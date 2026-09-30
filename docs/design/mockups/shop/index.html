@@ -1,0 +1,506 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><style>[hidden]{display:none!important}body{margin:0}</style></head><body>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Velowerkstatt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:wght@700&family=Figtree:ital,wght@0,400;0,600;0,700;0,900;1,900&family=Great+Vibes&family=JetBrains+Mono:wght@700&family=Jost:wght@300;700;800&family=Lora:ital,wght@0,400;0,600;1,600&family=Nunito:wght@900&display=swap">
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0b0716; --bg2: #120c22; --panel: #171029; --line: #2b2143; --line2: #3a2d5a; --ink: #f2eff6; --muted: #a79fbd; --faint: #6f678a;
+    --neon: #8b2bff; --neon-ink: #c9a6ff; --sun: #f2c230; --paper: #f5f1ec; --paper2: #ebe4dc; --card-ink: #1c1824; --card-muted: #6b6475;
+    --earn: #2d6a4f; --with: #1d5e86; --free: #5b6072; --crew: #2b44b8;
+    --ui: "Avenir Next", "Helvetica Neue", Figtree, system-ui, sans-serif; --head: Futura, Jost, "Century Gothic", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.4 var(--ui); -webkit-font-smoothing: antialiased; }
+  a { color: inherit; }
+  header.top { position: sticky; top: 0; z-index: 20; height: 60px; display: flex; align-items: center; gap: 22px; padding: 0 24px; background: color-mix(in oklab, var(--bg) 88%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+  .logo { display: flex; align-items: baseline; gap: 8px; font-family: var(--head); font-weight: 700; letter-spacing: 0.02em; font-size: 19px; white-space: nowrap; }
+  .logo small { font: 600 11px var(--ui); letter-spacing: 0.14em; text-transform: uppercase; color: var(--neon-ink); padding: 3px 8px; border: 1px solid var(--line2); border-radius: 999px; }
+  nav.tabs { display: flex; gap: 4px; }
+  nav.tabs a { text-decoration: none; color: var(--muted); padding: 7px 14px; border-radius: 8px; font-weight: 600; }
+  nav.tabs a.on { color: var(--ink); background: var(--panel); box-shadow: inset 0 -2px 0 var(--neon); }
+  .spacer { flex: 1; }
+  .search { width: 260px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg2); color: var(--faint); display: flex; align-items: center; padding: 0 12px; gap: 8px; }
+  .wallet { display: flex; align-items: center; gap: 10px; padding: 6px 14px 6px 8px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line2); white-space: nowrap; }
+  .wallet b { font-variant-numeric: tabular-nums; font-size: 15px; }
+  .wallet span { color: var(--muted); font-size: 12px; }
+  .coin { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff1b8, var(--sun) 55%, #c8962a); color: #5a3d06; font: 800 11px var(--head); box-shadow: inset 0 0 0 1.5px #b8861f; flex: none; }
+  .coin.sm { width: 16px; height: 16px; font-size: 9px; }
+  /* shop */
+  .shop { display: grid; grid-template-columns: 236px 1fr; }
+  aside.rail { position: sticky; top: 60px; height: calc(100vh - 60px); overflow: auto; padding: 18px 14px 40px 20px; border-right: 1px solid var(--line); }
+  .rail h4 { margin: 18px 0 6px; font: 700 11px var(--ui); letter-spacing: 0.16em; text-transform: uppercase; color: var(--faint); }
+  .rail a { display: flex; justify-content: space-between; text-decoration: none; padding: 4px 10px; border-radius: 7px; color: var(--muted); font-size: 13px; }
+  .rail a:hover, .rail a.on { background: var(--panel); color: var(--ink); }
+  .rail a i { font-style: normal; color: var(--faint); font-variant-numeric: tabular-nums; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line2); color: var(--muted); font-size: 12px; font-weight: 600; text-decoration: none; }
+  .chip.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  main.catalogue { padding: 22px 28px 60px; min-width: 0; }
+  .hero { display: grid; grid-template-columns: 1.15fr 1fr; gap: 24px; align-items: stretch; margin-bottom: 26px; }
+  .hero .pitch { padding: 26px 28px; border-radius: 18px; background: radial-gradient(120% 140% at 0% 0%, #2a1a4d 0%, var(--panel) 60%); border: 1px solid var(--line2); }
+  .hero h1 { margin: 0 0 8px; font: 700 34px/1.05 var(--head); letter-spacing: -0.01em; }
+  .hero p { margin: 0; color: var(--muted); font-size: 15px; max-width: 58ch; }
+  .hero .facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 20px; }
+  .fact { padding: 10px 12px; border-radius: 12px; background: #0000002e; border: 1px solid var(--line); }
+  .fact b { display: block; font: 700 22px var(--head); font-variant-numeric: tabular-nums; }
+  .fact span { color: var(--muted); font-size: 12px; }
+  .hero .makers { border-radius: 18px; border: 1px solid var(--line2); background: var(--bg2); padding: 16px; display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; align-content: center; }
+  .hero .makers a { display: grid; justify-items: center; gap: 6px; text-decoration: none; color: var(--muted); font-size: 11px; font-weight: 600; text-align: center; }
+  section.slot { margin-top: 30px; scroll-margin-top: 76px; }
+  section.slot > header { display: flex; align-items: baseline; gap: 14px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+  section.slot h2 { margin: 0; font: 700 22px var(--head); }
+  section.slot header span { color: var(--muted); font-size: 13px; }
+  section.slot header em { margin-left: auto; font-style: normal; color: var(--faint); font-size: 12px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(246px, 1fr)); gap: 16px; }
+  article.card { position: relative; display: flex; flex-direction: column; border-radius: 16px; overflow: hidden; background: var(--paper); color: var(--card-ink); box-shadow: 0 1px 0 #ffffff14 inset, 0 10px 30px -18px #000; transition: transform 0.18s, box-shadow 0.18s; }
+  article.card:hover { transform: translateY(-2px); box-shadow: 0 16px 40px -18px #000, 0 0 0 1px var(--neon); }
+  .thumb { position: relative; aspect-ratio: 3 / 2; background: radial-gradient(120% 95% at 50% 18%, #ffffff 0%, #f3eee8 52%, color-mix(in oklab, var(--tint, #8b8aa0) 26%, #e6ded5) 100%); }
+  .thumb canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .thumb .mark { position: absolute; left: 10px; top: 10px; width: 30px; height: 30px; border-radius: 50%; box-shadow: 0 2px 6px #0003; background: #fff; display: grid; place-items: center; }
+  .thumb .mark svg { width: 30px; height: 30px; }
+  .ribbon { position: absolute; right: 10px; top: 10px; font: 700 10px var(--ui); letter-spacing: 0.12em; text-transform: uppercase; padding: 4px 8px; border-radius: 6px; color: #fff; }
+  .ribbon.earn { background: var(--earn); } .ribbon.with { background: var(--with); } .ribbon.free { background: var(--free); } .ribbon.crew { background: var(--crew); } .ribbon.starter { background: #33313c; }
+  .era { position: absolute; left: 10px; bottom: 10px; font: 600 11px var(--ui); color: #4a4455; background: #ffffffc4; padding: 2px 8px; border-radius: 999px; }
+  .legal { position: absolute; right: 10px; bottom: 10px; font: 600 10px var(--ui); color: #5a3d06; background: #fff3c8; box-shadow: 0 0 0 1px #d9a92c66; padding: 2px 7px; border-radius: 6px; }
+  .body { padding: 12px 14px 12px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+  .maker { font: 700 10px var(--ui); letter-spacing: 0.14em; text-transform: uppercase; color: var(--card-muted); }
+  .body h3 { margin: 0; font: 700 16px/1.2 var(--ui); }
+  .spec { margin: 0; color: var(--card-muted); font-size: 12.5px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.7em; }
+  .opts { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+  .opts span { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: #1c18240d; border: 1px solid #1c18241a; color: #4a4455; }
+  .opts span.dot { padding: 0; width: 14px; height: 14px; border-radius: 50%; border: 1px solid #0002; }
+  .foot { display: flex; align-items: center; gap: 8px; margin-top: auto; padding-top: 8px; border-top: 1px solid #1c182414; }
+  .price { display: flex; align-items: center; gap: 6px; font: 700 16px var(--ui); font-variant-numeric: tabular-nums; }
+  .rule { display: flex; gap: 6px; align-items: flex-start; font-size: 12px; line-height: 1.3; color: #3d3846; font-weight: 600; }
+  .rule svg { flex: none; margin-top: 1px; }
+  .try { margin-left: auto; font: 700 12px var(--ui); padding: 6px 12px; border-radius: 8px; border: 1px solid #1c182433; background: transparent; color: var(--card-ink); cursor: pointer; white-space: nowrap; }
+  .try:hover { background: var(--card-ink); color: var(--paper); }
+  .note { margin: 26px 0 0; color: var(--faint); font-size: 12px; }
+  /* locker */
+  .locker { position: relative; height: calc(100vh - 60px); overflow: hidden; background: radial-gradient(60% 70% at 50% 58%, #2b2140 0%, #150f25 55%, #0b0716 100%); }
+  .locker canvas.stage { position: absolute; inset: 0; }
+  .locker svg.leaders { position: absolute; inset: 0; pointer-events: none; }
+  .callout { position: absolute; display: flex; align-items: center; gap: 8px; width: 318px; height: 36px; padding: 0 10px 0 6px; border-radius: 10px; background: #1a1230e6; border: 1px solid var(--line2); font-size: 12px; line-height: 1.15; }
+  .callout svg { width: 24px; height: 24px; flex: none; }
+  .callout .num { flex: none; width: 21px; height: 21px; border-radius: 50%; display: grid; place-items: center; font: 700 10.5px var(--ui); border: 1.2px solid #c9a6ff; }
+  .callout .num.r { background: #8b2bff; } .callout .num.b { background: #1d1530; }
+  .callout .t { min-width: 0; flex: 1; }
+  .callout .s { color: var(--faint); font: 700 9.5px var(--ui); letter-spacing: 0.12em; text-transform: uppercase; }
+  .callout .n { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+  .callout .p { white-space: nowrap; color: var(--muted); font-variant-numeric: tabular-nums; font-weight: 600; display: flex; align-items: center; gap: 4px; }
+  .callout .p.e { color: #7fd3a8; }
+  .locker .title { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); text-align: center; }
+  .locker .title h1 { margin: 0; font: 700 26px var(--head); }
+  .locker .title p { margin: 4px 0 0; color: var(--muted); }
+  .locker .sum { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); display: flex; gap: 10px; }
+  .locker .sum div { padding: 8px 14px; border-radius: 12px; background: #1a1230e6; border: 1px solid var(--line2); color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .locker .sum b { color: var(--ink); font: 700 16px var(--head); margin-right: 4px; font-variant-numeric: tabular-nums; }
+  /* makers */
+  .makers-page { padding: 26px 28px 60px; }
+  .makers-page > header { display: flex; align-items: flex-end; gap: 20px; margin-bottom: 22px; }
+  .makers-page h1 { margin: 0; font: 700 32px var(--head); }
+  .makers-page > header p { margin: 0; color: var(--muted); max-width: 70ch; }
+  .wall { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+  .brand { border-radius: 18px; overflow: hidden; background: var(--paper); color: var(--card-ink); display: flex; flex-direction: column; }
+  .brand .band { position: relative; height: 128px; display: flex; align-items: center; gap: 14px; padding: 0 18px; background: linear-gradient(135deg, var(--c0), color-mix(in oklab, var(--c0) 55%, var(--c2))); }
+  .brand .band svg.badge { width: 92px; height: 92px; flex: none; filter: drop-shadow(0 4px 10px #0005); }
+  .brand .band img.word { flex: 1 1 0; min-width: 0; max-width: 190px; height: 40px; object-fit: contain; object-position: left center; }
+  .brand .band .era { position: absolute; right: 12px; top: 12px; left: auto; bottom: auto; }
+  .brand .info { padding: 12px 16px 14px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+  .brand .word-meaning { font-style: italic; color: var(--card-muted); font-size: 12.5px; }
+  .brand .story { margin: 0; font-size: 13px; line-height: 1.4; }
+  .brand .makes { font-size: 12px; color: var(--card-muted); }
+  .brand .strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 4px; }
+  .brand .strip .mini { margin: 0; min-width: 0; }
+  .brand .strip .mini div { position: relative; aspect-ratio: 3 / 2; border-radius: 10px; overflow: hidden; background: radial-gradient(120% 95% at 50% 18%, #ffffff 0%, #f0ebe5 60%, #e3dbd2 100%); }
+  .brand .strip .mini canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .brand .strip figcaption { margin-top: 3px; font-size: 10.5px; font-weight: 700; color: #4a4455; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .brand .stats { display: flex; gap: 12px; margin-top: auto; padding-top: 8px; border-top: 1px solid #1c182414; font-size: 12px; color: var(--card-muted); }
+  .brand .stats b { color: var(--card-ink); font-variant-numeric: tabular-nums; }
+  .hero .makers .mk-head { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+  .hero .makers .mk-head b { font: 700 15px var(--head); color: var(--ink); }
+  .hero .makers .mk-head span { color: var(--faint); font-size: 12px; }
+  .modal { position: fixed; inset: 0; z-index: 50; display: none; place-items: center; background: #07040fd0; backdrop-filter: blur(6px); }
+  .modal.on { display: grid; }
+  .sheet { width: min(1120px, 94vw); border-radius: 22px; overflow: hidden; background: var(--paper); color: var(--card-ink); display: grid; grid-template-columns: 1.55fr 1fr; box-shadow: 0 40px 120px -30px #000; }
+  .sheet .view { position: relative; aspect-ratio: 16 / 10; background: radial-gradient(120% 95% at 50% 18%, #ffffff 0%, #f1ece6 55%, color-mix(in oklab, var(--tint, #8b8aa0) 22%, #e3dbd2) 100%); }
+  .sheet .view canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .sheet .view .detail { position: absolute; left: 14px; top: 14px; width: 34%; aspect-ratio: 3 / 2; border-radius: 12px; overflow: hidden; background: #fff; box-shadow: 0 8px 24px -10px #0006; border: 3px solid #fff; }
+  .sheet .view .detail canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .sheet .side { padding: 26px 26px 22px; display: flex; flex-direction: column; gap: 10px; }
+  .sheet .side h2 { margin: 0; font: 700 28px/1.1 var(--head); }
+  .sheet .side .who { display: flex; align-items: center; gap: 10px; }
+  .sheet .side .who svg { width: 40px; height: 40px; }
+  .sheet .side dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 6px 0; font-size: 13px; }
+  .sheet .side dt { color: var(--card-muted); font-weight: 600; }
+  .sheet .side dd { margin: 0; }
+  .sheet .side .opts span { cursor: pointer; font-size: 12px; padding: 3px 9px; }
+  .sheet .side .opts span.on { background: var(--card-ink); color: var(--paper); }
+  .sheet .buy { margin-top: auto; display: flex; gap: 10px; align-items: center; }
+  .sheet .buy button { flex: 1; font: 700 14px var(--ui); padding: 12px; border-radius: 12px; border: 0; background: var(--card-ink); color: var(--paper); cursor: pointer; }
+  .sheet .buy button.ghost { flex: none; background: transparent; color: var(--card-ink); border: 1px solid #1c182433; }
+  .sheet .fine { color: var(--card-muted); font-size: 12px; margin: 0; }
+  #progress { position: fixed; right: 18px; bottom: 16px; padding: 6px 12px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line2); color: var(--muted); font-size: 12px; z-index: 30; }
+  @media (max-width: 720px) { .shop { grid-template-columns: 1fr; } aside.rail { display: none; } .hero { grid-template-columns: 1fr; } .search, .wallet span { display: none; } .wall { grid-template-columns: 1fr; } }
+  header.top { top: env(safe-area-inset-top, 0px); }
+  @media (max-width: 720px) {
+    header.top { height: auto; flex-wrap: wrap; gap: 8px 12px; padding: 10px 16px; }
+    header.top .spacer { display: none; }
+    .logo small { display: none; }
+    main.catalogue { padding: 16px 16px 48px; }
+    .hero .pitch { padding: 20px 18px; }
+    .hero h1 { font-size: 28px; }
+    .hero .facts { grid-template-columns: repeat(2, 1fr); }
+    .hero .makers { grid-template-columns: repeat(4, 1fr); }
+    .locker .callout, .locker svg.leaders { display: none; }
+    .locker .sum { left: 16px; right: 16px; transform: none; flex-wrap: wrap; justify-content: center; }
+  }
+</style>
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/" } }
+</script>
+<header class="top">
+  <div class="logo">WattRoom <small>Velowerkstatt</small></div>
+  <nav class="tabs" id="tabs"></nav>
+  <div class="spacer"></div>
+  <div class="search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Frames, socks, makers…</div>
+  <div class="wallet"><span class="coin">B</span><b id="balance">1’240</b><span>Batzen · about 10 rides like your last</span></div>
+</header>
+<div id="app"></div>
+<div id="progress">Preparing the workshop…</div>
+<div class="modal" id="modal"></div>
+<script type="module">
+import * as THREE from 'three'
+import * as R from './rider3.js'
+import { markSVG, wordmarkCanvas } from './brands.js'
+import { hostFrame, thumbLoadout, unlockLabel, kindOf, tierPrice } from './shop-data.js'
+
+const cat = await (await fetch('./catalogue.json')).json()
+// Artifact links carry only a bare #token: #shop, #shop-buy, #shop-earn, #shop-free, #locker, #brands
+const VIEWS = ['shop', 'locker', 'brands']
+const [hv, hf] = location.hash.slice(1).split('-')
+const P = new Map(VIEWS.includes(hv) ? [['view', hv], ['filter', hf ?? null]] : [])
+addEventListener('hashchange', () => { if (VIEWS.includes(location.hash.slice(1).split('-')[0])) location.reload() })
+try { await Promise.all(['700 20px Jost', '300 20px Jost', '800 20px Jost', '400 20px Figtree', '900 20px Figtree', 'italic 900 20px Figtree', '700 20px "Bodoni Moda"', '20px "Great Vibes"', '700 20px "JetBrains Mono"', '400 20px Lora', 'italic 600 20px Lora', '900 20px Nunito'].map((f) => document.fonts.load(f))) } catch {}
+const view = P.get('view') ?? 'shop'
+const onlySlots = P.get('slots')?.split(',') ?? null
+const filter = P.get('filter') ?? 'all'
+const byId = new Map(cat.items.map((i) => [i.id, i]))
+const brandOf = new Map(cat.brands.map((b) => [b.id, b]))
+const pal = new Map(cat.palette.map((p) => [p.id, p.hex]))
+const fmt = (n) => n.toLocaleString('de-CH').replace(/’/g, ' ')
+const span = (a) => { const lo = Math.min(...a), hi = Math.max(...a); return lo === hi ? fmt(lo) : `${fmt(lo)}–${fmt(hi)}` }
+// the house mark for WattRoom's own items (no maker): a W on the chrome violet
+const HOUSE = (s) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#2b2143" stroke="#c9a6ff" stroke-width="1"/><path d="M6.4 8.2 L9 16 L12 10.6 L15 16 L17.6 8.2" fill="none" stroke="#f2eff6" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"/></svg>`
+const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;')
+document.getElementById('tabs').innerHTML = [['shop', 'Shop'], ['locker', 'Locker'], ['brands', 'Makers']].map(([v, l]) => `<a href="#${v}" class="${v === view ? 'on' : ''}">${l}</a>`).join('')
+const progress = document.getElementById('progress')
+
+// ---------------------------------------------------------------- studio: one offscreen renderer draws every thumbnail
+const TW = 360, TH = 240, DPR = 2
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true })
+renderer.setPixelRatio(DPR); renderer.setSize(TW, TH); renderer.setClearColor(0x000000, 0)
+const scene = new THREE.Scene()
+const sunDir = new THREE.Vector3(0.55, 0.62, 0.56).normalize()
+const key = new THREE.DirectionalLight('#fff1dc', 2.5); key.position.copy(sunDir).multiplyScalar(20); scene.add(key, key.target)
+scene.add(new THREE.HemisphereLight('#dfe6ff', '#8a7a6a', 1.35))
+R.lightRig.uRimSun.value.set('#ffe9cf').multiplyScalar(0.28); R.lightRig.uRimSky.value.set('#dfe6ff').multiplyScalar(0.1)
+const blobTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'); const g = x.createRadialGradient(64, 64, 0, 64, 64, 64); g.addColorStop(0, 'rgba(40,30,50,0.42)'); g.addColorStop(0.6, 'rgba(40,30,50,0.16)'); g.addColorStop(1, 'rgba(40,30,50,0)'); x.fillStyle = g; x.fillRect(0, 0, 128, 128); return new THREE.CanvasTexture(c) })()
+const blob = new THREE.Mesh(new THREE.PlaneGeometry(2.1, 0.62).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, depthWrite: false }))
+blob.position.set(0.12, 0.002, 0); scene.add(blob)
+const camera = new THREE.PerspectiveCamera(30, TW / TH, 0.02, 60)
+const logoTex = new Map()
+const logoFor = (brand) => { if (!brand) return null; if (!logoTex.has(brand.id)) { const t = new THREE.CanvasTexture(wordmarkCanvas(brand, 512, 80, '#ffffff')); t.anisotropy = 4; logoTex.set(brand.id, t) } return logoTex.get(brand.id) }
+
+const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z)
+const bonePt = (m, bone, p) => p.clone().applyMatrix4(m.userData.bones[bone].matrix)
+const restPt = (m, bone, p) => { const i = R.BONES.indexOf(bone); return p.clone().applyMatrix4(m.userData.rest[i]).applyMatrix4(m.userData.rest[i].clone().invert()).applyMatrix4(m.userData.bones[bone].matrix) }
+// framing presets: a target point on the rig, a view direction and a distance (bike space: +X forward, +Z drive side)
+const CAM = {
+  bike: (m) => { const bk = m.userData.rig.bk; return { at: V((bk.rear.x + bk.front.x) / 2 + 0.02, 0.5, 0), dir: [0.3, 0.2, 1], dist: 2.6 } },
+  rider: (m) => { const bk = m.userData.rig.bk; return { at: V((bk.rear.x + bk.front.x) / 2 + 0.1, 0.8, 0), dir: [0.35, 0.18, 1], dist: 3.85 } },
+  wheels: (m) => { const bk = m.userData.rig.bk; return { at: V((bk.rear.x + bk.front.x) / 2, bk.R * 1.05, 0), dir: [0.06, 0.1, 1], dist: 2.2 } },
+  bagFrame: (m) => { const bk = m.userData.rig.bk; return { at: bk.bb.clone().lerp(bk.ttFront, 0.5).add(V(-0.05, 0.02, 0)), dir: [0.22, 0.2, 1], dist: 1.45 } },
+  randoBag: (m) => { const bk = m.userData.rig.bk; return { at: bk.front.clone().add(V(-0.05, bk.R + 0.12, 0)), dir: [0.9, 0.45, 0.75], dist: 1.1 } },
+  computer: (m) => { const f = m.userData.rig.fit; return { at: f.clampPt.clone().add(V(0.06, 0.0, 0)), dir: [0.55, 0.7, 0.6], dist: 0.55 } },
+  bell: (m) => { const f = m.userData.rig.fit; return { at: f.clampPt.clone().add(V(-0.01, 0.015, -0.08)), dir: [0.35, 0.6, -0.8], dist: 0.5 } },
+  lights: (m) => { const bk = m.userData.rig.bk; return { at: bk.htBot.clone().add(V(0.06, 0.06, -0.06)), dir: [1, 0.35, -0.85], dist: 1.1 } },
+  socks: (m) => ({ at: bonePt(m, 'shinR', V(0, -0.33, 0)), dir: [0.3, 0.12, 1], dist: 0.78 }),
+  headBack: (m) => ({ at: bonePt(m, 'head', m.userData.meta.head.K.clone().add(V(0, 0.02, 0))), dir: [-0.45, 0.55, 0.8], dist: 0.85 }),
+  frameClose: (m) => { const bk = m.userData.rig.bk; return { at: V(bk.bb.x + 0.18, bk.bb.y + 0.3, 0), dir: [0.25, 0.14, 1], dist: 1.55 } },
+  front: (m) => { const bk = m.userData.rig.bk; return { at: bk.htBot.clone().lerp(bk.front, 0.5).add(V(0, 0.02, 0)), dir: [0.95, 0.3, 0.75], dist: 1.25 } },
+  wheel: (m) => { const bk = m.userData.rig.bk; return { at: bk.front.clone(), dir: [0.12, 0.1, 1], dist: 1.5 } },
+  hub: (m) => { const bk = m.userData.rig.bk; return { at: bk.front.clone().add(V(0, 0, 0.04)), dir: [0.35, 0.18, 1], dist: 0.52 } },
+  tyre: (m) => { const bk = m.userData.rig.bk; return { at: bk.front.clone().add(V(bk.R * 0.55, bk.R * 0.62, 0)), dir: [0.55, 0.35, 0.8], dist: 0.72 } },
+  drive: (m) => { const bk = m.userData.rig.bk; return { at: bk.bb.clone().lerp(bk.rear, 0.5).add(V(0, 0.06, 0.06)), dir: [0.12, 0.26, 1], dist: 1.0 } },
+  crank: (m) => { const bk = m.userData.rig.bk; return { at: bk.bb.clone().add(V(0.02, 0.02, 0.06)), dir: [0.22, 0.25, 1], dist: 0.68 } },
+  pedal: (m) => { const bk = m.userData.rig.bk, f = m.userData.rig.fit; return { at: bk.bb.clone().add(V(f.crank * 0.8, -0.02, 0.1)), dir: [0.45, 0.5, 1], dist: 0.62 } },
+  saddle: (m) => { const f = m.userData.rig.fit; return { at: f.contact.clone().add(V(-0.06, -0.07, 0)), dir: [-0.6, 0.42, 0.75], dist: 0.82 } },
+  cockpit: (m) => { const f = m.userData.rig.fit; return { at: f.clampPt.clone().add(V(0.02, -0.05, 0)), dir: [0.75, 0.9, 0.45], dist: 1.15 } },
+  bottle: (m) => { const bk = m.userData.rig.bk; return { at: bk.bb.clone().lerp(bk.dtFront, 0.45).add(V(-0.05, 0.02, 0.03)), dir: [0.18, 0.22, 1], dist: 1.05 } },
+  back: (m) => ({ at: bonePt(m, 'torso', V(0, 0.36, 0)), dir: [-0.9, 0.55, 0.62], dist: 1.5 }),
+  torso: (m) => ({ at: bonePt(m, 'torso', V(0.05, 0.4, 0)), dir: [0.8, 0.28, 0.72], dist: 1.5 }),
+  legs: (m) => ({ at: bonePt(m, 'shinR', V(0, 0.02, 0)).add(V(0, 0.02, 0)), dir: [0.12, 0.16, 1], dist: 1.35 }),
+  feet: (m) => ({ at: bonePt(m, 'footR', V(0.06, -0.01, 0)), dir: [0.35, 0.25, 1], dist: 0.74 }),
+  hands: (m) => ({ at: bonePt(m, 'handR', V(0.04, -0.02, 0)), dir: [0.5, 0.5, 0.85], dist: 0.5 }),
+  head: (m) => ({ at: bonePt(m, 'head', m.userData.meta.head.K.clone().add(V(0, 0.03, 0))), dir: [0.75, 0.28, 0.7], dist: 0.82 }),
+  face: (m) => ({ at: bonePt(m, 'head', m.userData.meta.head.K.clone().add(V(0.04, 0.0, 0))), dir: [1, 0.15, 0.45], dist: 0.56 }),
+  armL: (m) => ({ at: bonePt(m, 'armL', V(0, -0.1, 0)), dir: [0.5, 0.4, -0.9], dist: 0.9 }),
+  // closer product shots: the saddle's top, the bar's bend, the tape on a drop, the cage round a bottle, the head from behind
+  saddleTop: (m) => { const f = m.userData.rig.fit; return { at: f.contact.clone().add(V(0.0, -0.012, 0)), dir: [-0.5, 1.0, 0.62], dist: 0.66 } },
+  bars: (m) => { const f = m.userData.rig.fit; return { at: f.clampPt.clone().add(V(0.05, -0.045, 0)), dir: [0.95, 0.62, 0.62], dist: 0.98 } },
+  tape: (m) => { const f = m.userData.rig.fit; return { at: f.clampPt.clone().add(V(0.06, -0.075, 0.2)), dir: [0.6, 0.42, 0.95], dist: 0.44 } },
+  cage: (m) => { const bk = m.userData.rig.bk; return { at: bk.bb.clone().lerp(bk.dtFront, 0.42).add(V(-0.02, 0.03, 0.03)), dir: [0.22, 0.32, 1], dist: 0.66 } },
+  bento: (m) => { const bk = m.userData.rig.bk; return { at: bk.ttFront.clone().lerp(bk.cluster, 0.2).add(V(0, 0.045, 0)), dir: [0.35, 0.8, 0.75], dist: 0.72 } },
+  headset: (m) => { const bk = m.userData.rig.bk, f = m.userData.rig.fit; return { at: bk.htTop.clone().lerp(f.clampPt, 0.5).add(V(0.03, -0.06, 0)), dir: [0.85, 0.35, 0.8], dist: 0.95 } },
+  hair: (m) => ({ at: bonePt(m, 'head', m.userData.meta.head.K.clone().add(V(-0.035, -0.03, 0))), dir: [-0.62, 0.3, 0.78], dist: 0.72 })
+}
+const BIKE_ONLY = new Set(['frame', 'finish', 'fork', 'wheels', 'hub', 'tyres', 'groupset', 'gsFinish', 'crank', 'ring', 'pedals', 'saddle', 'bars', 'tape', 'bottles', 'cages', 'computer', 'lights', 'bell', 'bags', 'utility', 'charm'])
+const camFor = (it) => {
+  if (it.id === 'bag.musette') return 'back'
+  if (it.id === 'bag.wedge') return 'saddle'
+  if (it.id === 'bag.toptube') return 'bento'
+  if (['bag.halfframe', 'bag.fullframe'].includes(it.id)) return 'bagFrame'
+  if (it.id === 'bag.barroll') return 'cockpit'
+  if (it.id === 'bag.rando') return 'randoBag'
+  if (it.slot === 'utility') return 'bike'
+  if (it.slot === 'wheels') return 'wheels'
+  if (it.id === 'gs.mech' || it.id === 'gs.elec' || it.id === 'gs.delta') return 'headset'
+  if (it.slot === 'groupset') return 'frameClose'
+  if (it.slot === 'computer' || it.slot === 'bell' || it.slot === 'lights') return it.slot
+  if (it.slot === 'socks') return 'socks'
+  if (it.id === 'deco.flowers') return 'headBack'
+  if (it.id === 'plate.frame') return 'saddle'
+  if (it.id === 'charm.lampion') return 'cockpit'
+  if (it.id === 'charm.hammer') return 'frameClose'
+  if (it.id === 'bottle.rear') return 'saddle'
+  if (it.slot === 'armband' && it.style !== 'none') return 'armL'
+  if (it.slot === 'helmetDeco' && it.style === 'hc') return 'head'
+  if (it.id === 'warm.nightbands') return 'socks'
+  if (it.slot === 'warmers') return 'legs'
+  if (it.slot === 'saddle') return 'saddleTop'
+  if (it.slot === 'bars' && it.style !== 'tt' && it.style !== 'upright') return 'bars'
+  if (it.slot === 'tape') return 'tape'
+  if (it.slot === 'cages') return 'cage'
+  if (it.slot === 'hair') return 'hair'
+  return cat.slots.find((s) => s.id === it.slot)?.camera ?? 'bike'
+}
+function renderItem(it, opt = null, size = [TW, TH], o = {}) {
+  const lo = thumbLoadout(it, cat, opt)
+  const res = R.resolveLoadout(lo, cat)
+  const bikeOnly = o.bikeOnly ?? (BIKE_ONLY.has(it.slot) && it.id !== 'bag.musette' || (it.slot === 'plate' && it.style === 'frame'))
+  const frameBrand = brandOf.get(res.frame.brand)
+  if (!o.cam && ((it.slot === 'cap' && it.style !== 'headband') || it.slot === 'hair')) res.helmet = { ...res.helmet, style: 'none' } // product shot: the cap and hair without the helmet over them
+  const mesh = R.buildRider(res, cat, { bikeOnly, logo: logoFor(frameBrand) })
+  const a = new R.RiderAnimator(mesh, { seed: 3 })
+  let st
+  for (let i = 0; i < 45; i++) st = a.update(1 / 30, { cadence: 88, power: 190, speed: 8.5, ftp: 250 })
+  R.pose(mesh, { ...st, crank: bikeOnly ? 0 : 0.42, wheel: 0.3, wheelDelta: 0, headYaw: 0, stand: 0, swayAmp: 0 })
+  scene.add(mesh)
+  mesh.updateMatrixWorld(true)
+  const preset = CAM[o.cam ?? camFor(it)] ?? CAM.bike
+  const c = preset(mesh)
+  const dir = V(...c.dir).normalize()
+  if (size[0] !== TW || size[1] !== TH) { renderer.setSize(size[0], size[1]); camera.aspect = size[0] / size[1] } else camera.aspect = TW / TH
+  camera.fov = c.fov ?? 30; camera.position.copy(c.at).addScaledVector(dir, c.dist); camera.lookAt(c.at); camera.updateProjectionMatrix(); camera.updateMatrixWorld(true)
+  R.lightRig.uSunV.value.copy(sunDir).transformDirection(camera.matrixWorldInverse)
+  renderer.render(scene, camera)
+  scene.remove(mesh); mesh.geometry.dispose(); mesh.material.dispose()
+  return { canvas: renderer.domElement, res, mesh }
+}
+function paint(target, it, opt) {
+  const { canvas } = renderItem(it, opt)
+  target.width = TW * DPR; target.height = TH * DPR
+  target.getContext('2d').drawImage(canvas, 0, 0, target.width, target.height)
+}
+const queue = []
+const drain = () => new Promise((resolve) => {
+  const total = queue.length
+  const step = () => {
+    const t0 = performance.now()
+    while (queue.length && performance.now() - t0 < 60) { const [el, it, opt] = queue.shift(); try { paint(el, it, opt) } catch (e) { console.error(it.id, e) } }
+    progress.textContent = queue.length ? `Setting up the showroom · ${total - queue.length} of ${total}` : `${total} items on the shelves`
+    progress.hidden = !queue.length
+    if (queue.length) requestAnimationFrame(step); else resolve()
+  }
+  requestAnimationFrame(step)
+})
+
+// ---------------------------------------------------------------- shared bits
+const LOCK = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>'
+const STAR = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.6 7.1.7-5.4 4.8 1.6 7-6.2-3.7-6.2 3.7 1.6-7L2 9.3l7.1-.7z"/></svg>'
+const ribbonOf = (it) => ({ earn: ['earn', 'Earn'], with: ['with', 'Comes with'], free: it.starter ? ['starter', 'Starter'] : ['free', 'Free'], crew: ['crew', 'Crew'] })[kindOf(it)]
+const legalChip = (it) => (it.id === 'wheels.carbon' ? '30–80 mm · over 65 not race-legal' : it.id === 'bars.drop' ? '360–460 mm' : it.id === 'sock.plain' ? 'low · mid · tall' : it.id === 'tyre.black' ? '23–50 mm' : it.id === 'crank.four' ? '165–175 mm' : it.id === 'bottle.plastic' ? '0–2 bottles' : null)
+function optChips(it) {
+  if (!it.options) return ''
+  if (it.slot === 'lens') return `<div class="opts">${it.options.map((o) => `<span class="dot" title="${esc(o.name)}" style="background:${o.hex}"></span>`).join('')}<span>${it.options.length} tints</span></div>`
+  return `<div class="opts">${it.options.map((o) => `<span>${esc(o.name)}</span>`).join('')}</div>`
+}
+function cardHTML(it) {
+  const b = brandOf.get(it.brand)
+  const rb = ribbonOf(it)
+  const price = tierPrice(cat, it)
+  const rule = unlockLabel(it, cat)
+  const tint = b ? b.colours[0] : '#8b8aa0'
+  return `<article class="card k-${kindOf(it)}" data-id="${it.id}">
+    <div class="thumb" style="--tint:${tint}"><canvas></canvas><span class="mark" title="${b ? esc(b.name) : 'WattRoom'}">${b ? markSVG(b, 30) : HOUSE(30)}</span>${rb ? `<span class="ribbon ${rb[0]}">${rb[1]}</span>` : ''}${it.era ? `<span class="era">${esc(it.era)}</span>` : ''}${legalChip(it) ? `<span class="legal">${legalChip(it)}</span>` : ''}</div>
+    <div class="body">
+      <div class="maker">${b ? esc(b.name) : 'WattRoom'}</div>
+      <h3>${esc(it.name)}</h3>
+      <p class="spec">${esc(it.spec ?? it.blurb ?? '')}</p>
+      ${optChips(it)}
+      <div class="foot">${price ? `<span class="price"><span class="coin sm">B</span>${fmt(price)}</span><button class="try">Try on</button>` : `<span class="rule">${kindOf(it) === 'earn' ? LOCK : STAR}<span>${esc(rule)}</span></span>`}</div>
+    </div>
+  </article>`
+}
+
+// ---------------------------------------------------------------- views
+const app = document.getElementById('app')
+if (view === 'shop') {
+  const eco = cat.economics
+  const slots = cat.slots.filter((s) => !onlySlots || onlySlots.includes(s.id))
+  const product = (it) => it.style !== 'none' && it.fingers !== 'none' // 'no bell', 'no gloves' are states in the garage, not products
+  const shown = (it) => product(it) && (filter === 'all' || kindOf(it) === filter || (filter === 'free' && (it.starter || it.free)))
+  const rail = ['bike', 'rider'].map((g) => `<h4>${g === 'bike' ? 'Bike' : 'Rider'}</h4>` + cat.slots.filter((s) => s.group === g).map((s) => `<a href="#s-${s.id}">${s.label}<i>${cat.items.filter((i) => i.slot === s.id && product(i)).length}</i></a>`).join('')).join('')
+  app.innerHTML = `<div class="shop"><aside class="rail"><div class="chips">${[['all', 'All'], ['buy', 'Buy'], ['earn', 'Earn'], ['free', 'Free']].map(([f, l]) => `<a class="chip ${filter === f ? 'on' : ''}" href="#shop-${f}">${l}</a>`).join('')}</div>${rail}</aside>
+    <main class="catalogue">
+      ${onlySlots ? '' : `<div class="hero"><div class="pitch"><h1>Real parts.<br>Invented makers.</h1><p>Every frame, wheel and sock here is built from real specs and real eras, by twelve Swiss workshops that exist only in WattRoom. Looks only: nothing here makes you faster. Colours, widths and heights are yours to pick on anything you own.</p>
+        <div class="facts"><div class="fact"><b>${cat.items.filter(product).length}</b><span>products in ${cat.slots.length} slots</span></div><div class="fact"><b>${eco.buyable}</b><span>to buy in Batzen</span></div><div class="fact"><b>${eco.earnedOnly}</b><span>only earned, never sold</span></div><div class="fact"><b>${Math.round(eco.weeksToOwnEverything['3 rides/week (120)'] / 52 * 10) / 10} yrs</b><span>to own it all, 3 rides a week</span></div></div></div>
+        <div class="makers"><div class="mk-head"><b>Twelve makers, one craft each</b><span>invented · Swiss · never a real brand</span></div>${cat.brands.map((b) => `<a href="#brands">${markSVG(b, 54)}<span>${esc(b.name.split(' ')[0])}</span></a>`).join('')}</div></div>`}
+      ${slots.map((s) => { const list = cat.items.filter((i) => i.slot === s.id && shown(i)); if (!list.length) return ''; const prices = list.map((i) => tierPrice(cat, i)).filter(Boolean); return `<section class="slot" id="s-${s.id}"><header><h2>${s.label}</h2><span>${list.length} item${list.length === 1 ? '' : 's'}${prices.length ? ` · ${span(prices)} Batzen` : ''}</span><em>${s.group === 'bike' ? 'Bike' : 'Rider'}</em></header><div class="grid">${list.map(cardHTML).join('')}</div></section>` }).join('')}
+      <p class="note">Prices in Batzen, earned at your FTP rate: at most 72 an hour and 180 a day. Nothing is sold for money, nothing is random, nothing expires. Try-on is free; buying has a 10-minute undo while unworn.</p>
+    </main></div>`
+  for (const el of app.querySelectorAll('article.card')) queue.push([el.querySelector('canvas'), byId.get(el.dataset.id), null])
+  await drain()
+}
+
+if (view === 'brands') {
+  const reps = (b) => cat.items.filter((i) => i.brand === b.id && i.style !== 'none').sort((x, y) => (tierPrice(cat, y) ?? (y.unlock?.startsWith('earned') ? 1 : 0)) - (tierPrice(cat, x) ?? (x.unlock?.startsWith('earned') ? 1 : 0)) || cat.items.indexOf(x) - cat.items.indexOf(y)).slice(0, 3)
+  app.innerHTML = `<div class="makers-page"><header><h1>Makers</h1><p>Twelve workshops that exist only in WattRoom. Each owns a discipline and an era; none is a real brand, and none carries a flag, a coat of arms or a race’s colours.</p></header>
+    <div class="wall">${cat.brands.map((b) => { const its = cat.items.filter((i) => i.brand === b.id), pr = its.map((i) => tierPrice(cat, i)).filter(Boolean); return `<div class="brand" id="b-${b.id}" style="--c0:${b.colours[0]};--c2:${b.colours[2]}">
+      <div class="band">${markSVG(b, 92).replace('<svg ', '<svg class="badge" ')}<img class="word" data-brand="${b.id}" alt="${esc(b.name)}"><span class="era">${esc(b.era)}</span></div>
+      <div class="info"><div class="word-meaning">${esc(b.word)}</div><p class="story">${esc(b.story)}</p><div class="makes">${esc(b.makes)}</div>
+      <div class="strip">${reps(b).map((i) => `<figure class="mini" data-id="${i.id}"><div><canvas></canvas></div><figcaption>${esc(i.name)}</figcaption></figure>`).join('')}</div>
+      <div class="stats"><span><b>${its.length}</b> items</span>${pr.length ? `<span><b>${span(pr)}</b> Batzen</span>` : ''}<span><b>${its.filter((i) => kindOf(i) === 'earn').length}</b> earned</span></div></div></div>` }).join('')}</div></div>`
+  for (const img of app.querySelectorAll('img.word')) { const b = brandOf.get(img.dataset.brand); const light = R.hexToOklch(b.colours[0]).L > 0.7; img.src = wordmarkCanvas(b, 560, 110, light ? '#1c1824' : '#ffffff').toDataURL() }
+  for (const el of app.querySelectorAll('.mini')) queue.push([el.querySelector('canvas'), byId.get(el.dataset.id), null])
+  await drain()
+}
+
+if (view === 'locker') {
+  // every slot filled on one rider — a legal loadout (the resolver's notes must come back empty)
+  const L = {
+    name: 'Locker', frame: 'frame.endurance', finish: 'finish.teamlack', fork: 'fork.straight', wheels: 'wheels.carbon', hub: 'hub.bee', tyres: 'tyre.colourwall', groupset: 'gs.elec', gsFinish: 'gsf.anodised', crank: 'crank.hohl', ring: 'ring.oval', pedals: 'pedal.node', saddle: 'saddle.cutout', bars: 'bars.drop', tape: 'tape.collection', bottles: 'bottle.insulated', cages: 'cage.collection', computer: 'comp.tacho', lights: 'light.clip', bell: 'bell.collection', bags: 'bag.toptube', utility: 'util.pendler', charm: 'charm.cowbell',
+    jersey: 'jp.stickerei', cut: 'cut.race', layer: 'layer.gilet', shorts: 'bib.panels', warmers: 'warm.collection', socks: 'sock.nordic', shoes: 'shoe.strap', overshoes: 'over.collection', gloves: 'glove.full', helmet: 'helmet.road', helmetDeco: 'deco.flowers', glasses: 'glasses.halfrim', lens: 'lens.mirror', cap: 'cap.cotton', plate: 'plate.back', armband: 'armband.captain', hair: 'hair.braid',
+    opts: { finish: 'diagonal', tape: 'leather', cages: 'carbon', computer: 'wide', bell: 'ping', shorts: 'side', warmers: 'armleg', overshoes: 'toe', lens: 'enzian' },
+    params: { rimMm: 45, tyreMm: 32, bottles: 1, sockH: 'tall', shortsLen: 'short', sleeves: 'short', collar: 'std', brim: 'down', number: 118 },
+    colours: { frame: 'teal', frameAccent: 'glacier', decal: 'snow', jerseyA: 'enzian', jerseyB: 'ink', jerseyC: 'snow', layer: 'glacier', layerAccent: 'enzian', shorts: 'ink', shortsAccent: 'glacier', helmet: 'snow', helmetAccent: 'teal', socks: 'snow', sockAccent: 'enzian', shoes: 'snow', gloves: 'ink', barTape: 'leather', bottle: 'glacier', saddle: 'ink', hair: 'brick', warmer: 'enzian', cap: 'cream', capAccent: 'enzian', bag: 'graphite', bagAccent: 'sun', overshoe: 'teal', tyreWall: 'glacier', anodised: 'sun', armband: 'sun' },
+    skin: 'skin.4', body: { height: 1.76, build: 'athletic' }
+  }
+  const W = innerWidth, H = innerHeight - 60
+  app.innerHTML = `<div class="locker"><canvas class="stage"></canvas><svg class="leaders" width="${W}" height="${H}"></svg><div class="title"><h1>The locker</h1><p>All ${cat.slots.length} slots on one rider, one draw call</p></div><div class="sum" id="sum"></div></div>`
+  const box = app.querySelector('.locker'), svg = app.querySelector('svg.leaders')
+  const r2 = new THREE.WebGLRenderer({ canvas: app.querySelector('canvas.stage'), antialias: true, alpha: true })
+  r2.setPixelRatio(Math.min(devicePixelRatio, 2)); r2.setSize(W, H); r2.setClearColor(0, 0)
+  const sc = new THREE.Scene()
+  const k2 = new THREE.DirectionalLight('#fff1dc', 2.6); k2.position.set(6, 8, 7); sc.add(k2, k2.target)
+  sc.add(new THREE.HemisphereLight('#cfd8ff', '#5a4a6a', 1.3))
+  R.lightRig.uRimSun.value.set('#ffd9b0').multiplyScalar(0.34); R.lightRig.uRimSky.value.set('#a8b4ff').multiplyScalar(0.16)
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(1.35, 64).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#2d2346' })); floor.position.y = -0.005; sc.add(floor)
+  const sh = new THREE.Mesh(new THREE.PlaneGeometry(2.1, 0.7).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, depthWrite: false })); sh.position.set(0.12, 0.001, 0); sc.add(sh)
+  const res = R.resolveLoadout(L, cat)
+  const mesh = R.buildRider(res, cat, { logo: logoFor(brandOf.get(res.frame.brand)) })
+  const a = new R.RiderAnimator(mesh, { seed: 4 })
+  let st; for (let i = 0; i < 60; i++) st = a.update(1 / 30, { cadence: 86, power: 200, speed: 8.4, ftp: 250 })
+  R.pose(mesh, { ...st, crank: 0.5, headYaw: 0, stand: 0, swayAmp: 0 })
+  const grp = new THREE.Group(); grp.add(mesh); grp.rotation.y = -0.42; grp.position.set(-0.08, 0, 0); sc.add(grp)
+  grp.updateMatrixWorld(true)
+  const cam = new THREE.PerspectiveCamera(26, W / H, 0.05, 50)
+  cam.position.set(1.1, 1.55, 4.9); cam.lookAt(0.02, 0.74, 0); cam.updateMatrixWorld(true)
+  R.lightRig.uSunV.value.set(0.6, 0.7, 0.5).normalize().transformDirection(cam.matrixWorldInverse)
+  r2.render(sc, cam)
+  // anchors: a point on the part, per slot, in bone space
+  const m = mesh, rig = m.userData.rig, bk = rig.bk, fit = rig.fit, meta = m.userData.meta, K = meta.head.K, hk = meta.head.k, T = rig.dims.torso
+  const P = (bone, p) => p.clone().applyMatrix4(m.userData.bones[bone].matrix).applyMatrix4(grp.matrixWorld)
+  const tt = bk.ttFront.clone().lerp(bk.cluster, 0.5)
+  const anchors = {
+    helmet: P('head', K.clone().add(V(-0.02 * hk, 0.11 * hk, 0))), helmetDeco: P('head', K.clone().add(V(-0.1 * hk, 0.0, 0.09 * hk))), cap: P('head', K.clone().add(V(0.115 * hk, 0.03 * hk, 0.03 * hk))), glasses: P('head', K.clone().add(V(0.1 * hk, 0.0, 0.07 * hk))), lens: P('head', K.clone().add(V(0.105 * hk, -0.006 * hk, 0.02 * hk))), hair: P('head', K.clone().add(V(-0.12 * hk, -0.12 * hk, 0))),
+    jersey: P('torso', V(0.0, 0.62 * T, 0.14)), cut: P('torso', V(0.1, 0.95 * T, 0.05)), layer: P('torso', V(0.09, 0.45 * T, 0.12)), plate: P('torso', V(-0.1, 0.42 * T, 0.08)), armband: P('armL', V(0, -0.075, -0.03)),
+    gloves: P('handR', V(0.04, 0, 0.02)), warmers: P('foreR', V(0, -0.12, 0.02)), shorts: P('thighR', V(0.02, -0.22, 0.05)), socks: P('shinR', V(0, -0.37, 0.03)), shoes: P('footR', V(0.06, -0.04, 0.04)), overshoes: P('footR', V(0.17, -0.05, 0.03)),
+    frame: P('bike', tt.clone().setZ(0.02)), finish: P('bike', bk.dtFront.clone().lerp(bk.bb, 0.35).setZ(0.02)), fork: P('fork', bk.htBot.clone().lerp(bk.front, 0.45).setZ(0.05)), wheels: P('frontWheel', V(0.0, -(bk.Rb - 0.02), 0.02)), hub: P('rearWheel', V(0, 0, 0.05)), tyres: P('frontWheel', V(bk.R * 0.7, bk.R * 0.7, 0.02)),
+    groupset: P('bike', bk.rear.clone().add(V(0.012, -0.05, 0.075))), gsFinish: P('bike', bk.bb.clone().addScaledVector(bk.stDir, 0.16).add(V(0.02, -0.01, 0.06))), crank: P('crank', V(fit.crank * 0.6, 0, 0.075)), ring: P('crank', V(-0.06, 0.07, 0.06)), pedals: P('crank', V(fit.crank, 0, fit.pedalZ)),
+    saddle: P('bike', fit.contact.clone().add(V(-0.03, 0.0, 0.04))), bars: P('fork', fit.clampPt.clone().add(V(0.07, -0.1, 0.2))), tape: P('fork', fit.clampPt.clone().add(V(0.09, -0.04, -0.2))), computer: P('fork', fit.clampPt.clone().add(V(0.095, 0.015, 0.02))), bell: P('fork', fit.clampPt.clone().add(V(-0.005, 0.03, -0.075))),
+    lights: P('bike', fit.contact.clone().addScaledVector(bk.stDir, -0.115).add(V(-0.03, 0, 0))), bottles: P('bike', bk.bb.clone().lerp(bk.dtFront, 0.36).add(V(-0.04, 0.05, 0.02))), cages: P('bike', bk.bb.clone().lerp(bk.dtFront, 0.26).add(V(-0.02, 0.03, 0.03))),
+    bags: P('bike', bk.ttFront.clone().lerp(bk.cluster, 0.22).add(V(0, 0.04, 0.02))), utility: P('bike', bk.rear.clone().add(V(-0.05, bk.R + 0.04, 0.03))), charm: P('bike', fit.contact.clone().add(V(-0.08, -0.08, 0.01)))
+  }
+  const toScreen = (p) => { const q = p.clone().project(cam); return [(q.x + 1) / 2 * W, (1 - q.y) / 2 * H] }
+  const labelOf = (slot) => { const it = res[slot], b = brandOf.get(it.brand), pr = tierPrice(cat, it), k = kindOf(it); const opt = it.options ? it.options.find((o) => o.id === res.opt[slot])?.name : null; return { it, b, html: `${b ? markSVG(b, 24) : HOUSE(24)}<div class="t"><div class="s">${esc(cat.slots.find((s) => s.id === slot).label)}</div><div class="n">${esc(it.name)}${opt ? ' · ' + esc(opt) : ''}</div></div><div class="p ${k === 'earn' ? 'e' : ''}">${pr ? `<span class="coin sm">B</span>${fmt(pr)}` : k === 'earn' ? 'earned' : k === 'with' ? 'with frame' : k === 'crew' ? 'crew' : 'free'}</div>` } }
+  // exploded view: a numbered badge on each part (nudged apart where parts crowd), a numbered parts list either side
+  const order = [...cat.slots.filter((s) => s.group === 'rider'), ...cat.slots.filter((s) => s.group === 'bike')]
+  const pts = order.map((s, i) => { const p = toScreen(anchors[s.id] ?? P('bike', bk.bb)); return { slot: s.id, n: i + 1, a: p, b: [...p] } })
+  for (let it = 0; it < 220; it++) {
+    for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) {
+      const u = pts[i].b, v = pts[j].b, dx = v[0] - u[0], dy = v[1] - u[1], d = Math.hypot(dx, dy) || 0.01
+      if (d < 25) { const f = (25 - d) / 2 / d; u[0] -= dx * f; u[1] -= dy * f; v[0] += dx * f; v[1] += dy * f }
+    }
+    for (const e of pts) { e.b[0] += (e.a[0] - e.b[0]) * 0.04; e.b[1] += (e.a[1] - e.b[1]) * 0.04 }
+  }
+  let marks = ''
+  for (const e of pts) {
+    const moved = Math.hypot(e.b[0] - e.a[0], e.b[1] - e.a[1]) > 7
+    if (moved) marks += `<path d="M${e.a[0]} ${e.a[1]} L${e.b[0]} ${e.b[1]}" stroke="#c9a6ff" stroke-width="1.2" opacity="0.9"/>`
+    marks += `<circle cx="${e.a[0]}" cy="${e.a[1]}" r="2.6" fill="#f2eff6"/>`
+  }
+  for (const e of pts) marks += `<g><circle cx="${e.b[0]}" cy="${e.b[1]}" r="10.5" fill="${e.n <= 17 ? '#8b2bff' : '#1d1530'}" stroke="#c9a6ff" stroke-width="1.2"/><text x="${e.b[0]}" y="${e.b[1] + 4}" text-anchor="middle" font-family="Avenir Next, system-ui" font-weight="700" font-size="11" fill="#f2eff6">${e.n}</text></g>`
+  svg.innerHTML = marks
+  const column = (list, left) => {
+    const top = 78, gap = Math.min(40, (H - 150) / list.length)
+    list.forEach((e, i) => {
+      const { html } = labelOf(e.slot)
+      const div = document.createElement('div'); div.className = 'callout'; div.style.left = `${left}px`; div.style.top = `${top + i * gap}px`
+      div.innerHTML = `<span class="num ${e.n <= 17 ? 'r' : 'b'}">${e.n}</span>` + html; box.appendChild(div)
+    })
+  }
+  column(pts.filter((e) => e.n <= 17), 22)
+  column(pts.filter((e) => e.n > 17), W - 22 - 318)
+  const worth = cat.slots.reduce((s, x) => s + (tierPrice(cat, res[x.id]) ?? 0), 0)
+  const earned = cat.slots.filter((x) => kindOf(res[x.id]) === 'earn').length
+  const makers = new Set(cat.slots.map((x) => res[x.id].brand).filter(Boolean)).size
+  document.getElementById('sum').innerHTML = `<div><b>${cat.slots.length}</b>slots filled</div><div><b>${makers}</b>makers</div><div><b>${fmt(worth)}</b>Batzen of it bought</div><div><b>${earned}</b>earned, never sold</div><div><b>${fmt(m.geometry.index.count / 3)}</b>triangles · ${m.userData.detail < 1 ? 'detail ' + m.userData.detail : 'full detail'}</div><div>${res.notes.length ? esc(res.notes.map((n) => n.why).join('; ')) : 'no conflicts'}</div>`
+  progress.textContent = 'Locker ready'
+  progress.hidden = true
+}
+// ---------------------------------------------------------------- try-on: the item on a whole rider, free, with the detail shot beside it
+const modal = document.getElementById('modal')
+function tryOn(it, opt = null) {
+  const b = brandOf.get(it.brand), price = tierPrice(cat, it), rule = unlockLabel(it, cat)
+  const optNow = opt ?? it.options?.[0]?.id ?? null
+  modal.innerHTML = `<div class="sheet" style="--tint:${b ? b.colours[0] : '#8b8aa0'}"><div class="view"><canvas class="big"></canvas><div class="detail"><canvas class="small"></canvas></div></div>
+    <div class="side"><div class="who">${b ? markSVG(b, 40) : ''}<div><div class="maker">${b ? esc(b.name) : 'WattRoom'}</div><h2>${esc(it.name)}</h2></div></div>
+      <p class="spec" style="-webkit-line-clamp:unset;min-height:0">${esc(it.spec ?? it.blurb ?? '')}</p>
+      ${it.options ? `<div class="opts">${it.options.map((o) => `<span data-opt="${o.id}" class="${o.id === optNow ? 'on' : ''}">${esc(o.name)}</span>`).join('')}</div>` : ''}
+      <dl><dt>Slot</dt><dd>${esc(cat.slots.find((s) => s.id === it.slot).label)}</dd>${it.era ? `<dt>Era</dt><dd>${esc(it.era)}</dd>` : ''}${cat.slots.find((s) => s.id === it.slot).group === 'bike' ? `<dt>Shown on</dt><dd>${esc(hostFrame(it, cat).name)}${it.requires ? ` · needs ${esc(Object.entries(it.requires).map(([k, v]) => (Array.isArray(v) ? v.join('/') : k) + (Array.isArray(v) ? ' ' + k : ' mounts')).join(', '))}` : ''}</dd>` : ''}<dt>Colours</dt><dd>Yours to pick, free</dd><dt>Changes speed</dt><dd>No. Looks only.</dd></dl>
+      <div class="buy">${price ? `<button>Buy · <span class="coin sm" style="vertical-align:-3px">B</span> ${fmt(price)}</button><button class="ghost">Keep trying</button>` : `<span class="rule">${kindOf(it) === 'earn' ? LOCK : STAR}<span>${esc(rule)}</span></span>`}</div>
+      <p class="fine">${price ? 'Buying has a 10-minute undo while unworn. ' : ''}Try-on is free and changes nothing you own.</p></div></div>`
+  modal.classList.add('on')
+  const big = modal.querySelector('canvas.big'), small = modal.querySelector('canvas.small')
+  const bw = 700, bh = 438
+  const { canvas } = renderItem(it, optNow, [bw, bh], { cam: 'rider', bikeOnly: false })
+  big.width = bw * DPR; big.height = bh * DPR; big.getContext('2d').drawImage(canvas, 0, 0, big.width, big.height)
+  const d = renderItem(it, optNow, [TW, TH])
+  small.width = TW * DPR; small.height = TH * DPR; small.getContext('2d').drawImage(d.canvas, 0, 0, small.width, small.height)
+  renderer.setSize(TW, TH)
+  for (const s of modal.querySelectorAll('[data-opt]')) s.onclick = (e) => { e.stopPropagation(); tryOn(it, s.dataset.opt) }
+}
+modal.onclick = (e) => { if (e.target === modal || e.target.classList.contains('ghost')) modal.classList.remove('on') }
+addEventListener('keydown', (e) => { if (e.key === 'Escape') modal.classList.remove('on') })
+document.addEventListener('click', (e) => { const btn = e.target.closest('.try'); if (btn) tryOn(byId.get(btn.closest('article').dataset.id)) })
+if (P.get('try') && byId.has(P.get('try'))) tryOn(byId.get(P.get('try')), P.get('opt'))
+window.__ready = true
+</script>
+
+
+
+</body></html></body></html>
