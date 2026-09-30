@@ -275,7 +275,7 @@
 			<p class="text-muted m-0 text-xs sm:text-right">
 				{world.names.pass} ({Math.round(route.maxEle)} m) under the {world.names
 					.peak} · {route.name} up · built in {Math.round(built.ms)} ms · {world
-					.trees.length / 5}
+					.trees.length / 6}
 				trees, {world.houses.length / 5} houses
 			</p>
 			<p class="text-muted m-0 text-xs sm:text-right">
