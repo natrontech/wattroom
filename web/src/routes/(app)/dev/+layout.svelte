@@ -35,7 +35,7 @@
 		>
 			<a
 				href="/dev"
-				class="text-muted hover:text-ink mr-3 text-xs tracking-[0.2em] uppercase"
+				class="text-muted hover:text-ink mr-3 inline-flex min-h-6 items-center text-xs tracking-[0.2em] uppercase"
 				>dev</a
 			>
 			{#each screens as screen (screen.href)}

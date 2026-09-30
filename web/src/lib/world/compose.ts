@@ -10,7 +10,7 @@ import { makeRig, type Follow } from './rig';
 import { GEO } from './rider-rig';
 import { type Route } from '$lib/road/route';
 import { at } from '$lib/road/along';
-import { advance, defaultRiders, trainerFor, type Env } from './sim';
+import { advance, botWatts, defaultRiders, trainerFor, type Env } from './sim';
 import { buildStage, summitOf, type Stage } from './stage';
 import type { Style } from './styles';
 import type { Failure } from './ride-view';
@@ -73,6 +73,8 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	if (moment)
 		riders.forEach((r, i) => {
 			r.d = r.at = moment.m + r.d;
+			// A stand-in rides the watts its model gives it there, so its ring shows a zone.
+			if (!r.you) r.watts = botWatts(r, at(route, r.d).grade, moment.m);
 			pedal[i].crank = (r.d / CRANK_M) * 2 * Math.PI;
 			pedal[i].wheel = r.d / GEO.wheelR;
 		});
