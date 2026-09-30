@@ -40,38 +40,53 @@ for (const [width, height] of [
 		await expect(page.getByRole('button', { name: 'End ride' })).toBeVisible({
 			timeout: 30_000,
 		});
-		const surface = page.locator('[data-surface=docked]');
-		await expect(surface).toBeVisible();
-		// The world started: its canvas fills the surface behind the docks.
+		// Measured in the page, the moment the world draws behind its docks: a
+		// runner without a GPU misses its frames, and ten seconds on the ride
+		// rightly leaves for the flat road (#3080) — faster than a round trip
+		// per dock comes back from a page that software GL keeps busy.
 		// Building a world holds a loaded runner's main thread for a while.
+		let drawn: { name: string; box: Box }[];
 		try {
-			await expect(surface.locator('canvas')).toBeVisible({ timeout: 60_000 });
+			const measured = await page.waitForFunction(
+				() => {
+					const el = document.querySelector('[data-surface=docked]');
+					const canvas = el?.querySelector('canvas');
+					if (!el || !canvas || canvas.width === 300) return null;
+					const s = el.getBoundingClientRect();
+					const docks = [...el.querySelectorAll<HTMLElement>('[data-dock]')]
+						.map((d) => ({
+							name: d.dataset.dock!,
+							r: d.getBoundingClientRect(),
+						}))
+						.filter(({ r }) => r.width > 0 && r.height > 0)
+						.map(({ name, r }) => ({
+							name,
+							box: {
+								x0: (r.left - s.left) / s.width,
+								y0: (r.top - s.top) / s.height,
+								x1: (r.right - s.left) / s.width,
+								y1: (r.bottom - s.top) / s.height,
+							},
+						}));
+					const names = docks.map((d) => d.name);
+					return ['header', 'numbers', 'horizon'].every((n) =>
+						names.includes(n),
+					)
+						? docks
+						: null;
+				},
+				null,
+				{ polling: 100, timeout: 60_000 },
+			);
+			drawn = (await measured.jsonValue()) as { name: string; box: Box }[];
 		} finally {
 			await info.attach('console', { body: said.join('\n') });
 		}
-
-		for (const dock of ['header', 'numbers', 'horizon'])
-			await expect(surface.locator(`[data-dock=${dock}]`)).toBeVisible();
-		const drawn = await surface.evaluate((el) => {
-			const s = el.getBoundingClientRect();
-			return [...el.querySelectorAll<HTMLElement>('[data-dock]')]
-				.map((d) => ({ name: d.dataset.dock!, r: d.getBoundingClientRect() }))
-				.filter(({ r }) => r.width > 0 && r.height > 0)
-				.map(({ name, r }) => ({
-					name,
-					box: {
-						x0: (r.left - s.left) / s.width,
-						y0: (r.top - s.top) / s.height,
-						x1: (r.right - s.left) / s.width,
-						y1: (r.bottom - s.top) / s.height,
-					},
-				}));
-		});
 		expect(
 			drawn.map((d) => d.name),
 			JSON.stringify(drawn),
 		).toEqual(expect.arrayContaining(['header', 'numbers', 'horizon']));
-		for (const { name, box } of drawn as { name: string; box: Box }[]) {
+		for (const { name, box } of drawn) {
 			expect(meets(box, RIDER_BOX), `${name} over the rider`).toBe(false);
 			expect(meets(box, JUKEBOX_SEAT), `${name} over the jukebox seat`).toBe(
 				false,

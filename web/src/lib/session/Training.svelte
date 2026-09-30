@@ -15,7 +15,8 @@
 	import GamePanel from '$lib/session/GamePanel.svelte';
 	import Instrument from '$lib/session/Instrument.svelte';
 	import RidingSurface from '$lib/session/RidingSurface.svelte';
-	import { worldSlotOn } from '$lib/world/flag';
+	import FlatRoad from '$lib/world/FlatRoad.svelte';
+	import { createWorldView } from '$lib/world/world-view.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import BiasTrim from '$lib/session/BiasTrim.svelte';
 	import BikeComputer from '$lib/session/BikeComputer.svelte';
@@ -96,13 +97,14 @@
 	const riding = $derived(inRide.filter((r) => r.riding));
 	// The world in slot 2, where this device has it on (#3031, ADR-0066): it
 	// has the focus when nothing else takes it, holds under a shared screen,
-	// and a world that will not start leaves the slots as they were.
-	let worldFailed = $state(false);
-	const inWorld = $derived(worldSlotOn() && !worldFailed);
+	// and a world that cannot draw, or stops, leaves the slots as they were
+	// until the rider asks for 3D again (#3080).
+	const world = createWorldView();
+	const inWorld = $derived(world.on);
 	const rideWorld = () =>
 		import('$lib/world/RideWorld.svelte').catch((err: unknown) => {
 			console.error('world: the renderer did not load', err);
-			worldFailed = true;
+			world.fail('build-failed');
 			throw err;
 		});
 	// The sprint carries its own numbers and Watt Golf hides the meter:
@@ -238,7 +240,8 @@
 				watts={channel.you.watts}
 				ftp={channel.you.ftp}
 				paused={inFocus === 'media'}
-				onfail={() => (worldFailed = true)}
+				onfail={world.fail}
+				onflat={world.flatten}
 			/>
 		{/await}
 	{/snippet}
@@ -260,6 +263,9 @@
 					aside={inWorld ? undefined : trainerCard}
 					controls={inWorld ? undefined : sessionControls}
 				/>
+				{#if world.reason}
+					<FlatRoad reason={world.reason} onretry={world.retry} />
+				{/if}
 			</div>
 		{/snippet}
 

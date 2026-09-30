@@ -6,6 +6,7 @@ import {
 	chipsIn,
 	createAheadEase,
 	frameFor,
+	pagedFrame,
 	gradeStep,
 	nodesOf,
 	SKYLINE,
@@ -88,6 +89,16 @@ describe('the frame', () => {
 		const frame = frameFor(ramp(0, 6000), 2000, 3000, 1000, 200);
 		expect(frame.fromM).toBe(1500);
 		expect(frame.scale).toBeCloseTo(1000 / 3500, 9);
+	});
+
+	it('holds a 2 km page still under reduced motion, and turns it at its end (#3080)', () => {
+		const road = ramp(4, 6000);
+		const page = (m: number) => pagedFrame(road, m, 1000, 200);
+		expect(page(0).fromM).toBe(0);
+		expect(page(1999).fromM).toBe(0);
+		expect(page(1999)).toEqual(page(0));
+		expect(page(2000).fromM).toBe(SKYLINE.pageM);
+		expect(page(2000).scale).toBeCloseTo(1000 / SKYLINE.pageM, 9);
 	});
 });
 
