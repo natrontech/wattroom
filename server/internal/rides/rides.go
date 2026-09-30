@@ -22,14 +22,10 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
 
-// Bounds mirror the WS metrics gate and fitexport: attacker-controlled
-// series, capped before any of it is believed.
+// An attacker-controlled series, capped before any of it is believed: the
+// samples by protocol's MaxRideSamples and metric bounds, the body here.
 const (
-	maxSamples   = 6 * 60 * 60 // 6 h at 1 Hz — longer than any indoor session
 	maxBodyBytes = 4 << 20
-	maxWatts     = 3000
-	maxCadence   = 250
-	maxHR        = 250
 	// Saves per account per minute (#2251). POST /api/rides was the one
 	// rider-created row with no ceiling at all, while every neighbour has
 	// one — custom workouts 200 per account, MCP 60 calls a minute, OG cards

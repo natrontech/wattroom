@@ -29,6 +29,8 @@ export function createSoloRoadRide(deps: {
 	let wakeLock: WakeLock | undefined;
 	let off: (() => void) | undefined;
 	let lastSecond = -1;
+	/** The ride's numbers this second, sensors ranked over the trainer. */
+	let metrics = $state.raw<ReturnType<typeof arbitrate> | null>(null);
 	const guards = createRiderGuards();
 	const actuator = createActuator(() => trainer);
 
@@ -55,21 +57,22 @@ export function createSoloRoadRide(deps: {
 	});
 
 	function onSample(raw: TrainerSample) {
-		const metrics = arbitrate(
+		const ranked = arbitrate(
 			{ trainer: raw, sensors: deps.readings?.() ?? {} },
 			raw.at,
 		);
+		metrics = ranked;
 		actuator.sample(raw);
 		const second = Math.floor(raw.at / 1000);
 		const opens = second > lastSecond;
 		if (opens) lastSecond = second;
 		if (deps.free.mode === 'watts')
-			guards.sample(metrics, deps.free.targetWatts, opens ? 1 : 0);
+			guards.sample(ranked, deps.free.targetWatts, opens ? 1 : 0);
 		if (!opens) return;
 		deps.free.second({
-			watts: metrics.watts,
-			cadence: metrics.cadence,
-			hr: metrics.heartRate ?? 0,
+			watts: ranked.watts,
+			cadence: ranked.cadence,
+			hr: ranked.heartRate ?? 0,
 			at: raw.at,
 		});
 	}
@@ -87,6 +90,9 @@ export function createSoloRoadRide(deps: {
 		},
 		get gear() {
 			return actuator.gear;
+		},
+		get metrics() {
+			return metrics;
 		},
 		get guard() {
 			return guards.phase;

@@ -15,9 +15,9 @@ import (
 
 // validMetrics bounds WS input before it touches room state.
 func validMetrics(m protocol.RiderMetrics) bool {
-	return m.Watts >= 0 && m.Watts <= 3000 &&
-		m.HR >= 0 && m.HR <= 250 &&
-		m.Cadence >= 0 && m.Cadence <= 250 &&
+	return m.Watts >= 0 && m.Watts <= protocol.MaxWatts &&
+		m.HR >= 0 && m.HR <= protocol.MaxHeartRate &&
+		m.Cadence >= 0 && m.Cadence <= protocol.MaxCadence &&
 		m.RoadInBounds()
 }
 

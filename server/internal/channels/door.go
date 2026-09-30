@@ -61,14 +61,8 @@ func (s *Service) Authorize(r *http.Request, id string) (protocol.Rider, string,
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		s.log.Warn("look unavailable for roster", "err", err, "channel", id)
 	}
-	rider := protocol.Rider{
-		ID:       store.UUIDString(user.ID),
-		Name:     user.DisplayName,
-		Role:     liveRole(role),
-		FtpWatts: int(user.FtpWatts),
-		WeightKg: int(user.WeightKg),
-		TotalXp:  xp,
-	}
+	rider := store.RiderOf(user)
+	rider.Role, rider.TotalXp = liveRole(role), xp
 	if look != nil {
 		rider.Look = *look
 	}

@@ -24,6 +24,8 @@
 	import { carryOnFrom, type RideableRoute } from '$lib/ride/roads';
 	import { createSoloRoadRide } from '$lib/ride/solo-road.svelte';
 	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
+	import BikeComputer from '$lib/session/BikeComputer.svelte';
+	import { roadContext } from '$lib/session/computer-pages';
 	import Instrument from '$lib/session/Instrument.svelte';
 	import SensorOverview from '$lib/session/SensorOverview.svelte';
 	import { heldTrainer } from '$lib/session/sensor-status';
@@ -207,6 +209,21 @@
 				cassette={!profile.current.singleSpeed}
 			/>
 		{/if}
+		<!-- The bike computer, as a ride in a channel has it (ADR-0046, #3628):
+		     the road's speed, grade and distance on RIDE. -->
+		<BikeComputer
+			{watts}
+			cadence={solo.metrics?.cadence ?? 0}
+			hr={solo.metrics?.heartRate ?? 0}
+			kg={profile.current.kg}
+			lthr={profile.current.lthr}
+			{stale}
+			stats={free.live}
+			gear={free.mode === 'grade' && gearsEnabled()
+				? solo.gear.label
+				: undefined}
+			{...free.road && roadContext(free.road)}
+		/>
 		{#if free.road}
 			<!-- The horizon (#3059): the road ahead and your dot. -->
 			<div class="h-40">
