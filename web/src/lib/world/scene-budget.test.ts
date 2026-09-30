@@ -38,17 +38,17 @@ type Line = keyof typeof HIGH;
 
 const OVER: Partial<Record<Line, string>> = {
 	draws:
-		"#3077 batches the set pieces: every kit kind and every face of a sign's board is its own draw today",
+		"#3642 batches the set pieces: every kit kind and every face of a sign's board is its own draw today",
 	triangles:
 		'#3606 streams the ground and the road chunk by chunk; the whole world is one mesh of each, never culled',
 	'dressing.draws':
-		"#3077 batches the set pieces: every kit kind and every face of a sign's board is its own draw; the props are three",
+		"#3642 batches the set pieces: every kit kind and every face of a sign's board is its own draw; the props are three",
 };
 
 /** Dressing drawn as plain meshes, and who batches it. */
 const UNBATCHED: Record<string, string> = {
-	sign: '#3077 anchors set pieces to the road',
-	arch: '#3077 anchors set pieces to the road',
+	sign: '#3642 batches the sign boards',
+	arch: '#3642 batches the arch with the boards',
 };
 
 type Count = { draws: number; triangles: number };

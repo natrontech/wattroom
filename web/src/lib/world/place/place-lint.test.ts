@@ -21,7 +21,7 @@ const modules = readdirSync(dir).filter(
 );
 /**
  * The rest of the placement path (#3221, O11): the gates that admit a
- * placement, and what the props generator decides with. kit.ts is not here:
+ * placement, and what the props and set pieces decide with. kit.ts is not here:
  * it reads its numbers off three's models and rounds them to the millimetre,
  * so an engine's last bit never reaches a decision.
  */
@@ -31,6 +31,9 @@ const placement = [
 		.map((f) => `../placement/${f}`),
 	'../props/scatter.ts',
 	'../props/roads.ts',
+	'../props/placer.ts',
+	'../props/rhythm.ts',
+	'../setpieces.ts',
 ];
 const code = (file: string) =>
 	readFileSync(join(dir, file), 'utf8')

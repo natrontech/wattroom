@@ -159,18 +159,7 @@ export function buildStage(
 	for (const s of world.signs)
 		group.add(tag('dressing', board(route, s, style), 'sign'));
 	for (const a of world.arches)
-		group.add(
-			tag(
-				'dressing',
-				arch(
-					route,
-					a.d,
-					`${a.label} · ${world.names.pass.toUpperCase()}`,
-					style,
-				),
-				'arch',
-			),
-		);
+		group.add(tag('dressing', arch(route, a, style), 'arch'));
 
 	return { group, backdrop: horizon, overview, update: props.update };
 }

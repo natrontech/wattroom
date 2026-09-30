@@ -172,6 +172,18 @@ describe('the world', () => {
 		expect(offenders).toEqual([]);
 	});
 
+	it('crowns the pass it climbs both ways, and signs it for each way (#3077)', () => {
+		expect(world.arches.map((a) => a.label)).toEqual([
+			`KOM · ${world.names.pass.toUpperCase()}`,
+		]);
+		const pass = world.signs.filter((g) => g.look === 'pass');
+		expect(pass).toHaveLength(2);
+		expect(pass.every((g) => g.lines[0] === world.names.pass)).toBe(true);
+		expect(
+			world.signs.filter((g) => g.look === 'climb').length,
+		).toBeGreaterThanOrEqual(2);
+	});
+
 	it('never lifts the ground through the road', () => {
 		expect(worstRiseThroughRoad(route, world)).toBeLessThan(0.2);
 	});
