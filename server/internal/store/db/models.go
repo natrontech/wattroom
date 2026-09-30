@@ -443,6 +443,8 @@ type User struct {
 	StatusText         *string
 	StatusExpiresAt    pgtype.Timestamptz
 	Cheers             string
+	WeightChangedAt    pgtype.Timestamptz
+	WeightConfirmedAt  pgtype.Timestamptz
 }
 
 type UserAvatar struct {

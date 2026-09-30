@@ -39,13 +39,17 @@ func (x *export) profile() (map[string]any, error) {
 		// Art. 15's scope, so it carries the row — a file saying 200 W
 		// without saying nobody chose it is the same half-truth Home used
 		// to tell.
-		"ftpSource":     user.FtpSource,
-		"weightSource":  user.WeightSource,
-		"createdAt":     user.CreatedAt.Time,
-		"email":         user.Email,
-		"notifyPlanned": user.NotifyPlanned,
-		"accentPalette": user.AccentPalette,
-		"colorScheme":   user.ColorScheme,
+		"ftpSource":    user.FtpSource,
+		"weightSource": user.WeightSource,
+		// And when the weight last changed and was last confirmed (#3169),
+		// which a race reads — the row's, so the export's.
+		"weightChangedAt":   timeOrNil(user.WeightChangedAt),
+		"weightConfirmedAt": timeOrNil(user.WeightConfirmedAt),
+		"createdAt":         user.CreatedAt.Time,
+		"email":             user.Email,
+		"notifyPlanned":     user.NotifyPlanned,
+		"accentPalette":     user.AccentPalette,
+		"colorScheme":       user.ColorScheme,
 		// The rest of what the row holds about the rider (#1826): their own
 		// LTHR, the timezone the app observed, the Strava switch, and when
 		// the address was verified. The export claims Art. 15's scope; it

@@ -1069,6 +1069,42 @@ export interface LobbyPing {
 }
 
 //////////
+// source: race.go
+
+/**
+ * Races (docs/SPEC.md "Races", ADR-0067): a weight changed within the freeze
+ * before the flag rides unranked, and so does one the rider has not confirmed
+ * within the confirmation window.
+ */
+export const RaceWeightFreezeDays = 14;
+/**
+ * Races (docs/SPEC.md "Races", ADR-0067): a weight changed within the freeze
+ * before the flag rides unranked, and so does one the rider has not confirmed
+ * within the confirmation window.
+ */
+export const RaceWeightConfirmDays = 90;
+/**
+ * Why a race rides a rider unranked (ADR-0067). They still race; this is what
+ * the closing card tells them kept them off the results.
+ */
+export const UnrankedDefaultFtp = "default_ftp";
+/**
+ * Why a race rides a rider unranked (ADR-0067). They still race; this is what
+ * the closing card tells them kept them off the results.
+ */
+export const UnrankedDefaultWeight = "default_weight";
+/**
+ * Why a race rides a rider unranked (ADR-0067). They still race; this is what
+ * the closing card tells them kept them off the results.
+ */
+export const UnrankedFreshWeight = "fresh_weight";
+/**
+ * Why a race rides a rider unranked (ADR-0067). They still race; this is what
+ * the closing card tells them kept them off the results.
+ */
+export const UnrankedUnconfirmedWeight = "unconfirmed_weight";
+
+//////////
 // source: reactions.go
 
 /**
@@ -1162,6 +1198,11 @@ export const PokeCooldownSeconds = 10;
 // source: rider.go
 
 /**
+ * SourceDefault is ADR-0048's word for a number nobody chose: the account was
+ * created with it. The other two, "manual" and "ramp", are answers.
+ */
+export const SourceDefault = "default";
+/**
  * Rider is presence: who is in the voice channel right now, with what the
  * dashboard needs to render them. FTP crosses the wire so every screen can
  * show %FTP — scoped to the channel by design, the same visibility
@@ -1195,6 +1236,17 @@ export interface Rider {
    * the starter kit.
    */
   look?: string;
+  /**
+   * Where the two numbers came from (ADR-0048) — SourceDefault, "manual" or
+   * "ramp" — and when the weight last changed and when the rider last
+   * answered for it, in server millis, zero when never recorded (#3169). The
+   * channel already sees the numbers; these say how far a race may trust
+   * them, and a race reads all four at its flag (Unranked).
+   */
+  ftpSource?: string;
+  weightSource?: string;
+  weightChangedAt?: number /* int64 */;
+  weightConfirmedAt?: number /* int64 */;
   /**
    * Stepped out (#706). Presence, not a metric: the rider said so with the
    * Lounge's button, and every screen renders the mark instead of leaving
