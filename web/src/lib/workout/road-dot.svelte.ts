@@ -1,3 +1,4 @@
+import { createRoadReadout } from '$lib/ride/road-readout';
 import { createRoadRide, type RoadSecond } from '$lib/ride/road-ride';
 import { roadOf, roadSecond } from './road-workout';
 import type { Segment, Workout } from './types';
@@ -18,6 +19,11 @@ export function createRoadDot(workout: Workout, kg: () => number) {
 	/** Metres along the owner's road, where the pins are. */
 	const m = $derived(
 		pinned ? pinned.originM + (here?.m ?? pinned.fromM - pinned.originM) : 0,
+	);
+	// One readout a second, for slot 1 and the HUD alike (#3639).
+	const readoutAt = createRoadReadout();
+	const readout = $derived(
+		pinned ? readoutAt(pinned.road, m - pinned.originM) : null,
 	);
 	return {
 		pinned,
@@ -45,6 +51,8 @@ export function createRoadDot(workout: Workout, kg: () => number) {
 						/** Where the ride starts and each block ends, on it. */
 						startM: pinned.fromM - pinned.originM,
 						blockEndsM: pins?.map((end) => end - pinned.originM),
+						/** Where it is, as slot 1 and the HUD say it (#3639). */
+						readout: readout!,
 					}
 				: null;
 		},

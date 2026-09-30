@@ -14,6 +14,7 @@
 	 * possible.
 	 */
 	import { formatClock } from '$lib/format';
+	import { roadLine } from '$lib/ride/road-readout';
 	import { blockBands, type Block } from '$lib/workout/block';
 	import type { Snippet } from 'svelte';
 
@@ -77,6 +78,12 @@
 		<h2 class="font-display truncate text-3xl leading-none font-bold">
 			{block?.label || title}
 		</h2>
+		{#if block?.road}
+			<!-- Where on the road (#3639): the line the HUD is sent too. -->
+			<p data-testid="block-road" class="num text-muted mt-2 text-sm">
+				{roadLine(block.road)}
+			</p>
+		{/if}
 	</div>
 	{#if block}
 		<!-- Time left is the figure a rider looks up for (#3090): the largest
