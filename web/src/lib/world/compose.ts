@@ -20,6 +20,8 @@ import {
 	type SimRider,
 } from './sim';
 import { buildStage, summitOf, type Stage } from './stage';
+import { placeGrids } from './chunks/grids';
+import { streamGround, type GotGrid, type Grids } from './ground-stream';
 import type { Style } from './styles';
 import type { Failure } from './ride-view';
 import type { World } from './world';
@@ -55,6 +57,8 @@ export type MountOptions = {
 	 * ride nothing.
 	 */
 	metre?: () => RideMetre;
+	/** Where the streamed ground's chunks come from: the page's copy, then the build worker (#3606). */
+	grids?: (got: GotGrid) => Grids;
 	/**
 	 * A still moment, the dev gallery's (#3672): every rider, crank and
 	 * breath of wind placed from the metre, drawn and held, so two loads of
@@ -114,16 +118,17 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	const camera = new THREE.PerspectiveCamera(52, 1, 1, 60000);
 	const sight = makeSight();
 	const rig = makeRig(route, world);
+	const stream = streamGround(
+		opts.grids ?? ((got) => placeGrids(world, got)),
+		world.level,
+	);
 	let stage: Stage | null = null;
 	let crew: Crew | null = null;
 	let controls: OrbitControls | null = null;
 
 	function applyMode() {
 		const orbit = mode === 'orbit';
-		if (stage) {
-			stage.backdrop.visible = !orbit;
-			stage.overview.visible = orbit;
-		}
+		stage?.setOrbit(orbit);
 		if (orbit && !controls) {
 			// Open on the whole model, tilted like a diorama on a table.
 			const target = summitOf(route, world);
@@ -147,7 +152,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 			scene.remove(old);
 			disposeTree(old);
 		}
-		stage = buildStage(route, world, style, sight);
+		stage = buildStage(route, world, style, sight, stream);
 		crew = makeCrew(riders, style);
 		scene.add(stage.group, crew.group);
 		scene.fog = new THREE.FogExp2(style.sky.horizon, style.fogK * 1.1);
@@ -190,12 +195,18 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		else rig.update(camera, mode === 'heli' ? 'heli' : 'chase', you, me, real);
 		sight.uCam.value.copy(camera.position);
 		sight.uYou.value.copy(me);
-		stage?.update(camera.position);
+		look();
 		sinceHud += real;
 		if (sinceHud >= HUD_EVERY) {
 			sinceHud = 0;
 			opts.onTick?.(hud());
 		}
+	}
+
+	/** The ground, the road and the props' rings, brought to where the eye now is; the diorama holds still. */
+	function look() {
+		if (!controls) stream.update(camera.position.x, camera.position.z);
+		stage?.update(camera.position);
 	}
 
 	dress(opts.style);
@@ -208,9 +219,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		dress,
 		advanceBy,
 		/** Brings the level of detail to where the camera now stands, after moving it by hand (the scene budget does). */
-		look() {
-			stage?.update(camera.position);
-		},
+		look,
 		setCamera(next: CameraMode) {
 			mode = next;
 			applyMode();
@@ -258,6 +267,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		},
 		dispose() {
 			controls?.dispose();
+			stream.dispose();
 			disposeTree(scene);
 		},
 	};

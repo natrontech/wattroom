@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { Biome } from './biome';
 import { type Route } from '$lib/road/route';
 import type { Palette, Style } from './styles';
+import type { TerrainMesh } from './terrain-mesh';
 import type { World } from './world';
 import { bendsOf } from './terrain/road-frame';
 import {
@@ -21,10 +22,10 @@ export const yOf = (route: Route, ele: number) => (ele - route.minEle) * EXAG;
 
 export function terrain(
 	route: Route,
-	w: World,
+	mesh: TerrainMesh,
 	palette: Palette,
 ): THREE.BufferGeometry {
-	const { pos, biome, shade, forest, index } = w.mesh;
+	const { pos, biome, shade, forest, index } = mesh;
 	const n = pos.length / 3;
 	const p = new Float32Array(n * 3);
 	const colors = new Float32Array(n * 3);
@@ -63,6 +64,9 @@ export function terrain(
 // furniture stands on (bendsOf), inside columns clamped to 0.85 × the bend
 // radius so a hairpin never folds into a bow-tie.
 // uv carries (metres across, metres along) for the marking shader.
+// `rows` draws only rows [from, to] of the whole ribbon, the same vertices
+// and normals the whole would have there: it walks in from WARM rows back and
+// lights its ends with the faces beyond them, so pieces meet with no seam.
 export function road(
 	route: Route,
 	opts: {
@@ -70,6 +74,7 @@ export function road(
 		lift?: number;
 		shoulder?: number;
 		step?: number;
+		rows?: readonly [from: number, to: number];
 	} = {},
 ): THREE.BufferGeometry {
 	const half = (opts.width ?? ROAD_W) / 2;
@@ -83,18 +88,21 @@ export function road(
 	const drops =
 		shoulder > 0 ? [-SHOULDER_DROP, 0, 0, 0, -SHOULDER_DROP] : [0, 0, 0];
 	const cols = offs.length;
-	const pos: number[] = [];
-	const uv: number[] = [];
-	const prev: THREE.Vector3[] = [];
-	const centre = drawnRows(route, step);
+	const [from, to] = opts.rows ?? [0, Infinity];
+	const first = Math.max(0, from - WARM);
+	const centre = drawnRows(route, step, first, to + 1 + BEND_ROWS);
+	const last = Math.min(first + centre.length - 1, to + 1);
 	const bends = bendsOf(
 		centre.map((p) => p.x),
 		centre.map((p) => p.z),
 	);
-	for (let r = 0; r < centre.length; r++) {
-		const p = centre[r];
+	const pos: number[] = [];
+	const uv: number[] = [];
+	const prev: THREE.Vector3[] = [];
+	for (let r = first; r <= last; r++) {
+		const p = centre[r - first];
 		const d = r * step;
-		const k = bends[r]; // curvature, +left
+		const k = bends[r - first]; // curvature, +left
 		const bank = bankOf(k);
 		const lx = Math.cos(p.heading); // left of travel
 		const lz = -Math.sin(p.heading);
@@ -118,6 +126,45 @@ export function road(
 			uv.push(offs[c], d);
 		}
 	}
+	const whole = strip(pos, uv, cols);
+	whole.computeVertexNormals();
+	// The rows asked for, lit as the whole ribbon lights them.
+	const lo = Math.max(from, first);
+	const hi = Math.min(to, last);
+	if (lo === first && hi === last) {
+		whole.computeBoundingSphere();
+		return whole;
+	}
+	const keep = (a: THREE.BufferAttribute) =>
+		Array.from(
+			a.array.slice(
+				(lo - first) * cols * a.itemSize,
+				(hi - first + 1) * cols * a.itemSize,
+			),
+		);
+	const piece = strip(
+		keep(whole.attributes.position as THREE.BufferAttribute),
+		keep(whole.attributes.uv as THREE.BufferAttribute),
+		cols,
+	);
+	piece.setAttribute(
+		'normal',
+		new THREE.Float32BufferAttribute(
+			keep(whole.attributes.normal as THREE.BufferAttribute),
+			3,
+		),
+	);
+	whole.dispose();
+	piece.computeBoundingSphere();
+	return piece;
+}
+
+/** Rows a piece walks in from, so its columns step as the whole ribbon's do through a hairpin. */
+const WARM = 64;
+/** Rows past a piece's end its curvature reads: bendsOf spans at least 6 m and a segment. */
+const BEND_ROWS = 8;
+
+function strip(pos: number[], uv: number[], cols: number) {
 	const rows = pos.length / 3 / cols;
 	const idx: number[] = [];
 	for (let r = 0; r < rows - 1; r++)
@@ -129,8 +176,6 @@ export function road(
 	g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
 	g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
 	g.setIndex(idx);
-	g.computeVertexNormals();
-	g.computeBoundingSphere();
 	return g;
 }
 
