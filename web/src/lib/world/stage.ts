@@ -3,6 +3,7 @@
 // world data under it is not.
 import * as THREE from 'three';
 import { backdrop } from './backdrop';
+import { tag } from './family';
 import { arch, board, kits } from './furniture';
 import {
 	instanced,
@@ -77,7 +78,7 @@ export function buildStage(
 	sky.scale.setScalar(SKY_R);
 	sky.frustumCulled = false;
 	sky.renderOrder = -1;
-	group.add(sky);
+	group.add(tag('sky', sky));
 	group.add(new THREE.HemisphereLight(style.sky.top, style.shade, 1.6));
 	const sun = new THREE.DirectionalLight(style.key, 2.2);
 	sun.position.copy(sunDir(style).multiplyScalar(5000));
@@ -102,28 +103,37 @@ export function buildStage(
 		}),
 	);
 	horizon.frustumCulled = false;
-	group.add(horizon);
+	group.add(tag('sky', horizon));
 
 	group.add(
-		new THREE.Mesh(
-			terrain(route, world, style.palette),
-			terrainMaterial(style),
+		tag(
+			'terrain',
+			new THREE.Mesh(
+				terrain(route, world, style.palette),
+				terrainMaterial(style),
+			),
 		),
 	);
 	if (style.plinth)
 		group.add(
-			new THREE.Mesh(
-				plinth(route, world),
-				new THREE.MeshLambertMaterial({
-					color: style.plinth,
-					side: THREE.DoubleSide,
-				}),
+			tag(
+				'terrain',
+				new THREE.Mesh(
+					plinth(route, world),
+					new THREE.MeshLambertMaterial({
+						color: style.plinth,
+						side: THREE.DoubleSide,
+					}),
+				),
 			),
 		);
 	group.add(
-		new THREE.Mesh(
-			road(route, { width: ROAD_W, shoulder: SHOULDER }),
-			roadMaterial(style.road),
+		tag(
+			'road',
+			new THREE.Mesh(
+				road(route, { width: ROAD_W, shoulder: SHOULDER }),
+				roadMaterial(style.road),
+			),
 		),
 	);
 	const overview = new THREE.Mesh(
@@ -135,7 +145,7 @@ export function buildStage(
 		}),
 	);
 	overview.visible = false;
-	group.add(overview);
+	group.add(tag('road', overview));
 
 	const c = style.props;
 	const treeMat = toon(gradient, sight, { wind: true, fade: true });
@@ -151,7 +161,8 @@ export function buildStage(
 		data: Float32Array,
 		stride: number,
 		opts: Parameters<typeof instanced>[5],
-	) => group.add(instanced(route, geo, mat, data, stride, opts));
+	) =>
+		group.add(tag('dressing', instanced(route, geo, mat, data, stride, opts)));
 	place(P.spruce(c), treeMat, T, 5, {
 		keep: kind(T, 5, 0),
 		scale: (i) => T[i * 5 + 3],
@@ -178,15 +189,25 @@ export function buildStage(
 		rot: (i) => i * 1.3,
 		sink: 0.3,
 	});
-	if (style.stars) group.add(stars(style.stars));
+	if (style.stars) group.add(tag('sky', stars(style.stars)));
 
 	const leafy = toon(gradient, sight, { wind: true, fade: true });
 	for (const k of kits(route, world, c, { fade: houseMat, leafy, flat: plain }))
-		group.add(k);
-	for (const s of world.signs) group.add(board(route, s, style));
+		group.add(tag('dressing', k));
+	for (const s of world.signs)
+		group.add(tag('dressing', board(route, s, style), 'sign'));
 	for (const a of world.arches)
 		group.add(
-			arch(route, a.d, `${a.label} · ${world.names.pass.toUpperCase()}`, style),
+			tag(
+				'dressing',
+				arch(
+					route,
+					a.d,
+					`${a.label} · ${world.names.pass.toUpperCase()}`,
+					style,
+				),
+				'arch',
+			),
 		);
 
 	return { group, backdrop: horizon, overview };
