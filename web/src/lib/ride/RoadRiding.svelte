@@ -23,6 +23,8 @@
 	import { carryOnFrom, type RideableRoute } from '$lib/ride/roads';
 	import { createSoloRoadRide } from '$lib/ride/solo-road.svelte';
 	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
+	import BikeComputer from '$lib/session/BikeComputer.svelte';
+	import { roadContext } from '$lib/session/computer-pages';
 	import Instrument from '$lib/session/Instrument.svelte';
 	import SensorOverview from '$lib/session/SensorOverview.svelte';
 	import { heldTrainer } from '$lib/session/sensor-status';
@@ -73,7 +75,7 @@
 	// the start; a link that says where to start (Resume at km) already did.
 	let carry = $state<number | null>(null);
 	untrack(() => {
-		if (!from)
+		if (!from && !route.borrowed)
 			void carryOnFrom(route.id, route.road.length).then((m) => (carry = m));
 	});
 
@@ -152,7 +154,11 @@
 				class="btn btn-primary btn-lg">Start riding</button
 			>
 		{/if}
-		{#if from > 0}
+		{#if route.borrowed}
+			<p class="text-muted text-sm">
+				The crew’s road, from where the session starts. It saves as a free ride.
+			</p>
+		{:else if from > 0}
 			<p class="text-muted text-sm">
 				Carrying on from km {formatKm(from)}.
 			</p>
@@ -202,6 +208,21 @@
 				cassette={!profile.current.singleSpeed}
 			/>
 		{/if}
+		<!-- The bike computer, as a ride in a channel has it (ADR-0046, #3628):
+		     the road's speed, grade and distance on RIDE. -->
+		<BikeComputer
+			{watts}
+			cadence={solo.metrics?.cadence ?? 0}
+			hr={solo.metrics?.heartRate ?? 0}
+			kg={profile.current.kg}
+			lthr={profile.current.lthr}
+			{stale}
+			stats={free.live}
+			gear={free.mode === 'grade' && gearsEnabled()
+				? solo.gear.label
+				: undefined}
+			{...free.road && roadContext(free.road)}
+		/>
 		<button onclick={() => void end()} class="btn btn-primary btn-lg"
 			>{endRideLabel(free)}</button
 		>

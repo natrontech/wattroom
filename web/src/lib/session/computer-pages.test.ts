@@ -3,6 +3,7 @@ import type { LiveStats } from '$lib/ride/live-stats.svelte';
 import {
 	fieldsFor,
 	pagesFor,
+	roadContext,
 	turned,
 	type ComputerContext,
 } from './computer-pages';
@@ -87,6 +88,29 @@ describe('RIDE (ADR-0071)', () => {
 		expect(keys(fields).slice(0, 3)).toEqual(['power', 'speed', 'distance']);
 		expect(field(fields, 'speed').value).toBe('31.2');
 		expect(field(fields, 'distance').value).toBe('3.2 of 24.0');
+	});
+});
+
+describe('RIDE on a road (#3628)', () => {
+	it('reads the dot’s speed, the road’s grade and how far along it', () => {
+		const road = roadContext({
+			virtualMps: 5,
+			m: 1234,
+			length: 3000,
+			roadPct: 4.04,
+		});
+		const fields = fieldsFor('ride', ride(road));
+		expect(keys(fields)).toEqual([
+			'power',
+			'speed',
+			'grade',
+			'distance',
+			'cadence',
+			'wkg',
+		]);
+		expect(field(fields, 'speed').value).toBe('18.0');
+		expect(field(fields, 'grade').value).toBe('4.0');
+		expect(field(fields, 'distance').value).toBe('1.2 of 3.0');
 	});
 });
 

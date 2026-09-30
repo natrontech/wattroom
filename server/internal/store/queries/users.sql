@@ -23,10 +23,17 @@ select * from users where id = $1;
 -- The two sources travel with the two numbers (#1484). The handler decides the
 -- word — a rider answering the ask, a ramp test, or the value simply not
 -- having changed — so this statement only stores it.
+--
+-- The weight's two dates (#3169) are decided here, against the row as it
+-- stood: a changed weight moves both, and a claimed one — the rider answering
+-- for it, the commissaire's tap among them — moves the second.
 update users
 set display_name = $2, ftp_watts = $3, weight_kg = $4, strava_upload = $5,
     notify_planned = $6, lthr = sqlc.narg('lthr')::smallint,
-    ftp_source = $7, weight_source = $8
+    ftp_source = $7, weight_source = $8,
+    weight_changed_at = case when weight_kg <> $4 then now() else weight_changed_at end,
+    weight_confirmed_at = case when weight_kg <> $4 or sqlc.arg('weight_claimed')::bool
+        then now() else weight_confirmed_at end
 where id = $1
 returning *;
 

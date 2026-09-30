@@ -546,7 +546,9 @@ export const MaxCrewVoiceChannels = 10;
 /**
  * A text channel keeps its newest lines (docs/SPEC.md "Text channel
  * chat", default — tune in alpha): the prune on every write keeps this
- * many, and a backlog read returns at most this many.
+ * many, and a backlog read returns at most this many. A DM pair keeps the
+ * same: SPEC's one 500-message bound, which a temporary line counts
+ * toward in either.
  */
 export const MaxChannelLines = 500;
 /**
@@ -555,6 +557,27 @@ export const MaxChannelLines = 500;
  * crash recovery and the closing summary all hold this one line.
  */
 export const MinRideSamples = 60;
+/**
+ * A recorded sample's bounds (watts 0–3000; a track sprinter peaks near
+ * 2000 W): the WS metrics gate, POST /api/rides and a FIT export all
+ * refuse a sample outside them.
+ */
+export const MaxWatts = 3000;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const MaxCadence = 250;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const MaxHeartRate = 250;
+/**
+ * An uploaded or exported ride is at most 6 h at 1 Hz — longer than any
+ * indoor session anyone rides — so a request cannot allocate past it.
+ */
+export const MaxRideSamples = 6 * 60 * 60;
 /**
  * A rider's bias, the trim on their own targets (#795, docs/SPEC.md):
  * the workout clamps it here, and the server refuses a sample outside.
@@ -934,6 +957,134 @@ export interface Backfill {
 }
 
 //////////
+// source: open_ride.go
+
+/**
+ * OpenRideSample is a rider's second, up at 1 Hz: what the bunch needs to move
+ * them, and no heart rate or cadence, which it does not.
+ */
+export interface OpenRideSample {
+  seq: number /* int */; // monotonic per ride, for reconnect dedup
+  watts: number /* int */;
+  /**
+   * The rider's trim on their own targets, MinBias–MaxBias; 0 is none.
+   */
+  bias?: number /* float64 */;
+}
+/**
+ * OpenRideTick is the ride's one nameless frame a second, the same for every
+ * rider on it (ADR-0076 §11).
+ */
+export interface OpenRideTick {
+  at: number /* int64 */; // server millis
+  phase: string; // "pen" | "countIn" | "riding" | "done"
+  elapsed: number /* int */;
+  /**
+   * The bunch on the library road (ADR-0065), in metres and metres a second.
+   */
+  bunchM: number /* float64 */;
+  speed: number /* float64 */;
+  riders: OpenRideRider[];
+}
+/**
+ * OpenRideRider is one marker: the ride's id for a rider, and where they
+ * are. A group ride places them by offset from the bunch; a race format by
+ * their own metres and speed instead.
+ */
+export interface OpenRideRider {
+  e: string;
+  /**
+   * From the bunch, in decimetres — World's unit.
+   */
+  o?: number /* int16 */;
+  m?: number /* float64 */;
+  v?: number /* float64 */;
+}
+/**
+ * The coarse kit's two choices (docs/SPEC.md "Open rides"): a marker is told
+ * apart by one of these, never by a look.
+ */
+export const OpenRideJerseys = 12;
+/**
+ * The coarse kit's two choices (docs/SPEC.md "Open rides"): a marker is told
+ * apart by one of these, never by a look.
+ */
+export const OpenRideSilhouettes = 6;
+/**
+ * OpenRideKit is how a marker is drawn: a jersey colourway and a bike class,
+ * by index, and whether they lead the ride — set only for the host crew's
+ * owner and admins.
+ */
+export interface OpenRideKit {
+  jersey: number /* int */;
+  silhouette: number /* int */;
+  leader?: boolean;
+}
+/**
+ * OpenRideRoster is every marker's kit by ride id, down on join and on change,
+ * never on the tick. HostCrew is the host crew's name when the crew is listed
+ * (ADR-0039) and empty otherwise, which a client reads as "Hosted by a crew";
+ * it never names the person who opened the ride.
+ */
+export interface OpenRideRoster {
+  kits: { [key: string]: OpenRideKit};
+  hostCrew?: string;
+}
+/**
+ * OpenRideNames maps ride ids to rider ids, sent only to the viewer's own
+ * people — those who share a crew with them — and refreshed every 60 s.
+ */
+export interface OpenRideNames {
+  riders: { [key: string]: string};
+}
+/**
+ * A leader's calls, the closed set docs/SPEC.md "Open rides" names: never free
+ * text, at most one per 20 s per ride.
+ */
+export const OpenRideCallWelcome = "welcome";
+/**
+ * A leader's calls, the closed set docs/SPEC.md "Open rides" names: never free
+ * text, at most one per 20 s per ride.
+ */
+export const OpenRideCallClimbAhead = "climbAhead";
+/**
+ * A leader's calls, the closed set docs/SPEC.md "Open rides" names: never free
+ * text, at most one per 20 s per ride.
+ */
+export const OpenRideCallStayTogether = "stayTogether";
+/**
+ * A leader's calls, the closed set docs/SPEC.md "Open rides" names: never free
+ * text, at most one per 20 s per ride.
+ */
+export const OpenRideCallLast5Km = "last5km";
+/**
+ * A leader's calls, the closed set docs/SPEC.md "Open rides" names: never free
+ * text, at most one per 20 s per ride.
+ */
+export const OpenRideCallSprintSign = "sprintAtTheSign";
+/**
+ * A leader's calls, the closed set docs/SPEC.md "Open rides" names: never free
+ * text, at most one per 20 s per ride.
+ */
+export const OpenRideCallThanks = "thanks";
+/**
+ * OpenRideCall is one leader call, by its code.
+ */
+export interface OpenRideCall {
+  code: string;
+}
+/**
+ * OpenRideClosing is the closing card (ADR-0076 §9): counts, and in a race
+ * format the viewer's own placing, once — never a list, never stored.
+ */
+export interface OpenRideClosing {
+  riders: number /* int */;
+  crews: number /* int */;
+  alone?: boolean;
+  ownPlacing?: number /* int */;
+}
+
+//////////
 // source: protocol.go
 /*
 Package protocol defines the WebSocket message types. These Go structs are
@@ -1069,6 +1220,42 @@ export interface LobbyPing {
 }
 
 //////////
+// source: race.go
+
+/**
+ * Races (docs/SPEC.md "Races", ADR-0067): a weight changed within the freeze
+ * before the flag rides unranked, and so does one the rider has not confirmed
+ * within the confirmation window.
+ */
+export const RaceWeightFreezeDays = 14;
+/**
+ * Races (docs/SPEC.md "Races", ADR-0067): a weight changed within the freeze
+ * before the flag rides unranked, and so does one the rider has not confirmed
+ * within the confirmation window.
+ */
+export const RaceWeightConfirmDays = 90;
+/**
+ * Why a race rides a rider unranked (ADR-0067). They still race; this is what
+ * the closing card tells them kept them off the results.
+ */
+export const UnrankedDefaultFtp = "default_ftp";
+/**
+ * Why a race rides a rider unranked (ADR-0067). They still race; this is what
+ * the closing card tells them kept them off the results.
+ */
+export const UnrankedDefaultWeight = "default_weight";
+/**
+ * Why a race rides a rider unranked (ADR-0067). They still race; this is what
+ * the closing card tells them kept them off the results.
+ */
+export const UnrankedFreshWeight = "fresh_weight";
+/**
+ * Why a race rides a rider unranked (ADR-0067). They still race; this is what
+ * the closing card tells them kept them off the results.
+ */
+export const UnrankedUnconfirmedWeight = "unconfirmed_weight";
+
+//////////
 // source: reactions.go
 
 /**
@@ -1162,6 +1349,11 @@ export const PokeCooldownSeconds = 10;
 // source: rider.go
 
 /**
+ * SourceDefault is ADR-0048's word for a number nobody chose: the account was
+ * created with it. The other two, "manual" and "ramp", are answers.
+ */
+export const SourceDefault = "default";
+/**
  * Rider is presence: who is in the voice channel right now, with what the
  * dashboard needs to render them. FTP crosses the wire so every screen can
  * show %FTP — scoped to the channel by design, the same visibility
@@ -1195,6 +1387,17 @@ export interface Rider {
    * the starter kit.
    */
   look?: string;
+  /**
+   * Where the two numbers came from (ADR-0048) — SourceDefault, "manual" or
+   * "ramp" — and when the weight last changed and when the rider last
+   * answered for it, in server millis, zero when never recorded (#3169). The
+   * channel already sees the numbers; these say how far a race may trust
+   * them, and a race reads all four at its flag (Unranked).
+   */
+  ftpSource?: string;
+  weightSource?: string;
+  weightChangedAt?: number /* int64 */;
+  weightConfirmedAt?: number /* int64 */;
   /**
    * Stepped out (#706). Presence, not a metric: the rider said so with the
    * Lounge's button, and every screen renders the mark instead of leaving

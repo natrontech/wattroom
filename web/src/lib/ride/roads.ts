@@ -1,7 +1,9 @@
 import { api } from '$lib/api';
 import { canSimulate } from '$lib/ble/can-simulate';
 import type { Road } from '$lib/road/road';
+import { fetchCrewSchedule } from '$lib/crew-schedule';
 import { roadOf, type StoredRoute } from '$lib/road/stored';
+import { roadOf as attachedRoadOf } from '$lib/workout/road-workout';
 
 /**
  * May this screen ride a road (#3027)? The route ride lands behind a dev
@@ -25,6 +27,11 @@ export interface RideableRoute {
 	id: string;
 	name: string;
 	road: Road;
+	/**
+	 * Someone else's road, the crew's cut of it (#3621): ridden, never saved
+	 * against — the server keeps a ride only on the rider's own route.
+	 */
+	borrowed?: true;
 }
 
 /** The rider's own routes, newest first, as GET /api/routes lists them. */
@@ -76,4 +83,44 @@ export async function loadRoad(
 	} catch {
 		return { ok: false, error: 'That road could not be read. Try again.' };
 	}
+}
+
+/**
+ * A planned session's road as this rider will receive it (#3621): the crew's
+ * cut the plan carries, from the crew's metre — the plan's metre on the
+ * owner's road less where the cut starts, as `crewFromM` has it.
+ */
+export async function loadPlanRoad(
+	crew: string,
+	planId: string,
+): Promise<
+	| { ok: true; route: RideableRoute; from: number }
+	| { ok: false; error: string }
+> {
+	const res = await fetchCrewSchedule(crew);
+	if (!res.ok) return { ok: false, error: res.error.message };
+	const plan = res.data.sessions.find((p) => p.id === planId);
+	if (!plan)
+		return {
+			ok: false,
+			error: 'That session is not on your crew’s schedule any more.',
+		};
+	let cut: ReturnType<typeof attachedRoadOf> = null;
+	try {
+		cut = attachedRoadOf(JSON.parse(plan.workoutJson));
+	} catch {
+		/* said below */
+	}
+	if (!cut)
+		return { ok: false, error: 'That session’s road did not come with it.' };
+	return {
+		ok: true,
+		route: {
+			id: cut.routeId,
+			name: plan.workoutName,
+			road: cut.road,
+			borrowed: true,
+		},
+		from: Math.max(0, cut.fromM - cut.originM),
+	};
 }

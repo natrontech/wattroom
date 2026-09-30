@@ -27,5 +27,11 @@ describe('the end of the road (#3205)', () => {
 		expect(endRideLabel(at(2000, true))).toBe('End ride');
 		expect(endRideLabel(at(800, false, 1))).toBe('End ride');
 		expect(endRideLabel({ road: null })).toBe('End ride');
+		// A borrowed road saves without its route: nowhere to carry on (#3621).
+		expect(
+			endRideLabel({
+				road: { m: 1200, atEnd: false, lap: 0, borrowed: true },
+			}),
+		).toBe('End ride');
 	});
 });

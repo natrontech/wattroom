@@ -21,6 +21,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/store/storetest"
@@ -169,7 +170,7 @@ var rideBase = time.Now().Truncate(time.Second).Add(-time.Hour)
 
 // nextStart is the next fixture ride's start.
 func nextStart() time.Time {
-	return rideBase.Add(-time.Duration(rideBodies.Add(1)) * maxSamples * time.Second)
+	return rideBase.Add(-time.Duration(rideBodies.Add(1)) * protocol.MaxRideSamples * time.Second)
 }
 
 func rideBody(seconds, watts int) string {

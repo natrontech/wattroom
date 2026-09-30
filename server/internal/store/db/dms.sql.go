@@ -584,7 +584,7 @@ where least(dm.sender_id, dm.recipient_id) = least($1::uuid, $2::uuid)
         where least(sender_id, recipient_id) = least($1::uuid, $2::uuid)
           and greatest(sender_id, recipient_id) = greatest($1::uuid, $2::uuid)
         order by created_at desc
-        limit 500
+        limit $3::integer
     ) keep
 )
 `
@@ -592,11 +592,13 @@ where least(dm.sender_id, dm.recipient_id) = least($1::uuid, $2::uuid)
 type PruneDmsParams struct {
 	Column1 pgtype.UUID
 	Column2 pgtype.UUID
+	Keep    int32
 }
 
-// The 500-message bound per pair, pruned on write like room chat.
+// The bound per pair, protocol.MaxChannelLines — SPEC's one 500-message
+// bound, pruned on write like a text channel.
 func (q *Queries) PruneDms(ctx context.Context, arg PruneDmsParams) error {
-	_, err := q.db.Exec(ctx, pruneDms, arg.Column1, arg.Column2)
+	_, err := q.db.Exec(ctx, pruneDms, arg.Column1, arg.Column2, arg.Keep)
 	return err
 }
 

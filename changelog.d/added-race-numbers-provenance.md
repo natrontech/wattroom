@@ -1,0 +1,1 @@
+- The server now keeps when your weight last changed and when you last confirmed it. The voice channel's roster says where your FTP and weight came from. Together these let a race tell a settled number from a guess or last week's change.

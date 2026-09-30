@@ -1,5 +1,18 @@
 package protocol
 
+// SourceDefault is ADR-0048's word for a number nobody chose: the account was
+// created with it. The other two, "manual" and "ramp", are answers.
+const SourceDefault = "default"
+
+// SourceOf reads a stored source, which is nullable because the column had to
+// be (ADR-0019, expand only): a row with no word was never answered for.
+func SourceOf(stored *string) string {
+	if stored == nil || *stored == "" {
+		return SourceDefault
+	}
+	return *stored
+}
+
 // Rider is presence: who is in the voice channel right now, with what the
 // dashboard needs to render them. FTP crosses the wire so every screen can
 // show %FTP — scoped to the channel by design, the same visibility
@@ -24,6 +37,15 @@ type Rider struct {
 	// The voice channel's crew is its whole audience. Empty for a rider in
 	// the starter kit.
 	Look string `json:"look,omitempty"`
+	// Where the two numbers came from (ADR-0048) — SourceDefault, "manual" or
+	// "ramp" — and when the weight last changed and when the rider last
+	// answered for it, in server millis, zero when never recorded (#3169). The
+	// channel already sees the numbers; these say how far a race may trust
+	// them, and a race reads all four at its flag (Unranked).
+	FtpSource         string `json:"ftpSource,omitempty"`
+	WeightSource      string `json:"weightSource,omitempty"`
+	WeightChangedAt   int64  `json:"weightChangedAt,omitempty"`
+	WeightConfirmedAt int64  `json:"weightConfirmedAt,omitempty"`
 	// Stepped out (#706). Presence, not a metric: the rider said so with the
 	// Lounge's button, and every screen renders the mark instead of leaving
 	// an open mic over an empty trainer.

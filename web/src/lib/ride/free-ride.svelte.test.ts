@@ -268,6 +268,21 @@ describe('a free ride on a road', () => {
 			expect(samples[i].m).toBeLessThanOrEqual(samples[i - 1].m);
 	});
 
+	it('rides a borrowed road without saving against it (#3621)', async () => {
+		const free = createFreeRide({ ftp: () => 250, kg: () => 75 });
+		free.arm();
+		free.ride({ ...climb, borrowed: true }, 500);
+		ride(free, 250, 61);
+		await free.end();
+		const saved = uploads[0] as Record<string, unknown> & {
+			samples: { m?: number }[];
+		};
+		// The server keeps a ride only on the rider's own route.
+		expect(saved.routeId).toBeUndefined();
+		expect(saved.drive).toBeUndefined();
+		expect(saved.samples[0].m).toBeGreaterThanOrEqual(500);
+	});
+
 	it('keeps its road once the ride has started', () => {
 		const free = createFreeRide({ ftp: () => 250, kg: () => 75 });
 		free.arm();

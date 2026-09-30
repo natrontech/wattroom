@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test';
 import { expect, test, voicePath } from './crew';
 import { signInAs } from './signin';
 import { climbGpx } from './road-gpx';
@@ -15,6 +16,24 @@ import { climbGpx } from './road-gpx';
 
 /** The saver keeps a ride from a minute (docs/SPEC.md's minute rule). */
 const A_MINUTE_MS = 65_000;
+
+/**
+ * The bike computer's RIDE page on a road (#3628): the dot's speed, the
+ * road's own grade — a climb, eased in near its start, never the free ride's
+ * manual 0 — and how far along the 3 km it is.
+ */
+async function computerReadsTheRoad(page: Page) {
+	const computer = page.getByTestId('bike-computer');
+	const value = (key: string) =>
+		computer.locator(`[data-field=${key}]`).locator('span').nth(1);
+	await expect
+		.poll(async () => parseFloat((await value('grade').textContent()) ?? ''))
+		.toBeGreaterThan(1);
+	await expect(value('distance')).toHaveText(/^\d+\.\d of 3\.0/);
+	await expect
+		.poll(async () => parseFloat((await value('speed').textContent()) ?? ''))
+		.toBeGreaterThan(0);
+}
 
 test('a free ride on your own road moves along it and saves against it', async ({
 	riders,
@@ -103,6 +122,7 @@ test('a free ride on your own road moves along it and saves against it', async (
 	await expect(
 		rider.getByRole('button', { name: 'Leave the road' }),
 	).toHaveCount(0);
+	await computerReadsTheRoad(rider);
 
 	await rider.waitForTimeout(A_MINUTE_MS);
 	await rider.getByRole('button', { name: /^Save at km / }).click();
@@ -177,6 +197,7 @@ test('Ride it now rides your road alone, from where you left it', async ({
 			{ message: 'the dot never left km 1.0' },
 		)
 		.toBeGreaterThan(1);
+	await computerReadsTheRoad(page);
 	await page.getByRole('button', { name: /^Save at km / }).click();
 	await expect(page.getByText('See it in your history')).toBeVisible({
 		timeout: 20_000,

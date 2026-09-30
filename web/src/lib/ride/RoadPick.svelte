@@ -8,6 +8,7 @@
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import type { FreeRide } from '$lib/ride/free-ride.svelte';
 	import { formatKm as km } from '$lib/format';
+	import { carriesOn } from '$lib/ride/road-end';
 	import {
 		carryOnFrom,
 		loadRoad,
@@ -62,15 +63,13 @@
 	<div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
 		<span class="eyebrow">road</span>
 		<span class="min-w-0 truncate font-semibold">{free.road.name}</span>
-		<span class="text-muted num"
-			>{km(free.road.m)} of {km(free.road.length)} km</span
-		>
+		<!-- How far along it is the bike computer's to say (#3628). -->
 		{#if !free.recording}
 			<button
 				onclick={() => free.leaveRoad()}
 				class="btn btn-ghost btn-xs ml-auto">Leave the road</button
 			>
-		{:else if free.road.lap === 0 && !free.road.atEnd}
+		{:else if carriesOn(free.road)}
 			<span class="text-muted ml-auto text-xs"
 				>Save it, and carry on from here next time.</span
 			>
