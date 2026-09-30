@@ -1,4 +1,5 @@
 import { packRoad, unpackRoad, type Road } from '$lib/road/road';
+import { base64Of } from './import/route';
 import type { Segment, Workout } from './types';
 
 /**
@@ -56,7 +57,7 @@ export function withProfile(workout: Workout, road: Road): Workout {
 		...workout,
 		road: {
 			...workout.road,
-			profile: btoa(String.fromCharCode(...packRoad(road))),
+			profile: base64Of(packRoad(road)),
 			originM: 0,
 		},
 	};
