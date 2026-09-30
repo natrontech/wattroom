@@ -378,6 +378,12 @@
 					workout,
 					ftp,
 					session.trace,
+					// On a route whose blocks run by the clock the road is only
+					// shown (ADR-0062's scenery); a road that pins them is ridden
+					// in ERG to its metres, the chip as ever (#3485).
+					session.road && !session.road.pinned
+						? { kind: 'scenery' }
+						: { kind: 'erg' },
 				)
 			: null,
 	);

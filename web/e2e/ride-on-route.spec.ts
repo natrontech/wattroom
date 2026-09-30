@@ -92,6 +92,11 @@ test('any workout rides on your own route by the clock, and saves on it', async 
 	});
 	// Blocks end by the clock on a road that pins nothing: Skip is there.
 	await expect(page.getByRole('button', { name: 'Skip block' })).toBeVisible();
+	// The road runs by the clock here, so the trainer holds ERG and the
+	// header says the road is scenery (#3485, ADR-0062).
+	await expect(page.getByTestId('trainer-chip')).toHaveText(
+		'ERG: the road is scenery',
+	);
 	// On a road the horizon is the road ahead (#3641): the Skyline, your dot.
 	await expect(
 		page.getByTestId('skyline').getByTestId('skyline-dot'),

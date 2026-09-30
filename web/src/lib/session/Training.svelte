@@ -256,7 +256,7 @@
 					cadence={channel.you.cadence}
 					hr={channel.you.hr}
 					title={channel.shared?.workoutName ?? ''}
-					erg={!!channel.trainer && channel.actuating}
+					drives={!!channel.trainer && channel.actuating}
 					aside={inWorld ? undefined : trainerCard}
 					controls={inWorld ? undefined : sessionControls}
 				/>

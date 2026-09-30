@@ -512,7 +512,7 @@
 				hr={session.sample?.heartRate ?? 0}
 				title={workout.name}
 				unit="step"
-				erg
+				drives
 				eyebrow={stepEyebrow}
 			>
 				{#snippet controls()}

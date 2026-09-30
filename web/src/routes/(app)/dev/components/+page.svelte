@@ -126,6 +126,7 @@
 		rep: { index: 3, count: 5 },
 		last: null,
 		next: { label: 'Active recovery', watts: 146, seconds: 300 },
+		trainer: { kind: 'erg' } as const,
 	};
 	// The kit's icon picker, live: pick one and the mark beside it follows.
 	let galleryIcon = $state('zap');
