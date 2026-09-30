@@ -66,33 +66,34 @@ test.describe('the Skyline', () => {
 		expect(moving).toEqual({ transitions: 0, animations: 0 });
 	});
 
-	test('moves once a second, not ten times, for a rider who asked for stillness', async ({
+	test('holds the road still for a rider who asked for stillness, and walks the dot across it once a second (#3080)', async ({
 		browser,
 	}) => {
 		const context = await browser.newContext({ reducedMotion: 'reduce' });
 		const page = await context.newPage();
 		const skyline = await rideTheRoad(page, 'Still Skyline Rider');
-		const start = await shiftOf(skyline);
-		await expect
-			.poll(() => shiftOf(skyline), { timeout: 15_000 })
-			.toBeGreaterThan(start);
-		// Sampled in the page every 100 ms for 1.9 s: stepped once a second it
-		// lands on at most three positions, stepped at 10 Hz on nearly every
-		// sample. Hundredths of a pixel: at a climb's pace the road moves
-		// about a pixel a second.
-		const positions = await skyline
-			.locator(':scope > div')
-			.first()
-			.evaluate(async (layer) => {
-				const seen = new Set<number>();
-				const until = performance.now() + 1900;
-				while (performance.now() < until) {
-					const m41 = new DOMMatrix(getComputedStyle(layer).transform).m41;
-					seen.add(Math.round(m41 * 100));
-					await new Promise((r) => setTimeout(r, 100));
-				}
-				return seen.size;
-			});
+		const dot = skyline.getByTestId('skyline-dot');
+		const dotAt = () =>
+			dot.evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).m41);
+		const road = await shiftOf(skyline);
+		const start = await dotAt();
+		await expect.poll(dotAt, { timeout: 15_000 }).toBeGreaterThan(start);
+		// A fixed 2 km page: the road has not moved under the dot at all.
+		expect(await shiftOf(skyline)).toBe(road);
+		// Sampled in the page every 100 ms for 1.9 s: stepped once a second the
+		// dot lands on at most three positions, stepped at 10 Hz on nearly every
+		// sample. Hundredths of a pixel: at a climb's pace it moves about a
+		// pixel a second.
+		const positions = await dot.evaluate(async (el) => {
+			const seen = new Set<number>();
+			const until = performance.now() + 1900;
+			while (performance.now() < until) {
+				const m41 = new DOMMatrix(getComputedStyle(el).transform).m41;
+				seen.add(Math.round(m41 * 100));
+				await new Promise((r) => setTimeout(r, 100));
+			}
+			return seen.size;
+		});
 		expect(positions).toBeLessThanOrEqual(3);
 		await context.close();
 	});
