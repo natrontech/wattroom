@@ -482,6 +482,19 @@ const SURFACES = Object.fromEntries([
 				buffer: Buffer.from(hairpinsGpx()),
 			});
 	}),
+	page_('import-saved', DESK, async (page) => {
+		await page.goto(`${BASE}/workouts/import`);
+		await page
+			.locator('input[type=file]')
+			.first()
+			.setInputFiles({
+				name: 'hairpins.gpx',
+				mimeType: 'application/gpx+xml',
+				buffer: Buffer.from(hairpinsGpx()),
+			});
+		await page.getByRole('button', { name: 'Save to my routes' }).click();
+		await page.getByText(/is on your routes/).waitFor({ timeout: 15_000 });
+	}),
 	page_('history', DESK, '/history'),
 	page_('appearance', DESK, '/settings/appearance'),
 	page_('ride-preride', DESK, '/ride', { full: false }),
