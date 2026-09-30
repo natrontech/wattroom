@@ -140,11 +140,22 @@ test('import a .erg, and refuse the files that are not one', async ({
 	await expect(page.getByRole('alert')).toContainText('not valid XML');
 
 	await input.setInputFiles({
-		name: 'plan.fit',
+		name: 'plan.mrc',
 		mimeType: 'application/octet-stream',
 		buffer: Buffer.from('not a workout'),
 	});
 	await expect(page.getByRole('alert')).toContainText('.zwo and .erg');
+
+	// A .fit is a route file since #3058, and one that is not a FIT course
+	// says so as a route.
+	await input.setInputFiles({
+		name: 'plan.fit',
+		mimeType: 'application/octet-stream',
+		buffer: Buffer.from('not a course'),
+	});
+	await expect(page.getByRole('alert')).toContainText(
+		'not a GPX, TCX or FIT route',
+	);
 
 	// And back to a good one: the surface recovers without a reload.
 	await input.setInputFiles({
