@@ -16,10 +16,9 @@ import (
 
 // looks are the loadout's keys that are not slots: a look's free choices —
 // colours, options, sizes, skin and body — which cost nothing and are owned
-// by everyone (the catalogue's rules.priceTheIdea).
-// ponytail: stored as sent, bounded only by DecodeStrict's 64 KiB — the client
-// clamps them when it draws. Validate their shape here once another rider's
-// client draws them (Refs #3155).
+// by everyone (the catalogue's rules.priceTheIdea). Other riders' clients
+// draw them (#3155), so checkLooks bounds their shape and size; what each
+// value means stays the drawing client's to clamp.
 var looks = []string{"body", "colours", "opts", "params", "skin"}
 
 // handleOutfit saves what the rider wears: one item per slot, each one they
@@ -50,7 +49,14 @@ func (s *Service) handleOutfit(w http.ResponseWriter, r *http.Request) {
 		if msg := checkLoadout(loadout, owned); msg != "" {
 			return refusal{http.StatusBadRequest, "validation_error", msg}
 		}
-		return q.SetOutfit(r.Context(), db.SetOutfitParams{UserID: user.ID, Loadout: body})
+		if msg := checkLooks(loadout, len(body)); msg != "" {
+			return refusal{http.StatusBadRequest, "validation_error", msg}
+		}
+		hash, err := wear(r.Context(), q, body)
+		if err != nil {
+			return err
+		}
+		return q.SetOutfit(r.Context(), db.SetOutfitParams{UserID: user.ID, Loadout: body, LookHash: &hash})
 	})
 	if s.refused(w, err, "outfit save failed", "The outfit could not be saved. Try again.") {
 		return

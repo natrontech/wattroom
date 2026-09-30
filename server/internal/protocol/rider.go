@@ -18,6 +18,12 @@ type Rider struct {
 	// app already shows (#690). Identity the channel may see, the same rule
 	// the member list has followed since #253 — rides stay private.
 	TotalXp int64 `json:"totalXp"`
+	// What the rider's figure wears, by the hash GET /api/looks/{hash}
+	// answers (#3155): a compact name for the outfit, so a client fetches the
+	// outfit once and keeps it, and the outfit itself never rides the tick.
+	// The voice channel's crew is its whole audience. Empty for a rider in
+	// the starter kit.
+	Look string `json:"look,omitempty"`
 	// Stepped out (#706). Presence, not a metric: the rider said so with the
 	// Lounge's button, and every screen renders the mark instead of leaving
 	// an open mic over an empty trainer.

@@ -77,6 +77,17 @@ func (q *Queries) ExportUserWardrobe(ctx context.Context, arg ExportUserWardrobe
 	return items, nil
 }
 
+const getLook = `-- name: GetLook :one
+select loadout from looks where hash = $1
+`
+
+func (q *Queries) GetLook(ctx context.Context, hash string) (string, error) {
+	row := q.db.QueryRow(ctx, getLook, hash)
+	var loadout string
+	err := row.Scan(&loadout)
+	return loadout, err
+}
+
 const getUserOutfit = `-- name: GetUserOutfit :one
 select loadout, updated_at from outfits where user_id = $1
 `
@@ -157,6 +168,21 @@ func (q *Queries) MarkOutfitWorn(ctx context.Context, userID pgtype.UUID) error 
 	return err
 }
 
+const putLook = `-- name: PutLook :exec
+insert into looks (hash, loadout) values ($1, $2) on conflict (hash) do nothing
+`
+
+type PutLookParams struct {
+	Hash    string
+	Loadout string
+}
+
+// A look, by its content (#3155): the same outfit is the same row.
+func (q *Queries) PutLook(ctx context.Context, arg PutLookParams) error {
+	_, err := q.db.Exec(ctx, putLook, arg.Hash, arg.Loadout)
+	return err
+}
+
 const removeUnwornWardrobeItem = `-- name: RemoveUnwornWardrobeItem :execrows
 delete from wardrobe
 where user_id = $1 and item_id = $2 and first_worn_at is null
@@ -177,19 +203,36 @@ func (q *Queries) RemoveUnwornWardrobeItem(ctx context.Context, arg RemoveUnworn
 }
 
 const setOutfit = `-- name: SetOutfit :exec
-insert into outfits (user_id, loadout) values ($1, $2)
-on conflict (user_id) do update set loadout = excluded.loadout, updated_at = now()
+insert into outfits (user_id, loadout, look_hash) values ($1, $2, $3)
+on conflict (user_id) do update
+set loadout = excluded.loadout, look_hash = excluded.look_hash, updated_at = now()
 `
 
 type SetOutfitParams struct {
-	UserID  pgtype.UUID
-	Loadout []byte
+	UserID   pgtype.UUID
+	Loadout  []byte
+	LookHash *string
 }
 
 // What the rider's figure wears, as the client built it, checked before
-// this: one per rider, replaced whole.
+// this: one per rider, replaced whole, with the hash its look goes by.
 func (q *Queries) SetOutfit(ctx context.Context, arg SetOutfitParams) error {
-	_, err := q.db.Exec(ctx, setOutfit, arg.UserID, arg.Loadout)
+	_, err := q.db.Exec(ctx, setOutfit, arg.UserID, arg.Loadout, arg.LookHash)
+	return err
+}
+
+const setOutfitLook = `-- name: SetOutfitLook :exec
+update outfits set look_hash = $2 where user_id = $1
+`
+
+type SetOutfitLookParams struct {
+	UserID   pgtype.UUID
+	LookHash *string
+}
+
+// The hash an outfit's look goes by, after an undo changed it in place.
+func (q *Queries) SetOutfitLook(ctx context.Context, arg SetOutfitLookParams) error {
+	_, err := q.db.Exec(ctx, setOutfitLook, arg.UserID, arg.LookHash)
 	return err
 }
 
@@ -209,4 +252,16 @@ type TakeOffItemParams struct {
 func (q *Queries) TakeOffItem(ctx context.Context, arg TakeOffItemParams) error {
 	_, err := q.db.Exec(ctx, takeOffItem, arg.Slot, arg.UserID, arg.ItemID)
 	return err
+}
+
+const userLookHash = `-- name: UserLookHash :one
+select look_hash from outfits where user_id = $1
+`
+
+// The look a rider wears, for the voice channel's roster (#3155).
+func (q *Queries) UserLookHash(ctx context.Context, userID pgtype.UUID) (*string, error) {
+	row := q.db.QueryRow(ctx, userLookHash, userID)
+	var look_hash *string
+	err := row.Scan(&look_hash)
+	return look_hash, err
 }
