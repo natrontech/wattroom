@@ -41,7 +41,7 @@ func TestOpenSessionStartsThePlan(t *testing.T) {
 		{
 			name: "the plan already under way is started, not refused",
 			before: func(h *Hub, rm *channelState) {
-				if _, code, msg := h.OpenSession("track", alice, "Thursday", plan); code != "" {
+				if _, code, msg := h.OpenSession("track", alice, "Thursday", plan, nil, ""); code != "" {
 					t.Fatalf("first start: %s %s", code, msg)
 				}
 			},
@@ -76,7 +76,7 @@ func TestOpenSessionStartsThePlan(t *testing.T) {
 			rm := h.stateOf("track")
 			tt.before(h, rm)
 
-			id, code, _ := h.OpenSession("track", alice, "Thursday", plan)
+			id, code, _ := h.OpenSession("track", alice, "Thursday", plan, nil, "")
 			if code != tt.wantCode {
 				t.Fatalf("code = %q, want %q", code, tt.wantCode)
 			}
@@ -98,5 +98,37 @@ func TestOpenSessionStartsThePlan(t *testing.T) {
 					tt.wantPhase, tt.wantName, tt.wantTotal, tt.wantCoach)
 			}
 		})
+	}
+}
+
+// A plan on a road opens its session on that road (#3103), from the metre
+// the plan names on the crew's cut, and the bunch starts there; a route the
+// planner does not own is refused, and nothing is picked.
+func TestOpenSessionRidesThePlansRoad(t *testing.T) {
+	const plan = `{"name":"Next leg","steps":[{"type":"steady","seconds":600,"target":0.75}]}`
+	alice := protocol.Rider{ID: "alice", Name: "Alice", Role: "member"}
+	h := New(slog.New(slog.DiscardHandler), nil, nil)
+	h.SetRoads(fakeRoads{heights: slope(0, 20_000).Heights})
+	route := &protocol.ControlRoute{ID: homeLoop, FromM: 5000}
+	if _, code, msg := h.OpenSession("track", alice, "Next leg", plan, route, "bob"); code != "" {
+		t.Fatalf("open: %s %s", code, msg)
+	}
+	rm := h.stateOf("track")
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+	if r := rm.session.route; r == nil || r.FromM != 5000 || r.ID != homeLoop {
+		t.Fatalf("the session rides %+v, want the plan's road from 5000 m", rm.session.route)
+	}
+	if b := rm.session.bunch; b == nil || b.fromM+b.pace.Distance != 5000 {
+		t.Fatalf("the bunch starts at %+v, want 5000 m", rm.session.bunch)
+	}
+
+	refused := New(slog.New(slog.DiscardHandler), nil, nil)
+	refused.SetRoads(fakeRoads{refused: &protocol.Error{Code: "not_found", Message: "That route is not one of yours."}})
+	if _, code, _ := refused.OpenSession("track", alice, "Next leg", plan, route, "bob"); code != "not_found" {
+		t.Fatalf("a route the planner does not own answered %q, want not_found", code)
+	}
+	if s := refused.stateOf("track").session; s.workoutName != "" {
+		t.Fatalf("a refused road still picked %q", s.workoutName)
 	}
 }

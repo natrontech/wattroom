@@ -412,8 +412,18 @@ func (s *Service) handleCrewStarted(w http.ResponseWriter, r *http.Request) {
 		if !ok {
 			return
 		}
+		// On its road from its first metre (#3103), the planner's route
+		// whoever starts it.
+		var route *protocol.ControlRoute
+		if s.roads != nil {
+			var err error
+			if route, err = s.roads.CrewRoute(r.Context(), string(plan.WorkoutJson)); err != nil {
+				httpx.Fail(w, s.log, "plan road read failed", err, "The road could not be read just now. Start the session again in a moment.", "crew", store.UUIDString(crew.ID))
+				return
+			}
+		}
 		rider := protocol.Rider{ID: store.UUIDString(user.ID), Name: user.DisplayName, Role: role}
-		id, code, message := s.presence.OpenSession(store.UUIDString(channel), rider, plan.WorkoutName, workoutJSON)
+		id, code, message := s.presence.OpenSession(store.UUIDString(channel), rider, plan.WorkoutName, workoutJSON, route, store.UUIDString(plan.CreatedBy))
 		if code != "" {
 			status := http.StatusBadRequest
 			if code == "conflict" {

@@ -45,7 +45,7 @@ type Presence interface {
 	// A planned session's start opens it in its voice channel (#2440), and
 	// answers the channel's one-session rule: the session's id when it
 	// opened, or a code and a message.
-	OpenSession(channel string, rider protocol.Rider, workoutName, workoutJSON string) (id, code, message string)
+	OpenSession(channel string, rider protocol.Rider, workoutName, workoutJSON string, route *protocol.ControlRoute, routeOwner string) (id, code, message string)
 }
 
 // Gate is the channels' one gate, asked again (#2808). The door asks it once,

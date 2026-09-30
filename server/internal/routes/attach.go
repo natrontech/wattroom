@@ -221,6 +221,38 @@ func (a *Attacher) SessionRoute(ctx context.Context, coach, routeID string) (pro
 		road.Road{LengthM: cut.LengthM, Heights: cut.Heights}, nil, nil
 }
 
+// CrewRoute is the session route a workout's road asks for (#3103): its
+// route from the workout's first metre, counted along the crew's cut rather
+// than the owner's road — the owner's metres less the hidden end the cut
+// leaves out, and never past the cut's last sample. Nil when the workout
+// rides no road, or its route is gone.
+func (a *Attacher) CrewRoute(ctx context.Context, workoutJSON string) (*protocol.ControlRoute, error) {
+	ref, err := workout.RoadOf(workoutJSON)
+	if err != nil || ref == nil {
+		return nil, err
+	}
+	id, err := store.ParseUUID(ref.RouteID)
+	if err != nil {
+		return nil, fmt.Errorf("routes: route %q is not an id: %w", ref.RouteID, err)
+	}
+	row, err := a.q.GetRouteRoad(ctx, id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("routes: read road %s: %w", ref.RouteID, err)
+	}
+	ridden, err := road.UnpackRoad(row.Road)
+	if err != nil {
+		return nil, fmt.Errorf("routes: stored road %s unreadable: %w", ref.RouteID, err)
+	}
+	cut, origin := ridden.Cut(protocol.RouteHiddenEndM, ridden.LengthM-protocol.RouteHiddenEndM)
+	if len(cut.Heights) < 2 {
+		return nil, nil
+	}
+	return &protocol.ControlRoute{ID: ref.RouteID, FromM: min(max(ref.FromM-origin, 0), cut.LengthM-cut.Step())}, nil
+}
+
 // ForSession is a session's pick (#3051): the coach's own route, never one
 // from Strava, attached as the crew's cut for every socket in the channel —
 // the coach's included, since one workout rides the tick to all of them.

@@ -248,7 +248,11 @@ func (h *Hub) SessionAnnounce(channel, verb, actor, workout string, startsAt tim
 // is made if nobody is in it yet: the coach is on their way, and a countdown
 // nobody comes to ride ends like any other. The id is the session's, so the
 // starter can be taken to it (#2599); empty with a refusal.
-func (h *Hub) OpenSession(channel string, rider protocol.Rider, workoutName, workoutJSON string) (id, code, message string) {
+//
+// A plan on a road rides it (#3103): route is where on the crew's cut the
+// bunch starts, looked up as routeOwner's — the planner, whose route it is
+// (ADR-0063), whoever starts it.
+func (h *Hub) OpenSession(channel string, rider protocol.Rider, workoutName, workoutJSON string, route *protocol.ControlRoute, routeOwner string) (id, code, message string) {
 	rm := h.stateOf(channel)
 	rm.mu.Lock()
 	s := rm.session
@@ -261,13 +265,19 @@ func (h *Hub) OpenSession(channel string, rider protocol.Rider, workoutName, wor
 	if underWay {
 		return "", "conflict", "You're already riding " + current + " in this channel — end it before starting " + workoutName + "."
 	}
-	for _, c := range []protocol.Control{
-		{Action: "pick", WorkoutName: workoutName, WorkoutJSON: workoutJSON},
-		{Action: "start"},
-	} {
-		if code, message := rm.control(c, rider, h.now()); code != "" {
-			return "", code, message
+	var ride *routeRide
+	if route != nil {
+		resolved, refused := h.sessionRoute(*route, workoutJSON, routeOwner)
+		if refused != nil {
+			return "", refused.Code, refused.Message
 		}
+		ride = &resolved
+	}
+	if code, message := rm.controlOn(protocol.Control{Action: "pick", WorkoutName: workoutName, WorkoutJSON: workoutJSON}, ride, rider, h.now()); code != "" {
+		return "", code, message
+	}
+	if code, message := rm.control(protocol.Control{Action: "start"}, rider, h.now()); code != "" {
+		return "", code, message
 	}
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
