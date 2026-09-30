@@ -11,15 +11,17 @@
 	import { FtmsTrainer } from '$lib/ble/ftms';
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { formatClock } from '$lib/format';
+	import { formatClock, formatKm } from '$lib/format';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { createFreeRide, type FreeMode } from '$lib/ride/free-ride.svelte';
 	import GearShift from '$lib/ride/GearShift.svelte';
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
 	import { modeLine } from '$lib/ride/mode-copy';
+	import RoadEnd from '$lib/ride/RoadEnd.svelte';
+	import { endRideLabel, roadEndOffered } from '$lib/ride/road-end';
 	import RoadPick from '$lib/ride/RoadPick.svelte';
 	import Skyline from '$lib/ride/Skyline.svelte';
-	import type { RideableRoute } from '$lib/ride/roads';
+	import { carryOnFrom, type RideableRoute } from '$lib/ride/roads';
 	import { createSoloRoadRide } from '$lib/ride/solo-road.svelte';
 	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
 	import Instrument from '$lib/session/Instrument.svelte';
@@ -68,9 +70,17 @@
 	});
 	const stale = $derived(!!solo.trainer && now - lastAt > SIGNAL_LOST_MS);
 
-	function start() {
+	// Where the last ride of this road stopped short (#3205), beside From
+	// the start; a link that says where to start (Resume at km) already did.
+	let carry = $state<number | null>(null);
+	untrack(() => {
+		if (!from && !route.borrowed)
+			void carryOnFrom(route.id, route.road.length).then((m) => (carry = m));
+	});
+
+	function start(at?: number) {
 		const trainer = trainers.handOff();
-		if (trainer) solo.start(trainer);
+		if (trainer) solo.start(trainer, at);
 	}
 	async function end() {
 		ended = true;
@@ -122,17 +132,40 @@
 					: undefined,
 			}}
 		/>
-		<button
-			onclick={start}
-			disabled={!held.paired || held.fault === 'reconnecting'}
-			class="btn btn-primary btn-lg">Start riding</button
-		>
-		{#if from > 0}
+		{#if carry !== null}
+			<div class="flex flex-wrap gap-3">
+				<button
+					onclick={() => start(carry ?? 0)}
+					disabled={!held.paired || held.fault === 'reconnecting'}
+					class="btn btn-primary btn-lg"
+					>Carry on from km {formatKm(carry)}</button
+				>
+				<button
+					onclick={() => start(0)}
+					disabled={!held.paired || held.fault === 'reconnecting'}
+					class="btn btn-secondary btn-lg">From the start</button
+				>
+			</div>
+		{:else}
+			<button
+				onclick={() => start()}
+				disabled={!held.paired || held.fault === 'reconnecting'}
+				class="btn btn-primary btn-lg">Start riding</button
+			>
+		{/if}
+		{#if route.borrowed}
 			<p class="text-muted text-sm">
-				Carrying on from km {(from / 1000).toFixed(1)}.
+				The crew’s road, from where the session starts. It saves as a free ride.
+			</p>
+		{:else if from > 0}
+			<p class="text-muted text-sm">
+				Carrying on from km {formatKm(from)}.
 			</p>
 		{/if}
 	{:else if solo.trainer}
+		{#if roadEndOffered(free, false)}
+			<RoadEnd {free} onsave={() => void end()} />
+		{/if}
 		<Instrument
 			{watts}
 			{stale}
@@ -177,11 +210,16 @@
 		{#if free.road}
 			<!-- The horizon (#3059): the road ahead and your dot. -->
 			<div class="h-40">
-				<Skyline road={route.road} m={free.road.m} mps={free.road.virtualMps} />
+				<Skyline
+					road={route.road}
+					m={free.road.m}
+					mps={free.road.virtualMps}
+					reverse={free.road.reverse}
+				/>
 			</div>
 		{/if}
 		<button onclick={() => void end()} class="btn btn-primary btn-lg"
-			>End ride</button
+			>{endRideLabel(free)}</button
 		>
 	{:else if free.saving}
 		<p class="text-muted text-sm" role="status">Saving your ride…</p>

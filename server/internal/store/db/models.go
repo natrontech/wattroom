@@ -198,6 +198,12 @@ type Identity struct {
 	RefreshTokenEnc []byte
 }
 
+type Look struct {
+	Hash      string
+	Loadout   string
+	CreatedAt pgtype.Timestamptz
+}
+
 type Medal struct {
 	ID        pgtype.UUID
 	UserID    pgtype.UUID
@@ -218,6 +224,7 @@ type Outfit struct {
 	UserID    pgtype.UUID
 	Loadout   []byte
 	UpdatedAt pgtype.Timestamptz
+	LookHash  *string
 }
 
 type Passkey struct {

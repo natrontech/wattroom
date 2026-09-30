@@ -18,7 +18,7 @@ import { generate, type World } from './world';
  * it from the chase camera — frustum culled, instanced and batched meshes
  * counted as the GPU sees them, with WEBGL_multi_draw on and off.
  *
- * Today's world is over four lines, each named with the issue that brings
+ * Today's world is over three lines, each named with the issue that brings
  * it under; an entry that stops being over fails as stale, so the list can only
  * shrink. The low tier (30 draws, 150k; dressing 12 and 70k) gets its row
  * when a scene can be built low (#3080). Corridor decode (20 ms) waits for a
@@ -38,13 +38,11 @@ type Line = keyof typeof HIGH;
 
 const OVER: Partial<Record<Line, string>> = {
 	draws:
-		'#3077 batches the set pieces — a sign is a draw per face of its board today — and #3076 the props',
+		"#3077 batches the set pieces: every kit kind and every face of a sign's board is its own draw today",
 	triangles:
 		'#3606 streams the ground and the road chunk by chunk; the whole world is one mesh of each, never culled',
 	'dressing.draws':
-		'#3076 draws a BatchedMesh per material family where every prop kind is its own draw, and #3077 batches the signs and arches',
-	'dressing.triangles':
-		'#3076 puts props in 250 m BatchedMesh tiles, culled each and in two LOD rings; every tree is drawn today',
+		"#3077 batches the set pieces: every kit kind and every face of a sign's board is its own draw; the props are three",
 };
 
 /** Dressing drawn as plain meshes, and who batches it. */
@@ -113,6 +111,9 @@ function cost(
 }
 
 type Frame = {
+	multiDraw: boolean;
+	/** Props drawn: batched instances in view. */
+	props: number;
 	lines: Record<Line, number>;
 	drawn: Set<Family>;
 	untagged: string[];
@@ -137,6 +138,7 @@ function measure(
 	const per = new Map<Family, Count>();
 	const untagged: string[] = [];
 	const unbatched: string[] = [];
+	let props = 0;
 	scene.traverseVisible((o) => {
 		if (!drawable(o) || (o.frustumCulled && !frustum.intersectsObject(o)))
 			return;
@@ -146,6 +148,7 @@ function measure(
 			return;
 		}
 		const c = cost(o, frustum, multiDraw);
+		if ((o as THREE.BatchedMesh).isBatchedMesh && !multiDraw) props += c.draws;
 		if (c.draws === 0) return;
 		const f = per.get(family) ?? { draws: 0, triangles: 0 };
 		f.draws += c.draws;
@@ -170,6 +173,8 @@ function measure(
 			'dressing.triangles': of('dressing').triangles,
 			uploads: 0,
 		},
+		multiDraw,
+		props,
 		drawn: new Set(per.keys()),
 		untagged,
 		unbatched,
@@ -301,12 +306,22 @@ describe('the ride’s scene budget, high tier (#3083)', () => {
 					1 / 30,
 				);
 			}
+			w.look();
 			for (const multiDraw of [true, false])
 				frames.push(measure(w.scene, w.camera, multiDraw));
 		}
 	}, 60_000);
 
-	const worst = (line: Line) => Math.max(...frames.map((f) => f.lines[line]));
+	// Without WEBGL_multi_draw a BatchedMesh draws once per instance: that is
+	// the Firefox spectator's path (#3076's decision keeps it), so the draw
+	// lines hold with it on. Triangles are the GPU's work either way.
+	const DRAWS = new Set<Line>(['draws', 'dressing.draws']);
+	const worst = (line: Line) =>
+		Math.max(
+			...frames
+				.filter((f) => f.multiDraw || !DRAWS.has(line))
+				.map((f) => f.lines[line]),
+		);
 
 	it('declares a family for everything it draws', () => {
 		expect(frames.flatMap((f) => f.untagged)).toEqual([]);
@@ -343,6 +358,11 @@ describe('the ride’s scene budget, high tier (#3083)', () => {
 			expect([...f.drawn]).toEqual(expect.arrayContaining(['terrain', 'road']));
 	});
 
+	it('draws the props around the camera in every frame, as its rings stand there', () => {
+		for (const f of frames.filter((g) => !g.multiDraw))
+			expect(f.props).toBeGreaterThan(0);
+	});
+
 	it('draws the riders it counts', () => {
 		expect(worst('figures.triangles')).toBeGreaterThan(0);
 		expect(frames[0].lines.uploads).toBeGreaterThan(0);
@@ -354,7 +374,8 @@ describe('the ride’s scene budget, high tier (#3083)', () => {
 			if (
 				familyOf(o) === 'dressing' &&
 				drawable(o) &&
-				!(o as THREE.InstancedMesh).isInstancedMesh
+				!(o as THREE.InstancedMesh).isInstancedMesh &&
+				!(o as THREE.BatchedMesh).isBatchedMesh
 			)
 				kinds.add(kindOf(o));
 		});

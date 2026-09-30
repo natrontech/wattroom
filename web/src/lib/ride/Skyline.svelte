@@ -16,7 +16,7 @@
 	import { prefersReducedMotion } from '$lib/motion';
 	import { heightAt } from '$lib/road/at-metre';
 	import { climbsOf } from '$lib/road/climbs';
-	import type { Road } from '$lib/road/road';
+	import { turnedRound, type Road } from '$lib/road/road';
 	import {
 		aheadFor,
 		bandIn,
@@ -32,16 +32,22 @@
 	} from '$lib/road/skyline';
 
 	let {
-		road,
-		m,
+		road: stored,
+		m: storedM,
 		mps,
+		reverse = false,
 		band = [],
 		strip = false,
 		tv = false,
 	}: {
 		road: Road;
-		/** The dot: metres along the road, as of the last second. */
+		/** The dot: metres along the stored road, as of the last second. */
 		m: number;
+		/**
+		 * The lap rides back down the road (#3205): `m` counts down, and the
+		 * road ahead is the one behind it on the stored road.
+		 */
+		reverse?: boolean;
 		/** The dot's speed, m/s. */
 		mps: number;
 		/** A road workout's blocks, by metre. */
@@ -63,6 +69,10 @@
 		'fill-grade-4',
 		'fill-grade-5',
 	];
+
+	// The road as this lap rides it: the Skyline always looks ahead.
+	const road = $derived(reverse ? turnedRound(stored) : stored);
+	const m = $derived(reverse ? stored.length - storedM : storedM);
 
 	let width = $state(0);
 	let height = $state(0);
@@ -128,6 +138,7 @@
 	bind:clientWidth={width}
 	bind:clientHeight={height}
 	data-testid="skyline"
+	data-along={Math.round(m)}
 	role="img"
 	aria-label="the road ahead: {((road.length - m) / 1000).toFixed(1)} km to go"
 	class="relative h-full w-full overflow-hidden"

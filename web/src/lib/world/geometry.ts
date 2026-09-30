@@ -175,42 +175,6 @@ export function roadMaterial(c: Style['road']): THREE.MeshLambertMaterial {
 	return m;
 }
 
-// Instanced props: one matrix per item; `sink` so nothing hovers on a slope.
-export function instanced(
-	route: Route,
-	geometry: THREE.BufferGeometry,
-	material: THREE.Material,
-	data: Float32Array,
-	stride: number,
-	opts: {
-		scale?: (i: number) => number;
-		rot?: (i: number) => number;
-		keep?: (i: number) => boolean;
-		sink?: number;
-	} = {},
-): THREE.InstancedMesh {
-	const total = Math.floor(data.length / stride);
-	const mesh = new THREE.InstancedMesh(geometry, material, Math.max(1, total));
-	const m = new THREE.Matrix4();
-	const q = new THREE.Quaternion();
-	const s = new THREE.Vector3();
-	const p = new THREE.Vector3();
-	const up = new THREE.Vector3(0, 1, 0);
-	let n = 0;
-	for (let i = 0; i < total; i++) {
-		if (opts.keep && !opts.keep(i)) continue;
-		const o = i * stride;
-		p.set(data[o], yOf(route, data[o + 1]) - (opts.sink ?? 0), data[o + 2]);
-		q.setFromAxisAngle(up, opts.rot?.(i) ?? 0);
-		s.setScalar(opts.scale?.(i) ?? 1);
-		mesh.setMatrixAt(n++, m.compose(p, q, s));
-	}
-	mesh.count = n;
-	mesh.instanceMatrix.needsUpdate = true;
-	mesh.computeBoundingSphere();
-	return mesh;
-}
-
 // The world's edge as a plinth: walls from the ground's outline down to a
 // flat base, so the route reads as a model on a table instead of a world
 // that stops.

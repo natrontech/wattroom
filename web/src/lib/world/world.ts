@@ -21,15 +21,6 @@ import { scatter, type Prop } from './props/scatter';
 import type { Placement } from './placement/types';
 import { drawnRows } from './terrain/road-profile';
 
-/** What stands beside the road, as the stage draws it. */
-export type Props = {
-	trees: Float32Array; // x, base, z, scale, kind (0 spruce, 1 broadleaf), rotY ×N
-	houses: Float32Array; // x, base, z, rotY, kind (0 house, 1 church, 2 barn, 3 hut) ×N
-	cows: Float32Array; // x, base, z, rotY ×N
-	rocks: Float32Array; // x, base, z, scale, rotY ×N
-	villageNames: { d: number; name: string }[];
-};
-
 export type World = {
 	/** The set pieces' seed, until #3077 keys them by place. */
 	seed: number;
@@ -47,7 +38,11 @@ export type World = {
 	signs: Sign[];
 	arches: Arch[];
 	names: Names;
-} & Props;
+	/** What stands beside the road, keyed by place (#3076). */
+	props: Prop[];
+	/** Where each village stands along the route, for the markers and set pieces that read it so. */
+	villageNames: { d: number; name: string }[];
+};
 
 /** The dev world's salt. Its road is synthetic, so a public salt matches no place; a served road brings its own (#3225). */
 export const DEV_SALT: Salt = [0x57a770e0, 0x0de5a1e0, 0x5eed5eed, 0x00c0ffee];
@@ -96,38 +91,13 @@ export function generate(
 		biomeAt,
 		chunks: cover.chunks,
 	});
-	const HOUSE = { house: 0, church: 1, barn: 2, hut: 3 } as const;
-	const pick = (kinds: readonly string[], row: (p: Prop) => number[]) =>
-		new Float32Array(
-			placed.props.filter((p) => kinds.includes(p.kind)).flatMap(row),
-		);
-	const props: Props = {
-		trees: pick(['spruce', 'broadleaf'], (p) => [
-			p.x,
-			p.base,
-			p.z,
-			p.scale,
-			p.kind === 'broadleaf' ? 1 : 0,
-			p.rot,
-		]),
-		houses: pick(Object.keys(HOUSE), (p) => [
-			p.x,
-			p.base,
-			p.z,
-			p.rot,
-			HOUSE[p.kind as keyof typeof HOUSE],
-		]),
-		cows: pick(['cow'], (p) => [p.x, p.base, p.z, p.rot]),
-		rocks: pick(['rock'], (p) => [p.x, p.base, p.z, p.scale, p.rot]),
-		// Where each village stands along the route, for the markers and set pieces that read it so.
-		villageNames: placed.villages
-			.map((v) => ({
-				d: (nearest(v.x, v.z)?.i ?? 0) * route.step,
-				name: v.name,
-			}))
-			.sort((a, b) => a.d - b.d),
-	};
-	const markers = markersFor(route, props.villageNames);
+	const villageNames = placed.villages
+		.map((v) => ({
+			d: (nearest(v.x, v.z)?.i ?? 0) * route.step,
+			name: v.name,
+		}))
+		.sort((a, b) => a.d - b.d);
+	const markers = markersFor(route, villageNames);
 	const set = setPieces(route, markers, {
 		rand,
 		field,
@@ -135,7 +105,7 @@ export function generate(
 		heightAt,
 		biomeAt,
 		roadSurfaceAt,
-		villages: props.villageNames,
+		villages: villageNames,
 	});
 	return {
 		seed,
@@ -145,7 +115,8 @@ export function generate(
 		placements: placed.placements,
 		heightAt,
 		roadSurfaceAt,
-		...props,
+		props: placed.props,
+		villageNames,
 		markers,
 		...set,
 	};

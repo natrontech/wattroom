@@ -135,6 +135,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		else rig.update(camera, mode === 'heli' ? 'heli' : 'chase', you, me, real);
 		sight.uCam.value.copy(camera.position);
 		sight.uYou.value.copy(me);
+		stage?.update(camera.position);
 		sinceHud += real;
 		if (sinceHud >= HUD_EVERY) {
 			sinceHud = 0;
@@ -150,6 +151,10 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		camera,
 		dress,
 		advanceBy,
+		/** Brings the level of detail to where the camera now stands, after moving it by hand (the scene budget does). */
+		look() {
+			stage?.update(camera.position);
+		},
 		setCamera(next: CameraMode) {
 			mode = next;
 			applyMode();

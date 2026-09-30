@@ -32,9 +32,25 @@ select item_id from wardrobe where user_id = $1;
 
 -- name: SetOutfit :exec
 -- What the rider's figure wears, as the client built it, checked before
--- this: one per rider, replaced whole.
-insert into outfits (user_id, loadout) values ($1, $2)
-on conflict (user_id) do update set loadout = excluded.loadout, updated_at = now();
+-- this: one per rider, replaced whole, with the hash its look goes by.
+insert into outfits (user_id, loadout, look_hash) values ($1, $2, $3)
+on conflict (user_id) do update
+set loadout = excluded.loadout, look_hash = excluded.look_hash, updated_at = now();
+
+-- name: SetOutfitLook :exec
+-- The hash an outfit's look goes by, after an undo changed it in place.
+update outfits set look_hash = $2 where user_id = $1;
+
+-- name: PutLook :exec
+-- A look, by its content (#3155): the same outfit is the same row.
+insert into looks (hash, loadout) values ($1, $2) on conflict (hash) do nothing;
+
+-- name: GetLook :one
+select loadout from looks where hash = $1;
+
+-- name: UserLookHash :one
+-- The look a rider wears, for the voice channel's roster (#3155).
+select look_hash from outfits where user_id = $1;
 
 -- name: TakeOffItem :exec
 -- An undone purchase comes off the outfit too: its slot falls back to what

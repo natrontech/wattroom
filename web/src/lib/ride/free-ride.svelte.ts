@@ -2,7 +2,7 @@ import { account } from '$lib/account.svelte';
 import { MaxTrainerGrade, MinRideSamples } from '$lib/protocol';
 import { ergByRoad, ROAD } from '$lib/ride/ride-grade';
 import { gearsEnabled } from '$lib/ride/gears-enabled';
-import { createRoadRide, type RoadSecond } from '$lib/ride/road-ride';
+import { createRoadLaps, type RoadSecond } from '$lib/ride/road-ride';
 import type { RideableRoute } from '$lib/ride/roads';
 import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
 import { createLiveStats } from '$lib/ride/live-stats.svelte';
@@ -94,17 +94,25 @@ export function createFreeRide(deps: {
 	// 2026-09-28): Grade reads Road on one, and Watts rides ERG by the road.
 	let onRoad = $state.raw<{
 		route: RideableRoute;
-		ride: ReturnType<typeof createRoadRide>;
+		laps: ReturnType<typeof createRoadLaps>;
 	} | null>(null);
 	let here = $state.raw<RoadSecond | null>(null);
+	// The route a ride on it saves against: never a borrowed one (#3621).
+	const saveOn = $derived(
+		onRoad && !onRoad.route.borrowed ? onRoad.route : null,
+	);
 	const road = $derived(
 		onRoad && here
 			? {
 					id: onRoad.route.id,
 					name: onRoad.route.name,
 					length: onRoad.route.road.length,
+					lap: onRoad.laps.lap,
+					borrowed: !!onRoad.route.borrowed,
 					/** The road's own heights, for the Skyline (#3059). */
 					profile: onRoad.route.road,
+					/** This lap rides it back from the far end: `m` counts down. */
+					reverse: onRoad.laps.reverse,
 					...here,
 				}
 			: null,
@@ -166,18 +174,27 @@ export function createFreeRide(deps: {
 		 */
 		ride(route: RideableRoute, from = 0) {
 			if (startedAt !== null) return;
-			const ride = createRoadRide(route.road, {
+			const laps = createRoadLaps(route.road, {
 				kg: () => deps.kg?.() ?? 0,
 				from,
 			});
-			onRoad = { route, ride };
-			here = ride.second(0, Date.now());
+			onRoad = { route, laps };
+			here = laps.second(0, Date.now());
 		},
 		/** Off the road again, before the ride starts. */
 		leaveRoad() {
 			if (startedAt !== null) return;
 			onRoad = null;
 			here = null;
+		},
+		/**
+		 * At the end of the road (#3205): back the way you came, or from the
+		 * start again — the same ride, one more lap.
+		 */
+		turn(way: 'back' | 'again') {
+			if (!onRoad || !here?.atEnd) return;
+			onRoad.laps.turn(way);
+			here = { ...here, atEnd: false };
 		},
 		nudge(dir: 1 | -1) {
 			if (mode === 'grade') grade = nudged('grade', grade, dir);
@@ -196,7 +213,7 @@ export function createFreeRide(deps: {
 			// On a road the dot moves first: whether this second counts reads
 			// its speed, and the trainer's next grade is read where it lands.
 			if (armed && onRoad)
-				here = onRoad.ride.second(sample.watts, sample.at ?? Date.now());
+				here = onRoad.laps.second(sample.watts, sample.at ?? Date.now());
 			const virtualMps = here?.virtualMps ?? sample.virtualMps ?? 0;
 			const rolling = virtualMps > DEFAULTS.ridingMps;
 			if (!armed || (sample.watts <= 0 && sample.cadence <= 0 && !rolling))
@@ -215,18 +232,19 @@ export function createFreeRide(deps: {
 					startedAt,
 					workoutName: FREE_RIDE_NAME,
 					workoutJson: FREE_RIDE_JSON,
-					...(onRoad && { routeId: onRoad.route.id }),
+					...(saveOn && { routeId: saveOn.id }),
 				}).then((opened) => {
 					if (rideId === opening) buffer = opened;
 					else opened.release();
 				});
 			}
 			// The upload's own fields: its decoder refuses anything else.
+			const place = here && onRoad?.laps.fields(here);
 			samples.push({
 				watts: sample.watts,
 				cadence: sample.cadence,
 				hr: sample.hr,
-				...(here && { m: here.m, alt: here.alt }),
+				...place,
 			});
 			seconds = samples.length;
 			live.push({ watts: sample.watts });
@@ -235,7 +253,7 @@ export function createFreeRide(deps: {
 				watts: sample.watts,
 				cadence: sample.cadence,
 				heartRate: sample.hr,
-				...(here && { m: here.m, alt: here.alt }),
+				...place,
 				at: Date.now(),
 			});
 		},
@@ -252,8 +270,8 @@ export function createFreeRide(deps: {
 				workoutJson: FREE_RIDE_JSON,
 				startedAt: new Date(startedAt).toISOString(),
 				samples,
-				...(onRoad && {
-					routeId: onRoad.route.id,
+				...(saveOn && {
+					routeId: saveOn.id,
 					drive:
 						mode === 'watts'
 							? ('ergByRoad' as const)

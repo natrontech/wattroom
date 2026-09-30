@@ -138,8 +138,7 @@ describe('the world', () => {
 			};
 			const again = generate(route);
 			expect(again.seed).toBe(world.seed);
-			expect(identical(again.trees, world.trees)).toBe(true);
-			expect(identical(again.houses, world.houses)).toBe(true);
+			expect(JSON.stringify(again.props)).toBe(JSON.stringify(world.props));
 			expect(identical(again.mesh.pos, world.mesh.pos)).toBe(true);
 			expect(JSON.stringify(again.pieces)).toBe(JSON.stringify(world.pieces));
 		},
@@ -154,20 +153,22 @@ describe('the world', () => {
 			if (hit && hit.d < min)
 				offenders.push(`${label} ${hit.d.toFixed(1)} m from the centreline`);
 		};
-		const props = [
-			['tree', world.trees, 6, 10],
-			['house', world.houses, 5, 12],
-			['cow', world.cows, 4, 18],
-			['rock', world.rocks, 5, 8],
-		] as const;
-		for (const [label, arr, stride, min] of props)
-			for (let k = 0; k < arr.length; k += stride)
-				check(label, arr[k], arr[k + 2], min);
+		const clear: Record<string, number> = {
+			spruce: 10,
+			broadleaf: 10,
+			house: 12,
+			church: 12,
+			barn: 12,
+			hut: 12,
+			cow: 18,
+			rock: 8,
+		};
+		for (const p of world.props) check(p.kind, p.x, p.z, clear[p.kind]);
 		// Set pieces keep 6 m off the asphalt (edge at 3.2 m); road furniture excepted.
 		for (const p of world.pieces)
 			if (p.kind !== 'delineator' && p.kind !== 'snowpole')
 				check(p.kind, p.x, p.z, 9);
-		expect(world.trees.length).toBeGreaterThan(0);
+		expect(world.props.length).toBeGreaterThan(0);
 		expect(offenders).toEqual([]);
 	});
 

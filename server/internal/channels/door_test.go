@@ -205,3 +205,23 @@ func TestAuthorizeCarriesTheRidersLevel(t *testing.T) {
 		t.Fatalf("rider.TotalXp = %d (err %v), want 240 — the roster cannot ring without it", rider.TotalXp, err)
 	}
 }
+
+// The roster carries the rider's look by its hash (#3155), read from the
+// store at the door; a rider in the starter kit carries none.
+func TestAuthorizeCarriesTheRidersLook(t *testing.T) {
+	h := setup(t)
+	voice := h.create(t, "voice", "Look Room", false)
+	rider, _, err := h.authorize(t, "alice", voice)
+	if err != nil || rider.Look != "" {
+		t.Fatalf("a rider in the starter kit carries look %q (%v)", rider.Look, err)
+	}
+	look := "0123456789abcdef"
+	if err := h.store.Queries.SetOutfit(t.Context(), db.SetOutfitParams{
+		UserID: h.users.ByToken["alice"].ID, Loadout: []byte(`{"frame":"frame.race"}`), LookHash: &look,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if rider, _, err = h.authorize(t, "alice", voice); err != nil || rider.Look != look {
+		t.Fatalf("rider.Look = %q (%v), want %q", rider.Look, err, look)
+	}
+}
