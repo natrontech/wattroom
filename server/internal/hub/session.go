@@ -104,12 +104,16 @@ func (s *session) join(riderID string, in bool) bool {
 // rides, the recap and the radar show, and JSON the saver can parse.
 func (s *session) runGame(mode, name string, now time.Time) {
 	s.game = mode
-	s.workoutName, s.workoutJSON = name, gameWorkoutJSON(name)
+	s.workoutName, s.workoutJSON = name, gameWorkoutJSON(mode, name)
 	s.workoutHash = workoutHash(s.workoutJSON)
 	s.totalSeconds, s.segments = 0, nil
 	s.phase, s.startedAt, s.banked = "running", now, 0
 	s.run++
-	s.startBunch(now)
+	// A race rides no bunch: each racer has their own place on the road
+	// (ADR-0067), and riding together is never mixed into one.
+	if mode != modeRace {
+		s.startBunch(now)
+	}
 }
 
 // startBunch puts a new run's bunch at the start of its road.

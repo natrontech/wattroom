@@ -282,6 +282,11 @@ func (rm *channelState) controlOn(c protocol.Control, route *routeRide, rider pr
 		rm.session.join(rider.ID, c.Action == "join")
 		return "", ""
 	}
+	// The coach neutralises a race and lifts it (#3658); its session's own
+	// clock runs on, as a game's does.
+	if rm.session.game == modeRace && (c.Action == "pause" || c.Action == "resume") {
+		return rm.neutraliseLocked(c.Action == "pause", now)
+	}
 	if c.Action == "pick" && !rm.session.open() {
 		rm.session.begin(uuid.NewString(), rider.ID, rider.Name)
 	}
@@ -358,8 +363,9 @@ func (rm *channelState) refusalLocked(action string, rider protocol.Rider) (code
 		if action == "game" && s.phase == "done" && !rm.saved {
 			return "conflict", "The last session is still being saved — try again in a second."
 		}
-		// A game keeps its own clock and runs its own sprints.
-		if s.open() && s.game != "" && (action == "pause" || action == "resume") {
+		// A game keeps its own clock and runs its own sprints. A race's
+		// coach holds it instead: pause neutralises it (#3658).
+		if s.open() && s.game != "" && s.game != modeRace && (action == "pause" || action == "resume") {
 			return "invalid_request", "A game keeps its own clock — it does not pause."
 		}
 		if s.open() && s.game != "" && action == "sprint" {

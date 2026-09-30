@@ -127,6 +127,14 @@ func (rm *channelState) setDeviceKind(c *client, kind string) {
 	c.deviceKind = kind
 }
 
+// setDrive records how this screen's trainer rides a road (#3658). A bool,
+// so nothing to bound; unlimited like the device kind above.
+func (rm *channelState) setDrive(c *client, d protocol.Drive) {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+	c.ergByRoad = d.ErgByRoad
+}
+
 // releaseSensors drops everything a leaving socket held, so the rider's other
 // screens can pair. Called from leave, under the room lock already held there.
 func (rm *channelState) releaseSensorsLocked(c *client) bool {
