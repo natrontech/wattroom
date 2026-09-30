@@ -16,6 +16,7 @@
 	import { fetchRide, type RideDetail } from '$lib/ride/detail';
 	import { ridePlace } from '$lib/ride/list';
 	import RideComparison from '$lib/ride/RideComparison.svelte';
+	import RideSkyline from '$lib/ride/RideSkyline.svelte';
 	import type { RideRecord } from '$lib/history.svelte';
 	import { api } from '$lib/api';
 	import {
@@ -350,6 +351,8 @@
 				</p>
 			{/if}
 		</section>
+
+		<RideSkyline samples={ride.samples} />
 
 		<section class="mt-3 grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
 			{#each stats as stat (stat.label)}

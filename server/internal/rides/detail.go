@@ -287,8 +287,11 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 		s.log.Error("ride samples unreadable", "err", err, "ride", store.UUIDString(row.ID))
 	}
 	for _, sample := range samples {
+		// On a road, its place too: the page draws the ride's own Skyline
+		// from it (#3639). The owner's read only, like the rest of the trace.
 		out.Samples = append(out.Samples, sampleJSON{
 			Watts: sample.Watts, HR: sample.HR, Cadence: sample.Cadence,
+			M: sample.M, Alt: sample.Alt,
 		})
 	}
 	if road, err := s.store.Queries.GetRideRoad(r.Context(), db.GetRideRoadParams{ID: row.ID, UserID: user.ID}); err != nil {
