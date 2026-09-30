@@ -57,9 +57,7 @@
 				}
 			: null,
 	);
-	const climb = $derived(
-		climbView(skyline),
-	);
+	const climb = $derived(climbView(skyline));
 	watchClimbCues(() => climb);
 	const value = $derived(
 		watts

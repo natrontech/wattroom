@@ -86,9 +86,7 @@
 				}
 			: null,
 	);
-	const climb = $derived(
-		climbView(skyline),
-	);
+	const climb = $derived(climbView(skyline));
 	watchClimbCues(() => climb);
 	const stale = $derived(!!solo.trainer && now - lastAt > SIGNAL_LOST_MS);
 
