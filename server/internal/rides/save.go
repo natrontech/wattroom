@@ -273,8 +273,9 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "solo ride wallet mint failed", err, "The ride could not be saved. It stays on this device.")
 		return
 	}
-	// What the rider wore on it is theirs to keep now, past the undo (#3154).
-	if err := wardrobe.MarkWorn(r.Context(), q, user.ID); err != nil {
+	// What the rider wore on it is theirs to keep now, past the undo (#3154),
+	// and it may be a season's third ride (#3163).
+	if err := wardrobe.RideSaved(r.Context(), q, user.ID, row.StartedAt.Time.In(stats.Zone(user.Timezone))); err != nil {
 		httpx.Fail(w, s.log, "solo ride outfit worn failed", err, "The ride could not be saved. It stays on this device.")
 		return
 	}
