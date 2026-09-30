@@ -106,16 +106,21 @@
 	     one row tall where it fits and the focus above keeps its height (#3597);
 	     a phone's grid puts them above and below. -->
 	{#snippet name()}
-		<!-- A page's name is spaced like a label; the climb's header is a line
-		     to read, so it is not. -->
-		{@const climbLine =
-			shown === 'climb' && ctx.climb ? climbHeader(ctx.climb) : null}
+		<!-- CLIMB's name counts the climbs, its class the Skyline's chip. -->
+		{@const climb = shown === 'climb' ? ctx.climb : null}
 		<p
-			class="{size.word} text-muted leading-none {climbLine
-				? ''
-				: 'tracking-[0.2em]'} {phone ? 'mb-2' : ''}"
+			class="{size.word} text-muted flex items-center gap-3 leading-none whitespace-nowrap {phone
+				? 'mb-2'
+				: ''}"
 		>
-			{climbLine ?? PAGE_NAMES[shown]}
+			<span class="tracking-[0.2em]"
+				>{climb ? climbHeader(climb) : PAGE_NAMES[shown]}</span
+			>
+			{#if climb}<span
+					data-testid="climb-class"
+					class="border-neon bg-surface text-ink rounded border px-1 leading-none font-bold"
+					>{climb.card.cls}</span
+				>{/if}
 		</p>
 	{/snippet}
 	{#snippet dots()}

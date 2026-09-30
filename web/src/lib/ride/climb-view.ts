@@ -1,14 +1,13 @@
-import { BikeKg } from '$lib/protocol';
 import { heightAt } from '$lib/road/at-metre';
-import { climbCard, secondsToTop, type ClimbCard } from '$lib/road/climb-card';
+import { climbCard, type ClimbCard } from '$lib/road/climb-card';
 import { classedOf, climbsOf, type ClassedClimb } from '$lib/road/climbs';
 import { turnedRound, type Road } from '$lib/road/road';
 import { gradeStep, type SkylineView } from '$lib/road/skyline';
 
 /**
  * The climb card as a surface draws it (#3645): #3089's numbers for the road
- * as this lap rides it, the climb they belong to, its profile in 100 m bars,
- * and the time to its top. Null with no classed climb near.
+ * as this lap rides it, the climb they belong to and its profile in 100 m
+ * bars. Null with no classed climb near.
  */
 export interface ClimbView {
 	card: ClimbCard;
@@ -23,8 +22,6 @@ export interface ClimbView {
 	/** The climb's lowest and highest heights, the bars' scale. */
 	lo: number;
 	hi: number;
-	/** Seconds to the top at the last 30 s power; null with none to hold. */
-	secondsToTop: number | null;
 }
 
 /** 100 m of a climb (#3645): where it ends, how high, and its grade step. */
@@ -59,15 +56,8 @@ function once<T>(cache: WeakMap<Road, T>, road: Road, make: () => T): T {
 	return value;
 }
 
-/**
- * The climb card for a ride on a road, or null: `power30` is the rider's
- * last 30 s, `kg` their weight (the bike's is added, as the pace model does).
- */
-export function climbView(
-	view: SkylineView | null,
-	power30: number,
-	kg: number,
-): ClimbView | null {
+/** The climb card for a ride on a road, or null. */
+export function climbView(view: SkylineView | null): ClimbView | null {
 	if (!view) return null;
 	const road = view.reverse
 		? once(turnedOnce, view.road, () => turnedRound(view.road))
@@ -88,6 +78,5 @@ export function climbView(
 		bars,
 		lo: Math.min(...heights),
 		hi: Math.max(...heights),
-		secondsToTop: secondsToTop(road, m, climb.topM, power30, kg + BikeKg),
 	};
 }

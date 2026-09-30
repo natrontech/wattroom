@@ -16,7 +16,6 @@
 	import { untrack } from 'svelte';
 	import { ZONE_BG } from '$lib/components/zones';
 	import { prefersReducedMotion } from '$lib/motion';
-	import { HALO } from '$lib/ride/halo';
 	import { heightAt } from '$lib/road/at-metre';
 	import { climbsOf } from '$lib/road/climbs';
 	import { turnedRound, type Road } from '$lib/road/road';
@@ -61,6 +60,10 @@
 		strip?: boolean;
 		tv?: boolean;
 	} = $props();
+
+	/** The dot's halo, painted once: the watt colour fading out, no filter. */
+	const HALO =
+		'radial-gradient(circle, var(--color-watt) 0 28%, color-mix(in oklab, var(--color-watt) 35%, transparent) 42%, transparent 70%)';
 
 	// The road as this lap rides it: the Skyline always looks ahead.
 	const road = $derived(reverse ? turnedRound(stored) : stored);

@@ -634,7 +634,7 @@
 		<TvOverlay
 			stats={session.live}
 			skyline={tvSkyline}
-			climb={climbView(tvSkyline, session.live.power30, profile.current.kg)}
+			climb={climbView(tvSkyline)}
 			riders={[tvRider]}
 			segments={session.segments}
 			total={session.total}

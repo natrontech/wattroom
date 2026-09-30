@@ -231,7 +231,6 @@ describe('CLIMB (#3645)', () => {
 			bars: [],
 			lo: 500,
 			hi: 820,
-			secondsToTop: 754,
 		}) as ClimbView;
 
 	it('is a page only while a classed climb is near, between RIDE and POWER', () => {
@@ -243,23 +242,19 @@ describe('CLIMB (#3645)', () => {
 		expect(pagesFor({ stats, climb: null })).toEqual(['ride', 'power']);
 	});
 
-	it('heads the page with the climb, its class and the next one', () => {
-		expect(climbHeader(climb())).toBe(
-			'CLIMB 3 of 4 · I · next climb in 4.8 km',
-		);
+	it('names the page by the climb it is on; the next climb is on the road line', () => {
+		expect(climbHeader(climb())).toBe('CLIMB 3 OF 4');
 		expect(climbHeader(climb({ nextInM: undefined, n: 4 }))).toBe(
-			'CLIMB 4 of 4 · I',
+			'CLIMB 4 OF 4',
 		);
 	});
 
-	it('is to the top, ascent left, average left, grade now and time to the top', () => {
+	it('is to the top, ascent left and average left; grade is on the road line', () => {
 		const fields = fieldsFor('climb', ride({ climb: climb() }));
 		expect(fields.map((f) => [f.label, f.value, f.unit])).toEqual([
 			['To the top', '2.4', 'km'],
 			['Ascent left', '186', 'm'],
 			['Average left', '7.8', '%'],
-			['Grade', '8.5', '%'],
-			['Time to top', '12:34', undefined],
 		]);
 		const near = fieldsFor('climb', ride({ climb: climb({ toTopM: 420 }) }));
 		expect(near[0]).toMatchObject({ value: '400', unit: 'm' });

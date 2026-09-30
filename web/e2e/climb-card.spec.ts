@@ -50,14 +50,9 @@ test.describe('the climb card', () => {
 	}) => {
 		const cues: string[] = [];
 		const computer = await rideTheClimb(page, 'Climb Card Rider', cues);
-		await expect(computer.getByText('CLIMB 1 of 1 · IV')).toBeVisible();
-		for (const key of [
-			'toTop',
-			'ascentLeft',
-			'avgLeft',
-			'gradeNow',
-			'timeToTop',
-		])
+		await expect(computer.getByText('CLIMB 1 OF 1')).toBeVisible();
+		await expect(computer.getByTestId('climb-class')).toHaveText('IV');
+		for (const key of ['toTop', 'ascentLeft', 'avgLeft'])
 			await expect(computer.locator(`[data-field=${key}]`)).toBeVisible();
 		await expect(computer.getByTestId('climb-profile')).toBeVisible();
 		await expect(computer.getByTestId('climb-dot')).toBeVisible();

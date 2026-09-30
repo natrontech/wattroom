@@ -104,7 +104,7 @@
 	const inWorld = $derived(world.on);
 	const skyline = $derived(skylineOf(session.road, session.segments, ftp));
 	// The climb card on a road (#3645): CLIMB opens by itself, and says so.
-	const climb = $derived(climbView(skyline, session.live.power30, kg));
+	const climb = $derived(climbView(skyline));
 	watchClimbCues(() => climb);
 	const rideWorld = () =>
 		import('$lib/world/RideWorld.svelte').catch((err: unknown) => {

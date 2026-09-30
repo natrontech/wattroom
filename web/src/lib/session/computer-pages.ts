@@ -1,5 +1,5 @@
 import { hrZoneOf } from '$lib/components/zones';
-import { formatClock, wkg } from '$lib/format';
+import { wkg } from '$lib/format';
 import type { ClimbView } from '$lib/ride/climb-view';
 import { formatSplit } from '$lib/road/ghost';
 import { isTyping } from '$lib/keys';
@@ -103,14 +103,12 @@ const distance = (m: number) =>
 		? { value: `${Math.round(m / 100) * 100}`, unit: 'm' }
 		: { value: (m / 1000).toFixed(1), unit: 'km' };
 
-/** The CLIMB page's header (#3089): "CLIMB 3 of 4 · I · next climb in 4.8 km". */
+/**
+ * The CLIMB page's name (TARGETS phone-ride-road 3): "CLIMB 3 OF 4", its
+ * class a chip beside it. The next climb is slot 1's road line (D17).
+ */
 export function climbHeader(view: ClimbView): string {
-	const { n, of, cls, nextInM } = view.card;
-	const next =
-		nextInM !== undefined
-			? ` · next climb in ${(nextInM / 1000).toFixed(1)} km`
-			: '';
-	return `CLIMB ${n} of ${of} · ${cls}${next}`;
+	return `CLIMB ${view.card.n} OF ${view.card.of}`;
 }
 
 /** The chip on another page, for a rider who paged away (#3089). */
@@ -153,18 +151,6 @@ export function fieldsFor(page: ComputerPage, ctx: ComputerContext): Field[] {
 				label: 'Average left',
 				value: climb.card.avgLeftPct.toFixed(1),
 				unit: '%',
-			},
-			{
-				key: 'gradeNow',
-				label: 'Grade',
-				value: climb.card.grade.toFixed(1),
-				unit: '%',
-			},
-			{
-				key: 'timeToTop',
-				label: 'Time to top',
-				value:
-					climb.secondsToTop === null ? '—' : formatClock(climb.secondsToTop),
 			},
 		];
 	}

@@ -58,7 +58,7 @@
 			: null,
 	);
 	const climb = $derived(
-		climbView(skyline, free?.live.power30 ?? 0, channel.you.kg),
+		climbView(skyline),
 	);
 	watchClimbCues(() => climb);
 	const value = $derived(

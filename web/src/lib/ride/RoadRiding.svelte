@@ -87,7 +87,7 @@
 			: null,
 	);
 	const climb = $derived(
-		climbView(skyline, free.live.power30, profile.current.kg),
+		climbView(skyline),
 	);
 	watchClimbCues(() => climb);
 	const stale = $derived(!!solo.trainer && now - lastAt > SIGNAL_LOST_MS);

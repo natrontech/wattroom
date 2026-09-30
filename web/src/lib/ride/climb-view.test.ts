@@ -17,19 +17,19 @@ const view = (m: number, reverse = false) => ({ road, m, mps: 8, reverse });
 
 describe('the climb card as a surface reads it (#3645)', () => {
 	it('is nothing far from a climb', () => {
-		expect(climbView(view(200), 250, 75)).toBeNull();
-		expect(climbView(null, 250, 75)).toBeNull();
+		expect(climbView(view(200))).toBeNull();
+		expect(climbView(null)).toBeNull();
 	});
 
 	it('opens before the foot, and counts down to it', () => {
-		const card = climbView(view(1700), 250, 75)!;
+		const card = climbView(view(1700))!;
 		expect(card.card.cls).not.toBeNull();
 		expect(card.toFootM).toBeCloseTo(card.climb.startM - 1700, 6);
 		expect(card.toFootM).toBeGreaterThan(0);
 	});
 
 	it('draws the climb in 100 m bars, foot to top, each in its grade step', () => {
-		const card = climbView(view(2400), 250, 75)!;
+		const card = climbView(view(2400))!;
 		expect(card.toFootM).toBe(0);
 		const { startM, topM } = card.climb;
 		expect(card.bars[0].fromM).toBe(startM);
@@ -42,13 +42,8 @@ describe('the climb card as a surface reads it (#3645)', () => {
 		expect(card.heightNow).toBeGreaterThanOrEqual(card.lo);
 	});
 
-	it('times the top at the last 30 s, and not without power', () => {
-		expect(climbView(view(2400), 250, 75)!.secondsToTop).toBeGreaterThan(0);
-		expect(climbView(view(2400), 0, 75)!.secondsToTop).toBeNull();
-	});
-
 	it('reads a lap ridden back as the road that lap rides', () => {
 		// Back down from the far end: the climb is a descent, so no card.
-		expect(climbView(view(road.length - 3000, true), 250, 75)).toBeNull();
+		expect(climbView(view(road.length - 3000, true))).toBeNull();
 	});
 });

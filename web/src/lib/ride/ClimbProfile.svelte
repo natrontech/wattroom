@@ -2,9 +2,9 @@
 	/**
 	 * The climb card's profile (#3645): the climb from its foot to the top in
 	 * 100 m bars, each in its grade step's fill — the theme's own ramp, never
-	 * the zone tokens (#397) — and your dot on it, the only glow.
+	 * the zone tokens (#397) — and your dot on it, in ink: watt marks your
+	 * place once, on the Skyline (TARGETS G2).
 	 */
-	import { HALO } from '$lib/ride/halo';
 	import type { ClimbView } from '$lib/ride/climb-view';
 	import { GRADE_BG } from '$lib/road/skyline';
 
@@ -33,17 +33,16 @@
 		<span
 			class="{GRADE_BG[
 				bar.step
-			]} min-h-px flex-1 rounded-t-sm forced-color-adjust-none forced-colors:bg-[GrayText]"
+			]} min-h-px flex-1 forced-color-adjust-none forced-colors:bg-[GrayText]"
 			style:height="{up(bar.height)}%"
 		></span>
 	{/each}
 	<span
 		data-testid="climb-dot"
-		class="absolute -translate-x-1/2 translate-y-1/2 rounded-full forced-color-adjust-none forced-colors:bg-[Highlight] {tv
+		class="bg-ink ring-surface absolute -translate-x-1/2 translate-y-1/2 rounded-full ring-2 forced-color-adjust-none forced-colors:bg-[Highlight] {tv
 			? 'size-[3vh]'
 			: 'size-5'}"
 		style:left="{along}%"
 		style:bottom="{up(Math.min(Math.max(view.heightNow, view.lo), view.hi))}%"
-		style:background-image={HALO}
 	></span>
 </div>
