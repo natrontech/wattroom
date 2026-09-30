@@ -28,14 +28,25 @@ export function across(u: number, bank: number): number {
 
 /**
  * The road as drawn: the spline riders ride, every `step` metres from the
- * start. The ribbon is built on these rows and the ground's line is them, so
- * the two agree on where the road is and how it banks.
+ * start — rows `from` to `to` of it. The ribbon is built on these rows and
+ * the ground's line is them, so the two agree on where the road is and how
+ * it banks.
  */
-export function drawnRows(route: Route, step = 2): RoutePoint[] {
+export function drawnRows(
+	route: Route,
+	step = 2,
+	from = 0,
+	to = Infinity,
+): RoutePoint[] {
 	const rows: RoutePoint[] = [];
-	for (let d = 0; d <= route.length + 1e-6; d += step) rows.push(at(route, d));
+	for (let k = from; k <= to && k * step <= route.length + 1e-6; k++)
+		rows.push(at(route, k * step));
 	return rows;
 }
+
+/** How many rows the whole ribbon has, `step` metres apart. */
+export const rowCount = (route: Route, step = 2): number =>
+	Math.floor((route.length + 1e-6) / step) + 1;
 
 /**
  * A stroke as the road library keeps a road (#3047's shape): heights and
