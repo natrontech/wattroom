@@ -20,10 +20,14 @@ import { across, bankOf, drawnRows, ROAD_W } from './terrain/road-profile';
 
 let route: Route;
 let world: World;
+// A build takes about 1.5 s alone (ADR-0081: keyed by place is the slower
+// build) and several times that beside the rest of the suite.
+const BUILD_MS = 30_000;
+
 beforeAll(() => {
 	route = toRoute(syntheticPoints());
 	world = generate(route);
-});
+}, BUILD_MS);
 
 /** The cosine between each pair of consecutive segments of a polyline. */
 function turns(x: ArrayLike<number>, z: ArrayLike<number>): number[] {
@@ -121,22 +125,26 @@ describe('the route', () => {
 });
 
 describe('the world', () => {
-	it('is the same world for the same route', () => {
-		// Element by element: `toEqual` walks 700k terrain floats slowly enough
-		// to time out on a loaded CI runner.
-		const identical = (a: ArrayLike<number>, b: ArrayLike<number>) => {
-			if (a.length !== b.length) return false;
-			for (let i = 0; i < a.length; i++)
-				if (!Object.is(a[i], b[i])) return false;
-			return true;
-		};
-		const again = generate(route);
-		expect(again.seed).toBe(world.seed);
-		expect(identical(again.trees, world.trees)).toBe(true);
-		expect(identical(again.houses, world.houses)).toBe(true);
-		expect(identical(again.mesh.pos, world.mesh.pos)).toBe(true);
-		expect(JSON.stringify(again.pieces)).toBe(JSON.stringify(world.pieces));
-	});
+	it(
+		'is the same world for the same route',
+		() => {
+			// Element by element: `toEqual` walks 700k terrain floats slowly enough
+			// to time out on a loaded CI runner.
+			const identical = (a: ArrayLike<number>, b: ArrayLike<number>) => {
+				if (a.length !== b.length) return false;
+				for (let i = 0; i < a.length; i++)
+					if (!Object.is(a[i], b[i])) return false;
+				return true;
+			};
+			const again = generate(route);
+			expect(again.seed).toBe(world.seed);
+			expect(identical(again.trees, world.trees)).toBe(true);
+			expect(identical(again.houses, world.houses)).toBe(true);
+			expect(identical(again.mesh.pos, world.mesh.pos)).toBe(true);
+			expect(JSON.stringify(again.pieces)).toBe(JSON.stringify(world.pieces));
+		},
+		BUILD_MS,
+	);
 
 	it('keeps everything beside the road clear of it', () => {
 		const near = roadIndex(route).nearest;
