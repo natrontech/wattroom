@@ -55,9 +55,7 @@ export function attemptPoints(attempts: Attempt[]): AttemptPoint[] {
  * the last: a ride together or in ERG was not the rider's own pace, so it is
  * drawn and never trended. Null under two timed rides, or all on one instant.
  */
-export function attemptTrend(
-	points: AttemptPoint[],
-): {
+export function attemptTrend(points: AttemptPoint[]): {
 	from: { at: number; kmh: number };
 	to: { at: number; kmh: number };
 } | null {
