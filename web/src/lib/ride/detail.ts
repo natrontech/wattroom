@@ -50,6 +50,8 @@ export interface RideDetail {
 	medals: RideMedal[];
 	/** Empty when the stored blob could not be read — the numbers still hold. */
 	samples: RideTraceSample[];
+	/** A road ride's metres, the server's replay (#3053); absent off a road. */
+	distanceM?: number;
 	/** Where the ride was sent, if anywhere — absent when nobody tried (#799). */
 	export?: RideExport;
 	/**
