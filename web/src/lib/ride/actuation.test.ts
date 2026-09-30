@@ -9,7 +9,7 @@ import type {
 import { DEFAULTS, nudgedBias } from '$lib/workout/guards';
 import { createActuator, simulate } from './actuation.svelte';
 import { EASIER_HARDER_OFF, ergPress } from './easier-harder';
-import { nudged } from './free-ride.svelte';
+import { nudged } from './free-ride-controls';
 
 /** A trainer that remembers every write and switches mode as a real one does. */
 class Recorder implements Trainer {

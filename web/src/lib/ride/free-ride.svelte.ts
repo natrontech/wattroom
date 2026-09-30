@@ -1,6 +1,11 @@
 import { account } from '$lib/account.svelte';
-import { MaxTrainerGrade, MinRideSamples } from '$lib/protocol';
-import { ergByRoad, ROAD } from '$lib/ride/ride-grade';
+import { MinRideSamples } from '$lib/protocol';
+import {
+	openingWatts,
+	nudged,
+	type FreeMode,
+} from '$lib/ride/free-ride-controls';
+import { ergByRoad } from '$lib/ride/ride-grade';
 import { gearsEnabled } from '$lib/ride/gears-enabled';
 import { createRoadLaps, type RoadSecond } from '$lib/ride/road-ride';
 import type { RideableRoute } from '$lib/ride/roads';
@@ -8,18 +13,6 @@ import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
 import { createLiveStats } from '$lib/ride/live-stats.svelte';
 import { uploadRide, type RideUpload, type SaveFailure } from '$lib/ride/save';
 import { DEFAULTS } from '$lib/workout/guards';
-
-/**
- * docs/SPEC.md's free ride (ADR-0059) — defaults, tune in alpha. Its grade
- * range is the felt grade's: the felt floor, and ADR-0062's one ceiling.
- */
-export const GRADE = {
-	step: 0.5,
-	min: ROAD.feltMin,
-	max: MaxTrainerGrade,
-} as const;
-export const WATTS = { step: 10, min: 50, max: 1000 } as const;
-const OPENING_FTP_FRACTION = 0.55;
 
 /** The empty, unscored workout a free ride saves as — a game's shape. */
 export const FREE_RIDE_NAME = 'Free ride';
@@ -29,27 +22,8 @@ export const FREE_RIDE_JSON = JSON.stringify({
 	steps: [],
 });
 
-export type FreeMode = 'grade' | 'watts';
 export type FreeRideOutcome =
 	{ saved: { id: string } } | { failure: SaveFailure } | { short: true };
-
-const clamp = (value: number, { min, max }: { min: number; max: number }) =>
-	Math.min(max, Math.max(min, value));
-
-/** Where watts mode opens: an easy spin, on the 10 W grid. */
-export function openingWatts(ftp: number): number {
-	return clamp(
-		Math.round((OPENING_FTP_FRACTION * ftp) / WATTS.step) * WATTS.step,
-		WATTS,
-	);
-}
-
-/** One press of − or +, snapped to the mode's grid and held in its bounds. */
-export function nudged(mode: FreeMode, value: number, dir: 1 | -1): number {
-	const range = mode === 'grade' ? GRADE : WATTS;
-	const next = Math.round((value + dir * range.step) / range.step) * range.step;
-	return clamp(next, range);
-}
 
 /**
  * A free ride (ADR-0059): riding a voice channel with no session and no
@@ -208,6 +182,9 @@ export function createFreeRide(deps: {
 		}) {
 			// On a road the dot moves first: whether this second counts reads
 			// its speed, and the trainer's next grade is read where it lands.
+			// The sample keeps where the second began, as the server's replay
+			// steps it (ADR-0074): a ride from km 0 keeps from_m 0 (#3615).
+			const began = here;
 			if (armed && onRoad)
 				here = onRoad.laps.second(sample.watts, sample.at ?? Date.now());
 			const virtualMps = here?.virtualMps ?? sample.virtualMps ?? 0;
@@ -235,7 +212,7 @@ export function createFreeRide(deps: {
 				});
 			}
 			// The upload's own fields: its decoder refuses anything else.
-			const place = here && onRoad?.laps.fields(here);
+			const place = began && onRoad?.laps.fields(began);
 			samples.push({
 				watts: sample.watts,
 				cadence: sample.cadence,

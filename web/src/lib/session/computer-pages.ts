@@ -1,5 +1,6 @@
 import { hrZoneOf } from '$lib/components/zones';
 import { wkg } from '$lib/format';
+import { formatSplit } from '$lib/road/ghost';
 import { isTyping } from '$lib/keys';
 import type { LiveStats } from '$lib/ride/live-stats.svelte';
 
@@ -36,6 +37,8 @@ export interface ComputerContext {
 	grade?: number;
 	/** The dot on a road — never the trainer's own speed (ADR-0084). */
 	road?: { speedKph: number; km: number; ofKm: number };
+	/** Behind (+) or ahead (−) of your ghost, seconds (#3615, ADR-0068). */
+	split?: { seconds: number; best: boolean };
 	/** The block's target watts, while one is asked. */
 	target?: number;
 	/** This rider's live numbers (#3068); absent where this screen has none. */
@@ -149,6 +152,13 @@ export function fieldsFor(page: ComputerPage, ctx: ComputerContext): Field[] {
 			label: 'Grade',
 			value: ctx.grade.toFixed(1),
 			unit: '%',
+		});
+	if (ctx.split)
+		// A ghost is a memory, not live data: no watt, no glow (ADR-0068).
+		fields.push({
+			key: 'split',
+			label: ctx.split.best ? 'vs best' : 'vs last',
+			value: formatSplit(ctx.split.seconds),
 		});
 	if (ctx.road)
 		fields.push({

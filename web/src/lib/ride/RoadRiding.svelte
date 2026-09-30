@@ -13,8 +13,10 @@
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { formatClock, formatKm } from '$lib/format';
 	import { createProfileStore } from '$lib/profile.svelte';
-	import { createFreeRide, type FreeMode } from '$lib/ride/free-ride.svelte';
+	import type { FreeMode } from '$lib/ride/free-ride-controls';
+	import { createFreeRide } from '$lib/ride/free-ride.svelte';
 	import GearShift from '$lib/ride/GearShift.svelte';
+	import { createGhostSplit } from '$lib/ride/ghost-split.svelte';
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
 	import { modeLine } from '$lib/ride/mode-copy';
 	import RoadEnd from '$lib/ride/RoadEnd.svelte';
@@ -46,6 +48,7 @@
 		from: untrack(() => from),
 		readings: () => sensors.readings,
 	});
+	const ghost = createGhostSplit(() => free);
 	const trainers = soloTrainer();
 	const held = $derived(heldTrainer(trainers, channelConnection.current?.ride));
 
@@ -222,6 +225,7 @@
 				? solo.gear.label
 				: undefined}
 			{...free.road && roadContext(free.road)}
+			split={ghost.split ?? undefined}
 		/>
 		<button onclick={() => void end()} class="btn btn-primary btn-lg"
 			>{endRideLabel(free)}</button
