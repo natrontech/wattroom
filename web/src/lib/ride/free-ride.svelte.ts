@@ -103,6 +103,7 @@ export function createFreeRide(deps: {
 					id: onRoad.route.id,
 					name: onRoad.route.name,
 					length: onRoad.route.road.length,
+					lap: onRoad.laps.lap,
 					...here,
 				}
 			: null,

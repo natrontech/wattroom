@@ -22,6 +22,8 @@
 	import { modeLine } from '$lib/ride/mode-copy';
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
 	import GearShift from '$lib/ride/GearShift.svelte';
+	import RoadEnd from '$lib/ride/RoadEnd.svelte';
+	import { endRideLabel, roadEndOffered } from '$lib/ride/road-end';
 	import RoadPick from '$lib/ride/RoadPick.svelte';
 	import { roadsEnabled } from '$lib/ride/roads';
 	import Minus from '@lucide/svelte/icons/minus';
@@ -91,7 +93,7 @@
 				<button
 					onclick={() => void free?.end()}
 					disabled={free?.saving}
-					class="btn btn-primary btn-lg">End ride</button
+					class="btn btn-primary btn-lg">{endRideLabel(free)}</button
 				>
 			{/if}
 		</div>
@@ -197,6 +199,9 @@
 			</p>
 			{#if free && roadsEnabled()}
 				<div class="mx-auto w-full max-w-xl">
+					{#if roadEndOffered(free, !!riding)}
+						<RoadEnd {free} onsave={() => void free?.end()} />
+					{/if}
 					<RoadPick {free} />
 				</div>
 			{/if}
