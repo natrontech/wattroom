@@ -187,6 +187,9 @@ export function createChannelLive(address: PlaceAddress) {
 	// has none to lose and still has a bunch to put back.
 	let lastRoad: LostRoad | null = null;
 	let lostRoad = $state<LostRoad | null>(null);
+	// And the one a session that closed rode, for its closing card's next
+	// leg (#3103) — until the next session goes live.
+	let endedRoad = $state<LostRoad | null>(null);
 	function followSession(t: ServerTick) {
 		const phase = t.state?.phase;
 		const now = isLivePhase(phase);
@@ -201,6 +204,7 @@ export function createChannelLive(address: PlaceAddress) {
 			// nothing to save.
 			if (phase === 'done') {
 				settle(buffer);
+				endedRoad = lastRoad;
 				lastRoad = null;
 			} else {
 				if (!t.state?.workoutName) lostRoad = lastRoad;
@@ -225,6 +229,7 @@ export function createChannelLive(address: PlaceAddress) {
 		}
 		lostSession = null;
 		lostRoad = null;
+		endedRoad = null;
 		const startedAt = t.at - (t.state.elapsed ?? 0) * 1000;
 		openedFor = startedAt;
 		openedName = t.state.workoutName || 'Session ride';
@@ -701,6 +706,10 @@ export function createChannelLive(address: PlaceAddress) {
 		/** The road a restart took from this rider's session (#3103), or null. */
 		get lostRoad() {
 			return lostRoad;
+		},
+		/** The road the session this rider coached rode, once it closed (#3103). */
+		get endedRoad() {
+			return endedRoad;
 		},
 		/** Put the bunch back where it was: the same workout, a new session. */
 		resumeRoad() {

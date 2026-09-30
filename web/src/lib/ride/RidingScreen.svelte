@@ -16,6 +16,7 @@
 	 * deserves the screen a rider in a session gets.
 	 */
 	import FlagButton from '$lib/ride/FlagButton.svelte';
+	import { formatKm } from '$lib/format';
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
 	import { bindRideShift } from '$lib/ride/keys';
 	import { confirm } from '$lib/confirm.svelte';
@@ -120,9 +121,15 @@
 	<div class="flex flex-wrap items-center justify-end gap-2">
 		<!-- The kit's riding size (ux.md: btn-lg is the 44 px a rider hits
 			     while pedalling); these used to retype the chrome by hand. -->
+		<!-- Any workout on a road (#3594): the dot, at your watts. -->
+		{#if session.road}
+			<span class="text-muted num text-xs"
+				>{formatKm(session.road.m)} of {formatKm(session.road.toM)} km</span
+			>
+		{/if}
 		<!-- A road workout's blocks end at their metres (#3499): nothing to
 		     skip or hold longer, and the reason said where they were. -->
-		{#if session.road}
+		{#if session.road?.pinned}
 			<span class="text-muted text-xs"
 				>The road decides where a block ends.</span
 			>

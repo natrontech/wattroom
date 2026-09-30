@@ -5,7 +5,7 @@
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import type { Trainer } from '$lib/ble/trainer';
 	import { createRideSession } from '$lib/workout/session.svelte';
-	import { byReference } from '$lib/workout/road-workout';
+	import { byReference, withProfile } from '$lib/workout/road-workout';
 	import { createSignalWatch } from '$lib/workout/signal-watch.svelte';
 	import {
 		createRideSounds,
@@ -42,7 +42,9 @@
 	import RideDoors from '$lib/ride/RideDoors.svelte';
 	import SoloGames from '$lib/ride/SoloGames.svelte';
 	import SoloRoadRide from '$lib/ride/SoloRoadRide.svelte';
-	import { roadsEnabled } from '$lib/ride/roads';
+	import { loadRoad, roadsEnabled, type RideableRoute } from '$lib/ride/roads';
+	import { onRoute } from '$lib/road/compile';
+	import { formatKm } from '$lib/format';
 	import { doorsFor } from '$lib/crew-lounge';
 	import { crewLive } from '$lib/nav/crew-live.svelte';
 
@@ -68,7 +70,25 @@
 					}
 				: byId('sweet-spot-2x20')!),
 	);
-	const workout = $derived(selected.workout);
+	// Any workout on one of your own roads (#3594): ?w= with road=, from
+	// Terrain Match's start or km 0 (`from`). road= alone is a free ride on
+	// it (#3027). Blocks end by the clock; the dot rides the road.
+	const ridesRoute = !!(roadId && requested);
+	let onRoad = $state.raw<RideableRoute | null>(null);
+	let roadError = $state<string | null>(null);
+	$effect(() => {
+		if (!ridesRoute || !roadId) return;
+		void loadRoad(roadId).then((result) => {
+			if (result.ok) onRoad = result.route;
+			else roadError = result.error;
+		});
+	});
+	const roadPending = $derived(ridesRoute && !onRoad && !roadError);
+	const workout = $derived(
+		ridesRoute && onRoad
+			? withProfile(onRoute(selected.workout, onRoad, roadFrom), onRoad.road)
+			: selected.workout,
+	);
 	// A requested workout that is not built in waits for the shelf, and a
 	// shelf that failed or does not hold it is said — the fallback used to
 	// ride Sweet Spot 2×20 under a different name with no word (audit
@@ -483,8 +503,21 @@
 <!-- px-4 on a phone is the kit's gutter (`page`, ux.md's 16 px); the ride
      surface is not a `page` — it fills the window — so it spells the two. -->
 <main class="bg-surface text-ink flex min-h-screen flex-col px-4 py-5 sm:px-6">
-	{#if roadId}
+	{#if roadId && !requested}
 		<SoloRoadRide {roadId} from={roadFrom} />
+	{:else if roadPending}
+		<Skeleton class="h-8 w-56" />
+		<Skeleton class="mt-6 h-48" />
+	{:else if roadError}
+		<Banner tone="error">
+			{roadError}
+			{#snippet action()}
+				<a
+					href="/ride?w={encodeURIComponent(requested)}"
+					class="btn-link text-xs">Ride it without the road</a
+				>
+			{/snippet}
+		</Banner>
 	{:else if !session || session.state === 'idle'}
 		<!-- Idle with a session in hand is the moment between Start and the
 		     trainer answering it (#1800): still the setup screen, because
@@ -510,7 +543,9 @@
 		{:else}
 			<PreRide
 				{workout}
-				summary={selected.summary}
+				summary={onRoad
+					? `${selected.summary} On ${onRoad.name}, from km ${formatKm(roadFrom)}.`
+					: selected.summary}
 				{ftp}
 				{solo}
 				{replayName}

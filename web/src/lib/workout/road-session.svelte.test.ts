@@ -147,3 +147,71 @@ describe('the engine rides a road workout (#3499)', () => {
 			expect(ms[i]).toBeGreaterThanOrEqual(ms[i - 1]);
 	});
 });
+
+// #3594: any workout on a route (#3100) — no pins, so its blocks end by the
+// clock exactly as written, while the dot rides the road by the rider's watts.
+describe('any workout on a route, alone (#3594)', () => {
+	const onRoute: Workout = {
+		...workout,
+		road: { ...workout.road!, stepEndM: undefined },
+	};
+	const offRoute: Workout = { name: workout.name, steps: workout.steps };
+
+	async function ride(w: Workout) {
+		const session = createRideSession({
+			trainer: new SimulatedTrainer(),
+			workout: w,
+			ftp: FTP,
+			kg: () => 75,
+		});
+		await session.start();
+		session.tick(COUNTDOWN_SECONDS);
+		let s = 0;
+		for (; s < 3600 && session.state !== 'done'; s++) {
+			// A little under target in the second block, so the score has work.
+			const t = session.target;
+			session.onSample({
+				watts: session.info.segmentIndex === 1 ? t * 0.9 : t,
+				cadence: 85,
+				at: s * 1000,
+			});
+			session.tick();
+		}
+		return { session, seconds: s };
+	}
+
+	it('ends its blocks by the clock, moves the dot, and scores as off a road', async () => {
+		const on = await ride(onRoute);
+		const off = await ride(offRoute);
+		// The workout's own 350 s, not the road's metres.
+		expect(on.seconds).toBe(off.seconds);
+		expect(on.session.road?.pinned).toBe(false);
+		expect(on.session.road!.m).toBeGreaterThan(500);
+		expect(on.session.execution).toBeCloseTo(off.session.execution, 9);
+		const upload = recordingUpload(
+			onRoute,
+			on.session.startedAt,
+			on.session.recording,
+		);
+		expect(upload.routeId).toBe(workout.road!.routeId);
+		expect(upload.samples.at(-1)!.m).toBeGreaterThan(500);
+		expect(
+			recordingUpload(offRoute, off.session.startedAt, off.session.recording)
+				.routeId,
+		).toBeUndefined();
+	});
+
+	it('lets Skip block skip', async () => {
+		const session = createRideSession({
+			trainer: new SimulatedTrainer(),
+			workout: onRoute,
+			ftp: FTP,
+			kg: () => 75,
+		});
+		await session.start();
+		session.tick(COUNTDOWN_SECONDS);
+		session.onSample({ watts: 175, cadence: 85, at: 0 });
+		session.skip();
+		expect(session.info.segmentIndex).toBe(1);
+	});
+});

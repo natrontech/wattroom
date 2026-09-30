@@ -11,6 +11,8 @@ export interface LostRoad {
 	workoutJson: string;
 	totalSeconds: number;
 	route: ControlRoute;
+	/** When its timeline started, by the server's clock — what next week's leg is dated by. */
+	startedAt: number;
 }
 
 /**
@@ -35,6 +37,7 @@ export function roadOf(t: ServerTick, me: string | undefined): LostRoad | null {
 		workoutName: s.workoutName,
 		workoutJson: referenceOnly(s.workoutJson ?? ''),
 		totalSeconds: s.totalSeconds ?? 0,
+		startedAt: t.at - (s.elapsed ?? 0) * 1000,
 		route: {
 			id: route.id,
 			fromM: Math.min(bunchM, route.lengthM - 1),

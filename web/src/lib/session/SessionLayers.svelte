@@ -40,6 +40,8 @@
 	import { planDue, startCrewPlan, startedPath } from '$lib/crew-schedule';
 	import { device } from '$lib/device.svelte';
 	import { toasts } from '$lib/toast.svelte';
+	import { resumeKm, type LostRoad } from '$lib/channel/lost-road';
+	import { loadNextLeg, nextLegAt } from '$lib/road/next-leg';
 	import { flatten } from '$lib/workout/engine';
 	import type { Workout, Segment } from '$lib/workout/types';
 	import type { SessionState } from '$lib/protocol';
@@ -94,6 +96,26 @@
 	// mail to every member, so a second tap before the first answers was a
 	// duplicate on the calendar and in everyone's inbox.
 	let planning = $state(false);
+
+	// The next leg of a road session (#3103), planned as the picker plans:
+	// one POST at a time, the refusal told, the success toasted by the plan.
+	async function planNextLeg(ended: LostRoad) {
+		if (planning) return;
+		planning = true;
+		try {
+			const leg = await loadNextLeg(ended);
+			const refusal = leg.ok
+				? await onSchedule(
+						leg.workout.name,
+						JSON.stringify(leg.workout),
+						nextLegAt(ended).toISOString(),
+					)
+				: leg.error;
+			if (refusal) toasts.push(refusal, { tone: 'error' });
+		} finally {
+			planning = false;
+		}
+	}
 
 	// ── Composed, not owned (code-quality.md): the summary that reads the
 	// recording and the roster — each its own module, wired here to the
@@ -312,6 +334,19 @@
 							href="/history"
 							onclick={() => summary.dismiss()}
 							class="btn btn-primary">Your ride lands on Rides</a
+						>
+					{/if}
+					<!-- The next leg (#3103): the road this coach's session rode,
+					     from where the bunch stopped, a week on. -->
+					{#if live.endedRoad}
+						{@const ended = live.endedRoad}
+						<button
+							onclick={() => void planNextLeg(ended)}
+							disabled={planning}
+							class="btn btn-secondary"
+							>Plan next {nextLegAt(ended).toLocaleDateString(undefined, {
+								weekday: 'long',
+							})} from km {resumeKm(ended)}</button
 						>
 					{/if}
 					<!-- The page is already the channel's under it (#2600): the
