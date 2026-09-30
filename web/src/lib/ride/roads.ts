@@ -38,6 +38,29 @@ export async function myRoutes(): Promise<
 }
 
 /**
+ * Where to carry on along a road (#3205): where the rider's last ride of it
+ * alone stopped — its first metre plus the metres the replay kept — when that
+ * was short of the end. A ride that reached the end, or rode on past it in
+ * laps, left nothing to carry on from.
+ */
+export async function carryOnFrom(
+	routeId: string,
+	length: number,
+): Promise<number | null> {
+	const res = await api<{
+		attempts: { fromM?: number; distanceM?: number; kind: string }[];
+	}>(`/api/routes/${encodeURIComponent(routeId)}/attempts`);
+	// ponytail: an offer that could not be read is not offered; From the
+	// start still rides.
+	if (!res.ok) return null;
+	const last = res.data.attempts.find((a) => a.kind !== 'together');
+	if (!last?.distanceM) return null;
+	const m = (last.fromM ?? 0) + last.distanceM;
+	// Metres are kept whole: a ride to the end may land a metre short.
+	return m + 1 < length ? m : null;
+}
+
+/**
  * One route and its road. The owner's own read carries the whole road,
  * packed (road.ts); nothing else is needed to ride it.
  */

@@ -30,6 +30,9 @@ export interface BufferedSample {
 	m?: number;
 	/** And the road's height there, as the save carries it. */
 	alt?: number;
+	/** Its lap, and on a lap's first sample which way it runs (#3205). */
+	lap?: number;
+	reverse?: boolean;
 	/** ms epoch */
 	at: number;
 }

@@ -56,6 +56,13 @@ test('a free ride on your own road moves along it and saves against it', async (
 		.filter({ hasText: NAME })
 		.getByRole('button', { name: 'Ride it' })
 		.click();
+	// A rerun's rider stopped short on this road before (#3205): start over.
+	const fromStart = rider.getByRole('button', { name: 'From the start' });
+	const road = rider
+		.getByRole('group', { name: 'what you set' })
+		.getByRole('button', { name: 'Road' });
+	await expect(road.or(fromStart)).toBeVisible();
+	if (await fromStart.isVisible()) await fromStart.click();
 
 	// On the road: Grade reads Road, the ± pair is gone, the road sets it.
 	await expect(
@@ -98,7 +105,7 @@ test('a free ride on your own road moves along it and saves against it', async (
 	).toHaveCount(0);
 
 	await rider.waitForTimeout(A_MINUTE_MS);
-	await rider.getByRole('button', { name: 'End ride' }).click();
+	await rider.getByRole('button', { name: /^Save at km / }).click();
 	await expect(rider.getByText('See it in your history')).toBeVisible({
 		timeout: 20_000,
 	});
@@ -170,7 +177,7 @@ test('Ride it now rides your road alone, from where you left it', async ({
 			{ message: 'the dot never left km 1.0' },
 		)
 		.toBeGreaterThan(1);
-	await page.getByRole('button', { name: 'End ride' }).click();
+	await page.getByRole('button', { name: /^Save at km / }).click();
 	await expect(page.getByText('See it in your history')).toBeVisible({
 		timeout: 20_000,
 	});
