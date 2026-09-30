@@ -30,7 +30,7 @@ export const WORKOUT_EXTENSIONS = ['.zwo', '.erg'] as const;
  * Route files, which become a road (#3057). Their ceiling is a route's own,
  * MAX_ROUTE_FILE_BYTES — a recorded track is far bigger than a workout file.
  */
-export const ROUTE_EXTENSIONS = ['.gpx', '.tcx'] as const;
+export const ROUTE_EXTENSIONS = ['.gpx', '.tcx', '.fit'] as const;
 /** What the file picker and the drop zone accept. */
 export const IMPORT_EXTENSIONS = [
 	...WORKOUT_EXTENSIONS,
@@ -78,7 +78,7 @@ export function importWorkout(
 	if (!(WORKOUT_EXTENSIONS as readonly string[]).includes(extension)) {
 		return {
 			ok: false,
-			error: `WattRoom reads ${WORKOUT_EXTENSIONS.join(' and ')} workouts, and ${ROUTE_EXTENSIONS.join(' and ')} routes. “${fileName}” is none of them.`,
+			error: `WattRoom reads ${WORKOUT_EXTENSIONS.join(' and ')} workouts, and ${new Intl.ListFormat('en').format(ROUTE_EXTENSIONS)} routes. “${fileName}” is none of them.`,
 		};
 	}
 	if (source.trim() === '') return { ok: false, error: 'That file is empty.' };

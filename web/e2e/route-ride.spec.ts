@@ -227,4 +227,18 @@ test('Ride it now rides your road alone, from where you left it', async ({
 		return rides[0];
 	});
 	expect(saved.distanceM, 'the replay kept no distance').toBeGreaterThan(0);
+
+	// Its page draws the road it rode, from its own metres (#3639), and the
+	// phone's page body still scrolls down, never sideways (ux.md).
+	await page.getByRole('link', { name: 'See it in your history' }).click();
+	await expect(page.getByTestId('ride-skyline')).toBeVisible({
+		timeout: 15_000,
+	});
+	await expect
+		.poll(() =>
+			page
+				.getByTestId('page-body')
+				.evaluate((el) => el.scrollWidth - el.clientWidth),
+		)
+		.toBe(0);
 });

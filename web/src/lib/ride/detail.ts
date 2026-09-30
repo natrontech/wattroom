@@ -21,6 +21,9 @@ export interface RideMedal {
 export interface RideTraceSample extends RideSample {
 	hr?: number;
 	cadence?: number;
+	/** On a road (#3639): metres along it and the height there — 0 left out. */
+	m?: number;
+	alt?: number;
 }
 
 export interface RideDetail {

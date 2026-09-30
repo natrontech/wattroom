@@ -83,8 +83,8 @@ describe('parseRoute', () => {
 
 	it('refuses what it cannot ride, saying why', () => {
 		const refusals: [string, RegExp][] = [
-			['not xml <<', /not a GPX or TCX/],
-			['<kml><Placemark/></kml>', /not a GPX or TCX/],
+			['not xml <<', /not a GPX, TCX or FIT/],
+			['<kml><Placemark/></kml>', /not a GPX, TCX or FIT/],
 			[
 				'<gpx><trk><trkseg></trkseg></trk></gpx>',
 				/fewer than two track points/,

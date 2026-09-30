@@ -6,17 +6,9 @@
 	 */
 	import { HALO } from '$lib/ride/halo';
 	import type { ClimbView } from '$lib/ride/climb-view';
+	import { GRADE_BG } from '$lib/road/skyline';
 
 	let { view, tv = false }: { view: ClimbView; tv?: boolean } = $props();
-
-	/** Each grade step's fill, gentlest first (app.css, gated in grade-ramp.test.ts). */
-	const FILL = [
-		'bg-grade-1',
-		'bg-grade-2',
-		'bg-grade-3',
-		'bg-grade-4',
-		'bg-grade-5',
-	];
 
 	const span = $derived(Math.max(view.hi - view.lo, 1));
 	const up = (height: number) => ((height - view.lo) / span) * 100;
@@ -39,7 +31,7 @@
 >
 	{#each view.bars as bar, i (i)}
 		<span
-			class="{FILL[
+			class="{GRADE_BG[
 				bar.step
 			]} min-h-px flex-1 rounded-t-sm forced-color-adjust-none forced-colors:bg-[GrayText]"
 			style:height="{up(bar.height)}%"

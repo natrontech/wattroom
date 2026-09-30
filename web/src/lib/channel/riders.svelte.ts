@@ -3,7 +3,9 @@ import { describeBlock, type Block } from '$lib/workout/block';
 import type { LiveRider } from '$lib/channel/types';
 import { coachOf } from '$lib/channel/tick-session';
 import { scoredTarget } from '$lib/channel/types';
+import { createRoadReadout } from '$lib/ride/road-readout';
 import { targetAt } from '$lib/workout/engine';
+import { roadOf } from '$lib/workout/road-workout';
 import type { Segment, Workout } from '$lib/workout/types';
 import type { ServerTick } from '$lib/protocol';
 import type { createRecording } from '$lib/session/recording.svelte';
@@ -170,6 +172,21 @@ export function createRiders(deps: RiderDeps) {
 			trace: deps.recording.trace,
 		},
 	);
+	// The session's road (#3639): the crew's cut its pick carries, unpacked
+	// once a pick, at the bunch's metre — which counts the way it is ridden.
+	const cut = $derived.by(() => {
+		const workout = deps.workout();
+		return workout ? roadOf(workout) : null;
+	});
+	const readoutAt = createRoadReadout();
+	const road = $derived.by(() => {
+		const tick = deps.live.tick;
+		const route = tick?.state?.route;
+		const bunchM = tick?.world?.bunchM;
+		if (!cut || !route || bunchM === undefined) return undefined;
+		const m = route.reverse ? cut.road.length - bunchM : bunchM;
+		return readoutAt(cut.road, m, route.reverse);
+	});
 	const block = $derived(
 		deps.running() && deps.segments().length > 0
 			? describeBlock(
@@ -180,6 +197,8 @@ export function createRiders(deps: RiderDeps) {
 					deps.workout(),
 					you.ftp,
 					deps.recording.trace,
+					undefined,
+					road,
 				)
 			: null,
 	);

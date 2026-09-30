@@ -390,6 +390,7 @@
 					session.road && !session.road.pinned
 						? { kind: 'scenery' }
 						: { kind: 'erg' },
+					session.road?.readout,
 				)
 			: null,
 	);
