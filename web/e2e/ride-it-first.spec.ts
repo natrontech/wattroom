@@ -104,6 +104,13 @@ test('a planned road session’s card rides its road first, for its owner and fo
 		.getByRole('button', { name: 'Ride simulated' })
 		.click({ timeout: 15_000 });
 	await crew.getByRole('button', { name: 'Start riding' }).click();
+	// The invented road climbs from its first metre, so CLIMB opens by itself
+	// (#3645); the distance is RIDE's, one page back.
+	const computer = crew.getByTestId('bike-computer');
+	await expect(computer).toHaveAttribute('data-page', 'climb', {
+		timeout: 15_000,
+	});
+	await computer.getByRole('button', { name: 'RIDE page' }).click();
 	await expect(crew.getByText(new RegExp(`^${crewKm} of `))).toBeVisible({
 		timeout: 15_000,
 	});
