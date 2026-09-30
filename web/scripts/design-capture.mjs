@@ -18,8 +18,9 @@
 // assertion is written as FAILED-<id>.png and FAILED-<id>.txt instead, never
 // as a picture of the page before the ride; the run then exits 1.
 //
-// The road is the capture's own hairpin climb, invented and in the open South
-// Atlantic (#3054), imported on first use and found again by its name.
+// The road is the capture's own hairpin climb, or with --road rolling its
+// rolling route; both invented and in the open South Atlantic (#3054),
+// imported on first use and found again by name.
 import { chromium } from '@playwright/test';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
@@ -38,14 +39,19 @@ const OUT = flag(
 	fileURLToPath(new URL('../test-results/design/capture/', import.meta.url)),
 );
 const SCHEME = flag('--scheme', 'dark');
+const ROAD = flag('--road', 'hairpins');
 const only = args.filter(
 	(a, i) =>
 		!a.startsWith('--') &&
-		!['--base', '--out', '--scheme'].includes(args[i - 1]),
+		!['--base', '--out', '--scheme', '--road'].includes(args[i - 1]),
 );
-if (!BASE || !['dark', 'light'].includes(SCHEME)) {
+if (
+	!BASE ||
+	!['dark', 'light'].includes(SCHEME) ||
+	!['hairpins', 'rolling'].includes(ROAD)
+) {
 	console.error(
-		'Usage: design-capture.mjs --base http://localhost:<vite> [--out <dir>] [--scheme dark|light] [surface …]',
+		'Usage: design-capture.mjs --base http://localhost:<vite> [--out <dir>] [--scheme dark|light] [--road hairpins|rolling] [surface …]',
 	);
 	process.exit(2);
 }
@@ -60,7 +66,6 @@ const TV = { viewport: { width: 1920, height: 1080 } };
 const HUD_SHELL = { width: 320, height: 132 };
 const FULL_PAGE_CAP = 6000;
 const RIDE_SECONDS = 14;
-const FIXTURE = 'Design capture hairpins';
 
 // The keep-clear corridor has one home, docks.ts; the probe reads it there.
 const docks = readFileSync(
@@ -99,13 +104,55 @@ function hairpinsGpx() {
 		}
 		y += 60;
 	}
+	return gpxOf(points);
+}
+
+/**
+ * Two classed climbs, a descent and flats between, due east (TARGETS'
+ * "rolling route"): 1 km flat, 2 km at 6 %, 1.5 km at −5 %, 1 km flat,
+ * 1.5 km at 8 %, 500 m flat.
+ */
+function rollingGpx() {
+	const perLon = 111_195 * Math.cos((30.5 * Math.PI) / 180);
+	const legs = [
+		[1000, 0],
+		[2000, 6],
+		[1500, -5],
+		[1000, 0],
+		[1500, 8],
+		[500, 0],
+	];
+	const points = [];
+	let x = 0;
+	let ele = 100;
+	const at = () =>
+		points.push(
+			`<trkpt lat="-30.5000000" lon="${(-25 + x / perLon).toFixed(7)}"><ele>${ele.toFixed(1)}</ele></trkpt>`,
+		);
+	at();
+	for (const [metres, pct] of legs)
+		for (let i = 0; i < metres / 10; i++) {
+			x += 10;
+			ele += pct / 10;
+			at();
+		}
+	return gpxOf(points);
+}
+
+function gpxOf(points) {
 	return `<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="WattRoom design capture" xmlns="http://www.topografix.com/GPX/1/1">
-<trk><name>Hairpins</name><trkseg>
+<trk><name>Design fixture</name><trkseg>
 ${points.join('\n')}
 </trkseg></trk>
 </gpx>`;
 }
+
+/** The road the capture rides, by --road; each is found again by its name. */
+const FIXTURE = {
+	hairpins: { name: 'Design capture hairpins', gpx: hairpinsGpx },
+	rolling: { name: 'Design capture rolling', gpx: rollingGpx },
+}[ROAD];
 
 const browser = await chromium.launch({
 	// Metal, or a Mac's headless Chromium falls back to software GL and the
@@ -148,16 +195,16 @@ async function fixtureRoad(page) {
 			async () => (await (await fetch('/api/routes')).json()).routes,
 		)) ?? [];
 	const before = await list();
-	road = before.find((r) => r.name === FIXTURE)?.id;
+	road = before.find((r) => r.name === FIXTURE.name)?.id;
 	if (road) return road;
 	await page.goto(`${BASE}/workouts/import`);
 	await page
 		.locator('input[type=file]')
 		.first()
 		.setInputFiles({
-			name: 'hairpins.gpx',
+			name: `${ROAD}.gpx`,
 			mimeType: 'application/gpx+xml',
-			buffer: Buffer.from(hairpinsGpx()),
+			buffer: Buffer.from(FIXTURE.gpx()),
 		});
 	await page.getByRole('button', { name: 'Save to my routes' }).click();
 	await page.getByText(/is on your routes/).waitFor({ timeout: 15_000 });
@@ -173,7 +220,7 @@ async function fixtureRoad(page) {
 					body: JSON.stringify({ name }),
 				})
 			).ok,
-		[id, FIXTURE],
+		[id, FIXTURE.name],
 	);
 	if (!renamed) throw new Error('the fixture road could not be named');
 	return (road = id);
@@ -377,7 +424,11 @@ function probe(corridor) {
 		...document.querySelectorAll(
 			'button, a[href], input:not([type=hidden]), select, textarea, summary, [role=button]',
 		),
-	].filter((el) => shown(el) && !inSentence(el));
+	].filter((el) => {
+		// A visually hidden control (sr-only, 1 px) is reached through its label.
+		const r = el.getBoundingClientRect();
+		return shown(el) && r.width > 1 && r.height > 1 && !inSentence(el);
+	});
 	const sizes = controls.map((el) => {
 		const r = el.getBoundingClientRect();
 		const label =
@@ -481,9 +532,9 @@ const SURFACES = Object.fromEntries([
 			.locator('input[type=file]')
 			.first()
 			.setInputFiles({
-				name: 'hairpins.gpx',
+				name: `${ROAD}.gpx`,
 				mimeType: 'application/gpx+xml',
-				buffer: Buffer.from(hairpinsGpx()),
+				buffer: Buffer.from(FIXTURE.gpx()),
 			});
 	}),
 	page_('import-saved', DESK, async (page) => {
@@ -492,9 +543,9 @@ const SURFACES = Object.fromEntries([
 			.locator('input[type=file]')
 			.first()
 			.setInputFiles({
-				name: 'hairpins.gpx',
+				name: `${ROAD}.gpx`,
 				mimeType: 'application/gpx+xml',
-				buffer: Buffer.from(hairpinsGpx()),
+				buffer: Buffer.from(FIXTURE.gpx()),
 			});
 		await page.getByRole('button', { name: 'Save to my routes' }).click();
 		await page.getByText(/is on your routes/).waitFor({ timeout: 15_000 });
