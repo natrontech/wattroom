@@ -70,8 +70,10 @@ type place struct {
 
 // surplus is how far over the plan a rider rides this second, as a fraction
 // of FTP: their %FTP less their own biased target, so a personal trim is
-// never punished — the bunch's live mean standing in for the target where
-// the plan prescribes none. In a sprint it is their W/kg over the mean.
+// never punished — the pace the bunch rides standing in for the target where
+// the plan prescribes none: the live mean, or a leader's (#3030), whom a
+// relay's paceline then sits behind. In a sprint it is their W/kg over the
+// mean.
 func surplus(s sample, p planned, livePct, meanWkg float64) float64 {
 	if p.sprint {
 		if meanWkg <= 0 || s.wkg() <= 0 {

@@ -64,6 +64,9 @@ type bunch struct {
 	// carries them under.
 	stands    map[string]*stand
 	standsRev int64
+	// Who sets the pace in a second the plan leaves open, when a game names
+	// one (#3030): Team Relay's front rider. Empty rides the live mean.
+	leader string
 }
 
 func newBunch(r *routeRide, now time.Time) *bunch {
@@ -97,7 +100,7 @@ func (b *bunch) ride(now time.Time, running bool, joined map[string]struct{}, pl
 	}
 	for !now.Before(b.at.Add(time.Second)) {
 		b.at = b.at.Add(time.Second)
-		p, live := planAt(b.at), b.livePct()
+		p, live := planAt(b.at), b.pacePct()
 		b.step(p.watts(live))
 		b.settle(joined, p, live)
 	}
@@ -120,6 +123,21 @@ func (b *bunch) livePct() float64 {
 		return 0
 	}
 	return sum / float64(n)
+}
+
+// pacePct is the %FTP a second the plan leaves open is ridden at: the
+// leader's while they pedal, capped as livePct caps anyone, else the mean.
+func (b *bunch) pacePct() float64 {
+	if s, ok := b.heard[b.leader]; ok && s.pct() > 0 {
+		return min(s.pct(), protocol.BunchMaxPct)
+	}
+	return b.livePct()
+}
+
+// finished is whether a road that does not loop has been ridden to its end
+// (#3030): the finish a game on a road rides to. Nil rides no road.
+func (b *bunch) finished() bool {
+	return b != nil && !b.loop && b.fromM+b.pace.Distance >= b.road.LengthM
 }
 
 // planned is one second of the plan as the bunch reads it: a sprint, a
