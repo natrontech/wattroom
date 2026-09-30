@@ -8,8 +8,10 @@
 	 * Cheap by construction (#2998, PERFORMANCE.md): the road is SVG tiles no
 	 * wider than 4096 px, redrawn only when a second arrives; between seconds
 	 * a timer at most 10 times a second only moves them, and never a CSS
-	 * transition. Below 8 km/h, and for a rider who asked for stillness, they
-	 * move once a second. Your dot is the only glow, a halo painted once.
+	 * transition. Below 8 km/h they move once a second; for a rider who asked
+	 * for stillness nothing scrolls at all — a fixed 2 km page the dot walks
+	 * across, turned at once at its end (#3080). Your dot is the only glow, a
+	 * halo painted once.
 	 */
 	import { untrack } from 'svelte';
 	import { ZONE_BG } from '$lib/components/zones';
@@ -23,6 +25,7 @@
 		chipsIn,
 		createAheadEase,
 		frameFor,
+		pagedFrame,
 		SKYLINE,
 		stepsPerTick,
 		tileOf,
@@ -77,7 +80,8 @@
 	let width = $state(0);
 	let height = $state(0);
 	const climbs = $derived(climbsOf(road));
-	const perTick = $derived(stepsPerTick(mps, prefersReducedMotion.current));
+	const paged = $derived(prefersReducedMotion.current);
+	const perTick = $derived(stepsPerTick(mps, paged));
 
 	// The reach ahead eases with the speed, a second at a time.
 	const ease = createAheadEase(untrack(() => aheadFor(mps)));
@@ -106,7 +110,11 @@
 
 	// Redrawn once a second; moved between.
 	const frame = $derived(
-		width && height ? frameFor(road, m, ahead, width, height) : null,
+		!width || !height
+			? null
+			: paged
+				? pagedFrame(road, m, width, height)
+				: frameFor(road, m, ahead, width, height),
 	);
 	const tiles = $derived(
 		frame
@@ -123,11 +131,14 @@
 			? m
 			: Math.min(road.length, m + mps * Math.min(1, (now - secondAt) / 1000)),
 	);
-	const shift = $derived(frame ? (shown - SKYLINE.behindM) * frame.scale : 0);
+	// Scrolling, the road moves under a dot that stays; paged, the dot walks.
+	const shift = $derived(
+		!frame ? 0 : (paged ? frame.fromM : shown - SKYLINE.behindM) * frame.scale,
+	);
 	const dot = $derived(
 		frame
 			? {
-					x: SKYLINE.behindM * frame.scale,
+					x: (paged ? shown - frame.fromM : SKYLINE.behindM) * frame.scale,
 					y: yOf(frame, heightAt(road, shown)),
 				}
 			: null,

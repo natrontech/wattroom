@@ -32,6 +32,8 @@ export const SKYLINE = {
 	stillKph: 8,
 	/** The five grade steps' edges, %: under 3, 3–6, 6–9, 9–12, over 12. */
 	gradeEdges: [3, 6, 9, 12],
+	/** Under reduced motion, a fixed window this long that the dot walks across, paged at its end (#3080). */
+	pageM: 2000,
 } as const;
 
 /** How far ahead the speed asks the window to reach. */
@@ -96,8 +98,29 @@ export function frameFor(
 	width: number,
 	height: number,
 ): Frame {
-	const fromM = m - SKYLINE.behindM;
-	const toM = m + ahead;
+	return windowFrame(road, m, m - SKYLINE.behindM, m + ahead, width, height);
+}
+
+/** Under reduced motion (#3080): the page the dot is on, which turns at once when it reaches the end. */
+export function pagedFrame(
+	road: Road,
+	m: number,
+	width: number,
+	height: number,
+): Frame {
+	const fromM = Math.floor(m / SKYLINE.pageM) * SKYLINE.pageM;
+	return windowFrame(road, m, fromM, fromM + SKYLINE.pageM, width, height);
+}
+
+/** The window from `fromM` to `toM`; `m`, the dot, stands in for a window off the road's end. */
+function windowFrame(
+	road: Road,
+	m: number,
+	fromM: number,
+	toM: number,
+	width: number,
+	height: number,
+): Frame {
 	const step = roadStep(road);
 	let lo = Infinity;
 	let hi = -Infinity;
@@ -109,7 +132,7 @@ export function frameFor(
 	}
 	if (!Number.isFinite(lo)) lo = hi = heightAt(road, m);
 	return {
-		scale: width / (SKYLINE.behindM + ahead),
+		scale: width / (toM - fromM),
 		fromM,
 		lo,
 		span: Math.max(hi - lo, SKYLINE.spanFloorM),

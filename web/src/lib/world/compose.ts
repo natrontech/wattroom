@@ -12,6 +12,7 @@ import { at } from '$lib/road/along';
 import { advance, defaultRiders, trainerFor, type Env } from './sim';
 import { buildStage, summitOf, type Stage } from './stage';
 import type { Style } from './styles';
+import type { Failure } from './ride-view';
 import type { World } from './world';
 
 export type CameraMode = Follow | 'orbit';
@@ -35,7 +36,8 @@ export type MountOptions = {
 	ftp: number; // the signed-in rider's: your cadence and zone ring read against it
 	speedup?: number;
 	onTick?: (hud: Hud) => void; // a few times a second, while the loop runs
-	onFail?: () => void;
+	/** Once, when a world that started stops: rideView() takes it from there (#3080). */
+	onFail?: (why: Failure) => void;
 };
 
 const HUD_EVERY = 0.25; // seconds of real time between HUD snapshots

@@ -96,6 +96,35 @@ export function createPacer() {
 	};
 }
 
+/** docs/SPEC.md "The world": the Skyline takes over past this share of intervals missed over this long. */
+export const FALLBACK = { share: 0.2, seconds: 10 } as const;
+
+/**
+ * Judges the pacer's stats, handed one a second: true once more than a fifth
+ * of the divisor intervals over the last ten seconds of drawing went without
+ * a frame. A second that drew nothing — a gate shut — is no evidence either
+ * way, and ten of them must be seen before it says anything.
+ */
+export function missWatch() {
+	const seconds: { rendered: number; missed: number }[] = [];
+	let last: LoopStats | null = null;
+	return (stats: LoopStats): boolean => {
+		const before = last;
+		last = stats;
+		if (!before) return false;
+		const rendered = stats.rendered - before.rendered;
+		const missed = stats.missed - before.missed;
+		if (rendered + missed === 0) return false;
+		seconds.push({ rendered, missed });
+		if (seconds.length > FALLBACK.seconds) seconds.shift();
+		if (seconds.length < FALLBACK.seconds) return false;
+		let r = 0;
+		let m = 0;
+		for (const s of seconds) ((r += s.rendered), (m += s.missed));
+		return m / (r + m) > FALLBACK.share;
+	};
+}
+
 /**
  * Why the world is not drawing: the tab is hidden, the canvas is off screen,
  * a shared screen has its place, the desktop shell put its window away.
