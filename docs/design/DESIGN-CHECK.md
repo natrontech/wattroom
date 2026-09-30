@@ -327,6 +327,9 @@ METHOD, in this order
              extra, or any regression;
    minor   - detail within 8 px, tone, a spacing nit.
    CANNOT-TELL on an owned item counts as major unless its named source settles it.
+   A global-rule break that BEFORE shows identically on the same surface, and that an open issue
+   owns, is not graded: list it under OPEN-ELSEWHERE with that issue. Anything the PR adds or
+   makes worse is a regression, graded as above.
 
 OUTPUT, exactly this shape
 VERDICT: PASS | FAIL

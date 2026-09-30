@@ -177,10 +177,13 @@ async function growToBody(page: Page): Promise<boolean> {
 }
 
 /** Every clock-shaped reading on the page, joined. */
+// A read that lands mid-navigation counts as no clock yet, not a failure.
 const clocks = (page: Page) =>
-	page.evaluate(() =>
-		(document.body.innerText.match(/\b\d{1,2}:\d{2}\b/g) ?? []).join(' '),
-	);
+	page
+		.evaluate(() =>
+			(document.body.innerText.match(/\b\d{1,2}:\d{2}\b/g) ?? []).join(' '),
+		)
+		.catch(() => '');
 
 /**
  * Pairs the simulated trainer, starts, and waits for the ride's clock to reach
@@ -199,8 +202,15 @@ export async function ride(
 	const start = page
 		.getByRole('button', { name: /^Start (riding|the ride)$/ })
 		.first();
-	await start.waitFor({ timeout: 15_000 });
-	await start.click();
+	// A road left short of its end offers to carry on (#3205): every shot
+	// starts from km 0, whatever an earlier run saved.
+	const fromStart = page.getByRole('button', { name: 'From the start' });
+	await start.or(fromStart).first().waitFor({ timeout: 15_000 });
+	if (await fromStart.isVisible()) {
+		await fromStart.click();
+		await start.waitFor({ timeout: 5000 }).catch(() => {});
+	}
+	if (await start.isVisible()) await start.click();
 	await atSecond(page, second);
 }
 

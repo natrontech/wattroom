@@ -38,6 +38,7 @@ The v2 mock's route starts in an invented village, Stollmatt, and says nothing o
   - `[#n]` names an existing issue.
   - An untagged item holds today and is guarded against regression.
   - A PR is held to three things: the items its own issue owns, the global rules, and no regression anywhere else.
+  - A global-rule break that BEFORE shows identically on the same surface, and that an open issue owns, is listed under OPEN-ELSEWHERE with that issue and not graded (#3705). Anything the PR adds or makes worse is a regression and blocks, the never-justifiable list included.
 - **Check tags.** An item without a check tag is checked on the image. The other tags say where the answer is:
   - `[probe:<key>]`: the measurement JSON that the capture run writes beside each image;
   - `[test:<file>]`: a test in the repository that asserts it;
