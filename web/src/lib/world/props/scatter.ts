@@ -122,7 +122,7 @@ export function scatter(
 	place: Place,
 	placer: Placer = createPlacer(place.heightAt, place.ground.lines),
 	villages: Village[] = villageSites(place),
-): { props: Prop[]; villages: Village[] } {
+): { props: Prop[] } {
 	const { salt, ground, heightAt, biomeAt } = place;
 	const [e0, n0] = place.origin ?? [0, 0];
 	const lines = ground.lines;
@@ -132,7 +132,6 @@ export function scatter(
 	const house = keyer(salt, 'house');
 	const u = (key: number) => unit(key);
 
-	/** Stands `kind` at (x, z) if the gates let it: its base as high as its bury allows, never floating past its plinth. */
 	/** Stands a prop if the gates let it, and keeps it. */
 	function stand(
 		kind: PropKind,
@@ -326,5 +325,5 @@ export function scatter(
 		);
 	});
 
-	return { props, villages };
+	return { props };
 }
