@@ -158,7 +158,8 @@ export function buildStage(
 		group.add(tag('dressing', k));
 	for (const s of world.signs)
 		group.add(tag('dressing', board(route, s, style), 'sign'));
-	for (const a of world.arches) group.add(tag('dressing', arch(route, a, style), 'arch'));
+	for (const a of world.arches)
+		group.add(tag('dressing', arch(route, a, style), 'arch'));
 
 	return { group, backdrop: horizon, overview, update: props.update };
 }

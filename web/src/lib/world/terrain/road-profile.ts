@@ -47,7 +47,9 @@ export function strokeRoad(line: Line, every = 20): Road {
 	const n = line.x.length;
 	const arc = new Float64Array(n);
 	for (let i = 1; i < n; i++)
-		arc[i] = arc[i - 1] + Math.hypot(line.x[i] - line.x[i - 1], line.z[i] - line.z[i - 1]);
+		arc[i] =
+			arc[i - 1] +
+			Math.hypot(line.x[i] - line.x[i - 1], line.z[i] - line.z[i - 1]);
 	const length = arc[n - 1];
 	const samples = Math.max(2, Math.round(length / every) + 1);
 	const step = length / (samples - 1);
@@ -61,9 +63,13 @@ export function strokeRoad(line: Line, every = 20): Road {
 		const f = (s - arc[seg]) / (arc[seg + 1] - arc[seg] || 1);
 		xs.push(line.x[seg] + (line.x[seg + 1] - line.x[seg]) * f);
 		zs.push(line.z[seg] + (line.z[seg + 1] - line.z[seg]) * f);
-		heights.push(Math.round((line.h[seg] + (line.h[seg + 1] - line.h[seg]) * f) * 100) / 100);
+		heights.push(
+			Math.round((line.h[seg] + (line.h[seg + 1] - line.h[seg]) * f) * 100) /
+				100,
+		);
 	}
-	const heading = (k: number) => Math.atan2(xs[k + 1] - xs[k], zs[k + 1] - zs[k]);
+	const heading = (k: number) =>
+		Math.atan2(xs[k + 1] - xs[k], zs[k + 1] - zs[k]);
 	const turns: number[] = [];
 	for (let k = 0; k < samples - 1; k++) {
 		if (k === 0) {
