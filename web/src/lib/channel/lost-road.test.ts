@@ -31,6 +31,7 @@ describe('roadOf', () => {
 			workoutJson: '{"steps":[]}',
 			totalSeconds: 3600,
 			route: { id: 'r1', fromM: 14_200, reverse: true, loop: false },
+			startedAt: 0,
 		});
 		expect(resumeKm(roadOf(tick('me', 14_250), 'me')!)).toBe('14.3');
 	});

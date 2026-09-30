@@ -51,6 +51,19 @@ export function crewFromM(road: Road, fromM: number): number {
 }
 
 /**
+ * A metre of the crew's cut back on its owner's road — crewFromM the other
+ * way (#3103): what the tick says of a session, as a workout's road reference
+ * counts it.
+ */
+export function ownerFromM(road: Road, crewM: number): number {
+	const step = roadStep(road);
+	return Math.min(
+		crewM + Math.ceil(RouteHiddenEndM / step) * step,
+		road.length - step,
+	);
+}
+
+/**
  * How long the crew rides the whole road, every leg: the road's own workout
  * at the reference rider, which is the pace the bunch moves at (ADR-0065) —
  * the "crew pace" the picker's list and its time filter read (#3105).
