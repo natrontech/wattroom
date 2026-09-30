@@ -5,6 +5,7 @@
 	import { api } from '$lib/api';
 	import Banner from '$lib/components/Banner.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
+	import RouteAttempts from '$lib/components/RouteAttempts.svelte';
 	import RouteProfile from '$lib/components/RouteProfile.svelte';
 	import RouteShape from '$lib/components/RouteShape.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
@@ -174,6 +175,10 @@
 					? 'Files from Strava ride with you alone. Riding it arrives with route rides.'
 					: 'Riding it arrives with route rides.'}
 			</span>
+		</div>
+
+		<div class="mt-6">
+			<RouteAttempts routeId={route.id} />
 		</div>
 
 		<form
