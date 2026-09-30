@@ -308,7 +308,14 @@
 			{:else if inWorld}
 				<!-- On the road the world has the focus, and your watts sit with your numbers. -->
 			{:else}
-				<section class="grid min-h-0 content-center px-6">
+				<!-- The focus row gives way first on a short window (#3611): centred
+				     without the safe keyword, the Instrument overflowed it both ways,
+				     up over the header, and the coach's controls stopped taking
+				     clicks. Clipped to its row, and centred safely, it keeps its top
+				     — the watts — and covers nothing else. -->
+				<section
+					class="grid min-h-0 [align-content:safe_center] overflow-y-clip px-6"
+				>
 					<Instrument
 						watts={channel.you.watts}
 						stale={channel.youStale}

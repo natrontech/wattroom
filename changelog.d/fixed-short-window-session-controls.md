@@ -1,0 +1,1 @@
+- On a short window, the power readout in a session no longer spreads over the header, where it blocked a tap on End and Hand off. If the window is too short for all of it, it now keeps the watts and trims the gauge below them.
