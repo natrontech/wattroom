@@ -258,11 +258,12 @@ surface('ride-roadpick', async (s) => {
 	const o = await s.open(DESK, { world: false });
 	await fixtureRoad(o.page, 'hairpin');
 	await fixtureRoad(o.page, 'rolling');
-	await toTraining(o.page, await designCrew(o.page));
+	// Before a trainer pairs: the channel's free ride starts itself on
+	// pairing, and a started ride closes the picker.
+	await o.page.goto(`${voicePath(await designCrew(o.page))}/training`);
 	await o.page.getByRole('button', { name: 'Ride a road' }).first().click();
 	await o.page.waitForTimeout(1500);
 	await s.shot(o, { full: true });
-	await o.page.getByRole('button', { name: 'End ride' }).click();
 });
 
 /** Designer coaching, Design Partner riding along, a session started. */
@@ -463,11 +464,26 @@ surface('import', async (s) => {
 		await readRoad(o.page, 'hairpin');
 		await o.page.waitForTimeout(2500);
 		await s.shot(o, { name: `import${suffix}`, full: true });
+		const before = await routeIds(o.page);
 		await o.page.getByRole('button', { name: 'Save to my routes' }).click();
 		await o.page.getByText(/is on your routes/).waitFor({ timeout: 15_000 });
 		await s.shot(o, { name: `import-saved${suffix}`, full: true });
+		// The saved copy goes again, so the shelf keeps only the fixtures.
+		for (const id of await routeIds(o.page))
+			if (!before.has(id))
+				await o.page.evaluate(
+					(id) => fetch(`/api/routes/${id}`, { method: 'DELETE' }),
+					id,
+				);
 	}
 });
+
+async function routeIds(page: Opened['page']): Promise<Set<string>> {
+	const { routes } = (await (await page.request.get('/api/routes')).json()) as {
+		routes: { id: string }[];
+	};
+	return new Set(routes.map((r) => r.id));
+}
 
 test.fixme('routes', () => {
 	// /workouts/routes is still to come (#3692).

@@ -76,14 +76,19 @@
 			name: renameError ? route.name : name || route.name,
 			renameError,
 		};
-		toasts.push(`Saved “${saved.name}” to your routes.`);
 		return saved.id;
 	}
 
 	/** Ride it now (#3027): saved first, as a ride on a road rides a route. */
 	async function rideNow() {
+		const wasSaved = !!saved;
 		const id = saved?.id ?? (await save());
-		if (id) await goto(`/ride?road=${encodeURIComponent(id)}`);
+		if (!id) return;
+		// Leaving the page leaves the banner behind, so the save is said as
+		// the ride opens; staying, the banner says it once.
+		if (!wasSaved && saved)
+			toasts.push(`Saved “${saved.name}” to your routes.`);
+		await goto(`/ride?road=${encodeURIComponent(id)}`);
 	}
 </script>
 
