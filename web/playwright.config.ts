@@ -69,8 +69,34 @@ export default defineConfig({
 				'phone-width.spec.ts',
 				'voice-duck.spec.ts',
 				'voice-click-join.spec.ts',
+				'design-shots.spec.ts',
 			],
 			use: { ...devices['Desktop Chrome'], launchOptions: { args: [MUTE] } },
+		},
+		{
+			// The design shots (#3666, docs/design/DESIGN-CHECK.md): what a
+			// rider-visible change looks like, for a reviewer to hold against
+			// its target. Run by `make design-shots`, against this checkout's dev
+			// pair; the spec skips itself unless DESIGN_SHOTS_OUT says where to
+			// write. Metal on a Mac, or headless Chromium falls back to software
+			// GL and the world quietly draws the Flat road; SwiftShader elsewhere.
+			name: 'design',
+			testMatch: ['design-shots.spec.ts'],
+			use: {
+				...devices['Desktop Chrome'],
+				// A control that never comes fails its surface in seconds, not
+				// the five minutes a ride's test is allowed.
+				actionTimeout: 15_000,
+				launchOptions: {
+					args: [
+						MUTE,
+						process.platform === 'darwin'
+							? '--use-angle=metal'
+							: '--use-angle=swiftshader',
+						'--enable-unsafe-swiftshader',
+					],
+				},
+			},
 		},
 		{
 			// A real call with a camera in it (#2702): Chromium's own fake

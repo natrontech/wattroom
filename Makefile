@@ -6,7 +6,7 @@
 # tree keeps :8080/:5174 and the `wattroom` database; every linked worktree
 # derives its own from its path. `make dev-env` prints what this one takes.
 
-.PHONY: infra dev-env dev-server dev-web dev-db-drop web web-deps changelog protocol migration sqlc seed screenshots design-targets build test lint ci release print-golangci-version desktop desktop-smoke desktop-release perf perf-scenes licenses worktree-gc
+.PHONY: infra dev-env dev-server dev-web dev-db-drop web web-deps changelog protocol migration sqlc seed screenshots design-targets design-shots build test lint ci release print-golangci-version desktop desktop-smoke desktop-release perf perf-scenes licenses worktree-gc
 
 DEV_ENV := scripts/dev-env.sh
 
@@ -92,6 +92,23 @@ screenshots: web-deps ## redraw the site's share cards and the site/README scree
 			exit 1; \
 		}; \
 		cd web && node scripts/cards.mjs && node scripts/screenshots.mjs
+
+design-shots: web-deps ## screenshot and probe design surfaces from this checkout's dev pair: SURFACES="…" SCHEME=dark|light|both OUT=… (docs/design/DESIGN-CHECK.md)
+	@eval "$$($(DEV_ENV) print)"; \
+		curl -sf -o /dev/null "http://localhost:$$WATTROOM_DEV_WEB_PORT/api/healthz" || { \
+			echo "Nothing answers on http://localhost:$$WATTROOM_DEV_WEB_PORT/api/healthz — start the dev pair first: make infra, then make dev-server and make dev-web." >&2; \
+			exit 1; \
+		}; \
+		out="$(OUT)"; [ -n "$$out" ] || out="$$PWD/web/design-shots/$$(date +%Y%m%d-%H%M%S)"; \
+		schemes="$(SCHEME)"; [ -n "$$schemes" ] || schemes=dark; [ "$$schemes" = both ] && schemes="dark light"; \
+		status=0; \
+		for scheme in $$schemes; do \
+			(cd web && PLAYWRIGHT_BASE_URL="http://localhost:$$WATTROOM_DEV_WEB_PORT" \
+				DESIGN_SHOTS_OUT="$$out/$$scheme" DESIGN_SHOTS_SCHEME="$$scheme" \
+				DESIGN_SHOTS_SURFACES="$(SURFACES)" \
+				pnpm exec playwright test --project=design --reporter=list) || status=1; \
+		done; \
+		echo "Design shots: $$out"; exit $$status
 
 design-targets: web-deps ## re-render docs/design/targets from docs/design/mockups (MOCKS="v2 shop" for some; the mocks load fonts and three.js from CDNs)
 	cd web && node scripts/design-targets.mjs $(MOCKS)

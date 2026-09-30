@@ -24,6 +24,9 @@ vite.config.ts.timestamp-*
 .hwlog/
 test-results/
 playwright-report/
+# `make design-shots` (docs/design/DESIGN-CHECK.md): outside test-results/,
+# which every Playwright run empties first.
+/design-shots/
 
 # staged from the repo root by `make changelog`
 static/changelog.md

@@ -126,23 +126,17 @@ Run `make dev-db-drop` before you remove a worktree. LiveKit is shared: if a cap
 ## 4. Capture “before”, before your first edit
 
 Your branch is cut from `origin/main`, so a capture taken now shows main.
-- Keep captures under `web/test-results/design/<slug>/`, which git ignores.
+- Keep captures under `web/design-shots/<slug>/`, which git ignores.
+  - Not under `web/test-results/`: every Playwright run empties it first, so an e2e run between “before” and “after” would take the before set with it.
 - Never commit a capture.
 
-With the design-shots spec:
-
 ```sh
-eval "$(scripts/dev-env.sh print)"; make design-shots SURFACES="ride-road-world ride-free-road" SCHEME=both OUT="$PWD/web/test-results/design/<slug>/before"
+eval "$(scripts/dev-env.sh print)"; make design-shots SURFACES="ride-road-world ride-free-road" SCHEME=both OUT="$PWD/web/design-shots/<slug>/before"
 ```
 
-Until design-shots lands, use the interim script. It is in the repository; never use a copy from outside it.
+It runs `web/e2e/design-shots.spec.ts` against this worktree's dev pair and writes `OUT/dark/` and `OUT/light/`. Leave `SURFACES` out for every surface; leave `OUT` out for a dated folder under `web/design-shots/`. A surface that needs a second rider, a crew or a saved ride seeds it through the API, as the dev rider Designer, and reuses it on the next run. LiveKit is shared: say so in the PR when a capture joined voice.
 
-```sh
-eval "$(scripts/dev-env.sh print)"; node web/scripts/design-capture.mjs --base "http://localhost:$WATTROOM_DEV_WEB_PORT" --scheme dark \
-  --out "$PWD/web/test-results/design/<slug>/before" ride-free-road ride-road-world
-```
-
-Both tools do the following:
+The spec does the following:
 - **Mute** the mixer, writing all four channels in one object: `{ music: 0, cues: 0, board: 0, share: 0 }`. Any capture code you add must do the same.
 - **Assert** the ride is running and, on a world surface, that the world mounted. A shot that fails its assertion is written as `FAILED-<id>.png` with the error.
 - **Write** `<id>.json` beside each image. This is the only valid source of measurements. A number measured by hand, typed into a note, or taken from a browser pane is never evidence.
@@ -174,7 +168,7 @@ Give it only the filled prompt at the end of this file:
 It reads TARGETS.md itself and builds its own checklist from the owner tags. You do not decide which items it checks.
 
 **If you cannot start a fresh reviewer session**, as in some agent harnesses:
-1. Write a review bundle to `web/test-results/design/<slug>/review-bundle.md`, holding every input above and the filled prompt.
+1. Write a review bundle to `web/design-shots/<slug>/review-bundle.md`, holding every input above and the filled prompt.
 2. Leave the PR draft, with “Design check: pending, no reviewer available in this session” and the bundle's contents in the PR body.
 3. The orchestrator or the maintainer runs the prompt.
 
