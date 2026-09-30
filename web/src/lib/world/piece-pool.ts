@@ -25,6 +25,16 @@ export function piecePool(
 	const live = new Map<string, Slot>();
 	const free = new Map<string, Slot[]>();
 
+	function drop(key: string) {
+		const slot = live.get(key);
+		if (!slot) return;
+		live.delete(key);
+		mesh.setVisibleAt(slot.instance, false);
+		const list = free.get(slot.size) ?? [];
+		list.push(slot);
+		free.set(slot.size, list);
+	}
+
 	let { vertices: maxV, indices: maxI } = room;
 	function fit(vertices: number, indices: number) {
 		if (mesh.unusedVertexCount < vertices || mesh.unusedIndexCount < indices) {
@@ -43,9 +53,9 @@ export function piecePool(
 			return live.size;
 		},
 		has: (key: string) => live.has(key),
-		/** Draws `g` as `key`; the pool copies it and disposes it. */
+		/** Draws `g` as `key`, in place of what `key` drew before; the pool copies it and disposes it. */
 		add(key: string, g: THREE.BufferGeometry) {
-			if (live.has(key)) return;
+			drop(key);
 			const vertices = g.attributes.position.count;
 			const indices = g.index?.count ?? 0;
 			const size = `${vertices}:${indices}`;
@@ -61,15 +71,7 @@ export function piecePool(
 			}
 			g.dispose();
 		},
-		drop(key: string) {
-			const slot = live.get(key);
-			if (!slot) return;
-			live.delete(key);
-			mesh.setVisibleAt(slot.instance, false);
-			const list = free.get(slot.size) ?? [];
-			list.push(slot);
-			free.set(slot.size, list);
-		},
+		drop,
 	};
 }
 
