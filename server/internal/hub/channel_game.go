@@ -96,6 +96,16 @@ func (rm *channelState) endGame(now time.Time) bool {
 // "won" or "gameEnded" line up, and a coach clearing a finished game's podium
 // is not a second ending. Caller holds rm.mu.
 func (rm *channelState) stopGameLocked(now time.Time) {
+	// A race stopped under way ends as a finished one does (#3658): whoever
+	// is not over the line is out of it, and its riders keep their card for
+	// the linger. A second End clears it.
+	if r := raceOf(rm.game); r != nil && r.close() {
+		gs := rm.game.state(now)
+		rm.lastGame, rm.gameDoneAt = &gs, now
+		rm.events.add(gameEndedLine(gs.Mode, gs.Round, now), now)
+		rm.endGameSessionLocked(now)
+		return
+	}
 	if rm.game != nil && rm.gameDoneAt.IsZero() {
 		gs := rm.game.state(now)
 		rm.events.add(gameEndedLine(gs.Mode, gs.Round, now), now)

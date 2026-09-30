@@ -194,3 +194,28 @@ func TestANeutralisedSpanIsTakenOutOfTheRace(t *testing.T) {
 		t.Fatalf("leader ETA: %v %v", eta, ok)
 	}
 }
+
+// A hold after the klaxon never counts against a time (#3658): the same
+// race ridden with a minute neutralised halfway finishes on the same clock.
+func TestAHoldIsNotInAnyonesTime(t *testing.T) {
+	finish := func(hold bool) int64 {
+		r, err := New(flat(1_000), []Entrant{{ID: "a", WeightKg: 75, Category: "C"}, {ID: "b", WeightKg: 75, Category: "C"}}, flag)
+		if err != nil {
+			t.Fatal(err)
+		}
+		at := r.Klaxon()
+		for s := 1; s <= 200 && !r.Done(); s++ {
+			at = at.Add(time.Second)
+			if hold && s == 30 {
+				r.Neutralised(at.Add(-time.Second), at.Add(time.Minute-time.Second))
+				at = at.Add(time.Minute - time.Second)
+				continue
+			}
+			r.Step(at, map[string]int{"a": 250, "b": 200})
+		}
+		return r.Racers()["a"].FinishMs - r.Klaxon().UnixMilli()
+	}
+	if plain, held := finish(false), finish(true); plain != held {
+		t.Fatalf("a's time: %d ms plain, %d ms with a minute held", plain, held)
+	}
+}

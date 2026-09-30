@@ -32,13 +32,24 @@ type raceRun struct {
 	names map[string]string
 	// When the coach neutralised it; zero while it races.
 	heldAt time.Time
-	// When the leader first came within raceBurstETA of the line, and the
-	// second last stepped.
-	burstAt, at time.Time
+	// The second last stepped, and whether the leader was within
+	// raceBurstETA of the line then.
+	at    time.Time
+	burst bool
 }
 
 func newRaceRun(profile road.Road, now time.Time) *raceRun {
 	return &raceRun{profile: profile, flag: now.Add(countdownSeconds * time.Second)}
+}
+
+// raceLocked is the race the session is for, while it holds the room: nil
+// when the game is another, or a new session has started since. Caller
+// holds rm.mu.
+func (rm *channelState) raceLocked() *raceRun {
+	if r := raceOf(rm.game); r != nil && rm.session.game == modeRace {
+		return r
+	}
+	return nil
 }
 
 // raceOf is the running game's race, or nil when the game is another mode.
@@ -97,6 +108,12 @@ func (r *raceRun) neutralise(on bool, now time.Time) bool {
 	return true
 }
 
+// close ends a race under way where it stands, so the coach's End still
+// draws its card (#3658); false before the flag or once it is over.
+func (r *raceRun) close() bool {
+	return r.race != nil && r.race.Close()
+}
+
 // advance steps the race through the second just ridden. Before the flag,
 // while held, and once it is over there is nothing to step.
 func (r *raceRun) advance(now time.Time, samples map[string]int, _ map[string]protocol.Rider) {
@@ -104,20 +121,19 @@ func (r *raceRun) advance(now time.Time, samples map[string]int, _ map[string]pr
 		return
 	}
 	r.race.Step(now, samples)
-	r.at = now
-	if eta, ok := r.race.LeaderETA(); ok && eta <= raceBurstETA && r.burstAt.IsZero() {
-		r.burstAt = now
-	}
+	eta, riding := r.race.LeaderETA()
+	r.at, r.burst = now, riding && now.After(r.race.Klaxon()) && eta <= raceBurstETA
 }
 
-// sprintWindow is the 4 Hz finish: from the second the leader came within
-// raceBurstETA of the line for as long as the race steps — a hold, or the
-// last rider over the line, lets the tick back down to 1 Hz.
+// sprintWindow is the 4 Hz finish: the second just stepped, while the leader
+// still riding is within raceBurstETA of the line. Read afresh each second,
+// so a leader over it hands the window to the next, and a hold or a tail
+// minutes back lets the tick down to 1 Hz.
 func (r *raceRun) sprintWindow() (start, end time.Time, ok bool) {
-	if r.burstAt.IsZero() || r.done() || !r.heldAt.IsZero() {
+	if !r.burst || r.done() || !r.heldAt.IsZero() {
 		return time.Time{}, time.Time{}, false
 	}
-	return r.burstAt, r.at.Add(time.Second), true
+	return r.at, r.at.Add(time.Second), true
 }
 
 func (r *raceRun) done() bool {
@@ -165,7 +181,7 @@ func (r *raceRun) results() []protocol.RaceBracket {
 	return out
 }
 
-// entrants adds the race's riders to a set of who sees the closing card.
+// entrants adds the race's riders to a set of who sees its finishes and card.
 func (r *raceRun) entrants(to map[string]struct{}) map[string]struct{} {
 	if to == nil {
 		to = make(map[string]struct{}, len(r.names))
@@ -199,7 +215,7 @@ func (rm *channelState) neutraliseLocked(on bool, now time.Time) (code, message 
 }
 
 // raceFieldLocked is who lines up at the flag: every rider the session has on
-// its timeline and still in the channel, as their best screen describes them.
+// its timeline and still in the channel.
 // Caller holds rm.mu.
 func (rm *channelState) raceFieldLocked() (field []protocol.Rider, ergByRoad map[string]bool) {
 	byID := make(map[string]protocol.Rider)
@@ -208,7 +224,12 @@ func (rm *channelState) raceFieldLocked() (field []protocol.Rider, ergByRoad map
 		if !rm.session.rides(c.rider.ID) {
 			continue
 		}
-		byID[c.rider.ID] = c.rider
+		// One entry per rider: the profile is the same on every socket
+		// (withProfile), and of the 90-day bests each door read, the
+		// highest — never whichever socket the map yields.
+		if held, ok := byID[c.rider.ID]; !ok || c.rider.Best20mWatts > held.Best20mWatts {
+			byID[c.rider.ID] = c.rider
+		}
 		// Any of the rider's screens holding the watts holds the race's.
 		ergByRoad[c.rider.ID] = ergByRoad[c.rider.ID] || c.ergByRoad
 	}

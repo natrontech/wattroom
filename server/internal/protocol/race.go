@@ -65,12 +65,14 @@ func RaceFtp(r Rider) int {
 	return r.FtpWatts
 }
 
-// RaceCategory is the bracket a race places a rider in, from the race FTP's
-// 20 minutes (docs/SPEC.md: FTP is 0.95 × the best 20): the 90-day best
-// wherever the suggestion made the race FTP, so a profile FTP set low cannot
-// drop a rider a bracket, and one set higher is read as the rider claims it.
+// RaceCategory is the bracket a race places a rider in: from the 90-day best
+// 20 minutes (docs/SPEC.md), or from the 20 minutes the race FTP claims
+// (FTP is 0.95 × the best 20) when that is higher — so a profile FTP set low
+// cannot drop a rider a bracket, and one with no rides behind it is read as
+// the rider claims it.
 func RaceCategory(r Rider) string {
-	return Category(int(math.Round(float64(RaceFtp(r))/0.95)), float64(r.WeightKg))
+	claimed := int(math.Round(float64(RaceFtp(r)) / 0.95))
+	return Category(max(r.Best20mWatts, claimed), float64(r.WeightKg))
 }
 
 // answered: somebody chose the number — the rider, or a ramp test. No word at

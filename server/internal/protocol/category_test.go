@@ -39,9 +39,10 @@ func TestRaceFtpAndCategory(t *testing.T) {
 		{"no rides: the profile's", 200, 0, 200, "C"},
 		{"a best 20 above it: the suggestion", 200, 300, 285, "A"},
 		{"a best 20 inside the 2 %: the profile's", 285, 300, 285, "A"},
+		{"a profile set just under the 2 %: the best 20's bracket", 282, 300, 282, "A"},
 		{"a profile set above the rides: as claimed", 320, 300, 320, "A"},
 	} {
-		r := Rider{FtpWatts: c.ftp, WeightKg: 70, Best20mWatts: c.best20m}
+		r := Rider{FtpWatts: c.ftp, WeightKg: 75, Best20mWatts: c.best20m}
 		if got := RaceFtp(r); got != c.wantFtp {
 			t.Errorf("%s: race FTP %d, want %d", c.name, got, c.wantFtp)
 		}

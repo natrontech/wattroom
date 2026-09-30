@@ -129,6 +129,9 @@ func TestARaceRunsFromTheFlagToTheClosingCard(t *testing.T) {
 	if len(r.winners) != 0 {
 		t.Errorf("the race told the XP ledger its winner: %v", r.winners)
 	}
+	if w := r.cardOut.tick.World; w == nil || w.Racers["ben"].FinishMs == 0 {
+		t.Errorf("the tick that drew the card lost the last crossing: %+v", w)
+	}
 	if r.rm.session.open() {
 		t.Error("the race finished and left its session open")
 	}
@@ -188,7 +191,7 @@ func joinRideLeave(rm *channelState, id string) {
 // until the race is done.
 func TestTheFinishTicksAtFourHertz(t *testing.T) {
 	r := raceOn(t, 800, racer("ana", 75), racer("ben", 75))
-	pedal := watts(map[string]int{"ana": 250, "ben": 250})
+	pedal := watts(map[string]int{"ana": 250, "ben": 60})
 	interval := func() time.Duration {
 		r.rm.mu.Lock()
 		defer r.rm.mu.Unlock()
@@ -209,9 +212,15 @@ func TestTheFinishTicksAtFourHertz(t *testing.T) {
 	if !burst {
 		t.Fatal("the finish never went to 4 Hz")
 	}
-	r.ride(60, pedal)
+	// ana over the line, ben far back: the leader now is ben, minutes out.
+	for range 60 {
+		if tick := r.ride(1, pedal); tick.World.Racers["ana"].FinishMs != 0 {
+			break
+		}
+	}
+	r.ride(2, pedal)
 	if got := interval(); got != tickInterval {
-		t.Fatalf("after the finish: %v", got)
+		t.Fatalf("with the leader over the line and the tail far back: %v", got)
 	}
 }
 
@@ -284,12 +293,43 @@ func TestOnlyTheRidersSeeTheClosingCard(t *testing.T) {
 		if err := json.Unmarshal(<-c.out, &msg); err != nil {
 			t.Fatal(err)
 		}
-		return msg.Tick.Game != nil && msg.Tick.Game.Race != nil && msg.Tick.Game.Race.Results != nil
+		finished := msg.Tick.World != nil && msg.Tick.World.Racers["ana"].FinishMs != 0
+		card := msg.Tick.Game != nil && msg.Tick.Game.Race != nil && msg.Tick.Game.Race.Results != nil
+		if finished != card {
+			t.Errorf("%s: finish times %v, card %v — one without the other", c.rider.ID, finished, card)
+		}
+		return card
 	}
 	if !sees(r.clients["ana"]) {
 		t.Error("a racer was not sent the closing card")
 	}
 	if sees(watcher) {
 		t.Error("a rider who never joined the race was sent its results")
+	}
+}
+
+// The coach's End on a race under way still draws its card (#3658): the
+// riders over the line keep their places, the rest are out of it, and a
+// second End clears it.
+func TestEndingARaceUnderWayKeepsItsCard(t *testing.T) {
+	ana, ben := racer("ana", 70), racer("ben", 70)
+	r := raceOn(t, 600, ana, ben)
+	r.ride(10+protocol.RaceNeutralSeconds+120, watts(map[string]int{"ana": 280, "ben": 0}))
+	if !r.rm.endGame(r.now) {
+		t.Fatal("the coach could not end the race")
+	}
+	r.ride(1, watts(nil))
+	card := r.race()
+	if card == nil || len(card.Results) != 1 || len(card.Results[0].Placed) != 1 || card.Results[0].Placed[0].RiderID != "ana" {
+		t.Fatalf("the card after an End: %+v", card)
+	}
+	if r.rm.session.open() {
+		t.Error("the race ended and left its session open")
+	}
+	r.rm.endGame(r.now)
+	r.rm.mu.Lock()
+	defer r.rm.mu.Unlock()
+	if r.rm.game != nil {
+		t.Error("a second End left the card up")
 	}
 }

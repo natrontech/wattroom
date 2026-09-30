@@ -18,7 +18,8 @@ import (
 //   - a closed session's scores (#2819): ADR-0058 keeps the closing card for
 //     the riders who rode it, and a member who joins the channel afterwards
 //     must not read everyone's execution off the wire — nor a race's results,
-//     which only its riders see (ADR-0067).
+//     its card or its finish times, which only its riders see (ADR-0067).
+//     The race itself, racers moving on the road, the channel may watch.
 type tickFrames struct {
 	tick    *protocol.ServerTick
 	log     *slog.Logger
@@ -61,6 +62,15 @@ func (f *tickFrames) marshal(kind frameKind, cheers []protocol.Cheer) []byte {
 			card.Results = nil
 			game.Race = &card
 			t.Game = &game
+		}
+		if t.World != nil && t.World.Racers != nil {
+			world := *t.World
+			world.Racers = make(map[string]protocol.RaceRider, len(t.World.Racers))
+			for id, at := range t.World.Racers {
+				at.FinishMs = 0
+				world.Racers[id] = at
+			}
+			t.World = &world
 		}
 	}
 	if !kind.deck {

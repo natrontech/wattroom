@@ -307,18 +307,14 @@ func (s *session) world(hideOffsets bool) *protocol.World {
 	return s.bunch.world(hideOffsets)
 }
 
-// worldLocked is the road on the tick: a race's racers while one runs on
-// the session, else the session's bunch. Caller holds rm.mu.
+// worldLocked is the road on the tick: a race's racers while the session is
+// the race's — through the last crossing and the card's linger — else the
+// session's bunch. Caller holds rm.mu.
 func (rm *channelState) worldLocked() *protocol.World {
-	if r := raceOf(rm.game); r != nil && rm.session.onRace() {
+	if r := rm.raceLocked(); r != nil {
 		return r.world()
 	}
 	return rm.session.world(rm.lastGame != nil && rm.lastGame.MeterHidden)
-}
-
-// onRace is whether the session is a race's, from its start until it is done.
-func (s *session) onRace() bool {
-	return s.game == modeRace && s.phase != "idle" && s.phase != "done"
 }
 
 // onRollingRoad is whether the session's riders are being carried along a
