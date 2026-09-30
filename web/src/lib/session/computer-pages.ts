@@ -55,6 +55,26 @@ export interface Field {
 	zone?: number;
 }
 
+/**
+ * A road's numbers for RIDE (#3628): the dot's speed — never the trainer's
+ * own (ADR-0084) — the road's own grade, and how far along it the dot is.
+ */
+export function roadContext(road: {
+	virtualMps: number;
+	m: number;
+	length: number;
+	roadPct: number;
+}): Pick<ComputerContext, 'road' | 'grade'> {
+	return {
+		road: {
+			speedKph: road.virtualMps * 3.6,
+			km: road.m / 1000,
+			ofKm: road.length / 1000,
+		},
+		grade: road.roadPct,
+	};
+}
+
 /** POWER reads the live numbers, so a screen without them has RIDE alone. */
 export function pagesFor(stats: LiveStats | undefined): ComputerPage[] {
 	return stats ? [...PAGES] : ['ride'];

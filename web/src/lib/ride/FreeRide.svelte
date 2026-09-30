@@ -13,6 +13,7 @@
 	import Banner from '$lib/components/Banner.svelte';
 	import Instrument from '$lib/session/Instrument.svelte';
 	import BikeComputer from '$lib/session/BikeComputer.svelte';
+	import { roadContext } from '$lib/session/computer-pages';
 	import HrShare from '$lib/channel/HrShare.svelte';
 	import SessionControls from '$lib/session/SessionControls.svelte';
 	import TrainerOverview from '$lib/session/TrainerOverview.svelte';
@@ -228,6 +229,7 @@
 					lthr={conn?.profile.current.lthr}
 					stats={free?.live}
 					grade={watts ? undefined : free?.grade}
+					{...road && roadContext(road)}
 					gear={!watts && conn && gearsEnabled()
 						? conn.ride.gear.label
 						: undefined}
