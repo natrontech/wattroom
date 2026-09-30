@@ -957,6 +957,134 @@ export interface Backfill {
 }
 
 //////////
+// source: open_ride.go
+
+/**
+ * OpenRideSample is a rider's second, up at 1 Hz: what the bunch needs to move
+ * them, and no heart rate or cadence, which it does not.
+ */
+export interface OpenRideSample {
+  seq: number /* int */; // monotonic per ride, for reconnect dedup
+  watts: number /* int */;
+  /**
+   * The rider's trim on their own targets, MinBias–MaxBias; 0 is none.
+   */
+  bias?: number /* float64 */;
+}
+/**
+ * OpenRideTick is the ride's one nameless frame a second, the same for every
+ * rider on it (ADR-0076 §11).
+ */
+export interface OpenRideTick {
+  at: number /* int64 */; // server millis
+  phase: string; // "pen" | "countIn" | "riding" | "done"
+  elapsed: number /* int */;
+  /**
+   * The bunch on the library road (ADR-0065), in metres and metres a second.
+   */
+  bunchM: number /* float64 */;
+  speed: number /* float64 */;
+  riders: OpenRideRider[];
+}
+/**
+ * OpenRideRider is one marker: the ride's id for a rider, and where they
+ * are. A group ride places them by offset from the bunch; a race format by
+ * their own metres and speed instead.
+ */
+export interface OpenRideRider {
+  e: string;
+  /**
+   * From the bunch, in decimetres — World's unit.
+   */
+  o?: number /* int16 */;
+  m?: number /* float64 */;
+  v?: number /* float64 */;
+}
+/**
+ * The coarse kit's two choices (docs/SPEC.md "Open rides"): a marker is told
+ * apart by one of these, never by a look.
+ */
+export const OpenRideJerseys = 12;
+/**
+ * The coarse kit's two choices (docs/SPEC.md "Open rides"): a marker is told
+ * apart by one of these, never by a look.
+ */
+export const OpenRideSilhouettes = 6;
+/**
+ * OpenRideKit is how a marker is drawn: a jersey colourway and a bike class,
+ * by index, and whether they lead the ride — set only for the host crew's
+ * owner and admins.
+ */
+export interface OpenRideKit {
+  jersey: number /* int */;
+  silhouette: number /* int */;
+  leader?: boolean;
+}
+/**
+ * OpenRideRoster is every marker's kit by ride id, down on join and on change,
+ * never on the tick. HostCrew is the host crew's name when the crew is listed
+ * (ADR-0039) and empty otherwise, which a client reads as "Hosted by a crew";
+ * it never names the person who opened the ride.
+ */
+export interface OpenRideRoster {
+  kits: { [key: string]: OpenRideKit};
+  hostCrew?: string;
+}
+/**
+ * OpenRideNames maps ride ids to rider ids, sent only to the viewer's own
+ * people — those who share a crew with them — and refreshed every 60 s.
+ */
+export interface OpenRideNames {
+  riders: { [key: string]: string};
+}
+/**
+ * A leader's calls, the closed set docs/SPEC.md "Open rides" names: never free
+ * text, at most one per 20 s per ride.
+ */
+export const OpenRideCallWelcome = "welcome";
+/**
+ * A leader's calls, the closed set docs/SPEC.md "Open rides" names: never free
+ * text, at most one per 20 s per ride.
+ */
+export const OpenRideCallClimbAhead = "climbAhead";
+/**
+ * A leader's calls, the closed set docs/SPEC.md "Open rides" names: never free
+ * text, at most one per 20 s per ride.
+ */
+export const OpenRideCallStayTogether = "stayTogether";
+/**
+ * A leader's calls, the closed set docs/SPEC.md "Open rides" names: never free
+ * text, at most one per 20 s per ride.
+ */
+export const OpenRideCallLast5Km = "last5km";
+/**
+ * A leader's calls, the closed set docs/SPEC.md "Open rides" names: never free
+ * text, at most one per 20 s per ride.
+ */
+export const OpenRideCallSprintSign = "sprintAtTheSign";
+/**
+ * A leader's calls, the closed set docs/SPEC.md "Open rides" names: never free
+ * text, at most one per 20 s per ride.
+ */
+export const OpenRideCallThanks = "thanks";
+/**
+ * OpenRideCall is one leader call, by its code.
+ */
+export interface OpenRideCall {
+  code: string;
+}
+/**
+ * OpenRideClosing is the closing card (ADR-0076 §9): counts, and in a race
+ * format the viewer's own placing, once — never a list, never stored.
+ */
+export interface OpenRideClosing {
+  riders: number /* int */;
+  crews: number /* int */;
+  alone?: boolean;
+  ownPlacing?: number /* int */;
+}
+
+//////////
 // source: protocol.go
 /*
 Package protocol defines the WebSocket message types. These Go structs are
