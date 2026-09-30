@@ -17,8 +17,10 @@
 	 * through POST /api/routes. Riding it and planning it wait for route
 	 * rides, and say so rather than failing on a tap (errors.md).
 	 */
-	let { source, onanother }: { source: string; onanother: () => void } =
-		$props();
+	let {
+		source,
+		onanother,
+	}: { source: string | Uint8Array; onanother: () => void } = $props();
 
 	let choice = $state<RouteChoice>({});
 	const outcome = $derived(importRoute(source, choice));
