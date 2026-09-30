@@ -14,6 +14,7 @@
 	// is off its place (#2885), and this is the pattern the channel's other
 	// components follow.
 	import Banner from '$lib/components/Banner.svelte';
+	import { resumeKm } from '$lib/channel/lost-road';
 	import { device } from '$lib/device.svelte';
 	import FaultBanner from '$lib/channel/FaultBanner.svelte';
 	import {
@@ -197,6 +198,37 @@
 				</p>
 				{#snippet action()}
 					<a href="/history" class="btn btn-primary btn-lg">Recover the ride</a>
+				{/snippet}
+			</Banner>
+		</div>
+	{/if}
+
+	<!-- The road a restart took from the coach (#3103): the session is gone,
+	     but the bunch's last metre is not. Persistent, with the one big
+	     button back — a new session of the same workout from that metre. -->
+	{#if live.lostRoad}
+		{@const road = live.lostRoad}
+		<div class="shrink-0 px-5 pt-4">
+			<Banner tone="warn">
+				<p>
+					<span class="font-medium"
+						>The server restarted, and the session on the road went with it.</span
+					>
+					<span class="text-muted"
+						>The bunch was at km {resumeKm(road)}: start
+						{road.workoutName} again from there{device.spectator
+							? ', from the screen you ride at'
+							: ''}.</span
+					>
+				</p>
+				{#snippet action()}
+					{#if !device.spectator}
+						<button
+							class="btn btn-primary btn-lg"
+							onclick={() => live.resumeRoad()}
+							>Resume the bunch at km {resumeKm(road)}</button
+						>
+					{/if}
 				{/snippet}
 			</Banner>
 		</div>

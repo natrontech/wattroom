@@ -144,16 +144,11 @@
 			(t, s) => Math.max(t, s.startSeconds + s.seconds),
 			0,
 		);
-		live.control('pick', {
+		live.pickAndStart({
 			name: picked.name,
 			json: JSON.stringify(picked),
 			totalSeconds: total,
 		});
-		// start follows the tick that shows the pick landed (#1764): sent
-		// blind, a refused pick's reason was overwritten by start's own
-		// refusal, and a refused pick after a good one started the old one.
-		startAfterPick = picked.name;
-		following = true;
 		layers.setup.open = false;
 	}
 
@@ -162,12 +157,13 @@
 	// the voice channel's lobby left the coach looking at camera tiles while
 	// the timeline started without them. Only this tab, and only its own
 	// start: a refusal lets go, and nobody else's start moves anyone.
+	// Whether it follows is the live connection's (#3103): a resume from
+	// the status banner starts a session the same way.
 	const GO = { keepFocus: true, noScroll: true };
-	let following = $state(false);
 	$effect(() => {
 		const id = liveSessionId(live.tick?.state);
-		if (!following || !id) return;
-		following = false;
+		if (!live.following || !id) return;
+		live.followed();
 		const to = sessionPath(channel.address.crew, id);
 		if (page.url.pathname !== to) void goto(to, GO);
 	});
@@ -183,21 +179,7 @@
 		replaceState(door.rest, page.state);
 		if (device.spectator) return;
 		live.control('game', undefined, door.mode);
-		following = true;
-	});
-	let startAfterPick = $state<string | null>(null);
-	$effect(() => {
-		const state = live.tick?.state;
-		if (!startAfterPick || !state) return;
-		if (state.phase === 'idle' && state.workoutName === startAfterPick) {
-			startAfterPick = null;
-			live.control('start');
-		}
-	});
-	$effect(() => {
-		if (!live.refusal) return;
-		startAfterPick = null;
-		following = false;
+		live.follow();
 	});
 </script>
 
@@ -280,7 +262,7 @@
 				undefined
 			: (id) => {
 					live.control('game', undefined, id);
-					following = true;
+					live.follow();
 					layers.setup.open = false;
 				}}
 		trainer={unpaired ? trainerCard : undefined}
