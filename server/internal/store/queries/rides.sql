@@ -564,3 +564,15 @@ select rides.id, r.length_m, r.gain_m
 from rides
 join routes r on r.id = rides.route_id
 where rides.id = any(sqlc.arg(ids)::uuid[]);
+
+-- name: GetRideRoad :one
+-- The road a ride rode, for its card and page (#3142): the route's generated
+-- name — never the owner's rename (#3055) — where its heights came from, and
+-- the ride's metres on it. A ride on no road, or on a route since deleted,
+-- answers two empty strings; the metres stay while the ride does.
+select coalesce(rt.gen_name, '')::text as gen_name,
+       coalesce(rt.ele_source, '')::text as ele_source,
+       r.distance_m
+from rides r
+left join routes rt on rt.id = r.route_id
+where r.id = $1 and r.user_id = $2;

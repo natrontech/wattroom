@@ -11,7 +11,7 @@
 	import ZoneBar from '$lib/components/ZoneBar.svelte';
 	import { formatClock, formatDuration } from '$lib/format';
 	import { MEDAL_META, medalName } from '$lib/medals';
-	import { downloadRideCard } from '$lib/ride/card';
+	import { cardLabel, downloadRideCard } from '$lib/ride/card';
 	import { deleteRideAfterConfirm } from '$lib/ride/delete-ride';
 	import { fetchRide, type RideDetail } from '$lib/ride/detail';
 	import { ridePlace } from '$lib/ride/list';
@@ -264,7 +264,7 @@
 				class="btn btn-secondary btn-xs disabled:opacity-50"
 			>
 				<ImageDown size={13} />
-				{carding ? 'Drawing…' : 'Ride card'}
+				{carding ? 'Drawing…' : cardLabel(ride)}
 			</button>
 			<button
 				onclick={() => void downloadFit()}
