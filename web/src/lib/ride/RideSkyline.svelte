@@ -30,7 +30,7 @@
 {#if road && drawn}
 	<section class="panel panel-xl mt-3" aria-label="the road you rode">
 		<h2 class="eyebrow">the road</h2>
-		<p class="text-muted mt-0.5 mb-4 text-xs">
+		<p class="text-muted mt-1 mb-4 text-xs">
 			{formatKm(road.length)} km, as you rode it — laps and all.
 		</p>
 		<div
