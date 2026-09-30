@@ -18,6 +18,7 @@
 	import GearShift from '$lib/ride/GearShift.svelte';
 	import { createGhostSplit } from '$lib/ride/ghost-split.svelte';
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
+	import { bindShiftKeys } from '$lib/ride/keys';
 	import { modeLine } from '$lib/ride/mode-copy';
 	import RoadEnd from '$lib/ride/RoadEnd.svelte';
 	import { endRideLabel, roadEndOffered } from '$lib/ride/road-end';
@@ -89,6 +90,13 @@
 	const climb = $derived(climbView(skyline));
 	watchClimbCues(() => climb);
 	const stale = $derived(!!solo.trainer && now - lastAt > SIGNAL_LOST_MS);
+	// Easier / Harder from the keys and any clicker, wherever the pair and its
+	// hint are drawn (#3329, #3661).
+	$effect(() =>
+		free.mode === 'grade' && gearsEnabled()
+			? bindShiftKeys(solo.shift)
+			: undefined,
+	);
 
 	// Where the last ride of this road stopped short (#3205), beside From
 	// the start; a link that says where to start (Resume at km) already did.

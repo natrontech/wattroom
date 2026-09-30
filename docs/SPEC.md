@@ -1074,6 +1074,16 @@ min(their history, **1,500**).
 | Undo            | within **10 min**, and only if the item has not yet been worn on a ride                              |
 | UCI limits      | the 2026 limits (bars **400 mm**, rims **65 mm**, socks halfway to the knee) as information chips only |
 
+**The Swiss calendar** (#3163), the eight windows as the v3 shop draws them.
+Each is a week, its day and **3** days either side: Fasnacht (Basel's
+Morgestraich, the Monday after Ash Wednesday), Chalandamarz (1 March),
+Sechseläuten (the third Monday in April — a week earlier in Holy Week, a
+week later on Easter Monday), the longest day (21 June), 1 August,
+Samichlaus (6 December) and the longest night (21 December). Alpabzug is
+all of September and October. A window is read in the rider's own zone,
+counts the rides started inside it that year, and pays its item on the
+third; an item earned before keeps the day it was first earned.
+
 ## The living world (defaults — tune in alpha; #3178)
 
 What dresses the road beside the budgets of "The world" above.
