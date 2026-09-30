@@ -32,7 +32,8 @@
 	import RidingSurface from '$lib/session/RidingSurface.svelte';
 	import BiasTrim from '$lib/session/BiasTrim.svelte';
 	import BikeComputer from '$lib/session/BikeComputer.svelte';
-	import { worldSlotOn } from '$lib/world/flag';
+	import FlatRoad from '$lib/world/FlatRoad.svelte';
+	import { createWorldView } from '$lib/world/world-view.svelte';
 	import SprintMoment from '$lib/session/SprintMoment.svelte';
 	import type { Block } from '$lib/workout/block';
 	import type { createRideSession } from '$lib/workout/session.svelte';
@@ -97,10 +98,10 @@
 	}
 
 	// The world in slot 2, where this device has it on (#3031): three.js comes
-	// in its own chunk, and a world that will not start leaves the slots as
-	// they were for the rest of the ride.
-	let worldFailed = $state(false);
-	const inWorld = $derived(worldSlotOn() && !worldFailed);
+	// in its own chunk, and a world that cannot draw, or stops, hands the ride
+	// to the Skyline in slot 5 until the rider asks for 3D again (#3080).
+	const world = createWorldView();
+	const inWorld = $derived(world.on);
 	const skyline = $derived(skylineOf(session.road, session.segments, ftp));
 	// The climb card on a road (#3645): CLIMB opens by itself, and says so.
 	const climb = $derived(climbView(skyline, session.live.power30, kg));
@@ -108,7 +109,7 @@
 	const rideWorld = () =>
 		import('$lib/world/RideWorld.svelte').catch((err: unknown) => {
 			console.error('world: the renderer did not load', err);
-			worldFailed = true;
+			world.fail('build-failed');
 			throw err;
 		});
 
@@ -169,7 +170,7 @@
 
 {#snippet road()}
 	{#await rideWorld() then { default: RideWorld }}
-		<RideWorld {watts} {ftp} onfail={() => (worldFailed = true)} />
+		<RideWorld {watts} {ftp} onfail={world.fail} onflat={world.flatten} />
 	{/await}
 {/snippet}
 
@@ -186,6 +187,9 @@
 				drives
 				controls={inWorld ? undefined : rideControls}
 			/>
+			{#if world.reason}
+				<FlatRoad reason={world.reason} onretry={world.retry} />
+			{/if}
 		</div>
 	{/snippet}
 

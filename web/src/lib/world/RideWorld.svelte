@@ -12,10 +12,13 @@
 	/**
 	 * The world in slot 2 (#3031, ADR-0066): the rider's ride on a road, drawn
 	 * behind the docked slots. It reads the ride and writes nothing back —
-	 * rendering never drives the trainer. A world that will not start says so
-	 * through `onfail`, and the surface goes back to its slots.
+	 * rendering never drives the trainer. A world that will not start, or
+	 * stops, says why through `onfail`, and rideView() takes it from there
+	 * (#3080). A right-click on it offers the flat road.
 	 */
 	import { onMount } from 'svelte';
+	import { contextMenu } from '$lib/context-menu.svelte';
+	import type { Failure } from './ride-view';
 	import { parseRoute } from '$lib/road/parse';
 	import { toRoute } from '$lib/road/route';
 	import { mount, type WorldScene } from './scene';
@@ -30,12 +33,15 @@
 		ftp,
 		paused = false,
 		onfail,
+		onflat,
 	}: {
 		watts: number;
 		ftp: number;
 		/** A shared screen has the focus. */
 		paused?: boolean;
-		onfail: () => void;
+		onfail: (why: Failure) => void;
+		/** The rider asked for the flat road on this device. */
+		onflat: () => void;
 	} = $props();
 
 	let canvas = $state<HTMLCanvasElement>();
@@ -56,7 +62,7 @@
 				});
 			} catch (err) {
 				console.error('world: slot 2 did not start', err);
-				onfail();
+				onfail('build-failed');
 			}
 		}, 40);
 		return () => {
@@ -73,6 +79,9 @@
 
 <canvas
 	bind:this={canvas}
+	{@attach contextMenu(() => [
+		{ label: 'Ride the flat road on this device', onSelect: onflat },
+	])}
 	class="block h-full w-full"
 	class:invisible={paused}
 	aria-hidden="true"

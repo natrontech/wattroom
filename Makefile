@@ -6,7 +6,7 @@
 # tree keeps :8080/:5174 and the `wattroom` database; every linked worktree
 # derives its own from its path. `make dev-env` prints what this one takes.
 
-.PHONY: infra dev-env dev-server dev-web dev-db-drop web web-deps changelog protocol migration sqlc seed screenshots build test lint ci release print-golangci-version desktop desktop-smoke desktop-release perf perf-scenes licenses worktree-gc
+.PHONY: infra dev-env dev-server dev-web dev-db-drop web web-deps changelog protocol migration sqlc seed screenshots design-targets build test lint ci release print-golangci-version desktop desktop-smoke desktop-release perf perf-scenes licenses worktree-gc
 
 DEV_ENV := scripts/dev-env.sh
 
@@ -92,6 +92,9 @@ screenshots: web-deps ## redraw the site's share cards and the site/README scree
 			exit 1; \
 		}; \
 		cd web && node scripts/cards.mjs && node scripts/screenshots.mjs
+
+design-targets: web-deps ## re-render docs/design/targets from docs/design/mockups (MOCKS="v2 shop" for some; the mocks load fonts and three.js from CDNs)
+	cd web && node scripts/design-targets.mjs $(MOCKS)
 
 desktop: ## run the desktop shell against a URL (WATTROOM_URL, default this worktree's web)
 	@cd desktop && pnpm install --silent

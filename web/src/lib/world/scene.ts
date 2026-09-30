@@ -6,11 +6,13 @@
 // not start (no WebGL, most often), having released whatever it had made; a
 // world that stops later — its context lost, its shaders refused — says so
 // through onFail, once, and draws nothing more (ADR-0066: the fallback is
-// one-way).
+// one-way) — so does one that misses more than a fifth of its frames for ten
+// seconds (docs/SPEC.md "The world", #3080).
 import * as THREE from 'three';
 import { pixelRatio } from './budget';
 import { compose, type CameraMode, type MountOptions } from './compose';
-import { createLoop, type LoopStats, watchPage } from './loop';
+import { createLoop, type LoopStats, missWatch, watchPage } from './loop';
+import type { Failure } from './ride-view';
 import type { Style } from './styles';
 
 export type { CameraMode, Hud, MountOptions } from './compose';
@@ -72,12 +74,16 @@ export function mount(
 		renderer.render(scene, camera);
 	}, world.idle);
 	let failed = false;
-	function fail() {
+	function fail(why: Failure) {
 		if (failed) return;
 		failed = true;
 		loop.stop();
-		opts.onFail?.();
+		clearInterval(judge);
+		opts.onFail?.(why);
 	}
+	const watch = missWatch();
+	const judge = setInterval(() => watch(loop.stats()) && fail('frames'), 1000);
+	const lost = () => fail('context-lost');
 	function release() {
 		world.dispose();
 		renderer.dispose();
@@ -87,7 +93,7 @@ export function mount(
 	fit();
 	const observer = new ResizeObserver(fit);
 	observer.observe(canvas);
-	canvas.addEventListener('webglcontextlost', fail);
+	canvas.addEventListener('webglcontextlost', lost);
 	const unwatch = watchPage(canvas, loop.gate);
 	// The shaders compile off the main thread where the driver allows, and
 	// the first frame waits for them rather than stalling on them.
@@ -95,7 +101,7 @@ export function mount(
 		() => failed || loop.start(),
 		(err: unknown) => {
 			console.error('world: the shaders did not compile', err);
-			fail();
+			fail('build-failed');
 		},
 	);
 
@@ -109,9 +115,10 @@ export function mount(
 		dispose() {
 			failed = true; // what follows is ours, not a failure to report
 			loop.stop();
+			clearInterval(judge);
 			unwatch();
 			observer.disconnect();
-			canvas.removeEventListener('webglcontextlost', fail);
+			canvas.removeEventListener('webglcontextlost', lost);
 			release();
 		},
 	};

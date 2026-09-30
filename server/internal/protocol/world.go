@@ -44,4 +44,16 @@ type World struct {
 	// Riders coasting back to the bunch's tail (docs/SPEC.md "Riding a road
 	// together"), by rider id.
 	Resting []string `json:"resting,omitempty"`
+	// Each racer's own place in a race (#3032, ADR-0067), by rider id: a
+	// race rides no shared bunch. Races only.
+	Racers map[string]RaceRider `json:"racers,omitempty"`
+}
+
+// RaceRider is one racer on the tick: metres from the km-0 klaxon, their
+// speed, and when they crossed the line — to the millisecond, inside the
+// second they crossed it in — once they have.
+type RaceRider struct {
+	M        float64 `json:"m"`
+	V        float64 `json:"v"`
+	FinishMs int64   `json:"finishMs,omitempty"`
 }

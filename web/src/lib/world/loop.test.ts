@@ -1,6 +1,13 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it } from 'vitest';
-import { createLoop, createPacer, type Gate, watchPage } from './loop';
+import {
+	createLoop,
+	createPacer,
+	FALLBACK,
+	missWatch,
+	type Gate,
+	watchPage,
+} from './loop';
 
 /** Which of `n` animation frames at `hz` render, as a 1/0 string; `jitter` ms either way. */
 function pattern(hz: number, n: number, jitter = 0): string {
@@ -123,6 +130,48 @@ function fakeFrames() {
 		},
 	};
 }
+
+/**
+ * A display at `hz` whose renders take `cost` vsyncs, sampled as the scene
+ * samples it: the watch handed the pacer's stats once a second. Whether it
+ * said "fall back", and when, in seconds.
+ */
+function watched(hz: number, cost: (second: number) => number, s: number) {
+	const pacer = createPacer();
+	const watch = missWatch();
+	let now = 0;
+	for (let second = 1; second <= s; second++) {
+		while (now < second * 1000)
+			now += (pacer.tick(now) ? cost(second) : 1) * (1000 / hz);
+		if (watch(pacer.stats())) return second;
+	}
+	return null;
+}
+
+describe('the fallback watch (#3080)', () => {
+	it('falls back after ten seconds of a steady 20 fps: a third missed', () => {
+		expect(watched(60, () => 3, 30)).toBe(FALLBACK.seconds + 1);
+	});
+
+	it('never falls back while 30 fps is made', () => {
+		expect(watched(60, () => 2, 60)).toBeNull();
+		expect(watched(144, () => 5, 60)).toBeNull();
+	});
+
+	it('forgives a bad stretch shorter than a fifth of the window', () => {
+		// One second in ten at 10 fps: two of its three intervals missed.
+		expect(watched(60, (t) => (t % 10 === 0 ? 6 : 2), 60)).toBeNull();
+	});
+
+	it('needs ten seconds of drawing: the seconds a gate held the world fill nothing', () => {
+		const watch = missWatch();
+		const at = (k: number) => ({ rendered: 20 * k, missed: 10 * k, hz: 60 });
+		watch(at(0));
+		for (let i = 0; i < 30; i++) expect(watch(at(0))).toBe(false);
+		for (let k = 1; k < FALLBACK.seconds; k++) expect(watch(at(k))).toBe(false);
+		expect(watch(at(FALLBACK.seconds))).toBe(true);
+	});
+});
 
 describe('the loop', () => {
 	const GATES: Gate[] = ['hidden', 'offscreen', 'displaced', 'shell'];

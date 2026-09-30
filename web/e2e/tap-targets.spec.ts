@@ -149,6 +149,31 @@ test('the browse surfaces’ links and folds clear the floor on a phone', async 
  * sat at 28 px beside the coach's controls in a running session — small to
  * hit on purpose and easy to hit by mistake.
  */
+test('Try 3D again, on a ride held on the flat road, is riding size (#3080)', async ({
+	riders,
+}) => {
+	test.skip(
+		!!process.env.PLAYWRIGHT_BASE_URL,
+		'the ?as= dev provider only exists on a dev server',
+	);
+	const rider = await riders('Tap Flat Road Rider');
+	await rider.setViewportSize(PHONE);
+	await rider.addInitScript(() => {
+		localStorage.setItem('wattroom.world-slot.v1', '1');
+		localStorage.setItem('wattroom.flat-road.v1', '1');
+	});
+	await rider.goto('/ride');
+	await rider.getByRole('button', { name: 'Ride simulated' }).click();
+	await rider.getByRole('button', { name: 'Start the ride' }).click();
+	const retry = rider.getByRole('button', { name: 'Try 3D again' });
+	await expect(retry).toBeVisible({ timeout: 30_000 });
+	const retryBox = await box(retry);
+	expect(
+		retryBox.height,
+		`'Try 3D again' is ${retryBox.height}px tall`,
+	).toBeGreaterThanOrEqual(RIDING);
+});
+
 test('the header controls a pedalling rider uses are riding size', async ({
 	riders,
 	channels,
