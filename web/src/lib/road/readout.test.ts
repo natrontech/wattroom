@@ -1,22 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { climbsOf } from './climbs';
+import { legsRoad } from './fixtures';
 import { roadReadout } from './readout';
-import type { Road } from './road';
 
-const STEP = 20;
-
-/** A road drawn as legs of [metres, percent], a sample every 20 m, no turns. */
-function road(...legs: [number, number][]): Road {
-	const heights = [500];
-	for (const [metres, pct] of legs)
-		for (let s = 0; s < metres; s += STEP)
-			heights.push(heights[heights.length - 1] + (pct / 100) * STEP);
-	return {
-		length: STEP * (heights.length - 1),
-		heights,
-		turns: new Array(heights.length - 1).fill(0),
-	};
-}
+const road = legsRoad;
 
 // A synthetic ride (#3060): a kilometre flat, two kilometres at 5 %, a flat
 // kilometre, three at 6 %, and a flat finish — two classed climbs.

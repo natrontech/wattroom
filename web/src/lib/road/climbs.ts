@@ -50,6 +50,13 @@ const CLASSES: [ClimbClass, number][] = [
 	['IV', ClimbClassIV],
 ];
 
+/** A climb of class IV or harder: the ones a rider is told about. */
+export type ClassedClimb = Climb & { cls: ClimbClass };
+
+/** The road's classed climbs, in road order — what "climb 3 of 4" counts. */
+export const classedOf = (climbs: Climb[]): ClassedClimb[] =>
+	climbs.filter((c): c is ClassedClimb => c.cls !== null);
+
 export const scoreOf = (gainM: number) => 100 * gainM;
 
 export function classOf(score: number): ClimbClass | null {

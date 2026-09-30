@@ -5,6 +5,7 @@
  * the feature a test needs, and nothing else.
  */
 import type { TrackPoint } from './parse';
+import type { Road } from './road';
 
 const LAT0 = 46.6;
 const LON0 = 7.6;
@@ -180,3 +181,20 @@ export const FIXTURES: Record<string, () => TrackPoint[]> = {
 	'GPS spikes': spiky,
 	'21 hairpins': hairpinClimb,
 };
+
+/**
+ * A road drawn as legs of [metres, percent], a sample every 20 m, no turns:
+ * the synthetic ride a road's numbers are checked on.
+ */
+export function legsRoad(...legs: [number, number][]): Road {
+	const step = 20;
+	const heights = [500];
+	for (const [metres, pct] of legs)
+		for (let s = 0; s < metres; s += step)
+			heights.push(heights[heights.length - 1] + (pct / 100) * step);
+	return {
+		length: step * (heights.length - 1),
+		heights,
+		turns: new Array(heights.length - 1).fill(0),
+	};
+}

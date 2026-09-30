@@ -1,5 +1,5 @@
 import { gradeAt, heightAt } from './at-metre';
-import type { Climb, ClimbClass } from './climbs';
+import { classedOf, type Climb, type ClimbClass } from './climbs';
 import type { Road } from './road';
 
 /**
@@ -25,8 +25,6 @@ export interface RoadReadout {
 const BAR_M = 100;
 const BARS = 20;
 
-type Classed = Climb & { cls: ClimbClass };
-
 /**
  * The readout m metres along `road`, which is the road as ridden — turned
  * round on a lap ridden backwards — with `climbs` its climbs (climbsOf, read
@@ -43,7 +41,7 @@ export function roadReadout(
 		km: at / 1000,
 		totalKm: road.length / 1000,
 	};
-	const classed = climbs.filter((c): c is Classed => c.cls !== null);
+	const classed = classedOf(climbs);
 	const i = classed.findIndex((c) => c.startM <= at && at < c.topM);
 	if (i >= 0) {
 		readout.toTopM = classed[i].topM - at;
