@@ -25,8 +25,8 @@ import { at, leftOf } from '$lib/road/along';
 import type { SimRider } from './sim';
 import type { Style } from './styles';
 
-/** The trail lies on this much road behind you, and fades out along it (#3663). */
-const TRAIL_M = 12;
+/** The trail lies on this much road behind you and fades out along it (#3663): short of the chase eye, 6.5 m back, so it is seen to end. */
+const TRAIL_M = 5;
 /** About a wheel wide: a line, never a wedge or a fill. */
 const TRAIL_W = 0.08;
 const TRAIL_N = 24;

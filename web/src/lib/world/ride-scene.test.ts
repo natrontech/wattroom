@@ -90,10 +90,10 @@ describe('a ride’s world', () => {
 			expect(at(k).distanceTo(at(k + 1))).toBeCloseTo(0.08, 3);
 			expect(Math.abs(at(k).y - at(k + 1).y)).toBeLessThan(1e-6);
 		}
-		// It lies along twelve metres of road behind the wheel.
+		// It lies along five metres of road behind the wheel, and ends short of the chase eye.
 		const [first, last] = [at(0), at(pos.count - 2)];
-		expect(Math.hypot(first.x - last.x, first.z - last.z)).toBeGreaterThan(11);
-		expect(Math.hypot(first.x - last.x, first.z - last.z)).toBeLessThan(12.1);
+		expect(Math.hypot(first.x - last.x, first.z - last.z)).toBeGreaterThan(4.5);
+		expect(Math.hypot(first.x - last.x, first.z - last.z)).toBeLessThan(5.1);
 		w.dispose();
 	});
 });

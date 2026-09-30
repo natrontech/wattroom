@@ -438,12 +438,16 @@ const page_ = (id, device, path, { settle = 2500, full = true } = {}) => [
 	},
 ];
 
-/** A ride, captured RIDE_SECONDS in. world: true = drawn, false = must not be, undefined = either. */
-const ride_ = (id, device, url, { world, scheme } = {}) => [
+/**
+ * A ride, captured RIDE_SECONDS in. world: true = drawn, false = must not be,
+ * undefined = either. flag: this device's world flag, on wherever the world
+ * must draw; a negative check sets it on too, or it would prove nothing.
+ */
+const ride_ = (id, device, url, { world, scheme, flag = !!world } = {}) => [
 	id,
 	async () => {
 		const { page, errors } = await use(device, scheme);
-		await setWorld(page, !!world);
+		await setWorld(page, flag);
 		await ride(page, typeof url === 'function' ? await url(page) : url);
 		await assertRiding(page, world);
 		await shot(page, id, errors);
@@ -488,12 +492,15 @@ const SURFACES = Object.fromEntries([
 	page_('dev-world', DESK, '/dev/world', { settle: 9000, full: false }),
 	ride_('ride-free-road', DESK, roadRide(''), { scheme: 'light' }),
 	ride_('ride-workout-flat', DESK, '/ride?w=openers'),
-	ride_('ride-workout-world', DESK, '/ride?w=openers', { world: false }),
+	ride_('ride-workout-world', DESK, '/ride?w=openers', {
+		world: false,
+		flag: true,
+	}),
 	ride_('ride-road-world', DESK, roadRide('w=openers&from=0&'), {
 		world: true,
 	}),
 	ride_('ride-free-road-world', DESK, roadRide(''), { world: true }),
-	ride_('phone-ride', PHONE, '/ride?w=openers'),
+	ride_('phone-ride', PHONE, '/ride?w=openers', { world: false, flag: true }),
 	ride_('phone-ride-road', PHONE, roadRide(''), { world: true }),
 	[
 		'ride-tv',
