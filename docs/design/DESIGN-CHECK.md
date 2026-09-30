@@ -126,23 +126,17 @@ Run `make dev-db-drop` before you remove a worktree. LiveKit is shared: if a cap
 ## 4. Capture “before”, before your first edit
 
 Your branch is cut from `origin/main`, so a capture taken now shows main.
-- Keep captures under `web/test-results/design/<slug>/`, which git ignores.
+- Keep captures under `web/design-shots/<slug>/`, which git ignores.
+  - Not under `web/test-results/`: every Playwright run empties it first, so an e2e run between “before” and “after” would take the before set with it.
 - Never commit a capture.
 
-With the design-shots spec:
-
 ```sh
-eval "$(scripts/dev-env.sh print)"; make design-shots SURFACES="ride-road-world ride-free-road" SCHEME=both OUT="$PWD/web/test-results/design/<slug>/before"
+eval "$(scripts/dev-env.sh print)"; make design-shots SURFACES="ride-road-world ride-free-road" SCHEME=both OUT="$PWD/web/design-shots/<slug>/before"
 ```
 
-Until design-shots lands, use the interim script. It is in the repository; never use a copy from outside it.
+It runs `web/e2e/design-shots.spec.ts` against this worktree's dev pair and writes `OUT/dark/` and `OUT/light/`. Leave `SURFACES` out for every surface; leave `OUT` out for a dated folder under `web/design-shots/`. A surface that needs a second rider, a crew or a saved ride seeds it through the API, as the dev rider Designer, and reuses it on the next run. LiveKit is shared: say so in the PR when a capture joined voice.
 
-```sh
-eval "$(scripts/dev-env.sh print)"; node web/scripts/design-capture.mjs --base "http://localhost:$WATTROOM_DEV_WEB_PORT" --scheme dark \
-  --out "$PWD/web/test-results/design/<slug>/before" ride-free-road ride-road-world
-```
-
-Both tools do the following:
+The spec does the following:
 - **Mute** the mixer, writing all four channels in one object: `{ music: 0, cues: 0, board: 0, share: 0 }`. Any capture code you add must do the same.
 - **Assert** the ride is running and, on a world surface, that the world mounted. A shot that fails its assertion is written as `FAILED-<id>.png` with the error.
 - **Write** `<id>.json` beside each image. This is the only valid source of measurements. A number measured by hand, typed into a note, or taken from a browser pane is never evidence.
@@ -174,7 +168,7 @@ Give it only the filled prompt at the end of this file:
 It reads TARGETS.md itself and builds its own checklist from the owner tags. You do not decide which items it checks.
 
 **If you cannot start a fresh reviewer session**, as in some agent harnesses:
-1. Write a review bundle to `web/test-results/design/<slug>/review-bundle.md`, holding every input above and the filled prompt.
+1. Write a review bundle to `web/design-shots/<slug>/review-bundle.md`, holding every input above and the filled prompt.
 2. Leave the PR draft, with “Design check: pending, no reviewer available in this session” and the bundle's contents in the PR body.
 3. The orchestrator or the maintainer runs the prompt.
 
@@ -225,6 +219,13 @@ Never justifiable:
 - a place or effort shown to someone who may not see it (G10);
 - “it is better than before”: improvement is not the bar, the target is.
 
+**Inherited findings.** The list above binds the PR whose issue owns the finding, not a PR that only passes through a surface already broken on main. A finding is *inherited* when all three hold:
+- it fails on BEFORE exactly as on AFTER, and no worse;
+- this PR's issue owns none of the items involved;
+- an open issue owns the fix, and the author cites it.
+
+An inherited finding goes under “Open elsewhere” and does not count toward the verdict, even where the list above rejects J2. A finding that is worse on AFTER is a regression and counts in full. A finding main shares but no open issue owns is not inherited until one does: file it first. Decided by Jan on 2026-09-30 (#3606, #3663). Without this, a PR that changes nothing on a broken surface waits until every other lane has fixed that surface.
+
 ## 9. What goes in the PR body
 
 This section is filled after the last round:
@@ -246,7 +247,7 @@ Verdict: PASS (round 2 of 3) · blocker 0 · major 0 · minor 2 · cannot-tell 0
 Global rules: G1–G10 PASS (G4: watts 112 px, probe)
 Regressions: none
 Justified deviations: item 9, W/kg under the watts instead of beside it (J4: 30 % column, probe width 328 px)
-Open elsewhere: item 18 sky (Refs #3085), item 23 figure (design/world-figure)
+Open elsewhere: item 18 sky (Refs #3085), item 23 figure (design/world-figure); inherited from main: two watts figures (Refs #3668)
 Minors left: …
 ```
 
@@ -283,6 +284,7 @@ For each surface, absolute paths:
   {{PROBE_PATHS}}
 - MULTI captures (sequences, second rider, reduced motion, other scheme): {{MULTI_PATHS_OR_NONE}}
 Justifications the author offers: {{JUSTIFICATIONS_OR_NONE}}
+Inherited findings the author claims, each with the open issue that owns it: {{INHERITED_OR_NONE}}
 You may open docs/design/TARGETS.md and the ADRs, docs/SPEC.md sections and .claude/rules files it
 cites. Open nothing else from the change.
 
@@ -301,6 +303,10 @@ BUILD YOUR CHECKLIST FIRST
    None ever covers: the cave, glow or watt beyond G2's list, clipping, sideways scroll, text over
    text, a duplicated live number, a stand-in rider, a size under SPEC's floor, a capped or centred
    desk page, a sidebar card, or a privacy leak (G10).
+5. An inherited claim is CONFIRMED only if three things hold: the finding looks the same on BEFORE
+   as on AFTER, and no worse; none of its items is OWNED; and the author cites an open issue that
+   owns it. A confirmed inherited finding goes under OPEN-ELSEWHERE and does not count, whatever
+   its severity. This is the one case where a rule point 4 names does not fail the PR.
 
 METHOD, in this order
 1. Open every image with your file-reading tool. Do not rely on file names or on anything said
@@ -346,12 +352,13 @@ GLOBAL RULES:
 REGRESSIONS: <list, or none>
 UNNAMED DEVIATIONS: <list with severity, or none>
 JUSTIFICATIONS: <each offered one: ACCEPTED or REJECTED, and why>
+INHERITED: <each claimed one: CONFIRMED or REJECTED, and why>
 OPEN-ELSEWHERE: <other issues' items still open, one line each>
 CONFLICTS: <any place where two canon lines, or canon and the target, cannot both be met, with the
 two lines quoted; or none>
 TO FIX FIRST: <the three changes that would most improve the AFTER, most important first>
 
 VERDICT is PASS only when blocker=0 and major=0 across owned items, global rules, regressions and
-unnamed deviations. Do not soften a finding because the AFTER improves on the BEFORE: improvement
+unnamed deviations; COUNTS leave out the inherited findings you CONFIRMED. Do not soften a finding because the AFTER improves on the BEFORE: improvement
 is not the bar, the target is. Do not propose code. Do not ask questions; decide from what you see.
 ```
