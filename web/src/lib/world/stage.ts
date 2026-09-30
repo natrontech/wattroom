@@ -14,7 +14,7 @@ import { CHUNK_M } from './place/lattice';
 import { prng } from './rand';
 import type { Route } from '$lib/road/route';
 import { skyMaterial, sunDir, terrainMaterial, type Style } from './styles';
-import { GROUND_M, meshOf } from './terrain-mesh';
+import { meshOf, REACH } from './terrain-mesh';
 import { SHOULDER } from './terrain/road-profile';
 import type { World } from './world';
 
@@ -31,7 +31,7 @@ export type Stage = {
 };
 
 // Room for the ground within reach, and for a hilly road's pieces; either grows by half when it runs out.
-const GROUND_ROOM = { pieces: 2600, vertices: 160_000, indices: 720_000 };
+const GROUND_ROOM = { pieces: 13_000, vertices: 200_000, indices: 800_000 };
 const ROAD_ROOM = { pieces: 48, vertices: 48_000, indices: 240_000 };
 
 const SKY_R = 40000;
@@ -112,7 +112,7 @@ export function buildStage(
 	horizon.frustumCulled = false;
 	group.add(tag('sky', horizon));
 
-	// The ride's ground, chunk by chunk as the stream holds it, and its road, piece by piece within reach.
+	// The ride's ground, chunk by chunk as the stream holds it, and its road, piece by piece within the near reach.
 	const ground = piecePool(terrainMaterial(style), GROUND_ROOM);
 	group.add(tag('terrain', ground.mesh));
 	stream.attach({
@@ -134,12 +134,12 @@ export function buildStage(
 		pieces.forEach((p, k) => {
 			const key = String(k);
 			const d = Math.hypot(p.x - eye.x, p.z - eye.z) - p.r;
-			if (d <= GROUND_M && !ribbon.has(key))
+			if (d <= REACH.near && !ribbon.has(key))
 				ribbon.add(
 					key,
 					road(route, { width: ROAD_W, shoulder: SHOULDER, rows: p.rows }),
 				);
-			else if (d > GROUND_M * LEAVE) ribbon.drop(key);
+			else if (d > REACH.near * LEAVE) ribbon.drop(key);
 		});
 	}
 

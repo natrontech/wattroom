@@ -19,8 +19,12 @@ import { setPieces, type Arch, type Piece, type Sign } from './setpieces';
 import {
 	corridor,
 	createTerrain,
+	gridAt,
 	placeLevel,
+	type Coverage,
+	type Edges,
 	type Grid,
+	type Level,
 	type TerrainMesh,
 } from './terrain-mesh';
 import { makeGround } from './terrain/ground';
@@ -39,10 +43,14 @@ export type World = {
 	readonly mesh: TerrainMesh;
 	/** The corridor's outline, as segments: where a plinth stands. Built with the mesh. */
 	readonly rim: number[];
-	/** A chunk's drawn ground, built on this thread; the same bytes the build worker makes of `roads` and `salt`. */
+	/** How finely the place draws each chunk: fine near a road, coarse elsewhere, wherever the eye is. */
+	level: Coverage;
+	/** A chunk's ground at the place's level, built on this thread and kept: what the props stand on. */
 	grid: (ci: number, cj: number) => Grid | null;
-	/** A chunk's ground if something has built it already, without building it. */
+	/** That, if something has built it already, without building it. */
 	peek: (ci: number, cj: number) => Grid | null | undefined;
+	/** Any chunk's ground at any level, built on this thread and not kept: the same bytes the build worker makes of `roads` and `salt`. */
+	gridAt: (ci: number, cj: number, level: Level, edges: Edges) => Grid;
 	/** The roads the ground is shaped by, and the salt it is keyed by: what a worker builds the same ground from. */
 	roads: Line[];
 	salt: Salt;
@@ -86,11 +94,9 @@ export function generate(
 	const ground = makeGround(roads, { salt });
 	const cover = corridor(ground.lines, opts.margin ?? 1400);
 	// The place's levels, not the corridor's: a streamed chunk is the one the props stood on.
-	const terrain = createTerrain(
-		ground,
-		placeLevel(ground.lines),
-		landUse(ground.noise),
-	);
+	const level = placeLevel(ground.lines);
+	const land = landUse(ground.noise);
+	const terrain = createTerrain(ground, level, land);
 	const bounds: World['bounds'] = [Infinity, Infinity, -Infinity, -Infinity];
 	for (const [ci, cj] of cover.chunks) {
 		bounds[0] = Math.min(bounds[0], ci * CHUNK_M);
@@ -140,8 +146,10 @@ export function generate(
 		get rim() {
 			return diorama().rim;
 		},
+		level,
 		grid: terrain.chunk,
 		peek: terrain.peek,
+		gridAt: (ci, cj, at, edges) => gridAt(ground, land, ci, cj, at, edges),
 		roads,
 		salt,
 		placements: placer.placements,

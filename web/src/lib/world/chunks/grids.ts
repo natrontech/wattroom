@@ -1,34 +1,56 @@
-import type { GotGrid, Grids } from '../ground-stream';
+import type { GotGrid, GridAsk, Grids } from '../ground-stream';
 import type { Salt } from '../place/keyed';
-import type { ChunkAt, Grid } from '../terrain-mesh';
+import {
+	edgesOf,
+	type Coverage,
+	type Edges,
+	type Grid,
+	type Level,
+} from '../terrain-mesh';
 import type { Line } from '../terrain/lines';
 import { spawn } from './builder';
 
 /**
  * Where a streamed chunk's ground comes from (#3606): the page's own copy
- * when the world already built it — the props stood on it — else the build
- * worker, else this thread a chunk at a time with a frame between them, when
- * no worker will start or one stops. Every one of them is the same grid: the
- * worker builds the page's ground from the same roads and salt.
+ * when the world already built it just so — the props stood on it — else
+ * the build worker, else this thread a chunk at a time with a frame between
+ * them, when no worker will start or one stops. Every one of them is the
+ * same grid: the worker builds the page's ground from the same roads and
+ * salt.
  */
 
 export type ToGroundWorker =
 	| { type: 'ground'; roads: Line[]; salt: Salt }
-	| { type: 'grids'; chunks: ChunkAt[] };
-export type FromGroundWorker = {
-	type: 'grid';
-	chunk: ChunkAt;
-	grid: Grid | null;
-};
+	| { type: 'grids'; asks: GridAsk[] };
+export type FromGroundWorker = { type: 'grid'; ask: GridAsk; grid: Grid };
 
 type Place = {
 	roads: Line[];
 	salt: Salt;
-	/** A chunk's grid, built on this thread. */
+	/** How finely the place draws each chunk: what the world built and kept. */
+	level: Coverage;
+	/** A chunk's grid at the place's level, built on this thread and kept. */
 	grid: (ci: number, cj: number) => Grid | null;
-	/** A chunk's grid if this thread has built it already. */
+	/** That, if this thread has built it already. */
 	peek: (ci: number, cj: number) => Grid | null | undefined;
+	/** Any chunk's grid, built on this thread and not kept. */
+	gridAt: (ci: number, cj: number, level: Level, edges: Edges) => Grid;
 };
+
+/** Whether `a` is the chunk as the place draws it: what the world built for its props. */
+function placed(place: Place, a: GridAsk) {
+	const [ci, cj] = a.chunk;
+	return (
+		place.level(ci, cj) === a.level &&
+		edgesOf(place.level, ci, cj).every((e, k) => e === a.edges[k])
+	);
+}
+
+/** `a`'s grid, built on this thread: the world's kept copy when it is one. */
+const onPage = (place: Place, a: GridAsk): Grid =>
+	placed(place, a)
+		? place.grid(...a.chunk)!
+		: place.gridAt(...a.chunk, a.level, a.edges);
 
 export function placeGrids(
 	place: Place,
@@ -38,13 +60,14 @@ export function placeGrids(
 	let w = worker(); // null where no worker will start: spawn() catches that
 	let stopped = false;
 	/** Asked of the worker and not back yet: what this thread builds if it stops. */
-	const out = new Map<string, ChunkAt>();
-	const id = ([ci, cj]: ChunkAt) => `${ci}:${cj}`;
+	const out = new Map<string, GridAsk>();
+	const id = (a: GridAsk) =>
+		`${a.chunk.join(':')}:${a.level}:${a.edges.join()}`;
 
-	async function here(chunks: readonly ChunkAt[]) {
-		for (const c of chunks) {
+	async function here(asks: readonly GridAsk[]) {
+		for (const a of asks) {
 			if (stopped) return;
-			got(c, place.grid(c[0], c[1]));
+			got(a, onPage(place, a));
 			await new Promise((r) => setTimeout(r, 0));
 		}
 	}
@@ -52,8 +75,8 @@ export function placeGrids(
 	if (w) {
 		w.addEventListener('message', (e: MessageEvent<FromGroundWorker>) => {
 			if (e.data.type !== 'grid') return;
-			out.delete(id(e.data.chunk));
-			if (!stopped) got(e.data.chunk, e.data.grid);
+			out.delete(id(e.data.ask));
+			if (!stopped) got(e.data.ask, e.data.grid);
 		});
 		w.addEventListener('error', () => {
 			console.warn('world: the ground worker stopped; building on the page');
@@ -71,17 +94,17 @@ export function placeGrids(
 	}
 
 	return {
-		ask(chunks) {
-			const rest: ChunkAt[] = [];
-			for (const c of chunks) {
-				const kept = place.peek(c[0], c[1]);
-				if (kept !== undefined) got(c, kept);
-				else rest.push(c);
+		ask(asks) {
+			const rest: GridAsk[] = [];
+			for (const a of asks) {
+				const kept = placed(place, a) && place.peek(...a.chunk);
+				if (kept) got(a, kept);
+				else rest.push(a);
 			}
 			if (rest.length === 0) return;
 			if (!w) return void here(rest);
-			for (const c of rest) out.set(id(c), c);
-			w.postMessage({ type: 'grids', chunks: rest } satisfies ToGroundWorker);
+			for (const a of rest) out.set(id(a), a);
+			w.postMessage({ type: 'grids', asks: rest } satisfies ToGroundWorker);
 		},
 		dispose() {
 			stopped = true;
@@ -94,8 +117,8 @@ export function placeGrids(
 
 /** Every chunk built at once, on this thread: what the scene budget and the tests draw. */
 export const pageGrids =
-	(place: Pick<Place, 'grid'>) =>
+	(place: Place) =>
 	(got: GotGrid): Grids => ({
-		ask: (chunks) => chunks.forEach((c) => got(c, place.grid(c[0], c[1]))),
+		ask: (asks) => asks.forEach((a) => got(a, onPage(place, a))),
 		dispose() {},
 	});

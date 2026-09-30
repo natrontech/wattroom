@@ -68,7 +68,10 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	const camera = new THREE.PerspectiveCamera(52, 1, 1, 60000);
 	const sight = makeSight();
 	const rig = makeRig(route, world);
-	const stream = streamGround(opts.grids ?? ((got) => placeGrids(world, got)));
+	const stream = streamGround(
+		opts.grids ?? ((got) => placeGrids(world, got)),
+		world.level,
+	);
 	let stage: Stage | null = null;
 	let crew: Crew | null = null;
 	let controls: OrbitControls | null = null;

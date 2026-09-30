@@ -1,10 +1,11 @@
 // The drawn ground, chunk by chunk on the world lattice (#3075): a 160 m
-// chunk is a 40 m grid, or a 10 m one near a road or the camera. Every
-// vertex stands on a lattice point and takes the ground's height there, so
-// two neighbours agree wherever both have a vertex; a fine edge that borders
-// coarse ground takes the coarse edge's straight line, so the two meet with
-// no crack. heightAt reads the triangles actually drawn, so whatever stands
-// on the ground stands on what the rider sees.
+// chunk is a 40 m grid, or a 10 m one near a road or the camera, or — far
+// from a ride's eye — one 160 m quad (#3606). Every vertex stands on a
+// lattice point and takes the ground's height there, so two neighbours agree
+// wherever both have a vertex; an edge that borders coarser ground takes that
+// edge's straight line, so the two meet with no crack. heightAt reads the
+// triangles actually drawn, so whatever stands on the ground stands on what
+// the rider sees.
 import { Biome } from './biome';
 import { shadeOf, type LandUse } from './land';
 import { CHUNK_M, COARSE_M, FINE_M } from './place/lattice';
@@ -19,10 +20,18 @@ export type TerrainMesh = {
 	index: Uint32Array;
 };
 
-export type Level = 'fine' | 'coarse';
+export type Level = 'fine' | 'coarse' | 'far';
 /** How finely a chunk is drawn, by its index in the local frame; null where none is. */
 export type Coverage = (ci: number, cj: number) => Level | null;
 export type ChunkAt = readonly [ci: number, cj: number];
+/** Metres between a level's vertices. */
+export const STEP: Record<Level, number> = {
+	fine: FINE_M,
+	coarse: COARSE_M,
+	far: CHUNK_M,
+};
+/** The step each edge of a chunk is drawn at, west, east, north and south: its own, or its coarser neighbour's. */
+export type Edges = readonly [w: number, e: number, n: number, s: number];
 
 /** Chunks nearer a road than this are drawn fine: the road's earthworks all lie within it. */
 export const FINE_WITHIN = 60;
@@ -123,8 +132,13 @@ export function disc(cx: number, cz: number, reach: number): ChunkAt[] {
 	return out.sort((a, b) => a.d - b.d).map((o) => o.c);
 }
 
-/** How far around the camera the ground is drawn (a proposal, #3082 measures it). */
-export const GROUND_M = 4000;
+/**
+ * How far around a ride's eye the ground is drawn (#3606): the place's own
+ * detail out to `near`, one quad a chunk out to `far`. `far` reaches as far
+ * as a small world's whole corridor was drawn from its start; both are
+ * proposals, and #3082 measures them.
+ */
+export const REACH = { near: 4000, far: 10_000 };
 
 /**
  * The ground around a camera (docs/SPEC.md proposals, #3082 measures them):
@@ -136,7 +150,7 @@ export function around(
 	lines: readonly Line[],
 	cx: number,
 	cz: number,
-	reach = { ground: GROUND_M, fine: 1200 },
+	reach = { ground: REACH.near, fine: 1200 },
 ) {
 	const inside = (ci: number, cj: number) =>
 		toChunk(cx, cz, ci, cj) <= reach.ground;
@@ -182,11 +196,15 @@ function onGrid(h: Float32Array, row: number, fx: number, fz: number) {
 		: d + (c - d) * (1 - tx) + (b - d) * (1 - tz);
 }
 
-/**
- * A chunk's grid, where `coverage` draws one: every vertex on the lattice at
- * the ground's height there, and a fine edge that borders coarse ground on
- * that edge's straight line. Pure: a worker builds the same bytes (#3606).
- */
+/** How each edge of (ci, cj) is drawn under `coverage`: at the coarser of its own step and its neighbour's; a coarse one where none is drawn. */
+export function edgesOf(coverage: Coverage, ci: number, cj: number): Edges {
+	const own = STEP[coverage(ci, cj) ?? 'coarse'];
+	const at = (i: number, j: number) =>
+		Math.max(own, STEP[coverage(i, j) ?? 'coarse']);
+	return [at(ci - 1, cj), at(ci + 1, cj), at(ci, cj - 1), at(ci, cj + 1)];
+}
+
+/** A chunk's grid, where `coverage` draws one. */
 export function gridOf(
 	ground: Ground,
 	land: LandUse,
@@ -195,7 +213,24 @@ export function gridOf(
 	cj: number,
 ): Grid | null {
 	const level = coverage(ci, cj);
-	if (!level) return null;
+	return level
+		? gridAt(ground, land, ci, cj, level, edgesOf(coverage, ci, cj))
+		: null;
+}
+
+/**
+ * A chunk's grid at `level`: every vertex on the lattice at the ground's
+ * height there, and a vertex on an edge drawn coarser than the chunk on that
+ * edge's straight line. Pure: a worker builds the same bytes (#3606).
+ */
+export function gridAt(
+	ground: Ground,
+	land: LandUse,
+	ci: number,
+	cj: number,
+	level: Level,
+	edges: Edges,
+): Grid {
 	// Every height this chunk asks for lies on the 10 m lattice; neighbours ask for the same ones.
 	const asked = new Map<number, number>();
 	const groundAt = (x: number, z: number) => {
@@ -204,38 +239,32 @@ export function gridOf(
 		if (h === undefined) asked.set(k, (h = ground.heightAt(x, z)));
 		return h;
 	};
-	const step = level === 'fine' ? FINE_M : COARSE_M;
+	const step = STEP[level];
 	const n = CHUNK_M / step;
 	const row = n + 1;
 	const x0 = ci * CHUNK_M;
 	const z0 = cj * CHUNK_M;
-	const per = COARSE_M / step;
-	const coarseEdge = [
-		coverage(ci - 1, cj) !== 'fine', // i = 0
-		coverage(ci + 1, cj) !== 'fine', // i = n
-		coverage(ci, cj - 1) !== 'fine', // j = 0
-		coverage(ci, cj + 1) !== 'fine', // j = n
-	];
+	const [pw, pe, pn, ps] = edges.map((e) => e / step);
 	const h = new Float32Array(row * row);
 	for (let j = 0; j <= n; j++)
 		for (let i = 0; i <= n; i++) {
 			const x = x0 + i * step;
 			const z = z0 + j * step;
-			// A fine vertex on an edge the neighbour draws coarse lies on that edge's straight line.
-			const alongZ = (i === 0 && coarseEdge[0]) || (i === n && coarseEdge[1]);
-			const alongX = (j === 0 && coarseEdge[2]) || (j === n && coarseEdge[3]);
-			const offZ = j % per;
-			const offX = i % per;
-			if (level === 'fine' && alongZ && offZ !== 0) {
+			// A vertex on an edge drawn coarser lies on that edge's straight line.
+			const perZ = i === 0 ? pw : i === n ? pe : 1;
+			const perX = j === 0 ? pn : j === n ? ps : 1;
+			const offZ = j % perZ;
+			const offX = i % perX;
+			if (offZ !== 0) {
 				const za = z - offZ * step;
-				const t = offZ / per;
+				const t = offZ / perZ;
 				h[j * row + i] =
-					groundAt(x, za) * (1 - t) + groundAt(x, za + COARSE_M) * t;
-			} else if (level === 'fine' && alongX && offX !== 0) {
+					groundAt(x, za) * (1 - t) + groundAt(x, za + perZ * step) * t;
+			} else if (offX !== 0) {
 				const xa = x - offX * step;
-				const t = offX / per;
+				const t = offX / perX;
 				h[j * row + i] =
-					groundAt(xa, z) * (1 - t) + groundAt(xa + COARSE_M, z) * t;
+					groundAt(xa, z) * (1 - t) + groundAt(xa + perX * step, z) * t;
 			} else h[j * row + i] = groundAt(x, z);
 		}
 	const biome = new Uint8Array(row * row);

@@ -12,7 +12,7 @@ import type { FromGroundWorker, ToGroundWorker } from './grids';
 import type { Keying } from '../place/region';
 import { landUse } from '../land';
 import { makeGround } from '../terrain/ground';
-import { gridOf, placeLevel } from '../terrain-mesh';
+import { gridAt } from '../terrain-mesh';
 
 let keying: Keying | null = null;
 let index: StrokeIndex | null = null;
@@ -20,36 +20,27 @@ let index: StrokeIndex | null = null;
 let place: {
 	ground: ReturnType<typeof makeGround>;
 	land: ReturnType<typeof landUse>;
-	level: ReturnType<typeof placeLevel>;
 } | null = null;
 
 self.onmessage = (e: MessageEvent<ToWorker | ToGroundWorker>) => {
 	const m = e.data;
 	if (m.type === 'ground') {
 		const ground = makeGround(m.roads, { salt: m.salt });
-		place = {
-			ground,
-			land: landUse(ground.noise),
-			level: placeLevel(ground.lines),
-		};
+		place = { ground, land: landUse(ground.noise) };
 		return;
 	}
 	if (m.type === 'grids') {
 		if (!place) return;
-		for (const chunk of m.chunks) {
-			const grid = gridOf(place.ground, place.land, place.level, ...chunk);
-			const reply: FromGroundWorker = { type: 'grid', chunk, grid };
-			self.postMessage(
-				reply,
-				grid
-					? [
-							grid.h.buffer,
-							grid.biome.buffer,
-							grid.shade.buffer,
-							grid.forest.buffer,
-						]
-					: [],
-			);
+		for (const ask of m.asks) {
+			const { chunk, level, edges } = ask;
+			const grid = gridAt(place.ground, place.land, ...chunk, level, edges);
+			const reply: FromGroundWorker = { type: 'grid', ask, grid };
+			self.postMessage(reply, [
+				grid.h.buffer,
+				grid.biome.buffer,
+				grid.shade.buffer,
+				grid.forest.buffer,
+			]);
 		}
 		return;
 	}

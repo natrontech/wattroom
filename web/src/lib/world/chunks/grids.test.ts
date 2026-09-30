@@ -1,19 +1,9 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { toRoute } from '$lib/road/route';
-import { landUse } from '../land';
+import type { GridAsk } from '../ground-stream';
 import { CHUNK_M } from '../place/lattice';
+import { placeOf } from '../stream.test-helper';
 import { syntheticPoints } from '../synthetic';
-import {
-	createTerrain,
-	disc,
-	placeLevel,
-	type ChunkAt,
-	type Grid,
-} from '../terrain-mesh';
-import { makeGround } from '../terrain/ground';
-import type { Line } from '../terrain/lines';
-import { drawnRows } from '../terrain/road-profile';
-import { DEV_SALT } from '../world';
+import { disc, edgesOf, type ChunkAt, type Grid } from '../terrain-mesh';
 import { placeGrids, type ToGroundWorker } from './grids';
 
 /**
@@ -64,34 +54,31 @@ function standIn(opts: { failOnGrids?: boolean } = {}): Worker {
 }
 
 function place() {
-	const route = toRoute(syntheticPoints());
-	const rows = drawnRows(route);
-	const roads: Line[] = [
-		{
-			key: 'route',
-			x: rows.map((p) => p.x),
-			z: rows.map((p) => p.z),
-			h: rows.map((p) => p.ele),
-		},
-	];
-	const ground = makeGround(roads, { salt: DEV_SALT });
-	const terrain = createTerrain(
-		ground,
-		placeLevel(ground.lines),
-		landUse(ground.noise),
-	);
+	const p = placeOf(syntheticPoints());
 	const start: ChunkAt = [
-		Math.floor(route.x[0] / CHUNK_M),
-		Math.floor(route.z[0] / CHUNK_M),
+		Math.floor(p.route.x[0] / CHUNK_M),
+		Math.floor(p.route.z[0] / CHUNK_M),
 	];
-	return {
-		roads,
-		salt: DEV_SALT,
-		grid: terrain.chunk,
-		peek: terrain.peek,
-		near: disc((start[0] + 0.5) * CHUNK_M, (start[1] + 0.5) * CHUNK_M, 400),
-	};
+	const near = disc(
+		(start[0] + 0.5) * CHUNK_M,
+		(start[1] + 0.5) * CHUNK_M,
+		400,
+	);
+	// As the place draws them, and one far quad: what a ride's eye asks for.
+	const asks: GridAsk[] = near.map((chunk) => ({
+		chunk,
+		level: p.level(...chunk)!,
+		edges: edgesOf(p.level, ...chunk),
+	}));
+	asks.push({
+		chunk: [start[0] + 40, start[1]],
+		level: 'far',
+		edges: [160, 160, 160, 160],
+	});
+	return { ...p, asks };
 }
+
+const key = (a: GridAsk) => `${a.chunk.join(':')}:${a.level}`;
 
 async function until(done: () => boolean) {
 	for (let t = 0; t < 2000 && !done(); t++)
@@ -101,21 +88,23 @@ async function until(done: () => boolean) {
 describe('a streamed chunk', () => {
 	it('comes at once when the page built it, and from the worker, byte for byte, when it did not', async () => {
 		const p = place();
-		const [kept, ...rest] = p.near;
-		p.grid(...kept);
-		const got = new Map<string, Grid | null>();
+		const [kept, ...rest] = p.asks;
+		p.grid(...kept.chunk);
+		const got = new Map<string, Grid>();
 		const grids = placeGrids(
 			p,
-			(c, g) => got.set(c.join(':'), g),
+			(a, g) => got.set(key(a), g),
 			() => standIn(),
 		);
-		grids.ask(p.near);
-		expect([...got.keys()]).toEqual([kept.join(':')]);
-		await until(() => got.size === p.near.length);
+		grids.ask(p.asks);
+		expect([...got.keys()]).toEqual([key(kept)]);
+		await until(() => got.size === p.asks.length);
 		grids.dispose();
 		const fresh = place();
-		for (const c of rest)
-			expect(got.get(c.join(':')), c.join(':')).toEqual(fresh.grid(...c));
+		for (const a of rest)
+			expect(got.get(key(a)), key(a)).toEqual(
+				fresh.gridAt(...a.chunk, a.level, a.edges),
+			);
 		expect(rest.length).toBeGreaterThan(10);
 	});
 
@@ -123,11 +112,11 @@ describe('a streamed chunk', () => {
 		for (const worker of [() => standIn({ failOnGrids: true }), () => null]) {
 			const p = place();
 			const got = new Set<string>();
-			const grids = placeGrids(p, (c) => got.add(c.join(':')), worker);
-			grids.ask(p.near);
-			await until(() => got.size === p.near.length);
+			const grids = placeGrids(p, (a) => got.add(key(a)), worker);
+			grids.ask(p.asks);
+			await until(() => got.size === p.asks.length);
 			grids.dispose();
-			expect(got.size).toBe(p.near.length);
+			expect(got.size).toBe(p.asks.length);
 		}
 	});
 
@@ -139,7 +128,7 @@ describe('a streamed chunk', () => {
 			() => got++,
 			() => standIn(),
 		);
-		grids.ask(p.near);
+		grids.ask(p.asks);
 		grids.dispose();
 		await new Promise((r) => setTimeout(r, 50));
 		expect(got).toBe(0);

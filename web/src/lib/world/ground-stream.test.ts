@@ -3,64 +3,39 @@ import { describe, expect, it } from 'vitest';
 import { at } from '$lib/road/along';
 import { toRoute, type Route } from '$lib/road/route';
 import type { TrackPoint } from '$lib/road/parse';
+import { pageGrids } from './chunks/grids';
 import { road } from './geometry';
 import { roadPieces, streamGround, type GroundSink } from './ground-stream';
-import { landUse } from './land';
 import { CHUNK_M } from './place/lattice';
+import { placeOf } from './stream.test-helper';
 import { syntheticPoints } from './synthetic';
-import {
-	createTerrain,
-	disc,
-	GROUND_M,
-	placeLevel,
-	type ChunkAt,
-	type Grid,
-} from './terrain-mesh';
-import { makeGround } from './terrain/ground';
-import { drawnRows, ROAD_W, SHOULDER } from './terrain/road-profile';
-import { DEV_SALT } from './world';
+import { disc, REACH, type ChunkAt, type Grid } from './terrain-mesh';
+import { ROAD_W, SHOULDER } from './terrain/road-profile';
 import { BUILD_MS, longLoopPoints } from './world.test-helper';
 
 /**
  * The ride's ground, streamed around the eye (#3606): what it builds is set
  * by where the eye is, never by how long the route is, and a chunk it adds
- * meets the chunks already there with no crack.
+ * or swaps meets the chunks already there with no crack, whatever levels the
+ * two are drawn at.
  */
 
-/** A route's ground as a world builds it, without the props: what the stream draws from. */
-function groundOf(points: TrackPoint[]) {
-	const route = toRoute(points);
-	const rows = drawnRows(route);
-	const ground = makeGround(
-		[
-			{
-				key: 'route',
-				x: rows.map((p) => p.x),
-				z: rows.map((p) => p.z),
-				h: rows.map((p) => p.ele),
-			},
-		],
-		{ salt: DEV_SALT },
-	);
-	const level = placeLevel(ground.lines);
-	return {
-		route,
-		level,
-		terrain: createTerrain(ground, level, landUse(ground.noise)),
-	};
-}
-
-/** A stream over `g`'s ground, built on the page as asked, counting what it builds. */
-function streamOver(g: ReturnType<typeof groundOf>) {
+/** A stream over `points`' ground, built on the page as asked, counting what it builds. */
+function streamOver(points: TrackPoint[]) {
+	const place = placeOf(points);
+	const page = pageGrids(place);
 	let built = 0;
-	const stream = streamGround((got) => ({
-		ask(chunks) {
-			built += chunks.length;
-			for (const c of chunks) got(c, g.terrain.chunk(...c));
-		},
-		dispose() {},
-	}));
-	return { stream, built: () => built };
+	const stream = streamGround(
+		(got) => ({
+			...page(got),
+			ask(asks) {
+				built += asks.length;
+				page(got).ask(asks);
+			},
+		}),
+		place.level,
+	);
+	return { route: place.route, stream, built: () => built };
 }
 
 describe('the ground a ride draws around it', () => {
@@ -68,14 +43,13 @@ describe('the ground a ride draws around it', () => {
 		'is the same number of chunks around one camera, a 29 km loop or a 124 km one',
 		() => {
 			const counts = [syntheticPoints(), longLoopPoints()].map((points) => {
-				const g = groundOf(points);
-				const { stream, built } = streamOver(g);
+				const { stream, built } = streamOver(points);
 				stream.update(0, 0);
 				expect(stream.held()).toHaveLength(built());
 				return built();
 			});
 			expect(counts[0]).toBe(counts[1]);
-			expect(counts[0]).toBe(disc(0, 0, GROUND_M).length);
+			expect(counts[0]).toBe(disc(0, 0, REACH.far).length);
 		},
 		BUILD_MS,
 	);
@@ -83,13 +57,12 @@ describe('the ground a ride draws around it', () => {
 	it(
 		'adds and drops chunks as the rider rides, and never opens a crack where two meet',
 		() => {
-			const g = groundOf(syntheticPoints());
+			const { route, stream } = streamOver(syntheticPoints());
 			const drawn = new Map<string, { chunk: ChunkAt; grid: Grid }>();
 			let added = 0;
 			let dropped = 0;
 			const sink: GroundSink = {
 				add(id, chunk, grid) {
-					expect(drawn.has(id)).toBe(false);
 					drawn.set(id, { chunk, grid });
 					added++;
 				},
@@ -98,12 +71,12 @@ describe('the ground a ride draws around it', () => {
 					dropped++;
 				},
 			};
-			const { stream } = streamOver(g);
 			stream.attach(sink);
 			let worst = 0;
-			const faces = { fine: 0, mixed: 0 };
-			for (let d = 0; d < g.route.length; d += 1000) {
-				const p = at(g.route, d);
+			const faces = new Map<string, number>();
+			// 100 m steps for the first 3 km, as a ride moves; then 1 km jumps, as a stall or a seek does.
+			for (let d = 0; d < route.length; d += d < 3000 ? 100 : 1000) {
+				const p = at(route, d);
 				stream.update(p.x, p.z);
 				for (const {
 					chunk: [ci, cj],
@@ -115,10 +88,12 @@ describe('the ground a ride draws around it', () => {
 					] as const) {
 						const next = drawn.get(`${ci + di}:${cj + dj}`);
 						if (!next) continue;
-						const levels = [grid.step, next.grid.step].sort().join();
-						if (levels === '10,40') faces.mixed++;
-						else if (levels === '10,10') faces.fine++;
-						for (let s = 0; s <= CHUNK_M; s += 2.5)
+						const fine = Math.min(grid.step, next.grid.step);
+						const steps = `${fine},${Math.max(grid.step, next.grid.step)}`;
+						faces.set(steps, (faces.get(steps) ?? 0) + 1);
+						// Two straight-edged polylines part only at a vertex of the finer one; two quads share their corners.
+						if (fine === CHUNK_M) continue;
+						for (let s = 0; s <= CHUNK_M; s += fine)
 							worst = Math.max(
 								worst,
 								Math.abs(
@@ -131,8 +106,9 @@ describe('the ground a ride draws around it', () => {
 			}
 			expect(dropped).toBeGreaterThan(0);
 			expect(added).toBeGreaterThan(drawn.size);
-			expect(faces.mixed).toBeGreaterThan(0);
-			expect(faces.fine).toBeGreaterThan(0);
+			// Fine meets coarse at a road, coarse meets far at the near reach, and each meets its own.
+			for (const k of ['10,10', '10,40', '40,40', '40,160', '160,160'])
+				expect(faces.get(k), k).toBeGreaterThan(0);
 			expect(worst).toBeLessThan(1e-3);
 		},
 		BUILD_MS,
