@@ -5,7 +5,11 @@
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import type { Trainer } from '$lib/ble/trainer';
 	import { createRideSession } from '$lib/workout/session.svelte';
-	import { byReference, withProfile } from '$lib/workout/road-workout';
+	import {
+		byReference,
+		skylineOf,
+		withProfile,
+	} from '$lib/workout/road-workout';
 	import { createSignalWatch } from '$lib/workout/signal-watch.svelte';
 	import {
 		createRideSounds,
@@ -616,6 +620,7 @@
 		{@const ride = session}
 		<TvOverlay
 			stats={session.live}
+			skyline={skylineOf(session.road, session.segments, ftp)}
 			riders={[tvRider]}
 			segments={session.segments}
 			total={session.total}

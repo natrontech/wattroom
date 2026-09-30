@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { packRoad, type Road } from '$lib/road/road';
 import { flatten } from './engine';
-import { byReference, roadOf, roadSecond } from './road-workout';
+import {
+	bandOf,
+	byReference,
+	roadOf,
+	roadSecond,
+	skylineOf,
+} from './road-workout';
 import type { Workout } from './types';
 
 const road: Road = {
@@ -66,5 +72,39 @@ describe('a road workout (#3499)', () => {
 			name: 'x',
 			steps: [],
 		});
+	});
+});
+
+describe('the Skyline on a road workout (#3641)', () => {
+	const segments = flatten({
+		name: 'three blocks',
+		steps: [
+			{ type: 'steady', seconds: 300, target: 0.5 },
+			{ type: 'steady', seconds: 300, target: 1.0 },
+			{ type: 'steady', seconds: 300, target: 0.6 },
+		],
+	});
+
+	it("lays a pinned road's blocks along it, each in its graph zone", () => {
+		expect(bandOf(segments, 100, [800, 1500, 2000], 200)).toEqual([
+			{ fromM: 100, toM: 800, zone: 1 },
+			{ fromM: 800, toM: 1500, zone: 4 },
+			{ fromM: 1500, toM: 2000, zone: 2 },
+		]);
+	});
+
+	it('has no band where the clock ends the blocks', () => {
+		expect(bandOf(segments, 0, undefined, 200)).toEqual([]);
+	});
+
+	it('draws the road the dot rides, and nothing off a road', () => {
+		expect(skylineOf(null, segments, 200)).toBeNull();
+		const view = skylineOf(
+			{ road, along: 420, mps: 7, startM: 0, blockEndsM: [800, 1500, 2000] },
+			segments,
+			200,
+		);
+		expect(view).toMatchObject({ road, m: 420, mps: 7 });
+		expect(view?.band).toHaveLength(3);
 	});
 });

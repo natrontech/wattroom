@@ -242,3 +242,14 @@ export function bandIn(
 /** Every SVG node a frame draws: an area per grade step that has one, and a line, per tile. */
 export const nodesOf = (tiles: Tile[]): number =>
 	tiles.reduce((n, t) => n + t.areas.filter(Boolean).length + 1, 0);
+
+/** Everything the Skyline draws a ride from, handed through a surface to TV mode too. */
+export interface SkylineView {
+	road: Road;
+	/** The dot: metres along `road`. */
+	m: number;
+	mps: number;
+	band?: BandBlock[];
+	/** The lap rides `road` back from its far end (#3205). */
+	reverse?: boolean;
+}

@@ -1,4 +1,6 @@
+import { zoneOfSegment } from '$lib/components/zones';
 import { packRoad, unpackRoad, type Road } from '$lib/road/road';
+import type { BandBlock, SkylineView } from '$lib/road/skyline';
 import { base64Of } from './import/route';
 import type { Segment, Workout } from './types';
 
@@ -96,4 +98,51 @@ export function roadSecond(
 		Math.max(0, (m - start) / (road.stepEndM[i] - start)),
 	);
 	return segments[i].startSeconds + share * segments[i].seconds;
+}
+
+/**
+ * A pinned road's blocks by metre, for the Skyline's band (#3641): each from
+ * where the last one ended to its own end, in the zone the interval graph
+ * gives it. None on a road that does not pin its blocks.
+ */
+export function bandOf(
+	segments: readonly Segment[],
+	startM: number,
+	endsM: number[] | undefined,
+	ftp: number,
+): BandBlock[] {
+	if (!endsM) return [];
+	return endsM.flatMap((toM, i) =>
+		segments[i]
+			? [
+					{
+						fromM: i === 0 ? startM : endsM[i - 1],
+						toM,
+						zone: zoneOfSegment(segments[i], ftp),
+					},
+				]
+			: [],
+	);
+}
+
+/** A workout ridden on a road, as the Skyline draws it (#3641); null off one. */
+export function skylineOf(
+	road: {
+		road: Road;
+		along: number;
+		mps: number;
+		startM: number;
+		blockEndsM?: number[];
+	} | null,
+	segments: readonly Segment[],
+	ftp: number,
+): SkylineView | null {
+	return road
+		? {
+				road: road.road,
+				m: road.along,
+				mps: road.mps,
+				band: bandOf(segments, road.startM, road.blockEndsM, ftp),
+			}
+		: null;
 }

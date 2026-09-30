@@ -23,6 +23,8 @@
 	import { FLAG_NOTICE_MS, FLAG_SAID } from '$lib/ride/flag';
 	import RideStatus from '$lib/ride/RideStatus.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
+	import Skyline from '$lib/ride/Skyline.svelte';
+	import { skylineOf } from '$lib/workout/road-workout';
 	import Instrument from '$lib/session/Instrument.svelte';
 	import RideHeader from '$lib/session/RideHeader.svelte';
 	import RidingSurface from '$lib/session/RidingSurface.svelte';
@@ -97,6 +99,7 @@
 	// they were for the rest of the ride.
 	let worldFailed = $state(false);
 	const inWorld = $derived(worldSlotOn() && !worldFailed);
+	const skyline = $derived(skylineOf(session.road, session.segments, ftp));
 	const rideWorld = () =>
 		import('$lib/world/RideWorld.svelte').catch((err: unknown) => {
 			console.error('world: the renderer did not load', err);
@@ -245,14 +248,22 @@
 	{/snippet}
 
 	{#snippet horizon()}
-		<div class={inWorld ? 'h-full' : 'mt-4 h-28 shrink-0'}>
-			<IntervalGraph
-				segments={session.segments}
-				total={session.total}
-				elapsed={session.elapsed}
-				{ftp}
-				trace={session.trace}
-			/>
-		</div>
+		{#if skyline}
+			<!-- On a road the horizon is the road ahead (ADR-0046 as amended,
+			     #3641): the Skyline, with the blocks along it. -->
+			<div class={inWorld ? 'h-full' : 'mt-4 h-40 shrink-0'}>
+				<Skyline {...skyline} />
+			</div>
+		{:else}
+			<div class={inWorld ? 'h-full' : 'mt-4 h-28 shrink-0'}>
+				<IntervalGraph
+					segments={session.segments}
+					total={session.total}
+					elapsed={session.elapsed}
+					{ftp}
+					trace={session.trace}
+				/>
+			</div>
+		{/if}
 	{/snippet}
 </RidingSurface>

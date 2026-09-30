@@ -92,6 +92,10 @@ test('any workout rides on your own route by the clock, and saves on it', async 
 	});
 	// Blocks end by the clock on a road that pins nothing: Skip is there.
 	await expect(page.getByRole('button', { name: 'Skip block' })).toBeVisible();
+	// On a road the horizon is the road ahead (#3641): the Skyline, your dot.
+	await expect(
+		page.getByTestId('skyline').getByTestId('skyline-dot'),
+	).toBeVisible();
 	await expect
 		.poll(
 			async () =>
