@@ -103,6 +103,9 @@ type Hub struct {
 	keepalive keepalive
 	mu        sync.Mutex
 	states    map[string]*channelState
+	// Open rides (#3303): one room per ride, and the id maps that outlive them.
+	openRides map[string]*openRide
+	rideIDs   *openRideIDs
 	// Session saves and recaps in flight: fire-and-forget from the tick, but
 	// not from the process — Drain waits on them before the server exits
 	// (audit 2026-09-09).
@@ -152,6 +155,7 @@ func New(log *slog.Logger, access Access, saver SessionSaver) *Hub {
 	h := &Hub{log: log, access: access, saver: saver, now: time.Now,
 		keepalive: keepalive{every: socketKeepalive, pong: socketPingTimeout},
 		states:    make(map[string]*channelState), voice: make(map[string]map[string]voiceEntry),
+		openRides: make(map[string]*openRide), rideIDs: newOpenRideIDs(),
 		lobby: make(map[*lobbyClient]string), sockets: make(map[string]int),
 		holds:     make(map[string]int),
 		autoplays: make(chan autoplayJob, 64)}

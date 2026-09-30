@@ -6,6 +6,14 @@ package protocol
 // an open ride sends lives here, and TestAnOpenRideCarriesNothingAboutAnyone
 // refuses a field named or typed for a person or a number.
 
+// OpenRideMessage is what an open ride's socket carries down (#3303): the
+// tick, or the refusal a rider is told. The roster, names, calls and the
+// closing card join it with the door (#3304).
+type OpenRideMessage struct {
+	Tick  *OpenRideTick `json:"tick,omitempty"`
+	Error *Error        `json:"error,omitempty"`
+}
+
 // OpenRideSample is a rider's second, up at 1 Hz: what the bunch needs to move
 // them, and no heart rate or cadence, which it does not.
 type OpenRideSample struct {

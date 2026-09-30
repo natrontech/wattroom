@@ -25,6 +25,13 @@ var (
 		Name: "wattroom_room_frames_dropped_total",
 		Help: "Frames dropped because a client's send queue was full.",
 	})
+	// An open ride's shared frame, once a second per ride (#3303): what the
+	// 100-rider cap bounds, since there is no window and no sharding.
+	metricOpenRideFrameBytes = promauto.With(metrics.Registry).NewHistogram(prometheus.HistogramOpts{
+		Name:    "wattroom_open_ride_frame_bytes",
+		Help:    "Bytes in an open ride's shared frame, one observation per ride per tick.",
+		Buckets: prometheus.ExponentialBuckets(256, 2, 8),
+	})
 )
 
 // Riders whose trainer is connected and talking — a live sample inside
@@ -69,6 +76,15 @@ func (h *Hub) registerRideGauges() {
 		Name: "wattroom_room_spectators",
 		Help: "Sockets in voice channels with a running session, held by someone not riding it.",
 	}, h.spectatorCount))
+	// Open rides (#3303), counted like the rest: no ride ids in labels.
+	_ = metrics.Registry.Register(prometheus.NewGaugeFunc(prometheus.GaugeOpts{
+		Name: "wattroom_open_ride_rooms",
+		Help: "Open ride rooms live in this process.",
+	}, func() float64 { rooms, _ := h.openRideCounts(); return float64(rooms) }))
+	_ = metrics.Registry.Register(prometheus.NewGaugeFunc(prometheus.GaugeOpts{
+		Name: "wattroom_open_ride_riders",
+		Help: "Riders on open rides in this process.",
+	}, func() float64 { _, riders := h.openRideCounts(); return float64(riders) }))
 }
 
 // ridingCount deliberately never holds the hub lock and a room lock at the same
