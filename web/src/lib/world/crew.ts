@@ -2,6 +2,7 @@
 // (18 bones, one draw call), a flat zone ring on the road under it, a bead
 // for the orbit view, and — for you alone — the trail your power leaves.
 import * as THREE from 'three';
+import { tag } from './family';
 import { zoneOf } from '$lib/components/zones';
 import { damp } from '$lib/motion/damp';
 import { effortRpm } from './figure/cadence';
@@ -97,13 +98,18 @@ export function makeCrew(riders: SimRider[], style: Style) {
 		);
 		bead.visible = false;
 		const g = new THREE.Group();
-		g.add(model.mesh, new THREE.Mesh(shadowGeo, shadowMat), ring, bead);
+		g.add(
+			tag('figures', model.mesh),
+			tag('marks', new THREE.Mesh(shadowGeo, shadowMat)),
+			tag('marks', ring),
+			tag('marks', bead),
+		);
 		group.add(g);
 		return { group: g, model, ring, bead };
 	});
 
 	const trail = style.trail ? makeTrail(style.trail) : null;
-	if (trail) group.add(trail.mesh);
+	if (trail) group.add(tag('marks', trail.mesh));
 	let sinceSample = 0;
 	const you = new THREE.Vector3();
 
