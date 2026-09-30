@@ -470,6 +470,10 @@ const SURFACES = Object.fromEntries([
 	page_('phone-route', PHONE, async (page) =>
 		page.goto(`${BASE}/workouts/routes/${await fixtureRoad(page)}`),
 	),
+	page_('routes', DESK, async (page) => {
+		await fixtureRoad(page);
+		await page.goto(`${BASE}/workouts/routes`);
+	}),
 	page_('import-idle', DESK, '/workouts/import'),
 	page_('import', DESK, async (page) => {
 		await page.goto(`${BASE}/workouts/import`);
