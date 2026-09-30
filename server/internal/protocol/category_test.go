@@ -25,3 +25,28 @@ func TestSuggestFTP(t *testing.T) {
 		t.Fatal("suggested from no data")
 	}
 }
+
+// A race's FTP is the profile's, or the 90-day best 20's suggestion when that
+// is higher (ADR-0067), and its Category comes from it: a profile FTP set low
+// cannot drop a rider a bracket.
+func TestRaceFtpAndCategory(t *testing.T) {
+	for _, c := range []struct {
+		name         string
+		ftp, best20m int
+		wantFtp      int
+		wantCategory string
+	}{
+		{"no rides: the profile's", 200, 0, 200, "C"},
+		{"a best 20 above it: the suggestion", 200, 300, 285, "A"},
+		{"a best 20 inside the 2 %: the profile's", 285, 300, 285, "A"},
+		{"a profile set above the rides: as claimed", 320, 300, 320, "A"},
+	} {
+		r := Rider{FtpWatts: c.ftp, WeightKg: 70, Best20mWatts: c.best20m}
+		if got := RaceFtp(r); got != c.wantFtp {
+			t.Errorf("%s: race FTP %d, want %d", c.name, got, c.wantFtp)
+		}
+		if got := RaceCategory(r); got != c.wantCategory {
+			t.Errorf("%s: Category %s, want %s", c.name, got, c.wantCategory)
+		}
+	}
+}
