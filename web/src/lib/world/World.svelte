@@ -13,6 +13,7 @@
 	import type { Style } from './styles';
 	import { syntheticGpx } from './synthetic';
 	import { generate, type World } from './world';
+	import { devCrew } from '../../routes/(app)/dev/world/crew';
 
 	let { styles }: { styles: readonly Style[] } = $props();
 
@@ -99,6 +100,7 @@
 						camera,
 						watts,
 						ftp: profile.current.ftp,
+						riders: devCrew(watts, profile.current.ftp),
 						speedup,
 						onTick: (next) => (hud = next),
 						onFail: () => (drawFailed = true),

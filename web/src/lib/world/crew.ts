@@ -1,6 +1,7 @@
 // The riders as the world draws them: one skinned clay-toy figure each
 // (18 bones, one draw call), a flat zone ring on the road under it, a bead
-// for the orbit view, and — for you alone — the trail your power leaves.
+// for the orbit view, and — for you alone — the trail your power leaves: a
+// thin line on the road behind your wheel, the only glow in the world.
 import * as THREE from 'three';
 import { tag } from './family';
 import { zoneOf } from '$lib/components/zones';
@@ -24,8 +25,11 @@ import { at, leftOf } from '$lib/road/along';
 import type { SimRider } from './sim';
 import type { Style } from './styles';
 
-const TRAIL = 90; // samples, one every 0.2 s of ride time → ~18 s of light behind you
-const SAMPLE = 0.2;
+/** The trail lies on this much road behind you, and fades out along it (#3663). */
+const TRAIL_M = 12;
+/** About a wheel wide: a line, never a wedge or a fill. */
+const TRAIL_W = 0.08;
+const TRAIL_N = 24;
 const LANE = 0.9; // metres between riders abreast
 
 // Identity is a hue from the rider's id, never the watt hue (ADR-0005: watt
@@ -110,7 +114,6 @@ export function makeCrew(riders: SimRider[], style: Style) {
 
 	const trail = style.trail ? makeTrail(style.trail) : null;
 	if (trail) group.add(tag('marks', trail.mesh, 'trail'));
-	let sinceSample = 0;
 	const you = new THREE.Vector3();
 
 	// Place and pose everyone; returns where you are (at chest height).
@@ -166,13 +169,11 @@ export function makeCrew(riders: SimRider[], style: Style) {
 				rockBody: 0.02 + s.stand * 0.03,
 				nod: 0.02 * Math.sin(s.crank * 2),
 			});
-			if (r.you) you.set(x, y + 1.1, z);
+			if (r.you) {
+				you.set(x, y + 1.1, z);
+				trail?.follow(route, r.d, lane);
+			}
 		});
-		if (trail) {
-			sinceSample += dt;
-			trail.follow(you, sinceSample >= SAMPLE);
-			if (sinceSample >= SAMPLE) sinceSample = 0;
-		}
 		return you;
 	}
 
@@ -180,15 +181,19 @@ export function makeCrew(riders: SimRider[], style: Style) {
 }
 export type Crew = ReturnType<typeof makeCrew>;
 
-// A ribbon of light behind you: additive, unfogged, fading along its length.
+// Your trail: a thin line on the road from your wheel back TRAIL_M metres,
+// additive and unfogged, fading out along its length.
 function makeTrail(color: string) {
-	const pos = new Float32Array(TRAIL * 2 * 3);
-	const col = new Float32Array(TRAIL * 2 * 4);
+	const rows = TRAIL_N + 1;
+	const pos = new Float32Array(rows * 2 * 3);
+	const col = new Float32Array(rows * 2 * 4);
 	const c = new THREE.Color(color);
-	for (let i = 0; i < TRAIL; i++)
-		col.set([c.r, c.g, c.b, (1 - i / TRAIL) * 0.85, c.r, c.g, c.b, 0], i * 8);
+	for (let i = 0; i < rows; i++) {
+		const a = (1 - i / TRAIL_N) * 0.85;
+		col.set([c.r, c.g, c.b, a, c.r, c.g, c.b, a], i * 8);
+	}
 	const idx: number[] = [];
-	for (let i = 0; i < TRAIL - 1; i++)
+	for (let i = 0; i < TRAIL_N; i++)
 		idx.push(i * 2, i * 2 + 1, i * 2 + 2, i * 2 + 1, i * 2 + 3, i * 2 + 2);
 	const g = new THREE.BufferGeometry();
 	const attr = new THREE.BufferAttribute(pos, 3);
@@ -207,19 +212,20 @@ function makeTrail(color: string) {
 		}),
 	);
 	mesh.frustumCulled = false;
-	const hist: THREE.Vector3[] = [];
 	return {
 		mesh,
-		follow(you: THREE.Vector3, sample: boolean) {
-			const foot = you.clone().setY(you.y - 1.05);
-			if (sample || hist.length === 0) {
-				hist.unshift(foot);
-				if (hist.length > TRAIL) hist.pop();
-			} else hist[0].copy(foot);
-			for (let j = 0; j < TRAIL; j++) {
-				const h = hist[Math.min(j, hist.length - 1)];
-				attr.setXYZ(j * 2, h.x, h.y + 0.02, h.z);
-				attr.setXYZ(j * 2 + 1, h.x, h.y + 0.9, h.z);
+		/** Lays the line on the road behind `d`, in the lane you ride. */
+		follow(route: Route, d: number, lane: number) {
+			for (let i = 0; i < rows; i++) {
+				const back = d - (i / TRAIL_N) * TRAIL_M;
+				const p = at(route, route.loop ? back : Math.max(0, back));
+				const { lx, lz } = leftOf(p.heading);
+				const x = p.x + lx * lane;
+				const z = p.z + lz * lane;
+				const y = yOf(route, p.ele) + 0.14; // on the ribbon, a hair above it
+				const w = TRAIL_W / 2;
+				attr.setXYZ(i * 2, x + lx * w, y, z + lz * w);
+				attr.setXYZ(i * 2 + 1, x - lx * w, y, z - lz * w);
 			}
 			attr.needsUpdate = true;
 		},

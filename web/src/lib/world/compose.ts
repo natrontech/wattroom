@@ -9,7 +9,15 @@ import { makeSight } from './materials';
 import { makeRig, type Follow } from './rig';
 import { type Route } from '$lib/road/route';
 import { at } from '$lib/road/along';
-import { advance, defaultRiders, trainerFor, type Env } from './sim';
+import {
+	advance,
+	followMetre,
+	simRider,
+	trainerFor,
+	type Env,
+	type RideMetre,
+	type SimRider,
+} from './sim';
 import { buildStage, summitOf, type Stage } from './stage';
 import type { Style } from './styles';
 import type { Failure } from './ride-view';
@@ -38,6 +46,14 @@ export type MountOptions = {
 	onTick?: (hud: Hud) => void; // a few times a second, while the loop runs
 	/** Once, when a world that started stops: rideView() takes it from there (#3080). */
 	onFail?: (why: Failure) => void;
+	/** Who rides, you among them: the dev gallery's crew. Absent, you ride alone. */
+	riders?: SimRider[];
+	/**
+	 * The ride's own place on its road, a ride's world only (#3663): your
+	 * figure rides it, and the world moves nobody of its own and tells the
+	 * ride nothing.
+	 */
+	metre?: () => RideMetre;
 };
 
 const HUD_EVERY = 0.25; // seconds of real time between HUD snapshots
@@ -49,8 +65,21 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	let mode: CameraMode = opts.camera ?? 'chase';
 	let speedup = opts.speedup ?? 1;
 	const env: Env = { difficulty: 0.5 };
-	const riders = defaultRiders(opts.watts ?? 200, opts.ftp);
+	const riders = opts.riders ?? [
+		simRider({
+			id: 'you',
+			name: 'You',
+			mass: 80,
+			ftp: opts.ftp,
+			you: true,
+			watts: opts.watts ?? 200,
+			d: 0,
+		}),
+	];
 	const you = riders.find((r) => r.you) ?? riders[0];
+	// On a ride your figure is the ride's; only the gallery's crew is stepped here.
+	const stepped = opts.metre ? riders.filter((r) => r !== you) : riders;
+	const follow = followMetre();
 	const pedal: Pedalling[] = riders.map(() => ({
 		crank: 0,
 		wheel: 0,
@@ -131,7 +160,8 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		t += dt;
 		sight.uTime.value += real;
 		const n = Math.max(1, Math.ceil(dt / SUBSTEP));
-		for (let k = 0; k < n; k++) advance(route, riders, dt / n, t);
+		for (let k = 0; k < n; k++) advance(route, stepped, dt / n, t);
+		if (opts.metre) follow(you, opts.metre(), real);
 		const me = crew.update(route, pedal, dt, real, mode === 'orbit');
 		if (controls) controls.update();
 		else rig.update(camera, mode === 'heli' ? 'heli' : 'chase', you, me, real);

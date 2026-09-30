@@ -95,11 +95,13 @@
 		setTimeout(() => (flagNotice = false), FLAG_NOTICE_MS);
 	}
 
-	// The world in slot 2, where this device has it on (#3031): three.js comes
-	// in its own chunk, and a world that cannot draw, or stops, hands the ride
-	// to the Skyline in slot 5 until the rider asks for 3D again (#3080).
+	// The world in slot 2, where this device has it on (#3031) and the ride
+	// carries a road (ADR-0066: a ride with no road keeps its surface, #3663):
+	// three.js comes in its own chunk, and a world that cannot draw, or stops,
+	// hands the ride to the Skyline in slot 5 until the rider asks for 3D
+	// again (#3080).
 	const world = createWorldView();
-	const inWorld = $derived(world.on);
+	const inWorld = $derived(world.on && !!session.road);
 	const skyline = $derived(skylineOf(session.road, session.segments, ftp));
 	const rideWorld = () =>
 		import('$lib/world/RideWorld.svelte').catch((err: unknown) => {
@@ -165,7 +167,20 @@
 
 {#snippet road()}
 	{#await rideWorld() then { default: RideWorld }}
-		<RideWorld {watts} {ftp} onfail={world.fail} onflat={world.flatten} />
+		{#if session.road}
+			{@const on = session.road}
+			<RideWorld
+				road={on.road}
+				metre={() => ({
+					m: session.road?.along ?? on.along,
+					mps: session.road?.mps ?? 0,
+				})}
+				{watts}
+				{ftp}
+				onfail={world.fail}
+				onflat={world.flatten}
+			/>
+		{/if}
 	{/await}
 {/snippet}
 
@@ -182,7 +197,7 @@
 				drives
 				controls={inWorld ? undefined : rideControls}
 			/>
-			{#if world.reason}
+			{#if session.road && world.reason}
 				<FlatRoad reason={world.reason} onretry={world.retry} />
 			{/if}
 		</div>
