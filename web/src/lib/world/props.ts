@@ -213,6 +213,76 @@ export function rock(c: PropColors) {
 	return merge([tint(g.translate(0, 0.35, 0), c.rock)]);
 }
 
+// --- far models: each prop's outer-ring stand-in (#3076) ----------------------
+// The same silhouette and colours in a fraction of the triangles, standing on
+// the same ground: a building keeps its foundation's depth, a tree its root.
+
+export function spruceFar(c: PropColors) {
+	return merge([
+		tint(
+			cyl(0.35, 0.5, 1.5 + ROOT_M, 3).translate(0, (1.5 - ROOT_M) / 2, 0),
+			c.trunk,
+		),
+		tint(
+			new THREE.ConeGeometry(4.2, 13.4, 5).translate(0, 8.2, 0),
+			c.spruce,
+			c.spruceTip,
+		),
+	]);
+}
+
+export function broadleafFar(c: PropColors) {
+	const crown = new THREE.IcosahedronGeometry(4, 0)
+		.scale(1, 0.85, 1)
+		.translate(0, 7.2, 0);
+	return merge([
+		tint(
+			cyl(0.3, 0.45, 4.5 + ROOT_M, 3).translate(0, (4.5 - ROOT_M) / 2, 0),
+			c.trunk,
+		),
+		tint(crown, c.leaf, c.leafLight),
+	]);
+}
+
+// A building far off: its foundation, walls and roof as one block and one prism.
+function blockFar(
+	w: number,
+	d: number,
+	walls: number,
+	rise: number,
+	overhang: number,
+	c: PropColors,
+	wall: string,
+) {
+	return [
+		tint(box(w, walls + 3.1, d).translate(0, (walls - 3.1) / 2, 0), wall),
+		tint(roof(w, d, rise, overhang).translate(0, walls, 0), c.roof),
+	];
+}
+
+export const houseFar = (c: PropColors) =>
+	merge(blockFar(9.2, 11.2, 6, 4.2, 1.4, c, c.wall));
+
+export function churchFar(c: PropColors) {
+	return merge([
+		...blockFar(10, 18, 7, 5, 0.6, c, c.wall).map((g) => g.translate(0, 0, 2)),
+		tint(box(4.6, 19.1, 4.6).translate(0, 6.45, -8.5), c.wall),
+		tint(
+			new THREE.ConeGeometry(3.4, 11, 4)
+				.rotateY(Math.PI / 4)
+				.translate(0, 21.5, -8.5),
+			c.roof,
+		),
+	]);
+}
+
+export const barnFar = (c: PropColors) =>
+	merge(blockFar(12, 18, 5, 5.5, 1.2, c, c.wood));
+export const hutFar = (c: PropColors) =>
+	merge(blockFar(7, 8, 4.2, 2.4, 1, c, c.wood));
+export const cowFar = (c: PropColors) =>
+	merge([tint(box(1.1, 1.75, 2.1).translate(0, 0.875, 0), c.cow)]);
+
 // --- set-piece kits: small things that make a road a place -------------------
 
 export function bench(c: PropColors) {
