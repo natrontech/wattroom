@@ -34,9 +34,15 @@ func mintSession(ctx context.Context, q *db.Queries, kept []savedRide, rides, lo
 		if err := wallet.MintRide(ctx, q, ride.userID, ride.rideID, wallet.Batzen(ride.watts, ride.ftp, group)); err != nil {
 			return fmt.Errorf("stats: wallet: %w", err)
 		}
-		// Whatever each rider wore is theirs to keep now, past the undo (#3154).
-		if err := wardrobe.MarkWorn(ctx, q, ride.userID); err != nil {
-			return fmt.Errorf("stats: outfit worn: %w", err)
+		// Whatever each rider wore is theirs to keep now, past the undo
+		// (#3154), and the ride may be a season's third (#3163), in the
+		// rider's own calendar.
+		tz, err := q.UserTimezone(ctx, ride.userID)
+		if err != nil {
+			return fmt.Errorf("stats: timezone: %w", err)
+		}
+		if err := wardrobe.RideSaved(ctx, q, ride.userID, ride.facts.StartedAt.In(Zone(tz))); err != nil {
+			return fmt.Errorf("stats: wardrobe: %w", err)
 		}
 	}
 	return nil
