@@ -51,7 +51,9 @@ type World struct {
 
 // RaceRider is one racer on the tick: metres from the km-0 klaxon, their
 // speed, and when they crossed the line — to the millisecond, inside the
-// second they crossed it in — once they have.
+// second they crossed it in — once they have. On the race's clock: the
+// klaxon plus their racing time, so a span the coach neutralised after the
+// klaxon is not in it.
 type RaceRider struct {
 	M        float64 `json:"m"`
 	V        float64 `json:"v"`

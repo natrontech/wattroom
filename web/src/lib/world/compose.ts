@@ -7,9 +7,10 @@ import { makeCrew, type Crew, type Pedalling } from './crew';
 import { disposeTree } from './dispose';
 import { makeSight } from './materials';
 import { makeRig, type Follow } from './rig';
+import { GEO } from './rider-rig';
 import { type Route } from '$lib/road/route';
 import { at } from '$lib/road/along';
-import { advance, defaultRiders, trainerFor, type Env } from './sim';
+import { advance, botWatts, defaultRiders, trainerFor, type Env } from './sim';
 import { buildStage, summitOf, type Stage } from './stage';
 import type { Style } from './styles';
 import type { Failure } from './ride-view';
@@ -38,7 +39,18 @@ export type MountOptions = {
 	onTick?: (hud: Hud) => void; // a few times a second, while the loop runs
 	/** Once, when a world that started stops: rideView() takes it from there (#3080). */
 	onFail?: (why: Failure) => void;
+	/**
+	 * A still moment, the dev gallery's (#3672): every rider, crank and
+	 * breath of wind placed from the metre, drawn and held, so two loads of
+	 * one moment are one frame. `p` is the ride's progress, 0–1, for the light.
+	 */
+	moment?: Moment;
 };
+
+export type Moment = { m: number; p: number };
+
+/** Metres a crank turn carries a rider: a moment's pedals are placed by it. */
+const CRANK_M = 7;
 
 const HUD_EVERY = 0.25; // seconds of real time between HUD snapshots
 const SUBSTEP = 0.1; // sim seconds per integration step, so 16× does not tunnel through a crest
@@ -57,6 +69,15 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		stand: 0,
 	}));
 	const summit = world.markers.find((m) => m.kind === 'summit');
+	const moment = opts.moment;
+	if (moment)
+		riders.forEach((r, i) => {
+			r.d = r.at = moment.m + r.d;
+			// A stand-in rides the watts its model gives it there, so its ring shows a zone.
+			if (!r.you) r.watts = botWatts(r, at(route, r.d).grade, moment.m);
+			pedal[i].crank = (r.d / CRANK_M) * 2 * Math.PI;
+			pedal[i].wheel = r.d / GEO.wheelR;
+		});
 
 	const scene = new THREE.Scene();
 	// Near at 1 m: at 0.5 the depth buffer resolved 0.12 m at 1 km, and the
@@ -125,8 +146,10 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 
 	let t = 0;
 	let sinceHud = HUD_EVERY;
-	function advanceBy(real: number) {
+	function advanceBy(seconds: number) {
 		if (!crew) return;
+		// A moment holds: nothing it draws moves with the clock.
+		const real = moment ? 0 : seconds;
 		const dt = real * speedup;
 		t += dt;
 		sight.uTime.value += real;
@@ -146,6 +169,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	}
 
 	dress(opts.style);
+	if (moment) sight.uTime.value = moment.m / 10;
 	advanceBy(0);
 
 	return {
@@ -167,8 +191,41 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		setSpeedup(factor: number) {
 			speedup = factor;
 		},
-		/** Nothing moves: you have stopped pedalling, every rider stands, nobody turns the model. */
-		idle: () => you.watts === 0 && !controls && riders.every((r) => r.v < 0.05),
+		/** Nothing moves: a held moment, or you have stopped pedalling, every rider stands and nobody turns the model. */
+		idle: () =>
+			!!moment ||
+			(you.watts === 0 && !controls && riders.every((r) => r.v < 0.05)),
+		/**
+		 * What a design capture measures (#3672, docs/design/TARGETS.md): the
+		 * field of view, the moment drawn, and your figure's height on screen
+		 * as a share of the frame.
+		 */
+		probe() {
+			const box = new THREE.Box3();
+			const figure = crew?.you;
+			let bboxH = 0;
+			if (figure) {
+				figure.updateWorldMatrix(true, false);
+				camera.updateMatrixWorld();
+				box.setFromObject(figure);
+				let lo = Infinity;
+				let hi = -Infinity;
+				const v = new THREE.Vector3();
+				for (const x of [box.min.x, box.max.x])
+					for (const y of [box.min.y, box.max.y])
+						for (const z of [box.min.z, box.max.z]) {
+							v.set(x, y, z).project(camera);
+							lo = Math.min(lo, v.y);
+							hi = Math.max(hi, v.y);
+						}
+				bboxH = Math.round(((hi - lo) / 2) * 1000) / 1000;
+			}
+			return {
+				camera: { fov: Math.round(camera.fov * 100) / 100 },
+				moment: moment ?? null,
+				figure: { bboxH },
+			};
+		},
 		dispose() {
 			controls?.dispose();
 			disposeTree(scene);

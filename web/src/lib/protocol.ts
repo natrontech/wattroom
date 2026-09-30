@@ -226,6 +226,10 @@ export interface GameState {
   teamDistance?: number /* float64 */;
   riders: { [key: string]: GameRider};
   podium?: SprintScore[];
+  /**
+   * A race's own (#3658): its clock, and its closing card.
+   */
+  race?: RaceState;
 }
 
 //////////
@@ -1116,6 +1120,7 @@ export interface ClientMessage {
   away?: AwayState;
   device?: DeviceKind;
   roadside?: Roadside;
+  drive?: Drive;
 }
 /**
  * ServerTick is a voice channel's coalesced 1 Hz broadcast: every rider's
@@ -1284,6 +1289,63 @@ export const UnrankedFreshWeight = "fresh_weight";
  * the closing card tells them kept them off the results.
  */
 export const UnrankedUnconfirmedWeight = "unconfirmed_weight";
+/**
+ * "Don't make me shift": WattRoom chose the watts, so the ride is
+ * untimeable and the race cannot place it (ADR-0084, ADR-0074).
+ */
+export const UnrankedUntimeable = "untimeable";
+/**
+ * RaceVoidTooFew is a race whose flag found fewer than RaceMinRiders on the
+ * session's timeline: it never starts, and says so.
+ */
+export const RaceVoidTooFew = "too_few";
+/**
+ * Drive is how a rider's trainer rides a road, as their screen says when it
+ * opens and whenever it changes (#3658): ErgByRoad is "Don't make me shift",
+ * where WattRoom holds the watts, which a race rides unranked.
+ */
+export interface Drive {
+  ergByRoad: boolean;
+}
+/**
+ * RaceState is a race on the tick (#3658, ADR-0067): when the flag drops and
+ * when the klaxon sends it from km 0, whether the coach has neutralised it,
+ * and — once it is done — the closing card. The places ride World.Racers.
+ */
+export interface RaceState {
+  flagAtMs: number /* int64 */;
+  klaxonAtMs: number /* int64 */;
+  neutralised?: boolean;
+  /**
+   * Why the race never started: RaceVoidTooFew.
+   */
+  void?: string;
+  /**
+   * The closing card, per Category D–A. Never stored (ADR-0074).
+   */
+  results?: RaceBracket[];
+}
+/**
+ * RaceBracket is one Category on the closing card: its finishers in order,
+ * the ones the race could not place — shown, and told why — and whether the
+ * Category had one rider, who "rode alone".
+ */
+export interface RaceBracket {
+  category: string;
+  placed?: RaceFinisher[];
+  unranked?: RaceFinisher[];
+  alone?: boolean;
+}
+/**
+ * RaceFinisher is one rider over the line: their time from the klaxon to the
+ * millisecond, and why they are unplaced (an Unranked reason), if they are.
+ */
+export interface RaceFinisher {
+  riderId: string;
+  name: string;
+  ms: number /* int64 */;
+  why?: string;
+}
 
 //////////
 // source: reactions.go
@@ -1968,7 +2030,9 @@ export interface World {
 /**
  * RaceRider is one racer on the tick: metres from the km-0 klaxon, their
  * speed, and when they crossed the line — to the millisecond, inside the
- * second they crossed it in — once they have.
+ * second they crossed it in — once they have. On the race's clock: the
+ * klaxon plus their racing time, so a span the coach neutralised after the
+ * klaxon is not in it.
  */
 export interface RaceRider {
   m: number /* float64 */;

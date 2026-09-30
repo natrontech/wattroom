@@ -30,6 +30,46 @@ func (q *Queries) AddWardrobeItem(ctx context.Context, arg AddWardrobeItemParams
 	return acquired_at, err
 }
 
+const countRidesStartedBetween = `-- name: CountRidesStartedBetween :one
+select count(*)::int from rides
+where user_id = $1
+  and started_at >= $2 and started_at < $3
+`
+
+type CountRidesStartedBetweenParams struct {
+	UserID pgtype.UUID
+	FromAt pgtype.Timestamptz
+	ToAt   pgtype.Timestamptz
+}
+
+// The rides a rider started in [from_at, to_at): a season's window counts
+// them (#3163).
+func (q *Queries) CountRidesStartedBetween(ctx context.Context, arg CountRidesStartedBetweenParams) (int32, error) {
+	row := q.db.QueryRow(ctx, countRidesStartedBetween, arg.UserID, arg.FromAt, arg.ToAt)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const earnWardrobeItem = `-- name: EarnWardrobeItem :exec
+insert into wardrobe (user_id, item_id, source, acquired_at)
+values ($1, $2, 'earned', $3)
+on conflict (user_id, item_id) do nothing
+`
+
+type EarnWardrobeItemParams struct {
+	UserID     pgtype.UUID
+	ItemID     string
+	AcquiredAt pgtype.Timestamptz
+}
+
+// An earned item joins the wardrobe once: earned again in a later year, it
+// keeps the day it was first earned (#3163).
+func (q *Queries) EarnWardrobeItem(ctx context.Context, arg EarnWardrobeItemParams) error {
+	_, err := q.db.Exec(ctx, earnWardrobeItem, arg.UserID, arg.ItemID, arg.AcquiredAt)
+	return err
+}
+
 const exportUserWardrobe = `-- name: ExportUserWardrobe :many
 select item_id, source, acquired_at, first_worn_at from wardrobe
 where user_id = $1

@@ -104,14 +104,16 @@ func turnedRound(r road.Road) road.Road {
 
 // RideMode is ADR-0062's word for how a ride was ridden. An empty workout
 // marked unscored is a free ride on a rider's own and a game in a session —
-// both save that way — and anything else is a workout. Bunch and race arrive
-// with the sessions that ride a road.
+// both save that way, a race's game as a race (#3658) — and anything else is
+// a workout. Bunch arrives with the sessions that ride a road.
 func RideMode(workoutJSON string, inSession bool) string {
 	segments, _ := workout.Parse(workoutJSON)
-	if len(segments) > 0 || !workout.Unscored(workoutJSON) {
+	switch {
+	case len(segments) > 0 || !workout.Unscored(workoutJSON):
 		return "workout"
-	}
-	if inSession {
+	case inSession && workout.Race(workoutJSON):
+		return "race"
+	case inSession:
 		return "game"
 	}
 	return "free"

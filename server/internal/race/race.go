@@ -42,6 +42,9 @@ type Race struct {
 	profile road.Road
 	klaxon  time.Time
 	racers  map[string]*racer
+	// Time neutralised since the klaxon: a finish is stamped on the race's
+	// clock, so a hold never counts against anyone's time.
+	held time.Duration
 }
 
 // New lines entrants up on profile for a flag dropping at flag: the neutral
@@ -90,9 +93,56 @@ func (r *Race) Step(at time.Time, watts map[string]int) {
 		if length := r.profile.LengthM; from < length && rc.pace.Distance >= length {
 			// The photo finish: the crossing, placed inside this second.
 			inside := (length - from) / (rc.pace.Distance - from)
-			rc.finishMs = at.Add(-time.Duration((1 - inside) * float64(time.Second))).UnixMilli()
+			rc.finishMs = at.Add(-time.Duration((1-inside)*float64(time.Second)) - r.held).UnixMilli()
 		}
 	}
+}
+
+// Klaxon is when the race leaves km 0: the flag plus the neutral zone, and
+// later by any time the race spent neutralised before it.
+func (r *Race) Klaxon() time.Time { return r.klaxon }
+
+// Neutralised takes the span [from, to) out of the race (#3658): the coach
+// held it, so nobody moved and nobody's silence in it counts against the
+// disconnect grace. A neutral zone the hold reached ends that much later;
+// one after the klaxon comes off every later finish instead. The owner does
+// not Step inside the span.
+func (r *Race) Neutralised(from, to time.Time) {
+	held := to.Sub(from)
+	if held <= 0 {
+		return
+	}
+	if r.klaxon.After(from) {
+		r.klaxon = r.klaxon.Add(held)
+	} else {
+		r.held += held
+	}
+	for _, rc := range r.racers {
+		rc.heardAt = rc.heardAt.Add(held)
+	}
+}
+
+// Close ends the race where it stands (#3658): whoever has not crossed the
+// line is out of it, and the finishers keep their places. False when it was
+// already over.
+func (r *Race) Close() bool {
+	riding := r.riding()
+	for _, rc := range riding {
+		rc.out = true
+	}
+	return len(riding) > 0
+}
+
+// LeaderETA is how long the racer farthest along, still riding, takes to the
+// line at their speed now; false when nobody is riding towards it.
+func (r *Race) LeaderETA() (time.Duration, bool) {
+	riding := r.riding()
+	if len(riding) == 0 || riding[0].pace.Speed <= 0 {
+		return 0, false
+	}
+	lead := riding[0]
+	left := max(0, r.profile.LengthM-lead.pace.Distance)
+	return time.Duration(left / lead.pace.Speed * float64(time.Second)), true
 }
 
 // asReference is ADR-0067's physics: the reference rider's watts at this
