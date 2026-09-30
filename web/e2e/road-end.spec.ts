@@ -123,6 +123,15 @@ test('a solo route ride saves at its kilometre, carries on, and rides back from 
 	await expect
 		.poll(km, { message: 'the dot did not turn back', timeout: 60_000 })
 		.toBeLessThan(2.2);
+	// The Skyline looks ahead on the way back too (#3059): it draws the
+	// road as this lap rides it, so its metres grow though the stored
+	// road's count down.
+	const skyline = page.getByTestId('skyline');
+	const along = async () => Number(await skyline.getAttribute('data-along'));
+	const back = await along();
+	await expect
+		.poll(along, { message: 'the Skyline ran backwards', timeout: 15_000 })
+		.toBeGreaterThan(back);
 
 	await page.getByRole('button', { name: 'End ride' }).click();
 	await expect(page.getByText('See it in your history')).toBeVisible({

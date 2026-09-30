@@ -125,6 +125,10 @@ export function createRoadLaps(
 		get lap() {
 			return lap;
 		},
+		/** This lap runs back down the road, from its far end (#3205). */
+		get reverse() {
+			return reverse;
+		},
 		second: (watts: number, at: number): RoadSecond => ride.second(watts, at),
 		/** The next lap, from the end this one reached (#3205). */
 		turn(way: 'back' | 'again') {

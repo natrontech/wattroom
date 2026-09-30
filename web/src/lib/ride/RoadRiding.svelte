@@ -22,6 +22,7 @@
 	import RoadEnd from '$lib/ride/RoadEnd.svelte';
 	import { endRideLabel, roadEndOffered } from '$lib/ride/road-end';
 	import RoadPick from '$lib/ride/RoadPick.svelte';
+	import Skyline from '$lib/ride/Skyline.svelte';
 	import { carryOnFrom, type RideableRoute } from '$lib/ride/roads';
 	import { createSoloRoadRide } from '$lib/ride/solo-road.svelte';
 	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
@@ -227,6 +228,17 @@
 			{...free.road && roadContext(free.road)}
 			split={ghost.split ?? undefined}
 		/>
+		{#if free.road}
+			<!-- The horizon (#3059): the road ahead and your dot. -->
+			<div class="h-40">
+				<Skyline
+					road={route.road}
+					m={free.road.m}
+					mps={free.road.virtualMps}
+					reverse={free.road.reverse}
+				/>
+			</div>
+		{/if}
 		<button onclick={() => void end()} class="btn btn-primary btn-lg"
 			>{endRideLabel(free)}</button
 		>

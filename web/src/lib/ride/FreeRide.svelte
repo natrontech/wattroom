@@ -27,6 +27,7 @@
 	import RoadEnd from '$lib/ride/RoadEnd.svelte';
 	import { endRideLabel, roadEndOffered } from '$lib/ride/road-end';
 	import RoadPick from '$lib/ride/RoadPick.svelte';
+	import Skyline from '$lib/ride/Skyline.svelte';
 	import { roadsEnabled } from '$lib/ride/roads';
 	import Minus from '@lucide/svelte/icons/minus';
 	import Plus from '@lucide/svelte/icons/plus';
@@ -243,6 +244,17 @@
 				     included, so it says so under them (ADR-0008, #2804). -->
 				<HrShare class="mt-2" />
 			</div>
+			{#if road}
+				<!-- The horizon on a road (#3059): the road ahead and your dot. -->
+				<div class="h-40">
+					<Skyline
+						road={road.profile}
+						m={road.m}
+						mps={road.virtualMps}
+						reverse={road.reverse}
+					/>
+				</div>
+			{/if}
 		</section>
 
 		{#if free?.saving}

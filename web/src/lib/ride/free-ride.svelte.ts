@@ -83,6 +83,10 @@ export function createFreeRide(deps: {
 					length: onRoad.route.road.length,
 					lap: onRoad.laps.lap,
 					borrowed: !!onRoad.route.borrowed,
+					/** The road's own heights, for the Skyline (#3059). */
+					profile: onRoad.route.road,
+					/** This lap rides it back from the far end: `m` counts down. */
+					reverse: onRoad.laps.reverse,
 					...here,
 				}
 			: null,

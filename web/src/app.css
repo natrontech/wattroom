@@ -260,6 +260,14 @@
  * of its own. The tile frames and the trim face keep --color-edge. */
 @theme inline {
 	--color-frame: color-mix(in oklab, var(--color-muted) 15%, transparent);
+	/* The Skyline's five grade steps (#3059): the theme's own neon, stronger
+	   with each, so every theme family gets its ramp without a hex of its own.
+	   Held to the gate in grade-ramp.test.ts. */
+	--color-grade-1: color-mix(in oklab, var(--color-neon) 20%, transparent);
+	--color-grade-2: color-mix(in oklab, var(--color-neon) 35%, transparent);
+	--color-grade-3: color-mix(in oklab, var(--color-neon) 50%, transparent);
+	--color-grade-4: color-mix(in oklab, var(--color-neon) 70%, transparent);
+	--color-grade-5: color-mix(in oklab, var(--color-neon) 100%, transparent);
 }
 
 /*
