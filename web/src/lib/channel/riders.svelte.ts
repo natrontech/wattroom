@@ -197,6 +197,7 @@ export function createRiders(deps: RiderDeps) {
 					deps.workout(),
 					you.ftp,
 					deps.recording.trace,
+					undefined,
 					road,
 				)
 			: null,

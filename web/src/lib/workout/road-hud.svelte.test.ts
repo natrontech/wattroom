@@ -53,6 +53,7 @@ describe('slot 1 and the HUD say one road readout (#3639)', () => {
 				workout,
 				250,
 				[],
+				undefined,
 				readout,
 			);
 			expect(published.at(-1)?.road, `second ${s}`).toEqual(block.road);

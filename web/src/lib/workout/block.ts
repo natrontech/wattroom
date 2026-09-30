@@ -8,6 +8,16 @@ import type { Segment, TargetInfo, Workout } from '$lib/workout/types';
 export const LAST_BLOCK_SECONDS = 6;
 
 /**
+ * How the trainer rides the block (ADR-0062's table): to the watts in ERG;
+ * in ERG on a route whose blocks run by the clock, the road only shown
+ * ("scenery"); or the road's own grade in SIM, felt as ADR-0062 scales it.
+ */
+export type BlockTrainer =
+	| { kind: 'erg' }
+	| { kind: 'scenery' }
+	| { kind: 'road'; grade: number; felt: number };
+
+/**
  * The block a rider is in, as every riding surface reads it — the live
  * shell's, the solo ride's and the ramp test's.
  */
@@ -35,6 +45,8 @@ export interface Block {
 	 */
 	last: { watts: number; onTarget: number } | null;
 	next: { label: string; watts: number; seconds: number } | null;
+	/** How the trainer rides it: slot 1's trainer chip (#3485). */
+	trainer: BlockTrainer;
 	/** Where a ride on a road is (#3639): the readout the HUD is sent too. */
 	road?: RoadReadout;
 }
@@ -117,6 +129,8 @@ export function describeBlock(
 	ftp: number,
 	/** The rider's own trace, for the finished block's line; none, no line. */
 	trace: TracePoint[] = [],
+	/** How the trainer rides it, where that is not ERG to the watts (#3485). */
+	trainer: BlockTrainer = { kind: 'erg' },
 	/** Where on its road the ride is this second (#3639); off a road, none. */
 	road?: RoadReadout,
 ): Block {
@@ -170,6 +184,7 @@ export function describeBlock(
 				? lastBlock(segments[info.segmentIndex - 1], trace, ftp, info.bias)
 				: null,
 		secondsLeft: Math.round(info.secondsRemainingInSegment),
+		trainer,
 		cadenceLow: info.segment.cadenceLow,
 		cadenceHigh: info.segment.cadenceHigh,
 		hrLow: info.segment.hrLow,

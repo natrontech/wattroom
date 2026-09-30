@@ -71,6 +71,18 @@ export function createAheadEase(start: number = SKYLINE.aheadM) {
 export const stepsPerTick = (mps: number, reduced: boolean): boolean =>
 	reduced || mps * 3.6 < SKYLINE.stillKph;
 
+/**
+ * Each grade step's fill, gentlest first (app.css, gated in
+ * grade-ramp.test.ts): the Skyline's and the HUD's strip's one ramp.
+ */
+export const GRADE_FILL = [
+	'fill-grade-1',
+	'fill-grade-2',
+	'fill-grade-3',
+	'fill-grade-4',
+	'fill-grade-5',
+];
+
 /** 0–4: which of the five steps a grade falls in. A descent is the first. */
 export function gradeStep(pct: number): number {
 	return SKYLINE.gradeEdges.filter((edge) => pct >= edge).length;

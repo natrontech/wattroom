@@ -29,7 +29,7 @@
 		eyebrow = '',
 		controls,
 		aside,
-		erg = false,
+		drives = false,
 	}: {
 		block: Block | null;
 		elapsed: number;
@@ -49,15 +49,17 @@
 		/** Anything the screen wants between the clock and the controls. */
 		aside?: Snippet;
 		/**
-		 * This screen's trainer is holding the targets in ERG, so the header
-		 * may say so (#3090). Off where nothing is paired, or another of the
-		 * rider's screens holds it: a chip naming a mode no trainer is in is
-		 * a claim, not a fact.
+		 * This screen drives the trainer, so the header may say how — ERG to
+		 * the watts, the road as scenery, or the road's grade (#3090, #3485).
+		 * Off where nothing is paired, or another of the rider's screens holds
+		 * it: a chip naming a mode no trainer is in is a claim, not a fact.
 		 */
-		erg?: boolean;
+		drives?: boolean;
 	} = $props();
 
 	const bands = $derived(blockBands(block, cadence, hr));
+	const CHIP =
+		'border-neon/40 text-muted rounded border px-2 leading-tight tracking-normal normal-case';
 </script>
 
 <header class="flex flex-wrap items-end gap-x-6 gap-y-3">
@@ -101,9 +103,12 @@
 			<div class="shrink-0">
 				<p class="eyebrow flex items-center gap-2">
 					target
-					{#if erg}<span
-							class="border-neon/40 text-muted rounded border px-2 leading-tight tracking-normal normal-case"
-							>ERG {block.watts} W</span
+					{#if drives && block.trainer.kind !== 'road'}<span
+							data-testid="trainer-chip"
+							class={CHIP}
+							>{block.trainer.kind === 'scenery'
+								? 'ERG: the road is scenery'
+								: `ERG ${block.watts} W`}</span
 						>{/if}
 				</p>
 				<p
@@ -113,6 +118,17 @@
 					{block.watts} W · {block.band.low}–{block.band.high}
 				</p>
 			</div>
+		{/if}
+		{#if drives && block.trainer.kind === 'road'}
+			<!-- On a road in SIM there are no watts to hold: the road's grade,
+			     and the grade the trainer is given for it (ADR-0062). -->
+			<p class="shrink-0 self-center">
+				<span data-testid="trainer-chip" class="{CHIP} eyebrow"
+					>ROAD {block.trainer.grade.toFixed(1)} % · feel {block.trainer.felt.toFixed(
+						1,
+					)} %</span
+				>
+			</p>
 		{/if}
 		{#each bands as band (band.unit)}
 			<!-- The block's own band (#66, #67): the work itself on a torque or a

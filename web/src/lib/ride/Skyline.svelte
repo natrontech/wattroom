@@ -23,6 +23,7 @@
 		chipsIn,
 		createAheadEase,
 		frameFor,
+		GRADE_FILL,
 		SKYLINE,
 		stepsPerTick,
 		tileOf,
@@ -60,15 +61,6 @@
 	/** The dot's halo, painted once: the watt colour fading out, no filter. */
 	const HALO =
 		'radial-gradient(circle, var(--color-watt) 0 28%, color-mix(in oklab, var(--color-watt) 35%, transparent) 42%, transparent 70%)';
-
-	/** Each grade step's fill, gentlest first (app.css, gated in grade-ramp.test.ts). */
-	const FILL = [
-		'fill-grade-1',
-		'fill-grade-2',
-		'fill-grade-3',
-		'fill-grade-4',
-		'fill-grade-5',
-	];
 
 	// The road as this lap rides it: the Skyline always looks ahead.
 	const road = $derived(reverse ? turnedRound(stored) : stored);
@@ -159,7 +151,7 @@
 					{#each tile.areas as area, step (step)}
 						{#if area}<path
 								d={area}
-								class="{FILL[step]} forced-colors:fill-[GrayText]"
+								class="{GRADE_FILL[step]} forced-colors:fill-[GrayText]"
 							/>{/if}
 					{/each}
 					<path
