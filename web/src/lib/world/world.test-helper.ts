@@ -1,5 +1,7 @@
 import type { TrackPoint } from '$lib/road/parse';
 import type { Route } from '$lib/road/route';
+import { frameAt } from '$lib/road/along';
+import { ROAD_W } from './terrain/road-profile';
 import type { World } from './world';
 
 /**
@@ -22,14 +24,18 @@ export function folds(world: World): number {
 	return n;
 }
 
-/** The most the drawn ground rises above the road's centreline, in metres. */
+/** The most the drawn ground rises above the drawn road, across the carriageway, in metres. */
 export function worstRiseThroughRoad(route: Route, world: World): number {
 	let worst = -Infinity;
-	for (let i = 0; i < route.x.length; i += 7)
-		worst = Math.max(
-			worst,
-			world.heightAt(route.x[i], route.z[i]) - route.ele[i],
-		);
+	for (let i = 0; i < route.x.length; i += 7) {
+		const { lx, lz } = frameAt(route, i);
+		for (const u of [-ROAD_W / 2, 0, ROAD_W / 2]) {
+			const x = route.x[i] + lx * u;
+			const z = route.z[i] + lz * u;
+			const road = world.roadSurfaceAt(x, z) ?? route.ele[i];
+			worst = Math.max(worst, world.heightAt(x, z) - road);
+		}
+	}
 	return worst;
 }
 

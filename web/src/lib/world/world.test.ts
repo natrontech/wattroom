@@ -7,6 +7,10 @@ import { at } from '$lib/road/along';
 import { syntheticGpx, syntheticPoints } from './synthetic';
 import { generate, type World } from './world';
 import { folds, worstRiseThroughRoad } from './world.test-helper';
+import { check } from './placement/check';
+import type { Placement } from './placement/types';
+import { bendsOf } from './terrain/road-frame';
+import { across, bankOf, drawnRows, ROAD_W } from './terrain/road-profile';
 
 /**
  * The prototype's check.ts, as tests (#3021): the smallest set of things
@@ -165,5 +169,63 @@ describe('the world', () => {
 
 	it('folds no terrain face into a wall steeper than 58°', () => {
 		expect(folds(world)).toBe(0);
+	});
+
+	it('banks the road surface into bends as the ribbon is drawn', () => {
+		// The ribbon's own rows and curvature, as geometry.ts builds them.
+		const rows = drawnRows(route);
+		const curve = bendsOf(
+			rows.map((p) => p.x),
+			rows.map((p) => p.z),
+		);
+		let bends = 0;
+		let worst = 0;
+		for (let r = 50; r < rows.length - 50; r += 12) {
+			const k = curve[r];
+			if (Math.abs(k) < 1 / 150) continue;
+			bends++;
+			const p = rows[r];
+			const [lx, lz] = [Math.cos(p.heading), -Math.sin(p.heading)];
+			for (const u of [-ROAD_W / 2, ROAD_W / 2]) {
+				const surface = world.roadSurfaceAt(p.x + lx * u, p.z + lz * u)!;
+				worst = Math.max(
+					worst,
+					Math.abs(surface - (p.ele + across(u, bankOf(k)))),
+				);
+			}
+		}
+		expect(bends).toBeGreaterThan(20);
+		expect(worst).toBeLessThan(0.05);
+	});
+
+	it('stands road furniture on the drawn road, bank and all (#3219)', () => {
+		const posts: Placement[] = world.pieces
+			.filter((p) => p.kind === 'delineator')
+			.map((p, i) => ({
+				id: `post-${i}`,
+				kind: p.kind,
+				cls: 'furniture',
+				footprint: [
+					[p.x - 0.05, p.z - 0.05],
+					[p.x + 0.05, p.z - 0.05],
+					[p.x + 0.05, p.z + 0.05],
+					[p.x - 0.05, p.z + 0.05],
+				],
+				base: p.y,
+				height: 1,
+			}));
+		const road = {
+			points: Array.from(route.x, (x, i) => [x, route.z[i]] as const),
+			halfWidth: ROAD_W / 2,
+		};
+		// Where the ribbon is drawn it is the ground a post stands on.
+		const drawn = (x: number, z: number) =>
+			world.roadSurfaceAt(x, z) ?? world.heightAt(x, z);
+		expect(posts.length).toBeGreaterThan(100);
+		// Standing on it is the ground's; how far from the edge each post stands is the set pieces' (#3077).
+		const standing = check(posts, [road], drawn).filter(
+			(v) => v.rule === 'O2' || v.rule === 'O3',
+		);
+		expect(standing).toEqual([]);
 	});
 });

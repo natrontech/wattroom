@@ -22,7 +22,10 @@ export type Ground = {
 	field: Field;
 	nearest: Nearest;
 	heightAt: (x: number, z: number) => number;
-	biomeAt: (x: number, z: number) => Biome;
+	/** Null where no ground is drawn: nothing stands there. */
+	biomeAt: (x: number, z: number) => Biome | null;
+	/** The road's own surface where a road runs: what road furniture stands on. */
+	roadSurfaceAt: (x: number, z: number) => number | null;
 };
 
 type Ctx = Ground & {
@@ -67,7 +70,8 @@ export function dress(route: Route, c: Ctx): Props {
 			const off = 15 + rand() * rand() * 90; // most houses close to the street
 			const hx = route.x[j] + lx * off * s;
 			const hz = route.z[j] + lz * off * s;
-			if (!clear(hx, hz, 13) || biomeAt(hx, hz) === Biome.Water) continue;
+			const b = biomeAt(hx, hz);
+			if (!clear(hx, hz, 13) || b === null || b === Biome.Water) continue;
 			if (placed.some(([px, pz]) => (px - hx) ** 2 + (pz - hz) ** 2 < 15 ** 2))
 				continue;
 			placed.push([hx, hz]);

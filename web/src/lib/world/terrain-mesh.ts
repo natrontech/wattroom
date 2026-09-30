@@ -1,12 +1,15 @@
-// One crack-free surface: coarse vertices everywhere, coarse triangles
-// outside the fine chunks, then each fine chunk's own grid. A fine edge that
-// borders coarse ground takes the coarse edge's straight line, so the two
-// meet with no crack — and heightAt reads the triangles actually drawn, so
-// whatever stands on the ground stands on what the rider sees.
+// The drawn ground, chunk by chunk on the world lattice (#3075): a 160 m
+// chunk is a 40 m grid, or a 10 m one near a road or the camera. Every
+// vertex stands on a lattice point and takes the ground's height there, so
+// two neighbours agree wherever both have a vertex; a fine edge that borders
+// coarse ground takes the coarse edge's straight line, so the two meet with
+// no crack. heightAt reads the triangles actually drawn, so whatever stands
+// on the ground stands on what the rider sees.
+import { Biome } from './biome';
 import { shadeOf, type LandUse } from './land';
-
-export const CH = 4; // coarse cells per chunk
-export const F = 4; // fine subdivisions per coarse cell (40 m → 10 m)
+import { CHUNK_M, COARSE_M, FINE_M } from './place/lattice';
+import type { Ground } from './terrain/ground';
+import type { Line } from './terrain/lines';
 
 export type TerrainMesh = {
 	pos: Float32Array;
@@ -16,33 +19,113 @@ export type TerrainMesh = {
 	index: Uint32Array;
 };
 
-export type Grid = {
-	nx: number;
-	nz: number;
-	x0: number;
-	z0: number;
-	cell: number;
-	height: Float32Array;
-	roadDist: Float32Array;
-	biome: Uint8Array;
-	forest: Float32Array;
-	fine: (cx: number, cz: number) => boolean; // does this chunk get fine terrain?
-};
+export type Level = 'fine' | 'coarse';
+/** How finely a chunk is drawn, by its index in the local frame; null where none is. */
+export type Coverage = (ci: number, cj: number) => Level | null;
+export type ChunkAt = readonly [ci: number, cj: number];
 
-// The true ground at a fine vertex: its height and its distance to the road.
-// `coarseD` is the coarse grid's distance interpolated at the vertex, for a
-// vertex farther out than the road index searches.
-export type Probe = (
-	x: number,
-	z: number,
-	coarseD: number,
-) => { h: number; d: number };
+/** Chunks nearer a road than this are drawn fine: the road's earthworks all lie within it. */
+export const FINE_WITHIN = 60;
+/** The shade's reach, in metres: hollows darker, crests lighter over about this. */
+const SHADE_M = 3 * FINE_M;
+
+/** Metres from a point to a chunk's square. */
+function toChunk(x: number, z: number, ci: number, cj: number) {
+	const dx = Math.max(ci * CHUNK_M - x, 0, x - (ci + 1) * CHUNK_M);
+	const dz = Math.max(cj * CHUNK_M - z, 0, z - (cj + 1) * CHUNK_M);
+	return Math.sqrt(dx * dx + dz * dz);
+}
+
+/** The nearest any line comes to each chunk within `reach` of one, from vertices at most 20 m apart. */
+function roadReach(
+	lines: readonly Line[],
+	reach: number,
+	keep: (ci: number, cj: number) => boolean,
+) {
+	const best = new Map<string, { c: ChunkAt; d: number }>();
+	const span = Math.ceil(reach / CHUNK_M);
+	for (const l of lines) {
+		let since = Infinity;
+		for (let i = 0; i < l.x.length; i++) {
+			if (i > 0)
+				since += Math.sqrt(
+					(l.x[i] - l.x[i - 1]) ** 2 + (l.z[i] - l.z[i - 1]) ** 2,
+				);
+			if (since < 20 && i < l.x.length - 1) continue;
+			since = 0;
+			const ci0 = Math.floor(l.x[i] / CHUNK_M);
+			const cj0 = Math.floor(l.z[i] / CHUNK_M);
+			for (let cj = cj0 - span; cj <= cj0 + span; cj++)
+				for (let ci = ci0 - span; ci <= ci0 + span; ci++) {
+					if (!keep(ci, cj)) continue;
+					const d = toChunk(l.x[i], l.z[i], ci, cj);
+					if (d > reach) continue;
+					const id = `${ci}:${cj}`;
+					const was = best.get(id);
+					if (!was || d < was.d) best.set(id, { c: [ci, cj], d });
+				}
+		}
+	}
+	return best;
+}
+
+/**
+ * The whole corridor at once: every chunk within `reach` of a road, fine near
+ * one. What a world built before its ride uses; a streamed one asks around().
+ */
+export function corridor(lines: readonly Line[], reach: number) {
+	const near = roadReach(lines, reach, () => true);
+	const level: Coverage = (ci, cj) => {
+		const c = near.get(`${ci}:${cj}`);
+		return !c ? null : c.d <= FINE_WITHIN ? 'fine' : 'coarse';
+	};
+	return { level, chunks: [...near.values()].map((c) => c.c) };
+}
+
+/**
+ * The ground around a camera (docs/SPEC.md proposals, #3082 measures them):
+ * everything within `ground` metres, fine within `fine` and wherever a road
+ * runs. Two worlds built around one camera draw every chunk alike, so level
+ * of detail never hides a difference between them (#3226).
+ */
+export function around(
+	lines: readonly Line[],
+	cx: number,
+	cz: number,
+	reach = { ground: 4000, fine: 1200 },
+) {
+	const inside = (ci: number, cj: number) =>
+		toChunk(cx, cz, ci, cj) <= reach.ground;
+	const roads = roadReach(lines, FINE_WITHIN, inside);
+	const level: Coverage = (ci, cj) => {
+		const d = toChunk(cx, cz, ci, cj);
+		if (d > reach.ground) return null;
+		return d <= reach.fine || roads.has(`${ci}:${cj}`) ? 'fine' : 'coarse';
+	};
+	const r = Math.ceil(reach.ground / CHUNK_M);
+	const ci0 = Math.floor(cx / CHUNK_M);
+	const cj0 = Math.floor(cz / CHUNK_M);
+	const chunks: ChunkAt[] = [];
+	for (let cj = cj0 - r; cj <= cj0 + r; cj++)
+		for (let ci = ci0 - r; ci <= ci0 + r; ci++)
+			if (level(ci, cj)) chunks.push([ci, cj]);
+	return { level, chunks };
+}
+
+type Built = {
+	step: number;
+	row: number;
+	h: Float32Array;
+	biome: Uint8Array;
+	shade: Float32Array;
+	forest: Float32Array;
+};
 
 // Height on a grid of `row` columns at fractional (fx, fz), triangle by
 // triangle — the same split the index uses (a, a+row, a+1 | a+1, a+row, a+row+1).
 function onGrid(h: Float32Array, row: number, fx: number, fz: number) {
-	const ix = Math.floor(fx);
-	const iz = Math.floor(fz);
+	const ix = Math.min(row - 2, Math.floor(fx));
+	const iz = Math.min(row - 2, Math.floor(fz));
 	const tx = fx - ix;
 	const tz = fz - iz;
 	const a = h[iz * row + ix];
@@ -54,159 +137,185 @@ function onGrid(h: Float32Array, row: number, fx: number, fz: number) {
 		: d + (c - d) * (1 - tx) + (b - d) * (1 - tz);
 }
 
-export function buildMesh(g: Grid, probe: Probe, land: LandUse) {
-	const { nx, nz, cell, height, roadDist } = g;
-	const N = nx * nz;
-	const ncx = (nx - 1) / CH;
-	const ncz = (nz - 1) / CH;
-	const X = (ix: number) => g.x0 + ix * cell;
-	const Z = (iz: number) => g.z0 + iz * cell;
-	const pos: number[] = [];
-	const bio: number[] = [];
-	const shade: number[] = [];
-	const forest: number[] = [];
-	const index: number[] = [];
-	for (let k = 0; k < N; k++) {
-		const ix = k % nx;
-		const iz = Math.floor(k / nx);
-		pos.push(X(ix), height[k], Z(iz));
-		bio.push(g.biome[k]);
-		forest.push(g.forest[k]);
-		const at = (a: number, b: number) =>
-			height[
-				Math.min(nz - 1, Math.max(0, b)) * nx + Math.min(nx - 1, Math.max(0, a))
-			];
-		shade.push(
-			shadeOf(
-				height[k],
-				at(ix - 1, iz),
-				at(ix + 1, iz),
-				at(ix, iz - 1),
-				at(ix, iz + 1),
-				cell,
-			),
-		);
+export function createTerrain(
+	ground: Ground,
+	coverage: Coverage,
+	land: LandUse,
+) {
+	const built = new Map<string, Built | null>();
+
+	function build(ci: number, cj: number): Built | null {
+		const level = coverage(ci, cj);
+		if (!level) return null;
+		// Every height this chunk asks for lies on the 10 m lattice; neighbours ask for the same ones.
+		const asked = new Map<number, number>();
+		const groundAt = (x: number, z: number) => {
+			const k = Math.round(x / FINE_M) * 1e7 + Math.round(z / FINE_M);
+			let h = asked.get(k);
+			if (h === undefined) asked.set(k, (h = ground.heightAt(x, z)));
+			return h;
+		};
+		const step = level === 'fine' ? FINE_M : COARSE_M;
+		const n = CHUNK_M / step;
+		const row = n + 1;
+		const x0 = ci * CHUNK_M;
+		const z0 = cj * CHUNK_M;
+		const per = COARSE_M / step;
+		const coarseEdge = [
+			coverage(ci - 1, cj) !== 'fine', // i = 0
+			coverage(ci + 1, cj) !== 'fine', // i = n
+			coverage(ci, cj - 1) !== 'fine', // j = 0
+			coverage(ci, cj + 1) !== 'fine', // j = n
+		];
+		const h = new Float32Array(row * row);
+		for (let j = 0; j <= n; j++)
+			for (let i = 0; i <= n; i++) {
+				const x = x0 + i * step;
+				const z = z0 + j * step;
+				// A fine vertex on an edge the neighbour draws coarse lies on that edge's straight line.
+				const alongZ = (i === 0 && coarseEdge[0]) || (i === n && coarseEdge[1]);
+				const alongX = (j === 0 && coarseEdge[2]) || (j === n && coarseEdge[3]);
+				const offZ = j % per;
+				const offX = i % per;
+				if (level === 'fine' && alongZ && offZ !== 0) {
+					const za = z - offZ * step;
+					const t = offZ / per;
+					h[j * row + i] =
+						groundAt(x, za) * (1 - t) + groundAt(x, za + COARSE_M) * t;
+				} else if (level === 'fine' && alongX && offX !== 0) {
+					const xa = x - offX * step;
+					const t = offX / per;
+					h[j * row + i] =
+						groundAt(xa, z) * (1 - t) + groundAt(xa + COARSE_M, z) * t;
+				} else h[j * row + i] = groundAt(x, z);
+			}
+		const biome = new Uint8Array(row * row);
+		const shade = new Float32Array(row * row);
+		const forest = new Float32Array(row * row);
+		// Land use reads the fine ground whatever the chunk draws, so both sides of a seam agree.
+		for (let j = 0; j <= n; j++)
+			for (let i = 0; i <= n; i++) {
+				const k = j * row + i;
+				const x = x0 + i * step;
+				const z = z0 + j * step;
+				const l = groundAt(x - FINE_M, z);
+				const r = groundAt(x + FINE_M, z);
+				const u = groundAt(x, z - FINE_M);
+				const dn = groundAt(x, z + FINE_M);
+				const cover = land(
+					x,
+					z,
+					h[k],
+					(r - l) / (2 * FINE_M),
+					(dn - u) / (2 * FINE_M),
+					ground.nearest(x, z, 1)?.d ?? Infinity,
+				);
+				biome[k] = cover.biome;
+				forest[k] = cover.forest;
+				shade[k] = shadeOf(h[k], l, r, u, dn, SHADE_M);
+			}
+		return { step, row, h, biome, shade, forest };
 	}
-	for (let iz = 0; iz < nz - 1; iz++)
-		for (let ix = 0; ix < nx - 1; ix++) {
-			if (g.fine(Math.floor(ix / CH), Math.floor(iz / CH))) continue;
-			const a = iz * nx + ix;
-			index.push(a, a + nx, a + 1, a + 1, a + nx, a + nx + 1);
+
+	function chunk(ci: number, cj: number): Built | null {
+		const id = `${ci}:${cj}`;
+		if (!built.has(id)) built.set(id, build(ci, cj));
+		return built.get(id)!;
+	}
+
+	/** Where (x, z) lies in its chunk's grid, when a chunk is drawn there. */
+	function locate(x: number, z: number) {
+		const ci = Math.floor(x / CHUNK_M);
+		const cj = Math.floor(z / CHUNK_M);
+		const b = chunk(ci, cj);
+		if (!b) return null;
+		return {
+			b,
+			fx: (x - ci * CHUNK_M) / b.step,
+			fz: (z - cj * CHUNK_M) / b.step,
+		};
+	}
+
+	/** The drawn ground's height; the ground's own where nothing is drawn. */
+	function heightAt(x: number, z: number): number {
+		const at = locate(x, z);
+		return at ? onGrid(at.b.h, at.b.row, at.fx, at.fz) : ground.heightAt(x, z);
+	}
+
+	/** What grows at the drawn vertex nearest (x, z); null where no ground is drawn. */
+	function biomeAt(x: number, z: number): Biome | null {
+		const at = locate(x, z);
+		if (!at) return null;
+		return at.b.biome[
+			Math.round(at.fz) * at.b.row + Math.round(at.fx)
+		] as Biome;
+	}
+
+	/** The listed chunks as one mesh. */
+	function mesh(chunks: readonly ChunkAt[]): TerrainMesh {
+		const list = chunks
+			.map(([ci, cj]) => ({ ci, cj, b: chunk(ci, cj)! }))
+			.filter((c) => c.b);
+		const verts = list.reduce((s, c) => s + c.b.row * c.b.row, 0);
+		const tris = list.reduce((s, c) => s + 2 * (c.b.row - 1) ** 2, 0);
+		const pos = new Float32Array(verts * 3);
+		const biome = new Uint8Array(verts);
+		const shade = new Float32Array(verts);
+		const forest = new Float32Array(verts);
+		const index = new Uint32Array(tris * 3);
+		let v = 0;
+		let t = 0;
+		for (const { ci, cj, b } of list) {
+			const { row, step } = b;
+			for (let j = 0; j < row; j++)
+				for (let i = 0; i < row; i++) {
+					const k = j * row + i;
+					pos[(v + k) * 3] = ci * CHUNK_M + i * step;
+					pos[(v + k) * 3 + 1] = b.h[k];
+					pos[(v + k) * 3 + 2] = cj * CHUNK_M + j * step;
+				}
+			biome.set(b.biome, v);
+			shade.set(b.shade, v);
+			forest.set(b.forest, v);
+			for (let j = 0; j < row - 1; j++)
+				for (let i = 0; i < row - 1; i++) {
+					const a = v + j * row + i;
+					index.set([a, a + row, a + 1, a + 1, a + row, a + row + 1], t);
+					t += 6;
+				}
+			v += row * row;
 		}
+		return { pos, biome, shade, forest, index };
+	}
 
-	const fs = cell / F;
-	const M = CH * F + 1;
-	const fineChunks = new Map<number, Float32Array>(); // chunk → its drawn heights
-	const fineD = new Float32Array(M * M);
-	for (let cz = 0; cz < ncz; cz++)
-		for (let cx = 0; cx < ncx; cx++) {
-			if (!g.fine(cx, cz)) continue;
-			const ox = cx * CH;
-			const oz = cz * CH;
-			const fineH = new Float32Array(M * M);
-			fineChunks.set(cz * ncx + cx, fineH);
-			for (let j = 0; j < M; j++)
-				for (let i = 0; i < M; i++) {
-					const k = j * M + i;
-					const cornerI = i % F === 0;
-					const cornerJ = j % F === 0;
-					const edgeToCoarse =
-						(i === 0 && !g.fine(cx - 1, cz)) ||
-						(i === M - 1 && !g.fine(cx + 1, cz)) ||
-						(j === 0 && !g.fine(cx, cz - 1)) ||
-						(j === M - 1 && !g.fine(cx, cz + 1));
-					const onChunkCorner =
-						(i === 0 || i === M - 1) && (j === 0 || j === M - 1);
-					if (cornerI && cornerJ && (onChunkCorner || edgeToCoarse)) {
-						const c = (oz + j / F) * nx + ox + i / F; // a coarse vertex
-						fineH[k] = height[c];
-						fineD[k] = roadDist[c];
-					} else if (edgeToCoarse && (i === 0 || i === M - 1)) {
-						const a = (oz + Math.floor(j / F)) * nx + ox + i / F;
-						const t = (j % F) / F;
-						fineH[k] = height[a] * (1 - t) + height[a + nx] * t;
-						fineD[k] = roadDist[a] * (1 - t) + roadDist[a + nx] * t;
-					} else if (edgeToCoarse) {
-						const a = (oz + j / F) * nx + ox + Math.floor(i / F);
-						const t = (i % F) / F;
-						fineH[k] = height[a] * (1 - t) + height[a + 1] * t;
-						fineD[k] = roadDist[a] * (1 - t) + roadDist[a + 1] * t;
-					} else {
-						const p = probe(
-							X(ox) + i * fs,
-							Z(oz) + j * fs,
-							onGrid(
-								roadDist,
-								nx,
-								Math.min(nx - 1.0001, ox + i / F),
-								Math.min(nz - 1.0001, oz + j / F),
-							),
-						);
-						fineH[k] = p.h;
-						fineD[k] = p.d;
-					}
-				}
-			const base = pos.length / 3;
-			const h = (a: number, b: number) =>
-				fineH[
-					Math.min(M - 1, Math.max(0, b)) * M + Math.min(M - 1, Math.max(0, a))
-				];
-			for (let j = 0; j < M; j++)
-				for (let i = 0; i < M; i++) {
-					const k = j * M + i;
-					const x = X(ox) + i * fs;
-					const z = Z(oz) + j * fs;
-					pos.push(x, fineH[k], z);
-					const cover = land(
-						x,
-						z,
-						fineH[k],
-						(h(i + 1, j) - h(i - 1, j)) / (2 * fs),
-						(h(i, j + 1) - h(i, j - 1)) / (2 * fs),
-						fineD[k],
-					);
-					bio.push(cover.biome);
-					forest.push(cover.forest);
-					shade.push(
-						shadeOf(
-							fineH[k],
-							h(i - 1, j),
-							h(i + 1, j),
-							h(i, j - 1),
-							h(i, j + 1),
-							fs * 3,
-						),
-					);
-				}
-			for (let j = 0; j < M - 1; j++)
-				for (let i = 0; i < M - 1; i++) {
-					const a = base + j * M + i;
-					index.push(a, a + M, a + 1, a + 1, a + M, a + M + 1);
-				}
+	/**
+	 * The outline of the listed chunks: every edge with no drawn neighbour, as
+	 * segments ax, ay, az, bx, by, bz — where a plinth stands its walls.
+	 */
+	function rim(chunks: readonly ChunkAt[]): number[] {
+		const out: number[] = [];
+		for (const [ci, cj] of chunks) {
+			const b = chunk(ci, cj);
+			if (!b) continue;
+			const n = b.row - 1;
+			const vertex = (i: number, j: number) => [
+				ci * CHUNK_M + i * b.step,
+				b.h[j * b.row + i],
+				cj * CHUNK_M + j * b.step,
+			];
+			const sides: [boolean, (s: number) => number[]][] = [
+				[!coverage(ci - 1, cj), (s) => vertex(0, s)],
+				[!coverage(ci + 1, cj), (s) => vertex(n, s)],
+				[!coverage(ci, cj - 1), (s) => vertex(s, 0)],
+				[!coverage(ci, cj + 1), (s) => vertex(s, n)],
+			];
+			for (const [open, at] of sides)
+				if (open) for (let s = 0; s < n; s++) out.push(...at(s), ...at(s + 1));
 		}
+		return out;
+	}
 
-	const heightAt = (x: number, z: number) => {
-		const gx = Math.min(nx - 1.0001, Math.max(0, (x - g.x0) / cell));
-		const gz = Math.min(nz - 1.0001, Math.max(0, (z - g.z0) / cell));
-		const cx = Math.floor(gx / CH);
-		const cz = Math.floor(gz / CH);
-		const chunk = fineChunks.get(cz * ncx + cx);
-		if (chunk)
-			return onGrid(
-				chunk,
-				M,
-				Math.min(M - 1.0001, (gx - cx * CH) * F),
-				Math.min(M - 1.0001, (gz - cz * CH) * F),
-			);
-		return onGrid(height, nx, gx, gz);
-	};
-
-	const mesh: TerrainMesh = {
-		pos: new Float32Array(pos),
-		biome: new Uint8Array(bio),
-		shade: new Float32Array(shade),
-		forest: new Float32Array(forest),
-		index: new Uint32Array(index),
-	};
-	return { mesh, heightAt };
+	return { heightAt, biomeAt, mesh, rim, chunk };
 }
+
+export type Terrain = ReturnType<typeof createTerrain>;

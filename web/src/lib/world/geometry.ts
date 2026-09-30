@@ -3,12 +3,18 @@
 import * as THREE from 'three';
 import { Biome } from './biome';
 import { type Route } from '$lib/road/route';
-import { at, wrapAngle } from '$lib/road/along';
 import type { Palette, Style } from './styles';
 import type { World } from './world';
+import { bendsOf } from './terrain/road-frame';
+import {
+	bankOf,
+	drawnRows,
+	ROAD_W,
+	SHOULDER_DROP,
+} from './terrain/road-profile';
 
 export const EXAG = 1.2; // vertical exaggeration; the Alps read flat from a chase cam otherwise
-export const ROAD_W = 6.4; // a two-lane Swiss mountain road
+export { ROAD_W } from './terrain/road-profile';
 const ROAD_LIFT = 0.12;
 
 export const yOf = (route: Route, ele: number) => (ele - route.minEle) * EXAG;
@@ -53,8 +59,9 @@ export function terrain(
 }
 
 // The road, sampled from the same spline riders ride, every 2 m: shoulder,
-// edge, centre, edge, shoulder. Banked into bends (≤ 4°), inside columns
-// clamped to 0.85 × the bend radius so a hairpin never folds into a bow-tie.
+// edge, centre, edge, shoulder. Banked into bends (≤ 4°) by the curvature road
+// furniture stands on (bendsOf), inside columns clamped to 0.85 × the bend
+// radius so a hairpin never folds into a bow-tie.
 // uv carries (metres across, metres along) for the marking shader.
 export function road(
 	route: Route,
@@ -73,16 +80,22 @@ export function road(
 		shoulder > 0
 			? [half + shoulder, half, 0, -half, -(half + shoulder)]
 			: [half, 0, -half];
-	const drops = shoulder > 0 ? [-0.38, 0, 0, 0, -0.38] : [0, 0, 0];
+	const drops =
+		shoulder > 0 ? [-SHOULDER_DROP, 0, 0, 0, -SHOULDER_DROP] : [0, 0, 0];
 	const cols = offs.length;
 	const pos: number[] = [];
 	const uv: number[] = [];
 	const prev: THREE.Vector3[] = [];
-	for (let d = 0; d <= route.length + 1e-6; d += step) {
-		const p = at(route, d);
-		const k =
-			wrapAngle(at(route, d + 3).heading - at(route, d - 3).heading) / 6; // curvature, +left
-		const bank = Math.max(-0.07, Math.min(0.07, Math.atan((64 * k) / 9.81))); // v ≈ 8 m/s, ≤ 4°
+	const centre = drawnRows(route, step);
+	const bends = bendsOf(
+		centre.map((p) => p.x),
+		centre.map((p) => p.z),
+	);
+	for (let r = 0; r < centre.length; r++) {
+		const p = centre[r];
+		const d = r * step;
+		const k = bends[r]; // curvature, +left
+		const bank = bankOf(k);
 		const lx = Math.cos(p.heading); // left of travel
 		const lz = -Math.sin(p.heading);
 		const y = yOf(route, p.ele) + lift;
@@ -198,31 +211,21 @@ export function instanced(
 	return mesh;
 }
 
-// The world's edge as a plinth: walls from the ground down to a flat base,
-// so the route reads as a model on a table instead of a world that stops.
+// The world's edge as a plinth: walls from the ground's outline down to a
+// flat base, so the route reads as a model on a table instead of a world
+// that stops.
 export function plinth(
 	route: Route,
 	w: World,
 	depth = 220,
 ): THREE.BufferGeometry {
 	const base = yOf(route, route.minEle) - depth;
-	const rim: [number, number, number][] = [];
-	const push = (ix: number, iz: number) =>
-		rim.push([
-			w.x0 + ix * w.cell,
-			yOf(route, w.height[iz * w.nx + ix]),
-			w.z0 + iz * w.cell,
-		]);
-	for (let ix = 0; ix < w.nx; ix++) push(ix, 0);
-	for (let iz = 1; iz < w.nz; iz++) push(w.nx - 1, iz);
-	for (let ix = w.nx - 2; ix >= 0; ix--) push(ix, w.nz - 1);
-	for (let iz = w.nz - 2; iz >= 0; iz--) push(0, iz);
 	const pos: number[] = [];
-	for (let i = 0; i < rim.length; i++) {
-		const [ax, ay, az] = rim[i];
-		const [bx, by, bz] = rim[(i + 1) % rim.length];
-		pos.push(ax, ay, az, ax, base, az, bx, by, bz);
-		pos.push(bx, by, bz, ax, base, az, bx, base, bz);
+	for (let k = 0; k < w.rim.length; k += 6) {
+		const [ax, ay, az, bx, by, bz] = w.rim.slice(k, k + 6);
+		const [ya, yb] = [yOf(route, ay), yOf(route, by)];
+		pos.push(ax, ya, az, ax, base, az, bx, yb, bz);
+		pos.push(bx, yb, bz, ax, base, az, bx, base, bz);
 	}
 	const g = new THREE.BufferGeometry();
 	g.setAttribute(

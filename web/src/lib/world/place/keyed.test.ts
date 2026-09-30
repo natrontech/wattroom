@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cm, keyed, KINDS, saltOf, unit, type Salt } from './keyed';
+import { cm, keyed, keyer, KINDS, saltOf, unit, type Salt } from './keyed';
 import { cosDeg, sinDeg } from './sine';
 
 const SALT: Salt = [1, 2, 3, 4];
@@ -19,6 +19,21 @@ describe('keyed', () => {
 		expect(keyed(SALT, 'tree', 3, 4, 0)).not.toBe(base);
 		// Both halves of a large integer count.
 		expect(keyed(SALT, 'tree', 2 ** 32)).not.toBe(keyed(SALT, 'tree', 0));
+	});
+
+	it('keys the same through a keyer', () => {
+		for (const kind of KINDS) {
+			const k = keyer(SALT, kind);
+			for (const [a, b] of [
+				[0, 0],
+				[-1, 2 ** 40],
+				[65003, -18231],
+			]) {
+				expect(k(a, b)).toBe(keyed(SALT, kind, a, b));
+				expect(k(a, b, 40)).toBe(keyed(SALT, kind, a, b, 40));
+			}
+		}
+		expect(() => keyer(SALT, 'ground')(0.5, 1)).toThrow();
 	});
 
 	it('gives every kind its own stream', () => {

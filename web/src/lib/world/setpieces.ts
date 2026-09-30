@@ -56,7 +56,7 @@ type Ctx = Ground & { villages: { d: number; name: string }[] };
 export const FLAGS = 4; // flagpoles at the summit, one colour each from the style
 
 export function setPieces(route: Route, markers: Marker[], c: Ctx) {
-	const { rand, field, nearest, heightAt, biomeAt } = c;
+	const { rand, field, nearest, heightAt, biomeAt, roadSurfaceAt } = c;
 	const pieces: Piece[] = [];
 	const signs: Sign[] = [];
 	const arches: Arch[] = [];
@@ -76,7 +76,11 @@ export function setPieces(route: Route, markers: Marker[], c: Ctx) {
 		const { lx, lz, heading } = frame(j);
 		const x = route.x[j] + lx * off * side;
 		const z = route.z[j] + lz * off * side;
-		if (!clearOf(field, nearest, x, z, need) || biomeAt(x, z) === Biome.Water)
+		if (
+			!clearOf(field, nearest, x, z, need) ||
+			biomeAt(x, z) === null ||
+			biomeAt(x, z) === Biome.Water
+		)
 			return false;
 		pieces.push({
 			kind,
@@ -260,7 +264,13 @@ export function setPieces(route: Route, markers: Marker[], c: Ctx) {
 		for (const s of [-1, 1]) {
 			const x = route.x[i] + lx * 3.7 * s;
 			const z = route.z[i] + lz * 3.7 * s;
-			pieces.push({ kind: 'delineator', x, y: route.ele[i], z, rot: heading });
+			pieces.push({
+				kind: 'delineator',
+				x,
+				y: roadSurfaceAt(x, z) ?? route.ele[i],
+				z,
+				rot: heading,
+			});
 		}
 		d += Math.min(50, Math.max(10, R / 5));
 	}

@@ -8,12 +8,11 @@ import {
 } from './world.test-helper';
 
 /**
- * A long loop builds coarse cells wide enough that the far corners of a fine
- * chunk lie beyond the road index's search. Those vertices once took the
- * route's first sample as their road height, and the coarse vertex a fraction
- * of a row along as their distance: this loop drew 533 faces steeper than
- * 58°, and either half of the fix alone still drew about 480. Its own file,
- * so it builds beside world.test.ts rather than after it.
+ * A long loop once built coarse cells wide enough that the far corners of a
+ * fine chunk lay beyond the road index's search: 533 faces steeper than 58°.
+ * The ground is on the world lattice now (#3075), 40 and 10 m whatever the
+ * route, and this loop keeps it honest over 124 km. Its own file, so it
+ * builds beside world.test.ts rather than after it.
  */
 
 let route: Route;
@@ -24,11 +23,15 @@ beforeAll(() => {
 }, 30_000);
 
 describe('a world around a 124 km loop', () => {
-	it('is long enough that fine terrain reaches past the road index', () => {
+	it('draws on the lattice however long the route: every vertex 10 or 40 m from the next', () => {
 		expect(route.loop).toBe(true);
 		expect(route.length).toBeGreaterThan(100_000);
-		// A fine chunk spans 4 cells; past ~70 m its far corner is > 480 m out.
-		expect(world.cell).toBeGreaterThan(70);
+		const { pos } = world.mesh;
+		let off = 0;
+		for (let k = 0; k < pos.length; k += 3)
+			if (pos[k] % 10 !== 0 || pos[k + 2] % 10 !== 0) off++;
+		expect(pos.length).toBeGreaterThan(0);
+		expect(off).toBe(0);
 	});
 
 	it('folds no terrain face into a wall steeper than 58°', () => {
