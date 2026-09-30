@@ -1,0 +1,1 @@
+- On a solo ride on your own road, the keys the hint names now shift: `.` `+` `=` Harder and `,` `-` Easier, and a clicker that sends them, as on every other ride.
