@@ -58,6 +58,22 @@ describe('describeBlock for slot 1', () => {
 	const at = (t: number, trace: { t: number; w: number }[] = []) =>
 		describeBlock(targetAt(segments, ftp, t), segments, workout, ftp, trace);
 
+	it('carries how the trainer rides the block, ERG unless told (#3485)', () => {
+		expect(at(70).trainer).toEqual({ kind: 'erg' });
+		const info = targetAt(segments, ftp, 70);
+		expect(
+			describeBlock(info, segments, workout, ftp, [], { kind: 'scenery' })
+				.trainer,
+		).toEqual({ kind: 'scenery' });
+		expect(
+			describeBlock(info, segments, workout, ftp, [], {
+				kind: 'road',
+				grade: 8.9,
+				felt: 4.5,
+			}).trainer,
+		).toEqual({ kind: 'road', grade: 8.9, felt: 4.5 });
+	});
+
 	it('gives the target its tolerance band', () => {
 		const block = at(70);
 		expect(block.watts).toBe(200);

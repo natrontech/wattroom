@@ -179,7 +179,7 @@
 				cadence={session.sample?.cadence ?? 0}
 				hr={session.sample?.heartRate ?? 0}
 				title={workout.name}
-				erg
+				drives
 				controls={inWorld ? undefined : rideControls}
 			/>
 			{#if world.reason}

@@ -7,6 +7,7 @@ import {
 } from '$lib/ride/free-ride-controls';
 import { ergByRoad } from '$lib/ride/ride-grade';
 import { gearsEnabled } from '$lib/ride/gears-enabled';
+import { createRoadReadout } from '$lib/ride/road-readout';
 import { createRoadLaps, type RoadSecond } from '$lib/ride/road-ride';
 import type { RideableRoute } from '$lib/ride/roads';
 import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
@@ -75,6 +76,7 @@ export function createFreeRide(deps: {
 	const saveOn = $derived(
 		onRoad && !onRoad.route.borrowed ? onRoad.route : null,
 	);
+	const readoutAt = createRoadReadout();
 	const road = $derived(
 		onRoad && here
 			? {
@@ -87,6 +89,8 @@ export function createFreeRide(deps: {
 					profile: onRoad.route.road,
 					/** This lap rides it back from the far end: `m` counts down. */
 					reverse: onRoad.laps.reverse,
+					/** Where it is, as the HUD says it (#3639). */
+					readout: readoutAt(onRoad.route.road, here.m, onRoad.laps.reverse),
 					...here,
 				}
 			: null,

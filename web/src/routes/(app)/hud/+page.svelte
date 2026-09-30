@@ -1,8 +1,9 @@
 <script lang="ts">
 	import X from '@lucide/svelte/icons/x';
-	import { formatClock } from '$lib/format';
+	import { formatClock, formatKm } from '$lib/format';
 	import { isStale, subscribeHud, type HudSnapshot } from '$lib/hud/feed';
 	import { account } from '$lib/account.svelte';
+	import { GRADE_FILL, gradeStep } from '$lib/road/skyline';
 	import { toleranceBand } from '$lib/workout/guards';
 
 	// The HUD (#296, ADR-0041): the rider's own numbers in a window of their
@@ -25,6 +26,25 @@
 	// The band the riding screen uses, not a fourth copy of it (#2159): this
 	// one dropped docs/SPEC.md's ±10 W floor, so under a 200 W target the HUD
 	// read "off target" while the instrument it mirrors read "on target".
+	// The ride's clock: time left, or ridden on a ride with no end.
+	const clock = $derived(
+		!snapshot
+			? ''
+			: snapshot.elapsed === undefined
+				? `${formatClock(snapshot.remaining)} left`
+				: `${formatClock(snapshot.elapsed)} ridden`,
+	);
+	// On a road (#3092, #3060's readout): the grade under the rider and, on a
+	// classed climb, how far to its top — "8.9 % · top 6.0 km".
+	const road = $derived(snapshot?.road);
+	const roadLine = $derived(
+		road
+			? `${road.grade.toFixed(1)} %` +
+					(road.toTopM === undefined
+						? ''
+						: ` · top ${formatKm(road.toTopM)} km`)
+			: '',
+	);
 	const onTarget = $derived(
 		!!snapshot &&
 			snapshot.target > 0 &&
@@ -62,7 +82,18 @@
 			Waiting for a ride…
 		</p>
 	{:else}
-		<p class="eyebrow truncate" data-testid="hud-label">{snapshot.label}</p>
+		<div class="flex items-baseline gap-2">
+			<p class="eyebrow min-w-0 flex-1 truncate" data-testid="hud-label">
+				{snapshot.label}
+			</p>
+			{#if road}
+				<!-- Row 3 is the road's on a road; the clock moves up beside the
+				     label so the window keeps its 320×132 (desktop/main.js). -->
+				<p class="text-muted text-xs tabular-nums" data-testid="hud-remaining">
+					{clock}
+				</p>
+			{/if}
+		</div>
 		<div class="mt-1 flex items-baseline gap-3">
 			<span
 				class="font-display text-watt glow-text text-5xl leading-none font-bold tabular-nums"
@@ -88,10 +119,41 @@
 					: 'Channel connection lost — reconnecting'}
 			</p>
 		{/if}
-		<p class="text-muted mt-2 text-xs tabular-nums" data-testid="hud-remaining">
-			{snapshot.elapsed === undefined
-				? `${formatClock(snapshot.remaining)} left`
-				: `${formatClock(snapshot.elapsed)} ridden`}
-		</p>
+		{#if road}
+			<p class="text-ink mt-1 text-xs tabular-nums" data-testid="hud-road">
+				{roadLine}
+			</p>
+			{#if road.ahead}
+				<!-- The next 2 km in 100 m bars, in the Skyline's grade ramp:
+				     steeper is stronger and taller. -->
+				<svg
+					viewBox="0 0 20 5"
+					preserveAspectRatio="none"
+					width="100%"
+					class="mt-1 block h-3"
+					role="img"
+					aria-label="The grade over the next 2 km"
+					data-testid="hud-ahead"
+				>
+					{#each road.ahead as grade, i (i)}
+						{@const step = gradeStep(grade)}
+						<rect
+							x={i + 0.1}
+							y={4 - step}
+							width="0.8"
+							height={step + 1}
+							class="{GRADE_FILL[step]} forced-colors:fill-[GrayText]"
+						/>
+					{/each}
+				</svg>
+			{/if}
+		{:else}
+			<p
+				class="text-muted mt-2 text-xs tabular-nums"
+				data-testid="hud-remaining"
+			>
+				{clock}
+			</p>
+		{/if}
 	{/if}
 </main>
