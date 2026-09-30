@@ -160,7 +160,7 @@ export function makeGround(given: readonly Line[], opts: GroundOpts) {
 	/**
 	 * The ground: natural, clamped by real earthworks. It may rise from a road
 	 * no steeper than a 1:1 cutting (after a flat verge) and fall away no
-	 * steeper than a 1.5:1 embankment — from every road within 60 m, so
+	 * steeper than a 1.5:1 embankment — from every road within 400 m, so
 	 * stacked switchbacks share one slope and a hairpin's inside is one bank.
 	 */
 	function heightAt(x: number, z: number): number {
@@ -189,12 +189,11 @@ export function makeGround(given: readonly Line[], opts: GroundOpts) {
 		return smoothClamp(ground, lower, upper, 1.5);
 	}
 
-	/** Metres to the nearest road, read between 40 m lattice points: a cheap first cut, within about 20 m. */
+	/** Metres to the nearest road, read between 40 m lattice points: a cheap first cut. */
 	const roadDist = dist;
 
 	return {
 		heightAt,
-		natural,
 		roadSurfaceAt,
 		roadDist,
 		nearest: index.nearest,
