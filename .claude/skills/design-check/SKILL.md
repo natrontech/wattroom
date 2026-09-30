@@ -66,7 +66,7 @@ eval "$(scripts/dev-env.sh print)"; make design-shots SURFACES="<surface …>" S
 DESIGN-CHECK §7: at most three rounds.
 
 - Fix every blocker and major that your change caused, recapture into `after-<n+1>/`, and start a new reviewer.
-- Findings that fail identically on main and belong to another issue are J2 material. The never-justifiable list still binds: say so in the PR, do not argue it.
+- A finding that fails identically on main, on items your issue does not own, and that an open issue owns, is inherited (DESIGN-CHECK §8). Claim it in the reviewer's `{{INHERITED_OR_NONE}}` slot, citing that issue. A confirmed claim does not count, not even against the never-justifiable list. If no open issue owns the finding, file one first.
 - If a blocker or major is left after round 3, the PR stays draft. Then:
   - comment the evidence on the issue;
   - name the two canon lines that conflict;

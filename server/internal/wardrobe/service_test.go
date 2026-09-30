@@ -193,7 +193,7 @@ func TestUndo(t *testing.T) {
 
 	// Worn on a ride: kept.
 	h.call(t, "alice", http.MethodPut, "/api/me/outfit", `{"finish":"finish.metallic"}`)
-	if err := MarkWorn(t.Context(), h.st.Queries, h.id("alice")); err != nil {
+	if err := RideSaved(t.Context(), h.st.Queries, h.id("alice"), time.Now()); err != nil {
 		t.Fatal(err)
 	}
 	if status, _ := undo("finish.metallic"); status != http.StatusConflict {

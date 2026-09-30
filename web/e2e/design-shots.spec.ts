@@ -20,6 +20,7 @@ import {
 } from './design/session';
 import {
 	DESK,
+	DESK_720,
 	HUD_SHELL,
 	OUT,
 	PHONE,
@@ -388,12 +389,40 @@ surface('dev-world', async (s) => {
 	await s.shot(o);
 });
 
-test.fixme('world-start', () => {
-	// /dev/world's fixed moments come with design/world-moment (#3672).
+/** /dev/world at one still moment (#3672): two loads are one frame, chrome off. */
+const MOMENT_M = 11_000;
+async function moment(s: Shoot, device: typeof DESK, p: 0 | 1) {
+	const o = await s.open(device);
+	await o.page.goto(
+		`/dev/world?m=${MOMENT_M}&p=${p}&cam=chase&look=bluehour&chrome=0`,
+	);
+	await o.page.waitForFunction(
+		() => !!(window as unknown as { __worldProbe?: unknown }).__worldProbe,
+		null,
+		{ timeout: 30_000 },
+	);
+	await o.page.waitForTimeout(2000);
+	return o;
+}
+
+surface('world-start', async (s) => {
+	await s.shot(await moment(s, DESK, 0));
+	await s.shot(await moment(s, DESK_720, 0), { name: 'world-start-1280' });
+	// multi:world-start-twice — the same moment loaded twice, compared pixel
+	// for pixel.
+	const frames: Buffer[] = [];
+	for (let k = 0; k < 2; k++)
+		frames.push(await (await moment(s, DESK, 0)).page.screenshot());
+	await writeFile(join(OUT, 'world-start-twice.png'), frames[1]);
+	await writeFile(
+		join(OUT, 'world-start-twice.json'),
+		JSON.stringify({ identical: frames[0].equals(frames[1]) }, null, 2) + '\n',
+	);
 });
 
-test.fixme('world-end', () => {
-	// /dev/world's fixed moments come with design/world-moment (#3672).
+surface('world-end', async (s) => {
+	await s.shot(await moment(s, DESK, 1));
+	await s.shot(await moment(s, DESK_720, 1), { name: 'world-end-1280' });
 });
 
 // ─── C. Roads library ────────────────────────────────────────────────────

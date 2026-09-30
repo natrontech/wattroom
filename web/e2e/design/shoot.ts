@@ -34,6 +34,9 @@ export const PHONE: BrowserContextOptions = {
 	viewport: { width: 375, height: 812 },
 	deviceScaleFactor: 1,
 };
+export const DESK_720: BrowserContextOptions = {
+	viewport: { width: 1280, height: 720 },
+};
 export const TV: BrowserContextOptions = {
 	viewport: { width: 1920, height: 1080 },
 };

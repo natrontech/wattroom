@@ -209,6 +209,13 @@ export function probe(corridor: Box) {
 			mounted: !!document.querySelector('canvas'),
 			fallback: document.body.innerText.match(/Flat road —[^\n]*/)?.[0] ?? null,
 		},
+		// The world's own measurements, where /dev/world's dev hook reports them
+		// (#3672): camera.fov, renderer.draws and .triangles, figure.bboxH.
+		...((
+			window as unknown as {
+				__worldProbe?: () => Record<string, unknown>;
+			}
+		).__worldProbe?.() ?? {}),
 	};
 }
 
