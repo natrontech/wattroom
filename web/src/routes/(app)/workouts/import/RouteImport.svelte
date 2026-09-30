@@ -121,7 +121,7 @@
 {:else if saved}
 	<div class="mt-4 space-y-3">
 		<Banner tone="ok">
-			“{saved.name}” is on your routes, on the shelf under Workouts.
+			“{saved.name}” is on your routes.
 		</Banner>
 		{#if saved.renameError}
 			<Banner tone="warn"
