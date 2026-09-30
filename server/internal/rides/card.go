@@ -52,7 +52,6 @@ func (s *Service) handleCard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	card := og.RideCard{
-		WorkoutName: row.WorkoutName,
 		// In the rider's own day, like every other date the app prints —
 		// a ride at 19:42 must not read as tomorrow morning.
 		StartedAt: row.StartedAt.Time.In(stats.Zone(user.Timezone)),
@@ -77,9 +76,32 @@ func (s *Service) handleCard(w http.ResponseWriter, r *http.Request) {
 		s.log.Error("ride card samples unreadable", "err", err, "ride", store.UUIDString(row.ID))
 	}
 	card.Watts = make([]int, len(samples))
+	onRoad := false
 	for i, sample := range samples {
 		card.Watts[i] = sample.Watts
+		onRoad = onRoad || sample.M > 0
 	}
+	// A ride on a road is drawn as the road it rode (#3142): its metres and
+	// heights beside the watts, under the route's generated name — never the
+	// owner's own, which may name where they live (#3055) — and the line
+	// that says where the heights came from.
+	name := row.WorkoutName
+	if onRoad {
+		card.Metres = make([]float64, len(samples))
+		card.Heights = make([]float64, len(samples))
+		for i, sample := range samples {
+			card.Metres[i], card.Heights[i] = sample.M, sample.Alt
+		}
+		road, err := s.store.Queries.GetRideRoad(r.Context(), db.GetRideRoadParams{ID: id, UserID: user.ID})
+		if err != nil {
+			s.log.Warn("ride card road unreadable", "err", err, "ride", store.UUIDString(row.ID))
+		}
+		if road.GenName != "" {
+			name = road.GenName
+		}
+		card.HeightCredit = heightCredit(road.EleSource)
+	}
+	card.WorkoutName = name
 
 	png, err := og.RenderRide(card)
 	if err != nil {
@@ -87,12 +109,22 @@ func (s *Service) handleCard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "image/png")
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", cardFilename(row.StartedAt.Time, row.WorkoutName)))
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", cardFilename(row.StartedAt.Time, name)))
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Cache-Control", "private, no-store")
 	if _, err := w.Write(png); err != nil {
 		s.log.Warn("ride card write failed", "err", err, "ride", store.UUIDString(row.ID))
 	}
+}
+
+// heightCredit is where a road's heights came from, for the foot of its
+// poster. The rider's own file credits nobody else; a height model, once the
+// geo pack brings one, credits its source here (#3133).
+func heightCredit(eleSource string) string {
+	if eleSource == "file" {
+		return "Heights from the route's own file"
+	}
+	return ""
 }
 
 func cardFilename(startedAt time.Time, workout string) string {

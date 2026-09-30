@@ -174,6 +174,9 @@ type rideDetailJSON struct {
 	// them. Empty if the blob cannot be read: the numbers are still true, and
 	// a ride the rider wants gone must still open.
 	Samples []sampleJSON `json:"samples"`
+	// A road ride's metres, the server's replay (#3053): what tells the page
+	// its card is a poster (#3142). Absent off a road.
+	DistanceM *int32 `json:"distanceM,omitempty"`
 	// Where this ride was sent, and whether it arrived. Absent when the ride
 	// was never eligible — no Strava on the account, or auto-upload off.
 	Export *exportJSON `json:"export,omitempty"`
@@ -287,6 +290,11 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 		out.Samples = append(out.Samples, sampleJSON{
 			Watts: sample.Watts, HR: sample.HR, Cadence: sample.Cadence,
 		})
+	}
+	if road, err := s.store.Queries.GetRideRoad(r.Context(), db.GetRideRoadParams{ID: row.ID, UserID: user.ID}); err != nil {
+		s.log.Warn("ride road unreadable", "err", err, "ride", store.UUIDString(row.ID))
+	} else {
+		out.DistanceM = road.DistanceM
 	}
 	httpx.WriteJSON(w, http.StatusOK, out)
 }
