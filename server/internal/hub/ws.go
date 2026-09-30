@@ -78,6 +78,9 @@ type client struct {
 	// never leaves them: this one is room-visible and arrives whether or not
 	// anything was ever paired. Read under rm.mu like the pair above it.
 	deviceKind string
+	// "Don't make me shift" on this screen (#3658): WattRoom holds the watts
+	// on a road, so a race rides the rider unranked. Read under rm.mu.
+	ergByRoad bool
 	// The workout hash this socket last received the definition for (#1710).
 	// Owned by the tick loop: read and written there alone.
 	workoutSent string

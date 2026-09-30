@@ -50,4 +50,6 @@ type GameState struct {
 	TeamDistance    float64              `json:"teamDistance,omitempty"`
 	Riders          map[string]GameRider `json:"riders"`
 	Podium          []SprintScore        `json:"podium,omitempty"`
+	// A race's own (#3658): its clock, and its closing card.
+	Race *RaceState `json:"race,omitempty"`
 }

@@ -819,3 +819,29 @@ describe('channel live resumes the bunch after a restart', () => {
 		expect(sent(socket).map((m) => m.control.action)).toEqual(['pick']);
 	});
 });
+
+describe('channel live drive', () => {
+	beforeEach(() => {
+		FakeSocket.last = null;
+		vi.useFakeTimers();
+	});
+
+	// A race reads "Don't make me shift" off the socket at its flag (#3658),
+	// so a reconnect — a new socket to the hub — says it again.
+	it('tells the hub when WattRoom holds the watts, and again on a reconnect', async () => {
+		const live = createChannelLive(channelAddress('c', 'drive', 'drive'));
+		const first = FakeSocket.last!;
+		first.open();
+		live.setDrive(true);
+		const drives = (s: FakeSocket) =>
+			s.sent.map((raw) => JSON.parse(raw).drive).filter(Boolean);
+		expect(drives(first)).toEqual([{ ergByRoad: true }]);
+		first.close();
+		first.onclose?.();
+		await vi.advanceTimersByTimeAsync(2_500);
+		const second = FakeSocket.last!;
+		expect(second).not.toBe(first);
+		second.open();
+		expect(drives(second)).toEqual([{ ergByRoad: true }]);
+	});
+});

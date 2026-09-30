@@ -16,6 +16,7 @@ type ClientMessage struct {
 	Away     *AwayState      `json:"away,omitempty"`
 	Device   *DeviceKind     `json:"device,omitempty"`
 	Roadside *Roadside       `json:"roadside,omitempty"`
+	Drive    *Drive          `json:"drive,omitempty"`
 }
 
 // ServerTick is a voice channel's coalesced 1 Hz broadcast: every rider's

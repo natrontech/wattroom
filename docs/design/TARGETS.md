@@ -7,7 +7,7 @@ This file says what every rider-visible change is held to. Each surface has:
 - the canon that outranks those images;
 - a must-match list that a reviewer walks item by item.
 
-`docs/design/DESIGN-CHECK.md` is the procedure. The captures come from `make design-shots` (`web/e2e/design-shots.spec.ts`). Until that lands, they come from `node web/scripts/design-capture.mjs`.
+`docs/design/DESIGN-CHECK.md` is the procedure. The captures come from `make design-shots` (`web/e2e/design-shots.spec.ts`).
 
 ## Where the targets come from
 
@@ -201,7 +201,7 @@ Every step of every flow must match these:
 
 ## Surfaces
 
-The capture recipes are the design-shots spec's; until it lands, they are the interim script's.
+The capture recipes are the design-shots spec's.
 
 Every surface id below is also in `docs/design/surface-map.json`, which maps the files a change touches to the surfaces it draws: `node web/scripts/design-surfaces.mjs` prints them for a branch, and `web/scripts/design-surfaces.test.mjs` keeps the map and this file in step. A new surface gets a section here and a row there in the same change.
 

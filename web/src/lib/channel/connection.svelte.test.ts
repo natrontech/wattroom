@@ -41,6 +41,7 @@ const fakeLive = {
 	jukebox() {},
 	control() {},
 	cheer() {},
+	setDrive() {},
 };
 vi.mock('$lib/channel/live.svelte', () => ({
 	createChannelLive: () => fakeLive,

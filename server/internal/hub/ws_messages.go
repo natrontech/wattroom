@@ -34,6 +34,9 @@ func (h *Hub) handleMessage(c *client, rm *channelState, channel string, rider p
 		// of its own — the same reasoning as the sensor claim above.
 		rm.setDeviceKind(c, msg.Device.Kind)
 	}
+	if msg.Drive != nil {
+		rm.setDrive(c, *msg.Drive)
+	}
 	if msg.Away != nil {
 		// Unlimited like a sensor claim, and for the same reason: it is
 		// one map write per rider, so a client repeating itself changes

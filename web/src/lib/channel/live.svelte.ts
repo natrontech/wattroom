@@ -362,6 +362,7 @@ export function createChannelLive(address: PlaceAddress) {
 			// reconnect is a new socket. Re-declare it, or a rider who stepped
 			// out quietly comes back on everyone else's screen but their own.
 			if (away) send({ away: { away } });
+			if (ergByRoad) send({ drive: { ergByRoad } });
 			if (gapSeq !== null && buffer) {
 				const since = gapSeq;
 				gapSeq = null;
@@ -465,6 +466,9 @@ export function createChannelLive(address: PlaceAddress) {
 	// can re-declare it. Not $state: nothing renders from here — the roster
 	// on the tick is what every screen draws, this rider's tile included.
 	let away = false;
+	// "Don't make me shift" (#3658), kept for the same reason: a race reads
+	// it off the socket at its flag, and a reconnect is a new socket.
+	let ergByRoad = false;
 	/** On the wire, or waiting for it; past the bound, dropped. Metrics are
 	 * never queued: the next sample supersedes a lost one. */
 	// One frame a replay, a frame at a time — the hub takes one a second — and
@@ -647,6 +651,15 @@ export function createChannelLive(address: PlaceAddress) {
 		setAway(next: boolean, reason = '') {
 			away = next;
 			send({ away: { away: next, reason: next ? reason : '' } });
+		},
+		/**
+		 * Whether WattRoom holds the watts on a road for this rider — "Don't
+		 * make me shift" — which a race rides unranked (ADR-0084, #3658).
+		 */
+		setDrive(next: boolean) {
+			if (next === ergByRoad) return;
+			ergByRoad = next;
+			send({ drive: { ergByRoad } });
 		},
 		get channelEvents() {
 			return channelEvents;
