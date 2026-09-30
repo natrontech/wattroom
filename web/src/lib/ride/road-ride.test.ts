@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { heightAt } from '$lib/road/at-metre';
 import type { Road } from '$lib/road/road';
-import { createRoadRide } from './road-ride';
+import type { RoadSecond } from './road-ride';
+import { createRoadLaps, createRoadRide } from './road-ride';
 import { feltGrade } from './ride-grade';
 
 // 2 km sampled every 20 m: up 2 % to 1 km, then down 1 % (the server's own
@@ -66,5 +67,72 @@ describe('a ride on a stored road (#3027)', () => {
 		const end = riddenFor(ride, 300, 30);
 		expect(end.m).toBe(upThenDown.length);
 		expect(end.virtualMps).toBe(0);
+	});
+});
+
+describe('the end of the road, and laps (#3205)', () => {
+	/** Rides until the dot reaches the end of its way; the last second. */
+	function toTheEnd(second: (watts: number, at: number) => RoadSecond) {
+		let last = second(400, 0);
+		for (let s = 1; !last.atEnd; s++) {
+			expect(s, 'never reached the end').toBeLessThan(3600);
+			last = second(400, s * 1000);
+		}
+		return last;
+	}
+
+	it('stops the dot at the end and says so', () => {
+		const ride = createRoadRide(upThenDown, { kg });
+		const end = toTheEnd(ride.second);
+		expect(end.m).toBe(2000);
+		expect(end.virtualMps).toBe(0);
+		expect(ride.second(400, 4_000_000).m).toBe(2000);
+	});
+
+	it('rides back the way it came: the metres count down, and what went down climbs', () => {
+		const back = createRoadRide(upThenDown, { kg, from: 2000, reverse: true });
+		const first = back.second(250, 0);
+		const later = back.second(250, 1000);
+		expect(later.m).toBeLessThan(first.m);
+		expect(first.m).toBeLessThan(2000);
+		// The 1 % descent is a 1 % climb ridden from the far end.
+		expect(first.roadPct).toBeCloseTo(1, 9);
+		expect(first.alt).toBeCloseTo(heightAt(upThenDown, first.m), 9);
+		const home = toTheEnd(back.second);
+		expect(home.m).toBe(0);
+	});
+
+	it('numbers each lap and marks the first sample of a lap run backwards', () => {
+		const laps = createRoadLaps(upThenDown, { kg });
+		expect(laps.fields(laps.second(400, 0))).toEqual({
+			m: expect.any(Number),
+			alt: expect.any(Number),
+		});
+		toTheEnd(laps.second);
+		laps.turn('back');
+		const opening = laps.fields(laps.second(400, 0));
+		expect(opening).toMatchObject({ lap: 1, reverse: true });
+		expect(opening.m).toBeLessThan(2000);
+		const next = laps.fields(laps.second(400, 1000));
+		expect(next.lap).toBe(1);
+		expect(next.reverse).toBeUndefined();
+		expect(next.m).toBeLessThan(opening.m);
+
+		toTheEnd(laps.second);
+		laps.turn('again');
+		const again = laps.fields(laps.second(400, 0));
+		// Again the way it last ran: down the stored road from its far end.
+		expect(again).toMatchObject({ lap: 2, reverse: true });
+		expect(again.m).toBeGreaterThan(1900);
+	});
+
+	it('rides it again from the start, up the road', () => {
+		const laps = createRoadLaps(upThenDown, { kg });
+		toTheEnd(laps.second);
+		laps.turn('again');
+		const again = laps.fields(laps.second(400, 0));
+		expect(again.lap).toBe(1);
+		expect(again.reverse).toBeUndefined();
+		expect(again.m).toBeLessThan(100);
 	});
 });

@@ -54,6 +54,8 @@ export function uploadPayload(ride: RecoveredRide) {
 			clock: sample.clock,
 			released: sample.released,
 			...(sample.m !== undefined && { m: sample.m, alt: sample.alt }),
+			...(sample.lap && { lap: sample.lap }),
+			...(sample.reverse && { reverse: true }),
 		})),
 		// A free ride on a road saves against its route (#3027); how the
 		// trainer was driven went with the page, so the time is not claimed.
@@ -68,8 +70,11 @@ export function uploadPayload(ride: RecoveredRide) {
 export function resumeAt(
 	ride: RecoveredRide,
 ): { routeId: string; m: number } | null {
-	const m = ride.samples.at(-1)?.m;
-	return ride.routeId && m !== undefined ? { routeId: ride.routeId, m } : null;
+	const last = ride.samples.at(-1);
+	// ponytail: a ride past its first lap reached the road's end; there is
+	// nowhere up the road to carry on to, and a resume rides forward only.
+	if (!ride.routeId || last?.m === undefined || last.lap) return null;
+	return { routeId: ride.routeId, m: last.m };
 }
 
 /** The filename a rider gets: the day the ride happened, not the day they saved it. */

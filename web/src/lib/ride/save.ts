@@ -19,6 +19,9 @@ export interface RideUpload {
 		/** On a road (#3052): metres along it, and the height there. */
 		m?: number;
 		alt?: number;
+		/** Its lap, and on a lap's first sample which way it runs (#3598). */
+		lap?: number;
+		reverse?: boolean;
 	}[];
 	/** The stored route a ride on a road rode (#3053): one of the rider's own. */
 	routeId?: string;
