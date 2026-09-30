@@ -39,14 +39,13 @@ nohup make dev-web    > "$S/<pair>-web.log"    2>&1 & echo $! > "$S/<pair>-web.p
 ## 4. Capture
 
 ```sh
-eval "$(scripts/dev-env.sh print)"; node web/scripts/design-capture.mjs --base "http://localhost:$WATTROOM_DEV_WEB_PORT" \
-  --scheme dark --out "$PWD/web/test-results/design/<slug>/before" <surface …>
+eval "$(scripts/dev-env.sh print)"; make design-shots SURFACES="<surface …>" SCHEME=both OUT="$PWD/web/design-shots/<slug>/before"
 ```
 
 - Run it against main's pair into `before/`, and against the branch's pair into `after-<round>/`.
 - A desk surface is captured in both schemes.
-- Measurements come only from each `<id>.json` the script writes. Never type a number into the PR from a screenshot or the browser pane.
-- The browser pane is often hidden, and a hidden pane throttles its frames. Capture headless through the script, not through the pane.
+- Measurements come only from each `<id>.json` the spec writes. Never type a number into the PR from a screenshot or the browser pane.
+- The browser pane is often hidden, and a hidden pane throttles its frames. Capture headless through `make design-shots`, not through the pane.
 - If your own instrumentation patches the page (a wrapped `Worker.postMessage`, say), update it whenever the code it wraps changes. A stale patch breaks the page and looks like your bug.
 
 ## 5. The reviewer: a fresh Agent, every round
@@ -81,7 +80,7 @@ DESIGN-CHECK §7: at most three rounds.
   - pass the images through `files`, copied into a folder in your scratchpad;
   - load the `artifact-design` skill first.
 - If publishing is unavailable, send the files to the maintainer with **SendUserFile** instead.
-- Never commit captures. `web/test-results/` is ignored.
+- Never commit captures. `web/design-shots/` is ignored. Keep them out of `web/test-results/`, which every Playwright run empties.
 - Fill the PR's `## Design check` section from DESIGN-CHECK §9: the target, the surfaces, the image link (marked private) and the verdict, then the owned-items table, the global rules, the regressions, the justified deviations, what is open elsewhere, and the minors left.
 
 ## 8. Clean up
