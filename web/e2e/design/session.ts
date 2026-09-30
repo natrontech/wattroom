@@ -42,13 +42,16 @@ export async function startSession(
 		await press(picker.getByRole('button', { name: `Start ${pick.workout}` }));
 	} else {
 		await press(picker.getByRole('button', { name: 'Roads', exact: true }));
+		// Pick the road's row; the crew rides its own workout, started from
+		// the picker's footer like any other.
 		await press(
 			picker
 				.getByRole('list', { name: 'your routes' })
-				.getByRole('listitem')
+				.getByRole('button')
 				.filter({ hasText: pick.road })
-				.getByRole('button', { name: 'Ride it together' }),
+				.first(),
 		);
+		await press(picker.getByRole('button', { name: /^Start / }).last());
 	}
 }
 
