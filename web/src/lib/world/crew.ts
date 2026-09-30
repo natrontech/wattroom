@@ -8,7 +8,7 @@ import { zoneOf } from '$lib/components/zones';
 import { damp } from '$lib/motion/damp';
 import { effortRpm } from './figure/cadence';
 import { ROAD_LIFT, yOf } from './geometry';
-import { across, bankOf } from './terrain/road-profile';
+import { ROAD_W, across, bankOf } from './terrain/road-profile';
 import { ramp } from './materials';
 import { buildGeometry } from './rider-geometry';
 import { GEO } from './rider-rig';
@@ -36,6 +36,8 @@ const TRAIL_M = 3;
 const TRAIL_W = 0.08;
 const TRAIL_N = 24;
 const LANE = 0.9; // metres between riders abreast
+// ponytail: alone you keep to the right lane's middle, as on a Swiss road; a bunch spreads abreast across the road until #3098 gives it a formation.
+const KEEP_RIGHT = -ROAD_W / 4;
 
 // Identity is a hue from the rider's id, never the watt hue (ADR-0005: watt
 // is live data). Live power shows as the flat zone ring; the only glow is
@@ -132,7 +134,9 @@ export function makeCrew(riders: SimRider[], style: Style) {
 		riders.forEach((r, i) => {
 			const p = at(route, r.d);
 			const { lx, lz } = leftOf(p.heading);
-			const lane = (i - (riders.length - 1) / 2) * LANE;
+			const lane =
+				(riders.length === 1 ? KEEP_RIGHT : 0) +
+				(i - (riders.length - 1) / 2) * LANE;
 			const x = p.x + lx * lane;
 			const z = p.z + lz * lane;
 			const y = yOf(route, p.ele) + 0.12;

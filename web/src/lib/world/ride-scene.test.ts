@@ -1,11 +1,13 @@
 // @vitest-environment happy-dom
 import * as THREE from 'three';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { at, leftOf } from '$lib/road/along';
 import { legsRoad } from '$lib/road/fixtures';
 import { STYLES } from '../../routes/(app)/dev/world/styles';
 import { compose } from './compose';
 import { routeOfRoad } from './road-route';
 import type { RideMetre } from './sim';
+import { ROAD_W } from './terrain/road-profile';
 import { generate, type World } from './world';
 import { BUILD_MS } from './world.test-helper';
 import type { Route } from '$lib/road/route';
@@ -38,6 +40,24 @@ describe('a ride’s world', () => {
 			null,
 		);
 		expect(figures(w.scene)).toBe(1);
+		w.dispose();
+	});
+
+	it('keeps you, riding alone, in the middle of the right lane', () => {
+		const w = compose(
+			{ route, world, style, ftp: 250, metre: () => ({ m: 1200, mps: 0 }) },
+			null,
+		);
+		w.advanceBy(0.3);
+		let you: THREE.Object3D | undefined;
+		w.scene.traverse((o) => {
+			if (!you && o.userData.family === 'figures') you = o;
+		});
+		const pos = you!.getWorldPosition(new THREE.Vector3());
+		const p = at(route, 1200);
+		const { lx, lz } = leftOf(p.heading);
+		// Left of the road's centre is positive: the right lane's middle is a quarter of the road to the right.
+		expect((pos.x - p.x) * lx + (pos.z - p.z) * lz).toBeCloseTo(-ROAD_W / 4, 1);
 		w.dispose();
 	});
 
