@@ -166,6 +166,11 @@ func (rm *channelState) tickLocked(now func() time.Time, dt time.Duration, savin
 	// After state() has promoted a finished countdown: mood() never
 	// advances anything, and running is the only phase with a block.
 	state.TargetRpm = rm.session.mood(now()).TargetRPM()
+	// Team Relay's front rider leads the bunch on a road (#3030); the
+	// empty tick needs no leader, since nobody is heard to follow.
+	if rm.session.bunch != nil {
+		rm.session.bunch.leader = rm.bunchLeaderLocked()
+	}
 	rm.session.rideBunch(now())
 	rm.settleRoadsideLocked()
 	rm.sayPhaseLocked(state, now())

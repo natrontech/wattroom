@@ -59,9 +59,19 @@ func (rm *channelState) startGameOn(mode string, route *routeRide, rider protoco
 	return ""
 }
 
+// bunchLeaderLocked is who sets the bunch's pace in the seconds its plan
+// leaves open: Team Relay's front rider (#3030), or nobody. Caller holds
+// rm.mu.
+func (rm *channelState) bunchLeaderLocked() string {
+	if r := relayOf(rm.game); r != nil {
+		return r.leader()
+	}
+	return ""
+}
+
 // endGame stops the running mode; false when nothing was running (#1582).
-// It is the coach's out and the only end Team Relay has — relay.done() is
-// never true.
+// It is the coach's out, and off a road the only end Team Relay has — there
+// relay.done() is never true; on one the road's end finishes it (#3030).
 func (rm *channelState) endGame(now time.Time) bool {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
@@ -171,6 +181,10 @@ func (rm *channelState) advanceGameLocked(now time.Time) (winner string) {
 		}
 	}
 	rm.game.advance(now, samples, rm.gameRosterLocked())
+	// Team Relay on a road finishes where the road does (#3030).
+	if r := relayOf(rm.game); r != nil && rm.session.bunch.finished() {
+		r.finished = true
+	}
 	gs := rm.game.state(now)
 	rm.lastGame = &gs
 	if !rm.game.done() {
