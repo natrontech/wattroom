@@ -8,6 +8,7 @@
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import type { FreeRide } from '$lib/ride/free-ride.svelte';
 	import { formatKm as km } from '$lib/format';
+	import { carriesOn } from '$lib/ride/road-end';
 	import {
 		carryOnFrom,
 		loadRoad,
@@ -70,7 +71,7 @@
 				onclick={() => free.leaveRoad()}
 				class="btn btn-ghost btn-xs ml-auto">Leave the road</button
 			>
-		{:else if free.road.lap === 0 && !free.road.atEnd}
+		{:else if carriesOn(free.road)}
 			<span class="text-muted ml-auto text-xs"
 				>Save it, and carry on from here next time.</span
 			>

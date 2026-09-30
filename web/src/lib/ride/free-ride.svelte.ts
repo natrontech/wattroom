@@ -97,6 +97,10 @@ export function createFreeRide(deps: {
 		laps: ReturnType<typeof createRoadLaps>;
 	} | null>(null);
 	let here = $state.raw<RoadSecond | null>(null);
+	// The route a ride on it saves against: never a borrowed one (#3621).
+	const saveOn = $derived(
+		onRoad && !onRoad.route.borrowed ? onRoad.route : null,
+	);
 	const road = $derived(
 		onRoad && here
 			? {
@@ -104,6 +108,7 @@ export function createFreeRide(deps: {
 					name: onRoad.route.name,
 					length: onRoad.route.road.length,
 					lap: onRoad.laps.lap,
+					borrowed: !!onRoad.route.borrowed,
 					...here,
 				}
 			: null,
@@ -223,7 +228,7 @@ export function createFreeRide(deps: {
 					startedAt,
 					workoutName: FREE_RIDE_NAME,
 					workoutJson: FREE_RIDE_JSON,
-					...(onRoad && { routeId: onRoad.route.id }),
+					...(saveOn && { routeId: saveOn.id }),
 				}).then((opened) => {
 					if (rideId === opening) buffer = opened;
 					else opened.release();
@@ -261,8 +266,8 @@ export function createFreeRide(deps: {
 				workoutJson: FREE_RIDE_JSON,
 				startedAt: new Date(startedAt).toISOString(),
 				samples,
-				...(onRoad && {
-					routeId: onRoad.route.id,
+				...(saveOn && {
+					routeId: saveOn.id,
 					drive:
 						mode === 'watts'
 							? ('ergByRoad' as const)
