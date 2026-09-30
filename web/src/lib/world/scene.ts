@@ -1,14 +1,18 @@
 // The ride world on a canvas. Owns the renderer and the loop: the sim, the
-// camera rig, the riders and the trail advance only on frames it renders,
-// at 30 fps paced on vsync, and nothing runs while the tab is hidden. It
-// builds no DOM — the caller hands it a canvas and takes it back on dispose.
-// mount() throws when the scene will not start (no WebGL, most often), having
-// released whatever it had made.
+// camera rig, the riders and the trail advance only on frames it renders —
+// 30 fps on the display's vsync divisor, one a second while nothing moves,
+// none while a gate is shut (loop.ts). It builds no DOM — the caller hands it
+// a canvas and takes it back on dispose. mount() throws when the scene will
+// not start (no WebGL, most often), having released whatever it had made; a
+// world that stops later — its context lost, its shaders refused — says so
+// through onFail, once, and draws nothing more (ADR-0066: the fallback is
+// one-way).
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { pace, pixelRatio } from './budget';
+import { pixelRatio } from './budget';
 import { makeCrew, type Crew, type Pedalling } from './crew';
 import { disposeTree } from './dispose';
+import { createLoop, type LoopStats, watchPage } from './loop';
 import { makeSight } from './materials';
 import { makeRig, type Follow } from './rig';
 import { type Route } from '$lib/road/route';
@@ -39,6 +43,7 @@ export type MountOptions = {
 	ftp: number; // the signed-in rider's: your cadence and zone ring read against it
 	speedup?: number;
 	onTick?: (hud: Hud) => void; // a few times a second, while the loop runs
+	onFail?: () => void;
 };
 
 export type WorldScene = {
@@ -46,8 +51,10 @@ export type WorldScene = {
 	setCamera(mode: CameraMode): void;
 	setWatts(watts: number): void;
 	setSpeedup(factor: number): void;
-	/** Hold the loop — the desktop shell hid its window, or a shared screen has the focus (#3031). */
-	setPaused(paused: boolean): void;
+	/** Hold the loop while a shared screen has the world's place, or the desktop shell hid its window. */
+	hold(gate: 'displaced' | 'shell', held: boolean): void;
+	/** Frames drawn and divisor intervals missed, for rideView() (#3080). */
+	stats(): LoopStats;
 	dispose(): void;
 };
 
@@ -82,7 +89,9 @@ export function mount(
 	renderer.toneMapping = THREE.NoToneMapping;
 	renderer.shadowMap.enabled = false;
 	const scene = new THREE.Scene();
-	const camera = new THREE.PerspectiveCamera(52, 1, 0.5, 60000);
+	// Near at 1 m: at 0.5 the depth buffer resolved 0.12 m at 1 km, and the
+	// road's shoulder z-fought from about 1.26 km (#3078).
+	const camera = new THREE.PerspectiveCamera(52, 1, 1, 60000);
 	const sight = makeSight();
 	const rig = makeRig(route, world);
 	let stage: Stage | null = null;
@@ -176,36 +185,21 @@ export function mount(
 		}
 	}
 
-	let raf = 0;
-	let running = false;
-	let paused = false;
-	let last = -1;
-	let banked = 0;
-	let since = 0;
-	function frame(now: number) {
-		raf = requestAnimationFrame(frame);
-		const delta = last < 0 ? 0 : (now - last) / 1000;
-		last = now;
-		since += delta;
-		const p = pace(banked, delta);
-		banked = p.banked;
-		if (!p.render) return;
-		advanceBy(Math.min(since, MAX_DT));
-		since = 0;
-		renderer.render(scene, camera);
+	const loop = createLoop(
+		(seconds) => {
+			advanceBy(Math.min(seconds, MAX_DT));
+			renderer.render(scene, camera);
+		},
+		// Nothing moves: you have stopped pedalling, every rider stands, nobody turns the model.
+		() => you.watts === 0 && !controls && riders.every((r) => r.v < 0.05),
+	);
+	let failed = false;
+	function fail() {
+		if (failed) return;
+		failed = true;
+		loop.stop();
+		opts.onFail?.();
 	}
-	function start() {
-		if (running || paused || document.hidden) return;
-		running = true;
-		last = -1;
-		since = 0;
-		raf = requestAnimationFrame(frame);
-	}
-	function stop() {
-		running = false;
-		cancelAnimationFrame(raf);
-	}
-	const onVisibility = () => (document.hidden ? stop() : start());
 	function release() {
 		controls?.dispose();
 		disposeTree(scene);
@@ -217,15 +211,23 @@ export function mount(
 		dress(opts.style);
 		fit();
 		advanceBy(0);
-		renderer.render(scene, camera); // the first frame, before the loop's first tick
 	} catch (err) {
 		release(); // a scene that did not start holds no context either
 		throw err;
 	}
 	const observer = new ResizeObserver(fit);
 	observer.observe(canvas);
-	document.addEventListener('visibilitychange', onVisibility);
-	start();
+	canvas.addEventListener('webglcontextlost', fail);
+	const unwatch = watchPage(canvas, loop.gate);
+	// The shaders compile off the main thread where the driver allows, and
+	// the first frame waits for them rather than stalling on them.
+	renderer.compileAsync(scene, camera).then(
+		() => failed || loop.start(),
+		(err: unknown) => {
+			console.error('world: the shaders did not compile', err);
+			fail();
+		},
+	);
 
 	return {
 		setStyle: dress,
@@ -239,15 +241,14 @@ export function mount(
 		setSpeedup(factor) {
 			speedup = factor;
 		},
-		setPaused(next) {
-			paused = next;
-			if (paused) stop();
-			else start();
-		},
+		hold: loop.gate,
+		stats: loop.stats,
 		dispose() {
-			stop();
-			document.removeEventListener('visibilitychange', onVisibility);
+			failed = true; // what follows is ours, not a failure to report
+			loop.stop();
+			unwatch();
 			observer.disconnect();
+			canvas.removeEventListener('webglcontextlost', fail);
 			release();
 		},
 	};

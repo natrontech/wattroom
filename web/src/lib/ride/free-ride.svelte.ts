@@ -213,6 +213,7 @@ export function createFreeRide(deps: {
 					startedAt,
 					workoutName: FREE_RIDE_NAME,
 					workoutJson: FREE_RIDE_JSON,
+					...(onRoad && { routeId: onRoad.route.id }),
 				}).then((opened) => {
 					if (rideId === opening) buffer = opened;
 					else opened.release();
@@ -232,7 +233,7 @@ export function createFreeRide(deps: {
 				watts: sample.watts,
 				cadence: sample.cadence,
 				heartRate: sample.hr,
-				...(here && { m: here.m }),
+				...(here && { m: here.m, alt: here.alt }),
 				at: Date.now(),
 			});
 		},

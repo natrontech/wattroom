@@ -1,6 +1,7 @@
 <script module lang="ts">
 	import { createSessionSetup } from '$lib/session/session-setup.svelte';
 	import type { PickerIntent } from '$lib/channel/context';
+	import type { ControlRoute } from '$lib/protocol';
 
 	/**
 	 * What the shell opens over a voice channel for its session: TV mode and
@@ -124,7 +125,7 @@
 
 	// ── Coach controls ────────────────────────────────────────────────────────
 	const channel = useChannel();
-	function startWorkout(picked: Workout) {
+	function startWorkout(picked: Workout, route?: ControlRoute) {
 		// The workout this channel has planned, now (#2606): started through
 		// the plan, as its card and the Schedule start it, so it is marked and
 		// stops offering itself — a bare pick left it listed for its grace and
@@ -148,6 +149,7 @@
 			name: picked.name,
 			json: JSON.stringify(picked),
 			totalSeconds: total,
+			route,
 		});
 		// start follows the tick that shows the pick landed (#1764): sent
 		// blind, a refused pick's reason was overwritten by start's own
@@ -274,7 +276,7 @@
 				// it. Starting belongs to the screen the coach rides on, which
 				// is the gate SessionControls wears.
 				undefined
-			: (workout) => startWorkout(workout)}
+			: (workout, route) => startWorkout(workout, route)}
 		onStartGame={device.spectator
 			? // A game IS a session, started the same way.
 				undefined

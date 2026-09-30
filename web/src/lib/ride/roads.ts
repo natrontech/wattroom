@@ -1,6 +1,7 @@
 import { api } from '$lib/api';
 import { canSimulate } from '$lib/ble/can-simulate';
-import { unpackRoad, type Road } from '$lib/road/road';
+import type { Road } from '$lib/road/road';
+import { roadOf, type StoredRoute } from '$lib/road/stored';
 
 /**
  * May this screen ride a road (#3027)? The route ride lands behind a dev
@@ -43,18 +44,12 @@ export async function myRoutes(): Promise<
 export async function loadRoad(
 	id: string,
 ): Promise<{ ok: true; route: RideableRoute } | { ok: false; error: string }> {
-	const res = await api<{ id: string; name: string; road?: string }>(
-		`/api/routes/${encodeURIComponent(id)}`,
-	);
+	const res = await api<StoredRoute>(`/api/routes/${encodeURIComponent(id)}`);
 	if (!res.ok) return { ok: false, error: res.error.message };
-	if (!res.data.road)
-		return { ok: false, error: 'That route has no road to ride.' };
 	try {
-		const bytes = Uint8Array.from(atob(res.data.road), (c) => c.charCodeAt(0));
-		return {
-			ok: true,
-			route: { id: res.data.id, name: res.data.name, road: unpackRoad(bytes) },
-		};
+		const road = roadOf(res.data);
+		if (!road) return { ok: false, error: 'That route has no road to ride.' };
+		return { ok: true, route: { id: res.data.id, name: res.data.name, road } };
 	} catch {
 		return { ok: false, error: 'That road could not be read. Try again.' };
 	}

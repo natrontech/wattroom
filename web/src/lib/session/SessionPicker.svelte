@@ -8,7 +8,6 @@
 	import WhenPicker from '$lib/components/WhenPicker.svelte';
 	import { nextHourInput } from '$lib/components/when';
 	import ZoneDot from '$lib/components/ZoneDot.svelte';
-	import { plannedZoneSeconds } from '$lib/components/zones';
 	import { formatClock } from '$lib/format';
 	import {
 		fetchProgression,
@@ -22,6 +21,15 @@
 	import { durationSeconds, flatten } from '$lib/workout/engine';
 	import type { ShelfEntry } from '$lib/workout/shelf';
 	import type { Workout } from '$lib/workout/types';
+	import { api } from '$lib/api';
+	import type { ControlRoute } from '$lib/protocol';
+	import { roadsEnabled } from '$lib/ride/roads';
+	import { onRoute } from '$lib/road/compile';
+	import type { Road } from '$lib/road/road';
+	import type { StoredRoute } from '$lib/road/stored';
+	import RoadRow from './RoadRow.svelte';
+	import RoutePicker from './RoutePicker.svelte';
+	import { bandChips, zoneChips } from './workout-chips';
 
 	let {
 		shelf,
@@ -52,7 +60,7 @@
 		busy?: boolean;
 		gameRunning?: boolean;
 		/** Absent when this picker only plans: no voice channel to start it in. */
-		onStart?: (workout: Workout) => void;
+		onStart?: (workout: Workout, route?: ControlRoute) => void;
 		/** Your own workout, ridden beside the session (#2329); the 'ride' intent's one action. */
 		onRide?: (workout: Workout) => void;
 		/** Resolves to the server's refusal, which the picker shows under the
@@ -82,7 +90,7 @@
 	 *  shell around it to answer the key. */
 	let depth = $state(0);
 
-	let tab = $state<'workouts' | 'games'>('workouts');
+	let tab = $state<'workouts' | 'roads' | 'games'>('workouts');
 	// svelte-ignore state_referenced_locally
 	let mode = $state<PickerIntent>(
 		intent === 'ride' && onRide ? 'ride' : onStart ? intent : 'plan',
@@ -149,34 +157,41 @@
 	const ridesAlone = $derived(segments.some((seg) => seg.hrHold));
 	const total = $derived(picked ? durationSeconds(picked.workout) : 0);
 
-	// Zone breakdown: where the time actually goes, in the graph's colours.
-	const zoneChips = $derived(
-		plannedZoneSeconds(segments, ftp)
-			.map((seconds, zone) => ({ zone, seconds }))
-			.filter((entry) => entry.zone > 0 && entry.seconds > 0)
-			.map((entry) => ({
-				zone: entry.zone,
-				minutes: Math.max(1, Math.round(entry.seconds / 60)),
-			})),
-	);
+	const zones = $derived(zoneChips(segments, ftp));
+	const bands = $derived(bandChips(segments));
 
-	// Cadence/HR bands (#66/#67) — the picker is where they were invisible.
-	const bandChips = $derived.by(() => {
-		const chips = new Set<string>();
-		const phrase = (low: number | undefined, high: number | undefined) =>
-			low !== undefined && high !== undefined
-				? `${low}–${high}`
-				: high !== undefined
-					? `under ${high}`
-					: `over ${low}`;
-		for (const seg of segments) {
-			if (seg.cadenceLow !== undefined || seg.cadenceHigh !== undefined)
-				chips.add(`${phrase(seg.cadenceLow, seg.cadenceHigh)} rpm`);
-			if (seg.hrLow !== undefined || seg.hrHigh !== undefined)
-				chips.add(`${phrase(seg.hrLow, seg.hrHigh)} bpm`);
-		}
-		return [...chips];
-	});
+	// Roads (#3105): behind the roads dev gate like every route ride, and
+	// never in the solo 'ride' mode — riding your own workout on a road is
+	// its own door (#3594).
+	const roadsOn = $derived(roadsEnabled() && mode !== 'ride');
+	// Workouts, then your roads, then games — the tabs this picker has.
+	const tabs = $derived([
+		{ id: 'workouts' as const, label: 'Workouts' },
+		...(roadsOn ? [{ id: 'roads' as const, label: 'Roads' }] : []),
+		...(mode === 'start' && onStartGame
+			? [{ id: 'games' as const, label: 'Games' }]
+			: []),
+	]);
+	let routes = $state<StoredRoute[] | null>(null);
+	let routesError = $state<string | null>(null);
+	async function loadRoutes() {
+		routesError = null;
+		const res = await api<{ routes: StoredRoute[] }>('/api/routes');
+		if (res.ok) routes = res.data.routes;
+		else routesError = res.error.message;
+	}
+	if (roadsEnabled()) void loadRoutes();
+	let roadChoice = $state<{
+		workout: Workout;
+		route: ControlRoute;
+		legs: number;
+	} | null>(null);
+
+	// The Road row on a workout pick (#3100): which of your roads it rides.
+	let workoutRoad = $state<{ id: string; road: Road } | null>(null);
+	const onItsRoad = $derived(
+		picked && workoutRoad ? onRoute(picked.workout, workoutRoad) : null,
+	);
 
 	let planAt = $state(nextHourInput());
 	// A refused time is answered beside the field (errors.md), for as long as
@@ -192,6 +207,97 @@
 		refused = message ? { at, message } : null;
 	}
 </script>
+
+{#snippet actions(
+	workout: Workout,
+	route: ControlRoute | undefined,
+	alone: boolean,
+)}
+	{#if mode === 'ride' && onRide}
+		<!-- Beside the session, not in it (ADR-0059 amended): the one
+		     thing a rider needs to know before tapping. -->
+		<div class="flex flex-wrap items-center gap-3">
+			<div class="min-w-0 flex-1">
+				<p class="text-sm font-medium">
+					You ride it yourself, beside anything running here.
+				</p>
+				<p class="text-muted mt-1 text-xs">
+					A 3 s count-in, then your own clock. The call sees your numbers; the
+					workout stays yours.
+				</p>
+			</div>
+			<button
+				onclick={() => onRide(workout)}
+				class="btn btn-accent btn-lg shrink-0">Ride {workout.name}</button
+			>
+		</div>
+	{:else if alone}
+		<p class="text-muted text-sm">
+			This workout holds your heart rate, and that rides alone: ride it on your
+			own, or take the hold off its steps.
+		</p>
+	{:else if mode === 'start' && onStart}
+		{#if trainer}
+			<div class="mb-4">
+				<p class="mb-2 text-sm font-medium">
+					Pair your trainer first — the targets need something to hold them.
+				</p>
+				{@render trainer()}
+			</div>
+		{/if}
+		<div class="flex flex-wrap items-center gap-3">
+			<div class="min-w-0 flex-1">
+				<p class="text-sm font-medium">
+					It runs in {channelName}: anyone there can join it and ride with you.
+				</p>
+				<p class="text-muted mt-0.5 text-xs">
+					A 10 s countdown, then the shared timeline starts.
+				</p>
+			</div>
+			<!-- Still offered unpaired: a coach may lead without
+			     riding. Secondary, so it is a choice rather than
+			     the default. -->
+			<button
+				onclick={() => onStart(workout, route)}
+				disabled={busy}
+				class="btn {trainer ? 'btn-secondary' : 'btn-accent'} btn-lg shrink-0"
+				>{trainer ? 'Start without a trainer' : `Start ${workout.name}`}</button
+			>
+		</div>
+		<button onclick={() => (mode = 'plan')} class="btn-link mt-3 text-xs"
+			>Plan it for later instead</button
+		>
+	{:else}
+		<div class="flex flex-wrap items-end gap-3">
+			<div>
+				<span class="eyebrow">when</span>
+				<div class="mt-1"><WhenPicker bind:value={planAt} /></div>
+			</div>
+			{@render where?.()}
+			<button
+				onclick={() => void planIt(workout)}
+				disabled={busy || !planAt}
+				class="btn btn-primary btn-lg ml-auto shrink-0 disabled:opacity-40"
+				>Plan it</button
+			>
+		</div>
+		{#if refused && refused.at === planAt}
+			<p class="text-danger mt-2 text-xs" role="alert">
+				{refused.message}
+			</p>
+		{/if}
+		<!-- A private channel's plan reaches its people, not the whole
+		     crew (#2634). -->
+		<p class="text-muted mt-2 text-xs">
+			Everyone who can join it hears about it, and it lands in their calendars.
+		</p>
+		{#if onStart}
+			<button onclick={() => (mode = 'start')} class="btn-link mt-3 text-xs"
+				>Start it now instead</button
+			>
+		{/if}
+	{/if}
+{/snippet}
 
 <button
 	class="bg-paper/50 fixed inset-0 z-40"
@@ -222,20 +328,16 @@
 >
 	<header class="border-ink/5 flex items-center gap-4 border-b px-5 py-3.5">
 		<h2 class="font-display text-lg font-bold">{title}</h2>
-		{#if mode === 'start' && onStartGame}
+		{#if tabs.length > 1}
 			<div class="border-muted/20 flex gap-1 rounded border p-0.5">
-				<button
-					onclick={() => (tab = 'workouts')}
-					class="rounded px-3 py-1 text-xs {tab === 'workouts'
-						? 'bg-surface-raised text-ink'
-						: 'text-muted hover:text-ink'}">Workouts</button
-				>
-				<button
-					onclick={() => (tab = 'games')}
-					class="rounded px-3 py-1 text-xs {tab === 'games'
-						? 'bg-surface-raised text-ink'
-						: 'text-muted hover:text-ink'}">Games</button
-				>
+				{#each tabs as t (t.id)}
+					<button
+						onclick={() => (tab = t.id)}
+						class="rounded px-3 py-1 text-xs {tab === t.id
+							? 'bg-surface-raised text-ink'
+							: 'text-muted hover:text-ink'}">{t.label}</button
+					>
+				{/each}
 			</div>
 		{/if}
 		<button onclick={onClose} class="btn btn-secondary btn-xs ml-auto"
@@ -243,7 +345,18 @@
 		>
 	</header>
 
-	{#if tab === 'workouts' || mode === 'plan'}
+	{#if tab === 'roads' && roadsOn}
+		<RoutePicker
+			{routes}
+			error={routesError}
+			onRetry={() => void loadRoutes()}
+			bind:choice={roadChoice}
+		>
+			{#snippet footer(choice)}
+				{@render actions(choice.workout, choice.route, false)}
+			{/snippet}
+		</RoutePicker>
+	{:else if tab === 'workouts' || mode === 'plan'}
 		<!-- Two panes side by side is a desk layout: at 375px the dialog is
 		     343px wide, so a fixed w-72 list left the detail 53px and one word
 		     per line (#634). Below md they stack — list first, since picking is
@@ -332,13 +445,13 @@
 						class="text-muted mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px]"
 					>
 						<span class="num">{formatClock(total)}</span>
-						{#each zoneChips as chip (chip.zone)}
+						{#each zones as chip (chip.zone)}
 							<span class="num flex items-center gap-1">
 								<ZoneDot zone={chip.zone} />Z{chip.zone}
 								{chip.minutes}m
 							</span>
 						{/each}
-						{#each bandChips as chip (chip)}
+						{#each bands as chip (chip)}
 							<span class="border-muted/25 num rounded-full border px-2 py-0.5"
 								>{chip}</span
 							>
@@ -348,101 +461,17 @@
 					<!-- ONE primary action, for the question that opened the picker.
 					     The other intent is a link, not a second section: two equal
 					     panels under the preview is what made this feel weird. -->
+					{#if roadsOn && routes && routes.some((r) => !r.ownerOnly)}
+						<RoadRow {routes} bind:road={workoutRoad} />
+					{/if}
 					<div class="border-ink/5 mt-auto border-t pt-4">
-						{#if mode === 'ride' && onRide}
-							<!-- Beside the session, not in it (ADR-0059 amended): the one
-							     thing a rider needs to know before tapping. -->
-							<div class="flex flex-wrap items-center gap-3">
-								<div class="min-w-0 flex-1">
-									<p class="text-sm font-medium">
-										You ride it yourself, beside anything running here.
-									</p>
-									<p class="text-muted mt-1 text-xs">
-										A 3 s count-in, then your own clock. The call sees your
-										numbers; the workout stays yours.
-									</p>
-								</div>
-								<button
-									onclick={() => onRide(picked.workout)}
-									class="btn btn-accent btn-lg shrink-0"
-									>Ride {picked.workout.name}</button
-								>
-							</div>
-						{:else if ridesAlone}
-							<p class="text-muted text-sm">
-								This workout holds your heart rate, and that rides alone: ride
-								it on your own, or take the hold off its steps.
-							</p>
-						{:else if mode === 'start' && onStart}
-							{#if trainer}
-								<div class="mb-4">
-									<p class="mb-2 text-sm font-medium">
-										Pair your trainer first — the targets need something to hold
-										them.
-									</p>
-									{@render trainer()}
-								</div>
-							{/if}
-							<div class="flex flex-wrap items-center gap-3">
-								<div class="min-w-0 flex-1">
-									<p class="text-sm font-medium">
-										It runs in {channelName}: anyone there can join it and ride
-										with you.
-									</p>
-									<p class="text-muted mt-0.5 text-xs">
-										A 10 s countdown, then the shared timeline starts.
-									</p>
-								</div>
-								<!-- Still offered unpaired: a coach may lead without
-								     riding. Secondary, so it is a choice rather than
-								     the default. -->
-								<button
-									onclick={() => onStart(picked.workout)}
-									disabled={busy}
-									class="btn {trainer
-										? 'btn-secondary'
-										: 'btn-accent'} btn-lg shrink-0"
-									>{trainer
-										? 'Start without a trainer'
-										: `Start ${picked.workout.name}`}</button
-								>
-							</div>
-							<button
-								onclick={() => (mode = 'plan')}
-								class="btn-link mt-3 text-xs">Plan it for later instead</button
-							>
-						{:else}
-							<div class="flex flex-wrap items-end gap-3">
-								<div>
-									<span class="eyebrow">when</span>
-									<div class="mt-1"><WhenPicker bind:value={planAt} /></div>
-								</div>
-								{@render where?.()}
-								<button
-									onclick={() => void planIt(picked.workout)}
-									disabled={busy || !planAt}
-									class="btn btn-primary btn-lg ml-auto shrink-0 disabled:opacity-40"
-									>Plan it</button
-								>
-							</div>
-							{#if refused && refused.at === planAt}
-								<p class="text-danger mt-2 text-xs" role="alert">
-									{refused.message}
-								</p>
-							{/if}
-							<!-- A private channel's plan reaches its people, not the whole
-							     crew (#2634). -->
-							<p class="text-muted mt-2 text-xs">
-								Everyone who can join it hears about it, and it lands in their
-								calendars.
-							</p>
-							{#if onStart}
-								<button
-									onclick={() => (mode = 'start')}
-									class="btn-link mt-3 text-xs">Start it now instead</button
-								>
-							{/if}
-						{/if}
+						{@render actions(
+							onItsRoad ?? picked.workout,
+							onItsRoad && workoutRoad
+								? { id: workoutRoad.id, fromM: 0 }
+								: undefined,
+							ridesAlone,
+						)}
 					</div>
 				{/if}
 			</div>

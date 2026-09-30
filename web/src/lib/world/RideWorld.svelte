@@ -52,6 +52,7 @@
 					style: STYLES.find((s) => s.id === 'bluehour') ?? STYLES[0],
 					watts,
 					ftp,
+					onFail: onfail,
 				});
 			} catch (err) {
 				console.error('world: slot 2 did not start', err);
@@ -66,7 +67,8 @@
 	});
 
 	$effect(() => scene?.setWatts(watts));
-	$effect(() => scene?.setPaused(paused || shellHidden));
+	$effect(() => scene?.hold('displaced', paused));
+	$effect(() => scene?.hold('shell', shellHidden));
 </script>
 
 <canvas

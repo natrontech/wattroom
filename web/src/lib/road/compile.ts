@@ -10,7 +10,7 @@ import { LIMITS } from '$lib/workout/validate';
 import type { Climb } from './climbs';
 import { heightAt } from './at-metre';
 import { steadySpeed } from './pace';
-import type { Road } from './road';
+import { roadStep, type Road } from './road';
 
 /**
  * ERG by the road (#3026's decided formula): a stretch asks for
@@ -25,19 +25,22 @@ const CEILING = 0.9;
 export const targetFor = (gradePct: number) =>
 	Math.min(CEILING, Math.max(FLOOR, BASE + PER_PCT * gradePct));
 
-/** A stretch of the road, from a climb's foot to its top or between climbs. */
-type Stretch = { fromM: number; toM: number };
+/** A stretch of the road, in metres along it: a climb, the flat between two, or the part a ride takes. */
+export type Stretch = { fromM: number; toM: number };
 
-/** The road cut at every climb's foot and top: climbs and the flats between. */
-function stretchesOf(road: Road, climbs: Climb[]): Stretch[] {
+/** The ridden stretch cut at every climb's foot and top: climbs and the flats between. */
+function stretchesOf(climbs: Climb[], ridden: Stretch): Stretch[] {
 	const out: Stretch[] = [];
-	let at = 0;
+	let at = ridden.fromM;
 	for (const c of climbs) {
-		if (c.startM > at) out.push({ fromM: at, toM: c.startM });
-		out.push({ fromM: c.startM, toM: c.topM });
-		at = c.topM;
+		const fromM = Math.max(c.startM, ridden.fromM);
+		const toM = Math.min(c.topM, ridden.toM);
+		if (toM <= fromM) continue;
+		if (fromM > at) out.push({ fromM: at, toM: fromM });
+		out.push({ fromM, toM });
+		at = toM;
 	}
-	if (road.length > at) out.push({ fromM: at, toM: road.length });
+	if (ridden.toM > at) out.push({ fromM: at, toM: ridden.toM });
 	return out;
 }
 
@@ -53,9 +56,10 @@ function blocksOf(
 	climbs: Climb[],
 	ftp: number,
 	massKg: number,
+	ridden: Stretch,
 ): Block[] {
 	const out: Block[] = [];
-	for (const s of stretchesOf(road, climbs)) {
+	for (const s of stretchesOf(climbs, ridden)) {
 		const length = s.toM - s.fromM;
 		const grade =
 			((heightAt(road, s.toM) - heightAt(road, s.fromM)) / length) * 100;
@@ -85,16 +89,19 @@ function blocksOf(
  * MaxLegSeconds (docs/SPEC.md "Leg"): the first is the ride, later ones are
  * offered. Every block ends on the road at its `stepEndM`. Legs are named by
  * the route's generated name, never the owner's rename (#3055): a workout
- * goes out to the session, the ride list and friends' feeds.
+ * goes out to the session, the ride list and friends' feeds. `ridden` is the
+ * stretch it rides (#3105) — the whole road unless a climb or a later start
+ * was picked — and every metre stays the road's own.
  */
 export function compileRoad(
 	route: { id: string; genName: string; road: Road; climbs: Climb[] },
 	ftp: number,
 	massKg: number,
+	ridden: Stretch = { fromM: 0, toM: route.road.length },
 ): Workout[] {
 	const legs: Block[][] = [[]];
 	let spent = 0;
-	for (const block of blocksOf(route.road, route.climbs, ftp, massKg)) {
+	for (const block of blocksOf(route.road, route.climbs, ftp, massKg, ridden)) {
 		if (spent + block.seconds > MaxLegSeconds && legs.at(-1)!.length > 0) {
 			legs.push([]);
 			spent = 0;
@@ -102,7 +109,7 @@ export function compileRoad(
 		legs.at(-1)!.push(block);
 		spent += block.seconds;
 	}
-	let fromM = 0;
+	let fromM = ridden.fromM;
 	return legs.map((blocks, k) => {
 		const steps: SteadyStep[] = blocks.map((b) => ({
 			type: 'steady',
@@ -126,4 +133,27 @@ export function compileRoad(
 		fromM = toM;
 		return leg;
 	});
+}
+
+/**
+ * Any workout on a route (#3100): the road by reference, with no block pinned
+ * to it. The ERG steps stay exactly as written and score as always; only where
+ * the dot rides changes — solo by the rider's own watts, in a session at the
+ * bunch's prescribed pace (ADR-0065). The stretch runs from `fromM` to the
+ * road's end, and a road the workout already carried is replaced.
+ */
+export function onRoute(
+	workout: Workout,
+	route: { id: string; road: Road },
+	fromM = 0,
+): Workout {
+	const toM = route.road.length;
+	return {
+		...workout,
+		road: {
+			routeId: route.id,
+			fromM: Math.min(Math.max(fromM, 0), toM - roadStep(route.road)),
+			toM,
+		},
+	};
 }
