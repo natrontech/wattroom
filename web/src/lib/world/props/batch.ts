@@ -107,7 +107,7 @@ export function batchProps(
 	for (const p of props) {
 		const mesh = meshes.get(FAMILY[p.kind])!;
 		const id = mesh.addInstance(geometry.get(p.kind)![0]);
-		q.setFromAxisAngle(up, p.rot);
+		q.setFromAxisAngle(up, Math.atan2(p.turn[1], p.turn[0]));
 		mesh.setMatrixAt(
 			id,
 			m.compose(

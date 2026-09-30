@@ -16,7 +16,7 @@ const at = (kind: Prop['kind'], x: number): Prop => ({
 	x: x + TILE_M / 2,
 	z: -TILE_M / 2,
 	base: 0,
-	rot: 0,
+	turn: [1, 0],
 	scale: 1,
 });
 

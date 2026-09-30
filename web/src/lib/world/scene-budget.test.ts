@@ -181,6 +181,31 @@ function measure(
 	};
 }
 
+/**
+ * O13 (#3221, ADR-0072): what makes its own light or adds light to what is
+ * behind it. Only the rider's own trail may.
+ */
+function glowing(root: THREE.Object3D): string[] {
+	const out: string[] = [];
+	root.traverse((o) => {
+		const mat = (o as THREE.Mesh).material;
+		if (!mat) return;
+		for (const m of [mat].flat()) {
+			const e = (m as THREE.MeshLambertMaterial).emissive;
+			const lit =
+				!!e &&
+				e.r + e.g + e.b > 0 &&
+				(m as THREE.MeshLambertMaterial).emissiveIntensity > 0;
+			if (
+				(lit || m.blending === THREE.AdditiveBlending) &&
+				kindOf(o) !== 'trail'
+			)
+				out.push(`${kindOf(o)} ${m.type}`);
+		}
+	});
+	return out;
+}
+
 function kindOf(o: THREE.Object3D): string {
 	for (let p: THREE.Object3D | null = o; p; p = p.parent)
 		if (p.userData.kind) return p.userData.kind as string;
@@ -361,6 +386,20 @@ describe('the ride’s scene budget, high tier (#3083)', () => {
 	it('draws the props around the camera in every frame, as its rings stand there', () => {
 		for (const f of frames.filter((g) => !g.multiDraw))
 			expect(f.props).toBeGreaterThan(0);
+	});
+
+	it('lights nothing but the rider’s own trail (O13, #3221)', () => {
+		expect(glowing(w.scene)).toEqual([]);
+		const lamp = new THREE.Mesh(
+			new THREE.BoxGeometry(),
+			new THREE.MeshLambertMaterial({ emissive: 'white' }),
+		);
+		const add = new THREE.Mesh(
+			new THREE.BoxGeometry(),
+			new THREE.MeshBasicMaterial({ blending: THREE.AdditiveBlending }),
+		);
+		const probe = new THREE.Group().add(lamp, add);
+		expect(glowing(probe)).toHaveLength(2);
 	});
 
 	it('draws the riders it counts', () => {
