@@ -11,6 +11,7 @@ import { syntheticPoints } from '../synthetic';
 import { build, origin, routeLines } from '../terrain/network.test-helper';
 import { drawnRows, ROAD_W } from '../terrain/road-profile';
 import { generate, type World } from '../world';
+import { BUILD_MS } from '../world.test-helper';
 import { scatter, type Prop } from './scatter';
 
 /**
@@ -59,12 +60,16 @@ describe('the same place stands the same props (#3226)', () => {
 		expect(unmatched(A, C)).toBe(0);
 	});
 
-	it('would not, keyed by the route', () => {
-		const byName = things(
-			propsOf(routeLines.B(), [hashSeed('Toyjoch climb'), 1, 2, 3]),
-		);
-		expect(unmatched(A, byName)).toBeGreaterThan(A.length / 2);
-	});
+	it(
+		'would not, keyed by the route',
+		() => {
+			const byName = things(
+				propsOf(routeLines.B(), [hashSeed('Toyjoch climb'), 1, 2, 3]),
+			);
+			expect(unmatched(A, byName)).toBeGreaterThan(A.length / 2);
+		},
+		BUILD_MS,
+	);
 });
 
 /** The road as short overlapping stretches, and those near a footprint: O1 measured against all of it, cheaply. */

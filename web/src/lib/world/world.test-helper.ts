@@ -9,6 +9,13 @@ import type { World } from './world';
  * Test-only: nothing in the app imports it.
  */
 
+/**
+ * What a case that builds a world may take (#3503). A dev-world build is about
+ * 1.5 s alone (ADR-0081: keyed by place is the slower build) and several times
+ * that beside the rest of a full `make test`; vitest's 5 s default is not it.
+ */
+export const BUILD_MS = 30_000;
+
 /** Terrain faces steeper than 58° (rise over run above 1.6): a fold, not a hillside. */
 export function folds(world: World): number {
 	const { pos, index } = world.mesh;
