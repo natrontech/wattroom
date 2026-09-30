@@ -198,7 +198,9 @@
 		     header with a screen of nothing below it (#1531: "two thirds empty"). -->
 		<!-- On the road the world has the focus, and your watts sit with your numbers. -->
 		{#if !inWorld || session.sprint}
-			<section class="grid min-h-0 content-center">
+			<!-- Clipped to its row and centred safely on a short window (#3611):
+			     overflowing, it used to cover the header's controls. -->
+			<section class="grid min-h-0 [align-content:safe_center] overflow-y-clip">
 				{#if session.sprint}
 					<!-- A sprint block takes the focus, solo as in a session (#1793,
 				     ADR-0046): the count-in, the window and your watts, where the
