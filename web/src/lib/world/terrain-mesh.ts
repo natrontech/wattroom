@@ -172,7 +172,7 @@ export function createTerrain(
 		const groundAt = (x: number, z: number) => {
 			const k = Math.round(x / FINE_M) * 1e7 + Math.round(z / FINE_M);
 			let h = asked.get(k);
-			if (h === undefined) asked.set(k, (h = ground.heightAt(x, z)));
+			if (h === undefined) asked.set(k, (h = ground.drawnAt(x, z)));
 			return h;
 		};
 		const step = level === 'fine' ? FINE_M : COARSE_M;
