@@ -13,7 +13,7 @@ This file says what every rider-visible change is held to. Each surface has:
 
 The images live in `docs/design/targets/`. They were rendered on 2026-09-30 from our own mockups in `docs/design/mockups/`, and `make design-targets` re-renders them. Jan has seen and chosen every one.
 
-The v2 mock's route starts in an invented village, Stollmatt, and says nothing of how far its start is from km 0 (G10). The real place it first named was replaced before these files entered the repository, and v2's erg, ride, routes and summary were re-rendered for it.
+The v2 mock's route starts in an invented village, Stollmatt, and says nothing of how far its start is from km 0 (G10). Its traces stop about a kilometre short of the start on the way out and a little further on the way back, and nothing on its maps is centred on the start: the ring sits between the cut ends and km 0 on the first kept point. The real place it first named was replaced, and the traces trimmed, before these files entered the repository; v2's erg, ride, routes, summary, collections and phone were re-rendered for it.
 
 - `v2-*.png`, “Ride Worlds Play”: ride, erg, routes, summary, garage, collections, phone.
 - `v3-*.png`, “Ride Worlds Shared Roads”: roads, events, modes, race, rider, motion, roadside, shop.
