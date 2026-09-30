@@ -3,26 +3,28 @@
 // it, so whichever route reaches a spot finds the same ground there. This
 // dev path has one road, the route itself, in the route's own frame, until a
 // served road and the map's strokes arrive (#3057, #3239). The props are
-// keyed by place too (#3076); the set pieces still draw from the route's
-// seed until #3077 anchors them to the road. Nothing about the world is ever sent over the wire — only
-// the route and each rider's distance along it.
-import { makeField, roadIndex } from './field';
+// keyed by place too (#3076), and so are the set pieces (#3077): props and set
+// pieces stand through one placer, so each sees what the other stood. Nothing
+// about the world is ever sent over the wire — only the route and each rider's
+// distance along it.
+import { roadIndex } from './field';
 import { landUse } from './land';
 import { markersFor, type Marker } from './markers';
 import { CHUNK_M } from './place/lattice';
 import type { Salt } from './place/keyed';
-import { hashSeed, prng } from './rand';
+import { hashSeed } from './rand';
 import type { Route } from '$lib/road/route';
 import type { Names } from './names';
 import { setPieces, type Arch, type Piece, type Sign } from './setpieces';
 import { corridor, createTerrain, type TerrainMesh } from './terrain-mesh';
 import { makeGround } from './terrain/ground';
-import { scatter, type Prop } from './props/scatter';
+import { createPlacer } from './props/placer';
+import { scatter, villageSites, type Prop } from './props/scatter';
 import type { Placement } from './placement/types';
 import { drawnRows } from './terrain/road-profile';
 
 export type World = {
-	/** The set pieces' seed, until #3077 keys them by place. */
+	/** The far skyline's seed: the backdrop is still drawn from the route. */
 	seed: number;
 	/** The drawn ground's extent: minX, minZ, maxX, maxZ. */
 	bounds: [number, number, number, number];
@@ -54,7 +56,6 @@ export function generate(
 	const seed = hashSeed(
 		`${route.name}:${Math.round(route.length)}:${Math.round(route.gain)}`,
 	);
-	const rand = prng(seed);
 
 	// The ground's road is the drawn one, so earthworks and furniture follow the ribbon.
 	const rows = drawnRows(route);
@@ -79,40 +80,39 @@ export function generate(
 		bounds[2] = Math.max(bounds[2], (ci + 1) * CHUNK_M);
 		bounds[3] = Math.max(bounds[3], (cj + 1) * CHUNK_M);
 	}
-	const field = makeField(route);
 	const { nearest } = roadIndex(route);
 	const { heightAt, biomeAt } = terrain;
 	const { roadSurfaceAt } = ground;
 
-	const placed = scatter({
+	const place = {
 		salt: opts.salt ?? DEV_SALT,
 		ground,
 		heightAt,
 		biomeAt,
 		chunks: cover.chunks,
-	});
-	const villageNames = placed.villages
+	};
+	const villages = villageSites(place);
+	// Where the ribbon is drawn it is the ground a post stands on.
+	const placer = createPlacer(
+		(x, z) => roadSurfaceAt(x, z) ?? heightAt(x, z),
+		ground.lines,
+	);
+	// Set pieces stand first: a fountain in a village wins its spot over a tree.
+	const set = setPieces({ ...place, placer, villages });
+	const placed = scatter(place, placer, villages);
+	const villageNames = villages
 		.map((v) => ({
 			d: (nearest(v.x, v.z)?.i ?? 0) * route.step,
 			name: v.name,
 		}))
 		.sort((a, b) => a.d - b.d);
 	const markers = markersFor(route, villageNames);
-	const set = setPieces(route, markers, {
-		rand,
-		field,
-		nearest,
-		heightAt,
-		biomeAt,
-		roadSurfaceAt,
-		villages: villageNames,
-	});
 	return {
 		seed,
 		bounds,
 		mesh,
 		rim: terrain.rim(cover.chunks),
-		placements: placed.placements,
+		placements: placer.placements,
 		heightAt,
 		roadSurfaceAt,
 		props: placed.props,

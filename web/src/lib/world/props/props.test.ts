@@ -107,8 +107,11 @@ describe('the dev world’s props', () => {
 		const near = roadsBy(drawnRows(route).map((p) => [p.x, p.z] as P2));
 		const seen = crowd();
 		const out: Violation[] = [];
+		// Props and set pieces alike: road furniture stands on the ribbon where it is drawn.
+		const drawn = (x: number, z: number) =>
+			w.roadSurfaceAt(x, z) ?? w.heightAt(x, z);
 		for (const p of w.placements) {
-			out.push(...admit(p, near(p), w.heightAt, seen));
+			out.push(...admit(p, near(p), drawn, seen));
 			seen.add(p);
 		}
 		expect(w.placements.length).toBeGreaterThan(3000);

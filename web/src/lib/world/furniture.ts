@@ -4,8 +4,7 @@ import * as THREE from 'three';
 import { yOf } from './geometry';
 import * as P from './props';
 import { type Route } from '$lib/road/route';
-import { at } from '$lib/road/along';
-import type { Piece, PieceKind, Sign } from './setpieces';
+import type { Arch, Piece, PieceKind, Sign } from './setpieces';
 import type { PropColors, Style } from './styles';
 import type { World } from './world';
 
@@ -44,7 +43,6 @@ const LOW = new Set<PieceKind>([
 	'signpost',
 	'flag',
 ]);
-const ROADSIDE = new Set<PieceKind>(['delineator', 'snowpole']);
 
 export type KitMaterials = {
 	fade: THREE.Material; // buildings that may stand in the sightline
@@ -79,10 +77,10 @@ export function kits(
 		const mat =
 			kind === 'linden' ? mats.leafy : LOW.has(kind) ? mats.flat : mats.fade;
 		const im = new THREE.InstancedMesh(geo, mat, list.length);
-		const sink = ROADSIDE.has(kind) ? 0.05 : 0.15;
+		// Each stands on its own base: the gates set it (#3219), nothing sinks it after.
 		list.forEach((p, i) => {
-			q.setFromAxisAngle(up, p.rot);
-			v.set(p.x, yOf(route, p.y) - sink, p.z);
+			q.setFromAxisAngle(up, Math.atan2(p.turn[1], p.turn[0]));
+			v.set(p.x, yOf(route, p.y), p.z);
 			im.setMatrixAt(i, m4.compose(v, q, one));
 		});
 		im.computeBoundingSphere();
@@ -167,18 +165,13 @@ export function board(route: Route, sign: Sign, style: Style): THREE.Group {
 		g.add(leg);
 	}
 	g.position.set(sign.x, yOf(route, sign.y) - 0.1, sign.z);
-	g.rotation.y = sign.rot;
+	g.rotation.y = Math.atan2(sign.turn[1], sign.turn[0]);
 	return g;
 }
 
 // The KOM arch: ≥ 6 m clear, posts a metre outside the road edge, structural chrome — never glowing.
-export function arch(
-	route: Route,
-	d: number,
-	text: string,
-	style: Style,
-): THREE.Group {
-	const p = at(route, d);
+export function arch(route: Route, a: Arch, style: Style): THREE.Group {
+	const text = a.label;
 	const g = new THREE.Group();
 	const chrome = new THREE.MeshLambertMaterial({ color: style.arch.chrome });
 	for (const sx of [-4.4, 4.4]) {
@@ -209,7 +202,7 @@ export function arch(
 	]);
 	banner.position.y = 7.0;
 	g.add(banner);
-	g.position.set(p.x, yOf(route, p.ele) + 0.1, p.z);
-	g.rotation.y = p.heading + Math.PI;
+	g.position.set(a.x, yOf(route, a.y) + 0.1, a.z);
+	g.rotation.y = Math.atan2(a.turn[1], a.turn[0]) + Math.PI;
 	return g;
 }

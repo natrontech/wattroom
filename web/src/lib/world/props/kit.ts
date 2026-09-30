@@ -20,6 +20,23 @@ export const PROP_KINDS = [
 ] as const;
 export type PropKind = (typeof PROP_KINDS)[number];
 
+/** The set pieces' models (#3077): road furniture and the kits a road passes. */
+export const PIECE_MODELS = [
+	'bench',
+	'woodpile',
+	'bales',
+	'wayside',
+	'signpost',
+	'fountain',
+	'fence',
+	'flag',
+	'linden',
+	'chapel',
+	'snowpole',
+	'delineator',
+] as const;
+export type KitKind = PropKind | (typeof PIECE_MODELS)[number];
+
 export type KitSpec = {
 	/** The contact box's half width (x) and half depth (z), and its centre, in the model's frame. */
 	hw: number;
@@ -30,7 +47,7 @@ export type KitSpec = {
 	plinth: number;
 };
 
-const MODELS: Record<PropKind, (c: PropColors) => THREE.BufferGeometry> = {
+const MODELS: Record<KitKind, (c: PropColors) => THREE.BufferGeometry> = {
 	house: P.house,
 	church: P.church,
 	barn: P.barn,
@@ -39,6 +56,18 @@ const MODELS: Record<PropKind, (c: PropColors) => THREE.BufferGeometry> = {
 	cow: P.cow,
 	spruce: P.spruce,
 	broadleaf: P.broadleaf,
+	bench: P.bench,
+	woodpile: P.woodpile,
+	bales: P.bales,
+	wayside: P.wayside,
+	signpost: P.signpost,
+	fountain: P.fountain,
+	fence: P.fence,
+	flag: (c) => P.flagpole(c, 'white'),
+	linden: P.linden,
+	chapel: P.chapel,
+	snowpole: P.snowpole,
+	delineator: P.delineator,
 };
 
 /** Vertices this near the lowest point are where a model meets the ground. */
@@ -72,16 +101,16 @@ function specOf(g: THREE.BufferGeometry): KitSpec {
 
 // Colour is no part of a shape: any will do.
 const ANY = new Proxy({}, { get: () => 'white' }) as PropColors;
-let specs: Record<PropKind, KitSpec> | null = null;
+let specs: Record<KitKind, KitSpec> | null = null;
 
-export function kitSpec(kind: PropKind): KitSpec {
+export function kitSpec(kind: KitKind): KitSpec {
 	specs ??= Object.fromEntries(
-		PROP_KINDS.map((k) => {
+		(Object.keys(MODELS) as KitKind[]).map((k) => {
 			const g = MODELS[k](ANY);
 			const s = specOf(g);
 			g.dispose();
 			return [k, s];
 		}),
-	) as Record<PropKind, KitSpec>;
+	) as Record<KitKind, KitSpec>;
 	return specs[kind];
 }

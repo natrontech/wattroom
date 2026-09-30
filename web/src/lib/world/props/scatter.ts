@@ -1,12 +1,11 @@
 import { Biome } from '../biome';
 import { VILLAGES } from '../names';
 import { keyer, unit, type Salt } from '../place/keyed';
-import { admit, crowd } from '../placement/check';
-import type { P2 } from '../placement/geom';
-import { GATES, type Class, type Placement } from '../placement/types';
+import type { Class } from '../placement/types';
 import type { Ground, Origin } from '../terrain/ground';
-import { kitSpec, type PropKind } from './kit';
-import { deg, hashOf, roadsNear, turnBy, walker, type Turn } from './roads';
+import type { PropKind } from './kit';
+import { createPlacer, type Placer } from './placer';
+import { deg, hashOf, turnBy, walker, type Turn } from './roads';
 import { CHUNK_M } from '../place/lattice';
 import type { ChunkAt } from '../terrain-mesh';
 
@@ -32,7 +31,14 @@ export type Prop = {
 	scale: number;
 };
 
-export type Village = { x: number; z: number; name: string };
+/** A generated village: where it stands, its name, and the stroke and metre its street starts from. */
+export type Village = {
+	x: number;
+	z: number;
+	name: string;
+	line: number;
+	s: number;
+};
 
 export type Place = {
 	salt: Salt;
@@ -60,25 +66,74 @@ const TILE_M = 5000;
 const TREES_WITHIN = 700;
 const VILLAGE_R = 220;
 
-export function scatter(place: Place): {
-	props: Prop[];
-	placements: Placement[];
-	villages: Village[];
-} {
+/**
+ * Where the villages stand (#3076): flat road through meadow, one chance per
+ * 200 m of each stroke, and one village per 5 km tile, named by its tile.
+ * Asked before anything stands, so the set pieces can dress them (#3077).
+ */
+export function villageSites(place: Place): Village[] {
+	const { salt, ground, biomeAt } = place;
+	const [e0, n0] = place.origin ?? [0, 0];
+	const house = keyer(salt, 'house');
+	const name = keyer(salt, 'name');
+	const walks = ground.lines.map(walker);
+	const strokes = ground.lines.map((l) => hashOf(l.key));
+	const sites = new Map<
+		string,
+		{ key: number; k: number; slot: number; x: number; z: number }
+	>();
+	walks.forEach((w, k) => {
+		for (let slot = 0; slot * SITE_M <= w.length; slot++) {
+			const s = slot * SITE_M;
+			if (s < 500 || s > w.length - 500) continue;
+			let flat = true;
+			for (let t = s - 500; t < s + 500 && flat; t += 10)
+				if (Math.abs(w.at(t + 10).h - w.at(t).h) > 0.3) flat = false;
+			if (!flat) continue;
+			const p = w.at(s);
+			const meadow = [-1, 1].some(
+				(side) =>
+					biomeAt(p.x + p.lx * 25 * side, p.z + p.lz * 25 * side) ===
+					Biome.Meadow,
+			);
+			if (!meadow) continue;
+			const tile = `${Math.floor((e0 + p.x) / TILE_M)}:${Math.floor((n0 - p.z) / TILE_M)}`;
+			const key = house(strokes[k], slot, 0);
+			const was = sites.get(tile);
+			if (!was || key < was.key)
+				sites.set(tile, { key, k, slot, x: p.x, z: p.z });
+		}
+	});
+	return [...sites]
+		.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+		.map(([tile, site]) => {
+			const [ti, tj] = tile.split(':').map(Number);
+			return {
+				x: site.x,
+				z: site.z,
+				name: VILLAGES[name(ti, tj) % VILLAGES.length],
+				line: site.k,
+				s: site.slot * SITE_M,
+			};
+		});
+}
+
+export function scatter(
+	place: Place,
+	placer: Placer = createPlacer(place.heightAt, place.ground.lines),
+	villages: Village[] = villageSites(place),
+): { props: Prop[]; villages: Village[] } {
 	const { salt, ground, heightAt, biomeAt } = place;
 	const [e0, n0] = place.origin ?? [0, 0];
 	const lines = ground.lines;
-	const near = roadsNear(lines);
-	const crowded = crowd();
 	const props: Prop[] = [];
-	const placements: Placement[] = [];
 	const tree = keyer(salt, 'tree');
 	const prop = keyer(salt, 'prop');
 	const house = keyer(salt, 'house');
-	const name = keyer(salt, 'name');
 	const u = (key: number) => unit(key);
 
 	/** Stands `kind` at (x, z) if the gates let it: its base as high as its bury allows, never floating past its plinth. */
+	/** Stands a prop if the gates let it, and keeps it. */
 	function stand(
 		kind: PropKind,
 		cls: Class,
@@ -87,48 +142,8 @@ export function scatter(place: Place): {
 		turn: Turn,
 		scale = 1,
 	): boolean {
-		const spec = kitSpec(kind);
-		const [c, s] = turn;
-		const footprint: P2[] = [
-			[-1, -1],
-			[1, -1],
-			[1, 1],
-			[-1, 1],
-		].map(([a, b]) => {
-			const lx = (spec.cx + a * spec.hw) * scale;
-			const lz = (spec.cz + b * spec.hd) * scale;
-			return [x + lx * c + lz * s, z - lx * s + lz * c];
-		});
-		let lo = Infinity;
-		let hi = -Infinity;
-		for (const [px, pz] of [...footprint, [x, z] as P2]) {
-			const h = heightAt(px, pz);
-			lo = Math.min(lo, h);
-			hi = Math.max(hi, h);
-		}
-		const height = spec.height * scale;
-		const sunk = kind === 'rock';
-		const bury =
-			cls === 'building'
-				? 0
-				: Math.min(GATES.bury.kitShare * height, GATES.bury.kitMax);
-		// An erratic sits a third of its plinth deep, wherever it lies.
-		const base = sunk
-			? lo - spec.plinth * scale * 0.35
-			: Math.max(lo, hi - bury);
-		const p: Placement = {
-			id: `${kind}-${props.length}`,
-			kind,
-			cls,
-			footprint,
-			base,
-			height,
-			plinth: spec.plinth * scale,
-			sunk,
-		};
-		if (admit(p, near(x, z), heightAt, crowded).length > 0) return false;
-		crowded.add(p);
-		placements.push(p);
+		const base = placer.stand(kind, cls, x, z, turn, scale);
+		if (base === null) return false;
 		props.push({ kind, x, z, base, turn, scale });
 		return true;
 	}
@@ -172,49 +187,15 @@ export function scatter(place: Place): {
 	const walks = lines.map(walker);
 	const strokes = lines.map((l) => hashOf(l.key));
 
-	// Village sites: flat road through meadow, one chance per 200 m of each stroke; one village per 5 km tile.
-	const sites = new Map<
-		string,
-		{ key: number; k: number; slot: number; x: number; z: number }
-	>();
-	walks.forEach((w, k) => {
-		for (let slot = 0; slot * SITE_M <= w.length; slot++) {
-			const s = slot * SITE_M;
-			if (s < 500 || s > w.length - 500) continue;
-			let flat = true;
-			for (let t = s - 500; t < s + 500 && flat; t += 10)
-				if (Math.abs(w.at(t + 10).h - w.at(t).h) > 0.3) flat = false;
-			if (!flat) continue;
-			const p = w.at(s);
-			const meadow = [-1, 1].some(
-				(side) =>
-					biomeAt(p.x + p.lx * 25 * side, p.z + p.lz * 25 * side) ===
-					Biome.Meadow,
-			);
-			if (!meadow) continue;
-			const tile = `${Math.floor((e0 + p.x) / TILE_M)}:${Math.floor((n0 - p.z) / TILE_M)}`;
-			const key = house(strokes[k], slot, 0);
-			const was = sites.get(tile);
-			if (!was || key < was.key)
-				sites.set(tile, { key, k, slot, x: p.x, z: p.z });
-		}
-	});
-	const villages: Village[] = [];
-	for (const [tile, site] of [...sites].sort(([a], [b]) =>
-		a < b ? -1 : a > b ? 1 : 0,
-	)) {
-		const [ti, tj] = tile.split(':').map(Number);
-		villages.push({
-			x: site.x,
-			z: site.z,
-			name: VILLAGES[name(ti, tj) % VILLAGES.length],
-		});
-		const w = walks[site.k];
-		const count = 12 + Math.floor(u(house(strokes[site.k], site.slot, 1)) * 10);
+	// Each village: a church first, then houses along its street, most close to it.
+	for (const site of villages) {
+		const w = walks[site.line];
+		const stroke = strokes[site.line];
+		const slot = site.s / SITE_M;
+		const count = 12 + Math.floor(u(house(stroke, slot, 1)) * 10);
 		for (let t = 0, placed = 0; t < 200 && placed < count; t++) {
-			const r = (c: number) =>
-				u(house(strokes[site.k], site.slot, 100 + t * 8 + c));
-			const p = w.at(site.slot * SITE_M + (r(0) - 0.5) * 800);
+			const r = (c: number) => u(house(stroke, slot, 100 + t * 8 + c));
+			const p = w.at(site.s + (r(0) - 0.5) * 800);
 			const side = r(1) < 0.5 ? -1 : 1;
 			const off = 15 + r(2) * r(3) * 90; // most houses close to the street
 			const x = p.x + p.lx * off * side;
@@ -345,5 +326,5 @@ export function scatter(place: Place): {
 		);
 	});
 
-	return { props, placements, villages };
+	return { props, villages };
 }
