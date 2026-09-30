@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
 )
 
@@ -21,7 +22,7 @@ type droppedUser struct {
 	keep []byte
 }
 
-func (*liveDrops) SetProfile(string, string, int, int) {}
+func (*liveDrops) SetProfile(protocol.Rider) {}
 
 func (l *liveDrops) DropUser(userID string, keep []byte) {
 	l.users = append(l.users, droppedUser{userID, keep})

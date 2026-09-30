@@ -7,6 +7,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/natrontech/wattroom/server/internal/protocol"
 )
 
 // nextSource is the whole provenance rule (#1484), and the case that matters
@@ -35,35 +37,15 @@ func TestNextSource(t *testing.T) {
 	}
 }
 
-// The column is nullable because expand/contract required it (ADR-0019), so
-// an absent word has to read as the honest one: nobody answered.
-func TestSourceOfTreatsNothingAsDefault(t *testing.T) {
-	t.Parallel()
-	set := sourceRamp
-	empty := ""
-	for name, tc := range map[string]struct {
-		stored *string
-		want   string
-	}{
-		"null":  {nil, sourceDefault},
-		"empty": {&empty, sourceDefault},
-		"set":   {&set, sourceRamp},
-	} {
-		if got := sourceOf(tc.stored); got != tc.want {
-			t.Errorf("%s: got %q, want %q", name, got, tc.want)
-		}
-	}
-}
-
 // A new account rides on 200 W and 75 kg that nobody chose (#1484), and the
 // row has to say so — it is what the first-run ask and Home's label read.
 func TestNewAccountNumbersAreMarkedUnchosen(t *testing.T) {
 	s := testService(t)
 	user := testUser(t, s)
-	if got := sourceOf(user.FtpSource); got != sourceDefault {
+	if got := protocol.SourceOf(user.FtpSource); got != sourceDefault {
 		t.Errorf("ftp_source on a fresh account = %q, want %q", got, sourceDefault)
 	}
-	if got := sourceOf(user.WeightSource); got != sourceDefault {
+	if got := protocol.SourceOf(user.WeightSource); got != sourceDefault {
 		t.Errorf("weight_source on a fresh account = %q, want %q", got, sourceDefault)
 	}
 }
@@ -107,11 +89,25 @@ func TestProfileSourcesThroughTheAPI(t *testing.T) {
 		t.Fatalf("GET /api/me = %d %+v, want both sources %q", code, me, sourceDefault)
 	}
 
+	// The weight's two dates as the row holds them (#3169): a race reads a
+	// change inside 14 days, or no answer inside 90, as unranked.
+	weightDates := func(t *testing.T) (changed, confirmed bool) {
+		t.Helper()
+		row, err := s.store.Queries.GetUser(t.Context(), user.ID)
+		if err != nil {
+			t.Fatalf("re-read user: %v", err)
+		}
+		return row.WeightChangedAt.Valid, row.WeightConfirmedAt.Valid
+	}
+
 	// An unrelated save that round-trips the same numbers leaves them
 	// unanswered — this is the Strava toggle and the email form.
 	code, me = call(t, http.MethodPatch, `{"displayName":"renamed","ftpWatts":200,"weightKg":75}`)
 	if code != http.StatusOK || me.FtpSource != sourceDefault || me.WeightSource != sourceDefault {
 		t.Fatalf("unchanged numbers = %d %+v, want both still %q", code, me, sourceDefault)
+	}
+	if changed, confirmed := weightDates(t); changed || confirmed {
+		t.Fatalf("a round-tripped weight was dated: changed %v, confirmed %v", changed, confirmed)
 	}
 
 	// Changing one answers that one and only that one.
@@ -127,10 +123,21 @@ func TestProfileSourcesThroughTheAPI(t *testing.T) {
 	if code != http.StatusOK || me.WeightSource != sourceManual {
 		t.Fatalf("claimed weight = %d %+v, want weight %q", code, me, sourceManual)
 	}
+	// Answering for an unchanged weight confirms it and changes nothing:
+	// this is the commissaire's tap (ADR-0067).
+	if changed, confirmed := weightDates(t); changed || !confirmed {
+		t.Fatalf("a claimed weight: changed %v, confirmed %v, want only confirmed", changed, confirmed)
+	}
+
+	// A new weight is a change and an answer both.
+	code, _ = call(t, http.MethodPatch, `{"displayName":"renamed","ftpWatts":250,"weightKg":72}`)
+	if changed, confirmed := weightDates(t); code != http.StatusOK || !changed || !confirmed {
+		t.Fatalf("a changed weight = %d: changed %v, confirmed %v, want both", code, changed, confirmed)
+	}
 
 	// The ramp test's own save.
 	code, me = call(t, http.MethodPatch,
-		`{"displayName":"renamed","ftpWatts":300,"weightKg":75,"ftpSource":"ramp"}`)
+		`{"displayName":"renamed","ftpWatts":300,"weightKg":72,"ftpSource":"ramp"}`)
 	if code != http.StatusOK || me.FtpSource != sourceRamp {
 		t.Fatalf("ramp save = %d %+v, want ftp %q", code, me, sourceRamp)
 	}
@@ -140,7 +147,7 @@ func TestProfileSourcesThroughTheAPI(t *testing.T) {
 	if err != nil {
 		t.Fatalf("re-read user: %v", err)
 	}
-	if sourceOf(stored.FtpSource) != sourceRamp || sourceOf(stored.WeightSource) != sourceManual {
+	if protocol.SourceOf(stored.FtpSource) != sourceRamp || protocol.SourceOf(stored.WeightSource) != sourceManual {
 		t.Fatalf("row disagrees with the API: %+v", stored)
 	}
 }
@@ -187,7 +194,7 @@ func TestProfileSourceClaimsAreBounded(t *testing.T) {
 	if err != nil {
 		t.Fatalf("re-read user: %v", err)
 	}
-	if sourceOf(stored.FtpSource) != sourceDefault || stored.FtpWatts != 200 {
+	if protocol.SourceOf(stored.FtpSource) != sourceDefault || stored.FtpWatts != 200 {
 		t.Fatalf("a refused claim changed the row: %+v", stored)
 	}
 }
