@@ -276,7 +276,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	// What the rider wore on it is theirs to keep now, past the undo (#3154),
 	// and it may be a season's third ride (#3163).
 	if err := wardrobe.RideSaved(r.Context(), q, user.ID, row.StartedAt.Time.In(stats.Zone(user.Timezone))); err != nil {
-		httpx.Fail(w, s.log, "solo ride outfit worn failed", err, "The ride could not be saved. It stays on this device.")
+		httpx.Fail(w, s.log, "solo ride wardrobe failed", err, "The ride could not be saved. It stays on this device.")
 		return
 	}
 	if err := tx.Commit(r.Context()); err != nil {

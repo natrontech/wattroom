@@ -42,7 +42,7 @@ func mintSession(ctx context.Context, q *db.Queries, kept []savedRide, rides, lo
 			return fmt.Errorf("stats: timezone: %w", err)
 		}
 		if err := wardrobe.RideSaved(ctx, q, ride.userID, ride.facts.StartedAt.In(Zone(tz))); err != nil {
-			return fmt.Errorf("stats: outfit worn: %w", err)
+			return fmt.Errorf("stats: wardrobe: %w", err)
 		}
 	}
 	return nil
