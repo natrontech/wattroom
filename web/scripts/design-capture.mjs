@@ -51,6 +51,7 @@ if (!BASE || !['dark', 'light'].includes(SCHEME)) {
 }
 
 const DESK = { viewport: { width: 1440, height: 900 } };
+const DESK_720 = { viewport: { width: 1280, height: 720 } };
 const PHONE = {
 	viewport: { width: 375, height: 812 },
 	hasTouch: true,
@@ -412,6 +413,9 @@ function probe(corridor) {
 			canvas: !!document.querySelector('canvas'),
 			flat: document.body.innerText.match(/Flat road —[^\n]*/)?.[0] ?? null,
 		},
+		// The world's own measurements, where /dev/world's dev hook reports them (#3672):
+		// camera.fov, renderer.draws and .triangles, figure.bboxH, the moment drawn.
+		...(window.__worldProbe?.() ?? {}),
 	};
 }
 
@@ -435,6 +439,27 @@ const page_ = (id, device, path, { settle = 2500, full = true } = {}) => [
 		else await page.goto(BASE + path);
 		await page.waitForTimeout(settle);
 		await shot(page, id, errors, full);
+	},
+];
+
+/** /dev/world at one still moment (#3672): two loads of it are one frame, and the chrome is off. */
+const MOMENT_M = 11_000;
+const momentUrl = (p) =>
+	`/dev/world?m=${MOMENT_M}&p=${p}&cam=chase&look=bluehour&chrome=0`;
+async function moment(device, p) {
+	const { page, errors } = await use(device);
+	await page.goto(BASE + momentUrl(p));
+	await page.waitForFunction(() => !!window.__worldProbe, null, {
+		timeout: 30_000,
+	});
+	await page.waitForTimeout(2000);
+	return { page, errors };
+}
+const moment_ = (id, device, p) => [
+	id,
+	async () => {
+		const { page, errors } = await moment(device, p);
+		await shot(page, id, errors);
 	},
 ];
 
@@ -486,6 +511,28 @@ const SURFACES = Object.fromEntries([
 	page_('appearance', DESK, '/settings/appearance'),
 	page_('ride-preride', DESK, '/ride', { full: false }),
 	page_('dev-world', DESK, '/dev/world', { settle: 9000, full: false }),
+	moment_('world-start', DESK, 0),
+	moment_('world-start-1280', DESK_720, 0),
+	moment_('world-end', DESK, 1),
+	moment_('world-end-1280', DESK_720, 1),
+	[
+		// multi:world-start-twice — the same moment, loaded twice, compared pixel for pixel.
+		'world-start-twice',
+		async () => {
+			const frames = [];
+			for (let k = 0; k < 2; k++) {
+				const { page } = await moment(DESK, 0);
+				frames.push(await page.screenshot());
+			}
+			await writeFile(join(OUT, 'world-start-twice.png'), frames[1]);
+			await writeFile(
+				join(OUT, 'world-start-twice.json'),
+				JSON.stringify({ identical: frames[0].equals(frames[1]) }, null, 2) +
+					'\n',
+			);
+			console.log('captured', 'world-start-twice');
+		},
+	],
 	ride_('ride-free-road', DESK, roadRide(''), { scheme: 'light' }),
 	ride_('ride-workout-flat', DESK, '/ride?w=openers'),
 	ride_('ride-workout-world', DESK, '/ride?w=openers', { world: false }),

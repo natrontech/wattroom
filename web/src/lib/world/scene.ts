@@ -26,6 +26,10 @@ export type WorldScene = {
 	hold(gate: 'displaced' | 'shell', held: boolean): void;
 	/** Frames drawn and divisor intervals missed, for rideView() (#3080). */
 	stats(): LoopStats;
+	/** What a design capture measures (#3672): the composed scene's, and what the last frame drew. */
+	probe(): ReturnType<ReturnType<typeof compose>['probe']> & {
+		renderer: { draws: number; triangles: number };
+	};
 	dispose(): void;
 };
 
@@ -112,6 +116,13 @@ export function mount(
 		setSpeedup: (factor) => world.setSpeedup(factor),
 		hold: loop.gate,
 		stats: loop.stats,
+		probe: () => ({
+			...world.probe(),
+			renderer: {
+				draws: renderer.info.render.calls,
+				triangles: renderer.info.render.triangles,
+			},
+		}),
 		dispose() {
 			failed = true; // what follows is ours, not a failure to report
 			loop.stop();
