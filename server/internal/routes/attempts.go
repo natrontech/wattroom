@@ -231,10 +231,13 @@ func metresOf(samples []protocol.RiderMetrics) []float64 {
 // timeUp is how long a ride took from one metre of the road to another, to a
 // fraction of a second between its samples, rounded. False when it did not
 // ride the whole stretch — a ride begun halfway up a climb timed none of it.
+// A sample sitting on the metre counts as crossing it once the ride moves on,
+// so a climb from the road's first metre is timed (#3635) and time spent
+// standing at the foot is not.
 func timeUp(metres []float64, from, to float64) (int, bool) {
 	at := func(m float64) (float64, bool) {
 		for i := 1; i < len(metres); i++ {
-			if metres[i-1] < m && metres[i] >= m {
+			if metres[i-1] <= m && metres[i] >= m && metres[i] > metres[i-1] {
 				return float64(i-1) + (m-metres[i-1])/(metres[i]-metres[i-1]), true
 			}
 		}

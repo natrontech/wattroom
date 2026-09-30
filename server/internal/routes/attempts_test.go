@@ -144,3 +144,29 @@ func entry(list []any, i int) map[string]any {
 	m, _ := list[i].(map[string]any)
 	return m
 }
+
+// A climb is timed from where the ride crossed its foot to where it crossed
+// its top (#3635): from the first sample when a route begins at the foot — a
+// climb-only import — and not at all when the ride began past it.
+func TestTimeUpACrossingOfTheClimb(t *testing.T) {
+	for name, tc := range map[string]struct {
+		metres   []float64
+		from, to float64
+		want     int
+		ok       bool
+	}{
+		"a climb from the road's first metre":       {[]float64{0, 5, 10, 15, 20}, 0, 20, 4, true},
+		"a rider waiting at the foot starts moving": {[]float64{0, 0, 0, 5, 10}, 0, 10, 2, true},
+		"a climb along the road, between samples":   {[]float64{0, 4, 8, 12, 16}, 6, 14, 2, true},
+		"a ride begun past the foot":                {[]float64{5, 10, 15, 20}, 0, 20, 0, false},
+		"a ride that never reached the top":         {[]float64{0, 5, 10}, 0, 20, 0, false},
+		"no samples":                                {nil, 0, 20, 0, false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			got, ok := timeUp(tc.metres, tc.from, tc.to)
+			if got != tc.want || ok != tc.ok {
+				t.Fatalf("timeUp = %d, %v; want %d, %v", got, ok, tc.want, tc.ok)
+			}
+		})
+	}
+}
