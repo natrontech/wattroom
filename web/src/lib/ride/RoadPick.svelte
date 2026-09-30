@@ -7,6 +7,7 @@
 	import Banner from '$lib/components/Banner.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import type { FreeRide } from '$lib/ride/free-ride.svelte';
+	import { formatKm as km } from '$lib/format';
 	import { loadRoad, myRoutes, type RouteSummary } from '$lib/ride/roads';
 
 	let { free }: { free: FreeRide } = $props();
@@ -15,8 +16,6 @@
 	let routes = $state<RouteSummary[] | null>(null);
 	let error = $state<string | null>(null);
 	let loading = $state<string | null>(null);
-
-	const km = (m: number) => (m / 1000).toFixed(1);
 
 	async function show() {
 		open = true;

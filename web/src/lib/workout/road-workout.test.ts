@@ -40,13 +40,17 @@ describe('a road workout (#3499)', () => {
 		expect(at(9999)).toBe(500);
 	});
 
-	it('rides only a pinned road that came back with its profile', () => {
-		expect(roadOf(pinned)?.road.length).toBe(2000);
+	it('rides a road that came back with its profile, pinned or not (#3594)', () => {
+		expect(roadOf(pinned)?.stepEndM).toEqual([800, 2000]);
 		const { profile: _, ...bare } = pinned.road!;
 		expect(roadOf({ ...pinned, road: bare })).toBeNull();
-		expect(
-			roadOf({ ...pinned, road: { ...pinned.road!, stepEndM: undefined } }),
-		).toBeNull();
+		// Any workout on a route (#3100): ridden, with no pins to end its blocks.
+		const unpinned = roadOf({
+			...pinned,
+			road: { ...pinned.road!, stepEndM: undefined },
+		});
+		expect(unpinned?.road.length).toBe(2000);
+		expect(unpinned?.stepEndM).toBeUndefined();
 		expect(roadOf({ name: 'x', steps: [] })).toBeNull();
 	});
 
