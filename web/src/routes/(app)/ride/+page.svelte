@@ -5,6 +5,7 @@
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import type { Trainer } from '$lib/ble/trainer';
 	import { createRideSession } from '$lib/workout/session.svelte';
+	import { byReference } from '$lib/workout/road-workout';
 	import { createSignalWatch } from '$lib/workout/signal-watch.svelte';
 	import {
 		createRideSounds,
@@ -163,7 +164,9 @@
 				workoutName: workout.name,
 				// Carried so a ride whose save failed can be saved from the
 				// recovery card rather than only exported (#794).
-				workoutJson: JSON.stringify(workout),
+				workoutJson: JSON.stringify(byReference(workout)),
+				// A road workout's recovered ride saves against its route (#3499).
+				...(workout.road && { routeId: workout.road.routeId }),
 			});
 			noCrashSafety = !buffer.crashSafe;
 			flags.riding(trainer.name, `starting ${workout.name}`);
@@ -171,6 +174,7 @@
 				trainer,
 				workout,
 				ftp,
+				kg: () => profile.current.kg,
 				startedAt,
 				readings: () => sensors.readings,
 				// The rider's own sprint setup (#1529): a sprint block releases

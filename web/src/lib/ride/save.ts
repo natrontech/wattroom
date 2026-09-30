@@ -1,5 +1,7 @@
 import { account } from '$lib/account.svelte';
 import { api } from '$lib/api';
+import { byReference } from '$lib/workout/road-workout';
+import type { Workout } from '$lib/workout/types';
 
 /** A finished solo ride, in the shape POST /api/rides wants. */
 export interface RideUpload {
@@ -31,7 +33,7 @@ export interface RideUpload {
  * /ride and a voice channel's own workout (#2329).
  */
 export function recordingUpload(
-	workout: { name: string },
+	workout: Workout,
 	startedAt: Date,
 	recording: readonly {
 		watts: number;
@@ -40,11 +42,17 @@ export function recordingUpload(
 		bias: number;
 		clock: number;
 		released: boolean;
+		m?: number;
+		alt?: number;
 	}[],
 ): RideUpload {
+	// A road workout's ride saves against its route (#3499): the metres it
+	// rode, and ERG by the road, since WattRoom chose the watts (#3516).
+	const onRoad = !!workout.road && recording.some((s) => s.m !== undefined);
 	return {
 		workoutName: workout.name,
-		workoutJson: JSON.stringify(workout),
+		// By reference: the server refuses a road sent back up (ADR-0063).
+		workoutJson: JSON.stringify(byReference(workout)),
 		startedAt: startedAt.toISOString(),
 		samples: recording.map((sample) => ({
 			watts: sample.watts,
@@ -53,7 +61,12 @@ export function recordingUpload(
 			bias: sample.bias,
 			clock: sample.clock,
 			released: sample.released,
+			...(sample.m !== undefined && { m: sample.m, alt: sample.alt }),
 		})),
+		...(onRoad && {
+			routeId: workout.road!.routeId,
+			drive: 'ergByRoad' as const,
+		}),
 	};
 }
 
