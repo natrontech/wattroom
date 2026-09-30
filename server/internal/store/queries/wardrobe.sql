@@ -65,3 +65,17 @@ update wardrobe w set first_worn_at = now()
 from outfits o, jsonb_each_text(o.loadout) as slot(name, item)
 where o.user_id = sqlc.arg(user_id) and w.user_id = sqlc.arg(user_id)
   and w.item_id = slot.item and w.first_worn_at is null;
+
+-- name: CountRidesStartedBetween :one
+-- The rides a rider started in [from_at, to_at): a season's window counts
+-- them (#3163).
+select count(*)::int from rides
+where user_id = sqlc.arg(user_id)
+  and started_at >= sqlc.arg(from_at) and started_at < sqlc.arg(to_at);
+
+-- name: EarnWardrobeItem :exec
+-- An earned item joins the wardrobe once: earned again in a later year, it
+-- keeps the day it was first earned (#3163).
+insert into wardrobe (user_id, item_id, source, acquired_at)
+values (sqlc.arg(user_id), sqlc.arg(item_id), 'earned', sqlc.arg(acquired_at))
+on conflict (user_id, item_id) do nothing;

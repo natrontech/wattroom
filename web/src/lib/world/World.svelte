@@ -1,7 +1,10 @@
 <script lang="ts">
 	// The ride world with a desk's worth of controls: your watts, the art
 	// style, the camera, time, and a GPX of your own. It owns the canvas and
-	// hands it to scene.ts; everything three.js happens there.
+	// hands it to scene.ts; everything three.js happens there. Given a moment
+	// (#3672) it draws that one frame and holds it, with or without its
+	// controls, and in a dev build window.__worldProbe() reports what the
+	// frame drew — how a design capture measures the world.
 	import { FAMILY } from './props/batch';
 	import { onMount, untrack } from 'svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
@@ -13,8 +16,12 @@
 	import type { Style } from './styles';
 	import { syntheticGpx } from './synthetic';
 	import { generate, type World } from './world';
+	import type { WorldMoment } from '../../routes/(app)/dev/world/moment';
 
-	let { styles }: { styles: readonly Style[] } = $props();
+	let {
+		styles,
+		moment = null,
+	}: { styles: readonly Style[]; moment?: WorldMoment | null } = $props();
 
 	type Built = { route: Route; world: World; ms: number };
 	const CAMERAS: { id: CameraMode; label: string }[] = [
@@ -33,8 +40,14 @@
 	let host = $state<HTMLDivElement>();
 	let hud = $state.raw<Hud | null>(null);
 	let watts = $state(200);
-	let styleId = $state(untrack(() => styles[0]?.id ?? ''));
-	let camera = $state<CameraMode>('chase');
+	let styleId = $state(
+		untrack(
+			() =>
+				styles.find((s) => s.id === moment?.look)?.id ?? styles[0]?.id ?? '',
+		),
+	);
+	let camera = $state<CameraMode>(untrack(() => moment?.cam ?? 'chase'));
+	const chrome = $derived(!moment || moment.chrome);
 	let speedup = $state(1);
 	let scene: WorldScene | null = null;
 	const profile = createProfileStore();
@@ -100,6 +113,7 @@
 						watts,
 						ftp: profile.current.ftp,
 						speedup,
+						moment: moment ? { m: moment.m, p: moment.p } : undefined,
 						onTick: (next) => (hud = next),
 						onFail: () => (drawFailed = true),
 					}),
@@ -110,9 +124,14 @@
 			return;
 		}
 		scene = placed.scene;
+		const probe = () => placed.scene.probe();
+		if (import.meta.env.DEV)
+			(window as { __worldProbe?: typeof probe }).__worldProbe = probe;
 		return () => {
 			placed.remove();
 			if (scene === placed.scene) scene = null;
+			if (import.meta.env.DEV)
+				delete (window as { __worldProbe?: typeof probe }).__worldProbe;
 		};
 	});
 
@@ -177,7 +196,7 @@
 		</p>
 	{/if}
 
-	{#if built && !drawFailed}
+	{#if built && !drawFailed && chrome}
 		{@const { route, world } = built}
 		<section
 			aria-label="Your ride"

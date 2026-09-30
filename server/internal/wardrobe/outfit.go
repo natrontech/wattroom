@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -106,9 +107,14 @@ func wearable(it Item, owned []string) bool {
 	return true
 }
 
-// MarkWorn records that the rider's outfit went out on a ride: its bought
-// items are theirs to keep from here on, past the undo (docs/SPEC.md
-// "Wardrobe"). Called in the transaction that saves the ride.
-func MarkWorn(ctx context.Context, q *db.Queries, user pgtype.UUID) error {
-	return q.MarkOutfitWorn(ctx, user)
+// RideSaved is what a saved ride does to the rider's wardrobe, in the
+// transaction that saves it: the outfit went out on it, so its bought items
+// are theirs to keep past the undo (docs/SPEC.md "Wardrobe"), and a ride
+// inside a season's window may earn that season's items (#3163). start is
+// the ride's start in the rider's own zone.
+func RideSaved(ctx context.Context, q *db.Queries, user pgtype.UUID, start time.Time) error {
+	if err := q.MarkOutfitWorn(ctx, user); err != nil {
+		return err
+	}
+	return earnSeasons(ctx, q, user, start)
 }
