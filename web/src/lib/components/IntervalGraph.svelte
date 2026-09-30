@@ -2,7 +2,7 @@
 	import { formatClock } from '$lib/format';
 	import type { Segment } from '$lib/workout/types';
 	import { splitTrace, type TracePoint, thinRun } from './trace';
-	import { CEILING, ZONE_NAMES, ZONE_VAR, zoneOf } from './zones';
+	import { CEILING, ZONE_NAMES, ZONE_VAR, zoneOfSegment } from './zones';
 	import {
 		fractionAt,
 		grabAt,
@@ -111,8 +111,7 @@
 						: (seg.toFraction ?? from);
 			const x0 = x(seg.startSeconds);
 			const x1 = x(seg.startSeconds + seg.seconds);
-			const zone =
-				seg.kind === 'sprint' ? 7 : zoneOf(((from + to) / 2) * ftp, ftp);
+			const zone = zoneOfSegment(seg, ftp);
 			return {
 				points: `${x0},${BASE} ${x0},${y(from)} ${x1},${y(to)} ${x1},${BASE}`,
 				edge: `${x0},${y(from)} ${x1},${y(to)}`,

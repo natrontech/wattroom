@@ -1,0 +1,1 @@
+- A workout ridden on one of your roads now shows the road ahead at the bottom of the screen, where the interval graph was, and on the TV: its steepness, its climbs and your dot. Where the road decides when a block ends, the blocks run along it in their zone colours.

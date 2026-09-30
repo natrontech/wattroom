@@ -9,6 +9,8 @@
 	import type { LiveRider } from '$lib/channel/types';
 	import type { LiveStats } from '$lib/ride/live-stats.svelte';
 	import BikeComputer from '$lib/session/BikeComputer.svelte';
+	import Skyline from '$lib/ride/Skyline.svelte';
+	import type { SkylineView } from '$lib/road/skyline';
 
 	let {
 		riders,
@@ -22,6 +24,7 @@
 		live = true,
 		code = '',
 		stats,
+		skyline = null,
 	}: {
 		riders: LiveRider[];
 		/** Your instrument has nothing paired to read (#2941). */
@@ -39,6 +42,8 @@
 		code?: string;
 		/** Your live numbers, for the bike computer's POWER page (#3088). */
 		stats?: LiveStats;
+		/** A ride on a road: its horizon is the Skyline (#3641). */
+		skyline?: SkylineView | null;
 	} = $props();
 
 	const you = $derived(riders.find((r) => r.you) ?? riders[0]);
@@ -167,14 +172,18 @@
 
 		<div class="flex items-end gap-[2vw]">
 			<div class="min-w-0 flex-1 overflow-hidden rounded-lg">
-				<IntervalGraph
-					{segments}
-					{total}
-					{elapsed}
-					ftp={you.ftp}
-					trace={you.trace}
-					tv
-				/>
+				{#if skyline}
+					<div class="h-40"><Skyline tv {...skyline} /></div>
+				{:else}
+					<IntervalGraph
+						{segments}
+						{total}
+						{elapsed}
+						ftp={you.ftp}
+						trace={you.trace}
+						tv
+					/>
+				{/if}
 			</div>
 		</div>
 	{/if}

@@ -37,6 +37,14 @@ export function createRoadDot(workout: Workout, kg: () => number) {
 						routeId: pinned.routeId,
 						/** The road decides where a block ends (#3499). */
 						pinned: !!pins,
+						/** The road the dot rides, for the Skyline (#3641). */
+						road: pinned.road,
+						/** The dot on it: metres from its first, and its speed. */
+						along: m - pinned.originM,
+						mps: here?.virtualMps ?? 0,
+						/** Where the ride starts and each block ends, on it. */
+						startM: pinned.fromM - pinned.originM,
+						blockEndsM: pins?.map((end) => end - pinned.originM),
 					}
 				: null;
 		},
