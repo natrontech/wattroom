@@ -121,10 +121,12 @@ func TestOnlyTheOwnerPlansTheirRoad(t *testing.T) {
 type workoutOpener struct {
 	fakePresence
 	workoutJSON string
+	route       *protocol.ControlRoute
+	routeOwner  string
 }
 
-func (o *workoutOpener) OpenSession(channel string, _ protocol.Rider, _, workoutJSON string) (string, string, string) {
-	o.workoutJSON = workoutJSON
+func (o *workoutOpener) OpenSession(channel string, _ protocol.Rider, _, workoutJSON string, route *protocol.ControlRoute, routeOwner string) (string, string, string) {
+	o.workoutJSON, o.route, o.routeOwner = workoutJSON, route, routeOwner
 	return "session-in-" + channel, "", ""
 }
 
@@ -203,5 +205,34 @@ func TestAPlannedRoadGoesOutUnderItsGeneratedName(t *testing.T) {
 		if strings.Contains(text, "Home loop") || !strings.Contains(text, generated) {
 			t.Errorf("%s says %q, want %q and never the route's own name", surface, text, generated)
 		}
+	}
+}
+
+// A started plan rides its road from its first metre (#3103), counted on
+// the crew's cut and looked up as the planner's route whoever starts it:
+// bob starts alice's plan from her kilometre, and the session opens 400 m
+// shorter, where the crew's road begins.
+func TestAStartedPlanRidesItsRoadFromItsMetre(t *testing.T) {
+	h := setup(t)
+	h.svc.SetRoads(routes.NewAttacher(h.store.Queries, nil))
+	opener := &workoutOpener{}
+	h.svc.SetPresence(opener)
+	crew, channel := h.crewWithChannel(t)
+	route := h.tellingRoute(t, "alice", "gpx")
+	workout := `{"name":"Next leg","road":{"routeId":"` + route + `","fromM":1000,"toM":3000},"steps":[{"type":"steady","seconds":600,"target":0.7}]}`
+	body := fmt.Sprintf(`{"workoutName":"Next leg","workoutJson":%q,"startsAt":%q,"channelId":""}`, workout, time.Now().Add(10*time.Minute).UTC().Format(time.RFC3339))
+	status, got := h.call(t, "alice", http.MethodPost, schedulePath(crew), body)
+	if status != http.StatusCreated {
+		t.Fatalf("alice plans the next leg: %d %v", status, got)
+	}
+	plan, _ := got["id"].(string)
+	status, got = h.call(t, "bob", http.MethodPost, schedulePath(crew, "/", plan, "/started"),
+		fmt.Sprintf(`{"channelId":%q}`, store.UUIDString(channel)))
+	if status != http.StatusOK {
+		t.Fatalf("bob starts it: %d %v", status, got)
+	}
+	alice := store.UUIDString(h.users.ByToken["alice"].ID)
+	if opener.route == nil || opener.route.ID != route || opener.route.FromM != 600 || opener.routeOwner != alice {
+		t.Fatalf("the session opens on %+v as %q's, want %s from 600 m as alice's (%s)", opener.route, opener.routeOwner, route, alice)
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"slices"
 	"testing"
 
@@ -223,6 +224,39 @@ func TestAWorkoutOnARoadIsSharedUnderItsGeneratedName(t *testing.T) {
 	} {
 		if got, err := SharedName(t.Context(), h.store.Queries, c.workout, "From home"); err != nil || got != c.want {
 			t.Errorf("%s: %q %v, want %q", c.name, got, err, c.want)
+		}
+	}
+}
+
+// A plan's road starts its session on the crew's cut (#3103): the owner's
+// metre less the hidden end the cut leaves out, held inside the cut, and no
+// route at all for a workout with no road or a route that is gone.
+func TestAPlansRoadIsCountedOnTheCrewsCut(t *testing.T) {
+	h := setup(t, nil)
+	alice := h.users.ByToken["alice"].ID
+	mine := storeTellingRoute(t, h, alice, "gpx")
+	a := NewAttacher(h.store.Queries, nil)
+	on := func(fromM float64) string {
+		return fmt.Sprintf(`{"name":"R","road":{"routeId":%q,"fromM":%v,"toM":3000},"steps":[{"type":"road","seconds":600}]}`, mine, fromM)
+	}
+	for _, c := range []struct {
+		name  string
+		json  string
+		fromM float64
+		none  bool
+	}{
+		{"a kilometre along the owner's road", on(1000), 600, false},
+		{"inside the hidden end the crew never rides", on(100), 0, false},
+		{"past the cut's last sample", on(2900), 2180, false},
+		{"a workout with no road", `{"name":"R","steps":[{"type":"steady","seconds":60,"target":0.5}]}`, 0, true},
+		{"a route that is gone", fmt.Sprintf(`{"name":"R","road":{"routeId":%q,"fromM":0,"toM":3000},"steps":[]}`, uuid.NewString()), 0, true},
+	} {
+		route, err := a.CrewRoute(t.Context(), c.json)
+		if err != nil {
+			t.Fatalf("%s: %v", c.name, err)
+		}
+		if c.none != (route == nil) || route != nil && (route.ID != mine || route.FromM != c.fromM) {
+			t.Errorf("%s: %+v, want from %v m of %s (none: %v)", c.name, route, c.fromM, mine, c.none)
 		}
 	}
 }

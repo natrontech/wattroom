@@ -345,7 +345,7 @@ type sessionOpener struct {
 	coaches map[string]string
 }
 
-func (o *sessionOpener) OpenSession(channel string, rider protocol.Rider, _, _ string) (string, string, string) {
+func (o *sessionOpener) OpenSession(channel string, rider protocol.Rider, _, _ string, _ *protocol.ControlRoute, _ string) (string, string, string) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	if coach, busy := o.coaches[channel]; busy && coach != rider.ID {
