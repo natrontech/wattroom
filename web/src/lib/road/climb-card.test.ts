@@ -80,6 +80,18 @@ describe('time to the top from the pace model (#3089)', () => {
 		).toBeCloseTo(want, 3);
 	});
 
+	it('walks a road whose sample spacing is not a whole number of metres', () => {
+		// 6000.07 m over 300 steps: the 29th boundary, (28 + 1) * step, divides
+		// back to just under 29, and a walk that re-derived its sample from the
+		// metre stood on it forever, freezing the ride (#3645).
+		const odd = {
+			length: 6000.07,
+			heights: Array.from({ length: 301 }, (_, i) => 100 + i),
+			turns: new Array<number>(300).fill(0),
+		};
+		expect(secondsToTop(odd, 0, odd.length, 250, mass)).toBeGreaterThan(0);
+	});
+
 	it('has nothing to say with no power', () => {
 		expect(secondsToTop(ride, first.startM, first.topM, 0, mass)).toBeNull();
 	});

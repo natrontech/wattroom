@@ -89,8 +89,12 @@ export function secondsToTop(
 	if (watts <= 0) return null;
 	const step = roadStep(road);
 	let seconds = 0;
-	for (let at = Math.max(m, 0); at < topM;) {
-		const next = Math.min(topM, (Math.floor(at / step) + 1) * step);
+	let at = Math.max(m, 0);
+	// The walk counts samples rather than re-deriving one from the metre:
+	// (i + 1) * step / step can round back down to i, and it stood still (#3645).
+	for (let i = Math.floor(at / step) + 1; at < topM; i++) {
+		const next = Math.min(topM, i * step);
+		if (next <= at) continue;
 		seconds +=
 			(next - at) /
 			steadySpeed(watts, gradeAt(road, at), massKg, PaceDefaultCdA);
