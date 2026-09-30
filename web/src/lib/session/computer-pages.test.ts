@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { LiveStats } from '$lib/ride/live-stats.svelte';
+import type { ClimbView } from '$lib/ride/climb-view';
 import {
+	climbChip,
+	climbHeader,
 	fieldsFor,
 	pagesFor,
 	roadContext,
@@ -192,15 +195,78 @@ describe('the glow', () => {
 
 describe('the pages', () => {
 	it('keeps POWER for a screen with its own live numbers', () => {
-		expect(pagesFor(stats)).toEqual(['ride', 'power']);
-		expect(pagesFor(undefined)).toEqual(['ride']);
+		expect(pagesFor({ stats })).toEqual(['ride', 'power']);
+		expect(pagesFor({})).toEqual(['ride']);
 	});
 
 	it('turns both ways and wraps', () => {
-		const pages = pagesFor(stats);
+		const pages = pagesFor({ stats });
 		expect(turned(pages, 'ride', 1)).toBe('power');
 		expect(turned(pages, 'power', 1)).toBe('ride');
 		expect(turned(pages, 'ride', -1)).toBe('power');
 		expect(turned(['ride'], 'ride', 1)).toBe('ride');
+	});
+});
+
+describe('CLIMB (#3645)', () => {
+	const climb = (over: Partial<ClimbView['card']> = {}, toFootM = 0) =>
+		({
+			card: {
+				cls: 'I',
+				n: 3,
+				of: 4,
+				nextInM: 4800,
+				toTopM: 2400,
+				ascentLeftM: 186.4,
+				avgLeftPct: 7.77,
+				grade: 8.46,
+				flammeRouge: false,
+				summited: false,
+				...over,
+			},
+			climb: { startM: 1000, topM: 5000, gainM: 320, cls: 'I' },
+			m: 2600,
+			toFootM,
+			heightNow: 600,
+			bars: [],
+			lo: 500,
+			hi: 820,
+			secondsToTop: 754,
+		}) as ClimbView;
+
+	it('is a page only while a classed climb is near, between RIDE and POWER', () => {
+		expect(pagesFor({ stats, climb: climb() })).toEqual([
+			'ride',
+			'climb',
+			'power',
+		]);
+		expect(pagesFor({ stats, climb: null })).toEqual(['ride', 'power']);
+	});
+
+	it('heads the page with the climb, its class and the next one', () => {
+		expect(climbHeader(climb())).toBe(
+			'CLIMB 3 of 4 · I · next climb in 4.8 km',
+		);
+		expect(climbHeader(climb({ nextInM: undefined, n: 4 }))).toBe(
+			'CLIMB 4 of 4 · I',
+		);
+	});
+
+	it('is to the top, ascent left, average left, grade now and time to the top', () => {
+		const fields = fieldsFor('climb', ride({ climb: climb() }));
+		expect(fields.map((f) => [f.label, f.value, f.unit])).toEqual([
+			['To the top', '2.4', 'km'],
+			['Ascent left', '186', 'm'],
+			['Average left', '7.8', '%'],
+			['Grade', '8.5', '%'],
+			['Time to top', '12:34', undefined],
+		]);
+		const near = fieldsFor('climb', ride({ climb: climb({ toTopM: 420 }) }));
+		expect(near[0]).toMatchObject({ value: '400', unit: 'm' });
+	});
+
+	it('says where the climb is on another page', () => {
+		expect(climbChip(climb({}, 380))).toBe('Climb I in 400 m · → to view');
+		expect(climbChip(climb())).toBe('Climb I · 2.4 km to the top · → to view');
 	});
 });

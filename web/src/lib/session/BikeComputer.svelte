@@ -13,9 +13,12 @@
 	import ZoneDot from '$lib/components/ZoneDot.svelte';
 	import { ZONE_BG } from '$lib/components/zones';
 	import { pulse } from '$lib/motion/transitions';
+	import ClimbProfile from '$lib/ride/ClimbProfile.svelte';
 	import {
 		PAGE_NAMES,
 		claimPageTurn,
+		climbChip,
+		climbHeader,
 		fieldsFor,
 		pagesFor,
 		turned,
@@ -35,7 +38,7 @@
 	} = $props();
 
 	let page = $state<ComputerPage>('ride');
-	const pages = $derived(pagesFor(ctx.stats));
+	const pages = $derived(pagesFor(ctx));
 	const shown = $derived(pages.includes(page) ? page : 'ride');
 	const fields = $derived(fieldsFor(shown, ctx));
 	const turns = $derived(pages.length > 1);
@@ -69,6 +72,17 @@
 		pulse(gearField);
 	});
 
+	// CLIMB opens by itself from RIDE when a climb begins (ADR-0071, #3645),
+	// once a climb: a rider on another page chose it, and a chip says where
+	// the climb is instead; one who paged away from CLIMB is not pulled back.
+	let openedFor: number | null = null;
+	$effect(() => {
+		const climb = ctx.climb?.climb.startM ?? null;
+		if (climb === null || climb === openedFor) return;
+		openedFor = climb;
+		if (untrack(() => shown) === 'ride') page = 'climb';
+	});
+
 	const zoneStrip = $derived(
 		shown === 'power' && ctx.stats ? ctx.stats.zoneSeconds.slice(1, 8) : null,
 	);
@@ -92,12 +106,16 @@
 	     one row tall where it fits and the focus above keeps its height (#3597);
 	     a phone's grid puts them above and below. -->
 	{#snippet name()}
+		<!-- A page's name is spaced like a label; the climb's header is a line
+		     to read, so it is not. -->
+		{@const climbLine =
+			shown === 'climb' && ctx.climb ? climbHeader(ctx.climb) : null}
 		<p
-			class="{size.word} text-muted leading-none tracking-[0.2em] {phone
-				? 'mb-2'
-				: ''}"
+			class="{size.word} text-muted leading-none {climbLine
+				? ''
+				: 'tracking-[0.2em]'} {phone ? 'mb-2' : ''}"
 		>
-			{PAGE_NAMES[shown]}
+			{climbLine ?? PAGE_NAMES[shown]}
 		</p>
 	{/snippet}
 	{#snippet dots()}
@@ -155,6 +173,11 @@
 		></button>
 	{/if}
 	{#if phone}{@render name()}{/if}
+	{#if ctx.climb && shown !== 'climb'}
+		<p data-testid="climb-chip" class="{size.word} text-neon mb-2 leading-none">
+			{climbChip(ctx.climb)}
+		</p>
+	{/if}
 	<div class={layout}>
 		{#if !phone}{@render name()}{/if}
 		{#each fields as field (field.key)}
@@ -190,5 +213,9 @@
 		{#if turns && !tv && !phone}{@render dots()}{/if}
 	</div>
 	{#if zoneStrip}{@render strip(zoneStrip)}{/if}
+	{#if shown === 'climb' && ctx.climb}<ClimbProfile
+			view={ctx.climb}
+			{tv}
+		/>{/if}
 	{#if turns && phone}{@render dots()}{/if}
 </section>

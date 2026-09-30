@@ -22,8 +22,23 @@ const A_MINUTE_MS = 65_000;
  * road's own grade — a climb, eased in near its start, never the free ride's
  * manual 0 — and how far along the 3 km it is.
  */
+/**
+ * The invented road is a class IV climb from its first metre, so the bike
+ * computer opens CLIMB by itself (#3645); RIDE, where the road's own numbers
+ * are, is its dot away.
+ */
+async function toRide(page: Page) {
+	const computer = page.getByTestId('bike-computer');
+	await expect(computer).toHaveAttribute('data-page', 'climb', {
+		timeout: 15_000,
+	});
+	await computer.getByRole('button', { name: 'RIDE page' }).click();
+	await expect(computer).toHaveAttribute('data-page', 'ride');
+}
+
 async function computerReadsTheRoad(page: Page) {
 	const computer = page.getByTestId('bike-computer');
+	if ((await computer.getAttribute('data-page')) !== 'ride') await toRide(page);
 	const value = (key: string) =>
 		computer.locator(`[data-field=${key}]`).locator('span').nth(1);
 	await expect
@@ -93,6 +108,7 @@ test('a free ride on your own road moves along it and saves against it', async (
 		rider.getByRole('button', { name: 'steeper grade' }),
 	).toHaveCount(0);
 	await expect(rider.getByText(NAME)).toBeVisible();
+	await toRide(rider);
 	await expect(rider.getByText('0.0 of 3.0 km')).toBeVisible();
 
 	// A desk at phone width: the road row and the pair fit (ux.md).
@@ -177,6 +193,7 @@ test('Ride it now rides your road alone, from where you left it', async ({
 			.getByRole('group', { name: 'what you set' })
 			.getByRole('button', { name: 'Road' }),
 	).toBeVisible();
+	await toRide(page);
 	await expect(page.getByText(/^1\.0 of 3\.0 km$/)).toBeVisible();
 	await page.setViewportSize({ width: 375, height: 812 });
 	await expect

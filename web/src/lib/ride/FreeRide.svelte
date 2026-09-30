@@ -28,6 +28,8 @@
 	import { endRideLabel, roadEndOffered } from '$lib/ride/road-end';
 	import RoadPick from '$lib/ride/RoadPick.svelte';
 	import Skyline from '$lib/ride/Skyline.svelte';
+	import { climbView } from '$lib/ride/climb-view';
+	import { watchClimbCues } from '$lib/ride/climb-cues.svelte';
 	import { roadsEnabled } from '$lib/ride/roads';
 	import Minus from '@lucide/svelte/icons/minus';
 	import Plus from '@lucide/svelte/icons/plus';
@@ -44,6 +46,21 @@
 	const watts = $derived(free?.mode === 'watts');
 	// On a road the road chooses (#3027): its grade, or the watts it asks for.
 	const road = $derived(free?.road ?? null);
+	// The road as the Skyline and the climb card read it (#3059, #3645).
+	const skyline = $derived(
+		road
+			? {
+					road: road.profile,
+					m: road.m,
+					mps: road.virtualMps,
+					reverse: road.reverse,
+				}
+			: null,
+	);
+	const climb = $derived(
+		climbView(skyline, free?.live.power30 ?? 0, channel.you.kg),
+	);
+	watchClimbCues(() => climb);
 	const value = $derived(
 		watts
 			? `${road ? (free?.targetWatts ?? 0) : (free?.watts ?? 0)} W`
@@ -236,6 +253,7 @@
 					grade={watts ? undefined : free?.grade}
 					{...road && roadContext(road)}
 					split={ghost.split ?? undefined}
+					{climb}
 					gear={!watts && conn && gearsEnabled()
 						? conn.ride.gear.label
 						: undefined}
@@ -244,15 +262,10 @@
 				     included, so it says so under them (ADR-0008, #2804). -->
 				<HrShare class="mt-2" />
 			</div>
-			{#if road}
+			{#if skyline}
 				<!-- The horizon on a road (#3059): the road ahead and your dot. -->
 				<div class="h-40">
-					<Skyline
-						road={road.profile}
-						m={road.m}
-						mps={road.virtualMps}
-						reverse={road.reverse}
-					/>
+					<Skyline {...skyline} />
 				</div>
 			{/if}
 		</section>
