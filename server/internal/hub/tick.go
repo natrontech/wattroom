@@ -237,6 +237,11 @@ func (rm *channelState) tickLocked(now func() time.Time, dt time.Duration, savin
 			rode[id] = struct{}{}
 		}
 	}
+	// A race's closing card is its riders' alone (ADR-0067: a rider who
+	// never chose racing never sees its results).
+	if r := raceOf(rm.game); r != nil && r.done() {
+		rode = r.entrants(rode)
+	}
 	// The session just closed: hand the ride record to the saver exactly
 	// once. Snapshot under the lock, persist outside it (hub discipline:
 	// no I/O while holding a room mutex).

@@ -165,6 +165,17 @@ func (r *raceRun) results() []protocol.RaceBracket {
 	return out
 }
 
+// entrants adds the race's riders to a set of who sees the closing card.
+func (r *raceRun) entrants(to map[string]struct{}) map[string]struct{} {
+	if to == nil {
+		to = make(map[string]struct{}, len(r.names))
+	}
+	for id := range r.names {
+		to[id] = struct{}{}
+	}
+	return to
+}
+
 // world is the race on the tick: each racer's own place, since a race rides
 // no shared bunch (ADR-0067). Nil before the flag.
 func (r *raceRun) world() *protocol.World {

@@ -17,7 +17,8 @@ import (
 //     and the JSON goes only to a socket that has not heard this hash;
 //   - a closed session's scores (#2819): ADR-0058 keeps the closing card for
 //     the riders who rode it, and a member who joins the channel afterwards
-//     must not read everyone's execution off the wire.
+//     must not read everyone's execution off the wire — nor a race's results,
+//     which only its riders see (ADR-0067).
 type tickFrames struct {
 	tick    *protocol.ServerTick
 	log     *slog.Logger
@@ -55,6 +56,12 @@ func (f *tickFrames) marshal(kind frameKind, cheers []protocol.Cheer) []byte {
 	}
 	if !kind.scores {
 		t.Execution = nil
+		if t.Game != nil && t.Game.Race != nil && t.Game.Race.Results != nil {
+			game, card := *t.Game, *t.Game.Race
+			card.Results = nil
+			game.Race = &card
+			t.Game = &game
+		}
 	}
 	if !kind.deck {
 		t.Jukebox = nil

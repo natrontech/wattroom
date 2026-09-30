@@ -1,6 +1,8 @@
 package hub
 
 import (
+	"encoding/json"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -30,6 +32,8 @@ type raceRoom struct {
 	// The last race state a tick carried: the closing card outlives the
 	// game's linger here.
 	card *protocol.RaceState
+	// The tick that first carried the card, for what each socket is sent.
+	cardOut *tickOut
 }
 
 func raceOn(t *testing.T, lengthM float64, riders ...protocol.Rider) *raceRoom {
@@ -65,6 +69,9 @@ func (r *raceRoom) ride(seconds int, power func(id string) (int, bool)) protocol
 		tick = out.tick
 		if tick.Game != nil && tick.Game.Race != nil {
 			r.card = tick.Game.Race
+			if r.cardOut == nil && r.card.Results != nil {
+				r.cardOut = &out
+			}
 		}
 	}
 	return tick
@@ -255,5 +262,34 @@ func TestARestartVoidsTheRace(t *testing.T) {
 	tick := again.ride(5, watts(map[string]int{"ana": 250, "ben": 250}))
 	if tick.World != nil || tick.Game != nil {
 		t.Fatalf("after a restart: world %+v, game %+v", tick.World, tick.Game)
+	}
+}
+
+// Opt-in (ADR-0067): a rider who never chose racing never sees its results.
+// Someone in the channel, not on the race, is sent the tick without the card.
+func TestOnlyTheRidersSeeTheClosingCard(t *testing.T) {
+	r := raceOn(t, 600, racer("ana", 70), racer("ben", 70))
+	watcher := &client{rider: racer("cy", 70), out: make(chan []byte, clientQueue)}
+	r.rm.join(watcher)
+	r.ride(10+protocol.RaceNeutralSeconds+120, watts(map[string]int{"ana": 250, "ben": 250}))
+	if r.cardOut == nil {
+		t.Fatal("the race never drew its card")
+	}
+	sees := func(c *client) bool {
+		for len(c.out) > 0 {
+			<-c.out
+		}
+		r.rm.sendTick(slog.New(slog.DiscardHandler), r.cardOut)
+		var msg protocol.ServerMessage
+		if err := json.Unmarshal(<-c.out, &msg); err != nil {
+			t.Fatal(err)
+		}
+		return msg.Tick.Game != nil && msg.Tick.Game.Race != nil && msg.Tick.Game.Race.Results != nil
+	}
+	if !sees(r.clients["ana"]) {
+		t.Error("a racer was not sent the closing card")
+	}
+	if sees(watcher) {
+		t.Error("a rider who never joined the race was sent its results")
 	}
 }
