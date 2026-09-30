@@ -78,9 +78,13 @@ export function createRideClock(
 		advance(by: number) {
 			elapsed += by;
 		},
-		/** Jump to the start of the next block; false when there is none. */
+		/**
+		 * Jump to the start of the next block; false when there is none — or
+		 * on a road, where the road decides where a block ends (#3499).
+		 */
 		skip(): boolean {
 			const next = segments[info.segmentIndex + 1];
+			if (ride.road) return false;
 			if (!next) return false;
 			shift += next.startSeconds - seconds;
 			return true;
@@ -93,8 +97,10 @@ export function createRideClock(
 		 * per-segment durations rather than one global shift — not worth it until a
 		 * rider complains.
 		 */
-		extend(by: number) {
+		extend(by: number): boolean {
+			if (ride.road) return false;
 			shift -= by;
+			return true;
 		},
 	};
 }
