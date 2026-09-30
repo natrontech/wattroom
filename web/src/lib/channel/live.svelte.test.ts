@@ -752,6 +752,25 @@ describe('channel live resumes the bunch after a restart', () => {
 		expect(live.lostRoad).toBeNull();
 	});
 
+	it('keeps the road a session closed on, for its next leg, until the next goes live', () => {
+		const live = createChannelLive(channelAddress('c', 'road4', 'road4'));
+		const socket = FakeSocket.last!;
+		socket.open();
+		onTheRoad(socket, 'u1', 21_300);
+		socket.onmessage?.({
+			data: JSON.stringify({
+				tick: {
+					at: Date.now(),
+					state: { phase: 'done', elapsed: 600, workoutName: 'Openers' },
+				},
+			}),
+		});
+		expect(live.endedRoad?.route).toEqual({ id: 'r1', fromM: 21_300 });
+		expect(live.lostRoad).toBeNull();
+		onTheRoad(socket, 'u1', 0);
+		expect(live.endedRoad).toBeNull();
+	});
+
 	it('offers nothing to a rider who was not coaching, or after a session that closed', () => {
 		const live = createChannelLive(channelAddress('c', 'road2', 'road2'));
 		const socket = FakeSocket.last!;
