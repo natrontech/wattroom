@@ -71,14 +71,34 @@ function roadReach(
 
 /**
  * The whole corridor at once: every chunk within `reach` of a road, fine near
- * one. What a world built before its ride uses; a streamed one asks around().
+ * one. A world that small fills the box the corridor spans instead — a
+ * loop's inside, the diorama's square edge — up to `fill` chunks, about
+ * 150k coarse vertices; a longer road keeps to its corridor. What a world
+ * built before its ride uses; a streamed one asks around().
  */
-export function corridor(lines: readonly Line[], reach: number) {
+export function corridor(lines: readonly Line[], reach: number, fill = 6000) {
 	const near = roadReach(lines, reach, () => true);
-	const level: Coverage = (ci, cj) => {
-		const c = near.get(`${ci}:${cj}`);
-		return !c ? null : c.d <= FINE_WITHIN ? 'fine' : 'coarse';
-	};
+	const fine = (ci: number, cj: number) =>
+		(near.get(`${ci}:${cj}`)?.d ?? Infinity) <= FINE_WITHIN ? 'fine' : 'coarse';
+	const [i0, j0, i1, j1] = [...near.values()].reduce(
+		([a, b, c, d], { c: [ci, cj] }) => [
+			Math.min(a, ci),
+			Math.min(b, cj),
+			Math.max(c, ci),
+			Math.max(d, cj),
+		],
+		[Infinity, Infinity, -Infinity, -Infinity],
+	);
+	if ((i1 - i0 + 1) * (j1 - j0 + 1) <= fill) {
+		const chunks: ChunkAt[] = [];
+		for (let cj = j0; cj <= j1; cj++)
+			for (let ci = i0; ci <= i1; ci++) chunks.push([ci, cj]);
+		const level: Coverage = (ci, cj) =>
+			ci < i0 || ci > i1 || cj < j0 || cj > j1 ? null : fine(ci, cj);
+		return { level, chunks };
+	}
+	const level: Coverage = (ci, cj) =>
+		near.has(`${ci}:${cj}`) ? fine(ci, cj) : null;
 	return { level, chunks: [...near.values()].map((c) => c.c) };
 }
 
