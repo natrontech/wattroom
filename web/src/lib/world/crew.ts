@@ -182,7 +182,12 @@ export function makeCrew(riders: SimRider[], style: Style) {
 		return you;
 	}
 
-	return { group, update };
+	return {
+		group,
+		update,
+		/** Your figure, as a capture measures it (#3672). */
+		you: views[riders.findIndex((r) => r.you)]?.model.mesh ?? null,
+	};
 }
 export type Crew = ReturnType<typeof makeCrew>;
 

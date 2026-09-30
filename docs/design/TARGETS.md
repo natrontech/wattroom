@@ -38,6 +38,7 @@ The v2 mock's route starts in an invented village, Stollmatt, and says nothing o
   - `[#n]` names an existing issue.
   - An untagged item holds today and is guarded against regression.
   - A PR is held to three things: the items its own issue owns, the global rules, and no regression anywhere else.
+  - A global-rule failure is *inherited* when main already fails it the same way and an open issue owns the fix. It does not count against a PR that only passes through the surface (DESIGN-CHECK §8).
 - **Check tags.** An item without a check tag is checked on the image. The other tags say where the answer is:
   - `[probe:<key>]`: the measurement JSON that the capture run writes beside each image;
   - `[test:<file>]`: a test in the repository that asserts it;

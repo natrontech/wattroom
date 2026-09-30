@@ -58,9 +58,13 @@ export function makeRig(route: Route, world: World) {
 			want.y = Math.max(want.y, ground(want.x, want.z) + GOAL_FLOOR);
 			const a = along(route, rider.d + (chase ? 18 : 10));
 			look.set(a.x, yOf(route, a.ele) + 1.0, a.z).lerp(you, chase ? 0.45 : 0.8);
+			const kmh = rider.v * 3.6;
+			const fov = chase ? 50 + Math.min(10, Math.max(0, kmh - 20) * 0.25) : 45;
 			if (!started) {
 				eye.copy(want);
 				gaze.copy(look);
+				camera.fov = fov;
+				camera.updateProjectionMatrix();
 				started = true;
 			}
 			eye.lerp(want, damp(chase ? 0.22 : 0.6, real));
@@ -69,8 +73,6 @@ export function makeRig(route: Route, world: World) {
 			eye.y = Math.max(eye.y, ground(eye.x, eye.z) + EYE_FLOOR);
 			camera.position.copy(eye);
 			camera.lookAt(gaze);
-			const kmh = rider.v * 3.6;
-			const fov = chase ? 50 + Math.min(10, Math.max(0, kmh - 20) * 0.25) : 45;
 			if (Math.abs(camera.fov - fov) > 0.05) {
 				camera.fov += (fov - camera.fov) * damp(0.5, real);
 				camera.updateProjectionMatrix();
