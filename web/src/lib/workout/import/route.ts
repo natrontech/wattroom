@@ -8,6 +8,7 @@ import {
 	type RouteSource,
 	type TrackPoint,
 } from '$lib/road/parse';
+import { isFit } from '$lib/road/fit';
 import { lengthOf, toRoute, type Route } from '$lib/road/route';
 
 /**
@@ -82,7 +83,7 @@ function failed(err: unknown): RouteOutcome {
 }
 
 export function importRoute(
-	source: string,
+	source: string | Uint8Array,
 	choice: RouteChoice = {},
 ): RouteOutcome {
 	let parsed: ReturnType<typeof parseRoute>;
@@ -119,14 +120,22 @@ export function importRoute(
 /** Reads a picked route file, refusing one past the ceiling before reading it. */
 export async function readRouteFile(
 	file: File,
-): Promise<{ ok: true; source: string } | { ok: false; error: string }> {
+): Promise<
+	{ ok: true; source: string | Uint8Array } | { ok: false; error: string }
+> {
 	if (file.size > MAX_ROUTE_FILE_BYTES)
 		return {
 			ok: false,
 			error: `“${file.name}” is ${(file.size / (1 << 20)).toFixed(1)} MB. A route file is at most ${MAX_ROUTE_FILE_BYTES >> 20} MB — export the route alone, without laps or sensor data.`,
 		};
 	try {
-		return { ok: true, source: await file.text() };
+		// A FIT course is binary and read as bytes (#3058); told by its own
+		// signature, not by a name a download may have changed.
+		const bytes = new Uint8Array(await file.arrayBuffer());
+		return {
+			ok: true,
+			source: isFit(bytes) ? bytes : new TextDecoder().decode(bytes),
+		};
 	} catch {
 		return {
 			ok: false,

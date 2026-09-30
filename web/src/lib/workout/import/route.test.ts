@@ -106,6 +106,17 @@ describe('route files at the door', () => {
 		expect(isRouteFile('plan.zwo')).toBe(false);
 	});
 
+	it('reads a FIT course as bytes and anything else as text (#3058)', async () => {
+		expect(isRouteFile('Course.FIT')).toBe(true);
+		// Told by the file's own signature, not by a name a download changed.
+		const header = new Uint8Array(16);
+		header.set([14, 0x20, 0, 0, 0, 0, 0, 0, 0x2e, 0x46, 0x49, 0x54]);
+		const fit = await readRouteFile(new File([header], 'renamed.gpx'));
+		expect(fit.ok && fit.source instanceof Uint8Array).toBe(true);
+		const text = await readRouteFile(new File(['<gpx/>'], 'track.fit'));
+		expect(text.ok && text.source).toBe('<gpx/>');
+	});
+
 	it('refuses a route file past its ceiling before reading it', async () => {
 		const big = {
 			name: 'huge.gpx',

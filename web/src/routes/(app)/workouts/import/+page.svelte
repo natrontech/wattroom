@@ -38,7 +38,7 @@
 	 * The preview is the point: a converted file has lost whatever our steps
 	 * cannot say, and this is where that gets read before anything is stored.
 	 *
-	 * A .gpx or .tcx is a route instead (#3057): RouteImport takes the file's
+	 * A .gpx, .tcx or .fit is a route instead (#3057, #3058): RouteImport takes the file's
 	 * text from here and does the rest.
 	 */
 
@@ -56,7 +56,7 @@
 	let error = $state<string | null>(null);
 	let imported = $state<Imported | null>(null);
 	// A route file's text, once read; RouteImport converts it.
-	let routeSource = $state<string | null>(null);
+	let routeSource = $state<string | Uint8Array | null>(null);
 	let fileName = $state('');
 	let saving = $state(false);
 	// A save the server refused (#2627) is not a file that cannot be read: it
@@ -186,8 +186,9 @@
 	<h1 class="page-title">Import a workout or a route</h1>
 	<p class="text-muted mt-1 text-xs">
 		A Zwift <code>.zwo</code> or a <code>.erg</code> course file becomes a
-		WattRoom workout on your shelf; a <code>.gpx</code> or <code>.tcx</code> route
-		becomes a road you can ride. It stays yours — importing shares nothing.
+		WattRoom workout on your shelf; a <code>.gpx</code>, <code>.tcx</code> or
+		<code>.fit</code> route becomes a road you can ride. It stays yours — importing
+		shares nothing.
 	</p>
 
 	<input
@@ -285,8 +286,9 @@
 					{#snippet icon()}<FileUp size={20} class="text-muted" />{/snippet}
 					Drop a workout (<code>.zwo</code>, <code>.erg</code>) or a route (<code
 						>.gpx</code
-					>, <code>.tcx</code>) here, or choose one. You will see exactly what
-					it became — and what it could not bring — before anything is saved.
+					>, <code>.tcx</code>, <code>.fit</code>) here, or choose one. You will
+					see exactly what it became — and what it could not bring — before
+					anything is saved.
 					{#snippet cta()}
 						<button
 							onclick={() => picker?.click()}

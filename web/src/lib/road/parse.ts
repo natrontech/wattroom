@@ -1,7 +1,10 @@
+import { readFit } from './fit';
+
 /**
- * A route file becomes points (#3023): a GPX's track or route points, or a
- * TCX's trackpoints, with whatever elevation they carry. The browser's own XML
- * parser reads the file, so nothing here guesses at markup; FIT comes later.
+ * A route file becomes points (#3023): a GPX's track or route points, a TCX's
+ * trackpoints, or a FIT course's records (#3058, fit.ts), with whatever
+ * elevation they carry. The browser's own XML parser reads the XML, so
+ * nothing here guesses at markup.
  *
  * The file's <name> is not read. A route's name is generated from its numbers
  * (road.ts), so a place never travels in it (ADR-0063).
@@ -14,7 +17,7 @@ export type TrackPoint = { lat: number; lon: number; ele: number };
  * owner-only (ADR-0063), and telling one apart is a heuristic — the file's
  * creator says Strava — which the copy that explains it says too.
  */
-export type RouteSource = 'gpx' | 'tcx' | 'stravagpx';
+export type RouteSource = 'gpx' | 'tcx' | 'fit' | 'stravagpx';
 
 /** docs/SPEC.md "Route rides": the file a rider imports is at most 5 MB. */
 export const MAX_ROUTE_FILE_BYTES = 5 << 20;
@@ -114,7 +117,8 @@ function fillHeights(points: TrackPoint[]): number {
 	return filled;
 }
 
-export function parseRoute(text: string): {
+/** A route file, read. */
+export type ParsedRoute = {
 	/** Every track's points, in file order — what the world view rides. */
 	points: TrackPoint[];
 	/** The same points by track, for a file carrying several. */
@@ -124,12 +128,25 @@ export function parseRoute(text: string): {
 	heights: 'file' | 'none';
 	/** Points with no height of their own, given the one before them. */
 	filled: number;
-} {
-	if (new TextEncoder().encode(text).byteLength > MAX_ROUTE_FILE_BYTES)
+};
+
+export function parseRoute(source: string | Uint8Array): ParsedRoute {
+	const bytes =
+		typeof source === 'string'
+			? new TextEncoder().encode(source).byteLength
+			: source.byteLength;
+	if (bytes > MAX_ROUTE_FILE_BYTES)
 		throw new RouteError(
 			'This file is over 5 MB, more than a route needs. Export the route alone, without laps or sensor data, and pick it again.',
 		);
-	const doc = new DOMParser().parseFromString(text, 'application/xml');
+	if (typeof source !== 'string') {
+		// A FIT file is one track; a Strava export rides owner-only as the
+		// server's one Strava word says, whatever its format (ADR-0063).
+		const fit = readFit(source);
+		if ('refused' in fit) throw new RouteError(fit.refused);
+		return pointsOf([fit.points], fit.strava ? 'stravagpx' : 'fit');
+	}
+	const doc = new DOMParser().parseFromString(source, 'application/xml');
 	const root = doc.documentElement?.localName;
 	const gpx = root === 'gpx';
 	if (
@@ -137,9 +154,16 @@ export function parseRoute(text: string): {
 		(!gpx && root !== 'TrainingCenterDatabase')
 	)
 		throw new RouteError(
-			'This file is not a GPX or TCX route. Export the route from your planner as GPX, and pick that file.',
+			'This file is not a GPX, TCX or FIT route. Export the route from your planner as GPX, and pick that file.',
 		);
-	const tracks = tracksOf(doc, gpx);
+	return pointsOf(
+		tracksOf(doc, gpx),
+		fromStrava(doc, gpx) ? 'stravagpx' : gpx ? 'gpx' : 'tcx',
+	);
+}
+
+/** A file's tracks as a route's points, whatever format carried them. */
+function pointsOf(tracks: TrackPoint[][], src: RouteSource): ParsedRoute {
 	const points = tracks.flat();
 	if (points.length < 2)
 		throw new RouteError(
@@ -147,7 +171,6 @@ export function parseRoute(text: string): {
 		);
 	const heights = points.some((p) => Number.isFinite(p.ele)) ? 'file' : 'none';
 	const filled = fillHeights(points);
-	const src = fromStrava(doc, gpx) ? 'stravagpx' : gpx ? 'gpx' : 'tcx';
 	// A file with no heights at all is flat, not a file with every gap filled.
 	return {
 		points,
