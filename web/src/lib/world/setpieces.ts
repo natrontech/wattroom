@@ -235,7 +235,8 @@ export function setPieces(c: Ctx): {
 			sw: number,
 			sh: number,
 		) {
-			if (s < 0 || s > r.length) return;
+			// The profile's length is rounded to the centimetre: a foot at the stroke's end may read past it by that much.
+			if (s < 0 || s > r.length + 0.01) return;
 			const p = w.at(s);
 			const x = p.x - p.lx * off * dir;
 			const z = p.z - p.lz * off * dir;
