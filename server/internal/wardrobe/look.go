@@ -146,7 +146,9 @@ func (s *Service) handleLook(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Cache-Control", "private, max-age=31536000, immutable")
 	w.Header().Set("Content-Type", "application/json")
-	if _, err := w.Write([]byte(loadout)); err != nil {
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	// The stored bytes, not a re-encoding: a look's body hashes to its name.
+	if _, err := w.Write([]byte(loadout)); err != nil { //nolint:gosec // G705: canonical JSON this server wrote, served as JSON with nosniff
 		s.log.Warn("look write failed", "err", err)
 	}
 }

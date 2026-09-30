@@ -80,9 +80,9 @@ func TestAnOutfitIsWornAsALook(t *testing.T) {
 // once it has a package — must not reach the wardrobe, even through another
 // package. The whole import graph is read, not one file's imports.
 func TestTheWardrobeStaysOutOfWhatMovesRiders(t *testing.T) {
-	cmd := exec.Command("go", "list", "-deps", "-f", "{{.ImportPath}}", "./internal/hub")
+	cmd := exec.CommandContext(t.Context(), "go", "list", "-deps", "-f", "{{.ImportPath}}", "./internal/hub")
 	cmd.Dir = "../.."
-	if races, _ := exec.Command("sh", "-c", "cd ../.. && ls -d internal/race* 2>/dev/null").Output(); len(races) > 0 {
+	if races, _ := exec.CommandContext(t.Context(), "sh", "-c", "cd ../.. && ls -d internal/race* 2>/dev/null").Output(); len(races) > 0 {
 		for _, dir := range strings.Fields(string(races)) {
 			cmd.Args = append(cmd.Args, "./"+dir)
 		}
