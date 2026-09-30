@@ -7,7 +7,8 @@ import { tag } from './family';
 import { zoneOf } from '$lib/components/zones';
 import { damp } from '$lib/motion/damp';
 import { effortRpm } from './figure/cadence';
-import { yOf } from './geometry';
+import { ROAD_LIFT, yOf } from './geometry';
+import { across, bankOf } from './terrain/road-profile';
 import { ramp } from './materials';
 import { buildGeometry } from './rider-geometry';
 import { GEO } from './rider-rig';
@@ -21,7 +22,7 @@ import {
 } from './rider-model';
 import { pose } from './rider-pose';
 import { type Route } from '$lib/road/route';
-import { at, leftOf } from '$lib/road/along';
+import { at, curvature, leftOf } from '$lib/road/along';
 import type { SimRider } from './sim';
 import type { Style } from './styles';
 
@@ -226,7 +227,15 @@ function makeTrail(color: string) {
 				const { lx, lz } = leftOf(p.heading);
 				const x = p.x + lx * lane;
 				const z = p.z + lz * lane;
-				const y = yOf(route, p.ele) + 0.14; // on the ribbon, a hair above it
+				// On the ribbon where your lane crosses it, banked as the ribbon is, a hair above it.
+				const n = route.x.length - 1;
+				const at0 = Math.round(back / route.step);
+				const k = curvature(
+					route,
+					route.loop ? ((at0 % n) + n) % n : Math.min(Math.max(at0, 0), n),
+				);
+				const y =
+					yOf(route, p.ele) + ROAD_LIFT + across(lane, bankOf(k)) + 0.03;
 				const w = TRAIL_W / 2;
 				attr.setXYZ(i * 2, x + lx * w, y, z + lz * w);
 				attr.setXYZ(i * 2 + 1, x - lx * w, y, z - lz * w);
