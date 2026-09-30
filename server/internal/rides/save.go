@@ -129,7 +129,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 			"A ride under a minute is not saved — the same rule a session uses.", "samples")
 		return
 	}
-	if len(req.Samples) > maxSamples {
+	if len(req.Samples) > protocol.MaxRideSamples {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
 			"A ride longer than six hours is not something this saves.", "samples")
 		return
@@ -137,11 +137,12 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	samples := make([]protocol.RiderMetrics, len(req.Samples))
 	var laps []stats.Lap
 	for i, sample := range req.Samples {
-		if sample.Watts < 0 || sample.Watts > maxWatts ||
-			sample.Cadence < 0 || sample.Cadence > maxCadence ||
-			sample.HR < 0 || sample.HR > maxHR {
+		if sample.Watts < 0 || sample.Watts > protocol.MaxWatts ||
+			sample.Cadence < 0 || sample.Cadence > protocol.MaxCadence ||
+			sample.HR < 0 || sample.HR > protocol.MaxHeartRate {
 			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-				"A sample is out of range — watts 0-3000, cadence 0-250, heart rate 0-250.", "samples")
+				fmt.Sprintf("A sample is out of range — watts 0-%d, cadence 0-%d, heart rate 0-%d.",
+					protocol.MaxWatts, protocol.MaxCadence, protocol.MaxHeartRate), "samples")
 			return
 		}
 		// The bounds are the trim's own, the ones protocol.BiasOr clamps to;
@@ -153,7 +154,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		}
 		// A workout second past the six-hour ceiling is no second of any
 		// workout this saves — the same bound the sample count has.
-		if sample.Clock < 0 || sample.Clock > maxSamples {
+		if sample.Clock < 0 || sample.Clock > protocol.MaxRideSamples {
 			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
 				"A sample's workout second is out of range.", "samples")
 			return

@@ -13,6 +13,7 @@ import (
 	"github.com/muktihari/fit/decoder"
 	"github.com/muktihari/fit/profile/filedef"
 
+	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/testx"
 )
@@ -140,7 +141,7 @@ func TestHandlerRejectsBadInput(t *testing.T) {
 func TestHandlerRejectsOversizedRides(t *testing.T) {
 	var b strings.Builder
 	b.WriteString(`{"startedAt":"2026-08-29T06:00:00Z","samples":[`)
-	for i := range maxSamples + 1 {
+	for i := range protocol.MaxRideSamples + 1 {
 		if i > 0 {
 			b.WriteByte(',')
 		}
