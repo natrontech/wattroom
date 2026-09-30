@@ -223,15 +223,19 @@ async function assertRiding(page, world) {
 		throw new Error('a world canvas mounted on a ride with no road');
 }
 
-/** Grows the viewport to the page body's height, so one shot holds the page. */
+/**
+ * Grows the viewport to the page body's height, so one shot holds the page;
+ * false where there is no page body — the public site scrolls its document,
+ * which a full-page screenshot takes whole.
+ */
 async function fullPage(page) {
 	const height = await page.evaluate(() => {
 		const body = document.querySelector('[data-testid=page-body]');
-		// The public site scrolls the document; the app, its page body.
 		return body
 			? Math.ceil(body.getBoundingClientRect().top + body.scrollHeight)
-			: document.documentElement.scrollHeight;
+			: null;
 	});
+	if (height === null) return false;
 	const { width, height: now } = page.viewportSize();
 	if (height > now) {
 		await page.setViewportSize({
@@ -240,6 +244,7 @@ async function fullPage(page) {
 		});
 		await page.waitForTimeout(500);
 	}
+	return true;
 }
 
 /** Measurements, in the page: the only evidence a reviewer may cite. */
@@ -398,7 +403,12 @@ function probe(corridor) {
 
 	return {
 		cave: { present: !!cave, maxSurfaceL: round(maxL) },
-		overflowX: body ? body.scrollWidth - body.clientWidth : null,
+		// The app's shell hides a page's overflow, so there it is the page body's
+		// (TARGETS G5); the public site has no page body and scrolls its document.
+		overflowX: body
+			? body.scrollWidth - body.clientWidth
+			: document.documentElement.scrollWidth -
+				document.documentElement.clientWidth,
 		wattCount: wattFigures.length,
 		wattFigures,
 		wattMarks,
@@ -417,9 +427,12 @@ function probe(corridor) {
 }
 
 async function shot(page, id, errors, full = false) {
-	if (full) await fullPage(page);
+	const wholeDocument = full && !(await fullPage(page));
 	const probes = await page.evaluate(probe, CORRIDOR);
-	await page.screenshot({ path: join(OUT, `${id}.png`) });
+	await page.screenshot({
+		path: join(OUT, `${id}.png`),
+		fullPage: wholeDocument,
+	});
 	await writeFile(
 		join(OUT, `${id}.json`),
 		JSON.stringify({ ...probes, pageErrors: errors }, null, 2) + '\n',
