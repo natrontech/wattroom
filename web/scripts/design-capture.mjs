@@ -13,8 +13,8 @@
 //
 // Writes <id>.png and <id>.json (the probes: cave, overflowX, wattCount,
 // panels, minTarget, world) into --out. A riding surface is asserted to be
-// riding — the frame is the cave and its clock advances — and a world surface
-// to have drawn the world rather than the Flat road. A surface that fails its
+// riding — its clock advances; whether it is the cave is a probe — and a world
+// surface to have drawn the world rather than the Flat road. A surface that fails its
 // assertion is written as FAILED-<id>.png and FAILED-<id>.txt instead, never
 // as a picture of the page before the ride; the run then exits 1.
 //
@@ -194,18 +194,16 @@ async function ride(page, url, seconds = RIDE_SECONDS) {
 	await page.waitForTimeout(seconds * 1000);
 }
 
-/** A running ride: the frame is the cave and a clock in it moves; a world, drawn. */
+/**
+ * A running ride: a clock on the page moves; a world, drawn. Whether the frame
+ * is the cave is G1's question, so it is a probe rather than an assertion — a
+ * ride that forgot the cave is the defect the shot exists to show.
+ */
 async function assertRiding(page, world) {
 	const clocks = () =>
 		page.evaluate(() =>
-			(
-				document
-					.querySelector('.cave')
-					?.innerText.match(/\b\d{1,2}:\d{2}\b/g) ?? []
-			).join(' '),
+			(document.body.innerText.match(/\b\d{1,2}:\d{2}\b/g) ?? []).join(' '),
 		);
-	if (!(await page.locator('.cave').count()))
-		throw new Error('no .cave in the frame: the ride is not running');
 	const first = await clocks();
 	await page.waitForTimeout(2500);
 	if (!first || first === (await clocks()))
@@ -286,7 +284,10 @@ function probe(corridor) {
 			let el = document.elementFromPoint(fx * innerWidth, fy * innerHeight);
 			if (!el || el.closest('canvas')) continue;
 			let bg = null;
+			// A surface is a large box: a zone bar or a chip on it is not.
 			for (; el; el = el.parentElement) {
+				const r = el.getBoundingClientRect();
+				if (r.width * r.height < 0.05 * innerWidth * innerHeight) continue;
 				const c = rgba(getComputedStyle(el).backgroundColor);
 				if (c.a > 0.5) {
 					bg = c;
@@ -364,13 +365,19 @@ function probe(corridor) {
 			})
 		: [];
 
-	// G5: the page body's sideways overflow, and the smallest control.
+	// G5: the page body's sideways overflow, and the smallest control. A control
+	// inside a sentence is SC 2.5.8's inline exception, so it is not counted.
+	const inSentence = (el) =>
+		getComputedStyle(el).display === 'inline' ||
+		[...el.parentElement.childNodes].some(
+			(n) => n.nodeType === 3 && n.textContent.trim(),
+		);
 	const body = document.querySelector('[data-testid=page-body]');
 	const controls = [
 		...document.querySelectorAll(
 			'button, a[href], input:not([type=hidden]), select, textarea, summary, [role=button]',
 		),
-	].filter((el) => shown(el) && getComputedStyle(el).display !== 'inline');
+	].filter((el) => shown(el) && !inSentence(el));
 	const sizes = controls.map((el) => {
 		const r = el.getBoundingClientRect();
 		const label =
