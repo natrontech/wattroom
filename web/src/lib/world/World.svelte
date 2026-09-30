@@ -235,7 +235,6 @@
 			<input
 				id="world-watts"
 				type="range"
-				class="h-6"
 				min="0"
 				max="600"
 				step="5"
