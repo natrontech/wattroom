@@ -60,8 +60,8 @@ describe('slot 1 and the HUD say one road readout (#3639)', () => {
 		}
 		const last = session.road!.readout;
 		expect(last.km).toBeGreaterThan(1);
-		expect(roadLine(last)).toMatch(
-			/^km \d+\.\d of 3\.0 · 5\.0 % · top in \d\.\d km$/,
-		);
+		// Its one climb is the one being ridden: no next climb to name, and
+		// the top is the CLIMB page's (#3656).
+		expect(roadLine(last)).toMatch(/^km \d+\.\d of 3\.0 · 5\.0 %$/);
 	});
 });
