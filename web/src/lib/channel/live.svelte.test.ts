@@ -669,3 +669,134 @@ describe('channel live silence and offline (#2135, #2121)', () => {
 		vi.useRealTimers();
 	});
 });
+
+// #3103: a restart takes the session, never the road. The coach's screen
+// keeps where the bunch last was, and one tap picks the same workout again
+// from that metre — started, like any pick, once the tick shows it landed.
+describe('channel live resumes the bunch after a restart', () => {
+	beforeEach(() => {
+		FakeSocket.last = null;
+	});
+
+	const route = {
+		id: 'r1',
+		hash: 'h',
+		genName: 'Road · 30.0 km · 400 m',
+		fromM: 0,
+		lengthM: 30_000,
+	};
+	const onTheRoad = (socket: FakeSocket, coach: string, bunchM: number) =>
+		socket.onmessage?.({
+			data: JSON.stringify({
+				tick: {
+					at: Date.now(),
+					state: {
+						phase: 'running',
+						elapsed: 600,
+						coach,
+						workoutName: 'Openers',
+						totalSeconds: 3600,
+						workoutJson:
+							'{"name":"Openers","road":{"routeId":"r1","fromM":0,"toM":30000,"profile":"cut","originM":400},"steps":[]}',
+						route,
+					},
+					world: { bunchM, speedMps: 9 },
+				},
+			}),
+		});
+	const restarted = (socket: FakeSocket) =>
+		socket.onmessage?.({
+			data: JSON.stringify({
+				tick: { at: Date.now(), state: { phase: 'idle', elapsed: 0 } },
+			}),
+		});
+	const sent = (socket: FakeSocket) =>
+		socket.sent.map((m) => JSON.parse(m)).filter((m) => m.control);
+
+	it('offers the coach the bunch back at its last metre, and starts it once the pick lands', () => {
+		const live = createChannelLive(channelAddress('c', 'road', 'road'));
+		const socket = FakeSocket.last!;
+		socket.open();
+		onTheRoad(socket, 'u1', 14_150);
+		onTheRoad(socket, 'u1', 14_210);
+		restarted(socket);
+		expect(live.lostRoad?.route).toEqual({ id: 'r1', fromM: 14_210 });
+		live.resumeRoad();
+		const [pick] = sent(socket);
+		expect(pick.control).toMatchObject({
+			action: 'pick',
+			workoutName: 'Openers',
+			totalSeconds: 3600,
+			route: { id: 'r1', fromM: 14_210 },
+		});
+		// The pick carries the road by reference, never the crew's cut.
+		expect(JSON.parse(pick.control.workoutJson).road).toEqual({
+			routeId: 'r1',
+			fromM: 0,
+			toM: 30_000,
+		});
+		expect(live.following).toBe(true);
+		// Not yet: start waits for the tick that shows the pick.
+		expect(sent(socket)).toHaveLength(1);
+		socket.onmessage?.({
+			data: JSON.stringify({
+				tick: {
+					at: Date.now(),
+					state: { phase: 'idle', elapsed: 0, workoutName: 'Openers' },
+				},
+			}),
+		});
+		expect(sent(socket).at(-1)?.control).toEqual({ action: 'start' });
+		// The new session clears the offer.
+		onTheRoad(socket, 'u1', 14_210);
+		expect(live.lostRoad).toBeNull();
+	});
+
+	it('offers nothing to a rider who was not coaching, or after a session that closed', () => {
+		const live = createChannelLive(channelAddress('c', 'road2', 'road2'));
+		const socket = FakeSocket.last!;
+		socket.open();
+		onTheRoad(socket, 'someone-else', 9_000);
+		restarted(socket);
+		expect(live.lostRoad).toBeNull();
+
+		onTheRoad(socket, 'u1', 9_000);
+		socket.onmessage?.({
+			data: JSON.stringify({
+				tick: {
+					at: Date.now(),
+					state: { phase: 'done', elapsed: 600, workoutName: 'Openers' },
+				},
+			}),
+		});
+		restarted(socket);
+		expect(live.lostRoad).toBeNull();
+	});
+
+	it('lets a refused pick go without starting anything', () => {
+		const live = createChannelLive(channelAddress('c', 'road3', 'road3'));
+		const socket = FakeSocket.last!;
+		socket.open();
+		onTheRoad(socket, 'u1', 5_000);
+		restarted(socket);
+		live.resumeRoad();
+		socket.onmessage?.({
+			data: JSON.stringify({
+				error: {
+					code: 'not_found',
+					message: 'That route is not one of yours.',
+				},
+			}),
+		});
+		expect(live.following).toBe(false);
+		socket.onmessage?.({
+			data: JSON.stringify({
+				tick: {
+					at: Date.now(),
+					state: { phase: 'idle', elapsed: 0, workoutName: 'Openers' },
+				},
+			}),
+		});
+		expect(sent(socket).map((m) => m.control.action)).toEqual(['pick']);
+	});
+});
