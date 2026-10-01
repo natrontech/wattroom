@@ -200,9 +200,13 @@ func (r *raceRun) advance(now time.Time, samples map[string]int, _ map[string]pr
 	}
 	r.race.Step(now, samples)
 	eta, riding := r.race.LeaderETA()
-	// Against a clock, the finish is the clock's end (#3171).
+	// Against a clock, the finish is the line or the clock's end, whichever
+	// comes first (#3171).
 	if ends := r.race.Ends(); !ends.IsZero() {
-		eta, riding = ends.Sub(now), true
+		if left := ends.Sub(now); !riding || left < eta {
+			eta = left
+		}
+		riding = true
 	}
 	r.at, r.burst = now, riding && now.After(r.race.Klaxon()) && eta <= raceBurstETA
 }

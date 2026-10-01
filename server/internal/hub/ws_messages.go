@@ -165,17 +165,12 @@ func (h *Hub) control(c *client, rm *channelState, rider protocol.Rider, cmd pro
 			h.writeError(c, refused.Code, refused.Message)
 			return
 		}
-		minutes := cmd.Minutes
-		if cmd.GameMode == modeLastLight {
-			if minutes == 0 {
-				minutes = protocol.LastLightDefaultMinutes
-			}
-			if !protocol.LastLightLength(minutes) {
-				h.writeError(c, "validation_error", "Last Light runs 10, 20 or 30 minutes.")
-				return
-			}
+		// Absent is Last Light's default, which startGameOn fills in.
+		if cmd.GameMode == modeLastLight && cmd.Minutes != 0 && !protocol.LastLightLength(cmd.Minutes) {
+			h.writeError(c, "validation_error", "Last Light runs 10, 20 or 30 minutes.")
+			return
 		}
-		if refusal := rm.startGameOn(cmd.GameMode, route, minutes, rider, h.now()); refusal != "" {
+		if refusal := rm.startGameOn(cmd.GameMode, route, cmd.Minutes, rider, h.now()); refusal != "" {
 			h.writeError(c, "invalid_request", refusal)
 		}
 		return

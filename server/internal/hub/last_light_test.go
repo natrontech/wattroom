@@ -113,3 +113,80 @@ func TestLastLightRefusesAnotherLength(t *testing.T) {
 		}
 	}
 }
+
+// lastLight starts Last Light on a road of lengthM with ana and ben.
+func lastLight(t *testing.T, lengthM float64, minutes int) *raceRoom {
+	t.Helper()
+	ana, ben := racer("ana", 70), racer("ben", 70)
+	rm, clients := inChannel(t, "last-light", ana, ben)
+	r := &raceRoom{rm: rm, clients: clients, now: raceStart}
+	rm.now = func() time.Time { return r.now }
+	if refusal := rm.startGameOn(modeLastLight, rideOn(slope(0, lengthM), 0, false, false), minutes, ana, raceStart); refusal != "" {
+		t.Fatalf("start: %s", refusal)
+	}
+	joinRide(rm, "ben")
+	return r
+}
+
+// The coach's End stops Last Light's clock where it stands (#3171): the card
+// still ranks how far each rider got. Once the clock has run out, an End
+// clears the finished card as it does any game's — never emptying it of its
+// riders, never announcing the end a second time.
+func TestEndingLastLightRanksWhereEveryoneGot(t *testing.T) {
+	r := lastLight(t, 100_000, 10)
+	pedal := watts(map[string]int{"ana": 200, "ben": 260})
+	r.ride(10+protocol.RaceNeutralSeconds+120, pedal)
+	r.rm.endGame(r.now)
+	r.ride(1, pedal)
+	card := r.race()
+	if card == nil || len(card.Results) != 1 || len(card.Results[0].Placed) != 2 || card.Results[0].Placed[0].RiderID != "ben" {
+		t.Fatalf("the card after an End mid-clock: %+v", card)
+	}
+
+	r = lastLight(t, 100_000, 10)
+	r.ride(10+protocol.RaceNeutralSeconds+10*60+5, pedal)
+	before := r.race()
+	r.rm.endGame(r.now)
+	r.rm.mu.Lock()
+	after, lines := r.rm.lastGame, r.rm.events.drain()
+	r.rm.mu.Unlock()
+	if before == nil || len(before.Results) != 1 || after != nil || len(lines) != 0 {
+		t.Fatalf("an End after the clock: card %+v → %+v, lines %+v", before, after, lines)
+	}
+}
+
+// A road short enough to finish inside the clock (#3171): the 4 Hz finish
+// comes as the leader nears the line, not only as the clock nears its end.
+func TestLastLightFinishesAtTheLineInFourHertz(t *testing.T) {
+	r := lastLight(t, 800, 30)
+	pedal := watts(map[string]int{"ana": 250, "ben": 60})
+	interval := func() time.Duration {
+		r.rm.mu.Lock()
+		defer r.rm.mu.Unlock()
+		return r.rm.tickIntervalLocked(r.now)
+	}
+	r.ride(10+protocol.RaceNeutralSeconds+5, pedal)
+	for range 120 {
+		r.ride(1, pedal)
+		if interval() == burstTick {
+			return
+		}
+	}
+	t.Fatal("the leader neared the line inside a 30-minute clock and the tick never went to 4 Hz")
+}
+
+// Last Light with no length named runs the default 20 minutes (#3171).
+func TestLastLightDefaultsToTwentyMinutes(t *testing.T) {
+	r := lastLight(t, 100_000, 0)
+	r.ride(15, watts(map[string]int{"ana": 200, "ben": 200}))
+	klaxon := raceStart.Add((countdownSeconds + protocol.RaceNeutralSeconds) * time.Second)
+	if st := r.race(); st == nil || st.EndsAtMs != klaxon.Add(protocol.LastLightDefaultMinutes*time.Minute).UnixMilli() {
+		t.Fatalf("Last Light with no length: %+v", st)
+	}
+	r.rm.mu.Lock()
+	mode := r.rm.lastGame.Mode
+	r.rm.mu.Unlock()
+	if mode != modeLastLight {
+		t.Errorf("it reads as %q", mode)
+	}
+}

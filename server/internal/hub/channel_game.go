@@ -44,8 +44,11 @@ func (rm *channelState) startGameOn(mode string, route *routeRide, minutes int, 
 		if route == nil || !opens {
 			return refuseRaceRoad
 		}
-		if mode == modeRace {
+		switch {
+		case mode == modeRace:
 			minutes = 0
+		case minutes == 0:
+			minutes = protocol.LastLightDefaultMinutes
 		}
 		next = newSampledGame(newRaceRun(route.profile, minutes, now), now)
 	}
