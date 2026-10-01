@@ -279,7 +279,7 @@ func (r *raceRun) placeOf(riderID string) float64 {
 // just ridden (#3722) — the tick at second e has ridden second e-1 — and
 // whether any of their screens holds the watts now. Each racer's trail is
 // filled forward over a second no tick wrote, so it never goes back.
-func (r *raceRun) track(elapsed int, clients map[*client]struct{}) {
+func (r *raceRun) track(elapsed int, clients map[*client]struct{}, now time.Time) {
 	if r.race == nil {
 		return
 	}
@@ -296,10 +296,11 @@ func (r *raceRun) track(elapsed int, clients map[*client]struct{}) {
 		trail[second] = r.placeOf(id)
 		r.trail[id] = trail
 	}
-	// "Don't make me shift" at any point of the race untimes the ride
-	// (ADR-0084): WattRoom chose the watts for that stretch.
+	// "Don't make me shift" while racing untimes the ride (ADR-0084):
+	// WattRoom chose the watts for that stretch. The neutral zone, and a
+	// cool-down after the line, are not the time.
 	for c := range clients {
-		if _, in := r.names[c.rider.ID]; in && c.ergByRoad {
+		if c.ergByRoad && r.race.Racing(c.rider.ID, now) {
 			r.ergByRoad[c.rider.ID] = true
 		}
 	}
@@ -309,17 +310,32 @@ func (r *raceRun) track(elapsed int, clients map[*client]struct{}) {
 // of that sample's second (#3722), in the stored road's metres and at the
 // cut's height — relative to the cut's start, as every height the crew is
 // sent is. A replayed second lands where the race coasted them through it.
-// The samples of a rider the race never lined up are left as they came.
+//
+// A second the hub never heard — a drop the rider never replayed — is filled
+// with one at zero watts where the race coasted them: every consumer of a
+// ride's samples reads one a second, and a climb timed across a missing
+// second would be timed that much fast. The samples are in Clock order
+// (inOrder). Those of a rider the race never lined up are left as they came.
 func (r *raceRun) stamp(riderID string, samples []protocol.RiderMetrics, route *routeRide) []protocol.RiderMetrics {
 	trail, in := r.trail[riderID]
-	if !in || route == nil {
+	if !in || route == nil || len(samples) == 0 {
 		return samples
 	}
-	for i := range samples {
-		m := trail[min(max(samples[i].Clock, 0), len(trail)-1)]
-		samples[i].M, samples[i].Alt = route.storedM(m), r.profile.HeightAt(m)
+	at := func(s protocol.RiderMetrics) protocol.RiderMetrics {
+		m := trail[min(max(s.Clock, 0), len(trail)-1)]
+		s.M, s.Alt = route.storedM(m), r.profile.HeightAt(m)
+		return s
 	}
-	return samples
+	out := make([]protocol.RiderMetrics, 0, len(samples))
+	for i, s := range samples {
+		if i > 0 {
+			for c := samples[i-1].Clock + 1; c < s.Clock; c++ {
+				out = append(out, at(protocol.RiderMetrics{Clock: c}))
+			}
+		}
+		out = append(out, at(s))
+	}
+	return out
 }
 
 // recordRoad is one racer's ride along the race's road, for the saver

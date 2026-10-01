@@ -215,7 +215,7 @@ func (rm *channelState) advanceGameLocked(now time.Time) (winner string) {
 	}
 	rm.game.advance(now, samples, rm.gameRosterLocked())
 	if r := rm.raceLocked(); r != nil {
-		r.track(rm.session.state(now).Elapsed, rm.clients)
+		r.track(rm.session.state(now).Elapsed, rm.clients, now)
 	}
 	// Team Relay on a road finishes where the road does (#3030).
 	if r := relayOf(rm.game); r != nil && rm.session.bunch.finished() {

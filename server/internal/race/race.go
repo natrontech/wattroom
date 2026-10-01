@@ -132,6 +132,13 @@ func (r *Race) Span() (lead, tail float64, ok bool) {
 	return riding[0].pace.Distance, riding[len(riding)-1].pace.Distance, true
 }
 
+// Racing is whether a rider is racing at `at`: past the klaxon, not yet over
+// the line and not out — the stretch their time is made of (#3722).
+func (r *Race) Racing(id string, at time.Time) bool {
+	rc, in := r.racers[id]
+	return in && !rc.out && rc.finishMs == 0 && at.After(r.klaxon)
+}
+
 // Place is one racer's metres from km 0, and the share of the air they were
 // sheltered from on average since it (#3722); false for a rider the race
 // does not know.

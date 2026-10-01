@@ -140,3 +140,47 @@ func (amendFunc) SaveSession(_ context.Context, _, _, _, _ string, _ time.Time, 
 func (f amendFunc) AmendRide(_ context.Context, _, _, _, _ string, _ time.Time, rec RiderRecord) {
 	f(rec)
 }
+
+// A drop the rider never replays (#3722): every second of the ride is still
+// in the record — the unheard ones at zero watts where the race coasted them —
+// so a climb timed across the gap is timed for its whole length.
+func TestAnUnheardGapKeepsEverySecond(t *testing.T) {
+	r := raceOnCut(t, racer("ana", 70), racer("ben", 70))
+	r.ride(10+protocol.RaceNeutralSeconds+20, watts(map[string]int{"ana": 250, "ben": 250}))
+	gapFrom := r.rm.session.state(r.now).Elapsed
+	r.ride(10, watts(map[string]int{"ana": 250}))
+	r.ride(120, watts(map[string]int{"ana": 250, "ben": 250}))
+	rec := recordOf(t, r.ended, "ben")
+	stored(t, rec)
+	first, last := rec.Samples[0].Clock, rec.Samples[len(rec.Samples)-1].Clock
+	if len(rec.Samples) != last-first+1 {
+		t.Fatalf("ben's record has %d samples over seconds %d–%d: a second is missing", len(rec.Samples), first, last)
+	}
+	for _, s := range rec.Samples {
+		if s.Clock > gapFrom && s.Clock < gapFrom+9 && s.Watts != 0 {
+			t.Errorf("an unheard second (%d) carries %d W", s.Clock, s.Watts)
+		}
+	}
+}
+
+// "Don't make me shift" counts while racing, never in a cool-down after the
+// line (#3722): ana switches it on once she is over, and her time is hers.
+func TestHoldingTheWattsAfterTheLineKeepsTheTime(t *testing.T) {
+	r := raceOnCut(t, racer("ana", 70), racer("ben", 70))
+	pedal := watts(map[string]int{"ana": 300, "ben": 150})
+	r.ride(10+protocol.RaceNeutralSeconds+20, pedal)
+	for range 120 {
+		if tick := r.ride(1, pedal); tick.World.Racers["ana"].FinishMs != 0 {
+			break
+		}
+	}
+	r.rm.setDrive(r.clients["ana"], protocol.Drive{ErgByRoad: true})
+	r.rm.setDrive(r.clients["ben"], protocol.Drive{ErgByRoad: true})
+	r.ride(200, pedal)
+	if road := recordOf(t, r.ended, "ana").Road; road == nil || road.ErgByRoad {
+		t.Errorf("ana held the watts only after the line, and her ride reads %+v", road)
+	}
+	if road := recordOf(t, r.ended, "ben").Road; road == nil || !road.ErgByRoad {
+		t.Errorf("ben held the watts while racing, and his ride reads %+v", road)
+	}
+}
