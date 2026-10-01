@@ -258,6 +258,7 @@
 					target={target > 0 ? target : undefined}
 					stats={session.live}
 					{climb}
+					docked={inWorld}
 				/>
 			</div>
 			<BiasTrim
