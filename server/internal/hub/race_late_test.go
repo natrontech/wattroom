@@ -37,11 +37,49 @@ func TestALateJoinAfterKmZeroIsNeverRanked(t *testing.T) {
 			why[f.RiderID] = f.Why
 		}
 	}
-	for id, want := range map[string]string{"ana": "placed", "cara": "placed", "dan": protocol.UnrankedLate} {
+	for id, want := range map[string]string{"ana": "placed", "cara": "placed"} {
 		if why[id] != want {
 			t.Errorf("%s: %q, want %q (card %+v)", id, why[id], want, r.race().Results)
 		}
 	}
+	if why["dan"] == "placed" {
+		t.Errorf("dan joined after km 0 and was placed: %+v", r.race().Results)
+	}
+	// Twenty seconds down on 600 m, dan is still riding when the field is
+	// in: the race closes on its field and does not wait for him.
+	if r.cardOut == nil || r.cardOut.tick.World.Racers["dan"].FinishMs != 0 {
+		t.Errorf("the card waited for the late rider: %+v", r.cardOut)
+	}
+}
+
+// A join inside a hold before km 0 is still before km 0 (#3175): the lift
+// moves the klaxon on, and the rider goes onto the grid, placed like anyone.
+func TestAJoinDuringAHoldBeforeKmZeroGoesOnTheGrid(t *testing.T) {
+	ana, cara := racer("ana", 70), racer("cara", 70)
+	r := raceOn(t, 600, ana, racer("ben", 70))
+	c := &client{rider: cara, out: make(chan []byte, clientQueue)}
+	r.rm.join(c)
+	r.clients["cara"] = c
+	pedal := watts(map[string]int{"ana": 250, "ben": 250, "cara": 250})
+	r.ride(10+protocol.RaceNeutralSeconds-10, pedal)
+	if code, _ := r.rm.control(protocol.Control{Action: "pause"}, ana, r.now); code != "" {
+		t.Fatalf("the hold: %q", code)
+	}
+	r.ride(40, pedal) // past where the klaxon stood
+	joinRide(r.rm, "cara")
+	r.ride(2, pedal)
+	if code, _ := r.rm.control(protocol.Control{Action: "resume"}, ana, r.now); code != "" {
+		t.Fatalf("the lift: %q", code)
+	}
+	r.ride(200, pedal)
+	for _, b := range r.race().Results {
+		for _, f := range b.Placed {
+			if f.RiderID == "cara" {
+				return
+			}
+		}
+	}
+	t.Fatalf("cara joined in a hold before km 0 and is not placed: %+v", r.race().Results)
 }
 
 // The roadside beside a race (#3175): a spectator stands ahead of the

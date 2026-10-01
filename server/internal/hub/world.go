@@ -61,7 +61,7 @@ type bunch struct {
 	komsArmed int
 	lastKom   time.Time
 	// Where each spectator stands (#3029).
-	roadsideStands
+	roadside roadsideStands
 	// Who sets the pace in a second the plan leaves open, when a game names
 	// one (#3030): Team Relay's front rider. Empty rides the live mean.
 	leader string

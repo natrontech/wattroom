@@ -124,7 +124,7 @@ func (b *bunch) standAt(riderID string, verb protocol.Roadside, now time.Time) (
 	if verb.AtM < 0 || verb.AtM > b.road.LengthM || verb.Lap > 0 && !b.loop {
 		return "validation_error", "That is not a place on this road."
 	}
-	return b.put(riderID, float64(verb.Lap)*b.road.LengthM+verb.AtM, b.fromM+b.pace.Distance, "the bunch", now)
+	return b.roadside.put(riderID, float64(verb.Lap)*b.road.LengthM+verb.AtM, b.fromM+b.pace.Distance, "the bunch", now)
 }
 
 // settleRoadsideLocked lets go of every stand the riders have passed, and of
@@ -134,9 +134,9 @@ func (rm *channelState) settleRoadsideLocked() {
 	var rs *roadsideStands
 	var passed float64
 	if r := rm.raceLocked(); r != nil {
-		rs, passed = &r.roadsideStands, r.tail()
+		rs, passed = &r.roadside, r.tail()
 	} else if b := rm.session.bunch; b != nil {
-		rs, passed = &b.roadsideStands, b.fromM+b.pace.Distance
+		rs, passed = &b.roadside, b.fromM+b.pace.Distance
 	}
 	if rs == nil || len(rs.stands) == 0 {
 		return
@@ -157,5 +157,5 @@ func (rm *channelState) roadsideLocked() *protocol.RoadsideState {
 	if !rm.session.onRoad() {
 		return nil
 	}
-	return rm.session.bunch.snapshot(rm.session.bunch.place)
+	return rm.session.bunch.roadside.snapshot(rm.session.bunch.place)
 }

@@ -204,7 +204,7 @@ func (rm *channelState) advanceGameLocked(now time.Time) (winner string) {
 	if r := raceOf(rm.game); r != nil {
 		if r.due(now) {
 			r.line(rm.raceFieldLocked())
-		} else {
+		} else if r.admitting() {
 			field, ergByRoad := rm.raceFieldLocked()
 			r.admit(field, ergByRoad, now)
 		}
