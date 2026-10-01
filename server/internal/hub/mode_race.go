@@ -36,6 +36,8 @@ type raceRun struct {
 	// raceBurstETA of the line then.
 	at    time.Time
 	burst bool
+	// Who watches it from the roadside (#3175), waiting for its field.
+	roadside roadsideStands
 }
 
 func newRaceRun(profile road.Road, now time.Time) *raceRun {
@@ -75,15 +77,7 @@ func (r *raceRun) line(field []protocol.Rider, ergByRoad map[string]bool) {
 	entrants := make([]race.Entrant, 0, len(field))
 	r.names = make(map[string]string, len(field))
 	for _, rider := range field {
-		why := protocol.Unranked(rider, r.flag)
-		if why == "" && ergByRoad[rider.ID] {
-			why = protocol.UnrankedUntimeable
-		}
-		entrants = append(entrants, race.Entrant{
-			ID: rider.ID, WeightKg: float64(rider.WeightKg),
-			Category: protocol.RaceCategory(rider), Unranked: why,
-		})
-		r.names[rider.ID] = rider.Name
+		entrants = append(entrants, r.enter(rider, ergByRoad[rider.ID]))
 	}
 	started, err := race.New(r.profile, entrants, r.flag)
 	if err != nil {
@@ -91,6 +85,41 @@ func (r *raceRun) line(field []protocol.Rider, ergByRoad map[string]bool) {
 		return
 	}
 	r.race = started
+}
+
+// enter freezes one rider as the race takes them, read against its flag,
+// and names them on its card.
+func (r *raceRun) enter(rider protocol.Rider, ergByRoad bool) race.Entrant {
+	why := protocol.Unranked(rider, r.flag)
+	if why == "" && ergByRoad {
+		why = protocol.UnrankedUntimeable
+	}
+	r.names[rider.ID] = rider.Name
+	return race.Entrant{
+		ID: rider.ID, WeightKg: float64(rider.WeightKg),
+		Category: protocol.RaceCategory(rider), Unranked: why,
+	}
+}
+
+// admitting is whether a race under way still lines up late joiners.
+func (r *raceRun) admitting() bool { return r.race != nil && !r.race.Done() }
+
+// admit lines up whoever joined the session since the flag (#3175): onto the
+// grid before the klaxon, alongside from km 0 and unranked after it. Their
+// numbers freeze as they join, read against the flag as everyone's were. A
+// join inside a hold counts from where the hold began, which the lift then
+// moves on with everyone — a hold before km 0 is still before it.
+func (r *raceRun) admit(field []protocol.Rider, ergByRoad map[string]bool, now time.Time) {
+	at := now
+	if !r.heldAt.IsZero() {
+		at = r.heldAt
+	}
+	for _, rider := range field {
+		if _, in := r.names[rider.ID]; in {
+			continue
+		}
+		r.race.Join(r.enter(rider, ergByRoad[rider.ID]), at)
+	}
 }
 
 // neutralise holds the race, or lifts the hold (#3658): the coach's, and
@@ -190,6 +219,44 @@ func (r *raceRun) entrants(to map[string]struct{}) map[string]struct{} {
 		to[id] = struct{}{}
 	}
 	return to
+}
+
+// standAt puts a spectator's stand beside the race (#3175): ahead of its
+// leader, held until its last rider has passed. Before the klaxon everyone
+// is at km 0.
+func (r *raceRun) standAt(riderID string, verb protocol.Roadside, now time.Time) (code, message string) {
+	switch {
+	case r.race == nil:
+		return "invalid_request", "There is no race on the road to stand beside yet."
+	case r.race.Done():
+		return "invalid_request", "The race is over — there is nobody left to stand beside the road for."
+	}
+	if verb.AtM < 0 || verb.AtM > r.profile.LengthM || verb.Lap > 0 {
+		return "validation_error", "That is not a place on this road."
+	}
+	lead, _, _ := r.race.Span()
+	return r.roadside.put(riderID, verb.AtM, lead, "the leader", now)
+}
+
+// tail is the hindmost of the field still riding: a stand waits for them.
+// The line once nobody is.
+func (r *raceRun) tail() float64 {
+	if r.race == nil {
+		return 0
+	}
+	if _, tail, ok := r.race.Span(); ok {
+		return tail
+	}
+	return r.profile.LengthM
+}
+
+// roadsideState is the race's roadside on the tick: one road, no laps, and
+// none before the flag lines a field up — as world() has none.
+func (r *raceRun) roadsideState() *protocol.RoadsideState {
+	if r.race == nil {
+		return nil
+	}
+	return r.roadside.snapshot(func(u float64) (float64, int) { return min(u, r.profile.LengthM), 0 })
 }
 
 // world is the race on the tick: each racer's own place, since a race rides

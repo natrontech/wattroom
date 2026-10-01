@@ -206,7 +206,7 @@ func (rm *channelState) tickLocked(now func() time.Time, dt time.Duration, savin
 		}(),
 		Voice:    rm.voiceIDsLocked(),
 		World:    rm.worldLocked(),
-		Roadside: rm.session.roadside(),
+		Roadside: rm.roadsideLocked(),
 		Riders:   rm.metrics,
 		Roster:   make([]protocol.Rider, 0, len(rm.clients)),
 	}

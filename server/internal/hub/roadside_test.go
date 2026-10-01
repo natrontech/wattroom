@@ -50,7 +50,7 @@ func bunchAt(rm *channelState) float64 {
 func standing(rm *channelState) *protocol.RoadsideState {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
-	return rm.session.roadside()
+	return rm.roadsideLocked()
 }
 
 // #3029's acceptance: the validation matrix, with docs/SPEC.md's bounds.
