@@ -2,6 +2,7 @@ package crews
 
 import (
 	"errors"
+	"github.com/natrontech/wattroom/server/internal/protocol"
 	"net/http"
 	"strings"
 
@@ -55,7 +56,7 @@ func (s *Service) handleCrewDoor(w http.ResponseWriter, r *http.Request) {
 		role, err := s.store.Queries.CrewRoleOf(r.Context(), db.CrewRoleOfParams{CrewID: crew.ID, UserID: user.ID})
 		switch {
 		case err != nil:
-		case role == "banned":
+		case role == protocol.RoleBanned:
 			// Said at the door rather than on the click: a ban survives the
 			// code (docs/SPEC.md), so the Join it withholds would only have
 			// been refused (audit 2026-09-09).
@@ -162,7 +163,7 @@ func (s *Service) handleJoinCrew(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "crew role lookup failed", err, "Joining did not work. Try again.", "crew", store.UUIDString(crew.ID))
 		return
 	}
-	if role == "banned" {
+	if role == protocol.RoleBanned {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden", "This crew removed you.")
 		return
 	}
@@ -177,7 +178,7 @@ func (s *Service) handleJoinCrew(w http.ResponseWriter, r *http.Request) {
 		_ = s.store.Queries.SetPendingCrewCode(r.Context(), db.SetPendingCrewCodeParams{ID: user.ID})
 		s.changed(r.Context(), crew.ID)
 		// The role AFTER the join: the row just written (audit 2026-09-09).
-		role = "member"
+		role = protocol.RoleMember
 	}
 	httpx.WriteJSON(w, http.StatusOK, crewRefJSON{Id: store.UUIDString(crew.ID), Name: crew.Name, Icon: crew.Icon, Role: role})
 }
@@ -200,7 +201,7 @@ func (s *Service) handleLeaveCrew(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if role == "owner" {
+	if role == protocol.RoleOwner {
 		httpx.WriteError(w, http.StatusBadRequest, "validation_error", "You own this crew — hand it to someone first, then leave.")
 		return
 	}

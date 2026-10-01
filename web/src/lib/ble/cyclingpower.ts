@@ -1,8 +1,9 @@
 import { createCadenceTracker } from './revolutions';
 import { createBleSensor, type ReadingFields, type Sensor } from './sensor';
 
-/** Cycling Power Service and Cycling Power Measurement. */
-const CPS_SERVICE = 0x1818;
+/** Cycling Power Service — ftms.ts asks for it too, so a WCPS-only unit can be
+ * detected — and Cycling Power Measurement. */
+export const CPS_SERVICE = 0x1818;
 const CPS_MEASUREMENT = 0x2a63;
 
 /**

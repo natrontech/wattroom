@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/natrontech/wattroom/server/internal/protocol"
 	"net/http"
 
 	"github.com/jackc/pgx/v5"
@@ -26,17 +27,14 @@ const (
 // heard of. Every door into a channel asks this and nothing re-derives it.
 func mayEnter(crewRole string, private, named bool) bool {
 	switch crewRole {
-	case "owner", "admin":
+	case protocol.RoleOwner, protocol.RoleAdmin:
 		return true
-	case "member":
+	case protocol.RoleMember:
 		return !private || named
 	default: // "", "banned"
 		return false
 	}
 }
-
-// administers: the crew's owner and admins keep its channels (docs/SPEC.md).
-func administers(crewRole string) bool { return crewRole == "owner" || crewRole == "admin" }
 
 const notFound = "No channel lives here."
 
@@ -58,7 +56,7 @@ func (s *Service) crewFor(w http.ResponseWriter, r *http.Request) (pgtype.UUID, 
 		httpx.Fail(w, s.log, "crew role lookup failed", err, "The crew could not be loaded.")
 		return pgtype.UUID{}, db.User{}, "", false
 	}
-	if role == "" || role == "banned" {
+	if role == "" || role == protocol.RoleBanned {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "No crew lives here.")
 		return pgtype.UUID{}, db.User{}, "", false
 	}
@@ -109,7 +107,7 @@ func (s *Service) standing(ctx context.Context, c db.Channel, userID pgtype.UUID
 		return "", false, fmt.Errorf("crew role: %w", err)
 	}
 	named := false
-	if c.Private && role == "member" {
+	if c.Private && role == protocol.RoleMember {
 		if named, err = s.store.Queries.IsNamedInChannel(ctx, db.IsNamedInChannelParams{
 			ChannelID: c.ID, UserID: userID,
 		}); err != nil {
@@ -121,7 +119,7 @@ func (s *Service) standing(ctx context.Context, c db.Channel, userID pgtype.UUID
 
 // requireAdmin refuses a member who may see the channel but not keep it.
 func requireAdmin(w http.ResponseWriter, role string) bool {
-	if administers(role) {
+	if protocol.Administers(role) {
 		return true
 	}
 	httpx.WriteError(w, http.StatusForbidden, "forbidden", "Only the crew's owner and admins manage its channels.")
@@ -143,10 +141,6 @@ func (s *Service) RequireText(w http.ResponseWriter, r *http.Request) (db.Channe
 	}
 	return channel, user, role, true
 }
-
-// Administers reports whether a crew role keeps the crew's channels — and so
-// moderates their chat and marks their announcements (ADR-0058).
-func Administers(crewRole string) bool { return administers(crewRole) }
 
 // RequireCrew is crewFor for another package's crew-scoped read (#2435): a
 // signed-in, unbanned member, or a 404.

@@ -6,12 +6,12 @@ package chat
 import (
 	"context"
 	"errors"
+	"github.com/natrontech/wattroom/server/internal/protocol"
 	"net/http"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/natrontech/wattroom/server/internal/channels"
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
@@ -57,7 +57,7 @@ func (s *Service) handleSetChannelAnnouncement(w http.ResponseWriter, r *http.Re
 	if !ok {
 		return
 	}
-	if !channels.Administers(role) {
+	if !protocol.Administers(role) {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden", "Only the crew's owner or an admin can put up an announcement.")
 		return
 	}
@@ -100,7 +100,7 @@ func (s *Service) handleClearChannelAnnouncement(w http.ResponseWriter, r *http.
 	if !ok {
 		return
 	}
-	if !channels.Administers(role) {
+	if !protocol.Administers(role) {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden", "Only the crew's owner or an admin can take an announcement down.")
 		return
 	}
@@ -121,7 +121,7 @@ func (s *Service) handleCrewAnnouncement(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	row, err := s.store.Queries.NewestCrewAnnouncement(r.Context(), db.NewestCrewAnnouncementParams{
-		CrewID: crew, Viewer: me.ID, Admin: channels.Administers(role),
+		CrewID: crew, Viewer: me.ID, Admin: protocol.Administers(role),
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		w.WriteHeader(http.StatusNoContent)

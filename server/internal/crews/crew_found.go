@@ -85,6 +85,6 @@ func (s *Service) handleFoundCrew(w http.ResponseWriter, r *http.Request) {
 	s.changed(r.Context(), crew.ID)
 	httpx.WriteJSON(w, http.StatusCreated, crewRefJSON{
 		Id: store.UUIDString(crew.ID), Name: crew.Name, Code: *crew.Code,
-		Founded: true, Role: "owner", Named: true,
+		Founded: true, Role: protocol.RoleOwner, Named: true,
 	})
 }

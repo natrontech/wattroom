@@ -91,7 +91,7 @@ func (s *Service) handleCrewSchedule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	roster, err := s.store.Queries.ListCrewPlanRoster(r.Context(), db.ListCrewPlanRosterParams{
-		CrewID: crew.ID, Viewer: user.ID, Administers: administers(role),
+		CrewID: crew.ID, Viewer: user.ID, Administers: protocol.Administers(role),
 	})
 	if err != nil {
 		httpx.Fail(w, s.log, "list crew plan roster failed", err, "The schedule could not be loaded.", "crew", store.UUIDString(crew.ID))
@@ -264,7 +264,7 @@ func (s *Service) crewPlan(w http.ResponseWriter, r *http.Request, crew, viewer 
 // mayRearrange is the matrix's "move / cancel": the crew's owner and admins
 // any plan, a member their own.
 func mayRearrange(w http.ResponseWriter, role string, plan db.GetCrewPlanRow, user pgtype.UUID) bool {
-	if administers(role) || plan.CreatedBy == user {
+	if protocol.Administers(role) || plan.CreatedBy == user {
 		return true
 	}
 	httpx.WriteError(w, http.StatusForbidden, "forbidden",

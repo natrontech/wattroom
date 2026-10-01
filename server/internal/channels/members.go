@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
+	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -33,7 +34,7 @@ func (s *Service) handleNameMember(w http.ResponseWriter, r *http.Request) {
 	}
 	// Only somebody in the crew can be let into one of its channels: a door
 	// inside the crew is not a way into it, and a banned rider is not in it.
-	if targetRole == "" || targetRole == "banned" {
+	if targetRole == "" || targetRole == protocol.RoleBanned {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "They are not in this crew.")
 		return
 	}

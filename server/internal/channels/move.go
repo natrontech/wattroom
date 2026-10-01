@@ -64,12 +64,12 @@ func (s *Service) handleMove(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "crew role lookup failed", err, "They could not be moved.")
 		return
 	}
-	if riderRole == "" || riderRole == "banned" {
+	if riderRole == "" || riderRole == protocol.RoleBanned {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "They are not in this crew.")
 		return
 	}
 	named := false
-	if to.Private && riderRole == "member" {
+	if to.Private && riderRole == protocol.RoleMember {
 		if named, err = s.store.Queries.IsNamedInChannel(r.Context(), db.IsNamedInChannelParams{
 			ChannelID: to.ID, UserID: rider,
 		}); err != nil {

@@ -10,6 +10,7 @@ import (
 	"net/http"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
+	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -36,7 +37,7 @@ func (s *Service) handleSetHomeCrew(w http.ResponseWriter, r *http.Request) {
 	// exist and for one you are not in alike, and neither is told apart —
 	// a crew's existence is not public (crewByID says the same).
 	role, err := s.store.Queries.CrewRoleOf(r.Context(), db.CrewRoleOfParams{CrewID: id, UserID: user.ID})
-	if err != nil || role == "" || role == "banned" {
+	if err != nil || role == "" || role == protocol.RoleBanned {
 		httpx.WriteFieldError(w, http.StatusNotFound, "not_found", "You are not in that crew.", "crewId")
 		return
 	}

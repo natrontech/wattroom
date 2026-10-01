@@ -1634,6 +1634,26 @@ export interface Rider {
   device?: string;
 }
 /**
+ * A rider's standing in a crew (ADR-0058), as its membership row and a voice
+ * channel's roster say it. Banned is a row too, kept so a ban holds.
+ */
+export const RoleOwner = "owner";
+/**
+ * A rider's standing in a crew (ADR-0058), as its membership row and a voice
+ * channel's roster say it. Banned is a row too, kept so a ban holds.
+ */
+export const RoleAdmin = "admin";
+/**
+ * A rider's standing in a crew (ADR-0058), as its membership row and a voice
+ * channel's roster say it. Banned is a row too, kept so a ban holds.
+ */
+export const RoleMember = "member";
+/**
+ * A rider's standing in a crew (ADR-0058), as its membership row and a voice
+ * channel's roster say it. Banned is a row too, kept so a ban holds.
+ */
+export const RoleBanned = "banned";
+/**
  * AwayState is a rider stepping out (#706) — the Lounge's button, never a
  * timer: being off the bike is not being away, and a coach watching the stage
  * is present and not pedalling.

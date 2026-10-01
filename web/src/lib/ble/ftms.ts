@@ -1,3 +1,4 @@
+import { CPS_SERVICE } from './cyclingpower';
 import {
 	resolveSim,
 	type ControlMode,
@@ -18,8 +19,6 @@ const INDOOR_BIKE_DATA = 0x2ad2;
 const CONTROL_POINT = 0x2ad9;
 const SUPPORTED_POWER_RANGE = 0x2ad8;
 const MACHINE_STATUS = 0x2ada;
-/** Cycling Power Service — declared so a WCPS-only unit can be detected later. */
-const CPS_SERVICE = 0x1818;
 
 const OP_REQUEST_CONTROL = 0x00;
 const OP_SET_TARGET_POWER = 0x05;

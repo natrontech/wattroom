@@ -106,7 +106,7 @@ func (s *Service) crewScope(w http.ResponseWriter, r *http.Request, admin bool) 
 	if !ok {
 		return scope{}, false
 	}
-	if admin && role != "owner" && role != "admin" {
+	if admin && !protocol.Administers(role) {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden", "Only the crew's owner or an admin can do that to a crew playlist.")
 		return scope{}, false
 	}
