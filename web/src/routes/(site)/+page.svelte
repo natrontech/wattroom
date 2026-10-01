@@ -56,7 +56,7 @@
 			screen: 'session',
 			eyebrow: 'The session',
 			title: 'Everyone’s numbers on one screen, everyone’s voice in your ears',
-			body: 'Your watts big enough to read from the saddle, every rider’s watts, w/kg and cadence, how precisely each of you holds the target, the interval chart — and the crew’s jukebox beside it. A group ride, minus the road.',
+			body: 'Your watts big enough to read from the saddle, every rider’s watts, w/kg and cadence, how precisely each of you holds the target, the interval chart — and the crew’s jukebox beside it.',
 			alt: 'A live WattRoom session: the rider’s own watts on target, the other riders’ tiles, everyone’s execution, the interval timeline and the jukebox',
 		},
 		{
@@ -135,8 +135,7 @@
 	</h1>
 	<p class="text-muted mt-5 max-w-xl text-base text-balance sm:text-lg">
 		Your crew, one structured workout, every trainer on its own rider’s FTP —
-		and voice, so you suffer out loud. No virtual world: your watts are the
-		game.
+		and voice, so you suffer out loud. Your watts are the game.
 	</p>
 	<!-- The promise Home keeps (#2184, ADR-0038 amended): a stranger arrives
 	     with no invite, so the big button says what Home's does. -->

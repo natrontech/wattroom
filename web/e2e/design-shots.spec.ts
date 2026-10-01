@@ -644,12 +644,18 @@ surface('appearance', async (s) => {
 });
 
 surface('landing', async (s) => {
-	for (const [device, name] of [
-		[DESK, 'landing'],
-		[PHONE, 'landing-phone'],
+	// Signed out, as a stranger meets it: the landing on the desk and a phone,
+	// then the public pages that share its copy.
+	for (const [device, name, path] of [
+		[DESK, 'landing', '/'],
+		[PHONE, 'landing-phone', '/'],
+		[DESK, 'landing-de', '/de'],
+		[DESK, 'landing-game-modes', '/game-modes'],
+		[DESK, 'landing-zwift-alternative', '/zwift-alternative'],
+		[DESK, 'landing-smart-trainer-app', '/smart-trainer-app'],
 	] as const) {
 		const o = await s.open(device, { as: null });
-		await page(s, o, '/', { name });
+		await page(s, o, path, { name });
 	}
 });
 
