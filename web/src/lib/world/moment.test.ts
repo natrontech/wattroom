@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { toRoute, type Route } from '$lib/road/route';
+import { devCrew } from '../../routes/(app)/dev/world/crew';
 import { STYLES } from '../../routes/(app)/dev/world/styles';
 import { compose, type Composed } from './compose';
 import { syntheticPoints } from './synthetic';
@@ -43,8 +44,12 @@ function frame(w: Composed): number[] {
 }
 
 const moment = { m: 1200, p: 0 };
+// The gallery's crew, stand-ins and all: every figure a moment draws holds.
 const at = () =>
-	compose({ route, world, style, ftp: 250, watts: 220, moment }, null);
+	compose(
+		{ route, world, style, ftp: 250, riders: devCrew(220, 250), moment },
+		null,
+	);
 
 describe('a moment of the world', () => {
 	it('is one frame, however often it is drawn', () => {

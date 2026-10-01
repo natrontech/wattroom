@@ -5,6 +5,7 @@ import {
 	meets,
 	type Box,
 } from '../src/lib/session/docks';
+import { openAWorkoutOnARoad } from './route';
 import { signInTo } from './signin';
 
 /**
@@ -33,8 +34,11 @@ for (const [width, height] of [
 				JSON.stringify({ music: 0, cues: 0, board: 0, share: 0 }),
 			);
 		});
-		// The default workout: an hour long, so the ride outlasts a slow build.
+		// A workout on a road, the ride that draws a world; long enough to outlast a slow build.
 		await signInTo(page, '/ride');
+		// Landed: the sign-in's bounce back to /ride would otherwise overtake the importer.
+		await page.getByRole('button', { name: 'Ride simulated' }).waitFor();
+		await openAWorkoutOnARoad(page);
 		await page.getByRole('button', { name: 'Ride simulated' }).click();
 		await page.getByRole('button', { name: 'Start the ride' }).click();
 		await expect(page.getByRole('button', { name: 'End ride' })).toBeVisible({

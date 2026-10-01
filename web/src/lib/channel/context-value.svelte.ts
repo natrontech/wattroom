@@ -120,6 +120,9 @@ export function channelContextValue(deps: ContextDeps): ChannelContext {
 		get block() {
 			return roster.block;
 		},
+		get ridden() {
+			return roster.ridden;
+		},
 		get segments() {
 			return deps.segments();
 		},
