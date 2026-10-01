@@ -27,6 +27,7 @@
 	import Reactions from '$lib/chat/Reactions.svelte';
 	import EmojiPicker from '$lib/emoji/EmojiPicker.svelte';
 	import { stickToBottom } from '$lib/chat/stick-to-bottom';
+	import { repeatedLinks } from '$lib/chat/unfurl';
 	import { account } from '$lib/account.svelte';
 	import { goto } from '$app/navigation';
 	import ArrowDown from '@lucide/svelte/icons/arrow-down';
@@ -119,6 +120,13 @@
 	const isNew = (m: { fromId?: string; at: number }) =>
 		source.readAt !== null && m.fromId !== me && m.at > source.readAt;
 	const messages = $derived(timeline.map((e) => e.message));
+	// A link said again draws no second card (#3734).
+	const repeats = $derived(
+		repeatedLinks(
+			timeline.map((e) => ({ key: e.key, text: e.message.text })),
+			location.origin,
+		),
+	);
 	const newCount = $derived(messages.filter(isNew).length);
 	const firstNewId = $derived(messages.find(isNew)?.id);
 
@@ -391,6 +399,7 @@
 									{now}
 									{imageSrc}
 									menu={() => messageMenu(message)}
+									linkCard={!repeats.has(entry.key)}
 								/>
 							{/if}
 							{#if message.id && source.reactions}

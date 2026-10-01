@@ -11,6 +11,7 @@
  * asked once and not once per scroll.
  */
 import { api } from '$lib/api';
+import { parseInline, type Part } from './inline';
 
 export type Card = {
 	title: string;
@@ -46,6 +47,8 @@ export function oembedFor(url: string): string | null {
 }
 
 const cache = new Map<string, Promise<Card | null>>();
+/** The answers already in, so a line drawn again draws its final height. */
+const settled = new Map<string, Card | null>();
 
 /**
  * Thrown for an answer that means "ask again" rather than "there is nothing
@@ -69,9 +72,87 @@ const BACKOFF_MS = [1200, 2500, 5000];
 export function unfurl(url: string): Promise<Card | null> {
 	const cached = cache.get(url);
 	if (cached) return cached;
-	const pending = attempt(url, 0);
+	const pending = attempt(url, 0).then((card) => {
+		// A give-up has already left the cache; it is not an answer to keep.
+		if (cache.get(url) === pending) settled.set(url, card);
+		return card;
+	});
 	cache.set(url, pending);
 	return pending;
+}
+
+/**
+ * How long a line waits for its card before it stops making room (#3734).
+ * A card that answers inside this lands as the line itself appears; one that
+ * answers later would push every line above it up while somebody reads them.
+ */
+export const CARD_DEADLINE_MS = 1000;
+
+/**
+ * Hand a line its card without moving what the rider is reading (#3734).
+ * No placeholder: a line is drawn bare and grows by its card at most once,
+ * so a link with nothing to show never collapses a box out from under the
+ * thread. An answer already in shows at once; one inside the deadline lands
+ * with the line; a later one waits until `outOfView` says the line has left
+ * the screen, where its growth moves nothing anybody is looking at — the log
+ * re-pins at the bottom, and the browser anchors a reader scrolled back.
+ * `outOfView` takes the callback and returns its own teardown.
+ */
+export function holdCard(
+	url: string,
+	show: (card: Card) => void,
+	outOfView: (then: () => void) => () => void,
+): () => void {
+	const known = settled.get(url);
+	if (known !== undefined) {
+		if (known) show(known);
+		return () => {};
+	}
+	let alive = true;
+	let late = false;
+	let unwatch = () => {};
+	const deadline = setTimeout(() => (late = true), CARD_DEADLINE_MS);
+	void unfurl(url).then((card) => {
+		if (!alive || !card) return;
+		if (!late) {
+			show(card);
+			return;
+		}
+		unwatch = outOfView(() => {
+			unwatch();
+			if (alive) show(card);
+		});
+	});
+	return () => {
+		alive = false;
+		clearTimeout(deadline);
+		unwatch();
+	};
+}
+
+/**
+ * The lines whose link an earlier line already carded (#3734). The same
+ * article pasted again, or quoted back in a reply, is the same card twice —
+ * the link stays a link, and the thread stays mostly words.
+ */
+export function repeatedLinks(
+	lines: readonly { key: string; text?: string }[],
+	origin: string,
+): Set<string> {
+	const carded = new Set<string>();
+	const repeats = new Set<string>();
+	for (const { key, text } of lines) {
+		const url = text ? cardLink(parseInline(text, origin)) : undefined;
+		if (!url) continue;
+		if (carded.has(url)) repeats.add(key);
+		else carded.add(url);
+	}
+	return repeats;
+}
+
+/** The link a message's card is for — messengers preview one, not five. */
+export function cardLink(parts: Part[]): string | undefined {
+	return parts.find((part) => part.external)?.text;
 }
 
 async function attempt(url: string, tries: number): Promise<Card | null> {
