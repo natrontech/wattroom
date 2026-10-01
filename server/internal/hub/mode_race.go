@@ -15,6 +15,13 @@ import (
 // holds it while the coach neutralises it, and draws the closing card.
 const modeRace = "race"
 
+// modeLastLight is a race against a shared clock (#3171): the race runner,
+// ranked on the distance ridden when the clock runs out.
+const modeLastLight = "last-light"
+
+// isRace says whether a game mode runs on the race runner.
+func isRace(mode string) bool { return mode == modeRace || mode == modeLastLight }
+
 // raceBurstETA is docs/SPEC.md "Races": the tick goes to 4 Hz once the
 // leader is this close to the line.
 const raceBurstETA = 30 * time.Second
@@ -23,6 +30,9 @@ const raceBurstETA = 30 * time.Second
 // mutex guards it, as it guards every mode.
 type raceRun struct {
 	profile road.Road
+	// Last Light's clock in minutes from the klaxon (#3171); 0 races to the
+	// line.
+	minutes int
 	// The flag drops after the session's countdown (docs/SPEC.md "Races").
 	flag time.Time
 	// Nil until the flag, and for good when the flag found too few riders.
@@ -45,15 +55,26 @@ type raceRun struct {
 	roadside roadsideStands
 }
 
-func newRaceRun(profile road.Road, now time.Time) *raceRun {
-	return &raceRun{profile: profile, flag: now.Add(countdownSeconds * time.Second)}
+// newRaceRun is a race on profile whose flag drops after the countdown: to
+// the line, or — minutes > 0 — Last Light, against a clock of that many
+// minutes from the klaxon.
+func newRaceRun(profile road.Road, minutes int, now time.Time) *raceRun {
+	return &raceRun{profile: profile, minutes: minutes, flag: now.Add(countdownSeconds * time.Second)}
+}
+
+// mode is the race's game mode.
+func (r *raceRun) mode() string {
+	if r.minutes > 0 {
+		return modeLastLight
+	}
+	return modeRace
 }
 
 // raceLocked is the race the session is for, while it holds the room: nil
 // when the game is another, or a new session has started since. Caller
 // holds rm.mu.
 func (rm *channelState) raceLocked() *raceRun {
-	if r := raceOf(rm.game); r != nil && rm.session.game == modeRace {
+	if r := raceOf(rm.game); r != nil && isRace(rm.session.game) {
 		return r
 	}
 	return nil
@@ -110,6 +131,9 @@ func (r *raceRun) line(field []protocol.Rider, ergByRoad map[string]bool) {
 		return
 	}
 	r.race = started
+	if r.minutes > 0 {
+		started.Clock(started.Klaxon().Add(time.Duration(r.minutes) * time.Minute))
+	}
 }
 
 // enter freezes one rider as the race takes them, read against its flag,
@@ -176,6 +200,14 @@ func (r *raceRun) advance(now time.Time, samples map[string]int, _ map[string]pr
 	}
 	r.race.Step(now, samples)
 	eta, riding := r.race.LeaderETA()
+	// Against a clock, the finish is the line or the clock's end, whichever
+	// comes first (#3171).
+	if ends := r.race.Ends(); !ends.IsZero() {
+		if left := ends.Sub(now); !riding || left < eta {
+			eta = left
+		}
+		riding = true
+	}
 	r.at, r.burst = now, riding && now.After(r.race.Klaxon()) && eta <= raceBurstETA
 }
 
@@ -194,7 +226,7 @@ func (r *raceRun) done() bool {
 	return r.void != "" || r.race != nil && r.race.Done()
 }
 
-func (r *raceRun) state(time.Time) protocol.GameState {
+func (r *raceRun) state(now time.Time) protocol.GameState {
 	st := &protocol.RaceState{
 		FlagAtMs:    r.flag.UnixMilli(),
 		KlaxonAtMs:  r.flag.Add(protocol.RaceNeutralSeconds * time.Second).UnixMilli(),
@@ -204,12 +236,21 @@ func (r *raceRun) state(time.Time) protocol.GameState {
 	phase := "running"
 	if r.race != nil {
 		st.KlaxonAtMs = r.race.Klaxon().UnixMilli()
+		// Last Light's shared clock and its closing fog (#3171): a hold
+		// stops the clock, so the fog holds where it stood.
+		if ends := r.race.Ends(); !ends.IsZero() {
+			left := ends.Sub(now)
+			if !r.heldAt.IsZero() {
+				left = ends.Sub(r.heldAt)
+			}
+			st.EndsAtMs, st.FogM = ends.UnixMilli(), protocol.LastLightFog(left)
+		}
 	}
 	if r.done() {
 		phase = "done"
 		st.Results = r.results()
 	}
-	return protocol.GameState{Mode: modeRace, Phase: phase, Riders: map[string]protocol.GameRider{}, Race: st}
+	return protocol.GameState{Mode: r.mode(), Phase: phase, Riders: map[string]protocol.GameRider{}, Race: st}
 }
 
 // results is the closing card (ADR-0067): each Category's finishers by their
@@ -222,7 +263,10 @@ func (r *raceRun) results() []protocol.RaceBracket {
 	finishers := func(fs []race.Finisher) []protocol.RaceFinisher {
 		out := make([]protocol.RaceFinisher, len(fs))
 		for i, f := range fs {
-			out[i] = protocol.RaceFinisher{RiderID: f.ID, Name: r.names[f.ID], Ms: f.FinishMs - klaxon, Why: f.Why}
+			out[i] = protocol.RaceFinisher{RiderID: f.ID, Name: r.names[f.ID], M: f.Metres, Why: f.Why}
+			if f.FinishMs != 0 {
+				out[i].Ms = f.FinishMs - klaxon
+			}
 		}
 		return out
 	}

@@ -49,6 +49,10 @@ type Race struct {
 	// Time neutralised since the klaxon: a finish is stamped on the race's
 	// clock, so a hold never counts against anyone's time.
 	held time.Duration
+	// A race against a clock (#3171, Last Light) runs out at ends, zero for
+	// a race to the line; closed once it has.
+	ends   time.Time
+	closed bool
 }
 
 // New lines entrants up on profile for a flag dropping at flag: the neutral
@@ -70,6 +74,10 @@ func New(profile road.Road, entrants []Entrant, flag time.Time) (*Race, error) {
 // out. In the neutral zone everyone rolls on the flat and stays at km 0, so
 // the klaxon is a rolling start with nobody ahead.
 func (r *Race) Step(at time.Time, watts map[string]int) {
+	if !r.ends.IsZero() && at.After(r.ends) {
+		r.closed = true
+		return
+	}
 	neutral := !at.After(r.klaxon)
 	riding := r.riding()
 	// Every gap as the second began: the wheel in front has not moved yet.
@@ -172,6 +180,9 @@ func (r *Race) Neutralised(from, to time.Time) {
 	} else {
 		r.held += held
 	}
+	if r.ends.After(from) {
+		r.ends = r.ends.Add(held)
+	}
 	for _, rc := range r.racers {
 		rc.heardAt = rc.heardAt.Add(held)
 	}
@@ -181,6 +192,13 @@ func (r *Race) Neutralised(from, to time.Time) {
 // line is out of it, and the finishers keep their places. False when it was
 // already over.
 func (r *Race) Close() bool {
+	// A clock race ends its clock where it stands (#3171): its card ranks
+	// how far everyone got, so nobody is put out of it.
+	if !r.ends.IsZero() {
+		was := !r.closed
+		r.closed = true
+		return was
+	}
 	riding := r.riding()
 	for _, rc := range riding {
 		rc.out = true
@@ -260,7 +278,16 @@ func (r *Race) Racers() map[string]protocol.RaceRider {
 }
 
 // Done is whether every racer has crossed the line or is out.
-func (r *Race) Done() bool { return len(r.field()) == 0 }
+func (r *Race) Done() bool { return r.closed || len(r.field()) == 0 }
+
+// Clock makes the race one against a clock that runs out at end (#3171,
+// Last Light): nobody moves past it, and the card ranks how far each racer
+// got rather than when they crossed the line.
+func (r *Race) Clock(end time.Time) { r.ends = end }
+
+// Ends is when a clock race runs out — later by any time it was held before
+// then — and zero for a race to the line.
+func (r *Race) Ends() time.Time { return r.ends }
 
 // field is the riders still racing who started it: riding, less whoever
 // came after the klaxon (#3175). They ride alongside, shelter and are
@@ -282,6 +309,8 @@ type Finisher struct {
 	ID       string
 	FinishMs int64
 	Why      string
+	// How far they rode from km 0: what a clock race ranks on.
+	Metres float64
 }
 
 // Result is one Category's bracket on the closing card (ADR-0067): its
@@ -310,10 +339,12 @@ func (r *Race) Results() []Result {
 			if rc.Unranked != protocol.UnrankedLate {
 				entered++
 			}
-			if rc.finishMs == 0 {
+			// A clock race's card has everyone still on the road when it ran
+			// out; a race to the line, only who crossed it.
+			if rc.finishMs == 0 && (r.ends.IsZero() || rc.out) {
 				continue
 			}
-			f := Finisher{ID: rc.ID, FinishMs: rc.finishMs, Why: rc.Unranked}
+			f := Finisher{ID: rc.ID, FinishMs: rc.finishMs, Why: rc.Unranked, Metres: min(rc.pace.Distance, r.profile.LengthM)}
 			if f.Why == "" {
 				res.Placed = append(res.Placed, f)
 			} else {
@@ -323,8 +354,12 @@ func (r *Race) Results() []Result {
 		if len(res.Placed)+len(res.Unranked) == 0 {
 			continue
 		}
-		byFinish(res.Placed)
-		byFinish(res.Unranked)
+		order := byFinish
+		if !r.ends.IsZero() {
+			order = byDistance
+		}
+		order(res.Placed)
+		order(res.Unranked)
 		res.Alone = entered == 1
 		out = append(out, res)
 	}
@@ -337,5 +372,23 @@ func byFinish(fs []Finisher) {
 			return fs[i].FinishMs < fs[j].FinishMs
 		}
 		return fs[i].ID < fs[j].ID
+	})
+}
+
+// byDistance is a clock race's order: farthest first; between two who both
+// reached the line, the one who reached it first.
+func byDistance(fs []Finisher) {
+	sort.Slice(fs, func(i, j int) bool {
+		a, b := fs[i], fs[j]
+		if a.Metres != b.Metres {
+			return a.Metres > b.Metres
+		}
+		if (a.FinishMs == 0) != (b.FinishMs == 0) {
+			return a.FinishMs != 0
+		}
+		if a.FinishMs != b.FinishMs {
+			return a.FinishMs < b.FinishMs
+		}
+		return a.ID < b.ID
 	})
 }

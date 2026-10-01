@@ -42,7 +42,7 @@ type raceRoom struct {
 func raceOn(t *testing.T, lengthM float64, riders ...protocol.Rider) *raceRoom {
 	t.Helper()
 	rm, clients := inChannel(t, "race", riders...)
-	if refusal := rm.startGameOn(modeRace, rideOn(slope(0, lengthM), 0, false, false), riders[0], raceStart); refusal != "" {
+	if refusal := rm.startGameOn(modeRace, rideOn(slope(0, lengthM), 0, false, false), 0, riders[0], raceStart); refusal != "" {
 		t.Fatalf("start: %s", refusal)
 	}
 	for _, r := range riders[1:] {
@@ -98,12 +98,12 @@ func (r *raceRoom) race() *protocol.RaceState { return r.card }
 func TestARaceRidesARoadOfItsOwn(t *testing.T) {
 	ana := racer("ana", 70)
 	rm, _ := inChannel(t, "race", ana)
-	if refusal := rm.startGameOn(modeRace, nil, ana, raceStart); refusal != refuseRaceRoad {
+	if refusal := rm.startGameOn(modeRace, nil, 0, ana, raceStart); refusal != refuseRaceRoad {
 		t.Errorf("a race with no road: %q", refusal)
 	}
 	joinRide(rm, "ana")
 	rm.session.phase = "running"
-	if refusal := rm.startGameOn(modeRace, rideOn(slope(0, 1000), 0, false, false), ana, raceStart); refusal == "" {
+	if refusal := rm.startGameOn(modeRace, rideOn(slope(0, 1000), 0, false, false), 0, ana, raceStart); refusal == "" {
 		t.Error("a race started inside a running session")
 	}
 }

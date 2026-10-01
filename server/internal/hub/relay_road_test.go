@@ -18,7 +18,7 @@ func relayOnRoad(t *testing.T, lengthM float64, seconds int, send func(second in
 	ben := protocol.Rider{ID: "ben", Name: "ben", Role: "member", FtpWatts: 250}
 	rm, clients := inChannel(t, "relay-road", ana, ben)
 	now := time.Unix(1_700_000_000, 0)
-	if refusal := rm.startGameOn("team-relay", rideOn(slope(0, lengthM), 0, false, false), ana, now); refusal != "" {
+	if refusal := rm.startGameOn("team-relay", rideOn(slope(0, lengthM), 0, false, false), 0, ana, now); refusal != "" {
 		t.Fatalf("start: %s", refusal)
 	}
 	joinRide(rm, "ana", "ben")
