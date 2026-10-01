@@ -289,6 +289,7 @@ describe('the connection keeps deriving the session after a page dies', () => {
 					steps: [{ type: 'steady', seconds: 300, target: 0.95 }],
 				}),
 			},
+			roster: [],
 		};
 		expect(connection.shared()?.phase).toBe('running');
 		expect(connection.segments()).toHaveLength(1);
