@@ -1295,6 +1295,11 @@ export const UnrankedUnconfirmedWeight = "unconfirmed_weight";
  */
 export const UnrankedUntimeable = "untimeable";
 /**
+ * Joined after the klaxon (#3175): they ride alongside from km 0, and
+ * the race places only who started it.
+ */
+export const UnrankedLate = "late";
+/**
  * RaceVoidTooFew is a race whose flag found fewer than RaceMinRiders on the
  * session's timeline: it never starts, and says so.
  */

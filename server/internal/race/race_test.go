@@ -219,3 +219,33 @@ func TestAHoldIsNotInAnyonesTime(t *testing.T) {
 		t.Fatalf("a's time: %d ms plain, %d ms with a minute held", plain, held)
 	}
 }
+
+// A rider who comes after the flag (#3175): before the klaxon onto the grid
+// with everyone, after it from km 0 — and never ranked, whatever they ride.
+func TestALateJoinerAfterKmZeroIsNeverRanked(t *testing.T) {
+	r, err := New(flat(800), []Entrant{{ID: "a", WeightKg: 75, Category: "C"}, {ID: "b", WeightKg: 75, Category: "C"}}, flag)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !r.Join(Entrant{ID: "grid", WeightKg: 75, Category: "C"}, flag.Add(time.Minute)) {
+		t.Fatal("a join in the neutral zone was refused")
+	}
+	at := r.Klaxon()
+	for s := 1; s <= 30; s++ {
+		at = at.Add(time.Second)
+		r.Step(at, map[string]int{"a": 150, "b": 150, "grid": 150})
+	}
+	if !r.Join(Entrant{ID: "late", WeightKg: 75, Category: "C"}, at) || r.Join(Entrant{ID: "a"}, at) {
+		t.Fatal("a join after km 0, or a second one for a racer, went the wrong way")
+	}
+	for s := 1; s <= 400 && !r.Done(); s++ {
+		at = at.Add(time.Second)
+		// The late rider is the strongest by far, and still placed nowhere.
+		r.Step(at, map[string]int{"a": 150, "b": 150, "grid": 150, "late": 600})
+	}
+	res := r.Results()
+	if len(res) != 1 || len(res[0].Placed) != 3 || len(res[0].Unranked) != 1 ||
+		res[0].Unranked[0].ID != "late" || res[0].Unranked[0].Why != protocol.UnrankedLate {
+		t.Fatalf("results: %+v", res)
+	}
+}

@@ -33,6 +33,9 @@ const (
 	// "Don't make me shift": WattRoom chose the watts, so the ride is
 	// untimeable and the race cannot place it (ADR-0084, ADR-0074).
 	UnrankedUntimeable = "untimeable"
+	// Joined after the klaxon (#3175): they ride alongside from km 0, and
+	// the race places only who started it.
+	UnrankedLate = "late"
 )
 
 // Unranked is why a race whose flag drops at flag cannot place r, or "" when

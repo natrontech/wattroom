@@ -60,10 +60,8 @@ type bunch struct {
 	komLeft   bool
 	komsArmed int
 	lastKom   time.Time
-	// Where each spectator stands (#3029), and the revision the tick
-	// carries them under.
-	stands    map[string]*stand
-	standsRev int64
+	// Where each spectator stands (#3029).
+	roadsideStands
 	// Who sets the pace in a second the plan leaves open, when a game names
 	// one (#3030): Team Relay's front rider. Empty rides the live mean.
 	leader string
@@ -74,7 +72,6 @@ func newBunch(r *routeRide, now time.Time) *bunch {
 		road: r.profile, fromM: r.FromM, reverse: r.Reverse, loop: r.Loop,
 		at: now, heard: make(map[string]sample), places: make(map[string]*place),
 		koms:   komOpenings(r.profile, r.Reverse),
-		stands: make(map[string]*stand),
 	}
 	b.komU, b.komLeft = b.komAt(b.fromM, false)
 	return b

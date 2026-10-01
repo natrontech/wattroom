@@ -98,6 +98,33 @@ func (r *Race) Step(at time.Time, watts map[string]int) {
 	}
 }
 
+// Join lines up a rider who came to the race after its flag (#3175). Before
+// the klaxon they go onto the grid like everyone else; after it they ride
+// alongside from km 0, and the race never places them — they were late. A
+// rider already in it, still racing or out, is not lined up twice; false
+// then, and once the race is over.
+func (r *Race) Join(e Entrant, at time.Time) bool {
+	if _, in := r.racers[e.ID]; in || r.Done() {
+		return false
+	}
+	rc := &racer{Entrant: e, heardAt: r.klaxon}
+	if at.After(r.klaxon) {
+		rc.Unranked, rc.heardAt = protocol.UnrankedLate, at
+	}
+	r.racers[e.ID] = rc
+	return true
+}
+
+// Span is where the race is on its road: the farthest and the hindmost
+// racer still riding; false when nobody is.
+func (r *Race) Span() (lead, tail float64, ok bool) {
+	riding := r.riding()
+	if len(riding) == 0 {
+		return 0, 0, false
+	}
+	return riding[0].pace.Distance, riding[len(riding)-1].pace.Distance, true
+}
+
 // Klaxon is when the race leaves km 0: the flag plus the neutral zone, and
 // later by any time the race spent neutralised before it.
 func (r *Race) Klaxon() time.Time { return r.klaxon }

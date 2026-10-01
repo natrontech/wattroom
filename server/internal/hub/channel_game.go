@@ -200,8 +200,14 @@ func (rm *channelState) advanceGameLocked(now time.Time) (winner string) {
 	}
 	// The flag lines the field up (#3658): who the session has on its
 	// timeline then, on the numbers they carry then.
-	if r := raceOf(rm.game); r != nil && r.due(now) {
-		r.line(rm.raceFieldLocked())
+	// Whoever joins it later rides it too (#3175).
+	if r := raceOf(rm.game); r != nil {
+		if r.due(now) {
+			r.line(rm.raceFieldLocked())
+		} else {
+			field, ergByRoad := rm.raceFieldLocked()
+			r.admit(field, ergByRoad, now)
+		}
 	}
 	rm.game.advance(now, samples, rm.gameRosterLocked())
 	// Team Relay on a road finishes where the road does (#3030).
