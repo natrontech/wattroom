@@ -137,7 +137,11 @@
 		]
 	},
 	{
-		"files": ["web/src/lib/brand/**", "web/src/routes/(site)/**"],
+		"files": [
+			"web/src/lib/brand/**",
+			"web/src/lib/site/**",
+			"web/src/routes/(site)/**"
+		],
 		"surfaces": ["landing"]
 	},
 	{

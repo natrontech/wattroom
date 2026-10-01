@@ -46,6 +46,11 @@ type Rider struct {
 	WeightSource      string `json:"weightSource,omitempty"`
 	WeightChangedAt   int64  `json:"weightChangedAt,omitempty"`
 	WeightConfirmedAt int64  `json:"weightConfirmedAt,omitempty"`
+	// The 90-day best 20 minutes, read at the door for a race's flag (#3658):
+	// the race FTP and the Category come from it. Server-only — a number from
+	// the rider's rides, outside this crew as much as in it, and the channel
+	// sees the bracket a race puts them in and never the watts behind it.
+	Best20mWatts int `json:"-"`
 	// Stepped out (#706). Presence, not a metric: the rider said so with the
 	// Lounge's button, and every screen renders the mark instead of leaving
 	// an open mic over an empty trainer.

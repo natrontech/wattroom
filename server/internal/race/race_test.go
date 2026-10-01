@@ -168,3 +168,54 @@ func TestResultsArePerCategoryWithTheUnrankedApart(t *testing.T) {
 		t.Errorf("B %+v: a Category of one rides alone", b)
 	}
 }
+
+// A neutralised span moves nobody and puts nobody out (#3658): a rider silent
+// through a hold longer than the grace is still racing after it, and a hold
+// inside the neutral zone moves the klaxon by as much.
+func TestANeutralisedSpanIsTakenOutOfTheRace(t *testing.T) {
+	r, err := New(flat(5_000), []Entrant{{ID: "a", WeightKg: 75, Category: "C"}, {ID: "b", WeightKg: 75, Category: "C"}}, flag)
+	if err != nil {
+		t.Fatal(err)
+	}
+	klaxon := r.Klaxon()
+	r.Neutralised(flag.Add(time.Minute), flag.Add(2*time.Minute))
+	if want := klaxon.Add(time.Minute); !r.Klaxon().Equal(want) {
+		t.Fatalf("klaxon after a minute's hold in the neutral zone: %v, want %v", r.Klaxon(), want)
+	}
+	start := r.Klaxon()
+	r.Step(start.Add(time.Second), map[string]int{"a": 250, "b": 250})
+	from, to := start.Add(time.Second), start.Add(time.Second+2*protocol.RaceDisconnectSeconds*time.Second)
+	r.Neutralised(from, to)
+	r.Step(to.Add(time.Second), map[string]int{"a": 250, "b": 250})
+	if r.Done() || r.Racers()["b"].M == 0 {
+		t.Fatalf("after a hold longer than the grace: done %v, b at %.1f m", r.Done(), r.Racers()["b"].M)
+	}
+	if eta, ok := r.LeaderETA(); !ok || eta <= 0 {
+		t.Fatalf("leader ETA: %v %v", eta, ok)
+	}
+}
+
+// A hold after the klaxon never counts against a time (#3658): the same
+// race ridden with a minute neutralised halfway finishes on the same clock.
+func TestAHoldIsNotInAnyonesTime(t *testing.T) {
+	finish := func(hold bool) int64 {
+		r, err := New(flat(1_000), []Entrant{{ID: "a", WeightKg: 75, Category: "C"}, {ID: "b", WeightKg: 75, Category: "C"}}, flag)
+		if err != nil {
+			t.Fatal(err)
+		}
+		at := r.Klaxon()
+		for s := 1; s <= 200 && !r.Done(); s++ {
+			at = at.Add(time.Second)
+			if hold && s == 30 {
+				r.Neutralised(at.Add(-time.Second), at.Add(time.Minute-time.Second))
+				at = at.Add(time.Minute - time.Second)
+				continue
+			}
+			r.Step(at, map[string]int{"a": 250, "b": 200})
+		}
+		return r.Racers()["a"].FinishMs - r.Klaxon().UnixMilli()
+	}
+	if plain, held := finish(false), finish(true); plain != held {
+		t.Fatalf("a's time: %d ms plain, %d ms with a minute held", plain, held)
+	}
+}

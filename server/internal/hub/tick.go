@@ -205,7 +205,7 @@ func (rm *channelState) tickLocked(now func() time.Time, dt time.Duration, savin
 			return out
 		}(),
 		Voice:    rm.voiceIDsLocked(),
-		World:    rm.session.world(rm.lastGame != nil && rm.lastGame.MeterHidden),
+		World:    rm.worldLocked(),
 		Roadside: rm.session.roadside(),
 		Riders:   rm.metrics,
 		Roster:   make([]protocol.Rider, 0, len(rm.clients)),
@@ -236,6 +236,11 @@ func (rm *channelState) tickLocked(now func() time.Time, dt time.Duration, savin
 		for id := range rm.seen {
 			rode[id] = struct{}{}
 		}
+	}
+	// A race's finishes and its closing card are its riders' alone
+	// (ADR-0067: a rider who never chose racing never sees its results).
+	if r := rm.raceLocked(); r != nil && r.names != nil {
+		rode = r.entrants(rode)
 	}
 	// The session just closed: hand the ride record to the saver exactly
 	// once. Snapshot under the lock, persist outside it (hub discipline:
