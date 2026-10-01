@@ -2,13 +2,16 @@
 # the shell changes rarely, and every other PR would otherwise pay for an
 # Electron binary download to prove nothing.
 #
-# Linux only, deliberately. The shell is platform-independent JavaScript and so
-# is everything the smoke asserts — the preload bridge's keys, Node being
-# unreachable from the renderer, the navigation guard, the offline screen. A
-# macOS runner bills at ten times a Linux one and would re-assert the same
-# facts. What genuinely differs per platform is packaging, signing and TCC,
-# and none of that is exercised here: it belongs to the signing and release
-# workflows, on the platform each one targets.
+# Linux and macOS (#3011). Most of what the smoke asserts is platform-independent
+# JavaScript — the preload bridge's keys, Node being unreachable from the
+# renderer, the navigation guard, the offline screen — but the menu and
+# Notification Center exist only on a Mac, and all three bugs of #3001 were
+# macOS-only, with tests that skip on Linux. A macOS runner bills at ten times a
+# Linux one; the `paths` gate below means it is paid only when the shell
+# changes. Advisory, like every check outside ci.yml's required five.
+# What differs per platform beyond that — packaging, signing and TCC — is not
+# exercised here: it belongs to the signing and release workflows, on the
+# platform each one targets.
 #
 # What this cannot cover at all, on any runner: BLE and audio are not testable
 # in CI, and the native chooser is not Playwright-drivable (RESEARCH.md §15.5).
@@ -38,7 +41,12 @@ permissions:
 
 jobs:
   smoke:
-    runs-on: ubuntu-latest
+    strategy:
+      # One platform's failure must not hide the other's result.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -61,16 +69,19 @@ jobs:
         working-directory: desktop
         run: test -d node_modules/electron/dist || node node_modules/electron/install.js
       # Real key presses for the shortcut test (#3007): Playwright's keys go to
-      # the page and never reach the menu's accelerators.
-      - run: sudo apt-get install -y --no-install-recommends xdotool
-      # Electron needs an X server, and Playwright's _electron launches the real
-      # binary rather than a headless browser.
+      # the page and never reach the menu's accelerators. The test presses
+      # them on Linux only.
+      - if: runner.os == 'Linux'
+        run: sudo apt-get install -y --no-install-recommends xdotool
+      # Electron needs an X server on Linux, and Playwright's _electron launches
+      # the real binary rather than a headless browser. A Mac runner has a
+      # display of its own.
       - name: smoke
         working-directory: desktop
-        run: xvfb-run --auto-servernum pnpm exec playwright test
+        run: ${{ runner.os == 'Linux' && 'xvfb-run --auto-servernum ' || '' }}pnpm exec playwright test
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: failure()
         with:
-          name: desktop-smoke-trace
+          name: desktop-smoke-trace-${{ matrix.os }}
           path: desktop/test-results/
           retention-days: 7

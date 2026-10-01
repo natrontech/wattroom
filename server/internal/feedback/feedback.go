@@ -101,6 +101,7 @@ type Issuer interface {
 type Service struct {
 	sessions Sessions
 	issuer   Issuer
+	routes   Routes
 	log      *slog.Logger
 	ring     *LogRing
 	dir      string
@@ -113,13 +114,13 @@ type Service struct {
 	fileMu sync.Mutex
 }
 
-func New(sessions Sessions, issuer Issuer, ring *LogRing, log *slog.Logger) *Service {
+func New(sessions Sessions, issuer Issuer, routes Routes, ring *LogRing, log *slog.Logger) *Service {
 	dir := os.Getenv("WATTROOM_FEEDBACK_DIR")
 	if dir == "" {
 		dir = "feedback"
 	}
 	return &Service{
-		sessions: sessions, issuer: issuer, ring: ring, log: log,
+		sessions: sessions, issuer: issuer, routes: routes, ring: ring, log: log,
 		dir:      dir,
 		buildSHA: os.Getenv("WATTROOM_BUILD_SHA"),
 		lastSeen: map[string]time.Time{},
@@ -177,6 +178,12 @@ func (s *Service) handleSubmit(w http.ResponseWriter, r *http.Request) {
 	// real client meets.
 	if !boundedBuffer(report.Buffer) {
 		httpx.WriteError(w, http.StatusBadRequest, "validation_error", "That report is out of shape.")
+		return
+	}
+
+	// Before anything is kept: the disk record is what an agent reads too.
+	if err := s.withoutPlaces(r.Context(), user.ID, &report); err != nil {
+		httpx.Fail(w, s.log, "feedback route names failed", err, "The report could not be saved. Try once more.")
 		return
 	}
 
@@ -342,7 +349,7 @@ var (
 		dm download edit editor enter equipment friends hardware history home
 		hud import legal licenses login medal members messages modes music
 		notifications pairing panel perf pins privacy profile progression r ramp
-		recover ride road rooms schedule send sessions settings sitemap.xml sound spectator
+		recover ride road rooms routes schedule send sessions settings sitemap.xml sound spectator
 		styleguide summary terms theme-editor themes training trophies u
 		s v voice watch whats-new workouts world
 		de ftp-test game-modes group-workouts self-host smart-trainer-app vs zwift-alternative
@@ -353,6 +360,7 @@ var (
 	// session's /crew/[id]/s/[session] is `/crew/…/s` (#2450).
 	paramUnder = fieldSet(`
 		/c /crew /crew/…/c /crew/…/s /crew/…/v /dm /history /messages/dm /messages/r /r /u /vs
+		/workouts/routes
 	`)
 )
 
@@ -371,9 +379,7 @@ func fieldSet(list string) map[string]bool {
 // field being rider-supplied and so one more place a name could be posted.
 // Fingerprint keeps the full route, so per-room deduplication is unaffected.
 func publicRoute(route string) string {
-	if i := strings.IndexAny(route, "?#"); i >= 0 {
-		route = route[:i]
-	}
+	route = pathOnly(route)
 	segs := strings.Split(route, "/")
 	out := make([]string, len(segs))
 	copy(out, segs)

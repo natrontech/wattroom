@@ -21,7 +21,7 @@ func TestRoomLoopSurvivesAPanic(t *testing.T) {
 	// tick reaches the socket. Without the guard this test binary would die
 	// here rather than fail.
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
-	rm := newRoom("flaky")
+	rm := newChannelState("flaky")
 	var panicked atomic.Bool
 	// The presence push runs on the tick goroutine, outside the room lock.
 	// Once. The locked half of the tick has its own test below.
@@ -31,9 +31,9 @@ func TestRoomLoopSurvivesAPanic(t *testing.T) {
 		}
 	}
 	h.mu.Lock()
-	h.rooms["flaky"] = rm
+	h.states["flaky"] = rm
 	h.mu.Unlock()
-	h.launchRoom(rm)
+	h.launchChannel(rm)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
@@ -70,13 +70,13 @@ func TestRoomLoopReleasesTheLockAfterAPanic(t *testing.T) {
 	// Lock() forever — a room that never ticked again, and every hub-wide
 	// walk over rooms hung behind it.
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
-	rm := newRoom("wedged")
+	rm := newChannelState("wedged")
 	mode := &panickingMode{}
 	rm.game = mode
 	h.mu.Lock()
-	h.rooms["wedged"] = rm
+	h.states["wedged"] = rm
 	h.mu.Unlock()
-	h.launchRoom(rm)
+	h.launchChannel(rm)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
@@ -114,13 +114,13 @@ func TestRoomIsClosedWhenItsLoopGivesUp(t *testing.T) {
 	// again, with nothing on screen saying so. Now it is closed, and the
 	// reconnect lands in a fresh room with a live loop.
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
-	rm := newRoom("doomed")
+	rm := newChannelState("doomed")
 	mode := &alwaysPanickingMode{}
 	rm.game = mode
 	h.mu.Lock()
-	h.rooms["doomed"] = rm
+	h.states["doomed"] = rm
 	h.mu.Unlock()
-	h.launchRoom(rm)
+	h.launchChannel(rm)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
@@ -133,7 +133,7 @@ func TestRoomIsClosedWhenItsLoopGivesUp(t *testing.T) {
 	deadline := time.Now().Add(20 * time.Second)
 	for {
 		h.mu.Lock()
-		_, still := h.rooms["doomed"]
+		_, still := h.states["doomed"]
 		h.mu.Unlock()
 		if !still {
 			break

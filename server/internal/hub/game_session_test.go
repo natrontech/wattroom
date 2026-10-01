@@ -14,7 +14,7 @@ import (
 )
 
 // gameChannel is a channel on a hand-moved clock with these riders in it.
-func gameChannel(t *testing.T, now *time.Time, riders ...protocol.Rider) (*room, map[string]*client) {
+func gameChannel(t *testing.T, now *time.Time, riders ...protocol.Rider) (*channelState, map[string]*client) {
 	t.Helper()
 	rm := presenceRoom(now)
 	clients := map[string]*client{}

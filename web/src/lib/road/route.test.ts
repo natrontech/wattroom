@@ -51,6 +51,8 @@ describe('toRoute', () => {
 		expect(wander).toBeLessThan(1);
 		expect(r.length).toBeGreaterThan(2495);
 		expect(r.length).toBeLessThan(2505);
+		// Both faults are counted, for the importer to say so (#3057).
+		expect(r.fixed.spikes).toBe(2);
 	});
 
 	// A 9 m hairpin's legs are 18 m apart, so the path never comes back within
@@ -105,6 +107,13 @@ describe('toRoute', () => {
 			expect(
 				(r.road.heights[i] - r.road.heights[i - 1]) / step,
 			).toBeLessThanOrEqual(0.2 + 0.01 / step);
+		// The 30 % wall is held over most of its 300 m, and said so (#3057).
+		expect(r.fixed.heldM).toBeGreaterThan(150);
+		expect(r.fixed.heldM).toBeLessThan(450);
+	});
+
+	it('reports nothing fixed on a clean road', () => {
+		expect(toRoute(eastward(3000, 10)).fixed).toEqual({ spikes: 0, heldM: 0 });
 	});
 
 	// #3047 finds a hairpin as more than 2.4 rad of turn within 240 m, 300 m

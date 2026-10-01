@@ -6,8 +6,8 @@ type RiderMetrics struct {
 	HR      int `json:"hr,omitempty"`
 	Cadence int `json:"cadence,omitempty"`
 	Seq     int `json:"seq"` // monotonic per ride, for reconnect dedup
-	// The rider's personal trim on their own targets at this second, 0.8–1.2
-	// (docs/SPEC.md). A score answers "did you ride the plan you were on?",
+	// The rider's personal trim on their own targets at this second,
+	// MinBias–MaxBias (docs/SPEC.md). A score answers "did you ride the plan you were on?",
 	// and this is what the plan was — so the second is scored against the
 	// biased target, not the prescribed one (#795). It rides every sample
 	// because bias moves mid-ride, and it is stored with them, which is what
@@ -76,7 +76,7 @@ func (m RiderMetrics) BiasOr() float64 {
 	if m.Bias <= 0 {
 		return 1
 	}
-	return min(max(m.Bias, 0.8), 1.2)
+	return min(max(m.Bias, MinBias), MaxBias)
 }
 
 // Backfill is a reconnect's replay: samples the client buffered while the

@@ -72,7 +72,8 @@ where least(i.sender_id, i.recipient_id) = least($1::uuid, $2::uuid)
   );
 
 -- name: PruneDms :exec
--- The 500-message bound per pair, pruned on write like room chat.
+-- The bound per pair, protocol.MaxChannelLines — SPEC's one 500-message
+-- bound, pruned on write like a text channel.
 delete from dm_messages dm
 where least(dm.sender_id, dm.recipient_id) = least($1::uuid, $2::uuid)
   and greatest(dm.sender_id, dm.recipient_id) = greatest($1::uuid, $2::uuid)
@@ -82,7 +83,7 @@ where least(dm.sender_id, dm.recipient_id) = least($1::uuid, $2::uuid)
         where least(sender_id, recipient_id) = least($1::uuid, $2::uuid)
           and greatest(sender_id, recipient_id) = greatest($1::uuid, $2::uuid)
         order by created_at desc
-        limit 500
+        limit sqlc.arg(keep)::integer
     ) keep
 );
 

@@ -14,6 +14,8 @@
 	} from '$lib/crew-schedule';
 	import { device } from '$lib/device.svelte';
 	import { formatWhen } from '$lib/format';
+	import { roadsEnabled } from '$lib/ride/roads';
+	import { rideFirstHref } from '$lib/session/ride-first';
 	import { serverNow } from '$lib/server-clock';
 	import RsvpRow from '$lib/session/RsvpRow.svelte';
 	import TrainerOverview from '$lib/session/TrainerOverview.svelte';
@@ -35,7 +37,13 @@
 	const due = $derived(!!plan && planDue(plan.startsAt, now));
 	// Nobody else holds the channel's session — the one-session rule would
 	// refuse it with their name, and SessionControls already says whose it is.
-	const canStart = $derived(channel.canControl && !device.spectator);
+	const canStart = $derived(channel.canDrive);
+	// The road before the session (#3621): alone, on the road it will ride.
+	const rideFirst = $derived(
+		plan && roadsEnabled() && !device.spectator
+			? rideFirstHref(plan, channel.address.crew)
+			: null,
+	);
 	// The gear first, as the picker asks it (#2594).
 	const unpaired = $derived(needsTrainer(channel.trainer, channel.pairing));
 
@@ -95,8 +103,11 @@
 				</span>
 			{/if}
 		</div>
-		<div class="mt-2">
+		<div class="mt-2 flex flex-wrap items-center gap-3">
 			<RsvpRow {plan} onChoose={(word) => void choose(word)} />
+			{#if rideFirst}
+				<a href={rideFirst} class="btn btn-secondary ml-auto">Ride it first</a>
+			{/if}
 		</div>
 	</section>
 {/if}

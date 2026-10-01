@@ -1,4 +1,5 @@
 import { zoneOf } from '$lib/components/zones';
+import { NormPowerMinSeconds } from '$lib/protocol';
 
 /**
  * Post-ride numbers for the session summary (#39's design), computed from the
@@ -43,9 +44,6 @@ export function curvePoints(
 	];
 }
 
-/** docs/SPEC.md: under this the rolling-4th-power estimate is not meaningful. */
-export const NP_MIN_SECONDS = 20 * 60;
-
 /**
  * Normalised power: 30 s rolling average, fourth power, mean, fourth root —
  * the standard Coggan definition. Under 20 minutes it is the plain average,
@@ -55,7 +53,7 @@ export const NP_MIN_SECONDS = 20 * 60;
 export function normalizedPower(samples: RideSample[]): number {
 	const watts = samples.map((s) => s.watts);
 	if (watts.length === 0) return 0;
-	if (watts.length < NP_MIN_SECONDS) {
+	if (watts.length < NormPowerMinSeconds) {
 		return Math.round(watts.reduce((a, b) => a + b, 0) / watts.length);
 	}
 	let sum = 0;

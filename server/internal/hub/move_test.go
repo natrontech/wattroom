@@ -28,8 +28,8 @@ func TestMoveSendsOnlyTheMovedRiderAndNeverOneRiding(t *testing.T) {
 			h := New(slog.New(slog.DiscardHandler), nil, nil)
 			now := time.Now()
 			h.now = func() time.Time { return now }
-			rm := newRoom("cave")
-			h.rooms["cave"] = rm
+			rm := newChannelState("cave")
+			h.states["cave"] = rm
 			socket := func(id string) *client {
 				c := &client{rider: protocol.Rider{ID: id, Name: id}, out: make(chan []byte, clientQueue)}
 				rm.join(c)

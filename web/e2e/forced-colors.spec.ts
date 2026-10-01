@@ -1,5 +1,5 @@
 import { expect, test, type Locator } from '@playwright/test';
-import { signInTo } from './signin';
+import { signInAs, signInTo } from './signin';
 
 /**
  * Live bars under forced colours (#2860) — Windows high contrast, which paints
@@ -68,4 +68,76 @@ test('a progress bar stays visible in forced colours', async ({ page }) => {
 		edge: true,
 		fill: true,
 	});
+});
+
+test("the bike computer's page dots stay drawn in forced colours", async ({
+	page,
+}) => {
+	await signInTo(page, '/ride?w=smoke-test');
+	await page.getByRole('button', { name: 'Ride simulated' }).click();
+	await page.getByRole('button', { name: 'Start the ride' }).click({
+		timeout: 15_000,
+	});
+	const current = page.getByRole('button', { name: 'RIDE page' });
+	await expect(current).toHaveAttribute('aria-current', 'page', {
+		timeout: 15_000,
+	});
+	// Each dot keeps its ring, and the page you are on keeps its fill: a
+	// background alone is painted over with Canvas (#3088).
+	const mark = (dot: Locator) =>
+		dot.evaluate((button) => {
+			const dotMark = button.querySelector('span')!;
+			const probe = document.createElement('div');
+			probe.style.cssText =
+				'background-color: Canvas; forced-color-adjust: none';
+			document.body.append(probe);
+			const canvas = getComputedStyle(probe).backgroundColor;
+			probe.remove();
+			const style = getComputedStyle(dotMark);
+			return {
+				ring: style.borderTopWidth !== '0px',
+				fill:
+					style.backgroundColor !== canvas &&
+					!/rgba\(.*,\s*0\)$/.test(style.backgroundColor),
+			};
+		});
+	expect(await mark(current)).toEqual({ ring: true, fill: true });
+	expect(
+		(await mark(page.getByRole('button', { name: 'POWER page' }))).ring,
+	).toBe(true);
+});
+
+// The HUD's strip of the road ahead (#3092) is drawn in SVG fills, which
+// forced colours leave as the author's faint neon mix; each bar has to take
+// the system's GrayText instead, as the Skyline's do.
+test("the HUD's road strip stays drawn in forced colours", async ({
+	context,
+	page,
+}) => {
+	// /hud signed out says to sign in on the main window, so its door is ?as=.
+	await signInAs(page, 'Forced HUD', '/hud');
+	const rider = await context.newPage();
+	await rider.goto('/home');
+	await rider.evaluate(() => {
+		new BroadcastChannel('wattroom.hud').postMessage({
+			at: Date.now(),
+			watts: 250,
+			target: 0,
+			remaining: 0,
+			elapsed: 60,
+			label: 'Free ride',
+			road: { grade: 6, km: 1, totalKm: 5, ahead: [2, 4, 6, 8, 10] },
+		});
+	});
+	const bar = page.getByTestId('hud-ahead').locator('rect').first();
+	await expect(bar).toBeAttached({ timeout: 15_000 });
+	const { fill, grayText } = await bar.evaluate((rect) => {
+		const probe = document.createElement('div');
+		probe.style.cssText = 'color: GrayText; forced-color-adjust: none';
+		document.body.append(probe);
+		const grayText = getComputedStyle(probe).color;
+		probe.remove();
+		return { fill: getComputedStyle(rect).fill, grayText };
+	});
+	expect(fill).toBe(grayText);
 });

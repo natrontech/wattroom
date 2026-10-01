@@ -12,9 +12,12 @@ import type {
 import { SPRINT_LEAD_SECONDS } from '$lib/workout/sprint-window.svelte';
 import { SIGNAL_LOST_MS } from '$lib/workout/ride-state';
 import { effortOf, inRecoveryValley } from '$lib/roadside';
+import { createFreeRide } from '$lib/ride/free-ride.svelte';
 
 // The socket's own dependencies, silenced: IndexedDB, and the module the
 // tick's clock window lives in stays real (it only does arithmetic).
+const played = vi.hoisted(() => [] as string[]);
+vi.mock('$lib/sound/cues', () => ({ play: (id: string) => played.push(id) }));
 vi.mock('$lib/ride/buffer', () => ({
 	openRideBuffer: async () => ({
 		crashSafe: true,
@@ -109,7 +112,10 @@ const idleFree = {
 	mode: 'grade' as 'grade' | 'watts',
 	grade: 0,
 	watts: 110,
+	road: null,
+	targetWatts: 0,
 	second() {},
+	nudge() {},
 };
 
 function seqsSentOn(socket: FakeSocket): number[] {
@@ -478,6 +484,42 @@ describe('the personal guards in a group ride (#788)', () => {
 		live.close();
 	});
 
+	// #3027: on a road, grade mode rides the road's felt grade, never a
+	// hand-set one, and the dot moves by the watts the trainer reports.
+	it('rides the road’s felt grade on a free ride on a road', async () => {
+		const { live, deps } = inASession();
+		let free!: ReturnType<typeof createFreeRide>;
+		let ride!: ReturnType<typeof createRide>;
+		const dispose = $effect.root(() => {
+			free = createFreeRide({ ftp: () => 250, kg: () => 75 });
+			free.arm();
+			free.ride({
+				id: 'route-1',
+				name: 'Test climb',
+				road: {
+					length: 2000,
+					heights: Array.from({ length: 101 }, (_, i) => 100 + 0.8 * i),
+					turns: Array<number>(100).fill(0),
+				},
+			});
+			ride = createRide({ ...deps, joined: () => false, free });
+		});
+		const trainer = new FakeTrainer();
+		await ride.ride(trainer);
+		trainer.pedal(250, 90);
+		await settle();
+		expect(trainer.commands.at(-1)).toBe('sim:0');
+		await new Promise((resolve) => setTimeout(resolve, 600));
+		// 4 % felt at half (docs/SPEC.md "Felt grade").
+		expect(trainer.commands.at(-1)).toBe('sim:2');
+		trainer.pedal(250, 90);
+		await settle();
+		expect(free.road!.m).toBeGreaterThan(0);
+
+		dispose();
+		live.close();
+	});
+
 	it('rides a spectator’s free ride on the grade or the watts they set (ADR-0059)', async () => {
 		const { live, deps } = inASession();
 		const free = { ...idleFree, armed: true, grade: 4 };
@@ -505,7 +547,13 @@ describe('the personal guards in a group ride (#788)', () => {
 			ride = createRide({
 				...deps,
 				joined: () => false,
-				free: { ...idleFree, armed: true, mode: 'watts', watts: 130 },
+				free: {
+					...idleFree,
+					armed: true,
+					mode: 'watts',
+					watts: 130,
+					targetWatts: 130,
+				},
 			});
 		});
 		const second = new FakeTrainer();
@@ -514,6 +562,60 @@ describe('the personal guards in a group ride (#788)', () => {
 		expect(ride.target).toBe(130);
 		expect(second.commands.at(-1)).toBe('erg:130');
 		watts();
+		live.close();
+	});
+
+	// #3328/#3329: one pair of controls — the session's bias, the free
+	// ride's watts, a gear on its grade — and the keys bind while it acts.
+	it('makes a session, a free ride in watts and one on a grade easier or harder', async () => {
+		const { live, deps } = inASession();
+		let joined = $state(true);
+		let mode = $state<'grade' | 'watts'>('watts');
+		let watts = $state(130);
+		let ride!: ReturnType<typeof createRide>;
+		const dispose = $effect.root(() => {
+			ride = createRide({
+				...deps,
+				joined: () => joined,
+				free: {
+					...idleFree,
+					armed: true,
+					grade: 4,
+					get mode() {
+						return mode;
+					},
+					get watts() {
+						return watts;
+					},
+					get targetWatts() {
+						return mode === 'watts' ? watts : 0;
+					},
+					nudge: (dir) => (watts += 10 * dir),
+				},
+			});
+		});
+		expect(ride.shifting).toBe(false);
+		const trainer = new FakeTrainer();
+		await ride.ride(trainer);
+		await settle();
+		expect(ride.shifting).toBe(true);
+
+		expect(ride.easierHarder(1)).toEqual({ moved: true });
+		expect(ride.bias).toBe(1.01);
+		expect(watts).toBe(130);
+
+		joined = false;
+		await settle();
+		expect(ride.easierHarder(-1)).toEqual({ moved: true });
+		expect(watts).toBe(120);
+		expect(ride.bias).toBe(1.01);
+
+		mode = 'grade';
+		await settle();
+		expect(ride.easierHarder(1)).toEqual({ moved: true });
+		expect(watts).toBe(120);
+
+		dispose();
 		live.close();
 	});
 
@@ -770,6 +872,44 @@ describe('a trainer claim the hub refused (#1853)', () => {
 		answer(socket, { held: ['trainer'] });
 		await settle();
 		expect(trainer.commands).toEqual(['erg:200']);
+
+		dispose();
+		live.close();
+	});
+
+	// #3330: the grant moving restarts the gear at k = 1 — said with a cue the
+	// way it moved and on the gear field; a gear never shifted says nothing.
+	it('says the gear is back to the real one when the grant returns', async () => {
+		const { live, socket, deps } = inASession();
+		let ride!: ReturnType<typeof createRide>;
+		const dispose = $effect.root(() => {
+			ride = createRide({
+				...deps,
+				joined: () => false,
+				free: { ...idleFree, armed: true, grade: 4 },
+			});
+		});
+		const trainer = new FakeTrainer();
+		await ride.ride(trainer);
+		await settle();
+		played.length = 0;
+
+		answer(socket, { elsewhere: { trainer: 'phone' } });
+		await settle();
+		answer(socket, { held: ['trainer'] });
+		await settle();
+		expect(played).toEqual([]);
+		expect(ride.gearResetAt).toBe(0);
+
+		expect(ride.easierHarder(1)).toEqual({ moved: true });
+		expect(ride.gear.k).toBeGreaterThan(1);
+		answer(socket, { elsewhere: { trainer: 'phone' } });
+		await settle();
+		answer(socket, { held: ['trainer'] });
+		await settle();
+		expect(ride.gear.k).toBe(1);
+		expect(played).toEqual(['shift-down']);
+		expect(ride.gearResetAt).toBeGreaterThan(0);
 
 		dispose();
 		live.close();

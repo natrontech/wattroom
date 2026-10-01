@@ -91,7 +91,7 @@ func (c *captureIssuer) FileOrComment(_, title, body string) (string, error) {
 func TestSubmitStripsHeartRate(t *testing.T) {
 	t.Setenv("WATTROOM_FEEDBACK_DIR", t.TempDir())
 	issuer := &captureIssuer{}
-	svc := New(fakeSessions{db.User{DisplayName: "velvet"}}, issuer, NewLogRing(slog.DiscardHandler), slog.New(slog.DiscardHandler))
+	svc := New(fakeSessions{db.User{DisplayName: "velvet"}}, issuer, routeNames(nil), NewLogRing(slog.DiscardHandler), slog.New(slog.DiscardHandler))
 	mux := http.NewServeMux()
 	svc.Register(mux)
 
@@ -124,7 +124,7 @@ func TestSubmitStripsHeartRate(t *testing.T) {
 
 func TestSubmitRejectsMalformedBuffer(t *testing.T) {
 	t.Setenv("WATTROOM_FEEDBACK_DIR", t.TempDir())
-	svc := New(fakeSessions{db.User{DisplayName: "velvet"}}, nil, NewLogRing(slog.DiscardHandler), slog.New(slog.DiscardHandler))
+	svc := New(fakeSessions{db.User{DisplayName: "velvet"}}, nil, routeNames(nil), NewLogRing(slog.DiscardHandler), slog.New(slog.DiscardHandler))
 	mux := http.NewServeMux()
 	svc.Register(mux)
 	rec := httptest.NewRecorder()
@@ -175,7 +175,7 @@ func TestSubmitKeepsTheReporterOutOfThePublicIssue(t *testing.T) {
 	// half is needed there. Disk keeps both, for triage.
 	t.Setenv("WATTROOM_FEEDBACK_DIR", t.TempDir())
 	issuer := &captureIssuer{}
-	svc := New(fakeSessions{db.User{DisplayName: "velvet"}}, issuer, NewLogRing(slog.DiscardHandler), slog.New(slog.DiscardHandler))
+	svc := New(fakeSessions{db.User{DisplayName: "velvet"}}, issuer, routeNames(nil), NewLogRing(slog.DiscardHandler), slog.New(slog.DiscardHandler))
 	mux := http.NewServeMux()
 	svc.Register(mux)
 
@@ -231,7 +231,7 @@ func TestSubmitStoresOnlyTheReportersOwnLogLines(t *testing.T) {
 	log.Info("account deleted", "user", other)
 	log.Error("http: panic serving 10.0.0.7: boom")
 	log.Info("crew handed on", "crew", "k-1", "user", me, "to", other)
-	svc := New(fakeSessions{db.User{ID: id, DisplayName: "velvet"}}, nil, ring, slog.New(slog.DiscardHandler))
+	svc := New(fakeSessions{db.User{ID: id, DisplayName: "velvet"}}, nil, routeNames(nil), ring, slog.New(slog.DiscardHandler))
 	mux := http.NewServeMux()
 	svc.Register(mux)
 

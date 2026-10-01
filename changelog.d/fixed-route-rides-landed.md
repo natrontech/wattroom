@@ -1,0 +1,1 @@
+- A route's page rides it: **Ride it** opens the road ride, and neither the route page nor the importer promises route rides or a route shelf any more — both have shipped. Saving a route says so once, in the page, instead of again in a toast.

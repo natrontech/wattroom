@@ -23,7 +23,7 @@
 			comparison. We make WattRoom.
 		</caption>
 		<thead>
-			<tr class="border-muted/15 border-b">
+			<tr class="border-frame border-b">
 				<th scope="col" class="w-40 px-4 py-3"></th>
 				<th scope="col" class="font-display px-4 py-3">WattRoom</th>
 				{#each rivals as r (r.slug)}

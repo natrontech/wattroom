@@ -13,10 +13,12 @@
 		exportFilename,
 		exportPayload,
 		recordedMinutes,
+		resumeAt,
 		uploadPayload,
 		type RecoveredRide,
 	} from '$lib/ride/recovered';
 	import { recoverableRides } from '$lib/ride/recoverable.svelte';
+	import { roadsEnabled } from '$lib/ride/roads';
 	import { uploadRide } from '$lib/ride/save';
 	import { toasts } from '$lib/toast.svelte';
 
@@ -112,6 +114,18 @@
 			<button onclick={() => discard(ride)} class="btn btn-secondary btn-xs"
 				>Discard</button
 			>
+			<!-- A ride on a road carries on along it from where it stopped
+			     (#3027) — a new ride from that metre; this one stays to save. -->
+			{#if roadsEnabled() && resumeAt(ride)}
+				{@const at = resumeAt(ride)!}
+				<a
+					href="/ride?road={encodeURIComponent(at.routeId)}&from={Math.floor(
+						at.m,
+					)}"
+					class="btn btn-secondary btn-xs"
+					>Resume at km {(at.m / 1000).toFixed(1)}</a
+				>
+			{/if}
 		</div>
 	</div>
 {/each}

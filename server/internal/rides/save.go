@@ -15,9 +15,12 @@ import (
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/road"
+	"github.com/natrontech/wattroom/server/internal/routes"
 	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
+	"github.com/natrontech/wattroom/server/internal/wallet"
+	"github.com/natrontech/wattroom/server/internal/wardrobe"
 	"github.com/natrontech/wattroom/server/internal/workout"
 )
 
@@ -43,6 +46,11 @@ type sampleJSON struct {
 	// On a road (#3052): metres along it and the height there; absent off one.
 	M   float64 `json:"m,omitempty"`
 	Alt float64 `json:"alt,omitempty"`
+	// Which pass along the road (#3598): 0, 1, … in order. A lap's first
+	// sample says whether it runs down the stored road — "Ride back the way
+	// you came" — and then its m counts down.
+	Lap     int  `json:"lap,omitempty"`
+	Reverse bool `json:"reverse,omitempty"`
 }
 
 type createRequest struct {
@@ -52,12 +60,30 @@ type createRequest struct {
 	Samples     []sampleJSON `json:"samples"`
 	// The stored route the ride rode (#3053): one of the rider's own.
 	RouteID string `json:"routeId,omitempty"`
+	// How the trainer was driven along it (#3516): stats.DriveSIM, DriveGears
+	// or DriveERGByRoad. Unsaid, the ride's time is not known.
+	Drive string `json:"drive,omitempty"`
 }
 
 // roadRefusal answers a sample off the road in the bounds protocol holds it to.
 var roadRefusal = fmt.Sprintf(
-	"A sample's place on the road is out of range — it only moves forward, at most %d m a second, between %d m and %d m high.",
+	"A sample's place on the road is out of range — within a lap it only moves the lap's way, at most %d m a second, between %d m and %d m high.",
 	protocol.MaxRoadSpeedMps, protocol.MinRoadAltM, protocol.MaxRoadAltM)
+
+// lapFollows says whether a sample follows the one before it on the road
+// (#3598): within a lap, along it the lap's way and no faster than a rider
+// goes; a new lap — the next number — starts wherever its way says.
+func lapFollows(prev, next protocol.RiderMetrics, prevLap, nextLap int, reverse bool) bool {
+	switch {
+	case nextLap == prevLap+1:
+		return true
+	case nextLap != prevLap:
+		return false
+	case reverse:
+		return protocol.RoadFollows(next, prev, 1)
+	}
+	return protocol.RoadFollows(prev, next, 1)
+}
 
 func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	user, ok := s.users.RequireUser(w, r, "Not signed in.")
@@ -98,36 +124,37 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 			"A ride starts at a real time in the past.", "startedAt")
 		return
 	}
-	if len(req.Samples) < minSamples {
+	if len(req.Samples) < protocol.MinRideSamples {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
 			"A ride under a minute is not saved — the same rule a session uses.", "samples")
 		return
 	}
-	if len(req.Samples) > maxSamples {
+	if len(req.Samples) > protocol.MaxRideSamples {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
 			"A ride longer than six hours is not something this saves.", "samples")
 		return
 	}
 	samples := make([]protocol.RiderMetrics, len(req.Samples))
+	var laps []stats.Lap
 	for i, sample := range req.Samples {
-		if sample.Watts < 0 || sample.Watts > maxWatts ||
-			sample.Cadence < 0 || sample.Cadence > maxCadence ||
-			sample.HR < 0 || sample.HR > maxHR {
+		if sample.Watts < 0 || sample.Watts > protocol.MaxWatts ||
+			sample.Cadence < 0 || sample.Cadence > protocol.MaxCadence ||
+			sample.HR < 0 || sample.HR > protocol.MaxHeartRate {
 			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-				"A sample is out of range — watts 0-3000, cadence 0-250, heart rate 0-250.", "samples")
+				fmt.Sprintf("A sample is out of range — watts 0-%d, cadence 0-%d, heart rate 0-%d.",
+					protocol.MaxWatts, protocol.MaxCadence, protocol.MaxHeartRate), "samples")
 			return
 		}
-		// The bounds are the trim's own (workout/guards DEFAULTS.biasMin/Max,
-		// and what protocol.BiasOr clamps to) rather than numbers invented
-		// here; 0 is a sample from a ride that sends none.
-		if sample.Bias != 0 && (sample.Bias < minBias || sample.Bias > maxBias) {
+		// The bounds are the trim's own, the ones protocol.BiasOr clamps to;
+		// 0 is a sample from a ride that sends none.
+		if sample.Bias != 0 && (sample.Bias < protocol.MinBias || sample.Bias > protocol.MaxBias) {
 			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-				"A sample's bias is out of range — 0.8 to 1.2.", "samples")
+				fmt.Sprintf("A sample's bias is out of range — %.1f to %.1f.", protocol.MinBias, protocol.MaxBias), "samples")
 			return
 		}
 		// A workout second past the six-hour ceiling is no second of any
 		// workout this saves — the same bound the sample count has.
-		if sample.Clock < 0 || sample.Clock > maxSamples {
+		if sample.Clock < 0 || sample.Clock > protocol.MaxRideSamples {
 			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
 				"A sample's workout second is out of range.", "samples")
 			return
@@ -136,18 +163,36 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 			Watts: sample.Watts, HR: sample.HR, Cadence: sample.Cadence, Bias: sample.Bias, Clock: sample.Clock, Released: sample.Released, Seq: i,
 			M: sample.M, Alt: sample.Alt,
 		}
-		// A sample a second: along the road, never back, and no faster than
-		// a rider can go (#3052).
-		if !samples[i].RoadInBounds() || i > 0 && !protocol.RoadFollows(samples[i-1], samples[i], 1) {
+		// A sample a second: along the road the lap's way, never back, and no
+		// faster than a rider can go (#3052, #3598).
+		if i == 0 || sample.Lap != req.Samples[i-1].Lap {
+			laps = append(laps, stats.Lap{Start: i, Reverse: sample.Reverse})
+		}
+		if !samples[i].RoadInBounds() || i == 0 && sample.Lap != 0 ||
+			i > 0 && !lapFollows(samples[i-1], samples[i], req.Samples[i-1].Lap, sample.Lap, laps[len(laps)-1].Reverse) {
 			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", roadRefusal, "samples")
 			return
 		}
 	}
 
+	if !stats.KnownDrive(req.Drive) {
+		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
+			"Say how the trainer was driven along the road: sim, gears or ergByRoad.", "drive")
+		return
+	}
 	route, ridden, ok := s.routeOf(w, r, user.ID, req.RouteID)
 	if !ok {
 		return
 	}
+	// A ride on a road is kept under its route's generated name (#3055):
+	// friends' shared rides, the ride's card and its Strava title all read
+	// the name kept here, and the owner's rename can say where they live.
+	name, err := routes.SharedName(r.Context(), s.store.Queries, req.WorkoutJSON, req.WorkoutName)
+	if err != nil {
+		httpx.Fail(w, s.log, "ride road name unreadable", err, "The ride could not be saved. It stays on this device.")
+		return
+	}
+	req.WorkoutName = name
 	row, err := stats.BuildRideRow(user.ID, req.WorkoutName,
 		req.WorkoutJSON, req.StartedAt, int(user.FtpWatts), samples)
 	if err != nil {
@@ -155,9 +200,9 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 			"That ride could not be scored against this workout.", "workoutJson")
 		return
 	}
-	stats.SetHow(&row, stats.RideMode(req.WorkoutJSON, false), route != nil, stats.WeightThatDay(user))
+	stats.SetHow(&row, stats.RideMode(req.WorkoutJSON, false), req.WorkoutJSON, route != nil, req.Drive, stats.WeightThatDay(user))
 	if route != nil {
-		ride := stats.ReplayRoad(ridden, samples, float64(user.WeightKg)+protocol.BikeKg)
+		ride := stats.ReplayRoad(ridden, samples, laps, float64(user.WeightKg)+protocol.BikeKg)
 		stats.SetRoad(&row, *route, ride)
 		// The replay is the record (ADR-0074); a client whose own metres
 		// part from it by more than this is worth knowing about.
@@ -218,6 +263,22 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "solo ride xp ceiling write failed", err, "The ride could not be saved. It stays on this device.")
 		return
 	}
+	watts := make([]int, len(samples))
+	for i, sample := range samples {
+		watts[i] = sample.Watts
+	}
+	// Batzen in the ride's own transaction, under the lock taken above (#3152):
+	// the day's cap holds under two saves at once.
+	if err := wallet.MintRide(r.Context(), q, user.ID, id, wallet.Batzen(watts, int(row.FtpWatts), false)); err != nil {
+		httpx.Fail(w, s.log, "solo ride wallet mint failed", err, "The ride could not be saved. It stays on this device.")
+		return
+	}
+	// What the rider wore on it is theirs to keep now, past the undo (#3154),
+	// and it may be a season's third ride (#3163).
+	if err := wardrobe.RideSaved(r.Context(), q, user.ID, row.StartedAt.Time.In(stats.Zone(user.Timezone))); err != nil {
+		httpx.Fail(w, s.log, "solo ride wardrobe failed", err, "The ride could not be saved. It stays on this device.")
+		return
+	}
 	if err := tx.Commit(r.Context()); err != nil {
 		httpx.Fail(w, s.log, "solo ride save commit failed", err, "The ride could not be saved. It stays on this device.")
 		return
@@ -226,10 +287,6 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		s.uploader.RideSaved(id)
 	}
 	if s.keeper != nil {
-		watts := make([]int, len(samples))
-		for i, sample := range samples {
-			watts[i] = sample.Watts
-		}
 		s.keeper.RideSaved(user.ID, stats.Facts(req.StartedAt, int(user.FtpWatts), watts))
 	}
 	s.log.Info("solo ride saved", "seconds", row.Seconds, "kj", row.Kj)

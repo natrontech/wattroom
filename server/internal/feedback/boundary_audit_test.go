@@ -29,7 +29,7 @@ func (g *gate) RequireUser(w http.ResponseWriter, _ *http.Request, msg string) (
 func TestSubmitRefusesTheSignedOutAndTheFlood(t *testing.T) {
 	t.Setenv("WATTROOM_FEEDBACK_DIR", t.TempDir())
 	g := &gate{}
-	svc := New(g, &captureIssuer{}, NewLogRing(slog.DiscardHandler), slog.New(slog.DiscardHandler))
+	svc := New(g, &captureIssuer{}, routeNames(nil), NewLogRing(slog.DiscardHandler), slog.New(slog.DiscardHandler))
 	mux := http.NewServeMux()
 	svc.Register(mux)
 	payload := `{"route":"/ride","note":"x","firstError":"","clientBuild":"dev","userAgent":"vitest","trainer":"Kickr","clientMs":1,"buffer":{"ticks":[],"events":[],"errors":[]}}`

@@ -6,6 +6,8 @@
 	import RidingBars from '$lib/components/RidingBars.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { iceGathered } from '$lib/perf/ice-gathered';
+	import Skyline from '$lib/ride/Skyline.svelte';
+	import type { Road } from '$lib/road/road';
 
 	/**
 	 * One element at a time, for `make perf` (#3039): the harness in
@@ -33,7 +35,24 @@
 		'screen-share',
 		'camera',
 		'youtube',
+		'skyline',
 	];
+
+	/** An invented road for the Skyline (#3059): 40 km of rolling hills, a
+	 *  sample every 20 m. The dot moves a second at a time at `kph`, as a
+	 *  ride's does, so the stepping between seconds is what gets measured. */
+	const HILLS: Road = {
+		length: 1999 * 20,
+		heights: Array.from(
+			{ length: 2000 },
+			(_, i) => 500 + 80 * Math.sin(i / 40) + 30 * Math.sin(i / 13),
+		),
+		turns: Array(1999).fill(0),
+	};
+	const mps = Number(params.get('kph') ?? 25) / 3.6;
+	let metre = $state(0);
+	if (kase === 'skyline')
+		setInterval(() => (metre = (metre + mps) % HILLS.length), 1000);
 
 	/** Remote tracks arrive from /dev/perf/send, a separate renderer, so a
 	 *  share costs this page its decode and draw and never its encode. */
@@ -146,6 +165,11 @@
 					></video>
 				</div>
 			{/each}
+		{:else if kase === 'skyline'}
+			<!-- RoadRiding.svelte / FreeRide.svelte: the horizon on a road -->
+			<div class="h-40 w-full">
+				<Skyline road={HILLS} m={metre} {mps} />
+			</div>
 		{:else if kase === 'youtube'}
 			<!-- The jukebox player's shape; muted, and the harness mutes the process too -->
 			<iframe

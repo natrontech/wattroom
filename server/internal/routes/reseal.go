@@ -43,8 +43,20 @@ func Reseal(ctx context.Context, q *db.Queries, prev, next *secrets.Cipher) (int
 			if err != nil {
 				return moved, err
 			}
+			// The whole road moves with the shape (#3511); a row from before
+			// it has none sealed yet, and the boot seals it under next.
+			var roadSealed []byte
+			if row.RoadSealed != nil {
+				text, err := prev.Open(row.RoadSealed)
+				if err != nil {
+					return moved, fmt.Errorf("routes: a road under version %d would not open: %w", from, err)
+				}
+				if roadSealed, err = next.Seal(text); err != nil {
+					return moved, err
+				}
+			}
 			n, err := q.ResealRoute(ctx, db.ResealRouteParams{
-				ID: row.ID, GeomSealed: sealed, NewVersion: &to, OldVersion: &from,
+				ID: row.ID, GeomSealed: sealed, RoadSealed: roadSealed, NewVersion: &to, OldVersion: &from,
 			})
 			if err != nil {
 				return moved, err

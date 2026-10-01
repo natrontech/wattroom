@@ -38,6 +38,11 @@ export const DEFAULTS = {
 	 * those riders permanently paused mid-ride.
 	 */
 	pedallingWatts: 20,
+	/**
+	 * docs/SPEC.md "Riding on a road": virtual speed above this is riding —
+	 * a descent coasted at 0 W is not a rider who stopped (#3056).
+	 */
+	ridingMps: 0.5,
 	/** Seconds of not-pedalling before their targets pause. */
 	pauseAfterSeconds: 3,
 	/** Countdown shown when they start again, so resuming is not a jump-scare. */
@@ -58,9 +63,17 @@ export const DEFAULTS = {
 	spiralReleaseSeconds: 10,
 	/** Bias step and range for the ±% control. */
 	biasStep: 0.01,
-	biasMin: 0.8,
-	biasMax: 1.2,
+	biasMin: protocol.MinBias,
+	biasMax: protocol.MaxBias,
 } as const;
+
+/** The ±% control's next bias: `step` on, to the percent, inside its range. */
+export function nudgedBias(bias: number, step: number): number {
+	return Math.min(
+		DEFAULTS.biasMax,
+		Math.max(DEFAULTS.biasMin, Math.round((bias + step) * 100) / 100),
+	);
+}
 
 /** Where the rider is, personally — the session may be somewhere else entirely. */
 export type GuardPhase = 'running' | 'autopaused' | 'resuming';
@@ -68,6 +81,20 @@ export type GuardPhase = 'running' | 'autopaused' | 'resuming';
 export interface GuardSample {
 	watts: number;
 	cadence: number;
+	/**
+	 * On a road, the dot's speed, m/s (ADR-0062) — never the trainer's, which
+	 * is the drivetrain's alone. Absent off a road.
+	 */
+	virtualMps?: number;
+}
+
+/** Turning the pedals, or rolling down a road: either way, riding. */
+export function riding(sample: GuardSample): boolean {
+	return (
+		sample.cadence >= DEFAULTS.pauseCadence ||
+		sample.watts >= DEFAULTS.pedallingWatts ||
+		(sample.virtualMps ?? 0) > DEFAULTS.ridingMps
+	);
 }
 
 export function createPersonalGuards() {
@@ -104,13 +131,8 @@ export function createPersonalGuards() {
 		get scoring() {
 			return phase === 'running' && spiralSeconds === 0;
 		},
-		/** Is the rider turning the pedals at all? The caller's accounting wants it. */
-		pedalling(sample: GuardSample): boolean {
-			return (
-				sample.cadence >= DEFAULTS.pauseCadence ||
-				sample.watts >= DEFAULTS.pedallingWatts
-			);
-		},
+		/** Is the rider riding at all? The caller's accounting wants it. */
+		pedalling: riding,
 
 		/**
 		 * One sample against the target the rider was PRESCRIBED — not the one
@@ -128,7 +150,7 @@ export function createPersonalGuards() {
 		sample(sample: GuardSample, target: number, seconds = 1): boolean {
 			let actuate = false;
 			// Auto-pause: their targets stop, the clock does not rewind.
-			if (!this.pedalling(sample)) {
+			if (!riding(sample)) {
 				if (phase === 'running') {
 					idleSeconds += seconds;
 					if (idleSeconds >= DEFAULTS.pauseAfterSeconds) {

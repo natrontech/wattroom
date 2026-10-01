@@ -5,6 +5,8 @@
  * no server, and no claim on the sensor (ADR-0025): the HUD mirrors the
  * screen that holds the trainer, it never reads the trainer itself.
  */
+import type { RoadReadout } from '$lib/road/readout';
+
 export interface HudSnapshot {
 	/** Unix millis when published; a HUD that has not heard for a while says so. */
 	at: number;
@@ -25,6 +27,11 @@ export interface HudSnapshot {
 	 * confident 0 for a dropped trainer is worse than none (errors.md).
 	 */
 	fault?: 'trainer' | 'channel';
+	/**
+	 * Where a ride on a road is (#3060): the one readout slot 1 and every HUD
+	 * say it from. Absent off a road, and ignored by a HUD older than it.
+	 */
+	road?: RoadReadout;
 }
 
 const CHANNEL = 'wattroom.hud';
@@ -61,7 +68,12 @@ export function isStale(s: HudSnapshot | null, now = Date.now()): boolean {
 	return !s || now - s.at > HUD_STALE_MS;
 }
 
-function isSnapshot(x: unknown): x is HudSnapshot {
+/**
+ * What a HUD accepts: the fields every snapshot has always carried, and
+ * nothing it does not know refused — a HUD window left open across an
+ * upgrade keeps reading the newer feed (#3060).
+ */
+export function isSnapshot(x: unknown): x is HudSnapshot {
 	const s = x as Partial<HudSnapshot> | null;
 	return (
 		!!s &&

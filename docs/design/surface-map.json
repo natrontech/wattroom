@@ -1,0 +1,235 @@
+[
+	{
+		"files": [
+			"web/src/lib/session/RidingSurface.svelte",
+			"web/src/lib/session/docks.ts",
+			"web/src/lib/session/BikeComputer.svelte",
+			"web/src/lib/session/computer-pages.ts",
+			"web/src/lib/session/RideHeader.svelte",
+			"web/src/lib/ride/Skyline.svelte",
+			"web/src/lib/components/IntervalGraph.svelte",
+			"web/src/lib/session/Instrument.svelte",
+			"web/src/lib/world/FlatRoad.svelte",
+			"web/src/lib/world/ride-view.ts"
+		],
+		"surfaces": [
+			"ride-road-world",
+			"ride-workout-world",
+			"ride-workout-flat",
+			"ride-skyline-fallback",
+			"ride-status",
+			"ride-countin",
+			"ride-free-road",
+			"ride-free-road-world",
+			"ride-free-road-ghost",
+			"ride-road-end",
+			"ride-session-road",
+			"ride-session-flat",
+			"ride-channel-free",
+			"ride-ramp",
+			"ride-tv",
+			"ride-watch",
+			"phone-ride",
+			"phone-ride-road"
+		]
+	},
+	{
+		"files": [
+			"web/src/lib/ride/RoadRiding.svelte",
+			"web/src/lib/ride/SoloRoadRide.svelte"
+		],
+		"surfaces": [
+			"ride-free-road",
+			"ride-free-road-world",
+			"ride-free-road-ghost",
+			"ride-road-end",
+			"hud",
+			"hud-shell"
+		]
+	},
+	{
+		"files": ["web/src/lib/ride/FreeRide.svelte"],
+		"surfaces": ["ride-channel-free"]
+	},
+	{
+		"files": ["web/src/routes/(app)/ramp/**"],
+		"surfaces": ["ride-ramp"]
+	},
+	{
+		"files": [
+			"web/src/lib/session/Training.svelte",
+			"web/src/lib/session/TrainingPhone.svelte",
+			"web/src/routes/(app)/crew/*/s/**"
+		],
+		"surfaces": [
+			"ride-session-road",
+			"ride-session-flat",
+			"closing-card-session"
+		]
+	},
+	{
+		"files": [
+			"web/src/routes/(app)/crew/*/s/*/watch/**",
+			"web/src/**/SpectatorView.svelte"
+		],
+		"surfaces": ["ride-watch"]
+	},
+	{
+		"files": [
+			"web/src/lib/session/TvMode.svelte",
+			"web/src/lib/session/TvOverlay.svelte"
+		],
+		"surfaces": ["ride-tv"]
+	},
+	{
+		"files": ["web/src/routes/(app)/hud/**", "web/src/lib/hud/**"],
+		"surfaces": ["hud", "hud-shell"]
+	},
+	{
+		"files": [
+			"web/src/lib/workout/ride-life.svelte.ts",
+			"web/src/routes/(app)/+layout.svelte"
+		],
+		"surfaces": [
+			"ride-free-road",
+			"ride-countin",
+			"ride-status",
+			"ride-road-world",
+			"ride-preride",
+			"workouts",
+			"closing-card",
+			"history",
+			"home",
+			"appearance",
+			"garage-shop",
+			"open-rides"
+		]
+	},
+	{
+		"files": ["web/src/routes/(app)/ride/**"],
+		"surfaces": [
+			"ride-preride",
+			"ride-roadpick",
+			"ride-workout-flat",
+			"ride-workout-world",
+			"ride-road-world",
+			"ride-free-road",
+			"ride-free-road-world",
+			"ride-countin",
+			"ride-road-end",
+			"closing-card",
+			"closing-card-road",
+			"phone-ride",
+			"phone-ride-road"
+		]
+	},
+	{
+		"files": ["web/src/lib/world/**"],
+		"surfaces": [
+			"world-start",
+			"world-end",
+			"dev-world",
+			"ride-road-world",
+			"ride-free-road-world",
+			"ride-workout-world",
+			"phone-ride-road"
+		]
+	},
+	{
+		"files": [
+			"web/src/lib/brand/**",
+			"web/src/lib/site/**",
+			"web/src/routes/(site)/**"
+		],
+		"surfaces": ["landing"]
+	},
+	{
+		"files": [
+			"web/src/lib/ride/PreRide.svelte",
+			"web/src/lib/ride/RoadPick.svelte"
+		],
+		"surfaces": ["ride-preride", "ride-roadpick"]
+	},
+	{
+		"files": [
+			"web/src/routes/(app)/workouts/**",
+			"web/src/lib/components/RouteShape.svelte",
+			"web/src/lib/components/RouteProfile.svelte",
+			"web/src/lib/components/RoutePreview.svelte",
+			"web/src/lib/session/RoutePicker.svelte",
+			"web/src/**/RouteRow.svelte"
+		],
+		"surfaces": [
+			"workouts",
+			"phone-workouts",
+			"route",
+			"phone-route",
+			"import-idle",
+			"import",
+			"import-saved",
+			"routes",
+			"ride-roadpick"
+		]
+	},
+	{
+		"files": [
+			"web/src/lib/ride/SessionSummary.svelte",
+			"web/src/lib/ride/OwnRide.svelte",
+			"web/src/lib/session/SessionLayers.svelte",
+			"web/src/**/RecapHeader.svelte",
+			"web/src/**/RecapTiles.svelte"
+		],
+		"surfaces": [
+			"closing-card",
+			"closing-card-road",
+			"closing-card-session",
+			"ride-detail"
+		]
+	},
+	{
+		"files": ["web/src/routes/(app)/history/**"],
+		"surfaces": ["history", "history-rides", "ride-detail", "collections"]
+	},
+	{
+		"files": ["server/internal/og/**"],
+		"surfaces": ["poster"]
+	},
+	{
+		"files": ["web/src/routes/(app)/home/**", "web/src/lib/home/**"],
+		"surfaces": ["home", "phone-home"]
+	},
+	{
+		"files": [
+			"web/src/lib/profile/Appearance.svelte",
+			"web/src/routes/(app)/settings/appearance/**"
+		],
+		"surfaces": ["appearance", "appearance-advanced"]
+	},
+	{
+		"files": [
+			"web/src/**/SectionTabs.svelte",
+			"web/src/routes/(app)/settings/+layout.svelte"
+		],
+		"surfaces": ["appearance", "history", "routes", "garage-shop"]
+	},
+	{
+		"files": ["web/src/routes/(app)/garage/**"],
+		"surfaces": ["garage-shop", "garage-locker", "garage-makers"]
+	},
+	{
+		"files": ["web/src/routes/(app)/open-rides/**"],
+		"surfaces": ["open-rides"]
+	},
+	{
+		"files": ["web/src/app.css", "web/src/lib/themes.ts"],
+		"surfaces": [
+			"ride-workout-flat",
+			"ride-road-world",
+			"workouts",
+			"route",
+			"closing-card",
+			"home",
+			"appearance"
+		]
+	}
+]

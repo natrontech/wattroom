@@ -27,7 +27,7 @@ var pokeWords = map[protocol.PokeKind]struct{ choose, cooldown string }{
 // in this channel, because the valley it waits for is one of that
 // session's blocks. Who hands it up is anyone standing in the channel — the
 // roadside is everyone who is not on that rider's bike (ADR-0064).
-func (h *Hub) poke(c *client, rm *room, rider protocol.Rider, sent protocol.Poke) {
+func (h *Hub) poke(c *client, rm *channelState, rider protocol.Rider, sent protocol.Poke) {
 	kind := sent.Kind
 	if kind == "" {
 		kind = protocol.PokeKindPoke
@@ -84,7 +84,7 @@ func (h *Hub) poke(c *client, rm *room, rider protocol.Rider, sent protocol.Poke
 
 // ridesSession reports whether a rider is on the timeline of the session
 // open in this channel (ADR-0059) — joined, not merely standing beside it.
-func (rm *room) ridesSession(riderID string) bool {
+func (rm *channelState) ridesSession(riderID string) bool {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	return rm.session.rides(riderID)
@@ -92,7 +92,7 @@ func (rm *room) ridesSession(riderID string) bool {
 
 // hasRider is the room-scope gate: a client can name only somebody currently
 // sharing this room. Membership elsewhere and guessed ids buy nothing.
-func (rm *room) hasRider(riderID string) bool {
+func (rm *channelState) hasRider(riderID string) bool {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	for c := range rm.clients {
@@ -105,7 +105,7 @@ func (rm *room) hasRider(riderID string) bool {
 
 // queuePoke addresses every socket belonging to one rider. It queues rather
 // than writing because the tick goroutine is the only writer per socket.
-func (rm *room) queuePoke(riderID string, poke protocol.Poke) bool {
+func (rm *channelState) queuePoke(riderID string, poke protocol.Poke) bool {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	found := false
@@ -123,7 +123,7 @@ func (rm *room) queuePoke(riderID string, poke protocol.Poke) bool {
 
 // drainPokesLocked hands the tick loop its addressed messages and forgets
 // them. The caller holds the room lock.
-func (rm *room) drainPokesLocked() map[*client][]protocol.Poke {
+func (rm *channelState) drainPokesLocked() map[*client][]protocol.Poke {
 	if len(rm.pendingPokes) == 0 {
 		return nil
 	}
@@ -136,7 +136,7 @@ func (rm *room) drainPokesLocked() map[*client][]protocol.Poke {
 // channel they are in (#2721): the live arm of a poke the DM thread records.
 // A rider in no channel hears it from the thread's poll instead.
 func (h *Hub) PokeRider(riderID string, poke protocol.Poke) {
-	rooms := h.liveRooms()
+	rooms := h.liveChannels()
 	for _, rm := range rooms {
 		rm.queuePoke(riderID, poke)
 	}

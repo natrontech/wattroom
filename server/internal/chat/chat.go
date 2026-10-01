@@ -1,5 +1,5 @@
 // Package chat is a text channel's durable log (ADR-0058, #2435): the last
-// 500 lines per channel, pruned on write, plus reactions, images, read marks
+// protocol.MaxChannelLines per channel, pruned on write, plus reactions, images, read marks
 // and the one announcement a channel keeps. HTTP only; the fan-out is the
 // lobby ping naming the channel.
 package chat

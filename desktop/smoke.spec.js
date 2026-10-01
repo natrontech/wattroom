@@ -66,6 +66,19 @@ function trayLabels(app) {
 	);
 }
 
+/** Put the rider's window into native fullscreen, or out, and wait until it is. */
+function fullScreen(app, on) {
+	return app.evaluate(
+		({ BrowserWindow }, want) =>
+			new Promise((done) => {
+				const [w] = BrowserWindow.getAllWindows();
+				w.once(want ? 'enter-full-screen' : 'leave-full-screen', done);
+				w.setFullScreen(want);
+			}),
+		on,
+	);
+}
+
 /** Press a tray item by label, in the main process, as a rider would. */
 function clickTray(app, label, checked = undefined) {
 	return app.evaluate((_electron, [wanted, box]) => {
@@ -78,27 +91,135 @@ function clickTray(app, label, checked = undefined) {
 	}, [label, checked]);
 }
 
+test('the shell keeps a log where a rider can find it (#3012)', async () => {
+	const app = await launch(DEAD_URL);
+	await (await app.firstWindow()).locator('#retry').waitFor();
+	// This run's own words: on macOS the folder is ~/Library/Logs, shared by every run.
+	const said = `smoke: a warning for the log ${process.pid}-${Date.now()}`;
+	const dir = await app.evaluate(({ app: a }, words) => {
+		console.warn(words);
+		return a.getPath('logs');
+	}, said);
+	const file = path.join(dir, 'main.log');
+	await expect
+		.poll(() => (fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : ''))
+		.toContain(`Z warn ${said}\n`);
+	const version = require('./package.json').version;
+	expect(fs.readFileSync(file, 'utf8')).toContain(
+		` start ${version} (unpackaged) ${process.platform}\n`,
+	);
+	await app.close();
+});
+
+// The page hears a close to the tray and the window coming back (#3005,
+// #3079), and nothing else (#3509): a close hides the window rather than
+// destroying it, and the page leaves voice when it does. Only macOS is
+// certain to have a tray, and without one a close is a close.
+const heard = async (app) => {
+	const win = await app.firstWindow();
+	await expect(win.locator('#retry')).toBeVisible();
+	await win.evaluate(() => {
+		window.__seen = [];
+		window.wattroom.onVisibility((visible) => window.__seen.push(visible));
+	});
+	return win;
+};
+const throttled = (app) =>
+	app.evaluate(({ BrowserWindow }) =>
+		BrowserWindow.getAllWindows()[0].webContents.getBackgroundThrottling(),
+	);
+
+test('the page hears a close to the tray, and the window coming back', async () => {
+	test.skip(process.platform !== 'darwin', 'a tray is certain only on macOS');
+	const app = await launch(DEAD_URL);
+	const win = await heard(app);
+	await app.evaluate(({ BrowserWindow }) =>
+		BrowserWindow.getAllWindows()[0].close(),
+	);
+	await expect.poll(() => win.evaluate(() => window.__seen)).toEqual([false]);
+	expect(await throttled(app)).toBe(true);
+	// The Dock's way back: 'activate' opens the window the close put away.
+	await app.evaluate(({ app: a }) => a.emit('activate'));
+	await expect
+		.poll(() => win.evaluate(() => window.__seen))
+		.toEqual([false, true]);
+	expect(await throttled(app)).toBe(false);
+	await app.close();
+});
+
+// macOS fires 'hide' and 'show' whenever the window is minimised, covered,
+// behind a fullscreen app or on another Space (#3509): the rider is still
+// there, and still in the call.
+test('a covered or minimised window keeps the page in the call', async () => {
+	const app = await launch(DEAD_URL);
+	const win = await heard(app);
+	await app.evaluate(async ({ BrowserWindow }) => {
+		const [w] = BrowserWindow.getAllWindows();
+		// What Electron's occlusion delegate emits, as it emits it.
+		w.emit('hide');
+		w.emit('show');
+		w.minimize();
+		await new Promise((done) => setTimeout(done, 500));
+	});
+	// A ride ending while the window is down is no reason to throttle it: it was never closed.
+	await win.evaluate(() => {
+		window.wattroom.keepAwake(true);
+		window.wattroom.keepAwake(false);
+	});
+	await new Promise((done) => setTimeout(done, 500));
+	expect(await throttled(app)).toBe(false);
+	await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].restore());
+	expect(await win.evaluate(() => window.__seen)).toEqual([]);
+	await app.close();
+});
+
+// Where there is a tray, closing the window hides it (#3005), so the app keeps
+// running behind it. Only macOS is certain to have one: the Linux runner has
+// no status notifier host, and there a close quits (#3510, tested below).
+test('closing the window hides it where there is a tray', async () => {
+	test.skip(process.platform !== 'darwin', 'a tray is certain only on macOS');
+	const app = await launch(DEAD_URL);
+	const win = await app.firstWindow();
+	await expect(win.locator('#retry')).toBeVisible();
+	await app.evaluate(({ BrowserWindow }) =>
+		BrowserWindow.getAllWindows()[0].close(),
+	);
+	const state = await app.evaluate(({ BrowserWindow }) => {
+		const [w] = BrowserWindow.getAllWindows();
+		return { alive: Boolean(w) && !w.isDestroyed(), visible: w?.isVisible() };
+	});
+	expect(state).toEqual({ alive: true, visible: false });
+	await app.close();
+});
+
 test('the window comes back where it was, unless that is off every display', async () => {
 	const first = await launch(DEAD_URL);
 	const win = await first.firstWindow();
 	await expect(win.locator('#retry')).toBeVisible();
-	await first.evaluate(({ BrowserWindow }) => {
+	// What the window took, not what was asked: a display too short for it
+	// clamps the size — macOS on a CI runner gives 700 px back as 677 (#3011).
+	const set = await first.evaluate(({ BrowserWindow }) => {
 		const [w] = BrowserWindow.getAllWindows();
 		w.setBounds({ x: 40, y: 60, width: 900, height: 700 });
+		return w.getBounds();
 	});
 	const dir = first.userData;
 	await first.close();
 	const saved = JSON.parse(
 		fs.readFileSync(path.join(dir, 'window.json'), 'utf8'),
 	);
-	expect(saved).toMatchObject({ width: 900, height: 700, maximized: false });
+	expect(saved).toMatchObject({
+		width: set.width,
+		height: set.height,
+		maximized: false,
+	});
 
 	const second = await launch(DEAD_URL, dir);
 	await expect((await second.firstWindow()).locator('#retry')).toBeVisible();
 	const bounds = await second.evaluate(({ BrowserWindow }) =>
 		BrowserWindow.getAllWindows()[0].getBounds(),
 	);
-	expect([bounds.width, bounds.height]).toEqual([900, 700]);
+	expect([bounds.width, bounds.height]).toEqual([set.width, set.height]);
 	await second.close();
 
 	// A position off every display keeps the size and drops the position.
@@ -131,6 +252,58 @@ test('the window comes back where it was, unless that is off every display', asy
 	await third.close();
 });
 
+// Saved as it changes (#3013): a crash, a force-quit or a power cut mid-ride
+// keeps where the window was, and a rider who rides fullscreen gets it back.
+const savedState = (dir) => {
+	const file = path.join(dir, 'window.json');
+	return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null;
+};
+
+test('where the window was survives the shell being killed', async () => {
+	const app = await launch(DEAD_URL);
+	await expect((await app.firstWindow()).locator('#retry')).toBeVisible();
+	const set = await app.evaluate(({ BrowserWindow }) => {
+		const [w] = BrowserWindow.getAllWindows();
+		w.setBounds({ x: 60, y: 80, width: 880, height: 640 });
+		return w.getBounds();
+	});
+	await expect
+		.poll(() => savedState(app.userData)?.width)
+		.toBe(set.width);
+	app.process().kill('SIGKILL');
+	expect(savedState(app.userData)).toMatchObject({
+		width: set.width,
+		height: set.height,
+		maximized: false,
+		fullScreen: false,
+	});
+});
+
+test('fullscreen comes back fullscreen, and leaving it is kept too', async () => {
+	test.skip(
+		process.platform === 'linux',
+		'xvfb runs no window manager to go fullscreen',
+	);
+	const first = await launch(DEAD_URL);
+	await expect((await first.firstWindow()).locator('#retry')).toBeVisible();
+	await fullScreen(first, true);
+	await expect.poll(() => savedState(first.userData)?.fullScreen).toBe(true);
+	first.process().kill('SIGKILL');
+
+	const second = await launch(DEAD_URL, first.userData);
+	await expect((await second.firstWindow()).locator('#retry')).toBeVisible();
+	await expect
+		.poll(() =>
+			second.evaluate(({ BrowserWindow }) =>
+				BrowserWindow.getAllWindows()[0].isFullScreen(),
+			),
+		)
+		.toBe(true);
+	await fullScreen(second, false);
+	await expect.poll(() => savedState(second.userData)?.fullScreen).toBe(false);
+	await second.close();
+});
+
 test('the window opens and the bridge carries what the app looks for', async () => {
 	const app = await launch(DEAD_URL);
 	const win = await app.firstWindow();
@@ -159,9 +332,11 @@ test('the window opens and the bridge carries what the app looks for', async () 
 		'onNavigate',
 		'onNotification',
 		'onUpdate',
+		'onVisibility',
 		'pickDevice',
 		'platform',
 		'retry',
+		'setBadge',
 		'setLaunchAtLogin',
 		'setRoom',
 		'titleBar',
@@ -184,6 +359,84 @@ test('the window opens and the bridge carries what the app looks for', async () 
 	expect(leaked, 'node reachable from the renderer').toBe(false);
 
 	await app.close();
+});
+
+// #3008: the page's unread count reaches the icon, clamped the way badge.js
+// promises — a whole count, never negative, never a fraction. Read back on
+// macOS only: Linux keeps a badge only under a Unity launcher, and Windows
+// draws an overlay, which has no getter.
+test('the page\'s unread count reaches the Dock', async () => {
+	test.skip(process.platform !== 'darwin', 'no badge count to read back here');
+	const app = await launch(DEAD_URL);
+	const win = await app.firstWindow();
+	await expect(win.locator('#retry')).toBeVisible();
+	const badge = () => app.evaluate(({ app }) => app.getBadgeCount());
+	const send = (n) => win.evaluate((count) => window.wattroom.setBadge(count), n);
+
+	await send(7);
+	await expect.poll(badge).toBe(7);
+	await send(-3);
+	await expect.poll(badge).toBe(0);
+	await send(5000);
+	await expect.poll(badge).toBe(999);
+	await send(0);
+	await expect.poll(badge).toBe(0);
+
+	await app.close();
+});
+
+// #3010: every IPC handler answers only our own page — Electron's checklist,
+// item 17. A message whose frame is on another origin is dropped before the
+// handler runs; the same message from the page lands. Read back through the
+// badge, the one handler with a getter (macOS).
+test('a message from a frame that is not ours is refused', async () => {
+	test.skip(process.platform !== 'darwin', 'no badge count to read back here');
+	const app = await launch(DEAD_URL);
+	await app.firstWindow();
+	const counts = await app.evaluate(({ app, BrowserWindow, ipcMain }) => {
+		const win = BrowserWindow.getAllWindows()[0];
+		const foreign = {
+			sender: win.webContents,
+			senderFrame: { url: 'https://evil.example/' },
+		};
+		const ours = {
+			sender: win.webContents,
+			senderFrame: win.webContents.mainFrame,
+		};
+		ipcMain.emit('wattroom:badge', foreign, 9);
+		const refused = app.getBadgeCount();
+		ipcMain.emit('wattroom:badge', ours, 9);
+		const heard = app.getBadgeCount();
+		app.setBadgeCount(0);
+		return { refused, heard };
+	});
+	expect(counts).toEqual({ refused: 0, heard: 9 });
+	await app.close();
+});
+
+// The wrapper is only a guarantee if nothing goes around it (#3010): every
+// handler in main.js registers through `ipc.on` / `ipc.handle`.
+test('no module the shell loads registers an IPC handler around the sender check', () => {
+	const strip = (f) =>
+		require('node:fs')
+			.readFileSync(require('node:path').join(__dirname, f), 'utf8')
+			.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
+	const main = strip('main.js');
+	const wrapper = main.slice(
+		main.indexOf('const ipc = {'),
+		main.indexOf('};', main.indexOf('const ipc = {')),
+	);
+	expect(wrapper).toContain('fromUs(event)');
+	// The modules main.js hands `ipc` to (#3014) are held to it too.
+	const bare = require('./reached')
+		.reached()
+		.filter((f) => f.endsWith('.js'))
+		.flatMap((f) =>
+			((f === 'main.js' ? main.replace(wrapper, '') : strip(f)).match(
+				/ipcMain\.(on|handle)\(/g,
+			) ?? []).map(() => f),
+		);
+	expect(bare).toEqual([]);
 });
 
 // #3006: Electron draws no context menu, so a text field had no paste. Real
@@ -305,6 +558,22 @@ test('an unreachable app renders the offline screen, not a blank window', async 
 	await app.close();
 });
 
+test('outside macOS the download is offered at once, and nothing installs itself', async () => {
+	// #2818: only macOS checks a signature it trusts before installing, so
+	// Linux and Windows take home's download offer from the first newer
+	// version. macOS installs its own, and offers the download after three
+	// failures.
+	const app = await launch(DEAD_URL);
+	const win = await app.firstWindow();
+	await expect(win.locator('#retry')).toBeVisible();
+
+	expect(await win.evaluate(() => window.wattroom.updateFailed())).toBe(
+		process.platform !== 'darwin',
+	);
+
+	await app.close();
+});
+
 test('the navigation guard refuses another origin', async () => {
 	const app = await launch(DEAD_URL);
 	const win = await app.firstWindow();
@@ -400,9 +669,15 @@ test('the Bluetooth chooser holds the scan open and streams it to the app', asyn
 			dialog.showMessageBox = async () => ({ response: 1 });
 
 			const win = BrowserWindow.getAllWindows()[0];
+			// Sent the way the page sends it: every handler answers only its
+			// own page (#3010), and a bare emit has no frame to be.
+			const fromPage = {
+				sender: win.webContents,
+				senderFrame: win.webContents.mainFrame,
+			};
 			// What the preload does on load: registering onBleScan is the app
 			// saying it can draw the picker itself.
-			ipcMain.emit('wattroom:ble-picker-ready');
+			ipcMain.emit('wattroom:ble-picker-ready', fromPage);
 
 			const sent = [];
 			const pass = win.webContents.send.bind(win.webContents);
@@ -430,10 +705,10 @@ test('the Bluetooth chooser holds the scan open and streams it to the app', asyn
 			]);
 			const answeredWhileScanning = answers.length;
 
-			ipcMain.emit('wattroom:ble-pick', {}, 'a');
+			ipcMain.emit('wattroom:ble-pick', fromPage, 'a');
 			// A late answer from a picker whose request is over must not settle
 			// the next one.
-			ipcMain.emit('wattroom:ble-pick', {}, 'b');
+			ipcMain.emit('wattroom:ble-pick', fromPage, 'b');
 			return { sent, answeredWhileScanning, answers };
 		},
 	);
@@ -832,26 +1107,38 @@ test('launch at login writes the autostart file, and takes it away again', async
 	await app.close();
 });
 
-test('a login launch opens no window, and closing one later goes back to the tray', async () => {
+test('a login launch loads its window hidden, and closing it goes back to the tray', async () => {
+	test.skip(
+		process.platform === 'linux',
+		'the Linux runner has no status notifier host, so no tray (#3510)',
+	);
 	const app = await launch(DEAD_URL, null, ['--hidden']);
 	let gone = false;
 	app.on('close', () => (gone = true));
-	// Nothing on screen: the shell is in the tray waiting to be asked.
-	await new Promise((r) => setTimeout(r, 2000));
-	expect(
-		await app.evaluate(
-			({ BrowserWindow }) => BrowserWindow.getAllWindows().length,
-		),
-	).toBe(0);
-
-	// The tray is the way in.
-	await clickTray(app, 'Open WattRoom');
+	const shown = () =>
+		app.evaluate(({ BrowserWindow }) =>
+			BrowserWindow.getAllWindows().map((w) => w.isVisible()),
+		);
+	// Loaded and running, but nothing on screen (#3005): notifications and the
+	// lobby socket live in the page, so the page is there from boot.
 	const win = await app.firstWindow();
 	await expect(win.locator('#retry')).toBeVisible();
+	await new Promise((r) => setTimeout(r, 1000));
+	expect(await shown()).toEqual([false]);
+	// And throttled from boot, like any window in the tray (#3510): it never
+	// emitted 'hide', so nothing had told it.
+	expect(
+		await app.evaluate(({ BrowserWindow }) =>
+			BrowserWindow.getAllWindows()[0].webContents.getBackgroundThrottling(),
+		),
+	).toBe(true);
 
-	// Closing it must not quit: the rider asked WattRoom to be running when
-	// they sign in, and quit is a menu item, not a window control. On Linux
-	// and Windows, without the latch, this IS the quit.
+	// The tray is the way in, and it shows that same window.
+	await clickTray(app, 'Open WattRoom');
+	await expect.poll(shown).toEqual([true]);
+
+	// Closing it must not quit: quit is a menu item, not a window control.
+	// On Linux and Windows the close box used to BE the quit.
 	await app.evaluate(({ BrowserWindow }) =>
 		BrowserWindow.getAllWindows()[0].close(),
 	);
@@ -860,12 +1147,55 @@ test('a login launch opens no window, and closing one later goes back to the tra
 	// against a shell that was on its way out.
 	await new Promise((r) => setTimeout(r, 2000));
 	expect(gone, 'the shell quit with its window').toBe(false);
-	expect(
-		await app.evaluate(
-			({ BrowserWindow }) => BrowserWindow.getAllWindows().length,
-		),
-	).toBe(0);
+	expect(await shown()).toEqual([false]);
 	expect(await trayLabels(app)).toContain('Open WattRoom');
 
+	await app.close();
+});
+
+// A Linux desktop with no status notifier host draws no tray, however quietly
+// `new Tray` succeeds (#3510). There a login launch shows its window and a
+// close quits: a hidden window with no icon has no way back. The Linux runner
+// is exactly that desktop.
+test('with no tray host, a login launch shows its window and a close quits', async () => {
+	test.skip(process.platform !== 'linux', 'a tray host is a Linux question');
+	const app = await launch(DEAD_URL, null, ['--hidden']);
+	let gone = false;
+	app.on('close', () => (gone = true));
+	const win = await app.firstWindow();
+	await expect(win.locator('#retry')).toBeVisible();
+	await expect
+		.poll(() =>
+			app.evaluate(({ BrowserWindow }) =>
+				BrowserWindow.getAllWindows()[0].isVisible(),
+			),
+		)
+		.toBe(true);
+
+	await app.evaluate(({ BrowserWindow }) =>
+		BrowserWindow.getAllWindows()[0].close(),
+	);
+	await expect.poll(() => gone, 'the close quit the shell').toBe(true);
+});
+
+// Hiding a fullscreen window on macOS leaves its Space behind, black (#3510),
+// so a close leaves fullscreen first and hides after.
+test('closing a fullscreen window leaves fullscreen, then hides', async () => {
+	test.skip(process.platform !== 'darwin', 'a tray is certain only on macOS');
+	const app = await launch(DEAD_URL);
+	await expect((await app.firstWindow()).locator('#retry')).toBeVisible();
+	await fullScreen(app, true);
+
+	await app.evaluate(({ BrowserWindow }) =>
+		BrowserWindow.getAllWindows()[0].close(),
+	);
+	await expect
+		.poll(() =>
+			app.evaluate(({ BrowserWindow }) => {
+				const [w] = BrowserWindow.getAllWindows();
+				return { fullScreen: w.isFullScreen(), visible: w.isVisible() };
+			}),
+		)
+		.toEqual({ fullScreen: false, visible: false });
 	await app.close();
 });

@@ -54,7 +54,7 @@ func TestSpectatorsAreSocketsBesideARunningSession(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			h := New(slog.New(slog.DiscardHandler), nil, nil)
-			rm := h.room("velvet")
+			rm := h.stateOf("velvet")
 			// The coach rides; Ben watches from a desk and a phone.
 			for _, c := range []*client{sock("coach"), sock("ben"), sock("ben")} {
 				rm.join(c)

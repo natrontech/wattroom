@@ -16,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/channels"
+	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/store/storetest"
@@ -446,7 +447,7 @@ func TestAnnouncementIsAChannelsMarkedLine(t *testing.T) {
 	}
 }
 
-// The 500-line bound per channel keeps the channel's announcement however old.
+// The per-channel bound, MaxChannelLines, keeps the channel's announcement however old.
 func TestTheChannelPruneKeepsTheAnnouncement(t *testing.T) {
 	w := channelSetup(t)
 	oldest := w.say(t, "bob", w.open, "the notice")
@@ -454,14 +455,14 @@ func TestTheChannelPruneKeepsTheAnnouncement(t *testing.T) {
 	channel, _ := store.ParseUUID(w.open)
 	if _, err := w.svc.store.Pool.Exec(t.Context(),
 		`insert into chat_messages (channel_id, user_id, text, created_at)
-		 select $1, $2, 'filler', now() + make_interval(secs => g) from generate_series(1, 510) g`,
-		channel, w.users.ByToken["bob"].ID); err != nil {
+		 select $1, $2, 'filler', now() + make_interval(secs => g) from generate_series(1, $3) g`,
+		channel, w.users.ByToken["bob"].ID, protocol.MaxChannelLines+10); err != nil {
 		t.Fatalf("filler: %v", err)
 	}
 	if _, err := w.svc.store.Queries.SetChannelAnnouncement(t.Context(), db.SetChannelAnnouncementParams{ChannelID: channel, MessageID: id}); err != nil {
 		t.Fatalf("mark: %v", err)
 	}
-	if err := w.svc.store.Queries.PruneChannelChat(t.Context(), channel); err != nil {
+	if err := w.svc.store.Queries.PruneChannelChat(t.Context(), db.PruneChannelChatParams{ChannelID: channel, Keep: protocol.MaxChannelLines}); err != nil {
 		t.Fatalf("prune: %v", err)
 	}
 	var left int
@@ -470,7 +471,7 @@ func TestTheChannelPruneKeepsTheAnnouncement(t *testing.T) {
 		`select count(*), bool_or(id = $2) from chat_messages where channel_id = $1`, channel, id).Scan(&left, &kept); err != nil {
 		t.Fatalf("count: %v", err)
 	}
-	if left != 501 || !kept {
-		t.Errorf("after the prune: %d lines, announcement kept %v; want 501 and true", left, kept)
+	if left != protocol.MaxChannelLines+1 || !kept {
+		t.Errorf("after the prune: %d lines, announcement kept %v; want %d and true", left, kept, protocol.MaxChannelLines+1)
 	}
 }

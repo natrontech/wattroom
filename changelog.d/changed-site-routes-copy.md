@@ -1,0 +1,1 @@
+- The public site no longer promises a WattRoom without roads, a world or avatars: routes you import (with their profile and climbs) are part of it now. It still says what holds today: no drafting, no power-ups, no subscription. The smart-trainer page says the free ride has held a set grade or set watts since 24 September 2026.

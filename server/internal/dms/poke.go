@@ -58,7 +58,7 @@ func (s *Service) handlePoke(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.store.Queries.PruneDms(r.Context(), db.PruneDmsParams{
-		Column1: me.ID, Column2: peer,
+		Column1: me.ID, Column2: peer, Keep: protocol.MaxChannelLines,
 	}); err != nil {
 		s.log.Warn("prune dms", "err", err)
 	}

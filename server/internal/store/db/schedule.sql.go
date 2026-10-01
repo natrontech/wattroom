@@ -125,10 +125,10 @@ func (q *Queries) CountCrewUpcoming(ctx context.Context, crewID pgtype.UUID) (in
 
 const createCrewPlan = `-- name: CreateCrewPlan :one
 
-insert into scheduled_sessions (crew_id, channel_id, workout_name, workout_json, starts_at, created_by)
+insert into scheduled_sessions (crew_id, channel_id, workout_name, workout_json, starts_at, created_by, route_id)
 values ($1, $2, $3, $4,
-        $5, $6)
-returning id, workout_name, workout_json, starts_at, created_by, created_at, reminded_at, started_at, crew_id, channel_id
+        $5, $6, $7)
+returning id, workout_name, workout_json, starts_at, created_by, created_at, reminded_at, started_at, crew_id, channel_id, route_id
 `
 
 type CreateCrewPlanParams struct {
@@ -138,6 +138,7 @@ type CreateCrewPlanParams struct {
 	WorkoutJson []byte
 	StartsAt    pgtype.Timestamptz
 	CreatedBy   pgtype.UUID
+	RouteID     pgtype.UUID
 }
 
 // The crew's schedule (#2440, ADR-0058): a plan belongs to the crew and names
@@ -152,6 +153,7 @@ func (q *Queries) CreateCrewPlan(ctx context.Context, arg CreateCrewPlanParams) 
 		arg.WorkoutJson,
 		arg.StartsAt,
 		arg.CreatedBy,
+		arg.RouteID,
 	)
 	var i ScheduledSession
 	err := row.Scan(
@@ -165,6 +167,7 @@ func (q *Queries) CreateCrewPlan(ctx context.Context, arg CreateCrewPlanParams) 
 		&i.StartedAt,
 		&i.CrewID,
 		&i.ChannelID,
+		&i.RouteID,
 	)
 	return i, err
 }
@@ -798,7 +801,7 @@ update scheduled_sessions
 set starts_at = $1,
     reminded_at = case when starts_at = $1 then reminded_at else null end
 where id = $2 and crew_id = $3
-returning id, workout_name, workout_json, starts_at, created_by, created_at, reminded_at, started_at, crew_id, channel_id
+returning id, workout_name, workout_json, starts_at, created_by, created_at, reminded_at, started_at, crew_id, channel_id, route_id
 `
 
 type MoveCrewPlanParams struct {
@@ -823,6 +826,7 @@ func (q *Queries) MoveCrewPlan(ctx context.Context, arg MoveCrewPlanParams) (Sch
 		&i.StartedAt,
 		&i.CrewID,
 		&i.ChannelID,
+		&i.RouteID,
 	)
 	return i, err
 }

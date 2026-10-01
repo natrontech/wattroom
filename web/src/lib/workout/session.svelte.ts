@@ -1,14 +1,18 @@
 import { arbitrate } from '$lib/ble/arbitrate';
-import { publishHud } from '$lib/hud/feed';
 import { DEFAULT_PROFILE } from '$lib/profile.svelte';
-import type { Trainer, TrainerSample } from '$lib/ble/trainer';
-import { createActuator } from '$lib/ride/actuation';
-import { DEFAULTS, toleranceBand } from './guards';
+import type { TrainerSample } from '$lib/ble/trainer';
+import { createActuator } from '$lib/ride/actuation.svelte';
 import { createRiderGuards } from './rider-guards.svelte';
-import { createRideRecord } from './ride-record.svelte';
+import { wireSoloGuards } from './solo-guards';
+import { createHrHold } from './hr-hold.svelte';
+import { countsToward, createRideRecord } from './ride-record.svelte';
+import { createLiveStats } from '$lib/ride/live-stats.svelte';
 import { createRideClock } from './ride-clock.svelte';
 import { createRideLife } from './ride-life.svelte';
-import { signalLost, type RideOptions, type RideState } from './ride-state';
+import { createRoadDot } from './road-dot.svelte';
+import { createRideHud } from './ride-hud';
+import { createSoloAim } from './solo-aim.svelte';
+import type { RideOptions, RideState } from './ride-state';
 
 /**
  * Owns one ride: advances the workout clock, holds the trainer on target, and
@@ -27,9 +31,9 @@ export function createRideSession({
 		singleSpeed: DEFAULT_PROFILE.singleSpeed,
 	}),
 	onRecord,
+	kg = () => 0,
 }: RideOptions) {
 	const startedAt = new Date(startedAtMs ?? now());
-	let bias = $state(1);
 	let sample = $state<TrainerSample | null>(null);
 	/**
 	 * Auto-pause and the spiral release, shared with the group path so a rider
@@ -37,55 +41,63 @@ export function createRideSession({
 	 */
 	const guards = createRiderGuards();
 	const record = createRideRecord(ftp);
+	// The bike computer's numbers (#3068, #3088), one second per recorded one.
+	const live = createLiveStats(() => ftp);
+	// A step that holds heart rate moves its own watts (#67).
+	const hrHold = createHrHold(ftp);
 	const life = createRideLife(trainer, {
 		onSample,
 		tick,
 		now,
 		state: () => state,
+		back: () => actuator.reissue(),
+		swapped: () => {
+			actuator.release();
+			applyTarget();
+		},
 	});
 	/** The ride's life, and while it rides, the guards' word on how (#3369). */
 	const state = $derived<RideState>(
 		life.life === 'riding' ? guards.phase : life.life,
 	);
 
+	// A road workout's blocks end at their metres (#3499): the dot's
+	// position is the clock.
+	const dot = createRoadDot(workout, kg);
 	const clock = createRideClock(workout, ftp, {
-		bias: () => bias,
+		bias: () => aim.bias,
 		over: () => state === 'done',
+		road: dot.position,
 	});
 
-	/**
-	 * Released during spiral guard and while auto-paused — both mean "no
-	 * target" — and zero through the count-in, which has not asked for one
-	 * yet (#1800).
-	 */
-	const target = $derived(
-		state === 'autopaused' || state === 'countdown' || guards.spiralActive
-			? 0
-			: (clock.info.targetWatts ?? 0),
-	);
-
-	const inBand = $derived(
-		target > 0 &&
-			sample !== null &&
-			Math.abs(sample.watts - target) <= toleranceBand(target),
-	);
-
 	const actuator = createActuator(() => life.trainer);
+	const aim = createSoloAim({
+		actuator,
+		clock: () => clock,
+		guards,
+		hrHold,
+		state: () => state,
+		sample: () => sample,
+		sprint,
+		ftp,
+	});
+	const applyTarget = aim.apply;
+	const guarding = wireSoloGuards(guards, {
+		state: () => state,
+		prescribed: () => clock.info.targetWatts ?? 0,
+		actuate: applyTarget,
+		record,
+		end: finish,
+	});
 
-	function applyTarget() {
-		// Nothing reaches the trainer during the count-in (#1800). This is the
-		// one chokepoint for every target write — start(), the ticker, a bias
-		// nudge, skip/extend and repair() all come through here — so the first
-		// block's target lands when the clock does and not three seconds early.
-		if (state === 'countdown') return;
-		// A sprint outranks the guards, for the reason a group session gives
-		// (session/ride.svelte.ts): auto-pause is an INFERENCE that the rider
-		// left, a sprint is an announced effort they are about to answer.
-		if (clock.sprinting) actuator.sprint(sprint(), ftp);
-		else actuator.hold(target);
+	// The HUD hears each sample once it is taken, the dot moved: slot 1 and
+	// the HUD then say the same second of the road (#3639).
+	function onSample(raw: TrainerSample) {
+		take(raw);
+		publish();
 	}
 
-	function onSample(raw: TrainerSample) {
+	function take(raw: TrainerSample) {
 		// A paired power meter outranks the trainer, and a dedicated cadence sensor
 		// outranks both (RESEARCH.md §11). Resolved here so the whole ride — targets,
 		// auto-pause, execution, the .fit — reads one agreed set of numbers.
@@ -102,73 +114,59 @@ export function createRideSession({
 			at: raw.at,
 		};
 		sample = next;
-		publish();
+		// Stamped with when the heart rate was measured, not when this sample
+		// arrived: a silent strap must age into lost, not stay fresh (#3517).
+		hrHold.reading(metrics.heartRate, metrics.heartRateAt ?? raw.at);
 		// Nothing is ridden during the count-in (#1800): the sample is kept, so
 		// the numbers are live the instant the clock starts, but the record, the
 		// score and the guards belong to a ride that has not begun.
 		if (state === 'countdown') return;
 		// The record and the score admit one sample per ride second; the
-		// guards below look at every one — a stop is noticed by the sample
-		// that stopped, not by the second's first.
+		// guards look at every one — a stop is noticed by the sample that
+		// stopped, not by the second's first.
 		const admit = record.admits(raw.at);
-
-		// Auto-pause and the spiral guard, against the PRESCRIBED target: the one
-		// the trainer holds is zero exactly when a guard is already up. Before
-		// the record below, so the second that trips a guard is stamped as
-		// the guard's (#1796) — the same answer the live score gives it.
-		const pedalling = guards.pedalling(next);
-		if (state !== 'idle') {
-			// The same per-second gate the record uses (#1798): the guards count
-			// seconds, and a trainer notifies more than once a second.
-			if (guards.sample(next, clock.info.targetWatts ?? 0, admit ? 1 : 0))
-				applyTarget();
-		}
-
-		if (admit) {
-			const recorded = record.add(
-				raw.at,
-				clock.seconds,
-				next,
-				bias,
-				!guards.scoring,
-			);
-			onRecord?.(recorded);
-		}
-
-		// Execution excludes auto-paused time and untargeted blocks (docs/SPEC.md). The
-		// grace seconds before auto-pause engages are excluded too — the rider had
-		// already stopped, we simply had not noticed yet. A ramp is a warmup or a
-		// cooldown, which SPEC excludes as well: the server has always agreed
-		// (workout.TargetAt reports those seconds unscored) and this side had not.
-		if (
-			admit &&
-			state === 'running' &&
-			target > 0 &&
-			pedalling &&
-			clock.info.segment?.kind === 'steady'
-		)
-			record.score(next.watts, target, bias);
-	}
-
-	// The HUD feed (ADR-0041, #1665): the session publishes, not the screen,
-	// so the floating window follows the ride off /ride — and carries the
-	// fault the screen would be shouting about.
-	function publish() {
-		if (state === 'idle' || state === 'countdown' || state === 'done') return;
-		publishHud({
-			watts: sample?.watts ?? 0,
+		// On a road a coasted descent is riding (#3056).
+		const pedalling = guarding.sample(
+			{ ...next, virtualMps: dot.here?.virtualMps },
+			admit,
+		);
+		if (!admit) return;
+		const road = dot.second(next.watts, raw.at);
+		const recorded = record.add(
+			raw.at,
+			clock.seconds,
+			road
+				? { ...next, virtualMps: road.virtualMps, m: dot.m, alt: road.alt }
+				: next,
+			aim.bias,
+			!guards.scoring,
+		);
+		onRecord?.(recorded);
+		const target = aim.target;
+		const scored = countsToward({
+			state,
 			target,
-			remaining: Math.max(0, clock.total - clock.seconds),
-			label: workout.name,
-			// The rule both riding pages draw their banner from (#2158) — the
-			// HUD used to need a first sample, so the rider who alt-tabbed
-			// away from a trainer that never sends watts had the one surface
-			// they were looking at saying nothing at all (#2200).
-			fault: signalLost({ state, sample }, life.ridingSince, now())
-				? 'trainer'
-				: undefined,
+			pedalling,
+			segment: clock.info.segment,
 		});
+		live.push({
+			watts: next.watts,
+			block: clock.info.segmentIndex,
+			target: scored ? target : undefined,
+		});
+		if (scored) record.score(next.watts, target, aim.bias);
 	}
+
+	const publish = createRideHud({
+		label: workout.name,
+		state: () => state,
+		sample: () => sample,
+		target: () => aim.target,
+		remaining: () => clock.total - clock.seconds,
+		ridingSince: () => life.ridingSince,
+		now,
+		road: () => dot.summary?.readout,
+	});
 
 	/**
 	 * Advance the ride by `seconds`. Normally one, but a throttled or delayed tick
@@ -188,28 +186,13 @@ export function createRideSession({
 			return;
 		}
 		publish();
-		if (state === 'resuming') {
-			if (guards.tick(seconds)) applyTarget();
-			return;
-		}
-		// Stopped long enough that the rider has gone (#2622): the ride ends
-		// itself, and the stopped run is not part of it.
-		if (state === 'autopaused') {
-			if (guards.stoppedFor(seconds) >= DEFAULTS.stoppedEndsAfterSeconds) {
-				record.trimStoppedTail(guards.pedalling);
-				finish();
-			}
-			return;
-		}
-		if (state !== 'running') return;
-
-		if (guards.spiralActive && guards.tick(seconds)) applyTarget();
-
+		if (guarding.tick(seconds)) return;
 		clock.advance(seconds);
 		if (clock.seconds >= clock.total) {
 			finish();
 			return;
 		}
+		hrHold.tick(clock.info.segment, now());
 		applyTarget();
 		clock.sync();
 	}
@@ -241,6 +224,10 @@ export function createRideSession({
 		get trace() {
 			return record.trace;
 		},
+		/** The ride's live numbers so far (#3068). */
+		get live() {
+			return live.current;
+		},
 		/** The ride as recorded, for .fit export. */
 		get recording() {
 			return record.recording;
@@ -249,10 +236,10 @@ export function createRideSession({
 			return startedAt;
 		},
 		get target() {
-			return target;
+			return aim.target;
 		},
 		get bias() {
-			return bias;
+			return aim.bias;
 		},
 		get info() {
 			return clock.info;
@@ -265,13 +252,17 @@ export function createRideSession({
 			return record.scored;
 		},
 		get inBand() {
-			return inBand;
+			return aim.inBand;
 		},
 		get resumeIn() {
 			return guards.resumeIn;
 		},
 		get spiralActive() {
 			return guards.spiralActive;
+		},
+		/** A heart-rate hold with no fresh heart rate: holding its watts (#67). */
+		get hrHoldLost() {
+			return hrHold.lost;
 		},
 		/** The trainer this ride holds, for the recovery card (#1847). */
 		get trainerName() {
@@ -280,20 +271,8 @@ export function createRideSession({
 		get trainerStatus() {
 			return life.status;
 		},
-		/**
-		 * Ride on with another trainer (#1847): the recovery card used to pair
-		 * into the slot that let go at Start, so the ride stayed subscribed
-		 * to the first instance and the rider got two links and no watts.
-		 * The old instance is let go — its own reattach loop would otherwise
-		 * keep a second client on the same hardware.
-		 */
-		repair(next: Trainer) {
-			if (state === 'done') return;
-			const old = life.swap(next);
-			actuator.release();
-			applyTarget();
-			void old.disconnect();
-		},
+		/** Ride on with another trainer (#1847): see the life's repair. */
+		repair: life.repair,
 		/** The sprint block on screen, or the one about to be — null otherwise. */
 		get sprint() {
 			return clock.window;
@@ -305,13 +284,9 @@ export function createRideSession({
 		start: life.start,
 		abort: life.abort,
 		stop: finish,
-		nudgeBias(step: number) {
-			bias = Math.min(
-				DEFAULTS.biasMax,
-				Math.max(DEFAULTS.biasMin, Math.round((bias + step) * 100) / 100),
-			);
-			applyTarget();
-		},
+		nudgeBias: aim.nudgeBias,
+		atEnd: actuator.atEnd,
+		easierHarder: aim.easierHarder,
 		/** Jump to the start of the next block. */
 		skip() {
 			if (!clock.skip()) return;
@@ -320,9 +295,16 @@ export function createRideSession({
 		},
 		/** Hold the current block longer (see the clock's extend). */
 		extend(seconds: number) {
-			clock.extend(seconds);
+			if (!clock.extend(seconds)) return;
 			applyTarget();
 			clock.sync();
+		},
+		/**
+		 * A road workout's place on its road (#3499): where the dot is and
+		 * where the ride ends, in metres along the owner's road. Null off one.
+		 */
+		get road() {
+			return dot.summary;
 		},
 		/** Exposed for the ride screen's clock display and tests. */
 		tick,

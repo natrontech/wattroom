@@ -5,6 +5,7 @@ import { encodeSimulation } from '$lib/ble/ftms';
 import { BikeKg, PaceGravity, ReferenceRiderKg } from '$lib/protocol';
 import {
 	GEAR_RATIOS,
+	GEARS,
 	gearSpace,
 	ratioState,
 	simTransform,
@@ -120,6 +121,21 @@ describe('the gear space', () => {
 		}
 	});
 
+	it('moves at most a step and a half from a ratio outside the table (#3517)', () => {
+		const step = GEAR_RATIOS[1] / GEAR_RATIOS[0];
+		for (const [real, dir] of [
+			[0.01, 1],
+			[1e-6, 1],
+			[100, -1],
+		] as const) {
+			const k = gearSpace(real, 1).step(dir);
+			expect(Math.abs(Math.log(k)), `a shift from ${real}`).toBeLessThanOrEqual(
+				(Math.log(step) * 3) / 2 + 1e-9,
+			);
+			expect(k).not.toBe(1);
+		}
+	});
+
 	it('starts a Cog rider at gear 15 with k = 1, and a 42×14 rider at 17', () => {
 		expect(gearSpace(34 / 14, 1).gear).toBe(15);
 		const road = gearSpace(42 / 14, 1);
@@ -193,6 +209,20 @@ describe('real-ratio detection', () => {
 		const off = ratioState(false);
 		for (let s = 0; s < 20; s++) trackRatio(off, sample(3, 90));
 		expect(off.ratio).toBeNull();
+	});
+
+	// #3515: a flywheel reporting 0 m/s at 90 rpm read as a ratio of 0, and
+	// the next Harder divided a table gear by it — k = Infinity.
+	it('takes no ratio from a stopped flywheel, and a shift from none stays in range', () => {
+		const state = ratioState();
+		for (let s = 0; s < 20; s++) trackRatio(state, sample(0, 90));
+		expect(state.ratio).toBeNull();
+		for (const ratio of [null, 0, -1, NaN]) {
+			const k = gearSpace(ratio, 1).step(1);
+			expect(k, `k after a shift from ratio ${ratio}`).toBeLessThanOrEqual(
+				GEARS.blindMax,
+			);
+		}
 	});
 });
 

@@ -10,6 +10,11 @@
 	import { goto } from '$app/navigation';
 	import { account } from '$lib/account.svelte';
 	import { type MenuEntry } from '$lib/context-menu.svelte';
+	import RideOnRoute from './RideOnRoute.svelte';
+	import RouteShelf from './RouteShelf.svelte';
+	import RouteIcon from '@lucide/svelte/icons/route';
+	import { device, isSpectator } from '$lib/device.svelte';
+	import { roadsEnabled } from '$lib/ride/roads';
 	import WorkoutCard from './WorkoutCard.svelte';
 	import { durationSeconds } from '$lib/workout/engine';
 	import { byFocus, focuses, library, type Focus } from '$lib/workout/library';
@@ -65,8 +70,23 @@
 		icon: Play,
 		onSelect: () => void goto(`/ride?w=${id}`),
 	});
-	const libraryMenu = (id: string): MenuEntry[] => [
+	// Any workout on one of your roads (#3594) — not from a phone spectator,
+	// who rides nothing, and behind the roads dev gate.
+	const onRoads = $derived(roadsEnabled() && !isSpectator(device));
+	let routeFor = $state<{ id: string; workout: Workout } | null>(null);
+	const routeItems = (id: string, workout: Workout): MenuEntry[] =>
+		onRoads
+			? [
+					{
+						label: 'Ride it on a route',
+						icon: RouteIcon,
+						onSelect: () => (routeFor = { id, workout }),
+					},
+				]
+			: [];
+	const libraryMenu = (id: string, workout: Workout): MenuEntry[] => [
 		rideItem(id),
+		...routeItems(id, workout),
 		{
 			label: 'Save a copy',
 			icon: Copy,
@@ -75,6 +95,7 @@
 	];
 	const customMenu = (entry: CustomWorkout): MenuEntry[] => [
 		rideItem(entry.id),
+		...routeItems(entry.id, entry.workout),
 		{
 			label: 'Edit',
 			icon: Pencil,
@@ -208,9 +229,17 @@
 								onclick={() => removeCustom(entry)}
 								class="btn btn-ghost btn-xs text-danger">Delete</button
 							>
+							{#if onRoads}
+								<button
+									onclick={() =>
+										(routeFor = { id: entry.id, workout: entry.workout })}
+									class="btn btn-ghost btn-xs ml-auto">On a route</button
+								>
+							{/if}
 							<a
 								href="/ride?w={entry.id}"
-								class="btn btn-primary btn-xs ml-auto">Ride</a
+								class="btn btn-primary btn-xs {onRoads ? '' : 'ml-auto'}"
+								>Ride</a
 							>
 						{/snippet}
 					</WorkoutCard>
@@ -226,6 +255,8 @@
 			</p>
 		{/if}
 	</section>
+
+	<RouteShelf />
 
 	<!-- /ramp retires here (ADR-0020): a ramp test is a workout you start, not
 	     a destination. It keeps its own ride screen — it writes your FTP — but
@@ -275,7 +306,7 @@
 				ftp={previewFtp}
 				focus={entry.focus}
 				summary={entry.summary}
-				menu={() => libraryMenu(entry.id)}
+				menu={() => libraryMenu(entry.id, entry.workout)}
 			>
 				{#snippet badge()}
 					{#if suggestion && suggested.includes(entry.focus)}
@@ -290,11 +321,22 @@
 					>
 					<!-- The primary action, visible (#126): the title-only link read
 					     as a label, and the rest of the card was dead surface. -->
-					<a href="/ride?w={entry.id}" class="btn btn-primary btn-xs ml-auto"
-						>Ride</a
+					{#if onRoads}
+						<button
+							onclick={() =>
+								(routeFor = { id: entry.id, workout: entry.workout })}
+							class="btn btn-ghost btn-xs ml-auto">On a route</button
+						>
+					{/if}
+					<a
+						href="/ride?w={entry.id}"
+						class="btn btn-primary btn-xs {onRoads ? '' : 'ml-auto'}">Ride</a
 					>
 				{/snippet}
 			</WorkoutCard>
 		{/each}
 	</ul>
+	{#if routeFor}
+		<RideOnRoute {...routeFor} onclose={() => (routeFor = null)} />
+	{/if}
 </main>

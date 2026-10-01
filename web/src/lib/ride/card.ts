@@ -18,3 +18,11 @@ export async function downloadRideCard(id: string): Promise<string | null> {
 	downloadBlob(res.data.blob, res.data.filename ?? `wattroom-ride-${id}.png`);
 	return null;
 }
+
+/**
+ * What the button that downloads it says. A ride on a road is drawn as the
+ * road it rode — a poster (#3142) — and the button says so; every other ride
+ * gets its card.
+ */
+export const cardLabel = (ride: { distanceM?: number }) =>
+	ride.distanceM !== undefined ? 'Download the poster' : 'Ride card';

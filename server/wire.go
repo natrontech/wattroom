@@ -42,6 +42,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/housekeeping"
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/hub"
+	"github.com/natrontech/wattroom/server/internal/intervals"
 	"github.com/natrontech/wattroom/server/internal/mcp"
 	"github.com/natrontech/wattroom/server/internal/notify"
 	"github.com/natrontech/wattroom/server/internal/og"
@@ -61,6 +62,8 @@ import (
 	"github.com/natrontech/wattroom/server/internal/tracks"
 	"github.com/natrontech/wattroom/server/internal/unfurl"
 	"github.com/natrontech/wattroom/server/internal/usage"
+	"github.com/natrontech/wattroom/server/internal/wallet"
+	"github.com/natrontech/wattroom/server/internal/wardrobe"
 )
 
 // wired is what main still needs from the wiring: what to drain on shutdown,
@@ -131,7 +134,7 @@ func wire(ctx context.Context, st *store.Store, mux *http.ServeMux, baseURL stri
 	authService.Register(mux)
 	accountService := account.New(st, authService, log)
 	accountService.Register(mux)
-	feedbackService := feedback.New(authService, issuerOrNil(), logRing, log)
+	feedbackService := feedback.New(authService, issuerOrNil(), st.Queries, logRing, log)
 	feedbackService.Register(mux)
 	// A purge takes the rider's flag reports off disk too (#2906).
 	accountService.SetReportReaper(feedbackService)
@@ -150,6 +153,10 @@ func wire(ctx context.Context, st *store.Store, mux *http.ServeMux, baseURL stri
 		uploader.Sweep(ctx)
 	}
 	crewsService := crews.New(st, authService, log)
+	// A workout names its road by reference and each reader is handed their
+	// cut of it (#3051): the one attacher every workout read goes through.
+	roads := routes.NewAttacher(st.Queries, keys)
+	crewsService.SetRoads(roads)
 	crewsService.Register(mux)
 	crewCard = crewsService.CrewCard
 	// A purge hands the rider's crews on before the row goes (ADR-0038).
@@ -173,7 +180,12 @@ func wire(ctx context.Context, st *store.Store, mux *http.ServeMux, baseURL stri
 		// (#1643): it needs the store, not the key.
 		notify.Bare(st, log, baseURL).RegisterUnsubscribe(mux)
 	}
-	customworkouts.New(st, authService, log).Register(mux)
+	shelf := customworkouts.New(st, authService, log)
+	shelf.SetRoads(roads)
+	shelf.Register(mux)
+	// A rider's planned week from intervals.icu, pulled into the importer
+	// (#2327); hidden unless the operator registered a client.
+	intervals.New(authService, log, baseURL).Register(mux)
 	// Personal read tokens (ADR-0017): bearer auth for GETs of own data
 	// and the MCP coach endpoint. Cookie auth stays the write path.
 	tokenService := tokens.New(st, authService, authService, log)
@@ -198,10 +210,22 @@ func wire(ctx context.Context, st *store.Store, mux *http.ServeMux, baseURL stri
 	safego.Go(log, "last-20 HR backfill", func() { stats.BackfillLast20mHR(ctx, st, log) })
 	// And the critical-power pair on rides inside the 90-day curve (#3261).
 	safego.Go(log, "critical-power backfill", func() { stats.BackfillCriticalPower(ctx, st, log) })
+	// Batzen (#3152): each account's one opening grant from the riding it did
+	// before the wallet existed; a no-op once every account has one.
+	safego.Go(log, "wallet opening grants", func() { wallet.Open(ctx, st, log) })
+	// A route's road stored before #3511 held its turns and altitude in the
+	// clear: sealed with the shape under the key, and stripped to bare
+	// heights; a no-op once every road is.
+	safego.Go(log, "route roads sealed", func() { routes.SealRoads(ctx, st.Queries, keys, log) })
+	// Always private: the session source, never a personal token.
+	wallet.New(st, authService, log).Register(mux)
+	// Buying, undoing and dressing (#3154): the session source too.
+	wardrobe.New(st, authService, log).Register(mux)
 	// A rider's stored roads (#3024, ADR-0063): the session source, never
 	// readAuth — a personal token is how a coach's AI reads, and no
 	// coordinate reaches an AI context.
-	routes.New(st, authService, keys, log).Register(mux)
+	routesService := routes.New(st, authService, keys, log)
+	routesService.Register(mux)
 	// The export carries each route's GPX, which needs the key to open.
 	accountService.SetRouteKeys(keys)
 	ridesService := rides.New(st, readAuth, log)
@@ -272,6 +296,9 @@ func wire(ctx context.Context, st *store.Store, mux *http.ServeMux, baseURL stri
 		os.Exit(1)
 	}
 	h.SetHider(hidden)
+	h.SetRoads(roads)
+	// The road a session rides reaches its channel's members (#3096).
+	routesService.SetRiding(h)
 	hidden.Register(mux)
 	// The trophy case (#467): XP off the bike and achievements. It hears
 	// about rides from both savers, about sprints, tracks and sessions

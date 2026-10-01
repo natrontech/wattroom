@@ -44,10 +44,19 @@ const box = (w: number, h: number, d: number) => new THREE.BoxGeometry(w, h, d);
 const cyl = (top: number, bottom: number, h: number, seg: number) =>
 	new THREE.CylinderGeometry(top, bottom, h, seg);
 
+// A tree's trunk runs this far on below the ground, as a building's foundation
+// does: its plinth, so a tree on a hillside stands on its uphill side and its
+// root fills the downhill one (#3076). It covers the steepest forest land.ts
+// grows (0.85) under the widest trunk (1 m at the largest scale, 1.45).
+export const ROOT_M = 1.2;
+
 // A spruce: three stacked cones, slightly offset so it never looks stamped.
 export function spruce(c: PropColors) {
 	return merge([
-		tint(cyl(0.35, 0.5, 3, 5).translate(0, 1.5, 0), c.trunk),
+		tint(
+			cyl(0.35, 0.5, 3 + ROOT_M, 5).translate(0, (3 - ROOT_M) / 2, 0),
+			c.trunk,
+		),
 		tint(
 			new THREE.ConeGeometry(4.2, 7, 7).translate(0, 5.5, 0),
 			c.spruce,
@@ -84,7 +93,10 @@ function leafBlob(
 // A broadleaf: a trunk and two lumpy blobs.
 export function broadleaf(c: PropColors) {
 	return merge([
-		tint(cyl(0.3, 0.45, 4.5, 5).translate(0, 2.25, 0), c.trunk),
+		tint(
+			cyl(0.3, 0.45, 4.5 + ROOT_M, 5).translate(0, (4.5 - ROOT_M) / 2, 0),
+			c.trunk,
+		),
 		leafBlob(c, 0, 3.6, 0, 6.6, 0),
 		leafBlob(c, 0, 2.6, 1.6, 8.2, -0.8),
 		leafBlob(c, 0, 2.2, -1.5, 7.8, 1),
@@ -200,6 +212,76 @@ export function rock(c: PropColors) {
 	g.scale(1.3, 0.7, 1);
 	return merge([tint(g.translate(0, 0.35, 0), c.rock)]);
 }
+
+// --- far models: each prop's outer-ring stand-in (#3076) ----------------------
+// The same silhouette and colours in a fraction of the triangles, standing on
+// the same ground: a building keeps its foundation's depth, a tree its root.
+
+export function spruceFar(c: PropColors) {
+	return merge([
+		tint(
+			cyl(0.35, 0.5, 1.5 + ROOT_M, 3).translate(0, (1.5 - ROOT_M) / 2, 0),
+			c.trunk,
+		),
+		tint(
+			new THREE.ConeGeometry(4.2, 13.4, 5).translate(0, 8.2, 0),
+			c.spruce,
+			c.spruceTip,
+		),
+	]);
+}
+
+export function broadleafFar(c: PropColors) {
+	const crown = new THREE.IcosahedronGeometry(4, 0)
+		.scale(1, 0.85, 1)
+		.translate(0, 7.2, 0);
+	return merge([
+		tint(
+			cyl(0.3, 0.45, 4.5 + ROOT_M, 3).translate(0, (4.5 - ROOT_M) / 2, 0),
+			c.trunk,
+		),
+		tint(crown, c.leaf, c.leafLight),
+	]);
+}
+
+// A building far off: its foundation, walls and roof as one block and one prism.
+function blockFar(
+	w: number,
+	d: number,
+	walls: number,
+	rise: number,
+	overhang: number,
+	c: PropColors,
+	wall: string,
+) {
+	return [
+		tint(box(w, walls + 3.1, d).translate(0, (walls - 3.1) / 2, 0), wall),
+		tint(roof(w, d, rise, overhang).translate(0, walls, 0), c.roof),
+	];
+}
+
+export const houseFar = (c: PropColors) =>
+	merge(blockFar(9.2, 11.2, 6, 4.2, 1.4, c, c.wall));
+
+export function churchFar(c: PropColors) {
+	return merge([
+		...blockFar(10, 18, 7, 5, 0.6, c, c.wall).map((g) => g.translate(0, 0, 2)),
+		tint(box(4.6, 19.1, 4.6).translate(0, 6.45, -8.5), c.wall),
+		tint(
+			new THREE.ConeGeometry(3.4, 11, 4)
+				.rotateY(Math.PI / 4)
+				.translate(0, 21.5, -8.5),
+			c.roof,
+		),
+	]);
+}
+
+export const barnFar = (c: PropColors) =>
+	merge(blockFar(12, 18, 5, 5.5, 1.2, c, c.wood));
+export const hutFar = (c: PropColors) =>
+	merge(blockFar(7, 8, 4.2, 2.4, 1, c, c.wood));
+export const cowFar = (c: PropColors) =>
+	merge([tint(box(1.1, 1.75, 2.1).translate(0, 0.875, 0), c.cow)]);
 
 // --- set-piece kits: small things that make a road a place -------------------
 

@@ -14,6 +14,13 @@ export interface TrainerSample {
 	 */
 	heartRate?: number;
 	/**
+	 * When `heartRate` was last reported, ms epoch; `at` when absent. A unit
+	 * that splits Indoor Bike Data carries heart rate in one frame and power in
+	 * the next, and one that stops relaying it keeps its last value, so the
+	 * sample's own time says nothing about how old the heart rate is (#3517).
+	 */
+	heartRateAt?: number;
+	/**
 	 * The trainer's own flywheel speed, m/s, from Indoor Bike Data's
 	 * instantaneous speed. The virtual drivetrain is its only reader
 	 * (ADR-0084): the dot, timing and the bike computer never read it.
@@ -76,6 +83,8 @@ export interface Trainer {
 	setTargetPower(watts: number): Promise<void>;
 	/** Slope mode: the road to ride (FTMS op 0x11 / WCPS op 0x46). Switches mode to 'sim'. */
 	setSimulation(road: SimParams): Promise<void>;
+	/** FTMS op 0x12, for the Gears probe alone (#3331); absent where unsupported. */
+	setWheelCircumference?(mm: number): Promise<void>;
 	/** ~1 Hz while connected. Returns unsubscribe. */
 	onSample(cb: (s: TrainerSample) => void): () => void;
 	onStatus(cb: (s: TrainerStatus) => void): () => void;

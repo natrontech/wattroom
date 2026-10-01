@@ -12,6 +12,7 @@
     "dist": "electron-builder"
   },
   "devDependencies": {
+    "@electron/fuses": "1.8.0",
     "@playwright/test": "^1.63.0",
     "electron": "^44.4.1",
     "electron-builder": "26.16.1"
@@ -20,11 +21,27 @@
     "appId": "ch.wattroom.desktop",
     "productName": "WattRoom",
     "icon": "build/icon.png",
+    "electronFuses": {
+      "runAsNode": false,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false
+    },
     "files": [
       "main.js",
       "preload.js",
+      "log.js",
       "login-item.js",
       "tray.js",
+      "badge.js",
+      "visibility.js",
+      "window-state.js",
+      "notifications.js",
+      "hud.js",
+      "deep-link.js",
+      "updater.js",
+      "bluetooth.js",
+      "permissions.js",
+      "chooser.js",
       "offline.html",
       "package.json",
       "icons/*.png"

@@ -14,9 +14,9 @@ import (
 
 // occupied is the room at channel if anyone is connected to it — never creating
 // one, unlike room(): an HTTP post must not start a ticker for nobody.
-func (h *Hub) occupied(channel string) *room {
+func (h *Hub) occupied(channel string) *channelState {
 	h.mu.Lock()
-	rm, ok := h.rooms[channel]
+	rm, ok := h.states[channel]
 	h.mu.Unlock()
 	if !ok {
 		return nil
@@ -31,7 +31,7 @@ func (h *Hub) occupied(channel string) *room {
 
 func (h *Hub) Presence(channel string) protocol.ChannelPresence {
 	h.mu.Lock()
-	rm, ok := h.rooms[channel]
+	rm, ok := h.states[channel]
 	p := protocol.ChannelPresence{Phase: "idle", Voice: make([]string, 0, 4)}
 	// Fold by rider, not by connection: two tabs are one person on the radar,
 	// and a camera live in either of them is that person on camera (#293).
@@ -93,7 +93,7 @@ func (h *Hub) Presence(channel string) protocol.ChannelPresence {
 // h.mu is released before the room lock is taken, as in Presence.
 func (h *Hub) Occupants(channel string) []string {
 	h.mu.Lock()
-	rm := h.rooms[channel]
+	rm := h.states[channel]
 	ids := h.voiceRidersLocked(channel)
 	h.mu.Unlock()
 	if rm != nil {
@@ -116,7 +116,7 @@ func (h *Hub) LiveSession(channel string) (protocol.LiveSession, bool) {
 	// Not occupied(): a session runs on in a channel whose riders all
 	// dropped for a moment, and it is still live.
 	h.mu.Lock()
-	rm, ok := h.rooms[channel]
+	rm, ok := h.states[channel]
 	h.mu.Unlock()
 	if !ok {
 		return protocol.LiveSession{}, false
@@ -173,8 +173,8 @@ func (h *Hub) WhereIs(userIDs []string) map[string]string {
 	}
 	out := make(map[string]string, len(userIDs))
 	h.mu.Lock()
-	rooms := make(map[string]*room, len(h.rooms))
-	for channel, rm := range h.rooms {
+	rooms := make(map[string]*channelState, len(h.states))
+	for channel, rm := range h.states {
 		rooms[channel] = rm
 	}
 	for _, id := range h.lobby {
@@ -215,7 +215,7 @@ func (h *Hub) Riding(userIDs []string) map[string]bool {
 	for _, id := range userIDs {
 		wanted[id] = struct{}{}
 	}
-	rooms := h.liveRooms()
+	rooms := h.liveChannels()
 
 	now := h.now()
 	out := make(map[string]bool, len(userIDs))

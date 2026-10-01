@@ -64,9 +64,9 @@ func runningSession(t *testing.T) *session {
 	return s
 }
 
-func runningRoom(t *testing.T) *room {
+func runningRoom(t *testing.T) *channelState {
 	t.Helper()
-	rm := newRoom("sprints")
+	rm := newChannelState("sprints")
 	rm.session = runningSession(t)
 	return rm
 }

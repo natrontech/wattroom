@@ -16,10 +16,6 @@ const maxQueue = 50
 // the tick without paying for a history nobody scrolls.
 const maxHistory = 5
 
-// A video longer than six hours is not a party track; the clamp bounds the
-// untrusted playhead the same way metrics are bounded.
-const maxSeekSec = 6 * 3600
-
 // undoWindow is how long the deck remembers what remove/skipPlaylist just
 // dropped, so the acting client's toast can offer a genuine undo (#660) —
 // errors.md prefers undo over confirm for anything reversible, and the
@@ -29,16 +25,6 @@ const undoWindow = 10 * time.Second
 // How far into a track "back" stops meaning "start this one over" and starts
 // meaning "the one before it" — the idiom every music player already taught.
 const backRestartSec = 3.0
-
-func clampSec(v float64) float64 {
-	if v < 0 || v != v { // NaN guards itself
-		return 0
-	}
-	if v > maxSeekSec {
-		return maxSeekSec
-	}
-	return v
-}
 
 // eventKind labels every timeline line the deck produces (#321).
 const eventKind = "jukebox"

@@ -5,8 +5,16 @@
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import type { Trainer } from '$lib/ble/trainer';
 	import { createRideSession } from '$lib/workout/session.svelte';
-	import { signalLost as isSignalLost } from '$lib/workout/ride-state';
-	import { createRideSounds, guardOfRide } from '$lib/ride/ride-sounds.svelte';
+	import {
+		byReference,
+		skylineOf,
+		withProfile,
+	} from '$lib/workout/road-workout';
+	import { createSignalWatch } from '$lib/workout/signal-watch.svelte';
+	import {
+		createRideSounds,
+		soloRideSounds,
+	} from '$lib/ride/ride-sounds.svelte';
 	import { byId } from '$lib/workout/library';
 	import { customWorkouts } from '$lib/workout/custom.svelte';
 	import { pushProfile } from '$lib/profile-sync.svelte';
@@ -15,7 +23,7 @@
 	import { hwlog } from '$lib/ble/hwlog';
 	import { apiBlob } from '$lib/api';
 	import { downloadBlob } from '$lib/download';
-	import { uploadRide, type RideUpload } from '$lib/ride/save';
+	import { recordingUpload, uploadRide } from '$lib/ride/save';
 	import { toasts } from '$lib/toast.svelte';
 	import { createHistoryStore, summarise } from '$lib/history.svelte';
 	import { onDestroy } from 'svelte';
@@ -37,6 +45,10 @@
 	import { downloadRideCard } from '$lib/ride/card';
 	import RideDoors from '$lib/ride/RideDoors.svelte';
 	import SoloGames from '$lib/ride/SoloGames.svelte';
+	import SoloRoadRide from '$lib/ride/SoloRoadRide.svelte';
+	import { loadRoad, roadsEnabled, type RideableRoute } from '$lib/ride/roads';
+	import { onRoute } from '$lib/road/compile';
+	import { formatKm } from '$lib/format';
 	import { doorsFor } from '$lib/crew-lounge';
 	import { crewLive } from '$lib/nav/crew-live.svelte';
 
@@ -44,6 +56,16 @@
 	// is the session most people ride.
 	const custom = customWorkouts();
 	const requested = page.url.searchParams.get('w') ?? '';
+	// A free ride alone on one of your own roads (#3027), behind the roads
+	// dev gate; `from` is where a recovered ride on it stopped.
+	const roadId = roadsEnabled() ? page.url.searchParams.get('road') : null;
+	const roadFrom = Math.max(0, Number(page.url.searchParams.get('from')) || 0);
+	// A planned session's road, ridden first (#3621): the crew's cut of it.
+	const planRoad = (() => {
+		const crew = page.url.searchParams.get('crew');
+		const id = page.url.searchParams.get('plan');
+		return roadsEnabled() && crew && id ? { crew, id } : null;
+	})();
 	// Derived, not once: the shelf loads async — read at init it is always
 	// empty, and every custom ride silently fell back to the default.
 	const saved = $derived(custom.byId(requested));
@@ -58,7 +80,25 @@
 					}
 				: byId('sweet-spot-2x20')!),
 	);
-	const workout = $derived(selected.workout);
+	// Any workout on one of your own roads (#3594): ?w= with road=, from
+	// Terrain Match's start or km 0 (`from`). road= alone is a free ride on
+	// it (#3027). Blocks end by the clock; the dot rides the road.
+	const ridesRoute = !!(roadId && requested);
+	let onRoad = $state.raw<RideableRoute | null>(null);
+	let roadError = $state<string | null>(null);
+	$effect(() => {
+		if (!ridesRoute || !roadId) return;
+		void loadRoad(roadId).then((result) => {
+			if (result.ok) onRoad = result.route;
+			else roadError = result.error;
+		});
+	});
+	const roadPending = $derived(ridesRoute && !onRoad && !roadError);
+	const workout = $derived(
+		ridesRoute && onRoad
+			? withProfile(onRoute(selected.workout, onRoad, roadFrom), onRoad.road)
+			: selected.workout,
+	);
 	// A requested workout that is not built in waits for the shelf, and a
 	// shelf that failed or does not hold it is said — the fallback used to
 	// ride Sweet Spot 2×20 under a different name with no word (audit
@@ -154,7 +194,9 @@
 				workoutName: workout.name,
 				// Carried so a ride whose save failed can be saved from the
 				// recovery card rather than only exported (#794).
-				workoutJson: JSON.stringify(workout),
+				workoutJson: JSON.stringify(byReference(workout)),
+				// A road workout's recovered ride saves against its route (#3499).
+				...(workout.road && { routeId: workout.road.routeId }),
 			});
 			noCrashSafety = !buffer.crashSafe;
 			flags.riding(trainer.name, `starting ${workout.name}`);
@@ -162,6 +204,7 @@
 				trainer,
 				workout,
 				ftp,
+				kg: () => profile.current.kg,
 				startedAt,
 				readings: () => sensors.readings,
 				// The rider's own sprint setup (#1529): a sprint block releases
@@ -209,31 +252,13 @@
 	}
 
 	// What the ride says out loud (#1792): the cues a session plays for its
-	// riders — block, auto-pause, the resume count, the spiral release, a
-	// trainer fault, a sprint, the end — from the session's own state.
-	createRideSounds({
-		fault: () => (signalLost ? 'trainer' : null),
-		sprint: () => session?.sprint ?? null,
-		guard: () => guardOfRide(session?.state),
-		spiral: () => session?.spiralActive,
-		block: () =>
-			session &&
-			session.state !== 'idle' &&
-			session.state !== 'countdown' &&
-			session.state !== 'done'
-				? session.info.segmentIndex
-				: undefined,
-		// The 3-2-1 and the go, from the session's own implementation (#1800):
-		// seconds left while counting in, 0 once the clock runs so the `go`
-		// lands, undefined when a cancelled count-in must stay silent.
-		countdown: () =>
-			session?.state === 'countdown'
-				? Math.max(1, session.countdownRemaining)
-				: session?.state === 'running'
-					? 0
-					: undefined,
-		ended: () => session?.state === 'done',
-	});
+	// riders, from the session's own state — the same wiring as /ramp's (#3359).
+	createRideSounds(
+		soloRideSounds(
+			() => session,
+			() => signalLost,
+		),
+	);
 
 	// Guard telemetry for #46: the hardware session has to produce evidence, not
 	// an anecdote. Dev-only via hwlog; plain lets, same reasoning as heardBlock.
@@ -280,25 +305,11 @@
 		}
 		const ended = buffer;
 		const id = `${current.startedAt.getTime()}`;
-		const upload: RideUpload = {
-			workoutName: workout.name,
-			workoutJson: JSON.stringify(workout),
-			startedAt: current.startedAt.toISOString(),
-			samples: current.recording.map((sample) => ({
-				watts: sample.watts,
-				cadence: sample.cadence,
-				hr: sample.heartRate,
-				// The trim this second was ridden at (#1530): without it the
-				// server re-scores the ride against the workout as written and
-				// hands back an execution the rider never saw.
-				bias: sample.bias,
-				// The workout second it was ridden at (#1733): the server scores
-				// by it, so a pause mid-block no longer shifts the rest.
-				clock: sample.clock,
-				// The guard's own seconds (#1796): never a miss.
-				released: sample.released,
-			})),
-		};
+		const upload = recordingUpload(
+			workout,
+			current.startedAt,
+			current.recording,
+		);
 		const attempt = () => {
 			saving = true;
 			retrySave = null;
@@ -354,32 +365,27 @@
 		attempt();
 	}
 
-	// A frozen number is worse than a warning: past 3 s without a sample the
-	// dashboard says so, persistently, while the driver reconnects (#37).
-	let nowMs = $state(Date.now());
-	$effect(() => {
-		const id = setInterval(() => (nowMs = Date.now()), 1000);
-		return () => clearInterval(id);
-	});
-	// From the start, not from the first sample (#1799): a trainer that
-	// streams frames without a power field never delivered one, and the ride
-	// used to run its full length with nothing on screen and "Nothing was
-	// recorded" at the end. Stamped when the CLOCK starts rather than when
-	// Start was pressed (#1800) — the count-in is not a gap in the trainer's
-	// reporting, and stamping it there had the banner up on the first tick.
-	let ridingSince: number | undefined = $state();
-	$effect(() => {
-		if (session?.state === 'running' && ridingSince === undefined)
-			ridingSince = Date.now();
-		if (!session) ridingSince = undefined;
-	});
-	const signalLost = $derived(isSignalLost(session, ridingSince, nowMs));
+	const signal = createSignalWatch(() => session);
+	const signalLost = $derived(signal.lost);
 
 	// The block, derived once for both screens that draw it — the riding
 	// surface and the TV (ADR-0046).
 	const block = $derived(
 		session && session.segments.length > 0
-			? describeBlock(session.info, session.segments, workout, ftp)
+			? describeBlock(
+					session.info,
+					session.segments,
+					workout,
+					ftp,
+					session.trace,
+					// On a route whose blocks run by the clock the road is only
+					// shown (ADR-0062's scenery); a road that pins them is ridden
+					// in ERG to its metres, the chip as ever (#3485).
+					session.road && !session.road.pinned
+						? { kind: 'scenery' }
+						: { kind: 'erg' },
+					session.road?.readout,
+				)
 			: null,
 	);
 
@@ -514,7 +520,22 @@
 <!-- px-4 on a phone is the kit's gutter (`page`, ux.md's 16 px); the ride
      surface is not a `page` — it fills the window — so it spells the two. -->
 <main class="bg-surface text-ink flex min-h-screen flex-col px-4 py-5 sm:px-6">
-	{#if !session || session.state === 'idle'}
+	{#if (roadId || planRoad) && !requested}
+		<SoloRoadRide {roadId} plan={planRoad} from={roadFrom} />
+	{:else if roadPending}
+		<Skeleton class="h-8 w-56" />
+		<Skeleton class="mt-6 h-48" />
+	{:else if roadError}
+		<Banner tone="error">
+			{roadError}
+			{#snippet action()}
+				<a
+					href="/ride?w={encodeURIComponent(requested)}"
+					class="btn-link text-xs">Ride it without the road</a
+				>
+			{/snippet}
+		</Banner>
+	{:else if !session || session.state === 'idle'}
 		<!-- Idle with a session in hand is the moment between Start and the
 		     trainer answering it (#1800): still the setup screen, because
 		     nothing is counting in yet. -->
@@ -539,7 +560,9 @@
 		{:else}
 			<PreRide
 				{workout}
-				summary={selected.summary}
+				summary={onRoad
+					? `${selected.summary} On ${onRoad.name}, from km ${formatKm(roadFrom)}.`
+					: selected.summary}
 				{ftp}
 				{solo}
 				{replayName}
@@ -603,6 +626,8 @@
 		     inside it (#2156). -->
 		{@const ride = session}
 		<TvOverlay
+			stats={session.live}
+			skyline={skylineOf(session.road, session.segments, ftp)}
 			riders={[tvRider]}
 			segments={session.segments}
 			total={session.total}

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { routeGpx, TRACK_NAME } from './route';
 import { signInAs } from './signin';
 
 /**
@@ -139,11 +140,22 @@ test('import a .erg, and refuse the files that are not one', async ({
 	await expect(page.getByRole('alert')).toContainText('not valid XML');
 
 	await input.setInputFiles({
-		name: 'plan.fit',
+		name: 'plan.mrc',
 		mimeType: 'application/octet-stream',
 		buffer: Buffer.from('not a workout'),
 	});
 	await expect(page.getByRole('alert')).toContainText('.zwo and .erg');
+
+	// A .fit is a route file since #3058, and one that is not a FIT course
+	// says so as a route.
+	await input.setInputFiles({
+		name: 'plan.fit',
+		mimeType: 'application/octet-stream',
+		buffer: Buffer.from('not a course'),
+	});
+	await expect(page.getByRole('alert')).toContainText(
+		'not a GPX, TCX or FIT route',
+	);
 
 	// And back to a good one: the surface recovers without a reload.
 	await input.setInputFiles({
@@ -155,4 +167,135 @@ test('import a .erg, and refuse the files that are not one', async ({
 	await page.getByRole('button', { name: 'Save and edit' }).click();
 	await page.waitForURL('**/workouts/edit?w=*');
 	await expect(page.getByLabel('Workout name')).toHaveValue(ERG_NAME);
+});
+
+// A route file through the same door (#3057): the file stays in the browser,
+// the preview says what it became, and Save stores the road — which then
+// reads back under its generated name.
+test('import a .gpx route, read its preview, and save it', async ({ page }) => {
+	await page.addInitScript(() =>
+		localStorage.setItem(
+			'wattroom.mixer.v1',
+			JSON.stringify({ music: 0, cues: 0, board: 0, share: 0 }),
+		),
+	);
+	await signInAs(page, 'Import Verify Route', '/workouts/import');
+
+	await page.locator('input[type=file]').setInputFiles({
+		name: 'commute.gpx',
+		mimeType: 'application/gpx+xml',
+		buffer: Buffer.from(routeGpx()),
+	});
+
+	// The generated name, never the file's own <name>.
+	const heading = page.getByRole('heading', {
+		name: /^Road · 3\.0 km · \d+ m$/,
+	});
+	await expect(heading).toBeVisible();
+	const generated = (await heading.textContent())!.trim();
+	await expect(page.getByText(TRACK_NAME)).toHaveCount(0);
+	await expect(page.getByRole('list', { name: 'Climbs' })).toContainText('IV');
+	await expect(page.getByText('At the reference pace')).toBeVisible();
+	await expect(page.getByText(/smoothing every route gets/)).toBeVisible();
+	await expect(page.getByText(/map is sealed/)).toBeVisible();
+	// Behind the roads dev gate, which a dev server opens (#3027).
+	await expect(page.getByRole('button', { name: 'Ride it now' })).toBeEnabled();
+	// A crew plans a road from its session picker; nothing here promises it.
+	await expect(
+		page.getByRole('button', { name: 'Plan it for a crew' }),
+	).toHaveCount(0);
+	await expect(page.getByText(/arrives with/)).toHaveCount(0);
+
+	await page.getByLabel('your name for it').fill('Commute climb');
+	await page.getByRole('button', { name: 'Save to my routes' }).click();
+	await expect(
+		page.getByText(/“Commute climb” is on your routes/),
+	).toBeVisible();
+
+	// Stored: the owner's name on their own read, the generated one beside it.
+	const listed = await page.request.get('/api/routes');
+	expect(listed.ok()).toBe(true);
+	const { routes } = (await listed.json()) as {
+		routes: { name: string; generatedName: string }[];
+	};
+	expect(routes).toContainEqual(
+		expect.objectContaining({
+			name: 'Commute climb',
+			generatedName: generated,
+		}),
+	);
+});
+
+/**
+ * The intervals.icu pull as the page meets it (#2327). The round trip through
+ * intervals.icu's consent page needs a registered client (#3575), so the two
+ * reads this page makes are stubbed here; the server's half is Go-tested
+ * against a hand-written fake intervals.icu. This owns the landing, the list,
+ * a preview through the same importer, a real save, and a pull read once.
+ */
+test('a pulled week lists, previews and saves, and the pull is read once', async ({
+	page,
+}) => {
+	await page.addInitScript(() =>
+		localStorage.setItem(
+			'wattroom.mixer.v1',
+			JSON.stringify({ music: 0, cues: 0, board: 0, share: 0 }),
+		),
+	);
+	await signInAs(page, 'Import Pull', '/workouts/import');
+	// This dev server has no intervals.icu client: nothing is offered.
+	await expect(
+		page.getByRole('button', { name: 'Choose a file' }),
+	).toBeVisible();
+	await expect(page.getByText('from intervals.icu')).toHaveCount(0);
+
+	const PLANNED = `Planned Tempo ${RUN}`;
+	await page.route('**/api/intervals', (route) =>
+		route.fulfill({ json: { available: true } }),
+	);
+	let opened = 0;
+	await page.route('**/api/intervals/pulls/*', (route) => {
+		opened += 1;
+		return route.fulfill({
+			json: {
+				workouts: [
+					{
+						name: PLANNED,
+						date: '2026-10-01',
+						zwo: `<workout_file><name>${PLANNED}</name><workout><SteadyState Duration="1200" Power="0.8"/></workout></workout_file>`,
+					},
+				],
+				skipped: 1,
+			},
+		});
+	});
+	await page.goto('/workouts/import?intervals=a-pull');
+
+	const row = page.getByRole('listitem').filter({ hasText: PLANNED });
+	await expect(row).toContainText('2026-10-01');
+	await expect(
+		page.getByText(
+			'1 planned item had no workout file WattRoom can read, and was left out.',
+		),
+	).toBeVisible();
+	await expect(
+		page.getByRole('link', { name: 'Pull my planned workouts' }),
+	).toHaveAttribute('href', '/api/intervals/start');
+	// Spent: a reload would not ask for it again.
+	await expect.poll(() => new URL(page.url()).search).toBe('');
+
+	await row.getByRole('button', { name: 'Preview' }).click();
+	await expect(page.getByRole('heading', { name: PLANNED })).toBeVisible();
+	await expect(page.getByText('20:00', { exact: true }).first()).toBeVisible();
+	await page.getByRole('button', { name: 'Save to my shelf' }).click();
+	await expect(row).toContainText('On your shelf');
+	expect(new URL(page.url()).pathname).toBe('/workouts/import');
+	expect(opened).toBe(1);
+
+	await page.goto('/workouts/import?intervals=denied');
+	await expect(
+		page.getByText(
+			'Nothing was pulled: intervals.icu was not given access to your calendar.',
+		),
+	).toBeVisible();
 });

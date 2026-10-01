@@ -16,6 +16,8 @@ type Control struct {
 	// For action "handoff": the rider id the session's coach hands it to
 	// (#2438) — someone in the voice channel.
 	Rider string `json:"rider,omitempty"`
+	// For actions "pick" and "game": the road it rides (#3095).
+	Route *ControlRoute `json:"route,omitempty"`
 }
 
 // IsControlAction reports whether s is one of Control.Action's words — the

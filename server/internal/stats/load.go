@@ -3,14 +3,12 @@ package stats
 import (
 	"math"
 	"time"
+
+	"github.com/natrontech/wattroom/server/internal/protocol"
 )
 
 // Training-load math per docs/SPEC.md (Training load) and ADR-0016: Coggan's
 // published formulas under trademark-safe names. Nothing here invents a number.
-
-// normPowerMinSeconds: below 20 min the rolling-4th-power estimate is not
-// meaningful (SPEC) — NormPower falls back to plain average power.
-const normPowerMinSeconds = 20 * 60
 
 // NormPower is the 30 s rolling average of 1 Hz power, each value to the 4th
 // power, meaned, 4th-rooted. Short rides return plain average power.
@@ -18,7 +16,7 @@ func NormPower(watts []int) int {
 	if len(watts) == 0 {
 		return 0
 	}
-	if len(watts) < normPowerMinSeconds {
+	if len(watts) < protocol.NormPowerMinSeconds {
 		sum := 0
 		for _, w := range watts {
 			sum += w

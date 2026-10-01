@@ -57,9 +57,11 @@ func TestARoadIsNamedByItsNumbers(t *testing.T) {
 }
 
 func TestDecodePolyline6(t *testing.T) {
-	points := [][2]float64{{47.376887, 8.541694}, {47.377001, 8.540002}, {-33.9, 151.2}}
+	// Open ocean, invented (#3505): the mid-Atlantic, a step apart, then the
+	// Tasman Sea — a negative latitude and a longitude past ±100.
+	points := [][2]float64{{12.345678, -35.791357}, {12.345791, -35.793049}, {-40.5, 160.25}}
 	got, err := DecodePolyline6(testx.Polyline6(points), 10)
-	if err != nil || len(got) != 3 || got[0].Lat != 47.376887 || got[1].Lon != 8.540002 || got[2].Lat != -33.9 {
+	if err != nil || len(got) != 3 || got[0].Lat != 12.345678 || got[1].Lon != -35.793049 || got[2].Lat != -40.5 || got[2].Lon != 160.25 {
 		t.Fatalf("decoded %+v, %v", got, err)
 	}
 	for name, s := range map[string]string{

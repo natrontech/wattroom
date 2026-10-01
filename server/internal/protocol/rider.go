@@ -1,5 +1,18 @@
 package protocol
 
+// SourceDefault is ADR-0048's word for a number nobody chose: the account was
+// created with it. The other two, "manual" and "ramp", are answers.
+const SourceDefault = "default"
+
+// SourceOf reads a stored source, which is nullable because the column had to
+// be (ADR-0019, expand only): a row with no word was never answered for.
+func SourceOf(stored *string) string {
+	if stored == nil || *stored == "" {
+		return SourceDefault
+	}
+	return *stored
+}
+
 // Rider is presence: who is in the voice channel right now, with what the
 // dashboard needs to render them. FTP crosses the wire so every screen can
 // show %FTP — scoped to the channel by design, the same visibility
@@ -18,6 +31,26 @@ type Rider struct {
 	// app already shows (#690). Identity the channel may see, the same rule
 	// the member list has followed since #253 — rides stay private.
 	TotalXp int64 `json:"totalXp"`
+	// What the rider's figure wears, by the hash GET /api/looks/{hash}
+	// answers (#3155): a compact name for the outfit, so a client fetches the
+	// outfit once and keeps it, and the outfit itself never rides the tick.
+	// The voice channel's crew is its whole audience. Empty for a rider in
+	// the starter kit.
+	Look string `json:"look,omitempty"`
+	// Where the two numbers came from (ADR-0048) — SourceDefault, "manual" or
+	// "ramp" — and when the weight last changed and when the rider last
+	// answered for it, in server millis, zero when never recorded (#3169). The
+	// channel already sees the numbers; these say how far a race may trust
+	// them, and a race reads all four at its flag (Unranked).
+	FtpSource         string `json:"ftpSource,omitempty"`
+	WeightSource      string `json:"weightSource,omitempty"`
+	WeightChangedAt   int64  `json:"weightChangedAt,omitempty"`
+	WeightConfirmedAt int64  `json:"weightConfirmedAt,omitempty"`
+	// The 90-day best 20 minutes, read at the door for a race's flag (#3658):
+	// the race FTP and the Category come from it. Server-only — a number from
+	// the rider's rides, outside this crew as much as in it, and the channel
+	// sees the bracket a race puts them in and never the watts behind it.
+	Best20mWatts int `json:"-"`
 	// Stepped out (#706). Presence, not a metric: the rider said so with the
 	// Lounge's button, and every screen renders the mark instead of leaving
 	// an open mic over an empty trainer.

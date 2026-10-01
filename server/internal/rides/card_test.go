@@ -74,3 +74,33 @@ func TestCardAuthorization(t *testing.T) {
 		})
 	}
 }
+
+// A road ride's card is its poster, named by the route's generated name
+// (#3142, #3055) — even a ride saved before road rides were kept under it,
+// still carrying the owner's own name for the road.
+func TestARoadRideCardIsNamedByItsGeneratedName(t *testing.T) {
+	h := setup(t)
+	routeID, _ := storeRoute(t, h, "alice")
+	status, got := call(t, h.mux, "alice", http.MethodPost, "/api/rides", freeRideOn(routeID, 8, ""))
+	if status != http.StatusCreated {
+		t.Fatalf("save: %d %v", status, got)
+	}
+	id, _ := got["id"].(string)
+	if _, err := h.store.Pool.Exec(t.Context(), `update rides set workout_name = 'My street to work' where id = $1`, id); err != nil {
+		t.Fatal(err)
+	}
+	w := cardRequest(t, h, "alice", id)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", w.Code, w.Body.String())
+	}
+	if cd := w.Header().Get("Content-Disposition"); !strings.Contains(cd, "road-5-0-km-100-m") || strings.Contains(cd, "street") {
+		t.Errorf("the poster is named %q; want the generated name and never the owner's", cd)
+	}
+	if _, err := png.Decode(bytes.NewReader(w.Body.Bytes())); err != nil {
+		t.Fatalf("decode PNG: %v", err)
+	}
+	// And the ride's page knows it rode a road, so its button offers the poster.
+	if _, detail := call(t, h.mux, "alice", http.MethodGet, "/api/rides/"+id, ""); detail["distanceM"] == nil {
+		t.Errorf("the ride's page carries no distance: %v", detail)
+	}
+}

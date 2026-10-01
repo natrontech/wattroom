@@ -96,7 +96,7 @@ func TestPokeCooldownAnswersRateLimited(t *testing.T) {
 }
 
 func TestRoomAndHubShareOneClock(t *testing.T) {
-	// newRoom defaults to time.Now and Hub.room() never overrode it, so
+	// newChannelState defaults to time.Now and Hub.stateOf() never overrode it, so
 	// join/leave/setAway/setMetrics/fire stamped on one function and
 	// run/sayDepartedLocked/rm.allow on another — identical in production,
 	// divergent the moment either is injected, which is what the tests do.
@@ -104,7 +104,7 @@ func TestRoomAndHubShareOneClock(t *testing.T) {
 	frozen := time.Unix(1_700_000_000, 0)
 	h.now = func() time.Time { return frozen } // before any room exists
 
-	rm := h.room("velvet")
+	rm := h.stateOf("velvet")
 	if got := rm.now(); !got.Equal(frozen) {
 		t.Fatalf("room clock = %v, hub clock = %v", got, frozen)
 	}
@@ -130,7 +130,7 @@ func TestIdleTrainerIsNotASecondSprinter(t *testing.T) {
 	// second — five whole seconds of samples, ranked at 0.0 w/kg, and
 	// minSprintField read a field of two. The one person who sprinted took
 	// the podium and the Sprint Snob credit off nobody (#2235).
-	rm := newRoom("velvet")
+	rm := newChannelState("velvet")
 	ada := &client{rider: protocol.Rider{ID: "ada", Name: "Ada", WeightKg: 60}}
 	idle := &client{rider: protocol.Rider{ID: "idle", Name: "Idle", WeightKg: 70}}
 	rm.join(ada)
@@ -171,7 +171,7 @@ func TestCollectiveRampEndsOnTheTimeline(t *testing.T) {
 	// The collective branch sets finished and builds no podium, so
 	// advanceGameLocked's `len(gs.Podium) > 0` was false and a game the whole
 	// room had just ridden left the timeline empty (ADR-0022).
-	rm := newRoom("velvet")
+	rm := newChannelState("velvet")
 	if refusal := rm.startGame("collective-ramp", gameStarter, gat(0)); refusal != "" {
 		t.Fatal(refusal)
 	}
@@ -218,7 +218,7 @@ func TestCollectiveRampEndsOnTheTimeline(t *testing.T) {
 func TestEndGameSaysSoOnce(t *testing.T) {
 	// The coach's out, and the only end Team Relay has — relay.done() is
 	// never true, so nothing else was ever going to say the paceline stopped.
-	rm := newRoom("velvet")
+	rm := newChannelState("velvet")
 	if refusal := rm.startGame("team-relay", gameStarter, gat(0)); refusal != "" {
 		t.Fatal(refusal)
 	}
@@ -234,7 +234,7 @@ func TestEndGameSaysSoOnce(t *testing.T) {
 
 	// A coach clearing a podium that already announced itself is not a second
 	// ending: advanceGameLocked stamped gameDoneAt when it put the line up.
-	rm2 := newRoom("velvet")
+	rm2 := newChannelState("velvet")
 	if refusal := rm2.startGame("collective-ramp", gameStarter, gat(0)); refusal != "" {
 		t.Fatal(refusal)
 	}

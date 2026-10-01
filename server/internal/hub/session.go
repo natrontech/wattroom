@@ -48,6 +48,12 @@ type session struct {
 	// A game session has no timeline of its own: it runs with no length, does
 	// not pause, and the game's end is its end.
 	game string
+	// The road it rides (#3095), from the pick or the game that opened it;
+	// nil rides none. Replaced whole, never written through: state() hands
+	// the pointer to a tick that is encoded after the lock is let go.
+	route *routeRide
+	// The bunch on that road (#3028): built at each start, nil without one.
+	bunch *bunch
 	// Who joined it (ADR-0059): only they are driven and counted. The one
 	// who opened it is in from the start; everyone else in the channel
 	// spectates until they join. Bounded by riders who entered the channel.
@@ -98,11 +104,24 @@ func (s *session) join(riderID string, in bool) bool {
 // rides, the recap and the radar show, and JSON the saver can parse.
 func (s *session) runGame(mode, name string, now time.Time) {
 	s.game = mode
-	s.workoutName, s.workoutJSON = name, gameWorkoutJSON(name)
+	s.workoutName, s.workoutJSON = name, gameWorkoutJSON(mode, name)
 	s.workoutHash = workoutHash(s.workoutJSON)
 	s.totalSeconds, s.segments = 0, nil
 	s.phase, s.startedAt, s.banked = "running", now, 0
 	s.run++
+	// A race rides no bunch: each racer has their own place on the road
+	// (ADR-0067), and riding together is never mixed into one.
+	if mode != modeRace {
+		s.startBunch(now)
+	}
+}
+
+// startBunch puts a new run's bunch at the start of its road.
+func (s *session) startBunch(now time.Time) {
+	s.bunch = nil
+	if s.route != nil {
+		s.bunch = newBunch(s.route, now)
+	}
 }
 
 // drop closes a session that never started (#2438): an admin clearing a
@@ -144,6 +163,7 @@ func (s *session) start(now time.Time) bool {
 	s.banked = 0
 	s.segments, _ = workout.Parse(s.workoutJSON)
 	s.run++
+	s.startBunch(now)
 	return true
 }
 
@@ -202,6 +222,7 @@ func (s *session) state(now time.Time) protocol.SessionState {
 				Phase: "countdown", CountdownRemaining: remaining,
 				ID: s.id, Coach: s.coach, CoachName: s.coachName,
 				WorkoutName: s.workoutName, WorkoutJSON: s.workoutJSON, WorkoutHash: s.workoutHash, TotalSeconds: s.totalSeconds,
+				Route: s.route.ref(),
 			}
 		}
 		// The countdown elapsed; the timeline started the instant it hit zero.
@@ -232,6 +253,7 @@ func (s *session) state(now time.Time) protocol.SessionState {
 		Phase: s.phase, Elapsed: elapsed,
 		ID: s.id, Coach: s.coach, CoachName: s.coachName,
 		WorkoutName: s.workoutName, WorkoutJSON: s.workoutJSON, WorkoutHash: s.workoutHash, TotalSeconds: s.totalSeconds,
+		Route: s.route.ref(),
 	}
 }
 

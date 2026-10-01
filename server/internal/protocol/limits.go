@@ -106,6 +106,38 @@ const (
 	// How many voice channels a crew holds — MaxCrewTextChannels' rule.
 	MaxCrewVoiceChannels = 10
 
+	// A text channel keeps its newest lines (docs/SPEC.md "Text channel
+	// chat", default — tune in alpha): the prune on every write keeps this
+	// many, and a backlog read returns at most this many. A DM pair keeps the
+	// same: SPEC's one 500-message bound, which a temporary line counts
+	// toward in either.
+	MaxChannelLines = 500
+
+	// A ride the saver keeps is at least a minute of samples: fewer is a
+	// misclick, not a ride. The hub's saver, POST /api/rides, the browser's
+	// crash recovery and the closing summary all hold this one line.
+	MinRideSamples = 60
+	// A recorded sample's bounds (watts 0–3000; a track sprinter peaks near
+	// 2000 W): the WS metrics gate, POST /api/rides and a FIT export all
+	// refuse a sample outside them.
+	MaxWatts     = 3000
+	MaxCadence   = 250
+	MaxHeartRate = 250
+	// An uploaded or exported ride is at most 6 h at 1 Hz — longer than any
+	// indoor session anyone rides — so a request cannot allocate past it.
+	MaxRideSamples = 6 * 60 * 60
+	// A rider's bias, the trim on their own targets (#795, docs/SPEC.md):
+	// the workout clamps it here, and the server refuses a sample outside.
+	MinBias = 0.8
+	MaxBias = 1.2
+	// Normalised power below 20 minutes is not meaningful (docs/SPEC.md
+	// "Stats formulas"): shorter rides show plain average power, on the
+	// server's stats and the ride page alike (#1542).
+	NormPowerMinSeconds = 20 * 60
+	// A playhead past six hours is not a party track: every seek is clamped
+	// here, live on the deck and saved in a playlist, and in the browser.
+	MaxSeekSeconds = 6 * 60 * 60
+
 	// The tolerance band a second is scored in: within ±5 % of target, floor
 	// ±10 W (#2159). The floor is what keeps an easy block scoreable — at
 	// 60 W, 5 % is 3 W, which is inside a trainer's own error.
@@ -127,6 +159,22 @@ const (
 	MaxRouteMeters  = 200000
 	MinRoadGradePct = -15
 	MaxRoadGradePct = 20
+
+	// What a crew is sent of a route that is not theirs (ADR-0063, #3051):
+	// the road between its anchors, which until the geo pack draws zones are
+	// this far in from each end — a route hides its first and last metres by
+	// default — and at most this many bytes of it, packed, on a workout.
+	RouteHiddenEndM      = 400
+	MaxAttachedRoadBytes = 48 << 10
+
+	// A leg (docs/SPEC.md "Route rides"): the stretch of a route ridden in
+	// one sitting is at most six hours, so a long route compiles into legs.
+	MaxLegSeconds = 6 * 60 * 60
+
+	// ADR-0065's 150 % of FTP (docs/SPEC.md "Riding a road together"): the
+	// pace of a sprint block, and the most any one rider adds to a road
+	// step's live mean. Terrain Match rides a sprint at it too (#3099).
+	BunchMaxPct = 1.5
 
 	// The range every SIM write is clamped to (docs/SPEC.md "Route rides",
 	// ADR-0062): one range for every trainer, since FTMS cannot report an
@@ -192,6 +240,25 @@ const (
 	CPLongSeconds          = 720
 	CPEstimateShortSeconds = 300
 	CPEstimateLongSeconds  = 1200
+
+	// Climbs (docs/SPEC.md "Climbs", Garmin's rule; #3047, #3238): at least
+	// ClimbMinM long, averaging ClimbMinPct, scoring ClimbMinScore — length
+	// in m × average %, 100 × the gain. A class is held when the score is
+	// above its floor. A dip that loses less than ClimbDipLossM and is back
+	// over the top within ClimbDipM does not end a climb, and a road keeps
+	// its hardest MaxClimbs. $lib/road/climbs.ts and internal/road run the one
+	// rule on these.
+	ClimbMinM     = 500
+	ClimbMinPct   = 3
+	ClimbMinScore = 1500
+	ClimbClassIV  = 8000
+	ClimbClassIII = 16000
+	ClimbClassII  = 32000
+	ClimbClassI   = 64000
+	ClimbClassHC  = 80000
+	ClimbDipLossM = 20
+	ClimbDipM     = 300
+	MaxClimbs     = 32
 	// The reference rider (docs/SPEC.md): 75 kg on an 8 kg bike at 225 W —
 	// whom a road's estimates are made for when no real rider is in question.
 	ReferenceRiderKg    = 75

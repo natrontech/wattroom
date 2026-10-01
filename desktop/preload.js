@@ -70,10 +70,18 @@ contextBridge.exposeInMainWorld('wattroom', {
 	// menu item coming back, as a path for the app to route to rather than a
 	// navigation that would reload the ride out from under the rider.
 	setRoom: (room) => ipcRenderer.send('wattroom:room', room),
+	// The unread badge (#3008): the sidebar's own count, for the Dock or the
+	// taskbar icon. The shell draws it and decides nothing about it.
+	setBadge: (count) => ipcRenderer.send('wattroom:badge', count),
 	onNavigate: (cb) => ipcRenderer.on('wattroom:go', (_event, to) => cb(to)),
 	// Launch at login (#1313). `supported` is false where this build cannot
 	// touch the login items at all, and the setting hides rather than
 	// offering a switch that fails on click.
 	launchAtLogin: () => ipcRenderer.invoke('wattroom:login-item'),
 	setLaunchAtLogin: (on) => ipcRenderer.invoke('wattroom:login-item-set', on),
+	// Whether the rider's window is showing (#3005, #3079): a close hides it
+	// rather than destroying it, and the page hears both directions — to
+	// leave voice on a hide, and to pause what nobody can see.
+	onVisibility: (cb) =>
+		ipcRenderer.on('wattroom:visibility', (_event, visible) => cb(visible)),
 });

@@ -11,14 +11,14 @@ import (
 // joinRide puts riders on the session's timeline (ADR-0059). A test that
 // built its timeline with a bare pick has no session id and gets one, since
 // only an open session has riders.
-func joinRide(rm *room, ids ...string) {
+func joinRide(rm *channelState, ids ...string) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	joinRideLocked(rm, ids...)
 }
 
 // joinRideLocked is joinRide for a test already holding rm.mu.
-func joinRideLocked(rm *room, ids ...string) {
+func joinRideLocked(rm *channelState, ids ...string) {
 	// A bare pick has no id and no coach; the first rider coaches it, as
 	// the one who picks through control would.
 	if rm.session.id == "" && len(ids) > 0 {

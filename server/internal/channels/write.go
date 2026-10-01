@@ -326,7 +326,7 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 		s.log.Info("crew deleted with its last channel", "crew", store.UUIDString(channel.CrewID))
 	}
 	if channel.Kind == kindVoice && s.live != nil {
-		s.live.CloseRoom(store.UUIDString(channel.ID))
+		s.live.CloseChannel(store.UUIDString(channel.ID))
 	}
 	s.changed(r.Context(), channel.CrewID, user.ID)
 	w.WriteHeader(http.StatusNoContent)

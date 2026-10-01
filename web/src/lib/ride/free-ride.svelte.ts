@@ -1,20 +1,19 @@
 import { account } from '$lib/account.svelte';
-import { MaxTrainerGrade } from '$lib/protocol';
-import { ROAD } from '$lib/ride/ride-grade';
-import { MIN_SAMPLES, openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
+import { MinRideSamples } from '$lib/protocol';
+import {
+	openingWatts,
+	nudged,
+	type FreeMode,
+} from '$lib/ride/free-ride-controls';
+import { ergByRoad } from '$lib/ride/ride-grade';
+import { gearsEnabled } from '$lib/ride/gears-enabled';
+import { createRoadReadout } from '$lib/ride/road-readout';
+import { createRoadLaps, type RoadSecond } from '$lib/ride/road-ride';
+import type { RideableRoute } from '$lib/ride/roads';
+import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
+import { createLiveStats } from '$lib/ride/live-stats.svelte';
 import { uploadRide, type RideUpload, type SaveFailure } from '$lib/ride/save';
-
-/**
- * docs/SPEC.md's free ride (ADR-0059) — defaults, tune in alpha. Its grade
- * range is the felt grade's: the felt floor, and ADR-0062's one ceiling.
- */
-export const GRADE = {
-	step: 0.5,
-	min: ROAD.feltMin,
-	max: MaxTrainerGrade,
-} as const;
-export const WATTS = { step: 10, min: 50, max: 1000 } as const;
-const OPENING_FTP_FRACTION = 0.55;
+import { DEFAULTS } from '$lib/workout/guards';
 
 /** The empty, unscored workout a free ride saves as — a game's shape. */
 export const FREE_RIDE_NAME = 'Free ride';
@@ -24,27 +23,8 @@ export const FREE_RIDE_JSON = JSON.stringify({
 	steps: [],
 });
 
-export type FreeMode = 'grade' | 'watts';
 export type FreeRideOutcome =
 	{ saved: { id: string } } | { failure: SaveFailure } | { short: true };
-
-const clamp = (value: number, { min, max }: { min: number; max: number }) =>
-	Math.min(max, Math.max(min, value));
-
-/** Where watts mode opens: an easy spin, on the 10 W grid. */
-export function openingWatts(ftp: number): number {
-	return clamp(
-		Math.round((OPENING_FTP_FRACTION * ftp) / WATTS.step) * WATTS.step,
-		WATTS,
-	);
-}
-
-/** One press of − or +, snapped to the mode's grid and held in its bounds. */
-export function nudged(mode: FreeMode, value: number, dir: 1 | -1): number {
-	const range = mode === 'grade' ? GRADE : WATTS;
-	const next = Math.round((value + dir * range.step) / range.step) * range.step;
-	return clamp(next, range);
-}
 
 /**
  * A free ride (ADR-0059): riding a voice channel with no session and no
@@ -64,6 +44,8 @@ export function nudged(mode: FreeMode, value: number, dir: 1 | -1): number {
 export function createFreeRide(deps: {
 	ftp: () => number;
 	singleSpeed?: () => boolean;
+	/** The rider's weight, kg: a road's dot carries it (#3027). */
+	kg?: () => number;
 }) {
 	let armed = $state(false);
 	/** The mode the rider picked; null until they pick one. */
@@ -78,8 +60,41 @@ export function createFreeRide(deps: {
 	let saving = $state(false);
 	let outcome = $state<FreeRideOutcome | null>(null);
 	let samples: RideUpload['samples'] = [];
+	// The bike computer's numbers (#3068, #3088): no blocks and no target —
+	// a free ride is unscored — so its block numbers are the ride's.
+	const live = createLiveStats(deps.ftp);
 	let rideId = '';
 	let buffer: RideBuffer | null = null;
+	// A road is an attribute of the free ride, not a mode (#3027, decided
+	// 2026-09-28): Grade reads Road on one, and Watts rides ERG by the road.
+	let onRoad = $state.raw<{
+		route: RideableRoute;
+		laps: ReturnType<typeof createRoadLaps>;
+	} | null>(null);
+	let here = $state.raw<RoadSecond | null>(null);
+	// The route a ride on it saves against: never a borrowed one (#3621).
+	const saveOn = $derived(
+		onRoad && !onRoad.route.borrowed ? onRoad.route : null,
+	);
+	const readoutAt = createRoadReadout();
+	const road = $derived(
+		onRoad && here
+			? {
+					id: onRoad.route.id,
+					name: onRoad.route.name,
+					length: onRoad.route.road.length,
+					lap: onRoad.laps.lap,
+					borrowed: !!onRoad.route.borrowed,
+					/** The road's own heights, for the Skyline (#3059). */
+					profile: onRoad.route.road,
+					/** This lap rides it back from the far end: `m` counts down. */
+					reverse: onRoad.laps.reverse,
+					/** Where it is, as the HUD says it (#3639). */
+					readout: readoutAt(onRoad.route.road, here.m, onRoad.laps.reverse),
+					...here,
+				}
+			: null,
+	);
 
 	return {
 		get armed() {
@@ -94,12 +109,29 @@ export function createFreeRide(deps: {
 		get watts() {
 			return watts ?? openingWatts(deps.ftp());
 		},
+		/** The road under the ride, and where on it; null off a road. */
+		get road() {
+			return road;
+		},
+		/**
+		 * The watts the trainer holds: the rider's own in watts mode, or on a
+		 * road the road's (ERG by the road, docs/SPEC.md); none in grade mode.
+		 */
+		get targetWatts() {
+			if (mode !== 'watts') return 0;
+			return road
+				? ergByRoad(deps.ftp(), road.roadPct)
+				: (watts ?? openingWatts(deps.ftp()));
+		},
 		/** Pedalled at least once since it was armed. */
 		get recording() {
 			return startedAt !== null;
 		},
 		get seconds() {
 			return seconds;
+		},
+		get live() {
+			return live.current;
 		},
 		get saving() {
 			return saving;
@@ -114,17 +146,64 @@ export function createFreeRide(deps: {
 			if (next === 'watts' && watts === null) watts = openingWatts(deps.ftp());
 			picked = next;
 		},
+		/**
+		 * Onto a road, before the ride starts: a ride saved against a route is
+		 * ridden on it from its first second. `from` is a resumed ride's metre.
+		 */
+		ride(route: RideableRoute, from = 0) {
+			if (startedAt !== null) return;
+			const laps = createRoadLaps(route.road, {
+				kg: () => deps.kg?.() ?? 0,
+				from,
+			});
+			onRoad = { route, laps };
+			here = laps.second(0, Date.now());
+		},
+		/** Off the road again, before the ride starts. */
+		leaveRoad() {
+			if (startedAt !== null) return;
+			onRoad = null;
+			here = null;
+		},
+		/**
+		 * At the end of the road (#3205): back the way you came, or from the
+		 * start again — the same ride, one more lap.
+		 */
+		turn(way: 'back' | 'again') {
+			if (!onRoad || !here?.atEnd) return;
+			onRoad.laps.turn(way);
+			here = { ...here, atEnd: false };
+		},
 		nudge(dir: 1 | -1) {
 			if (mode === 'grade') grade = nudged('grade', grade, dir);
 			else watts = nudged('watts', watts ?? openingWatts(deps.ftp()), dir);
 		},
 		/** One counted second from the trainer, while no session drives it. */
-		second(sample: { watts: number; cadence: number; hr: number }) {
-			if (!armed || (sample.watts <= 0 && sample.cadence <= 0)) return;
+		second(sample: {
+			watts: number;
+			cadence: number;
+			hr: number;
+			/** On a road, the dot's speed: a coasted descent is ridden (#3056). */
+			virtualMps?: number;
+			/** ms epoch; the road's dot moves by the time between samples. */
+			at?: number;
+		}) {
+			// On a road the dot moves first: whether this second counts reads
+			// its speed, and the trainer's next grade is read where it lands.
+			// The sample keeps where the second began, as the server's replay
+			// steps it (ADR-0074): a ride from km 0 keeps from_m 0 (#3615).
+			const began = here;
+			if (armed && onRoad)
+				here = onRoad.laps.second(sample.watts, sample.at ?? Date.now());
+			const virtualMps = here?.virtualMps ?? sample.virtualMps ?? 0;
+			const rolling = virtualMps > DEFAULTS.ridingMps;
+			if (!armed || (sample.watts <= 0 && sample.cadence <= 0 && !rolling))
+				return;
 			if (startedAt === null) {
 				startedAt = Date.now();
 				outcome = null;
 				samples = [];
+				live.reset();
 				rideId = crypto.randomUUID();
 				buffer = null;
 				const opening = rideId;
@@ -134,18 +213,28 @@ export function createFreeRide(deps: {
 					startedAt,
 					workoutName: FREE_RIDE_NAME,
 					workoutJson: FREE_RIDE_JSON,
+					...(saveOn && { routeId: saveOn.id }),
 				}).then((opened) => {
 					if (rideId === opening) buffer = opened;
 					else opened.release();
 				});
 			}
-			samples.push(sample);
+			// The upload's own fields: its decoder refuses anything else.
+			const place = began && onRoad?.laps.fields(began);
+			samples.push({
+				watts: sample.watts,
+				cadence: sample.cadence,
+				hr: sample.hr,
+				...place,
+			});
 			seconds = samples.length;
+			live.push({ watts: sample.watts });
 			buffer?.append({
 				seq: samples.length,
 				watts: sample.watts,
 				cadence: sample.cadence,
 				heartRate: sample.hr,
+				...place,
 				at: Date.now(),
 			});
 		},
@@ -162,13 +251,22 @@ export function createFreeRide(deps: {
 				workoutJson: FREE_RIDE_JSON,
 				startedAt: new Date(startedAt).toISOString(),
 				samples,
+				...(saveOn && {
+					routeId: saveOn.id,
+					drive:
+						mode === 'watts'
+							? ('ergByRoad' as const)
+							: gearsEnabled()
+								? ('gears' as const)
+								: ('sim' as const),
+				}),
 			};
 			const ended = buffer;
 			startedAt = null;
 			seconds = 0;
 			samples = [];
 			// The buffer never offers a ride this short back either.
-			if (ride.samples.length < MIN_SAMPLES) {
+			if (ride.samples.length < MinRideSamples) {
 				ended?.end();
 				outcome = { short: true };
 				return outcome;

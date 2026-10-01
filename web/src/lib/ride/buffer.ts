@@ -13,6 +13,7 @@
  * reported as `crashSafe` and shown as persistent status (#1466 finding 4,
  * ADR-0052 rule 3).
  */
+import { MinRideSamples } from '$lib/protocol';
 export interface BufferedSample {
 	/** Strictly increasing per ride; doubles as the WS seq for server dedupe. */
 	seq: number;
@@ -25,6 +26,13 @@ export interface BufferedSample {
 	clock?: number;
 	/** The guard had the trainer off the target this second (#1796). */
 	released?: boolean;
+	/** On a road, metres along it (#3027): where a resumed ride starts again. */
+	m?: number;
+	/** And the road's height there, as the save carries it. */
+	alt?: number;
+	/** Its lap, and on a lap's first sample which way it runs (#3205). */
+	lap?: number;
+	reverse?: boolean;
 	/** ms epoch */
 	at: number;
 }
@@ -50,14 +58,17 @@ export interface RideMeta {
 	 * this existed; the retry hides itself for those.
 	 */
 	workoutJson?: string;
+	/**
+	 * The stored route a free ride on a road rode (#3027): a recovered one
+	 * saves against it, and offers to carry on along it.
+	 */
+	routeId?: string;
 	/** Set when the ride is SAVED, not when the recording stops (#794). */
 	endedAt?: number;
 }
 
 const DB_NAME = 'wattroom-rides';
 const KEEP_RIDES = 5;
-/** Under a minute of samples is a misclick, not a lost ride. */
-export const MIN_SAMPLES = 60;
 
 /** Every sample of one ride — the store's key is [rideId, seq]. */
 function samplesOf(rideId: string): IDBKeyRange {
@@ -236,7 +247,7 @@ export async function unfinishedRides(
 		// Still being recorded, here or in another tab: not a crash (#2617).
 		if (ride.endedAt || held.has(RECORDING + ride.rideId)) continue;
 		const samples = await readSamples(db, ride.rideId);
-		if (samples.length >= MIN_SAMPLES) out.push({ ...ride, samples });
+		if (samples.length >= MinRideSamples) out.push({ ...ride, samples });
 	}
 	return out;
 }
@@ -284,7 +295,7 @@ export function stale(rides: Array<RideMeta & { samples: number }>): string[] {
 	[...rides]
 		.sort((a, b) => b.startedAt - a.startedAt)
 		.forEach((ride, i) => {
-			const recoverable = !ride.endedAt && ride.samples >= MIN_SAMPLES;
+			const recoverable = !ride.endedAt && ride.samples >= MinRideSamples;
 			if (recoverable) unsaved++;
 			if (i >= KEEP_RIDES && (!recoverable || unsaved > KEEP_RIDES))
 				out.push(ride.rideId);

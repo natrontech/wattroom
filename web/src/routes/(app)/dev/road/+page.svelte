@@ -5,6 +5,7 @@
 	 * it keeps, and what it would send. A loaded file never leaves the tab.
 	 */
 	import { hairpinsOf } from '$lib/road/climbs';
+	import { planPath, profilePath } from '$lib/road/draw';
 	import { FIXTURES, toGpx } from '$lib/road/fixtures';
 	import { parseRoute, type RouteSource } from '$lib/road/parse';
 	import { packRoad, roadHash, roadStep } from '$lib/road/road';
@@ -45,35 +46,13 @@
 
 	pickFixture(Object.keys(FIXTURES)[0]);
 
-	/** The line from above, north up, fitted to the box with its aspect kept. */
-	const plan = $derived.by(() => {
-		if (!built) return '';
-		const { x, z } = built.route;
-		const [x0, x1] = [Math.min(...x), Math.max(...x)];
-		const [z0, z1] = [Math.min(...z), Math.max(...z)];
-		const k = Math.min(
-			(W - 20) / (x1 - x0 || 1),
-			(H * 2 - 20) / (z1 - z0 || 1),
-		);
-		return Array.from(
-			x,
-			(xi, i) =>
-				`${i ? 'L' : 'M'}${(10 + (xi - x0) * k).toFixed(1)} ${(10 + (z[i] - z0) * k).toFixed(1)}`,
-		).join(' ');
-	});
-
+	const plan = $derived(
+		built ? planPath(built.route.x, built.route.z, W, H * 2) : '',
+	);
 	/** Heights by distance, as the road keeps them every ~20 m. */
-	const profile = $derived.by(() => {
-		if (!built) return '';
-		const { heights } = built.route.road;
-		const [lo, hi] = [Math.min(...heights), Math.max(...heights)];
-		return heights
-			.map(
-				(h, i) =>
-					`${i ? 'L' : 'M'}${((i / (heights.length - 1)) * W).toFixed(1)} ${(H - 10 - ((h - lo) / (hi - lo || 1)) * (H - 20)).toFixed(1)}`,
-			)
-			.join(' ');
-	});
+	const profile = $derived(
+		built ? profilePath(built.route.road.heights, W, H) : '',
+	);
 </script>
 
 <main class="mx-auto max-w-4xl px-6 py-10">

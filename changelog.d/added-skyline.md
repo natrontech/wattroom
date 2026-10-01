@@ -1,0 +1,1 @@
+- Riding a road now shows the road ahead under your numbers: the next kilometres shaded by steepness, each classified climb marked where it tops out, and your dot moving along it. It looks further ahead the faster you go, and for a rider who asked for less motion it moves once a second.

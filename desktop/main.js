@@ -2,31 +2,39 @@
 //
 // A window, a permission boundary, and the handlers Electron makes mandatory.
 // It holds no product code: it loads the deployed web app, so the UI ships on
-// every server deploy and a desktop release only happens when this file
-// changes.
+// every server deploy and a desktop release only happens when the shell
+// changes. What would crowd this file lives beside it: the window's state,
+// notifications, the HUD, deep links, the updater, the Bluetooth chooser and
+// the permission handlers each have a module.
 //
-// Everything interesting here is in the four handlers (RESEARCH.md §15.1).
-// Electron is not a browser with a title bar — each of these is something
-// Chrome does for you, and each one's absence looks like a bug in WattRoom
-// rather than a missing handler.
+// Everything interesting is in the four handlers (RESEARCH.md §15.1):
+// Bluetooth (bluetooth.js), permissions and screen share (permissions.js),
+// and navigation (guardNavigation, below). Electron is not a browser with a
+// title bar — each of these is something Chrome does for you, and each one's
+// absence looks like a bug in WattRoom rather than a missing handler.
 
 const {
 	app,
 	BrowserWindow,
-	desktopCapturer,
-	dialog,
 	ipcMain,
 	Menu,
 	MenuItem,
-	Notification,
 	powerSaveBlocker,
-	screen,
 	shell,
 } = require('electron');
-const fs = require('node:fs');
 const path = require('node:path');
+const badge = require('./badge');
+const bluetooth = require('./bluetooth');
+const deepLink = require('./deep-link');
+const hud = require('./hud');
+const log = require('./log');
 const loginItem = require('./login-item');
+const notifications = require('./notifications');
+const permissions = require('./permissions');
 const tray = require('./tray');
+const updater = require('./updater');
+const visibility = require('./visibility');
+const windowState = require('./window-state');
 
 // Where the shell points. The default is production; a dev build overrides it
 // to a worktree's own Vite port (`make dev-env` prints it).
@@ -39,6 +47,13 @@ const APP_ORIGIN = new URL(APP_URL).origin;
 // sandboxed, and this is the same number in both.
 const SHELL_VERSION = require('./package.json').version;
 
+// Before anything can warn: stdout goes nowhere in a packaged app (#3012).
+const LOG_FILE = log.teeConsole(path.join(app.getPath('logs'), 'main.log'));
+log.append(
+	LOG_FILE,
+	`${new Date().toISOString()} start ${SHELL_VERSION}${app.isPackaged ? '' : ' (unpackaged)'} ${process.platform}\n`,
+);
+
 // The OS title bar is hidden and the web app draws the strip (#1188): macOS
 // drew a white bar over a dark app, and a bar the app owns follows its theme
 // and its typography. This is its height; the preload hands it to the app
@@ -46,86 +61,40 @@ const SHELL_VERSION = require('./package.json').version;
 // overlay controls are placed to sit inside it.
 const TITLE_BAR_PX = 32;
 
-// How long a scan may find NOTHING before the rider gets an answer. A trainer
-// woken by the cranks is advertising within a couple of seconds; past this it
-// is asleep, and saying so beats a button that never comes back. It stops
-// counting the moment the first device is heard: from there the picker is on
-// screen and the decision is the rider's, not a deadline's.
-const PAIRING_TIMEOUT_MS = 20_000;
-
-// Whether the loaded web app draws the device picker (#1716). The shell and
-// the app release on separate trains, so a shell newer than wattroom.ch is an
-// ordinary state — registering the listener is the handshake, and without it
-// the native message box below is still the answer.
-let pickerReady = false;
-// Registering the listener is the app saying it can draw the picker.
-ipcMain.on('wattroom:ble-picker-ready', () => {
-	pickerReady = true;
-});
+/** The shell's own offline screen, the one page not on APP_ORIGIN that speaks to it. */
+const OFFLINE_URL = require('node:url').pathToFileURL(
+	path.join(__dirname, 'offline.html'),
+).href;
 
 /**
- * The Bluetooth request currently open, if any.
- *
- * Chromium runs one chooser at a time and cancels the old one when a new
- * request starts, so a single slot is the whole state machine. Module scope
- * rather than per-window, like every other ipcMain handler here: the rider's
- * answer arrives on a channel, not through a window.
+ * Whether an IPC message came from our own page (#3010, Electron's security
+ * checklist, item 17): the app on APP_ORIGIN, or the offline screen. The
+ * preload runs only in the main frame and the navigation guard keeps that
+ * frame on our origin, so this is the second line — the one that still holds
+ * the day either of those changes. A frame that is gone has no URL, and is
+ * refused.
  */
-let scan = null;
-
-/** Answer the chooser once, whichever emit's callback is current. */
-function settleScan(deviceId) {
-	if (!scan) return;
-	clearTimeout(scan.timer);
-	const { answer, contents } = scan;
-	scan = null;
-	if (!contents.isDestroyed()) contents.send('wattroom:ble-scan', null);
-	answer(deviceId);
+function fromUs(event) {
+	const url = event?.senderFrame?.url;
+	if (typeof url !== 'string') return false;
+	return isOurs(url) || url.split(/[?#]/)[0] === OFFLINE_URL;
 }
-
-// The rider picked, or closed the picker. Ignored when no request is open:
-// a stale answer must never settle the NEXT one.
-ipcMain.on('wattroom:ble-pick', (_event, deviceId) =>
-	settleScan(deviceId || ''),
-);
-
-// True only for the launch warm-up (warmBluetooth), so its chooser is answered
-// rather than shown.
-let warmingBluetooth = false;
 
 /**
- * Spend the first Bluetooth failure at launch, where nobody is waiting (#1545).
- *
- * Chromium creates the CoreBluetooth manager on the FIRST requestDevice and
- * reports the adapter powered-off until it answers, ~300 ms later. Chrome's own
- * chooser draws "turn Bluetooth on" and recovers when it does; Electron turns
- * the same signal into a cancelled chooser, and `select-bluetooth-device` never
- * fires — so nothing in this file can see that request, let alone retry it. The
- * rider's first pairing attempt of every launch failed with "User cancelled",
- * having asked them nothing.
- *
- * `true` is the user-gesture argument: requestDevice needs transient activation.
- *
- * Packaged builds only. TCC does not accept the prebuilt Electron's Info.plist,
- * so an unpackaged shell is SIGABRTed the moment anything touches CoreBluetooth
- * — a dev shell cannot pair a trainer on macOS at all, and warming one at
- * launch would kill `pnpm start` on the spot.
+ * `ipcMain.on` and `.handle`, answering only `fromUs`. Every handler goes
+ * through here so a new one cannot forget the check; smoke.spec.js refuses a
+ * bare `ipcMain.on(` or `.handle(` anywhere else in this file.
  */
-function warmBluetooth(win) {
-	if (!app.isPackaged) return;
-	warmingBluetooth = true;
-	win.webContents
-		.executeJavaScript(
-			`navigator.bluetooth?.requestDevice({ filters: [{ services: ['fitness_machine'] }] }).catch(() => {})`,
-			true,
-		)
-		.catch(() => {
-			/* no Web Bluetooth (the offline screen is a file:// page) */
-		})
-		.finally(() => {
-			warmingBluetooth = false;
-		});
-}
+const ipc = {
+	on: (channel, fn) =>
+		ipcMain.on(channel, (event, ...args) => {
+			if (fromUs(event)) fn(event, ...args);
+		}),
+	handle: (channel, fn) =>
+		ipcMain.handle(channel, (event, ...args) =>
+			fromUs(event) ? fn(event, ...args) : undefined,
+		),
+};
 
 /** The only origin allowed to navigate, open windows, or hold a permission. */
 function isOurs(url) {
@@ -137,14 +106,19 @@ function isOurs(url) {
 }
 
 /**
- * Whether the login item started this run (#1313, login-item.js).
- *
- * Latched for the life of the process, because it decides two things: that
- * no window opens at launch, and that closing one afterwards returns the
- * shell to the tray instead of quitting something the rider asked to be
- * running.
+ * Whether the login item started this run (#1313, login-item.js): the window
+ * is then created loaded but hidden (#3005), so notifications, the lobby
+ * socket and deep links work from boot without putting a window in front of
+ * the rider.
  */
 let startedHidden = false;
+
+/**
+ * Whether there is a tray to hide into (#3005). Where there is, closing the
+ * main window hides it (visibility.js); a Linux desktop with no status
+ * notifier keeps the close that quits.
+ */
+let hasTray = false;
 
 /**
  * The rider's window, never the HUD.
@@ -156,7 +130,7 @@ let startedHidden = false;
 function mainWindow() {
 	return (
 		BrowserWindow.getAllWindows().find(
-			(w) => !w.isDestroyed() && w !== hudWindow,
+			(w) => !w.isDestroyed() && w !== hud.current(),
 		) ?? null
 	);
 }
@@ -167,11 +141,12 @@ function focusWindow(win) {
 	if (win.isMinimized()) win.restore();
 	win.show();
 	win.focus();
+	visibility.shown(win);
 }
 
 /**
- * The tray's "Open WattRoom", and the way back from a login launch — which
- * starts with no window at all, so there is nothing to focus.
+ * The tray's "Open WattRoom", the Dock, a second launch: show the rider's
+ * window, hidden or not, or make one if there is none.
  */
 function openWindow() {
 	const win = mainWindow();
@@ -195,55 +170,11 @@ function openPath(to) {
 	win.webContents.send('wattroom:go', to);
 }
 
-// Where the window was (#1948): size, position and whether it was maximized,
-// kept in userData and restored only when the saved rect still lands on a
-// display that is here — a monitor that went with the rider's desk keeps
-// the size and drops the position. The HUD places itself (ADR-0041).
-function windowStateFile() {
-	return path.join(app.getPath('userData'), 'window.json');
-}
-function readWindowState() {
-	try {
-		const s = JSON.parse(fs.readFileSync(windowStateFile(), 'utf8'));
-		if (typeof s.width === 'number' && typeof s.height === 'number') return s;
-	} catch {
-		/* first launch, or a file nobody wrote */
-	}
-	return null;
-}
-function onADisplay(b) {
-	return screen.getAllDisplays().some(({ workArea: a }) => {
-		return (
-			b.x < a.x + a.width &&
-			b.x + b.width > a.x &&
-			b.y < a.y + a.height &&
-			b.y + b.height > a.y
-		);
-	});
-}
-function saveWindowState(win) {
-	try {
-		const bounds = win.isMaximized() ? win.getNormalBounds() : win.getBounds();
-		fs.writeFileSync(
-			windowStateFile(),
-			JSON.stringify({ ...bounds, maximized: win.isMaximized() }),
-		);
-	} catch (err) {
-		console.warn('window state not saved:', err?.message ?? err);
-	}
-}
-
-function createWindow() {
-	const saved = readWindowState();
-	const placed =
-		saved &&
-		typeof saved.x === 'number' &&
-		typeof saved.y === 'number' &&
-		onADisplay(saved)
-			? { x: saved.x, y: saved.y, width: saved.width, height: saved.height }
-			: { width: saved?.width ?? 1280, height: saved?.height ?? 860 };
+/** @param opts.hidden load it without showing it (a login launch, #3005) */
+function createWindow({ hidden = false } = {}) {
+	const saved = windowState.read();
 	const win = new BrowserWindow({
-		...placed,
+		...windowState.bounds(saved),
 		minWidth: 380,
 		backgroundColor: '#0a0118', // --color-surface, so the first paint is not white
 		show: false,
@@ -280,18 +211,25 @@ function createWindow() {
 		},
 	});
 
-	win.once('ready-to-show', () => {
-		if (saved?.maximized) win.maximize();
-		win.show();
+	// Maximizing shows a window, so a hidden launch waits for the first show.
+	win.once(hidden ? 'show' : 'ready-to-show', () => {
+		if (saved?.fullScreen) win.setFullScreen(true);
+		else if (saved?.maximized) win.maximize();
+		if (!hidden) win.show();
 	});
-	win.on('close', () => saveWindowState(win));
+	visibility.manage(win, {
+		hides: hasTray,
+		hidden,
+		rideHeld: () => sleepBlockerId !== null,
+	});
+	windowState.track(win);
 	// The HUD shows only while this window is NOT in front (ADR-0041): in
 	// front, the riding screen has the numbers, and floating them over the
 	// jukebox's player would put a HUD over video, which YouTube's terms forbid.
-	win.on('focus', () => hudWindow?.hide());
-	win.on('blur', () => hudWindow?.showInactive());
+	win.on('focus', () => hud.current()?.hide());
+	win.on('blur', () => hud.current()?.showInactive());
 	win.on('closed', () => {
-		setHud(false);
+		hud.set(false);
 		// Nothing is connected to a room any more, so the tray must stop
 		// offering to open one (it would open a window on the app's home and
 		// look like the item did nothing).
@@ -300,7 +238,7 @@ function createWindow() {
 	installHandlers(win);
 	load(win);
 	// Once: the adapter stays up for the life of the process.
-	win.webContents.once('did-finish-load', () => warmBluetooth(win));
+	win.webContents.once('did-finish-load', () => bluetooth.warm(win));
 	return win;
 }
 
@@ -312,162 +250,8 @@ function load(win) {
 }
 
 function installHandlers(win) {
-	const ses = win.webContents.session;
-
-	// 1. Bluetooth. Electron ships no chooser at all: with no listener every
-	//    request is CANCELLED (so requestDevice rejects), and with a listener
-	//    that forgets preventDefault the FIRST device is selected silently —
-	//    which in a room of advertising sensors is someone else's trainer.
-	//    RESEARCH.md §15.1.
-	//
-	//    Electron emits this the moment the scan starts — ~130 ms in, before
-	//    anything can have advertised — and again for every device it hears.
-	//    Answering that first empty list is a cancel, which is how the shell
-	//    shipped unable to pair anything at all (#1545): hold the callback and
-	//    let the scan run.
-	//
-	//    What the rider sees is the app's own modal, fed the list as the scan
-	//    grows it (#1716). It used to be `dialog.showMessageBox` with one
-	//    button per device — an OS alert in the middle of a synthwave app, and
-	//    a SNAPSHOT: it opened on the first device heard, so a second sensor
-	//    advertising a moment later was invisible until you cancelled and
-	//    started again. RESEARCH.md §15.1 named the renderer-side picker as
-	//    the upside of owning this event; this is it.
-	//
-	//    Nothing is remembered between scans any more. The shell used to skip
-	//    the picker entirely for the last device it had seen — process-wide,
-	//    across every sensor kind — which saved a tap once and then made
-	//    pairing a DIFFERENT trainer impossible for the rest of the launch.
-	//    §15.1 lists remembering as an upside of owning the chooser; it is
-	//    one only if the rider can still get past it.
-	//
-	//    The slot and its answer channel are at module scope above; only the
-	//    event itself belongs to this window.
-	win.webContents.on('select-bluetooth-device', (event, devices, callback) => {
-		event.preventDefault();
-
-		// The launch warm-up below is a request nobody asked for: never put a
-		// picker in front of a rider for it.
-		if (warmingBluetooth) {
-			callback('');
-			return;
-		}
-
-		// Every emit brings a fresh callback into the same chooser; the newest
-		// is the one to answer with. A request that supersedes another
-		// inherits its countdown, which is only ever short — and the picker is
-		// modal, so the rider cannot start a second search while one is open.
-		if (!scan) {
-			scan = {
-				// Nothing found in this long means the sensor is asleep, not that
-				// the rider is still deciding. Cancelling gives the renderer a
-				// rejection it has copy for; silence would hang the pair button.
-				timer: setTimeout(() => settleScan(''), PAIRING_TIMEOUT_MS),
-			};
-		}
-		scan.answer = callback;
-		scan.contents = win.webContents;
-
-		// The renderer's requestDevice filters already narrowed this list to
-		// FTMS/HR/CSC, so everything offered here is pairable.
-		const offer = devices.map((d) => ({
-			id: d.deviceId,
-			name: d.deviceName || d.deviceId,
-		}));
-
-		if (pickerReady) {
-			// Something is advertising, so the deadline is over — the rider is
-			// now reading a list, and a countdown would close it under them.
-			if (offer.length > 0) clearTimeout(scan.timer);
-			win.webContents.send('wattroom:ble-scan', offer);
-			return;
-		}
-
-		// A web app too old to draw the picker (see pickerReady). The message
-		// box is a snapshot: a sensor heard after it opens is not in it.
-		if (offer.length === 0 || scan.asked) return;
-		scan.asked = true;
-		chooseFrom(
-			win,
-			'Pair a sensor',
-			offer.map((d) => ({ label: d.name, value: d.id })),
-		).then(({ value: deviceId }) => settleScan(deviceId || ''));
-	});
-
-	// 2. Permissions. Electron's default is to ALLOW — with remote content that
-	//    hands camera and microphone to anything that gets the renderer to
-	//    navigate. Deny by default, allow our own origin the things a room
-	//    actually needs.
-	// 'notifications' too (#296): the app's own switch (lib/notify) asks for
-	// it, and a shell that answered no left every room event silent — the one
-	// thing a desktop app is expected to do better than a tab.
-	const ALLOWED = new Set([
-		'media',
-		'clipboard-sanitized-write',
-		'fullscreen',
-		'notifications',
-	]);
-	// Decided on the FRAME that asks (#1939), not the top page: the embedded
-	// player is a third-party frame under our page, and the top URL let it
-	// inherit the mic, notifications and fullscreen.
-	ses.setPermissionRequestHandler((contents, permission, callback, details) => {
-		const from = details?.requestingUrl ?? contents.getURL();
-		callback(isOurs(from) && ALLOWED.has(permission));
-	});
-	// The check half: most web APIs check first and only request if denied, so
-	// a handler on one and not the other is a gate with a hole in it.
-	ses.setPermissionCheckHandler(
-		(_contents, permission, origin) =>
-			origin === APP_ORIGIN && ALLOWED.has(permission),
-	);
-
-	// 3. Screen share. Electron does not implement standard getDisplayMedia, so
-	//    without this the stage (#280) silently breaks. It must also survive
-	//    cancellation — an unhandled rejection here leaves the renderer waiting
-	//    forever (electron#47980).
-	ses.setDisplayMediaRequestHandler(
-		(request, callback) => {
-			desktopCapturer
-				.getSources({ types: ['screen', 'window'] })
-				.then((sources) => {
-					if (sources.length === 0) return callback({});
-					return chooseFrom(
-						win,
-						'Share a screen',
-						sources.map((s) => ({ label: s.name, value: s.id })),
-						canShareSound() && request.audioRequested ? SOUND_ASK : null,
-					).then(({ value: id, checked: sound }) => {
-						const picked = sources.find((s) => s.id === id);
-						// callback({}) is the deny path; a cancelled picker is a
-						// refusal, not an error to surface.
-						//
-						// 'loopback' is the system-audio half of ADR-0037 (#1124):
-						// what the machine is playing, captured through WASAPI.
-						// Offered with the picture and never assumed (#1699): the
-						// tap is the whole machine, so a rider who picked one
-						// window would otherwise also send their notifications,
-						// their calls and the room's own voices back into it.
-						if (!picked) return callback({});
-						callback(
-							sound ? { video: picked, audio: 'loopback' } : { video: picked },
-						);
-					});
-				})
-				.catch(() => callback({}));
-		},
-		// The native picker on macOS, our message box everywhere else.
-		//
-		// Not a preference: with an app-supplied picker, macOS creates the
-		// loopback track and never puts data in it (electron#52738) — live
-		// readyState, no error, silence. The system picker is also what raises
-		// the TCC "record system audio" prompt, so without it a rider is never
-		// asked for the permission the capture needs.
-		//
-		// Electron ignores the flag below macOS 15, where the app picker is
-		// still the only one, so this is safe to set for all of darwin.
-		{ useSystemPicker: process.platform === 'darwin' },
-	);
-
+	bluetooth.attach(win);
+	permissions.attach(win);
 	guardNavigation(win);
 	textMenu(win);
 
@@ -529,16 +313,10 @@ function textMenu(win) {
  * same hole as the permission default, one step removed. Every window the
  * shell opens gets this — the main one and the HUD.
  */
-// When the app last sent the rider to the system browser to sign in
-// (#1941): a wattroom:// link is accepted only for a little while after,
-// so a page in the rider's browser cannot throw a riding shell onto /login.
-let signInStartedAt = 0;
-const SIGN_IN_WINDOW_MS = 10 * 60 * 1000;
-
 function guardNavigation(win) {
 	win.webContents.setWindowOpenHandler(({ url }) => {
 		if (url.startsWith(`${APP_ORIGIN}/login?desktop=`))
-			signInStartedAt = Date.now();
+			deepLink.signInStarted();
 		if (/^https?:/.test(url)) void shell.openExternal(url);
 		return { action: 'deny' };
 	});
@@ -558,330 +336,46 @@ function guardNavigation(win) {
 	});
 }
 
-/**
- * Whether the machine's sound can ride along with the picture (#1124, #1699).
- *
- * Windows only, and not a preference: this handler runs on macOS only below
- * 15, where an app-supplied picker gets a loopback track with no data in it
- * (electron#52738) — asking there would promise a sound that never arrives
- * and leave the share notice claiming one. Above 15 the system picker asks
- * for audio itself, and Linux Chromium has no loopback at all.
- */
-function canShareSound() {
-	return process.platform === 'win32';
-}
-
-/**
- * What the loopback tap actually takes, said plainly: it is the machine's
- * output device, not the window the rider picked — Chromium has no per-app
- * tap to offer instead. Off unless ticked: the rider chose a window, and the
- * machine is more than they chose.
- */
-const SOUND_ASK =
-	"Send this machine's sound too — everything it plays, not just what you pick";
-
-/**
- * A chooser with no UI of its own. `dialog.showMessageBox` is native, needs no
- * renderer, and cannot drift from the app's theme because it has none.
- *
- * ponytail: caps at eight entries plus Cancel — past that a message box is the
- * wrong control. The Bluetooth chooser outgrew it and now draws in the app
- * (#1716); the screen picker still fits, and its checkbox has no counterpart
- * in a renderer-side one.
- *
- * @returns the chosen value (null if cancelled), and the checkbox if asked.
- */
-async function chooseFrom(win, title, options, checkboxLabel = null) {
-	const shown = options.slice(0, 8);
-	const { response, checkboxChecked } = await dialog.showMessageBox(win, {
-		type: 'question',
-		title,
-		message: title,
-		buttons: [...shown.map((o) => o.label), 'Cancel'],
-		cancelId: shown.length,
-		defaultId: 0,
-		...(checkboxLabel ? { checkboxLabel, checkboxChecked: false } : {}),
-	});
-	return {
-		value: shown[response]?.value ?? null,
-		checked: checkboxChecked === true,
-	};
-}
-
-// Self-update (#1303, ADR-0037 amended). Four shell releases in a day made
-// the nudge the wrong answer: the shell now asks the releases repo on launch
-// and every few hours, downloads the next release in the background, and
-// installs it when the rider restarts — or quietly on quit. The feed is
-// GitHub's `releases/latest/download` alias (package.json → publish), which
-// is what lets the tags stay desktop-v<CalVer> instead of v<semver>. The web
-// app is told when a download is ready and offers "Restart to update" at the
-// top of the sidebar, which a ride never shows — so never mid-ride, by
-// construction.
-let updateReady = null;
-let autoUpdater = null;
-
-function watchForUpdates() {
-	// Required here, not at the top: merely touching electron-updater's
-	// autoUpdater constructs it, and it parses the app's version as semver —
-	// a dev run reports Electron's own version, a packaged app reports
-	// package.json's, and a malformed one crashes at launch with a dialog.
-	if (!app.isPackaged) return;
-	({ autoUpdater } = require('electron-updater'));
-	autoUpdater.autoDownload = true;
-	autoUpdater.autoInstallOnAppQuit = true;
-	// stdout: nothing in a Dock launch, everything when run from a terminal —
-	// which is how "why did it not update" gets answered in a minute.
-	autoUpdater.logger = console;
-	autoUpdater.on('update-available', () => (updateFailures = 0));
-	autoUpdater.on('update-not-available', () => (updateFailures = 0));
-	autoUpdater.on('update-downloaded', (info) => {
-		updateFailures = 0;
-		updateReady = { version: info.version };
-		// Every window, not the one at launch (#1947): on macOS a window
-		// closed and reopened from the Dock is a new one.
-		for (const w of BrowserWindow.getAllWindows())
-			if (!w.isDestroyed()) w.webContents.send('wattroom:update', updateReady);
-	});
-	autoUpdater.on('error', (err) => {
-		// Offline, or the feed is missing: not worth a dialog. Counted (#1940):
-		// after three in a row the app's home offers the download instead of
-		// waiting for a self-update that is not coming.
-		updateFailures += 1;
-		console.warn('update check failed:', err?.message ?? err);
-	});
-	// On macOS closing the window leaves the app running, and a click on the
-	// Dock icon brings the window back without a launch — so a check tied to
-	// launch alone can sit six hours behind a release the rider is waiting
-	// for. Check when the app comes back into view too, at most once every
-	// ten minutes.
-	let lastCheck = 0;
-	const check = (force = false) => {
-		if (!force && Date.now() - lastCheck < 10 * 60 * 1000) return;
-		lastCheck = Date.now();
-		void autoUpdater.checkForUpdates().catch(() => {});
-	};
-	setTimeout(() => check(true), 15_000);
-	setInterval(() => check(true), 6 * 60 * 60 * 1000);
-	app.on('activate', () => check());
-	app.on('browser-window-focus', () => check());
-}
-
-// The renderer asks on mount, in case the download finished before it did.
-ipcMain.handle('wattroom:update-ready', () => updateReady);
-// Consecutive failures of the updater (#1940): three is "not coming".
-let updateFailures = 0;
-ipcMain.handle('wattroom:update-failed', () => updateFailures >= 3);
-ipcMain.on('wattroom:install-update', () => installUpdate());
-
-// Restarting into the update, and why "Restart" used to just close the app.
-// quitAndInstall() hands Squirrel's ShipIt a job that waits for EVERY
-// instance of the bundle to go away before it touches /Applications, and it
-// waits in silence: one log here sat twenty-six minutes between "install
-// request" and "Beginning installation", then gave up with
-//
-//     Aborting update attempt because there are 1 running instances
-//     Installation cancelled: … "App Still Running Error"
-//
-// The window had closed the moment the rider pressed the button, so what
-// they saw was the app dying and never coming back — no install, no
-// relaunch, no message. Electron's own quit is what ShipIt is waiting for
-// and it is not guaranteed to arrive: on macOS a window can close without
-// the process following it. So we do not leave the termination to chance.
-// Replacing the bundle then takes ShipIt the better part of half a minute,
-// and nothing can narrate that from here: a notification shown on the way out
-// is withdrawn with the process (checked against the signed build — it never
-// reaches Notification Center). So the sidebar's "Installing… reopens by
-// itself" is the last thing the rider gets, and this is the beat that lets
-// them read it.
-const INSTALL_QUIT_MS = 900;
-// Long enough for Squirrel to have handed ShipIt the job (the logs show it
-// registering within a second), short enough that the rider is still watching.
-const INSTALL_FORCE_EXIT_MS = 5000;
-let installing = false;
-
-function installUpdate() {
-	if (!autoUpdater || !updateReady || installing) return;
-	installing = true;
-	setTimeout(() => {
-		autoUpdater.quitAndInstall();
-		app.quit();
-		// If either of those took, this timer died with the process. Reaching
-		// it means the quit was refused — and a refused quit IS the abort, so
-		// exit() rather than sit here being the thing ShipIt waits for.
-		setTimeout(() => app.exit(0), INSTALL_FORCE_EXIT_MS);
-	}, INSTALL_QUIT_MS);
-}
-
-// The HUD (#296, ADR-0041): the rider's own numbers in a small frameless
-// window that floats over everything else — for the rider who alt-tabbed to
-// a film mid-interval. The web app opens it when a ride starts and closes it
-// when the ride ends; it loads /hud on our origin, in the same session, and
-// that page mirrors the riding screen through a BroadcastChannel. This
-// process only decides WHEN it is visible: never while the main window is in
-// front (see createWindow). The page's own close button sends hud(false),
-// and it stays closed until the next ride starts.
-const HUD_SIZE = { width: 320, height: 132 };
-let hudWindow = null;
-
-function setHud(on) {
-	if (!on) {
-		if (hudWindow && !hudWindow.isDestroyed()) hudWindow.close();
-		hudWindow = null;
-		return;
-	}
-	if (hudWindow) return;
-	const main = mainWindow();
-	if (!main) return;
-	hudWindow = new BrowserWindow({
-		...HUD_SIZE,
-		frame: false,
-		alwaysOnTop: true,
-		resizable: false,
-		minimizable: false,
-		maximizable: false,
-		fullscreenable: false,
-		skipTaskbar: true,
-		// A panel is how a window floats over another app's full-screen Space
-		// on macOS without the whole process becoming a UI element (#2660).
-		type: process.platform === 'darwin' ? 'panel' : undefined,
-		backgroundColor: '#0a0118',
-		show: false,
-		webPreferences: {
-			preload: path.join(__dirname, 'preload.js'),
-			additionalArguments: [`--wattroom-version=${SHELL_VERSION}`],
-			contextIsolation: true,
-			nodeIntegration: false,
-			sandbox: true,
-			backgroundThrottling: false,
-		},
-	});
-	// Above full-screen apps too, and on every desktop — that is the point.
-	hudWindow.setAlwaysOnTop(true, 'floating');
-	// Never the process transform (#2660): without skipTransformProcessType,
-	// visibleOnFullScreen is Electron calling app.dock.hide() — WattRoom lost
-	// its Dock icon, ⌘-Tab and menu bar for the rest of the run, and a rider
-	// whose main window went behind another app could not get back to it.
-	hudWindow.setVisibleOnAllWorkspaces(true, {
-		visibleOnFullScreen: true,
-		skipTransformProcessType: true,
-	});
-	// BOTTOM-LEFT of the display the app is on, a finger's width in (#1669).
-	//
-	// It used to sit top-right, which is exactly where TV mode seats the
-	// YouTube player (TvOverlay.svelte: `top-[3vh] right-[3vw]`, ≥240×200) —
-	// and this is an alwaysOnTop OS window, so at 1920×1080 roughly 280×115 px
-	// of the player was under it with nothing the page could do about it.
-	// ADR-0041's focus rule does not cover it: a room on a TV with WattRoom
-	// un-focused is the normal case, and un-focused is when the HUD SHOWS.
-	//
-	// Bottom-left is the one corner nothing else claims — TV's seat is
-	// top-right and the jukebox dock's corner fallback is bottom-right.
-	const { workArea } = screen.getDisplayMatching(main.getBounds());
-	hudWindow.setPosition(
-		workArea.x + 16,
-		workArea.y + workArea.height - HUD_SIZE.height - 16,
-	);
-	guardNavigation(hudWindow);
-	hudWindow.on('closed', () => {
-		hudWindow = null;
-	});
-	hudWindow.once('ready-to-show', () => {
-		if (hudWindow && !main.isFocused()) hudWindow.showInactive();
-	});
-	hudWindow.loadURL(`${APP_ORIGIN}/hud`).catch(() => {
-		/* a HUD that cannot load is closed by the next hud(false) */
-	});
-}
-
-ipcMain.on('wattroom:hud', (event, on) => {
-	// The HUD's own renderer runs the app's layout and used to answer its
-	// opening with hud(false) (#1938); only the main window drives the HUD.
-	if (
-		hudWindow &&
-		!hudWindow.isDestroyed() &&
-		event.sender === hudWindow.webContents
-	)
-		return;
-	setHud(Boolean(on));
+bluetooth.install({ ipc });
+permissions.install({ appOrigin: APP_ORIGIN, isOurs });
+updater.install({ ipc });
+hud.install({
+	ipc,
+	appOrigin: APP_ORIGIN,
+	version: SHELL_VERSION,
+	mainWindow,
+	guardNavigation,
 });
-
-// Notifications (ADR-0042). The web app's lib/notify decides WHETHER to
-// notify — enabled, nobody looking — and sends the words here, because the
-// shell's own Notification can do what the renderer's cannot: carry a reply
-// field (macOS) and hand a click back to the app with the conversation it
-// belongs to. Everything is clipped and the href must be a path on our
-// origin: remote content chooses the words, never where the app goes.
-const clip = (v, max) => (typeof v === 'string' ? v.slice(0, max) : '');
-// A path on our origin: one slash, and not a second slash OR a backslash
-// behind it — the URL parser reads `/\evil` as `//evil` (#1946).
-// The web app asks the same of its paths in web/src/lib/same-origin.ts.
-const ownPath = (v) =>
-	typeof v === 'string' && v.startsWith('/') && !/^\/[\/\\]/.test(v) ? v : '';
-
-// Every notification still showing, by tag (#3001). A Notification nothing
-// references is garbage collected with its listeners, and a click on it in
-// Notification Center then only activates the app: the conversation never
-// opened. One per tag, as the web's own Notification does: the newer line
-// replaces the older one rather than leaving a dead one behind it.
-// ponytail: never pruned; one entry per conversation that ever notified.
-const shown = new Map();
-
-ipcMain.on('wattroom:notify', (event, n) => {
-	if (!Notification.isSupported() || !n || typeof n !== 'object') return;
-	const title = clip(n.title, 120);
-	if (!title) return;
-	const payload = { tag: clip(n.tag, 80), href: ownPath(n.href) };
-	const placeholder = clip(n.replyPlaceholder, 60);
-	const note = new Notification({
-		title,
-		body: clip(n.body, 400),
-		hasReply: placeholder !== '',
-		replyPlaceholder: placeholder || undefined,
-		// Named, never a path: the renderer picks from what the shell bundles
-		// (#2696), so remote content cannot point it at a file.
-		icon:
-			n.icon === 'chat' ? path.join(__dirname, 'icons', 'chat.png') : undefined,
-	});
-	const win = BrowserWindow.fromWebContents(event.sender);
-	note.on('click', () => {
-		focusWindow(win);
-		if (!event.sender.isDestroyed())
-			event.sender.send('wattroom:notification', payload);
-	});
-	note.on('reply', (_e, reply) => {
-		if (!event.sender.isDestroyed())
-			event.sender.send('wattroom:notification', {
-				...payload,
-				// Not cut at the server's 500 (#1945): the field has no limit, and a
-				// 600-character reply arrived as 500 with nothing said. Sent whole
-				// (bounded far above, against a runaway paste), the server's own
-				// refusal reaches the rider through the renderer's toast (#1834).
-				reply: clip(reply, 4000),
-			});
-	});
-	shown.get(payload.tag)?.close();
-	shown.set(payload.tag, note);
-	note.show();
-});
+notifications.install({ ipc, focus: focusWindow });
+const { clip, ownPath } = notifications;
 
 // The tray's "Open <room>" (#1313). The app says which room it is connected
 // to, and the shell only ever puts the name in a menu item and sends the
 // path back. Clipped and checked like a notification's, and for the same
 // reason: remote content chooses the words, never where the app goes.
-ipcMain.on('wattroom:room', (event, r) => {
+ipc.on('wattroom:room', (event, r) => {
 	// The HUD runs the app's layout too (#1938), and it speaks for no room.
 	const win = BrowserWindow.fromWebContents(event.sender);
-	if (!win || win.isDestroyed() || win === hudWindow) return;
+	if (!win || win.isDestroyed() || win === hud.current()) return;
 	const to = r && typeof r === 'object' ? ownPath(r.path) : '';
 	tray.setRoom(to ? { path: to, name: clip(r.name, 60) || to } : null);
+});
+
+// The unread badge (#3008): the main window's sidebar speaks for it, never
+// the HUD, which runs the app's layout too (#1938). The count is clamped in
+// badge.js before the OS sees it.
+ipc.on('wattroom:badge', (event, n) => {
+	const win = BrowserWindow.fromWebContents(event.sender);
+	if (!win || win.isDestroyed() || win === hud.current()) return;
+	badge.set(n, win);
 });
 
 // Launch at login (#1313). The shell owns the OS side; Settings and the tray
 // are the two places that ask for it, and both get the same answer — whether
 // this build can do it at all, whether it is on, and one sentence when a
 // change did not take.
-ipcMain.handle('wattroom:login-item', () => loginItem.state());
-ipcMain.handle('wattroom:login-item-set', (_event, on) => {
+ipc.handle('wattroom:login-item', () => loginItem.state());
+ipc.handle('wattroom:login-item-set', (_event, on) => {
 	const error = loginItem.setEnabled(on === true);
 	// The tray carries the same switch, and a tick it did not draw itself is
 	// still its tick.
@@ -889,65 +383,11 @@ ipcMain.handle('wattroom:login-item-set', (_event, on) => {
 	return { ...loginItem.state(), error };
 });
 
-// wattroom:// — the way back into the app from the system browser (#1188).
-//
-// Sign-in happens in the browser, because it cannot happen here: Electron has
-// no WebAuthn UI, so a passkey request never resolves, and Google refuses
-// OAuth from an Electron window outright. The web app opens
-// /login?desktop=<nonce> in the browser, the rider signs in there however
-// they like, and the page comes back through wattroom://auth/<token>. All
-// the shell does with it is load /login?handoff=<token> on its own origin;
-// the page redeems the token with the nonce it kept, and the server mints
-// this window its own session. Nothing else is accepted: an unknown path or
-// an odd-looking token is dropped, not loaded.
-const DEEP_LINK_TOKEN = /^[A-Za-z0-9_-]{20,200}$/;
-
-function deepLinkToken(link) {
-	let url;
-	try {
-		url = new URL(link);
-	} catch {
-		return null;
-	}
-	if (url.protocol !== 'wattroom:' || url.hostname !== 'auth') return null;
-	const token = url.pathname.replace(/^\//, '');
-	return DEEP_LINK_TOKEN.test(token) ? token : null;
-}
-
-// The token goes to the page over IPC (#1941), never as a navigation: the
-// app decides what to do with it — redeem on /login, or say it is already
-// signed in — and a ride in progress is never loaded over. Only within the
-// sign-in window this shell itself opened; a link arriving cold, with no
-// sign-in started here, is dropped (ponytail: a shell quit mid-sign-in
-// loses the link and the rider starts again — a restart is not a session).
-function openDeepLink(link) {
-	const token = deepLinkToken(link);
-	if (!token) return;
-	if (Date.now() - signInStartedAt > SIGN_IN_WINDOW_MS) {
-		console.warn(
-			'wattroom:// link ignored: no sign-in was started from this app',
-		);
-		return;
-	}
-	const win = mainWindow();
-	if (!win) return;
-	focusWindow(win);
-	win.webContents.send('wattroom:handoff', token);
-}
-
-const deepLinkIn = (argv) => argv.find((a) => a.startsWith('wattroom://'));
-
 // Windows shows a notification only for an app with a model id; without
 // this every new Notification() from the renderer is dropped on the floor.
 if (process.platform === 'win32') app.setAppUserModelId('ch.wattroom.desktop');
 
-// Packaged only (#1944): unpackaged this registered the raw Electron binary
-// and took the link away from the installed app.
-if (app.isPackaged) app.setAsDefaultProtocolClient('wattroom');
-app.on('open-url', (event, link) => {
-	event.preventDefault();
-	openDeepLink(link);
-});
+deepLink.install({ mainWindow, focus: focusWindow });
 
 // One instance. Without this every wattroom:// link opens a second window
 // against the same session; on Windows and Linux the link arrives as the
@@ -956,13 +396,13 @@ if (!app.requestSingleInstanceLock()) {
 	app.quit();
 } else {
 	app.on('second-instance', (_event, argv) => {
-		const link = deepLinkIn(argv);
+		const link = deepLink.inArgv(argv);
 		if (link) {
-			openDeepLink(link);
+			deepLink.open(link);
 			return;
 		}
-		// A login launch has no window to raise, so this makes one — without
-		// it, clicking the installed app while the shell sat in the tray did
+		// Launching the installed app again shows the window, hidden or not —
+		// without this, clicking it while the shell sat in the tray did
 		// nothing at all.
 		openWindow();
 	});
@@ -996,22 +436,22 @@ if (!app.requestSingleInstanceLock()) {
 				}),
 			);
 		Menu.setApplicationMenu(menu);
-		// Launched by the login item, the shell opens no window: it comes up
-		// in the tray and waits to be asked (login-item.js). Every other
-		// launch is unchanged.
+		// Launched by the login item, the shell loads its window hidden: it
+		// comes up in the tray, running, and waits to be asked (login-item.js,
+		// #3005). Every other launch shows the window.
 		startedHidden = loginItem.startedByLoginItem();
-		// Before anything can want it: with no window, this is the only
-		// WattRoom on screen. Where there is nowhere to put one — a Linux
-		// desktop with no status notifier — a hidden launch would be a
-		// process with no surface at all, so it takes the window instead and
-		// the quit rule below goes back to the ordinary one with it.
-		if (!tray.install({ open: openWindow, go: openPath }))
-			startedHidden = false;
-		if (!startedHidden) createWindow();
-		watchForUpdates();
+		// Before any window: whether a close may hide it depends on there
+		// being a tray to hide into. Where there is nowhere to put one — a
+		// Linux desktop with no status notifier — a hidden launch would be a
+		// process with no surface at all, so it shows the window instead, and
+		// a close there quits as it always did.
+		hasTray = tray.install({ open: openWindow, go: openPath });
+		if (!hasTray) startedHidden = false;
+		createWindow({ hidden: startedHidden });
+		updater.watch();
 		// A cold start from a link is dropped (#1941): no sign-in was started
 		// from this run, and the rider starts the sign-in again.
-		if (deepLinkIn(process.argv))
+		if (deepLink.inArgv(process.argv))
 			console.warn('wattroom:// link at launch ignored');
 		// A Dock click brings the rider's window back, not merely a window
 		// (#2660): with the HUD up macOS counts a visible window and restores
@@ -1020,11 +460,10 @@ if (!app.requestSingleInstanceLock()) {
 	});
 
 	app.on('window-all-closed', () => {
-		// Closing the window still quits, everywhere but macOS — unless the
-		// login item started this run. A rider who asked WattRoom to be
-		// running when they sign in did not ask it to stop the first time
-		// they close a window, and the tray is where they say when to (#1313).
-		if (process.platform !== 'darwin' && !startedHidden) app.quit();
+		// With a tray a close hides the window (#3005), so this is reached
+		// only on the way out. Without one, closing the window quits,
+		// everywhere but macOS.
+		if (process.platform !== 'darwin' && !hasTray) app.quit();
 	});
 }
 
@@ -1039,15 +478,17 @@ function keepAwake(on) {
 		if (sleepBlockerId === null) {
 			sleepBlockerId = powerSaveBlocker.start('prevent-display-sleep');
 		}
-		return;
-	}
-	if (sleepBlockerId !== null) {
+	} else if (sleepBlockerId !== null) {
 		powerSaveBlocker.stop(sleepBlockerId);
 		sleepBlockerId = null;
 	}
+	// A ride in a hidden window keeps its timers at full rate; the hidden
+	// window with no ride gets throttled again (#3005).
+	const win = mainWindow();
+	if (win) visibility.throttleIfIdle(win, () => sleepBlockerId !== null);
 }
 
-ipcMain.on('wattroom:keep-awake', (_event, on) => keepAwake(Boolean(on)));
+ipc.on('wattroom:keep-awake', (_event, on) => keepAwake(Boolean(on)));
 
 // A renderer that crashes or navigates mid-ride would otherwise leave the
 // machine awake until quit.
@@ -1070,7 +511,7 @@ app.on('browser-window-created', (_e, win) => {
 app.on('will-quit', () => keepAwake(false));
 
 // Retry from the offline screen, and the only channel the preload exposes.
-ipcMain.on('wattroom:retry', (event) => {
+ipc.on('wattroom:retry', (event) => {
 	const win = BrowserWindow.fromWebContents(event.sender);
 	if (win) load(win);
 });

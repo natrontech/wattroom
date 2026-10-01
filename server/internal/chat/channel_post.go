@@ -81,7 +81,7 @@ func (s *Service) handleChannelPost(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// pruneChannelSampled bounds a channel: 500 lines, and the images nothing
+// pruneChannelSampled bounds a channel: MaxChannelLines, and the images nothing
 // points at, one write in sixteen and off the request — every save used to
 // pay a delete-with-subquery that stalled the sender (audit #219). The prune
 // outlives the request on purpose, bounded by its own timeout.
@@ -92,7 +92,7 @@ func (s *Service) pruneChannelSampled(channelID pgtype.UUID) {
 	safego.Go(s.log, "channel chat prune", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		if err := s.store.Queries.PruneChannelChat(ctx, channelID); err != nil {
+		if err := s.store.Queries.PruneChannelChat(ctx, db.PruneChannelChatParams{ChannelID: channelID, Keep: protocol.MaxChannelLines}); err != nil {
 			s.log.Warn("prune channel chat", "err", err, "channel", store.UUIDString(channelID))
 		}
 		if err := s.store.Queries.PruneChannelImages(ctx, channelID); err != nil {

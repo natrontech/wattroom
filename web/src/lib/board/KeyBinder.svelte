@@ -8,8 +8,15 @@
 	 * is also how a rider says "no key at all".
 	 */
 	import { bindKey, type Clip } from '$lib/board/clips.svelte';
+	import { gearsEnabled } from '$lib/ride/gears-enabled';
+	import { shiftsGears } from '$lib/ride/keys';
 
 	let { clip }: { clip: Clip } = $props();
+
+	// A ride's shift keys win over a pad's (#3329): say so where it is bound.
+	const shifts = $derived(
+		gearsEnabled() && !!clip.key && shiftsGears(clip.key),
+	);
 
 	let listening = $state(false);
 	let refusal = $state<string | undefined>();
@@ -46,7 +53,7 @@
 	title={listening
 		? 'press a key — Escape to clear it'
 		: clip.key
-			? `fires on ${clip.key.toUpperCase()} — click to change`
+			? `fires on ${clip.key.toUpperCase()} — ${shifts ? `${clip.key} shifts gears while you ride; pick another key` : 'click to change'}`
 			: 'no key — click to set one'}
 	class="font-display h-8 w-14 shrink-0 rounded border text-[11px] uppercase {listening
 		? 'border-neon text-ink'
@@ -62,4 +69,8 @@
 </button>
 {#if refusal}
 	<span class="text-danger basis-full text-[11px]">{refusal}</span>
+{:else if shifts}
+	<span class="text-muted basis-full text-[11px]"
+		>{clip.key} shifts gears while you ride; pick another key</span
+	>
 {/if}

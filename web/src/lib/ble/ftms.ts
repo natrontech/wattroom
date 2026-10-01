@@ -24,6 +24,7 @@ const CPS_SERVICE = 0x1818;
 const OP_REQUEST_CONTROL = 0x00;
 const OP_SET_TARGET_POWER = 0x05;
 const OP_SET_SIMULATION = 0x11;
+const OP_SET_WHEEL_CIRCUMFERENCE = 0x12;
 const OP_RESPONSE = 0x80;
 const RESULT_SUCCESS = 0x01;
 /** Fitness Machine Status: control permission lost — we have to ask again. */
@@ -79,6 +80,14 @@ export function clampTarget(watts: number, range: PowerRange): number {
 	return Math.min(range.maxWatts, Math.max(range.minWatts, stepped));
 }
 
+/** A notification's bytes as sent, space-separated hex. */
+function toHex(view: DataView): string {
+	return Array.from(
+		new Uint8Array(view.buffer, view.byteOffset, view.byteLength),
+		(byte) => byte.toString(16).padStart(2, '0'),
+	).join(' ');
+}
+
 /** Round onto a field's integer grid and clamp to its width. */
 function toField(value: number, min: number, max: number): number {
 	return Math.min(max, Math.max(min, Math.round(value)));
@@ -98,6 +107,17 @@ export function encodeSimulation(road: SimParams): ArrayBuffer {
 	payload.setInt16(3, toField(gradePct * 100, -0x8000, 0x7fff), true);
 	payload.setUint8(5, toField(crr * 10000, 0, 0xff));
 	payload.setUint8(6, toField(cw * 100, 0, 0xff));
+	return payload.buffer;
+}
+
+/**
+ * Set Wheel Circumference (op 0x12): UINT16 at 0.1 mm. Only the Gears
+ * probe sends it (#3331, P5): what a trainer does with it is the question.
+ */
+export function encodeWheelCircumference(mm: number): ArrayBuffer {
+	const payload = new DataView(new ArrayBuffer(3));
+	payload.setUint8(0, OP_SET_WHEEL_CIRCUMFERENCE);
+	payload.setUint16(1, toField(mm * 10, 0, 0xffff), true);
 	return payload.buffer;
 }
 
@@ -159,6 +179,7 @@ export class FtmsTrainer implements Trainer {
 	#logCbs = new Set<(text: string, ms?: number) => void>();
 	/** Latest full frame, including fields the Trainer interface does not carry. */
 	lastFrame: IndoorBikeData = {};
+	#heartRateAt?: number;
 	/**
 	 * Raw Indoor Bike Data notifications seen, and how many carried instantaneous
 	 * power (#520). A unit that streams frames with no power field delivers no
@@ -166,6 +187,15 @@ export class FtmsTrainer implements Trainer {
 	 */
 	frames = 0;
 	poweredFrames = 0;
+	/**
+	 * The Indoor Bike Data notifications the latest sample was read from, as
+	 * hex (#3377): one on most units, several on one that splits a frame
+	 * (More Data, #1849). A captured set is how a parser test pins a real
+	 * unit's flag layout rather than a re-encoded reading.
+	 */
+	lastRaw: string[] = [];
+	/** Notifications since the last sample: all of them, on a unit that never sends power. */
+	pendingRaw: string[] = [];
 	#statusCbs = new Set<(s: TrainerStatus) => void>();
 
 	/**
@@ -283,6 +313,9 @@ export class FtmsTrainer implements Trainer {
 			(event) => {
 				const view = (event.target as BluetoothRemoteGATTCharacteristic).value;
 				if (!view) return;
+				// ponytail: the last 8 unpowered notifications, a few seconds of a
+				// unit that never sends power (#520); enough to see its layout.
+				this.pendingRaw = [...this.pendingRaw, toHex(view)].slice(-8);
 				const data = parseIndoorBikeData(view);
 				// A conformant unit may split Indoor Bike Data across notifications
 				// (More Data, #1849): cadence in one frame, power in the next. Read
@@ -292,10 +325,16 @@ export class FtmsTrainer implements Trainer {
 				// and heart rate from the merged view.
 				// ponytail: a field the unit stops reporting stays at its last value;
 				// reset on the cycle's first frame (bit 0 clear) if that ever bites.
+				// Heart rate carries the time it was last reported, so a relay that
+				// stops goes stale in arbitration instead of holding (#3517).
+				const now = Date.now();
 				this.lastFrame = { ...this.lastFrame, ...data };
+				if (data.heartRate !== undefined) this.#heartRateAt = now;
 				this.frames += 1;
 				if (data.watts === undefined) return;
 				this.poweredFrames += 1;
+				this.lastRaw = this.pendingRaw;
+				this.pendingRaw = [];
 				const merged = this.lastFrame;
 				for (const cb of this.#sampleCbs) {
 					cb({
@@ -303,9 +342,10 @@ export class FtmsTrainer implements Trainer {
 						cadence: Math.round(merged.cadence ?? 0),
 						// Already parsed out of Indoor Bike Data; it used to stop here (#44).
 						heartRate: merged.heartRate,
+						heartRateAt: this.#heartRateAt,
 						speedMps:
 							merged.speedKph === undefined ? undefined : merged.speedKph / 3.6,
-						at: Date.now(),
+						at: now,
 					});
 				}
 			},
@@ -406,6 +446,11 @@ export class FtmsTrainer implements Trainer {
 	async setSimulation(road: SimParams): Promise<void> {
 		this.#mode = 'sim';
 		await this.#writeTarget(encodeSimulation(road));
+	}
+
+	/** Not a target: nothing later supersedes it in the queue. */
+	async setWheelCircumference(mm: number): Promise<void> {
+		await this.#write(encodeWheelCircumference(mm));
 	}
 
 	onSample(cb: (s: TrainerSample) => void): () => void {

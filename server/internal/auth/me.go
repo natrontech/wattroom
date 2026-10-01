@@ -232,8 +232,11 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 		ID: user.ID, DisplayName: req.DisplayName, FtpWatts: req.FtpWatts,
 		WeightKg: req.WeightKg, StravaUpload: stravaUpload,
 		NotifyPlanned: notify, Lthr: lthr,
-		FtpSource:    nextSource(sourceOf(user.FtpSource), req.FtpSource, user.FtpWatts != req.FtpWatts),
-		WeightSource: nextSource(sourceOf(user.WeightSource), req.WeightSource, user.WeightKg != req.WeightKg),
+		FtpSource:    nextSource(protocol.SourceOf(user.FtpSource), req.FtpSource, user.FtpWatts != req.FtpWatts),
+		WeightSource: nextSource(protocol.SourceOf(user.WeightSource), req.WeightSource, user.WeightKg != req.WeightKg),
+		// A claimed weight is an answer for it, the commissaire's tap among
+		// them (ADR-0067); the query moves the dates.
+		WeightClaimed: req.WeightSource != nil,
 	})
 	if err != nil {
 		httpx.Fail(w, s.log, "profile update failed", err, "Your profile could not be saved. Try again.")
@@ -245,8 +248,7 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if s.live != nil {
-		s.live.SetProfile(store.UUIDString(updated.ID), updated.DisplayName,
-			int(updated.FtpWatts), int(updated.WeightKg))
+		s.live.SetProfile(store.RiderOf(updated))
 	}
 	// The client replaces its whole `me` with this response — it has to be as
 	// complete as GET /api/me, or providers/AV/FTP-suggestion/XP vanish on save.
@@ -256,9 +258,10 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 // LiveProfile is the hub, as far as a profile save reaches it: a rider
 // standing in a voice channel carries their FTP, weight and name on every
 // open socket, captured when it opened. Without the push, a mid-session FTP
-// change is scored against the old one until they reconnect.
+// change is scored against the old one until they reconnect — and a weight
+// changed mid-session would reach a race's flag still dated as settled.
 type LiveProfile interface {
-	SetProfile(userID, name string, ftpWatts, weightKg int)
+	SetProfile(p protocol.Rider)
 }
 
 // Live is the hub, as far as auth reaches it: a saved profile, and a session
@@ -367,7 +370,7 @@ func (s *Service) fullMe(ctx context.Context, user db.User) meResponse {
 	// holding no sign-in provider at all, and nothing anywhere said so.
 	if best, err := s.store.Queries.Best20mIn90Days(ctx, user.ID); err != nil {
 		s.log.Warn("me: best 20m unavailable", "err", err, "user", store.UUIDString(user.ID))
-	} else if suggested, ok := stats.SuggestFTP(int(best), int(user.FtpWatts)); ok {
+	} else if suggested, ok := protocol.SuggestFTP(int(best), int(user.FtpWatts)); ok {
 		response.SuggestedFtp = suggested
 		response.Best20m = int(best)
 	}
@@ -413,8 +416,8 @@ func (s *Service) toMe(u db.User) meResponse {
 		AvatarURL:     u.AvatarUrl,
 		FtpWatts:      u.FtpWatts,
 		WeightKg:      u.WeightKg,
-		FtpSource:     sourceOf(u.FtpSource),
-		WeightSource:  sourceOf(u.WeightSource),
+		FtpSource:     protocol.SourceOf(u.FtpSource),
+		WeightSource:  protocol.SourceOf(u.WeightSource),
 		Lthr:          u.Lthr,
 		Email:         u.Email,
 		NotifyPlanned: u.NotifyPlanned,
@@ -443,21 +446,10 @@ func homeCrew(u db.User) *string {
 // The provenance of the two profile numbers (#1484), one vocabulary for the
 // column CHECK, the API and the client.
 const (
-	sourceDefault = "default" // nobody chose it: the account was created with it
-	sourceManual  = "manual"  // the rider set it, by typing it or accepting a suggestion
-	sourceRamp    = "ramp"    // a ramp test measured it
+	sourceDefault = protocol.SourceDefault
+	sourceManual  = "manual" // the rider set it, by typing it or accepting a suggestion
+	sourceRamp    = "ramp"   // a ramp test measured it
 )
-
-// sourceOf reads the column, which is nullable because the migration that
-// added it had to be (ADR-0019, expand only). A row with no word on it was
-// never answered for — the honest reading, and the one that makes the
-// first-run ask appear rather than quietly retire itself.
-func sourceOf(stored *string) string {
-	if stored == nil || *stored == "" {
-		return sourceDefault
-	}
-	return *stored
-}
 
 // claimableSource: a client may claim only the two sources that mean somebody
 // answered. "default" is the server's word for an account nobody has answered

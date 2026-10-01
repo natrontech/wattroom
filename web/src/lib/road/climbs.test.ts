@@ -1,35 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import {
-	MAX_CLIMBS,
-	classOf,
-	climbsOf,
-	hairpinsOf,
-	type Climb,
-} from './climbs';
+import { MaxClimbs } from '$lib/protocol';
+import { classOf, climbsOf, hairpinsOf, type Climb } from './climbs';
 import {
 	HAIRPINS,
+	legsRoad,
 	bridgeAndTunnel,
 	hairpinClimb,
 	spiky,
 	switchback,
 } from './fixtures';
-import type { Road } from './road';
 import { toRoute } from './route';
 
-const STEP = 20;
-
-/** A road drawn as legs of [metres, percent], a sample every 20 m, no turns. */
-function road(...legs: [number, number][]): Road {
-	const heights = [500];
-	for (const [metres, pct] of legs)
-		for (let s = 0; s < metres; s += STEP)
-			heights.push(heights[heights.length - 1] + (pct / 100) * STEP);
-	return {
-		length: STEP * (heights.length - 1),
-		heights,
-		turns: new Array(heights.length - 1).fill(0),
-	};
-}
+const road = legsRoad;
 
 const summary = (cs: Climb[]) =>
 	cs.map((c) => [c.startM, c.topM, Math.round(c.gainM), c.cls]);
@@ -87,7 +69,7 @@ describe('climbsOf, SPEC’s rule', () => {
 		const legs: [number, number][] = [];
 		for (let k = 0; k < 40; k++) legs.push([600 + 20 * k, 4], [600, -4]);
 		const cs = climbsOf(road(...legs));
-		expect(cs).toHaveLength(MAX_CLIMBS);
+		expect(cs).toHaveLength(MaxClimbs);
 		// The eight shortest were the first eight.
 		expect(cs[0].startM).toBeGreaterThan(8 * 1200);
 		const starts = cs.map((c) => c.startM);

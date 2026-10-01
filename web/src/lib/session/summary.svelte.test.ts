@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { tick } from 'svelte';
+import { MinRideSamples } from '$lib/protocol';
 
 const served = vi.hoisted(() => ({
 	rides: [] as {
@@ -32,7 +33,7 @@ vi.mock('$lib/api', () => ({
 const account = vi.hoisted(() => ({ load: vi.fn() }));
 vi.mock('$lib/account.svelte', () => ({ account }));
 
-const { createSummary, SUMMARY_MIN_SAMPLES } = await import('./summary.svelte');
+const { createSummary } = await import('./summary.svelte');
 const { createRecording } = await import('./recording.svelte');
 
 /** A summary wired to a phase the test moves by hand. Effects flush on tick(). */
@@ -129,7 +130,7 @@ describe('the late joiner finds their ride (#1537)', () => {
 		];
 		const t = await setup(() => timelineStart);
 		await t.go('running');
-		ride(t.recording, SUMMARY_MIN_SAMPLES);
+		ride(t.recording, MinRideSamples);
 		await t.go('done');
 		await vi.advanceTimersByTimeAsync(3_000);
 		expect(t.summary.rideId).toBe('r1');
@@ -164,7 +165,7 @@ describe('the summary finds a crew ride and its medal (#2522)', () => {
 		served.medals = { r2: [{ kind: 'metronome' }] };
 		const t = await setup(() => timelineStart);
 		await t.go('running');
-		ride(t.recording, SUMMARY_MIN_SAMPLES);
+		ride(t.recording, MinRideSamples);
 		await t.go('done');
 		await vi.advanceTimersByTimeAsync(3_000);
 		expect(t.summary.rideId).toBe('r2');
@@ -185,7 +186,7 @@ describe('the summary finds a crew ride and its medal (#2522)', () => {
 		];
 		const t = await setup(() => timelineStart);
 		await t.go('running');
-		ride(t.recording, SUMMARY_MIN_SAMPLES);
+		ride(t.recording, MinRideSamples);
 		await t.go('done');
 		await vi.advanceTimersByTimeAsync(3_000);
 		expect(t.summary.rideId).toBe('r3');
@@ -202,10 +203,10 @@ describe('the summary card outlives the next pick (#2603)', () => {
 	it('keeps the close through a pick, and lets go when the next one runs', async () => {
 		const t = await setup(() => undefined);
 		await t.go('running');
-		ride(t.recording, SUMMARY_MIN_SAMPLES);
+		ride(t.recording, MinRideSamples);
 		await t.go('done');
 		expect(t.summary.card?.workoutName).toBe('Openers');
-		expect(t.summary.card?.samples).toHaveLength(SUMMARY_MIN_SAMPLES);
+		expect(t.summary.card?.samples).toHaveLength(MinRideSamples);
 
 		await t.pick('Threshold');
 		expect(t.summary.card?.workoutName, 'the next pick closed it').toBe(
@@ -215,7 +216,7 @@ describe('the summary card outlives the next pick (#2603)', () => {
 		t.recording.follow('countdown');
 		await t.go('countdown');
 		expect(t.summary.card?.samples, 'the countdown emptied it').toHaveLength(
-			SUMMARY_MIN_SAMPLES,
+			MinRideSamples,
 		);
 
 		await t.go('running');
@@ -226,12 +227,12 @@ describe('the summary card outlives the next pick (#2603)', () => {
 	it('is gone once dismissed, and never shown for under a minute', async () => {
 		const t = await setup(() => undefined);
 		await t.go('running');
-		ride(t.recording, SUMMARY_MIN_SAMPLES - 1);
+		ride(t.recording, MinRideSamples - 1);
 		await t.go('done');
 		expect(t.summary.card).toBeNull();
 
 		await t.go('running');
-		ride(t.recording, SUMMARY_MIN_SAMPLES);
+		ride(t.recording, MinRideSamples);
 		await t.go('done');
 		expect(t.summary.card).not.toBeNull();
 		t.summary.dismiss();
@@ -246,14 +247,14 @@ describe('the summary card outlives the next pick (#2603)', () => {
 it('a dismissed close stays dismissed on the next mount', async () => {
 	const first = await setup(() => undefined, 'shared-close');
 	await first.go('running');
-	ride(first.recording, SUMMARY_MIN_SAMPLES);
+	ride(first.recording, MinRideSamples);
 	await first.go('done');
 	first.summary.dismiss();
 	first.off();
 
 	const again = await setup(() => undefined, 'shared-close');
 	await again.go('running');
-	ride(again.recording, SUMMARY_MIN_SAMPLES);
+	ride(again.recording, MinRideSamples);
 	await again.go('done');
 	expect(again.summary.card, 'the dismissed summary came back').toBeNull();
 	again.off();
@@ -272,7 +273,7 @@ describe('a ride the summary cannot find yet', () => {
 	it('points to Rides once the last look finds nothing', async () => {
 		const t = await setup(() => Date.now());
 		await t.go('running');
-		ride(t.recording, SUMMARY_MIN_SAMPLES);
+		ride(t.recording, MinRideSamples);
 		await t.go('done');
 		await vi.advanceTimersByTimeAsync(3_000);
 		expect(t.summary.rideLate).toBe(false);
@@ -287,7 +288,7 @@ describe('a ride the summary cannot find yet', () => {
 		served.refuse = true;
 		const t = await setup(() => Date.now());
 		await t.go('running');
-		ride(t.recording, SUMMARY_MIN_SAMPLES);
+		ride(t.recording, MinRideSamples);
 		await t.go('done');
 		await vi.advanceTimersByTimeAsync(3_000);
 		expect(t.summary.rideLate).toBe(true);

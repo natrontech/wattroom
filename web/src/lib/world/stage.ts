@@ -1,30 +1,38 @@
 // Everything a style paints that is not a rider: sky, light, terrain, road,
 // props, furniture and the horizon. Rebuilt whole on a style change — the
-// world data under it is not.
+// world data under it is not, and neither is the streamed ground it draws.
 import * as THREE from 'three';
 import { backdrop } from './backdrop';
+import { tag } from './family';
+import { chunkId, LEAVE, roadPieces, type GroundStream } from './ground-stream';
+import { batchProps } from './props/batch';
 import { arch, board, kits } from './furniture';
-import {
-	instanced,
-	plinth,
-	road,
-	roadMaterial,
-	ROAD_W,
-	terrain,
-	yOf,
-} from './geometry';
+import { plinth, road, roadMaterial, ROAD_W, terrain, yOf } from './geometry';
 import { PROP_RAMP, ramp, toon, type Sight } from './materials';
-import * as P from './props';
+import { piecePool } from './piece-pool';
+import { CHUNK_M } from './place/lattice';
 import { prng } from './rand';
 import type { Route } from '$lib/road/route';
 import { skyMaterial, sunDir, terrainMaterial, type Style } from './styles';
+import { meshOf, REACH } from './terrain-mesh';
+import { SHOULDER } from './terrain/road-profile';
 import type { World } from './world';
 
 export type Stage = {
 	group: THREE.Group;
-	backdrop: THREE.Object3D; // the horizon, hidden from the orbit view
-	overview: THREE.Object3D; // a fat road, drawn only from the orbit view
+	/** Brings what the stage draws to where the eye now is: the props' rings and the road's pieces. */
+	update(eye: THREE.Vector3): void;
+	/**
+	 * The orbit view: the whole model on its plinth and a fat road, no
+	 * horizon — built the first time it is asked, the desk's diorama — or the
+	 * ride's ground and road, streamed around the eye.
+	 */
+	setOrbit(on: boolean): void;
 };
+
+// Room for the ground within reach, and for a hilly road's pieces; either grows by half when it runs out.
+const GROUND_ROOM = { pieces: 13_000, vertices: 200_000, indices: 800_000 };
+const ROAD_ROOM = { pieces: 48, vertices: 48_000, indices: 240_000 };
 
 const SKY_R = 40000;
 const STARS = 2500;
@@ -65,6 +73,7 @@ export function buildStage(
 	world: World,
 	style: Style,
 	sight: Sight,
+	stream: GroundStream,
 ): Stage {
 	const group = new THREE.Group();
 	const gradient = ramp(PROP_RAMP);
@@ -76,7 +85,7 @@ export function buildStage(
 	sky.scale.setScalar(SKY_R);
 	sky.frustumCulled = false;
 	sky.renderOrder = -1;
-	group.add(sky);
+	group.add(tag('sky', sky));
 	group.add(new THREE.HemisphereLight(style.sky.top, style.shade, 1.6));
 	const sun = new THREE.DirectionalLight(style.key, 2.2);
 	sun.position.copy(sunDir(style).multiplyScalar(5000));
@@ -84,7 +93,8 @@ export function buildStage(
 
 	// Snow only where the route earns it — never on a flat loop.
 	const alpine = route.maxEle > 1000 || route.gain / (route.length / 1000) > 20;
-	const radius = Math.hypot(world.nx * world.cell, world.nz * world.cell) / 2;
+	const [minX, minZ, maxX, maxZ] = world.bounds;
+	const radius = Math.hypot(maxX - minX, maxZ - minZ) / 2;
 	const horizon = new THREE.Mesh(
 		backdrop(
 			route,
@@ -100,30 +110,39 @@ export function buildStage(
 		}),
 	);
 	horizon.frustumCulled = false;
-	group.add(horizon);
+	group.add(tag('sky', horizon));
 
-	group.add(
-		new THREE.Mesh(
-			terrain(route, world, style.palette),
-			terrainMaterial(style),
-		),
-	);
-	if (style.plinth)
-		group.add(
-			new THREE.Mesh(
-				plinth(route, world),
-				new THREE.MeshLambertMaterial({
-					color: style.plinth,
-					side: THREE.DoubleSide,
-				}),
-			),
-		);
-	group.add(
-		new THREE.Mesh(
-			road(route, { width: ROAD_W, shoulder: 1.6 }),
-			roadMaterial(style.road),
-		),
-	);
+	// The ride's ground, chunk by chunk as the stream holds it, and its road, piece by piece within the near reach.
+	const ground = piecePool(terrainMaterial(style), GROUND_ROOM);
+	group.add(tag('terrain', ground.mesh));
+	stream.attach({
+		add: (id, [ci, cj], grid) =>
+			ground.add(id, terrain(route, meshOf([{ ci, cj, grid }]), style.palette)),
+		drop: (id) => ground.drop(id),
+	});
+	const ribbon = piecePool(roadMaterial(style.road), ROAD_ROOM);
+	group.add(tag('road', ribbon.mesh));
+	const pieces = roadPieces(route);
+	let here: string | null = null;
+	function roads(eye: THREE.Vector3) {
+		const at = chunkId([
+			Math.floor(eye.x / CHUNK_M),
+			Math.floor(eye.z / CHUNK_M),
+		]);
+		if (at === here) return;
+		here = at;
+		pieces.forEach((p, k) => {
+			const key = String(k);
+			const d = Math.hypot(p.x - eye.x, p.z - eye.z) - p.r;
+			if (d <= REACH.near && !ribbon.has(key))
+				ribbon.add(
+					key,
+					road(route, { width: ROAD_W, shoulder: SHOULDER, rows: p.rows }),
+				);
+			else if (d > REACH.near * LEAVE) ribbon.drop(key);
+		});
+	}
+
 	const overview = new THREE.Mesh(
 		road(route, { width: 70, lift: 6, step: 20 }),
 		new THREE.MeshBasicMaterial({
@@ -133,61 +152,74 @@ export function buildStage(
 		}),
 	);
 	overview.visible = false;
-	group.add(overview);
+	group.add(tag('road', overview));
 
 	const c = style.props;
 	const treeMat = toon(gradient, sight, { wind: true, fade: true });
 	const houseMat = toon(gradient, sight, { fade: true });
 	const plain = toon(gradient, sight);
-	const T = world.trees;
-	const H = world.houses;
-	const kind = (arr: Float32Array, stride: number, k: number) => (i: number) =>
-		arr[i * stride + 4] === k;
-	const place = (
-		geo: THREE.BufferGeometry,
-		mat: THREE.Material,
-		data: Float32Array,
-		stride: number,
-		opts: Parameters<typeof instanced>[5],
-	) => group.add(instanced(route, geo, mat, data, stride, opts));
-	place(P.spruce(c), treeMat, T, 5, {
-		keep: kind(T, 5, 0),
-		scale: (i) => T[i * 5 + 3],
-		rot: (i) => i * 2.4,
-		sink: 0.6,
+	const props = batchProps(route, world.props, c, {
+		trees: treeMat,
+		buildings: houseMat,
+		stock: plain,
 	});
-	place(P.broadleaf(c), treeMat, T, 5, {
-		keep: kind(T, 5, 1),
-		scale: (i) => T[i * 5 + 3],
-		rot: (i) => i * 1.7,
-		sink: 0.6,
-	});
-	const buildings = [P.house, P.church, P.barn, P.hut];
-	buildings.forEach((model, k) =>
-		place(model(c), houseMat, H, 5, {
-			keep: kind(H, 5, k),
-			rot: (i) => H[i * 5 + 3],
-			sink: k === 3 ? 0.6 : 0.8,
-		}),
-	);
-	place(P.cow(c), plain, world.cows, 4, { rot: (i) => world.cows[i * 4 + 3] });
-	place(P.rock(c), plain, world.rocks, 4, {
-		scale: (i) => world.rocks[i * 4 + 3],
-		rot: (i) => i * 1.3,
-		sink: 0.3,
-	});
-	if (style.stars) group.add(stars(style.stars));
+	for (const mesh of props.meshes) group.add(tag('dressing', mesh));
+	if (style.stars) group.add(tag('sky', stars(style.stars)));
 
 	const leafy = toon(gradient, sight, { wind: true, fade: true });
 	for (const k of kits(route, world, c, { fade: houseMat, leafy, flat: plain }))
-		group.add(k);
-	for (const s of world.signs) group.add(board(route, s, style));
+		group.add(tag('dressing', k));
+	for (const s of world.signs)
+		group.add(tag('dressing', board(route, s, style), 'sign'));
 	for (const a of world.arches)
-		group.add(
-			arch(route, a.d, `${a.label} · ${world.names.pass.toUpperCase()}`, style),
-		);
+		group.add(tag('dressing', arch(route, a, style), 'arch'));
 
-	return { group, backdrop: horizon, overview };
+	let orbit = false;
+	let model: THREE.Object3D[] | null = null;
+	/** The whole corridor, once: a diorama's ground and its plinth. */
+	function diorama(): THREE.Object3D[] {
+		const out: THREE.Object3D[] = [
+			tag(
+				'terrain',
+				new THREE.Mesh(
+					terrain(route, world.mesh, style.palette),
+					ground.mesh.material,
+				),
+			),
+		];
+		if (style.plinth)
+			out.push(
+				tag(
+					'terrain',
+					new THREE.Mesh(
+						plinth(route, world),
+						new THREE.MeshLambertMaterial({
+							color: style.plinth,
+							side: THREE.DoubleSide,
+						}),
+					),
+				),
+			);
+		group.add(...out);
+		return out;
+	}
+
+	return {
+		group,
+		update(eye) {
+			props.update(eye);
+			if (!orbit) roads(eye);
+		},
+		setOrbit(on) {
+			orbit = on;
+			if (on) model ??= diorama();
+			for (const o of model ?? []) o.visible = on;
+			ground.mesh.visible = !on;
+			ribbon.mesh.visible = !on;
+			horizon.visible = !on;
+			overview.visible = on;
+		},
+	};
 }
 
 // The summit, where the orbit view looks from and at.

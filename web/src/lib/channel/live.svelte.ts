@@ -1,5 +1,6 @@
 import type {
 	ClientMessage,
+	ControlRoute,
 	Moved,
 	Poke,
 	RiderMetrics,
@@ -10,12 +11,12 @@ import type {
 	ServerTick,
 	SessionRecap,
 } from '$lib/protocol';
-import { PokeKindBottle } from '$lib/protocol';
+import { MinRideSamples, PokeKindBottle } from '$lib/protocol';
 import type { PlaceAddress } from '$lib/channel/address';
 import { fillDeck, type DeckHeard } from '$lib/channel/deck-heard';
 import { account } from '$lib/account.svelte';
 import { deviceWord } from '$lib/device.svelte';
-import { MIN_SAMPLES, openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
+import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
 import {
 	observeServerTime,
 	resetServerClock,
@@ -28,6 +29,7 @@ import {
 	timelineSecond,
 } from '$lib/channel/replay';
 import { isLivePhase } from '$lib/channel/tick-session';
+import { roadOf, type LostRoad } from '$lib/channel/lost-road';
 
 /**
  * The live side of one voice channel (#18): a WebSocket to the hub, the
@@ -86,6 +88,11 @@ export function createChannelLive(address: PlaceAddress) {
 	}
 	let refusal = $state<string | null>(null);
 	let refusalAt = 0;
+	// The pick this tab means to start once the tick shows it landed, and
+	// whether this tab follows the session it starts to its own address
+	// (#2599); a refusal lets go of both.
+	let startAfterPick: string | null = null;
+	let following = $state(false);
 	let jukeboxRefusal = $state<string | null>(null);
 	let jukeboxRefusalAt = 0;
 	// What the hub says this tab holds, and where the rider's other screens
@@ -173,6 +180,16 @@ export function createChannelLive(address: PlaceAddress) {
 	// browser crash leaves not even a .fit. Known at the open, so the rider
 	// hears it while they can still act on it (ADR-0052 rule 3).
 	let noCrashSafety = $state(false);
+	// The road this rider is coaching a session along, as the last live tick
+	// left it, and the one a restart took with it (#3103): the coach's way
+	// back is a new session picked from the bunch's last metre. Kept apart
+	// from lostSession, which is about samples — a coach with no trainer
+	// has none to lose and still has a bunch to put back.
+	let lastRoad: LostRoad | null = null;
+	let lostRoad = $state<LostRoad | null>(null);
+	// And the one a session that closed rode, for its closing card's next
+	// leg (#3103) — until the next session goes live.
+	let endedRoad = $state<LostRoad | null>(null);
 	function followSession(t: ServerTick) {
 		const phase = t.state?.phase;
 		const now = isLivePhase(phase);
@@ -185,11 +202,15 @@ export function createChannelLive(address: PlaceAddress) {
 			// copy: settling it would stamp that copy finished, because the
 			// fresh process acks the live stream it hears while holding
 			// nothing to save.
-			if (phase === 'done') settle(buffer);
-			else {
+			if (phase === 'done') {
+				settle(buffer);
+				endedRoad = lastRoad;
+				lastRoad = null;
+			} else {
+				if (!t.state?.workoutName) lostRoad = lastRoad;
 				// Nothing saved it, and nothing records it now (#2617).
 				buffer?.release();
-				if (bufferedRows >= MIN_SAMPLES && !t.state?.workoutName)
+				if (bufferedRows >= MinRideSamples && !t.state?.workoutName)
 					// No workout at all is the fresh process: a session that
 					// closed keeps its workout named on every later tick, and a
 					// new pick names the next one, so an idle channel that can
@@ -207,6 +228,8 @@ export function createChannelLive(address: PlaceAddress) {
 			return;
 		}
 		lostSession = null;
+		lostRoad = null;
+		endedRoad = null;
 		const startedAt = t.at - (t.state.elapsed ?? 0) * 1000;
 		openedFor = startedAt;
 		openedName = t.state.workoutName || 'Session ride';
@@ -234,7 +257,7 @@ export function createChannelLive(address: PlaceAddress) {
 	function settle(opened: RideBuffer | null) {
 		if (!opened) return;
 		void opened.since(acked).then((tail) => {
-			if (tail.length < MIN_SAMPLES) opened.end();
+			if (tail.length < MinRideSamples) opened.end();
 			// The hub never heard its tail: offered back from here (#2617).
 			else opened.release();
 		});
@@ -339,6 +362,7 @@ export function createChannelLive(address: PlaceAddress) {
 			// reconnect is a new socket. Re-declare it, or a rider who stepped
 			// out quietly comes back on everyone else's screen but their own.
 			if (away) send({ away: { away } });
+			if (ergByRoad) send({ drive: { ergByRoad } });
 			if (gapSeq !== null && buffer) {
 				const since = gapSeq;
 				gapSeq = null;
@@ -389,7 +413,20 @@ export function createChannelLive(address: PlaceAddress) {
 				const mine = me ? msg.tick.riders?.[me] : undefined;
 				if (mine) acked = mine.seq;
 				timelineAt = timelineOrigin(msg.tick);
+				if (isLivePhase(state?.phase)) lastRoad = roadOf(msg.tick, me);
 				followSession(msg.tick);
+				// Start follows the tick that shows the pick landed (#1764):
+				// sent blind, a refused pick's reason was overwritten by
+				// start's own refusal, and a refused pick after a good one
+				// started the old one.
+				if (
+					startAfterPick &&
+					state?.phase === 'idle' &&
+					state.workoutName === startAfterPick
+				) {
+					startAfterPick = null;
+					send({ control: { action: 'start' } });
+				}
 				if (msg.tick.events?.length) mergeEvents(msg.tick.events);
 			}
 			// A refused command is feedback, not a fault — it stays up long
@@ -402,6 +439,8 @@ export function createChannelLive(address: PlaceAddress) {
 				} else {
 					refusal = msg.error.message;
 					refusalAt = Date.now();
+					startAfterPick = null;
+					following = false;
 				}
 			} else {
 				const now = Date.now();
@@ -427,6 +466,9 @@ export function createChannelLive(address: PlaceAddress) {
 	// can re-declare it. Not $state: nothing renders from here — the roster
 	// on the tick is what every screen draws, this rider's tile included.
 	let away = false;
+	// "Don't make me shift" (#3658), kept for the same reason: a race reads
+	// it off the socket at its flag, and a reconnect is a new socket.
+	let ergByRoad = false;
 	/** On the wire, or waiting for it; past the bound, dropped. Metrics are
 	 * never queued: the next sample supersedes a lost one. */
 	// One frame a replay, a frame at a time — the hub takes one a second — and
@@ -438,6 +480,28 @@ export function createChannelLive(address: PlaceAddress) {
 		if (frame) send({ backfill: { samples: frame } });
 		replayFrom = rest[0]?.[0]?.seq ?? null;
 		if (rest.length > 0) setTimeout(() => replay(rest, run), REPLAY_SPACING_MS);
+	}
+
+	/**
+	 * Pick a workout — on a road, from where the route says — and start it
+	 * once the tick shows the pick landed; this tab then follows the session
+	 * to its address.
+	 */
+	function pickAndStart(
+		workout: { name: string; json: string; totalSeconds: number },
+		route?: ControlRoute,
+	) {
+		send({
+			control: {
+				action: 'pick',
+				workoutName: workout.name,
+				workoutJson: workout.json,
+				totalSeconds: workout.totalSeconds,
+				route,
+			},
+		});
+		startAfterPick = workout.name;
+		following = true;
 	}
 
 	function send(message: ClientMessage) {
@@ -588,6 +652,15 @@ export function createChannelLive(address: PlaceAddress) {
 			away = next;
 			send({ away: { away: next, reason: next ? reason : '' } });
 		},
+		/**
+		 * Whether WattRoom holds the watts on a road for this rider — "Don't
+		 * make me shift" — which a race rides unranked (ADR-0084, #3658).
+		 */
+		setDrive(next: boolean) {
+			if (next === ergByRoad) return;
+			ergByRoad = next;
+			send({ drive: { ergByRoad } });
+		},
 		get channelEvents() {
 			return channelEvents;
 		},
@@ -610,7 +683,13 @@ export function createChannelLive(address: PlaceAddress) {
 		},
 		control(
 			action: string,
-			workout?: { name: string; json: string; totalSeconds: number },
+			workout?: {
+				name: string;
+				json: string;
+				totalSeconds: number;
+				/** The road the pick rides, when it rides one (#3095, #3105). */
+				route?: import('$lib/protocol').ControlRoute;
+			},
 			gameMode?: string,
 		) {
 			send({
@@ -619,9 +698,40 @@ export function createChannelLive(address: PlaceAddress) {
 					workoutName: workout?.name,
 					workoutJson: workout?.json,
 					totalSeconds: workout?.totalSeconds,
+					route: workout?.route,
 					gameMode,
 				},
 			});
+		},
+		pickAndStart,
+		/** Follow the next session this tab starts, however it started it. */
+		follow() {
+			following = true;
+		},
+		/** Whether this tab goes to the next session's address when it opens. */
+		get following() {
+			return following;
+		},
+		/** It went. */
+		followed() {
+			following = false;
+		},
+		/** The road a restart took from this rider's session (#3103), or null. */
+		get lostRoad() {
+			return lostRoad;
+		},
+		/** The road the session this rider coached rode, once it closed (#3103). */
+		get endedRoad() {
+			return endedRoad;
+		},
+		/** Put the bunch back where it was: the same workout, a new session. */
+		resumeRoad() {
+			if (!lostRoad) return;
+			const { workoutName, workoutJson, totalSeconds, route } = lostRoad;
+			pickAndStart(
+				{ name: workoutName, json: workoutJson, totalSeconds },
+				route,
+			);
 		},
 		/** The coach gives the session to someone in the channel (#2636). */
 		handOff(rider: string) {

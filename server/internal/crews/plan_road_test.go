@@ -1,0 +1,238 @@
+package crews
+
+import (
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/natrontech/wattroom/server/internal/protocol"
+	"github.com/natrontech/wattroom/server/internal/road"
+	"github.com/natrontech/wattroom/server/internal/routes"
+	"github.com/natrontech/wattroom/server/internal/store"
+	"github.com/natrontech/wattroom/server/internal/store/db"
+	"github.com/natrontech/wattroom/server/internal/testx"
+)
+
+// tellingRoute gives who the telling road — ends that give themselves away —
+// from src, and returns its id.
+func (h *harness) tellingRoute(t *testing.T, who, src string) string {
+	t.Helper()
+	row, err := h.store.Queries.CreateRoute(t.Context(), db.CreateRouteParams{
+		OwnerID: h.users.ByToken[who].ID, Src: src, Name: "Home loop", GenName: "Road · 3.0 km · 50 m",
+		Road: testx.TellingRoad(), RoadHash: "telling", LengthM: 3000, GainM: 50,
+		Climbs: []byte("[]"), EleSource: "file",
+	})
+	if err != nil {
+		t.Fatalf("create route: %v", err)
+	}
+	return store.UUIDString(row.ID)
+}
+
+func roadPlanBody(routeID string, at time.Time) string {
+	workout := `{"name":"Home loop","road":{"routeId":"` + routeID + `","fromM":0,"toM":3000},"steps":[{"type":"road","seconds":600}]}`
+	return fmt.Sprintf(`{"workoutName":"Home loop","workoutJson":%q,"startsAt":%q,"channelId":""}`, workout, at.UTC().Format(time.RFC3339))
+}
+
+// No point, heading or height inside a hidden end reaches a crew member
+// through a plan (#3051, ADR-0063): bob reads alice's planned road as the
+// stretch between its anchors, from zero — and alice reads all of it.
+func TestAPlansRoadReachesTheCrewCut(t *testing.T) {
+	h := setup(t)
+	h.svc.SetRoads(routes.NewAttacher(h.store.Queries, nil))
+	crew, _ := h.crewWithChannel(t)
+	route := h.tellingRoute(t, "alice", "gpx")
+	status, body := h.call(t, "alice", http.MethodPost, schedulePath(crew), roadPlanBody(route, time.Now().Add(24*time.Hour)))
+	if status != http.StatusCreated {
+		t.Fatalf("alice plans her road: %d %v", status, body)
+	}
+	plan, _ := body["id"].(string)
+	var stored *string
+	if err := h.store.Pool.QueryRow(t.Context(), `select route_id::text from scheduled_sessions where id = $1`, plan).Scan(&stored); err != nil || stored == nil || *stored != route {
+		t.Fatalf("the plan's route_id is %v (%v), want %s", stored, err, route)
+	}
+
+	for _, c := range []struct {
+		who     string
+		samples int
+		origin  float64
+	}{{"alice", 151, 0}, {"bob", 111, protocol.RouteHiddenEndM}} {
+		entry := h.crewSchedule(t, c.who, crew)[plan]
+		raw, _ := entry["workoutJson"].(string)
+		var w struct {
+			Road struct {
+				Profile string  `json:"profile"`
+				OriginM float64 `json:"originM"`
+			} `json:"road"`
+		}
+		if err := json.Unmarshal([]byte(raw), &w); err != nil {
+			t.Fatalf("%s's plan workout unreadable: %v", c.who, err)
+		}
+		packed, err := base64.StdEncoding.DecodeString(w.Road.Profile)
+		if err != nil {
+			t.Fatal(err)
+		}
+		r, err := road.UnpackRoad(packed)
+		if err != nil {
+			t.Fatalf("%s's profile: %v", c.who, err)
+		}
+		if len(r.Heights) != c.samples || w.Road.OriginM != c.origin {
+			t.Errorf("%s reads %d samples from %v m, want %d from %v", c.who, len(r.Heights), w.Road.OriginM, c.samples, c.origin)
+		}
+		if c.who != "bob" {
+			continue
+		}
+		for i, height := range r.Heights {
+			if height != 0 {
+				t.Fatalf("bob holds height %d at %v m: an end's rise or an absolute altitude", i, height)
+			}
+		}
+		for i, turn := range r.Turns {
+			if turn == testx.TellingEndTurn {
+				t.Fatalf("bob holds turn %d of a hidden end", i)
+			}
+		}
+	}
+}
+
+// Only a route's owner plans it for the crew, and never one from Strava.
+func TestOnlyTheOwnerPlansTheirRoad(t *testing.T) {
+	h := setup(t)
+	h.svc.SetRoads(routes.NewAttacher(h.store.Queries, nil))
+	crew, _ := h.crewWithChannel(t)
+	alices := h.tellingRoute(t, "alice", "gpx")
+	strava := h.tellingRoute(t, "alice", "stravagpx")
+	at := time.Now().Add(24 * time.Hour)
+	for _, c := range []struct {
+		who, route string
+	}{{"bob", alices}, {"alice", strava}} {
+		status, body := h.call(t, c.who, http.MethodPost, schedulePath(crew), roadPlanBody(c.route, at))
+		if status != http.StatusForbidden || body["field"] != "workoutJson" {
+			t.Errorf("%s planning route %s: %d %v, want 403 on workoutJson", c.who, c.route, status, body)
+		}
+	}
+}
+
+// workoutOpener is the hub as a plan's start reaches it, keeping the workout
+// every socket in the channel would be sent.
+type workoutOpener struct {
+	fakePresence
+	workoutJSON string
+	route       *protocol.ControlRoute
+	routeOwner  string
+}
+
+func (o *workoutOpener) OpenSession(channel string, _ protocol.Rider, _, workoutJSON string, route *protocol.ControlRoute, routeOwner string) (string, string, string) {
+	o.workoutJSON, o.route, o.routeOwner = workoutJSON, route, routeOwner
+	return "session-in-" + channel, "", ""
+}
+
+// Starting a planned road session sends every socket the crew's cut, the
+// same as picking it does (#3512): bob starts alice's plan and the session
+// holds the stretch between the anchors, from zero — never the bare
+// reference nobody but alice could ride.
+func TestStartingARoadPlanSendsTheCrewCut(t *testing.T) {
+	h := setup(t)
+	h.svc.SetRoads(routes.NewAttacher(h.store.Queries, nil))
+	opener := &workoutOpener{}
+	h.svc.SetPresence(opener)
+	crew, channel := h.crewWithChannel(t)
+	route := h.tellingRoute(t, "alice", "gpx")
+	status, body := h.call(t, "alice", http.MethodPost, schedulePath(crew), roadPlanBody(route, time.Now().Add(10*time.Minute)))
+	if status != http.StatusCreated {
+		t.Fatalf("alice plans her road: %d %v", status, body)
+	}
+	plan, _ := body["id"].(string)
+	status, body = h.call(t, "bob", http.MethodPost, schedulePath(crew, "/", plan, "/started"),
+		fmt.Sprintf(`{"channelId":%q}`, store.UUIDString(channel)))
+	if status != http.StatusOK {
+		t.Fatalf("bob starts it: %d %v", status, body)
+	}
+	var w struct {
+		Road struct {
+			RouteID string  `json:"routeId"`
+			Profile string  `json:"profile"`
+			OriginM float64 `json:"originM"`
+		} `json:"road"`
+	}
+	if err := json.Unmarshal([]byte(opener.workoutJSON), &w); err != nil {
+		t.Fatalf("the session's workout: %v (%q)", err, opener.workoutJSON)
+	}
+	packed, err := base64.StdEncoding.DecodeString(w.Road.Profile)
+	if err != nil || w.Road.Profile == "" {
+		t.Fatalf("the session's road carries no profile — the bare reference went out: %s", opener.workoutJSON)
+	}
+	r, err := road.UnpackRoad(packed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if w.Road.RouteID != route || w.Road.OriginM != protocol.RouteHiddenEndM || len(r.Heights) != 111 {
+		t.Errorf("the session rides %d samples from %v m of %s, want the crew's 111 from %d", len(r.Heights), w.Road.OriginM, w.Road.RouteID, protocol.RouteHiddenEndM)
+	}
+	for i, turn := range r.Turns {
+		if turn == testx.TellingEndTurn || r.Heights[i] != 0 {
+			t.Fatalf("the session holds sample %d of a hidden end or an altitude", i)
+		}
+	}
+}
+
+// A planned road goes out under its route's generated name (#3055): alice
+// named her route "Home loop", and neither the plan nor the crew's schedule
+// nor its calendar feed says so — nor the reminder emails, which read the
+// same row.
+func TestAPlannedRoadGoesOutUnderItsGeneratedName(t *testing.T) {
+	h := setup(t)
+	h.svc.SetRoads(routes.NewAttacher(h.store.Queries, nil))
+	crew, _ := h.crewWithChannel(t)
+	route := h.tellingRoute(t, "alice", "gpx")
+	status, body := h.call(t, "alice", http.MethodPost, schedulePath(crew), roadPlanBody(route, time.Now().Add(24*time.Hour)))
+	if status != http.StatusCreated {
+		t.Fatalf("alice plans her road: %d %v", status, body)
+	}
+	plan, _ := body["id"].(string)
+	_, member := h.call(t, "bob", http.MethodGet, crewPath(crew), "")
+	token, _ := member["icsToken"].(string)
+	_, ics, _ := h.rawGet(t, crewPath(crew, "/calendar/", token, ".ics"))
+	const generated = "Road · 3.0 km · 50 m"
+	for surface, text := range map[string]string{
+		"the plan":          fmt.Sprint(body["workoutName"]),
+		"bob's schedule":    fmt.Sprint(h.crewSchedule(t, "bob", crew)[plan]["workoutName"]),
+		"the calendar feed": ics,
+	} {
+		if strings.Contains(text, "Home loop") || !strings.Contains(text, generated) {
+			t.Errorf("%s says %q, want %q and never the route's own name", surface, text, generated)
+		}
+	}
+}
+
+// A started plan rides its road from its first metre (#3103), counted on
+// the crew's cut and looked up as the planner's route whoever starts it:
+// bob starts alice's plan from her kilometre, and the session opens 400 m
+// shorter, where the crew's road begins.
+func TestAStartedPlanRidesItsRoadFromItsMetre(t *testing.T) {
+	h := setup(t)
+	h.svc.SetRoads(routes.NewAttacher(h.store.Queries, nil))
+	opener := &workoutOpener{}
+	h.svc.SetPresence(opener)
+	crew, channel := h.crewWithChannel(t)
+	route := h.tellingRoute(t, "alice", "gpx")
+	workout := `{"name":"Next leg","road":{"routeId":"` + route + `","fromM":1000,"toM":3000},"steps":[{"type":"steady","seconds":600,"target":0.7}]}`
+	body := fmt.Sprintf(`{"workoutName":"Next leg","workoutJson":%q,"startsAt":%q,"channelId":""}`, workout, time.Now().Add(10*time.Minute).UTC().Format(time.RFC3339))
+	status, got := h.call(t, "alice", http.MethodPost, schedulePath(crew), body)
+	if status != http.StatusCreated {
+		t.Fatalf("alice plans the next leg: %d %v", status, got)
+	}
+	plan, _ := got["id"].(string)
+	status, got = h.call(t, "bob", http.MethodPost, schedulePath(crew, "/", plan, "/started"),
+		fmt.Sprintf(`{"channelId":%q}`, store.UUIDString(channel)))
+	if status != http.StatusOK {
+		t.Fatalf("bob starts it: %d %v", status, got)
+	}
+	alice := store.UUIDString(h.users.ByToken["alice"].ID)
+	if opener.route == nil || opener.route.ID != route || opener.route.FromM != 600 || opener.routeOwner != alice {
+		t.Fatalf("the session opens on %+v as %q's, want %s from 600 m as alice's (%s)", opener.route, opener.routeOwner, route, alice)
+	}
+}

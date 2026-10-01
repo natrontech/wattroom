@@ -3,13 +3,21 @@ import { PaceDefaultCdA } from '$lib/protocol';
 import { createPace } from '$lib/road/pace';
 import { at } from '$lib/road/along';
 import { toRoute } from '$lib/road/route';
-import { advance, defaultRiders } from './sim';
+import { advance, simRider } from './sim';
 import { syntheticPoints } from './synthetic';
 
 describe('the dev world rides the shared pace model (#3048)', () => {
 	it('lands on the metre the pace model does at every whole second', () => {
 		const route = toRoute(syntheticPoints());
-		const [you] = defaultRiders(225, 250);
+		const you = simRider({
+			id: 'you',
+			name: 'You',
+			mass: 80,
+			ftp: 250,
+			you: true,
+			watts: 225,
+			d: 0,
+		});
 		const twin = createPace(you.v);
 		let d = you.d;
 		// Frames of a sixth of a second: the world steps on whole seconds only.

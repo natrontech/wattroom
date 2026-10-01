@@ -27,6 +27,12 @@ export interface SteadyStep {
 	 */
 	hrLow?: number;
 	hrHigh?: number;
+	/**
+	 * HR hold (#67 flavour 2, docs/SPEC.md): the rider's own client moves the
+	 * ERG watts to keep heart rate in the band above, within ±10 % FTP of the
+	 * target. Needs a band; never scored; rides alone.
+	 */
+	hrHold?: boolean;
 }
 
 export interface RepeatStep {
@@ -60,6 +66,27 @@ export interface Workout {
 	 * The editor never writes it; it is not a per-workout setting.
 	 */
 	unscored?: boolean;
+	/**
+	 * The road it rides, by reference (#3051): the stored route and the
+	 * stretch of it, with where each block ends on a road workout (#3026).
+	 * The server attaches the reader's cut of the road on read; a profile is
+	 * never sent back up.
+	 */
+	road?: WorkoutRoad;
+}
+
+export interface WorkoutRoad {
+	routeId: string;
+	fromM: number;
+	toM: number;
+	stepEndM?: number[];
+	/**
+	 * Attached on read, never sent back (byReference): the reader's cut of
+	 * the road, packed and base64, starting `originM` metres along the
+	 * owner's road (#3051).
+	 */
+	profile?: string;
+	originM?: number;
 }
 
 /** One entry of the flattened timeline — repeats expanded, absolute offsets. */
@@ -78,6 +105,8 @@ export interface Segment {
 	/** HR band carried from the step (steady only, display-only, bpm) */
 	hrLow?: number;
 	hrHigh?: number;
+	/** The band is held rather than shown (#67) — unscored. */
+	hrHold?: boolean;
 	/**
 	 * Path into the original (unexpanded) step tree, for UI highlighting:
 	 * `[i]` a top-level step, `[i, j]` a step inside a repeat. Every pass of a

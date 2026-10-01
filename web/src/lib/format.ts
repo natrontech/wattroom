@@ -139,3 +139,8 @@ export function formatStamp(ms: number): string {
 export function wkg(watts: number, kg: number | null | undefined): string {
 	return kg && kg > 0 ? (watts / kg).toFixed(1) : '–';
 }
+
+/** Metres as kilometres to one decimal, the way a road's readouts give them. */
+export function formatKm(m: number): string {
+	return (m / 1000).toFixed(1);
+}

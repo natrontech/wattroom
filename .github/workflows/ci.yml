@@ -381,6 +381,8 @@ jobs:
           git diff --exit-code static/legal/web.json
       - run: pnpm run test
       - run: pnpm run build
+      - name: three.js stays out of the eager shell and the (site) pages
+        run: node scripts/bundle-check.mjs
 
   # The same suite on the Node the `web` job above does not run (#2074).
   #

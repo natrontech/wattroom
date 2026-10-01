@@ -24,9 +24,9 @@ var openers = protocol.Control{Action: "pick", WorkoutName: "Openers", WorkoutJS
 
 // inChannel is a room with these riders standing in it, so a hand-off and a
 // refusal can name them.
-func inChannel(t *testing.T, channel string, riders ...protocol.Rider) (*room, map[string]*client) {
+func inChannel(t *testing.T, channel string, riders ...protocol.Rider) (*channelState, map[string]*client) {
 	t.Helper()
-	rm := newRoom(channel)
+	rm := newChannelState(channel)
 	clients := map[string]*client{}
 	for _, rider := range riders {
 		c := &client{rider: rider, out: make(chan []byte, clientQueue)}
@@ -37,7 +37,7 @@ func inChannel(t *testing.T, channel string, riders ...protocol.Rider) (*room, m
 }
 
 // expect runs one control and checks its answer's code ("" for "it ran").
-func expect(t *testing.T, rm *room, c protocol.Control, rider protocol.Rider, want string) string {
+func expect(t *testing.T, rm *channelState, c protocol.Control, rider protocol.Rider, want string) string {
 	t.Helper()
 	code, message := rm.control(c, rider, time.Now())
 	if code != want {
@@ -74,7 +74,7 @@ func TestSessionOnePerChannel(t *testing.T) {
 	if caveID == loftID {
 		t.Fatal("two channels share one session id")
 	}
-	for _, rm := range []*room{cave, loft} {
+	for _, rm := range []*channelState{cave, loft} {
 		go rm.run(slog.New(slog.DiscardHandler), time.Now, nil)
 		t.Cleanup(func() { close(rm.stop) })
 	}

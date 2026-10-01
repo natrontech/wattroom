@@ -17,7 +17,9 @@ import (
 //     and the JSON goes only to a socket that has not heard this hash;
 //   - a closed session's scores (#2819): ADR-0058 keeps the closing card for
 //     the riders who rode it, and a member who joins the channel afterwards
-//     must not read everyone's execution off the wire.
+//     must not read everyone's execution off the wire — nor a race's results,
+//     its card or its finish times, which only its riders see (ADR-0067).
+//     The race itself, racers moving on the road, the channel may watch.
 type tickFrames struct {
 	tick    *protocol.ServerTick
 	log     *slog.Logger
@@ -55,6 +57,21 @@ func (f *tickFrames) marshal(kind frameKind, cheers []protocol.Cheer) []byte {
 	}
 	if !kind.scores {
 		t.Execution = nil
+		if t.Game != nil && t.Game.Race != nil && t.Game.Race.Results != nil {
+			game, card := *t.Game, *t.Game.Race
+			card.Results = nil
+			game.Race = &card
+			t.Game = &game
+		}
+		if t.World != nil && t.World.Racers != nil {
+			world := *t.World
+			world.Racers = make(map[string]protocol.RaceRider, len(t.World.Racers))
+			for id, at := range t.World.Racers {
+				at.FinishMs = 0
+				world.Racers[id] = at
+			}
+			t.World = &world
+		}
 	}
 	if !kind.deck {
 		t.Jukebox = nil
@@ -69,7 +86,7 @@ func (f *tickFrames) marshal(kind frameKind, cheers []protocol.Cheer) []byte {
 
 // sendTick hands every socket its frame of the tick, and what is addressed to
 // it alone. Runs after rm.mu is released.
-func (rm *room) sendTick(log *slog.Logger, out *tickOut) {
+func (rm *channelState) sendTick(log *slog.Logger, out *tickOut) {
 	metricTicks.Inc()
 	frames := tickFrames{tick: &out.tick, log: log, channel: rm.channel}
 	for _, c := range out.clients {

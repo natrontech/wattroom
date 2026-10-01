@@ -4,10 +4,10 @@
 -- channel's existence is part of what it keeps.
 
 -- name: CreateCrewPlan :one
-insert into scheduled_sessions (crew_id, channel_id, workout_name, workout_json, starts_at, created_by)
+insert into scheduled_sessions (crew_id, channel_id, workout_name, workout_json, starts_at, created_by, route_id)
 values (sqlc.arg(crew_id), sqlc.narg(channel_id), sqlc.arg(workout_name), sqlc.arg(workout_json),
-        sqlc.arg(starts_at), sqlc.arg(created_by))
-returning id, workout_name, workout_json, starts_at, created_by, created_at, reminded_at, started_at, crew_id, channel_id;
+        sqlc.arg(starts_at), sqlc.arg(created_by), sqlc.narg(route_id))
+returning id, workout_name, workout_json, starts_at, created_by, created_at, reminded_at, started_at, crew_id, channel_id, route_id;
 
 -- name: CountCrewUpcoming :one
 -- docs/SPEC.md's 100-plan shelf, counted the way ListCrewUpcoming lists: a
@@ -106,7 +106,7 @@ update scheduled_sessions
 set starts_at = sqlc.arg(starts_at),
     reminded_at = case when starts_at = sqlc.arg(starts_at) then reminded_at else null end
 where id = sqlc.arg(id) and crew_id = sqlc.arg(crew_id)
-returning id, workout_name, workout_json, starts_at, created_by, created_at, reminded_at, started_at, crew_id, channel_id;
+returning id, workout_name, workout_json, starts_at, created_by, created_at, reminded_at, started_at, crew_id, channel_id, route_id;
 
 -- name: DeleteCrewPlan :one
 delete from scheduled_sessions where id = sqlc.arg(id) and crew_id = sqlc.arg(crew_id)

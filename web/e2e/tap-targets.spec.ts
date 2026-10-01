@@ -1,4 +1,5 @@
 import { expect, test, textPath, voicePath } from './crew';
+import { openAWorkoutOnARoad } from './route';
 
 /**
  * The kit's icon button, where a call site had typed its own (#2170).
@@ -149,6 +150,32 @@ test('the browse surfaces’ links and folds clear the floor on a phone', async 
  * sat at 28 px beside the coach's controls in a running session — small to
  * hit on purpose and easy to hit by mistake.
  */
+test('Try 3D again, on a ride held on the flat road, is riding size (#3080)', async ({
+	riders,
+}) => {
+	test.skip(
+		!!process.env.PLAYWRIGHT_BASE_URL,
+		'the ?as= dev provider only exists on a dev server',
+	);
+	const rider = await riders('Tap Flat Road Rider');
+	await rider.setViewportSize(PHONE);
+	await rider.addInitScript(() => {
+		localStorage.setItem('wattroom.world-slot.v1', '1');
+		localStorage.setItem('wattroom.flat-road.v1', '1');
+	});
+	// Only a ride on a road has a world to hold on the flat road (#3663).
+	await openAWorkoutOnARoad(rider);
+	await rider.getByRole('button', { name: 'Ride simulated' }).click();
+	await rider.getByRole('button', { name: 'Start the ride' }).click();
+	const retry = rider.getByRole('button', { name: 'Try 3D again' });
+	await expect(retry).toBeVisible({ timeout: 30_000 });
+	const retryBox = await box(retry);
+	expect(
+		retryBox.height,
+		`'Try 3D again' is ${retryBox.height}px tall`,
+	).toBeGreaterThanOrEqual(RIDING);
+});
+
 test('the header controls a pedalling rider uses are riding size', async ({
 	riders,
 	channels,
@@ -176,6 +203,17 @@ test('the header controls a pedalling rider uses are riding size', async ({
 		`'Start a session' on a free ride is ${startBox.height}px tall`,
 	).toBeGreaterThanOrEqual(RIDING);
 
+	// Easier and Harder on the free ride's grade (#3330): hit while pedalling.
+	for (const name of ['Easier', 'Harder']) {
+		const pair = coach.getByRole('button', { name, exact: true });
+		await expect(pair).toBeVisible();
+		const pairBox = await box(pair);
+		expect(
+			pairBox.height,
+			`${name} on a free ride is ${pairBox.height}px tall`,
+		).toBeGreaterThanOrEqual(RIDING);
+	}
+
 	await start.click();
 	await coach
 		.getByRole('textbox', { name: 'find a workout' })
@@ -195,4 +233,15 @@ test('the header controls a pedalling rider uses are riding size', async ({
 		unpairBox.height,
 		`Unpair in a running session is ${unpairBox.height}px tall`,
 	).toBeGreaterThanOrEqual(RIDING);
+
+	// The bike computer's page dots (#3088): a page is turned mid-interval.
+	const dots = coach.getByTestId('computer-dot');
+	await expect(dots.first()).toBeVisible({ timeout: 15_000 });
+	for (const dot of await dots.all()) {
+		const dotBox = await box(dot);
+		expect(
+			Math.min(dotBox.width, dotBox.height),
+			`a page dot is ${dotBox.width}×${dotBox.height}px`,
+		).toBeGreaterThanOrEqual(RIDING);
+	}
 });

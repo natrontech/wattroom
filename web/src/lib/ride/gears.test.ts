@@ -11,7 +11,7 @@ import type {
 import { BikeKg, PaceDefaultCdA, ReferenceRiderKg } from '$lib/protocol';
 import { at } from '$lib/road/along';
 import { createPace, dotSecond } from '$lib/road/pace';
-import { composeSim, createActuator } from './actuation';
+import { composeSim, createActuator } from './actuation.svelte';
 import { createRideGrade } from './ride-grade';
 import { gradedRoad, stretch } from './road.test-helper';
 

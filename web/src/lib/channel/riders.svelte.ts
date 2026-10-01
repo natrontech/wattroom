@@ -3,7 +3,10 @@ import { describeBlock, type Block } from '$lib/workout/block';
 import type { LiveRider } from '$lib/channel/types';
 import { coachOf } from '$lib/channel/tick-session';
 import { scoredTarget } from '$lib/channel/types';
+import { createRoadReadout } from '$lib/ride/road-readout';
 import { targetAt } from '$lib/workout/engine';
+import { roadOf } from '$lib/workout/road-workout';
+import { turnedRound } from '$lib/road/road';
 import type { Segment, Workout } from '$lib/workout/types';
 import type { ServerTick } from '$lib/protocol';
 import type { createRecording } from '$lib/session/recording.svelte';
@@ -170,6 +173,35 @@ export function createRiders(deps: RiderDeps) {
 			trace: deps.recording.trace,
 		},
 	);
+	// The session's road (#3639): the crew's cut its pick carries, unpacked
+	// once a pick, at the bunch's metre — which counts the way it is ridden.
+	const cut = $derived.by(() => {
+		const workout = deps.workout();
+		return workout ? roadOf(workout) : null;
+	});
+	// The road as the bunch rides it, and where on it: what the world draws (#3663).
+	const ridden = $derived.by(() => {
+		const route = deps.live.tick?.state?.route;
+		const world = deps.live.tick?.world;
+		if (!cut || !route || !world) return null;
+		// The bunch's speed, never the trainer's (ADR-0084: that is the drivetrain's alone).
+		const { bunchM, speedMps: bunchMps, offsets } = world;
+		return {
+			road: route.reverse ? turnedRound(cut.road) : cut.road,
+			// Your place is the bunch's and your elastic offset from it, in decimetres.
+			m: bunchM + (offsets?.[you.id] ?? 0) / 10,
+			mps: bunchMps,
+		};
+	});
+	const readoutAt = createRoadReadout();
+	const road = $derived.by(() => {
+		const tick = deps.live.tick;
+		const route = tick?.state?.route;
+		const bunchM = tick?.world?.bunchM;
+		if (!cut || !route || bunchM === undefined) return undefined;
+		const m = route.reverse ? cut.road.length - bunchM : bunchM;
+		return readoutAt(cut.road, m, route.reverse);
+	});
 	const block = $derived(
 		deps.running() && deps.segments().length > 0
 			? describeBlock(
@@ -179,6 +211,9 @@ export function createRiders(deps: RiderDeps) {
 					deps.segments(),
 					deps.workout(),
 					you.ftp,
+					deps.recording.trace,
+					undefined,
+					road,
 				)
 			: null,
 	);
@@ -192,6 +227,10 @@ export function createRiders(deps: RiderDeps) {
 		},
 		get block(): Block | null {
 			return block;
+		},
+		/** The session's road the way the bunch rides it, and where the bunch is; null off one. */
+		get ridden() {
+			return ridden;
 		},
 	};
 }

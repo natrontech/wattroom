@@ -1,6 +1,6 @@
 import type { SensorKind, SensorReading } from '$lib/ble/sensor';
 import type { Trainer } from '$lib/ble/trainer';
-import type { SprintSetup } from '$lib/ride/actuation';
+import type { SprintSetup } from '$lib/ride/actuation.svelte';
 import type { RecordedSecond } from './ride-record.svelte';
 import type { Workout } from './types';
 
@@ -80,4 +80,6 @@ export interface RideOptions {
 	sprint?: () => SprintSetup;
 	/** Called with each recorded sample — the crash-safety buffer's seam (#19). */
 	onRecord?: (sample: RecordedSecond) => void;
+	/** The rider's weight, kg: a road workout's dot carries it (#3499). */
+	kg?: () => number;
 }

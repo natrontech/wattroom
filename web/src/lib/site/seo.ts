@@ -34,7 +34,7 @@ export const LANDING: SitePage = {
 	// own positioning: "Zwift alternative", "structured workouts" and "smart
 	// trainer" are what a rider types into a search box (#2139).
 	description:
-		'Discord for indoor cycling — no virtual world, your watts are the game. A Zwift alternative for structured workouts and smart-trainer rides with friends.',
+		'Discord for indoor cycling — your crew, your voice, your watts. A Zwift alternative for structured workouts and smart-trainer rides with friends.',
 };
 
 export const GROUP_WORKOUTS: SitePage = {
@@ -48,14 +48,14 @@ export const ZWIFT_ALTERNATIVE: SitePage = {
 	path: '/zwift-alternative',
 	title: 'A free Zwift alternative for riding with friends — WattRoom',
 	description:
-		'No subscription, no install, no virtual world: a crew space with voice, synced ERG workouts on everyone’s own FTP, and games decided by watts. Open source.',
+		'No subscription, no install: a crew space with voice, synced ERG workouts on everyone’s own FTP, and games decided by watts. Open source.',
 };
 
 export const GAME_MODES: SitePage = {
 	path: '/game-modes',
 	title: 'Seven indoor cycling games decided by watts — WattRoom',
 	description:
-		'Sprint Roulette, Watt Golf, Backyard Ramp, Floor is Lava and more: group games for smart trainers where your power is the whole game. No avatars, no drafting.',
+		'Sprint Roulette, Watt Golf, Backyard Ramp, Floor is Lava and more: group games for smart trainers where your power is the whole game. No drafting, no power-ups.',
 };
 
 export const FTP_TEST: SitePage = {

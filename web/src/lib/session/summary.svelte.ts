@@ -2,12 +2,10 @@ import { account } from '$lib/account.svelte';
 import { api } from '$lib/api';
 import type { Medal } from '$lib/components/MedalCard.svelte';
 import { MEDAL_META } from '$lib/medals';
+import { MinRideSamples } from '$lib/protocol';
 import type { LiveRider } from '$lib/channel/types';
 import type { createRecording } from '$lib/session/recording.svelte';
 import { untrack } from 'svelte';
-
-/** A session is worth a summary once it has a minute of your riding in it. */
-export const SUMMARY_MIN_SAMPLES = 60;
 
 /**
  * What the summary card draws, taken when the session closes (#2603). The
@@ -149,7 +147,7 @@ export function createSummary(deps: {
 			rideLate = false;
 			sessionStart = deps.startedAt() ?? Date.now();
 		}
-		if (phase !== 'done' || deps.recording.samples.length < SUMMARY_MIN_SAMPLES)
+		if (phase !== 'done' || deps.recording.samples.length < MinRideSamples)
 			return;
 		// Taken the first time the close is seen, not only on the edge into
 		// it: a page that remounts after the close (#2600) sees it done.

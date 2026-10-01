@@ -155,9 +155,10 @@ re-seal once with the old key beside it:
 
 It moves every route sealed under the old key to the new one and logs how many
 it moved. It is safe to run twice and safe beside a running server. Until it has
-run, a route sealed under the old key keeps its heights, but its map will not
-open, and the rider's export says it is incomplete. A server with no key at all
-never stores a route's map, only its heights.
+run, a route sealed under the old key keeps its heights, but its map and its
+full road (turns, height above sea) will not open, and the rider's export says
+it is incomplete. A server with no key at all never stores a route's map or its
+turns, only its heights measured from its start.
 
 ### How much is it used?
 

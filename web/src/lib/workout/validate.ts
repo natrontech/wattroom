@@ -94,6 +94,11 @@ function checkHrBand(
 	const high = value.hrHigh as number | undefined;
 	if (low !== undefined && high !== undefined && low > high)
 		return `${where}: the HR band is upside down (${low} > ${high})`;
+	// A hold with nothing to hold to (#67, docs/SPEC.md).
+	if (value.hrHold !== undefined && typeof value.hrHold !== 'boolean')
+		return `${where}: hrHold must be true or false`;
+	if (value.hrHold && low === undefined && high === undefined)
+		return `${where}: a heart-rate hold needs an HR band to hold`;
 	return null;
 }
 

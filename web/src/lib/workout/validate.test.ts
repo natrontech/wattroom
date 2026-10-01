@@ -164,6 +164,25 @@ describe('validateWorkout', () => {
 		expect(validateWorkout(ok([step({ hrHigh: 300 })])).ok).toBe(false);
 		expect(validateWorkout(ok([step({ hrLow: 'easy' })])).ok).toBe(false);
 	});
+
+	it('refuses a heart-rate hold with no band to hold (#67 flavour 2)', () => {
+		const step = (extra: object) => ({
+			type: 'steady',
+			seconds: 300,
+			target: 0.65,
+			...extra,
+		});
+		expect(validateWorkout(ok([step({ hrHold: true })]))).toMatchObject({
+			ok: false,
+			error: expect.stringContaining('needs an HR band'),
+		});
+		expect(validateWorkout(ok([step({ hrHigh: 145, hrHold: true })])).ok).toBe(
+			true,
+		);
+		expect(validateWorkout(ok([step({ hrHigh: 145, hrHold: 'yes' })])).ok).toBe(
+			false,
+		);
+	});
 });
 
 // The server caps a whole workout at a day (#1393); the editor used to let

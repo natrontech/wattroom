@@ -1,5 +1,6 @@
 import { channelAddress } from '$lib/channel/address';
-import { describe, expect, it } from 'vitest';
+import { device } from '$lib/device.svelte';
+import { describe, expect, it, vi } from 'vitest';
 import {
 	channelContextValue,
 	type ContextDeps,
@@ -111,5 +112,22 @@ describe('channelContextValue (#686)', () => {
 		ctx.clearAnnouncement();
 
 		expect(calls).toEqual(['first', 'second']);
+	});
+
+	it('drives the session only from a screen that is not a phone (#3538)', () => {
+		const phone = vi.spyOn(device, 'spectator', 'get');
+		const d = deps(shellProps());
+		let coach = true;
+		d.canControl = () => coach;
+		const ctx = channelContextValue(d);
+
+		phone.mockReturnValue(false);
+		expect(ctx.canDrive).toBe(true);
+		phone.mockReturnValue(true);
+		expect(ctx.canDrive).toBe(false);
+		phone.mockReturnValue(false);
+		coach = false;
+		expect(ctx.canDrive).toBe(false);
+		phone.mockRestore();
 	});
 });

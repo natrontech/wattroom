@@ -54,7 +54,7 @@ const (
 	// "Zwift alternative", "structured training" and the trainer are what a
 	// rider types into a search box, and all three were sitting in canon,
 	// unindexed.
-	siteDesc = "Discord for indoor cycling — no virtual world, your watts are the game."
+	siteDesc = "Discord for indoor cycling — your crew, your voice, your watts."
 	metaDesc = siteDesc + " A Zwift alternative for structured workouts and smart-trainer rides with friends."
 )
 

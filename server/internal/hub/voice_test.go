@@ -95,7 +95,7 @@ func TestVoiceFoldsTabsPerRider(t *testing.T) {
 // open. Two tabs are one rider, and another channel's call is not this one.
 func TestOccupantsAreTheSocketsAndTheCall(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), nil, nil)
-	rm := h.room("velvet")
+	rm := h.stateOf("velvet")
 	rm.join(socket("kim-id", "Kim"))
 	rm.join(socket("kim-id", "Kim"))
 	rm.join(socket("jan-id", "Jan"))
@@ -121,7 +121,7 @@ func TestOccupantsAreTheSocketsAndTheCall(t *testing.T) {
 func TestAVoiceJoinStaysInItsChannel(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), nil, nil)
 	const a, b = "0b6c1f3e-0000-4000-8000-00000000000a", "0b6c1f3e-0000-4000-8000-00000000000b"
-	roomB := h.room(b)
+	roomB := h.stateOf(b)
 
 	h.VoiceJoined(a, "kim-id#aaa", "Kim")
 	h.VoiceCamera(a, "kim-id#aaa", "Kim", true)

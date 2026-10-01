@@ -131,7 +131,7 @@
 	</div>
 
 	<p class="eyebrow mt-8">compact — a running session's header</p>
-	<div class="border-muted/15 mt-2 rounded-lg border p-4">
+	<div class="border-frame mt-2 rounded-lg border p-4">
 		<SensorOverview
 			compact
 			elsewhere={now.elsewhere ? { trainer: now.elsewhere } : {}}
