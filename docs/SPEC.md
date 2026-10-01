@@ -849,7 +849,8 @@ scored workout (ADR-0062's table).
 - a dip that loses less than **20 m** and is back over the top within
   **300 m** does not end a climb;
 - a road keeps its hardest **32** climbs;
-- the climb card opens by itself for class **IV** and harder.
+- the climb card opens by itself for class **IV** and harder, on a free or
+  route ride; on a workout or a session its chip offers it instead ([#3645](https://github.com/natrontech/wattroom/issues/3645)).
 
 ## A route's place ([ADR-0063](decisions/0063-a-route-keeps-its-place-with-care.md))
 
@@ -1169,7 +1170,8 @@ of a **10°** field.
 ## The bike computer (defaults — tune in alpha; [ADR-0071](decisions/0071-the-bike-computer-pages-slot-3.md))
 
 Slot 3's pages, in order: **RIDE** (default, and where every ride starts),
-**CLIMB** (opens by itself from RIDE when a climb begins), **POWER**, **MAP**
+**CLIMB** (opens by itself from RIDE when a climb begins on a free or route
+ride; a workout or a session keeps RIDE and offers it, [#3645](https://github.com/natrontech/wattroom/issues/3645)), **POWER**, **MAP**
 (on a road only), **RACE** (later). ← / → or a tap on the panel turn them;
 PgUp / PgDn are Harder / Easier, never a page.
 
