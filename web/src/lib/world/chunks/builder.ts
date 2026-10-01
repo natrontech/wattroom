@@ -24,7 +24,8 @@ export type Builder = {
 	dispose(): void;
 };
 
-const spawn = (): Worker | null => {
+/** The build worker, or null where none will start. */
+export const spawn = (): Worker | null => {
 	try {
 		return new Worker(new URL('./build.worker.ts', import.meta.url), {
 			type: 'module',

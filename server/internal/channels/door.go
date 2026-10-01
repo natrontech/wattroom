@@ -61,8 +61,16 @@ func (s *Service) Authorize(r *http.Request, id string) (protocol.Rider, string,
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		s.log.Warn("look unavailable for roster", "err", err, "channel", id)
 	}
+	// What a race's flag reads for the race FTP and the Category (#3658),
+	// held by the hub and never sent. Unreadable, the race falls back to the
+	// profile FTP — a bracket read low, never a rider refused a room.
+	best20m, err := s.store.Queries.Best20mIn90Days(r.Context(), user.ID)
+	if err != nil {
+		s.log.Warn("best 20 min unavailable for roster", "err", err, "channel", id)
+		best20m = 0
+	}
 	rider := store.RiderOf(user)
-	rider.Role, rider.TotalXp = liveRole(role), xp
+	rider.Role, rider.TotalXp, rider.Best20mWatts = liveRole(role), xp, int(best20m)
 	if look != nil {
 		rider.Look = *look
 	}

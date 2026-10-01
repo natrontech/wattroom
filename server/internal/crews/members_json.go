@@ -3,7 +3,7 @@ package crews
 import (
 	"math"
 
-	"github.com/natrontech/wattroom/server/internal/stats"
+	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -50,7 +50,7 @@ func boardRowOf(row db.CrewWeekBoardRow) boardRowJSON {
 	best20m := int(math.Round(float64(row.FtpWatts) / 0.95))
 	category := ""
 	if chosen(row.FtpSource) || chosen(row.WeightSource) {
-		category = stats.Category(best20m, float64(row.WeightKg))
+		category = protocol.Category(best20m, float64(row.WeightKg))
 	}
 	return boardRowJSON{
 		Id: store.UUIDString(row.UserID), DisplayName: row.DisplayName,

@@ -38,6 +38,14 @@ func (rm *channelState) startGameOn(mode string, route *routeRide, rider protoco
 		return "A game inside a running session rides the session's road."
 	}
 	next := newGameMode(mode, now)
+	if mode == modeRace {
+		// Opt-in and on a road of its own (ADR-0067): it opens its session,
+		// never rides inside a workout or a bunch.
+		if route == nil || !opens {
+			return refuseRaceRoad
+		}
+		next = newSampledGame(newRaceRun(route.profile, now), now)
+	}
 	if next == nil {
 		return refuseNoSuchMode
 	}
@@ -88,6 +96,16 @@ func (rm *channelState) endGame(now time.Time) bool {
 // "won" or "gameEnded" line up, and a coach clearing a finished game's podium
 // is not a second ending. Caller holds rm.mu.
 func (rm *channelState) stopGameLocked(now time.Time) {
+	// A race stopped under way ends as a finished one does (#3658): whoever
+	// is not over the line is out of it, and its riders keep their card for
+	// the linger. A second End clears it.
+	if r := raceOf(rm.game); r != nil && r.close() {
+		gs := rm.game.state(now)
+		rm.lastGame, rm.gameDoneAt = &gs, now
+		rm.events.add(gameEndedLine(gs.Mode, gs.Round, now), now)
+		rm.endGameSessionLocked(now)
+		return
+	}
 	if rm.game != nil && rm.gameDoneAt.IsZero() {
 		gs := rm.game.state(now)
 		rm.events.add(gameEndedLine(gs.Mode, gs.Round, now), now)
@@ -179,6 +197,11 @@ func (rm *channelState) advanceGameLocked(now time.Time) (winner string) {
 		if rm.session.rides(id) {
 			samples[id] = m.Watts
 		}
+	}
+	// The flag lines the field up (#3658): who the session has on its
+	// timeline then, on the numbers they carry then.
+	if r := raceOf(rm.game); r != nil && r.due(now) {
+		r.line(rm.raceFieldLocked())
 	}
 	rm.game.advance(now, samples, rm.gameRosterLocked())
 	// Team Relay on a road finishes where the road does (#3030).

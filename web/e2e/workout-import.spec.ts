@@ -200,9 +200,11 @@ test('import a .gpx route, read its preview, and save it', async ({ page }) => {
 	await expect(page.getByText(/map is sealed/)).toBeVisible();
 	// Behind the roads dev gate, which a dev server opens (#3027).
 	await expect(page.getByRole('button', { name: 'Ride it now' })).toBeEnabled();
+	// A crew plans a road from its session picker; nothing here promises it.
 	await expect(
 		page.getByRole('button', { name: 'Plan it for a crew' }),
-	).toBeDisabled();
+	).toHaveCount(0);
+	await expect(page.getByText(/arrives with/)).toHaveCount(0);
 
 	await page.getByLabel('your name for it').fill('Commute climb');
 	await page.getByRole('button', { name: 'Save to my routes' }).click();

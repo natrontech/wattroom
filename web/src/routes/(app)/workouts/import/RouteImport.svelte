@@ -76,14 +76,19 @@
 			name: renameError ? route.name : name || route.name,
 			renameError,
 		};
-		toasts.push(`Saved “${saved.name}” to your routes.`);
 		return saved.id;
 	}
 
 	/** Ride it now (#3027): saved first, as a ride on a road rides a route. */
 	async function rideNow() {
+		const wasSaved = !!saved;
 		const id = saved?.id ?? (await save());
-		if (id) await goto(`/ride?road=${encodeURIComponent(id)}`);
+		if (!id) return;
+		// Leaving the page leaves the banner behind, so the save is said as
+		// the ride opens; staying, the banner says it once.
+		if (!wasSaved && saved)
+			toasts.push(`Saved “${saved.name}” to your routes.`);
+		await goto(`/ride?road=${encodeURIComponent(id)}`);
 	}
 </script>
 
@@ -121,8 +126,7 @@
 {:else if saved}
 	<div class="mt-4 space-y-3">
 		<Banner tone="ok">
-			“{saved.name}” is on your routes. A shelf for them under Workouts is
-			coming; riding one arrives with route rides.
+			“{saved.name}” is on your routes.
 		</Banner>
 		{#if saved.renameError}
 			<Banner tone="warn"
@@ -164,19 +168,16 @@
 			disabled={saving}
 			class="btn btn-primary btn-lg">Save to my routes</button
 		>
-		{#if !spectator}
-			<!-- Behind the roads dev gate (#3027); a disabled control says why
-			     (ux.md: never a press that fails). -->
+		{#if roadsEnabled() && !spectator}
+			<!-- Behind the roads dev gate (#3027) until #3352 lifts it; a screen
+			     that may not ride a road is not offered one (ux.md). A crew plans
+			     a road from its session picker, not from here. -->
 			<button
 				onclick={() => void rideNow()}
-				disabled={saving || !roadsEnabled()}
-				title={roadsEnabled()
-					? undefined
-					: 'Riding a road opens once the trainer numbers are final.'}
+				disabled={saving}
 				class="btn btn-ghost btn-lg">Ride it now</button
 			>
 		{/if}
-		<button disabled class="btn btn-ghost btn-lg">Plan it for a crew</button>
 		{#if imported.src === 'stravagpx'}
 			<span
 				class="border-frame text-muted inline-flex items-center gap-1 rounded border px-2 text-xs"
@@ -185,14 +186,9 @@
 			</span>
 		{/if}
 	</div>
-	<p class="text-muted mt-2 text-xs">
-		{#if imported.src === 'stravagpx'}
+	{#if imported.src === 'stravagpx'}
+		<p class="text-muted mt-2 text-xs">
 			Files from Strava ride with you alone, never in a crew's plan.
-			{#if !roadsEnabled()}Riding it arrives with route rides.{/if}
-		{:else if roadsEnabled()}
-			Planning it for a crew arrives with route rides.
-		{:else}
-			Riding it and planning it for a crew arrive with route rides.
-		{/if}
-	</p>
+		</p>
+	{/if}
 {/if}

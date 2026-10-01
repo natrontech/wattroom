@@ -59,6 +59,9 @@ type definition struct {
 	// workout that sets it — it is 25 steady steps the trainer holds the
 	// rider on, so scoring it against itself measures the trainer.
 	Unscored bool `json:"unscored,omitempty"`
+	// A race's session (#3658): the hub's game workout for a race says so,
+	// and its rides save as races rather than games.
+	Race bool `json:"race,omitempty"`
 }
 
 // Unscored reports whether the workout declares its own execution score
@@ -70,6 +73,12 @@ func Unscored(workoutJSON string) bool {
 		return false
 	}
 	return d.Unscored
+}
+
+// Race reports whether the workout is a race's session.
+func Race(workoutJSON string) bool {
+	var d definition
+	return json.Unmarshal([]byte(workoutJSON), &d) == nil && d.Race
 }
 
 // Segment is one flattened block on the timeline.

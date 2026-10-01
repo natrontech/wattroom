@@ -170,6 +170,10 @@ function connect(address: PlaceAddress): Connection {
 		// Here and not in a page: the recording outlives every page (#2654).
 		$effect(() => recording.follow(shared?.phase));
 
+		// A race reads this at its flag (#3658): the hub has no other way to
+		// know WattRoom, not the rider, holds the watts.
+		$effect(() => live.setDrive(profile.current.singleSpeed));
+
 		freeRide = createFreeRide({
 			ftp: () => profile.current.ftp,
 			singleSpeed: () => profile.current.singleSpeed,

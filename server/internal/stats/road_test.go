@@ -130,6 +130,9 @@ func TestRideMode(t *testing.T) {
 		{steps, true, "workout"},
 		{empty, false, "free"},
 		{empty, true, "game"},
+		// A race's session saves as one (#3658); a solo save saying so is not.
+		{`{"name":"Race","unscored":true,"race":true,"steps":[]}`, true, "race"},
+		{`{"name":"Race","unscored":true,"race":true,"steps":[]}`, false, "free"},
 	} {
 		if got := RideMode(c.json, c.session); got != c.want {
 			t.Errorf("RideMode(%s, session %v) = %q, want %q", c.json, c.session, got, c.want)

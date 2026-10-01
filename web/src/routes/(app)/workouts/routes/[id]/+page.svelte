@@ -10,14 +10,17 @@
 	import RouteShape from '$lib/components/RouteShape.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { confirm } from '$lib/confirm.svelte';
+	import { device, isSpectator } from '$lib/device.svelte';
 	import { routeNameLine, routePrivacyLine } from '$lib/privacy-copy';
+	import { roadsEnabled } from '$lib/ride/roads';
 	import { roadOf, shapeLine, type StoredRoute } from '$lib/road/stored';
 	import { toasts } from '$lib/toast.svelte';
 
 	/**
 	 * One route, as its owner sees it (#3061): the map only they may open, the
 	 * profile and its climbs, and what they can do with it. Delete asks first —
-	 * stored plans pay for it (errors.md) — and Ride it waits for route rides.
+	 * stored plans pay for it (errors.md) — and Ride it rides it (#3596), where
+	 * this screen may ride a road (ux.md: a control it cannot use is not drawn).
 	 */
 	const id = $derived(page.params.id ?? '');
 
@@ -168,14 +171,19 @@
 			{/if}
 		</div>
 
-		<div class="mt-6 flex flex-wrap items-center gap-3">
-			<button disabled class="btn btn-primary btn-lg">Ride it</button>
-			<span class="text-muted text-xs">
-				{route.ownerOnly
-					? 'Files from Strava ride with you alone. Riding it arrives with route rides.'
-					: 'Riding it arrives with route rides.'}
-			</span>
-		</div>
+		{#if roadsEnabled() && !isSpectator(device)}
+			<div class="mt-6 flex flex-wrap items-center gap-3">
+				<a
+					href="/ride?road={encodeURIComponent(route.id)}"
+					class="btn btn-primary btn-lg">Ride it</a
+				>
+				{#if route.ownerOnly}
+					<span class="text-muted text-xs"
+						>Files from Strava ride with you alone.</span
+					>
+				{/if}
+			</div>
+		{/if}
 
 		<div class="mt-6">
 			<RouteAttempts routeId={route.id} />
