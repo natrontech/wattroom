@@ -195,6 +195,28 @@ export async function savedRide(page: Page, road?: string): Promise<string> {
 }
 
 /**
+ * The ride a session just saved for this rider: the newest of theirs, once
+ * the save — which runs after the session closes — has landed (#3738).
+ */
+export async function newestRide(page: Page, after: number): Promise<string> {
+	for (let tries = 0; tries < 30; tries++) {
+		const rows = (
+			await call<{ rides: (RideRow & { startedAt: string })[] }>(
+				page,
+				'GET',
+				'/api/rides',
+			)
+		).body.rides;
+		const fresh = rows
+			?.filter((r) => Date.parse(r.startedAt) >= after)
+			.sort((a, b) => Date.parse(b.startedAt) - Date.parse(a.startedAt))[0];
+		if (fresh) return fresh.id;
+		await page.waitForTimeout(1000);
+	}
+	throw new Error('the session saved no ride');
+}
+
+/**
  * A workout that asks 1,100 W, so the head's watts reach four digits: the
  * simulated trainer follows an ERG target (validate.ts allows 3,000 W).
  */

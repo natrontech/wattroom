@@ -789,7 +789,7 @@ Every surface id below is also in `docs/design/surface-map.json`, which maps the
 
 #### ride-detail
 
-**Capture:** `/history/<seeded id>`, desk and phone.
+**Capture:** `/history/<seeded id>`, desk and phone; and a crew session's ride on a road, ridden past its minute (`ride-detail-session-road`, desk).
 
 **Target:** v2-summary.
 
