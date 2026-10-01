@@ -33,6 +33,14 @@ func wheelrace(t *testing.T, lengthM float64, par int) *raceRoom {
 
 var wheelraceKlaxon = raceStart.Add((countdownSeconds + protocol.RaceNeutralSeconds) * time.Second)
 
+// closesNear is whether a hard close at endsAtMs is par + 15 % from the
+// klaxon, par being the handicap's own: the coach's, or a breath under it
+// where the line lands on the road's last height step short of par.
+func closesNear(endsAtMs int64, par time.Duration) bool {
+	want := wheelraceKlaxon.Add(par * 115 / 100).UnixMilli()
+	return endsAtMs <= want && endsAtMs >= want-30_000
+}
+
 // #3172's head-start table: at the flag the scratch rider — the higher race
 // FTP for the same weight — starts at km 0 and the weaker rider up the road;
 // the line sits where par puts it, short of the road's end; the hard close
@@ -43,8 +51,7 @@ func TestAWheelraceBringsTheFieldToTheLineTogether(t *testing.T) {
 	pedal := watts(map[string]int{"ana": 250, "ben": 200})
 	tick := r.ride(15, pedal)
 	st := r.race()
-	if st == nil || st.LineM <= 5_000 || st.LineM >= 20_000 ||
-		st.EndsAtMs != wheelraceKlaxon.Add(15*time.Minute*115/100).UnixMilli() {
+	if st == nil || st.LineM <= 5_000 || st.LineM >= 20_000 || !closesNear(st.EndsAtMs, 15*time.Minute) {
 		t.Fatalf("the race at the flag: %+v", st)
 	}
 	if a, b := tick.World.Racers["ana"].M, tick.World.Racers["ben"].M; a != 0 || b <= 500 || b >= st.LineM {
@@ -99,8 +106,7 @@ func TestAWheelraceClosesHard(t *testing.T) {
 func TestAWheelraceDefaultsToThirtyMinutes(t *testing.T) {
 	r := wheelrace(t, 40_000, 0)
 	r.ride(15, watts(map[string]int{"ana": 250, "ben": 200}))
-	want := wheelraceKlaxon.Add(protocol.WheelraceDefaultMinutes * time.Minute * 115 / 100)
-	if st := r.race(); st == nil || st.EndsAtMs != want.UnixMilli() {
+	if st := r.race(); st == nil || !closesNear(st.EndsAtMs, protocol.WheelraceDefaultMinutes*time.Minute) {
 		t.Fatalf("a Wheelrace with no par: %+v", st)
 	}
 }
@@ -149,5 +155,63 @@ func TestAWheelraceRideStartsAtItsHeadStart(t *testing.T) {
 	}
 	if ana := recordOf(t, r.ended, "ana").Road; ana == nil || ana.FromM != 0 || math.Abs(ana.DistanceM-line) > 1e-6 {
 		t.Fatalf("ana, scratch, saved %+v", ana)
+	}
+}
+
+// The hard close counts from the handicap's own par (#3172): on a road that
+// ends before the coach's par, the field arrives sooner and the close comes
+// 15 % after that — not after a par nobody can ride.
+func TestAShortRoadClosesOnItsOwnPar(t *testing.T) {
+	r := wheelrace(t, 4_000, 30)
+	r.ride(15, watts(map[string]int{"ana": 250, "ben": 200}))
+	st := r.race()
+	if st == nil || st.LineM != 4_000 || st.EndsAtMs >= wheelraceKlaxon.Add(30*time.Minute).UnixMilli() {
+		t.Fatalf("a 4 km road with a 30-minute par: %+v", st)
+	}
+}
+
+// The coach's End after the hard close ends nothing a second time (#3172).
+func TestEndingAfterTheHardCloseEndsNothingTwice(t *testing.T) {
+	r := wheelrace(t, 20_000, 15)
+	r.ride(10+protocol.RaceNeutralSeconds+60, watts(map[string]int{"ana": 250, "ben": 200}))
+	// Into the card's linger, a few seconds past the hard close.
+	closes := time.UnixMilli(r.race().EndsAtMs)
+	r.ride(int(closes.Sub(r.now)/time.Second)+5, watts(map[string]int{"ana": 250, "ben": 40}))
+	if card := r.race(); card == nil || len(card.Results) == 0 {
+		t.Fatalf("no card a few seconds past the hard close: %+v", card)
+	}
+	r.rm.mu.Lock()
+	r.rm.events.drain()
+	r.rm.mu.Unlock()
+	r.rm.endGame(r.now)
+	r.rm.mu.Lock()
+	lines, game := r.rm.events.drain(), r.rm.game
+	r.rm.mu.Unlock()
+	// The End clears the finished card, as it does any game's, and says
+	// nothing: the race already announced its end.
+	if len(lines) != 0 || game != nil {
+		t.Fatalf("an End after the hard close: lines %+v, game still %v", lines, game != nil)
+	}
+}
+
+// A grid joiner stronger than the scratch rider the handicap was set for
+// cannot be placed by it, and rides unranked (#3172).
+func TestAStrongerLateGridJoinerRidesUnranked(t *testing.T) {
+	r := wheelrace(t, 20_000, 15)
+	pedal := watts(map[string]int{"ana": 250, "ben": 200, "cy": 300})
+	r.ride(15, pedal)
+	cy := racer("cy", 70)
+	cy.FtpWatts = 300
+	c := &client{rider: cy, out: make(chan []byte, clientQueue)}
+	r.rm.join(c)
+	r.clients["cy"] = c
+	joinRide(r.rm, "cy")
+	r.ride(protocol.RaceNeutralSeconds+15*60, pedal)
+	for _, b := range r.race().Results {
+		for _, f := range b.Placed {
+			if f.RiderID == "cy" {
+				t.Fatalf("cy, stronger than the scratch rider, was placed: %+v", r.race().Results)
+			}
+		}
 	}
 }

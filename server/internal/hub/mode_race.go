@@ -126,10 +126,11 @@ func (r *raceRun) line(field []protocol.Rider, ergByRoad map[string]bool) {
 	for _, rider := range field {
 		entrants = append(entrants, r.enter(rider, ergByRoad[rider.ID]))
 	}
-	profile := r.profile
 	if r.mode == modeWheelrace && len(field) > 0 {
-		profile = r.placeHandicap(field, entrants)
+		// The race's road ends at its line: its roadside, too.
+		r.profile = r.placeHandicap(field, entrants)
 	}
+	profile := r.profile
 	started, err := race.New(profile, entrants, r.flag)
 	if err != nil {
 		r.void = protocol.RaceVoidTooFew
@@ -141,7 +142,13 @@ func (r *raceRun) line(field []protocol.Rider, ergByRoad map[string]bool) {
 	case modeLastLight:
 		started.Clock(started.Klaxon().Add(minutes))
 	case modeWheelrace:
-		started.CloseAt(started.Klaxon().Add(minutes * (100 + protocol.WheelraceClosePct) / 100))
+		// From the handicap's own par: the coach's, or less where the road
+		// ends first.
+		par := minutes
+		if r.handicap != nil {
+			par = r.handicap.Par()
+		}
+		started.CloseAt(started.Klaxon().Add(par * (100 + protocol.WheelraceClosePct) / 100))
 	}
 }
 
@@ -204,9 +211,15 @@ func (r *raceRun) admit(field []protocol.Rider, ergByRoad map[string]bool, now t
 		}
 		e := r.enter(rider, ergByRoad[rider.ID])
 		// A Wheelrace's late joiner on the grid gets their own head start;
-		// after km 0 they ride from it like any late joiner.
+		// after km 0 they ride from it like any late joiner. One stronger than
+		// the scratch rider the handicap was set for cannot be placed by it,
+		// and rides unranked.
 		if r.handicap != nil {
-			e.StartM = r.handicap.Start(raceFtpAsReference(rider))
+			w := raceFtpAsReference(rider)
+			e.StartM = r.handicap.Start(w)
+			if !r.handicap.Placeable(w) {
+				e.Unranked = protocol.UnrankedLate
+			}
 		}
 		r.race.Join(e, at)
 	}
@@ -242,8 +255,8 @@ func (r *raceRun) advance(now time.Time, samples map[string]int, _ map[string]pr
 	r.race.Step(now, samples)
 	eta, riding := r.race.LeaderETA()
 	// Against a clock, the finish is the line or the clock's end, whichever
-	// comes first (#3171).
-	if ends := r.race.Ends(); !ends.IsZero() {
+	// comes first (#3171). A Wheelrace's hard close is no finish.
+	if ends := r.race.Ends(); !ends.IsZero() && r.mode == modeLastLight {
 		if left := ends.Sub(now); !riding || left < eta {
 			eta = left
 		}

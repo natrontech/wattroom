@@ -201,6 +201,10 @@ func (r *Race) Neutralised(from, to time.Time) {
 // line is out of it, and the finishers keep their places. False when it was
 // already over.
 func (r *Race) Close() bool {
+	// Once it has run out or closed hard, there is nothing left to end.
+	if r.closed {
+		return false
+	}
 	// A clock race ends its clock where it stands (#3171): its card ranks
 	// how far everyone got, so nobody is put out of it.
 	if r.byMetres {
