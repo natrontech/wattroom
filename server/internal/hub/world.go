@@ -71,7 +71,7 @@ func newBunch(r *routeRide, now time.Time) *bunch {
 	b := &bunch{
 		road: r.profile, fromM: r.FromM, reverse: r.Reverse, loop: r.Loop,
 		at: now, heard: make(map[string]sample), places: make(map[string]*place),
-		koms:   komOpenings(r.profile, r.Reverse),
+		koms: komOpenings(r.profile, r.Reverse),
 	}
 	b.komU, b.komLeft = b.komAt(b.fromM, false)
 	return b
