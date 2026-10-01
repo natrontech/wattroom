@@ -133,3 +133,21 @@ func TestAWheelraceRefusesAnotherPar(t *testing.T) {
 		}
 	}
 }
+
+// A Wheelrace's saved ride starts where its rider did (#3172): the head
+// start is where their road begins, and its metres are the ones they rode.
+func TestAWheelraceRideStartsAtItsHeadStart(t *testing.T) {
+	r := wheelrace(t, 20_000, 15)
+	r.saving = true
+	pedal := watts(map[string]int{"ana": 250, "ben": 200})
+	start := r.ride(15, pedal).World.Racers["ben"].M
+	r.ride(protocol.RaceNeutralSeconds+15*60+60, pedal)
+	line := r.race().LineM
+	road := recordOf(t, r.ended, "ben").Road
+	if road == nil || math.Abs(road.FromM-start) > 1e-6 || math.Abs(road.DistanceM-(line-start)) > 1e-6 {
+		t.Fatalf("ben started %.0f m up a %.0f m race and saved %+v", start, line, road)
+	}
+	if ana := recordOf(t, r.ended, "ana").Road; ana == nil || ana.FromM != 0 || math.Abs(ana.DistanceM-line) > 1e-6 {
+		t.Fatalf("ana, scratch, saved %+v", ana)
+	}
+}

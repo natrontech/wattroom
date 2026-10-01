@@ -446,9 +446,12 @@ func (r *raceRun) recordRoad(riderID string, route *routeRide) *RecordRoad {
 	if !ok {
 		return nil
 	}
+	// Where they started: km 0, or a Wheelrace's head start (#3172) — the
+	// first place the race wrote down for them.
+	from, _, _ := r.trail.span(riderID)
 	return &RecordRoad{
 		RouteID: route.ID, RoadHash: route.Hash,
-		FromM: route.storedM(0), DistanceM: m, ClimbedM: r.profile.ClimbedBetween(0, m),
+		FromM: route.storedM(from), DistanceM: max(m-from, 0), ClimbedM: r.profile.ClimbedBetween(from, m),
 		MeanShelter: shelter, ErgByRoad: r.ergByRoad[riderID],
 	}
 }
