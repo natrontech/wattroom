@@ -34,6 +34,10 @@ type racer struct {
 	finishMs int64
 	heardAt  time.Time
 	out      bool
+	// The shelter of every second ridden past km 0, summed (ADR-0077): a
+	// time mostly sheltered is not the rider's alone (ADR-0074).
+	sheltered float64
+	ridden    int
 }
 
 // Race is one race: its road, the klaxon every racer leaves km 0 at, and its
@@ -90,6 +94,8 @@ func (r *Race) Step(at time.Time, watts map[string]int) {
 		}
 		from := rc.pace.Distance
 		rc.pace.Step(asReference(w, rc.WeightKg), r.profile.GradeAt(from), mass, protocol.PaceDefaultCdA, shelters[i])
+		rc.sheltered += shelters[i]
+		rc.ridden++
 		if length := r.profile.LengthM; from < length && rc.pace.Distance >= length {
 			// The photo finish: the crossing, placed inside this second.
 			inside := (length - from) / (rc.pace.Distance - from)
@@ -124,6 +130,20 @@ func (r *Race) Span() (lead, tail float64, ok bool) {
 		return 0, 0, false
 	}
 	return riding[0].pace.Distance, riding[len(riding)-1].pace.Distance, true
+}
+
+// Place is one racer's metres from km 0, and the share of the air they were
+// sheltered from on average since it (#3722); false for a rider the race
+// does not know.
+func (r *Race) Place(id string) (metres, meanShelter float64, ok bool) {
+	rc, in := r.racers[id]
+	if !in {
+		return 0, 0, false
+	}
+	if rc.ridden > 0 {
+		meanShelter = rc.sheltered / float64(rc.ridden)
+	}
+	return min(rc.pace.Distance, r.profile.LengthM), meanShelter, true
 }
 
 // Klaxon is when the race leaves km 0: the flag plus the neutral zone, and

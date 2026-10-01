@@ -28,8 +28,10 @@ type raceRun struct {
 	// Nil until the flag, and for good when the flag found too few riders.
 	race *race.Race
 	void string
-	// Who rides it, by the name they had at the flag.
-	names map[string]string
+	// Who rides it, by the name they had at the flag, and whose screens held
+	// the watts then (ADR-0084).
+	names     map[string]string
+	ergByRoad map[string]bool
 	// When the coach neutralised it; zero while it races.
 	heldAt time.Time
 	// The second last stepped, and whether the leader was within
@@ -75,7 +77,7 @@ func (r *raceRun) due(now time.Time) bool {
 // the roster and never the race.
 func (r *raceRun) line(field []protocol.Rider, ergByRoad map[string]bool) {
 	entrants := make([]race.Entrant, 0, len(field))
-	r.names = make(map[string]string, len(field))
+	r.names, r.ergByRoad = make(map[string]string, len(field)), make(map[string]bool, len(field))
 	for _, rider := range field {
 		entrants = append(entrants, r.enter(rider, ergByRoad[rider.ID]))
 	}
@@ -94,7 +96,7 @@ func (r *raceRun) enter(rider protocol.Rider, ergByRoad bool) race.Entrant {
 	if why == "" && ergByRoad {
 		why = protocol.UnrankedUntimeable
 	}
-	r.names[rider.ID] = rider.Name
+	r.names[rider.ID], r.ergByRoad[rider.ID] = rider.Name, ergByRoad
 	return race.Entrant{
 		ID: rider.ID, WeightKg: float64(rider.WeightKg),
 		Category: protocol.RaceCategory(rider), Unranked: why,
@@ -257,6 +259,44 @@ func (r *raceRun) roadsideState() *protocol.RoadsideState {
 		return nil
 	}
 	return r.roadside.snapshot(func(u float64) (float64, int) { return min(u, r.profile.LengthM), 0 })
+}
+
+// placeOf is a racer's metres from km 0 now, 0 before the flag or for a rider it
+// has not lined up: where their record's sample stands on the road.
+func (r *raceRun) placeOf(riderID string) float64 {
+	if r.race == nil {
+		return 0
+	}
+	m, _, _ := r.race.Place(riderID)
+	return m
+}
+
+// placeRecords stands each racer's latest sample where the race has them now
+// (#3722), in the stored road's metres. Nothing before the flag.
+func (r *raceRun) placeRecords(record *accumulator, route *routeRide) {
+	if r.race == nil {
+		return
+	}
+	for id := range r.names {
+		record.placeLast(id, route.storedM(r.placeOf(id)))
+	}
+}
+
+// recordRoad is one racer's ride along the race's road, for the saver
+// (#3722); nil for a rider the race never lined up.
+func (r *raceRun) recordRoad(riderID string, route *routeRide) *RecordRoad {
+	if r.race == nil || route == nil {
+		return nil
+	}
+	m, shelter, ok := r.race.Place(riderID)
+	if !ok {
+		return nil
+	}
+	return &RecordRoad{
+		RouteID: route.ID, RoadHash: route.Hash,
+		FromM: route.storedM(0), DistanceM: m, ClimbedM: r.profile.ClimbedBetween(0, m),
+		MeanShelter: shelter, ErgByRoad: r.ergByRoad[riderID],
+	}
 }
 
 // world is the race on the tick: each racer's own place, since a race rides

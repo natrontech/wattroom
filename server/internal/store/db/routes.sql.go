@@ -671,6 +671,20 @@ func (q *Queries) RouteAudienceCrews(ctx context.Context, arg RouteAudienceCrews
 	return items, nil
 }
 
+const routeStored = `-- name: RouteStored :one
+select exists(select 1 from routes where id = $1)
+`
+
+// Whether a route is still stored, for a session ride that names it (#3722):
+// its owner may have deleted it between the ride and its save, and a ride
+// naming a gone route would fail the whole session's save on its key.
+func (q *Queries) RouteStored(ctx context.Context, id pgtype.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, routeStored, id)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const sealRouteRoad = `-- name: SealRouteRoad :execrows
 update routes set road = $1, road_sealed = $2
 where id = $3 and road_sealed is null

@@ -66,6 +66,12 @@ func (rm *channelState) setMetrics(c *client, m protocol.RiderMetrics) {
 	// The live sample is also part of the ride record; a later resend of the
 	// same seq dedupes against it, and it scores live at the timeline second
 	// it arrived on (#27).
+	// A racer's sample stands where the race has them (#3722): the client
+	// does not place itself in a race, and their record is the time they
+	// keep — in the stored road's metres, as every ride of it is.
+	if r := rm.raceLocked(); r != nil {
+		m.M = rm.session.route.storedM(r.placeOf(rider.ID))
+	}
 	if rm.session.phase == "running" {
 		state := rm.session.state(now)
 		rm.record.add(rider.ID, m, rm.session.segments, float64(rider.FtpWatts), state.Elapsed)
@@ -105,6 +111,13 @@ func (rm *channelState) backfill(c *client, samples []protocol.RiderMetrics, log
 	// session behind the record (a server that came back idle) there is no
 	// timeline to place it on, and it lands as it always did.
 	reached, placed := rm.replayReachLocked()
+	// A racer's replayed second stands where the race has them now (#3722):
+	// it coasted them through the gap, and their metres never go back.
+	stamp := func(m *protocol.RiderMetrics) {}
+	if r := rm.raceLocked(); r != nil {
+		at := rm.session.route.storedM(r.placeOf(rider.ID))
+		stamp = func(m *protocol.RiderMetrics) { m.M = at }
+	}
 	kept := 0
 	for _, m := range samples {
 		if !validMetrics(m) || placed && (m.Clock <= 0 || m.Clock > reached) {
@@ -113,6 +126,7 @@ func (rm *channelState) backfill(c *client, samples []protocol.RiderMetrics, log
 		// Not live-scored: the save-time score is the authoritative one. The
 		// one place a seq goes backwards on purpose, so it stays on the
 		// stream that sent it (#522).
+		stamp(&m)
 		rm.record.replay(rider.ID, m)
 		kept++
 	}
