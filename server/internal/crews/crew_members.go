@@ -150,7 +150,7 @@ func (s *Service) handleCrewRecaps(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rows, err := s.store.Queries.ListCrewRecaps(r.Context(), db.ListCrewRecapsParams{
-		CrewID: crew.ID, Viewer: user.ID, Admin: administers(role),
+		CrewID: crew.ID, Viewer: user.ID, Admin: protocol.Administers(role),
 		Days: recap.RetentionDays, MaxRows: maxCrewRecaps,
 	})
 	if err != nil {

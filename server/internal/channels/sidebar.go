@@ -82,12 +82,12 @@ func (s *Service) handleCrewsLive(w http.ResponseWriter, r *http.Request) {
 	}
 	out := make([]liveCrewJSON, 0, len(crews))
 	for _, c := range crews {
-		role := "member"
+		role := protocol.RoleMember
 		switch {
 		case c.Owned:
-			role = "owner"
+			role = protocol.RoleOwner
 		case c.Admin:
-			role = "admin"
+			role = protocol.RoleAdmin
 		}
 		crew, err := s.liveCrew(r.Context(), c.ID, user.ID, role)
 		if err != nil {

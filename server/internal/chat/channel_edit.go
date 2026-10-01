@@ -11,7 +11,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/natrontech/wattroom/server/internal/channels"
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
@@ -87,7 +86,7 @@ func (s *Service) handleChannelDelete(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if msg.UserID != me.ID && !channels.Administers(role) {
+	if msg.UserID != me.ID && !protocol.Administers(role) {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden", "You can only delete your own messages.")
 		return
 	}

@@ -76,7 +76,7 @@
 		compact?: boolean;
 	} = $props();
 
-	const supported = typeof navigator !== 'undefined' && !!navigator.bluetooth;
+	const supported = device.bluetooth;
 
 	const SENSORS: { kind: SensorKind; label: string; icon: typeof Zap }[] = [
 		{ kind: 'heart-rate', label: 'Heart rate', icon: HeartPulse },

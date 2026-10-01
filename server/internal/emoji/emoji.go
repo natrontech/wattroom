@@ -23,7 +23,6 @@ import (
 
 	"github.com/natrontech/wattroom/server/internal/audience"
 	"github.com/natrontech/wattroom/server/internal/budget"
-	"github.com/natrontech/wattroom/server/internal/channels"
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
@@ -232,7 +231,7 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "emoji lookup failed", err, "The emoji could not be deleted. Try again.", "crew", crewID)
 		return
 	}
-	if uploader != me.ID && !channels.Administers(role) {
+	if uploader != me.ID && !protocol.Administers(role) {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden", "You can only delete emoji you added.")
 		return
 	}

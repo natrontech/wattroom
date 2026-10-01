@@ -9,6 +9,7 @@
  * together rather than clipping.
  */
 import { SvelteMap } from 'svelte/reactivity';
+import { api } from '$lib/api';
 import { bus } from '$lib/sound/cues';
 import { peaksOf } from '$lib/sound/peaks';
 import { mixer } from '$lib/sound/mixer.svelte';
@@ -86,12 +87,11 @@ async function load(clipId: string): Promise<Heard | null> {
 			// half a strip needs, and neither is any use without the other.
 			const [sound, meta] = await Promise.all([
 				fetch(`/api/board/clips/${clipId}/audio`),
-				fetch(`/api/board/clips/${clipId}`),
+				api<Omit<Heard, 'buffer'>>(`/api/board/clips/${clipId}`),
 			]);
 			if (!sound.ok || !meta.ok) return null;
-			const described = (await meta.json()) as Omit<Heard, 'buffer'>;
 			const buffer = await audio.ctx.decodeAudioData(await sound.arrayBuffer());
-			const heard = { ...described, buffer };
+			const heard = { ...meta.data, buffer };
 			decoded.set(clipId, heard);
 			return heard;
 		} catch {

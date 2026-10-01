@@ -2,6 +2,7 @@ package crews
 
 import (
 	"errors"
+	"github.com/natrontech/wattroom/server/internal/protocol"
 	"net/http"
 	"strings"
 
@@ -41,7 +42,7 @@ func (s *Service) handleSetCrewImage(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if !administers(role) {
+	if !protocol.Administers(role) {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden", "Only the crew's owner or an admin can change its picture.")
 		return
 	}
@@ -62,7 +63,7 @@ func (s *Service) handleClearCrewImage(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if !administers(role) {
+	if !protocol.Administers(role) {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden", "Only the crew's owner or an admin can change its picture.")
 		return
 	}

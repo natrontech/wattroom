@@ -2,6 +2,7 @@ package crews
 
 import (
 	"errors"
+	"github.com/natrontech/wattroom/server/internal/protocol"
 	"net/http"
 	"strings"
 
@@ -42,7 +43,7 @@ func (s *Service) handleMovedRoom(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "crew role lookup failed", err, "That link could not be followed. Try again.")
 		return
 	}
-	if role == "" || role == "banned" {
+	if role == "" || role == protocol.RoleBanned {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", movedNotFound)
 		return
 	}

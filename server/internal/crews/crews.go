@@ -104,11 +104,11 @@ func (s *Service) handleMyCrews(w http.ResponseWriter, r *http.Request) {
 	}
 	out := make([]crewRefJSON, 0, len(rows))
 	for _, c := range rows {
-		role := "member"
+		role := protocol.RoleMember
 		if c.Owned {
-			role = "owner"
+			role = protocol.RoleOwner
 		} else if c.Admin {
-			role = "admin"
+			role = protocol.RoleAdmin
 		}
 		out = append(out, crewRefJSON{
 			Id: store.UUIDString(c.ID), Name: c.Name, Icon: c.Icon,
@@ -148,7 +148,7 @@ func (s *Service) crewByID(w http.ResponseWriter, r *http.Request) (db.GetCrewRo
 		httpx.Fail(w, s.log, "crew role lookup failed", err, "The crew could not be loaded.")
 		return db.GetCrewRow{}, db.User{}, "", false
 	}
-	if role == "" || role == "banned" {
+	if role == "" || role == protocol.RoleBanned {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "No crew lives here.")
 		return db.GetCrewRow{}, db.User{}, "", false
 	}
@@ -165,12 +165,12 @@ func (s *Service) crewPeople(ctx context.Context, crew db.GetCrewRow, user db.Us
 	}
 	admin := map[string]bool{}
 	for _, row := range roles {
-		if row.Role == "admin" {
+		if row.Role == protocol.RoleAdmin {
 			admin[store.UUIDString(row.UserID)] = true
 		}
 	}
 	rows, err := s.store.Queries.ListCrewPeople(ctx, db.ListCrewPeopleParams{
-		CrewID: crew.ID, Everyone: administers(role), Viewer: user.ID,
+		CrewID: crew.ID, Everyone: protocol.Administers(role), Viewer: user.ID,
 	})
 	if err != nil {
 		return nil, nil, err
@@ -179,12 +179,12 @@ func (s *Service) crewPeople(ctx context.Context, crew db.GetCrewRow, user db.Us
 	now := time.Now()
 	for _, p := range rows {
 		id := store.UUIDString(p.ID)
-		personRole := "member"
+		personRole := protocol.RoleMember
 		switch {
 		case p.ID == crew.OwnerID:
-			personRole = "owner"
+			personRole = protocol.RoleOwner
 		case admin[id]:
-			personRole = "admin"
+			personRole = protocol.RoleAdmin
 		}
 		people = append(people, crewPersonJSON{
 			ID: id, DisplayName: p.DisplayName, AvatarURL: p.AvatarUrl,
@@ -192,7 +192,7 @@ func (s *Service) crewPeople(ctx context.Context, crew db.GetCrewRow, user db.Us
 			StatusLine: status.Of(p.StatusEmoji, p.StatusEmojiID, p.StatusText, p.StatusExpiresAt, now),
 		})
 	}
-	if !administers(role) {
+	if !protocol.Administers(role) {
 		return people, nil, nil
 	}
 	bannedRows, err := s.store.Queries.ListCrewBanned(ctx, crew.ID)
@@ -204,13 +204,11 @@ func (s *Service) crewPeople(ctx context.Context, crew db.GetCrewRow, user db.Us
 		banned = append(banned, crewPersonJSON{
 			ID: store.UUIDString(p.ID), DisplayName: p.DisplayName,
 			AvatarURL: p.AvatarUrl,
-			Role:      "banned", Since: p.SetAt.Time.Format("2006-01-02"),
+			Role:      protocol.RoleBanned, Since: p.SetAt.Time.Format("2006-01-02"),
 		})
 	}
 	return people, banned, nil
 }
-
-func administers(role string) bool { return role == "owner" || role == "admin" }
 
 // codeOf: crews.code is still nullable in the column type, but crews_code_present
 // (#2334) refuses a new row without one and every crew has had one since the
@@ -235,7 +233,7 @@ func (s *Service) handleGetCrew(w http.ResponseWriter, r *http.Request) {
 		OwnerID:      store.UUIDString(crew.OwnerID),
 		Named:        crew.Named,
 		People:       []crewPersonJSON{},
-		Listed:       administers(role) && crew.Listed,
+		Listed:       protocol.Administers(role) && crew.Listed,
 		BoardEnabled: crew.BoardEnabled,
 		IcsToken:     crew.IcsToken,
 	}
