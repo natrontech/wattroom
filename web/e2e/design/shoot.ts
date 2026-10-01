@@ -122,6 +122,22 @@ export class Shoot {
 		{ name = this.id, full = false }: { name?: string; full?: boolean } = {},
 	): Promise<void> {
 		const wholeDocument = full && !(await growToBody(page));
+		// The public site lazy-loads its media: walk the document once so a
+		// whole-document shot shows what a reader scrolling it would see.
+		if (wholeDocument) {
+			await page.evaluate(async () => {
+				for (
+					let y = 0;
+					y < document.documentElement.scrollHeight;
+					y += innerHeight
+				) {
+					scrollTo(0, y);
+					await new Promise((r) => setTimeout(r, 150));
+				}
+				scrollTo(0, 0);
+			});
+			await page.waitForTimeout(1000);
+		}
 		const probes = await page.evaluate(probe, CORRIDOR);
 		await page.screenshot({
 			path: join(OUT, `${name}.png`),
