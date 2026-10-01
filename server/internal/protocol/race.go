@@ -95,6 +95,21 @@ const (
 	LastLightFogSeconds     = 60
 )
 
+// Wheelrace (docs/SPEC.md "Races", #3172): a handicap race to a line its par
+// time places, 15–45 minutes — 30 when the coach does not say — closed hard
+// at par plus WheelraceClosePct per cent.
+const (
+	WheelraceMinMinutes     = 15
+	WheelraceMaxMinutes     = 45
+	WheelraceDefaultMinutes = 30
+	WheelraceClosePct       = 15
+)
+
+// WheelraceLength reports whether a Wheelrace's par may be this many minutes.
+func WheelraceLength(minutes int) bool {
+	return minutes >= WheelraceMinMinutes && minutes <= WheelraceMaxMinutes
+}
+
 // LastLightLength reports whether a Last Light may run this many minutes.
 func LastLightLength(minutes int) bool {
 	return minutes == 10 || minutes == 20 || minutes == 30
@@ -126,10 +141,14 @@ type RaceState struct {
 	FlagAtMs    int64 `json:"flagAtMs"`
 	KlaxonAtMs  int64 `json:"klaxonAtMs"`
 	Neutralised bool  `json:"neutralised,omitempty"`
-	// A clock race's (#3171): when the shared clock runs out, and how far
-	// the fog lets a rider see now. Zero for a race to the line.
-	EndsAtMs int64   `json:"endsAtMs,omitempty"`
-	FogM     float64 `json:"fogM,omitempty"`
+	// When the race runs out: Last Light's shared clock (#3171), or a
+	// Wheelrace's hard close (#3172). Zero for a plain race to the line.
+	EndsAtMs int64 `json:"endsAtMs,omitempty"`
+	// How far Last Light's fog lets a rider see now.
+	FogM float64 `json:"fogM,omitempty"`
+	// Where a Wheelrace's line is, in metres from km 0 (#3172): short of the
+	// road's end, where its par puts it.
+	LineM float64 `json:"lineM,omitempty"`
 	// Why the race never started: RaceVoidTooFew.
 	Void string `json:"void,omitempty"`
 	// The closing card, per Category D–A. Never stored (ADR-0074).
