@@ -1,7 +1,11 @@
 <script lang="ts">
 	// The ride world with a desk's worth of controls: your watts, the art
 	// style, the camera, time, and a GPX of your own. It owns the canvas and
-	// hands it to scene.ts; everything three.js happens there.
+	// hands it to scene.ts; everything three.js happens there. Given a moment
+	// (#3672) it draws that one frame and holds it, with or without its
+	// controls, and in a dev build window.__worldProbe() reports what the
+	// frame drew — how a design capture measures the world.
+	import { FAMILY } from './props/batch';
 	import { onMount, untrack } from 'svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import Profile from './Profile.svelte';
@@ -12,8 +16,13 @@
 	import type { Style } from './styles';
 	import { syntheticGpx } from './synthetic';
 	import { generate, type World } from './world';
+	import { devCrew } from '../../routes/(app)/dev/world/crew';
+	import type { WorldMoment } from '../../routes/(app)/dev/world/moment';
 
-	let { styles }: { styles: readonly Style[] } = $props();
+	let {
+		styles,
+		moment = null,
+	}: { styles: readonly Style[]; moment?: WorldMoment | null } = $props();
 
 	type Built = { route: Route; world: World; ms: number };
 	const CAMERAS: { id: CameraMode; label: string }[] = [
@@ -32,8 +41,14 @@
 	let host = $state<HTMLDivElement>();
 	let hud = $state.raw<Hud | null>(null);
 	let watts = $state(200);
-	let styleId = $state(untrack(() => styles[0]?.id ?? ''));
-	let camera = $state<CameraMode>('chase');
+	let styleId = $state(
+		untrack(
+			() =>
+				styles.find((s) => s.id === moment?.look)?.id ?? styles[0]?.id ?? '',
+		),
+	);
+	let camera = $state<CameraMode>(untrack(() => moment?.cam ?? 'chase'));
+	const chrome = $derived(!moment || moment.chrome);
 	let speedup = $state(1);
 	let scene: WorldScene | null = null;
 	const profile = createProfileStore();
@@ -98,8 +113,11 @@
 						camera,
 						watts,
 						ftp: profile.current.ftp,
+						riders: devCrew(watts, profile.current.ftp),
 						speedup,
+						moment: moment ? { m: moment.m, p: moment.p } : undefined,
 						onTick: (next) => (hud = next),
+						onFail: () => (drawFailed = true),
 					}),
 			),
 		);
@@ -108,9 +126,14 @@
 			return;
 		}
 		scene = placed.scene;
+		const probe = () => placed.scene.probe();
+		if (import.meta.env.DEV)
+			(window as { __worldProbe?: typeof probe }).__worldProbe = probe;
 		return () => {
 			placed.remove();
 			if (scene === placed.scene) scene = null;
+			if (import.meta.env.DEV)
+				delete (window as { __worldProbe?: typeof probe }).__worldProbe;
 		};
 	});
 
@@ -175,11 +198,11 @@
 		</p>
 	{/if}
 
-	{#if built && !drawFailed}
+	{#if built && !drawFailed && chrome}
 		{@const { route, world } = built}
 		<section
 			aria-label="Your ride"
-			class="border-muted/15 bg-surface/90 absolute top-3 right-3 left-3 grid gap-2 rounded-lg border px-4 py-3 sm:right-auto sm:w-60"
+			class="border-frame bg-surface/90 absolute top-3 right-3 left-3 grid gap-2 rounded-lg border px-4 py-3 sm:right-auto sm:w-60"
 		>
 			<p class="m-0 flex items-baseline gap-1">
 				<span
@@ -224,7 +247,7 @@
 
 		<section
 			aria-label="View"
-			class="border-muted/15 bg-surface/90 absolute right-3 bottom-32 left-3 grid gap-2 rounded-lg border px-4 py-3 sm:top-3 sm:bottom-auto sm:left-auto sm:max-w-sm sm:justify-items-end"
+			class="border-frame bg-surface/90 absolute right-3 bottom-32 left-3 grid gap-2 rounded-lg border px-4 py-3 sm:top-3 sm:bottom-auto sm:left-auto sm:max-w-sm sm:justify-items-end"
 		>
 			<div class="flex flex-wrap gap-1 sm:justify-end">
 				{#each styles as s (s.id)}
@@ -273,9 +296,11 @@
 			{/if}
 			<p class="text-muted m-0 text-xs sm:text-right">
 				{world.names.pass} ({Math.round(route.maxEle)} m) under the {world.names
-					.peak} · {route.name} up · built in {Math.round(built.ms)} ms · {world
-					.trees.length / 5}
-				trees, {world.houses.length / 5} houses
+					.peak} · {route.name} up · built in {Math.round(built.ms)} ms · {world.props.filter(
+					(p) => p.kind === 'spruce' || p.kind === 'broadleaf',
+				).length}
+				trees, {world.props.filter((p) => FAMILY[p.kind] === 'buildings')
+					.length} houses
 			</p>
 			<p class="text-muted m-0 text-xs sm:text-right">
 				A GPX you load stays in this tab. Everything beside the road is
@@ -284,7 +309,7 @@
 		</section>
 
 		<div
-			class="border-muted/15 bg-surface/80 absolute right-3 bottom-3 left-3 h-24 rounded-lg border px-2 py-1.5"
+			class="border-frame bg-surface/80 absolute right-3 bottom-3 left-3 h-24 rounded-lg border px-2 py-1.5"
 		>
 			<Profile {route} riders={hud?.riders ?? []} />
 		</div>

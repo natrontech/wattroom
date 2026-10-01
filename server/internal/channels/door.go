@@ -54,14 +54,27 @@ func (s *Service) Authorize(r *http.Request, id string) (protocol.Rider, string,
 		s.log.Warn("total xp unavailable for roster", "err", err, "channel", id)
 		xp = 0
 	}
-	return protocol.Rider{
-		ID:       store.UUIDString(user.ID),
-		Name:     user.DisplayName,
-		Role:     liveRole(role),
-		FtpWatts: int(user.FtpWatts),
-		WeightKg: int(user.WeightKg),
-		TotalXp:  xp,
-	}, store.UUIDString(ch.ID), nil
+	// The look rides with the identity too (#3155), read from the store and
+	// never through the wardrobe: cosmetics stay out of what moves anyone.
+	// None read joins in the starter kit.
+	look, err := s.store.Queries.UserLookHash(r.Context(), user.ID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		s.log.Warn("look unavailable for roster", "err", err, "channel", id)
+	}
+	// What a race's flag reads for the race FTP and the Category (#3658),
+	// held by the hub and never sent. Unreadable, the race falls back to the
+	// profile FTP — a bracket read low, never a rider refused a room.
+	best20m, err := s.store.Queries.Best20mIn90Days(r.Context(), user.ID)
+	if err != nil {
+		s.log.Warn("best 20 min unavailable for roster", "err", err, "channel", id)
+		best20m = 0
+	}
+	rider := store.RiderOf(user)
+	rider.Role, rider.TotalXp, rider.Best20mWatts = liveRole(role), xp, int(best20m)
+	if look != nil {
+		rider.Look = *look
+	}
+	return rider, store.UUIDString(ch.ID), nil
 }
 
 // liveRole is the crew role as a voice channel carries it: the door's answer,

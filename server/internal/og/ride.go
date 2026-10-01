@@ -6,8 +6,6 @@ import (
 	"image"
 	"image/color"
 	"image/png"
-	"math"
-	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -86,6 +84,12 @@ type RideCard struct {
 	// Watts is the per-second series. A ride whose blob could not be read
 	// still gets a card; it just has no trace.
 	Watts []int
+	// On a road (#3142): each second's metres along it and height there,
+	// beside Watts. With them the card is a poster — the road it rode.
+	Metres, Heights []float64
+	// Where the road's heights came from, printed small at the foot of a
+	// poster: data that is someone else's is credited where it shows (#3133).
+	HeightCredit string
 }
 
 // embeddedFace parses the build-time asset once. A card is drawn per request
@@ -143,7 +147,7 @@ func RenderRide(c RideCard) ([]byte, error) {
 	drawText(img, subFace, cardMargin, 258, muted, sub)
 
 	fillRound(img, image.Rect(cardMargin, 286, cardRight, 660), 28, surfaceRaised)
-	if err := s.drawTrace(img, traceBox, c); err != nil {
+	if err := s.drawSilhouette(img, traceBox, c); err != nil {
 		return nil, err
 	}
 	if err := s.drawZoneBar(img, zoneBarBox, c); err != nil {
@@ -173,6 +177,13 @@ func RenderRide(c RideCard) ([]byte, error) {
 
 	if err := s.drawCurve(img, 1004, c.Curve); err != nil {
 		return nil, err
+	}
+	if c.HeightCredit != "" && onRoad(c) {
+		creditFace, err := s.face(18)
+		if err != nil {
+			return nil, err
+		}
+		drawText(img, creditFace, cardMargin, 1052, mutedDim, c.HeightCredit)
 	}
 
 	var buf bytes.Buffer
@@ -277,98 +288,6 @@ func (s *Service) drawCurve(dst *image.NRGBA, baseline int, curve stats.Curve) e
 			x += font.MeasureString(labelFace, "   ·   ").Ceil()
 		}
 	}
-	return nil
-}
-
-// drawTrace fills one column per horizontal pixel, coloured by the zone that
-// column peaked in: the shape of the ride and where it was hard, in one mark.
-// Drawn at 2× and scaled down, because a hard-edged silhouette at 1× is a
-// staircase.
-func (s *Service) drawTrace(dst *image.NRGBA, box image.Rectangle, c RideCard) error {
-	if len(c.Watts) < 2 || c.Ftp <= 0 {
-		face, err := s.face(26)
-		if err != nil {
-			return err
-		}
-		drawCenter(dst, face, box.Min.X+box.Dx()/2, box.Min.Y+box.Dy()/2, muted,
-			"No second-by-second record for this ride")
-		return nil
-	}
-	const ss = 2
-	w, h := box.Dx()*ss, box.Dy()*ss
-	// Peak per column, like the web's trace: an average flattens the sprints
-	// that are the point of looking at it.
-	peaks := make([]int, w)
-	for x := range peaks {
-		from := len(c.Watts) * x / w
-		to := max(from+1, len(c.Watts)*(x+1)/w)
-		for _, v := range c.Watts[from:min(to, len(c.Watts))] {
-			peaks[x] = max(peaks[x], v)
-		}
-	}
-	// The ceiling is the ride's 99th column, not its highest: scaled to the
-	// peak, one twelve-second sprint squashes an hour of riding into the
-	// bottom third of the box and the card is mostly empty. The few columns
-	// above it clip, and the true peak is printed under the trace as the
-	// best 5 s — so nothing is hidden, it is just not given the whole axis.
-	// Three columns wide, because the buckets alias: 4 000 samples across
-	// 1 760 columns means neighbouring columns cover two samples and three by
-	// turns, and drawing that raw combs the whole trace with a stripe the ride
-	// never rode.
-	smooth := make([]int, len(peaks))
-	for x := range peaks {
-		sum, n := 0, 0
-		for i := max(0, x-1); i <= min(len(peaks)-1, x+1); i++ {
-			sum += peaks[i]
-			n++
-		}
-		smooth[x] = sum / n
-	}
-	peaks = smooth
-	ranked := slices.Sorted(slices.Values(peaks))
-	top := math.Max(float64(c.Ftp)*1.35, float64(ranked[len(ranked)*99/100]))
-
-	tmp := image.NewNRGBA(image.Rect(0, 0, w, h))
-	const capHeight = 5 * ss
-	// One gradient down the whole box rather than one per column: faded from
-	// each column's own cap, a short column and a tall one reached the floor
-	// at different opacities and the recovery stretches grew vertical stripes.
-	shade := make([]uint8, h)
-	for py := range shade {
-		shade[py] = uint8(0xaa - 0x82*float64(py)/float64(h))
-	}
-	for x, peak := range peaks {
-		col := zoneInk[stats.PowerZone(peak, c.Ftp)]
-		y := max(0, h-int(float64(peak)/top*float64(h)))
-		// The cap carries the zone's colour and the area under it fades out of
-		// it, so the trace has a lit edge instead of a flat block of paint.
-		fill(tmp, image.Rect(x, y, x+1, min(y+capHeight, h)), col)
-		for py := y + capHeight; py < h; py++ {
-			body := col
-			body.A = shade[py]
-			tmp.SetNRGBA(x, py, body)
-		}
-	}
-	// ApproxBiLinear, not CatmullRom: a cubic kernel rings on an edge this
-	// hard and hangs a halo over the silhouette.
-	draw.ApproxBiLinear.Scale(dst, box, tmp, tmp.Bounds(), draw.Over, nil)
-
-	// The FTP line is a reference, so it is structural neon and dashed —
-	// nothing about it is live data (ADR-0005).
-	y := box.Max.Y - int(float64(c.Ftp)/top*float64(box.Dy()))
-	for x := box.Min.X; x < box.Max.X; x += 22 {
-		fill(dst, image.Rect(x, y, min(x+12, box.Max.X), y+2), neon)
-	}
-	face, err := s.face(22)
-	if err != nil {
-		return err
-	}
-	// On its own backing: the line lands wherever the ride's ceiling puts it,
-	// which is regularly on top of the trace.
-	label := "FTP " + watts(c.Ftp)
-	width := font.MeasureString(face, label).Ceil()
-	fill(dst, image.Rect(box.Max.X-width-12, y-34, box.Max.X, y-4), surfaceRaised)
-	drawRight(dst, face, box.Max.X, y-12, muted, label)
 	return nil
 }
 

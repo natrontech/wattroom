@@ -18,6 +18,18 @@ export type Road = {
 export const roadStep = (road: Road): number =>
 	road.length / (road.heights.length - 1);
 
+/**
+ * The road ridden from its far end (#3205), as the server's replay turns it
+ * round (stats.turnedRound): its heights in reverse, its turns the other way.
+ */
+export function turnedRound(road: Road): Road {
+	return {
+		length: road.length,
+		heights: road.heights.toReversed(),
+		turns: road.turns.toReversed().map((t) => -t),
+	};
+}
+
 const VERSION = 1;
 const cm = (m: number) => Math.round(m * 100);
 

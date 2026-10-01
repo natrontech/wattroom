@@ -15,9 +15,9 @@ import (
 
 // timelineRoom is a running session of two ten-minute blocks, with the
 // clock at timeline second 0 and a hand to move it.
-func timelineRoom(t *testing.T) (*room, time.Time, func(second int)) {
+func timelineRoom(t *testing.T) (*channelState, time.Time, func(second int)) {
 	t.Helper()
-	rm := newRoom("timeline")
+	rm := newChannelState("timeline")
 	rm.session.pick("Two blocks", `{"steps":[{"type":"steady","seconds":600,"target":0.5},{"type":"steady","seconds":600,"target":1.0}]}`, 1200)
 	joinRide(rm, "ana")
 	t0 := time.Unix(1_000_000, 0)
@@ -46,11 +46,11 @@ func TestALateJoinerIsKeptOnTheTimeline(t *testing.T) {
 	ben := rider("ben")
 	at(600)
 	joinRide(rm, "ben")
-	for second := 600; second < 600+MinRideSamples; second++ {
+	for second := 600; second < 600+protocol.MinRideSamples; second++ {
 		at(second)
 		rm.setMetrics(ben, protocol.RiderMetrics{Watts: 200, Cadence: 90, Seq: second})
 	}
-	at(600 + MinRideSamples)
+	at(600 + protocol.MinRideSamples)
 	rm.session.end(rm.now())
 	end := rm.closeLocked(rm.session.state(rm.now()), rm.now(), true)
 	if end == nil || len(end.records) != 1 {
@@ -60,8 +60,8 @@ func TestALateJoinerIsKeptOnTheTimeline(t *testing.T) {
 	if first := got.Samples[0].Clock; first != 600 {
 		t.Errorf("the late joiner's first sample says second %d, want 600 — it would be scored against minute 0", first)
 	}
-	if last := got.Samples[len(got.Samples)-1].Clock; last != 600+MinRideSamples-1 {
-		t.Errorf("the last sample says second %d, want %d", last, 600+MinRideSamples-1)
+	if last := got.Samples[len(got.Samples)-1].Clock; last != 600+protocol.MinRideSamples-1 {
+		t.Errorf("the last sample says second %d, want %d", last, 600+protocol.MinRideSamples-1)
 	}
 	if want := origin.Add(600 * time.Second); !got.StartedAt.Equal(want) {
 		t.Errorf("the ride starts at %v, want %v — ten minutes after the session", got.StartedAt, want)
@@ -116,11 +116,11 @@ func TestAReplayIsPlacedWhereItWasRidden(t *testing.T) {
 func TestAnAmendmentKeepsTheStartTheCloseSaved(t *testing.T) {
 	rm, origin, at := timelineRoom(t)
 	ana := rider("ana")
-	for second := 40; second < 40+MinRideSamples; second++ {
+	for second := 40; second < 40+protocol.MinRideSamples; second++ {
 		at(second)
 		rm.setMetrics(ana, protocol.RiderMetrics{Watts: 150, Cadence: 90, Seq: second + 1})
 	}
-	at(40 + MinRideSamples)
+	at(40 + protocol.MinRideSamples)
 	rm.session.end(rm.now())
 	end := rm.closeLocked(rm.session.state(rm.now()), rm.now(), true)
 	saved := end.records[0].StartedAt

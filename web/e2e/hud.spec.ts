@@ -67,3 +67,42 @@ test('the HUD waits, then shows what the riding screen publishes', async ({
 	// Two missed ticks and it goes quiet again rather than showing stale watts.
 	await expect(page.getByTestId('hud-quiet')).toBeVisible({ timeout: 8000 });
 });
+
+/**
+ * On a road (#3092): row 3 is the road — the grade under the rider and, on a
+ * classed climb, how far to its top — the next 2 km draw as 20 bars in the
+ * grade ramp, and the clock moves up beside the label so the shell's
+ * 320×132 window still holds it all.
+ */
+test('the HUD draws the road a ride is on', async ({ context, page }) => {
+	await page.setViewportSize({ width: 320, height: 132 });
+	await signInAs(page, 'HUD Roadie', '/hud');
+	await expect(page.getByTestId('hud-quiet')).toBeVisible();
+
+	const rider = await context.newPage();
+	await rider.goto('/home');
+	await rider.evaluate(() => {
+		new BroadcastChannel('wattroom.hud').postMessage({
+			at: Date.now(),
+			watts: 280,
+			target: 0,
+			remaining: 0,
+			elapsed: 1800,
+			label: 'Free ride',
+			road: {
+				grade: 8.94,
+				km: 12.4,
+				totalKm: 52.9,
+				toTopM: 6000,
+				climb: { cls: 'I', n: 3, of: 4 },
+				ahead: Array.from({ length: 20 }, (_, i) => i * 0.7),
+			},
+		});
+	});
+	await expect(page.getByTestId('hud-road')).toHaveText('8.9 % · top 6.0 km');
+	await expect(page.getByTestId('hud-remaining')).toHaveText('30:00 ridden');
+	const strip = page.getByTestId('hud-ahead');
+	await expect(strip.locator('rect')).toHaveCount(20);
+	const box = await strip.boundingBox();
+	expect(box && box.y + box.height).toBeLessThanOrEqual(132);
+});

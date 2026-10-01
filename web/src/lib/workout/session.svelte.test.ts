@@ -98,6 +98,25 @@ describe('the recovery (#1847)', () => {
 		expect(session.state).toBe('running');
 		session.stop();
 	});
+
+	// #3515: the group ride has said its target again on a reconnect since
+	// #1846; the solo ride only noted the status, and a SIM hold dedupes, so
+	// the trainer that came back held nothing until the target moved.
+	it('says the held road again when the trainer link comes back', async () => {
+		const trainer = new SimulatedTrainer();
+		const session = createRideSession({ trainer, workout, ftp: 200 });
+		await startRiding(session);
+		const sim = vi.spyOn(trainer, 'setSimulation');
+		pedal(session, 0, 0, DEFAULTS.pauseAfterSeconds);
+		expect(session.state).toBe('autopaused');
+		expect(sim).toHaveBeenCalledWith({ gradePct: 0 });
+		sim.mockClear();
+		trainer.simulateDropout(5);
+		await new Promise((resolve) => setTimeout(resolve, 30));
+		expect(session.trainerStatus).toBe('connected');
+		expect(sim).toHaveBeenCalled();
+		session.stop();
+	});
 });
 
 describe('the sprint window (#1793)', () => {
@@ -499,6 +518,36 @@ describe('sensor arbitration inside a ride', () => {
 		session.stop();
 	});
 
+	it('loses an HR hold when the strap goes silent, though samples keep coming (#3517)', async () => {
+		let t = 0;
+		const session = createRideSession({
+			trainer: new SimulatedTrainer(),
+			workout: {
+				name: 'hold',
+				steps: [
+					{
+						type: 'steady',
+						seconds: 120,
+						target: 0.65,
+						hrHigh: 145,
+						hrHold: true,
+					},
+				],
+			},
+			ftp: 200,
+			now: () => t,
+			// The strap's last reading, at 0: it went out of range after that.
+			readings: () => ({ 'heart-rate': { heartRate: 140, at: 0 } }),
+		});
+		await startRiding(session);
+		for (; t <= 4000; t += 1000) {
+			session.onSample({ watts: 130, cadence: 90, at: t });
+			session.tick();
+		}
+		expect(session.hrHoldLost).toBe(true);
+		session.stop();
+	});
+
 	it('auto-pauses on the cadence sensor, not the trainer estimate', async () => {
 		// Kickr cadence is firmware-estimated and drops out on sprint-to-easy
 		// transitions (RESEARCH.md §11); a real sensor saying 0 is the truth.
@@ -841,6 +890,40 @@ describe('a solo ride left stopped', () => {
 		expect(session.state).toBe('running');
 		t = feed(session, 0, 0, stopped - 30, t);
 		expect(session.state).toBe('autopaused');
+		session.stop();
+	});
+});
+
+describe('a heart-rate hold (#67, ADR-0008)', () => {
+	it('carries no weight in execution', async () => {
+		const session = createRideSession({
+			trainer: new SimulatedTrainer(),
+			workout: {
+				name: 'hold',
+				steps: [
+					{
+						type: 'steady',
+						seconds: 120,
+						target: 0.65,
+						hrHigh: 145,
+						hrHold: true,
+					},
+				],
+			},
+			ftp: 200,
+		});
+		await startRiding(session);
+		for (let i = 0; i < 30; i++) {
+			session.onSample({
+				watts: 130,
+				cadence: 90,
+				heartRate: 140,
+				at: i * 1000,
+			});
+			session.tick();
+		}
+		expect(session.target).toBe(130);
+		expect(session.scored).toBe(false);
 		session.stop();
 	});
 });

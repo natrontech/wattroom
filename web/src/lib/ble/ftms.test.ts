@@ -4,6 +4,7 @@ import {
 	clampTarget,
 	DEFAULT_POWER_RANGE,
 	encodeSimulation,
+	encodeWheelCircumference,
 	FtmsTrainer,
 	parsePowerRange,
 } from './ftms';
@@ -59,6 +60,18 @@ describe('parseIndoorBikeData', () => {
 	it('reads negative power without wrapping', () => {
 		// SINT16: coasting on some units reports slightly negative rather than zero.
 		expect(parseIndoorBikeData(packet(0x0041, 0xf6, 0xff)).watts).toBe(-10);
+	});
+});
+
+describe('encodeWheelCircumference (#3331)', () => {
+	it('writes op 0x12 with the circumference at 0.1 mm, little-endian', () => {
+		// 2096 mm = 20960 = 0x51e0 | 4192 mm = 41920 = 0xa3c0
+		expect([...new Uint8Array(encodeWheelCircumference(2096))]).toEqual([
+			0x12, 0xe0, 0x51,
+		]);
+		expect([...new Uint8Array(encodeWheelCircumference(4192))]).toEqual([
+			0x12, 0xc0, 0xa3,
+		]);
 	});
 });
 
@@ -343,6 +356,40 @@ describe('FtmsTrainer control-point queue', () => {
 		// flags 0x0041: no speed, instantaneous power 250 W.
 		device.bikeData.notify(Uint8Array.of(0x41, 0x00, 0xfa, 0x00));
 		expect(samples).toEqual([{ watts: 250, cadence: 90 }]);
+	});
+
+	// #3377: the bytes as sent, so a captured Kickr frame can be pinned here.
+	it('keeps the notifications each sample was read from, as hex', async () => {
+		const { trainer, device } = await paired();
+		const raw: string[][] = [];
+		trainer.onSample(() => raw.push(trainer.lastRaw));
+
+		device.bikeData.notify(Uint8Array.of(0x04, 0x00, 0x00, 0x00, 0xb4, 0x00));
+		expect(trainer.pendingRaw).toEqual(['04 00 00 00 b4 00']);
+		device.bikeData.notify(Uint8Array.of(0x41, 0x00, 0xfa, 0x00));
+		expect(raw).toEqual([['04 00 00 00 b4 00', '41 00 fa 00']]);
+		expect(trainer.pendingRaw).toEqual([]);
+
+		device.bikeData.notify(Uint8Array.of(0x41, 0x00, 0x2c, 0x01));
+		expect(raw.at(-1)).toEqual(['41 00 2c 01']);
+	});
+
+	it('stamps heart rate with the frame that carried it, not the one with power (#3517)', async () => {
+		const { trainer, device } = await paired();
+		const samples: TrainerSample[] = [];
+		trainer.onSample((s) => samples.push(s));
+
+		// flags 0x0200: speed 0.00 km/h, heart rate 140 — no power, no sample.
+		device.bikeData.notify(Uint8Array.of(0x00, 0x02, 0x00, 0x00, 0x8c));
+		const measured = Date.now();
+		await vi.advanceTimersByTimeAsync(4000);
+		// flags 0x0041: power only. The unit has stopped relaying heart rate.
+		device.bikeData.notify(Uint8Array.of(0x41, 0x00, 0xfa, 0x00));
+		expect(samples.at(-1)).toMatchObject({
+			heartRate: 140,
+			heartRateAt: measured,
+		});
+		expect(samples.at(-1)!.at - measured).toBe(4000);
 	});
 
 	it("carries a Kickr Core's speed in m/s, and none from a frame without it", async () => {

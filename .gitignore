@@ -17,3 +17,6 @@ server/tmp/
 # `git add -A`; this is the half that does not depend on anyone remembering.
 server/tracks/
 server/feedback/
+
+# Per-session worktrees Happier creates inside the clone (#3718).
+.dev/

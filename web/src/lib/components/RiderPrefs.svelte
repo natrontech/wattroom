@@ -75,13 +75,13 @@
 		     answers "joining must not put you on a board", and leaves the
 		     same trap standing for everyone already inside when the owner
 		     turns it on (ADR-0036, amended). -->
-<section class="border-muted/15 mt-4 rounded-lg border p-6">
+<section class="border-frame mt-4 rounded-lg border p-6">
 	<h2 class="font-display font-bold">Your settings for this crew</h2>
 	<p class="text-muted mt-1.5 text-xs">
 		Yours alone — nobody else sees them, and the owner cannot change them.
 	</p>
 	<label
-		class="border-muted/15 mt-3 flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3"
+		class="border-frame mt-3 flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3"
 	>
 		<input
 			type="checkbox"
@@ -100,7 +100,7 @@
 		</span>
 	</label>
 	<label
-		class="border-muted/15 mt-2 flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3"
+		class="border-frame mt-2 flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3"
 	>
 		<input
 			type="checkbox"

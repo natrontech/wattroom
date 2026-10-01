@@ -314,7 +314,7 @@ func TestSeekMovesTheSharedPlayhead(t *testing.T) {
 		t.Fatalf("negative seek: %v", got)
 	}
 	accepted(j, protocol.JukeboxCommand{Action: "seek", PositionSec: 1e9}, "r-jan", "jan", jat(20))
-	if got := j.positionAt(jat(20)); got != maxSeekSec {
+	if got := j.positionAt(jat(20)); got != protocol.MaxSeekSeconds {
 		t.Fatalf("huge seek: %v", got)
 	}
 	// Seeking while paused moves the playhead and stays paused.
@@ -449,7 +449,7 @@ func TestAddCarriesALibraryTrackLength(t *testing.T) {
 	}{
 		{"measured", 192_914, 192_914},
 		{"unknown", 0, 0},
-		{"past six hours", maxSeekSec*1000 + 1, 0},
+		{"past six hours", protocol.MaxSeekSeconds*1000 + 1, 0},
 		{"negative", -5, 0},
 	}
 	for _, tc := range cases {

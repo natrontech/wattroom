@@ -143,6 +143,9 @@ type videoGrant struct {
 	CanPublish   bool   `json:"canPublish"`
 	CanSubscribe bool   `json:"canSubscribe"`
 	RoomAdmin    bool   `json:"roomAdmin,omitempty"` // server-to-server only (Eject)
+	// LiveKit gates ListRooms on this, not roomAdmin: without it the
+	// reachability probe is refused every sweep (#3710).
+	RoomList bool `json:"roomList,omitempty"`
 }
 
 type claims struct {
@@ -209,7 +212,7 @@ func (s *Service) roomAPI(ctx context.Context, method, channel string, payload a
 	now := s.now()
 	token, err := s.sign(claims{
 		Iss: s.cfg.Key, Sub: s.cfg.Key, Nbf: now.Unix(), Exp: now.Add(time.Minute).Unix(),
-		Video: videoGrant{Room: channel, RoomAdmin: true},
+		Video: videoGrant{Room: channel, RoomAdmin: true, RoomList: true},
 	})
 	if err != nil {
 		return nil, err

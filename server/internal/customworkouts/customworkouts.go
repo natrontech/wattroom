@@ -17,6 +17,7 @@ import (
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/keyset"
+	"github.com/natrontech/wattroom/server/internal/routes"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/workout"
@@ -42,6 +43,8 @@ type Service struct {
 	store *store.Store
 	users UserSource
 	log   *slog.Logger
+	// A workout's road is checked and read through this (#3051); nil rides none.
+	roads *routes.Attacher
 }
 
 func New(st *store.Store, users UserSource, log *slog.Logger) *Service {
@@ -125,7 +128,7 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 	out := make([]workoutJSON, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, workoutJSON{
-			ID: store.UUIDString(row.ID), Workout: row.Definition,
+			ID: store.UUIDString(row.ID), Workout: s.readable(r.Context(), row.Definition, user.ID),
 			SavedAt: row.CreatedAt.Time.UnixMilli(),
 		})
 	}
@@ -159,6 +162,9 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	name := nameOf(req.Workout)
 	if code, message, field := checkDefinition(name, req.Workout); code != "" {
 		httpx.WriteFieldError(w, http.StatusBadRequest, code, message, field)
+		return
+	}
+	if !s.ownRoad(w, r, req.Workout, user.ID) {
 		return
 	}
 	// docs/SPEC.md's shelf ceiling. Counted with the rider's row locked, in
@@ -202,7 +208,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusCreated, workoutJSON{
-		ID: store.UUIDString(row.ID), Workout: row.Definition,
+		ID: store.UUIDString(row.ID), Workout: s.readable(r.Context(), row.Definition, user.ID),
 		SavedAt: row.CreatedAt.Time.UnixMilli(),
 	})
 }
@@ -227,6 +233,9 @@ func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteFieldError(w, http.StatusBadRequest, code, message, field)
 		return
 	}
+	if !s.ownRoad(w, r, req.Workout, user.ID) {
+		return
+	}
 	// owner_id in the WHERE is the authorization: someone else's id is a 404,
 	// indistinguishable from absent — no probing which ids exist.
 	row, err := s.store.Queries.UpdateWorkout(r.Context(), db.UpdateWorkoutParams{
@@ -243,7 +252,7 @@ func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, workoutJSON{
-		ID: store.UUIDString(row.ID), Workout: row.Definition,
+		ID: store.UUIDString(row.ID), Workout: s.readable(r.Context(), row.Definition, user.ID),
 		SavedAt: row.CreatedAt.Time.UnixMilli(),
 	})
 }

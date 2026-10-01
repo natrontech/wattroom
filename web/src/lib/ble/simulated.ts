@@ -17,7 +17,9 @@ import {
 
 /** One control write, as the trainer took it — SIM with every field resolved. */
 export type ControlWrite =
-	{ op: 'erg'; watts: number } | ({ op: 'sim' } & Required<SimParams>);
+	| { op: 'erg'; watts: number }
+	| ({ op: 'sim' } & Required<SimParams>)
+	| { op: 'circumference'; mm: number };
 
 /**
  * The real gear the simulated rider pushes (#3050), and the wheel it drives:
@@ -163,6 +165,12 @@ export class SimulatedTrainer implements Trainer {
 		this.#mode = 'sim';
 		this.#road = resolveSim(road);
 		this.writes.push({ op: 'sim', ...this.#road });
+	}
+
+	/** Taken and recorded, and nothing more: this trainer's wheel is fixed. */
+	async setWheelCircumference(mm: number): Promise<void> {
+		this.#assertConnected();
+		this.writes.push({ op: 'circumference', mm });
 	}
 
 	onSample(cb: (s: TrainerSample) => void): () => void {

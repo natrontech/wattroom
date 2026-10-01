@@ -182,10 +182,16 @@ values ($1, $2, $3, $4);
 -- row is already in the table, so its own week came back and the bonus was
 -- one week too high. Excluding the ride rather than the week is the same
 -- question save asks — a second ride the same week still counts.
+-- A ride counts only when it started no earlier than the week before the one
+-- it was saved in (#3514): a back-dated upload is kept, and builds no streak
+-- — ten one-minute uploads dated a week apart bought a 10-week streak whose
+-- bonus every session ride then paid outside the upload ceiling.
 select distinct date_trunc('week', started_at at time zone sqlc.arg(tz)::text)::date as week
 from rides
 where user_id = sqlc.arg(user_id)
   and (sqlc.narg(except_id)::uuid is null or rides.id <> sqlc.narg(except_id))
+  and date_trunc('week', started_at at time zone sqlc.arg(tz)::text)
+      >= date_trunc('week', created_at at time zone sqlc.arg(tz)::text) - interval '1 week'
 order by week desc
 limit 60;
 
@@ -548,3 +554,25 @@ where r.id = e.ride_id
   and r.user_id = $1
   and e.destination = $2
   and e.remote_id is not null;
+
+-- name: RouteNumbersOfRides :many
+-- The generated name's numbers for the road rides on one page of MCP's
+-- list_rides (#3054, ADR-0063): the route's length and gain, which every
+-- surface may carry, and never its name, its id or the ride's own metres. A
+-- ride whose route was deleted has none.
+select rides.id, r.length_m, r.gain_m
+from rides
+join routes r on r.id = rides.route_id
+where rides.id = any(sqlc.arg(ids)::uuid[]);
+
+-- name: GetRideRoad :one
+-- The road a ride rode, for its card and page (#3142): the route's generated
+-- name — never the owner's rename (#3055) — where its heights came from, and
+-- the ride's metres on it. A ride on no road, or on a route since deleted,
+-- answers two empty strings; the metres stay while the ride does.
+select coalesce(rt.gen_name, '')::text as gen_name,
+       coalesce(rt.ele_source, '')::text as ele_source,
+       r.distance_m
+from rides r
+left join routes rt on rt.id = r.route_id
+where r.id = $1 and r.user_id = $2;

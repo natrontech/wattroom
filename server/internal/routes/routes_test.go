@@ -25,6 +25,7 @@ type harness struct {
 	store *store.Store
 	users *testx.Users
 	keys  *secrets.Cipher
+	svc   *Service
 }
 
 // testKey is a key for tests alone, 32 bytes of one letter.
@@ -51,8 +52,9 @@ func setup(t *testing.T, keys *secrets.Cipher) *harness {
 		t.Cleanup(func() { _, _ = st.Pool.Exec(context.Background(), "delete from users where id = $1", u.ID) })
 	}
 	mux := http.NewServeMux()
-	New(st, users, keys, slog.New(slog.DiscardHandler)).Register(mux)
-	return &harness{mux: mux, store: st, users: users, keys: keys}
+	svc := New(st, users, keys, slog.New(slog.DiscardHandler))
+	svc.Register(mux)
+	return &harness{mux: mux, store: st, users: users, keys: keys, svc: svc}
 }
 
 func (h *harness) call(t *testing.T, user, method, path string, body any) (int, map[string]any) {
@@ -76,9 +78,9 @@ func (h *harness) call(t *testing.T, user, method, path string, body any) (int, 
 	return w.Code, out
 }
 
-// A 3 km road climbing 20 m, and the owner's place for it: Zürich's lake shore.
+// A 3 km road climbing 20 m, and the owner's place for it: open ocean.
 var (
-	shape   = testx.Polyline6([][2]float64{{47.3547, 8.5500}, {47.3600, 8.5480}, {47.3650, 8.5460}})
+	shape   = testx.Polyline6([][2]float64{{-48.8767, -123.3933}, {-48.8700, -123.3950}, {-48.8650, -123.3970}})
 	request = map[string]any{
 		"src": "gpx", "eleSource": "file", "road": testx.FlatRoad(3000, 20), "shape": shape,
 		"climbs": []map[string]any{{"startM": 100, "topM": 900, "gainM": 12, "cls": nil}},
@@ -161,7 +163,7 @@ func TestWithoutAKeyNoCoordinateReachesTheTable(t *testing.T) {
 	id, _ := body["id"].(string)
 	row := h.rowText(t, id)
 	// A bytea column prints as hex, so the shape is looked for that way too.
-	for _, piece := range []string{shape, shape[:8], hex.EncodeToString([]byte(shape[:8])), "47.35", "8.55"} {
+	for _, piece := range []string{shape, shape[:8], hex.EncodeToString([]byte(shape[:8])), "48.87", "123.39"} {
 		if strings.Contains(row, piece) {
 			t.Fatalf("%q reached the table with no key to seal it:\n%s", piece, row)
 		}
@@ -174,6 +176,9 @@ func TestWithoutAKeyNoCoordinateReachesTheTable(t *testing.T) {
 	}
 }
 
+// Someone else's route reads as absent (#3024). Its map is the one read that
+// answers otherwise: a rider it is not being ridden with is refused, 403
+// (#3096, road_test.go).
 func TestSomebodyElsesRouteIsAbsent(t *testing.T) {
 	h := setup(t, testKey(t, "k"))
 	id := h.keep(t, "alice")
@@ -182,7 +187,6 @@ func TestSomebodyElsesRouteIsAbsent(t *testing.T) {
 		body         any
 	}{
 		{http.MethodGet, "/api/routes/" + id, nil},
-		{http.MethodGet, "/api/routes/" + id + "/shape", nil},
 		{http.MethodPatch, "/api/routes/" + id, map[string]string{"name": "mine now"}},
 		{http.MethodDelete, "/api/routes/" + id, nil},
 	} {
@@ -237,11 +241,11 @@ func TestKeepingARouteRefusesWhatIsNotOne(t *testing.T) {
 func TestRenamingAndDeletingARoute(t *testing.T) {
 	h := setup(t, testKey(t, "k"))
 	id := h.keep(t, "alice")
-	if status, body := h.call(t, "alice", http.MethodPatch, "/api/routes/"+id, map[string]string{"name": "  Seestrasse loop  "}); status != http.StatusOK || body["name"] != "Seestrasse loop" {
+	if status, body := h.call(t, "alice", http.MethodPatch, "/api/routes/"+id, map[string]string{"name": "  Stollestich loop  "}); status != http.StatusOK || body["name"] != "Stollestich loop" {
 		t.Fatalf("rename: %d %v", status, body)
 	}
 	_, got := h.call(t, "alice", http.MethodGet, "/api/routes/"+id, nil)
-	if got["name"] != "Seestrasse loop" || got["generatedName"] != "Road · 3.0 km · 20 m" {
+	if got["name"] != "Stollestich loop" || got["generatedName"] != "Road · 3.0 km · 20 m" {
 		t.Fatalf("the owner's name replaced the generated one: %v", got)
 	}
 	for _, name := range []string{"", "   ", strings.Repeat("x", 81)} {
@@ -274,10 +278,15 @@ func TestResealMovesRoutesToTheNewKey(t *testing.T) {
 	if err != nil || moved < 1 {
 		t.Fatalf("re-seal moved %d (%v)", moved, err)
 	}
-	var sealed []byte
+	var sealed, stored, roadSealed []byte
 	var version int32
-	if err := h.store.Pool.QueryRow(t.Context(), "select geom_sealed, key_version from routes where id = $1", id).Scan(&sealed, &version); err != nil {
+	if err := h.store.Pool.QueryRow(t.Context(), "select geom_sealed, key_version, road, road_sealed from routes where id = $1", id).
+		Scan(&sealed, &version, &stored, &roadSealed); err != nil {
 		t.Fatal(err)
+	}
+	// The whole road moves with the shape (#3511).
+	if whole, err := WholeRoad(next, stored, roadSealed, &version); err != nil || !bytes.Equal(whole, testx.FlatRoad(3000, 20)) {
+		t.Fatalf("the new key opens a road of %d bytes (%v), want the one posted", len(whole), err)
 	}
 	if version != next.Version() {
 		t.Fatalf("key_version %d, want the new key's %d", version, next.Version())

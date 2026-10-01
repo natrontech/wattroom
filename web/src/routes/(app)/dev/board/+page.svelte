@@ -101,7 +101,7 @@
 {/snippet}
 
 {#snippet sidebar(rows: string[], lit: string)}
-	<div class="border-muted/15 w-40 shrink-0 border-r pr-3">
+	<div class="border-frame w-40 shrink-0 border-r pr-3">
 		<p class="eyebrow mb-2">velvet hammer</p>
 		<ul class="space-y-0.5">
 			{#each rows as row (row)}
@@ -237,7 +237,7 @@
 		)}
 		<div class="min-w-0 flex-1">
 			<div class="mb-3">{@render strip()}</div>
-			<div class="border-muted/15 mt-4 border-t pt-4">
+			<div class="border-frame mt-4 border-t pt-4">
 				<div class="mb-1 flex items-center gap-3">
 					<h3 class="font-display text-xl font-bold">Natron's board</h3>
 					<span class="ml-auto"
@@ -293,7 +293,7 @@
 					your Tuesdays are
 				</li>
 			</ul>
-			<div class="border-muted/15 mt-4 flex items-center gap-2 border-t pt-3">
+			<div class="border-frame mt-4 flex items-center gap-2 border-t pt-3">
 				<span class="input text-muted-dim flex-1 text-xs"
 					>Message Velvet Hammer…</span
 				>

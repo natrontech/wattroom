@@ -112,7 +112,7 @@
 
 	<!-- Preview first: the graph is what a rider recognises, not the step list. -->
 	<div
-		class="border-muted/15 bg-surface-raised mt-5 overflow-hidden rounded-lg border"
+		class="border-frame bg-surface-raised mt-5 overflow-hidden rounded-lg border"
 	>
 		<IntervalGraph {segments} {total} elapsed={0} ftp={FTP} trace={[]} />
 	</div>
@@ -153,7 +153,7 @@
 							class="flex w-full items-center gap-3 rounded-lg border px-4 py-3 text-left {selected ===
 							i
 								? 'bg-surface-raised border-ink/40'
-								: 'border-muted/15 hover:border-muted/40'}"
+								: 'border-frame hover:border-muted/40'}"
 						>
 							<span
 								class="h-8 w-1.5 shrink-0 rounded-full {step.type === 'sprint'
@@ -192,7 +192,7 @@
 			<h2 class="eyebrow">step</h2>
 			{#if current}
 				<div
-					class="border-muted/15 bg-surface-raised mt-3 space-y-4 rounded-lg border p-4"
+					class="border-frame bg-surface-raised mt-3 space-y-4 rounded-lg border p-4"
 				>
 					{#if current.type !== 'repeat'}
 						<label class="block">

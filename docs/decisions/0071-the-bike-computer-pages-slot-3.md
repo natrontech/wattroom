@@ -7,6 +7,11 @@
 - Beside: [0062](0062-the-horizon-may-be-a-road.md) (a road and its climbs), [0084](0084-wattroom-shifts.md) (Harder and Easier)
 - Decided by Jan, 2026-09-26: fixed data pages, no field picking
 
+> **Amended 2026-10-01 ([#3645](https://github.com/natrontech/wattroom/issues/3645), decided by Jan):** CLIMB opens by itself on a
+> free or route ride only. On a workout or a session the trainer holds ERG and
+> the road is scenery, so RIDE stays — the default page is always the
+> workout's — and the climb chip offers CLIMB instead.
+
 ## Context
 
 ADR-0046 gave slot 3 the rider's own numbers: rpm, bpm, W/kg, bias. A road
@@ -29,7 +34,8 @@ worse than a place you can see.
   its shape, and one panel shows one of a few fixed sets of numbers.
 - **The pages**, a closed set:
   - **RIDE**, the default;
-  - **CLIMB**, which opens by itself from RIDE when a climb begins;
+  - **CLIMB**, which opens by itself from RIDE when a climb begins on a free
+    or route ride (amended above);
   - **POWER**;
   - **MAP**, on a road only;
   - **RACE**, later.

@@ -45,7 +45,7 @@
 | **Leader call** | One of six fixed calls a ride leader may send to an open ride — welcome, climb ahead, stay together over the top, last 5 km, sprint at the sign, thanks for riding. Never free text. |
 | **Streak**            | Consecutive **weeks**, counted from Monday-start weeks, in which something was ridden. The current week is forgiving: a streak survives until that week ends without a ride, so a crew that always rides on Saturday does not read as broken on Tuesday. There are **two** streaks and they are different numbers — a **crew streak** and a **rider streak**, below. Say which one you mean; unqualified "streak" is ambiguous.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | **Crew streak** | Consecutive weeks in which a **crew** held at least one session, in whichever of its voice channels, in **UTC** weeks — a crew's riders are in several zones and a crew has none of its own. Two sessions in two channels in one week are one week, not two. It is a consistency number and it is the one on screen: the crew's Home labels it **this crew's streak**. It pays **no** XP — a crew streak that paid would let a rider join a crew on a six-week run and be paid for other people's rides. |
-| **Rider streak**      | Consecutive weeks in which a **rider** rode at least once — in any crew's session, or solo — in **their own** weeks (the day boundary under Stats formulas). This is the streak that **pays**: the XP streak bonus below is `25 ×` the rider's own current-week streak, capped at 250. It is read before the ride being saved lands, so the ride extends the streak from the next ride on. Never displayed as the crew's number.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| **Rider streak**      | Consecutive weeks in which a **rider** rode at least once — in any crew's session, or solo — in **their own** weeks (the day boundary under Stats formulas). This is the streak that **pays**: the XP streak bonus below is `25 ×` the rider's own current-week streak, capped at 250. It is read before the ride being saved lands, so the ride extends the streak from the next ride on. A ride counts toward it only if it started no earlier than the week before the one it was saved in ([#3514](https://github.com/natrontech/wattroom/issues/3514)): an upload dated further back is kept, and builds no streak. Never displayed as the crew's number.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | **Consistency** | Showing up, as opposed to how hard you rode — the thing a crew's own numbers are about ([RESEARCH.md §14.7](RESEARCH.md)). A crew expresses it two ways: its **crew streak**, and its **sessions this month** against its own last month, counted as distinct days, so an evening split across two voice channels counts once. It is never a per-rider score and never a ranking; a rider sees only their own turnout ([ADR-0036](decisions/0036-what-a-room-shows-about-its-members.md)). |
 | **Weekly board** | The one ordered surface a crew may have ([ADR-0036](decisions/0036-what-a-room-shows-about-its-members.md), amended by ADR-0058): each member's **kJ** and time ridden in the crew's sessions **this week**, bracketed by **Category**, resetting Monday with the crew streak's week. **Off until the crew's owner or an admin turns it on**, and never the crew's front page. It is the only crew surface that publishes a number derived from one member's rides, so it is disclosed twice — the crew's **door** (`/c/{code}`) says the crew keeps one before anyone joins (#1651), and each member has their own **include me** switch (`on_board` on their crew membership, starting as the door said: on for a rider who joined while the board was on, off for one who joined while it was off, and turning the board on changes nobody's switch (#2820); riders carried over from rooms start on only if they were on a board before, ADR-0058). A rider is on it only while they are a member: leaving takes their row with them. |
 | **Mode** | What a rider picks to ride, and one of exactly five: **Free ride**, **Workout**, **Bunch ride**, **Race**, **Game** ([ADR-0062](decisions/0062-the-horizon-may-be-a-road.md)). A **road** is an attribute of any of them, never a sixth. Stored as `ride_mode` `free \| workout \| bunch \| race \| game`, with a `timeable` flag ([ADR-0074](decisions/0074-a-time-is-yours-when-your-watts-moved-your-dot.md)). **Route ride**, **road step**, **road workout** and **scenery** are code names for how a road meets the trainer; no rider reads them. |
@@ -151,9 +151,11 @@ Names, counted in characters (not bytes, #1986): a crew or channel name is 1–6
 Shelf ceilings (#1414, defaults — tune in alpha). A crew holds at most **100
 planned sessions** — counted the way the crew's own schedule counts them,
 upcoming and not yet started, so a plan that ran, was cancelled or fell past its
-grace gives its slot back. An account holds at most **200 saved workouts**.
+grace gives its slot back. An account holds at most **200 saved workouts** and
+**200 routes** ([#3416](https://github.com/natrontech/wattroom/issues/3416)),
+and keeps at most **10 routes a minute** — the saves budget rides already have.
 **Rides are not capped**: a rider's history is the product, and nothing may
-delete or refuse it. A ceiling — these two, the crew and channel caps above — is
+delete or refuse it. A ceiling — these, the crew and channel caps above — is
 refused with **429 `rate_limited`** (errors.md, the same shape as the ten-token
 cap) and the message names the number and the remedy — never a wait, because a
 ceiling does not clear on its own.
@@ -316,6 +318,15 @@ Targets are fractions of FTP; absolute watts allowed via `"watts": 250` instead 
 
 `repeat` steps nest: a set of sets expresses over-unders without writing every rep out. The engine has always flattened recursively; the type used to forbid it (#12).
 
+A **road workout** carries its road by reference at the top level, and nothing
+else: `"road": { "routeId": "…", "fromM": 0, "toM": 42000, "stepEndM": [ … ] }`
+names the stored route, the stretch it rides (forward, within the route's
+**200 km**), and where each block ends, in order along that stretch. A road
+that carries heights or a shape is refused, because a copy could not be erased
+with the route (#3051). Every read attaches the reader's cut of the road (A
+route's place). A `road` step may set `fromM`, where on the road it starts;
+absent is where the last one left off. It has no target and is unscored.
+
 A workout may also carry top-level `"unscored": true`, which says its execution score is meaningless and stores the ride with `execution_scored = false` — no percentage on the ride, no `execution% × 50` XP bonus. Absent is scored. The **ramp test is the only workout that sets it**, and the editor never offers it: it is a property of a workout that measures the rider, not a setting (#1400).
 
 ## Power zones (Coggan 7-zone, % of FTP)
@@ -435,7 +446,7 @@ session bonus is 5, and achievements pay once.
 
 | Source                  | Rule                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Riding**              | `1 kJ = 1 XP` + execution bonus + streak bonus (Stats formulas above). A ride the browser **uploads** — solo, free or recovered, `POST /api/rides` — is the client's word, so it is bounded ([#3044](https://github.com/natrontech/wattroom/issues/3044)): it is refused when it shares a second with a ride already on the account (nobody rides two at once), and uploaded rides pay at most **6,000 XP per rider per UTC save day** (about 6 h at 280 W). A ride past the ceiling is saved with what is left of it, down to 0, and says so in its XP. Deleting a ride does not return its share of the day — otherwise delete-and-repost mints without end, since the deleted ride's XP stays (below). A session ride, saved by the hub from seconds it watched arrive, is outside the ceiling. |
+| **Riding**              | `1 kJ = 1 XP` + execution bonus + streak bonus (Stats formulas above). A ride the browser **uploads** — solo, free or recovered, `POST /api/rides` — is the client's word, so it is bounded ([#3044](https://github.com/natrontech/wattroom/issues/3044)): it is refused when it shares a second with a ride already on the account (nobody rides two at once), and uploaded rides pay at most **6,000 XP per rider per UTC save day** (about 6 h at 280 W). A ride past the ceiling is saved with what is left of it, down to 0, and says so in its XP. One that started earlier than the week before its save is kept, and counts toward no **rider streak** (Glossary) — whose bonus session rides pay outside the ceiling. Deleting a ride does not return its share of the day — otherwise delete-and-repost mints without end, since the deleted ride's XP stays (below). A session ride, saved by the hub from seconds it watched arrive, is outside the ceiling. |
 | **Lounge presence**     | **1 XP per 5 full minutes in voice** — in any voice channel's call — capped at **24 XP per rider per UTC day**. Leaving resets the five-minute count. Presence is what LiveKit's join/leave webhooks say — the server cannot hear who talks (mute state is client-reported), so "talking" is measured as being on the call, and every surface says "in voice", never "talking". Blocks past the cap are recorded at 0 XP so lounge hours keep counting toward Lounge Lizard. |
 | **Session voice bonus** | **5 XP per group session** the rider was in voice for **at least half of** the running timeline (pauses excluded). A group session has **≥ 2 saved rides** and **≥ 10 min** of timeline. Riders and listeners alike — a coach without a trainer on the call earns it.                                                                                                                                                                         |
 | **Achievements**        | One-time **100 (easy) / 250 (medium) / 500 (hard)** XP, paid the day the shelf gets the trophy.                                                                                                                                                                                                                                                                                                                                               |
@@ -820,6 +831,9 @@ What v0 ships (#3022):
 | Reference rider              | **75 kg** rider + **8 kg** bike at **225 W**                                                                                            |
 | Pace model                   | Martin et al. 1998, stepped once a second in **4** substeps (`$lib/road/pace.ts` and its Go twin `internal/road`, held to **0.1 %** by shared golden vectors): Crr **0.004**, ρ **1.225 kg/m³**, drivetrain η **0.97**, CdA **0.32 m²** until the Kickr sessions measure it. The pace model and FTMS share this one CdA; the factor between it and the Cw FTMS is sent (**0.51 kg/m** today, `SIM_DEFAULTS`) is what that session measures, and this row does not assert it |
 | Riding on a road             | virtual speed above **0.5 m/s** — presence, auto-pause, auto-end and the recording rule read this                                        |
+| Corners                      | a bend of radius r is taken at √(**0.6 g** × r), a 31° lean, and the pace brakes at **4 m/s²** to meet it; there is no brake control     |
+| A sample on a road           | its place runs forward from 0 to the route's length, at most **30 m** a second; its height stays within **−500 … 9,000 m** (the .fit's own floor) |
+| A road on a workout          | the reader's cut (A route's place), at most **48 KiB** packed                                                                            |
 | Leg                          | at most **6 h**                                                                                                                         |
 
 At the default difficulty a −6 % descent feels −1.5 %. A route ride is unscored;
@@ -832,7 +846,11 @@ scored workout (ADR-0062's table).
   (length in m × average %) at least **1,500**;
 - its class by score: **IV** above 8,000, **III** above 16,000, **II** above
   32,000, **I** above 64,000, **HC** above 80,000 — always in Roman numerals;
-- the climb card opens by itself for class **IV** and harder.
+- a dip that loses less than **20 m** and is back over the top within
+  **300 m** does not end a climb;
+- a road keeps its hardest **32** climbs;
+- the climb card opens by itself for class **IV** and harder, on a free or
+  route ride; on a workout or a session its chip offers it instead ([#3645](https://github.com/natrontech/wattroom/issues/3645)).
 
 ## A route's place ([ADR-0063](decisions/0063-a-route-keeps-its-place-with-care.md))
 
@@ -987,6 +1005,7 @@ A rider's bias never moves the bunch.
 | Frame rate          | **30 fps** on a vsync divisor                                                                                           |
 | High tier           | at most **60** draws and **400k** triangles                                                                             |
 | … figures           | at most **110k** triangles: **3** at LOD0 (**14k** each) and **9** at LOD1 (**7k** each)                                |
+| … far figures       | every figure past those 12 — strangers (Open rides) and the crowd on a climb (Races) — at a far LOD, instanced, inside the tier's totals; its triangles per figure are set by the first `make perf-scenes` measurement, as the GPU gate is |
 | … dressing          | at most **24** draws and **180k** triangles                                                                             |
 | Low tier            | at most **30** draws and **150k** triangles; dressing **12** draws and **70k**                                          |
 | Fallback            | to the Skyline when more than **20 %** of vsync-divisor intervals are missed over **10 s**; one-way for the ride        |
@@ -1055,6 +1074,16 @@ min(their history, **1,500**).
 | Crew kits       | templates unlock at **100 / 500 / 2,000** crew session hours                                         |
 | Undo            | within **10 min**, and only if the item has not yet been worn on a ride                              |
 | UCI limits      | the 2026 limits (bars **400 mm**, rims **65 mm**, socks halfway to the knee) as information chips only |
+
+**The Swiss calendar** (#3163), the eight windows as the v3 shop draws them.
+Each is a week, its day and **3** days either side: Fasnacht (Basel's
+Morgestraich, the Monday after Ash Wednesday), Chalandamarz (1 March),
+Sechseläuten (the third Monday in April — a week earlier in Holy Week, a
+week later on Easter Monday), the longest day (21 June), 1 August,
+Samichlaus (6 December) and the longest night (21 December). Alpabzug is
+all of September and October. A window is read in the rider's own zone,
+counts the rides started inside it that year, and pays its item on the
+third; an item earned before keeps the day it was first earned.
 
 ## The living world (defaults — tune in alpha; #3178)
 
@@ -1141,7 +1170,8 @@ of a **10°** field.
 ## The bike computer (defaults — tune in alpha; [ADR-0071](decisions/0071-the-bike-computer-pages-slot-3.md))
 
 Slot 3's pages, in order: **RIDE** (default, and where every ride starts),
-**CLIMB** (opens by itself from RIDE when a climb begins), **POWER**, **MAP**
+**CLIMB** (opens by itself from RIDE when a climb begins on a free or route
+ride; a workout or a session keeps RIDE and offers it, [#3645](https://github.com/natrontech/wattroom/issues/3645)), **POWER**, **MAP**
 (on a road only), **RACE** (later). ← / → or a tap on the panel turn them;
 PgUp / PgDn are Harder / Easier, never a page.
 

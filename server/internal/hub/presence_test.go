@@ -19,8 +19,8 @@ func pat(seconds int) time.Time {
 
 // A room whose clock the test moves by hand — `-race` and a wall clock make a
 // grace window untestable.
-func presenceRoom(now *time.Time) *room {
-	rm := newRoom("velvet")
+func presenceRoom(now *time.Time) *channelState {
+	rm := newChannelState("velvet")
 	rm.now = func() time.Time { return *now }
 	return rm
 }
@@ -30,7 +30,7 @@ func socket(id, name string) *client {
 }
 
 // verbs is what the room has queued to say, in order.
-func verbs(rm *room) []string {
+func verbs(rm *channelState) []string {
 	out := make([]string, 0, len(rm.events.pending))
 	for _, ev := range rm.events.pending {
 		out = append(out, ev.Verb+":"+ev.Actor)
@@ -230,7 +230,7 @@ func TestAnEmptyRoomStillSaysWhoLeft(t *testing.T) {
 		defer mu.Unlock()
 		return now
 	}
-	rm := newRoom("emptied")
+	rm := newChannelState("emptied")
 	rm.now = clock
 	kim := socket("r-kim", "Kim")
 	rm.join(kim)
@@ -329,7 +329,7 @@ func TestComingBackCarriesNoReason(t *testing.T) {
 // page say "3 riding" while two rode.
 func TestALiveSessionNamesOnlyItsRiders(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
-	rm := h.room("session-count")
+	rm := h.stateOf("session-count")
 	for _, c := range []*client{socket("r-ana", "Ana"), socket("r-kim", "Kim"), socket("r-sofa", "Sofa")} {
 		rm.join(c)
 	}

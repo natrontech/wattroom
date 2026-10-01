@@ -78,6 +78,9 @@ type client struct {
 	// never leaves them: this one is room-visible and arrives whether or not
 	// anything was ever paired. Read under rm.mu like the pair above it.
 	deviceKind string
+	// "Don't make me shift" on this screen (#3658): WattRoom holds the watts
+	// on a road, so a race rides the rider unranked. Read under rm.mu.
+	ergByRoad bool
 	// The workout hash this socket last received the definition for (#1710).
 	// Owned by the tick loop: read and written there alone.
 	workoutSent string
@@ -148,8 +151,8 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 	// must not forget a room in the window where this rider has its pointer
 	// and has not joined with it yet. Registered before the writer's defer, so
 	// it runs after rm.leave below.
-	rm := h.holdRoom(channel)
-	defer h.releaseRoom(channel)
+	rm := h.holdChannel(channel)
+	defer h.releaseChannel(channel)
 	c := &client{rider: rider, conn: conn, session: h.sessionOf(r), out: make(chan []byte, clientQueue)}
 	// This socket's own writer, so the room's tick never waits on it (#670).
 	writerDone := make(chan struct{})
@@ -303,6 +306,10 @@ func checkPick(c protocol.Control) string {
 	// The workout's own length is the session's (#1708), so it is the one
 	// checked (#2868); the socket's number never was the length.
 	if err := workout.CheckLength(segments); err != nil {
+		msg, _ := workout.RefusalMessage(err)
+		return msg
+	}
+	if err := workout.CheckRidesAlone(segments); err != nil {
 		msg, _ := workout.RefusalMessage(err)
 		return msg
 	}

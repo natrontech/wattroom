@@ -82,7 +82,7 @@
 	{:else if crews === null}
 		<ul class="mt-6 space-y-2">
 			{#each { length: 4 } as _, i (i)}
-				<li class="border-muted/15 rounded-lg border p-4"><Skeleton /></li>
+				<li class="border-frame rounded-lg border p-4"><Skeleton /></li>
 			{/each}
 		</ul>
 	{:else if crews.length === 0}
@@ -111,7 +111,7 @@
 					     and the board disclosure every invite meets. -->
 					<a
 						href="/c/{crew.code}"
-						class="border-muted/15 hover:border-muted/40 flex items-center gap-3 rounded-lg border px-4 py-3"
+						class="border-frame hover:border-muted/40 flex items-center gap-3 rounded-lg border px-4 py-3"
 					>
 						<CrewMark
 							name={crew.name}

@@ -65,6 +65,12 @@ export type Route = {
 	shape: string;
 	/** Read off `road`, so the server's twin finds the same ones (#3238). */
 	climbs: Climb[];
+	/**
+	 * What the pipeline changed, beyond the smoothing every route gets
+	 * (#3057): GPS spikes cut out, and metres whose grade was held to the
+	 * stored range.
+	 */
+	fixed: { spikes: number; heldM: number };
 };
 
 /** docs/SPEC.md: resample every 10 m, store every 20 m. */
@@ -105,6 +111,10 @@ export function toRoute(points: TrackPoint[]): Route {
 		Math.max(1, Math.round(AVERAGE_M / step / 2)),
 	);
 	const ele = holdGrade(smoothed, step);
+	let held = 0;
+	for (let i = 1; i < ele.length; i++)
+		if (Math.abs(ele[i] - ele[i - 1] - (smoothed[i] - smoothed[i - 1])) > 1e-9)
+			held++;
 	const grade = gradeOf(ele, step);
 
 	const heights: number[] = [];
@@ -140,10 +150,11 @@ export function toRoute(points: TrackPoint[]): Route {
 		road,
 		shape,
 		climbs: climbsOf(road),
+		fixed: { spikes: clean.cuts, heldM: held * step },
 	};
 }
 
-function lengthOf({ x, z }: { x: number[]; z: number[] }): number {
+export function lengthOf({ x, z }: { x: number[]; z: number[] }): number {
 	let s = 0;
 	for (let i = 1; i < x.length; i++)
 		s += Math.hypot(x[i] - x[i - 1], z[i] - z[i - 1]);

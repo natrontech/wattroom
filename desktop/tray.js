@@ -2,8 +2,9 @@
 //
 // A menu-bar / system-tray presence, and the thing that makes "WattRoom is
 // running without a window" a state a rider can see and get out of. Launched
-// by the login item the shell opens no window at all, so without this there
-// would be nothing on screen saying it is there.
+// by the login item, or with its window closed, the shell runs with its window
+// hidden (#3005), so without this there would be nothing on screen saying it
+// is there.
 //
 // #1313's three items, plus one: the window, the room the app is connected
 // to if there is one, quit — and the launch-at-login switch, because the
@@ -12,6 +13,7 @@
 // Notifications has the same switch, with the sentence explaining it.
 
 const { app, dialog, Menu, nativeImage, Tray } = require('electron');
+const { execFileSync } = require('node:child_process');
 const path = require('node:path');
 const loginItem = require('./login-item');
 
@@ -88,15 +90,59 @@ function refresh() {
 }
 
 /**
- * @param handlers `open` brings the rider's window back (creating one if the
- * login item started the shell without), `go` takes it to a path.
- * @returns whether there is a tray. False on a Linux desktop with no status
- * notifier to put one in, where `new Tray` throws — and the shell must not
- * die at launch over an icon, nor come up windowless with nowhere to be
- * clicked from. main.js opens a window instead.
+ * Whether a Linux desktop will draw a tray icon: something owns
+ * org.kde.StatusNotifierWatcher on the session bus (#3510). `new Tray` cannot
+ * say: it never throws for a missing host, it falls back to drawing nowhere.
+ * GNOME Shell without the AppIndicator extension is the common case. No bus,
+ * no answer or no probe to ask with all read as no tray, the side where a
+ * close still quits.
+ *
+ * ponytail: asked once, at launch. A panel that registers after the shell
+ * started leaves that run on close-quits; ask again on show if riders hit it.
+ */
+function linuxHasTrayHost() {
+	const ask = 'org.freedesktop.DBus.NameHasOwner';
+	const name = 'org.kde.StatusNotifierWatcher';
+	const probes = [
+		[
+			'gdbus',
+			`call --session --dest org.freedesktop.DBus --object-path /org/freedesktop/DBus --method ${ask} ${name}`,
+		],
+		[
+			'dbus-send',
+			`--session --print-reply --dest=org.freedesktop.DBus /org/freedesktop/DBus ${ask} string:${name}`,
+		],
+	];
+	for (const [cmd, args] of probes) {
+		try {
+			// gdbus answers "(true,)", dbus-send "boolean true".
+			const out = execFileSync(cmd, args.split(' '), {
+				encoding: 'utf8',
+				timeout: 1000,
+			});
+			return /\btrue\b/.test(out);
+		} catch (err) {
+			if (err.code !== 'ENOENT') return false; // asked, and no bus answered
+		}
+	}
+	return false;
+}
+
+/**
+ * @param handlers `open` brings the rider's window back (showing it if it is
+ * hidden, creating one if there is none), `go` takes it to a path.
+ * @returns whether there is a tray. False where there is nowhere to draw one —
+ * a Linux desktop with no status notifier host, or a `new Tray` that throws —
+ * and the shell must not come up windowless with nowhere to be clicked from,
+ * nor hide a window the rider cannot get back. main.js opens a window instead,
+ * and a close quits.
  */
 function install(handlers) {
 	actions = handlers;
+	if (process.platform === 'linux' && !linuxHasTrayHost()) {
+		console.warn('no status notifier host: no tray, and a close quits');
+		return false;
+	}
 	try {
 		tray = new Tray(trayImage());
 	} catch (err) {

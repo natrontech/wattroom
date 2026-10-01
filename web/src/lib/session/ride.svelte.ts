@@ -1,11 +1,20 @@
 import { pairError } from '$lib/ble/pair-error';
 import { arbitrate } from '$lib/ble/arbitrate';
 import { createFlightRecorder } from '$lib/ride/flightrecorder.svelte';
-import { createActuator } from '$lib/ride/actuation';
+import { createActuator } from '$lib/ride/actuation.svelte';
+import {
+	biasPress,
+	EASIER_HARDER_OFF,
+	ergPress,
+} from '$lib/ride/easier-harder';
+import { play } from '$lib/sound/cues';
+import { gearsEnabled } from '$lib/ride/gears-enabled';
 import type { Trainer, TrainerStatus } from '$lib/ble/trainer';
 import { sensors } from '$lib/sensors.svelte';
 import { wireMetrics } from '$lib/session/wire';
 import { SIGNAL_LOST_MS } from '$lib/workout/ride-state';
+import { targetAt } from '$lib/workout/engine';
+import { countsToward } from '$lib/workout/ride-record.svelte';
 import type { RideDeps } from '$lib/session/ride-deps';
 import { createRideTarget } from '$lib/session/ride-target.svelte';
 import { createSessionSprint } from '$lib/session/ride-sprint.svelte';
@@ -77,7 +86,25 @@ export function createRide(deps: RideDeps) {
 
 	const aim = createRideTarget(deps, () => actuating);
 	const sprint = createSessionSprint(deps);
-	const actuator = createActuator(() => trainer);
+	// The grant came back and the gear restarted at k = 1 (#3330): said with
+	// a cue the way it moved, and on the gear field for a few seconds.
+	let gearResetAt = $state(0);
+	const actuator = createActuator(
+		() => trainer,
+		(was) => {
+			// A gear never shifted is already the real one: nothing to say.
+			if (was === 1) return;
+			gearResetAt = Date.now();
+			play(was < 1 ? 'shift-up' : 'shift-down');
+		},
+	);
+	/** Why Easier / Harder cannot act here, or null when it can (#3329, #3330). */
+	const shiftOff = $derived.by(() => {
+		if (!gearsEnabled()) return EASIER_HARDER_OFF.gated;
+		if (!trainer) return EASIER_HARDER_OFF.noTrainer;
+		if (!actuating) return EASIER_HARDER_OFF.lost;
+		return deps.joined() || deps.free.armed ? null : EASIER_HARDER_OFF.idle;
+	});
 
 	// The guards' countdowns run on a local second — the session's clock is
 	// everyone's, and a rider's own recovery must not wait on it.
@@ -112,7 +139,10 @@ export function createRide(deps: RideDeps) {
 		// A free ride on a grade is a slope the rider chose, not a target
 		// to hold — and nothing for the guards to release (docs/SPEC.md).
 		if (!deps.joined() && deps.free.armed && deps.free.mode === 'grade') {
-			actuator.grade(deps.free.grade);
+			// On a road the grade is the road's felt grade (#3027, ADR-0062).
+			const road = deps.free.road;
+			if (road) actuator.road(road.felt);
+			else actuator.grade(deps.free.grade);
 			return;
 		}
 		actuator.hold(aim.target);
@@ -191,13 +221,30 @@ export function createRide(deps: RideDeps) {
 						),
 					);
 					const shared = deps.shared();
-					if (shared?.phase === 'running' && deps.joined())
-						deps.recording.record(shared.elapsed, metrics.watts);
-					else if (counted && !deps.joined())
+					if (shared?.phase === 'running' && deps.joined()) {
+						// The block and the scored target, for the bike computer's
+						// block numbers (#3088), by the rule the solo ride scores by.
+						const at = targetAt(
+							deps.segments(),
+							deps.profile.current.ftp,
+							shared.elapsed,
+						);
+						const scored = countsToward({
+							state: 'running',
+							target: aim.target,
+							pedalling: aim.scoring,
+							segment: at.segment,
+						});
+						deps.recording.record(shared.elapsed, metrics.watts, {
+							block: at.segmentIndex,
+							target: scored ? aim.target : undefined,
+						});
+					} else if (counted && !deps.joined())
 						deps.free.second({
 							watts: metrics.watts,
 							cadence: metrics.cadence,
 							hr: metrics.heartRate ?? 0,
+							at: sample.at,
 						});
 				}),
 			);
@@ -325,6 +372,30 @@ export function createRide(deps: RideDeps) {
 			};
 		},
 		nudgeBias: aim.nudgeBias,
+		/** Easier / Harder (#3328): a gear in SIM; in ERG a session's bias, or the free ride's watts. */
+		easierHarder(dir: 1 | -1) {
+			const erg = deps.joined()
+				? biasPress(() => aim.bias, aim.nudgeBias)
+				: deps.free.armed && deps.free.mode === 'watts' && !deps.free.road
+					? ergPress(() => deps.free.watts, deps.free.nudge)
+					: undefined;
+			return actuator.easierHarder(dir, erg);
+		},
+		/** Easier / Harder acts: this screen drives a trainer, in a session or a free ride (#3329). */
+		get shifting() {
+			return shiftOff === null;
+		},
+		get shiftOff() {
+			return shiftOff;
+		},
+		atEnd: actuator.atEnd,
+		/** The gear field's k, label and clamp (ADR-0084). */
+		get gear() {
+			return actuator.gear;
+		},
+		get gearResetAt() {
+			return gearResetAt;
+		},
 		ride,
 		unpair,
 		handOff,

@@ -102,7 +102,7 @@ func TestClaimSensorsFirstScreenWins(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			rm := newRoom("test")
+			rm := newChannelState("test")
 			phone := screen("jan", "t1", "phone")
 			desktop := screen("jan", "t2", "desktop")
 			rm.join(phone)
@@ -144,7 +144,7 @@ func TestReloadReclaimsItsOwnSensor(t *testing.T) {
 	// reloaded tab would be "another device" and would sit there unable to
 	// pair the trainer it is still physically connected to. The tab label is
 	// what makes it its own successor.
-	rm := newRoom("test")
+	rm := newChannelState("test")
 	before := screen("jan", "t1", "desktop")
 	rm.join(before)
 	rm.claimSensors(before, protocol.SensorClaim{Held: []string{"trainer"}, Tab: "t1", Device: "desktop"})
@@ -175,7 +175,7 @@ func TestTablessScreensStillArbitrate(t *testing.T) {
 	// such screen as the same one — otherwise two private-window tabs would
 	// both pass the metrics gate and the double-stream bug would be back
 	// exactly where nobody would think to look for it.
-	rm := newRoom("test")
+	rm := newChannelState("test")
 	first := &client{rider: protocol.Rider{ID: "jan"}}
 	second := &client{rider: protocol.Rider{ID: "jan"}}
 	rm.join(first)
@@ -198,7 +198,7 @@ func TestTablessScreensStillArbitrate(t *testing.T) {
 
 func TestAHostileClaimStaysBounded(t *testing.T) {
 	// WS input is untrusted: a claim must not be able to grow room state.
-	rm := newRoom("test")
+	rm := newChannelState("test")
 	c := &client{rider: protocol.Rider{ID: "jan"}}
 	rm.join(c)
 
@@ -228,7 +228,7 @@ func TestAHostileClaimStaysBounded(t *testing.T) {
 func TestClaimIsScopedToOneRider(t *testing.T) {
 	// Two people pair a trainer each; neither may block the other, and
 	// neither is told about the other's equipment.
-	rm := newRoom("test")
+	rm := newChannelState("test")
 	jan := screen("jan", "t1", "desktop")
 	kai := screen("kai", "t2", "desktop")
 	rm.join(jan)
@@ -255,7 +255,7 @@ func TestClaimIsScopedToOneRider(t *testing.T) {
 }
 
 func TestMetricsOnlyFromTheScreenHoldingTheTrainer(t *testing.T) {
-	rm := newRoom("test")
+	rm := newChannelState("test")
 	phone := screen("jan", "t1", "phone")
 	desktop := screen("jan", "t2", "desktop")
 	rm.join(phone)
@@ -282,7 +282,7 @@ func TestMetricsOnlyFromTheScreenHoldingTheTrainer(t *testing.T) {
 }
 
 func TestClosingATabFreesItsSensors(t *testing.T) {
-	rm := newRoom("test")
+	rm := newChannelState("test")
 	phone := screen("jan", "t1", "phone")
 	desktop := screen("jan", "t2", "desktop")
 	rm.join(phone)
@@ -310,7 +310,7 @@ func TestClosingATabFreesItsSensors(t *testing.T) {
 // phone the trainer was free, and a phone that took it stopped the desktop
 // that was still riding.
 func TestReapingAStaleSocketKeepsTheReconnectedTabsClaim(t *testing.T) {
-	rm := newRoom("test")
+	rm := newChannelState("test")
 	stale := screen("jan", "t1", "desktop")
 	phone := screen("jan", "t2", "phone")
 	rm.join(stale)

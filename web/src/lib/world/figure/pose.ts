@@ -16,6 +16,8 @@ import { clamp, lerp, sstep, X_, Y_, Z_ } from './math';
  */
 
 const DEG = Math.PI / 180;
+/** Radians the elbow turns up and out at the height of a move onto or off the pads. */
+const ELBOW_LIFT = 0.6;
 const fin = (x: unknown, d: number) =>
 	typeof x === 'number' && Number.isFinite(x) ? x : d;
 
@@ -79,6 +81,8 @@ export function pose(mesh: Figure, st: PoseState = {}): Figure {
 	hip.z = lerp(1, 0.5, s) * (hip.y - rt) * Math.sin(sway);
 	// Grips to wrists. The hands ride the fork, so steering carries them.
 	let wA = 0;
+	// Each hand's own share of the pads, and how high its move onto or off them has lifted it.
+	const { pad, lift } = S_;
 	const gripOf = (side: 'R' | 'L') => {
 		const gs = st.grip?.[side] ?? { a: 'hoods', b: 'hoods', p: 1 };
 		const ga = fit.grips[gs.a] ? gs.a : 'hoods';
@@ -93,7 +97,10 @@ export function pose(mesh: Figure, st: PoseState = {}): Figure {
 		pos.y += arc * 0.045 * k;
 		pos.x -= arc * 0.012 * k;
 		const q = (side === 'R' ? S_.qR : S_.qL).copy(A.q).slerp(Bg.q, e);
-		wA += (ga === 'extensions' ? 1 - e : 0) + (gb === 'extensions' ? e : 0);
+		const w = (ga === 'extensions' ? 1 - e : 0) + (gb === 'extensions' ? e : 0);
+		wA += w;
+		pad[side] = w;
+		lift[side] = ga === 'extensions' || gb === 'extensions' ? arc : 0;
 		pos.applyMatrix4(S_.forkM);
 		q.premultiply(S_.forkQ);
 		const grip = T_.a.set(d.grip.x, d.grip.y, 0).applyQuaternion(q);
@@ -227,15 +234,23 @@ export function pose(mesh: Figure, st: PoseState = {}): Figure {
 			.multiplyScalar(-0.2)
 			.add(T_.b.set(-0.3, -0.75 - 0.25 * tuck, 0))
 			.addScaledVector(Zw, side * lerp(0.5, 0.85, out) * (1 - 0.55 * tuck));
-		if (wA > 0 && fit.ext) {
+		const hand = side === 1 ? 'R' : 'L';
+		if (pad[hand] > 0 && fit.ext) {
 			const el = S_.el
 				.copy(fit.ext.elbow)
 				.setZ(side * 0.1 * k)
 				.applyMatrix4(S_.forkM);
 			const mid = S_.mid.addVectors(shJ, w).multiplyScalar(0.5);
-			pole.lerp(el.sub(mid).normalize(), wA);
+			pole.lerp(el.sub(mid).normalize(), pad[hand]);
 		}
 		const elbow = twoBone(shJ, w, u, f, pole, S_.elbow, S_.bend);
+		// Onto or off the pads the elbow rides its hand's arc: turned about the shoulder–wrist line, out and up over the knee.
+		if (lift[hand] > 0) {
+			const axis = T_.c.subVectors(w, shJ).normalize();
+			const turn = -side * ELBOW_LIFT * lift[hand];
+			elbow.sub(shJ).applyAxisAngle(axis, turn).add(shJ);
+			S_.bend.applyAxisAngle(axis, turn);
+		}
 		chainQuats(shJ, elbow, w, S_.bend, S_.qa, S_.qb);
 		setBone(bones, up, shJ, S_.qa);
 		setBone(bones, fo, elbow, S_.qb);

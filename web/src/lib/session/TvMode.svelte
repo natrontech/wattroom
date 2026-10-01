@@ -7,6 +7,10 @@
 	import { ZONE_BG, fillPct, zoneOf } from '$lib/components/zones';
 	import { formatClock } from '$lib/format';
 	import type { LiveRider } from '$lib/channel/types';
+	import type { LiveStats } from '$lib/ride/live-stats.svelte';
+	import BikeComputer from '$lib/session/BikeComputer.svelte';
+	import Skyline from '$lib/ride/Skyline.svelte';
+	import type { SkylineView } from '$lib/road/skyline';
 
 	let {
 		riders,
@@ -19,6 +23,8 @@
 		workoutName = '',
 		live = true,
 		code = '',
+		stats,
+		skyline = null,
 	}: {
 		riders: LiveRider[];
 		/** Your instrument has nothing paired to read (#2941). */
@@ -34,6 +40,10 @@
 		/** The crew's join code for the lounge screen (#1236): TVs are where a
 		 * code is most useful, and the crew's is the only one there is. */
 		code?: string;
+		/** Your live numbers, for the bike computer's POWER page (#3088). */
+		stats?: LiveStats;
+		/** A ride on a road: its horizon is the Skyline (#3641). */
+		skyline?: SkylineView | null;
 	} = $props();
 
 	const you = $derived(riders.find((r) => r.you) ?? riders[0]);
@@ -108,21 +118,25 @@
 						big
 					/>
 				</div>
-				<div class="mt-[2vh] flex items-baseline gap-[2.5vw] text-[6vh]">
-					<span class="text-ink"
-						>{you.cadence}
-						<span class="text-muted text-[3vh]">rpm</span></span
-					>
-					<!-- Only with something reporting it: a permanent "0 bpm" at three
-					     metres reads as a broken strap (#1531). -->
-					{#if you.hr > 0}
-						<span class="text-ink"
-							>{you.hr} <span class="text-muted text-[3vh]">bpm</span></span
-						>
-					{/if}
+				<div class="mt-[2vh] flex items-end gap-[2.5vw]">
+					<!-- Slot 3 at three metres (#3088): the same pages, turned by the
+					     same keys, with nothing on it to walk over and tap. The width
+					     of the section, so POWER's eight numbers take two rows. -->
+					<div class="min-w-0 flex-1">
+						<BikeComputer
+							tv
+							cadence={you.cadence}
+							hr={you.hr}
+							watts={you.watts}
+							kg={you.kg}
+							stale={you.stale}
+							target={you.target > 0 ? you.target : undefined}
+							{stats}
+						/>
+					</div>
 					{#if you.watts > 0}
 						<span
-							class="font-display text-ink flex items-center gap-[0.8vh] font-bold"
+							class="font-display text-ink flex items-center gap-[0.8vh] text-[6vh] font-bold"
 							><ZoneDot {zone} class="size-[3vh]" />Z{zone}</span
 						>
 					{/if}
@@ -158,13 +172,18 @@
 
 		<div class="flex items-end gap-[2vw]">
 			<div class="min-w-0 flex-1 overflow-hidden rounded-lg">
-				<IntervalGraph
-					{segments}
-					{total}
-					{elapsed}
-					ftp={you.ftp}
-					trace={you.trace}
-				/>
+				{#if skyline}
+					<div class="h-40"><Skyline tv {...skyline} /></div>
+				{:else}
+					<IntervalGraph
+						{segments}
+						{total}
+						{elapsed}
+						ftp={you.ftp}
+						trace={you.trace}
+						tv
+					/>
+				{/if}
 			</div>
 		</div>
 	{/if}

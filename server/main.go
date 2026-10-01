@@ -29,6 +29,11 @@ import (
 //go:embed all:webdist
 var webdist embed.FS
 
+// logLevel reads WATTROOM_LOG_LEVEL, the same shape as WATTROOM_ADDR and
+// WATTROOM_DEV_LOGIN rather than a new mechanism. Unset or unreadable means
+// info, which is what every deployment has had until now — an operator who
+// mistypes it gets the old behaviour and a line saying so, not a silent
+// server.
 func logLevel() slog.Level {
 	raw := strings.TrimSpace(os.Getenv("WATTROOM_LOG_LEVEL"))
 	if raw == "" {

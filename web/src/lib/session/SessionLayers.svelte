@@ -1,5 +1,7 @@
 <script module lang="ts">
 	import { createSessionSetup } from '$lib/session/session-setup.svelte';
+	import type { PickerIntent } from '$lib/channel/context';
+	import type { ControlRoute } from '$lib/protocol';
 
 	/**
 	 * What the shell opens over a voice channel for its session: TV mode and
@@ -19,7 +21,7 @@
 			},
 			/** The picker: open, intent, and the shelf it offers. */
 			setup,
-			openPicker(intent: 'start' | 'plan' = 'start') {
+			openPicker(intent: PickerIntent = 'start') {
 				setup.intent = intent;
 				setup.open = true;
 			},
@@ -38,6 +40,8 @@
 	import { planDue, startCrewPlan, startedPath } from '$lib/crew-schedule';
 	import { device } from '$lib/device.svelte';
 	import { toasts } from '$lib/toast.svelte';
+	import { resumeKm, type LostRoad } from '$lib/channel/lost-road';
+	import { loadNextLeg, nextLegAt } from '$lib/road/next-leg';
 	import { flatten } from '$lib/workout/engine';
 	import type { Workout, Segment } from '$lib/workout/types';
 	import type { SessionState } from '$lib/protocol';
@@ -93,6 +97,26 @@
 	// duplicate on the calendar and in everyone's inbox.
 	let planning = $state(false);
 
+	// The next leg of a road session (#3103), planned as the picker plans:
+	// one POST at a time, the refusal told, the success toasted by the plan.
+	async function planNextLeg(ended: LostRoad) {
+		if (planning) return;
+		planning = true;
+		try {
+			const leg = await loadNextLeg(ended);
+			const refusal = leg.ok
+				? await onSchedule(
+						leg.workout.name,
+						JSON.stringify(leg.workout),
+						nextLegAt(ended).toISOString(),
+					)
+				: leg.error;
+			if (refusal) toasts.push(refusal, { tone: 'error' });
+		} finally {
+			planning = false;
+		}
+	}
+
 	// ── Composed, not owned (code-quality.md): the summary that reads the
 	// recording and the roster — each its own module, wired here to the
 	// connection. ─────────────────────────────────────────────────────────────
@@ -123,7 +147,7 @@
 
 	// ── Coach controls ────────────────────────────────────────────────────────
 	const channel = useChannel();
-	function startWorkout(picked: Workout) {
+	function startWorkout(picked: Workout, route?: ControlRoute) {
 		// The workout this channel has planned, now (#2606): started through
 		// the plan, as its card and the Schedule start it, so it is marked and
 		// stops offering itself — a bare pick left it listed for its grace and
@@ -143,16 +167,10 @@
 			(t, s) => Math.max(t, s.startSeconds + s.seconds),
 			0,
 		);
-		live.control('pick', {
-			name: picked.name,
-			json: JSON.stringify(picked),
-			totalSeconds: total,
-		});
-		// start follows the tick that shows the pick landed (#1764): sent
-		// blind, a refused pick's reason was overwritten by start's own
-		// refusal, and a refused pick after a good one started the old one.
-		startAfterPick = picked.name;
-		following = true;
+		live.pickAndStart(
+			{ name: picked.name, json: JSON.stringify(picked), totalSeconds: total },
+			route,
+		);
 		layers.setup.open = false;
 	}
 
@@ -161,12 +179,13 @@
 	// the voice channel's lobby left the coach looking at camera tiles while
 	// the timeline started without them. Only this tab, and only its own
 	// start: a refusal lets go, and nobody else's start moves anyone.
+	// Whether it follows is the live connection's (#3103): a resume from
+	// the status banner starts a session the same way.
 	const GO = { keepFocus: true, noScroll: true };
-	let following = $state(false);
 	$effect(() => {
 		const id = liveSessionId(live.tick?.state);
-		if (!following || !id) return;
-		following = false;
+		if (!live.following || !id) return;
+		live.followed();
 		const to = sessionPath(channel.address.crew, id);
 		if (page.url.pathname !== to) void goto(to, GO);
 	});
@@ -182,21 +201,7 @@
 		replaceState(door.rest, page.state);
 		if (device.spectator) return;
 		live.control('game', undefined, door.mode);
-		following = true;
-	});
-	let startAfterPick = $state<string | null>(null);
-	$effect(() => {
-		const state = live.tick?.state;
-		if (!startAfterPick || !state) return;
-		if (state.phase === 'idle' && state.workoutName === startAfterPick) {
-			startAfterPick = null;
-			live.control('start');
-		}
-	});
-	$effect(() => {
-		if (!live.refusal) return;
-		startAfterPick = null;
-		following = false;
+		live.follow();
 	});
 </script>
 
@@ -214,6 +219,7 @@
 		workoutName={shared?.workoutName ?? ''}
 		playing={!!live.tick?.jukebox?.current}
 		sprint={live.tick?.sprint ?? connection.ride.blockSprint}
+		stats={connection.recording.live}
 		game={live.tick?.game ?? null}
 		countdown={phase === 'countdown'
 			? {
@@ -256,6 +262,13 @@
 				planning = false;
 			}
 		}}
+		onRide={device.spectator
+			? undefined
+			: (workout) => {
+					// Beside the session, on this channel's riding surface (#2329).
+					layers.setup.open = false;
+					void connection.ownRide.start(workout);
+				}}
 		onStart={device.spectator
 			? // A phone plans, and does not start (#1767). The Sessions place
 				// opens this picker on a spectator device now, and the picker
@@ -265,13 +278,13 @@
 				// it. Starting belongs to the screen the coach rides on, which
 				// is the gate SessionControls wears.
 				undefined
-			: (workout) => startWorkout(workout)}
+			: (workout, route) => startWorkout(workout, route)}
 		onStartGame={device.spectator
 			? // A game IS a session, started the same way.
 				undefined
 			: (id) => {
 					live.control('game', undefined, id);
-					following = true;
+					live.follow();
 					layers.setup.open = false;
 				}}
 		trainer={unpaired ? trainerCard : undefined}
@@ -321,6 +334,19 @@
 							href="/history"
 							onclick={() => summary.dismiss()}
 							class="btn btn-primary">Your ride lands on Rides</a
+						>
+					{/if}
+					<!-- The next leg (#3103): the road this coach's session rode,
+					     from where the bunch stopped, a week on. -->
+					{#if live.endedRoad}
+						{@const ended = live.endedRoad}
+						<button
+							onclick={() => void planNextLeg(ended)}
+							disabled={planning}
+							class="btn btn-secondary"
+							>Plan next {nextLegAt(ended).toLocaleDateString(undefined, {
+								weekday: 'long',
+							})} from km {resumeKm(ended)}</button
 						>
 					{/if}
 					<!-- The page is already the channel's under it (#2600): the

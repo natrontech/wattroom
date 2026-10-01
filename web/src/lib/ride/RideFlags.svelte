@@ -14,7 +14,7 @@
 {/if}
 
 {#if flags.unsent.length > 0}
-	<div class="border-muted/15 mt-4 grid gap-2 border-t pt-3">
+	<div class="border-frame mt-4 grid gap-2 border-t pt-3">
 		<span class="eyebrow">your flags</span>
 		{#each flags.unsent as flag (flag.clientMs)}
 			<div class="flex items-center gap-2">

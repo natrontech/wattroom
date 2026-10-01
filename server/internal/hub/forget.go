@@ -10,16 +10,17 @@ import (
 	"github.com/natrontech/wattroom/server/internal/protocol"
 )
 
-// roomIdleTTL is how long a room may sit empty before the hub forgets it —
-// docs/SPEC.md, "A room nobody is in is forgotten after 2 h", which also says
+// channelIdleTTL is how long a channel's state may sit empty before the hub
+// forgets it — docs/SPEC.md, "A voice channel nobody is in is forgotten after
+// 2 h", which also says
 // what is lost when it fires. The number is the product's, not this file's.
 //
-// Until #2297, `h.rooms[channel]` was deleted only by CloseRoom, and CloseRoom
+// Until #2297, `h.states[channel]` was deleted only by CloseChannel, and CloseChannel
 // fires only when the durable room row is deleted (#618): every channel anyone
 // had WS-joined since process start kept a tick goroutine, a jukebox queue, a
 // chat buffer, an event log, a session, a roster and per-rider sample
 // accumulators until the process was replaced.
-const roomIdleTTL = 2 * time.Hour
+const channelIdleTTL = 2 * time.Hour
 
 // idleForLocked is how long the room has been forgettable, and zero whenever
 // it is not — which is also what restarts the window. Called from the tick's
@@ -29,7 +30,7 @@ const roomIdleTTL = 2 * time.Hour
 //     webhooks independently of the sockets and outliving them (#149), so a
 //     room with voice participants and no sockets is not empty — somebody is
 //     in it talking. rm.voiceNow is the hub's own map mirrored into the room;
-//     forgetRoom re-reads the original before it deletes anything.
+//     forgetChannel re-reads the original before it deletes anything.
 //   - A session that is idle or done. A countdown, a running or a PAUSED
 //     timeline still holds samples nobody has saved, and this room's clock is
 //     the only thing that will close and save them (closeLocked) — forgetting
@@ -45,7 +46,7 @@ const roomIdleTTL = 2 * time.Hour
 // rather than something playing.
 //
 // Caller holds rm.mu.
-func (rm *room) idleForLocked(state protocol.SessionState, now time.Time) time.Duration {
+func (rm *channelState) idleForLocked(state protocol.SessionState, now time.Time) time.Duration {
 	if len(rm.voiceNow) > 0 || (state.Phase != "idle" && state.Phase != "done") {
 		rm.emptySince = time.Time{}
 		return 0
@@ -56,7 +57,7 @@ func (rm *room) idleForLocked(state protocol.SessionState, now time.Time) time.D
 	return now.Sub(rm.emptySince)
 }
 
-// holdRoom is HandleWS's way in: room()'s lookup-or-create, plus a claim that
+// holdChannel is HandleWS's way in: room()'s lookup-or-create, plus a claim that
 // keeps the sweep off this channel while the socket is arriving. Taken BEFORE the
 // lookup and released only after the client has left, so the claim strictly
 // encloses the socket's membership of the room.
@@ -66,39 +67,39 @@ func (rm *room) idleForLocked(state protocol.SessionState, now time.Time) time.D
 // there leaves that rider in a room with no clock and no entry in the hub —
 // sockets open, timer never moving, which is exactly the failure #751 closed
 // from the other end.
-func (h *Hub) holdRoom(channel string) *room {
+func (h *Hub) holdChannel(channel string) *channelState {
 	h.mu.Lock()
 	h.holds[channel]++
 	h.mu.Unlock()
-	return h.room(channel)
+	return h.stateOf(channel)
 }
 
-// releaseRoom drops one claim, deleting the key on the last — the map is
+// releaseChannel drops one claim, deleting the key on the last — the map is
 // bounded by rooms being joined right now, not by rooms ever joined.
-func (h *Hub) releaseRoom(channel string) {
+func (h *Hub) releaseChannel(channel string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	releaseCount(h.holds, channel)
 }
 
-// forgetRoom drops a room the hub has nothing left to do for, reporting
+// forgetChannel drops a room the hub has nothing left to do for, reporting
 // whether it did. The room's own tick calls it once idleForLocked passes
-// roomIdleTTL and returns when it says yes: the goroutine that decides is the
+// channelIdleTTL and returns when it says yes: the goroutine that decides is the
 // one that ends, and its exit condition is this answer.
 //
-// The room leaves h.rooms under the same lock room() takes, so nobody can be
-// handed it afterwards — only HandleWS brings a room back, through holdRoom.
+// The room leaves h.states under the same lock stateOf() takes, so nobody can be
+// handed it afterwards — only HandleWS brings a room back, through holdChannel.
 // It refuses on every claim the tick cannot see for itself: a socket arriving,
 // a voice participant that turned up since the tick's copy, and a channel that
-// has stopped being this room at all (a CloseRoom, then a re-create). Its stop
+// has stopped being this room at all (a CloseChannel, then a re-create). Its stop
 // channel stays open on purpose — the tick is about to return on its own, and
-// a later CloseRoom of the channel must reach whatever room holds it then.
-func (h *Hub) forgetRoom(rm *room) bool {
+// a later CloseChannel of the channel must reach whatever room holds it then.
+func (h *Hub) forgetChannel(rm *channelState) bool {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	if h.rooms[rm.channel] != rm || h.holds[rm.channel] > 0 || len(h.voice[rm.channel]) > 0 {
+	if h.states[rm.channel] != rm || h.holds[rm.channel] > 0 || len(h.voice[rm.channel]) > 0 {
 		return false
 	}
-	delete(h.rooms, rm.channel)
+	delete(h.states, rm.channel)
 	return true
 }

@@ -2,7 +2,7 @@
 	import { formatClock } from '$lib/format';
 	import type { Segment } from '$lib/workout/types';
 	import { splitTrace, type TracePoint, thinRun } from './trace';
-	import { CEILING, ZONE_NAMES, ZONE_VAR, zoneOf } from './zones';
+	import { CEILING, ZONE_NAMES, ZONE_VAR, zoneOfSegment } from './zones';
 	import {
 		fractionAt,
 		grabAt,
@@ -25,6 +25,7 @@
 		ftp,
 		trace,
 		compact = false,
+		tv = false,
 		ceiling = CEILING,
 		selectedPath = null,
 		onSelect,
@@ -37,6 +38,8 @@
 		ftp: number;
 		trace: TracePoint[];
 		compact?: boolean;
+		/** TV mode (#3407): the FTP label reads at 3 m, like every TV word. */
+		tv?: boolean;
 		/**
 		 * Top of the vertical scale, as a fraction of FTP. The ramp test rides
 		 * far above the FTP it exists to correct, so 1.5 × FTP flat-tops its
@@ -108,8 +111,7 @@
 						: (seg.toFraction ?? from);
 			const x0 = x(seg.startSeconds);
 			const x1 = x(seg.startSeconds + seg.seconds);
-			const zone =
-				seg.kind === 'sprint' ? 7 : zoneOf(((from + to) / 2) * ftp, ftp);
+			const zone = zoneOfSegment(seg, ftp);
 			return {
 				points: `${x0},${BASE} ${x0},${y(from)} ${x1},${y(to)} ${x1},${BASE}`,
 				edge: `${x0},${y(from)} ${x1},${y(to)}`,
@@ -370,7 +372,9 @@
 	{#if !compact}
 		<!-- HTML, not <text>: preserveAspectRatio="none" would stretch glyphs. -->
 		<span
-			class="text-muted pointer-events-none absolute right-1.5 -translate-y-full font-mono text-[9px] tracking-widest"
+			class="text-muted pointer-events-none absolute right-1.5 -translate-y-full font-mono tracking-widest {tv
+				? 'text-[3vh] leading-none'
+				: 'text-[9px]'}"
 			style="top: {(y(1) / H) * 100}%">FTP</span
 		>
 	{/if}

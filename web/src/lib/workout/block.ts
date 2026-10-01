@@ -1,5 +1,21 @@
 import { ZONE_NAMES, zoneOf } from '$lib/components/zones';
+import type { RoadReadout } from '$lib/road/readout';
+import type { TracePoint } from '$lib/components/trace';
+import { toleranceBand } from '$lib/workout/guards';
 import type { Segment, TargetInfo, Workout } from '$lib/workout/types';
+
+/** How long a finished block's line stays up in the next one (#3090). */
+export const LAST_BLOCK_SECONDS = 6;
+
+/**
+ * How the trainer rides the block (ADR-0062's table): to the watts in ERG;
+ * in ERG on a route whose blocks run by the clock, the road only shown
+ * ("scenery"); or the road's own grade in SIM, felt as ADR-0062 scales it.
+ */
+export type BlockTrainer =
+	| { kind: 'erg' }
+	| { kind: 'scenery' }
+	| { kind: 'road'; grade: number; felt: number };
 
 /**
  * The block a rider is in, as every riding surface reads it — the live
@@ -18,7 +34,21 @@ export interface Block {
 	/** Optional HR band, bpm (#67) — display-only, never scored (ADR-0008). */
 	hrLow?: number;
 	hrHigh?: number;
+	/** The watts a rider counts as on target — execution's own band. */
+	band: { low: number; high: number } | null;
+	/** "rep 3 of 5": which pass of a repeated step this is. Absent outside one. */
+	rep?: { index: number; count: number };
+	/**
+	 * How the block just finished went, for the first seconds of this one
+	 * (#3090): its average watts and the share of it inside the band. Null
+	 * when there is no trace to read, or the last block had no target.
+	 */
+	last: { watts: number; onTarget: number } | null;
 	next: { label: string; watts: number; seconds: number } | null;
+	/** How the trainer rides it: slot 1's trainer chip (#3485). */
+	trainer: BlockTrainer;
+	/** Where a ride on a road is (#3639): the readout the HUD is sent too. */
+	road?: RoadReadout;
 }
 
 /**
@@ -58,12 +88,51 @@ export function blockBands(block: Block | null, cadence: number, hr: number) {
 	].filter((b) => b !== null);
 }
 
+const samePath = (a: number[], b: number[]) =>
+	a.length === b.length && a.every((n, i) => n === b[i]);
+
+/** The target a segment prescribed at workout-clock second `t`, with the rider's bias. */
+function targetOf(seg: Segment, t: number, ftp: number, bias: number): number {
+	if (seg.watts !== undefined) return seg.watts * bias;
+	const from = seg.fromFraction ?? 0;
+	const to = seg.toFraction ?? from;
+	const at = Math.min(1, Math.max(0, (t - seg.startSeconds) / seg.seconds));
+	return (from + (to - from) * at) * ftp * bias;
+}
+
+/** The block that just ended, read off the trace (#3090). */
+function lastBlock(
+	seg: Segment | undefined,
+	trace: TracePoint[],
+	ftp: number,
+	bias: number,
+): Block['last'] {
+	if (!seg || seg.kind === 'sprint') return null;
+	const end = seg.startSeconds + seg.seconds;
+	const points = trace.filter((p) => p.t >= seg.startSeconds && p.t < end);
+	if (points.length === 0) return null;
+	const inBand = points.filter((p) => {
+		const target = targetOf(seg, p.t, ftp, bias);
+		return Math.abs(p.w - target) <= toleranceBand(target);
+	}).length;
+	return {
+		watts: Math.round(points.reduce((sum, p) => sum + p.w, 0) / points.length),
+		onTarget: Math.round((inBand / points.length) * 100),
+	};
+}
+
 /** What a rider reads mid-interval: what this block is, how long is left, what's next. */
 export function describeBlock(
 	info: TargetInfo,
 	segments: Segment[],
 	workout: Workout | null,
 	ftp: number,
+	/** The rider's own trace, for the finished block's line; none, no line. */
+	trace: TracePoint[] = [],
+	/** How the trainer rides it, where that is not ERG to the watts (#3485). */
+	trainer: BlockTrainer = { kind: 'erg' },
+	/** Where on its road the ride is this second (#3639); off a road, none. */
+	road?: RoadReadout,
 ): Block {
 	const label = (seg: Segment | undefined): string => {
 		if (!seg) return '';
@@ -85,12 +154,37 @@ export function describeBlock(
 	};
 
 	const upcoming = segments[info.segmentIndex + 1];
+	const watts = info.targetWatts ?? 0;
+	const passes = segments.filter((s) =>
+		samePath(s.stepPath, info.segment.stepPath),
+	);
+	const band = watts > 0 ? toleranceBand(watts) : 0;
 	return {
 		index: info.segmentIndex + 1,
 		count: segments.length,
 		label: label(info.segment),
-		watts: info.targetWatts ?? 0,
+		watts,
+		band:
+			watts > 0
+				? { low: Math.round(watts - band), high: Math.round(watts + band) }
+				: null,
+		rep:
+			passes.length > 1
+				? {
+						index:
+							segments
+								.slice(0, info.segmentIndex)
+								.filter((s) => samePath(s.stepPath, info.segment.stepPath))
+								.length + 1,
+						count: passes.length,
+					}
+				: undefined,
+		last:
+			info.segmentIndex > 0 && info.secondsIntoSegment < LAST_BLOCK_SECONDS
+				? lastBlock(segments[info.segmentIndex - 1], trace, ftp, info.bias)
+				: null,
 		secondsLeft: Math.round(info.secondsRemainingInSegment),
+		trainer,
 		cadenceLow: info.segment.cadenceLow,
 		cadenceHigh: info.segment.cadenceHigh,
 		hrLow: info.segment.hrLow,
@@ -102,5 +196,6 @@ export function describeBlock(
 					seconds: upcoming.seconds,
 				}
 			: null,
+		...(road && { road }),
 	};
 }

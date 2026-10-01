@@ -63,6 +63,14 @@ export const GEAR_RATIOS: readonly number[] = Array.from(
 		GEARS.lowest * (GEARS.highest / GEARS.lowest) ** (i / (GEARS.count - 1)),
 );
 
+/**
+ * "A shift" moves k at most a step and a half. Inside the table that is where
+ * the neighbour already lies; from a ratio outside it — a flywheel creeping at
+ * a turning crank reads as a ratio near 0 — gear 1 is nearest, and its
+ * neighbour divided by that ratio multiplied k many times over (#3517).
+ */
+const MAX_SHIFT = (GEARS.highest / GEARS.lowest) ** (1.5 / (GEARS.count - 1));
+
 /** The table gear (1-based) nearest a ratio, by ratio rather than by difference. */
 function nearestGear(ratio: number): number {
 	let best = 1;
@@ -93,7 +101,8 @@ export interface GearSpace {
  * fixed factor and the label counts steps from the real gear.
  */
 export function gearSpace(realRatio: number | null, k: number): GearSpace {
-	if (realRatio !== null) {
+	// Only a ratio a shift can divide by; anything else steps blind, bounded.
+	if (realRatio !== null && realRatio > 0) {
 		const gear = nearestGear(k * realRatio);
 		const to = (dir: 1 | -1) => gear + dir;
 		const atEnd = (dir: 1 | -1) => to(dir) < 1 || to(dir) > GEARS.count;
@@ -101,7 +110,13 @@ export function gearSpace(realRatio: number | null, k: number): GearSpace {
 			label: `Gear ${gear}`,
 			gear,
 			atEnd,
-			step: (dir) => (atEnd(dir) ? k : GEAR_RATIOS[to(dir) - 1] / realRatio),
+			step: (dir) =>
+				atEnd(dir)
+					? k
+					: Math.min(
+							k * MAX_SHIFT,
+							Math.max(k / MAX_SHIFT, GEAR_RATIOS[to(dir) - 1] / realRatio),
+						),
 		};
 	}
 	const n = Math.round(Math.log(k) / Math.log(GEARS.blindStep));
@@ -150,6 +165,9 @@ export function trackRatio(state: RatioState, sample: TrainerSample): boolean {
 	if (!state.detect) return false;
 	if (cadence < REAL_RATIO.minRpm || cadence > REAL_RATIO.maxRpm) return false;
 	const r = speedMps / ((cadence / 60) * REAL_RATIO.wheelMetres);
+	// A flywheel at rest under a turning crank is a glitch, not a gear: a
+	// ratio of 0 made the next shift divide by it (#3515).
+	if (!(r > 0)) return false;
 	state.window = [...state.window, r].slice(-REAL_RATIO.window);
 	if (state.window.length < REAL_RATIO.window) return false;
 	const m = median(state.window);

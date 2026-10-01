@@ -1,7 +1,10 @@
+import { readFit } from './fit';
+
 /**
- * A route file becomes points (#3023): a GPX's track or route points, or a
- * TCX's trackpoints, with whatever elevation they carry. The browser's own XML
- * parser reads the file, so nothing here guesses at markup; FIT comes later.
+ * A route file becomes points (#3023): a GPX's track or route points, a TCX's
+ * trackpoints, or a FIT course's records (#3058, fit.ts), with whatever
+ * elevation they carry. The browser's own XML parser reads the XML, so
+ * nothing here guesses at markup.
  *
  * The file's <name> is not read. A route's name is generated from its numbers
  * (road.ts), so a place never travels in it (ADR-0063).
@@ -14,7 +17,7 @@ export type TrackPoint = { lat: number; lon: number; ele: number };
  * owner-only (ADR-0063), and telling one apart is a heuristic — the file's
  * creator says Strava — which the copy that explains it says too.
  */
-export type RouteSource = 'gpx' | 'tcx' | 'stravagpx';
+export type RouteSource = 'gpx' | 'tcx' | 'fit' | 'stravagpx';
 
 /** docs/SPEC.md "Route rides": the file a rider imports is at most 5 MB. */
 export const MAX_ROUTE_FILE_BYTES = 5 << 20;
@@ -39,24 +42,50 @@ const numberIn = (el: Element | undefined): number =>
 const first = (el: Element | Document, tag: string): Element | undefined =>
 	el.getElementsByTagName(tag)[0];
 
-function gpxPoints(doc: Document): TrackPoint[] {
-	// A file carrying both a recorded track and a planned route of the same
-	// road would otherwise ride it twice.
-	let els = doc.getElementsByTagName('trkpt');
-	if (els.length === 0) els = doc.getElementsByTagName('rtept');
-	return Array.from(els, (el) => ({
-		lat: Number(el.getAttribute('lat') ?? NaN),
-		lon: Number(el.getAttribute('lon') ?? NaN),
-		ele: numberIn(first(el, 'ele')),
-	}));
+const gpxPoint = (el: Element): TrackPoint => ({
+	lat: Number(el.getAttribute('lat') ?? NaN),
+	lon: Number(el.getAttribute('lon') ?? NaN),
+	ele: numberIn(first(el, 'ele')),
+});
+
+const tcxPoint = (el: Element): TrackPoint => ({
+	lat: numberIn(first(el, 'LatitudeDegrees')),
+	lon: numberIn(first(el, 'LongitudeDegrees')),
+	ele: numberIn(first(el, 'AltitudeMeters')),
+});
+
+const placed = (p: TrackPoint) =>
+	Number.isFinite(p.lat) && Number.isFinite(p.lon);
+
+/** Each wrapper's points, placed ones only; a file with none of them is one group. */
+function grouped(
+	doc: Document,
+	wrapper: string,
+	tag: string,
+	read: (el: Element) => TrackPoint,
+): TrackPoint[][] {
+	const wrappers = Array.from(doc.getElementsByTagName(wrapper));
+	const groups = wrappers.length
+		? wrappers.map((w) => Array.from(w.getElementsByTagName(tag), read))
+		: [Array.from(doc.getElementsByTagName(tag), read)];
+	return groups.map((g) => g.filter(placed)).filter((g) => g.length > 0);
 }
 
-function tcxPoints(doc: Document): TrackPoint[] {
-	return Array.from(doc.getElementsByTagName('Trackpoint'), (el) => ({
-		lat: numberIn(first(el, 'LatitudeDegrees')),
-		lon: numberIn(first(el, 'LongitudeDegrees')),
-		ele: numberIn(first(el, 'AltitudeMeters')),
-	}));
+/**
+ * The file's tracks: a GPX's <trk>s — its <rte>s when it has no track, since
+ * a file carrying both a recorded track and a planned route of the same road
+ * would otherwise ride it twice — and a TCX's <Course>s, else its
+ * <Activity>s. Several tracks are a choice the rider makes (#3057).
+ */
+function tracksOf(doc: Document, gpx: boolean): TrackPoint[][] {
+	if (gpx) {
+		const tracks = grouped(doc, 'trk', 'trkpt', gpxPoint);
+		return tracks.length ? tracks : grouped(doc, 'rte', 'rtept', gpxPoint);
+	}
+	const courses = grouped(doc, 'Course', 'Trackpoint', tcxPoint);
+	return courses.length
+		? courses
+		: grouped(doc, 'Activity', 'Trackpoint', tcxPoint);
 }
 
 const STRAVA = /strava/i;
@@ -71,24 +100,53 @@ function fromStrava(doc: Document, gpx: boolean): boolean {
 	});
 }
 
-/** A file with no elevation still rides, flat; a gap takes the last height before it. */
-function fillHeights(points: TrackPoint[]) {
+/**
+ * A file with no elevation still rides, flat; a gap takes the last height
+ * before it. Answers how many gaps it filled.
+ */
+function fillHeights(points: TrackPoint[]): number {
 	let last = points.find((p) => Number.isFinite(p.ele))?.ele ?? 0;
+	let filled = 0;
 	for (const p of points) {
 		if (Number.isFinite(p.ele)) last = p.ele;
-		else p.ele = last;
+		else {
+			p.ele = last;
+			filled++;
+		}
 	}
+	return filled;
 }
 
-export function parseRoute(text: string): {
+/** A route file, read. */
+export type ParsedRoute = {
+	/** Every track's points, in file order — what the world view rides. */
 	points: TrackPoint[];
+	/** The same points by track, for a file carrying several. */
+	tracks: TrackPoint[][];
 	src: RouteSource;
-} {
-	if (new TextEncoder().encode(text).byteLength > MAX_ROUTE_FILE_BYTES)
+	/** Where the heights came from: the file, or nowhere — a flat road. */
+	heights: 'file' | 'none';
+	/** Points with no height of their own, given the one before them. */
+	filled: number;
+};
+
+export function parseRoute(source: string | Uint8Array): ParsedRoute {
+	const bytes =
+		typeof source === 'string'
+			? new TextEncoder().encode(source).byteLength
+			: source.byteLength;
+	if (bytes > MAX_ROUTE_FILE_BYTES)
 		throw new RouteError(
 			'This file is over 5 MB, more than a route needs. Export the route alone, without laps or sensor data, and pick it again.',
 		);
-	const doc = new DOMParser().parseFromString(text, 'application/xml');
+	if (typeof source !== 'string') {
+		// A FIT file is one track; a Strava export rides owner-only as the
+		// server's one Strava word says, whatever its format (ADR-0063).
+		const fit = readFit(source);
+		if ('refused' in fit) throw new RouteError(fit.refused);
+		return pointsOf([fit.points], fit.strava ? 'stravagpx' : 'fit');
+	}
+	const doc = new DOMParser().parseFromString(source, 'application/xml');
 	const root = doc.documentElement?.localName;
 	const gpx = root === 'gpx';
 	if (
@@ -96,16 +154,29 @@ export function parseRoute(text: string): {
 		(!gpx && root !== 'TrainingCenterDatabase')
 	)
 		throw new RouteError(
-			'This file is not a GPX or TCX route. Export the route from your planner as GPX, and pick that file.',
+			'This file is not a GPX, TCX or FIT route. Export the route from your planner as GPX, and pick that file.',
 		);
-	const points = (gpx ? gpxPoints(doc) : tcxPoints(doc)).filter(
-		(p) => Number.isFinite(p.lat) && Number.isFinite(p.lon),
+	return pointsOf(
+		tracksOf(doc, gpx),
+		fromStrava(doc, gpx) ? 'stravagpx' : gpx ? 'gpx' : 'tcx',
 	);
+}
+
+/** A file's tracks as a route's points, whatever format carried them. */
+function pointsOf(tracks: TrackPoint[][], src: RouteSource): ParsedRoute {
+	const points = tracks.flat();
 	if (points.length < 2)
 		throw new RouteError(
 			'This file has fewer than two track points. Export the track again, or pick another file.',
 		);
-	fillHeights(points);
-	const src = fromStrava(doc, gpx) ? 'stravagpx' : gpx ? 'gpx' : 'tcx';
-	return { points, src };
+	const heights = points.some((p) => Number.isFinite(p.ele)) ? 'file' : 'none';
+	const filled = fillHeights(points);
+	// A file with no heights at all is flat, not a file with every gap filled.
+	return {
+		points,
+		tracks,
+		src,
+		heights,
+		filled: heights === 'file' ? filled : 0,
+	};
 }

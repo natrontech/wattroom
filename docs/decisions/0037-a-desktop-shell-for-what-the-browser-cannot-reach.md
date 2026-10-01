@@ -287,3 +287,91 @@ reversal condition in Consequences still turns on macOS system audio alone
 it is in, the shell puts the name in a menu item and hands the path back over
 IPC. Navigating would reload the SPA, which mid-ride means dropping the
 socket and the trainer.
+
+## Amendment, 2026-09-29 (#3005): closing hides, and a login launch runs hidden
+
+The #1313 amendment's "a login launch opens no window" was about not putting
+a window in front of the rider at every boot. It also left a shell running
+with no renderer at all — and the web app is the only thing that notifies
+(ADR-0042), holds the lobby socket and takes a deep link. A login launch
+promised presence and delivered an icon; a closed window on macOS delivered no
+"session starting" and a cold reload on the Dock click. Discord and Slack hide
+the window on close and keep running. Decided on 2026-09-29, taking the
+recorded recommendation (option 1b):
+
+- **Where a tray exists, closing the main window hides it**, on every
+  platform: the red button, ⌘W, and the close box on Windows and Linux.
+  Quitting is ⌘Q, the app menu or the tray's Quit. Where there is no tray (a
+  Linux desktop with no status notifier), a close quits as it always did.
+  This replaces the rule above that a close quits on Windows and Linux unless
+  the login item started the run.
+- **A login launch creates the window hidden**: loaded, not shown.
+  Notifications, the lobby socket and deep links work from boot, and nothing
+  is put in front of the rider.
+- **Closing leaves voice.** When a close hides the window the page leaves the
+  voice call and stops the mic, the camera and any screen share: a closed
+  window is never a live mic, and it earns no lounge-presence XP. A close does
+  not end a ride in progress; the HUD floats as it does when the window is
+  behind another app (ADR-0041).
+- **Throttling comes back while hidden**, unless a ride holds the machine
+  awake. A ride's own clock survives throttling (#51); nothing else needs
+  full-rate timers nobody sees.
+- **The rider shows as online while WattRoom runs**, because holding the lobby
+  socket is being online. That is what launch at login is for, and the
+  Settings sentence says so, and that quitting from the tray goes offline.
+- On Windows and Linux the first close that hides the window says so once,
+  with a notification that WattRoom is still running in the tray.
+
+The page hears a hide and a show through one preload signal, `onVisibility`,
+which #3079 reuses.
+
+Three follow-ups the same day (#3510). On Linux, "no tray" means nothing owns
+`org.kde.StatusNotifierWatcher` on the session bus: `new Tray` succeeds without
+one and draws nowhere, so the shell asks the bus instead. A login launch's
+hidden window is throttled from boot, like a window a close put in the tray.
+And a close in fullscreen leaves fullscreen before it hides, because macOS
+would leave the fullscreen Space behind, black.
+
+## Amendment, 2026-09-29 (#2818): only macOS installs its own updates
+
+The #1303 amendment made the shell install its own updates everywhere, and
+this ADR had shipped Windows unsigned when an update was only a nudge. Nobody
+weighed the two together. An update installs whatever the releases repo
+serves, so the question is what checks it first:
+
+- **macOS** checks the Developer ID. Squirrel.Mac refuses anything else.
+- **Linux** (the AppImage and the deb) checks only a sha512 published beside
+  the binary, which anyone who can write a release can also write.
+- **Windows** checks Authenticode against the `publisherName` in
+  `app-update.yml`. It has one only because the build step's `CSC_LINK`
+  reaches the Windows runner and signs the build with the Apple certificate.
+  Read on a stock Windows Server (Microsoft's root store, the trust a rider's
+  PC has), both the installer and `WattRoom.exe` return **UnknownError**, not
+  Valid. So every Windows self-update since #1303 was downloaded and refused,
+  and a Windows rider reached the new version only through the #1940 offer,
+  after three refused downloads.
+
+Decided on 2026-09-29, taking the recorded recommendation and the branch it
+set for a Windows status that is not Valid:
+
+- **Linux and Windows go back to the download offer.** The shell still reads
+  the feed, and a newer version brings up the #1940 download offer on home at
+  once. It never downloads or installs by itself. macOS keeps self-install.
+  This narrows the #1303 amendment above to macOS.
+- **The Apple certificate on Windows is an interim, not a chosen identity.**
+  It stays in the workflow: scoping it to macOS would turn the Windows check
+  off rather than on, and the workflow says so beside `CSC_LINK`. Every build
+  reports the Windows Authenticode status in its job summary and warns when
+  it is not Valid. A real Windows identity (Azure Trusted Signing, with
+  `win.publisherName` set to the full DN) comes when the Windows revisit
+  trigger above fires, and Windows installs its own updates again only once
+  that report reads Valid.
+- **Rejected: a signature check of our own around electron-updater** (an
+  ed25519 key compiled into the shell, checked against the manifests before
+  install). It would cover Linux without money, but it is code on the most
+  sensitive path the shell has, and a rider loses little by clicking a
+  download.
+- **No approval gate on the publish job.** A bare `RELEASES_REPO_TOKEN` can
+  publish a release, but the only shell that installs one by itself needs the
+  Developer ID to accept it. Immutable releases on the releases repo are a
+  settings click for the maintainer, tracked in #3494.

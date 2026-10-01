@@ -10,6 +10,8 @@ import (
 // Team Relay (docs/SPEC.md): one rider on front at 110 % FTP, the rest at
 // 55 %; rotation on a 60–90 s timer; the room's score is the collective
 // distance, Σ front-seconds × front-watts. Cooperative: no podium, one number.
+// On a road (#3030) the front rider sets the bunch's pace and the road's end
+// is the finish.
 // ponytail: timer rotation only — the call-out rotation lands with voice UX.
 const (
 	relayFrontPct = 1.10
@@ -96,12 +98,35 @@ func (r *relay) state(now time.Time) protocol.GameState {
 		}
 		riders[id] = protocol.GameRider{OnFront: onFront, TargetPct: pct}
 	}
+	phase := "running"
+	if r.finished {
+		phase = "done"
+	}
 	return protocol.GameState{
-		Mode: "team-relay", Phase: "running",
+		Mode: "team-relay", Phase: phase,
 		RoundEndsAtMs: r.rotateAt.UnixMilli(),
 		TeamDistance:  r.distance, Riders: riders,
 	}
 }
 
-// done: a relay has no natural end — the coach ends it.
-func (r *relay) done() bool { return false }
+// done: off a road a relay has no natural end — the coach ends it. On one it
+// ends where the road does (#3030).
+func (r *relay) done() bool { return r.finished }
+
+// relayOf is the running Team Relay, through its sampling wrapper, or nil.
+func relayOf(g gameMode) *relay {
+	if s, ok := g.(*sampledGame); ok {
+		g = s.gameMode
+	}
+	r, _ := g.(*relay)
+	return r
+}
+
+// leader is the rider on front, who sets the bunch's pace on a road; empty
+// before anyone has shown up or once the relay is over.
+func (r *relay) leader() string {
+	if r.finished || len(r.order) == 0 {
+		return ""
+	}
+	return r.order[r.front]
+}

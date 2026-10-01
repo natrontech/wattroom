@@ -68,6 +68,14 @@
 		>
 		<p class="text-sm">Picking back up — ease in.</p>
 	</div>
+{:else if session.hrHoldLost}
+	<div class="border-z5/40 bg-z5/10 mt-4 rounded-lg border px-5 py-3">
+		<p class="text-sm font-medium">Heart-rate hold waiting — no heart rate</p>
+		<p class="text-muted text-xs">
+			Your watts stay where they are until your strap reads again. The hold
+			never raises them without it.
+		</p>
+	</div>
 {:else if session.spiralActive}
 	<div
 		class="border-neon/40 bg-surface-raised mt-4 rounded-lg border px-5 py-3"

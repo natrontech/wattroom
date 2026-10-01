@@ -1,11 +1,20 @@
 import type { TrackPoint } from '$lib/road/parse';
 import type { Route } from '$lib/road/route';
+import { frameAt } from '$lib/road/along';
+import { ROAD_W } from './terrain/road-profile';
 import type { World } from './world';
 
 /**
  * The world invariants both world test files check, one definition each.
  * Test-only: nothing in the app imports it.
  */
+
+/**
+ * What a case that builds a world may take (#3503). A dev-world build is about
+ * 1.5 s alone (ADR-0081: keyed by place is the slower build) and several times
+ * that beside the rest of a full `make test`; vitest's 5 s default is not it.
+ */
+export const BUILD_MS = 30_000;
 
 /** Terrain faces steeper than 58° (rise over run above 1.6): a fold, not a hillside. */
 export function folds(world: World): number {
@@ -22,14 +31,18 @@ export function folds(world: World): number {
 	return n;
 }
 
-/** The most the drawn ground rises above the road's centreline, in metres. */
+/** The most the drawn ground rises above the drawn road, across the carriageway, in metres. */
 export function worstRiseThroughRoad(route: Route, world: World): number {
 	let worst = -Infinity;
-	for (let i = 0; i < route.x.length; i += 7)
-		worst = Math.max(
-			worst,
-			world.heightAt(route.x[i], route.z[i]) - route.ele[i],
-		);
+	for (let i = 0; i < route.x.length; i += 7) {
+		const { lx, lz } = frameAt(route, i);
+		for (const u of [-ROAD_W / 2, 0, ROAD_W / 2]) {
+			const x = route.x[i] + lx * u;
+			const z = route.z[i] + lz * u;
+			const road = world.roadSurfaceAt(x, z) ?? route.ele[i];
+			worst = Math.max(worst, world.heightAt(x, z) - road);
+		}
+	}
 	return worst;
 }
 

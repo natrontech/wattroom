@@ -198,6 +198,12 @@ type Identity struct {
 	RefreshTokenEnc []byte
 }
 
+type Look struct {
+	Hash      string
+	Loadout   string
+	CreatedAt pgtype.Timestamptz
+}
+
 type Medal struct {
 	ID        pgtype.UUID
 	UserID    pgtype.UUID
@@ -212,6 +218,13 @@ type MovedRoom struct {
 	CrewID         pgtype.UUID
 	TextChannelID  pgtype.UUID
 	VoiceChannelID pgtype.UUID
+}
+
+type Outfit struct {
+	UserID    pgtype.UUID
+	Loadout   []byte
+	UpdatedAt pgtype.Timestamptz
+	LookHash  *string
 }
 
 type Passkey struct {
@@ -279,6 +292,7 @@ type Ride struct {
 	ClimbedM        *int32
 	WeightKg        *int16
 	MeanShelter     *float32
+	GroupSession    *bool
 }
 
 type RideExport struct {
@@ -320,6 +334,14 @@ type Route struct {
 	GeomSealed []byte
 	KeyVersion *int32
 	CreatedAt  pgtype.Timestamptz
+	RoadSealed []byte
+}
+
+type RouteCrewConsent struct {
+	RouteID   pgtype.UUID
+	CrewID    pgtype.UUID
+	Shared    bool
+	DecidedAt pgtype.Timestamptz
 }
 
 type ScheduledSession struct {
@@ -333,6 +355,7 @@ type ScheduledSession struct {
 	StartedAt   pgtype.Timestamptz
 	CrewID      pgtype.UUID
 	ChannelID   pgtype.UUID
+	RouteID     pgtype.UUID
 }
 
 type Session struct {
@@ -420,6 +443,8 @@ type User struct {
 	StatusText         *string
 	StatusExpiresAt    pgtype.Timestamptz
 	Cheers             string
+	WeightChangedAt    pgtype.Timestamptz
+	WeightConfirmedAt  pgtype.Timestamptz
 }
 
 type UserAvatar struct {
@@ -434,6 +459,23 @@ type VisibleChannel struct {
 	UserID    pgtype.UUID
 }
 
+type WalletEvent struct {
+	ID        int64
+	UserID    pgtype.UUID
+	Source    string
+	Amount    int32
+	Ref       string
+	CreatedAt pgtype.Timestamptz
+}
+
+type Wardrobe struct {
+	UserID      pgtype.UUID
+	ItemID      string
+	Source      string
+	AcquiredAt  pgtype.Timestamptz
+	FirstWornAt pgtype.Timestamptz
+}
+
 type Workout struct {
 	ID         pgtype.UUID
 	OwnerID    pgtype.UUID
@@ -441,6 +483,11 @@ type Workout struct {
 	Author     string
 	Definition []byte
 	CreatedAt  pgtype.Timestamptz
+}
+
+type WorldKey struct {
+	One bool
+	Key []byte
 }
 
 type XpEvent struct {

@@ -2,6 +2,8 @@
 
 WattRoom's user is on a bike, sweating, screen at arm's length or three metres away. Every UI decision optimizes for that first, desk-comfort second.
 
+Every surface has a target and a must-match list in [docs/design/TARGETS.md](../../docs/design/TARGETS.md); no rider-visible PR is marked ready without a passing design check ([DESIGN-CHECK.md](../../docs/design/DESIGN-CHECK.md)).
+
 ## The 95% rule
 
 Before adding any setting/toggle: would 95% of riders pick the same value? Then it's a default, not a setting (put edge-case needs in a collapsed Advanced expander at most). Defaults already decided this way live in docs/SPEC.md — voice/camera available by default, sensible tolerances, auto-pause on.

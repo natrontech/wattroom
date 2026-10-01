@@ -152,6 +152,10 @@ export interface Control {
    * (#2438) — someone in the voice channel.
    */
   rider?: string;
+  /**
+   * For actions "pick" and "game": the road it rides (#3095).
+   */
+  route?: ControlRoute;
 }
 
 //////////
@@ -222,6 +226,10 @@ export interface GameState {
   teamDistance?: number /* float64 */;
   riders: { [key: string]: GameRider};
   podium?: SprintScore[];
+  /**
+   * A race's own (#3658): its clock, and its closing card.
+   */
+  race?: RaceState;
 }
 
 //////////
@@ -540,6 +548,62 @@ export const MaxCrewTextChannels = 20;
  */
 export const MaxCrewVoiceChannels = 10;
 /**
+ * A text channel keeps its newest lines (docs/SPEC.md "Text channel
+ * chat", default — tune in alpha): the prune on every write keeps this
+ * many, and a backlog read returns at most this many. A DM pair keeps the
+ * same: SPEC's one 500-message bound, which a temporary line counts
+ * toward in either.
+ */
+export const MaxChannelLines = 500;
+/**
+ * A ride the saver keeps is at least a minute of samples: fewer is a
+ * misclick, not a ride. The hub's saver, POST /api/rides, the browser's
+ * crash recovery and the closing summary all hold this one line.
+ */
+export const MinRideSamples = 60;
+/**
+ * A recorded sample's bounds (watts 0–3000; a track sprinter peaks near
+ * 2000 W): the WS metrics gate, POST /api/rides and a FIT export all
+ * refuse a sample outside them.
+ */
+export const MaxWatts = 3000;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const MaxCadence = 250;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const MaxHeartRate = 250;
+/**
+ * An uploaded or exported ride is at most 6 h at 1 Hz — longer than any
+ * indoor session anyone rides — so a request cannot allocate past it.
+ */
+export const MaxRideSamples = 6 * 60 * 60;
+/**
+ * A rider's bias, the trim on their own targets (#795, docs/SPEC.md):
+ * the workout clamps it here, and the server refuses a sample outside.
+ */
+export const MinBias = 0.8;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const MaxBias = 1.2;
+/**
+ * Normalised power below 20 minutes is not meaningful (docs/SPEC.md
+ * "Stats formulas"): shorter rides show plain average power, on the
+ * server's stats and the ride page alike (#1542).
+ */
+export const NormPowerMinSeconds = 20 * 60;
+/**
+ * A playhead past six hours is not a party track: every seek is clamped
+ * here, live on the deck and saved in a playlist, and in the browser.
+ */
+export const MaxSeekSeconds = 6 * 60 * 60;
+/**
  * The tolerance band a second is scored in: within ±5 % of target, floor
  * ±10 W (#2159). The floor is what keeps an easy block scoreable — at
  * 60 W, 5 % is 3 W, which is inside a trainer's own error.
@@ -588,6 +652,29 @@ export const MinRoadGradePct = -15;
  * zones derive from (ADR-0014). Both sides read these; neither retypes them.
  */
 export const MaxRoadGradePct = 20;
+/**
+ * What a crew is sent of a route that is not theirs (ADR-0063, #3051):
+ * the road between its anchors, which until the geo pack draws zones are
+ * this far in from each end — a route hides its first and last metres by
+ * default — and at most this many bytes of it, packed, on a workout.
+ */
+export const RouteHiddenEndM = 400;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const MaxAttachedRoadBytes = 48 << 10;
+/**
+ * A leg (docs/SPEC.md "Route rides"): the stretch of a route ridden in
+ * one sitting is at most six hours, so a long route compiles into legs.
+ */
+export const MaxLegSeconds = 6 * 60 * 60;
+/**
+ * ADR-0065's 150 % of FTP (docs/SPEC.md "Riding a road together"): the
+ * pace of a sprint block, and the most any one rider adds to a road
+ * step's live mean. Terrain Match rides a sprint at it too (#3099).
+ */
+export const BunchMaxPct = 1.5;
 /**
  * The range every SIM write is clamped to (docs/SPEC.md "Route rides",
  * ADR-0062): one range for every trainer, since FTMS cannot report an
@@ -726,6 +813,66 @@ export const CPEstimateShortSeconds = 300;
  */
 export const CPEstimateLongSeconds = 1200;
 /**
+ * Climbs (docs/SPEC.md "Climbs", Garmin's rule; #3047, #3238): at least
+ * ClimbMinM long, averaging ClimbMinPct, scoring ClimbMinScore — length
+ * in m × average %, 100 × the gain. A class is held when the score is
+ * above its floor. A dip that loses less than ClimbDipLossM and is back
+ * over the top within ClimbDipM does not end a climb, and a road keeps
+ * its hardest MaxClimbs. $lib/road/climbs.ts and internal/road run the one
+ * rule on these.
+ */
+export const ClimbMinM = 500;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const ClimbMinPct = 3;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const ClimbMinScore = 1500;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const ClimbClassIV = 8000;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const ClimbClassIII = 16000;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const ClimbClassII = 32000;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const ClimbClassI = 64000;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const ClimbClassHC = 80000;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const ClimbDipLossM = 20;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const ClimbDipM = 300;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const MaxClimbs = 32;
+/**
  * The reference rider (docs/SPEC.md): 75 kg on an 8 kg bike at 225 W —
  * whom a road's estimates are made for when no real rider is in question.
  */
@@ -761,8 +908,8 @@ export interface RiderMetrics {
   cadence?: number /* int */;
   seq: number /* int */; // monotonic per ride, for reconnect dedup
   /**
-   * The rider's personal trim on their own targets at this second, 0.8–1.2
-   * (docs/SPEC.md). A score answers "did you ride the plan you were on?",
+   * The rider's personal trim on their own targets at this second,
+   * MinBias–MaxBias (docs/SPEC.md). A score answers "did you ride the plan you were on?",
    * and this is what the plan was — so the second is scored against the
    * biased target, not the prescribed one (#795). It rides every sample
    * because bias moves mid-ride, and it is stored with them, which is what
@@ -814,6 +961,143 @@ export interface Backfill {
 }
 
 //////////
+// source: open_ride.go
+
+/**
+ * OpenRideMessage is what an open ride's socket carries down (#3303): the
+ * tick, or the refusal a rider is told. The roster, names, calls and the
+ * closing card join it with the door (#3304).
+ */
+export interface OpenRideMessage {
+  tick?: OpenRideTick;
+  error?: Error;
+}
+/**
+ * OpenRideSample is a rider's second, up at 1 Hz: what the bunch needs to move
+ * them, and no heart rate or cadence, which it does not.
+ */
+export interface OpenRideSample {
+  seq: number /* int */; // monotonic per ride, for reconnect dedup
+  watts: number /* int */;
+  /**
+   * The rider's trim on their own targets, MinBias–MaxBias; 0 is none.
+   */
+  bias?: number /* float64 */;
+}
+/**
+ * OpenRideTick is the ride's one nameless frame a second, the same for every
+ * rider on it (ADR-0076 §11).
+ */
+export interface OpenRideTick {
+  at: number /* int64 */; // server millis
+  phase: string; // "pen" | "countIn" | "riding" | "done"
+  elapsed: number /* int */;
+  /**
+   * The bunch on the library road (ADR-0065), in metres and metres a second.
+   */
+  bunchM: number /* float64 */;
+  speed: number /* float64 */;
+  riders: OpenRideRider[];
+}
+/**
+ * OpenRideRider is one marker: the ride's id for a rider, and where they
+ * are. A group ride places them by offset from the bunch; a race format by
+ * their own metres and speed instead.
+ */
+export interface OpenRideRider {
+  e: string;
+  /**
+   * From the bunch, in decimetres — World's unit.
+   */
+  o?: number /* int16 */;
+  m?: number /* float64 */;
+  v?: number /* float64 */;
+}
+/**
+ * The coarse kit's two choices (docs/SPEC.md "Open rides"): a marker is told
+ * apart by one of these, never by a look.
+ */
+export const OpenRideJerseys = 12;
+/**
+ * The coarse kit's two choices (docs/SPEC.md "Open rides"): a marker is told
+ * apart by one of these, never by a look.
+ */
+export const OpenRideSilhouettes = 6;
+/**
+ * OpenRideKit is how a marker is drawn: a jersey colourway and a bike class,
+ * by index, and whether they lead the ride — set only for the host crew's
+ * owner and admins.
+ */
+export interface OpenRideKit {
+  jersey: number /* int */;
+  silhouette: number /* int */;
+  leader?: boolean;
+}
+/**
+ * OpenRideRoster is every marker's kit by ride id, down on join and on change,
+ * never on the tick. HostCrew is the host crew's name when the crew is listed
+ * (ADR-0039) and empty otherwise, which a client reads as "Hosted by a crew";
+ * it never names the person who opened the ride.
+ */
+export interface OpenRideRoster {
+  kits: { [key: string]: OpenRideKit};
+  hostCrew?: string;
+}
+/**
+ * OpenRideNames maps ride ids to rider ids, sent only to the viewer's own
+ * people — those who share a crew with them — and refreshed every 60 s.
+ */
+export interface OpenRideNames {
+  riders: { [key: string]: string};
+}
+/**
+ * A leader's calls, the closed set docs/SPEC.md "Open rides" names: never free
+ * text, at most one per 20 s per ride.
+ */
+export const OpenRideCallWelcome = "welcome";
+/**
+ * A leader's calls, the closed set docs/SPEC.md "Open rides" names: never free
+ * text, at most one per 20 s per ride.
+ */
+export const OpenRideCallClimbAhead = "climbAhead";
+/**
+ * A leader's calls, the closed set docs/SPEC.md "Open rides" names: never free
+ * text, at most one per 20 s per ride.
+ */
+export const OpenRideCallStayTogether = "stayTogether";
+/**
+ * A leader's calls, the closed set docs/SPEC.md "Open rides" names: never free
+ * text, at most one per 20 s per ride.
+ */
+export const OpenRideCallLast5Km = "last5km";
+/**
+ * A leader's calls, the closed set docs/SPEC.md "Open rides" names: never free
+ * text, at most one per 20 s per ride.
+ */
+export const OpenRideCallSprintSign = "sprintAtTheSign";
+/**
+ * A leader's calls, the closed set docs/SPEC.md "Open rides" names: never free
+ * text, at most one per 20 s per ride.
+ */
+export const OpenRideCallThanks = "thanks";
+/**
+ * OpenRideCall is one leader call, by its code.
+ */
+export interface OpenRideCall {
+  code: string;
+}
+/**
+ * OpenRideClosing is the closing card (ADR-0076 §9): counts, and in a race
+ * format the viewer's own placing, once — never a list, never stored.
+ */
+export interface OpenRideClosing {
+  riders: number /* int */;
+  crews: number /* int */;
+  alone?: boolean;
+  ownPlacing?: number /* int */;
+}
+
+//////////
 // source: protocol.go
 /*
 Package protocol defines the WebSocket message types. These Go structs are
@@ -835,6 +1119,8 @@ export interface ClientMessage {
   poke?: Poke;
   away?: AwayState;
   device?: DeviceKind;
+  roadside?: Roadside;
+  drive?: Drive;
 }
 /**
  * ServerTick is a voice channel's coalesced 1 Hz broadcast: every rider's
@@ -883,6 +1169,14 @@ export interface ServerTick {
    * Running game mode (#31/#32), replacing the workout timeline while on.
    */
   game?: GameState;
+  /**
+   * The bunch on the session's road (ADR-0065), while it rides one.
+   */
+  world?: World;
+  /**
+   * What the roadside has put on that road (ADR-0064, #3029), beside it.
+   */
+  roadside?: RoadsideState;
   /**
    * Live execution per rider (#27) — the SPEC score so far this session.
    */
@@ -937,6 +1231,120 @@ export interface ServerMessage {
  */
 export interface LobbyPing {
   channel?: string;
+}
+
+//////////
+// source: race.go
+
+/**
+ * Races (docs/SPEC.md "Races", ADR-0067): a weight changed within the freeze
+ * before the flag rides unranked, and so does one the rider has not confirmed
+ * within the confirmation window.
+ */
+export const RaceWeightFreezeDays = 14;
+/**
+ * Races (docs/SPEC.md "Races", ADR-0067): a weight changed within the freeze
+ * before the flag rides unranked, and so does one the rider has not confirmed
+ * within the confirmation window.
+ */
+export const RaceWeightConfirmDays = 90;
+/**
+ * A race's start and its field (docs/SPEC.md "Races" — defaults, tune in
+ * alpha): the neutral zone ridden at 0 % between the countdown and the km-0
+ * klaxon, the riders a race needs to start, and how long a silent rider keeps
+ * their place before they are out of it.
+ */
+export const RaceNeutralSeconds = 3 * 60;
+/**
+ * A race's start and its field (docs/SPEC.md "Races" — defaults, tune in
+ * alpha): the neutral zone ridden at 0 % between the countdown and the km-0
+ * klaxon, the riders a race needs to start, and how long a silent rider keeps
+ * their place before they are out of it.
+ */
+export const RaceMinRiders = 2;
+/**
+ * A race's start and its field (docs/SPEC.md "Races" — defaults, tune in
+ * alpha): the neutral zone ridden at 0 % between the countdown and the km-0
+ * klaxon, the riders a race needs to start, and how long a silent rider keeps
+ * their place before they are out of it.
+ */
+export const RaceDisconnectSeconds = 30;
+/**
+ * Why a race rides a rider unranked (ADR-0067). They still race; this is what
+ * the closing card tells them kept them off the results.
+ */
+export const UnrankedDefaultFtp = "default_ftp";
+/**
+ * Why a race rides a rider unranked (ADR-0067). They still race; this is what
+ * the closing card tells them kept them off the results.
+ */
+export const UnrankedDefaultWeight = "default_weight";
+/**
+ * Why a race rides a rider unranked (ADR-0067). They still race; this is what
+ * the closing card tells them kept them off the results.
+ */
+export const UnrankedFreshWeight = "fresh_weight";
+/**
+ * Why a race rides a rider unranked (ADR-0067). They still race; this is what
+ * the closing card tells them kept them off the results.
+ */
+export const UnrankedUnconfirmedWeight = "unconfirmed_weight";
+/**
+ * "Don't make me shift": WattRoom chose the watts, so the ride is
+ * untimeable and the race cannot place it (ADR-0084, ADR-0074).
+ */
+export const UnrankedUntimeable = "untimeable";
+/**
+ * RaceVoidTooFew is a race whose flag found fewer than RaceMinRiders on the
+ * session's timeline: it never starts, and says so.
+ */
+export const RaceVoidTooFew = "too_few";
+/**
+ * Drive is how a rider's trainer rides a road, as their screen says when it
+ * opens and whenever it changes (#3658): ErgByRoad is "Don't make me shift",
+ * where WattRoom holds the watts, which a race rides unranked.
+ */
+export interface Drive {
+  ergByRoad: boolean;
+}
+/**
+ * RaceState is a race on the tick (#3658, ADR-0067): when the flag drops and
+ * when the klaxon sends it from km 0, whether the coach has neutralised it,
+ * and — once it is done — the closing card. The places ride World.Racers.
+ */
+export interface RaceState {
+  flagAtMs: number /* int64 */;
+  klaxonAtMs: number /* int64 */;
+  neutralised?: boolean;
+  /**
+   * Why the race never started: RaceVoidTooFew.
+   */
+  void?: string;
+  /**
+   * The closing card, per Category D–A. Never stored (ADR-0074).
+   */
+  results?: RaceBracket[];
+}
+/**
+ * RaceBracket is one Category on the closing card: its finishers in order,
+ * the ones the race could not place — shown, and told why — and whether the
+ * Category had one rider, who "rode alone".
+ */
+export interface RaceBracket {
+  category: string;
+  placed?: RaceFinisher[];
+  unranked?: RaceFinisher[];
+  alone?: boolean;
+}
+/**
+ * RaceFinisher is one rider over the line: their time from the klaxon to the
+ * millisecond, and why they are unplaced (an Unranked reason), if they are.
+ */
+export interface RaceFinisher {
+  riderId: string;
+  name: string;
+  ms: number /* int64 */;
+  why?: string;
 }
 
 //////////
@@ -1033,6 +1441,11 @@ export const PokeCooldownSeconds = 10;
 // source: rider.go
 
 /**
+ * SourceDefault is ADR-0048's word for a number nobody chose: the account was
+ * created with it. The other two, "manual" and "ramp", are answers.
+ */
+export const SourceDefault = "default";
+/**
  * Rider is presence: who is in the voice channel right now, with what the
  * dashboard needs to render them. FTP crosses the wire so every screen can
  * show %FTP — scoped to the channel by design, the same visibility
@@ -1058,6 +1471,25 @@ export interface Rider {
    * the member list has followed since #253 — rides stay private.
    */
   totalXp: number /* int64 */;
+  /**
+   * What the rider's figure wears, by the hash GET /api/looks/{hash}
+   * answers (#3155): a compact name for the outfit, so a client fetches the
+   * outfit once and keeps it, and the outfit itself never rides the tick.
+   * The voice channel's crew is its whole audience. Empty for a rider in
+   * the starter kit.
+   */
+  look?: string;
+  /**
+   * Where the two numbers came from (ADR-0048) — SourceDefault, "manual" or
+   * "ramp" — and when the weight last changed and when the rider last
+   * answered for it, in server millis, zero when never recorded (#3169). The
+   * channel already sees the numbers; these say how far a race may trust
+   * them, and a race reads all four at its flag (Unranked).
+   */
+  ftpSource?: string;
+  weightSource?: string;
+  weightChangedAt?: number /* int64 */;
+  weightConfirmedAt?: number /* int64 */;
   /**
    * Stepped out (#706). Presence, not a metric: the rider said so with the
    * Lounge's button, and every screen renders the mark instead of leaving
@@ -1246,6 +1678,68 @@ export interface ChannelPresence {
 }
 
 //////////
+// source: roadside.go
+
+/**
+ * Roadside is one roadside verb (ADR-0064, #3029): something a spectator
+ * puts on the session's road. It paints, sounds and informs, and nothing it
+ * does reaches a rider's trainer, place or score. A refused one is answered
+ * with a `roadside_` code.
+ */
+export interface Roadside {
+  kind: RoadsideKind;
+  /**
+   * Where on the road, in metres along the crew's cut in the direction
+   * ridden, as World.BunchM reads it; Lap counts a looped road's laps.
+   */
+  atM: number /* float64 */;
+  lap?: number /* int */;
+}
+/**
+ * RoadsideKind is the closed set of roadside verbs. Anything else is refused
+ * at the socket.
+ */
+export type RoadsideKind = string;
+/**
+ * RoadsideKindStand is where a spectator watches from: ahead of the bunch,
+ * moved at most once a minute, frozen as the riders close on it, and gone
+ * once they pass it (docs/SPEC.md "The roadside").
+ */
+export const RoadsideKindStand: RoadsideKind = "stand";
+/**
+ * RoadsideState is what the roadside has put on the session's road, on the
+ * tick while a bunch rides it. Rev moves with every change — a stand placed,
+ * moved, passed or let go — so a client redraws only when it does.
+ */
+export interface RoadsideState {
+  rev: number /* int64 */;
+  stands?: RoadsideStand[];
+}
+/**
+ * RoadsideStand is one spectator's stand, where Roadside put it.
+ */
+export interface RoadsideStand {
+  riderId: string;
+  atM: number /* float64 */;
+  lap?: number /* int */;
+}
+/**
+ * docs/SPEC.md "The roadside" (defaults — tune in alpha): a stand is 300 m –
+ * 5 km ahead of the bunch, and moves at most once a minute.
+ */
+export const RoadsideStandMinAheadM = 300;
+/**
+ * docs/SPEC.md "The roadside" (defaults — tune in alpha): a stand is 300 m –
+ * 5 km ahead of the bunch, and moves at most once a minute.
+ */
+export const RoadsideStandMaxAheadM = 5000;
+/**
+ * docs/SPEC.md "The roadside" (defaults — tune in alpha): a stand is 300 m –
+ * 5 km ahead of the bunch, and moves at most once a minute.
+ */
+export const RoadsideStandMoveSeconds = 60;
+
+//////////
 // source: sensors.go
 
 /**
@@ -1349,6 +1843,11 @@ export interface SessionState {
    * fit.
    */
   targetRpm?: number /* int */;
+  /**
+   * The road the session rides (#3095), from the pick or the game that
+   * opened it; absent on a session with no road.
+   */
+  route?: SessionRoute;
 }
 /**
  * SessionRecapRider is one person a session saw, and when — the only two
@@ -1455,4 +1954,88 @@ export interface StatusLine {
    * When it clears, RFC 3339; absent is "don't clear".
    */
   expiresAt?: string;
+}
+
+//////////
+// source: world.go
+
+/**
+ * ControlRoute is the road a pick or a game rides (#3095, ADR-0065): one of
+ * the coach's own routes, where on it the bunch starts, which way it runs,
+ * and whether it rides again from the start when it reaches the end.
+ */
+export interface ControlRoute {
+  id: string;
+  /**
+   * Metres along the road as the crew rides it — the span between its
+   * anchors (ADR-0063) — in the direction ridden.
+   */
+  fromM?: number /* float64 */;
+  reverse?: boolean;
+  loop?: boolean;
+}
+/**
+ * SessionRoute is the road a session rides, by reference: never the road
+ * itself, which every socket fetches by Hash as the crew's cut (#3096). One
+ * frame for everyone — the coach who owns the route included — so a restart
+ * (ADR-0052) re-picks FromM and the bunch comes back where it was.
+ */
+export interface SessionRoute {
+  id: string;
+  /**
+   * The stored road's hash, the key a client caches the crew's cut under.
+   */
+  hash: string;
+  /**
+   * docs/SPEC.md's generated name ("Road · 52.9 km · 1,312 m"), never the
+   * owner's own, which may name the place the route's ends hide.
+   */
+  genName: string;
+  fromM: number /* float64 */;
+  reverse?: boolean;
+  /**
+   * The crew's cut, the length every metre above is bounded by.
+   */
+  lengthM: number /* float64 */;
+  loop?: boolean;
+}
+/**
+ * World is the bunch on the session's road (ADR-0065), on every tick while
+ * one rides it: one position, advanced once per whole second, and each
+ * rider's elastic place around it. Never ranked (ADR-0036) — an offset is
+ * where a figure stands, not a gap anyone is told about.
+ */
+export interface World {
+  bunchM: number /* float64 */;
+  speedMps: number /* float64 */;
+  /**
+   * Laps completed on a looped road.
+   */
+  lap?: number /* int */;
+  /**
+   * Each joined rider's place from the bunch in decimetres, by rider id.
+   */
+  offsets?: { [key: string]: number /* int16 */};
+  /**
+   * Riders coasting back to the bunch's tail (docs/SPEC.md "Riding a road
+   * together"), by rider id.
+   */
+  resting?: string[];
+  /**
+   * Each racer's own place in a race (#3032, ADR-0067), by rider id: a
+   * race rides no shared bunch. Races only.
+   */
+  racers?: { [key: string]: RaceRider};
+}
+/**
+ * RaceRider is one racer on the tick: metres from the km-0 klaxon, their
+ * speed, and when they crossed the line — to the millisecond, inside the
+ * second they crossed it in — once they have. On the race's clock: the
+ * klaxon plus their racing time, so a span the coach neutralised after the
+ * klaxon is not in it.
+ */
+export interface RaceRider {
+  m: number /* float64 */;
+  v: number /* float64 */;
+  finishMs?: number /* int64 */;
 }

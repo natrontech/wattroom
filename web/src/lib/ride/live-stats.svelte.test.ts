@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createLiveStats } from './live-stats.svelte';
-import { NP_MIN_SECONDS, normalizedPower, zoneSeconds } from './stats';
+import { NormPowerMinSeconds } from '$lib/protocol';
+import { normalizedPower, zoneSeconds } from './stats';
 
 const FTP = 250;
 
@@ -29,8 +30,8 @@ function lastAverage(watts: number[], k: number): number {
 // watt either side of the 20 minutes where NormPower changes formula.
 describe('live stats agree with stats.ts', () => {
 	it.each([
-		['19:59', NP_MIN_SECONDS - 1],
-		['20:01', NP_MIN_SECONDS + 1],
+		['19:59', NormPowerMinSeconds - 1],
+		['20:01', NormPowerMinSeconds + 1],
 	])('at %s', (_, seconds) => {
 		const watts = ride(seconds);
 		const live = createLiveStats(() => FTP);
@@ -53,7 +54,7 @@ describe('live stats agree with stats.ts', () => {
 	});
 
 	it('takes the rolling formula past 20 minutes, not the average', () => {
-		const watts = ride(NP_MIN_SECONDS + 1);
+		const watts = ride(NormPowerMinSeconds + 1);
 		const live = createLiveStats(() => FTP);
 		for (const w of watts) live.push({ watts: w });
 		expect(live.current.normPower).toBeGreaterThan(

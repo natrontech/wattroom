@@ -158,7 +158,7 @@ func (j *jukebox) newEntry(cmd protocol.JukeboxCommand, addedBy string) (protoco
 		entry.TrackID = cmd.TrackID
 		entry.Title = textx.Clip(cmd.Title, 200)
 		entry.Artist = textx.Clip(cmd.Artist, 200)
-		entry.StartSec = clampSec(cmd.PositionSec)
+		entry.StartSec = protocol.ClampSeek(cmd.PositionSec)
 		// Display only (#1431): the tracks table caps bpm at 399, and a
 		// value outside that is a client guessing, not a tag.
 		if cmd.Bpm > 0 && cmd.Bpm < 400 {
@@ -166,7 +166,7 @@ func (j *jukebox) newEntry(cmd protocol.JukeboxCommand, addedBy string) (protoco
 		}
 		// The length the server measured at upload (#1509), bounded like a
 		// seek: past six hours it is a client guessing, not a track.
-		if cmd.DurationMs > 0 && cmd.DurationMs <= maxSeekSec*1000 {
+		if cmd.DurationMs > 0 && cmd.DurationMs <= protocol.MaxSeekSeconds*1000 {
 			entry.DurationMs = cmd.DurationMs
 		}
 		return entry, true, ""
@@ -179,7 +179,7 @@ func (j *jukebox) newEntry(cmd protocol.JukeboxCommand, addedBy string) (protoco
 		return protocol.JukeboxEntry{}, false, refusalTrackCap
 	}
 	entry.VideoID, entry.Title = cmd.VideoID, textx.Clip(cmd.Title, 200)
-	entry.StartSec = clampSec(cmd.PositionSec)
+	entry.StartSec = protocol.ClampSeek(cmd.PositionSec)
 	return entry, true, ""
 }
 

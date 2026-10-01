@@ -1,0 +1,1 @@
+- You can import a route from a Garmin `.fit` course, the same way as from a `.gpx` or `.tcx`. A course exported from Strava stays private to you, as Strava's GPX exports already do.

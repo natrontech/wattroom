@@ -84,7 +84,7 @@ func TestEveryModeIsSampled(t *testing.T) {
 
 // A session start resets the ride's roster; the game keeps its own (#1581).
 func TestGameRosterSurvivesASessionStart(t *testing.T) {
-	rm := newRoom("roster")
+	rm := newChannelState("roster")
 	if refusal := rm.startGame("watt-golf", gameStarter, gat(0)); refusal != "" {
 		t.Fatal(refusal)
 	}
@@ -101,7 +101,7 @@ func TestGameRosterSurvivesASessionStart(t *testing.T) {
 
 // Two refusals with two different moves for the coach (#1582).
 func TestStartGameNamesItsRefusal(t *testing.T) {
-	rm := newRoom("refuse")
+	rm := newChannelState("refuse")
 	if got := rm.startGame("dodgeball", gameStarter, gat(0)); got != refuseNoSuchMode {
 		t.Fatalf("unknown mode: %q", got)
 	}
@@ -121,7 +121,7 @@ func TestStartGameNamesItsRefusal(t *testing.T) {
 
 // The tick bursts for a game's window as it does for the room's sprint (#1578).
 func TestTickBurstsForARouletteWindow(t *testing.T) {
-	rm := newRoom("burst")
+	rm := newChannelState("burst")
 	if got := rm.tickIntervalLocked(gat(0)); got != tickInterval {
 		t.Fatalf("idle room ticks every %s", got)
 	}
@@ -153,7 +153,7 @@ func TestTickBurstsForARouletteWindow(t *testing.T) {
 // linger — it used to staple "done" to every tick until the coach pressed
 // end (#1575, #1579).
 func TestFinishedGameIsAnnouncedOnceAndLetGo(t *testing.T) {
-	rm := newRoom("finish")
+	rm := newChannelState("finish")
 	if refusal := rm.startGame("watt-golf", gameStarter, gat(0)); refusal != "" {
 		t.Fatal(refusal)
 	}

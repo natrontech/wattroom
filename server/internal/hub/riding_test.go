@@ -122,10 +122,10 @@ func TestRidingAnswersOnlyTheRidersAsked(t *testing.T) {
 
 	// Every one of them has a trainer talking right now; only the watts differ.
 	for _, channel := range []string{"cave", "lair"} {
-		h.rooms[channel] = newRoom(channel)
+		h.states[channel] = newChannelState(channel)
 	}
 	join := func(channel, id string, pedalledAgo time.Duration, pedalled bool) {
-		rm := h.rooms[channel]
+		rm := h.states[channel]
 		rm.seen[id] = protocol.Rider{ID: id, Name: id}
 		rm.lastMetric[id] = now
 		if pedalled {

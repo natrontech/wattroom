@@ -13,18 +13,10 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
 
-// Bounds on untrusted input. A ride is client-recorded, so the request is
-// attacker-controlled: cap what it can allocate before any of it is believed.
-const (
-	// 6 hours at 1 Hz. Longer than any indoor session anyone rides.
-	maxSamples = 6 * 60 * 60
-	// Generous ceiling on the JSON body, independent of maxSamples.
-	maxBodyBytes = 4 << 20
-	// Track sprinters peak near 2000 W; 3000 is the bound AGENTS.md names.
-	maxWatts     = 3000
-	maxCadence   = 250
-	maxHeartRate = 250
-)
+// A ride is client-recorded, so the request is attacker-controlled: cap what
+// it can allocate before any of it is believed — the samples by protocol's
+// MaxRideSamples and metric bounds, and the JSON body, generously, here.
+const maxBodyBytes = 4 << 20
 
 // The switch in toRide already rejects out-of-range values; these make the
 // narrowing provably safe in one guarded step rather than two unguarded casts,
@@ -127,8 +119,8 @@ func toRide(req exportRequest) (Ride, string) {
 		return Ride{}, "ride is missing a start time"
 	case len(req.Samples) == 0:
 		return Ride{}, "ride has no samples"
-	case len(req.Samples) > maxSamples:
-		return Ride{}, fmt.Sprintf("ride has %d samples, more than the %d supported", len(req.Samples), maxSamples)
+	case len(req.Samples) > protocol.MaxRideSamples:
+		return Ride{}, fmt.Sprintf("ride has %d samples, more than the %d supported", len(req.Samples), protocol.MaxRideSamples)
 	}
 
 	samples := make([]Sample, 0, len(req.Samples))
@@ -138,12 +130,12 @@ func toRide(req exportRequest) (Ride, string) {
 		switch {
 		case s.Second < 0:
 			return Ride{}, fmt.Sprintf("sample %d has a negative time offset", i)
-		case s.Watts < 0 || s.Watts > maxWatts:
-			return Ride{}, fmt.Sprintf("sample %d has %d watts, outside 0–%d", i, s.Watts, maxWatts)
-		case s.Cadence < 0 || s.Cadence > maxCadence:
-			return Ride{}, fmt.Sprintf("sample %d has %d rpm, outside 0–%d", i, s.Cadence, maxCadence)
-		case s.HeartRate < 0 || s.HeartRate > maxHeartRate:
-			return Ride{}, fmt.Sprintf("sample %d has %d bpm, outside 0–%d", i, s.HeartRate, maxHeartRate)
+		case s.Watts < 0 || s.Watts > protocol.MaxWatts:
+			return Ride{}, fmt.Sprintf("sample %d has %d watts, outside 0–%d", i, s.Watts, protocol.MaxWatts)
+		case s.Cadence < 0 || s.Cadence > protocol.MaxCadence:
+			return Ride{}, fmt.Sprintf("sample %d has %d rpm, outside 0–%d", i, s.Cadence, protocol.MaxCadence)
+		case s.HeartRate < 0 || s.HeartRate > protocol.MaxHeartRate:
+			return Ride{}, fmt.Sprintf("sample %d has %d bpm, outside 0–%d", i, s.HeartRate, protocol.MaxHeartRate)
 		// Encode enforces this too, but reaching it there yields a 500 — an
 		// unordered ride is the caller's mistake, so it is caught at the boundary
 		// and reported as one.

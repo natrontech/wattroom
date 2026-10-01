@@ -128,7 +128,7 @@ func endedCmd(j *jukebox) protocol.JukeboxCommand {
 // the track that ended before it, which would double every play in the
 // history and quietly bias the weighting toward whatever gets played first.
 func TestTheRoomDrainsEachDeckEventOnce(t *testing.T) {
-	rm := newRoom("history-room")
+	rm := newChannelState("history-room")
 	var seen []trackEvent
 	rm.deckPlayed = func(ev trackEvent) { seen = append(seen, ev) }
 

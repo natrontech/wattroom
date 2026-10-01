@@ -1,5 +1,7 @@
 import { account } from '$lib/account.svelte';
 import { api } from '$lib/api';
+import { byReference } from '$lib/workout/road-workout';
+import type { Workout } from '$lib/workout/types';
 
 /** A finished solo ride, in the shape POST /api/rides wants. */
 export interface RideUpload {
@@ -14,7 +16,61 @@ export interface RideUpload {
 		bias?: number;
 		clock?: number;
 		released?: boolean;
+		/** On a road (#3052): metres along it, and the height there. */
+		m?: number;
+		alt?: number;
+		/** Its lap, and on a lap's first sample which way it runs (#3598). */
+		lap?: number;
+		reverse?: boolean;
 	}[];
+	/** The stored route a ride on a road rode (#3053): one of the rider's own. */
+	routeId?: string;
+	/** How the trainer was driven along it (#3516): sim, gears or ergByRoad. */
+	drive?: 'sim' | 'gears' | 'ergByRoad';
+}
+
+/**
+ * A solo ride as the account takes it: the workout it rode and every recorded
+ * second — the trim it was ridden at (#1530), the workout second (#1733) and
+ * the guard's own seconds (#1796), which the server scores by. One mapping for
+ * /ride and a voice channel's own workout (#2329).
+ */
+export function recordingUpload(
+	workout: Workout,
+	startedAt: Date,
+	recording: readonly {
+		watts: number;
+		cadence: number;
+		heartRate: number;
+		bias: number;
+		clock: number;
+		released: boolean;
+		m?: number;
+		alt?: number;
+	}[],
+): RideUpload {
+	// A road workout's ride saves against its route (#3499): the metres it
+	// rode, and ERG by the road, since WattRoom chose the watts (#3516).
+	const onRoad = !!workout.road && recording.some((s) => s.m !== undefined);
+	return {
+		workoutName: workout.name,
+		// By reference: the server refuses a road sent back up (ADR-0063).
+		workoutJson: JSON.stringify(byReference(workout)),
+		startedAt: startedAt.toISOString(),
+		samples: recording.map((sample) => ({
+			watts: sample.watts,
+			cadence: sample.cadence,
+			hr: sample.heartRate,
+			bias: sample.bias,
+			clock: sample.clock,
+			released: sample.released,
+			...(sample.m !== undefined && { m: sample.m, alt: sample.alt }),
+		})),
+		...(onRoad && {
+			routeId: workout.road!.routeId,
+			drive: 'ergByRoad' as const,
+		}),
+	};
 }
 
 /**

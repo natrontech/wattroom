@@ -27,8 +27,10 @@ export function makeSight() {
 export type Sight = ReturnType<typeof makeSight>;
 
 const WIND = /* glsl */ `
-	#ifdef USE_INSTANCING
+	#if defined(USE_INSTANCING)
 		vec3 root = (instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+	#elif defined(USE_BATCHING)
+		vec3 root = (batchingMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
 	#else
 		vec3 root = vec3(0.0);
 	#endif
@@ -70,6 +72,9 @@ export function toon(
 				vec4 wp = vec4(transformed, 1.0);
 				#ifdef USE_INSTANCING
 					wp = instanceMatrix * wp;
+				#endif
+				#ifdef USE_BATCHING
+					wp = batchingMatrix * wp;
 				#endif
 				vWorld = (modelMatrix * wp).xyz;`,
 			);

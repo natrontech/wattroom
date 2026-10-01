@@ -54,6 +54,53 @@ export function guardOfRide(
 	return undefined;
 }
 
+/** What `soloRideSounds` reads off a solo ride's or the ramp's session. */
+export interface SoloSession {
+	state: RideState;
+	sprint?: SprintState | null;
+	spiralActive?: boolean;
+	info: { segmentIndex: number };
+	countdownRemaining: number;
+}
+
+/**
+ * The deps /ride and /ramp both built by hand (#3359): one ride, one way of
+ * saying it (ADR-0046's parity rule). A fault is the trainer going quiet; the
+ * block, guard, spiral and end are the session's own; and the count-in is its
+ * 3-2-1 and the `go` (#1800) — seconds left while counting in, 0 once the
+ * clock runs so `go` lands, undefined when a cancelled count-in must stay
+ * silent.
+ */
+export function soloRideSounds(
+	session: () => SoloSession | null | undefined,
+	signalLost: () => boolean,
+): RideSoundDeps {
+	return {
+		fault: () => (signalLost() ? 'trainer' : null),
+		sprint: () => session()?.sprint ?? null,
+		guard: () => guardOfRide(session()?.state),
+		spiral: () => session()?.spiralActive,
+		block: () => {
+			const s = session();
+			return s &&
+				s.state !== 'idle' &&
+				s.state !== 'countdown' &&
+				s.state !== 'done'
+				? s.info.segmentIndex
+				: undefined;
+		},
+		countdown: () => {
+			const s = session();
+			return s?.state === 'countdown'
+				? Math.max(1, s.countdownRemaining)
+				: s?.state === 'running'
+					? 0
+					: undefined;
+		},
+		ended: () => session()?.state === 'done',
+	};
+}
+
 export function createRideSounds(deps: RideSoundDeps) {
 	// The start is the biggest state change in the product, so it is counted
 	// in out loud. The last count spoken, so a tick is said once — and -1 is

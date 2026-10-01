@@ -1,0 +1,1 @@
+- A route's page now shows every ride you have made of it at its average speed, by date. Timed rides are solid dots, and rides done together or in ERG are hollow. A trend line runs through your timed rides, and your best time up each climb is listed.

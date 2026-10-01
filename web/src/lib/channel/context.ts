@@ -8,11 +8,18 @@ import type { GameState, SensorPairing, SprintState } from '$lib/protocol';
 import type { StageSource } from '$lib/channel/stage';
 import type { CrewPlan } from '$lib/crew-schedule';
 import type { FlightRecorder } from '$lib/ride/flightrecorder.svelte';
+import type { Road } from '$lib/road/road';
 
 /**
  * `StageSource` is the minimum `pickStage` needs; the channel adds what the
  * picker draws — a generation, so a fresh track remounts, and a label.
  */
+
+/**
+ * What opened the session picker: a session to start now, one to plan, or
+ * your own workout to ride beside the session (#2329).
+ */
+export type PickerIntent = 'start' | 'plan' | 'ride';
 export interface ChannelStageSource extends StageSource {
 	gen: string;
 	label: string;
@@ -39,6 +46,8 @@ export interface ChannelContext {
 	readonly riders: LiveRider[];
 	readonly you: LiveRider;
 	readonly block: Block | null;
+	/** The session's road the way the bunch rides it, and where you are on it: what the world draws (#3663). Null off one. */
+	readonly ridden: { road: Road; m: number; mps: number } | null;
 	readonly segments: Segment[];
 	readonly shared:
 		| {
@@ -57,6 +66,13 @@ export interface ChannelContext {
 	readonly phase: 'lounge' | 'countdown' | 'live';
 	/** The session's controls: the coach's, or anyone's while none is open (#2438). */
 	readonly canControl: boolean;
+	/**
+	 * The session may be driven from THIS screen (#3538): the rider may coach,
+	 * and this is not a phone watching — a phone is a read-only spectator
+	 * (WATTROOM.md). The lounge, the plan card and both training places each
+	 * spelled it as `canControl && !device.spectator`.
+	 */
+	readonly canDrive: boolean;
 	/** The crew's own things — its playlists, its calendar: its owner's and
 	 *  its admins', whoever is coaching. */
 	readonly canManage: boolean;
@@ -107,7 +123,7 @@ export interface ChannelContext {
 		userId: string,
 		name: string,
 	): { name: string; onSelect: () => void } | undefined;
-	openPicker(intent?: 'start' | 'plan'): void;
+	openPicker(intent?: PickerIntent): void;
 	openTv(): void;
 
 	/** Stage sources and the active one — the lounge's shared-screen surface. */

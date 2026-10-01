@@ -63,7 +63,7 @@
 	const pairs = [
 		{
 			title: 'Smart trainers (FTMS)',
-			body: 'Any trainer that speaks Bluetooth FTMS, which most current smart trainers do. ERG mode holds your watts; a sprint or a free ride switches it to a grade you push against.',
+			body: 'Any trainer that speaks Bluetooth FTMS, which most current smart trainers do. ERG mode holds your watts; a sprint switches it to a grade you push against, and since 24 September 2026 a free ride holds whichever you set, a grade or your watts.',
 		},
 		{
 			title: 'Heart-rate straps',

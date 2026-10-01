@@ -337,7 +337,7 @@
 			<label
 				class="mt-3 flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 {crew.boardEnabled
 					? 'border-ink/40'
-					: 'border-muted/15'}"
+					: 'border-frame'}"
 			>
 				<input
 					type="checkbox"
@@ -367,7 +367,7 @@
 			<label
 				class="mt-3 flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 {crew.listed
 					? 'border-ink/40'
-					: 'border-muted/15'}"
+					: 'border-frame'}"
 			>
 				<input
 					type="checkbox"

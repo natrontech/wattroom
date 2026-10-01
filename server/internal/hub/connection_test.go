@@ -182,7 +182,7 @@ func TestARidersRosterEntryIsOneScreen(t *testing.T) {
 	dial(t, url, "jan:owner")
 	watcher := dial(t, url, "kim:member")
 	eventually(t, "both of jan's screens joined", func() bool {
-		rm := h.room("velvet")
+		rm := h.stateOf("velvet")
 		rm.mu.Lock()
 		defer rm.mu.Unlock()
 		return len(rm.clients) == 3
@@ -191,7 +191,7 @@ func TestARidersRosterEntryIsOneScreen(t *testing.T) {
 	// The slow screen is the phone, the quick one the desk. The roster has to
 	// report 12 ms AND "desktop": taking the lowest ping from one socket and
 	// the device word from whichever the map yielded first is the bug.
-	rm := h.room("velvet")
+	rm := h.stateOf("velvet")
 	rm.mu.Lock()
 	jans := make([]*client, 0, 2)
 	for c := range rm.clients {
@@ -239,7 +239,7 @@ func TestAnUnmeasuredSocketStillNamesItsDevice(t *testing.T) {
 	jan := dial(t, url, "jan:owner")
 	watcher := dial(t, url, "kim:member")
 	eventually(t, "jan joined", func() bool {
-		rm := h.room("velvet")
+		rm := h.stateOf("velvet")
 		rm.mu.Lock()
 		defer rm.mu.Unlock()
 		return len(rm.clients) == 2
@@ -286,7 +286,7 @@ func TestADeviceWordOutsideTheSetIsNotStored(t *testing.T) {
 
 	jan := dial(t, url, "jan:owner")
 	eventually(t, "jan joined", func() bool {
-		rm := h.room("velvet")
+		rm := h.stateOf("velvet")
 		rm.mu.Lock()
 		defer rm.mu.Unlock()
 		return len(rm.clients) == 1
@@ -311,7 +311,7 @@ func TestADeviceWordOutsideTheSetIsNotStored(t *testing.T) {
 		t.Fatalf("send tablet: %v", err)
 	}
 	eventually(t, "only the known word was stored", func() bool {
-		rm := h.room("velvet")
+		rm := h.stateOf("velvet")
 		rm.mu.Lock()
 		defer rm.mu.Unlock()
 		for c := range rm.clients {

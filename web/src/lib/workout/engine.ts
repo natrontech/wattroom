@@ -24,6 +24,7 @@ export function flatten(workout: Workout): Segment[] {
 					cadenceHigh: step.cadenceHigh,
 					hrLow: step.hrLow,
 					hrHigh: step.hrHigh,
+					hrHold: step.hrHold,
 					stepPath,
 				});
 				t += step.seconds;

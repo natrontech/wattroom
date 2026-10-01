@@ -194,7 +194,7 @@
 				</ul>
 			</section>
 
-			<section class="border-muted/15 rounded-lg border p-4">
+			<section class="border-frame rounded-lg border p-4">
 				<h2 class="flex items-center gap-1.5 text-xs font-semibold">
 					<Lock size={12} /> What a profile shows
 				</h2>

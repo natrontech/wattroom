@@ -29,23 +29,24 @@
 </script>
 
 <div class="cave bg-surface text-ink flex h-screen flex-col">
-	<nav
-		class="border-muted/15 bg-surface/90 z-10 flex shrink-0 flex-wrap items-center gap-1 border-b px-4 py-2 backdrop-blur"
-	>
-		<a
-			href="/dev"
-			class="text-muted hover:text-ink mr-3 text-xs tracking-[0.2em] uppercase"
-			>dev</a
+	<!-- chrome=0: a design capture's frame, with nothing of the gallery over it (#3672). -->
+	{#if page.url.searchParams.get('chrome') !== '0'}<nav
+			class="border-frame bg-surface/90 z-10 flex shrink-0 flex-wrap items-center gap-1 border-b px-4 py-2 backdrop-blur"
 		>
-		{#each screens as screen (screen.href)}
 			<a
-				href={screen.href}
-				class="rounded px-3 py-1.5 text-sm {page.url.pathname === screen.href
-					? 'bg-surface-raised text-ink'
-					: 'text-muted hover:text-ink'}">{screen.label}</a
+				href="/dev"
+				class="text-muted hover:text-ink mr-3 inline-flex min-h-6 items-center text-xs tracking-[0.2em] uppercase"
+				>dev</a
 			>
-		{/each}
-	</nav>
+			{#each screens as screen (screen.href)}
+				<a
+					href={screen.href}
+					class="rounded px-3 py-1.5 text-sm {page.url.pathname === screen.href
+						? 'bg-surface-raised text-ink'
+						: 'text-muted hover:text-ink'}">{screen.label}</a
+				>
+			{/each}
+		</nav>{/if}
 	<div class="min-h-0 flex-1 overflow-y-auto">
 		{@render children()}
 	</div>

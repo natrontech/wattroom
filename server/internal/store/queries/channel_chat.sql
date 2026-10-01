@@ -32,8 +32,8 @@ where i.channel_id = $1
   and not exists (select 1 from chat_messages m where m.image_id = i.id);
 
 -- name: PruneChannelChat :exec
--- The 500-message bound per text channel (docs/SPEC.md), keeping the
--- channel's announcement whatever its age (ADR-0057).
+-- The bound per text channel, protocol.MaxChannelLines (docs/SPEC.md),
+-- keeping the channel's announcement whatever its age (ADR-0057).
 delete from chat_messages cm
 where cm.channel_id = $1
   and cm.id is distinct from (select announcement_id from channels where id = $1)
@@ -42,7 +42,7 @@ where cm.channel_id = $1
         select id from chat_messages
         where channel_id = $1
         order by created_at desc
-        limit 500
+        limit sqlc.arg(keep)::integer
     ) keep
 );
 

@@ -541,6 +541,29 @@
 							/>
 						</label>
 					</div>
+					<!-- HR hold (#67): only once there is a band to hold. -->
+					<!-- Shown while it is set, too, so a band cleared under a hold
+					     leaves the rider a way to take the hold off. -->
+					{#if current.hrLow !== undefined || current.hrHigh !== undefined || current.hrHold}
+						<label class="mt-3 flex items-start gap-2 text-sm">
+							<input
+								type="checkbox"
+								checked={current.hrHold ?? false}
+								onchange={(event) =>
+									((current as SteadyStep).hrHold =
+										event.currentTarget.checked || undefined)}
+								class="mt-1"
+							/>
+							<span>
+								Hold my heart rate in this band
+								<span class="text-muted block text-[11px]"
+									>The trainer moves your watts, at most 10 % of FTP either way.
+									A ceiling alone only ever lowers them. Rides alone, never
+									scored.</span
+								>
+							</span>
+						</label>
+					{/if}
 				</details>
 			{:else if current.type === 'repeat'}
 				<label class="block">

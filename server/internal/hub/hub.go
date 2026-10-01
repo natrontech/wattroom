@@ -1,5 +1,5 @@
 // Package hub owns all live voice-channel state in memory (ADR-0058): one
-// goroutine per channel (a `room` in here until #2438 splits it), clients
+// goroutine per channel (its `channelState`, #3357), clients
 // join/leave over WebSocket, and rider metrics are coalesced into one tick
 // message per channel per second (see WATTROOM.md §3). Everything here dies
 // with the process — durable data is the store's problem.
@@ -42,10 +42,6 @@ type SessionSaver interface {
 	AmendRide(ctx context.Context, channel, session, workoutName, workoutJSON string, startedAt time.Time, rider RiderRecord)
 }
 
-// MinRideSamples is the saver's threshold: fewer than a minute of samples is
-// a misclick, not a ride — the same rule the client's crash recovery uses.
-const MinRideSamples = 60
-
 // XpKeeper hears what a room did that earns XP or counts toward an
 // achievement (#467). Defined here, where it is consumed; the gamify service
 // implements it. Every call happens outside the hub's locks and must return
@@ -73,12 +69,14 @@ type SessionClosed struct {
 	Seconds int
 	At      time.Time
 	Riders  []SessionRider
+	// The road the bunch covered and climbed (#3028), 0 off a road.
+	DistanceM, ClimbedM float64
 }
 
 // SessionRider is one person the session saw — on a bike, in voice, or both.
 type SessionRider struct {
 	ID string
-	// At least MinRideSamples samples: a ride the saver keeps.
+	// At least protocol.MinRideSamples samples: a ride the saver keeps.
 	Rode bool
 	// Seconds in the voice channel while the timeline ran.
 	VoiceSeconds int
@@ -104,7 +102,10 @@ type Hub struct {
 	// so a test can shorten it for one hub.
 	keepalive keepalive
 	mu        sync.Mutex
-	rooms     map[string]*room
+	states    map[string]*channelState
+	// Open rides (#3303): one room per ride, and the id maps that outlive them.
+	openRides map[string]*openRide
+	rideIDs   *openRideIDs
 	// Session saves and recaps in flight: fire-and-forget from the tick, but
 	// not from the process — Drain waits on them before the server exits
 	// (audit 2026-09-09).
@@ -116,6 +117,8 @@ type Hub struct {
 	// Who a hub-born change concerns (#2324); nil tells everyone.
 	audiences Audiences
 	hider     Hider
+	// A picked workout's road is cut for the channel through this (#3051).
+	roads Roads
 	// What makes a finished session durable (ADR-0034). Nil = no database,
 	// and a session leaves nothing.
 	recaps RecapKeeper
@@ -151,7 +154,8 @@ func (h *Hub) SetXpKeeper(k XpKeeper) { h.xp = k }
 func New(log *slog.Logger, access Access, saver SessionSaver) *Hub {
 	h := &Hub{log: log, access: access, saver: saver, now: time.Now,
 		keepalive: keepalive{every: socketKeepalive, pong: socketPingTimeout},
-		rooms:     make(map[string]*room), voice: make(map[string]map[string]voiceEntry),
+		states:    make(map[string]*channelState), voice: make(map[string]map[string]voiceEntry),
+		openRides: make(map[string]*openRide), rideIDs: newOpenRideIDs(),
 		lobby: make(map[*lobbyClient]string), sockets: make(map[string]int),
 		holds:     make(map[string]int),
 		autoplays: make(chan autoplayJob, 64)}
@@ -162,17 +166,17 @@ func New(log *slog.Logger, access Access, saver SessionSaver) *Hub {
 	return h
 }
 
-// CloseRoom forgets everything live about a voice channel that has been
+// CloseChannel forgets everything live about a voice channel that has been
 // deleted (#618): left behind, its jukebox queue, chat buffer, session and
 // roster outlive the channel, and nobody should inherit a dead channel's state.
 //
 // Sever the sockets, stop the ticker, drop both maps keyed by the channel. Only
 // HandleWS can bring one back — which authorizes against the database first,
 // so a deleted channel cannot.
-func (h *Hub) CloseRoom(channel string) {
+func (h *Hub) CloseChannel(channel string) {
 	h.mu.Lock()
-	rm := h.rooms[channel]
-	delete(h.rooms, channel)
+	rm := h.states[channel]
+	delete(h.states, channel)
 	// Voice is keyed by the same channel and outlives the sockets (#149); left
 	// behind, it seeds the next room's roster from voiceRidersLocked.
 	delete(h.voice, channel)
@@ -186,7 +190,7 @@ func (h *Hub) CloseRoom(channel string) {
 		conns = append(conns, c.conn)
 	}
 	// Safe exactly once: the map delete above happened under h.mu, so a
-	// second CloseRoom for this channel reads a nil room and returns.
+	// second CloseChannel for this channel reads a nil room and returns.
 	close(rm.stop)
 	rm.mu.Unlock()
 	for _, conn := range conns {
@@ -201,7 +205,7 @@ func (h *Hub) CloseRoom(channel string) {
 // rider happened to reconnect.
 func (h *Hub) SetRole(channel, userID, role string) {
 	h.mu.Lock()
-	rm := h.rooms[channel]
+	rm := h.states[channel]
 	h.mu.Unlock()
 	if rm == nil {
 		return
@@ -225,7 +229,7 @@ func (h *Hub) SetRole(channel, userID, role string) {
 // for a line nobody is there to read would leak a ticker per planned session.
 func (h *Hub) SessionAnnounce(channel, verb, actor, workout string, startsAt time.Time) {
 	h.mu.Lock()
-	rm, live := h.rooms[channel]
+	rm, live := h.states[channel]
 	h.mu.Unlock()
 	if !live {
 		return
@@ -248,8 +252,12 @@ func (h *Hub) SessionAnnounce(channel, verb, actor, workout string, startsAt tim
 // is made if nobody is in it yet: the coach is on their way, and a countdown
 // nobody comes to ride ends like any other. The id is the session's, so the
 // starter can be taken to it (#2599); empty with a refusal.
-func (h *Hub) OpenSession(channel string, rider protocol.Rider, workoutName, workoutJSON string) (id, code, message string) {
-	rm := h.room(channel)
+//
+// A plan on a road rides it (#3103): route is where on the crew's cut the
+// bunch starts, looked up as routeOwner's — the planner, whose route it is
+// (ADR-0063), whoever starts it.
+func (h *Hub) OpenSession(channel string, rider protocol.Rider, workoutName, workoutJSON string, route *protocol.ControlRoute, routeOwner string) (id, code, message string) {
+	rm := h.stateOf(channel)
 	rm.mu.Lock()
 	s := rm.session
 	underWay := s.open() && s.coach == rider.ID && s.phase != "idle"
@@ -261,40 +269,46 @@ func (h *Hub) OpenSession(channel string, rider protocol.Rider, workoutName, wor
 	if underWay {
 		return "", "conflict", "You're already riding " + current + " in this channel — end it before starting " + workoutName + "."
 	}
-	for _, c := range []protocol.Control{
-		{Action: "pick", WorkoutName: workoutName, WorkoutJSON: workoutJSON},
-		{Action: "start"},
-	} {
-		if code, message := rm.control(c, rider, h.now()); code != "" {
-			return "", code, message
+	var ride *routeRide
+	if route != nil {
+		resolved, refused := h.sessionRoute(*route, workoutJSON, routeOwner)
+		if refused != nil {
+			return "", refused.Code, refused.Message
 		}
+		ride = &resolved
+	}
+	if code, message := rm.controlOn(protocol.Control{Action: "pick", WorkoutName: workoutName, WorkoutJSON: workoutJSON}, ride, rider, h.now()); code != "" {
+		return "", code, message
+	}
+	if code, message := rm.control(protocol.Control{Action: "start"}, rider, h.now()); code != "" {
+		return "", code, message
 	}
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	return rm.session.id, "", ""
 }
 
-// liveRooms copies the hub's room pointers and lets the hub's lock go, so a
+// liveChannels copies the hub's room pointers and lets the hub's lock go, so a
 // caller then takes one room's lock at a time and never holds both: the lock
 // order every read across rooms keeps, and why a metrics scrape cannot wedge
 // a tick.
-func (h *Hub) liveRooms() []*room {
+func (h *Hub) liveChannels() []*channelState {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	rooms := make([]*room, 0, len(h.rooms))
-	for _, rm := range h.rooms {
+	rooms := make([]*channelState, 0, len(h.states))
+	for _, rm := range h.states {
 		rooms = append(rooms, rm)
 	}
 	return rooms
 }
 
-func (h *Hub) room(channel string) *room {
+func (h *Hub) stateOf(channel string) *channelState {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	rm, ok := h.rooms[channel]
+	rm, ok := h.states[channel]
 	if !ok {
-		rm = newRoom(channel)
-		// One clock for the room and the hub that owns it. newRoom defaults to
+		rm = newChannelState(channel)
+		// One clock for the room and the hub that owns it. newChannelState defaults to
 		// time.Now, which is identical in production and divergent the moment
 		// either is injected: join/leave/setAway/setMetrics/fire stamp on the
 		// room's, run/sayDepartedLocked/rm.allow on the hub's, so a departure
@@ -306,15 +320,15 @@ func (h *Hub) room(channel string) *room {
 		rm.changed = func(riders []string) { h.tellChannel(channel, riders...) }
 		rm.deckIdled = func() { h.triggerAutoplay(rm, channel) }
 		rm.deckPlayed = func(ev trackEvent) { h.recordTrackEvent(channel, ev) }
-		rm.forget = func() bool { return h.forgetRoom(rm) }
+		rm.forget = func() bool { return h.forgetChannel(rm) }
 		rm.xp = h.xp
 		rm.hider = h.hider
 		rm.recaps = h.recaps
 		// Voice can be live before the first socket opens the room — seed
 		// it, unlocked: nobody else can hold this room yet.
 		rm.voiceNow = h.voiceRidersLocked(channel)
-		h.rooms[channel] = rm
-		h.launchRoom(rm)
+		h.states[channel] = rm
+		h.launchChannel(rm)
 		// Its "just played" from the log (#1432), on the worker: a DB read
 		// never happens under a lock, and a full queue simply leaves the
 		// history empty until the room plays something.
@@ -347,7 +361,7 @@ func (h *Hub) Drain(timeout time.Duration) bool {
 	}
 }
 
-// launchRoom starts the room's tick loop under supervision (#651): a panic
+// launchChannel starts the room's tick loop under supervision (#651): a panic
 // in one tick — game mode, jukebox, session close — is logged with its stack
 // and the loop relaunched, so the clock never stays dead on the riders'
 // screens while every other room rides on. Bounded by safego's budget.
@@ -356,8 +370,8 @@ func (h *Hub) Drain(timeout time.Duration) bool {
 // clock is worse than no room: the sockets stay open and every rider watches
 // a timer that will never move again (#751). Close it instead — the clients
 // reconnect, and the join builds a fresh room with a live loop.
-func (h *Hub) launchRoom(rm *room) {
+func (h *Hub) launchChannel(rm *channelState) {
 	safego.SuperviseThen(h.log, h.now, "room "+rm.channel, rm.stop,
 		func() { rm.run(h.log, h.now, h.saver) },
-		func() { h.CloseRoom(rm.channel) })
+		func() { h.CloseChannel(rm.channel) })
 }

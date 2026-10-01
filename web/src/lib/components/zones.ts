@@ -85,6 +85,18 @@ export function zoneOf(watts: number, ftp: number): number {
 }
 
 /**
+ * A ridden segment's zone, as the interval graph colours it: a sprint is 7,
+ * and a ramp is its middle (#3641 draws the same under the Skyline).
+ */
+export function zoneOfSegment(seg: Segment, ftp: number): number {
+	if (seg.kind === 'sprint') return 7;
+	const from =
+		seg.watts !== undefined ? seg.watts / ftp : (seg.fromFraction ?? 0);
+	const to = seg.watts !== undefined ? from : (seg.toFraction ?? from);
+	return zoneOf(((from + to) / 2) * ftp, ftp);
+}
+
+/**
  * Zone of one planned step at a given FTP. 0 for a repeat or a sprint — neither
  * has a single target to colour (a repeat's children carry their own, and a
  * sprint is all-out by definition).

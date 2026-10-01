@@ -1,3 +1,4 @@
+import type { PickerIntent } from '$lib/channel/context';
 import type { PlaceAddress } from '$lib/channel/address';
 import type { ChannelContext, ChannelStageSource } from '$lib/channel/context';
 import type { channelConnection } from '$lib/channel/connection.svelte';
@@ -5,6 +6,7 @@ import type { createRiders } from '$lib/channel/riders.svelte';
 import type { Segment } from '$lib/workout/types';
 import { unmeasured } from '$lib/session/sensor-status';
 import { sensors } from '$lib/sensors.svelte';
+import { device } from '$lib/device.svelte';
 
 /**
  * ADR-0020's contract, built (#686). The shell keeps the state and the places
@@ -86,7 +88,7 @@ export interface ContextDeps {
 	focusId: () => string | null;
 	setFocus: (id: string | null) => void;
 	openTv: () => void;
-	openPicker: (intent?: 'start' | 'plan') => void;
+	openPicker: (intent?: PickerIntent) => void;
 
 	/** Actions the shell owns because they need more than the connection. */
 	banOf: (userId: string, name: string) => (() => void) | undefined;
@@ -118,6 +120,9 @@ export function channelContextValue(deps: ContextDeps): ChannelContext {
 		get block() {
 			return roster.block;
 		},
+		get ridden() {
+			return roster.ridden;
+		},
 		get segments() {
 			return deps.segments();
 		},
@@ -128,7 +133,10 @@ export function channelContextValue(deps: ContextDeps): ChannelContext {
 			return deps.phase();
 		},
 		get canControl() {
-			return deps.canControl();
+			return deps.canControl() && !device.spectator;
+		},
+		get canDrive() {
+			return deps.canControl() && !device.spectator;
 		},
 		get canManage() {
 			return deps.canManage();

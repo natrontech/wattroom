@@ -9,6 +9,8 @@
 	import type { Block } from '$lib/workout/block';
 	import type { LiveRider } from '$lib/channel/types';
 	import type { Segment } from '$lib/workout/types';
+	import type { LiveStats } from '$lib/ride/live-stats.svelte';
+	import type { SkylineView } from '$lib/road/skyline';
 	import type { Snippet } from 'svelte';
 
 	// TV mode's frame (#460, #686): the fullscreen surface, the way out of it,
@@ -38,6 +40,8 @@
 		status,
 		onJoin,
 		onExit,
+		stats,
+		skyline = null,
 	}: {
 		riders: LiveRider[];
 		/** Your instrument has nothing paired to read (#2941). */
@@ -70,6 +74,10 @@
 		 *  the way in, from three metres, without leaving the TV. */
 		onJoin?: () => void;
 		onExit: () => void;
+		/** Your live numbers, for the bike computer's POWER page (#3088). */
+		stats?: LiveStats;
+		/** A ride on a road: its horizon is the Skyline (#3641). */
+		skyline?: SkylineView | null;
 	} = $props();
 
 	const you = $derived(riders.find((r) => r.you));
@@ -150,6 +158,8 @@
 			{code}
 			{live}
 			{workoutName}
+			{stats}
+			{skyline}
 		/>
 	{/if}
 </div>

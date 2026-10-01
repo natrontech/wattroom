@@ -11,11 +11,12 @@
 	import ZoneBar from '$lib/components/ZoneBar.svelte';
 	import { formatClock, formatDuration } from '$lib/format';
 	import { MEDAL_META, medalName } from '$lib/medals';
-	import { downloadRideCard } from '$lib/ride/card';
+	import { cardLabel, downloadRideCard } from '$lib/ride/card';
 	import { deleteRideAfterConfirm } from '$lib/ride/delete-ride';
 	import { fetchRide, type RideDetail } from '$lib/ride/detail';
 	import { ridePlace } from '$lib/ride/list';
 	import RideComparison from '$lib/ride/RideComparison.svelte';
+	import RideSkyline from '$lib/ride/RideSkyline.svelte';
 	import type { RideRecord } from '$lib/history.svelte';
 	import { api } from '$lib/api';
 	import {
@@ -264,7 +265,7 @@
 				class="btn btn-secondary btn-xs disabled:opacity-50"
 			>
 				<ImageDown size={13} />
-				{carding ? 'Drawing…' : 'Ride card'}
+				{carding ? 'Drawing…' : cardLabel(ride)}
 			</button>
 			<button
 				onclick={() => void downloadFit()}
@@ -350,6 +351,8 @@
 				</p>
 			{/if}
 		</section>
+
+		<RideSkyline samples={ride.samples} />
 
 		<section class="mt-3 grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
 			{#each stats as stat (stat.label)}

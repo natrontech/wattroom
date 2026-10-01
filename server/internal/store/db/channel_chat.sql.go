@@ -414,15 +414,20 @@ where cm.channel_id = $1
         select id from chat_messages
         where channel_id = $1
         order by created_at desc
-        limit 500
+        limit $2::integer
     ) keep
 )
 `
 
-// The 500-message bound per text channel (docs/SPEC.md), keeping the
-// channel's announcement whatever its age (ADR-0057).
-func (q *Queries) PruneChannelChat(ctx context.Context, channelID pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, pruneChannelChat, channelID)
+type PruneChannelChatParams struct {
+	ChannelID pgtype.UUID
+	Keep      int32
+}
+
+// The bound per text channel, protocol.MaxChannelLines (docs/SPEC.md),
+// keeping the channel's announcement whatever its age (ADR-0057).
+func (q *Queries) PruneChannelChat(ctx context.Context, arg PruneChannelChatParams) error {
+	_, err := q.db.Exec(ctx, pruneChannelChat, arg.ChannelID, arg.Keep)
 	return err
 }
 

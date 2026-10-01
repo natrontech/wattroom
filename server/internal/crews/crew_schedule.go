@@ -103,7 +103,7 @@ func (s *Service) handleCrewSchedule(w http.ResponseWriter, r *http.Request) {
 	for _, row := range rows {
 		id := store.UUIDString(row.ID)
 		entry := scheduledJSON{
-			ID: id, WorkoutName: row.WorkoutName, WorkoutJSON: string(row.WorkoutJson),
+			ID: id, WorkoutName: row.WorkoutName, WorkoutJSON: s.readable(r.Context(), row.WorkoutJson, user.ID),
 			StartsAt: row.StartsAt.Time.Format(time.RFC3339), CreatedBy: row.CreatedBy,
 			Going: going[id], Out: out[id], YourAnswer: yours[id],
 			// Never below zero: someone can answer and leave between reads.
@@ -163,6 +163,10 @@ func (s *Service) handleCrewPlan(w http.ResponseWriter, r *http.Request) {
 	if !valid {
 		return
 	}
+	route, name, ok := s.planRoad(w, r, req.WorkoutJSON, name, user.ID)
+	if !ok {
+		return
+	}
 	channel, ok := s.enterableChannel(w, r, crew.ID, user.ID, req.ChannelID)
 	if !ok {
 		return
@@ -200,7 +204,7 @@ func (s *Service) handleCrewPlan(w http.ResponseWriter, r *http.Request) {
 	}
 	row, err := q.CreateCrewPlan(r.Context(), db.CreateCrewPlanParams{
 		CrewID: crew.ID, ChannelID: channel, WorkoutName: name, WorkoutJson: []byte(req.WorkoutJSON),
-		StartsAt: pgTime(req.StartsAt), CreatedBy: user.ID,
+		StartsAt: pgTime(req.StartsAt), CreatedBy: user.ID, RouteID: route,
 	})
 	if err != nil {
 		httpx.Fail(w, s.log, "plan failed", err, "The session could not be planned. Try again.", "crew", crewID)
@@ -217,7 +221,7 @@ func (s *Service) handleCrewPlan(w http.ResponseWriter, r *http.Request) {
 	}
 	s.announceIn(r.Context(), crew.ID, channel, "planned", user.DisplayName, name, req.StartsAt)
 	out := scheduledJSON{
-		ID: store.UUIDString(row.ID), WorkoutName: row.WorkoutName, WorkoutJSON: string(row.WorkoutJson),
+		ID: store.UUIDString(row.ID), WorkoutName: row.WorkoutName, WorkoutJSON: s.readable(r.Context(), row.WorkoutJson, user.ID),
 		StartsAt: row.StartsAt.Time.Format(time.RFC3339), CreatedBy: user.DisplayName, Mine: true,
 	}
 	if channel.Valid {
@@ -404,8 +408,22 @@ func (s *Service) handleCrewStarted(w http.ResponseWriter, r *http.Request) {
 	}
 	var sessionID string
 	if s.presence != nil {
+		workoutJSON, ok := s.sessionCut(w, r, plan.WorkoutJson)
+		if !ok {
+			return
+		}
+		// On its road from its first metre (#3103), the planner's route
+		// whoever starts it.
+		var route *protocol.ControlRoute
+		if s.roads != nil {
+			var err error
+			if route, err = s.roads.CrewRoute(r.Context(), string(plan.WorkoutJson)); err != nil {
+				httpx.Fail(w, s.log, "plan road read failed", err, "The road could not be read just now. Start the session again in a moment.", "crew", store.UUIDString(crew.ID))
+				return
+			}
+		}
 		rider := protocol.Rider{ID: store.UUIDString(user.ID), Name: user.DisplayName, Role: role}
-		id, code, message := s.presence.OpenSession(store.UUIDString(channel), rider, plan.WorkoutName, string(plan.WorkoutJson))
+		id, code, message := s.presence.OpenSession(store.UUIDString(channel), rider, plan.WorkoutName, workoutJSON, route, store.UUIDString(plan.CreatedBy))
 		if code != "" {
 			status := http.StatusBadRequest
 			if code == "conflict" {

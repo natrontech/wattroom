@@ -91,7 +91,7 @@ func TestAReloadKeepsTheRiderInTheGame(t *testing.T) {
 	for _, mode := range []string{"sprint-roulette", "points-race", "team-relay"} {
 		t.Run(mode, func(t *testing.T) {
 			now := gat(0)
-			rm := newRoom("reload")
+			rm := newChannelState("reload")
 			rm.now = func() time.Time { return now }
 			if refusal := rm.startGame(mode, gameStarter, now); refusal != "" {
 				t.Fatal(refusal)
@@ -196,7 +196,7 @@ func TestLeavingRiderIsWithdrawn(t *testing.T) {
 		}
 	})
 	t.Run("the room's sprint scores the present", func(t *testing.T) {
-		rm := newRoom("sprint-leave")
+		rm := newChannelState("sprint-leave")
 		rm.session.pick("W", `{"name":"W","steps":[{"type":"steady","seconds":600,"target":0.9}]}`, 600)
 		rm.session.start(time.Unix(0, 0))
 		rm.session.state(time.Unix(20, 0))
@@ -222,7 +222,7 @@ func TestLeavingRiderIsWithdrawn(t *testing.T) {
 		}
 	})
 	t.Run("the room tells the game", func(t *testing.T) {
-		rm := newRoom("relay-leave")
+		rm := newChannelState("relay-leave")
 		if refusal := rm.startGame("team-relay", gameStarter, gat(0)); refusal != "" {
 			t.Fatal(refusal)
 		}

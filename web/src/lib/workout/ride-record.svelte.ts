@@ -1,5 +1,29 @@
 import type { GuardSample } from './guards';
 import { toleranceBand } from './guards';
+import type { RideState } from './ride-state';
+import type { Segment } from './types';
+
+/**
+ * Whether a kept second counts toward execution. SPEC excludes auto-paused
+ * time and untargeted blocks, and the grace seconds before auto-pause
+ * engages — the rider had already stopped, we simply had not noticed yet. A
+ * ramp is a warmup or a cooldown, which SPEC excludes as well: the server
+ * has always agreed (workout.TargetAt reports those seconds unscored).
+ */
+export function countsToward(second: {
+	state: RideState;
+	target: number;
+	pedalling: boolean;
+	segment: Segment | undefined;
+}): boolean {
+	return (
+		second.state === 'running' &&
+		second.target > 0 &&
+		second.pedalling &&
+		second.segment?.kind === 'steady' &&
+		!second.segment.hrHold // never scored (ADR-0008)
+	);
+}
 
 /** One ride second as recorded, for .fit export and the crash-safety buffer (#19). */
 export interface RecordedSecond {
@@ -23,6 +47,15 @@ export interface RecordedSecond {
 	 * 100 % on the summary and 93 % on the ride's own page.
 	 */
 	bias: number;
+	/**
+	 * On a road, the dot's speed this second (#3056): what tells a coasted
+	 * descent from a rider who got off when a stopped tail is trimmed.
+	 * Never uploaded — every upload names its fields.
+	 */
+	virtualMps?: number;
+	/** On a road (#3499), metres along it and the height there, as uploaded. */
+	m?: number;
+	alt?: number;
 	/**
 	 * The guard had the trainer off the target this second (#1796):
 	 * paused, counting back in, or released. The live score skips it;
@@ -91,7 +124,14 @@ export function createRideRecord(ftp: number) {
 		add(
 			at: number,
 			clock: number,
-			sample: { watts: number; cadence: number; heartRate?: number },
+			sample: {
+				watts: number;
+				cadence: number;
+				heartRate?: number;
+				virtualMps?: number;
+				m?: number;
+				alt?: number;
+			},
 			bias: number,
 			released: boolean,
 		): RecordedSecond {
@@ -105,6 +145,10 @@ export function createRideRecord(ftp: number) {
 				heartRate: Math.max(0, Math.round(sample.heartRate ?? 0)),
 				bias,
 				released,
+				...(sample.virtualMps !== undefined && {
+					virtualMps: sample.virtualMps,
+				}),
+				...(sample.m !== undefined && { m: sample.m, alt: sample.alt }),
 			};
 			recording.push(recorded);
 			// Uncapped, for the reason session/recording.svelte.ts gives: the graph

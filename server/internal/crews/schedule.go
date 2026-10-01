@@ -173,6 +173,12 @@ func checkPlan(w http.ResponseWriter, name, workoutJSON string, startsAt time.Ti
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", message, "workoutJson")
 		return "", false
 	}
+	// A plan starts a session, and a heart-rate hold rides alone (#67).
+	if err := workout.CheckRidesAlone(segments); err != nil {
+		message, _ := workout.RefusalMessage(err)
+		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", message, "workoutJson")
+		return "", false
+	}
 	// The editor's bounds too (audit 2026-09-09); the message names the step.
 	if err := workout.Validate(workoutJSON); err != nil {
 		message, ok := workout.RefusalMessage(err)

@@ -46,9 +46,13 @@
 	import {
 		onShellHandoff,
 		onShellNavigate,
+		onShellVisibility,
+		setShellBadge,
 		setShellPlace,
 		shellTitleBar,
 	} from '$lib/desktop';
+	import { sidebarUnread } from '$lib/nav/sidebar-unread';
+	import { hangUpOnHide } from '$lib/channel/hang-up-on-hide';
 	import { notify } from '$lib/notify.svelte';
 	import { toasts } from '$lib/toast.svelte';
 
@@ -210,6 +214,21 @@
 	});
 	$effect(() => {
 		onShellNavigate((to) => void goto(to));
+	});
+	// The Dock and taskbar badge (#3008): the sidebar's own unread, summed,
+	// so the icon never says something the sidebar does not. The HUD speaks
+	// for nothing, as above; signed out, nothing is waiting.
+	$effect(() => {
+		if (page.url.pathname === '/hud') return;
+		setShellBadge(
+			account.me
+				? sidebarUnread(crewLive.crews, dmHeads.heads, friends.waiting)
+				: 0,
+		);
+	});
+	// A closed desktop window hides rather than dying (#3005), and hangs up.
+	$effect(() => {
+		onShellVisibility(hangUpOnHide);
 	});
 
 	// Presence is pushed, not polled (#251): the lobby socket pings, the store

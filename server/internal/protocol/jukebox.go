@@ -120,3 +120,13 @@ type JukeboxState struct {
 	// memory, so "put that on again" is one tap and nobody retypes a link.
 	History []JukeboxEntry `json:"history"`
 }
+
+// ClampSeek bounds an untrusted playhead in seconds to 0–MaxSeekSeconds, the
+// way metrics are bounded: the live deck and a saved playlist take the same
+// clamp, so nothing a playlist accepts is refused when it is queued.
+func ClampSeek(v float64) float64 {
+	if v < 0 || v != v { // NaN guards itself
+		return 0
+	}
+	return min(v, MaxSeekSeconds)
+}

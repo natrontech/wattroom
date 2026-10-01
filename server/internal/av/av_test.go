@@ -273,7 +273,8 @@ func TestEject(t *testing.T) {
 	if err := json.Unmarshal(raw, &got); err != nil {
 		t.Fatal(err)
 	}
-	if !got.Video.RoomAdmin || got.Video.Room != "velvet" || got.Video.RoomJoin {
+	// roomList too: the same token signs the reconciler's ListRooms probe (#3710).
+	if !got.Video.RoomAdmin || !got.Video.RoomList || got.Video.Room != "velvet" || got.Video.RoomJoin {
 		t.Fatalf("admin grant: %+v", got.Video)
 	}
 }

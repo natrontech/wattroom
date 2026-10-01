@@ -4,9 +4,10 @@
 // the place.
 //
 // Every route here is its owner's: the reads are keyed by owner, so someone
-// else's route reads as absent. Sessions only — a personal token, which is how
-// a coach's AI reads rides, never reaches a route (AGENTS.md: no coordinates
-// in an AI context).
+// else's route reads as absent — except the road and the span of its map the
+// crews that ride it may read (road.go, #3096). Sessions only — a personal
+// token, which is how a coach's AI reads rides, never reaches a route
+// (AGENTS.md: no coordinates in an AI context).
 package routes
 
 import (
@@ -23,6 +24,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/natrontech/wattroom/server/internal/budget"
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/road"
 	"github.com/natrontech/wattroom/server/internal/secrets"
@@ -41,6 +43,12 @@ const (
 	maxClimbs = 32
 	// docs/SPEC.md's names: a route's, like a workout's, is 1–80 characters.
 	maxNameRunes = 80
+	// docs/SPEC.md's shelf ceilings (#3416): the routes an account keeps, and
+	// the saves one may make in a minute — the numbers custom workouts and
+	// rides already use.
+	maxRoutesPerAccount = 200
+	savesPerWindow      = 10
+	saveWindow          = time.Minute
 )
 
 // Users is who is asking. The session source, never the token one.
@@ -49,15 +57,18 @@ type Users interface {
 }
 
 type Service struct {
-	store *store.Store
-	users Users
-	keys  *secrets.Cipher
-	log   *slog.Logger
+	store  *store.Store
+	users  Users
+	keys   *secrets.Cipher
+	riding Riding
+	saves  *budget.Budget[pgtype.UUID]
+	log    *slog.Logger
 }
 
 // New takes the server's key; nil, or one not configured, stores roads only.
 func New(st *store.Store, users Users, keys *secrets.Cipher, log *slog.Logger) *Service {
-	return &Service{store: st, users: users, keys: keys, log: log}
+	return &Service{store: st, users: users, keys: keys, log: log,
+		saves: budget.New[pgtype.UUID](savesPerWindow, saveWindow)}
 }
 
 func (s *Service) Register(mux *http.ServeMux) {
@@ -67,6 +78,11 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("PATCH /api/routes/{id}", s.handleRename)
 	mux.HandleFunc("DELETE /api/routes/{id}", s.handleDelete)
 	mux.HandleFunc("GET /api/routes/{id}/shape", s.handleShape)
+	mux.HandleFunc("GET /api/routes/{id}/attempts", s.handleAttempts)
+	mux.HandleFunc("GET /api/routes/{id}/ghost", s.handleGhost)
+	mux.HandleFunc("GET /api/world", s.handleWorld)
+	mux.HandleFunc("GET /api/routes/{id}/road", s.handleRoad)
+	mux.HandleFunc("PUT /api/routes/{id}/crews/{crew}", s.handleConsent)
 }
 
 // noKeyHint is the one line a route stored without its place carries.
@@ -115,7 +131,7 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 		out = append(out, routeJSON{
 			ID: store.UUIDString(row.ID), Name: row.Name, GeneratedName: row.GenName, Src: row.Src,
 			LengthM: row.LengthM, GainM: row.GainM, Climbs: row.Climbs, HasPlace: row.HasPlace,
-			OwnerOnly: row.Src == "stravagpx", CreatedAt: row.CreatedAt.Time,
+			OwnerOnly: row.Src == stravaSrc, CreatedAt: row.CreatedAt.Time,
 		})
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"routes": out})
@@ -135,11 +151,18 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "get route failed", err, "That route could not be loaded.")
 		return
 	}
+	// The owner rides the whole road; a seal this key will not open leaves
+	// them the bare one, which still rides.
+	whole, err := WholeRoad(s.keys, row.Road, row.RoadSealed, row.KeyVersion)
+	if err != nil {
+		s.log.Warn("route road would not open", "route", store.UUIDString(row.ID), "err", err)
+		whole = row.Road
+	}
 	httpx.WriteJSON(w, http.StatusOK, routeJSON{
 		ID: store.UUIDString(row.ID), Name: row.Name, GeneratedName: row.GenName, Src: row.Src,
 		LengthM: row.LengthM, GainM: row.GainM, Climbs: row.Climbs, HasPlace: row.HasPlace,
-		OwnerOnly: row.Src == "stravagpx", CreatedAt: row.CreatedAt.Time,
-		Road: row.Road, RoadHash: row.RoadHash, EleSource: row.EleSource,
+		OwnerOnly: row.Src == stravaSrc, CreatedAt: row.CreatedAt.Time,
+		Road: whole, RoadHash: row.RoadHash, EleSource: row.EleSource,
 	})
 }
 
@@ -151,7 +174,7 @@ func (s *Service) handleShape(w http.ResponseWriter, r *http.Request) {
 	}
 	row, err := s.store.Queries.GetOwnerRoutePlace(r.Context(), db.GetOwnerRoutePlaceParams{ID: id, OwnerID: user.ID})
 	if errors.Is(err, pgx.ErrNoRows) {
-		notFound(w)
+		s.crewShape(w, r, user.ID, id)
 		return
 	}
 	if err != nil {
@@ -168,7 +191,18 @@ func (s *Service) handleShape(w http.ResponseWriter, r *http.Request) {
 			"This route's map is sealed under a key this server no longer holds. Its heights still ride.")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]string{"shape": shape})
+	// The world's secrets for the owner (#3225): the route's, and each
+	// private region's with where it lies — nobody else is ever sent these.
+	key, err := s.worldKey(r.Context())
+	if err != nil {
+		httpx.Fail(w, s.log, "world key read failed", err, "That route's map could not be loaded.")
+		return
+	}
+	route := store.UUIDString(id)
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{
+		"shape": shape, "secret": key.RouteSecret(route),
+		"regions": hiddenEnds(key, route, float64(row.LengthM)),
+	})
 }
 
 func (s *Service) handleRename(w http.ResponseWriter, r *http.Request) {

@@ -835,6 +835,37 @@ func (q *Queries) GetRideForUpload(ctx context.Context, id pgtype.UUID) (GetRide
 	return i, err
 }
 
+const getRideRoad = `-- name: GetRideRoad :one
+select coalesce(rt.gen_name, '')::text as gen_name,
+       coalesce(rt.ele_source, '')::text as ele_source,
+       r.distance_m
+from rides r
+left join routes rt on rt.id = r.route_id
+where r.id = $1 and r.user_id = $2
+`
+
+type GetRideRoadParams struct {
+	ID     pgtype.UUID
+	UserID pgtype.UUID
+}
+
+type GetRideRoadRow struct {
+	GenName   string
+	EleSource string
+	DistanceM *int32
+}
+
+// The road a ride rode, for its card and page (#3142): the route's generated
+// name — never the owner's rename (#3055) — where its heights came from, and
+// the ride's metres on it. A ride on no road, or on a route since deleted,
+// answers two empty strings; the metres stay while the ride does.
+func (q *Queries) GetRideRoad(ctx context.Context, arg GetRideRoadParams) (GetRideRoadRow, error) {
+	row := q.db.QueryRow(ctx, getRideRoad, arg.ID, arg.UserID)
+	var i GetRideRoadRow
+	err := row.Scan(&i.GenName, &i.EleSource, &i.DistanceM)
+	return i, err
+}
+
 const getRideSamples = `-- name: GetRideSamples :one
 select samples from rides where id = $1 and user_id = $2
 `
@@ -1181,6 +1212,8 @@ select distinct date_trunc('week', started_at at time zone $1::text)::date as we
 from rides
 where user_id = $2
   and ($3::uuid is null or rides.id <> $3)
+  and date_trunc('week', started_at at time zone $1::text)
+      >= date_trunc('week', created_at at time zone $1::text) - interval '1 week'
 order by week desc
 limit 60
 `
@@ -1207,6 +1240,10 @@ type ListUserRideWeeksParams struct {
 // row is already in the table, so its own week came back and the bonus was
 // one week too high. Excluding the ride rather than the week is the same
 // question save asks — a second ride the same week still counts.
+// A ride counts only when it started no earlier than the week before the one
+// it was saved in (#3514): a back-dated upload is kept, and builds no streak
+// — ten one-minute uploads dated a week apart bought a 10-week streak whose
+// bonus every session ride then paid outside the upload ceiling.
 func (q *Queries) ListUserRideWeeks(ctx context.Context, arg ListUserRideWeeksParams) ([]pgtype.Date, error) {
 	rows, err := q.db.Query(ctx, listUserRideWeeks, arg.Tz, arg.UserID, arg.ExceptID)
 	if err != nil {
@@ -1514,6 +1551,43 @@ func (q *Queries) RideOverlaps(ctx context.Context, arg RideOverlapsParams) (boo
 	var column_1 bool
 	err := row.Scan(&column_1)
 	return column_1, err
+}
+
+const routeNumbersOfRides = `-- name: RouteNumbersOfRides :many
+select rides.id, r.length_m, r.gain_m
+from rides
+join routes r on r.id = rides.route_id
+where rides.id = any($1::uuid[])
+`
+
+type RouteNumbersOfRidesRow struct {
+	ID      pgtype.UUID
+	LengthM int32
+	GainM   int32
+}
+
+// The generated name's numbers for the road rides on one page of MCP's
+// list_rides (#3054, ADR-0063): the route's length and gain, which every
+// surface may carry, and never its name, its id or the ride's own metres. A
+// ride whose route was deleted has none.
+func (q *Queries) RouteNumbersOfRides(ctx context.Context, ids []pgtype.UUID) ([]RouteNumbersOfRidesRow, error) {
+	rows, err := q.db.Query(ctx, routeNumbersOfRides, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RouteNumbersOfRidesRow
+	for rows.Next() {
+		var i RouteNumbersOfRidesRow
+		if err := rows.Scan(&i.ID, &i.LengthM, &i.GainM); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const setRideCriticalPower = `-- name: SetRideCriticalPower :exec
