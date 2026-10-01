@@ -172,6 +172,9 @@ func (rm *channelState) tickLocked(now func() time.Time, dt time.Duration, savin
 		rm.session.bunch.leader = rm.bunchLeaderLocked()
 	}
 	rm.session.rideBunch(now())
+	if b := rm.session.bunch; b != nil && state.Phase == "running" {
+		b.track(state.Elapsed)
+	}
 	rm.settleRoadsideLocked()
 	rm.sayPhaseLocked(state, now())
 	// Whoever has been gone longer than the grace window (#984). The tick

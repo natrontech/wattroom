@@ -69,7 +69,7 @@ func (rm *channelState) closeLocked(state protocol.SessionState, now time.Time, 
 				start := riderStart(end.startedAt, samples)
 				rm.savedStarts[id] = start
 				rr := RiderRecord{Rider: rm.seen[id], Samples: samples, StartedAt: start}
-				if r := rm.ridden; r != nil {
+				if r := rm.recorderLocked(); r != nil {
 					rr.Samples = r.stamp(id, rr.Samples, rm.session.route)
 					rr.Road = r.recordRoad(id, rm.session.route)
 				}

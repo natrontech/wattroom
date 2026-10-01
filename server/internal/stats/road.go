@@ -226,12 +226,13 @@ func SetHow(row *db.CreateRideParams, mode, workoutJSON string, onRoad bool, dri
 	row.Timeable = Timeable(mode, workoutJSON, onRoad, drive, shelter)
 }
 
-// SetSessionRoad writes the road a session rider's own watts carried them
-// along (#3722): the session's route while it is still stored — the coach's,
-// whose generated name the channel was already shown — its road's hash as
-// both key and served road, the rider's metres on it, and the air they were
-// sheltered from. It answers how SetHow should read the drive: "Don't make me
-// shift", or the grade driving the trainer, in SIM or through gears alike.
+// SetSessionRoad writes the road a session carried a rider along — a race's
+// (#3722) or a bunch's (#3738): the session's route while it is still stored
+// — the coach's, whose generated name the channel was already shown — its
+// road's hash as both key and served road, the rider's metres on it, and the
+// air they were sheltered from. It answers how SetHow should read the drive:
+// "Don't make me shift", or the grade driving the trainer, in SIM or through
+// gears alike.
 func SetSessionRoad(row *db.CreateRideParams, rr hub.RecordRoad, stored bool) (drive string) {
 	if id, err := store.ParseUUID(rr.RouteID); err == nil && stored {
 		row.RouteID = id
@@ -239,8 +240,12 @@ func SetSessionRoad(row *db.CreateRideParams, rr hub.RecordRoad, stored bool) (d
 	key := rr.RoadHash
 	row.RouteKey, row.RoadH = &key, &key
 	row.FromM, row.DistanceM, row.ClimbedM = metres(rr.FromM), metres(rr.DistanceM), metres(rr.ClimbedM)
-	shelter := float32(rr.MeanShelter)
-	row.MeanShelter = &shelter
+	// A race's shelter is the hub's; a bunch's is not computed, and a
+	// shelter nobody measured is not 0 (#3738).
+	if !rr.Towed {
+		shelter := float32(rr.MeanShelter)
+		row.MeanShelter = &shelter
+	}
 	if rr.ErgByRoad {
 		return DriveERGByRoad
 	}

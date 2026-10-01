@@ -34,7 +34,7 @@ type raceRun struct {
 	ergByRoad map[string]bool
 	// Each racer's metres from km 0 at the end of each timeline second, for
 	// the record their saved ride keeps (#3722).
-	trail map[string][]float64
+	trail trail
 	// When the coach neutralised it; zero while it races.
 	heldAt time.Time
 	// The second last stepped, and whether the leader was within
@@ -55,6 +55,25 @@ func newRaceRun(profile road.Road, now time.Time) *raceRun {
 func (rm *channelState) raceLocked() *raceRun {
 	if r := raceOf(rm.game); r != nil && rm.session.game == modeRace {
 		return r
+	}
+	return nil
+}
+
+// roadRecorder is what stands a closed session's records on its road: the
+// race the run rode, or the session's bunch (#3738).
+type roadRecorder interface {
+	stamp(riderID string, samples []protocol.RiderMetrics, route *routeRide) []protocol.RiderMetrics
+	recordRoad(riderID string, route *routeRide) *RecordRoad
+}
+
+// recorderLocked is the run's road recorder, nil off a road. Caller holds
+// rm.mu.
+func (rm *channelState) recorderLocked() roadRecorder {
+	if rm.ridden != nil {
+		return rm.ridden
+	}
+	if rm.session.bunch != nil {
+		return rm.session.bunch
 	}
 	return nil
 }
@@ -81,7 +100,7 @@ func (r *raceRun) due(now time.Time) bool {
 func (r *raceRun) line(field []protocol.Rider, ergByRoad map[string]bool) {
 	entrants := make([]race.Entrant, 0, len(field))
 	r.names, r.ergByRoad = make(map[string]string, len(field)), make(map[string]bool, len(field))
-	r.trail = make(map[string][]float64, len(field))
+	r.trail = make(trail, len(field))
 	for _, rider := range field {
 		entrants = append(entrants, r.enter(rider, ergByRoad[rider.ID]))
 	}
@@ -276,25 +295,14 @@ func (r *raceRun) placeOf(riderID string) float64 {
 }
 
 // track writes down where each racer is at the end of the timeline second
-// just ridden (#3722) — the tick at second e has ridden second e-1 — and
-// whether any of their screens holds the watts now. Each racer's trail is
-// filled forward over a second no tick wrote, so it never goes back.
+// just ridden (#3722), and whether any of their screens holds the watts now.
+// A racer's place never goes back, so neither does their trail.
 func (r *raceRun) track(elapsed int, clients map[*client]struct{}, now time.Time) {
 	if r.race == nil {
 		return
 	}
-	second := max(elapsed-1, 0)
 	for id := range r.names {
-		trail := r.trail[id]
-		for len(trail) <= second {
-			last := 0.0
-			if len(trail) > 0 {
-				last = trail[len(trail)-1]
-			}
-			trail = append(trail, last)
-		}
-		trail[second] = r.placeOf(id)
-		r.trail[id] = trail
+		r.trail.write(id, elapsed, r.placeOf(id))
 	}
 	// "Don't make me shift" while racing untimes the ride (ADR-0084):
 	// WattRoom chose the watts for that stretch. The neutral zone, and a
@@ -317,12 +325,11 @@ func (r *raceRun) track(elapsed int, clients map[*client]struct{}, now time.Time
 // second would be timed that much fast. The samples are in Clock order
 // (inOrder). Those of a rider the race never lined up are left as they came.
 func (r *raceRun) stamp(riderID string, samples []protocol.RiderMetrics, route *routeRide) []protocol.RiderMetrics {
-	trail, in := r.trail[riderID]
-	if !in || route == nil || len(samples) == 0 {
+	if _, in := r.trail.at(riderID, 0); !in || route == nil || len(samples) == 0 {
 		return samples
 	}
 	at := func(s protocol.RiderMetrics) protocol.RiderMetrics {
-		m := trail[min(max(s.Clock, 0), len(trail)-1)]
+		m, _ := r.trail.at(riderID, s.Clock)
 		s.M, s.Alt = route.storedM(m), r.profile.HeightAt(m)
 		return s
 	}

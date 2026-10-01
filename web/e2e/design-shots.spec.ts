@@ -7,6 +7,7 @@ import {
 	designCrew,
 	fixtureRoad,
 	joinCrew,
+	newestRide,
 	planTwo,
 	readRoad,
 	savedRide,
@@ -545,6 +546,22 @@ surface('ride-detail', async (s) => {
 			name: `ride-detail-road${suffix}`,
 		});
 	}
+	// A crew session's ride on a road (#3738): the session saves it with its
+	// road, so its page draws the road as a solo road ride's does. No world:
+	// the session is here for the ride it saves, past the minute one is kept.
+	const started = Date.now() - 5_000;
+	const { coach } = await session(s, { road: ROADS.hairpin.name }, false);
+	try {
+		await coach.page.waitForTimeout(70_000);
+	} finally {
+		await endSession(coach.page);
+	}
+	await coach.page
+		.getByRole('dialog', { name: 'Session summary' })
+		.waitFor({ timeout: 30_000 });
+	await page(s, coach, `/history/${await newestRide(coach.page, started)}`, {
+		name: 'ride-detail-session-road',
+	});
 });
 
 surface('poster', async (s) => {
