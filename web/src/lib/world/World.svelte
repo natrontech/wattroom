@@ -16,6 +16,7 @@
 	import type { Style } from './styles';
 	import { syntheticGpx } from './synthetic';
 	import { generate, type World } from './world';
+	import { devCrew } from '../../routes/(app)/dev/world/crew';
 	import type { WorldMoment } from '../../routes/(app)/dev/world/moment';
 
 	let {
@@ -112,6 +113,7 @@
 						camera,
 						watts,
 						ftp: profile.current.ftp,
+						riders: devCrew(watts, profile.current.ftp),
 						speedup,
 						moment: moment ? { m: moment.m, p: moment.p } : undefined,
 						onTick: (next) => (hud = next),

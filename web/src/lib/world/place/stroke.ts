@@ -43,7 +43,11 @@ function before(a: Uint8Array, b: Uint8Array): boolean {
 }
 
 /** The road's centreline at every part, from its turns alone, heading 0 at its start. */
-function walk(road: Road): { x: Float64Array; z: Float64Array; part: number } {
+export function walk(road: Road): {
+	x: Float64Array;
+	z: Float64Array;
+	part: number;
+} {
 	const steps = road.turns.length;
 	const part = roadStep(road) / PARTS;
 	const x = new Float64Array(steps * PARTS + 1);

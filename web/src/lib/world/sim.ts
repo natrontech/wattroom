@@ -5,6 +5,7 @@ import { PaceDefaultCdA } from '$lib/protocol';
 import { createPace, type Pace } from '$lib/road/pace';
 import { type Route } from '$lib/road/route';
 import { at } from '$lib/road/along';
+import { damp } from '$lib/motion/damp';
 
 // What the trainer is told. Zwift's default "trainer difficulty" halves the
 // grade so a 12 % ramp does not stall a rider on a direct-drive; descents
@@ -29,18 +30,11 @@ export type SimRider = {
 	/** Where the last whole second left the rider, and how far into the next. */
 	at: number;
 	into: number;
+	/** How a stand-in rides: its watts on this grade at this time. Only the dev gallery has them. */
+	ride?: (r: SimRider, grade: number, t: number) => number;
 };
 
 export type Env = { difficulty: number };
-
-// A bot rides like a person: harder on climbs, soft on descents, a little noise.
-export function botWatts(r: SimRider, grade: number, t: number): number {
-	const push =
-		grade > 2 ? 1.05 + Math.min(0.15, grade / 60) : grade < -3 ? 0.35 : 0.82;
-	const wobble =
-		1 + 0.06 * Math.sin(t / 7 + r.mass) + 0.03 * Math.sin(t / 1.7 + r.ftp);
-	return r.ftp * push * wobble;
-}
 
 export function advance(
 	route: Route,
@@ -54,7 +48,7 @@ export function advance(
 		// frames of a sixth sum to 0.999…, so a second is whole a hair early.
 		for (r.into += dt; r.into > 1 - 1e-9; r.into -= 1) {
 			const g = at(route, r.at).grade;
-			if (!r.you) r.watts = botWatts(r, g, t);
+			if (r.ride) r.watts = r.ride(r, g, t);
 			const before = r.pace.distance;
 			r.pace.step(r.watts, g, r.mass, PaceDefaultCdA, 0);
 			r.at += r.pace.distance - before;
@@ -71,33 +65,48 @@ export function trainerFor(route: Route, r: SimRider, env: Env): number {
 	return trainerGrade(at(route, r.d).grade, env.difficulty);
 }
 
-// You, on your own FTP, and a small crew, a few wheels apart so the camera
-// sees you and them.
-export function defaultRiders(watts: number, ftp: number): SimRider[] {
-	const mk = (
-		id: string,
-		name: string,
-		mass: number,
-		ftp: number,
-		i: number,
-	): SimRider => ({
-		id,
-		name,
-		mass,
-		ftp,
-		you: i === 0,
-		watts: i === 0 ? watts : 0,
-		d: i * 7,
-		v: 8,
-		lap: 0,
-		pace: createPace(8),
-		at: i * 7,
-		into: 0,
-	});
-	return [
-		mk('you', 'You', 80, ftp, 0),
-		mk('sven', 'Sven', 74, 270, 1),
-		mk('mia', 'Mia', 61, 215, 2),
-		mk('tom', 'Tom', 92, 300, 3),
-	];
+/** A rider on the road, `d` metres along it, rolling at 8 m/s. */
+export function simRider(o: {
+	id: string;
+	name: string;
+	mass: number;
+	ftp: number;
+	you: boolean;
+	watts: number;
+	d: number;
+}): SimRider {
+	return { ...o, v: 8, lap: 0, pace: createPace(8), at: o.d, into: 0 };
+}
+
+/** Where a ride has you on its road: metres from the road's first sample, and metres a second. */
+export type RideMetre = { m: number; mps: number };
+
+/** A metre further off than this is a start or a seek: the figure goes there at once. */
+const JUMP_M = 50;
+/** The half-life, in seconds, in which the figure settles onto the ride's metre. */
+const SETTLE_S = 0.3;
+
+/**
+ * Your figure on the ride's own metre (#3663). The ride says where you are
+ * once a second; between its seconds the figure rolls on at the ride's
+ * speed and eases onto each new metre as it lands, so it stands where the
+ * Skyline's dot does and never jumps. It reads the ride and writes nothing
+ * back — rendering never drives the trainer.
+ */
+export function followMetre() {
+	let last = NaN;
+	let since = 0;
+	return (r: SimRider, ride: RideMetre, real: number) => {
+		if (ride.m !== last) {
+			last = ride.m;
+			since = 0;
+		} else since += real;
+		const target = ride.m + ride.mps * Math.min(since, 1);
+		r.d =
+			Math.abs(target - r.d) > JUMP_M
+				? target
+				: r.d + (target - r.d) * damp(SETTLE_S, real);
+		r.at = r.d;
+		r.v = ride.mps;
+	};
 }

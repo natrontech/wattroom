@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { openAWorkoutOnARoad } from './route';
 import { signInTo } from './signin';
 
 /**
@@ -9,7 +10,7 @@ import { signInTo } from './signin';
  */
 
 /**
- * A solo ride with the world on and 3D chosen, so a runner asking for reduced
+ * A solo workout on a road with the world on and 3D chosen, so a runner asking for reduced
  * motion still draws it, up to the moment the world first draws — and with
  * `lose`, its GPU context lost right then, in the page and in the same
  * breath: a runner without a GPU misses its frames and leaves for the flat
@@ -26,6 +27,9 @@ async function rideInTheWorld(page: Page, lose = false) {
 		);
 	});
 	await signInTo(page, '/ride');
+	// Landed: the sign-in's bounce back to /ride would otherwise overtake the importer.
+	await page.getByRole('button', { name: 'Ride simulated' }).waitFor();
+	await openAWorkoutOnARoad(page);
 	await page.getByRole('button', { name: 'Ride simulated' }).click();
 	await page.getByRole('button', { name: 'Start the ride' }).click();
 	await expect(page.getByRole('button', { name: 'End ride' })).toBeVisible({

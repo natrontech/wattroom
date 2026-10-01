@@ -100,7 +100,8 @@
 	// and a world that cannot draw, or stops, leaves the slots as they were
 	// until the rider asks for 3D again (#3080).
 	const world = createWorldView();
-	const inWorld = $derived(world.on);
+	// Only on a session that rides a road (ADR-0066, #3663).
+	const inWorld = $derived(world.on && !!channel.ridden);
 	const rideWorld = () =>
 		import('$lib/world/RideWorld.svelte').catch((err: unknown) => {
 			console.error('world: the renderer did not load', err);
@@ -236,13 +237,17 @@
 	{/snippet}
 	{#snippet road()}
 		{#await rideWorld() then { default: RideWorld }}
-			<RideWorld
-				watts={channel.you.watts}
-				ftp={channel.you.ftp}
-				paused={inFocus === 'media'}
-				onfail={world.fail}
-				onflat={world.flatten}
-			/>
+			{#if channel.ridden}
+				<RideWorld
+					road={channel.ridden.road}
+					metre={() => channel.ridden ?? { m: 0, mps: 0 }}
+					watts={channel.you.watts}
+					ftp={channel.you.ftp}
+					paused={inFocus === 'media'}
+					onfail={world.fail}
+					onflat={world.flatten}
+				/>
+			{/if}
 		{/await}
 	{/snippet}
 	<RidingSurface
@@ -263,7 +268,7 @@
 					aside={inWorld ? undefined : trainerCard}
 					controls={inWorld ? undefined : sessionControls}
 				/>
-				{#if world.reason}
+				{#if channel.ridden && world.reason}
 					<FlatRoad reason={world.reason} onretry={world.retry} />
 				{/if}
 			</div>

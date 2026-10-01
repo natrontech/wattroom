@@ -1,4 +1,5 @@
 import { expect, test, textPath, voicePath } from './crew';
+import { openAWorkoutOnARoad } from './route';
 
 /**
  * The kit's icon button, where a call site had typed its own (#2170).
@@ -162,7 +163,8 @@ test('Try 3D again, on a ride held on the flat road, is riding size (#3080)', as
 		localStorage.setItem('wattroom.world-slot.v1', '1');
 		localStorage.setItem('wattroom.flat-road.v1', '1');
 	});
-	await rider.goto('/ride');
+	// Only a ride on a road has a world to hold on the flat road (#3663).
+	await openAWorkoutOnARoad(rider);
 	await rider.getByRole('button', { name: 'Ride simulated' }).click();
 	await rider.getByRole('button', { name: 'Start the ride' }).click();
 	const retry = rider.getByRole('button', { name: 'Try 3D again' });

@@ -42,3 +42,15 @@ export async function importARoute(page: Page): Promise<string> {
 	};
 	return routes[0]?.id ?? '';
 }
+
+/**
+ * Opens a workout on a freshly stored road: since #3663 the only ride that
+ * draws a world, because a ride with no road has none to draw.
+ */
+export async function openAWorkoutOnARoad(
+	page: Page,
+	workout = 'openers',
+): Promise<void> {
+	const road = await importARoute(page);
+	await page.goto(`/ride?w=${workout}&road=${road}`);
+}

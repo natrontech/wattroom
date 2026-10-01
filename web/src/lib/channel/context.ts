@@ -8,6 +8,7 @@ import type { GameState, SensorPairing, SprintState } from '$lib/protocol';
 import type { StageSource } from '$lib/channel/stage';
 import type { CrewPlan } from '$lib/crew-schedule';
 import type { FlightRecorder } from '$lib/ride/flightrecorder.svelte';
+import type { Road } from '$lib/road/road';
 
 /**
  * `StageSource` is the minimum `pickStage` needs; the channel adds what the
@@ -45,6 +46,8 @@ export interface ChannelContext {
 	readonly riders: LiveRider[];
 	readonly you: LiveRider;
 	readonly block: Block | null;
+	/** The session's road the way the bunch rides it, and where you are on it: what the world draws (#3663). Null off one. */
+	readonly ridden: { road: Road; m: number; mps: number } | null;
 	readonly segments: Segment[];
 	readonly shared:
 		| {

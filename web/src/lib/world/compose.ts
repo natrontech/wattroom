@@ -10,7 +10,15 @@ import { makeRig, type Follow } from './rig';
 import { GEO } from './rider-rig';
 import { type Route } from '$lib/road/route';
 import { at } from '$lib/road/along';
-import { advance, botWatts, defaultRiders, trainerFor, type Env } from './sim';
+import {
+	advance,
+	followMetre,
+	simRider,
+	trainerFor,
+	type Env,
+	type RideMetre,
+	type SimRider,
+} from './sim';
 import { buildStage, summitOf, type Stage } from './stage';
 import { placeGrids } from './chunks/grids';
 import { streamGround, type GotGrid, type Grids } from './ground-stream';
@@ -41,6 +49,14 @@ export type MountOptions = {
 	onTick?: (hud: Hud) => void; // a few times a second, while the loop runs
 	/** Once, when a world that started stops: rideView() takes it from there (#3080). */
 	onFail?: (why: Failure) => void;
+	/** Who rides, you among them: the dev gallery's crew. Absent, you ride alone. */
+	riders?: SimRider[];
+	/**
+	 * The ride's own place on its road, a ride's world only (#3663): your
+	 * figure rides it, and the world moves nobody of its own and tells the
+	 * ride nothing.
+	 */
+	metre?: () => RideMetre;
 	/** Where the streamed ground's chunks come from: the page's copy, then the build worker (#3606). */
 	grids?: (got: GotGrid) => Grids;
 	/**
@@ -65,8 +81,21 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	let mode: CameraMode = opts.camera ?? 'chase';
 	let speedup = opts.speedup ?? 1;
 	const env: Env = { difficulty: 0.5 };
-	const riders = defaultRiders(opts.watts ?? 200, opts.ftp);
+	const riders = opts.riders ?? [
+		simRider({
+			id: 'you',
+			name: 'You',
+			mass: 80,
+			ftp: opts.ftp,
+			you: true,
+			watts: opts.watts ?? 200,
+			d: 0,
+		}),
+	];
 	const you = riders.find((r) => r.you) ?? riders[0];
+	// On a ride your figure is the ride's; only the gallery's crew is stepped here.
+	const stepped = opts.metre ? riders.filter((r) => r !== you) : riders;
+	const follow = followMetre();
 	const pedal: Pedalling[] = riders.map(() => ({
 		crank: 0,
 		wheel: 0,
@@ -78,7 +107,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		riders.forEach((r, i) => {
 			r.d = r.at = moment.m + r.d;
 			// A stand-in rides the watts its model gives it there, so its ring shows a zone.
-			if (!r.you) r.watts = botWatts(r, at(route, r.d).grade, moment.m);
+			if (r.ride) r.watts = r.ride(r, at(route, r.d).grade, moment.m);
 			pedal[i].crank = (r.d / CRANK_M) * 2 * Math.PI;
 			pedal[i].wheel = r.d / GEO.wheelR;
 		});
@@ -159,7 +188,8 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		t += dt;
 		sight.uTime.value += real;
 		const n = Math.max(1, Math.ceil(dt / SUBSTEP));
-		for (let k = 0; k < n; k++) advance(route, riders, dt / n, t);
+		for (let k = 0; k < n; k++) advance(route, stepped, dt / n, t);
+		if (opts.metre) follow(you, opts.metre(), real);
 		const me = crew.update(route, pedal, dt, real, mode === 'orbit');
 		if (controls) controls.update();
 		else rig.update(camera, mode === 'heli' ? 'heli' : 'chase', you, me, real);

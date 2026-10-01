@@ -16,7 +16,7 @@ import {
 
 export const EXAG = 1.2; // vertical exaggeration; the Alps read flat from a chase cam otherwise
 export { ROAD_W } from './terrain/road-profile';
-const ROAD_LIFT = 0.12;
+export const ROAD_LIFT = 0.12;
 
 export const yOf = (route: Route, ele: number) => (ele - route.minEle) * EXAG;
 

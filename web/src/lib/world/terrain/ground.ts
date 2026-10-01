@@ -22,6 +22,12 @@ const CUT = 1.0; // 1:1 cut slope
 const FILL = 0.667; // 1.5:1 fill slope
 export const SUBGRADE = 0.45; // ground under the road sits this far below the surface
 const EARTHWORKS_M = 60;
+/**
+ * The drawn ground within this of a road never stands over that road's own
+ * cutting: a 10 m grid cell's triangle across the carriageway reaches about
+ * 17 m out (#3709).
+ */
+const SHELF_M = 20;
 /** Every road's cut and fill bound the ground out to here; past it no natural ground is 267 m below a road. */
 const CONE_M = 400;
 /** How far out the natural ground's relief keeps rising from a road. */
@@ -189,6 +195,21 @@ export function makeGround(given: readonly Line[], opts: GroundOpts) {
 		return smoothClamp(ground, lower, upper, 1.5);
 	}
 
+	/**
+	 * The ground as it is drawn (#3709): heightAt, but within SHELF_M of a
+	 * road never above that road's own cutting. Where two roads agree that
+	 * is heightAt already; where legs stacked closer than their earthworks
+	 * allow disagree, heightAt splits the difference, and a triangle drawn
+	 * across the lower road would bury it.
+	 */
+	function drawnAt(x: number, z: number): number {
+		const h = heightAt(x, z);
+		const hit = index.nearest(x, z, 1);
+		if (!hit || hit.d >= SHELF_M) return h;
+		const dd = Math.max(0, hit.d - FORMATION);
+		return Math.min(h, hit.h - SUBGRADE + CUT * Math.max(0, dd - BENCH));
+	}
+
 	/** Metres to the nearest road, read between 40 m lattice points: a cheap first cut. */
 	const roadDist = dist;
 
@@ -210,6 +231,7 @@ export function makeGround(given: readonly Line[], opts: GroundOpts) {
 
 	return {
 		heightAt,
+		drawnAt,
 		roadSurfaceAt,
 		roadDist,
 		clearOf,
