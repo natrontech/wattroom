@@ -39,7 +39,7 @@
 	{/each}
 	<span
 		data-testid="climb-dot"
-		class="bg-ink ring-surface absolute -translate-x-1/2 translate-y-1/2 rounded-full ring-2 forced-color-adjust-none forced-colors:bg-[Highlight] {tv
+		class="bg-ink border-surface absolute -translate-x-1/2 translate-y-1/2 rounded-full border-2 forced-color-adjust-none forced-colors:bg-[Highlight] {tv
 			? 'size-[3vh]'
 			: 'size-5'}"
 		style:left="{along}%"
