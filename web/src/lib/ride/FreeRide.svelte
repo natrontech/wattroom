@@ -252,6 +252,7 @@
 					{...road && roadContext(road)}
 					split={ghost.split ?? undefined}
 					{climb}
+					climbOpens
 					gear={!watts && conn && gearsEnabled()
 						? conn.ride.gear.label
 						: undefined}

@@ -251,6 +251,7 @@
 			{...free.road && roadContext(free.road)}
 			split={ghost.split ?? undefined}
 			{climb}
+			climbOpens
 		/>
 		{#if skyline}
 			<!-- The horizon (#3059): the road ahead and your dot. -->

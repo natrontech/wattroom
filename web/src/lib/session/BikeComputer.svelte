@@ -29,25 +29,21 @@
 	let {
 		tv = false,
 		phone = false,
-		docked = false,
+		climbOpens = false,
 		...ctx
 	}: ComputerContext & {
 		/** At three metres, sized in vh (TvMode). */
 		tv?: boolean;
 		/** A phone in the hand: a 3×2 grid. */
 		phone?: boolean;
-		/** In a world's numbers dock (#3668): one narrow column under the watts. */
-		docked?: boolean;
+		/** A free or route ride, where CLIMB opens by itself (ADR-0071 as amended). */
+		climbOpens?: boolean;
 	} = $props();
 
 	let page = $state<ComputerPage>('ride');
 	const pages = $derived(pagesFor(ctx));
 	const shown = $derived(pages.includes(page) ? page : 'ride');
-	// Docked, CLIMB keeps the two numbers its column holds side by side: the
-	// average left is the Skyline's to draw, just beneath (#3645).
-	const fields = $derived(
-		fieldsFor(shown, ctx).filter((f) => !(docked && f.key === 'avgLeft')),
-	);
+	const fields = $derived(fieldsFor(shown, ctx));
 	const turns = $derived(pages.length > 1);
 
 	function turn(dir: 1 | -1) {
@@ -66,7 +62,7 @@
 			? 'grid grid-cols-3 gap-x-3 gap-y-2'
 			: tv
 				? 'flex flex-wrap items-start gap-x-[2.5vw] gap-y-[2vh]'
-				: `flex flex-wrap items-start ${docked ? 'gap-x-4' : 'gap-x-6'} gap-y-3`,
+				: 'flex flex-wrap items-start gap-x-6 gap-y-3',
 	);
 
 	// The gear pulses once when it changes (ADR-0084), never on arrival.
@@ -79,13 +75,14 @@
 		pulse(gearField);
 	});
 
-	// CLIMB opens by itself from RIDE when a climb begins (ADR-0071, #3645),
-	// once a climb: a rider on another page chose it, and a chip says where
-	// the climb is instead; one who paged away from CLIMB is not pulled back.
+	// On a free or route ride CLIMB opens by itself from RIDE when a climb
+	// begins (ADR-0071 as amended, #3645), once a climb: a rider on another
+	// page chose it, and a chip says where the climb is instead; one who paged
+	// away from CLIMB is not pulled back. A workout keeps RIDE, and its chip.
 	let openedFor: number | null = null;
 	$effect(() => {
 		const climb = ctx.climb?.climb.startM ?? null;
-		if (climb === null || climb === openedFor) return;
+		if (!climbOpens || climb === null || climb === openedFor) return;
 		openedFor = climb;
 		if (untrack(() => shown) === 'ride') page = 'climb';
 	});
@@ -113,16 +110,15 @@
 	     one row tall where it fits and the focus above keeps its height (#3597);
 	     a phone's grid puts them above and below. -->
 	{#snippet name()}
-		<!-- CLIMB's name counts the climbs, its class the Skyline's chip; a
-		     docked column has room for neither the count nor both on one line. -->
+		<!-- CLIMB's name counts the climbs, its class the Skyline's chip. -->
 		{@const climb = shown === 'climb' ? ctx.climb : null}
 		<p
-			class="{size.word} text-muted flex flex-wrap items-center gap-x-3 gap-y-1 leading-none whitespace-nowrap {phone
+			class="{size.word} text-muted flex items-center gap-3 leading-none whitespace-nowrap {phone
 				? 'mb-2'
 				: ''}"
 		>
 			<span class="tracking-[0.2em]"
-				>{climb && !docked ? climbHeader(climb) : PAGE_NAMES[shown]}</span
+				>{climb ? climbHeader(climb) : PAGE_NAMES[shown]}</span
 			>
 			{#if climb}<span
 					data-testid="climb-class"
@@ -196,7 +192,7 @@
 		{#each fields as field (field.key)}
 			<div data-testid="computer-field" data-field={field.key} class="min-w-0">
 				<span
-					class="{size.word} text-muted flex items-center gap-2 leading-none whitespace-nowrap"
+					class="{size.word} text-muted flex items-center gap-2 leading-none"
 					>{field.label}{#if field.zone}<ZoneDot
 							zone={field.zone}
 							class={tv ? 'size-[1.4vh]' : 'size-2'}
@@ -226,7 +222,7 @@
 		{#if turns && !tv && !phone}{@render dots()}{/if}
 	</div>
 	{#if zoneStrip}{@render strip(zoneStrip)}{/if}
-	{#if shown === 'climb' && ctx.climb && !docked}<ClimbProfile
+	{#if shown === 'climb' && ctx.climb}<ClimbProfile
 			view={ctx.climb}
 			{tv}
 		/>{/if}

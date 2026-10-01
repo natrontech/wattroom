@@ -381,7 +381,6 @@
 								target={channel.you.target > 0 ? channel.you.target : undefined}
 								stats={channelConnection.current?.recording.live}
 								{climb}
-								docked={inWorld}
 							/>
 						</div>
 						<BiasTrim
