@@ -1,0 +1,1 @@
+- Link previews in chat no longer push the conversation around while they load. A link shows as plain text until its preview is ready, a slow preview never holds a grey placeholder, and a link posted again does not draw a second card.
