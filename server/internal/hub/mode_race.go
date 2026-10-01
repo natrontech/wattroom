@@ -28,8 +28,13 @@ type raceRun struct {
 	// Nil until the flag, and for good when the flag found too few riders.
 	race *race.Race
 	void string
-	// Who rides it, by the name they had at the flag.
-	names map[string]string
+	// Who rides it, by the name they had at the flag, and whose screens held
+	// the watts then (ADR-0084).
+	names     map[string]string
+	ergByRoad map[string]bool
+	// Each racer's metres from km 0 at the end of each timeline second, for
+	// the record their saved ride keeps (#3722).
+	trail map[string][]float64
 	// When the coach neutralised it; zero while it races.
 	heldAt time.Time
 	// The second last stepped, and whether the leader was within
@@ -75,7 +80,8 @@ func (r *raceRun) due(now time.Time) bool {
 // the roster and never the race.
 func (r *raceRun) line(field []protocol.Rider, ergByRoad map[string]bool) {
 	entrants := make([]race.Entrant, 0, len(field))
-	r.names = make(map[string]string, len(field))
+	r.names, r.ergByRoad = make(map[string]string, len(field)), make(map[string]bool, len(field))
+	r.trail = make(map[string][]float64, len(field))
 	for _, rider := range field {
 		entrants = append(entrants, r.enter(rider, ergByRoad[rider.ID]))
 	}
@@ -94,7 +100,7 @@ func (r *raceRun) enter(rider protocol.Rider, ergByRoad bool) race.Entrant {
 	if why == "" && ergByRoad {
 		why = protocol.UnrankedUntimeable
 	}
-	r.names[rider.ID] = rider.Name
+	r.names[rider.ID], r.ergByRoad[rider.ID] = rider.Name, ergByRoad
 	return race.Entrant{
 		ID: rider.ID, WeightKg: float64(rider.WeightKg),
 		Category: protocol.RaceCategory(rider), Unranked: why,
@@ -257,6 +263,96 @@ func (r *raceRun) roadsideState() *protocol.RoadsideState {
 		return nil
 	}
 	return r.roadside.snapshot(func(u float64) (float64, int) { return min(u, r.profile.LengthM), 0 })
+}
+
+// placeOf is a racer's metres from km 0 now: 0 before the flag, or for a
+// rider it has not lined up.
+func (r *raceRun) placeOf(riderID string) float64 {
+	if r.race == nil {
+		return 0
+	}
+	m, _, _ := r.race.Place(riderID)
+	return m
+}
+
+// track writes down where each racer is at the end of the timeline second
+// just ridden (#3722) — the tick at second e has ridden second e-1 — and
+// whether any of their screens holds the watts now. Each racer's trail is
+// filled forward over a second no tick wrote, so it never goes back.
+func (r *raceRun) track(elapsed int, clients map[*client]struct{}, now time.Time) {
+	if r.race == nil {
+		return
+	}
+	second := max(elapsed-1, 0)
+	for id := range r.names {
+		trail := r.trail[id]
+		for len(trail) <= second {
+			last := 0.0
+			if len(trail) > 0 {
+				last = trail[len(trail)-1]
+			}
+			trail = append(trail, last)
+		}
+		trail[second] = r.placeOf(id)
+		r.trail[id] = trail
+	}
+	// "Don't make me shift" while racing untimes the ride (ADR-0084):
+	// WattRoom chose the watts for that stretch. The neutral zone, and a
+	// cool-down after the line, are not the time.
+	for c := range clients {
+		if c.ergByRoad && r.race.Racing(c.rider.ID, now) {
+			r.ergByRoad[c.rider.ID] = true
+		}
+	}
+}
+
+// stamp stands each of a racer's samples where the race had them at the end
+// of that sample's second (#3722), in the stored road's metres and at the
+// cut's height — relative to the cut's start, as every height the crew is
+// sent is. A replayed second lands where the race coasted them through it.
+//
+// A second the hub never heard — a drop the rider never replayed — is filled
+// with one at zero watts where the race coasted them: every consumer of a
+// ride's samples reads one a second, and a climb timed across a missing
+// second would be timed that much fast. The samples are in Clock order
+// (inOrder). Those of a rider the race never lined up are left as they came.
+func (r *raceRun) stamp(riderID string, samples []protocol.RiderMetrics, route *routeRide) []protocol.RiderMetrics {
+	trail, in := r.trail[riderID]
+	if !in || route == nil || len(samples) == 0 {
+		return samples
+	}
+	at := func(s protocol.RiderMetrics) protocol.RiderMetrics {
+		m := trail[min(max(s.Clock, 0), len(trail)-1)]
+		s.M, s.Alt = route.storedM(m), r.profile.HeightAt(m)
+		return s
+	}
+	out := make([]protocol.RiderMetrics, 0, len(samples))
+	for i, s := range samples {
+		if i > 0 {
+			for c := samples[i-1].Clock + 1; c < s.Clock; c++ {
+				out = append(out, at(protocol.RiderMetrics{Clock: c}))
+			}
+		}
+		out = append(out, at(s))
+	}
+	return out
+}
+
+// recordRoad is one racer's ride along the race's road, for the saver
+// (#3722); nil for a rider the race never lined up.
+func (r *raceRun) recordRoad(riderID string, route *routeRide) *RecordRoad {
+	if r.race == nil || route == nil {
+		return nil
+	}
+	m, shelter, ok := r.race.Place(riderID)
+	if !ok {
+		return nil
+	}
+	return &RecordRoad{
+		RouteID: route.ID, RoadHash: route.Hash,
+		FromM: route.storedM(0), DistanceM: m, ClimbedM: r.profile.ClimbedBetween(0, m),
+		MeanShelter: shelter, ErgByRoad: r.ergByRoad[riderID],
+	}
 }
 
 // world is the race on the tick: each racer's own place, since a race rides

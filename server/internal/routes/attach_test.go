@@ -181,13 +181,14 @@ func TestASessionRidesTheCoachsOwnRoadAsTheCrewsCut(t *testing.T) {
 	if err != nil || refused != nil {
 		t.Fatalf("alice's own route: %+v %v", refused, err)
 	}
-	want := protocol.SessionRoute{ID: mine, Hash: "telling", GenName: "Road · 3.0 km · 50 m", LengthM: whole.LengthM - 2*protocol.RouteHiddenEndM}
-	if route != want {
+	// The bunch's heights are the crew's cut's, and the hub holds no turns:
+	// no shape leaves for it (ADR-0063, #3028). Where the cut begins on the
+	// stored road rides along, server-only, for a race ride's metres (#3722).
+	cut, from := whole.Cut(protocol.RouteHiddenEndM, whole.LengthM-protocol.RouteHiddenEndM)
+	want := protocol.SessionRoute{ID: mine, Hash: "telling", GenName: "Road · 3.0 km · 50 m", LengthM: whole.LengthM - 2*protocol.RouteHiddenEndM, CutFromM: from}
+	if route != want || from < protocol.RouteHiddenEndM {
 		t.Errorf("the session rides %+v, want %+v", route, want)
 	}
-	// The bunch's heights are the crew's cut's, and the hub holds no turns:
-	// no shape leaves for it (ADR-0063, #3028).
-	cut, _ := whole.Cut(protocol.RouteHiddenEndM, whole.LengthM-protocol.RouteHiddenEndM)
 	if profile.LengthM != cut.LengthM || !slices.Equal(profile.Heights, cut.Heights) || profile.Turns != nil {
 		t.Errorf("the bunch climbs %v m over %d heights with turns %v, want the crew's cut's %v m and %d heights, no turns",
 			profile.LengthM, len(profile.Heights), profile.Turns, cut.LengthM, len(cut.Heights))

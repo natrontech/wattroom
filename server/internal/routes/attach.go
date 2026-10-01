@@ -216,8 +216,8 @@ func (a *Attacher) SessionRoute(ctx context.Context, coach, routeID string) (pro
 	if err != nil {
 		return protocol.SessionRoute{}, road.Road{}, nil, fmt.Errorf("routes: stored road %s unreadable: %w", routeID, err)
 	}
-	cut, _ := ridden.Cut(protocol.RouteHiddenEndM, ridden.LengthM-protocol.RouteHiddenEndM)
-	return protocol.SessionRoute{ID: routeID, Hash: row.RoadHash, GenName: row.GenName, LengthM: cut.LengthM},
+	cut, from := ridden.Cut(protocol.RouteHiddenEndM, ridden.LengthM-protocol.RouteHiddenEndM)
+	return protocol.SessionRoute{ID: routeID, Hash: row.RoadHash, GenName: row.GenName, LengthM: cut.LengthM, CutFromM: from},
 		road.Road{LengthM: cut.LengthM, Heights: cut.Heights}, nil, nil
 }
 

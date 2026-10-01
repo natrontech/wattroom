@@ -151,6 +151,7 @@ func TestTimeable(t *testing.T) {
 		erg          = `{"name":"Road ERG","steps":[{"type":"steady","seconds":600,"target":0.8}]}`
 		steps        = `{"name":"Road steps","steps":[{"type":"road","seconds":600},{"type":"repeat","times":2,"steps":[{"type":"road","seconds":300}]}]}`
 		mixed        = `{"name":"Mixed","steps":[{"type":"road","seconds":600},{"type":"steady","seconds":300,"target":0.6}]}`
+		race         = `{"name":"Race","unscored":true,"race":true,"steps":[]}`
 		unknown      = "unknown"
 		yes, untimed = "yes", "no"
 	)
@@ -174,6 +175,10 @@ func TestTimeable(t *testing.T) {
 		{"an ERG road workout measures the workout", "workout", erg, true, DriveSIM, 0, untimed},
 		{"a target among road steps", "workout", mixed, true, DriveSIM, 0, untimed},
 		{"a session's game", "game", free, false, "", 0, untimed},
+		{"a race on its road in SIM", "race", race, true, DriveSIM, 0, yes},
+		{"a race under Don't make me shift", "race", race, true, DriveERGByRoad, 0, untimed},
+		{"a race ridden mostly in the wheels", "race", race, true, DriveSIM, protocol.MaxTimeableShelter + 0.001, untimed},
+		{"a race the save placed on no road", "race", race, false, DriveSIM, 0, untimed},
 	} {
 		got := unknown
 		if v := Timeable(c.mode, c.workout, c.onRoad, c.drive, c.shelter); v != nil {

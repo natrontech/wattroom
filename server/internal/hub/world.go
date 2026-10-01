@@ -23,6 +23,10 @@ type routeRide struct {
 	profile road.Road
 }
 
+// storedM is a metre of the crew's cut as the stored road counts it, where
+// a rider's own rides of the road are kept (#3722).
+func (r *routeRide) storedM(cutM float64) float64 { return r.CutFromM + cutM }
+
 // ref is the reference every socket is sent; nil rides no road.
 func (r *routeRide) ref() *protocol.SessionRoute {
 	if r == nil {

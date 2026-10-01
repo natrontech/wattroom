@@ -155,3 +155,9 @@ limit 30;
 -- name: GetOwnRideSamples :one
 -- One of the rider's own rides' per-second record, the ghost's (#3033).
 select samples from rides where id = $1 and user_id = $2;
+
+-- name: RouteStored :one
+-- Whether a route is still stored, for a session ride that names it (#3722):
+-- its owner may have deleted it between the ride and its save, and a ride
+-- naming a gone route would fail the whole session's save on its key.
+select exists(select 1 from routes where id = $1);
