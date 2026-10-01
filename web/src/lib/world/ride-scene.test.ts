@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { at, leftOf } from '$lib/road/along';
 import { legsRoad } from '$lib/road/fixtures';
+import { RIDER_BOX } from '$lib/session/docks';
 import { STYLES } from '../../routes/(app)/dev/world/styles';
 import { compose } from './compose';
 import { routeOfRoad } from './road-route';
@@ -58,6 +59,16 @@ describe('a ride’s world', () => {
 		const { lx, lz } = leftOf(p.heading);
 		// Left of the road's centre is positive: the right lane's middle is a quarter of the road to the right.
 		expect((pos.x - p.x) * lx + (pos.z - p.z) * lz).toBeCloseTo(-ROAD_W / 4, 1);
+		// The chase eye rides your lane, so the lane leaves you inside RIDER_BOX (40–60 % across).
+		w.camera.aspect = 1440 / 900;
+		w.camera.updateProjectionMatrix();
+		w.advanceBy(0.3);
+		w.camera.updateMatrixWorld();
+		const across = you!
+			.getWorldPosition(new THREE.Vector3())
+			.project(w.camera).x;
+		expect((across + 1) / 2).toBeGreaterThan(RIDER_BOX.x0);
+		expect((across + 1) / 2).toBeLessThan(RIDER_BOX.x1);
 		w.dispose();
 	});
 

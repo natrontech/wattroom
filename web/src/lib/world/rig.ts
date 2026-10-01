@@ -53,11 +53,17 @@ export function makeRig(route: Route, world: World) {
 		) {
 			const chase = mode === 'chase';
 			const back = chase ? 6.5 + Math.min(3, rider.v * 0.15) : 70;
+			// The eye rides your lane, not the centre line, so your lane leaves you in RIDER_BOX.
+			const c = along(route, rider.d);
+			const sx = you.x - c.x;
+			const sz = you.z - c.z;
 			const b = along(route, rider.d - back);
-			want.set(b.x, yOf(route, b.ele) + (chase ? 2.4 : 42), b.z);
+			want.set(b.x + sx, yOf(route, b.ele) + (chase ? 2.4 : 42), b.z + sz);
 			want.y = Math.max(want.y, ground(want.x, want.z) + GOAL_FLOOR);
 			const a = along(route, rider.d + (chase ? 18 : 10));
-			look.set(a.x, yOf(route, a.ele) + 1.0, a.z).lerp(you, chase ? 0.45 : 0.8);
+			look
+				.set(a.x + sx, yOf(route, a.ele) + 1.0, a.z + sz)
+				.lerp(you, chase ? 0.45 : 0.8);
 			const kmh = rider.v * 3.6;
 			const fov = chase ? 50 + Math.min(10, Math.max(0, kmh - 20) * 0.25) : 45;
 			if (!started) {
