@@ -88,6 +88,7 @@ Canon beats the target, and the target beats today's app. Canon is WATTROOM.md, 
 | target track, “Block · n % on target” | under the head, only while a target is asked |
 | time left, block, target, elapsed of total | slot 1, in a workout |
 | km x of y, grade, next climb | slot 1's road line, on any ride with a road |
+| to the top, ascent left, average left | the CLIMB page, while a classed climb is near (#3645) |
 | elapsed, m climbed | slot 1's chip row, on a free ride |
 | how the trainer rides it | slot 1's trainer chip: “SIM · you feel y %”, “Watts · n W”, or “ERG: the road is scenery” |
 | speed | RIDE page, on a road |
@@ -244,7 +245,7 @@ Every surface id below is also in `docs/design/surface-map.json`, which maps the
      - the interval strip with its cursor;
      - NEXT (D16) with the 3-2-1 chips;
      - the trainer chip.
-   - On a road, the road line “km x of y · grade % · <climb> in z km” appears once, here.
+   - On a road, the road line “km x of y · grade % · <next climb> in z km” appears once, here.
    [ride-surface]
 7. The ride's controls are one row inside slot 1.
    - ⚑, TV, +1 min and Skip block are ≥ 44 × 44 px icon buttons with accessible names and tooltips.
