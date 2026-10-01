@@ -10,6 +10,8 @@
 
 	let { view, tv = false }: { view: ClimbView; tv?: boolean } = $props();
 
+	// Half the dot: at the foot and the top it stays inside the profile's row.
+	const half = $derived(tv ? '1.5vh' : '10px');
 	const span = $derived(Math.max(view.hi - view.lo, 1));
 	const up = (height: number) => ((height - view.lo) / span) * 100;
 	const along = $derived(
@@ -42,7 +44,7 @@
 		class="bg-ink border-surface absolute -translate-x-1/2 translate-y-1/2 rounded-full border-2 forced-color-adjust-none forced-colors:bg-[Highlight] {tv
 			? 'size-[3vh]'
 			: 'size-5'}"
-		style:left="{along}%"
+		style:left="clamp({half}, {along}%, calc(100% - {half}))"
 		style:bottom="{up(Math.min(Math.max(view.heightNow, view.lo), view.hi))}%"
 	></span>
 </div>
