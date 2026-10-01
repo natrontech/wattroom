@@ -32,6 +32,9 @@ type raceRun struct {
 	// the watts then (ADR-0084).
 	names     map[string]string
 	ergByRoad map[string]bool
+	// Each racer's metres from km 0 at the end of each timeline second, for
+	// the record their saved ride keeps (#3722).
+	trail map[string][]float64
 	// When the coach neutralised it; zero while it races.
 	heldAt time.Time
 	// The second last stepped, and whether the leader was within
@@ -78,6 +81,7 @@ func (r *raceRun) due(now time.Time) bool {
 func (r *raceRun) line(field []protocol.Rider, ergByRoad map[string]bool) {
 	entrants := make([]race.Entrant, 0, len(field))
 	r.names, r.ergByRoad = make(map[string]string, len(field)), make(map[string]bool, len(field))
+	r.trail = make(map[string][]float64, len(field))
 	for _, rider := range field {
 		entrants = append(entrants, r.enter(rider, ergByRoad[rider.ID]))
 	}
@@ -261,8 +265,8 @@ func (r *raceRun) roadsideState() *protocol.RoadsideState {
 	return r.roadside.snapshot(func(u float64) (float64, int) { return min(u, r.profile.LengthM), 0 })
 }
 
-// placeOf is a racer's metres from km 0 now, 0 before the flag or for a rider it
-// has not lined up: where their record's sample stands on the road.
+// placeOf is a racer's metres from km 0 now: 0 before the flag, or for a
+// rider it has not lined up.
 func (r *raceRun) placeOf(riderID string) float64 {
 	if r.race == nil {
 		return 0
@@ -271,15 +275,51 @@ func (r *raceRun) placeOf(riderID string) float64 {
 	return m
 }
 
-// placeRecords stands each racer's latest sample where the race has them now
-// (#3722), in the stored road's metres. Nothing before the flag.
-func (r *raceRun) placeRecords(record *accumulator, route *routeRide) {
+// track writes down where each racer is at the end of the timeline second
+// just ridden (#3722) — the tick at second e has ridden second e-1 — and
+// whether any of their screens holds the watts now. Each racer's trail is
+// filled forward over a second no tick wrote, so it never goes back.
+func (r *raceRun) track(elapsed int, clients map[*client]struct{}) {
 	if r.race == nil {
 		return
 	}
+	second := max(elapsed-1, 0)
 	for id := range r.names {
-		record.placeLast(id, route.storedM(r.placeOf(id)))
+		trail := r.trail[id]
+		for len(trail) <= second {
+			last := 0.0
+			if len(trail) > 0 {
+				last = trail[len(trail)-1]
+			}
+			trail = append(trail, last)
+		}
+		trail[second] = r.placeOf(id)
+		r.trail[id] = trail
 	}
+	// "Don't make me shift" at any point of the race untimes the ride
+	// (ADR-0084): WattRoom chose the watts for that stretch.
+	for c := range clients {
+		if _, in := r.names[c.rider.ID]; in && c.ergByRoad {
+			r.ergByRoad[c.rider.ID] = true
+		}
+	}
+}
+
+// stamp stands each of a racer's samples where the race had them at the end
+// of that sample's second (#3722), in the stored road's metres and at the
+// cut's height — relative to the cut's start, as every height the crew is
+// sent is. A replayed second lands where the race coasted them through it.
+// The samples of a rider the race never lined up are left as they came.
+func (r *raceRun) stamp(riderID string, samples []protocol.RiderMetrics, route *routeRide) []protocol.RiderMetrics {
+	trail, in := r.trail[riderID]
+	if !in || route == nil {
+		return samples
+	}
+	for i := range samples {
+		m := trail[min(max(samples[i].Clock, 0), len(trail)-1)]
+		samples[i].M, samples[i].Alt = route.storedM(m), r.profile.HeightAt(m)
+	}
+	return samples
 }
 
 // recordRoad is one racer's ride along the race's road, for the saver

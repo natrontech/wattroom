@@ -54,7 +54,11 @@ type channelState struct {
 	gameRoster map[string]protocol.Rider
 	// The mode's id, for the ledger; and the tick that first saw it done,
 	// zero while it runs (#1575, #1579).
-	gameMode   string
+	gameMode string
+	// The race this run's record belongs to (#3722), kept past its card's
+	// linger and a second End until the next run starts: the close and any
+	// late replay stand the record where it raced.
+	ridden     *raceRun
 	gameDoneAt time.Time
 	// The workout session a game started inside rides (#2830): the game
 	// ends with it. Empty for a game that opened its own session.

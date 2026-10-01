@@ -193,15 +193,6 @@ func (a *accumulator) execution(riderID string) (score float64, scored bool) {
 	return record.inBand / record.weight, true
 }
 
-// placeLast stands a rider's latest sample at m along the road (#3722): the
-// race steps a second after its samples arrived in it, and the second's
-// sample is where that second ended.
-func (a *accumulator) placeLast(riderID string, m float64) {
-	if record, ok := a.byRider[riderID]; ok && len(record.samples) > 0 {
-		record.samples[len(record.samples)-1].M = m
-	}
-}
-
 func (a *accumulator) count(riderID string) int {
 	if record, ok := a.byRider[riderID]; ok {
 		return len(record.samples)

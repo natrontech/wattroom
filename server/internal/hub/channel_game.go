@@ -59,6 +59,9 @@ func (rm *channelState) startGameOn(mode string, route *routeRide, rider protoco
 	}
 	rm.game = next
 	rm.gameMode = mode
+	if r := raceOf(next); r != nil {
+		rm.ridden = r
+	}
 	rm.gameDoneAt = time.Time{}
 	// The game's own roster (#1581): the tick merges rm.seen into it, so a
 	// session start — which resets rm.seen for the new ride — does not blank
@@ -163,6 +166,7 @@ func (rm *channelState) resetRunLocked(starter string) {
 	rm.present = make(map[string]*span)
 	rm.presentSince = time.Time{}
 	rm.startedBy = starter
+	rm.ridden = nil
 }
 
 // gameRosterLocked is the roster the game scores against: everyone the room
@@ -211,7 +215,7 @@ func (rm *channelState) advanceGameLocked(now time.Time) (winner string) {
 	}
 	rm.game.advance(now, samples, rm.gameRosterLocked())
 	if r := rm.raceLocked(); r != nil {
-		r.placeRecords(rm.record, rm.session.route)
+		r.track(rm.session.state(now).Elapsed, rm.clients)
 	}
 	// Team Relay on a road finishes where the road does (#3030).
 	if r := relayOf(rm.game); r != nil && rm.session.bunch.finished() {

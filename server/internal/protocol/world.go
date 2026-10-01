@@ -28,6 +28,10 @@ type SessionRoute struct {
 	// The crew's cut, the length every metre above is bounded by.
 	LengthM float64 `json:"lengthM"`
 	Loop    bool    `json:"loop,omitempty"`
+	// Where the crew's cut begins on the stored road (#3722): the first
+	// height step past the hidden end. Server-only — the hub keeps a race
+	// rider's ride in the stored road's metres, as every ride of it is.
+	CutFromM float64 `json:"-"`
 }
 
 // World is the bunch on the session's road (ADR-0065), on every tick while
