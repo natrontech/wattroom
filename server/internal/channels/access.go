@@ -31,7 +31,7 @@ func mayEnter(crewRole string, private, named bool) bool {
 		return true
 	case protocol.RoleMember:
 		return !private || named
-	default: // "", protocol.RoleBanned
+	default: // "", "banned"
 		return false
 	}
 }

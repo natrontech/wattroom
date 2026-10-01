@@ -181,7 +181,7 @@ func (s *Service) handleSetCrewRole(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	// Membership is a row since #1236, so protocol.RoleMember is written, never cleared:
+	// Membership is a row since #1236, so "member" is written, never cleared:
 	// deleting the row demoted an admin clean out of the crew and left an
 	// unbanned rider with no membership to come back to (audit 2026-09-09).
 	err = s.store.Queries.SetCrewRole(r.Context(), db.SetCrewRoleParams{CrewID: crew.ID, UserID: target, Role: req.Role})
