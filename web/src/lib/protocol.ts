@@ -148,8 +148,9 @@ export interface Control {
    */
   gameMode?: string;
   /**
-   * For action "game" on Last Light (#3171): its clock in minutes, one of
-   * 10, 20 or 30; absent is LastLightDefaultMinutes.
+   * For action "game": Last Light's clock in minutes, one of 10, 20 or 30
+   * (#3171), or a Wheelrace's par, 15 to 45 (#3172); absent is the mode's
+   * default.
    */
   minutes?: number /* int */;
   /**
@@ -1333,6 +1334,30 @@ export const LastLightFogToM = 150;
  */
 export const LastLightFogSeconds = 60;
 /**
+ * Wheelrace (docs/SPEC.md "Races", #3172): a handicap race to a line its par
+ * time places, 15–45 minutes — 30 when the coach does not say — closed hard
+ * at par plus WheelraceClosePct per cent.
+ */
+export const WheelraceMinMinutes = 15;
+/**
+ * Wheelrace (docs/SPEC.md "Races", #3172): a handicap race to a line its par
+ * time places, 15–45 minutes — 30 when the coach does not say — closed hard
+ * at par plus WheelraceClosePct per cent.
+ */
+export const WheelraceMaxMinutes = 45;
+/**
+ * Wheelrace (docs/SPEC.md "Races", #3172): a handicap race to a line its par
+ * time places, 15–45 minutes — 30 when the coach does not say — closed hard
+ * at par plus WheelraceClosePct per cent.
+ */
+export const WheelraceDefaultMinutes = 30;
+/**
+ * Wheelrace (docs/SPEC.md "Races", #3172): a handicap race to a line its par
+ * time places, 15–45 minutes — 30 when the coach does not say — closed hard
+ * at par plus WheelraceClosePct per cent.
+ */
+export const WheelraceClosePct = 15;
+/**
  * RaceVoidTooFew is a race whose flag found fewer than RaceMinRiders on the
  * session's timeline: it never starts, and says so.
  */
@@ -1355,11 +1380,19 @@ export interface RaceState {
   klaxonAtMs: number /* int64 */;
   neutralised?: boolean;
   /**
-   * A clock race's (#3171): when the shared clock runs out, and how far
-   * the fog lets a rider see now. Zero for a race to the line.
+   * When the race runs out: Last Light's shared clock (#3171), or a
+   * Wheelrace's hard close (#3172). Zero for a plain race to the line.
    */
   endsAtMs?: number /* int64 */;
+  /**
+   * How far Last Light's fog lets a rider see now.
+   */
   fogM?: number /* float64 */;
+  /**
+   * Where a Wheelrace's line is, in metres from km 0 (#3172): short of the
+   * road's end, where its par puts it.
+   */
+  lineM?: number /* float64 */;
   /**
    * Why the race never started: RaceVoidTooFew.
    */

@@ -23,6 +23,9 @@ type Entrant struct {
 	WeightKg float64
 	Category string
 	Unranked string
+	// Where on the road they start, in metres from km 0: a Wheelrace's head
+	// start (#3172); 0 for everyone else.
+	StartM float64
 }
 
 // ErrTooFew is a start with fewer than protocol.RaceMinRiders riders.
@@ -53,6 +56,9 @@ type Race struct {
 	// a race to the line; closed once it has.
 	ends   time.Time
 	closed bool
+	// Whether its card ranks the distance ridden (Last Light), rather than
+	// finish times with whoever the end caught off it (a hard close).
+	byMetres bool
 }
 
 // New lines entrants up on profile for a flag dropping at flag: the neutral
@@ -64,7 +70,9 @@ func New(profile road.Road, entrants []Entrant, flag time.Time) (*Race, error) {
 	klaxon := flag.Add(protocol.RaceNeutralSeconds * time.Second)
 	r := &Race{profile: profile, klaxon: klaxon, racers: make(map[string]*racer, len(entrants))}
 	for _, e := range entrants {
-		r.racers[e.ID] = &racer{Entrant: e, heardAt: klaxon}
+		rc := &racer{Entrant: e, heardAt: klaxon}
+		rc.pace.Distance = e.StartM
+		r.racers[e.ID] = rc
 	}
 	return r, nil
 }
@@ -96,12 +104,12 @@ func (r *Race) Step(at time.Time, watts map[string]int) {
 		}
 		mass := float64(protocol.ReferenceRiderKg + protocol.BikeKg)
 		if neutral {
-			rc.pace.Step(asReference(w, rc.WeightKg), 0, mass, protocol.PaceDefaultCdA, 0)
-			rc.pace.Distance = 0
+			rc.pace.Step(AsReference(w, rc.WeightKg), 0, mass, protocol.PaceDefaultCdA, 0)
+			rc.pace.Distance = rc.StartM
 			continue
 		}
 		from := rc.pace.Distance
-		rc.pace.Step(asReference(w, rc.WeightKg), r.profile.GradeAt(from), mass, protocol.PaceDefaultCdA, shelters[i])
+		rc.pace.Step(AsReference(w, rc.WeightKg), r.profile.GradeAt(from), mass, protocol.PaceDefaultCdA, shelters[i])
 		rc.sheltered += shelters[i]
 		rc.ridden++
 		if length := r.profile.LengthM; from < length && rc.pace.Distance >= length {
@@ -123,8 +131,9 @@ func (r *Race) Join(e Entrant, at time.Time) bool {
 	}
 	rc := &racer{Entrant: e, heardAt: r.klaxon}
 	if at.After(r.klaxon) {
-		rc.Unranked, rc.heardAt = protocol.UnrankedLate, at
+		rc.Unranked, rc.heardAt, rc.StartM = protocol.UnrankedLate, at, 0
 	}
+	rc.pace.Distance = rc.StartM
 	r.racers[e.ID] = rc
 	return true
 }
@@ -192,9 +201,13 @@ func (r *Race) Neutralised(from, to time.Time) {
 // line is out of it, and the finishers keep their places. False when it was
 // already over.
 func (r *Race) Close() bool {
+	// Once it has run out or closed hard, there is nothing left to end.
+	if r.closed {
+		return false
+	}
 	// A clock race ends its clock where it stands (#3171): its card ranks
 	// how far everyone got, so nobody is put out of it.
-	if !r.ends.IsZero() {
+	if r.byMetres {
 		was := !r.closed
 		r.closed = true
 		return was
@@ -219,9 +232,10 @@ func (r *Race) LeaderETA() (time.Duration, bool) {
 	return time.Duration(left / lead.pace.Speed * float64(time.Second)), true
 }
 
-// asReference is ADR-0067's physics: the reference rider's watts at this
-// rider's W/kg, so weight neither buys speed nor costs it.
-func asReference(watts int, weightKg float64) float64 {
+// AsReference is ADR-0067's physics: the reference rider's watts at this
+// rider's W/kg, so weight neither buys speed nor costs it. A Wheelrace's
+// handicap reads a race FTP through it (#3172).
+func AsReference(watts int, weightKg float64) float64 {
 	if weightKg <= 0 {
 		weightKg = protocol.ReferenceRiderKg
 	}
@@ -283,7 +297,12 @@ func (r *Race) Done() bool { return r.closed || len(r.field()) == 0 }
 // Clock makes the race one against a clock that runs out at end (#3171,
 // Last Light): nobody moves past it, and the card ranks how far each racer
 // got rather than when they crossed the line.
-func (r *Race) Clock(end time.Time) { r.ends = end }
+func (r *Race) Clock(end time.Time) { r.ends, r.byMetres = end, true }
+
+// CloseAt closes a race to the line hard at `at` (#3172, Wheelrace): whoever
+// has not crossed by then is off the card, and the card still ranks finish
+// times.
+func (r *Race) CloseAt(at time.Time) { r.ends, r.byMetres = at, false }
 
 // Ends is when a clock race runs out — later by any time it was held before
 // then — and zero for a race to the line.
@@ -341,7 +360,7 @@ func (r *Race) Results() []Result {
 			}
 			// A clock race's card has everyone still on the road when it ran
 			// out; a race to the line, only who crossed it.
-			if rc.finishMs == 0 && (r.ends.IsZero() || rc.out) {
+			if rc.finishMs == 0 && (!r.byMetres || rc.out) {
 				continue
 			}
 			f := Finisher{ID: rc.ID, FinishMs: rc.finishMs, Why: rc.Unranked, Metres: min(rc.pace.Distance, r.profile.LengthM)}
@@ -355,7 +374,7 @@ func (r *Race) Results() []Result {
 			continue
 		}
 		order := byFinish
-		if !r.ends.IsZero() {
+		if r.byMetres {
 			order = byDistance
 		}
 		order(res.Placed)

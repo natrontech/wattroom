@@ -2,6 +2,7 @@ package race
 
 import (
 	"errors"
+	"math"
 	"testing"
 	"time"
 
@@ -274,5 +275,61 @@ func TestAClockRaceRunsOutAndAHoldMovesItsEnd(t *testing.T) {
 	r.Step(r.Ends().Add(10*time.Second), map[string]int{"a": 250, "b": 250})
 	if r.Racers()["a"].M != m {
 		t.Error("a racer moved past the clock's end")
+	}
+}
+
+// A Wheelrace's handicap (#3172): the line goes where the scratch rider gets
+// in par, on a height step; the scratch starts at km 0, a weaker rider up the
+// road, a much weaker one farther up; and the pace model brings each to the
+// line at par. A road shorter than par puts the line at its end.
+func TestAHandicapBringsEveryoneToTheLineAtPar(t *testing.T) {
+	rolling := road.Road{LengthM: 40_000, Heights: make([]float64, 2001)}
+	for i := range rolling.Heights {
+		rolling.Heights[i] = 30 * math.Sin(float64(i)/40)
+	}
+	par := 30 * time.Minute
+	h := NewHandicap(rolling, par, 300)
+	if h.LineM <= 10_000 || h.LineM >= rolling.LengthM || math.Mod(h.LineM, rolling.Step()) != 0 {
+		t.Fatalf("the line at %.0f m", h.LineM)
+	}
+	if s := h.Start(300); s != 0 {
+		t.Errorf("the scratch rider starts at %.1f m", s)
+	}
+	// The line sits on a height step at or short of par's distance, so the
+	// scratch rider's own time to it is par or a breath under, and that is
+	// the time every head start is set to ride.
+	scratch := timeAlong(rolling, 0, h.LineM, 300, handicapGiveUp)
+	if scratch > par.Seconds() || scratch < par.Seconds()-5 {
+		t.Fatalf("the scratch rider reaches the line in %.1f s, want par %.0f s", scratch, par.Seconds())
+	}
+	for _, w := range []float64{250, 180} {
+		s := h.Start(w)
+		if s <= 0 || s >= h.LineM {
+			t.Fatalf("%v W starts at %.1f m", w, s)
+		}
+		if got := timeAlong(rolling, s, h.LineM, w, handicapGiveUp); math.Abs(got-scratch) > 0.5 {
+			t.Errorf("%v W from %.0f m reaches the line in %.1f s, with the scratch rider's %.1f s", w, s, got, scratch)
+		}
+	}
+	if h.Start(250) >= h.Start(180) {
+		t.Errorf("a weaker rider starts behind a stronger one: %.0f m and %.0f m", h.Start(250), h.Start(180))
+	}
+	short := NewHandicap(flat(5_000), par, 300)
+	if short.LineM != 5_000 {
+		t.Errorf("a 5 km road's line at %.0f m", short.LineM)
+	}
+}
+
+// A sparse road — one height step longer than par carries anyone — still has
+// a line one step up it, never at km 0 (#3172): a line at km 0 made a road of
+// no length, and the first step after the klaxon panicked.
+func TestASparseRoadsLineIsOneStepUp(t *testing.T) {
+	sparse := road.Road{LengthM: 20_000, Heights: []float64{0, 40, 80}}
+	h := NewHandicap(sparse, 15*time.Minute, 100)
+	if h.LineM != 10_000 {
+		t.Fatalf("the line on a 10 km-step road: %.0f m", h.LineM)
+	}
+	if s := h.Start(60); s < 0 || s >= h.LineM {
+		t.Fatalf("a weaker rider starts at %.0f m", s)
 	}
 }

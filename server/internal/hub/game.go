@@ -124,6 +124,7 @@ var gameModeNames = map[string]string{
 	"team-relay":      "Team Relay",
 	modeRace:          "Race",
 	modeLastLight:     "Last Light",
+	modeWheelrace:     "Wheelrace",
 }
 
 // gameWorkoutJSON is a game session's workout: no steps, and unscored, as the

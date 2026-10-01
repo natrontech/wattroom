@@ -1,6 +1,7 @@
 package hub
 
 import (
+	"math"
 	"sort"
 	"time"
 
@@ -19,8 +20,14 @@ const modeRace = "race"
 // ranked on the distance ridden when the clock runs out.
 const modeLastLight = "last-light"
 
+// modeWheelrace is a handicap race (#3172): head starts from the pace model,
+// so every rider riding their race FTP reaches the line together, at par.
+const modeWheelrace = "wheelrace"
+
 // isRace says whether a game mode runs on the race runner.
-func isRace(mode string) bool { return mode == modeRace || mode == modeLastLight }
+func isRace(mode string) bool {
+	return mode == modeRace || mode == modeLastLight || mode == modeWheelrace
+}
 
 // raceBurstETA is docs/SPEC.md "Races": the tick goes to 4 Hz once the
 // leader is this close to the line.
@@ -30,9 +37,12 @@ const raceBurstETA = 30 * time.Second
 // mutex guards it, as it guards every mode.
 type raceRun struct {
 	profile road.Road
-	// Last Light's clock in minutes from the klaxon (#3171); 0 races to the
-	// line.
+	// Which race: to the line, Last Light or Wheelrace; and its minutes —
+	// Last Light's clock (#3171) or a Wheelrace's par (#3172).
+	mode    string
 	minutes int
+	// A Wheelrace's handicap, from the flag; nil for every other race.
+	handicap *race.Handicap
 	// The flag drops after the session's countdown (docs/SPEC.md "Races").
 	flag time.Time
 	// Nil until the flag, and for good when the flag found too few riders.
@@ -55,19 +65,10 @@ type raceRun struct {
 	roadside roadsideStands
 }
 
-// newRaceRun is a race on profile whose flag drops after the countdown: to
-// the line, or — minutes > 0 — Last Light, against a clock of that many
-// minutes from the klaxon.
-func newRaceRun(profile road.Road, minutes int, now time.Time) *raceRun {
-	return &raceRun{profile: profile, minutes: minutes, flag: now.Add(countdownSeconds * time.Second)}
-}
-
-// mode is the race's game mode.
-func (r *raceRun) mode() string {
-	if r.minutes > 0 {
-		return modeLastLight
-	}
-	return modeRace
+// newRaceRun is a race of mode on profile whose flag drops after the
+// countdown, minutes being Last Light's clock or a Wheelrace's par.
+func newRaceRun(profile road.Road, mode string, minutes int, now time.Time) *raceRun {
+	return &raceRun{profile: profile, mode: mode, minutes: minutes, flag: now.Add(countdownSeconds * time.Second)}
 }
 
 // raceLocked is the race the session is for, while it holds the room: nil
@@ -125,15 +126,56 @@ func (r *raceRun) line(field []protocol.Rider, ergByRoad map[string]bool) {
 	for _, rider := range field {
 		entrants = append(entrants, r.enter(rider, ergByRoad[rider.ID]))
 	}
-	started, err := race.New(r.profile, entrants, r.flag)
+	if r.mode == modeWheelrace && len(field) > 0 {
+		// The race's road ends at its line: its roadside, too.
+		r.profile = r.placeHandicap(field, entrants)
+	}
+	profile := r.profile
+	started, err := race.New(profile, entrants, r.flag)
 	if err != nil {
 		r.void = protocol.RaceVoidTooFew
 		return
 	}
 	r.race = started
-	if r.minutes > 0 {
-		started.Clock(started.Klaxon().Add(time.Duration(r.minutes) * time.Minute))
+	minutes := time.Duration(r.minutes) * time.Minute
+	switch r.mode {
+	case modeLastLight:
+		started.Clock(started.Klaxon().Add(minutes))
+	case modeWheelrace:
+		// From the handicap's own par: the coach's, or less where the road
+		// ends first.
+		par := minutes
+		if r.handicap != nil {
+			par = r.handicap.Par()
+		}
+		started.CloseAt(started.Klaxon().Add(par * (100 + protocol.WheelraceClosePct) / 100))
 	}
+}
+
+// placeHandicap is a Wheelrace's handicap (#3172): the line where the
+// strongest rider's race FTP gets them in par, every entrant's head start to
+// meet them there, and the road cut at the line.
+func (r *raceRun) placeHandicap(field []protocol.Rider, entrants []race.Entrant) road.Road {
+	scratch := 0.0
+	for _, rider := range field {
+		scratch = max(scratch, raceFtpAsReference(rider))
+	}
+	h := race.NewHandicap(r.profile, time.Duration(r.minutes)*time.Minute, scratch)
+	r.handicap = &h
+	for i, rider := range field {
+		entrants[i].StartM = h.Start(raceFtpAsReference(rider))
+	}
+	// The line sits on a height step, so the road to it is a prefix of the
+	// heights. road.Cut is not used: the hub's road carries no turns to cut
+	// (ADR-0063), and a cut from km 0 rebases nothing.
+	steps := int(math.Round(h.LineM / r.profile.Step()))
+	return road.Road{LengthM: h.LineM, Heights: r.profile.Heights[:steps+1]}
+}
+
+// raceFtpAsReference is a rider's race FTP as the reference rider's watts:
+// what the race's W/kg physics rides them at (ADR-0067).
+func raceFtpAsReference(rider protocol.Rider) float64 {
+	return race.AsReference(protocol.RaceFtp(rider), float64(rider.WeightKg))
 }
 
 // enter freezes one rider as the race takes them, read against its flag,
@@ -167,7 +209,19 @@ func (r *raceRun) admit(field []protocol.Rider, ergByRoad map[string]bool, now t
 		if _, in := r.names[rider.ID]; in {
 			continue
 		}
-		r.race.Join(r.enter(rider, ergByRoad[rider.ID]), at)
+		e := r.enter(rider, ergByRoad[rider.ID])
+		// A Wheelrace's late joiner on the grid gets their own head start;
+		// after km 0 they ride from it like any late joiner. One stronger than
+		// the scratch rider the handicap was set for cannot be placed by it,
+		// and rides unranked.
+		if r.handicap != nil {
+			w := raceFtpAsReference(rider)
+			e.StartM = r.handicap.Start(w)
+			if !r.handicap.Placeable(w) {
+				e.Unranked = protocol.UnrankedLate
+			}
+		}
+		r.race.Join(e, at)
 	}
 }
 
@@ -201,8 +255,8 @@ func (r *raceRun) advance(now time.Time, samples map[string]int, _ map[string]pr
 	r.race.Step(now, samples)
 	eta, riding := r.race.LeaderETA()
 	// Against a clock, the finish is the line or the clock's end, whichever
-	// comes first (#3171).
-	if ends := r.race.Ends(); !ends.IsZero() {
+	// comes first (#3171). A Wheelrace's hard close is no finish.
+	if ends := r.race.Ends(); !ends.IsZero() && r.mode == modeLastLight {
 		if left := ends.Sub(now); !riding || left < eta {
 			eta = left
 		}
@@ -236,21 +290,27 @@ func (r *raceRun) state(now time.Time) protocol.GameState {
 	phase := "running"
 	if r.race != nil {
 		st.KlaxonAtMs = r.race.Klaxon().UnixMilli()
-		// Last Light's shared clock and its closing fog (#3171): a hold
-		// stops the clock, so the fog holds where it stood.
+		// When the race runs out (#3171, #3172), and Last Light's closing
+		// fog: a hold stops the clock, so the fog holds where it stood.
 		if ends := r.race.Ends(); !ends.IsZero() {
+			st.EndsAtMs = ends.UnixMilli()
 			left := ends.Sub(now)
 			if !r.heldAt.IsZero() {
 				left = ends.Sub(r.heldAt)
 			}
-			st.EndsAtMs, st.FogM = ends.UnixMilli(), protocol.LastLightFog(left)
+			if r.mode == modeLastLight {
+				st.FogM = protocol.LastLightFog(left)
+			}
+		}
+		if r.handicap != nil {
+			st.LineM = r.handicap.LineM
 		}
 	}
 	if r.done() {
 		phase = "done"
 		st.Results = r.results()
 	}
-	return protocol.GameState{Mode: r.mode(), Phase: phase, Riders: map[string]protocol.GameRider{}, Race: st}
+	return protocol.GameState{Mode: r.mode, Phase: phase, Riders: map[string]protocol.GameRider{}, Race: st}
 }
 
 // results is the closing card (ADR-0067): each Category's finishers by their
@@ -399,9 +459,12 @@ func (r *raceRun) recordRoad(riderID string, route *routeRide) *RecordRoad {
 	if !ok {
 		return nil
 	}
+	// Where they started: km 0, or a Wheelrace's head start (#3172) — the
+	// first place the race wrote down for them.
+	from, _, _ := r.trail.span(riderID)
 	return &RecordRoad{
 		RouteID: route.ID, RoadHash: route.Hash,
-		FromM: route.storedM(0), DistanceM: m, ClimbedM: r.profile.ClimbedBetween(0, m),
+		FromM: route.storedM(from), DistanceM: max(m-from, 0), ClimbedM: r.profile.ClimbedBetween(from, m),
 		MeanShelter: shelter, ErgByRoad: r.ergByRoad[riderID],
 	}
 }
