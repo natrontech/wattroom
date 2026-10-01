@@ -116,6 +116,12 @@ func (s *Saver) save(
 			onRoad, drive = true, SetSessionRoad(&row, *rr, stored)
 		}
 		SetHow(&row, RideMode(workoutJSON, true), workoutJSON, onRoad, drive, accountWeight(ctx, q, row.UserID))
+		if rr := rider.Road; rr != nil && rr.Towed {
+			// A bunch carried them (#3738): the road is theirs to keep, and
+			// the time on it is nobody's (ADR-0074).
+			untimed := false
+			row.Timeable = &untimed
+		}
 		row.Xp += StreakXP(ctx, q, row.UserID, start)
 		// A retry after a commit whose answer was lost must not insert the
 		// rider's ride — or their medals — twice (audit 2026-09-09).

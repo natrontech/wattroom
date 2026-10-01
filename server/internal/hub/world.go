@@ -69,13 +69,17 @@ type bunch struct {
 	// Who sets the pace in a second the plan leaves open, when a game names
 	// one (#3030): Team Relay's front rider. Empty rides the live mean.
 	leader string
+	// Where each joined rider stood each second, for the ride they save
+	// (#3738).
+	trail trail
 }
 
 func newBunch(r *routeRide, now time.Time) *bunch {
 	b := &bunch{
 		road: r.profile, fromM: r.FromM, reverse: r.Reverse, loop: r.Loop,
 		at: now, heard: make(map[string]sample), places: make(map[string]*place),
-		koms: komOpenings(r.profile, r.Reverse),
+		koms:  komOpenings(r.profile, r.Reverse),
+		trail: make(trail),
 	}
 	b.komU, b.komLeft = b.komAt(b.fromM, false)
 	return b

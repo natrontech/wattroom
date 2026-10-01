@@ -130,8 +130,8 @@ func (rm *channelState) backfill(c *client, samples []protocol.RiderMetrics, log
 	if kept > 0 && rm.saved && saver != nil {
 		if record, ok := rm.record.byRider[rider.ID]; ok {
 			whole := RiderRecord{Rider: rider, Samples: record.inOrder()}
-			// A racer's replay stands where the race had them (#3722).
-			if r := rm.ridden; r != nil {
+			// A replay stands where the race or the bunch had them (#3722, #3738).
+			if r := rm.recorderLocked(); r != nil {
 				whole.Samples = r.stamp(rider.ID, whole.Samples, rm.session.route)
 			}
 			// The start the close saved, however far back this replay reaches;
