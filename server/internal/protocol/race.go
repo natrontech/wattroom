@@ -84,6 +84,30 @@ func answered(source string) bool {
 	return source != "" && source != SourceDefault
 }
 
+// Last Light (docs/SPEC.md "Races", #3171): a race against a shared clock
+// of 10, 20 or 30 minutes — 20 when the coach does not say — ranked on the
+// distance ridden, whose fog closes from LastLightFogFromM to
+// LastLightFogToM over its final LastLightFogSeconds.
+const (
+	LastLightDefaultMinutes = 20
+	LastLightFogFromM       = 3000
+	LastLightFogToM         = 150
+	LastLightFogSeconds     = 60
+)
+
+// LastLightLength reports whether a Last Light may run this many minutes.
+func LastLightLength(minutes int) bool {
+	return minutes == 10 || minutes == 20 || minutes == 30
+}
+
+// LastLightFog is how far a rider sees with `left` on Last Light's clock:
+// the whole LastLightFogFromM until its final minute, closing at an even
+// rate to LastLightFogToM as it runs out.
+func LastLightFog(left time.Duration) float64 {
+	share := min(max(left.Seconds()/LastLightFogSeconds, 0), 1)
+	return LastLightFogToM + share*(LastLightFogFromM-LastLightFogToM)
+}
+
 // RaceVoidTooFew is a race whose flag found fewer than RaceMinRiders on the
 // session's timeline: it never starts, and says so.
 const RaceVoidTooFew = "too_few"
@@ -102,6 +126,10 @@ type RaceState struct {
 	FlagAtMs    int64 `json:"flagAtMs"`
 	KlaxonAtMs  int64 `json:"klaxonAtMs"`
 	Neutralised bool  `json:"neutralised,omitempty"`
+	// A clock race's (#3171): when the shared clock runs out, and how far
+	// the fog lets a rider see now. Zero for a race to the line.
+	EndsAtMs int64   `json:"endsAtMs,omitempty"`
+	FogM     float64 `json:"fogM,omitempty"`
 	// Why the race never started: RaceVoidTooFew.
 	Void string `json:"void,omitempty"`
 	// The closing card, per Category D–A. Never stored (ADR-0074).
@@ -118,11 +146,14 @@ type RaceBracket struct {
 	Alone    bool           `json:"alone,omitempty"`
 }
 
-// RaceFinisher is one rider over the line: their time from the klaxon to the
-// millisecond, and why they are unplaced (an Unranked reason), if they are.
+// RaceFinisher is one rider on the card: their time from the klaxon to the
+// millisecond once they crossed the line, how far they rode — what a clock
+// race ranks on — and why they are unplaced (an Unranked reason), if they
+// are.
 type RaceFinisher struct {
-	RiderID string `json:"riderId"`
-	Name    string `json:"name"`
-	Ms      int64  `json:"ms"`
-	Why     string `json:"why,omitempty"`
+	RiderID string  `json:"riderId"`
+	Name    string  `json:"name"`
+	Ms      int64   `json:"ms,omitempty"`
+	M       float64 `json:"m"`
+	Why     string  `json:"why,omitempty"`
 }

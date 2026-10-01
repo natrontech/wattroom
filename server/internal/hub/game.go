@@ -123,6 +123,7 @@ var gameModeNames = map[string]string{
 	"points-race":     "Points Race",
 	"team-relay":      "Team Relay",
 	modeRace:          "Race",
+	modeLastLight:     "Last Light",
 }
 
 // gameWorkoutJSON is a game session's workout: no steps, and unscored, as the
@@ -136,7 +137,7 @@ func gameWorkoutJSON(mode, name string) string {
 		Unscored bool   `json:"unscored"`
 		Race     bool   `json:"race,omitempty"`
 		Steps    []any  `json:"steps"`
-	}{name, true, mode == modeRace, []any{}})
+	}{name, true, isRace(mode), []any{}})
 	return string(b)
 }
 

@@ -13,6 +13,9 @@ type Control struct {
 	TotalSeconds int `json:"totalSeconds,omitempty"`
 	// For action "game": which mode to start.
 	GameMode string `json:"gameMode,omitempty"`
+	// For action "game" on Last Light (#3171): its clock in minutes, one of
+	// 10, 20 or 30; absent is LastLightDefaultMinutes.
+	Minutes int `json:"minutes,omitempty"`
 	// For action "handoff": the rider id the session's coach hands it to
 	// (#2438) — someone in the voice channel.
 	Rider string `json:"rider,omitempty"`

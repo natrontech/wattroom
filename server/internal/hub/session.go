@@ -111,7 +111,7 @@ func (s *session) runGame(mode, name string, now time.Time) {
 	s.run++
 	// A race rides no bunch: each racer has their own place on the road
 	// (ADR-0067), and riding together is never mixed into one.
-	if mode != modeRace {
+	if !isRace(mode) {
 		s.startBunch(now)
 	}
 }

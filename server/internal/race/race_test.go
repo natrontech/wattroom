@@ -249,3 +249,30 @@ func TestALateJoinerAfterKmZeroIsNeverRanked(t *testing.T) {
 		t.Fatalf("results: %+v", res)
 	}
 }
+
+// A clock race (#3171): nobody moves past its end, and a hold before the end
+// moves the end on by as long as it held.
+func TestAClockRaceRunsOutAndAHoldMovesItsEnd(t *testing.T) {
+	r, err := New(flat(100_000), []Entrant{{ID: "a", WeightKg: 75, Category: "C"}, {ID: "b", WeightKg: 75, Category: "C"}}, flag)
+	if err != nil {
+		t.Fatal(err)
+	}
+	end := r.Klaxon().Add(10 * time.Minute)
+	r.Clock(end)
+	at := r.Klaxon().Add(5 * time.Minute)
+	r.Neutralised(at, at.Add(time.Minute))
+	if want := end.Add(time.Minute); !r.Ends().Equal(want) {
+		t.Fatalf("the clock ends at %v after a minute's hold, want %v", r.Ends(), want)
+	}
+	for at := r.Klaxon().Add(time.Second); !r.Done(); at = at.Add(time.Second) {
+		r.Step(at, map[string]int{"a": 250, "b": 250})
+		if at.After(r.Ends().Add(2 * time.Second)) {
+			t.Fatal("the clock ran out and the race went on")
+		}
+	}
+	m := r.Racers()["a"].M
+	r.Step(r.Ends().Add(10*time.Second), map[string]int{"a": 250, "b": 250})
+	if r.Racers()["a"].M != m {
+		t.Error("a racer moved past the clock's end")
+	}
+}

@@ -19,7 +19,7 @@ func bunchRide(t *testing.T, lengthM, fromM float64, loop, reverse bool, seconds
 	rm.now = func() time.Time { return now }
 	route := rideOn(slope(0, lengthM), fromM, loop, reverse)
 	route.CutFromM = 420
-	if refusal := rm.startGameOn("team-relay", route, ana, now); refusal != "" {
+	if refusal := rm.startGameOn("team-relay", route, 0, ana, now); refusal != "" {
 		t.Fatalf("start: %s", refusal)
 	}
 	joinRide(rm, "ana", "ben")

@@ -148,6 +148,11 @@ export interface Control {
    */
   gameMode?: string;
   /**
+   * For action "game" on Last Light (#3171): its clock in minutes, one of
+   * 10, 20 or 30; absent is LastLightDefaultMinutes.
+   */
+  minutes?: number /* int */;
+  /**
    * For action "handoff": the rider id the session's coach hands it to
    * (#2438) — someone in the voice channel.
    */
@@ -1300,6 +1305,34 @@ export const UnrankedUntimeable = "untimeable";
  */
 export const UnrankedLate = "late";
 /**
+ * Last Light (docs/SPEC.md "Races", #3171): a race against a shared clock
+ * of 10, 20 or 30 minutes — 20 when the coach does not say — ranked on the
+ * distance ridden, whose fog closes from LastLightFogFromM to
+ * LastLightFogToM over its final LastLightFogSeconds.
+ */
+export const LastLightDefaultMinutes = 20;
+/**
+ * Last Light (docs/SPEC.md "Races", #3171): a race against a shared clock
+ * of 10, 20 or 30 minutes — 20 when the coach does not say — ranked on the
+ * distance ridden, whose fog closes from LastLightFogFromM to
+ * LastLightFogToM over its final LastLightFogSeconds.
+ */
+export const LastLightFogFromM = 3000;
+/**
+ * Last Light (docs/SPEC.md "Races", #3171): a race against a shared clock
+ * of 10, 20 or 30 minutes — 20 when the coach does not say — ranked on the
+ * distance ridden, whose fog closes from LastLightFogFromM to
+ * LastLightFogToM over its final LastLightFogSeconds.
+ */
+export const LastLightFogToM = 150;
+/**
+ * Last Light (docs/SPEC.md "Races", #3171): a race against a shared clock
+ * of 10, 20 or 30 minutes — 20 when the coach does not say — ranked on the
+ * distance ridden, whose fog closes from LastLightFogFromM to
+ * LastLightFogToM over its final LastLightFogSeconds.
+ */
+export const LastLightFogSeconds = 60;
+/**
  * RaceVoidTooFew is a race whose flag found fewer than RaceMinRiders on the
  * session's timeline: it never starts, and says so.
  */
@@ -1322,6 +1355,12 @@ export interface RaceState {
   klaxonAtMs: number /* int64 */;
   neutralised?: boolean;
   /**
+   * A clock race's (#3171): when the shared clock runs out, and how far
+   * the fog lets a rider see now. Zero for a race to the line.
+   */
+  endsAtMs?: number /* int64 */;
+  fogM?: number /* float64 */;
+  /**
    * Why the race never started: RaceVoidTooFew.
    */
   void?: string;
@@ -1342,13 +1381,16 @@ export interface RaceBracket {
   alone?: boolean;
 }
 /**
- * RaceFinisher is one rider over the line: their time from the klaxon to the
- * millisecond, and why they are unplaced (an Unranked reason), if they are.
+ * RaceFinisher is one rider on the card: their time from the klaxon to the
+ * millisecond once they crossed the line, how far they rode — what a clock
+ * race ranks on — and why they are unplaced (an Unranked reason), if they
+ * are.
  */
 export interface RaceFinisher {
   riderId: string;
   name: string;
-  ms: number /* int64 */;
+  ms?: number /* int64 */;
+  m: number /* float64 */;
   why?: string;
 }
 
