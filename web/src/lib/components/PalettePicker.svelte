@@ -39,7 +39,7 @@
 				type="button"
 				class="flex items-center gap-3 rounded-lg border p-3 text-left {selectedId ===
 				preset.identity
-					? 'border-ink/60'
+					? 'border-ink'
 					: 'border-muted/20 hover:border-muted/50'}"
 				style={tokenDeclarations(preset)}
 				onclick={() =>
