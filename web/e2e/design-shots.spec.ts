@@ -199,8 +199,12 @@ surface('ride-free-road', async (s) => {
 	await s.shot(o);
 });
 
-test.fixme('ride-free-road-world', () => {
-	// The world on a free ride's road is #3663's.
+surface('ride-free-road-world', async (s) => {
+	const o = await s.open(DESK, { world: true });
+	const road = await fixtureRoad(o.page, 'hairpin');
+	await ride(o.page, `/ride?road=${road}`);
+	await assertRiding(o.page, true);
+	await s.shot(o);
 });
 
 test.fixme('ride-free-road-ghost', () => {

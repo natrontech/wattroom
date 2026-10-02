@@ -4,7 +4,7 @@ import { keyer, unit, type Salt } from '../place/keyed';
 import type { Class } from '../placement/types';
 import type { Ground, Origin } from '../terrain/ground';
 import type { PropKind } from './kit';
-import { forest, FRAME_NEAR, PAIR_M, ringAt } from './forest';
+import { forest, FRAME_NEAR, ringAt } from './forest';
 import { createPlacer, type Placer } from './placer';
 import { deg, hashOf, turnBy, walker, type Turn } from './roads';
 import { CHUNK_M } from '../place/lattice';
@@ -73,6 +73,8 @@ const VILLAGE_OFF = 20;
 /** A building at a barn's slot brings one or two more, this far apart at most, in this many tries. */
 const CLUSTER_M = 26;
 const FARM_TRIES = 6;
+/** Metres of open yard round a building's walls, where no tree stands. */
+const YARD_M = 8;
 
 /**
  * Where the villages stand (#3076): flat road through meadow, one chance per
@@ -328,11 +330,32 @@ export function scatter(
 	// village — in groups where the stand noise says so, conifers framing the
 	// road, a forest edge behind every clearing, a thinner forest out of sight.
 	const woods = forest(tree(-1, -1, -1));
+	// Every building keeps its yard, so a hamlet reads as roofs in a clearing
+	// and no trunk stands at a wall.
+	const yards = placer.placements
+		.filter((p) => p.cls === 'building')
+		.map(({ footprint: f }) => {
+			const cx = f.reduce((s, [x]) => s + x, 0) / f.length;
+			const cz = f.reduce((s, [, z]) => s + z, 0) / f.length;
+			const r =
+				YARD_M +
+				Math.sqrt(
+					Math.max(
+						...f.map(([x, z]) => (x - cx) * (x - cx) + (z - cz) * (z - cz)),
+					),
+				);
+			return [cx, cz, r * r] as const;
+		});
+	const inYard = (x: number, z: number) =>
+		yards.some(
+			([cx, cz, rr]) => (x - cx) * (x - cx) + (z - cz) * (z - cz) < rr,
+		);
 	cells(TREE_M, (i, j) => {
 		const [x, z] = jitter(i, j, TREE_M, u(tree(i, j, 1)), u(tree(i, j, 2)));
 		const b = biomeAt(x, z);
 		const far = ground.roadDist(x, z);
-		if (b === null || far > TREES_WITHIN || inVillage(x, z)) return;
+		if (b === null || far > TREES_WITHIN || inVillage(x, z) || inYard(x, z))
+			return;
 		const g = woods.groupAt(e0 + x, n0 - z);
 		const frame = woods.frames(b, far);
 		if (u(tree(i, j, 0)) >= woods.chance(b, far, frame, g)) return;
@@ -342,15 +365,15 @@ export function scatter(
 		const tall = 0.6 + u(tree(i, j, 3)) * 0.6 + 0.35 * Math.max(0, g);
 		const kind = conifer ? 'spruce' : 'broadleaf';
 		stand(kind, 'kit', x, z, deg(Math.floor(u(tree(i, j, 5)) * 360)), tall);
-		// In the heart of a stand in sight a second tree grows close beside the first.
-		if (g < 0.3 || far > PAIR_M) return;
+		if (!woods.pairs(b, far, frame, g)) return;
 		const [dx, dz] = ringAt(u(tree(i, j, 6)), u(tree(i, j, 7)), 3.5, 6.5);
 		const tx = x + dx;
 		const tz = z + dz;
 		if (
 			ground.roadDist(tx, tz) >= FRAME_NEAR - 1 &&
 			ground.clearOf(tx, tz, 11) &&
-			!inVillage(tx, tz)
+			!inVillage(tx, tz) &&
+			!inYard(tx, tz)
 		)
 			stand(
 				kind,
