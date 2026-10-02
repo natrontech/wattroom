@@ -12,7 +12,8 @@ import {
 import type { BunchView } from '$lib/channel/bunch-view';
 import { at } from '$lib/road/along';
 import { type Route } from '$lib/road/route';
-import { bezier, DUR, EASE } from '$lib/motion/tokens';
+import { DUR } from '$lib/motion/tokens';
+import { damp } from '$lib/motion/damp';
 import { disposeTree } from './dispose';
 import { tag } from './family';
 import { arch } from './furniture';
@@ -22,11 +23,12 @@ import type { World } from './world';
 
 /** Metres the bunch rides past a stand before its rider may move on. */
 const PASSED_M = 60;
-/** Rounds the fog takes to climb from the road's lowest point to its highest. */
-// ponytail: a look, not a rule; tune with the collective ramp's real round counts.
-const FOG_ROUNDS = 10;
-/** Metres the fog keeps under the bunch's road: it rises toward the riders, never over them. */
-const FOG_CLEAR_M = 12;
+/** How far under the bunch the fog lies in round 1, and how much closer it creeps each round. */
+// ponytail: a look, not a rule; tune with real collective rounds.
+const FOG_DEPTH_M = 48;
+const FOG_RISE_M = 6;
+/** The nearest the fog comes: it creeps toward the riders, never over them. */
+const FOG_CLEAR_M = 10;
 /** Half the fog sea's side, metres: past the fog's own horizon. */
 const FOG_HALF_M = 30_000;
 /** Metres ahead past which the round's arch still follows the bunch's speed: too far to see it move. */
@@ -53,17 +55,12 @@ export function nextStand(
 	return from;
 }
 
-/** The fog sea's height in round `round`, metres above sea: from the road's foot toward its top, under the bunch at `ele`. */
-export function fogEle(route: Route, round: number, ele: number): number {
-	const lo = Math.min(...route.ele);
-	const hi = Math.max(...route.ele);
-	const rise = Math.min(1, Math.max(0, (round - 1) / FOG_ROUNDS));
-	return Math.min(lo - FOG_CLEAR_M + (hi - lo) * rise, ele - FOG_CLEAR_M);
+/** The fog sea's height in round `round`, metres above sea, under the bunch riding at `ele`: closer every round. */
+export function fogEle(round: number, ele: number): number {
+	return ele - Math.max(FOG_CLEAR_M, FOG_DEPTH_M - (round - 1) * FOG_RISE_M);
 }
 
 type Stand = { m: number; since: number };
-
-const settle = bezier(EASE.move);
 
 export function makeGameRoad(route: Route, world: World, style: Style) {
 	const group = new THREE.Group();
@@ -75,9 +72,7 @@ export function makeGameRoad(route: Route, world: World, style: Style) {
 	let held: { round: number; m: number; mesh: THREE.Group } | null = null;
 	let fog: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial> | null =
 		null;
-	let fogFrom = 0;
-	let fogTo = 0;
-	let fogT = 1;
+	let fogY = NaN;
 	let lastM = NaN;
 	let rang = false;
 
@@ -167,17 +162,13 @@ export function makeGameRoad(route: Route, world: World, style: Style) {
 
 			if (play?.mode === 'collective-ramp') {
 				const sea = fogSea();
-				const want = yOf(
-					route,
-					fogEle(route, play.round, at(route, view.m).ele),
-				);
-				if (want !== fogTo) {
-					fogFrom = sea.visible ? sea.position.y : want;
-					fogTo = want;
-					fogT = 0;
-				}
-				fogT = steady ? 1 : Math.min(1, fogT + (real * 1000) / DUR.draw);
-				sea.position.y = fogFrom + (fogTo - fogFrom) * settle(fogT);
+				const want = yOf(route, fogEle(play.round, at(route, view.m).ele));
+				// Eased under the bunch as it climbs and as a round turns; a held stamp under reduced motion.
+				fogY =
+					steady || !sea.visible || Number.isNaN(fogY)
+						? want
+						: fogY + (want - fogY) * damp(DUR.draw / 1000, real);
+				sea.position.y = fogY;
 				sea.visible = true;
 			} else if (fog) fog.visible = false;
 

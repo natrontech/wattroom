@@ -51,16 +51,12 @@ describe('a game on the road (#3114)', () => {
 		expect(nextStand(5900, hairpins, 6000, true)).toBe(8000);
 	});
 
-	it('raises the fog from the road’s foot toward its top, never over the bunch', () => {
-		const top = Math.max(...route.ele);
-		const low = fogEle(route, 1, top);
-		const later = fogEle(route, 6, top);
-		expect(later).toBeGreaterThan(low);
-		expect(fogEle(route, 50, top)).toBeLessThan(top);
-		// Riding low, the fog stays under you whatever the round.
-		expect(fogEle(route, 50, Math.min(...route.ele) + 20)).toBeLessThan(
-			Math.min(...route.ele) + 20,
-		);
+	it('lays the fog under the bunch, closer every round, never over it', () => {
+		expect(fogEle(1, 600)).toBe(552);
+		expect(fogEle(2, 600)).toBe(558);
+		expect(fogEle(2, 700)).toBe(658);
+		// Never nearer than 10 m, however many rounds.
+		expect(fogEle(50, 600)).toBe(590);
 	});
 
 	it('puts Backyard Ramp’s next round under an arch where the bunch will be, held for the round', () => {
@@ -119,7 +115,7 @@ describe('a game on the road (#3114)', () => {
 		expect(arches(g.group)[0].position.x).toBeCloseTo(aimed.x, 3);
 	});
 
-	it('raises Collective Ramp’s fog a round at a time, stepping under reduced motion', () => {
+	it('raises Collective Ramp’s fog a round at a time, eased, and held under reduced motion', () => {
 		const sea = (g: ReturnType<typeof makeGameRoad>) => {
 			let found: THREE.Object3D | null = null;
 			g.group.traverse((o) => {
@@ -132,24 +128,26 @@ describe('a game on the road (#3114)', () => {
 			round,
 			out: [],
 		});
+		const m = 5000;
+		const ele = at(route, m).ele;
 		const g = makeGameRoad(route, world, style);
-		g.update(view(5900, 0, play(1)), 0, 1 / 30, false);
-		const one = sea(g)!.position.y;
+		g.update(view(m, 0, play(1)), 0, 1 / 30, false);
 		expect(sea(g)!.visible).toBe(true);
-		g.update(view(5900, 1000, play(4)), 1, 1 / 30, false);
+		expect(sea(g)!.position.y).toBeCloseTo(yOf(route, fogEle(1, ele)), 3);
+		g.update(view(m, 1000, play(4)), 1, 1 / 30, false);
 		// Rising, not there yet.
-		expect(sea(g)!.position.y).toBeGreaterThan(one);
-		const want = yOf(route, fogEle(route, 4, route.ele.at(-1)!));
+		const want = yOf(route, fogEle(4, ele));
+		expect(sea(g)!.position.y).toBeGreaterThan(yOf(route, fogEle(1, ele)));
 		expect(sea(g)!.position.y).toBeLessThan(want);
-		for (let k = 0; k < 60; k++)
-			g.update(view(5900, 1000, play(4)), 1, 1 / 30, false);
-		expect(sea(g)!.position.y).toBeCloseTo(want, 3);
+		for (let k = 0; k < 600; k++)
+			g.update(view(m, 1000, play(4)), 1, 1 / 30, false);
+		expect(sea(g)!.position.y).toBeCloseTo(want, 2);
 
 		const steady = makeGameRoad(route, world, style);
-		steady.update(view(5900, 0, play(1)), 0, 1 / 30, true);
-		steady.update(view(5900, 1000, play(4)), 1, 1 / 30, true);
+		steady.update(view(m, 0, play(1)), 0, 1 / 30, true);
+		steady.update(view(m, 1000, play(4)), 1, 1 / 30, true);
 		expect(sea(steady)!.position.y).toBeCloseTo(want, 3);
-		steady.update(view(5900, 2000, undefined), 2, 1 / 30, true);
+		steady.update(view(m, 2000, undefined), 2, 1 / 30, true);
 		expect(sea(steady)!.visible).toBe(false);
 	});
 
