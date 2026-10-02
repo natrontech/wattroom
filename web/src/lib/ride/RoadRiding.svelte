@@ -230,7 +230,9 @@
 		{/if}
 		<!-- The bike computer, as a ride in a channel has it (ADR-0046, #3628):
 		     the road's speed, grade and distance on RIDE. -->
+		<!-- The instrument above is the head: RIDE leaves the watts to it. -->
 		<BikeComputer
+			head
 			{watts}
 			cadence={solo.metrics?.cadence ?? 0}
 			hr={solo.metrics?.heartRate ?? 0}
