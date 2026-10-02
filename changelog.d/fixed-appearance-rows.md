@@ -1,0 +1,1 @@
+- Settings → Appearance lines its rows up on one label column, and the light theme family is called Light, not White.

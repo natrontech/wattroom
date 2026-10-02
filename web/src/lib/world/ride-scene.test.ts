@@ -7,6 +7,7 @@ import { RIDER_BOX } from '$lib/session/docks';
 import { STYLES } from '../../routes/(app)/dev/world/styles';
 import { compose } from './compose';
 import { routeOfRoad } from './road-route';
+import type { Hud } from './compose';
 import type { RideMetre } from './sim';
 import { ROAD_W } from './terrain/road-profile';
 import { generate, type World } from './world';
@@ -126,5 +127,59 @@ describe('a ride’s world', () => {
 		expect(Math.hypot(first.x - last.x, first.z - last.z)).toBeGreaterThan(2.7);
 		expect(Math.hypot(first.x - last.x, first.z - last.z)).toBeLessThan(3.1);
 		w.dispose();
+	});
+
+	it('lays a bunch out by the wall’s time, however slowly its frames come (#3098)', () => {
+		const where = (frame: number, wall: number) => {
+			let tick = { m: 300, s: 0 };
+			let hud: Hud | null = null;
+			const w = compose(
+				{
+					route,
+					world,
+					style,
+					ftp: 250,
+					youId: 'a',
+					metre: () => ({ m: tick.m, mps: 8 }),
+					bunch: () => ({
+						m: tick.m,
+						mps: 8,
+						elapsed: 30,
+						order: ['a', 'b', 'c', 'd'],
+						// b is towed back in, two metres a second: an offset on the move.
+						offsets: { b: -40 + 2 * tick.s },
+						resting: [],
+						present: new Map(
+							['a', 'b', 'c', 'd'].map((id) => [id, { watts: 200, ftp: 250 }]),
+						),
+						game: false,
+					}),
+					onTick: (next) => (hud = next),
+				},
+				null,
+			);
+			// Six seconds of the hub's whole-second ticks, drawn at this screen's frame rate.
+			for (let t = 0; t < 6; t += wall) {
+				if (Math.floor(t + wall) > Math.floor(t))
+					tick = { m: tick.m + 8, s: tick.s + 1 };
+				w.advanceBy(frame, wall);
+			}
+			w.dispose();
+			return hud!.riders;
+		};
+		const fast = where(1 / 30, 1 / 30);
+		// A screen drawing twice a second: each frame clamped to 0.1 s, as scene.ts clamps it.
+		const slow = where(0.1, 0.5);
+		// The two snapshots are taken a moment apart: compare where each rider is against the first.
+		const gap = (list: Hud['riders'], id: string) =>
+			list.find((x) => x.id === id)!.d - list.find((x) => x.id === 'a')!.d;
+		for (const r of fast) {
+			const s = slow.find((x) => x.id === r.id)!;
+			expect(
+				Math.abs(gap(slow, r.id) - gap(fast, r.id)),
+				`${r.id} along the road`,
+			).toBeLessThan(1);
+			expect(Math.abs(s.lane - r.lane), `${r.id} across it`).toBeLessThan(0.1);
+		}
 	});
 });

@@ -457,6 +457,10 @@ Every surface id below is also in `docs/design/surface-map.json`, which maps the
    - never in the lower half of the corridor.
    [3086-names-ring]
 5. A crewmate's ring shows only where you may see their numbers (ADR-0059). [3086-names-ring]
+6. Both riders are in the world: two figures abreast on the road, each in its own kit, neither overlapping the other, and your figure still in `RIDER_BOX`. [#3098]
+7. The session's coach — here, you — wears a small violet chevron over the head: flat, unlit, and the only one on the road. [#3098]
+8. The formation, the front row's turn every 120 s, a far rider dithering to their place, the pull-over and the team car hold as SPEC “Riding a road together” says. [test:web/src/lib/world/bunch.test.ts] [#3098]
+9. Each screen draws each rider where the other screen does, within 1 m along the road and across it. [test:web/e2e/bunch-world.spec.ts] [#3098]
 
 #### ride-session-flat
 
