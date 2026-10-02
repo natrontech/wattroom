@@ -92,6 +92,35 @@ const col = (s: string | undefined) =>
 
 const sunOf = (style: Style) => sunDir(style.sun.elevation, style.sun.azimuth);
 
+/**
+ * Linear sRGB to OKLab and back (Ottosson). The horizon band blends there:
+ * from the sky to a grey of the sky's own lightness, then to the peach, so
+ * every pixel keeps either the sky's hue or the peach's — never a pink
+ * between them, never a grey brighter than the sky.
+ */
+const OKLAB = /* glsl */ `
+	vec3 toLab(vec3 c) {
+		vec3 lms = pow(max(vec3(
+			dot(c, vec3(0.4122214708, 0.5363325363, 0.0514459929)),
+			dot(c, vec3(0.2119034982, 0.6806995451, 0.1073969566)),
+			dot(c, vec3(0.0883024619, 0.2817188376, 0.6299787005))), 0.0), vec3(1.0 / 3.0));
+		return vec3(
+			dot(lms, vec3(0.2104542553, 0.7936177850, -0.0040720468)),
+			dot(lms, vec3(1.9779984951, -2.4285922050, 0.4505937099)),
+			dot(lms, vec3(0.0259040371, 0.7827717662, -0.8086757660)));
+	}
+	vec3 fromLab(vec3 l) {
+		vec3 lms = vec3(
+			dot(l, vec3(1.0, 0.3963377774, 0.2158037573)),
+			dot(l, vec3(1.0, -0.1055613458, -0.0638541728)),
+			dot(l, vec3(1.0, -0.0894841775, -1.2914855480)));
+		lms = lms * lms * lms;
+		return vec3(
+			dot(lms, vec3(4.0767416621, -3.3077115913, 0.2309699292)),
+			dot(lms, vec3(-1.2684380046, 2.6097574011, -0.3413193965)),
+			dot(lms, vec3(-0.0041960863, -0.7034186147, 1.7076147010)));
+	}`;
+
 /** Puts a light (light.ts) on the sky's or the ground's shader. */
 export function setLight(m: THREE.ShaderMaterial, light: Light) {
 	const u = m.uniforms;
@@ -212,6 +241,7 @@ export function skyMaterial(style: Style): THREE.ShaderMaterial {
 		},
 		vertexShader: /* glsl */ `varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
 		fragmentShader: /* glsl */ `uniform vec3 uTop, uHorizon, uSunward, uBand, uSun, uSunCol, uSunLow; uniform float uDisc, uPeach, uDusk; uniform sampler2D uSkyline; varying vec3 vDir;
+			${OKLAB}
 			void main(){
 				float h = max(vDir.y, 0.0);
 				float s = max(dot(vDir, uSun), 0.0);
@@ -219,10 +249,11 @@ export function skyMaterial(style: Style): THREE.ShaderMaterial {
 				vec3 c = mix(hor, uTop, pow(h, 0.45));
 				if (uPeach > 0.0) { // on the ridges as this eye sees them, gone about 1° above them
 					float ridge = texture2D(uSkyline, vec2(atan(vDir.x, vDir.z) / 6.2831853, 0.5)).r * 0.5;
-					float bh = 0.015 * (1.0 + 0.5 * pow(s, 4.0));
+					float bh = 0.018 * (1.0 + 0.5 * pow(s, 4.0));
 					float w = uPeach * smoothstep(-0.01, 0.0, vDir.y) * (1.0 - smoothstep(ridge - bh, ridge + bh, vDir.y));
-					vec3 pale = vec3(dot(uBand, vec3(0.2126, 0.7152, 0.0722))); // the peach's lightness in grey: out of a cool sky without passing pink
-					c = mix(mix(c, pale, min(1.0, w / 0.3)), uBand, max(0.0, (w - 0.3) / 0.7));
+					vec3 sky = toLab(c);
+					vec3 grey = vec3(sky.x, 0.0, 0.0);
+					c = fromLab(w < 0.06 ? mix(sky, grey, w / 0.06) : mix(grey, toLab(uBand), (w - 0.06) / 0.94));
 				}
 				if (uDisc > 0.5) c += uSunward * pow(s, 6.0) * 0.35 + hor * exp(-abs(vDir.y) * 14.0) * 0.12;
 				if (uDisc > 1.5) { // the outrun sun: flat disc, horizontal gaps widening toward the bottom

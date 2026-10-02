@@ -62,6 +62,8 @@ type View = {
 export function makeCrew(riders: SimRider[], style: Style) {
 	const group = new THREE.Group();
 	const gradient = ramp(RIDER_RAMP);
+	// A sun's contact shadow grounds each rider; under the sky alone nothing casts one (ADR-0072).
+	const shadowed = style.sun.elevation >= 0;
 	const shadowGeo = new THREE.CircleGeometry(0.5, 20)
 		.rotateX(-Math.PI / 2)
 		.scale(0.9, 1, 2.1);
@@ -109,12 +111,8 @@ export function makeCrew(riders: SimRider[], style: Style) {
 		);
 		bead.visible = false;
 		const g = new THREE.Group();
-		g.add(
-			tag('figures', model.mesh),
-			tag('marks', new THREE.Mesh(shadowGeo, shadowMat)),
-			tag('marks', ring),
-			tag('marks', bead),
-		);
+		g.add(tag('figures', model.mesh), tag('marks', ring), tag('marks', bead));
+		if (shadowed) g.add(tag('marks', new THREE.Mesh(shadowGeo, shadowMat)));
 		group.add(g);
 		return { group: g, model, ring, bead };
 	});

@@ -19,6 +19,7 @@ describe('the ride light (ADR-0072)', () => {
 
 	it('shows no star at the start, and stars once the zenith has darkened', () => {
 		expect(lightAt(RIDE, 0).stars).toBe(0);
+		expect(lightAt(RIDE, null).stars).toBe(0);
 		expect(lightAt(RIDE, 1).stars).toBeGreaterThan(0.9);
 	});
 

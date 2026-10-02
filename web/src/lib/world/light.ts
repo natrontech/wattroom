@@ -14,10 +14,11 @@ const DUSK_PER_DEG = 0.11;
 
 /**
  * The zenith's relative luminance (linear) at which the first star shows,
- * and at which they all have. The ride's zenith token passes the first at
- * about −5° and the second at about −8°.
+ * and at which they all have. The ride's zenith token passes the first just
+ * below −6°, so a ride with no known end starts starless too, and the
+ * second at about −8°.
  */
-const STARS_FROM = 0.066;
+const STARS_FROM = 0.055;
 const STARS_FULL = 0.042;
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
@@ -64,7 +65,7 @@ export type Light = {
 	from: THREE.Vector3;
 	/** What the sky still gives, 1 down to −4°. */
 	dusk: number;
-	/** The peach band's strength, fading as the sun sinks. */
+	/** The peach band's strength: full to −5°, gone by first night at −8°. */
 	peach: number;
 	/** The stars' opacity, by the zenith's luminance. */
 	stars: number;
@@ -84,7 +85,7 @@ export function lightAt(style: Style, p: number | null): Light {
 		sun,
 		from: keyed ? sun.clone() : new THREE.Vector3(0, 1, 0),
 		dusk,
-		peach: style.sky.band ? clamp01((elevation + 10) / 6) : 0,
+		peach: style.sky.band ? clamp01((elevation + 8) / 3) : 0,
 		stars: style.stars
 			? clamp01((STARS_FROM - y) / (STARS_FROM - STARS_FULL))
 			: 0,

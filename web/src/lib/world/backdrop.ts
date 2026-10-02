@@ -52,7 +52,7 @@ const SEG = 256;
 const SKY_N = 256; // bearings the skyline is drawn at
 const SKY_MOVE = 25; // metres the eye moves before the skyline is drawn again
 /** Bearings each way the skyline holds its highest ridge, then eases over half that: the band runs above the range, never round each peak. */
-const SKY_HOLD = 8;
+const SKY_HOLD = 6;
 
 /**
  * The skyline from an eye: at each of SKY_N bearings from +z clockwise, the

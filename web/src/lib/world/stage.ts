@@ -50,13 +50,13 @@ function stars(
 ): THREE.Points<THREE.BufferGeometry, THREE.PointsMaterial> {
 	const r = prng(7);
 	const pos = new Float32Array(STARS * 3);
-	const shade = new Float32Array(STARS * 3);
+	const fade = new Float32Array(STARS * 4).fill(1);
 	const low = Math.sin(STARS_LOW);
 	for (let i = 0; i < STARS; i++) {
 		const a = r() * Math.PI * 2;
 		const e = Math.asin(low + r() * (1 - low)); // even over the cap
 		const d = 30000;
-		shade.fill(Math.min(1, (e - STARS_LOW) / STARS_FADE), i * 3, i * 3 + 3);
+		fade[i * 4 + 3] = Math.min(1, (e - STARS_LOW) / STARS_FADE); // by alpha: a faint star is fainter, never darker than the sky
 		pos.set(
 			[
 				Math.cos(a) * Math.cos(e) * d,
@@ -68,7 +68,7 @@ function stars(
 	}
 	const g = new THREE.BufferGeometry();
 	g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-	g.setAttribute('color', new THREE.BufferAttribute(shade, 3));
+	g.setAttribute('color', new THREE.BufferAttribute(fade, 4));
 	const points = new THREE.Points(
 		g,
 		new THREE.PointsMaterial({
