@@ -29,22 +29,13 @@
 	// The ride's clock: time left, or ridden on a ride with no end.
 	const clock = $derived(
 		!snapshot
-			? ''
+			? null
 			: snapshot.elapsed === undefined
-				? `${formatClock(snapshot.remaining)} left`
-				: `${formatClock(snapshot.elapsed)} ridden`,
+				? { time: formatClock(snapshot.remaining), word: 'left' }
+				: { time: formatClock(snapshot.elapsed), word: 'ridden' },
 	);
-	// On a road (#3092, #3060's readout): the grade under the rider and, on a
-	// classed climb, how far to its top — "8.9 % · top 6.0 km".
 	const road = $derived(snapshot?.road);
-	const roadLine = $derived(
-		road
-			? `${road.grade.toFixed(1)} %` +
-					(road.toTopM === undefined
-						? ''
-						: ` · top ${formatKm(road.toTopM)} km`)
-			: '',
-	);
+
 	const onTarget = $derived(
 		!!snapshot &&
 			snapshot.target > 0 &&
@@ -60,6 +51,10 @@
      window is the container: the block inside is the shell's 320×132 at
      16 px, and any larger window scales that same block as one centred unit
      (#3678), so a browser tab on a second screen reads from the saddle. -->
+{#snippet clockText()}
+	{#if clock}<span class="num">{clock.time}</span> {clock.word}{/if}
+{/snippet}
+
 <main
 	class="cave bg-surface text-ink [container-type:size] relative grid h-dvh place-items-center overflow-hidden select-none"
 	style="-webkit-app-region: drag"
@@ -96,11 +91,8 @@
 				{#if road}
 					<!-- Row 3 is the road's on a road; the clock moves up beside the
 					     label so the window keeps its 320×132 (desktop/main.js). -->
-					<p
-						class="text-muted text-[0.75em] tabular-nums"
-						data-testid="hud-remaining"
-					>
-						{clock}
+					<p class="text-muted text-[0.75em]" data-testid="hud-remaining">
+						{@render clockText()}
 					</p>
 				{/if}
 			</div>
@@ -133,11 +125,16 @@
 				</p>
 			{/if}
 			{#if road}
-				<p
-					class="text-ink mt-[0.25em] text-[0.75em] tabular-nums"
-					data-testid="hud-road"
-				>
-					{roadLine}
+				<!-- On a road (#3092, #3060's readout): the grade under the rider
+				     and, on a classed climb, how far to its top. Numbers in the
+				     display face, units at half their size (TARGETS G4). -->
+				<p class="text-ink mt-[0.25em] text-[0.75em]" data-testid="hud-road">
+					<span class="num">{road.grade.toFixed(1)}</span>
+					<span class="unit">%</span>
+					{#if road.toTopM !== undefined}
+						· top <span class="num">{formatKm(road.toTopM)}</span>
+						<span class="unit">km</span>
+					{/if}
 				</p>
 				{#if road.ahead}
 					<!-- The next 2 km in 100 m bars, in the Skyline's grade ramp:
@@ -165,10 +162,10 @@
 				{/if}
 			{:else}
 				<p
-					class="text-muted mt-[0.5em] text-[0.75em] tabular-nums"
+					class="text-muted mt-[0.5em] text-[0.75em]"
 					data-testid="hud-remaining"
 				>
-					{clock}
+					{@render clockText()}
 				</p>
 			{/if}
 		{/if}
@@ -194,7 +191,12 @@
 	.label {
 		color: var(--color-muted);
 		font-size: 0.625em;
-		letter-spacing: 0.2em;
+		/* Tighter than the kit's 0.2em, so “Free ride · <road>” fits beside
+		   the clock in the shell's 320 px. */
+		letter-spacing: 0.12em;
 		text-transform: uppercase;
+	}
+	.unit {
+		font-size: 0.5em;
 	}
 </style>
