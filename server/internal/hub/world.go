@@ -72,6 +72,9 @@ type bunch struct {
 	// Who sets the pace in a second the plan leaves open, when a game names
 	// one (#3030): Team Relay's front rider. Empty rides the live mean.
 	leader string
+	// The %FTP a running game asks of everyone, when it asks one (#3114):
+	// a ramp's line, Floor is Lava's called zone. 0 asks nothing.
+	asks float64
 	// Where each joined rider stood each second, for the ride they save
 	// (#3738).
 	trail trail
@@ -134,10 +137,14 @@ func (b *bunch) livePct() float64 {
 }
 
 // pacePct is the %FTP a second the plan leaves open is ridden at: the
-// leader's while they pedal, capped as livePct caps anyone, else the mean.
+// leader's while they pedal, capped as livePct caps anyone, else what the
+// game asks of everyone, else the mean.
 func (b *bunch) pacePct() float64 {
 	if s, ok := b.heard[b.leader]; ok && s.pct() > 0 {
 		return min(s.pct(), protocol.BunchMaxPct)
+	}
+	if b.asks > 0 {
+		return min(b.asks, protocol.BunchMaxPct)
 	}
 	return b.livePct()
 }
