@@ -126,16 +126,15 @@ export function buildStage(
 		fog: false,
 		side: THREE.DoubleSide,
 	});
-	const horizon = new THREE.Mesh(
-		backdrop(
-			route,
-			world.seed,
-			radius,
-			{ ...style.backdrop, fog: style.sky.horizon },
-			style.backdrop.snowCaps && alpine,
-		),
-		horizonMat,
+	const ridges = backdrop(
+		route,
+		world.seed,
+		radius,
+		{ ...style.backdrop, fog: style.sky.horizon },
+		style.backdrop.snowCaps && alpine,
 	);
+	skyMat.uniforms.uSkyline.value = ridges.skyline.texture;
+	const horizon = new THREE.Mesh(ridges.geometry, horizonMat);
 	horizon.frustumCulled = false;
 	group.add(tag('sky', horizon));
 
@@ -237,6 +236,9 @@ export function buildStage(
 		group,
 		update(eye) {
 			props.update(eye);
+			// The sky stands round the eye, so its band meets the ridges where this eye sees them.
+			sky.position.copy(eye);
+			ridges.skyline.from(eye);
 			if (!orbit) roads(eye);
 		},
 		setOrbit(on) {

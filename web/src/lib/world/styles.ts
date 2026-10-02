@@ -200,6 +200,7 @@ export function skyMaterial(style: Style): THREE.ShaderMaterial {
 			uSunward: { value: col(style.sky.sunward) },
 			uBand: { value: col(style.sky.band) },
 			uPeach: { value: 0 },
+			uSkyline: { value: null as THREE.Texture | null }, // the backdrop's skyline by bearing (backdrop.ts)
 			uDusk: { value: 1 },
 			uSun: { value: sunOf(style) },
 			uSunCol: { value: col(style.sun.color) },
@@ -210,14 +211,19 @@ export function skyMaterial(style: Style): THREE.ShaderMaterial {
 			},
 		},
 		vertexShader: /* glsl */ `varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-		fragmentShader: /* glsl */ `uniform vec3 uTop, uHorizon, uSunward, uBand, uSun, uSunCol, uSunLow; uniform float uDisc, uPeach, uDusk; varying vec3 vDir;
+		fragmentShader: /* glsl */ `uniform vec3 uTop, uHorizon, uSunward, uBand, uSun, uSunCol, uSunLow; uniform float uDisc, uPeach, uDusk; uniform sampler2D uSkyline; varying vec3 vDir;
 			void main(){
 				float h = max(vDir.y, 0.0);
 				float s = max(dot(vDir, uSun), 0.0);
 				vec3 hor = mix(uHorizon, uSunward, pow(s, 8.0));
 				vec3 c = mix(hor, uTop, pow(h, 0.45));
-				float bh = 0.03 * (1.0 + 0.5 * pow(s, 4.0)); // about 2° high, never a tenth of the sky
-				c = mix(c, uBand, uPeach * smoothstep(-0.01, 0.0, vDir.y) * (1.0 - smoothstep(0.0, bh, vDir.y)));
+				if (uPeach > 0.0) { // on the ridges as this eye sees them, gone 2° above them
+					float ridge = texture2D(uSkyline, vec2(atan(vDir.x, vDir.z) / 6.2831853, 0.5)).r * 0.5;
+					float bh = 0.03 * (1.0 + 0.5 * pow(s, 4.0));
+					float w = uPeach * smoothstep(-0.01, 0.0, vDir.y) * (1.0 - smoothstep(ridge * 0.9, ridge + bh, vDir.y));
+					vec3 pale = vec3(dot(uBand, vec3(0.2126, 0.7152, 0.0722))); // the peach's lightness in grey: out of a cool sky without passing pink
+					c = mix(mix(c, pale, min(1.0, w / 0.3)), uBand, max(0.0, (w - 0.3) / 0.7));
+				}
 				if (uDisc > 0.5) c += uSunward * pow(s, 6.0) * 0.35 + hor * exp(-abs(vDir.y) * 14.0) * 0.12;
 				if (uDisc > 1.5) { // the outrun sun: flat disc, horizontal gaps widening toward the bottom
 					vec3 toSun = vDir - uSun;
