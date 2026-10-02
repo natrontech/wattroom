@@ -237,7 +237,11 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 	}
 	/** The lighter or fuller figure, keeping its pose, colours and material. */
 	function relod(v: View, lod: 0 | 1) {
-		const next = buildFigure(kit, { lod, palette: v.palette });
+		const next = buildFigure(kit, {
+			lod,
+			palette: v.palette,
+			material: v.material,
+		});
 		v.figure.geometry.dispose();
 		v.figure.geometry = next.geometry;
 		next.skeleton.dispose();
