@@ -471,6 +471,23 @@ Every surface id below is also in `docs/design/surface-map.json`, which maps the
 1. ride-workout-flat's items hold in the session's Training place. [ride-flat]
 2. The crew's rows are ≥ 44 px, and no crew number is in watt (G2). [ride-flat]
 
+#### ride-game-backyard, ride-game-collective
+
+**Capture:** two dev riders (Designer coaching, Design Partner riding along) in one crew's voice channel, on simulated trainers. The coach's socket starts the game on the hairpin road, because no screen starts a game on a road yet (#3794). The mixer is muted.
+- Backyard Ramp from the road's start, shot at 0:14 (`ride-game-backyard`) and at 2:45, as the round's last seconds run (`ride-game-backyard-arch`).
+- Collective Ramp from 3.5 km up the road, shot in round 2 (`ride-game-collective`).
+
+**Targets:** none drawn, canon is the bar. The layout around the world is ride-session-road's.
+
+**Canon:** #3114; ADR-0065; SPEC "Game mode parameters", "The roadside" and "Riding a road together".
+
+**Must match**
+1. A game on a road draws its world: the bunch on the road, as a session on a road does. [#3114]
+2. Backyard Ramp: an arch reading "ROUND n" spans the road where the bunch will be when the round ends. It wears the KOM arch's structural chrome and never glows, and it stands close ahead in the round's last seconds. [multi:ride-game-backyard-arch] [test:web/src/lib/world/game-road.test.ts] [#3114]
+3. Collective Ramp: a fog sea lies flat and unlit under the bunch and creeps closer each round, never over the road. Under reduced motion it steps. Where no land lies below the road, none shows. [test:web/src/lib/world/game-road.test.ts] [#3114]
+4. A rider a game puts out stands, stopped, on the verge at the first hairpin 300 m to 5 km ahead. The cowbell rings once as the bunch rides by, under the roadside's sound ceiling. [test:web/src/lib/world/ride-scene.test.ts] [#3114]
+5. The bunch rides the round's line in Backyard and Collective Ramp, and the middle of the called zone in Floor is Lava. [test:server/internal/hub/game_road_test.go] [#3114]
+
 #### ride-channel-free
 
 **Capture:** the voice channel's free ride (`lib/ride/FreeRide.svelte`), world off.
