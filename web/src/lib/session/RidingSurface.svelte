@@ -58,17 +58,14 @@
 			<!-- The left column: status at its top, your numbers at its foot on
 			     the horizon, each as tall as it is; the numbers scroll only when
 			     the two outgrow the column. -->
-			<div
-				class="absolute flex flex-col justify-between gap-4"
-				style={place(docks.column)}
-			>
+			<div class="absolute flex flex-col gap-4" style={place(docks.column)}>
 				{#if status}
 					<div data-dock="status" class="{panel} shrink-0">
 						{@render status()}
 					</div>
 				{/if}
 				{#if numbers}
-					<div data-dock="numbers" class="{panel} min-h-0">
+					<div data-dock="numbers" class="{panel} mt-auto min-h-0">
 						{@render numbers()}
 					</div>
 				{/if}
