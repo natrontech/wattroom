@@ -1,6 +1,8 @@
 // The horizon: three silhouette rings of mountains beyond the world's edge,
 // with a hero peak at the bearing the chase camera faces for the most riding
 // time and a second one at least 60° away. The world stops; the view doesn't.
+// It draws where its far ranges stand from the eye, so the sky can sit its
+// horizon band on the horizon, with the near range before it.
 import * as THREE from 'three';
 import { EXAG, yOf } from './geometry';
 import { referenceSpeed } from '$lib/road/pace';
@@ -42,11 +44,26 @@ export function bearings(route: Route): Peaks {
 }
 
 const RINGS = [
-	{ R: 3000, fog: 0.4, lift: 900, amp: 700, hero: 0.7 },
-	{ R: 8000, fog: 0.6, lift: 1700, amp: 1000, hero: 1.0 },
-	{ R: 14000, fog: 0.8, lift: 2300, amp: 1300, hero: 0.35 },
+	{ R: 3000, fog: 0.35, lift: 900, amp: 700, hero: 0.7 },
+	{ R: 8000, fog: 0.5, lift: 1700, amp: 1000, hero: 1.0 },
+	{ R: 14000, fog: 0.65, lift: 2300, amp: 1300, hero: 0.35 }, // never the sky's own colour: the farthest still stands out from it
 ];
 const SEG = 256;
+const SKY_N = 256; // bearings the skyline is drawn at
+const SKY_MOVE = 25; // metres the eye moves before the skyline is drawn again
+const SKY_EASE = 3; // bearings each way the skyline is averaged over: the band lies along the range, never round each peak
+
+/**
+ * The horizon from an eye: at each of SKY_N bearings from +z clockwise, the
+ * sine of the far ranges' elevation, eased and doubled into a byte
+ * (0.5 is 30°, far above any ridge). Linear and wrapping, so a shader
+ * reads it by bearing.
+ */
+export type Skyline = {
+	texture: THREE.DataTexture;
+	/** Draws it from where the eye now is, once it has moved far enough to matter. */
+	from(eye: THREE.Vector3): void;
+};
 
 export function backdrop(
 	route: Route,
@@ -54,7 +71,7 @@ export function backdrop(
 	radius: number,
 	colors: { ridge: string; rock: string; snow: string; fog: string },
 	snow: boolean,
-): THREE.BufferGeometry {
+): { geometry: THREE.BufferGeometry; skyline: Skyline } {
 	const peaks = bearings(route);
 	const n = noise2(seed ^ 0x51f15e);
 	const phase = prng(seed ^ 0x77)() * 100;
@@ -65,6 +82,7 @@ export function backdrop(
 	const pos: number[] = [];
 	const col: number[] = [];
 	const base = yOf(route, route.minEle) - 300;
+	const rings: { R: number; tops: number[] }[] = [];
 	const snowline = (2400 - route.minEle) * EXAG;
 	const near = (a: number, c: number, w: number) => {
 		let d = Math.abs(a - c);
@@ -86,6 +104,7 @@ export function backdrop(
 				900 * (k === 1 ? 1 : 0.4) * near(a, peaks.second, 0.12);
 			tops.push(Math.max(300, h) * EXAG);
 		}
+		rings.push({ R, tops });
 		const p = (a: number, y: number) => [
 			Math.sin(a) * R,
 			base + y,
@@ -135,5 +154,51 @@ export function backdrop(
 	const g = new THREE.BufferGeometry();
 	g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
 	g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-	return g;
+	// The near ring stands before the horizon; the far two make it.
+	return { geometry: g, skyline: skylineOf(rings.slice(1), base) };
+}
+
+function skylineOf(
+	rings: { R: number; tops: number[] }[],
+	base: number,
+): Skyline {
+	const data = new Uint8Array(SKY_N);
+	const raw = new Float64Array(SKY_N);
+	const texture = new THREE.DataTexture(data, SKY_N, 1, THREE.RedFormat);
+	texture.wrapS = THREE.RepeatWrapping;
+	texture.magFilter = texture.minFilter = THREE.LinearFilter;
+	let atX = Infinity;
+	let atZ = Infinity;
+	return {
+		texture,
+		from(eye) {
+			if (Math.hypot(eye.x - atX, eye.z - atZ) < SKY_MOVE) return;
+			atX = eye.x;
+			atZ = eye.z;
+			const ee = eye.x * eye.x + eye.z * eye.z;
+			for (let i = 0; i < SKY_N; i++) {
+				const a = (i / SKY_N) * Math.PI * 2;
+				const dx = Math.sin(a);
+				const dz = Math.cos(a);
+				const ed = eye.x * dx + eye.z * dz;
+				raw[i] = 0;
+				for (const { R, tops } of rings) {
+					// Where this bearing meets the ring, and how high the ridge stands there.
+					const t = -ed + Math.sqrt(Math.max(0, ed * ed - ee + R * R));
+					const u = Math.atan2(eye.x + t * dx, eye.z + t * dz) / (Math.PI * 2);
+					const f = (u - Math.floor(u)) * SEG;
+					const s = Math.min(SEG - 1, Math.floor(f));
+					const up = base + tops[s] + (tops[s + 1] - tops[s]) * (f - s) - eye.y;
+					raw[i] = Math.max(raw[i], up / Math.hypot(t, up));
+				}
+			}
+			for (let i = 0; i < SKY_N; i++) {
+				let sum = 0;
+				for (let j = -SKY_EASE; j <= SKY_EASE; j++)
+					sum += raw[(i + j + SKY_N) % SKY_N];
+				data[i] = Math.round(Math.min(1, (sum / (2 * SKY_EASE + 1)) * 2) * 255);
+			}
+			texture.needsUpdate = true;
+		},
+	};
 }

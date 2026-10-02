@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { at } from '$lib/road/along';
 import { toRoute, type Route } from '$lib/road/route';
-import { STYLES } from '../../routes/(app)/dev/world/styles';
+import { RIDE } from './look.test-helper';
 import { pageGrids } from './chunks/grids';
 import { compose, type Composed } from './compose';
 import { yOf } from './geometry';
@@ -25,7 +25,7 @@ beforeAll(() => {
 	route = toRoute(syntheticPoints());
 	const world = generate(route);
 	w = compose(
-		{ route, world, style: STYLES[0], ftp: 250, grids: pageGrids(world) },
+		{ route, world, style: RIDE, ftp: 250, grids: pageGrids(world) },
 		null,
 	);
 }, BUILD_MS);

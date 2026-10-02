@@ -244,6 +244,7 @@
 					bunch={() => channel.ridden?.bunch ?? null}
 					watts={channel.you.watts}
 					ftp={channel.you.ftp}
+					progress={total > 0 ? elapsed / total : null}
 					paused={inFocus === 'media'}
 					onfail={world.fail}
 					onflat={world.flatten}

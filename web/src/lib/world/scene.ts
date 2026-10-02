@@ -22,6 +22,8 @@ export type WorldScene = {
 	setCamera(mode: CameraMode): void;
 	setWatts(watts: number): void;
 	setSpeedup(factor: number): void;
+	/** The ride's progress, 0–1, for the light; null when it has no known end. */
+	setProgress(p: number | null): void;
 	/** Hold the loop while a shared screen has the world's place, or the desktop shell hid its window. */
 	hold(gate: 'displaced' | 'shell', held: boolean): void;
 	/** Frames drawn and divisor intervals missed, for rideView() (#3080). */
@@ -57,11 +59,13 @@ export function mount(
 		throw err;
 	}
 	const { scene, camera } = world;
+	// Behind the sky, the fog's colour: what the horizon is at this light.
+	const clear = () => scene.fog && renderer.setClearColor(scene.fog.color);
 	const dress = (style: Style) => {
 		world.dress(style);
-		renderer.setClearColor(style.sky.horizon);
+		clear();
 	};
-	renderer.setClearColor(opts.style.sky.horizon);
+	clear();
 
 	function fit() {
 		const w = canvas.clientWidth;
@@ -115,6 +119,10 @@ export function mount(
 		setCamera: (mode: CameraMode) => world.setCamera(mode),
 		setWatts: (watts) => world.setWatts(watts),
 		setSpeedup: (factor) => world.setSpeedup(factor),
+		setProgress(p) {
+			world.setProgress(p);
+			clear();
+		},
 		hold: loop.gate,
 		stats: loop.stats,
 		probe: () => ({

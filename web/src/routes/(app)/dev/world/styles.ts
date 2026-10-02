@@ -1,7 +1,8 @@
-// The prototype's six art styles, as data (#3021). Fixed colours on purpose:
+// The gallery's other art styles, as data (#3021). Fixed colours on purpose:
 // these are palettes being tried out, not yet derived from the theme tokens
-// the way a shipped world's would be. Hex values follow the Outrun identity
-// where one applies — the watt magenta trail, the zone ring's Z1–Z7.
+// the way a shipped world's are — the ride's own blue hour is
+// $lib/world/look.ts, painted from app.css. Hex values follow the Outrun
+// identity where one applies — the watt magenta trail, the zone ring's Z1–Z7.
 import { Biome } from '$lib/world/biome';
 import type { PropColors, RiderKit, Style } from '$lib/world/styles';
 
@@ -64,56 +65,6 @@ const ARCH: Style['arch'] = {
 const shared = { kit: KIT, zones: ZONES, signs: SIGNS, arch: ARCH };
 
 export const STYLES: readonly Style[] = [
-	{
-		id: 'bluehour',
-		label: 'Alpine blue hour',
-		ride: true,
-		sky: { top: '#1c2c51', horizon: '#94644f', sunward: '#e0936a' },
-		sun: { elevation: 5, azimuth: 250, disc: 'halo', color: '#ffc58f' },
-		fogK: 1.2e-4,
-		bands: 2,
-		shade: '#1a0c31',
-		skyFill: 0.12,
-		key: '#ffcfa3',
-		palette: {
-			[Biome.Water]: '#1a3b55',
-			[Biome.Meadow]: '#2f5a37',
-			[Biome.Forest]: '#123a29',
-			[Biome.Alpine]: '#4f5a44',
-			[Biome.Rock]: '#414758',
-			[Biome.Snow]: '#9aa5b8',
-			[Biome.Verge]: '#3d4a36',
-		},
-		grid: null,
-		contours: null,
-		imhof: null,
-		road: { asphalt: '#1b1a1f', line: '#cfc9d6', verge: '#2c2a2c' },
-		props: alpineProps({
-			spruce: '#0d2c20',
-			spruceTip: '#23503a',
-			leaf: '#23452a',
-			leafLight: '#3f6a3a',
-			trunk: '#3a2a22',
-			wall: '#b9ada0',
-			wood: '#5a3a26',
-			roof: '#2e2530',
-			stone: '#4c4a52',
-			cow: '#c9c2b8',
-			cowPatch: '#4a2e22',
-			post: '#d8d3dc',
-			rock: '#4c5060',
-		}),
-		trail: WATT,
-		plinth: null,
-		backdrop: {
-			ridge: '#26304a',
-			rock: '#3c4258',
-			snow: '#9aa5b8',
-			snowCaps: true,
-		},
-		stars: '#b9a6e0',
-		...shared,
-	},
 	{
 		id: 'golden',
 		label: 'Golden hour',
