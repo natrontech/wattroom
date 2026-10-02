@@ -193,7 +193,7 @@ surface('ride-free-road', async (s) => {
 });
 
 test.fixme('ride-free-road-world', () => {
-	// The world on a free ride's road is #3663's.
+	// A free ride on a road draws no world yet: #3669 brings it.
 });
 
 test.fixme('ride-free-road-ghost', () => {
@@ -217,7 +217,7 @@ surface('phone-ride', async (s) => {
 });
 
 test.fixme('phone-ride-road', () => {
-	// The world on a free ride's road is #3663's.
+	// A free ride on a road draws no world yet: #3669 brings it.
 });
 
 surface('hud', async (s) => {
@@ -441,6 +441,17 @@ async function moment(
 		() => !!(window as unknown as { __worldProbe?: unknown }).__worldProbe,
 		null,
 		{ timeout: 30_000 },
+	);
+	// The ground around the eye whole before the shot: a chunk still building is a frame two loads disagree on.
+	await o.page.waitForFunction(
+		() =>
+			(
+				window as unknown as {
+					__worldProbe: () => { ground?: { pending: number } };
+				}
+			).__worldProbe().ground?.pending === 0,
+		null,
+		{ timeout: 60_000 },
 	);
 	await o.page.waitForTimeout(2000);
 	return o;

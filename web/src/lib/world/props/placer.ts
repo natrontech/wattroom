@@ -1,4 +1,4 @@
-import { admit, crowd } from '../placement/check';
+import { alone } from '../placement/check';
 import type { P2 } from '../placement/geom';
 import { GATES, type Class, type Placement } from '../placement/types';
 import type { Line } from '../terrain/lines';
@@ -7,28 +7,27 @@ import { roadsNear, type Turn } from './roads';
 
 /**
  * Where everything the generator stands meets #3219's gates (#3076, #3077):
- * one crowd for set pieces and props alike, in the order they are asked, so
- * a bench never shares its spot with a spruce. A model stands on its own
- * footprint, read off it (kit.ts), with its base as high as its bury allows
- * and never floating past its plinth; it stands only if every gate passes.
+ * a model stands on its own footprint, read off it (kit.ts), with its base
+ * as high as its bury allows and never floating past its plinth, if every
+ * gate that asks only of it passes — the roads, the ground, itself. What
+ * stands beside what (O5) a tile settles by rank, never by order (tiles.ts,
+ * #3699), so a place stands the same things whichever way it was reached.
  */
 export function createPlacer(
 	ground: (x: number, z: number) => number,
 	lines: readonly Line[],
 ) {
 	const near = roadsNear(lines);
-	const crowded = crowd();
-	const placements: Placement[] = [];
 
-	/** The base `kind` stands at on (x, z), turned by `turn` — or null where the gates refuse it. */
-	function stand(
+	/** `kind` as it would stand on (x, z), turned by `turn` — or null where a gate of its own refuses it. */
+	function candidate(
 		kind: KitKind,
 		cls: Class,
 		x: number,
 		z: number,
 		turn: Turn,
 		scale = 1,
-	): number | null {
+	): Placement | null {
 		const spec = kitSpec(kind);
 		const [c, s] = turn;
 		const footprint: P2[] = [
@@ -59,7 +58,8 @@ export function createPlacer(
 			? lo - spec.plinth * scale * 0.35
 			: Math.max(lo, hi - bury);
 		const p: Placement = {
-			id: `${kind}-${placements.length}`,
+			// Named by where it stands, so the same thing has the same name whichever tile asked first.
+			id: `${kind}@${Math.round(x * 100)}:${Math.round(z * 100)}`,
 			kind,
 			cls,
 			footprint,
@@ -68,13 +68,10 @@ export function createPlacer(
 			plinth: spec.plinth * scale,
 			sunk,
 		};
-		if (admit(p, near(x, z), ground, crowded).length > 0) return null;
-		crowded.add(p);
-		placements.push(p);
-		return base;
+		return alone(p, near(x, z), ground).length > 0 ? null : p;
 	}
 
-	return { stand, placements };
+	return { candidate };
 }
 
 export type Placer = ReturnType<typeof createPlacer>;

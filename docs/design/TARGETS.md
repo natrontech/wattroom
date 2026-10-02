@@ -632,6 +632,7 @@ Every surface id below is also in `docs/design/surface-map.json`, which maps the
 1. Two loads of the same URL give an identical frame. [world-moment] [multi:world-start-twice]
 2. With `chrome=0`, no dev chrome shows. [world-moment]
 3. At p=0 there are no stars. At p=1, stars show only in the dark upper sky, never in the peach band, and the light is visibly darker. [3085-ride-light]
+4. The dressing streams with the ground, and a held moment draws all of it within the far ring from its first frame: the trees, buildings and roadside pieces a ride would meet there, with no gap where a tile is still to come. [#3699] [multi:world-start-twice]
 
 ### C. Roads library (desk)
 
