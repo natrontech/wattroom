@@ -7,6 +7,7 @@ import { createBunch, type Car } from './bunch';
 import { makeCrew, type Crew, type Pedalling } from './crew';
 import type { BunchView } from '$lib/channel/bunch-view';
 import { DEFAULT_DARK_ID, themeById } from '$lib/themes';
+import type { Viewer } from '$lib/wardrobe/guard';
 import { disposeTree } from './dispose';
 import { makeSight } from './materials';
 import { makeRig, type Follow } from './rig';
@@ -68,6 +69,8 @@ export type MountOptions = {
 	youId?: string;
 	/** The theme's structural accent, for the coach's chevron; Outrun's absent. */
 	neon?: string;
+	/** What the viewer's theme paints live data with: every kit colour is guarded for it (#3156); Outrun's absent. */
+	viewer?: Viewer;
 	/** Where the streamed ground's chunks come from: the page's copy, then the build worker (#3606). */
 	grids?: (got: GotGrid) => Grids;
 	/**
@@ -118,9 +121,20 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	// The bunch's riders by id, so a figure keeps its legs from frame to frame.
 	const crewmates = new Map<string, SimRider>();
 	let car: Car | null = null;
-	const neon = new THREE.Color(
-		opts.neon ?? themeById(DEFAULT_DARK_ID)!.tokens.neon,
-	);
+	const outrun = themeById(DEFAULT_DARK_ID)!.tokens;
+	const neon = new THREE.Color(opts.neon ?? outrun.neon);
+	const viewer: Viewer = opts.viewer ?? {
+		watt: outrun.watt,
+		zones: [
+			outrun.z1,
+			outrun.z2,
+			outrun.z3,
+			outrun.z4,
+			outrun.z5,
+			outrun.z6,
+			outrun.z7,
+		],
+	};
 	const summit = world.markers.find((m) => m.kind === 'summit');
 	const moment = opts.moment;
 	if (moment)
@@ -172,7 +186,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 			disposeTree(old);
 		}
 		stage = buildStage(route, world, style, sight, stream);
-		crew = makeCrew(style, neon);
+		crew = makeCrew(style, neon, viewer);
 		scene.add(stage.group, crew.group);
 		scene.fog = new THREE.FogExp2(style.sky.horizon, style.fogK * 1.1);
 		applyMode();
@@ -331,7 +345,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 			return {
 				camera: { fov: Math.round(camera.fov * 100) / 100 },
 				moment: moment ?? null,
-				figure: { bboxH, kitsInWattBand: crew?.kitsInWattBand() ?? 0 },
+				figure: { bboxH, kitCollisions: crew?.kitCollisions() ?? 0 },
 			};
 		},
 		dispose() {

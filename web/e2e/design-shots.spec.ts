@@ -420,10 +420,11 @@ async function moment(
 	device: typeof DESK,
 	p: 0 | 1,
 	cam: 'chase' | 'side' = 'chase',
+	extra = '',
 ) {
 	const o = await s.open(device);
 	await o.page.goto(
-		`/dev/world?m=${MOMENT_M}&p=${p}&cam=${cam}&look=bluehour&chrome=0`,
+		`/dev/world?m=${MOMENT_M}&p=${p}&cam=${cam}&look=bluehour&chrome=0${extra}`,
 	);
 	await o.page.waitForFunction(
 		() => !!(window as unknown as { __worldProbe?: unknown }).__worldProbe,
@@ -450,6 +451,20 @@ surface('world-start', async (s) => {
 	// multi:world-figure-side — the same moment from off your right shoulder,
 	// where the chase camera never stands: the face, the drops, both wheels.
 	await s.shot(await moment(s, DESK, 0, 'side'), { name: 'world-figure-side' });
+	// multi:world-figure-dots — you in Gipfelpunkte on a white ground (#3156).
+	await s.shot(await moment(s, DESK, 0, 'side', '&kit=gipfelpunkte'), {
+		name: 'world-figure-dots',
+	});
+	// multi:world-figure-motion — the side view riding on, four frames a
+	// quarter-second apart, in hoops: whether a pattern's edges crawl.
+	const ride = await moment(s, DESK, 0, 'side', '&kit=hoops&hold=0');
+	for (let k = 1; k <= 4; k++) {
+		await writeFile(
+			join(OUT, `world-figure-motion-${k}.png`),
+			await ride.page.screenshot(),
+		);
+		await ride.page.waitForTimeout(250);
+	}
 });
 
 surface('world-end', async (s) => {

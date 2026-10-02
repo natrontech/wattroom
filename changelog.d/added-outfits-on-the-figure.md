@@ -1,0 +1,1 @@
+- Riders in the world now wear their outfit: jersey patterns from the wardrobe (hoops, stripes, sash, chevron, Gipfelpunkte and more), their kit colours, frame, wheels, helmet and glasses. A rider who has chosen nothing gets a look of their own, the same on every screen. No kit colour ever reads as live data in your theme.
