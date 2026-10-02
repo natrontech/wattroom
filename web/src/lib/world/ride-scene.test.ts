@@ -153,6 +153,7 @@ describe('a ride’s world', () => {
 							['a', 'b', 'c', 'd'].map((id) => [id, { watts: 200, ftp: 250 }]),
 						),
 						game: false,
+						cheered: [],
 					}),
 					onTick: (next) => (hud = next),
 				},
@@ -183,6 +184,78 @@ describe('a ride’s world', () => {
 		}
 	});
 
+	it('draws a cheer for one rider over their head once, and blinks their tail light for 10 s (#3116)', () => {
+		const run = (steady: boolean) => {
+			// One tick carries the cheer; every frame reads its view until the next.
+			let sent = 1000;
+			const w = compose(
+				{
+					route,
+					world,
+					style,
+					ftp: 250,
+					youId: 'a',
+					metre: () => ({ m: 300, mps: 8 }),
+					steady: () => steady,
+					bunch: () => ({
+						m: 300,
+						mps: 8,
+						at: sent,
+						elapsed: 30,
+						order: ['a', 'b'],
+						offsets: {},
+						resting: [],
+						present: new Map([
+							['a', { watts: 200, ftp: 250 }],
+							['b', { watts: 200, ftp: 250 }],
+						]),
+						game: false,
+						cheered: sent === 1000 ? ['b'] : [],
+					}),
+				},
+				null,
+			);
+			const seen = (kind: string) => {
+				const over: string[] = [];
+				w.scene.traverseVisible((o) => {
+					if (o.userData.kind !== kind) return;
+					let p: THREE.Object3D | null = o;
+					while (p && !p.userData.rider) p = p.parent;
+					over.push(p?.userData.rider);
+				});
+				return over;
+			};
+			const frames: { t: number; thumb: string[]; light: string[] }[] = [];
+			for (let k = 0; k <= 12 * 30; k++) {
+				// A second tick at 1 s that does not cheer: the cheer is not heard again.
+				if (k === 30) sent = 2000;
+				w.advanceBy(k ? 1 / 30 : 0);
+				frames.push({
+					t: k / 30,
+					thumb: seen('cheer'),
+					light: seen('tail-light'),
+				});
+			}
+			w.dispose();
+			return (t: number) => frames[Math.round(t * 30)];
+		};
+		const moving = run(false);
+		expect(moving(0.1).thumb).toEqual(['b']);
+		expect(moving(0.1).light).toEqual(['b']);
+		// 2 Hz: off for the second quarter of each half-second.
+		expect(moving(0.35).light).toEqual([]);
+		expect(moving(0.6).light).toEqual(['b']);
+		expect(moving(3).thumb).toEqual([]);
+		expect(moving(9.6).light).toEqual(['b']);
+		expect(moving(10.1).light).toEqual([]);
+		expect(moving(11).thumb).toEqual([]);
+		// Reduced motion: a held stamp, the light lit throughout.
+		const steady = run(true);
+		expect(steady(0.35).light).toEqual(['b']);
+		expect(steady(9.6).light).toEqual(['b']);
+		expect(steady(10.1).light).toEqual([]);
+	});
+
 	it('draws a coach with no trainer as the team car: one chevron, no figure of their own (#3771)', () => {
 		const drawn = (coachRests: boolean) => {
 			const w = compose(
@@ -206,6 +279,7 @@ describe('a ride’s world', () => {
 							['a', { watts: 200, ftp: 250 }],
 						]),
 						game: false,
+						cheered: [],
 					}),
 				},
 				null,

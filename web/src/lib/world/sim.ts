@@ -6,6 +6,7 @@ import { createPace, type Pace } from '$lib/road/pace';
 import { type Route } from '$lib/road/route';
 import { at } from '$lib/road/along';
 import { damp } from '$lib/motion/damp';
+import type { CheerLook } from './cheer';
 
 // What the trainer is told. Zwift's default "trainer difficulty" halves the
 // grade so a 12 % ramp does not stall a rider on a direct-drive; descents
@@ -42,6 +43,8 @@ export type SimRider = {
 	coach?: boolean;
 	/** Their live zone as a ring; false leaves anyone's but yours to #3086. */
 	ring?: boolean;
+	/** A cheer for them, as it looks this frame (#3116). */
+	cheer?: CheerLook | null;
 };
 
 export type Env = { difficulty: number };

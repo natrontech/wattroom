@@ -60,6 +60,7 @@ function view(over: Partial<BunchView> = {}): BunchView {
 		resting: [],
 		present: there('a', 'b', 'c', 'coach'),
 		game: false,
+		cheered: [],
 		...over,
 	};
 }

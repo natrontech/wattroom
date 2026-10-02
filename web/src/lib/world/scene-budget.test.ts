@@ -450,6 +450,7 @@ describe('a bunch on the road (#3098)', () => {
 					coach: 'coach',
 					present: new Map(order.map((id) => [id, { watts: 200, ftp: 250 }])),
 					game: false,
+					cheered: [],
 				}),
 				grids: pageGrids(world),
 			},

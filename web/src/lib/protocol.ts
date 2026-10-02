@@ -1440,6 +1440,12 @@ export interface Cheer {
    * Sender name, filled by the server: cheering is presence.
    */
   from?: string;
+  /**
+   * The rider it is for (#3116): a thumbs-up over their head in the world
+   * and their tail light flickering, nothing more. Someone else in this
+   * voice channel, or the cheer drops; empty, it is everyone's.
+   */
+  to?: string;
 }
 /**
  * Board is one rider firing a pad on their soundboard (#877, ADR-0033). The
