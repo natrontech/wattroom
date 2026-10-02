@@ -33,6 +33,8 @@ const placement = [
 	'../props/roads.ts',
 	'../props/placer.ts',
 	'../props/rhythm.ts',
+	'../props/tiles.ts',
+	'../props/stand.ts',
 	'../setpieces.ts',
 ];
 const code = (file: string) =>

@@ -5,8 +5,11 @@ import * as THREE from 'three';
 import { backdrop } from './backdrop';
 import { tag } from './family';
 import { chunkId, LEAVE, roadPieces, type GroundStream } from './ground-stream';
-import { batchProps } from './props/batch';
-import { arch, board, kits } from './furniture';
+import { batchProps, FAR_M, NEAR_M, type Drawn } from './props/batch';
+import { tileCentre, tileKey, tileOf } from './props/tiles';
+import { disposeTree } from './dispose';
+import { arch, board } from './furniture';
+import type { Piece } from './setpieces';
 import { plinth, road, roadMaterial, ROAD_W, terrain, yOf } from './geometry';
 import { PROP_RAMP, ramp, toon, type Sight } from './materials';
 import { piecePool } from './piece-pool';
@@ -18,10 +21,25 @@ import { meshOf, REACH } from './terrain-mesh';
 import { SHOULDER } from './terrain/road-profile';
 import type { World } from './world';
 
+/** A set piece as the batch draws it: a flag by its colour's model. */
+const drawn = (p: Piece): Drawn => ({
+	kind: p.kind === 'flag' ? (`flag${p.flag ?? 0}` as Drawn['kind']) : p.kind,
+	x: p.x,
+	z: p.z,
+	base: p.y,
+	turn: p.turn,
+	scale: 1,
+});
+
 export type Stage = {
 	group: THREE.Group;
-	/** Brings what the stage draws to where the eye now is: the props' rings and the road's pieces. */
-	update(eye: THREE.Vector3): void;
+	/**
+	 * Brings what the stage draws to where the eye now is: the road's pieces,
+	 * and the dressing's tiles — those within the near ring at once, the rest
+	 * one a call, nearest first (#3699), or every one within reach when
+	 * `whole`.
+	 */
+	update(eye: THREE.Vector3, whole?: boolean): void;
 	/**
 	 * The orbit view: the whole model on its plinth and a fat road, no
 	 * horizon — built the first time it is asked, the desk's diorama — or the
@@ -158,7 +176,7 @@ export function buildStage(
 	const treeMat = toon(gradient, sight, { wind: true, fade: true });
 	const houseMat = toon(gradient, sight, { fade: true });
 	const plain = toon(gradient, sight);
-	const props = batchProps(route, world.props, c, {
+	const props = batchProps(route, c, {
 		trees: treeMat,
 		buildings: houseMat,
 		stock: plain,
@@ -166,13 +184,63 @@ export function buildStage(
 	for (const mesh of props.meshes) group.add(tag('dressing', mesh));
 	if (style.stars) group.add(tag('sky', stars(style.stars)));
 
-	const leafy = toon(gradient, sight, { wind: true, fade: true });
-	for (const k of kits(route, world, c, { fade: houseMat, leafy, flat: plain }))
-		group.add(tag('dressing', k));
-	for (const s of world.signs)
-		group.add(tag('dressing', board(route, s, style), 'sign'));
-	for (const a of world.arches)
-		group.add(tag('dressing', arch(route, a, style), 'arch'));
+	// Each tile's signs and arch, built with its tile and let go with it.
+	const boards = new Map<string, THREE.Object3D[]>();
+	function draw(ti: number, tj: number, eye: THREE.Vector3) {
+		const id = tileKey(ti, tj);
+		const t = world.tile(ti, tj);
+		props.add(
+			id,
+			tileCentre(ti, tj),
+			[...t.props, ...t.pieces.map(drawn)],
+			eye,
+		);
+		const shown = [
+			...t.signs.map((s) => tag('dressing', board(route, s, style), 'sign')),
+			...t.arches.map((a) => tag('dressing', arch(route, a, style), 'arch')),
+		];
+		if (shown.length === 0) return;
+		group.add(...shown);
+		boards.set(id, shown);
+	}
+	function undraw(id: string) {
+		props.drop(id);
+		for (const o of boards.get(id) ?? []) {
+			group.remove(o);
+			disposeTree(o);
+		}
+		boards.delete(id);
+	}
+	let near: string | null = null;
+	let wanted: [number, number][] = [];
+	function dress(eye: THREE.Vector3, whole: boolean) {
+		const here = tileKey(...tileOf(eye.x, eye.z));
+		if (here !== near) {
+			near = here;
+			wanted = world.tilesWithin(eye.x, eye.z, FAR_M);
+			for (const id of props.ids()) {
+				const [ti, tj] = id.split(':').map(Number);
+				const [cx, cz] = tileCentre(ti, tj);
+				if (Math.hypot(cx - eye.x, cz - eye.z) > FAR_M * LEAVE) undraw(id);
+			}
+		}
+		let spent = false;
+		for (const [ti, tj] of wanted) {
+			if (props.has(tileKey(ti, tj))) continue;
+			const [cx, cz] = tileCentre(ti, tj);
+			// Settling a tile costs its ground: the near ring now, else one a call, unless asked for all.
+			if (
+				!whole &&
+				Math.hypot(cx - eye.x, cz - eye.z) >= NEAR_M &&
+				!world.settled(ti, tj)
+			) {
+				if (spent) continue;
+				spent = true;
+			}
+			draw(ti, tj, eye);
+		}
+		props.update(eye);
+	}
 
 	let orbit = false;
 	let model: THREE.Object3D[] | null = null;
@@ -206,9 +274,13 @@ export function buildStage(
 
 	return {
 		group,
-		update(eye) {
-			props.update(eye);
-			if (!orbit) roads(eye);
+		update(eye, whole = false) {
+			// The diorama holds still: only the rings move with a camera that orbits it.
+			if (orbit) props.update(eye);
+			else {
+				dress(eye, whole);
+				roads(eye);
+			}
 		},
 		setOrbit(on) {
 			orbit = on;
