@@ -7,7 +7,8 @@
 	 * Sizes are docs/SPEC.md's legibility budget at the design distance:
 	 * secondary numbers 36 px on a desk and at least 5vh on a TV, words 24 px
 	 * and 3vh, and a unit at most half its number. The TV's numbers take 6vh
-	 * so that their unit, at half, still clears the 2.9vh floor.
+	 * so that their unit, at half, still clears the 2.9vh floor. A page's one
+	 * large figure — RACE's gap to par — takes time left's 72 px and 9vh.
 	 */
 	import { untrack } from 'svelte';
 	import ZoneDot from '$lib/components/ZoneDot.svelte';
@@ -18,6 +19,7 @@
 		claimPageTurn,
 		fieldsFor,
 		pagesFor,
+		sizesFor,
 		turned,
 		type ComputerContext,
 		type ComputerPage,
@@ -35,7 +37,7 @@
 	} = $props();
 
 	let page = $state<ComputerPage>('ride');
-	const pages = $derived(pagesFor(ctx.stats));
+	const pages = $derived(pagesFor(ctx.stats, ctx.race));
 	const shown = $derived(pages.includes(page) ? page : 'ride');
 	const fields = $derived(fieldsFor(shown, ctx));
 	const turns = $derived(pages.length > 1);
@@ -44,13 +46,7 @@
 		page = turned(pages, shown, dir);
 	}
 
-	const size = $derived(
-		tv
-			? { value: 'text-[6vh]', unit: 'text-[3vh]', word: 'text-[3vh]' }
-			: phone
-				? { value: 'text-2xl', unit: 'text-xs', word: 'text-sm' }
-				: { value: 'text-4xl', unit: 'text-lg', word: 'text-2xl' },
-	);
+	const size = $derived(sizesFor(tv, phone));
 	const layout = $derived(
 		phone
 			? 'grid grid-cols-3 gap-x-3 gap-y-2'
@@ -166,7 +162,7 @@
 							class={tv ? 'size-[1.4vh]' : 'size-2'}
 						/>{/if}</span
 				>
-				{#if field.neon}
+				{#if field.key === 'gear'}
 					<span
 						bind:this={gearField}
 						aria-live="polite"
@@ -175,11 +171,16 @@
 					>
 				{:else}
 					<!-- A space, not a margin, between number and unit: "78 rpm"
-					     is what a screen reader and a search both read. -->
+					     is what a screen reader and a search both read. Neon is a
+					     model's number, flat: only live data glows (ADR-0005). -->
 					<span
-						class="num mt-1 block {size.value} leading-none font-bold {field.glow
+						class="num mt-1 block {field.big
+							? size.big
+							: size.value} leading-none font-bold {field.glow
 							? 'text-watt glow-text'
-							: 'text-ink'}"
+							: field.neon
+								? 'text-neon'
+								: 'text-ink'}"
 						>{field.value}{#if field.unit}{' '}<span
 								class="text-muted {size.unit} font-normal">{field.unit}</span
 							>{/if}</span

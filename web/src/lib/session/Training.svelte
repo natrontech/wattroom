@@ -20,6 +20,7 @@
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import BiasTrim from '$lib/session/BiasTrim.svelte';
 	import BikeComputer from '$lib/session/BikeComputer.svelte';
+	import RaceRadio from '$lib/race/RaceRadio.svelte';
 	import HrShare from '$lib/channel/HrShare.svelte';
 	import RideHeader from '$lib/session/RideHeader.svelte';
 	import MonitorUp from '@lucide/svelte/icons/monitor-up';
@@ -272,6 +273,9 @@
 				{#if channel.ridden && world.reason}
 					<FlatRoad reason={world.reason} onretry={world.retry} />
 				{/if}
+				{#if channel.race}
+					<RaceRadio race={channel.race} />
+				{/if}
 			</div>
 		{/snippet}
 
@@ -376,6 +380,7 @@
 									: undefined}
 								target={channel.you.target > 0 ? channel.you.target : undefined}
 								stats={channelConnection.current?.recording.live}
+								race={channel.race ?? undefined}
 							/>
 						</div>
 						<BiasTrim

@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { LiveStats } from '$lib/ride/live-stats.svelte';
+import type { RaceReadout } from '$lib/race/race-view';
 import {
 	fieldsFor,
 	pagesFor,
 	roadContext,
+	sizesFor,
 	turned,
 	type ComputerContext,
 } from './computer-pages';
@@ -202,5 +204,56 @@ describe('the pages', () => {
 		expect(turned(pages, 'power', 1)).toBe('ride');
 		expect(turned(pages, 'ride', -1)).toBe('power');
 		expect(turned(['ride'], 'ride', 1)).toBe('ride');
+	});
+});
+
+describe('RACE (#3174)', () => {
+	const race = (over: Partial<RaceReadout> = {}): RaceReadout => ({
+		at: 0,
+		phase: 'racing',
+		par: 18.4,
+		category: 'C',
+		place: 2,
+		of: 4,
+		toLine: 3000,
+		...over,
+	});
+
+	it('is a page only while you race', () => {
+		expect(pagesFor(stats)).toEqual(['ride', 'power']);
+		expect(pagesFor(stats, race())).toEqual(['ride', 'power', 'race']);
+		expect(pagesFor(undefined, race())).toEqual(['ride', 'race']);
+	});
+
+	it('is the gap to par, large, then your place in your Category, then W/kg', () => {
+		const fields = fieldsFor('race', ride({ race: race() }));
+		expect(keys(fields)).toEqual(['par', 'place', 'wkg']);
+		expect(field(fields, 'par')).toMatchObject({ value: '+0:18', big: true });
+		expect(field(fields, 'place')).toMatchObject({
+			label: 'in C',
+			value: '2nd of 4',
+		});
+		// 251 W at 75 kg.
+		expect(field(fields, 'wkg').value).toBe('3.3');
+		expect(field(fields, 'par').label).toBe('on par');
+	});
+
+	it('draws the model in neon, never watt, and glows nothing', () => {
+		const fields = fieldsFor('race', ride({ race: race() }));
+		expect(field(fields, 'par').neon).toBe(true);
+		expect(field(fields, 'place').neon).toBe(true);
+		expect(fields.some((f) => f.glow)).toBe(false);
+	});
+
+	it('reads behind as −, and has nothing to say before km 0', () => {
+		const behind = fieldsFor('race', ride({ race: race({ par: -7 }) }));
+		expect(field(behind, 'par').value).toBe('−0:07');
+		const neutral = fieldsFor('race', ride({ race: race({ par: null }) }));
+		expect(field(neutral, 'par').value).toBe('—');
+	});
+
+	it('sets the gap to par at time left’s size: 72 px on a desk, 9vh on the TV', () => {
+		expect(sizesFor(false, false).big).toBe('text-7xl');
+		expect(sizesFor(true, false).big).toBe('text-[9vh]');
 	});
 });
