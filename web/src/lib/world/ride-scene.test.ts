@@ -5,6 +5,7 @@ import { at, leftOf } from '$lib/road/along';
 import { legsRoad } from '$lib/road/fixtures';
 import { RIDER_BOX } from '$lib/session/docks';
 import { STYLES } from '../../routes/(app)/dev/world/styles';
+import { VERGE_LANE } from './bunch';
 import { compose } from './compose';
 import { routeOfRoad } from './road-route';
 import type { Hud } from './compose';
@@ -254,6 +255,59 @@ describe('a ride’s world', () => {
 		expect(steady(0.35).light).toEqual(['b']);
 		expect(steady(9.6).light).toEqual(['b']);
 		expect(steady(10.1).light).toEqual([]);
+	});
+
+	it('stands a rider a game put out on the verge ahead, and rings the cowbell as the bunch rides by (#3114)', () => {
+		let tick = { m: 300, s: 0 };
+		const cues: string[] = [];
+		let hud: Hud | null = null;
+		const w = compose(
+			{
+				route,
+				world,
+				style,
+				ftp: 250,
+				youId: 'a',
+				metre: () => ({ m: tick.m, mps: 8 }),
+				onCue: (cue) => cues.push(cue),
+				onTick: (next) => (hud = next),
+				bunch: () => ({
+					m: tick.m,
+					mps: 8,
+					at: tick.s * 1000,
+					elapsed: tick.s,
+					order: ['a', 'b'],
+					offsets: {},
+					resting: [],
+					present: new Map([
+						['a', { watts: 200, ftp: 250 }],
+						['b', { watts: 125, ftp: 250 }],
+					]),
+					game: true,
+					cheered: [],
+					play: { mode: 'backyard-ramp', round: 2, out: ['b'] },
+				}),
+			},
+			null,
+		);
+		// A tick a second at 8 m/s, drawn at 30 frames a second.
+		const b = () => hud!.riders.find((r) => r.id === 'b')!;
+		for (let k = 1; k <= 30; k++) {
+			if (k % 30 === 0) tick = { m: tick.m + 8, s: tick.s + 1 };
+			w.advanceBy(1 / 30);
+		}
+		const stand = b().d;
+		// No hairpin on this road within 5 km: 300 m ahead of where they went out.
+		expect(stand).toBeCloseTo(300 + 300, 0);
+		expect(b().lane).toBeCloseTo(VERGE_LANE, 2);
+		expect(cues).toEqual([]);
+		for (let k = 1; k <= 40 * 30; k++) {
+			if (k % 30 === 0) tick = { m: tick.m + 8, s: tick.s + 1 };
+			w.advanceBy(1 / 30);
+		}
+		// Ridden past once: one ring.
+		expect(cues).toEqual(['cowbell']);
+		w.dispose();
 	});
 
 	it('draws a coach with no trainer as the team car: one chevron, no figure of their own (#3771)', () => {

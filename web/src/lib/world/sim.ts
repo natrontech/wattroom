@@ -45,6 +45,8 @@ export type SimRider = {
 	ring?: boolean;
 	/** A cheer for them, as it looks this frame (#3116). */
 	cheer?: CheerLook | null;
+	/** At the roadside, put out by a game (#3114): stopped on the verge, legs still. */
+	stopped?: boolean;
 };
 
 export type Env = { difficulty: number };
