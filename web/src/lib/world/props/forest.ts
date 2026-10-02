@@ -15,7 +15,7 @@ const STAND_M = 70;
 /** The road's framing stands: from the shoulder's edge out, and how thick they grow. */
 export const FRAME_NEAR = 12;
 const FRAME_FAR = 40;
-const FRAME_P = 0.48;
+const FRAME_P = 0.32;
 /** A framing stand thins in a gap between groups but never opens: the road is never bare for long. */
 const FRAME_FLOOR = 0.6;
 /** A clearing's forest edge: a belt behind the meadow beside the road, which hides what lies past it. */
@@ -23,7 +23,7 @@ const EDGE_FROM = 100;
 const EDGE_FULL = 150;
 const EDGE_END = 260;
 const EDGE_GONE = 320;
-const EDGE_P = 0.22;
+const EDGE_P = 0.15;
 /** Within this of the road, a stand's heart grows a second tree beside each first. */
 const PAIR_M = 120;
 /** Past this the forest is out of the chase camera's sight, and thins to this share. */
@@ -66,14 +66,22 @@ export function forest(seed: number) {
 			return p * (frame ? Math.max(FRAME_FLOOR, group) : group);
 		},
 		/**
-		 * Whether a tree brings a second close beside it: one framing the road
-		 * or on a clearing's edge always, so none stands alone in the open, and
-		 * one in a stand's heart within sight.
+		 * How many trees grow close round one, from a keyed unit `u`: one
+		 * framing the road or on a clearing's edge brings one to three, so none
+		 * stands alone in the open; one in a stand's heart within sight, one.
 		 */
-		pairs: (b: Biome, far: number, frame: boolean, g: number) =>
-			frame ||
-			(b === Biome.Meadow && far >= EDGE_FROM && far <= EDGE_GONE) ||
-			(g >= 0.3 && far <= PAIR_M),
+		neighbours: (
+			b: Biome,
+			far: number,
+			frame: boolean,
+			g: number,
+			u: number,
+		) =>
+			frame || (b === Biome.Meadow && far >= EDGE_FROM && far <= EDGE_GONE)
+				? 1 + Math.floor(u * 3)
+				: g >= 0.3 && far <= PAIR_M
+					? 1
+					: 0,
 	};
 }
 

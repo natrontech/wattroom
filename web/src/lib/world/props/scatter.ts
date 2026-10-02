@@ -76,6 +76,8 @@ const FARM_TRIES = 6;
 /** Metres of open yard round a building's walls, where no tree stands, and of pasture past them, where none frames the road. */
 const YARD_M = 8;
 const FIELD_M = 80;
+/** A village stands in its fields: no stand frames the road this near its church, so it shows from the approach. */
+const FIELDS_M = 600;
 
 /**
  * Where the villages stand (#3076): flat road through meadow, one chance per
@@ -224,11 +226,10 @@ export function scatter(
 			if (stand(kind, 'building', x, z, face)) placed++;
 		}
 	}
-	const inVillage = (x: number, z: number) =>
-		villages.some(
-			(v) =>
-				(v.x - x) * (v.x - x) + (v.z - z) * (v.z - z) < VILLAGE_R * VILLAGE_R,
-		);
+	const within = (x: number, z: number, m: number) =>
+		villages.some((v) => (v.x - x) * (v.x - x) + (v.z - z) * (v.z - z) < m * m);
+	const inVillage = (x: number, z: number) => within(x, z, VILLAGE_R);
+	const inFields = (x: number, z: number) => within(x, z, FIELDS_M);
 
 	// A farm on open meadow, huts above the treeline: a chance per 1.3 km of
 	// each stroke, and each brings one or two neighbours, never a lone box.
@@ -358,7 +359,8 @@ export function scatter(
 		if (b === null || far > TREES_WITHIN || inVillage(x, z) || inYard(x, z))
 			return;
 		const g = woods.groupAt(e0 + x, n0 - z);
-		const frame = woods.frames(b, far) && !near(x, z, FIELD_M);
+		const frame =
+			woods.frames(b, far) && !near(x, z, FIELD_M) && !inFields(x, z);
 		if (u(tree(i, j, 0)) >= woods.chance(b, far, frame, g)) return;
 		if (far < 140 && !ground.clearOf(x, z, 11)) return;
 		const conifer = frame || heightAt(x, z) >= 900 || u(tree(i, j, 4)) >= 0.55;
@@ -366,24 +368,27 @@ export function scatter(
 		const tall = 0.6 + u(tree(i, j, 3)) * 0.6 + 0.35 * Math.max(0, g);
 		const kind = conifer ? 'spruce' : 'broadleaf';
 		stand(kind, 'kit', x, z, deg(Math.floor(u(tree(i, j, 5)) * 360)), tall);
-		if (!woods.pairs(b, far, frame, g)) return;
-		const [dx, dz] = ringAt(u(tree(i, j, 6)), u(tree(i, j, 7)), 3.5, 6.5);
-		const tx = x + dx;
-		const tz = z + dz;
-		if (
-			ground.roadDist(tx, tz) >= FRAME_NEAR - 1 &&
-			ground.clearOf(tx, tz, 11) &&
-			!inVillage(tx, tz) &&
-			!inYard(tx, tz)
-		)
-			stand(
-				kind,
-				'kit',
-				tx,
-				tz,
-				deg(Math.floor(u(tree(i, j, 8)) * 360)),
-				tall * (0.75 + u(tree(i, j, 9)) * 0.3),
-			);
+		const more = woods.neighbours(b, far, frame, g, u(tree(i, j, 6)));
+		for (let k = 0; k < more; k++) {
+			const r = (c: number) => u(tree(i, j, 10 + k * 4 + c));
+			const [dx, dz] = ringAt(r(0), r(1), 3.5, 7);
+			const tx = x + dx;
+			const tz = z + dz;
+			if (
+				ground.roadDist(tx, tz) >= FRAME_NEAR - 1 &&
+				ground.clearOf(tx, tz, 11) &&
+				!inVillage(tx, tz) &&
+				!inYard(tx, tz)
+			)
+				stand(
+					kind,
+					'kit',
+					tx,
+					tz,
+					deg(Math.floor(r(2) * 360)),
+					tall * (0.75 + r(3) * 0.3),
+				);
+		}
 	});
 
 	return { props };
