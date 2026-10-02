@@ -417,12 +417,13 @@ body {
 @utility btn-danger-solid {
 	@apply bg-danger text-paper hover:bg-danger/90;
 }
-/* Accent affordance — the one chrome exception ADR-0005 allows: an affordance
- * that *creates* live data (start ride, go live). Border only, never a fill. */
+/* Accent affordance: an affordance that *creates* live data (start ride, go
+ * live). Border only, never a fill. Neon, not watt (#3757): it is chrome, and
+ * ADR-0005 spends watt on live data alone (TARGETS G2). */
 @utility btn-accent {
 	/* The accent is the frame and the tint, never the word (#1965, #2858):
-	 * watt is gated at 3:1 and the label is small. */
-	@apply border-watt/40 text-ink hover:bg-watt/10 border;
+	 * the label is small. */
+	@apply border-neon/40 text-ink hover:bg-neon/10 border;
 }
 @utility btn-xs {
 	@apply px-3 py-1.5 text-xs;
