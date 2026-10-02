@@ -7,8 +7,7 @@
 	 * Sizes are docs/SPEC.md's legibility budget at the design distance:
 	 * secondary numbers 36 px on a desk and at least 5vh on a TV, words 24 px
 	 * and 3vh, and a unit at most half its number. The TV's numbers take 6vh
-	 * so that their unit, at half, still clears the 2.9vh floor. A page's one
-	 * large figure — RACE's gap to par — takes time left's 72 px and 9vh.
+	 * so that their unit, at half, still clears the 2.9vh floor.
 	 */
 	import { untrack } from 'svelte';
 	import ZoneDot from '$lib/components/ZoneDot.svelte';
@@ -19,7 +18,6 @@
 		claimPageTurn,
 		fieldsFor,
 		pagesFor,
-		sizesFor,
 		turned,
 		type ComputerContext,
 		type ComputerPage,
@@ -46,13 +44,25 @@
 		page = turned(pages, shown, dir);
 	}
 
-	const size = $derived(sizesFor(tv, phone));
+	const size = $derived(
+		tv
+			? { value: 'text-[6vh]', unit: 'text-[3vh]', word: 'text-[3vh]' }
+			: phone
+				? { value: 'text-2xl', unit: 'text-xs', word: 'text-sm' }
+				: { value: 'text-4xl', unit: 'text-lg', word: 'text-2xl' },
+	);
+	// RACE's four cells sit in two columns, so each column keeps one left edge.
+	const columns = $derived(shown === 'race' && !phone);
 	const layout = $derived(
 		phone
 			? 'grid grid-cols-3 gap-x-3 gap-y-2'
-			: tv
-				? 'flex flex-wrap items-start gap-x-[2.5vw] gap-y-[2vh]'
-				: 'flex flex-wrap items-start gap-x-6 gap-y-3',
+			: columns
+				? tv
+					? 'grid grid-cols-[auto_1fr] items-start gap-x-[2.5vw] gap-y-[2vh]'
+					: 'grid grid-cols-[auto_1fr] items-start gap-x-6 gap-y-3'
+				: tv
+					? 'flex flex-wrap items-start gap-x-[2.5vw] gap-y-[2vh]'
+					: 'flex flex-wrap items-start gap-x-6 gap-y-3',
 	);
 
 	// The gear pulses once when it changes (ADR-0084), never on arrival.
@@ -100,7 +110,9 @@
 		<div
 			class="relative flex {phone
 				? 'mt-1 -mb-2 justify-center'
-				: 'ml-auto self-center'}"
+				: columns
+					? 'col-span-2 justify-self-end'
+					: 'ml-auto self-center'}"
 		>
 			{#each pages as p (p)}
 				<button
@@ -174,9 +186,7 @@
 					     is what a screen reader and a search both read. Neon is a
 					     model's number, flat: only live data glows (ADR-0005). -->
 					<span
-						class="num mt-1 block {field.big
-							? size.big
-							: size.value} leading-none font-bold {field.glow
+						class="num mt-1 block {size.value} leading-none font-bold {field.glow
 							? 'text-watt glow-text'
 							: field.neon
 								? 'text-neon'

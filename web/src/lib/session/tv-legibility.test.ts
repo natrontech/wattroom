@@ -17,8 +17,6 @@ const TV = [
 	'lib/session/IntervalStrip.svelte',
 	'lib/components/IntervalGraph.svelte',
 	'lib/session/BikeComputer.svelte',
-	// The computer's sizes, the TV's among them (#3174).
-	'lib/session/computer-pages.ts',
 ];
 const FLOOR_VH = 2.9;
 

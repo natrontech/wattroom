@@ -5,7 +5,6 @@ import {
 	fieldsFor,
 	pagesFor,
 	roadContext,
-	sizesFor,
 	turned,
 	type ComputerContext,
 } from './computer-pages';
@@ -225,17 +224,17 @@ describe('RACE (#3174)', () => {
 		expect(pagesFor(undefined, race())).toEqual(['ride', 'race']);
 	});
 
-	it('is the gap to par, large, then your place in your Category, then W/kg', () => {
+	it('is the gap to par, then your place in your Category, then W/kg', () => {
 		const fields = fieldsFor('race', ride({ race: race() }));
 		expect(keys(fields)).toEqual(['par', 'place', 'wkg']);
-		expect(field(fields, 'par')).toMatchObject({ value: '+0:18', big: true });
+		expect(field(fields, 'par')).toMatchObject({ value: '+0:18', neon: true });
 		expect(field(fields, 'place')).toMatchObject({
 			label: 'in C',
 			value: '2nd of 4',
 		});
 		// 251 W at 75 kg.
 		expect(field(fields, 'wkg').value).toBe('3.3');
-		expect(field(fields, 'par').label).toBe('on par');
+		expect(field(fields, 'par').label).toBe('vs par');
 	});
 
 	it('draws the model in neon, never watt, and glows nothing', () => {
@@ -250,10 +249,5 @@ describe('RACE (#3174)', () => {
 		expect(field(behind, 'par').value).toBe('−0:07');
 		const neutral = fieldsFor('race', ride({ race: race({ par: null }) }));
 		expect(field(neutral, 'par').value).toBe('—');
-	});
-
-	it('sets the gap to par at time left’s size: 72 px on a desk, 9vh on the TV', () => {
-		expect(sizesFor(false, false).big).toBe('text-7xl');
-		expect(sizesFor(true, false).big).toBe('text-[9vh]');
 	});
 });

@@ -13,90 +13,81 @@ const race = (over: Partial<RaceReadout> = {}): RaceReadout => ({
 	...over,
 });
 
+/** Ten minutes at 4 Hz that would keep any radio talking: holds, the line coming up fast, place and par moving. */
+function busyRace(t: number): RaceReadout {
+	return race({
+		phase:
+			t < 15
+				? 'neutral'
+				: t > 560
+					? 'finished'
+					: t % 47 < 6
+						? 'held'
+						: 'racing',
+		toLine: Math.max(0, 12_000 - t * 25),
+		place: 1 + (Math.floor(t) % 3),
+		par: Math.round(Math.sin(t) * 40),
+	});
+}
+
+function listen() {
+	const radio = createRadio();
+	const said: { t: number; text: string }[] = [];
+	for (let k = 0; k <= 2400; k++) {
+		const t = k / 4;
+		const call = radio.hear(busyRace(t), t);
+		if (call) said.push({ t, text: call.text });
+	}
+	return said;
+}
+
 describe('the team-car radio (#3174)', () => {
 	it('never speaks twice inside 20 s, however much happens', () => {
-		const radio = createRadio();
-		const said: number[] = [];
-		// Ten minutes at 4 Hz, the place and the par changing every second.
-		for (let k = 0; k <= 2400; k++) {
-			const t = k / 4;
-			const call = radio.hear(
-				race({
-					place: 1 + (Math.floor(t) % 3),
-					par: Math.sin(t) * 30,
-					toLine: 6000 - t * 9,
-				}),
-				t,
-			);
-			if (call) said.push(t);
-		}
 		// #3174's number, not the constant's: at most one call per 20 s.
 		expect(RADIO_SPACING_S).toBe(20);
-		expect(said.length).toBeGreaterThan(20);
+		const said = listen();
+		expect(said.length).toBeGreaterThan(10);
 		for (let i = 1; i < said.length; i++)
-			expect(said[i] - said[i - 1]).toBeGreaterThanOrEqual(RADIO_SPACING_S);
+			expect(said[i].t - said[i - 1].t).toBeGreaterThanOrEqual(RADIO_SPACING_S);
 	});
 
 	it('says the most pressing call first, and drops what a new phase makes stale', () => {
 		const radio = createRadio();
-		expect(radio.hear(race({ phase: 'neutral', par: null }), 0)?.text).toBe(
-			PHRASES.neutral(),
+		expect(
+			radio.hear(race({ phase: 'neutral', par: null, toLine: 6000 }), 0)?.text,
+		).toBe(PHRASES.neutral());
+		// The klaxon and a kilometre mark wait out the spacing; the klaxon goes first.
+		radio.hear(race({ toLine: 6000 }), 5);
+		radio.hear(race({ toLine: 4990 }), 6);
+		expect(radio.hear(race({ toLine: 4900 }), 20)?.text).toBe(PHRASES.klaxon());
+		expect(radio.hear(race({ toLine: 4800 }), 40)?.text).toBe(
+			'5 km to the line.',
 		);
-		// The klaxon and a par call wait out the spacing; the klaxon goes first.
-		radio.hear(race({ par: 18 }), 5);
-		expect(radio.hear(race({ par: 18 }), 20)?.text).toBe(PHRASES.klaxon());
-		expect(radio.hear(race({ par: 18 }), 40)?.text).toBe('0:18 up on par.');
 		// Held, then back on before the radio may speak: only "back on" is said.
-		radio.hear(race({ phase: 'held', par: 18 }), 45);
-		radio.hear(race({ par: 18 }), 50);
-		expect(radio.hear(race({ par: 18 }), 60)?.text).toBe(PHRASES.resumed());
+		radio.hear(race({ phase: 'held', toLine: 4700 }), 45);
+		radio.hear(race({ toLine: 4700 }), 50);
+		expect(radio.hear(race({ toLine: 4600 }), 60)?.text).toBe(
+			PHRASES.resumed(),
+		);
 	});
 
-	it('speaks only its closed phrases', () => {
-		const radio = createRadio();
-		const known = new Set<string>();
-		const texts: string[] = [];
-		for (let k = 0; k <= 4000; k++) {
-			const t = k / 4;
-			const phase =
-				t < 30
-					? 'neutral'
-					: t > 900
-						? 'finished'
-						: t % 300 < 20
-							? 'held'
-							: 'racing';
-			const call = radio.hear(
-				race({
-					phase,
-					par: phase === 'neutral' ? null : Math.round(Math.cos(t / 40) * 50),
-					place: 1 + (Math.floor(t / 60) % 4),
-					toLine: Math.max(0, 9000 - t * 10),
-				}),
-				t,
-			);
-			if (call) texts.push(call.text);
-		}
-		for (const p of [
+	it('speaks only its closed phrases, and never a number the RACE page shows', () => {
+		const said = listen().map((s) => s.text);
+		const fixed = new Set([
 			PHRASES.neutral(),
 			PHRASES.klaxon(),
 			PHRASES.held(),
 			PHRASES.resumed(),
-		])
-			known.add(p);
-		const templates = [
-			/^(\d+:\d\d) (up|down) on par\.$|^On par\.$/,
-			/^\d+(st|nd|rd|th) of \d+ in [A-D]\.$/,
-			/^\d+ k?m to the line\.$/,
-			/^Over the line\. \d+(st|nd|rd|th) in [A-D]\.$/,
-		];
-		for (const text of texts)
+			PHRASES.finish(),
+		]);
+		for (const text of said) {
 			expect(
-				known.has(text) || templates.some((re) => re.test(text)),
+				fixed.has(text) || /^\d+ k?m to the line\.$/.test(text),
 				text,
 			).toBe(true);
-		expect(texts).toContain(
-			PHRASES.finish(1 + (Math.floor(900.25 / 60) % 4), 'C'),
-		);
+			// One home per number: the place and the gap to par are the page's.
+			expect(text).not.toMatch(/\d+(st|nd|rd|th)\b|par/);
+		}
+		expect(said).toContain(PHRASES.finish());
 	});
 });

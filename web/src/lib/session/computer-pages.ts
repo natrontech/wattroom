@@ -58,8 +58,6 @@ export interface Field {
 	glow?: boolean;
 	/** Rider state in neon, never the watt accent (ADR-0005): the gear, and a race model's outputs (#3174). */
 	neon?: boolean;
-	/** The page's one large figure, at time-left size (docs/SPEC.md "The bike computer"). */
-	big?: boolean;
 	/** The heart-rate zone, as a dot beside the label. */
 	zone?: number;
 }
@@ -81,35 +79,6 @@ export function roadContext(road: {
 			ofKm: road.length / 1000,
 		},
 		grade: road.roadPct,
-	};
-}
-
-/**
- * docs/SPEC.md's legibility budget at the design distance, as text classes:
- * a desk's secondary numbers 36 px and words 24 px, a page's one large figure
- * time left's 72 px; the TV's 6vh, 3vh and 9vh, so a unit at half its
- * number still clears the 2.9vh floor; a phone in the hand smaller.
- */
-export function sizesFor(tv: boolean, phone: boolean) {
-	if (tv)
-		return {
-			value: 'text-[6vh]',
-			big: 'text-[9vh]',
-			unit: 'text-[3vh]',
-			word: 'text-[3vh]',
-		};
-	if (phone)
-		return {
-			value: 'text-2xl',
-			big: 'text-4xl',
-			unit: 'text-xs',
-			word: 'text-sm',
-		};
-	return {
-		value: 'text-4xl',
-		big: 'text-7xl',
-		unit: 'text-lg',
-		word: 'text-2xl',
 	};
 }
 
@@ -247,9 +216,11 @@ export function fieldsFor(page: ComputerPage, ctx: ComputerContext): Field[] {
 }
 
 /**
- * RACE (#3174): the gap to your Category's par, large; your place in your
- * Category; then W/kg. The par and the place are the race model's, so they
- * are neon and never watt — only your live power is.
+ * RACE (#3174): the gap to your Category's par first, your place in your
+ * Category, then W/kg. The par and the place are the race model's, so they
+ * are neon and never watt — only your live power is. The gap leads at the
+ * computer's number size: the 3 s power stays the largest number on the
+ * surface (docs/design/TARGETS.md "One home per number").
  */
 function raceFields(
 	ctx: ComputerContext,
@@ -261,11 +232,10 @@ function raceFields(
 	return [
 		{
 			key: 'par',
-			label: 'on par',
+			label: 'vs par',
 			// Ahead is +, behind is −; nothing to measure before km 0.
 			value: race.par === null ? '—' : formatSplit(race.par),
 			neon: true,
-			big: true,
 		},
 		{
 			key: 'place',
