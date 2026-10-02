@@ -1,0 +1,1 @@
+- A free ride on one of your roads is dark from the first stroke to End ride, sidebar included, as a workout ride is. A stray tap on the sidebar now asks before it leaves the ride, and the desktop app's floating numbers and the waiting of direct messages follow it too.

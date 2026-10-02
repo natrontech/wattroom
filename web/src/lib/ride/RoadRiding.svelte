@@ -16,6 +16,7 @@
 	import type { FreeMode } from '$lib/ride/free-ride-controls';
 	import { createFreeRide } from '$lib/ride/free-ride.svelte';
 	import GearShift from '$lib/ride/GearShift.svelte';
+	import { guardLeaving } from '$lib/ride/leave-guard.svelte';
 	import { createGhostSplit } from '$lib/ride/ghost-split.svelte';
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
 	import { bindShiftKeys } from '$lib/ride/keys';
@@ -100,7 +101,14 @@
 		await solo.end();
 	}
 	// Leaving the page is not End ride: the trainer is let go, and the crash
-	// buffer offers the ride back.
+	// buffer offers the ride back. A stray tap on the rail asks first, as a
+	// workout ride does (#3667).
+	guardLeaving(() => !!solo.trainer, {
+		title: 'Leave the ride?',
+		body: 'It stops here, unsaved on your account. Ride offers it back to save, or to carry on from where you left the road.',
+		action: 'Leave the ride',
+		cancel: 'Keep riding',
+	});
 	onDestroy(() => {
 		if (solo.trainer) void solo.trainer.disconnect();
 	});
@@ -222,7 +230,9 @@
 		{/if}
 		<!-- The bike computer, as a ride in a channel has it (ADR-0046, #3628):
 		     the road's speed, grade and distance on RIDE. -->
+		<!-- The instrument above is the head: RIDE leaves the watts to it. -->
 		<BikeComputer
+			head
 			{watts}
 			cadence={solo.metrics?.cadence ?? 0}
 			hr={solo.metrics?.heartRate ?? 0}

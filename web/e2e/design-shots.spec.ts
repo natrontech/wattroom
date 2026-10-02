@@ -187,6 +187,14 @@ surface('ride-free-road', async (s) => {
 	// World off, with the OS set to light: the cave has to hold anyway (G1).
 	const o = await s.open({ ...DESK, colorScheme: 'light' }, { world: false });
 	const road = await fixtureRoad(o.page, 'hairpin');
+	// Before the first stroke the setup is a desk surface, in the rider's
+	// scheme: the cave starts with the ride, not with the page (G1, #3667).
+	await o.page.goto(`/ride?road=${road}`);
+	await o.page
+		.getByRole('button', { name: 'Ride simulated' })
+		.first()
+		.waitFor({ timeout: 15_000 });
+	await s.shot(o, { name: 'ride-free-road-setup' });
 	await ride(o.page, `/ride?road=${road}`);
 	await assertRiding(o.page);
 	await s.shot(o);
