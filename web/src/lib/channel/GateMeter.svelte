@@ -43,7 +43,7 @@
 	const marked = $derived(!onThreshold || effective !== setting);
 </script>
 
-<div class="relative {onThreshold ? 'h-5' : 'h-2.5'} {cls}" {title}>
+<div class="relative {onThreshold ? 'h-6' : 'h-2.5'} {cls}" {title}>
 	<!-- Named (#1966): whether the call hears you was colour on a bar and
 	     nothing else — the one mid-ride state a rider checks for that reason. -->
 	<div
