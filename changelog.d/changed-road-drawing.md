@@ -1,0 +1,1 @@
+- A road is drawn the same way everywhere — on its page, in the importer and when you plan a session: the map in its own panel with start, finish and km markers and its climbs in the grade colours, and the profile filled by grade with a badge over every climb, its kilometres and heights, and a legend.
