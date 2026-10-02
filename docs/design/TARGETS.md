@@ -483,7 +483,7 @@ Every surface id below is also in `docs/design/surface-map.json`, which maps the
 
 **Must match**
 1. A game on a road draws its world: the bunch on the road, as a session on a road does. [#3114]
-2. Backyard Ramp: an arch reading "ROUND n" spans the road where the bunch will be when the round ends. It wears the KOM arch's structural chrome and never glows, and it stands close ahead in the round's last seconds. [multi:ride-game-backyard-arch] [test:web/src/lib/world/game-road.test.ts] [#3114]
+2. Backyard Ramp: an arch spans the road where the bunch will be when the round ends. It wears the KOM arch's structural chrome, carries no words (the round's number lives in the game's panel), never glows, and stands close ahead in the round's last seconds. [multi:ride-game-backyard-arch] [test:web/src/lib/world/game-road.test.ts] [#3114]
 3. Collective Ramp: a fog sea lies flat and unlit under the bunch and creeps closer each round, never over the road. Under reduced motion it steps. Where no land lies below the road, none shows. [test:web/src/lib/world/game-road.test.ts] [#3114]
 4. A rider a game puts out stands, stopped, on the verge at the first hairpin 300 m to 5 km ahead. The cowbell rings once as the bunch rides by, under the roadside's sound ceiling. [test:web/src/lib/world/ride-scene.test.ts] [#3114]
 5. The bunch rides the round's line in Backyard and Collective Ramp, and the middle of the called zone in Floor is Lava. [test:server/internal/hub/game_road_test.go] [#3114]

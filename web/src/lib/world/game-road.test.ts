@@ -82,7 +82,7 @@ describe('a game on the road (#3114)', () => {
 		g.update(view(0, 0, play(1), 0), 0, 0, false);
 		expect(arches(g.group)).toHaveLength(1);
 		const first = arches(g.group)[0];
-		expect(first.userData.label).toBe('ROUND 2');
+		expect(first.userData.round).toBe(2);
 		const there = at(route, rideAhead(route, 0, 0, 0.8, 180));
 		expect(first.position.x).toBeCloseTo(there.x, 3);
 		expect(first.position.z).toBeCloseTo(there.z, 3);
@@ -95,7 +95,7 @@ describe('a game on the road (#3114)', () => {
 		g.update(view(1100, 190_000, play(2)), 130, 0, false);
 		expect(arches(g.group)).toHaveLength(1);
 		expect(arches(g.group)[0]).not.toBe(first);
-		expect(arches(g.group)[0].userData.label).toBe('ROUND 3');
+		expect(arches(g.group)[0].userData.round).toBe(3);
 		g.update(
 			view(1200, 200_000, { ...play(2), mode: 'watt-golf' }),
 			140,

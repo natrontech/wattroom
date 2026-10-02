@@ -1,5 +1,5 @@
 // A game on the road (#3114), as the world stages it: Backyard Ramp's arch
-// where the next round starts, Collective Ramp's fog sea rising round by
+// where the next round starts, Collective Ramp's fog sea creeping up round by
 // round, and the riders a game has put out standing at the next hairpin,
 // where the bunch hears the cowbell as it passes. Structure and scenery,
 // never live data: nothing here glows (ADR-0005).
@@ -125,11 +125,12 @@ export function makeGameRoad(route: Route, world: World, style: Style) {
 				y: p.ele,
 				z: p.z,
 				turn: [-Math.cos(p.heading), -Math.sin(p.heading)],
-				label: `ROUND ${round}`,
+				// No words: the round has its one home in the game's panel.
+				label: '',
 			},
 			style,
 		);
-		mesh.userData.label = `ROUND ${round}`;
+		mesh.userData.round = round;
 		group.add(tag('dressing', mesh, 'arch'));
 		held = { round, m, mesh };
 	}
