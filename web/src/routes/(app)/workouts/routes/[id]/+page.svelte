@@ -188,8 +188,12 @@
 			{/if}
 		</div>
 		<p class="font-display text-muted mt-1 text-sm tabular-nums">
-			{#each statRow(route, loop) as part, i (part)}{i ? ' · ' : ''}<span
-					class="whitespace-nowrap">{part}</span
+			<!-- Numbers in ink, their units muted (v3-roads). -->
+			{#each statRow(route, loop) as part, i (part)}
+				{@const n = part.match(/^([\d.]+)(.*)$/)}{i ? ' · ' : ''}<span
+					class="whitespace-nowrap"
+					>{#if n}<span class="text-ink">{n[1]}</span
+						>{n[2]}{:else}{part}{/if}</span
 				>{/each}
 		</p>
 
