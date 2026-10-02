@@ -287,6 +287,12 @@ surface('ride-roadpick', async (s) => {
 	await o.page.getByRole('button', { name: 'Change' }).first().click();
 	await o.page.waitForTimeout(1500);
 	await s.shot(o, { full: true });
+	// And its empty state, for a rider with no roads yet (#3683).
+	const fresh = await s.open(DESK, { as: 'Newcomer', world: false });
+	await fresh.page.goto('/ride?alone');
+	await fresh.page.getByRole('button', { name: 'Change' }).first().click();
+	await fresh.page.waitForTimeout(1500);
+	await s.shot(fresh, { name: 'ride-roadpick-empty', full: true });
 });
 
 /** Designer coaching, Design Partner riding along, a session started. */
@@ -669,14 +675,17 @@ surface('flow-f1', async (s) => {
 	// F1's first steps (#3683): Workouts, then a route card's Ride onto /ride.
 	const o = await s.open(DESK, { world: false });
 	const road = await fixtureRoad(o.page, 'hairpin');
+	const desk = o.page.viewportSize()!;
 	await page(s, o, '/workouts', { name: 'flow-f1-1-workouts' });
+	// The whole-page shot grew the window; /ride is shot at the desk's own.
+	await o.page.setViewportSize(desk);
 	await o.page
 		.getByRole('listitem')
 		.filter({ has: o.page.locator(`a[href="/workouts/routes/${road}"]`) })
 		.getByRole('link', { name: /^(Ride|Carry on)$/ })
 		.click();
 	await o.page.waitForTimeout(2500);
-	await s.shot(o, { name: 'flow-f1-2-ride', full: true });
+	await s.shot(o, { name: 'flow-f1-2-ride' });
 });
 
 surface('appearance', async (s) => {
