@@ -193,7 +193,7 @@ surface('ride-free-road', async (s) => {
 });
 
 test.fixme('ride-free-road-world', () => {
-	// The world on a free ride's road is #3663's.
+	// A free ride on a road draws no world yet: #3669 brings it.
 });
 
 test.fixme('ride-free-road-ghost', () => {
@@ -217,7 +217,7 @@ surface('phone-ride', async (s) => {
 });
 
 test.fixme('phone-ride-road', () => {
-	// The world on a free ride's road is #3663's.
+	// A free ride on a road draws no world yet: #3669 brings it.
 });
 
 surface('hud', async (s) => {
