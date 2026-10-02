@@ -52,7 +52,12 @@ export function alone(
 	roads: readonly Road[],
 	ground: Ground,
 ): Violation[] {
-	return [...o1(p, roads, ground), ...o2(p, ground), ...o3(p, ground), ...o4(p)];
+	return [
+		...o1(p, roads, ground),
+		...o2(p, ground),
+		...o3(p, ground),
+		...o4(p),
+	];
 }
 
 /** Every gate one candidate fails, against the roads, the ground and what stands already. */

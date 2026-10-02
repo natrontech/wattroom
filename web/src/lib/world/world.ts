@@ -232,6 +232,7 @@ function boundsOf(
 		}
 	// The lowest chunk whose far edge is within the margin, the highest whose near edge is.
 	const low = (v: number) => Math.ceil((v - margin) / CHUNK_M - 1) * CHUNK_M;
-	const high = (v: number) => (Math.floor((v + margin) / CHUNK_M) + 1) * CHUNK_M;
+	const high = (v: number) =>
+		(Math.floor((v + margin) / CHUNK_M) + 1) * CHUNK_M;
 	return [low(x0), low(z0), high(x1), high(z1)];
 }
