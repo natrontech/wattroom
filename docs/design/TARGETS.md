@@ -622,15 +622,18 @@ Every surface id below is also in `docs/design/surface-map.json`, which maps the
 3. Forest stands grow close to the road, with no single cones on bare meadow. Houses sit in small clusters. [world-forest]
 4. The dev crew rides as ADR-0073 figures in distinct kits. [world-figure]
 5. Names show over the two nearest riders and anyone speaking. Rings are thin and flat. [3086-names-ring]
+6. Every rider wears a wardrobe look: a jersey pattern from the catalogue (hoops, stripes, sash, chevron and the rest) in the look's own colours, a helmet of their own, and no two riders in one look. [#3156]
 
 #### world-start, world-end
 
-**Capture:** `/dev/world?m=<metre>&p=0|1&cam=chase&look=bluehour&chrome=0`, at 1440 × 900 and 1280 × 720.
+**Capture:** `/dev/world?m=<metre>&p=0|1&cam=chase&look=bluehour&chrome=0`, at 1440 × 900 and 1280 × 720. world-start also shoots the same moment with `cam=side`, off your right shoulder, as world-figure-side.
 
 **Must match**
 1. Two loads of the same URL give an identical frame. [world-moment] [multi:world-start-twice]
 2. With `chrome=0`, no dev chrome shows. [world-moment]
 3. At p=0 there are no stars. At p=1, stars show only in the dark upper sky, never in the peach band, and the light is visibly darker. [3085-ride-light]
+4. Your jersey's pattern lies on the cloth, round the torso and on down the sleeves, with clean edges that do not crawl. Gipfelpunkte never puts its dots on a white ground. [#3156] [multi:world-figure-side]
+5. No kit colour reads as live data to the viewer: the probe counts no kit colour within the viewer's watt band or near a zone. [#3156] [probe:figure.kitCollisions]
 
 ### C. Roads library (desk)
 
