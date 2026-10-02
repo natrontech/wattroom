@@ -47,8 +47,9 @@ export async function startSession(
 		await press(
 			picker
 				.getByRole('list', { name: 'your routes' })
-				.getByRole('button')
+				.getByRole('listitem')
 				.filter({ hasText: pick.road })
+				.getByRole('button', { name: 'Pick' })
 				.first(),
 		);
 		await press(picker.getByRole('button', { name: /^Start / }).last());

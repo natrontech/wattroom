@@ -1,7 +1,7 @@
 <script lang="ts">
-	import Lock from '@lucide/svelte/icons/lock';
 	import type { Snippet } from 'svelte';
 	import RouteProfile from '$lib/components/RouteProfile.svelte';
+	import RouteRow from '$lib/components/RouteRow.svelte';
 	import { formatDuration } from '$lib/format';
 	import { MaxLegSeconds, type ControlRoute } from '$lib/protocol';
 	import { loadRoad } from '$lib/ride/roads';
@@ -131,14 +131,13 @@
 {:else if routes === null}
 	<p class="text-muted p-4 text-xs" aria-busy="true">Loading your routes…</p>
 {:else if routes.length === 0}
-	<!-- Teach, do not apologise (ux.md). -->
-	<div class="p-4">
-		<p class="text-sm font-medium">Ride your own roads.</p>
-		<p class="text-muted mt-1 text-xs">
-			Drop a GPX from Komoot or your Garmin and your crew rides it with you.
-			<a href="/workouts/import" class="btn-link">Import a route</a>
-		</p>
-	</div>
+	<!-- Teach, do not apologise (ux.md): one line and the way in (#3683). -->
+	<p class="text-muted flex flex-wrap items-center gap-x-3 gap-y-2 p-4 text-sm">
+		Your roads ride here — import a GPX, TCX or FIT.
+		<a href="/workouts/import" class="btn btn-secondary btn-xs"
+			>Import a route</a
+		>
+	</p>
 {:else}
 	<div class="flex min-h-0 flex-1 flex-col">
 		<div class="flex min-h-0 flex-1 flex-col md:flex-row">
@@ -181,27 +180,25 @@
 				>
 					{#each shown as r (r.id)}
 						{@const min = minutes(r.id)}
-						<li>
-							<button
-								onclick={() => (pickedId = r.id)}
-								disabled={r.ownerOnly}
-								class="w-full rounded px-3 py-2 text-left disabled:opacity-60 {picked?.id ===
-								r.id
-									? 'bg-surface-raised text-ink'
-									: 'text-muted hover:text-ink'}"
+						<li class="py-1">
+							<RouteRow
+								route={r}
+								selected={picked?.id === r.id}
+								extra={min !== null ? formatDuration(min * 60) : undefined}
 							>
-								<span class="block truncate text-sm font-medium">{r.name}</span>
-								<span class="num block text-[11px]"
-									>{(r.lengthM / 1000).toFixed(1)} km · {r.gainM} m{min !== null
-										? ` · ${formatDuration(min * 60)}`
-										: ''}</span
-								>
-								{#if r.ownerOnly}
-									<span class="mt-1 flex items-center gap-1 text-[11px]"
-										><Lock size={11} /> Only you can ride this one</span
-									>
-								{/if}
-							</button>
+								{#snippet action()}
+									{#if r.ownerOnly}
+										<!-- A route from Strava rides with its owner alone (ADR-0063). -->
+										<span class="text-muted text-xs">Rides with you alone</span>
+									{:else}
+										<button
+											onclick={() => (pickedId = r.id)}
+											aria-pressed={picked?.id === r.id}
+											class="btn btn-secondary btn-xs">Pick</button
+										>
+									{/if}
+								{/snippet}
+							</RouteRow>
 						</li>
 					{:else}
 						<li class="text-muted px-3 py-4 text-xs">
