@@ -12,11 +12,14 @@ import { signInTo } from './signin';
  * The world in slot 2, docked (#3031, ADR-0066): with the per-device flag on,
  * a ride draws the world behind its slots, and no slot — as the page lays it
  * out, not as docks.ts intends it — meets the rider box or the jukebox seat,
- * at a desk's two common sizes. Measured the way desktop/smoke.spec.js
- * measures a window: the rectangles the browser actually drew.
+ * at a desk's common sizes. Your numbers and the ride's status show whole,
+ * never scrolled inside their docks (#3662). Measured the way
+ * desktop/smoke.spec.js measures a window: the rectangles the browser
+ * actually drew.
  */
 for (const [width, height] of [
 	[1920, 1080],
+	[1440, 900],
 	[1280, 720],
 ])
 	test(`the docks leave the rider and the jukebox seat clear at ${width}×${height}`, async ({
@@ -49,7 +52,7 @@ for (const [width, height] of [
 		// rightly leaves for the flat road (#3080) — faster than a round trip
 		// per dock comes back from a page that software GL keeps busy.
 		// Building a world holds a loaded runner's main thread for a while.
-		let drawn: { name: string; box: Box }[];
+		let drawn: { name: string; scrolls: boolean; box: Box }[];
 		try {
 			const measured = await page.waitForFunction(
 				() => {
@@ -61,10 +64,12 @@ for (const [width, height] of [
 						.map((d) => ({
 							name: d.dataset.dock!,
 							r: d.getBoundingClientRect(),
+							scrolls: d.scrollHeight > d.clientHeight + 1,
 						}))
 						.filter(({ r }) => r.width > 0 && r.height > 0)
-						.map(({ name, r }) => ({
+						.map(({ name, r, scrolls }) => ({
 							name,
+							scrolls,
 							box: {
 								x0: (r.left - s.left) / s.width,
 								y0: (r.top - s.top) / s.height,
@@ -82,7 +87,7 @@ for (const [width, height] of [
 				null,
 				{ polling: 100, timeout: 60_000 },
 			);
-			drawn = (await measured.jsonValue()) as { name: string; box: Box }[];
+			drawn = (await measured.jsonValue()) as typeof drawn;
 		} finally {
 			await info.attach('console', { body: said.join('\n') });
 		}
@@ -90,7 +95,9 @@ for (const [width, height] of [
 			drawn.map((d) => d.name),
 			JSON.stringify(drawn),
 		).toEqual(expect.arrayContaining(['header', 'numbers', 'horizon']));
-		for (const { name, box } of drawn) {
+		for (const { name, box, scrolls } of drawn) {
+			if (name === 'numbers' || name === 'status')
+				expect(scrolls, `${name} cut short at ${width}×${height}`).toBe(false);
 			expect(meets(box, RIDER_BOX), `${name} over the rider`).toBe(false);
 			expect(meets(box, JUKEBOX_SEAT), `${name} over the jukebox seat`).toBe(
 				false,
