@@ -239,36 +239,40 @@
 	{/snippet}
 
 	{#snippet numbers()}
-		{#if inWorld && !session.sprint}
-			<Instrument {watts} {target} {ftp} stale={signalLost} compact />
-		{/if}
-		<div class="flex flex-wrap items-end gap-4">
-			<!-- In the world's narrow column the computer takes the whole width,
+		<!-- Over the world the panel insets its content as the status does. -->
+		<div class={inWorld ? 'px-4 py-2' : ''}>
+			{#if inWorld && !session.sprint}
+				<Instrument {watts} {target} {ftp} stale={signalLost} compact />
+			{/if}
+			<div class="flex flex-wrap items-end gap-4">
+				<!-- In the world's narrow column the computer takes the whole width,
 			     so its page wraps into rows instead of a tower (#3662). -->
-			<div class="min-w-0 flex-1 {inWorld ? 'basis-full' : ''}">
-				<BikeComputer
-					head={inWorld && !session.sprint}
-					cadence={session.sample?.cadence ?? 0}
-					stale={signalLost}
-					hr={session.sample?.heartRate ?? 0}
-					{watts}
-					{kg}
-					{lthr}
-					execution={session.scored ? session.execution : undefined}
-					target={target > 0 ? target : undefined}
-					stats={session.live}
+				<div class="min-w-0 flex-1 {inWorld ? 'basis-full' : ''}">
+					<BikeComputer
+						head={inWorld && !session.sprint}
+						narrow={inWorld}
+						cadence={session.sample?.cadence ?? 0}
+						stale={signalLost}
+						hr={session.sample?.heartRate ?? 0}
+						{watts}
+						{kg}
+						{lthr}
+						execution={session.scored ? session.execution : undefined}
+						target={target > 0 ? target : undefined}
+						stats={session.live}
+					/>
+				</div>
+				<BiasTrim
+					bias={session.bias}
+					onBias={(step) => session.nudgeBias(step)}
 				/>
 			</div>
-			<BiasTrim
-				bias={session.bias}
-				onBias={(step) => session.nudgeBias(step)}
-			/>
-		</div>
 
-		{#if flagNotice}
-			<!-- Consent in plain words, at the moment of the tap, never blocking. -->
-			<p class="text-muted mt-2 text-xs">{FLAG_SAID.after}</p>
-		{/if}
+			{#if flagNotice}
+				<!-- Consent in plain words, at the moment of the tap, never blocking. -->
+				<p class="text-muted mt-2 text-xs">{FLAG_SAID.after}</p>
+			{/if}
+		</div>
 	{/snippet}
 
 	{#snippet horizon()}

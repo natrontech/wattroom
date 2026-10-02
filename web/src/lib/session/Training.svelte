@@ -369,6 +369,7 @@
 						<div class="min-w-0 flex-1">
 							<BikeComputer
 								head={headed}
+								narrow={inWorld}
 								cadence={channel.you.cadence}
 								stale={channel.youStale}
 								hr={channel.you.hr}

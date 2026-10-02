@@ -58,7 +58,7 @@
 			<!-- The left column: status at its top, your numbers at its foot on
 			     the horizon, each as tall as it is; the numbers scroll only when
 			     the two outgrow the column. -->
-			<div class="absolute flex flex-col gap-4" style={place(docks.column)}>
+			<div class="absolute flex flex-col gap-3" style={place(docks.column)}>
 				{#if status}
 					<div data-dock="status" class="{panel} shrink-0">
 						{@render status()}
