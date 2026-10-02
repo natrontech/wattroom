@@ -257,6 +257,10 @@ func TestTheCoachNeutralisesTheRace(t *testing.T) {
 	}
 	before := r.ride(1, pedal).World.Racers
 	held := r.ride(2*protocol.RaceDisconnectSeconds, watts(map[string]int{"ana": 250}))
+	// The race's clock stops with it, and the tick says by how much (#3174).
+	if got := held.Game.Race.HeldMs; got < (2*protocol.RaceDisconnectSeconds-1)*1000 || got > (2*protocol.RaceDisconnectSeconds+1)*1000 {
+		t.Fatalf("held %d ms into a %d s hold", got, 2*protocol.RaceDisconnectSeconds)
+	}
 	if !r.race().Neutralised || held.World.Racers["ana"].M != before["ana"].M {
 		t.Fatalf("held: neutralised %v, ana %.1f m then %.1f m", r.race().Neutralised, before["ana"].M, held.World.Racers["ana"].M)
 	}

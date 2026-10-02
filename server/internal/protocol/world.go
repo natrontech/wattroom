@@ -66,4 +66,11 @@ type RaceRider struct {
 	M        float64 `json:"m"`
 	V        float64 `json:"v"`
 	FinishMs int64   `json:"finishMs,omitempty"`
+	// The Category the race froze them in at the flag, D–A (#3174): who they
+	// race, which the RACE page places them among. The bracket, never the
+	// watts behind it.
+	Cat string `json:"cat,omitempty"`
+	// Where on the road they started: a Wheelrace's head start, in metres
+	// from km 0. Their par rides from here.
+	From float64 `json:"from,omitempty"`
 }

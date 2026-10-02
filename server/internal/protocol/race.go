@@ -134,6 +134,16 @@ type Drive struct {
 	ErgByRoad bool `json:"ergByRoad"`
 }
 
+// Category par (docs/SPEC.md "Races"): the W/kg each Category's par rides at
+// on the race's physics, which the RACE page measures a rider's gap against
+// (#3174) and the pacer rides (ADR-0068).
+const (
+	ParWkgD = 2.2
+	ParWkgC = 2.85
+	ParWkgB = 3.6
+	ParWkgA = 4.3
+)
+
 // RaceState is a race on the tick (#3658, ADR-0067): when the flag drops and
 // when the klaxon sends it from km 0, whether the coach has neutralised it,
 // and — once it is done — the closing card. The places ride World.Racers.
@@ -141,6 +151,10 @@ type RaceState struct {
 	FlagAtMs    int64 `json:"flagAtMs"`
 	KlaxonAtMs  int64 `json:"klaxonAtMs"`
 	Neutralised bool  `json:"neutralised,omitempty"`
+	// How long the coach has held the race since km 0, a hold under way
+	// included (#3174): the race's clock is the tick's time less the klaxon
+	// and this, so a screen that opened after a hold still reads it.
+	HeldMs int64 `json:"heldMs,omitempty"`
 	// When the race runs out: Last Light's shared clock (#3171), or a
 	// Wheelrace's hard close (#3172). Zero for a plain race to the line.
 	EndsAtMs int64 `json:"endsAtMs,omitempty"`

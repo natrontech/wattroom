@@ -286,6 +286,8 @@ func (r *Race) Racers() map[string]protocol.RaceRider {
 			M:        min(rc.pace.Distance, r.profile.LengthM),
 			V:        rc.pace.Speed,
 			FinishMs: rc.finishMs,
+			Cat:      rc.Category,
+			From:     rc.StartM,
 		}
 	}
 	return out
@@ -303,6 +305,10 @@ func (r *Race) Clock(end time.Time) { r.ends, r.byMetres = end, true }
 // has not crossed by then is off the card, and the card still ranks finish
 // times.
 func (r *Race) CloseAt(at time.Time) { r.ends, r.byMetres = at, false }
+
+// Held is how long the race has been neutralised since km 0: the span every
+// racer's clock leaves out.
+func (r *Race) Held() time.Duration { return r.held }
 
 // Ends is when a clock race runs out — later by any time it was held before
 // then — and zero for a race to the line.

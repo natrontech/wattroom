@@ -333,3 +333,22 @@ func TestASparseRoadsLineIsOneStepUp(t *testing.T) {
 		t.Fatalf("a weaker rider starts at %.0f m", s)
 	}
 }
+
+// The RACE page's numbers (#3174): each racer's Category and where they
+// started ride the tick, so a screen places you among your own and rides
+// your par from your own start.
+func TestTheTickCarriesEachRacersCategoryAndStart(t *testing.T) {
+	r, err := New(flat(5_000), []Entrant{{ID: "a", WeightKg: 70, Category: "B"}, {ID: "b", WeightKg: 70, Category: "D", StartM: 400}}, flag)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := r.Racers()
+	if got["a"].Cat != "B" || got["a"].From != 0 || got["b"].Cat != "D" || got["b"].From != 400 {
+		t.Fatalf("racers %+v, want a in B from 0 and b in D from 400 m", got)
+	}
+	at := r.Klaxon().Add(10 * time.Second)
+	r.Neutralised(at, at.Add(time.Minute))
+	if r.Held() != time.Minute {
+		t.Fatalf("held %v after a minute's hold past km 0", r.Held())
+	}
+}

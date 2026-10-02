@@ -290,6 +290,11 @@ func (r *raceRun) state(now time.Time) protocol.GameState {
 	phase := "running"
 	if r.race != nil {
 		st.KlaxonAtMs = r.race.Klaxon().UnixMilli()
+		held := r.race.Held()
+		if !r.heldAt.IsZero() && r.heldAt.After(r.race.Klaxon()) {
+			held += now.Sub(r.heldAt)
+		}
+		st.HeldMs = held.Milliseconds()
 		// When the race runs out (#3171, #3172), and Last Light's closing
 		// fog: a hold stops the clock, so the fog holds where it stood.
 		if ends := r.race.Ends(); !ends.IsZero() {

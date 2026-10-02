@@ -1371,6 +1371,30 @@ export interface Drive {
   ergByRoad: boolean;
 }
 /**
+ * Category par (docs/SPEC.md "Races"): the W/kg each Category's par rides at
+ * on the race's physics, which the RACE page measures a rider's gap against
+ * (#3174) and the pacer rides (ADR-0068).
+ */
+export const ParWkgD = 2.2;
+/**
+ * Category par (docs/SPEC.md "Races"): the W/kg each Category's par rides at
+ * on the race's physics, which the RACE page measures a rider's gap against
+ * (#3174) and the pacer rides (ADR-0068).
+ */
+export const ParWkgC = 2.85;
+/**
+ * Category par (docs/SPEC.md "Races"): the W/kg each Category's par rides at
+ * on the race's physics, which the RACE page measures a rider's gap against
+ * (#3174) and the pacer rides (ADR-0068).
+ */
+export const ParWkgB = 3.6;
+/**
+ * Category par (docs/SPEC.md "Races"): the W/kg each Category's par rides at
+ * on the race's physics, which the RACE page measures a rider's gap against
+ * (#3174) and the pacer rides (ADR-0068).
+ */
+export const ParWkgA = 4.3;
+/**
  * RaceState is a race on the tick (#3658, ADR-0067): when the flag drops and
  * when the klaxon sends it from km 0, whether the coach has neutralised it,
  * and — once it is done — the closing card. The places ride World.Racers.
@@ -1379,6 +1403,12 @@ export interface RaceState {
   flagAtMs: number /* int64 */;
   klaxonAtMs: number /* int64 */;
   neutralised?: boolean;
+  /**
+   * How long the coach has held the race since km 0, a hold under way
+   * included (#3174): the race's clock is the tick's time less the klaxon
+   * and this, so a screen that opened after a hold still reads it.
+   */
+  heldMs?: number /* int64 */;
   /**
    * When the race runs out: Last Light's shared clock (#3171), or a
    * Wheelrace's hard close (#3172). Zero for a plain race to the line.
@@ -2144,4 +2174,15 @@ export interface RaceRider {
   m: number /* float64 */;
   v: number /* float64 */;
   finishMs?: number /* int64 */;
+  /**
+   * The Category the race froze them in at the flag, D–A (#3174): who they
+   * race, which the RACE page places them among. The bracket, never the
+   * watts behind it.
+   */
+  cat?: string;
+  /**
+   * Where on the road they started: a Wheelrace's head start, in metres
+   * from km 0. Their par rides from here.
+   */
+  from?: number /* float64 */;
 }
