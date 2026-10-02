@@ -8,10 +8,14 @@
 	 * and average, gain and where it tops out, and — given `bests` — the
 	 * owner's best time up it or “—”. Names are generated, “Climb 2”, the way
 	 * the climb card counts them, until real ones arrive (#3136). Numerals
-	 * right-aligned; the table scrolls in its own box on a phone.
+	 * right-aligned; the table scrolls in its own box on a phone. Under a
+	 * profile it goes without its header row, as the profile's own facts.
 	 */
-	let { climbs, bests }: { climbs: Climb[]; bests?: ClimbBest[] | null } =
-		$props();
+	let {
+		climbs,
+		bests,
+		head = true,
+	}: { climbs: Climb[]; bests?: ClimbBest[] | null; head?: boolean } = $props();
 
 	const rows = $derived(classedOf(climbs));
 	// `null` is “still loading”: the column holds its place, saying nothing yet.
@@ -23,7 +27,7 @@
 {#if rows.length > 0}
 	<div class="overflow-x-auto">
 		<table class="w-full min-w-[17rem] text-xs" aria-label="Climbs">
-			<thead>
+			<thead class={head ? '' : 'sr-only'}>
 				<tr class="text-muted border-frame border-b text-left">
 					<th class="eyebrow py-2 pr-2 font-normal sm:pr-3">Climb</th>
 					<th class="eyebrow py-2 pr-2 font-normal sm:pr-3">Class</th>
@@ -41,14 +45,14 @@
 					{@const best = bestOf(c.startM)}
 					<tr>
 						<td class="py-2 pr-2 sm:pr-3"
-							><span class="text-ink">Climb {i + 1}</span>
+							><span class="text-ink mr-2">Climb {i + 1}</span>
 							<span class="text-muted font-display block tabular-nums sm:inline"
 								>{formatKm(c.topM - c.startM)} km · {avg(c).toFixed(1)} %</span
 							></td
 						>
 						<td class="py-2 pr-2 sm:pr-3"
 							><span
-								class="border-neon font-display inline-block w-8 rounded border text-center font-bold"
+								class="bg-neon text-on-neon font-display inline-block w-8 rounded text-center font-bold"
 								>{c.cls}</span
 							></td
 						>
@@ -56,7 +60,7 @@
 							>{Math.round(c.gainM)} m</td
 						>
 						<td class="font-display py-2 pr-2 text-right tabular-nums sm:pr-3"
-							>km {formatKm(c.topM)}</td
+							>{head ? '' : 'top at '}km {formatKm(c.topM)}</td
 						>
 						{#if withBests}
 							<td class="font-display py-2 text-right tabular-nums">

@@ -115,7 +115,7 @@
 	</div>
 	{#if facts && classed.length > 0}
 		<div class="border-frame mt-3 border-t">
-			<ClimbTable {climbs} />
+			<ClimbTable {climbs} head={false} />
 		</div>
 	{/if}
 </figure>

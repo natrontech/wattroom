@@ -188,7 +188,9 @@
 			{/if}
 		</div>
 		<p class="font-display text-muted mt-1 text-sm tabular-nums">
-			{statRow(route, loop)}
+			{#each statRow(route, loop) as part, i (part)}{i ? ' · ' : ''}<span
+					class="whitespace-nowrap">{part}</span
+				>{/each}
 		</p>
 
 		<!-- On a phone How comes first, its primary at the top; then the

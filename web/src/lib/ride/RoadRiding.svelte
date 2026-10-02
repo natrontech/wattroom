@@ -136,8 +136,9 @@
 		<h1 class="page-title-sm min-w-0 truncate">
 			<!-- Ridden, the road opens its page (F1); a crew's road has none of yours. -->
 			{#if ended && !route.borrowed}
-				<a href="/workouts/routes/{route.id}" class="hover:underline"
-					>{route.name}</a
+				<a
+					href="/workouts/routes/{route.id}"
+					class="underline decoration-1 underline-offset-4">{route.name}</a
 				>
 			{:else}
 				{route.name}

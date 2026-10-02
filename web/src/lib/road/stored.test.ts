@@ -50,15 +50,17 @@ describe("the route page's stat row (#3680)", () => {
 	const climb = (cls: 'IV' | null) => ({ startM: 0, topM: 1, gainM: 1, cls });
 	it('says km, metres climbed, classed climbs, and loop or point to point', () => {
 		const route = { ...stored(), climbs: [climb('IV'), climb(null)] };
-		expect(statRow(route, false)).toBe(
+		expect(statRow(route, false).join(' · ')).toBe(
 			'3.0 km · 50 m climbed · 1 classed climb · point to point',
 		);
 		expect(
-			statRow({ ...route, climbs: [climb('IV'), climb('IV')] }, true),
+			statRow({ ...route, climbs: [climb('IV'), climb('IV')] }, true).join(
+				' · ',
+			),
 		).toBe('3.0 km · 50 m climbed · 2 classed climbs · loop');
 	});
 	it('leaves out what it does not know', () => {
-		expect(statRow(stored(), undefined)).toBe(
+		expect(statRow(stored(), undefined).join(' · ')).toBe(
 			'3.0 km · 50 m climbed · no classed climb',
 		);
 	});

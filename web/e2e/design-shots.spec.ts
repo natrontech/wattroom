@@ -488,6 +488,23 @@ surface('route', async (s) => {
 				name: road === 'hairpin' ? prefix : `${prefix}-${road}`,
 			});
 		}
+	// Where the route page's links lead (#3680): the primary, from where the
+	// last ride stopped, and the best ride.
+	const o = await s.open(DESK);
+	const id = await fixtureRoad(o.page, 'hairpin');
+	await o.page.goto(`/workouts/routes/${id}`);
+	const carry = o.page.getByRole('button', { name: /^From km / });
+	await carry.waitFor({ timeout: 15_000 });
+	await carry.click();
+	await o.page.getByRole('link', { name: 'Ride it' }).click();
+	await o.page.waitForURL(/\/ride\?road=.+&from=\d+/);
+	await o.page.waitForTimeout(2500);
+	await s.shot(o, { name: 'route-ride-it' });
+	await o.page.goto(`/workouts/routes/${id}`);
+	await o.page.getByRole('link', { name: /^Best / }).click();
+	await o.page.waitForURL('**/history/*');
+	await o.page.waitForTimeout(2500);
+	await s.shot(o, { name: 'route-best-opens' });
 });
 
 surface('import', async (s) => {

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import Banner from '$lib/components/Banner.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { formatClockLong, formatKm, formatShortDate } from '$lib/format';
@@ -100,8 +101,10 @@
 						<span class="font-display tabular-nums"
 							>{formatClockLong(l.ride.seconds)}{speed(l.ride)}</span
 						>
-						<span class="text-muted ml-auto text-xs"
-							>{formatShortDate(Date.parse(l.ride.startedAt))}</span
+						<span class="text-muted ml-auto flex items-center gap-1 text-xs"
+							>{formatShortDate(Date.parse(l.ride.startedAt))}<ChevronRight
+								size={14}
+							/></span
 						>
 					</a>
 				</li>
