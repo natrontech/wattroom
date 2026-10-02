@@ -3,20 +3,21 @@ import { noise2 } from '../rand';
 
 /**
  * The forest's shape (#3675): trees stand in groups where a slow noise says
- * so, conifer stands come down to the road on long stretches of it, a
- * meadow is a clearing with a forest edge behind it, and the deep forest out
+ * so, conifer stands line the road on open ground beside it, thinning
+ * between groups but never opening, a meadow is a clearing between them and
+ * a forest edge behind it, and the deep forest out
  * of sight thins to pay for the near trees (docs/SPEC.md "The world":
  * dressing). On the placement path, so exact arithmetic only (place-lint).
  */
 
-/** Metres across one group of trees, and one stretch of road the forest frames. */
+/** Metres across one group of trees. */
 const STAND_M = 70;
-const FRAME_M = 260;
-/** The road's framing stands: from the shoulder's edge out, and how much of the road has them. */
+/** The road's framing stands: from the shoulder's edge out, and how thick they grow. */
 export const FRAME_NEAR = 12;
 const FRAME_FAR = 40;
-const FRAME_ABOVE = -0.25;
 const FRAME_P = 0.62;
+/** A framing stand thins in a gap between groups but never opens: the road is never bare for long. */
+const FRAME_FLOOR = 0.6;
 /** A clearing's forest edge: a belt behind the meadow beside the road, which hides what lies past it. */
 const EDGE_FROM = 100;
 const EDGE_FULL = 150;
@@ -34,21 +35,19 @@ const smooth = (a: number, b: number, t: number) => {
 	return k * k * (3 - 2 * k);
 };
 
-/** The forest of one place, from two keyed seeds; points are the key frame's metres east and north. */
-export function forest([standSeed, frameSeed]: [number, number]) {
-	const stands = noise2(standSeed);
-	const frames = noise2(frameSeed);
+/** The forest of one place, from a keyed seed; points are the key frame's metres east and north. */
+export function forest(seed: number) {
+	const stands = noise2(seed);
 	return {
 		/** The stand at a point: below 0 a gap, above it a group, its heart near 1. */
 		groupAt: (e: number, n: number) => stands(e / STAND_M, n / STAND_M),
-		/** Whether a tree here frames the road: on open ground beside it, on long stretches of it. */
-		frames: (b: Biome, far: number, e: number, n: number) =>
+		/** Whether a tree here frames the road: on open ground beside it. */
+		frames: (b: Biome, far: number) =>
 			b !== Biome.Rock &&
 			b !== Biome.Snow &&
 			b !== Biome.Water &&
 			far >= FRAME_NEAR &&
-			far <= FRAME_FAR &&
-			frames(e / FRAME_M, n / FRAME_M) > FRAME_ABOVE,
+			far <= FRAME_FAR,
 		/** The chance a cell holds a tree, `far` metres from the road in stand `g`. */
 		chance(b: Biome, far: number, frame: boolean, g: number): number {
 			const group = Math.min(2, Math.max(0, 1 + 1.4 * g));
@@ -67,7 +66,7 @@ export function forest([standSeed, frameSeed]: [number, number]) {
 							: b === Biome.Alpine
 								? 0.05
 								: 0;
-			return p * group;
+			return p * (frame ? Math.max(FRAME_FLOOR, group) : group);
 		},
 	};
 }

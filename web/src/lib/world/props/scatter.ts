@@ -327,14 +327,14 @@ export function scatter(
 	// Trees: one draw per 22 m cell within 700 m of a road, never in a
 	// village — in groups where the stand noise says so, conifers framing the
 	// road, a forest edge behind every clearing, a thinner forest out of sight.
-	const woods = forest([tree(-1, -1, -1), tree(-2, -2, -2)]);
+	const woods = forest(tree(-1, -1, -1));
 	cells(TREE_M, (i, j) => {
 		const [x, z] = jitter(i, j, TREE_M, u(tree(i, j, 1)), u(tree(i, j, 2)));
 		const b = biomeAt(x, z);
 		const far = ground.roadDist(x, z);
 		if (b === null || far > TREES_WITHIN || inVillage(x, z)) return;
 		const g = woods.groupAt(e0 + x, n0 - z);
-		const frame = woods.frames(b, far, e0 + x, n0 - z);
+		const frame = woods.frames(b, far);
 		if (u(tree(i, j, 0)) >= woods.chance(b, far, frame, g)) return;
 		if (far < 140 && !ground.clearOf(x, z, 11)) return;
 		const conifer = frame || heightAt(x, z) >= 900 || u(tree(i, j, 4)) >= 0.55;
