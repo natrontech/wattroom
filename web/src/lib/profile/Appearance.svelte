@@ -26,9 +26,11 @@
 		{ flat: true, label: 'Flat road' },
 	];
 
-	// One label column, so every row's first control starts at the same x; the
-	// hint sits right of the controls on a desk and below them on a phone.
-	const ROW = 'mt-5 grid grid-cols-[4.5rem_1fr] items-baseline gap-x-3';
+	// One label column, so every row's first control starts at the same x; on a
+	// phone the label sits above its row, which a column would wrap. The hint
+	// sits right of the controls on a desk and below them on a phone.
+	const ROW =
+		'mt-5 grid items-baseline gap-x-3 gap-y-2 sm:grid-cols-[4.5rem_1fr]';
 	const HINT = 'text-muted basis-full text-xs lg:basis-auto';
 </script>
 
