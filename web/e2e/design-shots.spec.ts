@@ -492,6 +492,12 @@ surface('import', async (s) => {
 					id,
 				);
 	}
+	// The rolling road read too: flats and a descent between its climbs, so
+	// the line's own neon shows beside the climbs' ramp (#3679).
+	const o = await s.open(DESK);
+	await readRoad(o.page, 'rolling');
+	await o.page.waitForTimeout(2500);
+	await s.shot(o, { name: 'import-rolling', full: true });
 });
 
 async function routeIds(page: Opened['page']): Promise<Set<string>> {

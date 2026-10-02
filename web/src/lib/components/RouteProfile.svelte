@@ -39,15 +39,15 @@
 	];
 </script>
 
-<!-- Its content's size beside a taller shape, never stretched to it. -->
-<figure class="panel self-start">
-	<div class="flex gap-3">
-		<div class="relative mt-6 min-w-0 flex-1">
+<!-- The chart takes the panel's free height, so beside the shape the two
+     panels end together and no band stands empty under the legend. -->
+<figure class="panel flex flex-col">
+	<div class="mt-6 flex min-h-28 flex-1 gap-3">
+		<div class="relative min-w-0 flex-1">
 			<svg
 				viewBox="0 0 {W} {H}"
-				width="100%"
 				preserveAspectRatio="none"
-				class="block h-28"
+				class="absolute inset-0 block h-full w-full"
 				role="img"
 				aria-label="The road's heights by distance, filled by its grade"
 			>
@@ -63,23 +63,17 @@
 				/>
 			</svg>
 			{#if classed.length > 0}
-				<ol aria-label="Climbs">
-					{#each classed as c (c.startM)}
-						<li
-							class="bg-neon text-on-neon font-display absolute -translate-x-1/2 -translate-y-[calc(100%+4px)] rounded px-1.5 text-xs leading-5 font-bold"
-							style="left: {pct(c.topM)}; top: {topY(c)}"
-							title="{((c.topM - c.startM) / 1000).toFixed(1)} km · {Math.round(
-								c.gainM,
-							)} m, top at {(c.topM / 1000).toFixed(1)} km"
-						>
-							{c.cls}
-						</li>
-					{/each}
-				</ol>
+				{#each classed as c (c.startM)}
+					<span
+						class="bg-neon text-on-neon font-display absolute -translate-x-1/2 -translate-y-[calc(100%+4px)] rounded px-1.5 text-xs leading-5 font-bold"
+						style="left: {pct(c.topM)}; top: {topY(c)}"
+						aria-hidden="true">{c.cls}</span
+					>
+				{/each}
 			{/if}
 		</div>
 		<div
-			class="text-muted font-display mt-6 flex h-28 flex-col justify-between text-right text-xs tabular-nums"
+			class="text-muted font-display flex flex-col justify-between text-right text-xs tabular-nums"
 		>
 			<span>{Math.round(hi)} m</span>
 			<span>{Math.round(lo)} m</span>
@@ -98,12 +92,40 @@
 		<!-- A tick too near the end gives way to the road's length. -->
 		<span class="absolute right-0">{km.toFixed(1)} km</span>
 	</div>
-	<figcaption class="text-muted mt-3 flex flex-wrap items-center gap-3 text-xs">
+	<div
+		class="text-muted mt-3 flex flex-wrap items-center gap-3 text-xs"
+		aria-label="grade legend"
+	>
 		{#each LEGEND as label, i (label)}
 			<span class="flex items-center gap-1.5">
 				<span class="{SWATCH[i]} inline-block h-2.5 w-4 rounded-sm"></span>
 				<span class="font-display tabular-nums">{label}</span>
 			</span>
 		{/each}
-	</figcaption>
+	</div>
+	{#if classed.length > 0}
+		<!-- Each climb's facts, until the route page's climbs table holds them (#3680). -->
+		<ul class="border-frame mt-3 divide-y border-t text-xs" aria-label="Climbs">
+			{#each classed as c (c.startM)}
+				<li class="flex items-center gap-3 py-1.5">
+					<span
+						class="border-neon font-display w-8 rounded border text-center font-bold"
+						>{c.cls}</span
+					>
+					<span class="font-display tabular-nums"
+						>{((c.topM - c.startM) / 1000).toFixed(1)} km · {(
+							(c.gainM / (c.topM - c.startM || 1)) *
+							100
+						).toFixed(1)} %</span
+					>
+					<span class="font-display tabular-nums">{Math.round(c.gainM)} m</span>
+					<span class="text-muted ml-auto"
+						>top at <span class="font-display tabular-nums"
+							>{(c.topM / 1000).toFixed(1)} km</span
+						></span
+					>
+				</li>
+			{/each}
+		</ul>
+	{/if}
 </figure>
