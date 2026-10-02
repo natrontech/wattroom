@@ -29,6 +29,7 @@
 	import { mount, type WorldScene } from './scene';
 	import type { RideMetre } from './sim';
 	import type { BunchView } from '$lib/channel/bunch-view';
+	import { account } from '$lib/account.svelte';
 	import { generate } from './world';
 	// The dev gallery's blue hour, until #3085 gives the ride its own look.
 	import { STYLES } from '../../routes/(app)/dev/world/styles';
@@ -37,7 +38,6 @@
 		road,
 		metre,
 		bunch,
-		youId,
 		watts,
 		ftp,
 		paused = false,
@@ -50,7 +50,6 @@
 		metre: () => RideMetre;
 		/** Everyone on the road with you, on a session's road. */
 		bunch?: () => BunchView | null;
-		youId?: string;
 		watts: number;
 		ftp: number;
 		/** A shared screen has the focus. */
@@ -76,7 +75,8 @@
 					ftp,
 					metre,
 					bunch,
-					youId,
+					// Your kit is keyed by who you are, solo or in a bunch: the crew sees the one you see.
+					youId: account.me?.id,
 					// The theme's neon as the canvas resolves it, for the coach's chevron.
 					neon: getComputedStyle(canvas!).color,
 					onTick: (hud) => {

@@ -242,7 +242,6 @@
 					road={channel.ridden.road}
 					metre={() => channel.ridden ?? { m: 0, mps: 0 }}
 					bunch={() => channel.ridden?.bunch ?? null}
-					youId={channel.you.id}
 					watts={channel.you.watts}
 					ftp={channel.you.ftp}
 					paused={inFocus === 'media'}

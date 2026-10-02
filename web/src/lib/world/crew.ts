@@ -43,9 +43,11 @@ const TRAIL_N = 24;
 // Alone you keep to the right lane's middle, as on a Swiss road; the dev
 // gallery's crew spreads abreast; a bunch rides its formation (bunch.ts).
 const KEEP_RIGHT = -ROAD_W / 4;
-/** Where the coach's chevron floats: over a rider's head, over the car's roof. */
-const CHEVRON_Y = 2.05;
-const CHEVRON_CAR_Y = 2.35;
+/** Where the coach's chevron sits: just over a rider's helmet, over the car's roof. */
+const CHEVRON_Y = 1.82;
+const CHEVRON_CAR_Y = 2.2;
+/** About a helmet wide on a rider: worn, not a marker on the road ahead. */
+const CHEVRON_SCALE = 0.65;
 
 // Identity is a hue from the rider's id, never the watt hue (ADR-0005: watt
 // is live data). Live power shows as the flat zone ring; the only glow is
@@ -172,6 +174,7 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 		bead.visible = false;
 		const chevron = new THREE.Mesh(chevronGeo, chevronMaterial());
 		chevron.position.y = CHEVRON_Y;
+		chevron.scale.setScalar(CHEVRON_SCALE);
 		chevron.visible = false;
 		const g = new THREE.Group();
 		g.add(
@@ -348,7 +351,6 @@ function makeCar(
 	const wheelMat = paintIn(style.kit.tyre);
 	const chevron = new THREE.Mesh(chevronGeo, chevronMat);
 	chevron.position.y = CHEVRON_CAR_Y;
-	chevron.scale.setScalar(1.6);
 	const group = new THREE.Group();
 	group.add(
 		tag('figures', new THREE.Mesh(body, bodyMat), 'car'),
