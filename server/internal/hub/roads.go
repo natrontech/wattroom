@@ -2,6 +2,7 @@ package hub
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -61,6 +62,32 @@ func (h *Hub) sessionRoad(workoutJSON, name, coach string) (attached, shared, re
 		return "", "", "The road could not be read just now. Pick it again in a moment."
 	}
 	return attached, shared, refusal
+}
+
+// gameRoad is the road a game rides as its workout carries it (#3114): the
+// whole crew's cut from where the game starts, attached as a pick's is, so
+// every screen in the channel draws the road the bunch rides. A race keeps
+// its own road (ADR-0067).
+func (h *Hub) gameRoad(route routeRide, coach string) (json.RawMessage, string) {
+	ref, _ := json.Marshal(struct {
+		Road  workout.RoadRef `json:"road"`
+		Steps []any           `json:"steps"`
+	}{workout.RoadRef{
+		RouteID: route.ID,
+		FromM:   route.CutFromM + route.FromM,
+		ToM:     route.CutFromM + route.LengthM,
+	}, []any{}})
+	attached, _, refusal := h.sessionRoad(string(ref), "", coach)
+	if refusal != "" {
+		return nil, refusal
+	}
+	var out struct {
+		Road json.RawMessage `json:"road"`
+	}
+	if json.Unmarshal([]byte(attached), &out) != nil {
+		return nil, "The road could not be read just now. Pick it again in a moment."
+	}
+	return out.Road, ""
 }
 
 // sessionRoute resolves the road a pick or a game asks to ride (#3095),

@@ -1,6 +1,7 @@
 package hub
 
 import (
+	"encoding/json"
 	"math"
 	"slices"
 	"sort"
@@ -22,6 +23,10 @@ const roadRidingMps = 0.5
 type routeRide struct {
 	protocol.SessionRoute
 	profile road.Road
+	// A game's road as its session's workout carries it (#3114): the crew's
+	// cut, attached, so every screen can draw the road the game rides. A
+	// pick's workout carries its own; nil rides none.
+	road json.RawMessage
 }
 
 // storedM is a metre of the crew's cut as the stored road counts it, where
