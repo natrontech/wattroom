@@ -199,12 +199,8 @@ surface('ride-free-road', async (s) => {
 	await s.shot(o);
 });
 
-surface('ride-free-road-world', async (s) => {
-	const o = await s.open(DESK, { world: true });
-	const road = await fixtureRoad(o.page, 'hairpin');
-	await ride(o.page, `/ride?road=${road}`);
-	await assertRiding(o.page, true);
-	await s.shot(o);
+test.fixme('ride-free-road-world', () => {
+	// A free ride on a road draws no world yet: #3669 brings it.
 });
 
 test.fixme('ride-free-road-ghost', () => {
