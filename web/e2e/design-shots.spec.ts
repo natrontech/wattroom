@@ -240,6 +240,11 @@ surface('hud', async (s) => {
 		await s.shot({ page: hud, errors }, { name });
 		await hud.close();
 	}
+	// With no ride anywhere, the waiting state scales as the same block (#3678).
+	const idle = await s.open(DESK, { as: 'Hud Watcher', world: false });
+	await idle.page.goto('/hud');
+	await idle.page.waitForTimeout(2500);
+	await s.shot(idle, { name: 'hud-waiting' });
 });
 
 surface('ride-preride', async (s) => {
