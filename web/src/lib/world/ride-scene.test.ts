@@ -182,4 +182,51 @@ describe('a ride’s world', () => {
 			expect(Math.abs(s.lane - r.lane), `${r.id} across it`).toBeLessThan(0.1);
 		}
 	});
+
+	it('draws a coach with no trainer as the team car: one chevron, no figure of their own (#3771)', () => {
+		const drawn = (coachRests: boolean) => {
+			const w = compose(
+				{
+					route,
+					world,
+					style,
+					ftp: 250,
+					youId: 'coach',
+					metre: () => ({ m: 300, mps: 8 }),
+					bunch: () => ({
+						m: 300,
+						mps: 8,
+						elapsed: 30,
+						order: ['coach', 'a'],
+						offsets: {},
+						resting: coachRests ? ['coach'] : [],
+						coach: 'coach',
+						present: new Map([
+							['coach', { watts: coachRests ? 0 : 200, ftp: 250 }],
+							['a', { watts: 200, ftp: 250 }],
+						]),
+						game: false,
+					}),
+				},
+				null,
+			);
+			for (let k = 0; k < 30; k++) w.advanceBy(1 / 30);
+			let chevrons = 0;
+			let figures = 0;
+			w.scene.traverseVisible((o) => {
+				if (o.userData.kind === 'chevron') chevrons++;
+				else if (o.userData.family === 'figures' && o.userData.kind !== 'car')
+					figures++;
+			});
+			w.dispose();
+			return { chevrons, figures };
+		};
+		const riding = drawn(false);
+		const driving = drawn(true);
+		// Riding: the coach's chevron over their own figure, and two figures.
+		expect(riding.chevrons).toBe(1);
+		// Driving: the chevron rides on the car, and only the crewmate is drawn.
+		expect(driving.chevrons).toBe(1);
+		expect(driving.figures).toBe(riding.figures / 2);
+	});
 });
