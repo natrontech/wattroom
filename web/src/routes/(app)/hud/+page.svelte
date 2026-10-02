@@ -56,9 +56,12 @@
 <svelte:head><title>HUD · WattRoom</title></svelte:head>
 
 <!-- Fills the shell's frameless window; draggable by its whole face, the
-     close button excepted, so it can be moved without a title bar. -->
+     close button excepted, so it can be moved without a title bar. The
+     window is the container: the block inside is the shell's 320×132 at
+     16 px, and any larger window scales that same block as one centred unit
+     (#3678), so a browser tab on a second screen reads from the saddle. -->
 <main
-	class="cave bg-surface text-ink relative flex h-dvh flex-col justify-center overflow-hidden px-5 py-3 select-none"
+	class="cave bg-surface text-ink [container-type:size] relative grid h-dvh place-items-center overflow-hidden select-none"
 	style="-webkit-app-region: drag"
 >
 	{#if shell?.hud}
@@ -69,91 +72,129 @@
 			aria-label="Close the HUD"><X size={14} /></button
 		>
 	{/if}
-	{#if account.loaded && !account.me}
-		<!-- #1667: the layout's gate would open the sign-in page in this
-		     320 px box, and the shell cannot complete one anyway (ADR-0040). -->
-		<p class="eyebrow">wattroom</p>
-		<p class="text-muted mt-1 text-sm" data-testid="hud-signed-out">
-			Sign in on the main window.
-		</p>
-	{:else if quiet || !snapshot}
-		<p class="eyebrow">wattroom</p>
-		<p class="text-muted mt-1 text-sm" data-testid="hud-quiet">
-			Waiting for a ride…
-		</p>
-	{:else}
-		<div class="flex items-baseline gap-2">
-			<p class="eyebrow min-w-0 flex-1 truncate" data-testid="hud-label">
-				{snapshot.label}
+	<div class="hud flex flex-col justify-center">
+		{#if account.loaded && !account.me}
+			<!-- #1667: the layout's gate would open the sign-in page in this
+			     320 px box, and the shell cannot complete one anyway (ADR-0040). -->
+			<p class="label">wattroom</p>
+			<p
+				class="text-muted mt-[0.25em] text-[0.875em]"
+				data-testid="hud-signed-out"
+			>
+				Sign in on the main window.
 			</p>
+		{:else if quiet || !snapshot}
+			<p class="label">wattroom</p>
+			<p class="text-muted mt-[0.25em] text-[0.875em]" data-testid="hud-quiet">
+				Waiting for a ride…
+			</p>
+		{:else}
+			<div class="flex items-baseline gap-[0.5em]">
+				<p class="label min-w-0 flex-1 truncate" data-testid="hud-label">
+					{snapshot.label}
+				</p>
+				{#if road}
+					<!-- Row 3 is the road's on a road; the clock moves up beside the
+					     label so the window keeps its 320×132 (desktop/main.js). -->
+					<p
+						class="text-muted text-[0.75em] tabular-nums"
+						data-testid="hud-remaining"
+					>
+						{clock}
+					</p>
+				{/if}
+			</div>
+			<div class="mt-[0.25em] flex items-baseline gap-[0.75em]">
+				<span
+					class="font-display text-watt glow-text text-[3em] leading-none font-bold tabular-nums"
+					data-testid="hud-watts">{Math.round(snapshot.watts)}</span
+				>
+				<span class="text-muted text-[0.875em]">w</span>
+				{#if snapshot.target > 0}
+					<span
+						class="text-muted font-display ml-auto text-[1.5em] leading-none tabular-nums {onTarget
+							? 'text-ink'
+							: ''}"
+						data-testid="hud-target"
+						>{Math.round(snapshot.target)}<span class="text-[0.5em]">
+							target</span
+						></span
+					>
+				{/if}
+			</div>
+			{#if snapshot.fault}
+				<p
+					class="text-danger mt-[0.25em] text-[0.75em]"
+					data-testid="hud-fault"
+				>
+					{snapshot.fault === 'trainer'
+						? 'Trainer signal lost — reconnecting'
+						: 'Channel connection lost — reconnecting'}
+				</p>
+			{/if}
 			{#if road}
-				<!-- Row 3 is the road's on a road; the clock moves up beside the
-				     label so the window keeps its 320×132 (desktop/main.js). -->
-				<p class="text-muted text-xs tabular-nums" data-testid="hud-remaining">
+				<p
+					class="text-ink mt-[0.25em] text-[0.75em] tabular-nums"
+					data-testid="hud-road"
+				>
+					{roadLine}
+				</p>
+				{#if road.ahead}
+					<!-- The next 2 km in 100 m bars, in the Skyline's grade ramp:
+					     steeper is stronger and taller. -->
+					<svg
+						viewBox="0 0 20 5"
+						preserveAspectRatio="none"
+						width="100%"
+						class="mt-[0.25em] block h-[0.75em]"
+						role="img"
+						aria-label="The grade over the next 2 km"
+						data-testid="hud-ahead"
+					>
+						{#each road.ahead as grade, i (i)}
+							{@const step = gradeStep(grade)}
+							<rect
+								x={i + 0.1}
+								y={4 - step}
+								width="0.8"
+								height={step + 1}
+								class="{GRADE_FILL[step]} forced-colors:fill-[GrayText]"
+							/>
+						{/each}
+					</svg>
+				{/if}
+			{:else}
+				<p
+					class="text-muted mt-[0.5em] text-[0.75em] tabular-nums"
+					data-testid="hud-remaining"
+				>
 					{clock}
 				</p>
 			{/if}
-		</div>
-		<div class="mt-1 flex items-baseline gap-3">
-			<span
-				class="font-display text-watt glow-text text-5xl leading-none font-bold tabular-nums"
-				data-testid="hud-watts">{Math.round(snapshot.watts)}</span
-			>
-			<span class="text-muted text-sm">w</span>
-			{#if snapshot.target > 0}
-				<span
-					class="text-muted font-display ml-auto text-2xl leading-none tabular-nums {onTarget
-						? 'text-ink'
-						: ''}"
-					data-testid="hud-target"
-					>{Math.round(snapshot.target)}<span class="text-xs">
-						target</span
-					></span
-				>
-			{/if}
-		</div>
-		{#if snapshot.fault}
-			<p class="text-danger mt-1 text-xs" data-testid="hud-fault">
-				{snapshot.fault === 'trainer'
-					? 'Trainer signal lost — reconnecting'
-					: 'Channel connection lost — reconnecting'}
-			</p>
 		{/if}
-		{#if road}
-			<p class="text-ink mt-1 text-xs tabular-nums" data-testid="hud-road">
-				{roadLine}
-			</p>
-			{#if road.ahead}
-				<!-- The next 2 km in 100 m bars, in the Skyline's grade ramp:
-				     steeper is stronger and taller. -->
-				<svg
-					viewBox="0 0 20 5"
-					preserveAspectRatio="none"
-					width="100%"
-					class="mt-1 block h-3"
-					role="img"
-					aria-label="The grade over the next 2 km"
-					data-testid="hud-ahead"
-				>
-					{#each road.ahead as grade, i (i)}
-						{@const step = gradeStep(grade)}
-						<rect
-							x={i + 0.1}
-							y={4 - step}
-							width="0.8"
-							height={step + 1}
-							class="{GRADE_FILL[step]} forced-colors:fill-[GrayText]"
-						/>
-					{/each}
-				</svg>
-			{/if}
-		{:else}
-			<p
-				class="text-muted mt-2 text-xs tabular-nums"
-				data-testid="hud-remaining"
-			>
-				{clock}
-			</p>
-		{/if}
-	{/if}
+	</div>
 </main>
+
+<style>
+	/* The shell's 320×132 window at 16 px is the design (ADR-0041): every
+	   size inside is in em, and the font size is whatever fits that block
+	   into the window, never less than the shell's. In a full-screen tab the
+	   watts come to about a quarter of the window's height, and the words
+	   meet SPEC's HUD column (docs/SPEC.md, "The bike computer"). */
+	.hud {
+		font-size: max(16px, min(100cqw / 20, 100cqh / 8.25));
+		box-sizing: border-box;
+		width: 20em;
+		height: 8.25em;
+		max-width: 100cqw;
+		max-height: 100cqh;
+		padding: 0.75em 1.25em;
+	}
+	/* The kit's eyebrow, in em so it scales with the block. */
+	.label {
+		color: var(--color-muted);
+		font-size: 0.625em;
+		letter-spacing: 0.2em;
+		text-transform: uppercase;
+	}
+</style>

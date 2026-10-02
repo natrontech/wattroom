@@ -1180,14 +1180,20 @@ PgUp / PgDn are Harder / Easier, never a page.
 **Legibility**, at the design distance — desk: **0.8 m** from a **14-inch**
 laptop; TV: **3 m** from a **55-inch** set:
 
-| Text                  | At least      | TV       | Desk       |
-| --------------------- | ------------- | -------- | ---------- |
-| Watts                 | **45 arcmin** | **12vh** | **104 px** |
-| Time left             | **45 arcmin** | **9vh**  | **72 px**  |
-| Secondary numbers     | **22 arcmin** | **5vh**  | **36 px**  |
-| "Next", labels, words | **16 arcmin** | **3vh**  | **24 px**  |
+| Text                  | At least      | TV       | Desk       | HUD      |
+| --------------------- | ------------- | -------- | ---------- | -------- |
+| Watts                 | **45 arcmin** | **12vh** | **104 px** | **12vh** |
+| Time left             | **45 arcmin** | **9vh**  | **72 px**  | **9vh**  |
+| Secondary numbers     | **22 arcmin** | **5vh**  | **36 px**  | **5vh**  |
+| "Next", labels, words | **16 arcmin** | **3vh**  | **24 px**  | **3vh**  |
 
-Nothing on the TV is smaller than **2.9vh**. Panels are at least **85 %**
+Nothing on the TV is smaller than **2.9vh**. **The HUD's design distance**
+is a **second screen 1.3 m away, a 24-inch monitor**, the `/hud` tab of
+[ADR-0041](decisions/0041-the-hud-mirrors-the-riding-screen.md). A screen
+height subtends the same angle there as a 55-inch TV does at 3 m, so a vh
+reads the same, and the HUD takes the TV's column. It holds that in any
+landscape window. The shell's own 320 × 132 window is the floor the block
+never shrinks below ([#3678](https://github.com/natrontech/wattroom/issues/3678)). Panels are at least **85 %**
 opaque; a unit is at most half its number's size. The big watts figure is a
 **3 s** average; scoring still reads every second.
 
