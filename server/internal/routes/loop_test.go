@@ -31,7 +31,8 @@ func TestARouteKeepsWhetherItIsALoop(t *testing.T) {
 		if made["loop"] != c.want {
 			t.Errorf("%s: the create answered loop = %v, want %v", c.name, made["loop"], c.want)
 		}
-		_, got := h.call(t, "alice", http.MethodGet, "/api/routes/"+made["id"].(string), nil)
+		id, _ := made["id"].(string)
+		_, got := h.call(t, "alice", http.MethodGet, "/api/routes/"+id, nil)
 		if got["loop"] != c.want {
 			t.Errorf("%s: the read says loop = %v, want %v", c.name, got["loop"], c.want)
 		}
