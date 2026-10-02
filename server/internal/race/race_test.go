@@ -334,21 +334,38 @@ func TestASparseRoadsLineIsOneStepUp(t *testing.T) {
 	}
 }
 
-// The RACE page's numbers (#3174): each racer's Category and where they
-// started ride the tick, so a screen places you among your own and rides
-// your par from your own start.
-func TestTheTickCarriesEachRacersCategoryAndStart(t *testing.T) {
-	r, err := New(flat(5_000), []Entrant{{ID: "a", WeightKg: 70, Category: "B"}, {ID: "b", WeightKg: 70, Category: "D", StartM: 400}}, flag)
+// The RACE page's numbers (#3174): each racer's Category rides the tick, and
+// how far ahead of that Category's par they are at their metre — a rider at
+// par sits on it, a stronger one pulls ahead, a weaker one drops behind, and
+// a head start is par's start too.
+func TestEachRacerIsTimedAgainstTheirCategorysPar(t *testing.T) {
+	// 70 kg riders: C's par is 2.85 W/kg, 199.5 W.
+	entrants := []Entrant{
+		{ID: "par", WeightKg: 70, Category: "C"},
+		{ID: "strong", WeightKg: 70, Category: "C"},
+		{ID: "weak", WeightKg: 70, Category: "C"},
+		{ID: "ahead", WeightKg: 70, Category: "C", StartM: 500},
+	}
+	r, err := New(flat(20_000), entrants, flag)
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := r.Racers()
-	if got["a"].Cat != "B" || got["a"].From != 0 || got["b"].Cat != "D" || got["b"].From != 400 {
-		t.Fatalf("racers %+v, want a in B from 0 and b in D from 400 m", got)
+	if got := r.Racers()["par"]; got.Cat != "C" || got.Par != 0 {
+		t.Fatalf("at the klaxon: %+v, want C and no par yet", got)
 	}
-	at := r.Klaxon().Add(10 * time.Second)
-	r.Neutralised(at, at.Add(time.Minute))
-	if r.Held() != time.Minute {
-		t.Fatalf("held %v after a minute's hold past km 0", r.Held())
+	at := flag
+	for s := 1; s <= protocol.RaceNeutralSeconds+300; s++ {
+		at = at.Add(time.Second)
+		r.Step(at, map[string]int{"par": 200, "strong": 260, "weak": 150, "ahead": 200})
+	}
+	got := r.Racers()
+	if p := got["par"].Par; math.Abs(p) > 1 {
+		t.Fatalf("a rider at par is %+.1f s on it after 5 min", p)
+	}
+	if got["strong"].Par < 10 || got["weak"].Par > -10 {
+		t.Fatalf("strong %+.1f s, weak %+.1f s: want well ahead and well behind", got["strong"].Par, got["weak"].Par)
+	}
+	if p := got["ahead"].Par; math.Abs(p) > 1 {
+		t.Fatalf("a head start at par is %+.1f s on its own par", p)
 	}
 }

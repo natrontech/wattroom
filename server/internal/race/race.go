@@ -8,6 +8,7 @@ package race
 
 import (
 	"errors"
+	"math"
 	"sort"
 	"time"
 
@@ -59,6 +60,8 @@ type Race struct {
 	// Whether its card ranks the distance ridden (Last Light), rather than
 	// finish times with whoever the end caught off it (a hard close).
 	byMetres bool
+	// Each Category's par from each start a racer took (#3174).
+	pars map[parKey]*parTrack
 }
 
 // New lines entrants up on profile for a flag dropping at flag: the neutral
@@ -287,7 +290,11 @@ func (r *Race) Racers() map[string]protocol.RaceRider {
 			V:        rc.pace.Speed,
 			FinishMs: rc.finishMs,
 			Cat:      rc.Category,
-			From:     rc.StartM,
+		}
+		if par, ok := r.parAt(rc.Category, rc.StartM, out[id].M); ok && rc.ridden > 0 {
+			p := out[id]
+			p.Par = math.Round((par-float64(rc.ridden))*10) / 10
+			out[id] = p
 		}
 	}
 	return out
@@ -305,10 +312,6 @@ func (r *Race) Clock(end time.Time) { r.ends, r.byMetres = end, true }
 // has not crossed by then is off the card, and the card still ranks finish
 // times.
 func (r *Race) CloseAt(at time.Time) { r.ends, r.byMetres = at, false }
-
-// Held is how long the race has been neutralised since km 0: the span every
-// racer's clock leaves out.
-func (r *Race) Held() time.Duration { return r.held }
 
 // Ends is when a clock race runs out — later by any time it was held before
 // then — and zero for a race to the line.

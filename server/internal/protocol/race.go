@@ -144,6 +144,21 @@ const (
 	ParWkgA = 4.3
 )
 
+// ParWkg is a Category's par, 0 for none.
+func ParWkg(category string) float64 {
+	switch category {
+	case "D":
+		return ParWkgD
+	case "C":
+		return ParWkgC
+	case "B":
+		return ParWkgB
+	case "A":
+		return ParWkgA
+	}
+	return 0
+}
+
 // RaceState is a race on the tick (#3658, ADR-0067): when the flag drops and
 // when the klaxon sends it from km 0, whether the coach has neutralised it,
 // and — once it is done — the closing card. The places ride World.Racers.
@@ -151,10 +166,6 @@ type RaceState struct {
 	FlagAtMs    int64 `json:"flagAtMs"`
 	KlaxonAtMs  int64 `json:"klaxonAtMs"`
 	Neutralised bool  `json:"neutralised,omitempty"`
-	// How long the coach has held the race since km 0, a hold under way
-	// included (#3174): the race's clock is the tick's time less the klaxon
-	// and this, so a screen that opened after a hold still reads it.
-	HeldMs int64 `json:"heldMs,omitempty"`
 	// When the race runs out: Last Light's shared clock (#3171), or a
 	// Wheelrace's hard close (#3172). Zero for a plain race to the line.
 	EndsAtMs int64 `json:"endsAtMs,omitempty"`

@@ -70,7 +70,8 @@ type RaceRider struct {
 	// race, which the RACE page places them among. The bracket, never the
 	// watts behind it.
 	Cat string `json:"cat,omitempty"`
-	// Where on the road they started: a Wheelrace's head start, in metres
-	// from km 0. Their par rides from here.
-	From float64 `json:"from,omitempty"`
+	// Seconds ahead of their Category's par at their metre, behind when
+	// negative (#3174): par from their own start, on their own racing clock.
+	// Absent until they have raced a second.
+	Par float64 `json:"par,omitempty"`
 }

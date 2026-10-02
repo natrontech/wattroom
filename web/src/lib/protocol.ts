@@ -1404,12 +1404,6 @@ export interface RaceState {
   klaxonAtMs: number /* int64 */;
   neutralised?: boolean;
   /**
-   * How long the coach has held the race since km 0, a hold under way
-   * included (#3174): the race's clock is the tick's time less the klaxon
-   * and this, so a screen that opened after a hold still reads it.
-   */
-  heldMs?: number /* int64 */;
-  /**
    * When the race runs out: Last Light's shared clock (#3171), or a
    * Wheelrace's hard close (#3172). Zero for a plain race to the line.
    */
@@ -2181,8 +2175,9 @@ export interface RaceRider {
    */
   cat?: string;
   /**
-   * Where on the road they started: a Wheelrace's head start, in metres
-   * from km 0. Their par rides from here.
+   * Seconds ahead of their Category's par at their metre, behind when
+   * negative (#3174): par from their own start, on their own racing clock.
+   * Absent until they have raced a second.
    */
-  from?: number /* float64 */;
+  par?: number /* float64 */;
 }
