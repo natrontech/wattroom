@@ -112,3 +112,33 @@ test("a route card's Ride rides the road", async ({ page }) => {
 		page.getByRole('button', { name: /^(End ride|Save at km)/ }),
 	).toBeVisible({ timeout: 15_000 });
 });
+
+// A name the card cannot hold truncates, and never widens the phone's page
+// past its screen (#3683).
+test('a long route name truncates on a phone', async ({ page }) => {
+	await page.setViewportSize({ width: 375, height: 812 });
+	await signInAs(page, 'Long Name Rider', '/workouts');
+	const id = await importARoute(page);
+	const renamed = await page.evaluate(
+		async (id) =>
+			(
+				await fetch(`/api/routes/${id}`, {
+					method: 'PATCH',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({ name: 'The long way round, '.repeat(4) }),
+				})
+			).ok,
+		id,
+	);
+	expect(renamed).toBe(true);
+	await page.goto('/workouts');
+	const link = page.locator(`a[href="/workouts/routes/${id}"]`);
+	await expect(link).toBeVisible();
+	const body = page.getByTestId('page-body');
+	expect(
+		await body.evaluate((el) => el.scrollWidth - el.clientWidth),
+	).toBeLessThanOrEqual(0);
+	expect(await link.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(
+		true,
+	);
+});

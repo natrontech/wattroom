@@ -107,7 +107,7 @@
 		{:else}
 			<ul class="grid gap-2" aria-label="your routes">
 				{#each routes as route (route.id)}
-					<li>
+					<li class="min-w-0">
 						<RouteRow {route}>
 							{#snippet action()}
 								<button

@@ -119,16 +119,20 @@
 	{:else if routes === null}
 		<Skeleton class="h-16" rows={2} />
 	{:else if routes.length === 0}
-		<p class="text-muted flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
-			Your roads ride here — import a GPX, TCX or FIT.
-			<a href="/workouts/import" class="btn btn-secondary btn-xs"
+		<p class="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
+			<span class="text-muted"
+				>Your roads ride here — import a GPX, TCX or FIT.</span
+			>
+			<a
+				href="/workouts/import"
+				class="btn btn-secondary {onpick ? 'btn-lg' : 'btn-xs'}"
 				>Import a route</a
 			>
 		</p>
 	{:else}
 		<ul class="grid gap-2" aria-label="your routes">
 			{#each routes as route (route.id)}
-				<li>
+				<li class="min-w-0">
 					<RouteRow {route}>
 						{#snippet action()}
 							<!-- In /ride's card every control is 44 px (TARGETS

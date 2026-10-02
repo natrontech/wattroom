@@ -97,7 +97,7 @@
 	{:else}
 		<ul class="mt-2 grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
 			{#each routes as route (route.id)}
-				<li>
+				<li class="min-w-0">
 					<RouteRow {route} card menu={menu(route)}>
 						{#snippet action()}
 							{#if rides}
