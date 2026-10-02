@@ -626,13 +626,13 @@ Every surface id below is also in `docs/design/surface-map.json`, which maps the
 
 #### world-start, world-end
 
-**Capture:** `/dev/world?m=<metre>&p=0|1&cam=chase&look=bluehour&chrome=0`, at 1440 × 900 and 1280 × 720. world-start also shoots the same moment with `cam=side`, off your right shoulder, as world-figure-side.
+**Capture:** `/dev/world?m=<metre>&p=0|1&cam=chase&look=bluehour&chrome=0`, at 1440 × 900 and 1280 × 720. world-start also shoots the same moment with `cam=side`, off your right shoulder, as world-figure-side; with `&kit=gipfelpunkte`, you in Gipfelpunkte on a white ground, as world-figure-dots; and with `&kit=hoops&hold=0`, four frames a quarter-second apart as the side view rides on, as world-figure-motion-1 to 4.
 
 **Must match**
 1. Two loads of the same URL give an identical frame. [world-moment] [multi:world-start-twice]
 2. With `chrome=0`, no dev chrome shows. [world-moment]
 3. At p=0 there are no stars. At p=1, stars show only in the dark upper sky, never in the peach band, and the light is visibly darker. [3085-ride-light]
-4. Your jersey's pattern lies on the cloth, round the torso and on down the sleeves, with clean edges that do not crawl. Gipfelpunkte never puts its dots on a white ground. [#3156] [multi:world-figure-side]
+4. Your jersey's pattern lies on the cloth, round the torso and on down the sleeves, with clean edges that do not crawl. Gipfelpunkte never puts its dots on a white ground. [#3156] [multi:world-figure-side] [multi:world-figure-dots] [multi:world-figure-motion]
 5. No kit colour reads as live data to the viewer: the probe counts no kit colour within the viewer's watt band or near a zone. [#3156] [probe:figure.kitCollisions]
 
 ### C. Roads library (desk)
