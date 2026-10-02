@@ -626,7 +626,7 @@ Every surface id below is also in `docs/design/surface-map.json`, which maps the
 
 #### world-start, world-end
 
-**Capture:** `/dev/world?m=<metre>&p=0|1&cam=chase&look=bluehour&chrome=0`, at 1440 × 900 and 1280 × 720. world-start also shoots the same moment with `cam=side`, off your right shoulder, as world-figure-side; with `&kit=gipfelpunkte`, you in Gipfelpunkte on a white ground, as world-figure-dots; and with `&kit=hoops&hold=0`, four frames a quarter-second apart as the side view rides on, as world-figure-motion-1 to 4.
+**Capture:** `/dev/world?m=<metre>&p=0|1&cam=chase&look=bluehour&chrome=0`, at 1440 × 900 and 1280 × 720. world-start also shoots the same moment with `cam=side`, off your right shoulder, as world-figure-side; with `&kit=gipfelpunkte`, you in Gipfelpunkte with a white ground asked for, as world-figure-dots; and with `&kit=hoops&hold=0`, four frames a quarter-second apart as the side view rides on, as world-figure-motion-1 to 4.
 
 **Must match**
 1. Two loads of the same URL give an identical frame. [world-moment] [multi:world-start-twice]
