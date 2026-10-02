@@ -1,0 +1,1 @@
+- The "riding now" bars are violet and unlit, and the presence dots and the people button lose their glow, so magenta and glow stay with live numbers.

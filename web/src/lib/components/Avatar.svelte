@@ -163,7 +163,7 @@
 		     reading the timeline. -->
 		<span
 			class="absolute -bottom-0.5 -left-0.5 grid place-items-center rounded-full"
-			style="width:{mark}px;height:{mark}px;background:{ring};box-shadow:0 0 0 2px {ring}"
+			style="width:{mark}px;height:{mark}px;background:{ring};outline:2px solid {ring}"
 			role="img"
 			aria-label={status === 'away' ? away.label : STATUS_WORD[status]}
 		>
@@ -176,7 +176,7 @@
 	{:else if status}
 		<span
 			class="absolute -bottom-0.5 -left-0.5 rounded-full"
-			style="width:{dot}px;height:{dot}px;box-shadow:0 0 0 2px {ring};background:{status ===
+			style="width:{dot}px;height:{dot}px;outline:2px solid {ring};background:{status ===
 			'online'
 				? 'var(--color-z4)'
 				: 'color-mix(in oklab, var(--color-muted) 45%, transparent)'}"

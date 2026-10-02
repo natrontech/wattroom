@@ -283,7 +283,7 @@
 							? 'bg-ink/10 text-ink'
 							: 'text-ink/85 hover:bg-ink/5 hover:text-ink'}"
 					>
-						<span class="text-watt"><RidingBars size={9} /></span>
+						<RidingBars size={9} />
 						{sessionLine(c.session)}
 					</a>
 				{/if}
