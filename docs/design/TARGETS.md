@@ -470,6 +470,22 @@ Every surface id below is also in `docs/design/surface-map.json`, which maps the
 1. ride-workout-flat's items hold in the session's Training place. [ride-flat]
 2. The crew's rows are ≥ 44 px, and no crew number is in watt (G2). [ride-flat]
 
+#### ride-race
+
+**Capture:** two dev riders, Designer and Design Partner, race the hairpin road from Designer's voice channel with the world off; the bike computer turned to RACE, 20 s past km 0. No screen offers a race yet, so the capture's socket sends the start the hub takes from a client.
+
+**Targets:** v3-race (the computer's RACE page; the team-car radio line in slot 1).
+
+**Canon:** ADR-0067, ADR-0071; SPEC “Races”, “The bike computer”.
+
+**Must match**
+1. The RACE page reads, in this order: the gap to your Category's par in large type (label “on par”, “+0:18” ahead and “−0:18” behind), your place in your Category (label “in C”, “2nd of 2”), then W/kg. [#3174]
+2. The gap to par and the place are the race model's: neon, flat, never watt and never glowing. The page glows nothing. [#3174] [probe:wattCount]
+3. The gap to par is at time left's size: 72 px on a desk, 9vh on the TV. [#3174] [test:web/src/lib/session/computer-pages.test.ts]
+4. The team-car radio is one labelled line in slot 1, its words at least 24 px, saying one closed phrase at most every 20 s. [#3174] [test:web/src/lib/race/radio.test.ts]
+5. The shelter bar and the matches gauge join the page with their issues. [#3265] [#3263]
+6. ride-session-flat's items hold. [ride-flat]
+
 #### ride-channel-free
 
 **Capture:** the voice channel's free ride (`lib/ride/FreeRide.svelte`), world off.

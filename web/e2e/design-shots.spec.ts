@@ -1,4 +1,4 @@
-import { test } from '@playwright/test';
+import { test, type WebSocketRoute } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
@@ -331,6 +331,57 @@ surface('ride-session-road', async (s) => {
 	const { coach } = await session(s, { road: ROADS.hairpin.name }, true);
 	try {
 		await assertRiding(coach.page, true);
+		await s.shot(coach);
+	} finally {
+		await endSession(coach.page);
+	}
+});
+
+surface('ride-race', async (s) => {
+	// Designer and Design Partner race the hairpin road (#3174). No screen
+	// starts a race yet, so Designer's socket sends the start the hub takes.
+	const coach = await s.open(DESK, { world: false });
+	const crew = await designCrew(coach.page);
+	const road = await fixtureRoad(coach.page, 'hairpin');
+	const rider = await s.open(DESK, { as: 'Design Partner', world: false });
+	await joinCrew(rider.page, crew.code);
+	let socket: WebSocketRoute | undefined;
+	await coach.page.routeWebSocket(/\/ws\/channels\//, (ws) => {
+		socket = ws.connectToServer();
+	});
+	await toTraining(coach.page, crew);
+	// A run that failed mid-race left it running: end it first.
+	if (
+		await coach.page.getByRole('button', { name: 'end the session' }).count()
+	) {
+		await endSession(coach.page);
+		await toTraining(coach.page, crew);
+	}
+	await toTraining(rider.page, crew);
+	socket!.send(
+		JSON.stringify({
+			control: { action: 'game', gameMode: 'race', route: { id: road } },
+		}),
+	);
+	await joinSession(rider.page);
+	await coach.page
+		.getByRole('link', { name: 'Go to the ride' })
+		.click({ timeout: 15_000 });
+	try {
+		await coach.page.getByTestId('race-radio').waitFor({ timeout: 40_000 });
+		await coach.page
+			.getByRole('button', { name: 'RACE page', exact: true })
+			.click();
+		// Through the 3-minute neutral zone to km 0, then 20 s of racing.
+		await coach.page.waitForFunction(
+			() =>
+				/[+−]\d+:\d\d/.test(
+					document.querySelector('[data-field="par"]')?.textContent ?? '',
+				),
+			null,
+			{ timeout: 240_000 },
+		);
+		await coach.page.waitForTimeout(20_000);
 		await s.shot(coach);
 	} finally {
 		await endSession(coach.page);

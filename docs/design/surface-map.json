@@ -25,6 +25,7 @@
 			"ride-road-end",
 			"ride-session-road",
 			"ride-session-flat",
+			"ride-race",
 			"ride-channel-free",
 			"ride-ramp",
 			"ride-tv",
@@ -230,6 +231,14 @@
 			"closing-card",
 			"home",
 			"appearance"
+		]
+	},
+	{
+		"files": [
+			"web/src/lib/race/**"
+		],
+		"surfaces": [
+			"ride-race"
 		]
 	}
 ]
