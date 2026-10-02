@@ -128,7 +128,9 @@
 		<!-- The kit's riding size (ux.md: btn-lg is the 44 px a rider hits
 			     while pedalling); these used to retype the chrome by hand. -->
 		<!-- Any workout on a road (#3594): the dot, at your watts. -->
-		{#if session.road}
+		<!-- In the world slot 1's road line says it (TARGETS, one home per
+		     number), and the column has no height to spare (#3662). -->
+		{#if session.road && !inWorld}
 			<span class="text-muted num text-xs"
 				>{formatKm(session.road.m)} of {formatKm(session.road.toM)} km</span
 			>
@@ -241,8 +243,11 @@
 			<Instrument {watts} {target} {ftp} stale={signalLost} compact />
 		{/if}
 		<div class="flex flex-wrap items-end gap-4">
-			<div class="min-w-0 flex-1">
+			<!-- In the world's narrow column the computer takes the whole width,
+			     so its page wraps into rows instead of a tower (#3662). -->
+			<div class="min-w-0 flex-1 {inWorld ? 'basis-full' : ''}">
 				<BikeComputer
+					head={inWorld && !session.sprint}
 					cadence={session.sample?.cadence ?? 0}
 					stale={signalLost}
 					hr={session.sample?.heartRate ?? 0}
