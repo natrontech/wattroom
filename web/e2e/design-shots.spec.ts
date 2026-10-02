@@ -354,6 +354,18 @@ surface('ride-session-road', async (s) => {
 	try {
 		await assertRiding(coach.page, true);
 		await s.shot(coach);
+		// A cheer for one rider (#3116), from their crew tile's menu: it rides
+		// the next tick, then the thumb holds 2.4 s and the light blinks 10 s.
+		await coach.page
+			.getByTestId('crew-tile')
+			.filter({ hasText: 'Design Partner' })
+			.click({ button: 'right' });
+		await s.shot(coach, { name: 'ride-session-cheer-menu' });
+		await coach.page
+			.getByRole('menuitem', { name: 'Cheer Design Partner' })
+			.click();
+		await coach.page.waitForTimeout(1200);
+		await s.shot(coach, { name: 'ride-session-cheer' });
 	} finally {
 		await endSession(coach.page);
 	}
