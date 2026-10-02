@@ -10,7 +10,6 @@ import { DEFAULT_DARK_ID, themeById } from '$lib/themes';
 import { disposeTree } from './dispose';
 import { makeSight } from './materials';
 import { makeRig, type Follow } from './rig';
-import { GEO } from './rider-rig';
 import { type Route } from '$lib/road/route';
 import { at } from '$lib/road/along';
 import {
@@ -112,7 +111,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	const legs = new WeakMap<SimRider, Pedalling>();
 	const pedal = (r: SimRider): Pedalling => {
 		let p = legs.get(r);
-		if (!p) legs.set(r, (p = { crank: 0, wheel: 0, stand: 0 }));
+		if (!p) legs.set(r, (p = { crank: 0 }));
 		return p;
 	};
 	const bunch = opts.bunch ? createBunch() : null;
@@ -130,7 +129,6 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 			// A stand-in rides the watts its model gives it there, so its ring shows a zone.
 			if (r.ride) r.watts = r.ride(r, at(route, r.d).grade, moment.m);
 			pedal(r).crank = (r.d / CRANK_M) * 2 * Math.PI;
-			pedal(r).wheel = r.d / GEO.wheelR;
 		});
 
 	const scene = new THREE.Scene();
@@ -218,7 +216,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		const me = crew.update(route, riders, pedal, dt, real, mode === 'orbit');
 		crew.drive(route, car, mode === 'orbit');
 		if (controls) controls.update();
-		else rig.update(camera, mode === 'heli' ? 'heli' : 'chase', you, me, real);
+		else rig.update(camera, mode === 'orbit' ? 'chase' : mode, you, me, real);
 		sight.uCam.value.copy(camera.position);
 		sight.uYou.value.copy(me);
 		look();
@@ -333,7 +331,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 			return {
 				camera: { fov: Math.round(camera.fov * 100) / 100 },
 				moment: moment ?? null,
-				figure: { bboxH },
+				figure: { bboxH, kitsInWattBand: crew?.kitsInWattBand() ?? 0 },
 			};
 		},
 		dispose() {

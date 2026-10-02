@@ -33,6 +33,7 @@ const alpineProps = (p: Partial<PropColors>): PropColors => ({
 });
 
 const KIT: RiderKit = {
+	skin: '#858585', // #3413's neutral tone: oklch(0.616 0 0), none of the eight swatches
 	shoe: '#ece9f2',
 	tyre: '#1a1820',
 	rim: '#2e2b38',

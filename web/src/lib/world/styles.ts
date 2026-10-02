@@ -37,8 +37,10 @@ export type PropColors = {
 	rock: string;
 };
 
-// The bits of a rider that are not identity: shoes, tyres, rims, metal, lenses.
+// The bits of a rider that are not identity: shoes, tyres, rims, metal,
+// lenses, and the neutral skin every rider wears who has not chosen one.
 export type RiderKit = {
+	skin: string;
 	shoe: string;
 	tyre: string;
 	rim: string;

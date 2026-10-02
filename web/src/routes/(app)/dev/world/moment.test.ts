@@ -24,6 +24,11 @@ describe('a moment of /dev/world (#3672)', () => {
 		});
 	});
 
+	it('stands off your shoulder for the side view, and chases for any other camera', () => {
+		expect(at('m=0&cam=side')?.cam).toBe('side');
+		expect(at('m=0&cam=drone')?.cam).toBe('chase');
+	});
+
 	it('is no moment without a metre it can stand on', () => {
 		for (const q of ['', 'p=1', 'm=-5', 'm=km']) expect(at(q), q).toBeNull();
 		expect(at('m=10&p=7')?.p).toBe(1);
