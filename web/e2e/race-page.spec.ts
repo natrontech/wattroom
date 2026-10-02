@@ -55,12 +55,16 @@ test('a race shows its RACE page and calls it on the team-car radio', async ({
 			.getByRole('button', { name: 'Ride simulated' })
 			.click({ timeout: 15_000 });
 	}
-	await expect.poll(() => !!socket).toBe(true);
-	socket!.send(
-		JSON.stringify({
-			control: { action: 'game', gameMode: 'race', route: { id: routeId } },
-		}),
-	);
+	// Sent until the session opens: a page that reconnected has a new socket.
+	const start = JSON.stringify({
+		control: { action: 'game', gameMode: 'race', route: { id: routeId } },
+	});
+	const open = coach.getByRole('button', { name: 'end the session' });
+	for (let k = 0; k < 5 && !(await open.count()); k++) {
+		socket?.send(start);
+		await open.waitFor({ timeout: 4000 }).catch(() => {});
+	}
+	await expect(open).toBeVisible();
 	// The field freezes at the flag, so the guest lines up in the countdown.
 	await guest
 		.getByRole('link', { name: 'Join the ride' })

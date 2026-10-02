@@ -1,5 +1,6 @@
 import Dices from '@lucide/svelte/icons/dices';
 import Flame from '@lucide/svelte/icons/flame';
+import Flag from '@lucide/svelte/icons/flag';
 import Target from '@lucide/svelte/icons/target';
 import TrendingUp from '@lucide/svelte/icons/trending-up';
 import Star from '@lucide/svelte/icons/star';
@@ -80,7 +81,36 @@ export const GAME_MODES: GameMode[] = [
 	},
 ];
 
-const BY_ID = new Map(GAME_MODES.map((mode) => [mode.id, mode]));
+/**
+ * The races (ADR-0067): game modes on a road, which the picker cannot start
+ * yet — a race needs a road — named here so a running one reads by its name
+ * (#3174). The names are the hub's.
+ */
+const RACES: GameMode[] = [
+	{
+		id: 'race',
+		label: 'Race',
+		blurb:
+			'A mass start on a road: 3 min neutral, then first over the line in each Category.',
+		icon: Flag,
+	},
+	{
+		id: 'last-light',
+		label: 'Last Light',
+		blurb:
+			'As far as you can ride before the clock runs out; the fog closes last.',
+		icon: Flag,
+	},
+	{
+		id: 'wheelrace',
+		label: 'Wheelrace',
+		blurb:
+			'A handicap to a line: head starts from your FTP, so the field meets at par.',
+		icon: Flag,
+	},
+];
+
+const BY_ID = new Map([...GAME_MODES, ...RACES].map((mode) => [mode.id, mode]));
 
 /** The mode a wire id means, or undefined for one this client does not know. */
 export function gameMode(id: string): GameMode | undefined {

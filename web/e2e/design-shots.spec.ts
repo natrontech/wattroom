@@ -358,11 +358,15 @@ surface('ride-race', async (s) => {
 		await toTraining(coach.page, crew);
 	}
 	await toTraining(rider.page, crew);
-	socket!.send(
-		JSON.stringify({
-			control: { action: 'game', gameMode: 'race', route: { id: road } },
-		}),
-	);
+	// Sent until the session opens: a page that reconnected has a new socket.
+	const start = JSON.stringify({
+		control: { action: 'game', gameMode: 'race', route: { id: road } },
+	});
+	const open = coach.page.getByRole('button', { name: 'end the session' });
+	for (let k = 0; k < 5 && !(await open.count()); k++) {
+		socket?.send(start);
+		await open.waitFor({ timeout: 4000 }).catch(() => {});
+	}
 	await joinSession(rider.page);
 	await coach.page
 		.getByRole('link', { name: 'Go to the ride' })
