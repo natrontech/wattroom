@@ -22,15 +22,17 @@
 
 {#if rows.length > 0}
 	<div class="overflow-x-auto">
-		<table class="w-full min-w-[22rem] text-xs" aria-label="Climbs">
+		<table class="w-full min-w-[17rem] text-xs" aria-label="Climbs">
 			<thead>
 				<tr class="text-muted border-frame border-b text-left">
-					<th class="eyebrow py-2 pr-3 font-normal">Climb</th>
-					<th class="eyebrow py-2 pr-3 font-normal">Class</th>
-					<th class="eyebrow py-2 pr-3 text-right font-normal">Gain</th>
-					<th class="eyebrow py-2 pr-3 text-right font-normal">Top at</th>
+					<th class="eyebrow py-2 pr-2 font-normal sm:pr-3">Climb</th>
+					<th class="eyebrow py-2 pr-2 font-normal sm:pr-3">Class</th>
+					<th class="eyebrow py-2 pr-2 text-right font-normal sm:pr-3">Gain</th>
+					<th class="eyebrow py-2 pr-2 text-right font-normal sm:pr-3"
+						>Top at</th
+					>
 					{#if withBests}
-						<th class="eyebrow py-2 text-right font-normal">Your best</th>
+						<th class="eyebrow py-2 text-right font-normal">Best</th>
 					{/if}
 				</tr>
 			</thead>
@@ -38,22 +40,22 @@
 				{#each rows as c, i (c.startM)}
 					{@const best = bestOf(c.startM)}
 					<tr>
-						<td class="py-2 pr-3"
+						<td class="py-2 pr-2 sm:pr-3"
 							><span class="text-ink">Climb {i + 1}</span>
-							<span class="text-muted font-display tabular-nums"
+							<span class="text-muted font-display block tabular-nums sm:inline"
 								>{formatKm(c.topM - c.startM)} km · {avg(c).toFixed(1)} %</span
 							></td
 						>
-						<td class="py-2 pr-3"
+						<td class="py-2 pr-2 sm:pr-3"
 							><span
 								class="border-neon font-display inline-block w-8 rounded border text-center font-bold"
 								>{c.cls}</span
 							></td
 						>
-						<td class="font-display py-2 pr-3 text-right tabular-nums"
+						<td class="font-display py-2 pr-2 text-right tabular-nums sm:pr-3"
 							>{Math.round(c.gainM)} m</td
 						>
-						<td class="font-display py-2 pr-3 text-right tabular-nums"
+						<td class="font-display py-2 pr-2 text-right tabular-nums sm:pr-3"
 							>km {formatKm(c.topM)}</td
 						>
 						{#if withBests}
