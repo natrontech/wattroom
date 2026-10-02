@@ -24,6 +24,8 @@ export type StoredRoute = {
 	road?: string;
 	/** Why the map is missing, when it is. */
 	hint?: string;
+	/** On one route's read: it ends where it began. Absent before #3680. */
+	loop?: boolean;
 };
 
 /** The stored road, from the base64 one route's read carries. */
