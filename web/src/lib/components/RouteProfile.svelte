@@ -105,7 +105,10 @@
 	</div>
 	{#if classed.length > 0}
 		<!-- Each climb's facts, until the route page's climbs table holds them (#3680). -->
-		<ul class="border-frame mt-3 divide-y border-t text-xs" aria-label="Climbs">
+		<ul
+			class="border-frame divide-frame mt-3 divide-y border-t text-xs"
+			aria-label="Climbs"
+		>
 			{#each classed as c (c.startM)}
 				<li class="flex items-center gap-3 py-1.5">
 					<span
