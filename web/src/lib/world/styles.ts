@@ -46,6 +46,8 @@ export type RiderKit = {
 	rim: string;
 	metal: string;
 	glasses: string;
+	/** A rider's tail light, lit only to answer a cheer (#3116): never danger's red, nor a watt. */
+	tailLight: string;
 };
 
 export type Style = {

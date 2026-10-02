@@ -39,6 +39,7 @@ const KIT: RiderKit = {
 	rim: '#2e2b38',
 	metal: '#4a4756',
 	glasses: '#15131b',
+	tailLight: '#ff6a00', // amber: every red sits in some identity's watt band
 };
 const ZONES = [
 	'#4a3a78',

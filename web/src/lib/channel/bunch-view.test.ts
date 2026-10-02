@@ -47,6 +47,15 @@ describe('the bunch as the world reads it (#3098)', () => {
 		expect(bunchOf(tick(undefined), [])).toBeNull();
 	});
 
+	it('names who this tick’s cheers are for, and nobody for a cheer to everyone (#3116)', () => {
+		const t = tick({ bunchM: 0, speedMps: 0 });
+		t.cheers = [
+			{ emoji: 'thumbs-up', from: 'Kim', to: 'a' },
+			{ emoji: 'flame', from: 'Tom' },
+		];
+		expect(bunchOf(t, [])!.cheered).toEqual(['a']);
+	});
+
 	it('says when a game rides, where the team car never runs', () => {
 		expect(bunchOf(tick({ bunchM: 0, speedMps: 0 }, true), [])!.game).toBe(
 			true,

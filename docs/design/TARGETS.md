@@ -443,7 +443,7 @@ Every surface id below is also in `docs/design/surface-map.json`, which maps the
 
 #### ride-session-road
 
-**Capture:** two dev riders (Designer and a second rider whose name is letters only) in one crew's voice channel, riding a session on the hairpin road with the world on, a sprint armed and the jukebox seated. The mixer is muted.
+**Capture:** two dev riders (Designer and a second rider whose name is letters only) in one crew's voice channel, riding a session on the hairpin road with the world on, a sprint armed and the jukebox seated. The mixer is muted. Then `ride-session-cheer-menu` and `ride-session-cheer`: the coach cheers the second rider from their crew tile's menu, captured while the thumb shows.
 
 **Targets:** v2-ride (the bunch panel, the moment card, the seat); v2-erg.
 
@@ -461,6 +461,7 @@ Every surface id below is also in `docs/design/surface-map.json`, which maps the
 7. The session's coach — here, you — wears a small violet chevron over the head: flat, unlit, and the only one on the road. [#3098]
 8. The formation, the front row's turn every 120 s, a far rider dithering to their place, the pull-over and the team car hold as SPEC “Riding a road together” says. [test:web/src/lib/world/bunch.test.ts] [#3098]
 9. Each screen draws each rider where the other screen does, within 1 m along the road and across it. [test:web/e2e/bunch-world.spec.ts] [#3098]
+10. A cheer for one rider, sent from their crew tile's menu, draws a thumbs-up over that rider's head: a light disc with a dark thumb, flat and unlit, clear of the chevron. Their tail light blinks at 2 Hz for 10 s, in amber, which is neither danger's red nor any watt. Under reduced motion the light holds steady. Nothing about it glows. [multi:ride-session-cheer] [test:web/src/lib/world/ride-scene.test.ts] [#3116]
 
 #### ride-session-flat
 

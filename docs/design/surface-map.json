@@ -48,6 +48,10 @@
 		]
 	},
 	{
+		"files": ["web/src/lib/world/cheer.ts"],
+		"surfaces": ["ride-session-road"]
+	},
+	{
 		"files": ["web/src/lib/ride/FreeRide.svelte"],
 		"surfaces": ["ride-channel-free"]
 	},

@@ -30,6 +30,7 @@
 	import type { RideMetre } from './sim';
 	import type { BunchView } from '$lib/channel/bunch-view';
 	import { account } from '$lib/account.svelte';
+	import { prefersReducedMotion } from '$lib/motion';
 	import { generate } from './world';
 	// The dev gallery's blue hour, until #3085 gives the ride its own look.
 	import { STYLES } from '../../routes/(app)/dev/world/styles';
@@ -75,6 +76,7 @@
 					ftp,
 					metre,
 					bunch,
+					steady: () => prefersReducedMotion.current,
 					// Your kit is keyed by who you are, solo or in a bunch: the crew sees the one you see.
 					youId: account.me?.id,
 					// The theme's neon as the canvas resolves it, for the coach's chevron.

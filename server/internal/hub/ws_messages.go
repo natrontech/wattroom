@@ -4,6 +4,7 @@ package hub
 // (#3357). HandleWS reads; handleMessage takes each part of what it read.
 
 import (
+	"strings"
 	"time"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
@@ -55,8 +56,12 @@ func (h *Hub) handleMessage(c *client, rm *channelState, channel string, rider p
 		h.board(rm, rider, *msg.Board)
 	}
 	if msg.Cheer != nil {
-		if protocol.IsReaction(msg.Cheer.Emoji) && rm.allow("cheer", rider.ID, h.now(), time.Second) {
-			rm.cheer(protocol.Cheer{Emoji: msg.Cheer.Emoji, From: rider.Name}, rider.ID)
+		// A cheer for one rider takes the same limits as any (#3116): it is
+		// fire-and-forget, so one that names nobody here drops in silence.
+		to := strings.TrimSpace(msg.Cheer.To)
+		aimed := to == "" || (to != rider.ID && rm.hasRider(to))
+		if aimed && protocol.IsReaction(msg.Cheer.Emoji) && rm.allow("cheer", rider.ID, h.now(), time.Second) {
+			rm.cheer(protocol.Cheer{Emoji: msg.Cheer.Emoji, From: rider.Name, To: to}, rider.ID)
 		}
 	}
 	if msg.Jukebox != nil {
