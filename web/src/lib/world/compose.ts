@@ -3,7 +3,10 @@
 // the scene budget measures exactly what scene.ts would draw.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { createBunch, type Car } from './bunch';
 import { makeCrew, type Crew, type Pedalling } from './crew';
+import type { BunchView } from '$lib/channel/bunch-view';
+import { DEFAULT_DARK_ID, themeById } from '$lib/themes';
 import { disposeTree } from './dispose';
 import { makeSight } from './materials';
 import { makeRig, type Follow } from './rig';
@@ -35,7 +38,7 @@ export type Hud = {
 	km: number;
 	ele: number;
 	toTop: number; // km to the summit, negative once past it
-	riders: { id: string; name: string; you: boolean; d: number }[];
+	riders: { id: string; name: string; you: boolean; d: number; lane: number }[];
 };
 
 export type MountOptions = {
@@ -57,6 +60,15 @@ export type MountOptions = {
 	 * ride nothing.
 	 */
 	metre?: () => RideMetre;
+	/**
+	 * Everyone on the road with you, a session's world only (#3098): the
+	 * bunch places every joined rider, you among them, and the team car.
+	 */
+	bunch?: () => BunchView | null;
+	/** Your rider id: which of the bunch is you. */
+	youId?: string;
+	/** The theme's structural accent, for the coach's chevron; Outrun's absent. */
+	neon?: string;
 	/** Where the streamed ground's chunks come from: the page's copy, then the build worker (#3606). */
 	grids?: (got: GotGrid) => Grids;
 	/**
@@ -81,9 +93,9 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	let mode: CameraMode = opts.camera ?? 'chase';
 	let speedup = opts.speedup ?? 1;
 	const env: Env = { difficulty: 0.5 };
-	const riders = opts.riders ?? [
+	let riders = opts.riders ?? [
 		simRider({
-			id: 'you',
+			id: opts.youId ?? 'you',
 			name: 'You',
 			mass: 80,
 			ftp: opts.ftp,
@@ -96,20 +108,29 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	// On a ride your figure is the ride's; only the gallery's crew is stepped here.
 	const stepped = opts.metre ? riders.filter((r) => r !== you) : riders;
 	const follow = followMetre();
-	const pedal: Pedalling[] = riders.map(() => ({
-		crank: 0,
-		wheel: 0,
-		stand: 0,
-	}));
+	// What each rider's legs are doing, kept across style changes.
+	const legs = new Map<SimRider, Pedalling>();
+	const pedal = (r: SimRider): Pedalling => {
+		let p = legs.get(r);
+		if (!p) legs.set(r, (p = { crank: 0, wheel: 0, stand: 0 }));
+		return p;
+	};
+	const bunch = opts.bunch ? createBunch() : null;
+	// The bunch's riders by id, so a figure keeps its legs from frame to frame.
+	const crewmates = new Map<string, SimRider>();
+	let car: Car | null = null;
+	const neon = new THREE.Color(
+		opts.neon ?? themeById(DEFAULT_DARK_ID)!.tokens.neon,
+	);
 	const summit = world.markers.find((m) => m.kind === 'summit');
 	const moment = opts.moment;
 	if (moment)
-		riders.forEach((r, i) => {
+		riders.forEach((r) => {
 			r.d = r.at = moment.m + r.d;
 			// A stand-in rides the watts its model gives it there, so its ring shows a zone.
 			if (r.ride) r.watts = r.ride(r, at(route, r.d).grade, moment.m);
-			pedal[i].crank = (r.d / CRANK_M) * 2 * Math.PI;
-			pedal[i].wheel = r.d / GEO.wheelR;
+			pedal(r).crank = (r.d / CRANK_M) * 2 * Math.PI;
+			pedal(r).wheel = r.d / GEO.wheelR;
 		});
 
 	const scene = new THREE.Scene();
@@ -153,7 +174,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 			disposeTree(old);
 		}
 		stage = buildStage(route, world, style, sight, stream);
-		crew = makeCrew(riders, style);
+		crew = makeCrew(style, neon);
 		scene.add(stage.group, crew.group);
 		scene.fog = new THREE.FogExp2(style.sky.horizon, style.fogK * 1.1);
 		applyMode();
@@ -174,13 +195,15 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 				name: r.name,
 				you: r.you,
 				d: lap(r.d),
+				lane: r.lane ?? 0,
 			})),
 		};
 	}
 
 	let t = 0;
 	let sinceHud = HUD_EVERY;
-	function advanceBy(seconds: number) {
+	/** `wall` is the real time the frame took, unclamped: what the bunch is laid out by (#3098). */
+	function advanceBy(seconds: number, wall = seconds) {
 		if (!crew) return;
 		// A moment holds: nothing it draws moves with the clock.
 		const real = moment ? 0 : seconds;
@@ -189,18 +212,66 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		sight.uTime.value += real;
 		const n = Math.max(1, Math.ceil(dt / SUBSTEP));
 		for (let k = 0; k < n; k++) advance(route, stepped, dt / n, t);
-		if (opts.metre) follow(you, opts.metre(), real);
-		const me = crew.update(route, pedal, dt, real, mode === 'orbit');
+		const view = opts.bunch?.();
+		if (bunch && view) ride(view, moment ? 0 : wall);
+		else if (opts.metre) follow(you, opts.metre(), real);
+		const me = crew.update(route, riders, pedal, dt, real, mode === 'orbit');
+		crew.drive(route, car, mode === 'orbit');
 		if (controls) controls.update();
 		else rig.update(camera, mode === 'heli' ? 'heli' : 'chase', you, me, real);
 		sight.uCam.value.copy(camera.position);
 		sight.uYou.value.copy(me);
 		look();
-		sinceHud += real;
+		sinceHud += moment ? 0 : wall;
 		if (sinceHud >= HUD_EVERY) {
 			sinceHud = 0;
 			opts.onTick?.(hud());
 		}
+	}
+
+	/**
+	 * Lays the bunch out for this frame: everyone in it where it says,
+	 * you included while you ride in it, and the team car (#3098).
+	 */
+	function ride(view: BunchView, real: number) {
+		const out = bunch!.step(view, real);
+		const placed = new Set<string>();
+		for (const p of out.riders) {
+			placed.add(p.id);
+			let r = p.id === you.id ? you : crewmates.get(p.id);
+			if (!r) {
+				r = simRider({
+					id: p.id,
+					name: '',
+					mass: 0,
+					ftp: 0,
+					you: false,
+					watts: 0,
+					d: p.d,
+				});
+				r.ring = false;
+				crewmates.set(p.id, r);
+			}
+			Object.assign(r, {
+				d: p.d,
+				at: p.d,
+				v: p.v,
+				lane: p.lane,
+				alpha: p.alpha,
+				faded: p.faded,
+				coach: p.coach,
+			});
+			if (r !== you) Object.assign(r, { watts: p.watts, ftp: p.ftp });
+		}
+		for (const id of crewmates.keys())
+			if (!placed.has(id)) crewmates.delete(id);
+		// Not in it — watching, or before the plan runs: you ride the ride's metre, as alone.
+		if (!placed.has(you.id)) {
+			if (opts.metre) follow(you, opts.metre(), real);
+			you.lane = you.alpha = undefined;
+		}
+		riders = [you, ...crewmates.values()];
+		car = out.car;
 	}
 
 	/** The ground, the road and the props' rings, brought to where the eye now is; the diorama holds still. */

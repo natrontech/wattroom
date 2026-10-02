@@ -32,6 +32,16 @@ export type SimRider = {
 	into: number;
 	/** How a stand-in rides: its watts on this grade at this time. Only the dev gallery has them. */
 	ride?: (r: SimRider, grade: number, t: number) => number;
+	/** Metres left of the road's middle, from the bunch's formation (#3098); absent, crew.ts spreads riders abreast. */
+	lane?: number;
+	/** 0–1: below 1 the figure is dithered, arriving, leaving or landing somewhere new. */
+	alpha?: number;
+	/** Joined, but their screen has gone: drawn in greys. */
+	faded?: boolean;
+	/** The session's coach: wears the chevron. */
+	coach?: boolean;
+	/** Their live zone as a ring; false leaves anyone's but yours to #3086. */
+	ring?: boolean;
 };
 
 export type Env = { difficulty: number };
