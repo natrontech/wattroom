@@ -19,6 +19,7 @@ import {
 } from './figure/material';
 import { pose } from './figure/pose';
 import { figurePalette } from './figure-palette';
+import { inWattBand } from './placement/safety';
 import { yOf } from './geometry';
 import { ROAD_W } from './terrain/road-profile';
 import { chevronGeometry, makeCar } from './team-car';
@@ -49,11 +50,17 @@ const SETTLE_DT = 1 / 30;
 // is live data). Live power shows as the flat zone ring; the only glow is
 // your own trail.
 export function hueOf(id: string): number {
-	let h = 2166136261;
-	for (const ch of id) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
-	const u = ((h >>> 0) % 1000) / 1000;
+	const u = (fnv(id) % 1000) / 1000;
 	return (20 + u * 280) % 360; // skips 300°–20°, the watt magenta's neighbourhood
 }
+
+function fnv(id: string, h = 2166136261): number {
+	for (const ch of id) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+	return h >>> 0;
+}
+
+/** Which of figurePalette's variants a rider wears: a second hash of the id, apart from the hue. */
+const variantOf = (id: string) => fnv(id, 0x9e3779b9) >>> 28;
 
 // Where a rider's cranks stand, kept across style changes.
 export type Pedalling = { crank: number };
@@ -131,7 +138,7 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 		const known = views.get(r);
 		if (known) return known;
 		const hue = hueOf(r.id);
-		const palette = figurePalette(hue, style.kit);
+		const palette = figurePalette(hue, style.kit, variantOf(r.id));
 		const material = figureMaterial(kit, palette.jerseyAccent);
 		const figure = buildFigure(kit, { lod, palette, material });
 		figure.rotation.y = -Math.PI / 2; // the figure's +X forward becomes the world's heading
@@ -317,6 +324,14 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 			if (!at || !car.group.visible) return;
 			placeOn(car.group, route, at.d, at.lane);
 			car.set(at.alpha, at.coach);
+		},
+		/** Kit colours inside an identity's watt band, over every rider drawn: what a capture reports of the colour guard. */
+		kitsInWattBand(): number {
+			let n = 0;
+			for (const v of views.values())
+				for (const c of Object.values(v.palette))
+					if (inWattBand(`#${c.getHexString()}`)) n++;
+			return n;
 		},
 		/** Your figure, as a capture measures it (#3672). */
 		get you(): THREE.SkinnedMesh | null {

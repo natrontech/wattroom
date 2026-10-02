@@ -216,7 +216,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		const me = crew.update(route, riders, pedal, dt, real, mode === 'orbit');
 		crew.drive(route, car, mode === 'orbit');
 		if (controls) controls.update();
-		else rig.update(camera, mode === 'heli' ? 'heli' : 'chase', you, me, real);
+		else rig.update(camera, mode === 'orbit' ? 'chase' : mode, you, me, real);
 		sight.uCam.value.copy(camera.position);
 		sight.uYou.value.copy(me);
 		look();
@@ -331,7 +331,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 			return {
 				camera: { fov: Math.round(camera.fov * 100) / 100 },
 				moment: moment ?? null,
-				figure: { bboxH },
+				figure: { bboxH, kitsInWattBand: crew?.kitsInWattBand() ?? 0 },
 			};
 		},
 		dispose() {

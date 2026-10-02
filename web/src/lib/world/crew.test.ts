@@ -13,14 +13,17 @@ const route = toRoute(syntheticPoints());
 
 describe('the figure on its bike (#3673)', () => {
 	it('paints no kit colour that reads as an identity’s watt, and the neutral skin', () => {
-		for (let hue = 0; hue < 360; hue += 5) {
-			const palette = figurePalette(hue, style.kit);
-			const inBand = Object.entries(palette).filter(([, c]) =>
-				inWattBand(`#${c.getHexString()}`),
-			);
-			expect(inBand.map(([slot]) => `${hue}: ${slot}`)).toEqual([]);
-			expect(`#${palette.skin.getHexString()}`).toBe(style.kit.skin);
-		}
+		for (let hue = 0; hue < 360; hue += 5)
+			for (let variant = 0; variant < 16; variant++) {
+				const palette = figurePalette(hue, style.kit, variant);
+				const inBand = Object.entries(palette).filter(([, c]) =>
+					inWattBand(`#${c.getHexString()}`),
+				);
+				expect(inBand.map(([slot]) => `${hue}/${variant}: ${slot}`)).toEqual(
+					[],
+				);
+				expect(`#${palette.skin.getHexString()}`).toBe(style.kit.skin);
+			}
 	});
 
 	it('draws you and the two riders nearest you in full detail, and re-ranks as they move', () => {

@@ -21,22 +21,32 @@ export function clearOfWatt(c: THREE.Color): THREE.Color {
 	return c;
 }
 
-/** A rider's palette from their identity hue and the look's kit. */
-export function figurePalette(hue: number, kit: RiderKit): Palette {
+/**
+ * A rider's palette from their identity hue and the look's kit. `variant`
+ * picks, bit by bit, a dark or light jersey, a white or coloured helmet,
+ * black or coloured shorts and a black or coloured frame, so two riders
+ * whose hues sit close still never ride as twins.
+ */
+export function figurePalette(
+	hue: number,
+	kit: RiderKit,
+	variant = 0,
+): Palette {
 	const c = (h: number, s: number, l: number) =>
 		clearOfWatt(
 			new THREE.Color().setHSL((((h % 360) + 360) % 360) / 360, s, l),
 		);
 	const k = (hex: string) => new THREE.Color(hex);
-	const jersey = c(hue, 0.62, 0.56);
-	const accent = c(hue, 0.5, 0.34);
-	const shorts = c(hue, 0.35, 0.16);
-	const helmet = c(hue + 150, 0.6, 0.6);
+	const bit = (n: number) => (variant >> n) & 1;
+	const jersey = bit(0) ? c(hue, 0.55, 0.38) : c(hue, 0.62, 0.58);
+	const accent = c(hue + (bit(0) ? 25 : -25), 0.5, bit(0) ? 0.62 : 0.32);
+	const shorts = bit(2) ? c(hue, 0.4, 0.2) : k(kit.tyre);
+	const helmet = bit(1) ? k(kit.shoe) : c(hue + 150, 0.55, 0.55);
 	return {
 		jersey,
 		jerseyAccent: accent,
 		helmet,
-		helmetAccent: c(hue + 150, 0.4, 0.3),
+		helmetAccent: bit(1) ? accent.clone() : k(kit.tyre),
 		skin: k(kit.skin),
 		hair: k(kit.glasses),
 		shorts,
@@ -48,8 +58,8 @@ export function figurePalette(hue: number, kit: RiderKit): Palette {
 		glove: shorts.clone(),
 		glasses: k(kit.glasses),
 		lens: k(kit.glasses),
-		// A dark frame with a touch of the kit's hue: a road bike at chase distance.
-		frame: c(hue + 40, 0.25, 0.16),
+		// A dark frame, black or the kit's hue deepened: a road bike at chase distance.
+		frame: bit(3) ? c(hue, 0.45, 0.2) : k(kit.tyre),
 		frameAccent: accent.clone(),
 		saddle: k(kit.tyre),
 		barTape: k(kit.tyre),

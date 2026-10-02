@@ -393,10 +393,15 @@ surface('dev-world', async (s) => {
 
 /** /dev/world at one still moment (#3672): two loads are one frame, chrome off. */
 const MOMENT_M = 11_000;
-async function moment(s: Shoot, device: typeof DESK, p: 0 | 1) {
+async function moment(
+	s: Shoot,
+	device: typeof DESK,
+	p: 0 | 1,
+	cam: 'chase' | 'side' = 'chase',
+) {
 	const o = await s.open(device);
 	await o.page.goto(
-		`/dev/world?m=${MOMENT_M}&p=${p}&cam=chase&look=bluehour&chrome=0`,
+		`/dev/world?m=${MOMENT_M}&p=${p}&cam=${cam}&look=bluehour&chrome=0`,
 	);
 	await o.page.waitForFunction(
 		() => !!(window as unknown as { __worldProbe?: unknown }).__worldProbe,
@@ -420,6 +425,9 @@ surface('world-start', async (s) => {
 		join(OUT, 'world-start-twice.json'),
 		JSON.stringify({ identical: frames[0].equals(frames[1]) }, null, 2) + '\n',
 	);
+	// multi:world-figure-side — the same moment from off your right shoulder,
+	// where the chase camera never stands: the face, the drops, both wheels.
+	await s.shot(await moment(s, DESK, 0, 'side'), { name: 'world-figure-side' });
 });
 
 surface('world-end', async (s) => {
