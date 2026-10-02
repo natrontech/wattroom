@@ -240,6 +240,21 @@ surface('hud', async (s) => {
 		await s.shot({ page: hud, errors }, { name });
 		await hud.close();
 	}
+	// With no ride anywhere, the waiting state scales as the same block (#3678).
+	const idle = await s.open(DESK, { as: 'Hud Watcher', world: false });
+	await idle.page.goto('/hud');
+	await idle.page.waitForTimeout(2500);
+	await s.shot(idle, { name: 'hud-waiting' });
+	// Signed out, in the shell's window and in a tab: the same block.
+	for (const [name, size] of [
+		['hud-signed-out-shell', HUD_SHELL],
+		['hud-signed-out', DESK.viewport!],
+	] as const) {
+		const out = await s.open({ ...DESK, viewport: size }, { as: null });
+		await out.page.goto('/hud');
+		await out.page.waitForTimeout(2500);
+		await s.shot(out, { name });
+	}
 });
 
 surface('ride-preride', async (s) => {

@@ -57,7 +57,7 @@ Canon beats the target, and the target beats today's app. Canon is WATTROOM.md, 
   - Desk: watts ≥ 104 px, time left ≥ 72 px, secondary numbers ≥ 36 px, words and labels ≥ 24 px.
   - TV: 12 / 9 / 5 / 3 vh, and nothing under 2.9vh.
   - The mocks' 11–21 px labels sit under that floor. Where a mock's proportions cannot hold SPEC's sizes, the panel grows, never into the keep-clear corridor.
-  - SPEC has no phone row and no HUD row yet. design/ride-phone and design/ride-hud each propose one in their PR, derived from ADR-0071's arcminutes at a design distance they state. Until then, their items are relative (“the largest number on the screen”).
+  - SPEC has no phone row yet. design/ride-phone proposes one in its PR, derived from ADR-0071's arcminutes at a design distance it states; until then, its items are relative (“the largest number on the screen”). The HUD's row is SPEC's HUD column (#3678).
 - **D2. Slot 3's pages are ADR-0071's closed set:** RIDE, CLIMB, POWER, MAP (on a road), and later RACE. v2-erg's “Workout” tab is not a page. v2-ride's separate climb card is the CLIMB page.
 - **D3. A capable phone may draw the world.** ADR-0066 keys this on capability, never on width, which supersedes v2-phone's “never renders 3D”.
 - **D4. The world's look comes from the realism renders.** The v2/v3 mocks draw the prototype clay rider on a near-black road. The world is held to `world-*.jpg`, ADR-0072 and ADR-0073; v2/v3 stay the bar for layout.

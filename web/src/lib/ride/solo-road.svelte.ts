@@ -3,7 +3,7 @@ import type { SensorKind, SensorReading } from '$lib/ble/sensor';
 import type { Trainer, TrainerSample } from '$lib/ble/trainer';
 import { publishHud } from '$lib/hud/feed';
 import { createActuator } from '$lib/ride/actuation.svelte';
-import { FREE_RIDE_NAME, type FreeRide } from '$lib/ride/free-ride.svelte';
+import { freeRideLabel, type FreeRide } from '$lib/ride/free-ride.svelte';
 import { createRideShift } from '$lib/ride/ride-shift';
 import type { RideableRoute } from '$lib/ride/roads';
 import { acquireWakeLock, type WakeLock } from '$lib/workout/wakelock';
@@ -84,7 +84,7 @@ export function createSoloRoadRide(deps: {
 				target: deps.free.targetWatts,
 				remaining: 0,
 				elapsed: deps.free.seconds,
-				label: FREE_RIDE_NAME,
+				label: freeRideLabel(deps.free.road),
 				road: deps.free.road?.readout,
 			});
 	}
