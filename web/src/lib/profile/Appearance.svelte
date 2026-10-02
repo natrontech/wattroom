@@ -25,6 +25,11 @@
 		{ flat: false, label: '3D world' },
 		{ flat: true, label: 'Flat road' },
 	];
+
+	// One label column, so every row's first control starts at the same x; the
+	// hint sits right of the controls on a desk and below them on a phone.
+	const ROW = 'mt-5 grid grid-cols-[4.5rem_1fr] items-baseline gap-x-3';
+	const HINT = 'text-muted basis-full text-xs lg:basis-auto';
 </script>
 
 <!-- Full theme (#331, ADR-0005 amended): every colour moves together. -->
@@ -35,44 +40,44 @@
 	</div>
 	<!-- The scheme toggle lived on the room rail until ADR-0020 retired it
 	     (#326): auto follows the OS, the ride is always dark. -->
-	<div class="mt-5 flex flex-wrap items-center gap-2">
-		<span class="eyebrow mr-1">scheme</span>
-		{#each SCHEMES as option (option.value)}
-			<button
-				onclick={() => theme.set(option.value)}
-				aria-pressed={theme.current === option.value}
-				class="btn btn-xs {theme.current === option.value
-					? 'btn-primary'
-					: 'btn-secondary'}"
-			>
-				<option.icon size={12} />
-				{option.label}
-			</button>
-		{/each}
-		<span class="text-muted text-[11px]">
-			auto follows your OS — the ride is always dark
-		</span>
-	</div>
-	{#if worldSlotOn()}
-		<div class="mt-5 flex flex-wrap items-center gap-2">
-			<span class="eyebrow mr-1">road</span>
-			{#each ROADS as option (option.label)}
+	<div class={ROW}>
+		<span class="eyebrow">scheme</span>
+		<div class="flex flex-wrap items-center gap-2">
+			{#each SCHEMES as option (option.value)}
 				<button
-					onclick={() => {
-						flat = option.flat;
-						setFlatRoad(option.flat);
-					}}
-					aria-pressed={flat === option.flat}
-					class="btn btn-xs {flat === option.flat
+					onclick={() => theme.set(option.value)}
+					aria-pressed={theme.current === option.value}
+					class="btn btn-xs {theme.current === option.value
 						? 'btn-primary'
 						: 'btn-secondary'}"
 				>
+					<option.icon size={12} />
 					{option.label}
 				</button>
 			{/each}
-			<span class="text-muted text-[11px]">
-				how a ride on a road is drawn on this device
-			</span>
+			<span class={HINT}>auto follows your OS — the ride is always dark</span>
+		</div>
+	</div>
+	{#if worldSlotOn()}
+		<div class={ROW}>
+			<span class="eyebrow">road</span>
+			<div class="flex flex-wrap items-center gap-2">
+				{#each ROADS as option (option.label)}
+					<button
+						onclick={() => {
+							flat = option.flat;
+							setFlatRoad(option.flat);
+						}}
+						aria-pressed={flat === option.flat}
+						class="btn btn-xs {flat === option.flat
+							? 'btn-primary'
+							: 'btn-secondary'}"
+					>
+						{option.label}
+					</button>
+				{/each}
+				<span class={HINT}>how a ride on a road is drawn on this device</span>
+			</div>
 		</div>
 	{/if}
 </section>

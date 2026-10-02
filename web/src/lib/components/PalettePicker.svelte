@@ -21,12 +21,8 @@
 		<span class="bg-surface-raised absolute inset-x-1 top-1 h-5 rounded"></span>
 		<span class="bg-neon absolute inset-x-2 top-2 h-1 rounded-full opacity-80"
 		></span>
-		<!-- The data bar glows and the chrome bar does not: the swatch states the
-		     rule rather than relying on the caption to explain it. glow-stroke is
-		     driven by currentColor, and is transparent on light by design. -->
-		<span
-			class="glow-stroke bg-watt text-watt absolute inset-x-2 bottom-2 h-1.5 rounded-full"
-		></span>
+		<!-- The data bar in watt, unlit: a desk page glows nothing (TARGETS G2). -->
+		<span class="bg-watt absolute inset-x-2 bottom-2 h-1.5 rounded-full"></span>
 	</span>
 {/snippet}
 

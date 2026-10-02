@@ -44,10 +44,10 @@ try {
 /** Light only when the rider asked for it, or the OS did and they did not. */
 function activeFamily(): ThemeFamily {
 	const forced = document.documentElement.dataset.theme;
-	if (forced === 'light') return 'white';
+	if (forced === 'light') return 'light';
 	if (forced === 'dark') return 'dark';
 	return window.matchMedia?.('(prefers-color-scheme: light)').matches
-		? 'white'
+		? 'light'
 		: 'dark';
 }
 

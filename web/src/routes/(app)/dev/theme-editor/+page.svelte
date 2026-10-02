@@ -56,20 +56,20 @@
 		};
 	}
 
-	const PRESETS: { label: string; dark: string; white: string }[] = [
-		{ label: 'Outrun', dark: 'outrun', white: 'outrun-day' },
-		{ label: 'Tron', dark: 'tron-ice', white: 'tron-day' },
-		{ label: 'Miami', dark: 'miami-nights', white: 'miami-day' },
-		{ label: 'Laser', dark: 'laser-yellow', white: 'laser-day' },
-		{ label: 'Monokai', dark: 'monokai', white: 'monokai-day' },
+	const PRESETS: { label: string; dark: string; light: string }[] = [
+		{ label: 'Outrun', dark: 'outrun', light: 'outrun-day' },
+		{ label: 'Tron', dark: 'tron-ice', light: 'tron-day' },
+		{ label: 'Miami', dark: 'miami-nights', light: 'miami-day' },
+		{ label: 'Laser', dark: 'laser-yellow', light: 'laser-day' },
+		{ label: 'Monokai', dark: 'monokai', light: 'monokai-day' },
 	];
 
 	let dark = $state(stateFromSpec('tron-ice', 'Draft'));
-	let white = $state(stateFromSpec('tron-day', 'Draft Day'));
+	let light = $state(stateFromSpec('tron-day', 'Draft Day'));
 
 	function loadPreset(preset: (typeof PRESETS)[number]) {
 		dark = stateFromSpec(preset.dark, preset.label);
-		white = stateFromSpec(preset.white, `${preset.label} Day`);
+		light = stateFromSpec(preset.light, `${preset.label} Day`);
 	}
 
 	function themeFrom(
@@ -94,7 +94,7 @@
 	}
 
 	const darkTheme = $derived(themeFrom(dark, 'dark'));
-	const whiteTheme = $derived(themeFrom(white, 'white'));
+	const lightTheme = $derived(themeFrom(light, 'light'));
 
 	function exportCode(state: EditorState, family: ThemeSpec['family']): string {
 		const mutedHue = state.useMutedHue
@@ -121,7 +121,7 @@
 	},`;
 	}
 
-	let copied = $state<'dark' | 'white' | null>(null);
+	let copied = $state<'dark' | 'light' | null>(null);
 	async function copy(state: EditorState, family: ThemeSpec['family']) {
 		try {
 			await navigator.clipboard.writeText(exportCode(state, family));
@@ -191,11 +191,11 @@
 		</section>
 
 		<section>
-			<h2 class="eyebrow">desk · white</h2>
+			<h2 class="eyebrow">desk · light</h2>
 			<div class="mt-3 grid gap-4 lg:grid-cols-[15rem_1fr]">
-				<EditorControls bind:state={white} tokens={whiteTheme.tokens} />
+				<EditorControls bind:state={light} tokens={lightTheme.tokens} />
 				<ThemePanel
-					theme={whiteTheme}
+					theme={lightTheme}
 					surface="desk"
 					riders={channel.riders}
 					segments={channel.segments}
@@ -205,20 +205,20 @@
 				/>
 			</div>
 			<div class="mt-4">
-				<GateReport theme={whiteTheme} />
+				<GateReport theme={lightTheme} />
 			</div>
 			<div class="mt-3">
 				<pre
 					class="bg-surface-raised border-edge overflow-x-auto rounded-lg border p-3 text-[11px] leading-relaxed">{exportCode(
-						white,
-						'white',
+						light,
+						'light',
 					)}</pre>
 				<button
 					type="button"
 					class="btn btn-ghost btn-xs mt-2"
-					onclick={() => copy(white, 'white')}
+					onclick={() => copy(light, 'light')}
 				>
-					{copied === 'white' ? 'copied' : 'copy'}
+					{copied === 'light' ? 'copied' : 'copy'}
 				</button>
 			</div>
 		</section>

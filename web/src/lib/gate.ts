@@ -23,7 +23,7 @@ import {
 	CONTRAST,
 	DANGER_HUE,
 	DARK_SURFACE_MAX_L,
-	WHITE_SURFACE_MIN_L,
+	LIGHT_SURFACE_MIN_L,
 	type Theme,
 	type TokenName,
 } from './palette';
@@ -181,7 +181,7 @@ function check(
  * came back as a defect report twice (#2397). Add an entry here only after
  * checking the failure is the kind that genuinely can't be resolved by moving
  * a colour (#620): the surface pair itself is the point of the theme, and the
- * shared white-family zone ramp can't separate against it without erasing
+ * shared light-family zone ramp can't separate against it without erasing
  * that. #621 asked whether the gate should change rather than the palette and
  * answered no: APCA ranks the same zones 15–25% below the reference, so the
  * formula was not what rejected them. The list stays the escape hatch; there
@@ -379,7 +379,7 @@ export function gateChecks(theme: Theme, catalogue: Theme[]): GateCheck[] {
 	{
 		const l = hexToOklch(theme.tokens.surface).l;
 		const floor =
-			theme.family === 'dark' ? DARK_SURFACE_MAX_L : WHITE_SURFACE_MIN_L;
+			theme.family === 'dark' ? DARK_SURFACE_MAX_L : LIGHT_SURFACE_MIN_L;
 		const passes = theme.family === 'dark' ? l <= floor : l >= floor;
 		checks.push(
 			check(
