@@ -442,6 +442,17 @@ async function moment(
 		null,
 		{ timeout: 30_000 },
 	);
+	// The ground around the eye whole before the shot: a chunk still building is a frame two loads disagree on.
+	await o.page.waitForFunction(
+		() =>
+			(
+				window as unknown as {
+					__worldProbe: () => { ground?: { pending: number } };
+				}
+			).__worldProbe().ground?.pending === 0,
+		null,
+		{ timeout: 60_000 },
+	);
 	await o.page.waitForTimeout(2000);
 	return o;
 }

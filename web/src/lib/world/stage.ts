@@ -35,9 +35,9 @@ export type Stage = {
 	group: THREE.Group;
 	/**
 	 * Brings what the stage draws to where the eye now is: the road's pieces,
-	 * and the dressing's tiles — those within the near ring at once, the rest
-	 * one a call, nearest first (#3699), or every one within reach when
-	 * `whole`.
+	 * and the dressing's tiles — every one within reach on the first call or
+	 * when `whole`, after that those within the near ring at once and the rest
+	 * one a call, nearest first (#3699).
 	 */
 	update(eye: THREE.Vector3, whole?: boolean): void;
 	/**
@@ -213,7 +213,11 @@ export function buildStage(
 	}
 	let near: string | null = null;
 	let wanted: [number, number][] = [];
-	function dress(eye: THREE.Vector3, whole: boolean) {
+	// The first look draws everything in reach: a ride mounts with its far ring whole, never filling in.
+	let first = true;
+	function dress(eye: THREE.Vector3, asked: boolean) {
+		const whole = asked || first;
+		first = false;
 		const here = tileKey(...tileOf(eye.x, eye.z));
 		if (here !== near) {
 			near = here;

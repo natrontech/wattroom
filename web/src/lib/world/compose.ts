@@ -368,6 +368,8 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 			return {
 				camera: { fov: Math.round(camera.fov * 100) / 100 },
 				moment: moment ?? null,
+				// What a capture waits on before it shoots: the ground around the eye, whole (#3699).
+				ground: { pending: stream.pending() },
 				figure: { bboxH, kitsInWattBand: crew?.kitsInWattBand() ?? 0 },
 			};
 		},
