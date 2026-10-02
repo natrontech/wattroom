@@ -44,12 +44,12 @@ describe('the gallery shows every theme (#399)', () => {
 	});
 
 	// The dark member is what a ride renders whatever the scheme says
-	// (ADR-0005, amended in #113), so the cave column may never be a white one.
-	it('never puts a white theme in the cave column', () => {
+	// (ADR-0005, amended in #113), so the cave column may never be a light one.
+	it('never puts a light theme in the cave column', () => {
 		for (const row of GALLERY_ROWS)
 			for (const panel of row.panels)
 				expect(panel.theme.family).toBe(
-					panel.surface === 'cave' ? 'dark' : 'white',
+					panel.surface === 'cave' ? 'dark' : 'light',
 				);
 	});
 });
