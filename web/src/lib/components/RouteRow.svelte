@@ -60,13 +60,13 @@
 		>
 		{#if route.ownerOnly}
 			<span
-				class="border-frame text-muted inline-flex shrink-0 items-center gap-1 rounded border px-1.5 text-xs"
+				class="border-frame text-muted inline-flex shrink-0 items-center gap-1 rounded border px-2 text-xs"
 				><Lock size={11} /> Only you</span
 			>
 		{/if}
 		{#each chips as cls, i (cls)}
 			<span
-				class="font-display shrink-0 rounded px-1.5 text-xs leading-5 font-bold {i ===
+				class="font-display shrink-0 rounded px-2 text-xs leading-5 font-bold {i ===
 				0
 					? 'bg-neon text-on-neon'
 					: 'border-neon/60 border'}">{cls}</span
