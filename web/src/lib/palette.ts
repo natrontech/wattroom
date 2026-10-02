@@ -59,8 +59,8 @@ export function tokenDeclarations(theme: Theme): string {
 	).join('');
 }
 
-/** Dark themes are offered under the dark scheme, white ones under light. */
-export type ThemeFamily = 'dark' | 'white';
+/** Dark themes are offered under the dark scheme, light ones under light. */
+export type ThemeFamily = 'dark' | 'light';
 
 export interface Theme {
 	id: string;
@@ -156,7 +156,7 @@ const FAMILY: Record<
 			{ l: 0.662, c: 0.244, h: 2 },
 		],
 	},
-	white: {
+	light: {
 		surface: { l: 0.967, c: 0.011, h: 0 },
 		raised: { l: 1, c: 0, h: 0 },
 		muted: { l: 0.481, c: 0.086, h: 0 },
@@ -206,9 +206,9 @@ export const CONTRAST = { text: 4.5, accent: 3 } as const;
  */
 const MUTED_DIM_STEP = 0.08;
 
-/** A dark theme's surface must actually be dark; a white one's actually light. */
+/** A dark theme's surface must actually be dark; a light one's actually light. */
 export const DARK_SURFACE_MAX_L = 0.3;
-export const WHITE_SURFACE_MIN_L = 0.9;
+export const LIGHT_SURFACE_MIN_L = 0.9;
 
 /**
  * The contrast a zone fill is fitted to, measured off the reference ramp
@@ -220,7 +220,7 @@ export const WHITE_SURFACE_MIN_L = 0.9;
  */
 const ZONE_MIN_CONTRAST: Record<ThemeFamily, number> = {
 	dark: 1.8,
-	white: 2.6,
+	light: 2.6,
 };
 
 /**
