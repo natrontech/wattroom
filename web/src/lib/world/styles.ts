@@ -253,7 +253,7 @@ export function skyMaterial(style: Style): THREE.ShaderMaterial {
 					float w = uPeach * smoothstep(-0.01, 0.0, vDir.y) * (1.0 - smoothstep(ridge - bh, ridge + bh, vDir.y));
 					vec3 sky = toLab(c);
 					vec3 grey = vec3(sky.x, 0.0, 0.0);
-					c = fromLab(w < 0.06 ? mix(sky, grey, w / 0.06) : mix(grey, toLab(uBand), (w - 0.06) / 0.94));
+					c = fromLab(w < 0.03 ? mix(sky, grey, w / 0.03) : mix(grey, toLab(uBand), (w - 0.03) / 0.97));
 				}
 				if (uDisc > 0.5) c += uSunward * pow(s, 6.0) * 0.35 + hor * exp(-abs(vDir.y) * 14.0) * 0.12;
 				if (uDisc > 1.5) { // the outrun sun: flat disc, horizontal gaps widening toward the bottom
