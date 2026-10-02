@@ -93,6 +93,13 @@ surface('ride-road-world', async (s) => {
 		await ride(o.page, `/ride?w=openers&road=${road}&from=0`);
 		await assertRiding(o.page, true);
 		await s.shot(o, { name });
+		// multi:world-60s — the next minute of the same ride, a frame every
+		// 5 s: the forest beside the road as the rider passes it (#3675).
+		if (device === DESK)
+			for (let k = 1; k <= 12; k++) {
+				await o.page.waitForTimeout(5000);
+				await s.shot(o, { name: `world-60s-${String(k).padStart(2, '0')}` });
+			}
 	}
 });
 
