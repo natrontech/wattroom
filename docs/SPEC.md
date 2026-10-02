@@ -982,9 +982,11 @@ A rider's bias never moves the bunch.
 | Offset decay         | τ **20 s**                                                                                              |
 | Offset clamp         | **−10 … +25 m** while pedalling                                                                         |
 | Resting              | a rider silent past **10 s** (the virtual-speed rule) coasts back to **−40 m** and is marked Resting    |
-| Team-car tow back    | **20 s**                                                                                                |
+| Team-car tow back    | **20 s**; only in bunch rides and ERG sessions — never in a race, a game or a timeable effort; a towed rider gives no shelter |
+| Formation            | rows of Drafting's lanes, filled in the order riders joined, centred on the bunch's metre (#3098)       |
 | Front row            | rotates every **120 s** of elapsed time                                                                 |
-| Client snap          | eases at **25 m** off over **5 s**; relaxes to **0 %** grade at **1 %/s** after **5 s** of dead reckoning |
+| Lanes                | a critically damped spring with a **0.6 s** half-life (#3098)                                           |
+| Client snap          | within **25 m** of their place a rider eases there over **5 s**; further, they dither out (**200 ms**) and back in (**300 ms**) there, never sliding through others (#3098); relaxes to **0 %** grade at **1 %/s** after **5 s** of dead reckoning |
 | Late join            | a **3 s** drop-off                                                                                      |
 | KOM sprints          | open **300 m** before the top of a class **III** climb or harder; at most one per **5 min**, **6** per ride |
 | Terrain Match        | **250 m** step; penalty weight **0.3**; suggestion floor **0.2**                                        |

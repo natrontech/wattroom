@@ -2122,6 +2122,12 @@ export interface World {
    */
   resting?: string[];
   /**
+   * The joined riders in the order they joined the bunch, those who joined
+   * in one second by id (#3098): the formation's slots, so every screen
+   * draws one bunch and a late joiner rides in at its back.
+   */
+  order?: string[];
+  /**
    * Each racer's own place in a race (#3032, ADR-0067), by rider id: a
    * race rides no shared bunch. Races only.
    */

@@ -132,7 +132,7 @@
 			step="5"
 			bind:value={yours}
 			oninput={() => (touched = true)}
-			class="accent-neon h-6 min-w-40 flex-1"
+			class="accent-neon min-w-40 flex-1"
 		/>
 		<span class="num w-14 text-right font-bold">{yours} W</span>
 	</label>
