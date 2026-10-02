@@ -35,7 +35,7 @@ const PHASED: CallKind[] = ['neutral', 'klaxon', 'held', 'resumed'];
 /** Every phrase the radio has: the race's numbers go in, nothing else does. */
 export const PHRASES = {
 	neutral: () => 'Neutral zone. Roll easy to km 0.',
-	klaxon: () => 'Km 0. Race on.',
+	klaxon: () => 'km 0. Race on.',
 	held: () => 'Race held. Nobody moves.',
 	resumed: () => 'Race back on.',
 	distance: (m: number) =>

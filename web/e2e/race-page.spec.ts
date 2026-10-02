@@ -99,7 +99,7 @@ test('a race shows its RACE page and calls it on the team-car radio', async ({
 		/in [A-D]\s*(1st|2nd) of 2/,
 	);
 	await expect(coach.locator('[data-field="wkg"]')).toContainText(/\d\.\d/);
-	await expect(radio).toContainText(/Km 0\. Race on\.|to the line\./, {
+	await expect(radio).toContainText(/km 0\. Race on\.|to the line\./, {
 		timeout: 30_000,
 	});
 });

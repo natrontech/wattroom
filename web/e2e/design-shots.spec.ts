@@ -387,6 +387,13 @@ surface('ride-race', async (s) => {
 		);
 		await coach.page.waitForTimeout(20_000);
 		await s.shot(coach);
+		// multi:ride-race-ride — the same race on RIDE: a page turn keeps the
+		// computer's shape (ADR-0071).
+		await coach.page
+			.getByRole('button', { name: 'RIDE page', exact: true })
+			.click();
+		await coach.page.waitForTimeout(1000);
+		await s.shot(coach, { name: 'ride-race-ride' });
 	} finally {
 		await endSession(coach.page);
 	}

@@ -1,6 +1,6 @@
 import Dices from '@lucide/svelte/icons/dices';
 import Flame from '@lucide/svelte/icons/flame';
-import Flag from '@lucide/svelte/icons/flag';
+import Trophy from '@lucide/svelte/icons/trophy';
 import Target from '@lucide/svelte/icons/target';
 import TrendingUp from '@lucide/svelte/icons/trending-up';
 import Star from '@lucide/svelte/icons/star';
@@ -92,21 +92,21 @@ const RACES: GameMode[] = [
 		label: 'Race',
 		blurb:
 			'A mass start on a road: 3 min neutral, then first over the line in each Category.',
-		icon: Flag,
+		icon: Trophy,
 	},
 	{
 		id: 'last-light',
 		label: 'Last Light',
 		blurb:
 			'As far as you can ride before the clock runs out; the fog closes last.',
-		icon: Flag,
+		icon: Trophy,
 	},
 	{
 		id: 'wheelrace',
 		label: 'Wheelrace',
 		blurb:
 			'A handicap to a line: head starts from your FTP, so the field meets at par.',
-		icon: Flag,
+		icon: Trophy,
 	},
 ];
 

@@ -51,15 +51,16 @@
 				? { value: 'text-2xl', unit: 'text-xs', word: 'text-sm' }
 				: { value: 'text-4xl', unit: 'text-lg', word: 'text-2xl' },
 	);
-	// RACE's four cells sit in two columns, so each column keeps one left edge.
+	// RACE's four cells sit in two columns, so each column keeps one left edge,
+	// and the dots take a third beside both rows: the panel stays two rows tall.
 	const columns = $derived(shown === 'race' && !phone);
 	const layout = $derived(
 		phone
 			? 'grid grid-cols-3 gap-x-3 gap-y-2'
 			: columns
 				? tv
-					? 'grid grid-cols-[auto_1fr] items-start gap-x-[2.5vw] gap-y-[2vh]'
-					: 'grid grid-cols-[auto_1fr] items-start gap-x-6 gap-y-3'
+					? 'grid grid-cols-[auto_1fr_auto] items-start gap-x-[2.5vw] gap-y-[2vh]'
+					: 'grid grid-cols-[auto_1fr_auto] items-start gap-x-6 gap-y-3'
 				: tv
 					? 'flex flex-wrap items-start gap-x-[2.5vw] gap-y-[2vh]'
 					: 'flex flex-wrap items-start gap-x-6 gap-y-3',
@@ -111,7 +112,7 @@
 			class="relative flex {phone
 				? 'mt-1 -mb-2 justify-center'
 				: columns
-					? 'col-span-2 justify-self-end'
+					? 'col-start-3 row-span-2 row-start-1 self-center'
 					: 'ml-auto self-center'}"
 		>
 			{#each pages as p (p)}
