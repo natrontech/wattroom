@@ -1,0 +1,1 @@
+- In a session on a road, a KOM sprint now rides the climb itself: a geared rider's trainer feels the road's grade under their place in the bunch rather than their own sprint grade, and a single-speed rider still holds 2 × FTP. If the connection drops, the grade eases back to flat after five seconds instead of holding the last climb.
