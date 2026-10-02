@@ -93,6 +93,16 @@
 						stroke-linecap="round"
 					/>
 					{#each overpaint as c, i (i)}
+						<!-- The ramp is neon at five strengths: knocked out first, so a
+						     climb reads in its own step rather than over the line. -->
+						<path
+							d={c.d}
+							fill="none"
+							class="stroke-surface-raised"
+							stroke-width="3"
+							stroke-linejoin="round"
+							stroke-linecap="round"
+						/>
 						<path
 							d={c.d}
 							fill="none"

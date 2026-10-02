@@ -39,7 +39,8 @@
 	];
 </script>
 
-<figure class="panel">
+<!-- Its content's size beside a taller shape, never stretched to it. -->
+<figure class="panel self-start">
 	<div class="flex gap-3">
 		<div class="relative mt-6 min-w-0 flex-1">
 			<svg
