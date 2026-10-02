@@ -2,6 +2,7 @@ package hub
 
 import (
 	"math"
+	"slices"
 	"sort"
 	"time"
 
@@ -54,8 +55,10 @@ type bunch struct {
 	at time.Time
 	// This second's samples from the joined riders.
 	heard map[string]sample
-	// Every joined rider's place in it (#3097), once the plan runs.
+	// Every joined rider's place in it (#3097), once the plan runs, and how
+	// many have joined it: the next place's seq.
 	places map[string]*place
+	joins  int
 	// Where the road's KOM sprints open (#3102), the next one ahead, laps
 	// unrolled, while komLeft; how many this ride armed, and when the last
 	// one opened.
@@ -265,6 +268,7 @@ func (b *bunch) world(hideOffsets bool) *protocol.World {
 		Lap:      lap,
 	}
 	for id, pl := range b.places {
+		w.Order = append(w.Order, id)
 		if pl.resting {
 			w.Resting = append(w.Resting, id)
 		}
@@ -276,6 +280,7 @@ func (b *bunch) world(hideOffsets bool) *protocol.World {
 		}
 	}
 	sort.Strings(w.Resting)
+	slices.SortFunc(w.Order, func(x, y string) int { return b.places[x].seq - b.places[y].seq })
 	return w
 }
 

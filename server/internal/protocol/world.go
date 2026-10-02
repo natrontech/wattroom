@@ -48,6 +48,10 @@ type World struct {
 	// Riders coasting back to the bunch's tail (docs/SPEC.md "Riding a road
 	// together"), by rider id.
 	Resting []string `json:"resting,omitempty"`
+	// The joined riders in the order they joined the bunch, those who joined
+	// in one second by id (#3098): the formation's slots, so every screen
+	// draws one bunch and a late joiner rides in at its back.
+	Order []string `json:"order,omitempty"`
 	// Each racer's own place in a race (#3032, ADR-0067), by rider id: a
 	// race rides no shared bunch. Races only.
 	Racers map[string]RaceRider `json:"racers,omitempty"`
