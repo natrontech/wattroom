@@ -6,7 +6,7 @@ import { backdrop } from './backdrop';
 import { tag } from './family';
 import { chunkId, LEAVE, roadPieces, type GroundStream } from './ground-stream';
 import { batchProps, FAR_M, NEAR_M, type Drawn } from './props/batch';
-import { tileCentre, tileKey, tileOf } from './props/tiles';
+import { TILE_M, tileCentre, tileKey, tileOf } from './props/tiles';
 import { disposeTree } from './dispose';
 import { arch, board } from './furniture';
 import type { Piece } from './setpieces';
@@ -20,6 +20,14 @@ import { skyMaterial, sunDir, terrainMaterial, type Style } from './styles';
 import { meshOf, REACH } from './terrain-mesh';
 import { SHOULDER } from './terrain/road-profile';
 import type { World } from './world';
+
+/**
+ * How far round the eye the dressing's tiles are drawn: the far ring and the
+ * half diagonal and more a tile's centre moves while the eye stays in its own
+ * tile, so the batch's rings, measured from the eye itself, always find a
+ * tile there to show.
+ */
+const DRESS_M = FAR_M + 1.5 * TILE_M;
 
 /** A set piece as the batch draws it: a flag by its colour's model. */
 const drawn = (p: Piece): Drawn => ({
@@ -221,11 +229,11 @@ export function buildStage(
 		const here = tileKey(...tileOf(eye.x, eye.z));
 		if (here !== near) {
 			near = here;
-			wanted = world.tilesWithin(eye.x, eye.z, FAR_M);
+			wanted = world.tilesWithin(eye.x, eye.z, DRESS_M);
 			for (const id of props.ids()) {
 				const [ti, tj] = id.split(':').map(Number);
 				const [cx, cz] = tileCentre(ti, tj);
-				if (Math.hypot(cx - eye.x, cz - eye.z) > FAR_M * LEAVE) undraw(id);
+				if (Math.hypot(cx - eye.x, cz - eye.z) > DRESS_M * LEAVE) undraw(id);
 			}
 		}
 		let spent = false;
