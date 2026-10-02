@@ -665,8 +665,18 @@ surface('flow-f3', async (s) => {
 	await page(s, o, '/home', { name: 'flow-f3-6-home' });
 });
 
-test.fixme('flow-f1', () => {
-	// F1 starts at a route card's Ride, which design/route-row (#3683) adds.
+surface('flow-f1', async (s) => {
+	// F1's first steps (#3683): Workouts, then a route card's Ride onto /ride.
+	const o = await s.open(DESK, { world: false });
+	const road = await fixtureRoad(o.page, 'hairpin');
+	await page(s, o, '/workouts', { name: 'flow-f1-1-workouts' });
+	await o.page
+		.getByRole('listitem')
+		.filter({ has: o.page.locator(`a[href="/workouts/routes/${road}"]`) })
+		.getByRole('link', { name: /^(Ride|Carry on)$/ })
+		.click();
+	await o.page.waitForTimeout(2500);
+	await s.shot(o, { name: 'flow-f1-2-ride', full: true });
 });
 
 surface('appearance', async (s) => {
