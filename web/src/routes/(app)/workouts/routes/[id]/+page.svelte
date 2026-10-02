@@ -4,6 +4,7 @@
 	import { page } from '$app/state';
 	import { api } from '$lib/api';
 	import Banner from '$lib/components/Banner.svelte';
+	import ClimbTable from '$lib/components/ClimbTable.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import RouteAttempts from '$lib/components/RouteAttempts.svelte';
 	import RouteProfile from '$lib/components/RouteProfile.svelte';
@@ -12,15 +13,25 @@
 	import { confirm } from '$lib/confirm.svelte';
 	import { device, isSpectator } from '$lib/device.svelte';
 	import { routeNameLine, routePrivacyLine } from '$lib/privacy-copy';
-	import { roadsEnabled } from '$lib/ride/roads';
-	import { roadOf, shapeLine, type StoredRoute } from '$lib/road/stored';
+	import { carryOnOf, roadsEnabled } from '$lib/ride/roads';
+	import type { Attempt, ClimbBest } from '$lib/road/attempts';
+	import { classedOf } from '$lib/road/climbs';
+	import { isLoop } from '$lib/road/line';
+	import {
+		roadOf,
+		shapeLine,
+		statRow,
+		type StoredRoute,
+	} from '$lib/road/stored';
 	import { toasts } from '$lib/toast.svelte';
+	import RideHow from './RideHow.svelte';
 
 	/**
-	 * One route, as its owner sees it (#3061): the map only they may open, the
-	 * profile and its climbs, and what they can do with it. Delete asks first —
-	 * stored plans pay for it (errors.md) — and Ride it rides it (#3596), where
-	 * this screen may ride a road (ux.md: a control it cannot use is not drawn).
+	 * One route, as its owner sees it (#3061, #3680): the road on the left —
+	 * the map only they may open, the profile, its climbs and their rides of
+	 * it — and how to ride it on the right. Delete asks first — stored plans
+	 * pay for it (errors.md) — and How shows only where this screen may ride a
+	 * road (ux.md: a control it cannot use is not drawn).
 	 */
 	const id = $derived(page.params.id ?? '');
 
@@ -30,6 +41,10 @@
 	let missing = $state(false);
 	let shape = $state<{ x: number[]; z: number[] } | null>(null);
 	let shapeNote = $state<string | null>(null);
+
+	type Attempts = { attempts: Attempt[]; climbBests: ClimbBest[] };
+	let attempts = $state<Attempts | null>(null);
+	let attemptsError = $state<string | null>(null);
 
 	let name = $state('');
 	let renaming = $state(false);
@@ -54,6 +69,14 @@
 		else shapeNote = place.error.message;
 	}
 
+	// Read once: Your rides, the climbs' bests and where to carry on all use it.
+	async function loadAttempts(which: string) {
+		attemptsError = null;
+		const res = await api<Attempts>(`/api/routes/${which}/attempts`);
+		if (res.ok) attempts = res.data;
+		else attemptsError = res.error.message;
+	}
+
 	$effect(() => {
 		const which = id;
 		route = null;
@@ -61,10 +84,18 @@
 		missing = false;
 		shape = null;
 		shapeNote = null;
-		if (which) void load(which);
+		attempts = null;
+		if (which) void load(which).then(() => loadAttempts(which));
 	});
 
 	const road = $derived(route ? roadOf(route) : null);
+	const loop = $derived(
+		route?.loop ?? (shape ? isLoop({ ...shape, e: [] }) : undefined),
+	);
+	const carry = $derived(
+		attempts && road ? carryOnOf(attempts.attempts, road.length) : null,
+	);
+	const ridable = $derived(roadsEnabled() && !isSpectator(device));
 	const renamed = $derived(
 		route !== null && name.trim() !== '' && name.trim() !== route.name,
 	);
@@ -141,9 +172,9 @@
 		<div class="mt-4">
 			<Skeleton class="h-7 w-64" />
 			<Skeleton class="mt-2 h-3 w-44" />
-			<div class="mt-6 grid gap-4 sm:grid-cols-[2fr_3fr]">
+			<div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+				<Skeleton class="h-[220px] sm:h-[280px]" />
 				<Skeleton class="h-40" />
-				<Skeleton class="h-28" />
 			</div>
 		</div>
 	{:else}
@@ -156,79 +187,99 @@
 				>
 			{/if}
 		</div>
-		{#if route.name !== route.generatedName}
-			<p class="text-muted num text-xs">{route.generatedName}</p>
-		{/if}
+		<p class="font-display text-muted mt-1 text-sm tabular-nums">
+			{statRow(route, loop)}
+		</p>
 
-		<div class="mt-4 grid gap-4 sm:grid-cols-[2fr_3fr]">
-			{#if shape || shapeNote}
-				<RouteShape
-					x={shape?.x}
-					z={shape?.z}
-					climbs={route.climbs}
-					length={road?.length}
-					note={shapeNote ?? undefined}
-				/>
-			{:else}
-				<Skeleton class="h-[220px] sm:h-[280px]" />
-			{/if}
-			{#if road}
-				<RouteProfile {road} climbs={route.climbs} />
-			{/if}
-		</div>
-
-		{#if roadsEnabled() && !isSpectator(device)}
-			<div class="mt-6 flex flex-wrap items-center gap-3">
-				<a
-					href="/ride?road={encodeURIComponent(route.id)}"
-					class="btn btn-primary btn-lg">Ride it</a
-				>
-				{#if route.ownerOnly}
-					<span class="text-muted text-xs"
-						>Files from Strava ride with you alone.</span
-					>
-				{/if}
-			</div>
-		{/if}
-
-		<div class="mt-6">
-			<RouteAttempts routeId={route.id} />
-		</div>
-
-		<form
-			class="mt-6"
-			onsubmit={(event) => {
-				event.preventDefault();
-				void rename();
-			}}
+		<!-- On a phone How comes first, its primary at the top; then the
+		     profile, the shape, the climbs and the rides (TARGETS route 14). -->
+		<div
+			class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start"
 		>
-			<label for="route-name" class="eyebrow">your name for it</label>
-			<div class="mt-1 flex flex-wrap gap-2">
-				<input
-					id="route-name"
-					bind:value={name}
-					maxlength="80"
-					class="input min-w-0 flex-1"
-				/>
-				<button disabled={!renamed || renaming} class="btn btn-secondary"
-					>Rename</button
+			{#if ridable && road}
+				<aside
+					class="lg:col-start-2 lg:row-start-1"
+					aria-label="how to ride it"
+				>
+					<RideHow
+						id={route.id}
+						length={road.length}
+						climbs={route.climbs}
+						{carry}
+					/>
+				</aside>
+			{/if}
+			<div class="flex min-w-0 flex-col gap-4 lg:col-start-1 lg:row-start-1">
+				<div class="order-2 lg:order-1">
+					{#if shape || shapeNote}
+						<RouteShape
+							x={shape?.x}
+							z={shape?.z}
+							climbs={route.climbs}
+							length={road?.length}
+							note={shapeNote ?? undefined}
+						/>
+					{:else}
+						<Skeleton class="h-[220px] sm:h-[280px]" />
+					{/if}
+				</div>
+				{#if road}
+					<div class="order-1 lg:order-2">
+						<RouteProfile {road} climbs={route.climbs} facts={false} />
+					</div>
+				{/if}
+				{#if classedOf(route.climbs).length > 0}
+					<div class="panel order-3">
+						<ClimbTable
+							climbs={route.climbs}
+							bests={attempts?.climbBests ?? (attemptsError ? [] : null)}
+						/>
+					</div>
+				{/if}
+				<div class="panel order-4">
+					<RouteAttempts
+						data={attempts}
+						error={attemptsError}
+						onretry={() => void loadAttempts(route?.id ?? id)}
+					/>
+				</div>
+			</div>
+		</div>
+
+		<div class="border-frame mt-8 grid gap-6 border-t pt-6">
+			<form
+				class="max-w-[30rem]"
+				onsubmit={(event) => {
+					event.preventDefault();
+					void rename();
+				}}
+			>
+				<label for="route-name" class="eyebrow">your name for it</label>
+				<div class="mt-1 flex flex-wrap gap-2">
+					<input
+						id="route-name"
+						bind:value={name}
+						maxlength="80"
+						class="input min-w-0 flex-1"
+					/>
+					<button disabled={!renamed || renaming} class="btn btn-secondary"
+						>Rename</button
+					>
+				</div>
+				{#if renameError}
+					<!-- Field-level, under the field (errors.md). -->
+					<p class="text-danger mt-1 text-xs" role="alert">{renameError}</p>
+				{/if}
+				<p class="text-muted mt-1 text-xs">
+					{routeNameLine(route.generatedName)}
+				</p>
+			</form>
+			<p class="text-muted max-w-prose text-xs">{routePrivacyLine}</p>
+			<div>
+				<button onclick={() => void remove()} class="btn btn-danger"
+					>Delete the route</button
 				>
 			</div>
-			{#if renameError}
-				<!-- Field-level, under the field (errors.md). -->
-				<p class="text-danger mt-1 text-xs" role="alert">{renameError}</p>
-			{/if}
-			<p class="text-muted mt-1 text-xs">
-				{routeNameLine(route.generatedName)}
-			</p>
-		</form>
-
-		<p class="text-muted mt-6 text-xs">{routePrivacyLine}</p>
-
-		<div class="border-frame mt-6 border-t pt-4">
-			<button onclick={() => void remove()} class="btn btn-danger"
-				>Delete the route</button
-			>
 		</div>
 	{/if}
 </main>

@@ -1,0 +1,75 @@
+<script lang="ts">
+	import { formatClockLong, formatKm } from '$lib/format';
+	import type { ClimbBest } from '$lib/road/attempts';
+	import { classedOf, type Climb } from '$lib/road/climbs';
+
+	/**
+	 * A road's classed climbs, one row each (#3680): its name, class, length
+	 * and average, gain and where it tops out, and — given `bests` — the
+	 * owner's best time up it or “—”. Names are generated, “Climb 2”, the way
+	 * the climb card counts them, until real ones arrive (#3136). Numerals
+	 * right-aligned; the table scrolls in its own box on a phone.
+	 */
+	let { climbs, bests }: { climbs: Climb[]; bests?: ClimbBest[] | null } =
+		$props();
+
+	const rows = $derived(classedOf(climbs));
+	// `null` is “still loading”: the column holds its place, saying nothing yet.
+	const withBests = $derived(bests !== undefined);
+	const bestOf = (startM: number) => bests?.find((b) => b.startM === startM);
+	const avg = (c: Climb) => (c.gainM / (c.topM - c.startM || 1)) * 100;
+</script>
+
+{#if rows.length > 0}
+	<div class="overflow-x-auto">
+		<table class="w-full min-w-[22rem] text-xs" aria-label="Climbs">
+			<thead>
+				<tr class="text-muted border-frame border-b text-left">
+					<th class="eyebrow py-2 pr-3 font-normal">Climb</th>
+					<th class="eyebrow py-2 pr-3 font-normal">Class</th>
+					<th class="eyebrow py-2 pr-3 text-right font-normal">Gain</th>
+					<th class="eyebrow py-2 pr-3 text-right font-normal">Top at</th>
+					{#if withBests}
+						<th class="eyebrow py-2 text-right font-normal">Your best</th>
+					{/if}
+				</tr>
+			</thead>
+			<tbody class="divide-frame divide-y">
+				{#each rows as c, i (c.startM)}
+					{@const best = bestOf(c.startM)}
+					<tr>
+						<td class="py-2 pr-3"
+							><span class="text-ink">Climb {i + 1}</span>
+							<span class="text-muted font-display tabular-nums"
+								>{formatKm(c.topM - c.startM)} km · {avg(c).toFixed(1)} %</span
+							></td
+						>
+						<td class="py-2 pr-3"
+							><span
+								class="border-neon font-display inline-block w-8 rounded border text-center font-bold"
+								>{c.cls}</span
+							></td
+						>
+						<td class="font-display py-2 pr-3 text-right tabular-nums"
+							>{Math.round(c.gainM)} m</td
+						>
+						<td class="font-display py-2 pr-3 text-right tabular-nums"
+							>km {formatKm(c.topM)}</td
+						>
+						{#if withBests}
+							<td class="font-display py-2 text-right tabular-nums">
+								{#if best}
+									<a href="/history/{best.rideId}" class="hover:underline"
+										>{formatClockLong(best.seconds)}</a
+									>
+								{:else if bests}
+									<span class="text-muted">—</span>
+								{/if}
+							</td>
+						{/if}
+					</tr>
+				{/each}
+			</tbody>
+		</table>
+	</div>
+{/if}
