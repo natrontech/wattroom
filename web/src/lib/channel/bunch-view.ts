@@ -35,9 +35,11 @@ export function bunchOf(
 	const world = tick?.world;
 	if (!tick || !world || world.racers) return null;
 	const length = tick.state.route?.lengthM ?? 0;
+	// The bunch's speed, never the trainer's (ADR-0084: that is the drivetrain's alone).
+	const { speedMps: bunchMps } = world;
 	return {
 		m: world.bunchM + (world.lap ?? 0) * length,
-		mps: world.speedMps,
+		mps: bunchMps,
 		at: tick.at,
 		elapsed: tick.state.elapsed,
 		order: world.order ?? [],
