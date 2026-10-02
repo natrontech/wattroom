@@ -11,6 +11,13 @@ export const ROADS = {
 	// Renamed with #3725's geometry, so a road seeded before it is not found and reused.
 	hairpin: { name: 'Design switchbacks', gpx: hairpinGpx },
 	rolling: { name: 'Design rolling', gpx: rollingGpx },
+	// A name too long for a card, filed under the one source that rides
+	// owner-only (ADR-0063). The road is invented; no Strava data is in it.
+	ownerOnly: {
+		name: 'Design the long way round, over every pass and back down to the lake',
+		gpx: rollingGpx,
+		src: 'stravagpx',
+	},
 } as const;
 export type RoadName = keyof typeof ROADS;
 
@@ -38,8 +45,19 @@ export async function fixtureRoad(page: Page, road: RoadName): Promise<string> {
 	const found = before.find((r) => r.name === ROADS[road].name);
 	if (found) return found.id;
 	await readRoad(page, road);
+	const fixture = ROADS[road];
+	const src = 'src' in fixture ? fixture.src : undefined;
+	if (src)
+		await page.route('**/api/routes', (r) =>
+			r.request().method() === 'POST'
+				? r.continue({
+						postData: JSON.stringify({ ...r.request().postDataJSON(), src }),
+					})
+				: r.continue(),
+		);
 	await page.getByRole('button', { name: 'Save to my routes' }).click();
 	await page.getByText(/is on your routes/).waitFor({ timeout: 15_000 });
+	if (src) await page.unroute('**/api/routes');
 	const known = new Set(before.map((r) => r.id));
 	const made = (await routes(page)).find((r) => !known.has(r.id));
 	if (!made) throw new Error(`the ${road} road never reached /api/routes`);

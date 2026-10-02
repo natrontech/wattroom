@@ -77,7 +77,9 @@ test('two screens draw one bunch: each rider where the other screen has them', a
 	await picker.getByRole('button', { name: 'Roads' }).click();
 	await picker
 		.getByRole('list', { name: 'your routes' })
-		.getByRole('button', { name: new RegExp(NAME) })
+		.getByRole('listitem')
+		.filter({ hasText: NAME })
+		.getByRole('button', { name: 'Pick' })
 		.click();
 	await picker.getByRole('button', { name: /^Start Road/ }).click();
 	await guest

@@ -20,6 +20,11 @@ export type StoredRoute = {
 	/** From strava.com: it rides with its owner alone (ADR-0063). */
 	ownerOnly: boolean;
 	createdAt: string;
+	/** On the list only (#3683): the owner's own rides of the road, and the latest's time. */
+	rides?: number;
+	lastRiddenAt?: string;
+	/** On the list only: where the latest ride alone stopped short of the end. */
+	carryOnM?: number;
 	/** On one route's read only: packRoad's bytes, base64. */
 	road?: string;
 	/** Why the map is missing, when it is. */

@@ -8,7 +8,9 @@
 	 */
 	import { untrack } from 'svelte';
 	import Banner from '$lib/components/Banner.svelte';
+	import RouteRow from '$lib/components/RouteRow.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
+	import type { StoredRoute } from '$lib/road/stored';
 	import type { FreeRide } from '$lib/ride/free-ride.svelte';
 	import { formatKm as km } from '$lib/format';
 	import { carriesOn } from '$lib/ride/road-end';
@@ -17,7 +19,6 @@
 		loadRoad,
 		myRoutes,
 		type RideableRoute,
-		type RouteSummary,
 	} from '$lib/ride/roads';
 
 	let {
@@ -29,7 +30,7 @@
 	} = $props();
 
 	let open = $state(false);
-	let routes = $state<RouteSummary[] | null>(null);
+	let routes = $state<StoredRoute[] | null>(null);
 	let error = $state<string | null>(null);
 	let loading = $state<string | null>(null);
 	// A road the rider stopped short on last time (#3205): where to start.
@@ -118,26 +119,32 @@
 	{:else if routes === null}
 		<Skeleton class="h-16" rows={2} />
 	{:else if routes.length === 0}
-		<p class="text-muted text-sm">
-			Your routes ride here. Import a <code>.gpx</code> or
-			<code>.tcx</code> under
-			<a href="/workouts/import" class="underline">Import a workout</a>, and
-			pick it here.
+		<p class="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
+			<span class="text-muted"
+				>Your roads ride here — import a GPX, TCX or FIT.</span
+			>
+			<a
+				href="/workouts/import"
+				class="btn btn-secondary {onpick ? 'btn-lg' : 'btn-xs'}"
+				>Import a route</a
+			>
 		</p>
 	{:else}
-		<ul class="border-frame divide-y border-y" aria-label="your routes">
+		<ul class="grid gap-2" aria-label="your routes">
 			{#each routes as route (route.id)}
-				<li class="flex flex-wrap items-center gap-3 py-2">
-					<span class="min-w-0 flex-1 truncate text-sm">{route.name}</span>
-					<span class="text-muted num text-xs"
-						>{km(route.lengthM)} km · {route.gainM} m</span
-					>
-					<button
-						onclick={() => void pick(route.id)}
-						disabled={loading !== null}
-						class="btn btn-secondary btn-xs"
-						>{loading === route.id ? 'Loading…' : 'Ride it'}</button
-					>
+				<li class="min-w-0">
+					<RouteRow {route}>
+						{#snippet action()}
+							<!-- In /ride's card every control is 44 px (TARGETS
+							     ride-preride 7); beside a running free ride, the row's own. -->
+							<button
+								onclick={() => void pick(route.id)}
+								disabled={loading !== null}
+								class="btn btn-secondary {onpick ? 'btn-lg' : 'btn-xs'}"
+								>{loading === route.id ? 'Loading…' : 'Ride it'}</button
+							>
+						{/snippet}
+					</RouteRow>
 				</li>
 			{/each}
 		</ul>

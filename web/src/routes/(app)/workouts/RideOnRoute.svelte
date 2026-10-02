@@ -9,7 +9,9 @@
 	import Modal from '$lib/components/Modal.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { formatKm as km } from '$lib/format';
-	import { loadRoad, myRoutes, type RouteSummary } from '$lib/ride/roads';
+	import RouteRow from '$lib/components/RouteRow.svelte';
+	import { loadRoad, myRoutes } from '$lib/ride/roads';
+	import type { StoredRoute } from '$lib/road/stored';
 	import { matchTerrain } from '$lib/road/match';
 	import type { Workout } from '$lib/workout/types';
 
@@ -19,7 +21,7 @@
 		onclose,
 	}: { id: string; workout: Workout; onclose: () => void } = $props();
 
-	let routes = $state<RouteSummary[] | null>(null);
+	let routes = $state<StoredRoute[] | null>(null);
 	let error = $state<string | null>(null);
 	let loading = $state<string | null>(null);
 	let picked = $state<{
@@ -96,25 +98,26 @@
 		{:else if routes === null}
 			<Skeleton class="h-16" rows={2} />
 		{:else if routes.length === 0}
-			<p class="text-muted text-sm">
-				Your routes ride here. Import a <code>.gpx</code> or
-				<code>.tcx</code> under
-				<a href="/workouts/import" class="underline">Import a workout</a>.
+			<p class="text-muted flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
+				Your roads ride here — import a GPX, TCX or FIT.
+				<a href="/workouts/import" class="btn btn-secondary btn-xs"
+					>Import a route</a
+				>
 			</p>
 		{:else}
-			<ul class="border-frame divide-y border-y" aria-label="your routes">
+			<ul class="grid gap-2" aria-label="your routes">
 				{#each routes as route (route.id)}
-					<li class="flex flex-wrap items-center gap-3 py-2">
-						<span class="min-w-0 flex-1 truncate text-sm">{route.name}</span>
-						<span class="text-muted num text-xs"
-							>{km(route.lengthM)} km · {route.gainM} m</span
-						>
-						<button
-							onclick={() => void pick(route.id)}
-							disabled={loading !== null}
-							class="btn btn-secondary btn-xs"
-							>{loading === route.id ? 'Loading…' : 'Pick'}</button
-						>
+					<li class="min-w-0">
+						<RouteRow {route}>
+							{#snippet action()}
+								<button
+									onclick={() => void pick(route.id)}
+									disabled={loading !== null}
+									class="btn btn-secondary btn-xs"
+									>{loading === route.id ? 'Loading…' : 'Pick'}</button
+								>
+							{/snippet}
+						</RouteRow>
 					</li>
 				{/each}
 			</ul>
