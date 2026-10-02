@@ -32,6 +32,10 @@ The v2 mock's route starts in an invented village, Stollmatt, and says nothing o
   The notes are reasoning, and canon has since answered the open questions.
 - **Structure is the bar.** Compare proportion, grouping, alignment, hierarchy, what sits where, and what is absent. A size the mock happens to draw is not the bar; sizes come from docs/SPEC.md. **A pixel number written into a must-match item is the bar, within ±4 px.**
 - **Ignore the mock's data.** The Gurnigel loop, Mia and 258 W are illustrations. The capture rides other data, so compare structure.
+- **The capture's data is the fixtures'.** Its roads are `web/e2e/road-gpx.ts`, seeded by `web/e2e/design/seed.ts`:
+  - `<hairpin>` is “Design switchbacks”: a 1 km approach at 3 %, then eight legs at 8.8 % joined by seven hairpins. The app reads it as 7.1 km · 563 m, one class II climb, with the first hairpin about 1.7 km in.
+  - `<rolling>` is “Design rolling”: 7.5 km · 237 m, two class IV climbs.
+  An item that quotes a fixture's number takes it from a capture, never from memory. When a fixture changes, the items that quote it change in the same PR.
 - **Targets are drawn dark.** Desk surfaces are compared on a dark capture, and a light capture must hold the same layout. Riding surfaces are always dark.
 - **Owner tags.**
   - `[key]` after an item names the `design/<key>` issue that delivers it.
@@ -125,7 +129,7 @@ So the RIDE page holds:
 - **One kit, the `ride-panel` utility:** surface at 86 % opacity (floor 85 %, ADR-0071), a 1 px neon hairline at about 38 % alpha, 12 px radius, no backdrop blur and no shadow. A panel never sits inside another. [probe:panels]
 - **Spacing.** Panels sit 16 px in from the canvas edges and 12–16 px apart. Panels in one column share an edge.
 - **Size.** Each panel is its content's size: no empty band taller than 24 px, nothing scrolls, nothing is clipped. [probe:panels]
-- **The keep-clear corridor** (x 30–70 %, y 22.5–77.5 % of the canvas; `CORRIDOR` in `lib/session/docks.ts`) holds no panel, chip or text. [probe:panels] A panel stays out of it in one of three ways:
+- **The keep-clear corridor** (x 30–70 %, y 22.5–77.5 % of the canvas; `CORRIDOR` in `lib/session/docks.ts`) holds no panel, chip or text wherever a world is drawn in the canvas: the world surfaces, and TV and the HUD over the world. It keeps the figure and the road ahead in sight (ADR-0066, ADR-0071), so a flat surface, with neither, uses its whole column. [probe:panels] A panel over the world stays out of it in one of three ways:
   - it is ≤ 30 % of the canvas wide and sits against a side edge;
   - it ends above y 22.5 %;
   - it starts below y 77.5 %.
@@ -275,9 +279,10 @@ Every surface id below is also in `docs/design/surface-map.json`, which maps the
 **Must match: world**
 
 16. The world's road is this ride's road.
-    - The hairpins climb ahead. There is no flat valley straight and no church village.
-    - At “km 0.0 of 7.1”, your figure stands at the start.
+    - Ahead is the fixture's approach: a straight at 3 % toward the face of the switchback stack. There is no flat valley straight and no church village.
+    - Distance reads “0.1 of 7.1”, and your figure stands at the start of the approach.
     - Your figure's km matches the Skyline dot.
+    - From km 2.3, on the second leg, the hairpins climb ahead: the second hairpin and the stack above it are in view. [multi:world-hairpins]
     [3663-world-is-your-ride] [probe:world]
 17. A solo ride holds one figure, yours, with one ring. There are no bots. [3663-world-is-your-ride]
 18. The sky.
@@ -363,7 +368,7 @@ Every surface id below is also in `docs/design/surface-map.json`, which maps the
 **Canon:** errors.md; SPEC “Sync tolerances”.
 
 **Must match**
-1. The fault is one persistent line at the top of slot 1, with one ≥ 44 px recovery button. It is not a toast, and nothing enters the corridor. [ride-surface] [ride-flat]
+1. The fault is one persistent line at the top of slot 1, with one ≥ 44 px recovery button. It is not a toast, and over the world nothing enters the corridor (G3). [ride-surface] [ride-flat]
 2. The numbers read as stale (“—”), and nothing stale keeps its watt or its glow.
 
 #### ride-countin
@@ -646,7 +651,7 @@ Every surface id below is also in `docs/design/surface-map.json`, which maps the
    - Class chips (Roman numerals) sit at its right, the hardest filled neon.
    - An owner-only route carries the lock chip “Only you”.
    [route-row]
-8. The card's second line reads “7.1 km · 571 m · 1 climb”, muted. [route-row]
+8. The card's second line reads “7.1 km · 563 m · 1 climb”, muted. [route-row]
 9. The third line is one of: “Not ridden yet”, “Ridden 3× · last 29 Sep”, or “Left off at km 21.3”. [route-row]
 10. The card's actions:
     - Ride (`btn-primary btn-xs`) at the bottom right, reading “Carry on” when there is somewhere to carry on;
