@@ -4,6 +4,7 @@ import { keyer, unit, type Salt } from '../place/keyed';
 import type { Class } from '../placement/types';
 import type { Ground, Origin } from '../terrain/ground';
 import type { PropKind } from './kit';
+import { forest, FRAME_NEAR, PAIR_M, ringAt } from './forest';
 import { createPlacer, type Placer } from './placer';
 import { deg, hashOf, turnBy, walker, type Turn } from './roads';
 import { CHUNK_M } from '../place/lattice';
@@ -65,6 +66,13 @@ const SITE_M = 200;
 const TILE_M = 5000;
 const TREES_WITHIN = 700;
 const VILLAGE_R = 220;
+/** Metres of street a village's hamlets stand along, the street one hamlet spans, and the most a house stands off it past the first 15. */
+const VILLAGE_ALONG = 500;
+const HAMLET_M = 36;
+const VILLAGE_OFF = 20;
+/** A building at a barn's slot brings one or two more, this far apart at most, in this many tries. */
+const CLUSTER_M = 26;
+const FARM_TRIES = 6;
 
 /**
  * Where the villages stand (#3076): flat road through meadow, one chance per
@@ -186,17 +194,21 @@ export function scatter(
 	const walks = lines.map(walker);
 	const strokes = lines.map((l) => hashOf(l.key));
 
-	// Each village: a church first, then houses along its street, most close to it.
+	// Each village: a church first, then houses in a few hamlets along its
+	// street, each a handful of roofs close together on one side of the road.
 	for (const site of villages) {
 		const w = walks[site.line];
 		const stroke = strokes[site.line];
 		const slot = site.s / SITE_M;
 		const count = 12 + Math.floor(u(house(stroke, slot, 1)) * 10);
+		const hamlets = 3 + Math.floor(u(house(stroke, slot, 2)) * 3);
 		for (let t = 0, placed = 0; t < 200 && placed < count; t++) {
 			const r = (c: number) => u(house(stroke, slot, 100 + t * 8 + c));
-			const p = w.at(site.s + (r(0) - 0.5) * 800);
-			const side = r(1) < 0.5 ? -1 : 1;
-			const off = 15 + r(2) * r(3) * 90; // most houses close to the street
+			const h = Math.floor(r(0) * hamlets);
+			const at = (u(house(stroke, slot, 10 + h)) - 0.5) * VILLAGE_ALONG;
+			const p = w.at(site.s + at + (r(6) - 0.5) * HAMLET_M);
+			const side = u(house(stroke, slot, 20 + h)) < 0.5 ? -1 : 1;
+			const off = 15 + r(2) * r(3) * VILLAGE_OFF;
 			const x = p.x + p.lx * off * side;
 			const z = p.z + p.lz * off * side;
 			if (!ground.clearOf(x, z, 13) || biomeAt(x, z) === null) continue;
@@ -215,7 +227,8 @@ export function scatter(
 				(v.x - x) * (v.x - x) + (v.z - z) * (v.z - z) < VILLAGE_R * VILLAGE_R,
 		);
 
-	// Barns on open meadow, alpine huts above the treeline: a chance per 1.3 km of each stroke.
+	// A farm on open meadow, huts above the treeline: a chance per 1.3 km of
+	// each stroke, and each brings one or two neighbours, never a lone box.
 	walks.forEach((w, k) => {
 		for (let slot = 0; slot * BARN_M <= w.length; slot++) {
 			const r = (c: number) => u(house(strokes[k], -1 - slot, c));
@@ -230,13 +243,32 @@ export function scatter(
 				(b !== Biome.Meadow && b !== Biome.Alpine)
 			)
 				continue;
-			stand(
-				b === Biome.Meadow ? 'barn' : 'hut',
-				'building',
-				x,
-				z,
-				turnBy(p.along, deg(Math.floor(r(2) * 35))),
-			);
+			const face = turnBy(p.along, deg(Math.floor(r(2) * 35)));
+			if (!stand(b === Biome.Meadow ? 'barn' : 'hut', 'building', x, z, face))
+				continue;
+			const more = 1 + Math.floor(r(3) * 2);
+			let stood = 0;
+			for (let n = 0; n < FARM_TRIES && stood < more; n++) {
+				const [dx, dz] = ringAt(r(4 + n * 3), r(5 + n * 3), 16, CLUSTER_M);
+				const nx = x + dx;
+				const nz = z + dz;
+				if (!ground.clearOf(nx, nz, 16) || biomeAt(nx, nz) !== b) continue;
+				if (
+					stand(
+						b === Biome.Meadow ? 'house' : 'hut',
+						'building',
+						nx,
+						nz,
+						turnBy(face, deg(Math.round((r(6 + n * 3) - 0.5) * 30))),
+					)
+				)
+					stood++;
+			}
+			// A farm that found no neighbour does not stand alone: the barn goes too.
+			if (stood === 0) {
+				props.pop();
+				placer.placements.pop();
+			}
 		}
 	});
 
@@ -292,37 +324,42 @@ export function scatter(
 		}
 	});
 
-	// Trees: one draw per 22 m cell within 700 m of a road — dense in forest,
-	// thinning at its edge, a few stragglers in meadows — never in a village.
+	// Trees: one draw per 22 m cell within 700 m of a road, never in a
+	// village — in groups where the stand noise says so, conifers framing the
+	// road, a forest edge behind every clearing, a thinner forest out of sight.
+	const woods = forest([tree(-1, -1, -1), tree(-2, -2, -2)]);
 	cells(TREE_M, (i, j) => {
 		const [x, z] = jitter(i, j, TREE_M, u(tree(i, j, 1)), u(tree(i, j, 2)));
 		const b = biomeAt(x, z);
-		const p =
-			b === Biome.Forest
-				? 0.78
-				: b === Biome.Meadow
-					? 0.018
-					: b === Biome.Alpine
-						? 0.05
-						: 0;
-		if (u(tree(i, j, 0)) >= p) return;
 		const far = ground.roadDist(x, z);
+		if (b === null || far > TREES_WITHIN || inVillage(x, z)) return;
+		const g = woods.groupAt(e0 + x, n0 - z);
+		const frame = woods.frames(b, far, e0 + x, n0 - z);
+		if (u(tree(i, j, 0)) >= woods.chance(b, far, frame, g)) return;
+		if (far < 140 && !ground.clearOf(x, z, 11)) return;
+		const conifer = frame || heightAt(x, z) >= 900 || u(tree(i, j, 4)) >= 0.55;
+		// Heights vary by the stand, taller in its heart, and by the tree.
+		const tall = 0.6 + u(tree(i, j, 3)) * 0.6 + 0.35 * Math.max(0, g);
+		const kind = conifer ? 'spruce' : 'broadleaf';
+		stand(kind, 'kit', x, z, deg(Math.floor(u(tree(i, j, 5)) * 360)), tall);
+		// In the heart of a stand in sight a second tree grows close beside the first.
+		if (g < 0.3 || far > PAIR_M) return;
+		const [dx, dz] = ringAt(u(tree(i, j, 6)), u(tree(i, j, 7)), 3.5, 6.5);
+		const tx = x + dx;
+		const tz = z + dz;
 		if (
-			far > TREES_WITHIN ||
-			(far < 140 && !ground.clearOf(x, z, 11)) ||
-			inVillage(x, z)
+			ground.roadDist(tx, tz) >= FRAME_NEAR - 1 &&
+			ground.clearOf(tx, tz, 11) &&
+			!inVillage(tx, tz)
 		)
-			return;
-		const kind =
-			heightAt(x, z) < 900 && u(tree(i, j, 4)) < 0.55 ? 'broadleaf' : 'spruce';
-		stand(
-			kind,
-			'kit',
-			x,
-			z,
-			deg(Math.floor(u(tree(i, j, 5)) * 360)),
-			0.75 + u(tree(i, j, 3)) * 0.7,
-		);
+			stand(
+				kind,
+				'kit',
+				tx,
+				tz,
+				deg(Math.floor(u(tree(i, j, 8)) * 360)),
+				tall * (0.75 + u(tree(i, j, 9)) * 0.3),
+			);
 	});
 
 	return { props };
