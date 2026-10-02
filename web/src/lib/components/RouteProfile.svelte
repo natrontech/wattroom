@@ -65,7 +65,7 @@
 			{#if classed.length > 0}
 				{#each classed as c (c.startM)}
 					<span
-						class="bg-neon text-on-neon font-display absolute -translate-x-1/2 -translate-y-[calc(100%+4px)] rounded px-1.5 text-xs leading-5 font-bold"
+						class="bg-neon text-on-neon font-display absolute -translate-x-1/2 -translate-y-[calc(100%+4px)] rounded px-2 text-xs leading-5 font-bold"
 						style="left: {pct(c.topM)}; top: {topY(c)}"
 						aria-hidden="true">{c.cls}</span
 					>
@@ -97,7 +97,7 @@
 		aria-label="grade legend"
 	>
 		{#each LEGEND as label, i (label)}
-			<span class="flex items-center gap-1.5">
+			<span class="flex items-center gap-2">
 				<span class="{SWATCH[i]} inline-block h-2.5 w-4 rounded-sm"></span>
 				<span class="font-display tabular-nums">{label}</span>
 			</span>
@@ -110,7 +110,7 @@
 			aria-label="Climbs"
 		>
 			{#each classed as c (c.startM)}
-				<li class="flex items-center gap-3 py-1.5">
+				<li class="flex items-center gap-3 py-2">
 					<span
 						class="border-neon font-display w-8 rounded border text-center font-bold"
 						>{c.cls}</span
