@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ClimbTable from '$lib/components/ClimbTable.svelte';
 	import type { Climb } from '$lib/road/climbs';
 	import { kmTicks, profileArea, profilePath } from '$lib/road/draw';
 	import type { Road } from '$lib/road/road';
@@ -11,7 +12,16 @@
 	 * heights at the right. The words sit in HTML around the drawing, so the
 	 * area can stretch to any width while the type stays its size.
 	 */
-	let { road, climbs }: { road: Road; climbs: Climb[] } = $props();
+	let {
+		road,
+		climbs,
+		facts = true,
+	}: {
+		road: Road;
+		climbs: Climb[];
+		/** Each climb's facts under the legend; the route page sets its own table. */
+		facts?: boolean;
+	} = $props();
 
 	const W = 600;
 	const H = 140;
@@ -103,32 +113,9 @@
 			</span>
 		{/each}
 	</div>
-	{#if classed.length > 0}
-		<!-- Each climb's facts, until the route page's climbs table holds them (#3680). -->
-		<ul
-			class="border-frame divide-frame mt-3 divide-y border-t text-xs"
-			aria-label="Climbs"
-		>
-			{#each classed as c (c.startM)}
-				<li class="flex items-center gap-3 py-2">
-					<span
-						class="border-neon font-display w-8 rounded border text-center font-bold"
-						>{c.cls}</span
-					>
-					<span class="font-display tabular-nums"
-						>{((c.topM - c.startM) / 1000).toFixed(1)} km · {(
-							(c.gainM / (c.topM - c.startM || 1)) *
-							100
-						).toFixed(1)} %</span
-					>
-					<span class="font-display tabular-nums">{Math.round(c.gainM)} m</span>
-					<span class="text-muted ml-auto"
-						>top at <span class="font-display tabular-nums"
-							>{(c.topM / 1000).toFixed(1)} km</span
-						></span
-					>
-				</li>
-			{/each}
-		</ul>
+	{#if facts && classed.length > 0}
+		<div class="border-frame mt-3 border-t">
+			<ClimbTable {climbs} head={false} />
+		</div>
 	{/if}
 </figure>

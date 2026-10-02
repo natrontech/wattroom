@@ -24,6 +24,8 @@ export type StoredRoute = {
 	road?: string;
 	/** Why the map is missing, when it is. */
 	hint?: string;
+	/** On one route's read: it ends where it began. Absent before #3680. */
+	loop?: boolean;
 };
 
 /** The stored road, from the base64 one route's read carries. */
@@ -37,4 +39,25 @@ export function shapeLine(shape: string): { x: number[]; z: number[] } {
 	const points = decodePolyline6(shape).map((p) => ({ ...p, ele: 0 }));
 	const { x, z } = project(points, frameOf(points));
 	return { x, z };
+}
+
+/**
+ * The route page's stat row (#3680), part by part: “7.1 km”, “563 m
+ * climbed”, “1 classed climb”, “point to point”. Loop or point to point only
+ * where it is known — from the importer, or from the owner's map — never
+ * guessed.
+ */
+export function statRow(
+	route: StoredRoute,
+	loop: boolean | undefined,
+): string[] {
+	const classed = route.climbs.filter((c) => c.cls).length;
+	return [
+		`${(route.lengthM / 1000).toFixed(1)} km`,
+		`${route.gainM} m climbed`,
+		classed === 0
+			? 'no classed climb'
+			: `${classed} classed climb${classed === 1 ? '' : 's'}`,
+		...(loop === undefined ? [] : [loop ? 'loop' : 'point to point']),
+	];
 }

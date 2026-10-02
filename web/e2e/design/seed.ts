@@ -8,9 +8,10 @@ import { hairpinGpx, rollingGpx } from '../road-gpx';
 
 /** The fixture roads, each by the name its owner gives it on import. */
 export const ROADS = {
-	// Renamed with #3725's geometry, so a road seeded before it is not found and reused.
-	hairpin: { name: 'Design switchbacks', gpx: hairpinGpx },
-	rolling: { name: 'Design rolling', gpx: rollingGpx },
+	// Renamed with #3680's loop flag, so a road seeded before the importer
+	// sent it is not found and reused.
+	hairpin: { name: 'Design hairpins', gpx: hairpinGpx },
+	rolling: { name: 'Design rollers', gpx: rollingGpx },
 } as const;
 export type RoadName = keyof typeof ROADS;
 
