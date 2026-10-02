@@ -224,16 +224,14 @@ describe('RACE (#3174)', () => {
 		expect(pagesFor(undefined, race())).toEqual(['ride', 'race']);
 	});
 
-	it('is the gap to par, then your place in your Category, then W/kg', () => {
+	it('is the gap to par, then your place in your Category, and W/kg stays in its one home', () => {
 		const fields = fieldsFor('race', ride({ race: race() }));
-		expect(keys(fields)).toEqual(['par', 'place', 'wkg']);
+		expect(keys(fields)).toEqual(['par', 'place']);
 		expect(field(fields, 'par')).toMatchObject({ value: '+0:18', neon: true });
 		expect(field(fields, 'place')).toMatchObject({
 			label: 'in C',
 			value: '2nd of 4',
 		});
-		// 251 W at 75 kg.
-		expect(field(fields, 'wkg').value).toBe('3.3');
 		expect(field(fields, 'par').label).toBe('vs par');
 	});
 

@@ -479,7 +479,7 @@ Every surface id below is also in `docs/design/surface-map.json`, which maps the
 **Canon:** ADR-0067, ADR-0071; SPEC “Races”, “The bike computer”.
 
 **Must match**
-1. The RACE page reads, in this order: the gap to your Category's par (label “vs par”, “+0:18” ahead and “−0:18” behind), your place in your Category (label “in C”, “2nd of 2”), then W/kg, in two columns that each keep one left edge. [#3174]
+1. The RACE page reads, in this order: the gap to your Category's par (label “vs par”, “+0:18” ahead and “−0:18” behind), then your place in your Category (label “in C”, “2nd of 2”). W/kg stays in its one home, beside the 3 s power (“One home per number”), and the page is as tall as RIDE. [#3174] [multi:ride-race-ride]
 2. The gap to par and the place are the race model's: neon, flat, never watt and never glowing. The page glows nothing. [#3174] [probe:wattCount]
 3. The gap to par leads the page at the computer's number size, never larger than the 3 s power: “One home per number” keeps the 3 s power the largest number on the surface. [#3174]
 4. The team-car radio is one labelled line in slot 1, its words at least 24 px, saying one closed phrase at most every 20 s, and never a number the RACE page shows (D17). [#3174] [test:web/src/lib/race/radio.test.ts]

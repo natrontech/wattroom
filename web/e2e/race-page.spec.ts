@@ -6,7 +6,7 @@ import { climbGpx } from './road-gpx';
  * The RACE page and the team-car radio (#3174): two riders race the coach's
  * road on simulated trainers. Through the neutral zone the page has no par
  * yet and the radio calls it; from km 0 the page reads the gap to par, the
- * rider's place in their Category and W/kg, and the radio says the race is
+ * rider's place in their Category, and the radio says the race is
  * on. No screen starts a race yet, so the coach's socket sends the start the
  * hub takes from a client (ADR-0067: a race opens its own session on a road).
  */
@@ -91,14 +91,13 @@ test('a race shows its RACE page and calls it on the team-car radio', async ({
 	await expect(par).toContainText('—');
 	await expect(radio).toContainText('Neutral zone.');
 
-	// From km 0: the gap to par, a place among two, W/kg — and the call.
+	// From km 0: the gap to par, a place among two — and the call.
 	await expect(par).toContainText(/[+−]\d+:\d\d/, {
 		timeout: NEUTRAL_MS + 30_000,
 	});
 	await expect(coach.locator('[data-field="place"]')).toContainText(
 		/in [A-D]\s*(1st|2nd) of 2/,
 	);
-	await expect(coach.locator('[data-field="wkg"]')).toContainText(/\d\.\d/);
 	await expect(radio).toContainText(/km 0\. Race on\.|to the line\./, {
 		timeout: 30_000,
 	});

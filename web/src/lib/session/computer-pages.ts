@@ -105,7 +105,7 @@ export function turned(
 export function fieldsFor(page: ComputerPage, ctx: ComputerContext): Field[] {
 	const measured = (value: string) => (ctx.stale ? '—' : value);
 	const stats = ctx.stats?.seconds ? ctx.stats : undefined;
-	if (page === 'race') return raceFields(ctx, measured);
+	if (page === 'race') return raceFields(ctx);
 	if (page === 'power') {
 		const s = ctx.stats;
 		if (!s) return [];
@@ -216,19 +216,16 @@ export function fieldsFor(page: ComputerPage, ctx: ComputerContext): Field[] {
 }
 
 /**
- * RACE (#3174): the gap to your Category's par first, your place in your
- * Category, then W/kg. The par and the place are the race model's, so they
- * are neon and never watt — only your live power is. The gap leads at the
- * computer's number size: the 3 s power stays the largest number on the
- * surface (docs/design/TARGETS.md "One home per number").
+ * RACE (#3174): the gap to your Category's par, then your place in your
+ * Category — the race model's, so neon and never watt; only your live power
+ * is. The gap leads at the computer's number size, and W/kg stays in its one
+ * home beside the 3 s power: the 3 s power is the largest number on the
+ * surface, and no number shows twice (docs/design/TARGETS.md "One home per
+ * number").
  */
-function raceFields(
-	ctx: ComputerContext,
-	measured: (value: string) => string,
-): Field[] {
+function raceFields(ctx: ComputerContext): Field[] {
 	const race = ctx.race;
 	if (!race) return [];
-	const power = ctx.stats?.seconds ? ctx.stats.power3 : ctx.watts;
 	return [
 		{
 			key: 'par',
@@ -243,7 +240,6 @@ function raceFields(
 			value: `${ordinal(race.place)} of ${race.of}`,
 			neon: true,
 		},
-		{ key: 'wkg', label: 'W/kg', value: measured(wkg(power, ctx.kg)) },
 	];
 }
 
