@@ -31,8 +31,31 @@
 	import type { BunchView } from '$lib/channel/bunch-view';
 	import { account } from '$lib/account.svelte';
 	import { generate } from './world';
+	import type { Viewer } from '$lib/wardrobe/guard';
 	// The dev gallery's blue hour, until #3085 gives the ride its own look.
 	import { STYLES } from '../../routes/(app)/dev/world/styles';
+
+	/** The viewer's live-data colours as `el`'s theme resolves them: what every kit colour is guarded against (#3156). */
+	function viewerOf(el: Element): Viewer {
+		const probe = document.createElement('span');
+		probe.hidden = true;
+		el.append(probe);
+		const hex = (token: string) => {
+			probe.style.color = `var(--color-${token})`;
+			const rgb = getComputedStyle(probe)
+				.color.match(/[\d.]+/g)!
+				.slice(0, 3);
+			return `#${rgb.map((v) => Math.round(Number(v)).toString(16).padStart(2, '0')).join('')}`;
+		};
+		try {
+			return {
+				watt: hex('watt'),
+				zones: [1, 2, 3, 4, 5, 6, 7].map((z) => hex(`z${z}`)),
+			};
+		} finally {
+			probe.remove();
+		}
+	}
 
 	let {
 		road,
@@ -79,6 +102,7 @@
 					youId: account.me?.id,
 					// The theme's neon as the canvas resolves it, for the coach's chevron.
 					neon: getComputedStyle(canvas!).color,
+					viewer: viewerOf(canvas!.parentElement ?? document.body),
 					// When, at what speed, and where: two screens read a moment apart still compare.
 					onTick: (hud) => {
 						canvas!.dataset.riders = JSON.stringify({
