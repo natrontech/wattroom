@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { beforeAll, describe, expect, it } from 'vitest';
 import { toRoute } from '$lib/road/route';
-import { STYLES } from '../../../routes/(app)/dev/world/styles';
+import { RIDE } from '../look.test-helper';
 import { syntheticPoints } from '../synthetic';
 import { generate, type World } from '../world';
 import { bannerRefusals, inWattBand } from './safety';
@@ -176,20 +176,8 @@ describe('the dev world against O13', () => {
 		).toEqual([]);
 	});
 
-	/** Colours on the ride that sit in the watt band, and who takes them out. Live data — the trail, the zone rings — may. */
-	const IN_BAND: Record<string, string> = {
-		'props.hiking':
-			'#3085 gives the ride its own look: the hiking sign’s yellow reads as a yellow identity’s watt',
-		'props.flags.0':
-			'#3085: a summit flag’s red reads as a red identity’s watt',
-		'props.flags.2':
-			'#3085: a summit flag’s red reads as a red identity’s watt',
-		'props.flags.3':
-			'#3085: a summit flag’s yellow reads as a yellow identity’s watt',
-	};
-
-	it('dresses the ride in no colour that reads as live data, or names who changes it', () => {
-		const ride = STYLES.find((s) => s.id === 'bluehour')!;
+	/** Live data — the trail, the zone rings — may sit in the watt band; nothing else on the ride does. */
+	it('dresses the ride in no colour that reads as live data', () => {
 		const found: string[] = [];
 		const walk = (o: unknown, path: string): void => {
 			if (typeof o === 'string') {
@@ -198,14 +186,10 @@ describe('the dev world against O13', () => {
 				for (const [k, v] of Object.entries(o))
 					walk(v, path ? `${path}.${k}` : k);
 		};
-		const { trail, zones, ...objects } = ride;
+		const { trail, zones, ...objects } = RIDE;
 		void trail;
 		void zones;
 		walk(objects, '');
-		expect(found.filter((p) => !IN_BAND[p])).toEqual([]);
-		expect(
-			Object.keys(IN_BAND).filter((p) => !found.includes(p)),
-			'no longer in band: take it out of IN_BAND',
-		).toEqual([]);
+		expect(found).toEqual([]);
 	});
 });

@@ -1,12 +1,15 @@
 // An art style is data: the same World drawn with different colours, lines
-// and light. One light chunk shades every terrain — soft bands, a violet
-// shadow tint (never black), sky fill, baked AO, fog that warms toward the
-// sun — and the sky's horizon IS the fog colour, so land dissolves into sky.
+// and light. One light chunk shades every terrain — soft bands under a sun
+// that is up, the sky's soft light once it has set, a shadow tint (never
+// black), sky fill, baked AO, fog that leans toward the sun — and the sky's
+// horizon IS the fog colour, so land dissolves into sky.
 //
 // The colours themselves are the caller's: this module knows the shape of a
-// style, never its values, so the engine carries no palette of its own.
+// style, never its values, so the engine carries no palette of its own. How
+// the light falls is light.ts's; the shaders here take it as uniforms.
 import * as THREE from 'three';
 import type { Biome } from './biome';
+import { sunDir, type Light } from './light';
 import type { SignLook } from './setpieces';
 
 export type Palette = Record<Biome, string>;
@@ -50,9 +53,14 @@ export type Style = {
 	id: string;
 	label: string;
 	ride: boolean; // cave-safe: legible live watts on it (ADR-0005); desk-only otherwise
-	sky: { top: string; horizon: string; sunward: string };
+	sky: {
+		top: string;
+		horizon: string; // and the fog: one colour
+		sunward: string;
+		band?: string; // a thin band on the horizon: the ride's peach alpenglow
+	};
 	sun: {
-		elevation: number; // degrees
+		elevation: number; // degrees; below 0 the sky alone lights the look, and the ride's progress sinks it
 		azimuth: number; // degrees
 		disc: 'halo' | 'stripes' | 'none';
 		color: string;
@@ -62,7 +70,7 @@ export type Style = {
 	bands: number; // 0 = smooth, 1 = unlit, 2–3 = soft cel bands
 	shade: string; // shadow tint
 	skyFill: number;
-	key: string; // sunlight colour on props
+	key: string; // the light's colour: the sun's while it is up, the sky's once it has set
 	palette: Palette;
 	grid: { color: string; size: number; alpha: number } | null; // flats only
 	contours: { color: string; index: string; step: number } | null;
@@ -79,24 +87,27 @@ export type Style = {
 	arch: { chrome: string; panel: string; stripe: string; text: string };
 };
 
-export function sunDir(style: Style): THREE.Vector3 {
-	const e = (style.sun.elevation * Math.PI) / 180;
-	const a = (style.sun.azimuth * Math.PI) / 180;
-	return new THREE.Vector3(
-		Math.sin(a) * Math.cos(e),
-		Math.sin(e),
-		-Math.cos(a) * Math.cos(e),
-	).normalize();
-}
-
 const col = (s: string | undefined) =>
 	s ? new THREE.Color(s) : new THREE.Color(0, 0, 0);
+
+const sunOf = (style: Style) => sunDir(style.sun.elevation, style.sun.azimuth);
+
+/** Puts a light (light.ts) on the sky's or the ground's shader. */
+export function setLight(m: THREE.ShaderMaterial, light: Light) {
+	const u = m.uniforms;
+	u.uSun.value.copy(light.sun);
+	u.uDusk.value = light.dusk;
+	if (u.uFrom) u.uFrom.value.copy(light.from);
+	if (u.uPeach) u.uPeach.value = light.peach;
+}
 
 // The shared light: one chunk, every terrain, every style.
 export function terrainMaterial(style: Style): THREE.ShaderMaterial {
 	return new THREE.ShaderMaterial({
 		uniforms: {
-			uSun: { value: sunDir(style) },
+			uSun: { value: sunOf(style) },
+			uFrom: { value: sunOf(style) },
+			uDusk: { value: 1 },
 			uKey: { value: col(style.key) },
 			uShade: { value: col(style.shade) },
 			uSkyTop: { value: col(style.sky.top) },
@@ -126,8 +137,8 @@ export function terrainMaterial(style: Style): THREE.ShaderMaterial {
 				gl_Position = projectionMatrix * viewMatrix * world;
 			}`,
 		fragmentShader: /* glsl */ `
-			uniform vec3 uSun, uKey, uShade, uSkyTop, uHorizon, uSunward, uGridColor, uContour, uIndex, uValley, uPeak;
-			uniform float uFogK, uBands, uSkyFill, uGridSize, uGridAlpha, uContourStep, uImhof;
+			uniform vec3 uSun, uFrom, uKey, uShade, uSkyTop, uHorizon, uSunward, uGridColor, uContour, uIndex, uValley, uPeak;
+			uniform float uFogK, uBands, uSkyFill, uGridSize, uGridAlpha, uContourStep, uImhof, uDusk;
 			varying vec3 vColor; varying vec3 vPos; varying float vAo;
 			void main() {
 				vec3 n = normalize(cross(dFdx(vPos), dFdy(vPos)));
@@ -138,7 +149,7 @@ export function terrainMaterial(style: Style): THREE.ShaderMaterial {
 					float hs = clamp(dot(n, normalize(vec3(-1.0, 1.4, -1.0))), 0.0, 1.0);
 					col = mix(uValley, uPeak, hs) * (base / max(max(base.r, base.g), max(base.b, 0.001)) * 0.12 + 0.88);
 				} else {
-					float lam = dot(n, uSun) * 0.5 + 0.5; // half-Lambert
+					float lam = dot(n, uFrom) * 0.5 + 0.5; // half-Lambert, from the sun or, once it has set, the zenith
 					if (uBands > 1.5) {
 						float fw = fwidth(lam) * (1.0 + dist / 800.0); // soft band edges, blurred with distance so far facets never crawl
 						float q = lam * uBands;
@@ -167,14 +178,16 @@ export function terrainMaterial(style: Style): THREE.ShaderMaterial {
 				vec3 view = normalize(vPos - cameraPosition);
 				vec3 fogCol = mix(uHorizon, uSunward, pow(max(dot(view, uSun), 0.0), 8.0));
 				vec3 ext = exp(-dist * uFogK * vec3(1.3, 1.0, 0.75)); // red fades first: aerial perspective
-				gl_FragColor = vec4(mix(fogCol, col, ext), 1.0);
+				gl_FragColor = vec4(mix(fogCol, col, ext) * uDusk, 1.0);
 				#include <colorspace_fragment>
 			}`,
 	});
 }
 
-// A sky whose horizon is exactly the fog colour; a halo toward a low sun, or
-// a flat striped disc for synthwave — never bloomed, never a glow.
+// A sky whose horizon is exactly the fog colour; a thin band on the horizon
+// where the look has one — the ride's peach, a little taller toward the sun;
+// a halo toward a low sun, or a flat striped disc for synthwave — never
+// bloomed, never a glow.
 export function skyMaterial(style: Style): THREE.ShaderMaterial {
 	return new THREE.ShaderMaterial({
 		side: THREE.BackSide,
@@ -185,7 +198,10 @@ export function skyMaterial(style: Style): THREE.ShaderMaterial {
 			uTop: { value: col(style.sky.top) },
 			uHorizon: { value: col(style.sky.horizon) },
 			uSunward: { value: col(style.sky.sunward) },
-			uSun: { value: sunDir(style) },
+			uBand: { value: col(style.sky.band) },
+			uPeach: { value: 0 },
+			uDusk: { value: 1 },
+			uSun: { value: sunOf(style) },
 			uSunCol: { value: col(style.sun.color) },
 			uSunLow: { value: col(style.sun.low ?? style.sun.color) },
 			uDisc: {
@@ -194,12 +210,14 @@ export function skyMaterial(style: Style): THREE.ShaderMaterial {
 			},
 		},
 		vertexShader: /* glsl */ `varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-		fragmentShader: /* glsl */ `uniform vec3 uTop, uHorizon, uSunward, uSun, uSunCol, uSunLow; uniform float uDisc; varying vec3 vDir;
+		fragmentShader: /* glsl */ `uniform vec3 uTop, uHorizon, uSunward, uBand, uSun, uSunCol, uSunLow; uniform float uDisc, uPeach, uDusk; varying vec3 vDir;
 			void main(){
 				float h = max(vDir.y, 0.0);
 				float s = max(dot(vDir, uSun), 0.0);
 				vec3 hor = mix(uHorizon, uSunward, pow(s, 8.0));
 				vec3 c = mix(hor, uTop, pow(h, 0.45));
+				float bh = 0.03 * (1.0 + 0.5 * pow(s, 4.0)); // about 2° high, never a tenth of the sky
+				c = mix(c, uBand, uPeach * smoothstep(-0.01, 0.0, vDir.y) * (1.0 - smoothstep(0.0, bh, vDir.y)));
 				if (uDisc > 0.5) c += uSunward * pow(s, 6.0) * 0.35 + hor * exp(-abs(vDir.y) * 14.0) * 0.12;
 				if (uDisc > 1.5) { // the outrun sun: flat disc, horizontal gaps widening toward the bottom
 					vec3 toSun = vDir - uSun;
@@ -211,7 +229,7 @@ export function skyMaterial(style: Style): THREE.ShaderMaterial {
 						c = mix(c, disc, (1.0 - gap) * (1.0 - smoothstep(0.155, 0.16, r)));
 					}
 				}
-				gl_FragColor = vec4(c, 1.0);
+				gl_FragColor = vec4(c * uDusk, 1.0);
 				#include <colorspace_fragment>
 			}`,
 	});

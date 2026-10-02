@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { at } from '$lib/road/along';
 import { toRoute, type Route } from '$lib/road/route';
-import { STYLES } from '../../routes/(app)/dev/world/styles';
+import { RIDE } from './look.test-helper';
 import { pageGrids } from './chunks/grids';
 import { compose, type Composed } from './compose';
 import type { Family } from './family';
@@ -301,7 +301,7 @@ describe('the ride’s scene budget, high tier (#3083)', () => {
 	let world: World;
 	let w: Composed;
 	const frames: Frame[] = [];
-	const style = STYLES.find((s) => s.id === 'bluehour') ?? STYLES[0];
+	const style = RIDE;
 
 	beforeAll(() => {
 		route = toRoute(syntheticPoints());

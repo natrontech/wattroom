@@ -243,6 +243,7 @@
 					metre={() => channel.ridden ?? { m: 0, mps: 0 }}
 					watts={channel.you.watts}
 					ftp={channel.you.ftp}
+					progress={total > 0 ? elapsed / total : null}
 					paused={inFocus === 'media'}
 					onfail={world.fail}
 					onflat={world.flatten}

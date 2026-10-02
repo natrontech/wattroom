@@ -124,6 +124,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	);
 	let stage: Stage | null = null;
 	let crew: Crew | null = null;
+	let progress: number | null = moment ? moment.p : null;
 	let controls: OrbitControls | null = null;
 
 	function applyMode() {
@@ -156,7 +157,13 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		crew = makeCrew(riders, style);
 		scene.add(stage.group, crew.group);
 		scene.fog = new THREE.FogExp2(style.sky.horizon, style.fogK * 1.1);
+		light();
 		applyMode();
+	}
+
+	/** The sky, the ground and the fog at the ride's progress. */
+	function light() {
+		if (stage && scene.fog) scene.fog.color.copy(stage.light(progress));
 	}
 
 	function hud(): Hud {
@@ -229,6 +236,11 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		},
 		setSpeedup(factor: number) {
 			speedup = factor;
+		},
+		/** The ride's progress, 0–1, for the light; null when it has no known end (ADR-0072). */
+		setProgress(p: number | null) {
+			progress = p;
+			light();
 		},
 		/** Nothing moves: a held moment, or you have stopped pedalling, every rider stands and nobody turns the model. */
 		idle: () =>
