@@ -402,6 +402,11 @@ surface('ride-road-end', async (s) => {
 		.getByRole('link', { name: 'See it in your history' })
 		.waitFor({ timeout: 30_000 });
 	await s.shot(o, { name: 'closing-card-road', full: true });
+	// F1's last step (#3680): the road's name opens its page, the ride on it.
+	await o.page.getByRole('link', { name: ROADS.hairpin.name }).click();
+	await o.page.waitForURL(`**/workouts/routes/${road}`);
+	await o.page.waitForTimeout(2500);
+	await s.shot(o, { name: 'route-after-ride', full: true });
 });
 
 // ─── B. The world's look ─────────────────────────────────────────────────
