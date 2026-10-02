@@ -27,9 +27,17 @@ export function parseSharedWorkout(workoutJson: string | undefined): Parsed {
 	if (last?.json === workoutJson) return last.parsed;
 	let parsed: Parsed = EMPTY;
 	try {
-		const checked = validateWorkout(JSON.parse(workoutJson));
+		const raw = JSON.parse(workoutJson);
+		const checked = validateWorkout(raw);
 		if (checked.ok)
 			parsed = { workout: checked.workout, segments: flatten(checked.workout) };
+		// A game's workout has no steps, only the road it rides (#3114): nothing
+		// to ride by the clock, and a road the world draws all the same.
+		else if (raw?.road && Array.isArray(raw.steps) && raw.steps.length === 0)
+			parsed = {
+				workout: { name: String(raw.name ?? ''), steps: [], road: raw.road },
+				segments: [],
+			};
 	} catch {
 		parsed = EMPTY;
 	}

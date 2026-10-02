@@ -18,9 +18,9 @@ const world = {
 	markers: hairpins.map((d) => ({ kind: 'hairpin', d, label: '' })),
 } as unknown as World;
 
-const view = (m: number, at: number, play?: GamePlay): BunchView => ({
+const view = (m: number, at: number, play?: GamePlay, mps = 8): BunchView => ({
 	m,
-	mps: 8,
+	mps,
 	at,
 	elapsed: at / 1000,
 	order: ['a', 'b'],
@@ -91,6 +91,32 @@ describe('a game on the road (#3114)', () => {
 			false,
 		);
 		expect(arches(g.group)).toHaveLength(0);
+	});
+
+	it('aims the arch from the bunch’s speed while it is out of sight, and never moves it in sight', () => {
+		const g = makeGameRoad(route, world, style);
+		const play: GamePlay = {
+			mode: 'backyard-ramp',
+			round: 1,
+			roundEndsAt: 180_000,
+			out: [],
+		};
+		// The game's first tick: the bunch is still standing, with no speed to aim by.
+		g.update(view(0, 0, play, 0), 0, 0, false);
+		expect(arches(g.group)).toHaveLength(0);
+		// Rolling at 6 m/s, 3 min to go: aimed 1,080 m on.
+		g.update(view(10, 0, play, 6), 0, 0, false);
+		expect(arches(g.group)[0].position.x).toBeCloseTo(
+			at(route, 10 + 6 * 180).x,
+			3,
+		);
+		// Up to speed, 1.4 km to go: re-aimed while still out of sight.
+		g.update(view(40, 5000, play), 5, 0, false);
+		const aimed = at(route, 40 + 8 * 175);
+		expect(arches(g.group)[0].position.x).toBeCloseTo(aimed.x, 3);
+		// In sight: a slower bunch no longer moves it.
+		g.update(view(500, 120_000, play, 6), 120, 0, false);
+		expect(arches(g.group)[0].position.x).toBeCloseTo(aimed.x, 3);
 	});
 
 	it('raises Collective Ramp’s fog a round at a time, stepping under reduced motion', () => {

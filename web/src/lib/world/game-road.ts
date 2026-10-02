@@ -29,6 +29,8 @@ const FOG_ROUNDS = 10;
 const FOG_CLEAR_M = 12;
 /** Half the fog sea's side, metres: past the fog's own horizon. */
 const FOG_HALF_M = 30_000;
+/** Metres ahead past which the round's arch still follows the bunch's speed: too far to see it move. */
+const AIM_M = 1000;
 
 /**
  * Where a rider put out stands next (SPEC "The roadside"): the first hairpin
@@ -101,6 +103,13 @@ export function makeGameRoad(route: Route, world: World, style: Style) {
 		held = { round, m, mesh };
 	}
 
+	/** Where `furniture.arch` stands an arch at `m`: on the road, square to it. */
+	function put(mesh: THREE.Object3D, m: number) {
+		const p = at(route, m);
+		mesh.position.set(p.x, yOf(route, p.ele) + 0.1, p.z);
+		mesh.rotation.y = p.heading;
+	}
+
 	function dropArch() {
 		if (!held) return;
 		group.remove(held.mesh);
@@ -136,20 +145,24 @@ export function makeGameRoad(route: Route, world: World, style: Style) {
 		 */
 		update(view: BunchView, clock: number, real: number, steady: boolean) {
 			const play = view.play;
-			// The round that starts next stands where the bunch will be when this one ends, held for the round.
-			// ponytail: placed once from the bunch's speed; it rides the round's line on a road, so it lands near.
+			// The round that starts next stands where the bunch will be when this
+			// one ends: aimed from the bunch's speed while it is too far off to
+			// see move, then held, so it never slides once a rider can see it.
 			if (
 				play?.mode === 'backyard-ramp' &&
 				play.roundEndsAt !== undefined &&
 				view.at !== undefined
 			) {
 				const next = play.round + 1;
-				if (held?.round !== next)
-					archAt(
-						next,
-						view.m +
-							(view.mps * Math.max(0, play.roundEndsAt - view.at)) / 1000,
-					);
+				const aim =
+					view.m + (view.mps * Math.max(0, play.roundEndsAt - view.at)) / 1000;
+				// A standing bunch has no speed to aim by: the arch waits for it to roll.
+				if (held?.round !== next) {
+					if (view.mps > 1) archAt(next, aim);
+				} else if (held.m - view.m > AIM_M && held.m !== aim) {
+					held.m = aim;
+					put(held.mesh, aim);
+				}
 			} else dropArch();
 
 			if (play?.mode === 'collective-ramp') {
