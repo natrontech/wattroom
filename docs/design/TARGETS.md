@@ -301,7 +301,14 @@ Every surface id below is also in `docs/design/surface-map.json`, which maps the
     - The grain holds still under the moving camera. [multi:world-drift]
     - Snow poles belong to #3184.
     [world-road-surface]
-22. Conifer stands frame the road within 10–30 m, and their crowns cross the horizon line. [multi:world-60s] [world-forest]
+22. The forest.
+    - Across a 60 s sequence, most frames show conifer stands within 10–30 m of the road on at least one side. [multi:world-60s]
+    - Tree crowns cross the horizon line on at least one side.
+    - Trees grow in groups of varied height, never as evenly spaced single cones.
+    - A meadow is a clearing with a forest edge behind it.
+    - Houses sit in small clusters near the road.
+    - No tree or building stands on the road, the shoulder or the corridor. [test:web/src/lib/world/props/props.test.ts]
+    [world-forest]
 23. Your figure is ADR-0073's, on a drop-bar road bike with spoked wheels: kit, helmet and glasses, and no face. Every kit passes the wardrobe's colour guard (`lib/world/placement/safety.ts`, `wattHueBandDeg` in catalogue.json). [world-figure]
 24. Framing.
     - The figure fills 20–30 % of the canvas height. [probe:figure.bboxH]
@@ -631,6 +638,7 @@ Every surface id below is also in `docs/design/surface-map.json`, which maps the
 1. Two loads of the same URL give an identical frame. [world-moment] [multi:world-start-twice]
 2. With `chrome=0`, no dev chrome shows. [world-moment]
 3. At p=0 there are no stars. At p=1, stars show only in the dark upper sky, never in the peach band, and the light is visibly darker. [3085-ride-light]
+4. The forest is as in ride-road-world item 22, from one still: stands within 10–30 m of the road, crowns over the horizon, groups of varied height, clusters of houses. [world-forest]
 
 ### C. Roads library (desk)
 
