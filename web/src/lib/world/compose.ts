@@ -263,10 +263,15 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		}
 		for (const id of crewmates.keys())
 			if (!placed.has(id)) crewmates.delete(id);
-		// Not in it — watching, or before the plan runs: you ride the ride's metre, as alone.
+		// Not in it — watching, or before the plan runs: you ride the ride's
+		// metre, as alone, and wear no chevron the bunch did not give you. A
+		// coach with no trainer drives the team car instead, so their own
+		// figure is not drawn: the car is them (#3771).
 		if (!placed.has(you.id)) {
 			if (opts.metre) follow(you, opts.metre(), real);
-			you.lane = you.alpha = undefined;
+			you.lane = undefined;
+			you.alpha = out.car?.coach && view.coach === you.id ? 0 : undefined;
+			you.coach = false;
 		}
 		riders = [you, ...crewmates.values()];
 		car = out.car;

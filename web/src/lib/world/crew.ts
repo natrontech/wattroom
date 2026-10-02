@@ -308,6 +308,8 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 					v.group.position.y + 1.1,
 					v.group.position.z,
 				);
+				// No figure, no trail: a coach in the team car leaves none (#3771).
+				if (trail) trail.mesh.visible = alpha > 0;
 				trail?.follow(route, r.d, lane);
 			}
 		});
