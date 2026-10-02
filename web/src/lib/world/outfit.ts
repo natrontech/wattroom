@@ -208,18 +208,27 @@ const SEEDED_JERSEYS = catalogue.items.filter(
 /** The colours a seeded look picks from, and the darks its shorts take. */
 const KIT_COLOURS = catalogue.palette.map((p) => p.id);
 const DARKS = ['ink', 'graphite', 'night', 'slate'];
+/** Jersey colours that never read as bare skin: clear of every skin tone and of the neutral figure's mid grey. */
+const CLOTH = KIT_COLOURS.filter((id) => {
+	const hex = hexOf.get(id)!;
+	const k = hexToOklch(hex);
+	return (
+		catalogue.skinTones.every((s) => perceptualDistance(hex, s.hex) > 0.08) &&
+		!(k.c < 0.04 && k.l > 0.45 && k.l < 0.8)
+	);
+});
 
 /** A look for a rider who has chosen none: seeded from their id, so every screen dresses them alike. */
 export function seededLoadout(id: string): Loadout {
 	const r = prng(fnv(id, 0x9e3779b9));
 	const pick = <T>(xs: readonly T[]) => xs[Math.floor(r() * xs.length)];
-	const apart = (than: string) =>
+	const apart = (than: string, from = CLOTH) =>
 		pick(
-			KIT_COLOURS.filter(
+			from.filter(
 				(c) => perceptualDistance(hexOf.get(c)!, hexOf.get(than)!) > 0.18,
 			),
 		);
-	const a = pick(KIT_COLOURS);
+	const a = pick(CLOTH);
 	const b = apart(a);
 	return {
 		...STARTER,
@@ -232,7 +241,8 @@ export function seededLoadout(id: string): Loadout {
 			jerseyC: apart(b),
 			shorts: pick(DARKS),
 			shortsAccent: a,
-			helmet: pick(KIT_COLOURS),
+			// Never the hair's colour: from behind, a helmet must read as a helmet.
+			helmet: apart(String(STARTER.colours?.hair), KIT_COLOURS),
 			socks: pick(['snow', 'ink', b]),
 			sockAccent: a,
 			frame: pick([...DARKS, a]),

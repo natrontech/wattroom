@@ -30,7 +30,8 @@ export const patternIndex = (pattern: string): number =>
  * `jersey(a, sp, pc)`: the jersey's colour at a vertex whose main colour is
  * `a`, in pattern space `sp` (1 the torso, 2 a sleeve). On the torso, pc is
  * the torso bone's rest space — y up the back over uTorso metres, x to the
- * front, z across; a sleeve is one colour.
+ * front, z across; on a sleeve, (along it from the shoulder joint as a
+ * share of the arm, round it, side).
  * Every edge is anti-aliased by its own footprint (`aa`), so a pattern never
  * crawls at chase distance.
  */
@@ -39,6 +40,7 @@ uniform float uPattern;
 uniform float uTorso;
 uniform vec3 uJerseyB;
 uniform vec3 uJerseyC;
+const float DOT_M = 0.06; // metres between Gipfelpunkte's dots
 float inside(float d) { return 1.0 - aa(0.0, d); }
 vec3 jersey(vec3 a, float sp, vec3 pc) {
 	int p = int(uPattern + 0.5);
@@ -68,11 +70,24 @@ vec3 jersey(vec3 a, float sp, vec3 pc) {
 			b = x + y - 2.0 * x * y; // a checker: either band, never both
 		} else if (p == 10) b = inside(abs(fract(v * 9.0 + 0.25 * sin(u * 18.85)) - 0.5) - 0.08);
 		else if (p == 11) {
-			vec2 f = fract(vec2(u * 14.0, v * 9.0)) - 0.5;
-			b = inside(length(f) - 0.28);
+			// Dots laid out by arc length round the body, so they stay round where the torso narrows; they fade before the hem and the collar turn away.
+			float row = floor(pc.y / DOT_M);
+			float arc = u * 6.2831853 * length(pc.xz) / DOT_M + row * 0.5;
+			b = inside(length(vec2(fract(arc), fract(pc.y / DOT_M)) - 0.5) - 0.28) * smoothstep(-0.06, 0.02, v) * (1.0 - smoothstep(0.98, 1.04, v));
 		}
-	} else if (p == 1 || p == 7 || p == 8) b = 1.0; // a sleeve is one colour: the yoke's, the fade's top or the upper block's
-	// Every other pattern leaves the sleeve its main colour, so the torso's bands meet the shoulder seam cleanly.
+	} else if (p == 1 || p == 7 || p == 8) b = 1.0; // the yoke's, the fade's top or the upper block's colour runs down the sleeve
+	else {
+		// Down the sleeve from the shoulder joint, at the torso's spacing; the cap over the shoulder keeps the main colour, so the two never cross.
+		float s = pc.x;
+		float arm = smoothstep(0.02, 0.06, s);
+		float hoop = inside(abs(fract(s * 6.0) - 0.25) - 0.25);
+		float stripe = inside(abs(fract(pc.y * 8.0) - 0.25) - 0.25);
+		if (p == 3) b = hoop;
+		else if (p == 5) b = stripe;
+		else if (p == 9) b = hoop + stripe - 2.0 * hoop * stripe;
+		else if (p == 11) b = inside(length(fract(vec2(pc.y * 4.0 + floor(s * 10.0) * 0.5, s * 10.0)) - 0.5) - 0.28);
+		b *= arm;
+	}
 	return mix(mix(a, uJerseyB, b), uJerseyC, c);
 }
 `;
