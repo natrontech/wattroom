@@ -212,7 +212,7 @@
 		</label>
 		<a
 			href="/ramp"
-			class="text-muted hover:text-ink mt-2 inline-block text-xs underline"
+			class="text-muted hover:text-ink mt-1 inline-flex min-h-6 items-center text-xs underline"
 			>Measure it with a ramp test</a
 		>
 	</div>
