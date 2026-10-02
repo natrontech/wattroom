@@ -164,16 +164,12 @@ export function batchProps(
 			if (ring !== 2) mesh.setGeometryIdAt(id, geometry.get(kind)![ring]);
 		}
 	}
-	const ringOf = (tile: Tile, eye: THREE.Vector3, was: Ring | null): Ring => {
+	const ringOf = (tile: Tile, eye: THREE.Vector3, was: Ring): Ring => {
 		const d = Math.hypot(tile.cx - eye.x, tile.cz - eye.z);
 		// A tile crosses an edge inward at the edge, outward only 10 % past it.
 		const inside = (r: number, held: boolean) =>
 			held ? d <= r * LEAVE : d < r;
-		return inside(NEAR_M, was === 0)
-			? 0
-			: inside(FAR_M, was !== null && was <= 1)
-				? 1
-				: 2;
+		return inside(NEAR_M, was === 0) ? 0 : inside(FAR_M, was <= 1) ? 1 : 2;
 	};
 
 	return {
@@ -203,7 +199,8 @@ export function batchProps(
 				);
 				tile.members.push([mesh, n, p.kind]);
 			}
-			show(tile, ringOf(tile, eye, null));
+			// A tile comes in as though it had been near, as every tile once did: held out to its rings' far edges.
+			show(tile, ringOf(tile, eye, 0));
 			tiles.set(id, tile);
 		},
 		/** Lets a tile go: its instances' room is free for the next. */
