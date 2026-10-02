@@ -5,13 +5,14 @@
 // bunch adds the coach's chevron and the team car (#3098), and its riders
 // come and go mid-ride, dithered in and out.
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { tag } from './family';
 import { zoneOf } from '$lib/components/zones';
 import { damp } from '$lib/motion/damp';
 import { effortRpm } from './figure/cadence';
-import { ROAD_LIFT, yOf } from './geometry';
-import { ROAD_W, across, bankOf } from './terrain/road-profile';
+import { yOf } from './geometry';
+import { ROAD_W } from './terrain/road-profile';
+import { chevronGeometry, makeCar } from './team-car';
+import { makeTrail } from './trail';
 import { ramp } from './materials';
 import { LANE, type Car } from './bunch';
 import { buildGeometry } from './rider-geometry';
@@ -27,25 +28,15 @@ import {
 } from './rider-model';
 import { pose } from './rider-pose';
 import { type Route } from '$lib/road/route';
-import { at, curvature, leftOf } from '$lib/road/along';
+import { at, leftOf } from '$lib/road/along';
 import type { SimRider } from './sim';
 import type { Style } from './styles';
 
-/**
- * The trail lies on this much road behind you and fades out along it
- * (#3663): the chase frame's bottom edge meets the road about 3.3 m behind
- * the wheel, so the fade is seen to finish.
- */
-const TRAIL_M = 3;
-/** About a wheel wide: a line, never a wedge or a fill. */
-const TRAIL_W = 0.08;
-const TRAIL_N = 24;
 // Alone you keep to the right lane's middle, as on a Swiss road; the dev
 // gallery's crew spreads abreast; a bunch rides its formation (bunch.ts).
 const KEEP_RIGHT = -ROAD_W / 4;
-/** Where the coach's chevron sits: just over a rider's helmet, over the car's roof. */
+/** Where the coach's chevron sits: just over a rider's helmet. */
 const CHEVRON_Y = 1.82;
-const CHEVRON_CAR_Y = 2.2;
 /** About a helmet wide on a rider: worn, not a marker on the road ahead. */
 const CHEVRON_SCALE = 0.65;
 
@@ -84,21 +75,13 @@ function greyed(pal: RiderPalette): RiderPalette {
 	) as RiderPalette;
 }
 
-/** A downward chevron, in the plane across the road: seen from the chase camera behind. */
-function chevronGeometry(): THREE.BufferGeometry {
-	const s = new THREE.Shape();
-	s.moveTo(-0.2, 0.16);
-	s.lineTo(0, 0);
-	s.lineTo(0.2, 0.16);
-	s.lineTo(0.2, 0.07);
-	s.lineTo(0, -0.09);
-	s.lineTo(-0.2, 0.07);
-	s.closePath();
-	return new THREE.ShapeGeometry(s);
-}
-
 /** On the road `d` metres along it and `lane` metres left of its middle, leaning with the grade. */
-function placeOn(o: THREE.Object3D, route: Route, d: number, lane: number) {
+export function placeOn(
+	o: THREE.Object3D,
+	route: Route,
+	d: number,
+	lane: number,
+) {
 	const p = at(route, d);
 	const { lx, lz } = leftOf(p.heading);
 	o.position.set(p.x + lx * lane, yOf(route, p.ele) + 0.12, p.z + lz * lane);
@@ -309,119 +292,3 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 	};
 }
 export type Crew = ReturnType<typeof makeCrew>;
-
-/**
- * The team car (#3098): a box saloon in the kit's white, its wheels in the
- * tyre's black, one draw each. It tows a rider back in, and a coach with no
- * trainer drives it — then it wears their chevron on its roof.
- * ponytail: two boxes and four drums; a modelled car when the figure is (#3673).
- */
-function makeCar(
-	style: Style,
-	gradient: THREE.Texture,
-	chevronGeo: THREE.BufferGeometry,
-	chevronMat: THREE.MeshBasicMaterial,
-) {
-	const parts = [
-		new THREE.BoxGeometry(1.8, 0.7, 4.5).translate(0, 0.65, 0),
-		new THREE.BoxGeometry(1.6, 0.55, 2.3).translate(0, 1.27, -0.3),
-	];
-	const drum = (x: number, z: number) =>
-		new THREE.CylinderGeometry(0.33, 0.33, 0.24, 14)
-			.rotateZ(Math.PI / 2)
-			.translate(x, 0.33, z);
-	const drums = [
-		drum(-0.84, 1.45),
-		drum(0.84, 1.45),
-		drum(-0.84, -1.45),
-		drum(0.84, -1.45),
-	];
-	const body = mergeGeometries(parts);
-	const wheels = mergeGeometries(drums);
-	[...parts, ...drums].forEach((g) => g.dispose());
-	const paintIn = (color: string) => {
-		const m = new THREE.MeshToonMaterial({
-			color: new THREE.Color(color),
-			gradientMap: gradient,
-			alphaHash: true,
-		});
-		return m;
-	};
-	const bodyMat = paintIn(style.kit.shoe);
-	const wheelMat = paintIn(style.kit.tyre);
-	const chevron = new THREE.Mesh(chevronGeo, chevronMat);
-	chevron.position.y = CHEVRON_CAR_Y;
-	const group = new THREE.Group();
-	group.add(
-		tag('figures', new THREE.Mesh(body, bodyMat), 'car'),
-		tag('figures', new THREE.Mesh(wheels, wheelMat), 'car'),
-		tag('marks', chevron, 'chevron'),
-	);
-	group.visible = false;
-	return {
-		group,
-		set(alpha: number, coach: boolean) {
-			bodyMat.opacity = wheelMat.opacity = chevronMat.opacity = alpha;
-			chevron.visible = coach;
-		},
-	};
-}
-
-// Your trail: a thin line on the road from your wheel back TRAIL_M metres,
-// additive and unfogged, fading out along its length.
-function makeTrail(color: string) {
-	const rows = TRAIL_N + 1;
-	const pos = new Float32Array(rows * 2 * 3);
-	const col = new Float32Array(rows * 2 * 4);
-	const c = new THREE.Color(color);
-	for (let i = 0; i < rows; i++) {
-		const a = (1 - i / TRAIL_N) * 0.85;
-		col.set([c.r, c.g, c.b, a, c.r, c.g, c.b, a], i * 8);
-	}
-	const idx: number[] = [];
-	for (let i = 0; i < TRAIL_N; i++)
-		idx.push(i * 2, i * 2 + 1, i * 2 + 2, i * 2 + 1, i * 2 + 3, i * 2 + 2);
-	const g = new THREE.BufferGeometry();
-	const attr = new THREE.BufferAttribute(pos, 3);
-	g.setAttribute('position', attr);
-	g.setAttribute('color', new THREE.BufferAttribute(col, 4));
-	g.setIndex(idx);
-	const mesh = new THREE.Mesh(
-		g,
-		new THREE.MeshBasicMaterial({
-			vertexColors: true,
-			transparent: true,
-			blending: THREE.AdditiveBlending,
-			depthWrite: false,
-			side: THREE.DoubleSide,
-			fog: false,
-		}),
-	);
-	mesh.frustumCulled = false;
-	return {
-		mesh,
-		/** Lays the line on the road behind `d`, in the lane you ride. */
-		follow(route: Route, d: number, lane: number) {
-			for (let i = 0; i < rows; i++) {
-				const back = d - (i / TRAIL_N) * TRAIL_M;
-				const p = at(route, route.loop ? back : Math.max(0, back));
-				const { lx, lz } = leftOf(p.heading);
-				const x = p.x + lx * lane;
-				const z = p.z + lz * lane;
-				// On the ribbon where your lane crosses it, banked as the ribbon is, a hair above it.
-				const n = route.x.length - 1;
-				const at0 = Math.round(back / route.step);
-				const k = curvature(
-					route,
-					route.loop ? ((at0 % n) + n) % n : Math.min(Math.max(at0, 0), n),
-				);
-				const y =
-					yOf(route, p.ele) + ROAD_LIFT + across(lane, bankOf(k)) + 0.03;
-				const w = TRAIL_W / 2;
-				attr.setXYZ(i * 2, x + lx * w, y, z + lz * w);
-				attr.setXYZ(i * 2 + 1, x - lx * w, y, z - lz * w);
-			}
-			attr.needsUpdate = true;
-		},
-	};
-}

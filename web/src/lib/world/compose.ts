@@ -109,7 +109,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	const stepped = opts.metre ? riders.filter((r) => r !== you) : riders;
 	const follow = followMetre();
 	// What each rider's legs are doing, kept across style changes.
-	const legs = new Map<SimRider, Pedalling>();
+	const legs = new WeakMap<SimRider, Pedalling>();
 	const pedal = (r: SimRider): Pedalling => {
 		let p = legs.get(r);
 		if (!p) legs.set(r, (p = { crank: 0, wheel: 0, stand: 0 }));
