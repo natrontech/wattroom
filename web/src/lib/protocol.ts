@@ -1371,6 +1371,30 @@ export interface Drive {
   ergByRoad: boolean;
 }
 /**
+ * Category par (docs/SPEC.md "Races"): the W/kg each Category's par rides at
+ * on the race's physics, which the RACE page measures a rider's gap against
+ * (#3174) and the pacer rides (ADR-0068).
+ */
+export const ParWkgD = 2.2;
+/**
+ * Category par (docs/SPEC.md "Races"): the W/kg each Category's par rides at
+ * on the race's physics, which the RACE page measures a rider's gap against
+ * (#3174) and the pacer rides (ADR-0068).
+ */
+export const ParWkgC = 2.85;
+/**
+ * Category par (docs/SPEC.md "Races"): the W/kg each Category's par rides at
+ * on the race's physics, which the RACE page measures a rider's gap against
+ * (#3174) and the pacer rides (ADR-0068).
+ */
+export const ParWkgB = 3.6;
+/**
+ * Category par (docs/SPEC.md "Races"): the W/kg each Category's par rides at
+ * on the race's physics, which the RACE page measures a rider's gap against
+ * (#3174) and the pacer rides (ADR-0068).
+ */
+export const ParWkgA = 4.3;
+/**
  * RaceState is a race on the tick (#3658, ADR-0067): when the flag drops and
  * when the klaxon sends it from km 0, whether the coach has neutralised it,
  * and — once it is done — the closing card. The places ride World.Racers.
@@ -2144,4 +2168,16 @@ export interface RaceRider {
   m: number /* float64 */;
   v: number /* float64 */;
   finishMs?: number /* int64 */;
+  /**
+   * The Category the race froze them in at the flag, D–A (#3174): who they
+   * race, which the RACE page places them among. The bracket, never the
+   * watts behind it.
+   */
+  cat?: string;
+  /**
+   * Seconds ahead of their Category's par at their metre, behind when
+   * negative (#3174): par from their own start, on their own racing clock.
+   * Absent until they have raced a second.
+   */
+  par?: number /* float64 */;
 }

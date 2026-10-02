@@ -1,6 +1,7 @@
 import { hrZoneOf } from '$lib/components/zones';
 import { wkg } from '$lib/format';
 import { formatSplit } from '$lib/road/ghost';
+import { ordinal, type RaceReadout } from '$lib/race/race-view';
 import { isTyping } from '$lib/keys';
 import type { LiveStats } from '$lib/ride/live-stats.svelte';
 
@@ -8,14 +9,15 @@ import type { LiveStats } from '$lib/ride/live-stats.svelte';
  * The bike computer's page table (ADR-0071, docs/SPEC.md "The bike
  * computer"): which numbers each page of slot 3 shows, and nothing a rider
  * picks. RIDE is where every ride starts. CLIMB and MAP arrive with the
- * climb card (#3089), RACE with #3174.
+ * climb card (#3089); RACE shows while you race (#3174).
  */
-export const PAGES = ['ride', 'power'] as const;
+export const PAGES = ['ride', 'power', 'race'] as const;
 export type ComputerPage = (typeof PAGES)[number];
 
 export const PAGE_NAMES: Record<ComputerPage, string> = {
 	ride: 'RIDE',
 	power: 'POWER',
+	race: 'RACE',
 };
 
 /** Everything a page may read. Absent means this ride has no such number. */
@@ -43,6 +45,8 @@ export interface ComputerContext {
 	target?: number;
 	/** This rider's live numbers (#3068); absent where this screen has none. */
 	stats?: LiveStats;
+	/** Your race, while you race one (#3174). */
+	race?: RaceReadout;
 }
 
 export interface Field {
@@ -52,7 +56,7 @@ export interface Field {
 	unit?: string;
 	/** Live data in the watt accent, glowing: the 3 s power, and only it. */
 	glow?: boolean;
-	/** Rider state in neon, never the watt accent (ADR-0005): the gear. */
+	/** Rider state in neon, never the watt accent (ADR-0005): the gear, and a race model's outputs (#3174). */
 	neon?: boolean;
 	/** The heart-rate zone, as a dot beside the label. */
 	zone?: number;
@@ -78,9 +82,14 @@ export function roadContext(road: {
 	};
 }
 
-/** POWER reads the live numbers, so a screen without them has RIDE alone. */
-export function pagesFor(stats: LiveStats | undefined): ComputerPage[] {
-	return stats ? [...PAGES] : ['ride'];
+/** POWER reads the live numbers, so a screen without them has RIDE alone; RACE is there while you race. */
+export function pagesFor(
+	stats: LiveStats | undefined,
+	race?: RaceReadout,
+): ComputerPage[] {
+	return PAGES.filter(
+		(p) => p === 'ride' || (p === 'power' ? !!stats : !!race),
+	);
 }
 
 /** The page a turn lands on, wrapping at both ends. */
@@ -96,6 +105,7 @@ export function turned(
 export function fieldsFor(page: ComputerPage, ctx: ComputerContext): Field[] {
 	const measured = (value: string) => (ctx.stale ? '—' : value);
 	const stats = ctx.stats?.seconds ? ctx.stats : undefined;
+	if (page === 'race') return raceFields(ctx);
 	if (page === 'power') {
 		const s = ctx.stats;
 		if (!s) return [];
@@ -203,6 +213,34 @@ export function fieldsFor(page: ComputerPage, ctx: ComputerContext): Field[] {
 			neon: true,
 		});
 	return fields;
+}
+
+/**
+ * RACE (#3174): the gap to your Category's par, then your place in your
+ * Category — the race model's, so neon and never watt; only your live power
+ * is. The gap leads at the computer's number size, and W/kg stays in its one
+ * home beside the 3 s power: the 3 s power is the largest number on the
+ * surface, and no number shows twice (docs/design/TARGETS.md "One home per
+ * number").
+ */
+function raceFields(ctx: ComputerContext): Field[] {
+	const race = ctx.race;
+	if (!race) return [];
+	return [
+		{
+			key: 'par',
+			label: 'vs par',
+			// Ahead is +, behind is −; nothing to measure before km 0.
+			value: race.par === null ? '—' : formatSplit(race.par),
+			neon: true,
+		},
+		{
+			key: 'place',
+			label: `in ${race.category}`,
+			value: `${ordinal(race.place)} of ${race.of}`,
+			neon: true,
+		},
+	];
 }
 
 // Events a computer has already turned a page with: one key press turns

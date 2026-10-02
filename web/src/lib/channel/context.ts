@@ -10,6 +10,7 @@ import type { CrewPlan } from '$lib/crew-schedule';
 import type { FlightRecorder } from '$lib/ride/flightrecorder.svelte';
 import type { Road } from '$lib/road/road';
 import type { BunchView } from '$lib/channel/bunch-view';
+import type { RaceReadout } from '$lib/race/race-view';
 
 /**
  * `StageSource` is the minimum `pickStage` needs; the channel adds what the
@@ -55,6 +56,8 @@ export interface ChannelContext {
 		/** Everyone on the road with you (#3098). */
 		bunch: BunchView | null;
 	} | null;
+	/** Your race, while you race one (#3174); null otherwise. */
+	readonly race: RaceReadout | null;
 	readonly segments: Segment[];
 	readonly shared:
 		| {

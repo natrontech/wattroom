@@ -22,5 +22,9 @@ describe('racing your ghost (#3033)', () => {
 		expect(formatSplit(-12)).toBe('−0:12');
 		expect(formatSplit(8.4)).toBe('+0:08');
 		expect(formatSplit(-75)).toBe('−1:15');
+		// Level is level: neither ahead nor behind, so no sign (#3174).
+		expect(formatSplit(0)).toBe('0:00');
+		expect(formatSplit(-0.3)).toBe('0:00');
+		expect(formatSplit(0.4)).toBe('0:00');
 	});
 });
