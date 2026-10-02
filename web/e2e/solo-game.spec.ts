@@ -4,8 +4,8 @@ import { signInAs } from './signin';
 /**
  * A game from the solo ride (#3276): /ride's door opens the rider's lounge,
  * starts the game there with them as coach, and its end leaves the crew's
- * recap like any session. A rider in no crew sees the doors disabled, with
- * the line that says why.
+ * recap like any session. A rider in no crew sees the line that says where
+ * games run, and no door that would fail.
  */
 test.skip(
 	!!process.env.PLAYWRIGHT_BASE_URL,
@@ -95,7 +95,7 @@ test('a solo Watt Golf starts from /ride and saves as a game ride in the channel
 		.toEqual({ recap: true, ride: true });
 });
 
-test('a rider in no crew sees the game doors disabled, and why', async ({
+test('a rider in no crew is told where games run, with no door that fails', async ({
 	page,
 }) => {
 	await signInAs(page, 'Crewless Soloist', '/ride');
@@ -105,5 +105,5 @@ test('a rider in no crew sees the game doors disabled, and why', async ({
 		{ timeout: 15_000 },
 	);
 	for (const name of ['Watt Golf', 'Floor is Lava', 'Backyard Ramp'])
-		await expect(games.getByRole('button', { name })).toBeDisabled();
+		await expect(games.getByRole('button', { name })).toHaveCount(0);
 });

@@ -37,7 +37,6 @@
 		summary,
 		lastWorkout,
 		ftp,
-		games = true,
 	}: {
 		kind: RideKind;
 		road: RideableRoute | null;
@@ -53,8 +52,6 @@
 		/** The workout last ridden on this device, when it is the one below. */
 		lastWorkout?: string;
 		ftp: number;
-		/** Solo games, when no workout was asked for (#3276). */
-		games?: boolean;
 	} = $props();
 
 	const roads = roadsEnabled();
@@ -147,22 +144,23 @@
 				{:else}
 					<span class="text-muted">No road</span>
 				{/if}
-				<span class="ml-auto flex gap-2">
+			</div>
+			<div class="mt-3 flex flex-wrap gap-2">
+				<button
+					onclick={() => (picking = !picking)}
+					aria-expanded={picking}
+					class="btn btn-secondary btn-lg"
+					>{picking ? 'Close' : 'Change'}</button
+				>
+				{#if road}
 					<button
-						onclick={() => (picking = !picking)}
-						aria-expanded={picking}
-						class="btn btn-secondary btn-lg">Change</button
+						onclick={() => {
+							road = null;
+							from = 0;
+						}}
+						class="btn btn-secondary btn-lg">No road</button
 					>
-					{#if road}
-						<button
-							onclick={() => {
-								road = null;
-								from = 0;
-							}}
-							class="btn btn-secondary btn-lg">No road</button
-						>
-					{/if}
-				</span>
+				{/if}
 			</div>
 			{#if roadError}
 				<p class="text-danger mt-2 text-sm">{roadError}</p>
@@ -180,7 +178,7 @@
 						<button
 							onclick={() => (from = m)}
 							aria-pressed={from === m}
-							class="btn btn-lg border {from === m
+							class="btn btn-lg rounded-full border {from === m
 								? 'border-neon text-ink'
 								: 'border-muted/30 hover:border-muted/60'}"
 							>{m === 0 ? 'Whole road' : `From km ${formatKm(m)}`}</button
@@ -219,7 +217,6 @@
 		</div>
 	{/if}
 
-	{#if games}
-		<div class="border-frame mt-4 border-t pt-3"><SoloGames /></div>
-	{/if}
+	<!-- One line, whichever ride is chosen (ride-preride 9). -->
+	<div class="border-frame mt-4 border-t pt-3"><SoloGames /></div>
 </section>

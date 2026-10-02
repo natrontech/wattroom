@@ -74,7 +74,7 @@
 	})();
 	// What this device rode alone last (#3671): the Ride card opens on it.
 	const remembered = roadsEnabled() ? lastRoad() : undefined;
-	const rememberedWorkout = requested ? undefined : lastWorkout();
+	const rememberedWorkout = lastWorkout();
 	const pick = requested || rememberedWorkout || '';
 	// Derived, not once: the shelf loads async — read at init it is always
 	// empty, and every custom ride silently fell back to the default.
@@ -90,10 +90,11 @@
 					}
 				: byId('sweet-spot-2x20')!),
 	);
-	// “Last: <workout>” only while the card shows the one remembered.
+	// “Last: <workout>”, whichever workout the card shows.
 	const lastName = $derived(
-		rememberedWorkout && selected.id === rememberedWorkout
-			? selected.workout.name
+		rememberedWorkout
+			? (byId(rememberedWorkout)?.workout.name ??
+					custom.byId(rememberedWorkout)?.workout.name)
 			: undefined,
 	);
 	// The Ride card's answers (#3671). ?w= opens on Workout, with road= on
@@ -150,6 +151,13 @@
 	let gone = false;
 	let saving = $state(false);
 	let session = $state<ReturnType<typeof createRideSession> | null>(null);
+	// The setup is a desk page and wears the page frame (G7); the ride and
+	// its summary keep the riding surface's own gutters.
+	const setup = $derived(
+		!freeRide &&
+			!((roadId || planRoad) && !requested) &&
+			(!session || session.state === 'idle'),
+	);
 	let downloading = $state(false);
 	let carding = $state(false);
 	let error = $state<string | null>(null);
@@ -545,7 +553,11 @@
      desk surfaces, the effort itself gets the dark. -->
 <!-- px-4 on a phone is the kit's gutter (`page`, ux.md's 16 px); the ride
      surface is not a `page` — it fills the window — so it spells the two. -->
-<main class="bg-surface text-ink flex min-h-screen flex-col px-4 py-5 sm:px-6">
+<main
+	class="bg-surface text-ink flex min-h-screen flex-col {setup
+		? 'page'
+		: 'px-4 py-5 sm:px-6'}"
+>
 	{#if freeRide}
 		<SoloRoadRide
 			roadId={freeRide.id}
@@ -584,7 +596,6 @@
 				roadId={(requested && roadId) || remembered}
 				{remembered}
 				lastWorkout={lastName}
-				games={!requested}
 				{workout}
 				summary={ridesRoute && road
 					? `${selected.summary} On ${road.name}, from km ${formatKm(from)}.`

@@ -36,37 +36,34 @@
 	data-testid="solo-games"
 >
 	<h2 class="text-sm font-semibold">
-		A game alone{room ? `, in ${room.name} with your mic off` : ''}:
+		{room ? `A game alone, in ${room.name} with your mic off:` : 'A game:'}
 	</h2>
 	{#if !crewLive.loaded}
 		{#each modes as mode (mode.id)}<Skeleton class="h-11 w-32" />{/each}
-	{:else}
+	{:else if room}
 		{#each modes as mode (mode.id)}
 			{@const Icon = mode.icon}
 			<button
 				onclick={() => play(mode.id)}
-				disabled={!room}
-				title={room
-					? `${mode.blurb} Anyone who opens ${room.name} can join; alone, the game shows your own score.`
-					: mode.blurb}
+				title="{mode.blurb} Anyone who opens {room.name} can join; alone, the game shows your own score."
 				class="btn btn-ghost btn-lg"><Icon size={18} /> {mode.label}</button
 			>
 		{/each}
-		{#if !room && crewLive.error && crewLive.crews.length === 0}
-			<span class="text-muted text-sm">
-				{crewLive.error}
-				<button onclick={() => void crewLive.reload()} class="btn-link"
-					>Retry</button
-				>
-			</span>
-		{:else if !room}
-			<!-- Capability gating (ux.md): disabled with the one line that says
-			     why, never a door that fails on click. -->
-			<span class="text-muted text-sm" data-testid="solo-games-hint">
-				Games run in a crew's voice channel. <a href="/home" class="btn-link"
-					>Start a crew</a
-				>.
-			</span>
-		{/if}
+	{:else if crewLive.error && crewLive.crews.length === 0}
+		<span class="text-muted text-sm">
+			{crewLive.error}
+			<button onclick={() => void crewLive.reload()} class="btn-link"
+				>Retry</button
+			>
+		</span>
+	{:else}
+		<!-- Capability gating (ux.md): no door that fails on click, and the one
+		     line that says why — hidden rather than disabled, so the card's
+		     games stay one line (TARGETS ride-preride 9, #3671). -->
+		<span class="text-muted text-sm" data-testid="solo-games-hint">
+			Games run in a crew's voice channel. <a href="/home" class="btn-link"
+				>Start a crew</a
+			>.
+		</span>
 	{/if}
 </section>

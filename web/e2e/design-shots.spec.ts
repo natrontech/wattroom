@@ -253,7 +253,7 @@ surface('ride-preride', async (s) => {
 		(id) =>
 			localStorage.setItem(
 				'wattroom.last-ride.v1',
-				JSON.stringify({ road: id }),
+				JSON.stringify({ road: id, workout: 'openers' }),
 			),
 		hairpin,
 	);
