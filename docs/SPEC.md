@@ -974,6 +974,7 @@ window's 4 Hz ticks. Its pace:
 | a sprint block                          | the reference rider at **150 %** FTP                                 |
 | paused                                  | **0**                                                                |
 | a road step                             | the live mean %FTP of the pedalling riders, each capped at **150 %** |
+| a game on a road                        | what its mode asks of everyone, capped at **150 %**: Team Relay's front rider while they pedal (#3030); Backyard and Collective Ramp at the round's line; Floor is Lava at the middle of the called zone (#3114). Any other mode rides the live mean |
 
 A rider's bias never moves the bunch.
 

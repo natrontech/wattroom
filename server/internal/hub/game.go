@@ -132,13 +132,16 @@ var gameModeNames = map[string]string{
 // ride saves with its execution "not scored" rather than failing to parse.
 //
 // A race's says so, so its rides save as races (ADR-0062's ride_mode).
-func gameWorkoutJSON(mode, name string) string {
+//
+// A game on a road carries the crew's cut of it (#3114), as a pick does.
+func gameWorkoutJSON(mode, name string, road json.RawMessage) string {
 	b, _ := json.Marshal(struct {
-		Name     string `json:"name"`
-		Unscored bool   `json:"unscored"`
-		Race     bool   `json:"race,omitempty"`
-		Steps    []any  `json:"steps"`
-	}{name, true, isRace(mode), []any{}})
+		Name     string          `json:"name"`
+		Unscored bool            `json:"unscored"`
+		Race     bool            `json:"race,omitempty"`
+		Road     json.RawMessage `json:"road,omitempty"`
+		Steps    []any           `json:"steps"`
+	}{name, true, isRace(mode), road, []any{}})
 	return string(b)
 }
 

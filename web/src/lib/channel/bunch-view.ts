@@ -27,6 +27,19 @@ export type BunchView = {
 	game: boolean;
 	/** Who this tick's cheers are for (#3116): the world draws each over that rider's head. */
 	cheered: string[];
+	/** What a running game puts on the road (#3114). */
+	play?: GamePlay;
+};
+
+/** A running game as the world draws it (#3114): its mode, the round and when it ends, and who it has put out. */
+export type GamePlay = {
+	mode: string;
+	round: number;
+	/** A ramp's line, %FTP as a fraction: what the bunch rides on a road (#3114). */
+	linePct?: number;
+	/** When the round ends, server ms. */
+	roundEndsAt?: number;
+	out: string[];
 };
 
 /** The tick's bunch, or null while the session rides none. A race rides no shared bunch. */
@@ -54,5 +67,17 @@ export function bunchOf(
 		present: new Map(riders.map((r) => [r.id, { watts: r.watts, ftp: r.ftp }])),
 		game: !!tick.game,
 		cheered: (tick.cheers ?? []).flatMap((c) => (c.to ? [c.to] : [])),
+		play:
+			tick.game?.phase === 'running'
+				? {
+						mode: tick.game.mode,
+						round: tick.game.round ?? 0,
+						linePct: tick.game.linePct,
+						roundEndsAt: tick.game.roundEndsAtMs,
+						out: Object.entries(tick.game.riders ?? {}).flatMap(([id, r]) =>
+							r.eliminated ? [id] : [],
+						),
+					}
+				: undefined,
 	};
 }

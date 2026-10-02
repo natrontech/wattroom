@@ -52,6 +52,10 @@
 		"surfaces": ["ride-session-road"]
 	},
 	{
+		"files": ["web/src/lib/world/game-road.ts"],
+		"surfaces": ["ride-game-backyard", "ride-game-collective"]
+	},
+	{
 		"files": ["web/src/lib/ride/FreeRide.svelte"],
 		"surfaces": ["ride-channel-free"]
 	},

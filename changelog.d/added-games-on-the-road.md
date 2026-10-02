@@ -1,0 +1,1 @@
+- Games on a road ride their own pace: the bunch rides Backyard and Collective Ramp's line, or the middle of Floor is Lava's called zone. Backyard Ramp's next round waits under an arch on the road. In Collective Ramp a fog sea rises out of the valleys round by round. A rider a game puts out stands at the next hairpin, and the cowbell rings as the bunch rides past.

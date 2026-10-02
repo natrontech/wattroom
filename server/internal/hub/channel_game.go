@@ -88,6 +88,27 @@ func (rm *channelState) bunchLeaderLocked() string {
 	return ""
 }
 
+// gamePacer is a mode that asks the whole bunch for one %FTP on a road
+// (#3114): Backyard and Collective Ramp their line, Floor is Lava the middle
+// of its called zone. 0 asks nothing.
+type gamePacer interface{ pacePct() float64 }
+
+// bunchAsksLocked is what the running game asks the bunch to ride, or 0.
+// Caller holds rm.mu.
+func (rm *channelState) bunchAsksLocked() float64 {
+	g := rm.game
+	if g == nil || g.done() {
+		return 0
+	}
+	if s, ok := g.(*sampledGame); ok {
+		g = s.gameMode
+	}
+	if p, ok := g.(gamePacer); ok {
+		return p.pacePct()
+	}
+	return 0
+}
+
 // endGame stops the running mode; false when nothing was running (#1582).
 // It is the coach's out, and off a road the only end Team Relay has — there
 // relay.done() is never true; on one the road's end finishes it (#3030).
