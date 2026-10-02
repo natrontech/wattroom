@@ -424,3 +424,54 @@ describe('the ride’s scene budget, high tier (#3083)', () => {
 		expect([...kinds].sort()).toEqual(Object.keys(UNBATCHED).sort());
 	});
 });
+
+describe('a bunch on the road (#3098)', () => {
+	it('keeps twelve riders and the team car inside the figures’ share, tagged and unlit', () => {
+		const route = toRoute(syntheticPoints());
+		const world = generate(route);
+		const style = RIDE;
+		// docs/SPEC.md "The world": the figures' share holds 12 near figures.
+		const order = Array.from({ length: 12 }, (_, i) => `r${i}`);
+		const w = compose(
+			{
+				route,
+				world,
+				style,
+				ftp: 250,
+				youId: 'r0',
+				metre: () => ({ m: 500, mps: 8 }),
+				bunch: () => ({
+					m: 500,
+					mps: 8,
+					elapsed: 30,
+					order: ['coach', ...order],
+					offsets: {},
+					resting: ['coach'],
+					coach: 'coach',
+					present: new Map(order.map((id) => [id, { watts: 200, ftp: 250 }])),
+					game: false,
+				}),
+				grids: pageGrids(world),
+			},
+			null,
+		);
+		w.camera.aspect = 16 / 9;
+		w.camera.updateProjectionMatrix();
+		for (let k = 0; k < 30; k++) w.advanceBy(1 / 30);
+		const frame = measure(w.scene, w.camera, true);
+		expect(frame.untagged).toEqual([]);
+		expect(glowing(w.scene)).toEqual([]);
+		const kinds = new Set<string>();
+		w.scene.traverseVisible((o) => {
+			if (familyOf(o) === 'figures') kinds.add(kindOf(o));
+		});
+		expect(kinds.has('car'), 'the coach with no trainer drives the car').toBe(
+			true,
+		);
+		expect(frame.lines['figures.triangles']).toBeGreaterThan(0);
+		expect(frame.lines['figures.triangles']).toBeLessThanOrEqual(
+			HIGH['figures.triangles'],
+		);
+		w.dispose();
+	}, 60_000);
+});

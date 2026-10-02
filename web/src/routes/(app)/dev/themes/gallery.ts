@@ -20,13 +20,13 @@ import { THEMES } from '$lib/themes';
 /**
  * Which of the two jobs a family member does. A ride resolves the dark member
  * whatever the scheme says (ADR-0005, amended in #113), so the dark half of an
- * identity IS the cave; the white half only ever renders on a desk.
+ * identity IS the cave; the light half only ever renders on a desk.
  */
 export type Surface = 'cave' | 'desk';
 
 const SURFACE_OF: Record<ThemeFamily, Surface> = {
 	dark: 'cave',
-	white: 'desk',
+	light: 'desk',
 };
 
 export interface GalleryPanel {

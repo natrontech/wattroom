@@ -1,0 +1,1 @@
+- A session on a road now draws the whole bunch in the world, not just you: everyone who joined rides in formation around you, the front row swaps every two minutes, a rider who stops pulls over and the team car tows them back, and the coach wears a violet chevron — or drives the team car when they ride without a trainer.

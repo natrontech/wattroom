@@ -78,7 +78,8 @@ export function mount(
 	}
 
 	const loop = createLoop((seconds) => {
-		world.advanceBy(Math.min(seconds, MAX_DT));
+		// The bunch keeps the wall's time: where the hub has everyone does not wait for a slow frame.
+		world.advanceBy(Math.min(seconds, MAX_DT), seconds);
 		renderer.render(scene, camera);
 	}, world.idle);
 	let failed = false;

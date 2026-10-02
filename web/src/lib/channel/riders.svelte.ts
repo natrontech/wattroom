@@ -1,6 +1,7 @@
 import { isSounding } from '$lib/sound/board.svelte';
 import { describeBlock, type Block } from '$lib/workout/block';
 import type { LiveRider } from '$lib/channel/types';
+import { bunchOf } from '$lib/channel/bunch-view';
 import { coachOf } from '$lib/channel/tick-session';
 import { scoredTarget } from '$lib/channel/types';
 import { createRoadReadout } from '$lib/ride/road-readout';
@@ -191,6 +192,8 @@ export function createRiders(deps: RiderDeps) {
 			// Your place is the bunch's and your elastic offset from it, in decimetres.
 			m: bunchM + (offsets?.[you.id] ?? 0) / 10,
 			mps: bunchMps,
+			// Everyone on it, as the world lays them out (#3098).
+			bunch: bunchOf(deps.live.tick, riders),
 		};
 	});
 	const readoutAt = createRoadReadout();

@@ -812,9 +812,11 @@ input[type='radio']:disabled {
 	cursor: not-allowed;
 }
 
+/* 1.5rem is the hit box's 24 px floor (WCAG 2.2 SC 2.5.8, ux.md): the thumb
+ * and track keep their size, centred in it (#3714). */
 input[type='range'] {
 	appearance: none;
-	height: 1.25rem;
+	height: 1.5rem;
 	background: transparent;
 	cursor: pointer;
 }
