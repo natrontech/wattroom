@@ -73,8 +73,9 @@ const VILLAGE_OFF = 20;
 /** A building at a barn's slot brings one or two more, this far apart at most, in this many tries. */
 const CLUSTER_M = 26;
 const FARM_TRIES = 6;
-/** Metres of open yard round a building's walls, where no tree stands. */
+/** Metres of open yard round a building's walls, where no tree stands, and of pasture past them, where none frames the road. */
 const YARD_M = 8;
+const FIELD_M = 80;
 
 /**
  * Where the villages stand (#3076): flat road through meadow, one chance per
@@ -330,26 +331,26 @@ export function scatter(
 	// village — in groups where the stand noise says so, conifers framing the
 	// road, a forest edge behind every clearing, a thinner forest out of sight.
 	const woods = forest(tree(-1, -1, -1));
-	// Every building keeps its yard, so a hamlet reads as roofs in a clearing
-	// and no trunk stands at a wall.
-	const yards = placer.placements
+	// Every building keeps its yard, so no trunk stands at a wall, and its
+	// pasture, so the road opens beside a hamlet and the roofs show from it.
+	const homes = placer.placements
 		.filter((p) => p.cls === 'building')
 		.map(({ footprint: f }) => {
 			const cx = f.reduce((s, [x]) => s + x, 0) / f.length;
 			const cz = f.reduce((s, [, z]) => s + z, 0) / f.length;
-			const r =
-				YARD_M +
-				Math.sqrt(
-					Math.max(
-						...f.map(([x, z]) => (x - cx) * (x - cx) + (z - cz) * (z - cz)),
-					),
-				);
-			return [cx, cz, r * r] as const;
+			const r = Math.sqrt(
+				Math.max(
+					...f.map(([x, z]) => (x - cx) * (x - cx) + (z - cz) * (z - cz)),
+				),
+			);
+			return [cx, cz, r] as const;
 		});
-	const inYard = (x: number, z: number) =>
-		yards.some(
-			([cx, cz, rr]) => (x - cx) * (x - cx) + (z - cz) * (z - cz) < rr,
+	const near = (x: number, z: number, past: number) =>
+		homes.some(
+			([cx, cz, r]) =>
+				(x - cx) * (x - cx) + (z - cz) * (z - cz) < (r + past) * (r + past),
 		);
+	const inYard = (x: number, z: number) => near(x, z, YARD_M);
 	cells(TREE_M, (i, j) => {
 		const [x, z] = jitter(i, j, TREE_M, u(tree(i, j, 1)), u(tree(i, j, 2)));
 		const b = biomeAt(x, z);
@@ -357,7 +358,7 @@ export function scatter(
 		if (b === null || far > TREES_WITHIN || inVillage(x, z) || inYard(x, z))
 			return;
 		const g = woods.groupAt(e0 + x, n0 - z);
-		const frame = woods.frames(b, far);
+		const frame = woods.frames(b, far) && !near(x, z, FIELD_M);
 		if (u(tree(i, j, 0)) >= woods.chance(b, far, frame, g)) return;
 		if (far < 140 && !ground.clearOf(x, z, 11)) return;
 		const conifer = frame || heightAt(x, z) >= 900 || u(tree(i, j, 4)) >= 0.55;
