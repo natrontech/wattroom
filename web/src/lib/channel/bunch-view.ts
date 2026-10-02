@@ -11,6 +11,8 @@ export type BunchView = {
 	/** Metres along the road as ridden, a looped road's laps unrolled. */
 	m: number;
 	mps: number;
+	/** When the hub sent it, server ms: a page that handles it late knows by how much. */
+	at?: number;
 	/** The session's elapsed seconds: what turns the front row. */
 	elapsed: number;
 	/** The joined riders, in the order they joined. */
@@ -36,6 +38,7 @@ export function bunchOf(
 	return {
 		m: world.bunchM + (world.lap ?? 0) * length,
 		mps: world.speedMps,
+		at: tick.at,
 		elapsed: tick.state.elapsed,
 		order: world.order ?? [],
 		offsets: Object.fromEntries(

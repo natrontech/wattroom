@@ -79,14 +79,17 @@
 					youId: account.me?.id,
 					// The theme's neon as the canvas resolves it, for the coach's chevron.
 					neon: getComputedStyle(canvas!).color,
+					// When, at what speed, and where: two screens read a moment apart still compare.
 					onTick: (hud) => {
-						canvas!.dataset.riders = JSON.stringify(
-							hud.riders.map((r) => ({
+						canvas!.dataset.riders = JSON.stringify({
+							t: Date.now(),
+							mps: hud.kmh / 3.6,
+							riders: hud.riders.map((r) => ({
 								id: r.id,
 								d: Math.round(r.d * 10) / 10,
 								lane: Math.round(r.lane * 100) / 100,
 							})),
-						);
+						});
 					},
 					onFail: onfail,
 				});

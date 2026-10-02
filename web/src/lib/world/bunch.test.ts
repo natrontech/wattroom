@@ -130,8 +130,12 @@ describe('the bunch between ticks (#3098)', () => {
 		expect(towed.car).not.toBeNull();
 		expect(towed.car!.d).toBeCloseTo(of(towed, 'b').d, 0);
 		expect(towed.car!.lane).toBeGreaterThan(of(towed, 'b').lane);
-		// The tow over (20 s), the car leaves and the rider takes their place.
-		const back = ride(bunch, 24, () => view());
+		// docs/SPEC.md's 20 s tow: still towing at 19 s, the rider on the shoulder beside the car.
+		const towing = ride(bunch, 18, () => view({ offsets: { b: -2 } }));
+		expect(towing.car).not.toBeNull();
+		expect(of(towing, 'b').lane).toBeCloseTo(PULL_LANE, 1);
+		// The tow over, the car leaves and the rider takes their place.
+		const back = ride(bunch, 5, () => view());
 		expect(back.car).toBeNull();
 		expect(of(back, 'b').lane).toBeCloseTo(-LANE / 2, 1);
 	});
@@ -175,8 +179,37 @@ describe('the bunch between ticks (#3098)', () => {
 		const out = ride(bunch, 4, () => view({ order, offsets: { r4: 3 } }));
 		const a = of(out, 'r0');
 		const b = of(out, 'r4');
-		expect(
-			Math.abs(a.d - b.d) < 1.8 && Math.abs(a.lane - b.lane) < LANE / 2,
-		).toBe(false);
+		// Within a bike of each other, never closer across than a handlebar.
+		expect(Math.abs(a.d - b.d)).toBeLessThan(1.7);
+		expect(Math.abs(a.lane - b.lane)).toBeGreaterThan(0.42);
+	});
+
+	it('carries a tick handled late on from when the hub sent it', () => {
+		// Ticks sent each second; this page took 50 ms for most, then 3 s for one.
+		const bunch = createBunch();
+		bunch.step(view({ m: 1000, at: 0 }), 0, 50);
+		bunch.step(view({ m: 1008, at: 1000 }), 1, 1050);
+		bunch.step(view({ m: 1016, at: 2000 }), 4, 5050);
+		// Two seconds on with no tick: the bunch has ridden 3 s past that one and 2 more.
+		let out = bunch.step(view({ m: 1016, at: 2000 }), 0, 5050);
+		for (let k = 0; k < 60; k++)
+			out = bunch.step(view({ m: 1016, at: 2000 }), 1 / 30, 5050 + k * 33);
+		expect(of(out, 'a').d).toBeCloseTo(1016 + 5 * 8, 0);
+	});
+
+	it('lays the same bunch out whatever this screen saw first (#3098)', () => {
+		// One screen saw the coach ride alone, then a late joiner a metre behind;
+		// another opened with both there. Both end with the two in their slots.
+		const late = createBunch();
+		ride(late, 0.5, () => view({ order: ['a'] }));
+		const seen = ride(late, 3, () =>
+			view({ order: ['a', 'b'], offsets: { b: -1 } }),
+		);
+		const fresh = ride(createBunch(), 3, () =>
+			view({ order: ['a', 'b'], offsets: { b: -1 } }),
+		);
+		for (const id of ['a', 'b'])
+			expect(of(seen, id).lane).toBeCloseTo(of(fresh, id).lane, 2);
+		expect(of(seen, 'b').lane).toBeCloseTo(-LANE / 2, 2);
 	});
 });

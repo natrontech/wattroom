@@ -234,7 +234,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	 * you included while you ride in it, and the team car (#3098).
 	 */
 	function ride(view: BunchView, real: number) {
-		const out = bunch!.step(view, real);
+		const out = bunch!.step(view, real, Date.now());
 		const placed = new Set<string>();
 		for (const p of out.riders) {
 			placed.add(p.id);

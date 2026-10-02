@@ -100,6 +100,8 @@ type Follow = Placed & {
 	side: { x: number; v: number };
 	/** The lane the rider is making for this frame. */
 	want: number;
+	/** Their formation lane while they ride in it; none resting, towed or gone. */
+	slot?: number;
 	front: { x: number; v: number };
 	/** Dithering out to land at `base` once gone, or in, or neither. */
 	fade: 'out' | 'in' | null;
@@ -120,15 +122,23 @@ export function createBunch() {
 	let since = 0;
 	let t = 0;
 	let first = true;
+	// The least a tick has been late here: the network and the two clocks.
+	let early = Infinity;
 
+	/** `now` is the wall clock in ms, what a tick's `at` is read against. */
 	function step(
 		view: BunchView,
 		real: number,
+		now = NaN,
 	): { riders: Placed[]; car: Car | null } {
 		t += real;
 		if (view.m !== lastM) {
 			lastM = view.m;
-			since = 0;
+			// A tick handled late — a busy page working through a backlog — is
+			// already that late: the bunch rolled on from when the hub sent it.
+			const late = now - (view.at ?? NaN);
+			early = Math.min(early, late);
+			since = Number.isFinite(late) ? (late - early) / 1000 : 0;
 		} else since += real;
 		const at = view.m + view.mps * since;
 		const resting = new Set(view.resting);
@@ -199,10 +209,8 @@ export function createBunch() {
 				f.alpha = Math.min(1, f.alpha + real / IN_S);
 				if (f.alpha === 1) f.fade = null;
 			}
-			f.want =
-				f.resting || f.towUntil > t
-					? PULL_LANE
-					: (slots.get(id)?.lane ?? PULL_LANE);
+			f.slot = f.resting || f.towUntil > t ? undefined : slots.get(id)?.lane;
+			f.want = f.slot ?? PULL_LANE;
 			spring(f.front, slots.get(id)?.ahead ?? 0, real);
 			f.d = f.base + f.front.x;
 		}
@@ -211,6 +219,7 @@ export function createBunch() {
 		for (const f of riders.values()) {
 			if (riding.includes(f.id)) continue;
 			f.gone = true;
+			f.slot = undefined;
 			f.base += f.v * real;
 			f.d = f.base + f.front.x;
 			f.alpha -= real / OUT_S;
@@ -262,10 +271,11 @@ export function createBunch() {
 }
 
 /**
- * Two riders in one lane within a bike of each other — a rider moving up on
- * their offset, or the front row dropping back — and the one behind makes
- * for the gap beside the other, so nobody rides through anybody. It looks
- * wider than it moves, so a rider who made room keeps it while they overlap.
+ * Two riders whose slots share a lane within a bike of each other — a rider
+ * moving up on their offset, or the front row dropping back — and the one
+ * behind makes for the gap between that lane and the next, so nobody rides
+ * through anybody. Read from the slots, never from where a lane's spring has
+ * got to, so it holds the same on every screen whatever each saw before.
  * ponytail: pairwise, O(n²) over a bunch of tens; a sweep by d if bunches grow.
  */
 function giveWay(riders: Follow[]) {
@@ -274,11 +284,11 @@ function giveWay(riders: Follow[]) {
 		for (const b of riders)
 			if (
 				a !== b &&
-				!a.resting &&
-				!b.resting &&
-				Math.abs(a.lane - b.lane) < LANE * 0.8 &&
-				a.d >= b.d &&
+				a.slot !== undefined &&
+				b.slot !== undefined &&
+				Math.abs(a.slot - b.slot) < LANE / 4 &&
+				(a.d > b.d || (a.d === b.d && a.id < b.id)) &&
 				a.d - b.d < bike
 			)
-				b.want = a.lane + LANE * 0.6;
+				b.want = a.slot + LANE / 2;
 }

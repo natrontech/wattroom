@@ -14,14 +14,15 @@ const COUNTDOWN_MS = 10_000;
 const SETTLE_MS = 30_000;
 
 type Drawn = { id: string; d: number; lane: number };
+type Snapshot = { t: number; mps: number; riders: Drawn[] };
 
-/** Where this screen's world drew everyone, as its canvas says (RideWorld). */
+/** Where this screen's world drew everyone, when, and at what speed, as its canvas says (RideWorld). */
 const drawn = (page: Page) =>
 	page.evaluate(() => {
 		const said = document.querySelector<HTMLCanvasElement>(
 			'canvas[data-riders]',
 		)?.dataset.riders;
-		return said ? (JSON.parse(said) as Drawn[]) : [];
+		return said ? (JSON.parse(said) as Snapshot) : null;
 	});
 
 test('two screens draw one bunch: each rider where the other screen has them', async ({
@@ -84,34 +85,29 @@ test('two screens draw one bunch: each rider where the other screen has them', a
 		.click({ timeout: COUNTDOWN_MS + SETTLE_MS });
 
 	try {
-		// Read both screens at once: the bunch rolls on between the two reads,
-		// so compare where each screen has the guest against the coach, and
-		// each rider's lane.
+		// Both screens read at once, each snapshot stamped with when it was
+		// taken: a rider's place on one screen, carried on at the bunch's speed
+		// to the moment the other was taken, is where the other drew them.
 		await expect
 			.poll(
 				async () => {
 					const [a, b] = await Promise.all([drawn(coach), drawn(guest)]);
-					const pick = (list: Drawn[], id: string) =>
-						list.find((r) => r.id === id);
-					const views = [a, b].map((list) => ({
-						coach: pick(list, coachId),
-						guest: pick(list, guestId),
-					}));
-					if (views.some((v) => !v.coach || !v.guest))
+					const pick = (s: Snapshot | null, id: string) =>
+						s?.riders.find((r) => r.id === id);
+					const ids = [coachId, guestId];
+					if (!a || !b || ids.some((id) => !pick(a, id) || !pick(b, id)))
 						return `not both drawn yet: ${JSON.stringify([a, b])}`;
-					const [onCoach, onGuest] = views as {
-						coach: Drawn;
-						guest: Drawn;
-					}[];
-					const gap = (v: { coach: Drawn; guest: Drawn }) =>
-						v.guest.d - v.coach.d;
+					const since = (b.t - a.t) / 1000;
 					const off = Math.max(
-						Math.abs(gap(onCoach) - gap(onGuest)),
-						Math.abs(onCoach.coach.lane - onGuest.coach.lane),
-						Math.abs(onCoach.guest.lane - onGuest.guest.lane),
+						...ids.flatMap((id) => [
+							Math.abs(pick(a, id)!.d + a.mps * since - pick(b, id)!.d),
+							Math.abs(pick(a, id)!.lane - pick(b, id)!.lane),
+						]),
 					);
 					// Two riders ride abreast: on two lanes, never one.
-					const abreast = Math.abs(onCoach.coach.lane - onCoach.guest.lane);
+					const abreast = Math.abs(
+						pick(a, coachId)!.lane - pick(a, guestId)!.lane,
+					);
 					return off <= 1 && abreast > 0.5
 						? 'one bunch'
 						: `screens differ by ${off.toFixed(2)} m (coach ${coachId}, guest ${guestId}): ${JSON.stringify([a, b])}`;
