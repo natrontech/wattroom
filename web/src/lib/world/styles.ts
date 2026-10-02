@@ -217,10 +217,10 @@ export function skyMaterial(style: Style): THREE.ShaderMaterial {
 				float s = max(dot(vDir, uSun), 0.0);
 				vec3 hor = mix(uHorizon, uSunward, pow(s, 8.0));
 				vec3 c = mix(hor, uTop, pow(h, 0.45));
-				if (uPeach > 0.0) { // on the ridges as this eye sees them, gone 2° above them
+				if (uPeach > 0.0) { // on the ridges as this eye sees them, gone about 1° above them
 					float ridge = texture2D(uSkyline, vec2(atan(vDir.x, vDir.z) / 6.2831853, 0.5)).r * 0.5;
-					float bh = 0.03 * (1.0 + 0.5 * pow(s, 4.0));
-					float w = uPeach * smoothstep(-0.01, 0.0, vDir.y) * (1.0 - smoothstep(ridge * 0.9, ridge + bh, vDir.y));
+					float bh = 0.015 * (1.0 + 0.5 * pow(s, 4.0));
+					float w = uPeach * smoothstep(-0.01, 0.0, vDir.y) * (1.0 - smoothstep(ridge - bh, ridge + bh, vDir.y));
 					vec3 pale = vec3(dot(uBand, vec3(0.2126, 0.7152, 0.0722))); // the peach's lightness in grey: out of a cool sky without passing pink
 					c = mix(mix(c, pale, min(1.0, w / 0.3)), uBand, max(0.0, (w - 0.3) / 0.7));
 				}
