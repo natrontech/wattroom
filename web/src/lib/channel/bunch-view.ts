@@ -35,6 +35,8 @@ export type BunchView = {
 export type GamePlay = {
 	mode: string;
 	round: number;
+	/** A ramp's line, %FTP as a fraction: what the bunch rides on a road (#3114). */
+	linePct?: number;
 	/** When the round ends, server ms. */
 	roundEndsAt?: number;
 	out: string[];
@@ -70,6 +72,7 @@ export function bunchOf(
 				? {
 						mode: tick.game.mode,
 						round: tick.game.round ?? 0,
+						linePct: tick.game.linePct,
 						roundEndsAt: tick.game.roundEndsAtMs,
 						out: Object.entries(tick.game.riders ?? {}).flatMap(([id, r]) =>
 							r.eliminated ? [id] : [],

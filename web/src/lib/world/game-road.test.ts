@@ -5,7 +5,7 @@ import type { BunchView, GamePlay } from '$lib/channel/bunch-view';
 import { at } from '$lib/road/along';
 import { legsRoad } from '$lib/road/fixtures';
 import { STYLES } from '../../routes/(app)/dev/world/styles';
-import { fogEle, makeGameRoad, nextStand } from './game-road';
+import { fogEle, makeGameRoad, nextStand, rideAhead } from './game-road';
 import { yOf } from './geometry';
 import { routeOfRoad } from './road-route';
 import type { World } from './world';
@@ -59,27 +59,43 @@ describe('a game on the road (#3114)', () => {
 		expect(fogEle(50, 600)).toBe(590);
 	});
 
+	it('rides ahead the way the hub steps the bunch: slower up a climb, from a standing start too', () => {
+		const flat = routeOfRoad(legsRoad([6000, 0]));
+		const climb = routeOfRoad(legsRoad([6000, 6]));
+		const onFlat = rideAhead(flat, 0, 8, 0.8, 120);
+		expect(rideAhead(climb, 0, 8, 0.8, 120)).toBeLessThan(onFlat * 0.6);
+		expect(rideAhead(flat, 0, 0, 0.8, 120)).toBeLessThan(onFlat);
+		// Capped where the bunch caps a rider.
+		expect(rideAhead(flat, 0, 8, 3, 120)).toBe(rideAhead(flat, 0, 8, 1.5, 120));
+	});
+
 	it('puts Backyard Ramp’s next round under an arch where the bunch will be, held for the round', () => {
 		const g = makeGameRoad(route, world, style);
 		const play = (round: number): GamePlay => ({
 			mode: 'backyard-ramp',
 			round,
+			linePct: 0.8,
 			roundEndsAt: 180_000 * round,
 			out: [],
 		});
-		g.update(view(100, 60_000, play(1)), 0, 0, false);
+		// The game's first tick, the bunch standing: aimed from there all the same.
+		g.update(view(0, 0, play(1), 0), 0, 0, false);
 		expect(arches(g.group)).toHaveLength(1);
 		const first = arches(g.group)[0];
-		// 120 s left at 8 m/s: 960 m on from the bunch.
 		expect(first.userData.label).toBe('ROUND 2');
-		const there = at(route, 1060);
+		const there = at(route, rideAhead(route, 0, 0, 0.8, 180));
 		expect(first.position.x).toBeCloseTo(there.x, 3);
 		expect(first.position.z).toBeCloseTo(there.z, 3);
-		g.update(view(500, 110_000, play(1)), 50, 0, false);
+		// In sight, a bunch riding slower than aimed for does not move it.
+		const held = first.position.clone();
+		g.update(view(600, 120_000, play(1), 2), 120, 0, false);
 		expect(arches(g.group)[0]).toBe(first);
+		expect(first.position.distanceTo(held)).toBe(0);
+		// The next round, the next arch; a mode with no line, none.
 		g.update(view(1100, 190_000, play(2)), 130, 0, false);
 		expect(arches(g.group)).toHaveLength(1);
 		expect(arches(g.group)[0]).not.toBe(first);
+		expect(arches(g.group)[0].userData.label).toBe('ROUND 3');
 		g.update(
 			view(1200, 200_000, { ...play(2), mode: 'watt-golf' }),
 			140,
@@ -89,30 +105,26 @@ describe('a game on the road (#3114)', () => {
 		expect(arches(g.group)).toHaveLength(0);
 	});
 
-	it('aims the arch from the bunch’s speed while it is out of sight, and never moves it in sight', () => {
-		const g = makeGameRoad(route, world, style);
+	it('aims the arch again while it is out of sight', () => {
+		const long = routeOfRoad(legsRoad([9000, 0]));
+		const g = makeGameRoad(long, world, style);
 		const play: GamePlay = {
 			mode: 'backyard-ramp',
 			round: 1,
+			linePct: 0.8,
 			roundEndsAt: 180_000,
 			out: [],
 		};
-		// The game's first tick: the bunch is still standing, with no speed to aim by.
-		g.update(view(0, 0, play, 0), 0, 0, false);
-		expect(arches(g.group)).toHaveLength(0);
-		// Rolling at 6 m/s, 3 min to go: aimed 1,080 m on.
-		g.update(view(10, 0, play, 6), 0, 0, false);
-		expect(arches(g.group)[0].position.x).toBeCloseTo(
-			at(route, 10 + 6 * 180).x,
-			3,
-		);
-		// Up to speed, 1.4 km to go: re-aimed while still out of sight.
-		g.update(view(40, 5000, play), 5, 0, false);
-		const aimed = at(route, 40 + 8 * 175);
-		expect(arches(g.group)[0].position.x).toBeCloseTo(aimed.x, 3);
-		// In sight: a slower bunch no longer moves it.
-		g.update(view(500, 120_000, play, 6), 120, 0, false);
-		expect(arches(g.group)[0].position.x).toBeCloseTo(aimed.x, 3);
+		// A bunch said to roll far faster than the line rides: aimed well over a kilometre on.
+		g.update(view(0, 0, play, 30), 0, 0, false);
+		const far = arches(g.group)[0].position.x;
+		// A tick later, nearer the line's own speed: aimed again, nearer.
+		g.update(view(8, 1000, play, 8), 1, 0, false);
+		const again = arches(g.group)[0].position.x;
+		expect(
+			Math.abs(again - at(long, rideAhead(long, 8, 8, 0.8, 179)).x),
+		).toBeLessThan(0.001);
+		expect(again).not.toBeCloseTo(far, 0);
 	});
 
 	it('raises Collective Ramp’s fog a round at a time, eased, and held under reduced motion', () => {

@@ -5,10 +5,16 @@
 // never live data: nothing here glows (ADR-0005).
 import * as THREE from 'three';
 import {
+	BikeKg,
+	BunchMaxPct,
+	PaceDefaultCdA,
+	ReferenceRiderKg,
+	ReferenceRiderWatts,
 	RoadsideStandMaxAheadM,
 	RoadsideStandMinAheadM,
 	RoadsideStandMoveSeconds,
 } from '$lib/protocol';
+import { createPace } from '$lib/road/pace';
 import type { BunchView } from '$lib/channel/bunch-view';
 import { at } from '$lib/road/along';
 import { type Route } from '$lib/road/route';
@@ -58,6 +64,36 @@ export function nextStand(
 /** The fog sea's height in round `round`, metres above sea, under the bunch riding at `ele`: closer every round. */
 export function fogEle(round: number, ele: number): number {
 	return ele - Math.max(FOG_CLEAR_M, FOG_DEPTH_M - (round - 1) * FOG_RISE_M);
+}
+
+/**
+ * Where the bunch will be `seconds` on, riding `pct` of the reference rider's
+ * FTP from `mps` at `m`: the hub's own step (ADR-0065), a second at a time on
+ * the grade under it. A ramp's bunch rides its line on a road (#3114), so
+ * this is where the round ends.
+ */
+export function rideAhead(
+	route: Route,
+	m: number,
+	mps: number,
+	pct: number,
+	seconds: number,
+): number {
+	const pace = createPace(mps);
+	const watts = Math.min(pct, BunchMaxPct) * ReferenceRiderWatts;
+	let d = m;
+	for (let s = 0; s < seconds; s++) {
+		const before = pace.distance;
+		pace.step(
+			watts,
+			at(route, d).grade,
+			ReferenceRiderKg + BikeKg,
+			PaceDefaultCdA,
+			0,
+		);
+		d += pace.distance - before;
+	}
+	return d;
 }
 
 type Stand = { m: number; since: number };
@@ -140,23 +176,29 @@ export function makeGameRoad(route: Route, world: World, style: Style) {
 		 */
 		update(view: BunchView, clock: number, real: number, steady: boolean) {
 			const play = view.play;
+			const fresh = view.m !== lastM;
 			// The round that starts next stands where the bunch will be when this
-			// one ends: aimed from the bunch's speed while it is too far off to
-			// see move, then held, so it never slides once a rider can see it.
+			// one ends, ridden ahead at the line on the road's own grades: aimed
+			// again each tick while too far off to see move, then held.
 			if (
 				play?.mode === 'backyard-ramp' &&
 				play.roundEndsAt !== undefined &&
+				play.linePct !== undefined &&
 				view.at !== undefined
 			) {
 				const next = play.round + 1;
-				const aim =
-					view.m + (view.mps * Math.max(0, play.roundEndsAt - view.at)) / 1000;
-				// A standing bunch has no speed to aim by: the arch waits for it to roll.
-				if (held?.round !== next) {
-					if (view.mps > 1) archAt(next, aim);
-				} else if (held.m - view.m > AIM_M && held.m !== aim) {
-					held.m = aim;
-					put(held.mesh, aim);
+				const aim = () =>
+					rideAhead(
+						route,
+						view.m,
+						view.mps,
+						play.linePct!,
+						Math.max(0, Math.round((play.roundEndsAt! - view.at!) / 1000)),
+					);
+				if (held?.round !== next) archAt(next, aim());
+				else if (fresh && held.m - view.m > AIM_M) {
+					held.m = aim();
+					put(held.mesh, held.m);
 				}
 			} else dropArch();
 
@@ -185,7 +227,7 @@ export function makeGameRoad(route: Route, world: World, style: Style) {
 			}
 			// The cowbell, once a tick at most: the bunch rode past somebody standing.
 			rang = false;
-			if (view.m !== lastM) {
+			if (fresh) {
 				for (const s of stands.values())
 					if (lastM < s.m && s.m <= view.m) rang = true;
 				lastM = view.m;
