@@ -244,25 +244,32 @@ surface('hud', async (s) => {
 
 surface('ride-preride', async (s) => {
 	// With a remembered road (Designer has ridden one), and without (a rider
-	// who never has).
+	// who never has); past a crew's doors (D11), which an earlier surface's
+	// crew would otherwise put first.
 	const known = await s.open(DESK, { world: false });
-	await fixtureRoad(known.page, 'hairpin');
-	await page(s, known, '/ride', { name: 'ride-preride' });
+	const hairpin = await fixtureRoad(known.page, 'hairpin');
+	// What this device rode last is its own memory (#3671).
+	await known.page.evaluate(
+		(id) =>
+			localStorage.setItem(
+				'wattroom.last-ride.v1',
+				JSON.stringify({ road: id, workout: 'openers' }),
+			),
+		hairpin,
+	);
+	await page(s, known, '/ride?alone', { name: 'ride-preride' });
 	const fresh = await s.open(DESK, { as: 'Newcomer', world: false });
-	await page(s, fresh, '/ride', { name: 'ride-preride-no-road' });
+	await page(s, fresh, '/ride?alone', { name: 'ride-preride-no-road' });
 });
 
 surface('ride-roadpick', async (s) => {
-	// The road picker, with both roads seeded. Today it opens from a free
-	// ride's “Ride a road”; design/ride-preride (#3671) moves it to /ride's
-	// “Change”.
+	// The road picker, with both roads seeded, opened from /ride's
+	// “Change” (#3671).
 	const o = await s.open(DESK, { world: false });
 	await fixtureRoad(o.page, 'hairpin');
 	await fixtureRoad(o.page, 'rolling');
-	// Before a trainer pairs: the channel's free ride starts itself on
-	// pairing, and a started ride closes the picker.
-	await o.page.goto(`${voicePath(await designCrew(o.page))}/training`);
-	await o.page.getByRole('button', { name: 'Ride a road' }).first().click();
+	await o.page.goto('/ride?alone');
+	await o.page.getByRole('button', { name: 'Change' }).first().click();
 	await o.page.waitForTimeout(1500);
 	await s.shot(o, { full: true });
 });
