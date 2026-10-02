@@ -22,7 +22,8 @@ test('a solo Watt Golf starts from /ride and saves as a game ride in the channel
 	const page = await riders('Solo Golfer');
 	const opened = await channels.open(page, `Solo Golf ${Date.now() % 100000}`);
 	const since = Date.now();
-	await page.goto('/ride');
+	// Past the crew doors: the games are a line in the Ride card (#3671).
+	await page.goto('/ride?alone');
 
 	await page
 		.getByTestId('solo-games')
