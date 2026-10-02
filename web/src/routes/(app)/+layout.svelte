@@ -537,8 +537,8 @@
 			     the sidebar standing there (#412). -->
 			<button
 				onclick={() => (navDrawer.open = true)}
-				class="bg-surface-raised ring-ink/15 fixed bottom-4 left-4 z-40 grid h-12
-				w-12 place-items-center rounded-full shadow-lg ring-1 md:hidden"
+				class="bg-surface-raised border-ink/15 fixed bottom-4 left-4 z-40 grid h-12
+				w-12 place-items-center rounded-full border md:hidden"
 				aria-label="open navigation"
 			>
 				<Menu size={20} />
