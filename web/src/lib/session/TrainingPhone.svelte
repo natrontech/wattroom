@@ -30,11 +30,14 @@
 	import { pictureKey } from '$lib/channel/stage';
 	import { formatClock } from '$lib/format';
 	import { useChannel } from '$lib/channel/context';
+	import type { ClimbView } from '$lib/ride/climb-view';
 	import { endGame } from '$lib/session/end-game';
 	import { account } from '$lib/account.svelte';
 	import { blockBands } from '$lib/workout/block';
 	import { serverNow } from '$lib/server-clock';
 	import { channelConnection } from '$lib/channel/connection.svelte';
+
+	let { climb = null }: { climb?: ClimbView | null } = $props();
 
 	const channel = useChannel();
 	const total = $derived(channel.shared?.totalSeconds ?? 0);
@@ -210,7 +213,7 @@
 						<!-- No bias: the trim belongs to a target this device is not
 						     holding. A dead control with a tooltip is still a
 						     control (#565, ux.md). -->
-						<!-- POWER reads your own ride's numbers, so following a
+						<!-- POWER and CLIMB read your own ride, so following a
 						     crewmate leaves RIDE alone. -->
 						<BikeComputer
 							phone
@@ -225,6 +228,7 @@
 							stats={followed.you
 								? channelConnection.current?.recording.live
 								: undefined}
+							climb={followed.you ? climb : null}
 						/>
 					</div>
 				</section>

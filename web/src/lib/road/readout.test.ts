@@ -42,6 +42,21 @@ describe('the road readout every surface says (#3060)', () => {
 		expect(up.climb).toEqual({ cls: second.cls, n: 2, of: 2 });
 	});
 
+	it('names the next classed climb ahead, on a climb or off one', () => {
+		const [first, second] = classed;
+		expect(roadReadout(ride, climbs, 400).next).toEqual({
+			cls: first.cls,
+			inM: first.startM - 400,
+		});
+		// On the first climb, the next is the second.
+		const m = first.startM + 300;
+		expect(roadReadout(ride, climbs, m).next).toEqual({
+			cls: second.cls,
+			inM: second.startM - m,
+		});
+		expect(roadReadout(ride, climbs, second.startM + 1).next).toBeUndefined();
+	});
+
 	it('past a climb’s top, no longer on it', () => {
 		const r = roadReadout(ride, climbs, classed[0].topM + 1);
 		expect(r.climb).toBeUndefined();

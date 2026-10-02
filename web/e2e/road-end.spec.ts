@@ -117,8 +117,18 @@ test('a solo route ride saves at its kilometre, carries on, and rides back from 
 		)
 		.toBe(0);
 	await expect(sheet).toHaveCount(0, { timeout: 15_000 });
-	const km = async () =>
-		Number((await page.getByText(/ of 2\.2 km$/).textContent())?.split(' ')[0]);
+	// Back up 8 % is a classed climb: its card opens CLIMB by itself (#3645),
+	// and the road's metres are on RIDE, one dot away.
+	const computer = page.getByTestId('bike-computer');
+	const km = async () => {
+		if ((await computer.getAttribute('data-page')) === 'climb')
+			await computer.getByRole('button', { name: 'RIDE page' }).click();
+		const text = await page
+			.getByText(/ of 2\.2 km$/)
+			.textContent({ timeout: 2_000 })
+			.catch(() => null);
+		return text === null ? NaN : Number(text.split(' ')[0]);
+	};
 	// Back up 8 % is slow, and the readout is to 100 m.
 	await expect
 		.poll(km, { message: 'the dot did not turn back', timeout: 60_000 })

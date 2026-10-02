@@ -10,6 +10,7 @@
 		skylineOf,
 		withProfile,
 	} from '$lib/workout/road-workout';
+	import { climbView } from '$lib/ride/climb-view';
 	import { createSignalWatch } from '$lib/workout/signal-watch.svelte';
 	import {
 		createRideSounds,
@@ -404,6 +405,11 @@
 
 	// The block, derived once for both screens that draw it — the riding
 	// surface and the TV (ADR-0046).
+	// The road for the TV's horizon and its bike computer's CLIMB (#3641, #3645).
+	const tvSkyline = $derived(
+		session ? skylineOf(session.road, session.segments, ftp) : null,
+	);
+
 	const block = $derived(
 		session && session.segments.length > 0
 			? describeBlock(
@@ -659,7 +665,8 @@
 		{@const ride = session}
 		<TvOverlay
 			stats={session.live}
-			skyline={skylineOf(session.road, session.segments, ftp)}
+			skyline={tvSkyline}
+			climb={climbView(tvSkyline)}
 			riders={[tvRider]}
 			segments={session.segments}
 			total={session.total}

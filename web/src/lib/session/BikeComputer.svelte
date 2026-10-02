@@ -13,9 +13,12 @@
 	import ZoneDot from '$lib/components/ZoneDot.svelte';
 	import { ZONE_BG } from '$lib/components/zones';
 	import { pulse } from '$lib/motion/transitions';
+	import ClimbProfile from '$lib/ride/ClimbProfile.svelte';
 	import {
 		PAGE_NAMES,
 		claimPageTurn,
+		climbChip,
+		climbHeader,
 		fieldsFor,
 		pagesFor,
 		turned,
@@ -26,16 +29,19 @@
 	let {
 		tv = false,
 		phone = false,
+		climbOpens = false,
 		...ctx
 	}: ComputerContext & {
 		/** At three metres, sized in vh (TvMode). */
 		tv?: boolean;
 		/** A phone in the hand: a 3×2 grid. */
 		phone?: boolean;
+		/** A free or route ride, where CLIMB opens by itself (ADR-0071 as amended). */
+		climbOpens?: boolean;
 	} = $props();
 
 	let page = $state<ComputerPage>('ride');
-	const pages = $derived(pagesFor(ctx.stats));
+	const pages = $derived(pagesFor(ctx));
 	const shown = $derived(pages.includes(page) ? page : 'ride');
 	const fields = $derived(fieldsFor(shown, ctx));
 	const turns = $derived(pages.length > 1);
@@ -69,6 +75,18 @@
 		pulse(gearField);
 	});
 
+	// On a free or route ride CLIMB opens by itself from RIDE when a climb
+	// begins (ADR-0071 as amended, #3645), once a climb: a rider on another
+	// page chose it, and a chip says where the climb is instead; one who paged
+	// away from CLIMB is not pulled back. A workout keeps RIDE, and its chip.
+	let openedFor: number | null = null;
+	$effect(() => {
+		const climb = ctx.climb?.climb.startM ?? null;
+		if (!climbOpens || climb === null || climb === openedFor) return;
+		openedFor = climb;
+		if (untrack(() => shown) === 'ride') page = 'climb';
+	});
+
 	const zoneStrip = $derived(
 		shown === 'power' && ctx.stats ? ctx.stats.zoneSeconds.slice(1, 8) : null,
 	);
@@ -92,12 +110,21 @@
 	     one row tall where it fits and the focus above keeps its height (#3597);
 	     a phone's grid puts them above and below. -->
 	{#snippet name()}
+		<!-- CLIMB's name counts the climbs, its class the Skyline's chip. -->
+		{@const climb = shown === 'climb' ? ctx.climb : null}
 		<p
-			class="{size.word} text-muted leading-none tracking-[0.2em] {phone
+			class="{size.word} text-muted flex items-center gap-3 leading-none whitespace-nowrap {phone
 				? 'mb-2'
 				: ''}"
 		>
-			{PAGE_NAMES[shown]}
+			<span class="tracking-[0.2em]"
+				>{climb ? climbHeader(climb) : PAGE_NAMES[shown]}</span
+			>
+			{#if climb}<span
+					data-testid="climb-class"
+					class="border-neon bg-surface text-ink rounded border px-1 leading-none font-bold"
+					>{climb.card.cls}</span
+				>{/if}
 		</p>
 	{/snippet}
 	{#snippet dots()}
@@ -155,6 +182,11 @@
 		></button>
 	{/if}
 	{#if phone}{@render name()}{/if}
+	{#if ctx.climb && shown !== 'climb'}
+		<p data-testid="climb-chip" class="{size.word} text-neon mb-2 leading-none">
+			{climbChip(ctx.climb)}
+		</p>
+	{/if}
 	<div class={layout}>
 		{#if !phone}{@render name()}{/if}
 		{#each fields as field (field.key)}
@@ -190,5 +222,9 @@
 		{#if turns && !tv && !phone}{@render dots()}{/if}
 	</div>
 	{#if zoneStrip}{@render strip(zoneStrip)}{/if}
+	{#if shown === 'climb' && ctx.climb}<ClimbProfile
+			view={ctx.climb}
+			{tv}
+		/>{/if}
 	{#if turns && phone}{@render dots()}{/if}
 </section>

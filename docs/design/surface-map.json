@@ -4,6 +4,7 @@
 			"web/src/lib/session/RidingSurface.svelte",
 			"web/src/lib/session/docks.ts",
 			"web/src/lib/session/BikeComputer.svelte",
+			"web/src/lib/ride/ClimbProfile.svelte",
 			"web/src/lib/session/computer-pages.ts",
 			"web/src/lib/session/RideHeader.svelte",
 			"web/src/lib/ride/Skyline.svelte",

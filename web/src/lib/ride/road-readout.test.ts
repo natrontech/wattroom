@@ -22,10 +22,19 @@ describe('a ride’s road readout (#3639)', () => {
 		expect(at(ride, 1300, true).grade).toBeCloseTo(-5, 5);
 	});
 
-	it('says it as slot 1 reads it, the top only on a classed climb', () => {
+	it('says it as slot 1 reads it: the next climb, never the top of this one', () => {
+		expect(
+			roadLine({
+				grade: 7.62,
+				km: 12.44,
+				totalKm: 52.9,
+				toTopM: 3240,
+				next: { cls: 'II', inM: 4800 },
+			}),
+		).toBe('km 12.4 of 52.9 · 7.6 % · II in 4.8 km');
 		expect(
 			roadLine({ grade: 7.62, km: 12.44, totalKm: 52.9, toTopM: 3240 }),
-		).toBe('km 12.4 of 52.9 · 7.6 % · top in 3.2 km');
+		).toBe('km 12.4 of 52.9 · 7.6 %');
 		expect(roadLine({ grade: 0, km: 0.4, totalKm: 8 })).toBe(
 			'km 0.4 of 8.0 · 0.0 %',
 		);

@@ -24,6 +24,8 @@
 	import { endRideLabel, roadEndOffered } from '$lib/ride/road-end';
 	import RoadPick from '$lib/ride/RoadPick.svelte';
 	import Skyline from '$lib/ride/Skyline.svelte';
+	import { climbView } from '$lib/ride/climb-view';
+	import { watchClimbCues } from '$lib/ride/climb-cues.svelte';
 	import { carryOnFrom, type RideableRoute } from '$lib/ride/roads';
 	import { rememberRoad } from '$lib/ride/last-ride';
 	import type { Trainer } from '$lib/ble/trainer';
@@ -85,6 +87,19 @@
 			off();
 		};
 	});
+	// The road as the Skyline and the climb card read it (#3059, #3645).
+	const skyline = $derived(
+		free.road
+			? {
+					road: route.road,
+					m: free.road.m,
+					mps: free.road.virtualMps,
+					reverse: free.road.reverse,
+				}
+			: null,
+	);
+	const climb = $derived(climbView(skyline));
+	watchClimbCues(() => climb);
 	const stale = $derived(!!solo.trainer && now - lastAt > SIGNAL_LOST_MS);
 	// Easier / Harder from the keys and any clicker, wherever the pair and its
 	// hint are drawn (#3329, #3661).
@@ -249,16 +264,13 @@
 				: undefined}
 			{...free.road && roadContext(free.road)}
 			split={ghost.split ?? undefined}
+			{climb}
+			climbOpens
 		/>
-		{#if free.road}
+		{#if skyline}
 			<!-- The horizon (#3059): the road ahead and your dot. -->
 			<div class="h-40">
-				<Skyline
-					road={route.road}
-					m={free.road.m}
-					mps={free.road.virtualMps}
-					reverse={free.road.reverse}
-				/>
+				<Skyline {...skyline} />
 			</div>
 		{/if}
 		<button onclick={() => void end()} class="btn btn-primary btn-lg"

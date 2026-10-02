@@ -216,6 +216,17 @@ surface('phone-ride', async (s) => {
 	await s.shot(o);
 });
 
+surface('phone-ride-road-flat', async (s) => {
+	// phone-ride-road's recipe with the world off: the world on a free ride's
+	// road is #3663's, and its other items — the road line, the CLIMB page,
+	// the Skyline — do not wait for it.
+	const o = await s.open(PHONE, { world: false });
+	const road = await fixtureRoad(o.page, 'hairpin');
+	await ride(o.page, `/ride?road=${road}`);
+	await assertRiding(o.page);
+	await s.shot(o, { full: true });
+});
+
 test.fixme('phone-ride-road', () => {
 	// The world on a free ride's road is #3663's.
 });

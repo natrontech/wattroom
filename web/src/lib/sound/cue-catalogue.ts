@@ -65,7 +65,9 @@ export type CueId =
 	| 'handup'
 	| 'prime'
 	| 'shift-up'
-	| 'shift-down';
+	| 'shift-down'
+	| 'climb'
+	| 'summit';
 
 /** A minor triad reads as tension, a major one as reward — the whole emotional vocabulary. */
 const A4 = 440;
@@ -535,6 +537,44 @@ export const CUES: Record<CueId, Cue> = {
 				gain: 0.3,
 				filter: { from: 2400, q: 2, type: 'bandpass' },
 			},
+		],
+	},
+
+	// A road's climbs (#3645): the climb card opens, and its top is reached.
+	// Rising a fourth says "up ahead" without the sprint's urgency; the top
+	// resolves it, the way recover answers fault.
+	climb: {
+		id: 'climb',
+		label: 'Climb ahead',
+		hint: 'A classified climb starts soon: the climb card opens. Two notes rising a fourth.',
+		voices: [
+			{
+				type: 'triangle',
+				freq: note(-5),
+				at: 0,
+				dur: 0.16,
+				gain: 0.26,
+				filter: { from: 900, to: 1800 },
+			},
+			{
+				type: 'triangle',
+				freq: note(0),
+				at: 0.16,
+				dur: 0.26,
+				gain: 0.28,
+				filter: { from: 1200, to: 2400 },
+			},
+		],
+	},
+
+	summit: {
+		id: 'summit',
+		label: 'Summit',
+		hint: 'Over the top of the climb. A major arpeggio, up.',
+		voices: [
+			{ type: 'triangle', freq: note(4), at: 0, dur: 0.12, gain: 0.24 },
+			{ type: 'triangle', freq: note(7), at: 0.1, dur: 0.12, gain: 0.26 },
+			{ type: 'triangle', freq: note(12), at: 0.2, dur: 0.3, gain: 0.28 },
 		],
 	},
 };

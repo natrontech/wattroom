@@ -17,6 +17,8 @@ export interface RoadReadout {
 	toTopM?: number;
 	/** That climb: its class, and which of the road's classed climbs it is. */
 	climb?: { cls: ClimbClass; n: number; of: number };
+	/** The next classed climb ahead, and metres to its foot; absent past the last. */
+	next?: { cls: ClimbClass; inM: number };
 	/** The next 2 km in 100 m bars, each its grade in %; fewer in the road's last 2 km. */
 	ahead?: number[];
 }
@@ -47,6 +49,8 @@ export function roadReadout(
 		readout.toTopM = classed[i].topM - at;
 		readout.climb = { cls: classed[i].cls, n: i + 1, of: classed.length };
 	}
+	const next = classed.find((c) => c.startM > at);
+	if (next) readout.next = { cls: next.cls, inM: next.startM - at };
 	const ahead: number[] = [];
 	for (let k = 0; k < BARS && at + (k + 1) * BAR_M <= road.length; k++) {
 		const from = at + k * BAR_M;
