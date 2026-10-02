@@ -27,7 +27,7 @@
 {#if rows.length > 0}
 	<div class="overflow-x-auto">
 		<table
-			class="w-full min-w-[17rem] text-xs {head ? '' : 'whitespace-nowrap'}"
+			class="w-full text-xs {head ? 'min-w-[17rem]' : 'sm:whitespace-nowrap'}"
 			aria-label="Climbs"
 		>
 			<thead class={head ? '' : 'sr-only'}>
@@ -62,12 +62,13 @@
 						<td class="font-display py-2 pr-2 text-right tabular-nums sm:pr-3"
 							>{Math.round(c.gainM)} m</td
 						>
-						<!-- Last without a best: flush right, and under a profile it takes
-						     the spare width, so the climb's facts stay together on the left. -->
+						<!-- Last without a best: flush right. Under a profile on a desk it
+						     takes the spare width, so the climb's facts stay together on the
+						     left; on a phone the row keeps to the panel's width. -->
 						<td
 							class="font-display py-2 text-right tabular-nums {withBests
 								? 'pr-2 sm:pr-3'
-								: ''} {head ? '' : 'w-full'}"
+								: ''} {head ? '' : 'sm:w-full'}"
 							>{head ? '' : 'top at '}km {formatKm(c.topM)}</td
 						>
 						{#if withBests}
