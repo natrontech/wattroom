@@ -26,7 +26,10 @@
 
 {#if rows.length > 0}
 	<div class="overflow-x-auto">
-		<table class="w-full min-w-[17rem] text-xs" aria-label="Climbs">
+		<table
+			class="w-full min-w-[17rem] text-xs {head ? '' : 'whitespace-nowrap'}"
+			aria-label="Climbs"
+		>
 			<thead class={head ? '' : 'sr-only'}>
 				<tr class="text-muted border-frame border-b text-left">
 					<th class="eyebrow py-2 pr-2 font-normal sm:pr-3">Climb</th>
