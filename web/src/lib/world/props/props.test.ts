@@ -9,9 +9,10 @@ import type { Placement, Road, Violation } from '../placement/types';
 import { hashSeed } from '../rand';
 import { syntheticPoints } from '../synthetic';
 import { build, origin, routeLines } from '../terrain/network.test-helper';
-import { drawnRows, ROAD_W } from '../terrain/road-profile';
+import { drawnRows, ROAD_W, SHOULDER } from '../terrain/road-profile';
 import { generate, type World } from '../world';
 import { BUILD_MS } from '../world.test-helper';
+import { FAMILY } from './batch';
 import { scatter, type Prop } from './scatter';
 
 /**
@@ -121,6 +122,55 @@ describe('the dev world’s props', () => {
 		}
 		expect(w.placements.length).toBeGreaterThan(3000);
 		expect(out).toEqual([]);
+	});
+
+	it('keeps the road and its shoulder clear of every tree and building, and every crown off a wall (#3675)', () => {
+		// Every road, a point a metre, in 20 m buckets: near enough to a segment's distance.
+		const CELL = 20;
+		const buckets = new Map<string, P2[]>();
+		for (const { x, z } of w.roads)
+			for (let k = 0; k + 1 < x.length; k++) {
+				const n = Math.ceil(Math.hypot(x[k + 1] - x[k], z[k + 1] - z[k]));
+				for (let s = 0; s < n; s++) {
+					const px = x[k] + ((x[k + 1] - x[k]) * s) / n;
+					const pz = z[k] + ((z[k + 1] - z[k]) * s) / n;
+					const key = `${Math.floor(px / CELL)},${Math.floor(pz / CELL)}`;
+					buckets.set(key, [...(buckets.get(key) ?? []), [px, pz]]);
+				}
+			}
+		const toRoad = (px: number, pz: number) => {
+			let best = Infinity;
+			const [ci, cj] = [Math.floor(px / CELL), Math.floor(pz / CELL)];
+			for (let di = -1; di <= 1; di++)
+				for (let dj = -1; dj <= 1; dj++)
+					for (const [x, z] of buckets.get(`${ci + di},${cj + dj}`) ?? [])
+						best = Math.min(best, Math.hypot(px - x, pz - z));
+			return best;
+		};
+		const shoulder = ROAD_W / 2 + SHOULDER;
+		const CROWN_M = 3;
+		const trees = w.props.filter((p) => FAMILY[p.kind] === 'trees');
+		const homes = w.placements
+			.filter((p) => p.cls === 'building')
+			.map(({ id, footprint: f }) => {
+				const cx = f.reduce((s, [x]) => s + x, 0) / f.length;
+				const cz = f.reduce((s, [, z]) => s + z, 0) / f.length;
+				const r = Math.max(...f.map(([x, z]) => Math.hypot(x - cx, z - cz)));
+				return { id, cx, cz, r };
+			});
+		expect(trees.length).toBeGreaterThan(3000);
+		expect(homes.length).toBeGreaterThan(20);
+		const onRoad = [
+			...trees.map((t) => ({ id: t.kind, cx: t.x, cz: t.z, r: CROWN_M })),
+			...homes,
+		]
+			.filter((p) => toRoad(p.cx, p.cz) <= shoulder + p.r)
+			.map((p) => p.id);
+		const atWalls = trees.filter((t) =>
+			homes.some((h) => Math.hypot(t.x - h.cx, t.z - h.cz) <= h.r + CROWN_M),
+		);
+		expect(onRoad).toEqual([]);
+		expect(atWalls.length).toBe(0);
 	});
 
 	it('builds each village around its church, and grazes cows', () => {
