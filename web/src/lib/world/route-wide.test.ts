@@ -17,6 +17,12 @@ import { BUILD_MS, longLoopPoints } from './world.test-helper';
  * dressed around the villages, so a last bit that moved moves a bench. They
  * were retaken once, for #3832: a road's ends keep their grade now, so the
  * riding clock and what hangs on it moved; nothing else has moved them since.
+ *
+ * The two horizon digests are the exception: they were re-taken when a
+ * westward heading stopped counting toward bins up to 80° away (#3829),
+ * which moves the hero peak on a route ridden partly westward on purpose,
+ * and when the ridges' rock and snow colours became a blend over a height
+ * band, so a peak draws no vertical seam where it crosses the line (#3835).
  */
 
 /** FNV-1a over every number's float64 bytes, in order. */
@@ -111,7 +117,7 @@ describe('a 29 km loop, its route-wide work', () => {
 	});
 
 	it('draws the same horizon', () => {
-		expect(horizonDigest(route, world)).toBe('6092d61f');
+		expect(horizonDigest(route, world)).toBe('954e34ea');
 	});
 
 	it('stands the same things around the start, and along the whole loop', () => {
@@ -134,7 +140,7 @@ describe('a 124 km loop, its route-wide work', () => {
 	it('names the same villages, keeps the same clock and draws the same horizon', () => {
 		expect(digestOf([world.villageNames, world.markers])).toBe('c7b6942f');
 		expect(rhythmDigest(world)).toBe('4d5155d0');
-		expect(horizonDigest(route, world)).toBe('8bf95e93');
+		expect(horizonDigest(route, world)).toBe('23d26d12');
 	});
 
 	// Its start meets its end: the pieces planned before the finish are decided too.

@@ -1,0 +1,1 @@
+- On the Rides page, a ride row is as tall as what it holds: a one-line ride no longer sits over a blank band because its neighbour's title wrapped, and every row puts its figures and its share link in the same place.
