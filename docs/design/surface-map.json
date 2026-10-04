@@ -48,6 +48,10 @@
 		]
 	},
 	{
+		"files": ["web/src/lib/session/CountdownScreen.svelte"],
+		"surfaces": ["ride-countin"]
+	},
+	{
 		"files": ["web/src/lib/world/cheer.ts"],
 		"surfaces": ["ride-session-road"]
 	},
