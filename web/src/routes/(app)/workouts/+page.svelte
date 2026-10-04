@@ -225,10 +225,6 @@
 							<a href="/workouts/edit?w={entry.id}" class="btn btn-ghost btn-xs"
 								>Edit</a
 							>
-							<button
-								onclick={() => removeCustom(entry)}
-								class="btn btn-ghost btn-xs text-danger">Delete</button
-							>
 							{#if onRoads}
 								<button
 									onclick={() =>
@@ -240,6 +236,15 @@
 								href="/ride?w={entry.id}"
 								class="btn btn-primary btn-xs {onRoads ? '' : 'ml-auto'}"
 								>Ride</a
+							>
+							<span
+								role="separator"
+								aria-orientation="vertical"
+								class="bg-ink/10 h-4 w-px shrink-0"
+							></span>
+							<button
+								onclick={() => removeCustom(entry)}
+								class="btn btn-ghost btn-xs text-danger">Delete</button
 							>
 						{/snippet}
 					</WorkoutCard>
