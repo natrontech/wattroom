@@ -14,7 +14,9 @@ import { BUILD_MS, longLoopPoints } from './world.test-helper';
  * cheaper, never different: the same route still yields the same world.
  * Each digest below was taken on main before that work and is held here
  * byte for byte — the set pieces' plan is spaced by the riding clock and
- * dressed around the villages, so a last bit that moved moves a bench.
+ * dressed around the villages, so a last bit that moved moves a bench. They
+ * were retaken once, for #3832: a road's ends keep their grade now, so the
+ * riding clock and what hangs on it moved; nothing else has moved them since.
  *
  * The two horizon digests are the exception: they were re-taken when a
  * westward heading stopped counting toward bins up to 80° away (#3829),
@@ -95,14 +97,14 @@ describe('a 29 km loop, its route-wide work', () => {
 		const out: number[] = [];
 		for (let x = -3000; x <= 3000; x += 97)
 			for (let z = -3000; z <= 3000; z += 89) out.push(world.heightAt(x, z));
-		expect(digest(out)).toBe('6a821d83');
+		expect(digest(out)).toBe('cf06f8b3');
 		const grids: number[] = [];
 		for (let ci = -6; ci <= 6; ci += 3)
 			for (let cj = -6; cj <= 6; cj += 3) {
 				const g = world.grid(ci, cj);
 				if (g) grids.push(...g.h, ...g.biome, ...g.shade, ...g.forest);
 			}
-		expect(digest(grids)).toBe('4ea1647b');
+		expect(digest(grids)).toBe('b167d1cd');
 		expect(CHUNK_M).toBe(160);
 	});
 
@@ -111,19 +113,19 @@ describe('a 29 km loop, its route-wide work', () => {
 	});
 
 	it('keeps the same riding clock', () => {
-		expect(rhythmDigest(world)).toBe('0926db69');
+		expect(rhythmDigest(world)).toBe('52fdd075');
 	});
 
 	it('draws the same horizon', () => {
-		expect(horizonDigest(route, world)).toBe('6da8f2a1');
+		expect(horizonDigest(route, world)).toBe('954e34ea');
 	});
 
 	it('stands the same things around the start, and along the whole loop', () => {
-		expect(aroundStart(route, world)).toBe('d718762a');
+		expect(aroundStart(route, world)).toBe('e0d6504b');
 		const all = world.everything;
 		expect(
 			digestOf([all.props, all.pieces, all.signs, all.arches, all.placements]),
-		).toBe('4d276fbb');
+		).toBe('f1d34de5');
 	});
 });
 
@@ -136,13 +138,13 @@ describe('a 124 km loop, its route-wide work', () => {
 	}, BUILD_MS);
 
 	it('names the same villages, keeps the same clock and draws the same horizon', () => {
-		expect(digestOf([world.villageNames, world.markers])).toBe('47bf6885');
-		expect(rhythmDigest(world)).toBe('d1c51d12');
-		expect(horizonDigest(route, world)).toBe('a1f9cf87');
+		expect(digestOf([world.villageNames, world.markers])).toBe('c7b6942f');
+		expect(rhythmDigest(world)).toBe('4d5155d0');
+		expect(horizonDigest(route, world)).toBe('23d26d12');
 	});
 
 	// Its start meets its end: the pieces planned before the finish are decided too.
 	it('stands the same things around the start', () => {
-		expect(aroundStart(route, world)).toBe('5b17ee81');
+		expect(aroundStart(route, world)).toBe('a44b3aa6');
 	});
 });
