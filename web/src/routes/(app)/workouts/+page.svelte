@@ -240,7 +240,7 @@
 							<span
 								role="separator"
 								aria-orientation="vertical"
-								class="bg-ink/10 h-4 w-px shrink-0"
+								class="bg-muted/40 h-4 w-px shrink-0"
 							></span>
 							<button
 								onclick={() => removeCustom(entry)}

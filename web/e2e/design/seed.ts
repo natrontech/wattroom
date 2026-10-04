@@ -234,3 +234,25 @@ export async function bigWatts(page: Page): Promise<string> {
 		throw new Error(`saving the workout: ${JSON.stringify(made)}`);
 	return made.body.id;
 }
+
+/** A saved workout, so the shelf under "Your workouts" has a card to draw. */
+export async function ownWorkout(page: Page): Promise<string> {
+	const name = 'Design own workout';
+	type Shelf = { workouts: { id: string; workout: { name: string } }[] };
+	const found = (
+		await call<Shelf>(page, 'GET', '/api/workouts')
+	).body.workouts.find((w) => w.workout.name === name);
+	if (found) return found.id;
+	const made = await call<{ id: string }>(page, 'POST', '/api/workouts', {
+		workout: {
+			name,
+			steps: [
+				{ type: 'steady', seconds: 300, watts: 120 },
+				{ type: 'steady', seconds: 600, watts: 200 },
+			],
+		},
+	});
+	if (made.status !== 201 && made.status !== 200)
+		throw new Error(`saving the workout: ${JSON.stringify(made)}`);
+	return made.body.id;
+}
