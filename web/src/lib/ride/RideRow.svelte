@@ -49,10 +49,11 @@
 		</a>
 	{/if}
 	<!-- One structure on every card (#3818): the name and what the ride came
-	     to, then where it sits and the share toggle. The name takes at most
-	     two lines, so a neighbour in the grid is never a long way taller. -->
+	     to, then where it sits and the share toggle. The name is one line,
+	     cut with an ellipsis (the full one is its title and the ride's page),
+	     so every card is the same height and the grid stays even. -->
 	<span
-		class="font-display font-bold sm:col-start-1 sm:row-start-1 sm:line-clamp-2"
+		class="font-display truncate font-bold sm:col-start-1 sm:row-start-1"
 		title={ride.workoutName}>{ride.workoutName}</span
 	>
 	<div

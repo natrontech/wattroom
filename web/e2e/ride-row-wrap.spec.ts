@@ -112,5 +112,12 @@ test('a one-line ride row is not stretched by a neighbour that wraps', async ({
 		});
 		// Its own padding and its content, not its neighbour's height.
 		expect(blank, `at ${size.width} px`).toBeLessThanOrEqual(8);
+
+		// A long name is cut, not wrapped: both cards are one height, so the
+		// grid has no step between them (#3818).
+		const heights = await a
+			.locator('li[id^="ride-ride-row-"]')
+			.evaluateAll((lis) => lis.map((li) => li.getBoundingClientRect().height));
+		expect(Math.max(...heights) - Math.min(...heights)).toBeLessThanOrEqual(2);
 	}
 });
