@@ -322,7 +322,7 @@
 					href="https://support.garmin.com/en-US/?faq=Ht3ZP52Kju075uKvqTqu99"
 					target="_blank"
 					rel="noreferrer noopener"
-					class="mt-2 inline-block underline underline-offset-2"
+					class="link-standalone mt-2 underline underline-offset-2"
 					>Garmin's import instructions and troubleshooting</a
 				>
 			</details>
