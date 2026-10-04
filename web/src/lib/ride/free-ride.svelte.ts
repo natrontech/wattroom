@@ -27,7 +27,9 @@ export const FREE_RIDE_JSON = JSON.stringify({
 });
 
 export type FreeRideOutcome =
-	{ saved: { id: string } } | { failure: SaveFailure } | { short: true };
+	| { saved: { id: string; xp?: number } }
+	| { failure: SaveFailure }
+	| { short: true };
 
 /**
  * A free ride (ADR-0059): riding a voice channel with no session and no
