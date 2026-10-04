@@ -48,12 +48,11 @@
 			<span class="sr-only">Open {ride.workoutName}</span>
 		</a>
 	{/if}
-	<!-- One structure on every card (#3818), two lines tall wherever there is
-	     room: the name and what the ride came to, then where it sits and the
-	     share toggle. The name truncates rather than wrapping, because a
-	     wrapped one stretched its neighbour in the grid. -->
+	<!-- One structure on every card (#3818): the name and what the ride came
+	     to, then where it sits and the share toggle. The name takes at most
+	     two lines, so a neighbour in the grid is never a long way taller. -->
 	<span
-		class="font-display font-bold sm:col-start-1 sm:row-start-1 sm:truncate"
+		class="font-display font-bold sm:col-start-1 sm:row-start-1 sm:line-clamp-2"
 		title={ride.workoutName}>{ride.workoutName}</span
 	>
 	<div
