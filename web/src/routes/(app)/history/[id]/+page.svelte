@@ -189,7 +189,7 @@
 <main class="page">
 	<a
 		href="/history"
-		class="text-muted hover:text-ink inline-flex items-center gap-1.5 text-xs"
+		class="text-muted hover:text-ink link-standalone gap-1.5 text-xs"
 	>
 		<ArrowLeft size={14} /> Rides
 	</a>

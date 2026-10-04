@@ -198,7 +198,7 @@
 			title="Different FTPs. One session."
 			lede="Friends never ride at the same watts. WattRoom never asks them to: a workout is written in percentages of FTP, and every trainer holds its own rider’s share. Drag your FTP and watch."
 		/>
-		<a href="/group-workouts" class="btn-link mt-5 inline-block text-sm"
+		<a href="/group-workouts" class="btn-link link-standalone mt-5 text-sm"
 			>How group workouts work</a
 		>
 	</div>
