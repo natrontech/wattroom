@@ -6,7 +6,7 @@
 
 export const BARS_PER_GROUP = 3;
 export const BAR_GAP = 3;
-export const GROUP_PAD = 10; // total breath in a group, split either side
+export const GROUP_PAD = 16; // total breath in a group, split either side
 export const GUTTER = 40; // holds the reference label ("1,000 W" at 12px)
 export const MIN_BAR = 6;
 export const MAX_BAR = 52;
