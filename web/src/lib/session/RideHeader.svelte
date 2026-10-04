@@ -69,7 +69,9 @@
 <header class="flex flex-wrap items-end gap-x-6 gap-y-3">
 	<div class="min-w-0">
 		{#if context}
-			<p data-testid="ride-context" class="eyebrow truncate">{context}</p>
+			<p data-testid="ride-context" class="eyebrow max-w-sm truncate">
+				{context}
+			</p>
 		{/if}
 		<p class="eyebrow">
 			{#if eyebrow}

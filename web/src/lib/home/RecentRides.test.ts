@@ -19,3 +19,12 @@ describe('Home recent rides', () => {
 		expect(html.indexOf('Smoke Test')).toBeLessThan(html.indexOf('kJ'));
 	});
 });
+
+describe('a long ride name', () => {
+	it('truncates inside its own cell instead of pushing the stats off the row', () => {
+		const html = render(RecentRides, {
+			props: { rides: [{ ...ride, workoutName: 'x'.repeat(200) }] },
+		}).body;
+		expect(html).toMatch(/min-w-0 flex-1 truncate[^>]*>x{200}</);
+	});
+});
