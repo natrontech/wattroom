@@ -565,7 +565,8 @@
 <!-- px-4 on a phone is the kit's gutter (`page`, ux.md's 16 px); the ride
      surface is not a `page` — it fills the window — so it spells the two. -->
 <main
-	class="bg-surface text-ink flex min-h-screen flex-col {setup
+	class="bg-surface text-ink flex min-h-screen flex-col {setup ||
+	session?.state === 'done'
 		? 'page'
 		: 'px-4 py-5 sm:px-6'}"
 >
@@ -688,7 +689,7 @@
 	{#if session && session.state === 'done'}
 		<!-- The ride is over: the summary IS the screen — no dead HUD glowing
 		     zeros behind it (#126). -->
-		<div class="mt-4">
+		<div>
 			<SessionSummary
 				title={workout.name}
 				unsaved={saveStatus !== null && !savedId}

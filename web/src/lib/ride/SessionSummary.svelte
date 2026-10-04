@@ -303,7 +303,11 @@
 							</li>
 						{/each}
 					</ul>
-					<p class="text-muted mt-2 text-[11px]">Execution — time on target.</p>
+					{#if together.some((rider) => rider.execution !== undefined)}
+						<p class="text-muted mt-2 text-[11px]">
+							Execution — time on target.
+						</p>
+					{/if}
 				</section>
 			{/if}
 
