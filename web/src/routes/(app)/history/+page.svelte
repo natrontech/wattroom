@@ -31,6 +31,7 @@
 	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
 	import {
+		NO_RIDES_YET,
 		rideCursorOf,
 		rideCursorQuery,
 		type RideCursor,
@@ -448,11 +449,7 @@
 		     its own piece either way. -->
 		<div class="mt-8">
 			<EmptyState>
-				<p class="text-ink text-sm">No rides yet.</p>
-				<p class="mx-auto mt-2 max-w-sm text-xs leading-relaxed">
-					Finish a workout and it lands here with its execution score. You can
-					export any ride as a .fit for Strava or your head unit.
-				</p>
+				{NO_RIDES_YET}
 				{#snippet cta()}
 					<a href="/workouts" class="btn btn-primary">Ride solo</a>
 				{/snippet}
