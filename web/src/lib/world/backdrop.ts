@@ -7,8 +7,6 @@ import { referenceSpeed } from '$lib/road/pace';
 import { noise2, prng } from './rand';
 import type { Route } from '$lib/road/route';
 
-const smoothstep = THREE.MathUtils.smoothstep;
-
 export type Peaks = { hero: number; second: number; share: number }; // radians (heading convention), share of riding time
 
 // Which way does the camera look, weighted by how long you ride that way?
@@ -96,13 +94,10 @@ export function backdrop(
 			base + y,
 			Math.cos(a) * R,
 		]; // heading convention: 0 = +z
-		// Blended over a height band, not switched at a line: a switch inside
-		// one quad draws a vertical seam wherever a ridge crosses the line.
 		const c = (y: number) => {
-			const out = ridge.clone();
-			out.lerp(rock, smoothstep(y, snowline * 0.5, snowline * 0.74));
-			if (snow) out.lerp(snowC, smoothstep(y, snowline * 0.8, snowline * 1.2));
-			out.lerp(fog, ring.fog);
+			const t =
+				y > snowline && snow ? snowC : y > snowline * 0.62 ? rock : ridge;
+			const out = t.clone().lerp(fog, ring.fog);
 			return [out.r, out.g, out.b];
 		};
 		// two bands per segment: flank (ridge colour) and crown (rock, or snow above the snowline)
