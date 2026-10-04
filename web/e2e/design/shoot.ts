@@ -102,6 +102,9 @@ export class Shoot {
 				// World on is the device's World control at Full: this flag until
 				// #3214 replaces it.
 				if (world === true) localStorage.setItem('wattroom.world-slot.v1', '1');
+				// Software GL misses every frame; the dev build's frame judge
+				// stands down for the capture (#3823).
+				localStorage.setItem('wattroom.world-software.v1', '1');
 				if (world === false) localStorage.removeItem('wattroom.world-slot.v1');
 			},
 			[MUTED, world ?? null] as const,
@@ -238,13 +241,26 @@ export async function ride(
 	await atSecond(page, second);
 }
 
-/** Waits until a clock on the page reads `second` into the ride. */
+/**
+ * Waits until a clock on the page reads `second` into the ride. A machine
+ * that draws the world in software (#3823) answers a poll seconds late, so a
+ * clock that has already moved on, by up to LATE seconds, counts as reached:
+ * the shot is a little later in the ride, never a failed surface.
+ */
+const LATE = 45;
 export async function atSecond(page: Page, second: number): Promise<void> {
 	const mark = `${Math.floor(second / 60)}:${String(second % 60).padStart(2, '0')}`;
-	const deadline = Date.now() + (second + 30) * 1000;
-	while (!(await clocks(page)).split(' ').includes(mark)) {
+	const reached = (clock: string) => {
+		const [m, s] = clock.split(':').map(Number);
+		const at = m * 60 + s - second;
+		return at >= 0 && at <= LATE;
+	};
+	const deadline = Date.now() + (second + 30 + LATE) * 1000;
+	for (;;) {
+		const shown = (await clocks(page)).split(' ');
+		if (shown.includes(mark) || shown.some(reached)) return;
 		if (Date.now() > deadline)
-			throw new Error(`the ride never reached ${mark}: ${await clocks(page)}`);
+			throw new Error(`the ride never reached ${mark}: ${shown.join(' ')}`);
 		await page.waitForTimeout(200);
 	}
 }
