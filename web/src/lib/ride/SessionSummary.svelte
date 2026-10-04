@@ -153,7 +153,7 @@
 		</div>
 
 		<section
-			class="panel panel-lg xl:col-start-1 xl:row-span-2 xl:row-start-1"
+			class="panel panel-lg xl:col-start-1 xl:row-span-2 xl:row-start-1 xl:self-stretch"
 			data-testid="recap-trace"
 		>
 			{#if trace}
@@ -287,9 +287,9 @@
 			{#if together.length > 1}
 				<!-- The moment the session ends is when who was there matters
 				     (#1559): the card used to report one person's numbers. -->
-				<section class="panel panel-lg sm:col-span-2">
+				<section class="panel panel-lg">
 					<h2 class="eyebrow">who rode</h2>
-					<ul class="mt-3 grid gap-2 sm:grid-cols-2">
+					<ul class="mt-3 grid gap-2">
 						{#each together as rider (rider.id)}
 							<li class="flex items-baseline gap-2 text-sm">
 								<span class="truncate {rider.you ? 'font-medium' : ''}"
@@ -312,7 +312,7 @@
 			{/if}
 
 			{#if medal}
-				<section class="sm:col-span-2">
+				<section>
 					<h2 class="eyebrow">your medal</h2>
 					<div class="mt-3">
 						<MedalCard {medal} {placeName} />
