@@ -89,10 +89,12 @@
 	>
 	{#if server}
 		<!-- Per-ride sharing (ADR-0024): off by default, one tap to flip.
-		     The same toggle the ride's own page draws (#2167). -->
+		     The same toggle the ride's own page draws (#2167). -ml-3 is the
+		     button's own padding: its words, not its box, sit on the row's
+		     text edge when the meta wraps (#3806). -->
 		<ShareToggle
 			ride={server}
-			class="btn btn-ghost btn-xs relative -my-1 -mr-2"
+			class="btn btn-ghost btn-xs relative -my-1 -mr-2 -ml-3"
 		/>
 	{/if}
 </li>
