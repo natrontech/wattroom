@@ -112,5 +112,16 @@ test('a one-line ride row is not stretched by a neighbour that wraps', async ({
 		});
 		// Its own padding and its content, not its neighbour's height.
 		expect(blank, `at ${size.width} px`).toBeLessThanOrEqual(8);
+
+		// Nor does a long name make its neighbour a different height: the
+		// column beside it would hold a hole.
+		const heights = await a
+			.locator('li[id^="ride-ride-row-"]')
+			.evaluateAll((lis) => lis.map((li) => li.getBoundingClientRect().height));
+		if (size.width > 1000) {
+			expect(Math.max(...heights) - Math.min(...heights)).toBeLessThanOrEqual(
+				8,
+			);
+		}
 	}
 });

@@ -48,10 +48,17 @@
 			<span class="sr-only">Open {ride.workoutName}</span>
 		</a>
 	{/if}
-	<!-- One structure on every card (#3818): what the ride was on the left,
-	     what it came to on the right, the share toggle last in that group. -->
-	<div class="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-		<span class="font-display font-bold">{ride.workoutName}</span>
+	<!-- One structure on every card (#3818), two lines tall wherever there is
+	     room: the name and what the ride came to, then where it sits and the
+	     share toggle. The name truncates rather than wrapping, because a
+	     wrapped one stretched its neighbour in the grid. -->
+	<span
+		class="font-display font-bold sm:col-start-1 sm:row-start-1 sm:truncate"
+		title={ride.workoutName}>{ride.workoutName}</span
+	>
+	<div
+		class="flex flex-wrap items-baseline gap-x-4 gap-y-1 sm:col-start-1 sm:row-start-2"
+	>
 		{#if server?.exportState === 'failed'}
 			<!-- The one delivery state worth a mark on the row (#1553): the ride
 			     page says why and has the retry. Pending and delivered are the
@@ -76,14 +83,21 @@
 			>
 		{/if}
 	</div>
-	<div class="flex flex-wrap items-baseline gap-x-4 gap-y-1 sm:justify-end">
-		<span class="text-muted num text-xs">{formatClock(ride.seconds)}</span>
-		<span class="num text-xs">{ride.avgWatts} W</span>
-		<span class="text-muted num text-xs">{ride.kj} kJ</span>
+	<!-- Fixed widths, so the figures sit in the same columns on every card. -->
+	<div
+		class="flex items-baseline gap-x-4 justify-self-start sm:col-start-2 sm:row-start-1 sm:gap-x-3 sm:justify-self-end"
+	>
+		<span class="text-muted num text-xs sm:w-14 sm:text-right"
+			>{formatClock(ride.seconds)}</span
+		>
+		<span class="num text-xs sm:w-14 sm:text-right">{ride.avgWatts} W</span>
+		<span class="text-muted num text-xs sm:w-16 sm:text-right"
+			>{ride.kj} kJ</span
+		>
 		<!-- A ride whose workout prescribed no target has no execution to show;
 		     the dash says so on hover rather than sitting there unexplained. -->
 		<span
-			class="font-display text-sm font-semibold tabular-nums"
+			class="font-display text-sm font-semibold tabular-nums sm:w-10 sm:text-right"
 			title={ride.executionScored === false
 				? 'This workout had no power targets to score'
 				: undefined}
@@ -91,15 +105,15 @@
 				? '—'
 				: `${Math.round(ride.execution * 100)}%`}</span
 		>
-		{#if server}
-			<!-- Per-ride sharing (ADR-0024): off by default, one tap to flip.
+	</div>
+	{#if server}
+		<!-- Per-ride sharing (ADR-0024): off by default, one tap to flip.
 		     The same toggle the ride's own page draws (#2167). -ml-3 is the
 		     button's own padding: its words, not its box, sit on the row's
-		     text edge when the meta wraps (#3806). -->
-			<ShareToggle
-				ride={server}
-				class="btn btn-ghost btn-xs relative -my-1 -mr-2 -ml-3"
-			/>
-		{/if}
-	</div>
+		     text edge when the row stacks (#3806). -->
+		<ShareToggle
+			ride={server}
+			class="btn btn-ghost btn-xs relative -my-1 -mr-2 -ml-3 justify-self-start sm:col-start-2 sm:row-start-2 sm:justify-self-end"
+		/>
+	{/if}
 </li>
