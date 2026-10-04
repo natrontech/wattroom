@@ -721,6 +721,51 @@ surface('appearance', async (s) => {
 	});
 });
 
+surface('sound-dialog', async (s) => {
+	// The in-channel Sound dialog, opened without a call (its button needs the
+	// channel's av store, not LiveKit), and /settings/voice beside it, which
+	// draws the same faders at desk size.
+	const o = await s.open(DESK);
+	const crew = await designCrew(o.page);
+	await o.page.goto(voicePath(crew));
+	await o.page
+		.getByRole('button', { name: /^sound — the mix/ })
+		.first()
+		.click({ timeout: 15_000 });
+	await o.page.getByRole('dialog', { name: /^Sound/ }).waitFor();
+	await o.page.waitForTimeout(500);
+	const dialog = o.page.getByRole('dialog', { name: /^Sound/ });
+	// The dialog's own measurements: the page-wide probe cannot attribute them.
+	const dialogTargets = async () => ({
+		dialogTargets: await dialog.evaluate((el) => {
+			const high = (e: Element) =>
+				Math.round(e.getBoundingClientRect().height * 10) / 10;
+			return {
+				sliders: [...el.querySelectorAll('input[type=range]')].map(high),
+				done: high(
+					[...el.querySelectorAll('button')].find(
+						(b) => b.textContent?.trim() === 'Done',
+					)!,
+				),
+				selects: [...el.querySelectorAll('[role=combobox]')].map((e) => {
+					const r = e.getBoundingClientRect();
+					return { x: Math.round(r.x), width: Math.round(r.width) };
+				}),
+				scrollHeight: el.scrollHeight,
+				clientHeight: el.clientHeight,
+			};
+		}),
+	});
+	await s.shot(o, { name: 'sound-dialog', extra: await dialogTargets() });
+	await dialog.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+	await o.page.waitForTimeout(300);
+	await s.shot(o, {
+		name: 'sound-dialog-bottom',
+		extra: await dialogTargets(),
+	});
+	await page(s, o, '/settings/voice', { name: 'sound-dialog-settings-voice' });
+});
+
 surface('landing', async (s) => {
 	// Signed out, as a stranger meets it: the landing on the desk and a phone,
 	// then the public pages that share its copy.

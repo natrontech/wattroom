@@ -781,6 +781,13 @@ input[type='range']::-moz-range-thumb {
 	background: var(--color-neon);
 }
 
+/* Inside a dialog a rider opens mid-ride, the hit box is ux.md's 44 px: the
+ * thumb and track stay as drawn, centred in it (#3748). The same faders on
+ * /settings/voice are a desk's and keep the 24 px floor above. */
+.riding input[type='range'] {
+	height: 2.75rem;
+}
+
 /* The voice gate's slider draws no track of its own: the mic meter IS its
  * track (#289), so the thumb sits on the level it is gating. Kept as two
  * rules — one vendor selector either browser rejects kills the whole rule. */
