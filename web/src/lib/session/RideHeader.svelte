@@ -27,6 +27,7 @@
 		title = '',
 		unit = 'block',
 		eyebrow = '',
+		context = '',
 		controls,
 		aside,
 		drives = false,
@@ -44,6 +45,9 @@
 		/** Overrides "block n of m" where the screen counts differently — the
 		 *  ramp's warm-up is segment one and is not step one. */
 		eyebrow?: string;
+		/** Opens slot 1: mode · workout or road · riders (`rideContext()`), the
+		 *  line that keeps the workout's name once the block has its own. */
+		context?: string;
 		/** Transport: a coach's session controls, a solo rider's own. */
 		controls?: Snippet;
 		/** Anything the screen wants between the clock and the controls. */
@@ -64,6 +68,9 @@
 
 <header class="flex flex-wrap items-end gap-x-6 gap-y-3">
 	<div class="min-w-0">
+		{#if context}
+			<p data-testid="ride-context" class="eyebrow truncate">{context}</p>
+		{/if}
 		<p class="eyebrow">
 			{#if eyebrow}
 				{eyebrow}

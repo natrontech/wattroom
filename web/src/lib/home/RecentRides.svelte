@@ -51,11 +51,13 @@
 						<span class="text-muted w-24 shrink-0 text-xs"
 							>{formatWhen(ride.startedAt)}</span
 						>
-						<span class="min-w-0 flex-1 truncate">
-							{Math.round(ride.seconds / 60)} min
-						</span>
+						<span class="font-display min-w-0 flex-1 truncate font-bold"
+							>{ride.workoutName}</span
+						>
 						<span class="text-muted shrink-0 text-xs tabular-nums"
-							>{Math.round(ride.kj).toLocaleString()} kJ</span
+							>{Math.round(ride.seconds / 60)} min · {Math.round(
+								ride.kj,
+							).toLocaleString()} kJ</span
 						>
 					</a>
 				</li>
