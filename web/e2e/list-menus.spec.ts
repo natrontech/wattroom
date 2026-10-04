@@ -66,6 +66,10 @@ test("a channel's row in the crew column carries the sidebar's own menu", async 
 	await a.goto(`/crew/${opened.crew}`);
 	await a.getByRole('button', { name: 'open navigation' }).click();
 	const nav = a.locator('nav[aria-label="crews and channels"]');
+	// The drawer is as flat as the menu (#3810).
+	await expect(
+		nav.locator('xpath=ancestor::div[contains(@class, "inset-y-0")][1]'),
+	).toHaveCSS('box-shadow', 'none');
 	// All the way in before the right-click (#2578): mid-slide the row is off
 	// screen, the click scrolls the drawer's list to reach it, and that scroll
 	// lands after the menu opens and shuts it — once the list is long enough
