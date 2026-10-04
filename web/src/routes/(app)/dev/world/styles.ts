@@ -48,7 +48,7 @@ const ZONES = [
 	'#06d6a0',
 	'#ffa62b',
 	'#ff4d6d',
-	'#ff2e88',
+	'#e20843',
 ]; // --color-z1 … z7, dark family
 const WATT = '#ff3d8b'; // --color-watt, dark family
 const SIGNS: Style['signs'] = {
