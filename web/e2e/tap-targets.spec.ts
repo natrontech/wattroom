@@ -257,6 +257,90 @@ test('the header controls a pedalling rider uses are riding size', async ({
 });
 
 /**
+ * Standalone text links (#3750, #3756): not inline in a sentence, so SC 2.5.8's
+ * inline exception does not cover them, and each was 16–20 px tall.
+ */
+test('the landing header and its standalone link clear the floor', async ({
+	page,
+}) => {
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await page.goto('/');
+	const header = page.getByRole('navigation', { name: 'Site' }).first();
+	for (const name of [
+		'Group workouts',
+		'Game modes',
+		'FTP test',
+		'Compare',
+		'Self-host',
+	]) {
+		const link = header.getByRole('link', { name, exact: true });
+		await expect(link).toBeVisible();
+		const linkBox = await box(link);
+		expect(
+			linkBox.height,
+			`header link '${name}' is ${linkBox.height}px tall`,
+		).toBeGreaterThanOrEqual(FLOOR);
+	}
+	const how = page.getByRole('link', { name: 'How group workouts work' });
+	await how.scrollIntoViewIfNeeded();
+	const howBox = await box(how);
+	expect(
+		howBox.height,
+		`'How group workouts work' is ${howBox.height}px tall`,
+	).toBeGreaterThanOrEqual(FLOOR);
+});
+
+test("Home's All rides link and a ride's back link clear the floor", async ({
+	riders,
+}) => {
+	test.skip(
+		!!process.env.PLAYWRIGHT_BASE_URL,
+		'the ?as= dev provider only exists on a dev server',
+	);
+	const rider = await riders('Tap Link Rider');
+	await rider.setViewportSize(PHONE);
+	await rider.goto('/home');
+	const id = await rider.evaluate(async () => {
+		const res = await fetch('/api/rides', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				workoutName: 'Tap Link Ride',
+				workoutJson: JSON.stringify({
+					name: 'Tap Link Ride',
+					author: 'e2e',
+					steps: [{ type: 'steady', seconds: 120, target: 0.8 }],
+				}),
+				startedAt: new Date(Date.now() - 3_600_000).toISOString(),
+				samples: Array.from({ length: 120 }, () => ({ watts: 200 })),
+			}),
+		});
+		const body = (await res.json()) as { id?: string };
+		return res.ok ? (body.id ?? '') : `${res.status}`;
+	});
+	expect(id, 'a ride to link to').not.toBe('');
+	await rider.reload();
+	const all = rider.getByRole('link', { name: 'All rides →' });
+	await expect(all).toBeVisible({ timeout: 15_000 });
+	const allBox = await box(all);
+	expect(
+		allBox.height,
+		`'All rides →' is ${allBox.height}px tall`,
+	).toBeGreaterThanOrEqual(FLOOR);
+
+	await rider.goto(`/history/${id}`);
+	const back = rider
+		.getByTestId('page-body')
+		.getByRole('link', { name: 'Rides', exact: true });
+	await expect(back).toBeVisible({ timeout: 15_000 });
+	const backBox = await box(back);
+	expect(
+		backBox.height,
+		`the ride page's back link is ${backBox.height}px tall`,
+	).toBeGreaterThanOrEqual(FLOOR);
+});
+
+/**
  * The Sound dialog calls itself "the levels you reach for mid-ride" (#3748),
  * so its faders, the gate slider and Done are riding size, and its three
  * device selects sit in one row's worth of height, none truncated to a stub.

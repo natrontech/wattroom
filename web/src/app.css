@@ -455,6 +455,14 @@ body {
 	@apply text-muted hover:text-ink underline;
 }
 
+/* A text link that stands on its own line, not inside a sentence: 24 px tall
+ * (WCAG 2.2 SC 2.5.8, ux.md), where its 12–14 px type left 16–20. Beside
+ * btn-link or a hand-coloured link; an inline link in a sentence never takes
+ * it, because a box taller than the line would push the lines apart. */
+@utility link-standalone {
+	@apply inline-flex min-h-6 items-center;
+}
+
 /* Text field look. Width/margin at the call site. A refused field marks
  * itself off its own aria-invalid (#2178) — call sites used to retype the
  * whole border chain to add one red line, which is how three of them ended up

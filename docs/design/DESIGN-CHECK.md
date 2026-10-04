@@ -74,7 +74,7 @@ This table is a readable copy of the map. When they disagree, the JSON wins and 
 | `PreRide`, `RoadPick` | `ride-preride`, `ride-roadpick` |
 | `routes/(app)/workouts/**`, `RouteShape`, `RouteProfile`, `RoutePreview`, `RouteShelf`, `RoutePicker`, `RouteRow` | `workouts`, `phone-workouts`, `route`, `phone-route`, `import-idle`, `import`, `import-saved`, `routes`, `ride-roadpick` |
 | `SessionSummary`, `OwnRide`, `SessionLayers`, `RecapHeader`, `RecapTiles` | `closing-card`, `closing-card-road`, `closing-card-session`, `ride-detail` |
-| `routes/(app)/history/**` | `history`, `history-rides`, `ride-detail`, `collections` |
+| `routes/(app)/history/**`, `lib/ride/RideRow.svelte` | `history`, `history-rides`, `ride-detail`, `collections` |
 | `internal/og` | `poster` |
 | `routes/(app)/home/**`, `$lib/home` | `home`, `phone-home` |
 | `$lib/profile/Appearance` | `appearance`, `appearance-advanced` |

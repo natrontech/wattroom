@@ -8,6 +8,7 @@ import {
 	fixtureRoad,
 	joinCrew,
 	newestRide,
+	ownWorkout,
 	planTwo,
 	readRoad,
 	savedRide,
@@ -490,6 +491,7 @@ surface('workouts', async (s) => {
 		const o = await s.open(device);
 		await fixtureRoad(o.page, 'hairpin');
 		await fixtureRoad(o.page, 'rolling');
+		await ownWorkout(o.page);
 		await page(s, o, '/workouts', { name });
 	}
 });

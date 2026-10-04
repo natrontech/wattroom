@@ -82,7 +82,9 @@
 
 		<nav aria-label="Site" class="hidden items-center gap-5 text-sm lg:flex">
 			{#each nav as item (item.href)}
-				<a href={item.href} class="text-muted hover:text-ink">{item.label}</a>
+				<a href={item.href} class="text-muted hover:text-ink link-standalone"
+					>{item.label}</a
+				>
 			{/each}
 		</nav>
 
