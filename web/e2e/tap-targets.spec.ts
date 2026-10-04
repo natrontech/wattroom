@@ -135,6 +135,16 @@ test('the browse surfaces’ links and folds clear the floor on a phone', async 
 		a.locator('summary', { hasText: 'Advanced' }),
 	);
 
+	// The mixer's fold, and the checkbox in it, reached through its label (#3755).
+	await a.goto('/settings/voice');
+	const mixerFold = a.locator('summary', { hasText: 'Advanced' });
+	await measure('the mixer’s Advanced', mixerFold);
+	await mixerFold.click();
+	await measure(
+		'the mixer’s “My voice ducks it too”',
+		a.locator('label', { hasText: 'My voice ducks it too' }),
+	);
+
 	await a.goto(`/crew/${opened.crew}/schedule`);
 	await measure(
 		'the Schedule’s Advanced',
