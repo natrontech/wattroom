@@ -307,11 +307,11 @@
 	     and nothing said so — a modal is the session telling you it is over.
 	     It draws the close, not the live values (#2603): the coach's next pick
 	     turned the phase back to idle and took everyone's summary with it. -->
-	<!-- No width cap and no floating box (#3686): the card fills the window
-	     from the top, the way it fills the content column on /ride. -->
+	<!-- No width cap and no floating box (#3686): the card spans the window
+	     from its top, the way it spans the content column on /ride. -->
 	<Modal
 		label="Session summary"
-		class="min-h-[calc(100dvh-2rem)] max-w-none"
+		class="max-w-none self-start"
 		onclose={() => summary.dismiss()}
 	>
 		<SessionSummary
