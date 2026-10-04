@@ -119,7 +119,7 @@ test('a planned road session’s card rides its road first, for its owner and fo
 
 	await crew.waitForTimeout(A_MINUTE_MS);
 	await crew.getByRole('button', { name: 'End ride' }).click();
-	await expect(crew.getByText('See it in your history')).toBeVisible({
+	await expect(crew.getByText('See your ride')).toBeVisible({
 		timeout: 20_000,
 	});
 	const saved = await crew.evaluate(async () => {

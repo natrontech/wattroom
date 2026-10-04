@@ -1164,7 +1164,7 @@ surface(
 		const save = o.page.getByRole('button', { name: 'Save the ride' });
 		if (await save.count()) await save.first().click();
 		await o.page
-			.getByRole('link', { name: 'See it in your history' })
+			.getByRole('link', { name: 'See your ride' })
 			.waitFor({ timeout: 30_000 });
 		await s.shot(o, { name: 'closing-card-road', full: true });
 		// F1's last step (#3680): the road's name opens its page, the ride on it.
