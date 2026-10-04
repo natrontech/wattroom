@@ -266,6 +266,33 @@ export async function atSecond(page: Page, second: number): Promise<void> {
 }
 
 /**
+ * Waits until the page reads `reading` — slot 1's "km 0.1 of 7.1" — for a
+ * shot whose target is a distance, not a second (#3834). The dot moves by the
+ * whole seconds between samples, held to two (road-ride.ts), so a machine
+ * answering slowly reaches a clock mark with the road still behind it, and
+ * at 83 W on 3 % the first 50 m arrive near the 14 s mark anyway. Bounded: a
+ * reading that never comes is a failed shot with what the page said instead.
+ */
+export async function atReading(
+	page: Page,
+	reading: string,
+	timeoutMs = 90_000,
+): Promise<void> {
+	const text = () =>
+		page
+			.evaluate(() => document.body.innerText.match(/km [\d.]+ of [\d.]+/)?.[0])
+			.catch(() => undefined);
+	const deadline = Date.now() + timeoutMs;
+	for (;;) {
+		const shown = await text();
+		if (shown === reading) return;
+		if (Date.now() > deadline)
+			throw new Error(`the ride never read "${reading}": ${shown ?? 'no km'}`);
+		await page.waitForTimeout(200);
+	}
+}
+
+/**
  * A running ride: a clock on the page moves. Whether the frame is the cave is
  * G1's question and a probe, never an assertion — a ride that forgot the cave
  * is the defect the shot exists to show. `world`: drawn (true), must not be
