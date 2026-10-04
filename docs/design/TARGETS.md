@@ -33,7 +33,7 @@ The v2 mock's route starts in an invented village, Stollmatt, and says nothing o
 - **Structure is the bar.** Compare proportion, grouping, alignment, hierarchy, what sits where, and what is absent. A size the mock happens to draw is not the bar; sizes come from docs/SPEC.md. **A pixel number written into a must-match item is the bar, within ±4 px.**
 - **Ignore the mock's data.** The Gurnigel loop, Mia and 258 W are illustrations. The capture rides other data, so compare structure.
 - **The capture's data is the fixtures'.** Its roads are `web/e2e/road-gpx.ts`, seeded by `web/e2e/design/seed.ts`:
-  - `<hairpin>` is “Design switchbacks”: a 1 km approach at 3 %, then eight legs at 8.8 % joined by seven hairpins. The app reads it as 7.1 km · 563 m, one class II climb, with the first hairpin about 1.7 km in.
+  - `<hairpin>` is “Design hairpins”: a 1 km approach at 3 %, then eight legs at 8.8 % joined by seven hairpins. The app reads it as 7.1 km · 563 m, one class II climb, with the first hairpin about 1.7 km in.
   - `<rolling>` is “Design rolling”: 7.5 km · 237 m, two class IV climbs.
   An item that quotes a fixture's number takes it from a capture, never from memory. When a fixture changes, the items that quote it change in the same PR.
 - **Targets are drawn dark.** Desk surfaces are compared on a dark capture, and a light capture must hold the same layout. Riding surfaces are always dark.
