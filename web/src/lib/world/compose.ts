@@ -330,6 +330,9 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		setWatts(watts: number) {
 			you.watts = watts;
 		},
+		setSilent(silent: boolean) {
+			you.silent = silent;
+		},
 		setSpeedup(factor: number) {
 			speedup = factor;
 		},

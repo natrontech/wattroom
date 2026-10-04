@@ -21,6 +21,8 @@ export type WorldScene = {
 	setStyle(style: Style): void;
 	setCamera(mode: CameraMode): void;
 	setWatts(watts: number): void;
+	/** Your trainer is silent past SIGNAL_LOST_MS: the ring goes neutral and the trail stops until the next sample. */
+	setSilent(silent: boolean): void;
 	setSpeedup(factor: number): void;
 	/** Hold the loop while a shared screen has the world's place, or the desktop shell hid its window. */
 	hold(gate: 'displaced' | 'shell', held: boolean): void;
@@ -114,6 +116,7 @@ export function mount(
 		setStyle: dress,
 		setCamera: (mode: CameraMode) => world.setCamera(mode),
 		setWatts: (watts) => world.setWatts(watts),
+		setSilent: (silent) => world.setSilent(silent),
 		setSpeedup: (factor) => world.setSpeedup(factor),
 		hold: loop.gate,
 		stats: loop.stats,

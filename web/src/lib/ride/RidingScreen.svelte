@@ -176,6 +176,7 @@
 					mps: session.road?.mps ?? 0,
 				})}
 				{watts}
+				silent={signalLost}
 				{ftp}
 				onfail={world.fail}
 				onflat={world.flatten}

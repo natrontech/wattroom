@@ -43,6 +43,8 @@ export type SimRider = {
 	coach?: boolean;
 	/** Their live zone as a ring; false leaves anyone's but yours to #3086. */
 	ring?: boolean;
+	/** Their trainer has gone quiet past SIGNAL_LOST_MS (#3766): the ring drops its zone and the trail stops, as the panels' numbers read "—". */
+	silent?: boolean;
 	/** A cheer for them, as it looks this frame (#3116). */
 	cheer?: CheerLook | null;
 };
