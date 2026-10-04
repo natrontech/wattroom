@@ -54,4 +54,12 @@ test('the FTP card has no empty band under its content', async ({ riders }) => {
 	);
 	const band = panel.y + panel.height - (last.y + last.height) - padBottom;
 	expect(band).toBeLessThanOrEqual(EMPTY_BAND_MAX);
+
+	// Content-sized beside the chart would leave a hole under it: a sparse FTP
+	// card sits below the chart's card instead.
+	const chart = (await a
+		.locator('.panel')
+		.filter({ has: a.getByRole('heading', { name: 'Best power by duration' }) })
+		.boundingBox())!;
+	expect(panel.y).toBeGreaterThanOrEqual(chart.y + chart.height);
 });

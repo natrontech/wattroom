@@ -2,6 +2,7 @@
 	import FitnessChart from '$lib/components/FitnessChart.svelte';
 	import { confirm } from '$lib/confirm.svelte';
 	import FtpTrendChart from '$lib/components/FtpTrendChart.svelte';
+	import { trendSparse } from '$lib/components/ftp-trend';
 	import FtpPrompt from '$lib/components/FtpPrompt.svelte';
 	import { account } from '$lib/account.svelte';
 	import LthrPrompt from '$lib/components/LthrPrompt.svelte';
@@ -349,7 +350,13 @@
 			</span>
 		</div>
 
-		<div class="mt-3 grid gap-3 xl:grid-cols-2">
+		<!-- Side by side only when both have something to draw: beside a sparse
+		     FTP card the chart's height would leave a hole in the row (#3814). -->
+		<div
+			class="mt-3 grid gap-3 {trendSparse(progression.rides)
+				? ''
+				: 'xl:grid-cols-2'}"
+		>
 			<div class="panel panel-xl">
 				<h2 class="text-ink text-sm font-semibold">Best power by duration</h2>
 				<!-- ADR-0016: every load-derived surface says what it is scoped to (#1692). -->
@@ -369,7 +376,7 @@
 					all={progression.curve.all}
 				/>
 			</div>
-			<div class="panel panel-xl self-start">
+			<div class="panel panel-xl">
 				<h2 class="text-ink text-sm font-semibold">FTP over the last year</h2>
 				<!-- ADR-0016: every load-derived surface says what it is scoped to (#1692). -->
 				<span class="text-muted-dim ml-2 text-[11px]"
