@@ -53,7 +53,9 @@ it.each([
  */
 describe("the hairpin road's world", () => {
 	const points = [
-		...hairpinGpx().matchAll(/lat="([-\d.]+)" lon="([-\d.]+)"><ele>([-\d.]+)</g),
+		...hairpinGpx().matchAll(
+			/lat="([-\d.]+)" lon="([-\d.]+)"><ele>([-\d.]+)</g,
+		),
 	].map(([, lat, lon, ele]) => ({ lat: +lat, lon: +lon, ele: +ele }));
 	const route = routeOfRoad(toRoute(points).road);
 	const world = generate(route);
