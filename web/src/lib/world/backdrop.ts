@@ -16,10 +16,13 @@ export function bearings(route: Route): Peaks {
 	for (let i = 0; i < route.x.length - 1; i++) {
 		const v = referenceSpeed(route.grade[i]);
 		const dt = route.step / Math.max(1, v);
-		const h = Math.atan2(
+		// atan2 answers in (−π, π] and the bins sit in [0, 2π): one range, or a
+		// westward heading is counted toward bins up to 80° away.
+		let h = Math.atan2(
 			route.x[i + 1] - route.x[i],
 			route.z[i + 1] - route.z[i],
 		);
+		if (h < 0) h += Math.PI * 2;
 		for (let b = 0; b < 36; b++) {
 			let d = Math.abs(h - (b * Math.PI) / 18);
 			d = Math.min(d, Math.PI * 2 - d);
