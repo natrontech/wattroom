@@ -18,7 +18,9 @@ import { BUILD_MS, longLoopPoints } from './world.test-helper';
  *
  * The two horizon digests are the exception: they were re-taken when a
  * westward heading stopped counting toward bins up to 80° away (#3829),
- * which moves the hero peak on a route ridden partly westward on purpose.
+ * which moves the hero peak on a route ridden partly westward on purpose,
+ * and when the ridges' rock and snow colours became a blend over a height
+ * band, so a moved peak does not draw a vertical seam (#3835).
  */
 
 /** FNV-1a over every number's float64 bytes, in order. */
@@ -113,7 +115,7 @@ describe('a 29 km loop, its route-wide work', () => {
 	});
 
 	it('draws the same horizon', () => {
-		expect(horizonDigest(route, world)).toBe('3f208695');
+		expect(horizonDigest(route, world)).toBe('6da8f2a1');
 	});
 
 	it('stands the same things around the start, and along the whole loop', () => {
@@ -136,7 +138,7 @@ describe('a 124 km loop, its route-wide work', () => {
 	it('names the same villages, keeps the same clock and draws the same horizon', () => {
 		expect(digestOf([world.villageNames, world.markers])).toBe('47bf6885');
 		expect(rhythmDigest(world)).toBe('d1c51d12');
-		expect(horizonDigest(route, world)).toBe('28667af0');
+		expect(horizonDigest(route, world)).toBe('a1f9cf87');
 	});
 
 	// Its start meets its end: the pieces planned before the finish are decided too.
