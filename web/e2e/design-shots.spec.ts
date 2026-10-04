@@ -30,6 +30,7 @@ import {
 	Shoot,
 	TV,
 	assertRiding,
+	atReading,
 	atSecond,
 	ride,
 	wanted,
@@ -93,6 +94,8 @@ surface('ride-road-world', async (s) => {
 		const road = await fixtureRoad(o.page, 'hairpin');
 		await ride(o.page, `/ride?w=openers&road=${road}&from=0`);
 		await assertRiding(o.page, true);
+		// Item 16's distance, however long the road takes to get there (#3834).
+		await atReading(o.page, 'km 0.1 of 7.1');
 		await s.shot(o, { name });
 	}
 	// multi:world-hairpins — item 16's second leg, from km 2.3: the hairpins climb ahead.
