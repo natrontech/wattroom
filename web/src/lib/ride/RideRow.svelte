@@ -32,7 +32,7 @@
 <li
 	id="ride-{ride.id}"
 	title={server ? MENU_HINT : undefined}
-	class="panel relative flex flex-wrap items-baseline gap-x-4 gap-y-1 px-5 py-4 {highlighted
+	class="panel relative grid grid-cols-[minmax(0,1fr)] items-baseline gap-x-4 gap-y-1 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_auto] {highlighted
 		? 'ring-z2/70 ring-1'
 		: ''}"
 	{@attach contextMenu(() => (server ? rideRowMenu(server, forget) : []))}
@@ -48,53 +48,58 @@
 			<span class="sr-only">Open {ride.workoutName}</span>
 		</a>
 	{/if}
-	<span class="font-display font-bold">{ride.workoutName}</span>
-	{#if server?.exportState === 'failed'}
-		<!-- The one delivery state worth a mark on the row (#1553): the ride
-		     page says why and has the retry. Pending and delivered are the
-		     normal course and stay quiet here. -->
-		<span class="eyebrow text-danger" title="Open the ride to try again"
-			>not on Strava</span
+	<!-- One structure on every card (#3818): what the ride was on the left,
+	     what it came to on the right, the share toggle last in that group. -->
+	<div class="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+		<span class="font-display font-bold">{ride.workoutName}</span>
+		{#if server?.exportState === 'failed'}
+			<!-- The one delivery state worth a mark on the row (#1553): the ride
+			     page says why and has the retry. Pending and delivered are the
+			     normal course and stay quiet here. -->
+			<span class="eyebrow text-danger" title="Open the ride to try again"
+				>not on Strava</span
+			>
+		{/if}
+		<span class="text-muted text-xs"
+			>{new Date(ride.startedAt).toLocaleDateString()}</span
 		>
-	{/if}
-	<span class="text-muted text-xs"
-		>{new Date(ride.startedAt).toLocaleDateString()}</span
-	>
-	<!-- Where it was ridden (#2457): its own item, so the row's gap spaces
-	     it and a narrow row wraps it whole. -->
-	{#if server?.crew}
-		<span class="text-muted text-xs">{ridePlace(server)}</span>
-	{/if}
-	<!-- How far a road ride went and what it climbed (#3053): the server's
-	     replay, on a ride that had a road. -->
-	{#if server?.distanceM != null}
-		<span class="text-muted num text-xs"
-			>{kmAndClimb(server.distanceM, server.climbedM ?? 0)}</span
+		<!-- Where it was ridden (#2457): its own item, so the row's gap spaces
+		     it and a narrow row wraps it whole. -->
+		{#if server?.crew}
+			<span class="text-muted text-xs">{ridePlace(server)}</span>
+		{/if}
+		<!-- How far a road ride went and what it climbed (#3053): the server's
+		     replay, on a ride that had a road. -->
+		{#if server?.distanceM != null}
+			<span class="text-muted num text-xs"
+				>{kmAndClimb(server.distanceM, server.climbedM ?? 0)}</span
+			>
+		{/if}
+	</div>
+	<div class="flex flex-wrap items-baseline gap-x-4 gap-y-1 sm:justify-end">
+		<span class="text-muted num text-xs">{formatClock(ride.seconds)}</span>
+		<span class="num text-xs">{ride.avgWatts} W</span>
+		<span class="text-muted num text-xs">{ride.kj} kJ</span>
+		<!-- A ride whose workout prescribed no target has no execution to show;
+		     the dash says so on hover rather than sitting there unexplained. -->
+		<span
+			class="font-display text-sm font-semibold tabular-nums"
+			title={ride.executionScored === false
+				? 'This workout had no power targets to score'
+				: undefined}
+			>{ride.executionScored === false
+				? '—'
+				: `${Math.round(ride.execution * 100)}%`}</span
 		>
-	{/if}
-	<span class="text-muted num ml-auto text-xs">{formatClock(ride.seconds)}</span
-	>
-	<span class="num text-xs">{ride.avgWatts} W</span>
-	<span class="text-muted num text-xs">{ride.kj} kJ</span>
-	<!-- A ride whose workout prescribed no target has no execution to show;
-	     the dash says so on hover rather than sitting there unexplained. -->
-	<span
-		class="font-display text-sm font-semibold tabular-nums"
-		title={ride.executionScored === false
-			? 'This workout had no power targets to score'
-			: undefined}
-		>{ride.executionScored === false
-			? '—'
-			: `${Math.round(ride.execution * 100)}%`}</span
-	>
-	{#if server}
-		<!-- Per-ride sharing (ADR-0024): off by default, one tap to flip.
+		{#if server}
+			<!-- Per-ride sharing (ADR-0024): off by default, one tap to flip.
 		     The same toggle the ride's own page draws (#2167). -ml-3 is the
 		     button's own padding: its words, not its box, sit on the row's
 		     text edge when the meta wraps (#3806). -->
-		<ShareToggle
-			ride={server}
-			class="btn btn-ghost btn-xs relative -my-1 -mr-2 -ml-3"
-		/>
-	{/if}
+			<ShareToggle
+				ride={server}
+				class="btn btn-ghost btn-xs relative -my-1 -mr-2 -ml-3"
+			/>
+		{/if}
+	</div>
 </li>
