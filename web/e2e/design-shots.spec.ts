@@ -95,6 +95,12 @@ surface('ride-road-world', async (s) => {
 		await assertRiding(o.page, true);
 		await s.shot(o, { name });
 	}
+	// multi:world-hairpins — item 16's second leg, from km 2.3: the hairpins climb ahead.
+	const o = await s.open(DESK, { world: true });
+	const road = await fixtureRoad(o.page, 'hairpin');
+	await ride(o.page, `/ride?w=openers&road=${road}&from=2300`);
+	await assertRiding(o.page, true);
+	await s.shot(o, { name: 'world-hairpins' });
 });
 
 surface('ride-workout-world', async (s) => {

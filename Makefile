@@ -9,6 +9,8 @@
 .PHONY: infra dev-env dev-server dev-web dev-db-drop web web-deps changelog protocol migration sqlc seed screenshots design-targets design-shots build test lint ci release print-golangci-version desktop desktop-smoke desktop-release perf perf-scenes licenses worktree-gc
 
 DEV_ENV := scripts/dev-env.sh
+# "wattroom dev key, never deployed" in base64: 32 bytes, for make dev-server only.
+DEV_TOKEN_KEY := d2F0dHJvb20gZGV2IGtleSwgbmV2ZXIgZGVwbG95ZWQ=
 
 # The Go version CI lints with (go-version-file: server/go.mod); see lint.
 GO_VERSION := $(shell sed -n 's/^go //p' server/go.mod)
@@ -37,9 +39,12 @@ dev-env: ## print this checkout's dev ports and database
 dev-server: ## run Go server with hot reload (installs air on first use)
 	@# LiveKit stays one shared instance: two worktrees in voice land in the
 	@# same SFU. Only ports and Postgres are per-checkout.
+	@# The token key is a public dev one, as a deployment holds its own: a
+	@# server without one keeps every road bare, so the world a dev ride draws
+	@# is one straight instead of the road's turns (#3761).
 	@$(DEV_ENV) ensure-db
 	@$(DEV_ENV) banner server
-	@eval "$$($(DEV_ENV) print)"; cd server && WATTROOM_ADDR=":$$WATTROOM_DEV_SERVER_PORT" WATTROOM_METRICS_ADDR=":$$WATTROOM_DEV_METRICS_PORT" WATTROOM_BASE_URL="http://localhost:$$WATTROOM_DEV_SERVER_PORT" WATTROOM_DB="$$WATTROOM_DEV_DSN" WATTROOM_DEV_LOGIN=1 WATTROOM_LIVEKIT_URL="ws://localhost:7880" WATTROOM_LIVEKIT_KEY="devkey" WATTROOM_LIVEKIT_SECRET="secret" go run github.com/air-verse/air@v1.67.4
+	@eval "$$($(DEV_ENV) print)"; cd server && WATTROOM_TOKEN_KEY="$${WATTROOM_TOKEN_KEY:-$(DEV_TOKEN_KEY)}" WATTROOM_ADDR=":$$WATTROOM_DEV_SERVER_PORT" WATTROOM_METRICS_ADDR=":$$WATTROOM_DEV_METRICS_PORT" WATTROOM_BASE_URL="http://localhost:$$WATTROOM_DEV_SERVER_PORT" WATTROOM_DB="$$WATTROOM_DEV_DSN" WATTROOM_DEV_LOGIN=1 WATTROOM_LIVEKIT_URL="ws://localhost:7880" WATTROOM_LIVEKIT_KEY="devkey" WATTROOM_LIVEKIT_SECRET="secret" go run github.com/air-verse/air@v1.67.4
 
 dev-web: changelog web-deps ## run Vite dev server
 	@$(DEV_ENV) banner web
