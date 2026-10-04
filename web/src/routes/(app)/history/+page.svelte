@@ -369,7 +369,7 @@
 					all={progression.curve.all}
 				/>
 			</div>
-			<div class="panel panel-xl">
+			<div class="panel panel-xl self-start">
 				<h2 class="text-ink text-sm font-semibold">FTP over the last year</h2>
 				<!-- ADR-0016: every load-derived surface says what it is scoped to (#1692). -->
 				<span class="text-muted-dim ml-2 text-[11px]"

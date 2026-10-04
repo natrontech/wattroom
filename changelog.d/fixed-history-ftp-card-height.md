@@ -1,0 +1,1 @@
+- The Rides page's FTP card is as tall as its content instead of stretching to the power-by-duration chart beside it and leaving an empty band.
