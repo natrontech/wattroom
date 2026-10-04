@@ -3,7 +3,7 @@
 	// ride's own page (#1331), and the list links to the rest.
 	import { contextMenu, MENU_HINT } from '$lib/context-menu.svelte';
 	import { formatWhen } from '$lib/format';
-	import type { ServerRide } from '$lib/ride/list';
+	import { NO_RIDES_YET, type ServerRide } from '$lib/ride/list';
 	import { rideRowMenu } from '$lib/ride/row-menu';
 
 	let {
@@ -23,7 +23,7 @@
 	<section>
 		<h2 class="eyebrow">Recent rides</h2>
 		<p class="text-muted mt-2 text-sm">
-			No rides yet — every ride you finish lands here.
+			{NO_RIDES_YET}
 			<a href="/workouts" class="btn-link">Ride solo</a>
 		</p>
 	</section>

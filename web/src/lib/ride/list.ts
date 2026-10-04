@@ -1,5 +1,8 @@
 import type { RideRecord } from '$lib/history.svelte';
 
+/** The one line a place with no ride yet teaches (ux.md): Home and History say the same thing. */
+export const NO_RIDES_YET = 'No rides yet — every ride you finish lands here.';
+
 /** Where a ride was ridden (#2443): a crew, and the voice channel in it. */
 export interface RidePlace {
 	id: string;
