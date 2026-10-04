@@ -44,7 +44,9 @@ test('the FTP card has no empty band under its content', async ({ riders }) => {
 	await a.goto('/history');
 	const card = a
 		.locator('.panel')
-		.filter({ has: a.getByRole('heading', { name: 'FTP over the last year' }) });
+		.filter({
+			has: a.getByRole('heading', { name: 'FTP over the last year' }),
+		});
 	await expect(card).toBeVisible({ timeout: 15_000 });
 
 	const panel = (await card.boundingBox())!;
