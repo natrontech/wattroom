@@ -127,7 +127,7 @@
      sprint grade is (#1860, #2181). The 2026-09-10 navigation audit named
      both; only the other one got folded. -->
 <details class="mt-1.5">
-	<summary class="text-muted hover:text-ink cursor-pointer text-[11px]"
+	<summary class="text-muted hover:text-ink cursor-pointer py-1 text-[11px]"
 		>Advanced</summary
 	>
 	<label class="mt-2 flex items-start gap-2">
