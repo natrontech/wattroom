@@ -46,6 +46,11 @@ test('a workout is shaped, guarded, saved, and comes back through ?w=', async ({
 	await expect(page).toHaveURL(/\/workouts$/);
 	const card = page.getByRole('listitem').filter({ hasText: name });
 	await expect(card).toBeVisible();
+	// The destructive action comes last, after a divider (TARGETS G8).
+	await expect(
+		card.locator('a.btn, button.btn').filter({ visible: true }).last(),
+	).toHaveText('Delete');
+	await expect(card.getByRole('separator')).toHaveCount(1);
 	const editHref = await card
 		.getByRole('link', { name: 'Edit', exact: true })
 		.getAttribute('href');
