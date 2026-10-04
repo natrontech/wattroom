@@ -195,7 +195,10 @@
 		]
 	},
 	{
-		"files": ["web/src/routes/(app)/history/**"],
+		"files": [
+			"web/src/routes/(app)/history/**",
+			"web/src/lib/ride/RideRow.svelte"
+		],
 		"surfaces": ["history", "history-rides", "ride-detail", "collections"]
 	},
 	{
