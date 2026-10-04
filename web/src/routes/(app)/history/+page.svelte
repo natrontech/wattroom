@@ -474,7 +474,7 @@
 				</Banner>
 			</div>
 		{/if}
-		<ul class="mt-8 grid gap-2 xl:grid-cols-2">
+		<ul class="mt-8 grid items-start gap-2 xl:grid-cols-2">
 			{#each rides as ride (ride.id)}
 				<RideRow
 					{ride}
@@ -515,7 +515,7 @@
 			that finished while the server was unreachable is offered above, and
 			saving it moves it to your account.
 		</p>
-		<ul class="mt-3 grid gap-2 xl:grid-cols-2">
+		<ul class="mt-3 grid items-start gap-2 xl:grid-cols-2">
 			{#each device.all as ride (ride.id)}
 				<RideRow {ride} highlighted={highlightId === ride.id} {forget} />
 			{/each}
