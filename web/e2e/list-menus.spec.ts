@@ -94,6 +94,14 @@ test("a channel's row in the crew column carries the sidebar's own menu", async 
 	await a.getByRole('menuitem', { name: 'Open' }).click();
 	await expect(a).toHaveURL(new RegExp(`${textPath(opened)}$`));
 	await expect(a.getByPlaceholder(`Message ${opened.name}…`)).toBeVisible();
+
+	// The pickers float over the channel and are as flat as the menu (#3804):
+	// a shadow is a glow to the probe, and G3 holds every panel hairline and fill.
+	await a.getByRole('button', { name: 'add an emoji' }).click();
+	await expect(a.getByRole('dialog', { name: 'Pick an emoji' })).toHaveCSS(
+		'box-shadow',
+		'none',
+	);
 });
 
 test("a conversation's row offers the person's menu, and a ride's its verbs", async ({

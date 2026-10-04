@@ -349,7 +349,7 @@
 			? 'z-[56]'
 			: 'z-30'} flex flex-col overflow-hidden rounded-lg {seat
 			? ''
-			: 'ring-ink/15 shadow-2xl ring-1'} {showPlayer
+			: 'ring-ink/15 ring-1'} {showPlayer
 			? ''
 			: 'hidden'} {channelConnection.onPlacePath(page.url.pathname)
 			? 'right-4 bottom-20 xl:right-[calc(var(--pane-side-panel-w,272px)+1.25rem)] xl:bottom-4'

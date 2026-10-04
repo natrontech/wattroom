@@ -1,0 +1,1 @@
+- Floating panels (pickers, dialogs, toasts, menus, the soundboard and the drawers) no longer cast a drop shadow, so they read like every other panel: a hairline and a fill.
