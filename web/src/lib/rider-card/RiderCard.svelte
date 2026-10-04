@@ -81,7 +81,7 @@
 	onpointerleave={riderCard.leave}
 	style:left="{place.left}px"
 	style:top="{place.top}px"
-	class="panel fixed z-50 w-72 shadow-2xl"
+	class="panel fixed z-50 w-72"
 	data-testid="rider-card"
 >
 	<div class="flex items-center gap-3">
