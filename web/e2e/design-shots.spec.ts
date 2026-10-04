@@ -95,6 +95,12 @@ surface('ride-road-world', async (s) => {
 		await assertRiding(o.page, true);
 		await s.shot(o, { name });
 	}
+	// multi:world-hairpins — item 16's second leg, from km 2.3: the hairpins climb ahead.
+	const o = await s.open(DESK, { world: true });
+	const road = await fixtureRoad(o.page, 'hairpin');
+	await ride(o.page, `/ride?w=openers&road=${road}&from=2300`);
+	await assertRiding(o.page, true);
+	await s.shot(o, { name: 'world-hairpins' });
 });
 
 surface('ride-workout-world', async (s) => {
@@ -688,12 +694,31 @@ surface('flow-f3', async (s) => {
 	await o.page.getByRole('button', { name: 'Start the ride' }).click();
 	await atSecond(o.page, RIDE_SECOND);
 	await s.shot(o, { name: 'flow-f3-4-riding' });
+	// A long workout name in the opening eyebrow: its width is the CSS's, so
+	// the text is swapped in place and the probes measure the header.
+	await o.page
+		.getByTestId('ride-context')
+		.evaluate(
+			(el, name) => (el.textContent = name),
+			`Solo · ${'A very long workout name '.repeat(6)}`,
+		);
+	await s.shot(o, { name: 'flow-f3-4-riding-long-name' });
 	await o.page
 		.getByRole('link', { name: 'See your ride' })
 		.waitFor({ timeout: 120_000 });
 	await o.page.waitForTimeout(1500);
 	await s.shot(o, { name: 'flow-f3-5-closing-card', full: true });
 	await page(s, o, '/home', { name: 'flow-f3-6-home' });
+	// The same Recent rides row at phone width, with a long ride name.
+	const phone = await s.open(PHONE, { as: `First ${letters}`, world: false });
+	await phone.page.goto('/home');
+	const row = phone.page.getByRole('link', { name: /Smoke Test/ }).first();
+	await row.waitFor({ timeout: 15_000 });
+	await row.evaluate((el) => {
+		const name = el.querySelector('span.font-display');
+		if (name) name.textContent = 'A very long workout name '.repeat(6);
+	});
+	await s.shot(phone, { name: 'flow-f3-6-home-phone-long-name', full: true });
 });
 
 test.fixme('flow-f1', () => {
