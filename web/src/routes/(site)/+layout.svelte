@@ -116,7 +116,7 @@
 				</summary>
 				<nav
 					aria-label="Site"
-					class="panel panel-flush bg-surface-raised absolute right-0 mt-2 flex w-56 flex-col overflow-hidden"
+					class="panel panel-flush bg-surface-raised absolute right-0 mt-2 flex w-56 flex-col overflow-hidden shadow-xl"
 				>
 					{#each nav as item (item.href)}
 						<a
