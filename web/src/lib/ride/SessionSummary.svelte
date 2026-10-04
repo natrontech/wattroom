@@ -221,9 +221,7 @@
 		<!-- Everything else, two to a row: the road's climbs, the crew's climb
 		     board and the photos land here as more panels (#3141, #3147,
 		     #3230), never as a new column. -->
-		<div
-			class="grid items-start gap-4 sm:grid-cols-2 xl:col-start-2 xl:row-start-2"
-		>
+		<div class="grid gap-4 sm:grid-cols-2 xl:col-start-2 xl:row-start-2">
 			<section class="panel panel-lg">
 				<h2 class="eyebrow">power curve</h2>
 				<div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
