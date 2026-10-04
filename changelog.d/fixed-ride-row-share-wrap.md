@@ -1,1 +1,1 @@
-When a ride's row on History wraps onto a second line, "Share with friends" now starts on the same edge as the ride's name instead of 12 px in.
+- When a ride's row on History wraps onto a second line, "Share with friends" now starts on the same edge as the ride's name instead of 12 px in.
