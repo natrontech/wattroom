@@ -314,7 +314,7 @@
 			{#if medal}
 				<section class="sm:col-span-2">
 					<h2 class="eyebrow">your medal</h2>
-					<div class="mt-3 max-w-[400px]">
+					<div class="mt-3">
 						<MedalCard {medal} {placeName} />
 					</div>
 				</section>
