@@ -12,6 +12,7 @@ import * as THREE from 'three';
 import { pixelRatio } from './budget';
 import { compose, type CameraMode, type MountOptions } from './compose';
 import { createLoop, type LoopStats, missWatch, watchPage } from './loop';
+import { softwareDrawing } from './flag';
 import type { Failure } from './ride-view';
 import type { Style } from './styles';
 
@@ -87,7 +88,9 @@ export function mount(
 		opts.onFail?.(why);
 	}
 	const watch = missWatch();
-	const judge = setInterval(() => watch(loop.stats()) && fail('frames'), 1000);
+	const judge = softwareDrawing()
+		? undefined
+		: setInterval(() => watch(loop.stats()) && fail('frames'), 1000);
 	const lost = () => fail('context-lost');
 	function release() {
 		world.dispose();
