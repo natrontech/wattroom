@@ -38,6 +38,13 @@ export interface SummaryCard {
  * mount. Per tab and per sitting, like the recording it summarises.
  */
 const dismissedCloses = new Set<string>();
+/**
+ * Who rode each session, as last seen while its timeline ran (#3686). The
+ * hub's tick at the close says nobody rides, since no session is open, and
+ * the close usually lands on another mount — the session's address lets go
+ * for the channel's — so it is kept here, the way the dismissals are.
+ */
+const rodeIn = new Map<string, LiveRider[]>();
 
 export function createSummary(deps: {
 	recording: ReturnType<typeof createRecording>;
@@ -138,15 +145,12 @@ export function createSummary(deps: {
 		};
 	}
 
-	// Who rode, as last seen while the timeline ran (#3686): the hub's tick at
-	// the close says nobody is in a session any more, because none is open,
-	// so the roster read then was always empty and the card lost its riders.
-	let rode: LiveRider[] = [];
 	$effect(() => {
 		const phase = deps.phase();
-		if (phase !== 'running' && phase !== 'paused') return;
+		const id = deps.sessionId();
+		if (!id || (phase !== 'running' && phase !== 'paused')) return;
 		const now = deps.riders();
-		if (now.length > 0) rode = now;
+		if (now.length > 0) rodeIn.set(id, now);
 	});
 
 	$effect(() => {
@@ -174,7 +178,10 @@ export function createSummary(deps: {
 				samples: deps.recording.samples,
 				workoutName: deps.workoutName() ?? '',
 				kind: deps.kind(),
-				riders: deps.riders().length > 0 ? deps.riders() : rode,
+				riders:
+					deps.riders().length > 0
+						? deps.riders()
+						: (rodeIn.get(deps.sessionId() ?? '') ?? []),
 				ftp: deps.ftp(),
 				execution: deps.myExecution(),
 			}));

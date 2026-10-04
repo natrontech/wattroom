@@ -306,18 +306,20 @@ describe('a ride the summary cannot find yet', () => {
 });
 
 // The hub's tick at the close says nobody rides — no session is open — so the
-// roster read then was empty and the card never drew who rode (#3686).
+// roster read then was empty and the card never drew who rode (#3686). The
+// close lands on another mount: the session's page hands off to the channel's.
 it('keeps who rode from the running timeline when the close says nobody', async () => {
-	const s = await setup(() => undefined);
-	await s.go('running');
-	const two = [
+	const id = crypto.randomUUID();
+	const riding = await setup(() => undefined, id);
+	await riding.go('running');
+	await riding.roster([
 		{ id: 'u1', name: 'Jan', inSession: true },
 		{ id: 'u2', name: 'Mia', inSession: true },
-	] as LiveRider[];
-	await s.roster(two);
-	ride(s.recording, MinRideSamples);
-	await s.roster([]);
-	await s.go('done');
-	expect(s.summary.card?.riders.map((r) => r.id)).toEqual(['u1', 'u2']);
-	s.off();
+	] as LiveRider[]);
+	riding.off();
+	const closing = await setup(() => undefined, id);
+	ride(closing.recording, MinRideSamples);
+	await closing.go('done');
+	expect(closing.summary.card?.riders.map((r) => r.id)).toEqual(['u1', 'u2']);
+	closing.off();
 });
