@@ -80,8 +80,9 @@ This table is a readable copy of the map. When they disagree, the JSON wins and 
 | `$lib/profile/Appearance` | `appearance`, `appearance-advanced` |
 | `SectionTabs`, the Settings layout | `appearance`, `history`, `routes`, `garage-shop` |
 | `routes/(app)/garage/**` | `garage-shop`, `garage-locker`, `garage-makers` |
+| `QuickAudio`, `MixFaders`, `GateTune`, `GateMeter`, `DevicePickers`, `VoiceSettings` | `sound-dialog` |
 | open rides | `open-rides` |
-| `app.css` `@theme` or `@utility`, `themes.ts` | one surface per group, both schemes: `ride-workout-flat`, `ride-road-world`, `workouts`, `route`, `closing-card`, `home`, `appearance` |
+| `app.css` `@theme` or `@utility`, `themes.ts` | one surface per group, both schemes: `ride-workout-flat`, `ride-road-world`, `workouts`, `route`, `closing-card`, `home`, `appearance`, `sound-dialog` |
 
 ## 3. Your own dev pair
 

@@ -225,6 +225,18 @@
 		"surfaces": ["garage-shop", "garage-locker", "garage-makers"]
 	},
 	{
+		"files": [
+			"web/src/lib/channel/QuickAudio.svelte",
+			"web/src/lib/channel/MixFaders.svelte",
+			"web/src/lib/channel/GateTune.svelte",
+			"web/src/lib/channel/GateMeter.svelte",
+			"web/src/lib/channel/DevicePickers.svelte",
+			"web/src/lib/channel/VoiceSettings.svelte",
+			"web/src/lib/channel/sound-panel.svelte.ts"
+		],
+		"surfaces": ["sound-dialog"]
+	},
+	{
 		"files": ["web/src/routes/(app)/open-rides/**"],
 		"surfaces": ["open-rides"]
 	},
@@ -237,7 +249,8 @@
 			"route",
 			"closing-card",
 			"home",
-			"appearance"
+			"appearance",
+			"sound-dialog"
 		]
 	}
 ]

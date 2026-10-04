@@ -910,6 +910,18 @@ Every surface id below is also in `docs/design/surface-map.json`, which maps the
 6. Under reduced motion, Flat is chosen, with one “Show the world (steady camera)” button. [3214-world-control] [multi:reduced-motion]
 7. Hints are one muted line: right of the row at ≥ 1024 px, below it on a phone. Nothing scrolls sideways. [appearance]
 
+#### sound-dialog
+
+**Capture:** a voice channel at 1440 × 900, the sidebar's Sound button, the dialog open without a call, at the top (`sound-dialog`) and scrolled to its foot (`sound-dialog-bottom`); then `/settings/voice`, the whole page body. In both schemes. Both dialog shots carry `dialogTargets` in their probe JSON: every slider's and Done's height, each select's x and width, and the dialog's scrollHeight against clientHeight.
+
+**Target:** none drawn. The bar is ux.md's tap-target rule and the dialog's own line, “the levels you reach for mid-ride”.
+
+**Must match**
+1. The five faders, the gate slider and Done have hit boxes ≥ 44 px tall (`btn-lg` for Done); the thumb and track keep their drawn size, centred in the box. [3748] [probe:dialogTargets]
+2. The device row is one column of full-width selects: no label wraps, none truncates to a stub, and the three selects line up. [3748] [probe:dialogTargets]
+3. `/settings/voice` draws the same faders at the 24 px desk floor, not 44. It does not grow with the dialog. [3748]
+4. Nothing in the dialog glows, and it scrolls inside the window at 1440 × 900 rather than clipping Done. [3748] [probe:dialogTargets]
+
 #### landing
 
 **Capture:** `/` signed out, desk and phone, in both schemes.

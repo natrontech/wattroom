@@ -119,7 +119,11 @@ export class Shoot {
 	/** Writes `<name>.png` and its probes, `<name>.json`. */
 	async shot(
 		{ page, errors }: Pick<Opened, 'page' | 'errors'>,
-		{ name = this.id, full = false }: { name?: string; full?: boolean } = {},
+		{
+			name = this.id,
+			full = false,
+			extra = {},
+		}: { name?: string; full?: boolean; extra?: object } = {},
 	): Promise<void> {
 		const wholeDocument = full && !(await growToBody(page));
 		// The public site lazy-loads its media: walk the document once so a
@@ -145,7 +149,8 @@ export class Shoot {
 		});
 		await writeFile(
 			join(OUT, `${name}.json`),
-			JSON.stringify({ ...probes, pageErrors: errors }, null, 2) + '\n',
+			JSON.stringify({ ...probes, ...extra, pageErrors: errors }, null, 2) +
+				'\n',
 		);
 	}
 
