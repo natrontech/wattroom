@@ -48,6 +48,9 @@ test("a channel's row in the crew column carries the sidebar's own menu", async 
 		.locator(`a[href="${textPath(opened)}"]`);
 	await bRow.click({ button: 'right' });
 	await expect(b.getByRole('menuitem', { name: 'Open' })).toBeVisible();
+	// Flat like every panel (TARGETS G2, G3): the design probe reads any outer
+	// shadow as a glow (#3789).
+	await expect(b.getByRole('menu')).toHaveCSS('box-shadow', 'none');
 	await expect(
 		b.getByRole('menuitem', { name: 'Delete the chat' }),
 	).toHaveCount(0);
