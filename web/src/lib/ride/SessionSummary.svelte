@@ -1,20 +1,18 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { play } from '$lib/sound/cues';
-	import Logo from '$lib/brand/Logo.svelte';
 	import MedalCard, { type Medal } from '$lib/components/MedalCard.svelte';
 	import ZoneBar from '$lib/components/ZoneBar.svelte';
 	import { ZONE_VAR, zoneOf } from '$lib/components/zones';
-	import { formatClock } from '$lib/format';
-	import Activity from '@lucide/svelte/icons/activity';
-	import Clock from '@lucide/svelte/icons/clock';
-	import Flame from '@lucide/svelte/icons/flame';
-	import Gauge from '@lucide/svelte/icons/gauge';
-	import Target from '@lucide/svelte/icons/target';
-	import Trophy from '@lucide/svelte/icons/trophy';
-	import Users from '@lucide/svelte/icons/users';
-	import Zap from '@lucide/svelte/icons/zap';
+	import RecapHeader from '$lib/ride/RecapHeader.svelte';
+	import RecapTiles from '$lib/ride/RecapTiles.svelte';
 	import {
+		recapEyebrow,
+		recapTiles,
+		type RideKind,
+	} from '$lib/ride/recap-frame';
+	import {
+		averageWatts,
 		curvePoints,
 		normalizedPower,
 		powerTrace,
@@ -23,11 +21,14 @@
 		type RideSample,
 	} from '$lib/ride/stats';
 
-	// The post-session screen (#39's summary design): what you did, how well,
-	// what it earned — every number a SPEC formula over the rider's own samples.
+	// The closing card (#39's summary design, framed by #3686): what you did,
+	// how well, what it earned — every number a SPEC formula over the rider's
+	// own samples. It spans the column it is given; the actions ride the
+	// header and the numbers sit under it, so neither waits below the fold.
 	let {
-		title = 'Session complete',
-		subtitle,
+		title,
+		kind = 'Workout',
+		crew,
 		samples,
 		ftp,
 		execution,
@@ -35,11 +36,15 @@
 		placeName = 'WattRoom',
 		riders,
 		actions,
+		status,
 		unsaved = false,
 		savedXp,
 	}: {
-		title?: string;
-		subtitle: string;
+		/** The ride's name: the workout's, or the road's. */
+		title: string;
+		kind?: RideKind;
+		/** The crew a session rode with; absent on a ride alone. */
+		crew?: string;
 		samples: RideSample[];
 		ftp: number;
 		/** Absent when nothing scorable was ridden: shown as a dash, no bonus (#1454). */
@@ -52,7 +57,10 @@
 		 * and session are one card (#1531).
 		 */
 		riders?: { id: string; name: string; execution?: number; you?: boolean }[];
+		/** Secondary actions first, Done last (RecapHeader). */
 		actions?: Snippet;
+		/** What the save or the export said, under the header (errors.md). */
+		status?: Snippet;
 		/** The save failed (#2634): none of the XP below reached the account. */
 		unsaved?: boolean;
 		/** The saved ride's own XP, streak bonus in it (#3753): what the ride page reads. */
@@ -101,6 +109,21 @@
 			: [],
 	);
 	const xp = $derived(xpLines(kj, execution ?? 0, savedXp));
+	// The day it closed, kept: a card left open past midnight stays Monday's.
+	const closedAt = new Date();
+	const eyebrow = $derived(recapEyebrow(closedAt, kind, crew));
+	// The ride page's six (#3687 reads the same builder). An unsaved ride
+	// earned nothing on the account, so its tile goes rather than promise it.
+	const tiles = $derived(
+		recapTiles({
+			seconds,
+			kj,
+			avgWatts: averageWatts(samples),
+			normWatts: np,
+			execution,
+			xp: unsaved ? undefined : xp.total,
+		}),
+	);
 
 	// A medal announces itself once (SPEC: promotions announce, drops do not).
 	let cheered = false;
@@ -112,112 +135,97 @@
 	});
 </script>
 
-<div class="mx-auto max-w-5xl">
-	<header class="flex items-center gap-3">
-		<Logo size={30} />
-		<div>
-			<h1 class="page-title-sm leading-tight">{title}</h1>
-			<p class="text-muted text-xs">{subtitle}</p>
+<article class="w-full" data-testid="closing-card">
+	<RecapHeader {eyebrow} {title} {actions} />
+
+	{#if status}
+		<div class="has-[*]:mt-3">{@render status()}</div>
+	{/if}
+
+	<!-- Desk (≥ 1280): the trace and the zones on the left at 470 px, the rest
+	     on the right, tops aligned. Narrower, one column in reading order —
+	     the numbers, then the trace, then the rest (TARGETS.md closing-card). -->
+	<div
+		class="mt-4 grid items-start gap-4 xl:grid-cols-[470px_minmax(0,1fr)] xl:grid-rows-[auto_1fr]"
+	>
+		<div class="xl:col-start-2 xl:row-start-1">
+			<RecapTiles {tiles} />
 		</div>
-	</header>
 
-	<!-- Headline numbers first: what you did, how well, what it earned. An icon
-	     per number (#1559): four identical tiles read as one grey block, and
-	     these are the marks the downloadable ride card uses, so a rider meets
-	     one vocabulary across the two surfaces rather than two. -->
-	<section class="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-		{#each [{ icon: Clock, label: 'duration', value: formatClock(seconds) }, { icon: Flame, label: 'work', value: `${kj} kJ` }, { icon: Target, label: 'execution', value: execution === undefined ? '—' : `${Math.round(execution * 100)}%` }, { icon: Activity, label: 'normalised', value: `${np} W` }] as stat (stat.label)}
-			{@const Mark = stat.icon}
-			<div class="panel panel-lg">
-				<Mark size={18} class="text-neon" aria-hidden="true" />
-				<div
-					class="font-display mt-3 text-3xl leading-none font-bold tabular-nums"
-				>
-					{stat.value}
-				</div>
-				<div class="eyebrow mt-2">
-					{stat.label}
-				</div>
-			</div>
-		{/each}
-	</section>
-
-	<div class="mt-3 grid gap-3 {medal ? 'lg:grid-cols-[1fr_400px]' : ''}">
-		<div class="grid gap-3">
-			<section class="panel panel-lg">
-				<h2 class="eyebrow flex items-center gap-1.5">
-					<Gauge size={13} class="text-neon" aria-hidden="true" /> time in zone
-				</h2>
-				{#if totalZoneSeconds > 0}
-					<div class="mt-4">
-						<ZoneBar seconds={zones} legend />
-					</div>
-				{:else}
-					<p class="text-muted mt-3 text-xs">No riding recorded.</p>
-				{/if}
-			</section>
-
+		<section
+			class="panel panel-lg xl:col-start-1 xl:row-span-2 xl:row-start-1"
+			data-testid="recap-trace"
+		>
 			{#if trace}
-				<section class="panel panel-lg">
-					<h2 class="eyebrow flex items-center gap-1.5">
-						<Activity size={13} class="text-neon" aria-hidden="true" /> how it went
-					</h2>
-					<!-- viewBox and a percentage width, never a pixel width beside a
-					     measured container (ux.md): it has to fit a phone. -->
-					<svg
-						viewBox="0 0 {TRACE_W} {TRACE_H}"
-						width="100%"
-						height={TRACE_H}
-						preserveAspectRatio="none"
-						class="mt-3 block"
-						role="img"
-						aria-label="power over the ride, against your FTP"
-					>
-						<!-- A column per bucket, in the colour of the zone it was
-						     ridden at — not a gradient up the axis, which paints the
-						     bottom of a threshold effort Z1 because that is the height
-						     it passes through. Column by column is how hard it was
-						     *then*, which is the question. -->
-						{#each columns as column (column.x)}
-							<rect
-								x={column.x}
-								y={column.y}
-								width={column.width}
-								height={TRACE_H - column.y}
-								fill={ZONE_VAR[column.zone]}
-								fill-opacity="0.55"
-							/>
-							<!-- The lit edge, at rest: the same mark the downloadable
-							     card draws, and the only thing here at full strength. -->
-							<rect
-								x={column.x}
-								y={column.y}
-								width={column.width}
-								height={Math.min(2, TRACE_H - column.y)}
-								fill={ZONE_VAR[column.zone]}
-							/>
-						{/each}
-						<line
-							x1="0"
-							x2={TRACE_W}
-							y1={trace.ftpY}
-							y2={trace.ftpY}
-							stroke="currentColor"
-							stroke-width="1"
-							stroke-dasharray="4 4"
-							class="text-neon opacity-60"
+				<h2 class="eyebrow">how it went</h2>
+				<!-- viewBox and a percentage width, never a pixel width beside a
+				     measured container (ux.md): it has to fit a phone. -->
+				<svg
+					viewBox="0 0 {TRACE_W} {TRACE_H}"
+					width="100%"
+					height={TRACE_H}
+					preserveAspectRatio="none"
+					class="mt-3 block"
+					role="img"
+					aria-label="power over the ride, against your FTP"
+				>
+					<!-- A column per bucket, in the colour of the zone it was
+					     ridden at — not a gradient up the axis, which paints the
+					     bottom of a threshold effort Z1 because that is the height
+					     it passes through. Column by column is how hard it was
+					     *then*, which is the question. -->
+					{#each columns as column (column.x)}
+						<rect
+							x={column.x}
+							y={column.y}
+							width={column.width}
+							height={TRACE_H - column.y}
+							fill={ZONE_VAR[column.zone]}
+							fill-opacity="0.55"
 						/>
-					</svg>
-					<p class="text-muted mt-1 text-[11px]">
-						Power, second by second — the dashed line is your FTP ({ftp} W).
-					</p>
-				</section>
+						<!-- The lit edge, at rest: the same mark the downloadable
+						     card draws, and the only thing here at full strength. -->
+						<rect
+							x={column.x}
+							y={column.y}
+							width={column.width}
+							height={Math.min(2, TRACE_H - column.y)}
+							fill={ZONE_VAR[column.zone]}
+						/>
+					{/each}
+					<line
+						x1="0"
+						x2={TRACE_W}
+						y1={trace.ftpY}
+						y2={trace.ftpY}
+						stroke="currentColor"
+						stroke-width="1"
+						stroke-dasharray="4 4"
+						class="text-neon opacity-60"
+					/>
+				</svg>
+				<p class="text-muted mt-1 text-[11px]">
+					Power, second by second — the dashed line is your FTP ({ftp} W).
+				</p>
 			{/if}
+			<h2 class="eyebrow {trace ? 'mt-5' : ''}">time in zone</h2>
+			{#if totalZoneSeconds > 0}
+				<div class="mt-4">
+					<ZoneBar seconds={zones} legend />
+				</div>
+			{:else}
+				<p class="text-muted mt-3 text-xs">No riding recorded.</p>
+			{/if}
+		</section>
 
+		<!-- Everything else, two to a row: the road's climbs, the crew's climb
+		     board and the photos land here as more panels (#3141, #3147,
+		     #3230), never as a new column. -->
+		<div
+			class="grid items-start gap-4 sm:grid-cols-2 xl:col-start-2 xl:row-start-2"
+		>
 			<section class="panel panel-lg">
-				<h2 class="eyebrow flex items-center gap-1.5">
-					<Zap size={13} class="text-neon" aria-hidden="true" /> power curve
-				</h2>
+				<h2 class="eyebrow">power curve</h2>
 				<div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
 					{#each reached as point (point.label)}
 						<div>
@@ -239,36 +247,9 @@
 				{/if}
 			</section>
 
-			{#if together.length > 1}
-				<!-- The moment the session ends is when who was there matters
-				     (#1559): the card used to report one person's numbers. -->
-				<section class="panel panel-lg">
-					<h2 class="eyebrow flex items-center gap-1.5">
-						<Users size={13} class="text-neon" aria-hidden="true" /> who rode
-					</h2>
-					<ul class="mt-3 grid gap-1.5 sm:grid-cols-2">
-						{#each together as rider (rider.id)}
-							<li class="flex items-baseline gap-2 text-sm">
-								<span class="truncate {rider.you ? 'font-medium' : ''}"
-									>{rider.you ? 'You' : rider.name}</span
-								>
-								{#if rider.execution !== undefined}
-									<span class="text-muted num ml-auto text-xs"
-										>{Math.round(rider.execution * 100)}%</span
-									>
-								{/if}
-							</li>
-						{/each}
-					</ul>
-					<p class="text-muted mt-2 text-[11px]">Execution — time on target.</p>
-				</section>
-			{/if}
-
 			<section class="panel panel-lg">
 				<div class="flex items-baseline gap-3">
-					<h2 class="eyebrow flex items-center gap-1.5">
-						<Trophy size={13} class="text-neon" aria-hidden="true" /> progress
-					</h2>
+					<h2 class="eyebrow">progress</h2>
 					<span class="text-muted num ml-auto text-[11px]">+{xp.total} XP</span>
 				</div>
 				<ul class="text-muted num mt-3 space-y-1 text-[11px]">
@@ -304,22 +285,38 @@
 					{/if}
 				</p>
 			</section>
+
+			{#if together.length > 1}
+				<!-- The moment the session ends is when who was there matters
+				     (#1559): the card used to report one person's numbers. -->
+				<section class="panel panel-lg sm:col-span-2">
+					<h2 class="eyebrow">who rode</h2>
+					<ul class="mt-3 grid gap-2 sm:grid-cols-2">
+						{#each together as rider (rider.id)}
+							<li class="flex items-baseline gap-2 text-sm">
+								<span class="truncate {rider.you ? 'font-medium' : ''}"
+									>{rider.you ? 'You' : rider.name}</span
+								>
+								{#if rider.execution !== undefined}
+									<span class="text-muted num ml-auto text-xs"
+										>{Math.round(rider.execution * 100)}%</span
+									>
+								{/if}
+							</li>
+						{/each}
+					</ul>
+					<p class="text-muted mt-2 text-[11px]">Execution — time on target.</p>
+				</section>
+			{/if}
+
+			{#if medal}
+				<section class="sm:col-span-2">
+					<h2 class="eyebrow">your medal</h2>
+					<div class="mt-3 max-w-[400px]">
+						<MedalCard {medal} {placeName} />
+					</div>
+				</section>
+			{/if}
 		</div>
-
-		{#if medal}
-			<div>
-				<h2 class="eyebrow">your medal</h2>
-				<div class="mt-3">
-					<MedalCard {medal} {placeName} />
-				</div>
-				{#if actions}
-					<div class="mt-3">{@render actions()}</div>
-				{/if}
-			</div>
-		{/if}
 	</div>
-
-	{#if !medal && actions}
-		<div class="mt-3">{@render actions()}</div>
-	{/if}
-</div>
+</article>

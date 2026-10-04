@@ -71,6 +71,7 @@
 		segments,
 		phase,
 		placeName,
+		crewName,
 		code,
 		onSchedule,
 	}: {
@@ -81,6 +82,8 @@
 		segments: Segment[];
 		phase: Phase;
 		placeName: string;
+		/** The crew the channel belongs to: the closing card's eyebrow. */
+		crewName?: string;
 		code?: string;
 		onSchedule: ChannelShellProps['onSchedule'];
 	} = $props();
@@ -133,6 +136,9 @@
 		myExecution: () => you.execution,
 		sessionId: () => shared?.id,
 		workoutName: () => shared?.workoutName,
+		// A session on a road is a bunch ride (SPEC glossary); a game says so.
+		kind: () =>
+			live.tick?.game ? 'Game' : shared?.route ? 'Bunch ride' : 'Workout',
 		// Who rode is the session's riders (#2635): the channel's roster also
 		// holds phones and people who were only in the call.
 		riders: () => riders.filter((r) => r.inSession),
@@ -301,13 +307,17 @@
 	     and nothing said so — a modal is the session telling you it is over.
 	     It draws the close, not the live values (#2603): the coach's next pick
 	     turned the phase back to idle and took everyone's summary with it. -->
+	<!-- No width cap (#3686): the card spans the window, the way it spans the
+	     content column on /ride. -->
 	<Modal
 		label="Session summary"
-		class="max-w-5xl"
+		class="max-w-none"
 		onclose={() => summary.dismiss()}
 	>
 		<SessionSummary
-			subtitle="{placeName} · {card.workoutName} · {new Date().toLocaleDateString()}"
+			title={card.workoutName || placeName}
+			kind={card.kind}
+			crew={crewName}
 			samples={card.samples}
 			ftp={card.ftp}
 			execution={card.execution}
@@ -317,45 +327,43 @@
 			riders={card.riders}
 		>
 			{#snippet actions()}
-				<div class="flex flex-wrap gap-2">
-					<!-- The end links forward (#1331): the ride the session saved for
-					     you, found by the session it belongs to once the save lands.
-					     Following it is done with the summary: coming back to the
-					     channel must not open it again. -->
-					{#if summary.rideId}
-						<a
-							href="/history/{summary.rideId}"
-							onclick={() => summary.dismiss()}
-							class="btn btn-primary">See your ride</a
-						>
-					{:else if summary.rideLate}
-						<!-- A save slower than the looks, or a look refused (#2631):
-						     the ride lands on Rides, and the rider is told so. -->
-						<a
-							href="/history"
-							onclick={() => summary.dismiss()}
-							class="btn btn-primary">Your ride lands on Rides</a
-						>
-					{/if}
-					<!-- The next leg (#3103): the road this coach's session rode,
-					     from where the bunch stopped, a week on. -->
-					{#if live.endedRoad}
-						{@const ended = live.endedRoad}
-						<button
-							onclick={() => void planNextLeg(ended)}
-							disabled={planning}
-							class="btn btn-secondary"
-							>Plan next {nextLegAt(ended).toLocaleDateString(undefined, {
-								weekday: 'long',
-							})} from km {resumeKm(ended)}</button
-						>
-					{/if}
-					<!-- The page is already the channel's under it (#2600): the
-					     session's address lets go when it ends. -->
-					<button onclick={() => summary.dismiss()} class="btn btn-secondary"
-						>Back to {placeName}</button
+				<!-- The end links forward (#1331): the ride the session saved for
+				     you, found by the session it belongs to once the save lands.
+				     Following it is done with the summary: coming back to the
+				     channel must not open it again. -->
+				{#if summary.rideId}
+					<a
+						href="/history/{summary.rideId}"
+						onclick={() => summary.dismiss()}
+						class="btn btn-secondary">See your ride</a
 					>
-				</div>
+				{:else if summary.rideLate}
+					<!-- A save slower than the looks, or a look refused (#2631):
+					     the ride lands on Rides, and the rider is told so. -->
+					<a
+						href="/history"
+						onclick={() => summary.dismiss()}
+						class="btn btn-secondary">Your ride lands on Rides</a
+					>
+				{/if}
+				<!-- The next leg (#3103): the road this coach's session rode,
+				     from where the bunch stopped, a week on. -->
+				{#if live.endedRoad}
+					{@const ended = live.endedRoad}
+					<button
+						onclick={() => void planNextLeg(ended)}
+						disabled={planning}
+						class="btn btn-secondary"
+						>Plan next {nextLegAt(ended).toLocaleDateString(undefined, {
+							weekday: 'long',
+						})} from km {resumeKm(ended)}</button
+					>
+				{/if}
+				<!-- The page is already the channel's under it (#2600): the
+				     session's address lets go when it ends. -->
+				<button onclick={() => summary.dismiss()} class="btn btn-primary"
+					>Done</button
+				>
 			{/snippet}
 		</SessionSummary>
 	</Modal>

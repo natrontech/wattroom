@@ -4,6 +4,7 @@ import type { Medal } from '$lib/components/MedalCard.svelte';
 import { MEDAL_META } from '$lib/medals';
 import { MinRideSamples } from '$lib/protocol';
 import type { LiveRider } from '$lib/channel/types';
+import type { RideKind } from '$lib/ride/recap-frame';
 import type { createRecording } from '$lib/session/recording.svelte';
 import { untrack } from 'svelte';
 
@@ -18,6 +19,8 @@ export interface SummaryCard {
 	sessionId: string;
 	samples: ReturnType<typeof createRecording>['samples'];
 	workoutName: string;
+	/** The session's mode, for the card's eyebrow (#3686). */
+	kind: RideKind;
 	riders: LiveRider[];
 	ftp: number;
 	execution: number | undefined;
@@ -51,6 +54,7 @@ export function createSummary(deps: {
 	/** What the card keeps at the close, beside the rider's own samples. */
 	sessionId: () => string | undefined;
 	workoutName: () => string | undefined;
+	kind: () => RideKind;
 	riders: () => LiveRider[];
 	ftp: () => number;
 }) {
@@ -134,6 +138,17 @@ export function createSummary(deps: {
 		};
 	}
 
+	// Who rode, as last seen while the timeline ran (#3686): the hub's tick at
+	// the close says nobody is in a session any more, because none is open,
+	// so the roster read then was always empty and the card lost its riders.
+	let rode: LiveRider[] = [];
+	$effect(() => {
+		const phase = deps.phase();
+		if (phase !== 'running' && phase !== 'paused') return;
+		const now = deps.riders();
+		if (now.length > 0) rode = now;
+	});
+
 	$effect(() => {
 		const phase = deps.phase();
 		if (phase === 'running') {
@@ -158,7 +173,8 @@ export function createSummary(deps: {
 				sessionId: deps.sessionId() ?? '',
 				samples: deps.recording.samples,
 				workoutName: deps.workoutName() ?? '',
-				riders: deps.riders(),
+				kind: deps.kind(),
+				riders: deps.riders().length > 0 ? deps.riders() : rode,
 				ftp: deps.ftp(),
 				execution: deps.myExecution(),
 			}));

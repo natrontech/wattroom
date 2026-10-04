@@ -79,7 +79,6 @@
 	"lib/ride/RideDoors.svelte": 2,
 	"lib/ride/RideFeel.svelte": 4,
 	"lib/ride/RidingScreen.svelte": 1,
-	"lib/ride/SessionSummary.svelte": 6,
 	"lib/rider-card/RiderCard.svelte": 1,
 	"lib/session/CrewStrip.svelte": 1,
 	"lib/session/ExecutionMeter.svelte": 1,
