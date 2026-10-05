@@ -116,25 +116,28 @@ export function trayName(platform: string | null): string {
 // ── The tray, and launch at login (#1313) ────────────────────────────────
 
 /**
- * Whether this build can put WattRoom in the login items, and whether it
- * is there. `supported` is false in a browser, in a shell older than this,
- * and in a dev build on macOS — where the API would register Electron
- * itself. `error` carries the one sentence a refused change leaves behind.
+ * A switch the shell owns: launch at login, or the tray icon (#3843).
+ * `supported` is false in a browser, in a shell older than the switch, and
+ * where the OS cannot do it — a dev build on macOS for the login item, where
+ * the API would register Electron itself, or a desktop with no tray to draw
+ * in. `error` carries the one sentence a refused change leaves behind.
  */
-export interface LoginItem {
+export interface ShellSwitch {
 	supported: boolean;
 	enabled: boolean;
 	error: string | null;
 }
 
-type LoginBridge = {
+type SwitchBridge = {
 	launchAtLogin?: () => Promise<unknown>;
 	setLaunchAtLogin?: (on: boolean) => Promise<unknown>;
+	trayIcon?: () => Promise<unknown>;
+	setTrayIcon?: (on: boolean) => Promise<unknown>;
 };
 
 /** The shell's answer, or null for anything that is not one. */
-function asLoginItem(value: unknown): LoginItem | null {
-	const v = value as Partial<LoginItem> | null;
+function asSwitch(value: unknown): ShellSwitch | null {
+	const v = value as Partial<ShellSwitch> | null;
 	if (typeof v?.supported !== 'boolean') return null;
 	return {
 		supported: v.supported,
@@ -144,12 +147,12 @@ function asLoginItem(value: unknown): LoginItem | null {
 }
 
 async function askShell(
-	call: (bridge: LoginBridge) => Promise<unknown> | undefined,
-): Promise<LoginItem | null> {
-	const bridge = (globalThis as { wattroom?: LoginBridge }).wattroom;
+	call: (bridge: SwitchBridge) => Promise<unknown> | undefined,
+): Promise<ShellSwitch | null> {
+	const bridge = (globalThis as { wattroom?: SwitchBridge }).wattroom;
 	if (!bridge) return null;
 	try {
-		return asLoginItem(await call(bridge));
+		return asSwitch(await call(bridge));
 	} catch {
 		// A bridge that throws is a shell we cannot ask; the setting hides
 		// rather than showing a switch with nothing behind it.
@@ -158,13 +161,23 @@ async function askShell(
 }
 
 /** Null in a browser and in a shell that has no login-item bridge. */
-export function launchAtLogin(): Promise<LoginItem | null> {
+export function launchAtLogin(): Promise<ShellSwitch | null> {
 	return askShell((b) => b.launchAtLogin?.());
 }
 
 /** The rider's answer, and what came back — including a refusal to act on. */
-export function setLaunchAtLogin(on: boolean): Promise<LoginItem | null> {
+export function setLaunchAtLogin(on: boolean): Promise<ShellSwitch | null> {
 	return askShell((b) => b.setLaunchAtLogin?.(on));
+}
+
+/** Whether the shell's tray icon shows (#3843). Null in a browser and in an older shell. */
+export function trayIcon(): Promise<ShellSwitch | null> {
+	return askShell((b) => b.trayIcon?.());
+}
+
+/** The rider's answer, and what came back — including a refusal to act on. */
+export function setTrayIcon(on: boolean): Promise<ShellSwitch | null> {
+	return askShell((b) => b.setTrayIcon?.(on));
 }
 
 /**
