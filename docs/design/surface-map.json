@@ -218,6 +218,13 @@
 	},
 	{
 		"files": [
+			"web/src/lib/profile/ThisComputer.svelte",
+			"web/src/routes/(app)/settings/notifications/**"
+		],
+		"surfaces": ["settings-this-computer"]
+	},
+	{
+		"files": [
 			"web/src/**/SectionTabs.svelte",
 			"web/src/routes/(app)/settings/+layout.svelte"
 		],
