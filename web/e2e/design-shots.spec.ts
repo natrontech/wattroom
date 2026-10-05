@@ -749,6 +749,38 @@ surface('appearance', async (s) => {
 	});
 });
 
+surface('settings-this-computer', async (s) => {
+	// "This computer" draws only inside the desktop shell, so the capture
+	// hands the page a stand-in bridge with the two switches it asks about.
+	for (const [device, name, platform, icon] of [
+		[DESK, 'settings-this-computer', 'darwin', false],
+		[DESK, 'settings-this-computer-linux', 'linux', true],
+		[DESK, 'settings-this-computer-linux-off', 'linux', false],
+		[PHONE, 'settings-this-computer-phone', 'darwin', false],
+	] as const) {
+		const o = await s.open(device);
+		await o.ctx.addInitScript(
+			([os, on]) => {
+				const answer = (enabled: boolean) => () =>
+					Promise.resolve({ supported: true, enabled, error: null });
+				(window as unknown as { wattroom: object }).wattroom = {
+					version: '2026.10.1',
+					platform: os,
+					titleBar: 0,
+					launchAtLogin: answer(false),
+					trayIcon: answer(on),
+				};
+			},
+			[platform, icon] as const,
+		);
+		await page(s, o, '/settings/notifications', { name });
+	}
+	const browser = await s.open(DESK);
+	await page(s, browser, '/settings/notifications', {
+		name: 'settings-this-computer-browser',
+	});
+});
+
 surface('sound-dialog', async (s) => {
 	// The in-channel Sound dialog, opened without a call (its button needs the
 	// channel's av store, not LiveKit), and /settings/voice beside it, which

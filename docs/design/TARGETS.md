@@ -910,6 +910,19 @@ Every surface id below is also in `docs/design/surface-map.json`, which maps the
 6. Under reduced motion, Flat is chosen, with one “Show the world (steady camera)” button. [3214-world-control] [multi:reduced-motion]
 7. Hints are one muted line: right of the row at ≥ 1024 px, below it on a phone. Nothing scrolls sideways. [appearance]
 
+#### settings-this-computer
+
+**Capture:** `/settings/notifications`, the whole page body, with a stand-in desktop bridge: as macOS (`settings-this-computer`), as Linux with the tray icon on (`-linux`) and off (`-linux-off`), on a phone as macOS (`-phone`), and in a plain browser (`-browser`). In both schemes.
+
+**Target:** none drawn. The bar is the Settings kit, ux.md's capability gating and ADR-0037's #3843 amendment.
+
+**Must match**
+1. "This computer" is one panel after the other Notifications sections, on the column's left edge. A plain browser shows no such panel. [3843] [multi:browser]
+2. Each switch is one row: a checkbox on the label's first line and one muted hint under the label. Every row's checkbox starts at the same x. [3843]
+3. The tray row names the platform's place: "Show WattRoom in the menu bar" on macOS, "in the system tray" on Linux. It is unticked on macOS and ticked on Linux by default. [3843] [multi:linux]
+4. With the icon off on Windows or Linux, the launch-at-login hint says WattRoom opens when you sign in and names no tray. [3843] [multi:linux-off]
+5. Nothing glows, and nothing scrolls sideways at 375 px. [3843]
+
 #### sound-dialog
 
 **Capture:** a voice channel at 1440 × 900, the sidebar's Sound button, the dialog open without a call, at the top (`sound-dialog`) and scrolled to its foot (`sound-dialog-bottom`); then `/settings/voice`, the whole page body. In both schemes. Both dialog shots carry `dialogTargets` in their probe JSON: every slider's and Done's height, each select's x and width, and the dialog's scrollHeight against clientHeight.
