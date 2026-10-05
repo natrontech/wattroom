@@ -375,3 +375,23 @@ set for a Windows status that is not Valid:
   publish a release, but the only shell that installs one by itself needs the
   Developer ID to accept it. Immutable releases on the releases repo are a
   settings click for the maintainer, tracked in #3494.
+
+## Amendment, 2026-10-05 (#3843): the tray icon is a switch, off on macOS
+
+The #1313 amendment's "a tray icon, always" made the icon the only proof that
+a hidden shell was running. On macOS the Dock already says that and already
+brings the window back, so the menu-bar icon repeated the Dock, the app menu
+and Settings, and took a slot in a crowded menu bar for it. Decided on
+2026-10-05:
+
+- **Showing the tray icon is a per-device switch**, Settings → This computer,
+  on every platform, kept in the shell's `userData`. **Off by default on
+  macOS, on by default on Windows and Linux**, where the icon is still the
+  only way back to a hidden window.
+- **On macOS a close hides the window and a login launch runs hidden whether
+  or not the icon shows**: the Dock is the way back, and ⌘Q or the Dock's
+  Quit ends it.
+- **On Windows and Linux with the icon off**, the shell keeps the no-tray
+  rules this ADR already has for a Linux desktop with no status notifier: a
+  close quits and a login launch shows its window. The switch takes effect at
+  once, and is unavailable where there is no tray host to draw in.
