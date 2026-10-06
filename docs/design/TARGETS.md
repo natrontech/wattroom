@@ -118,7 +118,7 @@ So the RIDE page holds:
   - the 3 s power;
   - your position marker on the horizon: the Skyline dot, or the interval graph's cursor;
   - your trail in the world.
-- `--color-neon` is structure and prescription: frames, hairlines, selected borders, the grade and record ramps, rider state (the gear) and targets. It never carries a measured reading and never glows.
+- `--color-neon` is structure and prescription: frames, hairlines, selected borders, the grade and record ramps, rider state (the gear), targets, and a model's outputs (a race's gap to par and place, #3174). It never carries a measured reading and never glows.
 - Zone tokens carry zone readings and nothing else. A line or fill in a zone colour shows the zone actually ridden there, never a fixed zone used as decoration.
 - Desk surfaces glow nothing.
 - Records (history, collections, class chips, progress bars) use the neon ramp.
@@ -141,7 +141,7 @@ So the RIDE page holds:
 - The desk is 0.8 m from a 14-inch laptop; the TV is 3 m from a 55-inch set. Sizes are D1's, and a unit is at most half its number.
 - Riding surfaces label with `ride-label` (≥ 24 px on the desk, ≥ 3vh on the TV). The kit's `eyebrow` (10 px) is for desk pages only.
 - Numerals are `font-display` (Chakra Petch), tabular. Distance reads “x of y”.
-- Every word on a riding surface is a label or a number, with one exception: a status or recovery line that canon requires. That covers G3's ride-critical status, ADR-0062's hint for a hidden control, and the Flat-road reason from `REASONS` in `lib/world/ride-view.ts`. Such a line is one line, at label size, with at most one ≥ 44 px button.
+- Every word on a riding surface is a label or a number, with one exception: a status or recovery line that canon requires. That covers G3's ride-critical status, ADR-0062's hint for a hidden control, the Flat-road reason from `REASONS` in `lib/world/ride-view.ts`, and the team-car radio's closed phrases (SPEC “Races”). Such a line is one line, at label size, with at most one ≥ 44 px button.
 - The watts is one figure, the 3 s power, never repeated (D17).
 
 **G5. Phone width is 375 × 812.**
@@ -480,12 +480,13 @@ Every surface id below is also in `docs/design/surface-map.json`, which maps the
 **Canon:** ADR-0067, ADR-0071; SPEC “Races”, “The bike computer”.
 
 **Must match**
-1. The RACE page reads, in this order: the gap to your Category's par (label “vs par”, “+0:18” ahead and “−0:18” behind), then your place in your Category (label “in C”, “2nd of 2”). W/kg stays in its one home, beside the 3 s power (“One home per number”), and the page is as tall as RIDE. [#3174] [multi:ride-race-ride]
+1. The RACE page reads, in this order: the gap to your Category's par (label “vs par”, “+0:18” ahead and “−0:18” behind), then your place in your Category (label “in C”, “2nd of 2”). It shows no W/kg, and the page is as tall as RIDE. [#3174] [multi:ride-race-ride]
 2. The gap to par and the place are the race model's: neon, flat, never watt and never glowing. The page glows nothing. [#3174] [probe:wattCount]
 3. The gap to par leads the page at the computer's number size, never larger than the 3 s power: “One home per number” keeps the 3 s power the largest number on the surface. [#3174]
 4. The team-car radio is one labelled line in slot 1, its words at least 24 px, saying one closed phrase at most every 20 s, and never a number the RACE page shows (D17). [#3174] [test:web/src/lib/race/radio.test.ts]
 5. The shelter bar and the matches gauge join the page with their issues. [#3265] [#3263]
 6. ride-session-flat's items hold. [ride-flat]
+7. W/kg sits in its one home in a race too: beside the 3 s power in the game's compact head (“One home per number”; decided on #3174, 2026-10-06). [#3668]
 
 #### ride-channel-free
 
