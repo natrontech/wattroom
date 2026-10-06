@@ -73,3 +73,24 @@ export function attemptTrend(points: AttemptPoint[]): {
 	const at = (x: number) => ({ at: x, kmh: my + (sxy / sxx) * (x - mx) });
 	return { from: at(timed[0].at), to: at(timed[timed.length - 1].at) };
 }
+
+/**
+ * The owner's best ride of the road and their last (#3680). The best is the
+ * fastest timed ride by average speed — only a timed ride is the rider's own
+ * time (ADR-0074), and a route rides in legs, so speed is what compares; the
+ * last is the latest ride of any kind.
+ */
+export function bestAndLast(attempts: Attempt[]): {
+	best?: Attempt;
+	last?: Attempt;
+} {
+	const kmh = (a: Attempt) => (a.distanceM ?? 0) / a.seconds;
+	let best: Attempt | undefined;
+	let last: Attempt | undefined;
+	for (const a of attempts) {
+		if (!last || Date.parse(a.startedAt) > Date.parse(last.startedAt)) last = a;
+		const timed = a.kind === 'timed' && (a.distanceM ?? 0) > 0 && a.seconds > 0;
+		if (timed && (!best || kmh(a) > kmh(best))) best = a;
+	}
+	return { best, last };
+}

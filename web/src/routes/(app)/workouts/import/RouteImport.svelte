@@ -54,6 +54,7 @@
 				road: base64Of(packRoad(route.road)),
 				shape: route.shape,
 				climbs: route.climbs,
+				loop: route.loop,
 			},
 		});
 		if (!created.ok) {

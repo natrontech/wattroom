@@ -142,7 +142,15 @@
 	<header class="flex flex-wrap items-center gap-3">
 		<p class="eyebrow">free ride</p>
 		<h1 class="page-title-sm min-w-0 truncate">
-			{route.name}
+			<!-- Ridden, the road opens its page (F1); a crew's road has none of yours. -->
+			{#if ended && !route.borrowed}
+				<a
+					href="/workouts/routes/{route.id}"
+					class="underline decoration-1 underline-offset-4">{route.name}</a
+				>
+			{:else}
+				{route.name}
+			{/if}
 		</h1>
 		<span class="font-display ml-auto text-2xl font-bold tabular-nums"
 			>{formatClock(free.seconds)}</span
