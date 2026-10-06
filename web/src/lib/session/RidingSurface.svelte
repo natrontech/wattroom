@@ -43,8 +43,9 @@
 
 	const docks = $derived(DOCKS[layout]);
 	// A dock with nothing drawn in it (anchors and whitespace only) is not drawn either.
-	const dock =
-		'bg-surface/80 absolute overflow-auto rounded-xl [&:not(:has(*))]:hidden';
+	const panel =
+		'bg-surface/80 overflow-auto rounded-xl [&:not(:has(*))]:hidden';
+	const dock = `${panel} absolute`;
 </script>
 
 {#if world}
@@ -53,9 +54,21 @@
 		<div data-dock="header" class={dock} style={place(docks.header)}>
 			{@render header()}
 		</div>
-		{#if status}
-			<div data-dock="status" class={dock} style={place(docks.status)}>
-				{@render status()}
+		{#if status || numbers}
+			<!-- The left column: status at its top, your numbers at its foot on
+			     the horizon, each as tall as it is; the numbers scroll only when
+			     the two outgrow the column. -->
+			<div class="absolute flex flex-col gap-3" style={place(docks.column)}>
+				{#if status}
+					<div data-dock="status" class="{panel} shrink-0">
+						{@render status()}
+					</div>
+				{/if}
+				{#if numbers}
+					<div data-dock="numbers" class="{panel} mt-auto min-h-0">
+						{@render numbers()}
+					</div>
+				{/if}
 			</div>
 		{/if}
 		<div
@@ -65,11 +78,6 @@
 		>
 			{@render focus()}
 		</div>
-		{#if numbers}
-			<div data-dock="numbers" class={dock} style={place(docks.numbers)}>
-				{@render numbers()}
-			</div>
-		{/if}
 		{#if crew}
 			<div data-dock="crew" class={dock} style={place(docks.crew)}>
 				{@render crew()}

@@ -10,7 +10,7 @@
 Two locked things did not agree with each other, and the stats audit found the
 seam.
 
-[docs/SPEC.md](../SPEC.md)'s glossary says a level "only goes up, earned by work
+[SPEC](../spec/glossary.md)'s glossary says a level "only goes up, earned by work
 done", and [ADR-0027](0027-an-earned-badge-travels-progress-stays-home.md)
 hangs a rider's whole visible play off that number: the badges are "the
 substance the level is an aggregate of", and the level is what a room-mate sees
