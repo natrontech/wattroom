@@ -144,5 +144,3 @@ export function wkg(watts: number, kg: number | null | undefined): string {
 export function formatKm(m: number): string {
 	return (m / 1000).toFixed(1);
 }
-
-export const DEAD_CODE_PROBE = 1;
