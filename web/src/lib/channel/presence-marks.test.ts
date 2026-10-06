@@ -42,6 +42,15 @@ describe('presence marks (#505)', () => {
 		}
 	});
 
+	// G2: watt marks your 3 s power, your horizon marker and your trail, and
+	// nothing in a roster. Your own execution bar in the rail kept it (#3727).
+	it('keeps the roster off the live-data hue', () => {
+		for (const surface of ROSTERS) {
+			const source = readFileSync(join(SRC, surface), 'utf8');
+			expect(source.match(/\b(?:bg|text|border)-watt\b/), surface).toBeNull();
+		}
+	});
+
 	it('draws the strip and the Lounge tile from the one vocabulary', () => {
 		for (const tile of TILES) {
 			const source = readFileSync(join(SRC, tile), 'utf8');
