@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { unpackRoad } from '../../src/lib/road/road';
-import { hairpinGpx, rollingGpx } from '../road-gpx';
+import { climbGpx, hairpinGpx, rollingGpx } from '../road-gpx';
 
 /**
  * The design shots' fixtures (#3666), seeded through the API the way a rider
@@ -18,7 +18,9 @@ export const ROADS = {
 	// owner-only (ADR-0063). The road is invented; no Strava data is in it.
 	ownerOnly: {
 		name: 'Design the long way round, over every pass and back down to the lake',
-		gpx: rollingGpx,
+		// A road of its own: on the swells' line it shared their rides, since
+		// the same road is the same route (ADR-0081).
+		gpx: climbGpx,
 		turns: false,
 		src: 'stravagpx',
 	},
@@ -208,10 +210,13 @@ type RideRow = { id: string; workoutName: string };
 export async function savedRide(
 	page: Page,
 	road?: string,
-	/** Ride the road this far: past its end, it leaves nowhere to carry on. */
-	toM?: number,
+	/**
+	 * Ride long enough to reach the road's end, so nowhere is left to carry
+	 * on. The server replays the metres from the watts (ADR-0074).
+	 */
+	through = false,
 ): Promise<string> {
-	const name = toM
+	const name = through
 		? 'Design road ridden through'
 		: road
 			? 'Design road ride'
@@ -220,24 +225,23 @@ export async function savedRide(
 		.body.rides;
 	const found = rows?.find((r) => r.workoutName === name);
 	if (found) return found.id;
-	const samples = Array.from({ length: 600 }, (_, i) => ({
+	const seconds = through ? 2400 : 600;
+	const samples = Array.from({ length: seconds }, (_, i) => ({
 		watts: 180 + Math.round(40 * Math.sin(i / 30)),
 		cadence: 88,
 		hr: 140,
-		...(road
-			? { m: toM ? (i * toM) / 599 : i * 1.6, alt: 400 + 0.03 * i * 1.6 }
-			: {}),
+		...(road ? { m: i * 1.6, alt: 400 + 0.03 * i * 1.6 } : {}),
 	}));
 	const saved = await call(page, 'POST', '/api/rides', {
 		workoutName: name,
 		workoutJson: JSON.stringify({
 			name,
 			author: 'design shots',
-			steps: [{ type: 'steady', seconds: 600, target: 0.75 }],
+			steps: [{ type: 'steady', seconds, target: 0.75 }],
 		}),
 		// Hours back, and apart: nobody rides two at once (the server's 409).
 		startedAt: new Date(
-			Date.now() - (toM ? 6 : road ? 4 : 2) * 3_600_000,
+			Date.now() - (through ? 6 : road ? 4 : 2) * 3_600_000,
 		).toISOString(),
 		samples,
 		...(road ? { routeId: road } : {}),

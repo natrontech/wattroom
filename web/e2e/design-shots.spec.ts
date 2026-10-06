@@ -594,7 +594,7 @@ surface('workouts', async (s) => {
 		await fixtureRoad(o.page, 'hairpin');
 		// Ridden to its end, so its card says how often, not where you left
 		// off; ride-road-end leaves the hairpin short of its end (#3683).
-		await savedRide(o.page, await fixtureRoad(o.page, 'rolling'), 7600);
+		await savedRide(o.page, await fixtureRoad(o.page, 'rolling'), true);
 		await fixtureRoad(o.page, 'ownerOnly');
 		await ownWorkout(o.page);
 		await page(s, o, '/workouts', { name });
