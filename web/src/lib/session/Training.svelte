@@ -22,6 +22,7 @@
 	import BikeComputer from '$lib/session/BikeComputer.svelte';
 	import HrShare from '$lib/channel/HrShare.svelte';
 	import RideHeader from '$lib/session/RideHeader.svelte';
+	import { rideContext } from './ride-context';
 	import MonitorUp from '@lucide/svelte/icons/monitor-up';
 	import LogOut from '@lucide/svelte/icons/log-out';
 	import { goto } from '$app/navigation';
@@ -102,6 +103,9 @@
 	const world = createWorldView();
 	// Only on a session that rides a road (ADR-0066, #3663).
 	const inWorld = $derived(world.on && !!channel.ridden);
+	// The compact instrument heads your numbers here, so the computer leaves
+	// the watts to it: one number, one home (#3662).
+	const headed = $derived(inFocus === 'media' || inFocus === 'game' || inWorld);
 	const rideWorld = () =>
 		import('$lib/world/RideWorld.svelte').catch((err: unknown) => {
 			console.error('world: the renderer did not load', err);
@@ -243,7 +247,9 @@
 					metre={() => channel.ridden ?? { m: 0, mps: 0 }}
 					bunch={() => channel.ridden?.bunch ?? null}
 					watts={channel.you.watts}
+					silent={channel.youStale}
 					ftp={channel.you.ftp}
+					progress={total > 0 ? elapsed / total : null}
 					paused={inFocus === 'media'}
 					onfail={world.fail}
 					onflat={world.flatten}
@@ -265,6 +271,11 @@
 					cadence={channel.you.cadence}
 					hr={channel.you.hr}
 					title={channel.shared?.workoutName ?? ''}
+					context={rideContext(
+						'Session',
+						channel.shared?.workoutName ?? '',
+						inRide.length,
+					)}
 					drives={!!channel.trainer && channel.actuating}
 					aside={inWorld ? undefined : trainerCard}
 					controls={inWorld ? undefined : sessionControls}
@@ -350,7 +361,7 @@
 							? 'flex flex-col items-start gap-3'
 							: 'flex flex-wrap items-center gap-6'}
 					>
-						{#if inFocus === 'media' || inFocus === 'game' || inWorld}
+						{#if headed}
 							<!-- Under the player, never over it (RMF). -->
 							<div class="min-w-0 flex-1">
 								<Instrument
@@ -365,6 +376,8 @@
 						{/if}
 						<div class="min-w-0 flex-1">
 							<BikeComputer
+								head={headed}
+								narrow={inWorld}
 								cadence={channel.you.cadence}
 								stale={channel.youStale}
 								hr={channel.you.hr}

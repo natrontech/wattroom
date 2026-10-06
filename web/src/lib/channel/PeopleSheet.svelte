@@ -26,7 +26,7 @@
 <button
 	onclick={() => (open = true)}
 	class="bg-surface-raised ring-ink/15 fixed right-4 bottom-4 z-40 grid h-12
-	w-12 place-items-center rounded-full shadow-lg ring-1 xl:hidden"
+	w-12 place-items-center rounded-full ring-1 xl:hidden"
 	aria-label="who is here"
 >
 	<Users size={18} />
@@ -59,7 +59,7 @@
 		<!-- A dialog in fact as well as in shape (audit 2026-09-09): focus
 		     moves in, Tab stays in, Escape and the close button hand it back. -->
 		<div
-			class="bg-surface absolute inset-y-0 right-0 shadow-2xl"
+			class="bg-surface absolute inset-y-0 right-0"
 			role="dialog"
 			aria-modal="true"
 			aria-label="who is here"

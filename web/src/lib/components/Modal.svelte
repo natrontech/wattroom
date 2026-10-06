@@ -67,7 +67,7 @@
 	     phone was clipped at both ends with no way to scroll it. -->
 	<div
 		class={placement === 'right'
-			? `bg-surface border-ink/10 h-dvh w-full overflow-y-auto border-l shadow-2xl ${cls}`
+			? `bg-surface border-ink/10 h-dvh w-full overflow-y-auto border-l ${cls}`
 			: `panel panel-lg max-h-[calc(100dvh-2rem)] w-full overflow-y-auto ${cls}`}
 		in:enter={placement === 'right' && { x: 48 }}
 		role="dialog"

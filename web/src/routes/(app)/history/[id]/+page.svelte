@@ -189,7 +189,7 @@
 <main class="page">
 	<a
 		href="/history"
-		class="text-muted hover:text-ink inline-flex items-center gap-1.5 text-xs"
+		class="text-muted hover:text-ink link-standalone gap-1.5 text-xs"
 	>
 		<ArrowLeft size={14} /> Rides
 	</a>
@@ -322,7 +322,7 @@
 					href="https://support.garmin.com/en-US/?faq=Ht3ZP52Kju075uKvqTqu99"
 					target="_blank"
 					rel="noreferrer noopener"
-					class="mt-2 inline-block underline underline-offset-2"
+					class="link-standalone mt-2 underline underline-offset-2"
 					>Garmin's import instructions and troubleshooting</a
 				>
 			</details>

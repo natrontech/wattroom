@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { ramp } from '../materials';
-import { sunDir, type Style } from '../styles';
+import { sunDir } from '../light';
+import type { Style } from '../styles';
 import type { Kit } from './kit';
 
 /**
@@ -124,7 +125,7 @@ export const figureLight = {
 /** The rim takes the sunward sky, the fresnel the sky overhead; the sun's direction is in view space. */
 export function lightFigures(style: Style, camera: THREE.Camera): void {
 	figureLight.uSunV.value
-		.copy(sunDir(style))
+		.copy(sunDir(style.sun.elevation, style.sun.azimuth))
 		.transformDirection(camera.matrixWorldInverse);
 	figureLight.uRimSun.value
 		.set(style.sky.sunward)

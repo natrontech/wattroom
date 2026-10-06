@@ -169,6 +169,7 @@
 	let retrySave = $state<(() => void) | null>(null);
 	// The ride on the account, once it is: the summary's way forward (#1331).
 	let savedId = $state<string | null>(null);
+	let savedXp = $state<number | undefined>(undefined);
 
 	// ?replay=<fixture> rides a committed capture instead of the generator
 	// (#54): deterministic reproduction, the agent's screenshot instead of the
@@ -358,6 +359,7 @@
 					history.remove(id);
 					saveStatus = null;
 					savedId = outcome.saved.id || null;
+					savedXp = outcome.saved.xp;
 					if (gone)
 						toasts.push('Ride saved to your history.', {
 							href: savedId ? `/history/${savedId}` : undefined,
@@ -692,6 +694,7 @@
 					? 'Ride complete'
 					: 'Ride ended'}
 				unsaved={saveStatus !== null && !savedId}
+				{savedXp}
 				subtitle="{workout.name} · {new Date().toLocaleDateString()}"
 				samples={session.recording}
 				ftp={profile.current.ftp}

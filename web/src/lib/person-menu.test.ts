@@ -12,9 +12,12 @@ const connection = vi.hoisted(() => ({
 			setRiderGain: (id: string, gain: number, name?: string) => void;
 		};
 		live?: {
-			tick?: { roster?: { id: string; inSession?: boolean }[] };
+			tick?: {
+				roster?: { id: string; name?: string; inSession?: boolean }[];
+			};
 			poke?: (id: string) => void;
 			bottle?: (id: string) => void;
+			cheer?: (emoji: string, to?: string) => void;
 		};
 	},
 }));
@@ -166,6 +169,37 @@ describe('personMenu (#486)', () => {
 			expect(labels(personMenu('u1', () => {}, { you: true }))).not.toContain(
 				'Hand up a bottle',
 			);
+		} finally {
+			connection.current = null;
+		}
+	});
+
+	// A cheer for one rider (#3116) is drawn over their head in the world, so
+	// only a rider on the session's road is offered one, by name.
+	it('offers a cheer for a rider in the session, after the bottle', () => {
+		const cheer = vi.fn();
+		connection.current = {
+			av: { voice: {}, setRiderGain: () => {} },
+			live: {
+				tick: {
+					roster: [{ id: 'u1', name: 'Mia', inSession: true }, { id: 'u2' }],
+				},
+				poke: () => {},
+				bottle: () => {},
+				cheer,
+			},
+		};
+		try {
+			const entries = items(personMenu('u1', () => {}));
+			const labelled = entries.map((item) => item.label);
+			expect(labelled.indexOf('Cheer Mia')).toBe(
+				labelled.indexOf('Hand up a bottle') + 1,
+			);
+			entries.find((item) => item.label === 'Cheer Mia')!.onSelect();
+			expect(cheer).toHaveBeenCalledWith('thumbs-up', 'u1');
+			expect(
+				labels(personMenu('u2', () => {})).some((l) => l.startsWith('Cheer')),
+			).toBe(false);
 		} finally {
 			connection.current = null;
 		}

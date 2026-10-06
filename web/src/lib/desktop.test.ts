@@ -7,6 +7,8 @@ import {
 	installerOS,
 	isNewer,
 	launchAtLogin,
+	setTrayIcon,
+	trayIcon,
 	onShellNavigate,
 	parseRelease,
 	setLaunchAtLogin,
@@ -259,6 +261,28 @@ describe('launch at login, seen from the app (#1313)', () => {
 			launchAtLogin: vi.fn().mockRejectedValue(new Error('no IPC')),
 		};
 		await expect(launchAtLogin()).resolves.toBeNull();
+	});
+
+	// The tray icon rides the same bridge (#3843). A crossed wire would turn
+	// the rider's login items on when they asked for an icon.
+	it('asks the tray switch, not the login item, about the icon', async () => {
+		const answer = { supported: true, enabled: false, error: null };
+		const setLogin = vi.fn();
+		const setIcon = vi.fn().mockResolvedValue(answer);
+		(globalThis as { wattroom?: unknown }).wattroom = {
+			setLaunchAtLogin: setLogin,
+			trayIcon: vi.fn().mockResolvedValue(answer),
+			setTrayIcon: setIcon,
+		};
+		await expect(trayIcon()).resolves.toEqual(answer);
+		await expect(setTrayIcon(false)).resolves.toEqual(answer);
+		expect(setIcon).toHaveBeenCalledWith(false);
+		expect(setLogin).not.toHaveBeenCalled();
+		// A shell older than the switch hides it.
+		(globalThis as { wattroom?: unknown }).wattroom = {
+			setLaunchAtLogin: setLogin,
+		};
+		await expect(trayIcon()).resolves.toBeNull();
 	});
 
 	it('names the tray the way each platform does', () => {

@@ -2,6 +2,7 @@
 	import FitnessChart from '$lib/components/FitnessChart.svelte';
 	import { confirm } from '$lib/confirm.svelte';
 	import FtpTrendChart from '$lib/components/FtpTrendChart.svelte';
+	import { trendSparse } from '$lib/components/ftp-trend';
 	import FtpPrompt from '$lib/components/FtpPrompt.svelte';
 	import { account } from '$lib/account.svelte';
 	import LthrPrompt from '$lib/components/LthrPrompt.svelte';
@@ -31,6 +32,7 @@
 	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
 	import {
+		NO_RIDES_YET,
 		rideCursorOf,
 		rideCursorQuery,
 		type RideCursor,
@@ -348,7 +350,13 @@
 			</span>
 		</div>
 
-		<div class="mt-3 grid gap-3 xl:grid-cols-2">
+		<!-- Side by side only when both have something to draw: beside a sparse
+		     FTP card the chart's height would leave a hole in the row (#3814). -->
+		<div
+			class="mt-3 grid gap-3 {trendSparse(progression.rides)
+				? ''
+				: 'xl:grid-cols-2'}"
+		>
 			<div class="panel panel-xl">
 				<h2 class="text-ink text-sm font-semibold">Best power by duration</h2>
 				<!-- ADR-0016: every load-derived surface says what it is scoped to (#1692). -->
@@ -448,11 +456,7 @@
 		     its own piece either way. -->
 		<div class="mt-8">
 			<EmptyState>
-				<p class="text-ink text-sm">No rides yet.</p>
-				<p class="mx-auto mt-2 max-w-sm text-xs leading-relaxed">
-					Finish a workout and it lands here with its execution score. You can
-					export any ride as a .fit for Strava or your head unit.
-				</p>
+				{NO_RIDES_YET}
 				{#snippet cta()}
 					<a href="/workouts" class="btn btn-primary">Ride solo</a>
 				{/snippet}
@@ -470,7 +474,7 @@
 				</Banner>
 			</div>
 		{/if}
-		<ul class="mt-8 grid gap-2 xl:grid-cols-2">
+		<ul class="mt-8 grid items-start gap-2 xl:grid-cols-2">
 			{#each rides as ride (ride.id)}
 				<RideRow
 					{ride}
@@ -511,7 +515,7 @@
 			that finished while the server was unreachable is offered above, and
 			saving it moves it to your account.
 		</p>
-		<ul class="mt-3 grid gap-2 xl:grid-cols-2">
+		<ul class="mt-3 grid items-start gap-2 xl:grid-cols-2">
 			{#each device.all as ride (ride.id)}
 				<RideRow {ride} highlighted={highlightId === ride.id} {forget} />
 			{/each}

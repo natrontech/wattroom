@@ -34,7 +34,10 @@ const placement = [
 	'../props/roads.ts',
 	'../props/placer.ts',
 	'../props/rhythm.ts',
+	'../props/tiles.ts',
+	'../props/stand.ts',
 	'../setpieces.ts',
+	'../setpieces-stroke.ts',
 ];
 const code = (file: string) =>
 	readFileSync(join(dir, file), 'utf8')

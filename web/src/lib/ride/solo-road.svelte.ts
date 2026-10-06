@@ -6,6 +6,7 @@ import { createActuator } from '$lib/ride/actuation.svelte';
 import { freeRideLabel, type FreeRide } from '$lib/ride/free-ride.svelte';
 import { createRideShift } from '$lib/ride/ride-shift';
 import type { RideableRoute } from '$lib/ride/roads';
+import { publishRide } from '$lib/workout/ride-life.svelte';
 import { acquireWakeLock, type WakeLock } from '$lib/workout/wakelock';
 import { createRiderGuards } from '$lib/workout/rider-guards.svelte';
 
@@ -48,6 +49,10 @@ export function createSoloRoadRide(deps: {
 		if (deps.free.mode === 'grade' && road) actuator.road(road.felt);
 		else actuator.hold(target);
 	});
+
+	// Riding from the first stroke to End ride, or until the page goes: the
+	// frame caves, the HUD opens and DMs wait, as on a workout ride (#3667).
+	$effect(() => (trainer ? publishRide(() => 'running') : undefined));
 
 	$effect(() => {
 		if (!trainer) return;
@@ -137,5 +142,3 @@ export function createSoloRoadRide(deps: {
 		},
 	};
 }
-
-export type SoloRoadRide = ReturnType<typeof createSoloRoadRide>;

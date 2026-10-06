@@ -3,7 +3,6 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { toRoute, type Route } from '$lib/road/route';
 import { syntheticPoints } from '../synthetic';
 import { generate, type World } from '../world';
-import { BUILD_MS } from '../world.test-helper';
 import { FAMILY } from './batch';
 import { ringAt } from './forest';
 
@@ -13,7 +12,9 @@ let world: World;
 beforeAll(() => {
 	route = toRoute(syntheticPoints());
 	world = generate(route);
-}, BUILD_MS);
+	// The whole corridor settled, as the diorama asks for it.
+	void world.everything;
+}, 60_000);
 
 /** The road sample nearest a point, and how far it is. */
 function nearest(x: number, z: number): { i: number; d: number } {

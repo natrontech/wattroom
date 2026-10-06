@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { at } from '$lib/road/along';
 import { toRoute, type Route } from '$lib/road/route';
-import { STYLES } from '../../routes/(app)/dev/world/styles';
+import { RIDE } from './look.test-helper';
 import { pageGrids } from './chunks/grids';
 import { compose, type Composed } from './compose';
 import type { Family } from './family';
@@ -38,10 +38,8 @@ const HIGH = {
 type Line = keyof typeof HIGH;
 
 const OVER: Partial<Record<Line, string>> = {
-	draws:
-		"#3642 batches the set pieces: every kit kind and every face of a sign's board is its own draw today",
 	'dressing.draws':
-		"#3642 batches the set pieces: every kit kind and every face of a sign's board is its own draw; the props are three",
+		"#3642 batches the sign boards: every face of a sign's board is its own draw; the props and set pieces are three (#3699)",
 };
 
 /** Dressing drawn as plain meshes, and who batches it. */
@@ -301,7 +299,7 @@ describe('the ride’s scene budget, high tier (#3083)', () => {
 	let world: World;
 	let w: Composed;
 	const frames: Frame[] = [];
-	const style = STYLES.find((s) => s.id === 'bluehour') ?? STYLES[0];
+	const style = RIDE;
 
 	beforeAll(() => {
 		route = toRoute(syntheticPoints());
@@ -313,8 +311,9 @@ describe('the ride’s scene budget, high tier (#3083)', () => {
 		);
 		w.camera.aspect = 16 / 9;
 		w.camera.updateProjectionMatrix();
-		// At the start, the riders in view, a few frames in.
+		// At the start, the riders in view, a few frames in, the dressing within reach settled.
 		for (let k = 0; k < 4; k++) w.advanceBy(1 / 30);
+		w.look();
 		for (const multiDraw of [true, false])
 			frames.push(measure(w.scene, w.camera, multiDraw));
 		frames[0].lines.uploads = uploads(w, 1 / 30);
@@ -411,16 +410,8 @@ describe('the ride’s scene budget, high tier (#3083)', () => {
 	});
 
 	it('keeps its unbatched exceptions real', () => {
-		const kinds = new Set<string>();
-		w.scene.traverse((o) => {
-			if (
-				familyOf(o) === 'dressing' &&
-				drawable(o) &&
-				!(o as THREE.InstancedMesh).isInstancedMesh &&
-				!(o as THREE.BatchedMesh).isBatchedMesh
-			)
-				kinds.add(kindOf(o));
-		});
+		// The dressing streams with the eye (#3699): an exception is real if any frame measured drew it.
+		const kinds = new Set(frames.flatMap((f) => f.unbatched));
 		expect([...kinds].sort()).toEqual(Object.keys(UNBATCHED).sort());
 	});
 });
@@ -429,7 +420,7 @@ describe('a bunch on the road (#3098)', () => {
 	it('keeps twelve riders and the team car inside the figures’ share, tagged and unlit', () => {
 		const route = toRoute(syntheticPoints());
 		const world = generate(route);
-		const style = STYLES.find((s) => s.id === 'bluehour') ?? STYLES[0];
+		const style = RIDE;
 		// docs/SPEC.md "The world": the figures' share holds 12 near figures.
 		const order = Array.from({ length: 12 }, (_, i) => `r${i}`);
 		const w = compose(
@@ -450,6 +441,7 @@ describe('a bunch on the road (#3098)', () => {
 					coach: 'coach',
 					present: new Map(order.map((id) => [id, { watts: 200, ftp: 250 }])),
 					game: false,
+					cheered: [],
 				}),
 				grids: pageGrids(world),
 			},

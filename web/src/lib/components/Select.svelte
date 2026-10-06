@@ -178,7 +178,7 @@
 		     the longest device name and ran it off the edge of the dialog. Long
 		     labels wrap instead. -->
 		<div
-			class="border-muted/25 bg-surface-raised fixed z-50 rounded border shadow-lg shadow-black/40"
+			class="border-muted/25 bg-surface-raised fixed z-50 rounded border"
 			style:top={above ? undefined : `${place.top}px`}
 			style:bottom={above ? `${place.bottom}px` : undefined}
 			style:left="{place.left}px"

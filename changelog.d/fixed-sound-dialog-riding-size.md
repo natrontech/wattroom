@@ -1,0 +1,1 @@
+- The Sound dialog's faders, gate slider and Done button are now 44 px to hit, and its microphone, camera and speakers pickers stack in one column, so no label wraps and no device name is cut to "System de…".
