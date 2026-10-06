@@ -592,7 +592,9 @@ surface('workouts', async (s) => {
 	] as const) {
 		const o = await s.open(device);
 		await fixtureRoad(o.page, 'hairpin');
-		await fixtureRoad(o.page, 'rolling');
+		// Ridden to its end, so its card says how often, not where you left
+		// off; ride-road-end leaves the hairpin short of its end (#3683).
+		await savedRide(o.page, await fixtureRoad(o.page, 'rolling'), 7600);
 		await fixtureRoad(o.page, 'ownerOnly');
 		await ownWorkout(o.page);
 		await page(s, o, '/workouts', { name });
@@ -616,6 +618,13 @@ surface('workouts', async (s) => {
 	await o.page.waitForURL(`**/workouts/routes/${hairpin}`);
 	await o.page.waitForTimeout(1500);
 	await s.shot(o, { name: 'workouts-route-card-opens' });
+	// F1's first step: a route card's Ride lands on the ride with its road.
+	await o.page.goto('/workouts');
+	await o.page.waitForTimeout(2500);
+	await card.getByRole('link', { name: /^(Ride|Carry on)$/ }).click();
+	await o.page.waitForURL(/\/ride\?road=/);
+	await o.page.waitForTimeout(2000);
+	await s.shot(o, { name: 'flow-f1-2-ride' });
 });
 
 surface('route', async (s) => {

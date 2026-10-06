@@ -205,8 +205,17 @@ type RideRow = { id: string; workoutName: string };
  * A saved ride of ten minutes: on the hairpin road's approach when `road` is
  * given, so its page and poster draw a road. Found again by its name.
  */
-export async function savedRide(page: Page, road?: string): Promise<string> {
-	const name = road ? 'Design road ride' : 'Design ride';
+export async function savedRide(
+	page: Page,
+	road?: string,
+	/** Ride the road this far: past its end, it leaves nowhere to carry on. */
+	toM?: number,
+): Promise<string> {
+	const name = toM
+		? 'Design road ridden through'
+		: road
+			? 'Design road ride'
+			: 'Design ride';
 	const rows = (await call<{ rides: RideRow[] }>(page, 'GET', '/api/rides'))
 		.body.rides;
 	const found = rows?.find((r) => r.workoutName === name);
@@ -215,7 +224,9 @@ export async function savedRide(page: Page, road?: string): Promise<string> {
 		watts: 180 + Math.round(40 * Math.sin(i / 30)),
 		cadence: 88,
 		hr: 140,
-		...(road ? { m: i * 1.6, alt: 400 + 0.03 * i * 1.6 } : {}),
+		...(road
+			? { m: toM ? (i * toM) / 599 : i * 1.6, alt: 400 + 0.03 * i * 1.6 }
+			: {}),
 	}));
 	const saved = await call(page, 'POST', '/api/rides', {
 		workoutName: name,
@@ -225,7 +236,9 @@ export async function savedRide(page: Page, road?: string): Promise<string> {
 			steps: [{ type: 'steady', seconds: 600, target: 0.75 }],
 		}),
 		// Hours back, and apart: nobody rides two at once (the server's 409).
-		startedAt: new Date(Date.now() - (road ? 4 : 2) * 3_600_000).toISOString(),
+		startedAt: new Date(
+			Date.now() - (toM ? 6 : road ? 4 : 2) * 3_600_000,
+		).toISOString(),
 		samples,
 		...(road ? { routeId: road } : {}),
 	});
