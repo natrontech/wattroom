@@ -16,8 +16,8 @@ What every rider-visible change is held to. Per surface: an id (its capture's fi
 - Only the framed mock is the bar. A v2/v3 page's eyebrow, title and paragraph above it, and notes and “Open for Jan” box below, are reasoning canon has since answered.
 - Structure is the bar: proportion, grouping, alignment, hierarchy, what sits where, what is absent. Sizes come from docs/SPEC.md, not the mock; a pixel number in a must-match item is the bar, ±4 px.
 - Ignore the mock's data (its loop, Mia, 258 W). Capture data is the fixtures' (`web/e2e/road-gpx.ts`, seeded by `web/e2e/design/seed.ts`):
-  - `<hairpin>` “Design hairpins”: 1 km approach at 3 %, then eight legs at 8.8 % joined by seven hairpins; the app reads 7.1 km · 563 m, one class II climb, first hairpin ~1.7 km in.
-  - `<rolling>` “Design rolling”: 7.5 km · 237 m, two class IV climbs.
+  - `<hairpin>` “Design switchbacks”: 1 km approach at 3 %, then eight legs at 8.8 % joined by seven hairpins; the app reads 7.1 km · 571 m, one class II climb, first hairpin ~1.7 km in.
+  - `<rolling>` “Design swells”: 7.5 km · 237 m, two class IV climbs.
   - An item quoting a fixture's number takes it from a capture, never memory; a fixture change updates those items in the same PR.
 - Targets are drawn dark: desk surfaces compare on a dark capture, a light capture holds the same layout; riding surfaces are always dark.
 - Owner tags: `[key]` = the `design/<key>` issue that delivers it; `[#n]` = an existing issue; untagged = holds today, guarded against regression. A PR is held to its own issue's items, the global rules, and no regression elsewhere. A global-rule failure is *inherited*, not counted against a PR only passing through the surface, when main fails it the same way and an open issue owns the fix (DESIGN-CHECK §8).
@@ -389,7 +389,7 @@ Capture: `/workouts`, the hairpin and rolling route seeded; whole page body, des
 5. Sections 32 px apart; each eyebrow 8 px above its content. [workouts-page]
 6. Route cards use the workout cards' grid, panel, radius and frame. [route-row]
 7. Route card name: display face, bold, 16 px, truncating; class chips (Roman numerals) at its right, the hardest filled neon; an owner-only route carries the lock chip “Only you”. [route-row]
-8. Second line “7.1 km · 563 m · 1 climb”, muted. [route-row]
+8. Second line “7.1 km · 571 m · 1 climb”, muted. [route-row]
 9. Third line one of “Not ridden yet”, “Ridden 3× · last 29 Sep”, “Left off at km 21.3”. [route-row]
 10. Actions: Ride (`btn-primary btn-xs`) bottom right, “Carry on” when there is somewhere to carry on; the rest of the card opens the route page; context menu Ride it, Open, a separator, Delete in the danger token. [route-row]
 11. Phone order: title, search, Your workouts, Your routes, Measure, Curated; nothing scrolls sideways. [workouts-page]

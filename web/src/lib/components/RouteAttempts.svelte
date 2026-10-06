@@ -1,46 +1,46 @@
 <script lang="ts">
-	import { api } from '$lib/api';
+	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import Banner from '$lib/components/Banner.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { formatClockLong, formatKm, formatShortDate } from '$lib/format';
 	import {
 		attemptPoints,
 		attemptTrend,
+		bestAndLast,
 		type Attempt,
 		type ClimbBest,
 	} from '$lib/road/attempts';
 
 	/**
-	 * Every ride of a route, as its owner sees them (#3615, #3033): each at
-	 * its average speed by date — a timed ride solid, a ride together or in
-	 * ERG hollow — the trend through the timed ones, and the best time up
-	 * each classed climb. History, not live data: nothing here glows
-	 * (ADR-0005), and shape carries what a ride was, never colour alone.
+	 * Every ride of a route, as its owner sees them (#3615, #3033): the best
+	 * and the last, each a link to its ride (#3680); then each at its average
+	 * speed by date — a timed ride solid, a ride together or in ERG hollow —
+	 * and the trend through the timed ones. History, not live data: nothing
+	 * here glows (ADR-0005), and shape carries what a ride was, never colour
+	 * alone. The page reads the attempts once; the climbs table and the
+	 * carry-on read them too.
 	 */
-	let { routeId }: { routeId: string } = $props();
+	let {
+		data,
+		error,
+		onretry,
+	}: {
+		data: { attempts: Attempt[]; climbBests: ClimbBest[] } | null;
+		error: string | null;
+		onretry: () => void;
+	} = $props();
 
-	let data = $state<{ attempts: Attempt[]; climbBests: ClimbBest[] } | null>(
-		null,
-	);
-	let error = $state<string | null>(null);
-
-	async function load(id: string) {
-		error = null;
-		const res = await api<{ attempts: Attempt[]; climbBests: ClimbBest[] }>(
-			`/api/routes/${id}/attempts`,
-		);
-		if (!res.ok) {
-			error = res.error.message;
-			return;
-		}
-		data = res.data;
-	}
-
-	$effect(() => {
-		const id = routeId;
-		data = null;
-		void load(id);
+	const lines = $derived.by(() => {
+		const { best, last } = bestAndLast(data?.attempts ?? []);
+		return [
+			{ label: 'Best', ride: best },
+			{ label: 'Last', ride: last },
+		].filter((l): l is { label: string; ride: Attempt } => !!l.ride);
 	});
+	const speed = (a: Attempt) =>
+		a.distanceM && a.seconds > 0
+			? ` · ${formatKm(a.distanceM)} km at ${((a.distanceM / a.seconds) * 3.6).toFixed(1)} km/h`
+			: '';
 
 	const points = $derived(data ? attemptPoints(data.attempts) : []);
 	const trend = $derived(attemptTrend(points));
@@ -73,29 +73,43 @@
 </script>
 
 <section aria-labelledby="route-attempts">
-	<h2 id="route-attempts" class="text-ink text-sm font-semibold">
-		Your rides of it
-	</h2>
+	<h2 id="route-attempts" class="eyebrow">Your rides</h2>
 	{#if error}
 		<div class="mt-2">
 			<Banner tone="error">
 				{error}
 				{#snippet action()}
-					<button onclick={() => void load(routeId)} class="btn-link text-xs"
-						>Retry</button
-					>
+					<button onclick={onretry} class="btn-link text-xs">Retry</button>
 				{/snippet}
 			</Banner>
 		</div>
 	{:else if data === null}
 		<Skeleton class="mt-2 h-40" />
 	{:else if data.attempts.length === 0}
-		<p class="text-muted mt-1 text-xs leading-relaxed">
-			Each ride of this road lands here at its average speed — a timed ride
-			solid, one ridden together or in ERG hollow — with your best time up each
-			climb.
+		<p class="text-muted mt-2 text-sm">
+			Ride it once and your best and last rides of this road land here.
 		</p>
 	{:else}
+		<ul class="divide-frame mt-2 divide-y text-sm">
+			{#each lines as l (l.label)}
+				<li>
+					<a
+						href="/history/{l.ride.rideId}"
+						class="flex flex-wrap items-baseline gap-x-3 py-2 hover:underline"
+					>
+						<span class="eyebrow w-10">{l.label}</span>
+						<span class="font-display tabular-nums"
+							>{formatClockLong(l.ride.seconds)}{speed(l.ride)}</span
+						>
+						<span class="text-muted ml-auto flex items-center gap-1 text-xs"
+							>{formatShortDate(Date.parse(l.ride.startedAt))}<ChevronRight
+								size={14}
+							/></span
+						>
+					</a>
+				</li>
+			{/each}
+		</ul>
 		{#if points.length === 0}
 			<p class="text-muted mt-1 text-xs leading-relaxed">
 				Your rides of this road were saved before their distance was kept, so
@@ -210,20 +224,6 @@
 					{/each}
 				</svg>
 			</div>
-		{/if}
-		{#if data.climbBests.length > 0}
-			<ul
-				class="mt-2 flex flex-wrap gap-2"
-				aria-label="Your best up each climb"
-			>
-				{#each data.climbBests as best (best.startM)}
-					<li class="border-frame rounded border px-2 text-xs">
-						<span class="font-display font-bold">{best.cls}</span>
-						<span class="text-muted num">top at {formatKm(best.topM)} km</span>
-						<span class="text-ink num">{formatClockLong(best.seconds)}</span>
-					</li>
-				{/each}
-			</ul>
 		{/if}
 	{/if}
 </section>
