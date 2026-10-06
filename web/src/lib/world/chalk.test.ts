@@ -5,7 +5,7 @@ import type { Chalk } from '$lib/channel/bunch-view';
 import { at } from '$lib/road/along';
 import { legsRoad } from '$lib/road/fixtures';
 import { makeChalk } from './chalk';
-import { yOf } from './geometry';
+import { ROAD_LIFT, yOf } from './geometry';
 import { routeOfRoad } from './road-route';
 
 const route = routeOfRoad(legsRoad([1000, 0], [2000, 6], [1000, 0]));
@@ -34,9 +34,10 @@ describe('the roadside’s chalk (#3029)', () => {
 			const p = at(route, c.u);
 			expect(mesh.position.x).toBeCloseTo(p.x, 3);
 			expect(mesh.position.z).toBeCloseTo(p.z, 3);
-			// On the asphalt, a hair above it.
-			expect(mesh.position.y - yOf(route, p.ele)).toBeGreaterThan(0);
-			expect(mesh.position.y - yOf(route, p.ele)).toBeLessThan(0.1);
+			// On the asphalt, a hair above it: the road rides ROAD_LIFT over the centre line.
+			const asphalt = yOf(route, p.ele) + ROAD_LIFT;
+			expect(mesh.position.y - asphalt).toBeGreaterThan(0);
+			expect(mesh.position.y - asphalt).toBeLessThan(0.1);
 			expect(mesh.rotation.y).toBeCloseTo(p.heading, 6);
 			mesh.geometry.computeBoundingBox();
 			const box = mesh.geometry.boundingBox!;

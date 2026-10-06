@@ -397,7 +397,7 @@ surface('ride-session-road', async (s) => {
 surface('roadside-chalk', async (s) => {
 	// Design Watcher at the roadside of Designer's session on the hairpin road
 	// (#3029). The deck chalks halfway up the next climb, out of the chase
-	// camera's sight, so the watcher's socket lays one 40 m ahead for the
+	// camera's sight, so the watcher's socket lays one 60 m ahead for the
 	// world's shot, as the hub takes it from any deck.
 	const { coach, crew } = await session(s, { road: ROADS.hairpin.name }, true);
 	try {
@@ -411,6 +411,7 @@ surface('roadside-chalk', async (s) => {
 		await watcher.page
 			.getByRole('button', { name: 'Chalk Allez' })
 			.waitFor({ timeout: 20_000 });
+		await s.shot(watcher);
 		const riders = await coach.page
 			.locator('canvas[data-riders]')
 			.getAttribute('data-riders');
@@ -421,12 +422,14 @@ surface('roadside-chalk', async (s) => {
 		);
 		socket?.send(
 			JSON.stringify({
-				roadside: { kind: 'paint', stamp: 'heart', atM: ahead + 40 },
+				roadside: { kind: 'paint', stamp: 'heart', atM: ahead + 60 },
 			}),
 		);
-		await watcher.page.waitForTimeout(1500);
-		await s.shot(watcher);
+		// A tick to land it, while the bunch is still short of it.
+		await coach.page.waitForTimeout(1500);
 		await s.shot(coach, { name: 'roadside-chalk-world' });
+		// The watcher has chalked this road's one climb: the deck says so.
+		await s.shot(watcher, { name: 'roadside-chalk-spent' });
 	} finally {
 		await endSession(coach.page);
 	}

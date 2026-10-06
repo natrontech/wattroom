@@ -9,13 +9,14 @@ import { type Route } from '$lib/road/route';
 import { disposeTree } from './dispose';
 import { tag } from './family';
 import { FONT, paintedTexture } from './furniture';
-import { yOf } from './geometry';
+import { ROAD_LIFT, yOf } from './geometry';
 import { ROAD_W } from './terrain/road-profile';
 
-// ponytail: a look, not a rule — chalk across most of the road, half as long
-// as it is wide; tune it on a climb.
+// ponytail: a look, not a rule — chalk across most of the road and stretched
+// along it, as road paint is, so it reads from a rider's low eye; tune it on
+// a climb.
 const ACROSS = ROAD_W * 0.6;
-const ALONG = ACROSS / 2;
+const ALONG = ACROSS * 1.5;
 const W = 256;
 const H = 128;
 const CHALK = '#f1ede4';
@@ -87,7 +88,8 @@ function stampMesh(route: Route, c: Chalk): THREE.Mesh {
 			polygonOffsetFactor: -2,
 		}),
 	);
-	mesh.position.set(p.x, yOf(route, p.ele) + 0.03, p.z);
+	// On the asphalt, which rides ROAD_LIFT over the centre line, a hair above it.
+	mesh.position.set(p.x, yOf(route, p.ele) + ROAD_LIFT + 0.03, p.z);
 	mesh.rotation.y = p.heading;
 	mesh.userData.stamp = c.stamp;
 	return tag('dressing', mesh, 'chalk');
