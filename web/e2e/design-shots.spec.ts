@@ -178,7 +178,9 @@ surface('ride-skyline-fallback', async (s) => {
 });
 
 surface('ride-countin', async (s) => {
-	const o = await s.open(DESK, { world: true });
+	// With the OS set to light, so the frame shows the cave and not the
+	// scheme: it holds from the count-in's first frame (G1, #3667).
+	const o = await s.open({ ...DESK, colorScheme: 'light' }, { world: true });
 	const road = await fixtureRoad(o.page, 'hairpin');
 	await o.page.goto(`/ride?w=openers&road=${road}`);
 	await o.page
@@ -189,6 +191,8 @@ surface('ride-countin', async (s) => {
 		.getByRole('button', { name: /^Start (riding|the ride)$/ })
 		.first()
 		.click();
+	await o.page.getByText(/^starting$/i).waitFor({ timeout: 5000 });
+	await s.shot(o, { name: 'ride-countin-first' });
 	await o.page.waitForTimeout(1000);
 	await s.shot(o);
 });
