@@ -88,6 +88,7 @@ async function page(
 surface('ride-road-world', async (s) => {
 	for (const [device, name] of [
 		[DESK, 'ride-road-world'],
+		[DESK_720, 'ride-road-world-1280'],
 		[TV, 'ride-road-world-tv'],
 	] as const) {
 		const o = await s.open(device, { world: true });
