@@ -384,6 +384,8 @@ surface('ride-session-road', async (s) => {
 surface('ride-race', async (s) => {
 	// Designer and Design Partner race the hairpin road (#3174). No screen
 	// starts a race yet, so Designer's socket sends the start the hub takes.
+	// The 3-minute neutral zone alone is most of the default 5 minutes.
+	test.setTimeout(10 * 60_000);
 	const coach = await s.open(DESK, { world: false });
 	const crew = await designCrew(coach.page);
 	const road = await fixtureRoad(coach.page, 'hairpin');
