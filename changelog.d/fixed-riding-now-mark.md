@@ -1,0 +1,1 @@
+- Magenta and glow now stay with live numbers: the "riding now" bars are violet and unlit, the presence dots and floating buttons lose their glow, and the buttons that start or join a ride ("Join the ride", "Start a session", "Walk in") are framed in violet.

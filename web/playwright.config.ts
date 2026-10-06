@@ -46,17 +46,18 @@ export default defineConfig({
 	timeout: 5 * 60 * 1000,
 	expect: { timeout: 10_000 },
 	fullyParallel: false,
-	// Two workers, not one: the ride spec is two real minutes and the other three
-	// specs together are under one, so they finish alongside it instead of after
-	// it. More workers buys nothing — the ride is the floor — and would only put
-	// browsers in contention with the Go server on a 4-core runner.
-	workers: process.env.CI ? 2 : undefined,
+	// Three per CI shard (e2e.yml): most of a spec is a simulated trainer riding
+	// in real time, which leaves a 4-core runner idle at two. The @world specs,
+	// drawn in software GL, run apart from the rest, one at a time.
+	workers: process.env.CI ? 3 : undefined,
 	forbidOnly: !!process.env.CI,
 	// Two retries on CI, none locally: a genuine break still fails three
 	// times, while a startup wobble (the simulated trainer's first reading
 	// took the whole five minutes twice on main) no longer blocks a release.
 	retries: process.env.CI ? 2 : 0,
-	reporter: process.env.CI ? 'github' : 'list',
+	// shard-by-file.ts deals the files out under `--shard`, and does nothing
+	// without it.
+	reporter: [['./e2e/shard-by-file.ts'], [process.env.CI ? 'github' : 'list']],
 	use: {
 		baseURL: baseUrl(),
 		trace: 'retain-on-failure',
@@ -175,7 +176,9 @@ export default defineConfig({
 			testMatch: ['world-place.spec.ts'],
 			use: { ...devices['Desktop Firefox'] },
 		},
-	],
+		// Without somewhere to write, every design shot skips — and CI's shards
+		// split by test count, so 43 skips would leave the last one half idle.
+	].filter((p) => p.name !== 'design' || !!process.env.DESIGN_SHOTS_OUT),
 	// Serves the built SPA and proxies /api to the Go server, matching production.
 	//
 	// Always builds, never reuses: the server only ever serves build/, so a reused

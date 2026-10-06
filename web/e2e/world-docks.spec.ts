@@ -22,7 +22,7 @@ for (const [width, height] of [
 	[1440, 900],
 	[1280, 720],
 ])
-	test(`the docks leave the rider and the jukebox seat clear at ${width}×${height}`, async ({
+	test(`the docks leave the rider and the jukebox seat clear at ${width}×${height} @world`, async ({
 		page,
 	}, info) => {
 		await page.setViewportSize({ width, height });

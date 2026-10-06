@@ -86,6 +86,8 @@ async function page(
 // ─── A. Riding surfaces ──────────────────────────────────────────────────
 
 surface('ride-road-world', async (s) => {
+	// Four rides and a minute of road outlast the default five minutes.
+	test.setTimeout(600_000);
 	for (const [device, name] of [
 		[DESK, 'ride-road-world'],
 		[DESK_720, 'ride-road-world-1280'],
@@ -98,6 +100,13 @@ surface('ride-road-world', async (s) => {
 		// Item 16's distance, however long the road takes to get there (#3834).
 		await atReading(o.page, 'km 0.1 of 7.1');
 		await s.shot(o, { name });
+		// multi:world-60s — the next minute of the same ride, a frame every
+		// 5 s: the forest beside the road as the rider passes it (#3675).
+		if (device === DESK)
+			for (let k = 1; k <= 12; k++) {
+				await o.page.waitForTimeout(5000);
+				await s.shot(o, { name: `world-60s-${String(k).padStart(2, '0')}` });
+			}
 	}
 	// multi:world-hairpins — item 16's second leg, from km 2.3: the hairpins climb ahead.
 	const o = await s.open(DESK, { world: true });
@@ -578,15 +587,18 @@ surface('dev-world', async (s) => {
 
 /** /dev/world at one still moment (#3672): two loads are one frame, chrome off. */
 const MOMENT_M = 11_000;
+/** Just short of a hamlet of the dev road's first village, its roofs ahead (#3675). */
+const HAMLET_AT = 1_100;
 async function moment(
 	s: Shoot,
 	device: typeof DESK,
 	p: 0 | 1,
 	cam: 'chase' | 'side' = 'chase',
+	m = MOMENT_M,
 ) {
 	const o = await s.open(device);
 	await o.page.goto(
-		`/dev/world?m=${MOMENT_M}&p=${p}&cam=${cam}&look=bluehour&chrome=0`,
+		`/dev/world?m=${m}&p=${p}&cam=${cam}&look=bluehour&chrome=0`,
 	);
 	await o.page.waitForFunction(
 		() => !!(window as unknown as { __worldProbe?: unknown }).__worldProbe,
@@ -624,6 +636,10 @@ surface('world-start', async (s) => {
 	// multi:world-figure-side — the same moment from off your right shoulder,
 	// where the chase camera never stands: the face, the drops, both wheels.
 	await s.shot(await moment(s, DESK, 0, 'side'), { name: 'world-figure-side' });
+	// multi:world-hamlet — houses are judged where a hamlet is in sight (#3675).
+	await s.shot(await moment(s, DESK, 0, 'chase', HAMLET_AT), {
+		name: 'world-hamlet',
+	});
 });
 
 surface('world-end', async (s) => {

@@ -40,4 +40,4 @@ Claiming, worktrees and merging are in AGENTS.md ("Taking work", "Merging and cl
   ```
 
 - Required on `main`: `server` `web` `vulncheck` `docs` `changelog`. Everything else (`e2e`, the desktop smoke, `web-node-next`, `dead-code`) is advisory: a red one is a real finding but blocks nothing. Never call an advisory check a gate, and never read a green headline as "the ride passed".
-- `changelog` always reports (`skipping` on an exempt PR), so it can be required. `e2e` is path-filtered and never reports on a docs-only PR, so requiring it needs a skip-shim job first. `web-node-next` joins `web` when Node 26 is Active LTS.
+- `changelog` always reports (`skipping` on an exempt PR), so it can be required. `e2e` always reports too: it passes without riding when no code changed, and it fails when a shard drops a test. Until the ruleset lists it, auto-merge ignores it, so a riding-surface PR waits for `e2e` by hand. `web-node-next` joins `web` when Node 26 is Active LTS.
