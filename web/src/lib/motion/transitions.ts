@@ -1,7 +1,6 @@
 import { flip } from 'svelte/animate';
 import { prefersReducedMotion } from 'svelte/motion';
-import { fade, fly, scale, slide } from 'svelte/transition';
-import { pop as popCurve } from './damp';
+import { fly, slide } from 'svelte/transition';
 import { bezier, DUR, EASE } from './tokens';
 
 /**
@@ -38,16 +37,6 @@ export const enter = (node: Element, path: Path | false = {}) =>
 /** Something leaving, quicker than it came: `--dur-quick` on `--ease-leave`. */
 export const exit = (node: Element, path: Path | false = {}) =>
 	travel(node, path, DUR.quick, leave);
-
-/** A chip or a stamp landing: from nothing, over the pop's spring. */
-export const pop = (node: Element) =>
-	still()
-		? { duration: 0 }
-		: scale(node, { start: 0, duration: DUR.base, easing: popCurve });
-
-/** One value replacing another in place: a quick fade. */
-export const swap = (node: Element) =>
-	fade(node, { duration: still() ? 0 : DUR.quick, easing: moving });
 
 /** `animate:reorder` — a thing changing place in a list, on `--ease-move`. */
 export const reorder = (

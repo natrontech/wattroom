@@ -249,6 +249,7 @@
 					watts={channel.you.watts}
 					silent={channel.youStale}
 					ftp={channel.you.ftp}
+					progress={total > 0 ? elapsed / total : null}
 					paused={inFocus === 'media'}
 					onfail={world.fail}
 					onflat={world.flatten}

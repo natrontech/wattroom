@@ -142,5 +142,3 @@ export function createSoloRoadRide(deps: {
 		},
 	};
 }
-
-export type SoloRoadRide = ReturnType<typeof createSoloRoadRide>;

@@ -51,5 +51,3 @@ export function rhythmOf(line: Line, step = 10) {
 		at,
 	};
 }
-
-export type Rhythm = ReturnType<typeof rhythmOf>;
