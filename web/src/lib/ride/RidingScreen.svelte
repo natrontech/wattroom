@@ -181,6 +181,7 @@
 				{watts}
 				silent={signalLost}
 				{ftp}
+				progress={session.total > 0 ? session.elapsed / session.total : null}
 				onfail={world.fail}
 				onflat={world.flatten}
 			/>

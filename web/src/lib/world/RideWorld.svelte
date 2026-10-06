@@ -32,8 +32,7 @@
 	import { account } from '$lib/account.svelte';
 	import { prefersReducedMotion } from '$lib/motion';
 	import { generate } from './world';
-	// The dev gallery's blue hour, until #3085 gives the ride its own look.
-	import { STYLES } from '../../routes/(app)/dev/world/styles';
+	import { readLook } from './look';
 
 	let {
 		road,
@@ -42,6 +41,7 @@
 		watts,
 		silent = false,
 		ftp,
+		progress = null,
 		paused = false,
 		onfail,
 		onflat,
@@ -56,6 +56,8 @@
 		/** The trainer is silent past SIGNAL_LOST_MS, the signal the panels read "—" from. */
 		silent?: boolean;
 		ftp: number;
+		/** How far through the ride, 0–1, for the light; null when it has no known end (ADR-0072). */
+		progress?: number | null;
 		/** A shared screen has the focus. */
 		paused?: boolean;
 		onfail: (why: Failure) => void;
@@ -74,7 +76,7 @@
 				scene = mount(canvas!, {
 					route,
 					world: generate(route),
-					style: STYLES.find((s) => s.id === 'bluehour') ?? STYLES[0],
+					style: readLook(canvas!.parentElement ?? document.body),
 					watts,
 					ftp,
 					metre,
@@ -111,6 +113,7 @@
 	});
 
 	$effect(() => scene?.setWatts(watts));
+	$effect(() => scene?.setProgress(progress));
 	$effect(() => scene?.setSilent(silent));
 	$effect(() => scene?.hold('displaced', paused));
 	$effect(() => scene?.hold('shell', shellHidden));

@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { toRoute, type Route } from '$lib/road/route';
 import { devCrew } from '../../routes/(app)/dev/world/crew';
-import { STYLES } from '../../routes/(app)/dev/world/styles';
+import { RIDE } from './look.test-helper';
 import { compose, type Composed } from './compose';
 import { syntheticPoints } from './synthetic';
 import { generate, type World } from './world';
@@ -15,7 +15,7 @@ import { BUILD_MS } from './world.test-helper';
  * not the wind — so a design capture compares like with like.
  */
 
-const style = STYLES.find((s) => s.id === 'bluehour') ?? STYLES[0];
+const style = RIDE;
 let route: Route;
 let world: World;
 beforeAll(() => {
