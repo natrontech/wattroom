@@ -1,6 +1,9 @@
+import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import type { Route } from '$lib/road/route';
-import { bearings } from './backdrop';
+import { toRoute, type Route } from '$lib/road/route';
+import { backdrop, bearings } from './backdrop';
+import { yOf } from './geometry';
+import { syntheticPoints } from './synthetic';
 
 /** A flat route that rides each heading (degrees, compass: 0 north, 90 east) for that many steps. */
 function ridden(legs: [heading: number, steps: number][]): Route {
@@ -75,5 +78,52 @@ describe('the horizon bearings', () => {
 		const b = bearings(ridden(legs));
 		expect(deg(b.hero)).toBe(hero);
 		expect(b.share).toBeCloseTo(share, 9);
+	});
+});
+
+describe('the skyline the peach band lies on (#3085)', () => {
+	const route = toRoute(syntheticPoints());
+	const radius = 6000;
+	const { geometry, skyline } = backdrop(
+		route,
+		7,
+		radius,
+		{ ridge: '#333', rock: '#444', snow: '#eee', fog: '#666' },
+		false,
+	);
+	const eye = new THREE.Vector3(1200, yOf(route, route.minEle) + 40, -800);
+	skyline.from(eye);
+	const data = skyline.texture.image.data as Uint8Array;
+	const n = data.length;
+	/** The band's top at a bearing (radians from +z clockwise), as the sky reads it: linear, wrapping. */
+	const top = (a: number) => {
+		const f = ((((a / (Math.PI * 2)) % 1) + 1) % 1) * n - 0.5;
+		const i = Math.floor(f);
+		const k = f - i;
+		const v = (j: number) => data[(j + n) % n] / 255 / 4;
+		return v(i) * (1 - k) + v(i + 1) * k;
+	};
+
+	it('stands over every far crest at its own bearing, so no range covers the band', () => {
+		const pos = geometry.getAttribute('position');
+		let checked = 0;
+		for (let i = 0; i < pos.count; i++) {
+			const x = pos.getX(i);
+			const z = pos.getZ(i);
+			// The far two rings make the horizon; the near one stands before it.
+			if (Math.hypot(x, z) < radius + 8000 - 1) continue;
+			const dx = x - eye.x;
+			const dz = z - eye.z;
+			const up = pos.getY(i) - eye.y;
+			const sine = up / Math.hypot(dx, dz, up);
+			expect(top(Math.atan2(dx, dz))).toBeGreaterThanOrEqual(sine - 0.002);
+			checked++;
+		}
+		expect(checked).toBeGreaterThan(1000);
+	});
+
+	it('stays low, as distant ranges do: under 9° all round', () => {
+		for (let i = 0; i < n; i++)
+			expect(data[i] / 255 / 4).toBeLessThan(Math.sin((9 * Math.PI) / 180));
 	});
 });
