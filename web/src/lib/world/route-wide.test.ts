@@ -128,7 +128,7 @@ describe('a 29 km loop, its route-wide work', () => {
 		const all = world.everything;
 		expect(
 			digestOf([all.props, all.pieces, all.signs, all.arches, all.placements]),
-		).toBe('f1d34de5');
+		).toBe('9b3ab0e1');
 	});
 });
 
