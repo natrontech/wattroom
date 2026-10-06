@@ -38,11 +38,17 @@ export function walker(l: Line) {
 				(l.x[i] - l.x[i - 1]) * (l.x[i] - l.x[i - 1]) +
 					(l.z[i] - l.z[i - 1]) * (l.z[i] - l.z[i - 1]),
 			);
-	let seg = 0;
 	function at(s: number) {
 		const t = Math.min(Math.max(s, 0), arc[n - 1]);
-		while (seg > 0 && arc[seg] > t) seg--;
-		while (seg < n - 2 && arc[seg + 1] < t) seg++;
+		// The first segment that reaches t: the same whichever metre was asked before (#3699).
+		let lo = 0;
+		let hi = n - 2;
+		while (lo < hi) {
+			const mid = (lo + hi) >> 1;
+			if (arc[mid + 1] < t) lo = mid + 1;
+			else hi = mid;
+		}
+		const seg = lo;
 		const len = arc[seg + 1] - arc[seg] || 1;
 		const f = (t - arc[seg]) / len;
 		const dx = (l.x[seg + 1] - l.x[seg]) / len;
@@ -60,6 +66,9 @@ export function walker(l: Line) {
 	return { length: arc[n - 1], at };
 }
 
+/** Vertices between two in the window before a line counts as passing it twice: 200 m at 2 m a row, wider than the window. */
+const RUN_GAP = 100;
+
 /** The roads near a spot, cut to the stretch that can matter: what #3219's O1 measures against. */
 export function roadsNear(lines: readonly Line[]) {
 	const CELL = 40;
@@ -73,16 +82,25 @@ export function roadsNear(lines: readonly Line[]) {
 		}
 	});
 	return (x: number, z: number): Road[] => {
-		const span = new Map<number, [number, number]>();
+		const near = new Map<number, number[]>();
 		const ci = Math.floor(x / CELL);
 		const cj = Math.floor(z / CELL);
 		for (let dj = -2; dj <= 2; dj++)
 			for (let di = -2; di <= 2; di++)
-				for (const [k, i] of buckets.get(`${ci + di}:${cj + dj}`) ?? []) {
-					const s = span.get(k);
-					span.set(k, s ? [Math.min(s[0], i), Math.max(s[1], i)] : [i, i]);
+				for (const [k, i] of buckets.get(`${ci + di}:${cj + dj}`) ?? [])
+					near.set(k, [...(near.get(k) ?? []), i]);
+		// Each pass of a line through the window on its own: a loop's start and its end meet there without the whole loop between (#3699).
+		const runs: [number, number, number][] = [];
+		for (const [k, is] of near) {
+			is.sort((a, b) => a - b);
+			let a = is[0];
+			for (let n = 1; n <= is.length; n++)
+				if (n === is.length || is[n] - is[n - 1] > RUN_GAP) {
+					runs.push([k, a, is[n - 1]]);
+					a = is[n];
 				}
-		return [...span].map(([k, [a, b]]) => {
+		}
+		return runs.map(([k, a, b]) => {
 			const l = lines[k];
 			const points: P2[] = [];
 			// A few vertices past each end, for O1's reading of the bend.

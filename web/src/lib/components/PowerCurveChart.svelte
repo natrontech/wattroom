@@ -6,6 +6,7 @@
 	// pixels; neon grid per ADR-0005.
 	import ChartTip from '$lib/components/ChartTip.svelte';
 	import { SHOWN_WINDOWS as WINDOWS, type Curve } from '$lib/progression';
+	import { BAR_GAP, GUTTER, powerCurveGeometry } from './power-curve-geometry';
 
 	let { d30, d90, all }: { d30: Curve; d90: Curve; all: Curve } = $props();
 	const RANGES = [
@@ -15,13 +16,12 @@
 	];
 
 	let width = $state(600);
-	const W = $derived(Math.max(width, 240));
+	const geo = $derived(powerCurveGeometry(width, WINDOWS.length));
+	const W = $derived(geo.width);
 	const H = 260;
 	const PAD = { top: 30, bottom: 30 };
 	const plotH = H - PAD.top - PAD.bottom;
-	const groupW = $derived(W / WINDOWS.length);
-	const barW = $derived(Math.min(52, Math.max(26, groupW / 4.2)));
-	const gap = 3; // surface gap between adjacent bars
+	const barW = $derived(geo.barW);
 
 	const max = $derived(
 		Math.max(
@@ -37,7 +37,7 @@
 	// label stays inside; 18 covers four digits at 15px.
 	const LABEL_HALF = 18;
 	const labelX = (x: number) =>
-		Math.min(Math.max(x, LABEL_HALF), W - LABEL_HALF);
+		Math.min(Math.max(x, GUTTER + LABEL_HALF), W - LABEL_HALF);
 
 	let hovered = $state<{ wi: number; ri: number } | null>(null);
 </script>
@@ -64,7 +64,8 @@
 		aria-label="Best power by duration, 30 days vs 90 days vs all time"
 	>
 		<!-- One mid gridline only: the top line collides with the direct labels
-		     and the bars carry their own numbers anyway. -->
+		     and the bars carry their own numbers anyway. Its label sits in the
+		     left gutter, where no bar can be. -->
 		<line
 			x1="0"
 			x2={W}
@@ -81,10 +82,10 @@
 			>{Math.round(max * 0.5)} W</text
 		>
 		{#each WINDOWS as win, wi (win.key)}
-			{@const cx = wi * groupW + groupW / 2}
+			{@const cx = geo.groupCentre(wi)}
 			{#each RANGES as range, ri (range.label)}
 				{@const watts = range.curve()[win.key]}
-				{@const x = cx + (ri - 1) * (barW + gap) - barW / 2}
+				{@const x = geo.barX(wi, ri)}
 				<rect
 					{x}
 					y={H - PAD.bottom - barH(watts)}
@@ -104,7 +105,7 @@
 			     number on every mark. -->
 			{#if d30[win.key] > 0}
 				<text
-					x={labelX(cx + barW + gap)}
+					x={labelX(cx + barW + BAR_GAP)}
 					y={H - PAD.bottom - barH(d30[win.key]) - 8}
 					text-anchor="middle"
 					class="fill-ink font-display text-[15px] font-semibold"
@@ -131,9 +132,8 @@
 			{@const win = WINDOWS[hovered.wi]}
 			{@const range = RANGES[hovered.ri]}
 			{@const watts = range.curve()[win.key]}
-			{@const cx = hovered.wi * groupW + groupW / 2}
 			<ChartTip
-				x={cx + (hovered.ri - 1) * (barW + gap)}
+				x={geo.barX(hovered.wi, hovered.ri) + barW / 2}
 				y={H - PAD.bottom - barH(watts)}
 				maxX={W}
 				lines={[`best ${win.label} · ${range.label}`, `${watts} W`]}

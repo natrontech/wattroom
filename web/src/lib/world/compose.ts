@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createBunch, type Car } from './bunch';
+import { CHEER_S, cheerLook } from './cheer';
 import { makeCrew, type Crew, type Pedalling } from './crew';
 import type { BunchView } from '$lib/channel/bunch-view';
 import { DEFAULT_DARK_ID, themeById } from '$lib/themes';
@@ -68,6 +69,8 @@ export type MountOptions = {
 	youId?: string;
 	/** The theme's structural accent, for the coach's chevron; Outrun's absent. */
 	neon?: string;
+	/** Reduced motion, read each frame: a cheer's thumb and light hold still (ADR-0079). */
+	steady?: () => boolean;
 	/** Where the streamed ground's chunks come from: the page's copy, then the build worker (#3606). */
 	grids?: (got: GotGrid) => Grids;
 	/**
@@ -118,6 +121,10 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	// The bunch's riders by id, so a figure keeps its legs from frame to frame.
 	const crewmates = new Map<string, SimRider>();
 	let car: Car | null = null;
+	// Cheers for one rider (#3116): when each was heard, on the ride's own clock.
+	const cheered = new Map<string, number>();
+	let heard: unknown;
+	let clock = 0;
 	const neon = new THREE.Color(
 		opts.neon ?? themeById(DEFAULT_DARK_ID)!.tokens.neon,
 	);
@@ -233,6 +240,16 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	 */
 	function ride(view: BunchView, real: number) {
 		const out = bunch!.step(view, real, Date.now());
+		clock += real;
+		// A tick's cheers are heard once, however many frames read its view.
+		const tick = view.at ?? view;
+		if (tick !== heard) {
+			heard = tick;
+			for (const [id, at] of cheered)
+				if (clock - at >= CHEER_S) cheered.delete(id);
+			for (const id of view.cheered) cheered.set(id, clock);
+		}
+		const steady = opts.steady?.() ?? false;
 		const placed = new Set<string>();
 		for (const p of out.riders) {
 			placed.add(p.id);
@@ -258,6 +275,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 				alpha: p.alpha,
 				faded: p.faded,
 				coach: p.coach,
+				cheer: cheerOf(p.id, steady),
 			});
 			if (r !== you) Object.assign(r, { watts: p.watts, ftp: p.ftp });
 		}
@@ -272,15 +290,26 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 			you.lane = undefined;
 			you.alpha = out.car?.coach && view.coach === you.id ? 0 : undefined;
 			you.coach = false;
+			you.cheer = null;
 		}
 		riders = [you, ...crewmates.values()];
 		car = out.car;
 	}
 
-	/** The ground, the road and the props' rings, brought to where the eye now is; the diorama holds still. */
-	function look() {
+	/** How a cheer for `id` looks now; null with none, or once it is over. */
+	function cheerOf(id: string, steady: boolean) {
+		const at = cheered.get(id);
+		return at === undefined ? null : cheerLook(clock - at, steady);
+	}
+
+	/**
+	 * The ground, the road and the dressing, brought to where the eye now is;
+	 * the diorama holds still. A ride settles the dressing's tiles a few a
+	 * frame (#3699); a held moment, and a camera moved by hand, all at once.
+	 */
+	function look(whole = !!moment) {
 		if (!controls) stream.update(camera.position.x, camera.position.z);
-		stage?.update(camera.position);
+		stage?.update(camera.position, whole);
 	}
 
 	dress(opts.style);
@@ -292,8 +321,8 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		camera,
 		dress,
 		advanceBy,
-		/** Brings the level of detail to where the camera now stands, after moving it by hand (the scene budget does). */
-		look,
+		/** Brings the level of detail and the dressing to where the camera now stands, after moving it by hand (the scene budget does). */
+		look: () => look(true),
 		setCamera(next: CameraMode) {
 			mode = next;
 			applyMode();
@@ -301,13 +330,19 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		setWatts(watts: number) {
 			you.watts = watts;
 		},
+		setSilent(silent: boolean) {
+			you.silent = silent;
+		},
 		setSpeedup(factor: number) {
 			speedup = factor;
 		},
-		/** Nothing moves: a held moment, or you have stopped pedalling, every rider stands and nobody turns the model. */
+		/** Nothing moves: a held moment, or you have stopped pedalling, every rider stands, nobody turns the model and no cheer blinks. */
 		idle: () =>
 			!!moment ||
-			(you.watts === 0 && !controls && riders.every((r) => r.v < 0.05)),
+			(you.watts === 0 &&
+				!controls &&
+				cheered.size === 0 &&
+				riders.every((r) => r.v < 0.05)),
 		/**
 		 * What a design capture measures (#3672, docs/design/TARGETS.md): the
 		 * field of view, the moment drawn, and your figure's height on screen
@@ -336,6 +371,8 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 			return {
 				camera: { fov: Math.round(camera.fov * 100) / 100 },
 				moment: moment ?? null,
+				// What a capture waits on before it shoots: the ground around the eye, whole (#3699).
+				ground: { pending: stream.pending() },
 				figure: { bboxH, kitsInWattBand: crew?.kitsInWattBand() ?? 0 },
 			};
 		},

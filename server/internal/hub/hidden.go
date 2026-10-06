@@ -20,6 +20,9 @@ func (rm *channelState) hides(a, b string) bool {
 
 // cheersFor is the tick's cheers as `to` may hear them: the same slice when
 // nothing in it is from a rider hidden either way, else a copy without them.
+// A cheer for one rider across a hidden pair is its sender's alone: drawn
+// over that rider's head for nobody else, and the sender is never told
+// (#3116, #3202).
 func (rm *channelState) cheersFor(to string, cheers []protocol.Cheer, from []string) ([]protocol.Cheer, bool) {
 	if rm.hider == nil {
 		return cheers, false
@@ -27,7 +30,8 @@ func (rm *channelState) cheersFor(to string, cheers []protocol.Cheer, from []str
 	var own []protocol.Cheer
 	cut := false
 	for i, c := range cheers {
-		if i < len(from) && rm.hider.Hidden(to, from[i]) {
+		if i < len(from) && (rm.hider.Hidden(to, from[i]) ||
+			(c.To != "" && to != from[i] && rm.hider.Hidden(c.To, from[i]))) {
 			if !cut {
 				own, cut = append([]protocol.Cheer(nil), cheers[:i]...), true
 			}

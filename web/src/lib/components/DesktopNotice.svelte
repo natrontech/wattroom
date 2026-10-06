@@ -84,9 +84,12 @@
 					{/if}
 				</a>
 				<div class="flex items-center gap-4 text-xs">
-					<a href="/download" class="btn-link">Other systems and first launch</a
+					<a href="/download" class="btn-link link-standalone"
+						>Other systems and first launch</a
 					>
-					<button class="btn-link" onclick={decline}>Not now</button>
+					<button class="btn-link link-standalone" onclick={decline}
+						>Not now</button
+					>
 				</div>
 			</div>
 		</div>
