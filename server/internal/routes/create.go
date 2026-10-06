@@ -24,6 +24,8 @@ type createRequest struct {
 	// The owner's shape as polyline6; sealed, or not kept at all.
 	Shape  string      `json:"shape"`
 	Climbs []climbJSON `json:"climbs"`
+	// Whether the line ends where it began, which its heights cannot tell.
+	Loop *bool `json:"loop"`
 }
 
 // A GPX downloaded from strava.com, which rides with its owner alone
@@ -126,6 +128,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		Road: bare(rd), RoadSealed: roadSealed, RoadHash: roadHash(req.Road),
 		LengthM: int32(math.Round(rd.LengthM)), GainM: int32(math.Round(rd.GainM())), //nolint:gosec // bounded by UnpackRoad
 		Climbs: climbs, EleSource: req.EleSource, GeomSealed: sealed, KeyVersion: version,
+		Loop: req.Loop,
 	})
 	if err == nil {
 		err = tx.Commit(r.Context())
@@ -139,6 +142,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		LengthM: int32(math.Round(rd.LengthM)), GainM: int32(math.Round(rd.GainM())), //nolint:gosec // bounded by UnpackRoad
 		Climbs: climbs, HasPlace: sealed != nil, OwnerOnly: req.Src == stravaSrc,
 		CreatedAt: created.CreatedAt.Time, RoadHash: roadHash(req.Road), EleSource: req.EleSource,
+		Loop: req.Loop,
 	}
 	if sealed == nil {
 		out.Hint = noKeyHint

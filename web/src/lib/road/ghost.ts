@@ -33,9 +33,9 @@ export function splitAt(
 	return ghost === null ? null : seconds - ghost;
 }
 
-/** "−0:12" ahead, "+0:08" behind, as the split reads on the riding surface. */
+/** "−0:12" ahead, "+0:08" behind, as the split reads on the riding surface; level is "0:00", unsigned. */
 export function formatSplit(split: number): string {
 	const s = Math.round(Math.abs(split));
-	const sign = split < 0 ? '−' : '+';
+	const sign = s === 0 ? '' : split < 0 ? '−' : '+';
 	return `${sign}${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }

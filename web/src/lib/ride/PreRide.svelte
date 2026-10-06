@@ -17,7 +17,7 @@
 	import { FtmsTrainer } from '$lib/ble/ftms';
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import type { Trainer } from '$lib/ble/trainer';
-	import { device } from '$lib/device.svelte';
+	import { device, spectatorRideLine } from '$lib/device.svelte';
 	import RecoveredRides from '$lib/ride/RecoveredRides.svelte';
 	import RideCard, { type RideKind } from '$lib/ride/RideCard.svelte';
 	import type { RideableRoute } from '$lib/ride/roads';
@@ -165,10 +165,7 @@
 				{#if device.spectator}
 					<!-- The grid above is hidden on a spectator device, so the
 			     disabled button needs its own reason (errors.md). -->
-					<p class="text-muted text-sm">
-						This device can't reach a trainer — its browser has no Web
-						Bluetooth. Ride from a desktop, or Chrome on Android.
-					</p>
+					<p class="text-muted text-sm">{spectatorRideLine}</p>
 				{:else if !held.paired}
 					<p class="text-muted text-sm">
 						Pair your trainer above to start — {kind === 'free'
