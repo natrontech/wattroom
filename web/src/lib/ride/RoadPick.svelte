@@ -2,8 +2,11 @@
 	/**
 	 * Onto one of your own roads, before a free ride starts (#3027): the
 	 * road becomes the free ride's grade, and its metres its record. Behind
-	 * the roads dev gate (roads.ts), like gears.
+	 * the roads dev gate (roads.ts), like gears. Given `onpick` it only picks:
+	 * /ride's Ride card opens it from “Change” and keeps the road itself
+	 * (#3671), with where to start as its own chips.
 	 */
+	import { untrack } from 'svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import type { FreeRide } from '$lib/ride/free-ride.svelte';
@@ -17,7 +20,13 @@
 		type RouteSummary,
 	} from '$lib/ride/roads';
 
-	let { free }: { free: FreeRide } = $props();
+	let {
+		free,
+		onpick,
+	}: {
+		free?: FreeRide;
+		onpick?: (route: RideableRoute) => void;
+	} = $props();
 
 	let open = $state(false);
 	let routes = $state<RouteSummary[] | null>(null);
@@ -46,20 +55,28 @@
 			error = result.error;
 			return;
 		}
+		if (onpick) {
+			loading = null;
+			onpick(result.route);
+			return;
+		}
 		const carry = await carryOnFrom(result.route.id, result.route.road.length);
 		loading = null;
 		if (carry !== null) choosing = { route: result.route, carry };
 		else onto(result.route, 0);
 	}
 
+	// Opened from “Change”: the list is what the rider asked for.
+	if (untrack(() => onpick)) void show();
+
 	function onto(route: RideableRoute, from: number) {
-		free.ride(route, from);
+		free?.ride(route, from);
 		choosing = null;
 		open = false;
 	}
 </script>
 
-{#if free.road}
+{#if free?.road}
 	<div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
 		<span class="eyebrow">road</span>
 		<span class="min-w-0 truncate font-semibold">{free.road.name}</span>
@@ -75,7 +92,7 @@
 			>
 		{/if}
 	</div>
-{:else if !free.recording}
+{:else if !free?.recording}
 	{#if choosing}
 		{@const { route, carry } = choosing}
 		<div class="flex flex-wrap items-center gap-3">

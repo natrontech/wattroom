@@ -83,11 +83,13 @@ export function rideLook(
 			rock: w('prop-rock'),
 		},
 		kit: {
+			skin: w('kit-skin'),
 			shoe: w('kit-shoe'),
 			tyre: w('kit-tyre'),
 			rim: w('kit-rim'),
 			metal: w('kit-metal'),
 			glasses: w('kit-glasses'),
+			tailLight: w('kit-tail-light'),
 		},
 		zones: [1, 2, 3, 4, 5, 6, 7].map((z) => paint(`color-z${z}`)),
 		trail: paint('color-watt'),

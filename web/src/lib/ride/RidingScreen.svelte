@@ -27,6 +27,7 @@
 	import { skylineOf } from '$lib/workout/road-workout';
 	import Instrument from '$lib/session/Instrument.svelte';
 	import RideHeader from '$lib/session/RideHeader.svelte';
+	import { rideContext } from '$lib/session/ride-context';
 	import RidingSurface from '$lib/session/RidingSurface.svelte';
 	import BiasTrim from '$lib/session/BiasTrim.svelte';
 	import BikeComputer from '$lib/session/BikeComputer.svelte';
@@ -176,6 +177,7 @@
 					mps: session.road?.mps ?? 0,
 				})}
 				{watts}
+				silent={signalLost}
 				{ftp}
 				progress={session.total > 0 ? session.elapsed / session.total : null}
 				onfail={world.fail}
@@ -195,6 +197,7 @@
 				cadence={session.sample?.cadence ?? 0}
 				hr={session.sample?.heartRate ?? 0}
 				title={workout.name}
+				context={rideContext('Solo', workout.name)}
 				drives
 				controls={inWorld ? undefined : rideControls}
 			/>

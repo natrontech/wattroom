@@ -1,0 +1,1 @@
+- When your trainer goes quiet, the ring under your wheels in the 3D world turns neutral and your trail stops, instead of keeping the zone colour and the glow of a ride that is no longer live.

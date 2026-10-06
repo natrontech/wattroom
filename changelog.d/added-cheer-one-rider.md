@@ -1,0 +1,1 @@
+- Cheer one rider on the road: right-click a crewmate riding the session and cheer them. A thumbs-up shows over their head, and their tail light blinks for 10 seconds (steady if the device asks for reduced motion). A cheer pays nothing, and it never reaches anyone you or they have hidden.

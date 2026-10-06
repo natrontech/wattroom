@@ -1182,3 +1182,84 @@ describe('heart rate a trainer relays (#2804, ADR-0008)', () => {
 		live.close();
 	});
 });
+
+describe('a KOM sprint on a session’s road (#3553)', () => {
+	const settle = async () => {
+		await Promise.resolve();
+		flushSync();
+	};
+	afterEach(() => vi.useRealTimers());
+
+	/** A 4 % climb: felt at half, 2 % (docs/SPEC.md "Felt grade"). */
+	const climb = {
+		length: 2000,
+		heights: Array.from({ length: 101 }, (_, i) => 100 + 0.8 * i),
+		turns: Array<number>(100).fill(0),
+	};
+
+	async function sprintOnRoad(singleSpeed: boolean) {
+		vi.useFakeTimers();
+		const { live, socket, deps } = inASession();
+		const place = { road: climb, m: 500, mps: 8, at: Date.now() };
+		let ride!: ReturnType<typeof createRide>;
+		const dispose = $effect.root(() => {
+			ride = createRide({
+				...deps,
+				profile: { current: { ...deps.profile.current, singleSpeed } },
+				road: () => place,
+			});
+		});
+		const trainer = new FakeTrainer();
+		await ride.ride(trainer);
+		await settle();
+		// The hub arms the room's sprint at a KOM (#3102), for 30 s.
+		socket.onmessage!({
+			data: JSON.stringify({
+				tick: {
+					at: Date.now(),
+					sprint: { startsAtMs: Date.now(), endsAtMs: Date.now() + 30_000 },
+				},
+			}),
+		});
+		await settle();
+		await vi.advanceTimersByTimeAsync(1_000);
+		await settle();
+		return { trainer, live, dispose };
+	}
+
+	it('rides the road’s felt grade for a geared rider, not their own sprint grade', async () => {
+		const { trainer, live, dispose } = await sprintOnRoad(false);
+		// Flat first out of ERG, then the road: 2 %, never the 5 % sprint grade.
+		expect(trainer.commands).toContain('sim:0');
+		expect(trainer.commands.at(-1)).toBe('sim:2');
+		expect(trainer.commands).not.toContain('sim:5');
+		dispose();
+		live.close();
+	});
+
+	it('holds 2 × FTP for a single-speed rider, as off a road', async () => {
+		const { trainer, live, dispose } = await sprintOnRoad(true);
+		expect(trainer.commands.at(-1)).toBe('erg:400');
+		dispose();
+		live.close();
+	});
+
+	it('relaxes to flat at 1 %/s once the ticks have stopped for 5 s', async () => {
+		const { trainer, live, dispose } = await sprintOnRoad(false);
+		// 1 s since the last tick: the road, 2 %.
+		expect(trainer.commands.at(-1)).toBe('sim:2');
+		// 5 s: dead reckoning still rides the road.
+		await vi.advanceTimersByTimeAsync(4_000);
+		await settle();
+		expect(trainer.commands.at(-1)).toBe('sim:2');
+		// Past 5 s it eases off, a percent a second, to flat.
+		await vi.advanceTimersByTimeAsync(1_000);
+		await settle();
+		expect(trainer.commands.at(-1)).toBe('sim:1');
+		await vi.advanceTimersByTimeAsync(1_000);
+		await settle();
+		expect(trainer.commands.at(-1)).toBe('sim:0');
+		dispose();
+		live.close();
+	});
+});

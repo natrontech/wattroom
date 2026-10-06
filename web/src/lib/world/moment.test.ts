@@ -21,6 +21,8 @@ let world: World;
 beforeAll(() => {
 	route = toRoute(syntheticPoints());
 	world = generate(route);
+	// The tiles within reach of the moment, settled once: every load after draws them as they stand (#3699).
+	at().dispose();
 }, BUILD_MS);
 
 /** Everything a frame of `w` is drawn from that could move: the camera, every figure and bone, the wind. */

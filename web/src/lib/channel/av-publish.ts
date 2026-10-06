@@ -227,12 +227,24 @@ export function createPublish(host: PublishHost) {
 	 * One place, so the two cannot drift apart on what stopping means.
 	 */
 	async function stopShare() {
-		if (!conn.liveKitRoom) return;
+		if (!conn.liveKitRoom || !conn.liveKit) return;
 		av.sharing = false;
 		av.sharingAudio = false;
-		await conn.liveKitRoom.localParticipant
-			.setScreenShareEnabled(false)
-			.catch(() => {});
+		const local = conn.liveKitRoom.localParticipant;
+		await local.setScreenShareEnabled(false).catch(() => {});
+		// Trust the publication, not the call that was meant to end it
+		// (#3845): in the desktop shell that stop failed under Away, the bar
+		// went dark, and the call went on seeing the screen. Whatever outlived
+		// it is taken down by hand, and its capture ended either way, so even
+		// a refused unpublish shows the call nothing new.
+		const { ScreenShare, ScreenShareAudio } = conn.liveKit.Track.Source;
+		for (const source of [ScreenShare, ScreenShareAudio]) {
+			const pub = local.getTrackPublication(source);
+			const track = pub?.videoTrack ?? pub?.audioTrack;
+			if (!track) continue;
+			await local.unpublishTrack(track, true).catch(() => {});
+			track.mediaStreamTrack?.stop();
+		}
 		if (seats.drop('screen', conn.me, conn.myIdentity))
 			stage.dropScreen(conn.me);
 	}
@@ -289,16 +301,7 @@ export function createPublish(host: PublishHost) {
 		if (av.away) {
 			conn.micBeforeAway = av.micOn;
 			conn.camBeforeAway = av.camOn;
-			// Stepping away is the rider closing the mic, not losing it.
-			chain.clearFault();
-			if (av.micOn) {
-				chain.close();
-				av.micOn = false;
-			}
-			setVoice(conn.me, 'muted');
-			noteVoice();
-			await closeCam();
-			// And the screen goes with them (#1128). A rider who stepped out is
+			// The screen goes with them (#1128). A rider who stepped out is
 			// not watching what their machine is showing the call, which is the
 			// same argument as the camera's — and one step worse, because a
 			// screen keeps disclosing after they walk off (#563).
@@ -308,7 +311,20 @@ export function createPublish(host: PublishHost) {
 			// the rider pointed at something. Re-publishing a window they left
 			// ten minutes ago, without them asking, is how a private tab
 			// reaches a call. Coming back offers the button, not the share.
-			if (av.sharing) await stopShare();
+			//
+			// Before the mic and camera, and whatever `sharing` says (#3845):
+			// in the desktop shell the stop that ran after them failed while
+			// the bar said the share was over. With no screen up it does nothing.
+			await stopShare();
+			// Stepping away is the rider closing the mic, not losing it.
+			chain.clearFault();
+			if (av.micOn) {
+				chain.close();
+				av.micOn = false;
+			}
+			setVoice(conn.me, 'muted');
+			noteVoice();
+			await closeCam();
 			return;
 		}
 		if (conn.micBeforeAway && !av.micOn) {

@@ -2,6 +2,8 @@ import { pairError } from '$lib/ble/pair-error';
 import { arbitrate } from '$lib/ble/arbitrate';
 import { createFlightRecorder } from '$lib/ride/flightrecorder.svelte';
 import { createActuator } from '$lib/ride/actuation.svelte';
+import { createRideGrade } from '$lib/ride/ride-grade';
+import { createDeadReckoning, DEAD_RECKONING_S } from '$lib/channel/road-place';
 import {
 	biasPress,
 	EASIER_HARDER_OFF,
@@ -117,6 +119,34 @@ export function createRide(deps: RideDeps) {
 		return () => clearInterval(id);
 	});
 
+	// The session's road under you, second by second (#3553): the felt grade
+	// a second ahead of your place, dead-reckoned between ticks, relaxing to
+	// flat once the ticks have stopped for DEAD_RECKONING_S.
+	const reckon = createDeadReckoning();
+	const roadGrade = createRideGrade();
+	let feltAt = 0;
+	let felt = 0;
+	function feltOnRoad(): number | null {
+		const place = deps.road?.();
+		if (!place) {
+			roadGrade.reset();
+			feltAt = 0;
+			return null;
+		}
+		// The ride's own second: reading it runs this again each second.
+		const t = now;
+		if (t !== feltAt) {
+			const seconds = feltAt ? Math.max(1, (t - feltAt) / 1000) : 1;
+			feltAt = t;
+			const where = reckon(place, t);
+			felt =
+				where.dead > DEAD_RECKONING_S
+					? roadGrade.relax(seconds)
+					: roadGrade.road(place.road, where.m, place.mps, seconds);
+		}
+		return felt;
+	}
+
 	/** Slope, whoever asked for it: the coach's armed sprint or the workout's. */
 	const sprinting = $derived(deps.joined() && (sprint.armedLive || aim.sprint));
 	$effect(() => {
@@ -133,7 +163,11 @@ export function createRide(deps: RideDeps) {
 		// way round first; the two-rider e2e is what showed the cost.)
 		if (sprinting) {
 			const { sprintGrade, singleSpeed, ftp } = deps.profile.current;
-			actuator.sprint({ grade: sprintGrade, singleSpeed }, ftp);
+			// On a session's road a geared rider sprints up the road itself —
+			// a KOM's last 300 m (#3102); one gear cannot, so 2 × FTP holds.
+			const road = singleSpeed ? null : feltOnRoad();
+			if (road !== null) actuator.road(road);
+			else actuator.sprint({ grade: sprintGrade, singleSpeed }, ftp);
 			return;
 		}
 		// A free ride on a grade is a slope the rider chose, not a target

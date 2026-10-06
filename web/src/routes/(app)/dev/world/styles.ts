@@ -34,11 +34,13 @@ const alpineProps = (p: Partial<PropColors>): PropColors => ({
 });
 
 const KIT: RiderKit = {
+	skin: '#858585', // #3413's neutral tone: oklch(0.616 0 0), none of the eight swatches
 	shoe: '#ece9f2',
 	tyre: '#1a1820',
 	rim: '#2e2b38',
 	metal: '#4a4756',
 	glasses: '#15131b',
+	tailLight: '#ff6a00', // amber: every red sits in some identity's watt band
 };
 const ZONES = [
 	'#4a3a78',
@@ -47,7 +49,7 @@ const ZONES = [
 	'#06d6a0',
 	'#ffa62b',
 	'#ff4d6d',
-	'#ff2e88',
+	'#e20843',
 ]; // --color-z1 … z7, dark family
 const WATT = '#ff3d8b'; // --color-watt, dark family
 const SIGNS: Style['signs'] = {

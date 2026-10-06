@@ -2,12 +2,10 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { WORLD_SALT } from './place/network.test-helper';
 import { unmatched, type Thing } from './place/shared';
 import { apart, clock, crowded, type Profile } from './placement/stream';
-import { createPlacer } from './props/placer';
 import { walker } from './props/roads';
-import { villageSites } from './props/scatter';
 import { hashSeed } from './rand';
-import { setPieces } from './setpieces';
-import { build, origin, routeLines } from './terrain/network.test-helper';
+import { standNetwork } from './props/stand.test-helper';
+import { origin, routeLines } from './terrain/network.test-helper';
 import type { Line } from './terrain/lines';
 import type { Turn } from './props/roads';
 import { BUILD_MS } from './world.test-helper';
@@ -18,25 +16,7 @@ import { BUILD_MS } from './world.test-helper';
  * apart as #3221's O9 asks, riding either way.
  */
 
-function setOf(lines: Line[], salt = WORLD_SALT) {
-	const w = build(lines, salt);
-	const place = {
-		salt,
-		origin,
-		ground: w.ground,
-		heightAt: w.terrain.heightAt,
-		biomeAt: w.terrain.biomeAt,
-		chunks: w.cover.chunks,
-	};
-	const placer = createPlacer(
-		(x, z) => w.ground.roadSurfaceAt(x, z) ?? w.terrain.heightAt(x, z),
-		w.ground.lines,
-	);
-	return {
-		lines: w.ground.lines,
-		...setPieces({ ...place, placer, villages: villageSites(place) }),
-	};
-}
+const setOf = (lines: Line[], salt = WORLD_SALT) => standNetwork(lines, salt);
 
 const facing = (t: Turn) =>
 	Math.round((Math.atan2(t[1], t[0]) * 180) / Math.PI);

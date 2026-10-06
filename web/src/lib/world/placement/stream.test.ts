@@ -161,6 +161,7 @@ describe('the dev world against O13', () => {
 	let w: World;
 	beforeAll(() => {
 		w = generate(toRoute(syntheticPoints()));
+		void w.everything;
 	}, 60_000);
 
 	it('writes nothing refused on its signs and arches', () => {

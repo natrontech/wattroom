@@ -179,6 +179,10 @@ export function createSummary(deps: {
 		get dismissed() {
 			return dismissed;
 		},
+		/** The saved ride's XP, streak bonus included (#3753). */
+		get rideXp() {
+			return rideXp ?? undefined;
+		},
 		/** The ride's own page, once the session has saved it. */
 		get rideId() {
 			return rideId;

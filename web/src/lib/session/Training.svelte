@@ -22,6 +22,7 @@
 	import BikeComputer from '$lib/session/BikeComputer.svelte';
 	import HrShare from '$lib/channel/HrShare.svelte';
 	import RideHeader from '$lib/session/RideHeader.svelte';
+	import { rideContext } from './ride-context';
 	import MonitorUp from '@lucide/svelte/icons/monitor-up';
 	import LogOut from '@lucide/svelte/icons/log-out';
 	import { goto } from '$app/navigation';
@@ -243,6 +244,7 @@
 					metre={() => channel.ridden ?? { m: 0, mps: 0 }}
 					bunch={() => channel.ridden?.bunch ?? null}
 					watts={channel.you.watts}
+					silent={channel.youStale}
 					ftp={channel.you.ftp}
 					progress={total > 0 ? elapsed / total : null}
 					paused={inFocus === 'media'}
@@ -266,6 +268,11 @@
 					cadence={channel.you.cadence}
 					hr={channel.you.hr}
 					title={channel.shared?.workoutName ?? ''}
+					context={rideContext(
+						'Session',
+						channel.shared?.workoutName ?? '',
+						inRide.length,
+					)}
 					drives={!!channel.trainer && channel.actuating}
 					aside={inWorld ? undefined : trainerCard}
 					controls={inWorld ? undefined : sessionControls}

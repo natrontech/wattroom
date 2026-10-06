@@ -1,0 +1,1 @@
+- A ride on a long route now starts as fast as one on a short route: the world's trees, houses and roadside pieces are placed around you as you ride, instead of along the whole route before the first frame.

@@ -1,3 +1,5 @@
+import { placeOnRoad } from '$lib/channel/road-place';
+import { roadOf } from '$lib/workout/road-workout';
 import { rememberRodeIn } from '$lib/crew-lounge';
 import { account } from '$lib/account.svelte';
 import { createProfileStore } from '$lib/profile.svelte';
@@ -179,6 +181,10 @@ function connect(address: PlaceAddress): Connection {
 			singleSpeed: () => profile.current.singleSpeed,
 			kg: () => profile.current.kg,
 		});
+		// The session's road under you, for the trainer (#3553): the cut
+		// decoded once a pick, your place on it with every tick.
+		const cut = $derived(parsed.workout ? roadOf(parsed.workout) : null);
+		const place = $derived(placeOnRoad(live.tick, cut, account.me?.id ?? ''));
 		ride = createRide({
 			live,
 			profile,
@@ -186,6 +192,7 @@ function connect(address: PlaceAddress): Connection {
 			myId: () => account.me?.id,
 			shared: () => shared,
 			segments: () => parsed.segments,
+			road: () => place,
 			joined,
 			free: freeRide,
 		});

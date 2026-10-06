@@ -12,6 +12,7 @@ import * as THREE from 'three';
 import { pixelRatio } from './budget';
 import { compose, type CameraMode, type MountOptions } from './compose';
 import { createLoop, type LoopStats, missWatch, watchPage } from './loop';
+import { softwareDrawing } from './flag';
 import type { Failure } from './ride-view';
 import type { Style } from './styles';
 
@@ -21,6 +22,8 @@ export type WorldScene = {
 	setStyle(style: Style): void;
 	setCamera(mode: CameraMode): void;
 	setWatts(watts: number): void;
+	/** Your trainer is silent past SIGNAL_LOST_MS: the ring goes neutral and the trail stops until the next sample. */
+	setSilent(silent: boolean): void;
 	setSpeedup(factor: number): void;
 	/** The ride's progress, 0–1, for the light; null when it has no known end. */
 	setProgress(p: number | null): void;
@@ -91,7 +94,9 @@ export function mount(
 		opts.onFail?.(why);
 	}
 	const watch = missWatch();
-	const judge = setInterval(() => watch(loop.stats()) && fail('frames'), 1000);
+	const judge = softwareDrawing()
+		? undefined
+		: setInterval(() => watch(loop.stats()) && fail('frames'), 1000);
 	const lost = () => fail('context-lost');
 	function release() {
 		world.dispose();
@@ -118,6 +123,7 @@ export function mount(
 		setStyle: dress,
 		setCamera: (mode: CameraMode) => world.setCamera(mode),
 		setWatts: (watts) => world.setWatts(watts),
+		setSilent: (silent) => world.setSilent(silent),
 		setSpeedup: (factor) => world.setSpeedup(factor),
 		setProgress(p) {
 			world.setProgress(p);

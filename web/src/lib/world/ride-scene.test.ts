@@ -129,6 +129,44 @@ describe('a ride’s world', () => {
 		w.dispose();
 	});
 
+	it('stops your trail and takes your ring out of its zone while your trainer is silent, and gives both back with the next sample (#3766)', () => {
+		const w = compose(
+			{
+				route,
+				world,
+				style,
+				ftp: 250,
+				watts: 300,
+				metre: () => ({ m: 900, mps: 0 }),
+			},
+			null,
+		);
+		let trail: THREE.Mesh | undefined;
+		let ring: THREE.Mesh | undefined;
+		w.scene.traverse((o) => {
+			if (o.userData.kind === 'trail') trail = o as THREE.Mesh;
+			if (o instanceof THREE.Mesh && o.geometry instanceof THREE.RingGeometry)
+				ring = o;
+		});
+		const tone = () =>
+			`#${(ring!.material as THREE.MeshBasicMaterial).color.getHexString()}`;
+		const zones = style.zones.map((z) => new THREE.Color(z).getHexString());
+		w.advanceBy(0.3);
+		expect(zones).toContain(tone().slice(1));
+		expect(trail!.visible).toBe(true);
+
+		w.setSilent(true);
+		w.advanceBy(0.1);
+		expect(zones).not.toContain(tone().slice(1));
+		expect(trail!.visible).toBe(false);
+
+		w.setSilent(false);
+		w.advanceBy(0.1);
+		expect(zones).toContain(tone().slice(1));
+		expect(trail!.visible).toBe(true);
+		w.dispose();
+	});
+
 	it('lays a bunch out by the wall’s time, however slowly its frames come (#3098)', () => {
 		const where = (frame: number, wall: number) => {
 			let tick = { m: 300, s: 0 };
@@ -153,6 +191,7 @@ describe('a ride’s world', () => {
 							['a', 'b', 'c', 'd'].map((id) => [id, { watts: 200, ftp: 250 }]),
 						),
 						game: false,
+						cheered: [],
 					}),
 					onTick: (next) => (hud = next),
 				},
@@ -181,5 +220,125 @@ describe('a ride’s world', () => {
 			).toBeLessThan(1);
 			expect(Math.abs(s.lane - r.lane), `${r.id} across it`).toBeLessThan(0.1);
 		}
+	});
+
+	it('draws a cheer for one rider over their head once, and blinks their tail light for 10 s (#3116)', () => {
+		const run = (steady: boolean) => {
+			// One tick carries the cheer; every frame reads its view until the next.
+			let sent = 1000;
+			const w = compose(
+				{
+					route,
+					world,
+					style,
+					ftp: 250,
+					youId: 'a',
+					metre: () => ({ m: 300, mps: 8 }),
+					steady: () => steady,
+					bunch: () => ({
+						m: 300,
+						mps: 8,
+						at: sent,
+						elapsed: 30,
+						order: ['a', 'b'],
+						offsets: {},
+						resting: [],
+						present: new Map([
+							['a', { watts: 200, ftp: 250 }],
+							['b', { watts: 200, ftp: 250 }],
+						]),
+						game: false,
+						cheered: sent === 1000 ? ['b'] : [],
+					}),
+				},
+				null,
+			);
+			const seen = (kind: string) => {
+				const over: string[] = [];
+				w.scene.traverseVisible((o) => {
+					if (o.userData.kind !== kind) return;
+					let p: THREE.Object3D | null = o;
+					while (p && !p.userData.rider) p = p.parent;
+					over.push(p?.userData.rider);
+				});
+				return over;
+			};
+			const frames: { t: number; thumb: string[]; light: string[] }[] = [];
+			for (let k = 0; k <= 12 * 30; k++) {
+				// A second tick at 1 s that does not cheer: the cheer is not heard again.
+				if (k === 30) sent = 2000;
+				w.advanceBy(k ? 1 / 30 : 0);
+				frames.push({
+					t: k / 30,
+					thumb: seen('cheer'),
+					light: seen('tail-light'),
+				});
+			}
+			w.dispose();
+			return (t: number) => frames[Math.round(t * 30)];
+		};
+		const moving = run(false);
+		expect(moving(0.1).thumb).toEqual(['b']);
+		expect(moving(0.1).light).toEqual(['b']);
+		// 2 Hz: off for the second quarter of each half-second.
+		expect(moving(0.35).light).toEqual([]);
+		expect(moving(0.6).light).toEqual(['b']);
+		expect(moving(3).thumb).toEqual([]);
+		expect(moving(9.6).light).toEqual(['b']);
+		expect(moving(10.1).light).toEqual([]);
+		expect(moving(11).thumb).toEqual([]);
+		// Reduced motion: a held stamp, the light lit throughout.
+		const steady = run(true);
+		expect(steady(0.35).light).toEqual(['b']);
+		expect(steady(9.6).light).toEqual(['b']);
+		expect(steady(10.1).light).toEqual([]);
+	});
+
+	it('draws a coach with no trainer as the team car: one chevron, no figure of their own (#3771)', () => {
+		const drawn = (coachRests: boolean) => {
+			const w = compose(
+				{
+					route,
+					world,
+					style,
+					ftp: 250,
+					youId: 'coach',
+					metre: () => ({ m: 300, mps: 8 }),
+					bunch: () => ({
+						m: 300,
+						mps: 8,
+						elapsed: 30,
+						order: ['coach', 'a'],
+						offsets: {},
+						resting: coachRests ? ['coach'] : [],
+						coach: 'coach',
+						present: new Map([
+							['coach', { watts: coachRests ? 0 : 200, ftp: 250 }],
+							['a', { watts: 200, ftp: 250 }],
+						]),
+						game: false,
+						cheered: [],
+					}),
+				},
+				null,
+			);
+			for (let k = 0; k < 30; k++) w.advanceBy(1 / 30);
+			let chevrons = 0;
+			let figures = 0;
+			w.scene.traverseVisible((o) => {
+				if (o.userData.kind === 'chevron') chevrons++;
+				else if (o.userData.family === 'figures' && o.userData.kind !== 'car')
+					figures++;
+			});
+			w.dispose();
+			return { chevrons, figures };
+		};
+		const riding = drawn(false);
+		const driving = drawn(true);
+		// Riding: the coach's chevron over their own figure, and two figures.
+		expect(riding.chevrons).toBe(1);
+		// Driving: the chevron rides on the car, and only the crewmate is drawn.
+		expect(driving.chevrons).toBe(1);
+		expect(driving.figures).toBe(riding.figures / 2);
 	});
 });

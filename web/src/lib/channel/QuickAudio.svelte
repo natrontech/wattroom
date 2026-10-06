@@ -48,7 +48,7 @@
 	<Modal
 		label="Sound — the mix and your gate"
 		onclose={() => (soundPanel.open = false)}
-		class="max-w-md"
+		class="riding max-w-md"
 	>
 		<h2 class="font-display font-bold">Sound</h2>
 		<p class="text-muted mt-1 text-xs">
@@ -131,6 +131,7 @@
 			     mic's device, not one page away. The same pickers as
 			     /settings/voice (#1883), unnamed-device hint included. -->
 			<DevicePickers
+				stacked
 				devices={{ mics: voice.mics, cams: voice.cams, outs: voice.outs }}
 				micId={voice.micId}
 				camId={voice.camId}
@@ -148,7 +149,7 @@
 		<div class="mt-5 flex justify-end">
 			<button
 				onclick={() => (soundPanel.open = false)}
-				class="btn btn-secondary">Done</button
+				class="btn btn-lg btn-secondary">Done</button
 			>
 		</div>
 	</Modal>
