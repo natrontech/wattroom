@@ -5,13 +5,7 @@ import { flatten, targetAt } from '$lib/workout/engine';
 import type { Segment, Workout } from '$lib/workout/types';
 // Zone vocabulary lives in lib now that a real screen needs it; re-exported so the
 // existing mocks keep their single import.
-export {
-	CEILING,
-	fillPct,
-	ZONE_BG,
-	ZONE_NAMES,
-	zoneOf,
-} from '$lib/components/zones';
+export { fillPct, ZONE_BG, ZONE_NAMES, zoneOf } from '$lib/components/zones';
 export { formatClock } from '$lib/format';
 
 export const workout: Workout = {
@@ -64,18 +58,13 @@ export const CHANNEL_NAME = 'Thursday Sufferfest';
 
 // The real module's shapes, not a second copy of them (consolidation sweep
 // 2026-09-09): the gallery half-mocked what it also half-imported.
-export { TILE_METRICS, type TileMetric } from '$lib/channel/types';
+export type { TileMetric } from '$lib/channel/types';
 export type { Block } from '$lib/workout/block';
-// The band moved to the one place the app and the scorer share (#2159); the
-// gallery re-exports it from there so its callers keep one import.
-export { toleranceBand } from '$lib/workout/guards';
 import type { Block } from '$lib/workout/block';
+// The band lives in the one place the app and the scorer share (#2159).
 import { toleranceBand } from '$lib/workout/guards';
 
-/** Shared by the ride screen's notch bar and TV mode's delta — same data, two distances. */
-
 export type { LiveRider as MockRider } from '$lib/channel/types';
-export { targetState } from '$lib/channel/types';
 import type { LiveRider } from '$lib/channel/types';
 
 // Legacy shape retained for reference only.
@@ -212,29 +201,6 @@ export const medals: Medal[] = [
 		kj: 502,
 		xp: 611,
 	},
-];
-
-/** Scripted so the panel feels inhabited. Text chat is a fast-follow (WATTROOM.md), mocked here to prove the layout. */
-export const chatSeed = [
-	{ who: 'Nina', text: 'ftp test next week or are we all cowards' },
-	{ who: 'Ruben', text: 'cowards' },
-	{ who: 'Milo', text: 'my trainer is making a noise again' },
-	{ who: 'Sara', text: 'thats just your knees milo' },
-];
-
-export const chatLater = [
-	{ who: 'Tobi', text: 'sorry late, kid meltdown' },
-	{ who: 'Nina', text: 'ur fine were still in warmup' },
-	{ who: 'Ruben', text: 'this is not sweet spot this is threshold' },
-	{ who: 'Milo', text: 'speak for yourself' },
-	{ who: 'Sara', text: '🔥' },
-];
-
-export const queue = [
-	{ title: 'Kavinsky — Nightcall', length: '4:18', by: 'Nina' },
-	{ title: 'The Midnight — Los Angeles', length: '6:02', by: 'Ruben' },
-	{ title: 'Carpenter Brut — Turbo Killer', length: '4:41', by: 'You' },
-	{ title: 'Perturbator — Sentient', length: '5:29', by: 'Sara' },
 ];
 
 /**

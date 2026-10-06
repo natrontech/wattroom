@@ -22,7 +22,9 @@ import { BUILD_MS, longLoopPoints } from './world.test-helper';
  * westward heading stopped counting toward bins up to 80° away (#3829),
  * which moves the hero peak on a route ridden partly westward on purpose,
  * and when the ridges' rock and snow colours became a blend over a height
- * band, so a peak draws no vertical seam where it crosses the line (#3835).
+ * band, so a peak draws no vertical seam where it crosses the line (#3835),
+ * and when the ranges came to be sized by the angle they stand at, so the
+ * farthest stands low enough for the sky's peach to clear it (#3085).
  */
 
 /** FNV-1a over every number's float64 bytes, in order. */
@@ -60,7 +62,7 @@ function rhythmDigest(world: World) {
 
 function horizonDigest(route: Route, world: World) {
 	const [minX, minZ, maxX, maxZ] = world.bounds;
-	const g = backdrop(
+	const { geometry: g } = backdrop(
 		route,
 		world.seed,
 		Math.hypot(maxX - minX, maxZ - minZ) / 2,
@@ -117,7 +119,7 @@ describe('a 29 km loop, its route-wide work', () => {
 	});
 
 	it('draws the same horizon', () => {
-		expect(horizonDigest(route, world)).toBe('954e34ea');
+		expect(horizonDigest(route, world)).toBe('9c271efd');
 	});
 
 	it('stands the same things around the start, and along the whole loop', () => {
@@ -140,7 +142,7 @@ describe('a 124 km loop, its route-wide work', () => {
 	it('names the same villages, keeps the same clock and draws the same horizon', () => {
 		expect(digestOf([world.villageNames, world.markers])).toBe('c7b6942f');
 		expect(rhythmDigest(world)).toBe('4d5155d0');
-		expect(horizonDigest(route, world)).toBe('23d26d12');
+		expect(horizonDigest(route, world)).toBe('34e1724c');
 	});
 
 	// Its start meets its end: the pieces planned before the finish are decided too.

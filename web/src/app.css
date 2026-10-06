@@ -286,6 +286,82 @@
 }
 
 /*
+ * The world's own look (ADR-0072, #3085): the ride's Alpine blue hour. Single
+ * values, never light-dark pairs and never a theme's: the world looks the
+ * same under every theme and scheme, and only its accents — watt, neon, the
+ * zones — follow the rider's. $lib/world/look.ts reads them; the light, the
+ * sun below the horizon by the ride's progress, is not a colour and lives
+ * in light.ts. No hue sits in a dark identity's watt band (O13,
+ * placement/safety.ts), and the peach is pinned to OKLCH 58–60°.
+ */
+:root {
+	--world-sky-zenith: #3f4a76;
+	--world-sky-haze: #8c90ae;
+	--world-sky-peach: #d8a57e;
+	--world-sky-light: #b5bcdb;
+	--world-sky-shade: #2c2b41;
+	--world-sky-stars: #d0d7ec;
+
+	--world-biome-water: #1a3b55;
+	--world-biome-meadow: #2f5a37;
+	--world-biome-forest: #123a29;
+	--world-biome-alpine: #4f5a44;
+	--world-biome-rock: #414758;
+	--world-biome-snow: #9aa5b8;
+	--world-biome-verge: #3d4a36;
+
+	--world-ridge: #26304a;
+	--world-ridge-rock: #3c4258;
+
+	--world-road-asphalt: #1b1a1f;
+	--world-road-line: #cfc9d6;
+	--world-road-verge: #2c2a2c;
+
+	--world-prop-spruce: #0d2c20;
+	--world-prop-spruce-tip: #23503a;
+	--world-prop-leaf: #23452a;
+	--world-prop-leaf-light: #3f6a3a;
+	--world-prop-trunk: #3a2a22;
+	--world-prop-wall: #b9ada0;
+	--world-prop-wood: #5a3a26;
+	--world-prop-roof: #2e2530;
+	--world-prop-stone: #4c4a52;
+	--world-prop-cow: #c9c2b8;
+	--world-prop-cow-patch: #4a2e22;
+	--world-prop-bell: #caa27a;
+	--world-prop-bale: #d8c27a;
+	--world-prop-bale-light: #e9d898;
+	--world-prop-post: #d8d3dc;
+	--world-prop-band: #1b1b1f;
+	--world-prop-reflector: #f4f4f0;
+	--world-prop-pole: #9a9aa2;
+	--world-prop-hiking: #b29d5a;
+	--world-prop-water: #5aa0c8;
+	--world-prop-snowpole: #ff7a1a;
+	--world-prop-rock: #4c5060;
+	--world-flag-1: #88443b;
+	--world-flag-2: #d8d3dc;
+	--world-flag-3: #88443b;
+	--world-flag-4: #bfa967;
+
+	--world-kit-skin: #858585; /* #3413's neutral tone: none of the eight swatches */
+	--world-kit-shoe: #ece9f2;
+	--world-kit-tyre: #1a1820;
+	--world-kit-rim: #2e2b38;
+	--world-kit-metal: #4a4756;
+	--world-kit-glasses: #15131b;
+	--world-kit-tail-light: #ff6a00; /* amber: every red sits in some identity's watt band */
+
+	--world-sign-blue: #1f4f9a;
+	--world-sign-white: #ffffff;
+	--world-sign-ink: #1b1b1f;
+	--world-sign-post: #8a8a92;
+	--world-sign-chrome: #1a1320;
+	--world-sign-chrome-post: #3a3040;
+	--world-arch-chrome: #241a33;
+}
+
+/*
  * A number, anywhere (#2174). web/AGENTS.md: "Display type and every numeral
  * use `font-display`" — and seventy-five sites said `font-mono tabular-nums`
  * instead, which resolves to Tailwind's default stack, so numbers rendered in

@@ -51,18 +51,6 @@ export function tileCentre(
 	return [(ti + 0.5) * TILE_M - e0, n0 - (tj + 0.5) * TILE_M];
 }
 
-/** Whether (x, z) stands in tile (ti, tj). */
-export const inTile = (
-	ti: number,
-	tj: number,
-	x: number,
-	z: number,
-	origin: Origin = [0, 0],
-) => {
-	const [a, b] = tileOf(x, z, origin);
-	return a === ti && b === tj;
-};
-
 /**
  * Which of `own` stand: each unless a candidate of higher rank in `around`
  * (its own tile's and its neighbours') would touch it. Two ranks never tie:

@@ -221,5 +221,3 @@ export function batchProps(
 		ids: () => [...tiles.keys()],
 	};
 }
-
-export type Batch = ReturnType<typeof batchProps>;

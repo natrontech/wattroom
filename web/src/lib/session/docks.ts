@@ -10,8 +10,7 @@
  */
 
 export type Box = { x0: number; y0: number; x1: number; y1: number };
-export type Dock =
-	'header' | 'status' | 'focus' | 'numbers' | 'crew' | 'horizon';
+export type Dock = 'header' | 'column' | 'focus' | 'crew' | 'horizon';
 export type Layout = 'desk' | 'tv';
 
 export const CORRIDOR: Box = { x0: 0.3, y0: 0.225, x1: 0.7, y1: 0.775 };
@@ -20,26 +19,25 @@ export const RIDER_BOX: Box = { x0: 0.4, y0: 0.55, x1: 0.6, y1: 0.82 };
 export const JUKEBOX_SEAT: Box = { x0: 0.74, y0: 0.02, x1: 0.98, y1: 0.3 };
 
 // The header keeps to the band above the road; the ride's controls and its
-// status stand in the left column under it ('status'), your numbers below
-// them. What has the focus — a sprint, a game — takes the right column, which
-// the crew holds otherwise: they take turns, since a sprint quiets the crew
-// and a game's panel lists everyone itself.
+// status stand in the left column under it, your numbers below them — each
+// as tall as it is, so neither stands empty while the other is cut short
+// (#3662). What has the focus — a sprint, a game — takes the right column,
+// which the crew holds otherwise: they take turns, since a sprint quiets the
+// crew and a game's panel lists everyone itself.
 // prettier-ignore
 export const DOCKS: Record<Layout, Record<Dock, Box>> = {
 	desk: {
 		header: { x0: 0.02, y0: 0.02, x1: 0.72, y1: 0.22 },
-		status: { x0: 0.02, y0: 0.23, x1: 0.29, y1: 0.58 },
+		column: { x0: 0.02, y0: 0.23, x1: 0.29, y1: 0.84 },
 		focus: { x0: 0.72, y0: 0.32, x1: 0.98, y1: 0.84 },
-		numbers: { x0: 0.02, y0: 0.6, x1: 0.29, y1: 0.84 },
 		crew: { x0: 0.72, y0: 0.32, x1: 0.98, y1: 0.84 },
 		horizon: { x0: 0.02, y0: 0.86, x1: 0.98, y1: 0.98 },
 	},
 	// Three metres away the band is taller and the columns narrower.
 	tv: {
 		header: { x0: 0.02, y0: 0.02, x1: 0.72, y1: 0.22 },
-		status: { x0: 0.02, y0: 0.23, x1: 0.28, y1: 0.56 },
+		column: { x0: 0.02, y0: 0.23, x1: 0.28, y1: 0.86 },
 		focus: { x0: 0.74, y0: 0.32, x1: 0.98, y1: 0.86 },
-		numbers: { x0: 0.02, y0: 0.58, x1: 0.28, y1: 0.86 },
 		crew: { x0: 0.74, y0: 0.32, x1: 0.98, y1: 0.86 },
 		horizon: { x0: 0.02, y0: 0.88, x1: 0.98, y1: 0.98 },
 	},

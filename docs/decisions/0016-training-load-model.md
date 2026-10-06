@@ -19,7 +19,7 @@ legality.
 ## Decision
 
 **The math**: Coggan's, exactly as published, constants in
-[docs/SPEC.md](../SPEC.md) (Training load section) — 30 s rolling 4th-power
+[docs/spec/stats.md](../spec/stats.md) (Training load section) — 30 s rolling 4th-power
 NormPower, Load = Intensity² × hours × 100, Fitness/Fatigue as 42/7-day EWMAs
 of daily Load, Form as yesterday's difference. No invented alternative, no ML.
 
@@ -83,7 +83,7 @@ What this amendment fixes is the record, not the behaviour: the revisit conditio
 The amendment above held UTC because "a streak that has been counting one way should not
 silently re-bucket". Picking it up, that reason turns out not to apply to the surfaces it was
 protecting — so the rider-scoped buckets move to the rider's own zone, and
-[docs/SPEC.md](../SPEC.md) now states the day boundary rather than leaving it to be inferred
+[docs/spec/stats.md](../spec/stats.md) now states the day boundary rather than leaving it to be inferred
 from the code.
 
 **Why re-bucketing was safe after all.** The worry was about a number a rider watches

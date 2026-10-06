@@ -25,8 +25,6 @@ import { prng } from './rand';
 import { planStroke, type Group } from './setpieces-stroke';
 import type { Ground, Origin } from './terrain/ground';
 
-export { FLAGS } from './setpieces-stroke';
-
 export type PieceKind =
 	| 'bench'
 	| 'woodpile'

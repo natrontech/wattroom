@@ -99,7 +99,7 @@ The rule, so nobody rebuilds auto-connect from the founding line:
 - **The camera never auto-restores.** Not on rejoin, not on anything. A
   capture device that was shut stays shut until the rider opens it.
 
-The numbers live in [SPEC.md](../SPEC.md) "Room audio defaults" beside the
+The numbers live in [SPEC](../spec/voice.md) "Room audio defaults" beside the
 gate figures; this file records why. WATTROOM.md still reads "always-on" —
 ADR-0001 locks that document and #656 is deciding how a founding line
 records a divergence, so the pitch changes there in whatever form #656
