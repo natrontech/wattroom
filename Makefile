@@ -202,7 +202,7 @@ licenses:
 	python3 scripts/licenses-go.py
 	node scripts/licenses-web.mjs
 
-# AGENTS.md step 7, enforced (#2097). Removes finished worktrees and the
+# AGENTS.md "Merging and cleaning up", enforced (#2097). Removes finished worktrees and the
 # branches the remote is done with; refuses on a worktree holding commits
 # nobody has pushed, which is how finished work goes missing.
 .PHONY: worktree-gc

@@ -373,7 +373,7 @@ Every surface id below is also in `docs/design/surface-map.json`, which maps the
 
 #### ride-countin
 
-**Capture:** world on, `/ride?w=openers&road=<hairpin>`, captured during the count-in.
+**Capture:** world on, with the OS scheme set to light, `/ride?w=openers&road=<hairpin>`: `ride-countin-first` as the count-in appears, then `ride-countin` a second into it.
 
 **Target:** v3-motion, the count-in frame.
 

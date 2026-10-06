@@ -1,93 +1,43 @@
-# Git & GitHub conventions
+# Git and GitHub
 
-## When to commit (Claude decides — don't ask)
+Claiming, worktrees and merging are in AGENTS.md ("Taking work", "Merging and cleaning up").
 
-Commit with explicit pathspecs, never `git add -A`: the tree may hold a neighbour's uncommitted work, and a wildcard add makes it yours.
+## Commits
 
-Commit automatically when a logical unit of work is complete. One commit = one coherent change that could be reverted independently: a feature slice, a bug fix, a config/tooling change, a refactor of one area, tests for existing code. Never batch unrelated changes; never leave finished work uncommitted at the end of a turn.
+- Commit each finished logical unit without asking: one change that could be reverted on its own (a slice, a fix, a tooling change, one refactor, tests). Never batch unrelated changes; never end a turn with finished work uncommitted.
+- Stage explicit pathspecs. Never `git add -A`: the tree may hold a neighbour's work.
+- `<type>(<scope>): <description>`. Types: `feat` `fix` `refactor` `docs` `test` `chore` `perf` `style`. Scopes: `server` `web` `desktop` `ble` `hub` `protocol` `game` `jukebox` `ci` `deps`, omitted for repo-wide changes. Lowercase, imperative, no trailing period, ≤ 72 characters; a body only when the why isn't obvious. E.g. `fix(hub): drop stale metrics when rider leaves mid-tick`.
+- A generated file ships with the change that caused it (`protocol.ts` with its Go struct), never with unrelated work.
+- Never commit secrets or `.env`, never commit with `make ci` failing, never force-push a shared branch, never push to `main`.
 
-## Conventional commits
+## Pull requests
 
-```
-<type>(<scope>): <description>
-```
-
-Types: `feat` `fix` `refactor` `docs` `test` `chore` `perf` `style`.
-Scopes: `server` `web` `desktop` `ble` `hub` `protocol` `game` `jukebox` `ci` `deps` — omit when the change is repo-wide (most `docs:`/`chore:`).
-Rules: lowercase, imperative mood ("add" not "added"), no trailing period, ≤72 chars. Body only when the "why" isn't obvious.
-
-```
-feat(ble): serialize FTMS control-point writes behind 0x80 indications
-fix(hub): drop stale metrics when rider leaves mid-tick
-feat(game): backyard ramp elimination rules
-docs: ADR-0003 …
-```
-
-## When to push / branch / PR (multi-contributor phase — humans + Claude + Codex in parallel)
-
-- **A worktree, a branch and a draft PR are the default for all work** — created before the first edit, not before the first commit (AGENTS.md, "Working on the issue board", has the sequence and the reason a bare branch is not isolation). `git worktree add ../wattroom-worktrees/<slug> -b feat/<slug>`, open a **draft PR early** with `Closes #<n>` — in-flight drafts are how everyone sees what's being worked on. PR title in conventional-commit form (it becomes the squash commit).
-- **No direct pushes to main**, not even trivial doc fixes or ADR text — a repository ruleset rejects them (`GH013: Changes must be made through a pull request`). This superseded the old convention-only rule from #7; the branch + PR path below is the only one that works. `make release` goes through a PR for the same reason.
-- **Every PR adds its changelog entry as its own file**: `changelog.d/<category>-<slug>.md`, category being added / changed / deprecated / removed / fixed / security. Never edit `CHANGELOG.md` directly — eight agents appending to the same section conflicted constantly, and a conflict resolved carelessly during a rebase drops somebody's entry. `make release` collates the files and deletes them. CI fails a PR touching `server/` or `web/src` without one; the `no-changelog` label is the escape for work a rider cannot see. Write it for someone deciding whether to upgrade, not as a second copy of the PR title.
-- **A closing keyword is parsed, not read — in every tense, however you wrap it.** GitHub scans every PR body and commit message for a closing verb beside an issue number and acts on it. The verb set is wider than it looks: `close`, `closes`, `closed`, `fix`, `fixes`, `fixed`, `resolve`, `resolves`, `resolved`. The parser has no notion of quoting, negation, tense, or what the PR is about.
-
-  One issue was closed three times by three PRs, none of which meant to close anything:
-
-  1. a **negated** keyword in a body — "…? **No** — it stays open until someone runs it";
-  2. a **quoted** keyword, in the commit message of the PR explaining (1);
-  3. a **past-tense** keyword, in the body of the PR amending the rule after (2) — because the rule then listed only the `-s` forms, and so did the grep used to verify it.
-
-  Every attempt to describe the trap in prose sprang it. Markdown code fences do not help; the parser reads through them.
-
-  So: `Refs #<n>` for anything a PR does not finish, and **never put any inflection of those three verbs next to a live issue number** in text that reaches a PR body or commit message — not negated, not quoted, not in the past tense, not while writing a rule about it. To discuss the mechanism, use a placeholder (`#<n>`) or name the issue in words. Before pushing, check yourself with a pattern that covers the forms:
+- **Changelog**: each PR adds `changelog.d/<category>-<slug>.md` (added, changed, deprecated, removed, fixed, security) holding one bullet for someone deciding whether to upgrade. Never edit `CHANGELOG.md`; `make release` collates the files. CI fails a PR touching `server/` or `web/src` without one; label `no-changelog` when no rider sees the change.
+- **Closing keywords**: GitHub closes an issue when `close`, `closes`, `closed`, `fix`, `fixes`, `fixed`, `resolve`, `resolves` or `resolved` stands next to its number in a PR body or commit message, negated, quoted or fenced alike. Write `Closes #<n>` only for the issue the PR finishes, `Refs #<n>` for every other, and a placeholder (`#<n>`) when writing about the mechanism. Before pushing:
 
   ```bash
   grep -inE '(close[sd]?|fix(es|ed)?|resolve[sd]?)[[:space:]:]+#[0-9]+' <file>
   ```
 
-  After merging a PR that names an issue it did not finish, confirm with `gh issue view <n> --json state` — all three closes above were silent, and the third was found only because a board count came up one short.
+  After merging a PR that names an issue it did not finish, check `gh issue view <n> --json state`.
 
-  The cost is not tidiness. An obligation nobody can discharge starts reading as discharged — here a hardware validation nobody had performed, on an ADR whose entire point is that a synthetic fixture is not the real thing.
+- **Squash subject**: a one-commit branch squashes under that commit's subject, not the PR title. Pass it: `gh pr merge <n> --squash --subject '<title> (#<n>)'`.
+- Never tag or release by hand: `make release` computes the CalVer number and refuses an empty `## [Unreleased]`.
 
-- **A squash subject comes from the commit, not always from the PR title.** When a branch carries exactly one commit, GitHub's squash takes *that commit's* subject and ignores the PR title, so editing the title before merging changes nothing in `main`'s history. #2341 was retitled `fix: deploy/.env.example carries WATTROOM_TOKEN_KEY` and landed as `feat: add WATTROOM_TOKEN_KEY` — the wrong conventional-commit type, permanently, because `main` rejects the force-push that would fix it. Either amend the branch commit to the subject you want, or pass it explicitly: `gh pr merge <n> --squash --subject '<type>(<scope>): <description>'`.
+## Checks
 
-- **Never**: force-push shared branches, commit secrets/.env, commit with failing `make ci`, mix a generated-file regen with unrelated changes (protocol.ts regens ship WITH the Go struct change that caused them), or cut a release by hand — `make release` is the only path (it computes the CalVer number itself), and it refuses when `## [Unreleased]` is empty.
+- Read checks with `gh pr checks <n>`, never `statusCheckRollup`: the rollup keeps every superseded run, so labelling `no-changelog` leaves a dead `FAILURE` or `CANCELLED` beside the `SKIPPED`. When you need JSON, take the newest run per name and ask what a conclusion is not:
 
-## GitHub (gh CLI) — claim before you code
+  ```bash
+  gh pr view <n> --json statusCheckRollup --jq '
+    [.statusCheckRollup[]]
+    | group_by(.name // .context)
+    | map(max_by(.startedAt // .createdAt))
+    | map(select((.conclusion // .state) as $c
+          | $c != "SUCCESS" and $c != "SKIPPED" and $c != "NEUTRAL"))
+    | if length == 0 then "all green"
+      else map("\(.name // .context): \(.conclusion // .state)") | join(", ") end'
+  ```
 
-Work lives in issues on milestones (M0 onward); nobody (human or agent) works untracked.
-
-1. `gh issue view <n> --comments`, `gh pr list`, `git worktree list` — if it's assigned, claimed, has an open PR, or matches a branch name someone has a worktree on, coordinate there instead of duplicating. The draft PR is the claim and often exists with the issue thread still empty (#280 → #284 and #294); a worktree branch with no commits yet has no ref and no PR for either command to find, which is how one test got written three times (#297, #302, #304, #305).
-2. **Cut the branch before you claim** — `git checkout -b feat/<slug> origin/main`, or the `git worktree add` that does both. The worktree branch is the signal step 1 looks for and the only one that shows instantly; claiming by comment first means emitting it last, and that gap is where the collisions happen (#1003, #267). Re-run step 1 after reading the code, before the first edit.
-3. Claim: `gh issue edit <n> --add-assignee @me` + a one-line approach comment. Standing down instead? Say "proceed, do not stand down on account of my comment" — two agents each deferring to the other leaves the issue undone.
-4. Progress, blockers, and findings go in the issue/PR thread — not chat apps. Decisions in threads still get an ADR.
-5. Out-of-scope discoveries → new issue (right milestone + label), never PR scope-creep.
-6. **Reading a PR's checks: `gh pr checks <n>`, never `statusCheckRollup`.** The rollup returns *every* run of a check, not the current one, and a superseded run keeps its old conclusion forever. That is routine here rather than an edge case: `changelog.yml` triggers on `labeled` and cancels in-progress runs, so applying `no-changelog` leaves a dead `FAILURE` — or a `CANCELLED`, when the label beats the first run to the finish — sitting in the array beside the `SKIPPED` that replaced it. #1061, #1073 and #1115 all read red that way and all three are green; the first two were briefly mistaken for the changelog gate being bypassed in practice (#1043). `gh pr checks` collapses to the newest run and is correct. When you genuinely need JSON, take the newest run per name:
-
-   ```bash
-   gh pr view <n> --json statusCheckRollup --jq '
-     [.statusCheckRollup[]]
-     | group_by(.name // .context)
-     | map(max_by(.startedAt // .createdAt))
-     | map(select((.conclusion // .state) as $c
-           | $c != "SUCCESS" and $c != "SKIPPED" and $c != "NEUTRAL"))
-     | if length == 0 then "all green"
-       else map("\(.name // .context): \(.conclusion // .state)") | join(", ") end'
-   ```
-
-   Ask what a conclusion is **not**, as above, rather than listing the ways one can fail: `FAILURE` was the whole list until `CANCELLED` turned up, and the next one will not announce itself either.
-
-7. **Which checks gate a merge, and which only inform.** `main`'s ruleset (`bypass_actors: []`) requires exactly five contexts:
-
-   ```
-   server  web  vulncheck  docs  changelog
-   ```
-
-   Everything else that runs — `e2e`, the desktop smoke, `web-node-next` — is **advisory**: a red one is a real finding and a reviewer's job, but it blocks nothing. Don't describe an advisory check as a gate, and don't assume a green headline means the ride passed.
-
-   `changelog` is requirable because it **always reports**: the workflow carries no paths filter, so on a PR it exempts (a `no-changelog` label, a `release/` branch) it still reports `skipping`, and a ruleset counts that as reported (#1044, #1045).
-
-   `e2e` cannot be, as it stands, and this is the whole reason it is advisory rather than an oversight: `e2e.yml` filters on `paths: ['web/**', 'server/**', '.github/workflows/e2e.yml']`, so on a docs-only or ADR-only PR it never starts and therefore never reports. A required context that never reports leaves the PR pending forever — every docs PR unmergeable, and `make release` jammed, because a release PR touches only `CHANGELOG.md` and `changelog.d/`. Requiring it means first adding a skip-shim job outside the paths filter that reports the context, or paying the full ride on every docs PR. Neither is a ruleset toggle.
-
-   `web-node-next` is advisory by decision, not by accident (#2074): it graduates into the already-required `web` job when Node 26 becomes Active LTS, so a non-LTS Node can never stop the repo in the meantime.
-
-Labels — **area**: `ble` `channels` `workouts` `game-modes` `jukebox` `infra` `docs` `design`. **Kind**: `bug` `enhancement` `security` `feedback` (a rider report from the in-app flag button — ADR-0006; the `pickup-feedback` skill works this queue). **State**: `blocked` (waiting on another issue — the body names which), `backlog` (parked — ask first), `needs-human-input` (a decision a contributor must make — **do not implement what the issue says**; it usually records one person's opening position and wants push-back). The bar is that the repository cannot answer it: canon answering it makes it a defect, a stale doc gets amended, and two plausible options is not the bar (AGENTS.md has the test). Ask while the maintainer is there; the issue is the fallback. **Process**: `no-changelog` (PR is invisible to riders — exempt from the CHANGELOG check), `good-first-issue`.
+- Required on `main`: `server` `web` `vulncheck` `docs` `changelog`. Everything else (`e2e`, the desktop smoke, `web-node-next`) is advisory: a red one is a real finding but blocks nothing. Never call an advisory check a gate, and never read a green headline as "the ride passed".
+- `changelog` always reports (`skipping` on an exempt PR), so it can be required. `e2e` is path-filtered and never reports on a docs-only PR, so requiring it needs a skip-shim job first. `web-node-next` joins `web` when Node 26 is Active LTS.

@@ -47,6 +47,11 @@ export interface ComputerContext {
 	stats?: LiveStats;
 	/** Your race, while you race one (#3174). */
 	race?: RaceReadout;
+	/**
+	 * The surface draws the 3 s power above the computer already, so RIDE
+	 * leaves it out: one number, one home (TARGETS D17, #3667).
+	 */
+	head?: boolean;
 }
 
 export interface Field {
@@ -140,15 +145,17 @@ export function fieldsFor(page: ComputerPage, ctx: ComputerContext): Field[] {
 			{ key: 'load', label: 'Load', value: `${Math.round(s.load)}` },
 		];
 	}
-	const fields: Field[] = [
-		{
-			key: 'power',
-			label: 'Power',
-			value: measured(`${stats ? stats.power3 : Math.round(ctx.watts)}`),
-			unit: 'W',
-			glow: !ctx.stale,
-		},
-	];
+	const fields: Field[] = ctx.head
+		? []
+		: [
+				{
+					key: 'power',
+					label: 'Power',
+					value: measured(`${stats ? stats.power3 : Math.round(ctx.watts)}`),
+					unit: 'W',
+					glow: !ctx.stale,
+				},
+			];
 	if (ctx.road)
 		fields.push({
 			key: 'speed',
