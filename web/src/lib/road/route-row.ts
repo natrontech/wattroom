@@ -44,3 +44,14 @@ export function riddenLine(
 	});
 	return `Ridden ${route.rides}× · last ${last}`;
 }
+
+/**
+ * The route page's back link (TARGETS Flows rule 4): the page a row's name was
+ * opened from, else Workouts. Only a path on this site: `?back=` is a URL
+ * anyone can write, and an open redirect is not a back link.
+ */
+export function backLink(back: string | null): { href: string; label: string } {
+	if (!back || !/^\/(?![/\\])/.test(back) || back.includes('\\'))
+		return { href: '/workouts', label: 'Workouts' };
+	return { href: back, label: back === '/ride' ? 'Ride' : 'Back' };
+}

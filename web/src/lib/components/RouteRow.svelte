@@ -22,6 +22,7 @@
 		extra,
 		action,
 		menu,
+		back,
 	}: {
 		route: StoredRoute;
 		/** The shelf's card: the whole of it opens the route page. */
@@ -34,6 +35,8 @@
 		action?: Snippet;
 		/** The right-click and long-press menu, where the row has one. */
 		menu?: () => MenuEntry[];
+		/** The page the name is opened from, for the route page's back link. */
+		back?: string;
 	} = $props();
 
 	const chips = $derived(classChips(route.climbs));
@@ -53,7 +56,9 @@
 >
 	<div class="flex items-baseline gap-2">
 		<a
-			href="/workouts/routes/{route.id}"
+			href="/workouts/routes/{route.id}{back
+				? `?back=${encodeURIComponent(back)}`
+				: ''}"
 			class="font-display min-w-0 flex-1 truncate text-base font-bold hover:underline {card
 				? 'after:absolute after:inset-0'
 				: ''}">{route.name}</a

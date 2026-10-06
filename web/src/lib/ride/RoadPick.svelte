@@ -7,6 +7,7 @@
 	 * (#3671), with where to start as its own chips.
 	 */
 	import { untrack } from 'svelte';
+	import { page } from '$app/state';
 	import Banner from '$lib/components/Banner.svelte';
 	import RouteRow from '$lib/components/RouteRow.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
@@ -133,7 +134,7 @@
 		<ul class="grid gap-2" aria-label="your routes">
 			{#each routes as route (route.id)}
 				<li class="min-w-0">
-					<RouteRow {route}>
+					<RouteRow {route} back={page.url.pathname}>
 						{#snippet action()}
 							<!-- In /ride's card every control is 44 px (TARGETS
 							     ride-preride 7); beside a running free ride, the row's own. -->
