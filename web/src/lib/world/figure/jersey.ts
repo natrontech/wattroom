@@ -41,6 +41,7 @@ uniform float uTorso;
 uniform vec3 uJerseyB;
 uniform vec3 uJerseyC;
 const float DOT_M = 0.06; // metres between Gipfelpunkte's dots
+const float RAGLAN = 0.4; // how far down the side the shoulder seam runs: the collar at the top, the underarm at the side
 float inside(float d) { return 1.0 - aa(0.0, d); }
 vec3 jersey(vec3 a, float sp, vec3 pc) {
 	int p = int(uPattern + 0.5);
@@ -73,19 +74,27 @@ vec3 jersey(vec3 a, float sp, vec3 pc) {
 			// Dots laid out by arc length round the body, so they stay round where the torso narrows; they fade before the hem and the collar turn away.
 			float row = floor(pc.y / DOT_M);
 			float arc = u * 6.2831853 * length(pc.xz) / DOT_M + row * 0.5;
-			b = inside(length(vec2(fract(arc), fract(pc.y / DOT_M)) - 0.5) - 0.28) * smoothstep(-0.06, 0.02, v) * (1.0 - smoothstep(0.98, 1.04, v));
+			// A dot by the shoulder seam goes whole, judged at its row's middle, never sliced.
+			float vc = (row + 0.5) * DOT_M / uTorso;
+			b = inside(length(vec2(fract(arc), fract(pc.y / DOT_M)) - 0.5) - 0.28) * smoothstep(-0.06, 0.02, v) * step(vc + RAGLAN * min(abs(z), 1.0), 0.92);
+		}
+		// A raglan seam: from the collar down to the underarm the shoulder is plain, where the cloth turns into the armhole and a pattern would break up.
+		if (p != 1 && p != 8 && p != 11) {
+			float plain = inside(v + RAGLAN * min(abs(z), 1.0) - 0.92);
+			b *= plain;
+			c *= plain;
 		}
 	} else if (p == 1 || p == 7 || p == 8) b = 1.0; // the yoke's, the fade's top or the upper block's colour runs down the sleeve
 	else {
-		// Down the sleeve from the shoulder joint, at the torso's spacing; the cap over the shoulder keeps the main colour, so the two never cross.
+		// Down the sleeve from the shoulder joint, at the torso's spacing; the cap over the shoulder keeps the main colour, a seam with a clean edge.
 		float s = pc.x;
-		float arm = smoothstep(0.02, 0.06, s);
+		float arm = aa(0.0, s - 1.0 / 12.0); // the first hoop's end: the cap holds it whole
 		float hoop = inside(abs(fract(s * 6.0) - 0.25) - 0.25);
 		float stripe = inside(abs(fract(pc.y * 8.0) - 0.25) - 0.25);
 		if (p == 3) b = hoop;
 		else if (p == 5) b = stripe;
 		else if (p == 9) b = hoop + stripe - 2.0 * hoop * stripe;
-		else if (p == 11) b = inside(length(fract(vec2(pc.y * 4.0 + floor(s * 10.0) * 0.5, s * 10.0)) - 0.5) - 0.28);
+		else if (p == 11) b = inside(length(fract(vec2(pc.y * 4.0 + floor(s * 10.0) * 0.5, s * 10.0)) - 0.5) - 0.28) * step(2.0, floor(s * 10.0)); // the cap's rows go whole
 		b *= arm;
 	}
 	return mix(mix(a, uJerseyB, b), uJerseyC, c);
