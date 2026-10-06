@@ -249,7 +249,7 @@
 	--color-z4: light-dark(#04a37c, #06d6a0);
 	--color-z5: light-dark(#d97e00, #ffa62b);
 	--color-z6: light-dark(#e63c5b, #ff4d6d);
-	--color-z7: light-dark(#d9186f, #ff2e88);
+	--color-z7: light-dark(#ae0044, #e20843);
 }
 
 /* The structural line (#3420): a panel's frame, a divider, a section rule —
@@ -454,6 +454,14 @@ body {
  * Sizing and margin stay at the call site, like input. */
 @utility btn-link {
 	@apply text-muted hover:text-ink underline;
+}
+
+/* A text link that stands on its own line, not inside a sentence: 24 px tall
+ * (WCAG 2.2 SC 2.5.8, ux.md), where its 12–14 px type left 16–20. Beside
+ * btn-link or a hand-coloured link; an inline link in a sentence never takes
+ * it, because a box taller than the line would push the lines apart. */
+@utility link-standalone {
+	@apply inline-flex min-h-6 items-center;
 }
 
 /* Text field look. Width/margin at the call site. A refused field marks
@@ -772,6 +780,13 @@ input[type='range']::-moz-range-thumb {
 	border: 2px solid var(--color-surface);
 	border-radius: 50%;
 	background: var(--color-neon);
+}
+
+/* Inside a dialog a rider opens mid-ride, the hit box is ux.md's 44 px: the
+ * thumb and track stay as drawn, centred in it (#3748). The same faders on
+ * /settings/voice are a desk's and keep the 24 px floor above. */
+.riding input[type='range'] {
+	height: 2.75rem;
 }
 
 /* The voice gate's slider draws no track of its own: the mic meter IS its

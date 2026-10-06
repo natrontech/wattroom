@@ -1,0 +1,1 @@
+- The right-click and long-press menu is drawn flat, on the panel's own hairline, with no drop shadow.

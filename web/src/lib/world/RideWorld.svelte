@@ -13,7 +13,10 @@
 	 * The world in slot 2 (#3031, ADR-0066): the rider's ride on a road, drawn
 	 * behind the docked slots, built from the road this ride carries, with
 	 * your figure at the ride's own metre and nobody on it who is not there
-	 * (#3663). It reads the ride and writes nothing back — rendering never
+	 * (#3663); on a session's road, the bunch around you (#3098). Where it
+	 * drew everyone sits on the canvas as `data-riders`, a few times a
+	 * second, which is how two screens are checked against each other. It
+	 * reads the ride and writes nothing back — rendering never
 	 * drives the trainer. A world that will not start, or
 	 * stops, says why through `onfail`, and rideView() takes it from there
 	 * (#3080). A right-click on it offers the flat road.
@@ -25,6 +28,9 @@
 	import { routeOfRoad } from './road-route';
 	import { mount, type WorldScene } from './scene';
 	import type { RideMetre } from './sim';
+	import type { BunchView } from '$lib/channel/bunch-view';
+	import { account } from '$lib/account.svelte';
+	import { prefersReducedMotion } from '$lib/motion';
 	import { generate } from './world';
 	// The dev gallery's blue hour, until #3085 gives the ride its own look.
 	import { STYLES } from '../../routes/(app)/dev/world/styles';
@@ -32,7 +38,9 @@
 	let {
 		road,
 		metre,
+		bunch,
 		watts,
+		silent = false,
 		ftp,
 		paused = false,
 		onfail,
@@ -42,7 +50,11 @@
 		road: Road;
 		/** Where the ride has you on it, from its first sample. */
 		metre: () => RideMetre;
+		/** Everyone on the road with you, on a session's road. */
+		bunch?: () => BunchView | null;
 		watts: number;
+		/** The trainer is silent past SIGNAL_LOST_MS, the signal the panels read "—" from. */
+		silent?: boolean;
 		ftp: number;
 		/** A shared screen has the focus. */
 		paused?: boolean;
@@ -66,6 +78,24 @@
 					watts,
 					ftp,
 					metre,
+					bunch,
+					steady: () => prefersReducedMotion.current,
+					// Your kit is keyed by who you are, solo or in a bunch: the crew sees the one you see.
+					youId: account.me?.id,
+					// The theme's neon as the canvas resolves it, for the coach's chevron.
+					neon: getComputedStyle(canvas!).color,
+					// When, at what speed, and where: two screens read a moment apart still compare.
+					onTick: (hud) => {
+						canvas!.dataset.riders = JSON.stringify({
+							t: Date.now(),
+							mps: hud.kmh / 3.6,
+							riders: hud.riders.map((r) => ({
+								id: r.id,
+								d: Math.round(r.d * 10) / 10,
+								lane: Math.round(r.lane * 100) / 100,
+							})),
+						});
+					},
 					onFail: onfail,
 				});
 			} catch (err) {
@@ -81,6 +111,7 @@
 	});
 
 	$effect(() => scene?.setWatts(watts));
+	$effect(() => scene?.setSilent(silent));
 	$effect(() => scene?.hold('displaced', paused));
 	$effect(() => scene?.hold('shell', shellHidden));
 </script>
@@ -90,7 +121,7 @@
 	{@attach contextMenu(() => [
 		{ label: 'Ride the flat road on this device', onSelect: onflat },
 	])}
-	class="block h-full w-full"
+	class="text-neon block h-full w-full"
 	class:invisible={paused}
 	aria-hidden="true"
 ></canvas>

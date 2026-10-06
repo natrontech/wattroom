@@ -6,6 +6,7 @@ import { createPace, type Pace } from '$lib/road/pace';
 import { type Route } from '$lib/road/route';
 import { at } from '$lib/road/along';
 import { damp } from '$lib/motion/damp';
+import type { CheerLook } from './cheer';
 
 // What the trainer is told. Zwift's default "trainer difficulty" halves the
 // grade so a 12 % ramp does not stall a rider on a direct-drive; descents
@@ -32,6 +33,20 @@ export type SimRider = {
 	into: number;
 	/** How a stand-in rides: its watts on this grade at this time. Only the dev gallery has them. */
 	ride?: (r: SimRider, grade: number, t: number) => number;
+	/** Metres left of the road's middle, from the bunch's formation (#3098); absent, crew.ts spreads riders abreast. */
+	lane?: number;
+	/** 0–1: below 1 the figure is dithered, arriving, leaving or landing somewhere new. */
+	alpha?: number;
+	/** Joined, but their screen has gone: drawn in greys. */
+	faded?: boolean;
+	/** The session's coach: wears the chevron. */
+	coach?: boolean;
+	/** Their live zone as a ring; false leaves anyone's but yours to #3086. */
+	ring?: boolean;
+	/** Their trainer has gone quiet past SIGNAL_LOST_MS (#3766): the ring drops its zone and the trail stops, as the panels' numbers read "—". */
+	silent?: boolean;
+	/** A cheer for them, as it looks this frame (#3116). */
+	cheer?: CheerLook | null;
 };
 
 export type Env = { difficulty: number };

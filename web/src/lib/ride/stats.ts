@@ -74,6 +74,23 @@ export function rideXp(kj: number, execution: number): number {
 }
 
 /**
+ * What a ride earned, as the closing card and the ride page must both say it
+ * (#3753): the formula's total until the save answers, the saved ride's own
+ * XP after. `extra` is what the server added to the formula — the streak
+ * bonus — or took off it, past a day's ceiling.
+ */
+export function xpLines(
+	kj: number,
+	execution: number,
+	saved?: number,
+): { total: number; extra: number } {
+	const formula = rideXp(kj, execution);
+	return saved === undefined
+		? { total: formula, extra: 0 }
+		: { total: saved, extra: saved - formula };
+}
+
+/**
  * The ride as one SVG path against the FTP line (#1559): peak watts per
  * bucket, one point per bucket so a two-hour ride is under 300 nodes, the
  * top of the box the higher of 1.2 × FTP and the ride's own peak. Null when

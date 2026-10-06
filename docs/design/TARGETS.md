@@ -33,7 +33,7 @@ The v2 mock's route starts in an invented village, Stollmatt, and says nothing o
 - **Structure is the bar.** Compare proportion, grouping, alignment, hierarchy, what sits where, and what is absent. A size the mock happens to draw is not the bar; sizes come from docs/SPEC.md. **A pixel number written into a must-match item is the bar, within ±4 px.**
 - **Ignore the mock's data.** The Gurnigel loop, Mia and 258 W are illustrations. The capture rides other data, so compare structure.
 - **The capture's data is the fixtures'.** Its roads are `web/e2e/road-gpx.ts`, seeded by `web/e2e/design/seed.ts`:
-  - `<hairpin>` is “Design switchbacks”: a 1 km approach at 3 %, then eight legs at 8.8 % joined by seven hairpins. The app reads it as 7.1 km · 563 m, one class II climb, with the first hairpin about 1.7 km in.
+  - `<hairpin>` is “Design hairpins”: a 1 km approach at 3 %, then eight legs at 8.8 % joined by seven hairpins. The app reads it as 7.1 km · 563 m, one class II climb, with the first hairpin about 1.7 km in.
   - `<rolling>` is “Design rolling”: 7.5 km · 237 m, two class IV climbs.
   An item that quotes a fixture's number takes it from a capture, never from memory. When a fixture changes, the items that quote it change in the same PR.
 - **Targets are drawn dark.** Desk surfaces are compared on a dark capture, and a light capture must hold the same layout. Riding surfaces are always dark.
@@ -57,7 +57,7 @@ Canon beats the target, and the target beats today's app. Canon is WATTROOM.md, 
   - Desk: watts ≥ 104 px, time left ≥ 72 px, secondary numbers ≥ 36 px, words and labels ≥ 24 px.
   - TV: 12 / 9 / 5 / 3 vh, and nothing under 2.9vh.
   - The mocks' 11–21 px labels sit under that floor. Where a mock's proportions cannot hold SPEC's sizes, the panel grows, never into the keep-clear corridor.
-  - SPEC has no phone row and no HUD row yet. design/ride-phone and design/ride-hud each propose one in their PR, derived from ADR-0071's arcminutes at a design distance they state. Until then, their items are relative (“the largest number on the screen”).
+  - SPEC has no phone row yet. design/ride-phone proposes one in its PR, derived from ADR-0071's arcminutes at a design distance it states; until then, its items are relative (“the largest number on the screen”). The HUD's row is SPEC's HUD column (#3678).
 - **D2. Slot 3's pages are ADR-0071's closed set:** RIDE, CLIMB, POWER, MAP (on a road), and later RACE. v2-erg's “Workout” tab is not a page. v2-ride's separate climb card is the CLIMB page.
 - **D3. A capable phone may draw the world.** ADR-0066 keys this on capability, never on width, which supersedes v2-phone's “never renders 3D”.
 - **D4. The world's look comes from the realism renders.** The v2/v3 mocks draw the prototype clay rider on a near-black road. The world is held to `world-*.jpg`, ADR-0072 and ADR-0073; v2/v3 stay the bar for layout.
@@ -443,7 +443,7 @@ Every surface id below is also in `docs/design/surface-map.json`, which maps the
 
 #### ride-session-road
 
-**Capture:** two dev riders (Designer and a second rider whose name is letters only) in one crew's voice channel, riding a session on the hairpin road with the world on, a sprint armed and the jukebox seated. The mixer is muted.
+**Capture:** two dev riders (Designer and a second rider whose name is letters only) in one crew's voice channel, riding a session on the hairpin road with the world on, a sprint armed and the jukebox seated. The mixer is muted. Then `ride-session-cheer-menu` and `ride-session-cheer`: the coach cheers the second rider from their crew tile's menu, captured while the thumb shows.
 
 **Targets:** v2-ride (the bunch panel, the moment card, the seat); v2-erg.
 
@@ -457,6 +457,11 @@ Every surface id below is also in `docs/design/surface-map.json`, which maps the
    - never in the lower half of the corridor.
    [3086-names-ring]
 5. A crewmate's ring shows only where you may see their numbers (ADR-0059). [3086-names-ring]
+6. Both riders are in the world: two figures abreast on the road, each in its own kit, neither overlapping the other, and your figure still in `RIDER_BOX`. [#3098]
+7. The session's coach — here, you — wears a small violet chevron over the head: flat, unlit, and the only one on the road. [#3098]
+8. The formation, the front row's turn every 120 s, a far rider dithering to their place, the pull-over and the team car hold as SPEC “Riding a road together” says. [test:web/src/lib/world/bunch.test.ts] [#3098]
+9. Each screen draws each rider where the other screen does, within 1 m along the road and across it. [test:web/e2e/bunch-world.spec.ts] [#3098]
+10. A cheer for one rider, sent from their crew tile's menu, draws a thumbs-up over that rider's head: a light disc with a dark thumb, flat and unlit, clear of the chevron. Their tail light blinks at 2 Hz for 10 s, in amber, which is neither danger's red nor any watt. Under reduced motion the light holds steady. Nothing about it glows. [multi:ride-session-cheer] [test:web/src/lib/world/ride-scene.test.ts] [#3116]
 
 #### ride-session-flat
 
@@ -627,6 +632,7 @@ Every surface id below is also in `docs/design/surface-map.json`, which maps the
 1. Two loads of the same URL give an identical frame. [world-moment] [multi:world-start-twice]
 2. With `chrome=0`, no dev chrome shows. [world-moment]
 3. At p=0 there are no stars. At p=1, stars show only in the dark upper sky, never in the peach band, and the light is visibly darker. [3085-ride-light]
+4. The dressing streams with the ground, and a held moment draws all of it within the far ring from its first frame: the trees, buildings and roadside pieces a ride would meet there, with no gap where a tile is still to come. [#3699] [multi:world-start-twice]
 
 ### C. Roads library (desk)
 
@@ -903,6 +909,31 @@ Every surface id below is also in `docs/design/surface-map.json`, which maps the
 5. The ROAD row is gone. A collapsed “Advanced” at the panel's foot holds World: Full · Steady · Light · Flat, each with ADR-0079's line. [3214-world-control]
 6. Under reduced motion, Flat is chosen, with one “Show the world (steady camera)” button. [3214-world-control] [multi:reduced-motion]
 7. Hints are one muted line: right of the row at ≥ 1024 px, below it on a phone. Nothing scrolls sideways. [appearance]
+
+#### settings-this-computer
+
+**Capture:** `/settings/notifications`, the whole page body, with a stand-in desktop bridge: as macOS (`settings-this-computer`), as Linux with the tray icon on (`-linux`) and off (`-linux-off`), on a phone as macOS (`-phone`), and in a plain browser (`-browser`). In both schemes.
+
+**Target:** none drawn. The bar is the Settings kit, ux.md's capability gating and ADR-0037's #3843 amendment.
+
+**Must match**
+1. "This computer" is one panel after the other Notifications sections, on the column's left edge. A plain browser shows no such panel. [3843] [multi:browser]
+2. Each switch is one row: a checkbox on the label's first line and one muted hint under the label. Every row's checkbox starts at the same x. [3843]
+3. The tray row names the platform's place: "Show WattRoom in the menu bar" on macOS, "in the system tray" on Linux. It is unticked on macOS and ticked on Linux by default. [3843] [multi:linux]
+4. With the icon off on Windows or Linux, the launch-at-login hint says WattRoom opens when you sign in and names no tray. [3843] [multi:linux-off]
+5. Nothing glows, and nothing scrolls sideways at 375 px. [3843]
+
+#### sound-dialog
+
+**Capture:** a voice channel at 1440 × 900, the sidebar's Sound button, the dialog open without a call, at the top (`sound-dialog`) and scrolled to its foot (`sound-dialog-bottom`); then `/settings/voice`, the whole page body. In both schemes. Both dialog shots carry `dialogTargets` in their probe JSON: every slider's and Done's height, each select's x and width, and the dialog's scrollHeight against clientHeight.
+
+**Target:** none drawn. The bar is ux.md's tap-target rule and the dialog's own line, “the levels you reach for mid-ride”.
+
+**Must match**
+1. The five faders, the gate slider and Done have hit boxes ≥ 44 px tall (`btn-lg` for Done); the thumb and track keep their drawn size, centred in the box. [3748] [probe:dialogTargets]
+2. The device row is one column of full-width selects: no label wraps, none truncates to a stub, and the three selects line up. [3748] [probe:dialogTargets]
+3. `/settings/voice` draws the same faders at the 24 px desk floor, not 44. It does not grow with the dialog. [3748]
+4. Nothing in the dialog glows, and it scrolls inside the window at 1440 × 900 rather than clipping Done. [3748] [probe:dialogTargets]
 
 #### landing
 

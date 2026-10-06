@@ -7,6 +7,8 @@ import { referenceSpeed } from '$lib/road/pace';
 import { noise2, prng } from './rand';
 import type { Route } from '$lib/road/route';
 
+const smoothstep = THREE.MathUtils.smoothstep;
+
 export type Peaks = { hero: number; second: number; share: number }; // radians (heading convention), share of riding time
 
 // Which way does the camera look, weighted by how long you ride that way?
@@ -16,10 +18,13 @@ export function bearings(route: Route): Peaks {
 	for (let i = 0; i < route.x.length - 1; i++) {
 		const v = referenceSpeed(route.grade[i]);
 		const dt = route.step / Math.max(1, v);
-		const h = Math.atan2(
+		// atan2 answers in (−π, π] and the bins sit in [0, 2π): one range, or a
+		// westward heading is counted toward bins up to 80° away.
+		let h = Math.atan2(
 			route.x[i + 1] - route.x[i],
 			route.z[i + 1] - route.z[i],
 		);
+		if (h < 0) h += Math.PI * 2;
 		for (let b = 0; b < 36; b++) {
 			let d = Math.abs(h - (b * Math.PI) / 18);
 			d = Math.min(d, Math.PI * 2 - d);
@@ -91,10 +96,13 @@ export function backdrop(
 			base + y,
 			Math.cos(a) * R,
 		]; // heading convention: 0 = +z
+		// Blended over a height band, not switched at a line: a switch inside
+		// one quad draws a vertical seam wherever a ridge crosses the line.
 		const c = (y: number) => {
-			const t =
-				y > snowline && snow ? snowC : y > snowline * 0.62 ? rock : ridge;
-			const out = t.clone().lerp(fog, ring.fog);
+			const out = ridge.clone();
+			out.lerp(rock, smoothstep(y, snowline * 0.5, snowline * 0.74));
+			if (snow) out.lerp(snowC, smoothstep(y, snowline * 0.8, snowline * 1.2));
+			out.lerp(fog, ring.fog);
 			return [out.r, out.g, out.b];
 		};
 		// two bands per segment: flank (ridge colour) and crown (rock, or snow above the snowline)

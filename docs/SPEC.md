@@ -982,9 +982,11 @@ A rider's bias never moves the bunch.
 | Offset decay         | τ **20 s**                                                                                              |
 | Offset clamp         | **−10 … +25 m** while pedalling                                                                         |
 | Resting              | a rider silent past **10 s** (the virtual-speed rule) coasts back to **−40 m** and is marked Resting    |
-| Team-car tow back    | **20 s**                                                                                                |
+| Team-car tow back    | **20 s**; only in bunch rides and ERG sessions — never in a race, a game or a timeable effort; a towed rider gives no shelter |
+| Formation            | rows of Drafting's lanes, filled in the order riders joined, centred on the bunch's metre (#3098)       |
 | Front row            | rotates every **120 s** of elapsed time                                                                 |
-| Client snap          | eases at **25 m** off over **5 s**; relaxes to **0 %** grade at **1 %/s** after **5 s** of dead reckoning |
+| Lanes                | a critically damped spring with a **0.6 s** half-life (#3098)                                           |
+| Client snap          | within **25 m** of their place a rider eases there over **5 s**; further, they dither out (**200 ms**) and back in (**300 ms**) there, never sliding through others (#3098); relaxes to **0 %** grade at **1 %/s** after **5 s** of dead reckoning |
 | Late join            | a **3 s** drop-off                                                                                      |
 | KOM sprints          | open **300 m** before the top of a class **III** climb or harder; at most one per **5 min**, **6** per ride |
 | Terrain Match        | **250 m** step; penalty weight **0.3**; suggestion floor **0.2**                                        |
@@ -1178,14 +1180,20 @@ PgUp / PgDn are Harder / Easier, never a page.
 **Legibility**, at the design distance — desk: **0.8 m** from a **14-inch**
 laptop; TV: **3 m** from a **55-inch** set:
 
-| Text                  | At least      | TV       | Desk       |
-| --------------------- | ------------- | -------- | ---------- |
-| Watts                 | **45 arcmin** | **12vh** | **104 px** |
-| Time left             | **45 arcmin** | **9vh**  | **72 px**  |
-| Secondary numbers     | **22 arcmin** | **5vh**  | **36 px**  |
-| "Next", labels, words | **16 arcmin** | **3vh**  | **24 px**  |
+| Text                  | At least      | TV       | Desk       | HUD      |
+| --------------------- | ------------- | -------- | ---------- | -------- |
+| Watts                 | **45 arcmin** | **12vh** | **104 px** | **12vh** |
+| Time left             | **45 arcmin** | **9vh**  | **72 px**  | **9vh**  |
+| Secondary numbers     | **22 arcmin** | **5vh**  | **36 px**  | **5vh**  |
+| "Next", labels, words | **16 arcmin** | **3vh**  | **24 px**  | **3vh**  |
 
-Nothing on the TV is smaller than **2.9vh**. Panels are at least **85 %**
+Nothing on the TV is smaller than **2.9vh**. **The HUD's design distance**
+is a **second screen 1.3 m away, a 24-inch monitor**, the `/hud` tab of
+[ADR-0041](decisions/0041-the-hud-mirrors-the-riding-screen.md). A screen
+height subtends the same angle there as a 55-inch TV does at 3 m, so a vh
+reads the same, and the HUD takes the TV's column. It holds that in any
+landscape window. The shell's own 320 × 132 window is the floor the block
+never shrinks below ([#3678](https://github.com/natrontech/wattroom/issues/3678)). Panels are at least **85 %**
 opaque; a unit is at most half its number's size. The big watts figure is a
 **3 s** average; scoring still reads every second.
 

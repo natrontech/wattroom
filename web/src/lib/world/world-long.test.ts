@@ -20,6 +20,8 @@ let world: World;
 beforeAll(() => {
 	route = toRoute(longLoopPoints());
 	world = generate(route);
+	// The whole corridor's ground, as the diorama builds it: what this loop keeps honest.
+	void world.mesh;
 }, 60_000);
 
 describe('a world around a 124 km loop', () => {

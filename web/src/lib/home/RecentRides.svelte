@@ -3,7 +3,7 @@
 	// ride's own page (#1331), and the list links to the rest.
 	import { contextMenu, MENU_HINT } from '$lib/context-menu.svelte';
 	import { formatWhen } from '$lib/format';
-	import type { ServerRide } from '$lib/ride/list';
+	import { NO_RIDES_YET, type ServerRide } from '$lib/ride/list';
 	import { rideRowMenu } from '$lib/ride/row-menu';
 
 	let {
@@ -23,7 +23,7 @@
 	<section>
 		<h2 class="eyebrow">Recent rides</h2>
 		<p class="text-muted mt-2 text-sm">
-			No rides yet — every ride you finish lands here.
+			{NO_RIDES_YET}
 			<a href="/workouts" class="btn-link">Ride solo</a>
 		</p>
 	</section>
@@ -31,7 +31,9 @@
 	<section>
 		<div class="flex items-baseline gap-3">
 			<h2 class="eyebrow">Recent rides</h2>
-			<a href="/history" class="btn-link ml-auto text-xs">All rides →</a>
+			<a href="/history" class="btn-link link-standalone ml-auto text-xs"
+				>All rides →</a
+			>
 		</div>
 		<ul class="panel panel-flush divide-ink/5 mt-3 divide-y">
 			<!-- The same ride carries Share and Delete on /history (#2171): the
@@ -49,11 +51,13 @@
 						<span class="text-muted w-24 shrink-0 text-xs"
 							>{formatWhen(ride.startedAt)}</span
 						>
-						<span class="min-w-0 flex-1 truncate">
-							{Math.round(ride.seconds / 60)} min
-						</span>
+						<span class="font-display min-w-0 flex-1 truncate font-bold"
+							>{ride.workoutName}</span
+						>
 						<span class="text-muted shrink-0 text-xs tabular-nums"
-							>{Math.round(ride.kj).toLocaleString()} kJ</span
+							>{Math.round(ride.seconds / 60)} min · {Math.round(
+								ride.kj,
+							).toLocaleString()} kJ</span
 						>
 					</a>
 				</li>

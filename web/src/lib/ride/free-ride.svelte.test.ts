@@ -162,6 +162,31 @@ describe('recording a free ride', () => {
 		expect(await free.end()).toEqual({ short: true });
 		expect(uploads).toHaveLength(0);
 	});
+
+	// #3762: the card after End ride reads what was ridden, not 0:00.
+	it('keeps the time it ended on, saved or let go', async () => {
+		const free = createFreeRide({ ftp: () => 200 });
+		free.arm();
+		for (let i = 0; i < 59; i++) free.second(pedal);
+		await free.end();
+		expect(free.recording).toBe(false);
+		expect(free.seconds).toBe(59);
+		free.arm();
+		for (let i = 0; i < 60; i++) free.second(pedal);
+		await free.end();
+		expect(free.seconds).toBe(60);
+	});
+
+	it('starts the next ride on a clock of its own', async () => {
+		const free = createFreeRide({ ftp: () => 200 });
+		free.arm();
+		for (let i = 0; i < 60; i++) free.second(pedal);
+		await free.end();
+		free.arm();
+		expect(free.seconds).toBe(0);
+		free.second(pedal);
+		expect(free.seconds).toBe(1);
+	});
 });
 
 // #3027: the road is an attribute of the free ride. A hand-written road,

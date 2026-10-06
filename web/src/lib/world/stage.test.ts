@@ -24,6 +24,8 @@ let w: Composed;
 beforeAll(() => {
 	route = toRoute(syntheticPoints());
 	const world = generate(route);
+	// The eye rides the whole loop: every tile it settles, settled up front (#3699).
+	void world.everything;
 	w = compose(
 		{ route, world, style: STYLES[0], ftp: 250, grids: pageGrids(world) },
 		null,

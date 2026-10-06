@@ -161,10 +161,16 @@
 		{/if}
 
 		<div class="mt-4 grid gap-4 sm:grid-cols-[2fr_3fr]">
-			{#if shape}
-				<RouteShape x={shape.x} z={shape.z} />
+			{#if shape || shapeNote}
+				<RouteShape
+					x={shape?.x}
+					z={shape?.z}
+					climbs={route.climbs}
+					length={road?.length}
+					note={shapeNote ?? undefined}
+				/>
 			{:else}
-				<p class="text-muted text-xs">{shapeNote ?? ''}</p>
+				<Skeleton class="h-[220px] sm:h-[280px]" />
 			{/if}
 			{#if road}
 				<RouteProfile {road} climbs={route.climbs} />

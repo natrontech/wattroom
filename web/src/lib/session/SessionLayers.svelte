@@ -312,6 +312,7 @@
 			ftp={card.ftp}
 			execution={card.execution}
 			medal={summary.medal}
+			savedXp={summary.rideXp}
 			{placeName}
 			riders={card.riders}
 		>

@@ -1440,6 +1440,12 @@ export interface Cheer {
    * Sender name, filled by the server: cheering is presence.
    */
   from?: string;
+  /**
+   * The rider it is for (#3116): a thumbs-up over their head in the world
+   * and their tail light flickering, nothing more. Someone else in this
+   * voice channel, or the cheer drops; empty, it is everyone's.
+   */
+  to?: string;
 }
 /**
  * Board is one rider firing a pad on their soundboard (#877, ADR-0033). The
@@ -2121,6 +2127,12 @@ export interface World {
    * together"), by rider id.
    */
   resting?: string[];
+  /**
+   * The joined riders in the order they joined the bunch, those who joined
+   * in one second by id (#3098): the formation's slots, so every screen
+   * draws one bunch and a late joiner rides in at its back.
+   */
+  order?: string[];
   /**
    * Each racer's own place in a race (#3032, ADR-0067), by rider id: a
    * race rides no shared bunch. Races only.

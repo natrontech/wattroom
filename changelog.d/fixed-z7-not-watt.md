@@ -1,0 +1,1 @@
+- Outrun's hardest-effort colour (Zone 7) is no longer a near-twin of the live-data magenta: a sprint bar now reads as deep crimson, not as live watts. Miami's Zone 6 and Tron Ice's Zone 3, which sat just as close to their watt colour, moved off it too.

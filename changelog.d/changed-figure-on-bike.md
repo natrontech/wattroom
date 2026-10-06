@@ -1,0 +1,1 @@
+- The world draws every rider as a dressed figure on a road bike — helmet, kit, drop bars and spoked wheels — instead of the clay rider. Legs turn at the rider's cadence, and riders sit or stand by their effort.

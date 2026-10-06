@@ -201,3 +201,24 @@ func TestWattGolfWithholdsTheOffsets(t *testing.T) {
 		t.Fatalf("with the meter hidden the tick carries %+v, want the bunch moving and no offsets", w)
 	}
 }
+
+// The formation's order (#3098): the riders who joined in one second by id,
+// and a late joiner after everyone already in it, wherever their id sorts.
+func TestTheOrderIsWhoJoinedFirst(t *testing.T) {
+	at := time.Unix(1_700_000_000, 0)
+	b := newBunch(&flatRoad, at)
+	joined := map[string]struct{}{"mia": {}, "ben": {}, "tom": {}}
+	ride := func() {
+		at = at.Add(time.Second)
+		b.ride(at, true, joined, func(time.Time) planned { return planned{pct: 0.75} })
+	}
+	ride()
+	if got := b.world(false).Order; !slices.Equal(got, []string{"ben", "mia", "tom"}) {
+		t.Fatalf("the first second's riders in %v, want by id", got)
+	}
+	joined["abe"] = struct{}{}
+	ride()
+	if got := b.world(true).Order; !slices.Equal(got, []string{"ben", "mia", "tom", "abe"}) {
+		t.Fatalf("with a late joiner, %v; want them last, and the order kept while the meter hides", got)
+	}
+}

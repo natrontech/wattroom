@@ -5,7 +5,6 @@
 	// (#3672) it draws that one frame and holds it, with or without its
 	// controls, and in a dev build window.__worldProbe() reports what the
 	// frame drew — how a design capture measures the world.
-	import { FAMILY } from './props/batch';
 	import { onMount, untrack } from 'svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import Profile from './Profile.svelte';
@@ -296,11 +295,7 @@
 			{/if}
 			<p class="text-muted m-0 text-xs sm:text-right">
 				{world.names.pass} ({Math.round(route.maxEle)} m) under the {world.names
-					.peak} · {route.name} up · built in {Math.round(built.ms)} ms · {world.props.filter(
-					(p) => p.kind === 'spruce' || p.kind === 'broadleaf',
-				).length}
-				trees, {world.props.filter((p) => FAMILY[p.kind] === 'buildings')
-					.length} houses
+					.peak} · {route.name} up · built in {Math.round(built.ms)} ms
 			</p>
 			<p class="text-muted m-0 text-xs sm:text-right">
 				A GPX you load stays in this tab. Everything beside the road is

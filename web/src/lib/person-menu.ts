@@ -14,6 +14,7 @@ import GlassWater from '@lucide/svelte/icons/glass-water';
 import MessageSquare from '@lucide/svelte/icons/message-square';
 import MessageSquareMore from '@lucide/svelte/icons/message-square-more';
 import ShieldBan from '@lucide/svelte/icons/shield-ban';
+import ThumbsUp from '@lucide/svelte/icons/thumbs-up';
 import User from '@lucide/svelte/icons/user';
 import UserPlus from '@lucide/svelte/icons/user-plus';
 import Volume2 from '@lucide/svelte/icons/volume-2';
@@ -77,7 +78,9 @@ function riderVolume(id: string, name: string): MenuSlider {
  *
  * A bottle is a poke's sibling from the roadside (#3022), and lands only on a
  * rider riding the session in the channel you share — the hub's own rule, so
- * the entry is never one that would be refused.
+ * the entry is never one that would be refused. A cheer for them goes with
+ * it (#3116): the world draws it over their head, so only a rider on the
+ * road gets one.
  */
 function pokeItems(
 	id: string,
@@ -94,6 +97,11 @@ function pokeItems(
 						label: 'Hand up a bottle',
 						icon: GlassWater,
 						onSelect: () => live.bottle(id),
+					},
+					{
+						label: `Cheer ${beside.name}`,
+						icon: ThumbsUp,
+						onSelect: () => live.cheer('thumbs-up', id),
 					},
 				]
 			: [];

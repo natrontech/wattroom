@@ -29,6 +29,7 @@ import {
 	worst,
 	worstLc,
 	zoneFloor,
+	ZONE_WATT_MIN_GAP,
 } from './gate';
 import {
 	DEFAULT_CHOICE,
@@ -267,6 +268,17 @@ describe('the APCA report', () => {
 		for (const theme of THEMES)
 			for (const c of contrastChecks(theme))
 				expect(c.passes, `${theme.id} ${c.id}`).toBe(c.value >= c.floor);
+	});
+
+	it('holds every zone off the watt colour, Outrun dark Z7 first', () => {
+		// #3754: Z7 sat 0.015 from watt, so a sprint bar read as live data.
+		for (const id of ['outrun', 'outrun-day']) {
+			const check = gateChecks(themeById(id)!, THEMES).find(
+				(c) => c.id === 'z7-watt-delta',
+			)!;
+			expect(check.passes, `${id} z7 vs watt at ${check.value}`).toBe(true);
+			expect(check.floor).toBe(ZONE_WATT_MIN_GAP);
+		}
 	});
 
 	/**

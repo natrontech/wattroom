@@ -435,7 +435,7 @@
 			bind:this={drawerBox}
 			inert={device.narrow && !navDrawer.open}
 			class="fixed inset-y-0 left-0 z-50 shrink-0 transition-transform duration-(--dur-base) md:static md:z-auto md:translate-x-0 {navDrawer.open
-				? 'translate-x-0 shadow-2xl'
+				? 'translate-x-0'
 				: '-translate-x-full'}"
 			style={titleBar ? `top: ${titleBar}px` : ''}
 		>

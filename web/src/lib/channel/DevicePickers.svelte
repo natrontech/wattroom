@@ -11,6 +11,7 @@
 		camId = '',
 		outId = '',
 		canPickOutput = false,
+		stacked = false,
 		onDevice,
 		onName,
 	}: {
@@ -23,6 +24,9 @@
 		camId?: string;
 		outId?: string;
 		canPickOutput?: boolean;
+		/** One column, for a dialog too narrow for three: the labels and the
+		 * selects stay on one line each, and line up. */
+		stacked?: boolean;
 		onDevice?: (kind: 'mic' | 'cam' | 'out', id: string) => void;
 		/** With no call there is no mic test or join to name the devices; this
 		 * grants the mic once so the names show. */
@@ -30,7 +34,7 @@
 	} = $props();
 </script>
 
-<div class="grid gap-4 sm:grid-cols-3">
+<div class="grid gap-4 {stacked ? '' : 'sm:grid-cols-3'}">
 	<label class="block">
 		<span class="eyebrow">microphone</span>
 		<div class="mt-1">

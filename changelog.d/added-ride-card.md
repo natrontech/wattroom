@@ -1,0 +1,1 @@
+- /ride opens on a Ride card: choose Free ride or Workout, then the road it rides — your last road comes back by itself, with where to start and how the grade will feel — and a free ride on one of your roads now starts right there. The page fills the window instead of a narrow centred column.
