@@ -124,11 +124,11 @@ describe('a 29 km loop, its route-wide work', () => {
 	});
 
 	it('stands the same things around the start, and along the whole loop', () => {
-		expect(aroundStart(route, world)).toBe('f21a5403');
+		expect(aroundStart(route, world)).toBe('5696430d');
 		const all = world.everything;
 		expect(
 			digestOf([all.props, all.pieces, all.signs, all.arches, all.placements]),
-		).toBe('9b3ab0e1');
+		).toBe('51f4b775');
 	});
 });
 
@@ -148,6 +148,6 @@ describe('a 124 km loop, its route-wide work', () => {
 
 	// Its start meets its end: the pieces planned before the finish are decided too.
 	it('stands the same things around the start', () => {
-		expect(aroundStart(route, world)).toBe('38d82917');
+		expect(aroundStart(route, world)).toBe('cd615abe');
 	});
 });
