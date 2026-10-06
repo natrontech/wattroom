@@ -15,8 +15,9 @@ import { BUILD_MS, longLoopPoints } from './world.test-helper';
  * Each digest below was taken on main before that work and is held here
  * byte for byte — the set pieces' plan is spaced by the riding clock and
  * dressed around the villages, so a last bit that moved moves a bench. They
- * were retaken once, for #3832: a road's ends keep their grade now, so the
- * riding clock and what hangs on it moved; nothing else has moved them since.
+ * were retaken for #3832: a road's ends keep their grade now, so the
+ * riding clock and what hangs on it moved; and for #3675, whose forest
+ * frames the road.
  *
  * The two horizon digests are the exception: they were re-taken when a
  * westward heading stopped counting toward bins up to 80° away (#3829),
@@ -123,7 +124,7 @@ describe('a 29 km loop, its route-wide work', () => {
 	});
 
 	it('stands the same things around the start, and along the whole loop', () => {
-		expect(aroundStart(route, world)).toBe('e0d6504b');
+		expect(aroundStart(route, world)).toBe('f21a5403');
 		const all = world.everything;
 		expect(
 			digestOf([all.props, all.pieces, all.signs, all.arches, all.placements]),
@@ -147,6 +148,6 @@ describe('a 124 km loop, its route-wide work', () => {
 
 	// Its start meets its end: the pieces planned before the finish are decided too.
 	it('stands the same things around the start', () => {
-		expect(aroundStart(route, world)).toBe('a44b3aa6');
+		expect(aroundStart(route, world)).toBe('38d82917');
 	});
 });

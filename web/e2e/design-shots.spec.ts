@@ -86,6 +86,8 @@ async function page(
 // ─── A. Riding surfaces ──────────────────────────────────────────────────
 
 surface('ride-road-world', async (s) => {
+	// Four rides and a minute of road outlast the default five minutes.
+	test.setTimeout(600_000);
 	for (const [device, name] of [
 		[DESK, 'ride-road-world'],
 		[DESK_720, 'ride-road-world-1280'],
