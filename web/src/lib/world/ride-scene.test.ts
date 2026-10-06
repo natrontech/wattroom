@@ -1,8 +1,9 @@
 // @vitest-environment happy-dom
 import * as THREE from 'three';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { at, leftOf } from '$lib/road/along';
 import { legsRoad } from '$lib/road/fixtures';
+import { ROADSIDE_SOUNDS_PER_MINUTE, roadsideSound } from '$lib/roadside';
 import { RIDER_BOX } from '$lib/session/docks';
 import { STYLES } from '../../routes/(app)/dev/world/styles';
 import { VERGE_LANE } from './bunch';
@@ -295,7 +296,8 @@ describe('a ride’s world', () => {
 		expect(steady(10.1).light).toEqual([]);
 	});
 
-	it('stands a rider a game put out on the verge ahead, and rings the cowbell as the bunch rides by (#3114)', () => {
+	/** Backyard Ramp with b put out at 300 m; `ride(s)` rides s seconds, a tick a second at 8 m/s, drawn at 30 fps. */
+	function backyardRide() {
 		let tick = { m: 300, s: 0 };
 		const cues: string[] = [];
 		let hud: Hud | null = null;
@@ -328,21 +330,40 @@ describe('a ride’s world', () => {
 			},
 			null,
 		);
-		// A tick a second at 8 m/s, drawn at 30 frames a second.
-		const b = () => hud!.riders.find((r) => r.id === 'b')!;
-		for (let k = 1; k <= 30; k++) {
-			if (k % 30 === 0) tick = { m: tick.m + 8, s: tick.s + 1 };
-			w.advanceBy(1 / 30);
+		const ride = (seconds: number) => {
+			for (let k = 1; k <= seconds * 30; k++) {
+				if (k % 30 === 0) tick = { m: tick.m + 8, s: tick.s + 1 };
+				w.advanceBy(1 / 30);
+			}
+		};
+		return { w, cues, ride, b: () => hud!.riders.find((r) => r.id === 'b')! };
+	}
+
+	it('rings the cowbell under the roadside ceiling: with the minute’s sounds spent, the bunch passes in silence (#3114)', () => {
+		// An hour back, so the page's one ceiling, rung out by the crowd there,
+		// has forgotten it when the clock returns for the next test.
+		vi.setSystemTime(Date.now() - 3_600_000);
+		try {
+			for (let i = 0; i < ROADSIDE_SOUNDS_PER_MINUTE; i++)
+				roadsideSound(Date.now());
+			const { w, cues, ride } = backyardRide();
+			ride(41);
+			expect(cues).toEqual([]);
+			w.dispose();
+		} finally {
+			vi.useRealTimers();
 		}
+	});
+
+	it('stands a rider a game put out on the verge ahead, and rings the cowbell as the bunch rides by (#3114)', () => {
+		const { w, cues, ride, b } = backyardRide();
+		ride(1);
 		const stand = b().d;
 		// No hairpin on this road within 5 km: 300 m ahead of where they went out.
 		expect(stand).toBeCloseTo(300 + 300, 0);
 		expect(b().lane).toBeCloseTo(VERGE_LANE, 2);
 		expect(cues).toEqual([]);
-		for (let k = 1; k <= 40 * 30; k++) {
-			if (k % 30 === 0) tick = { m: tick.m + 8, s: tick.s + 1 };
-			w.advanceBy(1 / 30);
-		}
+		ride(40);
 		// Ridden past once: one ring.
 		expect(cues).toEqual(['cowbell']);
 		w.dispose();

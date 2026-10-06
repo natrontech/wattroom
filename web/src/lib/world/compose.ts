@@ -6,6 +6,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createBunch, type Car } from './bunch';
 import { CHEER_S, cheerLook } from './cheer';
 import { makeGameRoad, type GameRoad } from './game-road';
+import { roadsideSound } from '$lib/roadside';
 import { makeCrew, type Crew, type Pedalling } from './crew';
 import type { BunchView } from '$lib/channel/bunch-view';
 import { DEFAULT_DARK_ID, themeById } from '$lib/themes';
@@ -251,7 +252,8 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		game?.update(view, clock, real, steady);
 		const stands = game?.stands();
 		const out = bunch!.step(view, real, Date.now(), stands);
-		if (game?.rang) opts.onCue?.('cowbell');
+		// The cowbell counts against the roadside's one ceiling, like any ring (SPEC "The roadside").
+		if (game?.rang && roadsideSound(Date.now())) opts.onCue?.('cowbell');
 		// A tick's cheers are heard once, however many frames read its view.
 		const tick = view.at ?? view;
 		if (tick !== heard) {
