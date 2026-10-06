@@ -1,7 +1,8 @@
 // Closing hides, and the page hears it (#3005, ADR-0037 amended).
 //
-// Where a tray exists, closing the main window hides it instead of destroying
-// it — the red button, ⌘W, and the close box on Windows and Linux alike — so
+// Where there is a way back — the Dock on macOS, the tray icon elsewhere
+// (#3843) — closing the main window hides it instead of destroying it: the
+// red button, ⌘W, and the close box on Windows and Linux alike. So
 // the web app keeps running: notifications, the lobby socket and deep links
 // all live in the page, and a destroyed window takes them with it. Quitting is
 // ⌘Q, the app menu or the tray's Quit, which all go through `before-quit`.
@@ -55,8 +56,8 @@ function throttleIfIdle(win, rideHeld) {
  * Wire one main window.
  *
  * @param win the rider's window
- * @param opts.hides whether a close hides it (false where there is no tray,
- *   and then a close is today's close)
+ * @param opts.hides asked at each close: whether it hides the window (false
+ *   where there is no way back to it, and then a close is a close)
  * @param opts.hidden whether a login launch created it hidden: in the tray
  *   from boot, and throttled like any window a close put there (#3510)
  * @param opts.rideHeld whether a ride holds keepAwake right now
@@ -66,14 +67,13 @@ function manage(win, { hides, hidden, rideHeld }) {
 		if (!win.isDestroyed()) win.webContents.send('wattroom:visibility', visible);
 		throttleIfIdle(win, rideHeld);
 	};
-	if (!hides) return;
 	tellers.set(win, tell);
 	// On macOS 'show' tracks occlusion and may never come for a window that
 	// reopens under another one, so the ways back call shown() themselves.
 	win.on('show', () => shown(win));
 	win.on('session-end', allowClose); // Windows logoff and shutdown
 	win.on('close', (event) => {
-		if (quitting) return;
+		if (quitting || !hides()) return;
 		event.preventDefault();
 		closedToTray.add(win);
 		hideLeavingFullScreen(win);

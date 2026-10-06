@@ -178,7 +178,7 @@
 	tabindex="-1"
 	style:--top="{place.top}px"
 	style:--left="{place.left}px"
-	class="panel panel-flush fixed inset-x-0 bottom-0 z-50 flex h-[22.5rem] flex-col shadow-2xl sm:inset-x-auto sm:top-(--top) sm:bottom-auto sm:left-(--left) sm:w-80"
+	class="panel panel-flush fixed inset-x-0 bottom-0 z-50 flex h-[22.5rem] flex-col sm:inset-x-auto sm:top-(--top) sm:bottom-auto sm:left-(--left) sm:w-80"
 >
 	<div class="border-ink/5 flex items-center gap-2 border-b px-3 py-2">
 		<Search size={14} class="text-muted shrink-0" />

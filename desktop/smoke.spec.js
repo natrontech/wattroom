@@ -111,10 +111,10 @@ test('the shell keeps a log where a rider can find it (#3012)', async () => {
 	await app.close();
 });
 
-// The page hears a close to the tray and the window coming back (#3005,
+// The page hears a close hiding the window and the window coming back (#3005,
 // #3079), and nothing else (#3509): a close hides the window rather than
 // destroying it, and the page leaves voice when it does. Only macOS is
-// certain to have a tray, and without one a close is a close.
+// certain to hide: the Dock is its way back, tray icon or not (#3843).
 const heard = async (app) => {
 	const win = await app.firstWindow();
 	await expect(win.locator('#retry')).toBeVisible();
@@ -130,7 +130,7 @@ const throttled = (app) =>
 	);
 
 test('the page hears a close to the tray, and the window coming back', async () => {
-	test.skip(process.platform !== 'darwin', 'a tray is certain only on macOS');
+	test.skip(process.platform !== 'darwin', 'a close hides for certain only on macOS');
 	const app = await launch(DEAD_URL);
 	const win = await heard(app);
 	await app.evaluate(({ BrowserWindow }) =>
@@ -173,11 +173,12 @@ test('a covered or minimised window keeps the page in the call', async () => {
 	await app.close();
 });
 
-// Where there is a tray, closing the window hides it (#3005), so the app keeps
-// running behind it. Only macOS is certain to have one: the Linux runner has
-// no status notifier host, and there a close quits (#3510, tested below).
-test('closing the window hides it where there is a tray', async () => {
-	test.skip(process.platform !== 'darwin', 'a tray is certain only on macOS');
+// Where there is a way back, closing the window hides it (#3005), so the app
+// keeps running behind it. On macOS that is the Dock, and the menu-bar icon is
+// off by default (#3843); the Linux runner has no status notifier host, and
+// there a close quits (#3510, tested below).
+test('on macOS closing the window hides it, with no menu-bar icon', async () => {
+	test.skip(process.platform !== 'darwin', 'the Dock is the way back on macOS');
 	const app = await launch(DEAD_URL);
 	const win = await app.firstWindow();
 	await expect(win.locator('#retry')).toBeVisible();
@@ -189,6 +190,10 @@ test('closing the window hides it where there is a tray', async () => {
 		return { alive: Boolean(w) && !w.isDestroyed(), visible: w?.isVisible() };
 	});
 	expect(state).toEqual({ alive: true, visible: false });
+	expect(await win.evaluate(() => window.wattroom.trayIcon())).toEqual({
+		supported: true,
+		enabled: false,
+	});
 	await app.close();
 });
 
@@ -339,7 +344,9 @@ test('the window opens and the bridge carries what the app looks for', async () 
 		'setBadge',
 		'setLaunchAtLogin',
 		'setRoom',
+		'setTrayIcon',
 		'titleBar',
+		'trayIcon',
 		'updateFailed',
 		'version',
 	]);
@@ -1107,6 +1114,39 @@ test('launch at login writes the autostart file, and takes it away again', async
 	await app.close();
 });
 
+// The icon is the rider's to turn off or on (#3843): off by default on macOS,
+// on elsewhere, kept across launches. Where it is off on Windows or Linux a
+// close quits, because a hidden window would have no way back.
+test('the tray icon is a switch the shell remembers', async () => {
+	test.skip(
+		process.platform === 'linux',
+		'the Linux runner has no status notifier host, so no tray (#3510)',
+	);
+	const byDefault = process.platform !== 'darwin';
+	const first = await launch(DEAD_URL);
+	let win = await first.firstWindow();
+	await expect(win.locator('#retry')).toBeVisible();
+	const icon = (app) =>
+		app.evaluate(() => process.mainModule.require('./tray').present());
+	expect(await win.evaluate(() => window.wattroom.trayIcon())).toEqual({
+		supported: true,
+		enabled: byDefault,
+	});
+	expect(await icon(first)).toBe(byDefault);
+
+	expect(
+		await win.evaluate((on) => window.wattroom.setTrayIcon(on), !byDefault),
+	).toEqual({ supported: true, enabled: !byDefault, error: null });
+	expect(await icon(first)).toBe(!byDefault);
+	await first.close();
+
+	const again = await launch(DEAD_URL, first.userData);
+	win = await again.firstWindow();
+	await expect(win.locator('#retry')).toBeVisible();
+	expect(await icon(again)).toBe(!byDefault);
+	await again.close();
+});
+
 test('a login launch loads its window hidden, and closing it goes back to the tray', async () => {
 	test.skip(
 		process.platform === 'linux',
@@ -1171,6 +1211,11 @@ test('with no tray host, a login launch shows its window and a close quits', asy
 			),
 		)
 		.toBe(true);
+	// And Settings offers no icon that would draw nowhere.
+	expect(await win.evaluate(() => window.wattroom.trayIcon())).toEqual({
+		supported: false,
+		enabled: false,
+	});
 
 	await app.evaluate(({ BrowserWindow }) =>
 		BrowserWindow.getAllWindows()[0].close(),

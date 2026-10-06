@@ -191,4 +191,12 @@ describe('toRoute', () => {
 		expect(() => toRoute(eastward(1900, 20))).toThrow(/at least 2 km/);
 		expect(() => toRoute(eastward(201_000, 200))).toThrow(/at most 200 km/);
 	});
+
+	it('reads a steady approach at its grade from the first metres to the last (#3832)', () => {
+		const r = toRoute(eastward(3000, 10, (s) => 500 + 0.03 * s));
+		for (const m of [0, 100, 150, 1500, 2850, 2900, 3000]) {
+			const i = Math.min(r.grade.length - 1, Math.round(m / r.step));
+			expect(r.grade[i]).toBeCloseTo(3, 1);
+		}
+	});
 });

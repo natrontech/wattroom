@@ -52,6 +52,17 @@ vi.mock('livekit-client', () => {
 	// Every device switch asked of the SDK (#1876), and whether to refuse it.
 	const switched: { kind: string; id: string; exact?: boolean }[] = [];
 	let refuseSwitch = false;
+	// A stop the SDK refuses (#3845): the desktop shell's share outlived
+	// setScreenShareEnabled(false) while the app said it had ended.
+	let refuseShareStop = false;
+	let screenCapture = { stopped: false };
+	const screenTrack = {
+		mediaStreamTrack: {
+			stop() {
+				screenCapture.stopped = true;
+			},
+		},
+	};
 	class Room {
 		async switchActiveDevice(kind: string, id: string, exact?: boolean) {
 			if (refuseSwitch) throw new Error('NotReadableError: in use');
@@ -76,6 +87,8 @@ vi.mock('livekit-client', () => {
 				on: boolean,
 				options?: Record<string, unknown>,
 			) {
+				if (!on && refuseShareStop) throw new Error('could not unpublish');
+				if (on) screenCapture = { stopped: false };
 				shared = on;
 				lastShareOptions = options;
 				// Exactly what getDisplayMedia does with the constraint: no
@@ -87,11 +100,20 @@ vi.mock('livekit-client', () => {
 					? shareAudio
 						? { audioTrack: shareAudio }
 						: undefined
-					: shared
-						? { videoTrack: {} }
-						: undefined,
+					: !shared
+						? undefined
+						: source === 'screen_share'
+							? { videoTrack: screenTrack }
+							: { videoTrack: {} },
 			async publishTrack() {},
-			async unpublishTrack(track: { stopped: boolean }, stop?: boolean) {
+			async unpublishTrack(
+				track: { stopped: boolean } | typeof screenTrack,
+				stop?: boolean,
+			) {
+				if (!('stopped' in track)) {
+					if (track === screenTrack) shared = false;
+					return;
+				}
 				if (stop) track.stopped = true;
 				if (track === shareAudio) shareAudio = null;
 			},
@@ -138,6 +160,12 @@ vi.mock('livekit-client', () => {
 		refuseSwitches(on: boolean) {
 			refuseSwitch = on;
 		},
+		refuseShareStops(on: boolean) {
+			refuseShareStop = on;
+		},
+		/** Whether the call can still see the screen, and whether it is still captured. */
+		screenPublished: () => shared,
+		screenCaptured: () => !screenCapture.stopped,
 		// Another connection of a rider walking in and out (#1878), the way
 		// the SDK reports it: on the roster, then the event.
 		arrive(identity: string, joinedAt: Date, micOpen = true) {
@@ -297,6 +325,9 @@ const {
 	shareOptions,
 	switches,
 	refuseSwitches,
+	refuseShareStops,
+	screenPublished,
+	screenCaptured,
 	arrive,
 	depart,
 	reconnecting,
@@ -307,6 +338,9 @@ const {
 	shareOptions: () => { audio?: unknown } | undefined;
 	switches: () => { kind: string; id: string; exact?: boolean }[];
 	refuseSwitches: (on: boolean) => void;
+	refuseShareStops: (on: boolean) => void;
+	screenPublished: () => boolean;
+	screenCaptured: () => boolean;
 	arrive: (identity: string, joinedAt: Date, micOpen?: boolean) => void;
 	depart: (identity: string) => void;
 	reconnecting: () => void;
@@ -548,6 +582,31 @@ describe('createChannelAv', () => {
 			expect(mixer.muted).toBe(false);
 			dispose();
 		});
+	});
+
+	// #3845, from the desktop app: Away cleared the sharing bar while the
+	// call went on seeing the screen. The SDK's stop failed and the failure
+	// was swallowed, so "stopped" was the intent and not the publication.
+	it('takes the screen off the call on Away even when the stop is refused', async () => {
+		let av!: ReturnType<typeof createChannelAv>;
+		const dispose = $effect.root(() => {
+			av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
+		});
+		await av.join();
+		await av.toggleShare();
+		expect(screenPublished()).toBe(true);
+
+		refuseShareStops(true);
+		try {
+			await av.setAway(true);
+		} finally {
+			refuseShareStops(false);
+		}
+		expect(av.sharing).toBe(false);
+		expect(screenPublished(), 'the call still sees the screen').toBe(false);
+		expect(screenCaptured(), 'the screen is still being captured').toBe(false);
+		expect(av.stageSources.map((s) => s.key)).toEqual([]);
+		dispose();
 	});
 
 	// #354: the browser's own bar ends the share without asking us. LiveKit

@@ -138,6 +138,8 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 		color: style.kit.tailLight,
 	});
 	const zones = style.zones.map((z) => new THREE.Color(z));
+	// A silent trainer's ring: the neutral tone, none of Z1–Z7 (#3766), so nothing stale reads as a zone.
+	const neutral = new THREE.Color(style.kit.skin);
 	const chevronMaterial = () =>
 		new THREE.MeshBasicMaterial({
 			color: neon,
@@ -339,7 +341,9 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 			v.bead.visible = overview;
 			v.bead.scale.setScalar(overview ? 22 : 1);
 			v.bead.position.y = overview ? 22 : 0;
-			v.ring.material.color.copy(zones[zoneOf(r.watts, r.ftp) - 1]);
+			v.ring.material.color.copy(
+				r.silent ? neutral : zones[zoneOf(r.watts, r.ftp) - 1],
+			);
 			// The animator turns the legs at the rider's cadence, sits or stands them by SPEC's thresholds.
 			const state = v.anim.update(dt, inputOf(r, route));
 			pedal(r).crank = state.crank;
@@ -351,7 +355,7 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 					v.group.position.z,
 				);
 				// No figure, no trail: a coach in the team car leaves none (#3771).
-				if (trail) trail.mesh.visible = alpha > 0;
+				if (trail) trail.mesh.visible = alpha > 0 && !r.silent;
 				trail?.follow(route, r.d, lane);
 			}
 		});

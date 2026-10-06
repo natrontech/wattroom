@@ -8,6 +8,7 @@ import {
 	fixtureRoad,
 	joinCrew,
 	newestRide,
+	ownWorkout,
 	planTwo,
 	readRoad,
 	savedRide,
@@ -29,6 +30,7 @@ import {
 	Shoot,
 	TV,
 	assertRiding,
+	atReading,
 	atSecond,
 	ride,
 	wanted,
@@ -93,8 +95,16 @@ surface('ride-road-world', async (s) => {
 		const road = await fixtureRoad(o.page, 'hairpin');
 		await ride(o.page, `/ride?w=openers&road=${road}&from=0`);
 		await assertRiding(o.page, true);
+		// Item 16's distance, however long the road takes to get there (#3834).
+		await atReading(o.page, 'km 0.1 of 7.1');
 		await s.shot(o, { name });
 	}
+	// multi:world-hairpins — item 16's second leg, from km 2.3: the hairpins climb ahead.
+	const o = await s.open(DESK, { world: true });
+	const road = await fixtureRoad(o.page, 'hairpin');
+	await ride(o.page, `/ride?w=openers&road=${road}&from=2300`);
+	await assertRiding(o.page, true);
+	await s.shot(o, { name: 'world-hairpins' });
 });
 
 surface('ride-workout-world', async (s) => {
@@ -194,7 +204,7 @@ surface('ride-free-road', async (s) => {
 });
 
 test.fixme('ride-free-road-world', () => {
-	// The world on a free ride's road is #3663's.
+	// A free ride on a road draws no world yet: #3669 brings it.
 });
 
 test.fixme('ride-free-road-ghost', () => {
@@ -218,7 +228,7 @@ surface('phone-ride', async (s) => {
 });
 
 test.fixme('phone-ride-road', () => {
-	// The world on a free ride's road is #3663's.
+	// A free ride on a road draws no world yet: #3669 brings it.
 });
 
 surface('hud', async (s) => {
@@ -443,6 +453,17 @@ async function moment(
 		null,
 		{ timeout: 30_000 },
 	);
+	// The ground around the eye whole before the shot: a chunk still building is a frame two loads disagree on.
+	await o.page.waitForFunction(
+		() =>
+			(
+				window as unknown as {
+					__worldProbe: () => { ground?: { pending: number } };
+				}
+			).__worldProbe().ground?.pending === 0,
+		null,
+		{ timeout: 60_000 },
+	);
 	await o.page.waitForTimeout(2000);
 	return o;
 }
@@ -480,6 +501,7 @@ surface('workouts', async (s) => {
 		const o = await s.open(device);
 		await fixtureRoad(o.page, 'hairpin');
 		await fixtureRoad(o.page, 'rolling');
+		await ownWorkout(o.page);
 		await page(s, o, '/workouts', { name });
 	}
 });
@@ -676,12 +698,31 @@ surface('flow-f3', async (s) => {
 	await o.page.getByRole('button', { name: 'Start the ride' }).click();
 	await atSecond(o.page, RIDE_SECOND);
 	await s.shot(o, { name: 'flow-f3-4-riding' });
+	// A long workout name in the opening eyebrow: its width is the CSS's, so
+	// the text is swapped in place and the probes measure the header.
+	await o.page
+		.getByTestId('ride-context')
+		.evaluate(
+			(el, name) => (el.textContent = name),
+			`Solo · ${'A very long workout name '.repeat(6)}`,
+		);
+	await s.shot(o, { name: 'flow-f3-4-riding-long-name' });
 	await o.page
 		.getByRole('link', { name: 'See your ride' })
 		.waitFor({ timeout: 120_000 });
 	await o.page.waitForTimeout(1500);
 	await s.shot(o, { name: 'flow-f3-5-closing-card', full: true });
 	await page(s, o, '/home', { name: 'flow-f3-6-home' });
+	// The same Recent rides row at phone width, with a long ride name.
+	const phone = await s.open(PHONE, { as: `First ${letters}`, world: false });
+	await phone.page.goto('/home');
+	const row = phone.page.getByRole('link', { name: /Smoke Test/ }).first();
+	await row.waitFor({ timeout: 15_000 });
+	await row.evaluate((el) => {
+		const name = el.querySelector('span.font-display');
+		if (name) name.textContent = 'A very long workout name '.repeat(6);
+	});
+	await s.shot(phone, { name: 'flow-f3-6-home-phone-long-name', full: true });
 });
 
 test.fixme('flow-f1', () => {
@@ -707,6 +748,83 @@ surface('appearance', async (s) => {
 	await page(s, reduced, '/settings/appearance', {
 		name: 'appearance-reduced',
 	});
+});
+
+surface('settings-this-computer', async (s) => {
+	// "This computer" draws only inside the desktop shell, so the capture
+	// hands the page a stand-in bridge with the two switches it asks about.
+	for (const [device, name, platform, icon] of [
+		[DESK, 'settings-this-computer', 'darwin', false],
+		[DESK, 'settings-this-computer-linux', 'linux', true],
+		[DESK, 'settings-this-computer-linux-off', 'linux', false],
+		[PHONE, 'settings-this-computer-phone', 'darwin', false],
+	] as const) {
+		const o = await s.open(device);
+		await o.ctx.addInitScript(
+			([os, on]) => {
+				const answer = (enabled: boolean) => () =>
+					Promise.resolve({ supported: true, enabled, error: null });
+				(window as unknown as { wattroom: object }).wattroom = {
+					version: '2026.10.1',
+					platform: os,
+					titleBar: 0,
+					launchAtLogin: answer(false),
+					trayIcon: answer(on),
+				};
+			},
+			[platform, icon] as const,
+		);
+		await page(s, o, '/settings/notifications', { name });
+	}
+	const browser = await s.open(DESK);
+	await page(s, browser, '/settings/notifications', {
+		name: 'settings-this-computer-browser',
+	});
+});
+
+surface('sound-dialog', async (s) => {
+	// The in-channel Sound dialog, opened without a call (its button needs the
+	// channel's av store, not LiveKit), and /settings/voice beside it, which
+	// draws the same faders at desk size.
+	const o = await s.open(DESK);
+	const crew = await designCrew(o.page);
+	await o.page.goto(voicePath(crew));
+	await o.page
+		.getByRole('button', { name: /^sound — the mix/ })
+		.first()
+		.click({ timeout: 15_000 });
+	await o.page.getByRole('dialog', { name: /^Sound/ }).waitFor();
+	await o.page.waitForTimeout(500);
+	const dialog = o.page.getByRole('dialog', { name: /^Sound/ });
+	// The dialog's own measurements: the page-wide probe cannot attribute them.
+	const dialogTargets = async () => ({
+		dialogTargets: await dialog.evaluate((el) => {
+			const high = (e: Element) =>
+				Math.round(e.getBoundingClientRect().height * 10) / 10;
+			return {
+				sliders: [...el.querySelectorAll('input[type=range]')].map(high),
+				done: high(
+					[...el.querySelectorAll('button')].find(
+						(b) => b.textContent?.trim() === 'Done',
+					)!,
+				),
+				selects: [...el.querySelectorAll('[role=combobox]')].map((e) => {
+					const r = e.getBoundingClientRect();
+					return { x: Math.round(r.x), width: Math.round(r.width) };
+				}),
+				scrollHeight: el.scrollHeight,
+				clientHeight: el.clientHeight,
+			};
+		}),
+	});
+	await s.shot(o, { name: 'sound-dialog', extra: await dialogTargets() });
+	await dialog.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+	await o.page.waitForTimeout(300);
+	await s.shot(o, {
+		name: 'sound-dialog-bottom',
+		extra: await dialogTargets(),
+	});
+	await page(s, o, '/settings/voice', { name: 'sound-dialog-settings-voice' });
 });
 
 surface('landing', async (s) => {

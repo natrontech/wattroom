@@ -40,6 +40,7 @@
 		metre,
 		bunch,
 		watts,
+		silent = false,
 		ftp,
 		paused = false,
 		onfail,
@@ -52,6 +53,8 @@
 		/** Everyone on the road with you, on a session's road. */
 		bunch?: () => BunchView | null;
 		watts: number;
+		/** The trainer is silent past SIGNAL_LOST_MS, the signal the panels read "—" from. */
+		silent?: boolean;
 		ftp: number;
 		/** A shared screen has the focus. */
 		paused?: boolean;
@@ -108,6 +111,7 @@
 	});
 
 	$effect(() => scene?.setWatts(watts));
+	$effect(() => scene?.setSilent(silent));
 	$effect(() => scene?.hold('displaced', paused));
 	$effect(() => scene?.hold('shell', shellHidden));
 </script>

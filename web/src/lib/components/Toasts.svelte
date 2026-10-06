@@ -37,7 +37,7 @@
 	{#each toasts.items as toast (toast.id)}
 		<div
 			role={toast.tone === 'error' ? 'alert' : 'status'}
-			class="panel pointer-events-auto flex w-full items-center gap-3 px-4 py-3 text-sm shadow-lg {toast.tone ===
+			class="panel pointer-events-auto flex w-full items-center gap-3 px-4 py-3 text-sm {toast.tone ===
 			'error'
 				? 'border-danger/40'
 				: ''}"

@@ -48,6 +48,10 @@
 		]
 	},
 	{
+		"files": ["web/src/lib/session/CountdownScreen.svelte"],
+		"surfaces": ["ride-countin"]
+	},
+	{
 		"files": ["web/src/lib/world/cheer.ts"],
 		"surfaces": ["ride-session-road"]
 	},
@@ -191,7 +195,10 @@
 		]
 	},
 	{
-		"files": ["web/src/routes/(app)/history/**"],
+		"files": [
+			"web/src/routes/(app)/history/**",
+			"web/src/lib/ride/RideRow.svelte"
+		],
 		"surfaces": ["history", "history-rides", "ride-detail", "collections"]
 	},
 	{
@@ -211,6 +218,13 @@
 	},
 	{
 		"files": [
+			"web/src/lib/profile/ThisComputer.svelte",
+			"web/src/routes/(app)/settings/notifications/**"
+		],
+		"surfaces": ["settings-this-computer"]
+	},
+	{
+		"files": [
 			"web/src/**/SectionTabs.svelte",
 			"web/src/routes/(app)/settings/+layout.svelte"
 		],
@@ -219,6 +233,18 @@
 	{
 		"files": ["web/src/routes/(app)/garage/**"],
 		"surfaces": ["garage-shop", "garage-locker", "garage-makers"]
+	},
+	{
+		"files": [
+			"web/src/lib/channel/QuickAudio.svelte",
+			"web/src/lib/channel/MixFaders.svelte",
+			"web/src/lib/channel/GateTune.svelte",
+			"web/src/lib/channel/GateMeter.svelte",
+			"web/src/lib/channel/DevicePickers.svelte",
+			"web/src/lib/channel/VoiceSettings.svelte",
+			"web/src/lib/channel/sound-panel.svelte.ts"
+		],
+		"surfaces": ["sound-dialog"]
 	},
 	{
 		"files": ["web/src/routes/(app)/open-rides/**"],
@@ -233,7 +259,8 @@
 			"route",
 			"closing-card",
 			"home",
-			"appearance"
+			"appearance",
+			"sound-dialog"
 		]
 	}
 ]

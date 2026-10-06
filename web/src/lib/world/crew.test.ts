@@ -64,3 +64,60 @@ describe('the figure on its bike (#3673)', () => {
 		expect(detailed()).toEqual(['r0', 'r2', 'r5']);
 	});
 });
+
+describe('a silent trainer (#3766)', () => {
+	const you = () =>
+		simRider({
+			id: 'me',
+			name: 'Me',
+			mass: 75,
+			ftp: 250,
+			you: true,
+			watts: 300,
+			d: 1000,
+		});
+	const frame = (
+		rider: SimRider,
+		crew = makeCrew(style, new THREE.Color()),
+	) => {
+		const legs: Pedalling = { crank: 0 };
+		crew.update(route, [rider], () => legs, 0.1, 0.1, false);
+		const mesh = (kind: string) => {
+			let found: THREE.Mesh | undefined;
+			crew.group.traverse((o) => {
+				if (o.userData.kind === kind) found = o as THREE.Mesh;
+			});
+			return found!;
+		};
+		let ring: THREE.Mesh | undefined;
+		crew.group.traverse((o) => {
+			if (o instanceof THREE.Mesh && o.geometry instanceof THREE.RingGeometry)
+				ring = o;
+		});
+		const tone = (ring!.material as THREE.MeshBasicMaterial).color;
+		return { tone: `#${tone.getHexString()}`, trail: mesh('trail') };
+	};
+	const zoneTones = style.zones.map(
+		(z) => `#${new THREE.Color(z).getHexString()}`,
+	);
+
+	it('keeps its zone ring and its trail while the trainer speaks', () => {
+		const { tone, trail } = frame(you());
+		expect(zoneTones).toContain(tone);
+		expect(trail.visible).toBe(true);
+	});
+
+	it('drops the ring to a tone no zone wears and stops the trail, and both come back with the next sample', () => {
+		const crew = makeCrew(style, new THREE.Color());
+		const rider = you();
+		rider.silent = true;
+		const quiet = frame(rider, crew);
+		expect(zoneTones).not.toContain(quiet.tone);
+		expect(quiet.trail.visible).toBe(false);
+
+		rider.silent = false;
+		const back = frame(rider, crew);
+		expect(zoneTones).toContain(back.tone);
+		expect(back.trail.visible).toBe(true);
+	});
+});
