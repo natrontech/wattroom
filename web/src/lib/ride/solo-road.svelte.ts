@@ -3,9 +3,10 @@ import type { SensorKind, SensorReading } from '$lib/ble/sensor';
 import type { Trainer, TrainerSample } from '$lib/ble/trainer';
 import { publishHud } from '$lib/hud/feed';
 import { createActuator } from '$lib/ride/actuation.svelte';
-import { FREE_RIDE_NAME, type FreeRide } from '$lib/ride/free-ride.svelte';
+import { freeRideLabel, type FreeRide } from '$lib/ride/free-ride.svelte';
 import { createRideShift } from '$lib/ride/ride-shift';
 import type { RideableRoute } from '$lib/ride/roads';
+import { publishRide } from '$lib/workout/ride-life.svelte';
 import { acquireWakeLock, type WakeLock } from '$lib/workout/wakelock';
 import { createRiderGuards } from '$lib/workout/rider-guards.svelte';
 
@@ -49,6 +50,10 @@ export function createSoloRoadRide(deps: {
 		else actuator.hold(target);
 	});
 
+	// Riding from the first stroke to End ride, or until the page goes: the
+	// frame caves, the HUD opens and DMs wait, as on a workout ride (#3667).
+	$effect(() => (trainer ? publishRide(() => 'running') : undefined));
+
 	$effect(() => {
 		if (!trainer) return;
 		const id = setInterval(() => {
@@ -84,7 +89,7 @@ export function createSoloRoadRide(deps: {
 				target: deps.free.targetWatts,
 				remaining: 0,
 				elapsed: deps.free.seconds,
-				label: FREE_RIDE_NAME,
+				label: freeRideLabel(deps.free.road),
 				road: deps.free.road?.readout,
 			});
 	}
@@ -137,5 +142,3 @@ export function createSoloRoadRide(deps: {
 		},
 	};
 }
-
-export type SoloRoadRide = ReturnType<typeof createSoloRoadRide>;

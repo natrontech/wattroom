@@ -1,0 +1,1 @@
+- The desktop app no longer puts an icon in the macOS menu bar; the Dock already opens and quits it. Settings → Notifications → This computer has a switch to show the icon again, on every platform. On Windows and Linux the icon stays on by default, and turning it off makes closing the window quit WattRoom.

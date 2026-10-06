@@ -81,7 +81,7 @@
 		role="menu"
 		tabindex="-1"
 		onkeydown={onKey}
-		class="panel fixed z-[70] max-h-[70vh] min-w-44 overflow-y-auto p-1 shadow-2xl"
+		class="panel fixed z-[70] max-h-[70vh] min-w-44 overflow-y-auto p-1"
 		style="left: {pos.left}px; top: {pos.top}px"
 	>
 		{#each menu.items as item, i (i)}

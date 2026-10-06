@@ -24,6 +24,11 @@ describe('uploadRide', () => {
 		});
 	});
 
+	it("hands back the saved ride's own XP, which the card must show (#3753)", async () => {
+		api.mockResolvedValueOnce({ ok: true, data: { id: 'r-1', xp: 82 } });
+		expect(await uploadRide(ride)).toEqual({ saved: { id: 'r-1', xp: 82 } });
+	});
+
 	it("hands back the server's own words when it does not", async () => {
 		// errors.md: what went wrong, why, and what to do — the server already
 		// wrote that sentence, so nothing here paraphrases it.

@@ -1,0 +1,1 @@
+- The HUD in a browser tab scales to the window: on a second screen the watts fill about a quarter of the height and every word is readable from the saddle, while the desktop app's small floating window looks as before. On a road ride the HUD names the road: “Free ride · <road>”.

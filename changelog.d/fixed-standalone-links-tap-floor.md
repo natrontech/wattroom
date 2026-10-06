@@ -1,0 +1,1 @@
+- Standalone text links — Home's All rides, the landing header's links, How group workouts work, and a ride page's Rides back link — are 24 px tall instead of 16–20, so they are easier to hit on a phone and a touch screen.

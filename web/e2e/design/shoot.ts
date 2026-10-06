@@ -102,6 +102,9 @@ export class Shoot {
 				// World on is the device's World control at Full: this flag until
 				// #3214 replaces it.
 				if (world === true) localStorage.setItem('wattroom.world-slot.v1', '1');
+				// Software GL misses every frame; the dev build's frame judge
+				// stands down for the capture (#3823).
+				localStorage.setItem('wattroom.world-software.v1', '1');
 				if (world === false) localStorage.removeItem('wattroom.world-slot.v1');
 			},
 			[MUTED, world ?? null] as const,
@@ -119,7 +122,11 @@ export class Shoot {
 	/** Writes `<name>.png` and its probes, `<name>.json`. */
 	async shot(
 		{ page, errors }: Pick<Opened, 'page' | 'errors'>,
-		{ name = this.id, full = false }: { name?: string; full?: boolean } = {},
+		{
+			name = this.id,
+			full = false,
+			extra = {},
+		}: { name?: string; full?: boolean; extra?: object } = {},
 	): Promise<void> {
 		const wholeDocument = full && !(await growToBody(page));
 		// The public site lazy-loads its media: walk the document once so a
@@ -145,7 +152,8 @@ export class Shoot {
 		});
 		await writeFile(
 			join(OUT, `${name}.json`),
-			JSON.stringify({ ...probes, pageErrors: errors }, null, 2) + '\n',
+			JSON.stringify({ ...probes, ...extra, pageErrors: errors }, null, 2) +
+				'\n',
 		);
 	}
 
@@ -233,13 +241,53 @@ export async function ride(
 	await atSecond(page, second);
 }
 
-/** Waits until a clock on the page reads `second` into the ride. */
+/**
+ * Waits until a clock on the page reads `second` into the ride. A machine
+ * that draws the world in software (#3823) answers a poll seconds late, so a
+ * clock that has already moved on, by up to LATE seconds, counts as reached:
+ * the shot is a little later in the ride, never a failed surface.
+ */
+const LATE = 45;
 export async function atSecond(page: Page, second: number): Promise<void> {
 	const mark = `${Math.floor(second / 60)}:${String(second % 60).padStart(2, '0')}`;
-	const deadline = Date.now() + (second + 30) * 1000;
-	while (!(await clocks(page)).split(' ').includes(mark)) {
+	const reached = (clock: string) => {
+		const [m, s] = clock.split(':').map(Number);
+		const at = m * 60 + s - second;
+		return at >= 0 && at <= LATE;
+	};
+	const deadline = Date.now() + (second + 30 + LATE) * 1000;
+	for (;;) {
+		const shown = (await clocks(page)).split(' ');
+		if (shown.includes(mark) || shown.some(reached)) return;
 		if (Date.now() > deadline)
-			throw new Error(`the ride never reached ${mark}: ${await clocks(page)}`);
+			throw new Error(`the ride never reached ${mark}: ${shown.join(' ')}`);
+		await page.waitForTimeout(200);
+	}
+}
+
+/**
+ * Waits until the page reads `reading` — slot 1's "km 0.1 of 7.1" — for a
+ * shot whose target is a distance, not a second (#3834). The dot moves by the
+ * whole seconds between samples, held to two (road-ride.ts), so a machine
+ * answering slowly reaches a clock mark with the road still behind it, and
+ * at 83 W on 3 % the first 50 m arrive near the 14 s mark anyway. Bounded: a
+ * reading that never comes is a failed shot with what the page said instead.
+ */
+export async function atReading(
+	page: Page,
+	reading: string,
+	timeoutMs = 90_000,
+): Promise<void> {
+	const text = () =>
+		page
+			.evaluate(() => document.body.innerText.match(/km [\d.]+ of [\d.]+/)?.[0])
+			.catch(() => undefined);
+	const deadline = Date.now() + timeoutMs;
+	for (;;) {
+		const shown = await text();
+		if (shown === reading) return;
+		if (Date.now() > deadline)
+			throw new Error(`the ride never read "${reading}": ${shown ?? 'no km'}`);
 		await page.waitForTimeout(200);
 	}
 }

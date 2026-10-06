@@ -24,9 +24,13 @@
 	let seenTick: Cheer[] | undefined;
 
 	$effect(() => {
-		const batch = cheers;
-		if (!batch || batch.length === 0 || batch === seenTick) return;
-		seenTick = batch;
+		const ticked = cheers;
+		if (!ticked || ticked.length === 0 || ticked === seenTick) return;
+		seenTick = ticked;
+		// A cheer for one rider is the world's, over their head (#3116); what
+		// its rider hears of it is theirs to get (#3231).
+		const batch = ticked.filter((c) => !c.to);
+		if (batch.length === 0) return;
 		// The bell rings the cowbell; the rest blip, higher for a crowd.
 		// The cowbell is the roadside's sound, so it answers to its ceiling.
 		for (const cue of cheerCues(batch))

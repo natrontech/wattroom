@@ -1,4 +1,4 @@
-import { seededLoadout } from '$lib/world/outfit';
+import { seededLoadout } from '$lib/world/loadout';
 import { simRider, type SimRider } from '$lib/world/sim';
 
 /**

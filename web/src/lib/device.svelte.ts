@@ -47,6 +47,10 @@ export function isSpectator(env: DeviceEnv): boolean {
 	return env.narrow && env.coarse && !env.bluetooth;
 }
 
+/** Why a spectator device's ride button is disabled (errors.md: a reason, not a dead button). */
+export const spectatorRideLine =
+	"This device can't reach a trainer — its browser has no Web Bluetooth. Ride from a desktop, or Chrome on Android.";
+
 /** A media query as reactive state; `false` everywhere there is no window. */
 function watchMedia(query: string): () => boolean {
 	if (typeof window === 'undefined' || !window.matchMedia) return () => false;

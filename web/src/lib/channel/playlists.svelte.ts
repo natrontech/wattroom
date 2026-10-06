@@ -197,8 +197,7 @@ export function queueSavedPlaylist(address: PlaceAddress, id: string) {
 /**
  * Turn a pasted link into what POST .../tracks needs — the same parser the
  * live add box uses. An ambiguous "video inside a playlist" link saves just
- * the video, the same call `addYouTubeUrl` makes for a link dropped in chat:
- * there is nowhere here to ask either.
+ * the video: there is nowhere here to ask.
  */
 export async function commandFromLink(
 	input: string,

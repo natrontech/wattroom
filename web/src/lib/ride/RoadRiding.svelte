@@ -16,6 +16,7 @@
 	import type { FreeMode } from '$lib/ride/free-ride-controls';
 	import { createFreeRide } from '$lib/ride/free-ride.svelte';
 	import GearShift from '$lib/ride/GearShift.svelte';
+	import { guardLeaving } from '$lib/ride/leave-guard.svelte';
 	import { createGhostSplit } from '$lib/ride/ghost-split.svelte';
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
 	import { bindShiftKeys } from '$lib/ride/keys';
@@ -114,7 +115,14 @@
 		await solo.end();
 	}
 	// Leaving the page is not End ride: the trainer is let go, and the crash
-	// buffer offers the ride back.
+	// buffer offers the ride back. A stray tap on the rail asks first, as a
+	// workout ride does (#3667).
+	guardLeaving(() => !!solo.trainer, {
+		title: 'Leave the ride?',
+		body: 'It stops here, unsaved on your account. Ride offers it back to save, or to carry on from where you left the road.',
+		action: 'Leave the ride',
+		cancel: 'Keep riding',
+	});
 	onDestroy(() => {
 		if (solo.trainer) void solo.trainer.disconnect();
 	});
@@ -134,7 +142,15 @@
 	<header class="flex flex-wrap items-center gap-3">
 		<p class="eyebrow">free ride</p>
 		<h1 class="page-title-sm min-w-0 truncate">
-			{route.name}
+			<!-- Ridden, the road opens its page (F1); a crew's road has none of yours. -->
+			{#if ended && !route.borrowed}
+				<a
+					href="/workouts/routes/{route.id}"
+					class="underline decoration-1 underline-offset-4">{route.name}</a
+				>
+			{:else}
+				{route.name}
+			{/if}
 		</h1>
 		<span class="font-display ml-auto text-2xl font-bold tabular-nums"
 			>{formatClock(free.seconds)}</span
@@ -236,7 +252,9 @@
 		{/if}
 		<!-- The bike computer, as a ride in a channel has it (ADR-0046, #3628):
 		     the road's speed, grade and distance on RIDE. -->
+		<!-- The instrument above is the head: RIDE leaves the watts to it. -->
 		<BikeComputer
+			head
 			{watts}
 			cadence={solo.metrics?.cadence ?? 0}
 			hr={solo.metrics?.heartRate ?? 0}

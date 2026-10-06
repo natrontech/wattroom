@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { attemptPoints, attemptTrend, type Attempt } from './attempts';
+import {
+	attemptPoints,
+	attemptTrend,
+	bestAndLast,
+	type Attempt,
+} from './attempts';
 
 const ride = (
 	day: number,
@@ -43,5 +48,24 @@ describe('a route attempts chart (#3615)', () => {
 			attemptTrend(attemptPoints([ride(1, 25), ride(2, 30, 'together')])),
 		).toBeNull();
 		expect(attemptTrend([])).toBeNull();
+	});
+});
+
+describe("a route page's Best and Last (#3680)", () => {
+	it('takes the fastest timed ride as best and the latest of any kind as last', () => {
+		const { best, last } = bestAndLast([
+			ride(3, 24),
+			ride(9, 31, 'together'),
+			ride(5, 27),
+			ride(12, 22, 'erg'),
+			ride(7, 25),
+		]);
+		expect(best?.rideId).toBe('r5-timed');
+		expect(last?.rideId).toBe('r12-erg');
+	});
+
+	it('has no best without a timed ride, and nothing at all without rides', () => {
+		expect(bestAndLast([ride(4, 30, 'together')]).best).toBeUndefined();
+		expect(bestAndLast([])).toEqual({ best: undefined, last: undefined });
 	});
 });

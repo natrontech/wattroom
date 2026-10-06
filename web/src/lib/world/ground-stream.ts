@@ -132,6 +132,8 @@ export function streamGround(
 		},
 		/** The chunks held now, for the tests. */
 		held: () => [...held.values()],
+		/** Chunks asked for and not back yet: none, once the ground around the eye is whole. */
+		pending: () => asked.size,
 		dispose() {
 			grids.dispose();
 			sink = null;

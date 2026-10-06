@@ -2,6 +2,7 @@ import { isSounding } from '$lib/sound/board.svelte';
 import { describeBlock, type Block } from '$lib/workout/block';
 import type { LiveRider } from '$lib/channel/types';
 import { bunchOf } from '$lib/channel/bunch-view';
+import { raceOf } from '$lib/race/race-view';
 import { placeOnRoad } from '$lib/channel/road-place';
 import { coachOf } from '$lib/channel/tick-session';
 import { scoredTarget } from '$lib/channel/types';
@@ -186,6 +187,8 @@ export function createRiders(deps: RiderDeps) {
 		// Everyone on it, as the world lays them out (#3098).
 		return place && { ...place, bunch: bunchOf(deps.live.tick, riders) };
 	});
+	// Your race, while you race one (#3174): the RACE page's and the radio's.
+	const race = $derived(raceOf(deps.live.tick, you.id));
 	const readoutAt = createRoadReadout();
 	const road = $derived.by(() => {
 		const tick = deps.live.tick;
@@ -224,6 +227,9 @@ export function createRiders(deps: RiderDeps) {
 		/** The session's road the way the bunch rides it, and where the bunch is; null off one. */
 		get ridden() {
 			return ridden;
+		},
+		get race() {
+			return race;
 		},
 	};
 }

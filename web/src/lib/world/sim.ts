@@ -6,7 +6,8 @@ import { createPace, type Pace } from '$lib/road/pace';
 import { type Route } from '$lib/road/route';
 import { at } from '$lib/road/along';
 import { damp } from '$lib/motion/damp';
-import type { Loadout } from './outfit';
+import type { CheerLook } from './cheer';
+import type { Loadout } from './loadout';
 
 // What the trainer is told. Zwift's default "trainer difficulty" halves the
 // grade so a 12 % ramp does not stall a rider on a direct-drive; descents
@@ -45,6 +46,10 @@ export type SimRider = {
 	ring?: boolean;
 	/** What they wear (#3156); absent, a look seeded from their id. */
 	look?: Loadout;
+	/** Their trainer has gone quiet past SIGNAL_LOST_MS (#3766): the ring drops its zone and the trail stops, as the panels' numbers read "—". */
+	silent?: boolean;
+	/** A cheer for them, as it looks this frame (#3116). */
+	cheer?: CheerLook | null;
 };
 
 export type Env = { difficulty: number };

@@ -4,7 +4,8 @@ import { DEFAULT_DARK_ID, themeById } from '$lib/themes';
 import { STYLES } from '../../routes/(app)/dev/world/styles';
 import { PATTERNS, patternIndex } from './figure/jersey';
 import { resolveKit, WHEELS } from './figure/kit';
-import { kitOf, outfitOf, seededLoadout, type Loadout } from './outfit';
+import { seededLoadout, type Loadout } from './loadout';
+import { kitOf, outfitOf } from './outfit';
 
 const look = (STYLES.find((s) => s.id === 'bluehour') ?? STYLES[0]).kit;
 const t = themeById(DEFAULT_DARK_ID)!.tokens;

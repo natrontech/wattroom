@@ -104,4 +104,3 @@ export function makeRig(route: Route, world: World) {
 		},
 	};
 }
-export type Rig = ReturnType<typeof makeRig>;

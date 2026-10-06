@@ -17,11 +17,14 @@ import {
 	type FigureMaterial,
 } from './figure/material';
 import { pose } from './figure/pose';
-import { fnv, outfitOf, seededLoadout, type Outfit } from './outfit';
+import { fnv, seededLoadout } from './loadout';
+import { outfitOf, type Outfit } from './outfit';
 import { collides, type Viewer } from '$lib/wardrobe/guard';
+import { DEFAULT_DARK_ID, themeById } from '$lib/themes';
 import { yOf } from './geometry';
 import { ROAD_W } from './terrain/road-profile';
 import { chevronGeometry, makeCar } from './team-car';
+import { thumbGeometry } from './cheer';
 import { makeTrail } from './trail';
 import { ramp } from './materials';
 import { LANE, type Car } from './bunch';
@@ -37,6 +40,8 @@ const KEEP_RIGHT = -ROAD_W / 4;
 const CHEVRON_Y = 1.82;
 /** About a helmet wide on a rider: worn, not a marker on the road ahead. */
 const CHEVRON_SCALE = 0.65;
+/** A cheer's thumb (#3116): over the helmet, clear of a coach's chevron. */
+const THUMB_Y = 2.22;
 /** Riders drawn in full detail, you among them (docs/SPEC.md "The world"); the rest take LOD1. */
 const NEAR = 3;
 /** Seconds between choosing who is near: a swap rebuilds a figure. */
@@ -70,6 +75,8 @@ type View = {
 	shadow: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
 	bead: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
 	chevron: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
+	thumb: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
+	light: THREE.Mesh;
 };
 
 /** A joined rider whose screen has gone (#3098): their kit in greys, never a ghost's see-through. */
@@ -107,18 +114,37 @@ export function placeOn(
 /**
  * Everyone the world draws. `neon` is the theme's structural accent: the
  * coach's chevron wears it, flat and unlit — it never glows (ADR-0005).
- * `viewer` is the theme of whoever looks: every kit colour is guarded for it.
+ * Every kit colour is guarded for whoever looks, whose live data is the
+ * look's trail and zones: the theme's, on a ride.
  */
-export function makeCrew(style: Style, neon: THREE.Color, viewer: Viewer) {
+export function makeCrew(style: Style, neon: THREE.Color) {
+	const hex = (c: string) => `#${new THREE.Color(c).getHexString()}`;
+	const viewer: Viewer = {
+		watt: hex(style.trail ?? themeById(DEFAULT_DARK_ID)!.tokens.watt),
+		zones: style.zones.map(hex),
+	};
 	const group = new THREE.Group();
 	const gradient = ramp(TOON_BANDS.map((b) => b / 255));
+	// A sun's contact shadow grounds each rider; under the sky alone nothing casts one (ADR-0072).
+	const shadowed = style.sun.elevation >= 0;
 	const shadowGeo = new THREE.CircleGeometry(0.5, 20)
 		.rotateX(-Math.PI / 2)
 		.scale(0.9, 1, 2.1);
 	const ringGeo = new THREE.RingGeometry(0.62, 0.8, 32).rotateX(-Math.PI / 2);
 	const beadGeo = new THREE.SphereGeometry(1, 16, 12);
 	const chevronGeo = chevronGeometry();
+	const thumbGeo = thumbGeometry(
+		new THREE.Color(style.kit.shoe),
+		new THREE.Color(style.kit.tyre),
+	);
+	// Flat and unlit, like every mark: a tail light that answers a cheer never glows.
+	const lightGeo = new THREE.BoxGeometry(0.03, 0.045, 0.06);
+	const lightMaterial = new THREE.MeshBasicMaterial({
+		color: style.kit.tailLight,
+	});
 	const zones = style.zones.map((z) => new THREE.Color(z));
+	// A silent trainer's ring: the neutral tone, none of Z1–Z7 (#3766), so nothing stale reads as a zone.
+	const neutral = new THREE.Color(style.kit.skin);
 	const chevronMaterial = () =>
 		new THREE.MeshBasicMaterial({
 			color: neon,
@@ -201,7 +227,24 @@ export function makeCrew(style: Style, neon: THREE.Color, viewer: Viewer) {
 		chevron.position.y = CHEVRON_Y;
 		chevron.scale.setScalar(CHEVRON_SCALE);
 		chevron.visible = false;
+		const thumb = new THREE.Mesh(
+			thumbGeo,
+			new THREE.MeshBasicMaterial({
+				vertexColors: true,
+				side: THREE.DoubleSide,
+				alphaHash: true,
+			}),
+		);
+		thumb.position.y = THUMB_Y;
+		thumb.visible = false;
+		// Under the saddle's tail, on the post, in the figure's own frame (+X forward).
+		const light = new THREE.Mesh(lightGeo, lightMaterial);
+		const seat = figure.userData.rig.fit.contact;
+		light.position.set(seat.x - 0.035, seat.y - 0.09, 0);
+		light.visible = false;
+		figure.add(tag('marks', light, 'tail-light'));
 		const g = new THREE.Group();
+		shadow.visible = shadowed;
 		g.userData.rider = r.id;
 		g.add(
 			tag('figures', figure),
@@ -209,6 +252,7 @@ export function makeCrew(style: Style, neon: THREE.Color, viewer: Viewer) {
 			tag('marks', ring),
 			tag('marks', bead),
 			tag('marks', chevron, 'chevron'),
+			tag('marks', thumb, 'cheer'),
 		);
 		group.add(g);
 		const view: View = {
@@ -224,6 +268,8 @@ export function makeCrew(style: Style, neon: THREE.Color, viewer: Viewer) {
 			shadow,
 			bead,
 			chevron,
+			thumb,
+			light,
 		};
 		views.set(r, view);
 		return view;
@@ -236,6 +282,7 @@ export function makeCrew(style: Style, neon: THREE.Color, viewer: Viewer) {
 			m.dispose();
 		v.bead.material.dispose();
 		v.chevron.material.dispose();
+		v.thumb.material.dispose();
 		views.delete(r);
 	}
 
@@ -315,10 +362,20 @@ export function makeCrew(style: Style, neon: THREE.Color, viewer: Viewer) {
 			v.ring.visible = !overview && r.ring !== false;
 			v.chevron.visible = !overview && !!r.coach;
 			v.chevron.material.opacity = alpha;
+			// A cheer for them (#3116): the thumb, then the light.
+			const cheer = r.cheer;
+			v.thumb.visible = !overview && !!cheer && cheer.thumb > 0;
+			if (cheer) {
+				v.thumb.scale.setScalar(Math.max(cheer.thumb, 1e-3));
+				v.thumb.material.opacity = cheer.alpha * alpha;
+			}
+			v.light.visible = !overview && !!cheer?.lit;
 			v.bead.visible = overview;
 			v.bead.scale.setScalar(overview ? 22 : 1);
 			v.bead.position.y = overview ? 22 : 0;
-			v.ring.material.color.copy(zones[zoneOf(r.watts, r.ftp) - 1]);
+			v.ring.material.color.copy(
+				r.silent ? neutral : zones[zoneOf(r.watts, r.ftp) - 1],
+			);
 			// The animator turns the legs at the rider's cadence, sits or stands them by SPEC's thresholds.
 			const state = v.anim.update(dt, inputOf(r, route));
 			pedal(r).crank = state.crank;
@@ -329,6 +386,8 @@ export function makeCrew(style: Style, neon: THREE.Color, viewer: Viewer) {
 					v.group.position.y + 1.1,
 					v.group.position.z,
 				);
+				// No figure, no trail: a coach in the team car leaves none (#3771).
+				if (trail) trail.mesh.visible = alpha > 0 && !r.silent;
 				trail?.follow(route, r.d, lane);
 			}
 		});
