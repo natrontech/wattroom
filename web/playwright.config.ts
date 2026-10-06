@@ -101,6 +101,9 @@ export default defineConfig({
 			dependencies: ['design-seed'],
 			workers: 3,
 			retries: 1,
+			// ride-road-world rides the world four times: in software GL on a
+			// four-core runner that is past the five minutes a ride is given.
+			timeout: 10 * 60 * 1000,
 			use: {
 				...devices['Desktop Chrome'],
 				// A control that never comes fails its surface in seconds, not

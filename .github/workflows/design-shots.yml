@@ -96,7 +96,21 @@ jobs:
         working-directory: web
       - run: pnpm exec playwright install chromium
         working-directory: web
-      - run: make design-shots OUT="$RUNNER_TEMP/design-shots"
+      # A surface that fails leaves FAILED-<id>.png and .txt beside the rest,
+      # and a warning here, not a red run: the artifact is still main's for
+      # every other surface. phone-ride and closing-card's phone shot fail on
+      # Linux until #3854. A run that shot nothing is red.
+      - name: make design-shots
+        run: |
+          out="$RUNNER_TEMP/design-shots"
+          if make design-shots OUT="$out"; then exit 0; fi
+          failed=$(ls "$out"/*/FAILED-*.txt 2>/dev/null) || {
+            echo "::error::make design-shots failed before any surface did"
+            exit 1
+          }
+          for f in $failed; do
+            echo "::warning title=$(basename "$(dirname "$f")") $(basename "$f" .txt)::$(head -c 300 "$f" | tr '\n' ' ')"
+          done
       # Uploaded even when a surface failed: the rest are still main's, and a
       # FAILED-<id>.png says which one a check has to capture itself.
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
