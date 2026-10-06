@@ -397,7 +397,7 @@ surface('ride-session-road', async (s) => {
 surface('roadside-chalk', async (s) => {
 	// Design Watcher at the roadside of Designer's session on the hairpin road
 	// (#3029). The deck chalks halfway up the next climb, out of the chase
-	// camera's sight, so the watcher's socket lays one 50 m ahead for the
+	// camera's sight, so the watcher's socket lays one 30 m ahead for the
 	// world's shot, as the hub takes it from any deck.
 	const { coach, crew } = await session(s, { road: ROADS.hairpin.name }, true);
 	try {
@@ -426,7 +426,7 @@ surface('roadside-chalk', async (s) => {
 		);
 		socket?.send(
 			JSON.stringify({
-				roadside: { kind: 'paint', stamp: 'heart', atM: ahead + 50 },
+				roadside: { kind: 'paint', stamp: 'heart', atM: ahead + 30 },
 			}),
 		);
 		// A tick to land it, while the bunch is still short of it.
