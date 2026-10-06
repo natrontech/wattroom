@@ -8,7 +8,6 @@
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { confirm } from '$lib/confirm.svelte';
 	import type { MenuEntry } from '$lib/context-menu.svelte';
-	import { device, isSpectator } from '$lib/device.svelte';
 	import { roadsEnabled } from '$lib/ride/roads';
 	import type { StoredRoute } from '$lib/road/stored';
 	import { toasts } from '$lib/toast.svelte';
@@ -30,7 +29,9 @@
 	}
 	void load();
 
-	const rides = $derived(roadsEnabled() && !isSpectator(device));
+	// Every device, as a workout card's Ride: where this one cannot reach a
+	// trainer, /ride says why beside its disabled Start (ux.md).
+	const rides = $derived(roadsEnabled());
 	const rideHref = (r: StoredRoute) =>
 		`/ride?road=${encodeURIComponent(r.id)}${r.carryOnM !== undefined ? `&from=${Math.floor(r.carryOnM)}` : ''}`;
 
