@@ -20,8 +20,8 @@ description: Run the design check on a rider-visible change: capture its surface
   ```sh
   make design-shots SURFACES="$ids" OUT=web/design-shots/<slug>/after-1 > $S/after-1.log 2>&1
   ```
-- Before, meanwhile: `make design-before OUT=web/design-shots/<slug>/before`.
-  - Exit 2 printed main's run id: `gh run watch <id> --exit-status` in the background, then `make design-before` again.
+- Before, meanwhile: `scripts/design-before.sh web/design-shots/<slug>/before`.
+  - Exit 2 printed main's run id: `gh run watch <id> --exit-status` in the background, then the script again.
   - Exit 1, a surface missing from the download, or a `FAILED-<id>.png` in it: capture main from a scratch worktree, in the background once the branch's capture is done (two builds at once slow both):
     ```sh
     git worktree add --detach $S/main origin/main

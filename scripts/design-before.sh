@@ -5,7 +5,8 @@
 # that draws the same (nothing under web/ or server/internal/og changed in
 # between, the workflow's own paths).
 #
-# Usage: design-before.sh <out-dir>   (`make design-before OUT=…`)
+# Usage: scripts/design-before.sh <out-dir>   (run directly: make would fold
+#        the two exit codes below into its own 2)
 # Exit 1: no such artifact; DESIGN-CHECK.md says how to capture main locally.
 # Exit 2: the merge base's own run is still going; its id is printed, so
 #         `gh run watch <id>` can wait for it in the background.

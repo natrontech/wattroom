@@ -6,7 +6,7 @@
 # tree keeps :8080/:5174 and the `wattroom` database; every linked worktree
 # derives its own from its path. `make dev-env` prints what this one takes.
 
-.PHONY: infra dev-env dev-server dev-web dev-db-drop web web-deps changelog protocol migration sqlc seed screenshots design-targets design-shots design-before build test lint dead-code ci release print-golangci-version desktop desktop-smoke desktop-release perf perf-scenes licenses worktree-gc
+.PHONY: infra dev-env dev-server dev-web dev-db-drop web web-deps changelog protocol migration sqlc seed screenshots design-targets design-shots build test lint dead-code ci release print-golangci-version desktop desktop-smoke desktop-release perf perf-scenes licenses worktree-gc
 
 DEV_ENV := scripts/dev-env.sh
 # "wattroom dev key, never deployed" in base64: 32 bytes, for make dev-server only.
@@ -120,9 +120,6 @@ design-shots: web-deps ## screenshot and probe design surfaces from a build of t
 			DESIGN_SHOTS_SURFACES="$(SURFACES)" \
 			pnpm exec playwright test --project=design --reporter=list; \
 		status=$$?; echo "Design shots: $$out"; exit $$status
-
-design-before: ## main's design shots for this branch, from CI's artifact for the merge base: OUT=… (docs/design/DESIGN-CHECK.md)
-	@scripts/design-before.sh "$(or $(OUT),web/design-shots/before)"
 
 design-targets: web-deps ## re-render docs/design/targets from docs/design/mockups (MOCKS="v2 shop" for some; the mocks load fonts and three.js from CDNs)
 	cd web && node scripts/design-targets.mjs $(MOCKS)

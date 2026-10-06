@@ -2,8 +2,8 @@
 # Each push to main that changes what is drawn runs the design-shots spec on
 # every surface, both schemes, the world in software GL (#3826), and uploads
 # the captures and their probes as `design-shots-<sha>` for 14 days.
-# `make design-before` fetches the one for a branch's merge base, so a check
-# no longer builds and captures main on the author's machine.
+# scripts/design-before.sh fetches the one for a branch's merge base, so a
+# check no longer builds and captures main on the author's machine.
 #
 # Advisory: no ruleset requires it. A pull request that edits this file runs
 # it too, so a change here proves itself; workflow_dispatch re-takes a commit.
