@@ -411,6 +411,10 @@ surface('roadside-chalk', async (s) => {
 		await watcher.page
 			.getByRole('button', { name: 'Chalk Allez' })
 			.waitFor({ timeout: 20_000 });
+		// The deck sits low on the page: its last line in view for each shot.
+		await watcher.page
+			.getByRole('group', { name: 'chalk the next climb' })
+			.scrollIntoViewIfNeeded();
 		await s.shot(watcher);
 		const riders = await coach.page
 			.locator('canvas[data-riders]')
@@ -429,6 +433,9 @@ surface('roadside-chalk', async (s) => {
 		await coach.page.waitForTimeout(1500);
 		await s.shot(coach, { name: 'roadside-chalk-world' });
 		// The watcher has chalked this road's one climb: the deck says so.
+		await watcher.page
+			.getByText('No climb left ahead to chalk.')
+			.scrollIntoViewIfNeeded();
 		await s.shot(watcher, { name: 'roadside-chalk-spent' });
 		// A second stamp on that climb is refused, and the deck says why.
 		socket?.send(
@@ -439,7 +446,7 @@ surface('roadside-chalk', async (s) => {
 		await watcher.page
 			.getByRole('status')
 			.filter({ hasText: 'this climb' })
-			.waitFor();
+			.scrollIntoViewIfNeeded();
 		await s.shot(watcher, { name: 'roadside-chalk-refused' });
 	} finally {
 		await endSession(coach.page);
