@@ -29,6 +29,7 @@ jobs:
     outputs:
       code: ${{ steps.diff.outputs.code }}
       world: ${{ steps.diff.outputs.world }}
+      plan: ${{ steps.diff.outputs.plan }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -40,31 +41,42 @@ jobs:
         env:
           EVENT: ${{ github.event_name }}
         run: |
-          if [ "$EVENT" != pull_request ]; then
-            echo "code=true" >> "$GITHUB_OUTPUT"
-            echo "world=true" >> "$GITHUB_OUTPUT"
-            exit 0
+          code=true
+          world=true
+          if [ "$EVENT" = pull_request ]; then
+            files=$(git diff --name-only HEAD^1 HEAD)
+            echo "$files"
+            code=false
+            if grep -qE '^(web/|server/|\.github/workflows/e2e\.yml$)' <<<"$files"; then
+              code=true
+            fi
+            # What the @world specs stand on: the world, both riding surfaces and
+            # their routes, and the harness (Playwright and three.js versions too).
+            world_paths='^(web/src/lib/(world|ride|session)/|web/src/routes/\(app\)/(ride|dev/world|crew/\[id\]/s/\[session\]|crew/\[id\]/v/\[channel\]/training)/|web/e2e/.*\.(js|ts)$|web/(playwright\.config\.ts|package\.json|pnpm-lock\.yaml)$|\.github/workflows/e2e\.yml$)'
+            world=false
+            while read -r f; do
+              case "$f" in
+                # A spec is harness only when it is one of the world's own.
+                *.spec.ts) if [ -f "$f" ] && grep -q '@world' "$f"; then world=true; fi ;;
+                *) if grep -qE "$world_paths" <<<"$f"; then world=true; fi ;;
+              esac
+            done <<<"$files"
           fi
-          files=$(git diff --name-only HEAD^1 HEAD)
-          echo "$files"
-          code=false
-          if grep -qE '^(web/|server/|\.github/workflows/e2e\.yml$)' <<<"$files"; then
-            code=true
-          fi
-          # What the @world specs stand on: the world, both riding surfaces and
-          # their routes, and the harness (Playwright and three.js versions too).
-          world_paths='^(web/src/lib/(world|ride|session)/|web/src/routes/\(app\)/(ride|dev/world|crew/\[id\]/s/\[session\]|crew/\[id\]/v/\[channel\]/training)/|web/e2e/.*\.(js|ts)$|web/(playwright\.config\.ts|package\.json|pnpm-lock\.yaml)$|\.github/workflows/e2e\.yml$)'
-          world=false
-          while read -r f; do
-            case "$f" in
-              # A spec is harness only when it is one of the world's own.
-              *.spec.ts) if [ -f "$f" ] && grep -q '@world' "$f"; then world=true; fi ;;
-              *) if grep -qE "$world_paths" <<<"$f"; then world=true; fi ;;
-            esac
-          done <<<"$files"
           echo "code=$code world=$world"
           echo "code=$code" >> "$GITHUB_OUTPUT"
           echo "world=$world" >> "$GITHUB_OUTPUT"
+          # Three shards deal out the suite less the world. The @world specs
+          # draw in software GL, two screens at once in bunch-world.spec.ts,
+          # and starved beside three workers; they run apart, two at a time.
+          n=3
+          plan=""
+          for i in $(seq 1 $n); do
+            plan+="{\"shard\":\"$i\",\"args\":\"--shard=$i/$n --grep-invert=@world\"},"
+          done
+          if [ "$world" = true ]; then
+            plan+='{"shard":"world","args":"--grep=@world --workers=2"},'
+          fi
+          echo "plan={\"include\":[${plan%,}]}" | tee -a "$GITHUB_OUTPUT"
 
   shard:
     needs: changes
@@ -73,11 +85,9 @@ jobs:
     strategy:
       # Every shard finishes, so a red run names every failure at once.
       fail-fast: false
-      matrix:
-        shard: [1, 2, 3]
+      matrix: ${{ fromJSON(needs.changes.outputs.plan) }}
     env:
-      SHARD: ${{ matrix.shard }}/3
-      GREP: ${{ needs.changes.outputs.world != 'true' && '--grep-invert=@world' || '' }}
+      BROWSERS: ${{ matrix.shard == 'world' && 'chromium webkit firefox' || 'chromium' }}
     services:
       postgres:
         image: postgres:18
@@ -144,28 +154,26 @@ jobs:
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
-      # All three, so whichever shard saves the cache saves every browser.
-      - run: pnpm exec playwright install chromium webkit firefox
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-${{ matrix.shard == 'world' && 'all' || 'chromium' }}
+      - run: pnpm exec playwright install $BROWSERS
         working-directory: web
-      # The runner ships Chromium's libraries but not WebKit's or Firefox's, and
-      # those two run world-place.spec.ts only (#3224) — so only its shard pays
-      # the apt round trip, retried once because the mirrors flake. The listing
-      # names the deal alone as its reporter: the github one would annotate
-      # every test as "did not run".
-      - name: WebKit and Firefox libraries, if this shard runs them
+      # The runner ships Chromium's libraries but not WebKit's or Firefox's,
+      # which run world-place.spec.ts only (#3224). Retried once: apt mirrors
+      # flake.
+      - name: WebKit and Firefox libraries
+        if: matrix.shard == 'world'
         working-directory: web
         run: |
-          if pnpm exec playwright test --list --shard="$SHARD" $GREP --reporter=./e2e/shard-by-file.ts | grep -qE '\[(webkit|firefox)\]'; then
-            pnpm exec playwright install-deps webkit firefox ||
-              { sleep 15; pnpm exec playwright install-deps webkit firefox; }
-          fi
+          pnpm exec playwright install-deps webkit firefox ||
+            { sleep 15; pnpm exec playwright install-deps webkit firefox; }
       # No build step: playwright.config.ts's webServer always builds, so a
       # reused bundle can never be what gets tested. --add-reporter, not
       # --reporter: the config's reporters include e2e/shard-by-file.ts.
       - name: Run this shard
         working-directory: web
-        run: pnpm exec playwright test --shard="$SHARD" $GREP --add-reporter=blob
+        env:
+          ARGS: ${{ matrix.args }}
+        run: pnpm exec playwright test $ARGS --add-reporter=blob
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: ${{ !cancelled() }}
         with:
