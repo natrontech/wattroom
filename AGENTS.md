@@ -38,6 +38,7 @@ Standing down: withdraw your claim and write "proceed, do not stand down on acco
 - Progress, blockers and decisions go in the issue or PR. A decision made in a thread still gets an ADR.
 - Out-of-scope findings become new issues with a milestone and labels, never extra scope.
 - A PR a rider can see carries a Design check section per [docs/design/DESIGN-CHECK.md](docs/design/DESIGN-CHECK.md); one with a blocker or major left stays draft.
+- A PR body says what changed, why and how you checked it, in at most 600 characters ([template](.github/PULL_REQUEST_TEMPLATE.md)); findings and logs go in comments. CI goes red over 1,200.
 - Done = CI green, diff self-reviewed, PR marked ready.
 
 ## Merging and cleaning up
