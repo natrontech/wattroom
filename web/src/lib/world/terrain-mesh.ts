@@ -366,5 +366,3 @@ export function createTerrain(
 
 	return { heightAt, biomeAt, mesh, rim, chunk, peek };
 }
-
-export type Terrain = ReturnType<typeof createTerrain>;

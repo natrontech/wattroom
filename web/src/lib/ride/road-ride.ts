@@ -91,8 +91,6 @@ export function createRoadRide(
 	};
 }
 
-export type RoadRide = ReturnType<typeof createRoadRide>;
-
 /** A sample's place on the road, as the upload and the crash buffer keep it. */
 export interface RoadSampleFields {
 	m: number;
@@ -151,5 +149,3 @@ export function createRoadLaps(
 		},
 	};
 }
-
-export type RoadLaps = ReturnType<typeof createRoadLaps>;

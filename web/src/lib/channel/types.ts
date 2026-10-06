@@ -60,12 +60,6 @@ export interface PanelMember {
 }
 
 export type TileMetric = 'hr' | 'cadence' | 'wkg';
-export const TILE_METRICS: { id: TileMetric; label: string }[] = [
-	{ id: 'hr', label: 'bpm' },
-	{ id: 'cadence', label: 'rpm' },
-	{ id: 'wkg', label: 'w/kg' },
-];
-
 export function targetState(rider: Pick<LiveRider, 'watts' | 'target'>) {
 	const has = rider.target > 0;
 	// One band, docs/SPEC.md's, shared with the scorer through the generated

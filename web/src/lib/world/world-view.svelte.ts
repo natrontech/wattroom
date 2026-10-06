@@ -89,5 +89,3 @@ export function createWorldView() {
 		},
 	};
 }
-
-export type WorldView = ReturnType<typeof createWorldView>;
