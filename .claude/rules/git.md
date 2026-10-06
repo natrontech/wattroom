@@ -39,5 +39,5 @@ Claiming, worktrees and merging are in AGENTS.md ("Taking work", "Merging and cl
       else map("\(.name // .context): \(.conclusion // .state)") | join(", ") end'
   ```
 
-- Required on `main`: `server` `web` `vulncheck` `docs` `changelog`. Everything else (`e2e`, the desktop smoke, `web-node-next`) is advisory: a red one is a real finding but blocks nothing. Never call an advisory check a gate, and never read a green headline as "the ride passed".
+- Required on `main`: `server` `web` `vulncheck` `docs` `changelog`. Everything else (`e2e`, the desktop smoke, `web-node-next`, `dead-code`) is advisory: a red one is a real finding but blocks nothing. Never call an advisory check a gate, and never read a green headline as "the ride passed".
 - `changelog` always reports (`skipping` on an exempt PR), so it can be required. `e2e` is path-filtered and never reports on a docs-only PR, so requiring it needs a skip-shim job first. `web-node-next` joins `web` when Node 26 is Active LTS.

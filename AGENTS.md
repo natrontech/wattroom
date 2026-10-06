@@ -17,6 +17,7 @@ WattRoom: collaborative indoor cycling. Go server + SvelteKit SPA + Postgres + L
 - `make dev-server` / `make dev-web`: the hot-reload pair (Vite proxies /api and /ws).
 - `make test`: race-detected Go tests + vitest. Must pass.
 - `make lint`: golangci-lint, svelte-check, prettier.
+- `make dead-code`: unused files, exports and dependencies in web/ (knip) and functions nothing reaches in server/ (deadcode). CI's advisory `dead-code` job runs it.
 - `make protocol`: regenerate `web/src/lib/protocol.ts` after editing `server/internal/protocol/`; commit both.
 - `make migration name=<slug>`: the only way to add a migration. Never type a sequence number.
 - `make build`: one binary with the SPA embedded.
