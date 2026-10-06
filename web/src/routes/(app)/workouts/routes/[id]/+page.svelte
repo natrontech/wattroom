@@ -95,7 +95,7 @@
 	const carry = $derived(
 		attempts && road ? carryOnOf(attempts.attempts, road.length) : null,
 	);
-	const ridable = $derived(roadsEnabled() && !isSpectator(device));
+	const ridable = $derived(roadsEnabled());
 	const renamed = $derived(
 		route !== null && name.trim() !== '' && name.trim() !== route.name,
 	);
@@ -212,6 +212,7 @@
 						length={road.length}
 						climbs={route.climbs}
 						{carry}
+						spectator={isSpectator(device)}
 					/>
 				</aside>
 			{/if}

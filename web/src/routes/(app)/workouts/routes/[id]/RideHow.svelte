@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Bike from '@lucide/svelte/icons/bike';
 	import type { Component } from 'svelte';
+	import { spectatorRideLine } from '$lib/device.svelte';
 	import { formatKm } from '$lib/format';
 	import { classedOf, type Climb } from '$lib/road/climbs';
 
@@ -9,19 +10,23 @@
 	 * which stretch of it, and the one primary. A way is a row only once its
 	 * flow works — Workout on it (#3681) and Plan it for a crew (#3682) add
 	 * theirs to WAYS — so nothing here is a disabled promise. On a phone the
-	 * primary comes first; on a desk it closes the column.
+	 * primary comes first; on a desk it closes the column. A device that cannot
+	 * reach a trainer still sees how, its primary disabled with the reason.
 	 */
 	let {
 		id,
 		length,
 		climbs,
 		carry,
+		spectator = false,
 	}: {
 		id: string;
 		length: number;
 		climbs: Climb[];
 		/** Where the owner's last ride alone stopped short, or null. */
 		carry: number | null;
+		/** This device cannot reach a trainer (`device.spectator`). */
+		spectator?: boolean;
 	} = $props();
 
 	type Way = {
@@ -135,9 +140,16 @@
 		<p class="text-muted mt-2 text-xs">{said}</p>
 	</div>
 
-	<a
-		href={chosen.href(fromM)}
-		class="btn btn-primary btn-lg order-first w-full lg:order-none"
-		>{chosen.label}</a
-	>
+	<div class="order-first lg:order-none">
+		{#if spectator}
+			<button type="button" disabled class="btn btn-primary btn-lg w-full"
+				>{chosen.label}</button
+			>
+			<p class="text-muted mt-2 text-xs">{spectatorRideLine}</p>
+		{:else}
+			<a href={chosen.href(fromM)} class="btn btn-primary btn-lg w-full"
+				>{chosen.label}</a
+			>
+		{/if}
+	</div>
 </div>
