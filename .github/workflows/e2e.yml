@@ -67,14 +67,14 @@ jobs:
           echo "world=$world" >> "$GITHUB_OUTPUT"
           # Three shards deal out the suite less the world. The @world specs
           # draw in software GL, two screens at once in bunch-world.spec.ts,
-          # and starved beside three workers; they run apart, two at a time.
+          # and starve beside any other world; they run apart, one at a time.
           n=3
           plan=""
           for i in $(seq 1 $n); do
             plan+="{\"shard\":\"$i\",\"args\":\"--shard=$i/$n --grep-invert=@world\"},"
           done
           if [ "$world" = true ]; then
-            plan+='{"shard":"world","args":"--grep=@world --workers=2"},'
+            plan+='{"shard":"world","args":"--grep=@world --workers=1"},'
           fi
           echo "plan={\"include\":[${plan%,}]}" | tee -a "$GITHUB_OUTPUT"
 
@@ -127,13 +127,10 @@ jobs:
         with:
           persist-credentials: false
       # The default cache key looks for go.sum at the root and finds nothing.
-      # The workflow is in the key so this plain build is not ci.yml's race one.
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: server/go.mod
-          cache-dependency-path: |
-            server/go.sum
-            .github/workflows/e2e.yml
+          cache-dependency-path: server/go.sum
       # Warms the build cache for e2e/server.js's `go run .`.
       - run: go build -o /dev/null .
         working-directory: server

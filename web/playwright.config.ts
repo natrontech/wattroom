@@ -48,7 +48,7 @@ export default defineConfig({
 	fullyParallel: false,
 	// Three per CI shard (e2e.yml): most of a spec is a simulated trainer riding
 	// in real time, which leaves a 4-core runner idle at two. The @world specs,
-	// drawn in software GL, starve at three and run apart at two.
+	// drawn in software GL, run apart from the rest, one at a time.
 	workers: process.env.CI ? 3 : undefined,
 	forbidOnly: !!process.env.CI,
 	// Two retries on CI, none locally: a genuine break still fails three
