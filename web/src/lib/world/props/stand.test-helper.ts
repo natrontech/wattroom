@@ -28,7 +28,7 @@ export function standNetwork(lines: Line[], salt: Salt = WORLD_SALT) {
 		w.ground.lines,
 	);
 	const set = setPieces({ ...place, placer, villages });
-	const tiles = standTiles(scatter(place, placer, villages, set), set, origin);
+	const tiles = standTiles(scatter(place, placer, villages), set, origin);
 	const ids = new Map<string, [number, number]>();
 	const last = CHUNK_M - 0.01;
 	for (const [ci, cj] of w.cover.chunks)

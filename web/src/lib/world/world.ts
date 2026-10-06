@@ -129,7 +129,7 @@ export function generate(
 		ground.lines,
 	);
 	const set = setPieces({ ...place, placer, villages });
-	const tiles = standTiles(scatter(place, placer, villages, set), set);
+	const tiles = standTiles(scatter(place, placer, villages), set);
 	let all: Stood | null = null;
 	/** Every tile within reach of a road: a tree stands within 700 m of one, and its tile's centre within half a diagonal more. */
 	function everything(): Stood {

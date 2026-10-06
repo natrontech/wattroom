@@ -5,8 +5,8 @@ import { noise2 } from '../rand';
  * The forest's shape (#3675): trees stand in groups where a slow noise says
  * so, conifer stands line the road on open ground beside it, thinning
  * between groups but never opening, a meadow is a clearing between them and
- * a forest edge behind it, and the deep forest out
- * of sight thins to pay for the near trees (docs/SPEC.md "The world":
+ * a forest edge behind it, and the deep forest out of sight stands only in
+ * its stands' hearts to pay for the near trees (docs/SPEC.md "The world":
  * dressing). On the placement path, so exact arithmetic only (place-lint).
  */
 
@@ -23,12 +23,14 @@ const EDGE_FROM = 100;
 const EDGE_FULL = 150;
 const EDGE_END = 260;
 const EDGE_GONE = 320;
-const EDGE_P = 0.15;
+const EDGE_P = 0.6;
+/** The edge grows in stands, where the stand noise is above this (about a quarter of it). */
+const EDGE_CUT = 0.4;
 /** Within this of the road, a stand's heart grows a second tree beside each first. */
 const PAIR_M = 120;
-/** Past this the forest is out of the chase camera's sight, and thins to this share. */
+/** Past this the forest is out of the chase camera's sight: whole stands where the noise is above this (about 30 %), clearings between. */
 const DEEP_M = 250;
-const DEEP_THIN = 0.3;
+const DEEP_CUT = 0.3;
 
 const smooth = (a: number, b: number, t: number) => {
 	const k = Math.min(1, Math.max(0, (t - a) / (b - a)));
@@ -51,19 +53,16 @@ export function forest(seed: number) {
 		/** The chance a cell holds a tree, `far` metres from the road in stand `g`. */
 		chance(b: Biome, far: number, frame: boolean, g: number): number {
 			const group = Math.min(2, Math.max(0, 1 + 1.4 * g));
-			const p =
-				b === Biome.Forest
-					? 0.78 * (far > DEEP_M ? DEEP_THIN : 1)
-					: frame
-						? FRAME_P
-						: b === Biome.Meadow
-							? EDGE_P *
-								smooth(EDGE_FROM, EDGE_FULL, far) *
-								(1 - smooth(EDGE_END, EDGE_GONE, far))
-							: b === Biome.Alpine
-								? 0.05
-								: 0;
-			return p * (frame ? Math.max(FRAME_FLOOR, group) : group);
+			if (b === Biome.Forest)
+				return far > DEEP_M ? (g > DEEP_CUT ? 0.78 : 0) : 0.78 * group;
+			if (frame) return FRAME_P * Math.max(FRAME_FLOOR, group);
+			if (b === Biome.Meadow)
+				return g > EDGE_CUT
+					? EDGE_P *
+							smooth(EDGE_FROM, EDGE_FULL, far) *
+							(1 - smooth(EDGE_END, EDGE_GONE, far))
+					: 0;
+			return b === Biome.Alpine ? 0.05 * group : 0;
 		},
 		/**
 		 * How many trees grow close round one, from a keyed unit `u`: one

@@ -1,7 +1,7 @@
 import { Biome } from '../biome';
 import { VILLAGES } from '../names';
 import { keyer, unit, type Salt } from '../place/keyed';
-import type { Class, Placement } from '../placement/types';
+import type { Class } from '../placement/types';
 import type { Ground, Origin } from '../terrain/ground';
 import { forest, FRAME_NEAR, ringAt } from './forest';
 import type { PropKind } from './kit';
@@ -73,8 +73,6 @@ const VILLAGE_REACH = VILLAGE_ALONG / 2 + HAMLET_M / 2 + 15 + VILLAGE_OFF;
 /** A barn brings one or two more buildings, this far from it at most, in this many tries. */
 const CLUSTER_M = 26;
 const FARM_TRIES = 6;
-/** Metres of pasture round a building's walls, where no tree frames the road, so its roof shows from it. */
-const FIELD_M = 80;
 /** A village stands in its fields: no stand frames the road this near its church, so it shows from the approach. */
 const FIELDS_M = 600;
 /** How far a tree's neighbours stand from it (forest.ts). */
@@ -143,17 +141,8 @@ export function villageSites(place: Place): Village[] {
 	return out;
 }
 
-/**
- * What one tile of a place might stand beside its roads: the candidates its
- * tile is settled from (tiles.ts). `set` is the set pieces', whose buildings
- * keep their pastures too.
- */
-export function scatter(
-	place: Place,
-	placer: Placer,
-	villages: Village[],
-	set: { tile(ti: number, tj: number): { p: Placement }[] },
-) {
+/** What one tile of a place might stand beside its roads: the candidates its tile is settled from (tiles.ts). */
+export function scatter(place: Place, placer: Placer, villages: Village[]) {
 	const { salt, ground, heightAt, biomeAt } = place;
 	const origin = place.origin ?? [0, 0];
 	const [e0, n0] = origin;
@@ -333,39 +322,14 @@ export function scatter(
 		const [mx, mz] = [(ti + 0.5) * TILE_M - e0, n0 - (tj + 0.5) * TILE_M];
 		const nearTile = (x: number, z: number, m: number) =>
 			Math.abs(x - mx) <= TILE_M / 2 + m && Math.abs(z - mz) <= TILE_M / 2 + m;
-		// Every building that could stand here or keep its pasture here, as circles round its walls.
-		const homes: [number, number, number][] = [];
-		const home = ({ p }: { p: Placement }) => {
-			if (p.cls !== 'building') return;
-			const f = p.footprint;
-			const cx = f.reduce((s, [x]) => s + x, 0) / f.length;
-			const cz = f.reduce((s, [, z]) => s + z, 0) / f.length;
-			const r2 = Math.max(
-				...f.map(([x, z]) => (x - cx) * (x - cx) + (z - cz) * (z - cz)),
-			);
-			homes.push([cx, cz, Math.sqrt(r2)]);
-		};
-		const reach = VILLAGE_REACH + TILE_M + FIELD_M;
+		const reach = VILLAGE_REACH + TILE_M;
 		for (const v of villages)
 			if ((v.x - mx) * (v.x - mx) + (v.z - mz) * (v.z - mz) < reach * reach)
-				for (const c of housesOf(v)) {
-					keep(c);
-					home(c);
-				}
+				for (const c of housesOf(v)) keep(c);
 		farms.forEach((f, i) => {
-			if (!nearTile(f.x, f.z, CLUSTER_M + FIELD_M + 20)) return;
-			for (const c of clusterOf(i)) {
-				keep(c);
-				home(c);
-			}
+			if (nearTile(f.x, f.z, CLUSTER_M + 1))
+				for (const c of clusterOf(i)) keep(c);
 		});
-		for (let dj = -1; dj <= 1; dj++)
-			for (let di = -1; di <= 1; di++) set.tile(ti + di, tj + dj).forEach(home);
-		const near = (x: number, z: number, past: number) =>
-			homes.some(
-				([cx, cz, r]) =>
-					(x - cx) * (x - cx) + (z - cz) * (z - cz) < (r + past) * (r + past),
-			);
 
 		// Rocks where the ground is rock or alpine, in fields of four.
 		cells(ti, tj, ROCKS_M, 8, (i, j) => {
@@ -445,8 +409,7 @@ export function scatter(
 			const far = ground.roadDist(x, z);
 			if (b === null || far > TREES_WITHIN || inVillage(x, z)) return;
 			const g = woods.groupAt(e0 + x, n0 - z);
-			const frame =
-				woods.frames(b, far) && !near(x, z, FIELD_M) && !inFields(x, z);
+			const frame = woods.frames(b, far) && !inFields(x, z);
 			if (u(tree(i, j, 0)) >= woods.chance(b, far, frame, g)) return;
 			if (far < 140 && !ground.clearOf(x, z, 11)) return;
 			const conifer =
