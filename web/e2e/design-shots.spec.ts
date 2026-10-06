@@ -126,6 +126,15 @@ surface(
 			// Item 16's distance, however long the road takes to get there (#3834).
 			await atReading(o.page, 'km 0.1 of 7.1');
 			await s.shot(o, { name });
+			// multi:world-60s — the next minute of the same ride, a frame every
+			// 5 s: the forest beside the road as the rider passes it (#3675).
+			if (device === DESK)
+				for (let k = 1; k <= 12; k++) {
+					await o.page.waitForTimeout(5000);
+					await s.shot(o, {
+						name: `world-60s-${String(k).padStart(2, '0')}`,
+					});
+				}
 			await o.ctx.close();
 		}
 		// multi:world-hairpins — item 16's second leg, from km 2.3: the hairpins climb ahead.
@@ -460,9 +469,9 @@ async function still(
 	s: Shoot,
 	device: typeof DESK,
 	p: 0 | 1,
-	{ cam, name }: { cam?: 'chase' | 'side'; name?: string } = {},
+	{ cam, m, name }: { cam?: 'chase' | 'side'; m?: number; name?: string } = {},
 ) {
-	const o = await moment(s, device, p, cam);
+	const o = await moment(s, device, p, cam, m);
 	await s.shot(o, { name });
 	await o.ctx.close();
 }
@@ -501,6 +510,8 @@ alone(() => {
 			// multi:world-figure-side — the same moment from off your right shoulder,
 			// where the chase camera never stands: the face, the drops, both wheels.
 			await still(s, DESK, 0, { cam: 'side', name: 'world-figure-side' });
+			// multi:world-hamlet — houses are judged where a hamlet is in sight (#3675).
+			await still(s, DESK, 0, { m: HAMLET_AT, name: 'world-hamlet' });
 		},
 		{ once: true },
 	);
@@ -545,6 +556,23 @@ surface(
 					name: road === 'hairpin' ? prefix : `${prefix}-${road}`,
 				});
 			}
+		// Where the route page's links lead (#3680): the primary, from where the
+		// last ride stopped, and the best ride (the seed's timed one).
+		const o = await s.open(DESK);
+		const id = await fixtureRoad(o.page, 'hairpin');
+		await o.page.goto(`/workouts/routes/${id}`);
+		const carry = o.page.getByRole('button', { name: /^From km / });
+		await carry.waitFor({ timeout: 15_000 });
+		await carry.click();
+		await o.page.getByRole('link', { name: 'Ride it' }).click();
+		await o.page.waitForURL(/\/ride\?road=.+&from=\d+/);
+		await o.page.waitForTimeout(2500);
+		await s.shot(o, { name: 'route-ride-it' });
+		await o.page.goto(`/workouts/routes/${id}`);
+		await o.page.getByRole('link', { name: /^Best / }).click();
+		await o.page.waitForURL('**/history/*');
+		await o.page.waitForTimeout(2500);
+		await s.shot(o, { name: 'route-best-opens' });
 	},
 	{ also: ['phone-route'] },
 );
@@ -861,6 +889,11 @@ surface(
 			.getByRole('link', { name: 'See it in your history' })
 			.waitFor({ timeout: 30_000 });
 		await s.shot(o, { name: 'closing-card-road', full: true });
+		// F1's last step (#3680): the road's name opens its page, the ride on it.
+		await o.page.getByRole('link', { name: ROADS.hairpin.name }).click();
+		await o.page.waitForURL(`**/workouts/routes/${road}`);
+		await o.page.waitForTimeout(2500);
+		await s.shot(o, { name: 'route-after-ride', full: true });
 	},
 	{ also: ['closing-card-road'] },
 );

@@ -99,7 +99,7 @@ export default defineConfig({
 			name: 'design',
 			testMatch: ['design-shots.spec.ts'],
 			dependencies: ['design-seed'],
-			workers: 3,
+			workers: process.env.CI ? 2 : 3,
 			retries: 1,
 			// ride-road-world rides the world four times: in software GL on a
 			// four-core runner that is past the five minutes a ride is given.
@@ -197,7 +197,9 @@ export default defineConfig({
 		},
 		// Without somewhere to write, every design shot skips — and CI's shards
 		// split by test count, so 43 skips would leave the last one half idle.
-	].filter((p) => p.name !== 'design' || !!process.env.DESIGN_SHOTS_OUT),
+	].filter(
+		(p) => !p.name.startsWith('design') || !!process.env.DESIGN_SHOTS_OUT,
+	),
 	// Serves the built SPA and proxies /api to the Go server, matching production.
 	//
 	// Always builds, never reuses: the server only ever serves build/, so a reused

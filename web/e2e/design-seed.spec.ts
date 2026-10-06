@@ -7,6 +7,7 @@ import {
 	ownWorkout,
 	planTwo,
 	savedRide,
+	timedRide,
 } from './design/seed';
 import { DESK, OUT, Shoot } from './design/shoot';
 
@@ -30,6 +31,7 @@ test('seed', async ({ browser }) => {
 		await bigWatts(designer);
 		await savedRide(designer);
 		await savedRide(designer, hairpin);
+		await timedRide(designer, hairpin);
 		const crew = await designCrew(designer);
 		await planTwo(designer, crew);
 		for (const as of ['Design Partner', 'Design Watcher'])

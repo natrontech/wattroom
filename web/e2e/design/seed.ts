@@ -220,6 +220,32 @@ export async function savedRide(page: Page, road?: string): Promise<string> {
 }
 
 /**
+ * A timed free ride up the hairpin road's approach (ADR-0074): the route page's
+ * Best line needs one. Six hours back, clear of the other saved rides.
+ */
+export async function timedRide(page: Page, road: string): Promise<void> {
+	const startedAt = new Date(Date.now() - 6 * 3_600_000).toISOString();
+	const saved = await call(page, 'POST', '/api/rides', {
+		workoutName: 'Free ride',
+		workoutJson: JSON.stringify({
+			name: 'Free ride',
+			unscored: true,
+			steps: [],
+		}),
+		startedAt,
+		samples: Array.from({ length: 300 }, (_, i) => ({
+			watts: 200,
+			cadence: 88,
+			m: i * 2.5,
+		})),
+		routeId: road,
+		drive: 'sim',
+	});
+	if (saved.status !== 201 && saved.status !== 200)
+		throw new Error(`saving the timed ride: ${JSON.stringify(saved)}`);
+}
+
+/**
  * The ride a session just saved for this rider: the newest of theirs, once
  * the save — which runs after the session closes — has landed (#3738).
  */
