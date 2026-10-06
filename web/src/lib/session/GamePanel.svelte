@@ -87,7 +87,9 @@
 		? 'finished'
 		: 'running'}"
 >
-	<div class="flex items-center gap-3">
+	<!-- Wraps rather than squeezes: in a narrow dock End game takes its own
+	     line inside the card instead of running out of it. -->
+	<div class="flex flex-wrap items-center gap-x-3 gap-y-2 whitespace-nowrap">
 		<span class="font-display flex items-center gap-2 font-bold">
 			{#if mode}<mode.icon size={16} class="text-neon shrink-0" />{/if}
 			{mode?.label ?? game.mode}

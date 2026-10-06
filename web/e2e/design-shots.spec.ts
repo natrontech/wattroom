@@ -399,6 +399,8 @@ surface('ride-session-road', async (s) => {
  * (#3794), so the coach's socket sends the start the hub takes.
  */
 async function gameOnRoad(s: Shoot, mode: string, fromM = 0) {
+	// Its shots wait up to 3:20 of riding, most of the default 5 minutes.
+	test.setTimeout(10 * 60_000);
 	const coach = await s.open(DESK, { world: true });
 	const crew = await designCrew(coach.page);
 	const road = await fixtureRoad(coach.page, 'hairpin');
