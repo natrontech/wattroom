@@ -57,6 +57,13 @@
 		"surfaces": ["ride-session-road"]
 	},
 	{
+		"files": [
+			"web/src/lib/channel/RoadsideDeck.svelte",
+			"web/src/lib/world/chalk.ts"
+		],
+		"surfaces": ["roadside-chalk"]
+	},
+	{
 		"files": ["web/src/lib/ride/FreeRide.svelte"],
 		"surfaces": ["ride-channel-free"]
 	},

@@ -394,6 +394,44 @@ surface('ride-session-road', async (s) => {
 	}
 });
 
+surface('roadside-chalk', async (s) => {
+	// Design Watcher at the roadside of Designer's session on the hairpin road
+	// (#3029). The deck chalks halfway up the next climb, out of the chase
+	// camera's sight, so the watcher's socket lays one 40 m ahead for the
+	// world's shot, as the hub takes it from any deck.
+	const { coach, crew } = await session(s, { road: ROADS.hairpin.name }, true);
+	try {
+		const watcher = await s.open(DESK, { as: 'Design Watcher' });
+		await joinCrew(watcher.page, crew.code);
+		let socket: WebSocketRoute | undefined;
+		await watcher.page.routeWebSocket(/\/ws\/channels\//, (ws) => {
+			socket = ws.connectToServer();
+		});
+		await watcher.page.goto(voicePath(crew));
+		await watcher.page
+			.getByRole('button', { name: 'Chalk Allez' })
+			.waitFor({ timeout: 20_000 });
+		const riders = await coach.page
+			.locator('canvas[data-riders]')
+			.getAttribute('data-riders');
+		const ahead = Math.max(
+			...(JSON.parse(riders ?? '{}').riders ?? []).map(
+				(r: { d: number }) => r.d,
+			),
+		);
+		socket?.send(
+			JSON.stringify({
+				roadside: { kind: 'paint', stamp: 'heart', atM: ahead + 40 },
+			}),
+		);
+		await watcher.page.waitForTimeout(1500);
+		await s.shot(watcher);
+		await s.shot(coach, { name: 'roadside-chalk-world' });
+	} finally {
+		await endSession(coach.page);
+	}
+});
+
 surface('ride-race', async (s) => {
 	// Designer and Design Partner race the hairpin road (#3174). No screen
 	// starts a race yet, so Designer's socket sends the start the hub takes.

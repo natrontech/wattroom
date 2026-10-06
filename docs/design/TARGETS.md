@@ -246,6 +246,16 @@ Capture: two dev riders (Designer and a second, name letters only) in one crew's
 9. Each screen draws each rider where the other does, within 1 m along the road and across it. [test:web/e2e/bunch-world.spec.ts] [#3098]
 10. A cheer for one rider, sent from their crew tile's menu, draws a thumbs-up over their head (a light disc, a dark thumb, flat, unlit, clear of the chevron); their tail light blinks at 2 Hz for 10 s in amber, neither danger's red nor any watt, steady under reduced motion; nothing about it glows. [multi:ride-session-cheer] [test:web/src/lib/world/ride-scene.test.ts] [#3116]
 
+#### roadside-chalk
+
+Capture: Design Watcher at the roadside of Designer's session on the hairpin road (world on, Design Partner riding), on the voice channel's page; the watcher's socket lays a heart 40 m ahead of the bunch. Then `roadside-chalk-world`, Designer's ride with the heart on the road. Targets: none drawn; canon is the bar. Canon: ADR-0064; SPEC "The roadside".
+
+1. The deck's six chalk stamps (arrow, heart, Allez, Hopp, cowbell, the watched rider's initial) sit in two rows of three under the bottle, each ≥ 44 px; nothing is typed. [#3029] [probe:minTarget]
+2. With no climb left ahead the stamps are disabled, with one line saying so; a refused stamp says why under them. [#3029]
+3. Chalk lies flat on the road ahead of the bunch, pale on the asphalt, unlit and never glowing, reading up the road. [#3029] [multi:roadside-chalk-world] [test:web/src/lib/world/chalk.test.ts]
+4. Chalk is gone once the bunch rides over it. [#3029] [test:web/src/lib/world/chalk.test.ts]
+5. ride-session-road's items hold around it. [ride-surface]
+
 #### ride-session-flat
 
 Capture: as ride-session-road, on a session with no road.
