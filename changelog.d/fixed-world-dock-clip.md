@@ -1,0 +1,1 @@
+- With the world on, your numbers no longer get cut off beside the road. The ride's controls and your numbers now share the left column, each only as tall as it needs, so the whole bike computer page shows at 1440 × 900 and at 1280 × 720. Power now sits once, in the head above the computer.

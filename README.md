@@ -115,7 +115,7 @@ numbers, the chat and the voice channel, while the laptop runs the trainer.
 | **Floor is Lava**   | A power zone is called. Leave it and you burn a life.                 |
 | **Team Relay**      | One rider on the front at 110 %, everyone else recovering.            |
 
-The parameters live in [docs/SPEC.md](docs/SPEC.md#game-mode-parameters-defaults--tune-in-alpha).
+The parameters live in [docs/spec/game-modes.md](docs/spec/game-modes.md).
 You can [try a sprint on the website](https://wattroom.ch/game-modes).
 
 > [!NOTE]

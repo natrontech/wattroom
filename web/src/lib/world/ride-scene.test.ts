@@ -4,7 +4,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { at, leftOf } from '$lib/road/along';
 import { legsRoad } from '$lib/road/fixtures';
 import { RIDER_BOX } from '$lib/session/docks';
-import { STYLES } from '../../routes/(app)/dev/world/styles';
+import { RIDE } from './look.test-helper';
 import { compose } from './compose';
 import { routeOfRoad } from './road-route';
 import type { Hud } from './compose';
@@ -19,7 +19,7 @@ import type { Route } from '$lib/road/route';
  * ride says you are on its road — the world moves nobody of its own.
  */
 
-const style = STYLES.find((s) => s.id === 'bluehour') ?? STYLES[0];
+const style = RIDE;
 let route: Route;
 let world: World;
 beforeAll(() => {

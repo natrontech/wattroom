@@ -1,6 +1,9 @@
 // The horizon: three silhouette rings of mountains beyond the world's edge,
 // with a hero peak at the bearing the chase camera faces for the most riding
 // time and a second one at least 60° away. The world stops; the view doesn't.
+// The ranges are sized by the angle they stand at, not in metres, so on any
+// route the far ones stay low, as distant mountains do, and the sky's band
+// lies level just over them; it reads how high they stand from the eye.
 import * as THREE from 'three';
 import { EXAG, yOf } from './geometry';
 import { referenceSpeed } from '$lib/road/pace';
@@ -46,12 +49,32 @@ export function bearings(route: Route): Peaks {
 	};
 }
 
+// Heights as the tangent of the angle each ring stands at from the world's
+// middle, above the road's middle height: a ring is lower than the one
+// behind it, and the farthest crest stands about 5° up: over the world's own
+// hills, low as world-kom's distant ranges.
 const RINGS = [
-	{ R: 3000, fog: 0.4, lift: 900, amp: 700, hero: 0.7 },
-	{ R: 8000, fog: 0.6, lift: 1700, amp: 1000, hero: 1.0 },
-	{ R: 14000, fog: 0.8, lift: 2300, amp: 1300, hero: 0.35 },
+	{ R: 3000, fog: 0.35, lift: 0.035, amp: 0.02, hero: 0.7 },
+	{ R: 8000, fog: 0.5, lift: 0.055, amp: 0.025, hero: 1.0 },
+	{ R: 14000, fog: 0.65, lift: 0.07, amp: 0.03, hero: 0.35 }, // never the sky's own colour: the farthest still stands out from it
 ];
 const SEG = 256;
+const SKY_N = 256; // bearings the skyline is drawn at
+const SKY_MOVE = 25; // metres the eye moves before it is drawn again
+const SKY_WIDE = 24; // bearings each way (34°) a crest holds the band up: level across a view, never round each peak
+const SKY_EASE = 12; // bearings each way that is then eased over
+const SKY_SCALE = 4; // a byte's 0–1 is a sine of 0–0.25, about 14.5°: far over any range
+
+/**
+ * How high the far ranges stand from an eye, by bearing from +z clockwise:
+ * the sine of the highest crest within SKY_WIDE bearings, eased, times
+ * SKY_SCALE. Linear and wrapping, so the sky reads it by bearing.
+ */
+export type Skyline = {
+	texture: THREE.DataTexture;
+	/** Draws it from where the eye now is, once it has moved far enough to matter. */
+	from(eye: THREE.Vector3): void;
+};
 
 export function backdrop(
 	route: Route,
@@ -59,7 +82,7 @@ export function backdrop(
 	radius: number,
 	colors: { ridge: string; rock: string; snow: string; fog: string },
 	snow: boolean,
-): THREE.BufferGeometry {
+): { geometry: THREE.BufferGeometry; skyline: Skyline } {
 	const peaks = bearings(route);
 	const n = noise2(seed ^ 0x51f15e);
 	const phase = prng(seed ^ 0x77)() * 100;
@@ -70,6 +93,8 @@ export function backdrop(
 	const pos: number[] = [];
 	const col: number[] = [];
 	const base = yOf(route, route.minEle) - 300;
+	const mid = yOf(route, (route.minEle + route.maxEle) / 2) - base;
+	const rings: { R: number; tops: number[] }[] = [];
 	const snowline = (2400 - route.minEle) * EXAG;
 	const near = (a: number, c: number, w: number) => {
 		let d = Math.abs(a - c);
@@ -84,13 +109,14 @@ export function backdrop(
 			const ridgeNoise =
 				n(Math.cos(a) * 3 + phase + k * 17, Math.sin(a) * 3) * 0.6 +
 				n(Math.cos(a) * 9 + k, Math.sin(a) * 9 + phase) * 0.25;
-			const h =
+			const t =
 				ring.lift +
 				ring.amp * (0.45 + ridgeNoise) +
-				(k === 0 ? 700 : 900) * ring.hero * near(a, peaks.hero, 0.07) +
-				900 * (k === 1 ? 1 : 0.4) * near(a, peaks.second, 0.12);
-			tops.push(Math.max(300, h) * EXAG);
+				(k === 0 ? 0.015 : 0.02) * ring.hero * near(a, peaks.hero, 0.07) +
+				0.02 * (k === 1 ? 1 : 0.4) * near(a, peaks.second, 0.12);
+			tops.push(mid + Math.max(0.004, t) * R);
 		}
+		rings.push({ R, tops });
 		const p = (a: number, y: number) => [
 			Math.sin(a) * R,
 			base + y,
@@ -143,5 +169,58 @@ export function backdrop(
 	const g = new THREE.BufferGeometry();
 	g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
 	g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-	return g;
+	// The near ring stands before the horizon; the far two make it.
+	return { geometry: g, skyline: skylineOf(rings.slice(1), base) };
+}
+
+function skylineOf(
+	rings: { R: number; tops: number[] }[],
+	base: number,
+): Skyline {
+	const data = new Uint8Array(SKY_N);
+	const raw = new Float64Array(SKY_N);
+	const wide = new Float64Array(SKY_N);
+	const texture = new THREE.DataTexture(data, SKY_N, 1, THREE.RedFormat);
+	texture.wrapS = THREE.RepeatWrapping;
+	texture.magFilter = texture.minFilter = THREE.LinearFilter;
+	const at = (i: number) => (i + SKY_N) % SKY_N;
+	let atX = Infinity;
+	let atZ = Infinity;
+	return {
+		texture,
+		from(eye) {
+			if (Math.hypot(eye.x - atX, eye.z - atZ) < SKY_MOVE) return;
+			atX = eye.x;
+			atZ = eye.z;
+			const ee = eye.x * eye.x + eye.z * eye.z;
+			for (let i = 0; i < SKY_N; i++) {
+				const a = (i / SKY_N) * Math.PI * 2;
+				const dx = Math.sin(a);
+				const dz = Math.cos(a);
+				const ed = eye.x * dx + eye.z * dz;
+				raw[i] = 0;
+				for (const { R, tops } of rings) {
+					// Where this bearing meets the ring, and how high the ridge stands there.
+					const t = -ed + Math.sqrt(Math.max(0, ed * ed - ee + R * R));
+					const u = Math.atan2(eye.x + t * dx, eye.z + t * dz) / (Math.PI * 2);
+					const f = (u - Math.floor(u)) * SEG;
+					const s = Math.min(SEG - 1, Math.floor(f));
+					const up = base + tops[s] + (tops[s + 1] - tops[s]) * (f - s) - eye.y;
+					raw[i] = Math.max(raw[i], up / Math.hypot(t, up));
+				}
+			}
+			for (let i = 0; i < SKY_N; i++) {
+				wide[i] = 0;
+				for (let j = -SKY_WIDE; j <= SKY_WIDE; j++)
+					wide[i] = Math.max(wide[i], raw[at(i + j)]);
+			}
+			for (let i = 0; i < SKY_N; i++) {
+				let sum = 0;
+				for (let j = -SKY_EASE; j <= SKY_EASE; j++) sum += wide[at(i + j)];
+				const top = sum / (2 * SKY_EASE + 1);
+				data[i] = Math.round(Math.min(1, Math.max(0, top * SKY_SCALE)) * 255);
+			}
+			texture.needsUpdate = true;
+		},
+	};
 }

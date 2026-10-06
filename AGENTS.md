@@ -6,7 +6,7 @@ WattRoom: collaborative indoor cycling. Go server + SvelteKit SPA + Postgres + L
 
 - [WATTROOM.md](WATTROOM.md): every product and architecture decision, locked. Don't re-decide; a new decision is an ADR in `docs/decisions/`.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): the client owns the trainer, the server owns live state in memory, Postgres owns durable data only.
-- [docs/SPEC.md](docs/SPEC.md): glossary, roles, workout JSON, formulas, game parameters. Never invent a product number.
+- [docs/SPEC.md](docs/SPEC.md): the index of `docs/spec/`, one file per area (glossary, roles, workout JSON, formulas, game parameters…); load only your area. Never invent a product number.
 - [docs/HARDWARE-SESSIONS.md](docs/HARDWARE-SESSIONS.md): read it before asking anyone to plug in hardware.
 - [docs/design/TARGETS.md](docs/design/TARGETS.md): the target and must-match list for every rider-visible surface. Canon outranks the image; the image outranks today's app ([ADR-0086](docs/decisions/0086-a-rider-visible-change-is-held-to-its-target.md)).
 - `.claude/rules/` is vendor-neutral canon: `git.md` before your first commit, `errors.md` before API or frontend work, `code-quality.md` and `ux.md` before any feature.
@@ -38,6 +38,7 @@ Standing down: withdraw your claim and write "proceed, do not stand down on acco
 - Progress, blockers and decisions go in the issue or PR. A decision made in a thread still gets an ADR.
 - Out-of-scope findings become new issues with a milestone and labels, never extra scope.
 - A PR a rider can see carries a Design check section per [docs/design/DESIGN-CHECK.md](docs/design/DESIGN-CHECK.md); one with a blocker or major left stays draft.
+- A PR body says what changed, why and how you checked it, in at most 600 characters ([template](.github/PULL_REQUEST_TEMPLATE.md)); findings and logs go in comments. CI goes red over 1,200.
 - Done = CI green, diff self-reviewed, PR marked ready.
 
 ## Merging and cleaning up

@@ -122,6 +122,8 @@ export function placeOn(
 export function makeCrew(style: Style, neon: THREE.Color) {
 	const group = new THREE.Group();
 	const gradient = ramp(TOON_BANDS.map((b) => b / 255));
+	// A sun's contact shadow grounds each rider; under the sky alone nothing casts one (ADR-0072).
+	const shadowed = style.sun.elevation >= 0;
 	const shadowGeo = new THREE.CircleGeometry(0.5, 20)
 		.rotateX(-Math.PI / 2)
 		.scale(0.9, 1, 2.1);
@@ -218,6 +220,7 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 		light.visible = false;
 		figure.add(tag('marks', light, 'tail-light'));
 		const g = new THREE.Group();
+		shadow.visible = shadowed;
 		g.userData.rider = r.id;
 		g.add(
 			tag('figures', figure),
