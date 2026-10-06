@@ -191,7 +191,7 @@
 						<ProgressBar
 							pct={rider.execution * 100}
 							h="h-1"
-							fill={rider.you ? 'bg-watt' : 'bg-neon/70'}
+							fill={rider.you ? 'bg-neon' : 'bg-neon/70'}
 							title="{rider.name} is holding target {Math.round(
 								rider.execution * 100,
 							)}% of the time"
