@@ -86,5 +86,3 @@ export function standTiles(
 		},
 	};
 }
-
-export type StandTiles = ReturnType<typeof standTiles>;

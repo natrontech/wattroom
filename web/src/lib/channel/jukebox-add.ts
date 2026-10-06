@@ -1,9 +1,5 @@
 import type { JukeboxCommand } from '$lib/protocol';
-import {
-	resolvePlaylist,
-	titleFor,
-	type ResolvedPlaylist,
-} from '$lib/channel/youtube-playlist';
+import { titleFor, type ResolvedPlaylist } from '$lib/channel/youtube-playlist';
 
 /** "94", "94s", "1m34s", "1h2m3s" — the forms YouTube puts in ?t=. */
 function startSecFrom(u: URL): number {
@@ -126,59 +122,4 @@ export function queueResolvedPlaylist(
 		playlistTitle: resolved.playlistTitle,
 		tracks: resolved.tracks,
 	});
-}
-
-/**
- * Queue a whole playlist as one entry. Resolution can take a moment and can
- * fail (a private list, a blocked iframe API), so the caller gets the reason
- * rather than a paste that quietly did nothing.
- */
-async function queuePlaylist(
-	playlistId: string,
-	send: (command: JukeboxCommand) => void,
-): Promise<
-	| { ok: true; count: number; truncated: boolean }
-	| { ok: false; message: string }
-> {
-	let resolved;
-	try {
-		resolved = await resolvePlaylist(playlistId);
-	} catch {
-		return {
-			ok: false,
-			message:
-				'That playlist could not be read — it may be private or unlisted. A public playlist works.',
-		};
-	}
-	if (!resolved.tracks.length)
-		return { ok: false, message: 'That playlist is empty.' };
-	queueResolvedPlaylist(resolved, send);
-	return {
-		ok: true,
-		count: resolved.tracks.length,
-		truncated: resolved.truncated,
-	};
-}
-
-/**
- * The no-questions path, for a link dropped in the chat (#146) where there is
- * nowhere to ask. A bare playlist link is unambiguous and goes in whole; a
- * video that merely SITS in a playlist queues as the video, because that is
- * the thing the message was about. The add box asks instead.
- */
-export async function addYouTubeUrl(
-	url: string,
-	send: (command: JukeboxCommand) => void,
-): Promise<boolean> {
-	const link = readLink(url);
-	switch (link.kind) {
-		case 'video':
-		case 'both':
-			await queueVideo(link.videoId, link.startSec, send);
-			return true;
-		case 'playlist':
-			return (await queuePlaylist(link.playlistId, send)).ok;
-		case 'error':
-			return false;
-	}
 }

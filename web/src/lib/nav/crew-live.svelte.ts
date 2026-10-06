@@ -15,7 +15,7 @@ import { crewArrivals, runningSessions } from './crew-arrivals';
  * channel — and the next plan. One read, again on every lobby ping, the way
  * the rest of the column re-reads. The shapes are `$lib/crews-live`'s.
  */
-export type { LiveChannel, LiveCrew, LiveOccupant } from '$lib/crews-live';
+export type { LiveChannel, LiveCrew } from '$lib/crews-live';
 
 let crews = $state<LiveCrew[]>([]);
 let loaded = $state(false);

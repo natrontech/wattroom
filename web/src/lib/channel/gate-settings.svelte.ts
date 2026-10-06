@@ -14,7 +14,6 @@ import { GATE_DEFAULT, clampThreshold } from '$lib/channel/gate-scale';
 const VOICE_KEY = 'wattroom.voice.v1';
 
 export type GateMode = 'gate' | 'ptt';
-export type GateSettings = ReturnType<typeof createGateSettings>;
 
 export function createGateSettings() {
 	let mode = $state<GateMode>('gate');

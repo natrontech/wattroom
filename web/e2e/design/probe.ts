@@ -225,5 +225,3 @@ export function probe(corridor: Box) {
 		).__worldProbe?.() ?? {}),
 	};
 }
-
-export type Probes = ReturnType<typeof probe>;
