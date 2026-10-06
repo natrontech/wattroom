@@ -46,9 +46,10 @@ export default defineConfig({
 	timeout: 5 * 60 * 1000,
 	expect: { timeout: 10_000 },
 	fullyParallel: false,
-	// Four per CI shard (e2e.yml): most of a spec is a simulated trainer riding
-	// in real time, which leaves a 4-core runner mostly idle at two.
-	workers: process.env.CI ? 4 : undefined,
+	// Three per CI shard (e2e.yml): most of a spec is a simulated trainer riding
+	// in real time, which leaves a 4-core runner idle at two. At four the two
+	// software-GL screens of bunch-world.spec.ts fell behind each other.
+	workers: process.env.CI ? 3 : undefined,
 	forbidOnly: !!process.env.CI,
 	// Two retries on CI, none locally: a genuine break still fails three
 	// times, while a startup wobble (the simulated trainer's first reading
