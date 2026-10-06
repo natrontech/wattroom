@@ -335,6 +335,7 @@ type Route struct {
 	KeyVersion *int32
 	CreatedAt  pgtype.Timestamptz
 	RoadSealed []byte
+	Loop       *bool
 }
 
 type RouteCrewConsent struct {

@@ -1,4 +1,4 @@
-import { test } from '@playwright/test';
+import { test, type WebSocketRoute } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
@@ -403,6 +403,70 @@ surface('ride-session-road', async (s) => {
 	}
 });
 
+surface('ride-race', async (s) => {
+	// Designer and Design Partner race the hairpin road (#3174). No screen
+	// starts a race yet, so Designer's socket sends the start the hub takes.
+	// The 3-minute neutral zone alone is most of the default 5 minutes.
+	test.setTimeout(10 * 60_000);
+	const coach = await s.open(DESK, { world: false });
+	const crew = await designCrew(coach.page);
+	const road = await fixtureRoad(coach.page, 'hairpin');
+	const rider = await s.open(DESK, { as: 'Design Partner', world: false });
+	await joinCrew(rider.page, crew.code);
+	let socket: WebSocketRoute | undefined;
+	await coach.page.routeWebSocket(/\/ws\/channels\//, (ws) => {
+		socket = ws.connectToServer();
+	});
+	await toTraining(coach.page, crew);
+	// A run that failed mid-race left it running: end it first.
+	if (
+		await coach.page.getByRole('button', { name: 'end the session' }).count()
+	) {
+		await endSession(coach.page);
+		await toTraining(coach.page, crew);
+	}
+	await toTraining(rider.page, crew);
+	// Sent until the session opens: a page that reconnected has a new socket.
+	const start = JSON.stringify({
+		control: { action: 'game', gameMode: 'race', route: { id: road } },
+	});
+	const open = coach.page.getByRole('button', { name: 'end the session' });
+	for (let k = 0; k < 5 && !(await open.count()); k++) {
+		socket?.send(start);
+		await open.waitFor({ timeout: 4000 }).catch(() => {});
+	}
+	await joinSession(rider.page);
+	await coach.page
+		.getByRole('link', { name: 'Go to the ride' })
+		.click({ timeout: 15_000 });
+	try {
+		await coach.page.getByTestId('race-radio').waitFor({ timeout: 40_000 });
+		await coach.page
+			.getByRole('button', { name: 'RACE page', exact: true })
+			.click();
+		// Through the 3-minute neutral zone to km 0, then 20 s of racing.
+		await coach.page.waitForFunction(
+			() =>
+				/[+−]\d+:\d\d/.test(
+					document.querySelector('[data-field="par"]')?.textContent ?? '',
+				),
+			null,
+			{ timeout: 240_000 },
+		);
+		await coach.page.waitForTimeout(20_000);
+		await s.shot(coach);
+		// multi:ride-race-ride — the same race on RIDE: a page turn keeps the
+		// computer's shape (ADR-0071).
+		await coach.page
+			.getByRole('button', { name: 'RIDE page', exact: true })
+			.click();
+		await coach.page.waitForTimeout(1000);
+		await s.shot(coach, { name: 'ride-race-ride' });
+	} finally {
+		await endSession(coach.page);
+	}
+});
+
 surface('ride-channel-free', async (s) => {
 	// The voice channel's free ride starts itself once the trainer pairs.
 	const o = await s.open(DESK, { world: false });
@@ -446,6 +510,11 @@ surface('ride-road-end', async (s) => {
 		.getByRole('link', { name: 'See it in your history' })
 		.waitFor({ timeout: 30_000 });
 	await s.shot(o, { name: 'closing-card-road', full: true });
+	// F1's last step (#3680): the road's name opens its page, the ride on it.
+	await o.page.getByRole('link', { name: ROADS.hairpin.name }).click();
+	await o.page.waitForURL(`**/workouts/routes/${road}`);
+	await o.page.waitForTimeout(2500);
+	await s.shot(o, { name: 'route-after-ride', full: true });
 });
 
 // ─── B. The world's look ─────────────────────────────────────────────────
@@ -546,6 +615,23 @@ surface('route', async (s) => {
 				name: road === 'hairpin' ? prefix : `${prefix}-${road}`,
 			});
 		}
+	// Where the route page's links lead (#3680): the primary, from where the
+	// last ride stopped, and the best ride.
+	const o = await s.open(DESK);
+	const id = await fixtureRoad(o.page, 'hairpin');
+	await o.page.goto(`/workouts/routes/${id}`);
+	const carry = o.page.getByRole('button', { name: /^From km / });
+	await carry.waitFor({ timeout: 15_000 });
+	await carry.click();
+	await o.page.getByRole('link', { name: 'Ride it' }).click();
+	await o.page.waitForURL(/\/ride\?road=.+&from=\d+/);
+	await o.page.waitForTimeout(2500);
+	await s.shot(o, { name: 'route-ride-it' });
+	await o.page.goto(`/workouts/routes/${id}`);
+	await o.page.getByRole('link', { name: /^Best / }).click();
+	await o.page.waitForURL('**/history/*');
+	await o.page.waitForTimeout(2500);
+	await s.shot(o, { name: 'route-best-opens' });
 });
 
 surface('import', async (s) => {

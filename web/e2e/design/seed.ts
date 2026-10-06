@@ -9,10 +9,11 @@ import { hairpinGpx, rollingGpx } from '../road-gpx';
 
 /** The fixture roads, each by the name its owner gives it on import. */
 export const ROADS = {
-	// Renamed with #3725's geometry, and again with #3761's key, so a road
-	// seeded before either — the old shape, or stored bare — is not reused.
-	hairpin: { name: 'Design hairpins', gpx: hairpinGpx, turns: true },
-	rolling: { name: 'Design rolling', gpx: rollingGpx, turns: false },
+	// Renamed with #3725's geometry, with #3761's key, and with #3680's loop
+	// flag, so a road seeded before any of them — the old shape, stored bare,
+	// or with no loop sent — is not reused.
+	hairpin: { name: 'Design switchbacks', gpx: hairpinGpx, turns: true },
+	rolling: { name: 'Design swells', gpx: rollingGpx, turns: false },
 } as const;
 export type RoadName = keyof typeof ROADS;
 

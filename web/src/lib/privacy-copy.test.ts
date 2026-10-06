@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { routeNameLine } from './privacy-copy';
 import { FILES, code } from './source-scan.test-helper';
 
 /**
@@ -66,5 +67,13 @@ describe('what happens to a route is said once', () => {
 		expect(code(readFileSync(join(SRC, file), 'utf8'))).toMatch(
 			/\{routePrivacyLine\}/,
 		);
+	});
+});
+
+describe('routeNameLine', () => {
+	// A narrow hint split "571" from its "m" inside the quoted name (#3680).
+	it('keeps the quoted name on one line', () => {
+		const quoted = routeNameLine('Road · 7.1 km · 571 m').split('“')[1];
+		expect(quoted).not.toMatch(/ /);
 	});
 });

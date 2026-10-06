@@ -25,6 +25,7 @@
 			"ride-road-end",
 			"ride-session-road",
 			"ride-session-flat",
+			"ride-race",
 			"ride-channel-free",
 			"ride-ramp",
 			"ride-tv",
@@ -261,6 +262,14 @@
 			"home",
 			"appearance",
 			"sound-dialog"
+		]
+	},
+	{
+		"files": [
+			"web/src/lib/race/**"
+		],
+		"surfaces": [
+			"ride-race"
 		]
 	}
 ]
