@@ -163,6 +163,33 @@ describe('a game on the road (#3114)', () => {
 		expect(sea(steady)!.visible).toBe(false);
 	});
 
+	it('lays the fog flat and unlit, at least 10 m under the riders, where the ground beside the road hides it', () => {
+		const g = makeGameRoad(route, world, style);
+		const fog = () => {
+			let found: THREE.Mesh | null = null;
+			g.group.traverse((o) => {
+				if (o.userData.kind === 'fog-sea') found = o as THREE.Mesh;
+			});
+			return found! as THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
+		};
+		for (const round of [1, 3, 8, 40])
+			for (const m of [0, 1500, 3000, 5500]) {
+				const play: GamePlay = { mode: 'collective-ramp', round, out: [] };
+				g.update(view(m, round * 1000, play), round, 1 / 30, true);
+				expect(fog().position.y).toBeLessThanOrEqual(
+					yOf(route, at(route, m).ele - 10) + 1e-6,
+				);
+			}
+		const sea = fog();
+		sea.geometry.computeBoundingBox();
+		const box = sea.geometry.boundingBox!;
+		expect(box.max.y - box.min.y).toBeCloseTo(0, 6);
+		// Unlit: no light shades it, and nothing on it glows (ADR-0005).
+		expect(sea.material).toBeInstanceOf(THREE.MeshBasicMaterial);
+		// Depth-tested: wherever the ground meets the road, the ground covers it.
+		expect(sea.material.depthTest).toBe(true);
+	});
+
 	it('stands each rider who is out, moves them on once passed, and rings the cowbell as the bunch rides by', () => {
 		const g = makeGameRoad(route, world, style);
 		const play: GamePlay = { mode: 'backyard-ramp', round: 2, out: ['b'] };
