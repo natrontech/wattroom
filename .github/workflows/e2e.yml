@@ -69,7 +69,6 @@ jobs:
   shard:
     needs: changes
     if: needs.changes.outputs.code == 'true'
-    name: shard ${{ matrix.shard }}/3
     runs-on: ubuntu-latest
     strategy:
       # Every shard finishes, so a red run names every failure at once.
@@ -151,11 +150,13 @@ jobs:
         working-directory: web
       # The runner ships Chromium's libraries but not WebKit's or Firefox's, and
       # those two run world-place.spec.ts only (#3224) — so only its shard pays
-      # the apt round trip, retried once because the mirrors flake.
+      # the apt round trip, retried once because the mirrors flake. The listing
+      # names the deal alone as its reporter: the github one would annotate
+      # every test as "did not run".
       - name: WebKit and Firefox libraries, if this shard runs them
         working-directory: web
         run: |
-          if pnpm exec playwright test --list --shard="$SHARD" $GREP | grep -qE '\[(webkit|firefox)\]'; then
+          if pnpm exec playwright test --list --shard="$SHARD" $GREP --reporter=./e2e/shard-by-file.ts | grep -qE '\[(webkit|firefox)\]'; then
             pnpm exec playwright install-deps webkit firefox ||
               { sleep 15; pnpm exec playwright install-deps webkit firefox; }
           fi
@@ -189,6 +190,7 @@ jobs:
       CODE: ${{ needs.changes.outputs.code }}
       SHARDS: ${{ needs.shard.result }}
       MERGE: ${{ needs.shard.result == 'success' || needs.shard.result == 'failure' }}
+      GREP: ${{ needs.changes.outputs.world != 'true' && '--grep-invert=@world' || '' }}
     steps:
       - if: env.MERGE == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -216,7 +218,18 @@ jobs:
       - name: One report from every shard
         if: env.MERGE == 'true'
         working-directory: web
-        run: pnpm exec playwright merge-reports --reporter=github blob-reports
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: merged.json
+        run: pnpm exec playwright merge-reports --reporter=github,json blob-reports
+      # A test the shards' deal dropped would run nowhere and fail nothing.
+      - name: Every test ran on a shard
+        if: env.MERGE == 'true'
+        working-directory: web
+        run: |
+          listed=$(pnpm exec playwright test --list $GREP --reporter=./e2e/shard-by-file.ts | sed -n 's/^Total: \([0-9]*\) tests.*/\1/p')
+          reported=$(node -p "const s = require('./merged.json').stats; s.expected + s.unexpected + s.flaky + s.skipped")
+          echo "listed $listed, reported $reported"
+          [ "$listed" = "$reported" ]
       - name: Verdict
         if: always()
         run: |
