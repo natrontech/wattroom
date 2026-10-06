@@ -100,6 +100,10 @@
 					},
 					onFail: onfail,
 				});
+				// What a design capture measures on the ride, as /dev/world reports it (World.svelte).
+				if (import.meta.env.DEV)
+					(window as { __worldProbe?: () => unknown }).__worldProbe = () =>
+						scene?.probe();
 			} catch (err) {
 				console.error('world: slot 2 did not start', err);
 				onfail('build-failed');
@@ -107,6 +111,8 @@
 		}, 40);
 		return () => {
 			clearTimeout(t);
+			if (import.meta.env.DEV)
+				delete (window as { __worldProbe?: unknown }).__worldProbe;
 			scene?.dispose();
 			scene = null;
 		};
