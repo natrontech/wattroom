@@ -1,1 +1,1 @@
-- The generated world's forest now frames the road: conifer stands come down to within a few metres of it, trees grow in groups of mixed height, a meadow is a clearing with a forest edge behind it, and houses and farms stand in small clusters instead of alone.
+- Conifer stands now line the road, trees grow in groups, and houses stand in small clusters.
