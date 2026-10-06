@@ -250,8 +250,8 @@ Capture: two dev riders (Designer and a second, name letters only) in one crew's
 
 Capture: Design Watcher at the roadside of Designer's session on the hairpin road (world on, Design Partner riding), on the voice channel's page; then the watcher's socket lays a heart 30 m ahead of the bunch: `roadside-chalk-world`, Designer's ride with the heart on the road; `roadside-chalk-spent`, the deck once the road's one climb is chalked; `roadside-chalk-refused`, a second stamp on that climb refused. Targets: none drawn; canon is the bar. Canon: ADR-0064; SPEC "The roadside".
 
-1. The deck's six chalk stamps (arrow, heart, Allez, Hopp, cowbell, the watched rider's initial) sit in two rows of three under the bottle, each ≥ 44 px; nothing is typed. [#3029] [probe:minTarget]
-2. With no climb left ahead the stamps are disabled, with one line saying so; a refused stamp says why under them. [#3029] [multi:roadside-chalk-spent] [multi:roadside-chalk-refused]
+1. The deck's six chalk stamps (arrow, heart, Allez, Hopp, cowbell, the watched rider's initial) sit in one row under the bottle, each ≥ 44 px; nothing is typed. [#3029] [probe:minTarget]
+2. With no climb left ahead the stamps are disabled, with one line saying so; a refused stamp says why and when to try again, in the same line (ADR-0064 Bounds). [#3029] [multi:roadside-chalk-spent] [multi:roadside-chalk-refused]
 3. Chalk lies flat on the road ahead of the bunch, pale on the asphalt, unlit and never glowing, reading up the road. [#3029] [multi:roadside-chalk-world] [test:web/src/lib/world/chalk.test.ts]
 4. Chalk is gone once the bunch rides over it. [#3029] [test:server/internal/hub/roadside_paint_test.go] [test:web/src/lib/world/chalk.test.ts]
 5. ride-session-road's items hold around it. [ride-surface]

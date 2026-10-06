@@ -445,7 +445,7 @@ surface('roadside-chalk', async (s) => {
 		);
 		await watcher.page
 			.getByRole('status')
-			.filter({ hasText: 'this climb' })
+			.filter({ hasText: 'is chalked' })
 			.scrollIntoViewIfNeeded();
 		await s.shot(watcher, { name: 'roadside-chalk-refused' });
 	} finally {

@@ -65,7 +65,7 @@
 		<p class="text-muted text-2xl">Chalk the next climb</p>
 		<div
 			role="group"
-			class="grid grid-cols-3 gap-1.5"
+			class="grid grid-cols-6 gap-1.5"
 			aria-label="chalk the next climb"
 		>
 			{#each STAMPS as stamp (stamp)}
@@ -79,19 +79,20 @@
 						: `Chalk ${WORDS[stamp] ?? stamp}`}
 					class="border-muted/20 hover:border-muted/50 flex min-h-11 items-center justify-center rounded border text-2xl font-bold disabled:opacity-40"
 				>
-					{#if stamp === 'arrow'}<ArrowUp size={22} />
-					{:else if stamp === 'heart'}<Heart size={22} />
-					{:else if stamp === 'cowbell'}<Bell size={22} />
+					{#if stamp === 'arrow'}<ArrowUp size={26} />
+					{:else if stamp === 'heart'}<Heart size={26} />
+					{:else if stamp === 'cowbell'}<Bell size={26} />
 					{:else if initial}{to?.name.slice(0, 1).toUpperCase() ?? '—'}
 					{:else}{WORDS[stamp]}{/if}
 				</button>
 			{/each}
 		</div>
-		<!-- The answer to the last tap first; else why the stamps are off. -->
-		{#if live.roadsideRefusal}
-			<p role="status" class="text-2xl">{live.roadsideRefusal}</p>
-		{:else if !spot}
-			<p class="text-muted text-2xl">No climb left ahead to chalk.</p>
+		<!-- One line, one voice: the answer to the last tap first, else why
+		     the stamps are off. -->
+		{#if live.roadsideRefusal || !spot}
+			<p role="status" class="text-2xl">
+				{live.roadsideRefusal ?? 'No climb left ahead to chalk.'}
+			</p>
 		{/if}
 	{/if}
 </div>

@@ -136,19 +136,19 @@ func (rs *roadsideStands) put(riderID string, u, front float64, riders string, n
 func (rs *roadsideStands) chalkUp(riderID string, verb protocol.Roadside, u, front, climb float64, riders string) (code, message string) {
 	switch {
 	case climb < 0:
-		return "validation_error", "Paint goes on a climb."
+		return "validation_error", "Chalk goes on a climb. Try the next one up the road."
 	case u <= front:
-		return "validation_error", fmt.Sprintf("Paint goes on the road ahead of %s.", riders)
+		return "validation_error", fmt.Sprintf("Chalk goes ahead of %s. Try further up the road.", riders)
 	case rs.painted[riderID] >= protocol.RoadsidePaintPerRide:
-		return "rate_limited", fmt.Sprintf("You have painted your %d stamps this ride.", protocol.RoadsidePaintPerRide)
+		return "rate_limited", fmt.Sprintf("Your %d stamps are down. That is all this ride.", protocol.RoadsidePaintPerRide)
 	case rs.marks >= protocol.RoadsideMarksPerRide:
-		return "rate_limited", fmt.Sprintf("This ride has taken its %d marks — the chalk is gone.", protocol.RoadsideMarksPerRide)
+		return "rate_limited", fmt.Sprintf("This ride has its %d marks. That is all this ride.", protocol.RoadsideMarksPerRide)
 	case len(rs.paint) >= protocol.RoadsidePaintLive:
-		return "rate_limited", fmt.Sprintf("The road holds %d stamps already. Paint again once %s pass some.", protocol.RoadsidePaintLive, riders)
+		return "rate_limited", fmt.Sprintf("The road holds %d stamps. Try once %s passes some.", protocol.RoadsidePaintLive, riders)
 	}
 	for _, c := range rs.paint {
 		if c.by == riderID && c.climb == climb {
-			return "conflict", "You chalked this climb already."
+			return "conflict", "This climb is chalked. Try the next one."
 		}
 	}
 	if rs.painted == nil {

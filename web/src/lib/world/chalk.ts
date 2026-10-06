@@ -13,10 +13,10 @@ import { ROAD_LIFT, yOf } from './geometry';
 import { ROAD_W } from './terrain/road-profile';
 
 // ponytail: a look, not a rule — chalk across most of the road and stretched
-// along it, as road paint is, so it reads from a rider's low eye; tune it on
-// a climb.
+// four to one along it, as road paint is, so a rider's low eye sees the shape
+// whole rather than a sliver; tune it on a climb.
 const ACROSS = ROAD_W * 0.8;
-const ALONG = ACROSS * 2;
+const ALONG = ACROSS * 4;
 const W = 256;
 const H = 128;
 const CHALK = '#f1ede4';
