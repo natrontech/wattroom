@@ -148,7 +148,7 @@ func (rs *roadsideStands) chalkUp(riderID string, verb protocol.Roadside, u, fro
 	}
 	for _, c := range rs.paint {
 		if c.by == riderID && c.climb == climb {
-			return "conflict", "You have painted this climb. Paint the next one."
+			return "conflict", "You chalked this climb already."
 		}
 	}
 	if rs.painted == nil {
