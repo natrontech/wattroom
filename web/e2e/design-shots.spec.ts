@@ -126,6 +126,7 @@ surface(
 			// Item 16's distance, however long the road takes to get there (#3834).
 			await atReading(o.page, 'km 0.1 of 7.1');
 			await s.shot(o, { name });
+			await o.ctx.close();
 		}
 		// multi:world-hairpins — item 16's second leg, from km 2.3: the hairpins climb ahead.
 		const o = await s.open(DESK, { world: true });
@@ -196,6 +197,7 @@ surface(
 			// Twenty samples, SIGNAL_LOST_MS, and the line settling.
 			await o.page.waitForTimeout(30_000);
 			await s.shot(o, { name });
+			await o.ctx.close();
 		}
 	},
 	{ once: true },
@@ -433,7 +435,7 @@ async function moment(
 	await o.page.waitForFunction(
 		() => !!(window as unknown as { __worldProbe?: unknown }).__worldProbe,
 		null,
-		{ timeout: 30_000 },
+		{ timeout: 60_000 },
 	);
 	// The ground around the eye whole before the shot: a chunk still building is a frame two loads disagree on.
 	await o.page.waitForFunction(
@@ -448,6 +450,21 @@ async function moment(
 	);
 	await o.page.waitForTimeout(2000);
 	return o;
+}
+
+/**
+ * A moment shot, its page closed after: every world left drawing beside the
+ * next one is a second software-GL world, which starved CI's runner (#3858).
+ */
+async function still(
+	s: Shoot,
+	device: typeof DESK,
+	p: 0 | 1,
+	{ cam, name }: { cam?: 'chase' | 'side'; name?: string } = {},
+) {
+	const o = await moment(s, device, p, cam);
+	await s.shot(o, { name });
+	await o.ctx.close();
 }
 
 alone(() => {
@@ -465,13 +482,16 @@ alone(() => {
 	surface(
 		'world-start',
 		async (s) => {
-			await s.shot(await moment(s, DESK, 0));
-			await s.shot(await moment(s, DESK_720, 0), { name: 'world-start-1280' });
+			await still(s, DESK, 0);
+			await still(s, DESK_720, 0, { name: 'world-start-1280' });
 			// multi:world-start-twice — the same moment loaded twice, compared pixel
 			// for pixel.
 			const frames: Buffer[] = [];
-			for (let k = 0; k < 2; k++)
-				frames.push(await (await moment(s, DESK, 0)).page.screenshot());
+			for (let k = 0; k < 2; k++) {
+				const o = await moment(s, DESK, 0);
+				frames.push(await o.page.screenshot());
+				await o.ctx.close();
+			}
 			await writeFile(join(s.out, 'world-start-twice.png'), frames[1]);
 			await writeFile(
 				join(s.out, 'world-start-twice.json'),
@@ -480,9 +500,7 @@ alone(() => {
 			);
 			// multi:world-figure-side — the same moment from off your right shoulder,
 			// where the chase camera never stands: the face, the drops, both wheels.
-			await s.shot(await moment(s, DESK, 0, 'side'), {
-				name: 'world-figure-side',
-			});
+			await still(s, DESK, 0, { cam: 'side', name: 'world-figure-side' });
 		},
 		{ once: true },
 	);
@@ -490,8 +508,8 @@ alone(() => {
 	surface(
 		'world-end',
 		async (s) => {
-			await s.shot(await moment(s, DESK, 1));
-			await s.shot(await moment(s, DESK_720, 1), { name: 'world-end-1280' });
+			await still(s, DESK, 1);
+			await still(s, DESK_720, 1, { name: 'world-end-1280' });
 		},
 		{ once: true },
 	);
