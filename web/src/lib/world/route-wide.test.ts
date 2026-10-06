@@ -129,7 +129,7 @@ describe('a 29 km loop, its route-wide work', () => {
 		expect(
 			digestOf([all.props, all.pieces, all.signs, all.arches, all.placements]),
 		).toBe('51f4b775');
-	});
+	}, BUILD_MS);
 });
 
 describe('a 124 km loop, its route-wide work', () => {
