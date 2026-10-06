@@ -46,17 +46,17 @@ export default defineConfig({
 	timeout: 5 * 60 * 1000,
 	expect: { timeout: 10_000 },
 	fullyParallel: false,
-	// Two workers, not one: the ride spec is two real minutes and the other three
-	// specs together are under one, so they finish alongside it instead of after
-	// it. More workers buys nothing — the ride is the floor — and would only put
-	// browsers in contention with the Go server on a 4-core runner.
-	workers: process.env.CI ? 2 : undefined,
+	// Four per CI shard (e2e.yml): most of a spec is a simulated trainer riding
+	// in real time, which leaves a 4-core runner mostly idle at two.
+	workers: process.env.CI ? 4 : undefined,
 	forbidOnly: !!process.env.CI,
 	// Two retries on CI, none locally: a genuine break still fails three
 	// times, while a startup wobble (the simulated trainer's first reading
 	// took the whole five minutes twice on main) no longer blocks a release.
 	retries: process.env.CI ? 2 : 0,
-	reporter: process.env.CI ? 'github' : 'list',
+	// shard-by-file.ts deals the files out under `--shard`, and does nothing
+	// without it.
+	reporter: [['./e2e/shard-by-file.ts'], [process.env.CI ? 'github' : 'list']],
 	use: {
 		baseURL: baseUrl(),
 		trace: 'retain-on-failure',

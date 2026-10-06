@@ -155,15 +155,16 @@ jobs:
       - name: WebKit and Firefox libraries, if this shard runs them
         working-directory: web
         run: |
-          if pnpm exec playwright test --list --reporter=list --shard="$SHARD" $GREP | grep -qE '\[(webkit|firefox)\]'; then
+          if pnpm exec playwright test --list --shard="$SHARD" $GREP | grep -qE '\[(webkit|firefox)\]'; then
             pnpm exec playwright install-deps webkit firefox ||
               { sleep 15; pnpm exec playwright install-deps webkit firefox; }
           fi
       # No build step: playwright.config.ts's webServer always builds, so a
-      # reused bundle can never be what gets tested.
+      # reused bundle can never be what gets tested. --add-reporter, not
+      # --reporter: the config's reporters include e2e/shard-by-file.ts.
       - name: Run this shard
         working-directory: web
-        run: pnpm exec playwright test --shard="$SHARD" $GREP --reporter=blob,list
+        run: pnpm exec playwright test --shard="$SHARD" $GREP --add-reporter=blob
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: ${{ !cancelled() }}
         with:
