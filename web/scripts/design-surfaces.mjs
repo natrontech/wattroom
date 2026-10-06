@@ -100,7 +100,9 @@ if (
 	process.argv[1] === fileURLToPath(import.meta.url) &&
 	process.argv[2] === '--targets'
 ) {
-	const { text, missing } = targetsFor(process.argv.slice(3));
+	// One argument or many: zsh hands `--targets $ids` over unsplit.
+	const ids = process.argv.slice(3).flatMap((arg) => arg.split(/[\s,]+/));
+	const { text, missing } = targetsFor(ids.filter(Boolean));
 	if (missing.length) {
 		console.error(`No TARGETS.md section for: ${missing.join(' ')}`);
 		process.exitCode = 1;

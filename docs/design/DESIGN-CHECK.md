@@ -30,7 +30,7 @@ Find every way AFTER deviates from the TARGET and the canon. Default to FAIL.
 Issue {{ISSUE_KEY}}, round {{ROUND}} of 3. Surfaces, each with the files that selected it:
 {{SURFACES_WITH_FILES}}
 Canon: {{CANON_PATH}}, TARGETS.md cut to these surfaces; read it whole first. You may open what
-it cites (ADRs, docs/SPEC.md, .claude/rules), nothing else of the change.
+it cites (ADRs, docs/spec/ via docs/SPEC.md's index, .claude/rules), nothing else of the change.
 Per surface: TARGET {{TARGET_PATHS}} | BEFORE, main {{BEFORE_PATHS}} | AFTER {{AFTER_PATHS}} |
 PROBES {{PROBE_PATHS}} (the only measurements) | MULTI {{MULTI_PATHS_OR_NONE}}
 BEFORE is shot on Linux in software GL, AFTER on the author's machine: glyph raster and the world's
