@@ -122,6 +122,11 @@ export function rideLook(
 			stripe: paint('color-neon'),
 			text: w('sign-white'),
 		},
+		tag: {
+			bg: paint('color-surface'),
+			line: paint('color-edge'),
+			ink: paint('color-ink'),
+		},
 	};
 }
 

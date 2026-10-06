@@ -89,6 +89,8 @@ export type Style = {
 	stars: string | null;
 	signs: Record<SignLook, { bg: string; fg: string; post: string }>;
 	arch: { chrome: string; panel: string; stripe: string; text: string };
+	/** A rider's name tag (#3086): a dark pill, its hairline, its words. */
+	tag: { bg: string; line: string; ink: string };
 };
 
 const col = (s: string | undefined) =>

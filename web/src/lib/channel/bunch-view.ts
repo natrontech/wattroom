@@ -1,4 +1,5 @@
 import { coachOf } from '$lib/channel/tick-session';
+import { levelFromXp } from '$lib/level';
 import type { LiveRider } from '$lib/channel/types';
 import type { ServerTick } from '$lib/protocol';
 
@@ -21,8 +22,19 @@ export type BunchView = {
 	offsets: Record<string, number>;
 	resting: string[];
 	coach?: string;
-	/** Who is connected, and what their legs are doing: a joined rider who is not there is drawn faded. */
-	present: Map<string, { watts: number; ftp: number }>;
+	/** Who is connected, and what their legs are doing: a joined rider who is not there is drawn faded. Name, level and speaking hang their name tag (#3086). */
+	present: Map<
+		string,
+		{
+			watts: number;
+			ftp: number;
+			name?: string;
+			level?: number;
+			speaking?: boolean;
+		}
+	>;
+	/** A game hides the meter (Watt Golf): no live zone ring on anyone (#3086). */
+	meterHidden?: boolean;
 	/** A game rides: the team car never runs in one (#3098). */
 	game: boolean;
 	/** Who this tick's cheers are for (#3116): the world draws each over that rider's head. */
@@ -51,7 +63,22 @@ export function bunchOf(
 		resting: world.resting ?? [],
 		coach: coachOf(tick.state),
 		// Held watts, so a 1 Hz trainer that misses a tick does not stop the legs.
-		present: new Map(riders.map((r) => [r.id, { watts: r.watts, ftp: r.ftp }])),
+		present: new Map(
+			riders.map((r) => {
+				const xp = tick.roster.find((m) => m.id === r.id)?.totalXp;
+				return [
+					r.id,
+					{
+						watts: r.watts,
+						ftp: r.ftp,
+						name: r.name,
+						level: xp ? levelFromXp(xp) : undefined,
+						speaking: r.speaking,
+					},
+				];
+			}),
+		),
+		meterHidden: !!tick.game?.meterHidden,
 		game: !!tick.game,
 		cheered: (tick.cheers ?? []).flatMap((c) => (c.to ? [c.to] : [])),
 	};

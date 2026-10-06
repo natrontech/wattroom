@@ -19,6 +19,8 @@ Part of the product spec. [docs/SPEC.md](../SPEC.md) indexes every section and s
 | Ride sky            | lit by the sky only; sun **−4°** at the start to **−8°** at the finish by the ride's progress, **−6°** with no known end |
 | Alpenglow           | OKLCH hue **58–60°**                                                                                                     |
 | Flashes             | WCAG 2.3.1, and at most one dim flash per **10 s** over **25 %** of a 10° field; none under reduced motion               |
+| Live zone ring      | one flat band **0.08 m** wide (a wheel, as your trail), **0.71 m** around the bike, in the live zone's colour; under you and every rider whose numbers you may see (ADR-0059); none on a faded rider or under a game that hides the meter |
+| Name tags           | over the **2** riders nearest you and anyone speaking, never over you; text at least **16 arcmin** at the design distance (**20 px** in a 900 px frame); tags that would overlap merge |
 
 ## Real ground (defaults — tune in alpha; [ADR-0078](../decisions/0078-real-ground-painted-light.md))
 

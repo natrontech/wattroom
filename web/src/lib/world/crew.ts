@@ -45,6 +45,8 @@ const THUMB_Y = 2.22;
 const NEAR = 3;
 /** Seconds between choosing who is near: a swap rebuilds a figure. */
 const RANK_EVERY = 1;
+/** The live zone ring's band, a wheel wide, as the trail is (docs/SPEC.md "The world", #3086). */
+export const RING_BAND_M = 0.08;
 /** Seconds a new figure rides before it is first drawn, so it arrives in its riding posture. */
 const SETTLE_S = 2;
 const SETTLE_DT = 1 / 30;
@@ -127,7 +129,11 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 	const shadowGeo = new THREE.CircleGeometry(0.5, 20)
 		.rotateX(-Math.PI / 2)
 		.scale(0.9, 1, 2.1);
-	const ringGeo = new THREE.RingGeometry(0.62, 0.8, 32).rotateX(-Math.PI / 2);
+	const ringGeo = new THREE.RingGeometry(
+		0.71 - RING_BAND_M / 2,
+		0.71 + RING_BAND_M / 2,
+		48,
+	).rotateX(-Math.PI / 2);
 	const beadGeo = new THREE.SphereGeometry(1, 16, 12);
 	const chevronGeo = chevronGeometry();
 	const thumbGeo = thumbGeometry(
@@ -387,6 +393,10 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 				for (const c of Object.values(v.palette))
 					if (inWattBand(`#${c.getHexString()}`)) n++;
 			return n;
+		},
+		/** Where a rider stands this frame, on the road under their wheels: what a name tag hangs over. */
+		at(r: SimRider): THREE.Vector3 {
+			return views.get(r)?.group.position ?? you;
 		},
 		/** Your figure, as a capture measures it (#3672). */
 		get you(): THREE.SkinnedMesh | null {

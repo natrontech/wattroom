@@ -41,8 +41,12 @@ export type SimRider = {
 	faded?: boolean;
 	/** The session's coach: wears the chevron. */
 	coach?: boolean;
-	/** Their live zone as a ring; false leaves anyone's but yours to #3086. */
+	/** Their live zone as a ring; false where you may not see their numbers (#3086, ADR-0059). */
 	ring?: boolean;
+	/** Talking in the voice channel now: their name tag shows, with its speaking ring (#3086). */
+	speaking?: boolean;
+	/** Their level, for their name tag (#3086); absent, the tag shows the name alone. */
+	level?: number;
 	/** Their trainer has gone quiet past SIGNAL_LOST_MS (#3766): the ring drops its zone and the trail stops, as the panels' numbers read "—". */
 	silent?: boolean;
 	/** A cheer for them, as it looks this frame (#3116). */
