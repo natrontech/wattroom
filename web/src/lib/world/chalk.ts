@@ -15,8 +15,8 @@ import { ROAD_W } from './terrain/road-profile';
 // ponytail: a look, not a rule — chalk across most of the road and stretched
 // along it, as road paint is, so it reads from a rider's low eye; tune it on
 // a climb.
-const ACROSS = ROAD_W * 0.6;
-const ALONG = ACROSS * 1.5;
+const ACROSS = ROAD_W * 0.8;
+const ALONG = ACROSS * 2;
 const W = 256;
 const H = 128;
 const CHALK = '#f1ede4';
@@ -90,7 +90,9 @@ function stampMesh(route: Route, c: Chalk): THREE.Mesh {
 	);
 	// On the asphalt, which rides ROAD_LIFT over the centre line, a hair above it.
 	mesh.position.set(p.x, yOf(route, p.ele) + ROAD_LIFT + 0.03, p.z);
-	mesh.rotation.y = p.heading;
+	// The texture's top points up the road (heading is atan2(dx, dz)), so it
+	// reads the right way up to the riders coming at it.
+	mesh.rotation.y = p.heading + Math.PI;
 	mesh.userData.stamp = c.stamp;
 	return tag('dressing', mesh, 'chalk');
 }

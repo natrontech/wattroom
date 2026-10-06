@@ -38,7 +38,11 @@ describe('the roadside’s chalk (#3029)', () => {
 			const asphalt = yOf(route, p.ele) + ROAD_LIFT;
 			expect(mesh.position.y - asphalt).toBeGreaterThan(0);
 			expect(mesh.position.y - asphalt).toBeLessThan(0.1);
-			expect(mesh.rotation.y).toBeCloseTo(p.heading, 6);
+			// Reading up the road: the texture's top (the plane's -z once laid
+			// flat) points the way the riders go.
+			const top = new THREE.Vector3(0, 0, -1).applyEuler(mesh.rotation);
+			expect(top.x).toBeCloseTo(Math.sin(p.heading), 6);
+			expect(top.z).toBeCloseTo(Math.cos(p.heading), 6);
 			mesh.geometry.computeBoundingBox();
 			const box = mesh.geometry.boundingBox!;
 			expect(box.max.y - box.min.y).toBeCloseTo(0, 6);
