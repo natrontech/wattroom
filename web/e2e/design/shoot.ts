@@ -235,12 +235,18 @@ async function growToBody(page: Page): Promise<boolean> {
 	return true;
 }
 
-/** Every clock-shaped reading on the page, joined. */
+/**
+ * Every clock-shaped reading on the page, joined; a ghost's split (“+1:05”,
+ * “−0:12”) is a difference, not a clock, and a seeded ride on the road puts
+ * one on every road ride.
+ */
 // A read that lands mid-navigation counts as no clock yet, not a failure.
 const clocks = (page: Page) =>
 	page
 		.evaluate(() =>
-			(document.body.innerText.match(/\b\d{1,2}:\d{2}\b/g) ?? []).join(' '),
+			(
+				document.body.innerText.match(/(?<![+\u2212\d:])\d{1,2}:\d{2}\b/g) ?? []
+			).join(' '),
 		)
 		.catch(() => '');
 
@@ -261,15 +267,19 @@ export async function ride(
 	const start = page
 		.getByRole('button', { name: /^Start (riding|the ride)$/ })
 		.first();
-	// A road left short of its end offers to carry on (#3205): every shot
-	// starts from km 0, whatever an earlier run saved.
+	// A road left short of its end offers to carry on (#3205), and the offer
+	// replaces Start riding once its lookup lands, sometimes under the click:
+	// press whichever is there until neither is. Every shot starts from km 0.
 	const fromStart = page.getByRole('button', { name: 'From the start' });
-	await start.or(fromStart).first().waitFor({ timeout: 15_000 });
-	if (await fromStart.isVisible()) {
-		await fromStart.click();
-		await start.waitFor({ timeout: 5000 }).catch(() => {});
+	const either = start.or(fromStart).first();
+	await either.waitFor({ timeout: 15_000 });
+	const deadline = Date.now() + 30_000;
+	while (await either.isVisible()) {
+		if (Date.now() > deadline) throw new Error('the ride never started');
+		const button = (await fromStart.isVisible()) ? fromStart : start;
+		await button.click({ timeout: 5000 }).catch(() => {});
+		await page.waitForTimeout(500);
 	}
-	if (await start.isVisible()) await start.click();
 	await atSecond(page, second);
 }
 

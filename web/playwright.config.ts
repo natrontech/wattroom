@@ -93,11 +93,14 @@ export default defineConfig({
 			// elsewhere, where the dev build's frame judge stands down
 			// (e2e/design/shoot.ts, #3823) because software GL misses every frame.
 			// Three workers: one rides Designer's surfaces in order, the others
-			// take the surfaces that share nothing with them.
+			// take the surfaces that share nothing with them. One retry: on a
+			// loaded machine a browser that dies under one surface would
+			// otherwise send its author back to capture it again by hand.
 			name: 'design',
 			testMatch: ['design-shots.spec.ts'],
 			dependencies: ['design-seed'],
 			workers: 3,
+			retries: 1,
 			use: {
 				...devices['Desktop Chrome'],
 				// A control that never comes fails its surface in seconds, not
