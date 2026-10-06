@@ -96,7 +96,7 @@ Every step of every flow:
 1. No disabled promise (G8), no dead end.
 2. The road or workout keeps one name and one vocabulary across every step.
 3. One ride shows the same tiles wherever it is summarised.
-4. Every Back, Done or back link lands on the screen the rider came from.
+4. Every Back, Done or back link lands on the screen the rider came from. The one exception is a card that ends a ride (the closing card, the road-end card). Its ride is over and saved, so it is never returned to: the screen it leads to keeps its own back link to its section, for example the route page's “← Workouts” (#3680).
 
 ## Surfaces
 
