@@ -218,7 +218,8 @@ export function terrainMaterial(style: Style): THREE.ShaderMaterial {
 }
 
 // A sky whose horizon is exactly the fog colour; a thin band on the horizon
-// where the look has one — the ride's peach, a little taller toward the sun;
+// where the look has one — the ride's peach, level behind the far ranges and
+// just clearing the highest, a little taller toward the sun;
 // a halo toward a low sun, or a flat striped disc for synthwave — never
 // bloomed, never a glow.
 export function skyMaterial(style: Style): THREE.ShaderMaterial {
@@ -233,7 +234,7 @@ export function skyMaterial(style: Style): THREE.ShaderMaterial {
 			uSunward: { value: col(style.sky.sunward) },
 			uBand: { value: col(style.sky.band) },
 			uPeach: { value: 0 },
-			uSkyline: { value: null as THREE.Texture | null }, // the backdrop's skyline by bearing (backdrop.ts)
+			uBandTop: { value: 0 }, // the sine of the far ranges' highest crest from the eye (backdrop.ts)
 			uDusk: { value: 1 },
 			uSun: { value: sunOf(style) },
 			uSunCol: { value: col(style.sun.color) },
@@ -244,17 +245,16 @@ export function skyMaterial(style: Style): THREE.ShaderMaterial {
 			},
 		},
 		vertexShader: /* glsl */ `varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-		fragmentShader: /* glsl */ `uniform vec3 uTop, uHorizon, uSunward, uBand, uSun, uSunCol, uSunLow; uniform float uDisc, uPeach, uDusk; uniform sampler2D uSkyline; varying vec3 vDir;
+		fragmentShader: /* glsl */ `uniform vec3 uTop, uHorizon, uSunward, uBand, uSun, uSunCol, uSunLow; uniform float uDisc, uPeach, uDusk, uBandTop; varying vec3 vDir;
 			${OKLAB}
 			void main(){
 				float h = max(vDir.y, 0.0);
 				float s = max(dot(vDir, uSun), 0.0);
 				vec3 hor = mix(uHorizon, uSunward, pow(s, 8.0));
 				vec3 c = mix(hor, uTop, pow(h, 0.45));
-				if (uPeach > 0.0) { // on the ridges as this eye sees them, gone about 1° above them
-					float ridge = texture2D(uSkyline, vec2(atan(vDir.x, vDir.z) / 6.2831853, 0.5)).r * 0.5;
-					float bh = 0.018 * (1.0 + 0.5 * pow(s, 4.0));
-					float w = uPeach * smoothstep(-0.01, 0.0, vDir.y) * (1.0 - smoothstep(ridge - bh, ridge + bh, vDir.y));
+				if (uPeach > 0.0) { // level, fading out about 1.5° over the highest range
+					float clear = 0.026 * (1.0 + 0.5 * pow(s, 4.0));
+					float w = uPeach * smoothstep(-0.01, 0.0, vDir.y) * (1.0 - smoothstep(uBandTop * 0.85, uBandTop + clear, vDir.y));
 					vec3 sky = toLab(c);
 					vec3 grey = vec3(sky.x, 0.0, 0.0);
 					c = fromLab(w < 0.03 ? mix(sky, grey, w / 0.03) : mix(grey, toLab(uBand), (w - 0.03) / 0.97));
