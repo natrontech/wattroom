@@ -1,0 +1,1 @@
+- The riding screen opens with the workout's name above the block, and Home's Recent rides rows lead with the ride's name, so the workout keeps its name from the picker to Home.

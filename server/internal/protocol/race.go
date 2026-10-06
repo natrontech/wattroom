@@ -134,6 +134,31 @@ type Drive struct {
 	ErgByRoad bool `json:"ergByRoad"`
 }
 
+// Category par (docs/SPEC.md "Races"): the W/kg each Category's par rides at
+// on the race's physics, which the RACE page measures a rider's gap against
+// (#3174) and the pacer rides (ADR-0068).
+const (
+	ParWkgD = 2.2
+	ParWkgC = 2.85
+	ParWkgB = 3.6
+	ParWkgA = 4.3
+)
+
+// ParWkg is a Category's par, 0 for none.
+func ParWkg(category string) float64 {
+	switch category {
+	case "D":
+		return ParWkgD
+	case "C":
+		return ParWkgC
+	case "B":
+		return ParWkgB
+	case "A":
+		return ParWkgA
+	}
+	return 0
+}
+
 // RaceState is a race on the tick (#3658, ADR-0067): when the flag drops and
 // when the klaxon sends it from km 0, whether the coach has neutralised it,
 // and — once it is done — the closing card. The places ride World.Racers.

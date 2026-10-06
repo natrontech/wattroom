@@ -135,6 +135,16 @@ test('the browse surfaces’ links and folds clear the floor on a phone', async 
 		a.locator('summary', { hasText: 'Advanced' }),
 	);
 
+	// The mixer's fold, and the checkbox in it, reached through its label (#3755).
+	await a.goto('/settings/voice');
+	const mixerFold = a.locator('summary', { hasText: 'Advanced' });
+	await measure('the mixer’s Advanced', mixerFold);
+	await mixerFold.click();
+	await measure(
+		'the mixer’s “My voice ducks it too”',
+		a.locator('label', { hasText: 'My voice ducks it too' }),
+	);
+
 	await a.goto(`/crew/${opened.crew}/schedule`);
 	await measure(
 		'the Schedule’s Advanced',
@@ -150,7 +160,7 @@ test('the browse surfaces’ links and folds clear the floor on a phone', async 
  * sat at 28 px beside the coach's controls in a running session — small to
  * hit on purpose and easy to hit by mistake.
  */
-test('Try 3D again, on a ride held on the flat road, is riding size (#3080)', async ({
+test('Try 3D again, on a ride held on the flat road, is riding size (#3080) @world', async ({
 	riders,
 }) => {
 	test.skip(
@@ -244,4 +254,150 @@ test('the header controls a pedalling rider uses are riding size', async ({
 			`a page dot is ${dotBox.width}×${dotBox.height}px`,
 		).toBeGreaterThanOrEqual(RIDING);
 	}
+});
+
+/**
+ * Standalone text links (#3750, #3756): not inline in a sentence, so SC 2.5.8's
+ * inline exception does not cover them, and each was 16–20 px tall.
+ */
+test('the landing header and its standalone link clear the floor', async ({
+	page,
+}) => {
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await page.goto('/');
+	const header = page.getByRole('navigation', { name: 'Site' }).first();
+	for (const name of [
+		'Group workouts',
+		'Game modes',
+		'FTP test',
+		'Compare',
+		'Self-host',
+	]) {
+		const link = header.getByRole('link', { name, exact: true });
+		await expect(link).toBeVisible();
+		const linkBox = await box(link);
+		expect(
+			linkBox.height,
+			`header link '${name}' is ${linkBox.height}px tall`,
+		).toBeGreaterThanOrEqual(FLOOR);
+	}
+	const how = page.getByRole('link', { name: 'How group workouts work' });
+	await how.scrollIntoViewIfNeeded();
+	const howBox = await box(how);
+	expect(
+		howBox.height,
+		`'How group workouts work' is ${howBox.height}px tall`,
+	).toBeGreaterThanOrEqual(FLOOR);
+});
+
+test("Home's All rides link and a ride's back link clear the floor", async ({
+	riders,
+}) => {
+	test.skip(
+		!!process.env.PLAYWRIGHT_BASE_URL,
+		'the ?as= dev provider only exists on a dev server',
+	);
+	const rider = await riders('Tap Link Rider');
+	await rider.setViewportSize(PHONE);
+	await rider.goto('/home');
+	const id = await rider.evaluate(async () => {
+		const res = await fetch('/api/rides', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				workoutName: 'Tap Link Ride',
+				workoutJson: JSON.stringify({
+					name: 'Tap Link Ride',
+					author: 'e2e',
+					steps: [{ type: 'steady', seconds: 120, target: 0.8 }],
+				}),
+				startedAt: new Date(Date.now() - 3_600_000).toISOString(),
+				samples: Array.from({ length: 120 }, () => ({ watts: 200 })),
+			}),
+		});
+		const body = (await res.json()) as { id?: string };
+		return res.ok ? (body.id ?? '') : `${res.status}`;
+	});
+	expect(id, 'a ride to link to').not.toBe('');
+	await rider.reload();
+	const all = rider.getByRole('link', { name: 'All rides →' });
+	await expect(all).toBeVisible({ timeout: 15_000 });
+	const allBox = await box(all);
+	expect(
+		allBox.height,
+		`'All rides →' is ${allBox.height}px tall`,
+	).toBeGreaterThanOrEqual(FLOOR);
+
+	await rider.goto(`/history/${id}`);
+	const back = rider
+		.getByTestId('page-body')
+		.getByRole('link', { name: 'Rides', exact: true });
+	await expect(back).toBeVisible({ timeout: 15_000 });
+	const backBox = await box(back);
+	expect(
+		backBox.height,
+		`the ride page's back link is ${backBox.height}px tall`,
+	).toBeGreaterThanOrEqual(FLOOR);
+});
+
+/**
+ * The Sound dialog calls itself "the levels you reach for mid-ride" (#3748),
+ * so its faders, the gate slider and Done are riding size, and its three
+ * device selects sit in one row's worth of height, none truncated to a stub.
+ * The panel opens without a call: its Sound button needs the channel's av
+ * store, which exists before LiveKit answers. /settings/voice draws the same
+ * faders at desk size and keeps them there.
+ */
+test('the Sound dialog’s controls are riding size and its device row is aligned', async ({
+	riders,
+	channels,
+}) => {
+	test.skip(
+		!!process.env.PLAYWRIGHT_BASE_URL,
+		'the ?as= dev provider only exists on a dev server',
+	);
+
+	const a = await riders('Tap Sound Rider');
+	await a.addInitScript(() =>
+		localStorage.setItem(
+			'wattroom.mixer.v1',
+			JSON.stringify({ music: 0, cues: 0, board: 0, share: 0 }),
+		),
+	);
+	await a.setViewportSize({ width: 1440, height: 900 });
+	const opened = await channels.open(a, `Tap Sound ${Date.now() % 100000}`);
+	await a.goto(voicePath(opened));
+	await a
+		.getByRole('button', { name: /^sound — the mix/ })
+		.first()
+		.click();
+
+	const dialog = a.getByRole('dialog', { name: /^Sound/ });
+	await expect(dialog).toBeVisible({ timeout: 15_000 });
+
+	const short: string[] = [];
+	const ranges = dialog.locator('input[type=range]');
+	for (const [i, range] of (await ranges.all()).entries()) {
+		const { height } = await box(range);
+		if (height < RIDING) short.push(`slider ${i} is ${height}px tall`);
+	}
+	expect(
+		await ranges.count(),
+		'five faders and the gate',
+	).toBeGreaterThanOrEqual(6);
+	const done = await box(dialog.getByRole('button', { name: 'Done' }));
+	if (done.height < RIDING) short.push(`Done is ${done.height}px tall`);
+	expect(short, 'mid-ride controls under 44px').toEqual([]);
+
+	for (const label of ['Microphone', 'Camera', 'Speakers']) {
+		const select = dialog.getByRole('combobox', {
+			name: new RegExp(`^${label}`),
+		});
+		await expect(select, `${label} select`).toBeVisible();
+		const rect = await box(select);
+		// Stacked, each select spans the dialog, never a 100 px stub.
+		expect(rect.width, `${label} is ${rect.width}px wide`).toBeGreaterThan(200);
+	}
+	const eyebrow = await dialog.getByText('speakers · voice only').boundingBox();
+	expect(eyebrow!.height, 'the speakers label wrapped').toBeLessThan(20);
 });

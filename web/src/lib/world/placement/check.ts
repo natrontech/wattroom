@@ -46,6 +46,20 @@ export function crowd() {
 	};
 }
 
+/** Every gate one candidate fails on its own: against the roads, the ground and itself. */
+export function alone(
+	p: Placement,
+	roads: readonly Road[],
+	ground: Ground,
+): Violation[] {
+	return [
+		...o1(p, roads, ground),
+		...o2(p, ground),
+		...o3(p, ground),
+		...o4(p),
+	];
+}
+
 /** Every gate one candidate fails, against the roads, the ground and what stands already. */
 export function admit(
 	p: Placement,
@@ -54,10 +68,7 @@ export function admit(
 	placed: ReturnType<typeof crowd>,
 ): Violation[] {
 	return [
-		...o1(p, roads, ground),
-		...o2(p, ground),
-		...o3(p, ground),
-		...o4(p),
+		...alone(p, roads, ground),
 		...placed.near(p).flatMap((q) => o5(p, q)),
 	];
 }

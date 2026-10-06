@@ -21,7 +21,8 @@ export const routePrivacyLine =
 
 /**
  * Where a route's name travels (#3055), beside the box that renames it: the
- * importer and the route's own page say it the same way.
+ * importer and the route's own page say it the same way. The quoted name is
+ * one unbreakable unit, so a narrow column never splits a number from its unit.
  */
 export const routeNameLine = (generated: string) =>
-	`Only you see this name. Your crews, friends, calendars, emails and Strava see “${generated}”.`;
+	`Only you see this name. Your crews, friends, calendars, emails and Strava see “${generated.replaceAll(' ', ' ')}”.`;

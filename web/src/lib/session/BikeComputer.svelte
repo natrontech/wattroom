@@ -26,16 +26,23 @@
 	let {
 		tv = false,
 		phone = false,
+		narrow = false,
 		...ctx
 	}: ComputerContext & {
 		/** At three metres, sized in vh (TvMode). */
 		tv?: boolean;
 		/** A phone in the hand: a 3×2 grid. */
 		phone?: boolean;
+		/**
+		 * Beside the road, in the world's narrow column: the page's name and
+		 * its dots head the page and the fields sit under them, so the dots
+		 * never wrap onto a row of their own (#3662).
+		 */
+		narrow?: boolean;
 	} = $props();
 
 	let page = $state<ComputerPage>('ride');
-	const pages = $derived(pagesFor(ctx.stats));
+	const pages = $derived(pagesFor(ctx.stats, ctx.race));
 	const shown = $derived(pages.includes(page) ? page : 'ride');
 	const fields = $derived(fieldsFor(shown, ctx));
 	const turns = $derived(pages.length > 1);
@@ -155,8 +162,13 @@
 		></button>
 	{/if}
 	{#if phone}{@render name()}{/if}
+	{#if narrow && !phone && !tv}
+		<div class="flex items-center">
+			{@render name()}{#if turns}{@render dots()}{/if}
+		</div>
+	{/if}
 	<div class={layout}>
-		{#if !phone}{@render name()}{/if}
+		{#if !phone && !(narrow && !tv)}{@render name()}{/if}
 		{#each fields as field (field.key)}
 			<div data-testid="computer-field" data-field={field.key} class="min-w-0">
 				<span
@@ -166,7 +178,7 @@
 							class={tv ? 'size-[1.4vh]' : 'size-2'}
 						/>{/if}</span
 				>
-				{#if field.neon}
+				{#if field.key === 'gear'}
 					<span
 						bind:this={gearField}
 						aria-live="polite"
@@ -175,19 +187,25 @@
 					>
 				{:else}
 					<!-- A space, not a margin, between number and unit: "78 rpm"
-					     is what a screen reader and a search both read. -->
+					     is what a screen reader and a search both read. Neon is a
+					     model's number, flat: only live data glows (ADR-0005). The
+					     unit's own line-height would make a page with units 2 px
+					     taller than one without, so a turn would move the panel. -->
 					<span
 						class="num mt-1 block {size.value} leading-none font-bold {field.glow
 							? 'text-watt glow-text'
-							: 'text-ink'}"
+							: field.neon
+								? 'text-neon'
+								: 'text-ink'}"
 						>{field.value}{#if field.unit}{' '}<span
-								class="text-muted {size.unit} font-normal">{field.unit}</span
+								class="text-muted {size.unit} leading-none font-normal"
+								>{field.unit}</span
 							>{/if}</span
 					>
 				{/if}
 			</div>
 		{/each}
-		{#if turns && !tv && !phone}{@render dots()}{/if}
+		{#if turns && !tv && !phone && !narrow}{@render dots()}{/if}
 	</div>
 	{#if zoneStrip}{@render strip(zoneStrip)}{/if}
 	{#if turns && phone}{@render dots()}{/if}

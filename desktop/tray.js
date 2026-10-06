@@ -3,8 +3,12 @@
 // A menu-bar / system-tray presence, and the thing that makes "WattRoom is
 // running without a window" a state a rider can see and get out of. Launched
 // by the login item, or with its window closed, the shell runs with its window
-// hidden (#3005), so without this there would be nothing on screen saying it
-// is there.
+// hidden (#3005), so on Windows and Linux there would otherwise be nothing on
+// screen saying it is there.
+//
+// A switch since #3843, kept per device: off by default on macOS, where the
+// Dock already says the app is running and brings the window back, on
+// everywhere else, where the icon is the only way back to a hidden window.
 //
 // #1313's three items, plus one: the window, the room the app is connected
 // to if there is one, quit — and the launch-at-login switch, because the
@@ -14,6 +18,7 @@
 
 const { app, dialog, Menu, nativeImage, Tray } = require('electron');
 const { execFileSync } = require('node:child_process');
+const fs = require('node:fs');
 const path = require('node:path');
 const loginItem = require('./login-item');
 
@@ -22,6 +27,23 @@ let tray = null;
 /** `{ path, name }` of the room the app is connected to, or null. */
 let room = null;
 let actions = { open: () => {}, go: () => {} };
+/** Whether this desktop can draw a tray at all, asked once at launch. */
+let host = false;
+
+function prefFile() {
+	return path.join(app.getPath('userData'), 'tray.json');
+}
+
+/** The rider's choice, or the platform's default when they have made none. */
+function wanted() {
+	try {
+		const { show } = JSON.parse(fs.readFileSync(prefFile(), 'utf8'));
+		if (typeof show === 'boolean') return show;
+	} catch {
+		/* no choice made yet */
+	}
+	return process.platform !== 'darwin';
+}
 
 /**
  * macOS wants a template image — black with alpha, which the system tints
@@ -128,21 +150,8 @@ function linuxHasTrayHost() {
 	return false;
 }
 
-/**
- * @param handlers `open` brings the rider's window back (showing it if it is
- * hidden, creating one if there is none), `go` takes it to a path.
- * @returns whether there is a tray. False where there is nowhere to draw one —
- * a Linux desktop with no status notifier host, or a `new Tray` that throws —
- * and the shell must not come up windowless with nowhere to be clicked from,
- * nor hide a window the rider cannot get back. main.js opens a window instead,
- * and a close quits.
- */
-function install(handlers) {
-	actions = handlers;
-	if (process.platform === 'linux' && !linuxHasTrayHost()) {
-		console.warn('no status notifier host: no tray, and a close quits');
-		return false;
-	}
+/** Draw the icon. False when `new Tray` throws, and then there is none. */
+function create() {
 	try {
 		tray = new Tray(trayImage());
 	} catch (err) {
@@ -161,6 +170,63 @@ function install(handlers) {
 	return true;
 }
 
+function destroy() {
+	if (tray && !tray.isDestroyed()) tray.destroy();
+	tray = null;
+}
+
+/** Whether the icon is on screen right now. */
+function present() {
+	return tray !== null && !tray.isDestroyed();
+}
+
+/**
+ * @param handlers `open` brings the rider's window back (showing it if it is
+ * hidden, creating one if there is none), `go` takes it to a path.
+ * @returns whether there is a tray. False where the rider turned it off, or
+ * where there is nowhere to draw one — a Linux desktop with no status notifier
+ * host, or a `new Tray` that throws. On Windows and Linux the shell must then
+ * not come up windowless with nowhere to be clicked from, nor hide a window
+ * the rider cannot get back: main.js opens a window instead, and a close quits.
+ */
+function install(handlers) {
+	actions = handlers;
+	host = process.platform !== 'linux' || linuxHasTrayHost();
+	if (!host) {
+		console.warn('no status notifier host: no tray, and a close quits');
+		return false;
+	}
+	return wanted() ? create() : false;
+}
+
+/**
+ * The Settings switch: `supported` is false where there is no tray host, and
+ * the control hides rather than offering an icon that draws nowhere.
+ */
+function state() {
+	return { supported: host, enabled: present() };
+}
+
+/**
+ * Show or hide the icon, and remember it for the next launch.
+ *
+ * @returns null when it took, or one sentence saying what did not (errors.md).
+ */
+function setShown(on) {
+	if (!host) return 'This desktop has no system tray to show WattRoom in.';
+	try {
+		fs.writeFileSync(prefFile(), JSON.stringify({ show: on }));
+	} catch (err) {
+		console.warn('tray choice not saved:', err?.message ?? err);
+	}
+	if (!on) {
+		destroy();
+		return null;
+	}
+	if (present() || create()) return null;
+	return 'WattRoom could not put its icon in the system tray here.';
+}
+
 /** The room the app is connected to, or null when it is connected to none. */
 function setRoom(next) {
 	if (next?.path === room?.path && next?.name === room?.name) return;
@@ -168,4 +234,12 @@ function setRoom(next) {
 	refresh();
 }
 
-module.exports = { install, setRoom, refresh, menuTemplate };
+module.exports = {
+	install,
+	present,
+	state,
+	setShown,
+	setRoom,
+	refresh,
+	menuTemplate,
+};

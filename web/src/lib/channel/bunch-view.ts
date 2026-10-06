@@ -25,6 +25,8 @@ export type BunchView = {
 	present: Map<string, { watts: number; ftp: number }>;
 	/** A game rides: the team car never runs in one (#3098). */
 	game: boolean;
+	/** Who this tick's cheers are for (#3116): the world draws each over that rider's head. */
+	cheered: string[];
 };
 
 /** The tick's bunch, or null while the session rides none. A race rides no shared bunch. */
@@ -51,5 +53,6 @@ export function bunchOf(
 		// Held watts, so a 1 Hz trainer that misses a tick does not stop the legs.
 		present: new Map(riders.map((r) => [r.id, { watts: r.watts, ftp: r.ftp }])),
 		game: !!tick.game,
+		cheered: (tick.cheers ?? []).flatMap((c) => (c.to ? [c.to] : [])),
 	};
 }

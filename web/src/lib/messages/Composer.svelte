@@ -234,7 +234,7 @@
 			id={listId}
 			role="listbox"
 			aria-label="people to mention"
-			class="panel absolute bottom-full left-5 z-30 mb-1 min-w-44 p-1 shadow-2xl"
+			class="panel absolute bottom-full left-5 z-30 mb-1 min-w-44 p-1"
 		>
 			{#each mention.hits as name, i (name)}
 				<li>

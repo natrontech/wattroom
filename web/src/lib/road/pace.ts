@@ -36,23 +36,28 @@ import { roadStep, type Road } from './road';
  * first second.
  */
 
-/** Everything but the rider's own power, in newtons, at speed v. */
-function resistance(
-	v: number,
+/**
+ * Everything but the rider's own power, in newtons, is `still + air·v²`:
+ * the two terms that do not move with v, worked out once per grade rather
+ * than once per speed tried. The sum is evaluated in the order the formula
+ * above reads, so the result is the same to the last bit.
+ */
+function resistanceTerms(
 	grade: number,
 	mass: number,
 	cda: number,
 	shelter: number,
-): number {
+): { still: number; air: number } {
 	const theta = Math.atan(grade / 100);
 	// No draft takes more than ShelterMax of the air (a rule, ADR-0077),
 	// whatever a caller hands in.
 	const sheltered = 1 - Math.min(ShelterMax, Math.max(0, shelter));
-	return (
-		mass * PaceGravity * Math.sin(theta) +
-		PaceCrr * mass * PaceGravity * Math.cos(theta) +
-		0.5 * PaceAirDensity * cda * sheltered * v * v
-	);
+	return {
+		still:
+			mass * PaceGravity * Math.sin(theta) +
+			PaceCrr * mass * PaceGravity * Math.cos(theta),
+		air: 0.5 * PaceAirDensity * cda * sheltered,
+	};
 }
 
 /**
@@ -175,13 +180,14 @@ export function createPace(speed = 0, limit?: (distance: number) => number) {
 			shelter: number,
 		): void {
 			const dt = 1 / PaceSubsteps;
+			const { still, air } = resistanceTerms(grade, mass, cda, shelter);
 			braking = false;
 			for (let i = 0; i < PaceSubsteps; i++) {
 				let next = nextSpeed(
 					v,
 					mass,
 					PaceDrivetrainEfficiency * watts,
-					resistance(v, grade, mass, cda, shelter),
+					still + air * v * v,
 					dt,
 				);
 				// Held to the road where this substep ends, at the farthest it
@@ -226,11 +232,12 @@ export function steadySpeed(
 	cda: number,
 	shelter = 0,
 ): number {
+	const { still, air } = resistanceTerms(grade, mass, cda, shelter);
 	let lo = 0;
 	let hi = 40;
 	for (let k = 0; k < 60; k++) {
 		const mid = (lo + hi) / 2;
-		const power = resistance(mid, grade, mass, cda, shelter) * mid;
+		const power = (still + air * mid * mid) * mid;
 		if (PaceDrivetrainEfficiency * watts > power) lo = mid;
 		else hi = mid;
 	}

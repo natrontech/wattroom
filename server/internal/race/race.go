@@ -8,6 +8,7 @@ package race
 
 import (
 	"errors"
+	"math"
 	"sort"
 	"time"
 
@@ -59,6 +60,8 @@ type Race struct {
 	// Whether its card ranks the distance ridden (Last Light), rather than
 	// finish times with whoever the end caught off it (a hard close).
 	byMetres bool
+	// Each Category's par from each start a racer took (#3174).
+	pars map[parKey]*parTrack
 }
 
 // New lines entrants up on profile for a flag dropping at flag: the neutral
@@ -286,6 +289,12 @@ func (r *Race) Racers() map[string]protocol.RaceRider {
 			M:        min(rc.pace.Distance, r.profile.LengthM),
 			V:        rc.pace.Speed,
 			FinishMs: rc.finishMs,
+			Cat:      rc.Category,
+		}
+		if par, ok := r.parAt(rc.Category, rc.StartM, out[id].M); ok && rc.ridden > 0 {
+			p := out[id]
+			p.Par = math.Round((par-float64(rc.ridden))*10) / 10
+			out[id] = p
 		}
 	}
 	return out

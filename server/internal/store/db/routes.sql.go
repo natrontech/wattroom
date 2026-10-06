@@ -27,9 +27,9 @@ func (q *Queries) CountUserRoutes(ctx context.Context, ownerID pgtype.UUID) (int
 const createRoute = `-- name: CreateRoute :one
 insert into routes (
     owner_id, src, name, gen_name, road, road_hash, length_m, gain_m,
-    climbs, ele_source, geom_sealed, key_version, road_sealed
+    climbs, ele_source, geom_sealed, key_version, road_sealed, loop
 )
-values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 returning id, created_at
 `
 
@@ -47,6 +47,7 @@ type CreateRouteParams struct {
 	GeomSealed []byte
 	KeyVersion *int32
 	RoadSealed []byte
+	Loop       *bool
 }
 
 type CreateRouteRow struct {
@@ -69,6 +70,7 @@ func (q *Queries) CreateRoute(ctx context.Context, arg CreateRouteParams) (Creat
 		arg.GeomSealed,
 		arg.KeyVersion,
 		arg.RoadSealed,
+		arg.Loop,
 	)
 	var i CreateRouteRow
 	err := row.Scan(&i.ID, &i.CreatedAt)
@@ -188,7 +190,7 @@ func (q *Queries) GetOwnRideSamples(ctx context.Context, arg GetOwnRideSamplesPa
 const getOwnerRoute = `-- name: GetOwnerRoute :one
 select id, src, name, gen_name, road, road_hash, length_m, gain_m, climbs,
        ele_source, (geom_sealed is not null)::boolean as has_place, created_at,
-       road_sealed, key_version
+       road_sealed, key_version, loop
 from routes
 where id = $1 and owner_id = $2
 `
@@ -213,6 +215,7 @@ type GetOwnerRouteRow struct {
 	CreatedAt  pgtype.Timestamptz
 	RoadSealed []byte
 	KeyVersion *int32
+	Loop       *bool
 }
 
 // One route, the owner's only: someone else's reads as absent.
@@ -234,6 +237,7 @@ func (q *Queries) GetOwnerRoute(ctx context.Context, arg GetOwnerRouteParams) (G
 		&i.CreatedAt,
 		&i.RoadSealed,
 		&i.KeyVersion,
+		&i.Loop,
 	)
 	return i, err
 }

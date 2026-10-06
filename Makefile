@@ -6,9 +6,11 @@
 # tree keeps :8080/:5174 and the `wattroom` database; every linked worktree
 # derives its own from its path. `make dev-env` prints what this one takes.
 
-.PHONY: infra dev-env dev-server dev-web dev-db-drop web web-deps changelog protocol migration sqlc seed screenshots design-targets design-shots build test lint ci release print-golangci-version desktop desktop-smoke desktop-release perf perf-scenes licenses worktree-gc
+.PHONY: infra dev-env dev-server dev-web dev-db-drop web web-deps changelog protocol migration sqlc seed screenshots design-targets design-shots build test lint dead-code ci release print-golangci-version desktop desktop-smoke desktop-release perf perf-scenes licenses worktree-gc
 
 DEV_ENV := scripts/dev-env.sh
+# "wattroom dev key, never deployed" in base64: 32 bytes, for make dev-server only.
+DEV_TOKEN_KEY := d2F0dHJvb20gZGV2IGtleSwgbmV2ZXIgZGVwbG95ZWQ=
 
 # The Go version CI lints with (go-version-file: server/go.mod); see lint.
 GO_VERSION := $(shell sed -n 's/^go //p' server/go.mod)
@@ -19,6 +21,11 @@ GO_VERSION := $(shell sed -n 's/^go //p' server/go.mod)
 # and failed CI on findings only the newer linter could see. Bump this and
 # both move together; `make print-golangci-version` is what the workflow reads.
 GOLANGCI_VERSION := v2.13.2
+
+# The dead-code tools (#3862), pinned and fetched on use rather than added as
+# dependencies; CI's `dead-code` job runs `make dead-code`, so both read these.
+KNIP_VERSION := 6.39.0
+DEADCODE_VERSION := v0.51.0
 
 infra: ## start the shared Postgres + LiveKit containers (one project, any checkout)
 	@# Not a bare `docker compose up -d`: that names the compose project after
@@ -37,9 +44,12 @@ dev-env: ## print this checkout's dev ports and database
 dev-server: ## run Go server with hot reload (installs air on first use)
 	@# LiveKit stays one shared instance: two worktrees in voice land in the
 	@# same SFU. Only ports and Postgres are per-checkout.
+	@# The token key is a public dev one, as a deployment holds its own: a
+	@# server without one keeps every road bare, so the world a dev ride draws
+	@# is one straight instead of the road's turns (#3761).
 	@$(DEV_ENV) ensure-db
 	@$(DEV_ENV) banner server
-	@eval "$$($(DEV_ENV) print)"; cd server && WATTROOM_ADDR=":$$WATTROOM_DEV_SERVER_PORT" WATTROOM_METRICS_ADDR=":$$WATTROOM_DEV_METRICS_PORT" WATTROOM_BASE_URL="http://localhost:$$WATTROOM_DEV_SERVER_PORT" WATTROOM_DB="$$WATTROOM_DEV_DSN" WATTROOM_DEV_LOGIN=1 WATTROOM_LIVEKIT_URL="ws://localhost:7880" WATTROOM_LIVEKIT_KEY="devkey" WATTROOM_LIVEKIT_SECRET="secret" go run github.com/air-verse/air@v1.67.4
+	@eval "$$($(DEV_ENV) print)"; cd server && WATTROOM_TOKEN_KEY="$${WATTROOM_TOKEN_KEY:-$(DEV_TOKEN_KEY)}" WATTROOM_ADDR=":$$WATTROOM_DEV_SERVER_PORT" WATTROOM_METRICS_ADDR=":$$WATTROOM_DEV_METRICS_PORT" WATTROOM_BASE_URL="http://localhost:$$WATTROOM_DEV_SERVER_PORT" WATTROOM_DB="$$WATTROOM_DEV_DSN" WATTROOM_DEV_LOGIN=1 WATTROOM_LIVEKIT_URL="ws://localhost:7880" WATTROOM_LIVEKIT_KEY="devkey" WATTROOM_LIVEKIT_SECRET="secret" go run github.com/air-verse/air@v1.67.4
 
 dev-web: changelog web-deps ## run Vite dev server
 	@$(DEV_ENV) banner web
@@ -182,6 +192,22 @@ lint: web-deps
 	cd web && pnpm run check
 	cd web && pnpm run format:check
 
+dead-code: web-deps ## unused files, exports and dependencies in web/ (knip); functions no main or test reaches in server/ (deadcode)
+	@# Both run, so one red report does not hide the other. deadcode exits 0
+	@# on findings, so any output is the failure. With -test, a function a
+	@# test calls is alive: what is left is reached by nothing at all.
+	@status=0; \
+	(cd web && pnpm --silent dlx knip@$(KNIP_VERSION) --no-progress) || { \
+		echo 'Delete what is dead. Something used where knip cannot see it goes in web/knip.jsonc with its reason.' >&2; \
+		status=1; \
+	}; \
+	dead=$$(cd server && go run golang.org/x/tools/cmd/deadcode@$(DEADCODE_VERSION) -test ./...) || status=1; \
+	if [ -n "$$dead" ]; then \
+		printf '%s\n\n%s\n' "$$dead" 'Unreachable from every main and every test: delete it.' >&2; \
+		status=1; \
+	fi; \
+	exit $$status
+
 ci: test lint ## what CI runs
 
 release: ## cut a release: promote the changelog, tag, push (version is CalVer, computed)
@@ -197,7 +223,7 @@ licenses:
 	python3 scripts/licenses-go.py
 	node scripts/licenses-web.mjs
 
-# AGENTS.md step 7, enforced (#2097). Removes finished worktrees and the
+# AGENTS.md "Merging and cleaning up", enforced (#2097). Removes finished worktrees and the
 # branches the remote is done with; refuses on a worktree holding commits
 # nobody has pushed, which is how finished work goes missing.
 .PHONY: worktree-gc

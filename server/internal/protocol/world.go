@@ -66,4 +66,12 @@ type RaceRider struct {
 	M        float64 `json:"m"`
 	V        float64 `json:"v"`
 	FinishMs int64   `json:"finishMs,omitempty"`
+	// The Category the race froze them in at the flag, D–A (#3174): who they
+	// race, which the RACE page places them among. The bracket, never the
+	// watts behind it.
+	Cat string `json:"cat,omitempty"`
+	// Seconds ahead of their Category's par at their metre, behind when
+	// negative (#3174): par from their own start, on their own racing clock.
+	// Absent until they have raced a second.
+	Par float64 `json:"par,omitempty"`
 }

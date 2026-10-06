@@ -21,7 +21,7 @@ looking for other work, and do not re-open triage on issues someone else has cla
 ## 2. Claim before you read deeply
 
 `gh issue edit <n> --add-assignee @me` plus a one-line approach comment, per
-[`.claude/rules/git.md`](../../rules/git.md). Claiming first is what stops two agents landing the
+[AGENTS.md](../../../AGENTS.md), "Taking work". Claiming first is what stops two agents landing the
 same fix; you can always unassign at step 4.
 
 ## 3. Read the report

@@ -25,7 +25,7 @@ const drawn = (page: Page) =>
 		return said ? (JSON.parse(said) as Snapshot) : null;
 	});
 
-test('two screens draw one bunch: each rider where the other screen has them', async ({
+test('two screens draw one bunch: each rider where the other screen has them @world', async ({
 	riders,
 	channels,
 }, info) => {

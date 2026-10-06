@@ -5,11 +5,11 @@
 	// (#3672) it draws that one frame and holds it, with or without its
 	// controls, and in a dev build window.__worldProbe() reports what the
 	// frame drew — how a design capture measures the world.
-	import { FAMILY } from './props/batch';
 	import { onMount, untrack } from 'svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import Profile from './Profile.svelte';
 	import { buildFailureMessage, parseRoute } from '$lib/road/parse';
+	import { readLook } from './look';
 	import { placeScene } from './place-scene';
 	import { toRoute, type Route } from '$lib/road/route';
 	import { mount, type CameraMode, type Hud, type WorldScene } from './scene';
@@ -22,7 +22,14 @@
 	let {
 		styles,
 		moment = null,
-	}: { styles: readonly Style[]; moment?: WorldMoment | null } = $props();
+	}: {
+		/** The gallery's other looks, beside the ride's own. */
+		styles: readonly Style[];
+		moment?: WorldMoment | null;
+	} = $props();
+
+	// The ride's own look first, painted from the tokens a rider's world is.
+	const looks = $derived([readLook(document.documentElement), ...styles]);
 
 	type Built = { route: Route; world: World; ms: number };
 	const CAMERAS: { id: CameraMode; label: string }[] = [
@@ -42,10 +49,7 @@
 	let hud = $state.raw<Hud | null>(null);
 	let watts = $state(200);
 	let styleId = $state(
-		untrack(
-			() =>
-				styles.find((s) => s.id === moment?.look)?.id ?? styles[0]?.id ?? '',
-		),
+		untrack(() => looks.find((s) => s.id === moment?.look)?.id ?? looks[0].id),
 	);
 	let camera = $state<CameraMode>(untrack(() => moment?.cam ?? 'chase'));
 	const chrome = $derived(!moment || moment.chrome);
@@ -53,7 +57,7 @@
 	let scene: WorldScene | null = null;
 	const profile = createProfileStore();
 
-	const style = $derived(styles.find((s) => s.id === styleId) ?? styles[0]);
+	const style = $derived(looks.find((s) => s.id === styleId) ?? looks[0]);
 
 	function build(text: string): Built {
 		const t0 = performance.now();
@@ -250,7 +254,7 @@
 			class="border-frame bg-surface/90 absolute right-3 bottom-32 left-3 grid gap-2 rounded-lg border px-4 py-3 sm:top-3 sm:bottom-auto sm:left-auto sm:max-w-sm sm:justify-items-end"
 		>
 			<div class="flex flex-wrap gap-1 sm:justify-end">
-				{#each styles as s (s.id)}
+				{#each looks as s (s.id)}
 					<button
 						class="btn btn-xs btn-secondary"
 						class:bg-surface-raised={styleId === s.id}
@@ -296,11 +300,7 @@
 			{/if}
 			<p class="text-muted m-0 text-xs sm:text-right">
 				{world.names.pass} ({Math.round(route.maxEle)} m) under the {world.names
-					.peak} · {route.name} up · built in {Math.round(built.ms)} ms · {world.props.filter(
-					(p) => p.kind === 'spruce' || p.kind === 'broadleaf',
-				).length}
-				trees, {world.props.filter((p) => FAMILY[p.kind] === 'buildings')
-					.length} houses
+					.peak} · {route.name} up · built in {Math.round(built.ms)} ms
 			</p>
 			<p class="text-muted m-0 text-xs sm:text-right">
 				A GPX you load stays in this tab. Everything beside the road is

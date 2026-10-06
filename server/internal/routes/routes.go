@@ -120,6 +120,8 @@ type routeJSON struct {
 	RoadHash  string `json:"roadHash,omitempty"`
 	EleSource string `json:"eleSource,omitempty"`
 	Hint      string `json:"hint,omitempty"`
+	// Whether it ends where it began; absent for a route stored before #3680.
+	Loop *bool `json:"loop,omitempty"`
 }
 
 func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
@@ -171,7 +173,7 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 		ID: store.UUIDString(row.ID), Name: row.Name, GeneratedName: row.GenName, Src: row.Src,
 		LengthM: row.LengthM, GainM: row.GainM, Climbs: row.Climbs, HasPlace: row.HasPlace,
 		OwnerOnly: row.Src == stravaSrc, CreatedAt: row.CreatedAt.Time,
-		Road: whole, RoadHash: row.RoadHash, EleSource: row.EleSource,
+		Road: whole, RoadHash: row.RoadHash, EleSource: row.EleSource, Loop: row.Loop,
 	})
 }
 

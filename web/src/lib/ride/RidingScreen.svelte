@@ -27,6 +27,7 @@
 	import { skylineOf } from '$lib/workout/road-workout';
 	import Instrument from '$lib/session/Instrument.svelte';
 	import RideHeader from '$lib/session/RideHeader.svelte';
+	import { rideContext } from '$lib/session/ride-context';
 	import RidingSurface from '$lib/session/RidingSurface.svelte';
 	import BiasTrim from '$lib/session/BiasTrim.svelte';
 	import BikeComputer from '$lib/session/BikeComputer.svelte';
@@ -128,7 +129,9 @@
 		<!-- The kit's riding size (ux.md: btn-lg is the 44 px a rider hits
 			     while pedalling); these used to retype the chrome by hand. -->
 		<!-- Any workout on a road (#3594): the dot, at your watts. -->
-		{#if session.road}
+		<!-- In the world slot 1's road line says it (TARGETS, one home per
+		     number), and the column has no height to spare (#3662). -->
+		{#if session.road && !inWorld}
 			<span class="text-muted num text-xs"
 				>{formatKm(session.road.m)} of {formatKm(session.road.toM)} km</span
 			>
@@ -176,7 +179,9 @@
 					mps: session.road?.mps ?? 0,
 				})}
 				{watts}
+				silent={signalLost}
 				{ftp}
+				progress={session.total > 0 ? session.elapsed / session.total : null}
 				onfail={world.fail}
 				onflat={world.flatten}
 			/>
@@ -194,6 +199,7 @@
 				cadence={session.sample?.cadence ?? 0}
 				hr={session.sample?.heartRate ?? 0}
 				title={workout.name}
+				context={rideContext('Solo', workout.name)}
 				drives
 				controls={inWorld ? undefined : rideControls}
 			/>
@@ -237,33 +243,40 @@
 	{/snippet}
 
 	{#snippet numbers()}
-		{#if inWorld && !session.sprint}
-			<Instrument {watts} {target} {ftp} stale={signalLost} compact />
-		{/if}
-		<div class="flex flex-wrap items-end gap-4">
-			<div class="min-w-0 flex-1">
-				<BikeComputer
-					cadence={session.sample?.cadence ?? 0}
-					stale={signalLost}
-					hr={session.sample?.heartRate ?? 0}
-					{watts}
-					{kg}
-					{lthr}
-					execution={session.scored ? session.execution : undefined}
-					target={target > 0 ? target : undefined}
-					stats={session.live}
+		<!-- Over the world the panel insets its content as the status does. -->
+		<div class={inWorld ? 'px-4 py-2' : ''}>
+			{#if inWorld && !session.sprint}
+				<Instrument {watts} {target} {ftp} stale={signalLost} compact />
+			{/if}
+			<div class="flex flex-wrap items-end gap-4">
+				<!-- In the world's narrow column the computer takes the whole width,
+			     so its page wraps into rows instead of a tower (#3662). -->
+				<div class="min-w-0 flex-1 {inWorld ? 'basis-full' : ''}">
+					<BikeComputer
+						head={inWorld && !session.sprint}
+						narrow={inWorld}
+						cadence={session.sample?.cadence ?? 0}
+						stale={signalLost}
+						hr={session.sample?.heartRate ?? 0}
+						{watts}
+						{kg}
+						{lthr}
+						execution={session.scored ? session.execution : undefined}
+						target={target > 0 ? target : undefined}
+						stats={session.live}
+					/>
+				</div>
+				<BiasTrim
+					bias={session.bias}
+					onBias={(step) => session.nudgeBias(step)}
 				/>
 			</div>
-			<BiasTrim
-				bias={session.bias}
-				onBias={(step) => session.nudgeBias(step)}
-			/>
-		</div>
 
-		{#if flagNotice}
-			<!-- Consent in plain words, at the moment of the tap, never blocking. -->
-			<p class="text-muted mt-2 text-xs">{FLAG_SAID.after}</p>
-		{/if}
+			{#if flagNotice}
+				<!-- Consent in plain words, at the moment of the tap, never blocking. -->
+				<p class="text-muted mt-2 text-xs">{FLAG_SAID.after}</p>
+			{/if}
+		</div>
 	{/snippet}
 
 	{#snippet horizon()}
