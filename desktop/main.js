@@ -114,11 +114,14 @@ function isOurs(url) {
 let startedHidden = false;
 
 /**
- * Whether there is a tray to hide into (#3005). Where there is, closing the
- * main window hides it (visibility.js); a Linux desktop with no status
- * notifier keeps the close that quits.
+ * Whether a close may hide the window (#3005, #3843): on macOS always, because
+ * the Dock brings it back; elsewhere only while the tray icon is there to
+ * click. Without one a close quits, as it always did. Asked at each close,
+ * because the rider can turn the icon off or on in Settings.
  */
-let hasTray = false;
+function canHide() {
+	return process.platform === 'darwin' || tray.present();
+}
 
 /**
  * The rider's window, never the HUD.
@@ -218,7 +221,7 @@ function createWindow({ hidden = false } = {}) {
 		if (!hidden) win.show();
 	});
 	visibility.manage(win, {
-		hides: hasTray,
+		hides: canHide,
 		hidden,
 		rideHeld: () => sleepBlockerId !== null,
 	});
@@ -383,6 +386,14 @@ ipc.handle('wattroom:login-item-set', (_event, on) => {
 	return { ...loginItem.state(), error };
 });
 
+// The tray icon itself (#3843): Settings → This computer turns it on or off,
+// and the answer has the same shape as the login item's.
+ipc.handle('wattroom:tray', () => tray.state());
+ipc.handle('wattroom:tray-set', (_event, on) => {
+	const error = tray.setShown(on === true);
+	return { ...tray.state(), error };
+});
+
 // Windows shows a notification only for an app with a model id; without
 // this every new Notification() from the renderer is dropped on the floor.
 if (process.platform === 'win32') app.setAppUserModelId('ch.wattroom.desktop');
@@ -436,17 +447,16 @@ if (!app.requestSingleInstanceLock()) {
 				}),
 			);
 		Menu.setApplicationMenu(menu);
+		// Before any window: whether it may start hidden depends on there being
+		// a way back to it (canHide). Without one — Windows or Linux with the
+		// icon off, or a Linux desktop with no status notifier — a hidden
+		// launch would be a process with no surface at all, so it shows the
+		// window instead, and a close there quits as it always did.
+		tray.install({ open: openWindow, go: openPath });
 		// Launched by the login item, the shell loads its window hidden: it
-		// comes up in the tray, running, and waits to be asked (login-item.js,
-		// #3005). Every other launch shows the window.
-		startedHidden = loginItem.startedByLoginItem();
-		// Before any window: whether a close may hide it depends on there
-		// being a tray to hide into. Where there is nowhere to put one — a
-		// Linux desktop with no status notifier — a hidden launch would be a
-		// process with no surface at all, so it shows the window instead, and
-		// a close there quits as it always did.
-		hasTray = tray.install({ open: openWindow, go: openPath });
-		if (!hasTray) startedHidden = false;
+		// comes up running, in the Dock or the tray, and waits to be asked
+		// (login-item.js, #3005). Every other launch shows the window.
+		startedHidden = loginItem.startedByLoginItem() && canHide();
 		createWindow({ hidden: startedHidden });
 		updater.watch();
 		// A cold start from a link is dropped (#1941): no sign-in was started
@@ -460,10 +470,10 @@ if (!app.requestSingleInstanceLock()) {
 	});
 
 	app.on('window-all-closed', () => {
-		// With a tray a close hides the window (#3005), so this is reached
-		// only on the way out. Without one, closing the window quits,
-		// everywhere but macOS.
-		if (process.platform !== 'darwin' && !hasTray) app.quit();
+		// Where a close hides the window (#3005), this is reached only on the
+		// way out. Without a tray, closing the window quits, everywhere but
+		// macOS.
+		if (!canHide()) app.quit();
 	});
 }
 

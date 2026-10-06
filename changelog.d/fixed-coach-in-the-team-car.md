@@ -1,0 +1,1 @@
+- A coach riding a road session without a trainer now rides in the team car on their own screen too: their figure no longer stands on the road beside the car, and only one violet chevron shows.

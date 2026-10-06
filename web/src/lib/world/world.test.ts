@@ -24,6 +24,9 @@ let world: World;
 beforeAll(() => {
 	route = toRoute(syntheticPoints());
 	world = generate(route);
+	// The whole corridor settled and drawn as one, as the diorama asks for them.
+	void world.everything;
+	void world.mesh;
 }, BUILD_MS);
 
 /** The cosine between each pair of consecutive segments of a polyline. */

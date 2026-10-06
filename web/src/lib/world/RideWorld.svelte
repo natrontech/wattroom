@@ -30,6 +30,7 @@
 	import type { RideMetre } from './sim';
 	import type { BunchView } from '$lib/channel/bunch-view';
 	import { account } from '$lib/account.svelte';
+	import { prefersReducedMotion } from '$lib/motion';
 	import { generate } from './world';
 	// The dev gallery's blue hour, until #3085 gives the ride its own look.
 	import { STYLES } from '../../routes/(app)/dev/world/styles';
@@ -39,6 +40,7 @@
 		metre,
 		bunch,
 		watts,
+		silent = false,
 		ftp,
 		paused = false,
 		onfail,
@@ -51,6 +53,8 @@
 		/** Everyone on the road with you, on a session's road. */
 		bunch?: () => BunchView | null;
 		watts: number;
+		/** The trainer is silent past SIGNAL_LOST_MS, the signal the panels read "—" from. */
+		silent?: boolean;
 		ftp: number;
 		/** A shared screen has the focus. */
 		paused?: boolean;
@@ -75,6 +79,7 @@
 					ftp,
 					metre,
 					bunch,
+					steady: () => prefersReducedMotion.current,
 					// Your kit is keyed by who you are, solo or in a bunch: the crew sees the one you see.
 					youId: account.me?.id,
 					// The theme's neon as the canvas resolves it, for the coach's chevron.
@@ -106,6 +111,7 @@
 	});
 
 	$effect(() => scene?.setWatts(watts));
+	$effect(() => scene?.setSilent(silent));
 	$effect(() => scene?.hold('displaced', paused));
 	$effect(() => scene?.hold('shell', shellHidden));
 </script>

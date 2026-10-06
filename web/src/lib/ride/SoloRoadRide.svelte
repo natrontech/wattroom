@@ -8,16 +8,20 @@
 	import Banner from '$lib/components/Banner.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import RoadRiding from '$lib/ride/RoadRiding.svelte';
+	import type { Trainer } from '$lib/ble/trainer';
 	import { loadPlanRoad, loadRoad, type RideableRoute } from '$lib/ride/roads';
 
 	let {
 		roadId = null,
 		plan = null,
 		from = 0,
+		trainer,
 	}: {
 		roadId?: string | null;
 		plan?: { crew: string; id: string } | null;
 		from?: number;
+		/** Paired on /ride's card and handed over: ride at once (#3671). */
+		trainer?: Trainer;
 	} = $props();
 
 	let route = $state.raw<RideableRoute | null>(null);
@@ -40,7 +44,7 @@
 </script>
 
 {#if route}
-	<RoadRiding {route} from={start} />
+	<RoadRiding {route} from={start} {trainer} />
 {:else if error}
 	<div class="m-auto w-full max-w-2xl">
 		<Banner tone="error">

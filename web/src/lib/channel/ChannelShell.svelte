@@ -8,7 +8,7 @@
 	import { device } from '$lib/device.svelte';
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { publishHud } from '$lib/hud/feed';
-	import { FREE_RIDE_NAME } from '$lib/ride/free-ride.svelte';
+	import { freeRideLabel } from '$lib/ride/free-ride.svelte';
 	import { toasts } from '$lib/toast.svelte';
 	import { confirm } from '$lib/confirm.svelte';
 	import { banAsk } from '$lib/crew-flows';
@@ -184,7 +184,7 @@
 				target: free.mode === 'watts' ? free.watts : 0,
 				remaining: 0,
 				elapsed: free.seconds,
-				label: FREE_RIDE_NAME,
+				label: freeRideLabel(free.road),
 				fault,
 				road: free.road?.readout,
 			});

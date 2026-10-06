@@ -17,6 +17,9 @@ import { DEFAULTS } from '$lib/workout/guards';
 
 /** The empty, unscored workout a free ride saves as — a game's shape. */
 export const FREE_RIDE_NAME = 'Free ride';
+/** What the HUD calls a free ride: “Free ride · <road>” on one (#3678). */
+export const freeRideLabel = (road?: { name: string } | null): string =>
+	road ? `${FREE_RIDE_NAME} · ${road.name}` : FREE_RIDE_NAME;
 export const FREE_RIDE_JSON = JSON.stringify({
 	name: FREE_RIDE_NAME,
 	unscored: true,
@@ -24,7 +27,9 @@ export const FREE_RIDE_JSON = JSON.stringify({
 });
 
 export type FreeRideOutcome =
-	{ saved: { id: string } } | { failure: SaveFailure } | { short: true };
+	| { saved: { id: string; xp?: number } }
+	| { failure: SaveFailure }
+	| { short: true };
 
 /**
  * A free ride (ADR-0059): riding a voice channel with no session and no
@@ -127,6 +132,7 @@ export function createFreeRide(deps: {
 		get recording() {
 			return startedAt !== null;
 		},
+		/** The ride's pedalled seconds; once it ends, the time it ended on. */
 		get seconds() {
 			return seconds;
 		},
@@ -140,6 +146,9 @@ export function createFreeRide(deps: {
 			return outcome;
 		},
 		arm() {
+			// A new arming is a new ride's clock; the last one's ended time
+			// stays on screen until then (#3762).
+			if (!armed && startedAt === null) seconds = 0;
 			armed = true;
 		},
 		setMode(next: FreeMode) {
@@ -263,7 +272,6 @@ export function createFreeRide(deps: {
 			};
 			const ended = buffer;
 			startedAt = null;
-			seconds = 0;
 			samples = [];
 			// The buffer never offers a ride this short back either.
 			if (ride.samples.length < MinRideSamples) {

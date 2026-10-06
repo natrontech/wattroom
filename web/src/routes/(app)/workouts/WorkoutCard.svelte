@@ -57,7 +57,12 @@
 	{/if}
 	<!-- mt-auto: the graph is the bottom of every card whatever the description
 	     does above it, so a row of cards can be read across (#1525). -->
-	<div class="mt-auto flex flex-wrap items-center gap-x-3 gap-y-2 px-5 pt-3">
+	<!-- A ghost button's own padding sits inside the row, so its first and last
+	     are pulled out by it: the words, not the box, meet the card's text
+	     edges (#3802). The hit box keeps its size. -->
+	<div
+		class="mt-auto flex flex-wrap items-center gap-x-3 gap-y-2 px-5 pt-3 [&>.btn-ghost:first-child]:-ml-3 [&>.btn-ghost:last-child]:-mr-3"
+	>
 		{@render actions()}
 	</div>
 	<WorkoutPreview

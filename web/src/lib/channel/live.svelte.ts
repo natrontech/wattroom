@@ -633,8 +633,9 @@ export function createChannelLive(address: PlaceAddress) {
 		stopClip() {
 			send({ board: { clipId: '' } });
 		},
-		cheer(emoji: string) {
-			send({ cheer: { emoji } });
+		/** A cheer for everyone, or for one rider in the channel (#3116). */
+		cheer(emoji: string, to?: string) {
+			send({ cheer: to ? { emoji, to } : { emoji } });
 		},
 		poke(to: string) {
 			send({ poke: { to } });

@@ -1,0 +1,1 @@
+- The closing card now reads the XP the ride put on your account, streak bonus included, so it matches the ride page instead of running 25 XP short.

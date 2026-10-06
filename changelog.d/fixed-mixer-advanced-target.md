@@ -1,0 +1,1 @@
+- The mixer's Advanced fold and its "My voice ducks it too" checkbox are now at least 24 px to hit, so a tap on a phone or a laptop lands on the first try.

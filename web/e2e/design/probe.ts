@@ -155,7 +155,9 @@ export function probe(corridor: Box) {
 	// page's overflow, so there it is the page body's; the public site has no
 	// page body and scrolls its document. A control inside a sentence is
 	// SC 2.5.8's inline exception, and a visually hidden one (sr-only, 1 px) is
-	// reached through its label: neither is counted.
+	// reached through its label: neither is counted. A checkbox or radio inside
+	// its <label> is targeted through that label, which activates it (#3755), so
+	// the label's box is the one measured.
 	const body = document.querySelector('[data-testid=page-body]');
 	const root = document.documentElement;
 	const inSentence = (el: Element) =>
@@ -173,7 +175,12 @@ export function probe(corridor: Box) {
 			return shown(el) && r.width > 1 && r.height > 1 && !inSentence(el);
 		})
 		.map((el) => {
-			const r = el.getBoundingClientRect();
+			const hit =
+				el instanceof HTMLInputElement &&
+				(el.type === 'checkbox' || el.type === 'radio')
+					? (el.closest('label') ?? el)
+					: el;
+			const r = hit.getBoundingClientRect();
 			const label =
 				el.getAttribute('aria-label') ||
 				el.innerText ||

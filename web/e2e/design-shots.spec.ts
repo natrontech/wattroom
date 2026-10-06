@@ -8,6 +8,7 @@ import {
 	fixtureRoad,
 	joinCrew,
 	newestRide,
+	ownWorkout,
 	planTwo,
 	readRoad,
 	savedRide,
@@ -29,6 +30,7 @@ import {
 	Shoot,
 	TV,
 	assertRiding,
+	atReading,
 	atSecond,
 	ride,
 	wanted,
@@ -92,8 +94,16 @@ surface('ride-road-world', async (s) => {
 		const road = await fixtureRoad(o.page, 'hairpin');
 		await ride(o.page, `/ride?w=openers&road=${road}&from=0`);
 		await assertRiding(o.page, true);
+		// Item 16's distance, however long the road takes to get there (#3834).
+		await atReading(o.page, 'km 0.1 of 7.1');
 		await s.shot(o, { name });
 	}
+	// multi:world-hairpins — item 16's second leg, from km 2.3: the hairpins climb ahead.
+	const o = await s.open(DESK, { world: true });
+	const road = await fixtureRoad(o.page, 'hairpin');
+	await ride(o.page, `/ride?w=openers&road=${road}&from=2300`);
+	await assertRiding(o.page, true);
+	await s.shot(o, { name: 'world-hairpins' });
 });
 
 surface('ride-workout-world', async (s) => {
@@ -201,7 +211,7 @@ surface('ride-free-road', async (s) => {
 });
 
 test.fixme('ride-free-road-world', () => {
-	// The world on a free ride's road is #3663's.
+	// A free ride on a road draws no world yet: #3669 brings it.
 });
 
 test.fixme('ride-free-road-ghost', () => {
@@ -225,7 +235,7 @@ surface('phone-ride', async (s) => {
 });
 
 test.fixme('phone-ride-road', () => {
-	// The world on a free ride's road is #3663's.
+	// A free ride on a road draws no world yet: #3669 brings it.
 });
 
 surface('hud', async (s) => {
@@ -248,29 +258,51 @@ surface('hud', async (s) => {
 		await s.shot({ page: hud, errors }, { name });
 		await hud.close();
 	}
+	// With no ride anywhere, the waiting state scales as the same block (#3678).
+	const idle = await s.open(DESK, { as: 'Hud Watcher', world: false });
+	await idle.page.goto('/hud');
+	await idle.page.waitForTimeout(2500);
+	await s.shot(idle, { name: 'hud-waiting' });
+	// Signed out, in the shell's window and in a tab: the same block.
+	for (const [name, size] of [
+		['hud-signed-out-shell', HUD_SHELL],
+		['hud-signed-out', DESK.viewport!],
+	] as const) {
+		const out = await s.open({ ...DESK, viewport: size }, { as: null });
+		await out.page.goto('/hud');
+		await out.page.waitForTimeout(2500);
+		await s.shot(out, { name });
+	}
 });
 
 surface('ride-preride', async (s) => {
 	// With a remembered road (Designer has ridden one), and without (a rider
-	// who never has).
+	// who never has); past a crew's doors (D11), which an earlier surface's
+	// crew would otherwise put first.
 	const known = await s.open(DESK, { world: false });
-	await fixtureRoad(known.page, 'hairpin');
-	await page(s, known, '/ride', { name: 'ride-preride' });
+	const hairpin = await fixtureRoad(known.page, 'hairpin');
+	// What this device rode last is its own memory (#3671).
+	await known.page.evaluate(
+		(id) =>
+			localStorage.setItem(
+				'wattroom.last-ride.v1',
+				JSON.stringify({ road: id, workout: 'openers' }),
+			),
+		hairpin,
+	);
+	await page(s, known, '/ride?alone', { name: 'ride-preride' });
 	const fresh = await s.open(DESK, { as: 'Newcomer', world: false });
-	await page(s, fresh, '/ride', { name: 'ride-preride-no-road' });
+	await page(s, fresh, '/ride?alone', { name: 'ride-preride-no-road' });
 });
 
 surface('ride-roadpick', async (s) => {
-	// The road picker, with both roads seeded. Today it opens from a free
-	// ride's “Ride a road”; design/ride-preride (#3671) moves it to /ride's
-	// “Change”.
+	// The road picker, with both roads seeded, opened from /ride's
+	// “Change” (#3671).
 	const o = await s.open(DESK, { world: false });
 	await fixtureRoad(o.page, 'hairpin');
 	await fixtureRoad(o.page, 'rolling');
-	// Before a trainer pairs: the channel's free ride starts itself on
-	// pairing, and a started ride closes the picker.
-	await o.page.goto(`${voicePath(await designCrew(o.page))}/training`);
-	await o.page.getByRole('button', { name: 'Ride a road' }).first().click();
+	await o.page.goto('/ride?alone');
+	await o.page.getByRole('button', { name: 'Change' }).first().click();
 	await o.page.waitForTimeout(1500);
 	await s.shot(o, { full: true });
 });
@@ -340,6 +372,18 @@ surface('ride-session-road', async (s) => {
 	try {
 		await assertRiding(coach.page, true);
 		await s.shot(coach);
+		// A cheer for one rider (#3116), from their crew tile's menu: it rides
+		// the next tick, then the thumb holds 2.4 s and the light blinks 10 s.
+		await coach.page
+			.getByTestId('crew-tile')
+			.filter({ hasText: 'Design Partner' })
+			.click({ button: 'right' });
+		await s.shot(coach, { name: 'ride-session-cheer-menu' });
+		await coach.page
+			.getByRole('menuitem', { name: 'Cheer Design Partner' })
+			.click();
+		await coach.page.waitForTimeout(1200);
+		await s.shot(coach, { name: 'ride-session-cheer' });
 	} finally {
 		await endSession(coach.page);
 	}
@@ -401,15 +445,31 @@ surface('dev-world', async (s) => {
 
 /** /dev/world at one still moment (#3672): two loads are one frame, chrome off. */
 const MOMENT_M = 11_000;
-async function moment(s: Shoot, device: typeof DESK, p: 0 | 1) {
+async function moment(
+	s: Shoot,
+	device: typeof DESK,
+	p: 0 | 1,
+	cam: 'chase' | 'side' = 'chase',
+) {
 	const o = await s.open(device);
 	await o.page.goto(
-		`/dev/world?m=${MOMENT_M}&p=${p}&cam=chase&look=bluehour&chrome=0`,
+		`/dev/world?m=${MOMENT_M}&p=${p}&cam=${cam}&look=bluehour&chrome=0`,
 	);
 	await o.page.waitForFunction(
 		() => !!(window as unknown as { __worldProbe?: unknown }).__worldProbe,
 		null,
 		{ timeout: 30_000 },
+	);
+	// The ground around the eye whole before the shot: a chunk still building is a frame two loads disagree on.
+	await o.page.waitForFunction(
+		() =>
+			(
+				window as unknown as {
+					__worldProbe: () => { ground?: { pending: number } };
+				}
+			).__worldProbe().ground?.pending === 0,
+		null,
+		{ timeout: 60_000 },
 	);
 	await o.page.waitForTimeout(2000);
 	return o;
@@ -428,6 +488,9 @@ surface('world-start', async (s) => {
 		join(OUT, 'world-start-twice.json'),
 		JSON.stringify({ identical: frames[0].equals(frames[1]) }, null, 2) + '\n',
 	);
+	// multi:world-figure-side — the same moment from off your right shoulder,
+	// where the chase camera never stands: the face, the drops, both wheels.
+	await s.shot(await moment(s, DESK, 0, 'side'), { name: 'world-figure-side' });
 });
 
 surface('world-end', async (s) => {
@@ -445,6 +508,7 @@ surface('workouts', async (s) => {
 		const o = await s.open(device);
 		await fixtureRoad(o.page, 'hairpin');
 		await fixtureRoad(o.page, 'rolling');
+		await ownWorkout(o.page);
 		await page(s, o, '/workouts', { name });
 	}
 });
@@ -485,6 +549,12 @@ surface('import', async (s) => {
 					id,
 				);
 	}
+	// The rolling road read too: flats and a descent between its climbs, so
+	// the line's own neon shows beside the climbs' ramp (#3679).
+	const o = await s.open(DESK);
+	await readRoad(o.page, 'rolling');
+	await o.page.waitForTimeout(2500);
+	await s.shot(o, { name: 'import-rolling', full: true });
 });
 
 async function routeIds(page: Opened['page']): Promise<Set<string>> {
@@ -635,12 +705,31 @@ surface('flow-f3', async (s) => {
 	await o.page.getByRole('button', { name: 'Start the ride' }).click();
 	await atSecond(o.page, RIDE_SECOND);
 	await s.shot(o, { name: 'flow-f3-4-riding' });
+	// A long workout name in the opening eyebrow: its width is the CSS's, so
+	// the text is swapped in place and the probes measure the header.
+	await o.page
+		.getByTestId('ride-context')
+		.evaluate(
+			(el, name) => (el.textContent = name),
+			`Solo · ${'A very long workout name '.repeat(6)}`,
+		);
+	await s.shot(o, { name: 'flow-f3-4-riding-long-name' });
 	await o.page
 		.getByRole('link', { name: 'See your ride' })
 		.waitFor({ timeout: 120_000 });
 	await o.page.waitForTimeout(1500);
 	await s.shot(o, { name: 'flow-f3-5-closing-card', full: true });
 	await page(s, o, '/home', { name: 'flow-f3-6-home' });
+	// The same Recent rides row at phone width, with a long ride name.
+	const phone = await s.open(PHONE, { as: `First ${letters}`, world: false });
+	await phone.page.goto('/home');
+	const row = phone.page.getByRole('link', { name: /Smoke Test/ }).first();
+	await row.waitFor({ timeout: 15_000 });
+	await row.evaluate((el) => {
+		const name = el.querySelector('span.font-display');
+		if (name) name.textContent = 'A very long workout name '.repeat(6);
+	});
+	await s.shot(phone, { name: 'flow-f3-6-home-phone-long-name', full: true });
 });
 
 test.fixme('flow-f1', () => {
@@ -666,6 +755,83 @@ surface('appearance', async (s) => {
 	await page(s, reduced, '/settings/appearance', {
 		name: 'appearance-reduced',
 	});
+});
+
+surface('settings-this-computer', async (s) => {
+	// "This computer" draws only inside the desktop shell, so the capture
+	// hands the page a stand-in bridge with the two switches it asks about.
+	for (const [device, name, platform, icon] of [
+		[DESK, 'settings-this-computer', 'darwin', false],
+		[DESK, 'settings-this-computer-linux', 'linux', true],
+		[DESK, 'settings-this-computer-linux-off', 'linux', false],
+		[PHONE, 'settings-this-computer-phone', 'darwin', false],
+	] as const) {
+		const o = await s.open(device);
+		await o.ctx.addInitScript(
+			([os, on]) => {
+				const answer = (enabled: boolean) => () =>
+					Promise.resolve({ supported: true, enabled, error: null });
+				(window as unknown as { wattroom: object }).wattroom = {
+					version: '2026.10.1',
+					platform: os,
+					titleBar: 0,
+					launchAtLogin: answer(false),
+					trayIcon: answer(on),
+				};
+			},
+			[platform, icon] as const,
+		);
+		await page(s, o, '/settings/notifications', { name });
+	}
+	const browser = await s.open(DESK);
+	await page(s, browser, '/settings/notifications', {
+		name: 'settings-this-computer-browser',
+	});
+});
+
+surface('sound-dialog', async (s) => {
+	// The in-channel Sound dialog, opened without a call (its button needs the
+	// channel's av store, not LiveKit), and /settings/voice beside it, which
+	// draws the same faders at desk size.
+	const o = await s.open(DESK);
+	const crew = await designCrew(o.page);
+	await o.page.goto(voicePath(crew));
+	await o.page
+		.getByRole('button', { name: /^sound — the mix/ })
+		.first()
+		.click({ timeout: 15_000 });
+	await o.page.getByRole('dialog', { name: /^Sound/ }).waitFor();
+	await o.page.waitForTimeout(500);
+	const dialog = o.page.getByRole('dialog', { name: /^Sound/ });
+	// The dialog's own measurements: the page-wide probe cannot attribute them.
+	const dialogTargets = async () => ({
+		dialogTargets: await dialog.evaluate((el) => {
+			const high = (e: Element) =>
+				Math.round(e.getBoundingClientRect().height * 10) / 10;
+			return {
+				sliders: [...el.querySelectorAll('input[type=range]')].map(high),
+				done: high(
+					[...el.querySelectorAll('button')].find(
+						(b) => b.textContent?.trim() === 'Done',
+					)!,
+				),
+				selects: [...el.querySelectorAll('[role=combobox]')].map((e) => {
+					const r = e.getBoundingClientRect();
+					return { x: Math.round(r.x), width: Math.round(r.width) };
+				}),
+				scrollHeight: el.scrollHeight,
+				clientHeight: el.clientHeight,
+			};
+		}),
+	});
+	await s.shot(o, { name: 'sound-dialog', extra: await dialogTargets() });
+	await dialog.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+	await o.page.waitForTimeout(300);
+	await s.shot(o, {
+		name: 'sound-dialog-bottom',
+		extra: await dialogTargets(),
+	});
+	await page(s, o, '/settings/voice', { name: 'sound-dialog-settings-voice' });
 });
 
 surface('landing', async (s) => {

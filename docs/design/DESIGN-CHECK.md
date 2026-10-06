@@ -74,14 +74,15 @@ This table is a readable copy of the map. When they disagree, the JSON wins and 
 | `PreRide`, `RoadPick` | `ride-preride`, `ride-roadpick` |
 | `routes/(app)/workouts/**`, `RouteShape`, `RouteProfile`, `RoutePreview`, `RouteShelf`, `RoutePicker`, `RouteRow` | `workouts`, `phone-workouts`, `route`, `phone-route`, `import-idle`, `import`, `import-saved`, `routes`, `ride-roadpick` |
 | `SessionSummary`, `OwnRide`, `SessionLayers`, `RecapHeader`, `RecapTiles` | `closing-card`, `closing-card-road`, `closing-card-session`, `ride-detail` |
-| `routes/(app)/history/**` | `history`, `history-rides`, `ride-detail`, `collections` |
+| `routes/(app)/history/**`, `lib/ride/RideRow.svelte` | `history`, `history-rides`, `ride-detail`, `collections` |
 | `internal/og` | `poster` |
 | `routes/(app)/home/**`, `$lib/home` | `home`, `phone-home` |
 | `$lib/profile/Appearance` | `appearance`, `appearance-advanced` |
 | `SectionTabs`, the Settings layout | `appearance`, `history`, `routes`, `garage-shop` |
 | `routes/(app)/garage/**` | `garage-shop`, `garage-locker`, `garage-makers` |
+| `QuickAudio`, `MixFaders`, `GateTune`, `GateMeter`, `DevicePickers`, `VoiceSettings` | `sound-dialog` |
 | open rides | `open-rides` |
-| `app.css` `@theme` or `@utility`, `themes.ts` | one surface per group, both schemes: `ride-workout-flat`, `ride-road-world`, `workouts`, `route`, `closing-card`, `home`, `appearance` |
+| `app.css` `@theme` or `@utility`, `themes.ts` | one surface per group, both schemes: `ride-workout-flat`, `ride-road-world`, `workouts`, `route`, `closing-card`, `home`, `appearance`, `sound-dialog` |
 
 ## 3. Your own dev pair
 

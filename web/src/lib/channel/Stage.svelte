@@ -203,7 +203,7 @@
 	data-pane={PANE}
 	{@attach fit}
 	class={popped
-		? 'bg-surface ring-ink/15 fixed top-24 left-24 z-[55] rounded-lg p-1.5 shadow-2xl ring-1'
+		? 'bg-surface ring-ink/15 fixed top-24 left-24 z-[55] rounded-lg p-1.5 ring-1'
 		: 'mb-3'}
 >
 	{#if popped}

@@ -26,6 +26,8 @@
 	import RoadPick from '$lib/ride/RoadPick.svelte';
 	import Skyline from '$lib/ride/Skyline.svelte';
 	import { carryOnFrom, type RideableRoute } from '$lib/ride/roads';
+	import { rememberRoad } from '$lib/ride/last-ride';
+	import type { Trainer } from '$lib/ble/trainer';
 	import { createSoloRoadRide } from '$lib/ride/solo-road.svelte';
 	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
 	import BikeComputer from '$lib/session/BikeComputer.svelte';
@@ -36,7 +38,16 @@
 	import { sensors } from '$lib/sensors.svelte';
 	import { SIGNAL_LOST_MS } from '$lib/workout/ride-state';
 
-	let { route, from = 0 }: { route: RideableRoute; from?: number } = $props();
+	let {
+		route,
+		from = 0,
+		trainer: handed,
+	}: {
+		route: RideableRoute;
+		from?: number;
+		/** A trainer /ride's card paired and handed over: ride at once (#3671). */
+		trainer?: Trainer;
+	} = $props();
 
 	const profile = createProfileStore();
 	const free = createFreeRide({
@@ -88,14 +99,17 @@
 	// the start; a link that says where to start (Resume at km) already did.
 	let carry = $state<number | null>(null);
 	untrack(() => {
-		if (!from && !route.borrowed)
+		if (!from && !route.borrowed && !handed)
 			void carryOnFrom(route.id, route.road.length).then((m) => (carry = m));
 	});
 
-	function start(at?: number) {
-		const trainer = trainers.handOff();
-		if (trainer) solo.start(trainer, at);
+	function start(at?: number, trainer = trainers.handOff()) {
+		if (!trainer) return;
+		solo.start(trainer, at);
+		// The card's “your last road” (#3671); a crew's road is not yours.
+		if (!route.borrowed) rememberRoad(route.id);
 	}
+	untrack(() => handed && start(from, handed));
 	async function end() {
 		ended = true;
 		await solo.end();

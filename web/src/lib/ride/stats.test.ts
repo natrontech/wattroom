@@ -5,6 +5,7 @@ import {
 	normalizedPower,
 	powerTrace,
 	rideXp,
+	xpLines,
 	zoneSeconds,
 } from './stats';
 
@@ -52,6 +53,20 @@ describe('normalizedPower', () => {
 describe('rideXp', () => {
 	it('is the SPEC formula', () => {
 		expect(rideXp(400, 0.9)).toBe(445);
+	});
+});
+
+describe('xpLines (#3753)', () => {
+	it('is the formula until the ride is saved, with nothing to add', () => {
+		expect(xpLines(8, 0.98)).toEqual({ total: 57, extra: 0 });
+	});
+
+	it('totals what the ride page reads once the save has added the streak bonus', () => {
+		expect(xpLines(8, 0.98, 82)).toEqual({ total: 82, extra: 25 });
+	});
+
+	it('shows a ride cut short by the day ceiling as a negative extra', () => {
+		expect(xpLines(400, 0.9, 300)).toEqual({ total: 300, extra: -145 });
 	});
 });
 
