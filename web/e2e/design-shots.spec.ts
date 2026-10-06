@@ -430,6 +430,17 @@ surface('roadside-chalk', async (s) => {
 		await s.shot(coach, { name: 'roadside-chalk-world' });
 		// The watcher has chalked this road's one climb: the deck says so.
 		await s.shot(watcher, { name: 'roadside-chalk-spent' });
+		// A second stamp on that climb is refused, and the deck says why.
+		socket?.send(
+			JSON.stringify({
+				roadside: { kind: 'paint', stamp: 'hopp', atM: ahead + 300 },
+			}),
+		);
+		await watcher.page
+			.getByRole('status')
+			.filter({ hasText: 'this climb' })
+			.waitFor();
+		await s.shot(watcher, { name: 'roadside-chalk-refused' });
 	} finally {
 		await endSession(coach.page);
 	}

@@ -1,13 +1,12 @@
 <script lang="ts">
 	import ArrowUp from '@lucide/svelte/icons/arrow-up';
+	import Bell from '@lucide/svelte/icons/bell';
 	import GlassWater from '@lucide/svelte/icons/glass-water';
 	import Heart from '@lucide/svelte/icons/heart';
 	import CheerDeck from '$lib/channel/CheerDeck.svelte';
-	import CheerIcon from '$lib/components/CheerIcon.svelte';
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { useChannel } from '$lib/channel/context';
 	import { account } from '$lib/account.svelte';
-	import { BELL } from '$lib/icons';
 	import type { RoadsideStamp } from '$lib/protocol';
 	import { climbsOf } from '$lib/road/climbs';
 	import { nextChalkSpot, STAMPS } from '$lib/roadside';
@@ -61,7 +60,14 @@
 		>
 	{/if}
 	{#if live && road}
-		<div class="grid grid-cols-3 gap-1.5" aria-label="chalk the next climb">
+		<!-- Words at the riding floor (TARGETS G4): a rider a game put out
+		     chalks from here on the bike. -->
+		<p class="text-muted text-2xl">Chalk the next climb</p>
+		<div
+			role="group"
+			class="grid grid-cols-3 gap-1.5"
+			aria-label="chalk the next climb"
+		>
 			{#each STAMPS as stamp (stamp)}
 				{@const initial = stamp === 'initial'}
 				<button
@@ -71,20 +77,21 @@
 					aria-label={initial
 						? `Chalk ${to?.name ?? 'a rider'}'s initial`
 						: `Chalk ${WORDS[stamp] ?? stamp}`}
-					class="border-muted/20 hover:border-muted/50 flex min-h-11 items-center justify-center rounded border font-bold disabled:opacity-40"
+					class="border-muted/20 hover:border-muted/50 flex min-h-11 items-center justify-center rounded border text-2xl font-bold disabled:opacity-40"
 				>
-					{#if stamp === 'arrow'}<ArrowUp size={18} />
-					{:else if stamp === 'heart'}<Heart size={18} />
-					{:else if stamp === 'cowbell'}<CheerIcon cheer={BELL} size={18} />
+					{#if stamp === 'arrow'}<ArrowUp size={22} />
+					{:else if stamp === 'heart'}<Heart size={22} />
+					{:else if stamp === 'cowbell'}<Bell size={22} />
 					{:else if initial}{to?.name.slice(0, 1).toUpperCase() ?? '—'}
 					{:else}{WORDS[stamp]}{/if}
 				</button>
 			{/each}
 		</div>
-		{#if !spot}
-			<p class="text-muted text-sm">No climb left ahead to chalk.</p>
-		{:else if live.roadsideRefusal}
-			<p role="status" class="text-sm">{live.roadsideRefusal}</p>
+		<!-- The answer to the last tap first; else why the stamps are off. -->
+		{#if live.roadsideRefusal}
+			<p role="status" class="text-2xl">{live.roadsideRefusal}</p>
+		{:else if !spot}
+			<p class="text-muted text-2xl">No climb left ahead to chalk.</p>
 		{/if}
 	{/if}
 </div>
