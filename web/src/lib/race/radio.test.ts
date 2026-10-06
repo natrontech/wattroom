@@ -79,12 +79,15 @@ describe('the team-car radio (#3174)', () => {
 			PHRASES.held(),
 			PHRASES.resumed(),
 			PHRASES.finish(),
+			// SPEC "Races": the marks the radio counts down, and no others.
+			'10 km to the line.',
+			'5 km to the line.',
+			'2 km to the line.',
+			'1 km to the line.',
+			'500 m to the line.',
 		]);
 		for (const text of said) {
-			expect(
-				fixed.has(text) || /^\d+ k?m to the line\.$/.test(text),
-				text,
-			).toBe(true);
+			expect(fixed.has(text), text).toBe(true);
 			// One home per number: the place and the gap to par are the page's.
 			expect(text).not.toMatch(/\d+(st|nd|rd|th)\b|par/);
 		}

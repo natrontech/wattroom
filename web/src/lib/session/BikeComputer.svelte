@@ -176,7 +176,9 @@
 				{:else}
 					<!-- A space, not a margin, between number and unit: "78 rpm"
 					     is what a screen reader and a search both read. Neon is a
-					     model's number, flat: only live data glows (ADR-0005). -->
+					     model's number, flat: only live data glows (ADR-0005). The
+					     unit's own line-height would make a page with units 2 px
+					     taller than one without, so a turn would move the panel. -->
 					<span
 						class="num mt-1 block {size.value} leading-none font-bold {field.glow
 							? 'text-watt glow-text'
@@ -184,7 +186,8 @@
 								? 'text-neon'
 								: 'text-ink'}"
 						>{field.value}{#if field.unit}{' '}<span
-								class="text-muted {size.unit} font-normal">{field.unit}</span
+								class="text-muted {size.unit} leading-none font-normal"
+								>{field.unit}</span
 							>{/if}</span
 					>
 				{/if}
