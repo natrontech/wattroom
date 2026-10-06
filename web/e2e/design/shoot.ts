@@ -8,6 +8,7 @@ import {
 import { readFileSync } from 'node:fs';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { baseUrl } from '../env.js';
 import { probe, type Box } from './probe';
 
 /**
@@ -16,12 +17,20 @@ import { probe, type Box } from './probe';
  */
 
 export const OUT = process.env.DESIGN_SHOTS_OUT ?? '';
-export const SCHEME: 'dark' | 'light' =
-	process.env.DESIGN_SHOTS_SCHEME === 'light' ? 'light' : 'dark';
+export type Scheme = 'dark' | 'light';
+/** DESIGN_SHOTS_SCHEME: dark, light or both (the default). */
+export const SCHEMES: Scheme[] =
+	process.env.DESIGN_SHOTS_SCHEME === 'dark'
+		? ['dark']
+		: process.env.DESIGN_SHOTS_SCHEME === 'light'
+			? ['light']
+			: ['dark', 'light'];
 const ONLY = (process.env.DESIGN_SHOTS_SURFACES ?? '')
 	.split(/[\s,]+/)
 	.filter(Boolean);
-export const wanted = (id: string) => ONLY.length === 0 || ONLY.includes(id);
+/** A test is wanted when any surface id it captures is named, or none is. */
+export const wanted = (ids: readonly string[]) =>
+	ONLY.length === 0 || ids.some((id) => ONLY.includes(id));
 
 export const DESK: BrowserContextOptions = {
 	viewport: { width: 1440, height: 900 },
@@ -41,6 +50,24 @@ export const TV: BrowserContextOptions = {
 	viewport: { width: 1920, height: 1080 },
 };
 export const HUD_SHELL = { width: 320, height: 132 };
+
+/**
+ * The TV and the phone are variants of a surface (#3858): a full run takes
+ * them, a scoped one only when it names a TV or a phone surface, which the
+ * surface map does when a TV or phone layout file changed.
+ */
+const named = (variant: string) =>
+	ONLY.length === 0 ||
+	ONLY.some((id) => new RegExp(`(^|-)${variant}(-|$)`).test(id));
+const VARIANT = { tv: named('tv'), phone: named('phone') };
+export const takes = (device: BrowserContextOptions) =>
+	device === TV ? VARIANT.tv : device === PHONE ? VARIANT.phone : true;
+/** The rows of a recipe's device list this run takes. */
+export const variants = <
+	T extends readonly [BrowserContextOptions, ...unknown[]],
+>(
+	rows: readonly T[],
+): T[] => rows.filter(([device]) => takes(device));
 
 /** A full-page shot grows the viewport to the page body, this far at most. */
 const FULL_PAGE_CAP = 6000;
@@ -71,10 +98,15 @@ export interface Opened {
  */
 export class Shoot {
 	private opened: Opened[] = [];
+	/** Where this surface's shots go: the run's folder for its scheme. */
+	readonly out: string;
 	constructor(
 		private readonly browser: Browser,
 		readonly id: string,
-	) {}
+		private readonly scheme: Scheme,
+	) {
+		this.out = join(OUT, scheme);
+	}
 
 	/** A fresh context, muted before any page mounts; signed in as `as`. */
 	async open(
@@ -91,9 +123,9 @@ export class Shoot {
 	): Promise<Opened> {
 		const ctx = await this.browser.newContext({
 			...device,
-			baseURL: process.env.PLAYWRIGHT_BASE_URL,
+			baseURL: baseUrl(),
 			// A surface whose recipe fixes the OS scheme keeps it (ride-free-road).
-			colorScheme: device.colorScheme ?? SCHEME,
+			colorScheme: device.colorScheme ?? this.scheme,
 			reducedMotion,
 		});
 		await ctx.addInitScript(
@@ -147,11 +179,11 @@ export class Shoot {
 		}
 		const probes = await page.evaluate(probe, CORRIDOR);
 		await page.screenshot({
-			path: join(OUT, `${name}.png`),
+			path: join(this.out, `${name}.png`),
 			fullPage: wholeDocument,
 		});
 		await writeFile(
-			join(OUT, `${name}.json`),
+			join(this.out, `${name}.json`),
 			JSON.stringify({ ...probes, ...extra, pageErrors: errors }, null, 2) +
 				'\n',
 		);
@@ -161,9 +193,9 @@ export class Shoot {
 	async failed(error: unknown): Promise<void> {
 		const last = this.opened.at(-1);
 		const message = error instanceof Error ? error.message : String(error);
-		await writeFile(join(OUT, `FAILED-${this.id}.txt`), message + '\n');
+		await writeFile(join(this.out, `FAILED-${this.id}.txt`), message + '\n');
 		await last?.page
-			.screenshot({ path: join(OUT, `FAILED-${this.id}.png`) })
+			.screenshot({ path: join(this.out, `FAILED-${this.id}.png`) })
 			.catch(() => {});
 	}
 
@@ -173,9 +205,9 @@ export class Shoot {
 
 	/** Clears what an earlier run left under this surface's name. */
 	async clean(): Promise<void> {
-		await mkdir(OUT, { recursive: true });
+		await mkdir(this.out, { recursive: true });
 		for (const stale of [`FAILED-${this.id}.png`, `FAILED-${this.id}.txt`])
-			await rm(join(OUT, stale), { force: true });
+			await rm(join(this.out, stale), { force: true });
 	}
 }
 
