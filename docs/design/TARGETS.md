@@ -481,7 +481,7 @@ Capture: `/history` with no ride and with one seeded ride; whole page body, desk
 Capture: the Collections tab after one seeded road ride, desk and phone. Target: v2-collections.
 
 1. Header: `page-title`, a lock icon, “Only you see these numbers”. [collections]
-2. Three equal cards: EVEREST LADDER, Everest 8,849 m, Stratosphere 50,000 m and Kármán line 100,000 m, each “<done> of <target> m” over a 6 px bar [collections]; CLIMBS BY CLASS, HC and I–IV [collections]; REGIONS AND CONSISTENCY, Cantons “n of 26” and Eddington “E = n” [3145-explorer].
+2. Three equal cards: EVEREST LADDER: Everest 8,849 m, Stratosphere 50,000 m and Kármán line 100,000 m, each “<done> of <target> m” over a 6 px bar [collections]; CLIMBS BY CLASS: HC and I–IV [collections]; REGIONS AND CONSISTENCY: Cantons “n of 26” and Eddington “E = n” [3145-explorer].
 3. Explorer map 2/3 of the width: z14 tiles, ridden tiles neon at ~60 %; largest square outlined; ridden line ink; a caption box top left, tile credit bottom right; only what was ridden drawn. [3145-explorer]
 4. Col book: eight columns of stamps, each height, name and “3× · best 44:36”; the latest stamp foil; a pass not yet ridden dashed at 50 %. [3143-col-book]
 5. All on the neon ramp: no zones, watt or glow; “Everesting” never appears. [collections]
