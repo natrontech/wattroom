@@ -37,7 +37,7 @@ test.beforeAll(async () => {
 	bundle = result.output[0].code;
 });
 
-test('the spokes show at rest and go uniform past 0.35 of a period a frame', async ({
+test('the spokes show at rest and go uniform past 0.35 of a period a frame @world', async ({
 	page,
 }) => {
 	const errors: string[] = [];
