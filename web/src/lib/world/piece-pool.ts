@@ -74,5 +74,3 @@ export function piecePool(
 		drop,
 	};
 }
-
-export type PiecePool = ReturnType<typeof piecePool>;

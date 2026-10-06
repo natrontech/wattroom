@@ -1,14 +1,14 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { toRoute } from '$lib/road/route';
-import { STYLES } from '../../routes/(app)/dev/world/styles';
 import { makeCrew, type Pedalling } from './crew';
 import { figurePalette } from './figure-palette';
 import { inWattBand } from './placement/safety';
+import { RIDE } from './look.test-helper';
 import { simRider, type SimRider } from './sim';
 import { syntheticPoints } from './synthetic';
 
-const style = STYLES.find((s) => s.id === 'bluehour') ?? STYLES[0];
+const style = RIDE;
 const route = toRoute(syntheticPoints());
 
 describe('the figure on its bike (#3673)', () => {

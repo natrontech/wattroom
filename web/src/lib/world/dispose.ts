@@ -19,7 +19,11 @@ export function disposeTree(root: THREE.Object3D): void {
 		}
 	});
 	for (const m of materials) {
-		for (const value of Object.values(m))
+		const uniforms =
+			m instanceof THREE.ShaderMaterial
+				? Object.values(m.uniforms).map((u) => u.value)
+				: [];
+		for (const value of [...Object.values(m), ...uniforms])
 			if (value instanceof THREE.Texture) textures.add(value);
 		m.dispose();
 	}

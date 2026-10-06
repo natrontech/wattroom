@@ -36,13 +36,7 @@ describe('the docks around the world (#3031, ADR-0066)', () => {
 	it('puts a shared screen between the columns, clear of the jukebox seat', () => {
 		expect(meets(STAGE, JUKEBOX_SEAT)).toBe(false);
 		for (const docks of Object.values(DOCKS))
-			for (const name of [
-				'header',
-				'status',
-				'numbers',
-				'crew',
-				'horizon',
-			] as Dock[])
+			for (const name of ['header', 'column', 'crew', 'horizon'] as Dock[])
 				expect(meets(STAGE, docks[name]), `the stage over ${name}`).toBe(false);
 	});
 });
