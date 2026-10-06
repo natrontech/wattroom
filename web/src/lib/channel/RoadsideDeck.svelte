@@ -1,13 +1,22 @@
 <script lang="ts">
+	import ArrowUp from '@lucide/svelte/icons/arrow-up';
 	import GlassWater from '@lucide/svelte/icons/glass-water';
+	import Heart from '@lucide/svelte/icons/heart';
 	import CheerDeck from '$lib/channel/CheerDeck.svelte';
+	import CheerIcon from '$lib/components/CheerIcon.svelte';
 	import { channelConnection } from '$lib/channel/connection.svelte';
+	import { useChannel } from '$lib/channel/context';
+	import { account } from '$lib/account.svelte';
+	import { BELL } from '$lib/icons';
+	import type { RoadsideStamp } from '$lib/protocol';
+	import { climbsOf } from '$lib/road/climbs';
+	import { nextChalkSpot, STAMPS } from '$lib/roadside';
 
-	// The roadside's deck (#3022, ADR-0064): the cheers and the cowbell, and a
-	// bottle for the rider you are watching. Paint, sound and information —
-	// nothing on it reaches anybody's trainer. The bottle waits on their
-	// screen for an easy block, so handing one up mid-interval costs them
-	// nothing (roadside.ts).
+	// The roadside's deck (#3022, ADR-0064): the cheers and the cowbell, a
+	// bottle for the rider you are watching, and chalk for the next climb
+	// (#3029). Paint, sound and information — nothing on it reaches anybody's
+	// trainer. The bottle waits on their screen for an easy block, so handing
+	// one up mid-interval costs them nothing (roadside.ts).
 	let {
 		to,
 	}: {
@@ -16,6 +25,30 @@
 	} = $props();
 
 	const live = $derived(channelConnection.current?.live);
+	const channel = useChannel();
+	const road = $derived(channel.ridden?.road);
+	const climbs = $derived(road ? climbsOf(road) : []);
+	// The next climb ahead you have not chalked: where every stamp goes.
+	const spot = $derived.by(() => {
+		const tick = live?.tick;
+		const world = tick?.world;
+		if (!road || !world) return null;
+		const mine = (tick.roadside?.paint ?? []).filter(
+			(p) => p.riderId === account.me?.id,
+		);
+		return nextChalkSpot(
+			climbs,
+			road.length,
+			!!tick.state.route?.loop,
+			world.bunchM + (world.lap ?? 0) * road.length,
+			mine,
+		);
+	});
+
+	const WORDS: Partial<Record<RoadsideStamp, string>> = {
+		allez: 'Allez',
+		hopp: 'Hopp',
+	};
 </script>
 
 <div class="grid gap-2">
@@ -26,5 +59,32 @@
 			class="btn btn-secondary btn-lg w-full"
 			><GlassWater size={16} /> Hand {to.name} a bottle</button
 		>
+	{/if}
+	{#if live && road}
+		<div class="grid grid-cols-3 gap-1.5" aria-label="chalk the next climb">
+			{#each STAMPS as stamp (stamp)}
+				{@const initial = stamp === 'initial'}
+				<button
+					disabled={!spot || (initial && !to)}
+					onclick={() =>
+						spot && live.paint(stamp, spot, initial ? to?.id : undefined)}
+					aria-label={initial
+						? `Chalk ${to?.name ?? 'a rider'}'s initial`
+						: `Chalk ${WORDS[stamp] ?? stamp}`}
+					class="border-muted/20 hover:border-muted/50 flex min-h-11 items-center justify-center rounded border font-bold disabled:opacity-40"
+				>
+					{#if stamp === 'arrow'}<ArrowUp size={18} />
+					{:else if stamp === 'heart'}<Heart size={18} />
+					{:else if stamp === 'cowbell'}<CheerIcon cheer={BELL} size={18} />
+					{:else if initial}{to?.name.slice(0, 1).toUpperCase() ?? '—'}
+					{:else}{WORDS[stamp]}{/if}
+				</button>
+			{/each}
+		</div>
+		{#if !spot}
+			<p class="text-muted text-sm">No climb left ahead to chalk.</p>
+		{:else if live.roadsideRefusal}
+			<p role="status" class="text-sm">{live.roadsideRefusal}</p>
+		{/if}
 	{/if}
 </div>

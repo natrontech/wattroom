@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createBunch, type Car } from './bunch';
 import { CHEER_S, cheerLook } from './cheer';
+import { makeChalk } from './chalk';
 import { makeCrew, type Crew, type Pedalling } from './crew';
 import type { BunchView } from '$lib/channel/bunch-view';
 import { DEFAULT_DARK_ID, themeById } from '$lib/themes';
@@ -139,6 +140,9 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		});
 
 	const scene = new THREE.Scene();
+	// The roadside's chalk, on a bunch's road only (#3029).
+	const chalk = bunch ? makeChalk(route) : null;
+	if (chalk) scene.add(chalk.group);
 	// Near at 1 m: at 0.5 the depth buffer resolved 0.12 m at 1 km, and the
 	// road's shoulder z-fought from about 1.26 km (#3078).
 	const camera = new THREE.PerspectiveCamera(52, 1, 1, 60000);
@@ -247,6 +251,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	 */
 	function ride(view: BunchView, real: number) {
 		const out = bunch!.step(view, real, Date.now());
+		chalk?.update(view.chalk ?? []);
 		clock += real;
 		// A tick's cheers are heard once, however many frames read its view.
 		const tick = view.at ?? view;

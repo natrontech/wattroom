@@ -12,7 +12,19 @@ import type { LiveRider } from '$lib/channel/types';
 import { zoneOf } from '$lib/components/zones';
 import { BELL } from '$lib/icons';
 import type { Arrival } from '$lib/messages/announce';
-import type { Cheer, GameState } from '$lib/protocol';
+import {
+	RoadsideStampAllez,
+	RoadsideStampArrow,
+	RoadsideStampCowbell,
+	RoadsideStampHeart,
+	RoadsideStampHopp,
+	RoadsideStampInitial,
+	type Cheer,
+	type GameState,
+	type RoadsidePaint,
+	type RoadsideStamp,
+} from '$lib/protocol';
+import type { Climb } from '$lib/road/climbs';
 import type { CueId } from '$lib/sound/cue-catalogue';
 
 /**
@@ -192,4 +204,41 @@ export function bottleFor(
 		riders.filter((rider) => rider.inSession && !rider.you),
 		focusId,
 	);
+}
+
+/** The chalk a deck offers, in its order (Jan, 2026-10-06; SPEC "The roadside"). */
+export const STAMPS: readonly RoadsideStamp[] = [
+	RoadsideStampArrow,
+	RoadsideStampHeart,
+	RoadsideStampAllez,
+	RoadsideStampHopp,
+	RoadsideStampCowbell,
+	RoadsideStampInitial,
+];
+
+/**
+ * Where a spectator's next stamp goes (#3029): on the first climb ahead of the
+ * bunch they have not chalked yet, this lap or a loop's next, halfway between
+ * the bunch (or the climb's foot) and its top. `bunchU` is laps unrolled; null
+ * with no such climb left on the road.
+ */
+export function nextChalkSpot(
+	climbs: readonly Climb[],
+	length: number,
+	loop: boolean,
+	bunchU: number,
+	mine: readonly Pick<RoadsidePaint, 'atM' | 'lap'>[],
+): { atM: number; lap: number } | null {
+	const lap0 = loop ? Math.floor(bunchU / length) : 0;
+	for (const lap of loop ? [lap0, lap0 + 1] : [0])
+		for (const c of climbs) {
+			const from = Math.max(c.startM + lap * length, bunchU);
+			const top = c.topM + lap * length;
+			const chalked = mine.some(
+				(p) => (p.lap ?? 0) === lap && p.atM >= c.startM && p.atM <= c.topM,
+			);
+			if (top > from && !chalked)
+				return { atM: (from + top) / 2 - lap * length, lap };
+		}
+	return null;
 }
