@@ -41,7 +41,7 @@ test.beforeAll(async () => {
 	bundle = result.output[0].code;
 });
 
-test('the golden world hashes alike on the main thread and in a worker', async ({
+test('the golden world hashes alike on the main thread and in a worker @world', async ({
 	page,
 }) => {
 	await page.setContent('<!doctype html><title>place</title>');

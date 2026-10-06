@@ -48,9 +48,9 @@
 {#snippet tile(rider: LiveRider, followed: boolean)}
 	{@const zone = zoneOf(rider.watts, rider.ftp)}
 	<div
-		class="bg-surface-raised relative aspect-video overflow-hidden rounded ring-1 {followed
-			? 'ring-neon'
-			: 'ring-ink/10'}"
+		class="bg-surface-raised relative aspect-video overflow-hidden rounded outline-1 {followed
+			? 'outline-neon'
+			: 'outline-ink/10'}"
 	>
 		{#if channel.videoOf(rider.id)}
 			{#key channel.videoOf(rider.id)}

@@ -3,6 +3,7 @@ import { VILLAGES } from '../names';
 import { keyer, unit, type Salt } from '../place/keyed';
 import type { Class } from '../placement/types';
 import type { Ground, Origin } from '../terrain/ground';
+import { forest, FRAME_NEAR, ringAt } from './forest';
 import type { PropKind } from './kit';
 import type { Placer } from './placer';
 import { deg, hashOf, turnBy, walker, type Turn } from './roads';
@@ -63,8 +64,19 @@ const SITE_M = 200;
 const TILE_NAME_M = 5000;
 const TREES_WITHIN = 700;
 const VILLAGE_R = 220;
+/** Metres of street a village's hamlets stand along, the street one hamlet spans, and the most a house stands off it past the first 15. */
+const VILLAGE_ALONG = 500;
+const HAMLET_M = 36;
+const VILLAGE_OFF = 20;
 /** How far from its site a village's houses can stand: half its street, and their way off it. */
-const VILLAGE_REACH = 400 + 105;
+const VILLAGE_REACH = VILLAGE_ALONG / 2 + HAMLET_M / 2 + 15 + VILLAGE_OFF;
+/** A barn brings one or two more buildings, this far from it at most, in this many tries. */
+const CLUSTER_M = 26;
+const FARM_TRIES = 6;
+/** A village stands in its fields: no stand frames the road this near its church, so it shows from the approach. */
+const FIELDS_M = 600;
+/** How far a tree's neighbours stand from it (forest.ts). */
+const KIN_M = 7;
 
 /**
  * Where the villages stand (#3076): flat road through meadow, one chance per
@@ -181,8 +193,8 @@ export function scatter(place: Place, placer: Placer, villages: Village[]) {
 				fn(i, j);
 	}
 
-	// Each village: a church first, then houses along its street, most close
-	// to it — the first that pass their own gates, settled by rank.
+	// Each village: a church first, then houses in a few hamlets along its
+	// street, each a handful of roofs close together on one side of the road.
 	const villageHouses = new Map<Village, Candidate<Prop>[]>();
 	function housesOf(site: Village): Candidate<Prop>[] {
 		const done = villageHouses.get(site);
@@ -192,11 +204,14 @@ export function scatter(place: Place, placer: Placer, villages: Village[]) {
 		const stroke = strokes[site.line];
 		const slot = site.s / SITE_M;
 		const count = 12 + Math.floor(u(house(stroke, slot, 1)) * 10);
+		const hamlets = 3 + Math.floor(u(house(stroke, slot, 2)) * 3);
 		for (let t = 0; t < 200 && out.length < count; t++) {
 			const r = (c: number) => u(house(stroke, slot, 100 + t * 8 + c));
-			const p = w.at(site.s + (r(0) - 0.5) * 800);
-			const side = r(1) < 0.5 ? -1 : 1;
-			const off = 15 + r(2) * r(3) * 90; // most houses close to the street
+			const h = Math.floor(r(0) * hamlets);
+			const at = (u(house(stroke, slot, 10 + h)) - 0.5) * VILLAGE_ALONG;
+			const p = w.at(site.s + at + (r(7) - 0.5) * HAMLET_M);
+			const side = u(house(stroke, slot, 20 + h)) < 0.5 ? -1 : 1;
+			const off = 15 + r(2) * r(3) * VILLAGE_OFF;
 			const x = p.x + p.lx * off * side;
 			const z = p.z + p.lz * off * side;
 			if (!ground.clearOf(x, z, 13) || biomeAt(x, z) === null) continue;
@@ -220,13 +235,13 @@ export function scatter(place: Place, placer: Placer, villages: Village[]) {
 		villageHouses.set(site, out);
 		return out;
 	}
-	const inVillage = (x: number, z: number) =>
-		villages.some(
-			(v) =>
-				(v.x - x) * (v.x - x) + (v.z - z) * (v.z - z) < VILLAGE_R * VILLAGE_R,
-		);
+	const within = (x: number, z: number, m: number) =>
+		villages.some((v) => (v.x - x) * (v.x - x) + (v.z - z) * (v.z - z) < m * m);
+	const inVillage = (x: number, z: number) => within(x, z, VILLAGE_R);
+	const inFields = (x: number, z: number) => within(x, z, FIELDS_M);
 
-	// Barns on open meadow, alpine huts above the treeline: a chance per 1.3 km of each stroke.
+	// A farm on open meadow, huts above the treeline: a chance per 1.3 km of
+	// each stroke, and each brings one or two neighbours, never a lone box.
 	const farms = walks.flatMap((w, k) => {
 		const out: { k: number; slot: number; x: number; z: number; face: Turn }[] =
 			[];
@@ -245,6 +260,54 @@ export function scatter(place: Place, placer: Placer, villages: Village[]) {
 		}
 		return out;
 	});
+	const clusters = new Map<number, Candidate<Prop>[]>();
+	function clusterOf(i: number): Candidate<Prop>[] {
+		const done = clusters.get(i);
+		if (done) return done;
+		const f = farms[i];
+		const r = (c: number) => u(house(strokes[f.k], -1 - f.slot, c));
+		const b = biomeAt(f.x, f.z);
+		const out: Candidate<Prop>[] = [];
+		const barn =
+			ground.clearOf(f.x, f.z, 16) &&
+			(b === Biome.Meadow || b === Biome.Alpine) &&
+			candidate(
+				b === Biome.Meadow ? 'barn' : 'hut',
+				'building',
+				f.x,
+				f.z,
+				f.face,
+				1,
+				RANK.farm + r(3),
+			);
+		if (barn) {
+			const more = 1 + Math.floor(r(7) * 2);
+			for (let n = 0; n < FARM_TRIES && out.length < more; n++) {
+				const [dx, dz] = ringAt(r(10 + n * 3), r(11 + n * 3), 16, CLUSTER_M);
+				const [x, z] = [f.x + dx, f.z + dz];
+				if (!ground.clearOf(x, z, 16) || biomeAt(x, z) !== b) continue;
+				const face = turnBy(
+					f.face,
+					deg(Math.round((r(12 + n * 3) - 0.5) * 30)),
+				);
+				const c = candidate(
+					b === Biome.Meadow ? 'house' : 'hut',
+					'building',
+					x,
+					z,
+					face,
+					1,
+					RANK.farm + r(40 + n),
+				);
+				if (c) out.push(c);
+			}
+			// A farm that finds no neighbour does not stand alone: the barn goes too.
+			if (out.length) out.unshift(barn);
+		}
+		clusters.set(i, out);
+		return out;
+	}
+	const woods = forest(tree(-1, -1, -1));
 
 	/** Everything tile (ti, tj) might stand, in one order. */
 	function tile(ti: number, tj: number): Candidate<Prop>[] {
@@ -257,31 +320,16 @@ export function scatter(place: Place, placer: Placer, villages: Village[]) {
 			if (c && mine(c.is.x, c.is.z)) out.push(c);
 		};
 		const [mx, mz] = [(ti + 0.5) * TILE_M - e0, n0 - (tj + 0.5) * TILE_M];
+		const nearTile = (x: number, z: number, m: number) =>
+			Math.abs(x - mx) <= TILE_M / 2 + m && Math.abs(z - mz) <= TILE_M / 2 + m;
 		const reach = VILLAGE_REACH + TILE_M;
 		for (const v of villages)
 			if ((v.x - mx) * (v.x - mx) + (v.z - mz) * (v.z - mz) < reach * reach)
 				for (const c of housesOf(v)) keep(c);
-
-		for (const f of farms) {
-			if (!mine(f.x, f.z)) continue;
-			const b = biomeAt(f.x, f.z);
-			if (
-				!ground.clearOf(f.x, f.z, 16) ||
-				(b !== Biome.Meadow && b !== Biome.Alpine)
-			)
-				continue;
-			keep(
-				candidate(
-					b === Biome.Meadow ? 'barn' : 'hut',
-					'building',
-					f.x,
-					f.z,
-					f.face,
-					1,
-					RANK.farm + u(house(strokes[f.k], -1 - f.slot, 3)),
-				),
-			);
-		}
+		farms.forEach((f, i) => {
+			if (nearTile(f.x, f.z, CLUSTER_M + 1))
+				for (const c of clusterOf(i)) keep(c);
+		});
 
 		// Rocks where the ground is rock or alpine, in fields of four.
 		cells(ti, tj, ROCKS_M, 8, (i, j) => {
@@ -350,39 +398,52 @@ export function scatter(place: Place, placer: Placer, villages: Village[]) {
 			}
 		});
 
-		// Trees: one draw per 22 m cell within 700 m of a road — dense in forest,
-		// thinning at its edge, a few stragglers in meadows — never in a village.
-		cells(ti, tj, TREE_M, 0, (i, j) => {
+		// Trees: one draw per 22 m cell within 700 m of a road, never in a
+		// village — in groups where the stand noise says so, conifers
+		// framing the road, a forest edge behind every clearing, a thinner
+		// forest out of sight. A tree's neighbours may cross into this tile.
+		cells(ti, tj, TREE_M, KIN_M + 1, (i, j) => {
 			const [x, z] = jitter(i, j, TREE_M, u(tree(i, j, 1)), u(tree(i, j, 2)));
-			if (!mine(x, z)) return;
-			const far = ground.roadDist(x, z);
-			if (far > TREES_WITHIN) return;
+			if (!nearTile(x, z, KIN_M)) return;
 			const b = biomeAt(x, z);
-			const p =
-				b === Biome.Forest
-					? 0.78
-					: b === Biome.Meadow
-						? 0.018
-						: b === Biome.Alpine
-							? 0.05
-							: 0;
-			if (u(tree(i, j, 0)) >= p) return;
-			if ((far < 140 && !ground.clearOf(x, z, 11)) || inVillage(x, z)) return;
-			const kind =
-				heightAt(x, z) < 900 && u(tree(i, j, 4)) < 0.55
-					? 'broadleaf'
-					: 'spruce';
+			const far = ground.roadDist(x, z);
+			if (b === null || far > TREES_WITHIN || inVillage(x, z)) return;
+			const g = woods.groupAt(e0 + x, n0 - z);
+			const frame = woods.frames(b, far) && !inFields(x, z);
+			if (u(tree(i, j, 0)) >= woods.chance(b, far, frame, g)) return;
+			if (far < 140 && !ground.clearOf(x, z, 11)) return;
+			const conifer =
+				frame || heightAt(x, z) >= 900 || u(tree(i, j, 4)) >= 0.55;
+			// Heights vary by the stand, taller in its heart, and by the tree.
+			const tall = 0.6 + u(tree(i, j, 3)) * 0.6 + 0.35 * Math.max(0, g);
+			const kind = conifer ? 'spruce' : 'broadleaf';
+			const turn = deg(Math.floor(u(tree(i, j, 5)) * 360));
 			keep(
-				candidate(
-					kind,
-					'kit',
-					x,
-					z,
-					deg(Math.floor(u(tree(i, j, 5)) * 360)),
-					0.75 + u(tree(i, j, 3)) * 0.7,
-					RANK.tree + u(tree(i, j, 6)),
-				),
+				candidate(kind, 'kit', x, z, turn, tall, RANK.tree + u(tree(i, j, 6))),
 			);
+			const more = woods.neighbours(b, far, frame, g, u(tree(i, j, 7)));
+			for (let k = 0; k < more; k++) {
+				const r = (c: number) => u(tree(i, j, 10 + k * 5 + c));
+				const [dx, dz] = ringAt(r(0), r(1), 3.5, KIN_M);
+				const [tx, tz] = [x + dx, z + dz];
+				if (
+					mine(tx, tz) &&
+					ground.roadDist(tx, tz) >= FRAME_NEAR - 1 &&
+					ground.clearOf(tx, tz, 11) &&
+					!inVillage(tx, tz)
+				)
+					keep(
+						candidate(
+							kind,
+							'kit',
+							tx,
+							tz,
+							deg(Math.floor(r(2) * 360)),
+							tall * (0.75 + r(3) * 0.3),
+							RANK.tree + r(4),
+						),
+					);
+			}
 		});
 		return out;
 	}

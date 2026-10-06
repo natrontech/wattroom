@@ -56,9 +56,7 @@
 					<StatusMark line={o.statusLine} size={11} text />
 				</span>
 				{#if o.away}<Away size={11} class="shrink-0" aria-label="away" />{/if}
-				{#if o.riding}<span class="text-watt shrink-0"
-						><RidingBars size={9} /></span
-					>{/if}
+				{#if o.riding}<RidingBars size={9} />{/if}
 				{#if o.camera}<Video
 						size={11}
 						class="shrink-0"
