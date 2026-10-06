@@ -77,8 +77,8 @@ func TestTheRoadsideTakesAStandWithinItsBounds(t *testing.T) {
 		}, "validation_error", "not a place on this road"},
 		{"not a place at all", "ben", func(float64) protocol.Roadside { return stand(math.NaN()) }, "validation_error", "not a place"},
 		{"a verb the roadside has not got", "ben", func(b float64) protocol.Roadside {
-			return protocol.Roadside{Kind: "paint", AtM: b + 1000}
-		}, "validation_error", "nothing else yet"},
+			return protocol.Roadside{Kind: "confetti", AtM: b + 1000}
+		}, "validation_error", "nothing else"},
 		{"a rider riding the session", "coach", func(b float64) protocol.Roadside { return stand(b + 1000) }, "forbidden", "riding this session"},
 	} {
 		t.Run(c.name, func(t *testing.T) {

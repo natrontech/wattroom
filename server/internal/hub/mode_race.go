@@ -354,17 +354,35 @@ func (r *raceRun) entrants(to map[string]struct{}) map[string]struct{} {
 // leader, held until its last rider has passed. Before the klaxon everyone
 // is at km 0.
 func (r *raceRun) standAt(riderID string, verb protocol.Roadside, now time.Time) (code, message string) {
+	if code, message := r.roadsideOn(verb); code != "" {
+		return code, message
+	}
+	lead, _, _ := r.race.Span()
+	return r.roadside.put(riderID, verb.AtM, lead, "the leader", now)
+}
+
+// paintAt chalks a spectator's stamp on a climb ahead of the race's leader
+// (#3029).
+func (r *raceRun) paintAt(riderID string, verb protocol.Roadside) (code, message string) {
+	if code, message := r.roadsideOn(verb); code != "" {
+		return code, message
+	}
+	lead, _, _ := r.race.Span()
+	return r.roadside.chalkUp(riderID, verb, verb.AtM, lead, climbStart(road.ClimbsOf(r.profile), verb.AtM, 0), "the leader")
+}
+
+// roadsideOn says why a verb has no place beside the race: none running
+// yet, one over, or a place off its one road.
+func (r *raceRun) roadsideOn(verb protocol.Roadside) (code, message string) {
 	switch {
 	case r.race == nil:
 		return "invalid_request", "There is no race on the road to stand beside yet."
 	case r.race.Done():
 		return "invalid_request", "The race is over — there is nobody left to stand beside the road for."
-	}
-	if verb.AtM < 0 || verb.AtM > r.profile.LengthM || verb.Lap > 0 {
+	case verb.AtM < 0 || verb.AtM > r.profile.LengthM || verb.Lap > 0:
 		return "validation_error", "That is not a place on this road."
 	}
-	lead, _, _ := r.race.Span()
-	return r.roadside.put(riderID, verb.AtM, lead, "the leader", now)
+	return "", ""
 }
 
 // tail is the hindmost of the field still riding: a stand waits for them.

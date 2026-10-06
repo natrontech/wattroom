@@ -34,8 +34,10 @@ resistance, nothing it does reaches a trainer, and it picks **when, never who**
   KOM, and never in the last **3 min**.
 - **A stand** (where a spectator watches from): **300 m – 5 km** ahead of the
   bunch, moved at most once per **60 s**.
-- **Paint**: **6** stamps per spectator, one per climb; at most **12** live on
-  the road.
+- **Paint**: **6** stamps per spectator, one per climb, ahead of the riders;
+  at most **12** live on the road. The stamps are a closed
+  set of chalk (Jan, 2026-10-06): an arrow, a heart, *Allez*, *Hopp*, a cowbell
+  and a riding rider's initial. Nothing is typed, so nothing needs moderating.
 - **Backing a rider**: **one** per spectator per ride.
 - **Weather**: in rounds of **5 min**.
 - **Flashes**: at most one dim flash per **10 s**, and none under reduced
