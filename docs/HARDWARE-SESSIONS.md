@@ -167,3 +167,4 @@ trainer's 1.5 s ERG ramp, which is physical.
 
 Protocol facts, and the parsing traps that are counter-intuitive, are in
 [RESEARCH.md](RESEARCH.md) §1, §9 and §11. Read those before changing a parser.
+
