@@ -590,14 +590,26 @@ surface('world-start', async (s) => {
 		},
 	);
 	// multi:world-figure-motion — the side view riding on, four frames a
-	// quarter-second apart, in hoops: whether a pattern's edges crawl.
-	const ride = await moment(s, DESK, 0, 'side', MOMENT_M, '&kit=hoops&hold=0');
-	for (let k = 1; k <= 4; k++) {
-		await writeFile(
-			join(OUT, `world-figure-motion-${k}.png`),
-			await ride.page.screenshot(),
+	// quarter-second apart, in hoops and in Gipfelpunkte: whether a pattern's edges crawl.
+	for (const [kit, name] of [
+		['hoops', 'world-figure-motion'],
+		['gipfelpunkte', 'world-figure-dots-motion'],
+	]) {
+		const ride = await moment(
+			s,
+			DESK,
+			0,
+			'side',
+			MOMENT_M,
+			`&kit=${kit}&hold=0`,
 		);
-		await ride.page.waitForTimeout(250);
+		for (let k = 1; k <= 4; k++) {
+			await writeFile(
+				join(OUT, `${name}-${k}.png`),
+				await ride.page.screenshot(),
+			);
+			await ride.page.waitForTimeout(250);
+		}
 	}
 });
 

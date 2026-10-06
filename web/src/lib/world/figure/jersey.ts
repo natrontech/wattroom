@@ -44,6 +44,8 @@ const float DOT_M = 0.06; // metres between Gipfelpunkte's dots
 const float RAGLAN = 0.2; // how far down the side the shoulder seam runs from the collar
 const float SEAM_V = 0.95; // where it meets the collar
 float inside(float d) { return 1.0 - aa(0.0, d); }
+// Where the cloth turns from the eye a dot's cell gets finer than a pixel or two and would draw as slivers that crawl: fade it to the ground.
+float resolved(float fx, float fy) { return 1.0 - smoothstep(0.3, 0.6, max(fx, fy)); }
 vec3 jersey(vec3 a, float sp, vec3 pc) {
 	int p = int(uPattern + 0.5);
 	if (p == 0) return a;
@@ -80,7 +82,7 @@ vec3 jersey(vec3 a, float sp, vec3 pc) {
 			float uc = (floor(arc) + 0.5 - row * 0.5) * DOT_M / (6.2831853 * r);
 			float zc = r * sin(6.2831853 * uc) / (0.34 * uTorso);
 			float vc = (row + 0.5) * DOT_M / uTorso;
-			b = inside(length(vec2(fract(arc), fract(pc.y / DOT_M)) - 0.5) - 0.28) * smoothstep(-0.06, 0.02, v) * step(vc + RAGLAN * min(abs(zc), 1.0), SEAM_V);
+			b = inside(length(vec2(fract(arc), fract(pc.y / DOT_M)) - 0.5) - 0.28) * resolved(angFoot(u * 6.2831853) * length(pc.xz) / DOT_M, fwidth(pc.y / DOT_M)) * smoothstep(-0.06, 0.02, v) * step(vc + RAGLAN * min(abs(zc), 1.0), SEAM_V);
 		}
 		// A raglan seam: from the collar down to the underarm the shoulder is plain, where the cloth turns into the armhole and a pattern would break up.
 		if (p != 1 && p != 8 && p != 11) {
@@ -100,7 +102,10 @@ vec3 jersey(vec3 a, float sp, vec3 pc) {
 		else if (p == 5) b = stripe;
 		else if (p == 9) b = hoop + stripe - 2.0 * hoop * stripe;
 		// ponytail: the one row a short sleeve holds whole, between the cap and the cuff; a long sleeve's further rows wait for its end as a uniform.
-		else if (p == 11) b = inside(length(fract(vec2(pc.y * 4.0 + floor(s * 10.0) * 0.5, s * 10.0)) - 0.5) - 0.28) * step(abs(floor(s * 10.0) - 1.0), 0.5);
+		else if (p == 11) {
+			vec2 cell = vec2(pc.y * 4.0 + floor(s * 10.0) * 0.5, s * 10.0);
+			b = inside(length(fract(cell) - 0.5) - 0.28) * resolved((angFoot(pc.y * 6.2831853) * 4.0) / 6.2831853, fwidth(cell.y)) * step(abs(floor(s * 10.0) - 1.0), 0.5);
+		}
 		b *= arm;
 	}
 	return mix(mix(a, uJerseyB, b), uJerseyC, c);
