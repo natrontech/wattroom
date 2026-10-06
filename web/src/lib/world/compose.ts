@@ -313,10 +313,14 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		return at === undefined ? null : cheerLook(clock - at, steady);
 	}
 
-	/** The ground, the road and the props' rings, brought to where the eye now is; the diorama holds still. */
-	function look() {
+	/**
+	 * The ground, the road and the dressing, brought to where the eye now is;
+	 * the diorama holds still. A ride settles the dressing's tiles a few a
+	 * frame (#3699); a held moment, and a camera moved by hand, all at once.
+	 */
+	function look(whole = !!moment) {
 		if (!controls) stream.update(camera.position.x, camera.position.z);
-		stage?.update(camera.position);
+		stage?.update(camera.position, whole);
 	}
 
 	dress(opts.style);
@@ -328,14 +332,17 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		camera,
 		dress,
 		advanceBy,
-		/** Brings the level of detail to where the camera now stands, after moving it by hand (the scene budget does). */
-		look,
+		/** Brings the level of detail and the dressing to where the camera now stands, after moving it by hand (the scene budget does). */
+		look: () => look(true),
 		setCamera(next: CameraMode) {
 			mode = next;
 			applyMode();
 		},
 		setWatts(watts: number) {
 			you.watts = watts;
+		},
+		setSilent(silent: boolean) {
+			you.silent = silent;
 		},
 		setSpeedup(factor: number) {
 			speedup = factor;
@@ -375,6 +382,8 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 			return {
 				camera: { fov: Math.round(camera.fov * 100) / 100 },
 				moment: moment ?? null,
+				// What a capture waits on before it shoots: the ground around the eye, whole (#3699).
+				ground: { pending: stream.pending() },
 				figure: { bboxH, kitsInWattBand: crew?.kitsInWattBand() ?? 0 },
 			};
 		},

@@ -136,6 +136,7 @@
 						? 'Ride complete'
 						: 'Ride ended'}
 					unsaved={!!outcome && 'failure' in outcome}
+					savedXp={outcome && 'saved' in outcome ? outcome.xp : undefined}
 					subtitle="{workout.name} · {new Date().toLocaleDateString()}"
 					samples={session.recording}
 					{ftp}

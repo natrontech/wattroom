@@ -15,7 +15,7 @@ name: changelog
 # still matches.
 on:
   pull_request:
-    types: [opened, synchronize, reopened, labeled, unlabeled]
+    types: [opened, synchronize, reopened, labeled, unlabeled, edited]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -117,3 +117,23 @@ jobs:
           refactors — apply the `no-changelog` label instead.
           MSG
           exit 1
+
+  # Advisory, never required (#3860): a body over 1,200 characters goes red so
+  # the author trims it before merging. Agents aim for 600 (AGENTS.md).
+  # HTML comments don't count, so the template's own hints are free.
+  pr-body:
+    if: >-
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
+      !startsWith(github.head_ref, 'release/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: the PR body is short
+        env:
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          n=$(python3 -c 'import os, re; print(len(re.sub(r"<!--.*?-->", "", os.environ.get("BODY") or "", flags=re.S).strip()))')
+          if [ "$n" -gt 1200 ]; then
+            echo "::error::The PR body is $n characters. Keep it to what changed, why and how you checked it (aim for 600, at most 1,200); put findings and logs in comments."
+            exit 1
+          fi
+          echo "PR body: $n characters."

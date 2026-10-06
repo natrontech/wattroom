@@ -79,6 +79,10 @@ contextBridge.exposeInMainWorld('wattroom', {
 	// offering a switch that fails on click.
 	launchAtLogin: () => ipcRenderer.invoke('wattroom:login-item'),
 	setLaunchAtLogin: (on) => ipcRenderer.invoke('wattroom:login-item-set', on),
+	// The tray icon (#3843): whether it shows, the same answer's shape.
+	// `supported` is false where there is no tray to draw in.
+	trayIcon: () => ipcRenderer.invoke('wattroom:tray'),
+	setTrayIcon: (on) => ipcRenderer.invoke('wattroom:tray-set', on),
 	// Whether the rider's window is showing (#3005, #3079): a close hides it
 	// rather than destroying it, and the page hears both directions — to
 	// leave voice on a hide, and to pause what nobody can see.

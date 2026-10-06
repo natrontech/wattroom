@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test';
+import { unpackRoad } from '../../src/lib/road/road';
 import { hairpinGpx, rollingGpx } from '../road-gpx';
 
 /**
@@ -8,9 +9,10 @@ import { hairpinGpx, rollingGpx } from '../road-gpx';
 
 /** The fixture roads, each by the name its owner gives it on import. */
 export const ROADS = {
-	// Renamed with #3725's geometry, so a road seeded before it is not found and reused.
-	hairpin: { name: 'Design switchbacks', gpx: hairpinGpx },
-	rolling: { name: 'Design rolling', gpx: rollingGpx },
+	// Renamed with #3725's geometry, and again with #3761's key, so a road
+	// seeded before either — the old shape, or stored bare — is not reused.
+	hairpin: { name: 'Design hairpins', gpx: hairpinGpx, turns: true },
+	rolling: { name: 'Design rolling', gpx: rollingGpx, turns: false },
 } as const;
 export type RoadName = keyof typeof ROADS;
 
@@ -36,7 +38,7 @@ export async function readRoad(page: Page, road: RoadName): Promise<void> {
 export async function fixtureRoad(page: Page, road: RoadName): Promise<string> {
 	const before = await routes(page);
 	const found = before.find((r) => r.name === ROADS[road].name);
-	if (found) return found.id;
+	if (found) return turning(page, road, found.id);
 	await readRoad(page, road);
 	await page.getByRole('button', { name: 'Save to my routes' }).click();
 	await page.getByText(/is on your routes/).waitFor({ timeout: 15_000 });
@@ -56,7 +58,29 @@ export async function fixtureRoad(page: Page, road: RoadName): Promise<string> {
 		[made.id, ROADS[road].name],
 	);
 	if (!named) throw new Error(`the ${road} road could not be named`);
-	return made.id;
+	return turning(page, road, made.id);
+}
+
+/**
+ * The route, once its owner's read carries its turns (#3761). A server with
+ * no WATTROOM_TOKEN_KEY keeps a road bare — no turns, so no shape — and its
+ * world is one straight: every world shot would show a road that is not the
+ * fixture's, and pass for it.
+ */
+async function turning(
+	page: Page,
+	road: RoadName,
+	id: string,
+): Promise<string> {
+	if (!ROADS[road].turns) return id;
+	const read = await page.request.get(`/api/routes/${id}`);
+	const packed = ((await read.json()) as { road?: string }).road;
+	const turns = packed ? unpackRoad(Buffer.from(packed, 'base64')).turns : [];
+	if (!turns.some((t) => t !== 0))
+		throw new Error(
+			`route ${id} came back with no turns: is WATTROOM_TOKEN_KEY set on this server (make dev-server sets one)?`,
+		);
+	return id;
 }
 
 /** A call from the page, so the server's same-origin check sees its Origin. */
@@ -229,6 +253,28 @@ export async function bigWatts(page: Page): Promise<string> {
 	if (found) return found.id;
 	const made = await call<{ id: string }>(page, 'POST', '/api/workouts', {
 		workout: { name, steps: [{ type: 'steady', seconds: 600, watts: 1100 }] },
+	});
+	if (made.status !== 201 && made.status !== 200)
+		throw new Error(`saving the workout: ${JSON.stringify(made)}`);
+	return made.body.id;
+}
+
+/** A saved workout, so the shelf under "Your workouts" has a card to draw. */
+export async function ownWorkout(page: Page): Promise<string> {
+	const name = 'Design own workout';
+	type Shelf = { workouts: { id: string; workout: { name: string } }[] };
+	const found = (
+		await call<Shelf>(page, 'GET', '/api/workouts')
+	).body.workouts.find((w) => w.workout.name === name);
+	if (found) return found.id;
+	const made = await call<{ id: string }>(page, 'POST', '/api/workouts', {
+		workout: {
+			name,
+			steps: [
+				{ type: 'steady', seconds: 300, watts: 120 },
+				{ type: 'steady', seconds: 600, watts: 200 },
+			],
+		},
 	});
 	if (made.status !== 201 && made.status !== 200)
 		throw new Error(`saving the workout: ${JSON.stringify(made)}`);

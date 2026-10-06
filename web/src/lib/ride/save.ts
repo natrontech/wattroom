@@ -99,8 +99,8 @@ const FINAL = new Set(['validation_error', 'invalid_request', 'conflict']);
 /** Null on success — or the saved ride, so the summary can link to it (#1331). */
 export async function uploadRide(
 	ride: RideUpload,
-): Promise<{ saved: { id: string } } | { failure: SaveFailure }> {
-	const res = await api<{ id?: string }>('/api/rides', {
+): Promise<{ saved: { id: string; xp?: number } } | { failure: SaveFailure }> {
+	const res = await api<{ id?: string; xp?: number }>('/api/rides', {
 		method: 'POST',
 		json: ride,
 	});
@@ -109,7 +109,7 @@ export async function uploadRide(
 		// and /api/me is where those ride (#2626): re-read it now, so the
 		// prompt follows the ride that earned it rather than the next reload.
 		void account.load();
-		return { saved: { id: String(res.data?.id ?? '') } };
+		return { saved: { id: String(res.data?.id ?? ''), xp: res.data?.xp } };
 	}
 	return {
 		failure: { message: res.error.message, final: FINAL.has(res.error.error) },

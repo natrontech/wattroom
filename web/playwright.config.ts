@@ -79,7 +79,9 @@ export default defineConfig({
 			// its target. Run by `make design-shots`, against this checkout's dev
 			// pair; the spec skips itself unless DESIGN_SHOTS_OUT says where to
 			// write. Metal on a Mac, or headless Chromium falls back to software
-			// GL and the world quietly draws the Flat road; SwiftShader elsewhere.
+			// GL and the world quietly draws the Flat road; SwiftShader elsewhere,
+			// where the dev build's frame judge stands down (e2e/design/shoot.ts,
+			// #3823) because software GL misses every frame.
 			name: 'design',
 			testMatch: ['design-shots.spec.ts'],
 			use: {

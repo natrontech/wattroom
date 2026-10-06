@@ -130,6 +130,44 @@ describe('a ride’s world', () => {
 		w.dispose();
 	});
 
+	it('stops your trail and takes your ring out of its zone while your trainer is silent, and gives both back with the next sample (#3766)', () => {
+		const w = compose(
+			{
+				route,
+				world,
+				style,
+				ftp: 250,
+				watts: 300,
+				metre: () => ({ m: 900, mps: 0 }),
+			},
+			null,
+		);
+		let trail: THREE.Mesh | undefined;
+		let ring: THREE.Mesh | undefined;
+		w.scene.traverse((o) => {
+			if (o.userData.kind === 'trail') trail = o as THREE.Mesh;
+			if (o instanceof THREE.Mesh && o.geometry instanceof THREE.RingGeometry)
+				ring = o;
+		});
+		const tone = () =>
+			`#${(ring!.material as THREE.MeshBasicMaterial).color.getHexString()}`;
+		const zones = style.zones.map((z) => new THREE.Color(z).getHexString());
+		w.advanceBy(0.3);
+		expect(zones).toContain(tone().slice(1));
+		expect(trail!.visible).toBe(true);
+
+		w.setSilent(true);
+		w.advanceBy(0.1);
+		expect(zones).not.toContain(tone().slice(1));
+		expect(trail!.visible).toBe(false);
+
+		w.setSilent(false);
+		w.advanceBy(0.1);
+		expect(zones).toContain(tone().slice(1));
+		expect(trail!.visible).toBe(true);
+		w.dispose();
+	});
+
 	it('lays a bunch out by the wall’s time, however slowly its frames come (#3098)', () => {
 		const where = (frame: number, wall: number) => {
 			let tick = { m: 300, s: 0 };

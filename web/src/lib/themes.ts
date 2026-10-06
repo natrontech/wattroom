@@ -45,7 +45,7 @@ const SPECS: ThemeSpec[] = [
 			z4: '#06d6a0',
 			z5: '#ffa62b',
 			z6: '#ff4d6d',
-			z7: '#ff2e88',
+			z7: '#e20843',
 		},
 	},
 	{
@@ -139,7 +139,7 @@ const SPECS: ThemeSpec[] = [
 			z4: '#04a37c',
 			z5: '#d97e00',
 			z6: '#e63c5b',
-			z7: '#d9186f',
+			z7: '#ae0044',
 		},
 	},
 	{

@@ -48,3 +48,31 @@ describe('the trainer chip', () => {
 			expect(chip(trainer, false)).toBeNull();
 	});
 });
+
+// TARGETS Flows rule 2: the workout keeps its name once the block has one.
+describe('the context eyebrow', () => {
+	const body = (context?: string) =>
+		render(RideHeader, {
+			props: {
+				block: block({ kind: 'erg' }),
+				elapsed: 60,
+				total: 600,
+				title: 'Smoke Test',
+				context,
+			},
+		}).body;
+
+	it('names the workout above the block that is riding', () => {
+		const html = body('Solo · Smoke Test');
+		expect(html).toMatch(
+			/data-testid="ride-context"[^>]*>\s*Solo · Smoke Test/,
+		);
+		expect(html.indexOf('ride-context')).toBeLessThan(
+			html.indexOf('Threshold'),
+		);
+	});
+
+	it('draws nothing when the screen has no context to give', () => {
+		expect(body()).not.toContain('ride-context');
+	});
+});

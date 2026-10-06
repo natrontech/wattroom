@@ -145,7 +145,16 @@ export function gaussian(
 	);
 	const n = a.length;
 	const out = new Float64Array(n);
+	// Away from the ends the window wraps nowhere and is whole: the same sums, without asking.
+	let whole = 0;
+	for (let k = 0; k <= 2 * r; k++) whole += w[k];
 	for (let i = 0; i < n; i++) {
+		if (i >= r && i + r < n - 1) {
+			let s = 0;
+			for (let k = -r; k <= r; k++) s += a[i + k] * w[k + r];
+			out[i] = s / whole;
+			continue;
+		}
 		let s = 0;
 		let ws = 0;
 		for (let k = -r; k <= r; k++) {
