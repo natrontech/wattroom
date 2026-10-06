@@ -129,6 +129,18 @@ export function adjacentFloor(
 	return measure(ref.tokens[ZONES[index]], ref.tokens[ZONES[index + 1]]) * 0.9;
 }
 
+/**
+ * A zone drawn beside live data has to read as a zone. Same metric as the
+ * adjacent-zone gaps (`perceptualDistance`), same floor as the wardrobe's
+ * kit-versus-zone guard, and one the reference itself clears — its closest
+ * zone to watt, Z6, sits at 0.054. Outrun's dark Z7 sat at 0.015, so a sprint
+ * bar read as live data (#3754), and no check between zones could say so.
+ *
+ * A constant rather than a reference-held floor like the ones above: held to
+ * the reference, the broken Z7 would have set its own bar.
+ */
+export const ZONE_WATT_MIN_GAP = 0.05;
+
 export interface GateCheck {
 	id: string;
 	label: string;
@@ -192,6 +204,23 @@ export const EXCEPTIONS: {
 	checkId: string;
 	reason: string;
 }[] = [
+	{
+		themeId: 'miami-nights',
+		checkId: 'z6-watt-delta',
+		reason:
+			"the identity's watt is coral and the shared ramp's Z6 is coral (ADR-0023 §4: zones are a scale, not branding, held within 8° of the reference's hue). Moving Z6 clear of watt means leaving that ramp, which is a decision for the ramp and not for one theme; issue 3754 left it recorded here.",
+	},
+	{
+		themeId: 'miami-day',
+		checkId: 'z6-watt-delta',
+		reason: 'the same coral-on-coral as Miami Nights above, on the light ramp.',
+	},
+	{
+		themeId: 'tron-ice',
+		checkId: 'z3-watt-delta',
+		reason:
+			"the identity's watt is cyan and the shared ramp's Z3 is cyan, the same collision as Miami's Z6 and for the same reason: clearing it takes a hue move past the ramp's 8° (ADR-0023 §4).",
+	},
 	{
 		themeId: 'monokai',
 		checkId: 'surface-layering',
@@ -455,6 +484,20 @@ export function gateChecks(theme: Theme, catalogue: Theme[]): GateCheck[] {
 			check(
 				`${ZONES[i]}-${ZONES[i + 1]}-delta`,
 				`${ZONES[i]}→${ZONES[i + 1]} · perceptual gap`,
+				value,
+				floor,
+				value >= floor,
+				'',
+			),
+		);
+	}
+	for (const token of ZONES) {
+		const value = perceptualDistance(theme.tokens[token], theme.tokens.watt);
+		const floor = ZONE_WATT_MIN_GAP;
+		checks.push(
+			check(
+				`${token}-watt-delta`,
+				`${token} vs watt · perceptual gap`,
 				value,
 				floor,
 				value >= floor,

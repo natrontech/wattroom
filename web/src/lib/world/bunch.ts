@@ -5,13 +5,15 @@
 // clock, so every screen draws one bunch. It draws nothing: crew.ts does.
 import type { BunchView } from '$lib/channel/bunch-view';
 import { damp } from '$lib/motion/damp';
-import { GEO } from './rider-rig';
+import { rigFor } from './figure/rig';
+import { resolveKit } from './figure/kit';
 import { ROAD_W } from './terrain/road-profile';
 
 /** Metres between riders abreast. */
 export const LANE = 0.9;
 /** A bike, wheel to wheel, and docs/SPEC.md "Drafting"'s 1.0 m wheel gap: one row of the bunch. */
-const ROW_M = GEO.front[0] - GEO.rear[0] + 2 * GEO.wheelR + 1.0;
+const BIKE = rigFor(resolveKit()).bk;
+const ROW_M = BIKE.wheelbase + 2 * BIKE.R + 1.0;
 /** Where a resting rider pulls over: the right shoulder, as on a Swiss road. */
 export const PULL_LANE = -(ROAD_W / 2 - 0.5);
 /** docs/SPEC.md "Riding a road together": the front row rotates every 120 s of elapsed time. */

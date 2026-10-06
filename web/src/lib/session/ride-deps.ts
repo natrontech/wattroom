@@ -1,4 +1,5 @@
 import type { FreeRide } from '$lib/ride/free-ride.svelte';
+import type { RoadPlace } from '$lib/channel/road-place';
 import type { Segment } from '$lib/workout/types';
 import type { GameState, SensorPairing, SprintState } from '$lib/protocol';
 import type { createRecording } from '$lib/session/recording.svelte';
@@ -33,6 +34,8 @@ export interface RideDeps {
 	myId: () => string | undefined;
 	shared: () => { phase: string; elapsed: number } | undefined;
 	segments: () => Segment[];
+	/** Your place on the session's road, while the session rides one (#3553). */
+	road?: () => RoadPlace | null;
 	/** On the running session's timeline, by the hub's word (ADR-0059). A
 	 *  spectator's trainer is theirs: no target, no sprint, no record. */
 	joined: () => boolean;

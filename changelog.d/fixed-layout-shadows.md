@@ -1,0 +1,1 @@
+- The mobile drawer, the round open-navigation button and the landing page's phone menu no longer cast a shadow, like every other panel.

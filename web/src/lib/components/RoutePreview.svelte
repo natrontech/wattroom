@@ -67,7 +67,12 @@
 	</div>
 
 	<div class="mt-3 grid gap-4 sm:grid-cols-[2fr_3fr]">
-		<RouteShape x={route.x} z={route.z} />
+		<RouteShape
+			x={route.x}
+			z={route.z}
+			climbs={route.climbs}
+			length={route.road.length}
+		/>
 		<RouteProfile road={route.road} climbs={route.climbs} />
 	</div>
 

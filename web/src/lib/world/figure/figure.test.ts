@@ -2,7 +2,6 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { BONES as PROTOTYPE_BONES } from '../rider-rig';
 import { FRAMES, type FrameId } from './bikes/presets';
 import { B, BONES } from './contract';
 import { buildFigure } from './figure';
@@ -14,7 +13,11 @@ const triangles = (m: THREE.Mesh) => m.geometry.index!.count / 3;
 describe('one skinned figure and bike per draw', () => {
 	it('keeps model.js’s 18 bones in their order, then fork and hands', () => {
 		expect(BONES).toHaveLength(21);
-		expect(BONES.slice(0, 18)).toEqual([...PROTOTYPE_BONES]);
+		// prettier-ignore
+		expect(BONES.slice(0, 18)).toEqual([
+			'root', 'bike', 'frontWheel', 'rearWheel', 'crank', 'pelvis', 'torso', 'head',
+			'thighL', 'shinL', 'footL', 'thighR', 'shinR', 'footR', 'armL', 'foreL', 'armR', 'foreR',
+		]);
 		expect(BONES.slice(18)).toEqual(['fork', 'handL', 'handR']);
 		const m = buildFigure(resolveKit());
 		expect(m.skeleton.bones.map((b) => b.name)).toEqual([...BONES]);

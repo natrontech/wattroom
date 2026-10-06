@@ -24,7 +24,8 @@ export interface SprintSetup {
 
 /**
  * The grade a sprint rides: the rider's own sprint grade while there is no
- * road. On a road it becomes the road's grade under them (#3025, #3102).
+ * road. On a session's road a geared rider's sprint rides the road under
+ * them instead (#3553, #3102), written through `road()` second by second.
  * A Prime a spectator arms is not this rider's sprint and never gets here.
  */
 export function sprintSlope(setup: SprintSetup): number {
