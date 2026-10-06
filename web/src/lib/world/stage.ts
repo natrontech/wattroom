@@ -159,6 +159,7 @@ export function buildStage(
 		{ ...style.backdrop, fog: style.sky.horizon },
 		style.backdrop.snowCaps && alpine,
 	);
+	skyMat.uniforms.uSkyline.value = ridges.skyline.texture;
 	const horizon = new THREE.Mesh(ridges.geometry, horizonMat);
 	horizon.frustumCulled = false;
 	group.add(tag('sky', horizon));
@@ -316,7 +317,7 @@ export function buildStage(
 		update(eye, whole = false) {
 			// The sky stands round the eye, so its band clears the ridges as this eye sees them.
 			sky.position.copy(eye);
-			skyMat.uniforms.uBandTop.value = ridges.top(eye);
+			ridges.skyline.from(eye);
 			// The diorama holds still: only the rings move with a camera that orbits it.
 			if (orbit) props.update(eye);
 			else {

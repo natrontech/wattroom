@@ -234,7 +234,7 @@ export function skyMaterial(style: Style): THREE.ShaderMaterial {
 			uSunward: { value: col(style.sky.sunward) },
 			uBand: { value: col(style.sky.band) },
 			uPeach: { value: 0 },
-			uBandTop: { value: 0 }, // the sine of the far ranges' highest crest from the eye (backdrop.ts)
+			uSkyline: { value: null as THREE.Texture | null }, // the far ranges' crests by bearing (backdrop.ts)
 			uDusk: { value: 1 },
 			uSun: { value: sunOf(style) },
 			uSunCol: { value: col(style.sun.color) },
@@ -245,19 +245,22 @@ export function skyMaterial(style: Style): THREE.ShaderMaterial {
 			},
 		},
 		vertexShader: /* glsl */ `varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-		fragmentShader: /* glsl */ `uniform vec3 uTop, uHorizon, uSunward, uBand, uSun, uSunCol, uSunLow; uniform float uDisc, uPeach, uDusk, uBandTop; varying vec3 vDir;
+		fragmentShader: /* glsl */ `uniform vec3 uTop, uHorizon, uSunward, uBand, uSun, uSunCol, uSunLow; uniform float uDisc, uPeach, uDusk; uniform sampler2D uSkyline; varying vec3 vDir;
 			${OKLAB}
 			void main(){
 				float h = max(vDir.y, 0.0);
 				float s = max(dot(vDir, uSun), 0.0);
 				vec3 hor = mix(uHorizon, uSunward, pow(s, 8.0));
 				vec3 c = mix(hor, uTop, pow(h, 0.45));
-				if (uPeach > 0.0) { // level, fading out about 1.5° over the highest range
-					float clear = 0.026 * (1.0 + 0.5 * pow(s, 4.0));
-					float w = uPeach * smoothstep(-0.01, 0.0, vDir.y) * (1.0 - smoothstep(uBandTop * 0.85, uBandTop + clear, vDir.y));
+				if (uPeach > 0.0) { // level over the ranges in view, fading out half a degree over the highest
+					float top = texture2D(uSkyline, vec2(atan(vDir.x, vDir.z) / 6.2831853, 0.5)).r * 0.25;
+					float clear = 0.009 * (1.0 + 0.5 * pow(s, 4.0));
+					float w = uPeach * smoothstep(-0.01, 0.0, vDir.y) * (1.0 - smoothstep(top - 0.003, top + clear, vDir.y));
+					// The sky's chroma gives way to the peach's at the band's faint edge, so no pixel takes a hue between them, the pinks.
 					vec3 sky = toLab(c);
-					vec3 grey = vec3(sky.x, 0.0, 0.0);
-					c = fromLab(w < 0.03 ? mix(sky, grey, w / 0.03) : mix(grey, toLab(uBand), (w - 0.03) / 0.97));
+					vec3 band = toLab(uBand);
+					vec2 ab = w < 0.02 ? sky.yz * (1.0 - w / 0.02) : band.yz * sqrt((w - 0.02) / 0.98);
+					c = fromLab(vec3(mix(sky.x, band.x, w), ab));
 				}
 				if (uDisc > 0.5) c += uSunward * pow(s, 6.0) * 0.35 + hor * exp(-abs(vDir.y) * 14.0) * 0.12;
 				if (uDisc > 1.5) { // the outrun sun: flat disc, horizontal gaps widening toward the bottom
