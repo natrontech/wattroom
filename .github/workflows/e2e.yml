@@ -1,11 +1,9 @@
-# The one end-to-end flow (WATTROOM.md): simulated trainer rides a workout and
-# produces a .fit — entering through the login gate like every rider.
+# The end-to-end flows (WATTROOM.md): simulated trainers ride workouts through
+# the login gate like every rider, on the built SPA and the real Go server.
 #
-# Split out of ci.yml purely so `paths` can gate it. It is the most expensive
-# job in the repo by a wide margin (~4 min against the next-largest 2 min), and
-# roughly a quarter of PRs here change only docs, ADRs, or infra — where there
-# is no ride to break. Same filter on push: a docs-only merge cannot break it
-# either, and the next code commit still covers everything.
+# Sharded across runners; the `e2e` job at the bottom is the one check to
+# read. It always reports, so it can be required, and on a PR that changes no
+# code it passes without riding: there is nothing to break.
 name: e2e
 
 on:
@@ -15,12 +13,7 @@ on:
       - 'web/**'
       - 'server/**'
       - '.github/workflows/e2e.yml'
-  # Repeated rather than a YAML anchor: the Actions parser rejects anchors.
   pull_request:
-    paths:
-      - 'web/**'
-      - 'server/**'
-      - '.github/workflows/e2e.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -31,8 +24,61 @@ permissions:
   contents: read
 
 jobs:
-  e2e:
+  changes:
     runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+      world: ${{ steps.diff.outputs.world }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      # main runs everything. A PR checks out its merge commit, whose first
+      # parent is the base it is measured against.
+      - id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" != pull_request ]; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            echo "world=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          files=$(git diff --name-only HEAD^1 HEAD)
+          echo "$files"
+          code=false
+          if grep -qE '^(web/|server/|\.github/workflows/e2e\.yml$)' <<<"$files"; then
+            code=true
+          fi
+          # What the @world specs stand on: the world, both riding surfaces and
+          # their routes, and the harness (Playwright and three.js versions too).
+          world_paths='^(web/src/lib/(world|ride|session)/|web/src/routes/\(app\)/(ride|dev/world|crew/\[id\]/s/\[session\]|crew/\[id\]/v/\[channel\]/training)/|web/e2e/.*\.(js|ts)$|web/(playwright\.config\.ts|package\.json|pnpm-lock\.yaml)$|\.github/workflows/e2e\.yml$)'
+          world=false
+          while read -r f; do
+            case "$f" in
+              # A spec is harness only when it is one of the world's own.
+              *.spec.ts) if [ -f "$f" ] && grep -q '@world' "$f"; then world=true; fi ;;
+              *) if grep -qE "$world_paths" <<<"$f"; then world=true; fi ;;
+            esac
+          done <<<"$files"
+          echo "code=$code world=$world"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "world=$world" >> "$GITHUB_OUTPUT"
+
+  shard:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    name: shard ${{ matrix.shard }}/3
+    runs-on: ubuntu-latest
+    strategy:
+      # Every shard finishes, so a red run names every failure at once.
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    env:
+      SHARD: ${{ matrix.shard }}/3
+      GREP: ${{ needs.changes.outputs.world != 'true' && '--grep-invert=@world' || '' }}
     services:
       postgres:
         image: postgres:18
@@ -46,14 +92,10 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
-      # voice-duck.spec.ts's real LiveKit connection (#1171). A GitHub Actions
-      # service container has no `command:` override, unlike docker-compose.yml's
-      # `--dev`, so the devkey/secret pair e2e/server.js already defaults to
-      # (matching make dev-server) comes from an explicit `keys:` in the config
-      # instead. `node_ip: 127.0.0.1` is the same fix docker-compose.yml uses for
-      # macOS Docker Desktop's 172.x advertisement problem — here it is what
-      # makes the runner's own browser (outside the container, same as the host
-      # browser in local dev) able to reach the published RTC ports at all.
+      # voice-duck.spec.ts's real LiveKit connection (#1171). A service
+      # container takes no `command:`, so the devkey/secret pair e2e/server.js
+      # defaults to comes from `keys:`; `node_ip: 127.0.0.1` lets the runner's
+      # own browser reach the published RTC ports.
       livekit:
         image: livekit/livekit-server:v1.13
         env:
@@ -75,14 +117,15 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # The default cache key looks for go.sum at the root and finds nothing.
+      # The workflow is in the key so this plain build is not ci.yml's race one.
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: server/go.mod
-      # Warm the Go build cache: the e2e web server spawns `go run .`, and a cold
-      # module download used to still be running while the specs already were.
-      # Only the server binary — `./...` also compiled cmd/seed and every test
-      # dependency, none of which `go run .` needs. The real compile check is
-      # `go build ./...` in ci.yml's server job.
+          cache-dependency-path: |
+            server/go.sum
+            .github/workflows/e2e.yml
+      # Warms the build cache for e2e/server.js's `go run .`.
       - run: go build -o /dev/null .
         working-directory: server
       # Not `pnpm/setup` — see the note in ci.yml's `web` job (#2375).
@@ -96,22 +139,96 @@ jobs:
           cache-dependency-path: web/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
         working-directory: web
-      # No --with-deps: the ubuntu runner image already ships Chromium's shared
-      # libraries, so it was an apt-get round trip for nothing.
-      - run: pnpm exec playwright install chromium
+      - id: playwright
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
         working-directory: web
-      # WebKit and Firefox run one spec, world-place.spec.ts (#3224), and the
-      # runner ships neither's libraries — so these two do need --with-deps.
-      - run: pnpm exec playwright install --with-deps webkit firefox
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+      # All three, so whichever shard saves the cache saves every browser.
+      - run: pnpm exec playwright install chromium webkit firefox
         working-directory: web
-      # No `pnpm run build` here: playwright.config.ts's webServer always builds
-      # (deliberately — a reused build serves stale code), so a step here is a
-      # second full build of the same bundle.
-      - run: pnpm run test:e2e
+      # The runner ships Chromium's libraries but not WebKit's or Firefox's, and
+      # those two run world-place.spec.ts only (#3224) — so only its shard pays
+      # the apt round trip, retried once because the mirrors flake.
+      - name: WebKit and Firefox libraries, if this shard runs them
         working-directory: web
+        run: |
+          if pnpm exec playwright test --list --reporter=list --shard="$SHARD" $GREP | grep -qE '\[(webkit|firefox)\]'; then
+            pnpm exec playwright install-deps webkit firefox ||
+              { sleep 15; pnpm exec playwright install-deps webkit firefox; }
+          fi
+      # No build step: playwright.config.ts's webServer always builds, so a
+      # reused bundle can never be what gets tested.
+      - name: Run this shard
+        working-directory: web
+        run: pnpm exec playwright test --shard="$SHARD" $GREP --reporter=blob,list
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: ${{ !cancelled() }}
+        with:
+          name: blob-report-${{ matrix.shard }}
+          path: web/blob-report/
+          retention-days: 7
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: failure()
         with:
-          name: playwright-trace
+          name: playwright-trace-${{ matrix.shard }}
           path: web/test-results/
           retention-days: 7
+
+  # The check to read. A skipped job counts as passed on a ruleset, so this
+  # one always runs and says why it passed.
+  e2e:
+    needs: [changes, shard]
+    if: always()
+    runs-on: ubuntu-latest
+    env:
+      CHANGES: ${{ needs.changes.result }}
+      CODE: ${{ needs.changes.outputs.code }}
+      SHARDS: ${{ needs.shard.result }}
+      MERGE: ${{ needs.shard.result == 'success' || needs.shard.result == 'failure' }}
+    steps:
+      - if: env.MERGE == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - if: env.MERGE == 'true'
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          package_json_file: web/package.json
+      - if: env.MERGE == 'true'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - if: env.MERGE == 'true'
+        run: pnpm install --frozen-lockfile
+        working-directory: web
+      - if: env.MERGE == 'true'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: blob-report-*
+          path: web/blob-reports
+          merge-multiple: true
+      - name: One report from every shard
+        if: env.MERGE == 'true'
+        working-directory: web
+        run: pnpm exec playwright merge-reports --reporter=github blob-reports
+      - name: Verdict
+        if: always()
+        run: |
+          if [ "$CHANGES" != success ]; then
+            echo "::error::Could not tell what this change touches (changes: $CHANGES)."
+            exit 1
+          fi
+          if [ "$CODE" != true ]; then
+            echo "No change under web/, server/ or this workflow: nothing to ride, so no shard ran."
+            exit 0
+          fi
+          if [ "$SHARDS" != success ]; then
+            echo "::error::A shard did not pass (shards: $SHARDS)."
+            exit 1
+          fi
+          echo "Every shard passed."

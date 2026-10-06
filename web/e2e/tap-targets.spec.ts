@@ -160,7 +160,7 @@ test('the browse surfaces’ links and folds clear the floor on a phone', async 
  * sat at 28 px beside the coach's controls in a running session — small to
  * hit on purpose and easy to hit by mistake.
  */
-test('Try 3D again, on a ride held on the flat road, is riding size (#3080)', async ({
+test('Try 3D again, on a ride held on the flat road, is riding size (#3080) @world', async ({
 	riders,
 }) => {
 	test.skip(

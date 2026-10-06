@@ -63,7 +63,7 @@ async function onTheFlatRoad(page: Page, why: RegExp) {
 	await expect(page.getByRole('button', { name: 'End ride' })).toBeVisible();
 }
 
-test('a lost GPU context hands the ride to the flat road, and 3D comes back on asking', async ({
+test('a lost GPU context hands the ride to the flat road, and 3D comes back on asking @world', async ({
 	page,
 }) => {
 	await rideInTheWorld(page, true);
@@ -76,7 +76,7 @@ test('a lost GPU context hands the ride to the flat road, and 3D comes back on a
 	});
 });
 
-test('a world that misses its frames for ten seconds hands the ride to the flat road', async ({
+test('a world that misses its frames for ten seconds hands the ride to the flat road @world', async ({
 	page,
 }) => {
 	await rideInTheWorld(page);

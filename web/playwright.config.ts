@@ -175,7 +175,9 @@ export default defineConfig({
 			testMatch: ['world-place.spec.ts'],
 			use: { ...devices['Desktop Firefox'] },
 		},
-	],
+		// Without somewhere to write, every design shot skips — and CI's shards
+		// split by test count, so 43 skips would leave the last one half idle.
+	].filter((p) => p.name !== 'design' || !!process.env.DESIGN_SHOTS_OUT),
 	// Serves the built SPA and proxies /api to the Go server, matching production.
 	//
 	// Always builds, never reuses: the server only ever serves build/, so a reused
