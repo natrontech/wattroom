@@ -47,6 +47,8 @@ func (rm *channelState) roadsideVerb(riderID string, verb protocol.Roadside, now
 		return "validation_error", "The roadside can take a stand or paint a climb, and nothing else."
 	case math.IsNaN(verb.AtM) || math.IsInf(verb.AtM, 0) || verb.Lap < 0:
 		return "validation_error", "That is not a place on the road."
+	case !paint && (verb.Stamp != "" || verb.For != ""):
+		return "validation_error", "A stand is a place on the road, with no chalk."
 	case paint && !slices.Contains(protocol.RoadsideStamps, verb.Stamp):
 		return "validation_error", "That is not one of the chalk stamps."
 	case paint && (verb.Stamp == protocol.RoadsideStampInitial) != (verb.For != ""):
