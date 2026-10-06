@@ -6,8 +6,10 @@ services:
       POSTGRES_USER: wattroom
       POSTGRES_PASSWORD: wattroom
       POSTGRES_DB: wattroom
+    # Every mapping binds loopback: a bare 'port:port' publishes on all of the
+    # host's interfaces, which put this database (password above) on the LAN.
     ports:
-      - '5432:5432'
+      - '127.0.0.1:5432:5432'
     volumes:
       # postgres:18+ images store data under /var/lib/postgresql (major-version
       # subdirs); mounting the pre-18 /var/lib/postgresql/data path makes the
@@ -19,7 +21,9 @@ services:
     # --node-ip: in Docker on macOS the container would otherwise advertise its
     # internal 172.x address as the ICE candidate, which the host cannot reach —
     # signaling connects, the peer connection never does. The config pins the
-    # media ports to the narrow mapped range for the same reason.
+    # media ports to the narrow mapped range for the same reason. It also means
+    # a device on the LAN could never complete a call, so the ports below stay
+    # on loopback with nothing lost; --bind is the container's own interface.
     command: --dev --bind 0.0.0.0 --node-ip 127.0.0.1
     environment:
       LIVEKIT_CONFIG: |
@@ -32,9 +36,9 @@ services:
           urls:
             - http://host.docker.internal:8080/api/livekit/webhook
     ports:
-      - '7880:7880' # WS signaling
-      - '7881:7881' # WebRTC/TCP
-      - '51000-51050:51000-51050/udp' # media (narrow range for dev)
+      - '127.0.0.1:7880:7880' # WS signaling
+      - '127.0.0.1:7881:7881' # WebRTC/TCP
+      - '127.0.0.1:51000-51050:51000-51050/udp' # media (narrow range for dev)
 
 volumes:
   pgdata:
