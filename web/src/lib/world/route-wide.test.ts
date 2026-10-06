@@ -123,13 +123,23 @@ describe('a 29 km loop, its route-wide work', () => {
 		expect(horizonDigest(route, world)).toBe('9c271efd');
 	});
 
-	it('stands the same things around the start, and along the whole loop', () => {
-		expect(aroundStart(route, world)).toBe('5696430d');
-		const all = world.everything;
-		expect(
-			digestOf([all.props, all.pieces, all.signs, all.arches, all.placements]),
-		).toBe('51f4b775');
-	}, BUILD_MS);
+	it(
+		'stands the same things around the start, and along the whole loop',
+		() => {
+			expect(aroundStart(route, world)).toBe('5696430d');
+			const all = world.everything;
+			expect(
+				digestOf([
+					all.props,
+					all.pieces,
+					all.signs,
+					all.arches,
+					all.placements,
+				]),
+			).toBe('51f4b775');
+		},
+		BUILD_MS,
+	);
 });
 
 describe('a 124 km loop, its route-wide work', () => {
