@@ -86,33 +86,15 @@ export const GAME_MODES: GameMode[] = [
  * yet — a race needs a road — named here so a running one reads by its name
  * (#3174). The names are the hub's.
  */
-const RACES: GameMode[] = [
-	{
-		id: 'race',
-		label: 'Race',
-		blurb:
-			'A mass start on a road: 3 min neutral, then first over the line in each Category.',
-		icon: Trophy,
-	},
-	{
-		id: 'last-light',
-		label: 'Last Light',
-		blurb:
-			'As far as you can ride before the clock runs out; the fog closes last.',
-		icon: Trophy,
-	},
-	{
-		id: 'wheelrace',
-		label: 'Wheelrace',
-		blurb:
-			'A handicap to a line: head starts from your FTP, so the field meets at par.',
-		icon: Trophy,
-	},
+const RACES: Omit<GameMode, 'blurb'>[] = [
+	{ id: 'race', label: 'Race', icon: Trophy },
+	{ id: 'last-light', label: 'Last Light', icon: Trophy },
+	{ id: 'wheelrace', label: 'Wheelrace', icon: Trophy },
 ];
 
 const BY_ID = new Map([...GAME_MODES, ...RACES].map((mode) => [mode.id, mode]));
 
 /** The mode a wire id means, or undefined for one this client does not know. */
-export function gameMode(id: string): GameMode | undefined {
+export function gameMode(id: string): Omit<GameMode, 'blurb'> | undefined {
 	return BY_ID.get(id);
 }
