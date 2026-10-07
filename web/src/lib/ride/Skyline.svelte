@@ -157,6 +157,7 @@
 	>
 		{#if frame}
 			<div
+				data-testid="skyline-road"
 				class="absolute inset-y-0 left-0 will-change-transform"
 				style:transform="translateX({-shift}px)"
 			>
