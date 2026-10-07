@@ -142,6 +142,54 @@ describe('RIDE against your ghost (#3615)', () => {
 	});
 });
 
+describe("the one-home table, with the computer's own head (#3668)", () => {
+	const road = { speedKph: 30.2, km: 1.2, ofKm: 7.1 };
+	const headed = (over: Partial<ComputerContext> = {}) =>
+		ride({ ownHead: true, hr: 150, ...over });
+
+	it('reads RIDE as TARGETS says for each kind of ride', () => {
+		// A workout with no road: Cadence and Heart.
+		expect(keys(fieldsFor('ride', headed()))).toEqual(['cadence', 'hr']);
+		// A workout on a road, its km and grade in slot 1: Speed, Cadence, Heart.
+		expect(
+			keys(fieldsFor('ride', headed({ road, grade: 3, roadLine: true }))),
+		).toEqual(['speed', 'cadence', 'hr']);
+		// A free ride on a road: and the gear, and the split against a ghost.
+		expect(
+			keys(
+				fieldsFor(
+					'ride',
+					headed({
+						road,
+						grade: 3,
+						roadLine: true,
+						gear: 'Gear 15',
+						split: { seconds: 4, best: true },
+					}),
+				),
+			),
+		).toEqual(['speed', 'split', 'cadence', 'hr', 'gear']);
+	});
+
+	it('moves Execution to POWER and drops the 3 s field the head shows', () => {
+		const ctx = headed({ execution: 0.93 });
+		expect(keys(fieldsFor('ride', ctx))).not.toContain('execution');
+		const power = keys(fieldsFor('power', ctx));
+		expect(power[0]).toBe('execution');
+		expect(power).not.toContain('power3');
+	});
+
+	it("keeps the flat surface's fields where the head is not drawn (#3670)", () => {
+		expect(keys(fieldsFor('ride', ride({ hr: 150, execution: 0.9 })))).toEqual([
+			'power',
+			'cadence',
+			'hr',
+			'wkg',
+			'execution',
+		]);
+	});
+});
+
 describe('POWER (ADR-0071)', () => {
 	it('is the rolling powers, the block, NormPower, Intensity, the work and Load', () => {
 		const fields = fieldsFor('power', ride({ target: 240 }));

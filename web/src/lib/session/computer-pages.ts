@@ -52,6 +52,14 @@ export interface ComputerContext {
 	 * leaves it out: one number, one home (TARGETS D17, #3667).
 	 */
 	head?: boolean;
+	/**
+	 * The computer draws its own head (#3668): the 3 s power with W/kg
+	 * beside it and the zone under it. RIDE then leaves out Power and W/kg,
+	 * POWER its 3 s field, and Execution moves to POWER — the one-home table.
+	 */
+	ownHead?: boolean;
+	/** Slot 1 carries the road line (km x of y, grade), so RIDE leaves them out. */
+	roadLine?: boolean;
 }
 
 export interface Field {
@@ -117,7 +125,7 @@ export function fieldsFor(page: ComputerPage, ctx: ComputerContext): Field[] {
 		const block = ctx.target
 			? { label: 'Block', value: `${s.blockAverage}/${ctx.target}` }
 			: { label: 'Average', value: `${s.blockAverage}` };
-		return [
+		const fields: Field[] = [
 			{
 				key: 'power3',
 				label: '3 s',
@@ -144,18 +152,23 @@ export function fieldsFor(page: ComputerPage, ctx: ComputerContext): Field[] {
 			{ key: 'xp', label: 'Work', value: `+${s.kj}`, unit: 'XP' },
 			{ key: 'load', label: 'Load', value: `${Math.round(s.load)}` },
 		];
+		if (!ctx.ownHead) return fields;
+		const rest = fields.filter((f) => f.key !== 'power3');
+		const execution = executionField(ctx);
+		return execution ? [execution, ...rest] : rest;
 	}
-	const fields: Field[] = ctx.head
-		? []
-		: [
-				{
-					key: 'power',
-					label: 'Power',
-					value: measured(`${stats ? stats.power3 : Math.round(ctx.watts)}`),
-					unit: 'W',
-					glow: !ctx.stale,
-				},
-			];
+	const fields: Field[] =
+		ctx.head || ctx.ownHead
+			? []
+			: [
+					{
+						key: 'power',
+						label: 'Power',
+						value: measured(`${stats ? stats.power3 : Math.round(ctx.watts)}`),
+						unit: 'W',
+						glow: !ctx.stale,
+					},
+				];
 	if (ctx.road)
 		fields.push({
 			key: 'speed',
@@ -163,7 +176,7 @@ export function fieldsFor(page: ComputerPage, ctx: ComputerContext): Field[] {
 			value: ctx.road.speedKph.toFixed(1),
 			unit: 'km/h',
 		});
-	if (ctx.grade !== undefined)
+	if (ctx.grade !== undefined && !ctx.roadLine)
 		fields.push({
 			key: 'grade',
 			label: 'Grade',
@@ -177,7 +190,7 @@ export function fieldsFor(page: ComputerPage, ctx: ComputerContext): Field[] {
 			label: ctx.split.best ? 'vs best' : 'vs last',
 			value: formatSplit(ctx.split.seconds),
 		});
-	if (ctx.road)
+	if (ctx.road && !ctx.roadLine)
 		fields.push({
 			key: 'distance',
 			label: 'Distance',
@@ -200,18 +213,15 @@ export function fieldsFor(page: ComputerPage, ctx: ComputerContext): Field[] {
 			unit: 'bpm',
 			zone: ctx.lthr && !ctx.stale ? hrZoneOf(ctx.hr, ctx.lthr) : 0,
 		});
-	fields.push({
-		key: 'wkg',
-		label: 'W/kg',
-		value: measured(wkg(ctx.watts, ctx.kg)),
-	});
-	if (ctx.execution !== undefined)
+	if (!ctx.ownHead) {
 		fields.push({
-			key: 'execution',
-			label: 'Execution',
-			value: `${Math.round(ctx.execution * 100)}`,
-			unit: '%',
+			key: 'wkg',
+			label: 'W/kg',
+			value: measured(wkg(ctx.watts, ctx.kg)),
 		});
+		const execution = executionField(ctx);
+		if (execution) fields.push(execution);
+	}
 	if (ctx.gear)
 		fields.push({
 			key: 'gear',
@@ -220,6 +230,18 @@ export function fieldsFor(page: ComputerPage, ctx: ComputerContext): Field[] {
 			neon: true,
 		});
 	return fields;
+}
+
+/** Your live score, where nothing else on the surface ranks it (ADR-0046). */
+function executionField(ctx: ComputerContext): Field | null {
+	return ctx.execution === undefined
+		? null
+		: {
+				key: 'execution',
+				label: 'Execution',
+				value: `${Math.round(ctx.execution * 100)}`,
+				unit: '%',
+			};
 }
 
 /**
