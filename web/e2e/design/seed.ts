@@ -240,8 +240,9 @@ export async function savedRide(
 			steps: [{ type: 'steady', seconds, target: 0.75 }],
 		}),
 		// Hours back, and apart: nobody rides two at once (the server's 409).
+		// Six is the timed ride's.
 		startedAt: new Date(
-			Date.now() - (through ? 6 : road ? 4 : 2) * 3_600_000,
+			Date.now() - (through ? 8 : road ? 4 : 2) * 3_600_000,
 		).toISOString(),
 		samples,
 		...(road ? { routeId: road } : {}),
