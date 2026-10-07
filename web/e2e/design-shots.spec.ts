@@ -100,6 +100,13 @@ surface('ride-road-world', async (s) => {
 		// Item 16's distance, however long the road takes to get there (#3834).
 		await atReading(o.page, 'km 0.1 of 7.1');
 		await s.shot(o, { name });
+		// multi:world-drift — four frames a quarter-second apart as you ride
+		// on: the road's grain holds to the road, and the field of view (#3674).
+		if (device === DESK)
+			for (let k = 1; k <= 4; k++) {
+				await o.page.waitForTimeout(250);
+				await s.shot(o, { name: `world-drift-${k}` });
+			}
 		// multi:world-60s — the next minute of the same ride, a frame every
 		// 5 s: the forest beside the road as the rider passes it (#3675).
 		if (device === DESK)

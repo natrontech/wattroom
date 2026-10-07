@@ -398,7 +398,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 					yOf(route, ahead.ele),
 					ahead.z + la.lz * lane,
 				).project(camera);
-				asphaltAt = [v.x, v.y];
+				if (Math.abs(v.x) < 1 && Math.abs(v.y) < 1) asphaltAt = [v.x, v.y];
 			}
 			return {
 				asphaltAt,
