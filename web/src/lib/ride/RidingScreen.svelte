@@ -24,6 +24,8 @@
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import Skyline from '$lib/ride/Skyline.svelte';
 	import { skylineOf } from '$lib/workout/road-workout';
+	import { climbView } from '$lib/ride/climb-view';
+	import { watchClimbCues } from '$lib/ride/climb-cues.svelte';
 	import Instrument from '$lib/session/Instrument.svelte';
 	import RideHeader from '$lib/session/RideHeader.svelte';
 	import { rideContext } from '$lib/session/ride-context';
@@ -119,6 +121,9 @@
 	const world = createWorldView();
 	const inWorld = $derived(world.on && !!session.road);
 	const skyline = $derived(skylineOf(session.road, session.segments, ftp));
+	// The climb card on a road (#3645): CLIMB opens by itself, and says so.
+	const climb = $derived(climbView(skyline));
+	watchClimbCues(() => climb);
 	const rideWorld = () =>
 		import('$lib/world/RideWorld.svelte').catch((err: unknown) => {
 			console.error('world: the renderer did not load', err);
@@ -379,6 +384,7 @@
 					execution={session.scored ? session.execution : undefined}
 					target={target > 0 ? target : undefined}
 					stats={session.live}
+					{climb}
 				/>
 				<div class="px-4 pb-3">
 					<BiasTrim
@@ -394,6 +400,7 @@
 						     (D17); the flat layout itself is #3670's. -->
 						<BikeComputer
 							head={!session.sprint}
+							{climb}
 							cadence={session.sample?.cadence ?? 0}
 							stale={signalLost}
 							hr={session.sample?.heartRate ?? 0}

@@ -85,6 +85,15 @@ export const GRADE_FILL = [
 	'fill-grade-5',
 ];
 
+/** The same ramp as a background: the climb card's 100 m bars (#3645). */
+export const GRADE_BG = [
+	'bg-grade-1',
+	'bg-grade-2',
+	'bg-grade-3',
+	'bg-grade-4',
+	'bg-grade-5',
+];
+
 /** 0–4: which of the five steps a grade falls in. A descent is the first. */
 export function gradeStep(pct: number): number {
 	return SKYLINE.gradeEdges.filter((edge) => pct >= edge).length;

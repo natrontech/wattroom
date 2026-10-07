@@ -1,5 +1,6 @@
 import { hrZoneOf } from '$lib/components/zones';
 import { wkg } from '$lib/format';
+import type { ClimbView } from '$lib/ride/climb-view';
 import { formatSplit } from '$lib/road/ghost';
 import { ordinal, type RaceReadout } from '$lib/race/race-view';
 import { isTyping } from '$lib/keys';
@@ -11,11 +12,12 @@ import type { LiveStats } from '$lib/ride/live-stats.svelte';
  * picks. RIDE is where every ride starts. CLIMB and MAP arrive with the
  * climb card (#3089); RACE shows while you race (#3174).
  */
-export const PAGES = ['ride', 'power', 'race'] as const;
+export const PAGES = ['ride', 'climb', 'power', 'race'] as const;
 export type ComputerPage = (typeof PAGES)[number];
 
 export const PAGE_NAMES: Record<ComputerPage, string> = {
 	ride: 'RIDE',
+	climb: 'CLIMB',
 	power: 'POWER',
 	race: 'RACE',
 };
@@ -45,6 +47,8 @@ export interface ComputerContext {
 	target?: number;
 	/** This rider's live numbers (#3068); absent where this screen has none. */
 	stats?: LiveStats;
+	/** The climb card while a classed climb is near (#3645). */
+	climb?: ClimbView | null;
 	/** Your race, while you race one (#3174). */
 	race?: RaceReadout;
 	/**
@@ -95,14 +99,35 @@ export function roadContext(road: {
 	};
 }
 
-/** POWER reads the live numbers, so a screen without them has RIDE alone; RACE is there while you race. */
+/**
+ * The pages this ride has now: RIDE always, CLIMB while a classed climb is
+ * near (#3645), POWER where the screen has its own live numbers, and RACE
+ * while you race (#3174).
+ */
 export function pagesFor(
-	stats: LiveStats | undefined,
-	race?: RaceReadout,
+	ctx: Pick<ComputerContext, 'stats' | 'climb' | 'race'>,
 ): ComputerPage[] {
 	return PAGES.filter(
-		(p) => p === 'ride' || (p === 'power' ? !!stats : !!race),
+		(page) =>
+			page === 'ride' ||
+			(page === 'climb' && !!ctx.climb) ||
+			(page === 'power' && !!ctx.stats) ||
+			(page === 'race' && !!ctx.race),
 	);
+}
+
+/** A distance on the card: metres to the hundred below a kilometre, then km. */
+const distance = (m: number) =>
+	m < 1000
+		? { value: `${Math.round(m / 100) * 100}`, unit: 'm' }
+		: { value: (m / 1000).toFixed(1), unit: 'km' };
+
+/**
+ * The CLIMB page's name (TARGETS phone-ride-road 3): "CLIMB 3 OF 4", its
+ * class a chip beside it. The next climb is slot 1's road line (D17).
+ */
+export function climbHeader(view: ClimbView): string {
+	return `CLIMB ${view.card.n} OF ${view.card.of}`;
 }
 
 /** The page a turn lands on, wrapping at both ends. */
@@ -119,6 +144,27 @@ export function fieldsFor(page: ComputerPage, ctx: ComputerContext): Field[] {
 	const measured = (value: string) => (ctx.stale ? '—' : value);
 	const stats = ctx.stats?.seconds ? ctx.stats : undefined;
 	if (page === 'race') return raceFields(ctx);
+	if (page === 'climb') {
+		const climb = ctx.climb;
+		if (!climb) return [];
+		const top = distance(climb.card.toTopM);
+		// v2-ride's words: at SPEC's 24 px each fits half a docked computer.
+		return [
+			{ key: 'toTop', label: 'To top', ...top },
+			{
+				key: 'ascentLeft',
+				label: 'Ascent',
+				value: `${Math.round(climb.card.ascentLeftM)}`,
+				unit: 'm',
+			},
+			{
+				key: 'avgLeft',
+				label: 'Avg left',
+				value: climb.card.avgLeftPct.toFixed(1),
+				unit: '%',
+			},
+		];
+	}
 	if (page === 'power') {
 		const s = ctx.stats;
 		if (!s) return [];

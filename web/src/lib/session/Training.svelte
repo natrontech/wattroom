@@ -21,6 +21,8 @@
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import BiasTrim from '$lib/session/BiasTrim.svelte';
 	import BikeComputer from '$lib/session/BikeComputer.svelte';
+	import { climbView } from '$lib/ride/climb-view';
+	import { watchClimbCues } from '$lib/ride/climb-cues.svelte';
 	import RaceRadio from '$lib/race/RaceRadio.svelte';
 	import HrShare from '$lib/channel/HrShare.svelte';
 	import RideHeader from '$lib/session/RideHeader.svelte';
@@ -110,6 +112,9 @@
 	const world = createWorldView();
 	// Only on a session that rides a road (ADR-0066, #3663).
 	const inWorld = $derived(world.on && !!channel.ridden);
+	// The climb card on a session's road (#3645), on either layout.
+	const climb = $derived(climbView(channel.ridden));
+	watchClimbCues(() => climb);
 	// The compact instrument heads your numbers here, so the computer leaves
 	// the watts to it: one number, one home (#3662).
 	const headed = $derived(inFocus === 'media' || inFocus === 'game' || inWorld);
@@ -159,7 +164,7 @@
 	</CountdownScreen>
 {:else if device.narrow}
 	<!-- One column, the followed rider's instrument, the crew strip (#412). -->
-	<TrainingPhone />
+	<TrainingPhone {climb} />
 {:else}
 	{#snippet trainerCard()}
 		{#if !channel.trainer || targetsNote}<TrainerOverview compact />{/if}
@@ -376,6 +381,7 @@
 				     your heart rate reaches the call (ADR-0008, #2804). -->
 				<BikeComputer
 					docked
+					{climb}
 					roadLine={!!channel.block?.road}
 					road={channel.ridden
 						? {
@@ -441,6 +447,7 @@
 									: undefined}
 								target={channel.you.target > 0 ? channel.you.target : undefined}
 								stats={channelConnection.current?.recording.live}
+								{climb}
 								race={channel.race ?? undefined}
 							/>
 						</div>

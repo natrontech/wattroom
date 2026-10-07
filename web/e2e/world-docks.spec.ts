@@ -163,3 +163,83 @@ test('a window too short for the world rides the flat road and says so @world', 
 	).toBeVisible({ timeout: 30_000 });
 	await expect(page.locator('[data-surface=docked]')).toHaveCount(0);
 });
+
+/**
+ * The tallest pages in the shortest world (#3645): under a scored target at
+ * 1440 × 860, RIDE with its climb chip and CLIMB each stay between slot 1
+ * and the Skyline, whole. The road's one climb is class IV from its first
+ * metre; a workout leaves CLIMB to the rider, so the test turns to it. All
+ * in one round trip: software GL leaves for the flat road in seconds.
+ */
+test('RIDE and CLIMB under a scored target fit the shortest world @world', async ({
+	page,
+}) => {
+	await page.setViewportSize({ width: 1440, height: 860 });
+	await page.addInitScript(() => {
+		localStorage.setItem('wattroom.world-slot.v1', '1');
+		localStorage.setItem(
+			'wattroom.mixer.v1',
+			JSON.stringify({ music: 0, cues: 0, board: 0, share: 0 }),
+		);
+	});
+	await signInTo(page, '/ride');
+	await page.getByRole('button', { name: 'Ride simulated' }).waitFor();
+	await openAWorkoutOnARoad(page);
+	await page.getByRole('button', { name: 'Ride simulated' }).click();
+	await page.getByRole('button', { name: 'Start the ride' }).click();
+	await expect(page.getByRole('button', { name: 'End ride' })).toBeVisible({
+		timeout: 30_000,
+	});
+	await expect(page.locator('[data-surface=docked] canvas')).toBeVisible();
+	const pages = await page.evaluate(async () => {
+		const q = (s: string) => document.querySelector<HTMLElement>(s);
+		const until = async (ok: () => boolean, ms: number) => {
+			for (const end = performance.now() + ms; !ok();) {
+				if (performance.now() > end) return false;
+				await new Promise((r) => setTimeout(r, 50));
+			}
+			return true;
+		};
+		// Past the warm-up's ramp to a steady block, whose share is scored:
+		// the head at its tallest.
+		for (let i = 0; i < 4 && !q('[data-testid=head-block]'); i++) {
+			q('[aria-label="Skip block"]')!.click();
+			await until(() => !!q('[data-testid=head-block]'), 2_000);
+		}
+		const measure = async () => {
+			await new Promise((r) => requestAnimationFrame(() => r(null)));
+			const box = (name: string) => {
+				const d = q(`[data-dock=${name}]`)!;
+				const r = d.getBoundingClientRect();
+				const scrolls = d.scrollHeight > d.clientHeight + 1;
+				return { top: r.top, bottom: r.bottom, scrolls };
+			};
+			return {
+				docked: !!q('[data-surface=docked]'),
+				block: !!q('[data-testid=head-block]'),
+				chip: !!q('[data-testid=climb-chip]'),
+				header: box('header'),
+				numbers: box('numbers'),
+				horizon: box('horizon'),
+			};
+		};
+		const ride = await measure();
+		q('[data-testid=bike-computer] [title="Next page"]')!.click();
+		await until(
+			() => q('[data-testid=bike-computer]')!.dataset.page === 'climb',
+			2_000,
+		);
+		return { ride, climb: await measure() };
+	});
+	const said = JSON.stringify(pages);
+	expect(pages.ride.chip, said).toBe(true);
+	for (const { docked, block, header, numbers, horizon } of [
+		pages.ride,
+		pages.climb,
+	]) {
+		expect(docked && block, said).toBe(true);
+		expect(numbers.scrolls, said).toBe(false);
+		expect(numbers.top, said).toBeGreaterThanOrEqual(header.bottom);
+		expect(numbers.bottom, said).toBeLessThanOrEqual(horizon.top);
+	}
+});

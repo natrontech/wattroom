@@ -25,12 +25,17 @@ export function createRoadReadout() {
 	};
 }
 
-/** Slot 1's words for it (#3639): "km 12.4 of 52.9 · 7.6 % · top in 3.2 km". */
+/**
+ * Slot 1's words for it (#3639, TARGETS item 6): "km 12.4 of 52.9 · 7.6 % ·
+ * II in 4.8 km". The climb named is the next one ahead: the distance to the
+ * top of the one being ridden is the CLIMB page's, and one number has one
+ * home (D17, #3656).
+ */
 export function roadLine(r: RoadReadout): string {
 	const parts = [
 		`km ${r.km.toFixed(1)} of ${r.totalKm.toFixed(1)}`,
 		`${r.grade.toFixed(1)} %`,
 	];
-	if (r.toTopM !== undefined) parts.push(`top in ${formatKm(r.toTopM)} km`);
+	if (r.next) parts.push(`${r.next.cls} in ${formatKm(r.next.inM)} km`);
 	return parts.join(' · ');
 }

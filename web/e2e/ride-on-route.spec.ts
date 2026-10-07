@@ -98,6 +98,11 @@ test('any workout rides on your own route by the clock, and saves on it', async 
 	await expect(page.getByTestId('trainer-chip')).toHaveText(
 		'ERG: the road is scenery',
 	);
+	// So a climb does not take the computer: a workout keeps RIDE, and the
+	// chip offers CLIMB (ADR-0071 as amended, #3645).
+	const computer = page.getByTestId('bike-computer');
+	await expect(computer.getByTestId('climb-chip')).toBeVisible();
+	await expect(computer).toHaveAttribute('data-page', 'ride');
 	// On a road the horizon is the road ahead (#3641): the Skyline, your dot.
 	await expect(
 		page.getByTestId('skyline').getByTestId('skyline-dot'),

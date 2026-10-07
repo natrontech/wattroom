@@ -16,9 +16,11 @@
 	import ComputerHead from '$lib/session/ComputerHead.svelte';
 	import { ZONE_BG } from '$lib/components/zones';
 	import { pulse } from '$lib/motion/transitions';
+	import ClimbProfile from '$lib/ride/ClimbProfile.svelte';
 	import {
 		PAGE_NAMES,
 		claimPageTurn,
+		climbHeader,
 		fieldsFor,
 		pagesFor,
 		turned,
@@ -29,6 +31,7 @@
 	let {
 		tv = false,
 		phone = false,
+		climbOpens = false,
 		docked = false,
 		ftp = 0,
 		...ctx
@@ -37,6 +40,8 @@
 		tv?: boolean;
 		/** A phone in the hand: a 3×2 grid. */
 		phone?: boolean;
+		/** A free or route ride, where CLIMB opens by itself (ADR-0071 as amended). */
+		climbOpens?: boolean;
 		/**
 		 * Over the world, one panel at the left edge (#3668): the page control
 		 * ← name → with dots (D15), the head — the 3 s power, W/kg, the zone,
@@ -49,9 +54,14 @@
 	} = $props();
 
 	let page = $state<ComputerPage>('ride');
-	const pages = $derived(pagesFor(ctx.stats, ctx.race));
+	const pages = $derived(pagesFor(ctx));
 	const shown = $derived(pages.includes(page) ? page : 'ride');
 	const fields = $derived(fieldsFor(shown, { ...ctx, ownHead: docked }));
+	// Docked under a target the head's track takes the profile's room; the
+	// Skyline under the computer draws the climb and your dot.
+	const profile = $derived(
+		shown === 'climb' && !!ctx.climb && !(docked && ctx.target),
+	);
 	const turns = $derived(pages.length > 1);
 
 	function turn(dir: 1 | -1) {
@@ -83,6 +93,18 @@
 		pulse(gearField);
 	});
 
+	// On a free or route ride CLIMB opens by itself from RIDE when a climb
+	// begins (ADR-0071 as amended, #3645), once a climb: a rider on another
+	// page chose it, and a chip says where the climb is instead; one who paged
+	// away from CLIMB is not pulled back. A workout keeps RIDE, and its chip.
+	let openedFor: number | null = null;
+	$effect(() => {
+		const climb = ctx.climb?.climb.startM ?? null;
+		if (!climbOpens || climb === null || climb === openedFor) return;
+		openedFor = climb;
+		if (untrack(() => shown) === 'ride') page = 'climb';
+	});
+
 	const zoneStrip = $derived(
 		shown === 'power' && ctx.stats ? ctx.stats.zoneSeconds.slice(1, 8) : null,
 	);
@@ -107,13 +129,29 @@
 	<!-- The page's name and its dots sit in the row of numbers, so a page is
 	     one row tall where it fits and the focus above keeps its height (#3597);
 	     a phone's grid puts them above and below. -->
+	{#snippet badge()}
+		<!-- The climb's class in the Skyline's chip, beside every page's name
+		     while a classed climb is near: on CLIMB it names the climb, on the
+		     others it offers it (#3645), and it takes no row of its own. -->
+		{#if ctx.climb}<span
+				data-testid={shown === 'climb' ? 'climb-class' : 'climb-chip'}
+				class="border-neon bg-surface text-ink rounded border px-1 leading-none font-bold tracking-normal"
+				>{#if shown !== 'climb'}<span class="sr-only">{'climb '}</span>{/if}{ctx
+					.climb.card.cls}</span
+			>{/if}
+	{/snippet}
 	{#snippet name()}
+		<!-- CLIMB's name counts the climbs. -->
 		<p
-			class="{size.word} text-muted leading-none tracking-[0.2em] {phone
+			class="{size.word} text-muted flex items-center gap-3 leading-none whitespace-nowrap {phone
 				? 'mb-2'
 				: ''}"
 		>
-			{PAGE_NAMES[shown]}
+			<span class="tracking-[0.2em]"
+				>{shown === 'climb' && ctx.climb
+					? climbHeader(ctx.climb)
+					: PAGE_NAMES[shown]}</span
+			>{@render badge()}
 		</p>
 	{/snippet}
 	{#snippet dots()}
@@ -185,7 +223,9 @@
 					class="icon-btn-lg -ml-2"><ChevronLeft size={24} /></button
 				>
 			{/if}
-			<p class="ride-label text-ink">{PAGE_NAMES[shown]}</p>
+			<p class="ride-label text-ink flex items-center gap-2">
+				{PAGE_NAMES[shown]}{@render badge()}
+			</p>
 			{#if turns}
 				<button
 					type="button"
@@ -261,8 +301,17 @@
 				{/if}
 			</div>
 		{/each}
-		{#if turns && !tv && !phone && !docked}{@render dots()}{/if}
+		{#if turns && !tv && !phone && !docked && !profile}{@render dots()}{/if}
 	</div>
 	{#if zoneStrip}{@render strip(zoneStrip)}{/if}
+	{#if profile && ctx.climb}
+		<!-- Flat, the dots ride beside the profile, so CLIMB is no taller than
+		     RIDE and the Skyline under it keeps its place; a narrow panel wraps
+		     them under it rather than squeeze the climb. -->
+		<div class="flex flex-wrap items-end gap-3">
+			<div class="min-w-60 flex-1"><ClimbProfile view={ctx.climb} {tv} /></div>
+			{#if turns && !tv && !phone && !docked}{@render dots()}{/if}
+		</div>
+	{/if}
 	{#if turns && phone}{@render dots()}{/if}
 </section>

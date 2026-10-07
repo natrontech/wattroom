@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { LiveStats } from '$lib/ride/live-stats.svelte';
+import type { ClimbView } from '$lib/ride/climb-view';
 import type { RaceReadout } from '$lib/race/race-view';
 import {
+	climbHeader,
 	fieldsFor,
 	pagesFor,
 	roadContext,
@@ -248,16 +250,69 @@ describe('the glow', () => {
 
 describe('the pages', () => {
 	it('keeps POWER for a screen with its own live numbers', () => {
-		expect(pagesFor(stats)).toEqual(['ride', 'power']);
-		expect(pagesFor(undefined)).toEqual(['ride']);
+		expect(pagesFor({ stats })).toEqual(['ride', 'power']);
+		expect(pagesFor({})).toEqual(['ride']);
 	});
 
 	it('turns both ways and wraps', () => {
-		const pages = pagesFor(stats);
+		const pages = pagesFor({ stats });
 		expect(turned(pages, 'ride', 1)).toBe('power');
 		expect(turned(pages, 'power', 1)).toBe('ride');
 		expect(turned(pages, 'ride', -1)).toBe('power');
 		expect(turned(['ride'], 'ride', 1)).toBe('ride');
+	});
+});
+
+describe('CLIMB (#3645)', () => {
+	const climb = (over: Partial<ClimbView['card']> = {}, toFootM = 0) =>
+		({
+			card: {
+				cls: 'I',
+				n: 3,
+				of: 4,
+				nextInM: 4800,
+				toTopM: 2400,
+				ascentLeftM: 186.4,
+				avgLeftPct: 7.77,
+				grade: 8.46,
+				flammeRouge: false,
+				summited: false,
+				...over,
+			},
+			climb: { startM: 1000, topM: 5000, gainM: 320, cls: 'I' },
+			m: 2600,
+			toFootM,
+			heightNow: 600,
+			bars: [],
+			lo: 500,
+			hi: 820,
+		}) as ClimbView;
+
+	it('is a page only while a classed climb is near, between RIDE and POWER', () => {
+		expect(pagesFor({ stats, climb: climb() })).toEqual([
+			'ride',
+			'climb',
+			'power',
+		]);
+		expect(pagesFor({ stats, climb: null })).toEqual(['ride', 'power']);
+	});
+
+	it('names the page by the climb it is on; the next climb is on the road line', () => {
+		expect(climbHeader(climb())).toBe('CLIMB 3 OF 4');
+		expect(climbHeader(climb({ nextInM: undefined, n: 4 }))).toBe(
+			'CLIMB 4 OF 4',
+		);
+	});
+
+	it('is to the top, ascent left and average left; grade is on the road line', () => {
+		const fields = fieldsFor('climb', ride({ climb: climb() }));
+		expect(fields.map((f) => [f.label, f.value, f.unit])).toEqual([
+			['To top', '2.4', 'km'],
+			['Ascent', '186', 'm'],
+			['Avg left', '7.8', '%'],
+		]);
+		const near = fieldsFor('climb', ride({ climb: climb({ toTopM: 420 }) }));
+		expect(near[0]).toMatchObject({ value: '400', unit: 'm' });
 	});
 });
 
@@ -274,9 +329,13 @@ describe('RACE (#3174)', () => {
 	});
 
 	it('is a page only while you race', () => {
-		expect(pagesFor(stats)).toEqual(['ride', 'power']);
-		expect(pagesFor(stats, race())).toEqual(['ride', 'power', 'race']);
-		expect(pagesFor(undefined, race())).toEqual(['ride', 'race']);
+		expect(pagesFor({ stats })).toEqual(['ride', 'power']);
+		expect(pagesFor({ stats, race: race() })).toEqual([
+			'ride',
+			'power',
+			'race',
+		]);
+		expect(pagesFor({ race: race() })).toEqual(['ride', 'race']);
 	});
 
 	it('is the gap to par, then your place in your Category, and W/kg stays in its one home', () => {

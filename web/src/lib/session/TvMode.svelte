@@ -11,6 +11,7 @@
 	import BikeComputer from '$lib/session/BikeComputer.svelte';
 	import Skyline from '$lib/ride/Skyline.svelte';
 	import type { SkylineView } from '$lib/road/skyline';
+	import type { ClimbView } from '$lib/ride/climb-view';
 
 	let {
 		riders,
@@ -25,6 +26,7 @@
 		code = '',
 		stats,
 		skyline = null,
+		climb = null,
 	}: {
 		riders: LiveRider[];
 		/** Your instrument has nothing paired to read (#2941). */
@@ -44,6 +46,8 @@
 		stats?: LiveStats;
 		/** A ride on a road: its horizon is the Skyline (#3641). */
 		skyline?: SkylineView | null;
+		/** The climb card, for the bike computer (#3645). */
+		climb?: ClimbView | null;
 	} = $props();
 
 	const you = $derived(riders.find((r) => r.you) ?? riders[0]);
@@ -132,6 +136,7 @@
 							stale={you.stale}
 							target={you.target > 0 ? you.target : undefined}
 							{stats}
+							{climb}
 						/>
 					</div>
 					{#if you.watts > 0}
