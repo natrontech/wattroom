@@ -287,9 +287,18 @@ surface(
 	{ once: true },
 );
 
-test.fixme('ride-free-road-world', () => {
-	// A free ride on a road draws no world yet: #3669 brings it.
-});
+surface(
+	'ride-free-road-world',
+	async (s) => {
+		// The world on: until #3669 a free ride on a road draws none, and the probe's world.mounted says so.
+		const o = await s.open(DESK, { world: true });
+		const road = await fixtureRoad(o.page, 'hairpin');
+		await ride(o.page, `/ride?road=${road}`);
+		await assertRiding(o.page);
+		await s.shot(o);
+	},
+	{ once: true },
+);
 
 test.fixme('ride-free-road-ghost', () => {
 	// Added by the ghost issue (#3245), with its seeded effort.

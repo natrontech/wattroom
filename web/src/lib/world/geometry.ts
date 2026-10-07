@@ -227,7 +227,7 @@ export function roadMaterial(c: Style['road']): THREE.MeshLambertMaterial {
 				float shoulder = smoothstep(${(ROAD_W / 2).toFixed(2)} - fw, ${(ROAD_W / 2).toFixed(2)} + fw, abs(u));
 				float verge = smoothstep(${(ROAD_W / 2 + 0.9).toFixed(2)} - fw, ${(ROAD_W / 2 + 0.9).toFixed(2)} + fw, abs(u));
 				// A grain cell is 12 cm of road; past about a pixel a cell it melts into the road's own grey.
-				float grain = grainAt(vRoad * 8.0) * (1.0 - smoothstep(0.08, 0.2, fw)) * (0.14 + 0.1 * shoulder);
+				float grain = grainAt(vRoad * 8.0) * (1.0 - smoothstep(0.08, 0.2, fw)) * (0.45 + 0.1 * shoulder);
 				vec3 col = mix(uAsphalt, uShoulder, shoulder) * (1.0 + grain);
 				col = mix(col, uLine, max(edge, centre) * (1.0 - shoulder));
 				col = mix(col, uVerge, verge);
