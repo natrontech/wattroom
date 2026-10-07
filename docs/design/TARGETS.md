@@ -139,7 +139,7 @@ World:
 22. Forest: across a 60 s sequence most frames show conifer stands within 10–30 m of the road on one side at least [multi:world-60s]; crowns cross the horizon line; trees in groups of varied height, never evenly spaced single cones; a meadow a clearing with a forest edge behind it; houses in small clusters near the road, judged where a hamlet is in sight [multi:world-hamlet]; no tree or building on the road, its shoulder or the corridor, the chase camera's sightline along the road (`ground.clearOf`) [test:web/src/lib/world/props/props.test.ts]. [world-forest]
 23. Your figure is ADR-0073's, on a drop-bar road bike with spoked wheels: kit, helmet, glasses, no face. Every kit passes the wardrobe's colour guard (`lib/world/placement/safety.ts`, `wattHueBandDeg` in catalogue.json). [world-figure]
 24. Framing: figure 20–30 % of canvas height [probe:figure.bboxH]; horizon ~40–45 % from the top; field of view never > 4° over its base [probe:camera.fov] [multi:world-drift]. [3211-camera]
-25. One thin flat ring under your wheels, in your live zone colour, no halo; band width as SPEC “The world” records. [probe:ring.bandM] [3086-names-ring]
+25. One thin flat ring under your wheels, in your live zone colour, no halo; band width as SPEC “The world” records. [probe:ring.bandM] [test:web/src/lib/world/ride-scene.test.ts] [3086-names-ring]
 26. Your trail the only glowing or additive element: a thin line ~a wheel wide, fading out within a short fixed length behind you; never a wedge or fill. [3663-world-is-your-ride]
 27. On real ground the frame carries the map and height credits. [#3133]
 
@@ -238,8 +238,8 @@ Capture: two dev riders (Designer and a second, name letters only) in one crew's
 1. Crew panel under the seat in the right column, ~18 % wide; rows ≥ 44 px; your row tinted neon at ~16 %; no crew number in watt. [ride-surface]
 2. Moment card top-centre; border watt while live. [ride-surface]
 3. Seat clear; the now-playing line directly under it at the seat's width. [ride-surface]
-4. Name tags: small dark pills with a hairline, only over the two nearest riders and anyone speaking; merged when they would overlap; never in the corridor's lower half. [3086-names-ring]
-5. A crewmate's ring shows only where you may see their numbers (ADR-0059). [3086-names-ring]
+4. Name tags: small dark pills with a hairline, only over the two nearest riders and anyone speaking; merged when they would overlap; never in the corridor's lower half, nor over a panel, the chevron or a cheer's thumb. [test:web/src/lib/world/tags.test.ts] [3086-names-ring]
+5. A crewmate's ring shows only where you may see their numbers (ADR-0059). [test:web/src/lib/world/ride-scene.test.ts] [3086-names-ring]
 6. Both riders in the world: two figures abreast on the road, each in its own kit, not overlapping; your figure still in `RIDER_BOX`. [#3098]
 7. The session's coach (here, you) wears a small violet chevron over the head: flat, unlit, the only one on the road. [#3098]
 8. Formation, the front row's turn every 120 s, a far rider dithering to their place, the pull-over and the team car hold as SPEC “Riding a road together” says. [test:web/src/lib/world/bunch.test.ts] [#3098]
@@ -365,7 +365,7 @@ Capture: `/dev/world`, 9 s in, 1440 × 900; superseded by world-start and world-
 2. Road as ride-road-world item 21; orange snow poles belong to #3184. [world-road-surface]
 3. Forest stands close to the road, no single cones on bare meadow; houses in small clusters, judged where a hamlet is in sight [multi:world-hamlet]. [world-forest]
 4. The dev crew rides as ADR-0073 figures in distinct kits. [world-figure]
-5. Names over the two nearest riders and anyone speaking; rings thin and flat. [3086-names-ring]
+5. Names over the two nearest riders and anyone speaking; rings thin and flat. [test:web/src/lib/world/tags.test.ts] [3086-names-ring]
 
 #### world-start, world-end
 

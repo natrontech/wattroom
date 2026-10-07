@@ -36,11 +36,11 @@ import type { Style } from './styles';
 // gallery's crew spreads abreast; a bunch rides its formation (bunch.ts).
 const KEEP_RIGHT = -ROAD_W / 4;
 /** Where the coach's chevron sits: just over a rider's helmet. */
-const CHEVRON_Y = 1.82;
+export const CHEVRON_Y = 1.82;
 /** About a helmet wide on a rider: worn, not a marker on the road ahead. */
 const CHEVRON_SCALE = 0.65;
 /** A cheer's thumb (#3116): over the helmet, clear of a coach's chevron. */
-const THUMB_Y = 2.22;
+export const THUMB_Y = 2.22;
 /** Riders drawn in full detail, you among them (docs/SPEC.md "The world"); the rest take LOD1. */
 const NEAR = 3;
 /** Seconds between choosing who is near: a swap rebuilds a figure. */

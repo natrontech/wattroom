@@ -124,7 +124,7 @@ export function rideLook(
 		},
 		tag: {
 			bg: paint('color-surface'),
-			line: paint('color-edge'),
+			line: paint('color-neon'),
 			ink: paint('color-ink'),
 		},
 	};

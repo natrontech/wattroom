@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { CORRIDOR } from '$lib/session/docks';
 import { STYLES } from '../../routes/(app)/dev/world/styles';
 import type { SimRider } from './sim';
+import { CHEVRON_Y, THUMB_Y } from './crew';
 import { carriers, lay, makeTags, PILL_H, TEXT_H, textOf } from './tags';
 
 const rider = (id: string, d: number, more: Partial<SimRider> = {}) =>
@@ -42,17 +43,41 @@ describe('name tags over riders (#3086)', () => {
 		expect(laid[0].speaking).toBe(true);
 	});
 
-	it('never sits in the lower half of the keep-clear corridor', () => {
+	it('keeps to the upper half of the keep-clear corridor, clear of the panels beside it', () => {
 		const middle = (CORRIDOR.y0 + CORRIDOR.y1) / 2;
-		const [t] = lay(
-			[{ text: 'Ana', speaking: false, x: 0.5, y: 0.6 }],
-			16 / 10,
+		for (const x of [0.5, 0.2, 0.9]) {
+			const [t] = lay([{ text: 'Ana', speaking: false, x, y: 0.6 }], 16 / 10);
+			expect(t.y + PILL_H / 2).toBeLessThanOrEqual(middle + 1e-9);
+			const half = (TEXT_H * 0.6 * 3 + PILL_H) / (16 / 10) / 2;
+			expect(t.x - half).toBeGreaterThanOrEqual(CORRIDOR.x0 - 1e-9);
+			expect(t.x + half).toBeLessThanOrEqual(CORRIDOR.x1 + 1e-9);
+		}
+	});
+
+	it('stands over a cheer’s thumb while it shows, and just over the helmet otherwise', () => {
+		const style = STYLES.find((s) => s.id === 'bluehour') ?? STYLES[0];
+		const camera = new THREE.PerspectiveCamera(52, 16 / 10, 1, 1000);
+		camera.position.set(0, 1.5, 8);
+		camera.lookAt(0, 1.5, 0);
+		camera.updateMatrixWorld();
+		const at = () => new THREE.Vector3(0, 0, 0);
+		const foot = (cheer: SimRider['cheer']) => {
+			const tags = makeTags(style);
+			tags.update(
+				[rider('me', 0, { you: true }), rider('a', 1, { cheer })],
+				at,
+				camera,
+				false,
+			);
+			const [s] = tags.group.children as THREE.Sprite[];
+			return s.position.clone().project(camera).y - PILL_H;
+		};
+		const thumbTop = new THREE.Vector3(0, THUMB_Y + 0.16, 0).project(camera).y;
+		const helmet = new THREE.Vector3(0, CHEVRON_Y, 0).project(camera).y;
+		expect(foot({ thumb: 1, alpha: 1, lit: true })).toBeGreaterThanOrEqual(
+			thumbTop,
 		);
-		expect(t.y + PILL_H / 2).toBeLessThanOrEqual(middle + 1e-9);
-		// Beside the corridor it stays where its rider is.
-		expect(
-			lay([{ text: 'Ana', speaking: false, x: 0.2, y: 0.6 }], 16 / 10)[0].y,
-		).toBe(0.6);
+		expect(foot(null)).toBeCloseTo(helmet, 5);
 	});
 
 	it('is at least 16 arcmin tall at the design distance: 18 px of text in a 900 px frame', () => {

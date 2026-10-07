@@ -1,11 +1,12 @@
-// Name tags over riders (#3086, ADR-0073): small dark pills with a hairline
-// and ink text, over the two riders nearest you and anyone speaking — never
-// over you, never neon, never glowing. Tags that would overlap merge into
-// one; none sits in the lower half of the keep-clear corridor, where the road
-// ahead is.
+// Name tags over riders (#3086, ADR-0073): small dark pills with a neon
+// hairline and ink text, over the two riders nearest you and anyone speaking
+// — never over you, never glowing. Tags that would overlap merge into one;
+// each keeps to the keep-clear corridor's upper half, clear of the panels
+// beside it and of the road ahead below.
 import * as THREE from 'three';
 import { CORRIDOR } from '$lib/session/docks';
 import { tag } from './family';
+import { CHEVRON_Y, THUMB_Y } from './crew';
 import { FONT, paintedTexture } from './furniture';
 import type { SimRider } from './sim';
 import type { Style } from './styles';
@@ -20,8 +21,13 @@ export const PILL_H = 30 / 900;
 export const TEXT_H = 20 / 900;
 /** A character's width as a share of the text's height: Barlow at its widest. */
 const CHAR_W = 0.6;
-/** Over the helmet, clear of the coach's chevron and a cheer's thumb. */
-const TAG_Y = 2.35;
+/** Where a tag's foot sits: just over the helmet, or over the coach's chevron or a cheer's thumb while they are worn. */
+const footOf = (r: SimRider) =>
+	r.cheer && r.cheer.thumb > 0
+		? THUMB_Y + 0.2
+		: r.coach
+			? CHEVRON_Y + 0.2
+			: CHEVRON_Y;
 
 /** A tag as the frame lays it: its words, and its centre as shares of the frame, from the top left. */
 export type Laid = { text: string; speaking: boolean; x: number; y: number };
@@ -46,13 +52,21 @@ export const textOf = (r: SimRider) =>
 const widthOf = (text: string, aspect: number) =>
 	(TEXT_H * CHAR_W * text.length + PILL_H) / aspect;
 
-/**
- * The tags as the frame shows them: any that would overlap merged into one,
- * left to right, and any in the corridor's lower half lifted to its middle.
- */
+/** A tag kept to the corridor's upper half: no panel beside it, no road ahead under it. */
+function keep(t: Laid, aspect: number): Laid {
+	const half = widthOf(t.text, aspect) / 2;
+	const middle = (CORRIDOR.y0 + CORRIDOR.y1) / 2;
+	return {
+		...t,
+		x: Math.min(Math.max(t.x, CORRIDOR.x0 + half), CORRIDOR.x1 - half),
+		y: Math.min(Math.max(t.y, CORRIDOR.y0 + PILL_H / 2), middle - PILL_H / 2),
+	};
+}
+
+/** The tags as the frame shows them: kept to the corridor's upper half, and any that would overlap merged into one, left to right. */
 export function lay(tags: readonly Laid[], aspect: number): Laid[] {
 	const out: Laid[] = [];
-	for (const t of [...tags].sort((a, b) => a.x - b.x)) {
+	for (const t of tags.map((t) => keep(t, aspect)).sort((a, b) => a.x - b.x)) {
 		const prev = out.at(-1);
 		const overlaps =
 			prev &&
@@ -66,13 +80,9 @@ export function lay(tags: readonly Laid[], aspect: number): Laid[] {
 				x: (prev.x + t.x) / 2,
 				y: Math.min(prev.y, t.y),
 			};
-		else out.push({ ...t });
+		else out.push(t);
 	}
-	const middle = (CORRIDOR.y0 + CORRIDOR.y1) / 2;
-	for (const t of out)
-		if (t.x > CORRIDOR.x0 && t.x < CORRIDOR.x1 && t.y + PILL_H / 2 > middle)
-			t.y = middle - PILL_H / 2;
-	return out;
+	return out.map((t) => keep(t, aspect));
 }
 
 /** The pill as a texture: dark, a hairline, ink words; a speaking rider's hairline is the ink at twice the width. */
@@ -119,7 +129,7 @@ export function makeTags(style: Style) {
 				: lay(
 						carriers(riders).flatMap((r) => {
 							v.copy(at(r))
-								.setY(at(r).y + TAG_Y)
+								.setY(at(r).y + footOf(r))
 								.project(camera);
 							if (v.z > 1 || Math.abs(v.x) > 1 || Math.abs(v.y) > 1) return [];
 							deep.push(v.z);
@@ -128,16 +138,16 @@ export function makeTags(style: Style) {
 									text: textOf(r),
 									speaking: !!r.speaking,
 									x: (v.x + 1) / 2,
-									y: (1 - v.y) / 2,
+									y: (1 - v.y) / 2 - PILL_H / 2,
 								},
 							];
 						}),
 						camera.aspect,
 					);
 			const z = deep.length ? Math.min(...deep) : 0.5;
-			const keep = new Set(laid.map((t) => `${t.text}|${t.speaking}`));
+			const shown = new Set(laid.map((t) => `${t.text}|${t.speaking}`));
 			for (const [key, s] of drawn)
-				if (!keep.has(key)) {
+				if (!shown.has(key)) {
 					group.remove(s);
 					s.material.map?.dispose();
 					s.material.dispose();
