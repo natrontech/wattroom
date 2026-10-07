@@ -15,7 +15,12 @@
 	 */
 	import { formatClock } from '$lib/format';
 	import { roadLine } from '$lib/ride/road-readout';
-	import { blockBands, type Block } from '$lib/workout/block';
+	import {
+		blockBands,
+		nextFor,
+		trainerChip,
+		type Block,
+	} from '$lib/workout/block';
 	import type { Snippet } from 'svelte';
 
 	let {
@@ -117,10 +122,7 @@
 					target
 					{#if drives && block.trainer.kind !== 'road'}<span
 							data-testid="trainer-chip"
-							class={CHIP}
-							>{block.trainer.kind === 'scenery'
-								? 'ERG: the road is scenery'
-								: `ERG ${block.watts} W`}</span
+							class={CHIP}>{trainerChip(block)}</span
 						>{/if}
 				</p>
 				<p
@@ -136,9 +138,7 @@
 			     and the grade the trainer is given for it (ADR-0062). -->
 			<p class="shrink-0 self-center">
 				<span data-testid="trainer-chip" class="{CHIP} eyebrow"
-					>ROAD {block.trainer.grade.toFixed(1)} % · feel {block.trainer.felt.toFixed(
-						1,
-					)} %</span
+					>{trainerChip(block)}</span
 				>
 			</p>
 		{/if}
@@ -165,9 +165,7 @@
 				{#if block.next.watts > 0}<span class="num text-neon"
 						>{block.next.watts} W</span
 					>{/if}
-				for {block.next.seconds < 60
-					? `${block.next.seconds} s`
-					: `${Math.round(block.next.seconds / 60)} min`}
+				for {nextFor(block.next.seconds)}
 			</p>
 		{/if}
 		{#if block.last}
