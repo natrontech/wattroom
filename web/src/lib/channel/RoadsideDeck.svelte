@@ -65,7 +65,7 @@
 		<p class="text-muted text-2xl">Chalk the next climb</p>
 		<div
 			role="group"
-			class="grid grid-cols-6 gap-1.5"
+			class="grid grid-cols-6 gap-2"
 			aria-label="chalk the next climb"
 		>
 			{#each STAMPS as stamp (stamp)}
@@ -87,11 +87,12 @@
 				</button>
 			{/each}
 		</div>
-		<!-- One line, one voice: the answer to the last tap first, else why
-		     the stamps are off. -->
-		{#if live.roadsideRefusal || !spot}
+		<!-- One line, one voice: why the stamps are off first, so a refusal
+		     never sends you to a next climb there isn't; else the answer to
+		     the last tap. -->
+		{#if !spot || live.roadsideRefusal}
 			<p role="status" class="text-2xl">
-				{live.roadsideRefusal ?? 'No climb left ahead to chalk.'}
+				{spot ? live.roadsideRefusal : 'No climb left ahead to chalk.'}
 			</p>
 		{/if}
 	{/if}

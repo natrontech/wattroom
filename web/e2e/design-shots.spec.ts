@@ -433,6 +433,18 @@ surface('roadside-chalk', async (s) => {
 				(r: { d: number }) => r.d,
 			),
 		);
+		// A stamp where the bunch has already ridden is refused while the
+		// climb is still open, and the deck says why and where to try.
+		socket?.send(
+			JSON.stringify({
+				roadside: { kind: 'paint', stamp: 'hopp', atM: ahead - 1 },
+			}),
+		);
+		await watcher.page
+			.getByRole('status')
+			.filter({ hasText: 'Try' })
+			.scrollIntoViewIfNeeded();
+		await s.shot(watcher, { name: 'roadside-chalk-refused' });
 		socket?.send(
 			JSON.stringify({
 				roadside: { kind: 'paint', stamp: 'heart', atM: ahead + 30 },
@@ -446,17 +458,6 @@ surface('roadside-chalk', async (s) => {
 			.getByText('No climb left ahead to chalk.')
 			.scrollIntoViewIfNeeded();
 		await s.shot(watcher, { name: 'roadside-chalk-spent' });
-		// A second stamp on that climb is refused, and the deck says why.
-		socket?.send(
-			JSON.stringify({
-				roadside: { kind: 'paint', stamp: 'hopp', atM: ahead + 300 },
-			}),
-		);
-		await watcher.page
-			.getByRole('status')
-			.filter({ hasText: 'is chalked' })
-			.scrollIntoViewIfNeeded();
-		await s.shot(watcher, { name: 'roadside-chalk-refused' });
 	} finally {
 		await endSession(coach.page);
 	}
