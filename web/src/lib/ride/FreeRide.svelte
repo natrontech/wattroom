@@ -1,36 +1,25 @@
 <script lang="ts">
 	// The free ride (ADR-0059): the channel's riding surface with no workout
 	// and no session — you set the watts or the grade, stay in the call, and
-	// End ride saves it like any ride. ADR-0046's one surface: the same
-	// instrument and secondary row a session draws, with the rider's own
-	// control where the workout's target would be.
+	// End ride saves it like any ride. ADR-0046's one surface: the riding
+	// surface a road free ride draws (FreeRiding, #3669), with the rider's
+	// own control where the workout's transport would be.
 	import { onMount } from 'svelte';
 	import { useChannel } from '$lib/channel/context';
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { ridePath } from '$lib/channel/address';
 	import { liveSessionId } from '$lib/channel/tick-session';
-	import { formatClock } from '$lib/format';
 	import Banner from '$lib/components/Banner.svelte';
-	import Instrument from '$lib/session/Instrument.svelte';
-	import BikeComputer from '$lib/session/BikeComputer.svelte';
-	import { roadContext } from '$lib/session/computer-pages';
 	import HrShare from '$lib/channel/HrShare.svelte';
 	import SessionControls from '$lib/session/SessionControls.svelte';
 	import TrainerOverview from '$lib/session/TrainerOverview.svelte';
 	import { trainerTargetsNote } from '$lib/session/sensor-status';
 	import { deviceWord } from '$lib/device.svelte';
-	import { GRADE, WATTS, type FreeMode } from '$lib/ride/free-ride-controls';
-	import { modeLine } from '$lib/ride/mode-copy';
+	import FreeRiding from '$lib/ride/FreeRiding.svelte';
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
-	import GearShift from '$lib/ride/GearShift.svelte';
 	import { createGhostSplit } from '$lib/ride/ghost-split.svelte';
-	import RoadEnd from '$lib/ride/RoadEnd.svelte';
-	import { endRideLabel, roadEndOffered } from '$lib/ride/road-end';
 	import RoadPick from '$lib/ride/RoadPick.svelte';
-	import Skyline from '$lib/ride/Skyline.svelte';
 	import { roadsEnabled } from '$lib/ride/roads';
-	import Minus from '@lucide/svelte/icons/minus';
-	import Plus from '@lucide/svelte/icons/plus';
 	import Radio from '@lucide/svelte/icons/radio';
 
 	const channel = useChannel();
@@ -40,20 +29,6 @@
 
 	const targetsNote = $derived(
 		trainerTargetsNote(channel.pairing, deviceWord()),
-	);
-	const watts = $derived(free?.mode === 'watts');
-	// On a road the road chooses (#3027): its grade, or the watts it asks for.
-	const road = $derived(free?.road ?? null);
-	const value = $derived(
-		watts
-			? `${road ? (free?.targetWatts ?? 0) : (free?.watts ?? 0)} W`
-			: `${(road ? road.roadPct : (free?.grade ?? 0)).toFixed(1)} %`,
-	);
-	const atMin = $derived(
-		watts ? free?.watts === WATTS.min : free?.grade === GRADE.min,
-	);
-	const atMax = $derived(
-		watts ? free?.watts === WATTS.max : free?.grade === GRADE.max,
 	);
 	// A session beside you (ADR-0059): it leaves your trainer alone until you
 	// join, and joining saves this ride first.
@@ -68,42 +43,44 @@
 	// Your ghost on your own road, raced alone — never in a session (#3615,
 	// ADR-0068).
 	const ghost = createGhostSplit(() => (riding ? null : free));
-	const modes: { id: FreeMode; label: string }[] = $derived([
-		{ id: 'grade', label: road ? 'Road' : 'Grade' },
-		{ id: 'watts', label: 'Watts' },
-	]);
 </script>
 
-<div class="page flex h-full min-h-0 flex-col gap-6 overflow-y-auto pb-20">
-	<header class="flex flex-wrap items-center gap-3">
-		<p class="eyebrow">free ride</p>
-		<span class="font-display text-2xl font-bold tabular-nums"
-			>{formatClock(free?.seconds ?? 0)}</span
+{#snippet controls()}
+	<SessionControls compact />
+	<!-- Your own workout, beside anything running here (#2329): the same
+	     picker, the ride-alone lifecycle. It needs the trainer to hold
+	     its targets, so without one it says so rather than failing. -->
+	{#if !riding}
+		<button
+			onclick={() => channel.openPicker('ride')}
+			disabled={!channel.trainer}
+			title={channel.trainer ? undefined : 'Pair your trainer first'}
+			class="btn btn-secondary btn-lg disabled:opacity-40"
+			>Ride a workout</button
 		>
-		{#if !channel.trainer || targetsNote}<TrainerOverview compact />{/if}
-		<div class="ml-auto flex flex-wrap items-center gap-2">
-			<SessionControls compact />
-			<!-- Your own workout, beside anything running here (#2329): the same
-			     picker, the ride-alone lifecycle. It needs the trainer to hold
-			     its targets, so without one it says so rather than failing. -->
-			{#if !riding}
-				<button
-					onclick={() => channel.openPicker('ride')}
-					disabled={!channel.trainer}
-					title={channel.trainer ? undefined : 'Pair your trainer first'}
-					class="btn btn-secondary btn-lg disabled:opacity-40"
-					>Ride a workout</button
-				>
-			{/if}
-			{#if free?.recording}
-				<button
-					onclick={() => void free?.end()}
-					disabled={free?.saving}
-					class="btn btn-primary btn-lg">{endRideLabel(free)}</button
-				>
-			{/if}
-		</div>
-	</header>
+	{/if}
+{/snippet}
+
+{#snippet setup()}
+	{#if !channel.trainer || targetsNote}<TrainerOverview compact />{/if}
+	{#if free && roadsEnabled()}
+		<RoadPick {free} />
+	{/if}
+	<!-- Armed, not yet ridden: one line on what happens — the setup is not
+	     the ride yet. -->
+	<p class="text-muted text-2xl leading-6">
+		Pedal to start. It records while you ride and saves when you press End ride
+		— you stay in the call the whole time.
+	</p>
+{/snippet}
+
+{#snippet foot()}
+	<!-- A free ride shows the call your numbers (ADR-0059), heart rate
+	     included, so it says so under them (ADR-0008, #2804). -->
+	<HrShare class="px-4 pb-3" />
+{/snippet}
+
+<div class="page flex h-full min-h-0 flex-col gap-6 overflow-y-auto pb-20">
 	{#if conn?.ownRide.error}
 		<Banner tone="error">{conn.ownRide.error}</Banner>
 	{/if}
@@ -142,142 +119,46 @@
 		</div>
 	{/if}
 
-	{#if !riding}
-		<section class="grid content-center gap-6">
-			<Instrument
-				watts={channel.you.watts}
-				stale={channel.youStale}
-				idle={channel.youUnmeasured}
-				target={watts ? (free?.targetWatts ?? 0) : 0}
-				ftp={channel.you.ftp}
-			/>
-			<div class="flex flex-wrap items-center justify-center gap-4">
-				<div
-					class="border-muted/20 flex rounded-lg border p-1"
-					role="group"
-					aria-label="what you set"
-				>
-					{#each modes as mode (mode.id)}
-						<button
-							onclick={() => free?.setMode(mode.id)}
-							aria-pressed={free?.mode === mode.id}
-							class="btn btn-lg {free?.mode === mode.id
-								? 'btn-secondary'
-								: 'btn-ghost'}">{mode.label}</button
-						>
-					{/each}
-				</div>
-				<!-- On a road the road sets it, so the ± pair goes (#3027); in
-				     grade mode Easier and Harder below are what a rider moves. -->
-				<div class="flex items-center gap-3">
-					{#if !road}
-						<button
-							onclick={() => free?.nudge(-1)}
-							disabled={atMin}
-							class="btn btn-secondary btn-lg"
-							aria-label={watts ? 'fewer watts' : 'lower grade'}
-							><Minus size={18} /></button
-						>
-					{/if}
-					<span
-						class="font-display w-28 text-center text-3xl font-bold tabular-nums"
-						aria-live="polite">{value}</span
-					>
-					{#if !road}
-						<button
-							onclick={() => free?.nudge(1)}
-							disabled={atMax}
-							class="btn btn-secondary btn-lg"
-							aria-label={watts ? 'more watts' : 'steeper grade'}
-							><Plus size={18} /></button
-						>
-					{/if}
-				</div>
-			</div>
-			<!-- What the mode does, in one line (#3203): grade was the free ride
-			     without ERG a rider asked for, and the toggle never said so. -->
-			<p class="text-muted -mt-3 text-center text-sm">
-				{modeLine(
-					free?.mode ?? 'grade',
-					!!conn?.profile.current.singleSpeed,
-					!!road,
-				)}
-			</p>
-			{#if free && roadsEnabled()}
-				<div class="mx-auto w-full max-w-xl">
-					{#if roadEndOffered(free, !!riding)}
-						<RoadEnd {free} onsave={() => void free?.end()} />
-					{/if}
-					<RoadPick {free} />
-				</div>
-			{/if}
-			<!-- Grade mode shifts too (ADR-0084, amending ADR-0059): Easier and
-			     Harder below the grade pair, full width, the gear between. -->
-			{#if !watts && conn && gearsEnabled()}
-				<div class="mx-auto w-full max-w-xl">
-					<GearShift
-						shift={conn.shift}
-						gear={conn.ride.gear}
-						off={conn.ride.shiftOff}
-						resetAt={conn.ride.gearResetAt}
-						cassette={!conn.profile.current.singleSpeed}
-					/>
-				</div>
-			{/if}
-			<div>
-				<BikeComputer
-					cadence={channel.you.cadence}
-					stale={channel.youStale}
-					hr={channel.you.hr}
-					watts={channel.you.watts}
-					kg={channel.you.kg}
-					lthr={conn?.profile.current.lthr}
-					stats={free?.live}
-					grade={watts ? undefined : free?.grade}
-					{...road && roadContext(road)}
-					split={ghost.split ?? undefined}
-					gear={!watts && conn && gearsEnabled()
-						? conn.ride.gear.label
-						: undefined}
-				/>
-				<!-- A free ride shows the call your numbers (ADR-0059), heart rate
-				     included, so it says so under them (ADR-0008, #2804). -->
-				<HrShare class="mt-2" />
-			</div>
-			{#if road}
-				<!-- The horizon on a road (#3059): the road ahead and your dot. -->
-				<div class="h-40">
-					<Skyline
-						road={road.profile}
-						m={road.m}
-						mps={road.virtualMps}
-						reverse={road.reverse}
-					/>
-				</div>
-			{/if}
-		</section>
+	{#if !riding && free && conn}
+		<FreeRiding
+			{free}
+			watts={channel.you.watts}
+			cadence={channel.you.cadence}
+			hr={channel.you.hr}
+			kg={channel.you.kg}
+			lthr={conn.profile.current.lthr}
+			ftp={channel.you.ftp}
+			stale={channel.youStale}
+			idle={channel.youUnmeasured}
+			gear={gearsEnabled() ? conn.ride.gear : undefined}
+			shift={conn.shift}
+			shiftOff={conn.ride.shiftOff}
+			cassette={!conn.profile.current.singleSpeed}
+			split={ghost.split ?? undefined}
+			onend={free.recording ? () => void free?.end() : undefined}
+			ending={free.saving}
+			{controls}
+			{setup}
+			{foot}
+			worldClass="-mx-4 -my-6 sm:-mx-8 sm:-my-8"
+		/>
 
-		{#if free?.saving}
+		{#if free.saving}
 			<p class="text-muted text-sm" role="status">Saving your free ride…</p>
-		{:else if free?.outcome && 'saved' in free.outcome}
+		{:else if free.outcome && 'saved' in free.outcome}
 			<p class="text-sm" role="status">
 				Saved. <a href="/history/{free.outcome.saved.id}" class="underline"
 					>See it in your history</a
 				> — and on Strava, if you connected it.
 			</p>
-		{:else if free?.outcome && 'failure' in free.outcome}
+		{:else if free.outcome && 'failure' in free.outcome}
 			<p class="text-danger text-sm" role="alert">
 				It did not save — {free.outcome.failure.message} It is kept on this device,
 				and <a href="/ride" class="underline">Ride</a> offers it again.
 			</p>
-		{:else if free?.outcome && 'short' in free.outcome}
+		{:else if free.outcome && 'short' in free.outcome}
 			<p class="text-muted text-sm" role="status">
 				Under a minute — nothing to save.
-			</p>
-		{:else if !free?.recording}
-			<p class="text-muted text-sm">
-				Pedal to start. It records while you ride and saves when you press End
-				ride — you stay in the call the whole time.
 			</p>
 		{/if}
 	{/if}

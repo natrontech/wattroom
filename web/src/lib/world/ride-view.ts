@@ -10,7 +10,9 @@
 /** Why a world that started stopped: its context lost, its build or shaders failed, its frames missed. */
 export type Failure = 'context-lost' | 'build-failed' | 'frames';
 
-export type SkylineReason = 'chosen' | 'motion' | 'capability' | Failure;
+/** `short`: the window is too short for the panels around the road (Jan, 2026-10-07, #3668). */
+export type SkylineReason =
+	'chosen' | 'motion' | 'capability' | 'short' | Failure;
 
 export type RideViewEnv = {
 	/** The rider's Flat road choice on this device; null while never made. */
@@ -58,4 +60,9 @@ export const REASONS: Record<SkylineReason, { line: string; retry: boolean }> =
 			retry: true,
 		},
 		frames: { line: 'Flat road — this screen dropped frames', retry: true },
+		// It comes back by itself when the window grows: nothing to press.
+		short: {
+			line: 'Flat road — this window is too short for the world',
+			retry: false,
+		},
 	};

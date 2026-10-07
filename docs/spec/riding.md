@@ -98,7 +98,7 @@ Every number below is a **default**, to be tuned in alpha and re-measured by the
   - In an ERG workout: bias **±1 %**, within **0.8–1.2** (#795).
   - In the free ride's watts mode: **±10 W**.
   - Anywhere else: disabled, with a one-line hint.
-- **Grade mode (default; amends ADR-0059).** The grade pair (**0.5 %** steps, as today) sits above. Easier / Harder sit below, full width, with the gear between them. Both are `btn-lg`. On a road the pair is Easier / Harder only.
+- **Grade mode (default; amends ADR-0059).** The grade pair (**0.5 %** steps, as today) and Easier / Harder sit in slot 1's control row, each `btn-lg`; the number the grade pair moves is slot 1's trainer chip, and the gear has one home, the RIDE page (TARGETS D17; #3669 settled the earlier "gear between them"). On a road the pair is Easier / Harder only.
 - **Announce (default).**
   - `shift-up` and `shift-down` cues on the cues bus: two short ticks, rising or falling.
   - The gear field reads "Gear 15", or "+3" when no real ratio is known.

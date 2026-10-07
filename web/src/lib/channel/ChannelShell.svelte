@@ -34,6 +34,7 @@
 	import { takeVoice, type VoiceIntent } from '$lib/channel/voice-intent';
 	import { stageSlot } from '$lib/channel/stage-slot.svelte';
 	import { modals } from '$lib/modals.svelte';
+	import { peopleFold } from '$lib/channel/people-fold.svelte';
 
 	let props: ChannelShellProps = $props();
 
@@ -324,8 +325,6 @@
 	);
 
 	// ── Connection fault + jukebox helpers ────────────────────────────────────
-
-	let peopleSheet = $state(false);
 </script>
 
 <svelte:window
@@ -340,11 +339,11 @@
 		// count ABOVE them means something is stacked on top (#1974). The
 		// picker also answers Escape itself (#2513); whichever runs first
 		// closes it and the other finds nothing left to do.
-		const mine = (layers.setup.open ? 1 : 0) + (peopleSheet ? 1 : 0);
+		const mine = (layers.setup.open ? 1 : 0) + (peopleFold.open ? 1 : 0);
 		if (navDrawer.open || modals.open > mine) return;
 		if (layers.tv) layers.tv = false;
 		else if (layers.setup.open) layers.setup.open = false;
-		else if (peopleSheet) peopleSheet = false;
+		else if (peopleFold.open) peopleFold.open = false;
 		else focusId = null;
 	}}
 />
@@ -405,12 +404,14 @@
 		</div>
 	</main>
 
-	<div class="hidden shrink-0 xl:block">
-		{@render panel()}
-	</div>
+	{#if !peopleFold.folded}
+		<div class="hidden shrink-0 xl:block">
+			{@render panel()}
+		</div>
+	{/if}
 </div>
 
-<PeopleSheet bind:open={peopleSheet} {panel} />
+<PeopleSheet bind:open={peopleFold.open} folded={peopleFold.folded} {panel} />
 
 {#snippet panel()}
 	<SidePanel

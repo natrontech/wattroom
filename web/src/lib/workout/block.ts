@@ -199,3 +199,15 @@ export function describeBlock(
 		...(road && { road }),
 	};
 }
+
+/** Slot 1's trainer chip (#3485): how the trainer rides this block. */
+export function trainerChip(block: Pick<Block, 'trainer' | 'watts'>): string {
+	const t = block.trainer;
+	if (t.kind === 'scenery') return 'ERG: the road is scenery';
+	if (t.kind === 'erg') return `ERG ${block.watts} W`;
+	return `ROAD ${t.grade.toFixed(1)} % · feel ${t.felt.toFixed(1)} %`;
+}
+
+/** How long the next block runs, as NEXT says it (D16): "15 s", "5 min". */
+export const nextFor = (seconds: number): string =>
+	seconds < 60 ? `${seconds} s` : `${Math.round(seconds / 60)} min`;

@@ -69,6 +69,10 @@
 	const road = $derived(reverse ? turnedRound(stored) : stored);
 	const m = $derived(reverse ? stored.length - storedM : storedM);
 
+	// The profile keeps half a dot clear above and below, so the dot sits
+	// wholly inside its panel at a summit and in a valley (#3668).
+	const pad = $derived(tv ? '2vh' : '12px');
+	const uid = $props.id();
 	let width = $state(0);
 	let height = $state(0);
 	const climbs = $derived(climbsOf(road));
@@ -138,68 +142,92 @@
 </script>
 
 <div
-	bind:clientWidth={width}
-	bind:clientHeight={height}
 	data-testid="skyline"
 	data-along={Math.round(m)}
 	role="img"
 	aria-label="the road ahead: {((road.length - m) / 1000).toFixed(1)} km to go"
 	class="relative h-full w-full overflow-hidden"
 >
-	{#if frame}
-		<div
-			class="absolute inset-y-0 left-0 will-change-transform"
-			style:transform="translateX({-shift}px)"
-		>
-			{#each tiles as tile (tile.index)}
-				<svg
-					width={tile.width}
-					{height}
-					style:left="{tile.left}px"
-					class="absolute top-0 overflow-visible forced-color-adjust-none"
-					aria-hidden="true"
-				>
-					{#each tile.areas as area, step (step)}
-						{#if area}<path
-								d={area}
-								class="{GRADE_FILL[step]} forced-colors:fill-[GrayText]"
-							/>{/if}
-					{/each}
-					<path
-						d={tile.line}
-						fill="none"
-						class="stroke-neon forced-colors:stroke-[CanvasText]"
-						stroke-width={tv ? 3 : 2}
-					/>
-				</svg>
-			{/each}
-			{#each blocks as block, i (i)}
+	<div
+		bind:clientWidth={width}
+		bind:clientHeight={height}
+		class="absolute inset-x-0"
+		style:top={pad}
+		style:bottom={pad}
+	>
+		{#if frame}
+			<div
+				class="absolute inset-y-0 left-0 will-change-transform"
+				style:transform="translateX({-shift}px)"
+			>
+				{#each tiles as tile (tile.index)}
+					{@const cut = Math.max(0, (dot?.x ?? 0) + shift - tile.left)}
+					<svg
+						width={tile.width}
+						{height}
+						style:left="{tile.left}px"
+						class="absolute top-0 overflow-visible forced-color-adjust-none"
+						aria-hidden="true"
+					>
+						{#each tile.areas as area, step (step)}
+							{#if area}<path
+									d={area}
+									class="{GRADE_FILL[step]} forced-colors:fill-[GrayText]"
+								/>{/if}
+						{/each}
+						<!-- The road ridden is muted, the road ahead neon (TARGETS
+					     ride-road-world 11): one line, cut at the dot. -->
+						<clipPath id="{uid}-{tile.index}">
+							<rect
+								x={cut}
+								y={-height}
+								width={tile.width}
+								height={height * 3}
+							/>
+						</clipPath>
+						<path
+							d={tile.line}
+							fill="none"
+							class="stroke-muted forced-colors:stroke-[GrayText]"
+							stroke-width={tv ? 3 : 2}
+						/>
+						<path
+							d={tile.line}
+							fill="none"
+							clip-path="url(#{uid}-{tile.index})"
+							class="stroke-neon forced-colors:stroke-[CanvasText]"
+							stroke-width={tv ? 3 : 2}
+						/>
+					</svg>
+				{/each}
+				{#each blocks as block, i (i)}
+					<span
+						class="{ZONE_BG[block.zone]} absolute bottom-0 h-1.5"
+						style:left="{block.x}px"
+						style:width="{block.width}px"
+					></span>
+				{/each}
+				{#each chips as chip, i (i)}
+					<span
+						class="border-neon bg-surface text-ink absolute -mt-1 -translate-x-1/2 -translate-y-full rounded border px-1 leading-none font-bold {tv
+							? 'text-[3vh]'
+							: 'text-sm'}"
+						style:left="{chip.x}px"
+						style:top="{chip.y}px">{chip.cls}</span
+					>
+				{/each}
+			</div>
+			{#if dot}
+				<!-- The only glow: a halo painted once, never a filter (#2998). -->
 				<span
-					class="{ZONE_BG[block.zone]} absolute bottom-0 h-1.5"
-					style:left="{block.x}px"
-					style:width="{block.width}px"
+					data-testid="skyline-dot"
+					class="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 rounded-full will-change-transform forced-color-adjust-none forced-colors:bg-[Highlight] {tv
+						? 'size-[4vh]'
+						: 'size-6'}"
+					style:transform="translate({dot.x}px, {dot.y}px)"
+					style:background-image={HALO}
 				></span>
-			{/each}
-			{#each chips as chip, i (i)}
-				<span
-					class="border-neon bg-surface text-ink absolute -mt-1 -translate-x-1/2 -translate-y-full rounded border px-1 leading-none font-bold {tv
-						? 'text-[3vh]'
-						: 'text-sm'}"
-					style:left="{chip.x}px"
-					style:top="{chip.y}px">{chip.cls}</span
-				>
-			{/each}
-		</div>
-		{#if dot}
-			<!-- The only glow: a halo painted once, never a filter (#2998). -->
-			<span
-				data-testid="skyline-dot"
-				class="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 rounded-full will-change-transform forced-color-adjust-none forced-colors:bg-[Highlight] {tv
-					? 'size-[4vh]'
-					: 'size-6'}"
-				style:transform="translate({dot.x}px, {dot.y}px)"
-				style:background-image={HALO}
-			></span>
+			{/if}
 		{/if}
-	{/if}
+	</div>
 </div>

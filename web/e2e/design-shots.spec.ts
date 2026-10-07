@@ -122,7 +122,9 @@ surface(
 			const o = await s.open(device, { world: true });
 			const road = await fixtureRoad(o.page, 'hairpin');
 			await ride(o.page, `/ride?w=openers&road=${road}&from=0`);
-			await assertRiding(o.page, true);
+			// 1280 × 720 is shorter than the box table holds: it rides the flat
+			// road and says why (Jan, 2026-10-07, #3668).
+			await assertRiding(o.page, device !== DESK_720);
 			// Item 16's distance, however long the road takes to get there (#3834).
 			await atReading(o.page, 'km 0.1 of 7.1');
 			await s.shot(o, { name });
@@ -258,7 +260,8 @@ surface(
 			.getByRole('button', { name: /^Start (riding|the ride)$/ })
 			.first()
 			.click();
-		await o.page.getByText(/^starting$/i).waitFor({ timeout: 5000 });
+		// The digit, flat or over the world (#3668).
+		await o.page.getByTestId('count-in').waitFor({ timeout: 5000 });
 		await s.shot(o, { name: 'ride-countin-first' });
 		await o.page.waitForTimeout(1000);
 		await s.shot(o);
@@ -290,11 +293,11 @@ surface(
 surface(
 	'ride-free-road-world',
 	async (s) => {
-		// The world on: until #3669 a free ride on a road draws none, and the probe's world.mounted says so.
+		// The world on: a free ride on a road draws it in slot 2 (#3669).
 		const o = await s.open(DESK, { world: true });
 		const road = await fixtureRoad(o.page, 'hairpin');
 		await ride(o.page, `/ride?road=${road}`);
-		await assertRiding(o.page);
+		await assertRiding(o.page, true);
 		await s.shot(o);
 	},
 	{ once: true },
@@ -1128,6 +1131,12 @@ surface(
 				.click();
 			await coach.page.waitForTimeout(1200);
 			await s.shot(coach, { name: 'ride-session-cheer' });
+			// A sprint armed (D12, #3668): over the world, its moment card, top-
+			// centre where it fits and under the seat where it does not.
+			await coach.page.getByRole('button', { name: 'arm a sprint' }).click();
+			await coach.page.getByTestId('moment-card').waitFor({ timeout: 10_000 });
+			await coach.page.waitForTimeout(500);
+			await s.shot(coach, { name: 'ride-session-sprint' });
 		} finally {
 			await endSession(coach.page);
 		}

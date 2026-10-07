@@ -8,7 +8,9 @@ import { scan, stale, type Allowlist } from './source-scan.test-helper';
  */
 const ALLOWLIST: Allowlist = {
 	'lib/session/Instrument.svelte':
-		"docs/SPEC.md's Motion: the watts numeral keeps its 250 ms transform glide (#3200), and the gauge fill glides with it",
+		"docs/SPEC.md's Motion: the watts numeral keeps its 250 ms transform glide (#3200)",
+	'lib/session/PowerTrack.svelte':
+		"the gauge fill glides with the watts numeral's 250 ms (#3200), wherever the track is drawn",
 };
 
 /** `duration-200` and `duration-[250ms]` — not `duration-(--dur-base)`. */

@@ -5,6 +5,7 @@
  * mid-ride, never a second that drew well again. Loads no three.js.
  */
 import { prefersReducedMotion } from '$lib/motion';
+import { WORLD_MIN_PX } from '$lib/session/docks';
 import { worldSlotOn } from './flag';
 import {
 	rideView,
@@ -14,6 +15,16 @@ import {
 } from './ride-view';
 
 const FLAT_KEY = 'wattroom.flat-road.v1';
+
+// The window's height, kept for every ride on the page by one listener.
+const viewport = $state({
+	height: typeof window === 'undefined' ? Infinity : window.innerHeight,
+});
+if (typeof window !== 'undefined')
+	window.addEventListener(
+		'resize',
+		() => (viewport.height = window.innerHeight),
+	);
 
 /** The rider's Flat road choice on this device; null while never made. */
 export function flatRoad(): boolean | null {
@@ -60,12 +71,20 @@ export function createWorldView() {
 				})
 			: null;
 	let view = $state<RideView | null>(decide());
-	const reason = (): SkylineReason | null =>
-		view === null || view === 'world' ? null : view.skyline;
+	// The window's height is live, unlike a failure: the world comes back
+	// the moment the window holds its panels again.
+	const shown = (): RideView | null =>
+		view === 'world' && viewport.height < WORLD_MIN_PX
+			? { skyline: 'short' }
+			: view;
+	const reason = (): SkylineReason | null => {
+		const v = shown();
+		return v === null || v === 'world' ? null : v.skyline;
+	};
 	return {
 		/** The world draws in slot 2. */
 		get on() {
-			return view === 'world';
+			return shown() === 'world';
 		},
 		/** Why this ride is on the Skyline; null in the world, or where this device has no world slot. */
 		get reason() {
@@ -74,6 +93,17 @@ export function createWorldView() {
 		fail(why: Failure) {
 			failure = why;
 			view = decide();
+		},
+		/**
+		 * The world's own chunk (three.js), loaded for the ride; a renderer
+		 * that does not load is this ride's failure, and the Skyline's.
+		 */
+		load() {
+			return import('$lib/world/RideWorld.svelte').catch((err: unknown) => {
+				console.error('world: the renderer did not load', err);
+				this.fail('build-failed');
+				throw err;
+			});
 		},
 		/** The world's context menu: the flat road, from now on, on this device. */
 		flatten() {

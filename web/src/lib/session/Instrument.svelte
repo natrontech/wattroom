@@ -7,15 +7,10 @@
 	// track that marks the tolerance band, so "left or right of the bright
 	// slot" reads before any digit does. clamp() keeps it on screen at 0 W and
 	// at a sprint without a resize observer.
-	import {
-		CEILING,
-		fillPct,
-		ZONE_BG,
-		ZONE_NAMES,
-		zoneOf,
-	} from '$lib/components/zones';
+	import { CEILING, fillPct, ZONE_NAMES, zoneOf } from '$lib/components/zones';
 	import { targetState } from '$lib/channel/types';
 	import ZoneDot from '$lib/components/ZoneDot.svelte';
+	import PowerTrack from '$lib/session/PowerTrack.svelte';
 
 	// Primitives, not a LiveRider: the solo ride and the ramp test have watts
 	// and a target without a roster to belong to, and coupling the instrument
@@ -66,51 +61,6 @@
 	const numeral = $derived(quiet ? 'text-muted' : 'text-watt glow-text-strong');
 </script>
 
-{#snippet track(height: string)}
-	<div class="relative {height}">
-		<div
-			data-testid="power-gauge"
-			class="bg-surface-raised absolute inset-0 overflow-hidden rounded-full forced-colors:border"
-		>
-			<!-- Forced colours (#2860): the track keeps an edge, and the slot and
-			     the target speak Highlight; app.css paints the fill. -->
-			{#if state.has}
-				<!-- The slot you are aiming at. -->
-				<div
-					data-testid="gauge-slot"
-					class="bg-neon/30 absolute inset-y-0 forced-color-adjust-none forced-colors:bg-[Highlight]/40"
-					style="left: {pct(target - state.band)}%; width: {pct(
-						target + state.band,
-					) - pct(target - state.band)}%"
-				></div>
-			{/if}
-			<!-- Literal zone class: Tailwind scans source text, so a composed
-			     `bg-z3/60` is never generated (zones.ts). Full strength — the ramp
-			     is contrast-gated at 3:1 and dimming it voids that. -->
-			<!-- Scaled, not sized (#2998): a width transition repaints the fill
-			     on every frame of its glide, and with it anything sharing its
-			     layer — the glowing number above, once, cost 18% GPU. A solid
-			     colour clipped by the track looks the same either way. -->
-			<div
-				class="ease-live absolute inset-0 origin-left transition-transform duration-[250ms]"
-				style="transform: scaleX({pct(shown) / 100})"
-			>
-				<div
-					data-testid="gauge-fill"
-					class="{ZONE_BG[zone]} h-full w-full"
-				></div>
-			</div>
-			{#if state.has}
-				<div
-					data-testid="gauge-target"
-					class="bg-neon absolute inset-y-0 w-1 forced-color-adjust-none forced-colors:bg-[Highlight]"
-					style="left: {pct(target)}%"
-				></div>
-			{/if}
-		</div>
-	</div>
-{/snippet}
-
 {#if compact}
 	<div class="flex items-center gap-6">
 		<span class="flex shrink-0 items-baseline gap-1.5">
@@ -120,7 +70,9 @@
 			>
 			<span class="eyebrow">w</span>
 		</span>
-		<span class="min-w-0 flex-1">{@render track('h-3')}</span>
+		<span class="min-w-0 flex-1"
+			><PowerTrack watts={shown} {target} {ftp} {fullScale} class="h-3" /></span
+		>
 		<span
 			class="shrink-0 text-xs tabular-nums {state.inBand
 				? 'text-ok'
@@ -180,7 +132,13 @@
 	</div>
 
 	<div class={tv ? 'mt-[1.5vh]' : 'mt-3'}>
-		{@render track(tv ? 'h-[4vh]' : 'h-12')}
+		<PowerTrack
+			watts={shown}
+			{target}
+			{ftp}
+			{fullScale}
+			class={tv ? 'h-[4vh]' : 'h-12'}
+		/>
 	</div>
 
 	<div

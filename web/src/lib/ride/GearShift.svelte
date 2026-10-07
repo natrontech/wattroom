@@ -1,16 +1,12 @@
 <script lang="ts">
 	/**
-	 * Easier / Harder on screen, with the gear between them (ADR-0084, #3330):
-	 * the pair a rider hits at arm's length, the gear they are in, what the
-	 * trainer cannot do in it, and the one line that says the keys work too.
-	 *
-	 * The gear is rider state, not live data (ADR-0005): neon, never the watt
-	 * accent, and it never glows. It pulses once when it changes and is read
-	 * out politely; the cues are the shifter's (ride-shift.ts), so a key and a
-	 * tap here sound the same.
+	 * Easier / Harder on screen (ADR-0084, #3330): the pair a rider hits at
+	 * arm's length, 44 px each, in slot 1's control row (TARGETS ride-free-road
+	 * 7). The gear itself has one home, the RIDE page (D17), where it pulses
+	 * on a change; what the trainer cannot do in this gear is the pair's
+	 * tooltip. The cues are the shifter's (ride-shift.ts), so a key and a tap
+	 * here sound the same.
 	 */
-	import { untrack } from 'svelte';
-	import { pulse } from '$lib/motion/transitions';
 	import type { Clamp } from '$lib/ride/drivetrain';
 	import { createLimitWatch, limitLine } from '$lib/ride/limit-line';
 	import type { RideShift } from '$lib/ride/ride-shift';
@@ -20,38 +16,15 @@
 		shift,
 		gear,
 		off,
-		resetAt,
 		cassette,
 	}: {
 		shift: Pick<RideShift, 'press' | 'release' | 'drop'>;
-		gear: { label: string; clamp: Clamp };
+		gear: { clamp: Clamp };
 		/** Why the pair cannot act here — its one-line hint — or null. */
 		off: string | null;
-		/** When the grant came back and the gear restarted at k = 1. */
-		resetAt: number;
 		/** A real cassette under the virtual gear: not a one-gear setup. */
 		cassette: boolean;
 	} = $props();
-
-	/** How long "Gear back to your real gear" stays on the field (#3330). */
-	const RESET_SHOWN_MS = 5_000;
-
-	let reset = $state(false);
-	$effect(() => {
-		if (!resetAt) return;
-		reset = true;
-		const hide = setTimeout(() => (reset = false), RESET_SHOWN_MS);
-		return () => clearTimeout(hide);
-	});
-
-	let field = $state<HTMLElement>();
-	let seen = untrack(() => gear.label);
-	$effect(() => {
-		const label = gear.label;
-		if (label === seen) return;
-		seen = label;
-		pulse(field);
-	});
 
 	// The limit line waits out a clamp that only brushes the limit.
 	const limit = createLimitWatch();
@@ -63,6 +36,12 @@
 		);
 		return () => clearInterval(look);
 	});
+	// ponytail: the limit rides as the pair's tooltip; its own line when a
+	// rider asks why Harder stopped.
+	const title = $derived(
+		off ??
+			(limited && gear.clamp ? limitLine(gear.clamp, cassette) : undefined),
+	);
 
 	/** A finger or a mouse holds; a keyboard's Enter or Space taps (detail 0). */
 	function control(dir: ShiftDir) {
@@ -84,35 +63,17 @@
 	}
 </script>
 
-<div class="flex w-full flex-col gap-2">
-	<div class="flex items-stretch gap-3">
-		<button
-			{...control(-1)}
-			disabled={!!off}
-			title={off ?? undefined}
-			class="btn btn-secondary btn-lg flex-1 touch-manipulation select-none disabled:opacity-40"
-			>Easier</button
-		>
-		<output
-			bind:this={field}
-			aria-live="polite"
-			class="font-display text-neon flex min-w-28 items-center justify-center px-2 text-center text-xl font-bold tabular-nums"
-			>{reset ? 'Gear back to your real gear' : gear.label}</output
-		>
-		<button
-			{...control(1)}
-			disabled={!!off}
-			title={off ?? undefined}
-			class="btn btn-secondary btn-lg flex-1 touch-manipulation select-none disabled:opacity-40"
-			>Harder</button
-		>
-	</div>
-	{#if limited && gear.clamp}
-		<p role="status" class="text-warn text-center text-sm">
-			{limitLine(gear.clamp, cassette)}
-		</p>
-	{/if}
-	<p class="text-muted text-center text-sm">
-		{off ?? 'Shift with Easier and Harder, or − and + on a keyboard'}
-	</p>
-</div>
+<button
+	{...control(-1)}
+	disabled={!!off}
+	{title}
+	class="btn btn-secondary btn-lg touch-manipulation select-none disabled:opacity-40"
+	>Easier</button
+>
+<button
+	{...control(1)}
+	disabled={!!off}
+	{title}
+	class="btn btn-secondary btn-lg touch-manipulation select-none disabled:opacity-40"
+	>Harder</button
+>

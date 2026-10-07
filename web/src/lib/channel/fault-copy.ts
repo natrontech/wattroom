@@ -6,6 +6,8 @@ export interface FaultCopy {
 	title: string;
 	detail: string;
 	action?: string;
+	/** The title as slot 1's one line over the world (#3668), where it is longer than that line holds. */
+	line?: string;
 }
 
 // What went wrong, why it matters, what happens next — never "something went wrong".
@@ -20,6 +22,7 @@ export function faultCopy(fault: Fault, bufferedSeconds?: number): FaultCopy {
 		if (fault.state === 'no-power')
 			return {
 				title: 'Trainer is connected but sends no power',
+				line: 'Trainer sends no power',
 				detail:
 					'It reports over Bluetooth — cadence or speed — but never watts, so nothing here can score you. Pair a power meter as a sensor, or a trainer that measures power.',
 				// The button opens the chooser, which is what this copy asks
@@ -30,6 +33,7 @@ export function faultCopy(fault: Fault, bufferedSeconds?: number): FaultCopy {
 		if (fault.state === 'silent')
 			return {
 				title: 'Trainer is connected but sending nothing',
+				line: 'Trainer sends nothing',
 				detail:
 					'No data has arrived over Bluetooth. Spin the cranks to wake it — and close anything else holding the trainer (Zwift, the Wahoo app, another tab), since it only accepts one connection.',
 				action,
