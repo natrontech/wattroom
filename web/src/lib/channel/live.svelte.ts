@@ -11,7 +11,12 @@ import type {
 	ServerTick,
 	SessionRecap,
 } from '$lib/protocol';
-import { MinRideSamples, PokeKindBottle } from '$lib/protocol';
+import {
+	MinRideSamples,
+	PokeKindBottle,
+	RoadsideKindPaint,
+	type RoadsideStamp,
+} from '$lib/protocol';
 import type { PlaceAddress } from '$lib/channel/address';
 import { fillDeck, type DeckHeard } from '$lib/channel/deck-heard';
 import { account } from '$lib/account.svelte';
@@ -93,8 +98,11 @@ export function createChannelLive(address: PlaceAddress) {
 	// (#2599); a refusal lets go of both.
 	let startAfterPick: string | null = null;
 	let following = $state(false);
-	let jukeboxRefusal = $state<string | null>(null);
-	let jukeboxRefusalAt = 0;
+	// A refusal a surface shows beside its own control, by its code's prefix
+	// (errors.md): the jukebox's, the roadside's. Each stays six seconds.
+	const routed = $state<
+		Record<'jukebox' | 'roadside', { message: string; at: number } | null>
+	>({ jukebox: null, roadside: null });
 	// What the hub says this tab holds, and where the rider's other screens
 	// hold the rest (#610). Server truth: a tab learns here that its claim
 	// was refused, so nothing renders "paired" off its own click alone.
@@ -433,10 +441,12 @@ export function createChannelLive(address: PlaceAddress) {
 			// enough to read (ticks arrive every second; clearing on each one
 			// made refusals subliminal — audit #219).
 			if (msg.error) {
-				if (msg.error.code.startsWith('jukebox_')) {
-					jukeboxRefusal = msg.error.message;
-					jukeboxRefusalAt = Date.now();
-				} else {
+				const surface = (['jukebox', 'roadside'] as const).find((s) =>
+					msg.error!.code.startsWith(`${s}_`),
+				);
+				if (surface)
+					routed[surface] = { message: msg.error.message, at: Date.now() };
+				else {
 					refusal = msg.error.message;
 					refusalAt = Date.now();
 					startAfterPick = null;
@@ -445,8 +455,8 @@ export function createChannelLive(address: PlaceAddress) {
 			} else {
 				const now = Date.now();
 				if (refusal && now - refusalAt > 6_000) refusal = null;
-				if (jukeboxRefusal && now - jukeboxRefusalAt > 6_000)
-					jukeboxRefusal = null;
+				for (const s of ['jukebox', 'roadside'] as const)
+					if (routed[s] && now - routed[s].at > 6_000) routed[s] = null;
 			}
 		};
 		socket.onclose = onDrop;
@@ -551,7 +561,10 @@ export function createChannelLive(address: PlaceAddress) {
 			return noCrashSafety;
 		},
 		get jukeboxRefusal() {
-			return jukeboxRefusal;
+			return routed.jukebox?.message ?? null;
+		},
+		get roadsideRefusal() {
+			return routed.roadside?.message ?? null;
 		},
 		/** What this tab holds and what its rider's other screens hold (#610). */
 		get pairing() {
@@ -644,6 +657,23 @@ export function createChannelLive(address: PlaceAddress) {
 		bottle(to: string) {
 			send({ poke: { to, kind: PokeKindBottle } });
 		},
+		/** Chalk a stamp on the road (#3029); an initial names its rider. */
+		paint(
+			stamp: RoadsideStamp,
+			at: { atM: number; lap: number },
+			forRider?: string,
+		) {
+			routed.roadside = null;
+			send({
+				roadside: {
+					kind: RoadsideKindPaint,
+					stamp,
+					atM: at.atM,
+					lap: at.lap,
+					...(forRider ? { for: forRider } : {}),
+				},
+			});
+		},
 		/**
 		 * Step out, or come back (#706). The whole state, never a toggle: the
 		 * hub cannot then be left holding the opposite of what the rider sees
@@ -679,7 +709,7 @@ export function createChannelLive(address: PlaceAddress) {
 			// The dock's own end-of-track report is not the rider acting: it
 			// must not wipe a refusal they are still reading (#824).
 			if (command.action !== 'ended' && command.action !== 'unplayable')
-				jukeboxRefusal = null;
+				routed.jukebox = null;
 			send({ jukebox: command });
 		},
 		control(

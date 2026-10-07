@@ -1824,6 +1824,14 @@ export interface Roadside {
    */
   atM: number /* float64 */;
   lap?: number /* int */;
+  /**
+   * What a paint verb chalks; empty for a stand.
+   */
+  stamp?: RoadsideStamp;
+  /**
+   * Whose initial a RoadsideStampInitial chalks: a rider riding the session.
+   */
+  for?: string;
 }
 /**
  * RoadsideKind is the closed set of roadside verbs. Anything else is refused
@@ -1831,19 +1839,37 @@ export interface Roadside {
  */
 export type RoadsideKind = string;
 /**
- * RoadsideKindStand is where a spectator watches from: ahead of the bunch,
- * moved at most once a minute, frozen as the riders close on it, and gone
- * once they pass it (docs/SPEC.md "The roadside").
+ * RoadsideKindStand is where a spectator watches from: ahead of the
+ * bunch, moved at most once a minute, frozen as the riders close on it,
+ * and gone once they pass it (docs/SPEC.md "The roadside").
  */
 export const RoadsideKindStand: RoadsideKind = "stand";
 /**
+ * RoadsideKindPaint chalks a stamp on a climb ahead of the riders, one
+ * per climb (docs/SPEC.md "The roadside").
+ */
+export const RoadsideKindPaint: RoadsideKind = "paint";
+/**
+ * RoadsideStamp is the closed set of chalk a spectator may paint (Jan,
+ * 2026-10-06): nothing typed, so nothing to moderate.
+ */
+export type RoadsideStamp = string;
+export const RoadsideStampArrow: RoadsideStamp = "arrow";
+export const RoadsideStampHeart: RoadsideStamp = "heart";
+export const RoadsideStampAllez: RoadsideStamp = "allez";
+export const RoadsideStampHopp: RoadsideStamp = "hopp";
+export const RoadsideStampCowbell: RoadsideStamp = "cowbell";
+export const RoadsideStampInitial: RoadsideStamp = "initial";
+/**
  * RoadsideState is what the roadside has put on the session's road, on the
  * tick while a bunch rides it. Rev moves with every change — a stand placed,
- * moved, passed or let go — so a client redraws only when it does.
+ * moved, passed or let go, a stamp painted or passed — so a client redraws
+ * only when it does.
  */
 export interface RoadsideState {
   rev: number /* int64 */;
   stands?: RoadsideStand[];
+  paint?: RoadsidePaint[];
 }
 /**
  * RoadsideStand is one spectator's stand, where Roadside put it.
@@ -1854,20 +1880,57 @@ export interface RoadsideStand {
   lap?: number /* int */;
 }
 /**
+ * RoadsidePaint is one chalk stamp on the road, still ahead of the riders.
+ */
+export interface RoadsidePaint {
+  riderId: string;
+  stamp: RoadsideStamp;
+  for?: string;
+  atM: number /* float64 */;
+  lap?: number /* int */;
+}
+/**
  * docs/SPEC.md "The roadside" (defaults — tune in alpha): a stand is 300 m –
- * 5 km ahead of the bunch, and moves at most once a minute.
+ * 5 km ahead of the bunch, and moves at most once a minute; a spectator
+ * paints 6 stamps a ride, at most 12 lie on the road at once, and a ride
+ * takes at most 24 marks.
  */
 export const RoadsideStandMinAheadM = 300;
 /**
  * docs/SPEC.md "The roadside" (defaults — tune in alpha): a stand is 300 m –
- * 5 km ahead of the bunch, and moves at most once a minute.
+ * 5 km ahead of the bunch, and moves at most once a minute; a spectator
+ * paints 6 stamps a ride, at most 12 lie on the road at once, and a ride
+ * takes at most 24 marks.
  */
 export const RoadsideStandMaxAheadM = 5000;
 /**
  * docs/SPEC.md "The roadside" (defaults — tune in alpha): a stand is 300 m –
- * 5 km ahead of the bunch, and moves at most once a minute.
+ * 5 km ahead of the bunch, and moves at most once a minute; a spectator
+ * paints 6 stamps a ride, at most 12 lie on the road at once, and a ride
+ * takes at most 24 marks.
  */
 export const RoadsideStandMoveSeconds = 60;
+/**
+ * docs/SPEC.md "The roadside" (defaults — tune in alpha): a stand is 300 m –
+ * 5 km ahead of the bunch, and moves at most once a minute; a spectator
+ * paints 6 stamps a ride, at most 12 lie on the road at once, and a ride
+ * takes at most 24 marks.
+ */
+export const RoadsidePaintPerRide = 6;
+/**
+ * docs/SPEC.md "The roadside" (defaults — tune in alpha): a stand is 300 m –
+ * 5 km ahead of the bunch, and moves at most once a minute; a spectator
+ * paints 6 stamps a ride, at most 12 lie on the road at once, and a ride
+ * takes at most 24 marks.
+ */
+export const RoadsidePaintLive = 12;
+/**
+ * docs/SPEC.md "The roadside" (defaults — tune in alpha): a stand is 300 m –
+ * 5 km ahead of the bunch, and moves at most once a minute; a spectator
+ * paints 6 stamps a ride, at most 12 lie on the road at once, and a ride
+ * takes at most 24 marks.
+ */
+export const RoadsideMarksPerRide = 24;
 
 //////////
 // source: sensors.go

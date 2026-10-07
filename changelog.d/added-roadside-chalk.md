@@ -1,0 +1,1 @@
+- Spectators at the roadside can chalk the next climb with one of six stamps (an arrow, a heart, Allez, Hopp, a cowbell, or a riding rider's initial), and the riders see it on the road as they climb.

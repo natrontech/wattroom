@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createBunch, type Car } from './bunch';
 import { CHEER_S, cheerLook } from './cheer';
+import { makeChalk, type ChalkLayer } from './chalk';
 import { makeGameRoad, type GameRoad } from './game-road';
 import { roadsideSound } from '$lib/roadside';
 import { makeCrew, RING_BAND_M, type Crew, type Pedalling } from './crew';
@@ -145,6 +146,8 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		});
 
 	const scene = new THREE.Scene();
+	// The roadside's chalk, on a bunch's road only (#3029); painted in the style's road line.
+	let chalk: ChalkLayer | null = null;
 	// Near at 1 m: at 0.5 the depth buffer resolved 0.12 m at 1 km, and the
 	// road's shoulder z-fought from about 1.26 km (#3078).
 	const camera = new THREE.PerspectiveCamera(52, 1, 1, 60000);
@@ -182,7 +185,13 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	}
 
 	function dress(style: Style) {
-		for (const old of [stage?.group, crew?.group, game?.group, tags?.group]) {
+		for (const old of [
+			stage?.group,
+			crew?.group,
+			game?.group,
+			tags?.group,
+			chalk?.group,
+		]) {
 			if (!old) continue;
 			scene.remove(old);
 			disposeTree(old);
@@ -192,6 +201,10 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		game = makeGameRoad(route, world, style);
 		tags = makeTags(style);
 		scene.add(stage.group, crew.group, game.group, tags.group);
+		if (bunch) {
+			chalk = makeChalk(route, style);
+			scene.add(chalk.group);
+		}
 		scene.fog = new THREE.FogExp2(style.sky.horizon, style.fogK * 1.1);
 		light();
 		applyMode();
@@ -258,6 +271,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	 * you included while you ride in it, and the team car (#3098).
 	 */
 	function ride(view: BunchView, real: number) {
+		chalk?.update(view.chalk ?? []);
 		clock += real;
 		const steady = opts.steady?.() ?? false;
 		// A game's road first: who it has put out stands where it says (#3114).

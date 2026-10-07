@@ -1,7 +1,22 @@
 import { coachOf } from '$lib/channel/tick-session';
 import { levelFromXp } from '$lib/level';
 import type { LiveRider } from '$lib/channel/types';
-import type { ServerTick } from '$lib/protocol';
+import {
+	RoadsideStampInitial,
+	type RoadsideStamp,
+	type ServerTick,
+} from '$lib/protocol';
+
+/** One chalk stamp on the road (#3029), as the world draws it. */
+export type Chalk = {
+	/** Stable while it lies on the road: who painted it, and where. */
+	key: string;
+	stamp: RoadsideStamp;
+	/** An initial's letter, from the roster; empty for every other stamp. */
+	letter: string;
+	/** Metres along the road as ridden, laps unrolled. */
+	u: number;
+};
 
 /**
  * The bunch as one tick has it, in the terms the world draws (#3098,
@@ -39,6 +54,8 @@ export type BunchView = {
 	game: boolean;
 	/** Who this tick's cheers are for (#3116): the world draws each over that rider's head. */
 	cheered: string[];
+	/** The roadside's chalk still ahead of the bunch (#3029). */
+	chalk?: Chalk[];
 	/** What a running game puts on the road (#3114). */
 	play?: GamePlay;
 };
@@ -94,6 +111,19 @@ export function bunchOf(
 		meterHidden: !!tick.game?.meterHidden,
 		game: !!tick.game,
 		cheered: (tick.cheers ?? []).flatMap((c) => (c.to ? [c.to] : [])),
+		chalk: (tick.roadside?.paint ?? []).map((p) => {
+			const u = p.atM + (p.lap ?? 0) * length;
+			const name =
+				p.stamp === RoadsideStampInitial
+					? (riders.find((r) => r.id === p.for)?.name ?? '')
+					: '';
+			return {
+				key: `${p.riderId}@${u}`,
+				stamp: p.stamp,
+				letter: name.slice(0, 1).toUpperCase(),
+				u,
+			};
+		}),
 		play:
 			tick.game?.phase === 'running'
 				? {

@@ -22,16 +22,22 @@ const (
 // komClasses are the climbs a KOM sprint is held on: class III or harder.
 var komClasses = []string{"III", "II", "I", "HC"}
 
-// komOpenings is where each KOM sprint opens on the road in the direction
-// ridden, in metres from its start, in order.
-func komOpenings(profile road.Road, reverse bool) []float64 {
+// climbsRidden is the road's climbs in the direction ridden, in metres from
+// its start, in order.
+func climbsRidden(profile road.Road, reverse bool) []road.Climb {
 	if reverse {
 		heights := slices.Clone(profile.Heights)
 		slices.Reverse(heights)
 		profile = road.Road{LengthM: profile.LengthM, Heights: heights}
 	}
+	return road.ClimbsOf(profile)
+}
+
+// komOpenings is where each KOM sprint opens on the road in the direction
+// ridden, in metres from its start, in order.
+func komOpenings(profile road.Road, reverse bool) []float64 {
 	var at []float64
-	for _, c := range road.ClimbsOf(profile) {
+	for _, c := range climbsRidden(profile, reverse) {
 		if slices.Contains(komClasses, c.Class) {
 			at = append(at, max(0, c.TopM-komOpensBeforeTopM))
 		}

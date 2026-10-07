@@ -1136,6 +1136,85 @@ surface(
 );
 
 surface(
+	'roadside-chalk',
+	async (s) => {
+		// Design Watcher at the roadside of Designer's session on the hairpin road
+		// (#3029). The deck chalks halfway up the next climb, out of the chase
+		// camera's sight, so the watcher's socket lays one 18 m ahead for the
+		// world's shot, as the hub takes it from any deck.
+		const { coach, crew } = await session(
+			s,
+			{ road: ROADS.hairpin.name },
+			true,
+		);
+		try {
+			const watcher = await s.open(DESK, { as: 'Design Watcher' });
+			let socket: WebSocketRoute | undefined;
+			await watcher.page.routeWebSocket(/\/ws\/channels\//, (ws) => {
+				socket = ws.connectToServer();
+			});
+			await watcher.page.goto(voicePath(crew));
+			await watcher.page
+				.getByRole('button', { name: 'Chalk Allez' })
+				.waitFor({ timeout: 20_000 });
+			// The deck sits low on the page: its last line in view for each shot.
+			await watcher.page
+				.getByRole('group', { name: 'chalk the next climb' })
+				.scrollIntoViewIfNeeded();
+			await s.shot(watcher);
+			// The same deck on a phone propped beside the bike (SPEC "The roadside").
+			const phone = await s.open(PHONE, { as: 'Design Watcher' });
+			await phone.page.goto(voicePath(crew));
+			await phone.page
+				.getByRole('group', { name: 'chalk the next climb' })
+				.scrollIntoViewIfNeeded({ timeout: 20_000 });
+			await s.shot(phone, { name: 'roadside-chalk-phone' });
+			const riders = await coach.page
+				.locator('canvas[data-riders]')
+				.getAttribute('data-riders');
+			const ahead = Math.max(
+				...(JSON.parse(riders ?? '{}').riders ?? []).map(
+					(r: { d: number }) => r.d,
+				),
+			);
+			// A double tap while the climb is still open: the second stamp,
+			// inside the hub's quarter second, is refused, and the deck says why
+			// and when to try again. Both at the road's start, behind the bunch,
+			// so neither lands: the screen lags the hub.
+			const behind = JSON.stringify({
+				roadside: { kind: 'paint', stamp: 'hopp', atM: 0 },
+			});
+			socket?.send(behind);
+			socket?.send(behind);
+			await watcher.page
+				.getByRole('status')
+				.filter({ hasText: 'One thing at a time' })
+				.scrollIntoViewIfNeeded();
+			await s.shot(watcher, { name: 'roadside-chalk-refused' });
+			// The hub takes one roadside verb a quarter second (controlMinGap).
+			await watcher.page.waitForTimeout(1000);
+			socket?.send(
+				JSON.stringify({
+					roadside: { kind: 'paint', stamp: 'heart', atM: ahead + 18 },
+				}),
+			);
+			// A tick to land it, while the bunch is still short of it: near
+			// enough that the chase camera reads it beside the riders.
+			await coach.page.waitForTimeout(1000);
+			await s.shot(coach, { name: 'roadside-chalk-world' });
+			// The watcher has chalked this road's one climb: the deck says so.
+			await watcher.page
+				.getByText('No climb left ahead to chalk.')
+				.scrollIntoViewIfNeeded();
+			await s.shot(watcher, { name: 'roadside-chalk-spent' });
+		} finally {
+			await endSession(coach.page);
+		}
+	},
+	{ once: true },
+);
+
+surface(
 	'ride-race',
 	async (s) => {
 		// Designer and Design Partner race the hairpin road (#3174). No screen

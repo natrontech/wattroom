@@ -441,6 +441,46 @@ describe('a ride’s world', () => {
 		w.dispose();
 	});
 
+	it('chalks the roadside’s stamps on the bunch’s road, and drops them once ridden over (#3029)', () => {
+		let chalk = [{ key: 'kim@900', stamp: 'heart', letter: '', u: 900 }];
+		const w = compose(
+			{
+				route,
+				world,
+				style,
+				ftp: 250,
+				youId: 'a',
+				metre: () => ({ m: 300, mps: 8 }),
+				bunch: () => ({
+					m: 300,
+					mps: 8,
+					elapsed: 30,
+					order: ['a'],
+					offsets: {},
+					resting: [],
+					present: new Map([['a', { watts: 200, ftp: 250 }]]),
+					game: false,
+					cheered: [],
+					chalk,
+				}),
+			},
+			null,
+		);
+		const stamps = () => {
+			let n = 0;
+			w.scene.traverseVisible((o) => {
+				if (o.userData.kind === 'chalk') n++;
+			});
+			return n;
+		};
+		w.advanceBy(1 / 30);
+		expect(stamps()).toBe(1);
+		chalk = [];
+		w.advanceBy(1 / 30);
+		expect(stamps()).toBe(0);
+		w.dispose();
+	});
+
 	it('draws a coach with no trainer as the team car: one chevron, no figure of their own (#3771)', () => {
 		const drawn = (coachRests: boolean) => {
 			const w = compose(

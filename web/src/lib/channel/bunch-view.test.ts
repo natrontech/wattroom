@@ -58,6 +58,22 @@ describe('the bunch as the world reads it (#3098)', () => {
 		expect(bunchOf(t, [])!.cheered).toEqual(['a']);
 	});
 
+	it('lays the roadside’s chalk on the road, an initial by its rider’s name (#3029)', () => {
+		const t = tick({ bunchM: 0, speedMps: 0 });
+		t.roadside = {
+			rev: 3,
+			paint: [
+				{ riderId: 'kim', stamp: 'heart', atM: 1200 },
+				{ riderId: 'kim', stamp: 'initial', for: 'a', atM: 300, lap: 1 },
+			],
+		};
+		const riders = [{ id: 'a', name: 'ana' }] as unknown as LiveRider[];
+		expect(bunchOf(t, riders)!.chalk).toEqual([
+			{ key: 'kim@1200', stamp: 'heart', letter: '', u: 1200 },
+			{ key: 'kim@5300', stamp: 'initial', letter: 'A', u: 5300 },
+		]);
+	});
+
 	it('carries each rider’s name, level and voice for their tag, and a hidden meter (#3086)', () => {
 		const t = tick({ bunchM: 0, speedMps: 0 }, true);
 		t.roster = [{ id: 'a', totalXp: 5000 }] as ServerTick['roster'];

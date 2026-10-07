@@ -57,6 +57,13 @@
 	},
 	{
 		"files": [
+			"web/src/lib/channel/RoadsideDeck.svelte",
+			"web/src/lib/world/chalk.ts"
+		],
+		"surfaces": ["roadside-chalk"]
+	},
+	{
+		"files": [
 			"web/src/lib/world/game-road.ts",
 			"web/src/lib/session/GamePanel.svelte"
 		],

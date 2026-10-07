@@ -5,6 +5,7 @@ import { CUES } from '$lib/sound/cue-catalogue';
 import type { LiveRider } from '$lib/channel/types';
 import {
 	atRoadside,
+	nextChalkSpot,
 	bottleArrival,
 	bottleFor,
 	cheerCues,
@@ -257,5 +258,44 @@ describe('bottleFor (#3022)', () => {
 
 	it('has nobody to hand it to when nobody rides the session', () => {
 		expect(bottleFor([rider('me', { you: true })], null)).toBeNull();
+	});
+});
+
+describe('where the next stamp goes (#3029)', () => {
+	// Two climbs on a 10 km road: 1–3 km and 5–7 km.
+	const climbs = [
+		{ startM: 1000, topM: 3000, gainM: 120, cls: 'III' as const },
+		{ startM: 5000, topM: 7000, gainM: 120, cls: 'III' as const },
+	];
+
+	it('chalks the first climb ahead, halfway up from the bunch or its foot', () => {
+		expect(nextChalkSpot(climbs, 10_000, false, 400, [])).toEqual({
+			atM: 2000,
+			lap: 0,
+		});
+		// On the climb already: halfway from the bunch to the top.
+		expect(nextChalkSpot(climbs, 10_000, false, 2000, [])).toEqual({
+			atM: 2500,
+			lap: 0,
+		});
+	});
+
+	it('moves on to the next climb once you have chalked one, and none past the last', () => {
+		expect(nextChalkSpot(climbs, 10_000, false, 400, [{ atM: 1500 }])).toEqual({
+			atM: 6000,
+			lap: 0,
+		});
+		expect(nextChalkSpot(climbs, 10_000, false, 8000, [])).toBeNull();
+	});
+
+	it('goes round to a loop’s next lap', () => {
+		expect(nextChalkSpot(climbs, 10_000, true, 8000, [])).toEqual({
+			atM: 2000,
+			lap: 1,
+		});
+		// The same climb chalked on lap 0 is a fresh one on lap 1.
+		expect(
+			nextChalkSpot(climbs, 10_000, true, 10_400, [{ atM: 2000 }]),
+		).toEqual({ atM: 2000, lap: 1 });
 	});
 });

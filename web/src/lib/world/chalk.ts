@@ -1,0 +1,139 @@
+// The roadside's chalk on the road (#3029, ADR-0064): Jan's six stamps,
+// painted flat on the asphalt where the hub put them and gone once the bunch
+// rides over them. Scenery, never live data: in the road line's colour, lit
+// by the sky as the road's own paint is (ADR-0072), and nothing glows.
+import * as THREE from 'three';
+import type { Chalk } from '$lib/channel/bunch-view';
+import type { RoadsideStamp } from '$lib/protocol';
+import { at, curvature, leftOf } from '$lib/road/along';
+import { type Route } from '$lib/road/route';
+import { disposeTree } from './dispose';
+import { tag } from './family';
+import { FONT, paintedTexture } from './furniture';
+import { ROAD_LIFT, yOf } from './geometry';
+import type { Style } from './styles';
+import { across, bankOf, ROAD_W } from './terrain/road-profile';
+
+// ponytail: a look, not a rule — chalk on the road's left half, beside the
+// riders' line as v2-erg paints its road words: a bunch rides centred and a
+// rider alone keeps right, so up to three abreast clears it (a bigger bunch's
+// outer lane rides over its edge). Stretched four to one along the road, as
+// road paint is, so a rider's low eye sees the shape whole; tune it on a climb.
+const ACROSS = ROAD_W * 0.27;
+const ALONG = ACROSS * 4;
+/** The stamp's centre, metres left of the road's middle, a hand inside the edge. */
+export const BESIDE = ROAD_W / 2 - ACROSS / 2 - 0.2;
+const W = 256;
+const H = 128;
+
+/** The words a stamp chalks; the glyph stamps draw a shape instead. */
+const WORDS: Partial<Record<RoadsideStamp, string>> = {
+	allez: 'ALLEZ',
+	hopp: 'HOPP',
+};
+
+function draw(
+	x: OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D,
+	stamp: RoadsideStamp,
+	letter: string,
+	chalk: string,
+) {
+	x.fillStyle = chalk;
+	x.strokeStyle = chalk;
+	x.lineWidth = 14;
+	x.lineJoin = 'round';
+	x.textAlign = 'center';
+	x.textBaseline = 'middle';
+	const word = WORDS[stamp] ?? (stamp === 'initial' ? letter : '');
+	if (word) {
+		x.font = `bold ${word.length > 1 ? 84 : 112}px ${FONT}`;
+		x.fillText(word, W / 2, H / 2 + 6);
+		return;
+	}
+	x.beginPath();
+	if (stamp === 'arrow') {
+		// Up the road: the way the riders go.
+		x.moveTo(W / 2, 10);
+		x.lineTo(W / 2 + 44, 58);
+		x.lineTo(W / 2 + 16, 58);
+		x.lineTo(W / 2 + 16, 118);
+		x.lineTo(W / 2 - 16, 118);
+		x.lineTo(W / 2 - 16, 58);
+		x.lineTo(W / 2 - 44, 58);
+		x.closePath();
+		x.fill();
+	} else if (stamp === 'heart') {
+		x.moveTo(W / 2, 116);
+		x.bezierCurveTo(W / 2 - 78, 60, W / 2 - 54, 6, W / 2, 34);
+		x.bezierCurveTo(W / 2 + 54, 6, W / 2 + 78, 60, W / 2, 116);
+		x.fill();
+	} else if (stamp === 'cowbell') {
+		x.moveTo(W / 2 - 26, 22);
+		x.lineTo(W / 2 + 26, 22);
+		x.lineTo(W / 2 + 44, 100);
+		x.lineTo(W / 2 - 44, 100);
+		x.closePath();
+		x.stroke();
+		x.beginPath();
+		x.arc(W / 2, 112, 10, 0, Math.PI * 2);
+		x.fill();
+	}
+}
+
+/** One stamp, flat on the road beside the riders' line at its metre, reading up the road. */
+function stampMesh(route: Route, c: Chalk, chalk: string): THREE.Mesh {
+	const p = at(route, c.u);
+	const { lx, lz } = leftOf(p.heading);
+	const n = route.x.length - 1;
+	const bank = bankOf(
+		curvature(route, Math.min(Math.max(Math.round(c.u / route.step), 0), n)),
+	);
+	const mesh = new THREE.Mesh(
+		new THREE.PlaneGeometry(ACROSS, ALONG).rotateX(-Math.PI / 2),
+		// The road's paint is Lambert (roadMaterial): the same light, the same tone.
+		new THREE.MeshLambertMaterial({
+			map: paintedTexture(W, H, (x) => draw(x, c.stamp, c.letter, chalk)),
+			transparent: true,
+			depthWrite: false,
+			// Laid on the asphalt, never fighting it for the same depth.
+			polygonOffset: true,
+			polygonOffsetFactor: -2,
+		}),
+	);
+	// On the asphalt where it crosses, banked as the ribbon is, a hair above it.
+	mesh.position.set(
+		p.x + lx * BESIDE,
+		yOf(route, p.ele) + ROAD_LIFT + across(BESIDE, bank) + 0.03,
+		p.z + lz * BESIDE,
+	);
+	// The texture's top points up the road (heading is atan2(dx, dz)), so it
+	// reads the right way up to the riders coming at it; rolled with the bank.
+	mesh.rotation.set(0, p.heading + Math.PI, bank, 'YXZ');
+	mesh.userData.stamp = c.stamp;
+	return tag('dressing', mesh, 'chalk');
+}
+
+export function makeChalk(route: Route, style: Style) {
+	const group = new THREE.Group();
+	const drawn = new Map<string, THREE.Mesh>();
+	return {
+		group,
+		/** The chalk on this tick's road: new stamps painted, ridden-over ones gone. */
+		update(chalk: readonly Chalk[]) {
+			const keep = new Set(chalk.map((c) => c.key));
+			for (const [key, mesh] of drawn)
+				if (!keep.has(key)) {
+					group.remove(mesh);
+					disposeTree(mesh);
+					drawn.delete(key);
+				}
+			for (const c of chalk)
+				if (!drawn.has(c.key)) {
+					const mesh = stampMesh(route, c, style.road.line);
+					group.add(mesh);
+					drawn.set(c.key, mesh);
+				}
+		},
+	};
+}
+export type ChalkLayer = ReturnType<typeof makeChalk>;
