@@ -22,6 +22,7 @@
 		off,
 		resetAt,
 		cassette,
+		row = false,
 	}: {
 		shift: Pick<RideShift, 'press' | 'release' | 'drop'>;
 		gear: { label: string; clamp: Clamp };
@@ -31,6 +32,12 @@
 		resetAt: number;
 		/** A real cassette under the virtual gear: not a one-gear setup. */
 		cassette: boolean;
+		/**
+		 * In slot 1's control row (TARGETS ride-free-road 7): the pair and the
+		 * gear alone, 44 px each, no line under them — a riding surface's
+		 * words are labels and numbers (G4), and the keys are not named (D14).
+		 */
+		row?: boolean;
 	} = $props();
 
 	/** How long "Gear back to your real gear" stays on the field (#3330). */
@@ -84,35 +91,53 @@
 	}
 </script>
 
-<div class="flex w-full flex-col gap-2">
-	<div class="flex items-stretch gap-3">
-		<button
-			{...control(-1)}
-			disabled={!!off}
-			title={off ?? undefined}
-			class="btn btn-secondary btn-lg flex-1 touch-manipulation select-none disabled:opacity-40"
-			>Easier</button
-		>
-		<output
-			bind:this={field}
-			aria-live="polite"
-			class="font-display text-neon flex min-w-28 items-center justify-center px-2 text-center text-xl font-bold tabular-nums"
-			>{reset ? 'Gear back to your real gear' : gear.label}</output
-		>
-		<button
-			{...control(1)}
-			disabled={!!off}
-			title={off ?? undefined}
-			class="btn btn-secondary btn-lg flex-1 touch-manipulation select-none disabled:opacity-40"
-			>Harder</button
-		>
-	</div>
-	{#if limited && gear.clamp}
-		<p role="status" class="text-warn text-center text-sm">
-			{limitLine(gear.clamp, cassette)}
+{#snippet pair()}
+	<button
+		{...control(-1)}
+		disabled={!!off}
+		title={off ??
+			(row && limited && gear.clamp
+				? limitLine(gear.clamp, cassette)
+				: undefined)}
+		class="btn btn-secondary btn-lg touch-manipulation select-none disabled:opacity-40 {row
+			? ''
+			: 'flex-1'}">Easier</button
+	>
+	<output
+		bind:this={field}
+		aria-live="polite"
+		class="font-display text-neon flex items-center justify-center px-2 text-center font-bold tabular-nums {row
+			? 'min-w-16 text-2xl'
+			: 'min-w-28 text-xl'}"
+		>{reset && !row ? 'Gear back to your real gear' : gear.label}</output
+	>
+	<button
+		{...control(1)}
+		disabled={!!off}
+		title={off ??
+			(row && limited && gear.clamp
+				? limitLine(gear.clamp, cassette)
+				: undefined)}
+		class="btn btn-secondary btn-lg touch-manipulation select-none disabled:opacity-40 {row
+			? ''
+			: 'flex-1'}">Harder</button
+	>
+{/snippet}
+
+{#if row}
+	<!-- ponytail: the limit line rides as the buttons' tooltip here; its own
+	     line when a rider asks why Harder stopped. -->
+	<div class="flex items-stretch gap-2">{@render pair()}</div>
+{:else}
+	<div class="flex w-full flex-col gap-2">
+		<div class="flex items-stretch gap-3">{@render pair()}</div>
+		{#if limited && gear.clamp}
+			<p role="status" class="text-warn text-center text-sm">
+				{limitLine(gear.clamp, cassette)}
+			</p>
+		{/if}
+		<p class="text-muted text-center text-sm">
+			{off ?? 'Shift with Easier and Harder, or − and + on a keyboard'}
 		</p>
-	{/if}
-	<p class="text-muted text-center text-sm">
-		{off ?? 'Shift with Easier and Harder, or − and + on a keyboard'}
-	</p>
-</div>
+	</div>
+{/if}

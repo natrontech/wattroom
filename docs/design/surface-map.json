@@ -36,13 +36,18 @@
 	{
 		"files": [
 			"web/src/lib/ride/RoadRiding.svelte",
-			"web/src/lib/ride/SoloRoadRide.svelte"
+			"web/src/lib/ride/SoloRoadRide.svelte",
+			"web/src/lib/ride/FreeRiding.svelte",
+			"web/src/lib/ride/GearShift.svelte",
+			"web/src/lib/ride/RoadEnd.svelte",
+			"web/src/lib/ride/climbed.ts"
 		],
 		"surfaces": [
 			"ride-free-road",
 			"ride-free-road-world",
 			"ride-free-road-ghost",
 			"ride-road-end",
+			"ride-channel-free",
 			"hud",
 			"hud-shell"
 		]

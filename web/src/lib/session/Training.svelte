@@ -112,12 +112,6 @@
 	// The compact instrument heads your numbers here, so the computer leaves
 	// the watts to it: one number, one home (#3662).
 	const headed = $derived(inFocus === 'media' || inFocus === 'game' || inWorld);
-	const rideWorld = () =>
-		import('$lib/world/RideWorld.svelte').catch((err: unknown) => {
-			console.error('world: the renderer did not load', err);
-			world.fail('build-failed');
-			throw err;
-		});
 	// The sprint carries its own numbers and Watt Golf hides the meter:
 	// slots 3 to 5 stand empty while either has the focus.
 	// Over the world a sprint is a moment card and your numbers stay (D12).
@@ -239,7 +233,7 @@
 			/>{/if}
 	{/snippet}
 	{#snippet road()}
-		{#await rideWorld() then { default: RideWorld }}
+		{#await world.load() then { default: RideWorld }}
 			{#if channel.ridden}
 				<RideWorld
 					road={channel.ridden.road}

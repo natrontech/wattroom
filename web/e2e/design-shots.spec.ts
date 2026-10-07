@@ -293,11 +293,11 @@ surface(
 surface(
 	'ride-free-road-world',
 	async (s) => {
-		// The world on: until #3669 a free ride on a road draws none, and the probe's world.mounted says so.
+		// The world on: a free ride on a road draws it in slot 2 (#3669).
 		const o = await s.open(DESK, { world: true });
 		const road = await fixtureRoad(o.page, 'hairpin');
 		await ride(o.page, `/ride?road=${road}`);
-		await assertRiding(o.page);
+		await assertRiding(o.page, true);
 		await s.shot(o);
 	},
 	{ once: true },

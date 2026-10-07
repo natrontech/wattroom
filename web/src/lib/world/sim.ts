@@ -106,7 +106,7 @@ export function simRider(o: {
 export type RideMetre = { m: number; mps: number };
 
 /** A metre further off than this is a start or a seek: the figure goes there at once. */
-const JUMP_M = 50;
+export const JUMP_M = 50;
 /** The half-life, in seconds, in which the figure settles onto the ride's metre. */
 const SETTLE_S = 0.3;
 
