@@ -14,14 +14,6 @@ export function roadsEnabled(): boolean {
 	return canSimulate();
 }
 
-/** One of the rider's own routes, as the list names it. */
-export interface RouteSummary {
-	id: string;
-	name: string;
-	lengthM: number;
-	gainM: number;
-}
-
 /** A route with its road, ready to ride. */
 export interface RideableRoute {
 	id: string;
@@ -36,9 +28,9 @@ export interface RideableRoute {
 
 /** The rider's own routes, newest first, as GET /api/routes lists them. */
 export async function myRoutes(): Promise<
-	{ ok: true; routes: RouteSummary[] } | { ok: false; error: string }
+	{ ok: true; routes: StoredRoute[] } | { ok: false; error: string }
 > {
-	const res = await api<{ routes: RouteSummary[] }>('/api/routes');
+	const res = await api<{ routes: StoredRoute[] }>('/api/routes');
 	return res.ok
 		? { ok: true, routes: res.data.routes }
 		: { ok: false, error: res.error.message };

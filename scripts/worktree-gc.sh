@@ -152,7 +152,8 @@ claimed=$(
 			# `claimed` empty, and reported every live database as stranded (#2115).
 			sed -n \
 				-e "s/^export WATTROOM_DEV_DB_NAME='\(.*\)'$/\1/p" \
-				-e "s/^export WATTROOM_DEV_TEST_DB_NAME='\(.*\)'$/\1/p"
+				-e "s/^export WATTROOM_DEV_TEST_DB_NAME='\(.*\)'$/\1/p" \
+				-e "s/^export WATTROOM_DEV_DESIGN_DB_NAME='\(.*\)'$/\1/p"
 	done < <(git worktree list --porcelain | awk '/^worktree /{print $2}')
 )
 # `docker ps | head -1` picked a leftover container from a removed worktree and
@@ -168,7 +169,7 @@ if [ -z "$claimed" ]; then
 elif container=$(./scripts/dev-env.sh pg-container 2>/dev/null); then
 	stranded=$(
 		docker exec "$container" psql -U wattroom -lqt 2>/dev/null |
-			awk -F'|' '{gsub(/ /,"",$1); if ($1 ~ /^wattroom_(test_)?wt_/) print $1}' |
+			awk -F'|' '{gsub(/ /,"",$1); if ($1 ~ /^wattroom_(test_|design_)?wt_/) print $1}' |
 			grep -vxF "$claimed" || true
 	)
 	if [ -n "$stranded" ]; then
