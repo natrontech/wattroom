@@ -79,7 +79,7 @@ export type Style = {
 	grid: { color: string; size: number; alpha: number } | null; // flats only
 	contours: { color: string; index: string; step: number } | null;
 	imhof: { valley: string; peak: string } | null; // relief-map shading instead of bands
-	road: { asphalt: string; line: string; verge: string };
+	road: { asphalt: string; line: string; verge: string; shoulder?: string }; // no shoulder: the verge runs to the asphalt
 	props: PropColors;
 	kit: RiderKit;
 	zones: readonly string[]; // Z1–Z7: the flat ring under each rider

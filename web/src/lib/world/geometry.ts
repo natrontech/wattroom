@@ -182,12 +182,20 @@ function strip(pos: number[], uv: number[], cols: number) {
 // Road surface with markings drawn in the fragment shader: edge lines, a
 // 3-on-9-off centre dash, verge beyond the edge — box-filtered with fwidth,
 // so they stay crisp at 2 m and never shimmer at 2 km.
+/**
+ * The road as paint on the ribbon (#3674): asphalt with a fine grain, flat
+ * off-white lines, a gravel shoulder outside each edge line, then the verge.
+ * Lit by the sky like everything else, never glowing (ADR-0072). The grain
+ * lives in the road's own metres, so it holds still under a moving camera,
+ * and fades to grey once a grain cell is smaller than a pixel.
+ */
 export function roadMaterial(c: Style['road']): THREE.MeshLambertMaterial {
 	const m = new THREE.MeshLambertMaterial();
 	m.onBeforeCompile = (s) => {
 		s.uniforms.uAsphalt = { value: new THREE.Color(c.asphalt) };
 		s.uniforms.uLine = { value: new THREE.Color(c.line) };
 		s.uniforms.uVerge = { value: new THREE.Color(c.verge) };
+		s.uniforms.uShoulder = { value: new THREE.Color(c.shoulder ?? c.verge) };
 		s.vertexShader = s.vertexShader
 			.replace('#include <common>', '#include <common>\nvarying vec2 vRoad;')
 			.replace(
@@ -197,26 +205,37 @@ export function roadMaterial(c: Style['road']): THREE.MeshLambertMaterial {
 		s.fragmentShader = s.fragmentShader
 			.replace(
 				'#include <common>',
-				'#include <common>\nvarying vec2 vRoad;\nuniform vec3 uAsphalt; uniform vec3 uLine; uniform vec3 uVerge;',
+				`#include <common>
+				varying vec2 vRoad;
+				uniform vec3 uAsphalt; uniform vec3 uLine; uniform vec3 uVerge; uniform vec3 uShoulder;
+				float grainAt(vec2 p) {
+					vec2 i = floor(p), f = fract(p);
+					f = f * f * (3.0 - 2.0 * f);
+					float a = fract(sin(dot(i, vec2(12.9898, 78.233))) * 43758.5453);
+					float b = fract(sin(dot(i + vec2(1.0, 0.0), vec2(12.9898, 78.233))) * 43758.5453);
+					float c = fract(sin(dot(i + vec2(0.0, 1.0), vec2(12.9898, 78.233))) * 43758.5453);
+					float d = fract(sin(dot(i + vec2(1.0, 1.0), vec2(12.9898, 78.233))) * 43758.5453);
+					return mix(mix(a, b, f.x), mix(c, d, f.x), f.y) - 0.5;
+				}`,
 			)
 			.replace(
 				'vec4 diffuseColor = vec4( diffuse, opacity );',
 				`float u = vRoad.x, s = vRoad.y;
 				float fw = max(fwidth(u), 1e-4);
-				float edge = 1.0 - smoothstep(0.06 - fw, 0.06 + fw, abs(abs(u) - 2.95));
+				float edge = 1.0 - smoothstep(0.06 - fw, 0.06 + fw, abs(abs(u) - ${(ROAD_W / 2 - 0.25).toFixed(2)}));
 				float centre = (1.0 - smoothstep(0.055 - fw, 0.055 + fw, abs(u))) * step(fract(s / 12.0), 0.25);
-				float verge = smoothstep(3.2 - fw, 3.2 + fw, abs(u));
-				vec3 col = mix(uAsphalt, uLine, max(edge, centre));
+				float shoulder = smoothstep(${(ROAD_W / 2).toFixed(2)} - fw, ${(ROAD_W / 2).toFixed(2)} + fw, abs(u));
+				float verge = smoothstep(${(ROAD_W / 2 + 0.9).toFixed(2)} - fw, ${(ROAD_W / 2 + 0.9).toFixed(2)} + fw, abs(u));
+				// A grain cell is 12 cm of road; past about a pixel a cell it melts into the road's own grey.
+				float grain = grainAt(vRoad * 8.0) * (1.0 - smoothstep(0.08, 0.2, fw)) * (0.14 + 0.1 * shoulder);
+				vec3 col = mix(uAsphalt, uShoulder, shoulder) * (1.0 + grain);
+				col = mix(col, uLine, max(edge, centre) * (1.0 - shoulder));
 				col = mix(col, uVerge, verge);
 				vec4 diffuseColor = vec4(col, opacity);`,
-			)
-			// markings stay legible at dusk — flat, never bloomed
-			.replace(
-				'#include <emissivemap_fragment>',
-				'#include <emissivemap_fragment>\ntotalEmissiveRadiance += uLine * max(edge, centre) * (1.0 - verge) * 0.45;',
 			);
 	};
-	m.customProgramCacheKey = () => `road-${c.asphalt}-${c.line}-${c.verge}`;
+	m.customProgramCacheKey = () =>
+		`road-${c.asphalt}-${c.line}-${c.verge}-${c.shoulder}`;
 	return m;
 }
 

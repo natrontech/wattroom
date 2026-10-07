@@ -313,9 +313,10 @@
 	--world-ridge: #26304a;
 	--world-ridge-rock: #3c4258;
 
-	--world-road-asphalt: #1b1a1f;
+	--world-road-asphalt: #383a44;
 	--world-road-line: #cfc9d6;
-	--world-road-verge: #2c2a2c;
+	--world-road-shoulder: #5a5856; /* gravel, lighter than the asphalt */
+	--world-road-verge: #3d4a36; /* the ground's own verge, so the road meets it */
 
 	--world-prop-spruce: #0d2c20;
 	--world-prop-spruce-tip: #23503a;
