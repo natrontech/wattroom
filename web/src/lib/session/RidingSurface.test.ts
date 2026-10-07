@@ -21,8 +21,12 @@ describe('the jukebox seat over the world', () => {
 		const html = surface({ seat: snip('<p>Midnight City · Kim</p>') });
 		const seat = html.match(/<div data-seat="jukebox"[^>]*><\/div>/);
 		expect(seat, 'an empty hole for the player').not.toBeNull();
+		// Its own box, at the seat's right edge and width (24 % of the canvas).
+		const line = html.match(/<div data-testid="now-playing"[^>]*>/)?.[0] ?? '';
+		expect(line).toContain('right:16px');
+		expect(line).toContain('width:24%');
 		expect(html.indexOf('Midnight City')).toBeGreaterThan(
-			html.indexOf('data-seat="jukebox"'),
+			html.indexOf('data-testid="now-playing"'),
 		);
 	});
 

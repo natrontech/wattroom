@@ -21,6 +21,7 @@
 		CORRIDOR,
 		GAP_PX,
 		INSET_PX,
+		BAND_MAX_PX,
 		JUKEBOX_SEAT,
 		SIDE_MAX,
 		SKYLINE_PX,
@@ -71,6 +72,7 @@
 	// measured fit, not a breakpoint (Jan, 2026-10-06).
 	let width = $state(0);
 	let slotWidth = $state(0);
+	let playingH = $state(0);
 	const momentPlace = $derived(momentAt(width, INSET_PX + slotWidth));
 	const seatLeft = `${JUKEBOX_SEAT.x0 * 100}%`;
 	const seatW = `${(JUKEBOX_SEAT.x1 - JUKEBOX_SEAT.x0) * 100}%`;
@@ -102,9 +104,9 @@
 		{/if}
 		<div
 			data-dock="header"
-			class="{panel} w-fit"
-			style="left:{INSET_PX}px;top:{INSET_PX}px;max-width:calc({seatLeft} - {INSET_PX +
-				GAP_PX}px)"
+			class={panel}
+			style="left:{INSET_PX}px;top:{INSET_PX}px;width:min({BAND_MAX_PX}px, calc({seatLeft} - {INSET_PX +
+				GAP_PX}px))"
 			bind:offsetWidth={slotWidth}
 		>
 			{@render header()}
@@ -128,22 +130,25 @@
 				style="right:{INSET_PX}px;top:{INSET_PX}px;width:{seatW};height:{seatH}"
 				{@attach (node) => offerSeat(node, COLUMN_SEAT)}
 			></div>
+			<!-- The now-playing line, directly under the seat at its width. -->
+			<div
+				data-testid="now-playing"
+				class="absolute [&:not(:has(*))]:hidden"
+				style="right:{INSET_PX}px;top:{underSeat};width:{seatW}"
+				bind:offsetHeight={playingH}
+			>
+				{@render seat()}
+			</div>
 		{/if}
-		<!-- The right column under the seat: the now-playing line at the seat's
-		     width, the moment card when it does not fit top-centre, what has the
-		     focus, then the crew. -->
+		<!-- The right column under the seat and any now-playing line: the
+		     moment card when it does not fit top-centre, what has the focus,
+		     then the crew. -->
 		<div
 			class="absolute flex flex-col items-end gap-3"
-			style="right:{INSET_PX}px;top:{underSeat};{side};bottom:{INSET_PX +
-				SKYLINE_PX +
-				GAP_PX}px"
+			style="right:{INSET_PX}px;top:calc({underSeat} + {playingH
+				? playingH + GAP_PX
+				: 0}px);{side};bottom:{INSET_PX + SKYLINE_PX + GAP_PX}px"
 		>
-			{#if seat}<div
-					style="width:{width * (JUKEBOX_SEAT.x1 - JUKEBOX_SEAT.x0)}px"
-					class="max-w-full [&:not(:has(*))]:hidden"
-				>
-					{@render seat()}
-				</div>{/if}
 			{#if moment && momentPlace === 'seat'}
 				<!-- Never wider than the column, so never into the corridor (G3). -->
 				<div data-dock="moment" class="ride-panel max-w-full">

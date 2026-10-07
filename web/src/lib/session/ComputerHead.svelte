@@ -47,8 +47,9 @@
 		<p class="num leading-[0.85] font-bold whitespace-nowrap">
 			<span
 				data-testid="head-power"
-				class="text-[6.5rem] {stale ? 'text-muted' : 'text-watt glow-text'}"
-				>{stale ? '—' : power}</span
+				class="inline-block min-w-[3ch] text-[6.5rem] {stale
+					? 'text-muted'
+					: 'text-watt glow-text'}">{stale ? '—' : power}</span
 			>{' '}<span class="text-muted text-5xl font-normal">W</span>
 		</p>
 		<div class="pb-1">

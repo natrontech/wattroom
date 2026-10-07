@@ -23,6 +23,11 @@ export const JUKEBOX_SEAT: Box = { x0: 0.74, y0: 0.02, x1: 0.98, y1: 0.3 };
 /** A panel's inset from the canvas edge, and the gap between two (TARGETS G3). */
 export const INSET_PX = 16;
 export const GAP_PX = 12;
+/**
+ * Slot 1's band, one width (the box table's 860): content-sized, its controls
+ * moved with every digit of the clock beside them (#3668, round 3).
+ */
+export const BAND_MAX_PX = 860;
 /** A side panel's widest: against its edge, clear of the corridor (G3). */
 export const SIDE_MAX = CORRIDOR.x0;
 /** The Skyline's height along the bottom (TARGETS ride-road-world 11: over 56 px). */

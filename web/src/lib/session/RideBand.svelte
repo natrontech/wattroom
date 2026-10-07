@@ -82,7 +82,7 @@
 			<p
 				data-testid="block-left"
 				aria-label="left in {unit}"
-				class="num shrink-0 text-7xl leading-none font-bold"
+				class="num min-w-[4.5ch] shrink-0 text-7xl leading-none font-bold"
 			>
 				{formatClock(block.secondsLeft)}
 			</p>
