@@ -36,7 +36,6 @@
 	import { createRideFlags } from '$lib/ride/flags.svelte';
 	import RideFlags from '$lib/ride/RideFlags.svelte';
 	import PreRide from '$lib/ride/PreRide.svelte';
-	import CountdownScreen from '$lib/session/CountdownScreen.svelte';
 	import TvOverlay from '$lib/session/TvOverlay.svelte';
 	import RidingScreen from '$lib/ride/RidingScreen.svelte';
 	import RideStatus from '$lib/ride/RideStatus.svelte';
@@ -619,25 +618,13 @@
 				onError={(message) => (error = message)}
 			/>
 		{/if}
-	{:else if session.state === 'countdown'}
-		<!-- Sound AND visual (.claude/rules/ux.md): the cue alone reaches a
-		     rider who is climbing back onto the bike, not the one still walking
-		     to it. A session's own count-in screen (ADR-0046). -->
-		<CountdownScreen
-			remaining={session.countdownRemaining}
-			title={workout.name}
-			note={block
-				? `first up · ${block.label}${block.watts > 0 ? ` ${block.watts} W` : ''}`
-				: undefined}
-		>
-			{#snippet controls()}
-				<button onclick={cancelCountdown} class="btn btn-secondary btn-lg"
-					>Cancel</button
-				>
-			{/snippet}
-		</CountdownScreen>
 	{:else if session.state !== 'done'}
+		<!-- The count-in is the ride's own screen (ADR-0046, #1800): flat, the
+		     one digit; over the world, the slots already in place (#3668). -->
 		<RidingScreen
+			countIn={session.state === 'countdown'
+				? { remaining: session.countdownRemaining, cancel: cancelCountdown }
+				: undefined}
 			{session}
 			{block}
 			{workout}

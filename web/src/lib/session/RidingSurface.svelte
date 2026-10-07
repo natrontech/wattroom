@@ -18,6 +18,7 @@
 	import type { Snippet } from 'svelte';
 	import { COLUMN_SEAT, offerSeat } from '$lib/channel/stage-slot.svelte';
 	import {
+		CORRIDOR,
 		GAP_PX,
 		INSET_PX,
 		JUKEBOX_SEAT,
@@ -38,6 +39,7 @@
 		horizon,
 		world,
 		moment,
+		centre,
 		seat,
 		stage = false,
 		class: extra = '',
@@ -53,6 +55,8 @@
 		world?: Snippet;
 		/** A moment card — a sprint armed or live (D12) — over the world. */
 		moment?: Snippet;
+		/** The one thing the corridor holds: the count-in's digit (TARGETS ride-countin 2). */
+		centre?: Snippet;
 		/**
 		 * A session's jukebox seat, offered to the player while the people
 		 * column is folded away (#3668), with the now-playing line under it.
@@ -86,6 +90,11 @@
 		bind:clientWidth={width}
 	>
 		<div class="absolute inset-0">{@render world()}</div>
+		{#if centre}
+			<div class="absolute grid place-items-center" style={place(CORRIDOR)}>
+				{@render centre()}
+			</div>
+		{/if}
 		<div
 			data-dock="header"
 			class="{panel} w-fit"
