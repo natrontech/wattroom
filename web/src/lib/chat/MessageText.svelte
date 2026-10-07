@@ -9,10 +9,13 @@
 	let {
 		text,
 		preview = true,
+		linkCard = true,
 		menu,
 	}: {
 		text: string;
 		preview?: boolean;
+		/** False when an earlier line already carded this link (#3734). */
+		linkCard?: boolean;
 		/** The message's menu, handed to a GIF the way ChatImage wants it (#1817). */
 		menu?: () => MenuEntry[];
 	} = $props();
@@ -72,4 +75,4 @@
 					title={part.text}
 					class="inline-block h-[1.4em] w-auto align-[-0.35em]"
 				/>{:else}<span class={marks(part)}>{part.text}</span>{/if}{/each}</span
-	>{#if preview}<LinkPreview {parts} />{/if}{/if}
+	>{#if preview && linkCard}<LinkPreview {parts} />{/if}{/if}

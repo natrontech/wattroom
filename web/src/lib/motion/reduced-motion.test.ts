@@ -57,7 +57,7 @@ describe('reduced motion (#3208)', () => {
 		expect(
 			offenders,
 			`A transition that does not ask about reduced motion:\n${offenders.join('\n')}\n` +
-				'Use enter, exit, pop, swap or reorder from $lib/motion/transitions.',
+				'Use enter, exit or reorder from $lib/motion/transitions.',
 		).toEqual([]);
 	});
 });

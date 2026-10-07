@@ -15,6 +15,23 @@ export const soloRide = {
 	},
 };
 
+/**
+ * Publishes a ride as the one under way; the returned function withdraws it,
+ * unless a later ride has taken its place. A free ride on a road has no
+ * ride life of its own and publishes itself through this (#3667).
+ */
+export function publishRide(state: () => RideState): () => void {
+	const mine = {
+		get state() {
+			return state();
+		},
+	};
+	latest = mine;
+	return () => {
+		if (latest === mine) latest = null;
+	};
+}
+
 /** Where a solo ride is in its life; while riding, the guards say how (#3369). */
 export type RideLife = 'idle' | 'countdown' | 'riding' | 'done';
 
@@ -125,11 +142,7 @@ export function createRideLife(
 			life = 'countdown';
 			countdownRemaining = COUNTDOWN_SECONDS;
 			listen();
-			latest = {
-				get state() {
-					return ride.state();
-				},
-			};
+			publishRide(ride.state);
 			ticker = createTicker(ride.tick, { now: ride.now });
 			wakeLock = acquireWakeLock();
 		},

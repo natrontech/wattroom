@@ -93,5 +93,6 @@ test('a road ridden once races its ghost from the start', async ({ page }) => {
 	await computer.getByRole('button', { name: 'RIDE page' }).click();
 	await expect(split).toBeVisible({ timeout: 15_000 });
 	await expect(split).toContainText('vs last');
-	await expect(split).toContainText(/[−+]\d:\d\d/);
+	// The same simulated watts on the same road is level: "0:00", unsigned.
+	await expect(split).toContainText(/[−+]?\d:\d\d/);
 });

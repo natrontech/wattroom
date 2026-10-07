@@ -13,17 +13,17 @@ describe('presence marks (#505)', () => {
 	it('rings a speaker in the voice colour, never the live-data hue', () => {
 		// ADR-0005: watt marks live data and is the only thing that glows.
 		// Speaking is presence, so it is z4 — the roster's voice colour.
-		expect(tileFrame(true)).toContain('ring-z4');
+		expect(tileFrame(true)).toContain('outline-z4');
 		expect(tileFrame(true)).not.toMatch(/watt|glow/);
 	});
 
 	it('gives an idle tile an edge that exists in both families', () => {
-		expect(tileFrame(false)).toContain('ring-edge');
+		expect(tileFrame(false)).toContain('outline-edge');
 	});
 
 	it('makes away a third quiet presence state, never live data', () => {
-		expect(tileFrame(true, true)).toContain('ring-edge/50');
-		expect(tileFrame(true, true)).not.toMatch(/watt|glow|ring-z4/);
+		expect(tileFrame(true, true)).toContain('outline-edge/50');
+		expect(tileFrame(true, true)).not.toMatch(/watt|glow|outline-z4/);
 		// Quiet by its frame, not by fading the tile: opacity took the name on
 		// it under the text floor (#2888).
 		expect(tileFrame(true, true)).not.toMatch(/opacity/);
@@ -42,6 +42,15 @@ describe('presence marks (#505)', () => {
 		}
 	});
 
+	// G2: watt marks your 3 s power, your horizon marker and your trail, and
+	// nothing in a roster. Your own execution bar in the rail kept it (#3727).
+	it('keeps the roster off the live-data hue', () => {
+		for (const surface of ROSTERS) {
+			const source = readFileSync(join(SRC, surface), 'utf8');
+			expect(source.match(/\b(?:bg|text|border)-watt\b/), surface).toBeNull();
+		}
+	});
+
 	it('draws the strip and the Lounge tile from the one vocabulary', () => {
 		for (const tile of TILES) {
 			const source = readFileSync(join(SRC, tile), 'utf8');
@@ -50,7 +59,7 @@ describe('presence marks (#505)', () => {
 				'AWAY_MARK',
 			);
 			// A ring spelled out at the call site is how the two drifted apart.
-			expect(source.match(/ring-(?:z4|neon|ink)/), tile).toBeNull();
+			expect(source.match(/(?:ring|outline)-(?:z4|neon|ink)/), tile).toBeNull();
 		}
 	});
 });

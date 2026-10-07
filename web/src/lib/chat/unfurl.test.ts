@@ -9,7 +9,8 @@ vi.mock('$lib/api', () => ({
 	},
 }));
 
-const { oembedFor, unfurl } = await import('./unfurl');
+const { CARD_DEADLINE_MS, holdCard, oembedFor, repeatedLinks, unfurl } =
+	await import('./unfurl');
 
 const fetchMock = vi.fn();
 
@@ -162,5 +163,112 @@ describe('unfurl (#866)', () => {
 		await vi.advanceTimersByTimeAsync(60_000);
 		expect(await pending).toBeNull();
 		vi.useRealTimers();
+	});
+});
+
+describe('holdCard (#3734)', () => {
+	// A server answer that takes `ms` to arrive.
+	const slow = (ms: number, title: string) =>
+		new Promise((resolve) =>
+			setTimeout(
+				() => resolve({ ok: true, data: { title, host: 'example.com' } }),
+				ms,
+			),
+		);
+
+	// A line that never leaves the screen until the test says so.
+	function screen() {
+		let leave = () => {};
+		const outOfView = (then: () => void) => {
+			leave = then;
+			return () => (leave = () => {});
+		};
+		return { outOfView, leave: () => leave() };
+	}
+
+	it('lands a card that answers inside the deadline', async () => {
+		vi.useFakeTimers();
+		apiResponses.push(slow(CARD_DEADLINE_MS / 2, 'Quick'));
+		const shown: string[] = [];
+		holdCard(
+			'https://example.com/quick',
+			(card) => shown.push(card.title),
+			screen().outOfView,
+		);
+		await vi.advanceTimersByTimeAsync(CARD_DEADLINE_MS);
+		expect(shown).toEqual(['Quick']);
+		vi.useRealTimers();
+	});
+
+	it('holds a late card until its line has left the screen', async () => {
+		// The shuffle the rider reported: a card landing seconds after the line
+		// pushed every line above it up while they were reading them.
+		vi.useFakeTimers();
+		apiResponses.push(slow(CARD_DEADLINE_MS * 3, 'Slow'));
+		const shown: string[] = [];
+		const view = screen();
+		holdCard(
+			'https://example.com/slow',
+			(card) => shown.push(card.title),
+			view.outOfView,
+		);
+		await vi.advanceTimersByTimeAsync(CARD_DEADLINE_MS * 4);
+		expect(shown).toEqual([]);
+		view.leave();
+		expect(shown).toEqual(['Slow']);
+		vi.useRealTimers();
+	});
+
+	it('draws an answer already in at once, deadline or not', async () => {
+		apiResponses.push({ ok: true, data: { title: 'Seen', host: 'e.test' } });
+		await unfurl('https://e.test/seen');
+		const shown: string[] = [];
+		holdCard(
+			'https://e.test/seen',
+			(card) => shown.push(card.title),
+			() => {
+				throw new Error('an answer in hand waits for nothing');
+			},
+		);
+		expect(shown).toEqual(['Seen']);
+	});
+
+	it('shows nothing for a link with nothing to show, and nothing after teardown', async () => {
+		vi.useFakeTimers();
+		apiResponses.push({ ok: true, data: undefined });
+		const shown: string[] = [];
+		holdCard(
+			'https://e.test/empty',
+			(c) => shown.push(c.title),
+			screen().outOfView,
+		);
+		apiResponses.push(slow(10, 'Gone'));
+		const stop = holdCard(
+			'https://e.test/gone',
+			(c) => shown.push(c.title),
+			screen().outOfView,
+		);
+		stop();
+		await vi.advanceTimersByTimeAsync(CARD_DEADLINE_MS);
+		expect(shown).toEqual([]);
+		vi.useRealTimers();
+	});
+});
+
+describe('repeatedLinks (#3734)', () => {
+	it('cards a link once, however often it is said', () => {
+		const origin = 'https://wattroom.test';
+		const repeats = repeatedLinks(
+			[
+				{ key: 'a', text: 'look https://example.com/route' },
+				{ key: 'b', text: 'nice' },
+				{ key: 'c', text: 'https://example.com/route again' },
+				{ key: 'd', text: 'https://example.com/other' },
+				{ key: 'e' },
+				{ key: 'f', text: 'yes https://example.com/route' },
+			],
+			origin,
+		);
+		expect([...repeats]).toEqual(['c', 'f']);
 	});
 });

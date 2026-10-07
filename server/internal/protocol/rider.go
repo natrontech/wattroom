@@ -103,9 +103,22 @@ type Rider struct {
 	Device string `json:"device,omitempty"`
 }
 
-// Administers reports whether the rider runs the crew: its owner or an
-// admin, who may end a session somebody else is coaching (#2438).
-func (r Rider) Administers() bool { return r.Role == "owner" || r.Role == "admin" }
+// A rider's standing in a crew (ADR-0058), as its membership row and a voice
+// channel's roster say it. Banned is a row too, kept so a ban holds.
+const (
+	RoleOwner  = "owner"
+	RoleAdmin  = "admin"
+	RoleMember = "member"
+	RoleBanned = "banned"
+)
+
+// Administers reports whether a crew role runs the crew: its owner or an
+// admin, who keep its channels and may end a session somebody else is
+// coaching (#2438, docs/SPEC.md "Roles & permissions").
+func Administers(role string) bool { return role == RoleOwner || role == RoleAdmin }
+
+// Administers reports whether the rider runs the crew.
+func (r Rider) Administers() bool { return Administers(r.Role) }
 
 // AwayState is a rider stepping out (#706) — the Lounge's button, never a
 // timer: being off the bike is not being away, and a coach watching the stage

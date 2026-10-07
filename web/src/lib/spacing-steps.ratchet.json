@@ -22,7 +22,7 @@
 	"lib/channel/JukeboxRail.svelte": 5,
 	"lib/channel/JukeboxTrack.svelte": 2,
 	"lib/channel/Lounge.svelte": 3,
-	"lib/channel/MixFaders.svelte": 8,
+	"lib/channel/MixFaders.svelte": 7,
 	"lib/channel/QuickAudio.svelte": 2,
 	"lib/channel/RiderTile.svelte": 5,
 	"lib/channel/SidePanel.svelte": 2,

@@ -14,7 +14,7 @@ import {
 	DANGER_HUE,
 	DARK_SURFACE_MAX_L,
 	TOKENS,
-	WHITE_SURFACE_MIN_L,
+	LIGHT_SURFACE_MIN_L,
 	type Theme,
 	type TokenName,
 } from './palette';
@@ -29,6 +29,7 @@ import {
 	worst,
 	worstLc,
 	zoneFloor,
+	ZONE_WATT_MIN_GAP,
 } from './gate';
 import {
 	DEFAULT_CHOICE,
@@ -141,7 +142,7 @@ describe('colour maths', () => {
 describe('the catalogue', () => {
 	it('offers both families', () => {
 		expect(themesFor('dark').length).toBeGreaterThan(1);
-		expect(themesFor('white').length).toBeGreaterThan(1);
+		expect(themesFor('light').length).toBeGreaterThan(1);
 	});
 
 	it('keeps Outrun accents and surfaces at the values app.css ships', () => {
@@ -167,9 +168,9 @@ describe('the catalogue', () => {
 	});
 
 	it('gives every identity one theme in each family', () => {
-		// The ride surface is always dark (ADR-0005) — a white theme still
+		// The ride surface is always dark (ADR-0005) — a light theme still
 		// resolves the dark half of the same identity inside .cave.
-		for (const t of themesFor('white')) {
+		for (const t of themesFor('light')) {
 			expect(
 				THEMES.some(
 					(other) => other.identity === t.identity && other.family === 'dark',
@@ -269,6 +270,17 @@ describe('the APCA report', () => {
 				expect(c.passes, `${theme.id} ${c.id}`).toBe(c.value >= c.floor);
 	});
 
+	it('holds every zone off the watt colour, Outrun dark Z7 first', () => {
+		// #3754: Z7 sat 0.015 from watt, so a sprint bar read as live data.
+		for (const id of ['outrun', 'outrun-day']) {
+			const check = gateChecks(themeById(id)!, THEMES).find(
+				(c) => c.id === 'z7-watt-delta',
+			)!;
+			expect(check.passes, `${id} z7 vs watt at ${check.value}`).toBe(true);
+			expect(check.floor).toBe(ZONE_WATT_MIN_GAP);
+		}
+	});
+
 	/**
 	 * The guard that matters. Turning the reported warning into a failure is a
 	 * one-word edit in `check()`, and the thing it would break is not this
@@ -337,7 +349,7 @@ describe.each(each)('%s meets the contrast floors', (_name, theme: Theme) => {
 		const l = hexToOklch(theme.tokens.surface).l;
 		if (theme.family === 'dark')
 			expect(l).toBeLessThanOrEqual(DARK_SURFACE_MAX_L);
-		else expect(l).toBeGreaterThanOrEqual(WHITE_SURFACE_MIN_L);
+		else expect(l).toBeGreaterThanOrEqual(LIGHT_SURFACE_MIN_L);
 	});
 
 	it('keeps its two accents separable', () => {

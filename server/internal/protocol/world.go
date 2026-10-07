@@ -28,6 +28,10 @@ type SessionRoute struct {
 	// The crew's cut, the length every metre above is bounded by.
 	LengthM float64 `json:"lengthM"`
 	Loop    bool    `json:"loop,omitempty"`
+	// Where the crew's cut begins on the stored road (#3722): the first
+	// height step past the hidden end. Server-only — the hub keeps a race
+	// rider's ride in the stored road's metres, as every ride of it is.
+	CutFromM float64 `json:"-"`
 }
 
 // World is the bunch on the session's road (ADR-0065), on every tick while
@@ -44,6 +48,10 @@ type World struct {
 	// Riders coasting back to the bunch's tail (docs/SPEC.md "Riding a road
 	// together"), by rider id.
 	Resting []string `json:"resting,omitempty"`
+	// The joined riders in the order they joined the bunch, those who joined
+	// in one second by id (#3098): the formation's slots, so every screen
+	// draws one bunch and a late joiner rides in at its back.
+	Order []string `json:"order,omitempty"`
 	// Each racer's own place in a race (#3032, ADR-0067), by rider id: a
 	// race rides no shared bunch. Races only.
 	Racers map[string]RaceRider `json:"racers,omitempty"`
@@ -58,4 +66,12 @@ type RaceRider struct {
 	M        float64 `json:"m"`
 	V        float64 `json:"v"`
 	FinishMs int64   `json:"finishMs,omitempty"`
+	// The Category the race froze them in at the flag, D–A (#3174): who they
+	// race, which the RACE page places them among. The bracket, never the
+	// watts behind it.
+	Cat string `json:"cat,omitempty"`
+	// Seconds ahead of their Category's par at their metre, behind when
+	// negative (#3174): par from their own start, on their own racing clock.
+	// Absent until they have raced a second.
+	Par float64 `json:"par,omitempty"`
 }

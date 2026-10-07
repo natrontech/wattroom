@@ -51,7 +51,9 @@ test('a road session’s closing card plans the next leg from where the bunch st
 	await picker.getByRole('button', { name: 'Roads' }).click();
 	await picker
 		.getByRole('list', { name: 'your routes' })
-		.getByRole('button', { name: new RegExp(NAME) })
+		.getByRole('listitem')
+		.filter({ hasText: NAME })
+		.getByRole('button', { name: 'Pick' })
 		.click();
 	await picker.getByRole('button', { name: /^Start Road/ }).click();
 

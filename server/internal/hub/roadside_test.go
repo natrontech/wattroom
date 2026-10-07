@@ -50,7 +50,7 @@ func bunchAt(rm *channelState) float64 {
 func standing(rm *channelState) *protocol.RoadsideState {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
-	return rm.session.roadside()
+	return rm.roadsideLocked()
 }
 
 // #3029's acceptance: the validation matrix, with docs/SPEC.md's bounds.
@@ -77,8 +77,11 @@ func TestTheRoadsideTakesAStandWithinItsBounds(t *testing.T) {
 		}, "validation_error", "not a place on this road"},
 		{"not a place at all", "ben", func(float64) protocol.Roadside { return stand(math.NaN()) }, "validation_error", "not a place"},
 		{"a verb the roadside has not got", "ben", func(b float64) protocol.Roadside {
-			return protocol.Roadside{Kind: "paint", AtM: b + 1000}
-		}, "validation_error", "nothing else yet"},
+			return protocol.Roadside{Kind: "confetti", AtM: b + 1000}
+		}, "validation_error", "nothing else"},
+		{"a stand carrying chalk", "ben", func(b float64) protocol.Roadside {
+			return protocol.Roadside{Kind: protocol.RoadsideKindStand, AtM: b + 1000, Stamp: protocol.RoadsideStampHeart}
+		}, "validation_error", "no chalk"},
 		{"a rider riding the session", "coach", func(b float64) protocol.Roadside { return stand(b + 1000) }, "forbidden", "riding this session"},
 	} {
 		t.Run(c.name, func(t *testing.T) {

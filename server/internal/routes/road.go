@@ -158,7 +158,7 @@ func (s *Service) handleConsent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	role, err := s.store.Queries.CrewRoleOf(r.Context(), db.CrewRoleOfParams{CrewID: crew, UserID: user.ID})
-	if errors.Is(err, pgx.ErrNoRows) || err == nil && role != "owner" && role != "admin" && role != "member" {
+	if errors.Is(err, pgx.ErrNoRows) || err == nil && role != protocol.RoleOwner && role != protocol.RoleAdmin && role != protocol.RoleMember {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "That is not a crew of yours.")
 		return
 	}

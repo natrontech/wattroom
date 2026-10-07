@@ -9,9 +9,11 @@
 // reversible from the two places that can turn it on — Settings and the
 // tray — so undoing a click never means editing OS config.
 //
-// A login launch shows no window: the shell starts in the tray with its window
-// loaded but hidden (#3005), because a window in the rider's face at every boot
-// is what makes people turn this back off. HIDDEN_FLAG is how the launch says so.
+// A login launch shows no window: the shell starts in the Dock or the tray with
+// its window loaded but hidden (#3005), because a window in the rider's face at
+// every boot is what makes people turn this back off. HIDDEN_FLAG is how the
+// launch says so. Windows and Linux with the tray icon off show the window
+// anyway (#3843): hidden, there would be no way back to it.
 
 const { app } = require('electron');
 const fs = require('node:fs');

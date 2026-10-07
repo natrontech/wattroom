@@ -82,7 +82,9 @@
 
 		<nav aria-label="Site" class="hidden items-center gap-5 text-sm lg:flex">
 			{#each nav as item (item.href)}
-				<a href={item.href} class="text-muted hover:text-ink">{item.label}</a>
+				<a href={item.href} class="text-muted hover:text-ink link-standalone"
+					>{item.label}</a
+				>
 			{/each}
 		</nav>
 
@@ -116,7 +118,7 @@
 				</summary>
 				<nav
 					aria-label="Site"
-					class="panel panel-flush bg-surface-raised absolute right-0 mt-2 flex w-56 flex-col overflow-hidden shadow-xl"
+					class="panel panel-flush bg-surface-raised absolute right-0 mt-2 flex w-56 flex-col overflow-hidden"
 				>
 					{#each nav as item (item.href)}
 						<a

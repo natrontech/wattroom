@@ -49,10 +49,10 @@
 		{...MUSIC_FADER}
 		value={mixer.music}
 		oninput={(e) => mixer.setMusic(Number(e.currentTarget.value))}
-		class="mt-0.5 w-full"
+		class="w-full"
 	/>
 </label>
-<label class="mt-2 block text-xs">
+<label class="mt-1.5 block text-xs">
 	<span class="text-muted"
 		>cues · <span class="font-display tabular-nums"
 			>{Math.round(mixer.cues * 100)}%</span
@@ -64,13 +64,13 @@
 		value={mixer.cues}
 		oninput={(e) => mixer.setCues(Number(e.currentTarget.value))}
 		onchange={() => play('block')}
-		class="mt-0.5 w-full"
+		class="w-full"
 	/>
 </label>
 <!-- Its own channel, never the cues fader (#877, ADR-0033): a quiet ride must
      not silence the board, and turning the board down must not cost the
      rider their countdown cue. -->
-<label class="mt-2 block text-xs">
+<label class="mt-1.5 block text-xs">
 	<span class="text-muted"
 		>soundboard · <span class="font-display tabular-nums"
 			>{Math.round(mixer.board * 100)}%</span
@@ -84,14 +84,14 @@
 			mixer.setBoard(Number(e.currentTarget.value));
 			applyLevels();
 		}}
-		class="mt-0.5 w-full"
+		class="w-full"
 	/>
 </label>
 <!-- Somebody else's computer, coming through the call (#1124, #1699). The
      mixer, the gain and the dip under voice all shipped with the share; the
      fader did not, so the loudest thing in the call was the one source a
      rider could only turn down by asking the person sharing it. -->
-<label class="mt-2 block text-xs">
+<label class="mt-1.5 block text-xs">
 	<span class="text-muted"
 		>shared screens · <span class="font-display tabular-nums"
 			>{Math.round(mixer.share * 100)}%</span
@@ -102,11 +102,11 @@
 		{...UNIT_FADER}
 		value={mixer.share}
 		oninput={(e) => setShare(Number(e.currentTarget.value))}
-		class="mt-0.5 w-full"
+		class="w-full"
 		aria-label="how loud a shared screen's sound is"
 	/>
 </label>
-<label class="mt-2 block text-xs">
+<label class="mt-1.5 block text-xs">
 	<span class="text-muted"
 		>duck under voice · {mixer.duck === 1
 			? 'off'
@@ -118,7 +118,7 @@
 		value={mixer.duck}
 		oninput={(e) => mixer.setDuck(Number(e.currentTarget.value))}
 		onchange={() => play('block')}
-		class="mt-0.5 w-full"
+		class="w-full"
 		aria-label="how far music and cues dip under a voice"
 	/>
 </label>
@@ -126,8 +126,8 @@
      default is right for almost everyone (ux.md's 95% rule) — folded, the way
      sprint grade is (#1860, #2181). The 2026-09-10 navigation audit named
      both; only the other one got folded. -->
-<details class="mt-2">
-	<summary class="text-muted hover:text-ink cursor-pointer text-[11px]"
+<details class="mt-1.5">
+	<summary class="text-muted hover:text-ink cursor-pointer py-1 text-[11px]"
 		>Advanced</summary
 	>
 	<label class="mt-2 flex items-start gap-2">
@@ -151,7 +151,7 @@
 <div class="mt-3">
 	<span class="text-muted text-xs">riders</span>
 	{#if listed.length > 0}
-		<ul class="mt-1 space-y-2">
+		<ul class="mt-1 space-y-1.5">
 			{#each listed as rider (rider.id)}
 				{@const pct = Math.round(mixer.riderGain(rider.id) * 100)}
 				<li class="text-xs">
@@ -175,7 +175,7 @@
 						oninput={(e) =>
 							setRider(rider.id, Number(e.currentTarget.value) / 100)}
 						aria-label="{rider.name}'s volume"
-						class="mt-0.5 w-full"
+						class="w-full"
 					/>
 				</li>
 			{/each}

@@ -10,8 +10,6 @@ import { cm } from './keyed';
 export const FINE_M = 10;
 export const COARSE_M = 40;
 export const CHUNK_M = 160;
-/** Heights are metres above this in every world, never above a route's own start. */
-export const DATUM_M = 0;
 
 export type CellSize = typeof FINE_M | typeof COARSE_M | typeof CHUNK_M;
 export type Cell = { size: CellSize; i: number; j: number };
@@ -36,9 +34,3 @@ export function cellsOf(chunk: Cell, size: CellSize): Cell[] {
 			cells.push({ size, i: chunk.i * per + a, j: chunk.j * per + b });
 	return cells;
 }
-
-/** A cell's corner nearest the key frame's origin, in metres. */
-export const cornerOf = (cell: Cell): [number, number] => [
-	cell.i * cell.size,
-	cell.j * cell.size,
-];

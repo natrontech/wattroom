@@ -17,6 +17,7 @@
 		now,
 		imageSrc,
 		menu,
+		linkCard = true,
 	}: {
 		message: ThreadMessage;
 		/** The line names the reader. */
@@ -25,6 +26,8 @@
 		now: number;
 		imageSrc: (imageId: string) => string;
 		menu: () => MenuEntry[];
+		/** False when an earlier line already carded this link (#3734). */
+		linkCard?: boolean;
 	} = $props();
 </script>
 
@@ -55,7 +58,7 @@
 		     Their words only (#2686) — on the whole line it also kept this
 		     template's own spaces, a blank row above every picture. -->
 			<span class="whitespace-pre-wrap"
-				><MessageText text={message.text} {menu} /></span
+				><MessageText text={message.text} {menu} {linkCard} /></span
 			>
 		{/if}
 	{/if}

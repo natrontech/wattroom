@@ -87,7 +87,8 @@ test('any workout rides on your own route by the clock, and saves on it', async 
 		rideSmoke(page, `&road=${routeId}&from=0`),
 		rideSmoke(off, ''),
 	]);
-	await expect(page.getByText(/^0\.0 of 3\.0 km$/)).toBeVisible({
+	// Where on the road, once: slot 1's road line (TARGETS one home, D17).
+	await expect(page.getByTestId('block-road')).toContainText('km 0.0 of 3.0', {
 		timeout: 15_000,
 	});
 	// Blocks end by the clock on a road that pins nothing: Skip is there.
@@ -110,7 +111,9 @@ test('any workout rides on your own route by the clock, and saves on it', async 
 		.poll(
 			async () =>
 				Number(
-					(await page.getByText(/ of 3\.0 km$/).textContent())?.split(' ')[0],
+					(await page.getByTestId('block-road').textContent())?.match(
+						/km ([\d.]+) of/,
+					)?.[1],
 				),
 			{ message: 'the dot never left km 0', timeout: 30_000 },
 		)

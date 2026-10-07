@@ -10,7 +10,10 @@
 	 * so that their unit, at half, still clears the 2.9vh floor.
 	 */
 	import { untrack } from 'svelte';
+	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
+	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import ZoneDot from '$lib/components/ZoneDot.svelte';
+	import ComputerHead from '$lib/session/ComputerHead.svelte';
 	import { ZONE_BG } from '$lib/components/zones';
 	import { pulse } from '$lib/motion/transitions';
 	import ClimbProfile from '$lib/ride/ClimbProfile.svelte';
@@ -30,6 +33,8 @@
 		tv = false,
 		phone = false,
 		climbOpens = false,
+		docked = false,
+		ftp = 0,
 		...ctx
 	}: ComputerContext & {
 		/** At three metres, sized in vh (TvMode). */
@@ -38,12 +43,21 @@
 		phone?: boolean;
 		/** A free or route ride, where CLIMB opens by itself (ADR-0071 as amended). */
 		climbOpens?: boolean;
+		/**
+		 * Over the world, one panel at the left edge (#3668): the page control
+		 * ← name → with dots (D15), the head — the 3 s power, W/kg, the zone,
+		 * the target track — and the page's fields in a grid under a hairline.
+		 * The dock is the panel, so this draws none of its own.
+		 */
+		docked?: boolean;
+		/** For the head's zone and target track; read only when docked. */
+		ftp?: number;
 	} = $props();
 
 	let page = $state<ComputerPage>('ride');
 	const pages = $derived(pagesFor(ctx));
 	const shown = $derived(pages.includes(page) ? page : 'ride');
-	const fields = $derived(fieldsFor(shown, ctx));
+	const fields = $derived(fieldsFor(shown, { ...ctx, ownHead: docked }));
 	const turns = $derived(pages.length > 1);
 
 	function turn(dir: 1 | -1) {
@@ -104,7 +118,9 @@
 	data-testid="bike-computer"
 	data-page={shown}
 	aria-label="bike computer, {PAGE_NAMES[shown]} page"
-	class="panel relative"
+	class={docked
+		? 'relative flex w-[21rem] max-w-full flex-col gap-3 px-4 py-3'
+		: 'panel relative'}
 >
 	<!-- The page's name and its dots sit in the row of numbers, so a page is
 	     one row tall where it fits and the focus above keeps its height (#3597);
@@ -173,32 +189,87 @@
 	{#if turns && !tv}
 		<!-- The whole panel turns the page (ADR-0071). First, so the dots — the
 		     only other positioned thing in it — paint above it. Not on the TV,
-		     which has nothing to walk over and tap: its keys do. -->
+		     which has nothing to walk over and tap: its keys do. Docked, the
+		     arrows are the named way and this is the pointer's. -->
 		<button
 			type="button"
 			onclick={() => turn(1)}
 			aria-label="next page, {PAGE_NAMES[turned(pages, shown, 1)]}"
+			aria-hidden={docked || undefined}
+			tabindex={docked ? -1 : undefined}
 			class="focus-visible:outline-neon absolute inset-0 rounded-lg focus-visible:outline-2"
 		></button>
 	{/if}
+	{#if docked}
+		<!-- D15: the current page's name between ← and →, with position dots. -->
+		<div class="relative flex items-center gap-1">
+			{#if turns}
+				<button
+					type="button"
+					onclick={() => turn(-1)}
+					aria-label="previous page, {PAGE_NAMES[turned(pages, shown, -1)]}"
+					title="Previous page"
+					class="icon-btn-lg -ml-2"><ChevronLeft size={24} /></button
+				>
+			{/if}
+			<p class="ride-label text-ink">{PAGE_NAMES[shown]}</p>
+			{#if turns}
+				<button
+					type="button"
+					onclick={() => turn(1)}
+					aria-label="next page, {PAGE_NAMES[turned(pages, shown, 1)]}"
+					title="Next page"
+					class="icon-btn-lg"><ChevronRight size={24} /></button
+				>
+				<div class="ml-auto flex gap-2" aria-hidden="true">
+					{#each pages as p (p)}
+						<span
+							data-testid="computer-dot"
+							class="size-2.5 rounded-full border forced-color-adjust-none {p ===
+							shown
+								? 'bg-neon border-neon forced-colors:bg-[Highlight]'
+								: 'border-muted'}"
+						></span>
+					{/each}
+				</div>
+			{/if}
+		</div>
+		<ComputerHead
+			power={ctx.stats?.seconds ? ctx.stats.power3 : Math.round(ctx.watts)}
+			kg={ctx.kg}
+			{ftp}
+			stale={ctx.stale}
+			target={ctx.target}
+			blockExecution={ctx.stats?.blockExecution ?? null}
+		/>
+	{/if}
 	{#if phone}{@render name()}{/if}
 	{#if ctx.climb && shown !== 'climb'}
-		<p data-testid="climb-chip" class="{size.word} text-neon mb-2 leading-none">
+		<p
+			data-testid="climb-chip"
+			class="{size.word} text-neon {docked ? 'leading-7' : 'mb-2 leading-none'}"
+		>
 			{climbChip(ctx.climb)}
 		</p>
 	{/if}
-	<div class={layout}>
-		{#if !phone}{@render name()}{/if}
+	<div
+		class={docked
+			? 'border-neon/20 grid grid-cols-2 gap-x-6 gap-y-3 border-t pt-3'
+			: layout}
+	>
+		{#if !phone && !docked}{@render name()}{/if}
 		{#each fields as field (field.key)}
 			<div data-testid="computer-field" data-field={field.key} class="min-w-0">
 				<span
-					class="{size.word} text-muted flex items-center gap-2 leading-none"
+					class="{docked
+						? 'ride-label'
+						: `${size.word} text-muted`} flex items-center gap-2 leading-none"
 					>{field.label}{#if field.zone}<ZoneDot
 							zone={field.zone}
 							class={tv ? 'size-[1.4vh]' : 'size-2'}
 						/>{/if}</span
 				>
-				{#if field.neon}
+				{#if field.key === 'gear'}
 					<span
 						bind:this={gearField}
 						aria-live="polite"
@@ -207,19 +278,25 @@
 					>
 				{:else}
 					<!-- A space, not a margin, between number and unit: "78 rpm"
-					     is what a screen reader and a search both read. -->
+					     is what a screen reader and a search both read. Neon is a
+					     model's number, flat: only live data glows (ADR-0005). The
+					     unit's own line-height would make a page with units 2 px
+					     taller than one without, so a turn would move the panel. -->
 					<span
 						class="num mt-1 block {size.value} leading-none font-bold {field.glow
 							? 'text-watt glow-text'
-							: 'text-ink'}"
+							: field.neon
+								? 'text-neon'
+								: 'text-ink'}"
 						>{field.value}{#if field.unit}{' '}<span
-								class="text-muted {size.unit} font-normal">{field.unit}</span
+								class="text-muted {size.unit} leading-none font-normal"
+								>{field.unit}</span
 							>{/if}</span
 					>
 				{/if}
 			</div>
 		{/each}
-		{#if turns && !tv && !phone}{@render dots()}{/if}
+		{#if turns && !tv && !phone && !docked}{@render dots()}{/if}
 	</div>
 	{#if zoneStrip}{@render strip(zoneStrip)}{/if}
 	{#if shown === 'climb' && ctx.climb}<ClimbProfile

@@ -22,8 +22,8 @@ export function prng(seed: number): () => number {
 
 export type Noise2 = (x: number, z: number) => number;
 
-// ponytail: 2D value noise with smoothstep, not simplex — fbm hides the grid;
-// `simplex-noise` if the terrain ever reads blocky.
+// ponytail: 2D value noise with smoothstep, not simplex; `simplex-noise` if
+// the backdrop ever reads blocky.
 export function noise2(seed: number): Noise2 {
 	const r = prng(seed);
 	const perm = new Uint8Array(512);
@@ -48,20 +48,6 @@ export function noise2(seed: number): Noise2 {
 		const b = v(xi, zi + 1) + (v(xi + 1, zi + 1) - v(xi, zi + 1)) * tx;
 		return a + (b - a) * tz;
 	};
-}
-
-export function fbm(n: Noise2, x: number, z: number, oct: number): number {
-	let sum = 0;
-	let amp = 1;
-	let f = 1;
-	let norm = 0;
-	for (let o = 0; o < oct; o++) {
-		sum += n(x * f, z * f) * amp;
-		norm += amp;
-		amp *= 0.5;
-		f *= 2.03;
-	}
-	return sum / norm;
 }
 
 export const smoothstep = (a: number, b: number, t: number): number => {

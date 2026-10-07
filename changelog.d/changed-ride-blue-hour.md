@@ -1,0 +1,1 @@
+- The world behind a ride is now an Alpine blue hour lit by the sky alone: a cool blue sky with a thin peach band on the horizon, no warm side-light, and a dusk that deepens as the ride goes on until the first stars come out at its end. Your trail and zone ring keep your theme's colours.

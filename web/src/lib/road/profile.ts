@@ -13,29 +13,77 @@ import * as protocol from '$lib/protocol';
 export const MEDIAN_M = 200;
 export const AVERAGE_M = 120;
 
-export function rollingMedian(a: Float64Array, half: number): Float64Array {
-	const out = new Float64Array(a.length);
-	for (let i = 0; i < a.length; i++) {
-		const w = Array.from(
-			a.subarray(Math.max(0, i - half), Math.min(a.length, i + half + 1)),
-		).sort((p, q) => p - q);
-		const m = w.length >> 1;
-		out[i] = w.length % 2 ? w[m] : (w[m - 1] + w[m]) / 2;
+/**
+ * What a window sees beyond a road's end (#3832): the road turned about its
+ * end point, so a constant grade carries on past the end unbent. A window cut
+ * short on one side leans toward the end it ran out at, and read a steady 3 %
+ * approach as 0.9 % at 100 m. Samples with a whole window of road around them
+ * see only the road, so they come out of the smoothing byte for byte as before.
+ */
+function reflected(
+	a: Float64Array,
+	half: number,
+	lo: number,
+	hi: number,
+): { padded: Float64Array; half: number } {
+	const n = a.length;
+	const h = Math.max(0, Math.min(half, n - 1));
+	const padded = new Float64Array(n + 2 * h);
+	padded.set(a, h);
+	for (let k = 1; k <= h; k++) {
+		padded[h - k] = 2 * lo - a[k];
+		padded[h + n - 1 + k] = 2 * hi - a[n - 1 - k];
 	}
+	return { padded, half: h };
+}
+
+function median(values: number[]): number {
+	const w = values.sort((p, q) => p - q);
+	const m = w.length >> 1;
+	return w.length % 2 ? w[m] : (w[m - 1] + w[m]) / 2;
+}
+
+/**
+ * Where the first `count` samples' own trend meets the end sample, read by
+ * medians (the slope of the steps, then the offset from that slope) so one bad
+ * height among them moves neither: a GPS file's first fix is often its worst.
+ */
+function trendAtEnd(a: Float64Array, dir: 1 | -1, count: number): number {
+	const end = dir === 1 ? 0 : a.length - 1;
+	const at = (j: number) => a[end + dir * j];
+	if (count < 2) return a[end];
+	const steps: number[] = [];
+	for (let j = 0; j + 1 < count; j++) steps.push(at(j + 1) - at(j));
+	const slope = median(steps);
+	const offsets: number[] = [];
+	for (let j = 0; j < count; j++) offsets.push(at(j) - slope * j);
+	return median(offsets);
+}
+
+export function rollingMedian(a: Float64Array, half: number): Float64Array {
+	const n = a.length;
+	const count = Math.min(half, n - 1) + 1;
+	const { padded, half: h } = reflected(
+		a,
+		half,
+		trendAtEnd(a, 1, count),
+		trendAtEnd(a, -1, count),
+	);
+	const out = new Float64Array(n);
+	for (let i = 0; i < n; i++)
+		out[i] = median(Array.from(padded.subarray(i, i + 2 * h + 1)));
 	return out;
 }
 
 export function movingAverage(a: Float64Array, half: number): Float64Array {
-	const out = new Float64Array(a.length);
-	for (let i = 0; i < a.length; i++) {
+	const n = a.length;
+	if (n === 0) return new Float64Array(0);
+	const { padded, half: h } = reflected(a, half, a[0], a[n - 1]);
+	const out = new Float64Array(n);
+	for (let i = 0; i < n; i++) {
 		let s = 0;
-		let c = 0;
-		const hi = Math.min(a.length - 1, i + half);
-		for (let k = Math.max(0, i - half); k <= hi; k++) {
-			s += a[k];
-			c++;
-		}
-		out[i] = s / c;
+		for (let k = i; k <= i + 2 * h; k++) s += padded[k];
+		out[i] = s / (2 * h + 1);
 	}
 	return out;
 }
@@ -125,8 +173,9 @@ export function gainOf(ele: ArrayLike<number>): number {
  * the geo pack can name places outside every privacy zone.
  */
 export function roadName(lengthM: number, gainM: number): string {
-	return `Road · ${kmAndClimb(lengthM, gainM)}`;
+	return `${ROAD_NAME} · ${kmAndClimb(lengthM, gainM)}`;
 }
+export const ROAD_NAME = 'Road';
 
 /** A stretch of road as a rider reads it: `52.9 km · 1,312 m`. */
 export function kmAndClimb(lengthM: number, gainM: number): string {

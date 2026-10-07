@@ -1,6 +1,6 @@
 /**
  * The theme catalogue (#331). Each identity exists twice — a dark theme and a
- * white one built from the same three hues — because the scheme setting picks
+ * light one built from the same three hues — because the scheme setting picks
  * the family and a rider on either setting should still get their identity.
  *
  * Outrun pins the surfaces, text, and accents that shipped. Its old zone ramp
@@ -15,7 +15,7 @@ import {
 } from './palette';
 
 export const DEFAULT_DARK_ID = 'outrun';
-const DEFAULT_WHITE_ID = 'outrun-day';
+const DEFAULT_LIGHT_ID = 'outrun-day';
 export const DEFAULT_IDENTITY = 'outrun';
 
 const SPECS: ThemeSpec[] = [
@@ -45,7 +45,7 @@ const SPECS: ThemeSpec[] = [
 			z4: '#06d6a0',
 			z5: '#ffa62b',
 			z6: '#ff4d6d',
-			z7: '#ff2e88',
+			z7: '#e20843',
 		},
 	},
 	{
@@ -117,11 +117,11 @@ const SPECS: ThemeSpec[] = [
 		},
 	},
 	{
-		id: DEFAULT_WHITE_ID,
+		id: DEFAULT_LIGHT_ID,
 		identity: 'outrun',
 		name: 'Outrun Day',
 		note: 'The daylight desk. Saturation marks live data; nothing glows.',
-		family: 'white',
+		family: 'light',
 		wattHue: 0.3,
 		neonHue: 296,
 		surfaceHue: 305,
@@ -139,7 +139,7 @@ const SPECS: ThemeSpec[] = [
 			z4: '#04a37c',
 			z5: '#d97e00',
 			z6: '#e63c5b',
-			z7: '#d9186f',
+			z7: '#ae0044',
 		},
 	},
 	{
@@ -147,7 +147,7 @@ const SPECS: ThemeSpec[] = [
 		identity: 'tron',
 		name: 'Tron Day',
 		note: 'Cool paper, deep cyan data.',
-		family: 'white',
+		family: 'light',
 		wattHue: 200,
 		neonHue: 265,
 		surfaceHue: 265,
@@ -158,7 +158,7 @@ const SPECS: ThemeSpec[] = [
 		identity: 'miami',
 		name: 'Miami Day',
 		note: 'Warm paper, coral data over teal chrome.',
-		family: 'white',
+		family: 'light',
 		wattHue: 18,
 		neonHue: 195,
 		surfaceHue: 200,
@@ -167,8 +167,8 @@ const SPECS: ThemeSpec[] = [
 		id: 'laser-day',
 		identity: 'laser',
 		name: 'Laser Day',
-		note: 'Amber data on paper — yellow has to darken to survive white.',
-		family: 'white',
+		note: 'Amber data on paper — yellow has to darken to read on a light page.',
+		family: 'light',
 		wattHue: 88,
 		neonHue: 296,
 		surfaceHue: 301,
@@ -179,7 +179,7 @@ const SPECS: ThemeSpec[] = [
 		identity: 'monokai',
 		name: 'Monokai Day',
 		note: 'Warm paper, cyan-violet chrome, magenta on the numbers.',
-		family: 'white',
+		family: 'light',
 		wattHue: 200,
 		neonHue: 276,
 		surfaceHue: 270,

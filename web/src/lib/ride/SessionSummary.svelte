@@ -18,7 +18,7 @@
 		curvePoints,
 		normalizedPower,
 		powerTrace,
-		rideXp,
+		xpLines,
 		zoneSeconds,
 		type RideSample,
 	} from '$lib/ride/stats';
@@ -36,6 +36,7 @@
 		riders,
 		actions,
 		unsaved = false,
+		savedXp,
 	}: {
 		title?: string;
 		subtitle: string;
@@ -54,6 +55,8 @@
 		actions?: Snippet;
 		/** The save failed (#2634): none of the XP below reached the account. */
 		unsaved?: boolean;
+		/** The saved ride's own XP, streak bonus in it (#3753): what the ride page reads. */
+		savedXp?: number;
 	} = $props();
 
 	// The ride second by second (#1559): the screen a rider looks at while
@@ -97,7 +100,7 @@
 				)
 			: [],
 	);
-	const xp = $derived(rideXp(kj, execution ?? 0));
+	const xp = $derived(xpLines(kj, execution ?? 0, savedXp));
 
 	// A medal announces itself once (SPEC: promotions announce, drops do not).
 	let cheered = false;
@@ -266,7 +269,7 @@
 					<h2 class="eyebrow flex items-center gap-1.5">
 						<Trophy size={13} class="text-neon" aria-hidden="true" /> progress
 					</h2>
-					<span class="text-muted num ml-auto text-[11px]">+{xp} XP</span>
+					<span class="text-muted num ml-auto text-[11px]">+{xp.total} XP</span>
 				</div>
 				<ul class="text-muted num mt-3 space-y-1 text-[11px]">
 					<li class="flex">
@@ -277,12 +280,26 @@
 							>+{Math.round((execution ?? 0) * 50)}</span
 						>
 					</li>
+					{#if xp.extra > 0}
+						<li class="flex">
+							<span>streak bonus</span><span class="ml-auto">+{xp.extra}</span>
+						</li>
+					{:else if xp.extra < 0}
+						<li class="flex">
+							<span>over the day's XP ceiling</span><span class="ml-auto"
+								>{xp.extra}</span
+							>
+						</li>
+					{/if}
 				</ul>
 				<p class="text-muted mt-2 text-[11px]">
 					{#if unsaved}
 						None of this is on your account: the ride has not been saved.
-					{:else}
+					{:else if savedXp === undefined}
 						Your own streak bonus and level land on your account with the ride —
+						your weeks, not the crew's.
+					{:else}
+						This is the XP the ride put on your account — your streak counts
 						your weeks, not the crew's.
 					{/if}
 				</p>

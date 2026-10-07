@@ -59,8 +59,8 @@ export function tokenDeclarations(theme: Theme): string {
 	).join('');
 }
 
-/** Dark themes are offered under the dark scheme, white ones under light. */
-export type ThemeFamily = 'dark' | 'white';
+/** Dark themes are offered under the dark scheme, light ones under light. */
+export type ThemeFamily = 'dark' | 'light';
 
 export interface Theme {
 	id: string;
@@ -153,10 +153,10 @@ const FAMILY: Record<
 			{ l: 0.777, c: 0.16, h: 167 },
 			{ l: 0.796, c: 0.162, h: 68 },
 			{ l: 0.679, c: 0.213, h: 15 },
-			{ l: 0.662, c: 0.244, h: 2 },
+			{ l: 0.58, c: 0.23, h: 18 },
 		],
 	},
-	white: {
+	light: {
 		surface: { l: 0.967, c: 0.011, h: 0 },
 		raised: { l: 1, c: 0, h: 0 },
 		muted: { l: 0.481, c: 0.086, h: 0 },
@@ -172,7 +172,7 @@ const FAMILY: Record<
 			{ l: 0.636, c: 0.128, h: 168 },
 			{ l: 0.678, c: 0.155, h: 63 },
 			{ l: 0.618, c: 0.205, h: 16 },
-			{ l: 0.578, c: 0.223, h: 2 },
+			{ l: 0.48, c: 0.192, h: 10 },
 		],
 	},
 };
@@ -206,9 +206,9 @@ export const CONTRAST = { text: 4.5, accent: 3 } as const;
  */
 const MUTED_DIM_STEP = 0.08;
 
-/** A dark theme's surface must actually be dark; a white one's actually light. */
+/** A dark theme's surface must actually be dark; a light one's actually light. */
 export const DARK_SURFACE_MAX_L = 0.3;
-export const WHITE_SURFACE_MIN_L = 0.9;
+export const LIGHT_SURFACE_MIN_L = 0.9;
 
 /**
  * The contrast a zone fill is fitted to, measured off the reference ramp
@@ -220,7 +220,7 @@ export const WHITE_SURFACE_MIN_L = 0.9;
  */
 const ZONE_MIN_CONTRAST: Record<ThemeFamily, number> = {
 	dark: 1.8,
-	white: 2.6,
+	light: 2.6,
 };
 
 /**

@@ -3,6 +3,7 @@ package crews
 import (
 	"context"
 	"errors"
+	"github.com/natrontech/wattroom/server/internal/protocol"
 	"net/http"
 
 	"github.com/jackc/pgx/v5"
@@ -97,7 +98,7 @@ func (s *Service) handleTransferCrew(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if role != "owner" {
+	if role != protocol.RoleOwner {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden", "Only the crew's owner can hand it on.")
 		return
 	}
@@ -121,7 +122,7 @@ func (s *Service) handleTransferCrew(w http.ResponseWriter, r *http.Request) {
 	case err != nil:
 		httpx.Fail(w, s.log, "crew role lookup failed", err, "The crew could not be handed on.", "crew", store.UUIDString(crew.ID))
 		return
-	case targetRole == "banned":
+	case targetRole == protocol.RoleBanned:
 		httpx.WriteError(w, http.StatusBadRequest, "validation_error",
 			"They are banned from this crew. Lift the ban first if you mean it.")
 		return
@@ -139,7 +140,7 @@ func (s *Service) handleTransferCrew(w http.ResponseWriter, r *http.Request) {
 	q := s.store.Queries.WithTx(tx)
 	err = makeOwner(r.Context(), q, crew.ID, target)
 	if err == nil {
-		err = q.SetCrewRole(r.Context(), db.SetCrewRoleParams{CrewID: crew.ID, UserID: actor.ID, Role: "admin"})
+		err = q.SetCrewRole(r.Context(), db.SetCrewRoleParams{CrewID: crew.ID, UserID: actor.ID, Role: protocol.RoleAdmin})
 	}
 	if err == nil {
 		err = tx.Commit(r.Context())
@@ -155,6 +156,6 @@ func (s *Service) handleTransferCrew(w http.ResponseWriter, r *http.Request) {
 	s.reauthorize(r.Context(), crew.ID, target, actor.ID)
 	s.changed(r.Context(), crew.ID)
 	httpx.WriteJSON(w, http.StatusOK, crewRefJSON{
-		Id: store.UUIDString(crew.ID), Name: crew.Name, Icon: crew.Icon, Role: "admin",
+		Id: store.UUIDString(crew.ID), Name: crew.Name, Icon: crew.Icon, Role: protocol.RoleAdmin,
 	})
 }

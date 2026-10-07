@@ -2,6 +2,7 @@ import { hrZoneOf } from '$lib/components/zones';
 import { wkg } from '$lib/format';
 import type { ClimbView } from '$lib/ride/climb-view';
 import { formatSplit } from '$lib/road/ghost';
+import { ordinal, type RaceReadout } from '$lib/race/race-view';
 import { isTyping } from '$lib/keys';
 import type { LiveStats } from '$lib/ride/live-stats.svelte';
 
@@ -9,15 +10,16 @@ import type { LiveStats } from '$lib/ride/live-stats.svelte';
  * The bike computer's page table (ADR-0071, docs/SPEC.md "The bike
  * computer"): which numbers each page of slot 3 shows, and nothing a rider
  * picks. RIDE is where every ride starts. CLIMB and MAP arrive with the
- * climb card (#3089), RACE with #3174.
+ * climb card (#3089); RACE shows while you race (#3174).
  */
-export const PAGES = ['ride', 'climb', 'power'] as const;
+export const PAGES = ['ride', 'climb', 'power', 'race'] as const;
 export type ComputerPage = (typeof PAGES)[number];
 
 export const PAGE_NAMES: Record<ComputerPage, string> = {
 	ride: 'RIDE',
 	climb: 'CLIMB',
 	power: 'POWER',
+	race: 'RACE',
 };
 
 /** Everything a page may read. Absent means this ride has no such number. */
@@ -47,6 +49,21 @@ export interface ComputerContext {
 	stats?: LiveStats;
 	/** The climb card while a classed climb is near (#3645). */
 	climb?: ClimbView | null;
+	/** Your race, while you race one (#3174). */
+	race?: RaceReadout;
+	/**
+	 * The surface draws the 3 s power above the computer already, so RIDE
+	 * leaves it out: one number, one home (TARGETS D17, #3667).
+	 */
+	head?: boolean;
+	/**
+	 * The computer draws its own head (#3668): the 3 s power with W/kg
+	 * beside it and the zone under it. RIDE then leaves out Power and W/kg,
+	 * POWER its 3 s field, and Execution moves to POWER — the one-home table.
+	 */
+	ownHead?: boolean;
+	/** Slot 1 carries the road line (km x of y, grade), so RIDE leaves them out. */
+	roadLine?: boolean;
 }
 
 export interface Field {
@@ -56,7 +73,7 @@ export interface Field {
 	unit?: string;
 	/** Live data in the watt accent, glowing: the 3 s power, and only it. */
 	glow?: boolean;
-	/** Rider state in neon, never the watt accent (ADR-0005): the gear. */
+	/** Rider state in neon, never the watt accent (ADR-0005): the gear, and a race model's outputs (#3174). */
 	neon?: boolean;
 	/** The heart-rate zone, as a dot beside the label. */
 	zone?: number;
@@ -84,16 +101,18 @@ export function roadContext(road: {
 
 /**
  * The pages this ride has now: RIDE always, CLIMB while a classed climb is
- * near (#3645), and POWER where the screen has its own live numbers.
+ * near (#3645), POWER where the screen has its own live numbers, and RACE
+ * while you race (#3174).
  */
 export function pagesFor(
-	ctx: Pick<ComputerContext, 'stats' | 'climb'>,
+	ctx: Pick<ComputerContext, 'stats' | 'climb' | 'race'>,
 ): ComputerPage[] {
 	return PAGES.filter(
 		(page) =>
 			page === 'ride' ||
 			(page === 'climb' && !!ctx.climb) ||
-			(page === 'power' && !!ctx.stats),
+			(page === 'power' && !!ctx.stats) ||
+			(page === 'race' && !!ctx.race),
 	);
 }
 
@@ -134,6 +153,7 @@ export function turned(
 export function fieldsFor(page: ComputerPage, ctx: ComputerContext): Field[] {
 	const measured = (value: string) => (ctx.stale ? '—' : value);
 	const stats = ctx.stats?.seconds ? ctx.stats : undefined;
+	if (page === 'race') return raceFields(ctx);
 	if (page === 'climb') {
 		const climb = ctx.climb;
 		if (!climb) return [];
@@ -160,7 +180,7 @@ export function fieldsFor(page: ComputerPage, ctx: ComputerContext): Field[] {
 		const block = ctx.target
 			? { label: 'Block', value: `${s.blockAverage}/${ctx.target}` }
 			: { label: 'Average', value: `${s.blockAverage}` };
-		return [
+		const fields: Field[] = [
 			{
 				key: 'power3',
 				label: '3 s',
@@ -187,24 +207,32 @@ export function fieldsFor(page: ComputerPage, ctx: ComputerContext): Field[] {
 			{ key: 'xp', label: 'Work', value: `+${s.kj}`, unit: 'XP' },
 			{ key: 'load', label: 'Load', value: `${Math.round(s.load)}` },
 		];
+		if (!ctx.ownHead) return fields;
+		const rest = fields.filter((f) => f.key !== 'power3');
+		const execution = executionField(ctx);
+		return execution ? [execution, ...rest] : rest;
 	}
-	const fields: Field[] = [
-		{
-			key: 'power',
-			label: 'Power',
-			value: measured(`${stats ? stats.power3 : Math.round(ctx.watts)}`),
-			unit: 'W',
-			glow: !ctx.stale,
-		},
-	];
+	const fields: Field[] =
+		ctx.head || ctx.ownHead
+			? []
+			: [
+					{
+						key: 'power',
+						label: 'Power',
+						value: measured(`${stats ? stats.power3 : Math.round(ctx.watts)}`),
+						unit: 'W',
+						glow: !ctx.stale,
+					},
+				];
 	if (ctx.road)
 		fields.push({
 			key: 'speed',
 			label: 'Speed',
-			value: ctx.road.speedKph.toFixed(1),
+			// The dot rides on your power: with nothing measured it is not live (#3668).
+			value: measured(ctx.road.speedKph.toFixed(1)),
 			unit: 'km/h',
 		});
-	if (ctx.grade !== undefined)
+	if (ctx.grade !== undefined && !ctx.roadLine)
 		fields.push({
 			key: 'grade',
 			label: 'Grade',
@@ -218,7 +246,7 @@ export function fieldsFor(page: ComputerPage, ctx: ComputerContext): Field[] {
 			label: ctx.split.best ? 'vs best' : 'vs last',
 			value: formatSplit(ctx.split.seconds),
 		});
-	if (ctx.road)
+	if (ctx.road && !ctx.roadLine)
 		fields.push({
 			key: 'distance',
 			label: 'Distance',
@@ -241,18 +269,15 @@ export function fieldsFor(page: ComputerPage, ctx: ComputerContext): Field[] {
 			unit: 'bpm',
 			zone: ctx.lthr && !ctx.stale ? hrZoneOf(ctx.hr, ctx.lthr) : 0,
 		});
-	fields.push({
-		key: 'wkg',
-		label: 'W/kg',
-		value: measured(wkg(ctx.watts, ctx.kg)),
-	});
-	if (ctx.execution !== undefined)
+	if (!ctx.ownHead) {
 		fields.push({
-			key: 'execution',
-			label: 'Execution',
-			value: `${Math.round(ctx.execution * 100)}`,
-			unit: '%',
+			key: 'wkg',
+			label: 'W/kg',
+			value: measured(wkg(ctx.watts, ctx.kg)),
 		});
+		const execution = executionField(ctx);
+		if (execution) fields.push(execution);
+	}
 	if (ctx.gear)
 		fields.push({
 			key: 'gear',
@@ -261,6 +286,46 @@ export function fieldsFor(page: ComputerPage, ctx: ComputerContext): Field[] {
 			neon: true,
 		});
 	return fields;
+}
+
+/** Your live score, where nothing else on the surface ranks it (ADR-0046). */
+function executionField(ctx: ComputerContext): Field | null {
+	return ctx.execution === undefined
+		? null
+		: {
+				key: 'execution',
+				label: 'Execution',
+				value: `${Math.round(ctx.execution * 100)}`,
+				unit: '%',
+			};
+}
+
+/**
+ * RACE (#3174): the gap to your Category's par, then your place in your
+ * Category — the race model's, so neon and never watt; only your live power
+ * is. The gap leads at the computer's number size, and W/kg stays in its one
+ * home beside the 3 s power: the 3 s power is the largest number on the
+ * surface, and no number shows twice (docs/design/TARGETS.md "One home per
+ * number").
+ */
+function raceFields(ctx: ComputerContext): Field[] {
+	const race = ctx.race;
+	if (!race) return [];
+	return [
+		{
+			key: 'par',
+			label: 'vs par',
+			// Ahead is +, behind is −; nothing to measure before km 0.
+			value: race.par === null ? '—' : formatSplit(race.par),
+			neon: true,
+		},
+		{
+			key: 'place',
+			label: `in ${race.category}`,
+			value: `${ordinal(race.place)} of ${race.of}`,
+			neon: true,
+		},
+	];
 }
 
 // Events a computer has already turned a page with: one key press turns

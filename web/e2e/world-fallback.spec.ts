@@ -2,6 +2,10 @@ import { expect, test, type Page } from '@playwright/test';
 import { openAWorkoutOnARoad } from './route';
 import { signInTo } from './signin';
 
+// The world draws in a window the box table holds (TARGETS ride-road-world):
+// Desktop Chrome's 1280 × 720 is shorter, and rides the flat road (#3668).
+test.use({ viewport: { width: 1440, height: 900 } });
+
 /**
  * The world's fallback (#3080, ADR-0066): a world that stops mid-ride hands
  * the ride to the flat road, says why in slot 1 — a line, never a toast — and
@@ -63,7 +67,7 @@ async function onTheFlatRoad(page: Page, why: RegExp) {
 	await expect(page.getByRole('button', { name: 'End ride' })).toBeVisible();
 }
 
-test('a lost GPU context hands the ride to the flat road, and 3D comes back on asking', async ({
+test('a lost GPU context hands the ride to the flat road, and 3D comes back on asking @world', async ({
 	page,
 }) => {
 	await rideInTheWorld(page, true);
@@ -76,7 +80,7 @@ test('a lost GPU context hands the ride to the flat road, and 3D comes back on a
 	});
 });
 
-test('a world that misses its frames for ten seconds hands the ride to the flat road', async ({
+test('a world that misses its frames for ten seconds hands the ride to the flat road @world', async ({
 	page,
 }) => {
 	await rideInTheWorld(page);

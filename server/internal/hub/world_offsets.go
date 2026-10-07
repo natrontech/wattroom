@@ -2,6 +2,7 @@ package hub
 
 import (
 	"math"
+	"slices"
 	"time"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
@@ -66,6 +67,8 @@ type place struct {
 	// zero while nobody is towing this rider.
 	towFrom float64
 	towAt   time.Time
+	// When the rider joined the bunch, counted: the formation's order.
+	seq int
 }
 
 // surplus is how far over the plan a rider rides this second, as a fraction
@@ -103,14 +106,21 @@ func (b *bunch) settle(joined map[string]struct{}, p planned, livePct float64) {
 			delete(b.places, id)
 		}
 	}
+	var arrived []string
+	for id := range joined {
+		if b.places[id] == nil {
+			arrived = append(arrived, id)
+		}
+	}
+	slices.Sort(arrived)
+	for _, id := range arrived {
+		b.places[id] = &place{heardAt: b.at, seq: b.joins}
+		b.joins++
+	}
 	decay := math.Exp(-1 / offsetTauSeconds)
 	meanWkg := b.meanWkg()
 	for id := range joined {
 		pl := b.places[id]
-		if pl == nil {
-			pl = &place{heardAt: b.at}
-			b.places[id] = pl
-		}
 		if s, ok := b.heard[id]; ok {
 			pl.last, pl.heardAt = s, b.at
 			if pl.resting {

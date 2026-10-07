@@ -8,8 +8,9 @@
 	 * same whether ten people are waiting or nobody is.
 	 *
 	 * Read at three metres by someone already clipped in — one digit, nothing
-	 * else moving. The digit is the only glowing thing on it (ADR-0005: live
-	 * data glows, chrome does not).
+	 * else moving. The digit is a count to the start, not a measured reading,
+	 * so it is drawn in ink and does not glow (G2, ADR-0005: watt marks live
+	 * data and is the only thing that glows).
 	 */
 	interface Props {
 		/** Seconds left. */
@@ -34,7 +35,7 @@
 		</p>
 		<span
 			aria-hidden="true"
-			class="font-display text-watt glow-text-strong text-5xl leading-none font-bold tabular-nums"
+			class="font-display text-ink text-5xl leading-none font-bold tabular-nums"
 			>{remaining}</span
 		>
 		<span class="min-w-0">
@@ -59,7 +60,8 @@
 			<p class="eyebrow">starting</p>
 			<p
 				aria-hidden="true"
-				class="font-display text-watt glow-text-strong text-[10rem] leading-none font-bold tabular-nums"
+				data-testid="count-in"
+				class="font-display text-ink text-[10rem] leading-none font-bold tabular-nums"
 			>
 				{remaining}
 			</p>

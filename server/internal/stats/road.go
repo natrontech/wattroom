@@ -6,8 +6,10 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/natrontech/wattroom/server/internal/hub"
 	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/road"
+	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/workout"
 )
@@ -157,7 +159,10 @@ func Timeable(mode, workoutJSON string, onRoad bool, drive string, meanShelter f
 		if !roadStepsAlone(workoutJSON) {
 			return &no
 		}
-	default: // a session's game; bunch and race arrive with the sessions that ride a road
+	case "race":
+		// A race on its road (#3722): the rider's own watts moved their dot,
+		// at their W/kg (ADR-0067), timed as a free ride is.
+	default: // a session's game; a bunch tows its riders, and times nobody
 		return &no
 	}
 	switch drive {
@@ -209,11 +214,42 @@ func accountWeight(ctx context.Context, q *db.Queries, user pgtype.UUID) *int16 
 }
 
 // SetHow writes how every ride was ridden onto its row: its mode, whether a
-// time on it is the rider's, and their weight that day. Mean shelter reads 0
-// until the hub computes shelter (ADR-0077).
+// time on it is the rider's, and their weight that day. Mean shelter is the
+// row's own — a race's, as the hub computed it (ADR-0077) — and 0 for a ride
+// nobody sheltered.
 func SetHow(row *db.CreateRideParams, mode, workoutJSON string, onRoad bool, drive string, weight *int16) {
 	row.RideMode, row.WeightKg = &mode, weight
-	row.Timeable = Timeable(mode, workoutJSON, onRoad, drive, 0)
+	shelter := 0.0
+	if row.MeanShelter != nil {
+		shelter = float64(*row.MeanShelter)
+	}
+	row.Timeable = Timeable(mode, workoutJSON, onRoad, drive, shelter)
+}
+
+// SetSessionRoad writes the road a session carried a rider along — a race's
+// (#3722) or a bunch's (#3738): the session's route while it is still stored
+// — the coach's, whose generated name the channel was already shown — its
+// road's hash as both key and served road, the rider's metres on it, and the
+// air they were sheltered from. It answers how SetHow should read the drive:
+// "Don't make me shift", or the grade driving the trainer, in SIM or through
+// gears alike.
+func SetSessionRoad(row *db.CreateRideParams, rr hub.RecordRoad, stored bool) (drive string) {
+	if id, err := store.ParseUUID(rr.RouteID); err == nil && stored {
+		row.RouteID = id
+	}
+	key := rr.RoadHash
+	row.RouteKey, row.RoadH = &key, &key
+	row.FromM, row.DistanceM, row.ClimbedM = metres(rr.FromM), metres(rr.DistanceM), metres(rr.ClimbedM)
+	// A race's shelter is the hub's; a bunch's is not computed, and a
+	// shelter nobody measured is not 0 (#3738).
+	if !rr.Towed {
+		shelter := float32(rr.MeanShelter)
+		row.MeanShelter = &shelter
+	}
+	if rr.ErgByRoad {
+		return DriveERGByRoad
+	}
+	return DriveSIM
 }
 
 // SetRoad writes a road ride's summary onto its row: the route, the road's

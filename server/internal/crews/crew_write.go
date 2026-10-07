@@ -24,7 +24,7 @@ func (s *Service) handleRotateCrewCode(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if !administers(role) {
+	if !protocol.Administers(role) {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden", "Only the crew's owner or an admin can make a new invite link.")
 		return
 	}
@@ -54,7 +54,7 @@ func (s *Service) handleUpdateCrew(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if !administers(role) {
+	if !protocol.Administers(role) {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden", "Only the crew's owner or an admin can change that.")
 		return
 	}
@@ -124,7 +124,7 @@ func (s *Service) handleSetCrewRole(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if !administers(role) {
+	if !protocol.Administers(role) {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden", "Only the crew's owner or an admin can do that.")
 		return
 	}
@@ -136,7 +136,7 @@ func (s *Service) handleSetCrewRole(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That request could not be read.")
 		return
 	}
-	if req.Role != "admin" && req.Role != "member" && req.Role != "banned" {
+	if req.Role != protocol.RoleAdmin && req.Role != protocol.RoleMember && req.Role != protocol.RoleBanned {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
 			"A crew role is admin, member or banned — ownership does not transfer here.", "role")
 		return
@@ -165,12 +165,12 @@ func (s *Service) handleSetCrewRole(w http.ResponseWriter, r *http.Request) {
 	// already in the crew, never a door for a user id off a profile link —
 	// the upsert used to admit strangers (audit 2026-09-09). A ban may be
 	// pre-emptive: it keeps someone out, which is not letting them in.
-	if standing == "" && req.Role != "banned" {
+	if standing == "" && req.Role != protocol.RoleBanned {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
 			"A crew role is for someone already in the crew — share the code instead.", "userId")
 		return
 	}
-	if req.Role == "banned" && standing == "" {
+	if req.Role == protocol.RoleBanned && standing == "" {
 		// A pre-emptive ban takes an arbitrary id (#1933): one that is nobody
 		// used to hit the foreign key and come back as a 500.
 		if _, err := s.store.Queries.GetUser(r.Context(), target); errors.Is(err, pgx.ErrNoRows) {
@@ -189,7 +189,7 @@ func (s *Service) handleSetCrewRole(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "crew role update failed", err, "The role could not be changed.", "crew", store.UUIDString(crew.ID))
 		return
 	}
-	if req.Role == "banned" {
+	if req.Role == protocol.RoleBanned {
 		// The one ban now (ADR-0058): lifting it must not hand back the
 		// private channels they were named into.
 		if err := s.store.Queries.LeaveCrewChannels(r.Context(), db.LeaveCrewChannelsParams{CrewID: crew.ID, UserID: target}); err != nil {

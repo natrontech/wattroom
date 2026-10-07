@@ -82,6 +82,10 @@ export function createRideGrade(difficulty: number = ROAD.difficulty) {
 			const ahead = distance + speed * ROAD.lookAheadSeconds;
 			return toward(gradeAt(road, ahead), seconds);
 		},
+		/** No road to read — a dropped tick (#3553): toward 0 %, at the same slew. */
+		relax(seconds = 1): number {
+			return toward(0, seconds);
+		},
 		/** Off the road: the next one starts where it stands. */
 		reset() {
 			last = undefined;

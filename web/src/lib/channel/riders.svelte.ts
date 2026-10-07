@@ -1,12 +1,14 @@
 import { isSounding } from '$lib/sound/board.svelte';
 import { describeBlock, type Block } from '$lib/workout/block';
 import type { LiveRider } from '$lib/channel/types';
+import { bunchOf } from '$lib/channel/bunch-view';
+import { raceOf } from '$lib/race/race-view';
+import { placeOnRoad } from '$lib/channel/road-place';
 import { coachOf } from '$lib/channel/tick-session';
 import { scoredTarget } from '$lib/channel/types';
 import { createRoadReadout } from '$lib/ride/road-readout';
 import { targetAt } from '$lib/workout/engine';
 import { roadOf } from '$lib/workout/road-workout';
-import { turnedRound } from '$lib/road/road';
 import type { Segment, Workout } from '$lib/workout/types';
 import type { ServerTick } from '$lib/protocol';
 import type { createRecording } from '$lib/session/recording.svelte';
@@ -181,18 +183,12 @@ export function createRiders(deps: RiderDeps) {
 	});
 	// The road as the bunch rides it, and where on it: what the world draws (#3663).
 	const ridden = $derived.by(() => {
-		const route = deps.live.tick?.state?.route;
-		const world = deps.live.tick?.world;
-		if (!cut || !route || !world) return null;
-		// The bunch's speed, never the trainer's (ADR-0084: that is the drivetrain's alone).
-		const { bunchM, speedMps: bunchMps, offsets } = world;
-		return {
-			road: route.reverse ? turnedRound(cut.road) : cut.road,
-			// Your place is the bunch's and your elastic offset from it, in decimetres.
-			m: bunchM + (offsets?.[you.id] ?? 0) / 10,
-			mps: bunchMps,
-		};
+		const place = placeOnRoad(deps.live.tick, cut, you.id);
+		// Everyone on it, as the world lays them out (#3098).
+		return place && { ...place, bunch: bunchOf(deps.live.tick, riders) };
 	});
+	// Your race, while you race one (#3174): the RACE page's and the radio's.
+	const race = $derived(raceOf(deps.live.tick, you.id));
 	const readoutAt = createRoadReadout();
 	const road = $derived.by(() => {
 		const tick = deps.live.tick;
@@ -231,6 +227,9 @@ export function createRiders(deps: RiderDeps) {
 		/** The session's road the way the bunch rides it, and where the bunch is; null off one. */
 		get ridden() {
 			return ridden;
+		},
+		get race() {
+			return race;
 		},
 	};
 }

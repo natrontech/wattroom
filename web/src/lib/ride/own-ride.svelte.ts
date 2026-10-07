@@ -12,7 +12,9 @@ import type { Workout } from '$lib/workout/types';
 type RideSession = ReturnType<typeof createRideSession>;
 
 export type OwnRideOutcome =
-	{ saved: string | null } | { failure: SaveFailure } | { nothing: true };
+	| { saved: string | null; xp?: number }
+	| { failure: SaveFailure }
+	| { nothing: true };
 
 /**
  * Your own workout, beside the channel's session (#2329, ADR-0059 amended):
@@ -84,7 +86,7 @@ export function createOwnRide(deps: {
 		saving = false;
 		if ('saved' in result) {
 			ended?.end();
-			outcome = { saved: result.saved.id || null };
+			outcome = { saved: result.saved.id || null, xp: result.saved.xp };
 			return outcome;
 		}
 		// Kept in the crash buffer unless the server will refuse it again, so

@@ -16,8 +16,9 @@
 export function tileFrame(speaking: boolean, away = false): string {
 	// Away is the avatar's mark and word to say, not a faded tile: opacity took
 	// the name under the text floor with everything else on it (#2888).
-	if (away) return 'ring-edge/50 ring-1';
-	return speaking ? 'ring-z4 ring-2' : 'ring-edge ring-1';
+	// An outline, not a ring: a ring is a box-shadow, and chrome casts none (G2).
+	if (away) return 'outline-edge/50 outline-1';
+	return speaking ? 'outline-z4 outline-2' : 'outline-edge outline-1';
 }
 
 /**

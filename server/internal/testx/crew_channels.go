@@ -6,6 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -23,7 +24,7 @@ func Crew(t testing.TB, st *store.Store, name string, owner pgtype.UUID, members
 	}
 	t.Cleanup(func() { _, _ = st.Pool.Exec(context.Background(), "delete from crews where id = $1", crew.ID) })
 	for _, member := range members {
-		if err := st.Queries.SetCrewRole(ctx, db.SetCrewRoleParams{CrewID: crew.ID, UserID: member, Role: "member"}); err != nil {
+		if err := st.Queries.SetCrewRole(ctx, db.SetCrewRoleParams{CrewID: crew.ID, UserID: member, Role: protocol.RoleMember}); err != nil {
 			t.Fatalf("fixture crew member: %v", err)
 		}
 	}

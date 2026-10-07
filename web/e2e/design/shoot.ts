@@ -8,7 +8,8 @@ import {
 import { readFileSync } from 'node:fs';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { probe, type Box } from './probe';
+import { baseUrl } from '../env.js';
+import { probe, sampleAt, type Box } from './probe';
 
 /**
  * How the design shots open a browser, ride, and write a shot (#3666). The
@@ -16,12 +17,20 @@ import { probe, type Box } from './probe';
  */
 
 export const OUT = process.env.DESIGN_SHOTS_OUT ?? '';
-export const SCHEME: 'dark' | 'light' =
-	process.env.DESIGN_SHOTS_SCHEME === 'light' ? 'light' : 'dark';
+export type Scheme = 'dark' | 'light';
+/** DESIGN_SHOTS_SCHEME: dark, light or both (the default). */
+export const SCHEMES: Scheme[] =
+	process.env.DESIGN_SHOTS_SCHEME === 'dark'
+		? ['dark']
+		: process.env.DESIGN_SHOTS_SCHEME === 'light'
+			? ['light']
+			: ['dark', 'light'];
 const ONLY = (process.env.DESIGN_SHOTS_SURFACES ?? '')
 	.split(/[\s,]+/)
 	.filter(Boolean);
-export const wanted = (id: string) => ONLY.length === 0 || ONLY.includes(id);
+/** A test is wanted when any surface id it captures is named, or none is. */
+export const wanted = (ids: readonly string[]) =>
+	ONLY.length === 0 || ids.some((id) => ONLY.includes(id));
 
 export const DESK: BrowserContextOptions = {
 	viewport: { width: 1440, height: 900 },
@@ -41,6 +50,24 @@ export const TV: BrowserContextOptions = {
 	viewport: { width: 1920, height: 1080 },
 };
 export const HUD_SHELL = { width: 320, height: 132 };
+
+/**
+ * The TV and the phone are variants of a surface (#3858): a full run takes
+ * them, a scoped one only when it names a TV or a phone surface, which the
+ * surface map does when a TV or phone layout file changed.
+ */
+const named = (variant: string) =>
+	ONLY.length === 0 ||
+	ONLY.some((id) => new RegExp(`(^|-)${variant}(-|$)`).test(id));
+const VARIANT = { tv: named('tv'), phone: named('phone') };
+export const takes = (device: BrowserContextOptions) =>
+	device === TV ? VARIANT.tv : device === PHONE ? VARIANT.phone : true;
+/** The rows of a recipe's device list this run takes. */
+export const variants = <
+	T extends readonly [BrowserContextOptions, ...unknown[]],
+>(
+	rows: readonly T[],
+): T[] => rows.filter(([device]) => takes(device));
 
 /** A full-page shot grows the viewport to the page body, this far at most. */
 const FULL_PAGE_CAP = 6000;
@@ -71,10 +98,15 @@ export interface Opened {
  */
 export class Shoot {
 	private opened: Opened[] = [];
+	/** Where this surface's shots go: the run's folder for its scheme. */
+	readonly out: string;
 	constructor(
 		private readonly browser: Browser,
 		readonly id: string,
-	) {}
+		private readonly scheme: Scheme,
+	) {
+		this.out = join(OUT, scheme);
+	}
 
 	/** A fresh context, muted before any page mounts; signed in as `as`. */
 	async open(
@@ -91,9 +123,9 @@ export class Shoot {
 	): Promise<Opened> {
 		const ctx = await this.browser.newContext({
 			...device,
-			baseURL: process.env.PLAYWRIGHT_BASE_URL,
+			baseURL: baseUrl(),
 			// A surface whose recipe fixes the OS scheme keeps it (ride-free-road).
-			colorScheme: device.colorScheme ?? SCHEME,
+			colorScheme: device.colorScheme ?? this.scheme,
 			reducedMotion,
 		});
 		await ctx.addInitScript(
@@ -102,6 +134,9 @@ export class Shoot {
 				// World on is the device's World control at Full: this flag until
 				// #3214 replaces it.
 				if (world === true) localStorage.setItem('wattroom.world-slot.v1', '1');
+				// Software GL misses every frame; the dev build's frame judge
+				// stands down for the capture (#3823).
+				localStorage.setItem('wattroom.world-software.v1', '1');
 				if (world === false) localStorage.removeItem('wattroom.world-slot.v1');
 			},
 			[MUTED, world ?? null] as const,
@@ -119,7 +154,11 @@ export class Shoot {
 	/** Writes `<name>.png` and its probes, `<name>.json`. */
 	async shot(
 		{ page, errors }: Pick<Opened, 'page' | 'errors'>,
-		{ name = this.id, full = false }: { name?: string; full?: boolean } = {},
+		{
+			name = this.id,
+			full = false,
+			extra = {},
+		}: { name?: string; full?: boolean; extra?: object } = {},
 	): Promise<void> {
 		const wholeDocument = full && !(await growToBody(page));
 		// The public site lazy-loads its media: walk the document once so a
@@ -139,13 +178,22 @@ export class Shoot {
 			await page.waitForTimeout(1000);
 		}
 		const probes = await page.evaluate(probe, CORRIDOR);
-		await page.screenshot({
-			path: join(OUT, `${name}.png`),
+		const png = await page.screenshot({
+			path: join(this.out, `${name}.png`),
 			fullPage: wholeDocument,
 		});
+		const at = (probes as { asphaltAt?: [number, number] | null }).asphaltAt;
+		const asphaltRgb =
+			at && !wholeDocument
+				? await page.evaluate(sampleAt, { png: png.toString('base64'), at })
+				: null;
 		await writeFile(
-			join(OUT, `${name}.json`),
-			JSON.stringify({ ...probes, pageErrors: errors }, null, 2) + '\n',
+			join(this.out, `${name}.json`),
+			JSON.stringify(
+				{ ...probes, asphaltRgb, ...extra, pageErrors: errors },
+				null,
+				2,
+			) + '\n',
 		);
 	}
 
@@ -153,9 +201,9 @@ export class Shoot {
 	async failed(error: unknown): Promise<void> {
 		const last = this.opened.at(-1);
 		const message = error instanceof Error ? error.message : String(error);
-		await writeFile(join(OUT, `FAILED-${this.id}.txt`), message + '\n');
+		await writeFile(join(this.out, `FAILED-${this.id}.txt`), message + '\n');
 		await last?.page
-			.screenshot({ path: join(OUT, `FAILED-${this.id}.png`) })
+			.screenshot({ path: join(this.out, `FAILED-${this.id}.png`) })
 			.catch(() => {});
 	}
 
@@ -165,9 +213,9 @@ export class Shoot {
 
 	/** Clears what an earlier run left under this surface's name. */
 	async clean(): Promise<void> {
-		await mkdir(OUT, { recursive: true });
+		await mkdir(this.out, { recursive: true });
 		for (const stale of [`FAILED-${this.id}.png`, `FAILED-${this.id}.txt`])
-			await rm(join(OUT, stale), { force: true });
+			await rm(join(this.out, stale), { force: true });
 	}
 }
 
@@ -195,12 +243,18 @@ async function growToBody(page: Page): Promise<boolean> {
 	return true;
 }
 
-/** Every clock-shaped reading on the page, joined. */
+/**
+ * Every clock-shaped reading on the page, joined; a ghost's split (“+1:05”,
+ * “−0:12”) is a difference, not a clock, and a seeded ride on the road puts
+ * one on every road ride.
+ */
 // A read that lands mid-navigation counts as no clock yet, not a failure.
 const clocks = (page: Page) =>
 	page
 		.evaluate(() =>
-			(document.body.innerText.match(/\b\d{1,2}:\d{2}\b/g) ?? []).join(' '),
+			(
+				document.body.innerText.match(/(?<![+\u2212\d:])\d{1,2}:\d{2}\b/g) ?? []
+			).join(' '),
 		)
 		.catch(() => '');
 
@@ -221,25 +275,69 @@ export async function ride(
 	const start = page
 		.getByRole('button', { name: /^Start (riding|the ride)$/ })
 		.first();
-	// A road left short of its end offers to carry on (#3205): every shot
-	// starts from km 0, whatever an earlier run saved.
+	// A road left short of its end offers to carry on (#3205), and the offer
+	// replaces Start riding once its lookup lands, sometimes under the click:
+	// press whichever is there until neither is. Every shot starts from km 0.
 	const fromStart = page.getByRole('button', { name: 'From the start' });
-	await start.or(fromStart).first().waitFor({ timeout: 15_000 });
-	if (await fromStart.isVisible()) {
-		await fromStart.click();
-		await start.waitFor({ timeout: 5000 }).catch(() => {});
+	const either = start.or(fromStart).first();
+	await either.waitFor({ timeout: 15_000 });
+	const deadline = Date.now() + 30_000;
+	while (await either.isVisible()) {
+		if (Date.now() > deadline) throw new Error('the ride never started');
+		const button = (await fromStart.isVisible()) ? fromStart : start;
+		await button.click({ timeout: 5000 }).catch(() => {});
+		await page.waitForTimeout(500);
 	}
-	if (await start.isVisible()) await start.click();
 	await atSecond(page, second);
 }
 
-/** Waits until a clock on the page reads `second` into the ride. */
+/**
+ * Waits until a clock on the page reads `second` into the ride. A machine
+ * that draws the world in software (#3823) answers a poll seconds late, so a
+ * clock that has already moved on, by up to LATE seconds, counts as reached:
+ * the shot is a little later in the ride, never a failed surface.
+ */
+const LATE = 45;
 export async function atSecond(page: Page, second: number): Promise<void> {
 	const mark = `${Math.floor(second / 60)}:${String(second % 60).padStart(2, '0')}`;
-	const deadline = Date.now() + (second + 30) * 1000;
-	while (!(await clocks(page)).split(' ').includes(mark)) {
+	const reached = (clock: string) => {
+		const [m, s] = clock.split(':').map(Number);
+		const at = m * 60 + s - second;
+		return at >= 0 && at <= LATE;
+	};
+	const deadline = Date.now() + (second + 30 + LATE) * 1000;
+	for (;;) {
+		const shown = (await clocks(page)).split(' ');
+		if (shown.includes(mark) || shown.some(reached)) return;
 		if (Date.now() > deadline)
-			throw new Error(`the ride never reached ${mark}: ${await clocks(page)}`);
+			throw new Error(`the ride never reached ${mark}: ${shown.join(' ')}`);
+		await page.waitForTimeout(200);
+	}
+}
+
+/**
+ * Waits until the page reads `reading` — slot 1's "km 0.1 of 7.1" — for a
+ * shot whose target is a distance, not a second (#3834). The dot moves by the
+ * whole seconds between samples, held to two (road-ride.ts), so a machine
+ * answering slowly reaches a clock mark with the road still behind it, and
+ * at 83 W on 3 % the first 50 m arrive near the 14 s mark anyway. Bounded: a
+ * reading that never comes is a failed shot with what the page said instead.
+ */
+export async function atReading(
+	page: Page,
+	reading: string,
+	timeoutMs = 90_000,
+): Promise<void> {
+	const text = () =>
+		page
+			.evaluate(() => document.body.innerText.match(/km [\d.]+ of [\d.]+/)?.[0])
+			.catch(() => undefined);
+	const deadline = Date.now() + timeoutMs;
+	for (;;) {
+		const shown = await text();
+		if (shown === reading) return;
+		if (Date.now() > deadline)
+			throw new Error(`the ride never read "${reading}": ${shown ?? 'no km'}`);
 		await page.waitForTimeout(200);
 	}
 }

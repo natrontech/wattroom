@@ -83,9 +83,9 @@ func (s *Service) Authorize(r *http.Request, id string) (protocol.Rider, string,
 // since a banned rider never reaches the door.
 func liveRole(crewRole string) string {
 	switch crewRole {
-	case "owner", "admin":
+	case protocol.RoleOwner, protocol.RoleAdmin:
 		return crewRole
 	default:
-		return "member"
+		return protocol.RoleMember
 	}
 }

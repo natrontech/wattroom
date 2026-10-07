@@ -9,6 +9,8 @@ import type { StageSource } from '$lib/channel/stage';
 import type { CrewPlan } from '$lib/crew-schedule';
 import type { FlightRecorder } from '$lib/ride/flightrecorder.svelte';
 import type { Road } from '$lib/road/road';
+import type { BunchView } from '$lib/channel/bunch-view';
+import type { RaceReadout } from '$lib/race/race-view';
 
 /**
  * `StageSource` is the minimum `pickStage` needs; the channel adds what the
@@ -47,7 +49,15 @@ export interface ChannelContext {
 	readonly you: LiveRider;
 	readonly block: Block | null;
 	/** The session's road the way the bunch rides it, and where you are on it: what the world draws (#3663). Null off one. */
-	readonly ridden: { road: Road; m: number; mps: number } | null;
+	readonly ridden: {
+		road: Road;
+		m: number;
+		mps: number;
+		/** Everyone on the road with you (#3098). */
+		bunch: BunchView | null;
+	} | null;
+	/** Your race, while you race one (#3174); null otherwise. */
+	readonly race: RaceReadout | null;
 	readonly segments: Segment[];
 	readonly shared:
 		| {

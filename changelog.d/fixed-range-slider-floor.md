@@ -1,0 +1,1 @@
+- Every slider — the mixer, the voice gate, volume faders — is now 24 px tall, so it clears the minimum tap target instead of sitting 4 px under it.

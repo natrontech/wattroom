@@ -25,6 +25,7 @@
 		ftp,
 		trace,
 		compact = false,
+		marker = true,
 		tv = false,
 		ceiling = CEILING,
 		selectedPath = null,
@@ -38,6 +39,12 @@
 		ftp: number;
 		trace: TracePoint[];
 		compact?: boolean;
+		/**
+		 * The cursor is your position mark (G2's horizon marker), in watt. Off
+		 * where something else on the surface already is — slot 1's strip over
+		 * the world, under the Skyline's dot (#3668) — and the cursor is ink.
+		 */
+		marker?: boolean;
 		/** TV mode (#3407): the FTP label reads at 3 m, like every TV word. */
 		tv?: boolean;
 		/**
@@ -344,7 +351,7 @@
 				y1="0"
 				x2={x(elapsed)}
 				y2={BASE}
-				class="text-watt glow-stroke"
+				class={marker ? 'text-watt glow-stroke' : 'text-ink'}
 				stroke="currentColor"
 				stroke-width="2"
 				vector-effect="non-scaling-stroke"

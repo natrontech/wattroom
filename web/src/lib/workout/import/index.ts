@@ -10,7 +10,6 @@ export {
 	readRouteFile,
 	type ImportedRoute,
 	type RouteChoice,
-	type RouteOutcome,
 } from './route';
 
 /**

@@ -59,6 +59,11 @@ func (l *lava) callZone(now time.Time) {
 	l.outOfZone = make(map[string]int)
 }
 
+// pacePct: on a road the bunch rides the middle of the called zone (#3114).
+func (l *lava) pacePct() float64 {
+	return (zoneBounds[l.zone][0] + zoneBounds[l.zone][1]) / 2
+}
+
 // keptPedalling: the buffer covered the silence, so the out-of-zone clock the
 // lapsed grace started is forgiven (#1576).
 func (l *lava) keptPedalling(riderID string, seconds int, now time.Time) {

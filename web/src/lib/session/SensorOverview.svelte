@@ -53,6 +53,7 @@
 		elsewhere = {},
 		targetsNote,
 		compact = false,
+		large = false,
 	}: {
 		trainer: TrainerSlot;
 		/**
@@ -74,9 +75,15 @@
 		targetsNote?: string;
 		/** The trainer alone, as one row — a running session's header (#412). */
 		compact?: boolean;
+		/**
+		 * Every control at 44 px, two cards a row at xl: /ride's pre-ride
+		 * holds its buttons to that floor and sits the grid beside its card
+		 * (TARGETS ride-preride 7, #3671).
+		 */
+		large?: boolean;
 	} = $props();
 
-	const supported = typeof navigator !== 'undefined' && !!navigator.bluetooth;
+	const supported = device.bluetooth;
 
 	const SENSORS: { kind: SensorKind; label: string; icon: typeof Zap }[] = [
 		{ kind: 'heart-rate', label: 'Heart rate', icon: HeartPulse },
@@ -84,12 +91,11 @@
 		{ kind: 'cadence', label: 'Cadence', icon: RotateCw },
 	];
 
-	const BUTTON: Record<string, string> = {
-		primary: 'btn btn-primary btn-xs',
-		secondary: 'btn btn-secondary btn-xs',
-		forget:
-			'border-muted/25 hover:border-muted/60 rounded border px-3 py-1.5 text-xs',
-	};
+	const BUTTON: Record<string, string> = $derived({
+		primary: `btn btn-primary ${large ? 'btn-lg' : 'btn-xs'}`,
+		secondary: `btn btn-secondary ${large ? 'btn-lg' : 'btn-xs'}`,
+		forget: `border-muted/25 hover:border-muted/60 rounded border px-3 text-xs ${large ? 'min-h-11' : 'py-1.5'}`,
+	});
 
 	const trainerView = $derived(
 		cardView({
@@ -255,7 +261,11 @@
 			{/if}
 		</div>
 	{:else}
-		<div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+		<div
+			class="grid grid-cols-2 gap-2 sm:grid-cols-4 {large
+				? 'xl:grid-cols-2'
+				: ''}"
+		>
 			{@render card({
 				label: 'Trainer',
 				icon: Bike,
@@ -309,7 +319,9 @@
 			     medals, XP and streaks — the fairness layer takes no fakes. Gone
 			     while another screen holds the trainer: the hub would take no
 			     samples from this one anyway (#610). -->
-			<button onclick={trainer.onSimulate} class="btn btn-ghost btn-xs mt-2"
+			<button
+				onclick={trainer.onSimulate}
+				class="btn mt-2 {large ? 'btn-secondary btn-lg' : 'btn-ghost btn-xs'}"
 				>Ride simulated</button
 			>
 		{/if}

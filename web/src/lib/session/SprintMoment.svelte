@@ -4,6 +4,7 @@
 	import { PLACES } from '$lib/session/podium';
 	import { serverNow } from '$lib/server-clock';
 	import { wkg } from '$lib/format';
+	import { sprintPhase } from '$lib/session/sprint-phase';
 
 	// The sprint moment overlay (#30): klaxon countdown, the 15 s window, the
 	// mini-podium. Visual only since #1412 — the klaxon, the gun and the
@@ -37,13 +38,7 @@
 		return () => clearInterval(id);
 	});
 
-	const phase = $derived(
-		now < sprint.startsAtMs
-			? 'klaxon'
-			: now < sprint.endsAtMs
-				? 'live'
-				: 'podium',
-	);
+	const phase = $derived(sprintPhase(sprint, now));
 	const countdown = $derived(Math.ceil((sprint.startsAtMs - now) / 1000));
 	const remaining = $derived(Math.max(0, (sprint.endsAtMs - now) / 1000));
 </script>

@@ -37,7 +37,6 @@
 	import { createRideFlags } from '$lib/ride/flags.svelte';
 	import RideFlags from '$lib/ride/RideFlags.svelte';
 	import PreRide from '$lib/ride/PreRide.svelte';
-	import CountdownScreen from '$lib/session/CountdownScreen.svelte';
 	import TvOverlay from '$lib/session/TvOverlay.svelte';
 	import RidingScreen from '$lib/ride/RidingScreen.svelte';
 	import RideStatus from '$lib/ride/RideStatus.svelte';
@@ -45,9 +44,15 @@
 	import SessionSummary from '$lib/ride/SessionSummary.svelte';
 	import { downloadRideCard } from '$lib/ride/card';
 	import RideDoors from '$lib/ride/RideDoors.svelte';
-	import SoloGames from '$lib/ride/SoloGames.svelte';
 	import SoloRoadRide from '$lib/ride/SoloRoadRide.svelte';
-	import { loadRoad, roadsEnabled, type RideableRoute } from '$lib/ride/roads';
+	import { roadsEnabled, type RideableRoute } from '$lib/ride/roads';
+	import type { RideKind } from '$lib/ride/RideCard.svelte';
+	import {
+		lastRoad,
+		lastWorkout,
+		rememberRoad,
+		rememberWorkout,
+	} from '$lib/ride/last-ride';
 	import { onRoute } from '$lib/road/compile';
 	import { formatKm } from '$lib/format';
 	import { doorsFor } from '$lib/crew-lounge';
@@ -67,11 +72,15 @@
 		const id = page.url.searchParams.get('plan');
 		return roadsEnabled() && crew && id ? { crew, id } : null;
 	})();
+	// What this device rode alone last (#3671): the Ride card opens on it.
+	const remembered = roadsEnabled() ? lastRoad() : undefined;
+	const rememberedWorkout = lastWorkout();
+	const pick = requested || rememberedWorkout || '';
 	// Derived, not once: the shelf loads async — read at init it is always
 	// empty, and every custom ride silently fell back to the default.
-	const saved = $derived(custom.byId(requested));
+	const saved = $derived(custom.byId(pick));
 	const selected = $derived(
-		byId(requested) ??
+		byId(pick) ??
 			(saved
 				? {
 						id: saved.id,
@@ -81,25 +90,40 @@
 					}
 				: byId('sweet-spot-2x20')!),
 	);
-	// Any workout on one of your own roads (#3594): ?w= with road=, from
-	// Terrain Match's start or km 0 (`from`). road= alone is a free ride on
-	// it (#3027). Blocks end by the clock; the dot rides the road.
-	const ridesRoute = !!(roadId && requested);
-	let onRoad = $state.raw<RideableRoute | null>(null);
-	let roadError = $state<string | null>(null);
-	$effect(() => {
-		if (!ridesRoute || !roadId) return;
-		void loadRoad(roadId).then((result) => {
-			if (result.ok) onRoad = result.route;
-			else roadError = result.error;
-		});
-	});
-	const roadPending = $derived(ridesRoute && !onRoad && !roadError);
+	// “Last: <workout>”, whichever workout the card shows.
+	const lastName = $derived(
+		rememberedWorkout
+			? (byId(rememberedWorkout)?.workout.name ??
+					custom.byId(rememberedWorkout)?.workout.name)
+			: undefined,
+	);
+	// The Ride card's answers (#3671). ?w= opens on Workout, with road= on
+	// that road (#3594); otherwise a remembered road opens on a free ride.
+	// road= alone is a free ride on it (#3027), straight onto the road.
+	let kind = $state<RideKind>(requested || !remembered ? 'workout' : 'free');
+	let road = $state.raw<RideableRoute | null>(null);
+	let from = $state(roadFrom);
+	// Any workout on one of your own roads (#3594), from Terrain Match's
+	// start or km 0. Blocks end by the clock; the dot rides the road.
+	const ridesRoute = $derived(kind === 'workout' && !!road);
 	const workout = $derived(
-		ridesRoute && onRoad
-			? withProfile(onRoute(selected.workout, onRoad, roadFrom), onRoad.road)
+		ridesRoute && road
+			? withProfile(onRoute(selected.workout, road, from), road.road)
 			: selected.workout,
 	);
+	// A free ride on a road, started from the card with the paired trainer.
+	let freeRide = $state.raw<{
+		id: string;
+		from: number;
+		trainer: Trainer;
+	} | null>(null);
+	function start(trainer: Trainer) {
+		if (kind === 'free' && road) {
+			freeRide = { id: road.id, from, trainer };
+			return;
+		}
+		void begin(trainer);
+	}
 	// A requested workout that is not built in waits for the shelf, and a
 	// shelf that failed or does not hold it is said — the fallback used to
 	// ride Sweet Spot 2×20 under a different name with no word (audit
@@ -127,6 +151,13 @@
 	let gone = false;
 	let saving = $state(false);
 	let session = $state<ReturnType<typeof createRideSession> | null>(null);
+	// The setup is a desk page and wears the page frame (G7); the ride and
+	// its summary keep the riding surface's own gutters.
+	const setup = $derived(
+		!freeRide &&
+			!((roadId || planRoad) && !requested) &&
+			(!session || session.state === 'idle'),
+	);
 	let downloading = $state(false);
 	let carding = $state(false);
 	let error = $state<string | null>(null);
@@ -138,6 +169,7 @@
 	let retrySave = $state<(() => void) | null>(null);
 	// The ride on the account, once it is: the summary's way forward (#1331).
 	let savedId = $state<string | null>(null);
+	let savedXp = $state<number | undefined>(undefined);
 
 	// ?replay=<fixture> rides a committed capture instead of the generator
 	// (#54): deterministic reproduction, the agent's screenshot instead of the
@@ -176,6 +208,8 @@
 
 	async function begin(trainer: Trainer) {
 		error = null;
+		rememberWorkout(selected.id);
+		if (workout.road && road && !road.borrowed) rememberRoad(road.id);
 		// One trainer, one rider (#521): a voice channel now holds the
 		// trainer's BLE connection for as long as you stand in it, so a solo
 		// ride has to take it back
@@ -325,6 +359,7 @@
 					history.remove(id);
 					saveStatus = null;
 					savedId = outcome.saved.id || null;
+					savedXp = outcome.saved.xp;
 					if (gone)
 						toasts.push('Ride saved to your history.', {
 							href: savedId ? `/history/${savedId}` : undefined,
@@ -525,22 +560,19 @@
      desk surfaces, the effort itself gets the dark. -->
 <!-- px-4 on a phone is the kit's gutter (`page`, ux.md's 16 px); the ride
      surface is not a `page` — it fills the window — so it spells the two. -->
-<main class="bg-surface text-ink flex min-h-screen flex-col px-4 py-5 sm:px-6">
-	{#if (roadId || planRoad) && !requested}
+<main
+	class="bg-surface text-ink flex min-h-screen flex-col {setup
+		? 'page'
+		: 'px-4 py-5 sm:px-6'}"
+>
+	{#if freeRide}
+		<SoloRoadRide
+			roadId={freeRide.id}
+			from={freeRide.from}
+			trainer={freeRide.trainer}
+		/>
+	{:else if (roadId || planRoad) && !requested}
 		<SoloRoadRide {roadId} plan={planRoad} from={roadFrom} />
-	{:else if roadPending}
-		<Skeleton class="h-8 w-56" />
-		<Skeleton class="mt-6 h-48" />
-	{:else if roadError}
-		<Banner tone="error">
-			{roadError}
-			{#snippet action()}
-				<a
-					href="/ride?w={encodeURIComponent(requested)}"
-					class="btn-link text-xs">Ride it without the road</a
-				>
-			{/snippet}
-		</Banner>
 	{:else if !session || session.state === 'idle'}
 		<!-- Idle with a session in hand is the moment between Start and the
 		     trainer answering it (#1800): still the setup screen, because
@@ -565,15 +597,21 @@
 			<RideDoors onAlone={() => (alone = true)} />
 		{:else}
 			<PreRide
+				bind:kind
+				bind:road
+				bind:from
+				roadId={(requested && roadId) || remembered}
+				{remembered}
+				lastWorkout={lastName}
 				{workout}
-				summary={onRoad
-					? `${selected.summary} On ${onRoad.name}, from km ${formatKm(roadFrom)}.`
+				summary={ridesRoute && road
+					? `${selected.summary} On ${road.name}, from km ${formatKm(from)}.`
 					: selected.summary}
 				{ftp}
 				{solo}
 				{replayName}
 				{error}
-				onStart={(trainer) => void begin(trainer)}
+				onStart={start}
 				onReplay={beginReplay}
 				onSaved={(ride) => history.remove(String(ride.startedAt))}
 				onFtp={async (next) => {
@@ -586,30 +624,13 @@
 				onError={(message) => (error = message)}
 			/>
 		{/if}
-		<!-- A game from the solo ride (#3276) — not once a workout was picked,
-		     which is its own ride. -->
-		{#if !requested && !shelfPending && !shelfMissing}
-			<SoloGames />
-		{/if}
-	{:else if session.state === 'countdown'}
-		<!-- Sound AND visual (.claude/rules/ux.md): the cue alone reaches a
-		     rider who is climbing back onto the bike, not the one still walking
-		     to it. A session's own count-in screen (ADR-0046). -->
-		<CountdownScreen
-			remaining={session.countdownRemaining}
-			title={workout.name}
-			note={block
-				? `first up · ${block.label}${block.watts > 0 ? ` ${block.watts} W` : ''}`
-				: undefined}
-		>
-			{#snippet controls()}
-				<button onclick={cancelCountdown} class="btn btn-secondary btn-lg"
-					>Cancel</button
-				>
-			{/snippet}
-		</CountdownScreen>
 	{:else if session.state !== 'done'}
+		<!-- The count-in is the ride's own screen (ADR-0046, #1800): flat, the
+		     one digit; over the world, the slots already in place (#3668). -->
 		<RidingScreen
+			countIn={session.state === 'countdown'
+				? { remaining: session.countdownRemaining, cancel: cancelCountdown }
+				: undefined}
 			{session}
 			{block}
 			{workout}
@@ -667,6 +688,7 @@
 					? 'Ride complete'
 					: 'Ride ended'}
 				unsaved={saveStatus !== null && !savedId}
+				{savedXp}
 				subtitle="{workout.name} · {new Date().toLocaleDateString()}"
 				samples={session.recording}
 				ftp={profile.current.ftp}

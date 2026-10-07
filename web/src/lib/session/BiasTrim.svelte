@@ -6,6 +6,7 @@
 		bias,
 		onBias,
 		hint,
+		ride = false,
 	}: {
 		bias: number;
 		/** Absent with no trainer paired: nothing to trim (ux.md gating). */
@@ -17,6 +18,12 @@
 		 * problem that is not there.
 		 */
 		hint?: string;
+		/**
+		 * At the riding floor over the world (#3668): the trim's number at
+		 * SPEC's 36 px and its label at 24 px (G4). The flat layout keeps its
+		 * sizes until #3670.
+		 */
+		ride?: boolean;
 	} = $props();
 
 	// A dead control with no reason reads as a broken feature — riders report
@@ -34,10 +41,11 @@
 		aria-label="ease the target by one percent">−</button
 	>
 	<span class="text-center">
-		<span class="num block text-lg leading-none font-bold"
+		<span
+			class="num block leading-none font-bold {ride ? 'text-4xl' : 'text-lg'}"
 			>{Math.round(bias * 100)}%</span
 		>
-		<span class="eyebrow">bias</span>
+		<span class={ride ? 'ride-label' : 'eyebrow'}>bias</span>
 	</span>
 	<button
 		onclick={() => onBias?.(0.01)}

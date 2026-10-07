@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Remove the worktrees and branches that are finished, and refuse on anything
-# that is not (#2097, AGENTS.md step 7).
+# that is not (#2097, AGENTS.md "Merging and cleaning up").
 #
 # The orphan case is the reason this exists rather than an `xargs git worktree
 # remove`: a worktree holding commits that were never pushed is finished work
@@ -67,7 +67,7 @@ while read -r dir; do
 	# in-flight and hid the orphan this script exists to catch.
 	if [ "$ahead" -eq 0 ]; then
 		# ...which is also exactly what an agent looks like between
-		# `git worktree add` and its first commit, and AGENTS.md step 1 tells
+		# `git worktree add` and its first commit, and AGENTS.md "Taking work" tells
 		# every contributor to read that branch name and stay off it (#2116).
 		# To git the two are one clean tree at origin/main, so age is the only
 		# thing telling them apart — and this script's promise, that it removes
@@ -152,7 +152,8 @@ claimed=$(
 			# `claimed` empty, and reported every live database as stranded (#2115).
 			sed -n \
 				-e "s/^export WATTROOM_DEV_DB_NAME='\(.*\)'$/\1/p" \
-				-e "s/^export WATTROOM_DEV_TEST_DB_NAME='\(.*\)'$/\1/p"
+				-e "s/^export WATTROOM_DEV_TEST_DB_NAME='\(.*\)'$/\1/p" \
+				-e "s/^export WATTROOM_DEV_DESIGN_DB_NAME='\(.*\)'$/\1/p"
 	done < <(git worktree list --porcelain | awk '/^worktree /{print $2}')
 )
 # `docker ps | head -1` picked a leftover container from a removed worktree and
@@ -168,7 +169,7 @@ if [ -z "$claimed" ]; then
 elif container=$(./scripts/dev-env.sh pg-container 2>/dev/null); then
 	stranded=$(
 		docker exec "$container" psql -U wattroom -lqt 2>/dev/null |
-			awk -F'|' '{gsub(/ /,"",$1); if ($1 ~ /^wattroom_(test_)?wt_/) print $1}' |
+			awk -F'|' '{gsub(/ /,"",$1); if ($1 ~ /^wattroom_(test_|design_)?wt_/) print $1}' |
 			grep -vxF "$claimed" || true
 	)
 	if [ -n "$stranded" ]; then

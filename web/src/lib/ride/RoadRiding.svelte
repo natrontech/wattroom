@@ -16,6 +16,7 @@
 	import type { FreeMode } from '$lib/ride/free-ride-controls';
 	import { createFreeRide } from '$lib/ride/free-ride.svelte';
 	import GearShift from '$lib/ride/GearShift.svelte';
+	import { guardLeaving } from '$lib/ride/leave-guard.svelte';
 	import { createGhostSplit } from '$lib/ride/ghost-split.svelte';
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
 	import { bindShiftKeys } from '$lib/ride/keys';
@@ -27,6 +28,8 @@
 	import { climbView } from '$lib/ride/climb-view';
 	import { watchClimbCues } from '$lib/ride/climb-cues.svelte';
 	import { carryOnFrom, type RideableRoute } from '$lib/ride/roads';
+	import { rememberRoad } from '$lib/ride/last-ride';
+	import type { Trainer } from '$lib/ble/trainer';
 	import { createSoloRoadRide } from '$lib/ride/solo-road.svelte';
 	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
 	import BikeComputer from '$lib/session/BikeComputer.svelte';
@@ -37,7 +40,16 @@
 	import { sensors } from '$lib/sensors.svelte';
 	import { SIGNAL_LOST_MS } from '$lib/workout/ride-state';
 
-	let { route, from = 0 }: { route: RideableRoute; from?: number } = $props();
+	let {
+		route,
+		from = 0,
+		trainer: handed,
+	}: {
+		route: RideableRoute;
+		from?: number;
+		/** A trainer /ride's card paired and handed over: ride at once (#3671). */
+		trainer?: Trainer;
+	} = $props();
 
 	const profile = createProfileStore();
 	const free = createFreeRide({
@@ -102,20 +114,30 @@
 	// the start; a link that says where to start (Resume at km) already did.
 	let carry = $state<number | null>(null);
 	untrack(() => {
-		if (!from && !route.borrowed)
+		if (!from && !route.borrowed && !handed)
 			void carryOnFrom(route.id, route.road.length).then((m) => (carry = m));
 	});
 
-	function start(at?: number) {
-		const trainer = trainers.handOff();
-		if (trainer) solo.start(trainer, at);
+	function start(at?: number, trainer = trainers.handOff()) {
+		if (!trainer) return;
+		solo.start(trainer, at);
+		// The card's “your last road” (#3671); a crew's road is not yours.
+		if (!route.borrowed) rememberRoad(route.id);
 	}
+	untrack(() => handed && start(from, handed));
 	async function end() {
 		ended = true;
 		await solo.end();
 	}
 	// Leaving the page is not End ride: the trainer is let go, and the crash
-	// buffer offers the ride back.
+	// buffer offers the ride back. A stray tap on the rail asks first, as a
+	// workout ride does (#3667).
+	guardLeaving(() => !!solo.trainer, {
+		title: 'Leave the ride?',
+		body: 'It stops here, unsaved on your account. Ride offers it back to save, or to carry on from where you left the road.',
+		action: 'Leave the ride',
+		cancel: 'Keep riding',
+	});
 	onDestroy(() => {
 		if (solo.trainer) void solo.trainer.disconnect();
 	});
@@ -135,7 +157,15 @@
 	<header class="flex flex-wrap items-center gap-3">
 		<p class="eyebrow">free ride</p>
 		<h1 class="page-title-sm min-w-0 truncate">
-			{route.name}
+			<!-- Ridden, the road opens its page (F1); a crew's road has none of yours. -->
+			{#if ended && !route.borrowed}
+				<a
+					href="/workouts/routes/{route.id}"
+					class="underline decoration-1 underline-offset-4">{route.name}</a
+				>
+			{:else}
+				{route.name}
+			{/if}
 		</h1>
 		<span class="font-display ml-auto text-2xl font-bold tabular-nums"
 			>{formatClock(free.seconds)}</span
@@ -237,7 +267,9 @@
 		{/if}
 		<!-- The bike computer, as a ride in a channel has it (ADR-0046, #3628):
 		     the road's speed, grade and distance on RIDE. -->
+		<!-- The instrument above is the head: RIDE leaves the watts to it. -->
 		<BikeComputer
+			head
 			{watts}
 			cadence={solo.metrics?.cadence ?? 0}
 			hr={solo.metrics?.heartRate ?? 0}

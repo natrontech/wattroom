@@ -6,11 +6,15 @@ import * as THREE from 'three';
 import { damp } from '$lib/motion/damp';
 import { yOf } from './geometry';
 import { type Route } from '$lib/road/route';
-import { at } from '$lib/road/along';
+import { at, leftOf } from '$lib/road/along';
 import type { SimRider } from './sim';
 import type { World } from './world';
 
-export type Follow = 'chase' | 'heli';
+/** chase and heli follow you; side stands off your right shoulder, a held moment's view of the figure and bike. */
+export type Follow = 'chase' | 'heli' | 'side';
+
+/** The side view: metres out to your right, ahead, and up; a three-quarter front, so the face, the drops and both wheels show. */
+const SIDE = { out: 3.2, ahead: 1.6, up: 0.3, fov: 40 };
 
 const EYE_FLOOR = 1.5; // metres the eye keeps above the drawn ground
 const GOAL_FLOOR = 1.8;
@@ -51,6 +55,20 @@ export function makeRig(route: Route, world: World) {
 			you: THREE.Vector3,
 			real: number,
 		) {
+			if (mode === 'side') {
+				const p = along(route, rider.d);
+				const { lx, lz } = leftOf(p.heading);
+				camera.position.set(
+					you.x - lx * SIDE.out + Math.sin(p.heading) * SIDE.ahead,
+					you.y + SIDE.up,
+					you.z - lz * SIDE.out + Math.cos(p.heading) * SIDE.ahead,
+				);
+				camera.lookAt(you);
+				camera.fov = SIDE.fov;
+				camera.updateProjectionMatrix();
+				started = false;
+				return;
+			}
 			const chase = mode === 'chase';
 			const back = chase ? 6.5 + Math.min(3, rider.v * 0.15) : 70;
 			// The eye rides your lane, not the centre line, so your lane leaves you in RIDER_BOX.
@@ -86,4 +104,3 @@ export function makeRig(route: Route, world: World) {
 		},
 	};
 }
-export type Rig = ReturnType<typeof makeRig>;

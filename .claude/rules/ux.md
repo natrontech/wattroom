@@ -1,54 +1,54 @@
-# UX conventions
+# UX
 
-WattRoom's user is on a bike, sweating, screen at arm's length or three metres away. Every UI decision optimizes for that first, desk-comfort second.
+The rider is on a bike, sweating, the screen at arm's length or three metres away. Design for that first, the desk second.
 
-Every surface has a target and a must-match list in [docs/design/TARGETS.md](../../docs/design/TARGETS.md); no rider-visible PR is marked ready without a passing design check ([DESIGN-CHECK.md](../../docs/design/DESIGN-CHECK.md)).
+Every surface has a target and a must-match list in [docs/design/TARGETS.md](../../docs/design/TARGETS.md). A rider-visible PR is marked ready only after a passing design check ([DESIGN-CHECK.md](../../docs/design/DESIGN-CHECK.md)).
 
-## The 95% rule
+## Defaults
 
-Before adding any setting/toggle: would 95% of riders pick the same value? Then it's a default, not a setting (put edge-case needs in a collapsed Advanced expander at most). Defaults already decided this way live in docs/SPEC.md — voice/camera available by default, sensible tolerances, auto-pause on.
+If 95 % of riders would pick the same value, it is a default, not a setting; edge cases get a collapsed Advanced expander at most. Decided defaults live in docs/SPEC.md.
 
-## Mid-ride interaction rules
+## Mid-ride
 
-- Anything usable during a ride: huge tap targets, no precision gestures, no typing.
-- State changes announce themselves (sound + visual) — riders don't watch the screen continuously.
-- Errors during a ride are persistent dashboard status, never transient toasts; recovery is automatic wherever possible (reconnects), manual recovery is one big button.
+- Huge tap targets, no precision gestures, no typing.
+- State changes announce themselves with sound and a visual.
+- Errors are persistent status; recovery is automatic where possible and otherwise one big button.
 
 ## Surfaces
 
-- Empty states teach, never apologize: one line on what the thing is + the CTA that creates the first one ("Start your crew"). It's the only onboarding most users read.
-- Data (watts, graphs) gets the glow; chrome stays quiet. `--color-watt` = live data only.
-- Capability gating: features needing an absent precondition (no trainer paired, LiveKit down, not embeddable) render disabled with a one-line hint, or hide — never fail on click.
-- Vocabulary is docs/SPEC.md's glossary — crew, text channel, voice channel, session, coach, sprint moments. "Room" left the vocabulary with [ADR-0058](../../docs/decisions/0058-the-room-dissolves-into-the-crew.md). Don't invent synonyms per screen.
+- Empty states teach: one line on what the thing is, plus the CTA that makes the first one ("Start your crew").
+- Data (watts, graphs) glows; chrome stays quiet. `--color-watt` is live data only.
+- A feature whose precondition is absent (no trainer, LiveKit down, not embeddable) is disabled with a one-line hint or hidden. It never fails on click.
+- Words come from the SPEC glossary: crew, text channel, voice channel, session, coach, sprint moments. Never "room" ([ADR-0058](../../docs/decisions/0058-the-room-dissolves-into-the-crew.md)), and no per-screen synonyms.
 
-## Phone width
+## Phone width: 375 × 812
 
-The standard is **375 × 812**, and it applies to every surface outside a session. WATTROOM.md makes a phone a spectator *in a session*; it says nothing about `/history`, `/settings`, `/workouts` or `/u/me`, and a rider checking last night's ride on the sofa is a supported use.
+Every surface outside a session, including history, settings, workouts and profile.
 
-- **The page body scrolls down, never sideways.** Wide content — a chart, a table, a long row — wraps itself in its own `overflow-x: auto`. `e2e/phone-width.spec.ts` asserts this on `[data-testid=page-body]` for every route. Which routes those are lives in `e2e/routes.ts`, and that is where a new one is recorded — measured, or excluded with its reason; a route in neither fails `e2e/routes.test.ts` (#2386).
-- **Never put a pixel width on an SVG you also measure.** `width={W}` beside `bind:clientWidth` props open the very container it measures, so the chart latches at its widest and never comes back down — a 600px initial `$state` stayed 600 on a 375px phone. Use `width="100%"` with the `viewBox`, and keep any floor below the narrowest real column (#1008).
-- **Do not assert `documentElement.scrollWidth <= clientWidth`.** The shell's `overflow-hidden` columns absorb it: a chart 307px too wide left the document at exactly 375 and the check green. Measure the page body.
-- **Stacking order is a decision.** Source order puts sidebars first; on a phone the primary work comes first. The workout editor must not stack library-first.
-- **Tap targets: 24px is the floor, 44px is for riding.** WCAG 2.2 SC 2.5.8 (AA) requires 24×24 CSS px; the 44×44 in SC 2.5.5 is **AAA**, and it is the number the mid-ride rule above is really about — a sweating rider at arm's length, not someone on a sofa. Measured at 375px, the kit gives: `btn-lg` **44**, plain `btn` 36–38, `btn-xs` 28–30, `btn-link` 16 (inline text, an explicit SC 2.5.8 exception). So `btn-xs` is conformant on a browse surface and `btn-lg` is the variant that clears the enhanced bar — reach for it on controls a rider uses **while pedalling**, not everywhere. Stating a flat 44 here was wrong: it condemned every button in the app including the default one, which is how a rule gets ignored rather than followed (#1088).
-- The last item must clear the browser chrome.
+- The page body scrolls down, never sideways; wide content gets its own `overflow-x: auto`. `e2e/phone-width.spec.ts` measures `[data-testid=page-body]` on every route in `e2e/routes.ts`. A new route is measured or excluded there with a reason, or `e2e/routes.test.ts` fails.
+- Measure the page body, never `documentElement.scrollWidth`.
+- An SVG measured with `bind:clientWidth` gets `width="100%"` and a `viewBox`, never a pixel width; any floor stays below the narrowest real column.
+- Primary work stacks first on a phone, before any sidebar. The workout editor never stacks library-first.
+- Tap targets: 24 px minimum (WCAG 2.5.8), 44 px for controls used while pedalling (2.5.5). `btn-lg` is 44, `btn` 36–38, `btn-xs` 28–30, `btn-link` 16 (inline text, exempt). Use `btn-lg` mid-ride, not everywhere.
+- The last item clears the browser chrome.
 
 ## Keyboard focus
 
-- Opening a text-first task, such as a text channel or private conversation, puts focus in its primary input after navigation so typing works immediately. Apply this when switching conversations too.
-- Focus follows deliberate navigation, never incoming messages, polling, or background renders. Preserve focus when the rider chooses another control or opens a dialog, and avoid incidental scrolling when focusing.
+- Opening a text-first task (a text channel, a private conversation, or switching between them) focuses its input.
+- Focus follows deliberate navigation, never incoming messages, polling or background renders. Keep focus when the rider picks another control or opens a dialog; don't scroll as a side effect of focusing.
 
 ## Motion ([ADR-0079](../../docs/decisions/0079-motion-announces-the-camera-stays-still.md))
 
-- **Live numbers snap.** A bar settles through `transform` over `--dur-live`; only a result rolls, and only once.
-- **Juice goes on things, never on the screen**: a chip, a flag, a bell, confetti from a hand. No shake, bob, roll, overshoot, blur or speed lines anywhere a rider pedals.
-- **One stage moment at a time**, through the moments queue; every motion names its cue and its hit time.
-- **A cue exists only where its model exists** — no draft wake without draft physics.
-- **Reduced motion keeps every sound** and turns each motion into a held stamp. The world answers to the one per-device World control; the rest of the app follows the OS setting.
-- **Flashes**: WCAG 2.3.1 at most, one luminance flash per 10 s over 25 % of a 10° field, and `--color-z6`, `--color-z7`, `--color-danger` and `--color-watt` never blink.
+- Live numbers snap. A bar settles through `transform` over `--dur-live`; only a result rolls, and only once.
+- Juice goes on things, never on the screen: a chip, a flag, a bell, confetti from a hand. No shake, bob, roll, overshoot, blur or speed lines where a rider pedals.
+- One stage moment at a time, through the moments queue; every motion names its cue and its hit time.
+- A cue exists only where its model exists: no draft wake without draft physics.
+- Reduced motion keeps every sound and turns each motion into a held stamp. The world follows the per-device World control; the rest of the app follows the OS setting.
+- Flashes: at most WCAG 2.3.1 (one luminance flash per 10 s over 25 % of a 10° field). `--color-z6`, `--color-z7`, `--color-danger` and `--color-watt` never blink.
 - Durations and easings come from the motion tokens (docs/SPEC.md, "Motion"), never literals.
 
 ## Right-click
 
-- Every object with more than one action gets a context menu (`contextMenu` from `$lib/context-menu.svelte`, drawn by `ContextMenuHost`): a channel in the sidebar, a rider's tile, a track in the queue, the stage, a message. Right-click on a desk, long-press on touch.
-- The primary action stays on click; the menu holds the rest. Nothing lives *only* in a menu — it is a shortcut, never the sole way, so mid-ride targets stay huge and discoverable.
-- Items say what happens ("Leave the crew", "Remove"); destructive ones take the danger token and sit last after a separator.
+- An object with more than one action (a sidebar channel, a rider's tile, a queued track, the stage, a message) gets a context menu (`contextMenu` from `$lib/context-menu.svelte`, drawn by `ContextMenuHost`): right-click on a desk, long-press on touch.
+- The primary action stays on click. A menu item is a shortcut, never the only way.
+- Items say what happens ("Leave the crew", "Remove"); destructive ones take the danger token and sit last, after a separator.

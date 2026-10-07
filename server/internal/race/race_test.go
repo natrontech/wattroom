@@ -2,6 +2,7 @@ package race
 
 import (
 	"errors"
+	"math"
 	"testing"
 	"time"
 
@@ -217,5 +218,154 @@ func TestAHoldIsNotInAnyonesTime(t *testing.T) {
 	}
 	if plain, held := finish(false), finish(true); plain != held {
 		t.Fatalf("a's time: %d ms plain, %d ms with a minute held", plain, held)
+	}
+}
+
+// A rider who comes after the flag (#3175): before the klaxon onto the grid
+// with everyone, after it from km 0 — and never ranked, whatever they ride.
+func TestALateJoinerAfterKmZeroIsNeverRanked(t *testing.T) {
+	r, err := New(flat(800), []Entrant{{ID: "a", WeightKg: 75, Category: "C"}, {ID: "b", WeightKg: 75, Category: "C"}}, flag)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !r.Join(Entrant{ID: "grid", WeightKg: 75, Category: "C"}, flag.Add(time.Minute)) {
+		t.Fatal("a join in the neutral zone was refused")
+	}
+	at := r.Klaxon()
+	for s := 1; s <= 30; s++ {
+		at = at.Add(time.Second)
+		r.Step(at, map[string]int{"a": 150, "b": 150, "grid": 150})
+	}
+	if !r.Join(Entrant{ID: "late", WeightKg: 75, Category: "C"}, at) || r.Join(Entrant{ID: "a"}, at) {
+		t.Fatal("a join after km 0, or a second one for a racer, went the wrong way")
+	}
+	for s := 1; s <= 400 && !r.Done(); s++ {
+		at = at.Add(time.Second)
+		// The late rider is the strongest by far, and still placed nowhere.
+		r.Step(at, map[string]int{"a": 150, "b": 150, "grid": 150, "late": 600})
+	}
+	res := r.Results()
+	if len(res) != 1 || len(res[0].Placed) != 3 || len(res[0].Unranked) != 1 ||
+		res[0].Unranked[0].ID != "late" || res[0].Unranked[0].Why != protocol.UnrankedLate {
+		t.Fatalf("results: %+v", res)
+	}
+}
+
+// A clock race (#3171): nobody moves past its end, and a hold before the end
+// moves the end on by as long as it held.
+func TestAClockRaceRunsOutAndAHoldMovesItsEnd(t *testing.T) {
+	r, err := New(flat(100_000), []Entrant{{ID: "a", WeightKg: 75, Category: "C"}, {ID: "b", WeightKg: 75, Category: "C"}}, flag)
+	if err != nil {
+		t.Fatal(err)
+	}
+	end := r.Klaxon().Add(10 * time.Minute)
+	r.Clock(end)
+	at := r.Klaxon().Add(5 * time.Minute)
+	r.Neutralised(at, at.Add(time.Minute))
+	if want := end.Add(time.Minute); !r.Ends().Equal(want) {
+		t.Fatalf("the clock ends at %v after a minute's hold, want %v", r.Ends(), want)
+	}
+	for at := r.Klaxon().Add(time.Second); !r.Done(); at = at.Add(time.Second) {
+		r.Step(at, map[string]int{"a": 250, "b": 250})
+		if at.After(r.Ends().Add(2 * time.Second)) {
+			t.Fatal("the clock ran out and the race went on")
+		}
+	}
+	m := r.Racers()["a"].M
+	r.Step(r.Ends().Add(10*time.Second), map[string]int{"a": 250, "b": 250})
+	if r.Racers()["a"].M != m {
+		t.Error("a racer moved past the clock's end")
+	}
+}
+
+// A Wheelrace's handicap (#3172): the line goes where the scratch rider gets
+// in par, on a height step; the scratch starts at km 0, a weaker rider up the
+// road, a much weaker one farther up; and the pace model brings each to the
+// line at par. A road shorter than par puts the line at its end.
+func TestAHandicapBringsEveryoneToTheLineAtPar(t *testing.T) {
+	rolling := road.Road{LengthM: 40_000, Heights: make([]float64, 2001)}
+	for i := range rolling.Heights {
+		rolling.Heights[i] = 30 * math.Sin(float64(i)/40)
+	}
+	par := 30 * time.Minute
+	h := NewHandicap(rolling, par, 300)
+	if h.LineM <= 10_000 || h.LineM >= rolling.LengthM || math.Mod(h.LineM, rolling.Step()) != 0 {
+		t.Fatalf("the line at %.0f m", h.LineM)
+	}
+	if s := h.Start(300); s != 0 {
+		t.Errorf("the scratch rider starts at %.1f m", s)
+	}
+	// The line sits on a height step at or short of par's distance, so the
+	// scratch rider's own time to it is par or a breath under, and that is
+	// the time every head start is set to ride.
+	scratch := timeAlong(rolling, 0, h.LineM, 300, handicapGiveUp)
+	if scratch > par.Seconds() || scratch < par.Seconds()-5 {
+		t.Fatalf("the scratch rider reaches the line in %.1f s, want par %.0f s", scratch, par.Seconds())
+	}
+	for _, w := range []float64{250, 180} {
+		s := h.Start(w)
+		if s <= 0 || s >= h.LineM {
+			t.Fatalf("%v W starts at %.1f m", w, s)
+		}
+		if got := timeAlong(rolling, s, h.LineM, w, handicapGiveUp); math.Abs(got-scratch) > 0.5 {
+			t.Errorf("%v W from %.0f m reaches the line in %.1f s, with the scratch rider's %.1f s", w, s, got, scratch)
+		}
+	}
+	if h.Start(250) >= h.Start(180) {
+		t.Errorf("a weaker rider starts behind a stronger one: %.0f m and %.0f m", h.Start(250), h.Start(180))
+	}
+	short := NewHandicap(flat(5_000), par, 300)
+	if short.LineM != 5_000 {
+		t.Errorf("a 5 km road's line at %.0f m", short.LineM)
+	}
+}
+
+// A sparse road — one height step longer than par carries anyone — still has
+// a line one step up it, never at km 0 (#3172): a line at km 0 made a road of
+// no length, and the first step after the klaxon panicked.
+func TestASparseRoadsLineIsOneStepUp(t *testing.T) {
+	sparse := road.Road{LengthM: 20_000, Heights: []float64{0, 40, 80}}
+	h := NewHandicap(sparse, 15*time.Minute, 100)
+	if h.LineM != 10_000 {
+		t.Fatalf("the line on a 10 km-step road: %.0f m", h.LineM)
+	}
+	if s := h.Start(60); s < 0 || s >= h.LineM {
+		t.Fatalf("a weaker rider starts at %.0f m", s)
+	}
+}
+
+// The RACE page's numbers (#3174): each racer's Category rides the tick, and
+// how far ahead of that Category's par they are at their metre — a rider at
+// par sits on it, a stronger one pulls ahead, a weaker one drops behind, and
+// a head start is par's start too.
+func TestEachRacerIsTimedAgainstTheirCategorysPar(t *testing.T) {
+	// 70 kg riders: C's par is 2.85 W/kg, 199.5 W.
+	entrants := []Entrant{
+		{ID: "par", WeightKg: 70, Category: "C"},
+		{ID: "strong", WeightKg: 70, Category: "C"},
+		{ID: "weak", WeightKg: 70, Category: "C"},
+		{ID: "ahead", WeightKg: 70, Category: "C", StartM: 500},
+	}
+	r, err := New(flat(20_000), entrants, flag)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := r.Racers()["par"]; got.Cat != "C" || got.Par != 0 {
+		t.Fatalf("at the klaxon: %+v, want C and no par yet", got)
+	}
+	at := flag
+	for s := 1; s <= protocol.RaceNeutralSeconds+300; s++ {
+		at = at.Add(time.Second)
+		r.Step(at, map[string]int{"par": 200, "strong": 260, "weak": 150, "ahead": 200})
+	}
+	got := r.Racers()
+	if p := got["par"].Par; math.Abs(p) > 1 {
+		t.Fatalf("a rider at par is %+.1f s on it after 5 min", p)
+	}
+	if got["strong"].Par < 10 || got["weak"].Par > -10 {
+		t.Fatalf("strong %+.1f s, weak %+.1f s: want well ahead and well behind", got["strong"].Par, got["weak"].Par)
+	}
+	if p := got["ahead"].Par; math.Abs(p) > 1 {
+		t.Fatalf("a head start at par is %+.1f s on its own par", p)
 	}
 }

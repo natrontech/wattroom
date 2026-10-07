@@ -1,7 +1,9 @@
 package hub
 
 import (
+	"encoding/json"
 	"math"
+	"slices"
 	"sort"
 	"time"
 
@@ -21,7 +23,15 @@ const roadRidingMps = 0.5
 type routeRide struct {
 	protocol.SessionRoute
 	profile road.Road
+	// A game's road as its session's workout carries it (#3114): the crew's
+	// cut, attached, so every screen can draw the road the game rides. A
+	// pick's workout carries its own; nil rides none.
+	road json.RawMessage
 }
+
+// storedM is a metre of the crew's cut as the stored road counts it, where
+// a rider's own rides of the road are kept (#3722).
+func (r *routeRide) storedM(cutM float64) float64 { return r.CutFromM + cutM }
 
 // ref is the reference every socket is sent; nil rides no road.
 func (r *routeRide) ref() *protocol.SessionRoute {
@@ -50,8 +60,10 @@ type bunch struct {
 	at time.Time
 	// This second's samples from the joined riders.
 	heard map[string]sample
-	// Every joined rider's place in it (#3097), once the plan runs.
+	// Every joined rider's place in it (#3097), once the plan runs, and how
+	// many have joined it: the next place's seq.
 	places map[string]*place
+	joins  int
 	// Where the road's KOM sprints open (#3102), the next one ahead, laps
 	// unrolled, while komLeft; how many this ride armed, and when the last
 	// one opened.
@@ -60,21 +72,25 @@ type bunch struct {
 	komLeft   bool
 	komsArmed int
 	lastKom   time.Time
-	// Where each spectator stands (#3029), and the revision the tick
-	// carries them under.
-	stands    map[string]*stand
-	standsRev int64
+	// Where each spectator stands (#3029).
+	roadside roadsideStands
 	// Who sets the pace in a second the plan leaves open, when a game names
 	// one (#3030): Team Relay's front rider. Empty rides the live mean.
 	leader string
+	// The %FTP a running game asks of everyone, when it asks one (#3114):
+	// a ramp's line, Floor is Lava's called zone. 0 asks nothing.
+	asks float64
+	// Where each joined rider stood each second, for the ride they save
+	// (#3738).
+	trail trail
 }
 
 func newBunch(r *routeRide, now time.Time) *bunch {
 	b := &bunch{
 		road: r.profile, fromM: r.FromM, reverse: r.Reverse, loop: r.Loop,
 		at: now, heard: make(map[string]sample), places: make(map[string]*place),
-		koms:   komOpenings(r.profile, r.Reverse),
-		stands: make(map[string]*stand),
+		koms:  komOpenings(r.profile, r.Reverse),
+		trail: make(trail),
 	}
 	b.komU, b.komLeft = b.komAt(b.fromM, false)
 	return b
@@ -126,10 +142,14 @@ func (b *bunch) livePct() float64 {
 }
 
 // pacePct is the %FTP a second the plan leaves open is ridden at: the
-// leader's while they pedal, capped as livePct caps anyone, else the mean.
+// leader's while they pedal, capped as livePct caps anyone, else what the
+// game asks of everyone, else the mean.
 func (b *bunch) pacePct() float64 {
 	if s, ok := b.heard[b.leader]; ok && s.pct() > 0 {
 		return min(s.pct(), protocol.BunchMaxPct)
+	}
+	if b.asks > 0 {
+		return min(b.asks, protocol.BunchMaxPct)
 	}
 	return b.livePct()
 }
@@ -260,6 +280,7 @@ func (b *bunch) world(hideOffsets bool) *protocol.World {
 		Lap:      lap,
 	}
 	for id, pl := range b.places {
+		w.Order = append(w.Order, id)
 		if pl.resting {
 			w.Resting = append(w.Resting, id)
 		}
@@ -271,6 +292,7 @@ func (b *bunch) world(hideOffsets bool) *protocol.World {
 		}
 	}
 	sort.Strings(w.Resting)
+	slices.SortFunc(w.Order, func(x, y string) int { return b.places[x].seq - b.places[y].seq })
 	return w
 }
 

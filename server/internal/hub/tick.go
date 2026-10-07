@@ -170,8 +170,12 @@ func (rm *channelState) tickLocked(now func() time.Time, dt time.Duration, savin
 	// empty tick needs no leader, since nobody is heard to follow.
 	if rm.session.bunch != nil {
 		rm.session.bunch.leader = rm.bunchLeaderLocked()
+		rm.session.bunch.asks = rm.bunchAsksLocked()
 	}
 	rm.session.rideBunch(now())
+	if b := rm.session.bunch; b != nil && state.Phase == "running" {
+		b.track(state.Elapsed)
+	}
 	rm.settleRoadsideLocked()
 	rm.sayPhaseLocked(state, now())
 	// Whoever has been gone longer than the grace window (#984). The tick
@@ -206,7 +210,7 @@ func (rm *channelState) tickLocked(now func() time.Time, dt time.Duration, savin
 		}(),
 		Voice:    rm.voiceIDsLocked(),
 		World:    rm.worldLocked(),
-		Roadside: rm.session.roadside(),
+		Roadside: rm.roadsideLocked(),
 		Riders:   rm.metrics,
 		Roster:   make([]protocol.Rider, 0, len(rm.clients)),
 	}

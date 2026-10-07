@@ -130,6 +130,10 @@ func (rm *channelState) backfill(c *client, samples []protocol.RiderMetrics, log
 	if kept > 0 && rm.saved && saver != nil {
 		if record, ok := rm.record.byRider[rider.ID]; ok {
 			whole := RiderRecord{Rider: rider, Samples: record.inOrder()}
+			// A replay stands where the race or the bunch had them (#3722, #3738).
+			if r := rm.recorderLocked(); r != nil {
+				whole.Samples = r.stamp(rider.ID, whole.Samples, rm.session.route)
+			}
 			// The start the close saved, however far back this replay reaches;
 			// a rider with none had no ride saved, and the saver finds nothing.
 			var saved bool
@@ -284,7 +288,7 @@ func (rm *channelState) controlOn(c protocol.Control, route *routeRide, rider pr
 	}
 	// The coach neutralises a race and lifts it (#3658); its session's own
 	// clock runs on, as a game's does.
-	if rm.session.game == modeRace && (c.Action == "pause" || c.Action == "resume") {
+	if isRace(rm.session.game) && (c.Action == "pause" || c.Action == "resume") {
 		return rm.neutraliseLocked(c.Action == "pause", now)
 	}
 	if c.Action == "pick" && !rm.session.open() {
@@ -365,7 +369,7 @@ func (rm *channelState) refusalLocked(action string, rider protocol.Rider) (code
 		}
 		// A game keeps its own clock and runs its own sprints. A race's
 		// coach holds it instead: pause neutralises it (#3658).
-		if s.open() && s.game != "" && s.game != modeRace && (action == "pause" || action == "resume") {
+		if s.open() && s.game != "" && !isRace(s.game) && (action == "pause" || action == "resume") {
 			return "invalid_request", "A game keeps its own clock — it does not pause."
 		}
 		if s.open() && s.game != "" && action == "sprint" {

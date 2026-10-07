@@ -4,6 +4,7 @@ package hub
 // (#3357). HandleWS reads; handleMessage takes each part of what it read.
 
 import (
+	"strings"
 	"time"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
@@ -55,8 +56,12 @@ func (h *Hub) handleMessage(c *client, rm *channelState, channel string, rider p
 		h.board(rm, rider, *msg.Board)
 	}
 	if msg.Cheer != nil {
-		if protocol.IsReaction(msg.Cheer.Emoji) && rm.allow("cheer", rider.ID, h.now(), time.Second) {
-			rm.cheer(protocol.Cheer{Emoji: msg.Cheer.Emoji, From: rider.Name}, rider.ID)
+		// A cheer for one rider takes the same limits as any (#3116): it is
+		// fire-and-forget, so one that names nobody here drops in silence.
+		to := strings.TrimSpace(msg.Cheer.To)
+		aimed := to == "" || (to != rider.ID && rm.hasRider(to))
+		if aimed && protocol.IsReaction(msg.Cheer.Emoji) && rm.allow("cheer", rider.ID, h.now(), time.Second) {
+			rm.cheer(protocol.Cheer{Emoji: msg.Cheer.Emoji, From: rider.Name, To: to}, rider.ID)
 		}
 	}
 	if msg.Jukebox != nil {
@@ -165,7 +170,24 @@ func (h *Hub) control(c *client, rm *channelState, rider protocol.Rider, cmd pro
 			h.writeError(c, refused.Code, refused.Message)
 			return
 		}
-		if refusal := rm.startGameOn(cmd.GameMode, route, rider, h.now()); refusal != "" {
+		// Absent is Last Light's default, which startGameOn fills in.
+		if cmd.GameMode == modeLastLight && cmd.Minutes != 0 && !protocol.LastLightLength(cmd.Minutes) {
+			h.writeError(c, "validation_error", "Last Light runs 10, 20 or 30 minutes.")
+			return
+		}
+		if cmd.GameMode == modeWheelrace && cmd.Minutes != 0 && !protocol.WheelraceLength(cmd.Minutes) {
+			h.writeError(c, "validation_error", "A Wheelrace's par is 15 to 45 minutes.")
+			return
+		}
+		if route != nil && !isRace(cmd.GameMode) {
+			road, refusal := h.gameRoad(*route, rider.ID)
+			if refusal != "" {
+				h.writeError(c, "forbidden", refusal)
+				return
+			}
+			route.road = road
+		}
+		if refusal := rm.startGameOn(cmd.GameMode, route, cmd.Minutes, rider, h.now()); refusal != "" {
 			h.writeError(c, "invalid_request", refusal)
 		}
 		return

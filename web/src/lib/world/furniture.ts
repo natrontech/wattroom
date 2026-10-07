@@ -1,94 +1,12 @@
-// Set pieces, signs and the KOM arch. Kits are instanced by kind; signs and
-// arches are few, so each gets its own board with painted text.
+// Signs and the KOM arch: few, so each gets its own board with painted text.
+// The set pieces themselves are batched with the props (props/batch.ts).
 import * as THREE from 'three';
 import { yOf } from './geometry';
-import * as P from './props';
 import { type Route } from '$lib/road/route';
-import type { Arch, Piece, PieceKind, Sign } from './setpieces';
-import type { PropColors, Style } from './styles';
-import type { World } from './world';
+import type { Arch, Sign } from './setpieces';
+import type { Style } from './styles';
 
-type Kits = Record<
-	Exclude<PieceKind, 'flag'>,
-	(c: PropColors) => THREE.BufferGeometry
->;
-const KITS: Kits = {
-	bench: P.bench,
-	woodpile: P.woodpile,
-	bales: P.bales,
-	wayside: P.wayside,
-	signpost: P.signpost,
-	fountain: P.fountain,
-	fence: P.fence,
-	linden: P.linden,
-	chapel: P.chapel,
-	snowpole: P.snowpole,
-	delineator: P.delineator,
-	house: P.house,
-	barn: P.barn,
-	hut: P.hut,
-	cow: P.cow,
-};
-// Low kits never block (≤ 2 m under a 4.4 m eye): no fade.
-const LOW = new Set<PieceKind>([
-	'bench',
-	'woodpile',
-	'bales',
-	'fence',
-	'delineator',
-	'snowpole',
-	'cow',
-	'fountain',
-	'wayside',
-	'signpost',
-	'flag',
-]);
-
-export type KitMaterials = {
-	fade: THREE.Material; // buildings that may stand in the sightline
-	leafy: THREE.Material; // a linden sways and fades
-	flat: THREE.Material; // everything low
-};
-
-export function kits(
-	route: Route,
-	world: World,
-	c: PropColors,
-	mats: KitMaterials,
-): THREE.InstancedMesh[] {
-	const groups = new Map<string, Piece[]>();
-	for (const p of world.pieces) {
-		const k = p.kind === 'flag' ? c.flags[p.flag ?? 0] : p.kind;
-		const list = groups.get(k);
-		if (list) list.push(p);
-		else groups.set(k, [p]);
-	}
-	const m4 = new THREE.Matrix4();
-	const q = new THREE.Quaternion();
-	const one = new THREE.Vector3(1, 1, 1);
-	const up = new THREE.Vector3(0, 1, 0);
-	const v = new THREE.Vector3();
-	return [...groups.values()].map((list) => {
-		const kind = list[0].kind;
-		const geo =
-			kind === 'flag'
-				? P.flagpole(c, c.flags[list[0].flag ?? 0])
-				: KITS[kind](c);
-		const mat =
-			kind === 'linden' ? mats.leafy : LOW.has(kind) ? mats.flat : mats.fade;
-		const im = new THREE.InstancedMesh(geo, mat, list.length);
-		// Each stands on its own base: the gates set it (#3219), nothing sinks it after.
-		list.forEach((p, i) => {
-			q.setFromAxisAngle(up, Math.atan2(p.turn[1], p.turn[0]));
-			v.set(p.x, yOf(route, p.y), p.z);
-			im.setMatrixAt(i, m4.compose(v, q, one));
-		});
-		im.computeBoundingSphere();
-		return im;
-	});
-}
-
-const FONT = 'Barlow, system-ui, sans-serif';
+export const FONT = 'Barlow, system-ui, sans-serif';
 
 type Painting = {
 	cv: OffscreenCanvas | HTMLCanvasElement;
@@ -108,7 +26,7 @@ function canvas2d(w: number, h: number): Painting {
 	return { cv, x: cv.getContext('2d') };
 }
 
-function paintedTexture(
+export function paintedTexture(
 	w: number,
 	h: number,
 	draw: (x: NonNullable<Painting['x']>) => void,

@@ -148,6 +148,12 @@ export interface Control {
    */
   gameMode?: string;
   /**
+   * For action "game": Last Light's clock in minutes, one of 10, 20 or 30
+   * (#3171), or a Wheelrace's par, 15 to 45 (#3172); absent is the mode's
+   * default.
+   */
+  minutes?: number /* int */;
+  /**
    * For action "handoff": the rider id the session's coach hands it to
    * (#2438) — someone in the voice channel.
    */
@@ -1295,6 +1301,63 @@ export const UnrankedUnconfirmedWeight = "unconfirmed_weight";
  */
 export const UnrankedUntimeable = "untimeable";
 /**
+ * Joined after the klaxon (#3175): they ride alongside from km 0, and
+ * the race places only who started it.
+ */
+export const UnrankedLate = "late";
+/**
+ * Last Light (docs/SPEC.md "Races", #3171): a race against a shared clock
+ * of 10, 20 or 30 minutes — 20 when the coach does not say — ranked on the
+ * distance ridden, whose fog closes from LastLightFogFromM to
+ * LastLightFogToM over its final LastLightFogSeconds.
+ */
+export const LastLightDefaultMinutes = 20;
+/**
+ * Last Light (docs/SPEC.md "Races", #3171): a race against a shared clock
+ * of 10, 20 or 30 minutes — 20 when the coach does not say — ranked on the
+ * distance ridden, whose fog closes from LastLightFogFromM to
+ * LastLightFogToM over its final LastLightFogSeconds.
+ */
+export const LastLightFogFromM = 3000;
+/**
+ * Last Light (docs/SPEC.md "Races", #3171): a race against a shared clock
+ * of 10, 20 or 30 minutes — 20 when the coach does not say — ranked on the
+ * distance ridden, whose fog closes from LastLightFogFromM to
+ * LastLightFogToM over its final LastLightFogSeconds.
+ */
+export const LastLightFogToM = 150;
+/**
+ * Last Light (docs/SPEC.md "Races", #3171): a race against a shared clock
+ * of 10, 20 or 30 minutes — 20 when the coach does not say — ranked on the
+ * distance ridden, whose fog closes from LastLightFogFromM to
+ * LastLightFogToM over its final LastLightFogSeconds.
+ */
+export const LastLightFogSeconds = 60;
+/**
+ * Wheelrace (docs/SPEC.md "Races", #3172): a handicap race to a line its par
+ * time places, 15–45 minutes — 30 when the coach does not say — closed hard
+ * at par plus WheelraceClosePct per cent.
+ */
+export const WheelraceMinMinutes = 15;
+/**
+ * Wheelrace (docs/SPEC.md "Races", #3172): a handicap race to a line its par
+ * time places, 15–45 minutes — 30 when the coach does not say — closed hard
+ * at par plus WheelraceClosePct per cent.
+ */
+export const WheelraceMaxMinutes = 45;
+/**
+ * Wheelrace (docs/SPEC.md "Races", #3172): a handicap race to a line its par
+ * time places, 15–45 minutes — 30 when the coach does not say — closed hard
+ * at par plus WheelraceClosePct per cent.
+ */
+export const WheelraceDefaultMinutes = 30;
+/**
+ * Wheelrace (docs/SPEC.md "Races", #3172): a handicap race to a line its par
+ * time places, 15–45 minutes — 30 when the coach does not say — closed hard
+ * at par plus WheelraceClosePct per cent.
+ */
+export const WheelraceClosePct = 15;
+/**
  * RaceVoidTooFew is a race whose flag found fewer than RaceMinRiders on the
  * session's timeline: it never starts, and says so.
  */
@@ -1308,6 +1371,30 @@ export interface Drive {
   ergByRoad: boolean;
 }
 /**
+ * Category par (docs/SPEC.md "Races"): the W/kg each Category's par rides at
+ * on the race's physics, which the RACE page measures a rider's gap against
+ * (#3174) and the pacer rides (ADR-0068).
+ */
+export const ParWkgD = 2.2;
+/**
+ * Category par (docs/SPEC.md "Races"): the W/kg each Category's par rides at
+ * on the race's physics, which the RACE page measures a rider's gap against
+ * (#3174) and the pacer rides (ADR-0068).
+ */
+export const ParWkgC = 2.85;
+/**
+ * Category par (docs/SPEC.md "Races"): the W/kg each Category's par rides at
+ * on the race's physics, which the RACE page measures a rider's gap against
+ * (#3174) and the pacer rides (ADR-0068).
+ */
+export const ParWkgB = 3.6;
+/**
+ * Category par (docs/SPEC.md "Races"): the W/kg each Category's par rides at
+ * on the race's physics, which the RACE page measures a rider's gap against
+ * (#3174) and the pacer rides (ADR-0068).
+ */
+export const ParWkgA = 4.3;
+/**
  * RaceState is a race on the tick (#3658, ADR-0067): when the flag drops and
  * when the klaxon sends it from km 0, whether the coach has neutralised it,
  * and — once it is done — the closing card. The places ride World.Racers.
@@ -1316,6 +1403,20 @@ export interface RaceState {
   flagAtMs: number /* int64 */;
   klaxonAtMs: number /* int64 */;
   neutralised?: boolean;
+  /**
+   * When the race runs out: Last Light's shared clock (#3171), or a
+   * Wheelrace's hard close (#3172). Zero for a plain race to the line.
+   */
+  endsAtMs?: number /* int64 */;
+  /**
+   * How far Last Light's fog lets a rider see now.
+   */
+  fogM?: number /* float64 */;
+  /**
+   * Where a Wheelrace's line is, in metres from km 0 (#3172): short of the
+   * road's end, where its par puts it.
+   */
+  lineM?: number /* float64 */;
   /**
    * Why the race never started: RaceVoidTooFew.
    */
@@ -1337,13 +1438,16 @@ export interface RaceBracket {
   alone?: boolean;
 }
 /**
- * RaceFinisher is one rider over the line: their time from the klaxon to the
- * millisecond, and why they are unplaced (an Unranked reason), if they are.
+ * RaceFinisher is one rider on the card: their time from the klaxon to the
+ * millisecond once they crossed the line, how far they rode — what a clock
+ * race ranks on — and why they are unplaced (an Unranked reason), if they
+ * are.
  */
 export interface RaceFinisher {
   riderId: string;
   name: string;
-  ms: number /* int64 */;
+  ms?: number /* int64 */;
+  m: number /* float64 */;
   why?: string;
 }
 
@@ -1360,6 +1464,12 @@ export interface Cheer {
    * Sender name, filled by the server: cheering is presence.
    */
   from?: string;
+  /**
+   * The rider it is for (#3116): a thumbs-up over their head in the world
+   * and their tail light flickering, nothing more. Someone else in this
+   * voice channel, or the cheer drops; empty, it is everyone's.
+   */
+  to?: string;
 }
 /**
  * Board is one rider firing a pad on their soundboard (#877, ADR-0033). The
@@ -1554,6 +1664,26 @@ export interface Rider {
   device?: string;
 }
 /**
+ * A rider's standing in a crew (ADR-0058), as its membership row and a voice
+ * channel's roster say it. Banned is a row too, kept so a ban holds.
+ */
+export const RoleOwner = "owner";
+/**
+ * A rider's standing in a crew (ADR-0058), as its membership row and a voice
+ * channel's roster say it. Banned is a row too, kept so a ban holds.
+ */
+export const RoleAdmin = "admin";
+/**
+ * A rider's standing in a crew (ADR-0058), as its membership row and a voice
+ * channel's roster say it. Banned is a row too, kept so a ban holds.
+ */
+export const RoleMember = "member";
+/**
+ * A rider's standing in a crew (ADR-0058), as its membership row and a voice
+ * channel's roster say it. Banned is a row too, kept so a ban holds.
+ */
+export const RoleBanned = "banned";
+/**
  * AwayState is a rider stepping out (#706) — the Lounge's button, never a
  * timer: being off the bike is not being away, and a coach watching the stage
  * is present and not pedalling.
@@ -1694,6 +1824,14 @@ export interface Roadside {
    */
   atM: number /* float64 */;
   lap?: number /* int */;
+  /**
+   * What a paint verb chalks; empty for a stand.
+   */
+  stamp?: RoadsideStamp;
+  /**
+   * Whose initial a RoadsideStampInitial chalks: a rider riding the session.
+   */
+  for?: string;
 }
 /**
  * RoadsideKind is the closed set of roadside verbs. Anything else is refused
@@ -1701,19 +1839,37 @@ export interface Roadside {
  */
 export type RoadsideKind = string;
 /**
- * RoadsideKindStand is where a spectator watches from: ahead of the bunch,
- * moved at most once a minute, frozen as the riders close on it, and gone
- * once they pass it (docs/SPEC.md "The roadside").
+ * RoadsideKindStand is where a spectator watches from: ahead of the
+ * bunch, moved at most once a minute, frozen as the riders close on it,
+ * and gone once they pass it (docs/SPEC.md "The roadside").
  */
 export const RoadsideKindStand: RoadsideKind = "stand";
 /**
+ * RoadsideKindPaint chalks a stamp on a climb ahead of the riders, one
+ * per climb (docs/SPEC.md "The roadside").
+ */
+export const RoadsideKindPaint: RoadsideKind = "paint";
+/**
+ * RoadsideStamp is the closed set of chalk a spectator may paint (Jan,
+ * 2026-10-06): nothing typed, so nothing to moderate.
+ */
+export type RoadsideStamp = string;
+export const RoadsideStampArrow: RoadsideStamp = "arrow";
+export const RoadsideStampHeart: RoadsideStamp = "heart";
+export const RoadsideStampAllez: RoadsideStamp = "allez";
+export const RoadsideStampHopp: RoadsideStamp = "hopp";
+export const RoadsideStampCowbell: RoadsideStamp = "cowbell";
+export const RoadsideStampInitial: RoadsideStamp = "initial";
+/**
  * RoadsideState is what the roadside has put on the session's road, on the
  * tick while a bunch rides it. Rev moves with every change — a stand placed,
- * moved, passed or let go — so a client redraws only when it does.
+ * moved, passed or let go, a stamp painted or passed — so a client redraws
+ * only when it does.
  */
 export interface RoadsideState {
   rev: number /* int64 */;
   stands?: RoadsideStand[];
+  paint?: RoadsidePaint[];
 }
 /**
  * RoadsideStand is one spectator's stand, where Roadside put it.
@@ -1724,20 +1880,57 @@ export interface RoadsideStand {
   lap?: number /* int */;
 }
 /**
+ * RoadsidePaint is one chalk stamp on the road, still ahead of the riders.
+ */
+export interface RoadsidePaint {
+  riderId: string;
+  stamp: RoadsideStamp;
+  for?: string;
+  atM: number /* float64 */;
+  lap?: number /* int */;
+}
+/**
  * docs/SPEC.md "The roadside" (defaults — tune in alpha): a stand is 300 m –
- * 5 km ahead of the bunch, and moves at most once a minute.
+ * 5 km ahead of the bunch, and moves at most once a minute; a spectator
+ * paints 6 stamps a ride, at most 12 lie on the road at once, and a ride
+ * takes at most 24 marks.
  */
 export const RoadsideStandMinAheadM = 300;
 /**
  * docs/SPEC.md "The roadside" (defaults — tune in alpha): a stand is 300 m –
- * 5 km ahead of the bunch, and moves at most once a minute.
+ * 5 km ahead of the bunch, and moves at most once a minute; a spectator
+ * paints 6 stamps a ride, at most 12 lie on the road at once, and a ride
+ * takes at most 24 marks.
  */
 export const RoadsideStandMaxAheadM = 5000;
 /**
  * docs/SPEC.md "The roadside" (defaults — tune in alpha): a stand is 300 m –
- * 5 km ahead of the bunch, and moves at most once a minute.
+ * 5 km ahead of the bunch, and moves at most once a minute; a spectator
+ * paints 6 stamps a ride, at most 12 lie on the road at once, and a ride
+ * takes at most 24 marks.
  */
 export const RoadsideStandMoveSeconds = 60;
+/**
+ * docs/SPEC.md "The roadside" (defaults — tune in alpha): a stand is 300 m –
+ * 5 km ahead of the bunch, and moves at most once a minute; a spectator
+ * paints 6 stamps a ride, at most 12 lie on the road at once, and a ride
+ * takes at most 24 marks.
+ */
+export const RoadsidePaintPerRide = 6;
+/**
+ * docs/SPEC.md "The roadside" (defaults — tune in alpha): a stand is 300 m –
+ * 5 km ahead of the bunch, and moves at most once a minute; a spectator
+ * paints 6 stamps a ride, at most 12 lie on the road at once, and a ride
+ * takes at most 24 marks.
+ */
+export const RoadsidePaintLive = 12;
+/**
+ * docs/SPEC.md "The roadside" (defaults — tune in alpha): a stand is 300 m –
+ * 5 km ahead of the bunch, and moves at most once a minute; a spectator
+ * paints 6 stamps a ride, at most 12 lie on the road at once, and a ride
+ * takes at most 24 marks.
+ */
+export const RoadsideMarksPerRide = 24;
 
 //////////
 // source: sensors.go
@@ -2022,6 +2215,12 @@ export interface World {
    */
   resting?: string[];
   /**
+   * The joined riders in the order they joined the bunch, those who joined
+   * in one second by id (#3098): the formation's slots, so every screen
+   * draws one bunch and a late joiner rides in at its back.
+   */
+  order?: string[];
+  /**
    * Each racer's own place in a race (#3032, ADR-0067), by rider id: a
    * race rides no shared bunch. Races only.
    */
@@ -2038,4 +2237,16 @@ export interface RaceRider {
   m: number /* float64 */;
   v: number /* float64 */;
   finishMs?: number /* int64 */;
+  /**
+   * The Category the race froze them in at the flag, D–A (#3174): who they
+   * race, which the RACE page places them among. The bracket, never the
+   * watts behind it.
+   */
+  cat?: string;
+  /**
+   * Seconds ahead of their Category's par at their metre, behind when
+   * negative (#3174): par from their own start, on their own racing clock.
+   * Absent until they have raced a second.
+   */
+  par?: number /* float64 */;
 }

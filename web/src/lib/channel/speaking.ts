@@ -1,4 +1,5 @@
 import { GATE_SHUT, gateStep, type GateState } from '$lib/channel/gate';
+import { GATE_DEFAULT } from '$lib/channel/gate-scale';
 
 /**
  * Who is talking, measured rather than remembered (#987).
@@ -27,7 +28,7 @@ import { GATE_SHUT, gateStep, type GateState } from '$lib/channel/gate';
  * the published one, AGC'd and Opus-coded, which is what that number was
  * measured against.
  */
-export const SPEAKING_AT = 0.02;
+export const SPEAKING_AT = GATE_DEFAULT;
 
 /**
  * How long a voice stays lit after it stops. Shorter than the mic gate's

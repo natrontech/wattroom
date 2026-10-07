@@ -249,7 +249,7 @@
 	--color-z4: light-dark(#04a37c, #06d6a0);
 	--color-z5: light-dark(#d97e00, #ffa62b);
 	--color-z6: light-dark(#e63c5b, #ff4d6d);
-	--color-z7: light-dark(#d9186f, #ff2e88);
+	--color-z7: light-dark(#ae0044, #e20843);
 }
 
 /* The structural line (#3420): a panel's frame, a divider, a section rule —
@@ -283,6 +283,83 @@
 }
 :root[data-theme='light'] {
 	color-scheme: light;
+}
+
+/*
+ * The world's own look (ADR-0072, #3085): the ride's Alpine blue hour. Single
+ * values, never light-dark pairs and never a theme's: the world looks the
+ * same under every theme and scheme, and only its accents — watt, neon, the
+ * zones — follow the rider's. $lib/world/look.ts reads them; the light, the
+ * sun below the horizon by the ride's progress, is not a colour and lives
+ * in light.ts. No hue sits in a dark identity's watt band (O13,
+ * placement/safety.ts), and the peach is pinned to OKLCH 58–60°.
+ */
+:root {
+	--world-sky-zenith: #3f4a76;
+	--world-sky-haze: #8c90ae;
+	--world-sky-peach: #d8a57e;
+	--world-sky-light: #b5bcdb;
+	--world-sky-shade: #2c2b41;
+	--world-sky-stars: #d0d7ec;
+
+	--world-biome-water: #1a3b55;
+	--world-biome-meadow: #2f5a37;
+	--world-biome-forest: #123a29;
+	--world-biome-alpine: #4f5a44;
+	--world-biome-rock: #414758;
+	--world-biome-snow: #9aa5b8;
+	--world-biome-verge: #3d4a36;
+
+	--world-ridge: #26304a;
+	--world-ridge-rock: #3c4258;
+
+	--world-road-asphalt: #383a44;
+	--world-road-line: #cfc9d6;
+	--world-road-shoulder: #5a5856; /* gravel, lighter than the asphalt */
+	--world-road-verge: #3d4a36; /* the ground's own verge, so the road meets it */
+
+	--world-prop-spruce: #0d2c20;
+	--world-prop-spruce-tip: #23503a;
+	--world-prop-leaf: #23452a;
+	--world-prop-leaf-light: #3f6a3a;
+	--world-prop-trunk: #3a2a22;
+	--world-prop-wall: #b9ada0;
+	--world-prop-wood: #5a3a26;
+	--world-prop-roof: #2e2530;
+	--world-prop-stone: #4c4a52;
+	--world-prop-cow: #c9c2b8;
+	--world-prop-cow-patch: #4a2e22;
+	--world-prop-bell: #caa27a;
+	--world-prop-bale: #d8c27a;
+	--world-prop-bale-light: #e9d898;
+	--world-prop-post: #d8d3dc;
+	--world-prop-band: #1b1b1f;
+	--world-prop-reflector: #f4f4f0;
+	--world-prop-pole: #9a9aa2;
+	--world-prop-hiking: #b29d5a;
+	--world-prop-water: #5aa0c8;
+	--world-prop-snowpole: #ff7a1a;
+	--world-prop-rock: #4c5060;
+	--world-flag-1: #88443b;
+	--world-flag-2: #d8d3dc;
+	--world-flag-3: #88443b;
+	--world-flag-4: #bfa967;
+
+	--world-kit-skin: #858585; /* #3413's neutral tone: none of the eight swatches */
+	--world-kit-shoe: #ece9f2;
+	--world-kit-tyre: #1a1820;
+	--world-kit-rim: #2e2b38;
+	--world-kit-metal: #4a4756;
+	--world-kit-glasses: #15131b;
+	--world-kit-tail-light: #ff6a00; /* amber: every red sits in some identity's watt band */
+
+	--world-sign-blue: #1f4f9a;
+	--world-sign-white: #ffffff;
+	--world-sign-ink: #1b1b1f;
+	--world-sign-post: #8a8a92;
+	--world-sign-chrome: #1a1320;
+	--world-sign-chrome-post: #3a3040;
+	--world-arch-chrome: #241a33;
 }
 
 /*
@@ -417,12 +494,13 @@ body {
 @utility btn-danger-solid {
 	@apply bg-danger text-paper hover:bg-danger/90;
 }
-/* Accent affordance — the one chrome exception ADR-0005 allows: an affordance
- * that *creates* live data (start ride, go live). Border only, never a fill. */
+/* Accent affordance: an affordance that *creates* live data (start ride, go
+ * live). Border only, never a fill. Neon, not watt (#3757): it is chrome, and
+ * ADR-0005 spends watt on live data alone (TARGETS G2). */
 @utility btn-accent {
 	/* The accent is the frame and the tint, never the word (#1965, #2858):
-	 * watt is gated at 3:1 and the label is small. */
-	@apply border-watt/40 text-ink hover:bg-watt/10 border;
+	 * the label is small. */
+	@apply border-neon/40 text-ink hover:bg-neon/10 border;
 }
 @utility btn-xs {
 	@apply px-3 py-1.5 text-xs;
@@ -453,6 +531,14 @@ body {
  * Sizing and margin stay at the call site, like input. */
 @utility btn-link {
 	@apply text-muted hover:text-ink underline;
+}
+
+/* A text link that stands on its own line, not inside a sentence: 24 px tall
+ * (WCAG 2.2 SC 2.5.8, ux.md), where its 12–14 px type left 16–20. Beside
+ * btn-link or a hand-coloured link; an inline link in a sentence never takes
+ * it, because a box taller than the line would push the lines apart. */
+@utility link-standalone {
+	@apply inline-flex min-h-6 items-center;
 }
 
 /* Text field look. Width/margin at the call site. A refused field marks
@@ -504,9 +590,23 @@ body {
 	@apply border-muted/20 rounded-xl border;
 }
 
+/* A panel over the world (TARGETS G3, ADR-0071, #3668): flat, so the GPU
+ * budget holds — the surface at 86 % (the floor is 85 %), a neon hairline,
+ * no blur, no shadow, never nested. Its padding is its content's. */
+@utility ride-panel {
+	background: color-mix(in oklab, var(--color-surface) 86%, transparent);
+	border: 1px solid color-mix(in oklab, var(--color-neon) 38%, transparent);
+	border-radius: 12px;
+}
+
 /* Section label. One tracking, one size — ends the tracking-wider/tracking-[0.2em] split. */
 @utility eyebrow {
 	@apply text-muted text-[10px] tracking-[0.2em] uppercase;
+}
+/* A riding surface's label (TARGETS G4): SPEC's 24 px words on a desk; the
+ * kit's 10 px eyebrow is for desk pages only. */
+@utility ride-label {
+	@apply text-muted text-2xl leading-7 font-semibold tracking-[0.08em] uppercase;
 }
 
 /* The page's own title (#1697): one spelling, so the nineteen h1s that
@@ -738,9 +838,11 @@ input[type='radio']:disabled {
 	cursor: not-allowed;
 }
 
+/* 1.5rem is the hit box's 24 px floor (WCAG 2.2 SC 2.5.8, ux.md): the thumb
+ * and track keep their size, centred in it (#3714). */
 input[type='range'] {
 	appearance: none;
-	height: 1.25rem;
+	height: 1.5rem;
 	background: transparent;
 	cursor: pointer;
 }
@@ -769,6 +871,13 @@ input[type='range']::-moz-range-thumb {
 	border: 2px solid var(--color-surface);
 	border-radius: 50%;
 	background: var(--color-neon);
+}
+
+/* Inside a dialog a rider opens mid-ride, the hit box is ux.md's 44 px: the
+ * thumb and track stay as drawn, centred in it (#3748). The same faders on
+ * /settings/voice are a desk's and keep the 24 px floor above. */
+.riding input[type='range'] {
+	height: 2.75rem;
 }
 
 /* The voice gate's slider draws no track of its own: the mic meter IS its

@@ -194,7 +194,7 @@ test('import a .gpx route, read its preview, and save it', async ({ page }) => {
 	await expect(heading).toBeVisible();
 	const generated = (await heading.textContent())!.trim();
 	await expect(page.getByText(TRACK_NAME)).toHaveCount(0);
-	await expect(page.getByRole('list', { name: 'Climbs' })).toContainText('IV');
+	await expect(page.getByRole('table', { name: 'Climbs' })).toContainText('IV');
 	await expect(page.getByText('At the reference pace')).toBeVisible();
 	await expect(page.getByText(/smoothing every route gets/)).toBeVisible();
 	await expect(page.getByText(/map is sealed/)).toBeVisible();

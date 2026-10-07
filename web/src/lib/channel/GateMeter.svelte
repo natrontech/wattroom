@@ -43,7 +43,10 @@
 	const marked = $derived(!onThreshold || effective !== setting);
 </script>
 
-<div class="relative {onThreshold ? 'h-5' : 'h-2.5'} {cls}" {title}>
+<div
+	class="relative {onThreshold ? 'h-5 in-[.riding]:h-11' : 'h-2.5'} {cls}"
+	{title}
+>
 	<!-- Named (#1966): whether the call hears you was colour on a bar and
 	     nothing else — the one mid-ride state a rider checks for that reason. -->
 	<div
@@ -71,7 +74,7 @@
 	{#if onThreshold}
 		<input
 			type="range"
-			class="gate-slider absolute inset-0 m-0 w-full"
+			class="gate-slider absolute top-1/2 left-0 m-0 w-full -translate-y-1/2"
 			min={GATE_MIN_DB}
 			max={GATE_MAX_DB}
 			step="1"

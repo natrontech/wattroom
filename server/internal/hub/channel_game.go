@@ -21,13 +21,13 @@ import (
 // coaching, so its riders' rides, XP and recap are kept like a workout's. A
 // game inside a workout session already running rides that session.
 func (rm *channelState) startGame(mode string, rider protocol.Rider, now time.Time) string {
-	return rm.startGameOn(mode, nil, rider, now)
+	return rm.startGameOn(mode, nil, 0, rider, now)
 }
 
 // startGameOn is startGame on a road (#3095). The road is the session's, so
 // only a game that opens the session sets it; one inside a running session
 // rides that session's road.
-func (rm *channelState) startGameOn(mode string, route *routeRide, rider protocol.Rider, now time.Time) string {
+func (rm *channelState) startGameOn(mode string, route *routeRide, minutes int, rider protocol.Rider, now time.Time) string {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	if rm.game != nil && !rm.game.done() {
@@ -38,13 +38,21 @@ func (rm *channelState) startGameOn(mode string, route *routeRide, rider protoco
 		return "A game inside a running session rides the session's road."
 	}
 	next := newGameMode(mode, now)
-	if mode == modeRace {
+	if isRace(mode) {
 		// Opt-in and on a road of its own (ADR-0067): it opens its session,
 		// never rides inside a workout or a bunch.
 		if route == nil || !opens {
 			return refuseRaceRoad
 		}
-		next = newSampledGame(newRaceRun(route.profile, now), now)
+		switch {
+		case mode == modeRace:
+			minutes = 0
+		case minutes == 0 && mode == modeLastLight:
+			minutes = protocol.LastLightDefaultMinutes
+		case minutes == 0 && mode == modeWheelrace:
+			minutes = protocol.WheelraceDefaultMinutes
+		}
+		next = newSampledGame(newRaceRun(route.profile, mode, minutes, now), now)
 	}
 	if next == nil {
 		return refuseNoSuchMode
@@ -59,6 +67,9 @@ func (rm *channelState) startGameOn(mode string, route *routeRide, rider protoco
 	}
 	rm.game = next
 	rm.gameMode = mode
+	if r := raceOf(next); r != nil {
+		rm.ridden = r
+	}
 	rm.gameDoneAt = time.Time{}
 	// The game's own roster (#1581): the tick merges rm.seen into it, so a
 	// session start — which resets rm.seen for the new ride — does not blank
@@ -75,6 +86,27 @@ func (rm *channelState) bunchLeaderLocked() string {
 		return r.leader()
 	}
 	return ""
+}
+
+// gamePacer is a mode that asks the whole bunch for one %FTP on a road
+// (#3114): Backyard and Collective Ramp their line, Floor is Lava the middle
+// of its called zone. 0 asks nothing.
+type gamePacer interface{ pacePct() float64 }
+
+// bunchAsksLocked is what the running game asks the bunch to ride, or 0.
+// Caller holds rm.mu.
+func (rm *channelState) bunchAsksLocked() float64 {
+	g := rm.game
+	if g == nil || g.done() {
+		return 0
+	}
+	if s, ok := g.(*sampledGame); ok {
+		g = s.gameMode
+	}
+	if p, ok := g.(gamePacer); ok {
+		return p.pacePct()
+	}
+	return 0
 }
 
 // endGame stops the running mode; false when nothing was running (#1582).
@@ -163,6 +195,7 @@ func (rm *channelState) resetRunLocked(starter string) {
 	rm.present = make(map[string]*span)
 	rm.presentSince = time.Time{}
 	rm.startedBy = starter
+	rm.ridden = nil
 }
 
 // gameRosterLocked is the roster the game scores against: everyone the room
@@ -200,10 +233,19 @@ func (rm *channelState) advanceGameLocked(now time.Time) (winner string) {
 	}
 	// The flag lines the field up (#3658): who the session has on its
 	// timeline then, on the numbers they carry then.
-	if r := raceOf(rm.game); r != nil && r.due(now) {
-		r.line(rm.raceFieldLocked())
+	// Whoever joins it later rides it too (#3175).
+	if r := raceOf(rm.game); r != nil {
+		if r.due(now) {
+			r.line(rm.raceFieldLocked())
+		} else if r.admitting() {
+			field, ergByRoad := rm.raceFieldLocked()
+			r.admit(field, ergByRoad, now)
+		}
 	}
 	rm.game.advance(now, samples, rm.gameRosterLocked())
+	if r := rm.raceLocked(); r != nil {
+		r.track(rm.session.state(now).Elapsed, rm.clients, now)
+	}
 	// Team Relay on a road finishes where the road does (#3030).
 	if r := relayOf(rm.game); r != nil && rm.session.bunch.finished() {
 		r.finished = true

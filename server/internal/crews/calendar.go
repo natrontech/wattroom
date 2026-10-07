@@ -3,6 +3,7 @@ package crews
 import (
 	"crypto/subtle"
 	"fmt"
+	"github.com/natrontech/wattroom/server/internal/protocol"
 	"io"
 	"math"
 	"net/http"
@@ -179,7 +180,7 @@ func (s *Service) handleRotateCrewIcs(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if !administers(role) {
+	if !protocol.Administers(role) {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden", "Only the crew's owner or an admin can reset its calendar link.")
 		return
 	}

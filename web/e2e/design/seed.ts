@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
-import { hairpinGpx, rollingGpx } from '../road-gpx';
+import { unpackRoad } from '../../src/lib/road/road';
+import { climbGpx, hairpinGpx, rollingGpx } from '../road-gpx';
 
 /**
  * The design shots' fixtures (#3666), seeded through the API the way a rider
@@ -8,9 +9,21 @@ import { hairpinGpx, rollingGpx } from '../road-gpx';
 
 /** The fixture roads, each by the name its owner gives it on import. */
 export const ROADS = {
-	// Renamed with #3725's geometry, so a road seeded before it is not found and reused.
-	hairpin: { name: 'Design switchbacks', gpx: hairpinGpx },
-	rolling: { name: 'Design rolling', gpx: rollingGpx },
+	// Renamed with #3725's geometry, with #3761's key, and with #3680's loop
+	// flag, so a road seeded before any of them — the old shape, stored bare,
+	// or with no loop sent — is not reused.
+	hairpin: { name: 'Design switchbacks', gpx: hairpinGpx, turns: true },
+	rolling: { name: 'Design swells', gpx: rollingGpx, turns: false },
+	// A name too long for a card, filed under the one source that rides
+	// owner-only (ADR-0063). The road is invented; no Strava data is in it.
+	ownerOnly: {
+		name: 'Design the long way round, over every pass and back down to the lake',
+		// A road of its own: on the swells' line it shared their rides, since
+		// the same road is the same route (ADR-0081).
+		gpx: climbGpx,
+		turns: false,
+		src: 'stravagpx',
+	},
 } as const;
 export type RoadName = keyof typeof ROADS;
 
@@ -36,10 +49,21 @@ export async function readRoad(page: Page, road: RoadName): Promise<void> {
 export async function fixtureRoad(page: Page, road: RoadName): Promise<string> {
 	const before = await routes(page);
 	const found = before.find((r) => r.name === ROADS[road].name);
-	if (found) return found.id;
+	if (found) return turning(page, road, found.id);
 	await readRoad(page, road);
+	const fixture = ROADS[road];
+	const src = 'src' in fixture ? fixture.src : undefined;
+	if (src)
+		await page.route('**/api/routes', (r) =>
+			r.request().method() === 'POST'
+				? r.continue({
+						postData: JSON.stringify({ ...r.request().postDataJSON(), src }),
+					})
+				: r.continue(),
+		);
 	await page.getByRole('button', { name: 'Save to my routes' }).click();
 	await page.getByText(/is on your routes/).waitFor({ timeout: 15_000 });
+	if (src) await page.unroute('**/api/routes');
 	const known = new Set(before.map((r) => r.id));
 	const made = (await routes(page)).find((r) => !known.has(r.id));
 	if (!made) throw new Error(`the ${road} road never reached /api/routes`);
@@ -56,7 +80,29 @@ export async function fixtureRoad(page: Page, road: RoadName): Promise<string> {
 		[made.id, ROADS[road].name],
 	);
 	if (!named) throw new Error(`the ${road} road could not be named`);
-	return made.id;
+	return turning(page, road, made.id);
+}
+
+/**
+ * The route, once its owner's read carries its turns (#3761). A server with
+ * no WATTROOM_TOKEN_KEY keeps a road bare — no turns, so no shape — and its
+ * world is one straight: every world shot would show a road that is not the
+ * fixture's, and pass for it.
+ */
+async function turning(
+	page: Page,
+	road: RoadName,
+	id: string,
+): Promise<string> {
+	if (!ROADS[road].turns) return id;
+	const read = await page.request.get(`/api/routes/${id}`);
+	const packed = ((await read.json()) as { road?: string }).road;
+	const turns = packed ? unpackRoad(Buffer.from(packed, 'base64')).turns : [];
+	if (!turns.some((t) => t !== 0))
+		throw new Error(
+			`route ${id} came back with no turns: is WATTROOM_TOKEN_KEY set on this server (make dev-server sets one)?`,
+		);
+	return id;
 }
 
 /** A call from the page, so the server's same-origin check sees its Origin. */
@@ -161,13 +207,26 @@ type RideRow = { id: string; workoutName: string };
  * A saved ride of ten minutes: on the hairpin road's approach when `road` is
  * given, so its page and poster draw a road. Found again by its name.
  */
-export async function savedRide(page: Page, road?: string): Promise<string> {
-	const name = road ? 'Design road ride' : 'Design ride';
+export async function savedRide(
+	page: Page,
+	road?: string,
+	/**
+	 * Ride long enough to reach the road's end, so nowhere is left to carry
+	 * on. The server replays the metres from the watts (ADR-0074).
+	 */
+	through = false,
+): Promise<string> {
+	const name = through
+		? 'Design road ridden through'
+		: road
+			? 'Design road ride'
+			: 'Design ride';
 	const rows = (await call<{ rides: RideRow[] }>(page, 'GET', '/api/rides'))
 		.body.rides;
 	const found = rows?.find((r) => r.workoutName === name);
 	if (found) return found.id;
-	const samples = Array.from({ length: 600 }, (_, i) => ({
+	const seconds = through ? 2400 : 600;
+	const samples = Array.from({ length: seconds }, (_, i) => ({
 		watts: 180 + Math.round(40 * Math.sin(i / 30)),
 		cadence: 88,
 		hr: 140,
@@ -178,10 +237,13 @@ export async function savedRide(page: Page, road?: string): Promise<string> {
 		workoutJson: JSON.stringify({
 			name,
 			author: 'design shots',
-			steps: [{ type: 'steady', seconds: 600, target: 0.75 }],
+			steps: [{ type: 'steady', seconds, target: 0.75 }],
 		}),
 		// Hours back, and apart: nobody rides two at once (the server's 409).
-		startedAt: new Date(Date.now() - (road ? 4 : 2) * 3_600_000).toISOString(),
+		// Six is the timed ride's.
+		startedAt: new Date(
+			Date.now() - (through ? 8 : road ? 4 : 2) * 3_600_000,
+		).toISOString(),
 		samples,
 		...(road ? { routeId: road } : {}),
 	});
@@ -192,6 +254,54 @@ export async function savedRide(page: Page, road?: string): Promise<string> {
 	).body.rides?.find((r) => r.workoutName === name);
 	if (!again) throw new Error(`the ${name} never reached /api/rides`);
 	return again.id;
+}
+
+/**
+ * A timed free ride up the hairpin road's approach (ADR-0074): the route page's
+ * Best line needs one. Six hours back, clear of the other saved rides.
+ */
+export async function timedRide(page: Page, road: string): Promise<void> {
+	const startedAt = new Date(Date.now() - 6 * 3_600_000).toISOString();
+	const saved = await call(page, 'POST', '/api/rides', {
+		workoutName: 'Free ride',
+		workoutJson: JSON.stringify({
+			name: 'Free ride',
+			unscored: true,
+			steps: [],
+		}),
+		startedAt,
+		samples: Array.from({ length: 300 }, (_, i) => ({
+			watts: 200,
+			cadence: 88,
+			m: i * 2.5,
+		})),
+		routeId: road,
+		drive: 'sim',
+	});
+	if (saved.status !== 201 && saved.status !== 200)
+		throw new Error(`saving the timed ride: ${JSON.stringify(saved)}`);
+}
+
+/**
+ * The ride a session just saved for this rider: the newest of theirs, once
+ * the save — which runs after the session closes — has landed (#3738).
+ */
+export async function newestRide(page: Page, after: number): Promise<string> {
+	for (let tries = 0; tries < 30; tries++) {
+		const rows = (
+			await call<{ rides: (RideRow & { startedAt: string })[] }>(
+				page,
+				'GET',
+				'/api/rides',
+			)
+		).body.rides;
+		const fresh = rows
+			?.filter((r) => Date.parse(r.startedAt) >= after)
+			.sort((a, b) => Date.parse(b.startedAt) - Date.parse(a.startedAt))[0];
+		if (fresh) return fresh.id;
+		await page.waitForTimeout(1000);
+	}
+	throw new Error('the session saved no ride');
 }
 
 /**
@@ -207,6 +317,28 @@ export async function bigWatts(page: Page): Promise<string> {
 	if (found) return found.id;
 	const made = await call<{ id: string }>(page, 'POST', '/api/workouts', {
 		workout: { name, steps: [{ type: 'steady', seconds: 600, watts: 1100 }] },
+	});
+	if (made.status !== 201 && made.status !== 200)
+		throw new Error(`saving the workout: ${JSON.stringify(made)}`);
+	return made.body.id;
+}
+
+/** A saved workout, so the shelf under "Your workouts" has a card to draw. */
+export async function ownWorkout(page: Page): Promise<string> {
+	const name = 'Design own workout';
+	type Shelf = { workouts: { id: string; workout: { name: string } }[] };
+	const found = (
+		await call<Shelf>(page, 'GET', '/api/workouts')
+	).body.workouts.find((w) => w.workout.name === name);
+	if (found) return found.id;
+	const made = await call<{ id: string }>(page, 'POST', '/api/workouts', {
+		workout: {
+			name,
+			steps: [
+				{ type: 'steady', seconds: 300, watts: 120 },
+				{ type: 'steady', seconds: 600, watts: 200 },
+			],
+		},
 	});
 	if (made.status !== 201 && made.status !== 200)
 		throw new Error(`saving the workout: ${JSON.stringify(made)}`);

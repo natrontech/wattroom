@@ -15,7 +15,12 @@
 	 */
 	import { formatClock } from '$lib/format';
 	import { roadLine } from '$lib/ride/road-readout';
-	import { blockBands, type Block } from '$lib/workout/block';
+	import {
+		blockBands,
+		nextFor,
+		trainerChip,
+		type Block,
+	} from '$lib/workout/block';
 	import type { Snippet } from 'svelte';
 
 	let {
@@ -27,6 +32,7 @@
 		title = '',
 		unit = 'block',
 		eyebrow = '',
+		context = '',
 		controls,
 		aside,
 		drives = false,
@@ -44,6 +50,9 @@
 		/** Overrides "block n of m" where the screen counts differently — the
 		 *  ramp's warm-up is segment one and is not step one. */
 		eyebrow?: string;
+		/** Opens slot 1: mode · workout or road · riders (`rideContext()`), the
+		 *  line that keeps the workout's name once the block has its own. */
+		context?: string;
 		/** Transport: a coach's session controls, a solo rider's own. */
 		controls?: Snippet;
 		/** Anything the screen wants between the clock and the controls. */
@@ -64,6 +73,14 @@
 
 <header class="flex flex-wrap items-end gap-x-6 gap-y-3">
 	<div class="min-w-0">
+		{#if context}
+			<p
+				data-testid="ride-context"
+				class="text-muted max-w-sm truncate text-2xl leading-tight"
+			>
+				{context}
+			</p>
+		{/if}
 		<p class="eyebrow">
 			{#if eyebrow}
 				{eyebrow}
@@ -105,10 +122,7 @@
 					target
 					{#if drives && block.trainer.kind !== 'road'}<span
 							data-testid="trainer-chip"
-							class={CHIP}
-							>{block.trainer.kind === 'scenery'
-								? 'ERG: the road is scenery'
-								: `ERG ${block.watts} W`}</span
+							class={CHIP}>{trainerChip(block)}</span
 						>{/if}
 				</p>
 				<p
@@ -124,9 +138,7 @@
 			     and the grade the trainer is given for it (ADR-0062). -->
 			<p class="shrink-0 self-center">
 				<span data-testid="trainer-chip" class="{CHIP} eyebrow"
-					>ROAD {block.trainer.grade.toFixed(1)} % · feel {block.trainer.felt.toFixed(
-						1,
-					)} %</span
+					>{trainerChip(block)}</span
 				>
 			</p>
 		{/if}
@@ -153,9 +165,7 @@
 				{#if block.next.watts > 0}<span class="num text-neon"
 						>{block.next.watts} W</span
 					>{/if}
-				for {block.next.seconds < 60
-					? `${block.next.seconds} s`
-					: `${Math.round(block.next.seconds / 60)} min`}
+				for {nextFor(block.next.seconds)}
 			</p>
 		{/if}
 		{#if block.last}

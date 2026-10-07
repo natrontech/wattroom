@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { LiveStats } from '$lib/ride/live-stats.svelte';
 import type { ClimbView } from '$lib/ride/climb-view';
+import type { RaceReadout } from '$lib/race/race-view';
 import {
 	climbChip,
 	climbHeader,
@@ -43,6 +44,13 @@ describe('RIDE (ADR-0071)', () => {
 	it('is power, cadence and W/kg with nothing else to show', () => {
 		expect(keys(fieldsFor('ride', ride()))).toEqual([
 			'power',
+			'cadence',
+			'wkg',
+		]);
+	});
+
+	it('leaves the watts to a head that already shows them (D17, #3667)', () => {
+		expect(keys(fieldsFor('ride', ride({ head: true })))).toEqual([
 			'cadence',
 			'wkg',
 		]);
@@ -134,6 +142,54 @@ describe('RIDE against your ghost (#3615)', () => {
 		);
 		expect(field(last, 'split').label).toBe('vs last');
 		expect(field(last, 'split').value).toBe('+0:08');
+	});
+});
+
+describe("the one-home table, with the computer's own head (#3668)", () => {
+	const road = { speedKph: 30.2, km: 1.2, ofKm: 7.1 };
+	const headed = (over: Partial<ComputerContext> = {}) =>
+		ride({ ownHead: true, hr: 150, ...over });
+
+	it('reads RIDE as TARGETS says for each kind of ride', () => {
+		// A workout with no road: Cadence and Heart.
+		expect(keys(fieldsFor('ride', headed()))).toEqual(['cadence', 'hr']);
+		// A workout on a road, its km and grade in slot 1: Speed, Cadence, Heart.
+		expect(
+			keys(fieldsFor('ride', headed({ road, grade: 3, roadLine: true }))),
+		).toEqual(['speed', 'cadence', 'hr']);
+		// A free ride on a road: and the gear, and the split against a ghost.
+		expect(
+			keys(
+				fieldsFor(
+					'ride',
+					headed({
+						road,
+						grade: 3,
+						roadLine: true,
+						gear: 'Gear 15',
+						split: { seconds: 4, best: true },
+					}),
+				),
+			),
+		).toEqual(['speed', 'split', 'cadence', 'hr', 'gear']);
+	});
+
+	it('moves Execution to POWER and drops the 3 s field the head shows', () => {
+		const ctx = headed({ execution: 0.93 });
+		expect(keys(fieldsFor('ride', ctx))).not.toContain('execution');
+		const power = keys(fieldsFor('power', ctx));
+		expect(power[0]).toBe('execution');
+		expect(power).not.toContain('power3');
+	});
+
+	it("keeps the flat surface's fields where the head is not drawn (#3670)", () => {
+		expect(keys(fieldsFor('ride', ride({ hr: 150, execution: 0.9 })))).toEqual([
+			'power',
+			'cadence',
+			'hr',
+			'wkg',
+			'execution',
+		]);
 	});
 });
 
@@ -263,5 +319,53 @@ describe('CLIMB (#3645)', () => {
 	it('says where the climb is on another page', () => {
 		expect(climbChip(climb({}, 380))).toBe('Climb I in 400 m · → to view');
 		expect(climbChip(climb())).toBe('Climb I · 2.4 km to the top · → to view');
+	});
+});
+
+describe('RACE (#3174)', () => {
+	const race = (over: Partial<RaceReadout> = {}): RaceReadout => ({
+		at: 0,
+		phase: 'racing',
+		par: 18.4,
+		category: 'C',
+		place: 2,
+		of: 4,
+		toLine: 3000,
+		...over,
+	});
+
+	it('is a page only while you race', () => {
+		expect(pagesFor({ stats })).toEqual(['ride', 'power']);
+		expect(pagesFor({ stats, race: race() })).toEqual([
+			'ride',
+			'power',
+			'race',
+		]);
+		expect(pagesFor({ race: race() })).toEqual(['ride', 'race']);
+	});
+
+	it('is the gap to par, then your place in your Category, and W/kg stays in its one home', () => {
+		const fields = fieldsFor('race', ride({ race: race() }));
+		expect(keys(fields)).toEqual(['par', 'place']);
+		expect(field(fields, 'par')).toMatchObject({ value: '+0:18', neon: true });
+		expect(field(fields, 'place')).toMatchObject({
+			label: 'in C',
+			value: '2nd of 4',
+		});
+		expect(field(fields, 'par').label).toBe('vs par');
+	});
+
+	it('draws the model in neon, never watt, and glows nothing', () => {
+		const fields = fieldsFor('race', ride({ race: race() }));
+		expect(field(fields, 'par').neon).toBe(true);
+		expect(field(fields, 'place').neon).toBe(true);
+		expect(fields.some((f) => f.glow)).toBe(false);
+	});
+
+	it('reads behind as −, and has nothing to say before km 0', () => {
+		const behind = fieldsFor('race', ride({ race: race({ par: -7 }) }));
+		expect(field(behind, 'par').value).toBe('−0:07');
+		const neutral = fieldsFor('race', ride({ race: race({ par: null }) }));
+		expect(field(neutral, 'par').value).toBe('—');
 	});
 });

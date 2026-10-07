@@ -15,22 +15,31 @@
 	let {
 		panel,
 		open = $bindable(false),
+		folded = false,
 	}: {
 		/** What the drawer draws — the same snippet the xl column renders. */
 		panel: import('svelte').Snippet;
 		/** Bindable so Escape, handled once for the whole shell, can close it. */
 		open?: boolean;
+		/**
+		 * The column is folded at any width (people-fold.svelte.ts): the sheet
+		 * opens at xl too, from slot 1's own button, so this floating one,
+		 * which would sit on the Skyline, is not drawn.
+		 */
+		folded?: boolean;
 	} = $props();
 </script>
 
-<button
-	onclick={() => (open = true)}
-	class="bg-surface-raised ring-ink/15 fixed right-4 bottom-4 z-40 grid h-12
-	w-12 place-items-center rounded-full shadow-lg ring-1 xl:hidden"
-	aria-label="who is here"
->
-	<Users size={18} />
-</button>
+{#if !folded}
+	<button
+		onclick={() => (open = true)}
+		class="bg-surface-raised border-ink/15 fixed right-4 bottom-4 z-40 grid h-12
+	w-12 place-items-center rounded-full border xl:hidden"
+		aria-label="who is here"
+	>
+		<Users size={18} />
+	</button>
+{/if}
 
 {#if open}
 	<!-- Above the seated player, not under it (#483): the dock takes z-[56] to
@@ -54,12 +63,13 @@
 	<div
 		{@attach countModal}
 		class="bg-paper/50 fixed inset-0 z-[60] xl:hidden"
+		style:display={folded ? 'block' : undefined}
 		onclick={(e) => e.target === e.currentTarget && (open = false)}
 	>
 		<!-- A dialog in fact as well as in shape (audit 2026-09-09): focus
 		     moves in, Tab stays in, Escape and the close button hand it back. -->
 		<div
-			class="bg-surface absolute inset-y-0 right-0 shadow-2xl"
+			class="bg-surface border-ink/15 absolute inset-y-0 right-0 border-l"
 			role="dialog"
 			aria-modal="true"
 			aria-label="who is here"

@@ -30,45 +30,40 @@
 	}
 </script>
 
-<section class="mx-auto mt-6 w-full max-w-3xl" data-testid="solo-games">
-	<h2 class="eyebrow">A game</h2>
+<!-- One line in the Ride card (#3671): the doors, and where they open. -->
+<section
+	class="flex flex-wrap items-center gap-x-2 gap-y-1"
+	data-testid="solo-games"
+>
+	<h2 class="text-sm font-semibold">
+		{room ? `A game alone, in ${room.name} with your mic off:` : 'A game:'}
+	</h2>
 	{#if !crewLive.loaded}
-		<div class="mt-3 grid gap-3 sm:grid-cols-3">
-			{#each modes as mode (mode.id)}<Skeleton class="h-11" />{/each}
-		</div>
+		{#each modes as mode (mode.id)}<Skeleton class="h-11 w-32" />{/each}
+	{:else if room}
+		{#each modes as mode (mode.id)}
+			{@const Icon = mode.icon}
+			<button
+				onclick={() => play(mode.id)}
+				title="{mode.blurb} Anyone who opens {room.name} can join; alone, the game shows your own score."
+				class="btn btn-ghost btn-lg"><Icon size={18} /> {mode.label}</button
+			>
+		{/each}
+	{:else if crewLive.error && crewLive.crews.length === 0}
+		<span class="text-muted text-sm">
+			{crewLive.error}
+			<button onclick={() => void crewLive.reload()} class="btn-link"
+				>Retry</button
+			>
+		</span>
 	{:else}
-		<div class="mt-3 grid gap-3 sm:grid-cols-3">
-			{#each modes as mode (mode.id)}
-				{@const Icon = mode.icon}
-				<button
-					onclick={() => play(mode.id)}
-					disabled={!room}
-					title={mode.blurb}
-					class="btn btn-secondary btn-lg w-full justify-center"
-					><Icon size={18} /> {mode.label}</button
-				>
-			{/each}
-		</div>
-		{#if room}
-			<p class="text-muted mt-2 text-xs">
-				In {room.name}, with your mic off — anyone who opens it can join. Alone,
-				the game shows your own score.
-			</p>
-		{:else if crewLive.error && crewLive.crews.length === 0}
-			<p class="text-muted mt-2 text-xs">
-				{crewLive.error}
-				<button onclick={() => void crewLive.reload()} class="btn-link"
-					>Retry</button
-				>
-			</p>
-		{:else}
-			<!-- Capability gating (ux.md): disabled with the one line that says
-			     why, never a door that fails on click. -->
-			<p class="text-muted mt-2 text-xs" data-testid="solo-games-hint">
-				Games run in a crew's voice channel. <a href="/home" class="btn-link"
-					>Start a crew</a
-				>.
-			</p>
-		{/if}
+		<!-- Capability gating (ux.md): no door that fails on click, and the one
+		     line that says why — hidden rather than disabled, so the card's
+		     games stay one line (TARGETS ride-preride 9, #3671). -->
+		<span class="text-muted text-sm" data-testid="solo-games-hint">
+			Games run in a crew's voice channel. <a href="/home" class="btn-link"
+				>Start a crew</a
+			>.
+		</span>
 	{/if}
 </section>

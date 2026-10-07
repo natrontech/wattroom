@@ -26,6 +26,25 @@ type RiderRecord struct {
 	// When this rider's ride began: the timeline's start plus their first
 	// second (#2814), which is not the session's for a rider who joined late.
 	StartedAt time.Time
+	// The road the session carried this rider along: a race's (#3722) or a
+	// bunch's (#3738), nil off one. Each sample's M is their place on the
+	// stored road that second.
+	Road *RecordRoad
+}
+
+// RecordRoad is one rider's ride along a session's road, as the saver keeps
+// it: the stored route and its road's hash, where on the stored road they
+// started and how far they rode and climbed, and ADR-0074's timeable inputs —
+// the share of the air they were sheltered from, and whether WattRoom held
+// the watts ("Don't make me shift").
+type RecordRoad struct {
+	RouteID, RoadHash          string
+	FromM, DistanceM, ClimbedM float64
+	MeanShelter                float64
+	ErgByRoad                  bool
+	// A bunch carried them (ADR-0065): the road is theirs to keep, and the
+	// time on it is nobody's (ADR-0074).
+	Towed bool
 }
 
 // SessionSaver persists a closed session's rides. Defined here, where it is

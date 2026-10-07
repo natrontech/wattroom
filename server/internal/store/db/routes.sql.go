@@ -27,9 +27,9 @@ func (q *Queries) CountUserRoutes(ctx context.Context, ownerID pgtype.UUID) (int
 const createRoute = `-- name: CreateRoute :one
 insert into routes (
     owner_id, src, name, gen_name, road, road_hash, length_m, gain_m,
-    climbs, ele_source, geom_sealed, key_version, road_sealed
+    climbs, ele_source, geom_sealed, key_version, road_sealed, loop
 )
-values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 returning id, created_at
 `
 
@@ -47,6 +47,7 @@ type CreateRouteParams struct {
 	GeomSealed []byte
 	KeyVersion *int32
 	RoadSealed []byte
+	Loop       *bool
 }
 
 type CreateRouteRow struct {
@@ -69,6 +70,7 @@ func (q *Queries) CreateRoute(ctx context.Context, arg CreateRouteParams) (Creat
 		arg.GeomSealed,
 		arg.KeyVersion,
 		arg.RoadSealed,
+		arg.Loop,
 	)
 	var i CreateRouteRow
 	err := row.Scan(&i.ID, &i.CreatedAt)
@@ -188,7 +190,7 @@ func (q *Queries) GetOwnRideSamples(ctx context.Context, arg GetOwnRideSamplesPa
 const getOwnerRoute = `-- name: GetOwnerRoute :one
 select id, src, name, gen_name, road, road_hash, length_m, gain_m, climbs,
        ele_source, (geom_sealed is not null)::boolean as has_place, created_at,
-       road_sealed, key_version
+       road_sealed, key_version, loop
 from routes
 where id = $1 and owner_id = $2
 `
@@ -213,6 +215,7 @@ type GetOwnerRouteRow struct {
 	CreatedAt  pgtype.Timestamptz
 	RoadSealed []byte
 	KeyVersion *int32
+	Loop       *bool
 }
 
 // One route, the owner's only: someone else's reads as absent.
@@ -234,6 +237,7 @@ func (q *Queries) GetOwnerRoute(ctx context.Context, arg GetOwnerRouteParams) (G
 		&i.CreatedAt,
 		&i.RoadSealed,
 		&i.KeyVersion,
+		&i.Loop,
 	)
 	return i, err
 }
@@ -336,27 +340,48 @@ func (q *Queries) GetRouteRoad(ctx context.Context, id pgtype.UUID) (GetRouteRoa
 }
 
 const listOwnerRoutes = `-- name: ListOwnerRoutes :many
-select id, src, name, gen_name, length_m, gain_m, climbs,
-       (geom_sealed is not null)::boolean as has_place, created_at
-from routes
-where owner_id = $1
-order by created_at desc, id desc
+select r.id, r.src, r.name, r.gen_name, r.length_m, r.gain_m, r.climbs,
+       (r.geom_sealed is not null)::boolean as has_place, r.created_at,
+       ridden.rides::integer as rides,
+       ridden.last_ridden_at::timestamptz as last_ridden_at,
+       alone.from_m as last_alone_from_m,
+       alone.distance_m as last_alone_distance_m
+from routes r
+cross join lateral (
+    select count(*) as rides, max(started_at) as last_ridden_at
+    from rides where user_id = r.owner_id and route_key = r.road_hash
+) ridden
+left join lateral (
+    select from_m, distance_m from rides
+    where user_id = r.owner_id and route_key = r.road_hash and session_id is null
+    order by started_at desc
+    limit 1
+) alone on true
+where r.owner_id = $1
+order by r.created_at desc, r.id desc
 `
 
 type ListOwnerRoutesRow struct {
-	ID        pgtype.UUID
-	Src       string
-	Name      string
-	GenName   string
-	LengthM   int32
-	GainM     int32
-	Climbs    []byte
-	HasPlace  bool
-	CreatedAt pgtype.Timestamptz
+	ID                 pgtype.UUID
+	Src                string
+	Name               string
+	GenName            string
+	LengthM            int32
+	GainM              int32
+	Climbs             []byte
+	HasPlace           bool
+	CreatedAt          pgtype.Timestamptz
+	Rides              int32
+	LastRiddenAt       pgtype.Timestamptz
+	LastAloneFromM     *int32
+	LastAloneDistanceM *int32
 }
 
 // The owner's list (#3024): summary columns only — the road and the sealed
-// place stay cold until one route is opened.
+// place stay cold until one route is opened. With them, how the owner has
+// ridden each road (#3683), read in this one query on rides_user_route_key:
+// their own rides of its key (a re-import counts, ADR-0068), the latest, and
+// where the latest ridden alone began and how far it went.
 func (q *Queries) ListOwnerRoutes(ctx context.Context, ownerID pgtype.UUID) ([]ListOwnerRoutesRow, error) {
 	rows, err := q.db.Query(ctx, listOwnerRoutes, ownerID)
 	if err != nil {
@@ -376,6 +401,10 @@ func (q *Queries) ListOwnerRoutes(ctx context.Context, ownerID pgtype.UUID) ([]L
 			&i.Climbs,
 			&i.HasPlace,
 			&i.CreatedAt,
+			&i.Rides,
+			&i.LastRiddenAt,
+			&i.LastAloneFromM,
+			&i.LastAloneDistanceM,
 		); err != nil {
 			return nil, err
 		}
@@ -669,6 +698,20 @@ func (q *Queries) RouteAudienceCrews(ctx context.Context, arg RouteAudienceCrews
 		return nil, err
 	}
 	return items, nil
+}
+
+const routeStored = `-- name: RouteStored :one
+select exists(select 1 from routes where id = $1)
+`
+
+// Whether a route is still stored, for a session ride that names it (#3722):
+// its owner may have deleted it between the ride and its save, and a ride
+// naming a gone route would fail the whole session's save on its key.
+func (q *Queries) RouteStored(ctx context.Context, id pgtype.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, routeStored, id)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }
 
 const sealRouteRoad = `-- name: SealRouteRoad :execrows

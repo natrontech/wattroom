@@ -18,8 +18,7 @@
 	import { wkg } from '$lib/format';
 	import { useChannel } from '$lib/channel/context';
 	import { contextMenu } from '$lib/context-menu.svelte';
-	import { personMenu } from '$lib/person-menu';
-	import { goto } from '$app/navigation';
+	import { crewMenu } from '$lib/session/crew-menu';
 	import type { LiveRider } from '$lib/channel/types';
 
 	let {
@@ -38,19 +37,15 @@
 	} = $props();
 
 	const channel = useChannel();
-	const menuOf = (rider: LiveRider) =>
-		personMenu(rider.id, goto, {
-			you: rider.you,
-			handoff: channel.handOffOf(rider.id, rider.name),
-		});
+	const menuOf = (rider: LiveRider) => crewMenu(channel, rider);
 </script>
 
 {#snippet tile(rider: LiveRider, followed: boolean)}
 	{@const zone = zoneOf(rider.watts, rider.ftp)}
 	<div
-		class="bg-surface-raised relative aspect-video overflow-hidden rounded ring-1 {followed
-			? 'ring-neon'
-			: 'ring-ink/10'}"
+		class="bg-surface-raised relative aspect-video overflow-hidden rounded outline-1 {followed
+			? 'outline-neon'
+			: 'outline-ink/10'}"
 	>
 		{#if channel.videoOf(rider.id)}
 			{#key channel.videoOf(rider.id)}

@@ -34,18 +34,25 @@ type raceRoom struct {
 	card *protocol.RaceState
 	// The tick that first carried the card, for what each socket is sent.
 	cardOut *tickOut
+	// Whether the ticks hand a closed session to a saver, and what they did.
+	saving bool
+	ended  *sessionEnd
 }
 
 func raceOn(t *testing.T, lengthM float64, riders ...protocol.Rider) *raceRoom {
 	t.Helper()
 	rm, clients := inChannel(t, "race", riders...)
-	if refusal := rm.startGameOn(modeRace, rideOn(slope(0, lengthM), 0, false, false), riders[0], raceStart); refusal != "" {
+	if refusal := rm.startGameOn(modeRace, rideOn(slope(0, lengthM), 0, false, false), 0, riders[0], raceStart); refusal != "" {
 		t.Fatalf("start: %s", refusal)
 	}
 	for _, r := range riders[1:] {
 		joinRide(rm, r.ID)
 	}
-	return &raceRoom{rm: rm, clients: clients, now: raceStart}
+	room := &raceRoom{rm: rm, clients: clients, now: raceStart}
+	// The room's own clock is the test's, so a sample lands on the timeline
+	// second the tick has reached.
+	rm.now = func() time.Time { return room.now }
+	return room
 }
 
 // ride ticks the room for so many seconds, each rider's watts from power.
@@ -61,8 +68,11 @@ func (r *raceRoom) ride(seconds int, power func(id string) (int, bool)) protocol
 		}
 		r.rm.mu.Lock()
 		now := r.now
-		out := r.rm.tickLocked(func() time.Time { return now }, time.Second, false)
+		out := r.rm.tickLocked(func() time.Time { return now }, time.Second, r.saving)
 		r.rm.mu.Unlock()
+		if out.ended != nil {
+			r.ended = out.ended
+		}
 		if out.gameWinner != "" {
 			r.winners = append(r.winners, out.gameWinner)
 		}
@@ -88,12 +98,12 @@ func (r *raceRoom) race() *protocol.RaceState { return r.card }
 func TestARaceRidesARoadOfItsOwn(t *testing.T) {
 	ana := racer("ana", 70)
 	rm, _ := inChannel(t, "race", ana)
-	if refusal := rm.startGameOn(modeRace, nil, ana, raceStart); refusal != refuseRaceRoad {
+	if refusal := rm.startGameOn(modeRace, nil, 0, ana, raceStart); refusal != refuseRaceRoad {
 		t.Errorf("a race with no road: %q", refusal)
 	}
 	joinRide(rm, "ana")
 	rm.session.phase = "running"
-	if refusal := rm.startGameOn(modeRace, rideOn(slope(0, 1000), 0, false, false), ana, raceStart); refusal == "" {
+	if refusal := rm.startGameOn(modeRace, rideOn(slope(0, 1000), 0, false, false), 0, ana, raceStart); refusal == "" {
 		t.Error("a race started inside a running session")
 	}
 }

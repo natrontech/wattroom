@@ -1,0 +1,1 @@
+- On a road, the riders nearest you and anyone talking carry a name tag with their level, every rider whose numbers you can see wears a thin live-zone ring, and a game that hides the meter hides the rings too.

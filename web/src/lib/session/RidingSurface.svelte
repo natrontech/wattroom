@@ -7,13 +7,29 @@
 	 * own row whether or not it draws anything, so the focus always takes the
 	 * free height; what fills a slot, and its padding, is the caller's.
 	 *
-	 * With a world (#3031, ADR-0066) the world fills the surface and the slots
-	 * dock around it (docks.ts), clear of the road ahead; what has the focus —
-	 * a sprint, a game — floats in its dock, and a shared screen takes the
-	 * stage while the world holds.
+	 * With a world (#3031, ADR-0066) the world fills the surface edge to edge
+	 * and each slot is one flat `ride-panel`, its content's size, anchored
+	 * clear of the road ahead (docks.ts, #3668): slot 1 top left — the status,
+	 * when one holds, is its own first line — your numbers on the Skyline at
+	 * the left edge, the crew and what has the focus under the jukebox seat,
+	 * and the moment card top-centre when it fits there, otherwise under the
+	 * seat (D12). A shared screen takes the stage while the world holds.
 	 */
 	import type { Snippet } from 'svelte';
-	import { DOCKS, STAGE, STRIP_PX, place, type Layout } from './docks';
+	import { COLUMN_SEAT, offerSeat } from '$lib/channel/stage-slot.svelte';
+	import {
+		CORRIDOR,
+		GAP_PX,
+		INSET_PX,
+		BAND_MAX_PX,
+		JUKEBOX_SEAT,
+		SIDE_MAX,
+		SKYLINE_PX,
+		STAGE,
+		STRIP_PX,
+		momentAt,
+		place,
+	} from './docks';
 
 	let {
 		header,
@@ -23,11 +39,14 @@
 		crew,
 		horizon,
 		world,
-		layout = 'desk',
+		moment,
+		centre,
+		seat,
 		stage = false,
 		class: extra = '',
 	}: {
 		header: Snippet;
+		/** The flat layout's status row; over the world it is slot 1's first line, the caller's. */
 		status?: Snippet;
 		focus: Snippet;
 		numbers?: Snippet;
@@ -35,53 +54,142 @@
 		horizon?: Snippet;
 		/** The world, drawn behind the docks. */
 		world?: Snippet;
-		layout?: Layout;
+		/** A moment card — a sprint armed or live (D12) — over the world. */
+		moment?: Snippet;
+		/** The one thing the corridor holds: the count-in's digit (TARGETS ride-countin 2). */
+		centre?: Snippet;
+		/**
+		 * A session's jukebox seat, offered to the player while the people
+		 * column is folded away (#3668), with the now-playing line under it.
+		 */
+		seat?: Snippet;
 		/** A shared screen has the focus: it takes the stage, the horizon a strip. */
 		stage?: boolean;
 		class?: string;
 	} = $props();
 
-	const docks = $derived(DOCKS[layout]);
+	// What slot 1 leaves free decides where the moment card goes (D12): a
+	// measured fit, not a breakpoint (Jan, 2026-10-06).
+	let width = $state(0);
+	let slotWidth = $state(0);
+	let playingH = $state(0);
+	const momentPlace = $derived(momentAt(width, INSET_PX + slotWidth));
+	const seatLeft = `${JUKEBOX_SEAT.x0 * 100}%`;
+	const seatW = `${(JUKEBOX_SEAT.x1 - JUKEBOX_SEAT.x0) * 100}%`;
+	const seatH = `${(JUKEBOX_SEAT.y1 - JUKEBOX_SEAT.y0) * 100}%`;
+	// The right column hangs under the seat, empty or not: on a solo ride
+	// nothing grows into it (TARGETS ride-road-world 14).
+	const underSeat = `calc(${INSET_PX}px + ${seatH} + ${GAP_PX}px)`;
+	const side = `max-width:calc(${SIDE_MAX * 100}% - ${INSET_PX}px)`;
 	// A dock with nothing drawn in it (anchors and whitespace only) is not drawn either.
-	const dock =
-		'bg-surface/80 absolute overflow-auto rounded-xl [&:not(:has(*))]:hidden';
+	const panel = 'ride-panel absolute [&:not(:has(*))]:hidden';
 </script>
 
 {#if world}
-	<div class="relative min-h-0 overflow-hidden {extra}" data-surface="docked">
+	<div
+		class="relative min-h-0 overflow-hidden {extra}"
+		data-surface="docked"
+		bind:clientWidth={width}
+	>
 		<div class="absolute inset-0">{@render world()}</div>
-		<div data-dock="header" class={dock} style={place(docks.header)}>
-			{@render header()}
-		</div>
-		{#if status}
-			<div data-dock="status" class={dock} style={place(docks.status)}>
-				{@render status()}
+		{#if centre}
+			<!-- In the corridor's upper half, above where the chase camera
+			     draws you (RIDER_BOX), as v3-motion's GO stands. -->
+			<div
+				class="absolute grid items-start justify-items-center pt-[6%]"
+				style={place(CORRIDOR)}
+			>
+				{@render centre()}
 			</div>
 		{/if}
 		<div
-			data-dock="focus"
-			class="{dock} grid"
-			style={place(stage ? STAGE : docks.focus)}
+			data-dock="header"
+			class={panel}
+			style="left:{INSET_PX}px;top:{INSET_PX}px;width:min({BAND_MAX_PX}px, calc({seatLeft} - {INSET_PX +
+				GAP_PX}px))"
+			bind:offsetWidth={slotWidth}
 		>
-			{@render focus()}
+			{@render header()}
 		</div>
-		{#if numbers}
-			<div data-dock="numbers" class={dock} style={place(docks.numbers)}>
-				{@render numbers()}
+		{#if moment && momentPlace === 'top'}
+			<!-- Top-centre, in what slot 1 leaves before the seat. -->
+			<div
+				class="absolute flex justify-center"
+				style="left:{INSET_PX +
+					slotWidth +
+					GAP_PX}px;right:calc(100% - {seatLeft} + {GAP_PX}px);top:{INSET_PX}px"
+			>
+				<div data-dock="moment" class="ride-panel">{@render moment()}</div>
 			</div>
 		{/if}
-		{#if crew}
-			<div data-dock="crew" class={dock} style={place(docks.crew)}>
-				{@render crew()}
+		{#if seat}
+			<!-- The hole the player flies to: nothing is drawn over it (RMF). -->
+			<div
+				data-seat="jukebox"
+				class="absolute"
+				style="right:{INSET_PX}px;top:{INSET_PX}px;width:{seatW};height:{seatH}"
+				{@attach (node) => offerSeat(node, COLUMN_SEAT)}
+			></div>
+			<!-- The now-playing line, directly under the seat at its width. -->
+			<div
+				data-testid="now-playing"
+				class="absolute [&:not(:has(*))]:hidden"
+				style="right:{INSET_PX}px;top:{underSeat};width:{seatW}"
+				bind:offsetHeight={playingH}
+			>
+				{@render seat()}
+			</div>
+		{/if}
+		<!-- The right column under the seat and any now-playing line: the
+		     moment card when it does not fit top-centre, what has the focus,
+		     then the crew. -->
+		<div
+			class="absolute flex flex-col items-end gap-3"
+			style="right:{INSET_PX}px;top:calc({underSeat} + {playingH
+				? playingH + GAP_PX
+				: 0}px);{side};bottom:{INSET_PX + SKYLINE_PX + GAP_PX}px"
+		>
+			{#if moment && momentPlace === 'seat'}
+				<!-- Never wider than the column, so never into the corridor (G3). -->
+				<div data-dock="moment" class="ride-panel max-w-full">
+					{@render moment()}
+				</div>
+			{/if}
+			{#if !stage}
+				<div data-dock="focus" class="ride-panel [&:not(:has(*))]:hidden">
+					{@render focus()}
+				</div>
+			{/if}
+			{#if crew}
+				<div data-dock="crew" class="ride-panel [&:not(:has(*))]:hidden">
+					{@render crew()}
+				</div>
+			{/if}
+		</div>
+		{#if stage}
+			<div data-dock="focus" class="{panel} grid" style={place(STAGE)}>
+				{@render focus()}
+			</div>
+		{/if}
+		{#if numbers}
+			<!-- Your numbers stand on the Skyline at the left edge. -->
+			<div
+				data-dock="numbers"
+				class="{panel} w-fit"
+				style="left:{INSET_PX}px;bottom:{INSET_PX +
+					(stage ? STRIP_PX : SKYLINE_PX) +
+					GAP_PX}px;{side}"
+			>
+				{@render numbers()}
 			</div>
 		{/if}
 		{#if horizon}
 			<div
 				data-dock="horizon"
-				class="{dock} overflow-hidden"
-				style={stage
-					? `left:2%;right:2%;bottom:2%;height:${STRIP_PX}px`
-					: place(docks.horizon)}
+				class="{panel} overflow-hidden"
+				style="left:{INSET_PX}px;right:{INSET_PX}px;bottom:{INSET_PX}px;height:{stage
+					? STRIP_PX
+					: SKYLINE_PX}px"
 			>
 				{@render horizon()}
 			</div>

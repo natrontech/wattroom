@@ -1,6 +1,7 @@
 package hub
 
 import (
+	"encoding/json"
 	"hash/fnv"
 	"strconv"
 	"time"
@@ -104,14 +105,18 @@ func (s *session) join(riderID string, in bool) bool {
 // rides, the recap and the radar show, and JSON the saver can parse.
 func (s *session) runGame(mode, name string, now time.Time) {
 	s.game = mode
-	s.workoutName, s.workoutJSON = name, gameWorkoutJSON(mode, name)
+	var road json.RawMessage
+	if s.route != nil {
+		road = s.route.road
+	}
+	s.workoutName, s.workoutJSON = name, gameWorkoutJSON(mode, name, road)
 	s.workoutHash = workoutHash(s.workoutJSON)
 	s.totalSeconds, s.segments = 0, nil
 	s.phase, s.startedAt, s.banked = "running", now, 0
 	s.run++
 	// A race rides no bunch: each racer has their own place on the road
 	// (ADR-0067), and riding together is never mixed into one.
-	if mode != modeRace {
+	if !isRace(mode) {
 		s.startBunch(now)
 	}
 }

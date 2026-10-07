@@ -107,7 +107,21 @@ func (s *Saver) save(
 			continue
 		}
 		row.CrewID, row.ChannelID, row.SessionID = at.crew, at.channel, at.session
-		SetHow(&row, RideMode(workoutJSON, true), workoutJSON, false, "", accountWeight(ctx, q, row.UserID))
+		onRoad, drive := false, ""
+		if rr := rider.Road; rr != nil {
+			stored, err := routeStored(ctx, q, rr.RouteID)
+			if err != nil {
+				return err
+			}
+			onRoad, drive = true, SetSessionRoad(&row, *rr, stored)
+		}
+		SetHow(&row, RideMode(workoutJSON, true), workoutJSON, onRoad, drive, accountWeight(ctx, q, row.UserID))
+		if rr := rider.Road; rr != nil && rr.Towed {
+			// A bunch carried them (#3738): the road is theirs to keep, and
+			// the time on it is nobody's (ADR-0074).
+			untimed := false
+			row.Timeable = &untimed
+		}
 		row.Xp += StreakXP(ctx, q, row.UserID, start)
 		// A retry after a commit whose answer was lost must not insert the
 		// rider's ride — or their medals — twice (audit 2026-09-09).
@@ -502,4 +516,19 @@ func retrySave(
 	save func(context.Context) error,
 ) error {
 	return retry.Do(ctx, log, "session save "+room, saveAttempts, retryBase, attemptTimeout, save)
+}
+
+// routeStored is whether a session ride's route is still stored (#3722): its
+// owner may have deleted it since the ride, and the ride then keeps the road
+// by its hash alone.
+func routeStored(ctx context.Context, q *db.Queries, routeID string) (bool, error) {
+	id, err := store.ParseUUID(routeID)
+	if err != nil {
+		return false, nil
+	}
+	stored, err := q.RouteStored(ctx, id)
+	if err != nil {
+		return false, fmt.Errorf("stats: route %s stored: %w", routeID, err)
+	}
+	return stored, nil
 }

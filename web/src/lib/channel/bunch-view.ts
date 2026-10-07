@@ -1,0 +1,140 @@
+import { coachOf } from '$lib/channel/tick-session';
+import { levelFromXp } from '$lib/level';
+import type { LiveRider } from '$lib/channel/types';
+import {
+	RoadsideStampInitial,
+	type RoadsideStamp,
+	type ServerTick,
+} from '$lib/protocol';
+
+/** One chalk stamp on the road (#3029), as the world draws it. */
+export type Chalk = {
+	/** Stable while it lies on the road: who painted it, and where. */
+	key: string;
+	stamp: RoadsideStamp;
+	/** An initial's letter, from the roster; empty for every other stamp. */
+	letter: string;
+	/** Metres along the road as ridden, laps unrolled. */
+	u: number;
+};
+
+/**
+ * The bunch as one tick has it, in the terms the world draws (#3098,
+ * ADR-0065). Three-free, so the channel builds it and only the world, loaded
+ * lazily, steps it ($lib/world/bunch.ts).
+ */
+export type BunchView = {
+	/** Metres along the road as ridden, a looped road's laps unrolled. */
+	m: number;
+	mps: number;
+	/** When the hub sent it, server ms: a page that handles it late knows by how much. */
+	at?: number;
+	/** The session's elapsed seconds: what turns the front row. */
+	elapsed: number;
+	/** The joined riders, in the order they joined. */
+	order: string[];
+	/** Metres from the bunch, by rider; none while a game hides them. */
+	offsets: Record<string, number>;
+	resting: string[];
+	coach?: string;
+	/** Who is connected, and what their legs are doing: a joined rider who is not there is drawn faded. Name, level and speaking hang their name tag (#3086). */
+	present: Map<
+		string,
+		{
+			watts: number;
+			ftp: number;
+			name?: string;
+			level?: number;
+			speaking?: boolean;
+		}
+	>;
+	/** A game hides the meter (Watt Golf): no live zone ring on anyone (#3086). */
+	meterHidden?: boolean;
+	/** A game rides: the team car never runs in one (#3098). */
+	game: boolean;
+	/** Who this tick's cheers are for (#3116): the world draws each over that rider's head. */
+	cheered: string[];
+	/** The roadside's chalk still ahead of the bunch (#3029). */
+	chalk?: Chalk[];
+	/** What a running game puts on the road (#3114). */
+	play?: GamePlay;
+};
+
+/** A running game as the world draws it (#3114): its mode, the round and when it ends, and who it has put out. */
+export type GamePlay = {
+	mode: string;
+	round: number;
+	/** A ramp's line, %FTP as a fraction: what the bunch rides on a road (#3114). */
+	linePct?: number;
+	/** When the round ends, server ms. */
+	roundEndsAt?: number;
+	out: string[];
+};
+
+/** The tick's bunch, or null while the session rides none. A race rides no shared bunch. */
+export function bunchOf(
+	tick: ServerTick | null,
+	riders: LiveRider[],
+): BunchView | null {
+	const world = tick?.world;
+	if (!tick || !world || world.racers) return null;
+	const length = tick.state.route?.lengthM ?? 0;
+	// The bunch's speed, never the trainer's (ADR-0084: that is the drivetrain's alone).
+	const { speedMps: bunchMps } = world;
+	return {
+		m: world.bunchM + (world.lap ?? 0) * length,
+		mps: bunchMps,
+		at: tick.at,
+		elapsed: tick.state.elapsed,
+		order: world.order ?? [],
+		offsets: Object.fromEntries(
+			Object.entries(world.offsets ?? {}).map(([id, dm]) => [id, dm / 10]),
+		),
+		resting: world.resting ?? [],
+		coach: coachOf(tick.state),
+		// Held watts, so a 1 Hz trainer that misses a tick does not stop the legs.
+		present: new Map(
+			riders.map((r) => {
+				const xp = tick.roster.find((m) => m.id === r.id)?.totalXp;
+				return [
+					r.id,
+					{
+						watts: r.watts,
+						ftp: r.ftp,
+						name: r.name,
+						level: xp ? levelFromXp(xp) : undefined,
+						speaking: r.speaking,
+					},
+				];
+			}),
+		),
+		meterHidden: !!tick.game?.meterHidden,
+		game: !!tick.game,
+		cheered: (tick.cheers ?? []).flatMap((c) => (c.to ? [c.to] : [])),
+		chalk: (tick.roadside?.paint ?? []).map((p) => {
+			const u = p.atM + (p.lap ?? 0) * length;
+			const name =
+				p.stamp === RoadsideStampInitial
+					? (riders.find((r) => r.id === p.for)?.name ?? '')
+					: '';
+			return {
+				key: `${p.riderId}@${u}`,
+				stamp: p.stamp,
+				letter: name.slice(0, 1).toUpperCase(),
+				u,
+			};
+		}),
+		play:
+			tick.game?.phase === 'running'
+				? {
+						mode: tick.game.mode,
+						round: tick.game.round ?? 0,
+						linePct: tick.game.linePct,
+						roundEndsAt: tick.game.roundEndsAtMs,
+						out: Object.entries(tick.game.riders ?? {}).flatMap(([id, r]) =>
+							r.eliminated ? [id] : [],
+						),
+					}
+				: undefined,
+	};
+}
