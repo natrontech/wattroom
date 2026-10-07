@@ -54,7 +54,7 @@ describe('name tags over riders (#3086)', () => {
 		}
 	});
 
-	it('stands over a cheer’s thumb while it shows, and just over the helmet otherwise', () => {
+	it('stands over a cheer’s thumb while it shows, and over the chevron’s height otherwise', () => {
 		const style = STYLES.find((s) => s.id === 'bluehour') ?? STYLES[0];
 		const camera = new THREE.PerspectiveCamera(52, 16 / 10, 1, 1000);
 		camera.position.set(0, 1.5, 8);
@@ -73,11 +73,11 @@ describe('name tags over riders (#3086)', () => {
 			return s.position.clone().project(camera).y - PILL_H;
 		};
 		const thumbTop = new THREE.Vector3(0, THUMB_Y + 0.16, 0).project(camera).y;
-		const helmet = new THREE.Vector3(0, CHEVRON_Y, 0).project(camera).y;
+		const chevron = new THREE.Vector3(0, CHEVRON_Y + 0.2, 0).project(camera).y;
 		expect(foot({ thumb: 1, alpha: 1, lit: true })).toBeGreaterThanOrEqual(
 			thumbTop,
 		);
-		expect(foot(null)).toBeCloseTo(helmet, 5);
+		expect(foot(null)).toBeCloseTo(chevron, 5);
 	});
 
 	it('is at least 16 arcmin tall at the design distance: 18 px of text in a 900 px frame', () => {

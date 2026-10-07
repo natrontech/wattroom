@@ -21,13 +21,9 @@ export const PILL_H = 30 / 900;
 export const TEXT_H = 20 / 900;
 /** A character's width as a share of the text's height: Barlow at its widest. */
 const CHAR_W = 0.6;
-/** Where a tag's foot sits: just over the helmet, or over the coach's chevron or a cheer's thumb while they are worn. */
+/** Where a tag's foot sits: over the chevron's height, so no chevron abreast hides under it, or over a cheer's thumb while it shows. */
 const footOf = (r: SimRider) =>
-	r.cheer && r.cheer.thumb > 0
-		? THUMB_Y + 0.2
-		: r.coach
-			? CHEVRON_Y + 0.2
-			: CHEVRON_Y;
+	(r.cheer && r.cheer.thumb > 0 ? THUMB_Y : CHEVRON_Y) + 0.2;
 
 /** A tag as the frame lays it: its words, and its centre as shares of the frame, from the top left. */
 export type Laid = { text: string; speaking: boolean; x: number; y: number };
