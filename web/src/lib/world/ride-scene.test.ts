@@ -5,6 +5,7 @@ import { at, leftOf } from '$lib/road/along';
 import { legsRoad } from '$lib/road/fixtures';
 import { RIDER_BOX } from '$lib/session/docks';
 import { RIDE } from './look.test-helper';
+import { LANE } from './bunch';
 import { compose } from './compose';
 import { routeOfRoad } from './road-route';
 import type { Hud } from './compose';
@@ -145,8 +146,7 @@ describe('a ride’s world', () => {
 		let ring: THREE.Mesh | undefined;
 		w.scene.traverse((o) => {
 			if (o.userData.kind === 'trail') trail = o as THREE.Mesh;
-			if (o instanceof THREE.Mesh && o.geometry instanceof THREE.RingGeometry)
-				ring = o;
+			if (o instanceof THREE.Mesh && o.userData.kind === 'zone-ring') ring = o;
 		});
 		const tone = () =>
 			`#${(ring!.material as THREE.MeshBasicMaterial).color.getHexString()}`;
@@ -292,6 +292,78 @@ describe('a ride’s world', () => {
 		expect(steady(0.35).light).toEqual(['b']);
 		expect(steady(9.6).light).toEqual(['b']);
 		expect(steady(10.1).light).toEqual([]);
+	});
+
+	it('rings each rider whose numbers you may see, a thin flat band, and tags the nearest by name (#3086)', () => {
+		const drawn = (meterHidden: boolean, bPresent = true) => {
+			const present = new Map([
+				['a', { watts: 200, ftp: 250, name: 'Ana' }],
+				['b', { watts: 150, ftp: 250, name: 'Ben', level: 12 }],
+			]);
+			if (!bPresent) present.delete('b');
+			const w = compose(
+				{
+					route,
+					world,
+					style,
+					ftp: 250,
+					youId: 'a',
+					metre: () => ({ m: 300, mps: 8 }),
+					bunch: () => ({
+						m: 300,
+						mps: 8,
+						elapsed: 30,
+						order: ['a', 'b'],
+						offsets: {},
+						resting: [],
+						present,
+						game: false,
+						cheered: [],
+						meterHidden,
+					}),
+				},
+				null,
+			);
+			for (let k = 0; k < 30; k++) w.advanceBy(1 / 30);
+			const bands: number[] = [];
+			const widths: number[] = [];
+			const additive: string[] = [];
+			const tags: string[] = [];
+			w.scene.traverseVisible((o) => {
+				const m = o as THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
+				if (o.userData.kind === 'zone-ring') {
+					// Across the road, where the band crosses the x axis: outer less inner.
+					const xs: number[] = [];
+					const pos = m.geometry.getAttribute('position');
+					for (let i = 0; i < pos.count; i++)
+						if (Math.abs(pos.getZ(i)) < 1e-6) xs.push(Math.abs(pos.getX(i)));
+					bands.push(Math.max(...xs) - Math.min(...xs));
+					widths.push(2 * Math.max(...xs));
+				}
+				if (
+					m.material &&
+					'blending' in m.material &&
+					m.material.blending === THREE.AdditiveBlending
+				)
+					additive.push(o.userData.kind);
+				if (o.userData.kind === 'name-tag') tags.push(o.userData.text);
+			});
+			w.dispose();
+			return { bands, widths, additive, tags };
+		};
+		const both = drawn(false);
+		// Yours and your crewmate's, each one band a wheel wide.
+		expect(both.bands).toHaveLength(2);
+		for (const b of both.bands) expect(b).toBeCloseTo(0.08, 6);
+		// Narrower than the lane between riders abreast: two rings never cross.
+		for (const w of both.widths) expect(w).toBeLessThan(LANE);
+		// Never over you; the rider beside you, by name and level.
+		expect(both.tags).toEqual(['Ben · Lv 12']);
+		// Your trail stays the only glow.
+		expect(both.additive).toEqual(['trail']);
+		// A game that hides the meter hides every ring; a faded rider wears none.
+		expect(drawn(true).bands).toHaveLength(0);
+		expect(drawn(false, false).bands).toHaveLength(1);
 	});
 
 	it('draws a coach with no trainer as the team car: one chevron, no figure of their own (#3771)', () => {

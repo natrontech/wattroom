@@ -123,6 +123,11 @@ export function rideLook(
 			stripe: paint('color-neon'),
 			text: w('sign-white'),
 		},
+		tag: {
+			bg: paint('color-surface'),
+			line: paint('color-neon'),
+			ink: paint('color-ink'),
+		},
 	};
 }
 

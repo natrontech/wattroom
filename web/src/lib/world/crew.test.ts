@@ -116,8 +116,7 @@ describe('a silent trainer (#3766)', () => {
 		};
 		let ring: THREE.Mesh | undefined;
 		crew.group.traverse((o) => {
-			if (o instanceof THREE.Mesh && o.geometry instanceof THREE.RingGeometry)
-				ring = o;
+			if (o instanceof THREE.Mesh && o.userData.kind === 'zone-ring') ring = o;
 		});
 		const tone = (ring!.material as THREE.MeshBasicMaterial).color;
 		return { tone: `#${tone.getHexString()}`, trail: mesh('trail') };
@@ -125,6 +124,30 @@ describe('a silent trainer (#3766)', () => {
 	const zoneTones = style.zones.map(
 		(z) => `#${new THREE.Color(z).getHexString()}`,
 	);
+
+	it('wears the live zone on its ring and never on its kit (#3086, ADR-0073)', () => {
+		const crew = makeCrew(style, new THREE.Color());
+		const rider = you();
+		const kit = () =>
+			Array.from(
+				crew.you!.geometry.getAttribute('color').array as Float32Array,
+			);
+		rider.watts = 100;
+		const easy = frame(rider, crew);
+		const before = kit();
+		rider.watts = 600;
+		const hard = frame(rider, crew);
+		// The ring changes zone with the effort; the kit does not change at all.
+		expect(hard.tone).not.toBe(easy.tone);
+		expect(kit()).toEqual(before);
+		const worn = new Set<string>();
+		const c = new THREE.Color();
+		for (let i = 0; i < before.length; i += 3)
+			worn.add(
+				`#${c.setRGB(before[i], before[i + 1], before[i + 2]).getHexString()}`,
+			);
+		for (const z of zoneTones) expect(worn).not.toContain(z);
+	});
 
 	it('keeps its zone ring and its trail while the trainer speaks', () => {
 		const { tone, trail } = frame(you());
