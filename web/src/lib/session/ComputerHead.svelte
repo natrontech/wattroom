@@ -43,13 +43,13 @@
 </script>
 
 <div data-testid="computer-head" class="flex flex-col gap-2">
-	<div class="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
+	<div class="flex flex-wrap items-end justify-between gap-x-2 gap-y-2">
 		<p class="num leading-[0.85] font-bold whitespace-nowrap">
 			<span
 				data-testid="head-power"
 				class="text-[6.5rem] {stale ? 'text-muted' : 'text-watt glow-text'}"
 				>{stale ? '—' : power}</span
-			>{' '}<span class="text-muted text-5xl font-normal">W</span>
+			>{' '}<span class="text-muted text-2xl font-normal">W</span>
 		</p>
 		<div class="pb-1">
 			<p class="ride-label">W/kg</p>
