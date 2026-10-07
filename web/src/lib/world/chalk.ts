@@ -1,6 +1,7 @@
 // The roadside's chalk on the road (#3029, ADR-0064): Jan's six stamps,
 // painted flat on the asphalt where the hub put them and gone once the bunch
-// rides over them. Scenery, never live data: unlit, and nothing glows.
+// rides over them. Scenery, never live data: in the road line's colour, lit
+// by the sky as the road's own paint is (ADR-0072), and nothing glows.
 import * as THREE from 'three';
 import type { Chalk } from '$lib/channel/bunch-view';
 import type { RoadsideStamp } from '$lib/protocol';
@@ -24,10 +25,6 @@ const ALONG = ACROSS * 4;
 export const BESIDE = ROAD_W / 2 - ACROSS / 2 - 0.2;
 const W = 256;
 const H = 128;
-// ponytail: unlit, so the road line's token reads brighter than the lit
-// paint beside it (#3029's round 1: 207 against 147); dimmed to its tone at
-// the ride's light. Tune against the ribbon if the look's light moves.
-const TONE = 0.72;
 
 /** The words a stamp chalks; the glyph stamps draw a shape instead. */
 const WORDS: Partial<Record<RoadsideStamp, string>> = {
@@ -93,9 +90,9 @@ function stampMesh(route: Route, c: Chalk, chalk: string): THREE.Mesh {
 	);
 	const mesh = new THREE.Mesh(
 		new THREE.PlaneGeometry(ACROSS, ALONG).rotateX(-Math.PI / 2),
-		new THREE.MeshBasicMaterial({
+		// The road's paint is Lambert (roadMaterial): the same light, the same tone.
+		new THREE.MeshLambertMaterial({
 			map: paintedTexture(W, H, (x) => draw(x, c.stamp, c.letter, chalk)),
-			color: new THREE.Color().setScalar(TONE),
 			transparent: true,
 			depthWrite: false,
 			// Laid on the asphalt, never fighting it for the same depth.

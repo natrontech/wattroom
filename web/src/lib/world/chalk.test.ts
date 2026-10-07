@@ -6,7 +6,7 @@ import { at, leftOf } from '$lib/road/along';
 import { legsRoad } from '$lib/road/fixtures';
 import { lanesFor, LANE } from './bunch';
 import { BESIDE, makeChalk } from './chalk';
-import { ROAD_LIFT, yOf } from './geometry';
+import { ROAD_LIFT, roadMaterial, yOf } from './geometry';
 import { RIDE } from './look.test-helper';
 import { routeOfRoad } from './road-route';
 import { ROAD_W } from './terrain/road-profile';
@@ -15,7 +15,7 @@ const route = routeOfRoad(legsRoad([1000, 0], [2000, 6], [1000, 0]));
 const stamps = (layer: ReturnType<typeof makeChalk>) =>
 	layer.group.children as THREE.Mesh<
 		THREE.BufferGeometry,
-		THREE.MeshBasicMaterial
+		THREE.MeshLambertMaterial
 	>[];
 
 describe('the roadside’s chalk (#3029)', () => {
@@ -50,8 +50,9 @@ describe('the roadside’s chalk (#3029)', () => {
 			mesh.geometry.computeBoundingBox();
 			const box = mesh.geometry.boundingBox!;
 			expect(box.max.y - box.min.y).toBeCloseTo(0, 6);
-			// Scenery: no light shades it and nothing on it glows (ADR-0005).
-			expect(mesh.material).toBeInstanceOf(THREE.MeshBasicMaterial);
+			// Scenery, shaded as the road's paint is (ADR-0072), and nothing on it glows (ADR-0005).
+			expect(mesh.material).toBeInstanceOf(roadMaterial(RIDE.road).constructor);
+			expect(mesh.material.emissive.getHex()).toBe(0);
 			expect(mesh.userData.stamp).toBe(c.stamp);
 		}
 	});
