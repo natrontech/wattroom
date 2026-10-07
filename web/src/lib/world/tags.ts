@@ -21,7 +21,7 @@ export const TEXT_H = 20 / 900;
 /** A character's width as a share of the text's height: Barlow at its widest. */
 const CHAR_W = 0.6;
 /** Over the helmet, clear of the coach's chevron and a cheer's thumb. */
-const TAG_Y = 2.6;
+const TAG_Y = 2.35;
 
 /** A tag as the frame lays it: its words, and its centre as shares of the frame, from the top left. */
 export type Laid = { text: string; speaking: boolean; x: number; y: number };

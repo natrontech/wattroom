@@ -91,8 +91,7 @@ describe('a silent trainer (#3766)', () => {
 		};
 		let ring: THREE.Mesh | undefined;
 		crew.group.traverse((o) => {
-			if (o instanceof THREE.Mesh && o.geometry instanceof THREE.RingGeometry)
-				ring = o;
+			if (o instanceof THREE.Mesh && o.userData.kind === 'zone-ring') ring = o;
 		});
 		const tone = (ring!.material as THREE.MeshBasicMaterial).color;
 		return { tone: `#${tone.getHexString()}`, trail: mesh('trail') };

@@ -47,6 +47,40 @@ const NEAR = 3;
 const RANK_EVERY = 1;
 /** The live zone ring's band, a wheel wide, as the trail is (docs/SPEC.md "The world", #3086). */
 export const RING_BAND_M = 0.08;
+/**
+ * The ring's half-widths: an ellipse round the wheels, narrower than the
+ * formation's lane (bunch.ts LANE, 0.9 m) so two riders abreast never cross
+ * rings, and long enough to show past both wheels.
+ */
+const RING_ACROSS = 0.42 - RING_BAND_M / 2;
+const RING_ALONG = 0.99 - RING_BAND_M / 2;
+/** A flat elliptic band RING_BAND_M wide, lying on the road, its long axis along it. */
+function zoneRing(across: number, along: number): THREE.BufferGeometry {
+	const h = RING_BAND_M / 2;
+	const shape = new THREE.Shape().absellipse(
+		0,
+		0,
+		across + h,
+		along + h,
+		0,
+		Math.PI * 2,
+		false,
+		0,
+	);
+	shape.holes.push(
+		new THREE.Path().absellipse(
+			0,
+			0,
+			across - h,
+			along - h,
+			0,
+			Math.PI * 2,
+			true,
+			0,
+		),
+	);
+	return new THREE.ShapeGeometry(shape, 48).rotateX(-Math.PI / 2);
+}
 /** Seconds a new figure rides before it is first drawn, so it arrives in its riding posture. */
 const SETTLE_S = 2;
 const SETTLE_DT = 1 / 30;
@@ -129,11 +163,7 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 	const shadowGeo = new THREE.CircleGeometry(0.5, 20)
 		.rotateX(-Math.PI / 2)
 		.scale(0.9, 1, 2.1);
-	const ringGeo = new THREE.RingGeometry(
-		0.71 - RING_BAND_M / 2,
-		0.71 + RING_BAND_M / 2,
-		48,
-	).rotateX(-Math.PI / 2);
+	const ringGeo = zoneRing(RING_ACROSS, RING_ALONG);
 	const beadGeo = new THREE.SphereGeometry(1, 16, 12);
 	const chevronGeo = chevronGeometry();
 	const thumbGeo = thumbGeometry(
@@ -231,7 +261,7 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 		g.add(
 			tag('figures', figure),
 			tag('marks', shadow),
-			tag('marks', ring),
+			tag('marks', ring, 'zone-ring'),
 			tag('marks', bead),
 			tag('marks', chevron, 'chevron'),
 			tag('marks', thumb, 'cheer'),
