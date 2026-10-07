@@ -133,7 +133,6 @@
 			gear={gearsEnabled() ? conn.ride.gear : undefined}
 			shift={conn.shift}
 			shiftOff={conn.ride.shiftOff}
-			resetAt={conn.ride.gearResetAt}
 			cassette={!conn.profile.current.singleSpeed}
 			split={ghost.split ?? undefined}
 			onend={free.recording ? () => void free?.end() : undefined}

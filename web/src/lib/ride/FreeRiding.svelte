@@ -22,11 +22,12 @@
 	import { ONE_GEAR_LINE } from '$lib/ride/mode-copy';
 	import type { RideShift } from '$lib/ride/ride-shift';
 	import { roadLine } from '$lib/ride/road-readout';
-	import { endRideLabel, roadEndOffered } from '$lib/ride/road-end';
+	import { roadEndOffered } from '$lib/ride/road-end';
 	import RoadEnd from '$lib/ride/RoadEnd.svelte';
 	import Skyline from '$lib/ride/Skyline.svelte';
 	import BikeComputer from '$lib/session/BikeComputer.svelte';
 	import { roadContext } from '$lib/session/computer-pages';
+	import { SKYLINE_PX } from '$lib/session/docks';
 	import RidingSurface from '$lib/session/RidingSurface.svelte';
 	import FlatRoad from '$lib/world/FlatRoad.svelte';
 	import { JUMP_M } from '$lib/world/sim';
@@ -45,7 +46,6 @@
 		gear,
 		shift,
 		shiftOff = null,
-		resetAt = 0,
 		cassette = true,
 		split,
 		onend,
@@ -71,14 +71,13 @@
 		gear?: { label: string; clamp: Clamp };
 		shift?: Pick<RideShift, 'press' | 'release' | 'drop'>;
 		shiftOff?: string | null;
-		resetAt?: number;
 		cassette?: boolean;
 		/** Your ghost's split (ADR-0068). */
 		split?: { seconds: number; best: boolean };
 		/** End ride; absent while there is nothing to end. */
 		onend?: () => void;
 		ending?: boolean;
-		/** The caller's own controls in slot 1's row, before End ride. */
+		/** The caller's own controls, on the label's row. */
 		controls?: Snippet;
 		/** What the flat surface shows above the numbers before the first stroke. */
 		setup?: Snippet;
@@ -100,23 +99,19 @@
 		{ id: 'grade', label: road ? 'Road' : 'Grade' },
 		{ id: 'watts', label: 'Watts' },
 	]);
-	// Off a road the rider sets the slope or the watts (ADR-0059); on one the
-	// road does (#3027), and the chip says how the trainer rides it.
-	const value = $derived(
-		inWatts ? `${free.watts} W` : `${free.grade.toFixed(1)} %`,
-	);
 	const atMin = $derived(
 		inWatts ? free.watts === WATTS.min : free.grade === GRADE.min,
 	);
 	const atMax = $derived(
 		inWatts ? free.watts === WATTS.max : free.grade === GRADE.max,
 	);
+	// How the trainer rides it, once (TARGETS one home): the slope the rider
+	// set, or the road's felt one (#3025); the watts held, the rider's or the
+	// road's (#3027). Off a road the − and + move this number.
 	const chip = $derived(
-		!road
-			? null
-			: inWatts
-				? `Watts · ${free.targetWatts} W`
-				: `SIM · you feel ${road.felt.toFixed(1)} %`,
+		inWatts
+			? `Watts · ${free.targetWatts} W`
+			: `SIM · you feel ${(road ? road.felt : free.grade).toFixed(1)} %`,
 	);
 	// ponytail: the trainer reattaches by itself for as long as the page lives
 	// (#37), so the line has no button; one when a ride needs the chooser here.
@@ -152,24 +147,35 @@
 
 {#snippet band()}
 	<!-- Four rows, so the road's name is never cut for the controls: the
-	     label, the road line, the chip row, then the controls — 176 px at
-	     SPEC's sizes, above the corridor (the box table's 200). -->
+	     label with the caller's own controls, the road line, the chip row,
+	     then the ride's controls — 176 px at SPEC's sizes, above the corridor
+	     (the box table's 200). -->
 	<header data-testid="ride-band" class="flex flex-col gap-2 px-4 py-2">
-		{#if fault}
-			<!-- Ride-critical status is slot 1's first line (G3), never a toast. -->
-			<div
-				data-status-line
-				role="alert"
-				class="flex min-w-0 items-center gap-4"
-			>
-				<span class="bg-danger size-2.5 shrink-0 rounded-full"></span>
-				<p class="min-w-0 truncate {WORDS}">{fault}</p>
-			</div>
-		{:else}
-			<p data-testid="ride-context" class="ride-label truncate">
-				{freeRideLabel(road)}
-			</p>
-		{/if}
+		<div class="flex min-w-0 flex-wrap items-center gap-x-6 gap-y-2">
+			{#if fault}
+				<!-- Ride-critical status is slot 1's first line (G3), never a toast. -->
+				<div
+					data-status-line
+					role="alert"
+					class="flex min-w-0 flex-1 items-center gap-4"
+				>
+					<span class="bg-danger size-2.5 shrink-0 rounded-full"></span>
+					<p class="min-w-0 truncate {WORDS}">{fault}</p>
+				</div>
+			{:else}
+				<p
+					data-testid="ride-context"
+					class="ride-label min-w-0 flex-1 truncate"
+				>
+					{freeRideLabel(road)}
+				</p>
+			{/if}
+			{#if controls}
+				<div class="flex flex-wrap items-center gap-2">
+					{@render controls()}
+				</div>
+			{/if}
+		</div>
 		{#if road}
 			<!-- Where on the road, once (TARGETS one home: slot 1's road line). -->
 			<p data-testid="block-road" class="num text-4xl leading-none font-bold">
@@ -177,7 +183,7 @@
 			</p>
 		{/if}
 		<div class="flex flex-wrap items-center gap-x-4 gap-y-1 {WORDS}">
-			{#if chip}<span data-testid="trainer-chip" class={CHIP}>{chip}</span>{/if}
+			<span data-testid="trainer-chip" class={CHIP}>{chip}</span>
 			<p data-testid="ride-clock" class="num text-muted">
 				{formatClock(
 					free.seconds,
@@ -205,15 +211,13 @@
 				{/each}
 			</div>
 			{#if !road}
+				<!-- The number they move is the chip's (SPEC "Grade mode"). -->
 				<button
 					onclick={() => free.nudge(-1)}
 					disabled={atMin}
 					class="btn btn-secondary btn-lg"
 					aria-label={inWatts ? 'fewer watts' : 'lower grade'}
 					><Minus size={18} /></button
-				>
-				<span class="num w-24 text-center text-3xl font-bold" aria-live="polite"
-					>{value}</span
 				>
 				<button
 					onclick={() => free.nudge(1)}
@@ -224,14 +228,15 @@
 				>
 			{/if}
 			{#if gear && shift && !inWatts}
-				<GearShift row {shift} {gear} off={shiftOff} {resetAt} {cassette} />
+				<GearShift {shift} {gear} off={shiftOff} {cassette} />
 			{/if}
-			{@render controls?.()}
 			{#if onend}
+				<!-- End ride saves where you are; carrying on is the road-end
+				     card's offer, not this button's (TARGETS ride-free-road 10). -->
 				<button
 					onclick={onend}
 					disabled={ending}
-					class="btn btn-secondary btn-lg">{endRideLabel(free)}</button
+					class="btn btn-secondary btn-lg">End ride</button
 				>
 			{/if}
 		</div>
@@ -304,19 +309,23 @@
 
 	{#snippet focus()}
 		{#if !inWorld}
-			<!-- Flat, in slot order: the numbers, then the road ahead taking the
-			     free height so the Skyline is on screen (TARGETS ride-free-road 9). -->
+			<!-- Flat, in slot order: the numbers take the free height (TARGETS
+			     ride-workout-flat 8), the Skyline a strip along the bottom as
+			     over the world, on screen with the dot inside (ride-free-road 9). -->
 			<div class="flex min-h-0 flex-col gap-3 pt-3">
 				{#if setup && !free.recording}{@render setup()}{/if}
 				{#if roadEndOffered(free, false)}
 					<div class="ride-panel">{@render roadEnd()}</div>
 				{/if}
-				<div class="ride-panel">
+				<div class="ride-panel min-h-0 flex-1">
 					{@render computer()}
 					{@render foot?.()}
 				</div>
 				{#if road}
-					<div class="ride-panel min-h-40 flex-1 overflow-hidden">
+					<div
+						class="ride-panel shrink-0 overflow-hidden"
+						style:height="{SKYLINE_PX}px"
+					>
 						{@render skyline(road)}
 					</div>
 				{/if}

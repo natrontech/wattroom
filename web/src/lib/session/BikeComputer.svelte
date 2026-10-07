@@ -100,7 +100,9 @@
 	data-testid="bike-computer"
 	data-page={shown}
 	aria-label="bike computer, {PAGE_NAMES[shown]} page"
-	class={docked ? 'relative flex flex-col gap-3 px-4 py-3' : 'panel relative'}
+	class={docked
+		? '@container relative flex flex-col gap-3 px-4 py-3'
+		: 'panel relative'}
 >
 	<!-- The page's name and its dots sit in the row of numbers, so a page is
 	     one row tall where it fits and the focus above keeps its height (#3597);
@@ -192,7 +194,9 @@
 					title="Next page"
 					class="icon-btn-lg"><ChevronRight size={24} /></button
 				>
-				<div class="ml-auto flex gap-2" aria-hidden="true">
+				<!-- In the world's column the dots take the right edge; in a wide
+				     flat panel they stay beside the name (#3669). -->
+				<div class="ml-auto flex gap-2 @2xl:ml-4" aria-hidden="true">
 					{#each pages as p (p)}
 						<span
 							data-testid="computer-dot"
@@ -217,7 +221,7 @@
 	{#if phone}{@render name()}{/if}
 	<div
 		class={docked
-			? 'border-neon/20 grid grid-cols-2 gap-x-6 gap-y-3 border-t pt-3'
+			? 'border-neon/20 grid grid-cols-2 gap-x-6 gap-y-3 border-t pt-3 @2xl:flex @2xl:flex-wrap @2xl:gap-x-8'
 			: layout}
 	>
 		{#if !phone && !docked}{@render name()}{/if}

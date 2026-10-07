@@ -19,6 +19,7 @@
 	import { createGhostSplit } from '$lib/ride/ghost-split.svelte';
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
 	import { bindShiftKeys } from '$lib/ride/keys';
+	import { carriesOn } from '$lib/ride/road-end';
 	import { carryOnFrom, type RideableRoute } from '$lib/ride/roads';
 	import { rememberRoad } from '$lib/ride/last-ride';
 	import type { Trainer } from '$lib/ble/trainer';
@@ -218,6 +219,15 @@
 					>See it in your history</a
 				> — and on Strava, if you connected it.
 			</p>
+			{#if free.road && carriesOn(free.road)}
+				<!-- Partway up your own road, the offer is this card's (#3205,
+				     TARGETS ride-road-end 2): the same road from where you stopped. -->
+				<a
+					href="/ride?road={route.id}&from={Math.round(free.road.m)}"
+					class="btn btn-primary btn-lg self-start"
+					>Carry on from km {formatKm(free.road.m)} next time</a
+				>
+			{/if}
 		{:else if free.outcome && 'failure' in free.outcome}
 			<Banner tone="error">
 				It did not save — {free.outcome.failure.message} It is kept on this device,
