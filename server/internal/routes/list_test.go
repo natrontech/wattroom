@@ -47,7 +47,14 @@ func TestTheListCountsYourOwnRidesOfTheRoad(t *testing.T) {
 	if got["carryOnM"] != float64(1700) {
 		t.Errorf("carryOnM = %v, want 1700: the latest ride alone began at 500 and kept 1200", got["carryOnM"])
 	}
-	last, _ := time.Parse(time.RFC3339Nano, got["lastRiddenAt"].(string))
+	at, ok := got["lastRiddenAt"].(string)
+	if !ok {
+		t.Fatalf("lastRiddenAt = %v, want a time", got["lastRiddenAt"])
+	}
+	last, err := time.Parse(time.RFC3339Nano, at)
+	if err != nil {
+		t.Fatalf("lastRiddenAt %q does not parse: %v", at, err)
+	}
 	if time.Since(last) < 30*time.Minute {
 		t.Errorf("lastRiddenAt = %v, want alice's own latest, an hour ago, not bob's", last)
 	}
