@@ -67,6 +67,9 @@ export function createSoundCeiling(
 	};
 }
 
+/** The page's one roadside ceiling: every layer's cowbell, and the world's, counts against it. */
+export const roadsideSound = createSoundCeiling();
+
 /**
  * A game has put this rider out and is still going (#3022): they are at the
  * roadside now, spinning easy with the deck in reach. Only the modes that

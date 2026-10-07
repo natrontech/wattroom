@@ -179,6 +179,14 @@ func (h *Hub) control(c *client, rm *channelState, rider protocol.Rider, cmd pro
 			h.writeError(c, "validation_error", "A Wheelrace's par is 15 to 45 minutes.")
 			return
 		}
+		if route != nil && !isRace(cmd.GameMode) {
+			road, refusal := h.gameRoad(*route, rider.ID)
+			if refusal != "" {
+				h.writeError(c, "forbidden", refusal)
+				return
+			}
+			route.road = road
+		}
 		if refusal := rm.startGameOn(cmd.GameMode, route, cmd.Minutes, rider, h.now()); refusal != "" {
 			h.writeError(c, "invalid_request", refusal)
 		}

@@ -31,6 +31,7 @@
 	import type { BunchView } from '$lib/channel/bunch-view';
 	import { account } from '$lib/account.svelte';
 	import { prefersReducedMotion } from '$lib/motion';
+	import { play } from '$lib/sound/cues';
 	import { generate } from './world';
 	import { readLook } from './look';
 
@@ -82,6 +83,7 @@
 					metre,
 					bunch,
 					steady: () => prefersReducedMotion.current,
+					onCue: play,
 					// Your kit is keyed by who you are, solo or in a bunch: the crew sees the one you see.
 					youId: account.me?.id,
 					// The theme's neon as the canvas resolves it, for the coach's chevron.
@@ -100,15 +102,27 @@
 					},
 					onFail: onfail,
 				});
+				// What a design capture measures on the ride, as /dev/world reports it (World.svelte).
+				if (import.meta.env.DEV)
+					(window as { __worldProbe?: () => unknown }).__worldProbe = () =>
+						scene?.probe();
 			} catch (err) {
 				console.error('world: slot 2 did not start', err);
 				onfail('build-failed');
 			}
+			// A capture measures the ride's world as /dev/world's (docs/design/DESIGN-CHECK.md).
+			if (import.meta.env.DEV && scene)
+				(window as { __worldProbe?: () => unknown }).__worldProbe = () =>
+					scene?.probe();
 		}, 40);
 		return () => {
 			clearTimeout(t);
+			if (import.meta.env.DEV)
+				delete (window as { __worldProbe?: unknown }).__worldProbe;
 			scene?.dispose();
 			scene = null;
+			if (import.meta.env.DEV)
+				delete (window as { __worldProbe?: () => unknown }).__worldProbe;
 		};
 	});
 

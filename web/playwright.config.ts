@@ -71,20 +71,39 @@ export default defineConfig({
 				'voice-duck.spec.ts',
 				'voice-click-join.spec.ts',
 				'design-shots.spec.ts',
+				'design-seed.spec.ts',
 			],
+			use: { ...devices['Desktop Chrome'], launchOptions: { args: [MUTE] } },
+		},
+		{
+			// The design shots' crew, roads and rides, made before any surface
+			// is shot (#3858).
+			name: 'design-seed',
+			testMatch: ['design-seed.spec.ts'],
 			use: { ...devices['Desktop Chrome'], launchOptions: { args: [MUTE] } },
 		},
 		{
 			// The design shots (#3666, docs/design/DESIGN-CHECK.md): what a
 			// rider-visible change looks like, for a reviewer to hold against
-			// its target. Run by `make design-shots`, against this checkout's dev
-			// pair; the spec skips itself unless DESIGN_SHOTS_OUT says where to
-			// write. Metal on a Mac, or headless Chromium falls back to software
-			// GL and the world quietly draws the Flat road; SwiftShader elsewhere,
-			// where the dev build's frame judge stands down (e2e/design/shoot.ts,
-			// #3823) because software GL misses every frame.
+			// its target. Run by `make design-shots`, which builds with the dev
+			// hooks on (/dev/world, the world's probe) and serves that build
+			// here (#3858); the spec skips itself unless DESIGN_SHOTS_OUT says
+			// where to write. Metal on a Mac, or headless Chromium falls back to
+			// software GL and the world quietly draws the Flat road; SwiftShader
+			// elsewhere, where the dev build's frame judge stands down
+			// (e2e/design/shoot.ts, #3823) because software GL misses every frame.
+			// Three workers: one rides Designer's surfaces in order, the others
+			// take the surfaces that share nothing with them. One retry: on a
+			// loaded machine a browser that dies under one surface would
+			// otherwise send its author back to capture it again by hand.
 			name: 'design',
 			testMatch: ['design-shots.spec.ts'],
+			dependencies: ['design-seed'],
+			workers: process.env.CI ? 2 : 3,
+			retries: 1,
+			// ride-road-world rides the world four times: in software GL on a
+			// four-core runner that is past the five minutes a ride is given.
+			timeout: 10 * 60 * 1000,
 			use: {
 				...devices['Desktop Chrome'],
 				// A control that never comes fails its surface in seconds, not
@@ -178,7 +197,9 @@ export default defineConfig({
 		},
 		// Without somewhere to write, every design shot skips — and CI's shards
 		// split by test count, so 43 skips would leave the last one half idle.
-	].filter((p) => p.name !== 'design' || !!process.env.DESIGN_SHOTS_OUT),
+	].filter(
+		(p) => !p.name.startsWith('design') || !!process.env.DESIGN_SHOTS_OUT,
+	),
 	// Serves the built SPA and proxies /api to the Go server, matching production.
 	//
 	// Always builds, never reuses: the server only ever serves build/, so a reused

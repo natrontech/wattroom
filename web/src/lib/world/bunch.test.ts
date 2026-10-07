@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createBunch, formation, LANE, PULL_LANE } from './bunch';
+import { createBunch, formation, LANE, PULL_LANE, VERGE_LANE } from './bunch';
 import type { BunchView } from '$lib/channel/bunch-view';
 
 const ids = (n: number) => Array.from({ length: n }, (_, i) => `r${i}`);
@@ -139,6 +139,23 @@ describe('the bunch between ticks (#3098)', () => {
 		const back = ride(bunch, 5, () => view());
 		expect(back.car).toBeNull();
 		expect(of(back, 'b').lane).toBeCloseTo(-LANE / 2, 1);
+	});
+
+	it('dithers a rider a game put out to their stand, stopped on the verge (#3114)', () => {
+		const bunch = createBunch();
+		ride(bunch, 1, () => view());
+		const stands = new Map([['b', 1400]]);
+		let out = bunch.step(view(), 1 / 30, NaN, stands);
+		// Dithering out of the bunch, never sliding up the road.
+		expect(of(out, 'b').alpha).toBeLessThan(1);
+		expect(of(out, 'b').d).toBeLessThan(1100);
+		for (let k = 0; k < 30; k++) out = bunch.step(view(), 1 / 30, NaN, stands);
+		expect(of(out, 'b').d).toBe(1400);
+		expect(of(out, 'b').lane).toBe(VERGE_LANE);
+		expect(of(out, 'b').v).toBe(0);
+		expect(of(out, 'b').alpha).toBe(1);
+		// The rest ride on in formation.
+		expect(of(out, 'a').v).toBe(8);
 	});
 
 	it('never runs the team car in a game', () => {

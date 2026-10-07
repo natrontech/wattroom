@@ -6,14 +6,17 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createBunch, type Car } from './bunch';
 import { CHEER_S, cheerLook } from './cheer';
 import { makeChalk, type ChalkLayer } from './chalk';
-import { makeCrew, type Crew, type Pedalling } from './crew';
+import { makeGameRoad, type GameRoad } from './game-road';
+import { roadsideSound } from '$lib/roadside';
+import { makeCrew, RING_BAND_M, type Crew, type Pedalling } from './crew';
+import { makeTags, type Tags } from './tags';
 import type { BunchView } from '$lib/channel/bunch-view';
 import { DEFAULT_DARK_ID, themeById } from '$lib/themes';
 import { disposeTree } from './dispose';
 import { makeSight } from './materials';
 import { makeRig, type Follow } from './rig';
 import { type Route } from '$lib/road/route';
-import { at } from '$lib/road/along';
+import { at, leftOf } from '$lib/road/along';
 import {
 	advance,
 	followMetre,
@@ -24,6 +27,7 @@ import {
 	type SimRider,
 } from './sim';
 import { buildStage, summitOf, type Stage } from './stage';
+import { yOf } from './geometry';
 import { placeGrids } from './chunks/grids';
 import { streamGround, type GotGrid, type Grids } from './ground-stream';
 import type { Style } from './styles';
@@ -70,8 +74,10 @@ export type MountOptions = {
 	youId?: string;
 	/** The theme's structural accent, for the coach's chevron; Outrun's absent. */
 	neon?: string;
-	/** Reduced motion, read each frame: a cheer's thumb and light hold still (ADR-0079). */
+	/** Reduced motion, read each frame: a cheer's thumb and light hold still, the fog sea steps (ADR-0079). */
 	steady?: () => boolean;
+	/** A sound the road makes (#3114): the cowbell, as the bunch rides past someone a game put out. */
+	onCue?: (cue: 'cowbell') => void;
 	/** Where the streamed ground's chunks come from: the page's copy, then the build worker (#3606). */
 	grids?: (got: GotGrid) => Grids;
 	/**
@@ -153,6 +159,8 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	);
 	let stage: Stage | null = null;
 	let crew: Crew | null = null;
+	let game: GameRoad | null = null;
+	let tags: Tags | null = null;
 	let progress: number | null = moment ? moment.p : null;
 	let controls: OrbitControls | null = null;
 
@@ -177,14 +185,22 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	}
 
 	function dress(style: Style) {
-		for (const old of [stage?.group, crew?.group, chalk?.group]) {
+		for (const old of [
+			stage?.group,
+			crew?.group,
+			game?.group,
+			tags?.group,
+			chalk?.group,
+		]) {
 			if (!old) continue;
 			scene.remove(old);
 			disposeTree(old);
 		}
 		stage = buildStage(route, world, style, sight, stream);
 		crew = makeCrew(style, neon);
-		scene.add(stage.group, crew.group);
+		game = makeGameRoad(route, world, style);
+		tags = makeTags(style);
+		scene.add(stage.group, crew.group, game.group, tags.group);
 		if (bunch) {
 			chalk = makeChalk(route, style);
 			scene.add(chalk.group);
@@ -238,6 +254,8 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		crew.drive(route, car, mode === 'orbit');
 		if (controls) controls.update();
 		else rig.update(camera, mode === 'orbit' ? 'chase' : mode, you, me, real);
+		game?.follow(camera.position);
+		tags?.update(riders, (r) => crew!.at(r), camera, mode === 'orbit');
 		sight.uCam.value.copy(camera.position);
 		sight.uYou.value.copy(me);
 		look();
@@ -253,9 +271,15 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	 * you included while you ride in it, and the team car (#3098).
 	 */
 	function ride(view: BunchView, real: number) {
-		const out = bunch!.step(view, real, Date.now());
 		chalk?.update(view.chalk ?? []);
 		clock += real;
+		const steady = opts.steady?.() ?? false;
+		// A game's road first: who it has put out stands where it says (#3114).
+		game?.update(view, clock, real, steady);
+		const stands = game?.stands();
+		const out = bunch!.step(view, real, Date.now(), stands);
+		// The cowbell counts against the roadside's one ceiling, like any ring (SPEC "The roadside").
+		if (game?.rang && roadsideSound(Date.now())) opts.onCue?.('cowbell');
 		// A tick's cheers are heard once, however many frames read its view.
 		const tick = view.at ?? view;
 		if (tick !== heard) {
@@ -264,7 +288,6 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 				if (clock - at >= CHEER_S) cheered.delete(id);
 			for (const id of view.cheered) cheered.set(id, clock);
 		}
-		const steady = opts.steady?.() ?? false;
 		const placed = new Set<string>();
 		for (const p of out.riders) {
 			placed.add(p.id);
@@ -279,9 +302,9 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 					watts: 0,
 					d: p.d,
 				});
-				r.ring = false;
 				crewmates.set(p.id, r);
 			}
+			const who = view.present.get(p.id);
 			Object.assign(r, {
 				d: p.d,
 				at: p.d,
@@ -291,7 +314,14 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 				faded: p.faded,
 				coach: p.coach,
 				cheer: cheerOf(p.id, steady),
+				stopped: stands?.has(p.id) ?? false,
+				speaking: !!who?.speaking,
+				level: who?.level,
+				// A live zone where you may see their numbers (ADR-0059): a session's
+				// riders in your channel, unless a game hides the meter; never a faded one.
+				ring: !view.meterHidden && !p.faded,
 			});
+			if (r !== you && who?.name) r.name = who.name;
 			if (r !== you) Object.assign(r, { watts: p.watts, ftp: p.ftp });
 		}
 		for (const id of crewmates.keys())
@@ -388,12 +418,33 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 						}
 				bboxH = Math.round(((hi - lo) / 2) * 1000) / 1000;
 			}
+			// Where a capture reads the near asphalt (#3674): 4 m ahead of your wheel, a metre right of its line, clear of the trail.
+			let asphaltAt: [number, number] | null = null;
+			const yours = figure?.parent;
+			if (yours) {
+				const here = at(route, you.d);
+				const l = leftOf(here.heading);
+				const lane =
+					(yours.position.x - here.x) * l.lx +
+					(yours.position.z - here.z) * l.lz -
+					1;
+				const ahead = at(route, you.d + 4);
+				const la = leftOf(ahead.heading);
+				const v = new THREE.Vector3(
+					ahead.x + la.lx * lane,
+					yOf(route, ahead.ele),
+					ahead.z + la.lz * lane,
+				).project(camera);
+				if (Math.abs(v.x) < 1 && Math.abs(v.y) < 1) asphaltAt = [v.x, v.y];
+			}
 			return {
+				asphaltAt,
 				camera: { fov: Math.round(camera.fov * 100) / 100 },
 				moment: moment ?? null,
 				// What a capture waits on before it shoots: the ground around the eye, whole (#3699).
 				ground: { pending: stream.pending() },
-				figure: { bboxH, kitsInWattBand: crew?.kitsInWattBand() ?? 0 },
+				figure: { bboxH, kitCollisions: crew?.kitCollisions() ?? 0 },
+				ring: { bandM: RING_BAND_M },
 			};
 		},
 		dispose() {

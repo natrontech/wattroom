@@ -170,6 +170,7 @@ func (rm *channelState) tickLocked(now func() time.Time, dt time.Duration, savin
 	// empty tick needs no leader, since nobody is heard to follow.
 	if rm.session.bunch != nil {
 		rm.session.bunch.leader = rm.bunchLeaderLocked()
+		rm.session.bunch.asks = rm.bunchAsksLocked()
 	}
 	rm.session.rideBunch(now())
 	if b := rm.session.bunch; b != nil && state.Phase == "running" {

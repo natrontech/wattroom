@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { ramp } from '../materials';
+import { JERSEY_GLSL } from './jersey';
 import { sunDir } from '../light';
 import type { Style } from '../styles';
 import type { Kit } from './kit';
@@ -82,10 +83,11 @@ float aa(float edge, float x) { float w = max(fwidth(x), 1e-4) * 0.75; return sm
 float triw(float x) { return abs(fract(x) - 0.5) * 2.0; }
 `;
 
-// pattern spaces (contract.ts SP): 3 decal, 4 spokes, 5 blades
+// pattern spaces (contract.ts SP): 1 torso, 2 sleeve (the jersey's pattern), 3 decal, 4 spokes, 5 blades
 const WHEELS = /* glsl */ `#include <color_fragment>
 {
 	int sp = int(vAux.x + 0.5);
+	if (sp == 1 || sp == 2) diffuseColor.rgb = jersey(diffuseColor.rgb, vAux.x, vPc);
 	if (sp >= 3) {
 		float phi = atan(vPc.y, vPc.x); if (phi < 0.0) phi += 6.2831853;
 		float r = length(vPc.xy); float h = 0.5 * angFoot(phi);
@@ -141,12 +143,24 @@ export type FigureMaterial = THREE.MeshToonMaterial & {
 			uWheelDelta: { value: number };
 			uDecalStyle: { value: number };
 			uDecal: { value: THREE.Color };
+			uPattern: { value: number };
+			uTorso: { value: number };
+			uJerseyB: { value: THREE.Color };
+			uJerseyC: { value: THREE.Color };
 		};
 	};
 };
 
-/** One per rider: its wheels' sweep and its decal are its own; the program is shared. */
-export function figureMaterial(kit: Kit, decal: THREE.Color): FigureMaterial {
+/** The jersey's pattern (jersey.ts) and its second and third colours; plain without one. */
+export type JerseyLook = { pattern: number; b: THREE.Color; c: THREE.Color };
+
+/** One per rider: its wheels' sweep, its decal and its jersey's pattern are its own; the program is shared. */
+export function figureMaterial(
+	kit: Kit,
+	decal: THREE.Color,
+	jersey?: JerseyLook,
+	torso = 0.5,
+): FigureMaterial {
 	bands ??= ramp(TOON_BANDS.map((b) => b / 255));
 	const m = new THREE.MeshToonMaterial({
 		vertexColors: true,
@@ -157,6 +171,10 @@ export function figureMaterial(kit: Kit, decal: THREE.Color): FigureMaterial {
 		uWheelDelta: { value: 0 },
 		uDecalStyle: { value: DECAL_STYLES.indexOf(kit.wheels.decal.style) },
 		uDecal: { value: decal.clone() },
+		uPattern: { value: jersey?.pattern ?? 0 },
+		uTorso: { value: torso },
+		uJerseyB: { value: (jersey?.b ?? decal).clone() },
+		uJerseyC: { value: (jersey?.c ?? decal).clone() },
 	};
 	m.userData.u = u;
 	m.onBeforeCompile = (sh) => {
@@ -171,7 +189,10 @@ export function figureMaterial(kit: Kit, decal: THREE.Color): FigureMaterial {
 				'#include <begin_vertex>\nvPc = pc; vAux = aux;',
 			);
 		sh.fragmentShader = sh.fragmentShader
-			.replace('#include <common>', `${PARS}\n#include <common>`)
+			.replace(
+				'#include <common>',
+				`${PARS}\n${JERSEY_GLSL}\n#include <common>`,
+			)
 			.replace('#include <color_fragment>', WHEELS)
 			.replace('#include <opaque_fragment>', LIGHT);
 	};

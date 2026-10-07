@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { api } from '$lib/api';
+	import { backLink } from '$lib/road/route-row';
 	import Banner from '$lib/components/Banner.svelte';
 	import ClimbTable from '$lib/components/ClimbTable.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
@@ -34,6 +35,8 @@
 	 * road (ux.md: a control it cannot use is not drawn).
 	 */
 	const id = $derived(page.params.id ?? '');
+	// Back where the rider came from: a picker's row carries its page (#3683).
+	const back = $derived(backLink(page.url.searchParams.get('back')));
 
 	let route = $state<StoredRoute | null>(null);
 	let error = $state<string | null>(null);
@@ -142,7 +145,9 @@
 >
 
 <main class="page">
-	<a href="/workouts" class="text-muted hover:text-ink text-xs">← Workouts</a>
+	<a href={back.href} class="text-muted hover:text-ink text-xs"
+		>← {back.label}</a
+	>
 
 	{#if missing}
 		<div class="mt-8">

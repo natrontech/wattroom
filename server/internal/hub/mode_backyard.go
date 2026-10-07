@@ -65,6 +65,10 @@ func (b *backyard) linePct() float64 {
 	return math.Round(pct*100) / 100
 }
 
+// pacePct: on a road the bunch rides the line (#3114), so a rider holding
+// it rides with the bunch and one above it rides ahead.
+func (b *backyard) pacePct() float64 { return b.linePct() }
+
 // keptPedalling: the buffer covered the silence, so the below-band clock the
 // lapsed grace started is forgiven (#1576).
 func (b *backyard) keptPedalling(riderID string, seconds int, now time.Time) {

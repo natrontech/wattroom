@@ -56,6 +56,7 @@ export function rideLook(
 			asphalt: w('road-asphalt'),
 			line: w('road-line'),
 			verge: w('road-verge'),
+			shoulder: w('road-shoulder'),
 		},
 		props: {
 			spruce: w('prop-spruce'),
@@ -121,6 +122,11 @@ export function rideLook(
 			panel: w('sign-chrome'),
 			stripe: paint('color-neon'),
 			text: w('sign-white'),
+		},
+		tag: {
+			bg: paint('color-surface'),
+			line: paint('color-neon'),
+			ink: paint('color-ink'),
 		},
 	};
 }

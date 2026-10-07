@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ServerTick } from '$lib/protocol';
 import { bunchOf } from './bunch-view';
+import { levelFromXp } from '$lib/level';
 import type { LiveRider } from './types';
 
 const tick = (world: ServerTick['world'], game = false) =>
@@ -71,6 +72,41 @@ describe('the bunch as the world reads it (#3098)', () => {
 			{ key: 'kim@1200', stamp: 'heart', letter: '', u: 1200 },
 			{ key: 'kim@5300', stamp: 'initial', letter: 'A', u: 5300 },
 		]);
+	});
+
+	it('carries each rider’s name, level and voice for their tag, and a hidden meter (#3086)', () => {
+		const t = tick({ bunchM: 0, speedMps: 0 }, true);
+		t.roster = [{ id: 'a', totalXp: 5000 }] as ServerTick['roster'];
+		t.game = { meterHidden: true } as ServerTick['game'];
+		const riders = [
+			{ id: 'a', name: 'Ana', watts: 200, ftp: 250, speaking: true },
+		] as unknown as LiveRider[];
+		const view = bunchOf(t, riders)!;
+		expect(view.present.get('a')).toMatchObject({
+			name: 'Ana',
+			level: levelFromXp(5000),
+			speaking: true,
+		});
+		expect(view.meterHidden).toBe(true);
+	});
+
+	it('carries a running game’s round and who it has put out, and nothing once it is done (#3114)', () => {
+		const t = tick({ bunchM: 0, speedMps: 0 }, true);
+		t.game = {
+			mode: 'backyard-ramp',
+			phase: 'running',
+			round: 3,
+			roundEndsAtMs: 9000,
+			riders: { a: { eliminated: true }, b: {} },
+		};
+		expect(bunchOf(t, [])!.play).toEqual({
+			mode: 'backyard-ramp',
+			round: 3,
+			roundEndsAt: 9000,
+			out: ['a'],
+		});
+		t.game = { ...t.game, phase: 'done' };
+		expect(bunchOf(t, [])!.play).toBeUndefined();
 	});
 
 	it('says when a game rides, where the team car never runs', () => {

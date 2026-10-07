@@ -2,6 +2,7 @@ package hub
 
 import (
 	"context"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -39,7 +40,9 @@ func (f fakeRoads) ForSession(_ context.Context, coach, workoutJSON string) (str
 	if f.refusal != "" {
 		return "", f.refusal, nil
 	}
-	return strings.Replace(workoutJSON, `"toM":3000}`, `"toM":3000,"profile":"the crew's cut"}`, 1), "", nil
+	// Whatever stretch the reference names: a pick's 3 km, a game's whole cut.
+	toM := regexp.MustCompile(`("toM":[0-9.]+)}`)
+	return toM.ReplaceAllString(workoutJSON, `$1,"profile":"the crew's cut"}`), "", nil
 }
 
 // SharedName names a road workout by its route's generated name, the way
@@ -67,6 +70,36 @@ func TestAPickedRoadRidesTheTickAsTheCrewsCut(t *testing.T) {
 	})
 	if !strings.Contains(tick.Tick.State.WorkoutJSON, `"profile":"the crew's cut"`) {
 		t.Fatalf("the tick carries %s, want the crew's cut attached", tick.Tick.State.WorkoutJSON)
+	}
+}
+
+// A game on a road carries the crew's cut on its workout (#3114), as a pick
+// does, so every screen can draw the road the bunch rides. A race keeps its
+// own (ADR-0067): its workout says it is a race, and carries no road.
+func TestAGameOnARoadRidesTheTickWithTheCrewsCut(t *testing.T) {
+	for _, c := range []struct {
+		mode string
+		road bool
+	}{{"backyard-ramp", true}, {"team-relay", true}, {modeRace, false}} {
+		t.Run(c.mode, func(t *testing.T) {
+			h, _, url := controlHub(t)
+			h.SetRoads(fakeRoads{})
+			coach := dial(t, url, "jan:owner")
+			sendControl(t, coach, protocol.Control{
+				Action: "game", GameMode: c.mode,
+				Route: &protocol.ControlRoute{ID: "3f0c2a4e-8b1d-4c5e-9f6a-7b8c9d0e1f2a"},
+			})
+			tick := awaitFrame(t, coach, "the game on the tick", func(msg protocol.ServerMessage) bool {
+				return msg.Tick != nil && msg.Tick.State.WorkoutJSON != ""
+			})
+			got := tick.Tick.State.WorkoutJSON
+			if has := strings.Contains(got, `"profile":"the crew's cut"`); has != c.road {
+				t.Fatalf("the game's workout %s: road attached %v, want %v", got, has, c.road)
+			}
+			if c.road && !strings.Contains(got, `"fromM":0,"toM":2200`) {
+				t.Fatalf("the game's workout %s, want the whole 2.2 km cut", got)
+			}
+		})
 	}
 }
 

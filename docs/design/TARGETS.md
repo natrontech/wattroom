@@ -139,7 +139,7 @@ World:
 22. Forest: across a 60 s sequence most frames show conifer stands within 10–30 m of the road on one side at least [multi:world-60s]; crowns cross the horizon line; trees in groups of varied height, never evenly spaced single cones; a meadow a clearing with a forest edge behind it; houses in small clusters near the road, judged where a hamlet is in sight [multi:world-hamlet]; no tree or building on the road, its shoulder or the corridor, the chase camera's sightline along the road (`ground.clearOf`) [test:web/src/lib/world/props/props.test.ts]. [world-forest]
 23. Your figure is ADR-0073's, on a drop-bar road bike with spoked wheels: kit, helmet, glasses, no face. Every kit passes the wardrobe's colour guard (`lib/world/placement/safety.ts`, `wattHueBandDeg` in catalogue.json). [world-figure]
 24. Framing: figure 20–30 % of canvas height [probe:figure.bboxH]; horizon ~40–45 % from the top; field of view never > 4° over its base [probe:camera.fov] [multi:world-drift]. [3211-camera]
-25. One thin flat ring under your wheels, in your live zone colour, no halo; band width as SPEC “The world” records. [probe:ring.bandM] [3086-names-ring]
+25. One thin flat ring under your wheels, in your live zone colour, no halo; band width as SPEC “The world” records. [probe:ring.bandM] [test:web/src/lib/world/ride-scene.test.ts] [3086-names-ring]
 26. Your trail the only glowing or additive element: a thin line ~a wheel wide, fading out within a short fixed length behind you; never a wedge or fill. [3663-world-is-your-ride]
 27. On real ground the frame carries the map and height credits. [#3133]
 
@@ -238,8 +238,8 @@ Capture: two dev riders (Designer and a second, name letters only) in one crew's
 1. Crew panel under the seat in the right column, ~18 % wide; rows ≥ 44 px; your row tinted neon at ~16 %; no crew number in watt. [ride-surface]
 2. Moment card top-centre; border watt while live. [ride-surface]
 3. Seat clear; the now-playing line directly under it at the seat's width. [ride-surface]
-4. Name tags: small dark pills with a hairline, only over the two nearest riders and anyone speaking; merged when they would overlap; never in the corridor's lower half. [3086-names-ring]
-5. A crewmate's ring shows only where you may see their numbers (ADR-0059). [3086-names-ring]
+4. Name tags: small dark pills with a hairline, only over the two nearest riders and anyone speaking; merged when they would overlap; never in the corridor's lower half, nor over a panel, the chevron or a cheer's thumb. [test:web/src/lib/world/tags.test.ts] [3086-names-ring]
+5. A crewmate's ring shows only where you may see their numbers (ADR-0059). [test:web/src/lib/world/ride-scene.test.ts] [3086-names-ring]
 6. Both riders in the world: two figures abreast on the road, each in its own kit, not overlapping; your figure still in `RIDER_BOX`. [#3098]
 7. The session's coach (here, you) wears a small violet chevron over the head: flat, unlit, the only one on the road. [#3098]
 8. Formation, the front row's turn every 120 s, a far rider dithering to their place, the pull-over and the team car hold as SPEC “Riding a road together” says. [test:web/src/lib/world/bunch.test.ts] [#3098]
@@ -274,6 +274,16 @@ Capture: Designer and Design Partner race the hairpin road from Designer's voice
 5. The shelter bar and the matches gauge join with their issues. [#3265] [#3263]
 6. ride-session-flat's items hold. [ride-flat]
 7. In a race W/kg sits beside the 3 s power in the game's compact head (decided on #3174). [#3668]
+
+#### ride-game-backyard, ride-game-collective
+
+Capture: Designer coaching and Design Partner riding along in one crew's voice channel, simulated trainers, mixer muted; the coach's socket starts the game on the hairpin road (no screen does yet, #3794). Backyard Ramp from the start, shot at 0:14 and at 2:45 (`ride-game-backyard-arch`); Collective Ramp from 3.5 km, shot in round 2. Targets: none drawn; around the world it is the world layout (`lib/session/docks.ts`), where the game's card takes the column the crew holds otherwise. Canon: #3114; ADR-0065; SPEC "Game mode parameters", "The roadside", "Riding a road together".
+
+1. A game on a road draws its world: the bunch on the road, as a session on a road does. [#3114]
+2. Backyard Ramp: an arch where the bunch will be when the round ends; the KOM arch's chrome, no words (the round lives in the game's card), no glow; close ahead in the round's last seconds. [multi:ride-game-backyard-arch] [test:web/src/lib/world/game-road.test.ts] [#3114]
+3. Collective Ramp: a fog sea, flat and unlit, creeps closer each round but never within 10 m of the riders; the road already climbed may sink into it (SPEC's fog sea "the climb crosses"); steps under reduced motion; none where no land lies below. [test:web/src/lib/world/game-road.test.ts] [#3114]
+4. A rider a game puts out stands, stopped, on the verge at the first hairpin 300 m–5 km ahead; one cowbell as the bunch passes, under the roadside's sound ceiling. [test:web/src/lib/world/ride-scene.test.ts] [#3114]
+5. The bunch rides the round's line in Backyard and Collective Ramp, and the called zone's middle in Floor is Lava. [test:server/internal/hub/game_road_test.go] [#3114]
 
 #### ride-channel-free
 
@@ -375,16 +385,19 @@ Capture: `/dev/world`, 9 s in, 1440 × 900; superseded by world-start and world-
 2. Road as ride-road-world item 21; orange snow poles belong to #3184. [world-road-surface]
 3. Forest stands close to the road, no single cones on bare meadow; houses in small clusters, judged where a hamlet is in sight [multi:world-hamlet]. [world-forest]
 4. The dev crew rides as ADR-0073 figures in distinct kits. [world-figure]
-5. Names over the two nearest riders and anyone speaking; rings thin and flat. [3086-names-ring]
+5. Names over the two nearest riders and anyone speaking; rings thin and flat. [test:web/src/lib/world/tags.test.ts] [3086-names-ring]
+6. Every rider wears a wardrobe look: a catalogue jersey pattern in the look's own colours, a helmet of their own, no two riders in one look. [#3156]
 
 #### world-start, world-end
 
-Capture: `/dev/world?m=<metre>&p=0|1&cam=chase&look=bluehour&chrome=0`, 1440 × 900 and 1280 × 720; world-hamlet the same at m = 1100, a hamlet ahead.
+Capture: `/dev/world?m=<metre>&p=0|1&cam=chase&look=bluehour&chrome=0`, 1440 × 900 and 1280 × 720; world-hamlet the same at m = 1100, a hamlet ahead; world-start also shoots `cam=side` (world-figure-side), `&kit=gipfelpunkte` with a white ground asked for (world-figure-dots), and `&kit=hoops&hold=0` and `&kit=gipfelpunkte&hold=0` four frames a quarter-second apart each (world-figure-motion-1 to 4, world-figure-dots-motion-1 to 4).
 
 1. Two loads of the same URL give an identical frame. [world-moment] [multi:world-start-twice]
 2. With `chrome=0` no dev chrome. [world-moment]
 3. At p=0 no stars. At p=1 stars only in the dark upper sky, never in the peach band, light visibly darker. [3085-ride-light]
 4. The dressing streams with the ground; a held moment draws all of it within the far ring from its first frame (trees, buildings, roadside pieces a ride would meet there), no gap where a tile is still to come. [#3699] [multi:world-start-twice]
+5. Your jersey's pattern lies on the cloth, round the torso and down the sleeves, clean edges that do not crawl; Gipfelpunkte never puts its dots on a white ground. [#3156] [multi:world-figure-side] [multi:world-figure-dots] [multi:world-figure-motion] [multi:world-figure-dots-motion]
+6. No kit colour reads as live data to the viewer: the probe counts none within the viewer's watt band or near a zone. [#3156] [probe:figure.kitCollisions]
 
 ### C. Roads library (desk)
 
