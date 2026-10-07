@@ -1170,11 +1170,12 @@ surface(
 					(r: { d: number }) => r.d,
 				),
 			);
-			// A stamp where the bunch has already ridden is refused while the
-			// climb is still open, and the deck says why and where to try.
+			// A stamp at the road's start, behind the bunch, is refused while
+			// the climb is still open, and the deck says why and where to try.
+			// Not a metre behind the drawn riders: the screen lags the hub.
 			socket?.send(
 				JSON.stringify({
-					roadside: { kind: 'paint', stamp: 'hopp', atM: ahead - 1 },
+					roadside: { kind: 'paint', stamp: 'hopp', atM: 0 },
 				}),
 			);
 			await watcher.page
@@ -1182,6 +1183,8 @@ surface(
 				.filter({ hasText: 'Try' })
 				.scrollIntoViewIfNeeded();
 			await s.shot(watcher, { name: 'roadside-chalk-refused' });
+			// The hub takes one roadside verb a quarter second (controlMinGap).
+			await watcher.page.waitForTimeout(1000);
 			socket?.send(
 				JSON.stringify({
 					roadside: { kind: 'paint', stamp: 'heart', atM: ahead + 30 },
