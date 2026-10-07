@@ -58,6 +58,11 @@
 	const pages = $derived(pagesFor(ctx));
 	const shown = $derived(pages.includes(page) ? page : 'ride');
 	const fields = $derived(fieldsFor(shown, { ...ctx, ownHead: docked }));
+	// Docked under a target the head's track takes the profile's room; the
+	// Skyline under the computer draws the climb and your dot.
+	const profile = $derived(
+		shown === 'climb' && !!ctx.climb && !(docked && ctx.target),
+	);
 	const turns = $derived(pages.length > 1);
 
 	function turn(dir: 1 | -1) {
@@ -296,14 +301,16 @@
 				{/if}
 			</div>
 		{/each}
-		{#if turns && !tv && !phone && !docked}{@render dots()}{/if}
+		{#if turns && !tv && !phone && !docked && !profile}{@render dots()}{/if}
 	</div>
 	{#if zoneStrip}{@render strip(zoneStrip)}{/if}
-	<!-- Docked under a target the head's track takes the profile's room; the
-	     Skyline under the computer draws the climb and your dot. -->
-	{#if shown === 'climb' && ctx.climb && !(docked && ctx.target)}<ClimbProfile
-			view={ctx.climb}
-			{tv}
-		/>{/if}
+	{#if profile && ctx.climb}
+		<!-- Flat, the dots ride beside the profile, so CLIMB is no taller than
+		     RIDE and the Skyline under it keeps its place. -->
+		<div class="flex items-end gap-3">
+			<div class="min-w-0 flex-1"><ClimbProfile view={ctx.climb} {tv} /></div>
+			{#if turns && !tv && !phone && !docked}{@render dots()}{/if}
+		</div>
+	{/if}
 	{#if turns && phone}{@render dots()}{/if}
 </section>
