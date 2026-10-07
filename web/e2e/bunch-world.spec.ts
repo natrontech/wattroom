@@ -129,7 +129,7 @@ test('two screens draw one bunch: each rider where the other screen has them @wo
 		// is class IV from its first metre, and a session offers CLIMB by chip.
 		await expect(
 			coach.locator('[data-surface=docked] [data-testid=climb-chip]'),
-		).toHaveText('Climb IV');
+		).toHaveText('climb IV');
 	} finally {
 		await info.attach('console', { body: said.join('\n') });
 	}

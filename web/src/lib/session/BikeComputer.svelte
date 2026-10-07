@@ -20,7 +20,6 @@
 	import {
 		PAGE_NAMES,
 		claimPageTurn,
-		climbChip,
 		climbHeader,
 		fieldsFor,
 		pagesFor,
@@ -130,22 +129,29 @@
 	<!-- The page's name and its dots sit in the row of numbers, so a page is
 	     one row tall where it fits and the focus above keeps its height (#3597);
 	     a phone's grid puts them above and below. -->
+	{#snippet badge()}
+		<!-- The climb's class in the Skyline's chip, beside every page's name
+		     while a classed climb is near: on CLIMB it names the climb, on the
+		     others it offers it (#3645), and it takes no row of its own. -->
+		{#if ctx.climb}<span
+				data-testid={shown === 'climb' ? 'climb-class' : 'climb-chip'}
+				class="border-neon bg-surface text-ink rounded border px-1 leading-none font-bold tracking-normal"
+				>{#if shown !== 'climb'}<span class="sr-only">{'climb '}</span>{/if}{ctx
+					.climb.card.cls}</span
+			>{/if}
+	{/snippet}
 	{#snippet name()}
-		<!-- CLIMB's name counts the climbs, its class the Skyline's chip. -->
-		{@const climb = shown === 'climb' ? ctx.climb : null}
+		<!-- CLIMB's name counts the climbs. -->
 		<p
 			class="{size.word} text-muted flex items-center gap-3 leading-none whitespace-nowrap {phone
 				? 'mb-2'
 				: ''}"
 		>
 			<span class="tracking-[0.2em]"
-				>{climb ? climbHeader(climb) : PAGE_NAMES[shown]}</span
-			>
-			{#if climb}<span
-					data-testid="climb-class"
-					class="border-neon bg-surface text-ink rounded border px-1 leading-none font-bold"
-					>{climb.card.cls}</span
-				>{/if}
+				>{shown === 'climb' && ctx.climb
+					? climbHeader(ctx.climb)
+					: PAGE_NAMES[shown]}</span
+			>{@render badge()}
 		</p>
 	{/snippet}
 	{#snippet dots()}
@@ -217,7 +223,9 @@
 					class="icon-btn-lg -ml-2"><ChevronLeft size={24} /></button
 				>
 			{/if}
-			<p class="ride-label text-ink">{PAGE_NAMES[shown]}</p>
+			<p class="ride-label text-ink flex items-center gap-2">
+				{PAGE_NAMES[shown]}{@render badge()}
+			</p>
 			{#if turns}
 				<button
 					type="button"
@@ -249,14 +257,6 @@
 		/>
 	{/if}
 	{#if phone}{@render name()}{/if}
-	{#if ctx.climb && shown !== 'climb'}
-		<p
-			data-testid="climb-chip"
-			class="{size.word} text-neon {docked ? 'leading-7' : 'mb-2 leading-none'}"
-		>
-			{climbChip(ctx.climb)}
-		</p>
-	{/if}
 	<div
 		class={docked
 			? 'border-neon/20 grid grid-cols-2 gap-x-6 gap-y-3 border-t pt-3'

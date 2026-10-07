@@ -61,7 +61,7 @@ test.describe('the climb card', () => {
 		// Paged away: the page stays yours, and a chip names the climb.
 		await page.keyboard.press('ArrowRight');
 		await expect(computer).toHaveAttribute('data-page', 'power');
-		await expect(computer.getByTestId('climb-chip')).toHaveText('Climb IV');
+		await expect(computer.getByTestId('climb-chip')).toHaveText('climb IV');
 		await page.keyboard.press('ArrowLeft');
 		await expect(computer).toHaveAttribute('data-page', 'climb');
 		await expect(computer.getByTestId('climb-chip')).toHaveCount(0);

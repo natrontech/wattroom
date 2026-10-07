@@ -130,15 +130,6 @@ export function climbHeader(view: ClimbView): string {
 	return `CLIMB ${view.card.n} OF ${view.card.of}`;
 }
 
-/**
- * The chip on another page, for a rider who paged away (#3089): a label, as
- * v2-erg's. Its distances have homes already: to the top on CLIMB, the foot
- * on the road line (D17).
- */
-export function climbChip(view: ClimbView): string {
-	return `Climb ${view.card.cls}`;
-}
-
 /** The page a turn lands on, wrapping at both ends. */
 export function turned(
 	pages: readonly ComputerPage[],
@@ -158,7 +149,7 @@ export function fieldsFor(page: ComputerPage, ctx: ComputerContext): Field[] {
 		if (!climb) return [];
 		const top = distance(climb.card.toTopM);
 		// v2-ride's words: at SPEC's 24 px each fits half a docked computer.
-		const fields: Field[] = [
+		return [
 			{ key: 'toTop', label: 'To top', ...top },
 			{
 				key: 'ascentLeft',
@@ -173,11 +164,6 @@ export function fieldsFor(page: ComputerPage, ctx: ComputerContext): Field[] {
 				unit: '%',
 			},
 		];
-		// Docked, the page control names the page, so the class fills the
-		// grid's fourth cell instead of a header line (box table: ≤ 553 px).
-		if (ctx.ownHead)
-			fields.push({ key: 'class', label: 'Class', value: climb.card.cls });
-		return fields;
 	}
 	if (page === 'power') {
 		const s = ctx.stats;

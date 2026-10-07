@@ -3,7 +3,6 @@ import type { LiveStats } from '$lib/ride/live-stats.svelte';
 import type { ClimbView } from '$lib/ride/climb-view';
 import type { RaceReadout } from '$lib/race/race-view';
 import {
-	climbChip,
 	climbHeader,
 	fieldsFor,
 	pagesFor,
@@ -314,21 +313,6 @@ describe('CLIMB (#3645)', () => {
 		]);
 		const near = fieldsFor('climb', ride({ climb: climb({ toTopM: 420 }) }));
 		expect(near[0]).toMatchObject({ value: '400', unit: 'm' });
-	});
-
-	it('docked, carries the class in its grid, as the page control names the page', () => {
-		const fields = fieldsFor('climb', ride({ climb: climb(), ownHead: true }));
-		expect(fields.map((f) => [f.label, f.value])).toEqual([
-			['To top', '2.4'],
-			['Ascent', '186'],
-			['Avg left', '7.8'],
-			['Class', 'I'],
-		]);
-	});
-
-	it('names the climb on another page, its distances in their homes', () => {
-		expect(climbChip(climb({}, 380))).toBe('Climb I');
-		expect(climbChip(climb())).toBe('Climb I');
 	});
 });
 
