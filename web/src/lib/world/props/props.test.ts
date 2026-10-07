@@ -9,9 +9,11 @@ import type { Placement, Road, Violation } from '../placement/types';
 import { hashSeed } from '../rand';
 import { syntheticPoints } from '../synthetic';
 import { origin, routeLines } from '../terrain/network.test-helper';
-import { drawnRows, ROAD_W } from '../terrain/road-profile';
+import { makeGround } from '../terrain/ground';
+import { drawnRows, ROAD_W, SHOULDER } from '../terrain/road-profile';
 import { generate, type World } from '../world';
 import { BUILD_MS } from '../world.test-helper';
+import { FAMILY } from './batch';
 import type { Prop } from './scatter';
 import { standNetwork } from './stand.test-helper';
 import { TILE_M, tileCentre } from './tiles';
@@ -117,6 +119,31 @@ describe('the dev world’s props', () => {
 		}
 		expect(w.placements.length).toBeGreaterThan(3000);
 		expect(out).toEqual([]);
+	});
+
+	it('keeps every tree and building out of the road, its shoulder and the chase camera’s sightline, (#3675)', () => {
+		// The corridor is the road and its shoulder, widened on the inside of a bend where the camera's sightline cuts it.
+		const ground = makeGround(w.roads, { salt: w.salt });
+		const shoulder = ROAD_W / 2 + SHOULDER;
+		const CROWN_M = 3;
+		const trees = w.props.filter((p) => FAMILY[p.kind] === 'trees');
+		const homes = w.placements
+			.filter((p) => p.cls === 'building')
+			.map(({ id, footprint: f }) => {
+				const cx = f.reduce((s, [x]) => s + x, 0) / f.length;
+				const cz = f.reduce((s, [, z]) => s + z, 0) / f.length;
+				const r = Math.max(...f.map(([x, z]) => Math.hypot(x - cx, z - cz)));
+				return { id, cx, cz, r };
+			});
+		expect(trees.length).toBeGreaterThan(3000);
+		expect(homes.length).toBeGreaterThan(20);
+		const inCorridor = [
+			...trees.map((t) => ({ id: t.kind, cx: t.x, cz: t.z, r: CROWN_M })),
+			...homes,
+		]
+			.filter((p) => !ground.clearOf(p.cx, p.cz, shoulder + p.r))
+			.map((p) => p.id);
+		expect(inCorridor).toEqual([]);
 	});
 
 	it('builds each village around its church, and grazes cows', () => {

@@ -6,33 +6,32 @@
 			"web/src/lib/session/BikeComputer.svelte",
 			"web/src/lib/session/computer-pages.ts",
 			"web/src/lib/session/RideHeader.svelte",
-			"web/src/lib/ride/Skyline.svelte",
 			"web/src/lib/components/IntervalGraph.svelte",
 			"web/src/lib/session/Instrument.svelte",
-			"web/src/lib/world/FlatRoad.svelte",
-			"web/src/lib/world/ride-view.ts"
+			"web/src/lib/ride/RidingScreen.svelte"
 		],
+		"surfaces": ["ride-road-world", "ride-workout-flat", "ride-free-road"]
+	},
+	{
+		"files": ["web/src/lib/world/ride-view.ts"],
 		"surfaces": [
 			"ride-road-world",
 			"ride-workout-world",
-			"ride-workout-flat",
 			"ride-skyline-fallback",
-			"ride-status",
-			"ride-countin",
-			"ride-free-road",
-			"ride-free-road-world",
-			"ride-free-road-ghost",
-			"ride-road-end",
-			"ride-session-road",
-			"ride-session-flat",
-			"ride-race",
-			"ride-channel-free",
-			"ride-ramp",
-			"ride-tv",
-			"ride-watch",
-			"phone-ride",
-			"phone-ride-road"
+			"ride-free-road"
 		]
+	},
+	{
+		"files": ["web/src/lib/ride/Skyline.svelte"],
+		"surfaces": ["ride-free-road", "ride-skyline-fallback"]
+	},
+	{
+		"files": ["web/src/lib/world/FlatRoad.svelte"],
+		"surfaces": ["ride-skyline-fallback"]
+	},
+	{
+		"files": ["web/src/lib/ride/RideStatus.svelte"],
+		"surfaces": ["ride-status"]
 	},
 	{
 		"files": [
@@ -67,7 +66,6 @@
 	{
 		"files": [
 			"web/src/lib/session/Training.svelte",
-			"web/src/lib/session/TrainingPhone.svelte",
 			"web/src/routes/(app)/crew/*/s/**"
 		],
 		"surfaces": [
@@ -75,6 +73,10 @@
 			"ride-session-flat",
 			"closing-card-session"
 		]
+	},
+	{
+		"files": ["web/src/lib/session/TrainingPhone.svelte"],
+		"surfaces": ["ride-watch", "phone"]
 	},
 	{
 		"files": [
@@ -91,27 +93,27 @@
 		"surfaces": ["ride-tv"]
 	},
 	{
+		"files": ["web/src/lib/device.svelte.ts"],
+		"surfaces": [
+			"phone-ride",
+			"phone-ride-road",
+			"phone-workouts",
+			"phone-route",
+			"phone-home"
+		]
+	},
+	{
 		"files": ["web/src/routes/(app)/hud/**", "web/src/lib/hud/**"],
 		"surfaces": ["hud", "hud-shell"]
 	},
 	{
-		"files": [
-			"web/src/lib/workout/ride-life.svelte.ts",
-			"web/src/routes/(app)/+layout.svelte"
-		],
+		"files": ["web/src/lib/workout/ride-life.svelte.ts"],
 		"surfaces": [
 			"ride-free-road",
 			"ride-countin",
-			"ride-status",
 			"ride-road-world",
-			"ride-preride",
-			"workouts",
-			"closing-card",
-			"history",
-			"home",
-			"appearance",
-			"garage-shop",
-			"open-rides"
+			"ride-workout-flat",
+			"closing-card"
 		]
 	},
 	{
@@ -120,29 +122,20 @@
 			"ride-preride",
 			"ride-roadpick",
 			"ride-workout-flat",
-			"ride-workout-world",
 			"ride-road-world",
 			"ride-free-road",
-			"ride-free-road-world",
 			"ride-countin",
 			"ride-road-end",
-			"closing-card",
-			"closing-card-road",
-			"phone-ride",
-			"phone-ride-road"
+			"closing-card"
 		]
 	},
 	{
 		"files": ["web/src/lib/world/**"],
-		"surfaces": [
-			"world-start",
-			"world-end",
-			"dev-world",
-			"ride-road-world",
-			"ride-free-road-world",
-			"ride-workout-world",
-			"phone-ride-road"
-		]
+		"surfaces": ["world-start", "world-end", "ride-road-world"]
+	},
+	{
+		"files": ["web/src/routes/(app)/dev/world/**"],
+		"surfaces": ["dev-world", "world-start", "world-end"]
 	},
 	{
 		"files": [
@@ -170,9 +163,7 @@
 		],
 		"surfaces": [
 			"workouts",
-			"phone-workouts",
 			"route",
-			"phone-route",
 			"import-idle",
 			"import",
 			"import-saved",
@@ -208,7 +199,7 @@
 	},
 	{
 		"files": ["web/src/routes/(app)/home/**", "web/src/lib/home/**"],
-		"surfaces": ["home", "phone-home"]
+		"surfaces": ["home"]
 	},
 	{
 		"files": [
@@ -252,24 +243,21 @@
 		"surfaces": ["open-rides"]
 	},
 	{
-		"files": ["web/src/app.css", "web/src/lib/themes.ts"],
-		"surfaces": [
-			"ride-workout-flat",
-			"ride-road-world",
-			"workouts",
-			"route",
-			"closing-card",
-			"home",
-			"appearance",
-			"sound-dialog"
-		]
+		"files": ["web/src/lib/race/**"],
+		"surfaces": ["ride-race"]
 	},
 	{
 		"files": [
-			"web/src/lib/race/**"
+			"web/src/app.css",
+			"web/src/lib/themes.ts",
+			"web/src/routes/(app)/+layout.svelte"
 		],
 		"surfaces": [
-			"ride-race"
+			"ride-road-world",
+			"ride-workout-flat",
+			"route",
+			"home",
+			"appearance"
 		]
 	}
 ]

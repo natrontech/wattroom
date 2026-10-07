@@ -50,8 +50,8 @@ Standing down: withdraw your claim and write "proceed, do not stand down on acco
 
 ## What worktrees share
 
-- `scripts/dev-env.sh` derives each worktree's ports and databases from its path: server 8100+, Vite 5500+, verify 8500+, e2e 4400+ and 8700+, databases `wattroom_wt_<name>_<crc>` and `wattroom_test_wt_<name>_<crc>`. The main tree keeps :8080, :5174, :8082, :4173/:8081 and `wattroom` / `wattroom_test`. `make dev-env` prints them.
-- Both databases are created on demand and nothing removes them but `make dev-db-drop`.
+- `scripts/dev-env.sh` derives each worktree's ports and databases from its path: server 8100+, Vite 5500+, verify 8500+, e2e 4400+ and 8700+, databases `wattroom_wt_<name>_<crc>`, `wattroom_test_wt_<name>_<crc>` and `wattroom_design_wt_<name>_<crc>` (the design shots', made fresh each run). The main tree keeps :8080, :5174, :8082, :4173/:8081 and `wattroom` / `wattroom_test` / `wattroom_design`. `make dev-env` prints them.
+- The databases are created on demand and nothing removes them but `make dev-db-drop`.
 - A whole `go test ./...` run, and the next one, share one test database: a fixture that must be alone needs a run-unique name, and one that must survive a retention sweep is dated inside the retention. `WATTROOM_TEST_DB` overrides the name; a bare `go test` hits the main tree's.
 - Still shared: one Postgres server and one LiveKit. Say so when you verify audio.
 - `make infra` always starts the one compose project `wattroom`, wherever you run it. Never `docker compose up` by hand and never bring a compose project down. `make worktree-gc` names stray postgres containers and prints the `docker rm -f`; it stops nothing itself.

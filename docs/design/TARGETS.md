@@ -136,7 +136,7 @@ World:
 19. No warm key light, no cast shadow; shading soft and cool, from the sky. [3085-ride-light]
 20. Distant ridges opaque, paler and bluer with distance; no translucent pink layers, no white stripes. [3085-ride-light]
 21. Road: near asphalt cool dark grey, ~rgb 30–40 / 32–42 / 45–60 (tier3 samples 33,36,53), fine grain, never black [probe:asphaltRgb]; off-white edge lines and dashed centre line painted flat; a lighter gravel shoulder outside the edge line, then a green-grey verge; white posts with a black band in a steady rhythm to the vanishing point; grain still under the moving camera [multi:world-drift]; snow poles belong to #3184. [world-road-surface]
-22. Conifer stands frame the road within 10–30 m, crowns crossing the horizon line. [multi:world-60s] [world-forest]
+22. Forest: across a 60 s sequence most frames show conifer stands within 10–30 m of the road on one side at least [multi:world-60s]; crowns cross the horizon line; trees in groups of varied height, never evenly spaced single cones; a meadow a clearing with a forest edge behind it; houses in small clusters near the road, judged where a hamlet is in sight [multi:world-hamlet]; no tree or building on the road, its shoulder or the corridor, the chase camera's sightline along the road (`ground.clearOf`) [test:web/src/lib/world/props/props.test.ts]. [world-forest]
 23. Your figure is ADR-0073's, on a drop-bar road bike with spoked wheels: kit, helmet, glasses, no face. Every kit passes the wardrobe's colour guard (`lib/world/placement/safety.ts`, `wattHueBandDeg` in catalogue.json). [world-figure]
 24. Framing: figure 20–30 % of canvas height [probe:figure.bboxH]; horizon ~40–45 % from the top; field of view never > 4° over its base [probe:camera.fov] [multi:world-drift]. [3211-camera]
 25. One thin flat ring under your wheels, in your live zone colour, no halo; band width as SPEC “The world” records. [probe:ring.bandM] [3086-names-ring]
@@ -363,13 +363,13 @@ Capture: `/dev/world`, 9 s in, 1440 × 900; superseded by world-start and world-
 
 1. The “Alpine blue hour” look is ADR-0072's ride light, as ride-road-world items 18–20; its colours an app.css token family. [3085-ride-light]
 2. Road as ride-road-world item 21; orange snow poles belong to #3184. [world-road-surface]
-3. Forest stands close to the road, no single cones on bare meadow; houses in small clusters. [world-forest]
+3. Forest stands close to the road, no single cones on bare meadow; houses in small clusters, judged where a hamlet is in sight [multi:world-hamlet]. [world-forest]
 4. The dev crew rides as ADR-0073 figures in distinct kits. [world-figure]
 5. Names over the two nearest riders and anyone speaking; rings thin and flat. [3086-names-ring]
 
 #### world-start, world-end
 
-Capture: `/dev/world?m=<metre>&p=0|1&cam=chase&look=bluehour&chrome=0`, 1440 × 900 and 1280 × 720.
+Capture: `/dev/world?m=<metre>&p=0|1&cam=chase&look=bluehour&chrome=0`, 1440 × 900 and 1280 × 720; world-hamlet the same at m = 1100, a hamlet ahead.
 
 1. Two loads of the same URL give an identical frame. [world-moment] [multi:world-start-twice]
 2. With `chrome=0` no dev chrome. [world-moment]
