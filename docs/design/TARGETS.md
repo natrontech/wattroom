@@ -265,6 +265,16 @@ Capture: Designer and Design Partner race the hairpin road from Designer's voice
 6. ride-session-flat's items hold. [ride-flat]
 7. In a race W/kg sits beside the 3 s power in the game's compact head (decided on #3174). [#3668]
 
+#### ride-game-backyard, ride-game-collective
+
+Capture: Designer coaching and Design Partner riding along in one crew's voice channel, simulated trainers, mixer muted; the coach's socket starts the game on the hairpin road (no screen does yet, #3794). Backyard Ramp from the start, shot at 0:14 and at 2:45 (`ride-game-backyard-arch`); Collective Ramp from 3.5 km, shot in round 2. Targets: none drawn; around the world it is the world layout (`lib/session/docks.ts`), where the game's card takes the column the crew holds otherwise. Canon: #3114; ADR-0065; SPEC "Game mode parameters", "The roadside", "Riding a road together".
+
+1. A game on a road draws its world: the bunch on the road, as a session on a road does. [#3114]
+2. Backyard Ramp: an arch where the bunch will be when the round ends; the KOM arch's chrome, no words (the round lives in the game's card), no glow; close ahead in the round's last seconds. [multi:ride-game-backyard-arch] [test:web/src/lib/world/game-road.test.ts] [#3114]
+3. Collective Ramp: a fog sea, flat and unlit, creeps closer each round but never within 10 m of the riders; the road already climbed may sink into it (SPEC's fog sea "the climb crosses"); steps under reduced motion; none where no land lies below. [test:web/src/lib/world/game-road.test.ts] [#3114]
+4. A rider a game puts out stands, stopped, on the verge at the first hairpin 300 m–5 km ahead; one cowbell as the bunch passes, under the roadside's sound ceiling. [test:web/src/lib/world/ride-scene.test.ts] [#3114]
+5. The bunch rides the round's line in Backyard and Collective Ramp, and the called zone's middle in Floor is Lava. [test:server/internal/hub/game_road_test.go] [#3114]
+
 #### ride-channel-free
 
 Capture: the voice channel's free ride (`lib/ride/FreeRide.svelte`), world off.

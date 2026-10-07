@@ -74,6 +74,25 @@ describe('the bunch as the world reads it (#3098)', () => {
 		expect(view.meterHidden).toBe(true);
 	});
 
+	it('carries a running game’s round and who it has put out, and nothing once it is done (#3114)', () => {
+		const t = tick({ bunchM: 0, speedMps: 0 }, true);
+		t.game = {
+			mode: 'backyard-ramp',
+			phase: 'running',
+			round: 3,
+			roundEndsAtMs: 9000,
+			riders: { a: { eliminated: true }, b: {} },
+		};
+		expect(bunchOf(t, [])!.play).toEqual({
+			mode: 'backyard-ramp',
+			round: 3,
+			roundEndsAt: 9000,
+			out: ['a'],
+		});
+		t.game = { ...t.game, phase: 'done' };
+		expect(bunchOf(t, [])!.play).toBeUndefined();
+	});
+
 	it('says when a game rides, where the team car never runs', () => {
 		expect(bunchOf(tick({ bunchM: 0, speedMps: 0 }, true), [])!.game).toBe(
 			true,

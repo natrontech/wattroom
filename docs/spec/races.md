@@ -4,18 +4,18 @@ Part of the product spec. [docs/SPEC.md](../SPEC.md) indexes every section and s
 
 ## Open rides (defaults — tune in alpha; [ADR-0076](../decisions/0076-shared-roads-not-an-open-world.md))
 
-| Parameter            | Value                                                                                                                  |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Per crew             | at most **3** open rides starting in any rolling **7 days**, opened at most **28 days** ahead, inside the 3-month planning bound |
-| Riders per ride      | **100**; the 101st is refused with `rate_limited` ("This ride is full")                                                 |
-| The pen              | opens **10 min** before the flag; the count-in is #3087's                                                               |
-| Group ride, late join | lands at the bunch with #3108's drop-off, up to the plan's last **10 min**                                            |
-| Race formats         | the pen closes at the flag; disconnect grace **30 s** (Races)                                                          |
-| Stranger figures     | **40** visible on the high tier, **16** on the low; the rest are Skyline dots and counts in the peloton ring            |
-| Coarse kit           | **12** jersey colourways and **6** bike silhouettes                                                                    |
-| Ride-id map          | kept until **24 h** after the ride ends; reports kept **30 days**                                                      |
-| Name audience        | refreshed every **60 s**                                                                                               |
-| Leader calls         | **6** codes — welcome; climb ahead; stay together over the top; last 5 km; sprint at the sign; thanks for riding — at most **1** per **20 s** per ride |
+| Parameter             | Value                                                                                                                                                  |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Per crew              | at most **3** open rides starting in any rolling **7 days**, opened at most **28 days** ahead, inside the 3-month planning bound                       |
+| Riders per ride       | **100**; the 101st is refused with `rate_limited` ("This ride is full")                                                                                |
+| The pen               | opens **10 min** before the flag; the count-in is #3087's                                                                                              |
+| Group ride, late join | lands at the bunch with #3108's drop-off, up to the plan's last **10 min**                                                                             |
+| Race formats          | the pen closes at the flag; disconnect grace **30 s** (Races)                                                                                          |
+| Stranger figures      | **40** visible on the high tier, **16** on the low; the rest are Skyline dots and counts in the peloton ring                                           |
+| Coarse kit            | **12** jersey colourways and **6** bike silhouettes                                                                                                    |
+| Ride-id map           | kept until **24 h** after the ride ends; reports kept **30 days**                                                                                      |
+| Name audience         | refreshed every **60 s**                                                                                                                               |
+| Leader calls          | **6** codes — welcome; climb ahead; stay together over the top; last 5 km; sprint at the sign; thanks for riding — at most **1** per **20 s** per ride |
 
 ## The roadside ([ADR-0064](../decisions/0064-the-roadside.md) — defaults, tune in alpha)
 
@@ -91,12 +91,12 @@ What v0 ships (#3022):
 - **Critical power**: its lines are #3262's.
 - **Team-car radio**: closed phrases only — neutral zone, km 0, race held, race back on, **10**, **5**, **2** and **1 km** and **500 m** to the line, over the line — at most one every **20 s**, the most pressing first. It never says a number the RACE page shows.
 
-| Format     | Parameters                                                                                                                         |
-| ---------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Format     | Parameters                                                                                                                                                    |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Devil      | starts **45 s** ahead at **95 %** of par; a spectator's tug moves it **±1** point per **20 s**, within **88–102 %**, frozen while a rider is within **300 m** |
-| Last Light | **10**, **20** or **30 min**, default **20**; the fog closes from **3 km** to **150 m** over the final **60 s**                      |
-| Wheelrace  | par time **15–45 min**, default **30**; hard close at par **+15 %**                                                                |
-| The Col    | the summit café waits at most **5 min**                                                                                            |
+| Last Light | **10**, **20** or **30 min**, default **20**; the fog closes from **3 km** to **150 m** over the final **60 s**                                               |
+| Wheelrace  | par time **15–45 min**, default **30**; hard close at par **+15 %**                                                                                           |
+| The Col    | the summit café waits at most **5 min**                                                                                                                       |
 
 **The crowd on a climb**: density ρ(d) = ρmax · (1 − d/1500)², with ρmax
 **0.6/m** on class I and HC climbs and **0.25/m** on III–IV; at most **400**
@@ -108,47 +108,48 @@ Only in races and in free rides on a road, and always computed by the hub. The
 numbers follow Blocken (2018, 2025), Spoelstra (2021) and Zwift's PD4.1.1
 tests; the 50 % cap is a rule.
 
-| Parameter        | Value                                                                                                     |
-| ---------------- | --------------------------------------------------------------------------------------------------------- |
-| Shelter behind   | **35 %** up to a **1.0 m** wheel gap, fading linearly to **0** at **6 m**                                 |
-| Shelter in a line | **35 / 45 / 50 %** for second, third and later wheels; capped at **50 %** (rule)                          |
-| Adjacent lane    | **× 0.5**                                                                                                 |
-| Front rider      | **−3 %** drag with a wheel within **1 m** behind                                                          |
-| Lanes            | **3 / 4 / 5** lanes for up to **6 / 12 / more** riders, plus the passing lane; minimum gap **0.3 m**; one lane change per **2 s** |
-| Easing           | shelter eased with τ **2 s**                                                                              |
-| Groups           | split at a **2 s** gap                                                                                    |
-| Attack           | at least **+1.0 W/kg** over the group mean, with no shelter, for at least **3 s**                         |
-| Timing           | an effort above **5 %** mean shelter is untimeable (rule; Road times)                                     |
-| Trainer          | Cw = **0.51** × (1 − shelter) × k³ (Virtual gears), eased, written on a change of at least **5** points and at least **2 s** apart; a gear shift is exempt from the spacing |
-| No Cw            | a trainer that ignores Cw gets an equal grade offset                                                      |
+| Parameter         | Value                                                                                                                                                                       |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Shelter behind    | **35 %** up to a **1.0 m** wheel gap, fading linearly to **0** at **6 m**                                                                                                   |
+| Shelter in a line | **35 / 45 / 50 %** for second, third and later wheels; capped at **50 %** (rule)                                                                                            |
+| Adjacent lane     | **× 0.5**                                                                                                                                                                   |
+| Front rider       | **−3 %** drag with a wheel within **1 m** behind                                                                                                                            |
+| Lanes             | **3 / 4 / 5** lanes for up to **6 / 12 / more** riders, plus the passing lane; minimum gap **0.3 m**; one lane change per **2 s**                                           |
+| Easing            | shelter eased with τ **2 s**                                                                                                                                                |
+| Groups            | split at a **2 s** gap                                                                                                                                                      |
+| Attack            | at least **+1.0 W/kg** over the group mean, with no shelter, for at least **3 s**                                                                                           |
+| Timing            | an effort above **5 %** mean shelter is untimeable (rule; Road times)                                                                                                       |
+| Trainer           | Cw = **0.51** × (1 − shelter) × k³ (Virtual gears), eased, written on a change of at least **5** points and at least **2 s** apart; a gear shift is exempt from the spacing |
+| No Cw             | a trainer that ignores Cw gets an equal grade offset                                                                                                                        |
 
 ## Riding a road together (defaults — tune in alpha; [ADR-0065](../decisions/0065-riding-a-road-together.md))
 
 The bunch's one position advances once per whole second, never on a sprint
 window's 4 Hz ticks. Its pace:
 
-| The plan is                             | The bunch moves at                                                   |
-| --------------------------------------- | -------------------------------------------------------------------- |
-| an ERG workout, or a workout on a route | the reference rider (Route rides) at the block's prescribed %FTP     |
-| a sprint block                          | the reference rider at **150 %** FTP                                 |
-| paused                                  | **0**                                                                |
-| a road step                             | the live mean %FTP of the pedalling riders, each capped at **150 %** |
+| The plan is                             | The bunch moves at                                                                                                                                                                                                                                   |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| an ERG workout, or a workout on a route | the reference rider (Route rides) at the block's prescribed %FTP                                                                                                                                                                                     |
+| a sprint block                          | the reference rider at **150 %** FTP                                                                                                                                                                                                                 |
+| paused                                  | **0**                                                                                                                                                                                                                                                |
+| a road step                             | the live mean %FTP of the pedalling riders, each capped at **150 %**                                                                                                                                                                                 |
+| a game on a road                        | what its mode asks of everyone, capped at **150 %**: Team Relay's front rider while they pedal (#3030); Backyard and Collective Ramp at the round's line; Floor is Lava at the middle of the called zone (#3114). Any other mode rides the live mean |
 
 A rider's bias never moves the bunch.
 
-| Parameter            | Value                                                                                                   |
-| -------------------- | ------------------------------------------------------------------------------------------------------- |
-| Offset decay         | τ **20 s**                                                                                              |
-| Offset clamp         | **−10 … +25 m** while pedalling                                                                         |
-| Resting              | a rider silent past **10 s** (the virtual-speed rule) coasts back to **−40 m** and is marked Resting    |
-| Team-car tow back    | **20 s**; only in bunch rides and ERG sessions — never in a race, a game or a timeable effort; a towed rider gives no shelter |
-| Formation            | rows of Drafting's lanes, filled in the order riders joined, centred on the bunch's metre (#3098)       |
-| Front row            | rotates every **120 s** of elapsed time                                                                 |
-| Lanes                | a critically damped spring with a **0.6 s** half-life (#3098)                                           |
-| Client snap          | within **25 m** of their place a rider eases there over **5 s**; further, they dither out (**200 ms**) and back in (**300 ms**) there, never sliding through others (#3098); relaxes to **0 %** grade at **1 %/s** after **5 s** of dead reckoning |
-| Late join            | a **3 s** drop-off                                                                                      |
-| KOM sprints          | open **300 m** before the top of a class **III** climb or harder; at most one per **5 min**, **6** per ride |
-| Terrain Match        | **250 m** step; penalty weight **0.3**; suggestion floor **0.2**                                        |
+| Parameter         | Value                                                                                                                                                                                                                                              |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Offset decay      | τ **20 s**                                                                                                                                                                                                                                         |
+| Offset clamp      | **−10 … +25 m** while pedalling                                                                                                                                                                                                                    |
+| Resting           | a rider silent past **10 s** (the virtual-speed rule) coasts back to **−40 m** and is marked Resting                                                                                                                                               |
+| Team-car tow back | **20 s**; only in bunch rides and ERG sessions — never in a race, a game or a timeable effort; a towed rider gives no shelter                                                                                                                      |
+| Formation         | rows of Drafting's lanes, filled in the order riders joined, centred on the bunch's metre (#3098)                                                                                                                                                  |
+| Front row         | rotates every **120 s** of elapsed time                                                                                                                                                                                                            |
+| Lanes             | a critically damped spring with a **0.6 s** half-life (#3098)                                                                                                                                                                                      |
+| Client snap       | within **25 m** of their place a rider eases there over **5 s**; further, they dither out (**200 ms**) and back in (**300 ms**) there, never sliding through others (#3098); relaxes to **0 %** grade at **1 %/s** after **5 s** of dead reckoning |
+| Late join         | a **3 s** drop-off                                                                                                                                                                                                                                 |
+| KOM sprints       | open **300 m** before the top of a class **III** climb or harder; at most one per **5 min**, **6** per ride                                                                                                                                        |
+| Terrain Match     | **250 m** step; penalty weight **0.3**; suggestion floor **0.2**                                                                                                                                                                                   |
 
 ## Crew Tour (defaults — tune in alpha; [ADR-0080](../decisions/0080-a-crews-season-is-a-tour.md))
 

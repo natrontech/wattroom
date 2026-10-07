@@ -16,6 +16,8 @@ const BIKE = rigFor(resolveKit()).bk;
 const ROW_M = BIKE.wheelbase + 2 * BIKE.R + 1.0;
 /** Where a resting rider pulls over: the right shoulder, as on a Swiss road. */
 export const PULL_LANE = -(ROAD_W / 2 - 0.5);
+/** Where a rider a game put out stands (#3114): on the right verge, clear of the road. */
+export const VERGE_LANE = -(ROAD_W / 2 + 1);
 /** docs/SPEC.md "Riding a road together": the front row rotates every 120 s of elapsed time. */
 const ROTATE_S = 120;
 /** … the team car tows a rider back in over 20 s. */
@@ -127,11 +129,16 @@ export function createBunch() {
 	// The least a tick has been late here: the network and the two clocks.
 	let early = Infinity;
 
-	/** `now` is the wall clock in ms, what a tick's `at` is read against. */
+	/**
+	 * `now` is the wall clock in ms, what a tick's `at` is read against.
+	 * `stands` are the riders a game has put out (#3114), each stopped on the
+	 * verge where they stand, metres along the road.
+	 */
 	function step(
 		view: BunchView,
 		real: number,
 		now = NaN,
+		stands?: ReadonlyMap<string, number>,
 	): { riders: Placed[]; car: Car | null } {
 		t += real;
 		if (view.m !== lastM) {
@@ -181,6 +188,11 @@ export function createBunch() {
 				};
 				riders.set(id, f);
 			}
+			const stand = stands?.get(id);
+			if (stand !== undefined) {
+				atRoadside(f, stand, real);
+				continue;
+			}
 			if (f.resting && !resting.has(id) && !view.game) f.towUntil = t + TOW_S;
 			f.resting = resting.has(id);
 			const there = view.present.get(id);
@@ -199,18 +211,7 @@ export function createBunch() {
 			f.target = target;
 			f.base = target + owed;
 			if (f.fade === null && Math.abs(owed) > SNAP_M) f.fade = 'out';
-			if (f.fade === 'out') {
-				f.alpha -= real / OUT_S;
-				if (f.alpha <= 0) {
-					f.alpha = 0;
-					f.base = target;
-					f.fade = 'in';
-				}
-			}
-			if (f.fade === 'in') {
-				f.alpha = Math.min(1, f.alpha + real / IN_S);
-				if (f.alpha === 1) f.fade = null;
-			}
+			dither(f, real, () => (f.base = target));
 			f.slot = f.resting || f.towUntil > t ? undefined : slots.get(id)?.lane;
 			f.want = f.slot ?? PULL_LANE;
 			spring(f.front, slots.get(id)?.ahead ?? 0, real);
@@ -236,6 +237,21 @@ export function createBunch() {
 			riders: [...riders.values()],
 			car: teamCar(view, at, slots, driver, real),
 		};
+	}
+
+	/** Out of the game, at the roadside (#3114): stopped on the verge at their stand, dithered there from wherever they were. */
+	function atRoadside(f: Follow, stand: number, real: number) {
+		f.v = 0;
+		f.target = stand;
+		f.slot = undefined;
+		f.want = VERGE_LANE;
+		if (f.fade === null && f.base !== stand) f.fade = 'out';
+		dither(f, real, () => {
+			f.base = stand;
+			f.side = { x: VERGE_LANE, v: 0 };
+			f.front = { x: 0, v: 0 };
+		});
+		f.d = f.base + f.front.x;
 	}
 
 	/** The car tows whoever is towed, else follows the bunch with its driver, else is gone (#3098). */
@@ -270,6 +286,22 @@ export function createBunch() {
 	}
 
 	return { step };
+}
+
+/** Dithers a rider out, lands them where `land` says, and dithers them back in: never a slide through others. */
+function dither(f: Follow, real: number, land: () => void) {
+	if (f.fade === 'out') {
+		f.alpha -= real / OUT_S;
+		if (f.alpha <= 0) {
+			f.alpha = 0;
+			land();
+			f.fade = 'in';
+		}
+	}
+	if (f.fade === 'in') {
+		f.alpha = Math.min(1, f.alpha + real / IN_S);
+		if (f.alpha === 1) f.fade = null;
+	}
 }
 
 /**

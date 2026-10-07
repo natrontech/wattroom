@@ -1202,6 +1202,80 @@ surface(
 	{ once: true },
 );
 
+/**
+ * A game on the hairpin road (#3114): Designer coaching, Design Partner riding
+ * along, both on simulated trainers. No screen starts a game on a road yet
+ * (#3794), so the coach's socket sends the start the hub takes.
+ */
+async function gameOnRoad(s: Shoot, mode: string, fromM = 0) {
+	// Its shots wait up to 3:20 of riding, most of the default 5 minutes.
+	test.setTimeout(10 * 60_000);
+	const coach = await s.open(DESK, { world: true });
+	const crew = await designCrew(coach.page);
+	const road = await fixtureRoad(coach.page, 'hairpin');
+	const rider = await s.open(DESK, { as: 'Design Partner', world: true });
+	let socket: WebSocketRoute | undefined;
+	await coach.page.routeWebSocket(/\/ws\/channels\//, (ws) => {
+		socket = ws.connectToServer();
+	});
+	await toTraining(coach.page, crew);
+	const open = coach.page.getByRole('button', { name: 'end the session' });
+	if (await open.count()) {
+		await endSession(coach.page);
+		await toTraining(coach.page, crew);
+	}
+	await toTraining(rider.page, crew);
+	// Sent until the session opens: a page that reconnected has a new socket.
+	const start = JSON.stringify({
+		control: { action: 'game', gameMode: mode, route: { id: road, fromM } },
+	});
+	for (let k = 0; k < 5 && !(await open.count()); k++) {
+		socket?.send(start);
+		await open.waitFor({ timeout: 4000 }).catch(() => {});
+	}
+	await joinSession(rider.page);
+	// The game opened its session with the coach riding it, on the ride's own screen.
+	await coach.page
+		.getByRole('link', { name: 'Go to the ride' })
+		.click({ timeout: 15_000 });
+	return { coach, rider };
+}
+
+surface(
+	'ride-game-backyard',
+	async (s) => {
+		const { coach } = await gameOnRoad(s, 'backyard-ramp');
+		try {
+			await atSecond(coach.page, RIDE_SECOND);
+			await assertRiding(coach.page, true);
+			await s.shot(coach);
+			// The round's last half minute: the next round's arch is near.
+			await atSecond(coach.page, 165);
+			await s.shot(coach, { name: 'ride-game-backyard-arch' });
+		} finally {
+			await endSession(coach.page);
+		}
+	},
+	{ once: true },
+);
+
+surface(
+	'ride-game-collective',
+	async (s) => {
+		// Started up the hairpins, so the valley the fog fills lies below the bunch.
+		const { coach } = await gameOnRoad(s, 'collective-ramp', 3500);
+		try {
+			// Into round 2: the fog has risen once.
+			await atSecond(coach.page, 200);
+			await assertRiding(coach.page, true);
+			await s.shot(coach);
+		} finally {
+			await endSession(coach.page);
+		}
+	},
+	{ once: true },
+);
+
 surface('ride-detail', async (s) => {
 	for (const [device, suffix] of variants([
 		[DESK, ''],

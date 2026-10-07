@@ -31,6 +31,7 @@
 	import type { BunchView } from '$lib/channel/bunch-view';
 	import { account } from '$lib/account.svelte';
 	import { prefersReducedMotion } from '$lib/motion';
+	import { play } from '$lib/sound/cues';
 	import { generate } from './world';
 	import { readLook } from './look';
 
@@ -82,6 +83,7 @@
 					metre,
 					bunch,
 					steady: () => prefersReducedMotion.current,
+					onCue: play,
 					// Your kit is keyed by who you are, solo or in a bunch: the crew sees the one you see.
 					youId: account.me?.id,
 					// The theme's neon as the canvas resolves it, for the coach's chevron.

@@ -1,13 +1,6 @@
-<script lang="ts" module>
-	import { createSoundCeiling } from '$lib/roadside';
-
-	// One ceiling for the page, however many layers draw cheers.
-	const roadsideSound = createSoundCeiling();
-</script>
-
 <script lang="ts">
 	import { play } from '$lib/sound/cues';
-	import { cheerCues } from '$lib/roadside';
+	import { cheerCues, roadsideSound } from '$lib/roadside';
 	import type { Cheer } from '$lib/protocol';
 	import CheerIcon from '$lib/components/CheerIcon.svelte';
 

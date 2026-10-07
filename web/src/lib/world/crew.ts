@@ -128,9 +128,9 @@ function greyed(pal: Palette): Palette {
 
 /** What the animator reads from a rider on the road. */
 const inputOf = (r: SimRider, route: Route): RideInput => ({
-	power: r.watts,
+	power: r.stopped ? 0 : r.watts,
 	ftp: r.ftp,
-	speed: r.v,
+	speed: r.stopped ? 0 : r.v,
 	grade: at(route, r.d).grade,
 });
 

@@ -5,6 +5,8 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createBunch, type Car } from './bunch';
 import { CHEER_S, cheerLook } from './cheer';
+import { makeGameRoad, type GameRoad } from './game-road';
+import { roadsideSound } from '$lib/roadside';
 import { makeCrew, RING_BAND_M, type Crew, type Pedalling } from './crew';
 import { makeTags, type Tags } from './tags';
 import type { BunchView } from '$lib/channel/bunch-view';
@@ -71,8 +73,10 @@ export type MountOptions = {
 	youId?: string;
 	/** The theme's structural accent, for the coach's chevron; Outrun's absent. */
 	neon?: string;
-	/** Reduced motion, read each frame: a cheer's thumb and light hold still (ADR-0079). */
+	/** Reduced motion, read each frame: a cheer's thumb and light hold still, the fog sea steps (ADR-0079). */
 	steady?: () => boolean;
+	/** A sound the road makes (#3114): the cowbell, as the bunch rides past someone a game put out. */
+	onCue?: (cue: 'cowbell') => void;
 	/** Where the streamed ground's chunks come from: the page's copy, then the build worker (#3606). */
 	grids?: (got: GotGrid) => Grids;
 	/**
@@ -152,6 +156,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	);
 	let stage: Stage | null = null;
 	let crew: Crew | null = null;
+	let game: GameRoad | null = null;
 	let tags: Tags | null = null;
 	let progress: number | null = moment ? moment.p : null;
 	let controls: OrbitControls | null = null;
@@ -177,15 +182,16 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	}
 
 	function dress(style: Style) {
-		for (const old of [stage?.group, crew?.group, tags?.group]) {
+		for (const old of [stage?.group, crew?.group, game?.group, tags?.group]) {
 			if (!old) continue;
 			scene.remove(old);
 			disposeTree(old);
 		}
 		stage = buildStage(route, world, style, sight, stream);
 		crew = makeCrew(style, neon);
+		game = makeGameRoad(route, world, style);
 		tags = makeTags(style);
-		scene.add(stage.group, crew.group, tags.group);
+		scene.add(stage.group, crew.group, game.group, tags.group);
 		scene.fog = new THREE.FogExp2(style.sky.horizon, style.fogK * 1.1);
 		light();
 		applyMode();
@@ -235,6 +241,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		crew.drive(route, car, mode === 'orbit');
 		if (controls) controls.update();
 		else rig.update(camera, mode === 'orbit' ? 'chase' : mode, you, me, real);
+		game?.follow(camera.position);
 		tags?.update(riders, (r) => crew!.at(r), camera, mode === 'orbit');
 		sight.uCam.value.copy(camera.position);
 		sight.uYou.value.copy(me);
@@ -251,8 +258,14 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	 * you included while you ride in it, and the team car (#3098).
 	 */
 	function ride(view: BunchView, real: number) {
-		const out = bunch!.step(view, real, Date.now());
 		clock += real;
+		const steady = opts.steady?.() ?? false;
+		// A game's road first: who it has put out stands where it says (#3114).
+		game?.update(view, clock, real, steady);
+		const stands = game?.stands();
+		const out = bunch!.step(view, real, Date.now(), stands);
+		// The cowbell counts against the roadside's one ceiling, like any ring (SPEC "The roadside").
+		if (game?.rang && roadsideSound(Date.now())) opts.onCue?.('cowbell');
 		// A tick's cheers are heard once, however many frames read its view.
 		const tick = view.at ?? view;
 		if (tick !== heard) {
@@ -261,7 +274,6 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 				if (clock - at >= CHEER_S) cheered.delete(id);
 			for (const id of view.cheered) cheered.set(id, clock);
 		}
-		const steady = opts.steady?.() ?? false;
 		const placed = new Set<string>();
 		for (const p of out.riders) {
 			placed.add(p.id);
@@ -288,6 +300,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 				faded: p.faded,
 				coach: p.coach,
 				cheer: cheerOf(p.id, steady),
+				stopped: stands?.has(p.id) ?? false,
 				speaking: !!who?.speaking,
 				level: who?.level,
 				// A live zone where you may see their numbers (ADR-0059): a session's
