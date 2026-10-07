@@ -126,7 +126,7 @@ Box table (#3668), measured in the app's fonts at SPEC's sizes. Every panel is i
 
 | Panel                | x        | y     | w     | h     | Holds                                                     |
 | -------------------- | -------- | ----- | ----- | ----- | --------------------------------------------------------- |
-| slot 1, band         | 16       | 16    | ≤ 860 | ≤ 186 | as at 1440; ends 57 px above the corridor                 |
+| slot 1, band         | 16       | 16    | ≤ 860 | ≤ 186 | as at 1440; ends at y ≤ 202, 41 px above the corridor     |
 | moment card          | ≥ 888    | 16    | ≥ 300 | ≤ 186 | top-centre: about 340 px free between slot 1 and the seat |
 | bike computer        | 16       | ≥ 480 | ≤ 344 | ≤ 508 | as at 1440                                                |
 | crew panel (session) | right 16 | 330   | ≈ 240 | ≤ 650 | rows 44                                                   |
