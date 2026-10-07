@@ -91,7 +91,12 @@
 	>
 		<div class="absolute inset-0">{@render world()}</div>
 		{#if centre}
-			<div class="absolute grid place-items-center" style={place(CORRIDOR)}>
+			<!-- In the corridor's upper half, above where the chase camera
+			     draws you (RIDER_BOX), as v3-motion's GO stands. -->
+			<div
+				class="absolute grid items-start justify-items-center pt-[6%]"
+				style={place(CORRIDOR)}
+			>
 				{@render centre()}
 			</div>
 		{/if}
@@ -135,7 +140,7 @@
 		>
 			{#if seat}<div
 					style="width:{width * (JUKEBOX_SEAT.x1 - JUKEBOX_SEAT.x0)}px"
-					class="max-w-full"
+					class="max-w-full [&:not(:has(*))]:hidden"
 				>
 					{@render seat()}
 				</div>{/if}

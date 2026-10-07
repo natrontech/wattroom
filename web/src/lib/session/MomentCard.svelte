@@ -59,7 +59,6 @@
 				>{Math.max(0, Math.ceil((sprint.startsAtMs - now) / 1000))}</span
 			> s
 		</p>
-		<p class="text-muted {WORDS}">15 s all out · the trainer lets go</p>
 	{:else if phase === 'live'}
 		<p class="ride-label">Sprint · all out</p>
 		<p class={WORDS}>
@@ -68,9 +67,11 @@
 			> s left
 		</p>
 		{#if leader}
-			<p class="text-muted {WORDS} truncate">
-				{leader.name} leads ·
-				<span class="num text-ink">{wkg(leader.watts, leader.kg)}</span> W/kg
+			<p class="{WORDS} flex items-baseline gap-2">
+				<span class="ride-label">Leads</span>
+				<span class="min-w-0 truncate">{leader.name}</span>
+				<span class="num">{wkg(leader.watts, leader.kg)}</span>
+				<span class="text-muted">W/kg</span>
 			</p>
 		{/if}
 	{:else if sprint.results}

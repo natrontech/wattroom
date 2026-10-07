@@ -8,6 +8,7 @@
 	// returns. The player is never overlaid — RMF — so the numbers go below it.
 	import CountdownScreen from '$lib/session/CountdownScreen.svelte';
 	import CrewStrip from '$lib/session/CrewStrip.svelte';
+	import CrewRows from '$lib/session/CrewRows.svelte';
 	import { crewOf } from '$lib/session/follow';
 	import { bottleFor } from '$lib/roadside';
 	import RoadsideDeck from '$lib/channel/RoadsideDeck.svelte';
@@ -202,8 +203,12 @@
 			>
 			<SessionFlag />
 			{#if channel.you.inSession}
-				<button onclick={leaveRide} class="btn btn-secondary btn-lg"
-					>Leave the ride</button
+				<!-- One short word, so the eyebrow keeps the row (slot 1's 860 px). -->
+				<button
+					onclick={leaveRide}
+					class="btn btn-secondary btn-lg"
+					aria-label="Leave the ride"
+					title="Leave the ride">Leave</button
 				>
 			{/if}
 		</div>
@@ -221,6 +226,7 @@
 			ftp={channel.you.ftp}
 			trace={channel.you.trace}
 			compact
+			marker={false}
 		/>
 	{/snippet}
 	{#snippet nowPlaying()}
@@ -282,6 +288,10 @@
 				/>
 			{:else}
 				<div class="px-6 pt-5 pb-4">
+					<!-- The Flat-road reason is a status line: atop slot 1 (G3, G4). -->
+					{#if channel.ridden && world.reason}
+						<FlatRoad reason={world.reason} onretry={world.retry} />
+					{/if}
 					<RideHeader
 						block={channel.block}
 						{elapsed}
@@ -298,9 +308,6 @@
 						aside={trainerCard}
 						controls={sessionControls}
 					/>
-					{#if channel.ridden && world.reason}
-						<FlatRoad reason={world.reason} onretry={world.retry} />
-					{/if}
 				</div>
 			{/if}
 			{#if channel.race}
@@ -393,6 +400,7 @@
 				/>
 				<div class="flex flex-col gap-2 px-4 pb-3">
 					<BiasTrim
+						ride
 						bias={channel.bias}
 						onBias={channel.trainer && channel.actuating
 							? (step) => channel.nudgeBias(step)
@@ -463,12 +471,16 @@
 		{/snippet}
 
 		{#snippet crew()}
-			{#if !quiet && inFocus !== 'game' && !(inWorld && inFocus === 'sprint')}
+			{#if inWorld && inFocus !== 'game'}
+				<!-- Beside the road the crew stays under the seat, a sprint's card
+				     included (the box table): rows at the riding floor. -->
+				<div class="py-2"><CrewRows riders={inRide} /></div>
+			{:else if !quiet && inFocus !== 'game'}
 				<!-- The crew. A group-training surface that shows only your own
 			     numbers is a solo app with a chat window attached. A game's panel
 			     already lists everyone; a second list of the same people is what
 			     the sprint branch refuses too. -->
-				<div class={inWorld ? 'px-3 py-3' : 'mt-4'}>
+				<div class="mt-4">
 					<CrewStrip riders={crewOf(inRide, false)} />
 				</div>
 			{/if}
