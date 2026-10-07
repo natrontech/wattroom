@@ -130,14 +130,13 @@ export function climbHeader(view: ClimbView): string {
 	return `CLIMB ${view.card.n} OF ${view.card.of}`;
 }
 
-/** The chip on another page, for a rider who paged away (#3089). */
+/**
+ * The chip on another page, for a rider who paged away (#3089): a label, as
+ * v2-erg's. Its distances have homes already: to the top on CLIMB, the foot
+ * on the road line (D17).
+ */
 export function climbChip(view: ClimbView): string {
-	if (view.toFootM > 0) {
-		const to = distance(view.toFootM);
-		return `Climb ${view.card.cls} in ${to.value} ${to.unit} · → to view`;
-	}
-	const top = distance(view.card.toTopM);
-	return `Climb ${view.card.cls} · ${top.value} ${top.unit} to the top · → to view`;
+	return `Climb ${view.card.cls}`;
 }
 
 /** The page a turn lands on, wrapping at both ends. */

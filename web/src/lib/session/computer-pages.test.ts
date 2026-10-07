@@ -326,9 +326,9 @@ describe('CLIMB (#3645)', () => {
 		]);
 	});
 
-	it('says where the climb is on another page', () => {
-		expect(climbChip(climb({}, 380))).toBe('Climb I in 400 m · → to view');
-		expect(climbChip(climb())).toBe('Climb I · 2.4 km to the top · → to view');
+	it('names the climb on another page, its distances in their homes', () => {
+		expect(climbChip(climb({}, 380))).toBe('Climb I');
+		expect(climbChip(climb())).toBe('Climb I');
 	});
 });
 

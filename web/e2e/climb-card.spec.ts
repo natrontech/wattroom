@@ -45,7 +45,7 @@ test.describe('the climb card', () => {
 		'the ?as= dev provider only exists on a dev server',
 	);
 
-	test('opens by itself on a climb, says so, and says where it is from another page', async ({
+	test('opens by itself on a climb, says so, and is named from another page', async ({
 		page,
 	}) => {
 		const cues: string[] = [];
@@ -58,12 +58,10 @@ test.describe('the climb card', () => {
 		await expect(computer.getByTestId('climb-dot')).toBeVisible();
 		await expect.poll(() => cues).toContain('climb');
 
-		// Paged away: the page stays yours, and a chip says where the climb is.
+		// Paged away: the page stays yours, and a chip names the climb.
 		await page.keyboard.press('ArrowRight');
 		await expect(computer).toHaveAttribute('data-page', 'power');
-		await expect(computer.getByTestId('climb-chip')).toHaveText(
-			/^Climb IV · \d\.\d km to the top · → to view$/,
-		);
+		await expect(computer.getByTestId('climb-chip')).toHaveText('Climb IV');
 		await page.keyboard.press('ArrowLeft');
 		await expect(computer).toHaveAttribute('data-page', 'climb');
 		await expect(computer.getByTestId('climb-chip')).toHaveCount(0);

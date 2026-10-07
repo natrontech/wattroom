@@ -306,9 +306,10 @@
 	{#if zoneStrip}{@render strip(zoneStrip)}{/if}
 	{#if profile && ctx.climb}
 		<!-- Flat, the dots ride beside the profile, so CLIMB is no taller than
-		     RIDE and the Skyline under it keeps its place. -->
-		<div class="flex items-end gap-3">
-			<div class="min-w-0 flex-1"><ClimbProfile view={ctx.climb} {tv} /></div>
+		     RIDE and the Skyline under it keeps its place; a narrow panel wraps
+		     them under it rather than squeeze the climb. -->
+		<div class="flex flex-wrap items-end gap-3">
+			<div class="min-w-60 flex-1"><ClimbProfile view={ctx.climb} {tv} /></div>
 			{#if turns && !tv && !phone && !docked}{@render dots()}{/if}
 		</div>
 	{/if}

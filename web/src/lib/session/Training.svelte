@@ -381,6 +381,7 @@
 				     your heart rate reaches the call (ADR-0008, #2804). -->
 				<BikeComputer
 					docked
+					{climb}
 					roadLine={!!channel.block?.road}
 					road={channel.ridden
 						? {

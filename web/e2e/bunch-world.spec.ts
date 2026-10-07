@@ -125,6 +125,11 @@ test('two screens draw one bunch: each rider where the other screen has them @wo
 				},
 			)
 			.toBe('one bunch');
+		// The session's climb reaches the docked computer (#3645): the road
+		// is class IV from its first metre, and a session offers CLIMB by chip.
+		await expect(
+			coach.locator('[data-surface=docked] [data-testid=climb-chip]'),
+		).toHaveText('Climb IV');
 	} finally {
 		await info.attach('console', { body: said.join('\n') });
 	}

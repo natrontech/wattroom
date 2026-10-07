@@ -400,6 +400,7 @@
 						     (D17); the flat layout itself is #3670's. -->
 						<BikeComputer
 							head={!session.sprint}
+							{climb}
 							cadence={session.sample?.cadence ?? 0}
 							stale={signalLost}
 							hr={session.sample?.heartRate ?? 0}
