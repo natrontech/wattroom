@@ -63,7 +63,7 @@
 	{#if live && road}
 		<!-- Words at the riding floor (TARGETS G4): a rider a game put out
 		     chalks from here on the bike. -->
-		{#if spot}<p class="text-muted text-2xl">Chalk the next climb</p>{/if}
+		<p class="text-muted text-2xl">Chalk a climb ahead</p>
 		<div
 			role="group"
 			class="grid grid-cols-6 gap-2"
