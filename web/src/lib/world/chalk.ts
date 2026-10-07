@@ -24,6 +24,10 @@ const ALONG = ACROSS * 4;
 export const BESIDE = ROAD_W / 2 - ACROSS / 2 - 0.2;
 const W = 256;
 const H = 128;
+// ponytail: unlit, so the road line's token reads brighter than the lit
+// paint beside it (#3029's round 1: 207 against 147); dimmed to its tone at
+// the ride's light. Tune against the ribbon if the look's light moves.
+const TONE = 0.72;
 
 /** The words a stamp chalks; the glyph stamps draw a shape instead. */
 const WORDS: Partial<Record<RoadsideStamp, string>> = {
@@ -91,6 +95,7 @@ function stampMesh(route: Route, c: Chalk, chalk: string): THREE.Mesh {
 		new THREE.PlaneGeometry(ACROSS, ALONG).rotateX(-Math.PI / 2),
 		new THREE.MeshBasicMaterial({
 			map: paintedTexture(W, H, (x) => draw(x, c.stamp, c.letter, chalk)),
+			color: new THREE.Color().setScalar(TONE),
 			transparent: true,
 			depthWrite: false,
 			// Laid on the asphalt, never fighting it for the same depth.
