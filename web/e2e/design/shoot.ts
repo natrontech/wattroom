@@ -8,6 +8,7 @@ import {
 import { readFileSync } from 'node:fs';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { baseUrl } from '../env.js';
 import { probe, sampleAt, type Box } from './probe';
 
 /**
@@ -16,12 +17,20 @@ import { probe, sampleAt, type Box } from './probe';
  */
 
 export const OUT = process.env.DESIGN_SHOTS_OUT ?? '';
-export const SCHEME: 'dark' | 'light' =
-	process.env.DESIGN_SHOTS_SCHEME === 'light' ? 'light' : 'dark';
+export type Scheme = 'dark' | 'light';
+/** DESIGN_SHOTS_SCHEME: dark, light or both (the default). */
+export const SCHEMES: Scheme[] =
+	process.env.DESIGN_SHOTS_SCHEME === 'dark'
+		? ['dark']
+		: process.env.DESIGN_SHOTS_SCHEME === 'light'
+			? ['light']
+			: ['dark', 'light'];
 const ONLY = (process.env.DESIGN_SHOTS_SURFACES ?? '')
 	.split(/[\s,]+/)
 	.filter(Boolean);
-export const wanted = (id: string) => ONLY.length === 0 || ONLY.includes(id);
+/** A test is wanted when any surface id it captures is named, or none is. */
+export const wanted = (ids: readonly string[]) =>
+	ONLY.length === 0 || ids.some((id) => ONLY.includes(id));
 
 export const DESK: BrowserContextOptions = {
 	viewport: { width: 1440, height: 900 },
@@ -41,6 +50,24 @@ export const TV: BrowserContextOptions = {
 	viewport: { width: 1920, height: 1080 },
 };
 export const HUD_SHELL = { width: 320, height: 132 };
+
+/**
+ * The TV and the phone are variants of a surface (#3858): a full run takes
+ * them, a scoped one only when it names a TV or a phone surface, which the
+ * surface map does when a TV or phone layout file changed.
+ */
+const named = (variant: string) =>
+	ONLY.length === 0 ||
+	ONLY.some((id) => new RegExp(`(^|-)${variant}(-|$)`).test(id));
+const VARIANT = { tv: named('tv'), phone: named('phone') };
+export const takes = (device: BrowserContextOptions) =>
+	device === TV ? VARIANT.tv : device === PHONE ? VARIANT.phone : true;
+/** The rows of a recipe's device list this run takes. */
+export const variants = <
+	T extends readonly [BrowserContextOptions, ...unknown[]],
+>(
+	rows: readonly T[],
+): T[] => rows.filter(([device]) => takes(device));
 
 /** A full-page shot grows the viewport to the page body, this far at most. */
 const FULL_PAGE_CAP = 6000;
@@ -71,10 +98,15 @@ export interface Opened {
  */
 export class Shoot {
 	private opened: Opened[] = [];
+	/** Where this surface's shots go: the run's folder for its scheme. */
+	readonly out: string;
 	constructor(
 		private readonly browser: Browser,
 		readonly id: string,
-	) {}
+		private readonly scheme: Scheme,
+	) {
+		this.out = join(OUT, scheme);
+	}
 
 	/** A fresh context, muted before any page mounts; signed in as `as`. */
 	async open(
@@ -91,9 +123,9 @@ export class Shoot {
 	): Promise<Opened> {
 		const ctx = await this.browser.newContext({
 			...device,
-			baseURL: process.env.PLAYWRIGHT_BASE_URL,
+			baseURL: baseUrl(),
 			// A surface whose recipe fixes the OS scheme keeps it (ride-free-road).
-			colorScheme: device.colorScheme ?? SCHEME,
+			colorScheme: device.colorScheme ?? this.scheme,
 			reducedMotion,
 		});
 		await ctx.addInitScript(
@@ -147,7 +179,7 @@ export class Shoot {
 		}
 		const probes = await page.evaluate(probe, CORRIDOR);
 		const png = await page.screenshot({
-			path: join(OUT, `${name}.png`),
+			path: join(this.out, `${name}.png`),
 			fullPage: wholeDocument,
 		});
 		const at = (probes as { asphaltAt?: [number, number] | null }).asphaltAt;
@@ -156,7 +188,7 @@ export class Shoot {
 				? await page.evaluate(sampleAt, { png: png.toString('base64'), at })
 				: null;
 		await writeFile(
-			join(OUT, `${name}.json`),
+			join(this.out, `${name}.json`),
 			JSON.stringify(
 				{ ...probes, asphaltRgb, ...extra, pageErrors: errors },
 				null,
@@ -169,9 +201,9 @@ export class Shoot {
 	async failed(error: unknown): Promise<void> {
 		const last = this.opened.at(-1);
 		const message = error instanceof Error ? error.message : String(error);
-		await writeFile(join(OUT, `FAILED-${this.id}.txt`), message + '\n');
+		await writeFile(join(this.out, `FAILED-${this.id}.txt`), message + '\n');
 		await last?.page
-			.screenshot({ path: join(OUT, `FAILED-${this.id}.png`) })
+			.screenshot({ path: join(this.out, `FAILED-${this.id}.png`) })
 			.catch(() => {});
 	}
 
@@ -181,9 +213,9 @@ export class Shoot {
 
 	/** Clears what an earlier run left under this surface's name. */
 	async clean(): Promise<void> {
-		await mkdir(OUT, { recursive: true });
+		await mkdir(this.out, { recursive: true });
 		for (const stale of [`FAILED-${this.id}.png`, `FAILED-${this.id}.txt`])
-			await rm(join(OUT, stale), { force: true });
+			await rm(join(this.out, stale), { force: true });
 	}
 }
 
@@ -211,12 +243,18 @@ async function growToBody(page: Page): Promise<boolean> {
 	return true;
 }
 
-/** Every clock-shaped reading on the page, joined. */
+/**
+ * Every clock-shaped reading on the page, joined; a ghost's split (“+1:05”,
+ * “−0:12”) is a difference, not a clock, and a seeded ride on the road puts
+ * one on every road ride.
+ */
 // A read that lands mid-navigation counts as no clock yet, not a failure.
 const clocks = (page: Page) =>
 	page
 		.evaluate(() =>
-			(document.body.innerText.match(/\b\d{1,2}:\d{2}\b/g) ?? []).join(' '),
+			(
+				document.body.innerText.match(/(?<![+\u2212\d:])\d{1,2}:\d{2}\b/g) ?? []
+			).join(' '),
 		)
 		.catch(() => '');
 
@@ -237,15 +275,19 @@ export async function ride(
 	const start = page
 		.getByRole('button', { name: /^Start (riding|the ride)$/ })
 		.first();
-	// A road left short of its end offers to carry on (#3205): every shot
-	// starts from km 0, whatever an earlier run saved.
+	// A road left short of its end offers to carry on (#3205), and the offer
+	// replaces Start riding once its lookup lands, sometimes under the click:
+	// press whichever is there until neither is. Every shot starts from km 0.
 	const fromStart = page.getByRole('button', { name: 'From the start' });
-	await start.or(fromStart).first().waitFor({ timeout: 15_000 });
-	if (await fromStart.isVisible()) {
-		await fromStart.click();
-		await start.waitFor({ timeout: 5000 }).catch(() => {});
+	const either = start.or(fromStart).first();
+	await either.waitFor({ timeout: 15_000 });
+	const deadline = Date.now() + 30_000;
+	while (await either.isVisible()) {
+		if (Date.now() > deadline) throw new Error('the ride never started');
+		const button = (await fromStart.isVisible()) ? fromStart : start;
+		await button.click({ timeout: 5000 }).catch(() => {});
+		await page.waitForTimeout(500);
 	}
-	if (await start.isVisible()) await start.click();
 	await atSecond(page, second);
 }
 
