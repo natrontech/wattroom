@@ -26,7 +26,10 @@ test('seed', async ({ browser }) => {
 	try {
 		const designer = (await s.open(DESK)).page;
 		const hairpin = await fixtureRoad(designer, 'hairpin');
-		await fixtureRoad(designer, 'rolling');
+		// Ridden to its end, so its card says how often rather than where you
+		// left off; the owner-only road stays never ridden (#3683).
+		await savedRide(designer, await fixtureRoad(designer, 'rolling'), true);
+		await fixtureRoad(designer, 'ownerOnly');
 		await ownWorkout(designer);
 		await bigWatts(designer);
 		await savedRide(designer);

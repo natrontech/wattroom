@@ -340,27 +340,48 @@ func (q *Queries) GetRouteRoad(ctx context.Context, id pgtype.UUID) (GetRouteRoa
 }
 
 const listOwnerRoutes = `-- name: ListOwnerRoutes :many
-select id, src, name, gen_name, length_m, gain_m, climbs,
-       (geom_sealed is not null)::boolean as has_place, created_at
-from routes
-where owner_id = $1
-order by created_at desc, id desc
+select r.id, r.src, r.name, r.gen_name, r.length_m, r.gain_m, r.climbs,
+       (r.geom_sealed is not null)::boolean as has_place, r.created_at,
+       ridden.rides::integer as rides,
+       ridden.last_ridden_at::timestamptz as last_ridden_at,
+       alone.from_m as last_alone_from_m,
+       alone.distance_m as last_alone_distance_m
+from routes r
+cross join lateral (
+    select count(*) as rides, max(started_at) as last_ridden_at
+    from rides where user_id = r.owner_id and route_key = r.road_hash
+) ridden
+left join lateral (
+    select from_m, distance_m from rides
+    where user_id = r.owner_id and route_key = r.road_hash and session_id is null
+    order by started_at desc
+    limit 1
+) alone on true
+where r.owner_id = $1
+order by r.created_at desc, r.id desc
 `
 
 type ListOwnerRoutesRow struct {
-	ID        pgtype.UUID
-	Src       string
-	Name      string
-	GenName   string
-	LengthM   int32
-	GainM     int32
-	Climbs    []byte
-	HasPlace  bool
-	CreatedAt pgtype.Timestamptz
+	ID                 pgtype.UUID
+	Src                string
+	Name               string
+	GenName            string
+	LengthM            int32
+	GainM              int32
+	Climbs             []byte
+	HasPlace           bool
+	CreatedAt          pgtype.Timestamptz
+	Rides              int32
+	LastRiddenAt       pgtype.Timestamptz
+	LastAloneFromM     *int32
+	LastAloneDistanceM *int32
 }
 
 // The owner's list (#3024): summary columns only — the road and the sealed
-// place stay cold until one route is opened.
+// place stay cold until one route is opened. With them, how the owner has
+// ridden each road (#3683), read in this one query on rides_user_route_key:
+// their own rides of its key (a re-import counts, ADR-0068), the latest, and
+// where the latest ridden alone began and how far it went.
 func (q *Queries) ListOwnerRoutes(ctx context.Context, ownerID pgtype.UUID) ([]ListOwnerRoutesRow, error) {
 	rows, err := q.db.Query(ctx, listOwnerRoutes, ownerID)
 	if err != nil {
@@ -380,6 +401,10 @@ func (q *Queries) ListOwnerRoutes(ctx context.Context, ownerID pgtype.UUID) ([]L
 			&i.Climbs,
 			&i.HasPlace,
 			&i.CreatedAt,
+			&i.Rides,
+			&i.LastRiddenAt,
+			&i.LastAloneFromM,
+			&i.LastAloneDistanceM,
 		); err != nil {
 			return nil, err
 		}

@@ -390,6 +390,17 @@ surface('ride-roadpick', async (s) => {
 	await o.page.getByRole('button', { name: 'Change' }).first().click();
 	await o.page.waitForTimeout(1500);
 	await s.shot(o, { full: true });
+	// And its empty state, for a rider with no roads yet (#3683).
+	const fresh = await s.open(DESK, { as: 'Newcomer', world: false });
+	await fresh.page.goto('/ride?alone');
+	await fresh.page.getByRole('button', { name: 'Change' }).first().click();
+	await fresh.page.waitForTimeout(1500);
+	await s.shot(fresh, { name: 'ride-roadpick-empty', full: true });
+	// A row's name opens the route page.
+	await o.page.getByRole('link', { name: /^Design switchbacks$/ }).click();
+	await o.page.waitForURL('**/workouts/routes/*');
+	await o.page.waitForTimeout(1500);
+	await s.shot(o, { name: 'ride-roadpick-name-opens' });
 });
 
 surface(
@@ -538,6 +549,31 @@ surface(
 			const o = await s.open(device);
 			await page(s, o, '/workouts', { name });
 		}
+		// A rider with no roads; then the route card's menu, its body opening
+		// the route page, and its Ride starting F1 (#3683).
+		const fresh = await s.open(DESK, { as: 'Newcomer' });
+		await page(s, fresh, '/workouts', { name: 'workouts-empty' });
+		const o = await s.open(DESK);
+		const hairpin = await fixtureRoad(o.page, 'hairpin');
+		await o.page.goto('/workouts');
+		await o.page.waitForTimeout(2500);
+		const card = o.page
+			.getByRole('listitem')
+			.filter({ has: o.page.locator(`a[href="/workouts/routes/${hairpin}"]`) });
+		await card.click({ button: 'right', position: { x: 200, y: 60 } });
+		await o.page.waitForTimeout(500);
+		await s.shot(o, { name: 'workouts-route-menu' });
+		await o.page.keyboard.press('Escape');
+		await card.click({ position: { x: 200, y: 60 } });
+		await o.page.waitForURL(`**/workouts/routes/${hairpin}`);
+		await o.page.waitForTimeout(1500);
+		await s.shot(o, { name: 'workouts-route-card-opens' });
+		await o.page.goto('/workouts');
+		await o.page.waitForTimeout(2500);
+		await card.getByRole('link', { name: /^(Ride|Carry on)$/ }).click();
+		await o.page.waitForURL(/\/ride\?road=/);
+		await o.page.waitForTimeout(2000);
+		await s.shot(o, { name: 'flow-f1-2-ride' });
 	},
 	{ also: ['phone-workouts'] },
 );
@@ -635,8 +671,25 @@ surface(
 	{ also: ['phone-home'] },
 );
 
-test.fixme('flow-f1', () => {
-	// F1 starts at a route card's Ride, which design/route-row (#3683) adds.
+surface('flow-f1', async (s) => {
+	// F1's first steps (#3683): Workouts, then a route card's Ride onto /ride.
+	const o = await s.open(DESK, { world: false });
+	const road = await fixtureRoad(o.page, 'hairpin');
+	// The screen F1's Ride lands on, reached by its URL, so main has it too.
+	await o.page.goto(`/ride?road=${road}`);
+	await o.page.waitForTimeout(2500);
+	await s.shot(o, { name: 'flow-f1-0-ride-by-url' });
+	const desk = o.page.viewportSize()!;
+	await page(s, o, '/workouts', { name: 'flow-f1-1-workouts' });
+	// The whole-page shot grew the window; /ride is shot at the desk's own.
+	await o.page.setViewportSize(desk);
+	await o.page
+		.getByRole('listitem')
+		.filter({ has: o.page.locator(`a[href="/workouts/routes/${road}"]`) })
+		.getByRole('link', { name: /^(Ride|Carry on)$/ })
+		.click();
+	await o.page.waitForTimeout(2500);
+	await s.shot(o, { name: 'flow-f1-2-ride' });
 });
 
 surface(
