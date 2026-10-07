@@ -313,9 +313,10 @@
 	--world-ridge: #26304a;
 	--world-ridge-rock: #3c4258;
 
-	--world-road-asphalt: #1b1a1f;
+	--world-road-asphalt: #383a44;
 	--world-road-line: #cfc9d6;
-	--world-road-verge: #2c2a2c;
+	--world-road-shoulder: #5a5856; /* gravel, lighter than the asphalt */
+	--world-road-verge: #3d4a36; /* the ground's own verge, so the road meets it */
 
 	--world-prop-spruce: #0d2c20;
 	--world-prop-spruce-tip: #23503a;
@@ -493,12 +494,13 @@ body {
 @utility btn-danger-solid {
 	@apply bg-danger text-paper hover:bg-danger/90;
 }
-/* Accent affordance — the one chrome exception ADR-0005 allows: an affordance
- * that *creates* live data (start ride, go live). Border only, never a fill. */
+/* Accent affordance: an affordance that *creates* live data (start ride, go
+ * live). Border only, never a fill. Neon, not watt (#3757): it is chrome, and
+ * ADR-0005 spends watt on live data alone (TARGETS G2). */
 @utility btn-accent {
 	/* The accent is the frame and the tint, never the word (#1965, #2858):
-	 * watt is gated at 3:1 and the label is small. */
-	@apply border-watt/40 text-ink hover:bg-watt/10 border;
+	 * the label is small. */
+	@apply border-neon/40 text-ink hover:bg-neon/10 border;
 }
 @utility btn-xs {
 	@apply px-3 py-1.5 text-xs;

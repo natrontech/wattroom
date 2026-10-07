@@ -55,7 +55,7 @@ dev-web: changelog web-deps ## run Vite dev server
 	@$(DEV_ENV) banner web
 	@eval "$$($(DEV_ENV) print)"; cd web && PORT="$$WATTROOM_DEV_WEB_PORT" WATTROOM_API="http://localhost:$$WATTROOM_DEV_SERVER_PORT" pnpm dev
 
-dev-db-drop: ## drop this worktree's dev AND test databases (nothing removes them on `git worktree remove`)
+dev-db-drop: ## drop this worktree's dev, test AND design-shots databases (nothing removes them on `git worktree remove`)
 	@$(DEV_ENV) drop-db
 
 changelog: ## stage CHANGELOG.md as a static asset (#345)
@@ -103,22 +103,23 @@ screenshots: web-deps ## redraw the site's share cards and the site/README scree
 		}; \
 		cd web && node scripts/cards.mjs && node scripts/screenshots.mjs
 
-design-shots: web-deps ## screenshot and probe design surfaces from this checkout's dev pair: SURFACES="…" SCHEME=dark|light|both OUT=… (docs/design/DESIGN-CHECK.md)
+design-shots: web-deps ## screenshot and probe design surfaces from a build of this checkout, on a fresh database: SURFACES="…" SCHEME=dark|light|both OUT=… (docs/design/DESIGN-CHECK.md)
+	@# The e2e harness builds and serves (playwright.config.ts's webServer):
+	@# NODE_ENV=development keeps the dev hooks the shots need — /dev/world,
+	@# the world's probe, software drawing — in a bundle that loads like the
+	@# real one, and the token key keeps a road's turns (#3831). A caller with
+	@# its own database (CI) names it in WATTROOM_DB.
 	@eval "$$($(DEV_ENV) print)"; \
-		curl -sf -o /dev/null "http://localhost:$$WATTROOM_DEV_WEB_PORT/api/healthz" || { \
-			echo "Nothing answers on http://localhost:$$WATTROOM_DEV_WEB_PORT/api/healthz — start the dev pair first: make infra, then make dev-server and make dev-web." >&2; \
-			exit 1; \
-		}; \
-		out="$(OUT)"; [ -n "$$out" ] || out="$$PWD/web/design-shots/$$(date +%Y%m%d-%H%M%S)"; \
-		schemes="$(SCHEME)"; [ -n "$$schemes" ] || schemes=dark; [ "$$schemes" = both ] && schemes="dark light"; \
-		status=0; \
-		for scheme in $$schemes; do \
-			(cd web && PLAYWRIGHT_BASE_URL="http://localhost:$$WATTROOM_DEV_WEB_PORT" \
-				DESIGN_SHOTS_OUT="$$out/$$scheme" DESIGN_SHOTS_SCHEME="$$scheme" \
-				DESIGN_SHOTS_SURFACES="$(SURFACES)" \
-				pnpm exec playwright test --project=design --reporter=list) || status=1; \
-		done; \
-		echo "Design shots: $$out"; exit $$status
+		out="$(OUT)"; [ -n "$$out" ] || out="web/design-shots/$$(date +%Y%m%d-%H%M%S)"; \
+		case "$$out" in /*) ;; *) out="$$PWD/$$out" ;; esac; \
+		db="$${WATTROOM_DB:-}"; \
+		if [ -z "$$db" ]; then $(DEV_ENV) fresh-design-db || exit 1; db="$$WATTROOM_DEV_DESIGN_DSN"; fi; \
+		cd web && NODE_ENV=development WATTROOM_DB="$$db" \
+			WATTROOM_TOKEN_KEY="$${WATTROOM_TOKEN_KEY:-$(DEV_TOKEN_KEY)}" \
+			DESIGN_SHOTS_OUT="$$out" DESIGN_SHOTS_SCHEME="$(or $(SCHEME),both)" \
+			DESIGN_SHOTS_SURFACES="$(SURFACES)" \
+			pnpm exec playwright test --project=design --reporter=list; \
+		status=$$?; echo "Design shots: $$out"; exit $$status
 
 design-targets: web-deps ## re-render docs/design/targets from docs/design/mockups (MOCKS="v2 shop" for some; the mocks load fonts and three.js from CDNs)
 	cd web && node scripts/design-targets.mjs $(MOCKS)

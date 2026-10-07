@@ -26,6 +26,8 @@ export type FigureOptions = {
 	body?: { height?: number; build?: Build };
 	palette?: Palette;
 	material?: THREE.Material;
+	/** A figure already built for this kit, body and level of detail: its geometry is taken as it is, built and painted. */
+	geometry?: THREE.BufferGeometry;
 };
 
 export type Figure = THREE.SkinnedMesh & {
@@ -55,7 +57,45 @@ export function paint(geo: THREE.BufferGeometry, palette: Palette): void {
 
 export function buildFigure(kit: Kit, o: FigureOptions = {}): Figure {
 	const rig = rigFor(kit, o.body);
-	const mb = new MeshBuilder(restMatrices(rig.dims), o.lod ?? 0);
+	const rest = restMatrices(rig.dims);
+	const geo = o.geometry ?? buildGeometry(kit, rig, rest, o);
+	const material =
+		o.material ?? new THREE.MeshLambertMaterial({ vertexColors: !!o.palette });
+	const mesh = new THREE.SkinnedMesh(geo, material) as Figure;
+	const bones = BONES.map((name, i) => {
+		const bone = Object.assign(new THREE.Bone(), {
+			name,
+			matrixAutoUpdate: false,
+		});
+		bone.matrix.copy(rest[i]);
+		return bone;
+	});
+	// A flat rig: every bone's matrix is written whole, by the pose.
+	for (const bone of bones) mesh.add(bone);
+	mesh.bind(
+		new THREE.Skeleton(
+			bones,
+			rest.map((m) => m.clone().invert()),
+		),
+		new THREE.Matrix4(),
+	);
+	// Skinned bounds do not follow the pose; a rider is small and near the camera.
+	mesh.frustumCulled = false;
+	mesh.userData = {
+		rig,
+		kit,
+		bones: Object.fromEntries(BONES.map((n, i) => [n, bones[i]])),
+	};
+	return mesh;
+}
+
+function buildGeometry(
+	kit: Kit,
+	rig: Rig,
+	rest: THREE.Matrix4[],
+	o: FigureOptions,
+): THREE.BufferGeometry {
+	const mb = new MeshBuilder(rest, o.lod ?? 0);
 	buildLegs(mb, rig.dims, kit);
 	buildArms(mb, rig.dims, kit);
 	buildTorso(mb, rig.dims);
@@ -69,32 +109,5 @@ export function buildFigure(kit: Kit, o: FigureOptions = {}): Figure {
 	buildWheel(mb, rig, kit, 'rear');
 	const geo = mb.build();
 	if (o.palette) paint(geo, o.palette);
-	const material =
-		o.material ?? new THREE.MeshLambertMaterial({ vertexColors: !!o.palette });
-	const mesh = new THREE.SkinnedMesh(geo, material) as Figure;
-	const bones = BONES.map((name, i) => {
-		const bone = Object.assign(new THREE.Bone(), {
-			name,
-			matrixAutoUpdate: false,
-		});
-		bone.matrix.copy(mb.rest[i]);
-		return bone;
-	});
-	// A flat rig: every bone's matrix is written whole, by the pose.
-	for (const bone of bones) mesh.add(bone);
-	mesh.bind(
-		new THREE.Skeleton(
-			bones,
-			mb.rest.map((m) => m.clone().invert()),
-		),
-		new THREE.Matrix4(),
-	);
-	// Skinned bounds do not follow the pose; a rider is small and near the camera.
-	mesh.frustumCulled = false;
-	mesh.userData = {
-		rig,
-		kit,
-		bones: Object.fromEntries(BONES.map((n, i) => [n, bones[i]])),
-	};
-	return mesh;
+	return geo;
 }

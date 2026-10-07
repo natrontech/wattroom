@@ -16,8 +16,8 @@ What every rider-visible change is held to. Per surface: an id (its capture's fi
 - Only the framed mock is the bar. A v2/v3 page's eyebrow, title and paragraph above it, and notes and “Open for Jan” box below, are reasoning canon has since answered.
 - Structure is the bar: proportion, grouping, alignment, hierarchy, what sits where, what is absent. Sizes come from docs/SPEC.md, not the mock; a pixel number in a must-match item is the bar, ±4 px.
 - Ignore the mock's data (its loop, Mia, 258 W). Capture data is the fixtures' (`web/e2e/road-gpx.ts`, seeded by `web/e2e/design/seed.ts`):
-  - `<hairpin>` “Design hairpins”: 1 km approach at 3 %, then eight legs at 8.8 % joined by seven hairpins; the app reads 7.1 km · 563 m, one class II climb, first hairpin ~1.7 km in.
-  - `<rolling>` “Design rolling”: 7.5 km · 237 m, two class IV climbs.
+  - `<hairpin>` “Design switchbacks”: 1 km approach at 3 %, then eight legs at 8.8 % joined by seven hairpins; the app reads 7.1 km · 571 m, one class II climb, first hairpin ~1.7 km in.
+  - `<rolling>` “Design swells”: 7.5 km · 237 m, two class IV climbs.
   - An item quoting a fixture's number takes it from a capture, never memory; a fixture change updates those items in the same PR.
 - Targets are drawn dark: desk surfaces compare on a dark capture, a light capture holds the same layout; riding surfaces are always dark.
 - Owner tags: `[key]` = the `design/<key>` issue that delivers it; `[#n]` = an existing issue; untagged = holds today, guarded against regression. A PR is held to its own issue's items, the global rules, and no regression elsewhere. A global-rule failure is *inherited*, not counted against a PR only passing through the surface, when main fails it the same way and an open issue owns the fix (DESIGN-CHECK §8).
@@ -73,9 +73,9 @@ So the RIDE page holds: a workout with no road, Cadence and Heart; a workout on 
 | | Rule |
 |---|---|
 | G1 | **The cave.** From the count-in to End ride the whole frame, content and sidebar, uses the dark family (surface OKLCH L ≤ 0.30), whatever the OS scheme or theme toggle says [probe:cave]. TV mode, the spectator's Watch view and `/hud` are cave too. The setup before a ride, and the closing or road-end card after it, are desk surfaces following the rider's scheme (ADR-0005, amendments #113, #331). |
-| G2 | **Glow and accents.** `--color-watt` marks live data and alone glows. On a riding surface it marks exactly three things, nothing else (no crew-row number, no target, no second power figure): the 3 s power; your position marker on the horizon (the Skyline dot or the interval graph's cursor); your trail in the world [probe:wattCount]. `--color-neon` is structure and prescription (frames, hairlines, selected borders, grade and record ramps, rider state such as the gear, targets), never a measured reading, never glowing. Zone tokens carry zone readings only: a zone-coloured line or fill shows the zone actually ridden there, never a fixed zone as decoration. Desk surfaces glow nothing. Records (history, collections, class chips, progress bars) use the neon ramp. `danger` is its own token. z6, z7, danger and watt never blink. |
+| G2 | **Glow and accents.** `--color-watt` marks live data and alone glows. On a riding surface it marks exactly three things, nothing else (no crew-row number, no target, no second power figure): the 3 s power; your position marker on the horizon (the Skyline dot or the interval graph's cursor); your trail in the world [probe:wattCount]. `--color-neon` is structure and prescription (frames, hairlines, selected borders, grade and record ramps, rider state such as the gear, targets, a model's outputs such as a race's gap to par and place, #3174), never a measured reading, never glowing. Zone tokens carry zone readings only: a zone-coloured line or fill shows the zone actually ridden there, never a fixed zone as decoration. Desk surfaces glow nothing. Records (history, collections, class chips, progress bars) use the neon ramp. `danger` is its own token. z6, z7, danger and watt never blink. |
 | G3 | **Panels over the world.** One kit, the `ride-panel` utility: surface at 86 % opacity (floor 85 %, ADR-0071), 1 px neon hairline at ~38 % alpha, 12 px radius, no backdrop blur, no shadow; never nested [probe:panels]. Panels 16 px in from the canvas edges, 12–16 px apart; panels in one column share an edge. Each panel its content's size: no empty band > 24 px, nothing scrolls or clips [probe:panels]. The keep-clear corridor (x 30–70 %, y 22.5–77.5 % of the canvas; `CORRIDOR` in `lib/session/docks.ts`) holds no panel, chip or text wherever a world is drawn in the canvas (world surfaces; TV and the HUD over the world; ADR-0066, ADR-0071); a flat surface uses its whole column [probe:panels]. A panel over the world is ≤ 30 % of the canvas wide against a side edge, ends above y 22.5 %, or starts below y 77.5 %. The world fills its canvas edge to edge. The jukebox seat (top right, `JUKEBOX_SEAT`) has nothing over it; with no jukebox it stays empty and nothing grows into it. Ride-critical status (trainer silent or lost, reconnecting, socket dropped; errors.md, SPEC's `SIGNAL_LOST_MS`) is one persistent line atop slot 1 with at most one ≥ 44 px recovery button; never a toast, never in the corridor. |
-| G4 | **Legibility at the design distance.** Desk 0.8 m from a 14-inch laptop; TV 3 m from a 55-inch set. Sizes are D1's; a unit ≤ half its number. Riding surfaces label with `ride-label` (≥ 24 px desk, ≥ 3vh TV); the kit's `eyebrow` (10 px) is for desk pages only. Numerals `font-display` (Chakra Petch), tabular; distance reads “x of y”. Every word on a riding surface is a label or a number, except a status or recovery line canon requires (G3's ride-critical status, ADR-0062's hint for a hidden control, the Flat-road reason from `REASONS` in `lib/world/ride-view.ts`): one line, label size, at most one ≥ 44 px button. The watts is one figure, the 3 s power, never repeated (D17). |
+| G4 | **Legibility at the design distance.** Desk 0.8 m from a 14-inch laptop; TV 3 m from a 55-inch set. Sizes are D1's; a unit ≤ half its number. Riding surfaces label with `ride-label` (≥ 24 px desk, ≥ 3vh TV); the kit's `eyebrow` (10 px) is for desk pages only. Numerals `font-display` (Chakra Petch), tabular; distance reads “x of y”. Every word on a riding surface is a label or a number, except a status or recovery line canon requires (G3's ride-critical status, ADR-0062's hint for a hidden control, the Flat-road reason from `REASONS` in `lib/world/ride-view.ts`, the team-car radio's closed phrases in SPEC “Races”): one line, label size, at most one ≥ 44 px button. The watts is one figure, the 3 s power, never repeated (D17). |
 | G5 | **Phone width is 375 × 812.** The page body scrolls down, never sideways; measure `[data-testid=page-body]`, never the document [probe:overflowX]. No pixel width on an SVG that is also measured. Primary work first in the stacking order. Tap targets 24 px on a browse surface, 44 px (`btn-lg`, `icon-btn-lg`) for anything touched while pedalling [probe:minTarget]. The last item clears the floating navigation button and the browser chrome. |
 | G6 | **Motion** (ADR-0079, SPEC “Motion”). The camera is a tripod on a rail: no shake, bob, roll, overshoot, motion blur or speed lines; field of view rises ≤ +4° [probe:camera.fov]. Live numbers snap, except the watts numeral's 250 ms transform glide (#3200). Bars settle through `transform` over `--dur-live`. Only results roll, only once. One stage moment at a time. Durations and easings are tokens. Reduced motion: the world opens on Flat with one “Show the world (steady camera)” tap; every motion a held stamp; sounds stay. In a still capture, something mid-transition is a defect only if it shows in two captures. |
 | G7 | **The page frame** (desk pages in the app layout). Pages fill the content column (`page`: 16 px gutters on a phone, 32 px from `sm`), no max-width, never centred; a section that would stretch too far goes multi-column at `xl`. `/hud` and the TV centre their block by design. Every section's left edge on the title's. The kit: one `page-title`, `eyebrow` for section labels, `panel`, `btn-*`, `input`; never a retyped class string. Four states: loading (a skeleton in the content's shape); error, with a retry; empty (teaches in one line, plus the button that creates the first one); content. |
@@ -136,10 +136,10 @@ World:
 19. No warm key light, no cast shadow; shading soft and cool, from the sky. [3085-ride-light]
 20. Distant ridges opaque, paler and bluer with distance; no translucent pink layers, no white stripes. [3085-ride-light]
 21. Road: near asphalt cool dark grey, ~rgb 30–40 / 32–42 / 45–60 (tier3 samples 33,36,53), fine grain, never black [probe:asphaltRgb]; off-white edge lines and dashed centre line painted flat; a lighter gravel shoulder outside the edge line, then a green-grey verge; white posts with a black band in a steady rhythm to the vanishing point; grain still under the moving camera [multi:world-drift]; snow poles belong to #3184. [world-road-surface]
-22. Conifer stands frame the road within 10–30 m, crowns crossing the horizon line. [multi:world-60s] [world-forest]
+22. Forest: across a 60 s sequence most frames show conifer stands within 10–30 m of the road on one side at least [multi:world-60s]; crowns cross the horizon line; trees in groups of varied height, never evenly spaced single cones; a meadow a clearing with a forest edge behind it; houses in small clusters near the road, judged where a hamlet is in sight [multi:world-hamlet]; no tree or building on the road, its shoulder or the corridor, the chase camera's sightline along the road (`ground.clearOf`) [test:web/src/lib/world/props/props.test.ts]. [world-forest]
 23. Your figure is ADR-0073's, on a drop-bar road bike with spoked wheels: kit, helmet, glasses, no face. Every kit passes the wardrobe's colour guard (`lib/world/placement/safety.ts`, `wattHueBandDeg` in catalogue.json). [world-figure]
 24. Framing: figure 20–30 % of canvas height [probe:figure.bboxH]; horizon ~40–45 % from the top; field of view never > 4° over its base [probe:camera.fov] [multi:world-drift]. [3211-camera]
-25. One thin flat ring under your wheels, in your live zone colour, no halo; band width as SPEC “The world” records. [probe:ring.bandM] [3086-names-ring]
+25. One thin flat ring under your wheels, in your live zone colour, no halo; band width as SPEC “The world” records. [probe:ring.bandM] [test:web/src/lib/world/ride-scene.test.ts] [3086-names-ring]
 26. Your trail the only glowing or additive element: a thin line ~a wheel wide, fading out within a short fixed length behind you; never a wedge or fill. [3663-world-is-your-ride]
 27. On real ground the frame carries the map and height credits. [#3133]
 
@@ -238,8 +238,8 @@ Capture: two dev riders (Designer and a second, name letters only) in one crew's
 1. Crew panel under the seat in the right column, ~18 % wide; rows ≥ 44 px; your row tinted neon at ~16 %; no crew number in watt. [ride-surface]
 2. Moment card top-centre; border watt while live. [ride-surface]
 3. Seat clear; the now-playing line directly under it at the seat's width. [ride-surface]
-4. Name tags: small dark pills with a hairline, only over the two nearest riders and anyone speaking; merged when they would overlap; never in the corridor's lower half. [3086-names-ring]
-5. A crewmate's ring shows only where you may see their numbers (ADR-0059). [3086-names-ring]
+4. Name tags: small dark pills with a hairline, only over the two nearest riders and anyone speaking; merged when they would overlap; never in the corridor's lower half, nor over a panel, the chevron or a cheer's thumb. [test:web/src/lib/world/tags.test.ts] [3086-names-ring]
+5. A crewmate's ring shows only where you may see their numbers (ADR-0059). [test:web/src/lib/world/ride-scene.test.ts] [3086-names-ring]
 6. Both riders in the world: two figures abreast on the road, each in its own kit, not overlapping; your figure still in `RIDER_BOX`. [#3098]
 7. The session's coach (here, you) wears a small violet chevron over the head: flat, unlit, the only one on the road. [#3098]
 8. Formation, the front row's turn every 120 s, a far rider dithering to their place, the pull-over and the team car hold as SPEC “Riding a road together” says. [test:web/src/lib/world/bunch.test.ts] [#3098]
@@ -252,6 +252,18 @@ Capture: as ride-session-road, on a session with no road.
 
 1. ride-workout-flat's items hold in the session's Training place. [ride-flat]
 2. Crew rows ≥ 44 px; no crew number in watt (G2). [ride-flat]
+
+#### ride-race
+
+Capture: Designer and Design Partner race the hairpin road from Designer's voice channel, world off, the computer on RACE 20 s past km 0; the socket sends the start, as no screen offers a race yet. Then `ride-race-ride`, the same race on RIDE. Targets: v3-race (the RACE page; the radio line in slot 1). Canon: ADR-0067, ADR-0071; SPEC “Races”.
+
+1. RACE reads the gap to your Category's par (“vs par”, “+0:18” ahead, “−0:18” behind), then your place in your Category (“in C”, “2nd of 2”); no W/kg; as tall as RIDE. [#3174] [multi:ride-race-ride]
+2. Gap and place are the race model's: neon, flat, never watt; the page glows nothing. [#3174] [probe:wattCount]
+3. The gap is at the computer's number size, never larger than the 3 s power. [#3174]
+4. The team-car radio: one labelled line in slot 1, words ≥ 24 px, one closed phrase at most every 20 s, never a number RACE shows. [#3174] [test:web/src/lib/race/radio.test.ts]
+5. The shelter bar and the matches gauge join with their issues. [#3265] [#3263]
+6. ride-session-flat's items hold. [ride-flat]
+7. In a race W/kg sits beside the 3 s power in the game's compact head (decided on #3174). [#3668]
 
 #### ride-game-backyard, ride-game-collective
 
@@ -361,18 +373,21 @@ Capture: `/dev/world`, 9 s in, 1440 × 900; superseded by world-start and world-
 
 1. The “Alpine blue hour” look is ADR-0072's ride light, as ride-road-world items 18–20; its colours an app.css token family. [3085-ride-light]
 2. Road as ride-road-world item 21; orange snow poles belong to #3184. [world-road-surface]
-3. Forest stands close to the road, no single cones on bare meadow; houses in small clusters. [world-forest]
+3. Forest stands close to the road, no single cones on bare meadow; houses in small clusters, judged where a hamlet is in sight [multi:world-hamlet]. [world-forest]
 4. The dev crew rides as ADR-0073 figures in distinct kits. [world-figure]
-5. Names over the two nearest riders and anyone speaking; rings thin and flat. [3086-names-ring]
+5. Names over the two nearest riders and anyone speaking; rings thin and flat. [test:web/src/lib/world/tags.test.ts] [3086-names-ring]
+6. Every rider wears a wardrobe look: a catalogue jersey pattern in the look's own colours, a helmet of their own, no two riders in one look. [#3156]
 
 #### world-start, world-end
 
-Capture: `/dev/world?m=<metre>&p=0|1&cam=chase&look=bluehour&chrome=0`, 1440 × 900 and 1280 × 720.
+Capture: `/dev/world?m=<metre>&p=0|1&cam=chase&look=bluehour&chrome=0`, 1440 × 900 and 1280 × 720; world-hamlet the same at m = 1100, a hamlet ahead; world-start also shoots `cam=side` (world-figure-side), `&kit=gipfelpunkte` with a white ground asked for (world-figure-dots), and `&kit=hoops&hold=0` and `&kit=gipfelpunkte&hold=0` four frames a quarter-second apart each (world-figure-motion-1 to 4, world-figure-dots-motion-1 to 4).
 
 1. Two loads of the same URL give an identical frame. [world-moment] [multi:world-start-twice]
 2. With `chrome=0` no dev chrome. [world-moment]
 3. At p=0 no stars. At p=1 stars only in the dark upper sky, never in the peach band, light visibly darker. [3085-ride-light]
 4. The dressing streams with the ground; a held moment draws all of it within the far ring from its first frame (trees, buildings, roadside pieces a ride would meet there), no gap where a tile is still to come. [#3699] [multi:world-start-twice]
+5. Your jersey's pattern lies on the cloth, round the torso and down the sleeves, clean edges that do not crawl; Gipfelpunkte never puts its dots on a white ground. [#3156] [multi:world-figure-side] [multi:world-figure-dots] [multi:world-figure-motion] [multi:world-figure-dots-motion]
+6. No kit colour reads as live data to the viewer: the probe counts none within the viewer's watt band or near a zone. [#3156] [probe:figure.kitCollisions]
 
 ### C. Roads library (desk)
 
@@ -387,7 +402,7 @@ Capture: `/workouts`, the hairpin and rolling route seeded; whole page body, des
 5. Sections 32 px apart; each eyebrow 8 px above its content. [workouts-page]
 6. Route cards use the workout cards' grid, panel, radius and frame. [route-row]
 7. Route card name: display face, bold, 16 px, truncating; class chips (Roman numerals) at its right, the hardest filled neon; an owner-only route carries the lock chip “Only you”. [route-row]
-8. Second line “7.1 km · 563 m · 1 climb”, muted. [route-row]
+8. Second line “7.1 km · 571 m · 1 climb”, muted. [route-row]
 9. Third line one of “Not ridden yet”, “Ridden 3× · last 29 Sep”, “Left off at km 21.3”. [route-row]
 10. Actions: Ride (`btn-primary btn-xs`) bottom right, “Carry on” when there is somewhere to carry on; the rest of the card opens the route page; context menu Ride it, Open, a separator, Delete in the danger token. [route-row]
 11. Phone order: title, search, Your workouts, Your routes, Measure, Curated; nothing scrolls sideways. [workouts-page]

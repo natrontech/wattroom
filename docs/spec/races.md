@@ -89,6 +89,7 @@ What v0 ships (#3022):
 - **Category par** (W/kg): **D 2.2**, **C 2.85**, **B 3.6**, **A 4.3**. The pacer rides the same par (ADR-0068).
 - **Shelter**: the open field of [ADR-0077](../decisions/0077-the-wind-is-shared.md); results stay per Category.
 - **Critical power**: its lines are #3262's.
+- **Team-car radio**: closed phrases only — neutral zone, km 0, race held, race back on, **10**, **5**, **2** and **1 km** and **500 m** to the line, over the line — at most one every **20 s**, the most pressing first. It never says a number the RACE page shows.
 
 | Format     | Parameters                                                                                                                                                    |
 | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |

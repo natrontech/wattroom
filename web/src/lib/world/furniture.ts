@@ -6,7 +6,7 @@ import { type Route } from '$lib/road/route';
 import type { Arch, Sign } from './setpieces';
 import type { Style } from './styles';
 
-const FONT = 'Barlow, system-ui, sans-serif';
+export const FONT = 'Barlow, system-ui, sans-serif';
 
 type Painting = {
 	cv: OffscreenCanvas | HTMLCanvasElement;
@@ -26,7 +26,7 @@ function canvas2d(w: number, h: number): Painting {
 	return { cv, x: cv.getContext('2d') };
 }
 
-function paintedTexture(
+export function paintedTexture(
 	w: number,
 	h: number,
 	draw: (x: NonNullable<Painting['x']>) => void,

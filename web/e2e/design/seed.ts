@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { unpackRoad } from '../../src/lib/road/road';
-import { hairpinGpx, rollingGpx } from '../road-gpx';
+import { climbGpx, hairpinGpx, rollingGpx } from '../road-gpx';
 
 /**
  * The design shots' fixtures (#3666), seeded through the API the way a rider
@@ -9,10 +9,21 @@ import { hairpinGpx, rollingGpx } from '../road-gpx';
 
 /** The fixture roads, each by the name its owner gives it on import. */
 export const ROADS = {
-	// Renamed with #3725's geometry, and again with #3761's key, so a road
-	// seeded before either — the old shape, or stored bare — is not reused.
-	hairpin: { name: 'Design hairpins', gpx: hairpinGpx, turns: true },
-	rolling: { name: 'Design rolling', gpx: rollingGpx, turns: false },
+	// Renamed with #3725's geometry, with #3761's key, and with #3680's loop
+	// flag, so a road seeded before any of them — the old shape, stored bare,
+	// or with no loop sent — is not reused.
+	hairpin: { name: 'Design switchbacks', gpx: hairpinGpx, turns: true },
+	rolling: { name: 'Design swells', gpx: rollingGpx, turns: false },
+	// A name too long for a card, filed under the one source that rides
+	// owner-only (ADR-0063). The road is invented; no Strava data is in it.
+	ownerOnly: {
+		name: 'Design the long way round, over every pass and back down to the lake',
+		// A road of its own: on the swells' line it shared their rides, since
+		// the same road is the same route (ADR-0081).
+		gpx: climbGpx,
+		turns: false,
+		src: 'stravagpx',
+	},
 } as const;
 export type RoadName = keyof typeof ROADS;
 
@@ -40,8 +51,19 @@ export async function fixtureRoad(page: Page, road: RoadName): Promise<string> {
 	const found = before.find((r) => r.name === ROADS[road].name);
 	if (found) return turning(page, road, found.id);
 	await readRoad(page, road);
+	const fixture = ROADS[road];
+	const src = 'src' in fixture ? fixture.src : undefined;
+	if (src)
+		await page.route('**/api/routes', (r) =>
+			r.request().method() === 'POST'
+				? r.continue({
+						postData: JSON.stringify({ ...r.request().postDataJSON(), src }),
+					})
+				: r.continue(),
+		);
 	await page.getByRole('button', { name: 'Save to my routes' }).click();
 	await page.getByText(/is on your routes/).waitFor({ timeout: 15_000 });
+	if (src) await page.unroute('**/api/routes');
 	const known = new Set(before.map((r) => r.id));
 	const made = (await routes(page)).find((r) => !known.has(r.id));
 	if (!made) throw new Error(`the ${road} road never reached /api/routes`);
@@ -185,13 +207,26 @@ type RideRow = { id: string; workoutName: string };
  * A saved ride of ten minutes: on the hairpin road's approach when `road` is
  * given, so its page and poster draw a road. Found again by its name.
  */
-export async function savedRide(page: Page, road?: string): Promise<string> {
-	const name = road ? 'Design road ride' : 'Design ride';
+export async function savedRide(
+	page: Page,
+	road?: string,
+	/**
+	 * Ride long enough to reach the road's end, so nowhere is left to carry
+	 * on. The server replays the metres from the watts (ADR-0074).
+	 */
+	through = false,
+): Promise<string> {
+	const name = through
+		? 'Design road ridden through'
+		: road
+			? 'Design road ride'
+			: 'Design ride';
 	const rows = (await call<{ rides: RideRow[] }>(page, 'GET', '/api/rides'))
 		.body.rides;
 	const found = rows?.find((r) => r.workoutName === name);
 	if (found) return found.id;
-	const samples = Array.from({ length: 600 }, (_, i) => ({
+	const seconds = through ? 2400 : 600;
+	const samples = Array.from({ length: seconds }, (_, i) => ({
 		watts: 180 + Math.round(40 * Math.sin(i / 30)),
 		cadence: 88,
 		hr: 140,
@@ -202,10 +237,13 @@ export async function savedRide(page: Page, road?: string): Promise<string> {
 		workoutJson: JSON.stringify({
 			name,
 			author: 'design shots',
-			steps: [{ type: 'steady', seconds: 600, target: 0.75 }],
+			steps: [{ type: 'steady', seconds, target: 0.75 }],
 		}),
 		// Hours back, and apart: nobody rides two at once (the server's 409).
-		startedAt: new Date(Date.now() - (road ? 4 : 2) * 3_600_000).toISOString(),
+		// Six is the timed ride's.
+		startedAt: new Date(
+			Date.now() - (through ? 8 : road ? 4 : 2) * 3_600_000,
+		).toISOString(),
 		samples,
 		...(road ? { routeId: road } : {}),
 	});
@@ -216,6 +254,32 @@ export async function savedRide(page: Page, road?: string): Promise<string> {
 	).body.rides?.find((r) => r.workoutName === name);
 	if (!again) throw new Error(`the ${name} never reached /api/rides`);
 	return again.id;
+}
+
+/**
+ * A timed free ride up the hairpin road's approach (ADR-0074): the route page's
+ * Best line needs one. Six hours back, clear of the other saved rides.
+ */
+export async function timedRide(page: Page, road: string): Promise<void> {
+	const startedAt = new Date(Date.now() - 6 * 3_600_000).toISOString();
+	const saved = await call(page, 'POST', '/api/rides', {
+		workoutName: 'Free ride',
+		workoutJson: JSON.stringify({
+			name: 'Free ride',
+			unscored: true,
+			steps: [],
+		}),
+		startedAt,
+		samples: Array.from({ length: 300 }, (_, i) => ({
+			watts: 200,
+			cadence: 88,
+			m: i * 2.5,
+		})),
+		routeId: road,
+		drive: 'sim',
+	});
+	if (saved.status !== 201 && saved.status !== 200)
+		throw new Error(`saving the timed ride: ${JSON.stringify(saved)}`);
 }
 
 /**

@@ -98,7 +98,7 @@
 		? 'cave'
 		: ''} {stretch
 		? 'h-full'
-		: 'aspect-video'} transition-shadow duration-(--dur-quick) {tileFrame(
+		: 'aspect-video'} transition-[outline-color,outline-width] duration-(--dur-quick) {tileFrame(
 		rider.speaking,
 		rider.away,
 	)}"

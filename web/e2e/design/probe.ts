@@ -225,3 +225,37 @@ export function probe(corridor: Box) {
 		).__worldProbe?.() ?? {}),
 	};
 }
+
+/**
+ * The near asphalt's colour (#3674): a 9 px patch of the screenshot `png`
+ * (base64) where the world's probe projects the road ahead of your wheel,
+ * `at` in the canvas's clip space. Decoded in the page, which has a PNG
+ * decoder where node has none.
+ */
+export async function sampleAt({
+	png,
+	at: [nx, ny],
+}: {
+	png: string;
+	at: [number, number];
+}): Promise<number[]> {
+	const world = [...document.querySelectorAll('canvas')].sort(
+		(a, b) => b.width * b.height - a.width * a.height,
+	)[0];
+	const r = world.getBoundingClientRect();
+	const img = new Image();
+	img.src = `data:image/png;base64,${png}`;
+	await img.decode();
+	const k = img.width / innerWidth;
+	const x = Math.round((r.left + ((nx + 1) / 2) * r.width) * k);
+	const y = Math.round((r.top + ((1 - ny) / 2) * r.height) * k);
+	const c = document.createElement('canvas');
+	[c.width, c.height] = [img.width, img.height];
+	const g = c.getContext('2d')!;
+	g.drawImage(img, 0, 0);
+	const d = g.getImageData(x - 4, y - 4, 9, 9).data;
+	const sum = [0, 0, 0];
+	for (let i = 0; i < d.length; i += 4)
+		for (let j = 0; j < 3; j++) sum[j] += d[i + j];
+	return sum.map((v) => Math.round(v / (d.length / 4)));
+}

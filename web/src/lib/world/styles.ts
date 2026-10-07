@@ -79,7 +79,7 @@ export type Style = {
 	grid: { color: string; size: number; alpha: number } | null; // flats only
 	contours: { color: string; index: string; step: number } | null;
 	imhof: { valley: string; peak: string } | null; // relief-map shading instead of bands
-	road: { asphalt: string; line: string; verge: string };
+	road: { asphalt: string; line: string; verge: string; shoulder?: string }; // no shoulder: the verge runs to the asphalt
 	props: PropColors;
 	kit: RiderKit;
 	zones: readonly string[]; // Z1–Z7: the flat ring under each rider
@@ -89,6 +89,8 @@ export type Style = {
 	stars: string | null;
 	signs: Record<SignLook, { bg: string; fg: string; post: string }>;
 	arch: { chrome: string; panel: string; stripe: string; text: string };
+	/** A rider's name tag (#3086): a dark pill, its hairline, its words. */
+	tag: { bg: string; line: string; ink: string };
 };
 
 const col = (s: string | undefined) =>

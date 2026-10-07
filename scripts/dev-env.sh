@@ -30,7 +30,8 @@
 #   dev-env.sh infra       start the shared Postgres + LiveKit project (`make infra`)
 #   dev-env.sh ensure-db   create this worktree's dev database if it is missing
 #   dev-env.sh ensure-test-db  same for its test database (`make test`)
-#   dev-env.sh drop-db     drop both (never the main tree's `wattroom`)
+#   dev-env.sh fresh-design-db  drop and recreate the design shots' database
+#   dev-env.sh drop-db     drop all three (never the main tree's `wattroom`)
 #   dev-env.sh pg-container  the container id both of those act in
 #   dev-env.sh pg-strays   report postgres containers outside the shared project
 set -eu
@@ -171,6 +172,7 @@ if [ "$is_main_tree" = 1 ]; then
 	metrics_port=9091
 	db_name=wattroom
 	test_db_name=wattroom_test
+	design_db_name=wattroom_design
 else
 	worktree_name=$(basename "$toplevel")
 	hash=$(crc "$toplevel")
@@ -189,10 +191,14 @@ else
 	# in `psql -l` and one glance says which checkout owns both. 63-byte
 	# identifier cap: 17 + 32 + 5 fits.
 	test_db_name=$(printf 'wattroom_test_wt_%s_%04x' "$slug" $((hash % 65536)))
+	# The design shots' (#3858): made fresh for every `make design-shots`, so
+	# a capture here starts from the same nothing CI's does. 19 + 32 + 5 fits.
+	design_db_name=$(printf 'wattroom_design_wt_%s_%04x' "$slug" $((hash % 65536)))
 fi
 
 dsn="$PG_DSN_PREFIX/$db_name"
 test_dsn="$PG_DSN_PREFIX/$test_db_name"
+design_dsn="$PG_DSN_PREFIX/$design_db_name"
 
 # Checked, not trusted, exactly like the ports below: every name this script
 # hands out for the destructive suite must be recognisable as one. `drop-db`
@@ -247,6 +253,8 @@ export WATTROOM_DEV_DB_NAME='$db_name'
 export WATTROOM_DEV_DSN='$dsn'
 export WATTROOM_DEV_TEST_DB_NAME='$test_db_name'
 export WATTROOM_DEV_TEST_DSN='$test_dsn'
+export WATTROOM_DEV_DESIGN_DB_NAME='$design_db_name'
+export WATTROOM_DEV_DESIGN_DSN='$design_dsn'
 END
 	;;
 banner)
@@ -291,26 +299,33 @@ ensure-test-db)
 	container=$(pg_container) || no_postgres
 	create_db "$container" "$test_db_name"
 	;;
+fresh-design-db)
+	# Nothing in it outlives a run: the seed makes what the shots need, and a
+	# database that remembers the last run's rides shows them in this one's.
+	container=$(pg_container) || no_postgres
+	docker exec "$container" dropdb -U "$PG_USER" --if-exists --force "$design_db_name" >/dev/null
+	create_db "$container" "$design_db_name" >&2
+	;;
 pg-container)
 	# The gc needs the same answer for its stranded-database report, and this
 	# is the only place that knows how to find it.
 	pg_container || no_postgres
 	;;
 drop-db)
-	# Both of this checkout's databases: `git worktree remove` runs no hook, so
+	# Every database of this checkout: `git worktree remove` runs no hook, so
 	# whatever this does not take is litter in `psql -l` forever (AGENTS.md).
 	if [ "$is_main_tree" = 1 ]; then
-		echo "refusing to drop the main tree's databases ($db_name, $test_db_name)" >&2
+		echo "refusing to drop the main tree's databases ($db_name, $test_db_name, $design_db_name)" >&2
 		exit 1
 	fi
 	container=$(pg_container) || no_postgres
-	for victim in "$db_name" "$test_db_name"; do
+	for victim in "$db_name" "$test_db_name" "$design_db_name"; do
 		docker exec "$container" dropdb -U "$PG_USER" --if-exists --force "$victim" >/dev/null
 		echo "dropped database $victim"
 	done
 	;;
 *)
-	echo "usage: dev-env.sh [print|banner <server|web|verify|test|e2e>|infra|ensure-db|ensure-test-db|drop-db|pg-container|pg-strays]" >&2
+	echo "usage: dev-env.sh [print|banner <server|web|verify|test|e2e>|infra|ensure-db|ensure-test-db|fresh-design-db|drop-db|pg-container|pg-strays]" >&2
 	exit 2
 	;;
 esac

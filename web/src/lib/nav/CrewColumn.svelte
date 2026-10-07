@@ -283,7 +283,7 @@
 							? 'bg-ink/10 text-ink'
 							: 'text-ink/85 hover:bg-ink/5 hover:text-ink'}"
 					>
-						<span class="text-watt"><RidingBars size={9} /></span>
+						<RidingBars size={9} />
 						{sessionLine(c.session)}
 					</a>
 				{/if}
@@ -310,7 +310,7 @@
 <div
 	{@attach mover.ghostHere}
 	aria-hidden="true"
-	class="bg-surface-raised text-ink ring-neon/40 pointer-events-none fixed top-0 -left-[9999px] flex items-center gap-1.5 rounded-full py-1 pr-3 pl-1 text-xs font-medium shadow-lg ring-1"
+	class="bg-surface-raised text-ink border-neon/40 pointer-events-none fixed top-0 -left-[9999px] flex items-center gap-1.5 rounded-full border py-1 pr-3 pl-1 text-xs font-medium"
 >
 	{#if mover.ghostOf}
 		{@const face = faces.face(mover.ghostOf.id)}

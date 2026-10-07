@@ -64,7 +64,9 @@ const ARCH: Style['arch'] = {
 	stripe: '#8b2bff',
 	text: '#ffffff',
 };
-const shared = { kit: KIT, zones: ZONES, signs: SIGNS, arch: ARCH };
+// The cave's surface, neon and ink (app.css, dark).
+const TAG: Style['tag'] = { bg: '#0a0118', line: '#8b2bff', ink: '#ffffff' };
+const shared = { kit: KIT, zones: ZONES, signs: SIGNS, arch: ARCH, tag: TAG };
 
 export const STYLES: readonly Style[] = [
 	{

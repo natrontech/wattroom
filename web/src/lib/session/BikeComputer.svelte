@@ -42,7 +42,7 @@
 	} = $props();
 
 	let page = $state<ComputerPage>('ride');
-	const pages = $derived(pagesFor(ctx.stats));
+	const pages = $derived(pagesFor(ctx.stats, ctx.race));
 	const shown = $derived(pages.includes(page) ? page : 'ride');
 	const fields = $derived(fieldsFor(shown, ctx));
 	const turns = $derived(pages.length > 1);
@@ -178,7 +178,7 @@
 							class={tv ? 'size-[1.4vh]' : 'size-2'}
 						/>{/if}</span
 				>
-				{#if field.neon}
+				{#if field.key === 'gear'}
 					<span
 						bind:this={gearField}
 						aria-live="polite"
@@ -187,13 +187,19 @@
 					>
 				{:else}
 					<!-- A space, not a margin, between number and unit: "78 rpm"
-					     is what a screen reader and a search both read. -->
+					     is what a screen reader and a search both read. Neon is a
+					     model's number, flat: only live data glows (ADR-0005). The
+					     unit's own line-height would make a page with units 2 px
+					     taller than one without, so a turn would move the panel. -->
 					<span
 						class="num mt-1 block {size.value} leading-none font-bold {field.glow
 							? 'text-watt glow-text'
-							: 'text-ink'}"
+							: field.neon
+								? 'text-neon'
+								: 'text-ink'}"
 						>{field.value}{#if field.unit}{' '}<span
-								class="text-muted {size.unit} font-normal">{field.unit}</span
+								class="text-muted {size.unit} leading-none font-normal"
+								>{field.unit}</span
 							>{/if}</span
 					>
 				{/if}

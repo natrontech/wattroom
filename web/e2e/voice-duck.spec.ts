@@ -174,7 +174,7 @@ test("a real remote voice lights the listener's speaking ring, and losing it cle
 	await expect(
 		bTile,
 		`${B}'s tile never got the speaking ring on ${A}'s screen — the real remote-voice meter never reported a level`,
-	).toHaveClass(/ring-z4/, { timeout: 20_000 });
+	).toHaveClass(/outline-z4/, { timeout: 20_000 });
 
 	// Muting takes the level away — the ring has to follow it down, not
 	// linger (#987: a rider who stops must not stay lit up forever).
@@ -182,5 +182,5 @@ test("a real remote voice lights the listener's speaking ring, and losing it cle
 	await expect(
 		bTile,
 		`${B}'s tile stayed ringed as speaking after muting`,
-	).not.toHaveClass(/ring-z4/, { timeout: 5_000 });
+	).not.toHaveClass(/outline-z4/, { timeout: 5_000 });
 });

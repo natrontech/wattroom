@@ -102,15 +102,27 @@
 					},
 					onFail: onfail,
 				});
+				// What a design capture measures on the ride, as /dev/world reports it (World.svelte).
+				if (import.meta.env.DEV)
+					(window as { __worldProbe?: () => unknown }).__worldProbe = () =>
+						scene?.probe();
 			} catch (err) {
 				console.error('world: slot 2 did not start', err);
 				onfail('build-failed');
 			}
+			// A capture measures the ride's world as /dev/world's (docs/design/DESIGN-CHECK.md).
+			if (import.meta.env.DEV && scene)
+				(window as { __worldProbe?: () => unknown }).__worldProbe = () =>
+					scene?.probe();
 		}, 40);
 		return () => {
 			clearTimeout(t);
+			if (import.meta.env.DEV)
+				delete (window as { __worldProbe?: unknown }).__worldProbe;
 			scene?.dispose();
 			scene = null;
+			if (import.meta.env.DEV)
+				delete (window as { __worldProbe?: () => unknown }).__worldProbe;
 		};
 	});
 

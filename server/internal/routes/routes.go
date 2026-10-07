@@ -109,11 +109,19 @@ type routeJSON struct {
 	// A route from strava.com rides owner-only (ADR-0063).
 	OwnerOnly bool      `json:"ownerOnly"`
 	CreatedAt time.Time `json:"createdAt"`
+	// Set on the list only (#3683): the owner's own rides of the road, the
+	// latest's time, and where to carry on from when the latest ridden alone
+	// stopped short of the end.
+	Rides        *int32     `json:"rides,omitempty"`
+	LastRiddenAt *time.Time `json:"lastRiddenAt,omitempty"`
+	CarryOnM     *int32     `json:"carryOnM,omitempty"`
 	// Set on one route read, never on the list.
 	Road      []byte `json:"road,omitempty"`
 	RoadHash  string `json:"roadHash,omitempty"`
 	EleSource string `json:"eleSource,omitempty"`
 	Hint      string `json:"hint,omitempty"`
+	// Whether it ends where it began; absent for a route stored before #3680.
+	Loop *bool `json:"loop,omitempty"`
 }
 
 func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
@@ -128,10 +136,13 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 	}
 	out := make([]routeJSON, 0, len(rows))
 	for _, row := range rows {
+		rides := row.Rides
 		out = append(out, routeJSON{
 			ID: store.UUIDString(row.ID), Name: row.Name, GeneratedName: row.GenName, Src: row.Src,
 			LengthM: row.LengthM, GainM: row.GainM, Climbs: row.Climbs, HasPlace: row.HasPlace,
 			OwnerOnly: row.Src == stravaSrc, CreatedAt: row.CreatedAt.Time,
+			Rides: &rides, LastRiddenAt: timeOrNil(row.LastRiddenAt),
+			CarryOnM: carryOn(row.LastAloneFromM, row.LastAloneDistanceM, row.LengthM),
 		})
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"routes": out})
@@ -162,7 +173,7 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 		ID: store.UUIDString(row.ID), Name: row.Name, GeneratedName: row.GenName, Src: row.Src,
 		LengthM: row.LengthM, GainM: row.GainM, Climbs: row.Climbs, HasPlace: row.HasPlace,
 		OwnerOnly: row.Src == stravaSrc, CreatedAt: row.CreatedAt.Time,
-		Road: whole, RoadHash: row.RoadHash, EleSource: row.EleSource,
+		Road: whole, RoadHash: row.RoadHash, EleSource: row.EleSource, Loop: row.Loop,
 	})
 }
 
@@ -306,4 +317,29 @@ func Open(keys *secrets.Cipher, sealed []byte, version *int32) (string, error) {
 		return "", errors.New("routes: sealed under a key this server does not hold")
 	}
 	return keys.Open(sealed)
+}
+
+// carryOn is where the rider's latest ride of a road alone stopped (#3205,
+// #3683): its first metre plus the metres it kept, while that is short of
+// the end. The client's carryOnFrom reads the same rule off the attempts.
+// Metres are kept whole, so a ride to the end may land a metre short.
+func carryOn(from, distance *int32, length int32) *int32 {
+	if distance == nil || *distance <= 0 {
+		return nil
+	}
+	m := *distance
+	if from != nil {
+		m += *from
+	}
+	if m+1 >= length {
+		return nil
+	}
+	return &m
+}
+
+func timeOrNil(t pgtype.Timestamptz) *time.Time {
+	if !t.Valid {
+		return nil
+	}
+	return &t.Time
 }
