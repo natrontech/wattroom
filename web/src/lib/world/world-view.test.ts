@@ -10,10 +10,20 @@ function capable() {
 	} as unknown as WebGL2RenderingContext);
 }
 
+/** The window's height, as a resize says it (happy-dom's own is 768). */
+const at = (height: number) => {
+	Object.defineProperty(window, 'innerHeight', {
+		value: height,
+		configurable: true,
+	});
+	window.dispatchEvent(new Event('resize'));
+};
+
 describe('a ride’s world view (#3080)', () => {
 	beforeEach(() => {
 		localStorage.clear();
 		capable();
+		at(900);
 	});
 	afterEach(() => vi.restoreAllMocks());
 
@@ -41,6 +51,21 @@ describe('a ride’s world view (#3080)', () => {
 		expect(view.reason).toBe('chosen');
 		expect(flatRoad()).toBe(true);
 		expect(createWorldView().reason).toBe('chosen');
+	});
+
+	it('rides flat while the window is too short for its panels, and comes back as it grows (#3668)', () => {
+		setWorldSlot(true);
+		const view = createWorldView();
+		try {
+			at(720);
+			expect(view.on).toBe(false);
+			expect(view.reason).toBe('short');
+			at(900);
+			expect(view.on).toBe(true);
+			expect(flatRoad()).toBeNull(); // the window chose nothing for the rider
+		} finally {
+			at(900);
+		}
 	});
 
 	it('makes "Try 3D again" the rider’s new choice when their own choice held it flat', () => {

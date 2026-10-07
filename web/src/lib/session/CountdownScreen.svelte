@@ -60,6 +60,7 @@
 			<p class="eyebrow">starting</p>
 			<p
 				aria-hidden="true"
+				data-testid="count-in"
 				class="font-display text-ink text-[10rem] leading-none font-bold tabular-nums"
 			>
 				{remaining}

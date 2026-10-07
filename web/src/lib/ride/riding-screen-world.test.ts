@@ -31,7 +31,10 @@ const openers: Workout = {
 };
 
 /** The ride screen's markup for `workout`. */
-function screen(workout: Workout): string {
+function screen(
+	workout: Workout,
+	extra: { onTv?: () => void; onFlag?: () => void } = {},
+): string {
 	const session = createRideSession({
 		trainer: new SimulatedTrainer(),
 		workout,
@@ -47,6 +50,7 @@ function screen(workout: Workout): string {
 			watts: 150,
 			target: 150,
 			signalLost: false,
+			...extra,
 		},
 	}).body;
 }
@@ -62,5 +66,24 @@ describe('the world on a ride', () => {
 			legsRoad([1000, 0], [1000, 5]),
 		);
 		expect(screen(onRoad)).toContain('data-surface="docked"');
+	});
+
+	it('gives slot 1 its controls as named 44 px icons with tooltips, End ride the one word (TARGETS ride-road-world 7)', () => {
+		const onRoad = withProfile(
+			{ ...openers, road: { routeId: 'r1', fromM: 0, toM: 2000 } },
+			legsRoad([1000, 0], [1000, 5]),
+		);
+		const html = screen(onRoad, { onTv: () => {}, onFlag: () => {} });
+		// ⚑ keeps its own kit (FlagButton): a name and the tooltip that asks.
+		expect(html).toMatch(
+			/<button[^>]*title="[^"]+"[^>]*aria-label="Flag a problem"/,
+		);
+		for (const name of ['TV mode', 'One more minute', 'Skip block'])
+			expect(html).toMatch(
+				new RegExp(
+					`<button[^>]*class="[^"]*h-11 w-11[^"]*" aria-label="${name}" title="[^"]+"`,
+				),
+			);
+		expect(html).toMatch(/>End ride<\/button>/);
 	});
 });

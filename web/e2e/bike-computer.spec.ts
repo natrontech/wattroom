@@ -28,9 +28,10 @@ test('the bike computer turns its pages and reads from the saddle', async ({
 	});
 
 	// docs/SPEC.md: secondary numbers 36 px, words 24 px, a unit at most half.
-	const power = computer.locator('[data-field=power]');
-	await expect(power).toBeVisible();
-	const sizes = await power.evaluate((field) => {
+	// RIDE leaves the watts to the instrument above it (D17); cadence carries a unit.
+	const cadence = computer.locator('[data-field=cadence]');
+	await expect(cadence).toBeVisible();
+	const sizes = await cadence.evaluate((field) => {
 		const px = (el: Element) => parseFloat(getComputedStyle(el).fontSize);
 		const [label, value] = field.children;
 		return { label: px(label), value: px(value), unit: px(value.children[0]) };

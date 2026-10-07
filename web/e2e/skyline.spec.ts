@@ -37,8 +37,7 @@ async function rideTheRoad(page: Page, name: string) {
 /** How far the road has moved left under the dot, px. */
 const shiftOf = (skyline: ReturnType<Page['getByTestId']>) =>
 	skyline
-		.locator(':scope > div')
-		.first()
+		.getByTestId('skyline-road')
 		.evaluate((el) => -new DOMMatrix(getComputedStyle(el).transform).m41);
 
 test.describe('the Skyline', () => {

@@ -2,6 +2,10 @@ import type { Page } from '@playwright/test';
 import { expect, test, voicePath } from './crew';
 import { climbGpx } from './road-gpx';
 
+// The world draws in a window the box table holds (TARGETS ride-road-world):
+// Desktop Chrome's 1280 × 720 is shorter, and rides the flat road (#3668).
+test.use({ viewport: { width: 1440, height: 900 } });
+
 /**
  * The bunch in the world (#3098, ADR-0065): two riders in one session on a
  * road, each with the world on, and each screen draws both of them where the

@@ -590,9 +590,23 @@ body {
 	@apply border-muted/20 rounded-xl border;
 }
 
+/* A panel over the world (TARGETS G3, ADR-0071, #3668): flat, so the GPU
+ * budget holds — the surface at 86 % (the floor is 85 %), a neon hairline,
+ * no blur, no shadow, never nested. Its padding is its content's. */
+@utility ride-panel {
+	background: color-mix(in oklab, var(--color-surface) 86%, transparent);
+	border: 1px solid color-mix(in oklab, var(--color-neon) 38%, transparent);
+	border-radius: 12px;
+}
+
 /* Section label. One tracking, one size — ends the tracking-wider/tracking-[0.2em] split. */
 @utility eyebrow {
 	@apply text-muted text-[10px] tracking-[0.2em] uppercase;
+}
+/* A riding surface's label (TARGETS G4): SPEC's 24 px words on a desk; the
+ * kit's 10 px eyebrow is for desk pages only. */
+@utility ride-label {
+	@apply text-muted text-2xl leading-7 font-semibold tracking-[0.08em] uppercase;
 }
 
 /* The page's own title (#1697): one spelling, so the nineteen h1s that
