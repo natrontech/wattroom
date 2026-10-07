@@ -45,10 +45,17 @@ describe('name tags over riders (#3086)', () => {
 
 	it('keeps to the upper half of the keep-clear corridor, clear of the panels beside it', () => {
 		const middle = (CORRIDOR.y0 + CORRIDOR.y1) / 2;
-		for (const x of [0.5, 0.2, 0.9]) {
-			const [t] = lay([{ text: 'Ana', speaking: false, x, y: 0.6 }], 16 / 10);
+		for (const [x, y] of [
+			[0.5, 0.6],
+			[0.2, 0.6],
+			[0.9, 0.6],
+			[0.5, 0.1],
+		]) {
+			const [t] = lay([{ text: 'Ana', speaking: false, x, y }], 16 / 10);
 			expect(t.y + PILL_H / 2).toBeLessThanOrEqual(middle + 1e-9);
-			const half = (TEXT_H * 0.6 * 3 + PILL_H) / (16 / 10) / 2;
+			// Never up under the header that ends where the corridor begins.
+			expect(t.y - PILL_H / 2).toBeGreaterThanOrEqual(CORRIDOR.y0 - 1e-9);
+			const half = (TEXT_H * 0.6 * 3 + 1.2 * PILL_H) / (16 / 10) / 2;
 			expect(t.x - half).toBeGreaterThanOrEqual(CORRIDOR.x0 - 1e-9);
 			expect(t.x + half).toBeLessThanOrEqual(CORRIDOR.x1 + 1e-9);
 		}
@@ -73,15 +80,15 @@ describe('name tags over riders (#3086)', () => {
 			return s.position.clone().project(camera).y - PILL_H;
 		};
 		const thumbTop = new THREE.Vector3(0, THUMB_Y + 0.16, 0).project(camera).y;
-		const chevron = new THREE.Vector3(0, CHEVRON_Y + 0.2, 0).project(camera).y;
+		const chevron = new THREE.Vector3(0, CHEVRON_Y + 0.12, 0).project(camera).y;
 		expect(foot({ thumb: 1, alpha: 1, lit: true })).toBeGreaterThanOrEqual(
 			thumbTop,
 		);
 		expect(foot(null)).toBeCloseTo(chevron, 5);
 	});
 
-	it('is at least 16 arcmin tall at the design distance: 18 px of text in a 900 px frame', () => {
-		expect(TEXT_H * 900).toBeGreaterThanOrEqual(18);
+	it('is at least 16 arcmin tall at the design distance: 20 px of text in a 900 px frame', () => {
+		expect(TEXT_H * 900).toBeGreaterThanOrEqual(20);
 	});
 
 	it('draws each tag as a flat sprite, constant on screen, never additive', () => {

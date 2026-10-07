@@ -19,11 +19,15 @@ const NEAREST = 2;
  */
 export const PILL_H = 30 / 900;
 export const TEXT_H = 20 / 900;
-/** A character's width as a share of the text's height: Barlow at its widest. */
+/** Each end's padding, as a share of the pill's height: the target's small pill (v2-ride). */
+const PAD = 0.6;
+/** A character's width as a share of the text's height, where no canvas can measure: Barlow at its widest. */
 const CHAR_W = 0.6;
-/** Where a tag's foot sits: over the chevron's height, so no chevron abreast hides under it, or over a cheer's thumb while it shows. */
+/** The words' weight: medium, as the target's names are. */
+const WEIGHT = 500;
+/** Where a tag's foot sits: just clear of a chevron's height, so no chevron abreast hides under it, or over a cheer's thumb while it shows. */
 const footOf = (r: SimRider) =>
-	(r.cheer && r.cheer.thumb > 0 ? THUMB_Y : CHEVRON_Y) + 0.2;
+	r.cheer && r.cheer.thumb > 0 ? THUMB_Y + 0.2 : CHEVRON_Y + 0.12;
 
 /** A tag as the frame lays it: its words, and its centre as shares of the frame, from the top left. */
 export type Laid = { text: string; speaking: boolean; x: number; y: number };
@@ -44,9 +48,26 @@ export function carriers(riders: readonly SimRider[]): SimRider[] {
 export const textOf = (r: SimRider) =>
 	r.level ? `${r.name} · Lv ${r.level}` : r.name;
 
+let measurer:
+	| OffscreenCanvasRenderingContext2D
+	| CanvasRenderingContext2D
+	| null
+	| undefined;
+/** The words' width in ems, as the tag's font draws them. */
+function ems(text: string) {
+	measurer ??=
+		typeof OffscreenCanvas === 'function'
+			? new OffscreenCanvas(1, 1).getContext('2d')
+			: document.createElement('canvas').getContext('2d');
+	if (!measurer) return CHAR_W * text.length;
+	measurer.font = `${WEIGHT} 100px ${FONT}`;
+	return measurer.measureText(text).width / 100;
+}
+
+/** A pill's width as a share of the frame's height: its words, and the padding at each end. */
+const spanOf = (text: string) => TEXT_H * ems(text) + 2 * PAD * PILL_H;
 /** A pill's width as a share of the frame's width, for a frame `aspect` wide to 1 tall. */
-const widthOf = (text: string, aspect: number) =>
-	(TEXT_H * CHAR_W * text.length + PILL_H) / aspect;
+const widthOf = (text: string, aspect: number) => spanOf(text) / aspect;
 
 /** A tag kept to the corridor's upper half: no panel beside it, no road ahead under it. */
 function keep(t: Laid, aspect: number): Laid {
@@ -81,10 +102,10 @@ export function lay(tags: readonly Laid[], aspect: number): Laid[] {
 	return out.map((t) => keep(t, aspect));
 }
 
-/** The pill as a texture: dark, a hairline, ink words; a speaking rider's hairline is the ink at twice the width. */
+/** The pill as a texture: dark, the kit's faint neon hairline, ink words; a speaking rider's hairline is the ink at twice the width. */
 function pill(text: string, speaking: boolean, style: Style) {
 	const h = 60;
-	const w = Math.round(h * ((TEXT_H * CHAR_W * text.length + PILL_H) / PILL_H));
+	const w = Math.round((h * spanOf(text)) / PILL_H);
 	return {
 		w,
 		h,
@@ -95,9 +116,11 @@ function pill(text: string, speaking: boolean, style: Style) {
 			x.beginPath();
 			x.roundRect(2, 2, w - 4, h - 4, h / 2 - 2);
 			x.fill();
+			x.globalAlpha = speaking ? 1 : 0.38;
 			x.stroke();
+			x.globalAlpha = 1;
 			x.fillStyle = style.tag.ink;
-			x.font = `600 ${Math.round(h * (TEXT_H / PILL_H))}px ${FONT}`;
+			x.font = `${WEIGHT} ${Math.round(h * (TEXT_H / PILL_H))}px ${FONT}`;
 			x.textAlign = 'center';
 			x.textBaseline = 'middle';
 			x.fillText(text, w / 2, h / 2 + 1);
