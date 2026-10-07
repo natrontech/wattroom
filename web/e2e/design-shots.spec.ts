@@ -260,7 +260,8 @@ surface(
 			.getByRole('button', { name: /^Start (riding|the ride)$/ })
 			.first()
 			.click();
-		await o.page.getByText(/^starting$/i).waitFor({ timeout: 5000 });
+		// The digit, flat or over the world (#3668).
+		await o.page.getByTestId('count-in').waitFor({ timeout: 5000 });
 		await s.shot(o, { name: 'ride-countin-first' });
 		await o.page.waitForTimeout(1000);
 		await s.shot(o);

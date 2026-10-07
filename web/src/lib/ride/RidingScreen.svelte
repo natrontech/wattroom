@@ -178,6 +178,7 @@
 	<p class="sr-only" role="status">Starting {workout.name} in a moment</p>
 	<span
 		aria-hidden="true"
+		data-testid="count-in"
 		class="font-display text-ink text-[9rem] leading-none font-bold tabular-nums"
 		>{countIn?.remaining}</span
 	>
