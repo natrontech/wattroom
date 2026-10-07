@@ -299,7 +299,9 @@
 		{#if turns && !tv && !phone && !docked}{@render dots()}{/if}
 	</div>
 	{#if zoneStrip}{@render strip(zoneStrip)}{/if}
-	{#if shown === 'climb' && ctx.climb}<ClimbProfile
+	<!-- Docked under a target the head's track takes the profile's room; the
+	     Skyline under the computer draws the climb and your dot. -->
+	{#if shown === 'climb' && ctx.climb && !(docked && ctx.target)}<ClimbProfile
 			view={ctx.climb}
 			{tv}
 		/>{/if}

@@ -41,12 +41,13 @@ export const MOMENT_MIN_PX = 300;
 
 /**
  * The shortest canvas the box table holds at SPEC's sizes: slot 1's band
- * (176), the computer (508) and the Skyline (64), with their insets and
- * gaps. A shorter window rides the flat surface and says why (Jan,
- * 2026-10-07, #3668). ponytail: a constant from the box table; measure the
- * stack itself if the computer's pages ever grow.
+ * (176), the computer at its tallest (553: CLIMB under a scored target,
+ * #3645) and the Skyline (64), with their insets and gaps. A shorter window
+ * rides the flat surface and says why (Jan, 2026-10-07, #3668; raised from
+ * 820 for CLIMB, #3645). ponytail: a constant from the box table; measure
+ * the stack itself if the computer's pages grow again.
  */
-export const WORLD_MIN_PX = 820;
+export const WORLD_MIN_PX = 860;
 
 /** A shared screen's stage, between the columns, over the paused world. */
 export const STAGE: Box = { x0: 0.3, y0: 0.23, x1: 0.71, y1: 0.84 };

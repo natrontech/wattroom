@@ -110,17 +110,17 @@ Desk: 1440 × 900. Phone: 375 × 812 with touch. World on: the device's World co
 
 Capture: world on, `/ride?w=openers&road=<hairpin>&from=0`, simulated trainer, 14 s in; 1440 × 900 and 1920 × 1080. Targets: v2-ride, layout and panel kit (its CSS `--hud: rgba(10,1,24,.86)`, `--hud-line: rgba(139,43,255,.38)`, 12 px radius, 16 px insets); v2-erg, slot 1 and the computer in a workout; v3-motion's count-in frame, the slot map; v3-race, the computer's panel, with D15; world look: world-realism-tier3, world-kom, world-bluehour-hairpin. Canon: ADR-0046 (amendments #3062, #3063), 0066, 0071, 0072, 0073, 0079; SPEC “The bike computer”, “The world”, “Motion”.
 
-Box table (#3668), measured in the app's fonts at SPEC's sizes. Every panel is its content's size, so w and h are the most each takes. A session's canvas is the solo ride's: while it rides in the world the people column folds into its sheet (Jan, 2026-10-07). A window shorter than the table holds (a canvas under 820 px, such as 1280 × 720) rides flat with "Flat road — this window is too short for the world" and draws the world again when it grows (Jan, 2026-10-07).
+Box table (#3668), measured in the app's fonts at SPEC's sizes. Every panel is its content's size, so w and h are the most each takes. A session's canvas is the solo ride's: while it rides in the world the people column folds into its sheet (Jan, 2026-10-07). A window shorter than the table holds (a canvas under 860 px, such as 1280 × 720; 820 until #3645's CLIMB page, Jan 2026-10-07) rides flat with "Flat road — this window is too short for the world" and draws the world again when it grows (Jan, 2026-10-07).
 
 1440 × 900: canvas 1200 × 900 beside the 240 px sidebar; corridor x 360–840, y 202.5–697.5; seat x 888–1184, y 16–268.
 
-| Panel                | x        | y     | w       | h     | Holds                                                                                                                                                                                                                        |
-| -------------------- | -------- | ----- | ------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| slot 1, band         | 16       | 16    | ≤ 860   | ≤ 186 | eyebrow or status line 24 with the controls 44; time left 72 beside block · target · elapsed of total at 24; the interval strip 40 over NEXT 24 with its 3-2-1 chips; the trainer chip and road line 24. Ends above y 202.5. |
-| moment card          | right 16 | 280   | 300–344 | ≤ 160 | under the seat, its right edge the seat's: top-centre, between slot 1 and the seat, 300 px are not free; at most 30 % wide (D12)                                                                                             |
-| bike computer        | 16       | ≥ 300 | ≤ 344   | ≤ 508 | page control 44, the 3 s power 104 with W/kg 36 beside, zone 24, target track and its band 24, block on target 36, fields 24 / 36, bias trim 44. Ends 12 px above the Skyline.                                               |
-| crew panel (session) | right 16 | 280   | ≈ 240   | ≤ 520 | rows 44, under the seat and any moment card                                                                                                                                                                                  |
-| Skyline              | 16       | 820   | 1168    | 64    | the dot wholly inside                                                                                                                                                                                                        |
+| Panel                | x        | y     | w       | h     | Holds                                                                                                                                                                                                                         |
+| -------------------- | -------- | ----- | ------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| slot 1, band         | 16       | 16    | ≤ 860   | ≤ 186 | eyebrow or status line 24 with the controls 44; time left 72 beside block · target · elapsed of total at 24; the interval strip 40 over NEXT 24 with its 3-2-1 chips; the trainer chip and road line 24. Ends above y 202.5.  |
+| moment card          | right 16 | 280   | 300–344 | ≤ 160 | under the seat, its right edge the seat's: top-centre, between slot 1 and the seat, 300 px are not free; at most 30 % wide (D12)                                                                                              |
+| bike computer        | 16       | ≥ 255 | ≤ 344   | ≤ 553 | page control 44, the 3 s power 104 with W/kg 36 beside, zone 24, target track and its band 24, block on target 36, fields 24 / 36 (CLIMB a 2 × 2 grid), bias trim 44; RIDE's climb chip 24 × 2. Ends 12 px above the Skyline. |
+| crew panel (session) | right 16 | 280   | ≈ 240   | ≤ 520 | rows 44, under the seat and any moment card                                                                                                                                                                                   |
+| Skyline              | 16       | 820   | 1168    | 64    | the dot wholly inside                                                                                                                                                                                                         |
 
 1920 × 1080: canvas 1680 × 1080; corridor x 504–1176, y 243–837; seat x 1243–1664, y 16–318.
 
@@ -128,7 +128,7 @@ Box table (#3668), measured in the app's fonts at SPEC's sizes. Every panel is i
 | -------------------- | -------- | ----- | ----- | ----- | --------------------------------------------------------- |
 | slot 1, band         | 16       | 16    | ≤ 860 | ≤ 186 | as at 1440; ends at y ≤ 202, 41 px above the corridor     |
 | moment card          | ≥ 888    | 16    | ≥ 300 | ≤ 186 | top-centre: about 340 px free between slot 1 and the seat |
-| bike computer        | 16       | ≥ 480 | ≤ 344 | ≤ 508 | as at 1440                                                |
+| bike computer        | 16       | ≥ 435 | ≤ 344 | ≤ 553 | as at 1440                                                |
 | crew panel (session) | right 16 | 330   | ≈ 240 | ≤ 650 | rows 44                                                   |
 | Skyline              | 16       | 1000  | 1648  | 64    |                                                           |
 

@@ -158,21 +158,27 @@ export function fieldsFor(page: ComputerPage, ctx: ComputerContext): Field[] {
 		const climb = ctx.climb;
 		if (!climb) return [];
 		const top = distance(climb.card.toTopM);
-		return [
-			{ key: 'toTop', label: 'To the top', ...top },
+		// v2-ride's words: at SPEC's 24 px each fits half a docked computer.
+		const fields: Field[] = [
+			{ key: 'toTop', label: 'To top', ...top },
 			{
 				key: 'ascentLeft',
-				label: 'Ascent left',
+				label: 'Ascent',
 				value: `${Math.round(climb.card.ascentLeftM)}`,
 				unit: 'm',
 			},
 			{
 				key: 'avgLeft',
-				label: 'Average left',
+				label: 'Avg left',
 				value: climb.card.avgLeftPct.toFixed(1),
 				unit: '%',
 			},
 		];
+		// Docked, the page control names the page, so the class fills the
+		// grid's fourth cell instead of a header line (box table: ≤ 553 px).
+		if (ctx.ownHead)
+			fields.push({ key: 'class', label: 'Class', value: climb.card.cls });
+		return fields;
 	}
 	if (page === 'power') {
 		const s = ctx.stats;

@@ -308,12 +308,22 @@ describe('CLIMB (#3645)', () => {
 	it('is to the top, ascent left and average left; grade is on the road line', () => {
 		const fields = fieldsFor('climb', ride({ climb: climb() }));
 		expect(fields.map((f) => [f.label, f.value, f.unit])).toEqual([
-			['To the top', '2.4', 'km'],
-			['Ascent left', '186', 'm'],
-			['Average left', '7.8', '%'],
+			['To top', '2.4', 'km'],
+			['Ascent', '186', 'm'],
+			['Avg left', '7.8', '%'],
 		]);
 		const near = fieldsFor('climb', ride({ climb: climb({ toTopM: 420 }) }));
 		expect(near[0]).toMatchObject({ value: '400', unit: 'm' });
+	});
+
+	it('docked, carries the class in its grid, as the page control names the page', () => {
+		const fields = fieldsFor('climb', ride({ climb: climb(), ownHead: true }));
+		expect(fields.map((f) => [f.label, f.value])).toEqual([
+			['To top', '2.4'],
+			['Ascent', '186'],
+			['Avg left', '7.8'],
+			['Class', 'I'],
+		]);
 	});
 
 	it('says where the climb is on another page', () => {
