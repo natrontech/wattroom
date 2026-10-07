@@ -47,7 +47,7 @@
 <div
 	data-testid="moment-card"
 	data-phase={phase}
-	class="flex min-w-[300px] flex-col gap-1 rounded-[11px] px-4 py-3"
+	class="flex max-w-full min-w-[300px] flex-col gap-1 rounded-[11px] px-4 py-3"
 	style:box-shadow={phase === 'live'
 		? 'inset 0 0 0 1px var(--color-watt)'
 		: undefined}

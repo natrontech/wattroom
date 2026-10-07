@@ -145,7 +145,10 @@
 					{@render seat()}
 				</div>{/if}
 			{#if moment && momentPlace === 'seat'}
-				<div data-dock="moment" class="ride-panel">{@render moment()}</div>
+				<!-- Never wider than the column, so never into the corridor (G3). -->
+				<div data-dock="moment" class="ride-panel max-w-full">
+					{@render moment()}
+				</div>
 			{/if}
 			{#if !stage}
 				<div data-dock="focus" class="ride-panel [&:not(:has(*))]:hidden">
