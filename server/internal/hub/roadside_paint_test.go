@@ -45,7 +45,7 @@ func TestTheRoadsidePaintsAClimbAheadInChalk(t *testing.T) {
 		{"a heart up the climb", "ben", func(b float64) protocol.Roadside { return paint(protocol.RoadsideStampHeart, b+500) }, "", ""},
 		{"Allez on the next climb", "ben", func(float64) protocol.Roadside { return paint(protocol.RoadsideStampAllez, 5000) }, "", ""},
 		{"the coach's initial", "ben", func(b float64) protocol.Roadside { return initial("coach", b+500) }, "", ""},
-		{"on the climb behind the bunch", "ben", func(b float64) protocol.Roadside { return paint(protocol.RoadsideStampHeart, b-100) }, "validation_error", "ahead of the bunch"},
+		{"on the climb behind the bunch", "ben", func(b float64) protocol.Roadside { return paint(protocol.RoadsideStampHeart, b-100) }, "validation_error", "behind the bunch"},
 		{"on the flat between", "ben", func(float64) protocol.Roadside { return paint(protocol.RoadsideStampHopp, 3800) }, "validation_error", "on a climb"},
 		{"a stamp that is not chalk", "ben", func(b float64) protocol.Roadside { return paint("skull", b+500) }, "validation_error", "chalk stamps"},
 		{"no stamp at all", "ben", func(b float64) protocol.Roadside { return paint("", b+500) }, "validation_error", "chalk stamps"},
