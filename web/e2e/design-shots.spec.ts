@@ -1128,6 +1128,12 @@ surface(
 				.click();
 			await coach.page.waitForTimeout(1200);
 			await s.shot(coach, { name: 'ride-session-cheer' });
+			// A sprint armed (D12, #3668): over the world, its moment card, top-
+			// centre where it fits and under the seat where it does not.
+			await coach.page.getByRole('button', { name: 'arm a sprint' }).click();
+			await coach.page.getByTestId('moment-card').waitFor({ timeout: 10_000 });
+			await coach.page.waitForTimeout(500);
+			await s.shot(coach, { name: 'ride-session-sprint' });
 		} finally {
 			await endSession(coach.page);
 		}
