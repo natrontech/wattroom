@@ -206,8 +206,9 @@
 	<div class="flex flex-wrap items-center justify-end gap-2">
 		<!-- The kit's riding size (ux.md: btn-lg is the 44 px a rider hits
 			     while pedalling); these used to retype the chrome by hand. -->
-		<!-- Any workout on a road (#3594): the dot, at your watts. -->
-		{#if session.road}
+		<!-- Any workout on a road (#3594): the dot, at your watts — unless the
+		     header's road line already says it (one home, #3669). -->
+		{#if session.road && !block?.road}
 			<span class="text-muted num text-xs"
 				>{formatKm(session.road.m)} of {formatKm(session.road.toM)} km</span
 			>

@@ -183,13 +183,6 @@ export function fieldsFor(page: ComputerPage, ctx: ComputerContext): Field[] {
 			value: ctx.grade.toFixed(1),
 			unit: '%',
 		});
-	if (ctx.split)
-		// A ghost is a memory, not live data: no watt, no glow (ADR-0068).
-		fields.push({
-			key: 'split',
-			label: ctx.split.best ? 'vs best' : 'vs last',
-			value: formatSplit(ctx.split.seconds),
-		});
 	if (ctx.road && !ctx.roadLine)
 		fields.push({
 			key: 'distance',
@@ -228,6 +221,14 @@ export function fieldsFor(page: ComputerPage, ctx: ComputerContext): Field[] {
 			label: 'Gear',
 			value: ctx.gear.replace(/^Gear /, ''),
 			neon: true,
+		});
+	// After the sensors and the gear, as the one-home table orders RIDE.
+	if (ctx.split)
+		// A ghost is a memory, not live data: no watt, no glow (ADR-0068).
+		fields.push({
+			key: 'split',
+			label: ctx.split.best ? 'vs best' : 'vs last',
+			value: formatSplit(ctx.split.seconds),
 		});
 	return fields;
 }

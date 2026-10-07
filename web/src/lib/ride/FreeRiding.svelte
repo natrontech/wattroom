@@ -11,11 +11,14 @@
 	 */
 	import { untrack, type Snippet } from 'svelte';
 	import Minus from '@lucide/svelte/icons/minus';
+	import MonitorUp from '@lucide/svelte/icons/monitor-up';
 	import Plus from '@lucide/svelte/icons/plus';
 	import { faultCopy } from '$lib/channel/fault-copy';
 	import { formatClock } from '$lib/format';
 	import { climbedM } from '$lib/ride/climbed';
 	import type { Clamp } from '$lib/ride/drivetrain';
+	import { FLAG_NOTICE_MS, FLAG_SAID } from '$lib/ride/flag';
+	import FlagButton from '$lib/ride/FlagButton.svelte';
 	import { GRADE, WATTS, type FreeMode } from '$lib/ride/free-ride-controls';
 	import { freeRideLabel, type FreeRide } from '$lib/ride/free-ride.svelte';
 	import GearShift from '$lib/ride/GearShift.svelte';
@@ -50,6 +53,8 @@
 		split,
 		onend,
 		ending = false,
+		onflag,
+		ontv,
 		controls,
 		setup,
 		foot,
@@ -77,6 +82,9 @@
 		/** End ride; absent while there is nothing to end. */
 		onend?: () => void;
 		ending?: boolean;
+		/** The ⚑ and TV (#52, #1632); absent where the page has its own — a voice channel's. */
+		onflag?: () => void;
+		ontv?: () => void;
 		/** The caller's own controls, on the label's row. */
 		controls?: Snippet;
 		/** What the flat surface shows above the numbers before the first stroke. */
@@ -122,8 +130,19 @@
 	);
 	const hint = $derived(!inWatts && !cassette ? ONE_GEAR_LINE : undefined);
 
+	// The ⚑'s own acknowledgement (#52): consent in plain words, at the
+	// moment of the tap, never blocking.
+	let flagNotice = $state(false);
+	function flag() {
+		onflag?.();
+		flagNotice = true;
+		setTimeout(() => (flagNotice = false), FLAG_NOTICE_MS);
+	}
+
 	// Metres climbed this ride (TARGETS ride-free-road 3): the rises between
 	// one second's metre and the next; a jump is a lap turned, not a climb.
+	// Off a road nothing climbs, so nothing says so (ux.md: a cue exists only
+	// where its model exists).
 	let climbed = $state(0);
 	let lastM: number | null = null;
 	$effect(() => {
@@ -189,7 +208,11 @@
 					free.seconds,
 				)}{#if road}{` · ${Math.round(climbed)} m climbed`}{/if}
 			</p>
-			{#if hint}<p class="text-muted truncate">{hint}</p>{/if}
+			{#if flagNotice}
+				<p class="text-muted truncate">{FLAG_SAID.after}</p>
+			{:else if hint}
+				<p class="text-muted truncate">{hint}</p>
+			{/if}
 			{#if road && world.reason}
 				<FlatRoad reason={world.reason} onretry={world.retry} />
 			{/if}
@@ -229,6 +252,15 @@
 			{/if}
 			{#if gear && shift && !inWatts}
 				<GearShift {shift} {gear} off={shiftOff} {cassette} />
+			{/if}
+			{#if onflag}<FlagButton onflag={flag} sends="after" />{/if}
+			{#if ontv}
+				<button
+					onclick={ontv}
+					class="btn btn-secondary icon-btn-lg p-0"
+					aria-label="TV mode"
+					title="TV mode"><MonitorUp size={20} /></button
+				>
 			{/if}
 			{#if onend}
 				<!-- End ride saves where you are; carrying on is the road-end

@@ -154,7 +154,8 @@ describe("the one-home table, with the computer's own head (#3668)", () => {
 		expect(
 			keys(fieldsFor('ride', headed({ road, grade: 3, roadLine: true }))),
 		).toEqual(['speed', 'cadence', 'hr']);
-		// A free ride on a road: and the gear, and the split against a ghost.
+		// A free ride on a road: and the gear, and the split against a ghost,
+		// in the one-home table's order (Speed, Cadence, Heart, Gear, vs best).
 		expect(
 			keys(
 				fieldsFor(
@@ -168,7 +169,7 @@ describe("the one-home table, with the computer's own head (#3668)", () => {
 					}),
 				),
 			),
-		).toEqual(['speed', 'split', 'cadence', 'hr', 'gear']);
+		).toEqual(['speed', 'cadence', 'hr', 'gear', 'split']);
 	});
 
 	it('moves Execution to POWER and drops the 3 s field the head shows', () => {
