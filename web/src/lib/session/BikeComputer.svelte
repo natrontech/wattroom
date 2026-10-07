@@ -100,7 +100,9 @@
 	data-testid="bike-computer"
 	data-page={shown}
 	aria-label="bike computer, {PAGE_NAMES[shown]} page"
-	class={docked ? 'relative flex flex-col gap-3 px-4 py-3' : 'panel relative'}
+	class={docked
+		? 'relative flex w-[21rem] max-w-full flex-col gap-3 px-4 py-3'
+		: 'panel relative'}
 >
 	<!-- The page's name and its dots sit in the row of numbers, so a page is
 	     one row tall where it fits and the focus above keeps its height (#3597);
