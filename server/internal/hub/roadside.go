@@ -138,7 +138,7 @@ func (rs *roadsideStands) chalkUp(riderID string, verb protocol.Roadside, u, fro
 	case climb < 0:
 		return "validation_error", "Chalk goes on a climb. Try the next one."
 	case u <= front:
-		return "validation_error", fmt.Sprintf("Chalk goes ahead of %s. Try further up.", riders)
+		return "validation_error", fmt.Sprintf("That spot is behind %s. Chalk the next climb.", riders)
 	case rs.painted[riderID] >= protocol.RoadsidePaintPerRide:
 		return "rate_limited", fmt.Sprintf("Your %d stamps are down. That is all this ride.", protocol.RoadsidePaintPerRide)
 	case rs.marks >= protocol.RoadsideMarksPerRide:
