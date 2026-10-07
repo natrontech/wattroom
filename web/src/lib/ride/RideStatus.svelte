@@ -59,7 +59,8 @@
 			? {
 					text: repairError ?? fault.line ?? fault.title,
 					alert: true,
-					recover: fault.action,
+					recover: fault.lineAction ?? fault.action,
+					recoverName: fault.action,
 				}
 			: session.state === 'autopaused'
 				? { text: 'Paused — you stopped pedalling' }
@@ -70,7 +71,7 @@
 						: session.spiralActive
 							? { text: 'Spiral guard — spin back up to get the target back' }
 							: noCrashSafety
-								? { text: 'This browser keeps no copy of this ride' }
+								? { text: 'Not keeping its own copy of this ride' }
 								: null,
 	);
 
@@ -106,7 +107,9 @@
 				<button
 					onclick={() => void repair()}
 					disabled={repairing}
-					class="btn btn-primary btn-lg shrink-0"
+					aria-label={held.recoverName}
+					title={held.recoverName}
+					class="btn btn-primary h-11 shrink-0 px-4 text-2xl"
 					>{repairing ? 'Pairing…' : (held.recover ?? 'Reconnect')}</button
 				>
 			{/if}

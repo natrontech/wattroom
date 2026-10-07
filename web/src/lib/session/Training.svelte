@@ -206,7 +206,7 @@
 				<!-- One short word, so the eyebrow keeps the row (slot 1's 860 px). -->
 				<button
 					onclick={leaveRide}
-					class="btn btn-secondary btn-lg"
+					class="btn btn-secondary h-11 px-4 text-2xl"
 					aria-label="Leave the ride"
 					title="Leave the ride">Leave</button
 				>

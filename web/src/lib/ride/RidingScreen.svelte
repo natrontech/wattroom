@@ -140,8 +140,9 @@
 	<div class="flex items-center gap-2">
 		{#if countIn}
 			<!-- Nothing runs yet: the one way out. -->
-			<button onclick={countIn.cancel} class="btn btn-secondary btn-lg"
-				>Cancel</button
+			<button
+				onclick={countIn.cancel}
+				class="btn btn-secondary h-11 px-4 text-2xl">Cancel</button
 			>
 		{:else}
 			{#if onFlag}<FlagButton onflag={flag} sends="after" />{/if}
@@ -166,7 +167,7 @@
 					><SkipForward size={20} /></button
 				>
 			{/if}
-			<button onclick={endRide} class="btn btn-secondary btn-lg"
+			<button onclick={endRide} class="btn btn-secondary h-11 px-4 text-2xl"
 				>End ride</button
 			>
 		{/if}
@@ -295,7 +296,6 @@
 	<RidingSurface
 		class="flex-1 {inWorld ? '-mx-4 -my-5 sm:-mx-6' : 'pb-16 sm:pb-0'}"
 		world={inWorld ? road : undefined}
-		status={inWorld ? undefined : status}
 		moment={inWorld && session.sprint ? moment : undefined}
 		centre={countIn ? digit : undefined}
 	>
@@ -316,7 +316,12 @@
 					{strip}
 				/>
 			{:else}
-				<!-- The Flat-road reason is a status line: atop slot 1 (G3, G4). -->
+				<!-- Ride-critical states are persistent status, never toasts
+				     (.claude/rules/errors.md), and one line atop slot 1 (G3,
+				     ride-status 1); the way back from a dropout is its own button,
+				     wired to this ride's trainer (#1847). The Flat-road reason is
+				     a status line too (G4). -->
+				<RideStatus {session} {signalLost} {noCrashSafety} line />
 				{#if session.road && world.reason}
 					<FlatRoad reason={world.reason} onretry={world.retry} />
 				{/if}
@@ -443,13 +448,6 @@
 		{/snippet}
 	</RidingSurface>
 {/if}
-
-{#snippet status()}
-	<!-- Ride-critical states are persistent status, never toasts
-	     (.claude/rules/errors.md); the way back from a dropout is the
-	     status's own button, wired to this ride's trainer (#1847). -->
-	<RideStatus {session} {signalLost} {noCrashSafety} />
-{/snippet}
 
 {#snippet moment()}
 	{#if session.sprint}<MomentCard sprint={session.sprint} />{/if}
