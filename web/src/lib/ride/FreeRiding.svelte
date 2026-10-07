@@ -317,7 +317,10 @@
 				{#if roadEndOffered(free, false)}
 					<div class="ride-panel">{@render roadEnd()}</div>
 				{/if}
-				<div class="ride-panel min-h-0 flex-1">
+				<!-- The container the computer's wide layout answers to (its @2xl
+				     variants): here, never on the computer itself, whose own inline
+				     size would then collapse inside the world's w-fit dock. -->
+				<div class="ride-panel @container min-h-0 flex-1">
 					{@render computer()}
 					{@render foot?.()}
 				</div>
