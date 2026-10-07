@@ -1137,6 +1137,12 @@ surface(
 			await coach.page.getByTestId('moment-card').waitFor({ timeout: 10_000 });
 			await coach.page.waitForTimeout(500);
 			await s.shot(coach, { name: 'ride-session-sprint' });
+			// The window open: the card's border is watt while it is live.
+			await coach.page
+				.locator('[data-testid=moment-card][data-phase=live]')
+				.waitFor({ timeout: 30_000 });
+			await coach.page.waitForTimeout(500);
+			await s.shot(coach, { name: 'ride-session-sprint-live' });
 		} finally {
 			await endSession(coach.page);
 		}
