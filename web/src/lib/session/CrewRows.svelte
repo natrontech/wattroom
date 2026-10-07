@@ -16,7 +16,7 @@
 	const channel = useChannel();
 </script>
 
-<ul aria-label="the crew" class="flex w-54 flex-col">
+<ul aria-label="the crew" class="flex w-60 flex-col">
 	{#each riders as rider (rider.id)}
 		<li
 			{@attach contextMenu(() => crewMenu(channel, rider))}
