@@ -8,12 +8,29 @@ returning id, created_at;
 
 -- name: ListOwnerRoutes :many
 -- The owner's list (#3024): summary columns only — the road and the sealed
--- place stay cold until one route is opened.
-select id, src, name, gen_name, length_m, gain_m, climbs,
-       (geom_sealed is not null)::boolean as has_place, created_at
-from routes
-where owner_id = $1
-order by created_at desc, id desc;
+-- place stay cold until one route is opened. With them, how the owner has
+-- ridden each road (#3683), read in this one query on rides_user_route_key:
+-- their own rides of its key (a re-import counts, ADR-0068), the latest, and
+-- where the latest ridden alone began and how far it went.
+select r.id, r.src, r.name, r.gen_name, r.length_m, r.gain_m, r.climbs,
+       (r.geom_sealed is not null)::boolean as has_place, r.created_at,
+       ridden.rides::integer as rides,
+       ridden.last_ridden_at::timestamptz as last_ridden_at,
+       alone.from_m as last_alone_from_m,
+       alone.distance_m as last_alone_distance_m
+from routes r
+cross join lateral (
+    select count(*) as rides, max(started_at) as last_ridden_at
+    from rides where user_id = r.owner_id and route_key = r.road_hash
+) ridden
+left join lateral (
+    select from_m, distance_m from rides
+    where user_id = r.owner_id and route_key = r.road_hash and session_id is null
+    order by started_at desc
+    limit 1
+) alone on true
+where r.owner_id = $1
+order by r.created_at desc, r.id desc;
 
 -- name: GetOwnerRoute :one
 -- One route, the owner's only: someone else's reads as absent.

@@ -1,3 +1,4 @@
+import { seededLoadout } from '$lib/world/loadout';
 import { simRider, type SimRider } from '$lib/world/sim';
 
 /**
@@ -15,7 +16,15 @@ export function botWatts(r: SimRider, grade: number, t: number): number {
 	return r.ftp * push * wobble;
 }
 
-export function devCrew(watts: number, ftp: number): SimRider[] {
+/**
+ * `kit` dresses you in that jersey pattern on a white ground (#3156), the
+ * ground Gipfelpunkte must never dot; absent, you wear your seeded look.
+ */
+export function devCrew(
+	watts: number,
+	ftp: number,
+	kit?: string | null,
+): SimRider[] {
 	const bot = (
 		id: string,
 		name: string,
@@ -26,8 +35,25 @@ export function devCrew(watts: number, ftp: number): SimRider[] {
 		...simRider({ id, name, mass, ftp, you: false, watts: 0, d: i * 7 }),
 		ride: botWatts,
 	});
+	const you = simRider({
+		id: 'you',
+		name: 'You',
+		mass: 80,
+		ftp,
+		you: true,
+		watts,
+		d: 0,
+	});
+	if (kit) {
+		const seeded = seededLoadout('you');
+		you.look = {
+			...seeded,
+			jersey: `jp.${kit}`,
+			colours: { ...seeded.colours, jerseyA: 'snow', jerseyB: 'rust' },
+		};
+	}
 	return [
-		simRider({ id: 'you', name: 'You', mass: 80, ftp, you: true, watts, d: 0 }),
+		you,
 		bot('sven', 'Sven', 74, 270, 1),
 		bot('mia', 'Mia', 61, 215, 2),
 		bot('tom', 'Tom', 92, 300, 3),

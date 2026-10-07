@@ -13,7 +13,7 @@ import { disposeTree } from './dispose';
 import { makeSight } from './materials';
 import { makeRig, type Follow } from './rig';
 import { type Route } from '$lib/road/route';
-import { at } from '$lib/road/along';
+import { at, leftOf } from '$lib/road/along';
 import {
 	advance,
 	followMetre,
@@ -24,6 +24,7 @@ import {
 	type SimRider,
 } from './sim';
 import { buildStage, summitOf, type Stage } from './stage';
+import { yOf } from './geometry';
 import { placeGrids } from './chunks/grids';
 import { streamGround, type GotGrid, type Grids } from './ground-stream';
 import type { Style } from './styles';
@@ -390,12 +391,32 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 						}
 				bboxH = Math.round(((hi - lo) / 2) * 1000) / 1000;
 			}
+			// Where a capture reads the near asphalt (#3674): 4 m ahead of your wheel, a metre right of its line, clear of the trail.
+			let asphaltAt: [number, number] | null = null;
+			const yours = figure?.parent;
+			if (yours) {
+				const here = at(route, you.d);
+				const l = leftOf(here.heading);
+				const lane =
+					(yours.position.x - here.x) * l.lx +
+					(yours.position.z - here.z) * l.lz -
+					1;
+				const ahead = at(route, you.d + 4);
+				const la = leftOf(ahead.heading);
+				const v = new THREE.Vector3(
+					ahead.x + la.lx * lane,
+					yOf(route, ahead.ele),
+					ahead.z + la.lz * lane,
+				).project(camera);
+				if (Math.abs(v.x) < 1 && Math.abs(v.y) < 1) asphaltAt = [v.x, v.y];
+			}
 			return {
+				asphaltAt,
 				camera: { fov: Math.round(camera.fov * 100) / 100 },
 				moment: moment ?? null,
 				// What a capture waits on before it shoots: the ground around the eye, whole (#3699).
 				ground: { pending: stream.pending() },
-				figure: { bboxH, kitsInWattBand: crew?.kitsInWattBand() ?? 0 },
+				figure: { bboxH, kitCollisions: crew?.kitCollisions() ?? 0 },
 				ring: { bandM: RING_BAND_M },
 			};
 		},

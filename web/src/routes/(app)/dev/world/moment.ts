@@ -6,11 +6,15 @@ import type { Moment } from '$lib/world/compose';
  * capture loads the same URL twice and gets one frame: world-start is
  * `p=0`, world-end `p=1`, both with `chrome=0` for a frame with nothing of
  * the gallery over it. Null without `m`: the gallery rides as it always has.
+ * `kit=<jersey pattern>` dresses you in it on a white ground (#3156), and
+ * `hold=0` lets the moment ride on, for frames a still cannot give.
  */
 export type WorldMoment = Moment & {
 	cam: 'chase' | 'heli' | 'side';
 	look: string | null;
 	chrome: boolean;
+	kit: string | null;
+	hold: boolean;
 };
 
 export function momentOf(params: URLSearchParams): WorldMoment | null {
@@ -25,5 +29,7 @@ export function momentOf(params: URLSearchParams): WorldMoment | null {
 			'chase',
 		look: params.get('look'),
 		chrome: params.get('chrome') !== '0',
+		kit: params.get('kit'),
+		hold: params.get('hold') !== '0',
 	};
 }

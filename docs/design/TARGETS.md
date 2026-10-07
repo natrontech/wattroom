@@ -366,15 +366,18 @@ Capture: `/dev/world`, 9 s in, 1440 × 900; superseded by world-start and world-
 3. Forest stands close to the road, no single cones on bare meadow; houses in small clusters, judged where a hamlet is in sight [multi:world-hamlet]. [world-forest]
 4. The dev crew rides as ADR-0073 figures in distinct kits. [world-figure]
 5. Names over the two nearest riders and anyone speaking; rings thin and flat. [test:web/src/lib/world/tags.test.ts] [3086-names-ring]
+6. Every rider wears a wardrobe look: a catalogue jersey pattern in the look's own colours, a helmet of their own, no two riders in one look. [#3156]
 
 #### world-start, world-end
 
-Capture: `/dev/world?m=<metre>&p=0|1&cam=chase&look=bluehour&chrome=0`, 1440 × 900 and 1280 × 720; world-hamlet the same at m = 1100, a hamlet ahead.
+Capture: `/dev/world?m=<metre>&p=0|1&cam=chase&look=bluehour&chrome=0`, 1440 × 900 and 1280 × 720; world-hamlet the same at m = 1100, a hamlet ahead; world-start also shoots `cam=side` (world-figure-side), `&kit=gipfelpunkte` with a white ground asked for (world-figure-dots), and `&kit=hoops&hold=0` and `&kit=gipfelpunkte&hold=0` four frames a quarter-second apart each (world-figure-motion-1 to 4, world-figure-dots-motion-1 to 4).
 
 1. Two loads of the same URL give an identical frame. [world-moment] [multi:world-start-twice]
 2. With `chrome=0` no dev chrome. [world-moment]
 3. At p=0 no stars. At p=1 stars only in the dark upper sky, never in the peach band, light visibly darker. [3085-ride-light]
 4. The dressing streams with the ground; a held moment draws all of it within the far ring from its first frame (trees, buildings, roadside pieces a ride would meet there), no gap where a tile is still to come. [#3699] [multi:world-start-twice]
+5. Your jersey's pattern lies on the cloth, round the torso and down the sleeves, clean edges that do not crawl; Gipfelpunkte never puts its dots on a white ground. [#3156] [multi:world-figure-side] [multi:world-figure-dots] [multi:world-figure-motion] [multi:world-figure-dots-motion]
+6. No kit colour reads as live data to the viewer: the probe counts none within the viewer's watt band or near a zone. [#3156] [probe:figure.kitCollisions]
 
 ### C. Roads library (desk)
 
