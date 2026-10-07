@@ -122,7 +122,9 @@ surface(
 			const o = await s.open(device, { world: true });
 			const road = await fixtureRoad(o.page, 'hairpin');
 			await ride(o.page, `/ride?w=openers&road=${road}&from=0`);
-			await assertRiding(o.page, true);
+			// 1280 × 720 is shorter than the box table holds: it rides the flat
+			// road and says why (Jan, 2026-10-07, #3668).
+			await assertRiding(o.page, device !== DESK_720);
 			// Item 16's distance, however long the road takes to get there (#3834).
 			await atReading(o.page, 'km 0.1 of 7.1');
 			await s.shot(o, { name });
