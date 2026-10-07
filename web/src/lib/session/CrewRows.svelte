@@ -28,7 +28,7 @@
 			<span data-testid="crew-name" class="min-w-0 flex-1 truncate"
 				>{rider.name}</span
 			>
-			<span class="num shrink-0"
+			<span class="num shrink-0 text-4xl leading-none"
 				>{rider.stale ? '—' : wkg(rider.watts, rider.kg)}</span
 			>
 		</li>

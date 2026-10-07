@@ -35,6 +35,11 @@
 	const shown = $derived(stale ? 0 : power);
 	const zone = $derived(zoneOf(shown, ftp));
 	const band = $derived(target ? targetState({ watts: shown, target }) : null);
+	// v2-erg's window: a fifth of the target either side, to the nearest 5 W,
+	// so the band reads as a slot and not a sliver of 0–300 W.
+	const round5 = (w: number) => Math.round(w / 5) * 5;
+	const lo = $derived(target ? round5(target * 0.8) : 0);
+	const hi = $derived(target ? round5(target * 1.2) : 0);
 </script>
 
 <div data-testid="computer-head" class="flex flex-col gap-2">
@@ -61,21 +66,33 @@
 		</p>
 	{/if}
 	{#if target && band}
-		<PowerTrack watts={shown} {target} {ftp} class="mt-1 h-3" />
+		<PowerTrack
+			watts={shown}
+			{target}
+			{ftp}
+			from={lo}
+			fullScale={hi}
+			needle={!stale}
+			class="mt-1 h-3"
+		/>
+		<!-- The window's ends, and the band named under itself (v2-erg). -->
 		<p class="num text-muted flex justify-between text-2xl leading-7">
-			<span>{target - band.band}</span>
-			<span class="text-neon">{target} W</span>
-			<span>{target + band.band}</span>
+			<span>{lo}</span>
+			<span
+				>{target - band.band} · <span class="text-neon">{target}</span> · {target +
+					band.band}</span
+			>
+			<span>{hi} W</span>
 		</p>
-		<!-- While the target is asked, always: the block's share inside the
-		     band, "—" until a second of it is scored. -->
-		<p data-testid="head-block" class="flex items-baseline gap-3">
-			<span class="ride-label">Block</span>
-			<span class="num text-4xl leading-none font-bold"
-				>{blockExecution === null || stale
-					? '—'
-					: Math.round(blockExecution * 100)}</span
-			><span class="text-muted text-2xl">% on target</span>
-		</p>
+		{#if blockExecution !== null}
+			<!-- Once a second of the block is scored: SPEC scores a steady block
+			     with no guard up, so a ramp asks a target and has no share. -->
+			<p data-testid="head-block" class="flex items-baseline gap-3">
+				<span class="ride-label">Block</span>
+				<span class="num text-4xl leading-none font-bold"
+					>{stale ? '—' : Math.round(blockExecution * 100)}</span
+				><span class="text-muted text-2xl">% on target</span>
+			</p>
+		{/if}
 	{/if}
 </div>

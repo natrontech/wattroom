@@ -89,13 +89,14 @@
 			<div class="{WORDS} shrink-0 whitespace-nowrap">
 				<p>
 					{unit[0].toUpperCase() + unit.slice(1)}
-					{block.index} of {block.count} · {block.label || title}
+					<span class="num">{block.index} of {block.count}</span> · {block.label ||
+						title}
 				</p>
 				{#if block.band}
 					<!-- Prescribed, so neon: watt is only measured live data (#3090). -->
 					<p data-testid="block-target">
 						Target <span class="num text-neon font-bold">{block.watts} W</span>
-						· {block.band.low}–{block.band.high}
+						· <span class="num">{block.band.low}–{block.band.high}</span>
 					</p>
 				{/if}
 				<p data-testid="ride-clock" class="num text-muted">
@@ -116,7 +117,7 @@
 							<span class="min-w-0 truncate">
 								{block.next.label}{#if block.next.watts > 0}
 									· <span class="num text-neon">{block.next.watts} W</span>{/if}
-								· {nextFor(block.next.seconds)}
+								· <span class="num">{nextFor(block.next.seconds)}</span>
 							</span>
 							{#each [3, 2, 1] as n (n)}
 								<span

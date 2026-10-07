@@ -11,6 +11,8 @@
 		target,
 		ftp,
 		fullScale = undefined,
+		from = undefined,
+		needle = false,
 		class: extra = '',
 	}: {
 		/** What is shown: 0 while nothing is measured. */
@@ -19,11 +21,18 @@
 		ftp: number;
 		/** The right-hand end of the track in watts; FTP × 1.5 unless said (#1565). */
 		fullScale?: number;
+		/** The left-hand end, for a window round the target (#3668); 0 W unless said. */
+		from?: number;
+		/** Your power as a needle on the track, in ink: watt keeps to G2's three marks. */
+		needle?: boolean;
 		/** Its height, the caller's. */
 		class?: string;
 	} = $props();
 
-	const pct = (w: number) => fillPct(w, ftp, fullScale);
+	const pct = (w: number) =>
+		from === undefined || fullScale === undefined
+			? fillPct(w, ftp, fullScale)
+			: Math.min(100, Math.max(0, ((w - from) / (fullScale - from)) * 100));
 	const state = $derived(targetState({ watts, target }));
 	const zone = $derived(zoneOf(watts, ftp));
 </script>
@@ -58,6 +67,13 @@
 		>
 			<div data-testid="gauge-fill" class="{ZONE_BG[zone]} h-full w-full"></div>
 		</div>
+		{#if needle}
+			<div
+				data-testid="gauge-needle"
+				class="bg-ink absolute -inset-y-1 w-0.5 forced-color-adjust-none forced-colors:bg-[CanvasText]"
+				style="left: {pct(watts)}%"
+			></div>
+		{/if}
 		{#if state.has}
 			<div
 				data-testid="gauge-target"
