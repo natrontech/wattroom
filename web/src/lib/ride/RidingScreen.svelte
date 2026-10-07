@@ -16,7 +16,6 @@
 	 * deserves the screen a rider in a session gets.
 	 */
 	import FlagButton from '$lib/ride/FlagButton.svelte';
-	import { formatKm } from '$lib/format';
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
 	import { bindRideShift } from '$lib/ride/keys';
 	import { confirm } from '$lib/confirm.svelte';
@@ -214,12 +213,6 @@
 	<div class="flex flex-wrap items-center justify-end gap-2">
 		<!-- The kit's riding size (ux.md: btn-lg is the 44 px a rider hits
 			     while pedalling); these used to retype the chrome by hand. -->
-		<!-- Any workout on a road (#3594): the dot, at your watts. -->
-		{#if session.road}
-			<span class="text-muted num text-xs"
-				>{formatKm(session.road.m)} of {formatKm(session.road.toM)} km</span
-			>
-		{/if}
 		<!-- A road workout's blocks end at their metres (#3499): nothing to
 		     skip or hold longer, and the reason said where they were. -->
 		{#if session.road?.pinned}
@@ -397,11 +390,10 @@
 			{:else}
 				<div class="flex flex-wrap items-end gap-4">
 					<div class="min-w-0 flex-1">
-						<!-- Flat for want of the world (a short window, a failed
-						     build): the big instrument holds the watts, so RIDE
-						     leaves them (D17). The flat layout itself is #3670's. -->
+						<!-- The big instrument holds the watts, so RIDE leaves them
+						     (D17); the flat layout itself is #3670's. -->
 						<BikeComputer
-							head={!!world.reason && !session.sprint}
+							head={!session.sprint}
 							cadence={session.sample?.cadence ?? 0}
 							stale={signalLost}
 							hr={session.sample?.heartRate ?? 0}

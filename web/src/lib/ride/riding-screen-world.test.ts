@@ -31,7 +31,10 @@ const openers: Workout = {
 };
 
 /** The ride screen's markup for `workout`. */
-function screen(workout: Workout, extra: { onTv?: () => void } = {}): string {
+function screen(
+	workout: Workout,
+	extra: { onTv?: () => void; onFlag?: () => void } = {},
+): string {
 	const session = createRideSession({
 		trainer: new SimulatedTrainer(),
 		workout,
@@ -70,7 +73,11 @@ describe('the world on a ride', () => {
 			{ ...openers, road: { routeId: 'r1', fromM: 0, toM: 2000 } },
 			legsRoad([1000, 0], [1000, 5]),
 		);
-		const html = screen(onRoad, { onTv: () => {} });
+		const html = screen(onRoad, { onTv: () => {}, onFlag: () => {} });
+		// ⚑ keeps its own kit (FlagButton): a name and the tooltip that asks.
+		expect(html).toMatch(
+			/<button[^>]*title="[^"]+"[^>]*aria-label="Flag a problem"/,
+		);
 		for (const name of ['TV mode', 'One more minute', 'Skip block'])
 			expect(html).toMatch(
 				new RegExp(
