@@ -494,7 +494,9 @@
 			<!-- Beside the session, not on it (#3022): the roadside's deck, so
 			     a bottle is a button here and not only a tile's menu entry. A
 			     rider a game put out has it in the game's panel instead. -->
-			<div class="mt-3 max-w-md">
+			<!-- Wide enough that the deck's one status line holds a refusal at
+			     the riding floor's 24 px (TARGETS G4). -->
+			<div class="mt-3 max-w-xl">
 				<RoadsideDeck to={bottleFor(channel.riders, channel.focusId)} />
 			</div>
 		{/if}

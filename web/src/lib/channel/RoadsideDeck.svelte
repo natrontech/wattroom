@@ -1,9 +1,10 @@
 <script lang="ts">
 	import ArrowUp from '@lucide/svelte/icons/arrow-up';
-	import Bell from '@lucide/svelte/icons/bell';
 	import GlassWater from '@lucide/svelte/icons/glass-water';
 	import Heart from '@lucide/svelte/icons/heart';
 	import CheerDeck from '$lib/channel/CheerDeck.svelte';
+	import CheerIcon from '$lib/components/CheerIcon.svelte';
+	import { BELL } from '$lib/icons';
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { useChannel } from '$lib/channel/context';
 	import { account } from '$lib/account.svelte';
@@ -62,7 +63,7 @@
 	{#if live && road}
 		<!-- Words at the riding floor (TARGETS G4): a rider a game put out
 		     chalks from here on the bike. -->
-		<p class="text-muted text-2xl">Chalk the next climb</p>
+		{#if spot}<p class="text-muted text-2xl">Chalk the next climb</p>{/if}
 		<div
 			role="group"
 			class="grid grid-cols-6 gap-2"
@@ -81,7 +82,7 @@
 				>
 					{#if stamp === 'arrow'}<ArrowUp size={26} />
 					{:else if stamp === 'heart'}<Heart size={26} />
-					{:else if stamp === 'cowbell'}<Bell size={26} />
+					{:else if stamp === 'cowbell'}<CheerIcon cheer={BELL} size={26} />
 					{:else if initial}{to?.name.slice(0, 1).toUpperCase() ?? '—'}
 					{:else}{WORDS[stamp]}{/if}
 				</button>
@@ -91,7 +92,8 @@
 		     never sends you to a next climb there isn't; else the answer to
 		     the last tap. -->
 		{#if !spot || live.roadsideRefusal}
-			<p role="status" class="text-2xl">
+			<!-- One line (TARGETS G4): it never wraps under the stamps. -->
+			<p role="status" class="text-2xl whitespace-nowrap">
 				{spot ? live.roadsideRefusal : 'No climb left ahead to chalk.'}
 			</p>
 		{/if}
