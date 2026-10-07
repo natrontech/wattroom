@@ -63,7 +63,7 @@
 	{#if live && road}
 		<!-- Words at the riding floor (TARGETS G4): a rider a game put out
 		     chalks from here on the bike. -->
-		<p class="text-muted text-2xl">Chalk a climb ahead</p>
+		<p class="text-muted text-xl sm:text-2xl">Chalk a climb ahead</p>
 		<div
 			role="group"
 			class="grid grid-cols-6 gap-2"
@@ -78,7 +78,7 @@
 					aria-label={initial
 						? `Chalk ${to?.name ?? 'a rider'}'s initial`
 						: `Chalk ${WORDS[stamp] ?? stamp}`}
-					class="border-muted/20 hover:border-muted/50 flex min-h-11 items-center justify-center rounded border text-2xl font-bold disabled:opacity-40"
+					class="border-muted/20 hover:border-muted/50 flex min-h-11 items-center justify-center rounded border text-xl font-bold disabled:opacity-40 sm:text-2xl"
 				>
 					{#if stamp === 'arrow'}<ArrowUp size={26} />
 					{:else if stamp === 'heart'}<Heart size={26} />
@@ -92,8 +92,10 @@
 		     never sends you to a next climb there isn't; else the answer to
 		     the last tap. -->
 		{#if !spot || live.roadsideRefusal}
-			<!-- One line (TARGETS G4): it never wraps under the stamps. -->
-			<p role="status" class="text-2xl whitespace-nowrap">
+			<!-- One line at desk width (TARGETS G4); a phone has no SPEC size
+			     row yet (D1), so there the words step down and may wrap rather
+			     than scroll sideways (G5). -->
+			<p role="status" class="text-xl sm:text-2xl sm:whitespace-nowrap">
 				{spot ? live.roadsideRefusal : 'No climb left ahead to chalk.'}
 			</p>
 		{/if}
