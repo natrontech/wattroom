@@ -196,6 +196,7 @@
 		{ftp}
 		trace={session.trace}
 		compact
+		marker={false}
 	/>
 {/snippet}
 
@@ -315,6 +316,10 @@
 					{strip}
 				/>
 			{:else}
+				<!-- The Flat-road reason is a status line: atop slot 1 (G3, G4). -->
+				{#if session.road && world.reason}
+					<FlatRoad reason={world.reason} onretry={world.retry} />
+				{/if}
 				<RideHeader
 					{block}
 					elapsed={session.elapsed}
@@ -326,9 +331,6 @@
 					drives
 					controls={rideControls}
 				/>
-				{#if session.road && world.reason}
-					<FlatRoad reason={world.reason} onretry={world.retry} />
-				{/if}
 			{/if}
 		{/snippet}
 
@@ -382,6 +384,7 @@
 				/>
 				<div class="px-4 pb-3">
 					<BiasTrim
+						ride
 						bias={session.bias}
 						onBias={(step) => session.nudgeBias(step)}
 					/>
@@ -389,7 +392,11 @@
 			{:else}
 				<div class="flex flex-wrap items-end gap-4">
 					<div class="min-w-0 flex-1">
+						<!-- Flat for want of the world (a short window, a failed
+						     build): the big instrument holds the watts, so RIDE
+						     leaves them (D17). The flat layout itself is #3670's. -->
 						<BikeComputer
+							head={!!world.reason && !session.sprint}
 							cadence={session.sample?.cadence ?? 0}
 							stale={signalLost}
 							hr={session.sample?.heartRate ?? 0}
