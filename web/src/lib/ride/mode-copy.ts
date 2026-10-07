@@ -1,37 +1,13 @@
-import type { FreeMode } from '$lib/ride/free-ride-controls';
-
 /**
- * What the free ride's two modes do, said once (#3203). A rider asked for a
- * free ride without ERG; grade mode was it all along, and the toggle never
- * said so. The channel's free ride draws these under its toggle, and /ride's
- * free-ride card reads the same lines when it lands (#3027).
+ * What the free ride says, said once (#3203). The riding surface carries no
+ * teaching line (TARGETS G4): the mode's toggle and the trainer chip say
+ * what rides. What is left is the one hint for a control whose precondition
+ * is absent (ux.md), and Settings › Equipment's words.
  */
-export const MODE_LINES: Record<FreeMode, string> = {
-	grade: 'You set the slope and shift your own gears (SIM).',
-	watts: 'The trainer holds your watts whatever your cadence (ERG).',
-};
 
 /** Grade on a one-gear setup: slope mode has no usable range there. */
 export const ONE_GEAR_LINE =
 	'One gear: the grade has no range here, use Watts.';
-
-/** The same two modes on a road (#3027): the road chooses, not the rider. */
-export const ROAD_LINES: Record<FreeMode, string> = {
-	grade:
-		'The road sets the slope you feel, and you shift your own gears (SIM).',
-	watts:
-		'The trainer holds the watts the road asks for, whatever your cadence (ERG).',
-};
-
-/** The line under the toggle for the mode a rider is in. */
-export function modeLine(
-	mode: FreeMode,
-	singleSpeed: boolean,
-	onRoad = false,
-): string {
-	if (mode === 'grade' && singleSpeed) return ONE_GEAR_LINE;
-	return (onRoad ? ROAD_LINES : MODE_LINES)[mode];
-}
 
 /** Settings › Equipment's `singleSpeed`, said as what it does. */
 export const ONE_GEAR_SETTING = {
