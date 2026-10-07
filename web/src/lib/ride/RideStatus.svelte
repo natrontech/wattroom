@@ -56,7 +56,11 @@
 	// Ride-critical first (errors.md), then the guard, then the missing copy.
 	const held = $derived(
 		fault
-			? { text: repairError ?? fault.title, alert: true, recover: fault.action }
+			? {
+					text: repairError ?? fault.line ?? fault.title,
+					alert: true,
+					recover: fault.action,
+				}
 			: session.state === 'autopaused'
 				? { text: 'Paused — you stopped pedalling' }
 				: session.state === 'resuming'
