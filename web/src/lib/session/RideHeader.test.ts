@@ -25,8 +25,8 @@ const chip = (trainer: BlockTrainer, drives = true) => {
 
 // Slot 1's trainer chip (#3485, ADR-0062): how the trainer rides the block.
 describe('the trainer chip', () => {
-	it('says ERG and its watts to the watts', () => {
-		expect(chip({ kind: 'erg' })).toBe('ERG 262 W');
+	it('says the watts it holds, to the watts', () => {
+		expect(chip({ kind: 'erg' })).toBe('Watts · 262 W');
 	});
 
 	it('says the road is scenery on a route that runs by the clock', () => {
@@ -35,7 +35,7 @@ describe('the trainer chip', () => {
 
 	it('says the road and how it is felt, in place of ERG, on the road in SIM', () => {
 		expect(chip({ kind: 'road', grade: 8.94, felt: 4.47 })).toBe(
-			'ROAD 8.9 % · feel 4.5 %',
+			'SIM · you feel 4.5 %',
 		);
 	});
 

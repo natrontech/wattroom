@@ -15,6 +15,12 @@ describe('rideContext', () => {
 		);
 	});
 
+	it("says Road for a road's generated name, whose numbers are the road line's (D17)", () => {
+		expect(rideContext('Session', 'Road · 7.1 km · 571 m', 2)).toBe(
+			'Session · Road · 2 riders',
+		);
+	});
+
 	it('drops a name that is not there yet instead of a dangling dot', () => {
 		expect(rideContext('Session', '', 2)).toBe('Session · 2 riders');
 	});

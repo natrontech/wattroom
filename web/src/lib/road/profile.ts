@@ -173,8 +173,9 @@ export function gainOf(ele: ArrayLike<number>): number {
  * the geo pack can name places outside every privacy zone.
  */
 export function roadName(lengthM: number, gainM: number): string {
-	return `Road · ${kmAndClimb(lengthM, gainM)}`;
+	return `${ROAD_NAME} · ${kmAndClimb(lengthM, gainM)}`;
 }
+export const ROAD_NAME = 'Road';
 
 /** A stretch of road as a rider reads it: `52.9 km · 1,312 m`. */
 export function kmAndClimb(lengthM: number, gainM: number): string {
