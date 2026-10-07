@@ -152,6 +152,13 @@ surface(
 		await ride(o.page, `/ride?w=openers&road=${road}&from=2300`);
 		await assertRiding(o.page, true);
 		await s.shot(o, { name: 'world-hairpins' });
+		// multi:ride-road-world-climb — item 28: on the climb, turned to CLIMB,
+		// which a workout leaves to the rider (#3645).
+		await o.page.getByTestId('bike-computer').getByTitle('Next page').click();
+		await o.page
+			.locator('[data-testid=bike-computer][data-page=climb]')
+			.waitFor();
+		await s.shot(o, { name: 'ride-road-world-climb' });
 	},
 	{ once: true },
 );

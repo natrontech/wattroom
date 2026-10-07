@@ -165,6 +165,10 @@ World:
 26. Your trail the only glowing or additive element: a thin line ~a wheel wide, fading out within a short fixed length behind you; never a wedge or fill. [3663-world-is-your-ride]
 27. On real ground the frame carries the map and height credits. [#3133]
 
+Pages:
+
+28. Turned to CLIMB on the climb: ← CLIMB → with dots (D15) over the head; under the hairline To top · Ascent · Avg left · Class as a 2 × 2 grid, each label on one line at 24 px; while a target is asked no profile, as the Skyline below draws the climb and your dot; the panel between slot 1 and the Skyline, whole. [#3645] [multi:ride-road-world-climb]
+
 #### ride-workout-world
 
 Capture: world on, `/ride?w=openers`, no road: a negative check. Canon: ADR-0066.
