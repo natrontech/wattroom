@@ -9,7 +9,7 @@ import { readFileSync } from 'node:fs';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { baseUrl } from '../env.js';
-import { probe, type Box } from './probe';
+import { probe, sampleAt, type Box } from './probe';
 
 /**
  * How the design shots open a browser, ride, and write a shot (#3666). The
@@ -178,14 +178,22 @@ export class Shoot {
 			await page.waitForTimeout(1000);
 		}
 		const probes = await page.evaluate(probe, CORRIDOR);
-		await page.screenshot({
+		const png = await page.screenshot({
 			path: join(this.out, `${name}.png`),
 			fullPage: wholeDocument,
 		});
+		const at = (probes as { asphaltAt?: [number, number] | null }).asphaltAt;
+		const asphaltRgb =
+			at && !wholeDocument
+				? await page.evaluate(sampleAt, { png: png.toString('base64'), at })
+				: null;
 		await writeFile(
 			join(this.out, `${name}.json`),
-			JSON.stringify({ ...probes, ...extra, pageErrors: errors }, null, 2) +
-				'\n',
+			JSON.stringify(
+				{ ...probes, asphaltRgb, ...extra, pageErrors: errors },
+				null,
+				2,
+			) + '\n',
 		);
 	}
 

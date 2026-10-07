@@ -56,6 +56,7 @@ export function rideLook(
 			asphalt: w('road-asphalt'),
 			line: w('road-line'),
 			verge: w('road-verge'),
+			shoulder: w('road-shoulder'),
 		},
 		props: {
 			spruce: w('prop-spruce'),
