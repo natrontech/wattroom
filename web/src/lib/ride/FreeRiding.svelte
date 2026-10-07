@@ -220,9 +220,14 @@
 		<!-- One row of 44 px controls (ux.md, TARGETS ride-free-road 7); it
 		     wraps rather than clipping, as every control row does (#1634). -->
 		<div class="flex min-w-0 flex-wrap items-center gap-2">
-			<!-- No frame of its own: the pressed button is the group's mark, and
-			     a framed group is 10 px the band cannot spend above the corridor. -->
-			<div class="flex gap-1" role="group" aria-label="what you set">
+			<!-- One segmented control: a frame round both halves, the pressed
+			     half filled. No padding inside it — that was 10 px the band
+			     cannot spend above the corridor. -->
+			<div
+				class="border-muted/20 flex rounded-lg border"
+				role="group"
+				aria-label="what you set"
+			>
 				{#each modes as mode (mode.id)}
 					<button
 						onclick={() => free.setMode(mode.id)}
