@@ -11,6 +11,8 @@ describe('a moment of /dev/world (#3672)', () => {
 			cam: 'heli',
 			look: 'bluehour',
 			chrome: false,
+			kit: null,
+			hold: true,
 		});
 	});
 
@@ -21,12 +23,21 @@ describe('a moment of /dev/world (#3672)', () => {
 			cam: 'chase',
 			look: null,
 			chrome: true,
+			kit: null,
+			hold: true,
 		});
 	});
 
 	it('stands off your shoulder for the side view, and chases for any other camera', () => {
 		expect(at('m=0&cam=side')?.cam).toBe('side');
 		expect(at('m=0&cam=drone')?.cam).toBe('chase');
+	});
+
+	it('dresses you in a jersey pattern, and rides on when told not to hold', () => {
+		expect(at('m=0&kit=gipfelpunkte&hold=0')).toMatchObject({
+			kit: 'gipfelpunkte',
+			hold: false,
+		});
 	});
 
 	it('is no moment without a metre it can stand on', () => {

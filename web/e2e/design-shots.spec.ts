@@ -463,10 +463,11 @@ async function moment(
 	p: 0 | 1,
 	cam: 'chase' | 'side' = 'chase',
 	m = MOMENT_M,
+	extra = '',
 ) {
 	const o = await s.open(device);
 	await o.page.goto(
-		`/dev/world?m=${m}&p=${p}&cam=${cam}&look=bluehour&chrome=0`,
+		`/dev/world?m=${m}&p=${p}&cam=${cam}&look=bluehour&chrome=0${extra}`,
 	);
 	await o.page.waitForFunction(
 		() => !!(window as unknown as { __worldProbe?: unknown }).__worldProbe,
@@ -496,9 +497,14 @@ async function still(
 	s: Shoot,
 	device: typeof DESK,
 	p: 0 | 1,
-	{ cam, m, name }: { cam?: 'chase' | 'side'; m?: number; name?: string } = {},
+	{
+		cam,
+		m,
+		name,
+		extra,
+	}: { cam?: 'chase' | 'side'; m?: number; name?: string; extra?: string } = {},
 ) {
-	const o = await moment(s, device, p, cam, m);
+	const o = await moment(s, device, p, cam, m, extra);
 	await s.shot(o, { name });
 	await o.ctx.close();
 }
@@ -537,6 +543,35 @@ alone(() => {
 			// multi:world-figure-side — the same moment from off your right shoulder,
 			// where the chase camera never stands: the face, the drops, both wheels.
 			await still(s, DESK, 0, { cam: 'side', name: 'world-figure-side' });
+			// multi:world-figure-dots — you in Gipfelpunkte on a white ground (#3156).
+			await still(s, DESK, 0, {
+				cam: 'side',
+				name: 'world-figure-dots',
+				extra: '&kit=gipfelpunkte',
+			});
+			// multi:world-figure-motion — the side view riding on, four frames a
+			// quarter-second apart, in hoops and in Gipfelpunkte: whether a pattern's edges crawl.
+			for (const [kit, name] of [
+				['hoops', 'world-figure-motion'],
+				['gipfelpunkte', 'world-figure-dots-motion'],
+			]) {
+				const ride = await moment(
+					s,
+					DESK,
+					0,
+					'side',
+					MOMENT_M,
+					`&kit=${kit}&hold=0`,
+				);
+				for (let k = 1; k <= 4; k++) {
+					await writeFile(
+						join(s.out, `${name}-${k}.png`),
+						await ride.page.screenshot(),
+					);
+					await ride.page.waitForTimeout(250);
+				}
+				await ride.ctx.close();
+			}
 			// multi:world-hamlet — houses are judged where a hamlet is in sight (#3675).
 			await still(s, DESK, 0, { m: HAMLET_AT, name: 'world-hamlet' });
 		},

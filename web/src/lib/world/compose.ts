@@ -406,7 +406,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 				moment: moment ?? null,
 				// What a capture waits on before it shoots: the ground around the eye, whole (#3699).
 				ground: { pending: stream.pending() },
-				figure: { bboxH, kitsInWattBand: crew?.kitsInWattBand() ?? 0 },
+				figure: { bboxH, kitCollisions: crew?.kitCollisions() ?? 0 },
 			};
 		},
 		dispose() {

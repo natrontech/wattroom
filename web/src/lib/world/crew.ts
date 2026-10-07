@@ -11,15 +11,16 @@ import { tag } from './family';
 import { zoneOf } from '$lib/components/zones';
 import { RiderAnimator, type RideInput } from './figure/animator';
 import { buildFigure, paint, type Figure, type Palette } from './figure/figure';
-import { resolveKit } from './figure/kit';
 import {
 	figureMaterial,
 	TOON_BANDS,
 	type FigureMaterial,
 } from './figure/material';
 import { pose } from './figure/pose';
-import { figurePalette } from './figure-palette';
-import { inWattBand } from './placement/safety';
+import { fnv, seededLoadout } from './loadout';
+import { outfitOf, type Outfit } from './outfit';
+import { collides, type Viewer } from '$lib/wardrobe/guard';
+import { DEFAULT_DARK_ID, themeById } from '$lib/themes';
 import { yOf } from './geometry';
 import { ROAD_W } from './terrain/road-profile';
 import { chevronGeometry, makeCar } from './team-car';
@@ -57,14 +58,6 @@ export function hueOf(id: string): number {
 	return (20 + u * 280) % 360; // skips 300°–20°, the watt magenta's neighbourhood
 }
 
-function fnv(id: string, h = 2166136261): number {
-	for (const ch of id) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
-	return h >>> 0;
-}
-
-/** Which of figurePalette's variants a rider wears: a second hash of the id, apart from the hue. */
-const variantOf = (id: string) => fnv(id, 0x9e3779b9) >>> 28;
-
 // Where a rider's cranks stand, kept across style changes.
 export type Pedalling = { crank: number };
 
@@ -74,7 +67,9 @@ type View = {
 	lod: 0 | 1;
 	anim: RiderAnimator;
 	material: FigureMaterial;
-	palette: Palette;
+	outfit: Outfit;
+	/** The loadout's name in the figure cache. */
+	look: string;
 	faded: boolean;
 	ring: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
 	shadow: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
@@ -85,12 +80,13 @@ type View = {
 };
 
 /** A joined rider whose screen has gone (#3098): their kit in greys, never a ghost's see-through. */
+const grey = (c: THREE.Color) =>
+	new THREE.Color().setScalar(
+		0.18 + (0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b) * 0.45,
+	);
 function greyed(pal: Palette): Palette {
 	return Object.fromEntries(
-		Object.entries(pal).map(([slot, c]) => {
-			const l = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
-			return [slot, new THREE.Color().setScalar(0.18 + l * 0.45)];
-		}),
+		Object.entries(pal).map(([slot, c]) => [slot, grey(c)]),
 	) as Palette;
 }
 
@@ -118,8 +114,15 @@ export function placeOn(
 /**
  * Everyone the world draws. `neon` is the theme's structural accent: the
  * coach's chevron wears it, flat and unlit — it never glows (ADR-0005).
+ * Every kit colour is guarded for whoever looks, whose live data is the
+ * look's trail and zones: the theme's, on a ride.
  */
 export function makeCrew(style: Style, neon: THREE.Color) {
+	const hex = (c: string) => `#${new THREE.Color(c).getHexString()}`;
+	const viewer: Viewer = {
+		watt: hex(style.trail ?? themeById(DEFAULT_DARK_ID)!.tokens.watt),
+		zones: style.zones.map(hex),
+	};
 	const group = new THREE.Group();
 	const gradient = ramp(TOON_BANDS.map((b) => b / 255));
 	// A sun's contact shadow grounds each rider; under the sky alone nothing casts one (ADR-0072).
@@ -150,15 +153,36 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 		});
 
 	const views = new Map<SimRider, View>();
-	// Until #3156 dresses each rider, everyone rides the starter kit in their own colours.
-	const kit = resolveKit();
+	// A loadout is built once per level of detail; each rider wearing it draws a copy (#3156).
+	const shapes = new Map<string, THREE.BufferGeometry>();
+	function figureOf(o: Outfit, look: string, lod: 0 | 1, m: FigureMaterial) {
+		const key = `${lod}:${look}`;
+		let shape = shapes.get(key);
+		if (!shape) {
+			shape = buildFigure(o.kit, {
+				lod,
+				palette: o.palette,
+				material: m,
+			}).geometry;
+			shapes.set(key, shape);
+		}
+		const figure = buildFigure(o.kit, {
+			lod,
+			material: m,
+			geometry: shape.clone(),
+		});
+		m.userData.u.uTorso.value = figure.userData.rig.dims.torso;
+		return figure;
+	}
 	function viewOf(r: SimRider, route: Route, crank: number, lod: 0 | 1): View {
 		const known = views.get(r);
 		if (known) return known;
 		const hue = hueOf(r.id);
-		const palette = figurePalette(hue, style.kit, variantOf(r.id));
-		const material = figureMaterial(kit, palette.jerseyAccent);
-		const figure = buildFigure(kit, { lod, palette, material });
+		const loadout = r.look ?? seededLoadout(r.id);
+		const look = JSON.stringify(loadout);
+		const outfit = outfitOf(loadout, style.kit, viewer);
+		const material = figureMaterial(outfit.kit, outfit.decal, outfit.jersey);
+		const figure = figureOf(outfit, look, lod, material);
 		figure.rotation.y = -Math.PI / 2; // the figure's +X forward becomes the world's heading
 		const anim = new RiderAnimator(figure, {
 			seed: Math.round(hue * 1000),
@@ -237,7 +261,8 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 			lod,
 			anim,
 			material,
-			palette,
+			outfit,
+			look,
 			faded: false,
 			ring,
 			shadow,
@@ -276,16 +301,20 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 	}
 	/** The lighter or fuller figure, keeping its pose, colours and material. */
 	function relod(v: View, lod: 0 | 1) {
-		const next = buildFigure(kit, {
-			lod,
-			palette: v.palette,
-			material: v.material,
-		});
+		const next = figureOf(v.outfit, v.look, lod, v.material);
 		v.figure.geometry.dispose();
 		v.figure.geometry = next.geometry;
 		next.skeleton.dispose();
-		if (v.faded) paint(v.figure.geometry, greyed(v.palette));
+		if (v.faded) fade(v);
 		v.lod = lod;
+	}
+	/** A rider's kit in greys while their screen has gone, in their own colours again when it is back. */
+	function fade(v: View) {
+		const { palette, jersey } = v.outfit;
+		const u = v.material.userData.u;
+		paint(v.figure.geometry, v.faded ? greyed(palette) : palette);
+		u.uJerseyB.value.copy(v.faded ? grey(jersey.b) : jersey.b);
+		u.uJerseyC.value.copy(v.faded ? grey(jersey.c) : jersey.c);
 	}
 	let near = new Set<SimRider>();
 	let sinceRank = Infinity;
@@ -326,7 +355,7 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 			v.ring.material.opacity = 0.85 * alpha;
 			if (v.faded !== !!r.faded) {
 				v.faded = !!r.faded;
-				paint(v.figure.geometry, v.faded ? greyed(v.palette) : v.palette);
+				fade(v);
 			}
 			// On the model view a rider is a bead, not a giant figurine.
 			v.figure.visible = !overview;
@@ -380,12 +409,16 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 			placeOn(car.group, route, at.d, at.lane);
 			car.set(at.alpha, at.coach);
 		},
-		/** Kit colours inside an identity's watt band, over every rider drawn: what a capture reports of the colour guard. */
-		kitsInWattBand(): number {
+		/** Kit colours that read as live data to this viewer, over every rider drawn: what a capture reports of the colour guard. */
+		kitCollisions(): number {
 			let n = 0;
-			for (const v of views.values())
-				for (const c of Object.values(v.palette))
-					if (inWattBand(`#${c.getHexString()}`)) n++;
+			for (const { outfit } of views.values())
+				for (const c of [
+					...Object.values(outfit.palette),
+					outfit.jersey.b,
+					outfit.jersey.c,
+				])
+					if (collides(`#${c.getHexString()}`, viewer)) n++;
 			return n;
 		},
 		/** Your figure, as a capture measures it (#3672). */
