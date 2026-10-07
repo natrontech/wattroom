@@ -105,7 +105,9 @@
 				</p>
 			</div>
 			{#if strip || block.next}
-				<div class="flex min-w-0 flex-col gap-2">
+				<!-- As wide as NEXT and its chips, not as wide as the band may grow:
+				     the moment card's top-centre room is what slot 1 leaves (D12). -->
+				<div class="flex w-88 min-w-0 shrink flex-col gap-2">
 					{#if strip}<div class="h-10">{@render strip()}</div>{/if}
 					{#if block.next}
 						<!-- A name and an absolute target, never a delta (#1531, D16). -->
