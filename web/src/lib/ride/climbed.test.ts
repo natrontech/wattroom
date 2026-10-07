@@ -21,6 +21,14 @@ describe('climbedM', () => {
 		expect(climbedM(road, 50, 40)).toBe(10);
 	});
 
+	it('reads a part of a sample as its part, so seconds add up to the road', () => {
+		expect(climbedM(road, 0, 5)).toBe(5);
+		expect(climbedM(road, 5, 15)).toBeCloseTo(5);
+		let sum = 0;
+		for (let m = 2.5; m <= 50; m += 2.5) sum += climbedM(road, m - 2.5, m);
+		expect(sum).toBeCloseTo(16);
+	});
+
 	it('clamps to the road and climbs nothing standing still', () => {
 		expect(climbedM(road, 20, 20)).toBe(0);
 		expect(climbedM(road, -5, 500)).toBe(16);
