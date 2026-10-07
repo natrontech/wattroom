@@ -67,13 +67,15 @@
 			<span class="text-neon">{target} W</span>
 			<span>{target + band.band}</span>
 		</p>
-		{#if blockExecution !== null}
-			<p data-testid="head-block" class="flex items-baseline gap-3">
-				<span class="ride-label">Block</span>
-				<span class="num text-4xl leading-none font-bold"
-					>{Math.round(blockExecution * 100)}</span
-				><span class="text-muted text-2xl">% on target</span>
-			</p>
-		{/if}
+		<!-- While the target is asked, always: the block's share inside the
+		     band, "—" until a second of it is scored. -->
+		<p data-testid="head-block" class="flex items-baseline gap-3">
+			<span class="ride-label">Block</span>
+			<span class="num text-4xl leading-none font-bold"
+				>{blockExecution === null || stale
+					? '—'
+					: Math.round(blockExecution * 100)}</span
+			><span class="text-muted text-2xl">% on target</span>
+		</p>
 	{/if}
 </div>

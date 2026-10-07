@@ -224,7 +224,9 @@
 		{#each fields as field (field.key)}
 			<div data-testid="computer-field" data-field={field.key} class="min-w-0">
 				<span
-					class="{size.word} text-muted flex items-center gap-2 leading-none"
+					class="{docked
+						? 'ride-label'
+						: `${size.word} text-muted`} flex items-center gap-2 leading-none"
 					>{field.label}{#if field.zone}<ZoneDot
 							zone={field.zone}
 							class={tv ? 'size-[1.4vh]' : 'size-2'}

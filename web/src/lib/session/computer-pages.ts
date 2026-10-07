@@ -173,7 +173,8 @@ export function fieldsFor(page: ComputerPage, ctx: ComputerContext): Field[] {
 		fields.push({
 			key: 'speed',
 			label: 'Speed',
-			value: ctx.road.speedKph.toFixed(1),
+			// The dot rides on your power: with nothing measured it is not live (#3668).
+			value: measured(ctx.road.speedKph.toFixed(1)),
 			unit: 'km/h',
 		});
 	if (ctx.grade !== undefined && !ctx.roadLine)
