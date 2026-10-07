@@ -52,7 +52,7 @@ for (const [width, height] of [
 		// rightly leaves for the flat road (#3080) — faster than a round trip
 		// per dock comes back from a page that software GL keeps busy.
 		// Building a world holds a loaded runner's main thread for a while.
-		let drawn: { name: string; scrolls: boolean; box: Box }[];
+		let drawn: { name: string; scrolls: boolean; alpha: number; box: Box }[];
 		try {
 			const measured = await page.waitForFunction(
 				() => {
@@ -60,6 +60,14 @@ for (const [width, height] of [
 					const canvas = el?.querySelector('canvas');
 					if (!el || !canvas || canvas.width === 300) return null;
 					const s = el.getBoundingClientRect();
+					// A panel's opacity, however its colour is written (oklab, color-mix).
+					const paint = document.createElement('canvas').getContext('2d')!;
+					const alphaOf = (color: string) => {
+						paint.clearRect(0, 0, 1, 1);
+						paint.fillStyle = color;
+						paint.fillRect(0, 0, 1, 1);
+						return paint.getImageData(0, 0, 1, 1).data[3] / 255;
+					};
 					const docks = [...el.querySelectorAll<HTMLElement>('[data-dock]')]
 						.map((d) => ({
 							name: d.dataset.dock!,
@@ -67,11 +75,13 @@ for (const [width, height] of [
 							scrolls:
 								d.scrollHeight > d.clientHeight + 1 ||
 								d.scrollWidth > d.clientWidth + 1,
+							alpha: alphaOf(getComputedStyle(d).backgroundColor),
 						}))
 						.filter(({ r }) => r.width > 0 && r.height > 0)
-						.map(({ name, r, scrolls }) => ({
+						.map(({ name, r, scrolls, alpha }) => ({
 							name,
 							scrolls,
+							alpha,
 							box: {
 								x0: (r.left - s.left) / s.width,
 								y0: (r.top - s.top) / s.height,
@@ -97,8 +107,10 @@ for (const [width, height] of [
 			drawn.map((d) => d.name),
 			JSON.stringify(drawn),
 		).toEqual(expect.arrayContaining(['header', 'numbers', 'horizon']));
-		for (const { name, box, scrolls } of drawn) {
+		for (const { name, box, scrolls, alpha } of drawn) {
 			expect(scrolls, `${name} cut short at ${width}×${height}`).toBe(false);
+			// ADR-0071's floor: a panel over the world is at least 85 % opaque (G3).
+			expect(alpha, `${name} at ${alpha} opacity`).toBeGreaterThanOrEqual(0.85);
 			expect(meets(box, CORRIDOR), `${name} in the corridor`).toBe(false);
 			expect(meets(box, RIDER_BOX), `${name} over the rider`).toBe(false);
 			expect(meets(box, JUKEBOX_SEAT), `${name} over the jukebox seat`).toBe(
