@@ -2,11 +2,14 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import type { Chalk } from '$lib/channel/bunch-view';
-import { at } from '$lib/road/along';
+import { at, leftOf } from '$lib/road/along';
 import { legsRoad } from '$lib/road/fixtures';
-import { makeChalk } from './chalk';
+import { lanesFor, LANE } from './bunch';
+import { BESIDE, makeChalk } from './chalk';
 import { ROAD_LIFT, yOf } from './geometry';
+import { RIDE } from './look.test-helper';
 import { routeOfRoad } from './road-route';
+import { ROAD_W } from './terrain/road-profile';
 
 const route = routeOfRoad(legsRoad([1000, 0], [2000, 6], [1000, 0]));
 const stamps = (layer: ReturnType<typeof makeChalk>) =>
@@ -25,15 +28,16 @@ describe('the roadside’s chalk (#3029)', () => {
 	};
 
 	it('lays each stamp flat on the road at its metre, unlit, reading up the road', () => {
-		const layer = makeChalk(route);
+		const layer = makeChalk(route, RIDE);
 		layer.update([heart, initial]);
 		expect(stamps(layer)).toHaveLength(2);
 		for (const [mesh, c] of stamps(layer).map(
 			(m, i) => [m, [heart, initial][i]] as const,
 		)) {
 			const p = at(route, c.u);
-			expect(mesh.position.x).toBeCloseTo(p.x, 3);
-			expect(mesh.position.z).toBeCloseTo(p.z, 3);
+			const { lx, lz } = leftOf(p.heading);
+			expect(mesh.position.x).toBeCloseTo(p.x + lx * BESIDE, 3);
+			expect(mesh.position.z).toBeCloseTo(p.z + lz * BESIDE, 3);
 			// On the asphalt, a hair above it: the road rides ROAD_LIFT over the centre line.
 			const asphalt = yOf(route, p.ele) + ROAD_LIFT;
 			expect(mesh.position.y - asphalt).toBeGreaterThan(0);
@@ -52,8 +56,21 @@ describe('the roadside’s chalk (#3029)', () => {
 		}
 	});
 
+	it('lies beside the riders’ line, never under three abreast, and on the asphalt (v2-erg)', () => {
+		const layer = makeChalk(route, RIDE);
+		layer.update([heart]);
+		const [mesh] = stamps(layer);
+		mesh.geometry.computeBoundingBox();
+		const half =
+			(mesh.geometry.boundingBox!.max.x - mesh.geometry.boundingBox!.min.x) / 2;
+		// Three abreast ride ±LANE; a rider's shoulders are about 0.3 m either side of their line.
+		const widest = ((lanesFor(6) - 1) / 2) * LANE + 0.3;
+		expect(BESIDE - half).toBeGreaterThan(widest);
+		expect(BESIDE + half).toBeLessThanOrEqual(ROAD_W / 2);
+	});
+
 	it('keeps a stamp while it lies on the road, and lets it go once ridden over', () => {
-		const layer = makeChalk(route);
+		const layer = makeChalk(route, RIDE);
 		layer.update([heart, initial]);
 		const [first, second] = stamps(layer);
 		layer.update([initial]);

@@ -4,22 +4,26 @@
 import * as THREE from 'three';
 import type { Chalk } from '$lib/channel/bunch-view';
 import type { RoadsideStamp } from '$lib/protocol';
-import { at } from '$lib/road/along';
+import { at, curvature, leftOf } from '$lib/road/along';
 import { type Route } from '$lib/road/route';
 import { disposeTree } from './dispose';
 import { tag } from './family';
 import { FONT, paintedTexture } from './furniture';
 import { ROAD_LIFT, yOf } from './geometry';
-import { ROAD_W } from './terrain/road-profile';
+import type { Style } from './styles';
+import { across, bankOf, ROAD_W } from './terrain/road-profile';
 
-// ponytail: a look, not a rule — chalk across most of the road and stretched
-// four to one along it, as road paint is, so a rider's low eye sees the shape
-// whole rather than a sliver; tune it on a climb.
-const ACROSS = ROAD_W * 0.8;
+// ponytail: a look, not a rule — chalk on the road's left half, beside the
+// riders' line as v2-erg paints its road words: a bunch rides centred and a
+// rider alone keeps right, so up to three abreast clears it (a bigger bunch's
+// outer lane rides over its edge). Stretched four to one along the road, as
+// road paint is, so a rider's low eye sees the shape whole; tune it on a climb.
+const ACROSS = ROAD_W * 0.27;
 const ALONG = ACROSS * 4;
+/** The stamp's centre, metres left of the road's middle, a hand inside the edge. */
+export const BESIDE = ROAD_W / 2 - ACROSS / 2 - 0.2;
 const W = 256;
 const H = 128;
-const CHALK = '#f1ede4';
 
 /** The words a stamp chalks; the glyph stamps draw a shape instead. */
 const WORDS: Partial<Record<RoadsideStamp, string>> = {
@@ -31,9 +35,10 @@ function draw(
 	x: OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D,
 	stamp: RoadsideStamp,
 	letter: string,
+	chalk: string,
 ) {
-	x.fillStyle = CHALK;
-	x.strokeStyle = CHALK;
+	x.fillStyle = chalk;
+	x.strokeStyle = chalk;
 	x.lineWidth = 14;
 	x.lineJoin = 'round';
 	x.textAlign = 'center';
@@ -74,13 +79,18 @@ function draw(
 	}
 }
 
-/** One stamp, flat on the road at its metre, reading up the road. */
-function stampMesh(route: Route, c: Chalk): THREE.Mesh {
+/** One stamp, flat on the road beside the riders' line at its metre, reading up the road. */
+function stampMesh(route: Route, c: Chalk, chalk: string): THREE.Mesh {
 	const p = at(route, c.u);
+	const { lx, lz } = leftOf(p.heading);
+	const n = route.x.length - 1;
+	const bank = bankOf(
+		curvature(route, Math.min(Math.max(Math.round(c.u / route.step), 0), n)),
+	);
 	const mesh = new THREE.Mesh(
 		new THREE.PlaneGeometry(ACROSS, ALONG).rotateX(-Math.PI / 2),
 		new THREE.MeshBasicMaterial({
-			map: paintedTexture(W, H, (x) => draw(x, c.stamp, c.letter)),
+			map: paintedTexture(W, H, (x) => draw(x, c.stamp, c.letter, chalk)),
 			transparent: true,
 			depthWrite: false,
 			// Laid on the asphalt, never fighting it for the same depth.
@@ -88,16 +98,20 @@ function stampMesh(route: Route, c: Chalk): THREE.Mesh {
 			polygonOffsetFactor: -2,
 		}),
 	);
-	// On the asphalt, which rides ROAD_LIFT over the centre line, a hair above it.
-	mesh.position.set(p.x, yOf(route, p.ele) + ROAD_LIFT + 0.03, p.z);
+	// On the asphalt where it crosses, banked as the ribbon is, a hair above it.
+	mesh.position.set(
+		p.x + lx * BESIDE,
+		yOf(route, p.ele) + ROAD_LIFT + across(BESIDE, bank) + 0.03,
+		p.z + lz * BESIDE,
+	);
 	// The texture's top points up the road (heading is atan2(dx, dz)), so it
-	// reads the right way up to the riders coming at it.
-	mesh.rotation.y = p.heading + Math.PI;
+	// reads the right way up to the riders coming at it; rolled with the bank.
+	mesh.rotation.set(0, p.heading + Math.PI, bank, 'YXZ');
 	mesh.userData.stamp = c.stamp;
 	return tag('dressing', mesh, 'chalk');
 }
 
-export function makeChalk(route: Route) {
+export function makeChalk(route: Route, style: Style) {
 	const group = new THREE.Group();
 	const drawn = new Map<string, THREE.Mesh>();
 	return {
@@ -113,7 +127,7 @@ export function makeChalk(route: Route) {
 				}
 			for (const c of chalk)
 				if (!drawn.has(c.key)) {
-					const mesh = stampMesh(route, c);
+					const mesh = stampMesh(route, c, style.road.line);
 					group.add(mesh);
 					drawn.set(c.key, mesh);
 				}
