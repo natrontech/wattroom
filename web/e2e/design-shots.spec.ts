@@ -1162,6 +1162,13 @@ surface(
 				.getByRole('group', { name: 'chalk the next climb' })
 				.scrollIntoViewIfNeeded();
 			await s.shot(watcher);
+			// The same deck on a phone propped beside the bike (SPEC "The roadside").
+			const phone = await s.open(PHONE, { as: 'Design Watcher' });
+			await phone.page.goto(voicePath(crew));
+			await phone.page
+				.getByRole('group', { name: 'chalk the next climb' })
+				.scrollIntoViewIfNeeded({ timeout: 20_000 });
+			await s.shot(phone, { name: 'roadside-chalk-phone' });
 			const riders = await coach.page
 				.locator('canvas[data-riders]')
 				.getAttribute('data-riders');
@@ -1170,17 +1177,18 @@ surface(
 					(r: { d: number }) => r.d,
 				),
 			);
-			// A stamp at the road's start, behind the bunch, is refused while
-			// the climb is still open, and the deck says why and where to try.
-			// Not a metre behind the drawn riders: the screen lags the hub.
-			socket?.send(
-				JSON.stringify({
-					roadside: { kind: 'paint', stamp: 'hopp', atM: 0 },
-				}),
-			);
+			// A double tap while the climb is still open: the second stamp,
+			// inside the hub's quarter second, is refused, and the deck says why
+			// and when to try again. Both at the road's start, behind the bunch,
+			// so neither lands: the screen lags the hub.
+			const behind = JSON.stringify({
+				roadside: { kind: 'paint', stamp: 'hopp', atM: 0 },
+			});
+			socket?.send(behind);
+			socket?.send(behind);
 			await watcher.page
 				.getByRole('status')
-				.filter({ hasText: 'Try' })
+				.filter({ hasText: 'One thing at a time' })
 				.scrollIntoViewIfNeeded();
 			await s.shot(watcher, { name: 'roadside-chalk-refused' });
 			// The hub takes one roadside verb a quarter second (controlMinGap).
