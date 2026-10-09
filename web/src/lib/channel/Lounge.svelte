@@ -12,16 +12,13 @@
 	import { pickStage, pictureKey } from '$lib/channel/stage';
 	import { useChannel } from '$lib/channel/context';
 	import { endGame } from '$lib/session/end-game';
-	import { ridePath, sessionPath } from '$lib/channel/address';
-	import { liveSessionId } from '$lib/channel/tick-session';
 	import AnnouncementStrip from '$lib/announce/AnnouncementStrip.svelte';
 	import MarkedIn from '$lib/announce/MarkedIn.svelte';
 	import SessionControls from '$lib/session/SessionControls.svelte';
+	import LoungeSession from '$lib/channel/LoungeSession.svelte';
 	import CountdownScreen from '$lib/session/CountdownScreen.svelte';
 	import PlanCard from '$lib/session/PlanCard.svelte';
-	import TrainerOverview from '$lib/session/TrainerOverview.svelte';
 	import HrShare from '$lib/channel/HrShare.svelte';
-	import { needsTrainer } from '$lib/session/sensor-status';
 	import EventLine from '$lib/channel/EventLine.svelte';
 	import { eventText } from '$lib/channel/events';
 
@@ -31,7 +28,6 @@
 	import { bottleFor } from '$lib/roadside';
 	import { device } from '$lib/device.svelte';
 	import { account } from '$lib/account.svelte';
-	import Radio from '@lucide/svelte/icons/radio';
 	import Bike from '@lucide/svelte/icons/bike';
 	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 	import { channelConnection } from '$lib/channel/connection.svelte';
@@ -47,12 +43,16 @@
 	import ScreenShare from '@lucide/svelte/icons/screen-share';
 
 	const channel = useChannel();
-	const EVENTS_SHOWN = 8;
-	// The newest few, and only those this client can put into words.
+	// While a ride runs the frame is the cave and this stage a riding surface
+	// (TARGETS G1): a rider a game put out uses it on the bike, so its words
+	// take riding size through the `ride-stage:` variant (#3890, #3882).
+	const riding = $derived(!!channelConnection.current?.riding());
+	// The newest few, and only those this client can put into words; fewer
+	// on a ride, where each is a 24 px line.
 	const events = $derived(
 		(channelConnection.current?.live.channelEvents ?? [])
 			.filter((event) => eventText(event))
-			.slice(-EVENTS_SHOWN),
+			.slice(riding ? -3 : -8),
 	);
 	const av = $derived(channelConnection.current?.av);
 	const isOwner = $derived(channel.myRole === 'owner');
@@ -242,7 +242,9 @@
 	     session leaves a free rider alone. Hidden on a phone, which has no
 	     trainer to ride — the same gate Join the ride has (ux.md). -->
 	{#if !device.spectator && !channel.you.inSession}
-		<a href={channel.address.training} class="btn btn-secondary btn-lg"
+		<a
+			href={channel.address.training}
+			class="btn btn-secondary btn-lg ride-stage:ride-word"
 			><Bike size={15} /> Free ride</a
 		>
 	{/if}
@@ -265,7 +267,10 @@
      floored at 320, and the Lounge scrolled sideways on a
      phone the moment anything was on stage. The bottom clears the drawer
      and people buttons floating in the corners (#1627). -->
-<div class="page flex h-full flex-col pb-20 xl:pb-8">
+<div
+	class="page flex h-full flex-col pb-20 xl:pb-8"
+	data-ride-stage={riding || undefined}
+>
 	<!-- The crew's announcement, above everything (#2408), and only while
 	     no session runs: mid-session the Lounge is tiles, the sprint and the
 	     stage, and a notice about next Thursday pushing them down is the
@@ -309,7 +314,8 @@
 						aria-pressed={layout === option.id}
 						title="{option.label} — {option.hint}"
 						aria-label="{option.label} layout"
-						class="icon-btn icon-btn-sm {layout === option.id
+						class="icon-btn icon-btn-sm ride-stage:icon-btn-lg {layout ===
+						option.id
 							? 'bg-surface-raised text-ink'
 							: 'text-muted hover:text-ink'}"><option.icon size={13} /></button
 					>
@@ -318,7 +324,8 @@
 		{/if}
 		<button
 			onclick={() => channel.openTv()}
-			class="btn btn-ghost btn-xs {channel.stageSources.length
+			class="btn btn-ghost btn-xs ride-stage:btn-lg ride-stage:ride-word {channel
+				.stageSources.length
 				? ''
 				: 'ml-auto'}"><MonitorUp size={13} /> TV</button
 		>
@@ -377,7 +384,7 @@
 							class="block w-full text-left"
 							title="tap to unfocus">{@render tile(focused)}</button
 						>
-						<p class="text-muted mt-2 text-xs">
+						<p class="text-muted ride-stage:ride-word mt-2 text-xs">
 							<span class="text-ink font-medium">{focused.name}</span> is focused
 							— tap again to let go.
 						</p>
@@ -450,56 +457,7 @@
 		</div>
 	{/if}
 	{#if channel.phase !== 'lounge'}
-		<!-- The session's controls in every phase (audit 2026-09-09): the
-		     dashboard below mounts only while nothing runs, and with it went
-		     Pause and End for a coach standing here mid-ride — and the way
-		     into the ride for a member arriving mid-session. -->
-		<div class="mt-4 flex flex-wrap items-center gap-2">
-			<SessionControls />
-			{#if needsTrainer(channel.trainer, channel.pairing)}
-				<!-- A planned session's Start now lands here mid-countdown
-				     (#2594), and so does a rider whose coach started it: the
-				     way to pair sits beside the way into the ride. -->
-				<TrainerOverview compact />
-			{/if}
-			{#if !device.spectator}
-				<!-- Not to a phone (#1627): it cannot ride, and Training would
-				     answer "bring a laptop". The coach needs the way in too: a
-				     voice channel has no Training row in the sidebar, and the
-				     session's page is where the ride is (#2450). -->
-				<a
-					href={ridePath(
-						channel.address,
-						liveSessionId(channelConnection.current?.live.tick?.state),
-					)}
-					class="btn btn-accent btn-lg"
-					><Radio size={15} />
-					{channel.canControl ? 'Go to the ride' : 'Join the ride'}</a
-				>
-			{:else if liveSessionId(channelConnection.current?.live.tick?.state)}
-				<!-- A phone watches (#2635): the session's watch page is the
-				     phone's view of it since #2450, and the Lounge had no way
-				     there once the ride link was held back. -->
-				<a
-					href="{sessionPath(
-						channel.address.crew,
-						liveSessionId(channelConnection.current?.live.tick?.state)!,
-					)}/watch"
-					class="btn btn-accent btn-lg"><Radio size={15} /> Watch the session</a
-				>
-			{/if}
-			{@render freeRide()}
-		</div>
-		{#if channel.phase === 'live' && !channel.you.inSession}
-			<!-- Beside the session, not on it (#3022): the roadside's deck, so
-			     a bottle is a button here and not only a tile's menu entry. A
-			     rider a game put out has it in the game's panel instead. -->
-			<!-- Wide enough that the deck's one status line holds a refusal at
-			     the riding floor's 24 px (TARGETS G4). -->
-			<div class="mt-3 max-w-xl">
-				<RoadsideDeck to={bottleFor(channel.riders, channel.focusId)} />
-			</div>
-		{/if}
+		<LoungeSession {freeRide} />
 	{/if}
 	{#if channel.address.channel && events.length}
 		<!-- A voice channel's events (ADR-0022 as amended by ADR-0058): it has
@@ -507,7 +465,7 @@
 		     they are about — the last few, newest last, never persisted. -->
 		<section class="mt-4" aria-label="what happened here">
 			{#each events as event (`${event.at}-${event.verb}-${event.actor ?? ''}`)}
-				<EventLine {event} />
+				<EventLine {event} class="ride-stage:ride-word" />
 			{/each}
 		</section>
 	{/if}
@@ -523,7 +481,7 @@
 			{@render freeRide()}
 			<button
 				onclick={() => channel.openPicker('plan')}
-				class="btn btn-secondary btn-lg"
+				class="btn btn-secondary btn-lg ride-stage:ride-word"
 				><CalendarClock size={15} /> Plan for later</button
 			>
 		</div>

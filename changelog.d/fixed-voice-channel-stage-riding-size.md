@@ -1,0 +1,1 @@
+- A voice channel's page is riding size while its session runs: the riders' names and numbers, Join the ride, Free ride, the trainer's buttons and the bottle read at 24 px or more from the saddle, and the layout and TV buttons are 44 px targets.

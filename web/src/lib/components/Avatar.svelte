@@ -90,6 +90,7 @@
 </script>
 
 <span
+	data-avatar
 	class="relative inline-block shrink-0 align-middle"
 	style="width:{size}px;height:{size}px"
 	title={label}

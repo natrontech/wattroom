@@ -107,18 +107,24 @@
 			onclick={() => void endGame(channel)}
 			title="End game"
 			aria-label="end the game"
-			class="btn btn-secondary {compact ? 'h-11 w-11 p-0' : 'btn-lg'}"
+			class="btn btn-secondary ride-stage:ride-word {compact
+				? 'h-11 w-11 p-0'
+				: 'btn-lg'}"
 			><Gamepad2 size={compact ? 18 : 15} />{#if !compact}End game{/if}</button
 		>
 	{/if}
 	{#if idle}
 		<!-- Riding size in the compact header too (#2886): a free rider turns
 		     the ride into a session from here while pedalling. -->
-		<button onclick={() => channel.openPicker()} class="btn btn-accent btn-lg"
+		<button
+			onclick={() => channel.openPicker()}
+			class="btn btn-accent btn-lg ride-stage:ride-word"
 			><Radio size={15} /> Start a session</button
 		>
 	{:else if phase === 'countdown'}
-		<button onclick={() => channel.control('end')} class="btn btn-danger btn-lg"
+		<button
+			onclick={() => channel.control('end')}
+			class="btn btn-danger btn-lg ride-stage:ride-word"
 			><Square size={13} /> Stop the countdown</button
 		>
 	{:else}
@@ -146,7 +152,7 @@
 					onclick={() => channel.control('pause')}
 					title="Pause"
 					aria-label="pause the session"
-					class="text-muted hover:text-ink flex items-center justify-center gap-1.5 rounded text-sm {compact
+					class="text-muted hover:text-ink ride-stage:ride-word flex items-center justify-center gap-1.5 rounded text-sm {compact
 						? 'h-11 w-11'
 						: 'min-h-11 px-4'}"
 					><Pause size={compact ? 18 : 14} />{#if !compact}Pause{/if}</button
@@ -156,7 +162,7 @@
 					onclick={() => channel.control('resume')}
 					title="Resume"
 					aria-label="resume the session"
-					class="hover:bg-surface-raised flex items-center justify-center gap-1.5 rounded text-sm {compact
+					class="hover:bg-surface-raised ride-stage:ride-word flex items-center justify-center gap-1.5 rounded text-sm {compact
 						? 'h-11 w-11'
 						: 'min-h-11 px-4'}"
 					><Play size={compact ? 18 : 14} />{#if !compact}Resume{/if}</button
@@ -167,7 +173,7 @@
 					onclick={() => (handingOff = true)}
 					title="Hand off"
 					aria-label="hand the session off"
-					class="text-muted hover:text-ink flex items-center justify-center gap-1.5 rounded text-sm {compact
+					class="text-muted hover:text-ink ride-stage:ride-word flex items-center justify-center gap-1.5 rounded text-sm {compact
 						? 'h-11 w-11'
 						: 'min-h-11 px-4'}"
 					><Crown size={compact ? 18 : 14} />{#if !compact}Hand off{/if}</button
@@ -177,7 +183,7 @@
 				onclick={endSession}
 				title="End"
 				aria-label="end the session"
-				class="text-danger hover:bg-danger/10 flex items-center justify-center gap-1.5 rounded text-sm {compact
+				class="text-danger hover:bg-danger/10 ride-stage:ride-word flex items-center justify-center gap-1.5 rounded text-sm {compact
 					? 'h-11 w-11'
 					: 'min-h-11 px-4'}"
 				><Square size={compact ? 16 : 13} />{#if !compact}End{/if}</button
@@ -188,13 +194,15 @@
 	<!-- End anyone's session (docs/SPEC.md roles, #2598): the crew's lever
 	     over a session left running or a pick left behind, since one session
 	     holds the channel. On a phone too — it needs nothing a phone lacks. -->
-	<button onclick={endTheirs} class="btn btn-danger btn-lg"
+	<button onclick={endTheirs} class="btn btn-danger btn-lg ride-stage:ride-word"
 		><Square size={13} />
 		{view === 'clear' ? `Clear ${whose} pick` : `End ${whose} session`}</button
 	>
 {:else if view === 'held' && !compact}
 	<!-- In place of the Start a member no longer has: who holds the channel. -->
-	<p class="text-muted text-sm">{coachName} is setting up a session here.</p>
+	<p class="text-muted ride-stage:ride-word text-sm">
+		{coachName} is setting up a session here.
+	</p>
 {/if}
 
 {#if handingOff && takers.length > 0}

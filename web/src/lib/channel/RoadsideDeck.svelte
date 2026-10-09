@@ -51,12 +51,14 @@
 	};
 </script>
 
+<!-- Every word here at the riding floor (TARGETS G4): a rider a game put
+     out uses the deck on the bike (#3890). -->
 <div class="grid gap-2">
 	<CheerDeck onCheer={(key) => live?.cheer(key)} />
 	{#if to && live}
 		<button
 			onclick={() => live.bottle(to.id)}
-			class="btn btn-secondary btn-lg w-full"
+			class="btn btn-secondary btn-lg ride-word w-full"
 			><GlassWater size={16} /> Hand {to.name} a bottle</button
 		>
 	{/if}

@@ -608,6 +608,16 @@ body {
 @utility ride-label {
 	@apply text-muted text-2xl leading-7 font-semibold tracking-[0.08em] uppercase;
 }
+/* A word on a riding surface that is not a label: a button's, a status
+ * line's, a name (TARGETS G4). 24 px from `sm`; a phone has no SPEC size row
+ * yet (D1), so there it steps down and may wrap rather than scroll (G5). */
+@utility ride-word {
+	@apply text-xl sm:text-2xl;
+}
+/* The voice channel's stage while a ride runs (TARGETS G1, #3890): the Lounge
+ * marks its root, and the components it shares with desk pages take riding
+ * size inside it only, e.g. `ride-stage:ride-word`. */
+@custom-variant ride-stage (&:where([data-ride-stage] *));
 
 /* The page's own title (#1697): one spelling, so the nineteen h1s that
    retyped it cannot drift apart. Extras (a margin, truncate) ride beside it. */
