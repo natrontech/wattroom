@@ -21,14 +21,19 @@ describe('tabular figures (TARGETS G4, #3869)', () => {
 
 	it('keeps the value one text for a screen reader, the drawn figures hidden', () => {
 		const html = render(TabularFigures, { props: { value: 1098 } }).body;
-		expect(html).toMatch(/<span class="sr-only">1098<\/span>/);
-		expect(html).toMatch(/<span aria-hidden="true">/);
+		// Visually hidden, read aloud: clipped to a pixel, never display:none.
+		expect(html).toMatch(
+			/<span class="absolute size-px overflow-hidden [^"]*clip-path:inset\(50%\)[^"]*">1098<\/span>/,
+		);
+		expect(html).toMatch(/<span aria-hidden="true" class="inline-block">/);
 	});
 
 	it('draws what is not a figure as it is', () => {
 		const html = render(TabularFigures, { props: { value: '—' } }).body;
 		expect(cells(html)).toHaveLength(0);
-		expect(html).toMatch(/<span aria-hidden="true">(<!--[^>]*-->)*—/);
+		expect(html).toMatch(
+			/<span aria-hidden="true" class="inline-block">(<!--[^>]*-->)*—/,
+		);
 	});
 
 	// Chakra Petch has no tnum, so `tabular-nums` alone left these

@@ -8,14 +8,20 @@
 	 *
 	 * The drawn figures are generated content, so the value stays one text
 	 * node: what a screen reader reads, and the one watt figure the design
-	 * probe and world-docks count (G2).
+	 * probe and world-docks count (G2). It is `sr-only` without the −1 px
+	 * margin, and the figures' row an inline-block as tall as its line: both
+	 * stood above the readout's box (#2888), an inline span being as tall as
+	 * the font, at a leading under 1.
 	 */
 	let { value }: { value: string | number } = $props();
 
 	const text = $derived(String(value));
 </script>
 
-<span class="sr-only">{text}</span><span aria-hidden="true"
+<span
+	class="absolute size-px overflow-hidden whitespace-nowrap [clip-path:inset(50%)]"
+	>{text}</span
+><span aria-hidden="true" class="inline-block"
 	>{#each [...text] as char, i (i)}{#if char >= '0' && char <= '9'}<span
 				data-figure={char}
 				class="inline-flex w-[0.62em] justify-center before:content-[attr(data-figure)]"
