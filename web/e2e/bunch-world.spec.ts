@@ -20,13 +20,22 @@ const SETTLE_MS = 30_000;
 type Drawn = { id: string; d: number; lane: number };
 type Snapshot = { t: number; mps: number; riders: Drawn[] };
 
-/** Where this screen's world drew everyone, when, and at what speed, as its canvas says (RideWorld). */
+/**
+ * Where this screen's world drew everyone, when, and at what speed, as its
+ * canvas says (RideWorld); or, once its world has handed the ride to the flat
+ * road, the line saying why. A saturated runner's world misses its frames and
+ * goes flat, which is the app judging right, not the bunch drawing wrong (#3877).
+ */
 const drawn = (page: Page) =>
 	page.evaluate(() => {
 		const said = document.querySelector<HTMLCanvasElement>(
 			'canvas[data-riders]',
 		)?.dataset.riders;
-		return said ? (JSON.parse(said) as Snapshot) : null;
+		if (said) return JSON.parse(said) as Snapshot;
+		return (
+			document.querySelector('[data-testid=flat-road]')?.textContent?.trim() ??
+			null
+		);
 	});
 
 test('two screens draw one bunch: each rider where the other screen has them @world', async ({
@@ -98,6 +107,8 @@ test('two screens draw one bunch: each rider where the other screen has them @wo
 			.poll(
 				async () => {
 					const [a, b] = await Promise.all([drawn(coach), drawn(guest)]);
+					if (typeof a === 'string' || typeof b === 'string')
+						return `a world went to the flat road: ${JSON.stringify([a, b])}`;
 					const pick = (s: Snapshot | null, id: string) =>
 						s?.riders.find((r) => r.id === id);
 					const ids = [coachId, guestId];
