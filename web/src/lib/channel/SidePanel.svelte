@@ -320,7 +320,7 @@
 			     which is what the 160 px cap did whenever the stage held the
 			     video. -->
 			<div
-				class="border-ink/5 max-h-[45%] min-h-0 shrink-0 overflow-y-auto border-b p-4"
+				class="border-ink/5 max-h-[45%] min-h-0 shrink-0 overflow-y-auto border-b p-3"
 			>
 				{@render player()}
 			</div>
