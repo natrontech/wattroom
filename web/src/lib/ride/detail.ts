@@ -55,6 +55,8 @@ export interface RideDetail {
 	samples: RideTraceSample[];
 	/** A road ride's metres, the server's replay (#3053); absent off a road. */
 	distanceM?: number;
+	/** The road it rode, under the name its owner knows it by (#3874). */
+	road?: { routeId: string; name: string };
 	/** Where the ride was sent, if anywhere — absent when nobody tried (#799). */
 	export?: RideExport;
 	/**

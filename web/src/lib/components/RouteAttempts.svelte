@@ -1,8 +1,10 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import Banner from '$lib/components/Banner.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { formatClockLong, formatKm, formatShortDate } from '$lib/format';
+	import { rideHref } from '$lib/road/route-row';
 	import {
 		attemptPoints,
 		attemptTrend,
@@ -94,7 +96,7 @@
 			{#each lines as l (l.label)}
 				<li>
 					<a
-						href="/history/{l.ride.rideId}"
+						href={rideHref(l.ride.rideId, page.url.pathname + page.url.search)}
 						class="flex flex-wrap items-baseline gap-x-3 py-2 hover:underline"
 					>
 						<span class="eyebrow w-10">{l.label}</span>

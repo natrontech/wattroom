@@ -15,6 +15,7 @@
 	import { deleteRideAfterConfirm } from '$lib/ride/delete-ride';
 	import { fetchRide, type RideDetail } from '$lib/ride/detail';
 	import { ridePlace } from '$lib/ride/list';
+	import { localPath } from '$lib/road/route-row';
 	import RideComparison from '$lib/ride/RideComparison.svelte';
 	import RideSkyline from '$lib/ride/RideSkyline.svelte';
 	import type { RideRecord } from '$lib/history.svelte';
@@ -37,6 +38,21 @@
 
 	const id = $derived(page.params.id ?? '');
 	let ride = $state<RideDetail | null>(null);
+	// Flows rule 4: a ride opened from the page that links it goes back there.
+	const back = $derived.by(() => {
+		const href = localPath(page.url.searchParams.get('back'));
+		if (!href) return { href: '/history', label: 'Rides' };
+		const road = ride?.road;
+		return {
+			href,
+			label:
+				road && href.startsWith(`/workouts/routes/${road.routeId}`)
+					? road.name
+					: 'Back',
+		};
+	});
+	// The road's name is the ride's name (Flows rule 2); a Free ride on one is that road.
+	const title = $derived(ride?.road?.name || ride?.workoutName);
 	let error = $state<string | null>(null);
 	// A ride that is not yours reads as absent, and retrying will not find it —
 	// so it gets the empty state, not the error-with-retry one.
@@ -182,16 +198,15 @@
 	);
 </script>
 
-<svelte:head
-	><title>{ride?.workoutName ?? 'Ride'} · Rides · WattRoom</title></svelte:head
->
+<svelte:head><title>{title ?? 'Ride'} · Rides · WattRoom</title></svelte:head>
 
 <main class="page">
 	<a
-		href="/history"
+		href={back.href}
 		class="text-muted hover:text-ink link-standalone gap-1.5 text-xs"
 	>
-		<ArrowLeft size={14} /> Rides
+		<ArrowLeft size={14} />
+		{back.label}
 	</a>
 
 	{#if missing}
@@ -234,7 +249,7 @@
 		<header class="mt-4 flex flex-wrap items-end gap-x-4 gap-y-2">
 			<div>
 				<h1 class="page-title-sm leading-tight">
-					{ride.workoutName}
+					{title}
 				</h1>
 				<p class="text-muted mt-0.5 text-xs">
 					{new Date(ride.startedAt).toLocaleString()} · {formatDuration(
