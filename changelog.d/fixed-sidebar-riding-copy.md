@@ -1,0 +1,1 @@
+- While you ride, the sidebar no longer carries its teaching lines about joining a crew or messaging a friend.

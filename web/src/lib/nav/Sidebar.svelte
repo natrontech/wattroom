@@ -56,9 +56,13 @@
 	let {
 		pathname,
 		live = false,
+		riding = false,
 	}: {
 		pathname: string;
 		live?: boolean;
+		// A riding surface allows no sentence but a status line (TARGETS G4):
+		// the empty-state teaching below is for the rider at the desk (#3723).
+		riding?: boolean;
 	} = $props();
 
 	// Your own badge, on the same rule as everyone else's (#824): the people
@@ -208,7 +212,7 @@
 						>Retry</button
 					>
 				</p>
-			{:else if presence.loaded && crews.length === 0}
+			{:else if presence.loaded && crews.length === 0 && !riding}
 				<!-- In no crew at all (#2144): the way in is joining one, and
 				     starting a crew of your own is the option, not the ask. -->
 				<p class="text-muted px-2 pt-3 text-xs">
@@ -272,7 +276,7 @@
 					>Retry</button
 				>
 			</p>
-		{:else if dmHeads.loaded && dmHeads.heads.length === 0 && !dmsFolded}
+		{:else if dmHeads.loaded && dmHeads.heads.length === 0 && !dmsFolded && !riding}
 			<!-- A heading over nothing taught nothing (#1819): the first thread
 			     starts on a friend's page. -->
 			<a

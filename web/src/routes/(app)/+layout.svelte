@@ -444,6 +444,7 @@
 			<Sidebar
 				pathname={page.url.pathname}
 				live={channelConnection.current?.live.tick?.state.phase === 'running'}
+				{riding}
 			/>
 		</div>
 		<!-- inert while the drawer is open (#1969): Tab past its last row used
