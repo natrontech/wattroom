@@ -13,7 +13,7 @@ import { BUILD_MS, longLoopPoints } from './world.test-helper';
  * The route-wide work a ride does before its first frame (#3797) was made
  * cheaper, never different: the same route still yields the same world.
  * Each digest below was taken on main before that work and is held here
- * byte for byte — the set pieces' plan is spaced by the riding clock and
+ * (numbers settled to 6 digits, #3849) — the set pieces' plan is spaced by the riding clock and
  * dressed around the villages, so a last bit that moved moves a bench. They
  * were retaken for #3832: a road's ends keep their grade now, so the
  * riding clock and what hangs on it moved; and for #3675, whose forest
@@ -28,20 +28,34 @@ import { BUILD_MS, longLoopPoints } from './world.test-helper';
  * farthest stands low enough for the sky's peach to clear it (#3085).
  */
 
-/** FNV-1a over every number's float64 bytes, in order. */
+/**
+ * A number to 6 significant digits. libm's pow and exp answer in the last bit
+ * differently on arm64 and x64, so a digest over raw float64 bytes is red on
+ * a Mac while green in CI (#3849); a world that really changed moves digits
+ * far above the 6th.
+ */
+const settled = (v: number) => (Number.isFinite(v) ? +v.toPrecision(6) : v);
+
+/** FNV-1a over every number's settled float64 bytes, in order. */
 function digest(values: Iterable<number>): string {
 	const view = new DataView(new ArrayBuffer(8));
 	let h = 0x811c9dc5;
 	for (const v of values) {
-		view.setFloat64(0, v);
+		view.setFloat64(0, settled(v));
 		for (let i = 0; i < 8; i++) h = Math.imul(h ^ view.getUint8(i), 0x01000193);
 	}
 	return (h >>> 0).toString(16).padStart(8, '0');
 }
 
-/** The same over a value's JSON, whose numbers round-trip exactly. */
+/** The same over a value's JSON, its numbers settled the same way. */
 const digestOf = (value: unknown) =>
-	digest([...JSON.stringify(value)].map((c) => c.charCodeAt(0)));
+	digest(
+		[
+			...JSON.stringify(value, (_, v) =>
+				typeof v === 'number' ? settled(v) : v,
+			),
+		].map((c) => c.charCodeAt(0)),
+	);
 
 /** What a ride's first frame settles: the tiles around its start, nearest first. */
 function aroundStart(route: Route, world: World) {
@@ -84,7 +98,7 @@ describe('the reference pace', () => {
 	it('answers every grade as it did', () => {
 		const out: number[] = [];
 		for (let g = -30; g <= 30; g += 0.0137) out.push(referenceSpeed(g));
-		expect(digest(out)).toBe('b44a98a2');
+		expect(digest(out)).toBe('9f7cccf2');
 	});
 });
 
@@ -100,33 +114,33 @@ describe('a 29 km loop, its route-wide work', () => {
 		const out: number[] = [];
 		for (let x = -3000; x <= 3000; x += 97)
 			for (let z = -3000; z <= 3000; z += 89) out.push(world.heightAt(x, z));
-		expect(digest(out)).toBe('cf06f8b3');
+		expect(digest(out)).toBe('13000c6f');
 		const grids: number[] = [];
 		for (let ci = -6; ci <= 6; ci += 3)
 			for (let cj = -6; cj <= 6; cj += 3) {
 				const g = world.grid(ci, cj);
 				if (g) grids.push(...g.h, ...g.biome, ...g.shade, ...g.forest);
 			}
-		expect(digest(grids)).toBe('b167d1cd');
+		expect(digest(grids)).toBe('445a41b4');
 		expect(CHUNK_M).toBe(160);
 	});
 
 	it('names the same villages at the same metres', () => {
-		expect(digestOf([world.villageNames, world.markers])).toBe('7fcecd1d');
+		expect(digestOf([world.villageNames, world.markers])).toBe('25faa618');
 	});
 
 	it('keeps the same riding clock', () => {
-		expect(rhythmDigest(world)).toBe('52fdd075');
+		expect(rhythmDigest(world)).toBe('22577077');
 	});
 
 	it('draws the same horizon', () => {
-		expect(horizonDigest(route, world)).toBe('9c271efd');
+		expect(horizonDigest(route, world)).toBe('4802fb68');
 	});
 
 	it(
 		'stands the same things around the start, and along the whole loop',
 		() => {
-			expect(aroundStart(route, world)).toBe('5696430d');
+			expect(aroundStart(route, world)).toBe('3480b172');
 			const all = world.everything;
 			expect(
 				digestOf([
@@ -136,7 +150,7 @@ describe('a 29 km loop, its route-wide work', () => {
 					all.arches,
 					all.placements,
 				]),
-			).toBe('51f4b775');
+			).toBe('6d2c813d');
 		},
 		BUILD_MS,
 	);
@@ -151,13 +165,13 @@ describe('a 124 km loop, its route-wide work', () => {
 	}, BUILD_MS);
 
 	it('names the same villages, keeps the same clock and draws the same horizon', () => {
-		expect(digestOf([world.villageNames, world.markers])).toBe('c7b6942f');
-		expect(rhythmDigest(world)).toBe('4d5155d0');
-		expect(horizonDigest(route, world)).toBe('34e1724c');
+		expect(digestOf([world.villageNames, world.markers])).toBe('efe6aff7');
+		expect(rhythmDigest(world)).toBe('602d4bc8');
+		expect(horizonDigest(route, world)).toBe('b85d6eb8');
 	});
 
 	// Its start meets its end: the pieces planned before the finish are decided too.
 	it('stands the same things around the start', () => {
-		expect(aroundStart(route, world)).toBe('cd615abe');
+		expect(aroundStart(route, world)).toBe('600388a8');
 	});
 });
