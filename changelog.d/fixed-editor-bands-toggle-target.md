@@ -1,0 +1,1 @@
+- The workout editor's cadence and heart-rate bands toggle and its Discard are big enough to hit with a fingertip.

@@ -251,7 +251,7 @@
 				class="btn btn-secondary btn-xs"
 				title="Redo (⇧⌘Z)">Redo</button
 			>
-			<a href="/workouts" class="text-muted hover:text-ink text-sm">Discard</a>
+			<a href="/workouts" class="btn btn-ghost">Discard</a>
 			<button
 				onclick={save}
 				disabled={!check.ok || !hydrated || shelfFull}
@@ -466,7 +466,9 @@
 						current.hrLow !== undefined ||
 						current.hrHigh !== undefined}
 				>
-					<summary class="eyebrow cursor-pointer"
+					<!-- A 24 px target (G5, #3906) whose padding sits in the gaps
+					     around it, so the panel keeps its rhythm. -->
+					<summary class="eyebrow -my-2 cursor-pointer py-2"
 						>cadence and heart-rate bands</summary
 					>
 					<p class="text-muted mt-1 mb-2 text-[11px]">

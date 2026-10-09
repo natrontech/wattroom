@@ -115,6 +115,7 @@
 			"phone-ride",
 			"phone-ride-road",
 			"phone-workouts",
+			"phone-workout-editor",
 			"phone-route",
 			"phone-home"
 		]
@@ -187,6 +188,10 @@
 			"routes",
 			"ride-roadpick"
 		]
+	},
+	{
+		"files": ["web/src/routes/(app)/workouts/edit/**"],
+		"surfaces": ["workout-editor", "phone-workout-editor"]
 	},
 	{
 		"files": [
