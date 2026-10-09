@@ -1264,14 +1264,6 @@ surface(
 				.getByRole('group', { name: 'chalk the next climb' })
 				.scrollIntoViewIfNeeded({ timeout: 20_000 });
 			await s.shot(phone, { name: 'roadside-chalk-phone' });
-			const riders = await coach.page
-				.locator('canvas[data-riders]')
-				.getAttribute('data-riders');
-			const ahead = Math.max(
-				...(JSON.parse(riders ?? '{}').riders ?? []).map(
-					(r: { d: number }) => r.d,
-				),
-			);
 			// A double tap while the climb is still open: the second stamp,
 			// inside the hub's quarter second, is refused, and the deck says why
 			// and when to try again. Both at the road's start, behind the bunch,
@@ -1288,9 +1280,24 @@ surface(
 			await s.shot(watcher, { name: 'roadside-chalk-refused' });
 			// The hub takes one roadside verb a quarter second (controlMinGap).
 			await watcher.page.waitForTimeout(1000);
+			// The heart goes 18 m past the bunch's front as it is now. The
+			// world's canvas holds the riders as of its last frame, with the
+			// speed they ride at; a software-GL shot takes seconds, so that
+			// reading is carried on to this moment, and the hub refuses a chalk
+			// that lands behind its front.
+			const front = await coach.page.evaluate(() => {
+				const canvas = document.querySelector<HTMLCanvasElement>(
+					'canvas[data-riders]',
+				);
+				const seen = JSON.parse(canvas?.dataset.riders ?? '{}');
+				const lead = Math.max(
+					...(seen.riders ?? []).map((r: { d: number }) => r.d),
+				);
+				return lead + ((seen.mps ?? 0) * (Date.now() - seen.t)) / 1000;
+			});
 			socket?.send(
 				JSON.stringify({
-					roadside: { kind: 'paint', stamp: 'heart', atM: ahead + 18 },
+					roadside: { kind: 'paint', stamp: 'heart', atM: front + 18 },
 				}),
 			);
 			// A tick to land it, while the bunch is still short of it: near
