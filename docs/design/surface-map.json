@@ -282,6 +282,15 @@
 		"surfaces": ["ride-race"]
 	},
 	{
+		"files": ["web/src/lib/nav/**"],
+		"surfaces": [
+			"home",
+			"ride-road-world",
+			"ride-session-flat",
+			"ride-session-road"
+		]
+	},
+	{
 		"files": [
 			"web/src/app.css",
 			"web/src/lib/themes.ts",
