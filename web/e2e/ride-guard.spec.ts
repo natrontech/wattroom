@@ -1,3 +1,4 @@
+import type { Locator } from '@playwright/test';
 import { expect, test, voicePath } from './crew';
 import { signInTo } from './signin';
 
@@ -125,7 +126,10 @@ test('a free ride goes dark, feeds the HUD and asks before another channel ends 
 		});
 		const riding = page.url();
 
-		await expect(page.locator('.cave'), 'the lights stayed up').toHaveCount(1);
+		await expect(
+			page.locator('.cave:has(#page-body)'),
+			'the lights stayed up',
+		).toHaveCount(1);
 		const hud = await page.context().newPage();
 		await hud.goto('/hud');
 		await expect(hud.getByTestId('hud-label')).toHaveText('Free ride', {
@@ -137,11 +141,23 @@ test('a free ride goes dark, feeds the HUD and asks before another channel ends 
 		const elsewhere = page.locator(
 			`nav[aria-label="crews and channels"] a[href="/crew/${opened.crew}/v/${other}"]`,
 		);
+		// A menu and a confirm opened mid-ride are the cave too (#3788): their
+		// hosts mount outside the frame, where the rider's scheme reached them.
+		const schemeOf = (el: Locator) =>
+			el.evaluate((node) => getComputedStyle(node).colorScheme);
+		await elsewhere.click({ button: 'right' });
+		const menu = page.getByRole('menu');
+		await expect(menu).toBeVisible();
+		expect(await schemeOf(menu), 'a menu opened mid-ride').toBe('dark');
+		await page.keyboard.press('Escape');
+		await expect(menu).toBeHidden();
+
 		await elsewhere.click();
 		const ask = page.getByRole('dialog');
 		await expect(
 			ask.getByText(`End your free ride in ${opened.name}?`),
 		).toBeVisible();
+		expect(await schemeOf(ask), 'a confirm opened mid-ride').toBe('dark');
 		await ask.getByRole('button', { name: 'Keep riding' }).click();
 		expect(page.url()).toBe(riding);
 		await expect(end).toBeVisible();

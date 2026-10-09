@@ -1,1 +1,1 @@
-- A context menu, rider card or confirm dialog opened mid-ride now stays dark in the light scheme instead of flashing white over the riding view.
+- A context menu, rider card, confirm dialog or toast that opens mid-ride now stays dark in the light scheme instead of drawing white over the riding view.
