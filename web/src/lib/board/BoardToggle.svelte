@@ -21,7 +21,7 @@
 <button
 	onclick={() => boardPanel.toggle()}
 	aria-expanded={boardPanel.open}
-	class="btn btn-xs mt-1.5 w-full {boardPanel.open
+	class="btn btn-lg min-w-0 flex-1 {boardPanel.open
 		? 'btn-primary'
 		: 'btn-secondary'}"
 	title="your soundboard"><Drum size={13} /> Soundboard</button

@@ -326,22 +326,24 @@
 			</div>
 		{/if}
 
-		<div class="border-ink/5 border-t p-3">
+		<div class="border-ink/5 flex flex-col gap-2 border-t p-3">
 			<!-- Your reactions (#2722), and under them the soundboard: both are
 			     a thing you throw into the channel, and neither is typing —
-			     which mid-ride was never on the table anyway (ux.md). -->
-			<CheerDeck onCheer={(key) => onCheer?.(key)}>
-				{#snippet more()}
-					<button
-						onclick={(e) => (pickerAt = pickerAt ? null : e.currentTarget)}
-						aria-label="More reactions"
-						aria-expanded={!!pickerAt}
-						title="More reactions"
-						class="border-muted/20 hover:border-muted/50 text-muted hover:text-ink flex min-h-11 w-11 shrink-0 items-center justify-center rounded border"
-						><SmilePlus size={18} /></button
-					>
-				{/snippet}
-			</CheerDeck>
+			     which mid-ride was never on the table anyway (ux.md). The picker
+			     sits beside the soundboard: six 44 px targets do not fit one row
+			     of the column (TARGETS G5, #3828). -->
+			<CheerDeck onCheer={(key) => onCheer?.(key)} />
+			<div class="flex gap-2">
+				<BoardToggle />
+				<button
+					onclick={(e) => (pickerAt = pickerAt ? null : e.currentTarget)}
+					aria-label="More reactions"
+					aria-expanded={!!pickerAt}
+					title="More reactions"
+					class="border-muted/20 hover:border-muted/50 text-muted hover:text-ink flex min-h-11 w-11 shrink-0 items-center justify-center rounded border"
+					><SmilePlus size={18} /></button
+				>
+			</div>
 			{#if pickerAt}
 				<EmojiPicker
 					anchor={pickerAt}
@@ -354,7 +356,6 @@
 					onClose={() => (pickerAt = null)}
 				/>
 			{/if}
-			<BoardToggle />
 		</div>
 	</div>
 </aside>

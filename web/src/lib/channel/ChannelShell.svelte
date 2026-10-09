@@ -433,6 +433,7 @@
 				refusal={live.jukeboxRefusal}
 				address={props.address}
 				targetRpm={live.tick?.state?.targetRpm ?? 0}
+				riding={connection.riding()}
 			/>
 		{/snippet}
 	</SidePanel>

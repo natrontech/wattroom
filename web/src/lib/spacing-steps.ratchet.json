@@ -2,7 +2,6 @@
 	"app.css": 2,
 	"lib/announce/AnnouncementStrip.svelte": 1,
 	"lib/board/BoardFace.svelte": 5,
-	"lib/board/BoardToggle.svelte": 1,
 	"lib/board/ClipsFace.svelte": 1,
 	"lib/board/Soundboard.svelte": 6,
 	"lib/board/TrimFace.svelte": 9,

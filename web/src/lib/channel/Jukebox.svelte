@@ -13,6 +13,7 @@
 	import JukeboxTrack from '$lib/channel/JukeboxTrack.svelte';
 	import { IN_SYNC_SEC, playerInfo } from '$lib/channel/jukebox-player.svelte';
 	import { listening } from '$lib/channel/listening.svelte';
+	import { railFold } from '$lib/channel/rail-size';
 	import {
 		createPlaylistStore,
 		type SaveTarget,
@@ -34,6 +35,7 @@
 		address,
 		refusal = null,
 		targetRpm = 0,
+		riding = false,
 	}: {
 		jukebox: JukeboxState | undefined;
 		send: (command: JukeboxCommand) => void;
@@ -42,6 +44,8 @@
 		refusal?: string | null;
 		/** The running block's cadence, from the tick (#1431). */
 		targetRpm?: number;
+		/** A ride is under way: the controls here are 44 px (TARGETS G5). */
+		riding?: boolean;
 	} = $props();
 
 	const current = $derived(jukebox?.current);
@@ -139,7 +143,7 @@
 		</p>
 	{/if}
 
-	<JukeboxAdd {send} {refusal} />
+	<JukeboxAdd {send} {refusal} {riding} />
 
 	{#if queue.length}
 		<div class="min-w-0">
@@ -192,11 +196,11 @@
 
 	<!-- What is saved comes after what is live (#1423): the queue is what the
 	     channel is about to hear; the playlists are where it can reach next. -->
-	<JukeboxPlaylists {address} {crewStore} {mineStore} />
+	<JukeboxPlaylists {address} {crewStore} {mineStore} {riding} />
 
 	{#if history.length}
 		<details class="min-w-0">
-			<summary class="eyebrow cursor-pointer py-2 select-none"
+			<summary class="eyebrow cursor-pointer select-none {railFold(riding)}"
 				>just played · {history.length}</summary
 			>
 			<ul class="mt-1.5 flex flex-col gap-1.5">

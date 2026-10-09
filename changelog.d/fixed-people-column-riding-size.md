@@ -1,0 +1,1 @@
+- A voice channel's people column is riding size while you ride: the cheers, the soundboard and the jukebox's controls are 44 px targets, and the jukebox's search field reads "Search or paste a link…" in full.
