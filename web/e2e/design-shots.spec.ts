@@ -755,6 +755,18 @@ surface(
 		] as const)) {
 			const o = await s.open(device);
 			await page(s, o, '/home', { name, measure: { home: homeProbe } });
+			if (device !== DESK) continue;
+			// multi:home-sheet — where a rider in a crew starts or joins
+			// another: the action row's crew button opens the sheet (#3688).
+			const desk = o.page.viewportSize()!;
+			await o.page.setViewportSize({ width: desk.width, height: 900 });
+			await o.page
+				.getByTestId('home-actions')
+				.getByRole('button', { name: /^(Start|Join) a crew$/ })
+				.click();
+			await o.page.getByRole('dialog').waitFor();
+			await o.page.waitForTimeout(500);
+			await s.shot(o, { name: 'home-sheet' });
 		}
 	},
 	{ also: ['phone-home'] },
