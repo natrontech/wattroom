@@ -31,17 +31,24 @@ const waist =
 		];
 	};
 
+/**
+ * Where the jersey ends, in torso lengths below the hip centre: on the
+ * shorts, a few millimetres proud of the pelvis, never over the saddle
+ * (#3772). Its cap is flat, hidden inside the shorts.
+ */
+const HEM = -0.08;
+
 export function buildTorso(mb: MeshBuilder, d: RiderDims): void {
 	const { k, build: b } = d;
 	const T = d.torso;
 	// prettier-ignore
-	const hw = curve([[-0.14, 0.168], [-0.06, 0.172], [0.04, 0.166], [0.16, 0.146], [0.3, 0.142], [0.45, 0.15], [0.62, 0.164], [0.8, 0.176], [0.92, 0.168], [1.0, 0.138], [1.05, 0.1], [1.1, 0.064]]);
+	const hw = curve([[HEM, 0.156], [-0.02, 0.162], [0.04, 0.163], [0.16, 0.148], [0.3, 0.142], [0.45, 0.15], [0.62, 0.162], [0.8, 0.172], [0.92, 0.176], [1.0, 0.174], [1.05, 0.14], [1.1, 0.07]]);
 	// prettier-ignore
-	const fr = curve([[-0.14, 0.098], [-0.05, 0.1], [0.05, 0.1], [0.2, 0.094], [0.35, 0.098], [0.55, 0.11], [0.75, 0.102], [0.92, 0.08], [1.02, 0.056], [1.1, 0.038]]);
+	const fr = curve([[HEM, 0.08], [-0.02, 0.086], [0.05, 0.094], [0.2, 0.094], [0.35, 0.098], [0.55, 0.11], [0.75, 0.102], [0.92, 0.08], [1.02, 0.056], [1.1, 0.038]]);
 	// prettier-ignore
-	const bk = curve([[-0.14, 0.11], [-0.05, 0.112], [0.05, 0.106], [0.2, 0.09], [0.4, 0.086], [0.62, 0.092], [0.8, 0.098], [0.95, 0.085], [1.04, 0.058], [1.1, 0.038]]);
+	const bk = curve([[HEM, 0.118], [-0.02, 0.114], [0.05, 0.106], [0.2, 0.092], [0.4, 0.088], [0.62, 0.09], [0.8, 0.092], [0.95, 0.08], [1.04, 0.056], [1.1, 0.038]]);
 	const shift = curve([
-		[-0.14, 0],
+		[HEM, 0],
 		[0.9, 0],
 		[1.1, -0.016],
 	]);
@@ -49,7 +56,7 @@ export function buildTorso(mb: MeshBuilder, d: RiderDims): void {
 	const st: Station[] = [];
 	for (let i = 0; i <= N; i++)
 		st.push({
-			t: -0.14 + (1.16 * i) / N,
+			t: HEM + ((1.02 - HEM) * i) / N,
 			slot: S.jersey,
 			aux: [SP.torso, 0, 0],
 		});
@@ -59,7 +66,7 @@ export function buildTorso(mb: MeshBuilder, d: RiderDims): void {
 		{ t: 1.1, slot: S.jerseyAccent },
 	);
 	// prettier-ignore
-	axisLoft(mb, st, (t) => ({ c: V(shift(t) * k, t * T, 0), u: X_, v: Z_, ruP: fr(t) * k * b, ruN: bk(t) * k * b, rv: hw(t) * k * (0.94 + 0.06 * b), n: 2.5 }), B.torso, { sides: 20, capStart: V(0, -0.15 * T, 0), capEnd: V(-0.016 * k, 1.12 * T, 0), weights: waist(k) });
+	axisLoft(mb, st, (t) => ({ c: V(shift(t) * k, t * T, 0), u: X_, v: Z_, ruP: fr(t) * k * b, ruN: bk(t) * k * b, rv: hw(t) * k * (0.94 + 0.06 * b), n: 2.5 }), B.torso, { sides: 20, capStart: V(0, HEM * T, 0), capEnd: V(-0.016 * k, 1.12 * T, 0), weights: waist(k) });
 	// Rear pockets and their hem ride the waist weights of the back they sit on.
 	for (const z of [-0.075, 0, 0.075])
 		// prettier-ignore

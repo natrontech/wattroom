@@ -182,9 +182,11 @@ export function buildBike(mb: MeshBuilder, rig: Rig, kit: Kit): void {
 			base.clone().addScaledVector(side, 0.049),
 			qFromTo(Z_, axis),
 		);
+		// The body shoulders in to a narrower cap and its nozzle: a cap as wide as the body reads as an open tube (#3772).
 		// prettier-ignore
 		const prof = [[0.001, 0], [0.034, 0.002], [0.037, 0.02], [0.035, 0.09], [0.037, 0.15], [0.032, 0.18]].map(([r, z]) => ({ r, z, slot: S.bottle }))
-			.concat([[0.032, 0.18], [0.02, 0.195], [0.008, 0.215], [0.001, 0.218]].map(([r, z]) => ({ r, z, slot: S.bottleCap })));
+			.concat([[0.022, 0.194]].map(([r, z]) => ({ r, z, slot: S.bottle })))
+			.concat([[0.022, 0.194], [0.022, 0.206], [0.007, 0.212], [0.001, 0.226]].map(([r, z]) => ({ r, z, slot: S.bottleCap })));
 		revolve(mb, prof, B.bike, {
 			m,
 			segments: lod ? 8 : 12,
