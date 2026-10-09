@@ -2,10 +2,10 @@ import type { Locator } from '@playwright/test';
 import { expect, test, voicePath } from './crew';
 
 /**
- * The sidebar on a ride (#3770). The cave covers it (TARGETS G1), so every
- * word it shows is read at SPEC's 24 px (G4, D1) and every row it offers is
- * the 44 px a pedalling thumb gets (ux.md); back at the desk it keeps its own
- * sizes.
+ * The sidebar on a ride (#3770, #3933). The cave covers it (TARGETS G1), so
+ * every word it shows is read at SPEC's 24 px (G4, D1) and everything it
+ * offers to tap is the 44 px a pedalling thumb gets (G5, ux.md); back at the
+ * desk it keeps its own sizes.
  */
 const RIDER = 'Ride Sidebar Rider';
 
@@ -31,14 +31,20 @@ function wordsUnder(nav: Locator, px: number): Promise<string[]> {
 	}, px);
 }
 
-/** The heights of the sidebar's link rows, under `px`. */
-function rowsUnder(nav: Locator, px: number): Promise<string[]> {
+/** The sidebar's visible links and buttons whose smaller side is under `px`. */
+function targetsUnder(nav: Locator, px: number): Promise<string[]> {
 	return nav.evaluate(
 		(root, floor) =>
-			[...root.querySelectorAll('a')]
-				.map((a) => ({ a, box: a.getBoundingClientRect() }))
-				.filter(({ box }) => box.height > 0 && box.height < floor)
-				.map(({ a, box }) => `${Math.round(box.height)}px · ${a.innerText}`),
+			[...root.querySelectorAll<HTMLElement>('a, button')]
+				.map((el) => ({ el, box: el.getBoundingClientRect() }))
+				.filter(({ box }) => box.width > 1 && box.height > 1)
+				.filter(({ box }) => Math.min(box.width, box.height) < floor)
+				.map(
+					({ el, box }) =>
+						`${Math.round(Math.min(box.width, box.height))}px · ${
+							el.getAttribute('aria-label') || el.innerText
+						}`,
+				),
 		px,
 	);
 }
@@ -70,7 +76,9 @@ test('the sidebar reads at 24 px on a ride, and at its desk sizes after', async 
 	).toBeVisible();
 
 	expect(await wordsUnder(nav, 24), 'desk-sized words on a ride').toEqual([]);
-	expect(await rowsUnder(nav, 44), 'desk-sized rows on a ride').toEqual([]);
+	expect(await targetsUnder(nav, 44), 'desk-sized targets on a ride').toEqual(
+		[],
+	);
 	await expect(
 		nav.getByRole('button', { name: 'new chat' }),
 		'naming a channel is typing, never mid-ride',

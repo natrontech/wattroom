@@ -203,7 +203,7 @@
 		     sensors, ramp test, devices, the mixer, the gate, the theme. -->
 		<a
 			href="/settings"
-			class="cave:h-11 cave:w-11 grid h-11 w-11 place-items-center rounded md:h-7 md:w-7 {destination ===
+			class="cave:h-11 cave:w-11 grid h-11 w-11 shrink-0 place-items-center rounded md:h-7 md:w-7 {destination ===
 				undefined && pathname.startsWith('/settings')
 				? 'text-ink'
 				: 'text-muted hover:bg-ink/5 hover:text-ink'}"
@@ -395,7 +395,7 @@
 					}}
 					aria-label="Choose a state"
 					aria-haspopup="menu"
-					class="btn btn-secondary min-h-11 rounded-l-none px-2"
+					class="btn btn-secondary cave:min-w-11 min-h-11 rounded-l-none px-2"
 					><ChevronDown size={13} class={CAVE_MARK} /></button
 				>
 			{/if}
