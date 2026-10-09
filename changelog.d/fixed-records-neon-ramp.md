@@ -1,0 +1,1 @@
+- The Rides page's records charts, best power by duration and FTP over the last year, now draw in the violet neon of the rest of the records instead of the Z2 zone blue, so a zone colour no longer reads as a fixed decoration.
