@@ -54,7 +54,7 @@
 </script>
 
 <details class="min-w-0">
-	<summary class="eyebrow cursor-pointer py-1.5 select-none">playlists</summary>
+	<summary class="eyebrow cursor-pointer py-2 select-none">playlists</summary>
 
 	<div class="mt-2 flex gap-1.5" role="tablist">
 		<button
