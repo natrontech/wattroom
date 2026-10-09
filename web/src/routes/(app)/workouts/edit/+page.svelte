@@ -251,7 +251,7 @@
 				class="btn btn-secondary btn-xs"
 				title="Redo (⇧⌘Z)">Redo</button
 			>
-			<a href="/workouts" class="text-muted hover:text-ink text-sm">Discard</a>
+			<a href="/workouts" class="btn btn-ghost">Discard</a>
 			<button
 				onclick={save}
 				disabled={!check.ok || !hydrated || shelfFull}
