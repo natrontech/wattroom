@@ -159,7 +159,10 @@
 	{/if}
 
 	<!-- Name and voice state, top-left; kept off the power bar's edge. -->
-	<div class="absolute top-2 left-2.5 flex max-w-[62%] items-center gap-1.5">
+	<div
+		class="absolute top-2 left-2.5 flex max-w-[62%] items-center gap-1.5"
+		data-testid="tile-name"
+	>
 		<span
 			class="text-ink truncate text-sm font-semibold"
 			{@attach hoverCard(() => rider.id)}>{rider.name}</span
@@ -258,6 +261,7 @@
 	{#if live && extras.length && !rider.stale}
 		<div
 			class="text-ink num absolute right-2.5 bottom-3 flex gap-3 text-xs font-medium"
+			data-testid="tile-stats"
 		>
 			{#each extras as extra (extra.key)}
 				<span class={extra.key === 'wkg' ? 'hidden @[10rem]:inline' : ''}

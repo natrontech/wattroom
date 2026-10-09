@@ -498,6 +498,31 @@ test('a phone in the voice channel is offered the running session to watch', asy
 	await expect(page.getByRole('link', { name: 'Join the ride' })).toHaveCount(
 		0,
 	);
+
+	// The coach's tile in the phone's two-up grid (#3768): its avatar, riding
+	// badge and all, sat centred across the stat line and under the coach chip.
+	const tile = page
+		.getByTestId('rider-tile')
+		.filter({ hasText: 'Watch Coach' });
+	const stats = tile.getByTestId('tile-stats');
+	await expect(stats).toBeVisible({ timeout: 15_000 });
+	const avatar = tile.getByRole('img', { name: 'riding now' }).locator('..');
+	await expect(avatar).toBeVisible();
+	const seat = (await avatar.boundingBox())!;
+	for (const [what, other] of [
+		['the stat line', stats],
+		['the name and its coach chip', tile.getByTestId('tile-name')],
+	] as const) {
+		const box = (await other.boundingBox())!;
+		expect(
+			seat.x < box.x + box.width &&
+				box.x < seat.x + seat.width &&
+				seat.y < box.y + box.height &&
+				box.y < seat.y + seat.height,
+			`the avatar overlaps ${what}`,
+		).toBe(false);
+	}
+
 	await watch.click();
 	await page.waitForURL(new RegExp(`${session}$`), { timeout: 15_000 });
 	await expect(page.getByText('Recovery Spin').first()).toBeVisible({
