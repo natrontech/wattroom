@@ -241,8 +241,12 @@
 		<p class="text-muted mt-1 text-sm">{headline.text}</p>
 	{/if}
 	<!-- One action row (#3688): ride, plan, a crew, in that order on every
-	     visit, each 44 px (a phone on the bars), one of them filled. -->
-	<div class="mt-4 flex flex-wrap items-start gap-3" data-testid="home-actions">
+	     visit, each 44 px (a phone on the bars), one of them filled. The
+	     filled one takes a clear border so it stands as tall as the rest. -->
+	<div
+		class="mt-4 flex flex-wrap items-start gap-3 [&_.btn-primary]:border [&_.btn-primary]:border-transparent"
+		data-testid="home-actions"
+	>
 		{#if headline}
 			<a href={headline.href} class="btn btn-primary btn-lg"
 				><Radio size={15} /> {headline.cta}</a
@@ -329,7 +333,7 @@
 	<!-- You, in numbers — the band the mock's "your week" grew into: FTP,
 	     level, w/kg and the week, one glance. Four equal tiles (v2-summary):
 	     an eyebrow, a value in the display face, a muted unit on its
-	     baseline. Nothing here needs a click. -->
+	     baseline at half its size (TARGETS G4). Nothing here needs a click. -->
 	<section
 		class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4"
 		data-testid="home-tiles"
@@ -337,7 +341,7 @@
 		<div class="panel">
 			<p class="eyebrow">ftp</p>
 			<p class="font-display text-2xl font-bold tabular-nums">
-				{account.me?.ftpWatts ?? '–'}<span class="text-muted ml-1 text-sm"
+				{account.me?.ftpWatts ?? '–'}<span class="text-muted ml-1 text-xs"
 					>W</span
 				>
 			</p>
@@ -374,7 +378,7 @@
 				<Skeleton class="mt-1 h-3 w-24" />
 			{:else}
 				<p class="font-display text-2xl font-bold tabular-nums">
-					{week.count}<span class="text-muted ml-1 text-sm"
+					{week.count}<span class="text-muted ml-1 text-xs"
 						>ride{week.count === 1 ? '' : 's'}</span
 					>
 				</p>
@@ -391,7 +395,7 @@
 			{:else if form}
 				<p class="font-display text-2xl font-bold tabular-nums">
 					{form.formPct > 0 ? '+' : ''}{Math.round(form.formPct)}<span
-						class="text-muted ml-1 text-sm">%</span
+						class="text-muted ml-1 text-xs">%</span
 					>
 				</p>
 				<p class="text-muted text-[11px]">{form.zone}</p>
