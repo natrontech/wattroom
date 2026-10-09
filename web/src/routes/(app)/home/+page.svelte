@@ -198,8 +198,8 @@
 	const doors = $derived(doorsFor(crewLive));
 	// The action row has exactly one filled button (TARGETS home 4): the
 	// ride that is on; before the first crew, the crew (ADR-0010); else the
-	// door this rider takes; else riding solo.
-	const filled = $derived<'join' | 'crew' | 'door' | 'solo' | null>(
+	// door this rider takes; else the alone door, standing by itself.
+	const filled = $derived<'join' | 'crew' | 'door' | 'alone' | null>(
 		headline
 			? 'join'
 			: crewless
@@ -207,7 +207,7 @@
 				: doors
 					? 'door'
 					: ready
-						? 'solo'
+						? 'alone'
 						: null,
 	);
 	const skin = (which: typeof filled) =>
@@ -267,7 +267,7 @@
 			{:else}
 				<!-- The alone door, by the doors' own name, where there is no
 			     lounge to offer beside it. -->
-				<a href="/ride?alone" class="btn btn-lg {skin('solo')}"
+				<a href="/ride?alone" class="btn btn-lg {skin('alone')}"
 					><User size={15} /> Ride alone</a
 				>
 			{/if}
