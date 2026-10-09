@@ -712,6 +712,28 @@ surface(
 	{ also: ['phone-route'] },
 );
 
+surface(
+	'workout-editor',
+	async (s) => {
+		for (const [device, name] of variants([
+			[DESK, 'workout-editor'],
+			[PHONE, 'phone-workout-editor'],
+		] as const)) {
+			const o = await s.open(device);
+			await page(s, o, '/workouts/edit', { name });
+		}
+		// The selected block's cadence and heart-rate bands, unfolded (#3906).
+		const o = await s.open(DESK);
+		await o.page.goto('/workouts/edit');
+		await o.page
+			.locator('summary', { hasText: 'cadence and heart-rate bands' })
+			.click();
+		await o.page.waitForTimeout(500);
+		await s.shot(o, { name: 'workout-editor-bands', full: true });
+	},
+	{ also: ['phone-workout-editor'] },
+);
+
 test.fixme('routes', () => {
 	// /workouts/routes is still to come (#3692).
 });

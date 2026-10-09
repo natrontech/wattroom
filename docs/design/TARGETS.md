@@ -443,6 +443,14 @@ Capture: `/workouts`, the hairpin and rolling route seeded; whole page body, des
 10. Actions: Ride (`btn-primary btn-xs`) bottom right, “Carry on” when there is somewhere to carry on; the rest of the card opens the route page; context menu Ride it, Open, a separator, Delete in the danger token. [route-row]
 11. Phone order: title, search, Your workouts, Your routes, Measure, Curated; nothing scrolls sideways. [workouts-page]
 
+#### workout-editor, phone-workout-editor
+
+Capture: `/workouts/edit`, a fresh sheet on its one steady block, the bands folded; whole page body, desk and phone, both schemes; `workout-editor-bands` the same sheet with the bands unfolded, desk. Target: none drawn, canon is the bar. Canon: G5, G7, ux.md (phone width), ADR-0005 (the editor is chrome, flat and quiet).
+
+1. The page fills the content column, no max-width, never centred; every section's left edge on the title's.
+2. On a phone the sheet stacks before the library; nothing scrolls sideways. [probe:overflowX]
+3. The cadence and heart-rate bands fold is ≥ 24 px tall, at 375 px too. [#3906] [test:tap-targets.spec.ts]
+
 #### route, phone-route
 
 Capture: `/workouts/routes/<id>` for the hairpin and the rolling route (≥ 2 classed climbs, a descent, a flat); whole page body, desk and phone, both schemes. Targets: v2-routes (How column); v3-roads (stat row, your times); v2-summary (climbs table). Canon: ADR-0063; SPEC's route, place and segment sections.
