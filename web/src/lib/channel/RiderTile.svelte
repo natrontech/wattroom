@@ -67,14 +67,14 @@
 	const zone = $derived(zoneOf(rider.watts, rider.ftp));
 	const fill = $derived(fillPct(rider.watts, rider.ftp));
 
-	// Which stats a tile has room for. On the riding stage they are SPEC's
-	// 36 px secondary numbers (TARGETS D1, #3890), so a narrower tile keeps
-	// fewer of them rather than wrapping into the avatar: bpm always, rpm from
-	// 20rem, W/kg from 28rem.
+	// Which stats a tile has room for. On the riding stage a tile from 18rem
+	// takes riding sizes (TARGETS G4, D1's 36 px secondary numbers, #3890);
+	// a phone's two-up tile is too narrow for them and keeps its own, as D1
+	// has no phone row yet. At riding size W/kg waits for 28rem.
 	const STAT_FIT: Record<TileMetric, string> = {
 		hr: '',
-		cadence: 'ride-stage:hidden ride-stage:@[20rem]:inline',
-		wkg: 'hidden @[10rem]:inline ride-stage:hidden ride-stage:@[28rem]:inline',
+		cadence: '',
+		wkg: 'hidden @[10rem]:inline ride-stage:@[18rem]:hidden ride-stage:@[28rem]:inline',
 	};
 
 	// value drives the zero-filter; text keeps the decimal so the column stays aligned.
@@ -174,7 +174,7 @@
 		data-testid="tile-name"
 	>
 		<span
-			class="text-ink ride-stage:ride-word truncate text-sm font-semibold"
+			class="text-ink ride-stage:@[18rem]:text-2xl truncate text-sm font-semibold"
 			{@attach hoverCard(() => rider.id)}>{rider.name}</span
 		>
 		<!-- Their status (ADR-0060): the emoji, the words on hover. -->
@@ -182,11 +182,13 @@
 		{#if rider.eliminated}
 			<!-- Knocked out of the running game (#1590): computed for every
 			     tile and drawn by none. -->
-			<span class="eyebrow text-muted ride-stage:ride-word shrink-0">out</span>
+			<span class="eyebrow text-muted ride-stage:@[18rem]:text-2xl shrink-0"
+				>out</span
+			>
 		{/if}
 		{#if rider.coach}
 			<span
-				class="{MARK_SURFACE} ride-stage:ride-word rounded-full px-1.5 py-0.5 text-[9px]"
+				class="{MARK_SURFACE} ride-stage:@[18rem]:text-2xl rounded-full px-1.5 py-0.5 text-[9px]"
 				>coach</span
 			>
 		{/if}
@@ -223,13 +225,15 @@
 			     Last known is muted, not faded (#2888): at opacity-40 it read
 			     under the text floor. -->
 			<span
-				class="font-display ride-stage:text-4xl text-2xl leading-none font-bold tabular-nums {rider.stale
+				class="font-display ride-stage:@[18rem]:text-4xl text-2xl leading-none font-bold tabular-nums {rider.stale
 					? 'text-muted'
 					: rider.you
 						? 'text-watt glow-text'
 						: 'text-ink'}">{rider.watts}</span
 			>
-			<span class="text-ink/80 ride-stage:text-lg text-xs font-medium">W</span>
+			<span class="text-ink/80 ride-stage:@[18rem]:text-lg text-xs font-medium"
+				>W</span
+			>
 		</div>
 	{/if}
 
@@ -255,7 +259,7 @@
 			/>
 		{/if}
 		{#if rider.away}
-			<span class="{AWAY_MARK} ride-stage:ride-word">away</span>
+			<span class="{AWAY_MARK} ride-stage:@[18rem]:text-2xl">away</span>
 		{/if}
 	</div>
 
@@ -268,7 +272,7 @@
 			class="absolute inset-x-0 bottom-2.5 flex justify-center @max-[12rem]:right-2.5 @max-[12rem]:left-auto"
 		>
 			<span
-				class="bg-surface/85 text-warn ride-stage:ride-word rounded-full px-2 py-0.5 text-[10px] font-medium tracking-wider uppercase"
+				class="bg-surface/85 text-warn ride-stage:@[18rem]:text-2xl rounded-full px-2 py-0.5 text-[10px] font-medium tracking-wider uppercase"
 				>no signal</span
 			>
 		</div>
@@ -276,12 +280,12 @@
 
 	{#if live && extras.length && !rider.stale}
 		<div
-			class="text-ink num ride-stage:text-4xl ride-stage:font-bold absolute right-2.5 bottom-3 flex gap-3 text-xs font-medium"
+			class="text-ink num ride-stage:@[18rem]:text-4xl ride-stage:@[18rem]:font-bold absolute right-2.5 bottom-3 flex gap-3 text-xs font-medium"
 			data-testid="tile-stats"
 		>
 			{#each extras as extra (extra.key)}
 				<span class={STAT_FIT[extra.key]}
-					>{extra.text}<span class="text-ink/80 ride-stage:text-lg">
+					>{extra.text}<span class="text-ink/80 ride-stage:@[18rem]:text-lg">
 						{extra.unit}</span
 					></span
 				>
