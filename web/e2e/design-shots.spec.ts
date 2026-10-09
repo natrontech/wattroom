@@ -1085,7 +1085,7 @@ async function session(
 	await startSession(coach.page, pick);
 	await joinSession(rider.page);
 	await atSecond(coach.page, RIDE_SECOND);
-	return { coach, crew };
+	return { coach, rider, crew };
 }
 
 surface(
@@ -1405,7 +1405,11 @@ surface('ride-detail', async (s) => {
 	// road, so its page draws the road as a solo road ride's does. No world:
 	// the session is here for the ride it saves, past the minute one is kept.
 	const started = Date.now() - 5_000;
-	const { coach } = await session(s, { road: ROADS.hairpin.name }, false);
+	const { coach, rider } = await session(
+		s,
+		{ road: ROADS.hairpin.name },
+		false,
+	);
 	try {
 		await coach.page.waitForTimeout(70_000);
 	} finally {
@@ -1416,5 +1420,10 @@ surface('ride-detail', async (s) => {
 		.waitFor({ timeout: 30_000 });
 	await page(s, coach, `/history/${await newestRide(coach.page, started)}`, {
 		name: 'ride-detail-session-road',
+	});
+	// The same session's ride for the rider whose road it is not (#3874,
+	// ADR-0063): the road's generated name, never its owner's.
+	await page(s, rider, `/history/${await newestRide(rider.page, started)}`, {
+		name: 'ride-detail-session-road-rider',
 	});
 });
