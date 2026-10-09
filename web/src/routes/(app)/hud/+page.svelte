@@ -217,14 +217,18 @@
 			height: auto;
 			padding: 0;
 		}
+		/* Leading of one: the clock's line box would otherwise carry its
+		   half-leading above the label, and the block would sit low. */
 		.rows {
 			min-width: 12em;
+			line-height: 1;
 		}
 		/* A word at SPEC's size, not the shell's: the eyebrow keeps the
 		   block's width for the numbers, and a road's name wraps onto a
 		   second line rather than vanish into an ellipsis. */
 		.label {
 			font-size: max(0.375em, 3cqh);
+			line-height: 1.25;
 			display: -webkit-box;
 			-webkit-box-orient: vertical;
 			-webkit-line-clamp: 2;
