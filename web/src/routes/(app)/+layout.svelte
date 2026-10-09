@@ -578,7 +578,7 @@
 <VerifyEmailGate />
 
 <ImageViewer />
-<ContextMenuHost />
+<ContextMenuHost {riding} />
 <RiderCardHost />
 <ConfirmHost />
 {#if statusEditor.open}

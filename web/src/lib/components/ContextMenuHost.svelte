@@ -1,14 +1,21 @@
 <script lang="ts">
 	// The one menu (#465). Fixed, above dialogs and the dock; keyboard walks
 	// it; Escape, a click anywhere else, a scroll or a resize close it.
+	// Mid-ride it wears the riding kit (#3943): `ride-panel`, SPEC's 24 px
+	// words, 44 px rows, and a place clear of the corridor and of its object.
 	import {
 		closeMenu,
 		menu,
 		MENU_WALK,
 		placeMenu,
+		placeRidingMenu,
 		scrollClosesMenu,
+		type Rect,
 	} from '$lib/context-menu.svelte';
 	import { navDrawer } from '$lib/nav/drawer.svelte';
+	import { CORRIDOR } from '$lib/session/docks';
+
+	let { riding = false }: { riding?: boolean } = $props();
 
 	let box = $state<HTMLDivElement | null>(null);
 	// Where a fader has been dragged since the menu opened: `menu.items` is
@@ -23,14 +30,25 @@
 		const node = box;
 		const { x, y } = menu;
 		dragged = {};
-		pos = placeMenu(
-			x,
-			y,
-			node.offsetWidth,
-			node.offsetHeight,
-			innerWidth,
-			innerHeight,
-		);
+		pos = riding
+			? placeRidingMenu(
+					x,
+					y,
+					node.offsetWidth,
+					node.offsetHeight,
+					innerWidth,
+					innerHeight,
+					corridor(),
+					menu.anchor?.getBoundingClientRect() ?? null,
+				)
+			: placeMenu(
+					x,
+					y,
+					node.offsetWidth,
+					node.offsetHeight,
+					innerWidth,
+					innerHeight,
+				);
 		node.querySelector<HTMLElement>(MENU_WALK)?.focus();
 		// The press that opened the menu is still travelling: on some inputs
 		// the pointerdown lands after the contextmenu event, and listening for
@@ -54,6 +72,28 @@
 			window.removeEventListener('resize', dismiss);
 		};
 	});
+
+	// The corridor is kept clear only where a world is drawn (G3).
+	function corridor(): Rect | null {
+		const r = document
+			.querySelector('[data-surface=docked]')
+			?.getBoundingClientRect();
+		if (!r) return null;
+		return {
+			left: r.left + CORRIDOR.x0 * r.width,
+			top: r.top + CORRIDOR.y0 * r.height,
+			right: r.left + CORRIDOR.x1 * r.width,
+			bottom: r.top + CORRIDOR.y1 * r.height,
+		};
+	}
+
+	const row = $derived(
+		riding
+			? 'min-h-11 px-4 py-2 text-2xl leading-7 font-semibold'
+			: 'px-3 py-2 text-sm',
+	);
+	const icon = $derived(riding ? 22 : 14);
+	const hint = $derived(riding ? 'text-2xl' : 'text-[11px]');
 
 	function onKey(event: KeyboardEvent) {
 		if (!box) return;
@@ -81,7 +121,9 @@
 		role="menu"
 		tabindex="-1"
 		onkeydown={onKey}
-		class="panel fixed z-[70] max-h-[70vh] min-w-44 overflow-y-auto p-1"
+		class="{riding
+			? 'ride-panel'
+			: 'panel'} fixed z-[70] max-h-[70vh] min-w-44 overflow-y-auto p-1"
 		style="left: {pos.left}px; top: {pos.top}px"
 	>
 		{#each menu.items as item, i (i)}
@@ -93,19 +135,14 @@
 				     it while the menu's own up/down keep walking the entries. -->
 				<!-- role=group (#1964): a bare label and a slider are not menu
 				     children, and were pruned or mis-announced under role=menu. -->
-				<div
-					role="group"
-					aria-label={item.label}
-					class="block rounded px-3 py-2 text-sm"
-				>
+				<div role="group" aria-label={item.label} class="block rounded {row}">
 					<span class="flex items-center gap-2.5">
 						{#if item.icon}<item.icon
-								size={14}
+								size={icon}
 								class="shrink-0 opacity-80"
 							/>{/if}
 						<span class="min-w-0 flex-1 truncate">{item.label}</span>
-						<span
-							class="font-display text-muted shrink-0 text-[11px] tabular-nums"
+						<span class="font-display text-muted shrink-0 tabular-nums {hint}"
 							>{item.format(value)}</span
 						>
 					</span>
@@ -140,16 +177,16 @@
 						navDrawer.open = false;
 						run();
 					}}
-					class="flex w-full items-center gap-2.5 rounded px-3 py-2 text-left text-sm disabled:opacity-40 {item.danger
+					class="flex w-full items-center gap-2.5 rounded text-left disabled:opacity-40 {row} {item.danger
 						? 'text-danger hover:bg-danger/10'
 						: 'hover:bg-surface'}"
 				>
 					{#if item.icon}<item.icon
-							size={14}
+							size={icon}
 							class="shrink-0 opacity-80"
 						/>{/if}
 					<span class="min-w-0 flex-1 truncate">{item.label}</span>
-					{#if item.hint}<span class="text-muted shrink-0 text-[11px]"
+					{#if item.hint}<span class="text-muted shrink-0 {hint}"
 							>{item.hint}</span
 						>{/if}
 				</button>

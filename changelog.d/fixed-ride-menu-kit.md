@@ -1,0 +1,1 @@
+- A rider's menu opened mid-ride now reads from the bike: large words and rows, the riding panel, and a place clear of the road ahead and of the tile it came from.
