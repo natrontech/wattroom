@@ -223,10 +223,12 @@
 		.rows {
 			line-height: 1;
 		}
-		/* The label keeps the shell's share of the block; a road's name that
-		   outgrows the width the numbers set wraps onto a second line rather
-		   than vanish into an ellipsis. */
+		/* A word at SPEC's size rather than the shell's share: the eyebrow
+		   keeps the block's width for the numbers, and a road's name too long
+		   for one line wraps onto a second rather than vanish into an
+		   ellipsis. */
 		.label {
+			font-size: max(0.375em, 3cqh);
 			line-height: 1.25;
 			display: -webkit-box;
 			-webkit-box-orient: vertical;
