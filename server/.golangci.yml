@@ -22,3 +22,9 @@ linters:
 formatters:
   enable:
     - gofmt
+
+# The soak (#3852) builds only under its tag; lint it too, so nothing it
+# calls changes under it unseen.
+run:
+  build-tags:
+    - soak
