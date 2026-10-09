@@ -224,8 +224,9 @@
 		{#each texts as c (c.id)}
 			<li>{@render row(c)}</li>
 		{:else}
-			<!-- Empty states teach (ux.md): what a chat channel is, and who makes one. -->
-			<li class="text-muted px-2 py-1 text-xs">
+			<!-- Empty states teach (ux.md): what a chat channel is, and who makes
+			     one. Desk teaching, so never on a riding surface (G4, #3723). -->
+			<li class="text-muted cave:hidden px-2 py-1 text-xs">
 				{admin
 					? 'No chat channels yet — the + makes the first place to write.'
 					: 'No chat channels yet. The crew’s owner or an admin makes them.'}
@@ -292,7 +293,7 @@
 				<VoiceOccupants channel={c} {open} {mover} />
 			</li>
 		{:else}
-			<li class="text-muted px-2 py-1 text-xs">
+			<li class="text-muted cave:hidden px-2 py-1 text-xs">
 				{admin
 					? 'No voice channels yet — the + makes the first place to ride together.'
 					: 'No voice channels yet. The crew’s owner or an admin makes them.'}

@@ -451,6 +451,10 @@ body {
 	/* Inherited text color restarts here — body's follows the daylight side. */
 	color: var(--color-ink);
 }
+/* What chrome shared with the desk — the sidebar — does on a riding surface
+   (TARGETS G4): `cave:hidden` takes a desk sentence off the ride. `:is` and
+   not `:where`: the ride outranks the desk's own `md:` sizes. */
+@custom-variant cave (&:is(.cave *));
 
 /*
  * Keyboard focus. Deliberately unlayered: Tailwind's utilities live in @layer, and
