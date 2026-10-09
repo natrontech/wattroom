@@ -1285,21 +1285,38 @@ surface(
 			// speed they ride at; a software-GL shot takes seconds, so that
 			// reading is carried on to this moment, and the hub refuses a chalk
 			// that lands behind its front.
-			const front = await coach.page.evaluate(() => {
-				const canvas = document.querySelector<HTMLCanvasElement>(
-					'canvas[data-riders]',
+			// A refused heart (the front moved past it) is laid again from a
+			// fresh reading, until the deck says the climb is spent.
+			let front = NaN;
+			let landed = false;
+			for (let attempt = 0; attempt < 4 && !landed; attempt++) {
+				front = await coach.page.evaluate(() => {
+					const canvas = document.querySelector<HTMLCanvasElement>(
+						'canvas[data-riders]',
+					);
+					const seen = JSON.parse(canvas?.dataset.riders ?? '{}');
+					const lead = Math.max(
+						...(seen.riders ?? []).map((r: { d: number }) => r.d),
+					);
+					return lead + ((seen.mps ?? 0) * (Date.now() - seen.t)) / 1000;
+				});
+				if (Number.isFinite(front)) {
+					socket?.send(
+						JSON.stringify({
+							roadside: { kind: 'paint', stamp: 'heart', atM: front + 18 },
+						}),
+					);
+				}
+				landed = await watcher.page
+					.getByText('No climb left ahead to chalk.')
+					.waitFor({ timeout: 5_000 })
+					.then(() => true)
+					.catch(() => false);
+			}
+			if (!landed)
+				throw new Error(
+					`the heart never landed on the climb; last front ${front}`,
 				);
-				const seen = JSON.parse(canvas?.dataset.riders ?? '{}');
-				const lead = Math.max(
-					...(seen.riders ?? []).map((r: { d: number }) => r.d),
-				);
-				return lead + ((seen.mps ?? 0) * (Date.now() - seen.t)) / 1000;
-			});
-			socket?.send(
-				JSON.stringify({
-					roadside: { kind: 'paint', stamp: 'heart', atM: front + 18 },
-				}),
-			);
 			// A tick to land it, while the bunch is still short of it: near
 			// enough that the chase camera reads it beside the riders.
 			await coach.page.waitForTimeout(1000);
