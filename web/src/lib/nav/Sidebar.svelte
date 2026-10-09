@@ -379,6 +379,6 @@
 		onclose={() => (opening = false)}
 		class="max-w-sm"
 	>
-		<StartOrJoin compact />
+		<StartOrJoin />
 	</Modal>
 {/if}

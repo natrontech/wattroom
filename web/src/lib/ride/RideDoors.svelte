@@ -24,7 +24,22 @@
 	import { crewLive } from '$lib/nav/crew-live.svelte';
 	import { liveNumbersLine } from '$lib/privacy-copy';
 
-	let { onAlone }: { onAlone: () => void } = $props();
+	let {
+		onAlone,
+		lead = false,
+		class: cls = 'mx-auto w-full max-w-3xl',
+	}: {
+		onAlone: () => void;
+		/**
+		 * Fill the door that leads (Home, #3688): Home's action row has one
+		 * filled button, and with no session running it is the door this
+		 * rider takes. /ride leaves both doors equal.
+		 */
+		lead?: boolean;
+		class?: string;
+	} = $props();
+	const skin = (first: boolean) =>
+		lead && first ? 'btn-primary' : 'btn-secondary';
 
 	if (!crewLive.loaded) void crewLive.reload();
 
@@ -63,15 +78,15 @@
 	}
 </script>
 
-{#snippet aloneDoor()}
+{#snippet aloneDoor(first: boolean)}
 	<button
 		onclick={alone}
-		class="btn btn-secondary btn-lg w-full justify-center"
+		class="btn {skin(first)} btn-lg w-full justify-center"
 		data-testid="ride-alone"><User size={18} /> Ride alone</button
 	>
 {/snippet}
 
-<section class="mx-auto w-full max-w-3xl" data-testid="ride-doors">
+<section class={cls} data-testid="ride-doors">
 	{#if !crewLive.loaded}
 		<!-- Not a door that is missing while the read is out (#1666). -->
 		<div class="grid gap-3 sm:grid-cols-2">
@@ -82,7 +97,7 @@
 		<!-- A failed read with nothing to show: riding alone is still a tap,
 		     and the lounge says why it is not here (errors.md). With no crew to
 		     ride in at all, the parent shows no doors (doorsFor). -->
-		{@render aloneDoor()}
+		{@render aloneDoor(true)}
 		<p class="text-muted mt-2 text-xs">
 			{crewLive.error}
 			<button onclick={() => void crewLive.reload()} class="btn-link"
@@ -92,7 +107,7 @@
 	{:else}
 		{#snippet alonePanel()}
 			<div>
-				{@render aloneDoor()}
+				{@render aloneDoor(!loungeFirst)}
 				<p class="text-muted mt-1.5 text-xs">Nobody sees this ride live.</p>
 			</div>
 		{/snippet}
@@ -100,7 +115,7 @@
 			<div>
 				<button
 					onclick={intoLounge}
-					class="btn btn-secondary btn-lg w-full justify-center"
+					class="btn {skin(loungeFirst)} btn-lg w-full justify-center"
 					data-testid="ride-in-lounge"
 					><Users size={18} /> Ride in {name}, your crew can drop in</button
 				>

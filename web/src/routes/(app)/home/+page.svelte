@@ -10,7 +10,6 @@
 	import FriendsAround from '$lib/friends/FriendsAround.svelte';
 	import { aroundNow, namedInCards } from '$lib/home/around-now';
 	import { weekTotals } from '$lib/ride/week';
-	import { revealCrews } from '$lib/home/reveal';
 	import { page } from '$app/state';
 	import StartOrJoin from '$lib/home/StartOrJoin.svelte';
 	import AroundNow from '$lib/home/AroundNow.svelte';
@@ -36,7 +35,9 @@
 
 	// Home (#212): the between-rides overview — who is around, what is
 	// planned, your friends, your week. ADR-0020 folded /sessions in here;
-	// the sidebar is the list of crews and their channels.
+	// the sidebar is the list of crews and their channels. It reads top-down
+	// (#3688): the greeting, one action row, the set-up card while steps
+	// remain, four tiles, then the week beside who is around and your rides.
 
 	void account.load();
 
@@ -142,8 +143,11 @@
 	// "Start a crew" opens the same sheet the sidebar's + does outside a crew
 	// the rider keeps (#1199, #1333, #2480) — on Home's own body, because the
 	// drawer the sidebar lives in below md is translated off-screen and takes
-	// a dialog inside it along.
+	// a dialog inside it along. It is Home's one way into a crew (#3688):
+	// a second copy of the forms in a column of their own offered "Start a
+	// crew" three times.
 	let opening = $state(false);
+	const crewless = $derived(ready && presence.crews.length === 0);
 	// Planning happens on a crew's Schedule (#2440), and every member plans:
 	// the crews you are in are where the button goes, the main one first
 	// (#2144). None yet: start or join one first (#2511).
@@ -188,15 +192,35 @@
 	});
 	const week = $derived(weekTotals(rides ?? []));
 
+	// The two doors (#3274): alone, or where the crew can drop in. They are
+	// the action row's ride, in place of Ride solo, which is the same act.
+	const doors = $derived(doorsFor(crewLive));
+	// The action row has exactly one filled button (TARGETS home 4): the
+	// ride that is on; before the first crew, the crew (ADR-0010); else the
+	// door this rider takes; else riding solo.
+	const filled = $derived<'join' | 'crew' | 'door' | 'solo' | null>(
+		headline
+			? 'join'
+			: crewless
+				? 'crew'
+				: doors
+					? 'door'
+					: ready
+						? 'solo'
+						: null,
+	);
+	const skin = (which: typeof filled) =>
+		filled === which ? 'btn-primary' : 'btn-secondary';
+
 	// A deep link to the forms — the directory's empty state, a shared
-	// /home#crews — lands on them once the page is up (#1199).
+	// /home#crews — opens them once the page is up (#1199).
 	$effect(() => {
-		// The forms render once the crew list has landed; before that there
-		// is nothing to reveal. #sessions the same way (#1862): the old
-		// /sessions redirect landed on the top, because the section it named
-		// was behind the same fetch when the hash was applied.
+		// The sheet asks the crew list which form leads; before that it
+		// stays shut. #sessions the same way (#1862): the old /sessions
+		// redirect landed on the top, because the section it named was behind
+		// the same fetch when the hash was applied.
 		if (!ready) return;
-		if (page.url.hash === '#crews') queueMicrotask(revealCrews);
+		if (page.url.hash === '#crews') opening = true;
 		else if (page.url.hash === '#sessions')
 			queueMicrotask(() =>
 				document.getElementById('sessions')?.scrollIntoView({ block: 'start' }),
@@ -216,30 +240,30 @@
 	{#if headline}
 		<p class="text-muted mt-1 text-sm">{headline.text}</p>
 	{/if}
-	<!-- The things you actually come here to do, as buttons rather than as
-	     sections to scroll for. The hero is the ride that is on; the rest are
-	     always there. -->
-	<div class="mt-4 flex flex-wrap items-center gap-2">
+	<!-- One action row (#3688): ride, plan, a crew, in that order on every
+	     visit, each 44 px (a phone on the bars), one of them filled. -->
+	<div class="mt-4 flex flex-wrap items-start gap-3" data-testid="home-actions">
 		{#if headline}
-			<a href={headline.href} class="btn btn-accent btn-lg"
+			<a href={headline.href} class="btn btn-primary btn-lg"
 				><Radio size={15} /> {headline.cta}</a
 			>
 		{/if}
-		<!-- Before the first crew, the crew is the big button (ADR-0010,
-		     ux.md's empty-state rule): the landing page promised one, and the
-		     largest button here used to send them to a workout list instead
-		     (audit 2026-09-09). -->
-		<a
-			href="/workouts"
-			class="btn btn-secondary {headline || !presence.crews.length
-				? ''
-				: 'btn-lg'}"><ChartColumn size={15} /> Ride solo</a
-		>
+		{#if doors}
+			<RideDoors
+				onAlone={() => void goto('/ride?alone')}
+				lead={filled === 'door'}
+				class="min-w-0 flex-[1_1_100%] lg:flex-[1_1_32rem]"
+			/>
+		{:else}
+			<a href="/workouts" class="btn btn-lg max-sm:flex-1 {skin('solo')}"
+				><ChartColumn size={15} /> Ride solo</a
+			>
+		{/if}
 		{#if plannable.length > 1}
 			<!-- More than one crew to plan in: ask, never guess (#435). -->
-			<details class="relative">
+			<details class="relative max-sm:flex-1">
 				<summary
-					class="btn btn-secondary cursor-pointer list-none [&::-webkit-details-marker]:hidden"
+					class="btn btn-secondary btn-lg w-full cursor-pointer list-none [&::-webkit-details-marker]:hidden"
 					><CalendarClock size={15} /> Plan a session</summary
 				>
 				<ul class="panel absolute top-full left-0 z-20 mt-1 min-w-56 py-1">
@@ -257,27 +281,29 @@
 				</ul>
 			</details>
 		{:else if firstCrew}
-			<a href="/crew/{firstCrew.id}/schedule?plan" class="btn btn-secondary"
+			<a
+				href="/crew/{firstCrew.id}/schedule?plan"
+				class="btn btn-secondary btn-lg max-sm:flex-1"
 				><CalendarClock size={15} /> Plan a session</a
 			>
-		{:else if !ready}
+		{/if}
+		{#if ready}
+			<!-- Carrying an invite, the crew button is joining the crew that
+			     sent it (#2144, #2184); everyone else is offered the crew the
+			     signed-out landing promised, and joining is one step down the
+			     same sheet. Filled before the first crew (ADR-0010). -->
+			<button
+				onclick={() => (opening = true)}
+				class="btn btn-lg max-sm:flex-1 {skin('crew')}"
+				><Plus size={15} />
+				{joinFirst ? 'Join a crew' : 'Start a crew'}</button
+			>
+		{:else if !presence.error}
 			<!-- Not "start your first" before the list has said there is none
 			     (#2848): a rider with crews was one tap from founding a
 			     duplicate while it loaded, and after it failed — when the banner
 			     below says why. -->
-			{#if !presence.error}<Skeleton class="h-11 w-36" />{/if}
-		{:else}
-			<!-- Carrying an invite, the big button is joining the crew that sent
-			     it (#2144, #2184); everyone else gets the crew the signed-out
-			     landing promised, and joining is one step down the same sheet. -->
-			<button
-				onclick={() => (opening = true)}
-				class="btn {presence.crews.length
-					? 'btn-secondary'
-					: 'btn-primary btn-lg'}"
-				><Plus size={15} />
-				{joinFirst ? 'Join a crew' : 'Start a crew'}</button
-			>
+			<Skeleton class="h-11 w-36" />
 		{/if}
 	</div>
 
@@ -300,14 +326,14 @@
 
 	<RecoveredNotice />
 
-	<!-- The desktop app's offer, for a rider in a browser on a desk. What's
-	     new and every update moved to the sidebar's update row (#2588): Home
-	     is not where WattRoom opens any more (#2576). -->
-	<DesktopNotice />
-
 	<!-- You, in numbers — the band the mock's "your week" grew into: FTP,
-	     level, w/kg and the week, one glance. Nothing here needs a click. -->
-	<section class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+	     level, w/kg and the week, one glance. Four equal tiles (v2-summary):
+	     an eyebrow, a value in the display face, a muted unit on its
+	     baseline. Nothing here needs a click. -->
+	<section
+		class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4"
+		data-testid="home-tiles"
+	>
 		<div class="panel">
 			<p class="eyebrow">ftp</p>
 			<p class="font-display text-2xl font-bold tabular-nums">
@@ -332,7 +358,10 @@
 		>
 			<p class="eyebrow">level · trophies</p>
 			<p class="font-display text-2xl font-bold tabular-nums">{level}</p>
-			<div class="mt-1.5"><ProgressBar pct={levelProgress(xp) * 100} /></div>
+			<!-- Muted: the tiles are numbers, and no tile wears an accent. -->
+			<div class="mt-1.5">
+				<ProgressBar pct={levelProgress(xp) * 100} fill="bg-muted" />
+			</div>
 			<p class="text-muted mt-1 text-[11px] tabular-nums">
 				{toNext.toLocaleString()} XP to {level + 1}
 			</p>
@@ -361,7 +390,9 @@
 				<Skeleton class="mt-1 h-3 w-24" />
 			{:else if form}
 				<p class="font-display text-2xl font-bold tabular-nums">
-					{form.formPct > 0 ? '+' : ''}{Math.round(form.formPct)}%
+					{form.formPct > 0 ? '+' : ''}{Math.round(form.formPct)}<span
+						class="text-muted ml-1 text-sm">%</span
+					>
 				</p>
 				<p class="text-muted text-[11px]">{form.zone}</p>
 			{:else}
@@ -372,7 +403,7 @@
 	</section>
 
 	{#if !ready}
-		<div class="mt-8 grid gap-3">
+		<div class="mt-8 grid gap-8 xl:grid-cols-2">
 			{#each { length: 2 } as _, i (i)}
 				<div class="border-frame rounded-lg border px-5 py-4">
 					<Skeleton class="h-4 w-48" />
@@ -381,20 +412,18 @@
 			{/each}
 		</div>
 	{:else}
-		<!-- Two columns on a wide screen (#417): what is happening on the left,
-		     what you can open or plan on the right — the page fills the column
-		     instead of stopping at 48rem. -->
-		<div class="mt-8 grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
+		<!-- Two equal columns on a wide screen (#417, #3688): what is planned
+		     on the left; who is around, then what you rode, on the right. One
+		     column below xl, in that order. -->
+		<div class="mt-8 grid gap-8 xl:grid-cols-2">
+			<!-- What's next: every planned session, across every crew you are
+			     in (ADR-0020 — /sessions retired into this). Planning and saying
+			     you are in both happen on the Schedule of the crew whose session
+			     it is. -->
+			<div class="min-w-0">
+				<WhatsNext planCrew={firstCrew?.id} />
+			</div>
 			<div class="min-w-0 space-y-8">
-				<!-- The two doors (#3274): alone, or where the crew can drop in. -->
-				{#if doorsFor(crewLive)}
-					<section>
-						<h2 class="eyebrow">Ride</h2>
-						<div class="mt-3">
-							<RideDoors onAlone={() => void goto('/ride?alone')} />
-						</div>
-					</section>
-				{/if}
 				<!-- Around right now: the reason to open the app — people. -->
 				<section>
 					<h2 class="eyebrow">Around right now</h2>
@@ -403,27 +432,20 @@
 						<div class="mt-3"><FriendsAround list={friendsOnline} /></div>
 					{/if}
 				</section>
-
 				<!-- The last few rides: what you did, one line each, the log a click away. -->
 				<RecentRides
 					rides={recent}
 					ondelete={(ride) =>
 						(rides = rides?.filter((r) => r.id !== ride.id) ?? null)}
 				/>
-
-				<!-- What's next: every planned session, across every crew you are
-			     in (ADR-0020 — /sessions retired into this). Planning and saying
-			     you are in both happen on the Schedule of the crew whose session
-			     it is. -->
-				<WhatsNext planCrew={firstCrew?.id} />
 			</div>
-			<!-- Friends is its own place (ADR-0020); the heading that stayed here
-			     with nothing under it went with #1333. -->
-			<aside class="min-w-0 space-y-8">
-				<StartOrJoin />
-			</aside>
 		</div>
 	{/if}
+
+	<!-- The desktop app's offer, for a rider in a browser on a desk: last,
+	     under the rider's own numbers and week (#3688). What's new and every
+	     update moved to the sidebar's update row (#2588). -->
+	<DesktopNotice />
 </main>
 
 {#if opening}
@@ -434,6 +456,6 @@
 		onclose={() => (opening = false)}
 		class="max-w-sm"
 	>
-		<StartOrJoin compact />
+		<StartOrJoin />
 	</Modal>
 {/if}

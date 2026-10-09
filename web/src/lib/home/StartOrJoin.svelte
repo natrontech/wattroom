@@ -1,15 +1,14 @@
 <script lang="ts">
 	// Getting into a crew: starting one of your own (#2480), or joining one
-	// with a code — Home's crew section, and what the sidebar's + points at.
+	// with a code — the sheet the sidebar's + and Home's crew button open.
+	// Stacked, no section heading, the first field focused (#1199). Home's
+	// own copy of these forms went with #3688: it offered "Start a crew"
+	// three times on one page.
 	import { goto } from '$app/navigation';
 	import { account } from '$lib/account.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import { crewDoor, crewDoorPath, foundCrew } from '$lib/crew';
-	import {
-		administersNone,
-		foundedCount,
-		leadsWithJoining,
-	} from '$lib/nav/crews';
+	import { foundedCount, leadsWithJoining } from '$lib/nav/crews';
 	import { presence } from '$lib/presence.svelte';
 	// The code lengths and the caps are the server's, generated (#2180): the
 	// box that tells a friend's code from a crew's cannot disagree with the
@@ -21,16 +20,6 @@
 		MaxFoundedCrews,
 	} from '$lib/protocol';
 
-	let {
-		compact = false,
-	}: {
-		/**
-		 * The sheet the sidebar's + opens (#1199): stacked, no section
-		 * heading, the name field focused — the forms are the same.
-		 */
-		compact?: boolean;
-	} = $props();
-
 	const crews = $derived(presence.crews);
 	// A rider carrying an invite is asked to join that crew before founding
 	// one (#2144, #2184): the code box leads and starting a crew is the second
@@ -40,9 +29,6 @@
 	const joinFirst = $derived(
 		presence.loaded && leadsWithJoining(crews, account.me?.pendingInvite),
 	);
-	// No crew of your own yet — the day-one heading.
-	const crewless = $derived(presence.loaded && administersNone(crews));
-
 	let crewName = $state('');
 	let joinCode = $state('');
 	let busy = $state(false);
@@ -96,35 +82,13 @@
 	}
 </script>
 
-<section id={compact ? undefined : 'crews'}>
-	{#if !compact}
-		<!-- Named for what is under it (#2176): the panel leads with joining a
-		     crew for an invited rider. A rider with no crew and no invite gets
-		     the landing's own words back (#2184). -->
-		<h2 class="eyebrow">
-			{joinFirst
-				? 'Get into a crew'
-				: crewless
-					? 'Start your crew'
-					: 'Start or join a crew'}
-		</h2>
-	{/if}
-	<div
-		class="grid gap-3 {compact
-			? 'grid-cols-1'
-			: 'mt-3 sm:grid-cols-2 xl:grid-cols-1'}"
-	>
+<section>
+	<div class="grid grid-cols-1 gap-3">
 		<!-- Two panels, and which comes first is a decision (ux.md): the
 		     DOM order, not a CSS order, so the tab order and a reader agree
 		     with the eye. -->
 		{#snippet startPanel()}
-			<div
-				class={compact
-					? joinFirst
-						? 'border-ink/5 border-t pt-4'
-						: ''
-					: 'panel panel-lg'}
-			>
+			<div class={joinFirst ? 'border-ink/5 border-t pt-4' : ''}>
 				<h3 class="font-display font-bold">
 					{joinFirst ? 'Or start a crew of your own' : 'Start a crew'}
 				</h3>
@@ -143,13 +107,13 @@
 				>
 					<!-- svelte-ignore a11y_autofocus -->
 					<input
-						id={compact ? 'start-crew-name-sheet' : 'start-crew-name'}
+						id="start-crew-name-sheet"
 						bind:value={crewName}
 						maxlength={MaxCrewNameChars}
 						class="input mt-3 w-full"
 						placeholder="Crew name"
 						aria-label="crew name"
-						autofocus={compact && !joinFirst}
+						autofocus={!joinFirst}
 					/>
 					<button
 						disabled={busy || !crewName.trim() || foundedOut}
@@ -166,17 +130,9 @@
 			</div>
 		{/snippet}
 		{#snippet joinPanel()}
-			<div
-				class={compact
-					? joinFirst
-						? ''
-						: 'border-ink/5 border-t pt-4'
-					: 'panel panel-lg'}
-			>
+			<div class={joinFirst ? '' : 'border-ink/5 border-t pt-4'}>
 				<h3 class="font-display font-bold">
-					{compact && !joinFirst
-						? 'Or join a crew with a code'
-						: 'Join a crew with a code'}
+					{joinFirst ? 'Join a crew with a code' : 'Or join a crew with a code'}
 				</h3>
 				<p class="text-muted mt-1 text-xs">
 					Six characters, from whoever invited you to their crew.
@@ -192,7 +148,7 @@
 				>
 					<!-- svelte-ignore a11y_autofocus -->
 					<input
-						id={compact ? 'join-code-sheet' : 'join-code'}
+						id="join-code-sheet"
 						bind:value={joinCode}
 						maxlength={FriendCodeLen}
 						class="input mt-3 w-full font-mono tracking-[0.3em] uppercase placeholder:tracking-normal placeholder:normal-case"
@@ -201,7 +157,7 @@
 							: undefined}
 						placeholder="Crew code"
 						aria-label="crew code"
-						autofocus={compact && joinFirst}
+						autofocus={joinFirst}
 					/>
 					{#if invalidCode}
 						<!-- Field-level validation lands under the field (errors.md). -->
