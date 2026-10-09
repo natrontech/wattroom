@@ -466,7 +466,7 @@
 						current.hrLow !== undefined ||
 						current.hrHigh !== undefined}
 				>
-					<summary class="eyebrow cursor-pointer"
+					<summary class="eyebrow cursor-pointer py-2"
 						>cadence and heart-rate bands</summary
 					>
 					<p class="text-muted mt-1 mb-2 text-[11px]">

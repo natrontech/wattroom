@@ -1,0 +1,1 @@
+- The workout editor's cadence and heart-rate bands toggle is big enough to hit with a fingertip.

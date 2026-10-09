@@ -151,6 +151,13 @@ test('the browse surfaces’ links and folds clear the floor on a phone', async 
 		a.locator('summary', { hasText: 'Advanced' }),
 	);
 
+	// A fresh sheet opens on its one steady block, bands folded (#3906).
+	await a.goto('/workouts/edit');
+	await measure(
+		'the editor’s cadence and heart-rate bands',
+		a.locator('summary', { hasText: 'cadence and heart-rate bands' }),
+	);
+
 	expect(short, 'browse controls under the 24px floor').toEqual([]);
 });
 
