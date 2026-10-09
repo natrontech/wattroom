@@ -61,6 +61,7 @@
 	{
 		"files": [
 			"web/src/lib/channel/RoadsideDeck.svelte",
+			"web/src/lib/channel/CheerDeck.svelte",
 			"web/src/lib/world/chalk.ts"
 		],
 		"surfaces": ["roadside-chalk"]
@@ -75,6 +76,18 @@
 	{
 		"files": ["web/src/lib/ride/FreeRide.svelte"],
 		"surfaces": ["ride-channel-free"]
+	},
+	{
+		"files": [
+			"web/src/lib/channel/SidePanel.svelte",
+			"web/src/lib/channel/CheerDeck.svelte",
+			"web/src/lib/board/BoardToggle.svelte",
+			"web/src/lib/channel/Jukebox.svelte",
+			"web/src/lib/channel/JukeboxAdd.svelte",
+			"web/src/lib/channel/JukeboxPlaylists.svelte",
+			"web/src/lib/channel/rail-size.ts"
+		],
+		"surfaces": ["ride-session-flat", "ride-channel-free"]
 	},
 	{
 		"files": ["web/src/routes/(app)/ramp/**"],
