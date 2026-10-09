@@ -1,7 +1,6 @@
 import type { LiveCrew } from '$lib/crews-live';
 import { sessionPath } from '$lib/channel/address';
 import { planPath } from '$lib/crew-schedule';
-import { formatTime } from '$lib/format';
 
 /** One row of GET /api/schedule: a plan, which crew's it is (#2440), the
  *  voice channel when it names one, and how many are in (#3689). */
@@ -22,6 +21,8 @@ export interface WeekEntry {
 	key: string;
 	at: number;
 	time: string;
+	/** "PM" where the rider's locale keeps a 12-hour clock, else null. */
+	period: string | null;
 	kind: string;
 	title: string;
 	meta: string;
@@ -38,6 +39,22 @@ export interface WeekDay {
 }
 
 const DAYS = 7;
+
+/** The time in the row's 56 px column, its day period apart: "10:56" and
+ *  "PM" do not fit one line at 15 px, and a wrap fell wherever it fell. */
+function clock(ms: number): { time: string; period: string | null } {
+	const parts = new Intl.DateTimeFormat(undefined, {
+		hour: '2-digit',
+		minute: '2-digit',
+	}).formatToParts(new Date(ms));
+	const period = parts.find((p) => p.type === 'dayPeriod')?.value ?? null;
+	const time = parts
+		.filter((p) => p.type !== 'dayPeriod')
+		.map((p) => p.value)
+		.join('')
+		.trim();
+	return { time, period };
+}
 
 function midnight(ms: number, plusDays = 0): number {
 	const d = new Date(ms);
@@ -56,7 +73,7 @@ function planEntry(plan: Planned, now: number): WeekEntry {
 	return {
 		key: `plan:${plan.id}`,
 		at,
-		time: formatTime(at),
+		...clock(at),
 		kind: 'Crew session',
 		title: plan.workoutName,
 		meta: `${place} · ${plan.minutes} min · planned by ${plan.createdBy}`,
@@ -82,7 +99,7 @@ function liveEntries(crews: readonly LiveCrew[], now: number): WeekEntry[] {
 				{
 					key: `live:${session.id}`,
 					at,
-					time: formatTime(at),
+					...clock(at),
 					kind: 'Crew session',
 					title: session.workout || 'A session',
 					meta: [

@@ -104,3 +104,11 @@ describe('byDay', () => {
 		expect(days[1].label).not.toMatch(/Today/);
 	});
 });
+
+describe('the time column', () => {
+	it('keeps the day period off the time, where the locale has one', () => {
+		const { week } = weekList([plan('a', at(1, 19, 5))], [], now);
+		expect(week[0].time).toMatch(/^\d{1,2}[:.]05$/);
+		expect(week[0].period ?? '').not.toMatch(/\d/);
+	});
+});

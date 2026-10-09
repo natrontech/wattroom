@@ -84,10 +84,15 @@
 							? 'opacity-60 hover:opacity-100'
 							: 'bg-surface-raised hover:border-muted/40'}"
 					>
-						<span
-							class="font-display w-14 shrink-0 text-[15px] leading-5 tabular-nums"
-							>{entry.time}</span
-						>
+						<span class="w-14 shrink-0">
+							<span
+								class="font-display block text-[15px] leading-5 whitespace-nowrap tabular-nums"
+								>{entry.time}</span
+							>
+							{#if entry.period}
+								<span class="eyebrow block">{entry.period}</span>
+							{/if}
+						</span>
 						<!-- The count sits right of the row; on a phone, under the
 						     title (TARGETS home 9). -->
 						<div class="min-w-0 flex-1 sm:flex sm:items-start sm:gap-3">

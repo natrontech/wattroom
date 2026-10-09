@@ -90,7 +90,8 @@ export function homeProbe() {
 		...(week?.querySelectorAll('[data-testid=week-row]') ?? []),
 	].map((li) => {
 		const link = li.querySelector('a');
-		const time = link?.firstElementChild ?? null;
+		const column = link?.firstElementChild ?? null;
+		const time = column?.firstElementChild ?? null;
 		const lines = link?.querySelectorAll('p') ?? [];
 		const count = link?.querySelector('span.tabular-nums:not(.font-display)');
 		const dot = link?.querySelector('span.rounded-full');
@@ -99,7 +100,9 @@ export function homeProbe() {
 			...box(link)!,
 			wholeRowLink: !!link && link.parentElement === li,
 			time: text(time, 12),
-			timeColumn: box(time)?.w ?? null,
+			period: text(column?.children[1], 4) || null,
+			timeColumn: box(column)?.w ?? null,
+			timeOneLine: time ? box(time)!.h <= 22 : null,
 			timePx: timeCs ? parseFloat(timeCs.fontSize) : null,
 			timeFont: timeCs?.fontFamily.split(',')[0].trim() ?? null,
 			kind: text(lines[0]),
