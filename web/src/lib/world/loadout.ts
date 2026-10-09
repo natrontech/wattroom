@@ -79,7 +79,10 @@ function seeded(id: string, worn: readonly string[], abreast: number): Loadout {
 			),
 		);
 	let a = pick(CLOTH);
-	for (const before of [worn, worn.slice(Math.max(0, worn.length - abreast + 1))]) {
+	for (const before of [
+		worn,
+		worn.slice(Math.max(0, worn.length - abreast + 1)),
+	]) {
 		if (clearOf(a, before)) break;
 		const free = CLOTH.filter((c) => clearOf(c, before));
 		if (free.length) {
