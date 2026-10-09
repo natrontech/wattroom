@@ -142,7 +142,8 @@ describe('the world', () => {
 			expect(identical(again.mesh.pos, world.mesh.pos)).toBe(true);
 			expect(JSON.stringify(again.pieces)).toBe(JSON.stringify(world.pieces));
 		},
-		BUILD_MS,
+		// It builds a second world beside the one `beforeAll` built (#3879).
+		2 * BUILD_MS,
 	);
 
 	it('keeps everything beside the road clear of it', () => {
