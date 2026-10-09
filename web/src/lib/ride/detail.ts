@@ -1,4 +1,4 @@
-import type { RidePlace } from './list';
+import type { RidePlace, RideRoad } from './list';
 /**
  * One past ride, opened (#503). The Rides list is summaries; this is the
  * single blob read ADR-0016 keeps the samples for — the shape the server
@@ -55,8 +55,8 @@ export interface RideDetail {
 	samples: RideTraceSample[];
 	/** A road ride's metres, the server's replay (#3053); absent off a road. */
 	distanceM?: number;
-	/** The road it rode, under the name its owner knows it by (#3874). */
-	road?: { routeId: string; name: string };
+	/** The rider's own road it rode (#3874): its title and its way back. */
+	road?: RideRoad;
 	/** Where the ride was sent, if anywhere — absent when nobody tried (#799). */
 	export?: RideExport;
 	/**

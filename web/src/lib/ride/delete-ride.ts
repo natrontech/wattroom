@@ -1,6 +1,7 @@
 import { confirm } from '$lib/confirm.svelte';
 import { toasts } from '$lib/toast.svelte';
 import { deleteRide } from './detail';
+import { rideTitle, type RideRoad } from './list';
 
 /**
  * One of errors.md's confirm cases, not an undo toast: a ride's samples are
@@ -14,13 +15,15 @@ export async function deleteRideAfterConfirm(ride: {
 	id: string;
 	workoutName: string;
 	startedAt: string;
+	road?: RideRoad;
 }): Promise<boolean> {
+	const name = rideTitle(ride);
 	const ok = await confirm({
 		title: 'Delete this ride?',
 		// The XP stays (ADR-0047): deleting a ride is privacy, not work
 		// undone, and saying otherwise discouraged the very thing the ADR
 		// protects (#2632).
-		body: `“${ride.workoutName}”, ${new Date(ride.startedAt).toLocaleDateString()} — its power trace and its medals go with it; your XP and level stay. This one can't be undone.`,
+		body: `“${name}”, ${new Date(ride.startedAt).toLocaleDateString()} — its power trace and its medals go with it; your XP and level stay. This one can't be undone.`,
 		action: 'Delete ride',
 	});
 	if (!ok) return false;
@@ -32,6 +35,6 @@ export async function deleteRideAfterConfirm(ride: {
 		toasts.push(res.error.message, { tone: 'error' });
 		return false;
 	}
-	toasts.push(`“${ride.workoutName}” is gone.`);
+	toasts.push(`“${name}” is gone.`);
 	return true;
 }

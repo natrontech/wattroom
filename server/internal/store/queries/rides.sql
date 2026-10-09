@@ -568,14 +568,27 @@ where rides.id = any(sqlc.arg(ids)::uuid[]);
 -- name: GetRideRoad :one
 -- The road a ride rode, for its card and page (#3142): the route's generated
 -- name — never the owner's rename (#3055) — where its heights came from, and
--- the ride's metres on it. The owner's own read adds the route's id and the
--- name they know it by (#3874). A ride on no road, or on a route since
--- deleted, answers empty strings; the metres stay while the ride does.
+-- the ride's metres on it. When the road is the rider's own route, its id and
+-- the name they know it by too (#3874): a session ridden on someone else's
+-- road has that road's id, and its rename is its owner's alone (ADR-0063).
+-- A ride on no road, or on a route since deleted, answers empty strings; the
+-- metres stay while the ride does.
 select coalesce(rt.gen_name, '')::text as gen_name,
-       coalesce(rt.id::text, '')::text as route_id,
-       coalesce(rt.name, '')::text as route_name,
+       coalesce(case when rt.owner_id = r.user_id then rt.id::text end, '')::text as route_id,
+       coalesce(case when rt.owner_id = r.user_id then rt.name end, '')::text as route_name,
        coalesce(rt.ele_source, '')::text as ele_source,
        r.distance_m
 from rides r
 left join routes rt on rt.id = r.route_id
 where r.id = $1 and r.user_id = $2;
+
+-- name: OwnRoadsOfRides :many
+-- The rider's own routes under one page of their rides list (#3874): the id
+-- and the name they know each by, beside its generated name, so a ride on
+-- one is titled as the route page is. Only the rider's own list: never MCP,
+-- which carries no route name (ADR-0063), and never a road someone else
+-- owns, whose rename is theirs.
+select rides.id, r.id as route_id, r.name, r.gen_name
+from rides
+join routes r on r.id = rides.route_id and r.owner_id = rides.user_id
+where rides.user_id = sqlc.arg(user_id) and rides.id = any(sqlc.arg(ids)::uuid[]);

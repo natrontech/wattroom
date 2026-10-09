@@ -1,3 +1,3 @@
-- A ride opened from a road's page (Best, Last, or a climb's best time) now
-  carries the road's name as its title, and its back link returns to that
-  road's page instead of Rides.
+- A free ride on one of your roads is now called by the road's name on its
+  page, in Rides and on Home, not "Free ride"; opened from the road's page
+  (Best, Last or a climb's best time), its back link returns there.

@@ -837,8 +837,8 @@ func (q *Queries) GetRideForUpload(ctx context.Context, id pgtype.UUID) (GetRide
 
 const getRideRoad = `-- name: GetRideRoad :one
 select coalesce(rt.gen_name, '')::text as gen_name,
-       coalesce(rt.id::text, '')::text as route_id,
-       coalesce(rt.name, '')::text as route_name,
+       coalesce(case when rt.owner_id = r.user_id then rt.id::text end, '')::text as route_id,
+       coalesce(case when rt.owner_id = r.user_id then rt.name end, '')::text as route_name,
        coalesce(rt.ele_source, '')::text as ele_source,
        r.distance_m
 from rides r
@@ -861,9 +861,11 @@ type GetRideRoadRow struct {
 
 // The road a ride rode, for its card and page (#3142): the route's generated
 // name — never the owner's rename (#3055) — where its heights came from, and
-// the ride's metres on it. The owner's own read adds the route's id and the
-// name they know it by (#3874). A ride on no road, or on a route since
-// deleted, answers empty strings; the metres stay while the ride does.
+// the ride's metres on it. When the road is the rider's own route, its id and
+// the name they know it by too (#3874): a session ridden on someone else's
+// road has that road's id, and its rename is its owner's alone (ADR-0063).
+// A ride on no road, or on a route since deleted, answers empty strings; the
+// metres stay while the ride does.
 func (q *Queries) GetRideRoad(ctx context.Context, arg GetRideRoadParams) (GetRideRoadRow, error) {
 	row := q.db.QueryRow(ctx, getRideRoad, arg.ID, arg.UserID)
 	var i GetRideRoadRow
@@ -1509,6 +1511,55 @@ where ride_id = $1 and state = 'delivered'
 func (q *Queries) MarkRideExportStale(ctx context.Context, rideID pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, markRideExportStale, rideID)
 	return err
+}
+
+const ownRoadsOfRides = `-- name: OwnRoadsOfRides :many
+select rides.id, r.id as route_id, r.name, r.gen_name
+from rides
+join routes r on r.id = rides.route_id and r.owner_id = rides.user_id
+where rides.user_id = $1 and rides.id = any($2::uuid[])
+`
+
+type OwnRoadsOfRidesParams struct {
+	UserID pgtype.UUID
+	Ids    []pgtype.UUID
+}
+
+type OwnRoadsOfRidesRow struct {
+	ID      pgtype.UUID
+	RouteID pgtype.UUID
+	Name    string
+	GenName string
+}
+
+// The rider's own routes under one page of their rides list (#3874): the id
+// and the name they know each by, beside its generated name, so a ride on
+// one is titled as the route page is. Only the rider's own list: never MCP,
+// which carries no route name (ADR-0063), and never a road someone else
+// owns, whose rename is theirs.
+func (q *Queries) OwnRoadsOfRides(ctx context.Context, arg OwnRoadsOfRidesParams) ([]OwnRoadsOfRidesRow, error) {
+	rows, err := q.db.Query(ctx, ownRoadsOfRides, arg.UserID, arg.Ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []OwnRoadsOfRidesRow
+	for rows.Next() {
+		var i OwnRoadsOfRidesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.RouteID,
+			&i.Name,
+			&i.GenName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const requeueRideExport = `-- name: RequeueRideExport :execrows

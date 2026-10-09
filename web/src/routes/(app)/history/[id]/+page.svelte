@@ -14,8 +14,8 @@
 	import { cardLabel, downloadRideCard } from '$lib/ride/card';
 	import { deleteRideAfterConfirm } from '$lib/ride/delete-ride';
 	import { fetchRide, type RideDetail } from '$lib/ride/detail';
-	import { ridePlace } from '$lib/ride/list';
-	import { localPath } from '$lib/road/route-row';
+	import { ridePlace, rideTitle } from '$lib/ride/list';
+	import { rideBackLink } from '$lib/back-link';
 	import RideComparison from '$lib/ride/RideComparison.svelte';
 	import RideSkyline from '$lib/ride/RideSkyline.svelte';
 	import type { RideRecord } from '$lib/history.svelte';
@@ -38,21 +38,12 @@
 
 	const id = $derived(page.params.id ?? '');
 	let ride = $state<RideDetail | null>(null);
-	// Flows rule 4: a ride opened from the page that links it goes back there.
-	const back = $derived.by(() => {
-		const href = localPath(page.url.searchParams.get('back'));
-		if (!href) return { href: '/history', label: 'Rides' };
-		const road = ride?.road;
-		return {
-			href,
-			label:
-				road && href.startsWith(`/workouts/routes/${road.routeId}`)
-					? road.name
-					: 'Back',
-		};
-	});
-	// The road's name is the ride's name (Flows rule 2); a Free ride on one is that road.
-	const title = $derived(ride?.road?.name || ride?.workoutName);
+	// Flows rules 2 and 4 (#3874): a ride on the rider's own road is named as
+	// its route page is, and goes back to the page that opened it.
+	const back = $derived(
+		rideBackLink(page.url.searchParams.get('back'), ride?.road),
+	);
+	const title = $derived(ride ? rideTitle(ride) : null);
 	let error = $state<string | null>(null);
 	// A ride that is not yours reads as absent, and retrying will not find it —
 	// so it gets the empty state, not the error-with-retry one.

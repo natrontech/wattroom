@@ -1,13 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Climb } from './climbs';
-import {
-	backLink,
-	classChips,
-	localPath,
-	riddenLine,
-	rideHref,
-	statLine,
-} from './route-row';
+import { classChips, riddenLine, statLine } from './route-row';
 
 const climb = (cls: Climb['cls']): Climb =>
 	({ startM: 0, topM: 1000, gainM: 50, cls }) as Climb;
@@ -45,38 +38,5 @@ describe('a route row (#3683)', () => {
 				carryOnM: 21300,
 			}),
 		).toBe('Left off at km 21.3');
-	});
-});
-
-describe("the route page's back link (Flows rule 4)", () => {
-	it('returns to the picker it was opened from', () => {
-		expect(backLink('/ride')).toEqual({ href: '/ride', label: 'Ride' });
-		expect(backLink('/crew/c1/v/v1')).toEqual({
-			href: '/crew/c1/v/v1',
-			label: 'Back',
-		});
-	});
-
-	it('falls back to Workouts, and never leaves the site', () => {
-		const home = { href: '/workouts', label: 'Workouts' };
-		for (const back of [
-			null,
-			'',
-			'ride',
-			'//evil.example',
-			'https://evil.example',
-			'/\\evil.example',
-		])
-			expect(backLink(back), String(back)).toEqual(home);
-	});
-});
-
-describe('a ride opened from a route page', () => {
-	it('carries the page it came from, and the ride page reads it back', () => {
-		const from = '/workouts/routes/r1?back=%2Fride';
-		const href = rideHref('ride1', from);
-		expect(localPath(new URL(href, 'http://x').searchParams.get('back'))).toBe(
-			from,
-		);
 	});
 });

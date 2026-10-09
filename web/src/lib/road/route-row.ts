@@ -44,25 +44,3 @@ export function riddenLine(
 	});
 	return `Ridden ${route.rides}× · last ${last}`;
 }
-
-/** A `?back=` value if it is a path on this site; anyone can write the URL. */
-export function localPath(back: string | null): string | null {
-	return back && /^\/(?![/\\])/.test(back) && !back.includes('\\')
-		? back
-		: null;
-}
-
-/**
- * The route page's back link (TARGETS Flows rule 4): the page a row's name was
- * opened from, else Workouts. Only a path on this site: `?back=` is a URL
- * anyone can write, and an open redirect is not a back link.
- */
-export function backLink(back: string | null): { href: string; label: string } {
-	const href = localPath(back);
-	if (!href) return { href: '/workouts', label: 'Workouts' };
-	return { href, label: href === '/ride' ? 'Ride' : 'Back' };
-}
-
-/** A ride opened from a page that is its way back (Flows rule 4). */
-export const rideHref = (rideId: string, back: string): string =>
-	`/history/${rideId}?back=${encodeURIComponent(back)}`;

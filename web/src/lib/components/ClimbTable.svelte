@@ -2,7 +2,7 @@
 	import { page } from '$app/state';
 	import { formatClockLong, formatKm } from '$lib/format';
 	import type { ClimbBest } from '$lib/road/attempts';
-	import { rideHref } from '$lib/road/route-row';
+	import { withBack } from '$lib/back-link';
 	import { classedOf, type Climb } from '$lib/road/climbs';
 
 	/**
@@ -77,8 +77,8 @@
 							<td class="font-display py-2 text-right tabular-nums">
 								{#if best}
 									<a
-										href={rideHref(
-											best.rideId,
+										href={withBack(
+											`/history/${best.rideId}`,
 											page.url.pathname + page.url.search,
 										)}
 										class="hover:underline">{formatClockLong(best.seconds)}</a
