@@ -42,7 +42,7 @@ test('a free ride on a road rides in the cave, and asks before leaving', async (
 		.getByRole('button', { name: 'Ride simulated' })
 		.click({ timeout: 15_000 });
 	await expect(page.locator('.cave'), 'setup is a desk surface').toHaveCount(0);
-	await page.getByRole('button', { name: 'Start riding' }).click();
+	await page.getByRole('button', { name: 'Start the ride' }).click();
 	// The frame, page and sidebar; the hosts outside it wear their own (#3788).
 	const cave = page.locator('.cave:has(#page-body)');
 	await expect(cave, 'the lights stayed up').toHaveCount(1);

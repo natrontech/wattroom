@@ -76,7 +76,7 @@ test('a solo route ride saves at its kilometre, carries on, and rides back from 
 
 	// A minute, then stop short: End ride saves where you are.
 	await pairSimulated(page, routeId);
-	await page.getByRole('button', { name: 'Start riding' }).click();
+	await page.getByRole('button', { name: 'Start the ride' }).click();
 	await page.waitForTimeout(A_MINUTE_MS);
 	await page.getByRole('button', { name: /^Save at km / }).click();
 	await expect(page.getByText('See it in your history')).toBeVisible({
@@ -86,16 +86,13 @@ test('a solo route ride saves at its kilometre, carries on, and rides back from 
 	const stopped = (first.fromM ?? 0) + first.distanceM!;
 	expect(stopped, 'the first ride reached the end').toBeLessThan(2150);
 
-	// The next start carries on from there, beside From the start.
+	// The next start offers to carry on from there, beside the whole road.
 	await pairSimulated(page, routeId);
-	const carry = page.getByRole('button', { name: /^Carry on from km / });
-	await expect(carry).toHaveText(
-		`Carry on from km ${(stopped / 1000).toFixed(1)}`,
-	);
-	await expect(
-		page.getByRole('button', { name: 'From the start' }),
-	).toBeVisible();
+	const carry = page.getByRole('button', { name: /^From km / });
+	await expect(carry).toHaveText(`From km ${(stopped / 1000).toFixed(1)}`);
+	await expect(page.getByRole('button', { name: 'Whole road' })).toBeVisible();
 	await carry.click();
+	await page.getByRole('button', { name: 'Start the ride' }).click();
 
 	// Down to the end: the sheet, and Ride back after its 10 s.
 	const sheet = page.getByRole('region', { name: 'the end of the road' });

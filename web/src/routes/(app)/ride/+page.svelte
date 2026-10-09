@@ -62,8 +62,8 @@
 	// is the session most people ride.
 	const custom = customWorkouts();
 	const requested = page.url.searchParams.get('w') ?? '';
-	// A free ride alone on one of your own roads (#3027), behind the roads
-	// dev gate; `from` is where a recovered ride on it stopped.
+	// One of your own roads (#3027), behind the roads dev gate; `from` is
+	// where on it to start: a recovered ride's stop, or the route page's chip.
 	const roadId = roadsEnabled() ? page.url.searchParams.get('road') : null;
 	const roadFrom = Math.max(0, Number(page.url.searchParams.get('from')) || 0);
 	// A planned session's road, ridden first (#3621): the crew's cut of it.
@@ -98,9 +98,11 @@
 			: undefined,
 	);
 	// The Ride card's answers (#3671). ?w= opens on Workout, with road= on
-	// that road (#3594); otherwise a remembered road opens on a free ride.
-	// road= alone is a free ride on it (#3027), straight onto the road.
-	let kind = $state<RideKind>(requested || !remembered ? 'workout' : 'free');
+	// that road (#3594); road= alone opens on a free ride on it, the one setup
+	// a road ride has (#3855); otherwise a remembered road opens on a free ride.
+	let kind = $state<RideKind>(
+		!requested && (roadId || remembered) ? 'free' : 'workout',
+	);
 	let road = $state.raw<RideableRoute | null>(null);
 	let from = $state(roadFrom);
 	// Any workout on one of your own roads (#3594), from Terrain Match's
@@ -133,10 +135,12 @@
 	const shelfMissing = $derived(wanted && custom.loaded && !saved);
 
 	// The two doors (#3274): a rider with a crew chooses between riding alone
-	// and riding in the crew's lounge. Not when a workout was already picked —
-	// the lounge's free ride has none, and Home's "Ride alone" arrives here
-	// with ?alone, so that choice stays one tap.
-	let alone = $state(page.url.searchParams.has('alone') || !!requested);
+	// and riding in the crew's lounge. Not when a workout or a road was
+	// already picked — the lounge's free ride has neither, and Home's "Ride
+	// alone" arrives here with ?alone, so that choice stays one tap.
+	let alone = $state(
+		page.url.searchParams.has('alone') || !!requested || !!roadId,
+	);
 	const doors = $derived(!alone && doorsFor(crewLive));
 
 	// FTP comes from the profile, set by hand or measured by a ramp test (#14).
@@ -155,7 +159,7 @@
 	// its summary keep the riding surface's own gutters.
 	const setup = $derived(
 		!freeRide &&
-			!((roadId || planRoad) && !requested) &&
+			!(planRoad && !requested) &&
 			(!session || session.state === 'idle'),
 	);
 	let downloading = $state(false);
@@ -571,8 +575,10 @@
 			from={freeRide.from}
 			trainer={freeRide.trainer}
 		/>
-	{:else if (roadId || planRoad) && !requested}
-		<SoloRoadRide {roadId} plan={planRoad} from={roadFrom} />
+	{:else if planRoad && !requested}
+		<!-- A crew's planned road keeps its own setup: the card rides only
+		     your roads, and this one is the crew's cut (#3621). -->
+		<SoloRoadRide plan={planRoad} />
 	{:else if !session || session.state === 'idle'}
 		<!-- Idle with a session in hand is the moment between Start and the
 		     trainer answering it (#1800): still the setup screen, because
@@ -600,7 +606,7 @@
 				bind:kind
 				bind:road
 				bind:from
-				roadId={(requested && roadId) || remembered}
+				roadId={roadId || remembered}
 				{remembered}
 				lastWorkout={lastName}
 				{workout}
