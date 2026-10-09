@@ -1,8 +1,8 @@
 <script lang="ts">
 	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
-	import ChartColumn from '@lucide/svelte/icons/chart-column';
 	import Plus from '@lucide/svelte/icons/plus';
 	import Radio from '@lucide/svelte/icons/radio';
+	import User from '@lucide/svelte/icons/user';
 	import { account, unchosen } from '$lib/account.svelte';
 	import { api } from '$lib/api';
 	import { presence } from '$lib/presence.svelte';
@@ -193,7 +193,8 @@
 	const week = $derived(weekTotals(rides ?? []));
 
 	// The two doors (#3274): alone, or where the crew can drop in. They are
-	// the action row's ride, in place of Ride solo, which is the same act.
+	// the action row's ride; with no lounge to offer, the alone door stands
+	// by itself.
 	const doors = $derived(doorsFor(crewLive));
 	// The action row has exactly one filled button (TARGETS home 4): the
 	// ride that is on; before the first crew, the crew (ADR-0010); else the
@@ -242,73 +243,81 @@
 	{/if}
 	<!-- One action row (#3688): ride, plan, a crew, in that order on every
 	     visit, each 44 px (a phone on the bars), one of them filled. The
-	     filled one takes a clear border so it stands as tall as the rest. -->
-	<div
-		class="mt-4 flex flex-wrap items-start gap-3 [&_.btn-primary]:border [&_.btn-primary]:border-transparent"
-		data-testid="home-actions"
-	>
-		{#if headline}
-			<a href={headline.href} class="btn btn-primary btn-lg"
-				><Radio size={15} /> {headline.cta}</a
-			>
-		{/if}
-		{#if doors}
-			<RideDoors
-				onAlone={() => void goto('/ride?alone')}
-				lead={filled === 'door'}
-				class="min-w-0 flex-[1_1_100%] lg:flex-[1_1_32rem]"
-			/>
-		{:else}
-			<a href="/workouts" class="btn btn-lg max-sm:flex-1 {skin('solo')}"
-				><ChartColumn size={15} /> Ride solo</a
-			>
-		{/if}
-		{#if plannable.length > 1}
-			<!-- More than one crew to plan in: ask, never guess (#435). -->
-			<details class="relative max-sm:flex-1">
-				<summary
-					class="btn btn-secondary btn-lg w-full cursor-pointer list-none [&::-webkit-details-marker]:hidden"
-					><CalendarClock size={15} /> Plan a session</summary
+	     filled one takes a clear border so it stands as tall as the rest.
+	     The row is shared out, never left ragged: each door wide enough for
+	     its label on one line, the rest alike. Where the column is too narrow
+	     for that (a container query: the sidebar takes its share), two to a
+	     row, the doors a row of their own. -->
+	<div class="@container mt-4">
+		<div
+			class="grid grid-cols-2 items-start gap-3 @5xl:flex [&_.btn-primary]:border [&_.btn-primary]:border-transparent [&>*]:@5xl:flex-[3_1_0%]"
+			data-testid="home-actions"
+		>
+			{#if headline}
+				<a href={headline.href} class="btn btn-primary btn-lg col-span-2"
+					><Radio size={15} /> {headline.cta}</a
 				>
-				<ul class="panel absolute top-full left-0 z-20 mt-1 min-w-56 py-1">
-					{#each plannable as crew (crew.id)}
-						<li>
-							<a
-								href="/crew/{crew.id}/schedule?plan"
-								class="hover:bg-surface flex items-center gap-2 px-3 py-2 text-sm"
-							>
-								<MarkIcon icon={crew.icon} size={14} />
-								<span class="truncate">{crew.name}</span>
-							</a>
-						</li>
-					{/each}
-				</ul>
-			</details>
-		{:else if firstCrew}
-			<a
-				href="/crew/{firstCrew.id}/schedule?plan"
-				class="btn btn-secondary btn-lg max-sm:flex-1"
-				><CalendarClock size={15} /> Plan a session</a
-			>
-		{/if}
-		{#if ready}
-			<!-- Carrying an invite, the crew button is joining the crew that
+			{/if}
+			{#if doors}
+				<RideDoors
+					onAlone={() => void goto('/ride?alone')}
+					lead={filled === 'door'}
+					class="col-span-2 min-w-0 @5xl:!flex-[11_1_0%]"
+				/>
+			{:else}
+				<!-- The alone door, by the doors' own name, where there is no
+			     lounge to offer beside it. -->
+				<a href="/ride?alone" class="btn btn-lg {skin('solo')}"
+					><User size={15} /> Ride alone</a
+				>
+			{/if}
+			{#if plannable.length > 1}
+				<!-- More than one crew to plan in: ask, never guess (#435). -->
+				<details class="relative">
+					<summary
+						class="btn btn-secondary btn-lg w-full cursor-pointer list-none [&::-webkit-details-marker]:hidden"
+						><CalendarClock size={15} /> Plan a session</summary
+					>
+					<ul class="panel absolute top-full left-0 z-20 mt-1 min-w-56 py-1">
+						{#each plannable as crew (crew.id)}
+							<li>
+								<a
+									href="/crew/{crew.id}/schedule?plan"
+									class="hover:bg-surface flex items-center gap-2 px-3 py-2 text-sm"
+								>
+									<MarkIcon icon={crew.icon} size={14} />
+									<span class="truncate">{crew.name}</span>
+								</a>
+							</li>
+						{/each}
+					</ul>
+				</details>
+			{:else if firstCrew}
+				<a
+					href="/crew/{firstCrew.id}/schedule?plan"
+					class="btn btn-secondary btn-lg"
+					><CalendarClock size={15} /> Plan a session</a
+				>
+			{/if}
+			{#if ready}
+				<!-- Carrying an invite, the crew button is joining the crew that
 			     sent it (#2144, #2184); everyone else is offered the crew the
 			     signed-out landing promised, and joining is one step down the
 			     same sheet. Filled before the first crew (ADR-0010). -->
-			<button
-				onclick={() => (opening = true)}
-				class="btn btn-lg max-sm:flex-1 {skin('crew')}"
-				><Plus size={15} />
-				{joinFirst ? 'Join a crew' : 'Start a crew'}</button
-			>
-		{:else if !presence.error}
-			<!-- Not "start your first" before the list has said there is none
+				<button
+					onclick={() => (opening = true)}
+					class="btn btn-lg {skin('crew')}"
+					><Plus size={15} />
+					{joinFirst ? 'Join a crew' : 'Start a crew'}</button
+				>
+			{:else if !presence.error}
+				<!-- Not "start your first" before the list has said there is none
 			     (#2848): a rider with crews was one tap from founding a
 			     duplicate while it loaded, and after it failed — when the banner
 			     below says why. -->
-			<Skeleton class="h-11 w-36" />
-		{/if}
+				<Skeleton class="h-11" />
+			{/if}
+		</div>
 	</div>
 
 	<!-- Its steps read the crew list and the rides; before both have landed
@@ -362,10 +371,7 @@
 		>
 			<p class="eyebrow">level · trophies</p>
 			<p class="font-display text-2xl font-bold tabular-nums">{level}</p>
-			<!-- Muted: the tiles are numbers, and no tile wears an accent. -->
-			<div class="mt-1.5">
-				<ProgressBar pct={levelProgress(xp) * 100} fill="bg-muted" />
-			</div>
+			<div class="mt-1.5"><ProgressBar pct={levelProgress(xp) * 100} /></div>
 			<p class="text-muted mt-1 text-[11px] tabular-nums">
 				{toNext.toLocaleString()} XP to {level + 1}
 			</p>

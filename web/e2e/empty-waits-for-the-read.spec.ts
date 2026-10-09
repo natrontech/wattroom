@@ -44,7 +44,7 @@ test('Home offers no crew to start while the crew list is out, or after it faile
 		return refuse(route);
 	});
 	await page.goto('/home');
-	await expect(page.getByRole('link', { name: /Ride solo/ })).toBeVisible();
+	await expect(page.getByRole('link', { name: /Ride alone/ })).toBeVisible();
 	const start = page.getByRole('button', {
 		name: /^(Start a crew|Join a crew)$/,
 	});

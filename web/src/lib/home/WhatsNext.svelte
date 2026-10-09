@@ -170,8 +170,7 @@
 		>
 			<CalendarClock size={15} class="text-muted shrink-0" />
 			<span class="text-muted min-w-0 flex-1 text-xs">
-				Put all of this in your calendar app — one subscription, every crew you
-				are in.
+				One subscription puts every crew's sessions in your calendar app.
 			</span>
 			<span class="btn-link shrink-0 text-xs">Get your calendar link</span>
 		</a>
