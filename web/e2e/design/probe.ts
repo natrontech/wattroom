@@ -259,3 +259,48 @@ export async function sampleAt({
 		for (let j = 0; j < 3; j++) sum[j] += d[i + j];
 	return sum.map((v) => Math.round(v / (d.length / 4)));
 }
+
+/**
+ * The HUD's scale (#3857, TARGETS hud item 2), taken in the page: how tall the
+ * watts' numerals stand against the window, where the block sits in it (each
+ * edge as a percentage of the window's width or height), and every text's
+ * font size in vh, which SPEC's HUD column bounds.
+ */
+export function hudScale() {
+	const pct = (n: number, of: number) => Math.round((n / of) * 1000) / 10;
+	const block = document.querySelector('.hud');
+	const watts = document.querySelector('[data-testid=hud-watts]');
+	let numeralVh: number | null = null;
+	if (watts) {
+		const cs = getComputedStyle(watts);
+		const ctx = document.createElement('canvas').getContext('2d')!;
+		ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+		const m = ctx.measureText(watts.textContent ?? '');
+		numeralVh = pct(
+			m.actualBoundingBoxAscent + m.actualBoundingBoxDescent,
+			innerHeight,
+		);
+	}
+	const r = block?.getBoundingClientRect();
+	const texts = [...(block?.querySelectorAll('*') ?? [])]
+		.map((el) => ({
+			text: [...el.childNodes]
+				.filter((n) => n.nodeType === Node.TEXT_NODE)
+				.map((n) => n.textContent)
+				.join('')
+				.trim()
+				.slice(0, 24),
+			vh: pct(parseFloat(getComputedStyle(el).fontSize), innerHeight),
+		}))
+		.filter((t) => t.text);
+	return {
+		numeralVh,
+		block: r && {
+			x0: pct(r.left, innerWidth),
+			y0: pct(r.top, innerHeight),
+			x1: pct(r.right, innerWidth),
+			y1: pct(r.bottom, innerHeight),
+		},
+		texts,
+	};
+}

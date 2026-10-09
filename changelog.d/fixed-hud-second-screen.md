@@ -1,0 +1,1 @@
+- The HUD in a tab on a second screen centres its numbers as one block, with the watts about a quarter of the screen's height and the ride's clock as large as on the TV; a long road name wraps instead of being cut off.
