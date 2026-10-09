@@ -250,7 +250,7 @@
 	     row, the doors a row of their own. -->
 	<div class="@container mt-4">
 		<div
-			class="grid grid-cols-2 items-start gap-3 @5xl:flex [&_.btn-primary]:border [&_.btn-primary]:border-transparent [&>*]:@5xl:flex-[3_1_0%]"
+			class="grid grid-cols-2 items-start gap-3 @5xl:flex @5xl:gap-x-6 [&_.btn-primary]:border [&_.btn-primary]:border-transparent [&>*]:@5xl:flex-[3_1_0%]"
 			data-testid="home-actions"
 		>
 			{#if headline}
@@ -413,7 +413,7 @@
 	</section>
 
 	{#if !ready}
-		<div class="mt-8 grid gap-8 xl:grid-cols-2">
+		<div class="mt-6 grid gap-8 xl:grid-cols-2">
 			{#each { length: 2 } as _, i (i)}
 				<div class="border-frame rounded-lg border px-5 py-4">
 					<Skeleton class="h-4 w-48" />
@@ -425,7 +425,7 @@
 		<!-- Two equal columns on a wide screen (#417, #3688): what is planned
 		     on the left; who is around, then what you rode, on the right. One
 		     column below xl, in that order. -->
-		<div class="mt-8 grid gap-8 xl:grid-cols-2">
+		<div class="mt-6 grid gap-8 xl:grid-cols-2">
 			<!-- What's next: every planned session, across every crew you are
 			     in (ADR-0020 — /sessions retired into this). Planning and saying
 			     you are in both happen on the Schedule of the crew whose session

@@ -108,7 +108,9 @@
 		{#snippet alonePanel()}
 			<div>
 				{@render aloneDoor(!loungeFirst)}
-				<p class="text-muted mt-1.5 text-xs">Nobody sees this ride live.</p>
+				<p class="text-muted mt-1.5 text-xs text-pretty">
+					Nobody sees this ride live.
+				</p>
 			</div>
 		{/snippet}
 		{#snippet loungePanel(name: string)}
@@ -119,7 +121,10 @@
 					data-testid="ride-in-lounge"
 					><Users size={18} /> Ride in {name}, your crew can drop in</button
 				>
-				<p class="text-muted mt-1.5 text-xs" data-testid="lounge-now">
+				<p
+					class="text-muted mt-1.5 text-xs text-pretty"
+					data-testid="lounge-now"
+				>
 					{#if others.length > 0}
 						{others.map((o) => o.name).join(', ')}
 						{others.length === 1 ? 'is' : 'are'} there now.
@@ -155,6 +160,6 @@
 			</label>
 		{/if}
 		<!-- Said once, in the words every surface uses (#2824). -->
-		<p class="text-muted-dim mt-3 text-[11px]">{liveNumbersLine}</p>
+		<p class="text-muted-dim mt-3 text-[11px] text-pretty">{liveNumbersLine}</p>
 	{/if}
 </section>
