@@ -47,12 +47,15 @@
 	// (TARGETS G1): a rider a game put out uses it on the bike, so its words
 	// take riding size through the `ride-stage:` variant (#3890, #3882).
 	const riding = $derived(!!channelConnection.current?.riding());
-	// The newest few, and only those this client can put into words; fewer
-	// on a ride, where each is a 24 px line.
+	// The newest few, and only those this client can put into words. Not on
+	// a ride: a riding surface says nothing but labels, numbers and canon's
+	// status lines (TARGETS G4), and the stage must fit the deck in view.
 	const events = $derived(
-		(channelConnection.current?.live.channelEvents ?? [])
-			.filter((event) => eventText(event))
-			.slice(riding ? -3 : -8),
+		riding
+			? []
+			: (channelConnection.current?.live.channelEvents ?? [])
+					.filter((event) => eventText(event))
+					.slice(-8),
 	);
 	const av = $derived(channelConnection.current?.av);
 	const isOwner = $derived(channel.myRole === 'owner');
@@ -324,7 +327,7 @@
 		{/if}
 		<button
 			onclick={() => channel.openTv()}
-			class="btn btn-ghost btn-xs ride-stage:btn-lg ride-stage:ride-word {channel
+			class="btn btn-ghost btn-xs ride-stage:min-h-11 ride-stage:ride-word {channel
 				.stageSources.length
 				? ''
 				: 'ml-auto'}"><MonitorUp size={13} /> TV</button
@@ -465,7 +468,7 @@
 		     they are about — the last few, newest last, never persisted. -->
 		<section class="mt-4" aria-label="what happened here">
 			{#each events as event (`${event.at}-${event.verb}-${event.actor ?? ''}`)}
-				<EventLine {event} class="ride-stage:ride-word" />
+				<EventLine {event} />
 			{/each}
 		</section>
 	{/if}

@@ -612,7 +612,7 @@ body {
  * line's, a name (TARGETS G4). 24 px from `sm`; a phone has no SPEC size row
  * yet (D1), so there it steps down and may wrap rather than scroll (G5). */
 @utility ride-word {
-	@apply text-xl sm:text-2xl;
+	@apply text-xl leading-7 sm:text-2xl sm:leading-7;
 }
 /* The voice channel's stage while a ride runs (TARGETS G1, #3890): the Lounge
  * marks its root, and the components it shares with desk pages take riding

@@ -170,7 +170,7 @@
 
 	<!-- Name and voice state, top-left; kept off the power bar's edge. -->
 	<div
-		class="absolute top-2 left-2.5 flex max-w-[62%] items-center gap-1.5"
+		class="absolute top-2 left-2.5 flex max-w-[62%] items-center gap-1.5 @max-[12rem]:max-w-[calc(100%-5rem)]"
 		data-testid="tile-name"
 	>
 		<span
@@ -188,7 +188,7 @@
 		{/if}
 		{#if rider.coach}
 			<span
-				class="{MARK_SURFACE} ride-stage:@[18rem]:text-2xl rounded-full px-1.5 py-0.5 text-[9px]"
+				class="{MARK_SURFACE} ride-stage:@[18rem]:text-2xl rounded-full px-1.5 py-0.5 text-[9px] @max-[12rem]:hidden"
 				>coach</span
 			>
 		{/if}
