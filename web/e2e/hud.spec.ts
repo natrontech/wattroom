@@ -132,7 +132,7 @@ test('the HUD fills a second screen as one centred block', async ({
 			target: 0,
 			remaining: 0,
 			elapsed: 480,
-			label: 'Free ride · Corridor switchbacks',
+			label: 'Free ride · Corridor loop',
 			road: {
 				grade: 8.94,
 				km: 12.4,

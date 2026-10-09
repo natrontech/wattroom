@@ -206,28 +206,27 @@
 	   at 11cqh the watts' numerals stand about a quarter of it tall and every
 	   word meets SPEC's HUD column (docs/SPEC.md, "The bike computer"). The
 	   shell's 2.4 : 1 proportion would bind on the width of any ordinary
-	   screen, so here the block is as wide as its rows, at least 12em, and
-	   the cave centres it as one unit. 14em holds the widest row (four-digit
-	   watts beside a four-digit target), so a narrower window shrinks the
-	   block whole rather than clip it. */
+	   screen, so here the block is as wide as its numbers, at least 12em, and
+	   the cave centres it as one unit; every state shares that left edge.
+	   14em holds the widest row (four-digit watts beside a four-digit
+	   target), so a narrower window shrinks the block whole, never clips it. */
 	@container (min-width: 480px) and (min-height: 200px) {
 		.hud {
 			font-size: min(11cqh, 100cqw / 14);
 			width: auto;
+			min-width: 12em;
 			height: auto;
 			padding: 0;
 		}
 		/* Leading of one: the clock's line box would otherwise carry its
 		   half-leading above the label, and the block would sit low. */
 		.rows {
-			min-width: 12em;
 			line-height: 1;
 		}
-		/* A word at SPEC's size, not the shell's: the eyebrow keeps the
-		   block's width for the numbers, and a road's name wraps onto a
-		   second line rather than vanish into an ellipsis. */
+		/* The label keeps the shell's share of the block; a road's name that
+		   outgrows the width the numbers set wraps onto a second line rather
+		   than vanish into an ellipsis. */
 		.label {
-			font-size: max(0.375em, 3cqh);
 			line-height: 1.25;
 			display: -webkit-box;
 			-webkit-box-orient: vertical;
