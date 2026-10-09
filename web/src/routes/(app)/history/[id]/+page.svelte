@@ -14,7 +14,9 @@
 	import { cardLabel, downloadRideCard } from '$lib/ride/card';
 	import { deleteRideAfterConfirm } from '$lib/ride/delete-ride';
 	import { fetchRide, type RideDetail } from '$lib/ride/detail';
-	import { ridePlace } from '$lib/ride/list';
+	import { ridePlace, rideTitle } from '$lib/ride/list';
+	import { rideBackLink } from '$lib/back-link';
+	import { bestQuery } from '$lib/ride/compare';
 	import RideComparison from '$lib/ride/RideComparison.svelte';
 	import RideSkyline from '$lib/ride/RideSkyline.svelte';
 	import type { RideRecord } from '$lib/history.svelte';
@@ -37,6 +39,12 @@
 
 	const id = $derived(page.params.id ?? '');
 	let ride = $state<RideDetail | null>(null);
+	// Flows rules 2 and 4 (#3874): a ride on the rider's own road is named as
+	// its route page is, and goes back to the page that opened it.
+	const back = $derived(
+		rideBackLink(page.url.searchParams.get('back'), ride?.road),
+	);
+	const title = $derived(ride ? rideTitle(ride) : null);
 	let error = $state<string | null>(null);
 	// A ride that is not yours reads as absent, and retrying will not find it —
 	// so it gets the empty state, not the error-with-retry one.
@@ -63,9 +71,8 @@
 	let progression = $state<Progression | null>(null);
 	function loadRides() {
 		ridesError = null;
-		void api<{ ride: RideRecord | null }>(
-			`/api/rides/best?workout=${encodeURIComponent(ride?.workoutName ?? '')}&except=${encodeURIComponent(id)}`,
-		).then((res) => {
+		if (!ride) return;
+		void api<{ ride: RideRecord | null }>(bestQuery(ride)).then((res) => {
 			if (res.ok) {
 				best = res.data.ride;
 				bestLoaded = true;
@@ -182,16 +189,15 @@
 	);
 </script>
 
-<svelte:head
-	><title>{ride?.workoutName ?? 'Ride'} · Rides · WattRoom</title></svelte:head
->
+<svelte:head><title>{title ?? 'Ride'} · Rides · WattRoom</title></svelte:head>
 
 <main class="page">
 	<a
-		href="/history"
+		href={back.href}
 		class="text-muted hover:text-ink link-standalone gap-1.5 text-xs"
 	>
-		<ArrowLeft size={14} /> Rides
+		<ArrowLeft size={14} />
+		{back.label}
 	</a>
 
 	{#if missing}
@@ -234,7 +240,7 @@
 		<header class="mt-4 flex flex-wrap items-end gap-x-4 gap-y-2">
 			<div>
 				<h1 class="page-title-sm leading-tight">
-					{ride.workoutName}
+					{title}
 				</h1>
 				<p class="text-muted mt-0.5 text-xs">
 					{new Date(ride.startedAt).toLocaleString()} · {formatDuration(

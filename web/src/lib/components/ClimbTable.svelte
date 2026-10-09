@@ -1,6 +1,8 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import { formatClockLong, formatKm } from '$lib/format';
 	import type { ClimbBest } from '$lib/road/attempts';
+	import { withBack } from '$lib/back-link';
 	import { classedOf, type Climb } from '$lib/road/climbs';
 
 	/**
@@ -74,8 +76,12 @@
 						{#if withBests}
 							<td class="font-display py-2 text-right tabular-nums">
 								{#if best}
-									<a href="/history/{best.rideId}" class="hover:underline"
-										>{formatClockLong(best.seconds)}</a
+									<a
+										href={withBack(
+											`/history/${best.rideId}`,
+											page.url.pathname + page.url.search,
+										)}
+										class="hover:underline">{formatClockLong(best.seconds)}</a
 									>
 								{:else if bests}
 									<span class="text-muted">—</span>

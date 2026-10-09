@@ -511,7 +511,7 @@ Capture: a simulated ride of ≥ 65 s, then End ride; as a workout ride, a road 
 
 #### ride-detail
 
-Capture: `/history/<seeded id>`, desk and phone; a crew session's ride on a road, ridden past its minute (`ride-detail-session-road`, desk). Target: v2-summary.
+Capture: `/history/<seeded id>`, desk and phone; a crew session's ride on a road, ridden past its minute, as the road's owner sees theirs (`ride-detail-session-road`, desk) and as the other rider sees theirs (`ride-detail-session-road-rider`, desk: the generated name, G10). Target: v2-summary.
 
 1. Header is the closing card's `RecapHeader`. [ride-page]
 2. Actions one row: Share, “Download the poster”, Export, a separator, Delete last in danger; Delete also last in the context menu. [ride-page]
