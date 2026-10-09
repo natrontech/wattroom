@@ -449,7 +449,7 @@ Capture: `/workouts/edit`, a fresh sheet on its one steady block, the bands fold
 
 1. The page fills the content column, no max-width, never centred; every section's left edge on the title's.
 2. On a phone the sheet stacks before the library; nothing scrolls sideways. [probe:overflowX]
-3. The cadence and heart-rate bands fold is ≥ 24 px tall, at 375 px too. [#3906] [test:tap-targets.spec.ts]
+3. The cadence and heart-rate bands fold [#3906] and Discard [#3919] are ≥ 24 px tall, at 375 px too. [probe:minTarget] [test:tap-targets.spec.ts]
 
 #### route, phone-route
 
