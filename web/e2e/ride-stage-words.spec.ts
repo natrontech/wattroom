@@ -37,7 +37,9 @@ test("a voice channel's stage words are riding size while its session runs", asy
 	await picker.getByRole('button', { name: 'Start without a trainer' }).click();
 	await page.waitForURL(`/crew/${opened.crew}/s/**`, { timeout: 30_000 });
 
-	// The count-in is a ride's start: from there the stage is ridden.
+	// Back beside the ride, on the channel's own page: from the count-in on
+	// its stage is ridden.
+	await page.goto(voicePath(opened));
 	const stage = page.locator('[data-ride-stage]');
 	await expect(stage).toBeVisible({ timeout: 30_000 });
 	await expect(

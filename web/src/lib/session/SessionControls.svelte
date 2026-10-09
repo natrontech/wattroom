@@ -140,7 +140,7 @@
 					disabled={!!channel.sprint}
 					title={channel.sprint ? 'A sprint is already running' : 'Sprint'}
 					aria-label="arm a sprint"
-					class="text-ink hover:bg-neon/10 flex items-center justify-center gap-1.5 rounded text-sm disabled:opacity-40 {compact
+					class="text-ink hover:bg-neon/10 ride-stage:ride-word flex items-center justify-center gap-1.5 rounded text-sm disabled:opacity-40 {compact
 						? 'h-11 w-11'
 						: 'min-h-11 px-4'}"
 					><Zap
