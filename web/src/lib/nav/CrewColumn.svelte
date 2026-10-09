@@ -274,12 +274,14 @@
 					<!-- What is running, how far in, how many (ADR-0020's radar):
 					     the bars carry the watt, the words stay chrome (#1965).
 					     And the way in from anywhere in the crew (#2450): the
-					     session's own page, which joins no voice by itself. -->
+					     session's own page, which joins no voice by itself. One
+					     line on a 24 px floor (#3895), running to the row's edge
+					     before its ellipsis takes over. -->
 					<a
 						{href}
 						aria-current={on ? 'page' : undefined}
 						title="join the ride"
-						class="flex min-h-11 items-center gap-1.5 rounded px-2 py-1 pl-8 text-[10px] md:min-h-6 {on
+						class="flex min-h-11 items-center gap-1 rounded py-1 pr-0 pl-8 text-[10px] md:min-h-6 {on
 							? 'bg-ink/10 text-ink'
 							: 'text-ink/85 hover:bg-ink/5 hover:text-ink'}"
 					>
