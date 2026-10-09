@@ -66,6 +66,13 @@ describe('sessionLine', () => {
 			'Sweet Spot 2×20 · starting · Sven coaching · 4 riding',
 		);
 	});
+	// The stored road's km is not the cut a session rides; slot 1's road line
+	// has that one (#3932).
+	it('says a generated road name as Road', () => {
+		expect(
+			sessionLine({ ...session, workout: 'Road · 7.1 km · 571 m' }),
+		).toBe('Road · 12 min · Sven coaching · 4 riding');
+	});
 	// A paused session's clock stands still; "12 min" read as running.
 	it('says paused while it is', () => {
 		expect(sessionLine({ ...session, phase: 'paused' })).toBe(
