@@ -219,12 +219,14 @@
 		</div>
 	{/if}
 
+	<!-- Under 12rem (a phone's two-up grid) the seat is too short for an avatar
+	     between the coach chip and the stat line: it sits bottom-left (#3768). -->
 	<!-- The seat's centre is the person, not the brand: the same avatar the
 	     roster and the sidebar strip draw (#253), with its level ring — a
 	     WattRoom mark on every camera-off tile said nothing about who was in
 	     the chair. Over the camera it steps aside; the away word does not. -->
 	<div
-		class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1.5"
+		class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1.5 @max-[12rem]:items-start @max-[12rem]:justify-end @max-[12rem]:pb-3 @max-[12rem]:pl-2.5"
 	>
 		{#if !rider.cameraOn}
 			<Avatar
