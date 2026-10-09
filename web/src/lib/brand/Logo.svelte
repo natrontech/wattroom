@@ -4,10 +4,9 @@
 	 * literally an interval graph. `live` sets the bars breathing — the mark
 	 * doubles as the quietest possible "a session is running" indicator.
 	 *
-	 * Spans, not SVG, and the glow on each bar, never on the mark (#2998): a
-	 * filter over animated content is blurred again on every frame, and an
-	 * SVG transform animation is not reliably composited. As spans, each bar
-	 * and its halo are drawn once and the compositor only scales them.
+	 * Spans, not SVG (#2998): an SVG transform animation is not reliably
+	 * composited, while each span bar is drawn once and the compositor only
+	 * scales it. Neon, never watt, and no glow: chrome (ADR-0005).
 	 */
 	let {
 		size = 32,
@@ -28,12 +27,12 @@
 	<span
 		role="img"
 		aria-label="WattRoom"
-		class="text-watt relative shrink-0 {live ? 'live' : ''}"
+		class="text-neon relative shrink-0 {live ? 'live' : ''}"
 		style="width: {size}px; height: {size}px"
 	>
 		{#each bars as bar, i (bar.left)}
 			<span
-				class="bar absolute rounded-full {live ? 'glow-stroke' : ''}"
+				class="bar absolute rounded-full"
 				style="left: {bar.left}; top: {bar.top}; width: {unit(
 					8,
 				)}; height: {bar.height}; --i: {i}"
@@ -50,7 +49,7 @@
 
 <style>
 	.bar {
-		background: linear-gradient(var(--color-watt), var(--color-neon));
+		background: var(--color-neon);
 	}
 	/* app.css's stepped `equalizer` (#3199). */
 	.live .bar {
