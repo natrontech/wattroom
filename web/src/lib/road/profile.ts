@@ -177,6 +177,15 @@ export function roadName(lengthM: number, gainM: number): string {
 }
 export const ROAD_NAME = 'Road';
 
+/**
+ * A ride's name where slot 1's road line is on screen or a session rides the
+ * crew's cut (D17, #3932): a generated road name is its numbers, and those
+ * belong to the road line, so it reads "Road". Any other name stands.
+ */
+export function rideName(name: string): string {
+	return name.startsWith(`${ROAD_NAME} · `) ? ROAD_NAME : name;
+}
+
 /** A stretch of road as a rider reads it: `52.9 km · 1,312 m`. */
 export function kmAndClimb(lengthM: number, gainM: number): string {
 	const km = (lengthM / 1000).toFixed(1);
