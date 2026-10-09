@@ -1,0 +1,1 @@
+- The jukebox's search field reads "Search or paste a link…" in full, and the workout editor's cadence and heart-rate bands toggle is easier to hit.

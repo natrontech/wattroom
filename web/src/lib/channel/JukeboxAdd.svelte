@@ -191,7 +191,7 @@
 	<input
 		value={text}
 		oninput={(e) => search(e.currentTarget.value)}
-		placeholder="Search your library, or paste a link…"
+		placeholder="Search or paste a link…"
 		class="input input-xs min-w-0 flex-1"
 		aria-label="add music: search your library, or paste a YouTube link"
 	/>
