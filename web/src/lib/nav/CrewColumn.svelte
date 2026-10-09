@@ -279,12 +279,12 @@
 						{href}
 						aria-current={on ? 'page' : undefined}
 						title="join the ride"
-						class="flex min-h-11 items-center gap-1.5 truncate rounded px-2 pb-1 pl-8 text-[10px] md:min-h-0 {on
+						class="flex min-h-11 items-center gap-1.5 rounded px-2 py-1 pl-8 text-[10px] md:min-h-6 {on
 							? 'bg-ink/10 text-ink'
 							: 'text-ink/85 hover:bg-ink/5 hover:text-ink'}"
 					>
 						<RidingBars size={9} />
-						{sessionLine(c.session)}
+						<span class="truncate">{sessionLine(c.session)}</span>
 					</a>
 				{/if}
 				<VoiceOccupants channel={c} {open} {mover} />
