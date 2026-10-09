@@ -3,7 +3,8 @@
 // the scene budget measures exactly what scene.ts would draw.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { createBunch, MOST_ABREAST, type Car } from './bunch';
+import { createBunch, type Car } from './bunch';
+import { MOST_ABREAST } from './lanes';
 import { CHEER_S, cheerLook } from './cheer';
 import { makeChalk, type ChalkLayer } from './chalk';
 import { makeGameRoad, type GameRoad } from './game-road';

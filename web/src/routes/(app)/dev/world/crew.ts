@@ -1,4 +1,4 @@
-import { MOST_ABREAST } from '$lib/world/bunch';
+import { MOST_ABREAST } from '$lib/world/lanes';
 import { bunchLooks, seededLoadout } from '$lib/world/loadout';
 import { simRider, type SimRider } from '$lib/world/sim';
 

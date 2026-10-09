@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { perceptualDistance } from '$lib/color';
-import { MOST_ABREAST, formation } from './bunch';
+import { formation } from './bunch';
+import { MOST_ABREAST } from './lanes';
 import { bunchLooks, hexOf, JERSEY_BAND, seededLoadout } from './loadout';
 import { prng } from './rand';
 
