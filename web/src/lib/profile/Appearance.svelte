@@ -29,16 +29,18 @@
 	// One label column, so every row's first control starts at the same x; on a
 	// phone the label sits above its row, which a column would wrap. The hint
 	// sits right of the controls on a desk and below them on a phone.
-	const ROW =
-		'mt-5 grid items-baseline gap-x-3 gap-y-2 sm:grid-cols-[4.5rem_1fr]';
+	const COLUMNS = 'sm:grid-cols-[4.5rem_1fr] gap-x-3';
+	const ROW = `mt-5 grid items-baseline gap-y-2 ${COLUMNS}`;
 	const HINT = 'text-muted basis-full text-xs lg:basis-auto';
 </script>
 
 <!-- Full theme (#331, ADR-0005 amended): every colour moves together. -->
 <section class="panel panel-xl mt-8">
 	<h2 class="font-display font-bold">Appearance</h2>
-	<div class="mt-4">
-		<PalettePicker />
+	<div class="mt-4 grid {COLUMNS}">
+		<div class="sm:col-start-2">
+			<PalettePicker />
+		</div>
 	</div>
 	<!-- The scheme toggle lived on the room rail until ADR-0020 retired it
 	     (#326): auto follows the OS, the ride is always dark. -->

@@ -1,0 +1,1 @@
+- Appearance in settings lines its theme cards up with the scheme and road buttons, so every row starts at the same place.
