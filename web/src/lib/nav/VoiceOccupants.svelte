@@ -13,6 +13,7 @@
 	import { railPeople } from './rail-people';
 	import type { VoiceMover } from './voice-mover.svelte';
 	import { enter, exit, reorder } from '$lib/motion/transitions';
+	import { CAVE_MARK, CAVE_WORDS } from './cave-sizes';
 
 	let {
 		channel,
@@ -44,7 +45,7 @@
 				class:landed={mover.landed(channel, o)}
 				class:opacity-40={mover.dragging?.rider === o.id}
 				class:opacity-60={mover.inFlight(o.id)}
-				class="text-muted flex items-center gap-1.5 rounded px-2 py-0.5 pl-8 text-xs transition-opacity duration-(--dur-quick) motion-reduce:transition-none {grab.draggable
+				class="text-muted flex items-center gap-1.5 rounded px-2 py-0.5 pl-8 text-xs {CAVE_WORDS} transition-opacity duration-(--dur-quick) motion-reduce:transition-none {grab.draggable
 					? 'cursor-grab active:cursor-grabbing'
 					: ''}"
 			>
@@ -55,16 +56,20 @@
 				<span class="text-muted-dim min-w-0 flex-1 truncate">
 					<StatusMark line={o.statusLine} size={11} text />
 				</span>
-				{#if o.away}<Away size={11} class="shrink-0" aria-label="away" />{/if}
+				{#if o.away}<Away
+						size={11}
+						class="shrink-0 {CAVE_MARK}"
+						aria-label="away"
+					/>{/if}
 				{#if o.riding}<RidingBars size={9} />{/if}
 				{#if o.camera}<Video
 						size={11}
-						class="shrink-0"
+						class="shrink-0 {CAVE_MARK}"
 						aria-label="camera on"
 					/>{/if}
 				{#if o.voice}<Headphones
 						size={11}
-						class="shrink-0"
+						class="shrink-0 {CAVE_MARK}"
 						aria-label="in voice"
 					/>{/if}
 			</li>
@@ -76,11 +81,11 @@
 	     the line's the whole list. Drawn even while empty, so the last name
 	     out can still glide away. -->
 	<p
-		class="text-muted-dim flex items-center gap-1 truncate px-2 pl-8 text-[10px] {list.length
+		class="text-muted-dim flex items-center gap-1 truncate px-2 pl-8 text-[10px] {CAVE_WORDS} {list.length
 			? 'pb-1'
 			: ''}"
 	>
-		{#if inVoice}<Headphones size={9} class="shrink-0" />{/if}
+		{#if inVoice}<Headphones size={9} class="shrink-0 {CAVE_MARK}" />{/if}
 		<span class="flex min-w-0 items-center truncate" title={people.label}>
 			{#each list.slice(0, people.shown.length) as o, i (o.id)}
 				<span
