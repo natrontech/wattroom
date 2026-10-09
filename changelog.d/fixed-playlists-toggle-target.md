@@ -1,0 +1,1 @@
+- The jukebox's Playlists and Just played toggles are big enough to hit with a thumb or a fingertip.

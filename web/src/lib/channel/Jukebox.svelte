@@ -196,7 +196,7 @@
 
 	{#if history.length}
 		<details class="min-w-0">
-			<summary class="eyebrow cursor-pointer select-none"
+			<summary class="eyebrow cursor-pointer py-2 select-none"
 				>just played · {history.length}</summary
 			>
 			<ul class="mt-1.5 flex flex-col gap-1.5">
