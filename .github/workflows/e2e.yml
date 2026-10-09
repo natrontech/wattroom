@@ -74,7 +74,7 @@ jobs:
             plan+="{\"shard\":\"$i\",\"args\":\"--shard=$i/$n --grep-invert=@world\"},"
           done
           if [ "$world" = true ]; then
-            plan+='{"shard":"world","args":"--grep=@world --workers=1"},'
+            plan+='{"shard":"world","args":"--grep=@world --workers=2 --retries=0"},'
           fi
           echo "plan={\"include\":[${plan%,}]}" | tee -a "$GITHUB_OUTPUT"
 
