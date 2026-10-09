@@ -43,6 +43,13 @@ export const PHONE: BrowserContextOptions = {
 	viewport: { width: 375, height: 812 },
 	deviceScaleFactor: 1,
 };
+// A phone that rides (#3854): Chrome on Android, which a Pixel 5 runs, has
+// Web Bluetooth, and a phone with it is no spectator (device.svelte.ts;
+// ADR-0066: "A phone with Web Bluetooth rides"). PHONE stays the phone that
+// cannot, the one a Watch view is for. Headless Chromium on Linux lacks the
+// API, so this profile is lent its presence (`lendBluetooth`); every ride
+// here is the simulated trainer's, and nothing pairs through it.
+export const RIDING_PHONE: BrowserContextOptions = { ...PHONE };
 export const DESK_720: BrowserContextOptions = {
 	viewport: { width: 1280, height: 720 },
 };
@@ -61,7 +68,11 @@ const named = (variant: string) =>
 	ONLY.some((id) => new RegExp(`(^|-)${variant}(-|$)`).test(id));
 const VARIANT = { tv: named('tv'), phone: named('phone') };
 export const takes = (device: BrowserContextOptions) =>
-	device === TV ? VARIANT.tv : device === PHONE ? VARIANT.phone : true;
+	device === TV
+		? VARIANT.tv
+		: device === PHONE || device === RIDING_PHONE
+			? VARIANT.phone
+			: true;
 /** The rows of a recipe's device list this run takes. */
 export const variants = <
 	T extends readonly [BrowserContextOptions, ...unknown[]],
@@ -141,6 +152,7 @@ export class Shoot {
 			},
 			[MUTED, world ?? null] as const,
 		);
+		if (device === RIDING_PHONE) await ctx.addInitScript(lendBluetooth);
 		const page = await ctx.newPage();
 		page.on('dialog', (d) => void d.accept());
 		const errors: string[] = [];
@@ -217,6 +229,25 @@ export class Shoot {
 		for (const stale of [`FAILED-${this.id}.png`, `FAILED-${this.id}.txt`])
 			await rm(join(this.out, stale), { force: true });
 	}
+}
+
+/**
+ * Web Bluetooth where the browser has none, for RIDING_PHONE: the app asks
+ * only whether it exists until a rider pairs, and a chooser opened here is
+ * dismissed, as a rider would dismiss it.
+ */
+function lendBluetooth() {
+	if ('bluetooth' in navigator) return;
+	const bluetooth = {
+		requestDevice: () =>
+			Promise.reject(
+				new DOMException('User cancelled the chooser.', 'NotFoundError'),
+			),
+	};
+	Object.defineProperty(Navigator.prototype, 'bluetooth', {
+		get: () => bluetooth,
+		configurable: true,
+	});
 }
 
 /**

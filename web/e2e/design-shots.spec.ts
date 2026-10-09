@@ -24,6 +24,7 @@ import {
 	OUT,
 	PHONE,
 	RIDE_SECOND,
+	RIDING_PHONE,
 	SCHEMES,
 	Shoot,
 	TV,
@@ -333,7 +334,7 @@ surface(
 surface(
 	'phone-ride',
 	async (s) => {
-		const o = await s.open(PHONE, { world: true });
+		const o = await s.open(RIDING_PHONE, { world: true });
 		await ride(o.page, '/ride?w=openers');
 		await assertRiding(o.page);
 		await s.shot(o);
@@ -345,7 +346,7 @@ surface('phone-ride-road-flat', async (s) => {
 	// phone-ride-road's recipe with the world off: the world on a free ride's
 	// road is #3663's, and its other items — the road line, the CLIMB page,
 	// the Skyline — do not wait for it.
-	const o = await s.open(PHONE, { world: false });
+	const o = await s.open(RIDING_PHONE, { world: false });
 	const road = await fixtureRoad(o.page, 'hairpin');
 	await ride(o.page, `/ride?road=${road}`);
 	await assertRiding(o.page);
@@ -1053,11 +1054,9 @@ surface('closing-card', async (s) => {
 	await o.page.waitForURL(/\/history\//);
 	await o.page.waitForTimeout(2500);
 	await s.shot(o, { name: 'flow-f2-4-ride-page', full: true });
-	// The phone last: its profile is a spectator that is offered no simulated
-	// trainer (#3854), and a failed shot ends the surface.
 	for (const [device, name, reducedMotion] of variants([
 		[DESK, 'closing-card-reduced', 'reduce'],
-		[PHONE, 'closing-card-phone', undefined],
+		[RIDING_PHONE, 'closing-card-phone', undefined],
 	] as const)) {
 		const other = await s.open(device, { world: false, reducedMotion });
 		await rideToTheCard(other);
