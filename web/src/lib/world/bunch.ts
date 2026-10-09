@@ -39,6 +39,8 @@ const CAR_SIDE_M = 1.4;
 export function lanesFor(n: number): number {
 	return n <= 6 ? 3 : n <= 12 ? 4 : 5;
 }
+/** The most riders a row seats side by side, however big the bunch. */
+export const MOST_ABREAST = lanesFor(Infinity);
 
 /** Where a rider sits in the bunch: metres left of the road's middle, and metres ahead of its centre. */
 export type Slot = { lane: number; ahead: number };

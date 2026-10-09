@@ -3,12 +3,13 @@
 // the scene budget measures exactly what scene.ts would draw.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { createBunch, type Car } from './bunch';
+import { createBunch, MOST_ABREAST, type Car } from './bunch';
 import { CHEER_S, cheerLook } from './cheer';
 import { makeChalk, type ChalkLayer } from './chalk';
 import { makeGameRoad, type GameRoad } from './game-road';
 import { roadsideSound } from '$lib/roadside';
 import { makeCrew, RING_BAND_M, type Crew, type Pedalling } from './crew';
+import { bunchLooks, type Loadout } from './loadout';
 import { makeTags, type Tags } from './tags';
 import type { BunchView } from '$lib/channel/bunch-view';
 import { DEFAULT_DARK_ID, themeById } from '$lib/themes';
@@ -127,6 +128,9 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	const bunch = opts.bunch ? createBunch() : null;
 	// The bunch's riders by id, so a figure keeps its legs from frame to frame.
 	const crewmates = new Map<string, SimRider>();
+	// What each of them wears, spread over the bunch in its join order (#3791); worked out again only when that order changes.
+	let looks = new Map<string, Loadout>();
+	let lookedAt = '';
 	let car: Car | null = null;
 	// Cheers for one rider (#3116): when each was heard, on the ride's own clock.
 	const cheered = new Map<string, number>();
@@ -288,6 +292,14 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 				if (clock - at >= CHEER_S) cheered.delete(id);
 			for (const id of view.cheered) cheered.set(id, clock);
 		}
+		const order = view.order.join('\n');
+		if (order !== lookedAt) {
+			lookedAt = order;
+			looks = bunchLooks(
+				view.order.map((id) => ({ id })),
+				MOST_ABREAST,
+			);
+		}
 		const placed = new Set<string>();
 		for (const p of out.riders) {
 			placed.add(p.id);
@@ -317,6 +329,8 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 				stopped: stands?.has(p.id) ?? false,
 				speaking: !!who?.speaking,
 				level: who?.level,
+				// One leaving keeps their look while they dither out.
+				look: looks.get(p.id) ?? r.look,
 				// A live zone where you may see their numbers (ADR-0059): a session's
 				// riders in your channel, unless a game hides the meter; never a faded one.
 				ring: !view.meterHidden && !p.faded,

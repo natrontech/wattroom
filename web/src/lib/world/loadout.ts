@@ -46,8 +46,30 @@ const CLOTH = KIT_COLOURS.filter((id) => {
 	);
 });
 
+/**
+ * Jerseys nearer than this read as one colour from the chase camera (#3791):
+ * lime and sun, enzian and alpine. It is the widest band the palette can
+ * always keep a jersey clear of four others: as many as a five-lane row seats
+ * ahead of you.
+ */
+export const JERSEY_BAND = 0.16;
+const clearOf = (jersey: string, worn: readonly string[]) =>
+	worn.every(
+		(w) => perceptualDistance(hexOf.get(jersey)!, hexOf.get(w)!) > JERSEY_BAND,
+	);
+
 /** A look for a rider who has chosen none: seeded from their id, so every screen dresses them alike. */
 export function seededLoadout(id: string): Loadout {
+	return seeded(id, [], 1);
+}
+
+/**
+ * A seeded look whose jersey keeps clear of `worn`, the jerseys of everyone
+ * who joined before: of all of them where the palette allows, and always of
+ * the `abreast - 1` just before, whom a row can seat beside it. A jersey
+ * already clear is kept, so with nobody before it this is the rider's own look.
+ */
+function seeded(id: string, worn: readonly string[], abreast: number): Loadout {
 	const r = prng(fnv(id, 0x9e3779b9));
 	const pick = <T>(xs: readonly T[]) => xs[Math.floor(r() * xs.length)];
 	const apart = (than: string, from = CLOTH) =>
@@ -56,7 +78,15 @@ export function seededLoadout(id: string): Loadout {
 				(c) => perceptualDistance(hexOf.get(c)!, hexOf.get(than)!) > 0.18,
 			),
 		);
-	const a = pick(CLOTH);
+	let a = pick(CLOTH);
+	for (const before of [worn, worn.slice(Math.max(0, worn.length - abreast + 1))]) {
+		if (clearOf(a, before)) break;
+		const free = CLOTH.filter((c) => clearOf(c, before));
+		if (free.length) {
+			a = pick(free);
+			break;
+		}
+	}
 	const b = apart(a);
 	return {
 		...STARTER,
@@ -78,4 +108,29 @@ export function seededLoadout(id: string): Loadout {
 			decal: b,
 		},
 	};
+}
+
+/** Who rides a road together, in the order they joined, and the look they chose, if any. */
+export type Wearer = { id: string; look?: Loadout };
+
+/**
+ * Everyone's look on a road together (#3791): a chosen look as chosen, and a
+ * seeded one clear of the jerseys ridden by those who joined before. Read in
+ * the join order every screen shares, it dresses everyone alike on every
+ * screen, and a rider joining never changes the look of anyone before them.
+ * `abreast` is the most riders a row of the bunch seats side by side.
+ */
+export function bunchLooks(
+	riders: readonly Wearer[],
+	abreast: number,
+): Map<string, Loadout> {
+	const looks = new Map<string, Loadout>();
+	const worn: string[] = [];
+	for (const { id, look } of riders) {
+		const l = look ?? seeded(id, worn, abreast);
+		looks.set(id, l);
+		const jersey = String(l.colours?.jerseyA ?? STARTER.colours?.jerseyA);
+		if (hexOf.has(jersey)) worn.push(jersey);
+	}
+	return looks;
 }
