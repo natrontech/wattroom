@@ -32,7 +32,7 @@ import { BUILD_MS, longLoopPoints } from './world.test-helper';
  * A number to 6 significant digits. libm's pow and exp answer in the last bit
  * differently on arm64 and x64, so a digest over raw float64 bytes is red on
  * a Mac while green in CI (#3849); a world that really changed moves digits
- * far above the 7th.
+ * far above the 6th.
  */
 const settled = (v: number) => (Number.isFinite(v) ? +v.toPrecision(6) : v);
 
