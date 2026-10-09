@@ -1,0 +1,1 @@
+- On a phone's Watch view, a rider tile's avatar no longer runs into the coach chip or the cadence and heart rate figures.

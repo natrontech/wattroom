@@ -159,7 +159,10 @@
 	{/if}
 
 	<!-- Name and voice state, top-left; kept off the power bar's edge. -->
-	<div class="absolute top-2 left-2.5 flex max-w-[62%] items-center gap-1.5">
+	<div
+		class="absolute top-2 left-2.5 flex max-w-[62%] items-center gap-1.5"
+		data-testid="tile-name"
+	>
 		<span
 			class="text-ink truncate text-sm font-semibold"
 			{@attach hoverCard(() => rider.id)}>{rider.name}</span
@@ -222,9 +225,12 @@
 	<!-- The seat's centre is the person, not the brand: the same avatar the
 	     roster and the sidebar strip draw (#253), with its level ring — a
 	     WattRoom mark on every camera-off tile said nothing about who was in
-	     the chair. Over the camera it steps aside; the away word does not. -->
+	     the chair. Over the camera it steps aside; the away word does not.
+	     Under 12rem (a phone's two-up grid) the seat is too short for an
+	     avatar between the coach chip and the stat line: it sits bottom-left,
+	     the away word beside it (#3768). -->
 	<div
-		class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1.5"
+		class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1.5 @max-[12rem]:inset-auto @max-[12rem]:bottom-3 @max-[12rem]:left-2.5 @max-[12rem]:flex-row"
 	>
 		{#if !rider.cameraOn}
 			<Avatar
@@ -244,8 +250,12 @@
 
 	{#if rider.stale}
 		<!-- A badge, not a curtain: a quiet trainer says nothing about their
-		     camera, and the dimmed watts above already read "last known". -->
-		<div class="absolute inset-x-0 bottom-2.5 flex justify-center">
+		     camera, and the dimmed watts above already read "last known".
+		     Where a narrow tile seats the avatar bottom-left, it takes the
+		     stat line's place on the right instead. -->
+		<div
+			class="absolute inset-x-0 bottom-2.5 flex justify-center @max-[12rem]:right-2.5 @max-[12rem]:left-auto"
+		>
 			<span
 				class="bg-surface/85 text-warn rounded-full px-2 py-0.5 text-[10px] font-medium tracking-wider uppercase"
 				>no signal</span
@@ -256,6 +266,7 @@
 	{#if live && extras.length && !rider.stale}
 		<div
 			class="text-ink num absolute right-2.5 bottom-3 flex gap-3 text-xs font-medium"
+			data-testid="tile-stats"
 		>
 			{#each extras as extra (extra.key)}
 				<span class={extra.key === 'wkg' ? 'hidden @[10rem]:inline' : ''}
