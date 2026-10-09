@@ -170,6 +170,71 @@ func TestASilentRiderRestsAndIsTowedBack(t *testing.T) {
 	}
 }
 
+// #3759: the team car tows only in bunch rides and ERG sessions (docs/SPEC.md
+// "Riding a road together"). In a game on a road, a rider back from a rest
+// returns on their elastic offset alone: inside the clamp from their first
+// second back, where the car would still hold them at their rest's metre.
+func TestTheTeamCarStaysHomeInAGame(t *testing.T) {
+	road := rideOn(slope(0, 200_000), 0, false, false)
+	for _, c := range []struct {
+		name  string
+		start func(t *testing.T, rm *channelState, coach protocol.Rider, now time.Time) time.Time
+		towed bool
+	}{
+		{"an ERG session tows", func(t *testing.T, rm *channelState, coach protocol.Rider, now time.Time) time.Time {
+			for _, ctl := range []protocol.Control{
+				{Action: "pick", WorkoutName: "Out", WorkoutJSON: ergHalfHour},
+				{Action: "start"},
+			} {
+				route := road
+				if ctl.Action != "pick" {
+					route = nil
+				}
+				if code, message := rm.controlOn(ctl, route, coach, now); code != "" {
+					t.Fatalf("%s: %s", ctl.Action, message)
+				}
+			}
+			return tickFor(rm, now, countdownSeconds)
+		}, true},
+		{"a game on a road does not", func(t *testing.T, rm *channelState, coach protocol.Rider, now time.Time) time.Time {
+			if refusal := rm.startGameOn("points-race", road, 0, coach, now); refusal != "" {
+				t.Fatal(refusal)
+			}
+			return now
+		}, false},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			coach, ben := as("coach"), as("ben")
+			rm, clients := inChannel(t, "velvet", coach, ben)
+			now := time.Unix(1_700_000_000, 0)
+			rm.now = func() time.Time { return now }
+			now = c.start(t, rm, coach, now)
+			joinRide(rm, "coach", "ben")
+			// Ben rides ten seconds, falls silent for a minute and pedals
+			// again for one; the coach rides throughout.
+			for second := range 71 {
+				now = now.Add(time.Second)
+				rm.setMetrics(clients["coach"], protocol.RiderMetrics{Watts: 150, Seq: second + 1})
+				if second < 10 || second == 70 {
+					rm.setMetrics(clients["ben"], protocol.RiderMetrics{Watts: 150, Seq: second + 1})
+				}
+				rm.mu.Lock()
+				rm.tickLocked(rm.now, time.Second, false)
+				rm.mu.Unlock()
+			}
+			rm.mu.Lock()
+			defer rm.mu.Unlock()
+			pl := rm.session.bunch.places["ben"]
+			if pl == nil || pl.resting {
+				t.Fatalf("heard again, ben is %+v; want riding in the bunch", pl)
+			}
+			if towing := !pl.towAt.IsZero(); towing != c.towed || (pl.offset < offsetMinM) != c.towed {
+				t.Fatalf("a second back from a rest: at %.1f m, towing %v; want towing %v", pl.offset, towing, c.towed)
+			}
+		})
+	}
+}
+
 // While Watt Golf hides the meter, where a rider stands would say how hard
 // they ride: the tick carries the bunch and who is resting, and no offsets.
 func TestWattGolfWithholdsTheOffsets(t *testing.T) {

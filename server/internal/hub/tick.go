@@ -171,6 +171,11 @@ func (rm *channelState) tickLocked(now func() time.Time, dt time.Duration, savin
 	if rm.session.bunch != nil {
 		rm.session.bunch.leader = rm.bunchLeaderLocked()
 		rm.session.bunch.asks = rm.bunchAsksLocked()
+		// The team car tows only in bunch rides and ERG sessions, never in
+		// a game (docs/SPEC.md "Riding a road together"; a race rides no
+		// bunch at all), and the client draws none while the tick carries
+		// one (#3098).
+		rm.session.bunch.noTow = rm.game != nil
 	}
 	rm.session.rideBunch(now())
 	if b := rm.session.bunch; b != nil && state.Phase == "running" {

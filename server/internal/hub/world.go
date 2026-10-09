@@ -80,6 +80,8 @@ type bunch struct {
 	// The %FTP a running game asks of everyone, when it asks one (#3114):
 	// a ramp's line, Floor is Lava's called zone. 0 asks nothing.
 	asks float64
+	// A game rides the road (#3759): the team car stays home.
+	noTow bool
 	// Where each joined rider stood each second, for the ride they save
 	// (#3738).
 	trail trail
