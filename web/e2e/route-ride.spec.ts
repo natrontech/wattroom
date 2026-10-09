@@ -234,6 +234,13 @@ test('Ride it now rides your road alone, from where you left it', async ({
 	await expect(page.getByTestId('ride-skyline')).toBeVisible({
 		timeout: 15_000,
 	});
+	// One ride, one distance (#3931): the panel says the replay's metres,
+	// the same the Rides row says.
+	await expect(
+		page.getByText(
+			`${(saved.distanceM! / 1000).toFixed(1)} km, as you rode it`,
+		),
+	).toBeVisible();
 	await expect
 		.poll(() =>
 			page
