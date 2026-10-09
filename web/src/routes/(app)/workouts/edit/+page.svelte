@@ -637,10 +637,18 @@
 						class="btn btn-secondary btn-xs">Wrap in a repeat</button
 					>
 				{/if}
-				<button
-					onclick={() => (selected = removeAndSelect(workout, selected!))}
-					class="btn btn-danger btn-xs ml-auto">Delete</button
-				>
+				<!-- Last, after a separator, the two wrapping together (G8). -->
+				<span class="ml-auto flex items-center gap-2">
+					<span
+						role="separator"
+						aria-orientation="vertical"
+						class="bg-muted/40 h-4 w-px shrink-0"
+					></span>
+					<button
+						onclick={() => (selected = removeAndSelect(workout, selected!))}
+						class="btn btn-danger btn-xs">Delete</button
+					>
+				</span>
 			</div>
 		</div>
 	{:else}
