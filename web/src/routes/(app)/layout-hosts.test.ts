@@ -39,3 +39,16 @@ describe('the root layout (#2406)', () => {
 		},
 	);
 });
+
+/**
+ * The menu, rider card and confirm hosts mount outside the frame that wears
+ * `.cave` while riding (#3788), so a light desk drew them white over the
+ * dark ride. They sit in a wrapper that takes the cave itself.
+ */
+describe('the overlay hosts while riding (#3788)', () => {
+	it('mount inside a wrapper that carries the cave when riding', () => {
+		expect(layout).toMatch(
+			/<div class="contents \{riding \? 'cave' : ''\}">\s*<ContextMenuHost \/>\s*<RiderCardHost \/>\s*<ConfirmHost \/>\s*<\/div>/,
+		);
+	});
+});

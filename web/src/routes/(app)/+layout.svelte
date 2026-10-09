@@ -578,9 +578,14 @@
 <VerifyEmailGate />
 
 <ImageViewer />
-<ContextMenuHost />
-<RiderCardHost />
-<ConfirmHost />
+<!-- These mount outside the frame, so they take the cave themselves while
+     riding: a menu, a rider card or a confirm opened mid-ride is part of the
+     dark frame (TARGETS G1). `contents` leaves their fixed layout alone. -->
+<div class="contents {riding ? 'cave' : ''}">
+	<ContextMenuHost />
+	<RiderCardHost />
+	<ConfirmHost />
+</div>
 {#if statusEditor.open}
 	<StatusEditor />
 {/if}
