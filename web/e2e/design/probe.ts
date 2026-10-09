@@ -114,9 +114,22 @@ export function probe(corridor: Box) {
 			(isWatt(cs.fill) || isWatt(cs.stroke))
 		)
 			wattMarks++;
-		if (glowing(cs) && glows.length < 20)
+		// A text shadow inherits: the spans a figure is drawn in (TabularFigures,
+		// #3869) carry its glow, and are that glow rather than another one.
+		const inherited =
+			cs.textShadow !== 'none' &&
+			!cs.filter.includes('drop-shadow') &&
+			(cs.boxShadow === 'none' || cs.boxShadow.includes('inset')) &&
+			!!el.parentElement &&
+			getComputedStyle(el.parentElement).textShadow === cs.textShadow;
+		if (glowing(cs) && !inherited && glows.length < 20)
 			glows.push(
-				(own || el.getAttribute('aria-label') || el.tagName).slice(0, 40),
+				(
+					own ||
+					el.getAttribute('aria-label') ||
+					el.textContent?.trim() ||
+					el.tagName
+				).slice(0, 40),
 			);
 	}
 
