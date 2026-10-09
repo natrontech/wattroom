@@ -398,8 +398,11 @@
 			document.getElementById('page-body')?.focus();
 		}}>Skip to the page</a
 	>
-	<!-- Right after the skip link, so Undo is two tabs from the top (#1961). -->
-	<Toasts />
+	<!-- Right after the skip link, so Undo is two tabs from the top (#1961).
+	     Outside the frame, so it takes the cave itself while riding (#3788). -->
+	<div class="contents {riding ? 'cave' : ''}">
+		<Toasts />
+	</div>
 	<!-- The RIDE is the cave (#113, refined on rider feedback): the lounge is
 	     a desk surface and follows the theme — the lights go down when the
 	     session starts, and come back up when it ends. A solo ride or ramp
@@ -578,9 +581,14 @@
 <VerifyEmailGate />
 
 <ImageViewer />
-<ContextMenuHost />
-<RiderCardHost />
-<ConfirmHost />
+<!-- These mount outside the frame, so they take the cave themselves while
+     riding: a menu, a rider card or a confirm opened mid-ride is part of the
+     dark frame (TARGETS G1). `contents` leaves their fixed layout alone. -->
+<div class="contents {riding ? 'cave' : ''}">
+	<ContextMenuHost />
+	<RiderCardHost />
+	<ConfirmHost />
+</div>
 {#if statusEditor.open}
 	<StatusEditor />
 {/if}

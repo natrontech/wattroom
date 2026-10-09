@@ -39,3 +39,28 @@ describe('the root layout (#2406)', () => {
 		},
 	);
 });
+
+/**
+ * The menu, rider card, confirm and toast hosts mount outside the frame that
+ * wears `.cave` while riding (#3788), so a light desk drew them white over
+ * the dark ride. They sit in wrappers that take the cave themselves.
+ */
+describe('the overlay hosts while riding (#3788)', () => {
+	const caveWrapped = (inner: string) =>
+		new RegExp(
+			`<div class="contents \\{riding \\? 'cave' : ''\\}">\\s*${inner}\\s*</div>`,
+		);
+
+	it('mount inside a wrapper that carries the cave when riding', () => {
+		expect(layout).toMatch(
+			caveWrapped(
+				'<ContextMenuHost />\\s*<RiderCardHost />\\s*<ConfirmHost />',
+			),
+		);
+	});
+
+	it('wraps the framed toast host too, still right after the skip link', () => {
+		const framed = branches(layout).find((b) => b.includes('Skip to the page'));
+		expect(framed).toMatch(caveWrapped('<Toasts />'));
+	});
+});
