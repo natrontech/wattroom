@@ -3,7 +3,7 @@ import { signInAs } from './signin';
 
 /**
  * The golden onboarding path (#122, #2480): a fresh account starts its crew
- * on Home and lands in it with a text and a voice channel. This exact flow
+ * from Home and lands in it with a text and a voice channel. This exact flow
  * shipped hard-broken once — the create form only rendered when the room
  * list was non-empty, so the empty state's CTAs focused inputs that did not
  * exist.
@@ -22,10 +22,16 @@ test('a fresh user starts their first crew through the UI', async ({
 	expect(purged, 'could not start from a fresh rider').toBeLessThan(300);
 	await signInAs(page, 'Smoke Crew Owner', '/home');
 
+	// Home's one way into a crew (#3688): the action row's button opens the
+	// sheet the sidebar's + opens.
 	const name = `Smoke Test Crew ${Date.now() % 100000}`;
-	await page.locator('#start-crew-name').fill(name);
 	await page
-		.locator('#crews')
+		.getByTestId('home-actions')
+		.getByRole('button', { name: 'Start a crew', exact: true })
+		.click();
+	const sheet = page.getByRole('dialog', { name: 'Start a crew' });
+	await sheet.locator('#start-crew-name-sheet').fill(name);
+	await sheet
 		.getByRole('button', { name: 'Start a crew', exact: true })
 		.click();
 	await page.waitForURL(/\/crew\/[0-9a-f-]+$/, { timeout: 15_000 });

@@ -42,16 +42,22 @@ test("a code typed on Home meets the crew's door, and its board, before the join
 
 	const b = await riders(B);
 	await b.goto('/home');
+	// The code box is in the sheet Home's crew button opens (#3688).
+	await b
+		.getByTestId('home-actions')
+		.getByRole('button', { name: /^(Start a crew|Join a crew)$/ })
+		.click();
+	const sheet = b.getByRole('dialog');
 
 	// A code no crew can have — the alphabet has no 0 (shared.go) — is
 	// refused beside the box it was typed in, not on a page of its own.
-	await b.locator('#join-code').fill('000000');
-	await b.getByRole('button', { name: 'Join crew' }).click();
-	await expect(b.getByText('No crew has that code')).toBeVisible();
+	await sheet.locator('#join-code-sheet').fill('000000');
+	await sheet.getByRole('button', { name: 'Join crew' }).click();
+	await expect(sheet.getByText('No crew has that code')).toBeVisible();
 	await expect(b).toHaveURL(/\/home$/);
 
-	await b.locator('#join-code').fill(opened.code);
-	await b.getByRole('button', { name: 'Join crew' }).click();
+	await sheet.locator('#join-code-sheet').fill(opened.code);
+	await sheet.getByRole('button', { name: 'Join crew' }).click();
 
 	// The door, and the board said out loud on it, before anything is joined.
 	await b.waitForURL(new RegExp(`/c/${opened.code}$`), { timeout: 15_000 });

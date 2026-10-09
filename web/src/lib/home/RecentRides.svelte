@@ -24,7 +24,7 @@
 		<h2 class="eyebrow">Recent rides</h2>
 		<p class="text-muted mt-2 text-sm">
 			{NO_RIDES_YET}
-			<a href="/workouts" class="btn-link">Ride solo</a>
+			<a href="/ride?alone" class="btn-link">Ride alone</a>
 		</p>
 	</section>
 {:else}

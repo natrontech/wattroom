@@ -11,6 +11,7 @@ import {
 	savedRide,
 	voicePath,
 } from './design/seed';
+import { homeProbe } from './design/home-probe';
 import {
 	endSession,
 	joinSession,
@@ -98,16 +99,31 @@ function alone(register: () => void) {
 	});
 }
 
-/** A page shot whole, after it has settled. */
+/**
+ * A page shot whole, after it has settled. `measure`: a surface's own probes,
+ * each under its key in the shot's JSON, taken at the window's size before
+ * the shot grows it.
+ */
 async function page(
 	s: Shoot,
 	opened: Opened,
 	path: string,
-	{ name, settle = 2500 }: { name?: string; settle?: number } = {},
+	{
+		name,
+		settle = 2500,
+		measure,
+	}: {
+		name?: string;
+		settle?: number;
+		measure?: Record<string, () => unknown>;
+	} = {},
 ) {
 	await opened.page.goto(path);
 	await opened.page.waitForTimeout(settle);
-	await s.shot(opened, { name, full: true });
+	const extra: Record<string, unknown> = {};
+	for (const [key, probe] of Object.entries(measure ?? {}))
+		extra[key] = await opened.page.evaluate(probe);
+	await s.shot(opened, { name, full: true, extra });
 }
 
 // ─── A. Riding surfaces ──────────────────────────────────────────────────
@@ -738,11 +754,52 @@ surface(
 			[PHONE, 'phone-home'],
 		] as const)) {
 			const o = await s.open(device);
-			await page(s, o, '/home', { name });
+			await page(s, o, '/home', { name, measure: { home: homeProbe } });
+			if (device !== DESK) continue;
+			// multi:home-sheet — where a rider in a crew starts or joins
+			// another: the action row's crew button opens the sheet (#3688).
+			const desk = o.page.viewportSize()!;
+			await o.page.setViewportSize({ width: desk.width, height: 900 });
+			await o.page
+				.getByTestId('home-actions')
+				.getByRole('button', { name: /^(Start|Join) a crew$/ })
+				.click();
+			await o.page.getByRole('dialog').waitFor();
+			await o.page.waitForTimeout(500);
+			await s.shot(o, { name: 'home-sheet' });
+			// multi:home-desktop-offer — the desktop app's offer, which a
+			// browser on a desk sees once a build is out: last on the page.
+			// A phone is never offered it (DesktopNotice).
+			const offer = await s.open({ ...DESK, userAgent: WINDOWS_UA });
+			await offer.page.route(RELEASE_FEED, (route) =>
+				route.fulfill({ json: DESKTOP_RELEASE }),
+			);
+			await page(s, offer, '/home', {
+				name: 'home-desktop-offer',
+				measure: { home: homeProbe },
+			});
 		}
 	},
 	{ also: ['phone-home'] },
 );
+
+const WINDOWS_UA =
+	'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
+const RELEASE_FEED =
+	'https://api.github.com/repos/natrontech/wattroom-releases/**';
+/** A desktop build, as the release feed lists one (desktop.spec.ts's). */
+const DESKTOP_RELEASE = {
+	tag_name: 'desktop-v0.2.0',
+	html_url:
+		'https://github.com/natrontech/wattroom-releases/releases/tag/desktop-v0.2.0',
+	assets: [
+		{
+			name: 'WattRoom-0.2.0-win-x64.exe',
+			browser_download_url: 'https://dl.test/WattRoom-0.2.0-win-x64.exe',
+			size: 90000000,
+		},
+	],
+};
 
 surface('flow-f1', async (s) => {
 	// F1's first steps (#3683): Workouts, then a route card's Ride onto /ride.
@@ -896,7 +953,10 @@ alone(() => {
 			.replace(/[0-9]/g, (d) => 'klmnopqrst'[Number(d)])
 			.slice(-8);
 		const o = await s.open(DESK, { as: `First ${letters}`, world: false });
-		await page(s, o, '/home', { name: 'flow-f3-1-home' });
+		await page(s, o, '/home', {
+			name: 'flow-f3-1-home',
+			measure: { home: homeProbe },
+		});
 		await page(s, o, '/ride?w=smoke-test', { name: 'flow-f3-2-ride' });
 		await o.page
 			.getByRole('button', { name: 'Ride simulated' })
@@ -921,7 +981,10 @@ alone(() => {
 			.waitFor({ timeout: 120_000 });
 		await o.page.waitForTimeout(1500);
 		await s.shot(o, { name: 'flow-f3-5-closing-card', full: true });
-		await page(s, o, '/home', { name: 'flow-f3-6-home' });
+		await page(s, o, '/home', {
+			name: 'flow-f3-6-home',
+			measure: { home: homeProbe },
+		});
 		if (!takes(PHONE)) return;
 		// The same Recent rides row at phone width, with a long ride name.
 		const phone = await s.open(PHONE, {

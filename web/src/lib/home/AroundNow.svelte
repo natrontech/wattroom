@@ -13,7 +13,6 @@
 	import { crewLive } from '$lib/nav/crew-live.svelte';
 	import { presence } from '$lib/presence.svelte';
 	import { aroundNow } from './around-now';
-	import { revealCrews } from './reveal';
 
 	const around = $derived(aroundNow(crewLive.crews, account.me?.id ?? ''));
 	// Where to walk in when nobody is anywhere: the main crew's first voice
@@ -106,10 +105,10 @@
 		{/if}
 	</p>
 {:else}
+	<!-- Starting one is the action row's (#3688); this line offers the
+	     other way in, the crews that chose to be found (ADR-0039). -->
 	<p class="text-muted mt-3 text-sm">
 		Nobody's around yet — the people you ride with are in a crew.
-		<button onclick={revealCrews} class="btn-link"
-			>Join one with its code, or start your own</button
-		>.
+		<a href="/crews/directory" class="btn-link">Find a crew</a>.
 	</p>
 {/if}

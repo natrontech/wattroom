@@ -1,0 +1,1 @@
+- Home now reads top to bottom: your greeting, one row of actions, the set-up card while steps remain, your four numbers, then This week beside who is around and your recent rides. "Start a crew" is offered once, and the desktop-app offer moved to the foot of the page.
