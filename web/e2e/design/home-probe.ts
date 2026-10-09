@@ -79,6 +79,40 @@ export function homeProbe() {
 	const week = document.getElementById('sessions');
 	const weekHeading = week?.querySelector('h2');
 	const firstRow = week?.querySelector('li') ?? null;
+	// This week's rows (#3689, TARGETS home 7-9): each row's link, its time
+	// column, its count's place, and whether it is dimmed or live.
+	const ok = token('--color-ok');
+	const dayHeaders = [...(week?.querySelectorAll('h3') ?? [])].map((h) => ({
+		text: text(h),
+		eyebrow: h.classList.contains('eyebrow'),
+	}));
+	const weekRows = [
+		...(week?.querySelectorAll('[data-testid=week-row]') ?? []),
+	].map((li) => {
+		const link = li.querySelector('a');
+		const time = link?.firstElementChild ?? null;
+		const lines = link?.querySelectorAll('p') ?? [];
+		const count = link?.querySelector('span.tabular-nums:not(.font-display)');
+		const dot = link?.querySelector('span.rounded-full');
+		const timeCs = time ? getComputedStyle(time) : null;
+		return {
+			...box(link)!,
+			wholeRowLink: !!link && link.parentElement === li,
+			time: text(time, 12),
+			timeColumn: box(time)?.w ?? null,
+			timePx: timeCs ? parseFloat(timeCs.fontSize) : null,
+			timeFont: timeCs?.fontFamily.split(',')[0].trim() ?? null,
+			kind: text(lines[0]),
+			title: text(lines[1]),
+			meta: text(lines[2], 80),
+			count: count ? text(count, 20) : null,
+			countBox: box(count),
+			titleBox: box(lines[1]),
+			opacity: link ? parseFloat(getComputedStyle(link).opacity) : null,
+			background: link ? getComputedStyle(link).backgroundColor : null,
+			liveDotOk: dot ? getComputedStyle(dot).backgroundColor === ok : null,
+		};
+	});
 	const around = [...document.querySelectorAll('main h2')].find((h) =>
 		/around right now/i.test(h.textContent ?? ''),
 	);
@@ -104,6 +138,13 @@ export function homeProbe() {
 			heading: box(weekHeading),
 			headingText: text(weekHeading),
 			firstRow: box(firstRow),
+			dayHeaders,
+			rows: weekRows,
+			nextHeading: [...(week?.querySelectorAll('h3') ?? [])].some(
+				(h) => text(h) === 'Next',
+			),
+			teaching: text(week?.querySelector('p.text-sm'), 120),
+			scrollsSideways: !!week && week.scrollWidth > Math.ceil(week.clientWidth),
 			aboveTheFold:
 				!!weekHeading &&
 				(box(firstRow ?? weekHeading)?.bottom ?? Infinity) <= viewport,
