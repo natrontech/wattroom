@@ -57,6 +57,7 @@ export const TV: BrowserContextOptions = {
 	viewport: { width: 1920, height: 1080 },
 };
 export const HUD_SHELL = { width: 320, height: 132 };
+const SHOT_TIMEOUT_MS = 60_000;
 
 /**
  * The TV and the phone are variants of a surface (#3858): a full run takes
@@ -190,9 +191,13 @@ export class Shoot {
 			await page.waitForTimeout(1000);
 		}
 		const probes = await page.evaluate(probe, CORRIDOR);
+		// A world frame drawn in software GL on a loaded machine took longer
+		// than the 15 s a control is given, and every frame after it was lost
+		// (#3942); a shot waits for its frame, not for a click.
 		const png = await page.screenshot({
 			path: join(this.out, `${name}.png`),
 			fullPage: wholeDocument,
+			timeout: SHOT_TIMEOUT_MS,
 		});
 		const at = (probes as { asphaltAt?: [number, number] | null }).asphaltAt;
 		const asphaltRgb =
