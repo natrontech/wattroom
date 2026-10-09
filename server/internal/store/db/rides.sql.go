@@ -837,6 +837,8 @@ func (q *Queries) GetRideForUpload(ctx context.Context, id pgtype.UUID) (GetRide
 
 const getRideRoad = `-- name: GetRideRoad :one
 select coalesce(rt.gen_name, '')::text as gen_name,
+       coalesce(rt.id::text, '')::text as route_id,
+       coalesce(rt.name, '')::text as route_name,
        coalesce(rt.ele_source, '')::text as ele_source,
        r.distance_m
 from rides r
@@ -851,18 +853,27 @@ type GetRideRoadParams struct {
 
 type GetRideRoadRow struct {
 	GenName   string
+	RouteID   string
+	RouteName string
 	EleSource string
 	DistanceM *int32
 }
 
 // The road a ride rode, for its card and page (#3142): the route's generated
 // name — never the owner's rename (#3055) — where its heights came from, and
-// the ride's metres on it. A ride on no road, or on a route since deleted,
-// answers two empty strings; the metres stay while the ride does.
+// the ride's metres on it. The owner's own read adds the route's id and the
+// name they know it by (#3874). A ride on no road, or on a route since
+// deleted, answers empty strings; the metres stay while the ride does.
 func (q *Queries) GetRideRoad(ctx context.Context, arg GetRideRoadParams) (GetRideRoadRow, error) {
 	row := q.db.QueryRow(ctx, getRideRoad, arg.ID, arg.UserID)
 	var i GetRideRoadRow
-	err := row.Scan(&i.GenName, &i.EleSource, &i.DistanceM)
+	err := row.Scan(
+		&i.GenName,
+		&i.RouteID,
+		&i.RouteName,
+		&i.EleSource,
+		&i.DistanceM,
+	)
 	return i, err
 }
 

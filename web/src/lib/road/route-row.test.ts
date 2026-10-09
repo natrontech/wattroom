@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { Climb } from './climbs';
-import { backLink, classChips, riddenLine, statLine } from './route-row';
+import {
+	backLink,
+	classChips,
+	localPath,
+	riddenLine,
+	rideHref,
+	statLine,
+} from './route-row';
 
 const climb = (cls: Climb['cls']): Climb =>
 	({ startM: 0, topM: 1000, gainM: 50, cls }) as Climb;
@@ -61,5 +68,15 @@ describe("the route page's back link (Flows rule 4)", () => {
 			'/\\evil.example',
 		])
 			expect(backLink(back), String(back)).toEqual(home);
+	});
+});
+
+describe('a ride opened from a route page', () => {
+	it('carries the page it came from, and the ride page reads it back', () => {
+		const from = '/workouts/routes/r1?back=%2Fride';
+		const href = rideHref('ride1', from);
+		expect(localPath(new URL(href, 'http://x').searchParams.get('back'))).toBe(
+			from,
+		);
 	});
 });

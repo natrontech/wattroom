@@ -26,6 +26,9 @@ func TestARoadRidesPageCarriesItsMetresAndHeights(t *testing.T) {
 	}
 	id, _ := got["id"].(string)
 	_, detail := call(t, h.mux, "alice", http.MethodGet, "/api/rides/"+id, "")
+	if road, _ := detail["road"].(map[string]any); road["routeId"] != routeID || road["name"] != "Home loop" {
+		t.Errorf("road = %v, want the route %s under the owner's name", detail["road"], routeID)
+	}
 	read, _ := detail["samples"].([]any)
 	if len(read) != 120 {
 		t.Fatalf("samples = %d, want 120", len(read))
@@ -41,6 +44,9 @@ func TestARoadRidesPageCarriesItsMetresAndHeights(t *testing.T) {
 	}
 	id, _ = got["id"].(string)
 	_, detail = call(t, h.mux, "alice", http.MethodGet, "/api/rides/"+id, "")
+	if detail["road"] != nil {
+		t.Errorf("a ride off a road names a road: %v", detail["road"])
+	}
 	read, _ = detail["samples"].([]any)
 	if first, _ := read[0].(map[string]any); first["m"] != nil || first["alt"] != nil {
 		t.Errorf("a ride off a road reads a place: %v", first)
