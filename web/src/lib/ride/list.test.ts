@@ -44,4 +44,9 @@ describe('rideTitle (#3874)', () => {
 		);
 		expect(rideTitle({ workoutName: 'Free ride' })).toBe('Free ride');
 	});
+	it('names a free ride by the road even when the road has no generated name', () => {
+		expect(
+			rideTitle({ workoutName: 'Free ride', road: { ...road, genName: '' } }),
+		).toBe('Home loop');
+	});
 });

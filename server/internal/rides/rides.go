@@ -233,20 +233,22 @@ func rideJSONOf(row db.ListUserRidesRow) rideJSON {
 }
 
 // handleBest answers the ride page's "against your best" (#1687): the
-// hardest ride of the same workout over the whole history. The page used
-// to scan the first page of the list and call a year-old workout a first.
+// hardest ride of the same workout over the whole history — or, for a ride
+// titled by its road, the best ride of that road (#3874). The page used to
+// scan the first page of the list and call a year-old workout a first.
 func (s *Service) handleBest(w http.ResponseWriter, r *http.Request) {
 	user, ok := s.users.RequireUser(w, r, "Not signed in.")
 	if !ok {
 		return
 	}
-	workout := r.URL.Query().Get("workout")
-	if workout == "" {
-		httpx.WriteError(w, http.StatusBadRequest, "validation_error", "workout names the workout to compare against.")
+	query := r.URL.Query()
+	workout, route := query.Get("workout"), query.Get("route")
+	if workout == "" && route == "" {
+		httpx.WriteError(w, http.StatusBadRequest, "validation_error", "workout or route names what to compare against.")
 		return
 	}
 	var except pgtype.UUID
-	if raw := r.URL.Query().Get("except"); raw != "" {
+	if raw := query.Get("except"); raw != "" {
 		id, err := store.ParseUUID(raw)
 		if err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, "validation_error", "except must be a ride id.")
@@ -254,9 +256,26 @@ func (s *Service) handleBest(w http.ResponseWriter, r *http.Request) {
 		}
 		except = id
 	}
-	row, err := s.store.Queries.BestUserRideOfWorkout(r.Context(), db.BestUserRideOfWorkoutParams{
-		UserID: user.ID, WorkoutName: workout, ExceptID: except, Destination: exportDestination,
-	})
+	var row db.ListUserRidesRow
+	var err error
+	if route != "" {
+		routeID, perr := store.ParseUUID(route)
+		if perr != nil {
+			httpx.WriteError(w, http.StatusBadRequest, "validation_error", "route must be a route id.")
+			return
+		}
+		var on db.BestUserRideOnRoadRow
+		on, err = s.store.Queries.BestUserRideOnRoad(r.Context(), db.BestUserRideOnRoadParams{
+			UserID: user.ID, RouteID: routeID, ExceptID: except, Destination: exportDestination,
+		})
+		row = db.ListUserRidesRow(on)
+	} else {
+		var of db.BestUserRideOfWorkoutRow
+		of, err = s.store.Queries.BestUserRideOfWorkout(r.Context(), db.BestUserRideOfWorkoutParams{
+			UserID: user.ID, WorkoutName: workout, ExceptID: except, Destination: exportDestination,
+		})
+		row = db.ListUserRidesRow(of)
+	}
 	if errors.Is(err, pgx.ErrNoRows) {
 		httpx.WriteJSON(w, http.StatusOK, map[string]any{"ride": nil})
 		return
@@ -265,7 +284,7 @@ func (s *Service) handleBest(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "best ride failed", err, "Your rides could not be loaded.")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"ride": rideJSONOf(db.ListUserRidesRow(row))})
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"ride": rideJSONOf(row)})
 }
 
 // handleShare flips one ride's friends-visibility (ADR-0024). Owner-only:

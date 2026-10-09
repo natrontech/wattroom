@@ -67,6 +67,31 @@ where user_id = $1 and workout_name = $2
 order by avg_watts desc, started_at desc
 limit 1;
 
+-- name: BestUserRideOnRoad :one
+-- The ride page's "against your best" for a ride titled by its road (#3874):
+-- the rider's best ride of the same road as the route page has it (#3680),
+-- every ride saved against the road's key (ADR-0068) — the fastest timed one
+-- by average speed, else, with none timed, the hardest. Only a road the rider
+-- owns. Same columns as ListUserRides so one JSON mapping serves all three.
+select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp,
+       (rides.crew_id is not null or rides.channel_id is not null or rides.session_id is not null)::boolean as in_session, shared_at,
+       rides.distance_m, rides.climbed_m,
+       e.state as export_state,
+       rides.crew_id, coalesce(c.name, '')::text as crew_name,
+       rides.channel_id, coalesce(ch.name, '')::text as channel_name
+from rides
+join routes rt on rt.id = sqlc.arg(route_id)::uuid and rt.owner_id = rides.user_id
+left join ride_exports e on e.ride_id = rides.id and e.destination = sqlc.arg(destination)::text
+left join crews c on c.id = rides.crew_id
+left join channels ch on ch.id = rides.channel_id
+where rides.user_id = sqlc.arg(user_id) and rides.route_key = rt.road_hash
+  and (sqlc.narg(except_id)::uuid is null or rides.id <> sqlc.narg(except_id))
+order by (rides.timeable is true and rides.distance_m > 0 and rides.seconds > 0) desc,
+         case when rides.timeable is true and rides.seconds > 0
+              then rides.distance_m::float8 / rides.seconds end desc nulls last,
+         avg_watts desc, started_at desc
+limit 1;
+
 -- name: GetRide :one
 -- The one per-ride blob read ADR-0016 allows: a rider opening a single ride
 -- is exactly what the samples are kept for. Owner-scoped, so someone else's

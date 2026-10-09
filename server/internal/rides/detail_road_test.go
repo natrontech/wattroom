@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/testx"
 )
@@ -107,5 +108,63 @@ func TestARideNamesItsRoadOnlyToTheRoadsOwner(t *testing.T) {
 		if leak := testx.Leak(string(raw)); leak != "" {
 			t.Errorf("bob's %s carries %q", where, leak)
 		}
+	}
+}
+
+// A ride titled by its road is set beside the rider's best of that road
+// (#3874), as the route page has it (#3680): the fastest timed ride, else
+// the hardest; never a ride off the road, nor a road someone else owns.
+func TestBestRideOnRoad(t *testing.T) {
+	h := setup(t)
+	routeID, _ := storeRoute(t, h, "alice")
+	saved := func(drive string) string {
+		status, got := call(t, h.mux, "alice", http.MethodPost, "/api/rides", freeRideOn(routeID, 8, drive))
+		if status != http.StatusCreated {
+			t.Fatalf("save: %d %v", status, got)
+		}
+		id, _ := got["id"].(string)
+		return id
+	}
+	slow, fast, held := saved(stats.DriveSIM), saved(stats.DriveSIM), saved(stats.DriveERGByRoad)
+	off := h.save(t, "alice", 600, 400)
+	set := func(id, sql string) {
+		t.Helper()
+		ride, _ := store.ParseUUID(id)
+		if _, err := h.store.Pool.Exec(t.Context(), "update rides set "+sql+" where id = $1", ride); err != nil {
+			t.Fatal(err)
+		}
+	}
+	set(slow, "distance_m = 2000, timeable = true, avg_watts = 300")
+	set(fast, "distance_m = 3000, timeable = true, avg_watts = 200")
+	set(held, "distance_m = 4000, timeable = false, avg_watts = 350")
+
+	best := func(user, query string) any {
+		t.Helper()
+		status, body := call(t, h.mux, user, http.MethodGet, "/api/rides/best?"+query, "")
+		if status != http.StatusOK {
+			t.Fatalf("%s: %d %v", query, status, body)
+		}
+		ride, _ := body["ride"].(map[string]any)
+		return ride["id"]
+	}
+	if got := best("alice", "route="+routeID+"&except="+slow); got != fast {
+		t.Errorf("best of the road: %v, want the fastest timed ride %s", got, fast)
+	}
+	if got := best("alice", "route="+routeID+"&except="+fast); got != slow {
+		t.Errorf("best of the road but the fastest: %v, want the other timed ride %s", got, slow)
+	}
+	set(slow, "timeable = false")
+	set(fast, "timeable = false")
+	if got := best("alice", "route="+routeID); got != held {
+		t.Errorf("best of a road timed never: %v, want the hardest %s", got, held)
+	}
+	if got := best("alice", "route="+routeID); got == off {
+		t.Error("a ride off the road is the road's best")
+	}
+	if got := best("bob", "route="+routeID); got != nil {
+		t.Errorf("bob's best of alice's road: %v, want none", got)
+	}
+	if status, _ := call(t, h.mux, "alice", http.MethodGet, "/api/rides/best?route=nope", ""); status != http.StatusBadRequest {
+		t.Errorf("a malformed route: %d, want 400", status)
 	}
 }

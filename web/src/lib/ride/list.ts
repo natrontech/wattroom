@@ -41,23 +41,36 @@ export interface RideRoad {
 }
 
 /**
- * What a ride is called (#3874, Flows rule 2): on a road of the rider's own,
- * a ride saved under no name of its own — a free ride, or a session that rode
- * the road under its generated name — is the road, named as its route page
- * names it. A workout keeps its own name. One title for the list, Home and
- * the ride page, so a ride never reads as two rides.
+ * The road a ride is named by (#3874, Flows rule 2): on a road of the rider's
+ * own, a ride saved under no name of its own — a free ride, or a session that
+ * rode the road under its generated name — is the road, named as its route
+ * page names it. A workout keeps its own name, and answers none.
+ */
+export function namingRoad(ride: {
+	workoutName: string;
+	road?: RideRoad;
+}): RideRoad | undefined {
+	const { workoutName, road } = ride;
+	if (!road) return undefined;
+	if (workoutName === FREE_RIDE_NAME) return road;
+	if (road.genName && workoutName.startsWith(road.genName)) return road;
+	return undefined;
+}
+
+/**
+ * What a ride is called: its road's name when the road names it (a long
+ * road's legs keep their "· leg 1 of 2"), else its workout's. One title for
+ * the list, Home and the ride page, so a ride never reads as two rides.
  */
 export function rideTitle(ride: {
 	workoutName: string;
 	road?: RideRoad;
 }): string {
-	const { workoutName, road } = ride;
-	if (!road) return workoutName;
-	if (workoutName === FREE_RIDE_NAME) return road.name;
-	// A long road's legs: "<generated> · leg 1 of 2".
-	if (road.genName && workoutName.startsWith(road.genName))
-		return road.name + workoutName.slice(road.genName.length);
-	return workoutName;
+	const road = namingRoad(ride);
+	if (!road) return ride.workoutName;
+	return road.genName && ride.workoutName.startsWith(road.genName)
+		? road.name + ride.workoutName.slice(road.genName.length)
+		: road.name;
 }
 
 export interface ServerRide extends RideRecord {

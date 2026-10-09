@@ -16,6 +16,7 @@
 	import { fetchRide, type RideDetail } from '$lib/ride/detail';
 	import { ridePlace, rideTitle } from '$lib/ride/list';
 	import { rideBackLink } from '$lib/back-link';
+	import { bestQuery } from '$lib/ride/compare';
 	import RideComparison from '$lib/ride/RideComparison.svelte';
 	import RideSkyline from '$lib/ride/RideSkyline.svelte';
 	import type { RideRecord } from '$lib/history.svelte';
@@ -70,9 +71,8 @@
 	let progression = $state<Progression | null>(null);
 	function loadRides() {
 		ridesError = null;
-		void api<{ ride: RideRecord | null }>(
-			`/api/rides/best?workout=${encodeURIComponent(ride?.workoutName ?? '')}&except=${encodeURIComponent(id)}`,
-		).then((res) => {
+		if (!ride) return;
+		void api<{ ride: RideRecord | null }>(bestQuery(ride)).then((res) => {
 			if (res.ok) {
 				best = res.data.ride;
 				bestLoaded = true;

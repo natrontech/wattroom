@@ -13,6 +13,7 @@
  * never summed, ranked, or called fitness.
  */
 import type { RideRecord } from '$lib/history.svelte';
+import { namingRoad, type RideRoad } from './list';
 
 export interface CompareRow {
 	label: string;
@@ -25,6 +26,23 @@ export interface CompareRow {
 function signed(n: number, unit = ''): string {
 	if (n === 0) return '';
 	return `${n > 0 ? '+' : '−'}${Math.abs(n)}${unit}`;
+}
+
+/**
+ * What "against your best" asks the server for: a ride its road names is set
+ * beside the rider's best of that road, the route page's Best (#3874); any
+ * other beside their best of its workout. Never the ride itself.
+ */
+export function bestQuery(ride: {
+	id: string;
+	workoutName: string;
+	road?: RideRoad;
+}): string {
+	const road = namingRoad(ride);
+	const of = road
+		? `route=${encodeURIComponent(road.routeId)}`
+		: `workout=${encodeURIComponent(ride.workoutName)}`;
+	return `/api/rides/best?${of}&except=${encodeURIComponent(ride.id)}`;
 }
 
 /** The comparison table's rows, in reading order. */
