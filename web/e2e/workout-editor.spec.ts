@@ -20,6 +20,10 @@ test('a workout is shaped, guarded, saved, and comes back through ?w=', async ({
 	await expect(page.getByLabel('Workout name')).toHaveValue('New workout');
 	await expect(blocks).toHaveText(/1 block\b/);
 	await expect(page.getByRole('button', { name: 'Undo' })).toBeDisabled();
+	// The step's Delete comes last, after a separator (TARGETS G8, #3936).
+	await expect(
+		page.locator('[role=separator] + button', { hasText: /^Delete$/ }),
+	).toBeVisible();
 
 	await page.getByLabel('Workout name').fill(name);
 	await page.getByLabel(/^duration/).fill('5:00');
