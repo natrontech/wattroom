@@ -1,0 +1,1 @@
+- A road ride's setup says why Start riding is disabled before the trainer is paired, and says when the trainer is reconnecting.
