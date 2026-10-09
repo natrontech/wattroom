@@ -68,7 +68,9 @@ test('a planned road session’s card rides its road first, for its owner and fo
 		.getByRole('link', { name: 'Ride it first' })
 		.click();
 	await owner.waitForURL(`/ride?road=${routeId}&from=${PLAN_FROM_M}`);
-	await expect(owner.getByText('Carrying on from km 1.0.')).toBeVisible();
+	await expect(
+		owner.getByRole('button', { name: 'From km 1.0' }),
+	).toHaveAttribute('aria-pressed', 'true');
 
 	// A crew member: the crew's cut, from the crew's metre.
 	const crew = await riders('First Road Rider');
