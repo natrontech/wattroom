@@ -1,0 +1,1 @@
+- The big watts figure keeps one width as it changes: each digit sits in a cell of its own, so the number no longer shifts sideways from one second to the next and four-digit sprints line up.

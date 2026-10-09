@@ -9,6 +9,7 @@
 	// at a sprint without a resize observer.
 	import { CEILING, fillPct, ZONE_NAMES, zoneOf } from '$lib/components/zones';
 	import { targetState } from '$lib/channel/types';
+	import TabularFigures from '$lib/components/TabularFigures.svelte';
 	import ZoneDot from '$lib/components/ZoneDot.svelte';
 	import PowerTrack from '$lib/session/PowerTrack.svelte';
 
@@ -110,7 +111,8 @@
 			<span
 				class="font-display {numeral} block leading-[0.85] font-bold tabular-nums {tv
 					? 'text-[16vh]'
-					: 'text-[6.5rem]'}">{quiet ? '—' : watts}</span
+					: 'text-[6.5rem]'}"
+				><TabularFigures value={quiet ? '—' : watts} /></span
 			>
 			<span class="eyebrow {tv ? 'text-[3vh]' : ''}">watts</span>
 			<!-- The zone you are actually in, named (#1531, ADR-0046): the gauge
