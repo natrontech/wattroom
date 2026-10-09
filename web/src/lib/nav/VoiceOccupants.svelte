@@ -86,7 +86,12 @@
 			: ''}"
 	>
 		{#if inVoice}<Headphones size={9} class="shrink-0 {CAVE_MARK}" />{/if}
-		<span class="flex min-w-0 items-center truncate" title={people.label}>
+		<!-- On a ride the names wrap, a name a line, rather than each cut to
+		     a few letters of 24 px. -->
+		<span
+			class="cave:flex-wrap flex min-w-0 items-center truncate"
+			title={people.label}
+		>
 			{#each list.slice(0, people.shown.length) as o, i (o.id)}
 				<span
 					in:enter={{ axis: 'x' }}
