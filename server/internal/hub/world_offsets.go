@@ -11,8 +11,10 @@ import (
 // Each rider's place in the bunch (ADR-0065, #3097): an elastic offset from
 // its one position. Ride harder and you move up it, ease off and you drift
 // back; fall silent and the bunch carries you at its tail until the team car
-// tows you back in. Nobody is ever removed, and nothing is ranked (ADR-0036):
-// an offset is where a figure stands, never a gap anyone is told about.
+// tows you back in — in a bunch ride or an ERG session; in a game your
+// offset alone brings you back. Nobody is ever removed, and nothing is ranked
+// (ADR-0036): an offset is where a figure stands, never a gap anyone is told
+// about.
 
 // docs/SPEC.md "Riding a road together" (defaults — tune in alpha).
 const (
@@ -99,7 +101,8 @@ func surplus(s sample, p planned, livePct, meanWkg float64) float64 {
 
 // settle moves every joined rider's place on by the second just ridden:
 // o ← o·e^(−1/τ) + s·v·1 s, clamped, at the bunch's speed after the step. A
-// rider who left the session leaves the bunch with it.
+// rider who left the session leaves the bunch with it. Under noTow a rider
+// back from a rest returns on that alone, and a tow under way ends.
 func (b *bunch) settle(joined map[string]struct{}, p planned, livePct float64) {
 	for id := range b.places {
 		if _, in := joined[id]; !in {
@@ -132,7 +135,7 @@ func (b *bunch) settle(joined map[string]struct{}, p planned, livePct float64) {
 		case b.at.Sub(pl.heardAt) > ridingWindow:
 			pl.resting, pl.towAt = true, time.Time{}
 			pl.offset = restingOffsetM + (pl.offset-restingOffsetM)*decay
-		case !pl.towAt.IsZero() && towed <= towSeconds:
+		case !b.noTow && !pl.towAt.IsZero() && towed <= towSeconds:
 			pl.offset = pl.towFrom * (1 - towed/towSeconds)
 		default:
 			pl.towAt = time.Time{}
