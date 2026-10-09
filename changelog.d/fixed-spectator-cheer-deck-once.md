@@ -1,0 +1,1 @@
+- A spectator in a voice channel sees the cheer row once: the roadside deck keeps the cheers and the cowbell, and the people column keeps the soundboard and the emoji picker.

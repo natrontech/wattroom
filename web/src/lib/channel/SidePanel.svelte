@@ -7,7 +7,6 @@
 	import SmilePlus from '@lucide/svelte/icons/smile-plus';
 	import MicOff from '@lucide/svelte/icons/mic-off';
 	import Video from '@lucide/svelte/icons/video';
-	import CheerDeck from '$lib/channel/CheerDeck.svelte';
 	import BoardToggle from '$lib/board/BoardToggle.svelte';
 	import EmojiPicker from '$lib/emoji/EmojiPicker.svelte';
 	import { emojiCrew } from '$lib/emoji/crew-emoji.svelte';
@@ -327,12 +326,9 @@
 		{/if}
 
 		<div class="border-ink/5 flex flex-col gap-2 border-t p-3">
-			<!-- Your reactions (#2722), and under them the soundboard: both are
-			     a thing you throw into the channel, and neither is typing —
-			     which mid-ride was never on the table anyway (ux.md). The picker
-			     sits beside the soundboard: six 44 px targets do not fit one row
-			     of the column (TARGETS G5, #3828). -->
-			<CheerDeck onCheer={(key) => onCheer?.(key)} />
+			<!-- The soundboard and the picker. The cheers and the cowbell live on
+			     the roadside deck (RoadsideDeck), not here (#3941). Neither is
+			     typing, which mid-ride was never on the table anyway (ux.md). -->
 			<div class="flex gap-2">
 				<BoardToggle />
 				<button
