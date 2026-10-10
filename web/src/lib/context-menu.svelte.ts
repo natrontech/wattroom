@@ -141,7 +141,7 @@ const overlaps = (a: Rect, b: Rect): boolean =>
  * A menu opened mid-ride (#3943) keeps out of the keep-clear corridor (G3)
  * and off the object it was opened from: the pointer's place first, then
  * beside the object, then above or below it, each also tried pushed
- * sideways out of the corridor. `corridor` and `anchor` are viewport
+ * to the corridor's right edge (its left holds the numbers and the sidebar). `corridor` and `anchor` are viewport
  * rectangles; the desk's place stands when nothing fits.
  */
 export function placeRidingMenu(
@@ -171,11 +171,7 @@ export function placeRidingMenu(
 	for (const t of tries) {
 		const top = clampTop(t.top);
 		const lefts = [clampLeft(t.left)];
-		if (corridor)
-			lefts.push(
-				clampLeft(corridor.right + margin),
-				clampLeft(corridor.left - margin - w),
-			);
+		if (corridor) lefts.push(clampLeft(corridor.right + margin));
 		for (const left of lefts) {
 			const box = { left, top, right: left + w, bottom: top + h };
 			if (corridor && overlaps(box, corridor)) continue;
