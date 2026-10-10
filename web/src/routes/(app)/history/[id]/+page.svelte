@@ -358,7 +358,7 @@
 			{/if}
 		</section>
 
-		<RideSkyline samples={ride.samples} />
+		<RideSkyline samples={ride.samples} distanceM={ride.distanceM} />
 
 		<section class="mt-3 grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
 			{#each stats as stat (stat.label)}
