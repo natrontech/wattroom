@@ -28,9 +28,15 @@ export const SCHEMES: Scheme[] =
 const ONLY = (process.env.DESIGN_SHOTS_SURFACES ?? '')
 	.split(/[\s,]+/)
 	.filter(Boolean);
-/** A test is wanted when any surface id it captures is named, or none is. */
+// DESIGN_SHOTS_EXCEPT: the surfaces other CI shards take (design-shots.yml),
+// so the shard that names none still gets any surface added later.
+const EXCEPT = (process.env.DESIGN_SHOTS_EXCEPT ?? '')
+	.split(/[\s,]+/)
+	.filter(Boolean);
+/** A test is wanted when any surface id it captures is named, or none is, and none is excepted. */
 export const wanted = (ids: readonly string[]) =>
-	ONLY.length === 0 || ids.some((id) => ONLY.includes(id));
+	(ONLY.length === 0 || ids.some((id) => ONLY.includes(id))) &&
+	!ids.some((id) => EXCEPT.includes(id));
 
 export const DESK: BrowserContextOptions = {
 	viewport: { width: 1440, height: 900 },
@@ -61,11 +67,13 @@ const SHOT_TIMEOUT_MS = 60_000;
 
 /**
  * The TV and the phone are variants of a surface (#3858): a full run takes
- * them, a scoped one only when it names a TV or a phone surface, which the
- * surface map does when a TV or phone layout file changed.
+ * them (a CI shard does too, DESIGN_SHOTS_VARIANTS=all), a scoped one only
+ * when it names a TV or a phone surface, which the surface map does when a TV
+ * or phone layout file changed.
  */
 const named = (variant: string) =>
 	ONLY.length === 0 ||
+	process.env.DESIGN_SHOTS_VARIANTS === 'all' ||
 	ONLY.some((id) => new RegExp(`(^|-)${variant}(-|$)`).test(id));
 const VARIANT = { tv: named('tv'), phone: named('phone') };
 export const takes = (device: BrowserContextOptions) =>
