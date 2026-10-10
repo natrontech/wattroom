@@ -1,0 +1,1 @@
+- While you ride, the sidebar reads at the bike computer's 24 px: its rows, section labels, the voice channel's session line and who is in it, and your name and buttons, with rows you can hit mid-pedal. Making a channel waits until you are off the bike.

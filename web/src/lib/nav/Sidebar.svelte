@@ -52,6 +52,7 @@
 	import ReleaseSheet from './ReleaseSheet.svelte';
 	import { updates } from './updates.svelte';
 	import { shellVersion } from '$lib/desktop';
+	import { CAVE_MARK, CAVE_ROW, CAVE_WORDS } from './cave-sizes';
 
 	let {
 		pathname,
@@ -155,7 +156,8 @@
 		<a href="/home" class="flex items-center gap-2 px-4 py-4">
 			<Logo size={22} {live} />
 			{#if presence.loaded}
-				<span class="font-display text-sm font-bold">WattRoom</span>
+				<span class="font-display text-sm font-bold {CAVE_WORDS}">WattRoom</span
+				>
 			{:else}
 				<Skeleton class="h-4 w-24" />
 			{/if}
@@ -183,11 +185,11 @@
 							title={waiting > 0
 								? `${waiting} waiting for you to answer`
 								: undefined}
-							class="flex min-h-11 items-center gap-2 rounded px-2 py-1.5 text-sm md:min-h-0 {on
+							class="flex min-h-11 items-center gap-2 rounded px-2 py-1.5 text-sm md:min-h-0 {CAVE_ROW} {on
 								? 'bg-ink/10 text-ink'
 								: 'text-muted hover:bg-ink/5 hover:text-ink'}"
 						>
-							<entry.icon size={15} class="shrink-0" />
+							<entry.icon size={15} class="shrink-0 {CAVE_MARK}" />
 							{entry.label}
 							{#if waiting > 0}
 								<span class="{UNREAD_COUNT} ml-auto"
@@ -202,7 +204,7 @@
 			<!-- A failed read is not an empty one (#2173): both leave no crews,
 			     and only one of them is a rider to teach. -->
 			{#if presence.error && crews.length === 0}
-				<p class="text-muted px-2 pt-3 text-xs">
+				<p class="text-muted px-2 pt-3 text-xs {CAVE_WORDS}">
 					{presence.error}
 					<button onclick={() => presence.reload()} class="btn-link"
 						>Retry</button
@@ -229,7 +231,7 @@
 		     rider reading "messages" over a column of faces could not tell
 		     them from the friends list or from who is in the voice channel
 		     with them. -->
-		<div class="eyebrow flex items-center px-2 pt-4 pb-1">
+		<div class="eyebrow cave:ride-label flex items-center px-2 pt-4 pb-1">
 			<!-- The heading folds the list (#1359): a chevron at the end of a
 			     section heading says fold, not go — the crew switcher above
 			     taught that. A button resets text-transform, so the eyebrow's
@@ -258,7 +260,7 @@
 						title="someone wrote"
 					></span>{/if}<ChevronRight
 					size={14}
-					class="-my-2 ml-auto shrink-0 transition-transform motion-reduce:transition-none {dmsFolded
+					class="-my-2 ml-auto shrink-0 {CAVE_MARK} transition-transform motion-reduce:transition-none {dmsFolded
 						? ''
 						: 'rotate-90'}"
 				/></button
@@ -267,10 +269,11 @@
 		{#if dmHeads.error && dmHeads.heads.length === 0 && !dmsFolded}
 			<!-- A refused poll is not "no conversations" (#1816, #2848): the
 			     prompt below told a rider with threads to start their first. -->
-			<p class="text-muted mx-2 mb-2 px-2 py-1 text-xs">
+			<p class="text-muted mx-2 mb-2 px-2 py-1 text-xs {CAVE_WORDS}">
 				Messages did not load.
-				<button onclick={() => dmHeads.retry()} class="btn-link text-xs"
-					>Retry</button
+				<button
+					onclick={() => dmHeads.retry()}
+					class="btn-link text-xs {CAVE_WORDS}">Retry</button
 				>
 			</p>
 		{:else if dmHeads.loaded && dmHeads.heads.length === 0 && !dmsFolded}
@@ -303,7 +306,7 @@
 						<a
 							href="/messages/dm/{head.peerId}"
 							aria-current={on ? 'page' : undefined}
-							class="flex min-h-11 w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm md:min-h-0 {on
+							class="flex min-h-11 w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm md:min-h-0 {CAVE_ROW} {on
 								? 'bg-ink/10 text-ink'
 								: dmHeads.unread(head.peerId)
 									? 'text-ink font-semibold'

@@ -41,6 +41,7 @@
 	import { people as faces } from '$lib/people.svelte';
 	import { createVoiceMover } from './voice-mover.svelte';
 	import VoiceOccupants from './VoiceOccupants.svelte';
+	import { CAVE_MARK, CAVE_ROW, CAVE_WORDS } from './cave-sizes';
 
 	let { crew, pathname }: { crew: CrewRef; pathname: string } = $props();
 
@@ -151,12 +152,13 @@
 </script>
 
 {#snippet section(label: string, kind: 'text' | 'voice')}
-	<div class="eyebrow flex items-center px-2 pt-4 pb-1">
+	<div class="eyebrow cave:ride-label flex items-center px-2 pt-4 pb-1">
 		{label}
 		{#if admin}
+			<!-- Naming a channel is typing: never mid-ride (ux.md). -->
 			<button
 				onclick={() => (creating = kind)}
-				class="hover:text-ink -my-2 ml-auto grid h-11 w-11 place-items-center md:h-6 md:w-6"
+				class="hover:text-ink cave:hidden -my-2 ml-auto grid h-11 w-11 place-items-center md:h-6 md:w-6"
 				title={newLabel(kind).toLowerCase()}
 				aria-label={newLabel(kind).toLowerCase()}><Plus size={16} /></button
 			>
@@ -173,16 +175,20 @@
 		title={MENU_HINT}
 		aria-current={on ? 'page' : undefined}
 		{@attach contextMenu(() => menu(c))}
-		class="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded px-2 py-1.5 text-sm md:min-h-0 {on
+		class="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded px-2 py-1.5 text-sm md:min-h-0 {CAVE_ROW} {on
 			? 'bg-ink/10 text-ink'
 			: c.unread
 				? 'text-ink/85 hover:bg-ink/5 font-medium'
 				: 'text-muted hover:bg-ink/5 hover:text-ink'}"
 	>
-		<Mark size={15} class="shrink-0" />
+		<Mark size={15} class="shrink-0 {CAVE_MARK}" />
 		<span class="min-w-0 flex-1 truncate">{c.name}</span>
 		{#if c.private}
-			<Lock size={11} class="text-muted-dim shrink-0" aria-label="private" />
+			<Lock
+				size={11}
+				class="text-muted-dim shrink-0 {CAVE_MARK}"
+				aria-label="private"
+			/>
 		{/if}
 		{#if c.unread}
 			<span class={UNREAD_COUNT}>{unreadCount(c.unread)}</span>
@@ -197,11 +203,11 @@
 			<a
 				href={entry.href}
 				aria-current={on ? 'page' : undefined}
-				class="flex min-h-11 items-center gap-2 rounded px-2 py-1.5 text-sm md:min-h-0 {on
+				class="flex min-h-11 items-center gap-2 rounded px-2 py-1.5 text-sm md:min-h-0 {CAVE_ROW} {on
 					? 'bg-ink/10 text-ink'
 					: 'text-muted hover:bg-ink/5 hover:text-ink'}"
 			>
-				<entry.icon size={15} class="shrink-0" />
+				<entry.icon size={15} class="shrink-0 {CAVE_MARK}" />
 				{entry.label}
 			</a>
 		</li>
@@ -213,7 +219,7 @@
 	{#if !crewLive.loaded}
 		<div class="space-y-1 px-2 pt-4"><Skeleton rows={3} class="h-5" /></div>
 	{:else if crewLive.error}
-		<p class="text-muted px-2 pt-4 text-xs">
+		<p class="text-muted px-2 pt-4 text-xs {CAVE_WORDS}">
 			{crewLive.error}
 			<button onclick={() => crewLive.reload()} class="btn-link">Retry</button>
 		</p>
@@ -259,10 +265,10 @@
 							aria-expanded={open}
 							aria-label="{open ? 'Hide' : 'Show'} who is in {c.name}"
 							title="{open ? 'Hide' : 'Show'} who is in {c.name}"
-							class="text-muted hover:text-ink grid h-11 w-11 shrink-0 place-items-center rounded md:h-6 md:w-6"
+							class="text-muted hover:text-ink cave:h-11 cave:w-11 grid h-11 w-11 shrink-0 place-items-center rounded md:h-6 md:w-6"
 							><ChevronRight
 								size={14}
-								class="transition-transform motion-reduce:transition-none {open
+								class="{CAVE_MARK} transition-transform motion-reduce:transition-none {open
 									? 'rotate-90'
 									: ''}"
 							/></button
@@ -282,7 +288,7 @@
 						{href}
 						aria-current={on ? 'page' : undefined}
 						title="join the ride"
-						class="flex min-h-11 items-center gap-1 rounded py-1 pr-0 pl-8 text-[10px] md:min-h-6 {on
+						class="flex min-h-11 items-center gap-1 rounded py-1 pr-0 pl-8 text-[10px] md:min-h-6 {CAVE_ROW} {on
 							? 'bg-ink/10 text-ink'
 							: 'text-ink/85 hover:bg-ink/5 hover:text-ink'}"
 					>

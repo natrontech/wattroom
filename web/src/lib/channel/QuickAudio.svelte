@@ -20,6 +20,7 @@
 	import { device } from '$lib/device.svelte';
 	import HandheldMicNote from '$lib/channel/HandheldMicNote.svelte';
 	import { openSoundPanel, soundPanel } from '$lib/channel/sound-panel.svelte';
+	import { CAVE_MARK } from '$lib/nav/cave-sizes';
 
 	// `compact` is the sidebar's you-panel: an icon in a row of icons, next to
 	// the mic and the camera it belongs with.
@@ -35,11 +36,13 @@
 		onclick={openSoundPanel}
 		aria-expanded={open}
 		class={compact
-			? 'text-muted-dim hover:text-muted flex flex-1 justify-center rounded py-1.5'
+			? 'text-muted-dim hover:text-muted cave:min-h-11 flex flex-1 items-center justify-center rounded py-1.5'
 			: 'btn btn-secondary btn-xs'}
 		title="the mix, the gate and your devices"
 		aria-label="sound — the mix, the gate and your devices"
-		>{#if compact}<Sliders size={16} />{:else}<Sliders size={13} /> Sound{/if}</button
+		>{#if compact}<Sliders size={16} class={CAVE_MARK} />{:else}<Sliders
+				size={13}
+			/> Sound{/if}</button
 	>
 {/if}
 
