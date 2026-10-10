@@ -35,7 +35,7 @@
 		const { x, y } = menu;
 		dragged = {};
 		const lane = corridor();
-		const edge = menu.anchor?.getBoundingClientRect().right ?? innerWidth - 16;
+		const edge = tile()?.getBoundingClientRect().right ?? innerWidth - 16;
 		const room = lane ? edge - lane.right - 12 : 0;
 		maxW = riding && room >= 240 ? room : null;
 		void tick().then(() => place(node, x, y, lane));
@@ -73,7 +73,7 @@
 					innerWidth,
 					innerHeight,
 					lane,
-					menu.anchor?.getBoundingClientRect() ?? null,
+					tile()?.getBoundingClientRect() ?? null,
 				)
 			: placeMenu(
 					x,
@@ -84,6 +84,10 @@
 					innerHeight,
 				);
 	}
+
+	// The panel the menu's tile sits in: the menu keeps clear of the whole
+	// panel, so it shares the column's edge and gap.
+	const tile = () => menu.anchor?.closest('.ride-panel') ?? menu.anchor ?? null;
 
 	// The corridor is kept clear only where a world is drawn (G3).
 	function corridor(): Rect | null {
