@@ -189,6 +189,14 @@
 			disabled={!held.paired || held.fault === 'reconnecting'}
 			class="btn btn-primary btn-lg">Start riding</button
 		>
+		{#if !held.paired}
+			<p class="text-muted text-sm">
+				Pair your trainer above to start — the road needs something to set its
+				slope.
+			</p>
+		{:else if held.fault === 'reconnecting'}
+			<p class="text-muted text-sm">Waiting for the trainer to come back.</p>
+		{/if}
 		{#if route.borrowed}
 			<p class="text-muted text-sm">
 				The crew’s road, from where the session starts. It saves as a free ride.
