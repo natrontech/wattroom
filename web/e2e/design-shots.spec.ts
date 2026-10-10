@@ -1196,6 +1196,21 @@ surface(
 		);
 		try {
 			await assertRiding(coach.page);
+			// A track on the deck and a queue behind it: the transport, the
+			// queue's rows and their vote and remove controls are what a rider
+			// pedals with (#3927). Muted by the shoot's mixer.
+			const add = coach.page.getByRole('textbox', {
+				name: 'add music: search your library, or paste a YouTube link',
+			});
+			for (const id of ['designOne', 'designTwo', 'designThree']) {
+				await add.fill(`https://www.youtube.com/watch?v=${id}`);
+				await add.press('Enter');
+				await coach.page
+					.getByText(id)
+					.filter({ visible: true })
+					.first()
+					.waitFor({ timeout: 15_000 });
+			}
 			await s.shot(coach);
 			for (const [device, name] of variants([
 				[DESK, 'ride-watch'],

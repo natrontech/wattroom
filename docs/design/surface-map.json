@@ -85,6 +85,9 @@
 			"web/src/lib/channel/Jukebox.svelte",
 			"web/src/lib/channel/JukeboxAdd.svelte",
 			"web/src/lib/channel/JukeboxPlaylists.svelte",
+			"web/src/lib/channel/JukeboxDeck.svelte",
+			"web/src/lib/channel/JukeboxTrack.svelte",
+			"web/src/lib/channel/JukeboxPlaylistRow.svelte",
 			"web/src/lib/channel/rail-size.ts"
 		],
 		"surfaces": ["ride-session-flat", "ride-channel-free"]
