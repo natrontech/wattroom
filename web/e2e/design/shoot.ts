@@ -9,6 +9,7 @@ import { readFileSync } from 'node:fs';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { baseUrl } from '../env.js';
+import { pinCapabilities, readCapabilities } from './capabilities';
 import { probe, sampleAt, type Box } from './probe';
 
 /**
@@ -46,9 +47,9 @@ export const PHONE: BrowserContextOptions = {
 // A phone that rides (#3854): Chrome on Android, which a Pixel 5 runs, has
 // Web Bluetooth, and a phone with it is no spectator (device.svelte.ts;
 // ADR-0066: "A phone with Web Bluetooth rides"). PHONE stays the phone that
-// cannot, the one a Watch view is for. Headless Chromium on Linux lacks the
-// API, so this profile is lent its presence (`lendBluetooth`); every ride
-// here is the simulated trainer's, and nothing pairs through it.
+// cannot, the one a Watch view is for. Every context has its Bluetooth pinned
+// (`pinCapabilities`), present for all but PHONE; every ride here is the
+// simulated trainer's, and nothing pairs through it.
 export const RIDING_PHONE: BrowserContextOptions = { ...PHONE };
 export const DESK_720: BrowserContextOptions = {
 	viewport: { width: 1280, height: 720 },
@@ -153,7 +154,9 @@ export class Shoot {
 			},
 			[MUTED, world ?? null] as const,
 		);
-		if (device === RIDING_PHONE) await ctx.addInitScript(lendBluetooth);
+		await ctx.addInitScript(pinCapabilities, {
+			bluetooth: device !== PHONE,
+		});
 		const page = await ctx.newPage();
 		page.on('dialog', (d) => void d.accept());
 		const errors: string[] = [];
@@ -191,6 +194,7 @@ export class Shoot {
 			await page.waitForTimeout(1000);
 		}
 		const probes = await page.evaluate(probe, CORRIDOR);
+		const capabilities = await page.evaluate(readCapabilities);
 		// A world frame drawn in software GL on a loaded machine took longer
 		// than the 15 s a control is given, and every frame after it was lost
 		// (#3942); a shot waits for its frame, not for a click.
@@ -207,7 +211,7 @@ export class Shoot {
 		await writeFile(
 			join(this.out, `${name}.json`),
 			JSON.stringify(
-				{ ...probes, asphaltRgb, ...extra, pageErrors: errors },
+				{ ...probes, asphaltRgb, capabilities, ...extra, pageErrors: errors },
 				null,
 				2,
 			) + '\n',
@@ -234,25 +238,6 @@ export class Shoot {
 		for (const stale of [`FAILED-${this.id}.png`, `FAILED-${this.id}.txt`])
 			await rm(join(this.out, stale), { force: true });
 	}
-}
-
-/**
- * Web Bluetooth where the browser has none, for RIDING_PHONE: the app asks
- * only whether it exists until a rider pairs, and a chooser opened here is
- * dismissed, as a rider would dismiss it.
- */
-function lendBluetooth() {
-	if ('bluetooth' in navigator) return;
-	const bluetooth = {
-		requestDevice: () =>
-			Promise.reject(
-				new DOMException('User cancelled the chooser.', 'NotFoundError'),
-			),
-	};
-	Object.defineProperty(Navigator.prototype, 'bluetooth', {
-		get: () => bluetooth,
-		configurable: true,
-	});
 }
 
 /**
