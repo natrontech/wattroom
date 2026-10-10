@@ -1,0 +1,1 @@
+- A road ride's page gives the same distance as its Rides row: the server's replay of the ride.
