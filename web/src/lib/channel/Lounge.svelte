@@ -247,7 +247,7 @@
 	{#if !device.spectator && !channel.you.inSession}
 		<a
 			href={channel.address.training}
-			class="btn btn-secondary btn-lg ride-stage:ride-word"
+			class="btn btn-secondary btn-lg ride-stage:ride-word ride-stage:py-2"
 			><Bike size={15} /> Free ride</a
 		>
 	{/if}
@@ -484,7 +484,7 @@
 			{@render freeRide()}
 			<button
 				onclick={() => channel.openPicker('plan')}
-				class="btn btn-secondary btn-lg ride-stage:ride-word"
+				class="btn btn-secondary btn-lg ride-stage:ride-word ride-stage:py-2"
 				><CalendarClock size={15} /> Plan for later</button
 			>
 		</div>

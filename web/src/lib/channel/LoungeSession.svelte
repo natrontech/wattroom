@@ -42,7 +42,7 @@
 		     where the ride is (#2450). -->
 		<a
 			href={ridePath(channel.address, sessionId)}
-			class="btn btn-accent btn-lg ride-stage:ride-word"
+			class="btn btn-accent btn-lg ride-stage:ride-word ride-stage:py-2"
 			><Radio size={15} />
 			{channel.canControl ? 'Go to the ride' : 'Join the ride'}</a
 		>
@@ -52,7 +52,7 @@
 		     ride link was held back. -->
 		<a
 			href="{sessionPath(channel.address.crew, sessionId)}/watch"
-			class="btn btn-accent btn-lg ride-stage:ride-word"
+			class="btn btn-accent btn-lg ride-stage:ride-word ride-stage:py-2"
 			><Radio size={15} /> Watch the session</a
 		>
 	{/if}

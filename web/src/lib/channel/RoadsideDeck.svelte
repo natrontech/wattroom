@@ -58,7 +58,7 @@
 	{#if to && live}
 		<button
 			onclick={() => live.bottle(to.id)}
-			class="btn btn-secondary btn-lg ride-word w-full"
+			class="btn btn-secondary btn-lg ride-word ride-stage:py-2 w-full"
 			><GlassWater size={16} /> Hand {to.name} a bottle</button
 		>
 	{/if}

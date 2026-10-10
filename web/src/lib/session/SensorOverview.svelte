@@ -215,7 +215,7 @@
 				     mistake, and a slip unpairs the trainer mid-session. -->
 				<button
 					onclick={trainer.onForget}
-					class="btn btn-ghost btn-lg ride-stage:ride-word"
+					class="btn btn-ghost btn-lg ride-stage:ride-word ride-stage:py-2"
 					>Unpair trainer</button
 				>
 			{:else if trainerView.button}
@@ -236,13 +236,13 @@
 					</p>
 					<button
 						onclick={trainer.onForget}
-						class="btn btn-ghost btn-xs ride-stage:btn-lg ride-stage:ride-word"
+						class="btn btn-ghost btn-xs ride-stage:min-h-11 ride-stage:ride-word"
 						>{trainerView.button.label} trainer</button
 					>
 				{:else}
 					<button
 						onclick={trainer.onPair}
-						class="btn btn-secondary btn-lg ride-stage:ride-word"
+						class="btn btn-secondary btn-lg ride-stage:ride-word ride-stage:py-2"
 						>{trainerView.button.variant === 'primary'
 							? 'Pair trainer'
 							: trainerView.button.label}</button
@@ -260,7 +260,7 @@
 				     browser with no Web Bluetooth still simulates (#2594). -->
 				<button
 					onclick={trainer.onSimulate}
-					class="btn btn-ghost btn-xs ride-stage:btn-lg ride-stage:ride-word"
+					class="btn btn-ghost btn-xs ride-stage:min-h-11 ride-stage:ride-word"
 					>Ride simulated</button
 				>
 			{/if}

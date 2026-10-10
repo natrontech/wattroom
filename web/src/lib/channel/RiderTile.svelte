@@ -70,11 +70,11 @@
 	// Which stats a tile has room for. On the riding stage a tile from 18rem
 	// takes riding sizes (TARGETS G4, D1's 36 px secondary numbers, #3890);
 	// a phone's two-up tile is too narrow for them and keeps its own, as D1
-	// has no phone row yet. At riding size W/kg waits for 28rem.
+	// has no phone row yet. At riding size W/kg waits for 22rem.
 	const STAT_FIT: Record<TileMetric, string> = {
 		hr: '',
 		cadence: '',
-		wkg: 'hidden @[10rem]:inline ride-stage:@[18rem]:hidden ride-stage:@[28rem]:inline',
+		wkg: 'hidden @[10rem]:inline ride-stage:@[18rem]:hidden ride-stage:@[22rem]:inline',
 	};
 
 	// value drives the zero-filter; text keeps the decimal so the column stays aligned.
@@ -102,13 +102,17 @@
 </script>
 
 <!-- A camera frame is the cave whatever the page's scheme (#2668): on paper
-     the scrim below mixed white, and the feed sat under a milky haze. -->
+     the scrim below mixed white, and the feed sat under a milky haze. A seat
+     with no camera is wider on the ridden stage from `sm`, so the riding-size
+     deck below the tiles stays in view (#3890). -->
 <div
 	class="bg-surface-raised @container relative overflow-hidden rounded-lg {rider.cameraOn
 		? 'cave'
 		: ''} {stretch
 		? 'h-full'
-		: 'aspect-video'} transition-[outline-color,outline-width] duration-(--dur-quick) {tileFrame(
+		: rider.cameraOn
+			? 'aspect-video'
+			: 'ride-stage:sm:aspect-[2/1] aspect-video'} transition-[outline-color,outline-width] duration-(--dur-quick) {tileFrame(
 		rider.speaking,
 		rider.away,
 	)}"
@@ -170,7 +174,7 @@
 
 	<!-- Name and voice state, top-left; kept off the power bar's edge. -->
 	<div
-		class="absolute top-2 left-2.5 flex max-w-[62%] items-center gap-1.5 @max-[12rem]:max-w-[calc(100%-5rem)]"
+		class="absolute top-2 left-2.5 flex max-w-[62%] items-center gap-1.5 @max-[12rem]:max-w-[calc(100%-1.25rem)]"
 		data-testid="tile-name"
 	>
 		<span
@@ -188,7 +192,7 @@
 		{/if}
 		{#if rider.coach}
 			<span
-				class="{MARK_SURFACE} ride-stage:@[18rem]:text-2xl rounded-full px-1.5 py-0.5 text-[9px] @max-[12rem]:hidden"
+				class="{MARK_SURFACE} ride-stage:@[18rem]:text-2xl rounded-full px-1.5 py-0.5 text-[9px]"
 				>coach</span
 			>
 		{/if}
@@ -219,7 +223,7 @@
 
 	<!-- Power, top-right. Only your own tile glows. -->
 	{#if live}
-		<div class="absolute top-2 right-2.5 text-right">
+		<div class="absolute top-2 right-2.5 text-right @max-[12rem]:top-8">
 			<!-- No drop-shadow: on paper a shadow under near-black numerals is
 			     the blur the rider reported (#505); the scrim carries them.
 			     Last known is muted, not faded (#2888): at opacity-40 it read
