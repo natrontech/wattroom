@@ -55,6 +55,7 @@ jobs:
             "games:ride-game-backyard roadside-chalk ride-session-road"
             "race:ride-race ride-session-flat"
             "detail:ride-detail world-start"
+            "pages:landing flow-f3 ride-status ride-skyline-fallback ride-workout-flat"
           )
           plan=""
           named=""
@@ -109,6 +110,9 @@ jobs:
       # The service's own database, fresh with the job: `make design-shots`
       # makes one only where it can reach the shared dev Postgres.
       WATTROOM_DB: postgres://wattroom:wattroom@localhost:5432/wattroom
+      # A scoped run skips the TV and phone variants its ids do not name; a
+      # shard is part of a full run, so it takes them all.
+      DESIGN_SHOTS_VARIANTS: all
       DESIGN_SHOTS_EXCEPT: ${{ matrix.except }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
