@@ -12,7 +12,7 @@ export interface Capabilities {
 /** What a shot reports of the page it drew, beside its probes. */
 export function readCapabilities() {
 	return {
-		bluetooth: !!navigator.bluetooth,
+		bluetooth: 'bluetooth' in navigator && !!navigator.bluetooth,
 		share: typeof navigator.share,
 		pointerFine: matchMedia('(pointer: fine)').matches,
 		hoverHover: matchMedia('(hover: hover)').matches,
