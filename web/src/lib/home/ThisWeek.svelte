@@ -77,11 +77,11 @@
 				<li data-testid="week-row">
 					<!-- The whole row is the link (TARGETS home 7): a plan opens its
 					     own row on its crew's Schedule (#2608), a session riding now
-					     its own page. Past rows dim; the rest stand raised. -->
+					     its own page. Past rows draw muted and flat; the rest stand raised. -->
 					<a
 						href={entry.href}
 						class="border-frame flex min-h-11 gap-3 rounded-lg border px-4 py-3 transition-colors {entry.past
-							? 'opacity-60 hover:opacity-100'
+							? 'text-muted hover:border-muted/40'
 							: 'bg-surface-raised hover:border-muted/40'}"
 					>
 						<span class="w-14 shrink-0">
