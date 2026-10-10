@@ -1,4 +1,5 @@
-import { seededLoadout } from '$lib/world/loadout';
+import { MOST_ABREAST } from '$lib/world/lanes';
+import { bunchLooks, seededLoadout } from '$lib/world/loadout';
 import { simRider, type SimRider } from '$lib/world/sim';
 
 /**
@@ -52,10 +53,14 @@ export function devCrew(
 			colours: { ...seeded.colours, jerseyA: 'snow', jerseyB: 'rust' },
 		};
 	}
-	return [
+	const crew = [
 		you,
 		bot('sven', 'Sven', 74, 270, 1),
 		bot('mia', 'Mia', 61, 215, 2),
 		bot('tom', 'Tom', 92, 300, 3),
 	];
+	// Each in their own kit, as a bunch dresses its riders (#3791).
+	const looks = bunchLooks(crew, MOST_ABREAST);
+	for (const r of crew) r.look = looks.get(r.id);
+	return crew;
 }
