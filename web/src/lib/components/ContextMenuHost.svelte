@@ -35,7 +35,8 @@
 		const { x, y } = menu;
 		dragged = {};
 		const lane = corridor();
-		const room = lane ? innerWidth - lane.right - 16 : 0;
+		const edge = menu.anchor?.getBoundingClientRect().right ?? innerWidth - 16;
+		const room = lane ? edge - lane.right - 12 : 0;
 		maxW = riding && room >= 240 ? room : null;
 		void tick().then(() => place(node, x, y, lane));
 		node.querySelector<HTMLElement>(MENU_WALK)?.focus();
@@ -154,9 +155,7 @@
 								size={icon}
 								class="shrink-0 opacity-80"
 							/>{/if}
-						<span class="min-w-0 flex-1 {riding ? '' : 'truncate'}"
-							>{item.label}</span
-						>
+						<span class="min-w-0 flex-1 truncate">{item.label}</span>
 						<span class="font-display text-muted shrink-0 tabular-nums {hint}"
 							>{item.format(value)}</span
 						>
@@ -200,9 +199,7 @@
 							size={icon}
 							class="shrink-0 opacity-80"
 						/>{/if}
-					<span class="min-w-0 flex-1 {riding ? '' : 'truncate'}"
-						>{item.label}</span
-					>
+					<span class="min-w-0 flex-1 truncate">{item.label}</span>
 					{#if item.hint}<span class="text-muted shrink-0 {hint}"
 							>{item.hint}</span
 						>{/if}

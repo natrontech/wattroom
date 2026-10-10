@@ -154,7 +154,7 @@ export function placeRidingMenu(
 	corridor: Rect | null,
 	anchor: Rect | null,
 ): { left: number; top: number } {
-	const margin = 8;
+	const margin = 12;
 	const desk = placeMenu(x, y, w, h, vw, vh);
 	const clampLeft = (l: number) =>
 		Math.max(margin, Math.min(l, vw - w - margin));
@@ -171,6 +171,8 @@ export function placeRidingMenu(
 	for (const t of tries) {
 		const top = clampTop(t.top);
 		const lefts = [clampLeft(t.left)];
+		// The anchor's right edge, so the menu shares the column's edge.
+		if (anchor) lefts.unshift(clampLeft(anchor.right - w));
 		if (corridor) lefts.push(clampLeft(corridor.right + margin));
 		for (const left of lefts) {
 			const box = { left, top, right: left + w, bottom: top + h };
