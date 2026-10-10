@@ -261,7 +261,14 @@
 			     headings say which question the split answers, and the ones this
 			     channel has not got sit last, greyed. -->
 			{@const { here, away, elsewhere: others, notHere } = groups}
-			<div class="border-ink/5 min-h-0 flex-1 overflow-y-auto border-b">
+			<!-- While a ride runs the jukebox sits on top and the crew under it,
+			     each at its content's size (TARGETS G3): the free height falls
+			     below the column's last block, never between two of them. -->
+			<div
+				class="border-ink/5 min-h-0 overflow-y-auto border-b {live
+					? 'order-2 shrink'
+					: 'flex-1'}"
+			>
 				{#if here.length > 0}
 					<div class="eyebrow flex items-center gap-1.5 px-3 pt-3 pb-1">
 						{#if !live}<Headphones size={10} />{/if}
@@ -320,13 +327,19 @@
 			     which is what the 160 px cap did whenever the stage held the
 			     video. -->
 			<div
-				class="border-ink/5 max-h-[45%] min-h-0 shrink-0 overflow-y-auto border-b p-3"
+				class="border-ink/5 max-h-[45%] min-h-0 shrink-0 overflow-y-auto border-b p-3 {live
+					? 'order-1'
+					: ''}"
 			>
 				{@render player()}
 			</div>
 		{/if}
 
-		<div class="border-ink/5 flex flex-col gap-2 border-t p-3">
+		<div
+			class="border-ink/5 flex flex-col gap-2 border-t p-3 {live
+				? 'order-3'
+				: ''}"
+		>
 			<!-- Your reactions (#2722), and under them the soundboard: both are
 			     a thing you throw into the channel, and neither is typing —
 			     which mid-ride was never on the table anyway (ux.md). The picker
