@@ -20,6 +20,7 @@ If 95 % of riders would pick the same value, it is a default, not a setting; edg
 - Data (watts, graphs) glows; chrome stays quiet. `--color-watt` is live data only.
 - A feature whose precondition is absent (no trainer, LiveKit down, not embeddable) is disabled with a one-line hint or hidden. It never fails on click.
 - Words come from the SPEC glossary: crew, text channel, voice channel, session, coach, sprint moments. Never "room" ([ADR-0058](../../docs/decisions/0058-the-room-dissolves-into-the-crew.md)), and no per-screen synonyms.
+- Copy says what a thing is or does, never what it isn't. No reassurance by negation ("your private space, and no one else's", "nothing leaves this device", "no one sees this but you"). Name what doesn't happen only when the rider needs that fact to decide, and then say it once, in a few words.
 
 ## Phone width: 375 × 812
 
