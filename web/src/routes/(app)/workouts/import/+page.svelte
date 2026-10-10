@@ -6,7 +6,6 @@
 	import { page } from '$app/state';
 	import { account } from '$lib/account.svelte';
 	import Banner from '$lib/components/Banner.svelte';
-	import EmptyState from '$lib/components/EmptyState.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import WorkoutPreview from '$lib/components/WorkoutPreview.svelte';
 	import { fileDrop } from '$lib/file-drop.svelte';
@@ -183,7 +182,7 @@
 <svelte:head><title>Import a workout or a route · WattRoom</title></svelte:head>
 
 <main class="page">
-	<h1 class="page-title">Import a workout or a route</h1>
+	<h1 class="page-title text-balance">Import a workout or a route</h1>
 	<p class="text-muted mt-1 text-xs">
 		A Zwift <code>.zwo</code> or a <code>.erg</code> course file becomes a
 		WattRoom workout on your shelf; a <code>.gpx</code>, <code>.tcx</code> or
@@ -272,32 +271,27 @@
 	<section class="mt-6">
 		<div
 			{...drop.on}
-			class="rounded-lg border border-dashed transition-colors {idle
-				? 'py-6'
-				: 'p-6'} {drop.over
+			class="rounded-lg border border-dashed p-6 transition-colors {drop.over
 				? 'border-neon bg-neon/5'
-				: idle
-					? 'border-transparent'
-					: 'border-muted/25'}"
+				: 'border-muted/25'}"
 		>
 			{#if reading}
 				<!-- Reading is usually instant; a file on a slow volume is not. -->
 				<Skeleton class="h-24" rows={2} />
 			{:else if idle}
-				<EmptyState>
-					{#snippet icon()}<FileUp size={20} class="text-muted" />{/snippet}
-					Drop a workout (<code>.zwo</code>, <code>.erg</code>) or a route (<code
-						>.gpx</code
-					>, <code>.tcx</code>, <code>.fit</code>) here, or choose one. You will
-					see exactly what it became — and what it could not bring — before
-					anything is saved.
-					{#snippet cta()}
-						<button
-							onclick={() => picker?.click()}
-							class="btn btn-primary btn-lg">Choose a file</button
-						>
-					{/snippet}
-				</EmptyState>
+				<div class="text-muted flex flex-col items-start gap-3 text-sm">
+					<FileUp size={20} class="text-muted" />
+					<p>
+						Drop a workout (<code>.zwo</code>, <code>.erg</code>) or a route (<code
+							>.gpx</code
+						>, <code>.tcx</code>, <code>.fit</code>) here, or choose one. You
+						will see exactly what it became — and what it could not bring —
+						before anything is saved.
+					</p>
+					<button onclick={() => picker?.click()} class="btn btn-primary btn-lg"
+						>Choose a file</button
+					>
+				</div>
 			{:else}
 				<div class="flex flex-wrap items-center gap-x-3 gap-y-2">
 					<FileUp size={16} class="text-muted shrink-0" />
@@ -409,7 +403,9 @@
 		<p class="text-muted mt-6 text-xs">
 			A converted workout is a WattRoom workout: every target scales to your
 			FTP, and you can reshape it in the editor afterwards.
-			<a href="/workouts" class="hover:text-ink underline">Back to workouts</a>
+			<a href="/workouts" class="hover:text-ink whitespace-nowrap underline"
+				>Back to workouts</a
+			>
 		</p>
 	{/if}
 </main>
