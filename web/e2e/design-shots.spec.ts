@@ -1177,8 +1177,9 @@ surface(
 );
 
 /** A 65 s workout, ridden to its closing card. */
-async function rideToTheCard(o: Opened) {
+async function rideToTheCard(o: Opened, onMount?: () => Promise<void>) {
 	await ride(o.page, '/ride?w=smoke-test');
+	await onMount?.();
 	await o.page
 		.getByRole('link', { name: 'See your ride' })
 		.waitFor({ timeout: 120_000 });
@@ -1211,9 +1212,20 @@ surface('closing-card', async (s) => {
 		[RIDING_PHONE, 'closing-card-phone', undefined],
 	] as const)) {
 		const other = await s.open(device, { world: false, reducedMotion });
-		await rideToTheCard(other);
+		// Under reduced motion the finished card appears at once: a frame the
+		// moment the card mounts, and the settled one beside it.
+		await rideToTheCard(other, async () => {
+			if (!reducedMotion) return;
+			await other.page
+				.getByTestId('closing-card')
+				.waitFor({ timeout: 120_000 });
+			await s.shot(other, { name: 'closing-card-reduced-0' });
+		});
 		await s.shot(other, { name, full: true });
 	}
+	// The real card with what no ride here reaches: a medal and a scored
+	// roster (/dev/summary renders SessionSummary with them).
+	await page(s, o, '/dev/summary', { name: 'closing-card-medal' });
 });
 
 /** Designer coaching, Design Partner riding along, a session started. */
@@ -1236,6 +1248,11 @@ async function session(
 	await toTraining(rider.page, crew);
 	await startSession(coach.page, pick);
 	await joinSession(rider.page);
+	// Started "without a trainer" (its trainer was on the free ride), the
+	// coach rides along the way the partner does: a two-rider session.
+	const coachJoins = coach.page.getByRole('link', { name: 'Join the ride' });
+	if (await coachJoins.isVisible({ timeout: 5000 }).catch(() => false))
+		await coachJoins.click();
 	await atSecond(coach.page, RIDE_SECOND);
 	return { coach, rider, crew };
 }
