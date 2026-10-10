@@ -251,7 +251,7 @@
 				class="btn btn-secondary btn-xs"
 				title="Redo (⇧⌘Z)">Redo</button
 			>
-			<a href="/workouts" class="text-muted hover:text-ink text-sm">Discard</a>
+			<a href="/workouts" class="btn btn-ghost">Discard</a>
 			<button
 				onclick={save}
 				disabled={!check.ok || !hydrated || shelfFull}
@@ -466,7 +466,9 @@
 						current.hrLow !== undefined ||
 						current.hrHigh !== undefined}
 				>
-					<summary class="eyebrow cursor-pointer"
+					<!-- A 24 px target (G5, #3906) whose padding sits in the gaps
+					     around it, so the panel keeps its rhythm. -->
+					<summary class="eyebrow -my-2 cursor-pointer py-2"
 						>cadence and heart-rate bands</summary
 					>
 					<p class="text-muted mt-1 mb-2 text-[11px]">
@@ -637,10 +639,18 @@
 						class="btn btn-secondary btn-xs">Wrap in a repeat</button
 					>
 				{/if}
-				<button
-					onclick={() => (selected = removeAndSelect(workout, selected!))}
-					class="btn btn-danger btn-xs ml-auto">Delete</button
-				>
+				<!-- Last, after a separator, the two wrapping together (G8). -->
+				<span class="ml-auto flex items-center gap-2">
+					<span
+						role="separator"
+						aria-orientation="vertical"
+						class="bg-muted/40 h-4 w-px shrink-0"
+					></span>
+					<button
+						onclick={() => (selected = removeAndSelect(workout, selected!))}
+						class="btn btn-danger btn-xs">Delete</button
+					>
+				</span>
 			</div>
 		</div>
 	{:else}

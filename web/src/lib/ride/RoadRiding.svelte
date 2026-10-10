@@ -1,9 +1,11 @@
 <script lang="ts">
 	/**
-	 * A free ride alone on one of your own roads (#3027): the channel's free
-	 * ride surface, lifted to /ride for parity (ADR-0046). Pair, ride from the
-	 * first stroke, End ride saves against the route. No count-in, no
-	 * workout: the road sets the grade, or the watts in watts mode.
+	 * A free ride alone on a road (#3027): the channel's free ride surface,
+	 * lifted to /ride for parity (ADR-0046). Ride from the first stroke, End
+	 * ride saves against the route. No count-in, no workout: the road sets the
+	 * grade, or the watts in watts mode. Your own road is set up on /ride's
+	 * card, which hands the trainer over (#3855); only a crew's planned road
+	 * pairs here.
 	 */
 	import { onDestroy, untrack } from 'svelte';
 	import Banner from '$lib/components/Banner.svelte';
@@ -11,7 +13,7 @@
 	import { FtmsTrainer } from '$lib/ble/ftms';
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { formatClock, formatKm } from '$lib/format';
+	import { formatClock } from '$lib/format';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import type { FreeMode } from '$lib/ride/free-ride-controls';
 	import { createFreeRide } from '$lib/ride/free-ride.svelte';
@@ -27,7 +29,7 @@
 	import Skyline from '$lib/ride/Skyline.svelte';
 	import { climbView } from '$lib/ride/climb-view';
 	import { watchClimbCues } from '$lib/ride/climb-cues.svelte';
-	import { carryOnFrom, type RideableRoute } from '$lib/ride/roads';
+	import type { RideableRoute } from '$lib/ride/roads';
 	import { rememberRoad } from '$lib/ride/last-ride';
 	import type { Trainer } from '$lib/ble/trainer';
 	import { createSoloRoadRide } from '$lib/ride/solo-road.svelte';
@@ -110,14 +112,6 @@
 			: undefined,
 	);
 
-	// Where the last ride of this road stopped short (#3205), beside From
-	// the start; a link that says where to start (Resume at km) already did.
-	let carry = $state<number | null>(null);
-	untrack(() => {
-		if (!from && !route.borrowed && !handed)
-			void carryOnFrom(route.id, route.road.length).then((m) => (carry = m));
-	});
-
 	function start(at?: number, trainer = trainers.handOff()) {
 		if (!trainer) return;
 		solo.start(trainer, at);
@@ -190,34 +184,14 @@
 					: undefined,
 			}}
 		/>
-		{#if carry !== null}
-			<div class="flex flex-wrap gap-3">
-				<button
-					onclick={() => start(carry ?? 0)}
-					disabled={!held.paired || held.fault === 'reconnecting'}
-					class="btn btn-primary btn-lg"
-					>Carry on from km {formatKm(carry)}</button
-				>
-				<button
-					onclick={() => start(0)}
-					disabled={!held.paired || held.fault === 'reconnecting'}
-					class="btn btn-secondary btn-lg">From the start</button
-				>
-			</div>
-		{:else}
-			<button
-				onclick={() => start()}
-				disabled={!held.paired || held.fault === 'reconnecting'}
-				class="btn btn-primary btn-lg">Start riding</button
-			>
-		{/if}
+		<button
+			onclick={() => start()}
+			disabled={!held.paired || held.fault === 'reconnecting'}
+			class="btn btn-primary btn-lg">Start riding</button
+		>
 		{#if route.borrowed}
 			<p class="text-muted text-sm">
 				The crew’s road, from where the session starts. It saves as a free ride.
-			</p>
-		{:else if from > 0}
-			<p class="text-muted text-sm">
-				Carrying on from km {formatKm(from)}.
 			</p>
 		{/if}
 	{:else if solo.trainer}

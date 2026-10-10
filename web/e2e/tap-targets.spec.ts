@@ -151,6 +151,18 @@ test('the browse surfaces’ links and folds clear the floor on a phone', async 
 		a.locator('summary', { hasText: 'Advanced' }),
 	);
 
+	// A fresh sheet opens on its one steady block, bands folded (#3906), and
+	// its way out sits beside Save (#3919).
+	await a.goto('/workouts/edit');
+	await measure(
+		'the editor’s cadence and heart-rate bands',
+		a.locator('summary', { hasText: 'cadence and heart-rate bands' }),
+	);
+	await measure(
+		'the editor’s Discard',
+		a.getByRole('link', { name: 'Discard' }),
+	);
+
 	expect(short, 'browse controls under the 24px floor').toEqual([]);
 });
 
@@ -254,6 +266,93 @@ test('the header controls a pedalling rider uses are riding size', async ({
 			`a page dot is ${dotBox.width}×${dotBox.height}px`,
 		).toBeGreaterThanOrEqual(RIDING);
 	}
+});
+
+/**
+ * The voice channel's people column (#3828, #3912). On a ride it is part of
+ * the riding surface, so everything in it is 44 px each way: the cheers had
+ * shrunk to 35 px wide to fit one row, and the jukebox and the soundboard were
+ * 30 px. At any width its search field says its whole placeholder: the old one
+ * was cut mid-word at the column's default 272 px.
+ */
+test('the people column is riding size on a ride, and its search placeholder fits', async ({
+	riders,
+	channels,
+}) => {
+	test.skip(
+		!!process.env.PLAYWRIGHT_BASE_URL,
+		'the ?as= dev provider only exists on a dev server',
+	);
+	const rider = await riders('Tap Column Rider');
+	await rider.setViewportSize({ width: 1440, height: 900 });
+	const opened = await channels.open(
+		rider,
+		`Tap Column ${Date.now() % 100000}`,
+	);
+	await rider.goto(`${voicePath(opened)}/training`);
+	const field = rider.getByRole('textbox', { name: /^add music/ });
+	const column = rider
+		.getByRole('complementary')
+		.filter({ has: field })
+		.first();
+	await expect(field).toBeVisible({ timeout: 15_000 });
+
+	/** The placeholder's width in the field's own font, against its room. */
+	const fit = () =>
+		field.evaluate((input: HTMLInputElement) => {
+			const cs = getComputedStyle(input);
+			const pen = document.createElement('canvas').getContext('2d')!;
+			pen.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+			return {
+				text: Math.ceil(pen.measureText(input.placeholder).width),
+				room: Math.floor(
+					input.clientWidth -
+						parseFloat(cs.paddingLeft) -
+						parseFloat(cs.paddingRight),
+				),
+			};
+		});
+	/** The column at its narrowest, which its own min-width sets. */
+	const narrowest = () =>
+		column.evaluate((aside: HTMLElement) => (aside.style.width = '0px'));
+	const fits = async (where: string) => {
+		const { text, room } = await fit();
+		expect
+			.soft(text, `the search placeholder ${where}: ${text}px in ${room}px`)
+			.toBeLessThanOrEqual(room);
+	};
+	/** Every control in the column under 44 px either way. */
+	const short = async () => {
+		const found: string[] = [];
+		for (const control of await column
+			.locator('button, a[href], input, select, textarea, summary')
+			.filter({ visible: true })
+			.all()) {
+			const { width, height } = await box(control);
+			if (Math.min(width, height) >= RIDING) continue;
+			const name =
+				(await control.getAttribute('aria-label')) ??
+				(await control.innerText()).trim();
+			found.push(`${name || 'a control'} is ${width}×${height}px`);
+		}
+		return found;
+	};
+
+	await fits('at the desk');
+	await narrowest();
+	await fits('at the desk, the column at its narrowest');
+
+	await rider
+		.getByRole('button', { name: 'Ride simulated' })
+		.click({ timeout: 15_000 });
+	await expect(rider.getByRole('button', { name: 'End ride' })).toBeVisible({
+		timeout: 15_000,
+	});
+	await expect
+		.poll(short, { message: 'people column controls under 44px on a ride' })
+		.toEqual([]);
+	await narrowest();
+	await fits('riding, the column at its narrowest');
 });
 
 /**

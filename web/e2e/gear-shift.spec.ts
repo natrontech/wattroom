@@ -101,7 +101,7 @@ test('a solo ride on your road shifts from the keys its hint names', async ({
 	await page
 		.getByRole('button', { name: 'Ride simulated' })
 		.click({ timeout: 15_000 });
-	await page.getByRole('button', { name: 'Start riding' }).click();
+	await page.getByRole('button', { name: 'Start the ride' }).click();
 	await expect(
 		page.getByText('Shift with Easier and Harder, or − and + on a keyboard'),
 	).toBeVisible({ timeout: 15_000 });

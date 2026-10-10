@@ -66,7 +66,7 @@ test('a road ridden once races its ghost from the start', async ({ page }) => {
 
 	// Never ridden: no ghost, no split, and nothing says anything is wrong.
 	await pairSimulated(page, routeId);
-	await page.getByRole('button', { name: 'Start riding' }).click();
+	await page.getByRole('button', { name: 'Start the ride' }).click();
 	// A class IV climb from the first metre: CLIMB opens by itself (#3645),
 	// and the split is on RIDE, one page back.
 	await expect(computer).toHaveAttribute('data-page', 'climb', {
@@ -86,7 +86,8 @@ test('a road ridden once races its ghost from the start', async ({ page }) => {
 
 	// From the start again: the first ride is the ghost, and the split reads.
 	await pairSimulated(page, routeId);
-	await page.getByRole('button', { name: 'From the start' }).click();
+	await page.getByRole('button', { name: 'Whole road' }).click();
+	await page.getByRole('button', { name: 'Start the ride' }).click();
 	await expect(computer).toHaveAttribute('data-page', 'climb', {
 		timeout: 15_000,
 	});

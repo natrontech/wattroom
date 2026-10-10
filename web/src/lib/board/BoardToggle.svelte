@@ -12,7 +12,8 @@
 	 * Labelled rather than a fifth glyph in that row: a bare drum among four
 	 * reaction faces reads as a fifth reaction, and the first rider to see it
 	 * there could not find the board at all. `Away` in the sidebar is the same
-	 * shape — a toggle that says what it is, primary while it is on.
+	 * shape — a toggle that says what it is, primary while it is on. Off, it
+	 * wears the cheers' own border, so the deck reads as one set of keys.
 	 */
 	import Drum from '@lucide/svelte/icons/drum';
 	import { boardPanel } from '$lib/board/panel.svelte';
@@ -21,8 +22,8 @@
 <button
 	onclick={() => boardPanel.toggle()}
 	aria-expanded={boardPanel.open}
-	class="btn btn-xs mt-1.5 w-full {boardPanel.open
-		? 'btn-primary'
-		: 'btn-secondary'}"
+	class="btn btn-lg min-w-0 flex-1 border {boardPanel.open
+		? 'btn-primary border-transparent'
+		: 'border-muted/20 hover:border-muted/50'}"
 	title="your soundboard"><Drum size={13} /> Soundboard</button
 >

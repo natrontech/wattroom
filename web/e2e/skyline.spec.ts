@@ -26,7 +26,7 @@ async function rideTheRoad(page: Page, name: string) {
 	await page
 		.getByRole('button', { name: 'Ride simulated' })
 		.click({ timeout: 15_000 });
-	await page.getByRole('button', { name: 'Start riding' }).click();
+	await page.getByRole('button', { name: 'Start the ride' }).click();
 	const skyline = page.getByTestId('skyline');
 	await expect(skyline.getByTestId('skyline-dot')).toBeVisible({
 		timeout: 15_000,

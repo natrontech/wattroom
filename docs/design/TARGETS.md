@@ -87,7 +87,7 @@ So the RIDE page holds: a workout with no road, Cadence and Heart; a workout on 
 
 Sequence captures [multi:flow-*], one per step, checked for continuity: a frame can pass while the screens do not connect.
 
-- **F1, a road ridden:** Workouts → a route card's Ride → `/ride?road=` → 65 s → End ride → road-end card → the route page shows the ride under Your rides. [route-row] [ride-free-road-surface] [route-page]
+- **F1, a road ridden:** Workouts → a route card's Ride → `/ride?road=`, the Ride card on Free ride and that road → Start the ride → 65 s → End ride → road-end card → the route page shows the ride under Your rides. [route-row] [ride-free-road-surface] [route-page]
 - **F2, a workout ridden:** `/ride` → Workout → 65 s → End ride → closing card → See your ride → the ride page, wearing the closing card's header and tiles. [ride-preride] [closing-card] [ride-page]
 - **F3, first run:** fresh dev account → Home's set-up card → `/ride` → pair the simulated trainer → first ride → closing card → Home shows it under Recent rides. [home] [ride-preride] [closing-card]
 
@@ -383,7 +383,7 @@ Capture: `/hud` in a second page while a road free ride runs: `hud-shell` at 320
 
 #### ride-preride (a desk surface)
 
-Capture: world off, `/ride`, with and without a remembered road, both schemes. Target: v3-modes' “/ride, alone” column. Canon: ADR-0062; ADR-0020's amendment, “Pages fill the column”.
+Capture: world off, `/ride`, with and without a remembered road, both schemes; `ride-free-road-setup`, `/ride?road=<hairpin>` before the first stroke. Target: v3-modes' “/ride, alone” column. Canon: ADR-0062; ADR-0020's amendment, “Pages fill the column”.
 
 1. First under the title, two tiles “Free ride” | “Workout”, each its name at display size with one line under it: “You drive the trainer. Hold a grade, or hold your watts.” / “The plan drives it. Last: <workout>.”; the chosen tile has the neon border. [ride-preride]
 2. Same card: the eyebrow ROAD, then the road's name; “your last road” when it is the remembered one; buttons “Change” and “No road”. [ride-preride]
@@ -394,6 +394,7 @@ Capture: world off, `/ride`, with and without a remembered road, both schemes. T
 7. Tiles, chips and buttons ≥ 44 px tall. [ride-preride]
 8. Follows the rider's scheme; in dark, cards surface-raised with a hairline.
 9. Solo games one line in the card. [ride-preride]
+10. `/ride?road=<id>` opens this card on Free ride with that road chosen, its `from` the selected chip, never a setup of its own. [#3855] [multi:ride-free-road-setup]
 
 #### ride-roadpick
 
@@ -443,6 +444,14 @@ Capture: `/workouts`, the hairpin and rolling route seeded; whole page body, des
 9. Third line one of “Not ridden yet”, “Ridden 3× · last 29 Sep”, “Left off at km 21.3”. [route-row]
 10. Actions: Ride (`btn-primary btn-xs`) bottom right, “Carry on” when there is somewhere to carry on; the rest of the card opens the route page; context menu Ride it, Open, a separator, Delete in the danger token. [route-row]
 11. Phone order: title, search, Your workouts, Your routes, Measure, Curated; nothing scrolls sideways. [workouts-page]
+
+#### workout-editor, phone-workout-editor
+
+Capture: `/workouts/edit`, a fresh sheet on its one steady block, the bands folded; whole page body, desk and phone, both schemes; `workout-editor-bands` the same sheet with the bands unfolded, desk. Target: none drawn, canon is the bar. Canon: G5, G7, ux.md (phone width), ADR-0005 (the editor is chrome, flat and quiet).
+
+1. The page fills the content column, no max-width, never centred; every section's left edge on the title's.
+2. On a phone the sheet stacks before the library; nothing scrolls sideways. [probe:overflowX]
+3. The cadence and heart-rate bands fold [#3906] and Discard [#3919] are ≥ 24 px tall, at 375 px too. [probe:minTarget] [test:tap-targets.spec.ts]
 
 #### route, phone-route
 

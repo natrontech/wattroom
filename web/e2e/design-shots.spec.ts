@@ -38,6 +38,7 @@ import {
 	wanted,
 	type Opened,
 } from './design/shoot';
+import { hudScale } from './design/probe';
 
 /**
  * The design shots (#3666, docs/design/DESIGN-CHECK.md): every surface in
@@ -392,14 +393,20 @@ surface(
 			await hud.setViewportSize(size);
 			await hud.goto('/hud');
 			await hud.waitForTimeout(4000);
-			await s.shot({ page: hud, errors }, { name });
+			await s.shot(
+				{ page: hud, errors },
+				{ name, extra: { hud: await hud.evaluate(hudScale) } },
+			);
 			await hud.close();
 		}
 		// With no ride anywhere, the waiting state scales as the same block (#3678).
 		const idle = await s.open(DESK, { as: 'Hud Watcher', world: false });
 		await idle.page.goto('/hud');
 		await idle.page.waitForTimeout(2500);
-		await s.shot(idle, { name: 'hud-waiting' });
+		await s.shot(idle, {
+			name: 'hud-waiting',
+			extra: { hud: await idle.page.evaluate(hudScale) },
+		});
 		// Signed out, in the shell's window and in a tab: the same block.
 		for (const [name, size] of [
 			['hud-signed-out-shell', HUD_SHELL],
@@ -408,7 +415,10 @@ surface(
 			const out = await s.open({ ...DESK, viewport: size }, { as: null });
 			await out.page.goto('/hud');
 			await out.page.waitForTimeout(2500);
-			await s.shot(out, { name });
+			await s.shot(out, {
+				name,
+				extra: { hud: await out.page.evaluate(hudScale) },
+			});
 		}
 	},
 	{ also: ['hud-shell'], once: true },
@@ -700,6 +710,28 @@ surface(
 		await s.shot(o, { name: 'route-best-opens' });
 	},
 	{ also: ['phone-route'] },
+);
+
+surface(
+	'workout-editor',
+	async (s) => {
+		for (const [device, name] of variants([
+			[DESK, 'workout-editor'],
+			[PHONE, 'phone-workout-editor'],
+		] as const)) {
+			const o = await s.open(device);
+			await page(s, o, '/workouts/edit', { name });
+		}
+		// The selected block's cadence and heart-rate bands, unfolded (#3906).
+		const o = await s.open(DESK);
+		await o.page.goto('/workouts/edit');
+		await o.page
+			.locator('summary', { hasText: 'cadence and heart-rate bands' })
+			.click();
+		await o.page.waitForTimeout(500);
+		await s.shot(o, { name: 'workout-editor-bands', full: true });
+	},
+	{ also: ['phone-workout-editor'] },
 );
 
 test.fixme('routes', () => {

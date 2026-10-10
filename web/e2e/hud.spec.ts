@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { hudScale } from './design/probe';
 import { signInAs } from './signin';
 
 /**
@@ -105,4 +106,56 @@ test('the HUD draws the road a ride is on', async ({ context, page }) => {
 	await expect(strip.locator('rect')).toHaveCount(20);
 	const box = await strip.boundingBox();
 	expect(box && box.y + box.height).toBeLessThanOrEqual(132);
+});
+
+/**
+ * A second screen (#3857, TARGETS hud item 2): the shell's rows scale as one
+ * centred block, the watts' numerals about a quarter of the window's height,
+ * and every word at SPEC's HUD column — the clock at 9vh, nothing under the
+ * 2.9vh floor. The shell's 2.4 : 1 block used to bind on the width, which
+ * left the numerals at 17 % and the rows spanning the window from its left.
+ */
+test('the HUD fills a second screen as one centred block', async ({
+	context,
+	page,
+}) => {
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await signInAs(page, 'HUD Second Screen', '/hud');
+	await expect(page.getByTestId('hud-quiet')).toBeVisible();
+
+	const rider = await context.newPage();
+	await rider.goto('/home');
+	await rider.evaluate(() => {
+		new BroadcastChannel('wattroom.hud').postMessage({
+			at: Date.now(),
+			watts: 280,
+			target: 0,
+			remaining: 0,
+			elapsed: 480,
+			label: 'Free ride · Corridor loop',
+			road: {
+				grade: 8.94,
+				km: 12.4,
+				totalKm: 52.9,
+				toTopM: 6000,
+				ahead: Array.from({ length: 20 }, (_, i) => i * 0.5),
+			},
+		});
+	});
+	await expect(page.getByTestId('hud-watts')).toHaveText('280');
+
+	const { numeralVh, block, texts } = await page.evaluate(hudScale);
+	expect(numeralVh).toBeGreaterThanOrEqual(21);
+	expect(numeralVh).toBeLessThanOrEqual(27);
+	// Centred, with the cave around it on every side.
+	expect(block!.x0).toBeGreaterThan(5);
+	expect(Math.abs(block!.x0 - (100 - block!.x1))).toBeLessThanOrEqual(0.5);
+	expect(Math.abs(block!.y0 - (100 - block!.y1))).toBeLessThanOrEqual(0.5);
+	expect(Math.min(...texts.map((t) => t.vh))).toBeGreaterThanOrEqual(2.9);
+	expect(texts.find((t) => t.text === 'ridden')?.vh).toBeGreaterThanOrEqual(9);
+	// The road's name wraps onto a second line rather than truncating away.
+	const label = await page
+		.getByTestId('hud-label')
+		.evaluate((el) => [el.scrollHeight - el.clientHeight, el.clientHeight]);
+	expect(label[0]).toBeLessThanOrEqual(1);
 });

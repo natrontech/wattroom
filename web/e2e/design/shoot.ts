@@ -308,22 +308,12 @@ export async function ride(
 		.getByRole('button', { name: 'Ride simulated' })
 		.first()
 		.click({ timeout: 15_000 });
-	const start = page
+	// /ride's card, a road ride's too (#3855): a road left short of its end
+	// offers to carry on as a chip, and the card opens on the url's `from`.
+	await page
 		.getByRole('button', { name: /^Start (riding|the ride)$/ })
-		.first();
-	// A road left short of its end offers to carry on (#3205), and the offer
-	// replaces Start riding once its lookup lands, sometimes under the click:
-	// press whichever is there until neither is. Every shot starts from km 0.
-	const fromStart = page.getByRole('button', { name: 'From the start' });
-	const either = start.or(fromStart).first();
-	await either.waitFor({ timeout: 15_000 });
-	const deadline = Date.now() + 30_000;
-	while (await either.isVisible()) {
-		if (Date.now() > deadline) throw new Error('the ride never started');
-		const button = (await fromStart.isVisible()) ? fromStart : start;
-		await button.click({ timeout: 5000 }).catch(() => {});
-		await page.waitForTimeout(500);
-	}
+		.first()
+		.click({ timeout: 15_000 });
 	await atSecond(page, second);
 }
 
