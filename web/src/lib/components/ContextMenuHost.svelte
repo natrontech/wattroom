@@ -3,6 +3,7 @@
 	// it; Escape, a click anywhere else, a scroll or a resize close it.
 	// Mid-ride it wears the riding kit (#3943): `ride-panel`, SPEC's 24 px
 	// words, 44 px rows, and a place clear of the corridor and of its object.
+	import { tick } from 'svelte';
 	import {
 		closeMenu,
 		menu,
@@ -23,6 +24,9 @@
 	// follows the thumb.
 	let dragged = $state<Record<number, number>>({});
 	let pos = $state({ left: 0, top: 0 });
+	// Mid-ride the menu's width stops at the corridor's right edge, so it can
+	// stand in the right column instead of over the road or the numbers.
+	let maxW = $state<number | null>(null);
 	const open = $derived(menu.items.length > 0);
 
 	$effect(() => {
@@ -30,25 +34,10 @@
 		const node = box;
 		const { x, y } = menu;
 		dragged = {};
-		pos = riding
-			? placeRidingMenu(
-					x,
-					y,
-					node.offsetWidth,
-					node.offsetHeight,
-					innerWidth,
-					innerHeight,
-					corridor(),
-					menu.anchor?.getBoundingClientRect() ?? null,
-				)
-			: placeMenu(
-					x,
-					y,
-					node.offsetWidth,
-					node.offsetHeight,
-					innerWidth,
-					innerHeight,
-				);
+		const lane = corridor();
+		const room = lane ? innerWidth - lane.right - 16 : 0;
+		maxW = riding && room >= 240 ? room : null;
+		void tick().then(() => place(node, x, y, lane));
 		node.querySelector<HTMLElement>(MENU_WALK)?.focus();
 		// The press that opened the menu is still travelling: on some inputs
 		// the pointerdown lands after the contextmenu event, and listening for
@@ -72,6 +61,28 @@
 			window.removeEventListener('resize', dismiss);
 		};
 	});
+
+	function place(node: HTMLElement, x: number, y: number, lane: Rect | null) {
+		pos = riding
+			? placeRidingMenu(
+					x,
+					y,
+					node.offsetWidth,
+					node.offsetHeight,
+					innerWidth,
+					innerHeight,
+					lane,
+					menu.anchor?.getBoundingClientRect() ?? null,
+				)
+			: placeMenu(
+					x,
+					y,
+					node.offsetWidth,
+					node.offsetHeight,
+					innerWidth,
+					innerHeight,
+				);
+	}
 
 	// The corridor is kept clear only where a world is drawn (G3).
 	function corridor(): Rect | null {
@@ -124,7 +135,9 @@
 		class="{riding
 			? 'ride-panel'
 			: 'panel'} fixed z-[70] max-h-[70vh] min-w-44 overflow-y-auto p-1"
-		style="left: {pos.left}px; top: {pos.top}px"
+		style="left: {pos.left}px; top: {pos.top}px{maxW
+			? `; max-width: ${maxW}px`
+			: ''}"
 	>
 		{#each menu.items as item, i (i)}
 			{#if item === 'separator'}
@@ -141,7 +154,9 @@
 								size={icon}
 								class="shrink-0 opacity-80"
 							/>{/if}
-						<span class="min-w-0 flex-1 truncate">{item.label}</span>
+						<span class="min-w-0 flex-1 {riding ? '' : 'truncate'}"
+							>{item.label}</span
+						>
 						<span class="font-display text-muted shrink-0 tabular-nums {hint}"
 							>{item.format(value)}</span
 						>
@@ -185,7 +200,9 @@
 							size={icon}
 							class="shrink-0 opacity-80"
 						/>{/if}
-					<span class="min-w-0 flex-1 truncate">{item.label}</span>
+					<span class="min-w-0 flex-1 {riding ? '' : 'truncate'}"
+						>{item.label}</span
+					>
 					{#if item.hint}<span class="text-muted shrink-0 {hint}"
 							>{item.hint}</span
 						>{/if}
