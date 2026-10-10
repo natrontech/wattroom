@@ -1280,7 +1280,7 @@ surface(
 			await s.shot(watcher, { name: 'roadside-chalk-refused' });
 			// The hub takes one roadside verb a quarter second (controlMinGap).
 			await watcher.page.waitForTimeout(1000);
-			// The heart goes 18 m past the bunch's front as it is now. The
+			// The heart goes 60 m past the bunch's front as it is now. The
 			// world's canvas holds the riders as of its last frame, with the
 			// speed they ride at; a software-GL shot takes seconds, so that
 			// reading is carried on to this moment, and the hub refuses a chalk
@@ -1303,7 +1303,7 @@ surface(
 				if (Number.isFinite(front)) {
 					socket?.send(
 						JSON.stringify({
-							roadside: { kind: 'paint', stamp: 'heart', atM: front + 18 },
+							roadside: { kind: 'paint', stamp: 'heart', atM: front + 60 },
 						}),
 					);
 				}
@@ -1317,15 +1317,14 @@ surface(
 				throw new Error(
 					`the heart never landed on the climb; last front ${front}`,
 				);
-			// A tick to land it, while the bunch is still short of it: near
-			// enough that the chase camera reads it beside the riders.
-			await coach.page.waitForTimeout(1000);
-			await s.shot(coach, { name: 'roadside-chalk-world' });
-			// The watcher has chalked this road's one climb: the deck says so.
+			// The riders pass the chalk, and the hub lets it go: a shot on
+			// software GL can outlast the heart's few seconds. So the spent
+			// shot comes first, then the world's.
 			await watcher.page
 				.getByText('No climb left ahead to chalk.')
 				.scrollIntoViewIfNeeded();
 			await s.shot(watcher, { name: 'roadside-chalk-spent' });
+			await s.shot(coach, { name: 'roadside-chalk-world' });
 		} finally {
 			await endSession(coach.page);
 		}
