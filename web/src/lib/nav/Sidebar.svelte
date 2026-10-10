@@ -210,8 +210,9 @@
 				</p>
 			{:else if presence.loaded && crews.length === 0}
 				<!-- In no crew at all (#2144): the way in is joining one, and
-				     starting a crew of your own is the option, not the ask. -->
-				<p class="text-muted px-2 pt-3 text-xs">
+				     starting a crew of your own is the option, not the ask. Desk
+				     teaching, so never on a riding surface (G4, #3723). -->
+				<p class="text-muted cave:hidden px-2 pt-3 text-xs">
 					Not in a crew yet —
 					<button onclick={() => (opening = true)} class="btn-link"
 						>join one with its code</button
@@ -274,10 +275,10 @@
 			</p>
 		{:else if dmHeads.loaded && dmHeads.heads.length === 0 && !dmsFolded}
 			<!-- A heading over nothing taught nothing (#1819): the first thread
-			     starts on a friend's page. -->
+			     starts on a friend's page. Not mid-ride (G4, #3723). -->
 			<a
 				href="/friends"
-				class="text-muted hover:text-ink mx-2 mb-2 block rounded px-2 py-1 text-xs"
+				class="text-muted hover:text-ink cave:hidden mx-2 mb-2 block rounded px-2 py-1 text-xs"
 				>Message a friend to start one</a
 			>
 		{:else if dmHeads.heads.length > 0 && !dmsFolded}
@@ -356,10 +357,11 @@
 	{:else if !shellVersion() && !device.coarse}
 		<!-- Discord's "download apps" corner (#1235): a quiet, permanent way to
 		     the desktop app, for a rider in a browser on a desk. Gone inside the
-		     shell, and on a phone, where the app is not for them. -->
+		     shell, on a phone, where the app is not for them, and on a ride,
+		     which is not the desk it is for (G4, #3723). -->
 		<a
 			href="/download"
-			class="text-muted hover:text-ink border-ink/5 flex items-center gap-2 border-t px-4 py-2.5 text-xs"
+			class="text-muted hover:text-ink border-ink/5 cave:hidden flex items-center gap-2 border-t px-4 py-2.5 text-xs"
 		>
 			<Monitor size={14} />
 			Get the desktop app
