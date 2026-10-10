@@ -356,6 +356,7 @@
 	{segments}
 	{phase}
 	placeName={props.name}
+	crewName={props.crewName}
 	code={props.code}
 	onSchedule={props.onSchedule}
 />

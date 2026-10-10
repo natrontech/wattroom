@@ -4,6 +4,7 @@ import type { Medal } from '$lib/components/MedalCard.svelte';
 import { MEDAL_META } from '$lib/medals';
 import { MinRideSamples } from '$lib/protocol';
 import type { LiveRider } from '$lib/channel/types';
+import type { RideKind } from '$lib/ride/recap-frame';
 import type { createRecording } from '$lib/session/recording.svelte';
 import { untrack } from 'svelte';
 
@@ -18,6 +19,8 @@ export interface SummaryCard {
 	sessionId: string;
 	samples: ReturnType<typeof createRecording>['samples'];
 	workoutName: string;
+	/** The session's mode, for the card's eyebrow (#3686). */
+	kind: RideKind;
 	riders: LiveRider[];
 	ftp: number;
 	execution: number | undefined;
@@ -35,6 +38,13 @@ export interface SummaryCard {
  * mount. Per tab and per sitting, like the recording it summarises.
  */
 const dismissedCloses = new Set<string>();
+/**
+ * Who rode each session, as last seen while its timeline ran (#3686). The
+ * hub's tick at the close says nobody rides, since no session is open, and
+ * the close usually lands on another mount — the session's address lets go
+ * for the channel's — so it is kept here, the way the dismissals are.
+ */
+const rodeIn = new Map<string, LiveRider[]>();
 
 export function createSummary(deps: {
 	recording: ReturnType<typeof createRecording>;
@@ -51,6 +61,7 @@ export function createSummary(deps: {
 	/** What the card keeps at the close, beside the rider's own samples. */
 	sessionId: () => string | undefined;
 	workoutName: () => string | undefined;
+	kind: () => RideKind;
 	riders: () => LiveRider[];
 	ftp: () => number;
 }) {
@@ -136,6 +147,14 @@ export function createSummary(deps: {
 
 	$effect(() => {
 		const phase = deps.phase();
+		const id = deps.sessionId();
+		if (!id || (phase !== 'running' && phase !== 'paused')) return;
+		const now = deps.riders();
+		if (now.length > 0) rodeIn.set(id, now);
+	});
+
+	$effect(() => {
+		const phase = deps.phase();
 		if (phase === 'running') {
 			// The rider's next session is under way: the last card goes.
 			card = null;
@@ -158,7 +177,11 @@ export function createSummary(deps: {
 				sessionId: deps.sessionId() ?? '',
 				samples: deps.recording.samples,
 				workoutName: deps.workoutName() ?? '',
-				riders: deps.riders(),
+				kind: deps.kind(),
+				riders:
+					deps.riders().length > 0
+						? deps.riders()
+						: (rodeIn.get(deps.sessionId() ?? '') ?? []),
 				ftp: deps.ftp(),
 				execution: deps.myExecution(),
 			}));

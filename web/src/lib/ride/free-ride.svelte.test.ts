@@ -122,6 +122,17 @@ describe('recording a free ride', () => {
 			expect(Object.keys(sample).sort()).toEqual(['cadence', 'hr', 'watts']);
 	});
 
+	// The closing card draws the ride that ended (#3686): its samples
+	// outlive the end, until the next ride starts.
+	it('keeps what the ended ride rode, for its closing card', async () => {
+		const free = createFreeRide({ ftp: () => 200 });
+		free.arm();
+		for (let i = 0; i < 60; i++) free.second(pedal);
+		await free.end();
+		expect(free.ridden).toHaveLength(60);
+		expect(free.ridden[0]).toMatchObject({ watts: pedal.watts });
+	});
+
 	it('saves as the empty, unscored workout named Free ride', async () => {
 		const free = createFreeRide({ ftp: () => 200 });
 		free.arm();

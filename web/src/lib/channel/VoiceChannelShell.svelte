@@ -179,6 +179,7 @@
 			address={channelAddress(crew.id, channel.id, channel.name)}
 			role={liveRoleOf(crew.role)}
 			name={channel.name}
+			crewName={crew.name}
 			code={crew.code ?? ''}
 			soundPack={channel.soundPack ?? 'base'}
 			{members}

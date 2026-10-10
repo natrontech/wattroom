@@ -28,7 +28,7 @@
 	is decoration, which is exactly what it is good at.
 -->
 <figure
-	class="bg-surface ring-ink/10 relative aspect-[4/5] w-full max-w-[400px] overflow-hidden rounded-xl ring-1"
+	class="bg-surface border-ink/10 relative aspect-[4/5] w-full max-w-[400px] overflow-hidden rounded-xl border"
 >
 	<svg
 		viewBox="0 0 400 500"
@@ -37,8 +37,10 @@
 	>
 		<defs>
 			<linearGradient id="{uid}-sun" x1="0" y1="0" x2="0" y2="1">
-				<stop offset="0%" stop-color="var(--color-watt)" />
-				<stop offset="100%" stop-color="var(--color-neon)" />
+				<!-- Neon, not watt (#3686): a medal is a record, not live data,
+				     and a desk surface glows nothing (ADR-0005). -->
+				<stop offset="0%" stop-color="var(--color-neon)" />
+				<stop offset="100%" stop-color="var(--color-neon)" stop-opacity="0.3" />
 			</linearGradient>
 			<mask id="{uid}-slices">
 				<rect x="0" y="0" width="400" height="500" fill="white" />
@@ -107,7 +109,7 @@
 		{#if medal.value}
 			<div class="mt-8 flex items-baseline gap-2">
 				<span
-					class="text-watt glow-text-strong font-display text-7xl leading-none font-bold tabular-nums"
+					class="text-ink font-display text-7xl leading-none font-bold tabular-nums"
 					>{medal.value}</span
 				>
 				<span class="text-muted text-lg">{medal.unit}</span>

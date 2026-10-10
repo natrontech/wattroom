@@ -65,6 +65,8 @@ export function createFreeRide(deps: {
 	let saving = $state(false);
 	let outcome = $state<FreeRideOutcome | null>(null);
 	let samples: RideUpload['samples'] = [];
+	/** The last ride's samples, kept past its end for its closing card. */
+	let ridden = $state.raw<RideUpload['samples']>([]);
 	// The bike computer's numbers (#3068, #3088): no blocks and no target —
 	// a free ride is unscored — so its block numbers are the ride's.
 	const live = createLiveStats(deps.ftp);
@@ -141,6 +143,10 @@ export function createFreeRide(deps: {
 		},
 		get saving() {
 			return saving;
+		},
+		/** What the ride that ended rode, second by second (#3686). */
+		get ridden() {
+			return ridden;
 		},
 		get outcome() {
 			return outcome;
@@ -272,6 +278,7 @@ export function createFreeRide(deps: {
 			};
 			const ended = buffer;
 			startedAt = null;
+			ridden = samples;
 			samples = [];
 			// The buffer never offers a ride this short back either.
 			if (ride.samples.length < MinRideSamples) {

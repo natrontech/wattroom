@@ -24,6 +24,7 @@
 	import { bindShiftKeys } from '$lib/ride/keys';
 	import { modeLine } from '$lib/ride/mode-copy';
 	import RoadEnd from '$lib/ride/RoadEnd.svelte';
+	import SessionSummary from '$lib/ride/SessionSummary.svelte';
 	import { endRideLabel, roadEndOffered } from '$lib/ride/road-end';
 	import RoadPick from '$lib/ride/RoadPick.svelte';
 	import Skyline from '$lib/ride/Skyline.svelte';
@@ -147,151 +148,174 @@
 	);
 </script>
 
-<div class="m-auto flex w-full max-w-2xl flex-col gap-6">
-	<header class="flex flex-wrap items-center gap-3">
-		<p class="eyebrow">free ride</p>
-		<h1 class="page-title-sm min-w-0 truncate">
-			<!-- Ridden, the road opens its page (F1); a crew's road has none of yours. -->
-			{#if ended && !route.borrowed}
-				<a
-					href="/workouts/routes/{route.id}"
-					class="underline decoration-1 underline-offset-4">{route.name}</a
+{#if ended && free.outcome && !('short' in free.outcome)}
+	{@const outcome = free.outcome}
+	<!-- The road ends on the closing card (#3686, #3839): the frame every ride
+	     closes on. The road's own section is #3141's. -->
+	<SessionSummary
+		kind="Free ride"
+		title={route.name}
+		samples={free.ridden}
+		ftp={profile.current.ftp}
+		unsaved={'failure' in outcome}
+		savedXp={'saved' in outcome ? outcome.saved.xp : undefined}
+	>
+		{#snippet actions()}
+			{#if 'saved' in outcome}
+				<a href="/history/{outcome.saved.id}" class="btn btn-secondary"
+					>See your ride</a
 				>
-			{:else}
-				{route.name}
 			{/if}
-		</h1>
-		<span class="font-display ml-auto text-2xl font-bold tabular-nums"
-			>{formatClock(free.seconds)}</span
-		>
-	</header>
-
-	{#if !solo.trainer && !ended}
-		<SensorOverview
-			trainer={{
-				state: held.state,
-				device: held.device,
-				reading: held.reading,
-				hint: held.hint,
-				error: held.error,
-				onPair: () => void trainers.pair(new FtmsTrainer()),
-				onForget: held.forget,
-				onSimulate: canSimulate()
-					? () =>
-							void trainers.pair(
-								new SimulatedTrainer({ baseWatts: profile.current.ftp * 0.8 }),
-							)
-					: undefined,
-			}}
-		/>
-		<button
-			onclick={() => start()}
-			disabled={!held.paired || held.fault === 'reconnecting'}
-			class="btn btn-primary btn-lg">Start riding</button
-		>
-		{#if !held.paired}
-			<p class="text-muted text-sm">
-				Pair your trainer above to start — the road needs something to set its
-				slope.
-			</p>
-		{:else if held.fault === 'reconnecting'}
-			<p class="text-muted text-sm">Waiting for the trainer to come back.</p>
-		{/if}
-		{#if route.borrowed}
-			<p class="text-muted text-sm">
-				The crew’s road, from where the session starts. It saves as a free ride.
-			</p>
-		{/if}
-	{:else if solo.trainer}
-		{#if roadEndOffered(free, false)}
-			<RoadEnd {free} onsave={() => void end()} />
-		{/if}
-		<Instrument
-			{watts}
-			{stale}
-			idle={!solo.trainer}
-			target={free.mode === 'watts' ? free.targetWatts : 0}
-			ftp={profile.current.ftp}
-		/>
-		<div class="flex flex-wrap items-center justify-center gap-4">
-			<div
-				class="border-muted/20 flex rounded-lg border p-1"
-				role="group"
-				aria-label="what you set"
-			>
-				{#each modes as mode (mode.id)}
-					<button
-						onclick={() => free.setMode(mode.id)}
-						aria-pressed={free.mode === mode.id}
-						class="btn btn-lg {free.mode === mode.id
-							? 'btn-secondary'
-							: 'btn-ghost'}">{mode.label}</button
+			<a href="/home" class="btn btn-primary">Done</a>
+		{/snippet}
+		{#snippet status()}
+			{#if 'failure' in outcome}
+				<Banner tone="error">
+					It did not save — {outcome.failure.message} It is kept on this device, and
+					Ride offers it again.
+				</Banner>
+			{/if}
+		{/snippet}
+	</SessionSummary>
+{:else}
+	<div class="m-auto flex w-full max-w-2xl flex-col gap-6">
+		<header class="flex flex-wrap items-center gap-3">
+			<p class="eyebrow">free ride</p>
+			<h1 class="page-title-sm min-w-0 truncate">
+				<!-- Ridden, the road opens its page (F1); a crew's road has none of yours. -->
+				{#if ended && !route.borrowed}
+					<a
+						href="/workouts/routes/{route.id}"
+						class="underline decoration-1 underline-offset-4">{route.name}</a
 					>
-				{/each}
-			</div>
-			<span
-				class="font-display w-28 text-center text-3xl font-bold tabular-nums"
-				aria-live="polite">{value}</span
+				{:else}
+					{route.name}
+				{/if}
+			</h1>
+			<span class="font-display ml-auto text-2xl font-bold tabular-nums"
+				>{formatClock(free.seconds)}</span
 			>
-		</div>
-		<p class="text-muted -mt-3 text-center text-sm">
-			{modeLine(free.mode, profile.current.singleSpeed, true)}
-		</p>
-		<RoadPick {free} />
-		{#if free.mode === 'grade' && gearsEnabled()}
-			<GearShift
-				shift={solo.shift}
-				gear={solo.gear}
-				off={null}
-				resetAt={0}
-				cassette={!profile.current.singleSpeed}
+		</header>
+
+		{#if !solo.trainer && !ended}
+			<SensorOverview
+				trainer={{
+					state: held.state,
+					device: held.device,
+					reading: held.reading,
+					hint: held.hint,
+					error: held.error,
+					onPair: () => void trainers.pair(new FtmsTrainer()),
+					onForget: held.forget,
+					onSimulate: canSimulate()
+						? () =>
+								void trainers.pair(
+									new SimulatedTrainer({
+										baseWatts: profile.current.ftp * 0.8,
+									}),
+								)
+						: undefined,
+				}}
 			/>
-		{/if}
-		<!-- The bike computer, as a ride in a channel has it (ADR-0046, #3628):
-		     the road's speed, grade and distance on RIDE. -->
-		<!-- The instrument above is the head: RIDE leaves the watts to it. -->
-		<BikeComputer
-			head
-			{watts}
-			cadence={solo.metrics?.cadence ?? 0}
-			hr={solo.metrics?.heartRate ?? 0}
-			kg={profile.current.kg}
-			lthr={profile.current.lthr}
-			{stale}
-			stats={free.live}
-			gear={free.mode === 'grade' && gearsEnabled()
-				? solo.gear.label
-				: undefined}
-			{...free.road && roadContext(free.road)}
-			split={ghost.split ?? undefined}
-			{climb}
-			climbOpens
-		/>
-		{#if skyline}
-			<!-- The horizon (#3059): the road ahead and your dot. -->
-			<div class="h-40">
-				<Skyline {...skyline} />
+			<button
+				onclick={() => start()}
+				disabled={!held.paired || held.fault === 'reconnecting'}
+				class="btn btn-primary btn-lg">Start riding</button
+			>
+			{#if !held.paired}
+				<p class="text-muted text-sm">
+					Pair your trainer above to start — the road needs something to set its
+					slope.
+				</p>
+			{:else if held.fault === 'reconnecting'}
+				<p class="text-muted text-sm">Waiting for the trainer to come back.</p>
+			{/if}
+			{#if route.borrowed}
+				<p class="text-muted text-sm">
+					The crew’s road, from where the session starts. It saves as a free
+					ride.
+				</p>
+			{/if}
+		{:else if solo.trainer}
+			{#if roadEndOffered(free, false)}
+				<RoadEnd {free} onsave={() => void end()} />
+			{/if}
+			<Instrument
+				{watts}
+				{stale}
+				idle={!solo.trainer}
+				target={free.mode === 'watts' ? free.targetWatts : 0}
+				ftp={profile.current.ftp}
+			/>
+			<div class="flex flex-wrap items-center justify-center gap-4">
+				<div
+					class="border-muted/20 flex rounded-lg border p-1"
+					role="group"
+					aria-label="what you set"
+				>
+					{#each modes as mode (mode.id)}
+						<button
+							onclick={() => free.setMode(mode.id)}
+							aria-pressed={free.mode === mode.id}
+							class="btn btn-lg {free.mode === mode.id
+								? 'btn-secondary'
+								: 'btn-ghost'}">{mode.label}</button
+						>
+					{/each}
+				</div>
+				<span
+					class="font-display w-28 text-center text-3xl font-bold tabular-nums"
+					aria-live="polite">{value}</span
+				>
 			</div>
+			<p class="text-muted -mt-3 text-center text-sm">
+				{modeLine(free.mode, profile.current.singleSpeed, true)}
+			</p>
+			<RoadPick {free} />
+			{#if free.mode === 'grade' && gearsEnabled()}
+				<GearShift
+					shift={solo.shift}
+					gear={solo.gear}
+					off={null}
+					resetAt={0}
+					cassette={!profile.current.singleSpeed}
+				/>
+			{/if}
+			<!-- The bike computer, as a ride in a channel has it (ADR-0046, #3628):
+			     the road's speed, grade and distance on RIDE. -->
+			<!-- The instrument above is the head: RIDE leaves the watts to it. -->
+			<BikeComputer
+				head
+				{watts}
+				cadence={solo.metrics?.cadence ?? 0}
+				hr={solo.metrics?.heartRate ?? 0}
+				kg={profile.current.kg}
+				lthr={profile.current.lthr}
+				{stale}
+				stats={free.live}
+				gear={free.mode === 'grade' && gearsEnabled()
+					? solo.gear.label
+					: undefined}
+				{...free.road && roadContext(free.road)}
+				split={ghost.split ?? undefined}
+				{climb}
+				climbOpens
+			/>
+			{#if skyline}
+				<!-- The horizon (#3059): the road ahead and your dot. -->
+				<div class="h-40">
+					<Skyline {...skyline} />
+				</div>
+			{/if}
+			<button onclick={() => void end()} class="btn btn-primary btn-lg"
+				>{endRideLabel(free)}</button
+			>
+		{:else if free.saving}
+			<p class="text-muted text-sm" role="status">Saving your ride…</p>
+		{:else}
+			<p class="text-muted text-sm" role="status">
+				Under a minute — nothing to save.
+			</p>
 		{/if}
-		<button onclick={() => void end()} class="btn btn-primary btn-lg"
-			>{endRideLabel(free)}</button
-		>
-	{:else if free.saving}
-		<p class="text-muted text-sm" role="status">Saving your ride…</p>
-	{:else if free.outcome && 'saved' in free.outcome}
-		<p class="text-sm" role="status">
-			Saved. <a href="/history/{free.outcome.saved.id}" class="underline"
-				>See it in your history</a
-			> — and on Strava, if you connected it.
-		</p>
-	{:else if free.outcome && 'failure' in free.outcome}
-		<Banner tone="error">
-			It did not save — {free.outcome.failure.message} It is kept on this device,
-			and Ride offers it again.
-		</Banner>
-	{:else}
-		<p class="text-muted text-sm" role="status">
-			Under a minute — nothing to save.
-		</p>
-	{/if}
-</div>
+	</div>
+{/if}

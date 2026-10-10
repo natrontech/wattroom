@@ -2,6 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { tick } from 'svelte';
 import { MinRideSamples } from '$lib/protocol';
+import type { LiveRider } from '$lib/channel/types';
 
 const served = vi.hoisted(() => ({
 	rides: [] as {
@@ -44,6 +45,7 @@ async function setup(
 ) {
 	let phase = $state<string | undefined>('idle');
 	let workout = $state('Openers');
+	let riders = $state<LiveRider[]>([]);
 	const recording = createRecording({ ftp: () => 200 });
 	let summary!: ReturnType<typeof createSummary>;
 	const off = $effect.root(() => {
@@ -56,12 +58,17 @@ async function setup(
 			myExecution: () => 0.9,
 			sessionId: () => sessionId,
 			workoutName: () => workout,
-			riders: () => [],
+			kind: () => 'Workout',
+			riders: () => riders,
 			ftp: () => 250,
 		});
 	});
 	await tick();
 	return {
+		async roster(next: LiveRider[]) {
+			riders = next;
+			await tick();
+		},
 		recording,
 		summary,
 		async go(next: string) {
@@ -100,6 +107,7 @@ it('a summary mounted mid-ride leaves the recording alone', async () => {
 			myExecution: () => 0.9,
 			sessionId: () => 's1',
 			workoutName: () => workout,
+			kind: () => 'Workout',
 			riders: () => [],
 			ftp: () => 250,
 		});
@@ -295,4 +303,23 @@ describe('a ride the summary cannot find yet', () => {
 		t.off();
 		vi.useRealTimers();
 	});
+});
+
+// The hub's tick at the close says nobody rides — no session is open — so the
+// roster read then was empty and the card never drew who rode (#3686). The
+// close lands on another mount: the session's page hands off to the channel's.
+it('keeps who rode from the running timeline when the close says nobody', async () => {
+	const id = crypto.randomUUID();
+	const riding = await setup(() => undefined, id);
+	await riding.go('running');
+	await riding.roster([
+		{ id: 'u1', name: 'Jan', inSession: true },
+		{ id: 'u2', name: 'Mia', inSession: true },
+	] as LiveRider[]);
+	riding.off();
+	const closing = await setup(() => undefined, id);
+	ride(closing.recording, MinRideSamples);
+	await closing.go('done');
+	expect(closing.summary.card?.riders.map((r) => r.id)).toEqual(['u1', 'u2']);
+	closing.off();
 });

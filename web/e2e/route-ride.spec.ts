@@ -218,7 +218,7 @@ test('Ride it now rides your road alone, from where you left it', async ({
 		.toBeGreaterThan(1);
 	await computerReadsTheRoad(page);
 	await page.getByRole('button', { name: /^Save at km / }).click();
-	await expect(page.getByText('See it in your history')).toBeVisible({
+	await expect(page.getByText('See your ride')).toBeVisible({
 		timeout: 20_000,
 	});
 	const saved = await page.evaluate(async () => {
@@ -232,7 +232,7 @@ test('Ride it now rides your road alone, from where you left it', async ({
 
 	// Its page draws the road it rode, from its own metres (#3639), and the
 	// phone's page body still scrolls down, never sideways (ux.md).
-	await page.getByRole('link', { name: 'See it in your history' }).click();
+	await page.getByRole('link', { name: 'See your ride' }).click();
 	await expect(page.getByTestId('ride-skyline')).toBeVisible({
 		timeout: 15_000,
 	});
