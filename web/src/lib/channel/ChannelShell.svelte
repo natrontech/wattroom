@@ -416,6 +416,7 @@
 {#snippet panel()}
 	<SidePanel
 		live={phase === 'live'}
+		riding={!!connection.riding()}
 		{riders}
 		members={props.members}
 		onCheer={(emoji) => live.cheer(emoji)}
