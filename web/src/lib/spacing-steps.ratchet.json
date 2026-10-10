@@ -64,7 +64,7 @@
 	"lib/messages/MessageThread.svelte": 1,
 	"lib/messages/ThreadList.svelte": 2,
 	"lib/messages/unread-marks.ts": 1,
-	"lib/nav/CrewColumn.svelte": 4,
+	"lib/nav/CrewColumn.svelte": 3,
 	"lib/nav/CrewSwitcher.svelte": 5,
 	"lib/nav/ReleaseSheet.svelte": 6,
 	"lib/nav/Sidebar.svelte": 5,
