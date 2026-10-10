@@ -401,17 +401,29 @@ func TestStartingACrewPlan(t *testing.T) {
 	}
 }
 
-// Home's "What's next" is every crew the rider is in (#325, #2440), with the
-// channels they may enter.
+// Home's This week is every crew the rider is in (#325, #2440), with the
+// channels they may enter and how many are in (#3689) — counted by the
+// Schedule's reach, so a banned rider's yes is not.
 func TestMyScheduleIsEveryCrewsPlans(t *testing.T) {
 	h := setup(t)
 	crew, channel := h.crewWithChannel(t)
+	h.join(t, "carol", crew)
 	coaches := store.UUIDString(h.channel(t, crew, "voice", "Coaches", true))
 	for _, where := range []string{store.UUIDString(channel), coaches} {
-		if status, body := h.call(t, "alice", http.MethodPost, schedulePath(crew), crewPlanBody(time.Now().Add(time.Hour), where)); status != http.StatusCreated {
+		status, body := h.call(t, "alice", http.MethodPost, schedulePath(crew), crewPlanBody(time.Now().Add(time.Hour), where))
+		if status != http.StatusCreated {
 			t.Fatalf("plan: %d %v", status, body)
 		}
+		if where != coaches {
+			plan, _ := body["id"].(string)
+			for _, who := range []string{"bob", "carol"} {
+				if status, _ := h.call(t, who, http.MethodPut, schedulePath(crew, "/", plan, "/rsvp"), ""); status != http.StatusNoContent {
+					t.Fatalf("%s in: %d", who, status)
+				}
+			}
+		}
 	}
+	h.banFromCrew(t, crew, "carol")
 	_, body := h.call(t, "bob", http.MethodGet, "/api/schedule", "")
 	list, _ := body["sessions"].([]any)
 	var mine []map[string]any
@@ -422,5 +434,8 @@ func TestMyScheduleIsEveryCrewsPlans(t *testing.T) {
 	}
 	if len(mine) != 1 || mine[0]["channelName"] != "Pain Cave" || mine[0]["crewName"] != crew.Name {
 		t.Fatalf("bob's schedule: %v, want the Pain Cave plan alone, named for the crew", mine)
+	}
+	if mine[0]["goingCount"] != float64(1) {
+		t.Errorf("goingCount %v, want 1: bob in, banned carol not counted", mine[0]["goingCount"])
 	}
 }

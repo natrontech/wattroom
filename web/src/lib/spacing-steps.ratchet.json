@@ -56,7 +56,7 @@
 	"lib/home/FtpAsk.svelte": 2,
 	"lib/home/RecentRides.svelte": 1,
 	"lib/home/StartOrJoin.svelte": 2,
-	"lib/home/WhatsNext.svelte": 2,
+	"lib/home/ThisWeek.svelte": 1,
 	"lib/messages/ChannelThread.svelte": 2,
 	"lib/messages/Composer.svelte": 5,
 	"lib/messages/LineBody.svelte": 3,

@@ -810,10 +810,67 @@ surface(
 				name: 'home-desktop-offer',
 				measure: { home: homeProbe },
 			});
+			// multi:home-week-* — This week's other states (#3689, TARGETS
+			// home 7-8), the schedule and the crews' live read answered here.
+			for (const [state, sessions, riding] of WEEK_STATES) {
+				const o = await s.open(DESK);
+				await o.page.route('**/api/schedule', (route) =>
+					route.fulfill({ json: { sessions: sessions(), icsToken: '' } }),
+				);
+				if (riding)
+					await o.page.route('**/api/crews/live', async (route) => {
+						const res = await route.fetch();
+						const body = (await res.json()) as LiveRead;
+						const voice = body.crews[0]?.channels.find(
+							(ch) => ch.kind === 'voice',
+						);
+						if (voice) voice.session = RIDING_SESSION();
+						await route.fulfill({ response: res, json: body });
+					});
+				await page(s, o, '/home', {
+					name: `home-week-${state}`,
+					measure: { home: homeProbe },
+				});
+			}
 		}
 	},
 	{ also: ['phone-home'] },
 );
+
+type LiveRead = {
+	crews: { channels: { kind: string; session?: unknown }[] }[];
+};
+const planned = (id: string, hours: number, goingCount: number) => ({
+	id,
+	workoutName: id === 'gone' ? 'Openers before work' : 'Saturday long tempo',
+	minutes: 60,
+	startsAt: new Date(Date.now() + hours * 3_600_000).toISOString(),
+	createdBy: 'Designer',
+	crewId: '00000000-0000-0000-0000-000000000000',
+	crewName: 'Design Crew',
+	channelName: 'Pain Cave',
+	goingCount,
+});
+/** The session riding now in the crew's voice channel, ten minutes in. */
+const RIDING_SESSION = () => ({
+	id: '00000000-0000-0000-0000-0000000000aa',
+	channel: '',
+	workout: 'Sweet spot 2×20',
+	phase: 'running',
+	elapsed: 600,
+	coach: '',
+	coachName: 'Designer',
+	riders: ['Designer', 'Rider Two'],
+	riderIds: ['', ''],
+});
+const WEEK_STATES: [string, () => unknown[], boolean][] = [
+	// Nothing this week: the first plan after it, under NEXT.
+	['next', () => [planned('later', 24 * 9, 3)], false],
+	// Nothing planned at all: one teaching line.
+	['empty', () => [], false],
+	// A session riding now, and a plan whose time has just gone.
+	['live', () => [planned('gone', -0.2, 0), planned('later', 26, 4)], true],
+];
 
 const WINDOWS_UA =
 	'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';

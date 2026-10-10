@@ -15,7 +15,7 @@
 	import AroundNow from '$lib/home/AroundNow.svelte';
 	import FirstRun from '$lib/home/FirstRun.svelte';
 	import RecentRides from '$lib/home/RecentRides.svelte';
-	import WhatsNext from '$lib/home/WhatsNext.svelte';
+	import ThisWeek from '$lib/home/ThisWeek.svelte';
 	import type { ServerRide } from '$lib/ride/list';
 	import Modal from '$lib/components/Modal.svelte';
 	import { leadsWithJoining } from '$lib/nav/crews';
@@ -426,12 +426,12 @@
 		     on the left; who is around, then what you rode, on the right. One
 		     column below xl, in that order. -->
 		<div class="mt-6 grid gap-8 xl:grid-cols-2">
-			<!-- What's next: every planned session, across every crew you are
-			     in (ADR-0020 — /sessions retired into this). Planning and saying
-			     you are in both happen on the Schedule of the crew whose session
-			     it is. -->
+			<!-- This week: every planned session, across every crew you are
+			     in, under its day (ADR-0020 — /sessions retired into this;
+			     #3689). Planning and saying you are in both happen on the
+			     Schedule of the crew whose session it is. -->
 			<div class="min-w-0">
-				<WhatsNext planCrew={firstCrew?.id} />
+				<ThisWeek planCrew={firstCrew?.id} />
 			</div>
 			<div class="min-w-0 space-y-8">
 				<!-- Around right now: the reason to open the app — people. -->
