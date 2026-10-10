@@ -43,6 +43,7 @@
 	import ScreenShare from '@lucide/svelte/icons/screen-share';
 
 	const channel = useChannel();
+	const EVENTS_SHOWN = 8;
 	// While a ride runs the frame is the cave and this stage a riding surface
 	// (TARGETS G1): a rider a game put out uses it on the bike, so its words
 	// take riding size through the `ride-stage:` variant (#3890, #3882).
@@ -55,7 +56,7 @@
 			? []
 			: (channelConnection.current?.live.channelEvents ?? [])
 					.filter((event) => eventText(event))
-					.slice(-8),
+					.slice(-EVENTS_SHOWN),
 	);
 	const av = $derived(channelConnection.current?.av);
 	const isOwner = $derived(channel.myRole === 'owner');
