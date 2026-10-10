@@ -4,7 +4,7 @@
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import JukeboxPlaylistRow from '$lib/channel/JukeboxPlaylistRow.svelte';
 	import { useChannel } from '$lib/channel/context';
-	import { railButton, railField, railFold } from '$lib/channel/rail-size';
+	import { railButton, railField, railLabel } from '$lib/channel/rail-size';
 	import type { createPlaylistStore } from '$lib/channel/playlists.svelte';
 
 	// The saved playlists above the live queue (#627): crew playlists (any
@@ -59,7 +59,7 @@
 </script>
 
 <details class="min-w-0">
-	<summary class="eyebrow cursor-pointer select-none {railFold(riding)}"
+	<summary class="{railLabel(riding)} cursor-pointer py-2 select-none"
 		>playlists</summary
 	>
 
