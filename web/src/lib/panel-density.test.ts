@@ -19,8 +19,6 @@ import { scanSource, stale, type Allowlist } from './source-scan.test-helper';
 const ALLOWLIST: Allowlist = {
 	'*.css':
 		'the stylesheet is where the four densities are defined, not a call site',
-	'lib/components/ContextMenuHost.svelte':
-		'a menu: its items carry the padding, and p-1 is the inset that keeps a highlighted item off the border',
 	'lib/messages/Composer.svelte':
 		'the emoji menu, taking ContextMenuHost’s inset for the same reason',
 	'routes/(app)/home/+page.svelte':

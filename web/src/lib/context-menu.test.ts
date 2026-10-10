@@ -5,6 +5,7 @@ import {
 	contextMenu,
 	menu,
 	placeMenu,
+	placeRidingMenu,
 	scrollClosesMenu,
 } from '$lib/context-menu.svelte';
 
@@ -21,6 +22,50 @@ describe('placeMenu', () => {
 			top: 730,
 		});
 		expect(placeMenu(50, 890, 200, 950, 1440, 900).top).toBe(8);
+	});
+});
+
+// #3943 at 1440 × 900: the canvas beside the 240 px sidebar puts the
+// corridor at x 600–1080, y 202.5–697.5; a crew tile in the right column.
+describe('placeRidingMenu', () => {
+	const corridor = { left: 600, top: 202.5, right: 1080, bottom: 697.5 };
+	const tile = { left: 1100, top: 340, right: 1424, bottom: 420 };
+	const clear = (
+		p: { left: number; top: number },
+		w: number,
+		h: number,
+		r: typeof corridor,
+	) =>
+		p.left >= r.right ||
+		p.left + w <= r.left ||
+		p.top >= r.bottom ||
+		p.top + h <= r.top;
+
+	it('keeps the pointer place when it is clear', () => {
+		expect(
+			placeRidingMenu(100, 100, 272, 400, 1440, 900, corridor, null),
+		).toEqual({ left: 100, top: 100 });
+	});
+
+	it('leaves the corridor and the tile it was opened from', () => {
+		const p = placeRidingMenu(1300, 356, 272, 420, 1440, 900, corridor, tile);
+		expect(clear(p, 272, 420, corridor)).toBe(true);
+		expect(clear(p, 272, 420, tile)).toBe(true);
+		expect(p.left).toBeGreaterThanOrEqual(8);
+		expect(p.left + 272).toBeLessThanOrEqual(1432);
+		expect(p.top + 420).toBeLessThanOrEqual(892);
+	});
+
+	it('without a world it only steps off its object', () => {
+		const p = placeRidingMenu(1300, 356, 272, 420, 1440, 900, null, tile);
+		expect(clear(p, 272, 420, tile)).toBe(true);
+	});
+
+	it('falls back to the desk place when nothing fits', () => {
+		const all = { left: 0, top: 0, right: 1440, bottom: 900 };
+		expect(placeRidingMenu(100, 100, 272, 400, 1440, 900, all, null)).toEqual(
+			placeMenu(100, 100, 272, 400, 1440, 900),
+		);
 	});
 });
 
