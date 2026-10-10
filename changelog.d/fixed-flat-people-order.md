@@ -1,0 +1,1 @@
+- On a ride, the people column puts the jukebox on top and the crew under it, with no empty gap between them.

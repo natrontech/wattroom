@@ -48,6 +48,7 @@
 	// text channels are pages of their own.
 	let {
 		live,
+		riding = false,
 		riders = [],
 		members = [],
 		player,
@@ -57,6 +58,8 @@
 		elsewhere,
 	}: {
 		live: boolean;
+		/** This device's rider is pedalling, in a session or a free ride. */
+		riding?: boolean;
 		/** Who is here (ADR-0020, #181 gap 3) — the roster owns the column. */
 		riders?: LiveRider[];
 		/**
@@ -76,6 +79,7 @@
 		elsewhere?: ReadonlyMap<string, Elsewhere>;
 	} = $props();
 
+	const stacked = $derived(live || riding);
 	const avatarOf = $derived(new Map(members.map((m) => [m.id, m])));
 	// Discord's offline half of the member list: the channel is the same
 	// channel when nobody is in it, and a column that says "in the channel — 1"
@@ -244,7 +248,9 @@
      width it sets, the same way it did for the native grip. -->
 <aside
 	{@attach (node) => keepSize(node, 'side-panel')}
-	class="border-ink/5 relative h-full w-68 shrink-0 overflow-hidden border-l"
+	class="border-ink/5 relative w-68 shrink-0 overflow-hidden border-l {stacked
+		? 'max-h-full'
+		: 'h-full'}"
 	style="min-width: 240px; max-width: 40vw"
 >
 	<!-- The panel is right of its divider: pulling left makes it wider. -->
@@ -255,13 +261,20 @@
 		aria-orientation="vertical"
 		aria-label="resize the panel"
 	></div>
-	<div class="flex h-full flex-col">
+	<div class="flex flex-col {stacked ? 'max-h-full' : 'h-full'}">
 		{#if riders.length > 0 || groups.elsewhere.length > 0 || groups.notHere.length > 0}
 			<!-- Everyone the crew HAS, in the three groups roster.ts decides. The
 			     headings say which question the split answers, and the ones this
 			     channel has not got sit last, greyed. -->
 			{@const { here, away, elsewhere: others, notHere } = groups}
-			<div class="border-ink/5 min-h-0 flex-1 overflow-y-auto border-b">
+			<!-- While a ride runs the jukebox sits on top and the crew under it,
+			     each at its content's size (TARGETS G3): the free height falls
+			     below the column's last block, never between two of them. -->
+			<div
+				class="border-ink/5 min-h-0 overflow-y-auto border-b {stacked
+					? 'order-2 shrink'
+					: 'flex-1'}"
+			>
 				{#if here.length > 0}
 					<div class="eyebrow flex items-center gap-1.5 px-3 pt-3 pb-1">
 						{#if !live}<Headphones size={10} />{/if}
@@ -320,13 +333,19 @@
 			     which is what the 160 px cap did whenever the stage held the
 			     video. -->
 			<div
-				class="border-ink/5 max-h-[45%] min-h-0 shrink-0 overflow-y-auto border-b p-3"
+				class="border-ink/5 max-h-[45%] min-h-0 shrink-0 overflow-y-auto border-b p-3 {stacked
+					? 'order-1'
+					: ''}"
 			>
 				{@render player()}
 			</div>
 		{/if}
 
-		<div class="border-ink/5 flex flex-col gap-2 border-t p-3">
+		<div
+			class="border-ink/5 flex flex-col gap-2 border-t p-3 {stacked
+				? 'order-3'
+				: ''}"
+		>
 			<!-- Your reactions (#2722), and under them the soundboard: both are
 			     a thing you throw into the channel, and neither is typing —
 			     which mid-ride was never on the table anyway (ux.md). The picker
