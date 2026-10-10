@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { railLabel, railText } from '$lib/channel/rail-size';
 	import Crown from '@lucide/svelte/icons/crown';
 	import Drum from '@lucide/svelte/icons/drum';
 	import Headphones from '@lucide/svelte/icons/headphones';
@@ -97,9 +98,10 @@
 {#snippet person(rider: LiveRider)}
 	<!-- 44 px rows: a bike-side target for the row's own link and its menu. -->
 	<li
-		class="flex min-h-11 items-center gap-2 rounded px-2 py-1 text-xs {rider.speaking
-			? 'text-ink'
-			: 'text-ink/70'}"
+		class="flex min-h-11 items-center gap-2 rounded px-2 py-1 {railText(
+			riding,
+			'text-xs',
+		)} {rider.speaking ? 'text-ink' : 'text-ink/70'}"
 		{@attach contextMenu(() =>
 			personMenu(rider.id, goto, {
 				// Your own row has a menu now (#2131): everything on it is
@@ -176,7 +178,9 @@
 							     too, and beside the tile's live watts they read as a second
 							     number disagreeing with the first (#2882 L6-09). -->
 							<span
-								class="shrink-0 text-[10px] tabular-nums {now.has && now.inBand
+								class="shrink-0 tabular-nums {riding
+									? 'font-display text-2xl'
+									: 'text-[10px]'} {now.has && now.inBand
 									? 'text-ok'
 									: 'text-muted'}"
 								title={now.has
@@ -209,7 +213,10 @@
 
 {#snippet absent(member: PanelMember, where?: Elsewhere)}
 	<li
-		class="text-muted-dim flex min-h-11 items-center gap-2 rounded px-2 py-1 text-xs"
+		class="text-muted-dim flex min-h-11 items-center gap-2 rounded px-2 py-1 {railText(
+			riding,
+			'text-xs',
+		)}"
 		{@attach contextMenu(() =>
 			personMenu(member.id, goto, {
 				ban: banOf?.(member.id, member.displayName),
@@ -276,12 +283,16 @@
 					: 'flex-1'}"
 			>
 				{#if here.length > 0}
-					<div class="eyebrow flex items-center gap-1.5 px-3 pt-3 pb-1">
+					<div
+						class="{railLabel(riding)} flex items-center gap-1.5 px-3 pt-3 pb-1"
+					>
 						{#if !live}<Headphones size={10} />{/if}
 						{live
-							? `holding target — ${here.length}`
+							? riding
+								? `holding — ${here.length}`
+								: `holding target — ${here.length}`
 							: `in voice — ${here.length}`}
-						{#if live}
+						{#if live && !riding}
 							<!-- The bars below had only a hover title to say what they
 							     are (#1558) — the same word the summary and the ride
 							     page use, where a rider can read it. -->
@@ -293,7 +304,7 @@
 					</ul>
 				{/if}
 				{#if away.length > 0}
-					<div class="eyebrow px-3 pt-3 pb-1">
+					<div class="{railLabel(riding)} px-3 pt-3 pb-1">
 						{live
 							? `not pedalling — ${away.length}`
 							: `in the channel — ${away.length}`}
@@ -305,7 +316,7 @@
 				{#if others.length > 0}
 					<!-- Online, just not here (#2536): a crew with two voice
 					     channels puts half its people in the other one. -->
-					<div class="eyebrow px-3 pt-3 pb-1">
+					<div class="{railLabel(riding)} px-3 pt-3 pb-1">
 						in another channel — {others.length}
 					</div>
 					<ul class="px-1">
@@ -318,7 +329,9 @@
 				{#if notHere.length > 0}
 					<!-- Not "offline" (#2849): this channel only knows they are not
 					     in it. A friend's dot says more, from the friends list. -->
-					<div class="eyebrow px-3 pt-3 pb-1">not here — {notHere.length}</div>
+					<div class="{railLabel(riding)} px-3 pt-3 pb-1">
+						not here — {notHere.length}
+					</div>
 					<ul class="px-1 pb-2">
 						{#each notHere as member (member.id)}{@render absent(member)}{/each}
 					</ul>

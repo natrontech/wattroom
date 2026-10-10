@@ -13,12 +13,14 @@
 	import type { JukeboxEntry } from '$lib/protocol';
 	import type { SaveTarget } from '$lib/channel/playlists.svelte';
 	import { fitsCadence } from '$lib/channel/cadence-fit';
+	import { railText } from '$lib/channel/rail-size';
 	import { thumbnailFor } from '$lib/channel/jukebox-add';
 
 	// One track in the playlist (#286) — the same row for what's next and for
 	// what just played, because they differ only in which verbs apply.
 	let {
 		entry,
+		riding = false,
 		position,
 		myId,
 		onVote,
@@ -30,6 +32,8 @@
 		targetRpm = 0,
 	}: {
 		entry: JukeboxEntry;
+		/** On a riding surface its words are at G4's floor (#3758). */
+		riding?: boolean;
 		/** 1-based slot in "up next"; absent in history. */
 		position?: number;
 		myId?: string;
@@ -151,10 +155,10 @@
 		</div>
 
 		<div class="min-w-0 flex-1">
-			<p class="truncate text-xs leading-tight">
+			<p class="truncate {railText(riding, 'text-xs leading-tight')}">
 				{tracks.length ? entry.playlistTitle : entry.title}
 			</p>
-			<p class="text-muted truncate text-[10px]">
+			<p class="text-muted truncate {railText(riding, 'text-[10px]')}">
 				{#if tracks.length}
 					playlist · {tracks.length} tracks · {entry.addedBy}
 				{:else if entry.artist}
