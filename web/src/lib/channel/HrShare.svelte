@@ -44,7 +44,7 @@
 		class="flex flex-wrap items-center gap-x-3 gap-y-1 {klass}"
 	>
 		<p
-			class="flex items-center gap-1.5 text-sm {view.shared
+			class="ride-stage:ride-word flex items-center gap-1.5 text-sm {view.shared
 				? 'text-ink'
 				: 'text-muted'}"
 			role="status"
@@ -61,7 +61,7 @@
 		     Named in full: a screen share's button says "Stop sharing" too. -->
 		<button
 			onclick={toggle}
-			class="btn btn-secondary btn-lg"
+			class="btn btn-secondary btn-lg ride-stage:ride-word"
 			aria-label="{view.action} heart rate"
 			title={view.shared
 				? 'Nobody in the call sees your bpm while it is off. A session ride saved meanwhile has none either; a free ride keeps it.'
@@ -70,7 +70,9 @@
 		{#if error}
 			<!-- Where the tap was (errors.md): a storage-blocked browser cannot
 			     keep the choice, and the rider has to know it did not stick. -->
-			<p class="text-danger text-xs" role="alert">{error}</p>
+			<p class="text-danger ride-stage:ride-word text-xs" role="alert">
+				{error}
+			</p>
 		{/if}
 	</div>
 {/if}

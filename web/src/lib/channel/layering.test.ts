@@ -28,10 +28,16 @@ const CHANNEL_TO_SESSION: Record<string, { modules: string[]; why: string }> = {
 			'end-game',
 			'SessionControls.svelte',
 			'SprintMoment.svelte',
+		],
+		why: "the channel's page shows the session running in it, and is where one is started, with the plan due in it (#2606)",
+	},
+	'lib/channel/LoungeSession.svelte': {
+		modules: [
+			'SessionControls.svelte',
 			'TrainerOverview.svelte',
 			'sensor-status',
 		],
-		why: "the channel's page shows the session running in it, and is where one is started — with the trainer card for a rider still unpaired (#2594), and the plan due in it (#2606)",
+		why: "the Lounge's way into a running session: its controls, and the trainer card for a rider still unpaired (#2594)",
 	},
 	'lib/channel/context-value.svelte.ts': {
 		modules: ['sensor-status'],

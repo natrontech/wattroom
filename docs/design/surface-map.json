@@ -68,6 +68,14 @@
 	},
 	{
 		"files": [
+			"web/src/lib/channel/Lounge.svelte",
+			"web/src/lib/channel/LoungeSession.svelte",
+			"web/src/lib/channel/RiderTile.svelte"
+		],
+		"surfaces": ["roadside-chalk", "ride-watch"]
+	},
+	{
+		"files": [
 			"web/src/lib/world/game-road.ts",
 			"web/src/lib/session/GamePanel.svelte"
 		],

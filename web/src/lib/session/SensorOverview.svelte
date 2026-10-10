@@ -203,7 +203,7 @@
 					     is doing — in the view's own tone, since only one of those
 					     two is a fault. -->
 					<p
-						class="text-xs {trainerView.tone === 'danger'
+						class="ride-stage:ride-word text-xs {trainerView.tone === 'danger'
 							? 'text-danger'
 							: 'text-muted'}"
 					>
@@ -213,7 +213,9 @@
 				<!-- Riding size, quiet (#2886): at 28 px beside the coach's
 				     controls it was small to hit on purpose and easy to hit by
 				     mistake, and a slip unpairs the trainer mid-session. -->
-				<button onclick={trainer.onForget} class="btn btn-ghost btn-lg"
+				<button
+					onclick={trainer.onForget}
+					class="btn btn-ghost btn-lg ride-stage:ride-word ride-stage:py-2"
 					>Unpair trainer</button
 				>
 			{:else if trainerView.button}
@@ -226,24 +228,28 @@
 				     wiring that to onPair opened the chooser instead (#1716). -->
 				{#if trainerView.button.variant === 'forget'}
 					<p
-						class="text-xs {trainerView.tone === 'danger'
+						class="ride-stage:ride-word text-xs {trainerView.tone === 'danger'
 							? 'text-danger'
 							: 'text-muted'}"
 					>
 						{trainerView.note}
 					</p>
-					<button onclick={trainer.onForget} class="btn btn-ghost btn-xs"
+					<button
+						onclick={trainer.onForget}
+						class="btn btn-ghost btn-xs ride-stage:min-h-11 ride-stage:ride-word"
 						>{trainerView.button.label} trainer</button
 					>
 				{:else}
-					<button onclick={trainer.onPair} class="btn btn-secondary btn-lg"
+					<button
+						onclick={trainer.onPair}
+						class="btn btn-secondary btn-lg ride-stage:ride-word ride-stage:py-2"
 						>{trainerView.button.variant === 'primary'
 							? 'Pair trainer'
 							: trainerView.button.label}</button
 					>
 				{/if}
 			{:else}
-				<p class="text-muted text-xs">
+				<p class="text-muted ride-stage:ride-word text-xs">
 					Trainer {trainerView.note.toLowerCase()}{trainerView.instead
 						? ` — ${trainerView.instead.toLowerCase()}`
 						: ''}
@@ -252,12 +258,14 @@
 			{#if trainer.onSimulate && trainerView.shape !== 'live' && !elsewhere.trainer}
 				<!-- Outside the pair button's branch, as the full grid has it: a
 				     browser with no Web Bluetooth still simulates (#2594). -->
-				<button onclick={trainer.onSimulate} class="btn btn-ghost btn-xs"
+				<button
+					onclick={trainer.onSimulate}
+					class="btn btn-ghost btn-xs ride-stage:min-h-11 ride-stage:ride-word"
 					>Ride simulated</button
 				>
 			{/if}
 			{#if trainer.error && trainer.state !== 'connecting'}
-				<p class="text-danger text-xs">{trainer.error}</p>
+				<p class="text-danger ride-stage:ride-word text-xs">{trainer.error}</p>
 			{/if}
 		</div>
 	{:else}
