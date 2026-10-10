@@ -174,7 +174,9 @@ test('two riders share a session: crew strip, execution bars, sprint scoreboard'
 		a.getByTestId('execution-row').first(),
 		'from xl the Training card drew the contest a second time beside the people column',
 	).toBeHidden();
-	await expect(a.locator('aside').getByText(/^holding — \d+$/i)).toBeVisible();
+	await expect(
+		a.locator('aside').getByText(B, { exact: true }).first(),
+	).toBeVisible();
 
 	// --- A arms a sprint, and the scoreboard ranks both on w/kg -------------
 	await a.getByRole('button', { name: 'arm a sprint' }).click();
