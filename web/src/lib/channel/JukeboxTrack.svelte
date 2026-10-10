@@ -14,6 +14,7 @@
 	import type { SaveTarget } from '$lib/channel/playlists.svelte';
 	import { fitsCadence } from '$lib/channel/cadence-fit';
 	import { thumbnailFor } from '$lib/channel/jukebox-add';
+	import { railIcon } from '$lib/channel/rail-size';
 
 	// One track in the playlist (#286) — the same row for what's next and for
 	// what just played, because they differ only in which verbs apply.
@@ -28,6 +29,7 @@
 		saveTargets = [],
 		onSave,
 		targetRpm = 0,
+		riding = false,
 	}: {
 		entry: JukeboxEntry;
 		/** 1-based slot in "up next"; absent in history. */
@@ -46,6 +48,8 @@
 		onSave?: (target: SaveTarget) => void;
 		/** The rpm the running block asks for (#1431); 0 outside a session. */
 		targetRpm?: number;
+		/** A ride is under way: the row's controls are 44 px (TARGETS G5). */
+		riding?: boolean;
 	} = $props();
 
 	const fits = $derived(fitsCadence(entry.bpm, targetRpm));
@@ -179,7 +183,9 @@
 				onclick={() => (open = !open)}
 				aria-expanded={open}
 				aria-label={open ? 'hide the tracks' : 'show the tracks'}
-				class="text-muted hover:text-ink grid h-9 w-6 shrink-0 place-items-center"
+				class="text-muted hover:text-ink grid shrink-0 place-items-center {riding
+					? 'h-11 w-11'
+					: 'h-9 w-6'}"
 			>
 				{#if open}<ChevronUp size={14} />{:else}<ChevronDown size={14} />{/if}
 			</button>
@@ -191,7 +197,9 @@
 				onclick={onVote}
 				aria-pressed={mine}
 				aria-label={mine ? 'remove your vote' : 'vote for this track'}
-				class="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded border {mine
+				class="flex shrink-0 flex-col {riding
+					? 'h-11 w-11'
+					: 'h-9 w-9'} items-center justify-center rounded border {mine
 					? 'border-neon bg-neon/15 text-ink'
 					: 'border-muted/20 text-muted hover:border-muted/50'}"
 			>
@@ -206,7 +214,7 @@
 			<button
 				onclick={onRequeue}
 				aria-label="queue this again"
-				class="text-muted hover:text-ink icon-btn"
+				class="text-muted hover:text-ink {railIcon(riding)}"
 				><RotateCcw size={15} /></button
 			>
 		{/if}
@@ -214,7 +222,8 @@
 			<button
 				onclick={onRemove}
 				aria-label="remove from the queue"
-				class="text-muted hover:text-danger icon-btn"><X size={15} /></button
+				class="text-muted hover:text-danger {railIcon(riding)}"
+				><X size={15} /></button
 			>
 		{/if}
 	</div>

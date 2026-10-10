@@ -1,0 +1,1 @@
+- The jukebox's transport, the queue's rows and their chevrons, vote and remove buttons, the "+N more" and "Save as a playlist" links, and an open playlist's rows are 44 px while a ride runs; at the desk they keep their size.

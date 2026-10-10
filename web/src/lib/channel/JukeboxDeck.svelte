@@ -35,6 +35,7 @@
 	import { MUSIC_FADER } from '$lib/sound/fader';
 	import { mixer } from '$lib/sound/mixer.svelte';
 	import { toasts } from '$lib/toast.svelte';
+	import { railIcon } from '$lib/channel/rail-size';
 
 	// What is ON, and everything that moves it (#114, #1423): the picture the
 	// player flies onto, the words, the shared playhead, the transport, and the
@@ -46,11 +47,14 @@
 		jukebox,
 		current,
 		send,
+		riding = false,
 	}: {
 		jukebox: JukeboxState;
 		/** `jukebox.current`, already narrowed: no deck is drawn without one. */
 		current: JukeboxEntry;
 		send: (command: JukeboxCommand) => void;
+		/** A ride is under way: the transport is 44 px (TARGETS G5). */
+		riding?: boolean;
 	} = $props();
 
 	// A stable attachment: a fresh arrow every render would tear the offer
@@ -300,7 +304,7 @@
 	<div class="flex min-w-0 flex-wrap items-center justify-center gap-1">
 		<button
 			onclick={() => send({ action: 'back' })}
-			class="text-muted hover:text-ink icon-btn"
+			class="text-muted hover:text-ink {railIcon(riding)}"
 			aria-label={setTracks
 				? 'start this track over, or step back through the playlist'
 				: 'start this track over'}><SkipBack size={17} /></button
@@ -308,7 +312,7 @@
 		{#if !streaming}
 			<button
 				onclick={() => seekTo(elapsed - 30)}
-				class="text-muted hover:text-ink icon-btn"
+				class="text-muted hover:text-ink {railIcon(riding)}"
 				aria-label="back 30 seconds"><Rewind size={17} /></button
 			>
 		{/if}
@@ -326,13 +330,13 @@
 		{#if !streaming}
 			<button
 				onclick={() => seekTo(elapsed + 30)}
-				class="text-muted hover:text-ink icon-btn"
+				class="text-muted hover:text-ink {railIcon(riding)}"
 				aria-label="forward 30 seconds"><FastForward size={17} /></button
 			>
 		{/if}
 		<button
 			onclick={() => send({ action: 'skip' })}
-			class="text-muted hover:text-ink icon-btn"
+			class="text-muted hover:text-ink {railIcon(riding)}"
 			aria-label={setTracks
 				? 'skip to the next track in the playlist'
 				: 'skip to the next track'}><SkipForward size={17} /></button
@@ -343,7 +347,7 @@
 			     when there is a playlist to leave (ux.md). -->
 			<button
 				onclick={skipPlaylist}
-				class="text-muted hover:text-ink icon-btn"
+				class="text-muted hover:text-ink {railIcon(riding)}"
 				aria-label="skip the whole playlist"><ListX size={17} /></button
 			>
 		{/if}
@@ -385,7 +389,7 @@
 			>
 			<button
 				onclick={() => listening.rejoin()}
-				class="text-ink icon-btn"
+				class="text-ink {railIcon(riding)}"
 				aria-label="rejoin the music"
 				title="Rejoin — back in with everyone, from wherever it has got to"
 				><Headphones size={17} /></button
@@ -394,14 +398,14 @@
 			<span class="text-muted-dim min-w-0 flex-1 truncate">yours only</span>
 			<button
 				onclick={() => stepOut('skip')}
-				class="text-muted hover:text-ink icon-btn"
+				class="text-muted hover:text-ink {railIcon(riding)}"
 				aria-label="skip this one for me"
 				title="Skip for me — back automatically on the next track"
 				><Hourglass size={17} /></button
 			>
 			<button
 				onclick={() => stepOut('stop')}
-				class="text-muted hover:text-ink icon-btn"
+				class="text-muted hover:text-ink {railIcon(riding)}"
 				aria-label="stop the music for me"
 				title="Stop for me — it keeps playing for everyone else"
 				><HeadphoneOff size={17} /></button

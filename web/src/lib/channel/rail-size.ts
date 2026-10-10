@@ -19,3 +19,10 @@ export const railField = (riding: boolean) =>
 
 /** A fold's `<summary>`: its 10 px eyebrow padded to 47 px, or 31 px. */
 export const railFold = (riding: boolean) => (riding ? 'py-4' : 'py-2');
+
+/** An icon-only button: the kit's 40 px at the desk, 44 px while riding. */
+export const railIcon = (riding: boolean) =>
+	riding ? 'icon-btn icon-btn-lg' : 'icon-btn';
+
+/** A standalone text link (`btn-link`): 44 px tall while riding, inline at the desk. */
+export const railLink = (riding: boolean) => (riding ? 'min-h-11' : '');

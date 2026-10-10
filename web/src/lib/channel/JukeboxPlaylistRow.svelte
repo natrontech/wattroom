@@ -16,6 +16,7 @@
 	import { deleteQuestion, playingIn } from '$lib/channel/playlist-autoplay';
 	import type { JukeboxCommand } from '$lib/protocol';
 	import { thumbnailFor } from '$lib/channel/jukebox-add';
+	import { railButton } from '$lib/channel/rail-size';
 	import JukeboxAdd from '$lib/channel/JukeboxAdd.svelte';
 	import {
 		commandFromSavedTrack,
@@ -34,6 +35,7 @@
 		store,
 		address,
 		canManage,
+		riding = false,
 	}: {
 		playlist: SavedPlaylist;
 		store: ReturnType<typeof createPlaylistStore>;
@@ -44,6 +46,8 @@
 		/** Rename, delete and remove-a-track: the crew's owner's and admins' on
 		 * a crew playlist (#771), always yours on a personal one. */
 		canManage: boolean;
+		/** A ride is under way: the row's controls and tracks are 44 px (TARGETS G5). */
+		riding?: boolean;
 	} = $props();
 
 	let open = $state(false);
@@ -272,7 +276,9 @@
 			onclick={toggle}
 			aria-expanded={open}
 			aria-label={open ? 'hide tracks' : 'show tracks'}
-			class="text-muted hover:text-ink grid h-9 w-6 shrink-0 place-items-center"
+			class="text-muted hover:text-ink grid shrink-0 place-items-center {riding
+				? 'h-11 w-11'
+				: 'h-9 w-6'}"
 		>
 			{#if open}<ChevronUp size={14} />{:else}<ChevronDown size={14} />{/if}
 		</button>
@@ -311,7 +317,9 @@
 			<button
 				onclick={queue}
 				disabled={busy || !playlist.trackCount}
-				class="btn btn-secondary btn-xs shrink-0 disabled:opacity-40"
+				class="btn btn-secondary {railButton(
+					riding,
+				)} shrink-0 disabled:opacity-40"
 				aria-label="queue this playlist into {address.name}">Queue</button
 			>
 		{/if}
@@ -331,7 +339,9 @@
 				<ul class="flex flex-col gap-1">
 					{#each tracks as track, i (track.id)}
 						<li
-							class="group flex min-w-0 items-center gap-1.5"
+							class="group flex min-w-0 items-center gap-1.5 {riding
+								? 'min-h-11'
+								: ''}"
 							{@attach contextMenu(() => trackMenu(track, i))}
 						>
 							{#if track.trackId}
@@ -369,7 +379,9 @@
 								<button
 									onclick={() => void removeTrack(track, i)}
 									aria-label="remove this track"
-									class="text-muted hover:text-danger grid h-6 w-6 shrink-0 place-items-center opacity-0 group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:hidden"
+									class="text-muted hover:text-danger grid shrink-0 place-items-center opacity-0 {riding
+										? 'h-11 w-11'
+										: 'h-6 w-6'} group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:hidden"
 									><X size={12} /></button
 								>
 							{/if}

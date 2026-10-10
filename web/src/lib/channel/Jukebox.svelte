@@ -13,7 +13,7 @@
 	import JukeboxTrack from '$lib/channel/JukeboxTrack.svelte';
 	import { IN_SYNC_SEC, playerInfo } from '$lib/channel/jukebox-player.svelte';
 	import { listening } from '$lib/channel/listening.svelte';
-	import { railFold } from '$lib/channel/rail-size';
+	import { railFold, railLink } from '$lib/channel/rail-size';
 	import {
 		createPlaylistStore,
 		type SaveTarget,
@@ -135,7 +135,7 @@
 	</div>
 
 	{#if jukebox && current}
-		<JukeboxDeck {jukebox} {current} {send} />
+		<JukeboxDeck {jukebox} {current} {send} {riding} />
 	{:else}
 		<p class="text-muted text-xs leading-relaxed">
 			Nothing is playing. Search your library or paste a YouTube link, and
@@ -165,6 +165,7 @@
 						{saveTargets}
 						onSave={(target) => void saveEntry(entry, target)}
 						{targetRpm}
+						{riding}
 					/>
 				{/each}
 			</ul>
@@ -172,7 +173,7 @@
 				{#if queue.length > QUEUE_PEEK}
 					<button
 						onclick={() => (showAllQueue = !showAllQueue)}
-						class="btn-link"
+						class="btn-link {railLink(riding)}"
 						>{showAllQueue
 							? 'fewer'
 							: `+${queue.length - QUEUE_PEEK} more`}</button
@@ -183,7 +184,7 @@
 				<button
 					onclick={() => void saveQueue()}
 					disabled={savingQueue}
-					class="btn-link ml-auto"
+					class="btn-link ml-auto {railLink(riding)}"
 					title="the deck and everything behind it, as a new crew playlist"
 					>Save as a playlist</button
 				>
@@ -210,6 +211,7 @@
 					     videoId made the hub read it as a blank YouTube add (#1144). -->
 					<JukeboxTrack
 						{entry}
+						{riding}
 						onRequeue={() =>
 							send({
 								action: 'add',

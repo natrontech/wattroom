@@ -104,6 +104,7 @@
 						{store}
 						{address}
 						canManage={tab !== 'crew' || canManage}
+						{riding}
 					/>
 				{/each}
 			</ul>
