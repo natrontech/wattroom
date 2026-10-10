@@ -70,7 +70,11 @@ test('the sidebar reads at 24 px on a ride, and at its desk sizes after', async 
 	await expect(page.getByRole('button', { name: 'End ride' })).toBeVisible({
 		timeout: 30_000,
 	});
-	await expect(page.locator('.cave'), 'the lights stayed up').toHaveCount(1);
+	// The frame, page and sidebar; the hosts outside it wear their own (#3788).
+	await expect(
+		page.locator('.cave:has(#page-body)'),
+		'the lights stayed up',
+	).toHaveCount(1);
 	await expect(
 		nav.getByRole('link', { name: 'Home', exact: true }),
 	).toBeVisible();
