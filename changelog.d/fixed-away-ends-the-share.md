@@ -1,1 +1,0 @@
-- Away ends your screen share for everyone in the call. In the desktop app the share bar went off while crewmates still saw your screen.

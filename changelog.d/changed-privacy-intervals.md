@@ -1,1 +1,0 @@
-- The privacy policy now names intervals.icu: what a pull of your planned week reads, that the token is dropped at once and nothing is kept, and the one short-lived cookie it sets.

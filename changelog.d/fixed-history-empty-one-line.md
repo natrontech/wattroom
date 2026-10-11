@@ -1,1 +1,0 @@
-- An empty ride history now says it in one line, the same one Home uses, with a single Ride solo button, instead of apologising across three.

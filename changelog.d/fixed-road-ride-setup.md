@@ -1,1 +1,0 @@
-- Riding one of your roads opens on the Ride card with that road chosen, so its setup fills the page like any other ride's, instead of a narrow centred block.

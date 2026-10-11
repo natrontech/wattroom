@@ -1,1 +1,0 @@
-- While you ride, the sidebar drops its desk teaching lines (joining a crew, messaging a friend, making a first channel, getting the desktop app); its rows stay where they are.

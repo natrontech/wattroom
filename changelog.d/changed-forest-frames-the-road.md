@@ -1,1 +1,0 @@
-- Conifer stands now line the road, trees grow in groups, and houses stand in small clusters.

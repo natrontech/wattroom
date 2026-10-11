@@ -1,1 +1,0 @@
-- A voice channel's right rail reads at riding size while you ride: labels, rider names and the jukebox's track lines are large, and the desk teaching sentences are gone.

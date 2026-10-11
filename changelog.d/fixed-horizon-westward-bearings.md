@@ -1,1 +1,0 @@
-- The mountains on the horizon now rise where you ride toward most of the time: a road ridden partly westward no longer pulls its main peak toward the wrong side of the sky.

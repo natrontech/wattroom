@@ -1,1 +1,0 @@
-- The live session row under a voice channel in the sidebar is a full 24 px tap target and ends in an ellipsis when it runs long.
