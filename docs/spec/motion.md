@@ -58,8 +58,15 @@ over base with a **2 s** half-life; a shot change is a cut or a **300 ms**
 fog-dip.
 
 **The World control**: Full, Steady (heli camera, fixed FOV, cuts, no
-particles), Light (the lowest 3D tier), Flat (the Skyline). Per device; reduced
-motion opens on Flat.
+particles), Light (the lowest 3D tier), Flat (the Skyline). Per device, stored
+in `wattroom.world.mode.v1`; reduced motion opens on Flat, with one tap to
+Steady.
+
+**Steady** (default; `world/rig.ts`): heli camera **260 m** back and **190 m**
+up, fixed FOV **45°**, cuts instead of moves, no particles or confetti, lean
+×**0.5**, vegetation sway ×**0.3**. Crank and wheels keep turning, because they
+are data. **Light** draws at **0.5 MP** (Full: 1.0 MP) until the quality ladder
+has a lower tier.
 
 **Flashes**: WCAG 2.3.1; at most one luminance flash per **10 s** over **25 %**
 of a **10°** field.

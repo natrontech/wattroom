@@ -1,7 +1,8 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setWorldSlot } from './flag';
-import { createWorldView, flatRoad, setFlatRoad } from './world-view.svelte';
+import { setWorldMode, worldMode } from './mode';
+import { createWorldView } from './world-view.svelte';
 
 /** A browser that draws the world: WebGL2 and WEBGL_multi_draw. */
 function capable() {
@@ -41,7 +42,7 @@ describe('a ride’s world view (#3080)', () => {
 		expect(view.reason).toBe('frames');
 		view.retry();
 		expect(view.on).toBe(true);
-		expect(flatRoad()).toBeNull(); // a failure mended is no choice made
+		expect(worldMode()).toBeNull(); // a failure mended is no choice made
 	});
 
 	it('takes the flat road from the world’s menu, and remembers it on this device', () => {
@@ -49,7 +50,7 @@ describe('a ride’s world view (#3080)', () => {
 		const view = createWorldView();
 		view.flatten();
 		expect(view.reason).toBe('chosen');
-		expect(flatRoad()).toBe(true);
+		expect(worldMode()).toBe('flat');
 		expect(createWorldView().reason).toBe('chosen');
 	});
 
@@ -62,18 +63,30 @@ describe('a ride’s world view (#3080)', () => {
 			expect(view.reason).toBe('short');
 			at(900);
 			expect(view.on).toBe(true);
-			expect(flatRoad()).toBeNull(); // the window chose nothing for the rider
+			expect(worldMode()).toBeNull(); // the window chose nothing for the rider
 		} finally {
 			at(900);
 		}
 	});
 
+	it('opens on Flat under reduced motion, and one tap lands on Steady (#3214)', async () => {
+		setWorldSlot(true);
+		const { prefersReducedMotion } = await import('$lib/motion');
+		vi.spyOn(prefersReducedMotion, 'current', 'get').mockReturnValue(true);
+		const view = createWorldView();
+		expect(view.reason).toBe('motion');
+		view.retry();
+		expect(view.on).toBe(true);
+		expect(worldMode()).toBe('steady');
+		expect(view.look).toBe('steady');
+	});
+
 	it('makes "Try 3D again" the rider’s new choice when their own choice held it flat', () => {
 		setWorldSlot(true);
-		setFlatRoad(true);
+		setWorldMode('flat');
 		const view = createWorldView();
 		view.retry();
 		expect(view.on).toBe(true);
-		expect(flatRoad()).toBe(false);
+		expect(worldMode()).toBe('full');
 	});
 });

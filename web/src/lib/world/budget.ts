@@ -2,6 +2,9 @@
 // the view needs, and never more than docs/SPEC.md's budget. The frame rate
 // is loop.ts's.
 
+/** Light draws half of it (#3214); there is no lower tier yet. */
+export const LIGHT_PIXEL_BUDGET = 5e5;
+
 /** About 1.0 MP a frame (docs/SPEC.md, "The world"). */
 export const PIXEL_BUDGET = 1e6;
 
@@ -10,6 +13,11 @@ export const PIXEL_BUDGET = 1e6;
  * own, unless that would draw more than the budget. No floor: a big window
  * draws below one pixel per CSS pixel and the browser scales it up.
  */
-export function pixelRatio(w: number, h: number, dpr: number): number {
-	return Math.min(dpr, Math.sqrt(PIXEL_BUDGET / Math.max(1, w * h)));
+export function pixelRatio(
+	w: number,
+	h: number,
+	dpr: number,
+	budget = PIXEL_BUDGET,
+): number {
+	return Math.min(dpr, Math.sqrt(budget / Math.max(1, w * h)));
 }

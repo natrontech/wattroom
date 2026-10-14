@@ -183,7 +183,7 @@ test('Try 3D again, on a ride held on the flat road, is riding size (#3080) @wor
 	await rider.setViewportSize(PHONE);
 	await rider.addInitScript(() => {
 		localStorage.setItem('wattroom.world-slot.v1', '1');
-		localStorage.setItem('wattroom.flat-road.v1', '1');
+		localStorage.setItem('wattroom.world.mode.v1', 'flat');
 	});
 	// Only a ride on a road has a world to hold on the flat road (#3663).
 	await openAWorkoutOnARoad(rider);
