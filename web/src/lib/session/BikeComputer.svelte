@@ -303,6 +303,7 @@
 					? `border-neon/20 [container-type:size] grid min-h-0 shrink grow ${TV_COLS[tvCols]} gap-x-[2vw] gap-y-[1.5vh] border-t pt-[2vh]`
 					: 'border-neon/20 grid grid-cols-2 gap-x-6 gap-y-3 border-t pt-3'
 				: layout}
+			data-testid={docked ? 'computer-fields' : undefined}
 			style:flex-basis={docked && tv ? tvFields : undefined}
 		>
 			{#if !phone && !docked}{@render name()}{/if}
