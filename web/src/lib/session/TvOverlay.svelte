@@ -171,6 +171,7 @@
 			{skyline}
 			{climb}
 			{exit}
+			seated={playing}
 		/>
 	{/if}
 </div>

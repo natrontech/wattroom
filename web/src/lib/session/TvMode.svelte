@@ -27,6 +27,7 @@
 		skyline = null,
 		climb = null,
 		exit,
+		seated = false,
 	}: {
 		riders: LiveRider[];
 		/** Your instrument has nothing paired to read (#2941). */
@@ -50,6 +51,8 @@
 		climb?: ClimbView | null;
 		/** The way out, in the top row beside the title and clock (#3677). */
 		exit?: import('svelte').Snippet;
+		/** The jukebox sits in the top-right seat: the top rows end short of it. */
+		seated?: boolean;
 	} = $props();
 
 	const you = $derived(riders.find((r) => r.you) ?? riders[0]);
@@ -63,7 +66,9 @@
 -->
 <div class="bg-surface flex h-full flex-col px-[3vw] py-[3vh]">
 	{#if !live || !you}
-		<div class="flex justify-end">{@render exit?.()}</div>
+		<div class="flex justify-end {seated ? 'pr-[27vw]' : ''}">
+			{@render exit?.()}
+		</div>
 		<!-- Idle lounge: no HUD of glowing zeros (glow marks LIVE data,
 		     ADR-0005) — the TV shows who is here and how to join. -->
 		<div class="flex flex-1 flex-col items-center justify-center text-center">
@@ -90,7 +95,7 @@
 			</p>
 		</div>
 	{:else}
-		<header class="flex items-center gap-[2vw]">
+		<header class="flex items-center gap-[2vw] {seated ? 'pr-[27vw]' : ''}">
 			<h1 class="font-display text-[3.4vh] leading-none font-bold">
 				{placeName}
 			</h1>
@@ -105,7 +110,12 @@
 		<!-- The riding surface's panels at three metres (ADR-0046, #3677): the
 		     head with the one watts figure beside slot 1, the computer's pages
 		     under them, the graph along the bottom. -->
-		<div class="mt-[2vh] grid grid-cols-[2fr_3fr] gap-[1.5vw]">
+		<!-- Without a block slot 1 draws nothing, and the head takes the row. -->
+		<div
+			class="mt-[2vh] grid gap-[1.5vw] {block
+				? 'grid-cols-[2fr_3fr]'
+				: 'grid-cols-1'} {seated ? 'pr-[27vw]' : ''}"
+		>
 			<section class="ride-panel px-[1.5vw] py-[1.5vh]">
 				<ComputerHead
 					tv
