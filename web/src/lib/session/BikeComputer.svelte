@@ -313,7 +313,7 @@
 				? tv
 					? `border-neon/20 [container-type:size] grid min-h-0 shrink grow ${TV_COLS[tvCols]} gap-x-[2vw] gap-y-[1.5vh] border-t pt-[2vh]`
 					: wide
-						? 'border-neon/20 grid min-w-0 flex-1 grid-cols-4 gap-x-6 gap-y-3 border-l pl-8'
+						? 'border-neon/20 grid min-w-0 flex-1 auto-cols-fr grid-flow-col gap-x-8 border-l pl-8'
 						: 'border-neon/20 grid grid-cols-2 gap-x-6 gap-y-3 border-t pt-3'
 				: layout}
 			style:flex-basis={docked && tv ? tvFields : undefined}

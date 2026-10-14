@@ -244,22 +244,24 @@
 				{roadLine(road.readout)}
 			</p>
 		{/if}
-		<div class="flex flex-wrap items-center gap-x-4 gap-y-1 {WORDS}">
-			<span data-testid="trainer-chip" class={CHIP}>{chip}</span>
-			<p data-testid="ride-clock" class="num text-muted">
-				{formatClock(
-					free.seconds,
-				)}{#if road}{` · ${Math.round(climbed)} m climbed`}{/if}
-			</p>
-			{#if flagNotice}
-				<p class="text-muted truncate">{FLAG_SAID.after}</p>
-			{:else if hint}
-				<p class="text-muted truncate">{hint}</p>
-			{/if}
-			{#if road && world.reason}
-				<FlatRoad reason={world.reason} onretry={world.retry} />
-			{/if}
-		</div>
+		{#if !fault}
+			<div class="flex flex-wrap items-center gap-x-4 gap-y-1 {WORDS}">
+				<span data-testid="trainer-chip" class={CHIP}>{chip}</span>
+				<p data-testid="ride-clock" class="num text-muted">
+					{formatClock(
+						free.seconds,
+					)}{#if road}{` · ${Math.round(climbed)} m climbed`}{/if}
+				</p>
+				{#if flagNotice}
+					<p class="text-muted truncate">{FLAG_SAID.after}</p>
+				{:else if hint}
+					<p class="text-muted truncate">{hint}</p>
+				{/if}
+				{#if road && world.reason}
+					<FlatRoad reason={world.reason} onretry={world.retry} />
+				{/if}
+			</div>
+		{/if}
 		<!-- One row of 44 px controls (ux.md, TARGETS ride-free-road 7); it
 		     wraps rather than clipping, as every control row does (#1634). -->
 		<div class="flex min-w-0 flex-wrap items-center gap-2">
@@ -377,6 +379,7 @@
 {/snippet}
 
 <RidingSurface
+	headerFit
 	class="flex-1 {inWorld ? worldClass : ''} {extra}"
 	world={inWorld ? worldSlot : undefined}
 	moment={inWorld && roadEndOffered(free, false) ? roadEnd : undefined}

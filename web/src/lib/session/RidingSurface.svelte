@@ -33,6 +33,7 @@
 
 	let {
 		header,
+		headerFit = false,
 		status,
 		focus,
 		numbers,
@@ -46,6 +47,8 @@
 		class: extra = '',
 	}: {
 		header: Snippet;
+		/** Slot 1 is its content's size (the box table), not the strip's width. */
+		headerFit?: boolean;
 		/** The flat layout's status row; over the world it is slot 1's first line, the caller's. */
 		status?: Snippet;
 		focus: Snippet;
@@ -105,7 +108,9 @@
 		<div
 			data-dock="header"
 			class={panel}
-			style="left:{INSET_PX}px;top:{INSET_PX}px;width:min({BAND_MAX_PX}px, calc({seatLeft} - {INSET_PX +
+			style="left:{INSET_PX}px;top:{INSET_PX}px;{headerFit
+				? 'width:fit-content;max-width'
+				: 'width'}:min({BAND_MAX_PX}px, calc({seatLeft} - {INSET_PX +
 				GAP_PX}px))"
 			bind:offsetWidth={slotWidth}
 		>
