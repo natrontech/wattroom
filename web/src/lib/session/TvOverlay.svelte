@@ -133,13 +133,13 @@
 	{/if}
 	<button
 		onclick={onExit}
-		class="btn btn-secondary btn-ride absolute bottom-4 left-4 z-10"
+		class="btn btn-secondary btn-lg absolute bottom-4 left-4 z-10"
 		>Exit TV mode (esc)</button
 	>
 	{#if onJoin}
 		<button
 			onclick={onJoin}
-			class="btn btn-accent btn-ride absolute bottom-[4vh] left-1/2 z-10 -translate-x-1/2"
+			class="btn btn-accent btn-lg absolute bottom-[4vh] left-1/2 z-10 -translate-x-1/2"
 			>Join the ride</button
 		>
 	{/if}
