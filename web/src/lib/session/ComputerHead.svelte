@@ -68,6 +68,7 @@
 				}
 			: {
 					power: 'text-[6.5rem]',
+					row: '',
 					unit: 'text-2xl',
 					label: 'ride-label',
 					value: 'text-4xl',
