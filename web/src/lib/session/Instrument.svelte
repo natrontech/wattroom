@@ -121,9 +121,9 @@
 			)}cqw, 100cqw - 50%) - 50%))"
 		>
 			<div
-				class="flex justify-center {watts >= 1000
+				class={watts >= 1000
 					? 'contents'
-					: 'items-end gap-4'}"
+					: 'flex items-end justify-center gap-4'}
 			>
 				<span
 					class="font-display {numeral} block leading-[0.85] font-bold tabular-nums {tv
