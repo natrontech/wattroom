@@ -1321,15 +1321,25 @@ async function queueDeck(page: Page, tracks: [string, string][]) {
 		.getByText((tracks[1] ?? tracks[0])[1])
 		.filter({ visible: true })
 		.count();
+	// The hub takes one jukebox command per 300 ms from a rider and refuses
+	// the rest, the stand-in player's own included: an add that does not
+	// show is sent again.
 	for (const [id, title] of queued ? [] : tracks) {
-		if (!(await add.isVisible())) await fold.click();
-		await add.fill(`https://www.youtube.com/watch?v=${id}`);
-		await add.press('Enter');
-		await page
+		const shown = page
 			.getByText(new RegExp(`${id}|${title}`))
 			.filter({ visible: true })
-			.first()
-			.waitFor({ timeout: 15_000 });
+			.first();
+		for (let tries = 3; ; tries--) {
+			if (!(await add.isVisible())) await fold.click();
+			await add.fill(`https://www.youtube.com/watch?v=${id}`);
+			await add.press('Enter');
+			const ok = await shown
+				.waitFor({ timeout: 5_000 })
+				.then(() => true)
+				.catch(() => false);
+			if (ok) break;
+			if (tries === 1) throw new Error(`${title} never reached the deck`);
+		}
 	}
 	if (await add.isVisible()) await fold.click();
 	return fold;
