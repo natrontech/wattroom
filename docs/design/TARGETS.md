@@ -444,6 +444,8 @@ Capture: `/workouts`, the hairpin and rolling route seeded; whole page body, des
 9. Third line one of “Not ridden yet”, “Ridden 3× · last 29 Sep”, “Left off at km 21.3”. [route-row]
 10. Actions: Ride (`btn-primary btn-xs`) bottom right, “Carry on” when there is somewhere to carry on; the rest of the card opens the route page; context menu Ride it, Open, a separator, Delete in the danger token. [route-row]
 11. Phone order: title, search, Your workouts, Your routes, Measure, Curated; nothing scrolls sideways. [workouts-page]
+12. Picking for a road (`workouts-on`, `phone-workouts-on`: `/workouts?on=<routeId>` from the route page's “Workout on it”): one line above the search, “Pick a workout for <road> · Terrain Match picks the start”, with Cancel back to the route page; no watt, no glow; at 375 it wraps and nothing scrolls sideways. [route-workout-on]
+13. In that mode each workout card's Ride opens the existing “Ride it on a route” dialog already on that road, at where to start (`workouts-on-ride`); no second workout list. [route-workout-on]
 
 #### workout-editor, phone-workout-editor
 
@@ -472,6 +474,7 @@ Capture: `/workouts/routes/<id>` for the hairpin and the rolling route (≥ 2 cl
 13. Rename (≤ ~480 px), the privacy line (once) and Delete (`btn-danger`) last, under one divider. [route-page]
 14. Phone order: back link, title, stats, primary, How, stretch, profile, shape, climbs, rides, rename, privacy, Delete; drawings `width="100%"`; the table scrolls in its own box. [route-page] [road-drawing]
 15. No watt, glow, shadow or blur anywhere.
+16. With “Workout on it” selected (`route-workout-on`): its line reads “Pick a workout; Terrain Match picks the start”, the primary reads “Pick a workout” and opens `/workouts?on=<id>`, and Which stretch is absent, since Terrain Match picks the start. [route-workout-on]
 
 #### import-idle, import, import-saved
 
