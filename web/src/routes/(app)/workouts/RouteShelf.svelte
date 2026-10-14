@@ -79,10 +79,12 @@
 </script>
 
 <section class="mt-8">
-	<div class="flex flex-wrap items-baseline justify-between gap-3">
+	<div class="flex min-h-7 flex-wrap items-center justify-between gap-3">
 		<h2 class="eyebrow">your routes</h2>
 		{#if routes && routes.length > 0}
-			<a href="/workouts/import" class="btn btn-ghost btn-xs">Import a route</a>
+			<a href="/workouts/import" class="btn btn-ghost btn-xs -mr-3"
+				>Import a route</a
+			>
 		{/if}
 	</div>
 	{#if error}

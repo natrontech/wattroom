@@ -663,6 +663,14 @@ surface(
 		await o.page.waitForTimeout(500);
 		await s.shot(o, { name: 'workouts-route-menu' });
 		await o.page.keyboard.press('Escape');
+		// The search finds routes as well as workouts (#3685).
+		const search = o.page.getByRole('searchbox', {
+			name: 'Find a workout or a route',
+		});
+		await search.fill('swells');
+		await o.page.waitForTimeout(500);
+		await s.shot(o, { name: 'workouts-search' });
+		await search.fill('');
 		await card.click({ position: { x: 200, y: 60 } });
 		await o.page.waitForURL(`**/workouts/routes/${hairpin}`);
 		await o.page.waitForTimeout(1500);

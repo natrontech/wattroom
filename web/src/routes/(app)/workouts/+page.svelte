@@ -3,6 +3,7 @@
 	import Banner from '$lib/components/Banner.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
+	import ListPlus from '@lucide/svelte/icons/list-plus';
 	import Gauge from '@lucide/svelte/icons/gauge';
 	import Pencil from '@lucide/svelte/icons/pencil';
 	import Play from '@lucide/svelte/icons/play';
@@ -158,7 +159,7 @@
 
 	<!-- Yours first: they are the ones you had to make on purpose. -->
 	<section class="mt-8">
-		<div class="flex flex-wrap items-baseline justify-between gap-3">
+		<div class="flex min-h-7 flex-wrap items-center justify-between gap-3">
 			<h2 class="eyebrow">your workouts</h2>
 			{#if custom.full}
 				<!-- The ceiling is said where the shelf is, not discovered on the
@@ -170,7 +171,9 @@
 				<!-- Buttons, not inline words (#2886): at 16 px they were under
 				     ux.md's 24 px floor on a phone. An empty shelf's doors are its
 				     empty state's alone (#3685). -->
-				<span class="flex flex-wrap gap-1">
+				<!-- -mr-3: the last door's text, not its padding, meets the cards'
+				     right edge. -->
+				<span class="-mr-3 flex flex-wrap gap-1">
 					<a href="/workouts/edit" class="btn btn-ghost btn-xs"
 						>Build a workout</a
 					>
@@ -201,6 +204,7 @@
 		{:else if shelfEmpty}
 			<div class="mt-2">
 				<EmptyState>
+					{#snippet icon()}<ListPlus size={20} class="text-muted" />{/snippet}
 					Workouts you build or import land here and follow you to any device.
 					{#snippet cta()}
 						<a href="/workouts/edit" class="btn btn-primary btn-xs"
@@ -266,7 +270,9 @@
 	<!-- /ramp retires here (ADR-0020): a ramp test is a workout you start, not
 	     a destination. It keeps its own ride screen — it writes your FTP — but
 	     it is reached from the shelf. -->
-	<h2 class="eyebrow mt-8">measure</h2>
+	<div class="mt-8 flex min-h-7 items-center">
+		<h2 class="eyebrow">measure</h2>
+	</div>
 	<ul class="mt-2">
 		<li class="panel panel-lg flex flex-wrap items-center gap-x-4 gap-y-2">
 			<Gauge size={16} class="text-muted shrink-0" />
@@ -281,7 +287,9 @@
 		</li>
 	</ul>
 
-	<h2 class="eyebrow mt-8">curated</h2>
+	<div class="mt-8 flex min-h-7 items-center">
+		<h2 class="eyebrow">curated</h2>
+	</div>
 	{#if suggestion && suggested.length > 0}
 		<p class="text-muted mt-2 text-xs">
 			Suggested for today:
