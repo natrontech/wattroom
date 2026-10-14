@@ -768,6 +768,8 @@ surface(
 		await o.page
 			.getByRole('link', { name: /^Ride leg 2 of \d+$/ })
 			.waitFor({ timeout: 30_000 });
+		// The save settles into its banner before the shot.
+		await o.page.waitForTimeout(2500);
 		await s.shot(o, { name: 'route-leg-summary', full: true });
 		// Workout on it (#3681): the row picked, the shelf picking for this
 		// road, and a card's Ride opening on it; then the shelf on a phone.
