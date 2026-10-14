@@ -1,7 +1,6 @@
 <script lang="ts">
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import IntervalStrip from '$lib/session/IntervalStrip.svelte';
-	import ComputerHead from '$lib/session/ComputerHead.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import { ZONE_BG, fillPct, zoneOf } from '$lib/components/zones';
 	import { formatClock } from '$lib/format';
@@ -108,56 +107,46 @@
 		</header>
 
 		<!-- The riding surface's panels at three metres (ADR-0046, #3677): the
-		     head with the one watts figure beside slot 1, the computer's pages
-		     under them, the graph along the bottom. -->
-		<!-- Without a block slot 1 draws nothing, and the head takes the row. -->
+		     bike computer — page control, head, fields — beside slot 1 and the
+		     roster, one column each, as tall as the tallest; the graph takes
+		     the rest along the bottom. -->
 		<div
-			class="mt-[2vh] grid gap-[1.5vw] {block
-				? 'grid-cols-[2fr_3fr]'
-				: 'grid-cols-1'} {seated ? 'pr-[27vw]' : ''}"
+			class="mt-[2vh] grid auto-cols-fr grid-flow-col gap-[1.5vw] {seated
+				? 'pr-[27vw]'
+				: ''}"
 		>
-			<section class="ride-panel px-[1.5vw] py-[1.5vh]">
-				<ComputerHead
-					tv
-					power={stats?.seconds ? stats.power3 : Math.round(you.watts)}
-					kg={you.kg}
-					ftp={you.ftp}
-					stale={you.stale || idle}
-					target={you.target > 0 ? you.target : undefined}
-					blockExecution={stats?.blockExecution ?? null}
-				/>
-				{#if idle}
-					<p class="text-muted mt-[1vh] text-[3vh]">
-						No trainer — pair one to see your watts
-					</p>
-				{/if}
-			</section>
-			<IntervalStrip {block} bias={1} cadence={you.cadence} hr={you.hr} big />
-		</div>
-
-		<div class="mt-[1.5vh] flex min-h-0 flex-1 items-start gap-[1.5vw]">
 			<!-- Slot 3 at three metres (#3088): the same pages, turned by the
 			     same keys. -->
-			<div class="min-w-0 flex-1">
+			<section class="ride-panel min-w-0">
 				<BikeComputer
 					tv
+					docked
 					cadence={you.cadence}
 					hr={you.hr}
 					watts={you.watts}
 					kg={you.kg}
-					stale={you.stale}
+					ftp={you.ftp}
+					stale={you.stale || idle}
 					target={you.target > 0 ? you.target : undefined}
 					{stats}
 					{climb}
 				/>
-			</div>
+				{#if idle}
+					<p class="text-muted px-[1.5vw] pb-[1.5vh] text-[3vh]">
+						No trainer — pair one to see your watts
+					</p>
+				{/if}
+			</section>
+			{#if block}
+				<IntervalStrip {block} bias={1} cadence={you.cadence} hr={you.hr} big />
+			{/if}
 
 			<!-- Everyone else, one row per rider. No faces: at 3 m you read names and
 			     numbers. Absent riding alone (#1632): the same TV serves a solo
 			     ride, and an empty third of the screen is not a roster. -->
 			{#if others.length > 0}
 				<section
-					class="ride-panel flex w-[34vw] flex-col gap-[1.6vh] px-[1.5vw] py-[1.5vh]"
+					class="ride-panel flex min-w-0 flex-col gap-[1.6vh] px-[1.5vw] py-[1.5vh]"
 				>
 					{#each others as rider (rider.id)}
 						{@const riderZone = zoneOf(rider.watts, rider.ftp)}
@@ -181,9 +170,9 @@
 			{/if}
 		</div>
 
-		<div class="ride-panel mt-[1.5vh] overflow-hidden">
+		<div class="ride-panel mt-[1.5vh] min-h-[14vh] flex-1 overflow-hidden">
 			{#if skyline}
-				<div class="h-40"><Skyline tv {...skyline} /></div>
+				<div class="h-full"><Skyline tv {...skyline} /></div>
 			{:else}
 				<IntervalGraph
 					{segments}

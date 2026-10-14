@@ -12,6 +12,7 @@
 	import { targetState } from '$lib/channel/types';
 	import { wkg } from '$lib/format';
 	import PowerTrack from '$lib/session/PowerTrack.svelte';
+	import { TV_LABEL } from '$lib/session/computer-pages';
 
 	let {
 		power,
@@ -50,8 +51,7 @@
 			? {
 					power: 'text-[16vh]',
 					unit: 'text-[4vh]',
-					label:
-						'text-muted text-[3vh] font-semibold tracking-[0.08em] uppercase',
+					label: TV_LABEL,
 					value: 'text-[6vh]',
 					words: 'text-[3vh] leading-none',
 					dot: 'size-[1.8vh]',

@@ -19,6 +19,7 @@
 	import ClimbProfile from '$lib/ride/ClimbProfile.svelte';
 	import {
 		PAGE_NAMES,
+		TV_LABEL,
 		claimPageTurn,
 		climbHeader,
 		fieldsFor,
@@ -56,15 +57,15 @@
 	let page = $state<ComputerPage>('ride');
 	const pages = $derived(pagesFor(ctx));
 	const shown = $derived(pages.includes(page) ? page : 'ride');
-	// The TV draws the same head beside slot 1 (#3677), so its fields are a
-	// docked computer's: one watts figure on the screen.
-	const fields = $derived(fieldsFor(shown, { ...ctx, ownHead: docked || tv }));
+	const fields = $derived(fieldsFor(shown, { ...ctx, ownHead: docked }));
 	// Docked under a target the head's track takes the profile's room; the
 	// Skyline under the computer draws the climb and your dot.
 	const profile = $derived(
 		shown === 'climb' && !!ctx.climb && !(docked && ctx.target),
 	);
 	const turns = $derived(pages.length > 1);
+	// Docked on the TV (#3677): the same panel in vh, so it reads at 3 m.
+	const label = $derived(tv ? TV_LABEL : 'ride-label');
 
 	function turn(dir: 1 | -1) {
 		page = turned(pages, shown, dir);
@@ -125,10 +126,10 @@
 	data-page={shown}
 	aria-label="bike computer, {PAGE_NAMES[shown]} page"
 	class={docked
-		? 'relative flex w-[21rem] max-w-full flex-col gap-3 px-4 py-3'
-		: tv
-			? 'ride-panel relative flex flex-col gap-[1.5vh] px-[1.5vw] py-[1.5vh]'
-			: 'panel relative'}
+		? tv
+			? 'relative flex flex-col gap-[1.5vh] px-[1.5vw] py-[1.5vh]'
+			: 'relative flex w-[21rem] max-w-full flex-col gap-3 px-4 py-3'
+		: 'panel relative'}
 >
 	<!-- The page's name and its dots sit in the row of numbers, so a page is
 	     one row tall where it fits and the focus above keeps its height (#3597);
@@ -215,7 +216,7 @@
 			class="focus-visible:outline-neon absolute inset-0 rounded-lg focus-visible:outline-2"
 		></button>
 	{/if}
-	{#if docked || tv}
+	{#if docked}
 		<!-- D15: the current page's name between ← and →, with position dots. -->
 		<div class="relative flex items-center gap-1">
 			{#if turns}
@@ -224,14 +225,11 @@
 					onclick={() => turn(-1)}
 					aria-label="previous page, {PAGE_NAMES[turned(pages, shown, -1)]}"
 					title="Previous page"
-					class="icon-btn-lg -ml-2"><ChevronLeft size={24} /></button
+					class="icon-btn-lg -ml-2"
+					><ChevronLeft size={24} class={tv ? 'size-[3.4vh]' : ''} /></button
 				>
 			{/if}
-			<p
-				class="{tv
-					? `${size.word} font-semibold tracking-[0.08em] uppercase`
-					: 'ride-label'} text-ink flex items-center gap-2"
-			>
+			<p class="{label} text-ink flex items-center gap-2">
 				{PAGE_NAMES[shown]}{@render badge()}
 			</p>
 			{#if turns}
@@ -240,13 +238,16 @@
 					onclick={() => turn(1)}
 					aria-label="next page, {PAGE_NAMES[turned(pages, shown, 1)]}"
 					title="Next page"
-					class="icon-btn-lg"><ChevronRight size={24} /></button
+					class="icon-btn-lg"
+					><ChevronRight size={24} class={tv ? 'size-[3.4vh]' : ''} /></button
 				>
 				<div class="ml-auto flex gap-2" aria-hidden="true">
 					{#each pages as p (p)}
 						<span
 							data-testid="computer-dot"
-							class="size-2.5 rounded-full border forced-color-adjust-none {p ===
+							class="{tv
+								? 'size-[2.9vh]'
+								: 'size-2.5'} rounded-full border forced-color-adjust-none {p ===
 							shown
 								? 'bg-neon border-neon forced-colors:bg-[Highlight]'
 								: 'border-muted'}"
@@ -255,8 +256,6 @@
 				</div>
 			{/if}
 		</div>
-	{/if}
-	{#if docked}
 		<ComputerHead
 			power={ctx.stats?.seconds ? ctx.stats.power3 : Math.round(ctx.watts)}
 			kg={ctx.kg}
@@ -264,20 +263,21 @@
 			stale={ctx.stale}
 			target={ctx.target}
 			blockExecution={ctx.stats?.blockExecution ?? null}
+			{tv}
 		/>
 	{/if}
 	{#if phone}{@render name()}{/if}
 	<div
 		class={docked
-			? 'border-neon/20 grid grid-cols-2 gap-x-6 gap-y-3 border-t pt-3'
+			? `border-neon/20 grid grid-cols-2 border-t ${tv ? 'gap-x-[2vw] gap-y-[1.5vh] pt-[1.5vh]' : 'gap-x-6 gap-y-3 pt-3'}`
 			: layout}
 	>
-		{#if !phone && !docked && !tv}{@render name()}{/if}
+		{#if !phone && !docked}{@render name()}{/if}
 		{#each fields as field (field.key)}
 			<div data-testid="computer-field" data-field={field.key} class="min-w-0">
 				<span
 					class="{docked
-						? 'ride-label'
+						? label
 						: `${size.word} text-muted`} flex items-center gap-2 leading-none"
 					>{field.label}{#if field.zone}<ZoneDot
 							zone={field.zone}

@@ -41,7 +41,7 @@ describe('TV mode reads at three metres (#3067)', () => {
 
 	// A shared component draws its TV sizes only when told it is on the TV:
 	// the graph's FTP label read 0.8vh there until TvMode said so (#3407).
-	it.each(['IntervalGraph', 'BikeComputer', 'ComputerHead'])(
+	it.each(['IntervalGraph', 'BikeComputer'])(
 		'tells the %s it is on the TV',
 		(component) => {
 			const tags =
@@ -71,15 +71,13 @@ describe('TV mode reads at three metres (#3067)', () => {
 		expect(header).toContain('{@render exit?.()}');
 	});
 
-	// One home per number (TARGETS D17): the head's 3 s power is the one
-	// watts figure, so the TV draws no second power readout (#3677).
-	it('draws the 3 s power once, in the head', () => {
+	// One home per number (TARGETS D17): the docked computer's head holds
+	// the one watts figure, so the TV draws no second power readout (#3677).
+	it('draws the 3 s power once, in the docked computer', () => {
 		const tv = read('lib/session/TvMode.svelte');
-		expect(tv.match(/<ComputerHead\b/g)).toHaveLength(1);
-		expect(tv).not.toMatch(/<Instrument\b/);
-		// …and the computer under it leaves power and W/kg to that head.
-		expect(read('lib/session/BikeComputer.svelte')).toMatch(
-			/ownHead: docked \|\| tv\b/,
-		);
+		const computers = tv.match(/<BikeComputer\b[\s\S]*?\/>/g) ?? [];
+		expect(computers).toHaveLength(1);
+		expect(computers[0]).toMatch(/\bdocked\b/);
+		expect(tv).not.toMatch(/<(Instrument|ComputerHead)\b/);
 	});
 });
