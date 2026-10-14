@@ -51,9 +51,9 @@
 		class="flex flex-wrap items-center gap-x-3 gap-y-1 {klass}"
 	>
 		<p
-			class="ride-stage:ride-word flex items-center gap-1.5 text-sm {ride
+			class="ride-stage:ride-word flex items-center gap-1.5 {ride
 				? 'ride-word'
-				: ''} {view.shared ? 'text-ink' : 'text-muted'}"
+				: 'text-sm'} {view.shared ? 'text-ink' : 'text-muted'}"
 			role="status"
 		>
 			{#if view.shared}

@@ -394,8 +394,7 @@
 
 	{#snippet focus()}
 		{#if !inWorld}
-			<!-- Flat, in slot order: the numbers take the free height (TARGETS
-			     ride-workout-flat 8), the Skyline a strip along the bottom as
+			<!-- Flat, in slot order: the Skyline a strip along the bottom as
 			     over the world, on screen with the dot inside (ride-free-road 9). -->
 			<div class="flex min-h-0 flex-col gap-3 pt-3">
 				{#if setup && !free.recording}{@render setup()}{/if}
@@ -411,8 +410,8 @@
 				</div>
 				{#if road}
 					<div
-						class="ride-panel min-h-0 flex-1 overflow-hidden"
-						style:min-height="{SKYLINE_PX}px"
+						class="ride-panel shrink-0 overflow-hidden"
+						style:height="{SKYLINE_PX}px"
 					>
 						{@render skyline(road)}
 					</div>
