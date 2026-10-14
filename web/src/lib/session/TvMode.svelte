@@ -121,15 +121,16 @@
 			</p>
 		</div>
 	{:else}
-		<!-- The riding surface's panels at three metres (ADR-0046, #3677), each
-		     sized to its content: its big number takes the height first, up to
-		     its cap, and the graph's band grows by what the numbers can't use.
-		     A row taller than the screen shrinks its numbers, never the graph. -->
+		<!-- The riding surface's panels at three metres (ADR-0046, #3677), one
+		     row as tall as its content: each panel's numbers take the height
+		     first, up to their caps, and the graph's band grows by what they
+		     can't use. A row taller than the screen shrinks the numbers, never
+		     the graph. -->
 		<div
 			class="grid min-h-0 flex-1 grid-rows-[minmax(0,auto)_minmax(12.5vh,1fr)]"
 		>
 			<div
-				class="grid min-h-0 grid-rows-[minmax(0,1fr)] items-start gap-[1.5vh] {block &&
+				class="grid min-h-0 grid-rows-[minmax(0,1fr)] gap-[1.5vh] {block &&
 				others.length
 					? 'grid-cols-[4fr_3fr_3fr]'
 					: block

@@ -54,14 +54,18 @@
 		{/if}
 		<p class={TV_LABEL}>left in block</p>
 		<div
-			class="[container-type:size] mt-[1vh] min-h-[7.7vh] shrink {formatClock(
+			class="[container-type:size] mt-[1vh] max-h-[25.5vh] min-h-[7.7vh] shrink grow {formatClock(
 				block.secondsLeft,
 			).length > 4
 				? 'basis-[calc(min(30vh,24cqw)*0.85)]'
 				: 'basis-[calc(min(30vh,30cqw)*0.85)]'}"
 		>
 			<p
-				class="font-display text-[117.6cqh] leading-[0.85] font-bold whitespace-nowrap tabular-nums"
+				class="font-display leading-[0.85] font-bold whitespace-nowrap tabular-nums {formatClock(
+					block.secondsLeft,
+				).length > 4
+					? 'text-[length:min(117.6cqh,28cqw)]'
+					: 'text-[length:min(117.6cqh,35cqw)]'}"
 			>
 				{formatClock(block.secondsLeft)}
 			</p>

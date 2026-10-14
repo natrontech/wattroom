@@ -106,8 +106,11 @@ describe('turning the page', () => {
 	it('draws the power once on the TV, in its head (#3677)', () => {
 		const html = draw({ stats, tv: true, docked: true, ftp: 250 });
 		expect(html.match(/data-testid="head-power"/g)).toHaveLength(1);
+		// Sized from its own box, which is capped by the panel's height and
+		// width (ride-tv 9), so it shrinks before any word does.
+		expect(html).toMatch(/data-testid="head-power" class="text-\[117\.6cqh\]/);
 		expect(html).toMatch(
-			/data-testid="head-power" class="text-\[length:min\(var\(--head,34vh\),\d+cqw\)\]/,
+			/\[container-type:size\] basis-\[calc\(min\(34vh,\d+cqw\)\*0\.85\)\]/,
 		);
 		expect(html).not.toMatch(
 			/data-testid="computer-field" data-field="(power|wkg)"/,

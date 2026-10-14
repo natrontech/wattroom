@@ -47,17 +47,23 @@
 	const hi = $derived(target ? round5(target * 1.2) : 0);
 	// On the TV the watts take the height the panel has, up to 34vh, sized
 	// from their own box so that it shrinks before any word does (#3677);
-	// never past the width: each digit takes about 0.57 em, and at four
-	// W/kg wraps under them. Slot 1's clock stays smaller (ride-tv 9).
+	// never past the width: each digit takes about 0.57 em, with W/kg beside
+	// them at the top (v2-erg); two digits may stand taller, since the width
+	// leaves them room. Slot 1's clock stays smaller (ride-tv 9).
 	const digits = $derived(String(power).length);
 	// ride-label is 24 px, under the TV's 2.9vh floor: the TV spells it in vh.
 	const size = $derived(
 		tv
 			? {
-					power:
+					power: 'text-[117.6cqh]',
+					row: `min-h-[10.2vh] shrink items-start [container-type:size] ${
 						digits >= 4
-							? 'text-[length:min(var(--head,34vh),34cqw)]'
-							: 'text-[length:min(var(--head,34vh),38cqw)]',
+							? 'basis-[calc(min(34vh,28cqw)*0.85)]'
+							: digits === 3
+								? 'basis-[calc(min(34vh,34cqw)*0.85)]'
+								: 'basis-[calc(min(40vh,50cqw)*0.85)]'
+					}`,
+					side: 'text-right',
 					unit: 'text-[8vh]',
 					label: TV_LABEL,
 					value: 'text-[9vh]',
@@ -68,7 +74,8 @@
 				}
 			: {
 					power: 'text-[6.5rem]',
-					row: '',
+					row: 'flex-wrap items-end',
+					side: 'pb-1',
 					unit: 'text-2xl',
 					label: 'ride-label',
 					value: 'text-4xl',
@@ -81,9 +88,7 @@
 </script>
 
 <div data-testid="computer-head" class="flex min-h-0 flex-col {size.gap}">
-	<div
-		class="flex flex-wrap items-end justify-between gap-x-2 gap-y-2 {size.row}"
-	>
+	<div class="flex justify-between gap-x-2 gap-y-2 {size.row}">
 		<p class="num leading-[0.85] font-bold whitespace-nowrap">
 			<span
 				data-testid="head-power"
@@ -91,7 +96,7 @@
 				><TabularFigures value={stale ? '—' : power} /></span
 			>{' '}<span class="text-muted {size.unit} font-normal">W</span>
 		</p>
-		<div class="pb-1">
+		<div class={size.side}>
 			<p class={size.label}>W/kg</p>
 			<p data-field="wkg" class="num {size.value} leading-none font-bold">
 				{stale ? '—' : wkg(power, kg)}
@@ -124,15 +129,31 @@
 			>
 			<span>{hi} W</span>
 		</p>
-		{#if blockExecution !== null}
-			<!-- Once a second of the block is scored: SPEC scores a steady block
-			     with no guard up, so a ramp asks a target and has no share. -->
-			<p data-testid="head-block" class="flex items-baseline gap-3">
-				<span class={size.label}>Block</span>
+		<!-- The block's share once a second of it is scored: SPEC scores a
+		     steady block with no guard up, so a ramp asks a target and has no
+		     share, and the band's word stands in its place. -->
+		<p data-testid="head-block" class="flex items-baseline gap-3">
+			<span class={size.label}>Block</span>
+			{#if blockExecution !== null}
 				<span class="num {size.value} leading-none font-bold"
 					>{stale ? '—' : Math.round(blockExecution * 100)}</span
 				><span class="text-muted {size.words}">% on target</span>
-			</p>
-		{/if}
+			{:else}
+				<span
+					class="{size.words} font-semibold {stale
+						? 'text-muted'
+						: band.inBand
+							? 'text-ok'
+							: 'text-warn'}"
+					>{stale
+						? '—'
+						: band.inBand
+							? 'on target'
+							: band.delta > 0
+								? 'over target'
+								: 'under target'}</span
+				>
+			{/if}
+		</p>
 	{/if}
 </div>

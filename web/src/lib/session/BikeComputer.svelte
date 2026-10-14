@@ -24,6 +24,7 @@
 		climbHeader,
 		fieldsFor,
 		pagesFor,
+		type Field,
 		turned,
 		type ComputerContext,
 		type ComputerPage,
@@ -66,6 +67,24 @@
 	const turns = $derived(pages.length > 1);
 	// Docked on the TV (#3677): the same panel in vh, so it reads at 3 m.
 	const label = $derived(tv ? TV_LABEL : 'ride-label');
+	// On the TV the fields are the panel's last row and take the height the
+	// head leaves (ride-tv 9): up to three to a row, each number sized from
+	// the row's box and its column's width (a figure is about 0.62 em, its
+	// unit half that), between SPEC's 5vh floor and well under the watts.
+	const tvRows = $derived(Math.max(1, Math.ceil(fields.length / 3)));
+	const tvCols = $derived(Math.min(3, Math.max(1, fields.length)));
+	const TV_COLS = ['', 'grid-cols-1', 'grid-cols-2', 'grid-cols-3'];
+	const tvFields = $derived(
+		`calc(2vh + ${tvRows} * (3vh + 0.25rem + 10vh) + ${tvRows - 1} * 1.5vh)`,
+	);
+	function tvValue(field: Field): string {
+		const ems =
+			field.value.length * 0.62 +
+			(field.unit ? field.unit.length * 0.3 + 0.3 : 0);
+		const tall = `calc((100cqh - ${tvRows} * (3vh + 0.25rem) - ${tvRows - 1} * 1.5vh) / ${tvRows})`;
+		const wide = `calc((100cqw - ${tvCols - 1} * 2vw) / ${tvCols} / ${ems.toFixed(2)})`;
+		return `clamp(5vh, min(${tall}, ${wide}), 20vh)`;
+	}
 
 	function turn(dir: 1 | -1) {
 		page = turned(pages, shown, dir);
@@ -129,7 +148,7 @@
 	aria-label="bike computer, {PAGE_NAMES[shown]} page"
 	class={docked
 		? tv
-			? `relative flex flex-1 flex-col justify-between gap-[1.5vh] px-[1.5vw] py-[1.5vh] ${fields.length > 2 ? '[--head:22vh]' : ''}`
+			? 'relative flex min-h-0 flex-1 flex-col gap-[1.5vh] px-[1.5vw] py-[1.5vh]'
 			: 'relative flex w-[21rem] max-w-full flex-col gap-3 px-4 py-3'
 		: 'panel relative'}
 >
@@ -262,7 +281,9 @@
 	{#if phone}{@render name()}{/if}
 	<!-- On the TV the fields stand under the head (#3677): its watts take the
 	     width, and the height the panel has after every word (ride-tv 9). -->
-	<div class={docked && tv ? 'flex min-h-0 flex-col gap-[2vh]' : 'contents'}>
+	<div
+		class={docked && tv ? 'flex min-h-0 flex-1 flex-col gap-[2vh]' : 'contents'}
+	>
 		{#if docked}
 			<div class={tv ? 'flex min-h-0 min-w-0 flex-col' : 'contents'}>
 				<ComputerHead
@@ -279,9 +300,10 @@
 		<div
 			class={docked
 				? tv
-					? 'border-neon/20 flex flex-wrap gap-x-[3vw] gap-y-[1.5vh] border-t pt-[2vh]'
+					? `border-neon/20 [container-type:size] grid min-h-0 shrink grow ${TV_COLS[tvCols]} gap-x-[2vw] gap-y-[1.5vh] border-t pt-[2vh]`
 					: 'border-neon/20 grid grid-cols-2 gap-x-6 gap-y-3 border-t pt-3'
 				: layout}
+			style:flex-basis={docked && tv ? tvFields : undefined}
 		>
 			{#if !phone && !docked}{@render name()}{/if}
 			{#each fields as field (field.key)}
@@ -304,6 +326,7 @@
 							bind:this={gearField}
 							aria-live="polite"
 							class="num text-neon mt-1 block {size.value} leading-none font-bold"
+							style:font-size={docked && tv ? tvValue(field) : undefined}
 							>{field.value}</span
 						>
 					{:else}
@@ -318,6 +341,7 @@
 								: field.neon
 									? 'text-neon'
 									: 'text-ink'}"
+							style:font-size={docked && tv ? tvValue(field) : undefined}
 							>{field.value}{#if field.unit}{' '}<span
 									class="text-muted {size.unit} leading-none font-normal"
 									>{field.unit}</span
