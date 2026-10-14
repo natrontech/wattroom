@@ -8,6 +8,7 @@
 	 * pairs here.
 	 */
 	import { onDestroy, untrack } from 'svelte';
+	import { page } from '$app/state';
 	import Banner from '$lib/components/Banner.svelte';
 	import { canSimulate } from '$lib/ble/can-simulate';
 	import { FtmsTrainer } from '$lib/ble/ftms';
@@ -110,6 +111,15 @@
 		if (!route.borrowed) rememberRoad(route.id);
 	}
 	untrack(() => handed && start(from, handed));
+	// ?replay=<fixture> rides a committed capture, as /ride's workout does (#54).
+	const replayName = $derived(
+		canSimulate() ? page.url.searchParams.get('replay') : null,
+	);
+	async function replay() {
+		const res = await fetch(`/fixtures/${replayName}.json`);
+		if (res.ok)
+			start(0, new SimulatedTrainer({ replay: (await res.json()).samples }));
+	}
 	async function end() {
 		ended = true;
 		tv = false;
@@ -277,6 +287,13 @@
 				disabled={!held.paired || held.fault === 'reconnecting'}
 				class="btn btn-primary btn-lg">Start riding</button
 			>
+			{#if replayName}
+				<button
+					onclick={() => void replay()}
+					data-testid="ride-replay"
+					class="btn btn-accent btn-lg">Replay {replayName}</button
+				>
+			{/if}
 			{#if !held.paired}
 				<p class="text-muted text-sm">
 					Pair your trainer above to start — the road needs something to set its

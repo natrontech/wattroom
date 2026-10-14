@@ -246,6 +246,17 @@ surface(
 			await s.shot(o, { name });
 			await o.ctx.close();
 		}
+		// The free ride's own line atop slot 1 (#3669): the road, trainer silent.
+		const f = await s.open(DESK, { world: true });
+		await f.page.route('**/fixtures/design-silence.json', (route) =>
+			route.fulfill({ json: SILENCE }),
+		);
+		const id = await fixtureRoad(f.page, 'hairpin');
+		await f.page.goto(`/ride?road=${id}&from=0&replay=design-silence`);
+		await f.page.getByTestId('ride-replay').click({ timeout: 15_000 });
+		await f.page.waitForTimeout(30_000);
+		await s.shot(f, { name: 'ride-status-free-road' });
+		await f.ctx.close();
 	},
 	{ once: true },
 );
