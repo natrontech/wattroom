@@ -248,7 +248,7 @@
 					<button
 						onclick={() => free.setMode(mode.id)}
 						aria-pressed={free.mode === mode.id}
-						class="btn btn-lg {free.mode === mode.id
+						class="btn btn-ride {free.mode === mode.id
 							? 'btn-secondary'
 							: 'btn-ghost'}">{mode.label}</button
 					>
@@ -259,14 +259,14 @@
 				<button
 					onclick={() => free.nudge(-1)}
 					disabled={atMin}
-					class="btn btn-secondary btn-lg"
+					class="btn btn-secondary btn-ride"
 					aria-label={inWatts ? 'fewer watts' : 'lower grade'}
 					><Minus size={18} /></button
 				>
 				<button
 					onclick={() => free.nudge(1)}
 					disabled={atMax}
-					class="btn btn-secondary btn-lg"
+					class="btn btn-secondary btn-ride"
 					aria-label={inWatts ? 'more watts' : 'steeper grade'}
 					><Plus size={18} /></button
 				>
@@ -289,7 +289,7 @@
 				<button
 					onclick={onend}
 					disabled={ending}
-					class="btn btn-secondary btn-lg">End ride</button
+					class="btn btn-secondary btn-ride">End ride</button
 				>
 			{/if}
 		</div>
@@ -300,6 +300,7 @@
 	<!-- The dot's speed is RIDE's (one home); km and grade are slot 1's. -->
 	<BikeComputer
 		docked
+		wide={!inWorld}
 		roadLine
 		{ftp}
 		{watts}
@@ -374,14 +375,14 @@
 				<!-- The container the computer's wide layout answers to (its @2xl
 				     variants): here, never on the computer itself, whose own inline
 				     size would then collapse inside the world's w-fit dock. -->
-				<div class="ride-panel @container min-h-0 flex-1">
+				<div class="ride-panel shrink-0">
 					{@render computer()}
 					{@render foot?.()}
 				</div>
 				{#if road}
 					<div
-						class="ride-panel shrink-0 overflow-hidden"
-						style:height="{SKYLINE_PX}px"
+						class="ride-panel min-h-0 flex-1 overflow-hidden"
+						style:min-height="{SKYLINE_PX}px"
 					>
 						{@render skyline(road)}
 					</div>

@@ -8,13 +8,12 @@
 	 * pairs here.
 	 */
 	import { onDestroy, untrack } from 'svelte';
-	import { page } from '$app/state';
 	import Banner from '$lib/components/Banner.svelte';
 	import { canSimulate } from '$lib/ble/can-simulate';
 	import { FtmsTrainer } from '$lib/ble/ftms';
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { formatClock } from '$lib/format';
+	import { formatClock, formatKm } from '$lib/format';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { createRideFlags } from '$lib/ride/flags.svelte';
 	import { createFreeRide, freeRideLabel } from '$lib/ride/free-ride.svelte';
@@ -23,6 +22,7 @@
 	import { createGhostSplit } from '$lib/ride/ghost-split.svelte';
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
 	import { bindShiftKeys } from '$lib/ride/keys';
+	import { carriesOn } from '$lib/ride/road-end';
 	import SessionSummary from '$lib/ride/SessionSummary.svelte';
 	import RideFlags from '$lib/ride/RideFlags.svelte';
 	import type { RideableRoute } from '$lib/ride/roads';
@@ -111,15 +111,6 @@
 		if (!route.borrowed) rememberRoad(route.id);
 	}
 	untrack(() => handed && start(from, handed));
-	// ?replay=<fixture> rides a committed capture, as /ride's workout does (#54).
-	const replayName = $derived(
-		canSimulate() ? page.url.searchParams.get('replay') : null,
-	);
-	async function replay() {
-		const res = await fetch(`/fixtures/${replayName}.json`);
-		if (res.ok)
-			start(0, new SimulatedTrainer({ replay: (await res.json()).samples }));
-	}
 	async function end() {
 		ended = true;
 		tv = false;
@@ -178,6 +169,15 @@
 		savedXp={'saved' in outcome ? outcome.saved.xp : undefined}
 	>
 		{#snippet actions()}
+			{#if free.road && carriesOn(free.road)}
+				<!-- Partway up your own road, the offer is this card's (#3205, TARGETS
+				     ride-road-end 2): the same road from where you stopped. -->
+				<a
+					href="/ride?road={route.id}&from={Math.round(free.road.m)}"
+					class="btn btn-primary"
+					>Carry on from km {formatKm(free.road.m)} next time</a
+				>
+			{/if}
 			{#if 'saved' in outcome}
 				<a href="/history/{outcome.saved.id}" class="btn btn-secondary"
 					>See your ride</a
@@ -288,13 +288,6 @@
 				disabled={!held.paired || held.fault === 'reconnecting'}
 				class="btn btn-primary btn-lg">Start riding</button
 			>
-			{#if replayName}
-				<button
-					onclick={() => void replay()}
-					data-testid="ride-replay"
-					class="btn btn-accent btn-lg">Replay {replayName}</button
-				>
-			{/if}
 			{#if !held.paired}
 				<p class="text-muted text-sm">
 					Pair your trainer above to start — the road needs something to set its

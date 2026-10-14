@@ -253,7 +253,8 @@ surface(
 			route.fulfill({ json: SILENCE }),
 		);
 		const id = await fixtureRoad(f.page, 'hairpin');
-		await f.page.goto(`/ride?road=${id}&from=0&replay=design-silence`);
+		await f.page.goto(`/ride?road=${id}&replay=design-silence`);
+		await f.page.getByText(ROADS.hairpin.name).first().waitFor();
 		await f.page.getByTestId('ride-replay').click({ timeout: 15_000 });
 		await f.page.waitForTimeout(30_000);
 		await s.shot(f, { name: 'ride-status-free-road' });
