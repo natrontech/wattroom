@@ -171,7 +171,7 @@
 			class="border-frame mt-6 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border px-4 py-3 text-sm"
 			role="status"
 		>
-			<p class="min-w-0 flex-1">
+			<p class="min-w-0">
 				Pick a workout for <span class="font-semibold"
 					>{onName ?? 'your road'}</span
 				> · Terrain Match picks the start

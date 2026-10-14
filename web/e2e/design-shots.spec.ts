@@ -755,7 +755,8 @@ surface(
 			.click();
 		await o.page.getByText(/where to start\?/).waitFor({ timeout: 15_000 });
 		await s.shot(o, { name: 'workouts-on-ride' });
-		const p = await s.open(PHONE);
+		// A phone that rides: one that cannot never reaches the pick.
+		const p = await s.open(RIDING_PHONE);
 		await page(s, p, `/workouts?on=${await fixtureRoad(p.page, 'hairpin')}`, {
 			name: 'phone-workouts-on',
 		});
