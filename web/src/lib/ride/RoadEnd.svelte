@@ -31,8 +31,9 @@
 		<button onclick={() => free.turn('back')} class="btn btn-primary btn-ride"
 			>Ride back the way you came</button
 		>
-		<button onclick={() => free.turn('again')} class="btn btn-secondary btn-ride"
-			>Ride it again</button
+		<button
+			onclick={() => free.turn('again')}
+			class="btn btn-secondary btn-ride">Ride it again</button
 		>
 		<button onclick={onsave} class="btn btn-secondary btn-ride"
 			>Save the ride</button

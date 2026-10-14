@@ -96,8 +96,9 @@
 					: undefined}
 			>
 				{#snippet controls()}
-					<button onclick={() => own.cancel()} class="btn btn-secondary btn-ride"
-						>Cancel</button
+					<button
+						onclick={() => own.cancel()}
+						class="btn btn-secondary btn-ride">Cancel</button
 					>
 				{/snippet}
 			</CountdownScreen>

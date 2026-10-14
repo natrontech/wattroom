@@ -144,9 +144,8 @@
 	<div class="flex items-center gap-2">
 		{#if countIn}
 			<!-- Nothing runs yet: the one way out. -->
-			<button
-				onclick={countIn.cancel}
-				class="btn btn-secondary btn-ride">Cancel</button
+			<button onclick={countIn.cancel} class="btn btn-secondary btn-ride"
+				>Cancel</button
 			>
 		{:else}
 			{#if onFlag}<FlagButton onflag={flag} sends="after" />{/if}
@@ -237,13 +236,16 @@
 				title={session.info.segmentIndex + 1 >= session.segments.length
 					? 'Last block — End ride instead'
 					: undefined}
-				class="btn btn-secondary btn-ride disabled:opacity-40">Skip block</button
+				class="btn btn-secondary btn-ride disabled:opacity-40"
+				>Skip block</button
 			>
 		{/if}
 		{#if onTv}
 			<button onclick={onTv} class="btn btn-secondary btn-ride">TV</button>
 		{/if}
-		<button onclick={endRide} class="btn btn-secondary btn-ride">End ride</button>
+		<button onclick={endRide} class="btn btn-secondary btn-ride"
+			>End ride</button
+		>
 		{#if onFlag}
 			<FlagButton onflag={flag} sends="after" />
 		{/if}

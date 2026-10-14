@@ -517,8 +517,9 @@
 			>
 				{#snippet controls()}
 					<div class="flex flex-wrap items-center justify-end gap-2">
-						<button onclick={() => (tv = true)} class="btn btn-secondary btn-ride"
-							>TV</button
+						<button
+							onclick={() => (tv = true)}
+							class="btn btn-secondary btn-ride">TV</button
 						>
 						<button onclick={stopTest} class="btn btn-secondary btn-ride"
 							>I'm done</button
