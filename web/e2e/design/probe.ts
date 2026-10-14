@@ -202,12 +202,18 @@ export function probe(corridor: Box) {
 			return {
 				px: Math.round(Math.min(r.width, r.height)),
 				label: label.trim().slice(0, 40),
+				// A worded control's word (G4): its size, where it has letters.
+				wordPx: /\p{L}/u.test(el.innerText)
+					? parseFloat(getComputedStyle(el).fontSize)
+					: null,
 			};
 		});
 	const smallest = sizes.reduce<{ px: number; label: string | null }>(
 		(a, b) => (b.px < a.px ? b : a),
 		{ px: Infinity, label: null },
 	);
+
+	const words = sizes.filter((s) => s.wordPx !== null);
 
 	return {
 		cave: { present: !!cave, maxSurfaceL: round(maxL) },
@@ -224,6 +230,11 @@ export function probe(corridor: Box) {
 			label: smallest.label,
 			under24: sizes.filter((s) => s.px < 24).length,
 			under44: sizes.filter((s) => s.px < 44).length,
+		},
+		// G4's floor for a riding surface's words; a desk page reads it as data.
+		buttonWords: {
+			minPx: words.length ? Math.min(...words.map((w) => w.wordPx!)) : null,
+			under24: words.filter((w) => w.wordPx! < 24).map((w) => w.label),
 		},
 		world: {
 			mounted: !!document.querySelector('canvas'),
