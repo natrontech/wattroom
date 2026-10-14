@@ -84,6 +84,7 @@
 					<button
 						onclick={() => choose(option.mode)}
 						aria-pressed={mode === option.mode}
+						title={option.line}
 						class="btn btn-xs {mode === option.mode
 							? 'btn-primary'
 							: 'btn-secondary'}"
@@ -92,11 +93,11 @@
 					</button>
 				{/each}
 			</div>
-			<ul class="{HINT} sm:col-start-2">
+			<p class="{HINT} sm:col-start-2">
 				{#each WORLD_MODES as option (option.mode)}
-					<li><span class="font-bold">{option.label}</span> {option.line}</li>
+					{#if option.mode === mode}{option.label} — {option.line}{/if}
 				{/each}
-			</ul>
+			</p>
 			{#if !chosen && prefersReducedMotion.current}
 				<button
 					onclick={() => choose('steady')}
