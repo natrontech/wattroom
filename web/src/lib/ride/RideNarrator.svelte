@@ -93,8 +93,9 @@
 
 	let lastStale: boolean | undefined;
 	$effect(() => {
+		// Losing the trainer interrupts; getting it back is good news and waits its turn.
 		if (lastStale !== undefined && stale !== lastStale)
-			narrator.alert(trainerLine(stale));
+			(stale ? narrator.alert : narrator.polite)(trainerLine(stale));
 		lastStale = stale;
 	});
 
