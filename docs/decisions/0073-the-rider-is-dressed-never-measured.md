@@ -49,9 +49,8 @@ body.
   coarse kit, never from `hueOf(id)` (#3308).
 
 The proportions are in docs/SPEC.md's "The figure" section. The height range
-and the eight swatch values are not decided yet; they are
-[#3413](https://github.com/natrontech/wattroom/issues/3413)'s, and land in the
-same section, never only in code.
+and the eight swatch values are recorded there too
+([#3413](https://github.com/natrontech/wattroom/issues/3413)), never only in code.
 
 ## Consequences
 
@@ -69,6 +68,6 @@ same section, never only in code.
 ## Amendment, 2026-09-29 (#3151): the height range is recorded
 
 The height range was recorded after all, in #3151's SPEC proposals: **1.50–2.05
-m**, with 3 builds. It is in docs/SPEC.md's "The figure" section. Only the eight
-swatch values and the neutral tone remain
-[#3413](https://github.com/natrontech/wattroom/issues/3413)'s.
+m**, with 3 builds. It is in docs/SPEC.md's "The figure" section. The eight
+swatch values and the neutral tone are recorded there as well
+([#3413](https://github.com/natrontech/wattroom/issues/3413)).

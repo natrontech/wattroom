@@ -113,23 +113,23 @@
 				</p>
 			{:else if phase === 'armed'}
 				<p class="font-display text-xl font-bold">Klaxon! Sprint in…</p>
-				<p class="num text-watt glow-text-strong text-6xl font-bold">
+				<p class="num text-watt text-6xl font-bold">
 					{Math.ceil(left / 1000)}
 				</p>
 			{:else if phase === 'sprint'}
 				<p class="eyebrow">Sprinting · {(left / 1000).toFixed(1)} s left</p>
-				<p class="num text-watt glow-text-strong text-6xl font-bold">
+				<p class="num text-watt text-6xl font-bold">
 					{Math.round(power)}<span class="text-muted ml-1 text-2xl">W</span>
 				</p>
 				<div class="bg-ink/5 mt-3 h-3 overflow-hidden rounded-full">
 					<div
-						class="bg-watt glow-stroke h-full rounded-full"
+						class="bg-watt h-full rounded-full"
 						style="width: {(power / SPRINT.max) * 100}%"
 					></div>
 				</div>
 			{:else}
 				<p class="eyebrow">Your best five seconds</p>
-				<p class="num text-watt glow-text-strong text-6xl font-bold">
+				<p class="num text-watt text-6xl font-bold">
 					{score}<span class="text-muted ml-1 text-2xl">W</span>
 				</p>
 				<ol class="mt-3 flex flex-col gap-1 text-sm">

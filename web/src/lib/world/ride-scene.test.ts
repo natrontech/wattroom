@@ -528,4 +528,41 @@ describe('a ride’s world', () => {
 		expect(driving.chevrons).toBe(1);
 		expect(driving.figures).toBe(riding.figures / 2);
 	});
+
+	it('stands one finish arch across the road’s last metre, square to it (#3623)', () => {
+		const w = compose(
+			{ route, world, style, ftp: 250, metre: () => ({ m: 0, mps: 0 }) },
+			null,
+		);
+		const arches: THREE.Object3D[] = [];
+		w.scene.traverse((o) => {
+			if (o.userData.kind === 'arch') arches.push(o);
+		});
+		expect(arches).toHaveLength(1);
+		const end = at(route, route.length);
+		expect(arches[0].position.x).toBeCloseTo(end.x, 3);
+		expect(arches[0].position.z).toBeCloseTo(end.z, 3);
+		const turn = arches[0].rotation.y - end.heading;
+		expect(Math.cos(turn)).toBeCloseTo(1, 6);
+		w.dispose();
+
+		// A session that laps the road rides on through its end: no finish there.
+		const lapped = compose(
+			{
+				route,
+				world,
+				style,
+				ftp: 250,
+				loop: true,
+				metre: () => ({ m: 0, mps: 0 }),
+			},
+			null,
+		);
+		let n = 0;
+		lapped.scene.traverse((o) => {
+			if (o.userData.kind === 'arch') n++;
+		});
+		expect(n).toBe(0);
+		lapped.dispose();
+	});
 });

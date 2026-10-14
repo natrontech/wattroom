@@ -115,9 +115,8 @@
 					></span>
 				</span>
 				<span
-					class="num text-right text-lg font-bold {r.you
-						? 'text-watt glow-text'
-						: ''}">{watts} W</span
+					class="num text-right text-lg font-bold {r.you ? 'text-watt' : ''}"
+					>{watts} W</span
 				>
 			</li>
 		{/each}

@@ -53,6 +53,8 @@ export interface ChannelContext {
 		road: Road;
 		m: number;
 		mps: number;
+		/** The bunch laps the road: it has no finish. */
+		loop: boolean;
 		/** Everyone on the road with you (#3098). */
 		bunch: BunchView | null;
 	} | null;

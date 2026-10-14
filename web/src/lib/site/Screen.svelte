@@ -24,7 +24,7 @@
 
 <figure class={narrow ? 'mx-auto w-full max-w-72' : ''}>
 	<div
-		class="border-muted/20 bg-surface-raised overflow-hidden rounded-xl border shadow-2xl"
+		class="border-muted/20 bg-surface-raised overflow-hidden rounded-xl border"
 	>
 		<img
 			src="/screens/{name}.webp"
