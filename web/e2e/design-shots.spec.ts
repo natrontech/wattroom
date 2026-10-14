@@ -1333,6 +1333,10 @@ async function queueDeck(page: Page, tracks: [string, string][]) {
 			if (!(await add.isVisible())) await fold.click();
 			await add.fill(`https://www.youtube.com/watch?v=${id}`);
 			await add.press('Enter');
+			// Past the queue's peek of three, a title shows once it is opened.
+			await page.waitForTimeout(500);
+			const more = page.getByRole('button', { name: /^\+\d+ more$/ });
+			if (await more.isVisible()) await more.click();
 			const ok = await shown
 				.waitFor({ timeout: 5_000 })
 				.then(() => true)
@@ -1341,6 +1345,8 @@ async function queueDeck(page: Page, tracks: [string, string][]) {
 			if (tries === 1) throw new Error(`${title} never reached the deck`);
 		}
 	}
+	const fewer = page.getByRole('button', { name: 'fewer' });
+	if (await fewer.isVisible()) await fewer.click();
 	if (await add.isVisible()) await fold.click();
 	return fold;
 }
