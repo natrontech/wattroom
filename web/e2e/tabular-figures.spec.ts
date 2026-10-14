@@ -10,7 +10,7 @@ test('every display figure advances the same width, at both weights', async ({
 }) => {
 	await page.goto('/login');
 	const widths = await page.evaluate(async () => {
-		const out: Record<string, number[]> = {};
+		const out: Record<string, number[] | boolean> = {};
 		for (const weight of [500, 700]) {
 			const runs = [...'0123456789'].map((figure) => {
 				const span = document.createElement('span');
@@ -25,9 +25,20 @@ test('every display figure advances the same width, at both weights', async ({
 			out[weight] = runs.map((span) => span.getBoundingClientRect().width);
 			runs.forEach((span) => span.remove());
 		}
+		// A fallback sans with tabular digits would pass the widths on its own.
+		const faces = [...document.fonts].filter(
+			(face) =>
+				face.family.replace(/"/g, '') === 'WattRoom Figures' &&
+				face.status === 'loaded',
+		);
+		out.loaded = ['500', '700'].every((weight) =>
+			faces.some((face) => face.weight === weight),
+		);
 		return out;
 	});
-	for (const [weight, runs] of Object.entries(widths)) {
+	expect(widths.loaded, 'WattRoom Figures loaded at 500 and 700').toBe(true);
+	for (const weight of ['500', '700']) {
+		const runs = widths[weight] as number[];
 		expect(
 			Math.max(...runs) - Math.min(...runs),
 			`${weight}: ${runs.join(' ')}`,
