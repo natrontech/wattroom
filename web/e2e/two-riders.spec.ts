@@ -175,7 +175,7 @@ test('two riders share a session: crew strip, execution bars, sprint scoreboard'
 		'from xl the Training card drew the contest a second time beside the people column',
 	).toBeHidden();
 	await expect(
-		a.locator('aside').getByText('target · execution'),
+		a.locator('aside').getByText(B, { exact: true }).first(),
 	).toBeVisible();
 
 	// --- A arms a sprint, and the scoreboard ranks both on w/kg -------------

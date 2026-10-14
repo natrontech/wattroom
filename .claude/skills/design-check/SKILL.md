@@ -16,6 +16,7 @@ description: Run the design check on a rider-visible change: capture its surface
 ## 2. Capture, in the background
 
 - Rebase on `origin/main` first, so the merge base is main's head.
+- Every background call here passes `timeout: 3600000`. Otherwise a headless run (`claude -p`, `scripts/issue-runs.sh`) stops a background command at 10 minutes, mid-build.
 - After: one Bash call with `run_in_background: true`, then carry on until its notification arrives. Never poll it with `sleep`.
   ```sh
   make design-shots SURFACES="$ids" OUT=web/design-shots/<slug>/after-1 > $S/after-1.log 2>&1

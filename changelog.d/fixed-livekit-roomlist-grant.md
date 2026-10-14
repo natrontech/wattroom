@@ -1,1 +1,0 @@
-- For self-hosters: the server's once-a-minute check that the voice server is up no longer gets a refusal from LiveKit each time. Before, it logged a "permissions denied" line every minute, and it could not tell a working LiveKit from one with a wrong API key.

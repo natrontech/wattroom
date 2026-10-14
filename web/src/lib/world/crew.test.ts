@@ -80,6 +80,22 @@ describe('outfits on the figure (#3156)', () => {
 		expect(fb).not.toEqual(cb);
 	});
 
+	it('dresses a rider again when the bunch gives them another look, and only then (#3791)', () => {
+		const r = rider(0, 1000, true);
+		const crew = makeCrew(style, new THREE.Color());
+		crew.update(route, [r], pedal, 0.1, 0.1, false);
+		const first = figures(crew).get('r0');
+
+		// The same look, handed over afresh: the figure stays.
+		r.look = seededLoadout('r0');
+		crew.update(route, [r], pedal, 0.1, 0.1, false);
+		expect(figures(crew).get('r0')).toBe(first);
+
+		r.look = seededLoadout('another');
+		crew.update(route, [r], pedal, 0.1, 0.1, false);
+		expect(figures(crew).get('r0')).not.toBe(first);
+	});
+
 	it('shows no kit colour that reads as live data to its viewer', () => {
 		const crew = makeCrew(style, new THREE.Color());
 		const crowd = Array.from({ length: 12 }, (_, i) =>

@@ -1,1 +1,0 @@
-- Your best time up a climb now shows for a climb at the very start of a route, as on any route imported from a climb's foot. Until now those climbs were never timed.

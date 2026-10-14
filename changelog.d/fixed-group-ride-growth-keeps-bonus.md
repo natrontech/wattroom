@@ -1,1 +1,0 @@
-- Minutes that reach a group ride after it was first saved now earn the group session's × 1.2 Batzen, as the rest of the ride did. Before, they could be paid as if you had ridden alone.

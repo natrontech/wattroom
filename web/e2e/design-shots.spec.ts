@@ -810,10 +810,67 @@ surface(
 				name: 'home-desktop-offer',
 				measure: { home: homeProbe },
 			});
+			// multi:home-week-* — This week's other states (#3689, TARGETS
+			// home 7-8), the schedule and the crews' live read answered here.
+			for (const [state, sessions, riding] of WEEK_STATES) {
+				const o = await s.open(DESK);
+				await o.page.route('**/api/schedule', (route) =>
+					route.fulfill({ json: { sessions: sessions(), icsToken: '' } }),
+				);
+				if (riding)
+					await o.page.route('**/api/crews/live', async (route) => {
+						const res = await route.fetch();
+						const body = (await res.json()) as LiveRead;
+						const voice = body.crews[0]?.channels.find(
+							(ch) => ch.kind === 'voice',
+						);
+						if (voice) voice.session = RIDING_SESSION();
+						await route.fulfill({ response: res, json: body });
+					});
+				await page(s, o, '/home', {
+					name: `home-week-${state}`,
+					measure: { home: homeProbe },
+				});
+			}
 		}
 	},
 	{ also: ['phone-home'] },
 );
+
+type LiveRead = {
+	crews: { channels: { kind: string; session?: unknown }[] }[];
+};
+const planned = (id: string, hours: number, goingCount: number) => ({
+	id,
+	workoutName: id === 'gone' ? 'Openers before work' : 'Saturday long tempo',
+	minutes: 60,
+	startsAt: new Date(Date.now() + hours * 3_600_000).toISOString(),
+	createdBy: 'Designer',
+	crewId: '00000000-0000-0000-0000-000000000000',
+	crewName: 'Design Crew',
+	channelName: 'Pain Cave',
+	goingCount,
+});
+/** The session riding now in the crew's voice channel, ten minutes in. */
+const RIDING_SESSION = () => ({
+	id: '00000000-0000-0000-0000-0000000000aa',
+	channel: '',
+	workout: 'Sweet spot 2×20',
+	phase: 'running',
+	elapsed: 600,
+	coach: '',
+	coachName: 'Designer',
+	riders: ['Designer', 'Rider Two'],
+	riderIds: ['', ''],
+});
+const WEEK_STATES: [string, () => unknown[], boolean][] = [
+	// Nothing this week: the first plan after it, under NEXT.
+	['next', () => [planned('later', 24 * 9, 3)], false],
+	// Nothing planned at all: one teaching line.
+	['empty', () => [], false],
+	// A session riding now, and a plan whose time has just gone.
+	['live', () => [planned('gone', -0.2, 0), planned('later', 26, 4)], true],
+];
 
 const WINDOWS_UA =
 	'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
@@ -1107,7 +1164,7 @@ surface(
 		const save = o.page.getByRole('button', { name: 'Save the ride' });
 		if (await save.count()) await save.first().click();
 		await o.page
-			.getByRole('link', { name: 'See it in your history' })
+			.getByRole('link', { name: 'See your ride' })
 			.waitFor({ timeout: 30_000 });
 		await s.shot(o, { name: 'closing-card-road', full: true });
 		// F1's last step (#3680): the road's name opens its page, the ride on it.
@@ -1120,8 +1177,9 @@ surface(
 );
 
 /** A 65 s workout, ridden to its closing card. */
-async function rideToTheCard(o: Opened) {
+async function rideToTheCard(o: Opened, onMount?: () => Promise<void>) {
 	await ride(o.page, '/ride?w=smoke-test');
+	await onMount?.();
 	await o.page
 		.getByRole('link', { name: 'See your ride' })
 		.waitFor({ timeout: 120_000 });
@@ -1154,9 +1212,20 @@ surface('closing-card', async (s) => {
 		[RIDING_PHONE, 'closing-card-phone', undefined],
 	] as const)) {
 		const other = await s.open(device, { world: false, reducedMotion });
-		await rideToTheCard(other);
+		// Under reduced motion the finished card appears at once: a frame the
+		// moment the card mounts, and the settled one beside it.
+		await rideToTheCard(other, async () => {
+			if (!reducedMotion) return;
+			await other.page
+				.getByTestId('closing-card')
+				.waitFor({ timeout: 120_000 });
+			await s.shot(other, { name: 'closing-card-reduced-0' });
+		});
 		await s.shot(other, { name, full: true });
 	}
+	// The real card with what no ride here reaches: a medal and a scored
+	// roster (/dev/summary renders SessionSummary with them).
+	await page(s, o, '/dev/summary', { name: 'closing-card-medal' });
 });
 
 /** Designer coaching, Design Partner riding along, a session started. */
@@ -1179,6 +1248,11 @@ async function session(
 	await toTraining(rider.page, crew);
 	await startSession(coach.page, pick);
 	await joinSession(rider.page);
+	// Started "without a trainer" (its trainer was on the free ride), the
+	// coach rides along the way the partner does: a two-rider session.
+	const coachJoins = coach.page.getByRole('link', { name: 'Join the ride' });
+	if (await coachJoins.isVisible({ timeout: 5000 }).catch(() => false))
+		await coachJoins.click();
 	await atSecond(coach.page, RIDE_SECOND);
 	return { coach, rider, crew };
 }
@@ -1311,14 +1385,6 @@ surface(
 				.getByRole('group', { name: 'chalk the next climb' })
 				.scrollIntoViewIfNeeded({ timeout: 20_000 });
 			await s.shot(phone, { name: 'roadside-chalk-phone' });
-			const riders = await coach.page
-				.locator('canvas[data-riders]')
-				.getAttribute('data-riders');
-			const ahead = Math.max(
-				...(JSON.parse(riders ?? '{}').riders ?? []).map(
-					(r: { d: number }) => r.d,
-				),
-			);
 			// A double tap while the climb is still open: the second stamp,
 			// inside the hub's quarter second, is refused, and the deck says why
 			// and when to try again. Both at the road's start, behind the bunch,
@@ -1335,20 +1401,51 @@ surface(
 			await s.shot(watcher, { name: 'roadside-chalk-refused' });
 			// The hub takes one roadside verb a quarter second (controlMinGap).
 			await watcher.page.waitForTimeout(1000);
-			socket?.send(
-				JSON.stringify({
-					roadside: { kind: 'paint', stamp: 'heart', atM: ahead + 18 },
-				}),
-			);
-			// A tick to land it, while the bunch is still short of it: near
-			// enough that the chase camera reads it beside the riders.
-			await coach.page.waitForTimeout(1000);
-			await s.shot(coach, { name: 'roadside-chalk-world' });
-			// The watcher has chalked this road's one climb: the deck says so.
+			// The heart goes 60 m past the bunch's front as it is now. The
+			// world's canvas holds the riders as of its last frame, with the
+			// speed they ride at; a software-GL shot takes seconds, so that
+			// reading is carried on to this moment, and the hub refuses a chalk
+			// that lands behind its front.
+			// A refused heart (the front moved past it) is laid again from a
+			// fresh reading, until the deck says the climb is spent.
+			let front = NaN;
+			let landed = false;
+			for (let attempt = 0; attempt < 4 && !landed; attempt++) {
+				front = await coach.page.evaluate(() => {
+					const canvas = document.querySelector<HTMLCanvasElement>(
+						'canvas[data-riders]',
+					);
+					const seen = JSON.parse(canvas?.dataset.riders ?? '{}');
+					const lead = Math.max(
+						...(seen.riders ?? []).map((r: { d: number }) => r.d),
+					);
+					return lead + ((seen.mps ?? 0) * (Date.now() - seen.t)) / 1000;
+				});
+				if (Number.isFinite(front)) {
+					socket?.send(
+						JSON.stringify({
+							roadside: { kind: 'paint', stamp: 'heart', atM: front + 60 },
+						}),
+					);
+				}
+				landed = await watcher.page
+					.getByText('No climb left ahead to chalk.')
+					.waitFor({ timeout: 5_000 })
+					.then(() => true)
+					.catch(() => false);
+			}
+			if (!landed)
+				throw new Error(
+					`the heart never landed on the climb; last front ${front}`,
+				);
+			// The riders pass the chalk, and the hub lets it go: a shot on
+			// software GL can outlast the heart's few seconds. So the spent
+			// shot comes first, then the world's.
 			await watcher.page
 				.getByText('No climb left ahead to chalk.')
 				.scrollIntoViewIfNeeded();
 			await s.shot(watcher, { name: 'roadside-chalk-spent' });
+			await s.shot(coach, { name: 'roadside-chalk-world' });
 		} finally {
 			await endSession(coach.page);
 		}

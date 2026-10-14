@@ -1,1 +1,0 @@
-- Riding in the world, your W/kg now stays beside your 3 s power up to 999 W, instead of dropping under it once you pass 100 W.

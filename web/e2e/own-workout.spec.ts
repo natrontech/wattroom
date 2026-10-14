@@ -43,6 +43,13 @@ test('a rider rides their own workout beside the session, and nothing of it coun
 			),
 		);
 		await rider.goto(`${voicePath(opened)}/training`);
+		// Unpaired, it says what it waits for rather than sitting greyed (#3724).
+		await expect(rider.getByText('Pair your trainer first')).toBeVisible({
+			timeout: SETTLE_MS,
+		});
+		await expect(
+			rider.getByRole('button', { name: 'Ride a workout' }),
+		).toHaveAccessibleDescription('Pair your trainer first');
 		await rider
 			.getByRole('button', { name: 'Ride simulated' })
 			.click({ timeout: 15_000 });

@@ -54,7 +54,7 @@ describe('the overlay hosts while riding (#3788)', () => {
 	it('mount inside a wrapper that carries the cave when riding', () => {
 		expect(layout).toMatch(
 			caveWrapped(
-				'<ContextMenuHost />\\s*<RiderCardHost />\\s*<ConfirmHost />',
+				'<ContextMenuHost \\{riding\\} />\\s*<RiderCardHost />\\s*<ConfirmHost />',
 			),
 		);
 	});

@@ -565,7 +565,8 @@
 <!-- px-4 on a phone is the kit's gutter (`page`, ux.md's 16 px); the ride
      surface is not a `page` — it fills the window — so it spells the two. -->
 <main
-	class="bg-surface text-ink flex min-h-screen flex-col {setup
+	class="bg-surface text-ink flex min-h-screen flex-col {setup ||
+	session?.state === 'done'
 		? 'page'
 		: 'px-4 py-5 sm:px-6'}"
 >
@@ -688,74 +689,63 @@
 	{#if session && session.state === 'done'}
 		<!-- The ride is over: the summary IS the screen — no dead HUD glowing
 		     zeros behind it (#126). -->
-		<div class="mx-auto mt-4 w-full max-w-3xl">
+		<div>
 			<SessionSummary
-				title={session.elapsed >= session.total
-					? 'Ride complete'
-					: 'Ride ended'}
+				title={workout.name}
 				unsaved={saveStatus !== null && !savedId}
 				{savedXp}
-				subtitle="{workout.name} · {new Date().toLocaleDateString()}"
 				samples={session.recording}
 				ftp={profile.current.ftp}
 				execution={session.scored ? session.execution : undefined}
 			>
 				{#snippet actions()}
-					<div class="panel panel-lg">
-						<div class="flex flex-wrap items-center gap-2">
-							<!-- The end links forward (#1331): the ride's own page first,
-							     the export and the next workout after it. -->
-							{#if savedId}
-								<a href="/history/{savedId}" class="btn btn-primary"
-									>See your ride</a
-								>
-							{:else if saving}
-								<!-- The row keeps its shape while the save is in flight:
-								     the button under the thumb never changes role (#1544). -->
-								<button disabled class="btn btn-primary">Saving…</button>
-							{/if}
-							<button
-								onclick={downloadFit}
-								disabled={downloading || !session?.recording.length}
-								data-testid="download-fit"
-								class="btn {savedId || saving
-									? 'btn-secondary'
-									: 'btn-primary'}"
-								>{downloading ? 'Preparing…' : 'Export .fit'}</button
-							>
-							{#if savedId}
-								<button
-									onclick={downloadCard}
-									disabled={carding}
-									data-testid="download-card"
-									class="btn btn-secondary"
-									>{carding ? 'Drawing…' : 'Ride card'}</button
-								>
-							{/if}
-							<a href="/workouts" class="btn btn-secondary"
-								>Pick another workout</a
-							>
-						</div>
-						{#if saveStatus}
-							<div class="mt-2">
-								<Banner tone="warn">
-									{saveStatus}
-									{#snippet action()}
-										{#if retrySave}
-											<button onclick={retrySave} class="btn btn-secondary"
-												>Try again</button
-											>
-										{/if}
-									{/snippet}
-								</Banner>
-							</div>
-						{/if}
-						{#if error}
-							<div class="mt-2"><Banner tone="error">{error}</Banner></div>
-						{/if}
-
-						<RideFlags {flags} />
-					</div>
+					<!-- The end links forward (#1331): the ride's own page first,
+					     the export and the next workout after it, Done last. -->
+					{#if savedId}
+						<a href="/history/{savedId}" class="btn btn-secondary"
+							>See your ride</a
+						>
+					{:else if saving}
+						<!-- The row keeps its shape while the save is in flight:
+						     the button under the thumb never changes role (#1544). -->
+						<button disabled class="btn btn-secondary">Saving…</button>
+					{/if}
+					<button
+						onclick={downloadFit}
+						disabled={downloading || !session?.recording.length}
+						data-testid="download-fit"
+						class="btn btn-secondary"
+						>{downloading ? 'Preparing…' : 'Export .fit'}</button
+					>
+					{#if savedId}
+						<button
+							onclick={downloadCard}
+							disabled={carding}
+							data-testid="download-card"
+							class="btn btn-secondary"
+							>{carding ? 'Drawing…' : 'Ride card'}</button
+						>
+					{/if}
+					<a href="/workouts" class="btn btn-secondary">Pick another workout</a>
+					<a href="/home" class="btn btn-primary">Done</a>
+				{/snippet}
+				{#snippet status()}
+					{#if saveStatus}
+						<Banner tone="warn">
+							{saveStatus}
+							{#snippet action()}
+								{#if retrySave}
+									<button onclick={retrySave} class="btn btn-secondary"
+										>Try again</button
+									>
+								{/if}
+							{/snippet}
+						</Banner>
+					{/if}
+					{#if error}
+						<div class="mt-2"><Banner tone="error">{error}</Banner></div>
+					{/if}
+					<RideFlags {flags} />
 				{/snippet}
 			</SessionSummary>
 		</div>

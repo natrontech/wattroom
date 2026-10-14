@@ -2,7 +2,8 @@ import { expect, test } from './crew';
 import { signInAs } from './signin';
 
 /**
- * Home's "What's next" is one row per planned SESSION, across crews (#1693).
+ * Home's This week is one row per planned SESSION, across crews (#1693,
+ * #3689).
  *
  * ADR-0020 retired `/sessions` into Home because "a cross-room list of what is
  * coming is the second half of what is happening". What landed rendered the
@@ -55,14 +56,15 @@ test('Home lists every planned session, not one per channel', async ({
 	}
 
 	await page.goto('/home');
-	const list = page.getByTestId('whats-next');
-	await expect(list.getByRole('listitem')).toHaveCount(3);
+	const list = page.getByTestId('home-week');
+	const rows = list.getByTestId('week-row');
+	await expect(rows).toHaveCount(3);
 
 	// Every plan, in the order they are ridden — and each says which channel it
 	// runs in, which is the only thing a cross-crew list has to add.
-	const rowText = await list
-		.getByRole('listitem')
-		.evaluateAll((all) => all.map((li) => li.textContent ?? ''));
+	const rowText = await rows.evaluateAll((all) =>
+		all.map((li) => li.textContent ?? ''),
+	);
 	expect(rowText.map((text) => text.replace(/\s+/g, ' '))).toEqual([
 		expect.stringContaining(`Tuesday ${stamp}`),
 		expect.stringContaining(`Wednesday ${stamp}`),

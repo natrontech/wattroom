@@ -585,7 +585,7 @@
      riding: a menu, a rider card or a confirm opened mid-ride is part of the
      dark frame (TARGETS G1). `contents` leaves their fixed layout alone. -->
 <div class="contents {riding ? 'cave' : ''}">
-	<ContextMenuHost />
+	<ContextMenuHost {riding} />
 	<RiderCardHost />
 	<ConfirmHost />
 </div>

@@ -151,7 +151,7 @@ async function seedALongToken(page: Page, channel: string): Promise<void> {
 }
 
 /**
- * And Home's "What's next" is empty until something is planned, so /home used
+ * And Home's This week is empty until something is planned, so /home used
  * to be measured with that section rendering one line of prose (#1693). Each
  * row is a workout name, a date, a crew name and a planner on a 375px column —
  * the widest thing on the page once it has content.
@@ -180,7 +180,7 @@ async function seedAPlannedSession(page: Page, crew: string): Promise<void> {
 		});
 		return res.ok;
 	}, crew);
-	if (!ok) throw new Error("could not plan a session for Home's What's next");
+	if (!ok) throw new Error("could not plan a session for Home's This week");
 }
 
 test('no page outside a voice channel scrolls sideways on a phone', async ({

@@ -27,7 +27,7 @@ WattRoom: collaborative indoor cycling. Go server + SvelteKit SPA + Postgres + L
 
 Every change has a GitHub issue on a milestone. All of this happens before the first edit, not the first commit:
 
-1. **Check it is free**: `gh issue view <n> --comments`, `gh pr list`, `git worktree list`. It is taken if it is assigned, claimed in a comment, covered by an open PR (a draft is a claim even on a silent issue), or named by someone's worktree branch (a branch with no commits is an agent that just started). Taken: coordinate in the thread.
+1. **Check it is free**: `gh issue view <n> --comments`, `gh pr list`, `git worktree list`. It is taken if it is assigned, claimed in a comment, covered by an open PR (a draft is a claim even on a silent issue), or named by someone's worktree branch (a branch with no commits is an agent that just started). A branch whose PR closed standing down is kept work, not a claim: resume it. Taken: coordinate in the thread.
 2. **Cut the worktree**: `git worktree add ../wattroom-worktrees/<slug> -b feat/<slug> origin/main` (or `fix/`, `docs/`, `chore/`), and work only there. A session that starts in a linked worktree (Happier's `.dev/worktree/<name>`) renames its branch instead (`git branch -m feat/<slug>`) and opens no second one.
 3. **Claim**: `gh issue edit <n> --add-assignee @me` and a one-line approach comment.
 4. **Open a draft PR** with `Closes #<n>` and a conventional-commit title. Re-run step 1 after reading the code; the earliest claim wins.
@@ -37,14 +37,15 @@ Standing down: withdraw your claim and write "proceed, do not stand down on acco
 ## Doing it
 
 - Progress, blockers and decisions go in the issue or PR. A decision made in a thread still gets an ADR.
-- Out-of-scope findings become new issues with a milestone and labels, never extra scope.
+- An out-of-scope finding is never extra scope. Search first and comment on the open issue that owns it. Only a defect a rider would notice, or one that breaks CI, becomes a new issue, with a milestone and labels, and one rule broken in several places is one issue. A minor goes in a PR comment.
+- A PR that ships part of an issue says `Refs #<n>` and ticks its box in the issue's checklist, and the one that ticks the last box says `Closes #<n>`. An issue main already satisfies is closed, naming the PRs that did it.
 - A PR a rider can see carries a Design check section per [docs/design/DESIGN-CHECK.md](docs/design/DESIGN-CHECK.md); one with a blocker or major left stays draft.
 - A PR body says what changed, why and how you checked it, in at most 600 characters ([template](.github/PULL_REQUEST_TEMPLATE.md)); findings and logs go in comments. CI goes red over 1,200.
 - Done = CI green, diff self-reviewed, PR marked ready.
 
 ## Merging and cleaning up
 
-- **Merge your own PR** once the five required checks pass (`gh pr checks <n>`), no advisory check is red and no reviewer point is open: `gh pr merge <n> --squash --subject '<type>(<scope>): <description> (#<n>)'`. A PR that edits WATTROOM.md is marked ready and left for a human.
+- **Merge your own PR** once the five required checks pass (wait with `scripts/wait-checks.sh <n>`, one call, never a sleep loop), no advisory check is red and no reviewer point is open: `gh pr merge <n> --squash --subject '<type>(<scope>): <description> (#<n>)'`. A PR that edits WATTROOM.md is marked ready and left for a human.
 - **Then finish**: `make dev-db-drop`, delete the branch locally and on the remote, `git worktree remove`, and leave the canonical clone on `main`, pulled.
 - Never stash, discard or revert files you did not write. Report the blocker and the one command that clears it.
 

@@ -1,1 +1,0 @@
-- In the workout editor a step's Delete sits last, after a divider, apart from the step's other actions.

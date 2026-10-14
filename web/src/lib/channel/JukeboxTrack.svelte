@@ -13,13 +13,14 @@
 	import type { JukeboxEntry } from '$lib/protocol';
 	import type { SaveTarget } from '$lib/channel/playlists.svelte';
 	import { fitsCadence } from '$lib/channel/cadence-fit';
+	import { railIcon, railText } from '$lib/channel/rail-size';
 	import { thumbnailFor } from '$lib/channel/jukebox-add';
-	import { railIcon } from '$lib/channel/rail-size';
 
 	// One track in the playlist (#286) — the same row for what's next and for
 	// what just played, because they differ only in which verbs apply.
 	let {
 		entry,
+		riding = false,
 		position,
 		myId,
 		onVote,
@@ -29,9 +30,11 @@
 		saveTargets = [],
 		onSave,
 		targetRpm = 0,
-		riding = false,
 	}: {
 		entry: JukeboxEntry;
+		/** On a riding surface its words are at G4's floor (#3758) and its
+		 *  controls 44 px (G5). */
+		riding?: boolean;
 		/** 1-based slot in "up next"; absent in history. */
 		position?: number;
 		myId?: string;
@@ -48,8 +51,6 @@
 		onSave?: (target: SaveTarget) => void;
 		/** The rpm the running block asks for (#1431); 0 outside a session. */
 		targetRpm?: number;
-		/** A ride is under way: the row's controls are 44 px (TARGETS G5). */
-		riding?: boolean;
 	} = $props();
 
 	const fits = $derived(fitsCadence(entry.bpm, targetRpm));
@@ -155,10 +156,10 @@
 		</div>
 
 		<div class="min-w-0 flex-1">
-			<p class="truncate text-xs leading-tight">
+			<p class="truncate {railText(riding, 'text-xs leading-tight')}">
 				{tracks.length ? entry.playlistTitle : entry.title}
 			</p>
-			<p class="text-muted truncate text-[10px]">
+			<p class="text-muted truncate {railText(riding, 'text-[10px]')}">
 				{#if tracks.length}
 					playlist · {tracks.length} tracks · {entry.addedBy}
 				{:else if entry.artist}
