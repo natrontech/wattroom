@@ -171,6 +171,7 @@
 	<SessionSummary
 		kind="Free ride"
 		title={route.name}
+		titleHref={route.borrowed ? undefined : `/workouts/routes/${route.id}`}
 		samples={free.ridden}
 		ftp={profile.current.ftp}
 		unsaved={'failure' in outcome}

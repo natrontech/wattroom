@@ -87,6 +87,14 @@
 	const you = $derived(riders.find((r) => r.you));
 </script>
 
+{#snippet exit()}
+	<button
+		onclick={onExit}
+		class="btn btn-secondary min-h-11 px-[1.5vw] text-[3vh] leading-none"
+		>Exit TV mode (esc)</button
+	>
+{/snippet}
+
 <!-- TV mode is the cave whatever the theme says — it exists for the ride. -->
 <!-- A dialog (audit 2026-09-09): the one surface where the page behind is
      entirely hidden, and Tab still walked it. -->
@@ -109,13 +117,20 @@
 			{@attach (node) => offerSeat(node, TV_SEAT)}
 		></div>
 	{/if}
-	<!-- Ride-critical status on the TV too (audit 2026-09-09): the overlay
-	     used to paint over a trainer drop, a reconnect and the rider's own
-	     auto-pause while the instrument kept looking confident. Clear of
-	     the player's seat in the top-right. -->
-	<div class="absolute top-[2vh] right-[30vw] left-[3vw] z-10">
-		{@render status?.()}
-	</div>
+	{#if countdown}
+		<!-- Ride-critical status on the TV too (audit 2026-09-09): the overlay
+		     used to paint over a trainer drop, a reconnect and the rider's own
+		     auto-pause while the instrument kept looking confident. Live, TvMode
+		     gives it a row above the panels; the count-in has it clear of the
+		     player's seat in the top-right. -->
+		<div
+			class="absolute top-[2vh] left-[3vw] z-10 {playing
+				? 'right-[47vw]'
+				: 'right-[30vw]'}"
+		>
+			{@render status?.()}
+		</div>
+	{/if}
 	{#if sprint}
 		<div class="absolute inset-x-[12vw] top-[14vh] z-10">
 			<SprintMoment {sprint} myWatts={you?.watts ?? 0} roster={riders} />
@@ -131,11 +146,6 @@
 			/>
 		</div>
 	{/if}
-	<button
-		onclick={onExit}
-		class="btn btn-secondary btn-lg absolute bottom-4 left-4 z-10"
-		>Exit TV mode (esc)</button
-	>
 	{#if onJoin}
 		<button
 			onclick={onJoin}
@@ -144,6 +154,8 @@
 		>
 	{/if}
 	{#if countdown}
+		<!-- TvMode carries the way out in its top row; the count-in has none. -->
+		<div class="absolute bottom-[3vh] left-[3vw] z-10">{@render exit()}</div>
 		<div class="h-full">
 			<CountdownScreen
 				remaining={countdown.remaining}
@@ -165,6 +177,9 @@
 			{stats}
 			{skyline}
 			{climb}
+			{exit}
+			{status}
+			seated={playing}
 		/>
 	{/if}
 </div>

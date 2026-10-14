@@ -17,10 +17,12 @@ const TV = [
 	'lib/session/IntervalStrip.svelte',
 	'lib/components/IntervalGraph.svelte',
 	'lib/session/BikeComputer.svelte',
+	'lib/session/ComputerHead.svelte',
 ];
 const FLOOR_VH = 2.9;
 
 const SRC = join(import.meta.dirname, '../..');
+const read = (file: string) => code(readFileSync(join(SRC, file), 'utf8'));
 const sizes = (file: string) =>
 	[
 		...code(readFileSync(join(SRC, file), 'utf8')).matchAll(
@@ -50,4 +52,35 @@ describe('TV mode reads at three metres (#3067)', () => {
 			for (const tag of tags) expect(tag).toMatch(/\btv\b/);
 		},
 	);
+
+	// The exit hint read 1.1vh, over the interval graph (#3677).
+	it("draws its way out at 2.9vh and 44 px, in the work panel's top row", () => {
+		const exit =
+			read('lib/session/TvOverlay.svelte').match(
+				/\{#snippet exit\(\)\}([\s\S]*?)\{\/snippet\}/,
+			)?.[1] ?? '';
+		expect(exit).toMatch(/onclick=\{onExit\}/);
+		expect(exit).toMatch(/\bmin-h-11\b/);
+		const vh = [...exit.matchAll(/\btext-\[(\d+(?:\.\d+)?)vh\]/g)];
+		expect(vh.map((m) => Number(m[1]))).toEqual([expect.any(Number)]);
+		expect(Number(vh[0][1])).toBeGreaterThanOrEqual(FLOOR_VH);
+		const head =
+			read('lib/session/TvMode.svelte').match(
+				/\{#snippet head\(\)\}([\s\S]*?)\{\/snippet\}/,
+			)?.[1] ?? '';
+		expect(head).toContain('{@render exit?.()}');
+		expect(read('lib/session/IntervalStrip.svelte')).toContain(
+			'{@render head()}',
+		);
+	});
+
+	// One home per number (TARGETS D17): the docked computer's head holds
+	// the one watts figure, so the TV draws no second power readout (#3677).
+	it('draws the 3 s power once, in the docked computer', () => {
+		const tv = read('lib/session/TvMode.svelte');
+		const computers = tv.match(/<BikeComputer\b[\s\S]*?\/>/g) ?? [];
+		expect(computers).toHaveLength(1);
+		expect(computers[0]).toMatch(/\bdocked\b/);
+		expect(tv).not.toMatch(/<(Instrument|ComputerHead)\b/);
+	});
 });

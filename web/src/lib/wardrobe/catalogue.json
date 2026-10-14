@@ -353,35 +353,35 @@
 	"skinTones": [
 		{
 			"id": "skin.1",
-			"hex": "#f0d3be"
+			"hex": "#f6ede4"
 		},
 		{
 			"id": "skin.2",
-			"hex": "#e2b894"
+			"hex": "#e6d3b2"
 		},
 		{
 			"id": "skin.3",
-			"hex": "#cf9d77"
+			"hex": "#ccb089"
 		},
 		{
 			"id": "skin.4",
-			"hex": "#b88260"
+			"hex": "#af8f67"
 		},
 		{
 			"id": "skin.5",
-			"hex": "#9a6a4b"
+			"hex": "#926e4d"
 		},
 		{
 			"id": "skin.6",
-			"hex": "#7c5339"
+			"hex": "#73503c"
 		},
 		{
 			"id": "skin.7",
-			"hex": "#5f3e2b"
+			"hex": "#4d392f"
 		},
 		{
 			"id": "skin.8",
-			"hex": "#44291e"
+			"hex": "#292420"
 		}
 	],
 	"builds": {

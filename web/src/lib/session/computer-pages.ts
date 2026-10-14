@@ -13,6 +13,9 @@ import type { LiveStats } from '$lib/ride/live-stats.svelte';
  * climb card (#3089); RACE shows while you race (#3174).
  */
 export const PAGES = ['ride', 'climb', 'power', 'race'] as const;
+/** ride-label at three metres: SPEC's 3vh, where ride-label's 24 px is under the TV's 2.9vh floor. */
+export const TV_LABEL =
+	'text-muted text-[3vh] leading-none font-semibold tracking-[0.08em] uppercase';
 export type ComputerPage = (typeof PAGES)[number];
 
 export const PAGE_NAMES: Record<ComputerPage, string> = {

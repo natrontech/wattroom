@@ -22,7 +22,7 @@ import type {
 	Standing,
 } from './setpieces';
 import type { Line } from './terrain/lines';
-import { strokeRoad } from './terrain/road-profile';
+import { FORMATION, strokeRoad } from './terrain/road-profile';
 import { climbsOf, hairpinsOf } from '$lib/road/climbs';
 import { turnedRound } from '$lib/road/road';
 
@@ -536,7 +536,16 @@ export function planStroke(line: Line, k: number, plan: Plan) {
 	}
 
 	// Road furniture from the stroke's start, a stretch at a time: snow poles every 25 m above 1,100 m
-	// where the ground falls away, delineators every 50 m, both sides, 0.5 m outside the edge line.
+	// where the ground falls away, delineators every 50 m, both sides, 0.5 m outside the edge line,
+	// and every 25 m on a side whose ground 8 m past the shoulder lies over 4 m below the road
+	// (#3838): from below, they mark a stacked leg as road when its ledge hides the asphalt.
+	const dropsAway = (p: ReturnType<typeof w.at>, side: number) =>
+		p.h -
+			heightAt(
+				p.x + p.lx * (FORMATION + 8) * side,
+				p.z + p.lz * (FORMATION + 8) * side,
+			) >
+		4;
 	for (let a = 0; a <= r.length; a += STRETCH_M) {
 		const g = filed(a + STRETCH_M / 2);
 		g.step(() => {
@@ -550,9 +559,10 @@ export function planStroke(line: Line, k: number, plan: Plan) {
 						: -1;
 				put(g, 'snowpole', 'furniture', s, fall, 4.4, 0, 5e6 + s, null);
 			}
-			for (let s = a; s < a + STRETCH_M && s <= r.length; s += 50)
+			for (let s = a; s < a + STRETCH_M && s <= r.length; s += 25)
 				for (const side of [-1, 1]) {
 					const p = w.at(s);
+					if (s % 50 !== 0 && !dropsAway(p, side)) continue;
 					const x = p.x + p.lx * 3.7 * side;
 					const z = p.z + p.lz * 3.7 * side;
 					const placed = placer.candidate(

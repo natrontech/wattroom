@@ -8,7 +8,7 @@ Part of the product spec. [docs/SPEC.md](../SPEC.md) indexes every section and s
 - **Build**: slim, athletic or strong — the rider's choice, never derived from weight.
 - **Height**: the rider's choice, **1.50–2.05 m** (#3151).
 - **Builds**: **3**.
-- **Skin**: one of **8** free swatches, never sold; the values are [#3413](https://github.com/natrontech/wattroom/issues/3413)'s. The neutral figure's tone is none of the 8.
+- **Skin**: one of **8** free swatches, never sold; the values are `#f6ede4`, `#e6d3b2`, `#ccb089`, `#af8f67`, `#926e4d`, `#73503c`, `#4d392f`, `#292420` (lightest to darkest): eight stops evenly spaced along the path through all ten tones of the Monk Skin Tone Scale in OKLab, both ends included (Ellis Monk / Google, skintone.google, CC BY 4.0; [#3413](https://github.com/natrontech/wattroom/issues/3413)). The neutral figure's tone is `oklch(0.616 0 0)` (`#858585`), the mean lightness of the eight with no chroma, and none of the 8.
 - **Neutral figure** (until the rider chooses): athletic build, a middle height, the neutral tone.
 - **The live zone** is a flat ground ring under the bike, never the jersey.
 
