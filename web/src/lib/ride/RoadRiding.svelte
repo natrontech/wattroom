@@ -24,6 +24,7 @@
 	import { bindShiftKeys } from '$lib/ride/keys';
 	import { modeLine } from '$lib/ride/mode-copy';
 	import RoadEnd from '$lib/ride/RoadEnd.svelte';
+	import RideNarrator from '$lib/ride/RideNarrator.svelte';
 	import SessionSummary from '$lib/ride/SessionSummary.svelte';
 	import { endRideLabel, roadEndOffered } from '$lib/ride/road-end';
 	import RoadPick from '$lib/ride/RoadPick.svelte';
@@ -147,6 +148,10 @@
 			: `${(free.road?.roadPct ?? 0).toFixed(1)} %`,
 	);
 </script>
+
+{#if solo.trainer && !ended}
+	<RideNarrator view={skyline} {watts} ftp={profile.current.ftp} {stale} />
+{/if}
 
 {#if ended && free.outcome && !('short' in free.outcome)}
 	{@const outcome = free.outcome}

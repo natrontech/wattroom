@@ -25,6 +25,7 @@
 	import GearShift from '$lib/ride/GearShift.svelte';
 	import { createGhostSplit } from '$lib/ride/ghost-split.svelte';
 	import RoadEnd from '$lib/ride/RoadEnd.svelte';
+	import RideNarrator from '$lib/ride/RideNarrator.svelte';
 	import { endRideLabel, roadEndOffered } from '$lib/ride/road-end';
 	import RoadPick from '$lib/ride/RoadPick.svelte';
 	import Skyline from '$lib/ride/Skyline.svelte';
@@ -88,6 +89,13 @@
 		{ id: 'watts', label: 'Watts' },
 	]);
 </script>
+
+<RideNarrator
+	view={skyline}
+	watts={channel.you.watts}
+	ftp={channel.you.ftp}
+	stale={channel.youStale}
+/>
 
 <div class="page flex h-full min-h-0 flex-col gap-6 overflow-y-auto pb-20">
 	<header class="flex flex-wrap items-center gap-3">
