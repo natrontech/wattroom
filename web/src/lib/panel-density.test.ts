@@ -111,6 +111,7 @@ describe('a size variant emits after the base it overrides', () => {
 			'btn',
 			'btn-xs',
 			'btn-lg',
+			'btn-ride',
 			'input',
 			'input-xs',
 			'p-1',
@@ -135,6 +136,7 @@ describe('a size variant emits after the base it overrides', () => {
 		for (const [base, variant] of [
 			['.btn', '.btn-xs'],
 			['.btn', '.btn-lg'],
+			['.btn', '.btn-ride'],
 			['.input', '.input-xs'],
 		]) {
 			expect(at(variant), `${variant} must emit after ${base}`).toBeGreaterThan(

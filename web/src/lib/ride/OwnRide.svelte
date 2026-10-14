@@ -96,7 +96,7 @@
 					: undefined}
 			>
 				{#snippet controls()}
-					<button onclick={() => own.cancel()} class="btn btn-secondary btn-lg"
+					<button onclick={() => own.cancel()} class="btn btn-secondary btn-ride"
 						>Cancel</button
 					>
 				{/snippet}
@@ -112,7 +112,7 @@
 					</p>
 					<a
 						href={ridePath(channel.address, running)}
-						class="btn btn-accent btn-lg ml-auto"
+						class="btn btn-accent btn-ride ml-auto"
 						><Radio size={15} /> Join the ride</a
 					>
 				</div>
