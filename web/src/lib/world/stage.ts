@@ -2,6 +2,7 @@
 // props, furniture and the horizon. Rebuilt whole on a style change — the
 // world data under it is not, and neither is the streamed ground it draws.
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { backdrop } from './backdrop';
 import { tag } from './family';
 import { chunkId, LEAVE, roadPieces, type GroundStream } from './ground-stream';
@@ -10,7 +11,15 @@ import { TILE_M, tileCentre, tileKey, tileOf } from './props/tiles';
 import { disposeTree } from './dispose';
 import { arch, board } from './furniture';
 import type { Piece } from './setpieces';
-import { plinth, road, roadMaterial, ROAD_W, terrain, yOf } from './geometry';
+import {
+	parapet,
+	plinth,
+	road,
+	roadMaterial,
+	ROAD_W,
+	terrain,
+	yOf,
+} from './geometry';
 import { PROP_RAMP, ramp, toon, type Sight } from './materials';
 import { piecePool } from './piece-pool';
 import { CHUNK_M } from './place/lattice';
@@ -187,12 +196,20 @@ export function buildStage(
 		pieces.forEach((p, k) => {
 			const key = String(k);
 			const d = Math.hypot(p.x - eye.x, p.z - eye.z) - p.r;
-			if (d <= REACH.near && !ribbon.has(key))
-				ribbon.add(
-					key,
-					road(route, { width: ROAD_W, shoulder: SHOULDER, rows: p.rows }),
-				);
-			else if (d > REACH.near * LEAVE) ribbon.drop(key);
+			if (d <= REACH.near && !ribbon.has(key)) {
+				const surface = road(route, {
+					width: ROAD_W,
+					shoulder: SHOULDER,
+					rows: p.rows,
+				});
+				const wall = parapet(route, world.heightAt, p.rows);
+				if (!wall) ribbon.add(key, surface);
+				else {
+					ribbon.add(key, mergeGeometries([surface, wall])!);
+					surface.dispose();
+					wall.dispose();
+				}
+			} else if (d > REACH.near * LEAVE) ribbon.drop(key);
 		});
 	}
 

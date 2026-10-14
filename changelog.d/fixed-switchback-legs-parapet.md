@@ -1,0 +1,1 @@
+- On a climb that stacks its switchbacks, each leg's valley side has a low white parapet, so the legs above read as road from below.

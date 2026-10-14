@@ -2,7 +2,9 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import type { Road } from '$lib/road/road';
 import type { Route } from '$lib/road/route';
 import { Biome } from './biome';
+import { parapet } from './geometry';
 import { routeOfRoad } from './road-route';
+import { rowCount } from './terrain/road-profile';
 import { generate, type World } from './world';
 import { BUILD_MS, worstRiseThroughRoad } from './world.test-helper';
 
@@ -60,5 +62,20 @@ describe('stacked switchbacks', () => {
 		}
 		expect(wall).toBeGreaterThan(100);
 		expect(rock / wall).toBeLessThan(0.4);
+	});
+});
+
+describe('stacked switchbacks, seen from below', () => {
+	it('wall each leg above the first on its valley side (#3838)', () => {
+		const wall = parapet(route, world.heightAt, [0, rowCount(route) - 1]);
+		const along = (wall?.attributes.uv.array ?? []).filter((_, i) => i % 2);
+		const walled = new Set(along);
+		const LEG = 700; // 30 rows of 20 m, then the turn
+		const share = (leg: number) =>
+			[...walled].filter((d) => d >= leg * LEG && d < (leg + 1) * LEG)
+				.length /
+			(Math.min(LEG, route.length - leg * LEG) / 2);
+		expect(share(0)).toBeLessThan(0.1); // it rises from the valley's own ground
+		for (const leg of [1, 2, 3]) expect(share(leg)).toBeGreaterThan(0.4);
 	});
 });

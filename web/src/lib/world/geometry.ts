@@ -10,6 +10,7 @@ import { bendsOf } from './terrain/road-frame';
 import {
 	bankOf,
 	drawnRows,
+	FORMATION,
 	ROAD_W,
 	SHOULDER_DROP,
 } from './terrain/road-profile';
@@ -179,6 +180,76 @@ function strip(pos: number[], uv: number[], cols: number) {
 	return g;
 }
 
+/** A parapet stands where the ground this far past the shoulder lies more than `WALL_FALL` m below the road. */
+const WALL_OUT = 8;
+const WALL_FALL = 4;
+/** The parapet's height over the shoulder's edge, and how far its foot reaches into the fill below. */
+const WALL_H = 0.9;
+const WALL_FOOT = 1.5;
+/** The `u` a parapet carries: past any ribbon's width, so the road's shader paints it whole. */
+const WALL_U = 50;
+
+/**
+ * A low parapet on a road's valley side, wherever the ground falls away
+ * (#3838): from below, a stack of switchback legs reads as road by it, when
+ * the ledge hides the asphalt and the forest the face. Rows `from` to `to`,
+ * as `road` draws them, so a piece merges into its ribbon and costs no draw.
+ * Two faces, out and in, each lit from its own side. Null where none stands.
+ */
+export function parapet(
+	route: Route,
+	groundAt: (x: number, z: number) => number,
+	[from, to]: readonly [number, number],
+	step = 2,
+): THREE.BufferGeometry | null {
+	const rows = drawnRows(route, step, from, to);
+	const pos: number[] = [];
+	const normal: number[] = [];
+	const uv: number[] = [];
+	const idx: number[] = [];
+	for (const side of [-1, 1]) {
+		let prev = -1;
+		rows.forEach((p, i) => {
+			const ox = Math.cos(p.heading) * side; // outward
+			const oz = -Math.sin(p.heading) * side;
+			const out = FORMATION + WALL_OUT;
+			if (p.ele - groundAt(p.x + ox * out, p.z + oz * out) <= WALL_FALL) {
+				prev = -1;
+				return;
+			}
+			const x = p.x + ox * FORMATION;
+			const z = p.z + oz * FORMATION;
+			const y = yOf(route, p.ele) + ROAD_LIFT - SHOULDER_DROP;
+			const v = pos.length / 3;
+			for (const n of [1, -1])
+				for (const h of [y - WALL_FOOT, y + WALL_H]) {
+					pos.push(x, h, z);
+					normal.push(ox * n, 0, oz * n);
+					uv.push(side * WALL_U, (from + i) * step);
+				}
+			if (prev >= 0)
+				for (const [f, n] of [
+					[0, 1],
+					[2, -1],
+				]) {
+					const [a, c, b, d] = [prev + f, prev + f + 1, v + f, v + f + 1]; // a b along the foot, c d the top
+					// (a, b, c) faces right of travel: wound so each face looks out of its own side.
+					idx.push(
+						...(side * n < 0 ? [a, b, c, b, d, c] : [a, c, b, b, c, d]),
+					);
+				}
+			prev = v;
+		});
+	}
+	if (idx.length === 0) return null;
+	const g = new THREE.BufferGeometry();
+	g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+	g.setAttribute('normal', new THREE.Float32BufferAttribute(normal, 3));
+	g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+	g.setIndex(idx);
+	return g;
+}
+
 // Road surface with markings drawn in the fragment shader: edge lines, a
 // 3-on-9-off centre dash, verge beyond the edge — box-filtered with fwidth,
 // so they stay crisp at 2 m and never shimmer at 2 km.
@@ -231,6 +302,7 @@ export function roadMaterial(c: Style['road']): THREE.MeshLambertMaterial {
 				vec3 col = mix(uAsphalt, uShoulder, shoulder) * (1.0 + grain);
 				col = mix(col, uLine, max(edge, centre) * (1.0 - shoulder));
 				col = mix(col, uVerge, verge);
+				col = mix(col, uLine, step(${WALL_U - 1}.0, abs(u))); // a parapet (#3838)
 				vec4 diffuseColor = vec4(col, opacity);`,
 			);
 	};
