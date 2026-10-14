@@ -6,9 +6,15 @@
 -- the caller passes are the app's opening guess, not the rider's answer, and
 -- everything downstream — the first-run step, Home's label — reads that word
 -- rather than re-deriving it from "is it still 200".
-insert into users (display_name, avatar_url, ftp_watts, weight_kg, email_required,
+--
+-- id is null, and so random, for every real account. Only a dev rider passes
+-- one (#3992), derived from its name, so a fresh database seats the same
+-- riders in the same roster order; two racing sign-ins share the one row.
+insert into users (id, display_name, avatar_url, ftp_watts, weight_kg, email_required,
                    ftp_source, weight_source)
-values ($1, $2, $3, $4, true, 'default', 'default')
+values (coalesce(sqlc.narg(id)::uuid, gen_random_uuid()), sqlc.arg(display_name),
+        sqlc.narg(avatar_url), sqlc.arg(ftp_watts), sqlc.arg(weight_kg), true, 'default', 'default')
+on conflict (id) do update set id = excluded.id
 returning *;
 
 -- name: GetUser :one

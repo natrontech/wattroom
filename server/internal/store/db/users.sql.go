@@ -134,13 +134,16 @@ func (q *Queries) ConsumeAccountRecovery(ctx context.Context, recoverHash []byte
 }
 
 const createUser = `-- name: CreateUser :one
-insert into users (display_name, avatar_url, ftp_watts, weight_kg, email_required,
+insert into users (id, display_name, avatar_url, ftp_watts, weight_kg, email_required,
                    ftp_source, weight_source)
-values ($1, $2, $3, $4, true, 'default', 'default')
+values (coalesce($1::uuid, gen_random_uuid()), $2,
+        $3, $4, $5, true, 'default', 'default')
+on conflict (id) do update set id = excluded.id
 returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires, pending_crew_code, home_crew_id, status_emoji, status_emoji_id, status_text, status_expires_at, cheers, weight_changed_at, weight_confirmed_at
 `
 
 type CreateUserParams struct {
+	ID          pgtype.UUID
 	DisplayName string
 	AvatarUrl   *string
 	FtpWatts    int16
@@ -154,8 +157,13 @@ type CreateUserParams struct {
 // the caller passes are the app's opening guess, not the rider's answer, and
 // everything downstream — the first-run step, Home's label — reads that word
 // rather than re-deriving it from "is it still 200".
+//
+// id is null, and so random, for every real account. Only a dev rider passes
+// one (#3992), derived from its name, so a fresh database seats the same
+// riders in the same roster order; two racing sign-ins share the one row.
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
 	row := q.db.QueryRow(ctx, createUser,
+		arg.ID,
 		arg.DisplayName,
 		arg.AvatarUrl,
 		arg.FtpWatts,
