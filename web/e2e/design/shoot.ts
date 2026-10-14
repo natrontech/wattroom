@@ -39,6 +39,16 @@ export const wanted = (ids: readonly string[]) =>
 	(ONLY.length === 0 || ids.some((id) => ONLY.includes(id))) &&
 	!ids.some((id) => EXCEPT.includes(id));
 
+/**
+ * The browser every desk shot claims to be (#3884). detectOS reads the user
+ * agent, so a Mac's own Chromium would be offered the dmg and CI's the AppImage.
+ */
+export const DESK_UA =
+	'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
+/** GitHub's feed of the desktop builds: stubbed empty so no shot depends on the live release. */
+export const RELEASE_FEED =
+	'https://api.github.com/repos/natrontech/wattroom-releases/**';
+
 export const DESK: BrowserContextOptions = {
 	viewport: { width: 1440, height: 900 },
 };
@@ -144,6 +154,7 @@ export class Shoot {
 	): Promise<Opened> {
 		const ctx = await this.browser.newContext({
 			...device,
+			userAgent: device.userAgent ?? DESK_UA,
 			baseURL: baseUrl(),
 			// A surface whose recipe fixes the OS scheme keeps it (ride-free-road).
 			colorScheme: device.colorScheme ?? this.scheme,
@@ -165,6 +176,7 @@ export class Shoot {
 			},
 			[MUTED, world ?? null] as const,
 		);
+		await ctx.route(RELEASE_FEED, (route) => route.fulfill({ status: 404 }));
 		await ctx.addInitScript(pinCapabilities, {
 			bluetooth: device !== PHONE,
 		});
