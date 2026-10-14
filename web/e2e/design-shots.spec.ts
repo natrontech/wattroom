@@ -1299,7 +1299,7 @@ window.onYouTubeIframeAPIReady?.();
 /**
  * Queues YouTube tracks on a riding page's deck through the jukebox's sheet
  * (#3983), stood in for by YOUTUBE_STUB, and leaves the sheet shut. A
- * channel's deck outlives its session: an earlier shot may have queued it.
+ * channel's deck outlives its session.
  */
 async function queueDeck(page: Page, tracks: [string, string][]) {
 	await page.route('https://www.youtube.com/iframe_api', (route) =>
@@ -1311,8 +1311,11 @@ async function queueDeck(page: Page, tracks: [string, string][]) {
 	const fold = page
 		.locator('summary', { hasText: /^jukebox$/ })
 		.filter({ visible: true });
+	// Queued already when the queue's peek shows the second title: another
+	// shot on the same channel may have put the first one on the deck.
+	if (!(await add.isVisible())) await fold.click();
 	const queued = await page
-		.getByText(tracks[0][1])
+		.getByText((tracks[1] ?? tracks[0])[1])
 		.filter({ visible: true })
 		.count();
 	for (const [id, title] of queued ? [] : tracks) {
