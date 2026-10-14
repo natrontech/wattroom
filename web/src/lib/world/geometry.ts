@@ -183,9 +183,11 @@ function strip(pos: number[], uv: number[], cols: number) {
 /** A parapet stands where the ground this far past the shoulder lies more than `WALL_FALL` m below the road. */
 const WALL_OUT = 8;
 const WALL_FALL = 4;
-/** The parapet's height over the shoulder's edge, and how far its foot reaches into the fill below. */
-const WALL_H = 0.9;
-const WALL_FOOT = 1.5;
+/** The parapet stands this far past the shoulder, so the verge shows inside it. */
+const WALL_IN = 1;
+/** Its height over the road, and how far its foot reaches into the fill below. */
+const WALL_H = 0.7;
+const WALL_FOOT = 2;
 /** The `u` a parapet carries: past any ribbon's width, so the road's shader paints it whole. */
 const WALL_U = 50;
 
@@ -218,9 +220,9 @@ export function parapet(
 			const falls =
 				p.ele - groundAt(p.x + ox * out, p.z + oz * out) > WALL_FALL;
 			walled ||= falls;
-			const x = p.x + ox * FORMATION;
-			const z = p.z + oz * FORMATION;
-			const y = yOf(route, p.ele) + ROAD_LIFT - SHOULDER_DROP;
+			const x = p.x + ox * (FORMATION + WALL_IN);
+			const z = p.z + oz * (FORMATION + WALL_IN);
+			const y = yOf(route, p.ele) + ROAD_LIFT;
 			const v = pos.length / 3;
 			for (const n of [1, -1])
 				for (const h of [y - WALL_FOOT, falls ? y + WALL_H : y - WALL_FOOT]) {
@@ -300,7 +302,8 @@ export function roadMaterial(c: Style['road']): THREE.MeshLambertMaterial {
 				vec3 col = mix(uAsphalt, uShoulder, shoulder) * (1.0 + grain);
 				col = mix(col, uLine, max(edge, centre) * (1.0 - shoulder));
 				col = mix(col, uVerge, verge);
-				col = mix(col, uLine, step(${WALL_U - 1}.0, abs(u))); // a parapet (#3838)
+				// A parapet (#3838): pale stone, between the gravel and the paint, in the road's grain.
+				col = mix(col, mix(uShoulder, uLine, 0.4) * (1.0 + grain), step(${WALL_U - 1}.0, abs(u)));
 				vec4 diffuseColor = vec4(col, opacity);`,
 			);
 	};
