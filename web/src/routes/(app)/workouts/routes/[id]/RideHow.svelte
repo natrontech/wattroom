@@ -56,7 +56,7 @@
 			key: 'legs',
 			icon: ListOrdered,
 			label: 'Ride its workout',
-			line: 'ERG by the road at your FTP, in legs of at most 6 h',
+			line: 'ERG by the road, at your FTP',
 			stretch: false,
 			href: () => `/ride?road=${encodeURIComponent(id)}&leg=1`,
 		},
