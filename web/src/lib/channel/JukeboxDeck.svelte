@@ -252,7 +252,7 @@
 			{#snippet label()}
 				<span class="block min-w-0 text-2xl leading-7" title={MENU_HINT}>
 					<span class="block truncate font-medium">{current.title}</span>
-					<span class="text-muted flex min-w-0 gap-1.5">
+					<span class="text-muted flex min-w-0 gap-2">
 						<span class="min-w-0 truncate">by {current.addedBy}</span>
 						{#if next}<span class="num shrink-0">· {next} next</span>{/if}
 					</span>
