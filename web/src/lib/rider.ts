@@ -24,7 +24,7 @@ export interface SharedRide {
 	executionScored?: boolean;
 	/** docs/SPEC.md medal kinds won on this ride. */
 	medals?: string[];
-	/** Ridden with a crew (#3361: `inRoom` before crews, still sent for a release). */
+	/** Ridden with a crew. */
 	withCrew: boolean;
 	/** The voice channel's name, only when you may enter it. */
 	channelName?: string;

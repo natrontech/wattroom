@@ -598,7 +598,7 @@ func TestRideDetailNamesItsCrewAndMedals(t *testing.T) {
 		t.Fatalf("medals: %v", medals)
 	}
 	// The crew's name, under its own key and — for one release — the old one (#3361).
-	if medal, _ := medals[0].(map[string]any); medal["kind"] != "diesel" || medal["crewName"] != "Pain Cave" || medal["roomName"] != "Pain Cave" {
+	if medal, _ := medals[0].(map[string]any); medal["kind"] != "diesel" || medal["crewName"] != "Pain Cave" || medal["roomName"] != nil {
 		t.Fatalf("medal: %v", medals[0])
 	}
 }
