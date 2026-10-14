@@ -31,6 +31,7 @@ import {
 	TV,
 	assertRiding,
 	atReading,
+	atRoundSecond,
 	atSecond,
 	ride,
 	takes,
@@ -1305,7 +1306,7 @@ async function session(
 	const coachJoins = coach.page.getByRole('link', { name: 'Join the ride' });
 	if (await coachJoins.isVisible({ timeout: 5000 }).catch(() => false))
 		await coachJoins.click();
-	await atSecond(coach.page, RIDE_SECOND);
+	await atRoundSecond(coach.page, RIDE_SECOND);
 	return { coach, rider, crew };
 }
 
@@ -1601,11 +1602,11 @@ surface(
 	async (s) => {
 		const { coach } = await gameOnRoad(s, 'backyard-ramp');
 		try {
-			await atSecond(coach.page, RIDE_SECOND);
+			await atRoundSecond(coach.page, RIDE_SECOND);
 			await assertRiding(coach.page, true);
 			await s.shot(coach);
 			// The round's last half minute: the next round's arch is near.
-			await atSecond(coach.page, 165);
+			await atRoundSecond(coach.page, 165);
 			await s.shot(coach, { name: 'ride-game-backyard-arch' });
 		} finally {
 			await endSession(coach.page);
@@ -1621,7 +1622,7 @@ surface(
 		const { coach } = await gameOnRoad(s, 'collective-ramp', 3500);
 		try {
 			// Into round 2: the fog has risen once.
-			await atSecond(coach.page, 200);
+			await atRoundSecond(coach.page, 200);
 			await assertRiding(coach.page, true);
 			await s.shot(coach);
 		} finally {

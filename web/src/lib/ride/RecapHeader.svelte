@@ -8,12 +8,15 @@
 	let {
 		eyebrow,
 		title,
+		titleHref,
 		subline,
 		actions,
 	}: {
 		/** “<weekday> · <ride kind> · Solo|<crew>” (`recapEyebrow`). */
 		eyebrow: string;
 		title: string;
+		/** The title opens this page (a road's route page, F1). */
+		titleHref?: string;
 		/** A muted line under the title, before the actions wrap. */
 		subline?: Snippet;
 		/** Secondary actions first; the one filled button, Done, last. */
@@ -24,7 +27,15 @@
 <header class="flex flex-wrap items-center gap-x-6 gap-y-3">
 	<div class="min-w-0">
 		<p class="eyebrow">{eyebrow}</p>
-		<h1 class="page-title-sm mt-1 leading-tight break-words">{title}</h1>
+		<h1 class="page-title-sm mt-1 leading-tight break-words">
+			{#if titleHref}
+				<a href={titleHref} class="underline decoration-1 underline-offset-4"
+					>{title}</a
+				>
+			{:else}
+				{title}
+			{/if}
+		</h1>
 		{#if subline}
 			<p class="text-muted mt-1 text-xs">{@render subline()}</p>
 		{/if}

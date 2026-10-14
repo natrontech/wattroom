@@ -27,6 +27,7 @@
 	// header and the numbers sit under it, so neither waits below the fold.
 	let {
 		title,
+		titleHref,
 		kind = 'Workout',
 		crew,
 		samples,
@@ -42,6 +43,7 @@
 	}: {
 		/** The ride's name: the workout's, or the road's. */
 		title: string;
+		titleHref?: string;
 		kind?: RideKind;
 		/** The crew a session rode with; absent on a ride alone. */
 		crew?: string;
@@ -136,7 +138,7 @@
 </script>
 
 <article class="w-full" data-testid="closing-card">
-	<RecapHeader {eyebrow} {title} {actions} />
+	<RecapHeader {eyebrow} {title} {titleHref} {actions} />
 
 	{#if status}
 		<div class="has-[*]:mt-3">{@render status()}</div>
