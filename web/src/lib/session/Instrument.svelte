@@ -117,7 +117,11 @@
 				shown,
 			)}cqw, 100cqw - 50%) - 50%))"
 		>
-			<div class="flex items-end justify-center gap-4">
+			<div
+				class="flex justify-center {watts >= 1000
+					? 'flex-col items-center gap-2'
+					: 'items-end gap-4'}"
+			>
 				<span
 					class="font-display {numeral} block leading-[0.85] font-bold tabular-nums {tv
 						? 'text-[16vh]'
@@ -125,7 +129,7 @@
 					><TabularFigures value={quiet ? '—' : watts} /></span
 				>
 				{#if kg !== undefined}
-					<!-- W/kg beside the 3 s power, in the head (D17). -->
+					<!-- W/kg beside the 3 s power, under it from 1000 W (D17, ride-road-world item 9). -->
 					<span class="flex flex-col items-start text-left">
 						<span class="ride-label {tv ? 'text-[3vh]' : ''}">W/kg</span>
 						<span
