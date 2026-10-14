@@ -261,10 +261,14 @@
 		<p class="truncate font-medium {railText(riding, 'text-sm leading-tight')}">
 			{current.title}
 		</p>
-		<p class="text-muted mt-0.5 truncate {railText(riding, 'text-[11px]')}">
-			{setTracks ? 'playlist queued by' : 'queued by'}
-			{current.addedBy}
-		</p>
+		<!-- Riding, the column's height goes to the crew below: who queued it
+		     and the clock are desk detail, the bar shows how far it is. -->
+		{#if !riding}
+			<p class="text-muted mt-0.5 truncate text-[11px]">
+				{setTracks ? 'playlist queued by' : 'queued by'}
+				{current.addedBy}
+			</p>
+		{/if}
 	</div>
 
 	{#if streaming}
@@ -307,15 +311,12 @@
 					</span>
 				</span>
 			</button>
-			<div
-				class="text-muted num flex justify-between {railText(
-					riding,
-					'text-[10px]',
-				)}"
-			>
-				<span>{formatClockLong(elapsed)}</span>
-				<span>{duration > 0 ? formatClockLong(duration) : '–:––'}</span>
-			</div>
+			{#if !riding}
+				<div class="text-muted num flex justify-between text-[10px]">
+					<span>{formatClockLong(elapsed)}</span>
+					<span>{duration > 0 ? formatClockLong(duration) : '–:––'}</span>
+				</div>
+			{/if}
 		</div>
 	{/if}
 
