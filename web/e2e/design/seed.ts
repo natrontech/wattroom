@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { unpackRoad } from '../../src/lib/road/road';
-import { climbGpx, hairpinGpx, rollingGpx } from '../road-gpx';
+import { climbGpx, hairpinGpx, longHaulGpx, rollingGpx } from '../road-gpx';
 
 /**
  * The design shots' fixtures (#3666), seeded through the API the way a rider
@@ -14,6 +14,8 @@ export const ROADS = {
 	// or with no loop sent — is not reused.
 	hairpin: { name: 'Design switchbacks', gpx: hairpinGpx, turns: true },
 	rolling: { name: 'Design swells', gpx: rollingGpx, turns: false },
+	// Long enough for a second leg: Ride its workout offers it (#3601).
+	longHaul: { name: 'Design long haul', gpx: longHaulGpx, turns: false },
 	// A name too long for a card, filed under the one source that rides
 	// owner-only (ADR-0063). The road is invented; no Strava data is in it.
 	ownerOnly: {

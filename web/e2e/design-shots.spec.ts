@@ -741,15 +741,10 @@ surface(
 		await o.page.waitForURL('**/history/*');
 		await o.page.waitForTimeout(2500);
 		await s.shot(o, { name: 'route-best-opens' });
-		// Workout on it (#3681): the row picked, the shelf picking for this
-		// road, and a card's Ride opening on it; then the shelf on a phone.
-		await o.page.goto(`/workouts/routes/${id}`);
-		await o.page.getByRole('button', { name: /Workout on it/ }).click();
-		await o.page.waitForTimeout(500);
-		await s.shot(o, { name: 'route-workout-on' });
 		// Ride its workout (#3601): the row picked, leg 1's setup, and its
 		// summary with the offer of leg 2.
-		await o.page.goto(`/workouts/routes/${id}`);
+		const haul = await fixtureRoad(o.page, 'longHaul');
+		await o.page.goto(`/workouts/routes/${haul}`);
 		await o.page.getByRole('button', { name: /Ride its workout/ }).click();
 		await o.page.waitForTimeout(500);
 		await s.shot(o, { name: 'route-leg' });
@@ -760,17 +755,24 @@ surface(
 			.first()
 			.waitFor({ timeout: 15_000 });
 		await s.shot(o, { name: 'route-leg-setup' });
-		await ride(o.page, `/ride?road=${id}&leg=1`, { second: 8 });
+		await ride(o.page, `/ride?road=${haul}&leg=1`, { second: 65 });
 		await o.page
 			.getByRole('button', { name: /^(End ride|Save at km)/ })
 			.first()
 			.click();
+		await o.page.getByRole('button', { name: 'End the ride' }).click();
 		const saveLeg = o.page.getByRole('button', { name: 'Save the ride' });
 		if (await saveLeg.count()) await saveLeg.first().click();
 		await o.page
 			.getByRole('link', { name: /^Ride leg 2 of \d+$/ })
 			.waitFor({ timeout: 30_000 });
 		await s.shot(o, { name: 'route-leg-summary', full: true });
+		// Workout on it (#3681): the row picked, the shelf picking for this
+		// road, and a card's Ride opening on it; then the shelf on a phone.
+		await o.page.goto(`/workouts/routes/${id}`);
+		await o.page.getByRole('button', { name: /Workout on it/ }).click();
+		await o.page.waitForTimeout(500);
+		await s.shot(o, { name: 'route-workout-on' });
 		await o.page.getByRole('link', { name: 'Pick a workout' }).click();
 		await o.page.waitForURL(/\/workouts\?on=/);
 		await o.page.waitForTimeout(2500);
