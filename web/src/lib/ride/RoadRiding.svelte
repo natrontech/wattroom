@@ -212,6 +212,7 @@
 		cassette={!profile.current.singleSpeed}
 		split={ghost.split ?? undefined}
 		onend={() => void end()}
+		onrepair={(next) => solo.repair(next)}
 		onflag={() => flags.recorder.flag()}
 		ontv={() => (tv = true)}
 		worldClass="-mx-4 -my-5 sm:-mx-6"

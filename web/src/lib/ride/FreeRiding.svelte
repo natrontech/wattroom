@@ -14,6 +14,9 @@
 	import MonitorUp from '@lucide/svelte/icons/monitor-up';
 	import Plus from '@lucide/svelte/icons/plus';
 	import { faultCopy } from '$lib/channel/fault-copy';
+	import { FtmsTrainer } from '$lib/ble/ftms';
+	import { pairError } from '$lib/ble/pair-error';
+	import type { Trainer } from '$lib/ble/trainer';
 	import { formatClock } from '$lib/format';
 	import { climbedM } from '$lib/ride/climbed';
 	import type { Clamp } from '$lib/ride/drivetrain';
@@ -54,6 +57,7 @@
 		cassette = true,
 		split,
 		onend,
+		onrepair,
 		ending = false,
 		onflag,
 		ontv,
@@ -84,6 +88,8 @@
 		/** End ride; absent while there is nothing to end. */
 		onend?: () => void;
 		ending?: boolean;
+		/** Ride on with another trainer; absent where the page reattaches by itself. */
+		onrepair?: (next: Trainer) => void;
 		/** The ⚑ and TV (#52, #1632); absent where the page has its own — a voice channel's. */
 		onflag?: () => void;
 		ontv?: () => void;
@@ -137,8 +143,21 @@
 			? `Watts · ${free.targetWatts} W`
 			: `SIM · you feel ${(road ? road.felt : free.grade).toFixed(1)} %`,
 	);
-	// ponytail: the trainer reattaches by itself for as long as the page lives
-	// (#37), so the line has no button; one when a ride needs the chooser here.
+	let repairing = $state(false);
+	let repairError = $state<string | null>(null);
+	async function repair() {
+		repairing = true;
+		repairError = null;
+		const next = new FtmsTrainer();
+		try {
+			await next.connect();
+			onrepair?.(next);
+		} catch (cause) {
+			repairError = pairError(cause);
+		} finally {
+			repairing = false;
+		}
+	}
 	const fault = $derived(
 		stale && !idle
 			? faultCopy({ kind: 'trainer', state: 'silent' }).line
@@ -195,7 +214,15 @@
 					class="flex min-w-0 flex-1 items-center gap-4"
 				>
 					<span class="bg-danger size-2.5 shrink-0 rounded-full"></span>
-					<p class="min-w-0 truncate {WORDS}">{fault}</p>
+					<p class="min-w-0 truncate {WORDS}">{repairError ?? fault}</p>
+					{#if onrepair}
+						<button
+							onclick={() => void repair()}
+							disabled={repairing}
+							class="btn btn-primary btn-ride shrink-0"
+							>{repairing ? 'Pairing…' : 'Pair again'}</button
+						>
+					{/if}
 				</div>
 			{:else}
 				<p
