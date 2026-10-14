@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { formatClock } from '$lib/format';
 	import type { Block } from '$lib/workout/block';
-	import { blockBands, nextFor, trainerChip } from '$lib/workout/block';
+	import { blockBands, nextText, trainerChip } from '$lib/workout/block';
 	import { TV_LABEL } from '$lib/session/computer-pages';
 	import CountChips from '$lib/session/CountChips.svelte';
 
@@ -105,9 +105,7 @@
 			>
 				<span class={TV_LABEL}>next</span>
 				<span class="font-display min-w-0 truncate font-semibold"
-					>{block.next.label}{#if block.next.watts > 0}
-						· <span class="num text-neon">{block.next.watts} W</span>{/if}
-					· <span class="num">{nextFor(block.next.seconds)}</span></span
+					>{nextText(block.next)}</span
 				>
 				<CountChips
 					secondsLeft={block.secondsLeft}
@@ -150,11 +148,7 @@
 			<div class="border-ink/10 border-l pl-[3%] text-right">
 				<p class="eyebrow">next</p>
 				<p class="font-display text-base font-semibold tabular-nums">
-					{block.next.label}
-				</p>
-				<p class="text-muted num text-[11px]">
-					{#if block.next.watts > 0}{block.next.watts} W ·
-					{/if}{nextFor(block.next.seconds)}
+					{nextText(block.next)}
 				</p>
 			</div>
 		{/if}

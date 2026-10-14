@@ -15,7 +15,7 @@
 	 */
 	import { formatClock } from '$lib/format';
 	import { roadLine } from '$lib/ride/road-readout';
-	import { nextFor, trainerChip, type Block } from '$lib/workout/block';
+	import { nextText, trainerChip, type Block } from '$lib/workout/block';
 	import CountChips from '$lib/session/CountChips.svelte';
 	import type { Snippet } from 'svelte';
 
@@ -112,9 +112,7 @@
 						<p class="{WORDS} flex items-center gap-2 whitespace-nowrap">
 							<span class="ride-label">Next</span>
 							<span class="min-w-0 truncate">
-								{block.next.label}{#if block.next.watts > 0}
-									· <span class="num text-neon">{block.next.watts} W</span>{/if}
-								· <span class="num">{nextFor(block.next.seconds)}</span>
+								{nextText(block.next)}
 							</span>
 							<CountChips secondsLeft={block.secondsLeft} />
 						</p>
