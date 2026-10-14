@@ -102,10 +102,16 @@
 			     picker, the ride-alone lifecycle. It needs the trainer to hold
 			     its targets, so without one it says so rather than failing. -->
 			{#if !riding}
+				{#if !channel.trainer}<span
+						id="free-ride-workout-hint"
+						class="text-muted text-xs">Pair your trainer first</span
+					>{/if}
 				<button
 					onclick={() => channel.openPicker('ride')}
 					disabled={!channel.trainer}
-					title={channel.trainer ? undefined : 'Pair your trainer first'}
+					aria-describedby={channel.trainer
+						? undefined
+						: 'free-ride-workout-hint'}
 					class="btn btn-secondary btn-lg disabled:opacity-40"
 					>Ride a workout</button
 				>
