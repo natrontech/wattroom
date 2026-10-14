@@ -370,6 +370,7 @@
 						idle={channel.youUnmeasured}
 						target={channel.you.target}
 						ftp={channel.you.ftp}
+						kg={channel.you.kg}
 					/>
 				</section>
 			{/if}
@@ -429,6 +430,7 @@
 									idle={channel.youUnmeasured}
 									target={channel.you.target}
 									ftp={channel.you.ftp}
+									kg={channel.you.kg}
 									compact
 								/>
 							</div>

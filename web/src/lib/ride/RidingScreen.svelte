@@ -356,7 +356,7 @@
 				     seconds of all-out. No roster: nobody else is here. -->
 						<SprintMoment sprint={session.sprint} myWatts={watts} />
 					{:else}
-						<Instrument {watts} {target} {ftp} stale={signalLost} />
+						<Instrument {watts} {target} {ftp} {kg} stale={signalLost} />
 					{/if}
 				</section>
 			{/if}

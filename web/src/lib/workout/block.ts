@@ -208,6 +208,12 @@ export function trainerChip(block: Pick<Block, 'trainer' | 'watts'>): string {
 	return `SIM · you feel ${t.felt.toFixed(1)} %`;
 }
 
+/** NEXT's one wording on every surface (D16): "Sprint · 15 s", "Tempo · 220 W · 5 min". */
+export const nextText = (next: NonNullable<Block['next']>): string =>
+	[next.label, next.watts > 0 ? `${next.watts} W` : '', nextFor(next.seconds)]
+		.filter(Boolean)
+		.join(' · ');
+
 /** How long the next block runs, as NEXT says it (D16): "15 s", "5 min". */
 export const nextFor = (seconds: number): string =>
 	seconds < 60 ? `${seconds} s` : `${Math.round(seconds / 60)} min`;
