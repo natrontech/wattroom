@@ -117,16 +117,26 @@
 				shown,
 			)}cqw, 100cqw - 50%) - 50%))"
 		>
-			<span
-				class="font-display {numeral} block leading-[0.85] font-bold tabular-nums {tv
-					? 'text-[16vh]'
-					: 'text-[6.5rem]'}"
-				><TabularFigures value={quiet ? '—' : watts} /></span
-			>
-			<span class="eyebrow {tv ? 'text-[3vh]' : ''}"
-				>watts{#if kg !== undefined}
-					· {quiet ? '—' : wkg(watts, kg)} W/kg{/if}</span
-			>
+			<div class="flex items-end justify-center gap-4">
+				<span
+					class="font-display {numeral} block leading-[0.85] font-bold tabular-nums {tv
+						? 'text-[16vh]'
+						: 'text-[6.5rem]'}"
+					><TabularFigures value={quiet ? '—' : watts} /></span
+				>
+				{#if kg !== undefined}
+					<!-- W/kg beside the 3 s power, in the head (D17). -->
+					<span class="flex flex-col items-start text-left">
+						<span class="ride-label {tv ? 'text-[3vh]' : ''}">W/kg</span>
+						<span
+							class="font-display text-ink leading-none font-bold tabular-nums {tv
+								? 'text-[6vh]'
+								: 'text-4xl'}">{quiet ? '—' : wkg(watts, kg)}</span
+						>
+					</span>
+				{/if}
+			</div>
+			<span class="eyebrow {tv ? 'text-[3vh]' : ''}">watts</span>
 			<!-- The zone you are actually in, named (#1531, ADR-0046): the gauge
 			     has been tinted by it since #386 and never said which one, so the
 			     colour was a code with no key on the one screen that could give
