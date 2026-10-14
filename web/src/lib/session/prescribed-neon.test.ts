@@ -10,21 +10,21 @@ const asked = (html: string) =>
 		...html.matchAll(/<span class="text-neon">\d+<\/span>/g),
 	].map((m) => m[0]);
 
+const head = () =>
+	render(ComputerHead, {
+		props: { power: 240, kg: 75, ftp: 250, stale: false, target: 250 },
+	}).body;
+const instrument = () =>
+	render(Instrument, {
+		props: { watts: 240, target: 250, ftp: 250, fullScale: 375 },
+	}).body;
+
 describe('a prescribed target wears neon, never watt, never a glow', () => {
 	it.each([
-		[
-			'the computer head',
-			ComputerHead,
-			{ power: 240, kg: 75, ftp: 250, stale: false, target: 250 },
-		],
-		[
-			'the instrument',
-			Instrument,
-			{ watts: 240, target: 250, ftp: 250, fullScale: 375 },
-		],
-	] as const)('%s', (_, component, props) => {
-		const html = render(component as never, { props }).body;
-		const marks = asked(html);
+		['the computer head', head],
+		['the instrument', instrument],
+	])('%s', (_, draw) => {
+		const marks = asked(draw());
 		expect(marks.length).toBeGreaterThan(0);
 		for (const m of marks) expect(m).not.toMatch(/watt|glow/);
 	});
