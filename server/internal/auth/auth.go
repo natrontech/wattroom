@@ -26,6 +26,8 @@ import (
 	"time"
 
 	"github.com/go-webauthn/webauthn/webauthn"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	"golang.org/x/oauth2"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
@@ -218,15 +220,20 @@ var devNames = regexp.MustCompile(`^[A-Za-z][A-Za-z ]{0,23}$`)
 
 const devNameRule = "A dev rider's name is 1–24 letters and spaces, starting with a letter."
 
+// devIdentity's account id comes from its name (#3992): the hub orders a
+// roster by user id, and a fresh database (make design-shots builds one per
+// run) would otherwise deal the same dev riders out in a new order each time.
 func devIdentity(as string) identity {
 	as = strings.TrimSpace(as)
-	if as == "" || strings.EqualFold(as, "Dev Rider") {
-		return identity{ProviderUserID: "local-dev", DisplayName: "Dev Rider"}
+	ident := identity{ProviderUserID: "local-dev", DisplayName: "Dev Rider"}
+	if as != "" && !strings.EqualFold(as, "Dev Rider") {
+		ident = identity{
+			ProviderUserID: "local-dev:" + strings.ToLower(strings.ReplaceAll(as, " ", "-")),
+			DisplayName:    as,
+		}
 	}
-	return identity{
-		ProviderUserID: "local-dev:" + strings.ToLower(strings.ReplaceAll(as, " ", "-")),
-		DisplayName:    as,
-	}
+	ident.UserID = pgtype.UUID{Bytes: uuid.NewSHA1(uuid.NameSpaceURL, []byte("wattroom:"+ident.ProviderUserID)), Valid: true}
+	return ident
 }
 
 func (s *Service) handleStart(w http.ResponseWriter, r *http.Request) {

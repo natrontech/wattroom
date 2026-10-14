@@ -172,10 +172,11 @@ export function armProfile(d: RiderDims): Section {
 	const L1 = d.upperArm;
 	const L2 = d.foreArm;
 	// prettier-ignore
-	const r = curve([[-0.06 * k, 0.056], [0, 0.058], [0.06 * k, 0.054], [0.15 * k, 0.047], [0.25 * k, 0.042], [L1, 0.036], [L1 + 0.05 * k, 0.041], [L1 + 0.12 * k, 0.036], [L1 + L2 - 0.02 * k, 0.026], [L1 + L2, 0.027]]);
+	const r = curve([[-0.06 * k, 0.05], [0, 0.052], [0.06 * k, 0.052], [0.15 * k, 0.047], [0.25 * k, 0.042], [L1, 0.036], [L1 + 0.05 * k, 0.041], [L1 + 0.12 * k, 0.036], [L1 + L2 - 0.02 * k, 0.026], [L1 + L2, 0.027]]);
 	// prettier-ignore
 	const bic = curve([[0.05 * k, 0], [0.15 * k, 0.011], [0.26 * k, 0], [L1 + 0.02 * k, 0], [L1 + 0.07 * k, 0.006], [L1 + 0.15 * k, 0]]);
-	const cap = 0.058 * b * k;
+	// The shoulder's round no prouder than the deltoid: a bigger one puffs the sleeve (#3772).
+	const cap = 0.05 * b * k;
 	const at = (s: number): Profile => {
 		if (s < 0) {
 			const rr = Math.sqrt(Math.max(cap * cap - s * s, 1e-6));

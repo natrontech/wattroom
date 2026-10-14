@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/endpoints"
 )
@@ -23,6 +24,8 @@ type identity struct {
 	ProviderUserID string
 	DisplayName    string
 	AvatarURL      string
+	// UserID is the account id a first sign-in creates; unset means random.
+	UserID pgtype.UUID
 }
 
 type provider struct {

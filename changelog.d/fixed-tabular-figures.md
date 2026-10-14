@@ -1,0 +1,1 @@
+- Clocks, watts and every other number now keep their width as their digits change, instead of shifting on each tick.

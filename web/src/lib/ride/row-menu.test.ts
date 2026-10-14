@@ -44,6 +44,15 @@ describe('rideRowMenu (#2171)', () => {
 		);
 	});
 
+	it('puts Delete last, after a separator, in danger (#3687)', () => {
+		const entries = rideRowMenu(ride());
+		expect(entries.at(-2)).toBe('separator');
+		expect(entries.at(-1)).toMatchObject({
+			label: 'Delete ride',
+			danger: true,
+		});
+	});
+
 	it('flips the ride the other way', () => {
 		item(rideRowMenu(ride()), 'Share with friends').onSelect();
 		expect(shared.calls).toEqual([true]);

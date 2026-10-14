@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { FRAMES, type FrameId } from './bikes/presets';
-import { B, BONES } from './contract';
+import { B, BONES, S } from './contract';
 import { buildFigure } from './figure';
 import { resolveKit } from './kit';
 
@@ -96,6 +96,35 @@ describe('one skinned figure and bike per draw', () => {
 			return w;
 		};
 		expect(width('strong')).toBeGreaterThan(width('slim'));
+	});
+
+	it('ends the jersey on the shorts, fitted to the hips, never over the saddle (#3772)', () => {
+		const m = buildFigure(resolveKit());
+		const { k } = m.userData.rig.dims;
+		const g = m.geometry;
+		const p = g.attributes.position;
+		const slot = g.attributes.slot;
+		const bone = g.attributes.skinIndex;
+		// The bind pose in the pelvis's own space: y up the spine from the hip centre, z across.
+		const toPelvis = m.skeleton.boneInverses[B.pelvis];
+		const v = new THREE.Vector3();
+		let lowest = Infinity;
+		let widest = 0;
+		let hips = 0;
+		for (let i = 0; i < p.count; i++) {
+			v.fromBufferAttribute(p, i).applyMatrix4(toPelvis);
+			const s = slot.getX(i);
+			// The sleeves ride the arms, which bind elsewhere.
+			const trunk = [B.pelvis, B.torso].includes(bone.getX(i));
+			if (s === S.jersey && trunk) {
+				lowest = Math.min(lowest, v.y);
+				if (v.y < 0) widest = Math.max(widest, Math.abs(v.z));
+			}
+			if (s === S.shorts && v.y < 0 && v.y > -0.06 * k)
+				hips = Math.max(hips, Math.abs(v.z));
+		}
+		expect(lowest).toBeGreaterThan(-0.05 * k);
+		expect(widest - hips).toBeLessThan(0.012 * k);
 	});
 
 	it('stands in its bind pose until a pose is written', () => {

@@ -117,10 +117,10 @@ func TestASessionRideStaysOneWhenItsCrewIsGone(t *testing.T) {
 		return nil
 	}
 
-	if d := page(ride); d["crewMember"] != true || d["room"] != true || d["inSession"] != true {
+	if d := page(ride); d["crewMember"] != true || d["room"] != nil || d["inSession"] != true {
 		t.Errorf("a member's session ride: crewMember %v room %v inSession %v", d["crewMember"], d["room"], d["inSession"])
 	}
-	if d := page(solo); d["room"] == true || d["inSession"] == true || d["crewMember"] == true {
+	if d := page(solo); d["room"] != nil || d["inSession"] == true || d["crewMember"] == true {
 		t.Errorf("a solo ride: room %v inSession %v crewMember %v", d["room"], d["inSession"], d["crewMember"])
 	}
 
@@ -137,13 +137,13 @@ func TestASessionRideStaysOneWhenItsCrewIsGone(t *testing.T) {
 	if _, err := h.store.Pool.Exec(t.Context(), "delete from crews where id = $1", crew.ID); err != nil {
 		t.Fatal(err)
 	}
-	if r := listed(ride); r["crew"] != nil || r["room"] != true || r["inSession"] != true {
+	if r := listed(ride); r["crew"] != nil || r["room"] != nil || r["inSession"] != true {
 		t.Errorf("the list, crew gone: crew %v room %v inSession %v", r["crew"], r["room"], r["inSession"])
 	}
-	if d := page(ride); d["crew"] != nil || d["room"] != true || d["inSession"] != true {
+	if d := page(ride); d["crew"] != nil || d["room"] != nil || d["inSession"] != true {
 		t.Errorf("the page, crew gone: crew %v room %v inSession %v", d["crew"], d["room"], d["inSession"])
 	}
-	if r := listed(solo); r["room"] == true || r["inSession"] == true {
+	if r := listed(solo); r["room"] != nil || r["inSession"] == true {
 		t.Errorf("the solo ride reads as a session ride: room %v inSession %v", r["room"], r["inSession"])
 	}
 }

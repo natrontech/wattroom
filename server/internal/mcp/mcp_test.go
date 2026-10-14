@@ -351,7 +351,7 @@ func TestListRidesNamesNoPlace(t *testing.T) {
 // The session flag rides under its standing name (#2959), beside the retired
 // `room` a coach's script still reads until #3461 drops it: both present,
 // both saying the same thing.
-func TestListRidesCarriesInSessionBesideRoom(t *testing.T) {
+func TestListRidesCarriesInSessionNotRoom(t *testing.T) {
 	mux, st, user := setup(t)
 	if _, err := st.Queries.CreateRide(t.Context(), db.CreateRideParams{
 		UserID: user.ID, WorkoutName: "Openers",
@@ -377,8 +377,8 @@ func TestListRidesCarriesInSessionBesideRoom(t *testing.T) {
 	}
 	ride := payload.Rides[0]
 	in, has := ride["inSession"]
-	if !has || in != ride["room"] || in != false {
-		t.Fatalf("a solo ride: inSession %v (present %v), room %v", in, has, ride["room"])
+	if _, room := ride["room"]; !has || in != false || room {
+		t.Fatalf("a solo ride: inSession %v (present %v), room present %v", in, has, room)
 	}
 }
 

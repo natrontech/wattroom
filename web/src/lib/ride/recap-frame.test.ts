@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { recapEyebrow, recapTiles } from '$lib/ride/recap-frame';
+import { recapEyebrow, recapTiles, rideKind } from '$lib/ride/recap-frame';
 
 describe('recapTiles (#3686)', () => {
 	const full = {
@@ -55,5 +55,25 @@ describe('recapEyebrow (#3686)', () => {
 		expect(recapEyebrow(saturday, 'Bunch ride', 'Hill Rats')).toBe(
 			`${weekday} · Bunch ride · Hill Rats`,
 		);
+	});
+});
+
+describe('rideKind (#3687)', () => {
+	it('names a ride by the mode it was saved with', () => {
+		expect(rideKind({ rideMode: 'free', distanceM: 12000 })).toBe('Free ride');
+		expect(rideKind({ rideMode: 'workout', distanceM: 12000 })).toBe('Workout');
+		expect(rideKind({ rideMode: 'game', inSession: true })).toBe('Game');
+		expect(rideKind({ rideMode: 'race', inSession: true })).toBe('Race');
+	});
+
+	it('calls a session on a road a bunch ride, as the closing card does', () => {
+		expect(
+			rideKind({ rideMode: 'workout', inSession: true, distanceM: 12000 }),
+		).toBe('Bunch ride');
+		expect(rideKind({ rideMode: 'workout', inSession: true })).toBe('Workout');
+	});
+
+	it('reads a ride older than its mode as a workout', () => {
+		expect(rideKind({})).toBe('Workout');
 	});
 });

@@ -12,7 +12,7 @@ import type { RideSample } from './stats';
 export interface RideMedal {
 	/** docs/SPEC.md kind — names come from $lib/medals, never retyped. */
 	kind: string;
-	/** The crew it was won in (#3361: `roomName` before crews). */
+	/** The crew it was won in. */
 	crewName: string;
 	awardedAt: string;
 }
@@ -55,6 +55,8 @@ export interface RideDetail {
 	samples: RideTraceSample[];
 	/** A road ride's metres, the server's replay (#3053); absent off a road. */
 	distanceM?: number;
+	/** How it was ridden, ADR-0062's word (#3687); absent on older rides. */
+	rideMode?: 'free' | 'workout' | 'bunch' | 'race' | 'game';
 	/** The rider's own road it rode (#3874): its title and its way back. */
 	road?: RideRoad;
 	/** Where the ride was sent, if anywhere — absent when nobody tried (#799). */
