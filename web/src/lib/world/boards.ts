@@ -20,10 +20,14 @@ import type { Style } from './styles';
  * its props (stage.ts).
  */
 
-/** A face's slot: each face is painted at its own size, stretched into one, and stretched back onto its board. */
-const SLOT_W = 512;
+/**
+ * A face's slot: each face is painted at its own size, stretched into one, and
+ * stretched back onto its board; 1024 wide keeps the arch's banner whole.
+ * ponytail: a tile's faces re-upload their whole 8 MB page; per-slot uploads if a tile's arrival stalls a ride.
+ */
+const SLOT_W = 1024;
 const SLOT_H = 256;
-const COLS = 4;
+const COLS = 2;
 const ROWS = 4;
 /** UV inset, in pixels, so a page's far mips blend little of a neighbour's face. */
 const INSET = 4;
