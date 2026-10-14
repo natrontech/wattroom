@@ -150,10 +150,6 @@ type sharedRideJSON struct {
 	// may enter it (ListSharedRides).
 	WithCrew    bool   `json:"withCrew"`
 	ChannelName string `json:"channelName,omitempty"`
-	// The same two under their names from before crews (ADR-0058), for one
-	// release, so a tab loaded before the deploy still reads them (#3361).
-	InRoom   bool   `json:"inRoom"`
-	RoomName string `json:"roomName,omitempty"`
 }
 
 type riderJSON struct {
@@ -303,7 +299,6 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 				ExecutionScored: row.ExecutionScored,
 				Medals:          strings.Fields(row.MedalKinds),
 				WithCrew:        row.WithCrew, ChannelName: row.ChannelName,
-				InRoom: row.WithCrew, RoomName: row.ChannelName,
 			})
 		}
 	}

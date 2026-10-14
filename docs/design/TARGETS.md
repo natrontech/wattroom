@@ -152,9 +152,9 @@ Layout:
 
 World:
 
-16. The world's road is this ride's: ahead, the fixture's approach, a straight at 3 % toward the face of the switchback stack (no flat valley straight, no church village); distance “0.1 of 7.1”, your figure at the approach's start; your figure's km matches the Skyline dot; from km 2.3, on the second leg, the hairpins climb ahead, the second hairpin and the stack above it in view [multi:world-hairpins]. [3663-world-is-your-ride] [probe:world]
+16. The world's road is this ride's: ahead, the fixture's approach, a straight at 3 % toward the face of the switchback stack (no flat valley straight, no church village); distance “0.1 of 7.1”, your figure at the approach's start; your figure's km matches the Skyline dot; from km 2.3, on the second leg, what the chase camera holds (item 24): the road bending into the second hairpin ahead, the slope rising beside it [multi:world-hairpins]. [3663-world-is-your-ride] [probe:world]
 17. A solo ride holds one figure, yours, one ring; no bots. [3663-world-is-your-ride]
-18. Sky: top third cool blue-lavender, blue the highest channel, darkening upward; a thin peach band on the horizon, OKLCH hue 58–60°, ≥ 40° from every dark identity's watt, no taller than ~a tenth of the visible sky; nothing brown-mauve or pink; no stars at the start. [3085-ride-light]
+18. Sky: top third cool blue-lavender, blue the highest channel, darkening upward; a thin peach band on the horizon, OKLCH hue 58–60°, ≥ 40° from every dark identity's watt, no taller than ~a tenth of the visible sky; nothing brown-mauve or pink; no stars at the start; judged on a frame where the sky shows, not where the stack's face fills it. [3085-ride-light]
 19. No warm key light, no cast shadow; shading soft and cool, from the sky. [3085-ride-light]
 20. Distant ridges opaque, paler and bluer with distance; no translucent pink layers, no white stripes. [3085-ride-light]
 21. Road: near asphalt cool dark grey, ~rgb 30–40 / 32–42 / 45–60 (tier3 samples 33,36,53), fine grain, never black [probe:asphaltRgb]; off-white edge lines and dashed centre line painted flat; a lighter gravel shoulder outside the edge line, then a green-grey verge; white posts with a black band in a steady rhythm to the vanishing point; grain still under the moving camera [multi:world-drift]; snow poles belong to #3184. [world-road-surface]
@@ -434,7 +434,7 @@ Capture: `/dev/world?m=<metre>&p=0|1&cam=chase&look=bluehour&chrome=0`, 1440 × 
 Capture: `/workouts`, the hairpin and rolling route seeded; whole page body, desk and phone, both schemes. Targets: v2-routes, v3-roads (“Your roads”), v2-collections (the rhythm).
 
 1. Title and subline top left. The search box on its own row, ≤ ~420 px wide, reads “Find a workout or a route”, filters routes too. [workouts-page]
-2. Every shelf opens with one header row: eyebrow left, the shelf's doors right on the same baseline (`btn-ghost btn-xs`, ≥ 28 px). [workouts-page]
+2. Every shelf opens with one header row: eyebrow left, the shelf's doors right on the same baseline (`btn-ghost btn-xs`, ≥ 28 px). [workouts-page] [probe:doors]
 3. Each door once; on an empty shelf the doors live only in the empty state. [workouts-page]
 4. An empty state is one line plus its button; no “Nothing yet.” [workouts-page]
 5. Sections 32 px apart; each eyebrow 8 px above its content. [workouts-page]

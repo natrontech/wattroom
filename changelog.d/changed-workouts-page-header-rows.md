@@ -1,0 +1,1 @@
+- The Workouts page puts its search on its own row, and it finds your routes as well as your workouts; each shelf has one header row with its buttons, and an empty one says what lands there in one line.
