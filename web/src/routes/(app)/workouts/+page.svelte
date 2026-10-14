@@ -133,7 +133,6 @@
 	const shelfEmpty = $derived(
 		!custom.error && custom.loaded && custom.all.length === 0,
 	);
-	let routesMatching = $state(0);
 </script>
 
 <svelte:head><title>Workouts · WattRoom</title></svelte:head>
@@ -217,6 +216,12 @@
 				</EmptyState>
 			</div>
 		{:else}
+			<!-- Each shelf says when the search emptied it (#3685). -->
+			{#if shownCustom.length === 0}
+				<p class="text-muted mt-2 text-sm">
+					No workout of yours matches “{query.trim()}”.
+				</p>
+			{/if}
 			<ul class="mt-2 grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
 				{#each shownCustom as entry (entry.id)}
 					<WorkoutCard
@@ -265,7 +270,7 @@
 		{/if}
 	</section>
 
-	<RouteShelf {query} bind:matching={routesMatching} />
+	<RouteShelf {query} />
 
 	<!-- /ramp retires here (ADR-0020): a ramp test is a workout you start, not
 	     a destination. It keeps its own ride screen — it writes your FTP — but
@@ -308,9 +313,9 @@
 		{/each}
 	</div>
 
-	{#if query.trim() && shown.length === 0 && shownCustom.length === 0 && routesMatching === 0}
+	{#if shown.length === 0}
 		<p class="text-muted mt-4 text-sm">
-			No workout or route matches “{query.trim()}”.
+			No curated workout matches “{query.trim()}”.
 		</p>
 	{/if}
 	<ul class="mt-4 grid gap-3 md:grid-cols-2 2xl:grid-cols-3">

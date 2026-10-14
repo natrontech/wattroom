@@ -638,6 +638,23 @@ alone(() => {
 
 // ─── C. Roads library ────────────────────────────────────────────────────
 
+/** probe:doors — each shelf header row's doors: label, classes, box (#3685). */
+const shelfDoors = () =>
+	[...document.querySelectorAll('h2.eyebrow')].map((h) => ({
+		shelf: h.textContent?.trim(),
+		doors: [...(h.parentElement?.querySelectorAll('a, button') ?? [])].map(
+			(d) => {
+				const r = d.getBoundingClientRect();
+				return {
+					label: d.textContent?.trim(),
+					cls: d.className,
+					h: Math.round(r.height),
+					right: Math.round(r.right),
+				};
+			},
+		),
+	}));
+
 surface(
 	'workouts',
 	async (s) => {
@@ -646,12 +663,15 @@ surface(
 			[PHONE, 'phone-workouts'],
 		] as const)) {
 			const o = await s.open(device);
-			await page(s, o, '/workouts', { name });
+			await page(s, o, '/workouts', { name, measure: { doors: shelfDoors } });
 		}
 		// A rider with no roads; then the route card's menu, its body opening
 		// the route page, and its Ride starting F1 (#3683).
 		const fresh = await s.open(DESK, { as: 'Newcomer' });
-		await page(s, fresh, '/workouts', { name: 'workouts-empty' });
+		await page(s, fresh, '/workouts', {
+			name: 'workouts-empty',
+			measure: { doors: shelfDoors },
+		});
 		const o = await s.open(DESK);
 		const hairpin = await fixtureRoad(o.page, 'hairpin');
 		await o.page.goto('/workouts');

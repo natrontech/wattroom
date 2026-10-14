@@ -17,12 +17,9 @@
 	 * way a workout is, so it lives on the same page. Each is the one route
 	 * row (#3683): the card opens its page, Ride rides it — from where they
 	 * left off when there is somewhere to carry on. The page's search finds
-	 * them too (#3685); `matching` tells it whether any did.
+	 * them too (#3685).
 	 */
-	let {
-		query = '',
-		matching = $bindable(0),
-	}: { query?: string; matching?: number } = $props();
+	let { query = '' }: { query?: string } = $props();
 	let routes = $state<StoredRoute[] | null>(null);
 	let error = $state<string | null>(null);
 
@@ -42,9 +39,6 @@
 				r.name.toLowerCase().includes(q) ||
 				r.generatedName.toLowerCase().includes(q),
 		);
-	});
-	$effect(() => {
-		matching = shown.length;
 	});
 
 	// Every device, as a workout card's Ride: where this one cannot reach a
@@ -116,6 +110,11 @@
 			</EmptyState>
 		</div>
 	{:else}
+		{#if shown.length === 0}
+			<p class="text-muted mt-2 text-sm">
+				No route of yours matches “{query.trim()}”.
+			</p>
+		{/if}
 		<ul class="mt-2 grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
 			{#each shown as route (route.id)}
 				<li class="min-w-0">
