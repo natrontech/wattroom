@@ -747,6 +747,30 @@ surface(
 		await o.page.getByRole('button', { name: /Workout on it/ }).click();
 		await o.page.waitForTimeout(500);
 		await s.shot(o, { name: 'route-workout-on' });
+		// Ride its workout (#3601): the row picked, leg 1's setup, and its
+		// summary with the offer of leg 2.
+		await o.page.goto(`/workouts/routes/${id}`);
+		await o.page.getByRole('button', { name: /Ride its workout/ }).click();
+		await o.page.waitForTimeout(500);
+		await s.shot(o, { name: 'route-leg' });
+		await o.page.getByRole('link', { name: 'Ride its workout' }).click();
+		await o.page.waitForURL(/\/ride\?road=.+&leg=1/);
+		await o.page
+			.getByRole('button', { name: 'Ride simulated' })
+			.first()
+			.waitFor({ timeout: 15_000 });
+		await s.shot(o, { name: 'route-leg-setup' });
+		await ride(o.page, `/ride?road=${id}&leg=1`, { second: 8 });
+		await o.page
+			.getByRole('button', { name: /^(End ride|Save at km)/ })
+			.first()
+			.click();
+		const saveLeg = o.page.getByRole('button', { name: 'Save the ride' });
+		if (await saveLeg.count()) await saveLeg.first().click();
+		await o.page
+			.getByRole('link', { name: /^Ride leg 2 of \d+$/ })
+			.waitFor({ timeout: 30_000 });
+		await s.shot(o, { name: 'route-leg-summary', full: true });
 		await o.page.getByRole('link', { name: 'Pick a workout' }).click();
 		await o.page.waitForURL(/\/workouts\?on=/);
 		await o.page.waitForTimeout(2500);
