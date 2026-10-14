@@ -49,19 +49,23 @@ describe('the bike computer reads from the saddle', () => {
 		['on a desk', {}, 'px', { value: 36, word: 24 }],
 		['on the TV', { tv: true }, 'vh', { value: 5, word: 3 }],
 	] as const)('%s', (_, props, unit, floor) => {
+		// Cadence, not power: on the TV the head draws the power (#3677).
 		const html = draw({ stats, ...props });
 		const value = sizeOf(
-			classesOf(html, /<span[^>]*class="num[^"]*"[^>]*>251/),
+			classesOf(html, /<span[^>]*class="num[^"]*"[^>]*>90/),
 			unit,
 		);
 		const unitSize = sizeOf(
-			classesOf(html, /<span[^>]*class="text-muted[^"]*font-normal"[^>]*>W</),
+			classesOf(
+				html,
+				/<span[^>]*class="text-muted[^"]*font-normal"[^>]*>rpm</,
+			),
 			unit,
 		);
 		const word = sizeOf(
 			classesOf(
 				html,
-				/<span[^>]*class="[^"]*flex items-center[^"]*"[^>]*>Power/,
+				/<span[^>]*class="[^"]*flex items-center[^"]*"[^>]*>Cadence/,
 			),
 			unit,
 		);
@@ -94,7 +98,17 @@ describe('turning the page', () => {
 		expect(html).not.toMatch(/computer-dot|next page/);
 	});
 
-	it('has nothing to tap on the TV, where the keys turn it', () => {
-		expect(draw({ stats, tv: true })).not.toMatch(/<button/);
+	// TARGETS D15: ← name → with dots on every layout, the TV's included.
+	it('turns by ← and → on the TV, with its dots', () => {
+		const html = draw({ stats, tv: true });
+		expect(html).toMatch(/aria-label="previous page, POWER"[^>]*icon-btn-lg/);
+		expect(html).toMatch(/aria-label="next page, POWER"[^>]*icon-btn-lg/);
+		expect(html.match(/data-testid="computer-dot"/g)).toHaveLength(2);
+	});
+
+	it('leaves power and W/kg to the head on the TV (#3677)', () => {
+		const html = draw({ stats, tv: true });
+		expect(html).not.toMatch(/data-field="(power|wkg)"/);
+		expect(html).toMatch(/data-field="cadence"/);
 	});
 });
