@@ -477,7 +477,7 @@ Capture: `/workouts/routes/<id>` for the hairpin and the rolling route (≥ 2 cl
 15. No watt, glow, shadow or blur anywhere.
 16. With “Workout on it” selected (`route-workout-on`): its line reads “Pick a workout; Terrain Match picks the start”, the primary reads “Pick a workout” and opens `/workouts?on=<id>`, and Which stretch is absent, since Terrain Match picks the start. [route-workout-on]
 17. With “Ride its workout” selected (`route-leg`): the primary reads “Ride its workout” and opens `/ride?road=<id>&leg=1`; Which stretch is absent, since the legs cover the road. The leg's setup at that url is a desk surface on the leg's workout, not the free-ride card. [route-leg]
-18. A leg's summary (`route-leg-summary`) offers “Ride leg k+1 of n” as a `btn-secondary` beside Pick another workout and Done, only while the road runs on past leg k; the last leg has no such button. [route-leg]
+18. A leg's summary (`route-leg-summary`) offers “Ride leg k+1 of n” as a `btn-secondary` beside Pick another workout and Done, only while the road runs on past leg k; the last leg has no such button. [route-leg] [test:web/src/lib/road/leg.test.ts]
 
 #### import-idle, import, import-saved
 

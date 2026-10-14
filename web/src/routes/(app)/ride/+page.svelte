@@ -622,9 +622,11 @@
 				{remembered}
 				lastWorkout={lastName}
 				{workout}
-				summary={ridesRoute && road
-					? `${selected.summary} On ${road.name}, from km ${formatKm(from)}.`
-					: selected.summary}
+				summary={legs.length > 0
+					? `ERG by the road, at your FTP: leg ${Math.min(leg, legs.length)} of ${legs.length}.`
+					: ridesRoute && road
+						? `${selected.summary} On ${road.name}, from km ${formatKm(from)}.`
+						: selected.summary}
 				{ftp}
 				{solo}
 				{replayName}
