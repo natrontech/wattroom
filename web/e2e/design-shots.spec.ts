@@ -37,6 +37,7 @@ import {
 	takes,
 	variants,
 	wanted,
+	RELEASE_FEED,
 	type Opened,
 } from './design/shoot';
 import { hudScale } from './design/probe';
@@ -931,8 +932,6 @@ const WEEK_STATES: [string, () => unknown[], boolean][] = [
 
 const WINDOWS_UA =
 	'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
-const RELEASE_FEED =
-	'https://api.github.com/repos/natrontech/wattroom-releases/**';
 /** A desktop build, as the release feed lists one (desktop.spec.ts's). */
 const DESKTOP_RELEASE = {
 	tag_name: 'desktop-v0.2.0',

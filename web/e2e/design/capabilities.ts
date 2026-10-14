@@ -16,6 +16,7 @@ export function readCapabilities() {
 		share: typeof navigator.share,
 		pointerFine: matchMedia('(pointer: fine)').matches,
 		hoverHover: matchMedia('(hover: hover)').matches,
+		userAgent: navigator.userAgent,
 	};
 }
 
