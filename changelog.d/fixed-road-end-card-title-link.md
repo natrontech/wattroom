@@ -1,0 +1,1 @@
+- The road-end card's title opens the road's page again.
