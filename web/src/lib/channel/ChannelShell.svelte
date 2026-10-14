@@ -418,6 +418,7 @@
 	<SidePanel
 		live={phase === 'live'}
 		riding={!!connection.riding()}
+		roadside={phase === 'live' && !connection.joined()}
 		{riders}
 		members={props.members}
 		onCheer={(emoji) => live.cheer(emoji)}

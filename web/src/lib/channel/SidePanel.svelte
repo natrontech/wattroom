@@ -50,6 +50,7 @@
 	let {
 		live,
 		riding = false,
+		roadside = false,
 		riders = [],
 		members = [],
 		player,
@@ -61,6 +62,8 @@
 		live: boolean;
 		/** This device's rider is pedalling, in a session or a free ride. */
 		riding?: boolean;
+		/** The page beside it carries the roadside deck and its cheers (#3941). */
+		roadside?: boolean;
 		/** Who is here (ADR-0020, #181 gap 3) — the roster owns the column. */
 		riders?: LiveRider[];
 		/**
@@ -363,8 +366,9 @@
 			     a thing you throw into the channel, and neither is typing —
 			     which mid-ride was never on the table anyway (ux.md). The picker
 			     sits beside the soundboard: six 44 px targets do not fit one row
-			     of the column (TARGETS G5, #3828). -->
-			<CheerDeck onCheer={(key) => onCheer?.(key)} />
+			     of the column (TARGETS G5, #3828). A spectator's cheers are the
+			     roadside deck's, drawn once (#3941). -->
+			{#if !roadside}<CheerDeck onCheer={(key) => onCheer?.(key)} />{/if}
 			<div class="flex gap-2">
 				<BoardToggle />
 				<button

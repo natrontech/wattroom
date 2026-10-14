@@ -428,6 +428,21 @@ test('a phone follows a session link and watches it run', async ({
 	});
 	const session = new URL(coach.url()).pathname;
 
+	// A desk beside the session draws one cheer deck, the roadside's: the
+	// people column drew the same five a second time (#3941).
+	const desk = await riders('Watch Desk');
+	await desk.setViewportSize({ width: 1440, height: 900 });
+	await channels.enter(desk, opened);
+	await expect(
+		desk.getByRole('button', { name: /^Hand .+ a bottle$/ }),
+	).toBeVisible({ timeout: 15_000 });
+	await expect(
+		desk.getByRole('button', { name: 'More reactions' }),
+	).toBeVisible();
+	await expect(
+		desk.getByRole('button', { name: 'Ring the cowbell' }),
+	).toHaveCount(1);
+
 	const phone = await riders('Session Phone');
 	await phone.setViewportSize({ width: 375, height: 812 });
 	await channels.enter(phone, opened);
