@@ -112,14 +112,17 @@
 		class="@container flex items-end {tv ? 'min-h-[22vh]' : 'min-h-32'}"
 	>
 		<div
-			class="ease-live w-max text-center transition-transform duration-[250ms]"
+			class="ease-live w-max text-center transition-transform duration-[250ms] {watts >=
+			1000
+				? 'flex flex-col items-center'
+				: ''}"
 			style="transform: translateX(calc(clamp(50%, {pct(
 				shown,
 			)}cqw, 100cqw - 50%) - 50%))"
 		>
 			<div
 				class="flex justify-center {watts >= 1000
-					? 'flex-col items-center gap-2'
+					? 'contents'
 					: 'items-end gap-4'}"
 			>
 				<span
@@ -130,7 +133,11 @@
 				>
 				{#if kg !== undefined}
 					<!-- W/kg beside the 3 s power, under it from 1000 W (D17, ride-road-world item 9). -->
-					<span class="flex flex-col items-start text-left">
+					<span
+						class="flex flex-col text-left {watts >= 1000
+							? 'order-2 mt-2 items-center'
+							: 'items-start'}"
+					>
 						<span class="ride-label {tv ? 'text-[3vh]' : ''}">W/kg</span>
 						<span
 							class="font-display text-ink leading-none font-bold tabular-nums {tv
@@ -140,7 +147,7 @@
 					</span>
 				{/if}
 			</div>
-			<span class="eyebrow {tv ? 'text-[3vh]' : ''}">watts</span>
+			<span class="eyebrow order-1 {tv ? 'text-[3vh]' : ''}">watts</span>
 			<!-- The zone you are actually in, named (#1531, ADR-0046): the gauge
 			     has been tinted by it since #386 and never said which one, so the
 			     colour was a code with no key on the one screen that could give
@@ -149,7 +156,7 @@
 				<!-- Muted words and a zone dot (#2856): the ramp is fitted to a
 				     fill's floor, and Z1 written in its own colour was 2.1:1. -->
 				<span
-					class="eyebrow flex items-center justify-center gap-1 {tv
+					class="eyebrow order-3 flex items-center justify-center gap-1 {tv
 						? 'text-[3vh]'
 						: ''}"
 					><ZoneDot {zone} class={tv ? 'size-[1.8vh]' : 'size-1.5'} />z{zone}
