@@ -80,7 +80,7 @@
 				>{retrying ? 'Queueing…' : 'Try sending it again'}</button
 			>
 			{#if retryError}
-				<span class="text-danger mt-1.5 block">{retryError}</span>
+				<span class="text-danger mt-2 block">{retryError}</span>
 			{/if}
 		{/if}
 	</p>
