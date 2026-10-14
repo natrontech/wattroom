@@ -91,6 +91,8 @@ Run `date` when you start. At two hours without a green PR, or on the third fail
 
 If the issue already has two stand-downs, add `needs-human-input` and mention @janlauber with the blocker instead, so no run takes it up a third time.
 
+A design check that ends FAIL at round 3 is not a stand-down. Follow design-check §7: the PR stays draft, and the issue keeps `needs-human-input` and the mention. Never close that PR or remove that label. On #3677 doing so cost a whole second run that failed the same way.
+
 Kill only processes you started, by PID.
 
 ## 9. The last line
