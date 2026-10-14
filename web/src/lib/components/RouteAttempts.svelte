@@ -50,7 +50,7 @@
 	let width = $state(600);
 	const W = $derived(Math.max(width, 240));
 	const H = 160;
-	const PAD = { top: 12, bottom: 24, right: 64, left: 8 };
+	const PAD = { top: 12, bottom: 24, right: 72, left: 8 };
 	const plotW = $derived(W - PAD.left - PAD.right);
 	const plotH = H - PAD.top - PAD.bottom;
 

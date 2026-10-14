@@ -70,7 +70,7 @@ func (s *Service) upsert(r *http.Request, p provider, ident identity, tok *oauth
 	// (#1484): nobody has chosen these yet, and the first-run ask and Home's
 	// label both read that word rather than guessing from "is it still 200".
 	user, err = q.CreateUser(ctx, db.CreateUserParams{
-		DisplayName: name, FtpWatts: 200, WeightKg: 75,
+		ID: ident.UserID, DisplayName: name, FtpWatts: 200, WeightKg: 75,
 	})
 	if err != nil {
 		return db.User{}, false, err
@@ -99,7 +99,11 @@ func (s *Service) upsert(r *http.Request, p provider, ident identity, tok *oauth
 			if lookupErr != nil {
 				return db.User{}, false, lookupErr
 			}
-			_ = q.DeleteUser(ctx, user.ID)
+			// A dev rider's racers share one user row (ident.UserID): that
+			// row is the winner's, not an orphan.
+			if user.ID != winner.UserID {
+				_ = q.DeleteUser(ctx, user.ID)
+			}
 			// The loser adopts the winner's account, so nothing was created
 			// here even though this branch ran CreateUser.
 			adopted, err := q.GetUser(ctx, winner.UserID)

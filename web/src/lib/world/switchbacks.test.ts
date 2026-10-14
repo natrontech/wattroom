@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { Road } from '$lib/road/road';
 import type { Route } from '$lib/road/route';
+import { Biome } from './biome';
 import { routeOfRoad } from './road-route';
 import { generate, type World } from './world';
 import { BUILD_MS, worstRiseThroughRoad } from './world.test-helper';
@@ -35,5 +36,29 @@ beforeAll(() => {
 describe('stacked switchbacks', () => {
 	it('never lift the ground through a road, even where two legs disagree', () => {
 		expect(worstRiseThroughRoad(route, world)).toBeLessThan(0.2);
+	});
+
+	it('grow the wall between legs over, not paint it bare rock (#3838)', () => {
+		const { pos, biome } = world.mesh;
+		const toRoad = (x: number, z: number) => {
+			let d = Infinity;
+			for (let i = 0; i < route.x.length; i++)
+				d = Math.min(d, Math.hypot(route.x[i] - x, route.z[i] - z));
+			return d;
+		};
+		let wall = 0;
+		let rock = 0;
+		for (let v = 0; v < pos.length / 3; v++) {
+			const [x, z] = [pos[v * 3], pos[v * 3 + 2]];
+			const d = toRoad(x, z);
+			if (d < 10 || d > 58) continue;
+			const gx = (world.heightAt(x + 5, z) - world.heightAt(x - 5, z)) / 10;
+			const gz = (world.heightAt(x, z + 5) - world.heightAt(x, z - 5)) / 10;
+			if (Math.hypot(gx, gz) <= 0.85) continue;
+			wall++;
+			if (biome[v] === Biome.Rock) rock++;
+		}
+		expect(wall).toBeGreaterThan(100);
+		expect(rock / wall).toBeLessThan(0.4);
 	});
 });

@@ -8,11 +8,14 @@
 	let {
 		eyebrow,
 		title,
+		subline,
 		actions,
 	}: {
 		/** “<weekday> · <ride kind> · Solo|<crew>” (`recapEyebrow`). */
 		eyebrow: string;
 		title: string;
+		/** A muted line under the title, before the actions wrap. */
+		subline?: Snippet;
 		/** Secondary actions first; the one filled button, Done, last. */
 		actions?: Snippet;
 	} = $props();
@@ -22,6 +25,9 @@
 	<div class="min-w-0">
 		<p class="eyebrow">{eyebrow}</p>
 		<h1 class="page-title-sm mt-1 leading-tight break-words">{title}</h1>
+		{#if subline}
+			<p class="text-muted mt-1 text-xs">{@render subline()}</p>
+		{/if}
 	</div>
 	{#if actions}
 		<div

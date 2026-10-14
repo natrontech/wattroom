@@ -1,0 +1,1 @@
+- Personal-token tooling: the ride list, the ride detail and the MCP `list_rides` tool no longer carry `room`; read `inSession`, the same flag, which shipped beside it in 2026.10.1.

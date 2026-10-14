@@ -1,0 +1,1 @@
+- The slope between stacked switchback legs is grass and trees with rock outcrops, no longer one bare grey wall beside the road.

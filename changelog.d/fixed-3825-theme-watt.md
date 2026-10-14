@@ -1,0 +1,1 @@
+- Miami Nights, Miami Day and Tron Ice draw their watt clear of the zone colours, so a Z6 or Z3 bar no longer reads as live data.

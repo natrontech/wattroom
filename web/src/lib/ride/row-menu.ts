@@ -1,6 +1,5 @@
 import type { MenuEntry } from '$lib/context-menu.svelte';
 import { deleteRideAfterConfirm } from './delete-ride';
-import type { ServerRide } from './list';
 import { setRideShared, shareAction } from './share';
 import Lock from '@lucide/svelte/icons/lock';
 import Trash2 from '@lucide/svelte/icons/trash-2';
@@ -13,12 +12,14 @@ import Users from '@lucide/svelte/icons/users';
  * sharing, it cannot be handed back by an undo toast (errors.md).
  *
  * `onDeleted` is how the caller's own list forgets the ride; a refused or
- * cancelled delete never calls it.
+ * cancelled delete never calls it. The ride's own page opens the same menu
+ * (#3687), with Delete last there too.
  */
-export function rideRowMenu(
-	ride: ServerRide,
-	onDeleted?: (ride: ServerRide) => void,
-): MenuEntry[] {
+export function rideRowMenu<
+	R extends Parameters<typeof deleteRideAfterConfirm>[0] & {
+		sharedWithFriends: boolean;
+	},
+>(ride: R, onDeleted?: (ride: R) => void): MenuEntry[] {
 	return [
 		{
 			label: shareAction(ride.sharedWithFriends).label,

@@ -6,6 +6,27 @@
  * Defaults below are the generated Outrun theme. The app shell replaces all
  * colour tokens together when the rider chooses another theme.
  */
+/*
+ * Chakra Petch's ten figures, each in one advance (G4, #3922). The face has no
+ * `tnum` feature, so `tabular-nums` does nothing on it and a ticking clock
+ * shifted as its digits changed. web/scripts/tabular-figures.py cuts these
+ * from @fontsource/chakra-petch; OFL 1.1, as the original.
+ */
+@font-face {
+	font-family: 'WattRoom Figures';
+	font-weight: 500;
+	font-display: swap;
+	src: url('./lib/fonts/wattroom-figures-500.woff2') format('woff2');
+	unicode-range: U+0030-0039;
+}
+@font-face {
+	font-family: 'WattRoom Figures';
+	font-weight: 700;
+	font-display: swap;
+	src: url('./lib/fonts/wattroom-figures-700.woff2') format('woff2');
+	unicode-range: U+0030-0039;
+}
+
 @theme {
 	/* Tailwind's pulse, sampled 44 times in its 2 s instead of on every frame
 	 * (#3199): the same opacity curve, but the window only has to be
@@ -148,9 +169,10 @@
 		}
 	}
 
-	/* Chakra Petch carries display and every number; Barlow does the reading. */
+	/* Chakra Petch carries display and every number; Barlow does the reading.
+	 * Its figures come from WattRoom Figures, below. */
 	--font-sans: 'Barlow', ui-sans-serif, system-ui, sans-serif;
-	--font-display: 'Chakra Petch', var(--font-sans);
+	--font-display: 'WattRoom Figures', 'Chakra Petch', var(--font-sans);
 
 	/* Motion (ADR-0079; the values are docs/SPEC.md's "Motion"). Mirrored for
 	 * script in $lib/motion/tokens.ts, and motion-tokens.test.ts holds the two
@@ -369,7 +391,8 @@
  * whichever monospace the OS ships beside Chakra Petch numbers on the same
  * row. Chakra Petch's numerals are the brand; this is the rule with a name, so
  * a surface that wants aligned digits asks for `num` rather than reaching for
- * a typeface.
+ * a typeface. The figures align through `--font-display`'s first face, which
+ * holds them in one advance; `tabular-nums` only matters to the fallback.
  *
  * Not for a code, a token or an address: those are strings that happen to
  * contain digits, and a monospace face is doing real work there.
@@ -617,6 +640,12 @@ body {
  * yet (D1), so there it steps down and may wrap rather than scroll (G5). */
 @utility ride-word {
 	@apply text-xl leading-7 sm:text-2xl sm:leading-7;
+}
+/* A worded button on a riding surface (TARGETS G4, #3896): btn-lg's 44 px
+ * box with ride-word's 24 px word, where btn-lg's 14 px sat under the floor.
+ * Icon buttons keep their 44 × 44 square. */
+@utility btn-ride {
+	@apply ride-word min-h-11 px-4 py-2 font-semibold;
 }
 /* The voice channel's stage while a ride runs (TARGETS G1, #3890): the Lounge
  * marks its root, and the components it shares with desk pages take riding

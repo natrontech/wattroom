@@ -257,7 +257,7 @@
 						<button
 							onclick={() => free.setMode(mode.id)}
 							aria-pressed={free.mode === mode.id}
-							class="btn btn-lg {free.mode === mode.id
+							class="btn btn-ride {free.mode === mode.id
 								? 'btn-secondary'
 								: 'btn-ghost'}">{mode.label}</button
 						>
@@ -307,7 +307,7 @@
 					<Skyline {...skyline} />
 				</div>
 			{/if}
-			<button onclick={() => void end()} class="btn btn-primary btn-lg"
+			<button onclick={() => void end()} class="btn btn-primary btn-ride"
 				>{endRideLabel(free)}</button
 			>
 		{:else if free.saving}

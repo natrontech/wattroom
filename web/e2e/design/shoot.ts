@@ -158,6 +158,9 @@ export class Shoot {
 				// Software GL misses every frame; the dev build's frame judge
 				// stands down for the capture (#3823).
 				localStorage.setItem('wattroom.world-software.v1', '1');
+				// The simulated rider holds the watts without noise, so BEFORE and
+				// AFTER show the numeral at one place on its glide (#4000).
+				localStorage.setItem('wattroom.sim-steady.v1', '1');
 				if (world === false) localStorage.removeItem('wattroom.world-slot.v1');
 			},
 			[MUTED, world ?? null] as const,

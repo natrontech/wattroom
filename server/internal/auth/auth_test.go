@@ -1270,3 +1270,47 @@ func TestMeSaysWhenToAskAgain(t *testing.T) {
 		t.Fatal("no pending address, no window")
 	}
 }
+
+// A dev rider is the same account id on every fresh database (#3992): the hub
+// orders a roster by id, so design shots seat their riders in one order only
+// while this holds. The literal pins it across processes, not just reruns.
+func TestDevRiderIDIsStableAcrossFreshDatabases(t *testing.T) {
+	s := devLinkService(t)
+	const designer = "014f2bfb-c40b-5f36-bf67-8fc00a84403d"
+	for range 2 {
+		devSignIn(t, s, "Designer")
+		if got := devIdentityOwners(t, s)["local-dev:designer"]; got != designer {
+			t.Fatalf("Designer's user id = %q, want %q", got, designer)
+		}
+		// The next sign-in meets an empty table, as a fresh database would.
+		if _, err := s.store.Pool.Exec(t.Context(), "delete from users where id = $1", designer); err != nil {
+			t.Fatalf("delete: %v", err)
+		}
+	}
+}
+
+// First sign-ins of one dev rider race to the same user row; a loser adopts
+// it and must not delete it as its own orphan.
+func TestDevSignInRaceKeepsTheSharedRow(t *testing.T) {
+	s := devLinkService(t)
+	var wg sync.WaitGroup
+	codes := make([]int, 8)
+	for i := range codes {
+		wg.Go(func() {
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/auth/dev/start?as=Racer", nil)
+			req.SetPathValue("provider", "dev")
+			w := httptest.NewRecorder()
+			s.handleStart(w, req)
+			codes[i] = w.Code
+		})
+	}
+	wg.Wait()
+	for i, code := range codes {
+		if code != http.StatusFound {
+			t.Fatalf("sign-in %d: %d", i, code)
+		}
+	}
+	if _, err := s.store.Queries.GetUser(t.Context(), devIdentity("Racer").UserID); err != nil {
+		t.Fatalf("the shared row is gone: %v", err)
+	}
+}

@@ -205,23 +205,6 @@ export const EXCEPTIONS: {
 	reason: string;
 }[] = [
 	{
-		themeId: 'miami-nights',
-		checkId: 'z6-watt-delta',
-		reason:
-			"the identity's watt is coral and the shared ramp's Z6 is coral (ADR-0023 §4: zones are a scale, not branding, held within 8° of the reference's hue). Moving Z6 clear of watt means leaving that ramp, which is a decision for the ramp and not for one theme; issue 3754 left it recorded here.",
-	},
-	{
-		themeId: 'miami-day',
-		checkId: 'z6-watt-delta',
-		reason: 'the same coral-on-coral as Miami Nights above, on the light ramp.',
-	},
-	{
-		themeId: 'tron-ice',
-		checkId: 'z3-watt-delta',
-		reason:
-			"the identity's watt is cyan and the shared ramp's Z3 is cyan, the same collision as Miami's Z6 and for the same reason: clearing it takes a hue move past the ramp's 8° (ADR-0023 §4).",
-	},
-	{
 		themeId: 'monokai',
 		checkId: 'surface-layering',
 		reason:

@@ -927,7 +927,8 @@ select coalesce(rt.gen_name, '')::text as gen_name,
        coalesce(case when rt.owner_id = r.user_id then rt.id::text end, '')::text as route_id,
        coalesce(case when rt.owner_id = r.user_id then rt.name end, '')::text as route_name,
        coalesce(rt.ele_source, '')::text as ele_source,
-       r.distance_m
+       r.distance_m,
+       r.ride_mode
 from rides r
 left join routes rt on rt.id = r.route_id
 where r.id = $1 and r.user_id = $2
@@ -944,6 +945,7 @@ type GetRideRoadRow struct {
 	RouteName string
 	EleSource string
 	DistanceM *int32
+	RideMode  *string
 }
 
 // The road a ride rode, for its card and page (#3142): the route's generated
@@ -952,7 +954,8 @@ type GetRideRoadRow struct {
 // the name they know it by too (#3874): a session ridden on someone else's
 // road has that road's id, and its rename is its owner's alone (ADR-0063).
 // A ride on no road, or on a route since deleted, answers empty strings; the
-// metres stay while the ride does.
+// metres stay while the ride does. How it was ridden comes too (ADR-0062),
+// null on a ride saved before rides kept it: the page's eyebrow says it.
 func (q *Queries) GetRideRoad(ctx context.Context, arg GetRideRoadParams) (GetRideRoadRow, error) {
 	row := q.db.QueryRow(ctx, getRideRoad, arg.ID, arg.UserID)
 	var i GetRideRoadRow
@@ -962,6 +965,7 @@ func (q *Queries) GetRideRoad(ctx context.Context, arg GetRideRoadParams) (GetRi
 		&i.RouteName,
 		&i.EleSource,
 		&i.DistanceM,
+		&i.RideMode,
 	)
 	return i, err
 }

@@ -25,6 +25,8 @@ const ALLOWLIST: Allowlist = {
 		'the crew picker is a menu (py-1, inset as above)',
 	'lib/ride/RecapTiles.svelte':
 		"a recap tile is about 58 px tall (TARGETS.md closing-card item 6), which the default's py-3 grows past",
+	'routes/(app)/history/[id]/+page.svelte':
+		"the ride's best-power tiles wear RecapTiles' tile beside it (#3687), so one kind of number reads one way",
 	'lib/friends/FriendsAround.svelte':
 		'the friends-around row is pills at text-xs, which the card density would draw at twice their height',
 	'routes/(app)/u/[id]/+page.svelte':
@@ -111,6 +113,7 @@ describe('a size variant emits after the base it overrides', () => {
 			'btn',
 			'btn-xs',
 			'btn-lg',
+			'btn-ride',
 			'input',
 			'input-xs',
 			'p-1',
@@ -135,6 +138,7 @@ describe('a size variant emits after the base it overrides', () => {
 		for (const [base, variant] of [
 			['.btn', '.btn-xs'],
 			['.btn', '.btn-lg'],
+			['.btn', '.btn-ride'],
 			['.input', '.input-xs'],
 		]) {
 			expect(at(variant), `${variant} must emit after ${base}`).toBeGreaterThan(
