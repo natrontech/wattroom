@@ -72,8 +72,7 @@ describe('stacked switchbacks, seen from below', () => {
 		const walled = new Set(along);
 		const LEG = 700; // 30 rows of 20 m, then the turn
 		const share = (leg: number) =>
-			[...walled].filter((d) => d >= leg * LEG && d < (leg + 1) * LEG)
-				.length /
+			[...walled].filter((d) => d >= leg * LEG && d < (leg + 1) * LEG).length /
 			(Math.min(LEG, route.length - leg * LEG) / 2);
 		expect(share(0)).toBeLessThan(0.1); // it rises from the valley's own ground
 		for (const leg of [1, 2, 3]) expect(share(leg)).toBeGreaterThan(0.4);

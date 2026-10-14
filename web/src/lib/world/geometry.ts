@@ -234,9 +234,7 @@ export function parapet(
 				]) {
 					const [a, c, b, d] = [prev + f, prev + f + 1, v + f, v + f + 1]; // a b along the foot, c d the top
 					// (a, b, c) faces right of travel: wound so each face looks out of its own side.
-					idx.push(
-						...(side * n < 0 ? [a, b, c, b, d, c] : [a, c, b, b, c, d]),
-					);
+					idx.push(...(side * n < 0 ? [a, b, c, b, d, c] : [a, c, b, b, c, d]));
 				}
 			prev = v;
 		});
