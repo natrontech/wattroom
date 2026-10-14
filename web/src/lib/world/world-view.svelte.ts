@@ -7,14 +7,13 @@
 import { prefersReducedMotion } from '$lib/motion';
 import { WORLD_MIN_PX } from '$lib/session/docks';
 import { worldSlotOn } from './flag';
+import { setWorldMode, worldMode, type WorldMode } from './mode';
 import {
 	rideView,
 	type Failure,
 	type RideView,
 	type SkylineReason,
 } from './ride-view';
-
-const FLAT_KEY = 'wattroom.flat-road.v1';
 
 // The window's height, kept for every ride on the page by one listener.
 const viewport = $state({
@@ -25,24 +24,6 @@ if (typeof window !== 'undefined')
 		'resize',
 		() => (viewport.height = window.innerHeight),
 	);
-
-/** The rider's Flat road choice on this device; null while never made. */
-export function flatRoad(): boolean | null {
-	try {
-		const v = localStorage.getItem(FLAT_KEY);
-		return v === null ? null : v === '1';
-	} catch {
-		return null;
-	}
-}
-
-export function setFlatRoad(flat: boolean): void {
-	try {
-		localStorage.setItem(FLAT_KEY, flat ? '1' : '0');
-	} catch {
-		/* a browser that keeps nothing keeps the default */
-	}
-}
 
 let caps: { webgl2: boolean; multiDraw: boolean } | null = null;
 
@@ -64,7 +45,7 @@ export function createWorldView() {
 	const decide = (): RideView | null =>
 		worldSlotOn()
 			? rideView({
-					flat: flatRoad(),
+					mode: worldMode(),
 					reducedMotion: prefersReducedMotion.current,
 					...capabilities(),
 					failure,
@@ -94,15 +75,24 @@ export function createWorldView() {
 			failure = why;
 			view = decide();
 		},
+		/** Full, Steady or Light, as the rider chose; Full while nothing was. */
+		get look(): Exclude<WorldMode, 'flat'> {
+			const m = worldMode();
+			return m === null || m === 'flat' ? 'full' : m;
+		},
 		/** The world's context menu: the flat road, from now on, on this device. */
 		flatten() {
-			setFlatRoad(true);
+			setWorldMode('flat');
 			view = decide();
 		},
-		/** The only way back to the world this ride; a choice it overrides is the rider's new one. */
+		/**
+		 * The only way back to the world this ride; a choice it overrides is the
+		 * rider's new one. Reduced motion's one tap lands on Steady (ADR-0079).
+		 */
 		retry() {
 			const was = reason();
-			if (was === 'chosen' || was === 'motion') setFlatRoad(false);
+			if (was === 'chosen') setWorldMode('full');
+			if (was === 'motion') setWorldMode('steady');
 			failure = null;
 			view = decide();
 		},

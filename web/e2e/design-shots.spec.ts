@@ -264,11 +264,12 @@ surface(
 			const o = await s.open(DESK, { world: true, reducedMotion });
 			if (flat)
 				await o.ctx.addInitScript(() =>
-					localStorage.setItem('wattroom.flat-road.v1', '1'),
+					localStorage.setItem('wattroom.world.mode.v1', 'flat'),
 				);
 			const road = await fixtureRoad(o.page, 'hairpin');
 			await ride(o.page, `/ride?w=openers&road=${road}`);
 			await assertRiding(o.page);
+			await o.page.getByTestId('flat-road').waitFor();
 			await s.shot(o, { name });
 		}
 	},
