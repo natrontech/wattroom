@@ -123,12 +123,15 @@
 				class="flex shrink-0 items-center gap-1.5 font-mono {railText(
 					riding,
 					'text-[10px]',
-				)} {inSync ? 'text-watt' : 'text-muted'}"
+				)} {!inSync ? 'text-muted' : riding ? 'text-neon' : 'text-watt'}"
 			>
+				<!-- Riding, watt is G2's three marks and nothing else. -->
 				<span
-					class="h-1.5 w-1.5 rounded-full {inSync
-						? 'bg-watt glow-stroke'
-						: 'bg-muted motion-safe:animate-pulse'}"
+					class="h-1.5 w-1.5 rounded-full {!inSync
+						? 'bg-muted motion-safe:animate-pulse'
+						: riding
+							? 'bg-neon'
+							: 'bg-watt glow-stroke'}"
 				></span>
 				{inSync ? 'in sync' : 'catching up'}
 			</span>

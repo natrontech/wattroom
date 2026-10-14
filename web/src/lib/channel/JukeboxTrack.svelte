@@ -140,13 +140,15 @@
 					class="bg-surface h-9 w-16 rounded object-cover"
 				/>
 			{/if}
-			{#if position}
+			<!-- Riding, a 9 px badge is under G4's floor: the list's order is the
+			     position, and the chevron says there is more than one. -->
+			{#if position && !riding}
 				<span
 					class="bg-paper/70 text-ink num absolute bottom-0 left-0 rounded-tr px-1 text-[9px]"
 					>{position}</span
 				>
 			{/if}
-			{#if tracks.length}
+			{#if tracks.length && !riding}
 				<!-- The stack says "more than one" before any words do. -->
 				<span
 					class="border-neon/50 bg-paper/80 text-muted num absolute right-0 bottom-0 rounded-tl border-t border-l px-1 text-[9px]"
@@ -205,7 +207,9 @@
 					: 'border-muted/20 text-muted hover:border-muted/50'}"
 			>
 				<ChevronUp size={12} />
-				<span class="num text-[10px] leading-none">{votes}</span>
+				<span class="num leading-none {riding ? 'text-2xl' : 'text-[10px]'}"
+					>{votes}</span
+				>
 			</button>
 		{/if}
 

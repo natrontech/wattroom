@@ -1323,11 +1323,19 @@ surface(
 			const add = coach.page.getByRole('textbox', {
 				name: 'add music: search your library, or paste a YouTube link',
 			});
-			for (const [id, title] of [
-				['dQw4w9WgXcQ', 'Never Gonna Give You Up'],
-				['9bZkp7q19f0', 'GANGNAM STYLE'],
-				['kJQP7kiw5Fk', 'Despacito'],
-			]) {
+			// The channel's deck outlives the session: the scheme shot before
+			// this one left it queued.
+			const queued = await coach.page
+				.getByText('Never Gonna Give You Up')
+				.filter({ visible: true })
+				.count();
+			for (const [id, title] of queued
+				? []
+				: [
+						['dQw4w9WgXcQ', 'Never Gonna Give You Up'],
+						['9bZkp7q19f0', 'GANGNAM STYLE'],
+						['kJQP7kiw5Fk', 'Despacito'],
+					]) {
 				await add.fill(`https://www.youtube.com/watch?v=${id}`);
 				await add.press('Enter');
 				await coach.page
