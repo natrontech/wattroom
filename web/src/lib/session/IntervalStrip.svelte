@@ -48,7 +48,7 @@
 		<div>
 			<p class={TV_LABEL}>block {block.index} of {block.count}</p>
 			<p
-				class="font-display mt-[1vh] text-[26vh] leading-[0.85] font-bold tabular-nums"
+				class="font-display mt-[1vh] text-[34vh] leading-[0.85] font-bold tabular-nums"
 			>
 				{formatClock(block.secondsLeft)}
 			</p>

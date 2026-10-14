@@ -49,8 +49,8 @@
 	const size = $derived(
 		tv
 			? {
-					power: 'text-[30vh]',
-					unit: 'text-[7vh]',
+					power: 'text-[34vh]',
+					unit: 'text-[8vh]',
 					label: TV_LABEL,
 					value: 'text-[9vh]',
 					words: 'text-[3.4vh] leading-none',

@@ -73,7 +73,7 @@
 
 	const size = $derived(
 		tv
-			? { value: 'text-[9vh]', unit: 'text-[4.5vh]', word: 'text-[3vh]' }
+			? { value: 'text-[10vh]', unit: 'text-[5vh]', word: 'text-[3vh]' }
 			: phone
 				? { value: 'text-2xl', unit: 'text-xs', word: 'text-sm' }
 				: { value: 'text-4xl', unit: 'text-lg', word: 'text-2xl' },
@@ -262,7 +262,7 @@
 	     width, and the panel the height the graph's slim band leaves. -->
 	<div
 		class={docked && tv
-			? 'flex flex-1 flex-col justify-between gap-[2vh]'
+			? 'flex flex-1 flex-col justify-evenly gap-[2vh]'
 			: 'contents'}
 	>
 		{#if docked}
