@@ -21,8 +21,6 @@
 	import { bindRideShift } from '$lib/ride/keys';
 	import { confirm } from '$lib/confirm.svelte';
 	import { FLAG_NOTICE_MS, FLAG_SAID } from '$lib/ride/flag';
-	import CoachMark from '$lib/ride/CoachMark.svelte';
-	import { coachDone, coachSeen } from '$lib/ride/coach-marks';
 	import RideStatus from '$lib/ride/RideStatus.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import Skyline from '$lib/ride/Skyline.svelte';
@@ -41,7 +39,6 @@
 	import MomentCard from '$lib/session/MomentCard.svelte';
 	import CountdownScreen from '$lib/session/CountdownScreen.svelte';
 	import RideBand from '$lib/session/RideBand.svelte';
-	import CircleHelp from '@lucide/svelte/icons/circle-help';
 	import MonitorUp from '@lucide/svelte/icons/monitor-up';
 	import AlarmClockPlus from '@lucide/svelte/icons/alarm-clock-plus';
 	import SkipForward from '@lucide/svelte/icons/skip-forward';
@@ -123,13 +120,6 @@
 	// hands the ride to the Skyline in slot 5 until the rider asks for 3D
 	// again (#3080).
 	const world = createWorldView();
-	// The first world ride's three marks (#3218); "How to read the road" in
-	// slot 1 asks for them again.
-	let coach = $state<number | null>(coachSeen() ? null : 0);
-	function endCoach() {
-		coach = null;
-		coachDone();
-	}
 	const inWorld = $derived(world.on && !!session.road);
 	const skyline = $derived(skylineOf(session.road, session.segments, ftp));
 	// The climb card on a road (#3645): CLIMB opens by itself, and says so.
@@ -167,12 +157,6 @@
 					><MonitorUp size={20} /></button
 				>
 			{/if}
-			<button
-				onclick={() => (coach === null ? (coach = 0) : endCoach())}
-				class={ICON}
-				aria-label="How to read the road"
-				title="How to read the road"><CircleHelp size={20} /></button
-			>
 			{#if !session.road?.pinned}
 				<button
 					onclick={() => session.extend(60)}
@@ -316,7 +300,7 @@
 	<RidingSurface
 		class="flex-1 {inWorld ? '-mx-4 -my-5 sm:-mx-6' : 'pb-16 sm:pb-0'}"
 		world={inWorld ? road : undefined}
-		moment={inWorld && (session.sprint || coach !== null) ? moment : undefined}
+		moment={inWorld && session.sprint ? moment : undefined}
 		centre={countIn ? digit : undefined}
 	>
 		{#snippet header()}
@@ -471,13 +455,5 @@
 {/if}
 
 {#snippet moment()}
-	{#if session.sprint}
-		<MomentCard sprint={session.sprint} />
-	{:else if coach !== null}
-		<CoachMark
-			step={coach}
-			onnext={() => (coach = (coach ?? 0) + 1)}
-			ondone={endCoach}
-		/>
-	{/if}
+	{#if session.sprint}<MomentCard sprint={session.sprint} />{/if}
 {/snippet}

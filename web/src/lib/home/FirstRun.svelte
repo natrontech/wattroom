@@ -23,6 +23,8 @@
 		label: string;
 		/** The small grey line under a link row; the ask writes its own. */
 		hint?: string;
+		/** More small grey lines under the hint (#3218). */
+		lines?: string[];
 		href?: string;
 		ask?: boolean;
 	};
@@ -63,6 +65,11 @@
 					done: ridden,
 					label: 'Ride your first road',
 					hint: 'a short climb on the simulated trainer, or pair your own',
+					lines: [
+						'The ring under you is your zone.',
+						'The road ahead shows the climb.',
+						'The climb card opens by itself.',
+					],
 					href: `/ride?road=${INTRO_ROAD_ID}`,
 				}
 			: {
@@ -139,6 +146,9 @@
 							<span class="min-w-0 flex-1">
 								<span class="block font-medium">{step.label}</span>
 								<span class="text-muted block text-xs">{step.hint}</span>
+								{#each step.lines ?? [] as line (line)}
+									<span class="text-muted block text-xs">{line}</span>
+								{/each}
 							</span>
 							<ChevronRight size={14} class="text-muted shrink-0" />
 						</a>

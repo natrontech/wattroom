@@ -15,6 +15,9 @@ test('a rider who has never ridden is shown the first step on Home', async ({
 	await expect(page.getByText(/getting set up/)).toBeVisible();
 	const first = page.getByRole('link', { name: /Ride your first road/ });
 	await expect(first).toBeVisible();
+	await expect(
+		page.getByText('The ring under you is your zone.'),
+	).toBeVisible();
 	await first.click();
 	await expect(page).toHaveURL(/\/ride\?road=intro$/);
 });
@@ -49,44 +52,6 @@ test('the first-run card rides the intro road on the simulated trainer', async (
 	await expect(page.getByTestId('bike-computer')).toBeVisible({
 		timeout: 15_000,
 	});
-});
-
-/**
- * The first world ride shows three coach marks (#3218) and, once dismissed,
- * never again on this device.
- */
-test('the first world ride shows its three marks once @world', async ({
-	page,
-}) => {
-	test.skip(
-		!!process.env.PLAYWRIGHT_BASE_URL,
-		'the ?as= dev provider only exists on a dev server',
-	);
-	await page.setViewportSize({ width: 1440, height: 900 });
-	await page.addInitScript(MUTE);
-	// The world is in slot 2 behind this flag (#3031).
-	await page.addInitScript(() =>
-		localStorage.setItem('wattroom.world-slot.v1', '1'),
-	);
-	await signInAs(page, 'Coach Mark Rider', '/ride?w=smoke-test&road=intro');
-	await page
-		.getByRole('button', { name: 'Ride simulated' })
-		.click({ timeout: 15_000 });
-	await page.getByRole('button', { name: 'Start the ride' }).click();
-	const mark = page.getByTestId('coach-mark');
-	await expect(mark).toContainText('Your zone', { timeout: 20_000 });
-	await mark.getByRole('button', { name: 'Next' }).click();
-	await expect(mark).toContainText('The road ahead');
-	// "?" in slot 1 puts them away.
-	await page.getByRole('button', { name: 'How to read the road' }).click();
-	await expect(mark).toHaveCount(0);
-	// Kept for the device: the next world ride opens without them.
-	expect(
-		await page.evaluate(() => localStorage.getItem('wattroom.coach.road.v1')),
-	).toBe('1');
-	// "How to read the road" in slot 1 brings them back.
-	await page.getByRole('button', { name: 'How to read the road' }).click();
-	await expect(mark).toContainText('Your zone');
 });
 
 /**
