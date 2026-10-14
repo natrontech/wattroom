@@ -177,6 +177,10 @@ surface(
 			.locator('[data-testid=bike-computer][data-page=climb]')
 			.waitFor();
 		await s.shot(o, { name: 'ride-road-world-climb' });
+		// multi:world-finish — item 29: about 150 m from the road’s end, the finish arch ahead (#3623).
+		await ride(o.page, `/ride?w=openers&road=${road}&from=6950`);
+		await assertRiding(o.page, true);
+		await s.shot(o, { name: 'world-finish' });
 	},
 	{ once: true },
 );

@@ -8,6 +8,7 @@ import { chunkId, LEAVE, roadPieces, type GroundStream } from './ground-stream';
 import { batchProps, FAR_M, NEAR_M, type Drawn } from './props/batch';
 import { TILE_M, tileCentre, tileKey, tileOf } from './props/tiles';
 import { batchBoards } from './boards';
+import { archOnRoad } from './furniture';
 import type { Piece } from './setpieces';
 import { plinth, road, roadMaterial, ROAD_W, terrain, yOf } from './geometry';
 import { PROP_RAMP, ramp, toon, type Sight } from './materials';
@@ -116,6 +117,8 @@ export function buildStage(
 	style: Style,
 	sight: Sight,
 	stream: GroundStream,
+	/** The road ends under a finish arch; a lapped one does not. */
+	finish = true,
 ): Stage {
 	const group = new THREE.Group();
 	const gradient = ramp(PROP_RAMP);
@@ -222,6 +225,11 @@ export function buildStage(
 	// Each tile's signs and arch, stood with its tile and let go with it.
 	const boards = batchBoards(route, style);
 	group.add(tag('dressing', boards.root));
+	// The road's end (#3623): the world's route is the road the way it is ridden, so the finish is its last metre. A loop has none.
+	if (finish && !route.loop)
+		group.add(
+			tag('dressing', archOnRoad(route, route.length, 'FINISH', style), 'arch'),
+		);
 	function draw(ti: number, tj: number, eye: THREE.Vector3) {
 		const id = tileKey(ti, tj);
 		const t = world.tile(ti, tj);

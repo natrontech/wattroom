@@ -72,6 +72,8 @@ export type MountOptions = {
 	 * bunch places every joined rider, you among them, and the team car.
 	 */
 	bunch?: () => BunchView | null;
+	/** The session laps the road (#3623): no finish arch on it. */
+	loop?: boolean;
 	/** Your rider id: which of the bunch is you. */
 	youId?: string;
 	/** The theme's structural accent, for the coach's chevron; Outrun's absent. */
@@ -201,7 +203,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 			scene.remove(old);
 			disposeTree(old);
 		}
-		stage = buildStage(route, world, style, sight, stream);
+		stage = buildStage(route, world, style, sight, stream, !opts.loop);
 		crew = makeCrew(style, neon);
 		game = makeGameRoad(route, world, style);
 		tags = makeTags(style);
