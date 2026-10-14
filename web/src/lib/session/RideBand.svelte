@@ -16,6 +16,7 @@
 	import { formatClock } from '$lib/format';
 	import { roadLine } from '$lib/ride/road-readout';
 	import { nextFor, trainerChip, type Block } from '$lib/workout/block';
+	import CountChips from '$lib/session/CountChips.svelte';
 	import type { Snippet } from 'svelte';
 
 	let {
@@ -54,10 +55,6 @@
 	// time left, so the band ends above the corridor (the box table's 186).
 	const WORDS = 'text-2xl leading-6';
 	const CHIP = `${WORDS} border-neon/40 text-muted rounded border px-2 whitespace-nowrap`;
-	// The last three seconds of a block light their chip (v2-erg's 3-2-1).
-	const counting = $derived(
-		block?.next ? Math.ceil(block.secondsLeft) : Infinity,
-	);
 </script>
 
 <header data-testid="ride-band" class="flex flex-col gap-2 px-4 py-2">
@@ -119,15 +116,7 @@
 									· <span class="num text-neon">{block.next.watts} W</span>{/if}
 								· <span class="num">{nextFor(block.next.seconds)}</span>
 							</span>
-							{#each [3, 2, 1] as n (n)}
-								<span
-									data-testid="count-chip"
-									class="num grid size-7 shrink-0 place-items-center rounded border {counting ===
-									n
-										? 'border-neon text-ink'
-										: 'border-neon/40 text-muted'}">{n}</span
-								>
-							{/each}
+							<CountChips secondsLeft={block.secondsLeft} />
 						</p>
 					{/if}
 				</div>

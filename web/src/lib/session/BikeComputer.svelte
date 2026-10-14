@@ -19,10 +19,12 @@
 	import ClimbProfile from '$lib/ride/ClimbProfile.svelte';
 	import {
 		PAGE_NAMES,
+		TV_LABEL,
 		claimPageTurn,
 		climbHeader,
 		fieldsFor,
 		pagesFor,
+		type Field,
 		turned,
 		type ComputerContext,
 		type ComputerPage,
@@ -63,6 +65,26 @@
 		shown === 'climb' && !!ctx.climb && !(docked && ctx.target),
 	);
 	const turns = $derived(pages.length > 1);
+	// Docked on the TV (#3677): the same panel in vh, so it reads at 3 m.
+	const label = $derived(tv ? TV_LABEL : 'ride-label');
+	// On the TV the fields are the panel's last row and take the height the
+	// head leaves (ride-tv 9): up to three to a row, each number sized from
+	// the row's box and its column's width (a figure is about 0.62 em, its
+	// unit half that), between SPEC's 5vh floor and well under the watts.
+	const tvRows = $derived(Math.max(1, Math.ceil(fields.length / 3)));
+	const tvCols = $derived(Math.min(3, Math.max(1, fields.length)));
+	const TV_COLS = ['', 'grid-cols-1', 'grid-cols-2', 'grid-cols-3'];
+	const tvFields = $derived(
+		`calc(2vh + ${tvRows} * (3vh + 0.25rem + 10vh) + ${tvRows - 1} * 1.5vh)`,
+	);
+	function tvValue(field: Field): string {
+		const ems =
+			field.value.length * 0.62 +
+			(field.unit ? field.unit.length * 0.3 + 0.3 : 0);
+		const tall = `calc((100cqh - ${tvRows} * (3vh + 0.25rem) - ${tvRows - 1} * 1.5vh) / ${tvRows})`;
+		const wide = `calc((100cqw - ${tvCols - 1} * 2vw) / ${tvCols} / ${ems.toFixed(2)})`;
+		return `clamp(5vh, min(${tall}, ${wide}), 20vh)`;
+	}
 
 	function turn(dir: 1 | -1) {
 		page = turned(pages, shown, dir);
@@ -70,7 +92,9 @@
 
 	const size = $derived(
 		tv
-			? { value: 'text-[6vh]', unit: 'text-[3vh]', word: 'text-[3vh]' }
+			? fields.length > 2
+				? { value: 'text-[6vh]', unit: 'text-[3vh]', word: 'text-[3vh]' }
+				: { value: 'text-[10vh]', unit: 'text-[5vh]', word: 'text-[3vh]' }
 			: phone
 				? { value: 'text-2xl', unit: 'text-xs', word: 'text-sm' }
 				: { value: 'text-4xl', unit: 'text-lg', word: 'text-2xl' },
@@ -123,7 +147,9 @@
 	data-page={shown}
 	aria-label="bike computer, {PAGE_NAMES[shown]} page"
 	class={docked
-		? 'relative flex w-[21rem] max-w-full flex-col gap-3 px-4 py-3'
+		? tv
+			? 'relative flex min-h-0 flex-1 flex-col gap-[1.5vh] px-[1.5vw] py-[1.5vh]'
+			: 'relative flex w-[21rem] max-w-full flex-col gap-3 px-4 py-3'
 		: 'panel relative'}
 >
 	<!-- The page's name and its dots sit in the row of numbers, so a page is
@@ -220,10 +246,11 @@
 					onclick={() => turn(-1)}
 					aria-label="previous page, {PAGE_NAMES[turned(pages, shown, -1)]}"
 					title="Previous page"
-					class="icon-btn-lg -ml-2"><ChevronLeft size={24} /></button
+					class="icon-btn-lg -ml-2"
+					><ChevronLeft size={24} class={tv ? 'size-[3.4vh]' : ''} /></button
 				>
 			{/if}
-			<p class="ride-label text-ink flex items-center gap-2">
+			<p class="{label} text-ink flex items-center gap-2">
 				{PAGE_NAMES[shown]}{@render badge()}
 			</p>
 			{#if turns}
@@ -232,13 +259,16 @@
 					onclick={() => turn(1)}
 					aria-label="next page, {PAGE_NAMES[turned(pages, shown, 1)]}"
 					title="Next page"
-					class="icon-btn-lg"><ChevronRight size={24} /></button
+					class="icon-btn-lg"
+					><ChevronRight size={24} class={tv ? 'size-[3.4vh]' : ''} /></button
 				>
 				<div class="ml-auto flex gap-2" aria-hidden="true">
 					{#each pages as p (p)}
 						<span
 							data-testid="computer-dot"
-							class="size-2.5 rounded-full border forced-color-adjust-none {p ===
+							class="{tv
+								? 'size-[2.9vh]'
+								: 'size-2.5'} rounded-full border forced-color-adjust-none {p ===
 							shown
 								? 'bg-neon border-neon forced-colors:bg-[Highlight]'
 								: 'border-muted'}"
@@ -247,61 +277,81 @@
 				</div>
 			{/if}
 		</div>
-		<ComputerHead
-			power={ctx.stats?.seconds ? ctx.stats.power3 : Math.round(ctx.watts)}
-			kg={ctx.kg}
-			{ftp}
-			stale={ctx.stale}
-			target={ctx.target}
-			blockExecution={ctx.stats?.blockExecution ?? null}
-		/>
 	{/if}
 	{#if phone}{@render name()}{/if}
+	<!-- On the TV the fields stand under the head (#3677): its watts take the
+	     width, and the height the panel has after every word (ride-tv 9). -->
 	<div
-		class={docked
-			? 'border-neon/20 grid grid-cols-2 gap-x-6 gap-y-3 border-t pt-3'
-			: layout}
+		class={docked && tv ? 'flex min-h-0 flex-1 flex-col gap-[2vh]' : 'contents'}
 	>
-		{#if !phone && !docked}{@render name()}{/if}
-		{#each fields as field (field.key)}
-			<div data-testid="computer-field" data-field={field.key} class="min-w-0">
-				<span
-					class="{docked
-						? 'ride-label'
-						: `${size.word} text-muted`} flex items-center gap-2 leading-none"
-					>{field.label}{#if field.zone}<ZoneDot
-							zone={field.zone}
-							class={tv ? 'size-[1.4vh]' : 'size-2'}
-						/>{/if}</span
+		{#if docked}
+			<div class={tv ? 'flex min-h-0 min-w-0 flex-col' : 'contents'}>
+				<ComputerHead
+					power={ctx.stats?.seconds ? ctx.stats.power3 : Math.round(ctx.watts)}
+					kg={ctx.kg}
+					{ftp}
+					stale={ctx.stale}
+					target={ctx.target}
+					blockExecution={ctx.stats?.blockExecution ?? null}
+					{tv}
+				/>
+			</div>
+		{/if}
+		<div
+			class={docked
+				? tv
+					? `border-neon/20 [container-type:size] grid min-h-0 shrink grow ${TV_COLS[tvCols]} gap-x-[2vw] gap-y-[1.5vh] border-t pt-[2vh]`
+					: 'border-neon/20 grid grid-cols-2 gap-x-6 gap-y-3 border-t pt-3'
+				: layout}
+			style:flex-basis={docked && tv ? tvFields : undefined}
+		>
+			{#if !phone && !docked}{@render name()}{/if}
+			{#each fields as field (field.key)}
+				<div
+					data-testid="computer-field"
+					data-field={field.key}
+					class="min-w-0"
 				>
-				{#if field.key === 'gear'}
 					<span
-						bind:this={gearField}
-						aria-live="polite"
-						class="num text-neon mt-1 block {size.value} leading-none font-bold"
-						>{field.value}</span
+						class="{docked
+							? label
+							: `${size.word} text-muted`} flex items-center gap-2 leading-none"
+						>{field.label}{#if field.zone}<ZoneDot
+								zone={field.zone}
+								class={tv ? 'size-[1.4vh]' : 'size-2'}
+							/>{/if}</span
 					>
-				{:else}
-					<!-- A space, not a margin, between number and unit: "78 rpm"
+					{#if field.key === 'gear'}
+						<span
+							bind:this={gearField}
+							aria-live="polite"
+							class="num text-neon mt-1 block {size.value} leading-none font-bold"
+							style:font-size={docked && tv ? tvValue(field) : undefined}
+							>{field.value}</span
+						>
+					{:else}
+						<!-- A space, not a margin, between number and unit: "78 rpm"
 					     is what a screen reader and a search both read. Neon is a
 					     model's number, flat: only live data glows (ADR-0005). The
 					     unit's own line-height would make a page with units 2 px
 					     taller than one without, so a turn would move the panel. -->
-					<span
-						class="num mt-1 block {size.value} leading-none font-bold {field.glow
-							? 'text-watt glow-text'
-							: field.neon
-								? 'text-neon'
-								: 'text-ink'}"
-						>{field.value}{#if field.unit}{' '}<span
-								class="text-muted {size.unit} leading-none font-normal"
-								>{field.unit}</span
-							>{/if}</span
-					>
-				{/if}
-			</div>
-		{/each}
-		{#if turns && !tv && !phone && !docked && !profile}{@render dots()}{/if}
+						<span
+							class="num mt-1 block {size.value} leading-none font-bold {field.glow
+								? 'text-watt glow-text'
+								: field.neon
+									? 'text-neon'
+									: 'text-ink'}"
+							style:font-size={docked && tv ? tvValue(field) : undefined}
+							>{field.value}{#if field.unit}{' '}<span
+									class="text-muted {size.unit} leading-none font-normal"
+									>{field.unit}</span
+								>{/if}</span
+						>
+					{/if}
+				</div>
+			{/each}
+			{#if turns && !tv && !phone && !docked && !profile}{@render dots()}{/if}
+		</div>
 	</div>
 	{#if zoneStrip}{@render strip(zoneStrip)}{/if}
 	{#if profile && ctx.climb}

@@ -333,13 +333,13 @@ Capture: world on, `/ride?w=openers` (no road: the flat TV), TV pressed, 1920 ×
 
 1. The 3 s power is the one watts figure, ≥ 12vh, in watt; the numbers row carries cadence and heart, not power. [ride-tv]
 2. Nothing under 2.9vh, the exit hint, the scale's 0 / 300 and the FTP label included. [ride-tv] [test:tv-legibility.test.ts]
-3. Exit control ≥ 44 px, in the top row beside title and clock, overlapping nothing. [ride-tv]
+3. Exit control ≥ 44 px, in the work panel's top row beside its eyebrow (the title, as v2-erg draws it), overlapping nothing; in a workout the clock is slot 1's elapsed of total, never a second one (D17). [ride-tv]
 4. Top half: no empty region wider than a quarter of the screen. [ride-tv]
 5. Time left ≥ 9vh. NEXT is describeBlock's text (D16), never “0 W”. [ride-tv]
 6. Zone as digit and name inside the numbers panel, in its row. [ride-tv]
 7. Secondary numbers ≥ 5vh; a unit ≤ half its number. [ride-tv]
 8. Every block a `ride-panel`, one level deep; page control per D15. [ride-tv]
-9. Interval graph: full-width panel along the bottom, clear of every control. [ride-tv]
+9. Interval graph: a slim full-width band along the bottom, as v2-erg draws it, clear of every control; the numbers above grow into the height it leaves, up to just under the watts figure; height they can't use goes back to the band (Jan, 2026-10-14). [ride-tv]
 10. Cave covers the frame; no sidebar.
 
 #### ride-watch
