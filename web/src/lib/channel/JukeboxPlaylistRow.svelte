@@ -295,9 +295,9 @@
 			{:else if canManage}
 				<button
 					onclick={() => (renaming = true)}
-					class="block max-w-full truncate text-left font-medium {riding
-						? 'min-h-11 text-2xl leading-7'
-						: 'text-xs'}">{playlist.name}</button
+					class="block max-w-full text-left font-medium {riding
+						? 'line-clamp-2 min-h-11 text-2xl leading-7 break-words'
+						: 'truncate text-xs'}">{playlist.name}</button
 				>
 			{:else}
 				<!-- Not a control for a rider who cannot rename it (#2162, ux.md:

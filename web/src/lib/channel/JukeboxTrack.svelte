@@ -161,7 +161,13 @@
 		{/if}
 
 		<div class="min-w-0 flex-1">
-			<p class="truncate {railText(riding, 'text-xs leading-tight')}">
+			<!-- Riding, a title takes two lines: at 24 px one held nine letters. -->
+			<p
+				class="{riding ? 'line-clamp-2 break-words' : 'truncate'} {railText(
+					riding,
+					'text-xs leading-tight',
+				)}"
+			>
 				{tracks.length ? entry.playlistTitle : entry.title}
 			</p>
 			<p class="text-muted truncate {railText(riding, 'text-[10px]')}">

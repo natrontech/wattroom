@@ -151,7 +151,10 @@
 			behind={riding ? below : undefined}
 		/>
 	{:else if riding}
-		<RailSheet label="jukebox">{@render below()}</RailSheet>
+		<RailSheet>
+			{#snippet label()}<span class="ride-label">jukebox</span>{/snippet}
+			{@render below()}
+		</RailSheet>
 	{:else}
 		<p class="text-muted text-xs leading-relaxed">
 			Nothing is playing. Search your library or paste a YouTube link, and
@@ -191,8 +194,12 @@
 					/>
 				{/each}
 			</ul>
+			<!-- Riding, each link keeps its one line and they stack. -->
 			<div
-				class="mt-1.5 flex items-center gap-3 {railText(riding, 'text-[11px]')}"
+				class="mt-1.5 flex flex-wrap items-center gap-x-3 whitespace-nowrap {railText(
+					riding,
+					'text-[11px]',
+				)}"
 			>
 				{#if queue.length > QUEUE_PEEK}
 					<button

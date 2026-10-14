@@ -1311,9 +1311,7 @@ async function queueDeck(page: Page, tracks: [string, string][]) {
 	const add = page.getByRole('textbox', {
 		name: 'add music: search your library, or paste a YouTube link',
 	});
-	const fold = page
-		.locator('summary', { hasText: /^jukebox$/ })
-		.filter({ visible: true });
+	const fold = page.getByTestId('rail-sheet').filter({ visible: true });
 	// Queued already when the queue's peek shows the second title: another
 	// shot on the same channel may have put the first one on the deck.
 	if (!(await add.isVisible())) await fold.click();

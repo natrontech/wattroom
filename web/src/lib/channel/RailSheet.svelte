@@ -1,11 +1,13 @@
 <script lang="ts">
+	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import type { Snippet } from 'svelte';
 
 	// Riding, what the people column holds beyond the seat opens over the
 	// crew instead of pushing it down (#3983): v2-ride keeps the crew panel
 	// straight under the seat, and a fold that grew the column moved the
-	// crew off the frame.
-	let { label, children }: { label: string; children: Snippet } = $props();
+	// crew off the frame. `label` is what opens it: the seat's strip, or the
+	// jukebox's name while nothing plays.
+	let { label, children }: { label: Snippet; children: Snippet } = $props();
 
 	// Fixed, at the rect the fold has when it opens: the deck's capped scroll
 	// box and the people panel both clip, and an absolute sheet inside them
@@ -22,7 +24,18 @@
 </script>
 
 <details class="min-w-0" bind:open ontoggle={place}>
-	<summary class="ride-label cursor-pointer py-2 select-none">{label}</summary>
+	<summary
+		data-testid="rail-sheet"
+		class="flex min-h-11 min-w-0 cursor-pointer list-none items-center gap-2 select-none [&::-webkit-details-marker]:hidden"
+	>
+		<span class="min-w-0 flex-1">{@render label()}</span>
+		<ChevronDown
+			size={20}
+			class="text-muted shrink-0 transition-transform duration-(--dur-base) {open
+				? 'rotate-180'
+				: ''}"
+		/>
+	</summary>
 	{#if open}
 		<div
 			class="bg-surface border-neon/40 fixed z-30 flex flex-col gap-3 overflow-y-auto rounded-lg border p-2"
