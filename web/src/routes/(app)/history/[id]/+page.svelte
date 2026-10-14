@@ -19,7 +19,9 @@
 	import RecapTiles from '$lib/ride/RecapTiles.svelte';
 	import { recapEyebrow, recapTiles, rideKind } from '$lib/ride/recap-frame';
 	import RideDelivery from '$lib/ride/RideDelivery.svelte';
-	import { ridePlace, rideTitle } from '$lib/ride/list';
+	import { rideTitle } from '$lib/ride/list';
+	import { rideRowMenu } from '$lib/ride/row-menu';
+	import { contextMenu } from '$lib/context-menu.svelte';
 	import { rideBackLink } from '$lib/back-link';
 	import { bestQuery } from '$lib/ride/compare';
 	import RideComparison from '$lib/ride/RideComparison.svelte';
@@ -160,7 +162,8 @@
 		ride
 			? recapTiles({
 					...ride,
-					execution: ride.executionScored === false ? undefined : ride.execution,
+					execution:
+						ride.executionScored === false ? undefined : ride.execution,
 				})
 			: [],
 	);
@@ -216,7 +219,14 @@
 	{:else}
 		<!-- The header's actions are a snippet, which loses the narrowing. -->
 		{@const shown = ride}
-		<div class="mt-4">
+		<!-- Right-click or long-press: the ride's own menu, the one its row
+		     opens, with Delete last there too (ux.md, Right-click). -->
+		<div
+			class="mt-4"
+			{@attach contextMenu(() =>
+				rideRowMenu(shown, () => void goto('/history')),
+			)}
+		>
 			<RecapHeader
 				eyebrow={recapEyebrow(
 					new Date(ride.startedAt),
@@ -225,6 +235,22 @@
 				)}
 				title={title ?? ride.workoutName}
 			>
+				{#snippet subline()}
+					{new Date(shown.startedAt).toLocaleString(undefined, {
+						dateStyle: 'medium',
+						timeStyle: 'short',
+					})}
+					<!-- The crew is the link (#2457), the channel the words. The
+					     eyebrow names the crew; a crew the rider left is not
+					     linked, its page is not theirs to open (#2630). -->
+					{#if shown.crew && shown.crewMember}
+						· <a
+							href="/crew/{shown.crew.id}"
+							class="hover:text-ink underline underline-offset-2"
+							>{shown.crew.name}</a
+						>{#if shown.channel}&nbsp;in {shown.channel.name}{/if}
+					{/if}
+				{/snippet}
 				{#snippet actions()}
 					<!-- The per-ride opt-in, where a rider decides a ride is worth
 					     showing (#1691, ADR-0024): undo over confirm. The same toggle
@@ -249,28 +275,15 @@
 						{exporting ? 'Preparing…' : 'Export'}
 					</button>
 					<!-- Delete last, after a separator, as in the ride's context
-					     menu (ux.md, Right-click). -->
-					<span aria-hidden="true" class="bg-ink/10 h-6 w-px"></span>
+					     menu. On a phone the row wraps and a separator would end a
+					     line, so Delete stands alone there by position. -->
+					<span aria-hidden="true" class="bg-ink/10 hidden h-6 w-px sm:block"
+					></span>
 					<button onclick={() => void removeRide()} class="btn btn-danger">
 						<Trash2 size={14} /> Delete ride
 					</button>
 				{/snippet}
 			</RecapHeader>
-			<p class="text-muted mt-1 text-xs">
-				{new Date(ride.startedAt).toLocaleString()}
-				<!-- Where it was ridden (#2457): the crew is the link, the
-				     channel is the words. A crew the rider left is named and
-				     not linked — its page is not theirs to open (#2630). -->
-				{#if ride.crew && ride.crewMember}
-					· with <a
-						href="/crew/{ride.crew.id}"
-						class="hover:text-ink underline underline-offset-2"
-						>{ride.crew.name}</a
-					>{#if ride.channel}&nbsp;in {ride.channel.name}{/if}
-				{:else}
-					· {ridePlace(ride)}
-				{/if}
-			</p>
 		</div>
 		<div class="mt-4"><RecapTiles {tiles} /></div>
 		{#if downloadError}<div class="mt-3">
@@ -284,8 +297,7 @@
 			</div>
 		{:else if ride.samples.length === 0}
 			<p class="text-muted mt-3 text-xs">
-				No samples were stored for this ride, so there is no FIT file to
-				export.
+				No samples were stored for this ride, so there is no FIT file to export.
 			</p>
 		{/if}
 
@@ -319,21 +331,21 @@
 
 		<RideSkyline samples={ride.samples} distanceM={ride.distanceM} />
 
-
 		{#if ride.curve}
 			<!-- The ride's own curve (SPEC's four windows, #1691): computed at
 			     save and in the export, and never shown until now. -->
-			<section class="mt-3 grid gap-3 sm:grid-cols-4">
+			<section class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
 				{#each curveCells as [label, watts] (label)}
-					<div class="panel panel-lg">
-						<div
-							class="font-display text-2xl leading-none font-bold tabular-nums"
-						>
-							{#if watts > 0}{watts}<span class="text-muted ml-1 text-sm"
-									>W</span
-								>{:else}<span class="text-muted">–</span>{/if}
+					<!-- RecapTiles' tile, so one kind of number reads one way. -->
+					<div class="panel py-2">
+						<div class="eyebrow leading-none">{label}</div>
+						<div class="mt-1 flex items-baseline gap-1">
+							<span
+								class="font-display text-2xl leading-none font-bold tabular-nums"
+								>{watts > 0 ? watts : '–'}</span
+							>
+							{#if watts > 0}<span class="text-muted text-xs">W</span>{/if}
 						</div>
-						<div class="eyebrow mt-2">{label}</div>
 					</div>
 				{/each}
 			</section>
