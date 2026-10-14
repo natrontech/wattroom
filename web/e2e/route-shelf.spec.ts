@@ -103,11 +103,7 @@ test("a route card's Ride rides the road", async ({ page }) => {
 	await page
 		.getByRole('button', { name: 'Ride simulated' })
 		.click({ timeout: 15_000 });
-	const fromStart = page.getByRole('button', { name: 'From the start' });
-	const start = page.getByRole('button', { name: 'Start riding' });
-	await expect(start.or(fromStart)).toBeVisible();
-	if (await fromStart.isVisible()) await fromStart.click();
-	else await start.click();
+	await page.getByRole('button', { name: 'Start the ride' }).click();
 	await expect(
 		page.getByRole('button', { name: /^(End ride|Save at km)/ }),
 	).toBeVisible({ timeout: 15_000 });

@@ -31,7 +31,7 @@ async function rideTheClimb(page: Page, name: string, cues: string[]) {
 	await page
 		.getByRole('button', { name: 'Ride simulated' })
 		.click({ timeout: 15_000 });
-	await page.getByRole('button', { name: 'Start riding' }).click();
+	await page.getByRole('button', { name: 'Start the ride' }).click();
 	const computer = page.getByTestId('bike-computer');
 	await expect(computer).toHaveAttribute('data-page', 'climb', {
 		timeout: 15_000,

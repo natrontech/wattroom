@@ -42,6 +42,8 @@ export interface ChannelShellProps {
 	address: PlaceAddress;
 	role: string;
 	name: string;
+	/** The crew the channel belongs to (#3686): the closing card names it. */
+	crewName?: string;
 	/** The crew's join code (#1236), for the TV's idle screen. */
 	code?: string;
 	soundPack?: string;

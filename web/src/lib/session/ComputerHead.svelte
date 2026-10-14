@@ -6,6 +6,7 @@
 	 * name, never colour alone (#3213); and, while a target is asked, the
 	 * target track with its band and how much of this block sat inside it.
 	 */
+	import TabularFigures from '$lib/components/TabularFigures.svelte';
 	import ZoneDot from '$lib/components/ZoneDot.svelte';
 	import { ZONE_NAMES, zoneOf } from '$lib/components/zones';
 	import { targetState } from '$lib/channel/types';
@@ -48,7 +49,7 @@
 			<span
 				data-testid="head-power"
 				class="text-[6.5rem] {stale ? 'text-muted' : 'text-watt glow-text'}"
-				>{stale ? '—' : power}</span
+				><TabularFigures value={stale ? '—' : power} /></span
 			>{' '}<span class="text-muted text-2xl font-normal">W</span>
 		</p>
 		<div class="pb-1">

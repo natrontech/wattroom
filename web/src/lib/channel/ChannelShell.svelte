@@ -356,6 +356,7 @@
 	{segments}
 	{phase}
 	placeName={props.name}
+	crewName={props.crewName}
 	code={props.code}
 	onSchedule={props.onSchedule}
 />
@@ -416,6 +417,7 @@
 {#snippet panel()}
 	<SidePanel
 		live={phase === 'live'}
+		riding={!!connection.riding()}
 		{riders}
 		members={props.members}
 		onCheer={(emoji) => live.cheer(emoji)}
@@ -433,6 +435,7 @@
 				refusal={live.jukeboxRefusal}
 				address={props.address}
 				targetRpm={live.tick?.state?.targetRpm ?? 0}
+				riding={connection.riding()}
 			/>
 		{/snippet}
 	</SidePanel>

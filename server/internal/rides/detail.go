@@ -177,6 +177,10 @@ type rideDetailJSON struct {
 	// A road ride's metres, the server's replay (#3053): what tells the page
 	// its card is a poster (#3142). Absent off a road.
 	DistanceM *int32 `json:"distanceM,omitempty"`
+	// The rider's own road it rode (#3874): what the page titles the ride
+	// with and links back to. Absent off a road, on someone else's, or when
+	// the route has since been deleted.
+	Road *rideRoadJSON `json:"road,omitempty"`
 	// Where this ride was sent, and whether it arrived. Absent when the ride
 	// was never eligible — no Strava on the account, or auto-upload off.
 	Export *exportJSON `json:"export,omitempty"`
@@ -298,6 +302,9 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 		s.log.Warn("ride road unreadable", "err", err, "ride", store.UUIDString(row.ID))
 	} else {
 		out.DistanceM = road.DistanceM
+		if road.RouteID != "" {
+			out.Road = &rideRoadJSON{RouteID: road.RouteID, Name: road.RouteName, GenName: road.GenName}
+		}
 	}
 	httpx.WriteJSON(w, http.StatusOK, out)
 }

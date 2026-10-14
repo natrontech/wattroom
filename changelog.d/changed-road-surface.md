@@ -1,1 +1,0 @@
-- The road looks like a road: grey asphalt with a fine grain, flat lines, a gravel shoulder and a green verge, and nothing on it glows.

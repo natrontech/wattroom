@@ -1,11 +1,16 @@
 package rides
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/natrontech/wattroom/server/internal/stats"
+	"github.com/natrontech/wattroom/server/internal/store"
+	"github.com/natrontech/wattroom/server/internal/testx"
 )
 
 // A road ride's page draws its own Skyline (#3639): the owner's read of the
@@ -26,6 +31,9 @@ func TestARoadRidesPageCarriesItsMetresAndHeights(t *testing.T) {
 	}
 	id, _ := got["id"].(string)
 	_, detail := call(t, h.mux, "alice", http.MethodGet, "/api/rides/"+id, "")
+	if road, _ := detail["road"].(map[string]any); road["routeId"] != routeID || road["name"] != "Home loop" || road["genName"] != "Road · 5.0 km · 100 m" {
+		t.Errorf("road = %v, want the route %s under the owner's name and its generated one", detail["road"], routeID)
+	}
 	read, _ := detail["samples"].([]any)
 	if len(read) != 120 {
 		t.Fatalf("samples = %d, want 120", len(read))
@@ -41,8 +49,122 @@ func TestARoadRidesPageCarriesItsMetresAndHeights(t *testing.T) {
 	}
 	id, _ = got["id"].(string)
 	_, detail = call(t, h.mux, "alice", http.MethodGet, "/api/rides/"+id, "")
+	if detail["road"] != nil {
+		t.Errorf("a ride off a road names a road: %v", detail["road"])
+	}
 	read, _ = detail["samples"].([]any)
 	if first, _ := read[0].(map[string]any); first["m"] != nil || first["alt"] != nil {
 		t.Errorf("a ride off a road reads a place: %v", first)
+	}
+}
+
+// A ride on the rider's own road carries it on their list and its page, under
+// the name they know it by (#3874), so the ride is titled as the route page
+// is. A session ridden on someone else's road carries neither its id nor its
+// owner's rename (ADR-0063): the generated name it was saved under stays.
+func TestARideNamesItsRoadOnlyToTheRoadsOwner(t *testing.T) {
+	h := setup(t)
+	routeID, _ := storeRoute(t, h, "alice")
+	// The owner's rename, an invented place (testx.Corridor): what must not
+	// reach anyone else.
+	if _, err := h.store.Pool.Exec(t.Context(), "update routes set name = $1 where id = $2::uuid",
+		testx.Corridor.Route, routeID); err != nil {
+		t.Fatal(err)
+	}
+	status, got := call(t, h.mux, "alice", http.MethodPost, "/api/rides", freeRideOn(routeID, 8, ""))
+	if status != http.StatusCreated {
+		t.Fatalf("save: %d %v", status, got)
+	}
+	own, _ := got["id"].(string)
+	// Bob rode alice's road in her session: his ride names her route, as a
+	// session's save does.
+	theirs := h.save(t, "bob", 120, 200)
+	theirsID, _ := store.ParseUUID(theirs)
+	if _, err := h.store.Pool.Exec(t.Context(),
+		"update rides set route_id = $1::uuid, workout_name = 'Road · 5.0 km · 100 m' where id = $2", routeID, theirsID); err != nil {
+		t.Fatal(err)
+	}
+
+	listed := func(user, id string) map[string]any {
+		_, list := call(t, h.mux, user, http.MethodGet, "/api/rides", "")
+		rides, _ := list["rides"].([]any)
+		for _, r := range rides {
+			if ride, _ := r.(map[string]any); ride["id"] == id {
+				return ride
+			}
+		}
+		t.Fatalf("%s's list holds no ride %s", user, id)
+		return nil
+	}
+	if road, _ := listed("alice", own)["road"].(map[string]any); road["routeId"] != routeID || road["name"] != testx.Corridor.Route || road["genName"] != "Road · 5.0 km · 100 m" {
+		t.Errorf("alice's list: road = %v, want her route under her name", road)
+	}
+	_, detail := call(t, h.mux, "bob", http.MethodGet, "/api/rides/"+theirs, "")
+	for where, ride := range map[string]map[string]any{"list": listed("bob", theirs), "page": detail} {
+		if ride["road"] != nil {
+			t.Errorf("bob's %s names alice's road: %v", where, ride["road"])
+		}
+		raw, _ := json.Marshal(ride)
+		if leak := testx.Leak(string(raw)); leak != "" {
+			t.Errorf("bob's %s carries %q", where, leak)
+		}
+	}
+}
+
+// A ride titled by its road is set beside the rider's best of that road
+// (#3874), as the route page has it (#3680): the fastest timed ride, else
+// the hardest; never a ride off the road, nor a road someone else owns.
+func TestBestRideOnRoad(t *testing.T) {
+	h := setup(t)
+	routeID, _ := storeRoute(t, h, "alice")
+	saved := func(drive string) string {
+		status, got := call(t, h.mux, "alice", http.MethodPost, "/api/rides", freeRideOn(routeID, 8, drive))
+		if status != http.StatusCreated {
+			t.Fatalf("save: %d %v", status, got)
+		}
+		id, _ := got["id"].(string)
+		return id
+	}
+	slow, fast, held := saved(stats.DriveSIM), saved(stats.DriveSIM), saved(stats.DriveERGByRoad)
+	off := h.save(t, "alice", 600, 400)
+	set := func(id, sql string) {
+		t.Helper()
+		ride, _ := store.ParseUUID(id)
+		if _, err := h.store.Pool.Exec(t.Context(), "update rides set "+sql+" where id = $1", ride); err != nil {
+			t.Fatal(err)
+		}
+	}
+	set(slow, "distance_m = 2000, timeable = true, avg_watts = 300")
+	set(fast, "distance_m = 3000, timeable = true, avg_watts = 200")
+	set(held, "distance_m = 4000, timeable = false, avg_watts = 350")
+
+	best := func(user, query string) any {
+		t.Helper()
+		status, body := call(t, h.mux, user, http.MethodGet, "/api/rides/best?"+query, "")
+		if status != http.StatusOK {
+			t.Fatalf("%s: %d %v", query, status, body)
+		}
+		ride, _ := body["ride"].(map[string]any)
+		return ride["id"]
+	}
+	if got := best("alice", "route="+routeID+"&except="+slow); got != fast {
+		t.Errorf("best of the road: %v, want the fastest timed ride %s", got, fast)
+	}
+	if got := best("alice", "route="+routeID+"&except="+fast); got != slow {
+		t.Errorf("best of the road but the fastest: %v, want the other timed ride %s", got, slow)
+	}
+	set(slow, "timeable = false")
+	set(fast, "timeable = false")
+	if got := best("alice", "route="+routeID); got != held {
+		t.Errorf("best of a road timed never: %v, want the hardest %s", got, held)
+	}
+	if got := best("alice", "route="+routeID); got == off {
+		t.Error("a ride off the road is the road's best")
+	}
+	if got := best("bob", "route="+routeID); got != nil {
+		t.Errorf("bob's best of alice's road: %v, want none", got)
+	}
+	if status, _ := call(t, h.mux, "alice", http.MethodGet, "/api/rides/best?route=nope", ""); status != http.StatusBadRequest {
+		t.Errorf("a malformed route: %d, want 400", status)
 	}
 }

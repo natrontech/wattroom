@@ -3,7 +3,7 @@
 	// ride's own page (#1331), and the list links to the rest.
 	import { contextMenu, MENU_HINT } from '$lib/context-menu.svelte';
 	import { formatWhen } from '$lib/format';
-	import { NO_RIDES_YET, type ServerRide } from '$lib/ride/list';
+	import { NO_RIDES_YET, rideTitle, type ServerRide } from '$lib/ride/list';
 	import { rideRowMenu } from '$lib/ride/row-menu';
 
 	let {
@@ -52,7 +52,7 @@
 							>{formatWhen(ride.startedAt)}</span
 						>
 						<span class="font-display min-w-0 flex-1 truncate font-bold"
-							>{ride.workoutName}</span
+							>{rideTitle(ride)}</span
 						>
 						<span class="text-muted shrink-0 text-xs tabular-nums"
 							>{Math.round(ride.seconds / 60)} min · {Math.round(

@@ -44,15 +44,26 @@ test("the route page's Ride it rides the road", async ({ page }) => {
 	await page.getByRole('button', { name: 'Whole road' }).click();
 	await expect(ride).toHaveAttribute('href', `/ride?road=${id}`);
 
+	// It opens /ride's card on a free ride on this road, which fills the
+	// column from its left like any desk page: no centred block (G7, #3855).
 	await ride.click();
-	await page
-		.getByRole('button', { name: 'Ride simulated' })
-		.click({ timeout: 15_000 });
-	const fromStart = page.getByRole('button', { name: 'From the start' });
-	const start = page.getByRole('button', { name: 'Start riding' });
-	await expect(start.or(fromStart)).toBeVisible();
-	if (await fromStart.isVisible()) await fromStart.click();
-	else await start.click();
+	const simulated = page.getByRole('button', { name: 'Ride simulated' });
+	await expect(simulated).toBeVisible({ timeout: 15_000 });
+	const body = page.getByTestId('page-body');
+	const column = await body.boundingBox();
+	const title = await body
+		.getByRole('heading', { level: 1 })
+		.first()
+		.boundingBox();
+	expect(
+		title!.x - column!.x,
+		'the setup starts away from the column’s left gutter',
+	).toBeLessThanOrEqual(32);
+	await expect(
+		page.getByRole('button', { name: 'Whole road' }),
+	).toHaveAttribute('aria-pressed', 'true');
+	await simulated.click();
+	await page.getByRole('button', { name: 'Start the ride' }).click();
 	await expect(
 		page.getByRole('button', { name: /^(End ride|Save at km)/ }),
 	).toBeVisible({ timeout: 15_000 });

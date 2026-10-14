@@ -4,6 +4,8 @@
 			"web/src/lib/session/RidingSurface.svelte",
 			"web/src/lib/session/docks.ts",
 			"web/src/lib/session/BikeComputer.svelte",
+			"web/src/lib/session/ComputerHead.svelte",
+			"web/src/lib/components/TabularFigures.svelte",
 			"web/src/lib/ride/ClimbProfile.svelte",
 			"web/src/lib/session/computer-pages.ts",
 			"web/src/lib/session/RideHeader.svelte",
@@ -59,9 +61,18 @@
 	{
 		"files": [
 			"web/src/lib/channel/RoadsideDeck.svelte",
+			"web/src/lib/channel/CheerDeck.svelte",
 			"web/src/lib/world/chalk.ts"
 		],
 		"surfaces": ["roadside-chalk"]
+	},
+	{
+		"files": [
+			"web/src/lib/channel/Lounge.svelte",
+			"web/src/lib/channel/LoungeSession.svelte",
+			"web/src/lib/channel/RiderTile.svelte"
+		],
+		"surfaces": ["roadside-chalk", "ride-watch"]
 	},
 	{
 		"files": [
@@ -73,6 +84,18 @@
 	{
 		"files": ["web/src/lib/ride/FreeRide.svelte"],
 		"surfaces": ["ride-channel-free"]
+	},
+	{
+		"files": [
+			"web/src/lib/channel/SidePanel.svelte",
+			"web/src/lib/channel/CheerDeck.svelte",
+			"web/src/lib/board/BoardToggle.svelte",
+			"web/src/lib/channel/Jukebox.svelte",
+			"web/src/lib/channel/JukeboxAdd.svelte",
+			"web/src/lib/channel/JukeboxPlaylists.svelte",
+			"web/src/lib/channel/rail-size.ts"
+		],
+		"surfaces": ["ride-session-flat", "ride-channel-free"]
 	},
 	{
 		"files": ["web/src/routes/(app)/ramp/**"],
@@ -113,6 +136,7 @@
 			"phone-ride",
 			"phone-ride-road",
 			"phone-workouts",
+			"phone-workout-editor",
 			"phone-route",
 			"phone-home"
 		]
@@ -185,6 +209,10 @@
 			"routes",
 			"ride-roadpick"
 		]
+	},
+	{
+		"files": ["web/src/routes/(app)/workouts/edit/**"],
+		"surfaces": ["workout-editor", "phone-workout-editor"]
 	},
 	{
 		"files": [
@@ -260,6 +288,15 @@
 	{
 		"files": ["web/src/lib/race/**"],
 		"surfaces": ["ride-race"]
+	},
+	{
+		"files": ["web/src/lib/nav/**"],
+		"surfaces": [
+			"home",
+			"ride-road-world",
+			"ride-session-flat",
+			"ride-session-road"
+		]
 	},
 	{
 		"files": [

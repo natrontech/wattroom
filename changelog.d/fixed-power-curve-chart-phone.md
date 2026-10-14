@@ -1,1 +1,0 @@
-- The Rides page's power-by-duration chart no longer overlaps its duration groups on a phone, keeps its first bar whole, and puts the mid-line's watt label beside the bars instead of on them.

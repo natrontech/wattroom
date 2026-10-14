@@ -194,12 +194,12 @@ func TestACrewBanTakesItsPlansOffTheRidersSchedule(t *testing.T) {
 	}
 }
 
-// Home's "What's next" is one row per planned session, across crews (#1693,
+// Home's This week is one row per planned session, across crews (#1693,
 // ADR-0020): a crew with three plans this week shows three, as the rider's
 // calendar does. And the row is deliberately not the crew schedule's: saying
-// you are in stays on the crew's schedule, so `going` is absent here rather
-// than present and empty, and the workout JSON no cross-crew list renders
-// does not ride along.
+// you are in, and who is, stay on the crew's schedule, so `going` is absent
+// here rather than present and empty — Home carries the bare count (#3689) —
+// and the workout JSON no cross-crew list renders does not ride along.
 func TestHomeListsEveryPlanAndNoRsvp(t *testing.T) {
 	h := setup(t)
 	crew, _ := h.crewWithChannel(t)

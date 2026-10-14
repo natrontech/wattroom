@@ -11,7 +11,9 @@
 	// It moves to <body> on mount: `fixed` is relative to the nearest
 	// transformed ancestor, and the sidebar wrapper animates its drawer with a
 	// translate, so a modal opened from inside it was clipped to 240 px.
+	// A modal opened inside the cave keeps it (#3788): body is outside it.
 	function portal(node: HTMLElement) {
+		if (node.closest('.cave')) node.classList.add('cave');
 		document.body.appendChild(node);
 		// Svelte removes the node from where it THOUGHT it was, so a portalled
 		// one has to take itself down.

@@ -13,6 +13,7 @@
 	import JukeboxTrack from '$lib/channel/JukeboxTrack.svelte';
 	import { IN_SYNC_SEC, playerInfo } from '$lib/channel/jukebox-player.svelte';
 	import { listening } from '$lib/channel/listening.svelte';
+	import { railLabel, railText } from '$lib/channel/rail-size';
 	import {
 		createPlaylistStore,
 		type SaveTarget,
@@ -34,6 +35,7 @@
 		address,
 		refusal = null,
 		targetRpm = 0,
+		riding = false,
 	}: {
 		jukebox: JukeboxState | undefined;
 		send: (command: JukeboxCommand) => void;
@@ -42,6 +44,8 @@
 		refusal?: string | null;
 		/** The running block's cadence, from the tick (#1431). */
 		targetRpm?: number;
+		/** A ride is under way: the controls here are 44 px (TARGETS G5). */
+		riding?: boolean;
 	} = $props();
 
 	const current = $derived(jukebox?.current);
@@ -110,15 +114,16 @@
 
 <section class="flex min-w-0 flex-col gap-3">
 	<div class="flex min-w-0 items-center justify-between gap-2">
-		<span class="eyebrow">jukebox</span>
+		<span class={railLabel(riding)}>jukebox</span>
 		{#if current && jukebox?.playing && !playerInfo.live && !listening.out}
 			<!-- Proof everyone is together, in the one place riders look for it.
 			     A rider who has stepped out is not with it and must not be told
 			     they are: the badge goes, and comes back when they rejoin. -->
 			<span
-				class="flex shrink-0 items-center gap-1.5 font-mono text-[10px] {inSync
-					? 'text-watt'
-					: 'text-muted'}"
+				class="flex shrink-0 items-center gap-1.5 font-mono {railText(
+					riding,
+					'text-[10px]',
+				)} {inSync ? 'text-watt' : 'text-muted'}"
 			>
 				<span
 					class="h-1.5 w-1.5 rounded-full {inSync
@@ -132,18 +137,18 @@
 
 	{#if jukebox && current}
 		<JukeboxDeck {jukebox} {current} {send} />
-	{:else}
+	{:else if !riding}
 		<p class="text-muted text-xs leading-relaxed">
 			Nothing is playing. Search your library or paste a YouTube link, and
 			everyone hears it on the same second.
 		</p>
 	{/if}
 
-	<JukeboxAdd {send} {refusal} />
+	<JukeboxAdd {send} {refusal} {riding} />
 
 	{#if queue.length}
 		<div class="min-w-0">
-			<p class="eyebrow flex items-center justify-between">
+			<p class="{railLabel(riding)} flex items-center justify-between">
 				<span>up next</span>
 				<span class="num">{queue.length}</span>
 			</p>
@@ -151,6 +156,7 @@
 				{#each queue.slice(0, showAllQueue ? queue.length : QUEUE_PEEK) as entry, i (entry.id)}
 					<JukeboxTrack
 						{entry}
+						{riding}
 						position={i + 1}
 						myId={account.me?.id}
 						onVote={() => send({ action: 'vote', entryId: entry.id })}
@@ -164,7 +170,9 @@
 					/>
 				{/each}
 			</ul>
-			<div class="mt-1.5 flex items-center gap-3 text-[11px]">
+			<div
+				class="mt-1.5 flex items-center gap-3 {railText(riding, 'text-[11px]')}"
+			>
 				{#if queue.length > QUEUE_PEEK}
 					<button
 						onclick={() => (showAllQueue = !showAllQueue)}
@@ -184,19 +192,21 @@
 					>Save as a playlist</button
 				>
 			</div>
-			<p class="text-muted-dim mt-1.5 text-[10px]">
-				Votes float a track up the queue.
-			</p>
+			{#if !riding}
+				<p class="text-muted-dim mt-1.5 text-[10px]">
+					Votes float a track up the queue.
+				</p>
+			{/if}
 		</div>
 	{/if}
 
 	<!-- What is saved comes after what is live (#1423): the queue is what the
 	     channel is about to hear; the playlists are where it can reach next. -->
-	<JukeboxPlaylists {address} {crewStore} {mineStore} />
+	<JukeboxPlaylists {address} {crewStore} {mineStore} {riding} />
 
 	{#if history.length}
 		<details class="min-w-0">
-			<summary class="eyebrow cursor-pointer py-2 select-none"
+			<summary class="{railLabel(riding)} cursor-pointer py-2 select-none"
 				>just played · {history.length}</summary
 			>
 			<ul class="mt-1.5 flex flex-col gap-1.5">
@@ -206,6 +216,7 @@
 					     videoId made the hub read it as a blank YouTube add (#1144). -->
 					<JukeboxTrack
 						{entry}
+						{riding}
 						onRequeue={() =>
 							send({
 								action: 'add',

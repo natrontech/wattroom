@@ -62,8 +62,8 @@
 	// is the session most people ride.
 	const custom = customWorkouts();
 	const requested = page.url.searchParams.get('w') ?? '';
-	// A free ride alone on one of your own roads (#3027), behind the roads
-	// dev gate; `from` is where a recovered ride on it stopped.
+	// One of your own roads (#3027), behind the roads dev gate; `from` is
+	// where on it to start: a recovered ride's stop, or the route page's chip.
 	const roadId = roadsEnabled() ? page.url.searchParams.get('road') : null;
 	const roadFrom = Math.max(0, Number(page.url.searchParams.get('from')) || 0);
 	// A planned session's road, ridden first (#3621): the crew's cut of it.
@@ -98,9 +98,11 @@
 			: undefined,
 	);
 	// The Ride card's answers (#3671). ?w= opens on Workout, with road= on
-	// that road (#3594); otherwise a remembered road opens on a free ride.
-	// road= alone is a free ride on it (#3027), straight onto the road.
-	let kind = $state<RideKind>(requested || !remembered ? 'workout' : 'free');
+	// that road (#3594); road= alone opens on a free ride on it, the one setup
+	// a road ride has (#3855); otherwise a remembered road opens on a free ride.
+	let kind = $state<RideKind>(
+		!requested && (roadId || remembered) ? 'free' : 'workout',
+	);
 	let road = $state.raw<RideableRoute | null>(null);
 	let from = $state(roadFrom);
 	// Any workout on one of your own roads (#3594), from Terrain Match's
@@ -133,10 +135,12 @@
 	const shelfMissing = $derived(wanted && custom.loaded && !saved);
 
 	// The two doors (#3274): a rider with a crew chooses between riding alone
-	// and riding in the crew's lounge. Not when a workout was already picked —
-	// the lounge's free ride has none, and Home's "Ride alone" arrives here
-	// with ?alone, so that choice stays one tap.
-	let alone = $state(page.url.searchParams.has('alone') || !!requested);
+	// and riding in the crew's lounge. Not when a workout or a road was
+	// already picked — the lounge's free ride has neither, and Home's "Ride
+	// alone" arrives here with ?alone, so that choice stays one tap.
+	let alone = $state(
+		page.url.searchParams.has('alone') || !!requested || !!roadId,
+	);
 	const doors = $derived(!alone && doorsFor(crewLive));
 
 	// FTP comes from the profile, set by hand or measured by a ramp test (#14).
@@ -155,7 +159,7 @@
 	// its summary keep the riding surface's own gutters.
 	const setup = $derived(
 		!freeRide &&
-			!((roadId || planRoad) && !requested) &&
+			!(planRoad && !requested) &&
 			(!session || session.state === 'idle'),
 	);
 	let downloading = $state(false);
@@ -561,7 +565,8 @@
 <!-- px-4 on a phone is the kit's gutter (`page`, ux.md's 16 px); the ride
      surface is not a `page` — it fills the window — so it spells the two. -->
 <main
-	class="bg-surface text-ink flex min-h-screen flex-col {setup
+	class="bg-surface text-ink flex min-h-screen flex-col {setup ||
+	session?.state === 'done'
 		? 'page'
 		: 'px-4 py-5 sm:px-6'}"
 >
@@ -571,8 +576,10 @@
 			from={freeRide.from}
 			trainer={freeRide.trainer}
 		/>
-	{:else if (roadId || planRoad) && !requested}
-		<SoloRoadRide {roadId} plan={planRoad} from={roadFrom} />
+	{:else if planRoad && !requested}
+		<!-- A crew's planned road keeps its own setup: the card rides only
+		     your roads, and this one is the crew's cut (#3621). -->
+		<SoloRoadRide plan={planRoad} />
 	{:else if !session || session.state === 'idle'}
 		<!-- Idle with a session in hand is the moment between Start and the
 		     trainer answering it (#1800): still the setup screen, because
@@ -600,7 +607,7 @@
 				bind:kind
 				bind:road
 				bind:from
-				roadId={(requested && roadId) || remembered}
+				roadId={roadId || remembered}
 				{remembered}
 				lastWorkout={lastName}
 				{workout}
@@ -682,74 +689,63 @@
 	{#if session && session.state === 'done'}
 		<!-- The ride is over: the summary IS the screen — no dead HUD glowing
 		     zeros behind it (#126). -->
-		<div class="mx-auto mt-4 w-full max-w-3xl">
+		<div>
 			<SessionSummary
-				title={session.elapsed >= session.total
-					? 'Ride complete'
-					: 'Ride ended'}
+				title={workout.name}
 				unsaved={saveStatus !== null && !savedId}
 				{savedXp}
-				subtitle="{workout.name} · {new Date().toLocaleDateString()}"
 				samples={session.recording}
 				ftp={profile.current.ftp}
 				execution={session.scored ? session.execution : undefined}
 			>
 				{#snippet actions()}
-					<div class="panel panel-lg">
-						<div class="flex flex-wrap items-center gap-2">
-							<!-- The end links forward (#1331): the ride's own page first,
-							     the export and the next workout after it. -->
-							{#if savedId}
-								<a href="/history/{savedId}" class="btn btn-primary"
-									>See your ride</a
-								>
-							{:else if saving}
-								<!-- The row keeps its shape while the save is in flight:
-								     the button under the thumb never changes role (#1544). -->
-								<button disabled class="btn btn-primary">Saving…</button>
-							{/if}
-							<button
-								onclick={downloadFit}
-								disabled={downloading || !session?.recording.length}
-								data-testid="download-fit"
-								class="btn {savedId || saving
-									? 'btn-secondary'
-									: 'btn-primary'}"
-								>{downloading ? 'Preparing…' : 'Export .fit'}</button
-							>
-							{#if savedId}
-								<button
-									onclick={downloadCard}
-									disabled={carding}
-									data-testid="download-card"
-									class="btn btn-secondary"
-									>{carding ? 'Drawing…' : 'Ride card'}</button
-								>
-							{/if}
-							<a href="/workouts" class="btn btn-secondary"
-								>Pick another workout</a
-							>
-						</div>
-						{#if saveStatus}
-							<div class="mt-2">
-								<Banner tone="warn">
-									{saveStatus}
-									{#snippet action()}
-										{#if retrySave}
-											<button onclick={retrySave} class="btn btn-secondary"
-												>Try again</button
-											>
-										{/if}
-									{/snippet}
-								</Banner>
-							</div>
-						{/if}
-						{#if error}
-							<div class="mt-2"><Banner tone="error">{error}</Banner></div>
-						{/if}
-
-						<RideFlags {flags} />
-					</div>
+					<!-- The end links forward (#1331): the ride's own page first,
+					     the export and the next workout after it, Done last. -->
+					{#if savedId}
+						<a href="/history/{savedId}" class="btn btn-secondary"
+							>See your ride</a
+						>
+					{:else if saving}
+						<!-- The row keeps its shape while the save is in flight:
+						     the button under the thumb never changes role (#1544). -->
+						<button disabled class="btn btn-secondary">Saving…</button>
+					{/if}
+					<button
+						onclick={downloadFit}
+						disabled={downloading || !session?.recording.length}
+						data-testid="download-fit"
+						class="btn btn-secondary"
+						>{downloading ? 'Preparing…' : 'Export .fit'}</button
+					>
+					{#if savedId}
+						<button
+							onclick={downloadCard}
+							disabled={carding}
+							data-testid="download-card"
+							class="btn btn-secondary"
+							>{carding ? 'Drawing…' : 'Ride card'}</button
+						>
+					{/if}
+					<a href="/workouts" class="btn btn-secondary">Pick another workout</a>
+					<a href="/home" class="btn btn-primary">Done</a>
+				{/snippet}
+				{#snippet status()}
+					{#if saveStatus}
+						<Banner tone="warn">
+							{saveStatus}
+							{#snippet action()}
+								{#if retrySave}
+									<button onclick={retrySave} class="btn btn-secondary"
+										>Try again</button
+									>
+								{/if}
+							{/snippet}
+						</Banner>
+					{/if}
+					{#if error}
+						<div class="mt-2"><Banner tone="error">{error}</Banner></div>
+					{/if}
+					<RideFlags {flags} />
 				{/snippet}
 			</SessionSummary>
 		</div>

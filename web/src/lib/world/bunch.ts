@@ -7,6 +7,7 @@ import type { BunchView } from '$lib/channel/bunch-view';
 import { damp } from '$lib/motion/damp';
 import { rigFor } from './figure/rig';
 import { resolveKit } from './figure/kit';
+import { lanesFor } from './lanes';
 import { ROAD_W } from './terrain/road-profile';
 
 /** Metres between riders abreast. */
@@ -34,11 +35,6 @@ const LANE_HALF_S = 0.6;
 const CAR_BACK_M = 4.5 + ROW_M;
 /** The car beside the rider it tows, centre to centre. */
 const CAR_SIDE_M = 1.4;
-
-/** docs/SPEC.md "Drafting": 3, 4 or 5 lanes for up to 6, 12 or more riders. */
-export function lanesFor(n: number): number {
-	return n <= 6 ? 3 : n <= 12 ? 4 : 5;
-}
 
 /** Where a rider sits in the bunch: metres left of the road's middle, and metres ahead of its centre. */
 export type Slot = { lane: number; ahead: number };
