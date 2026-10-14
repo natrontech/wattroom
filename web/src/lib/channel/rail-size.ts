@@ -7,11 +7,13 @@
  */
 
 /**
- * A button: 44 px tall on the kit's own padding while riding, btn-xs at the
- * desk. Not btn-lg, whose 20 px sides would take the room the jukebox's
- * search field needs for its placeholder at the column's narrowest (#3912).
+ * A button: 44 px tall on the kit's own padding with its words at G4's floor
+ * while riding, btn-xs at the desk. Not btn-lg, whose 20 px sides would take
+ * the room the jukebox's search field needs for its placeholder at the
+ * column's narrowest (#3912).
  */
-export const railButton = (riding: boolean) => (riding ? 'min-h-11' : 'btn-xs');
+export const railButton = (riding: boolean) =>
+	riding ? 'min-h-11 text-2xl' : 'btn-xs';
 
 /** A text field beside a railButton, as tall as it, its words at G4's floor while riding. */
 export const railField = (riding: boolean) =>
