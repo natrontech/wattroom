@@ -18,6 +18,8 @@ export function roadsEnabled(): boolean {
 export interface RideableRoute {
 	id: string;
 	name: string;
+	/** The generated name legs go out under, never the owner's rename (#3055). */
+	generatedName?: string;
 	road: Road;
 	/**
 	 * Someone else's road, the crew's cut of it (#3621): ridden, never saved
@@ -80,7 +82,15 @@ export async function loadRoad(
 	try {
 		const road = roadOf(res.data);
 		if (!road) return { ok: false, error: 'That route has no road to ride.' };
-		return { ok: true, route: { id: res.data.id, name: res.data.name, road } };
+		return {
+			ok: true,
+			route: {
+				id: res.data.id,
+				name: res.data.name,
+				generatedName: res.data.generatedName,
+				road,
+			},
+		};
 	} catch {
 		return { ok: false, error: 'That road could not be read. Try again.' };
 	}

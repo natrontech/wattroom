@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Bike from '@lucide/svelte/icons/bike';
+	import ListOrdered from '@lucide/svelte/icons/list-ordered';
 	import Dumbbell from '@lucide/svelte/icons/dumbbell';
 	import type { Component } from 'svelte';
 	import { spectatorRideLine } from '$lib/device.svelte';
@@ -50,6 +51,14 @@
 			stretch: true,
 			href: (fromM) =>
 				`/ride?road=${encodeURIComponent(id)}${fromM > 0 ? `&from=${Math.round(fromM)}` : ''}`,
+		},
+		{
+			key: 'legs',
+			icon: ListOrdered,
+			label: 'Ride its workout',
+			line: 'ERG by the road at your FTP, in legs of at most 6 h',
+			stretch: false,
+			href: () => `/ride?road=${encodeURIComponent(id)}&leg=1`,
 		},
 		{
 			key: 'workout',
