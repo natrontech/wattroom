@@ -52,7 +52,7 @@ If `$AGENT_COUNT` is above 1, prefer issues where `number % AGENT_COUNT == AGENT
 
 - Reproduce first: a test or a design-shot probe that fails on main. Watch it fail.
 - Make the smallest diff that meets the issue: no refactor, no cleanup next to it.
-- If a rider can see the change, start the design check's capture (`design-check` §2) as soon as the fix builds, not after everything else. Run it in the background with `timeout: 3600000`, because a headless run otherwise stops it at 10 minutes. Every PR abandoned in October left this step undone.
+- If a rider can see the change, start the design check's capture (`design-check` §2) as soon as the fix builds, not after everything else. Run it in the background with `timeout: 3600000`, because a headless run otherwise stops it at 10 minutes. Seven of the 13 PRs closed unmerged around 2026-10-09 stopped with this step still to run.
 
 ## 4. Prove
 
