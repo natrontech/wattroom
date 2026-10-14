@@ -3,7 +3,8 @@
 	 * Any workout, ridden on one of your own roads (#3594): pick the road,
 	 * then where on it to start — Terrain Match's proposal (#3099) or km 0,
 	 * one tap apart. Blocks still end by the clock; the road is scenery the
-	 * dot rides at your own watts.
+	 * dot rides at your own watts. Opened from a route page (#3681), `road`
+	 * is already picked: it opens on where to start.
 	 */
 	import Banner from '$lib/components/Banner.svelte';
 	import Modal from '$lib/components/Modal.svelte';
@@ -18,8 +19,14 @@
 	let {
 		id,
 		workout,
+		road,
 		onclose,
-	}: { id: string; workout: Workout; onclose: () => void } = $props();
+	}: {
+		id: string;
+		workout: Workout;
+		road?: string;
+		onclose: () => void;
+	} = $props();
 
 	let routes = $state<StoredRoute[] | null>(null);
 	let error = $state<string | null>(null);
@@ -40,6 +47,7 @@
 		else error = result.error;
 	}
 	void load();
+	if (road) void pick(road);
 
 	async function pick(routeId: string) {
 		loading = routeId;
@@ -95,7 +103,7 @@
 					>Another route</button
 				>
 			</div>
-		{:else if routes === null}
+		{:else if routes === null || (road && loading === road)}
 			<Skeleton class="h-16" rows={2} />
 		{:else if routes.length === 0}
 			<p class="text-muted flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
