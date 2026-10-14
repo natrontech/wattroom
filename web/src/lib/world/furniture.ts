@@ -84,19 +84,33 @@ export function paintArch(
 }
 
 // The KOM arch: ≥ 6 m clear, posts a metre outside the road edge, structural chrome — never glowing.
-type Box = readonly [at: [number, number, number], size: [number, number, number]];
+type Box = readonly [
+	at: [number, number, number],
+	size: [number, number, number],
+];
 /** Its chrome in its own frame, centre and size: two posts, and the banner painted front and back. */
 export const ARCH_POSTS: readonly Box[] = [
-	[[-4.4, 3.8, 0], [0.5, 7.6, 0.5]],
-	[[4.4, 3.8, 0], [0.5, 7.6, 0.5]],
+	[
+		[-4.4, 3.8, 0],
+		[0.5, 7.6, 0.5],
+	],
+	[
+		[4.4, 3.8, 0],
+		[0.5, 7.6, 0.5],
+	],
 ];
-export const ARCH_BANNER: Box = [[0, 7.0, 0], [9.4, 1.4, 0.3]];
+export const ARCH_BANNER: Box = [
+	[0, 7.0, 0],
+	[9.4, 1.4, 0.3],
+];
 
 /** The arch as one moving group, for a game's finish (game-road.ts); the ride's arches are batched (boards.ts). */
 export function arch(route: Route, a: Arch, style: Style): THREE.Group {
 	const g = new THREE.Group();
 	const chrome = new THREE.MeshLambertMaterial({ color: style.arch.chrome });
-	const tex = paintedTexture(...ARCH_PAINT, (x) => paintArch(x, a.label, style));
+	const tex = paintedTexture(...ARCH_PAINT, (x) =>
+		paintArch(x, a.label, style),
+	);
 	const face = new THREE.MeshLambertMaterial({ map: tex });
 	const box = ([at, size]: Box, m: THREE.Material | THREE.Material[]) => {
 		const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), m);
