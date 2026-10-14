@@ -77,7 +77,7 @@
 {#snippet foot()}
 	<!-- A free ride shows the call your numbers (ADR-0059), heart rate
 	     included, so it says so under them (ADR-0008, #2804). -->
-	<HrShare class="px-4 pb-3" />
+	<HrShare ride class="px-4 pb-3" />
 {/snippet}
 
 <div class="page flex h-full min-h-0 flex-col gap-6 overflow-y-auto pb-20">
