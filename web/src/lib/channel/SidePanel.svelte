@@ -370,7 +370,7 @@
 			     roadside deck's, drawn once (#3941). -->
 			{#if !roadside}<CheerDeck onCheer={(key) => onCheer?.(key)} />{/if}
 			<div class="flex gap-2">
-				<BoardToggle />
+				<BoardToggle {riding} />
 				<button
 					onclick={(e) => (pickerAt = pickerAt ? null : e.currentTarget)}
 					aria-label="More reactions"
