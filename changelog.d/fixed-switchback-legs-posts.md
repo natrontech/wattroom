@@ -1,0 +1,1 @@
+- On a climb that stacks its switchbacks, each leg's valley side carries a white post every 25 m, so the legs above read as road from below.

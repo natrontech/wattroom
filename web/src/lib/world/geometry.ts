@@ -10,7 +10,6 @@ import { bendsOf } from './terrain/road-frame';
 import {
 	bankOf,
 	drawnRows,
-	FORMATION,
 	ROAD_W,
 	SHOULDER_DROP,
 } from './terrain/road-profile';
@@ -180,76 +179,6 @@ function strip(pos: number[], uv: number[], cols: number) {
 	return g;
 }
 
-/** A parapet stands where the ground this far past the shoulder lies more than `WALL_FALL` m below the road. */
-const WALL_OUT = 8;
-const WALL_FALL = 4;
-/** The parapet stands this far past the shoulder, so the verge shows inside it. */
-const WALL_IN = 1;
-/** Its height over the road, and how far its foot reaches into the fill below. */
-const WALL_H = 0.7;
-const WALL_FOOT = 2;
-/** The `u` a parapet carries: past any ribbon's width, so the road's shader paints it whole. */
-const WALL_U = 50;
-
-/**
- * A low parapet on a road's valley side, wherever the ground falls away
- * (#3838): from below, a stack of switchback legs reads as road by it, when
- * the ledge hides the asphalt and the forest the face. Rows `from` to `to`,
- * as `road` draws them, so a piece merges into its ribbon and costs no draw.
- * Two faces, out and in, each lit from its own side. Every row has its wall,
- * flat under the ground where none stands, so every walled piece is one size
- * and the road's pool reuses its slot (piece-pool). Null where none stands.
- */
-export function parapet(
-	route: Route,
-	groundAt: (x: number, z: number) => number,
-	[from, to]: readonly [number, number],
-	step = 2,
-): THREE.BufferGeometry | null {
-	const rows = drawnRows(route, step, from, to);
-	const pos: number[] = [];
-	const normal: number[] = [];
-	const uv: number[] = [];
-	const idx: number[] = [];
-	let walled = false;
-	for (const side of [-1, 1]) {
-		rows.forEach((p, i) => {
-			const ox = Math.cos(p.heading) * side; // outward
-			const oz = -Math.sin(p.heading) * side;
-			const out = FORMATION + WALL_OUT;
-			const falls =
-				p.ele - groundAt(p.x + ox * out, p.z + oz * out) > WALL_FALL;
-			walled ||= falls;
-			const x = p.x + ox * (FORMATION + WALL_IN);
-			const z = p.z + oz * (FORMATION + WALL_IN);
-			const y = yOf(route, p.ele) + ROAD_LIFT;
-			const v = pos.length / 3;
-			for (const n of [1, -1])
-				for (const h of [y - WALL_FOOT, falls ? y + WALL_H : y - WALL_FOOT]) {
-					pos.push(x, h, z);
-					normal.push(ox * n, 0, oz * n);
-					uv.push(side * WALL_U, (from + i) * step);
-				}
-			if (i > 0)
-				for (const [f, n] of [
-					[0, 1],
-					[2, -1],
-				]) {
-					const [a, c, b, d] = [v - 4 + f, v - 3 + f, v + f, v + f + 1]; // a b along the foot, c d the top
-					// (a, b, c) faces right of travel: wound so each face looks out of its own side.
-					idx.push(...(side * n < 0 ? [a, b, c, b, d, c] : [a, c, b, b, c, d]));
-				}
-		});
-	}
-	if (!walled) return null;
-	const g = new THREE.BufferGeometry();
-	g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-	g.setAttribute('normal', new THREE.Float32BufferAttribute(normal, 3));
-	g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-	g.setIndex(idx);
-	return g;
-}
-
 // Road surface with markings drawn in the fragment shader: edge lines, a
 // 3-on-9-off centre dash, verge beyond the edge — box-filtered with fwidth,
 // so they stay crisp at 2 m and never shimmer at 2 km.
@@ -302,8 +231,6 @@ export function roadMaterial(c: Style['road']): THREE.MeshLambertMaterial {
 				vec3 col = mix(uAsphalt, uShoulder, shoulder) * (1.0 + grain);
 				col = mix(col, uLine, max(edge, centre) * (1.0 - shoulder));
 				col = mix(col, uVerge, verge);
-				// A parapet (#3838): pale stone, between the gravel and the paint, in the road's grain.
-				col = mix(col, mix(uShoulder, uLine, 0.4) * (1.0 + grain), step(${WALL_U - 1}.0, abs(u)));
 				vec4 diffuseColor = vec4(col, opacity);`,
 			);
 	};

@@ -2,9 +2,8 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import type { Road } from '$lib/road/road';
 import type { Route } from '$lib/road/route';
 import { Biome } from './biome';
-import { parapet } from './geometry';
 import { routeOfRoad } from './road-route';
-import { rowCount } from './terrain/road-profile';
+import { drawnRows, FORMATION, rowCount } from './terrain/road-profile';
 import { generate, type World } from './world';
 import { BUILD_MS, worstRiseThroughRoad } from './world.test-helper';
 
@@ -66,29 +65,49 @@ describe('stacked switchbacks', () => {
 });
 
 describe('stacked switchbacks, seen from below', () => {
-	it('wall each leg above the first on its valley side (#3838)', () => {
-		const wall = parapet(route, world.heightAt, [0, rowCount(route) - 1]);
-		// Each row holds a foot and a top, out and in; a wall stands where its top is over its foot.
-		const pos = wall?.attributes.position.array ?? [];
-		const along = wall?.attributes.uv.array ?? [];
-		const walled = new Set<number>();
-		for (let v = 0; v < pos.length / 3; v += 4)
-			if (pos[(v + 1) * 3 + 1] > pos[v * 3 + 1]) walled.add(along[v * 2 + 1]);
+	it('post each leg every 25 m on the side its ground falls away (#3838)', () => {
+		const rows = drawnRows(route, 2, 0, rowCount(route) - 1);
 		const LEG = 700; // 30 rows of 20 m, then the turn
-		const share = (leg: number) =>
-			[...walled].filter((d) => d >= leg * LEG && d < (leg + 1) * LEG).length /
-			(Math.min(LEG, route.length - leg * LEG) / 2);
-		expect(share(0)).toBeLessThan(0.1); // it rises from the valley's own ground
-		for (const leg of [1, 2, 3]) expect(share(leg)).toBeGreaterThan(0.4);
-	});
-
-	it('draw every walled piece one size, so the road pool reuses its slots', () => {
-		const sizes = [400, 600, 800, 1000].map(
-			(from) =>
-				parapet(route, world.heightAt, [from, from + 200])?.attributes.position
-					.count,
-		);
-		expect(sizes[0]).toBeGreaterThan(0);
-		expect(new Set(sizes).size).toBe(1);
+		/** Posts and fall-away rows per leg and side, keyed `leg:side`. */
+		const posts = new Map<string, number>();
+		const falls = new Map<string, number>();
+		const keyOf = (i: number, side: number) =>
+			`${Math.floor((i * 2) / LEG)}:${side}`;
+		const dropsAway = (p: (typeof rows)[number], side: number) =>
+			p.ele -
+				world.heightAt(
+					p.x + Math.cos(p.heading) * side * (FORMATION + 8),
+					p.z - Math.sin(p.heading) * side * (FORMATION + 8),
+				) >
+			4;
+		rows.forEach((p, i) => {
+			for (const side of [-1, 1])
+				if (dropsAway(p, side)) {
+					const k = keyOf(i, side);
+					falls.set(k, (falls.get(k) ?? 0) + 2);
+				}
+		});
+		for (const d of world.pieces) {
+			if (d.kind !== 'delineator') continue;
+			let i = 0;
+			let best = Infinity;
+			rows.forEach((p, j) => {
+				const dd = Math.hypot(p.x - d.x, p.z - d.z);
+				if (dd < best) [best, i] = [dd, j];
+			});
+			const p = rows[i];
+			const side = Math.sign(
+				(d.x - p.x) * Math.cos(p.heading) - (d.z - p.z) * Math.sin(p.heading),
+			);
+			if (!dropsAway(p, side)) continue;
+			const k = keyOf(i, side);
+			posts.set(k, (posts.get(k) ?? 0) + 1);
+		}
+		// The first leg rises from the valley's own ground; every leg above it drops away somewhere.
+		expect(falls.has('0:1') || falls.has('0:-1')).toBe(false);
+		for (const leg of [1, 2, 3])
+			expect(falls.has(`${leg}:1`) || falls.has(`${leg}:-1`)).toBe(true);
+		for (const [k, m] of falls)
+			if (m >= 100) expect((posts.get(k) ?? 0) / m, k).toBeGreaterThan(1 / 30);
 	});
 });

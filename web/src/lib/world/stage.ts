@@ -2,24 +2,15 @@
 // props, furniture and the horizon. Rebuilt whole on a style change — the
 // world data under it is not, and neither is the streamed ground it draws.
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { backdrop } from './backdrop';
 import { tag } from './family';
 import { chunkId, LEAVE, roadPieces, type GroundStream } from './ground-stream';
 import { batchProps, FAR_M, NEAR_M, type Drawn } from './props/batch';
 import { TILE_M, tileCentre, tileKey, tileOf } from './props/tiles';
-import { disposeTree } from './dispose';
-import { arch, board } from './furniture';
+import { batchBoards } from './boards';
+import { archOnRoad } from './furniture';
 import type { Piece } from './setpieces';
-import {
-	parapet,
-	plinth,
-	road,
-	roadMaterial,
-	ROAD_W,
-	terrain,
-	yOf,
-} from './geometry';
+import { plinth, road, roadMaterial, ROAD_W, terrain, yOf } from './geometry';
 import { PROP_RAMP, ramp, toon, type Sight } from './materials';
 import { piecePool } from './piece-pool';
 import { CHUNK_M } from './place/lattice';
@@ -70,7 +61,7 @@ export type Stage = {
 
 // Room for the ground within reach, and for a hilly road's pieces; either grows by half when it runs out.
 const GROUND_ROOM = { pieces: 13_000, vertices: 200_000, indices: 800_000 };
-const ROAD_ROOM = { pieces: 48, vertices: 128_000, indices: 480_000 }; // every piece walled (parapet)
+const ROAD_ROOM = { pieces: 48, vertices: 48_000, indices: 240_000 };
 
 const SKY_R = 40000;
 const STARS = 2500;
@@ -126,6 +117,8 @@ export function buildStage(
 	style: Style,
 	sight: Sight,
 	stream: GroundStream,
+	/** The road ends under a finish arch; a lapped one does not. */
+	finish = true,
 ): Stage {
 	const group = new THREE.Group();
 	const gradient = ramp(PROP_RAMP);
@@ -196,20 +189,12 @@ export function buildStage(
 		pieces.forEach((p, k) => {
 			const key = String(k);
 			const d = Math.hypot(p.x - eye.x, p.z - eye.z) - p.r;
-			if (d <= REACH.near && !ribbon.has(key)) {
-				const surface = road(route, {
-					width: ROAD_W,
-					shoulder: SHOULDER,
-					rows: p.rows,
-				});
-				const wall = parapet(route, world.heightAt, p.rows);
-				if (!wall) ribbon.add(key, surface);
-				else {
-					ribbon.add(key, mergeGeometries([surface, wall])!);
-					surface.dispose();
-					wall.dispose();
-				}
-			} else if (d > REACH.near * LEAVE) ribbon.drop(key);
+			if (d <= REACH.near && !ribbon.has(key))
+				ribbon.add(
+					key,
+					road(route, { width: ROAD_W, shoulder: SHOULDER, rows: p.rows }),
+				);
+			else if (d > REACH.near * LEAVE) ribbon.drop(key);
 		});
 	}
 
@@ -237,8 +222,14 @@ export function buildStage(
 	const starField = style.stars ? stars(style.stars) : null;
 	if (starField) group.add(tag('sky', starField));
 
-	// Each tile's signs and arch, built with its tile and let go with it.
-	const boards = new Map<string, THREE.Object3D[]>();
+	// Each tile's signs and arch, stood with its tile and let go with it.
+	const boards = batchBoards(route, style);
+	group.add(tag('dressing', boards.root));
+	// The road's end (#3623): the world's route is the road the way it is ridden, so the finish is its last metre. A loop has none.
+	if (finish && !route.loop)
+		group.add(
+			tag('dressing', archOnRoad(route, route.length, 'FINISH', style), 'arch'),
+		);
 	function draw(ti: number, tj: number, eye: THREE.Vector3) {
 		const id = tileKey(ti, tj);
 		const t = world.tile(ti, tj);
@@ -248,21 +239,11 @@ export function buildStage(
 			[...t.props, ...t.pieces.map(drawn)],
 			eye,
 		);
-		const shown = [
-			...t.signs.map((s) => tag('dressing', board(route, s, style), 'sign')),
-			...t.arches.map((a) => tag('dressing', arch(route, a, style), 'arch')),
-		];
-		if (shown.length === 0) return;
-		group.add(...shown);
-		boards.set(id, shown);
+		boards.add(id, t.signs, t.arches);
 	}
 	function undraw(id: string) {
 		props.drop(id);
-		for (const o of boards.get(id) ?? []) {
-			group.remove(o);
-			disposeTree(o);
-		}
-		boards.delete(id);
+		boards.drop(id);
 	}
 	let near: string | null = null;
 	let wanted: [number, number][] = [];
