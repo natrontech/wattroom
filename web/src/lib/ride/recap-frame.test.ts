@@ -59,10 +59,21 @@ describe('recapEyebrow (#3686)', () => {
 });
 
 describe('rideKind (#3687)', () => {
-	it('reads a saved ride by what it kept', () => {
+	it('names a ride by the mode it was saved with', () => {
+		expect(rideKind({ rideMode: 'free', distanceM: 12000 })).toBe('Free ride');
+		expect(rideKind({ rideMode: 'workout', distanceM: 12000 })).toBe('Workout');
+		expect(rideKind({ rideMode: 'game', inSession: true })).toBe('Game');
+		expect(rideKind({ rideMode: 'race', inSession: true })).toBe('Race');
+	});
+
+	it('calls a session on a road a bunch ride, as the closing card does', () => {
+		expect(
+			rideKind({ rideMode: 'workout', inSession: true, distanceM: 12000 }),
+		).toBe('Bunch ride');
+		expect(rideKind({ rideMode: 'workout', inSession: true })).toBe('Workout');
+	});
+
+	it('reads a ride older than its mode as a workout', () => {
 		expect(rideKind({})).toBe('Workout');
-		expect(rideKind({ inSession: true })).toBe('Workout');
-		expect(rideKind({ distanceM: 12000 })).toBe('Free ride');
-		expect(rideKind({ distanceM: 12000, inSession: true })).toBe('Bunch ride');
 	});
 });

@@ -175,6 +175,9 @@ type rideDetailJSON struct {
 	// A road ride's metres, the server's replay (#3053): what tells the page
 	// its card is a poster (#3142). Absent off a road.
 	DistanceM *int32 `json:"distanceM,omitempty"`
+	// How it was ridden, ADR-0062's word (free, workout, bunch, race, game):
+	// the eyebrow over the page's title (#3687). Absent on older rides.
+	RideMode string `json:"rideMode,omitempty"`
 	// The rider's own road it rode (#3874): what the page titles the ride
 	// with and links back to. Absent off a road, on someone else's, or when
 	// the route has since been deleted.
@@ -300,6 +303,9 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 		s.log.Warn("ride road unreadable", "err", err, "ride", store.UUIDString(row.ID))
 	} else {
 		out.DistanceM = road.DistanceM
+		if road.RideMode != nil {
+			out.RideMode = *road.RideMode
+		}
 		if road.RouteID != "" {
 			out.Road = &rideRoadJSON{RouteID: road.RouteID, Name: road.RouteName, GenName: road.GenName}
 		}
