@@ -25,7 +25,7 @@ describe('the instrument knows when its numbers are not live (#2851)', () => {
 		expect(surfaces).toEqual(
 			expect.arrayContaining([
 				'lib/ride/FreeRide.svelte',
-				'lib/session/Training.svelte',
+				'lib/ride/RoadRiding.svelte',
 				'lib/session/TrainingPhone.svelte',
 			]),
 		);
