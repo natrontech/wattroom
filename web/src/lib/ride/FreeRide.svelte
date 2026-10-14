@@ -112,7 +112,7 @@
 					aria-describedby={channel.trainer
 						? undefined
 						: 'free-ride-workout-hint'}
-					class="btn btn-secondary btn-lg disabled:opacity-40"
+					class="btn btn-secondary btn-ride disabled:opacity-40"
 					>Ride a workout</button
 				>
 			{/if}
@@ -120,7 +120,7 @@
 				<button
 					onclick={() => void free?.end()}
 					disabled={free?.saving}
-					class="btn btn-primary btn-lg">{endRideLabel(free)}</button
+					class="btn btn-primary btn-ride">{endRideLabel(free)}</button
 				>
 			{/if}
 		</div>
@@ -142,7 +142,7 @@
 			</p>
 			<a
 				href={ridePath(channel.address, session)}
-				class="btn btn-accent btn-lg ml-auto"
+				class="btn btn-accent btn-ride ml-auto"
 				><Radio size={15} /> Go to the ride</a
 			>
 		</div>
@@ -157,7 +157,7 @@
 			</p>
 			<a
 				href={ridePath(channel.address, session)}
-				class="btn btn-accent btn-lg ml-auto"
+				class="btn btn-accent btn-ride ml-auto"
 				><Radio size={15} /> Join the ride</a
 			>
 		</div>
@@ -182,7 +182,7 @@
 						<button
 							onclick={() => free?.setMode(mode.id)}
 							aria-pressed={free?.mode === mode.id}
-							class="btn btn-lg {free?.mode === mode.id
+							class="btn btn-ride {free?.mode === mode.id
 								? 'btn-secondary'
 								: 'btn-ghost'}">{mode.label}</button
 						>

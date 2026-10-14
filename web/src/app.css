@@ -641,6 +641,12 @@ body {
 @utility ride-word {
 	@apply text-xl leading-7 sm:text-2xl sm:leading-7;
 }
+/* A worded button on a riding surface (TARGETS G4, #3896): btn-lg's 44 px
+ * box with ride-word's 24 px word, where btn-lg's 14 px sat under the floor.
+ * Icon buttons keep their 44 × 44 square. */
+@utility btn-ride {
+	@apply ride-word min-h-11 px-4 py-2 font-semibold;
+}
 /* The voice channel's stage while a ride runs (TARGETS G1, #3890): the Lounge
  * marks its root, and the components it shares with desk pages take riding
  * size inside it only, e.g. `ride-stage:ride-word`. */

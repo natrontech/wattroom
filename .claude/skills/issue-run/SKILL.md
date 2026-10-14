@@ -15,10 +15,14 @@ A run takes one issue, or one batch (§1), to **merged** or **closed with eviden
 
 ## 1. Pick
 
-Not workable: labelled `needs-human-input`, `blocked`, `backlog` or `feedback` (the `pickup-feedback` skill owns that one); assigned; covered by an open PR; or named by a live branch or worktree. A branch whose PR closed standing down is not a claim but kept work.
+Not workable: labelled `needs-human-input`, `blocked`, `backlog` or `feedback` (the `pickup-feedback` skill owns that one); assigned; covered by an open PR; or named by a live branch or worktree. A branch whose PR closed standing down is not a claim but kept work. So is a decided draft (source 0).
 
 If `$AGENT_COUNT` is above 1, prefer issues where `number % AGENT_COUNT == AGENT_INDEX`, so the agents beside you start apart. Take the first source that yields an issue:
 
+0. **Decided drafts.** A draft PR parked by a round-3 design FAIL whose issue has since lost `needs-human-input`, with a maintainer comment after the draft's last push. The comment is the decision. Apply it, then run a fresh design check from round 1 against the canon as it stands now, and land it. Nothing else resumes these, because the open draft reads as a claim.
+   ```sh
+   gh pr list --draft --author jlaubot --json number,title,closingIssuesReferences
+   ```
 1. **Kept work.** A PR closed unmerged ("standing down", "paused for budget") whose `Closes` issue is still open. Read why it stopped. Unless the maintainer rejected the approach, resume its branch, or `git fetch origin pull/<pr>/head` if the branch is gone. Don't start over.
    ```sh
    gh pr list --state closed --search "is:unmerged" --limit 30 --json number,headRefName,closingIssuesReferences
@@ -86,10 +90,12 @@ Run `date` when you start. At two hours without a green PR, or on the third fail
 
 1. Push the branch, then close its PR and keep the branch. An open PR reads as a claim.
 2. Comment on the issue: what works, what doesn't, and the one command or decision that unblocks it.
-3. Unassign yourself, and add `blocked` if something outside the code blocks it. The next run resumes the branch as kept work.
+3. Unassign yourself. If something outside the code blocks it, add `blocked` and mention @janlauber in the comment. A mention is the push that tells him. Otherwise the next run resumes the branch as kept work.
 4. End the run.
 
-If the issue already has two stand-downs, add `needs-human-input` with the blocker instead, so no run takes it up a third time.
+If the issue already has two stand-downs, add `needs-human-input` and mention @janlauber with the blocker instead, so no run takes it up a third time.
+
+A design check that ends FAIL at round 3 is not a stand-down. Follow design-check §7: the PR stays draft, and the issue keeps `needs-human-input` and the mention. Never close that PR or remove that label. On #3677 doing so cost a whole second run that failed the same way.
 
 Kill only processes you started, by PID.
 

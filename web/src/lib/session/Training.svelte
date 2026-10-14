@@ -173,17 +173,16 @@
 		<SessionControls compact />
 		<!-- The 3 m view, from the place the rider is on (#1667): the
 		     Lounge had the only button, off the numbers, mid-interval. -->
-		<!-- btn-lg, as /ride and /ramp give the same control and as
-		     every neighbour in this header already is (#2161): it is
-		     pressed while pedalling, which is what ux.md's 44 px is
-		     about. -->
+		<!-- btn-ride, as /ride and /ramp give the same control (#2161,
+		     #3896): it is pressed while pedalling, which is what ux.md's
+		     44 px and TARGETS G4's 24 px word are about. -->
 		<button
 			onclick={() => channel.openTv()}
-			class="btn btn-secondary btn-lg"
+			class="btn btn-secondary btn-ride"
 			aria-label="TV mode"><MonitorUp size={15} /> TV</button
 		>
 		{#if channel.you.inSession}
-			<button onclick={leaveRide} class="btn btn-ghost btn-lg"
+			<button onclick={leaveRide} class="btn btn-ghost btn-ride"
 				><LogOut size={15} /> Leave the ride</button
 			>
 		{/if}
@@ -211,7 +210,7 @@
 				<!-- One short word, so the eyebrow keeps the row (slot 1's 860 px). -->
 				<button
 					onclick={leaveRide}
-					class="btn btn-secondary h-11 px-4 text-2xl"
+					class="btn btn-secondary btn-ride"
 					aria-label="Leave the ride"
 					title="Leave the ride">Leave</button
 				>

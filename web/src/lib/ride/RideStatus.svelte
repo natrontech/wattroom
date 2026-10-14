@@ -109,7 +109,7 @@
 					disabled={repairing}
 					aria-label={held.recoverName}
 					title={held.recoverName}
-					class="btn btn-primary h-11 shrink-0 px-4 text-2xl"
+					class="btn btn-primary btn-ride shrink-0"
 					>{repairing ? 'Pairing…' : (held.recover ?? 'Reconnect')}</button
 				>
 			{/if}

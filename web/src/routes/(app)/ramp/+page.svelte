@@ -490,7 +490,7 @@
 							buffer?.end();
 							buffer = null;
 						}}
-						class="btn btn-secondary btn-lg">Cancel</button
+						class="btn btn-secondary btn-ride">Cancel</button
 					>
 				{/snippet}
 			</CountdownScreen>
@@ -517,10 +517,11 @@
 			>
 				{#snippet controls()}
 					<div class="flex flex-wrap items-center justify-end gap-2">
-						<button onclick={() => (tv = true)} class="btn btn-secondary btn-lg"
-							>TV</button
+						<button
+							onclick={() => (tv = true)}
+							class="btn btn-secondary btn-ride">TV</button
 						>
-						<button onclick={stopTest} class="btn btn-secondary btn-lg"
+						<button onclick={stopTest} class="btn btn-secondary btn-ride"
 							>I'm done</button
 						>
 						<FlagButton onflag={flag} sends="after" />

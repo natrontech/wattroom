@@ -8,7 +8,7 @@ import { climbGpx } from './road-gpx';
  * climbing 4 % in the open South Atlantic.
  */
 
-async function rideTheRoad(page: Page, name: string) {
+async function rideTheRoad(page: Page, name: string, from = 0) {
 	await page.addInitScript(() =>
 		localStorage.setItem(
 			'wattroom.mixer.v1',
@@ -23,6 +23,7 @@ async function rideTheRoad(page: Page, name: string) {
 	});
 	await page.getByRole('button', { name: 'Ride it now' }).click();
 	await page.waitForURL(/\/ride\?road=/);
+	if (from) await page.goto(`${page.url()}&from=${from}`);
 	await page
 		.getByRole('button', { name: 'Ride simulated' })
 		.click({ timeout: 15_000 });
@@ -49,7 +50,8 @@ test.describe('the Skyline', () => {
 	test('carries your dot, and the road moves under it by steps', async ({
 		page,
 	}) => {
-		const skyline = await rideTheRoad(page, 'Skyline Rider');
+		// Past the first 0.5 km, where the dot walks (#4003).
+		const skyline = await rideTheRoad(page, 'Skyline Rider', 1000);
 		await expect(skyline.locator('svg path').first()).toBeAttached();
 		const start = await shiftOf(skyline);
 		await expect

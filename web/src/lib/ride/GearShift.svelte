@@ -90,7 +90,7 @@
 			{...control(-1)}
 			disabled={!!off}
 			title={off ?? undefined}
-			class="btn btn-secondary btn-lg flex-1 touch-manipulation select-none disabled:opacity-40"
+			class="btn btn-secondary btn-ride flex-1 touch-manipulation select-none disabled:opacity-40"
 			>Easier</button
 		>
 		<output
@@ -103,7 +103,7 @@
 			{...control(1)}
 			disabled={!!off}
 			title={off ?? undefined}
-			class="btn btn-secondary btn-lg flex-1 touch-manipulation select-none disabled:opacity-40"
+			class="btn btn-secondary btn-ride flex-1 touch-manipulation select-none disabled:opacity-40"
 			>Harder</button
 		>
 	</div>

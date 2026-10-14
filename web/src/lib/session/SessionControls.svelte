@@ -118,13 +118,17 @@
 		     the ride into a session from here while pedalling. -->
 		<button
 			onclick={() => channel.openPicker()}
-			class="btn btn-accent btn-lg ride-stage:ride-word"
+			class="btn btn-accent {compact
+				? 'btn-ride'
+				: 'btn-lg ride-stage:ride-word'}"
 			><Radio size={15} /> Start a session</button
 		>
 	{:else if phase === 'countdown'}
 		<button
 			onclick={() => channel.control('end')}
-			class="btn btn-danger btn-lg ride-stage:ride-word"
+			class="btn btn-danger {compact
+				? 'btn-ride'
+				: 'btn-lg ride-stage:ride-word'}"
 			><Square size={13} /> Stop the countdown</button
 		>
 	{:else}
@@ -194,7 +198,11 @@
 	<!-- End anyone's session (docs/SPEC.md roles, #2598): the crew's lever
 	     over a session left running or a pick left behind, since one session
 	     holds the channel. On a phone too — it needs nothing a phone lacks. -->
-	<button onclick={endTheirs} class="btn btn-danger btn-lg ride-stage:ride-word"
+	<button
+		onclick={endTheirs}
+		class="btn btn-danger {compact
+			? 'btn-ride'
+			: 'btn-lg ride-stage:ride-word'}"
 		><Square size={13} />
 		{view === 'clear' ? `Clear ${whose} pick` : `End ${whose} session`}</button
 	>
