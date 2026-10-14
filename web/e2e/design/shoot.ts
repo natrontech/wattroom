@@ -320,21 +320,49 @@ export async function ride(
  * the shot is a little later in the ride, never a failed surface.
  */
 const LATE = 45;
-export async function atSecond(page: Page, second: number): Promise<void> {
-	const mark = `${Math.floor(second / 60)}:${String(second % 60).padStart(2, '0')}`;
-	const reached = (clock: string) => {
-		const [m, s] = clock.split(':').map(Number);
-		const at = m * 60 + s - second;
-		return at >= 0 && at <= LATE;
-	};
-	const deadline = Date.now() + (second + 30 + LATE) * 1000;
+const seconds = (clock: string) => {
+	const [m, s] = clock.split(':').map(Number);
+	return m * 60 + s;
+};
+async function waitClock(
+	page: Page,
+	label: string,
+	reached: (clockSeconds: number) => boolean,
+	deadlineS: number,
+): Promise<void> {
+	const deadline = Date.now() + deadlineS * 1000;
 	for (;;) {
 		const shown = (await clocks(page)).split(' ');
-		if (shown.includes(mark) || shown.some(reached)) return;
+		if (shown.some((c) => c && reached(seconds(c)))) return;
 		if (Date.now() > deadline)
-			throw new Error(`the ride never reached ${mark}: ${shown.join(' ')}`);
+			throw new Error(`the ride never reached ${label}: ${shown.join(' ')}`);
 		await page.waitForTimeout(200);
 	}
+}
+export async function atSecond(page: Page, second: number): Promise<void> {
+	const mark = `${Math.floor(second / 60)}:${String(second % 60).padStart(2, '0')}`;
+	await waitClock(
+		page,
+		mark,
+		(c) => c - second >= 0 && c - second <= LATE,
+		second + 30 + LATE,
+	);
+}
+
+/**
+ * The game card's only clock counts its round down (GamePanel's roundLeft,
+ * ROUND_S long), so `second` into the ride reads ROUND_S × round − second.
+ * A game's ride clock is that countdown, never a count up (#4006).
+ */
+const ROUND_S = 180;
+export async function atRoundSecond(page: Page, second: number): Promise<void> {
+	const left = ROUND_S * (Math.floor(second / ROUND_S) + 1) - second;
+	await waitClock(
+		page,
+		`${second}s into the game (${left}s left in its round)`,
+		(c) => left - c >= 0 && left - c <= LATE,
+		second + 30 + LATE,
+	);
 }
 
 /**
