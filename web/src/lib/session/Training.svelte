@@ -21,6 +21,7 @@
 	import BiasTrim from '$lib/session/BiasTrim.svelte';
 	import BikeComputer from '$lib/session/BikeComputer.svelte';
 	import { climbView } from '$lib/ride/climb-view';
+	import RideNarrator from '$lib/ride/RideNarrator.svelte';
 	import { watchClimbCues } from '$lib/ride/climb-cues.svelte';
 	import RaceRadio from '$lib/race/RaceRadio.svelte';
 	import HrShare from '$lib/channel/HrShare.svelte';
@@ -135,6 +136,12 @@
 	});
 	const ICON = 'btn btn-secondary h-11 w-11 p-0';
 </script>
+
+<RideNarrator
+	view={channel.ridden}
+	watts={channel.you.watts}
+	ftp={channel.you.ftp}
+/>
 
 {#if channel.phase === 'lounge'}
 	<TrainingLounge {targetsNote} />
