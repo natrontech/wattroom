@@ -33,7 +33,6 @@
 
 	let {
 		header,
-		status,
 		focus,
 		numbers,
 		crew,
@@ -46,8 +45,6 @@
 		class: extra = '',
 	}: {
 		header: Snippet;
-		/** The flat layout's status row; over the world it is slot 1's first line, the caller's. */
-		status?: Snippet;
 		focus: Snippet;
 		numbers?: Snippet;
 		crew?: Snippet;
@@ -196,17 +193,44 @@
 		{/if}
 	</div>
 {:else}
-	<div
-		class="grid min-h-0 grid-cols-[minmax(0,1fr)] grid-rows-[auto_auto_1fr_auto_auto_auto] {extra}"
-	>
-		<div class="row-start-1 min-w-0">{@render header()}</div>
-		{#if status}<div class="row-start-2 min-w-0">{@render status()}</div>{/if}
-		<!-- The focus fills its row: one stretched cell, allowed to shrink below its content. -->
-		<div class="row-start-3 grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)]">
+	<!-- No world: the same slots as flat panels in one column (#3670, TARGETS
+	     ride-workout-flat). Panels touch at one gap, so no band opens between
+	     them: the horizon takes the free height, or the focus does when a
+	     screen has the stage. -->
+	<div class="flex min-h-0 flex-col gap-3 {extra}" data-surface="flat">
+		<div data-dock="header" class="ride-panel shrink-0">{@render header()}</div>
+		<div
+			data-dock="focus"
+			class="ride-panel min-h-0 overflow-y-auto [&:not(:has(*))]:hidden {stage
+				? 'grow'
+				: 'shrink-0'}"
+		>
 			{@render focus()}
 		</div>
-		{#if numbers}<div class="row-start-4 min-w-0">{@render numbers()}</div>{/if}
-		{#if crew}<div class="row-start-5 min-w-0">{@render crew()}</div>{/if}
-		{#if horizon}<div class="row-start-6 min-w-0">{@render horizon()}</div>{/if}
+		{#if numbers}
+			<!-- The computer fills the panel's width: the head's track and the
+			     fields stand in the room a 21 rem dock would leave empty. -->
+			<div
+				data-dock="numbers"
+				class="ride-panel flex min-h-0 shrink-0 flex-col [&_[data-testid=bike-computer]]:w-full [&_[data-testid=computer-head]>div:first-child]:justify-start [&_[data-testid=computer-head]>div:first-child]:gap-x-8 [&:not(:has(*))]:hidden"
+			>
+				{@render numbers()}
+			</div>
+		{/if}
+		{#if crew}
+			<div data-dock="crew" class="ride-panel shrink-0 [&:not(:has(*))]:hidden">
+				{@render crew()}
+			</div>
+		{/if}
+		{#if horizon}
+			<div
+				data-dock="horizon"
+				class="ride-panel flex min-h-28 flex-col overflow-hidden [&:not(:has(*))]:hidden {stage
+					? 'shrink-0'
+					: 'grow'}"
+			>
+				{@render horizon()}
+			</div>
+		{/if}
 	</div>
 {/if}

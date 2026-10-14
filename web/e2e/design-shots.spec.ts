@@ -267,7 +267,7 @@ surface(
 					localStorage.setItem('wattroom.flat-road.v1', '1'),
 				);
 			const road = await fixtureRoad(o.page, 'hairpin');
-			await ride(o.page, `/ride?road=${road}`);
+			await ride(o.page, `/ride?w=openers&road=${road}`);
 			await assertRiding(o.page);
 			await s.shot(o, { name });
 		}

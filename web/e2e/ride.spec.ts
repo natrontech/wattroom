@@ -40,7 +40,10 @@ test('a simulated ride produces a .fit file', async ({ page }) => {
 	await page.getByRole('button', { name: 'Start the ride' }).click();
 
 	// The ride is live once power is arriving.
-	const watts = page.locator('.text-watt.glow-text-strong').first();
+	// The flat surface draws power once, in the watt colour: the computer's
+	// head (TARGETS ride-workout-flat 4). A second numeral is a duplicate (#3670).
+	const watts = page.locator('.text-watt');
+	await expect(watts).toHaveCount(1);
 	await expect(watts).not.toHaveText('0', { timeout: 15_000 });
 
 	// The clock has to actually advance — a frozen session still renders numbers,

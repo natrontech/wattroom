@@ -24,11 +24,9 @@ describe('the instrument knows when its numbers are not live (#2851)', () => {
 	it('finds the riding surfaces', () => {
 		expect(surfaces).toEqual(
 			expect.arrayContaining([
-				'lib/ride/RidingScreen.svelte',
 				'lib/ride/FreeRide.svelte',
 				'lib/session/Training.svelte',
 				'lib/session/TrainingPhone.svelte',
-				'routes/(app)/ramp/+page.svelte',
 			]),
 		);
 	});
@@ -42,17 +40,11 @@ describe('the instrument knows when its numbers are not live (#2851)', () => {
 
 /**
  * A voice channel's places draw your instrument before anything is paired,
- * and its 0 glowed as though measured (#2941). The solo ride and the ramp
- * test start only with a trainer in hand, so they always have one to read.
+ * and its 0 glowed as though measured (#2941).
  */
-const SOLO = ['lib/ride/RidingScreen.svelte', 'routes/(app)/ramp/+page.svelte'];
-
 describe('the instrument knows when nothing is paired (#2941)', () => {
-	it.each(surfaces.filter((file) => !SOLO.includes(file)))(
-		'%s tells every instrument',
-		(file) => {
-			const tags = read(file).match(/<Instrument\b[\s\S]*?\/>/g) ?? [];
-			for (const tag of tags) expect(tag).toMatch(/\bidle\b/);
-		},
-	);
+	it.each(surfaces)('%s tells every instrument', (file) => {
+		const tags = read(file).match(/<Instrument\b[\s\S]*?\/>/g) ?? [];
+		for (const tag of tags) expect(tag).toMatch(/\bidle\b/);
+	});
 });
