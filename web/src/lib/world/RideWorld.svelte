@@ -39,6 +39,7 @@
 		road,
 		metre,
 		bunch,
+		loop = false,
 		watts,
 		silent = false,
 		ftp,
@@ -53,6 +54,8 @@
 		metre: () => RideMetre;
 		/** Everyone on the road with you, on a session's road. */
 		bunch?: () => BunchView | null;
+		/** The session laps the road: it has no finish. */
+		loop?: boolean;
 		watts: number;
 		/** The trainer is silent past SIGNAL_LOST_MS, the signal the panels read "—" from. */
 		silent?: boolean;
@@ -82,6 +85,7 @@
 					ftp,
 					metre,
 					bunch,
+					loop,
 					steady: () => prefersReducedMotion.current,
 					onCue: play,
 					// Your kit is keyed by who you are, solo or in a bunch: the crew sees the one you see.

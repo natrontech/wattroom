@@ -16,7 +16,7 @@ describe('your place on the session’s road (#3553)', () => {
 			world: { bunchM: 400, speedMps: 8, offsets: { me: -35 } },
 		} as never;
 		const place = placeOnRoad(tick, { road } as never, 'me')!;
-		expect(place).toMatchObject({ m: 396.5, mps: 8, at: 5 });
+		expect(place).toMatchObject({ m: 396.5, mps: 8, at: 5, loop: false });
 		// Turned round: the climb is a descent.
 		expect(place.road.heights[0]).toBe(road.heights.at(-1));
 		expect(placeOnRoad(tick, null, 'me')).toBeNull();
@@ -29,6 +29,7 @@ describe('your place on the session’s road (#3553)', () => {
 			m,
 			mps: 8,
 			at: t,
+			loop: false,
 		});
 		expect(reckon(at(100, 0), 0)).toEqual({ m: 100, dead: 0 });
 		// A sprint window's 4 Hz ticks repeat the whole second's metre: it keeps rolling.

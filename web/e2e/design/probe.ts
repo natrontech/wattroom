@@ -196,6 +196,22 @@ export function probe(corridor: Box) {
 		[...(el.parentElement?.childNodes ?? [])].some(
 			(n) => n.nodeType === Node.TEXT_NODE && n.textContent?.trim(),
 		);
+	// A worded control's word (G4): the smallest shown text in it with letters,
+	// where it has any. Its own font size alone misses words set on a span.
+	const wordPx = (el: Element) => {
+		const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+		let min: number | null = null;
+		for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+			const host = n.parentElement;
+			if (!host || !/\p{L}/u.test(n.textContent ?? '')) continue;
+			const box = host.getBoundingClientRect();
+			// sr-only text is 1 px and read aloud, not seen.
+			if (!host.checkVisibility() || !shown(host) || box.width <= 1) continue;
+			const px = parseFloat(getComputedStyle(host).fontSize);
+			min = min === null ? px : Math.min(min, px);
+		}
+		return min;
+	};
 	const sizes = [
 		...document.querySelectorAll<HTMLElement>(
 			'button, a[href], input:not([type=hidden]), select, textarea, summary, [role=button]',
@@ -220,12 +236,15 @@ export function probe(corridor: Box) {
 			return {
 				px: Math.round(Math.min(r.width, r.height)),
 				label: label.trim().slice(0, 40),
+				wordPx: wordPx(el),
 			};
 		});
 	const smallest = sizes.reduce<{ px: number; label: string | null }>(
 		(a, b) => (b.px < a.px ? b : a),
 		{ px: Infinity, label: null },
 	);
+
+	const words = sizes.filter((s) => s.wordPx !== null);
 
 	return {
 		cave: { present: !!cave, maxSurfaceL: round(maxL) },
@@ -242,6 +261,11 @@ export function probe(corridor: Box) {
 			label: smallest.label,
 			under24: sizes.filter((s) => s.px < 24).length,
 			under44: sizes.filter((s) => s.px < 44).length,
+		},
+		// G4's floor for a riding surface's words; a desk page reads it as data.
+		buttonWords: {
+			minPx: words.length ? Math.min(...words.map((w) => w.wordPx!)) : null,
+			under24: words.filter((w) => w.wordPx! < 24).map((w) => w.label),
 		},
 		world: {
 			mounted: !!document.querySelector('canvas'),

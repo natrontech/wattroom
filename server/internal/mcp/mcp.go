@@ -144,7 +144,7 @@ var toolList = []map[string]any{
 		"description": "The rider's recent ride summaries, newest first: workout, date, duration, " +
 			"average watts, kJ, execution score, `Route ride` as the workout of a ride on a road with " +
 			"that road's `km` and `gainM`, and `inSession` for a ride ridden in a crew " +
-			"session (`room` is the same flag under its old name and goes in a later release). " +
+			"session. " +
 			"Answers `more` when older rides remain, with " +
 			"`nextBefore`/`nextBeforeId` to pass back for the next page.",
 		"inputSchema": map[string]any{
@@ -265,7 +265,6 @@ func (s *Service) listRides(ctx context.Context, user db.User, args json.RawMess
 		ExecutionScored   bool     `json:"executionScored"`
 		Ftp               int      `json:"ftp"`
 		Xp                int      `json:"xp"`
-		Room              bool     `json:"room"`
 		InSession         bool     `json:"inSession"`
 		SharedWithFriends bool     `json:"sharedWithFriends"`
 		Km                *float64 `json:"km,omitempty"`
@@ -281,7 +280,7 @@ func (s *Service) listRides(ctx context.Context, user db.User, args json.RawMess
 			ID: store.UUIDString(row.ID), Workout: row.WorkoutName, Date: row.StartedAt.Time.Format(time.RFC3339),
 			Seconds: int(row.Seconds), AvgWatts: int(row.AvgWatts), Kj: int(row.Kj),
 			Execution: float64(row.Execution), ExecutionScored: row.ExecutionScored, Ftp: int(row.FtpWatts), Xp: int(row.Xp),
-			Room: row.InSession, InSession: row.InSession, SharedWithFriends: row.SharedAt.Valid,
+			InSession: row.InSession, SharedWithFriends: row.SharedAt.Valid,
 		}
 		// A road ride is its road's numbers and nothing else here (#3054,
 		// ADR-0063): its workout is named after the route, and a route's name

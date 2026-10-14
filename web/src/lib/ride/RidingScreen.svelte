@@ -144,9 +144,8 @@
 	<div class="flex items-center gap-2">
 		{#if countIn}
 			<!-- Nothing runs yet: the one way out. -->
-			<button
-				onclick={countIn.cancel}
-				class="btn btn-secondary h-11 px-4 text-2xl">Cancel</button
+			<button onclick={countIn.cancel} class="btn btn-secondary btn-ride"
+				>Cancel</button
 			>
 		{:else}
 			{#if onFlag}<FlagButton onflag={flag} sends="after" />{/if}
@@ -171,7 +170,7 @@
 					><SkipForward size={20} /></button
 				>
 			{/if}
-			<button onclick={endRide} class="btn btn-secondary h-11 px-4 text-2xl"
+			<button onclick={endRide} class="btn btn-secondary btn-ride"
 				>End ride</button
 			>
 		{/if}
@@ -216,8 +215,8 @@
 		     px past the viewport and the ⚑ — the last button — could not be
 		     reached at all. -->
 	<div class="flex flex-wrap items-center justify-end gap-2">
-		<!-- The kit's riding size (ux.md: btn-lg is the 44 px a rider hits
-			     while pedalling); these used to retype the chrome by hand. -->
+		<!-- The kit's riding size (ux.md: btn-ride, 44 px with a 24 px word);
+			     these used to retype the chrome by hand. -->
 		<!-- A road workout's blocks end at their metres (#3499): nothing to
 		     skip or hold longer, and the reason said where they were. -->
 		{#if session.road?.pinned}
@@ -227,7 +226,7 @@
 		{:else}
 			<button
 				onclick={() => session.extend(60)}
-				class="btn btn-secondary btn-lg">+1 min</button
+				class="btn btn-secondary btn-ride">+1 min</button
 			>
 			<!-- Nothing to skip to on the last block: disabled with the
 				     reason, never a click that does nothing (ux.md, #1799). -->
@@ -237,13 +236,16 @@
 				title={session.info.segmentIndex + 1 >= session.segments.length
 					? 'Last block — End ride instead'
 					: undefined}
-				class="btn btn-secondary btn-lg disabled:opacity-40">Skip block</button
+				class="btn btn-secondary btn-ride disabled:opacity-40"
+				>Skip block</button
 			>
 		{/if}
 		{#if onTv}
-			<button onclick={onTv} class="btn btn-secondary btn-lg">TV</button>
+			<button onclick={onTv} class="btn btn-secondary btn-ride">TV</button>
 		{/if}
-		<button onclick={endRide} class="btn btn-secondary btn-lg">End ride</button>
+		<button onclick={endRide} class="btn btn-secondary btn-ride"
+			>End ride</button
+		>
 		{#if onFlag}
 			<FlagButton onflag={flag} sends="after" />
 		{/if}
@@ -285,7 +287,7 @@
 			: undefined}
 	>
 		{#snippet controls()}
-			<button onclick={countIn.cancel} class="btn btn-secondary btn-lg"
+			<button onclick={countIn.cancel} class="btn btn-secondary btn-ride"
 				>Cancel</button
 			>
 		{/snippet}

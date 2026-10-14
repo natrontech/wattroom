@@ -1200,7 +1200,7 @@ describe('a KOM sprint on a session’s road (#3553)', () => {
 	async function sprintOnRoad(singleSpeed: boolean) {
 		vi.useFakeTimers();
 		const { live, socket, deps } = inASession();
-		const place = { road: climb, m: 500, mps: 8, at: Date.now() };
+		const place = { road: climb, m: 500, mps: 8, at: Date.now(), loop: false };
 		let ride!: ReturnType<typeof createRide>;
 		const dispose = $effect.root(() => {
 			ride = createRide({
