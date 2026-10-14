@@ -9,6 +9,7 @@
 	// at a sprint without a resize observer.
 	import { CEILING, fillPct, ZONE_NAMES, zoneOf } from '$lib/components/zones';
 	import { targetState } from '$lib/channel/types';
+	import { wkg } from '$lib/format';
 	import TabularFigures from '$lib/components/TabularFigures.svelte';
 	import ZoneDot from '$lib/components/ZoneDot.svelte';
 	import PowerTrack from '$lib/session/PowerTrack.svelte';
@@ -26,6 +27,7 @@
 		fullScale = undefined,
 		stale = false,
 		idle = false,
+		kg = undefined,
 	}: {
 		watts: number;
 		target: number;
@@ -52,6 +54,8 @@
 		 * signal" — capability gating, not an error (ux.md).
 		 */
 		idle?: boolean;
+		/** Weight, when the surface keeps W/kg beside the watts (TARGETS D17). */
+		kg?: number | null;
 	} = $props();
 
 	const quiet = $derived(stale || idle);
@@ -69,7 +73,10 @@
 				class="font-display {numeral} text-4xl leading-none font-bold tabular-nums"
 				>{quiet ? '—' : watts}</span
 			>
-			<span class="eyebrow">w</span>
+			<span class="eyebrow"
+				>w{#if kg !== undefined}
+					· {quiet ? '—' : wkg(watts, kg)} W/kg{/if}</span
+			>
 		</span>
 		<span class="min-w-0 flex-1"
 			><PowerTrack watts={shown} {target} {ftp} {fullScale} class="h-3" /></span
@@ -116,7 +123,10 @@
 					: 'text-[6.5rem]'}"
 				><TabularFigures value={quiet ? '—' : watts} /></span
 			>
-			<span class="eyebrow {tv ? 'text-[3vh]' : ''}">watts</span>
+			<span class="eyebrow {tv ? 'text-[3vh]' : ''}"
+				>watts{#if kg !== undefined}
+					· {quiet ? '—' : wkg(watts, kg)} W/kg{/if}</span
+			>
 			<!-- The zone you are actually in, named (#1531, ADR-0046): the gauge
 			     has been tinted by it since #386 and never said which one, so the
 			     colour was a code with no key on the one screen that could give

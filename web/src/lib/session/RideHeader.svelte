@@ -17,7 +17,7 @@
 	import { roadLine } from '$lib/ride/road-readout';
 	import {
 		blockBands,
-		nextFor,
+		nextText,
 		trainerChip,
 		type Block,
 	} from '$lib/workout/block';
@@ -161,11 +161,7 @@
 			     target, never a delta: a rider at threshold should not be doing
 			     arithmetic to find out what is coming (#1531). -->
 			<p class="text-muted max-w-full min-w-0 truncate text-2xl">
-				next · {block.next.label}
-				{#if block.next.watts > 0}<span class="num text-neon"
-						>{block.next.watts} W</span
-					>{/if}
-				for {nextFor(block.next.seconds)}
+				next · <span class="num">{nextText(block.next)}</span>
 			</p>
 		{/if}
 		{#if block.last}

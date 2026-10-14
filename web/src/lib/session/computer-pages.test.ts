@@ -48,11 +48,8 @@ describe('RIDE (ADR-0071)', () => {
 		]);
 	});
 
-	it('leaves the watts to a head that already shows them (D17, #3667)', () => {
-		expect(keys(fieldsFor('ride', ride({ head: true })))).toEqual([
-			'cadence',
-			'wkg',
-		]);
+	it('leaves the watts and W/kg to a head that already shows them (D17, #3667)', () => {
+		expect(keys(fieldsFor('ride', ride({ head: true })))).toEqual(['cadence']);
 	});
 
 	it('shows the 3 s average as its power once one exists, and this second before', () => {
