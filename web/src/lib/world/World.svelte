@@ -108,7 +108,7 @@
 		const placed = untrack(() =>
 			placeScene(
 				into,
-				`A world generated around ${data.route.name}, with you and three riders on it`,
+				`A world generated around ${data.route.name}, with ${moment ? 'you' : 'you and three riders'} on it`,
 				(canvas) =>
 					mount(canvas, {
 						route: data.route,
