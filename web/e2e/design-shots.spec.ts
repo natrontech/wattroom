@@ -1351,6 +1351,10 @@ surface(
 			const add = coach.page.getByRole('textbox', {
 				name: 'add music: search your library, or paste a YouTube link',
 			});
+			// Once a track plays, the add box folds behind the seat (#3983).
+			const fold = coach.page
+				.getByText('controls and queue')
+				.filter({ visible: true });
 			// The channel's deck outlives the session: the scheme shot before
 			// this one left it queued.
 			const queued = await coach.page
@@ -1364,6 +1368,7 @@ surface(
 						['9bZkp7q19f0', 'GANGNAM STYLE'],
 						['kJQP7kiw5Fk', 'Despacito'],
 					]) {
+				if (!(await add.isVisible())) await fold.click();
 				await add.fill(`https://www.youtube.com/watch?v=${id}`);
 				await add.press('Enter');
 				await coach.page
@@ -1372,7 +1377,13 @@ surface(
 					.first()
 					.waitFor({ timeout: 15_000 });
 			}
+			// The seat, folded; then multi:ride-session-deck — the fold open,
+			// its transport, queue and playlists at riding size (#3927).
+			if (await add.isVisible()) await fold.click();
 			await s.shot(coach);
+			await fold.click();
+			await s.shot(coach, { name: 'ride-session-deck' });
+			await fold.click();
 			for (const [device, name] of variants([
 				[DESK, 'ride-watch'],
 				[PHONE, 'ride-watch-phone'],
