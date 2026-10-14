@@ -45,9 +45,10 @@
 	const round5 = (w: number) => Math.round(w / 5) * 5;
 	const lo = $derived(target ? round5(target * 0.8) : 0);
 	const hi = $derived(target ? round5(target * 1.2) : 0);
-	// On the TV the watts grow to the panel's height (--head, BikeComputer)
-	// but never past its width: each digit takes about 0.57 em, and at four
-	// W/kg wraps under them (#3677). Slot 1's clock stays smaller (D17).
+	// On the TV the watts take the height the panel has, up to 34vh, sized
+	// from their own box so that it shrinks before any word does (#3677);
+	// never past the width: each digit takes about 0.57 em, and at four
+	// W/kg wraps under them. Slot 1's clock stays smaller (ride-tv 9).
 	const digits = $derived(String(power).length);
 	// ride-label is 24 px, under the TV's 2.9vh floor: the TV spells it in vh.
 	const size = $derived(
@@ -78,8 +79,10 @@
 	);
 </script>
 
-<div data-testid="computer-head" class="flex flex-col {size.gap}">
-	<div class="flex flex-wrap items-end justify-between gap-x-2 gap-y-2">
+<div data-testid="computer-head" class="flex min-h-0 flex-col {size.gap}">
+	<div
+		class="flex flex-wrap items-end justify-between gap-x-2 gap-y-2 {size.row}"
+	>
 		<p class="num leading-[0.85] font-bold whitespace-nowrap">
 			<span
 				data-testid="head-power"

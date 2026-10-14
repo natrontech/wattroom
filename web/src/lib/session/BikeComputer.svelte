@@ -261,14 +261,10 @@
 	{/if}
 	{#if phone}{@render name()}{/if}
 	<!-- On the TV the fields stand under the head (#3677): its watts take the
-	     width, and the panel the height the graph's slim band leaves. -->
-	<div
-		class={docked && tv
-			? 'flex flex-1 flex-col justify-evenly gap-[2vh]'
-			: 'contents'}
-	>
+	     width, and the height the panel has after every word (ride-tv 9). -->
+	<div class={docked && tv ? 'flex min-h-0 flex-col gap-[2vh]' : 'contents'}>
 		{#if docked}
-			<div class={tv ? 'min-w-0' : 'contents'}>
+			<div class={tv ? 'flex min-h-0 min-w-0 flex-col' : 'contents'}>
 				<ComputerHead
 					power={ctx.stats?.seconds ? ctx.stats.power3 : Math.round(ctx.watts)}
 					kg={ctx.kg}

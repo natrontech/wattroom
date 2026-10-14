@@ -117,17 +117,20 @@
 			{@attach (node) => offerSeat(node, TV_SEAT)}
 		></div>
 	{/if}
-	<!-- Ride-critical status on the TV too (audit 2026-09-09): the overlay
-	     used to paint over a trainer drop, a reconnect and the rider's own
-	     auto-pause while the instrument kept looking confident. Clear of
-	     the player's seat in the top-right, and of the exit beside it. -->
-	<div
-		class="absolute top-[2vh] left-[3vw] z-10 {playing
-			? 'right-[47vw]'
-			: 'right-[30vw]'}"
-	>
-		{@render status?.()}
-	</div>
+	{#if countdown}
+		<!-- Ride-critical status on the TV too (audit 2026-09-09): the overlay
+		     used to paint over a trainer drop, a reconnect and the rider's own
+		     auto-pause while the instrument kept looking confident. Live, TvMode
+		     gives it a row above the panels; the count-in has it clear of the
+		     player's seat in the top-right. -->
+		<div
+			class="absolute top-[2vh] left-[3vw] z-10 {playing
+				? 'right-[47vw]'
+				: 'right-[30vw]'}"
+		>
+			{@render status?.()}
+		</div>
+	{/if}
 	{#if sprint}
 		<div class="absolute inset-x-[12vw] top-[14vh] z-10">
 			<SprintMoment {sprint} myWatts={you?.watts ?? 0} roster={riders} />
@@ -175,6 +178,7 @@
 			{skyline}
 			{climb}
 			{exit}
+			{status}
 			seated={playing}
 		/>
 	{/if}

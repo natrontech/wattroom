@@ -54,7 +54,7 @@ describe('TV mode reads at three metres (#3067)', () => {
 	);
 
 	// The exit hint read 1.1vh, over the interval graph (#3677).
-	it('draws its way out at 2.9vh and 44 px, in the top row', () => {
+	it("draws its way out at 2.9vh and 44 px, in the work panel's top row", () => {
 		const exit =
 			read('lib/session/TvOverlay.svelte').match(
 				/\{#snippet exit\(\)\}([\s\S]*?)\{\/snippet\}/,
@@ -64,11 +64,14 @@ describe('TV mode reads at three metres (#3067)', () => {
 		const vh = [...exit.matchAll(/\btext-\[(\d+(?:\.\d+)?)vh\]/g)];
 		expect(vh.map((m) => Number(m[1]))).toEqual([expect.any(Number)]);
 		expect(Number(vh[0][1])).toBeGreaterThanOrEqual(FLOOR_VH);
-		const header =
+		const head =
 			read('lib/session/TvMode.svelte').match(
-				/<header\b[\s\S]*?<\/header>/,
-			)?.[0] ?? '';
-		expect(header).toContain('{@render exit?.()}');
+				/\{#snippet head\(\)\}([\s\S]*?)\{\/snippet\}/,
+			)?.[1] ?? '';
+		expect(head).toContain('{@render exit?.()}');
+		expect(read('lib/session/IntervalStrip.svelte')).toContain(
+			'{@render head()}',
+		);
 	});
 
 	// One home per number (TARGETS D17): the docked computer's head holds

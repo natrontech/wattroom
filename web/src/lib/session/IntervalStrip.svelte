@@ -14,6 +14,7 @@
 		hr = 0,
 		elapsed = 0,
 		total = 0,
+		head,
 	}: {
 		block: Block | null;
 		bias: number;
@@ -27,6 +28,8 @@
 		/** The workout clock, slot 1's "elapsed of total" on the TV (#3677). */
 		elapsed?: number;
 		total?: number;
+		/** The TV's eyebrow and its way out, the panel's first row (#3677). */
+		head?: import('svelte').Snippet;
 	} = $props();
 
 	const bands = $derived(blockBands(block, cadence, hr));
@@ -38,57 +41,63 @@
 	both put that front and centre; the first version of the group ride had neither.
 -->
 {#if block && big}
-	<!-- Slot 1 at three metres (#3677), v2-erg's work band stood up: time
-	     left over the block, its target, the clock and the trainer chip,
-	     then NEXT as describeBlock says it (D16) and its 3-2-1 chips.
-	     As tall as the computer, its numbers grown into that height. -->
+	<!-- Slot 1 at three metres (#3677), v2-erg's work band stood up: the
+	     eyebrow, time left over the block, its target, the clock and the
+	     trainer chip, then NEXT as describeBlock says it (D16) and its 3-2-1
+	     chips. Time left takes the height its panel has, up to just under the
+	     watts (ride-tv 9): sized from its box, which shrinks before any word. -->
 	<div
-		class="ride-panel @container flex h-full min-w-0 flex-col justify-between gap-[2vh] px-[1.5vw] py-[1.5vh]"
+		class="ride-panel @container flex max-h-full min-h-0 min-w-0 flex-col overflow-hidden px-[1.5vw] py-[1.5vh]"
 	>
-		<div class="min-w-0">
-			<p class={TV_LABEL}>left in block</p>
+		{#if head}
+			<div class="mb-[2vh]">{@render head()}</div>
+		{/if}
+		<p class={TV_LABEL}>left in block</p>
+		<div
+			class="[container-type:size] mt-[1vh] min-h-[7.7vh] shrink {formatClock(
+				block.secondsLeft,
+			).length > 4
+				? 'basis-[calc(min(30vh,24cqw)*0.85)]'
+				: 'basis-[calc(min(30vh,30cqw)*0.85)]'}"
+		>
 			<p
-				class="font-display mt-[1vh] leading-[0.85] font-bold whitespace-nowrap tabular-nums {formatClock(
-					block.secondsLeft,
-				).length > 4
-					? 'text-[length:min(26vh,24cqw)]'
-					: 'text-[length:min(26vh,30cqw)]'}"
+				class="font-display text-[117.6cqh] leading-[0.85] font-bold whitespace-nowrap tabular-nums"
 			>
 				{formatClock(block.secondsLeft)}
 			</p>
-			<!-- v2-erg's lines under the clock: the block, its target, the clock. -->
-			<p class="mt-[3vh] truncate text-[5vh] leading-none">
-				Block <span class="num">{block.index} of {block.count}</span> · {block.label}
-			</p>
-			{#if block.band}
-				<!-- Prescribed, so neon: watt is only measured live data. -->
-				<p class="mt-[2vh] text-[5vh] leading-none">
-					Target <span class="num text-neon font-bold">{block.watts} W</span>
-					· <span class="num">{block.band.low}–{block.band.high}</span>
-				</p>
-			{/if}
-			<p class="num text-muted mt-[2vh] text-[5vh] leading-none">
-				{formatClock(elapsed)}{#if total > 0}{` of ${formatClock(total)}`}{/if}
-			</p>
-			<p class="mt-[2vh]">
-				<span
-					class="border-neon/40 inline-block rounded border px-[1vw] py-[0.6vh] text-[3.4vh] leading-none"
-					>{trainerChip(block)}</span
-				>
-			</p>
-			{#each bands as b (b.text)}
-				<p
-					class="font-display mt-[2vh] text-[5vh] leading-none font-semibold tabular-nums {b.inBand
-						? 'text-ok'
-						: 'text-warn'}"
-				>
-					at {b.text}
-				</p>
-			{/each}
 		</div>
+		<!-- v2-erg's lines under the clock: the block, its target, the clock. -->
+		<p class="mt-[3vh] truncate text-[5vh] leading-none">
+			Block <span class="num">{block.index} of {block.count}</span> · {block.label}
+		</p>
+		{#if block.band}
+			<!-- Prescribed, so neon: watt is only measured live data. -->
+			<p class="mt-[2vh] text-[5vh] leading-none">
+				Target <span class="num text-neon font-bold">{block.watts} W</span>
+				· <span class="num">{block.band.low}–{block.band.high}</span>
+			</p>
+		{/if}
+		<p class="num text-muted mt-[2vh] text-[5vh] leading-none">
+			{formatClock(elapsed)}{#if total > 0}{` of ${formatClock(total)}`}{/if}
+		</p>
+		<p class="mt-[2vh]">
+			<span
+				class="border-neon/40 inline-block rounded border px-[1vw] py-[0.6vh] text-[3.4vh] leading-none"
+				>{trainerChip(block)}</span
+			>
+		</p>
+		{#each bands as b (b.text)}
+			<p
+				class="font-display mt-[2vh] text-[5vh] leading-none font-semibold tabular-nums {b.inBand
+					? 'text-ok'
+					: 'text-warn'}"
+			>
+				at {b.text}
+			</p>
+		{/each}
 		{#if block.next}
 			<div
-				class="border-ink/10 flex flex-wrap items-baseline gap-x-[1vw] gap-y-[1.5vh] border-t pt-[2vh] text-[6vh] leading-none"
+				class="border-ink/10 mt-[2vh] flex flex-wrap items-baseline gap-x-[1vw] gap-y-[1.5vh] border-t pt-[2vh] text-[6vh] leading-none"
 			>
 				<span class={TV_LABEL}>next</span>
 				<span class="font-display min-w-0 truncate font-semibold"
