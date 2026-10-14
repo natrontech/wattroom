@@ -1400,6 +1400,8 @@ surface(
 			await coach.page
 				.getByRole('button', { name: 'Save as a playlist' })
 				.click();
+			// Its "saved" toast is the app's, not the sheet's: dismissed.
+			await coach.page.getByRole('button', { name: 'Dismiss' }).first().click();
 			await coach.page.locator('summary', { hasText: /^playlists$/ }).click();
 			const show = coach.page
 				.getByRole('button', { name: 'show tracks' })
