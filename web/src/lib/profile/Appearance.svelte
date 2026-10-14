@@ -92,12 +92,12 @@
 						{option.label}
 					</button>
 				{/each}
+				<p class="{HINT} col-span-2 sm:col-span-1">
+					{#each WORLD_MODES as option (option.mode)}
+						{#if option.mode === mode}{option.label} — {option.line}{/if}
+					{/each}
+				</p>
 			</div>
-			<p class="{HINT} sm:col-start-2">
-				{#each WORLD_MODES as option (option.mode)}
-					{#if option.mode === mode}{option.label} — {option.line}{/if}
-				{/each}
-			</p>
 			{#if !chosen && prefersReducedMotion.current}
 				<button
 					onclick={() => choose('steady')}
