@@ -82,9 +82,6 @@ export function momentLine(e: MomentEvent): string | null {
 }
 
 export const blockLine = (label: string) => `Block: ${label}`;
-export const joinedLine = (who: string, joined: boolean) =>
-	`${who} ${joined ? 'joined' : 'left'}`;
-export const sprintArmedLine = 'Sprint armed';
 export const trainerLine = (lost: boolean) =>
 	lost ? 'Trainer signal lost' : 'Trainer signal back';
 

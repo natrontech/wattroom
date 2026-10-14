@@ -128,7 +128,7 @@
 	<p role="status">
 		{#key said.politeSeq}{said.polite}{/key}
 	</p>
-	<p role="alert">
-		{#key said.alertSeq}{said.alert}{/key}
-	</p>
+	{#if said.alert}
+		{#key said.alertSeq}<p role="alert">{said.alert}</p>{/key}
+	{/if}
 </div>
