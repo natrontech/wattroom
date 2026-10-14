@@ -1,0 +1,1 @@
+- A right-click menu opened just after scrolling a list stays open instead of closing at once.
