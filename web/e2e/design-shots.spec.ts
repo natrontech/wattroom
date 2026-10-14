@@ -1370,14 +1370,6 @@ surface(
 				.getByRole('group', { name: 'chalk the next climb' })
 				.scrollIntoViewIfNeeded({ timeout: 20_000 });
 			await s.shot(phone, { name: 'roadside-chalk-phone' });
-			const riders = await coach.page
-				.locator('canvas[data-riders]')
-				.getAttribute('data-riders');
-			const ahead = Math.max(
-				...(JSON.parse(riders ?? '{}').riders ?? []).map(
-					(r: { d: number }) => r.d,
-				),
-			);
 			// A double tap while the climb is still open: the second stamp,
 			// inside the hub's quarter second, is refused, and the deck says why
 			// and when to try again. Both at the road's start, behind the bunch,
@@ -1394,20 +1386,51 @@ surface(
 			await s.shot(watcher, { name: 'roadside-chalk-refused' });
 			// The hub takes one roadside verb a quarter second (controlMinGap).
 			await watcher.page.waitForTimeout(1000);
-			socket?.send(
-				JSON.stringify({
-					roadside: { kind: 'paint', stamp: 'heart', atM: ahead + 18 },
-				}),
-			);
-			// A tick to land it, while the bunch is still short of it: near
-			// enough that the chase camera reads it beside the riders.
-			await coach.page.waitForTimeout(1000);
-			await s.shot(coach, { name: 'roadside-chalk-world' });
-			// The watcher has chalked this road's one climb: the deck says so.
+			// The heart goes 60 m past the bunch's front as it is now. The
+			// world's canvas holds the riders as of its last frame, with the
+			// speed they ride at; a software-GL shot takes seconds, so that
+			// reading is carried on to this moment, and the hub refuses a chalk
+			// that lands behind its front.
+			// A refused heart (the front moved past it) is laid again from a
+			// fresh reading, until the deck says the climb is spent.
+			let front = NaN;
+			let landed = false;
+			for (let attempt = 0; attempt < 4 && !landed; attempt++) {
+				front = await coach.page.evaluate(() => {
+					const canvas = document.querySelector<HTMLCanvasElement>(
+						'canvas[data-riders]',
+					);
+					const seen = JSON.parse(canvas?.dataset.riders ?? '{}');
+					const lead = Math.max(
+						...(seen.riders ?? []).map((r: { d: number }) => r.d),
+					);
+					return lead + ((seen.mps ?? 0) * (Date.now() - seen.t)) / 1000;
+				});
+				if (Number.isFinite(front)) {
+					socket?.send(
+						JSON.stringify({
+							roadside: { kind: 'paint', stamp: 'heart', atM: front + 60 },
+						}),
+					);
+				}
+				landed = await watcher.page
+					.getByText('No climb left ahead to chalk.')
+					.waitFor({ timeout: 5_000 })
+					.then(() => true)
+					.catch(() => false);
+			}
+			if (!landed)
+				throw new Error(
+					`the heart never landed on the climb; last front ${front}`,
+				);
+			// The riders pass the chalk, and the hub lets it go: a shot on
+			// software GL can outlast the heart's few seconds. So the spent
+			// shot comes first, then the world's.
 			await watcher.page
 				.getByText('No climb left ahead to chalk.')
 				.scrollIntoViewIfNeeded();
 			await s.shot(watcher, { name: 'roadside-chalk-spent' });
+			await s.shot(coach, { name: 'roadside-chalk-world' });
 		} finally {
 			await endSession(coach.page);
 		}
