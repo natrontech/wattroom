@@ -7,8 +7,7 @@ import { tag } from './family';
 import { chunkId, LEAVE, roadPieces, type GroundStream } from './ground-stream';
 import { batchProps, FAR_M, NEAR_M, type Drawn } from './props/batch';
 import { TILE_M, tileCentre, tileKey, tileOf } from './props/tiles';
-import { disposeTree } from './dispose';
-import { arch, board } from './furniture';
+import { batchBoards } from './boards';
 import type { Piece } from './setpieces';
 import { plinth, road, roadMaterial, ROAD_W, terrain, yOf } from './geometry';
 import { PROP_RAMP, ramp, toon, type Sight } from './materials';
@@ -220,8 +219,9 @@ export function buildStage(
 	const starField = style.stars ? stars(style.stars) : null;
 	if (starField) group.add(tag('sky', starField));
 
-	// Each tile's signs and arch, built with its tile and let go with it.
-	const boards = new Map<string, THREE.Object3D[]>();
+	// Each tile's signs and arch, stood with its tile and let go with it.
+	const boards = batchBoards(route, style);
+	group.add(tag('dressing', boards.root));
 	function draw(ti: number, tj: number, eye: THREE.Vector3) {
 		const id = tileKey(ti, tj);
 		const t = world.tile(ti, tj);
@@ -231,21 +231,11 @@ export function buildStage(
 			[...t.props, ...t.pieces.map(drawn)],
 			eye,
 		);
-		const shown = [
-			...t.signs.map((s) => tag('dressing', board(route, s, style), 'sign')),
-			...t.arches.map((a) => tag('dressing', arch(route, a, style), 'arch')),
-		];
-		if (shown.length === 0) return;
-		group.add(...shown);
-		boards.set(id, shown);
+		boards.add(id, t.signs, t.arches);
 	}
 	function undraw(id: string) {
 		props.drop(id);
-		for (const o of boards.get(id) ?? []) {
-			group.remove(o);
-			disposeTree(o);
-		}
-		boards.delete(id);
+		boards.drop(id);
 	}
 	let near: string | null = null;
 	let wanted: [number, number][] = [];

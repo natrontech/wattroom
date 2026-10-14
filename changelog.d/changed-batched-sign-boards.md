@@ -1,0 +1,1 @@
+- A road's signs and KOM arches draw in two batches instead of up to eight draws each, so a climb full of hairpin numbers stays inside the world's draw budget.
