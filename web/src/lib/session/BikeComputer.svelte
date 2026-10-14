@@ -73,7 +73,9 @@
 
 	const size = $derived(
 		tv
-			? { value: 'text-[6vh]', unit: 'text-[3vh]', word: 'text-[3vh]' }
+			? fields.length > 2
+				? { value: 'text-[6vh]', unit: 'text-[3vh]', word: 'text-[3vh]' }
+				: { value: 'text-[10vh]', unit: 'text-[5vh]', word: 'text-[3vh]' }
 			: phone
 				? { value: 'text-2xl', unit: 'text-xs', word: 'text-sm' }
 				: { value: 'text-4xl', unit: 'text-lg', word: 'text-2xl' },

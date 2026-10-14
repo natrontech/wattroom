@@ -103,15 +103,13 @@
 			{#if workoutName !== block?.label}
 				<span class="text-muted text-[3vh]">{workoutName}</span>
 			{/if}
-			<div class="ml-auto flex items-center gap-[2vw]">
-				{#if !block}
-					<span
-						class="font-display text-[5vh] leading-none font-bold tabular-nums"
-						>{formatClock(elapsed)}</span
-					>
-				{/if}
-				{@render exit?.()}
-			</div>
+			{@render exit?.()}
+			{#if !block}
+				<span
+					class="font-display ml-auto text-[5vh] leading-none font-bold tabular-nums"
+					>{formatClock(elapsed)}</span
+				>
+			{/if}
 		</header>
 
 		<!-- The riding surface's panels at three metres (ADR-0046, #3677): the
@@ -120,9 +118,9 @@
 		     others off, all filling the height the graph's slim band leaves. -->
 		<div
 			class="mt-[2vh] grid min-h-0 flex-1 gap-[1.5vh] {block && others.length
-				? 'grid-cols-[4fr_4fr_3fr]'
+				? 'grid-cols-[4fr_3fr_3fr]'
 				: block
-					? 'grid-cols-[2fr_3fr]'
+					? 'grid-cols-2'
 					: others.length
 						? 'grid-cols-[3fr_2fr]'
 						: 'grid-cols-1'} {seated ? 'pr-[27vw]' : ''}"

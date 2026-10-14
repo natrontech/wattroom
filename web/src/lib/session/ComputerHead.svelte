@@ -46,7 +46,8 @@
 	const lo = $derived(target ? round5(target * 0.8) : 0);
 	const hi = $derived(target ? round5(target * 1.2) : 0);
 	// On the TV the watts grow to the panel's height (--head, BikeComputer)
-	// but never past its width: each digit takes about 0.57 em (#3677).
+	// but never past its width: each digit takes about 0.57 em, and at four
+	// W/kg wraps under them (#3677). Slot 1's clock stays smaller (D17).
 	const digits = $derived(String(power).length);
 	// ride-label is 24 px, under the TV's 2.9vh floor: the TV spells it in vh.
 	const size = $derived(
@@ -54,10 +55,8 @@
 			? {
 					power:
 						digits >= 4
-							? 'text-[length:min(var(--head,34vh),22cqw)]'
-							: digits === 3
-								? 'text-[length:min(var(--head,34vh),29cqw)]'
-								: 'text-[length:min(var(--head,34vh),40cqw)]',
+							? 'text-[length:min(var(--head,34vh),34cqw)]'
+							: 'text-[length:min(var(--head,34vh),38cqw)]',
 					unit: 'text-[8vh]',
 					label: TV_LABEL,
 					value: 'text-[9vh]',
