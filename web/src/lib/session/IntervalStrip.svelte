@@ -43,12 +43,16 @@
 	     describeBlock says it (D16), its 3-2-1 chips and the trainer chip.
 	     As tall as the computer, its numbers grown into that height. -->
 	<div
-		class="ride-panel flex h-full flex-col justify-between gap-[2vh] px-[1.5vw] py-[1.5vh]"
+		class="ride-panel @container flex h-full min-w-0 flex-col justify-between gap-[2vh] px-[1.5vw] py-[1.5vh]"
 	>
 		<div>
 			<p class={TV_LABEL}>block {block.index} of {block.count}</p>
 			<p
-				class="font-display mt-[1vh] text-[34vh] leading-[0.85] font-bold tabular-nums"
+				class="font-display mt-[1vh] leading-[0.85] font-bold whitespace-nowrap tabular-nums {formatClock(
+					block.secondsLeft,
+				).length > 4
+					? 'text-[length:min(34vh,30cqw)]'
+					: 'text-[length:min(34vh,40cqw)]'}"
 			>
 				{formatClock(block.secondsLeft)}
 			</p>
@@ -79,7 +83,7 @@
 			{/each}
 		</div>
 		<div
-			class="border-ink/10 flex items-baseline gap-[1vw] border-t pt-[2vh] text-[6vh] leading-none"
+			class="border-ink/10 flex flex-wrap items-baseline gap-x-[1vw] gap-y-[1.5vh] border-t pt-[2vh] text-[6vh] leading-none"
 		>
 			{#if block.next}
 				<span class={TV_LABEL}>next</span>

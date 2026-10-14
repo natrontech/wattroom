@@ -120,8 +120,12 @@
 	<!-- Ride-critical status on the TV too (audit 2026-09-09): the overlay
 	     used to paint over a trainer drop, a reconnect and the rider's own
 	     auto-pause while the instrument kept looking confident. Clear of
-	     the player's seat in the top-right. -->
-	<div class="absolute top-[2vh] right-[30vw] left-[3vw] z-10">
+	     the player's seat in the top-right, and of the exit beside it. -->
+	<div
+		class="absolute top-[2vh] left-[3vw] z-10 {playing
+			? 'right-[47vw]'
+			: 'right-[30vw]'}"
+	>
 		{@render status?.()}
 	</div>
 	{#if sprint}

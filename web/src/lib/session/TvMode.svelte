@@ -115,18 +115,21 @@
 		</header>
 
 		<!-- The riding surface's panels at three metres (ADR-0046, #3677): the
-		     bike computer — page control, head, fields — as wide as it needs,
-		     slot 1 and the roster sharing the rest, all as tall as the
-		     tallest and filling the height the graph's slim band leaves. -->
+		     bike computer, slot 1 and the roster in fixed shares of the width,
+		     so a long number shrinks in its own panel instead of pushing the
+		     others off, all filling the height the graph's slim band leaves. -->
 		<div
-			class="mt-[2vh] grid min-h-0 flex-1 grid-flow-col gap-[1.5vh] {block ||
-			others.length
-				? 'auto-cols-fr grid-cols-[auto]'
-				: ''} {seated ? 'pr-[27vw]' : ''}"
+			class="mt-[2vh] grid min-h-0 flex-1 gap-[1.5vh] {block && others.length
+				? 'grid-cols-[4fr_4fr_3fr]'
+				: block
+					? 'grid-cols-[2fr_3fr]'
+					: others.length
+						? 'grid-cols-[3fr_2fr]'
+						: 'grid-cols-1'} {seated ? 'pr-[27vw]' : ''}"
 		>
 			<!-- Slot 3 at three metres (#3088): the same pages, turned by the
 			     same keys. -->
-			<section class="ride-panel flex min-w-0 flex-col">
+			<section class="ride-panel @container flex min-w-0 flex-col">
 				<BikeComputer
 					tv
 					docked

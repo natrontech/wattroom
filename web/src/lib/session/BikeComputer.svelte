@@ -73,7 +73,7 @@
 
 	const size = $derived(
 		tv
-			? { value: 'text-[10vh]', unit: 'text-[5vh]', word: 'text-[3vh]' }
+			? { value: 'text-[6vh]', unit: 'text-[3vh]', word: 'text-[3vh]' }
 			: phone
 				? { value: 'text-2xl', unit: 'text-xs', word: 'text-sm' }
 				: { value: 'text-4xl', unit: 'text-lg', word: 'text-2xl' },
@@ -127,7 +127,7 @@
 	aria-label="bike computer, {PAGE_NAMES[shown]} page"
 	class={docked
 		? tv
-			? 'relative flex flex-1 flex-col justify-between gap-[1.5vh] px-[1.5vw] py-[1.5vh]'
+			? `relative flex flex-1 flex-col justify-between gap-[1.5vh] px-[1.5vw] py-[1.5vh] ${fields.length > 2 ? '[--head:22vh]' : ''}`
 			: 'relative flex w-[21rem] max-w-full flex-col gap-3 px-4 py-3'
 		: 'panel relative'}
 >
