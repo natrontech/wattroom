@@ -201,7 +201,7 @@ export function fieldsFor(page: ComputerPage, ctx: ComputerContext): Field[] {
 			{ key: 'xp', label: 'Work', value: `+${s.kj}`, unit: 'XP' },
 			{ key: 'load', label: 'Load', value: `${Math.round(s.load)}` },
 		];
-		if (!ctx.ownHead) return fields;
+		if (!ctx.head && !ctx.ownHead) return fields;
 		const rest = fields.filter((f) => f.key !== 'power3');
 		const execution = executionField(ctx);
 		return execution ? [execution, ...rest] : rest;
@@ -263,13 +263,12 @@ export function fieldsFor(page: ComputerPage, ctx: ComputerContext): Field[] {
 			unit: 'bpm',
 			zone: ctx.lthr && !ctx.stale ? hrZoneOf(ctx.hr, ctx.lthr) : 0,
 		});
-	if (!ctx.head && !ctx.ownHead)
+	if (!ctx.head && !ctx.ownHead) {
 		fields.push({
 			key: 'wkg',
 			label: 'W/kg',
 			value: measured(wkg(ctx.watts, ctx.kg)),
 		});
-	if (!ctx.ownHead) {
 		const execution = executionField(ctx);
 		if (execution) fields.push(execution);
 	}

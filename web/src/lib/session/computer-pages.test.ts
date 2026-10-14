@@ -52,6 +52,12 @@ describe('RIDE (ADR-0071)', () => {
 		expect(keys(fieldsFor('ride', ride({ head: true })))).toEqual(['cadence']);
 	});
 
+	it('moves execution to POWER where a head shows the watts (D17)', () => {
+		const ctx = ride({ head: true, execution: 0.9, stats });
+		expect(keys(fieldsFor('ride', ctx))).not.toContain('execution');
+		expect(keys(fieldsFor('power', ctx))[0]).toBe('execution');
+	});
+
 	it('shows the 3 s average as its power once one exists, and this second before', () => {
 		expect(field(fieldsFor('ride', ride()), 'power').value).toBe('251');
 		const first = ride({ stats: { ...stats, seconds: 0 } });

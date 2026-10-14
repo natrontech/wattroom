@@ -1,7 +1,7 @@
 <script lang="ts">
 	let {
 		secondsLeft,
-		size = 'size-7',
+		size = 'size-9 text-2xl',
 	}: {
 		secondsLeft: number;
 		/** The chip's box, and on the TV its type, in vh. */
