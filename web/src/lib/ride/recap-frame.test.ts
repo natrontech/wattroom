@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { recapEyebrow, recapTiles } from '$lib/ride/recap-frame';
+import { recapEyebrow, recapTiles, rideKind } from '$lib/ride/recap-frame';
 
 describe('recapTiles (#3686)', () => {
 	const full = {
@@ -55,5 +55,14 @@ describe('recapEyebrow (#3686)', () => {
 		expect(recapEyebrow(saturday, 'Bunch ride', 'Hill Rats')).toBe(
 			`${weekday} · Bunch ride · Hill Rats`,
 		);
+	});
+});
+
+describe('rideKind (#3687)', () => {
+	it('reads a saved ride by what it kept', () => {
+		expect(rideKind({})).toBe('Workout');
+		expect(rideKind({ inSession: true })).toBe('Workout');
+		expect(rideKind({ distanceM: 12000 })).toBe('Free ride');
+		expect(rideKind({ distanceM: 12000, inSession: true })).toBe('Bunch ride');
 	});
 });

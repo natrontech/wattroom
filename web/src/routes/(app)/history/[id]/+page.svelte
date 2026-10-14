@@ -9,11 +9,16 @@
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import ZoneBar from '$lib/components/ZoneBar.svelte';
-	import { formatClock, formatDuration } from '$lib/format';
+	import { formatDuration } from '$lib/format';
 	import { MEDAL_META, medalName } from '$lib/medals';
 	import { cardLabel, downloadRideCard } from '$lib/ride/card';
 	import { deleteRideAfterConfirm } from '$lib/ride/delete-ride';
 	import { fetchRide, type RideDetail } from '$lib/ride/detail';
+	import FitImportHelp from '$lib/ride/FitImportHelp.svelte';
+	import RecapHeader from '$lib/ride/RecapHeader.svelte';
+	import RecapTiles from '$lib/ride/RecapTiles.svelte';
+	import { recapEyebrow, recapTiles, rideKind } from '$lib/ride/recap-frame';
+	import RideDelivery from '$lib/ride/RideDelivery.svelte';
 	import { ridePlace, rideTitle } from '$lib/ride/list';
 	import { rideBackLink } from '$lib/back-link';
 	import { bestQuery } from '$lib/ride/compare';
@@ -112,24 +117,6 @@
 		carding = false;
 	}
 
-	// #1158. A delivery that ran out of attempts used to be a dead row and a
-	// sentence blaming a disconnection that had usually not happened. This is
-	// the one big button errors.md asks for; the server's own sweep does the
-	// rest, so there is no second delivery path.
-	let retrying = $state(false);
-	let retryError = $state<string | null>(null);
-	async function retryExport() {
-		if (!ride) return;
-		retrying = true;
-		retryError = null;
-		const res = await api(`/api/rides/${encodeURIComponent(id)}/export/retry`, {
-			method: 'POST',
-		});
-		if (res.ok) await load(id);
-		else retryError = res.error.message;
-		retrying = false;
-	}
-
 	async function load(which: string) {
 		const res = await fetchRide(which);
 		if (res.ok) {
@@ -169,22 +156,12 @@
 			? SHOWN_WINDOWS.map((w) => [`best ${w.label}`, curve[w.key]])
 			: [];
 	});
-	const stats = $derived(
+	const tiles = $derived(
 		ride
-			? [
-					{ label: 'duration', value: formatClock(ride.seconds) },
-					{ label: 'work', value: `${ride.kj} kJ` },
-					{ label: 'average', value: `${ride.avgWatts} W` },
-					{ label: 'normalised', value: `${ride.normWatts} W` },
-					{
-						label: 'execution',
-						value:
-							ride.executionScored === false
-								? 'not scored'
-								: `${Math.round(ride.execution * 100)}%`,
-					},
-					{ label: 'earned', value: `${ride.xp} XP` },
-				]
+			? recapTiles({
+					...ride,
+					execution: ride.executionScored === false ? undefined : ride.execution,
+				})
 			: [],
 	);
 </script>
@@ -237,54 +214,65 @@
 			</div>
 		</div>
 	{:else}
-		<header class="mt-4 flex flex-wrap items-end gap-x-4 gap-y-2">
-			<div>
-				<h1 class="page-title-sm leading-tight">
-					{title}
-				</h1>
-				<p class="text-muted mt-0.5 text-xs">
-					{new Date(ride.startedAt).toLocaleString()} · {formatDuration(
-						ride.seconds,
-					)}
-					<!-- Where it was ridden (#2457): the crew is the link, the
-					     channel is the words. A crew the rider left is named and
-					     not linked — its page is not theirs to open (#2630). -->
-					{#if ride.crew && ride.crewMember}
-						· with <a
-							href="/crew/{ride.crew.id}"
-							class="hover:text-ink underline underline-offset-2"
-							>{ride.crew.name}</a
-						>{#if ride.channel}&nbsp;in {ride.channel.name}{/if}
-					{:else}
-						· {ridePlace(ride)}
-					{/if}
-				</p>
-			</div>
-			<!-- The per-ride opt-in, where a rider decides a ride is worth
-			     showing (#1691, ADR-0024): undo over confirm. The same toggle
-			     the history row draws — this one used to name the STATE, so
-			     "Private" was the button you pressed to share (#2167). -->
-			<ShareToggle {ride} class="btn btn-secondary btn-xs ml-auto" />
-			<button
-				onclick={() => void downloadCard()}
-				disabled={carding}
-				class="btn btn-secondary btn-xs disabled:opacity-50"
+		<!-- The header's actions are a snippet, which loses the narrowing. -->
+		{@const shown = ride}
+		<div class="mt-4">
+			<RecapHeader
+				eyebrow={recapEyebrow(
+					new Date(ride.startedAt),
+					rideKind(ride),
+					ride.crew?.name,
+				)}
+				title={title ?? ride.workoutName}
 			>
-				<ImageDown size={13} />
-				{carding ? 'Drawing…' : cardLabel(ride)}
-			</button>
-			<button
-				onclick={() => void downloadFit()}
-				disabled={exporting || ride.samples.length === 0}
-				class="btn btn-secondary btn-xs disabled:opacity-50"
-			>
-				<Download size={13} />
-				{exporting ? 'Preparing…' : 'Download FIT'}
-			</button>
-			<button onclick={() => void removeRide()} class="btn btn-danger btn-xs">
-				<Trash2 size={13} /> Delete ride
-			</button>
-		</header>
+				{#snippet actions()}
+					<!-- The per-ride opt-in, where a rider decides a ride is worth
+					     showing (#1691, ADR-0024): undo over confirm. The same toggle
+					     the history row draws — this one used to name the STATE, so
+					     "Private" was the button you pressed to share (#2167). -->
+					<ShareToggle ride={shown} class="btn btn-secondary" />
+					<button
+						onclick={() => void downloadCard()}
+						disabled={carding}
+						class="btn btn-secondary disabled:opacity-50"
+					>
+						<ImageDown size={14} />
+						{carding ? 'Drawing…' : cardLabel(shown)}
+					</button>
+					<button
+						onclick={() => void downloadFit()}
+						disabled={exporting || shown.samples.length === 0}
+						title="Download this ride as a FIT file"
+						class="btn btn-secondary disabled:opacity-50"
+					>
+						<Download size={14} />
+						{exporting ? 'Preparing…' : 'Export'}
+					</button>
+					<!-- Delete last, after a separator, as in the ride's context
+					     menu (ux.md, Right-click). -->
+					<span aria-hidden="true" class="bg-ink/10 h-6 w-px"></span>
+					<button onclick={() => void removeRide()} class="btn btn-danger">
+						<Trash2 size={14} /> Delete ride
+					</button>
+				{/snippet}
+			</RecapHeader>
+			<p class="text-muted mt-1 text-xs">
+				{new Date(ride.startedAt).toLocaleString()}
+				<!-- Where it was ridden (#2457): the crew is the link, the
+				     channel is the words. A crew the rider left is named and
+				     not linked — its page is not theirs to open (#2630). -->
+				{#if ride.crew && ride.crewMember}
+					· with <a
+						href="/crew/{ride.crew.id}"
+						class="hover:text-ink underline underline-offset-2"
+						>{ride.crew.name}</a
+					>{#if ride.channel}&nbsp;in {ride.channel.name}{/if}
+				{:else}
+					· {ridePlace(ride)}
+				{/if}
+			</p>
+		</div>
+		<div class="mt-4"><RecapTiles {tiles} /></div>
 		{#if downloadError}<div class="mt-3">
 				<Banner tone="error">
 					{downloadError.message}
@@ -297,41 +285,12 @@
 		{:else if ride.samples.length === 0}
 			<p class="text-muted mt-3 text-xs">
 				No samples were stored for this ride, so there is no FIT file to
-				download.
+				export.
 			</p>
 		{/if}
 
 		{#if ride.samples.length > 0}
-			<details class="text-muted mt-3 max-w-2xl text-xs leading-relaxed">
-				<summary class="text-ink w-fit cursor-pointer py-1">
-					Import this ride into Garmin Connect
-				</summary>
-				<ol class="mt-2 list-decimal space-y-1 pl-5">
-					<li>Choose Download FIT above and keep the file on your computer.</li>
-					<li>
-						Sign in to Garmin Connect in your browser, open the cloud upload
-						icon, then choose Import Data.
-					</li>
-					<li>Browse to the downloaded file and choose Import.</li>
-				</ol>
-				<p class="mt-2">
-					The file includes your recorded power, cadence and heart rate when
-					available. You choose whether to send it to Garmin; WattRoom does not
-					upload it automatically.
-				</p>
-				<p class="mt-2">
-					Check the activity in Garmin Connect before importing again. Pause
-					timing may differ, and Garmin acceptance and training-status effects
-					have not been verified for WattRoom exports.
-				</p>
-				<a
-					href="https://support.garmin.com/en-US/?faq=Ht3ZP52Kju075uKvqTqu99"
-					target="_blank"
-					rel="noreferrer noopener"
-					class="link-standalone mt-2 underline underline-offset-2"
-					>Garmin's import instructions and troubleshooting</a
-				>
-			</details>
+			<FitImportHelp />
 		{/if}
 
 		<section class="panel panel-xl mt-6">
@@ -360,18 +319,6 @@
 
 		<RideSkyline samples={ride.samples} distanceM={ride.distanceM} />
 
-		<section class="mt-3 grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
-			{#each stats as stat (stat.label)}
-				<div class="panel panel-lg">
-					<div
-						class="font-display text-2xl leading-none font-bold tabular-nums"
-					>
-						{stat.value}
-					</div>
-					<div class="eyebrow mt-2">{stat.label}</div>
-				</div>
-			{/each}
-		</section>
 
 		{#if ride.curve}
 			<!-- The ride's own curve (SPEC's four windows, #1691): computed at
@@ -447,60 +394,11 @@
 		<RideFeel id={ride.id} feel={ride.feel} />
 
 		{#if ride.export}
-			<!-- #799: a rider who turned auto-upload on has had no way to know
-			     whether the ride actually arrived. Delivery is durable now, so
-			     the page can simply say. -->
-			<section class="mt-3">
-				<h2 class="eyebrow">where it went</h2>
-				<p class="panel text-muted mt-3 text-xs">
-					{#if ride.export.state === 'delivered'}
-						<!-- {' '}: Svelte trims a block's leading whitespace, so the
-						     newline before "as" vanished and the sentence read "On
-						     Stravaas activity …" on every exported ride (#1532). The
-						     space cannot live outside the block — there is none to
-						     spare before the full stop when there is no id. -->
-						On Strava{#if ride.export.remoteId}{' '}as
-							<a
-								class="underline"
-								href="https://www.strava.com/activities/{ride.export.remoteId}"
-								target="_blank"
-								rel="noreferrer noopener">activity {ride.export.remoteId}</a
-							>{/if}.
-						{#if ride.export.staleSince}
-							<!-- #2281: the ride grew after it was delivered, and the
-							     copy on Strava never catches up — StartRideExport will
-							     not re-open a delivered row, and re-posting is refused
-							     as a duplicate. Saying so is the whole fix; replacing
-							     the activity would mean deleting it, and its kudos and
-							     comments with it. -->
-							<span class="mt-2 block">
-								This ride grew after it was sent: a late reconnect added the
-								rest of it here, and Strava still has the shorter version.
-								WattRoom will not replace the activity — that would take its
-								kudos and comments with it — so download the FIT above and add
-								it to Strava yourself if you want the whole ride there.
-							</span>
-						{/if}
-					{:else if ride.export.state === 'pending'}
-						Waiting to reach Strava — it is retried on its own, nothing to do.
-					{:else}
-						<!-- The cause is almost always Strava being briefly away,
-						     not a disconnection — so the copy no longer guesses at
-						     one, and the action it offers is the one that helps. -->
-						Could not be sent to Strava — it was tried several times over a couple
-						of hours. Your ride is safe here.
-						<button
-							onclick={retryExport}
-							disabled={retrying}
-							class="btn btn-secondary btn-xs mt-2 block"
-							>{retrying ? 'Queueing…' : 'Try sending it again'}</button
-						>
-						{#if retryError}
-							<span class="text-danger mt-1.5 block">{retryError}</span>
-						{/if}
-					{/if}
-				</p>
-			</section>
+			<RideDelivery
+				id={ride.id}
+				delivery={ride.export}
+				onRetried={() => load(id)}
+			/>
 		{/if}
 	{/if}
 </main>

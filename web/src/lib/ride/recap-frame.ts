@@ -73,3 +73,17 @@ export function recapEyebrow(
 	const weekday = when.toLocaleDateString(undefined, { weekday: 'long' });
 	return [weekday, kind, crew || 'Solo'].join(' · ');
 }
+
+/**
+ * A saved ride's kind, from what it kept (#3687): a session on a road is a
+ * bunch ride, a road ridden alone a free ride (as `RoadRiding` names it), the
+ * rest a workout. ponytail: a saved ride does not record a game, so a game
+ * reads as the workout it ran on; store the mode on the ride if it matters.
+ */
+export function rideKind(ride: {
+	inSession?: boolean;
+	distanceM?: number;
+}): RideKind {
+	if (ride.distanceM === undefined) return 'Workout';
+	return ride.inSession ? 'Bunch ride' : 'Free ride';
+}
