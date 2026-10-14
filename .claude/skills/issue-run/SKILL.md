@@ -86,10 +86,10 @@ Run `date` when you start. At two hours without a green PR, or on the third fail
 
 1. Push the branch, then close its PR and keep the branch. An open PR reads as a claim.
 2. Comment on the issue: what works, what doesn't, and the one command or decision that unblocks it.
-3. Unassign yourself, and add `blocked` if something outside the code blocks it. The next run resumes the branch as kept work.
+3. Unassign yourself. If something outside the code blocks it, add `blocked` and mention @janlauber in the comment. A mention is the push that tells him. Otherwise the next run resumes the branch as kept work.
 4. End the run.
 
-If the issue already has two stand-downs, add `needs-human-input` with the blocker instead, so no run takes it up a third time.
+If the issue already has two stand-downs, add `needs-human-input` and mention @janlauber with the blocker instead, so no run takes it up a third time.
 
 Kill only processes you started, by PID.
 
