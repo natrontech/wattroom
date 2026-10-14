@@ -160,6 +160,7 @@
 		"surfaces": [
 			"ride-preride",
 			"ride-roadpick",
+			"ride-figure-card",
 			"ride-workout-flat",
 			"ride-road-world",
 			"ride-free-road",
@@ -190,6 +191,13 @@
 			"web/src/lib/ride/RoadPick.svelte"
 		],
 		"surfaces": ["ride-preride", "ride-roadpick"]
+	},
+	{
+		"files": [
+			"web/src/lib/ride/FigureCard.svelte",
+			"web/src/lib/ride/figure-choice.ts"
+		],
+		"surfaces": ["ride-figure-card"]
 	},
 	{
 		"files": [
