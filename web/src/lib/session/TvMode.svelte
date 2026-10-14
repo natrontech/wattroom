@@ -117,9 +117,10 @@
 		<!-- The riding surface's panels at three metres (ADR-0046, #3677): the
 		     bike computer — page control, head, fields — as wide as it needs,
 		     slot 1 and the roster sharing the rest, all as tall as the
-		     tallest; the graph takes what is left along the bottom. -->
+		     tallest and filling the height the graph's slim band leaves. -->
 		<div
-			class="mt-[2vh] grid grid-flow-col gap-[1.5vw] {block || others.length
+			class="mt-[2vh] grid min-h-0 flex-1 grid-flow-col gap-[1.5vw] {block ||
+			others.length
 				? 'auto-cols-fr grid-cols-[auto]'
 				: ''} {seated ? 'pr-[27vw]' : ''}"
 		>
@@ -186,7 +187,7 @@
 			{/if}
 		</div>
 
-		<div class="ride-panel mt-[1.5vh] min-h-[14vh] flex-1 overflow-hidden">
+		<div class="ride-panel mt-[1.5vh] h-[18vh] shrink-0 overflow-hidden">
 			{#if skyline}
 				<div class="h-full"><Skyline tv {...skyline} /></div>
 			{:else}

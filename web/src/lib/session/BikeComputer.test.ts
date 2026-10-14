@@ -106,7 +106,7 @@ describe('turning the page', () => {
 	it('draws the power once on the TV, in its head (#3677)', () => {
 		const html = draw({ stats, tv: true, docked: true, ftp: 250 });
 		expect(html.match(/data-testid="head-power"/g)).toHaveLength(1);
-		expect(html).toMatch(/data-testid="head-power" class="text-\[16vh\]/);
+		expect(html).toMatch(/data-testid="head-power" class="text-\[22vh\]/);
 		expect(html).not.toMatch(
 			/data-testid="computer-field" data-field="(power|wkg)"/,
 		);

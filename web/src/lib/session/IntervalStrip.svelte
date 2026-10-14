@@ -3,6 +3,7 @@
 	import type { Block } from '$lib/workout/block';
 	import { blockBands, nextFor, trainerChip } from '$lib/workout/block';
 	import { TV_LABEL } from '$lib/session/computer-pages';
+	import CountChips from '$lib/session/CountChips.svelte';
 
 	let {
 		block,
@@ -38,15 +39,16 @@
 -->
 {#if block && big}
 	<!-- Slot 1 at three metres (#3677), v2-erg's work band: time left beside
-	     the block and its target, then NEXT as describeBlock says it (D16)
-	     and the trainer chip. Centred in a panel as tall as the computer. -->
+	     the block and its target, then NEXT as describeBlock says it (D16),
+	     its 3-2-1 chips and the trainer chip. Centred in a panel as tall as
+	     the computer. -->
 	<div
 		class="ride-panel flex h-full flex-col justify-center gap-[3vh] px-[1.5vw] py-[1.5vh]"
 	>
 		<div class="flex items-end gap-[3vw]">
 			<div>
 				<p
-					class="font-display text-[15vh] leading-[0.85] font-bold tabular-nums"
+					class="font-display text-[22vh] leading-[0.85] font-bold tabular-nums"
 				>
 					{formatClock(block.secondsLeft)}
 				</p>
@@ -55,7 +57,7 @@
 			<div class="min-w-0">
 				<p class={TV_LABEL}>block {block.index} of {block.count}</p>
 				<p
-					class="font-display mt-[1vh] truncate text-[6vh] leading-none font-bold"
+					class="font-display mt-[1vh] truncate text-[8vh] leading-none font-bold"
 				>
 					{block.label}
 				</p>
@@ -92,6 +94,10 @@
 						· <span class="num text-neon">{block.next.watts} W</span>{/if}
 					· <span class="num">{nextFor(block.next.seconds)}</span></span
 				>
+				<CountChips
+					secondsLeft={block.secondsLeft}
+					size="size-[5.5vh] self-center text-[3.4vh]"
+				/>
 			{/if}
 			<span
 				class="border-neon/40 ml-auto shrink-0 rounded border px-[1vw] py-[0.6vh] text-[3vh]"
