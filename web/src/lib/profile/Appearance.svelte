@@ -12,6 +12,7 @@
 		worldMode,
 		type WorldMode,
 	} from '$lib/world/mode';
+	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import Monitor from '@lucide/svelte/icons/monitor';
 	import Moon from '@lucide/svelte/icons/moon';
 	import Sun from '@lucide/svelte/icons/sun';
@@ -71,10 +72,11 @@
 			<span class={HINT}>auto follows your OS — the ride is always dark</span>
 		</div>
 	</div>
-	<details class="mt-5" open={!chosen && prefersReducedMotion.current}>
-		<summary class="eyebrow flex min-h-7 cursor-pointer items-center"
-			>Advanced</summary
-		>
+	<details class="group mt-5" open={!chosen && prefersReducedMotion.current}>
+		<summary class="eyebrow flex min-h-7 cursor-pointer items-center gap-1">
+			<ChevronRight size={12} class="group-open:rotate-90" />
+			Advanced
+		</summary>
 		<div class={ROW}>
 			<span class="eyebrow">world</span>
 			<div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">

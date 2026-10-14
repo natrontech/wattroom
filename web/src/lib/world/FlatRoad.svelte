@@ -19,7 +19,7 @@
 		{REASONS[reason].line}
 	</p>
 	{#if REASONS[reason].retry}
-		<button onclick={onretry} class="btn btn-secondary btn-lg"
+		<button onclick={onretry} class="btn btn-secondary btn-ride"
 			>{reason === 'motion' ? STEADY_BUTTON : 'Try 3D again'}</button
 		>
 	{/if}
