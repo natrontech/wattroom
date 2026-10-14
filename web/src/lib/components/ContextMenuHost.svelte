@@ -42,14 +42,20 @@
 		node.querySelector<HTMLElement>(MENU_WALK)?.focus();
 		// The press that opened the menu is still travelling: on some inputs
 		// the pointerdown lands after the contextmenu event, and listening for
-		// it right away closed the menu in the same gesture that opened it.
+		// it right away closed the menu in the same gesture that opened it. A
+		// scroll is delivered on the next frame, so one that started before the
+		// right-click (a wheel step in flight, a scroll into view) lands after the menu
+		// opened and closed it too (#3976): scroll listens from the frame after.
 		let armed = false;
+		let scrollArmed = false;
 		const arm = setTimeout(() => (armed = true), 0);
+		const armScroll = requestAnimationFrame(() => (scrollArmed = true));
 		const away = (event: Event) => {
 			if (armed && !node.contains(event.target as Node)) closeMenu();
 		};
 		const scrolled = (event: Event) => {
-			if (scrollClosesMenu(event.target, menu.anchor)) closeMenu();
+			if (scrollArmed && scrollClosesMenu(event.target, menu.anchor))
+				closeMenu();
 		};
 		const dismiss = () => closeMenu();
 		document.addEventListener('pointerdown', away, true);
@@ -57,6 +63,7 @@
 		window.addEventListener('resize', dismiss);
 		return () => {
 			clearTimeout(arm);
+			cancelAnimationFrame(armScroll);
 			document.removeEventListener('pointerdown', away, true);
 			window.removeEventListener('scroll', scrolled, true);
 			window.removeEventListener('resize', dismiss);
