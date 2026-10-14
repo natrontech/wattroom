@@ -13,10 +13,79 @@ test('a rider who has never ridden is shown the first step on Home', async ({
 }) => {
 	await signInAs(page, 'First Run Rider', '/home');
 	await expect(page.getByText(/getting set up/)).toBeVisible();
-	const first = page.getByRole('link', { name: /Take your first ride/ });
+	const first = page.getByRole('link', { name: /Ride your first road/ });
 	await expect(first).toBeVisible();
 	await first.click();
-	await expect(page).toHaveURL(/\/settings\/equipment$/);
+	await expect(page).toHaveURL(/\/ride\?road=intro$/);
+});
+
+const MUTE = () =>
+	localStorage.setItem(
+		'wattroom.mixer.v1',
+		JSON.stringify({ music: 0, cues: 0, board: 0, share: 0 }),
+	);
+
+/**
+ * Step 3 (#3218): the card leads onto the built-in intro road, and a fresh
+ * account rides it on the simulated trainer, no route of its own needed.
+ */
+test('the first-run card rides the intro road on the simulated trainer', async ({
+	page,
+}) => {
+	test.skip(
+		!!process.env.PLAYWRIGHT_BASE_URL,
+		'the ?as= dev provider only exists on a dev server',
+	);
+	await page.addInitScript(MUTE);
+	await signInAs(page, 'Intro Road Rider', '/home');
+	await page.getByRole('link', { name: /Ride your first road/ }).click();
+	await page
+		.getByRole('button', { name: 'Ride simulated' })
+		.click({ timeout: 15_000 });
+	await page.getByRole('button', { name: 'Start the ride' }).click();
+	await expect(
+		page.getByRole('heading', { name: 'Your first road' }),
+	).toBeVisible();
+	await expect(page.getByTestId('bike-computer')).toBeVisible({
+		timeout: 15_000,
+	});
+});
+
+/**
+ * The first world ride shows three coach marks (#3218) and, once dismissed,
+ * never again on this device.
+ */
+test('the first world ride shows its three marks once @world', async ({
+	page,
+}) => {
+	test.skip(
+		!!process.env.PLAYWRIGHT_BASE_URL,
+		'the ?as= dev provider only exists on a dev server',
+	);
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await page.addInitScript(MUTE);
+	// The world is in slot 2 behind this flag (#3031).
+	await page.addInitScript(() =>
+		localStorage.setItem('wattroom.world-slot.v1', '1'),
+	);
+	await signInAs(page, 'Coach Mark Rider', '/ride?w=smoke-test&road=intro');
+	await page
+		.getByRole('button', { name: 'Ride simulated' })
+		.click({ timeout: 15_000 });
+	await page.getByRole('button', { name: 'Start the ride' }).click();
+	const mark = page.getByTestId('coach-mark');
+	await expect(mark).toContainText('Your zone', { timeout: 20_000 });
+	await mark.getByRole('button', { name: 'Next' }).click();
+	await expect(mark).toContainText('The road ahead');
+	await mark.getByRole('button', { name: 'Skip' }).click();
+	await expect(mark).toHaveCount(0);
+	// Kept for the device: the next world ride opens without them.
+	expect(
+		await page.evaluate(() => localStorage.getItem('wattroom.coach.road.v1')),
+	).toBe('1');
+	// "How to read the road" in slot 1 brings them back.
+	await page.getByRole('button', { name: 'How to read the road' }).click();
+	await expect(mark).toContainText('Your zone');
 });
 
 /**
@@ -44,9 +113,9 @@ test('a new account is asked for its FTP and weight, and answering retires the s
 
 	const ask = page.getByText('Set your FTP and weight');
 	await expect(ask).toBeVisible();
-	// Above "Take your first ride", because it is above it in consequence.
+	// Above "Ride your first road", because it is above it in consequence.
 	const labels = await page
-		.getByText(/Set your FTP and weight|Take your first ride/)
+		.getByText(/Set your FTP and weight|Ride your first road/)
 		.allInnerTexts();
 	expect(labels[0]).toContain('Set your FTP and weight');
 
