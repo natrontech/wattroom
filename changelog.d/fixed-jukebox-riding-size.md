@@ -1,1 +1,1 @@
-- The jukebox's transport and seek bar, the queue's rows and their chevrons, vote and remove buttons, the "+N more" and "Save as a playlist" links, and an open playlist's rows are 44 px while a ride runs; at the desk they keep their size.
+- On a ride the jukebox's deck reads at riding size: its transport, seek bar, volume fader, the queue's rows and controls, the "+N more" and "Save as a playlist" links and an open playlist's rows are 44 px, its words are riding size, and its progress bar no longer takes the live-power colour; at the desk nothing changes.

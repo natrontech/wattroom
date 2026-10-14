@@ -35,7 +35,7 @@
 	import { MUSIC_FADER } from '$lib/sound/fader';
 	import { mixer } from '$lib/sound/mixer.svelte';
 	import { toasts } from '$lib/toast.svelte';
-	import { railIcon } from '$lib/channel/rail-size';
+	import { railIcon, railText } from '$lib/channel/rail-size';
 
 	// What is ON, and everything that moves it (#114, #1423): the picture the
 	// player flies onto, the words, the shared playhead, the transport, and the
@@ -53,7 +53,8 @@
 		/** `jukebox.current`, already narrowed: no deck is drawn without one. */
 		current: JukeboxEntry;
 		send: (command: JukeboxCommand) => void;
-		/** A ride is under way: the transport and the seek bar are 44 px (TARGETS G5). */
+		/** A ride is under way: the transport, seek bar and fader are 44 px
+		 *  (TARGETS G5), the words at G4's floor, and no watt but G2's marks. */
 		riding?: boolean;
 	} = $props();
 
@@ -227,8 +228,10 @@
 				class="h-full w-full object-cover opacity-60"
 			/>
 			<span
-				class="bg-paper/70 text-muted absolute inset-x-0 bottom-0 px-2 py-1 text-[10px]"
-				>The player docks here.</span
+				class="bg-paper/70 text-muted absolute inset-x-0 bottom-0 px-2 py-1 {railText(
+					riding,
+					'text-[10px]',
+				)}">The player docks here.</span
 			>
 		</div>
 	{/if}
@@ -238,7 +241,12 @@
 			<!-- Where the deck is inside the set, before the track's own
 			     name: the playlist is the thing that is on. -->
 			<div class="mb-1 min-w-0">
-				<p class="text-muted flex items-baseline gap-1.5 text-[11px]">
+				<p
+					class="text-muted flex items-baseline gap-1.5 {railText(
+						riding,
+						'text-[11px]',
+					)}"
+				>
 					<span class="truncate">{current.playlistTitle}</span>
 					<span class="num shrink-0">{setPosition}/{setTracks}</span>
 				</p>
@@ -250,10 +258,10 @@
 				</span>
 			</div>
 		{/if}
-		<p class="truncate text-sm leading-tight font-medium">
+		<p class="truncate font-medium {railText(riding, 'text-sm leading-tight')}">
 			{current.title}
 		</p>
-		<p class="text-muted mt-0.5 truncate text-[11px]">
+		<p class="text-muted mt-0.5 truncate {railText(riding, 'text-[11px]')}">
 			{setTracks ? 'playlist queued by' : 'queued by'}
 			{current.addedBy}
 		</p>
@@ -262,9 +270,11 @@
 	{#if streaming}
 		<!-- The watt on the dot, the words in ink (#1965): the accent is
 		     a graphic at 3:1, not 10 px text. -->
-		<p class="eyebrow flex items-center gap-1.5">
+		<p class="{railText(riding, 'eyebrow')} flex items-center gap-1.5">
 			<span
-				class="bg-watt glow-stroke h-1.5 w-1.5 rounded-full"
+				class="h-1.5 w-1.5 rounded-full {riding
+					? 'bg-neon'
+					: 'bg-watt glow-stroke'}"
 				aria-hidden="true"
 			></span>
 			live · playing at the stream edge
@@ -284,16 +294,25 @@
 			>
 				<span class="bg-muted/20 block h-1.5 w-full rounded-full">
 					<span
-						class="bg-watt relative block h-full rounded-full transition-[width] duration-(--dur-base)"
+						class="relative block h-full rounded-full transition-[width] duration-(--dur-base) {riding
+							? 'bg-neon'
+							: 'bg-watt'}"
 						style="width: {progress}%"
 					>
 						<span
-							class="bg-watt glow-stroke absolute top-1/2 -right-1.5 h-3 w-3 -translate-y-1/2 rounded-full opacity-0 transition-opacity group-hover:opacity-100"
+							class="absolute top-1/2 -right-1.5 h-3 w-3 -translate-y-1/2 rounded-full opacity-0 transition-opacity group-hover:opacity-100 {riding
+								? 'bg-neon'
+								: 'bg-watt glow-stroke'}"
 						></span>
 					</span>
 				</span>
 			</button>
-			<div class="text-muted num flex justify-between text-[10px]">
+			<div
+				class="text-muted num flex justify-between {railText(
+					riding,
+					'text-[10px]',
+				)}"
+			>
 				<span>{formatClockLong(elapsed)}</span>
 				<span>{duration > 0 ? formatClockLong(duration) : '–:––'}</span>
 			</div>
@@ -365,13 +384,14 @@
 			{...MUSIC_FADER}
 			value={mixer.music}
 			oninput={(e) => mixer.setMusic(Number(e.currentTarget.value))}
-			class="min-w-0 flex-1"
+			class="min-w-0 flex-1 {riding ? 'min-h-11' : ''}"
 			aria-label="music volume, yours only — {mixer.music}%"
 			title="music volume — yours only, {mixer.music}%"
 		/>
 		<span
-			class="text-muted font-display w-8 shrink-0 text-right text-[10px] tabular-nums"
-			>{mixer.music}%</span
+			class="text-muted font-display shrink-0 text-right tabular-nums {riding
+				? 'w-16'
+				: 'w-8'} {railText(riding, 'text-[10px]')}">{mixer.music}%</span
 		>
 	</label>
 
@@ -382,7 +402,12 @@
 	     smallest targets in the column, on the one row that is only
 	     ever pressed mid-ride. Both verbs stay visible — the menu is
 	     never the only way (ux.md). -->
-	<div class="flex min-w-0 items-center justify-end gap-1 text-[11px]">
+	<div
+		class="flex min-w-0 items-center justify-end gap-1 {railText(
+			riding,
+			'text-[11px]',
+		)}"
+	>
 		{#if listening.out}
 			<span class="text-muted min-w-0 flex-1 truncate"
 				>{listening.mode === 'skip'
