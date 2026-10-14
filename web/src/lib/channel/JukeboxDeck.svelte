@@ -53,7 +53,7 @@
 		/** `jukebox.current`, already narrowed: no deck is drawn without one. */
 		current: JukeboxEntry;
 		send: (command: JukeboxCommand) => void;
-		/** A ride is under way: the transport is 44 px (TARGETS G5). */
+		/** A ride is under way: the transport and the seek bar are 44 px (TARGETS G5). */
 		riding?: boolean;
 	} = $props();
 
@@ -277,10 +277,12 @@
 					const box = e.currentTarget.getBoundingClientRect();
 					seekTo(((e.clientX - box.left) / box.width) * duration);
 				}}
-				class="block w-full cursor-pointer py-1.5"
+				class="w-full cursor-pointer {riding
+					? 'flex min-h-11 items-center'
+					: 'block py-1.5'}"
 				aria-label="seek the shared playhead"
 			>
-				<span class="bg-muted/20 block h-1.5 rounded-full">
+				<span class="bg-muted/20 block h-1.5 w-full rounded-full">
 					<span
 						class="bg-watt relative block h-full rounded-full transition-[width] duration-(--dur-base)"
 						style="width: {progress}%"
