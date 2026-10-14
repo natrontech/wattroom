@@ -442,6 +442,15 @@ test('a phone follows a session link and watches it run', async ({
 	await expect(
 		desk.getByRole('button', { name: 'Ring the cowbell' }),
 	).toHaveCount(1);
+	// Its free ride beside the session draws no roadside deck, so the people
+	// column keeps the cheers.
+	await desk.goto(`${voicePath(opened)}/training`);
+	await expect(
+		desk.getByRole('button', { name: 'Ride simulated' }),
+	).toBeVisible({ timeout: 15_000 });
+	await expect(
+		desk.getByRole('button', { name: 'Ring the cowbell' }),
+	).toHaveCount(1);
 
 	const phone = await riders('Session Phone');
 	await phone.setViewportSize({ width: 375, height: 812 });

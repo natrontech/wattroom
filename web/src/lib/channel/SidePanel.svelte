@@ -9,6 +9,7 @@
 	import MicOff from '@lucide/svelte/icons/mic-off';
 	import Video from '@lucide/svelte/icons/video';
 	import CheerDeck from '$lib/channel/CheerDeck.svelte';
+	import { roadsideShown } from '$lib/channel/RoadsideDeck.svelte';
 	import BoardToggle from '$lib/board/BoardToggle.svelte';
 	import EmojiPicker from '$lib/emoji/EmojiPicker.svelte';
 	import { emojiCrew } from '$lib/emoji/crew-emoji.svelte';
@@ -50,7 +51,6 @@
 	let {
 		live,
 		riding = false,
-		roadside = false,
 		riders = [],
 		members = [],
 		player,
@@ -62,8 +62,6 @@
 		live: boolean;
 		/** This device's rider is pedalling, in a session or a free ride. */
 		riding?: boolean;
-		/** The page beside it carries the roadside deck and its cheers (#3941). */
-		roadside?: boolean;
 		/** Who is here (ADR-0020, #181 gap 3) — the roster owns the column. */
 		riders?: LiveRider[];
 		/**
@@ -366,9 +364,9 @@
 			     a thing you throw into the channel, and neither is typing —
 			     which mid-ride was never on the table anyway (ux.md). The picker
 			     sits beside the soundboard: six 44 px targets do not fit one row
-			     of the column (TARGETS G5, #3828). A spectator's cheers are the
-			     roadside deck's, drawn once (#3941). -->
-			{#if !roadside}<CheerDeck onCheer={(key) => onCheer?.(key)} />{/if}
+			     of the column (TARGETS G5, #3828). While a roadside deck is on
+			     screen, the cheers are its alone (#3941). -->
+			{#if !roadsideShown()}<CheerDeck onCheer={(key) => onCheer?.(key)} />{/if}
 			<div class="flex gap-2">
 				<BoardToggle {riding} />
 				<button
