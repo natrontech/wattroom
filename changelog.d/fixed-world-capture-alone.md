@@ -1,0 +1,1 @@
+- The world capture frames draw the rider alone, with no stand-in beside them.

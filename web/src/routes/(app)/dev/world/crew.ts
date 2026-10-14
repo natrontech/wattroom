@@ -20,11 +20,13 @@ export function botWatts(r: SimRider, grade: number, t: number): number {
 /**
  * `kit` dresses you in that jersey pattern on a white ground (#3156), the
  * ground Gipfelpunkte must never dot; absent, you wear your seeded look.
+ * `alone` is a design capture's frame (G9): the figure with no stand-ins.
  */
 export function devCrew(
 	watts: number,
 	ftp: number,
 	kit?: string | null,
+	alone = false,
 ): SimRider[] {
 	const bot = (
 		id: string,
@@ -53,12 +55,14 @@ export function devCrew(
 			colours: { ...seeded.colours, jerseyA: 'snow', jerseyB: 'rust' },
 		};
 	}
-	const crew = [
-		you,
-		bot('sven', 'Sven', 74, 270, 1),
-		bot('mia', 'Mia', 61, 215, 2),
-		bot('tom', 'Tom', 92, 300, 3),
-	];
+	const crew = alone
+		? [you]
+		: [
+				you,
+				bot('sven', 'Sven', 74, 270, 1),
+				bot('mia', 'Mia', 61, 215, 2),
+				bot('tom', 'Tom', 92, 300, 3),
+			];
 	// Each in their own kit, as a bunch dresses its riders (#3791).
 	const looks = bunchLooks(crew, MOST_ABREAST);
 	for (const r of crew) r.look = looks.get(r.id);

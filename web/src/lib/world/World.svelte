@@ -117,7 +117,7 @@
 						camera,
 						watts,
 						ftp: profile.current.ftp,
-						riders: devCrew(watts, profile.current.ftp, moment?.kit),
+						riders: devCrew(watts, profile.current.ftp, moment?.kit, !!moment),
 						speedup,
 						moment: moment?.hold ? { m: moment.m, p: moment.p } : undefined,
 						onTick: (next) => (hud = next),
