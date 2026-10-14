@@ -14,8 +14,7 @@
 	/**
 	 * A route file on the import page (#3057): what the rider must choose
 	 * first — which track, or a flat road — then the preview, then Save
-	 * through POST /api/routes. Riding it and planning it wait for route
-	 * rides, and say so rather than failing on a tap (errors.md).
+	 * through POST /api/routes, which leaves a way into the saved route.
 	 */
 	let {
 		source,
@@ -38,8 +37,10 @@
 		renameError: string | null;
 	} | null>(null);
 
-	// A phone watching from the sofa has no trainer to ride it on.
-	const spectator = $derived(isSpectator(device));
+	// A phone watching from the sofa has no trainer to ride it on. Behind the
+	// roads dev gate (#3027) until #3352 lifts it; a screen that may not ride
+	// a road is not offered one (ux.md).
+	const ridable = $derived(roadsEnabled() && !isSpectator(device));
 
 	async function save(): Promise<string | null> {
 		if (!imported || saving) return null;
@@ -128,6 +129,20 @@
 	<div class="mt-4 space-y-3">
 		<Banner tone="ok">
 			“{saved.name}” is on your routes.
+			{#snippet action()}
+				<span class="flex shrink-0 gap-2">
+					<a
+						href="/workouts/routes/{encodeURIComponent(saved!.id)}"
+						class="btn btn-secondary btn-xs">Open it</a
+					>
+					{#if ridable}
+						<a
+							href="/ride?road={encodeURIComponent(saved!.id)}"
+							class="btn btn-secondary btn-xs">Ride it</a
+						>
+					{/if}
+				</span>
+			{/snippet}
 		</Banner>
 		{#if saved.renameError}
 			<Banner tone="warn"
@@ -163,25 +178,26 @@
 			</Banner>
 		</div>
 	{/if}
-	<div class="mt-5 flex flex-wrap items-center gap-3">
+	<!-- On a phone the actions stack full width, primary first. Plan it for
+	     a crew joins them with the session picker's road (#3682). -->
+	<div
+		class="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center"
+	>
 		<button
 			onclick={() => void save()}
 			disabled={saving}
-			class="btn btn-primary btn-lg">Save to my routes</button
+			class="btn btn-primary btn-lg w-full sm:w-auto">Save to my routes</button
 		>
-		{#if roadsEnabled() && !spectator}
-			<!-- Behind the roads dev gate (#3027) until #3352 lifts it; a screen
-			     that may not ride a road is not offered one (ux.md). A crew plans
-			     a road from its session picker, not from here. -->
+		{#if ridable}
 			<button
 				onclick={() => void rideNow()}
 				disabled={saving}
-				class="btn btn-ghost btn-lg">Ride it now</button
+				class="btn btn-secondary btn-lg w-full sm:w-auto">Ride it now</button
 			>
 		{/if}
 		{#if imported.src === 'stravagpx'}
 			<span
-				class="border-frame text-muted inline-flex items-center gap-1 rounded border px-2 text-xs"
+				class="border-frame text-muted inline-flex items-center gap-1 self-start rounded border px-2 text-xs sm:self-auto"
 			>
 				<Lock size={12} /> Only you can ride this one
 			</span>
