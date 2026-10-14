@@ -1272,15 +1272,21 @@ surface(
 			await assertRiding(coach.page);
 			// A track on the deck and a queue behind it: the transport, the
 			// queue's rows and their vote and remove controls are what a rider
-			// pedals with (#3927). Muted by the shoot's mixer.
+			// pedals with (#3927). Muted by the shoot's mixer. Real, embeddable
+			// videos: a made-up id fails in YouTube's player and is skipped as
+			// unplayable, leaving an empty deck; the first plays for minutes.
 			const add = coach.page.getByRole('textbox', {
 				name: 'add music: search your library, or paste a YouTube link',
 			});
-			for (const id of ['designOne', 'designTwo', 'designThree']) {
+			for (const [id, title] of [
+				['dQw4w9WgXcQ', 'Never Gonna Give You Up'],
+				['9bZkp7q19f0', 'GANGNAM STYLE'],
+				['kJQP7kiw5Fk', 'Despacito'],
+			]) {
 				await add.fill(`https://www.youtube.com/watch?v=${id}`);
 				await add.press('Enter');
 				await coach.page
-					.getByText(id)
+					.getByText(new RegExp(`${id}|${title}`))
 					.filter({ visible: true })
 					.first()
 					.waitFor({ timeout: 15_000 });
