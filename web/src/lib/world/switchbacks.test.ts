@@ -51,7 +51,7 @@ describe('stacked switchbacks', () => {
 		for (let v = 0; v < pos.length / 3; v++) {
 			const [x, z] = [pos[v * 3], pos[v * 3 + 2]];
 			const d = toRoad(x, z);
-			if (d < 10 || d > 40) continue;
+			if (d < 10 || d > 58) continue;
 			const gx = (world.heightAt(x + 5, z) - world.heightAt(x - 5, z)) / 10;
 			const gz = (world.heightAt(x, z + 5) - world.heightAt(x, z - 5)) / 10;
 			if (Math.hypot(gx, gz) <= 0.85) continue;
