@@ -21,6 +21,7 @@
 		type Narration,
 	} from '$lib/ride/narrator';
 	import { gradeAt } from '$lib/road/at-metre';
+	import { turnedRound } from '$lib/road/road';
 	import type { SkylineView } from '$lib/road/skyline';
 
 	let {
@@ -56,7 +57,11 @@
 	let kmLeft = Infinity;
 	$effect(() => {
 		const c = climb;
-		if (!c) return;
+		if (!c) {
+			// The card closed: the next lap's climb opens afresh.
+			opened = null;
+			return;
+		}
 		if (c.climb.startM !== opened) {
 			opened = c.climb.startM;
 			topped = null;
@@ -94,7 +99,7 @@
 	});
 
 	function keys(event: KeyboardEvent) {
-		if (event.key.toLowerCase() !== 's' || !view) return;
+		if (event.key.toLowerCase() !== 's' || event.repeat || !view) return;
 		if (event.metaKey || event.ctrlKey || event.altKey || isTyping(event))
 			return;
 		// A pad the rider bound to S is theirs.
@@ -105,8 +110,11 @@
 			stateLine({
 				m,
 				lengthM: road.length,
-				grade: view.reverse ? -gradeAt(road, view.m) : gradeAt(road, view.m),
-				toTopM: climb?.toFootM === 0 ? climb.card.toTopM : undefined,
+				grade: gradeAt(view.reverse ? turnedRound(road) : road, m),
+				toTopM:
+					climb?.toFootM === 0 && !climb.card.summited
+						? climb.card.toTopM
+						: undefined,
 				watts,
 				zone: ftp > 0 ? zoneOf(watts, ftp) : 1,
 			}),
