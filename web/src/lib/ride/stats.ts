@@ -68,6 +68,14 @@ export function normalizedPower(samples: RideSample[]): number {
 	return Math.round(Math.pow(fourthSum / count, 0.25));
 }
 
+/** Mean watts, rounded as the server's saver stores `avg_watts`. */
+export function averageWatts(samples: RideSample[]): number {
+	if (samples.length === 0) return 0;
+	return Math.round(
+		samples.reduce((sum, s) => sum + s.watts, 0) / samples.length,
+	);
+}
+
 /** docs/SPEC.md XP: 1 kJ = 1 XP plus execution% × 50. Streak lands server-side. */
 export function rideXp(kj: number, execution: number): number {
 	return kj + Math.round(execution * 50);

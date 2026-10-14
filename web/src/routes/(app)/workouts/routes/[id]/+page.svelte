@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { api } from '$lib/api';
-	import { backLink } from '$lib/road/route-row';
+	import { routeBackLink } from '$lib/back-link';
 	import Banner from '$lib/components/Banner.svelte';
 	import ClimbTable from '$lib/components/ClimbTable.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
@@ -36,7 +36,7 @@
 	 */
 	const id = $derived(page.params.id ?? '');
 	// Back where the rider came from: a picker's row carries its page (#3683).
-	const back = $derived(backLink(page.url.searchParams.get('back')));
+	const back = $derived(routeBackLink(page.url.searchParams.get('back')));
 
 	let route = $state<StoredRoute | null>(null);
 	let error = $state<string | null>(null);

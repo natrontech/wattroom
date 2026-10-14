@@ -272,7 +272,9 @@
 	<section class="mt-6">
 		<div
 			{...drop.on}
-			class="rounded-lg border border-dashed p-6 transition-colors {drop.over
+			class="rounded-lg border border-dashed transition-colors {idle
+				? 'py-6'
+				: 'p-6'} {drop.over
 				? 'border-neon bg-neon/5'
 				: idle
 					? 'border-transparent'

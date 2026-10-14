@@ -9,6 +9,7 @@ import { readFileSync } from 'node:fs';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { baseUrl } from '../env.js';
+import { pinCapabilities, readCapabilities } from './capabilities';
 import { probe, sampleAt, type Box } from './probe';
 
 /**
@@ -28,9 +29,15 @@ export const SCHEMES: Scheme[] =
 const ONLY = (process.env.DESIGN_SHOTS_SURFACES ?? '')
 	.split(/[\s,]+/)
 	.filter(Boolean);
-/** A test is wanted when any surface id it captures is named, or none is. */
+// DESIGN_SHOTS_EXCEPT: the surfaces other CI shards take (design-shots.yml),
+// so the shard that names none still gets any surface added later.
+const EXCEPT = (process.env.DESIGN_SHOTS_EXCEPT ?? '')
+	.split(/[\s,]+/)
+	.filter(Boolean);
+/** A test is wanted when any surface id it captures is named, or none is, and none is excepted. */
 export const wanted = (ids: readonly string[]) =>
-	ONLY.length === 0 || ids.some((id) => ONLY.includes(id));
+	(ONLY.length === 0 || ids.some((id) => ONLY.includes(id))) &&
+	!ids.some((id) => EXCEPT.includes(id));
 
 export const DESK: BrowserContextOptions = {
 	viewport: { width: 1440, height: 900 },
@@ -46,9 +53,9 @@ export const PHONE: BrowserContextOptions = {
 // A phone that rides (#3854): Chrome on Android, which a Pixel 5 runs, has
 // Web Bluetooth, and a phone with it is no spectator (device.svelte.ts;
 // ADR-0066: "A phone with Web Bluetooth rides"). PHONE stays the phone that
-// cannot, the one a Watch view is for. Headless Chromium on Linux lacks the
-// API, so this profile is lent its presence (`lendBluetooth`); every ride
-// here is the simulated trainer's, and nothing pairs through it.
+// cannot, the one a Watch view is for. Every context has its Bluetooth pinned
+// (`pinCapabilities`), present for all but PHONE; every ride here is the
+// simulated trainer's, and nothing pairs through it.
 export const RIDING_PHONE: BrowserContextOptions = { ...PHONE };
 export const DESK_720: BrowserContextOptions = {
 	viewport: { width: 1280, height: 720 },
@@ -61,11 +68,13 @@ const SHOT_TIMEOUT_MS = 60_000;
 
 /**
  * The TV and the phone are variants of a surface (#3858): a full run takes
- * them, a scoped one only when it names a TV or a phone surface, which the
- * surface map does when a TV or phone layout file changed.
+ * them (a CI shard does too, DESIGN_SHOTS_VARIANTS=all), a scoped one only
+ * when it names a TV or a phone surface, which the surface map does when a TV
+ * or phone layout file changed.
  */
 const named = (variant: string) =>
 	ONLY.length === 0 ||
+	process.env.DESIGN_SHOTS_VARIANTS === 'all' ||
 	ONLY.some((id) => new RegExp(`(^|-)${variant}(-|$)`).test(id));
 const VARIANT = { tv: named('tv'), phone: named('phone') };
 export const takes = (device: BrowserContextOptions) =>
@@ -153,7 +162,9 @@ export class Shoot {
 			},
 			[MUTED, world ?? null] as const,
 		);
-		if (device === RIDING_PHONE) await ctx.addInitScript(lendBluetooth);
+		await ctx.addInitScript(pinCapabilities, {
+			bluetooth: device !== PHONE,
+		});
 		const page = await ctx.newPage();
 		page.on('dialog', (d) => void d.accept());
 		const errors: string[] = [];
@@ -191,6 +202,7 @@ export class Shoot {
 			await page.waitForTimeout(1000);
 		}
 		const probes = await page.evaluate(probe, CORRIDOR);
+		const capabilities = await page.evaluate(readCapabilities);
 		// A world frame drawn in software GL on a loaded machine took longer
 		// than the 15 s a control is given, and every frame after it was lost
 		// (#3942); a shot waits for its frame, not for a click.
@@ -207,7 +219,7 @@ export class Shoot {
 		await writeFile(
 			join(this.out, `${name}.json`),
 			JSON.stringify(
-				{ ...probes, asphaltRgb, ...extra, pageErrors: errors },
+				{ ...probes, asphaltRgb, capabilities, ...extra, pageErrors: errors },
 				null,
 				2,
 			) + '\n',
@@ -234,25 +246,6 @@ export class Shoot {
 		for (const stale of [`FAILED-${this.id}.png`, `FAILED-${this.id}.txt`])
 			await rm(join(this.out, stale), { force: true });
 	}
-}
-
-/**
- * Web Bluetooth where the browser has none, for RIDING_PHONE: the app asks
- * only whether it exists until a rider pairs, and a chooser opened here is
- * dismissed, as a rider would dismiss it.
- */
-function lendBluetooth() {
-	if ('bluetooth' in navigator) return;
-	const bluetooth = {
-		requestDevice: () =>
-			Promise.reject(
-				new DOMException('User cancelled the chooser.', 'NotFoundError'),
-			),
-	};
-	Object.defineProperty(Navigator.prototype, 'bluetooth', {
-		get: () => bluetooth,
-		configurable: true,
-	});
 }
 
 /**
@@ -308,22 +301,12 @@ export async function ride(
 		.getByRole('button', { name: 'Ride simulated' })
 		.first()
 		.click({ timeout: 15_000 });
-	const start = page
+	// /ride's card, a road ride's too (#3855): a road left short of its end
+	// offers to carry on as a chip, and the card opens on the url's `from`.
+	await page
 		.getByRole('button', { name: /^Start (riding|the ride)$/ })
-		.first();
-	// A road left short of its end offers to carry on (#3205), and the offer
-	// replaces Start riding once its lookup lands, sometimes under the click:
-	// press whichever is there until neither is. Every shot starts from km 0.
-	const fromStart = page.getByRole('button', { name: 'From the start' });
-	const either = start.or(fromStart).first();
-	await either.waitFor({ timeout: 15_000 });
-	const deadline = Date.now() + 30_000;
-	while (await either.isVisible()) {
-		if (Date.now() > deadline) throw new Error('the ride never started');
-		const button = (await fromStart.isVisible()) ? fromStart : start;
-		await button.click({ timeout: 5000 }).catch(() => {});
-		await page.waitForTimeout(500);
-	}
+		.first()
+		.click({ timeout: 15_000 });
 	await atSecond(page, second);
 }
 

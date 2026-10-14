@@ -1,1 +1,0 @@
-- On a workout card, Edit, Save a copy and Delete now line up with the workout's name and length above them, instead of sitting 12 px in.

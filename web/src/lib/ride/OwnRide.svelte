@@ -130,50 +130,42 @@
 				noCrashSafety={own.noCrashSafety}
 			/>
 		{:else}
-			<div class="mx-auto w-full max-w-3xl">
-				<SessionSummary
-					title={session.elapsed >= session.total
-						? 'Ride complete'
-						: 'Ride ended'}
-					unsaved={!!outcome && 'failure' in outcome}
-					savedXp={outcome && 'saved' in outcome ? outcome.xp : undefined}
-					subtitle="{workout.name} · {new Date().toLocaleDateString()}"
-					samples={session.recording}
-					{ftp}
-					execution={session.scored ? session.execution : undefined}
-				>
-					{#snippet actions()}
-						<div class="panel panel-lg">
-							<div class="flex flex-wrap items-center gap-2">
-								{#if outcome && 'saved' in outcome && outcome.saved}
-									<a href="/history/{outcome.saved}" class="btn btn-primary"
-										>See your ride</a
-									>
-								{:else if own.saving}
-									<button disabled class="btn btn-primary">Saving…</button>
-								{/if}
-								<button
-									onclick={() => own.dismiss()}
-									disabled={own.saving}
-									class="btn btn-secondary">Back to the free ride</button
-								>
-							</div>
-							{#if outcome && 'failure' in outcome}
-								<div class="mt-2">
-									<Banner tone="warn">
-										It did not save — {outcome.failure.message} It is kept on this
-										device, and Ride offers it again.
-									</Banner>
-								</div>
-							{:else if outcome && 'nothing' in outcome}
-								<p class="text-muted mt-2 text-sm" role="status">
-									Nothing was recorded — no watts reached the app.
-								</p>
-							{/if}
-						</div>
-					{/snippet}
-				</SessionSummary>
-			</div>
+			<SessionSummary
+				title={workout.name}
+				unsaved={!!outcome && 'failure' in outcome}
+				savedXp={outcome && 'saved' in outcome ? outcome.xp : undefined}
+				samples={session.recording}
+				{ftp}
+				execution={session.scored ? session.execution : undefined}
+			>
+				{#snippet actions()}
+					{#if outcome && 'saved' in outcome && outcome.saved}
+						<a href="/history/{outcome.saved}" class="btn btn-secondary"
+							>See your ride</a
+						>
+					{:else if own.saving}
+						<button disabled class="btn btn-secondary">Saving…</button>
+					{/if}
+					<!-- Back to the free ride: the channel's own riding (#3340). -->
+					<button
+						onclick={() => own.dismiss()}
+						disabled={own.saving}
+						class="btn btn-primary">Done</button
+					>
+				{/snippet}
+				{#snippet status()}
+					{#if outcome && 'failure' in outcome}
+						<Banner tone="warn">
+							It did not save — {outcome.failure.message} It is kept on this device,
+							and Ride offers it again.
+						</Banner>
+					{:else if outcome && 'nothing' in outcome}
+						<p class="text-muted text-sm" role="status">
+							Nothing was recorded — no watts reached the app.
+						</p>
+					{/if}
+				{/snippet}
+			</SessionSummary>
 		{/if}
 	</div>
 {/if}

@@ -722,7 +722,16 @@ func (q *Queries) ListUserCalendar(ctx context.Context, arg ListUserCalendarPara
 const listUserCrewPlans = `-- name: ListUserCrewPlans :many
 select s.id, s.workout_name, s.workout_json, s.starts_at, s.created_at,
        u.display_name as created_by, s.crew_id, cw.name as crew_name,
-       s.channel_id, coalesce(ch.name, '')::text as channel_name
+       s.channel_id, coalesce(ch.name, '')::text as channel_name,
+       -- ListCrewRsvps' reach (#1675), so Home counts who the Schedule names.
+       (select count(*) from session_rsvps r
+        where r.session_id = s.id and r.going
+          and case when s.channel_id is null
+                then cw.owner_id = r.user_id
+                  or exists (select 1 from crew_roles cr
+                             where cr.crew_id = s.crew_id and cr.user_id = r.user_id and cr.role in ('member', 'admin'))
+                else exists (select 1 from visible_channels v where v.channel_id = s.channel_id and v.user_id = r.user_id)
+              end)::int as going_count
 from scheduled_sessions s
 join crews cw on cw.id = s.crew_id
 join users u on u.id = s.created_by
@@ -756,10 +765,11 @@ type ListUserCrewPlansRow struct {
 	CrewName    string
 	ChannelID   pgtype.UUID
 	ChannelName string
+	GoingCount  int32
 }
 
-// Home's "What's next" (#325, #2440): every crew the rider is in, one list,
-// with the channels they may enter.
+// Home's This week (#325, #2440, #3689): every crew the rider is in, one
+// list, with the channels they may enter and how many said they are in.
 func (q *Queries) ListUserCrewPlans(ctx context.Context, arg ListUserCrewPlansParams) ([]ListUserCrewPlansRow, error) {
 	rows, err := q.db.Query(ctx, listUserCrewPlans,
 		arg.StartsFrom,
@@ -785,6 +795,7 @@ func (q *Queries) ListUserCrewPlans(ctx context.Context, arg ListUserCrewPlansPa
 			&i.CrewName,
 			&i.ChannelID,
 			&i.ChannelName,
+			&i.GoingCount,
 		); err != nil {
 			return nil, err
 		}

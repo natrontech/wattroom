@@ -34,6 +34,21 @@ const external = isExternal();
 // the audio IS the thing under test.
 const MUTE = '--mute-audio';
 
+// How the world's browsers draw WebGL: Metal on a Mac, SwiftShader elsewhere,
+// named rather than fallen back to. A headless Chromium left to fall back to
+// SwiftShader composites in software, and reads every WebGL frame back on the
+// page's main thread, waiting out each frame SwiftShader draws (#3877): a page
+// drawing the world beside another went quiet for up to 19 s, so its simulated
+// trainer fell silent, its socket fell behind the hub's ticks, and a read of
+// it came back seconds late. Named, the canvas reaches the compositor as a
+// texture and the main thread stays free.
+const GL = [
+	process.platform === 'darwin'
+		? '--use-angle=metal'
+		: '--use-angle=swiftshader',
+	'--enable-unsafe-swiftshader',
+];
+
 export default defineConfig({
 	testDir: 'e2e',
 	// Specs only. Playwright's default testMatch takes *.test.ts as well, so it
@@ -65,6 +80,7 @@ export default defineConfig({
 	projects: [
 		{
 			name: 'chromium',
+			grepInvert: /@world/,
 			testIgnore: [
 				'mobile-channel.spec.ts',
 				'phone-width.spec.ts',
@@ -74,6 +90,15 @@ export default defineConfig({
 				'design-seed.spec.ts',
 			],
 			use: { ...devices['Desktop Chrome'], launchOptions: { args: [MUTE] } },
+		},
+		{
+			// The @world specs: Chromium as above, drawing WebGL the way GL says.
+			name: 'world',
+			grep: /@world/,
+			use: {
+				...devices['Desktop Chrome'],
+				launchOptions: { args: [MUTE, ...GL] },
+			},
 		},
 		{
 			// The design shots' crew, roads and rides, made before any surface
@@ -109,15 +134,7 @@ export default defineConfig({
 				// A control that never comes fails its surface in seconds, not
 				// the five minutes a ride's test is allowed.
 				actionTimeout: 15_000,
-				launchOptions: {
-					args: [
-						MUTE,
-						process.platform === 'darwin'
-							? '--use-angle=metal'
-							: '--use-angle=swiftshader',
-						'--enable-unsafe-swiftshader',
-					],
-				},
+				launchOptions: { args: [MUTE, ...GL] },
 			},
 		},
 		{

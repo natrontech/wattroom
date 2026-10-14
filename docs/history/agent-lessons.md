@@ -11,6 +11,15 @@ AGENTS.md and `.claude/rules/` state rules; this file keeps the incidents that e
 - **Say "proceed" when standing down.** Two agents that each defer to the other leave the issue undone, which costs more than a duplicate.
 - **A worktree, not just a branch.** Several sessions drive one clone; `HEAD` belongs to whoever moved it last, so a neighbour's checkout of `main` moves you mid-task and their `git add -A` sweeps up your files. Happier sessions already start in a worktree, and opening a second one beside it split the work (#3718).
 - **No direct pushes.** The convention-only rule from #7 became a ruleset (`GH013`).
+- **A kept branch is not a claim.** #3772, #3944 and #3947 sat open for days beside finished branches whose PRs had closed standing down, and the rule as written could read those branches as claims (#3970).
+
+## The queue
+
+- **The count is the score.** Over the two weeks to 2026-10-14, 181 issues opened and 168 closed while 172 PRs merged. Many of the new ones were design findings filed one per element, and 121 open issues carried `design` (#3970).
+- **Tick the checklist.** About 40 open issues were named by merged `Refs` PRs, some by five, and nobody checked whether they were done.
+- **One issue per fresh session.** A `/loop` session carries every earlier issue in its context. It paid about 24M cache-read tokens per `gh pr merge` call against 13M without a loop, and the longest ones ran to the 967K compaction point of a 1M window. Across all sessions, cache reads were 27.3B tokens against 49M output (#3970).
+- **Wait in one call.** Polling CI took about 4,700 calls in three weeks, and each one was a turn that re-read the whole context (#3970).
+- **Canon by section.** `TARGETS.md` was read whole 183 times, at about 18 KB each.
 
 ## Worktrees and infrastructure
 

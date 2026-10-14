@@ -17,7 +17,7 @@ import {
 	type FigureMaterial,
 } from './figure/material';
 import { pose } from './figure/pose';
-import { fnv, seededLoadout } from './loadout';
+import { fnv, seededLoadout, type Loadout } from './loadout';
 import { outfitOf, type Outfit } from './outfit';
 import { collides, type Viewer } from '$lib/wardrobe/guard';
 import { DEFAULT_DARK_ID, themeById } from '$lib/themes';
@@ -106,6 +106,8 @@ type View = {
 	outfit: Outfit;
 	/** The loadout's name in the figure cache. */
 	look: string;
+	/** The look the rider was given when this view was dressed; absent, their seeded one. */
+	wears?: Loadout;
 	faded: boolean;
 	ring: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
 	shadow: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
@@ -125,6 +127,9 @@ function greyed(pal: Palette): Palette {
 		Object.entries(pal).map(([slot, c]) => [slot, grey(c)]),
 	) as Palette;
 }
+
+/** What a rider wears: their look, or one seeded from their id. */
+const loadoutOf = (r: SimRider): Loadout => r.look ?? seededLoadout(r.id);
 
 /** What the animator reads from a rider on the road. */
 const inputOf = (r: SimRider, route: Route): RideInput => ({
@@ -214,7 +219,7 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 		const known = views.get(r);
 		if (known) return known;
 		const hue = hueOf(r.id);
-		const loadout = r.look ?? seededLoadout(r.id);
+		const loadout = loadoutOf(r);
 		const look = JSON.stringify(loadout);
 		const outfit = outfitOf(loadout, style.kit, viewer);
 		const material = figureMaterial(outfit.kit, outfit.decal, outfit.jersey);
@@ -299,6 +304,7 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 			material,
 			outfit,
 			look,
+			wears: r.look,
 			faded: false,
 			ring,
 			shadow,
@@ -344,6 +350,13 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 		if (v.faded) fade(v);
 		v.lod = lod;
 	}
+	/** A rider given another look — a bunch spreads its seeded kits as riders join (#3791) — is dressed again, if it is new. */
+	function redress(r: SimRider) {
+		const v = views.get(r);
+		if (!v || v.wears === r.look) return;
+		v.wears = r.look;
+		if (JSON.stringify(loadoutOf(r)) !== v.look) drop(r, v);
+	}
 	/** A rider's kit in greys while their screen has gone, in their own colours again when it is back. */
 	function fade(v: View) {
 		const { palette, jersey } = v.outfit;
@@ -376,6 +389,7 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 				(riders.length === 1 ? KEEP_RIGHT : 0) +
 					(i - (riders.length - 1) / 2) * LANE;
 			const lod = near.has(r) ? 0 : 1;
+			redress(r);
 			const v = viewOf(r, route, pedal(r).crank, lod);
 			if (v.lod !== lod) relod(v, lod);
 			placeOn(v.group, route, r.d, lane);

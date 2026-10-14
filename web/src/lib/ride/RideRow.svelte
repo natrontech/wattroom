@@ -8,7 +8,7 @@
 	import { formatClock } from '$lib/format';
 	import type { RideRecord } from '$lib/history.svelte';
 	import { kmAndClimb } from '$lib/road/profile';
-	import { ridePlace, type ServerRide } from '$lib/ride/list';
+	import { ridePlace, rideTitle, type ServerRide } from '$lib/ride/list';
 	import { rideRowMenu } from '$lib/ride/row-menu';
 	import ShareToggle from '$lib/ride/ShareToggle.svelte';
 
@@ -25,6 +25,7 @@
 		highlighted: boolean;
 		forget: (ride: ServerRide) => void;
 	} = $props();
+	const title = $derived(rideTitle(server ?? ride));
 </script>
 
 <!-- A device-only ride has no server to flip or delete, so its row offers
@@ -45,7 +46,7 @@
 			href="/history/{ride.id}"
 			class="focus-visible:ring-neon/60 absolute inset-0 rounded-lg focus-visible:ring-2 focus-visible:outline-none"
 		>
-			<span class="sr-only">Open {ride.workoutName}</span>
+			<span class="sr-only">Open {title}</span>
 		</a>
 	{/if}
 	<!-- One structure on every card (#3818): the name and what the ride came
@@ -54,7 +55,7 @@
 	     so every card is the same height and the grid stays even. -->
 	<span
 		class="font-display truncate font-bold sm:col-start-1 sm:row-start-1"
-		title={ride.workoutName}>{ride.workoutName}</span
+		{title}>{title}</span
 	>
 	<div
 		class="flex flex-wrap items-baseline gap-x-4 gap-y-1 sm:col-start-1 sm:row-start-2"

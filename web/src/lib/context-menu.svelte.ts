@@ -132,6 +132,58 @@ export function placeMenu(
 	return { left, top };
 }
 
+export type Rect = { left: number; top: number; right: number; bottom: number };
+
+const overlaps = (a: Rect, b: Rect): boolean =>
+	a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+
+/**
+ * A menu opened mid-ride (#3943) keeps out of the keep-clear corridor (G3)
+ * and off the object it was opened from: the pointer's place first, then
+ * beside the object, then above or below it, each also tried pushed
+ * to the corridor's right edge (its left holds the numbers and the sidebar). `corridor` and `anchor` are viewport
+ * rectangles; the desk's place stands when nothing fits.
+ */
+export function placeRidingMenu(
+	x: number,
+	y: number,
+	w: number,
+	h: number,
+	vw: number,
+	vh: number,
+	corridor: Rect | null,
+	anchor: Rect | null,
+): { left: number; top: number } {
+	const margin = 12;
+	const desk = placeMenu(x, y, w, h, vw, vh);
+	const clampLeft = (l: number) =>
+		Math.max(margin, Math.min(l, vw - w - margin));
+	const clampTop = (t: number) =>
+		Math.max(margin, Math.min(t, vh - h - margin));
+	const tries = [desk];
+	if (anchor)
+		tries.push(
+			{ left: anchor.left - margin - w, top: y },
+			{ left: anchor.right + margin, top: y },
+			{ left: x, top: anchor.top - margin - h },
+			{ left: x, top: anchor.bottom + margin },
+		);
+	for (const t of tries) {
+		const top = clampTop(t.top);
+		const lefts = [clampLeft(t.left)];
+		// The anchor's right edge, so the menu shares the column's edge.
+		if (anchor) lefts.unshift(clampLeft(anchor.right - w));
+		if (corridor) lefts.push(clampLeft(corridor.right + margin));
+		for (const left of lefts) {
+			const box = { left, top, right: left + w, bottom: top + h };
+			if (corridor && overlaps(box, corridor)) continue;
+			if (anchor && overlaps(box, anchor)) continue;
+			return { left, top };
+		}
+	}
+	return desk;
+}
+
 /** Long-press on touch opens the same menu — right-click has no finger. */
 const LONG_PRESS_MS = 500;
 /**

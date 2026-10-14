@@ -87,7 +87,7 @@ So the RIDE page holds: a workout with no road, Cadence and Heart; a workout on 
 
 Sequence captures [multi:flow-*], one per step, checked for continuity: a frame can pass while the screens do not connect.
 
-- **F1, a road ridden:** Workouts → a route card's Ride → `/ride?road=` → 65 s → End ride → road-end card → the route page shows the ride under Your rides. [route-row] [ride-free-road-surface] [route-page]
+- **F1, a road ridden:** Workouts → a route card's Ride → `/ride?road=`, the Ride card on Free ride and that road → Start the ride → 65 s → End ride → road-end card → the route page shows the ride under Your rides. [route-row] [ride-free-road-surface] [route-page]
 - **F2, a workout ridden:** `/ride` → Workout → 65 s → End ride → closing card → See your ride → the ride page, wearing the closing card's header and tiles. [ride-preride] [closing-card] [ride-page]
 - **F3, first run:** fresh dev account → Home's set-up card → `/ride` → pair the simulated trainer → first ride → closing card → Home shows it under Recent rides. [home] [ride-preride] [closing-card]
 
@@ -271,6 +271,7 @@ Capture: two dev riders (Designer and a second, name letters only) in one crew's
 8. Formation, the front row's turn every 120 s, a far rider dithering to their place, the pull-over and the team car hold as SPEC “Riding a road together” says. [test:web/src/lib/world/bunch.test.ts] [#3098]
 9. Each screen draws each rider where the other does, within 1 m along the road and across it. [test:web/e2e/bunch-world.spec.ts] [#3098]
 10. A cheer for one rider, sent from their crew tile's menu, draws a thumbs-up over their head (a light disc, a dark thumb, flat, unlit, clear of the chevron); their tail light blinks at 2 Hz for 10 s in amber, neither danger's red nor any watt, steady under reduced motion; nothing about it glows. [multi:ride-session-cheer] [test:web/src/lib/world/ride-scene.test.ts] [#3116]
+11. A crew tile's menu mid-ride wears the riding kit: one `ride-panel`, 24 px words, rows ≥ 44 px; placed clear of the corridor and of the tile it opened from; in the cave in either scheme. [#3943] [multi:ride-session-cheer-menu] [test:web/src/lib/context-menu.test.ts]
 
 #### roadside-chalk
 
@@ -382,7 +383,7 @@ Capture: `/hud` in a second page while a road free ride runs: `hud-shell` at 320
 
 #### ride-preride (a desk surface)
 
-Capture: world off, `/ride`, with and without a remembered road, both schemes. Target: v3-modes' “/ride, alone” column. Canon: ADR-0062; ADR-0020's amendment, “Pages fill the column”.
+Capture: world off, `/ride`, with and without a remembered road, both schemes; `ride-free-road-setup`, `/ride?road=<hairpin>` before the first stroke. Target: v3-modes' “/ride, alone” column. Canon: ADR-0062; ADR-0020's amendment, “Pages fill the column”.
 
 1. First under the title, two tiles “Free ride” | “Workout”, each its name at display size with one line under it: “You drive the trainer. Hold a grade, or hold your watts.” / “The plan drives it. Last: <workout>.”; the chosen tile has the neon border. [ride-preride]
 2. Same card: the eyebrow ROAD, then the road's name; “your last road” when it is the remembered one; buttons “Change” and “No road”. [ride-preride]
@@ -393,6 +394,7 @@ Capture: world off, `/ride`, with and without a remembered road, both schemes. T
 7. Tiles, chips and buttons ≥ 44 px tall. [ride-preride]
 8. Follows the rider's scheme; in dark, cards surface-raised with a hairline.
 9. Solo games one line in the card. [ride-preride]
+10. `/ride?road=<id>` opens this card on Free ride with that road chosen, its `from` the selected chip, never a setup of its own. [#3855] [multi:ride-free-road-setup]
 
 #### ride-roadpick
 
@@ -442,6 +444,14 @@ Capture: `/workouts`, the hairpin and rolling route seeded; whole page body, des
 9. Third line one of “Not ridden yet”, “Ridden 3× · last 29 Sep”, “Left off at km 21.3”. [route-row]
 10. Actions: Ride (`btn-primary btn-xs`) bottom right, “Carry on” when there is somewhere to carry on; the rest of the card opens the route page; context menu Ride it, Open, a separator, Delete in the danger token. [route-row]
 11. Phone order: title, search, Your workouts, Your routes, Measure, Curated; nothing scrolls sideways. [workouts-page]
+
+#### workout-editor, phone-workout-editor
+
+Capture: `/workouts/edit`, a fresh sheet on its one steady block, the bands folded; whole page body, desk and phone, both schemes; `workout-editor-bands` the same sheet with the bands unfolded, desk. Target: none drawn, canon is the bar. Canon: G5, G7, ux.md (phone width), ADR-0005 (the editor is chrome, flat and quiet).
+
+1. The page fills the content column, no max-width, never centred; every section's left edge on the title's.
+2. On a phone the sheet stacks before the library; nothing scrolls sideways. [probe:overflowX]
+3. The cadence and heart-rate bands fold [#3906] and Discard [#3919] are ≥ 24 px tall, at 375 px too. [probe:minTarget] [test:tap-targets.spec.ts]
 
 #### route, phone-route
 
@@ -511,7 +521,7 @@ Capture: a simulated ride of ≥ 65 s, then End ride; as a workout ride, a road 
 
 #### ride-detail
 
-Capture: `/history/<seeded id>`, desk and phone; a crew session's ride on a road, ridden past its minute (`ride-detail-session-road`, desk). Target: v2-summary.
+Capture: `/history/<seeded id>`, desk and phone; a crew session's ride on a road, ridden past its minute, as the road's owner sees theirs (`ride-detail-session-road`, desk) and as the other rider sees theirs (`ride-detail-session-road-rider`, desk: the generated name, G10). Target: v2-summary.
 
 1. Header is the closing card's `RecapHeader`. [ride-page]
 2. Actions one row: Share, “Download the poster”, Export, a separator, Delete last in danger; Delete also last in the context menu. [ride-page]

@@ -10,6 +10,7 @@
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import type { RideRecord } from '$lib/history.svelte';
 	import { compareRows, curveSentence } from './compare';
+	import { rideTitle, type RideRoad } from './list';
 
 	let {
 		ride,
@@ -20,7 +21,7 @@
 		error = null,
 		onRetry,
 	}: {
-		ride: RideRecord;
+		ride: RideRecord & { road?: RideRoad };
 		/** The hardest ride of the same workout over the whole history, from
 		 * the server (#1687): scanning one page of the list called a year-old
 		 * workout a first. Null when there is none. */
@@ -68,7 +69,7 @@
 	{:else if !best}
 		<div class="mt-3">
 			<EmptyState>
-				First time you have ridden {ride.workoutName}. Ride it again and this is
+				First time you have ridden {rideTitle(ride)}. Ride it again and this is
 				where the two sit side by side.
 			</EmptyState>
 		</div>

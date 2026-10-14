@@ -1,6 +1,6 @@
 ---
 name: pickup-feedback
-description: Turn one rider feedback report into a draft PR with a regression test. Use when working the feedback queue, typically driven by /loop.
+description: Turn one rider feedback report into a draft PR with a regression test. Use when working the feedback queue, one report per fresh session (RUN=/pickup-feedback scripts/issue-runs.sh), never /loop.
 ---
 
 # Pick up one rider report
@@ -15,7 +15,7 @@ Your job this tick: **one** issue, from report to draft PR. Not two. Not a sweep
 gh issue list --label feedback --state open --search "no:assignee sort:created-asc" --limit 5
 ```
 
-Nothing unassigned → say so in one line and stop. An empty queue is a fine outcome; do not go
+If nothing is unassigned, end with the line `run: queue empty` and stop. An empty queue is a fine outcome; do not go
 looking for other work, and do not re-open triage on issues someone else has claimed.
 
 ## 2. Claim before you read deeply

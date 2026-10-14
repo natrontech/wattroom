@@ -197,6 +197,93 @@ func (q *Queries) BestUserRideOfWorkout(ctx context.Context, arg BestUserRideOfW
 	return i, err
 }
 
+const bestUserRideOnRoad = `-- name: BestUserRideOnRoad :one
+select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp,
+       (rides.crew_id is not null or rides.channel_id is not null or rides.session_id is not null)::boolean as in_session, shared_at,
+       rides.distance_m, rides.climbed_m,
+       e.state as export_state,
+       rides.crew_id, coalesce(c.name, '')::text as crew_name,
+       rides.channel_id, coalesce(ch.name, '')::text as channel_name
+from rides
+join routes rt on rt.id = $1::uuid and rt.owner_id = rides.user_id
+left join ride_exports e on e.ride_id = rides.id and e.destination = $2::text
+left join crews c on c.id = rides.crew_id
+left join channels ch on ch.id = rides.channel_id
+where rides.user_id = $3 and rides.route_key = rt.road_hash
+  and ($4::uuid is null or rides.id <> $4)
+order by (rides.timeable is true and rides.distance_m > 0 and rides.seconds > 0) desc,
+         case when rides.timeable is true and rides.seconds > 0
+              then rides.distance_m::float8 / rides.seconds end desc nulls last,
+         avg_watts desc, started_at desc
+limit 1
+`
+
+type BestUserRideOnRoadParams struct {
+	RouteID     pgtype.UUID
+	Destination string
+	UserID      pgtype.UUID
+	ExceptID    pgtype.UUID
+}
+
+type BestUserRideOnRoadRow struct {
+	ID              pgtype.UUID
+	WorkoutName     string
+	StartedAt       pgtype.Timestamptz
+	Seconds         int32
+	AvgWatts        int16
+	Kj              int32
+	Execution       float32
+	ExecutionScored bool
+	FtpWatts        int16
+	Xp              int32
+	InSession       bool
+	SharedAt        pgtype.Timestamptz
+	DistanceM       *int32
+	ClimbedM        *int32
+	ExportState     *string
+	CrewID          pgtype.UUID
+	CrewName        string
+	ChannelID       pgtype.UUID
+	ChannelName     string
+}
+
+// The ride page's "against your best" for a ride titled by its road (#3874):
+// the rider's best ride of the same road as the route page has it (#3680),
+// every ride saved against the road's key (ADR-0068) — the fastest timed one
+// by average speed, else, with none timed, the hardest. Only a road the rider
+// owns. Same columns as ListUserRides so one JSON mapping serves all three.
+func (q *Queries) BestUserRideOnRoad(ctx context.Context, arg BestUserRideOnRoadParams) (BestUserRideOnRoadRow, error) {
+	row := q.db.QueryRow(ctx, bestUserRideOnRoad,
+		arg.RouteID,
+		arg.Destination,
+		arg.UserID,
+		arg.ExceptID,
+	)
+	var i BestUserRideOnRoadRow
+	err := row.Scan(
+		&i.ID,
+		&i.WorkoutName,
+		&i.StartedAt,
+		&i.Seconds,
+		&i.AvgWatts,
+		&i.Kj,
+		&i.Execution,
+		&i.ExecutionScored,
+		&i.FtpWatts,
+		&i.Xp,
+		&i.InSession,
+		&i.SharedAt,
+		&i.DistanceM,
+		&i.ClimbedM,
+		&i.ExportState,
+		&i.CrewID,
+		&i.CrewName,
+		&i.ChannelID,
+		&i.ChannelName,
+	)
+	return i, err
+}
+
 const countCrewMedalsByRider = `-- name: CountCrewMedalsByRider :many
 select user_id, count(*)::int as medals
 from medals
@@ -837,6 +924,8 @@ func (q *Queries) GetRideForUpload(ctx context.Context, id pgtype.UUID) (GetRide
 
 const getRideRoad = `-- name: GetRideRoad :one
 select coalesce(rt.gen_name, '')::text as gen_name,
+       coalesce(case when rt.owner_id = r.user_id then rt.id::text end, '')::text as route_id,
+       coalesce(case when rt.owner_id = r.user_id then rt.name end, '')::text as route_name,
        coalesce(rt.ele_source, '')::text as ele_source,
        r.distance_m
 from rides r
@@ -851,18 +940,29 @@ type GetRideRoadParams struct {
 
 type GetRideRoadRow struct {
 	GenName   string
+	RouteID   string
+	RouteName string
 	EleSource string
 	DistanceM *int32
 }
 
 // The road a ride rode, for its card and page (#3142): the route's generated
 // name — never the owner's rename (#3055) — where its heights came from, and
-// the ride's metres on it. A ride on no road, or on a route since deleted,
-// answers two empty strings; the metres stay while the ride does.
+// the ride's metres on it. When the road is the rider's own route, its id and
+// the name they know it by too (#3874): a session ridden on someone else's
+// road has that road's id, and its rename is its owner's alone (ADR-0063).
+// A ride on no road, or on a route since deleted, answers empty strings; the
+// metres stay while the ride does.
 func (q *Queries) GetRideRoad(ctx context.Context, arg GetRideRoadParams) (GetRideRoadRow, error) {
 	row := q.db.QueryRow(ctx, getRideRoad, arg.ID, arg.UserID)
 	var i GetRideRoadRow
-	err := row.Scan(&i.GenName, &i.EleSource, &i.DistanceM)
+	err := row.Scan(
+		&i.GenName,
+		&i.RouteID,
+		&i.RouteName,
+		&i.EleSource,
+		&i.DistanceM,
+	)
 	return i, err
 }
 
@@ -1498,6 +1598,55 @@ where ride_id = $1 and state = 'delivered'
 func (q *Queries) MarkRideExportStale(ctx context.Context, rideID pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, markRideExportStale, rideID)
 	return err
+}
+
+const ownRoadsOfRides = `-- name: OwnRoadsOfRides :many
+select rides.id, r.id as route_id, r.name, r.gen_name
+from rides
+join routes r on r.id = rides.route_id and r.owner_id = rides.user_id
+where rides.user_id = $1 and rides.id = any($2::uuid[])
+`
+
+type OwnRoadsOfRidesParams struct {
+	UserID pgtype.UUID
+	Ids    []pgtype.UUID
+}
+
+type OwnRoadsOfRidesRow struct {
+	ID      pgtype.UUID
+	RouteID pgtype.UUID
+	Name    string
+	GenName string
+}
+
+// The rider's own routes under one page of their rides list (#3874): the id
+// and the name they know each by, beside its generated name, so a ride on
+// one is titled as the route page is. Only the rider's own list: never MCP,
+// which carries no route name (ADR-0063), and never a road someone else
+// owns, whose rename is theirs.
+func (q *Queries) OwnRoadsOfRides(ctx context.Context, arg OwnRoadsOfRidesParams) ([]OwnRoadsOfRidesRow, error) {
+	rows, err := q.db.Query(ctx, ownRoadsOfRides, arg.UserID, arg.Ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []OwnRoadsOfRidesRow
+	for rows.Next() {
+		var i OwnRoadsOfRidesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.RouteID,
+			&i.Name,
+			&i.GenName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const requeueRideExport = `-- name: RequeueRideExport :execrows

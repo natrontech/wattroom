@@ -65,9 +65,15 @@ test('the coach hands the session to another rider', async ({
 	await expect(
 		coach.getByRole('button', { name: 'end the session' }),
 	).toHaveCount(0);
-	// The line is the channel's, read on its page (#2599). The taker rides
-	// the session now (#2829), so they walk back to the channel inside the
-	// app: its timeline lives in the channel's store, and a reload drops it.
+	// The line is the channel's, read on its page (#2599). A ridden stage
+	// shows no event lines (TARGETS G4, #3890), so the taker ends the ride
+	// first, then walks back to the channel inside the app: its timeline
+	// lives in the channel's store, and a reload drops it.
+	await taker.getByRole('button', { name: 'end the session' }).click();
+	await taker
+		.getByRole('dialog')
+		.getByRole('button', { name: 'End the session' })
+		.click();
 	const line = `${COACH} handed the session to ${TAKER}`;
 	await taker
 		.locator(`a[href="${voicePath(opened)}"]`)

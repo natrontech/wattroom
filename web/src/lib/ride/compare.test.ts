@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { RideRecord } from '$lib/history.svelte';
-import { compareRows, curveSentence } from './compare';
+import { bestQuery, compareRows, curveSentence } from './compare';
 
 const ride = (over: Partial<RideRecord> & { id: string }): RideRecord => ({
 	workoutName: 'Sweet Spot 3×12',
@@ -65,5 +65,29 @@ describe('curveSentence', () => {
 
 	it('says nothing at all without a curve yet', () => {
 		expect(curveSentence(0, 0)).toBeNull();
+	});
+});
+
+describe('bestQuery (#3874)', () => {
+	const road = {
+		routeId: 'r1',
+		name: 'Home loop',
+		genName: 'Road · 7.1 km · 571 m',
+	};
+	it('sets a ride its road names beside the best of that road', () => {
+		expect(bestQuery({ id: 'x', workoutName: 'Free ride', road })).toBe(
+			'/api/rides/best?route=r1&except=x',
+		);
+		expect(
+			bestQuery({ id: 'x', workoutName: 'Road · 7.1 km · 571 m', road }),
+		).toBe('/api/rides/best?route=r1&except=x');
+	});
+	it('sets a workout beside the best of that workout, on a road or off one', () => {
+		expect(bestQuery({ id: 'x', workoutName: 'Sweet Spot 3×15', road })).toBe(
+			'/api/rides/best?workout=Sweet%20Spot%203%C3%9715&except=x',
+		);
+		expect(bestQuery({ id: 'x', workoutName: 'Free ride' })).toBe(
+			'/api/rides/best?workout=Free%20ride&except=x',
+		);
 	});
 });

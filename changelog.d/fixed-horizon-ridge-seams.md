@@ -1,1 +1,0 @@
-- The horizon's ridges blend their rock and snow colours over a height band, so a peak no longer draws a vertical streak where it crosses the snowline.

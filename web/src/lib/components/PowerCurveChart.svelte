@@ -46,7 +46,7 @@
 	{#each RANGES as range (range.label)}
 		<span class="text-muted flex items-center gap-1.5" role="listitem">
 			<span
-				class="bg-z2 inline-block h-2.5 w-2.5 rounded-xs"
+				class="bg-neon inline-block h-2.5 w-2.5 rounded-xs"
 				style="opacity: {range.opacity}"
 			></span>
 			{range.label}
@@ -92,7 +92,7 @@
 					width={barW}
 					height={Math.max(barH(watts), watts > 0 ? 2 : 0)}
 					rx="5"
-					class="fill-z2"
+					class="fill-neon"
 					style="opacity: {hovered?.wi === wi && hovered?.ri === ri
 						? 1
 						: range.opacity}"

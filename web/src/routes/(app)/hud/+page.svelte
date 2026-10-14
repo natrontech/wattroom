@@ -84,14 +84,19 @@
 				Waiting for a ride…
 			</p>
 		{:else}
-			<div class="flex items-baseline gap-[0.5em]">
-				<p class="label min-w-0 flex-1 truncate" data-testid="hud-label">
+			<!-- The label never widens the block (contain: inline-size): the
+			     numbers set its width, and the label truncates to it. -->
+			<div class="rows flex items-baseline gap-[0.5em]">
+				<p
+					class="label min-w-0 flex-1 truncate [contain:inline-size]"
+					data-testid="hud-label"
+				>
 					{snapshot.label}
 				</p>
 				{#if road}
 					<!-- Row 3 is the road's on a road; the clock moves up beside the
 					     label so the window keeps its 320×132 (desktop/main.js). -->
-					<p class="text-muted text-[0.75em]" data-testid="hud-remaining">
+					<p class="clock text-muted" data-testid="hud-remaining">
 						{@render clockText()}
 					</p>
 				{/if}
@@ -161,10 +166,7 @@
 					</svg>
 				{/if}
 			{:else}
-				<p
-					class="text-muted mt-[0.5em] text-[0.75em]"
-					data-testid="hud-remaining"
-				>
+				<p class="clock text-muted mt-[0.5em]" data-testid="hud-remaining">
 					{@render clockText()}
 				</p>
 			{/if}
@@ -175,9 +177,7 @@
 <style>
 	/* The shell's 320×132 window at 16 px is the design (ADR-0041): every
 	   size inside is in em, and the font size is whatever fits that block
-	   into the window, never less than the shell's. In a full-screen tab the
-	   watts come to about a quarter of the window's height, and the words
-	   meet SPEC's HUD column (docs/SPEC.md, "The bike computer"). */
+	   into the window, never less than the shell's. */
 	.hud {
 		font-size: max(16px, min(100cqw / 20, 100cqh / 8.25));
 		box-sizing: border-box;
@@ -196,7 +196,49 @@
 		letter-spacing: 0.12em;
 		text-transform: uppercase;
 	}
+	.clock {
+		font-size: 0.75em;
+	}
 	.unit {
 		font-size: 0.5em;
+	}
+	/* A larger window (#3857) scales the same rows from the window's height:
+	   at 11cqh the watts' numerals stand about a quarter of it tall and every
+	   word meets SPEC's HUD column (docs/SPEC.md, "The bike computer"). The
+	   shell's 2.4 : 1 proportion would bind on the width of any ordinary
+	   screen, so here the block is as wide as its numbers, at least 12em, and
+	   the cave centres it as one unit; every state shares that left edge.
+	   14em holds the widest row (four-digit watts beside a four-digit
+	   target), so a narrower window shrinks the block whole, never clips it. */
+	@container (min-width: 480px) and (min-height: 200px) {
+		.hud {
+			font-size: min(11cqh, 100cqw / 14);
+			width: auto;
+			min-width: 12em;
+			height: auto;
+			padding: 0;
+		}
+		/* Leading of one: the clock's line box would otherwise carry its
+		   half-leading above the label, and the block would sit low. */
+		.rows {
+			line-height: 1;
+		}
+		/* A word at SPEC's size rather than the shell's share: the eyebrow
+		   keeps the block's width for the numbers, and a road's name too long
+		   for one line wraps onto a second rather than vanish into an
+		   ellipsis. */
+		.label {
+			font-size: max(0.375em, 3cqh);
+			line-height: 1.25;
+			display: -webkit-box;
+			-webkit-box-orient: vertical;
+			-webkit-line-clamp: 2;
+			line-clamp: 2;
+			white-space: normal;
+		}
+		/* SPEC's time-left floor, kept when the width binds the block. */
+		.clock {
+			font-size: max(0.75em, 9cqh);
+		}
 	}
 </style>

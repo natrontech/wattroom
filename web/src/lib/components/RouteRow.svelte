@@ -6,6 +6,7 @@
 		MENU_HINT,
 		type MenuEntry,
 	} from '$lib/context-menu.svelte';
+	import { withBack } from '$lib/back-link';
 	import { classChips, riddenLine, statLine } from '$lib/road/route-row';
 	import type { StoredRoute } from '$lib/road/stored';
 
@@ -56,9 +57,7 @@
 >
 	<div class="flex items-baseline gap-2">
 		<a
-			href="/workouts/routes/{route.id}{back
-				? `?back=${encodeURIComponent(back)}`
-				: ''}"
+			href={withBack(`/workouts/routes/${route.id}`, back)}
 			class="font-display min-w-0 flex-1 truncate text-base font-bold hover:underline {card
 				? 'after:absolute after:inset-0'
 				: ''}">{route.name}</a

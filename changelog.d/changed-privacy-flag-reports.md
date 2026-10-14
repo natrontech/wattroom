@@ -1,1 +1,0 @@
-- The privacy policy now says what a flag report keeps, that a copy without your name becomes a public GitHub issue, and that deleting your account removes the report but not that issue.

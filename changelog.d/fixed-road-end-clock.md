@@ -1,1 +1,0 @@
-- The card after a free ride on a road ends on the time you rode, not 0:00.

@@ -92,7 +92,7 @@
 			FTP
 		</span>
 		<span class="text-muted flex items-center gap-1.5" role="listitem">
-			<span class="bg-z2 inline-block h-2.5 w-2.5 rounded-full"></span>
+			<span class="bg-neon inline-block h-2.5 w-2.5 rounded-full"></span>
 			best 20 min of a ride
 		</span>
 		{#if marks.length > 0}
@@ -163,7 +163,7 @@
 					cx={x(ride.date)}
 					cy={y(ride.best20m)}
 					r={hovered === ride ? 7 : 5.5}
-					class="fill-z2"
+					class="fill-neon"
 				/>
 			{/each}
 			<!-- The FTP a ramp test set, on the ramp's own ride (#1572). A
