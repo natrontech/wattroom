@@ -16,7 +16,7 @@
 	import { deleteQuestion, playingIn } from '$lib/channel/playlist-autoplay';
 	import type { JukeboxCommand } from '$lib/protocol';
 	import { thumbnailFor } from '$lib/channel/jukebox-add';
-	import { railButton } from '$lib/channel/rail-size';
+	import { railButton, railText } from '$lib/channel/rail-size';
 	import JukeboxAdd from '$lib/channel/JukeboxAdd.svelte';
 	import {
 		commandFromSavedTrack,
@@ -295,8 +295,9 @@
 			{:else if canManage}
 				<button
 					onclick={() => (renaming = true)}
-					class="block max-w-full truncate text-left text-xs font-medium"
-					>{playlist.name}</button
+					class="block max-w-full truncate text-left font-medium {riding
+						? 'min-h-11 text-2xl leading-7'
+						: 'text-xs'}">{playlist.name}</button
 				>
 			{:else}
 				<!-- Not a control for a rider who cannot rename it (#2162, ux.md:
@@ -304,11 +305,14 @@
 				     the × are gated on `canManage` and this path was not, so a
 				     member on the crew tab could open the box, type, and read
 				     the server's refusal under the row. -->
-				<span class="block max-w-full truncate text-xs font-medium"
-					>{playlist.name}</span
+				<span
+					class="block max-w-full truncate font-medium {railText(
+						riding,
+						'text-xs',
+					)}">{playlist.name}</span
 				>
 			{/if}
-			<p class="text-muted text-[10px]">
+			<p class="text-muted {railText(riding, 'text-[10px]')}">
 				{playlist.trackCount}
 				{playlist.trackCount === 1 ? 'track' : 'tracks'}
 			</p>
@@ -360,7 +364,11 @@
 									class="bg-surface h-6 w-11 shrink-0 rounded object-cover"
 								/>
 							{/if}
-							<span class="min-w-0 flex-1 truncate text-[11px]"
+							<span
+								class="min-w-0 flex-1 truncate {railText(
+									riding,
+									'text-[11px]',
+								)}"
 								>{track.playlistTitle ?? track.title}{#if track.artist}<span
 										class="text-muted"
 									>
@@ -394,6 +402,7 @@
 					send={(command) => void addTrack(command)}
 					refusal={error}
 					verb="Saved"
+					{riding}
 				/>
 			</div>
 			<!-- Nothing lives only in a menu (ux.md, #2884): on touch or a
@@ -401,7 +410,9 @@
 			{#if canManage}
 				<button
 					onclick={() => void remove()}
-					class="btn btn-xs text-danger mt-2 flex items-center gap-1"
+					class="btn {railButton(
+						riding,
+					)} text-danger mt-2 flex items-center gap-1"
 					><Trash2 size={12} />Delete playlist</button
 				>
 			{/if}
