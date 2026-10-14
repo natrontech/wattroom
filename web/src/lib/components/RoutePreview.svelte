@@ -81,7 +81,8 @@
 		)}
 	/>
 
-	<div class="mt-3 grid gap-4 sm:grid-cols-[2fr_3fr]">
+	<!-- Stacked, as on the route page: one drawing of the road. -->
+	<div class="mt-3 grid gap-4">
 		<RouteShape
 			x={route.x}
 			z={route.z}

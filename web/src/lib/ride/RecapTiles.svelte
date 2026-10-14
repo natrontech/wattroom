@@ -12,7 +12,9 @@
 
 <section
 	aria-label={label}
-	class="grid grid-cols-2 gap-2 {tiles.length > 2 ? 'sm:grid-cols-3' : ''}"
+	class="grid gap-2 {tiles.length > 2
+		? 'grid-cols-2 sm:grid-cols-3'
+		: 'grid-cols-1 sm:grid-cols-2'}"
 >
 	{#each tiles as tile (tile.label)}
 		<div class="panel py-2" data-testid="recap-tile">

@@ -149,7 +149,7 @@
 				>Your own name for it did not stick: {saved.renameError}</Banner
 			>
 		{/if}
-		<button onclick={onanother} class="btn btn-ghost btn-lg"
+		<button onclick={onanother} class="btn btn-secondary btn-lg"
 			>Import another file</button
 		>
 	</div>
