@@ -477,7 +477,10 @@ surface(
 		await atSecond(o.page, RIDE_SECOND);
 		await assertRiding(o.page);
 		// A track on the deck: the people column's seat (#3983).
-		await queueDeck(o.page, [['dQw4w9WgXcQ', 'Never Gonna Give You Up']]);
+		// Not one of ride-session-flat's: on the same channel's deck, a title
+		// already showing would end its wait at once, and the next add would
+		// meet the deck's burst throttle.
+		await queueDeck(o.page, [['fJ9rUzIMcZQ', 'Bohemian Rhapsody']]);
 		await s.shot(o);
 		await o.page.getByRole('button', { name: 'End ride' }).click();
 	},
