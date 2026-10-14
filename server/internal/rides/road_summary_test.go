@@ -118,6 +118,10 @@ func TestARoadRideKeepsItsSummaryAndTheReplayIsTheRecord(t *testing.T) {
 	if got["distanceM"] == nil || got["climbedM"] == nil {
 		t.Errorf("the saved ride's answer carries no distance or climbing: %v", got)
 	}
+	// The ride's page names how it was ridden in its eyebrow (#3687).
+	if _, detail := call(t, h.mux, "alice", http.MethodGet, "/api/rides/"+id, ""); detail["rideMode"] != "free" {
+		t.Errorf("the ride page reads mode %v, want free", detail["rideMode"])
+	}
 }
 
 // A ride with no road still says how it was ridden, and keeps a weight the

@@ -22,7 +22,9 @@ export async function downloadRideCard(id: string): Promise<string | null> {
 /**
  * What the button that downloads it says. A ride on a road is drawn as the
  * road it rode — a poster (#3142) — and the button says so; every other ride
- * gets its card.
+ * gets its card, and the button says what it does (#3687).
  */
 export const cardLabel = (ride: { distanceM?: number }) =>
-	ride.distanceM !== undefined ? 'Download the poster' : 'Ride card';
+	ride.distanceM !== undefined
+		? 'Download the poster'
+		: 'Download the ride card';

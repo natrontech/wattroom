@@ -1,4 +1,12 @@
+<script module lang="ts">
+	// How many roadside decks are on screen: while one is, the people column
+	// leaves its cheers to it, so they draw once (#3941).
+	let mounted = $state(0);
+	export const roadsideShown = () => mounted > 0;
+</script>
+
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import ArrowUp from '@lucide/svelte/icons/arrow-up';
 	import GlassWater from '@lucide/svelte/icons/glass-water';
 	import Heart from '@lucide/svelte/icons/heart';
@@ -23,6 +31,11 @@
 		/** Who the bottle goes to — the rider being watched; none, no bottle. */
 		to: { id: string; name: string } | null;
 	} = $props();
+
+	onMount(() => {
+		mounted += 1;
+		return () => (mounted -= 1);
+	});
 
 	const live = $derived(channelConnection.current?.live);
 	const channel = useChannel();

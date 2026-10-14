@@ -99,11 +99,29 @@ export function probe(corridor: Box) {
 		cs.textShadow !== 'none' ||
 		cs.filter.includes('drop-shadow') ||
 		(cs.boxShadow !== 'none' && !cs.boxShadow.includes('inset'));
+	// An open modal's opaque box hides what lies wholly under it (#3989): the
+	// stage's own tile still glows behind a session's closing card, unseen.
+	const modals = [...document.querySelectorAll('[aria-modal=true]')]
+		.filter(
+			(el) => shown(el) && rgba(getComputedStyle(el).backgroundColor).a > 0.9,
+		)
+		.map((el) => el.getBoundingClientRect());
+	const covered = (el: Element) => {
+		if (el.closest('[aria-modal=true]')) return false;
+		const r = el.getBoundingClientRect();
+		return modals.some(
+			(m) =>
+				r.left >= m.left &&
+				r.right <= m.right &&
+				r.top >= m.top &&
+				r.bottom <= m.bottom,
+		);
+	};
 	const wattFigures: { text: string; glow: boolean }[] = [];
 	const glows: string[] = [];
 	let wattMarks = 0;
 	for (const el of document.body.querySelectorAll('*')) {
-		if (!shown(el)) continue;
+		if (!shown(el) || covered(el)) continue;
 		const cs = getComputedStyle(el);
 		const own = ownText(el);
 		const svg = el instanceof SVGElement;

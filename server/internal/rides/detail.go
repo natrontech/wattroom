@@ -159,9 +159,7 @@ type rideDetailJSON struct {
 	Crew    *placeJSON `json:"crew,omitempty"`
 	Channel *placeJSON `json:"channel,omitempty"`
 	// Ridden in a session, whether or not its crew is still there (#2630):
-	// the list's `room`, so one sentence says where a ride was on both.
-	Room bool `json:"room,omitempty"`
-	// `room` under the list's new name (#2959); `room` goes in #3461.
+	// the list's `inSession`, so one sentence says where a ride was on both.
 	InSession bool `json:"inSession,omitempty"`
 	// Whether the rider may still enter the crew named above (#2630): a crew
 	// they left, or that banned them, is named and not linked.
@@ -175,6 +173,9 @@ type rideDetailJSON struct {
 	// A road ride's metres, the server's replay (#3053): what tells the page
 	// its card is a poster (#3142). Absent off a road.
 	DistanceM *int32 `json:"distanceM,omitempty"`
+	// How it was ridden, ADR-0062's word (free, workout, bunch, race, game):
+	// the eyebrow over the page's title (#3687). Absent on older rides.
+	RideMode string `json:"rideMode,omitempty"`
 	// The rider's own road it rode (#3874): what the page titles the ride
 	// with and links back to. Absent off a road, on someone else's, or when
 	// the route has since been deleted.
@@ -256,8 +257,7 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 		out.Curve = &curve
 	}
 	out.Crew, out.Channel = placeOf(row.CrewID, row.CrewName), placeOf(row.ChannelID, row.ChannelName)
-	out.Room = row.CrewID.Valid || row.ChannelID.Valid || row.SessionID.Valid
-	out.InSession = out.Room
+	out.InSession = row.CrewID.Valid || row.ChannelID.Valid || row.SessionID.Valid
 	out.CrewMember = row.CrewMember
 	for _, medal := range medalRows {
 		out.Medals = append(out.Medals, medalJSON{
@@ -300,6 +300,9 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 		s.log.Warn("ride road unreadable", "err", err, "ride", store.UUIDString(row.ID))
 	} else {
 		out.DistanceM = road.DistanceM
+		if road.RideMode != nil {
+			out.RideMode = *road.RideMode
+		}
 		if road.RouteID != "" {
 			out.Road = &rideRoadJSON{RouteID: road.RouteID, Name: road.RouteName, GenName: road.GenName}
 		}

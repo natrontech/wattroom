@@ -5,9 +5,12 @@
 import { Biome } from './biome';
 import { CHUNK_M } from './place/lattice';
 import { smoothstep } from './rand';
-import type { Relief } from './terrain/ground';
+import { EARTHWORKS_M, type Relief } from './terrain/ground';
 
 export type Cover = { biome: Biome; forest: number };
+
+/** On a road's earthworks, steep ground is rock where the outcrop noise is above this (about a fifth of it). */
+const OUTCROP_CUT = 0.35;
 
 // Forest where it is steep or north-facing (the farmer mows the flat sunny
 // bits), never right beside a village road. `forest` is continuous so edges
@@ -26,7 +29,13 @@ export function landUse(noise: Relief) {
 		const treeline = 1850 + 80 * noise('biome', [16 * CHUNK_M], x, z);
 		if (d < 5) return bare(Biome.Verge);
 		if (h > 2350) return bare(Biome.Snow);
-		if (slope > 0.85) return bare(Biome.Rock);
+		// A road's earthworks are grown over, rock only in outcrops: a cutting
+		// painted rock whole was a bare wall beside the road (#3838).
+		if (
+			slope > 0.85 &&
+			(d >= EARTHWORKS_M || noise('biome', [CHUNK_M / 4], x, z) > OUTCROP_CUT)
+		)
+			return bare(Biome.Rock);
 		if (h > treeline) return bare(Biome.Alpine);
 		const north = slope > 1e-4 ? gz / slope : 0;
 		const f =
