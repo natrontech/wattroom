@@ -1,4 +1,4 @@
-import { test, type WebSocketRoute } from '@playwright/test';
+import { test, type Page, type WebSocketRoute } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
@@ -476,6 +476,8 @@ surface(
 		await toTraining(o.page, crew);
 		await atSecond(o.page, RIDE_SECOND);
 		await assertRiding(o.page);
+		// A track on the deck: the people column's seat (#3983).
+		await queueDeck(o.page, [['dQw4w9WgXcQ', 'Never Gonna Give You Up']]);
 		await s.shot(o);
 		await o.page.getByRole('button', { name: 'End ride' }).click();
 	},
@@ -1294,6 +1296,39 @@ window.YT = { Player: class {
 window.onYouTubeIframeAPIReady?.();
 `;
 
+/**
+ * Queues YouTube tracks on a riding page's deck through the jukebox's sheet
+ * (#3983), stood in for by YOUTUBE_STUB, and leaves the sheet shut. A
+ * channel's deck outlives its session: an earlier shot may have queued it.
+ */
+async function queueDeck(page: Page, tracks: [string, string][]) {
+	await page.route('https://www.youtube.com/iframe_api', (route) =>
+		route.fulfill({ contentType: 'text/javascript', body: YOUTUBE_STUB }),
+	);
+	const add = page.getByRole('textbox', {
+		name: 'add music: search your library, or paste a YouTube link',
+	});
+	const fold = page
+		.locator('summary', { hasText: /^jukebox$/ })
+		.filter({ visible: true });
+	const queued = await page
+		.getByText(tracks[0][1])
+		.filter({ visible: true })
+		.count();
+	for (const [id, title] of queued ? [] : tracks) {
+		if (!(await add.isVisible())) await fold.click();
+		await add.fill(`https://www.youtube.com/watch?v=${id}`);
+		await add.press('Enter');
+		await page
+			.getByText(new RegExp(`${id}|${title}`))
+			.filter({ visible: true })
+			.first()
+			.waitFor({ timeout: 15_000 });
+	}
+	if (await add.isVisible()) await fold.click();
+	return fold;
+}
+
 /** Designer coaching, Design Partner riding along, a session started. */
 async function session(
 	s: Shoot,
@@ -1342,48 +1377,17 @@ surface(
 			// player skips tracks at random in a headless browser, which empties
 			// the deck, so it is stood in for by YOUTUBE_STUB; titles and
 			// thumbnails are YouTube's.
-			await coach.page.route('https://www.youtube.com/iframe_api', (route) =>
-				route.fulfill({
-					contentType: 'text/javascript',
-					body: YOUTUBE_STUB,
-				}),
-			);
-			const add = coach.page.getByRole('textbox', {
-				name: 'add music: search your library, or paste a YouTube link',
-			});
-			// Riding, the add box sits in the jukebox's sheet (#3983).
-			const fold = coach.page
-				.locator('summary', { hasText: /^jukebox$/ })
-				.filter({ visible: true });
-			// The channel's deck outlives the session: the scheme shot before
-			// this one left it queued.
-			const queued = await coach.page
-				.getByText('Never Gonna Give You Up')
-				.filter({ visible: true })
-				.count();
-			for (const [id, title] of queued
-				? []
-				: [
-						['dQw4w9WgXcQ', 'Never Gonna Give You Up'],
-						['9bZkp7q19f0', 'GANGNAM STYLE'],
-						['kJQP7kiw5Fk', 'Despacito'],
-						['JGwWNGJdvx8', 'Shape of You'],
-						['OPf0YbXqDm0', 'Uptown Funk'],
-					]) {
-				if (!(await add.isVisible())) await fold.click();
-				await add.fill(`https://www.youtube.com/watch?v=${id}`);
-				await add.press('Enter');
-				await coach.page
-					.getByText(new RegExp(`${id}|${title}`))
-					.filter({ visible: true })
-					.first()
-					.waitFor({ timeout: 15_000 });
-			}
+			const fold = await queueDeck(coach.page, [
+				['dQw4w9WgXcQ', 'Never Gonna Give You Up'],
+				['9bZkp7q19f0', 'GANGNAM STYLE'],
+				['kJQP7kiw5Fk', 'Despacito'],
+				['JGwWNGJdvx8', 'Shape of You'],
+				['OPf0YbXqDm0', 'Uptown Funk'],
+			]);
 			// The seat, its sheet shut; then multi:ride-session-deck — the sheet
 			// open, its transport and queue at riding size (#3927); then
 			// multi:ride-session-deck-playlists — the queue saved, and that
 			// playlist open in the sheet.
-			if (await add.isVisible()) await fold.click();
 			await s.shot(coach);
 			await fold.click();
 			await s.shot(coach, { name: 'ride-session-deck' });
