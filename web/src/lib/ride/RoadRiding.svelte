@@ -247,6 +247,7 @@
 				idle={!solo.trainer}
 				target={free.mode === 'watts' ? free.targetWatts : 0}
 				ftp={profile.current.ftp}
+				kg={profile.current.kg}
 			/>
 			<div class="flex flex-wrap items-center justify-center gap-4">
 				<div

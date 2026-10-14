@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { rideView, type RideView, type RideViewEnv } from './ride-view';
 
 const able: RideViewEnv = {
-	flat: null,
+	mode: null,
 	reducedMotion: false,
 	webgl2: true,
 	multiDraw: true,
@@ -12,7 +12,7 @@ const able: RideViewEnv = {
 describe('rideView (#3080)', () => {
 	const cases: [string, Partial<RideViewEnv>, RideView][] = [
 		['a capable browser, nothing chosen', {}, 'world'],
-		['the rider chose Flat road', { flat: true }, { skyline: 'chosen' }],
+		['the rider chose Flat road', { mode: 'flat' }, { skyline: 'chosen' }],
 		[
 			'reduced motion opens on Flat',
 			{ reducedMotion: true },
@@ -20,9 +20,20 @@ describe('rideView (#3080)', () => {
 		],
 		[
 			'reduced motion, the rider chose 3D',
-			{ reducedMotion: true, flat: false },
+			{ reducedMotion: true, mode: 'full' },
 			'world',
 		],
+		[
+			'reduced motion, the rider chose Steady',
+			{ reducedMotion: true, mode: 'steady' },
+			'world',
+		],
+		[
+			'reduced motion, the rider chose Flat',
+			{ reducedMotion: true, mode: 'flat' },
+			{ skyline: 'chosen' },
+		],
+		['Light is a world', { mode: 'light' }, 'world'],
 		['no WebGL2', { webgl2: false }, { skyline: 'capability' }],
 		['no WEBGL_multi_draw', { multiDraw: false }, { skyline: 'capability' }],
 		[
@@ -39,7 +50,7 @@ describe('rideView (#3080)', () => {
 		// The World control is read first, then the browser, then the ride.
 		[
 			'a choice outranks a missing capability',
-			{ flat: true, webgl2: false },
+			{ mode: 'flat', webgl2: false },
 			{ skyline: 'chosen' },
 		],
 		[
@@ -49,7 +60,7 @@ describe('rideView (#3080)', () => {
 		],
 		[
 			'the rider chose 3D and the frames failed',
-			{ flat: false, failure: 'frames' },
+			{ mode: 'full', failure: 'frames' },
 			{ skyline: 'frames' },
 		],
 	];

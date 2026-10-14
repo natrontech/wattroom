@@ -10,11 +10,14 @@ import { at, leftOf } from '$lib/road/along';
 import type { SimRider } from './sim';
 import type { World } from './world';
 
-/** chase and heli follow you; side stands off your right shoulder, a held moment's view of the figure and bike. */
-export type Follow = 'chase' | 'heli' | 'side';
+/** chase, heli and steady follow you; side stands off your right shoulder, a held moment's view of the figure and bike. */
+export type Follow = 'chase' | 'heli' | 'side' | 'steady';
 
 /** The side view: metres out to your right, ahead, and up; a three-quarter front, so the face, the drops and both wheels show. */
 const SIDE = { out: 3.2, ahead: 1.6, up: 0.3, fov: 40 };
+
+/** Steady (ADR-0079, docs/spec/motion.md): the heli's view from far and high, one FOV, no easing. */
+const STEADY = { back: 260, up: 190, fov: 45 };
 
 const EYE_FLOOR = 1.5; // metres the eye keeps above the drawn ground
 const GOAL_FLOOR = 1.8;
@@ -70,20 +73,33 @@ export function makeRig(route: Route, world: World) {
 				return;
 			}
 			const chase = mode === 'chase';
-			const back = chase ? 6.5 + Math.min(3, rider.v * 0.15) : 70;
+			const steady = mode === 'steady';
+			const back = steady
+				? STEADY.back
+				: chase
+					? 6.5 + Math.min(3, rider.v * 0.15)
+					: 70;
 			// The eye rides your lane, not the centre line, so your lane leaves you in RIDER_BOX.
 			const c = along(route, rider.d);
 			const sx = you.x - c.x;
 			const sz = you.z - c.z;
 			const b = along(route, rider.d - back);
-			want.set(b.x + sx, yOf(route, b.ele) + (chase ? 2.4 : 42), b.z + sz);
+			want.set(
+				b.x + sx,
+				yOf(route, b.ele) + (steady ? STEADY.up : chase ? 2.4 : 42),
+				b.z + sz,
+			);
 			want.y = Math.max(want.y, ground(want.x, want.z) + GOAL_FLOOR);
 			const a = along(route, rider.d + (chase ? 18 : 10));
 			look
 				.set(a.x + sx, yOf(route, a.ele) + 1.0, a.z + sz)
 				.lerp(you, chase ? 0.45 : 0.8);
 			const kmh = rider.v * 3.6;
-			const fov = chase ? 50 + Math.min(10, Math.max(0, kmh - 20) * 0.25) : 45;
+			const fov = steady
+				? STEADY.fov
+				: chase
+					? 50 + Math.min(10, Math.max(0, kmh - 20) * 0.25)
+					: 45;
 			if (!started) {
 				eye.copy(want);
 				gaze.copy(look);
@@ -91,8 +107,14 @@ export function makeRig(route: Route, world: World) {
 				camera.updateProjectionMatrix();
 				started = true;
 			}
-			eye.lerp(want, damp(chase ? 0.22 : 0.6, real));
-			gaze.lerp(look, damp(0.12, real));
+			// Steady cuts: the eye and gaze are where they belong, never on the way.
+			if (steady) {
+				eye.copy(want);
+				gaze.copy(look);
+			} else {
+				eye.lerp(want, damp(chase ? 0.22 : 0.6, real));
+				gaze.lerp(look, damp(0.12, real));
+			}
 			// The goal clears the ground; the eased eye can still cut a crest.
 			eye.y = Math.max(eye.y, ground(eye.x, eye.z) + EYE_FLOOR);
 			camera.position.copy(eye);

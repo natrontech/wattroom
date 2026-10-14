@@ -9,7 +9,7 @@
 // one-way) — so does one that misses more than a fifth of its frames for ten
 // seconds (docs/SPEC.md "The world", #3080).
 import * as THREE from 'three';
-import { pixelRatio } from './budget';
+import { LIGHT_PIXEL_BUDGET, pixelRatio } from './budget';
 import { compose, type CameraMode, type MountOptions } from './compose';
 import { createLoop, type LoopStats, missWatch, watchPage } from './loop';
 import { softwareDrawing } from './flag';
@@ -74,7 +74,14 @@ export function mount(
 		const w = canvas.clientWidth;
 		const h = canvas.clientHeight;
 		if (!w || !h) return;
-		renderer.setPixelRatio(pixelRatio(w, h, window.devicePixelRatio));
+		renderer.setPixelRatio(
+			pixelRatio(
+				w,
+				h,
+				window.devicePixelRatio,
+				opts.light ? LIGHT_PIXEL_BUDGET : undefined,
+			),
+		);
 		renderer.setSize(w, h, false);
 		camera.aspect = w / h;
 		camera.updateProjectionMatrix();
