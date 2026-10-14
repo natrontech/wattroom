@@ -190,7 +190,7 @@ Capture: world off, `/ride?w=openers`, 14 s in; a second frame at four-digit wat
 5. RIDE page fields per the one-home table (workout, no road: Cadence, Heart), in the head's panel, no gap wider than ~48 px; page control (D15) in that panel's header row. [ride-flat]
 6. Bias trim inside that panel, each button ≥ 44 px. [ride-flat]
 7. Interval graph: full-width panel along the bottom, ≥ 112 px tall; its FTP label at `ride-label` size, or dropped. [ride-flat]
-8. Numbers panel takes the free height; no band between panels > 16 px. [ride-flat]
+8. The graph panel takes the free height and its plot fills it (no aspect lock); the numbers panel lays its fields in a row across the panel's width at its content height; no band between panels > 16 px (Jan, 2026-10-15, #3670). [ride-flat]
 9. At four digits the numeral stays inside its panel, covering no other text. [multi:four-digit] [ride-flat]
 10. Persistent status per G3. [multi:ride-status] [ride-flat]
 11. Cave covers the frame.
