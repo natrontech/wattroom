@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { formatClock } from '$lib/format';
 	import type { Block } from '$lib/workout/block';
-	import { blockBands } from '$lib/workout/block';
+	import { blockBands, nextFor } from '$lib/workout/block';
 
 	let {
 		block,
@@ -32,9 +32,9 @@
 -->
 {#if block}
 	<div
-		class="bg-surface-raised ring-ink/10 flex items-center gap-[3%] rounded-lg ring-1 {big
-			? 'px-[2vw] py-[1.6vh]'
-			: 'px-5 py-3'}"
+		class="flex items-center gap-[3%] {big
+			? 'ride-panel px-[2vw] py-[1.6vh]'
+			: 'bg-surface-raised ring-ink/10 rounded-lg px-5 py-3 ring-1'}"
 	>
 		<div class="min-w-0">
 			<p class="eyebrow {big ? 'text-[3vh]' : ''}">
@@ -78,8 +78,14 @@
 				>
 					{block.next.label}
 				</p>
+				<!-- describeBlock's next block, as slot 1 says it (D16): a sprint
+				     asks no watts, so it names none. -->
 				<p class="text-muted num {big ? 'text-[3vh]' : 'text-[11px]'}">
-					{block.next.watts} W · {formatClock(block.next.seconds)}
+					{#if block.next.watts > 0}<span class="text-neon"
+							>{block.next.watts} W</span
+						>
+						·
+					{/if}{nextFor(block.next.seconds)}
 				</p>
 			</div>
 		{/if}

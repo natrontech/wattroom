@@ -87,6 +87,14 @@
 	const you = $derived(riders.find((r) => r.you));
 </script>
 
+{#snippet exit()}
+	<button
+		onclick={onExit}
+		class="btn btn-secondary min-h-11 px-[1.5vw] text-[3vh] leading-none"
+		>Exit TV mode (esc)</button
+	>
+{/snippet}
+
 <!-- TV mode is the cave whatever the theme says — it exists for the ride. -->
 <!-- A dialog (audit 2026-09-09): the one surface where the page behind is
      entirely hidden, and Tab still walked it. -->
@@ -131,11 +139,6 @@
 			/>
 		</div>
 	{/if}
-	<button
-		onclick={onExit}
-		class="btn btn-secondary btn-lg absolute bottom-4 left-4 z-10"
-		>Exit TV mode (esc)</button
-	>
 	{#if onJoin}
 		<button
 			onclick={onJoin}
@@ -144,6 +147,8 @@
 		>
 	{/if}
 	{#if countdown}
+		<!-- TvMode carries the way out in its top row; the count-in has none. -->
+		<div class="absolute bottom-[3vh] left-[3vw] z-10">{@render exit()}</div>
 		<div class="h-full">
 			<CountdownScreen
 				remaining={countdown.remaining}
@@ -165,6 +170,7 @@
 			{stats}
 			{skyline}
 			{climb}
+			{exit}
 		/>
 	{/if}
 </div>

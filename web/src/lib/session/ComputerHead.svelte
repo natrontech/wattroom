@@ -20,6 +20,7 @@
 		stale,
 		target,
 		blockExecution = null,
+		tv = false,
 	}: {
 		/** The 3 s power, or this second's watts before three have passed. */
 		power: number;
@@ -31,6 +32,8 @@
 		target?: number;
 		/** The block's scored seconds inside the band, 0–1; null until one is scored. */
 		blockExecution?: number | null;
+		/** At three metres (TvMode): SPEC's TV sizes, in vh. */
+		tv?: boolean;
 	} = $props();
 
 	const shown = $derived(stale ? 0 : power);
@@ -41,6 +44,28 @@
 	const round5 = (w: number) => Math.round(w / 5) * 5;
 	const lo = $derived(target ? round5(target * 0.8) : 0);
 	const hi = $derived(target ? round5(target * 1.2) : 0);
+	// ride-label is 24 px, under the TV's 2.9vh floor: the TV spells it in vh.
+	const size = $derived(
+		tv
+			? {
+					power: 'text-[16vh]',
+					unit: 'text-[4vh]',
+					label: 'text-muted text-[3vh] font-semibold tracking-[0.08em] uppercase',
+					value: 'text-[6vh]',
+					words: 'text-[3vh] leading-none',
+					dot: 'size-[1.8vh]',
+					track: 'mt-[1vh] h-[2vh]',
+				}
+			: {
+					power: 'text-[6.5rem]',
+					unit: 'text-2xl',
+					label: 'ride-label',
+					value: 'text-4xl',
+					words: 'text-2xl leading-7',
+					dot: 'size-3',
+					track: 'mt-1 h-3',
+				},
+	);
 </script>
 
 <div data-testid="computer-head" class="flex flex-col gap-2">
@@ -48,21 +73,21 @@
 		<p class="num leading-[0.85] font-bold whitespace-nowrap">
 			<span
 				data-testid="head-power"
-				class="text-[6.5rem] {stale ? 'text-muted' : 'text-watt glow-text'}"
+				class="{size.power} {stale ? 'text-muted' : 'text-watt glow-text'}"
 				><TabularFigures value={stale ? '—' : power} /></span
-			>{' '}<span class="text-muted text-2xl font-normal">W</span>
+			>{' '}<span class="text-muted {size.unit} font-normal">W</span>
 		</p>
 		<div class="pb-1">
-			<p class="ride-label">W/kg</p>
-			<p data-field="wkg" class="num text-4xl leading-none font-bold">
+			<p class={size.label}>W/kg</p>
+			<p data-field="wkg" class="num {size.value} leading-none font-bold">
 				{stale ? '—' : wkg(power, kg)}
 			</p>
 		</div>
 	</div>
 	{#if shown > 0}
 		<!-- Silent at 0 W: Z1 for a rider who stopped is a lie. -->
-		<p data-testid="head-zone" class="ride-label flex items-center gap-2">
-			<ZoneDot {zone} class="size-3" />Z{zone}
+		<p data-testid="head-zone" class="{size.label} flex items-center gap-2">
+			<ZoneDot {zone} class={size.dot} />Z{zone}
 			{ZONE_NAMES[zone]}
 		</p>
 	{/if}
@@ -74,10 +99,10 @@
 			from={lo}
 			fullScale={hi}
 			needle={!stale}
-			class="mt-1 h-3"
+			class={size.track}
 		/>
 		<!-- The window's ends, and the band named under itself (v2-erg). -->
-		<p class="num text-muted flex justify-between text-2xl leading-7">
+		<p class="num text-muted flex justify-between {size.words}">
 			<span>{lo}</span>
 			<span
 				>{target - band.band} · <span class="text-neon">{target}</span> · {target +
@@ -89,10 +114,10 @@
 			<!-- Once a second of the block is scored: SPEC scores a steady block
 			     with no guard up, so a ramp asks a target and has no share. -->
 			<p data-testid="head-block" class="flex items-baseline gap-3">
-				<span class="ride-label">Block</span>
-				<span class="num text-4xl leading-none font-bold"
+				<span class={size.label}>Block</span>
+				<span class="num {size.value} leading-none font-bold"
 					>{stale ? '—' : Math.round(blockExecution * 100)}</span
-				><span class="text-muted text-2xl">% on target</span>
+				><span class="text-muted {size.words}">% on target</span>
 			</p>
 		{/if}
 	{/if}

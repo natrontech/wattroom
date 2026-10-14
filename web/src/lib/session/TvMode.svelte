@@ -1,9 +1,8 @@
 <script lang="ts">
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import IntervalStrip from '$lib/session/IntervalStrip.svelte';
-	import Instrument from '$lib/session/Instrument.svelte';
+	import ComputerHead from '$lib/session/ComputerHead.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
-	import ZoneDot from '$lib/components/ZoneDot.svelte';
 	import { ZONE_BG, fillPct, zoneOf } from '$lib/components/zones';
 	import { formatClock } from '$lib/format';
 	import type { LiveRider } from '$lib/channel/types';
@@ -27,6 +26,7 @@
 		stats,
 		skyline = null,
 		climb = null,
+		exit,
 	}: {
 		riders: LiveRider[];
 		/** Your instrument has nothing paired to read (#2941). */
@@ -48,11 +48,12 @@
 		skyline?: SkylineView | null;
 		/** The climb card, for the bike computer (#3645). */
 		climb?: ClimbView | null;
+		/** The way out, in the top row beside the title and clock (#3677). */
+		exit?: import('svelte').Snippet;
 	} = $props();
 
 	const you = $derived(riders.find((r) => r.you) ?? riders[0]);
 	const others = $derived(riders.filter((r) => !r.you));
-	const zone = $derived(zoneOf(you.watts, you.ftp));
 </script>
 
 <!--
@@ -62,6 +63,7 @@
 -->
 <div class="bg-surface flex h-full flex-col px-[3vw] py-[3vh]">
 	{#if !live || !you}
+		<div class="flex justify-end">{@render exit?.()}</div>
 		<!-- Idle lounge: no HUD of glowing zeros (glow marks LIVE data,
 		     ADR-0005) — the TV shows who is here and how to join. -->
 		<div class="flex flex-1 flex-col items-center justify-center text-center">
@@ -88,7 +90,7 @@
 			</p>
 		</div>
 	{:else}
-		<header class="flex items-baseline gap-[2vw]">
+		<header class="flex items-center gap-[2vw]">
 			<h1 class="font-display text-[3.4vh] leading-none font-bold">
 				{placeName}
 			</h1>
@@ -97,62 +99,56 @@
 				class="font-display ml-auto text-[5vh] leading-none font-bold tabular-nums"
 				>{formatClock(elapsed)}</span
 			>
+			{@render exit?.()}
 		</header>
 
-		<div class="mt-[3vh] flex flex-1 gap-[3vw]">
-			<!-- Yours: the same instrument the arm's-length view uses, at 3 m —
-			     the number travels over the tolerance band, so "left or right of
-			     the bright slot" reads from the sofa the way it reads from the
-			     saddle. One design at two distances (ADR-0020). -->
-			<section class="flex min-w-0 flex-1 flex-col justify-center">
-				<Instrument
-					watts={you.watts}
-					target={you.target}
-					ftp={you.ftp}
-					stale={you.stale}
-					{idle}
+		<!-- The riding surface's panels at three metres (ADR-0046, #3677): the
+		     head with the one watts figure beside slot 1, the computer's pages
+		     under them, the graph along the bottom. -->
+		<div class="mt-[2vh] grid grid-cols-[2fr_3fr] gap-[1.5vw]">
+			<section class="ride-panel px-[1.5vw] py-[1.5vh]">
+				<ComputerHead
 					tv
+					power={stats?.seconds ? stats.power3 : Math.round(you.watts)}
+					kg={you.kg}
+					ftp={you.ftp}
+					stale={you.stale || idle}
+					target={you.target > 0 ? you.target : undefined}
+					blockExecution={stats?.blockExecution ?? null}
 				/>
-				<div class="mt-[2.5vh]">
-					<IntervalStrip
-						{block}
-						bias={1}
-						cadence={you.cadence}
-						hr={you.hr}
-						big
-					/>
-				</div>
-				<div class="mt-[2vh] flex items-end gap-[2.5vw]">
-					<!-- Slot 3 at three metres (#3088): the same pages, turned by the
-					     same keys, with nothing on it to walk over and tap. The width
-					     of the section, so POWER's eight numbers take two rows. -->
-					<div class="min-w-0 flex-1">
-						<BikeComputer
-							tv
-							cadence={you.cadence}
-							hr={you.hr}
-							watts={you.watts}
-							kg={you.kg}
-							stale={you.stale}
-							target={you.target > 0 ? you.target : undefined}
-							{stats}
-							{climb}
-						/>
-					</div>
-					{#if you.watts > 0}
-						<span
-							class="font-display text-ink flex items-center gap-[0.8vh] text-[6vh] font-bold"
-							><ZoneDot {zone} class="size-[3vh]" />Z{zone}</span
-						>
-					{/if}
-				</div>
+				{#if idle}
+					<p class="text-muted mt-[1vh] text-[3vh]">
+						No trainer — pair one to see your watts
+					</p>
+				{/if}
 			</section>
+			<IntervalStrip {block} bias={1} cadence={you.cadence} hr={you.hr} big />
+		</div>
+
+		<div class="mt-[1.5vh] flex min-h-0 flex-1 items-start gap-[1.5vw]">
+			<!-- Slot 3 at three metres (#3088): the same pages, turned by the
+			     same keys. -->
+			<div class="min-w-0 flex-1">
+				<BikeComputer
+					tv
+					cadence={you.cadence}
+					hr={you.hr}
+					watts={you.watts}
+					kg={you.kg}
+					stale={you.stale}
+					target={you.target > 0 ? you.target : undefined}
+					{stats}
+					{climb}
+				/>
+			</div>
 
 			<!-- Everyone else, one row per rider. No faces: at 3 m you read names and
 			     numbers. Absent riding alone (#1632): the same TV serves a solo
 			     ride, and an empty third of the screen is not a roster. -->
 			{#if others.length > 0}
-				<section class="flex w-[34vw] flex-col justify-center gap-[1.6vh]">
+				<section
+					class="ride-panel flex w-[34vw] flex-col gap-[1.6vh] px-[1.5vw] py-[1.5vh]"
+				>
 					{#each others as rider (rider.id)}
 						{@const riderZone = zoneOf(rider.watts, rider.ftp)}
 						<div class="flex items-center gap-[1.2vw]">
@@ -175,21 +171,19 @@
 			{/if}
 		</div>
 
-		<div class="flex items-end gap-[2vw]">
-			<div class="min-w-0 flex-1 overflow-hidden rounded-lg">
-				{#if skyline}
-					<div class="h-40"><Skyline tv {...skyline} /></div>
-				{:else}
-					<IntervalGraph
-						{segments}
-						{total}
-						{elapsed}
-						ftp={you.ftp}
-						trace={you.trace}
-						tv
-					/>
-				{/if}
-			</div>
+		<div class="ride-panel mt-[1.5vh] overflow-hidden">
+			{#if skyline}
+				<div class="h-40"><Skyline tv {...skyline} /></div>
+			{:else}
+				<IntervalGraph
+					{segments}
+					{total}
+					{elapsed}
+					ftp={you.ftp}
+					trace={you.trace}
+					tv
+				/>
+			{/if}
 		</div>
 	{/if}
 </div>

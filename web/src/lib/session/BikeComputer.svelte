@@ -56,7 +56,9 @@
 	let page = $state<ComputerPage>('ride');
 	const pages = $derived(pagesFor(ctx));
 	const shown = $derived(pages.includes(page) ? page : 'ride');
-	const fields = $derived(fieldsFor(shown, { ...ctx, ownHead: docked }));
+	// The TV draws the same head beside slot 1 (#3677), so its fields are a
+	// docked computer's: one watts figure on the screen.
+	const fields = $derived(fieldsFor(shown, { ...ctx, ownHead: docked || tv }));
 	// Docked under a target the head's track takes the profile's room; the
 	// Skyline under the computer draws the climb and your dot.
 	const profile = $derived(
@@ -124,7 +126,9 @@
 	aria-label="bike computer, {PAGE_NAMES[shown]} page"
 	class={docked
 		? 'relative flex w-[21rem] max-w-full flex-col gap-3 px-4 py-3'
-		: 'panel relative'}
+		: tv
+			? 'ride-panel relative flex flex-col gap-[1.5vh] px-[1.5vw] py-[1.5vh]'
+			: 'panel relative'}
 >
 	<!-- The page's name and its dots sit in the row of numbers, so a page is
 	     one row tall where it fits and the focus above keeps its height (#3597);
@@ -211,7 +215,7 @@
 			class="focus-visible:outline-neon absolute inset-0 rounded-lg focus-visible:outline-2"
 		></button>
 	{/if}
-	{#if docked}
+	{#if docked || tv}
 		<!-- D15: the current page's name between ← and →, with position dots. -->
 		<div class="relative flex items-center gap-1">
 			{#if turns}
@@ -223,7 +227,11 @@
 					class="icon-btn-lg -ml-2"><ChevronLeft size={24} /></button
 				>
 			{/if}
-			<p class="ride-label text-ink flex items-center gap-2">
+			<p
+				class="{tv
+					? `${size.word} font-semibold tracking-[0.08em] uppercase`
+					: 'ride-label'} text-ink flex items-center gap-2"
+			>
 				{PAGE_NAMES[shown]}{@render badge()}
 			</p>
 			{#if turns}
@@ -247,6 +255,8 @@
 				</div>
 			{/if}
 		</div>
+	{/if}
+	{#if docked}
 		<ComputerHead
 			power={ctx.stats?.seconds ? ctx.stats.power3 : Math.round(ctx.watts)}
 			kg={ctx.kg}
@@ -262,7 +272,7 @@
 			? 'border-neon/20 grid grid-cols-2 gap-x-6 gap-y-3 border-t pt-3'
 			: layout}
 	>
-		{#if !phone && !docked}{@render name()}{/if}
+		{#if !phone && !docked && !tv}{@render name()}{/if}
 		{#each fields as field (field.key)}
 			<div data-testid="computer-field" data-field={field.key} class="min-w-0">
 				<span
