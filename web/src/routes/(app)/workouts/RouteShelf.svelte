@@ -16,8 +16,10 @@
 	 * The rider's routes (#3061), under their workouts: a route is ridden the
 	 * way a workout is, so it lives on the same page. Each is the one route
 	 * row (#3683): the card opens its page, Ride rides it — from where they
-	 * left off when there is somewhere to carry on.
+	 * left off when there is somewhere to carry on. The page's search finds
+	 * them too (#3685).
 	 */
+	let { query = '' }: { query?: string } = $props();
 	let routes = $state<StoredRoute[] | null>(null);
 	let error = $state<string | null>(null);
 
@@ -28,6 +30,16 @@
 		else error = res.error.message;
 	}
 	void load();
+
+	const shown = $derived.by(() => {
+		const q = query.trim().toLowerCase();
+		return (routes ?? []).filter(
+			(r) =>
+				!q ||
+				r.name.toLowerCase().includes(q) ||
+				r.generatedName.toLowerCase().includes(q),
+		);
+	});
 
 	// Every device, as a workout card's Ride: where this one cannot reach a
 	// trainer, /ride says why beside its disabled Start (ux.md).
@@ -61,10 +73,12 @@
 </script>
 
 <section class="mt-8">
-	<div class="flex flex-wrap items-baseline gap-3">
+	<div class="flex min-h-7 flex-wrap items-center justify-between gap-3">
 		<h2 class="eyebrow">your routes</h2>
 		{#if routes && routes.length > 0}
-			<a href="/workouts/import" class="btn btn-ghost btn-xs">Import a route</a>
+			<a href="/workouts/import" class="btn btn-ghost btn-xs -mr-3"
+				>Import a route</a
+			>
 		{/if}
 	</div>
 	{#if error}
@@ -96,8 +110,13 @@
 			</EmptyState>
 		</div>
 	{:else}
+		{#if shown.length === 0}
+			<p class="text-muted mt-2 text-sm">
+				No route of yours matches “{query.trim()}”.
+			</p>
+		{/if}
 		<ul class="mt-2 grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
-			{#each routes as route (route.id)}
+			{#each shown as route (route.id)}
 				<li class="min-w-0">
 					<RouteRow {route} card menu={menu(route)}>
 						{#snippet action()}

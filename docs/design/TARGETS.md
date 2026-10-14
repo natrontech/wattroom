@@ -434,7 +434,7 @@ Capture: `/dev/world?m=<metre>&p=0|1&cam=chase&look=bluehour&chrome=0`, 1440 × 
 Capture: `/workouts`, the hairpin and rolling route seeded; whole page body, desk and phone, both schemes. Targets: v2-routes, v3-roads (“Your roads”), v2-collections (the rhythm).
 
 1. Title and subline top left. The search box on its own row, ≤ ~420 px wide, reads “Find a workout or a route”, filters routes too. [workouts-page]
-2. Every shelf opens with one header row: eyebrow left, the shelf's doors right on the same baseline (`btn-ghost btn-xs`, ≥ 28 px). [workouts-page]
+2. Every shelf opens with one header row: eyebrow left, the shelf's doors right on the same baseline (`btn-ghost btn-xs`, ≥ 28 px). [workouts-page] [probe:doors]
 3. Each door once; on an empty shelf the doors live only in the empty state. [workouts-page]
 4. An empty state is one line plus its button; no “Nothing yet.” [workouts-page]
 5. Sections 32 px apart; each eyebrow 8 px above its content. [workouts-page]
