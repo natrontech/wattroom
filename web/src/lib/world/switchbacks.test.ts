@@ -68,13 +68,27 @@ describe('stacked switchbacks', () => {
 describe('stacked switchbacks, seen from below', () => {
 	it('wall each leg above the first on its valley side (#3838)', () => {
 		const wall = parapet(route, world.heightAt, [0, rowCount(route) - 1]);
-		const along = (wall?.attributes.uv.array ?? []).filter((_, i) => i % 2);
-		const walled = new Set(along);
+		// Each row holds a foot and a top, out and in; a wall stands where its top is over its foot.
+		const pos = wall?.attributes.position.array ?? [];
+		const along = wall?.attributes.uv.array ?? [];
+		const walled = new Set<number>();
+		for (let v = 0; v < pos.length / 3; v += 4)
+			if (pos[(v + 1) * 3 + 1] > pos[v * 3 + 1]) walled.add(along[v * 2 + 1]);
 		const LEG = 700; // 30 rows of 20 m, then the turn
 		const share = (leg: number) =>
 			[...walled].filter((d) => d >= leg * LEG && d < (leg + 1) * LEG).length /
 			(Math.min(LEG, route.length - leg * LEG) / 2);
 		expect(share(0)).toBeLessThan(0.1); // it rises from the valley's own ground
 		for (const leg of [1, 2, 3]) expect(share(leg)).toBeGreaterThan(0.4);
+	});
+
+	it('draw every walled piece one size, so the road pool reuses its slots', () => {
+		const sizes = [400, 600, 800, 1000].map(
+			(from) =>
+				parapet(route, world.heightAt, [from, from + 200])?.attributes.position
+					.count,
+		);
+		expect(sizes[0]).toBeGreaterThan(0);
+		expect(new Set(sizes).size).toBe(1);
 	});
 });

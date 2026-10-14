@@ -70,7 +70,7 @@ export type Stage = {
 
 // Room for the ground within reach, and for a hilly road's pieces; either grows by half when it runs out.
 const GROUND_ROOM = { pieces: 13_000, vertices: 200_000, indices: 800_000 };
-const ROAD_ROOM = { pieces: 48, vertices: 48_000, indices: 240_000 };
+const ROAD_ROOM = { pieces: 48, vertices: 128_000, indices: 480_000 }; // every piece walled (parapet)
 
 const SKY_R = 40000;
 const STARS = 2500;
