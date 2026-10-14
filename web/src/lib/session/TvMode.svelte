@@ -63,7 +63,7 @@
 	chat, nothing you would need to walk over and click. Everything sized in vh so it
 	holds at 3 m on any panel.
 -->
-<div class="bg-surface flex h-full flex-col px-[3vw] py-[3vh]">
+<div class="bg-surface flex h-full flex-col p-[3vh]">
 	{#if !live || !you}
 		<div class="flex justify-end {seated ? 'pr-[27vw]' : ''}">
 			{@render exit?.()}
@@ -119,14 +119,14 @@
 		     slot 1 and the roster sharing the rest, all as tall as the
 		     tallest and filling the height the graph's slim band leaves. -->
 		<div
-			class="mt-[2vh] grid min-h-0 flex-1 grid-flow-col gap-[1.5vw] {block ||
+			class="mt-[2vh] grid min-h-0 flex-1 grid-flow-col gap-[1.5vh] {block ||
 			others.length
 				? 'auto-cols-fr grid-cols-[auto]'
 				: ''} {seated ? 'pr-[27vw]' : ''}"
 		>
 			<!-- Slot 3 at three metres (#3088): the same pages, turned by the
 			     same keys. -->
-			<section class="ride-panel min-w-0">
+			<section class="ride-panel flex min-w-0 flex-col">
 				<BikeComputer
 					tv
 					docked
@@ -187,7 +187,7 @@
 			{/if}
 		</div>
 
-		<div class="ride-panel mt-[1.5vh] h-[18vh] shrink-0 overflow-hidden">
+		<div class="ride-panel mt-[1.5vh] h-[11vh] shrink-0 overflow-hidden">
 			{#if skyline}
 				<div class="h-full"><Skyline tv {...skyline} /></div>
 			{:else}

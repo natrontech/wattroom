@@ -73,7 +73,7 @@
 
 	const size = $derived(
 		tv
-			? { value: 'text-[6vh]', unit: 'text-[3vh]', word: 'text-[3vh]' }
+			? { value: 'text-[9vh]', unit: 'text-[4.5vh]', word: 'text-[3vh]' }
 			: phone
 				? { value: 'text-2xl', unit: 'text-xs', word: 'text-sm' }
 				: { value: 'text-4xl', unit: 'text-lg', word: 'text-2xl' },
@@ -127,7 +127,7 @@
 	aria-label="bike computer, {PAGE_NAMES[shown]} page"
 	class={docked
 		? tv
-			? 'relative flex flex-col gap-[1.5vh] px-[1.5vw] py-[1.5vh]'
+			? 'relative flex flex-1 flex-col justify-between gap-[1.5vh] px-[1.5vw] py-[1.5vh]'
 			: 'relative flex w-[21rem] max-w-full flex-col gap-3 px-4 py-3'
 		: 'panel relative'}
 >
@@ -258,11 +258,15 @@
 		</div>
 	{/if}
 	{#if phone}{@render name()}{/if}
-	<!-- On the TV the fields stand beside the head, not under it (#3677): a
-	     wide screen, and a panel as tall as slot 1 beside it. -->
-	<div class={docked && tv ? 'flex items-start gap-[2vw]' : 'contents'}>
+	<!-- On the TV the fields stand under the head (#3677): its watts take the
+	     width, and the panel the height the graph's slim band leaves. -->
+	<div
+		class={docked && tv
+			? 'flex flex-1 flex-col justify-between gap-[2vh]'
+			: 'contents'}
+	>
 		{#if docked}
-			<div class={tv ? 'min-w-0 flex-1' : 'contents'}>
+			<div class={tv ? 'min-w-0' : 'contents'}>
 				<ComputerHead
 					power={ctx.stats?.seconds ? ctx.stats.power3 : Math.round(ctx.watts)}
 					kg={ctx.kg}
@@ -277,7 +281,7 @@
 		<div
 			class={docked
 				? tv
-					? 'border-neon/20 flex flex-col gap-[1.5vh] self-stretch border-l pl-[2vw]'
+					? 'border-neon/20 flex flex-wrap gap-x-[3vw] gap-y-[1.5vh] border-t pt-[2vh]'
 					: 'border-neon/20 grid grid-cols-2 gap-x-6 gap-y-3 border-t pt-3'
 				: layout}
 		>

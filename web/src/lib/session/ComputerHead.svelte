@@ -49,14 +49,14 @@
 	const size = $derived(
 		tv
 			? {
-					power: 'text-[22vh]',
-					unit: 'text-[6vh]',
+					power: 'text-[30vh]',
+					unit: 'text-[7vh]',
 					label: TV_LABEL,
-					value: 'text-[6vh]',
-					words: 'text-[3vh] leading-none',
-					dot: 'size-[1.8vh]',
-					track: 'mt-[0.5vh] h-[2vh]',
-					gap: 'gap-[0.5vh]',
+					value: 'text-[9vh]',
+					words: 'text-[3.4vh] leading-none',
+					dot: 'size-[2vh]',
+					track: 'mt-[1vh] h-[3vh]',
+					gap: 'gap-[1vh]',
 				}
 			: {
 					power: 'text-[6.5rem]',

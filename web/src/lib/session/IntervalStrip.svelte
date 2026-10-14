@@ -38,54 +38,48 @@
 	both put that front and centre; the first version of the group ride had neither.
 -->
 {#if block && big}
-	<!-- Slot 1 at three metres (#3677), v2-erg's work band: time left beside
-	     the block and its target, then NEXT as describeBlock says it (D16),
-	     its 3-2-1 chips and the trainer chip. Centred in a panel as tall as
-	     the computer. -->
+	<!-- Slot 1 at three metres (#3677), v2-erg's work band stood up: the
+	     block over its time left, its name and target, then NEXT as
+	     describeBlock says it (D16), its 3-2-1 chips and the trainer chip.
+	     As tall as the computer, its numbers grown into that height. -->
 	<div
-		class="ride-panel flex h-full flex-col justify-center gap-[3vh] px-[1.5vw] py-[1.5vh]"
+		class="ride-panel flex h-full flex-col justify-between gap-[2vh] px-[1.5vw] py-[1.5vh]"
 	>
-		<div class="flex items-end gap-[3vw]">
-			<div>
+		<div>
+			<p class={TV_LABEL}>block {block.index} of {block.count}</p>
+			<p
+				class="font-display mt-[1vh] text-[26vh] leading-[0.85] font-bold tabular-nums"
+			>
+				{formatClock(block.secondsLeft)}
+			</p>
+			<p class="{TV_LABEL} mt-[1vh]">left in block</p>
+		</div>
+		<div class="min-w-0">
+			<p class="font-display truncate text-[8vh] leading-none font-bold">
+				{block.label}
+			</p>
+			{#if block.band}
+				<!-- Prescribed, so neon: watt is only measured live data. -->
+				<p class="mt-[1.5vh] text-[4vh] leading-none">
+					Target <span class="num text-neon font-bold">{block.watts} W</span>
+					· <span class="num">{block.band.low}–{block.band.high}</span>
+				</p>
+			{/if}
+			<p class="num text-muted mt-[1.5vh] text-[4vh] leading-none">
+				{formatClock(elapsed)}{#if total > 0}{` of ${formatClock(total)}`}{/if}
+			</p>
+			{#each bands as b (b.text)}
 				<p
-					class="font-display text-[22vh] leading-[0.85] font-bold tabular-nums"
+					class="font-display mt-[1.5vh] text-[4vh] leading-none font-semibold tabular-nums {b.inBand
+						? 'text-ok'
+						: 'text-warn'}"
 				>
-					{formatClock(block.secondsLeft)}
+					at {b.text}
 				</p>
-				<p class="{TV_LABEL} mt-[1vh]">left in block</p>
-			</div>
-			<div class="min-w-0">
-				<p class={TV_LABEL}>block {block.index} of {block.count}</p>
-				<p
-					class="font-display mt-[1vh] truncate text-[8vh] leading-none font-bold"
-				>
-					{block.label}
-				</p>
-				{#if block.band}
-					<!-- Prescribed, so neon: watt is only measured live data. -->
-					<p class="mt-[1vh] text-[3vh] leading-none">
-						Target <span class="num text-neon font-bold">{block.watts} W</span>
-						· <span class="num">{block.band.low}–{block.band.high}</span>
-					</p>
-				{/if}
-				<p class="num text-muted mt-[1vh] text-[3vh] leading-none">
-					{formatClock(
-						elapsed,
-					)}{#if total > 0}{` of ${formatClock(total)}`}{/if}
-				</p>
-				{#each bands as b (b.text)}
-					<p
-						class="font-display mt-[1vh] text-[3vh] leading-none font-semibold tabular-nums {b.inBand
-							? 'text-ok'
-							: 'text-warn'}"
-					>
-						at {b.text}
-					</p>
-				{/each}
-			</div>
+			{/each}
 		</div>
 		<div
-			class="border-ink/10 flex items-baseline gap-[1vw] border-t pt-[1.5vh] text-[5vh] leading-none"
+			class="border-ink/10 flex items-baseline gap-[1vw] border-t pt-[2vh] text-[6vh] leading-none"
 		>
 			{#if block.next}
 				<span class={TV_LABEL}>next</span>
@@ -96,11 +90,11 @@
 				>
 				<CountChips
 					secondsLeft={block.secondsLeft}
-					size="size-[5.5vh] self-center text-[3.4vh]"
+					size="size-[6vh] self-center text-[3.4vh]"
 				/>
 			{/if}
 			<span
-				class="border-neon/40 ml-auto shrink-0 rounded border px-[1vw] py-[0.6vh] text-[3vh]"
+				class="border-neon/40 ml-auto shrink-0 self-center rounded border px-[1vw] py-[0.6vh] text-[3.4vh]"
 				>{trainerChip(block)}</span
 			>
 		</div>
