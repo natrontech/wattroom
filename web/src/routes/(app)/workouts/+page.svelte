@@ -3,6 +3,7 @@
 	import Banner from '$lib/components/Banner.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
+	import ListPlus from '@lucide/svelte/icons/list-plus';
 	import Gauge from '@lucide/svelte/icons/gauge';
 	import Pencil from '@lucide/svelte/icons/pencil';
 	import Play from '@lucide/svelte/icons/play';
@@ -129,6 +130,9 @@
 	const shownCustom = $derived(
 		custom.all.filter((e) => matches(e.workout.name)),
 	);
+	const shelfEmpty = $derived(
+		!custom.error && custom.loaded && custom.all.length === 0,
+	);
 </script>
 
 <svelte:head><title>Workouts · WattRoom</title></svelte:head>
@@ -143,20 +147,18 @@
 		</div>
 	</div>
 
-	<!-- Yours first: they are the ones you had to make on purpose. -->
-	<section class="mt-6">
-		<!-- Stacked below sm (#2183): side by side, the search box was 207 px
-		     with its placeholder cut off beside a heading that had wrapped to
-		     two lines. -->
-		<div class="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:gap-3">
-			<input
-				bind:value={query}
-				type="search"
-				placeholder="Find a workout — by name or focus"
-				aria-label="Find a workout"
-				class="input mt-4 w-full max-w-sm sm:mt-6"
-			/>
+	<!-- Its own row, above every shelf it filters (#3685). -->
+	<input
+		bind:value={query}
+		type="search"
+		placeholder="Find a workout or a route"
+		aria-label="Find a workout or a route"
+		class="input mt-6 w-full max-w-sm"
+	/>
 
+	<!-- Yours first: they are the ones you had to make on purpose. -->
+	<section class="mt-8">
+		<div class="flex min-h-7 flex-wrap items-center justify-between gap-3">
 			<h2 class="eyebrow">your workouts</h2>
 			{#if custom.full}
 				<!-- The ceiling is said where the shelf is, not discovered on the
@@ -164,11 +166,13 @@
 				<span class="text-muted text-xs"
 					>{custom.max} workouts — the shelf is full. Delete one to build another.</span
 				>
-			{:else}
+			{:else if !shelfEmpty}
 				<!-- Buttons, not inline words (#2886): at 16 px they were under
-				     ux.md's 24 px floor on a phone. One row of their own, so the
-				     column a phone stacks into does not stretch each across it. -->
-				<span class="flex flex-wrap gap-1">
+				     ux.md's 24 px floor on a phone. An empty shelf's doors are its
+				     empty state's alone (#3685). -->
+				<!-- -mr-3: the last door's text, not its padding, meets the cards'
+				     right edge. -->
+				<span class="-mr-3 flex flex-wrap gap-1">
 					<a href="/workouts/edit" class="btn btn-ghost btn-xs"
 						>Build a workout</a
 					>
@@ -196,12 +200,11 @@
 			<div class="mt-2 grid gap-2 md:grid-cols-2 2xl:grid-cols-3">
 				<Skeleton class="h-40" rows={2} />
 			</div>
-		{:else if custom.all.length === 0}
+		{:else if shelfEmpty}
 			<div class="mt-2">
 				<EmptyState>
-					Nothing yet. Build one from scratch, import the plan you were given as
-					a .zwo or .erg, or open any workout below and save a copy — it lands
-					on your account and follows you to any device.
+					{#snippet icon()}<ListPlus size={20} class="text-muted" />{/snippet}
+					Workouts you build or import land here and follow you to any device.
 					{#snippet cta()}
 						<a href="/workouts/edit" class="btn btn-primary btn-xs"
 							>Build a workout</a
@@ -213,6 +216,12 @@
 				</EmptyState>
 			</div>
 		{:else}
+			<!-- Each shelf says when the search emptied it (#3685). -->
+			{#if shownCustom.length === 0}
+				<p class="text-muted mt-2 text-sm">
+					No workout of yours matches “{query.trim()}”.
+				</p>
+			{/if}
 			<ul class="mt-2 grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
 				{#each shownCustom as entry (entry.id)}
 					<WorkoutCard
@@ -261,13 +270,15 @@
 		{/if}
 	</section>
 
-	<RouteShelf />
+	<RouteShelf {query} />
 
 	<!-- /ramp retires here (ADR-0020): a ramp test is a workout you start, not
 	     a destination. It keeps its own ride screen — it writes your FTP — but
 	     it is reached from the shelf. -->
-	<h2 class="eyebrow mt-8">measure</h2>
-	<ul class="mt-3">
+	<div class="mt-8 flex min-h-7 items-center">
+		<h2 class="eyebrow">measure</h2>
+	</div>
+	<ul class="mt-2">
 		<li class="panel panel-lg flex flex-wrap items-center gap-x-4 gap-y-2">
 			<Gauge size={16} class="text-muted shrink-0" />
 			<div class="min-w-0 flex-1">
@@ -281,7 +292,9 @@
 		</li>
 	</ul>
 
-	<h2 class="eyebrow mt-8">curated</h2>
+	<div class="mt-8 flex min-h-7 items-center">
+		<h2 class="eyebrow">curated</h2>
+	</div>
 	{#if suggestion && suggested.length > 0}
 		<p class="text-muted mt-2 text-xs">
 			Suggested for today:
@@ -289,7 +302,7 @@
 			— {suggestion.why}. Your call, always.
 		</p>
 	{/if}
-	<div class="mt-6 flex flex-wrap gap-1">
+	<div class="mt-2 flex flex-wrap gap-1">
 		{#each ['All', ...focuses] as option (option)}
 			<button
 				onclick={() => (active = option as Focus | 'All')}
@@ -300,8 +313,10 @@
 		{/each}
 	</div>
 
-	{#if query.trim() && shown.length === 0 && shownCustom.length === 0}
-		<p class="text-muted mt-4 text-sm">No workout matches “{query.trim()}”.</p>
+	{#if shown.length === 0}
+		<p class="text-muted mt-4 text-sm">
+			No curated workout matches “{query.trim()}”.
+		</p>
 	{/if}
 	<ul class="mt-4 grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
 		{#each shown as entry (entry.id)}

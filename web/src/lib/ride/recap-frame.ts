@@ -73,3 +73,27 @@ export function recapEyebrow(
 	const weekday = when.toLocaleDateString(undefined, { weekday: 'long' });
 	return [weekday, kind, crew || 'Solo'].join(' · ');
 }
+
+const KIND_OF_MODE = {
+	free: 'Free ride',
+	workout: 'Workout',
+	bunch: 'Bunch ride',
+	race: 'Race',
+	game: 'Game',
+} as const satisfies Record<string, RideKind>;
+
+/**
+ * A saved ride's kind (#3687), as the closing card named it: the mode the
+ * ride was saved with, except that a session on a road is a bunch ride
+ * (SessionLayers). A ride older than its mode reads as a workout.
+ */
+export function rideKind(ride: {
+	rideMode?: keyof typeof KIND_OF_MODE;
+	inSession?: boolean;
+	distanceM?: number;
+}): RideKind {
+	const kind = KIND_OF_MODE[ride.rideMode ?? 'workout'];
+	return kind === 'Workout' && ride.inSession && ride.distanceM !== undefined
+		? 'Bunch ride'
+		: kind;
+}

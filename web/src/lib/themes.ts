@@ -54,7 +54,9 @@ const SPECS: ThemeSpec[] = [
 		name: 'Tron Ice',
 		note: 'Blue-black, cyan on the numbers. Colder for long sessions.',
 		family: 'dark',
-		wattHue: 200,
+		// Off 200, where the watt sat on the shared ramp's cyan Z3 and a Z3
+		// bar read as live data (#3825).
+		wattHue: 194,
 		neonHue: 265,
 		surfaceHue: 265,
 		wattLc: { l: 0.72, c: 0.13 },
@@ -68,6 +70,10 @@ const SPECS: ThemeSpec[] = [
 		wattHue: 18,
 		neonHue: 195,
 		surfaceHue: 200,
+		// Lighter than the family's watt, where it sat on the shared ramp's
+		// coral Z6 (#3825). Hue can't clear it: pink is Outrun's, and orange
+		// meets danger and the world's peach band.
+		wattLc: { l: 0.74, c: 0.2 },
 	},
 	{
 		id: 'laser-yellow',
@@ -162,6 +168,8 @@ const SPECS: ThemeSpec[] = [
 		wattHue: 18,
 		neonHue: 195,
 		surfaceHue: 200,
+		// Darker than the family's watt for the same Z6 as Miami Nights' (#3825).
+		wattLc: { l: 0.56, c: 0.23 },
 	},
 	{
 		id: 'laser-day',
