@@ -261,6 +261,7 @@
 					ftp={channel.you.ftp}
 					progress={total > 0 ? elapsed / total : null}
 					paused={inFocus === 'media'}
+					look={world.look}
 					onfail={world.fail}
 					onflat={world.flatten}
 				/>

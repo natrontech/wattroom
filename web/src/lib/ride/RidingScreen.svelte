@@ -266,6 +266,7 @@
 				silent={signalLost}
 				{ftp}
 				progress={session.total > 0 ? session.elapsed / session.total : null}
+				look={world.look}
 				onfail={world.fail}
 				onflat={world.flatten}
 			/>

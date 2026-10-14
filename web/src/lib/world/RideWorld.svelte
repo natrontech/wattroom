@@ -45,6 +45,7 @@
 		ftp,
 		progress = null,
 		paused = false,
+		look = 'full',
 		onfail,
 		onflat,
 	}: {
@@ -64,6 +65,8 @@
 		progress?: number | null;
 		/** A shared screen has the focus. */
 		paused?: boolean;
+		/** The World control's choice (#3214): Steady's camera, Light's budget. */
+		look?: 'full' | 'steady' | 'light';
 		onfail: (why: Failure) => void;
 		/** The rider asked for the flat road on this device. */
 		onflat: () => void;
@@ -86,7 +89,9 @@
 					metre,
 					bunch,
 					loop,
-					steady: () => prefersReducedMotion.current,
+					camera: look === 'steady' ? 'steady' : 'chase',
+					light: look === 'light',
+					steady: () => prefersReducedMotion.current || look === 'steady',
 					onCue: play,
 					// Your kit is keyed by who you are, solo or in a bunch: the crew sees the one you see.
 					youId: account.me?.id,

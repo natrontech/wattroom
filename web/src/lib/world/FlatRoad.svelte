@@ -3,7 +3,7 @@
 	 * Why this ride is on the Skyline (#3080): a persistent line in slot 1,
 	 * never a toast (errors.md), and the one way back when there is one.
 	 */
-	import { REASONS, type SkylineReason } from './ride-view';
+	import { REASONS, STEADY_BUTTON, type SkylineReason } from './ride-view';
 
 	let { reason, onretry }: { reason: SkylineReason; onretry: () => void } =
 		$props();
@@ -20,7 +20,7 @@
 	</p>
 	{#if REASONS[reason].retry}
 		<button onclick={onretry} class="btn btn-secondary btn-lg"
-			>Try 3D again</button
+			>{reason === 'motion' ? STEADY_BUTTON : 'Try 3D again'}</button
 		>
 	{/if}
 </div>
