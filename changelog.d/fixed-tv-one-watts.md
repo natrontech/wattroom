@@ -1,1 +1,1 @@
-- TV mode shows your watts once, large, with W/kg and your zone beside the block and what comes next; the exit button sits in the top row, readable from the sofa.
+- TV mode shows your watts once, large, with W/kg and your zone beside the block, what comes next and a 3-2-1 count; the workout graph is a slim band along the bottom, and the exit button sits in the top row, readable from the sofa.
