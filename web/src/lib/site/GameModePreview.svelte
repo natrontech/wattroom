@@ -1,7 +1,7 @@
 <script lang="ts">
 	// A game mode in one looping line (#2995): what the rider would see on the
-	// session's chart, drawn as a toy. Watt is the live trace and the only
-	// thing that glows (ADR-0005); zones colour the targets. CSS animation
+	// session's chart, drawn as a toy. Watt is the live trace, flat like the
+	// rest of the public site; zones colour the targets. CSS animation
 	// only, and reduced motion gets the still frame.
 	let { mode }: { mode: string } = $props();
 </script>
@@ -106,9 +106,6 @@
 		fill: none;
 		stroke-linejoin: round;
 		stroke-linecap: round;
-		filter: drop-shadow(
-			0 0 3px color-mix(in oklab, var(--color-watt) 60%, transparent)
-		);
 	}
 	.stairs {
 		stroke: var(--color-neon);
