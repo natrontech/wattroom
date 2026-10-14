@@ -292,7 +292,7 @@
 		class={docked && tv
 			? 'flex min-h-0 flex-1 flex-col gap-[2vh]'
 			: docked && wide
-				? 'flex flex-wrap items-end gap-x-12 gap-y-3'
+				? 'flex flex-wrap items-end gap-x-8 gap-y-3'
 				: 'contents'}
 	>
 		{#if docked}
