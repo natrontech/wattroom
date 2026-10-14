@@ -50,7 +50,8 @@
 			? {
 					power: 'text-[16vh]',
 					unit: 'text-[4vh]',
-					label: 'text-muted text-[3vh] font-semibold tracking-[0.08em] uppercase',
+					label:
+						'text-muted text-[3vh] font-semibold tracking-[0.08em] uppercase',
 					value: 'text-[6vh]',
 					words: 'text-[3vh] leading-none',
 					dot: 'size-[1.8vh]',

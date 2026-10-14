@@ -56,10 +56,7 @@ describe('the bike computer reads from the saddle', () => {
 			unit,
 		);
 		const unitSize = sizeOf(
-			classesOf(
-				html,
-				/<span[^>]*class="text-muted[^"]*font-normal"[^>]*>rpm</,
-			),
+			classesOf(html, /<span[^>]*class="text-muted[^"]*font-normal"[^>]*>rpm</),
 			unit,
 		);
 		const word = sizeOf(
