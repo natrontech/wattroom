@@ -66,7 +66,8 @@ test('four digits keep one width, inside the box', async ({ page }) => {
 						const outer = el.getBoundingClientRect();
 						const readout = el.firstElementChild!.getBoundingClientRect();
 						return {
-							watts: el.firstElementChild!.firstElementChild!.textContent!,
+							// The numeral, not the head's W/kg beside or under it (D17).
+							watts: el.querySelector('.font-display')!.textContent!,
 							width: readout.width,
 							inside:
 								readout.left >= outer.left - 0.5 &&
