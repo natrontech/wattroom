@@ -106,6 +106,7 @@ Every number below is a **default**, to be tuned in alpha and re-measured by the
 - **Keys (default).**
   - Harder: `.` `+` `=` Numpad+. Easier: `,` `-` Numpad−. PgUp / PgDn are Harder / Easier.
   - No modifier key. `event.repeat` is ignored, because the shifter does the repeating. Keydown and keyup are press and release.
+- **The ride narrator (default, #3213; WCAG 4.1.3).** An sr-only `role=status` region says a block change, a climb opening (class, length, average grade), "N km to the top" at each whole kilometre left, and the summit, at most one line per **5 s**; a newer line replaces a waiting one. `role=alert` says the trainer signal lost and back, and the **S** key: "km 12.4 of 51.7, 5.8 %, 6.0 km to the top, 258 W, zone 3" (on a road; not while typing, not with a modifier, and not when a soundboard pad is bound to S). Climbs are named by class; a climb's name waits for the privacy rule on place names (ADR-0063).
 - **Phone (default).** Taps only, as a full-width pair. Each tap is answered with the gear, and whether it is at an end.
 - **The trainer grant moves (default).** When another of the rider's screens takes the trainer, k restarts at 1 with a cue and "Gear back to your real gear". A reconnect keeps k.
 
