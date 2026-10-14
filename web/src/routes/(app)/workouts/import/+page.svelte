@@ -18,6 +18,7 @@
 		importWorkoutFile,
 		isRouteFile,
 		readRouteFile,
+		ROUTE_EXTENSIONS,
 		type Imported,
 	} from '$lib/workout/import';
 	import {
@@ -70,6 +71,8 @@
 	const idle = $derived(
 		!reading && !imported && !error && routeSource === null,
 	);
+	// Every "Import a route" door asks for a route file (#3684).
+	const asRoute = page.url.searchParams.get('as') === 'route';
 
 	// Never render a button that will fail (errors.md): a new workout on a
 	// full shelf is a 429, and a shelf that could not be read at all must not
@@ -179,27 +182,39 @@
 	}
 </script>
 
-<svelte:head><title>Import a workout or a route · WattRoom</title></svelte:head>
+<svelte:head
+	><title
+		>{asRoute ? 'Import a route' : 'Import a workout or a route'} · WattRoom</title
+	></svelte:head
+>
 
 <main class="page">
-	<h1 class="page-title text-balance">Import a workout or a route</h1>
+	<h1 class="page-title text-balance">
+		{asRoute ? 'Import a route' : 'Import a workout or a route'}
+	</h1>
 	<p class="text-muted mt-1 text-xs">
-		A Zwift <code>.zwo</code> or a <code>.erg</code> course file becomes a
-		WattRoom workout on your shelf; a <code>.gpx</code>, <code>.tcx</code> or
-		<code>.fit</code> route becomes a road you can ride. It stays yours — importing
-		shares nothing.
+		{#if asRoute}
+			A <code>.gpx</code>, <code>.tcx</code> or <code>.fit</code> route becomes a
+			road you can ride.
+		{:else}
+			A Zwift <code>.zwo</code> or a <code>.erg</code> course file becomes a
+			WattRoom workout on your shelf; a <code>.gpx</code>, <code>.tcx</code> or
+			<code>.fit</code> route becomes a road you can ride.
+		{/if}
 	</p>
 
 	<input
 		bind:this={picker}
 		type="file"
-		accept={IMPORT_EXTENSIONS.join(',')}
+		accept={(asRoute ? ROUTE_EXTENSIONS : IMPORT_EXTENSIONS).join(',')}
 		onchange={pick}
 		class="sr-only"
-		aria-label="Choose a workout or route file"
+		aria-label={asRoute
+			? 'Choose a route file'
+			: 'Choose a workout or route file'}
 	/>
 
-	{#if offerPull || pull}
+	{#if !asRoute && (offerPull || pull)}
 		<section class="mt-6">
 			<div class="flex flex-wrap items-center gap-3">
 				<h2 class="eyebrow">from intervals.icu</h2>
@@ -271,9 +286,11 @@
 	<section class="mt-6">
 		<div
 			{...drop.on}
-			class="rounded-lg border border-dashed p-6 transition-colors {drop.over
-				? 'border-neon bg-neon/5'
-				: 'border-muted/25'}"
+			class={drop.over
+				? 'border-neon bg-neon/5 rounded-lg border border-dashed p-6'
+				: idle
+					? 'border-muted/25 rounded-lg border border-dashed p-6 transition-colors'
+					: 'panel'}
 		>
 			{#if reading}
 				<!-- Reading is usually instant; a file on a slow volume is not. -->
@@ -282,7 +299,9 @@
 				<div class="text-muted flex flex-col items-start gap-3 text-sm">
 					<h2 class="text-ink flex items-center gap-2 text-base font-semibold">
 						<FileUp size={20} class="text-muted shrink-0" />
-						Drop a ZWO, ERG, GPX, TCX or FIT
+						{asRoute
+							? 'Drop a GPX, TCX or FIT'
+							: 'Drop a ZWO, ERG, GPX, TCX or FIT'}
 					</h2>
 					<p class="max-w-prose">
 						Drop it here or choose one. You will see exactly what it became —
@@ -399,7 +418,7 @@
 		</div>
 	</section>
 
-	{#if routeSource === null}
+	{#if routeSource === null && !asRoute}
 		<p class="text-muted mt-6 text-xs">
 			A converted workout is a WattRoom workout: every target scales to your
 			FTP, and you can reshape it in the editor afterwards.

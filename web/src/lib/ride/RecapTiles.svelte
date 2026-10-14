@@ -2,13 +2,17 @@
 	import type { RecapTile } from '$lib/ride/recap-frame';
 
 	// A finished ride's numbers (#3686), three by two: the closing card's and
-	// the ride page's, in the same order (`recapTiles`).
-	let { tiles }: { tiles: RecapTile[] } = $props();
+	// the ride page's, in the same order (`recapTiles`); and the importer's
+	// times over a road (#3684), two at most.
+	let {
+		tiles,
+		label = 'the ride in numbers',
+	}: { tiles: RecapTile[]; label?: string } = $props();
 </script>
 
 <section
-	aria-label="the ride in numbers"
-	class="grid grid-cols-2 gap-2 sm:grid-cols-3"
+	aria-label={label}
+	class="grid grid-cols-2 gap-2 {tiles.length > 2 ? 'sm:grid-cols-3' : ''}"
 >
 	{#each tiles as tile (tile.label)}
 		<div class="panel py-2" data-testid="recap-tile">

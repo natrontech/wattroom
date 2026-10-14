@@ -76,7 +76,7 @@
 	<div class="flex min-h-7 flex-wrap items-center justify-between gap-3">
 		<h2 class="eyebrow">your routes</h2>
 		{#if routes && routes.length > 0}
-			<a href="/workouts/import" class="btn btn-ghost btn-xs -mr-3"
+			<a href="/workouts/import?as=route" class="btn btn-ghost btn-xs -mr-3"
 				>Import a route</a
 			>
 		{/if}
@@ -103,7 +103,7 @@
 				{#snippet icon()}<RouteIcon size={20} class="text-muted" />{/snippet}
 				Your roads ride here — import a GPX, TCX or FIT.
 				{#snippet cta()}
-					<a href="/workouts/import" class="btn btn-primary btn-xs"
+					<a href="/workouts/import?as=route" class="btn btn-primary btn-xs"
 						>Import a route</a
 					>
 				{/snippet}

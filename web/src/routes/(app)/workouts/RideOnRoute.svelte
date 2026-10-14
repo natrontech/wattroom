@@ -100,7 +100,7 @@
 		{:else if routes.length === 0}
 			<p class="text-muted flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
 				Your roads ride here — import a GPX, TCX or FIT.
-				<a href="/workouts/import" class="btn btn-secondary btn-xs"
+				<a href="/workouts/import?as=route" class="btn btn-secondary btn-xs"
 					>Import a route</a
 				>
 			</p>
