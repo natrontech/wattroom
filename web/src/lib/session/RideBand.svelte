@@ -60,7 +60,7 @@
 	// 24 px words on 24 px lines: three of them stack as tall as the 72 px
 	// time left, so the band ends above the corridor (the box table's 186).
 	const WORDS = 'text-2xl leading-6';
-	const CHIP = `${WORDS} border-neon/40 text-muted rounded border px-2 whitespace-nowrap`;
+	const CHIP = `${WORDS} shrink-0 border-neon/40 text-muted rounded border px-2 whitespace-nowrap`;
 </script>
 
 {#snippet trainerChipEl(b: Block)}
@@ -124,17 +124,14 @@
 							{@render strip()}
 						</div>{/if}
 					{#if block.next || (wide && drives)}
-						<!-- A name and an absolute target, never a delta (#1531, D16). Flat,
-						     the line wraps whole chips rather than cutting NEXT, and the
-						     trainer chip stays on it when no block is left. -->
-						<p
-							class="{WORDS} flex items-center gap-x-2 {wide
-								? 'flex-wrap'
-								: 'whitespace-nowrap'}"
-						>
+						<!-- A name and an absolute target, never a delta (#1531, D16). One
+						     line (TARGETS ride-workout-flat 2): NEXT's text gives way before
+						     a chip wraps, and the trainer chip stays on it when no block is
+						     left. -->
+						<p class="{WORDS} flex items-center gap-x-2 whitespace-nowrap">
 							{#if block.next}
 								<span class="ride-label">Next</span>
-								<span class="{wide ? '' : 'truncate'} min-w-0">
+								<span class="min-w-0 truncate">
 									{nextText(block.next)}
 								</span>
 								<CountChips secondsLeft={block.secondsLeft} />

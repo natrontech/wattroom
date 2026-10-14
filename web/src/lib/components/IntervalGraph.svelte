@@ -266,7 +266,7 @@
 </script>
 
 <!-- On the TV the graph takes what height its panel is given (#3677). -->
-<div class="relative {tv ? 'h-full' : ''}">
+<div class="relative {tv || ride ? 'h-full' : ''}">
 	<svg
 		bind:this={svg}
 		viewBox="0 0 {W} {H}"
