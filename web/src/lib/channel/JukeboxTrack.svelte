@@ -122,40 +122,43 @@
 	})}
 >
 	<div class="flex min-w-0 items-center gap-2">
-		<div class="relative shrink-0">
-			{#if entry.trackId}
-				<!-- A pool track has no thumbnail to show and needs none: the
-				     mark says "this one is audio" at a glance (#267). -->
-				<div
-					class="bg-surface text-muted grid h-9 w-16 place-items-center rounded"
-				>
-					<Music size={14} />
-				</div>
-			{:else}
-				<img
-					src={thumbnailFor(entry.videoId)}
-					alt=""
-					loading="lazy"
-					referrerpolicy="no-referrer"
-					class="bg-surface h-9 w-16 rounded object-cover"
-				/>
-			{/if}
-			<!-- Riding, a 9 px badge is under G4's floor: the list's order is the
-			     position, and the chevron says there is more than one. -->
-			{#if position && !riding}
-				<span
-					class="bg-paper/70 text-ink num absolute bottom-0 left-0 rounded-tr px-1 text-[9px]"
-					>{position}</span
-				>
-			{/if}
-			{#if tracks.length && !riding}
-				<!-- The stack says "more than one" before any words do. -->
-				<span
-					class="border-neon/50 bg-paper/80 text-muted num absolute right-0 bottom-0 rounded-tl border-t border-l px-1 text-[9px]"
-					>{tracks.length}</span
-				>
-			{/if}
-		</div>
+		<!-- Riding, the title takes the thumbnail's width (#3983): at G4's
+		     24 px it was cut to three letters. The badges were under the floor;
+		     the list's order is the position, the chevron says "more than one". -->
+		{#if !riding}
+			<div class="relative shrink-0">
+				{#if entry.trackId}
+					<!-- A pool track has no thumbnail to show and needs none: the
+					     mark says "this one is audio" at a glance (#267). -->
+					<div
+						class="bg-surface text-muted grid h-9 w-16 place-items-center rounded"
+					>
+						<Music size={14} />
+					</div>
+				{:else}
+					<img
+						src={thumbnailFor(entry.videoId)}
+						alt=""
+						loading="lazy"
+						referrerpolicy="no-referrer"
+						class="bg-surface h-9 w-16 rounded object-cover"
+					/>
+				{/if}
+				{#if position}
+					<span
+						class="bg-paper/70 text-ink num absolute bottom-0 left-0 rounded-tr px-1 text-[9px]"
+						>{position}</span
+					>
+				{/if}
+				{#if tracks.length}
+					<!-- The stack says "more than one" before any words do. -->
+					<span
+						class="border-neon/50 bg-paper/80 text-muted num absolute right-0 bottom-0 rounded-tl border-t border-l px-1 text-[9px]"
+						>{tracks.length}</span
+					>
+				{/if}
+			</div>
+		{/if}
 
 		<div class="min-w-0 flex-1">
 			<p class="truncate {railText(riding, 'text-xs leading-tight')}">

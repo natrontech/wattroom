@@ -1351,9 +1351,9 @@ surface(
 			const add = coach.page.getByRole('textbox', {
 				name: 'add music: search your library, or paste a YouTube link',
 			});
-			// Once a track plays, the add box folds behind the seat (#3983).
+			// Riding, the add box sits in the jukebox's sheet (#3983).
 			const fold = coach.page
-				.getByText('controls and queue')
+				.locator('summary', { hasText: /^jukebox$/ })
 				.filter({ visible: true });
 			// The channel's deck outlives the session: the scheme shot before
 			// this one left it queued.
@@ -1367,6 +1367,8 @@ surface(
 						['dQw4w9WgXcQ', 'Never Gonna Give You Up'],
 						['9bZkp7q19f0', 'GANGNAM STYLE'],
 						['kJQP7kiw5Fk', 'Despacito'],
+						['JGwWNGJdvx8', 'Shape of You'],
+						['OPf0YbXqDm0', 'Uptown Funk'],
 					]) {
 				if (!(await add.isVisible())) await fold.click();
 				await add.fill(`https://www.youtube.com/watch?v=${id}`);
@@ -1377,12 +1379,27 @@ surface(
 					.first()
 					.waitFor({ timeout: 15_000 });
 			}
-			// The seat, folded; then multi:ride-session-deck — the fold open,
-			// its transport, queue and playlists at riding size (#3927).
+			// The seat, its sheet shut; then multi:ride-session-deck — the sheet
+			// open, its transport and queue at riding size (#3927); then
+			// multi:ride-session-deck-playlists — the queue saved, and that
+			// playlist open in the sheet.
 			if (await add.isVisible()) await fold.click();
 			await s.shot(coach);
 			await fold.click();
 			await s.shot(coach, { name: 'ride-session-deck' });
+			await coach.page
+				.getByRole('button', { name: 'Save as a playlist' })
+				.click();
+			await coach.page.locator('summary', { hasText: /^playlists$/ }).click();
+			const show = coach.page
+				.getByRole('button', { name: 'show tracks' })
+				.first();
+			await show.click();
+			await coach.page
+				.getByRole('button', { name: 'hide tracks' })
+				.first()
+				.scrollIntoViewIfNeeded();
+			await s.shot(coach, { name: 'ride-session-deck-playlists' });
 			await fold.click();
 			for (const [device, name] of variants([
 				[DESK, 'ride-watch'],

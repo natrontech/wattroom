@@ -32,6 +32,7 @@
 		offerSeat,
 		stageSlot,
 	} from '$lib/channel/stage-slot.svelte';
+	import RailSheet from '$lib/channel/RailSheet.svelte';
 	import TrackWave from '$lib/channel/TrackWave.svelte';
 	import { MUSIC_FADER } from '$lib/sound/fader';
 	import { mixer } from '$lib/sound/mixer.svelte';
@@ -245,22 +246,17 @@
 	{/if}
 	{#if riding}
 		<!-- v2-ride's seat (#3983): the tile and one strip, the crew straight
-		     under it. The transport and the queue fold behind the strip. -->
-		<p class="flex min-w-0 gap-1.5 text-2xl leading-7" title={MENU_HINT}>
-			<span class="min-w-0 truncate font-medium">{current.title}</span>
-			<span class="text-muted min-w-0 shrink-[3] truncate"
-				>· queued by {current.addedBy}{next ? ` · ${next} next` : ''}</span
-			>
-		</p>
-		<details class="min-w-0">
-			<summary class="ride-label cursor-pointer py-2 select-none"
-				>controls and queue</summary
-			>
-			<div class="mt-1.5 flex min-w-0 flex-col gap-3">
-				{@render controls()}
-				{@render behind?.()}
-			</div>
-		</details>
+		     under it. The transport and the queue open over the crew. -->
+		<div class="min-w-0 text-2xl leading-7" title={MENU_HINT}>
+			<p class="truncate font-medium">{current.title}</p>
+			<p class="text-muted truncate">
+				queued by {current.addedBy}{next ? ` · ${next} next` : ''}
+			</p>
+		</div>
+		<RailSheet label="jukebox">
+			{@render controls()}
+			{@render behind?.()}
+		</RailSheet>
 	{:else}
 		<!-- The hint sits on the words, never over the player (RMF). -->
 		<div class="min-w-0" title={MENU_HINT}>
@@ -333,12 +329,15 @@
 					</span>
 				</span>
 			</button>
-			{#if !riding}
-				<div class="text-muted num flex justify-between text-[10px]">
-					<span>{formatClockLong(elapsed)}</span>
-					<span>{duration > 0 ? formatClockLong(duration) : '–:––'}</span>
-				</div>
-			{/if}
+			<div
+				class="text-muted num flex justify-between {railText(
+					riding,
+					'text-[10px]',
+				)}"
+			>
+				<span>{formatClockLong(elapsed)}</span>
+				<span>{duration > 0 ? formatClockLong(duration) : '–:––'}</span>
+			</div>
 		</div>
 	{/if}
 
