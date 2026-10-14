@@ -42,6 +42,7 @@ const fakeLive = {
 	control() {},
 	cheer() {},
 	setDrive() {},
+	onRemote: () => () => {},
 };
 vi.mock('$lib/channel/live.svelte', () => ({
 	createChannelLive: () => fakeLive,
