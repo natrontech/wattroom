@@ -367,6 +367,16 @@
 	--world-flag-3: #88443b;
 	--world-flag-4: #bfa967;
 
+	/* Eight skin swatches: evenly spaced along the path through the ten tones of
+	   the Monk Skin Tone Scale in OKLab (Ellis Monk / Google, skintone.google, CC BY 4.0). */
+	--world-skin-1: #f6ede4;
+	--world-skin-2: #e6d3b2;
+	--world-skin-3: #ccb089;
+	--world-skin-4: #af8f67;
+	--world-skin-5: #926e4d;
+	--world-skin-6: #73503c;
+	--world-skin-7: #4d392f;
+	--world-skin-8: #292420;
 	--world-kit-skin: #858585; /* #3413's neutral tone: none of the eight swatches */
 	--world-kit-shoe: #ece9f2;
 	--world-kit-tyre: #1a1820;
