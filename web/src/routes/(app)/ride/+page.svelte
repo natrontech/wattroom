@@ -645,23 +645,27 @@
 	{:else if session.state !== 'done'}
 		<!-- The count-in is the ride's own screen (ADR-0046, #1800): flat, the
 		     one digit; over the world, the slots already in place (#3668). -->
-		<RidingScreen
-			countIn={session.state === 'countdown'
-				? { remaining: session.countdownRemaining, cancel: cancelCountdown }
-				: undefined}
-			{session}
-			{block}
-			{workout}
-			{ftp}
-			kg={profile.current.kg}
-			lthr={profile.current.lthr}
-			{watts}
-			{target}
-			{signalLost}
-			{noCrashSafety}
-			onFlag={() => flags.recorder.flag()}
-			onTv={() => (tv = true)}
-		/>
+		<!-- Under the TV the riding screen keeps running, unseen and unread:
+		     the TV is then the one home of every number (D17, #3677). -->
+		<div class="contents {tv ? 'invisible' : ''}" inert={tv}>
+			<RidingScreen
+				countIn={session.state === 'countdown'
+					? { remaining: session.countdownRemaining, cancel: cancelCountdown }
+					: undefined}
+				{session}
+				{block}
+				{workout}
+				{ftp}
+				kg={profile.current.kg}
+				lthr={profile.current.lthr}
+				{watts}
+				{target}
+				{signalLost}
+				{noCrashSafety}
+				onFlag={() => flags.recorder.flag()}
+				onTv={() => (tv = true)}
+			/>
+		</div>
 	{/if}
 
 	{#if session && session.state !== 'done' && tv}

@@ -262,11 +262,12 @@
 	);
 </script>
 
-<div class="relative">
+<!-- On the TV the graph takes what height its panel is given (#3677). -->
+<div class="relative {tv ? 'h-full' : ''}">
 	<svg
 		bind:this={svg}
 		viewBox="0 0 {W} {H}"
-		class="w-full {compact ? 'h-14' : 'h-28'}"
+		class="w-full {compact ? 'h-14' : tv ? 'h-full' : 'h-28'}"
 		preserveAspectRatio="none"
 	>
 		{#each blocks as block, i (i)}
