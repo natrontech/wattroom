@@ -139,7 +139,16 @@
 	</div>
 
 	{#if jukebox && current}
-		<JukeboxDeck {jukebox} {current} {send} {riding} />
+		<!-- Riding, the deck is v2-ride's seat and everything below folds
+		     behind it, so the crew sits straight under the music (#3983). -->
+		<JukeboxDeck
+			{jukebox}
+			{current}
+			{send}
+			{riding}
+			next={queue.length}
+			behind={riding ? below : undefined}
+		/>
 	{:else if !riding}
 		<p class="text-muted text-xs leading-relaxed">
 			Nothing is playing. Search your library or paste a YouTube link, and
@@ -147,6 +156,12 @@
 		</p>
 	{/if}
 
+	{#if !(riding && jukebox && current)}
+		{@render below()}
+	{/if}
+</section>
+
+{#snippet below()}
 	<JukeboxAdd {send} {refusal} {riding} />
 
 	{#if queue.length}
@@ -237,4 +252,4 @@
 			</ul>
 		</details>
 	{/if}
-</section>
+{/snippet}

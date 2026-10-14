@@ -10,6 +10,7 @@
 	import Headphones from '@lucide/svelte/icons/headphones';
 	import Hourglass from '@lucide/svelte/icons/hourglass';
 	import Volume2 from '@lucide/svelte/icons/volume-2';
+	import type { Snippet } from 'svelte';
 	import {
 		contextMenu,
 		MENU_HINT,
@@ -48,6 +49,8 @@
 		current,
 		send,
 		riding = false,
+		next = 0,
+		behind,
 	}: {
 		jukebox: JukeboxState;
 		/** `jukebox.current`, already narrowed: no deck is drawn without one. */
@@ -56,6 +59,11 @@
 		/** A ride is under way: the transport, seek bar and fader are 44 px
 		 *  (TARGETS G5), the words at G4's floor, and no watt but G2's marks. */
 		riding?: boolean;
+		/** How many tracks wait behind this one, for the seat's strip. */
+		next?: number;
+		/** Riding, what folds behind the seat with the transport (#3983):
+		 *  the add box, the queue and the playlists. */
+		behind?: Snippet;
 	} = $props();
 
 	// A stable attachment: a fresh arrow every render would tear the offer
@@ -235,42 +243,56 @@
 			>
 		</div>
 	{/if}
-	<!-- The hint sits on the words, never over the player (RMF). -->
-	<div class="min-w-0" title={MENU_HINT}>
-		{#if setTracks}
-			<!-- Where the deck is inside the set, before the track's own
-			     name: the playlist is the thing that is on. -->
-			<div class="mb-1 min-w-0">
-				<p
-					class="text-muted flex items-baseline gap-1.5 {railText(
-						riding,
-						'text-[11px]',
-					)}"
-				>
-					<span class="truncate">{current.playlistTitle}</span>
-					<span class="num shrink-0">{setPosition}/{setTracks}</span>
-				</p>
-				<span class="bg-muted/20 mt-1 block h-0.5 rounded-full">
-					<span
-						class="bg-neon block h-full rounded-full"
-						style="width: {(setPosition / setTracks) * 100}%"
-					></span>
-				</span>
-			</div>
-		{/if}
-		<p class="truncate font-medium {railText(riding, 'text-sm leading-tight')}">
-			{current.title}
+	{#if riding}
+		<!-- v2-ride's seat (#3983): the tile and one strip, the crew straight
+		     under it. The transport and the queue fold behind the strip. -->
+		<p class="flex min-w-0 gap-1.5 text-2xl leading-7" title={MENU_HINT}>
+			<span class="min-w-0 truncate font-medium">{current.title}</span>
+			<span class="text-muted min-w-0 shrink-[3] truncate"
+				>· queued by {current.addedBy}{next ? ` · ${next} next` : ''}</span
+			>
 		</p>
-		<!-- Riding, the column's height goes to the crew below: who queued it
-		     and the clock are desk detail, the bar shows how far it is. -->
-		{#if !riding}
+		<details class="min-w-0">
+			<summary class="ride-label cursor-pointer py-2 select-none"
+				>controls and queue</summary
+			>
+			<div class="mt-1.5 flex min-w-0 flex-col gap-3">
+				{@render controls()}
+				{@render behind?.()}
+			</div>
+		</details>
+	{:else}
+		<!-- The hint sits on the words, never over the player (RMF). -->
+		<div class="min-w-0" title={MENU_HINT}>
+			{#if setTracks}
+				<!-- Where the deck is inside the set, before the track's own
+				     name: the playlist is the thing that is on. -->
+				<div class="mb-1 min-w-0">
+					<p class="text-muted flex items-baseline gap-1.5 text-[11px]">
+						<span class="truncate">{current.playlistTitle}</span>
+						<span class="num shrink-0">{setPosition}/{setTracks}</span>
+					</p>
+					<span class="bg-muted/20 mt-1 block h-0.5 rounded-full">
+						<span
+							class="bg-neon block h-full rounded-full"
+							style="width: {(setPosition / setTracks) * 100}%"
+						></span>
+					</span>
+				</div>
+			{/if}
+			<p class="truncate text-sm leading-tight font-medium">
+				{current.title}
+			</p>
 			<p class="text-muted mt-0.5 truncate text-[11px]">
 				{setTracks ? 'playlist queued by' : 'queued by'}
 				{current.addedBy}
 			</p>
-		{/if}
-	</div>
+		</div>
+		{@render controls()}
+	{/if}
+</div>
 
+{#snippet controls()}
 	{#if streaming}
 		<!-- The watt on the dot, the words in ink (#1965): the accent is
 		     a graphic at 3:1, not 10 px text. -->
@@ -440,4 +462,4 @@
 			>
 		{/if}
 	</div>
-</div>
+{/snippet}
