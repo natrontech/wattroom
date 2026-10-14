@@ -5,6 +5,7 @@ import { shouldAnnounce } from '$lib/notify-once';
 import { away } from '$lib/notify.svelte';
 import { STALE_AFTER, readOrder } from '$lib/stale';
 import type { LiveSession } from '$lib/protocol';
+import { rideName } from '$lib/road/profile';
 import { channelConnection } from '$lib/channel/connection.svelte';
 import { crewArrivals, runningSessions } from './crew-arrivals';
 
@@ -108,7 +109,9 @@ export function sessionLine(session: LiveSession): string {
 	const minutes = Math.floor(session.elapsed / 60);
 	const riders = session.riders.length;
 	return [
-		session.workout || 'A session',
+		// A road reads "Road": the stored road's km is not the cut the session
+		// rides, and slot 1's road line has the real one (#3932).
+		session.workout ? rideName(session.workout) : 'A session',
 		// A paused clock stands still (#2635): "12 min" read as running.
 		session.phase === 'countdown'
 			? 'starting'

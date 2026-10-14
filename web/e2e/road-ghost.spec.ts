@@ -80,7 +80,7 @@ test('a road ridden once races its ghost from the start', async ({ page }) => {
 	await expect(split).toHaveCount(0);
 	await expect(page.getByRole('alert')).toHaveCount(0);
 	await page.getByRole('button', { name: /^Save at km / }).click();
-	await expect(page.getByText('See it in your history')).toBeVisible({
+	await expect(page.getByText('See your ride')).toBeVisible({
 		timeout: 20_000,
 	});
 

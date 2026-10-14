@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { climbsOf } from '$lib/road/climbs';
 import { chipsIn, tileOf } from '$lib/road/skyline';
-import { rideProfile, wholeRoadFrame } from './ride-profile';
+import { rideProfile, riddenM, wholeRoadFrame } from './ride-profile';
 
 /** A synthetic ride (#3639): a second a sample at `mps`, up `pct` % from 100 m. */
 function ride(seconds: number, mps: number, pct: number, from = 0) {
@@ -57,5 +57,13 @@ describe('a road ride’s own profile (#3639)', () => {
 		const chips = chipsIn(frame, road, climbsOf(road));
 		expect(chips.length).toBeGreaterThan(0);
 		expect(chips[0].x).toBeGreaterThan(900);
+	});
+});
+
+describe('one road ride, one distance (#3931)', () => {
+	it('says the server’s replay when the ride has one, the samples’ metres otherwise', () => {
+		const road = rideProfile(ride(300, 5, 6))!;
+		expect(riddenM(road, 1300)).toBe(1300);
+		expect(riddenM(road)).toBeCloseTo(1495, 5);
 	});
 });

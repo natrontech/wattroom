@@ -1,1 +1,0 @@
-- A workout ridden on a route whose blocks run by the clock now says so beside its target: "ERG: the road is scenery". The trainer holds your watts, and the road is only shown.

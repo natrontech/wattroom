@@ -1,1 +1,0 @@
-- Riders in the world wear their outfit, its jersey pattern and colours included, and a rider who chose none gets a look of their own.

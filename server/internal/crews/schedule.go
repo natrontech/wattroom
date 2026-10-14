@@ -90,12 +90,15 @@ type plannedJSON struct {
 	CrewName    string `json:"crewName"`
 	ChannelID   string `json:"channelId,omitempty"`
 	ChannelName string `json:"channelName,omitempty"`
+	// How many said they are in (#3689): Home's row counts them. Who they
+	// are, and the answer itself, stay on the crew's Schedule (#1693).
+	GoingCount int32 `json:"goingCount"`
 }
 
 // handleMySchedule is the cross-crew planning surface (#325, #2440):
 // everything you can ride in every crew you are in, plus the feed token.
-// Home's "What's next" is what renders it (ADR-0020, ADR-0021 amended) — one
-// row per planned session.
+// Home's This week is what renders it (ADR-0020, ADR-0021 amended, #3689) —
+// one row per planned session.
 func (s *Service) handleMySchedule(w http.ResponseWriter, r *http.Request) {
 	user, ok := s.users.RequireUser(w, r, "Not signed in.")
 	if !ok {
@@ -122,6 +125,7 @@ func (s *Service) handleMySchedule(w http.ResponseWriter, r *http.Request) {
 			Minutes:  workoutMinutes(string(row.WorkoutJson)),
 			StartsAt: row.StartsAt.Time.Format(time.RFC3339), CreatedBy: row.CreatedBy,
 			CrewID: store.UUIDString(row.CrewID), CrewName: row.CrewName,
+			GoingCount: row.GoingCount,
 		}
 		if row.ChannelID.Valid {
 			entry.ChannelID, entry.ChannelName = store.UUIDString(row.ChannelID), row.ChannelName

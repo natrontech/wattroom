@@ -79,7 +79,7 @@ test('a solo route ride saves at its kilometre, carries on, and rides back from 
 	await page.getByRole('button', { name: 'Start the ride' }).click();
 	await page.waitForTimeout(A_MINUTE_MS);
 	await page.getByRole('button', { name: /^Save at km / }).click();
-	await expect(page.getByText('See it in your history')).toBeVisible({
+	await expect(page.getByText('See your ride')).toBeVisible({
 		timeout: 20_000,
 	});
 	const [first] = await attempts(page, routeId);
@@ -141,7 +141,7 @@ test('a solo route ride saves at its kilometre, carries on, and rides back from 
 		.toBeGreaterThan(back);
 
 	await page.getByRole('button', { name: 'End ride' }).click();
-	await expect(page.getByText('See it in your history')).toBeVisible({
+	await expect(page.getByText('See your ride')).toBeVisible({
 		timeout: 20_000,
 	});
 	const [second, ...rest] = await attempts(page, routeId);

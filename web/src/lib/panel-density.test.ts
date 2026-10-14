@@ -19,12 +19,12 @@ import { scanSource, stale, type Allowlist } from './source-scan.test-helper';
 const ALLOWLIST: Allowlist = {
 	'*.css':
 		'the stylesheet is where the four densities are defined, not a call site',
-	'lib/components/ContextMenuHost.svelte':
-		'a menu: its items carry the padding, and p-1 is the inset that keeps a highlighted item off the border',
 	'lib/messages/Composer.svelte':
 		'the emoji menu, taking ContextMenuHost’s inset for the same reason',
 	'routes/(app)/home/+page.svelte':
 		'the crew picker is a menu (py-1, inset as above)',
+	'lib/ride/RecapTiles.svelte':
+		"a recap tile is about 58 px tall (TARGETS.md closing-card item 6), which the default's py-3 grows past",
 	'lib/friends/FriendsAround.svelte':
 		'the friends-around row is pills at text-xs, which the card density would draw at twice their height',
 	'routes/(app)/u/[id]/+page.svelte':

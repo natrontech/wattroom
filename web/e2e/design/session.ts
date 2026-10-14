@@ -39,7 +39,13 @@ export async function startSession(
 		await press(
 			picker.getByRole('button', { name: new RegExp(pick.workout) }).first(),
 		);
-		await press(picker.getByRole('button', { name: `Start ${pick.workout}` }));
+		// A coach whose trainer is still on the channel's free ride is offered
+		// "Start without a trainer" instead, as the road branch below allows.
+		await press(
+			picker.getByRole('button', {
+				name: new RegExp(`^Start (${pick.workout}|without a trainer)$`),
+			}),
+		);
 	} else {
 		await press(picker.getByRole('button', { name: 'Roads', exact: true }));
 		// Pick the road's row; the crew rides its own workout, started from

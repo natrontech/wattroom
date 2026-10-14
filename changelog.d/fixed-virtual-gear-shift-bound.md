@@ -1,1 +1,0 @@
-- One tap of Harder or Easier moves a virtual gear by at most a step and a half, even when your trainer's reported speed makes no sense for the cadence. Before, a trainer reporting a crawl at a turning crank could turn a single shift into the heaviest resistance it can make.

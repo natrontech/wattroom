@@ -271,6 +271,7 @@ Capture: two dev riders (Designer and a second, name letters only) in one crew's
 8. Formation, the front row's turn every 120 s, a far rider dithering to their place, the pull-over and the team car hold as SPEC “Riding a road together” says. [test:web/src/lib/world/bunch.test.ts] [#3098]
 9. Each screen draws each rider where the other does, within 1 m along the road and across it. [test:web/e2e/bunch-world.spec.ts] [#3098]
 10. A cheer for one rider, sent from their crew tile's menu, draws a thumbs-up over their head (a light disc, a dark thumb, flat, unlit, clear of the chevron); their tail light blinks at 2 Hz for 10 s in amber, neither danger's red nor any watt, steady under reduced motion; nothing about it glows. [multi:ride-session-cheer] [test:web/src/lib/world/ride-scene.test.ts] [#3116]
+11. A crew tile's menu mid-ride wears the riding kit: one `ride-panel`, 24 px words, rows ≥ 44 px; placed clear of the corridor and of the tile it opened from; in the cave in either scheme. [#3943] [multi:ride-session-cheer-menu] [test:web/src/lib/context-menu.test.ts]
 
 #### roadside-chalk
 

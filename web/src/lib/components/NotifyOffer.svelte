@@ -14,7 +14,7 @@
 	// prompt nobody asked for.
 	//
 	// Wherever a rider meets a plan outside a ride (ux.md — never mid-ride):
-	// Home's "What's next", the crew Home's next-up card and the crew's
+	// Home's This week, the crew Home's next-up card and the crew's
 	// Schedule (#2612). WattRoom opens in a crew since #2576, so Home alone
 	// was a page a rider in one crew might never visit.
 	import { toasts } from '$lib/toast.svelte';

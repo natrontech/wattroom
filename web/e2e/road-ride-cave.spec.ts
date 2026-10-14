@@ -42,10 +42,25 @@ test('a free ride on a road rides in the cave, and asks before leaving', async (
 		.getByRole('button', { name: 'Ride simulated' })
 		.click({ timeout: 15_000 });
 	await expect(page.locator('.cave'), 'setup is a desk surface').toHaveCount(0);
+	// The sidebar's teaching sentences are desk copy (G4, #3723): a rider in
+	// no crew, with no conversation, reads them at setup and never mid-ride.
+	const sidebar = page.locator('nav[aria-label="crews and channels"]');
+	const teaching = [
+		sidebar.getByText('Not in a crew yet'),
+		sidebar.getByText('Message a friend to start one'),
+		sidebar.getByText('Get the desktop app'),
+	];
+	for (const line of teaching) await expect(line).toBeVisible();
 	await page.getByRole('button', { name: 'Start the ride' }).click();
 	// The frame, page and sidebar; the hosts outside it wear their own (#3788).
 	const cave = page.locator('.cave:has(#page-body)');
 	await expect(cave, 'the lights stayed up').toHaveCount(1);
+	for (const line of teaching)
+		await expect(line, 'desk copy on a riding surface').toBeHidden();
+	await expect(
+		sidebar.getByRole('link', { name: 'Home', exact: true }),
+		'the rows went with the sentences',
+	).toBeVisible();
 
 	await page
 		.locator('nav')
@@ -71,4 +86,5 @@ test('a free ride on a road rides in the cave, and asks before leaving', async (
 	await expect(page.locator('.cave'), 'the cave outlived End ride').toHaveCount(
 		0,
 	);
+	for (const line of teaching) await expect(line).toBeVisible();
 });

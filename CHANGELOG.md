@@ -17,6 +17,394 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.10.1] - 2026-10-11
+
+### Added
+
+- Rides now earn Batzen, WattRoom's currency for the cosmetics garage that
+  is coming. One Batzen is one minute ridden at your own FTP, up to 180 a
+  day, and 1.2 × as many in a group session. Every account starts with 100.
+  Riders who were already riding before this release get a one-time grant
+  from their past rides, up to 1,500. Batzen can only be earned by riding,
+  never bought, and your data export now lists them.
+- Your numbers under the power gauge are now a bike computer with two pages. RIDE shows your power (a 3-second average), cadence, heart rate, W/kg and, where they apply, grade, gear and execution. POWER shows your 3, 10 and 30-second power, the block against its target, NormPower, Intensity, your work so far as XP (1 kJ is 1 XP), Load and your time in each zone. Turn the page with ← and →, a tap on the panel, or a dot. Every ride starts on RIDE, and the TV shows the same pages at three-metre size.
+- A session on a road now draws the whole bunch in the world, not just you: everyone who joined rides in formation around you, the front row swaps every two minutes, a rider who stops pulls over and the team car tows them back, and the coach wears a violet chevron — or drives the team car when they ride without a trainer.
+- Cheer one rider on the road: right-click a crewmate riding the session and cheer them. A thumbs-up shows over their head, and their tail light blinks for 10 seconds (steady if the device asks for reduced motion). A cheer pays nothing, and it never reaches anyone you or they have hidden.
+- On a road with a classified climb, your bike computer gains a CLIMB page. It shows which climb of how many and its class, how far and how much height to the top, and the average gradient left, above a profile of the climb with your dot on it. On a free or route ride it opens by itself as the climb begins, with a short sound, and a second sound marks the top. In a workout or a session it stays on your workout's numbers, and the climb's class sits beside the page's name, one tap away. The road line at the top of a road ride now names the next climb ahead instead of the top of the one you are on. Riding in the world, while a workout asks a target, the Skyline below draws the climb in place of the profile, and the world now needs a window at least 860 px tall, up from 820.
+- In the desktop app, the Dock icon on a Mac shows how many things are
+  waiting for you: unread chat lines, unread conversations and friend
+  requests. It is the same count the sidebar shows. On Windows the taskbar
+  icon gets a dot, and on Linux the launcher gets the count where your
+  desktop supports it. This needs the next desktop app update.
+- You can import a route from a Garmin `.fit` course, the same way as from a `.gpx` or `.tcx`. A course exported from Strava stays private to you, as Strava's GPX exports already do.
+- Games on a road ride their own pace: the bunch rides Backyard and Collective Ramp's line, or the middle of Floor is Lava's called zone. Backyard Ramp's next round waits under an arch on the road. In Collective Ramp a fog sea rises out of the valleys round by round. A rider a game puts out stands at the next hairpin, and the cowbell rings as the bunch rides past.
+- You can hide a rider, from their card or from the menu on their name. A
+  hidden rider can no longer message you, ask to be your friend, or reach
+  you with cheers, pokes or reactions, and you no longer reach them; they
+  are not told. In a crew you share you still ride together — an admin can
+  remove a member. Settings → Notifications lists the riders you hid and
+  shows any of them again, and your data export includes the list.
+- Heart-rate hold: a steady step with a heart-rate band can now hold it. Tick "Hold my heart rate in this band" in the workout editor, and on a solo ride the trainer moves your watts slowly, by at most 2 % of FTP a minute and never more than 10 % either way, to keep you in the band. A ceiling alone only ever lowers the watts. If your strap stops reading, the watts stay where they are and the ride says so. A hold is never scored and rides alone: a session will not start a workout that has one.
+- Pull your planned week from intervals.icu into Import a workout. The next seven days of planned workouts arrive as a list, each previewed and saved like a `.zwo` you picked, with anything WattRoom could not carry said. WattRoom asks intervals.icu for your calendar only, keeps no access and stores nothing until you save. Offered where the server has an intervals.icu client (`WATTROOM_OAUTH_INTERVALS_ID` and `_SECRET`).
+- On a road, the riders nearest you and anyone talking carry a name tag with their level, every rider whose numbers you can see wears a thin live-zone ring, and a game that hides the meter hides the rings too.
+- Riders in the world wear their outfit, its jersey pattern and colours included, and a rider who chose none gets a look of their own.
+- Ride your own workout in a voice channel, beside whatever session is running there: on the channel's Training page, "Ride a workout" opens the same picker, and the workout runs the way a ride alone does — a 3 s count-in, your own clock with +1 min and Skip block — and saves and scores like one. The call sees your live numbers, never the workout. Nothing of it counts toward the session, and joining the session saves it first.
+- The server now keeps when your weight last changed and when you last confirmed it. The voice channel's roster says where your FTP and weight came from. Together these let a race tell a settled number from a guess or last week's change.
+- In a race, the bike computer has a RACE page: how far ahead of or behind your Category's par you are, and your place among the riders of your Category. A team-car radio line in the ride's header calls the race — the neutral zone, km 0, a hold, the kilometres to the line, the finish — at most once every 20 seconds.
+- /ride opens on a Ride card: choose Free ride or Workout, then the road it rides — your last road comes back by itself, with where to start and how the grade will feel — and a free ride on one of your roads now starts right there. The page fills the window instead of a narrow centred column.
+- If you're in a crew, /ride and Home now offer two equal choices: ride
+  alone, or ride in your crew's lounge where they can drop in. The lounge is
+  the voice channel you last rode in for that crew, or its first one. It
+  opens with your mic off, shows who is there now, and says once who sees
+  your numbers. Riding alone stays one tap and shows nobody. The last choice
+  leads next time, and a rider in several crews picks the crew once.
+- A ride on a road comes out as a poster. Its downloadable card draws the road
+  you rode — the climbs and descents over the distance, painted with the zone
+  you were in on each stretch — under the route's generated name, with a line
+  saying where the heights came from. The button on the ride's page says
+  "Download the poster" for such a ride.
+- Every ride you save now remembers how you rode it — a free ride, a
+  workout or a game — and the weight you had set that day (never a
+  default one), and your data export includes both. It is ready for rides
+  on your own routes, which will show their distance and climbing in your
+  history.
+- A workout ridden on a route whose blocks run by the clock now says so beside its target: "ERG: the road is scenery". The trainer holds your watts, and the road is only shown.
+- Ride one of your roads with your crew. The session picker gains a Roads tab
+  next to Workouts and Games: filter your routes by distance, climbing and
+  time, choose the whole road, one of its climbs or a start km, and start or
+  plan it. The crew rides the road's own workout, ERG by its grade. A workout
+  can take a road too, and a route from Strava stays yours alone. Racing a
+  road arrives with races. For now it sits behind the same switch as the
+  other route rides.
+- Spectators at the roadside can chalk the next climb with one of six stamps (an arrow, a heart, Allez, Hopp, a cowbell, or a riding rider's initial), and the riders see it on the road as they climb.
+- The roadside. Every cheer row now ends in a cowbell (any one rider hears at
+  most 12 a minute, however hard the crowd rings), and anyone watching a
+  session — on a phone beside the bike, at a desk, or knocked out of Backyard
+  Ramp or Floor is Lava — can hand a rider in it a bottle. The bottle waits on
+  the rider's screen until the ride next eases off, so it never lands in the
+  middle of an effort, a game's included. Riders a game puts out are told
+  they are at the roadside, with the deck right there. Nothing a spectator
+  does ever touches anyone's trainer.
+- On phones, cheers and the other cues are heard from the first tap. A
+  phone used to stay silent however much you tapped until something else
+  unlocked its sound.
+- Operators: `/metrics` has `wattroom_room_spectators`, the sockets watching
+  a running session without riding it, beside `wattroom_room_riding`.
+- A route's page now shows every ride you have made of it at its average speed, by date. Timed rides are solid dots, and rides done together or in ERG are hollow. A trend line runs through your timed rides, and your best time up each climb is listed.
+- Import a route. Workouts › Import now takes a `.gpx` or `.tcx` file and
+  shows what it became before anything is stored: the road from above, its
+  profile and classed climbs, how long it rides at your pace and at the
+  reference pace, what was fixed on the way, and the generated name it goes
+  out under — with your own name for it, which only you see. Save keeps it on
+  your routes; riding it arrives with route rides.
+- Your routes have a home. Workouts lists the routes you imported, and each
+  one opens on its own page: its map (only you ever see it), its profile and
+  climbs, your own name for it, and Delete — which asks first, since a crew's
+  plan that carries the route loses its road. Your rides keep theirs.
+- The server can now keep riders' routes (GPX and TCX), ready for importing
+  a route in the app. A route's map and its full road, with every turn and
+  its height above sea, are sealed with `WATTROOM_TOKEN_KEY`, and only its
+  owner can open them. A server without that key keeps only a route's
+  heights, measured from its start, and never its map. An account keeps up
+  to 200 routes, adding at most 10 a minute. Deleting a route or the account
+  erases it, and the data export now includes each route as a GPX file. If
+  you rotate the key, run `/wattroom reseal-routes` once with the old key in
+  `WATTROOM_TOKEN_KEY_PREVIOUS`; deploy/README.md has the steps.
+- A ride in a crew session on a road now keeps its road, the way a solo road
+  ride does. The ride page shows the road's name, the distance you covered
+  and what you climbed, and the ride appears among that road's attempts as
+  ridden together. A ride the bunch towed you along still never times a
+  climb.
+- A workout ridden on one of your roads now shows the road ahead at the bottom of the screen, where the interval graph was, and on the TV: its steepness, its climbs and your dot. Where the road decides when a block ends, the blocks run along it in their zone colours.
+- Riding a road now shows the road ahead under your numbers: the next kilometres shaded by steepness, each classified climb marked where it tops out, and your dot moving along it. It looks further ahead the faster you go, and for a rider who asked for less motion it moves once a second.
+- /ride offers three games you can play alone: Watt Golf, Floor is Lava and
+  Backyard Ramp. One tap opens your crew's lounge with your mic off and starts
+  the game there with you as its coach. Anyone who opens the channel can join
+  in, and its ride and recap are kept like any session's. Alone, a game shows
+  your own score; medals still need three riders. Without a crew the games
+  show, disabled, with a link to start one.
+- Rides now earn the Swiss calendar's items for the garage that is coming.
+  Three rides inside a window earn its item: Räppli confetti in Fasnacht
+  week, the Treichel cowbell around 1 March, Spring meadow socks in
+  Sechseläuten week, the Längster Tag cap around 21 June, the paper lampion
+  around 1 August, the Alpabzug flower crown in September and October, the
+  Samichlaus hood around 6 December and the Längste Nacht gilet around
+  21 December. Every window comes back each year, so missing one costs you
+  a year's wait, never the item. None of them can be bought.
+- The server can now sell wardrobe items for Batzen, undo a purchase within
+  10 minutes if the item has not been worn on a ride yet, and save the outfit
+  you wear, which may only use items you own. If you cannot afford an item,
+  it says how many rides like your last one you need. The garage screen that
+  uses this is still to come.
+
+### Changed
+
+- Appearance in settings lines its theme cards up with the scheme and road buttons, so every row starts at the same place.
+- The card after a ride uses the whole width of the page. Its buttons sit
+  beside the title, so See your ride and Done no longer hide below the fold.
+  Six tiles with the ride page's numbers sit under the title, and on a wide
+  screen the power trace and the zones stand to the left of the rest. A free
+  ride on a road now closes on the same card, and a session's card lists who
+  rode with you again.
+- Desktop app: closing the window now keeps WattRoom running in the menu bar or tray, the way Discord and Slack do, so messages and session reminders still reach you. Closing it takes you out of voice and turns off your mic, camera and screen share, but a ride in progress keeps going. Quit with ⌘Q or from the tray. Started at login, the app now loads in the background, so it is ready the moment you open it. (Needs the next desktop app update.)
+- Your conversation list updates the moment a message, an edit, a reaction
+  or a poke arrives, and a thread you read on one device clears its dot on
+  the others at once. Each open tab used to re-read the list every ten
+  seconds, even mid-ride; now it only asks when something changed.
+- The world draws every rider as a dressed figure on a road bike — helmet, kit, drop bars and spoked wheels — instead of the clay rider. Legs turn at the rider's cadence, and riders sit or stand by their effort.
+- Conifer stands now line the road, trees grow in groups, and houses stand in small clusters.
+- On high-refresh displays WattRoom now stays under a fifth of the graphics
+  chip while someone rides, while a screen is shared and during your own
+  ride; on a 165 Hz 5K monitor a shared screen took 40%. To get there, the
+  riding bars, the breathing logo and the speaking pulse update about 22
+  times a second instead of on every frame, the watts number glides to each
+  reading in a quarter second instead of half, and the stage's zoom controls
+  sit on a plain dark pill rather than a blurred one.
+- Home's list of planned sessions is now This week: today and the next six
+  days under their own day headings, each row showing the time, the crew
+  and channel, and how many said they are in. A session riding right now in
+  one of your crews sits among today's with a green dot. With nothing this
+  week, the next planned session shows under Next.
+- Home now reads top to bottom: your greeting, one row of actions, the set-up card while steps remain, your four numbers, then This week beside who is around and your recent rides. "Start a crew" is offered once, and the desktop-app offer moved to the foot of the page.
+- The HUD in a browser tab scales to the window: on a second screen the watts fill about a quarter of the height and every word is readable from the saddle, while the desktop app's small floating window looks as before. On a road ride the HUD names the road: “Free ride · <road>”.
+- In a session on a road, a KOM sprint now rides the climb itself: a geared rider's trainer feels the road's grade under their place in the bunch rather than their own sprint grade, and a single-speed rider still holds 2 × FTP. If the connection drops, the grade eases back to flat after five seconds instead of holding the last climb.
+- The WattRoom mark is violet throughout, no longer fading to magenta, so magenta only marks live data.
+- A long road's world opens sooner. The work it did over the whole route
+  before the first frame (the riding clock, the village sites, the horizon's
+  bearings and the route's smoothing) is about 45 % cheaper on a 124 km loop,
+  and the world it builds is the same, bench for bench.
+- Animations now share one set of speeds and curves. Every bar that follows
+  live numbers settles at the same pace. The side sheet, the menu drawer and
+  riders joining or leaving a voice channel arrive and leave the same way,
+  and a rider who asked their system for reduced motion still sees none of
+  it.
+- The privacy policy now says what a flag report keeps, that a copy without your name becomes a public GitHub issue, and that deleting your account removes the report but not that issue.
+- The privacy policy now names intervals.icu: what a pull of your planned week reads, that the token is dropped at once and nothing is kept, and the one short-lived cookie it sets.
+- The world behind a ride is now an Alpine blue hour lit by the sky alone: a cool blue sky with a thin peach band on the horizon, no warm side-light, and a dusk that deepens as the ride goes on until the first stars come out at its end. Your trail and zone ring keep your theme's colours.
+- The top of the ride screen now leads with how long is left in the block,
+  in big numbers. Next to it you get your target with the range that counts
+  as on target ("262 W · 249–275"), which rep of an interval set you are on,
+  and a larger "next" line. For the first six seconds of each block it also
+  shows how the previous block went: your average and the share of it you
+  held on target.
+- Riding a road in the world, your numbers sit in flat panels at the riding sizes around the road ahead: the workout's band at the top with its controls, the bike computer with your 3 s power, W/kg and zone at the left, the Skyline along the bottom. A session folds the people column away so the world keeps its width, and a sprint shows as a card beside the road. A window too short for all of that rides the flat road and says why.
+- A road is drawn the same way everywhere — on its page, in the importer and when you plan a session: the map in its own panel with start, finish and km markers and its climbs in the grade colours, and the profile filled by grade with a badge over every climb, its kilometres and heights, and a legend.
+- The road looks like a road: grey asphalt with a fine grain, flat lines, a gravel shoulder and a green verge, and nothing on it glows.
+- A route's page now shows the road on the left and how to ride it on the right. The road shows its stats (km, metres climbed, classed climbs, loop or point to point), the map, the profile, one table of its climbs with your best up each, and your best and last rides. How offers Ride it over the whole road, from where you left off, or from the foot of one climb. The card after a road ride links back to the road's page.
+- Every list of your routes — the Workouts shelf, /ride's road picker, a workout's “on a route” and the session picker — shows the same row: the route's climbs as class chips, its length and climbing, whether you have ridden it or where you left off, and a Ride (or Carry on) that takes you straight onto it. A route's name always opens its page, and right-click offers Ride it, Open and Delete.
+- AI tools connected through MCP now see a ride on one of your routes as
+  "Route ride", with only that road's length and climbing. They never see the
+  route's name, which is often a place. Flag reports also have your route
+  names and anything that looks like a coordinate removed before they are
+  saved or filed.
+- While you ride, the sidebar reads at the bike computer's 24 px: its rows, section labels, the voice channel's session line and who is in it, and your name and buttons, with rows you can hit mid-pedal. Making a channel waits until you are off the bike.
+- "Sign out everywhere else" in your profile settings now lists the
+  personal tokens it leaves signed in, each with a Revoke button. Signing
+  out never revokes tokens, so a coach's tools keep working. Now you can
+  also see whether a session you didn't trust left a token behind, and
+  revoke it on the spot.
+- The public site no longer promises a WattRoom without roads, a world or avatars: routes you import (with their profile and climbs) are part of it now. It still says what holds today: no drafting, no power-ups, no subscription. The smart-trainer page says the free ride has held a set grade or set watts since 24 September 2026.
+- With reduced motion switched on in your system settings, the road profile
+  under a workout on a road no longer scrolls. It shows a fixed 2 km stretch
+  that your dot moves across, and turns to the next stretch when you reach
+  its end.
+- The screen you ride in front of no longer shows riders' status lines. That
+  covers the crew strip, the sprint takeover, the game panel, the session
+  summary and the hand-off list. At three metres they crowded the numbers.
+  Status lines still show everywhere else a rider's name does.
+- The desktop app no longer puts an icon in the macOS menu bar; the Dock already opens and quits it. Settings → Notifications → This computer has a switch to show the icon again, on every platform. On Windows and Linux the icon stays on by default, and turning it off makes closing the window quit WattRoom.
+- A ride on a long route now starts as fast as one on a short route: the world's trees, houses and roadside pieces are placed around you as you ride, instead of along the whole route before the first frame.
+- The 3D ride world (still behind its flag) draws the ground and road around
+  you as you ride instead of the whole route's in every frame: the road and
+  the detailed ground within 4 km, plainer ground out to 10 km, the far part
+  built on a background thread. The busiest frame of the test loop drops
+  from over 400,000 triangles to about 250,000, and a long route's ground no
+  longer stops 1.4 km from the road.
+
+### Deprecated
+
+- For scripts and AI tools that read your rides with a personal token: a ride now says `inSession` when it was ridden in a crew session, in the ride list, the ride page and the MCP `list_rides` tool. The old `room` flag gives the same answer for one more release and is then removed, so move your tooling over now.
+
+### Fixed
+
+- Settings → Appearance lines its rows up on one label column, and the light theme family is called Light, not White.
+- Away ends your screen share for everyone in the call. In the desktop app the share bar went off while crewmates still saw your screen.
+- Riders side by side on a shared road wear clearly different jerseys, the same on every screen.
+- Link previews in chat no longer push the conversation around while they load. A link shows as plain text until its preview is ready, a slow preview never holds a grey placeholder, and a link posted again does not draw a second card.
+- Your best time up a climb now shows for a climb at the very start of a route, as on any route imported from a climb's foot. Until now those climbs were never timed.
+- The closing card now reads the XP the ride put on your account, streak bonus included, so it matches the ride page instead of running 25 XP short.
+- A coach riding a road session without a trainer now rides in the team car on their own screen too: their figure no longer stands on the road beside the car, and only one violet chevron shows.
+- The right-click and long-press menu is drawn flat, on the panel's own hairline, with no drop shadow.
+- The count-in digit is no longer drawn in the magenta watt accent with a glow.
+  It counts down to the start rather than showing a measured reading, so it is
+  now plain ink, and the watt accent stays on your live power.
+- On a Mac, ⌘W closes the desktop app's window again, and clicking the
+  WattRoom icon in the menu bar opens its menu instead of just raising the
+  window. Clicking a message notification now opens that conversation, even
+  one that has sat in Notification Center for a while. Before, it only
+  brought the app forward.
+- On Windows and Linux, the desktop app answers Ctrl+= and Ctrl+Plus to
+  zoom in, Ctrl+Minus to zoom out, Ctrl+0 to reset, Ctrl+R to reload and
+  Ctrl+W to close, as a browser does. Before, none of those did anything
+  there. Ctrl+= zooms in on a Mac too.
+- In the desktop app, right-clicking in the chat box or on selected text
+  opens the usual Cut, Copy, Paste and Select All menu, with spelling
+  suggestions where the system offers them. Before, a right-click there
+  did nothing.
+- The DJ trophy now counts only tracks that actually played. A track needs
+  at least a minute of real play (pauses don't count), and an uploaded track
+  also has to play to within five seconds of its end. Before, the client
+  simply reporting "ended" earned the credit, so the trophy could be farmed
+  by queueing a track and ending it at once. The queue still moves on
+  exactly as before, and trophies already earned stay earned.
+- The workout editor's cadence and heart-rate bands toggle and its Discard are big enough to hit with a fingertip.
+- Floating panels (pickers, dialogs, toasts, menus, the soundboard and the drawers) no longer cast a drop shadow, so they read like every other panel: a hairline and a fill.
+- On a ride, the people column puts the jukebox on top and the crew under it, with no empty gap between them.
+- The free ride now says what each mode does: grade is the free ride without ERG, where you set the slope and shift your own gears, and watts has the trainer hold your power whatever your cadence. On a one-gear setup (a Zwift Cog) it opens in watts, since the slope has no range there, with grade still one tap away. The Equipment setting now reads "One gear (Zwift Cog), or don't make me shift".
+- If your trainer reconnects during a free ride on a grade, it goes back to
+  your grade. Before, it came back flat.
+- In a game on a road, a rider back from a rest rides back into the bunch on their own; the team car tows only in bunch rides and ERG sessions.
+- WattRoom uses far less of your graphics chip while someone rides, while a
+  session runs, while a screen share is on the stage and during your own
+  ride. On a MacBook these screens took 20–45% of the GPU; now each stays
+  near 10–15%. Nothing looks different: the glowing riding bars, the
+  breathing logo, the gliding watts number and the stage's blurred zoom
+  controls are drawn the same way, just no longer redrawn from scratch on
+  every frame.
+- Minutes that reach a group ride after it was first saved now earn the group session's × 1.2 Batzen, as the rest of the ride did. Before, they could be paid as if you had ridden alone.
+- Riding in the world, your W/kg now stays beside your 3 s power up to 999 W, instead of dropping under it once you pass 100 W.
+- An empty ride history now says it in one line, the same one Home uses, with a single Ride solo button, instead of apologising across three.
+- The Rides page's FTP card is as tall as its content, and with too little history to draw it sits under the power-by-duration chart instead of stretching to the chart beside it.
+- The horizon's ridges blend their rock and snow colours over a height band, so a peak no longer draws a vertical streak where it crosses the snowline.
+- The mountains on the horizon now rise where you ride toward most of the time: a road ridden partly westward no longer pulls its main peak toward the wrong side of the sky.
+- A heart-rate hold whose strap goes quiet now says it has lost your heart rate after three seconds and holds its watts, instead of steering on the last number it heard. A heart rate your trainer stops relaying also leaves the screen instead of staying there.
+- The HUD in a tab on a second screen centres its numbers as one block, with the watts about a quarter of the screen's height and the ride's clock as large as on the TV; a road's name wraps onto a second line instead of being cut short.
+- The import page's drop card now lines up with the page title, so its left edge sits on the same line as the title and the sections below it.
+- Before you pair anything that measures power, the big power readout in a
+  voice channel no longer shows a glowing 0 as if it were measuring you. It
+  shows a dash and "no trainer — pair one to see your watts", on the desktop,
+  on a phone following you, in a free ride and in TV mode. A trainer or power
+  meter paired on another of your screens counts.
+- The "try the sprint" game on the home page no longer flashes its frame on
+  and off while you wait for the go. The frame turns pink and stays that way
+  until the sprint starts.
+- The mobile drawer, the round open-navigation button and the landing page's phone menu no longer cast a shadow, like every other panel.
+- For self-hosters: the server's once-a-minute check that the voice server is up no longer gets a refusal from LiveKit each time. Before, it logged a "permissions denied" line every minute, and it could not tell a working LiveKit from one with a wrong API key.
+- A context menu, rider card, confirm dialog or toast that opens mid-ride now stays dark in the light scheme instead of drawing white over the riding view.
+- When every cue fires at once with a soundboard clip at its loudest, the
+  sound no longer clips on your speakers. A limiter now holds the mix under
+  full scale, and it changes nothing that was already quieter than that.
+- The mixer's Advanced fold and its "My voice ducks it too" checkbox are now at least 24 px to hit, so a tap on a phone or a laptop lands on the first try.
+- Numbers now share one typeface everywhere, including ride rows, track
+  lengths, ping, XP and kJ totals, game timers, execution percentages and the
+  jukebox's vote counts. About thirty of them were still drawn in your
+  system's monospace font beside the app's own numbers.
+- A road ride's page gives the same distance as its Rides row: the server's replay of the ride.
+- A voice channel's people column is riding size while you ride: the cheers, the soundboard and the jukebox's controls are 44 px targets, and the jukebox's search field reads "Search or paste a link…" in full.
+- The jukebox's Playlists and Just played toggles are big enough to hit with a thumb or a fingertip.
+- The Rides page's power-by-duration chart no longer overlaps its duration groups on a phone, keeps its first bar whole, and puts the mid-line's watt label beside the bars instead of on them.
+- A voice channel's right rail reads at riding size while you ride: labels, rider names and the jukebox's track lines are large, and the desk teaching sentences are gone.
+- Every slider — the mixer, the voice gate, volume faders — is now 24 px tall, so it clears the minimum tap target instead of sitting 4 px under it.
+- The Rides page's records charts, best power by duration and FTP over the last year, now draw in the violet neon of the rest of the records instead of the Z2 zone blue, so a zone colour no longer reads as a fixed decoration.
+- A free ride on one of your roads is now called by the road's name on its
+  page, in Rides and on Home, not "Free ride", and its "Against your best"
+  sets it beside your best ride of that road, the route page's Best. Opened
+  from the road's page (Best, Last or a climb's best time), its back link
+  returns there.
+- A rider's menu opened mid-ride now reads from the bike: large words and rows, the riding panel, and a place clear of the road ahead and of the tile it came from.
+- On the Rides page, a ride row is as tall as what it holds: a one-line ride no longer sits over a blank band because its neighbour's title wrapped, and every row puts its figures and its share link in the same place.
+- When a ride's row on History wraps onto a second line, "Share with friends" now starts on the same edge as the ride's name instead of 12 px in.
+- If the server drops mid-ride and you tap back into your voice channel,
+  the ride's status now stays on screen even when the channel's page can't
+  load: the reconnect, how much riding this device is holding, and End ride.
+  Before, only the page's load error showed there, while your trainer and
+  the recording carried on unseen.
+- Magenta and glow now stay with live numbers: the "riding now" bars are violet and unlit, the presence dots and floating buttons lose their glow, and the buttons that start or join a ride ("Join the ride", "Start a session", "Walk in") are framed in violet.
+- The card after a free ride on a road ends on the time you rode, not 0:00.
+- The first and last stretch of an imported road now feel as steep as they are: a steady climb no longer eases in over its opening 150 m, or flattens out over its last.
+- A free ride on one of your roads is dark from the first stroke to End ride, sidebar included, as a workout ride is. A stray tap on the sidebar now asks before it leaves the ride, and the desktop app's floating numbers and the waiting of direct messages follow it too.
+- Riding one of your roads opens on the Ride card with that road chosen, so its setup fills the page like any other ride's, instead of a narrow centred block.
+- On a solo ride on your own road, the keys the hint names now shift: `.` `+` `=` Harder and `,` `-` Easier, and a clicker that sends them, as on every other ride.
+- A road ride's setup says why Start riding is disabled before the trainer is paired, and says when the trainer is reconnecting.
+- A route's page rides it: **Ride it** opens the road ride, and neither the route page nor the importer promises route rides or a route shelf any more — both have shipped. Saving a route says so once, in the page, instead of again in a toast.
+- A session on a road reads "Road" in the sidebar, as it does above the ride,
+  instead of the whole stored road's length beside the shorter stretch the
+  session actually rides.
+- The live session row under a voice channel in the sidebar is a full 24 px tap target and ends in an ellipsis when it runs long.
+- On a short window, the power readout in a session no longer spreads over the header, where it blocked a tap on End and Hand off. If the window is too short for all of it, it now keeps the watts and trims the gauge below them.
+- While you ride, the sidebar drops its desk teaching lines (joining a crew, messaging a friend, making a first channel, getting the desktop app); its rows stay where they are.
+- A resistance change your trainer missed is sent again. When a write timed out or was refused, or the trainer dropped and reconnected mid-ride, a solo ride could leave the trainer on its old ERG target. That included the whole of the spin-out release and auto-pause, when you should be freewheeling.
+- The Sound dialog's faders, gate slider and Done button are now 44 px to hit, and its microphone, camera and speakers pickers stack in one column, so no label wraps and no device name is cut to "System de…".
+- Standalone text links — Home's All rides, the landing header's links, How group workouts work, and a ride page's Rides back link — are 24 px tall instead of 16–20, so they are easier to hit on a phone and a touch screen.
+- On light themes, status words are now easy to read. This covers "on target"
+  under the gauge, "in voice" and "voice reconnecting…", "gate open", "no
+  signal" on a rider's tile, and the confirmations after a ramp test or a
+  flag. They were drawn in the zone greens and ambers, which are too pale on
+  a white page to read as small text. Dark themes look the same as before.
+- In the workout editor a step's Delete sits last, after a divider, apart from the step's other actions.
+- An uploaded ride that started more than a week before you saved it no
+  longer counts toward your weekly streak. The ride is still kept, with its
+  stats and XP. A ride saved the morning after, or any time the week after,
+  counts as before.
+- The big watts figure keeps one width as it changes: each digit sits in a cell of its own, so the number no longer shifts sideways from one second to the next, and a four-digit sprint stays inside its box instead of running off the edge.
+- On a phone's Watch view, a rider tile's avatar no longer runs into the coach chip or the cadence and heart rate figures.
+- In TV mode, the "FTP" label on the workout graph can now be read from the
+  saddle. It was a tiny 9-pixel label, and it is now the same size as the
+  TV's other labels.
+- TV mode is readable from the saddle three metres away. Block time left is
+  bigger, and so are cadence, heart rate, your crewmates' watts and every
+  label. Nothing on the TV is now smaller than the size you can read at that
+  distance on a 55-inch set.
+- One tap of Harder or Easier moves a virtual gear by at most a step and a half, even when your trainer's reported speed makes no sense for the cadence. Before, a trainer reporting a crawl at a turning crank could turn a single shift into the heaviest resistance it can make.
+- A voice channel's page is riding size while its session runs: the riders' names and numbers, Join the ride, Free ride, the trainer's buttons and the bottle read at 24 px or more from the saddle, and the layout and TV buttons are 44 px targets.
+- A workout you saved now keeps Delete at the end of its card, after a
+  divider, instead of between Edit and Ride.
+- On a workout card, Edit, Save a copy and Delete now line up with the workout's name and length above them, instead of sitting 12 px in.
+- The riding screen opens with the workout's name above the block, and Home's Recent rides rows lead with the ride's name, so the workout keeps its name from the picker to Home.
+- With the world on, your numbers no longer get cut off beside the road. The ride's controls and your numbers now share the left column, each only as tall as it needs, so the whole bike computer page shows at 1440 × 900 and at 1280 × 720. Power now sits once, in the head above the computer.
+- The 3D ride world (still behind its flag) draws the ride you are on. It
+  builds from the road your ride carries instead of a made-up mountain pass,
+  your rider stands where the ride's own distance puts you, and a solo ride
+  shows only you, with no stand-in riders. A workout with no road keeps its
+  usual screen, and your trail is a thin line on the road behind your wheel
+  instead of a wall of light.
+- When your trainer goes quiet, the ring under your wheels in the 3D world turns neutral and your trail stops, instead of keeping the zone colour and the glow of a ride that is no longer live.
+- Outrun's hardest-effort colour (Zone 7) is no longer a near-twin of the live-data magenta: a sprint bar now reads as deep crimson, not as live watts. Miami's Zone 6 and Tron Ice's Zone 3, which sat just as close to their watt colour, moved off it too.
+
+### Security
+
+- A ride saved from the browser can no longer be used to farm XP. A ride that
+  overlaps one already on your account is refused, since nobody rides two at
+  once. Rides saved from the browser now pay at most 6,000 XP per UTC day,
+  about six hours at 280 W, and deleting a ride no longer frees up room to
+  post it again. No real ride comes near the limit, and rides saved from a
+  live session don't count toward it.
+- The app no longer lets just any inline script run. Only the handful of scripts WattRoom itself ships are allowed, each by its fingerprint, so a script slipped into a page is refused by the browser instead of running.
+- The desktop app locks down three Electron switches (running as plain
+  Node, `NODE_OPTIONS`, and the `--inspect` debugger) that let other
+  software on the same computer run its own code as WattRoom and use the
+  camera, microphone and Bluetooth access you gave WattRoom.
+- Deleting your account now also deletes, from our server, the problem
+  reports you sent with the in-app flag button: your name, the last two
+  minutes of your ride and your own server log lines. Before, they stayed in
+  the server's report file after your account was gone. Each report also
+  opened or added to a public issue on GitHub, without your name. That issue
+  stays, including the note you wrote, your browser, your trainer and the
+  last two minutes of your ride. Reports sent before release 2026.09.146
+  carry only a display name, which can't be tied to your account safely, so
+  those stay on the server too.
+- What you call a route stays yours. A workout built on one of your routes
+  now goes out under the route's generated name ("Road · 52.9 km · 1,312 m")
+  wherever someone else can read it — the session, the presence radar, the
+  crew's calendar feed and emails, friends' shared rides, ride cards and the
+  Strava title — so a name like "from home to …" no longer says where you live.
+- A voice channel's session controls (pick, start, pause, end and the other coach controls)
+  are now rate-limited on the server, like cheers and the jukebox already
+  were: one rider can send the same control at most four times a second.
+  Before, a misbehaving client could repeat a workout pick as fast as its
+  connection allowed, and the server re-checked every one. Riding and
+  coaching are unaffected, and a tap that comes too quickly now says so.
+
 ## [2026.09.147] - 2026-09-26
 
 ### Added
@@ -3465,7 +3853,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.147...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.10.1...HEAD
+[2026.10.1]: https://github.com/natrontech/wattroom/compare/2026.09.147...2026.10.1
 [2026.09.147]: https://github.com/natrontech/wattroom/compare/2026.09.146...2026.09.147
 [2026.09.146]: https://github.com/natrontech/wattroom/compare/2026.09.145...2026.09.146
 [2026.09.145]: https://github.com/natrontech/wattroom/compare/2026.09.144...2026.09.145

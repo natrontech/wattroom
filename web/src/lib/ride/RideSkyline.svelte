@@ -8,15 +8,22 @@
 	import { formatKm } from '$lib/format';
 	import { climbsOf } from '$lib/road/climbs';
 	import { chipsIn, GRADE_FILL, tileOf } from '$lib/road/skyline';
-	import { rideProfile, wholeRoadFrame } from './ride-profile';
+	import { rideProfile, riddenM, wholeRoadFrame } from './ride-profile';
 
-	let { samples }: { samples: readonly { m?: number; alt?: number }[] } =
-		$props();
+	let {
+		samples,
+		distanceM,
+	}: {
+		samples: readonly { m?: number; alt?: number }[];
+		/** The server's replay of the ride, its one distance (#3931). */
+		distanceM?: number;
+	} = $props();
 
 	// A viewBox, never a pixel width on an SVG the page measures (ux.md).
 	const W = 1000;
 	const H = 120;
 	const road = $derived(rideProfile(samples));
+	const km = $derived(road ? formatKm(riddenM(road, distanceM)) : '');
 	const drawn = $derived.by(() => {
 		if (!road) return null;
 		const frame = wholeRoadFrame(road, W, H);
@@ -31,13 +38,13 @@
 	<section class="panel panel-xl mt-3" aria-label="the road you rode">
 		<h2 class="eyebrow">the road</h2>
 		<p class="text-muted mt-1 mb-4 text-xs">
-			{formatKm(road.length)} km, as you rode it — laps and all.
+			{km} km, as you rode it — laps and all.
 		</p>
 		<div
 			class="relative h-32"
 			data-testid="ride-skyline"
 			role="img"
-			aria-label="the road's profile, {formatKm(road.length)} km"
+			aria-label="the road's profile, {km} km"
 		>
 			<svg
 				viewBox="0 0 {W} {H}"

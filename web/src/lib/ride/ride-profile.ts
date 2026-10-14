@@ -42,6 +42,14 @@ export function rideProfile(
 	return { length, heights, turns: Array<number>(n).fill(0) };
 }
 
+/**
+ * How far a saved road ride went, in metres: the server's replay when the
+ * ride has one, because the replay is the record (ADR-0074) and its Rides row
+ * says it (#3931). The samples' own metres only for a ride saved without one.
+ */
+export const riddenM = (road: Road, distanceM?: number): number =>
+	distanceM ?? road.length;
+
 /** The whole road in one slot of `width` × `height`, for skyline.ts's tiles. */
 export function wholeRoadFrame(
 	road: Road,

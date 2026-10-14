@@ -17,5 +17,13 @@ export const railButton = (riding: boolean) => (riding ? 'min-h-11' : 'btn-xs');
 export const railField = (riding: boolean) =>
 	riding ? 'input-xs min-h-11' : 'input-xs';
 
-/** A fold's `<summary>`: its 10 px eyebrow padded to 47 px, or 31 px. */
-export const railFold = (riding: boolean) => (riding ? 'py-4' : 'py-2');
+/**
+ * A heading: TARGETS G4's 24 px label while riding, the kit's 10 px eyebrow at
+ * the desk (#3758). A fold's summary adds py-2: 44 px riding, 31 px at the desk.
+ */
+export const railLabel = (riding: boolean) =>
+	riding ? 'ride-label' : 'eyebrow';
+
+/** A line of rail words at the riding floor, or the desk class the caller names. */
+export const railText = (riding: boolean, desk: string) =>
+	riding ? 'text-2xl leading-7' : desk;

@@ -810,10 +810,67 @@ surface(
 				name: 'home-desktop-offer',
 				measure: { home: homeProbe },
 			});
+			// multi:home-week-* — This week's other states (#3689, TARGETS
+			// home 7-8), the schedule and the crews' live read answered here.
+			for (const [state, sessions, riding] of WEEK_STATES) {
+				const o = await s.open(DESK);
+				await o.page.route('**/api/schedule', (route) =>
+					route.fulfill({ json: { sessions: sessions(), icsToken: '' } }),
+				);
+				if (riding)
+					await o.page.route('**/api/crews/live', async (route) => {
+						const res = await route.fetch();
+						const body = (await res.json()) as LiveRead;
+						const voice = body.crews[0]?.channels.find(
+							(ch) => ch.kind === 'voice',
+						);
+						if (voice) voice.session = RIDING_SESSION();
+						await route.fulfill({ response: res, json: body });
+					});
+				await page(s, o, '/home', {
+					name: `home-week-${state}`,
+					measure: { home: homeProbe },
+				});
+			}
 		}
 	},
 	{ also: ['phone-home'] },
 );
+
+type LiveRead = {
+	crews: { channels: { kind: string; session?: unknown }[] }[];
+};
+const planned = (id: string, hours: number, goingCount: number) => ({
+	id,
+	workoutName: id === 'gone' ? 'Openers before work' : 'Saturday long tempo',
+	minutes: 60,
+	startsAt: new Date(Date.now() + hours * 3_600_000).toISOString(),
+	createdBy: 'Designer',
+	crewId: '00000000-0000-0000-0000-000000000000',
+	crewName: 'Design Crew',
+	channelName: 'Pain Cave',
+	goingCount,
+});
+/** The session riding now in the crew's voice channel, ten minutes in. */
+const RIDING_SESSION = () => ({
+	id: '00000000-0000-0000-0000-0000000000aa',
+	channel: '',
+	workout: 'Sweet spot 2×20',
+	phase: 'running',
+	elapsed: 600,
+	coach: '',
+	coachName: 'Designer',
+	riders: ['Designer', 'Rider Two'],
+	riderIds: ['', ''],
+});
+const WEEK_STATES: [string, () => unknown[], boolean][] = [
+	// Nothing this week: the first plan after it, under NEXT.
+	['next', () => [planned('later', 24 * 9, 3)], false],
+	// Nothing planned at all: one teaching line.
+	['empty', () => [], false],
+	// A session riding now, and a plan whose time has just gone.
+	['live', () => [planned('gone', -0.2, 0), planned('later', 26, 4)], true],
+];
 
 const WINDOWS_UA =
 	'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
@@ -1107,7 +1164,7 @@ surface(
 		const save = o.page.getByRole('button', { name: 'Save the ride' });
 		if (await save.count()) await save.first().click();
 		await o.page
-			.getByRole('link', { name: 'See it in your history' })
+			.getByRole('link', { name: 'See your ride' })
 			.waitFor({ timeout: 30_000 });
 		await s.shot(o, { name: 'closing-card-road', full: true });
 		// F1's last step (#3680): the road's name opens its page, the ride on it.
@@ -1120,8 +1177,9 @@ surface(
 );
 
 /** A 65 s workout, ridden to its closing card. */
-async function rideToTheCard(o: Opened) {
+async function rideToTheCard(o: Opened, onMount?: () => Promise<void>) {
 	await ride(o.page, '/ride?w=smoke-test');
+	await onMount?.();
 	await o.page
 		.getByRole('link', { name: 'See your ride' })
 		.waitFor({ timeout: 120_000 });
@@ -1154,9 +1212,20 @@ surface('closing-card', async (s) => {
 		[RIDING_PHONE, 'closing-card-phone', undefined],
 	] as const)) {
 		const other = await s.open(device, { world: false, reducedMotion });
-		await rideToTheCard(other);
+		// Under reduced motion the finished card appears at once: a frame the
+		// moment the card mounts, and the settled one beside it.
+		await rideToTheCard(other, async () => {
+			if (!reducedMotion) return;
+			await other.page
+				.getByTestId('closing-card')
+				.waitFor({ timeout: 120_000 });
+			await s.shot(other, { name: 'closing-card-reduced-0' });
+		});
 		await s.shot(other, { name, full: true });
 	}
+	// The real card with what no ride here reaches: a medal and a scored
+	// roster (/dev/summary renders SessionSummary with them).
+	await page(s, o, '/dev/summary', { name: 'closing-card-medal' });
 });
 
 /** Designer coaching, Design Partner riding along, a session started. */
@@ -1179,6 +1248,11 @@ async function session(
 	await toTraining(rider.page, crew);
 	await startSession(coach.page, pick);
 	await joinSession(rider.page);
+	// Started "without a trainer" (its trainer was on the free ride), the
+	// coach rides along the way the partner does: a two-rider session.
+	const coachJoins = coach.page.getByRole('link', { name: 'Join the ride' });
+	if (await coachJoins.isVisible({ timeout: 5000 }).catch(() => false))
+		await coachJoins.click();
 	await atSecond(coach.page, RIDE_SECOND);
 	return { coach, rider, crew };
 }

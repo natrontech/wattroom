@@ -1,1 +1,0 @@
-- The import page's drop card now lines up with the page title, so its left edge sits on the same line as the title and the sections below it.
