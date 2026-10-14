@@ -102,7 +102,7 @@ Every step of every flow:
 
 Capture recipes are the design-shots spec's. Every id below is in `docs/design/surface-map.json`, which maps changed files to the surfaces they draw (`node web/scripts/design-surfaces.mjs` prints a branch's; `web/scripts/design-surfaces.test.mjs` keeps map and file in step). A new surface gets a section here and a row there in one change. A section is a Capture, Target(s) and Canon line, then its numbered must-match items.
 
-Desk: 1440 × 900. Phone: 375 × 812 with touch. World on: the device's World control at Full (the `wattroom.world-slot.v1` flag until #3214 replaces it); every world surface asserts the world mounted and did not fall back, or the shot is FAILED [probe:world].
+Desk: 1440 × 900. Phone: 375 × 812 with touch. World on: the device's World control at Full (`wattroom.world.mode.v1`), with the `wattroom.world-slot.v1` flag on until the default flips; every world surface asserts the world mounted and did not fall back, or the shot is FAILED [probe:world].
 
 ### A. Riding surfaces (the cave)
 

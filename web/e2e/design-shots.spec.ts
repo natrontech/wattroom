@@ -37,6 +37,7 @@ import {
 	takes,
 	variants,
 	wanted,
+	RELEASE_FEED,
 	type Opened,
 } from './design/shoot';
 import { hudScale } from './design/probe';
@@ -275,11 +276,12 @@ surface(
 			const o = await s.open(DESK, { world: true, reducedMotion });
 			if (flat)
 				await o.ctx.addInitScript(() =>
-					localStorage.setItem('wattroom.flat-road.v1', '1'),
+					localStorage.setItem('wattroom.world.mode.v1', 'flat'),
 				);
 			const road = await fixtureRoad(o.page, 'hairpin');
-			await ride(o.page, `/ride?road=${road}`);
+			await ride(o.page, `/ride?w=openers&road=${road}`);
 			await assertRiding(o.page);
+			await o.page.getByTestId('flat-road').waitFor();
 			await s.shot(o, { name });
 		}
 	},
@@ -943,8 +945,6 @@ const WEEK_STATES: [string, () => unknown[], boolean][] = [
 
 const WINDOWS_UA =
 	'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
-const RELEASE_FEED =
-	'https://api.github.com/repos/natrontech/wattroom-releases/**';
 /** A desktop build, as the release feed lists one (desktop.spec.ts's). */
 const DESKTOP_RELEASE = {
 	tag_name: 'desktop-v0.2.0',

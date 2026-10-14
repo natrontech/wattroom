@@ -43,7 +43,9 @@ test('the bike computer turns its pages and reads from the saddle', async ({
 
 	await page.keyboard.press('ArrowRight');
 	await expect(computer).toHaveAttribute('data-page', 'power');
-	await expect(computer.locator('[data-field=power3]')).toBeVisible();
+	// The head above shows the 3 s power, so POWER opens on the 10 s (D17).
+	await expect(computer.locator('[data-field=power10]')).toBeVisible();
+	await expect(computer.locator('[data-field=power3]')).toHaveCount(0);
 	await expect(computer.getByTestId('zone-strip')).toBeVisible();
 
 	await page.keyboard.press('PageUp');

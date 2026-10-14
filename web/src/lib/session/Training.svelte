@@ -255,6 +255,7 @@
 					ftp={channel.you.ftp}
 					progress={total > 0 ? elapsed / total : null}
 					paused={inFocus === 'media'}
+					look={world.look}
 					onfail={world.fail}
 					onflat={world.flatten}
 				/>
@@ -364,6 +365,7 @@
 						idle={channel.youUnmeasured}
 						target={channel.you.target}
 						ftp={channel.you.ftp}
+						kg={channel.you.kg}
 					/>
 				</section>
 			{/if}
@@ -423,6 +425,7 @@
 									idle={channel.youUnmeasured}
 									target={channel.you.target}
 									ftp={channel.you.ftp}
+									kg={channel.you.kg}
 									compact
 								/>
 							</div>
