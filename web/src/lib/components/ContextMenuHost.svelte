@@ -44,7 +44,7 @@
 		// the pointerdown lands after the contextmenu event, and listening for
 		// it right away closed the menu in the same gesture that opened it. A
 		// scroll is delivered on the next frame, so one that started before the
-		// right-click (a wheel's tail, a scroll into view) lands after the menu
+		// right-click (a wheel step in flight, a scroll into view) lands after the menu
 		// opened and closed it too (#3976): scroll listens from the frame after.
 		let armed = false;
 		let scrollArmed = false;
