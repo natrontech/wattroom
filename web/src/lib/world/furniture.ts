@@ -2,6 +2,7 @@
 // draws them batched (boards.ts); the set pieces batch with the props (props/batch.ts).
 import * as THREE from 'three';
 import { yOf } from './geometry';
+import { at } from '$lib/road/along';
 import { type Route } from '$lib/road/route';
 import type { Arch, Sign } from './setpieces';
 import type { Style } from './styles';
@@ -104,7 +105,7 @@ export const ARCH_BANNER: Box = [
 	[9.4, 1.4, 0.3],
 ];
 
-/** The arch as one moving group, for a game's finish (game-road.ts); the ride's arches are batched (boards.ts). */
+/** The arch as one group, for a game's round and the road's finish; the ride's KOM arches are batched (boards.ts). */
 export function arch(route: Route, a: Arch, style: Style): THREE.Group {
 	const g = new THREE.Group();
 	const chrome = new THREE.MeshLambertMaterial({ color: style.arch.chrome });
@@ -122,4 +123,25 @@ export function arch(route: Route, a: Arch, style: Style): THREE.Group {
 	g.position.set(a.x, yOf(route, a.y) + 0.1, a.z);
 	g.rotation.y = Math.atan2(a.turn[1], a.turn[0]) + Math.PI;
 	return g;
+}
+
+/** An arch across the road at metre `m`, square to it, facing the rider coming up to it. */
+export function archOnRoad(
+	route: Route,
+	m: number,
+	label: string,
+	style: Style,
+): THREE.Group {
+	const p = at(route, m);
+	return arch(
+		route,
+		{
+			x: p.x,
+			y: p.ele,
+			z: p.z,
+			turn: [-Math.cos(p.heading), -Math.sin(p.heading)],
+			label,
+		},
+		style,
+	);
 }
