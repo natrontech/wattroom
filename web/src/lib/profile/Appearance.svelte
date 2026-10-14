@@ -72,7 +72,9 @@
 		</div>
 	</div>
 	<details class="mt-5" open={!chosen && prefersReducedMotion.current}>
-		<summary class="eyebrow cursor-pointer">Advanced</summary>
+		<summary class="eyebrow flex min-h-7 cursor-pointer items-center"
+			>Advanced</summary
+		>
 		<div class={ROW}>
 			<span class="eyebrow">world</span>
 			<div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
