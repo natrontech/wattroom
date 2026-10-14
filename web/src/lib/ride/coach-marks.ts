@@ -5,19 +5,11 @@
  */
 const KEY = 'wattroom.coach.road.v1';
 
+// Labels, not sentences: a riding surface carries no teaching copy (TARGETS G4).
 export const COACH_MARKS = [
-	{
-		title: 'Your zone',
-		body: 'The ring under you is your zone. It changes colour as your power does.',
-	},
-	{
-		title: 'The road ahead',
-		body: 'The line ahead is the road. Its slope sets how hard your trainer pushes back.',
-	},
-	{
-		title: 'The climb card',
-		body: 'When a climb starts, the bike computer turns to CLIMB by itself.',
-	},
+	'Your zone: the ring under you',
+	'The road ahead',
+	'CLIMB opens by itself',
 ] as const;
 
 export function coachSeen(): boolean {

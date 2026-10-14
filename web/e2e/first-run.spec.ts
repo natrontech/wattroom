@@ -77,7 +77,8 @@ test('the first world ride shows its three marks once @world', async ({
 	await expect(mark).toContainText('Your zone', { timeout: 20_000 });
 	await mark.getByRole('button', { name: 'Next' }).click();
 	await expect(mark).toContainText('The road ahead');
-	await mark.getByRole('button', { name: 'Skip' }).click();
+	// "?" in slot 1 puts them away.
+	await page.getByRole('button', { name: 'How to read the road' }).click();
 	await expect(mark).toHaveCount(0);
 	// Kept for the device: the next world ride opens without them.
 	expect(

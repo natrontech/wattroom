@@ -165,7 +165,7 @@
 				>
 			{/if}
 			<button
-				onclick={() => (coach = 0)}
+				onclick={() => (coach === null ? (coach = 0) : endCoach())}
 				class={ICON}
 				aria-label="How to read the road"
 				title="How to read the road"><CircleHelp size={20} /></button
