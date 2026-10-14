@@ -1,1 +1,1 @@
-- The import page's drop card is left-aligned like its design target, and the phone title no longer wraps badly.
+- The import page's drop card has a title and left-aligned copy like its design target, and the phone title no longer wraps badly.

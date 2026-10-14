@@ -280,12 +280,15 @@
 				<Skeleton class="h-24" rows={2} />
 			{:else if idle}
 				<div class="text-muted flex flex-col items-start gap-3 text-sm">
-					<FileUp size={20} class="text-muted" />
+					<h2 class="text-ink flex items-center gap-2 text-base font-semibold">
+						<FileUp size={20} class="text-muted shrink-0" />
+						Drop a ZWO, ERG, GPX, TCX or FIT
+					</h2>
 					<p>
-						Drop a workout (<code>.zwo</code>, <code>.erg</code>) or a route (<code
+						A workout (<code>.zwo</code>, <code>.erg</code>) or a route (<code
 							>.gpx</code
-						>, <code>.tcx</code>, <code>.fit</code>) here, or choose one. You
-						will see exactly what it became — and what it could not bring —
+						>, <code>.tcx</code>, <code>.fit</code>), dropped here or chosen.
+						You will see exactly what it became — and what it could not bring —
 						before anything is saved.
 					</p>
 					<button onclick={() => picker?.click()} class="btn btn-primary btn-lg"
