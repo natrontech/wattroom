@@ -13,7 +13,7 @@
 	import type { JukeboxEntry } from '$lib/protocol';
 	import type { SaveTarget } from '$lib/channel/playlists.svelte';
 	import { fitsCadence } from '$lib/channel/cadence-fit';
-	import { railText } from '$lib/channel/rail-size';
+	import { railIcon, railText } from '$lib/channel/rail-size';
 	import { thumbnailFor } from '$lib/channel/jukebox-add';
 
 	// One track in the playlist (#286) — the same row for what's next and for
@@ -32,7 +32,8 @@
 		targetRpm = 0,
 	}: {
 		entry: JukeboxEntry;
-		/** On a riding surface its words are at G4's floor (#3758). */
+		/** On a riding surface its words are at G4's floor (#3758) and its
+		 *  controls 44 px (G5). */
 		riding?: boolean;
 		/** 1-based slot in "up next"; absent in history. */
 		position?: number;
@@ -121,41 +122,52 @@
 	})}
 >
 	<div class="flex min-w-0 items-center gap-2">
-		<div class="relative shrink-0">
-			{#if entry.trackId}
-				<!-- A pool track has no thumbnail to show and needs none: the
-				     mark says "this one is audio" at a glance (#267). -->
-				<div
-					class="bg-surface text-muted grid h-9 w-16 place-items-center rounded"
-				>
-					<Music size={14} />
-				</div>
-			{:else}
-				<img
-					src={thumbnailFor(entry.videoId)}
-					alt=""
-					loading="lazy"
-					referrerpolicy="no-referrer"
-					class="bg-surface h-9 w-16 rounded object-cover"
-				/>
-			{/if}
-			{#if position}
-				<span
-					class="bg-paper/70 text-ink num absolute bottom-0 left-0 rounded-tr px-1 text-[9px]"
-					>{position}</span
-				>
-			{/if}
-			{#if tracks.length}
-				<!-- The stack says "more than one" before any words do. -->
-				<span
-					class="border-neon/50 bg-paper/80 text-muted num absolute right-0 bottom-0 rounded-tl border-t border-l px-1 text-[9px]"
-					>{tracks.length}</span
-				>
-			{/if}
-		</div>
+		<!-- Riding, the title takes the thumbnail's width (#3983): at G4's
+		     24 px it was cut to three letters. The badges were under the floor;
+		     the list's order is the position, the chevron says "more than one". -->
+		{#if !riding}
+			<div class="relative shrink-0">
+				{#if entry.trackId}
+					<!-- A pool track has no thumbnail to show and needs none: the
+					     mark says "this one is audio" at a glance (#267). -->
+					<div
+						class="bg-surface text-muted grid h-9 w-16 place-items-center rounded"
+					>
+						<Music size={14} />
+					</div>
+				{:else}
+					<img
+						src={thumbnailFor(entry.videoId)}
+						alt=""
+						loading="lazy"
+						referrerpolicy="no-referrer"
+						class="bg-surface h-9 w-16 rounded object-cover"
+					/>
+				{/if}
+				{#if position}
+					<span
+						class="bg-paper/70 text-ink num absolute bottom-0 left-0 rounded-tr px-1 text-[9px]"
+						>{position}</span
+					>
+				{/if}
+				{#if tracks.length}
+					<!-- The stack says "more than one" before any words do. -->
+					<span
+						class="border-neon/50 bg-paper/80 text-muted num absolute right-0 bottom-0 rounded-tl border-t border-l px-1 text-[9px]"
+						>{tracks.length}</span
+					>
+				{/if}
+			</div>
+		{/if}
 
 		<div class="min-w-0 flex-1">
-			<p class="truncate {railText(riding, 'text-xs leading-tight')}">
+			<!-- Riding, a title takes two lines: at 24 px one held nine letters. -->
+			<p
+				class="{riding ? 'line-clamp-2 break-words' : 'truncate'} {railText(
+					riding,
+					'text-xs leading-tight',
+				)}"
+			>
 				{tracks.length ? entry.playlistTitle : entry.title}
 			</p>
 			<p class="text-muted truncate {railText(riding, 'text-[10px]')}">
@@ -183,7 +195,9 @@
 				onclick={() => (open = !open)}
 				aria-expanded={open}
 				aria-label={open ? 'hide the tracks' : 'show the tracks'}
-				class="text-muted hover:text-ink grid h-9 w-6 shrink-0 place-items-center"
+				class="text-muted hover:text-ink grid shrink-0 place-items-center {riding
+					? 'h-11 w-11'
+					: 'h-9 w-6'}"
 			>
 				{#if open}<ChevronUp size={14} />{:else}<ChevronDown size={14} />{/if}
 			</button>
@@ -195,12 +209,16 @@
 				onclick={onVote}
 				aria-pressed={mine}
 				aria-label={mine ? 'remove your vote' : 'vote for this track'}
-				class="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded border {mine
+				class="flex shrink-0 flex-col {riding
+					? 'h-11 w-11'
+					: 'h-9 w-9'} items-center justify-center rounded border {mine
 					? 'border-neon bg-neon/15 text-ink'
 					: 'border-muted/20 text-muted hover:border-muted/50'}"
 			>
 				<ChevronUp size={12} />
-				<span class="num text-[10px] leading-none">{votes}</span>
+				<span class="num leading-none {riding ? 'text-2xl' : 'text-[10px]'}"
+					>{votes}</span
+				>
 			</button>
 		{/if}
 
@@ -210,7 +228,7 @@
 			<button
 				onclick={onRequeue}
 				aria-label="queue this again"
-				class="text-muted hover:text-ink icon-btn"
+				class="text-muted hover:text-ink {railIcon(riding)}"
 				><RotateCcw size={15} /></button
 			>
 		{/if}
@@ -218,7 +236,8 @@
 			<button
 				onclick={onRemove}
 				aria-label="remove from the queue"
-				class="text-muted hover:text-danger icon-btn"><X size={15} /></button
+				class="text-muted hover:text-danger {railIcon(riding)}"
+				><X size={15} /></button
 			>
 		{/if}
 	</div>

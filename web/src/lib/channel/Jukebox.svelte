@@ -11,9 +11,10 @@
 	import JukeboxDeck from '$lib/channel/JukeboxDeck.svelte';
 	import JukeboxPlaylists from '$lib/channel/JukeboxPlaylists.svelte';
 	import JukeboxTrack from '$lib/channel/JukeboxTrack.svelte';
+	import RailSheet from '$lib/channel/RailSheet.svelte';
 	import { IN_SYNC_SEC, playerInfo } from '$lib/channel/jukebox-player.svelte';
 	import { listening } from '$lib/channel/listening.svelte';
-	import { railLabel, railText } from '$lib/channel/rail-size';
+	import { railLabel, railLink, railText } from '$lib/channel/rail-size';
 	import {
 		createPlaylistStore,
 		type SaveTarget,
@@ -113,37 +114,60 @@
 </script>
 
 <section class="flex min-w-0 flex-col gap-3">
-	<div class="flex min-w-0 items-center justify-between gap-2">
-		<span class={railLabel(riding)}>jukebox</span>
-		{#if current && jukebox?.playing && !playerInfo.live && !listening.out}
-			<!-- Proof everyone is together, in the one place riders look for it.
-			     A rider who has stepped out is not with it and must not be told
-			     they are: the badge goes, and comes back when they rejoin. -->
-			<span
-				class="flex shrink-0 items-center gap-1.5 font-mono {railText(
-					riding,
-					'text-[10px]',
-				)} {inSync ? 'text-watt' : 'text-muted'}"
-			>
+	<!-- Riding, the seat is the tile and its strip (#3983): the heading is
+	     the sheet's, and whether the deck is in sync is desk detail. -->
+	{#if !riding}
+		<div class="flex min-w-0 items-center justify-between gap-2">
+			<span class="eyebrow">jukebox</span>
+			{#if current && jukebox?.playing && !playerInfo.live && !listening.out}
+				<!-- Proof everyone is together, in the one place riders look for it.
+				     A rider who has stepped out is not with it and must not be told
+				     they are: the badge goes, and comes back when they rejoin. -->
 				<span
-					class="h-1.5 w-1.5 rounded-full {inSync
-						? 'bg-watt glow-stroke'
-						: 'bg-muted motion-safe:animate-pulse'}"
-				></span>
-				{inSync ? 'in sync' : 'catching up'}
-			</span>
-		{/if}
-	</div>
+					class="flex shrink-0 items-center gap-1.5 font-mono text-[10px] {inSync
+						? 'text-watt'
+						: 'text-muted'}"
+				>
+					<span
+						class="h-1.5 w-1.5 rounded-full {inSync
+							? 'bg-watt glow-stroke'
+							: 'bg-muted motion-safe:animate-pulse'}"
+					></span>
+					{inSync ? 'in sync' : 'catching up'}
+				</span>
+			{/if}
+		</div>
+	{/if}
 
 	{#if jukebox && current}
-		<JukeboxDeck {jukebox} {current} {send} />
-	{:else if !riding}
+		<!-- Riding, the deck is v2-ride's seat and everything below opens
+		     over the crew from it, so the crew sits under the music (#3983). -->
+		<JukeboxDeck
+			{jukebox}
+			{current}
+			{send}
+			{riding}
+			next={queue.length}
+			behind={riding ? below : undefined}
+		/>
+	{:else if riding}
+		<RailSheet>
+			{#snippet label()}<span class="ride-label">jukebox</span>{/snippet}
+			{@render below()}
+		</RailSheet>
+	{:else}
 		<p class="text-muted text-xs leading-relaxed">
 			Nothing is playing. Search your library or paste a YouTube link, and
 			everyone hears it on the same second.
 		</p>
 	{/if}
 
+	{#if !riding}
+		{@render below()}
+	{/if}
+</section>
+
+{#snippet below()}
 	<JukeboxAdd {send} {refusal} {riding} />
 
 	{#if queue.length}
@@ -170,13 +194,17 @@
 					/>
 				{/each}
 			</ul>
+			<!-- Riding, each link keeps its one line and they stack. -->
 			<div
-				class="mt-1.5 flex items-center gap-3 {railText(riding, 'text-[11px]')}"
+				class="mt-1.5 flex flex-wrap items-center gap-x-3 whitespace-nowrap {railText(
+					riding,
+					'text-[11px]',
+				)}"
 			>
 				{#if queue.length > QUEUE_PEEK}
 					<button
 						onclick={() => (showAllQueue = !showAllQueue)}
-						class="btn-link"
+						class="btn-link {railLink(riding)}"
 						>{showAllQueue
 							? 'fewer'
 							: `+${queue.length - QUEUE_PEEK} more`}</button
@@ -187,7 +215,7 @@
 				<button
 					onclick={() => void saveQueue()}
 					disabled={savingQueue}
-					class="btn-link ml-auto"
+					class="btn-link ml-auto {railLink(riding)}"
 					title="the deck and everything behind it, as a new crew playlist"
 					>Save as a playlist</button
 				>
@@ -234,4 +262,4 @@
 			</ul>
 		</details>
 	{/if}
-</section>
+{/snippet}

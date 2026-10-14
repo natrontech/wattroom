@@ -16,6 +16,7 @@
 	import { deleteQuestion, playingIn } from '$lib/channel/playlist-autoplay';
 	import type { JukeboxCommand } from '$lib/protocol';
 	import { thumbnailFor } from '$lib/channel/jukebox-add';
+	import { railButton, railText } from '$lib/channel/rail-size';
 	import JukeboxAdd from '$lib/channel/JukeboxAdd.svelte';
 	import {
 		commandFromSavedTrack,
@@ -34,6 +35,7 @@
 		store,
 		address,
 		canManage,
+		riding = false,
 	}: {
 		playlist: SavedPlaylist;
 		store: ReturnType<typeof createPlaylistStore>;
@@ -44,6 +46,8 @@
 		/** Rename, delete and remove-a-track: the crew's owner's and admins' on
 		 * a crew playlist (#771), always yours on a personal one. */
 		canManage: boolean;
+		/** A ride is under way: the row's controls and tracks are 44 px (TARGETS G5). */
+		riding?: boolean;
 	} = $props();
 
 	let open = $state(false);
@@ -272,7 +276,9 @@
 			onclick={toggle}
 			aria-expanded={open}
 			aria-label={open ? 'hide tracks' : 'show tracks'}
-			class="text-muted hover:text-ink grid h-9 w-6 shrink-0 place-items-center"
+			class="text-muted hover:text-ink grid shrink-0 place-items-center {riding
+				? 'h-11 w-11'
+				: 'h-9 w-6'}"
 		>
 			{#if open}<ChevronUp size={14} />{:else}<ChevronDown size={14} />{/if}
 		</button>
@@ -289,8 +295,9 @@
 			{:else if canManage}
 				<button
 					onclick={() => (renaming = true)}
-					class="block max-w-full truncate text-left text-xs font-medium"
-					>{playlist.name}</button
+					class="block max-w-full text-left font-medium {riding
+						? 'line-clamp-2 min-h-11 text-2xl leading-7 break-words'
+						: 'truncate text-xs'}">{playlist.name}</button
 				>
 			{:else}
 				<!-- Not a control for a rider who cannot rename it (#2162, ux.md:
@@ -298,11 +305,14 @@
 				     the × are gated on `canManage` and this path was not, so a
 				     member on the crew tab could open the box, type, and read
 				     the server's refusal under the row. -->
-				<span class="block max-w-full truncate text-xs font-medium"
-					>{playlist.name}</span
+				<span
+					class="block max-w-full truncate font-medium {railText(
+						riding,
+						'text-xs',
+					)}">{playlist.name}</span
 				>
 			{/if}
-			<p class="text-muted text-[10px]">
+			<p class="text-muted {railText(riding, 'text-[10px]')}">
 				{playlist.trackCount}
 				{playlist.trackCount === 1 ? 'track' : 'tracks'}
 			</p>
@@ -311,7 +321,9 @@
 			<button
 				onclick={queue}
 				disabled={busy || !playlist.trackCount}
-				class="btn btn-secondary btn-xs shrink-0 disabled:opacity-40"
+				class="btn btn-secondary {railButton(
+					riding,
+				)} shrink-0 disabled:opacity-40"
 				aria-label="queue this playlist into {address.name}">Queue</button
 			>
 		{/if}
@@ -331,7 +343,9 @@
 				<ul class="flex flex-col gap-1">
 					{#each tracks as track, i (track.id)}
 						<li
-							class="group flex min-w-0 items-center gap-1.5"
+							class="group flex min-w-0 items-center gap-1.5 {riding
+								? 'min-h-11'
+								: ''}"
 							{@attach contextMenu(() => trackMenu(track, i))}
 						>
 							{#if track.trackId}
@@ -350,7 +364,11 @@
 									class="bg-surface h-6 w-11 shrink-0 rounded object-cover"
 								/>
 							{/if}
-							<span class="min-w-0 flex-1 truncate text-[11px]"
+							<span
+								class="min-w-0 flex-1 truncate {railText(
+									riding,
+									'text-[11px]',
+								)}"
 								>{track.playlistTitle ?? track.title}{#if track.artist}<span
 										class="text-muted"
 									>
@@ -369,7 +387,9 @@
 								<button
 									onclick={() => void removeTrack(track, i)}
 									aria-label="remove this track"
-									class="text-muted hover:text-danger grid h-6 w-6 shrink-0 place-items-center opacity-0 group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:hidden"
+									class="text-muted hover:text-danger grid shrink-0 place-items-center opacity-0 {riding
+										? 'h-11 w-11'
+										: 'h-6 w-6'} group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:hidden"
 									><X size={12} /></button
 								>
 							{/if}
@@ -382,6 +402,7 @@
 					send={(command) => void addTrack(command)}
 					refusal={error}
 					verb="Saved"
+					{riding}
 				/>
 			</div>
 			<!-- Nothing lives only in a menu (ux.md, #2884): on touch or a
@@ -389,7 +410,9 @@
 			{#if canManage}
 				<button
 					onclick={() => void remove()}
-					class="btn btn-xs text-danger mt-2 flex items-center gap-1"
+					class="btn {railButton(
+						riding,
+					)} text-danger mt-2 flex items-center gap-1"
 					><Trash2 size={12} />Delete playlist</button
 				>
 			{/if}

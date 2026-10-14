@@ -1,4 +1,4 @@
-import { test, type WebSocketRoute } from '@playwright/test';
+import { test, type Page, type WebSocketRoute } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
@@ -476,6 +476,11 @@ surface(
 		await toTraining(o.page, crew);
 		await atSecond(o.page, RIDE_SECOND);
 		await assertRiding(o.page);
+		// A track on the deck: the people column's seat (#3983).
+		// Not one of ride-session-flat's: on the same channel's deck, a title
+		// already showing would end its wait at once, and the next add would
+		// meet the deck's burst throttle.
+		await queueDeck(o.page, [['fJ9rUzIMcZQ', 'Bohemian Rhapsody']]);
 		await s.shot(o);
 		await o.page.getByRole('button', { name: 'End ride' }).click();
 	},
@@ -1256,6 +1261,94 @@ surface('closing-card', async (s) => {
 	await page(s, o, '/dev/summary', { name: 'closing-card-medal' });
 });
 
+/**
+ * The IFrame API, standing in for YouTube's (#3927): a player that plays what
+ * it is given from where it is told, never ends and never errors, and shows
+ * the video's own thumbnail where the video would be.
+ */
+const YOUTUBE_STUB = `
+window.YT = { Player: class {
+	constructor(node, opts) {
+		this.node = typeof node === 'string' ? document.getElementById(node) : node;
+		this.events = opts.events || {};
+		this.state = -1; this.at = 0; this.since = 0;
+		setTimeout(() => this.events.onReady?.({ target: this }));
+	}
+	show(id) {
+		this.node.innerHTML = '<img src="https://i.ytimg.com/vi/' + id +
+			'/mqdefault.jpg" alt="" style="width:100%;height:100%;object-fit:cover">';
+	}
+	go(state) { this.state = state; this.events.onStateChange?.({ data: state, target: this }); }
+	loadVideoById(id, at = 0) { this.show(id); this.seekTo(at); this.go(1); }
+	cueVideoById(id, at = 0) { this.show(id); this.seekTo(at); this.go(5); }
+	playVideo() { this.since = Date.now(); this.go(1); }
+	pauseVideo() { this.at = this.getCurrentTime(); this.go(2); }
+	stopVideo() { this.pauseVideo(); }
+	seekTo(at) { this.at = at; this.since = Date.now(); }
+	getCurrentTime() { return this.state === 1 ? this.at + (Date.now() - this.since) / 1000 : this.at; }
+	getDuration() { return 213; }
+	getPlayerState() { return this.state; }
+	getPlaybackRate() { return 1; }
+	setPlaybackRate() {}
+	getVideoData() { return { isLive: false }; }
+	getVolume() { return 0; }
+	setVolume() {}
+	unloadModule() {}
+	destroy() { this.node.innerHTML = ''; }
+} };
+window.onYouTubeIframeAPIReady?.();
+`;
+
+/**
+ * Queues YouTube tracks on a riding page's deck through the jukebox's sheet
+ * (#3983), stood in for by YOUTUBE_STUB, and leaves the sheet shut. A
+ * channel's deck outlives its session.
+ */
+async function queueDeck(page: Page, tracks: [string, string][]) {
+	await page.route('https://www.youtube.com/iframe_api', (route) =>
+		route.fulfill({ contentType: 'text/javascript', body: YOUTUBE_STUB }),
+	);
+	const add = page.getByRole('textbox', {
+		name: 'add music: search your library, or paste a YouTube link',
+	});
+	const fold = page.getByTestId('rail-sheet').filter({ visible: true });
+	// Queued already when the queue's peek shows the second title: another
+	// shot on the same channel may have put the first one on the deck.
+	if (!(await add.isVisible())) await fold.click();
+	const queued = await page
+		.getByText((tracks[1] ?? tracks[0])[1])
+		.filter({ visible: true })
+		.count();
+	// The hub takes one jukebox command per 300 ms from a rider and refuses
+	// the rest, the stand-in player's own included: an add that does not
+	// show is sent again.
+	for (const [id, title] of queued ? [] : tracks) {
+		const shown = page
+			.getByText(new RegExp(`${id}|${title}`))
+			.filter({ visible: true })
+			.first();
+		for (let tries = 3; ; tries--) {
+			if (!(await add.isVisible())) await fold.click();
+			await add.fill(`https://www.youtube.com/watch?v=${id}`);
+			await add.press('Enter');
+			// Past the queue's peek of three, a title shows once it is opened.
+			await page.waitForTimeout(500);
+			const more = page.getByRole('button', { name: /^\+\d+ more$/ });
+			if (await more.isVisible()) await more.click();
+			const ok = await shown
+				.waitFor({ timeout: 5_000 })
+				.then(() => true)
+				.catch(() => false);
+			if (ok) break;
+			if (tries === 1) throw new Error(`${title} never reached the deck`);
+		}
+	}
+	const fewer = page.getByRole('button', { name: 'fewer' });
+	if (await fewer.isVisible()) await fewer.click();
+	if (await add.isVisible()) await fold.click();
+	return fold;
+}
+
 /** Designer coaching, Design Partner riding along, a session started. */
 async function session(
 	s: Shoot,
@@ -1298,7 +1391,42 @@ surface(
 		);
 		try {
 			await assertRiding(coach.page);
+			// A track on the deck and a queue behind it: the transport, the
+			// queue's rows and their vote and remove controls are what a rider
+			// pedals with (#3927). Muted by the shoot's mixer. YouTube's own
+			// player skips tracks at random in a headless browser, which empties
+			// the deck, so it is stood in for by YOUTUBE_STUB; titles and
+			// thumbnails are YouTube's.
+			const fold = await queueDeck(coach.page, [
+				['dQw4w9WgXcQ', 'Never Gonna Give You Up'],
+				['9bZkp7q19f0', 'GANGNAM STYLE'],
+				['kJQP7kiw5Fk', 'Despacito'],
+				['JGwWNGJdvx8', 'Shape of You'],
+				['OPf0YbXqDm0', 'Uptown Funk'],
+			]);
+			// The seat, its sheet shut; then multi:ride-session-deck — the sheet
+			// open, its transport and queue at riding size (#3927); then
+			// multi:ride-session-deck-playlists — the queue saved, and that
+			// playlist open in the sheet.
 			await s.shot(coach);
+			await fold.click();
+			await s.shot(coach, { name: 'ride-session-deck' });
+			await coach.page
+				.getByRole('button', { name: 'Save as a playlist' })
+				.click();
+			// Its "saved" toast is the app's, not the sheet's: dismissed.
+			await coach.page.getByRole('button', { name: 'Dismiss' }).first().click();
+			await coach.page.locator('summary', { hasText: /^playlists$/ }).click();
+			const show = coach.page
+				.getByRole('button', { name: 'show tracks' })
+				.first();
+			await show.click();
+			await coach.page
+				.getByRole('button', { name: 'hide tracks' })
+				.first()
+				.scrollIntoViewIfNeeded();
+			await s.shot(coach, { name: 'ride-session-deck-playlists' });
+			await fold.click();
 			for (const [device, name] of variants([
 				[DESK, 'ride-watch'],
 				[PHONE, 'ride-watch-phone'],

@@ -7,15 +7,17 @@
  */
 
 /**
- * A button: 44 px tall on the kit's own padding while riding, btn-xs at the
- * desk. Not btn-lg, whose 20 px sides would take the room the jukebox's
- * search field needs for its placeholder at the column's narrowest (#3912).
+ * A button: 44 px tall on the kit's own padding with its words at G4's floor
+ * while riding, btn-xs at the desk. Not btn-lg, whose 20 px sides would take
+ * the room the jukebox's search field needs for its placeholder at the
+ * column's narrowest (#3912).
  */
-export const railButton = (riding: boolean) => (riding ? 'min-h-11' : 'btn-xs');
+export const railButton = (riding: boolean) =>
+	riding ? 'min-h-11 text-2xl' : 'btn-xs';
 
-/** A text field beside a railButton, as tall as it. */
+/** A text field beside a railButton, as tall as it, its words at G4's floor while riding. */
 export const railField = (riding: boolean) =>
-	riding ? 'input-xs min-h-11' : 'input-xs';
+	riding ? 'min-h-11 text-2xl' : 'input-xs';
 
 /**
  * A heading: TARGETS G4's 24 px label while riding, the kit's 10 px eyebrow at
@@ -27,3 +29,10 @@ export const railLabel = (riding: boolean) =>
 /** A line of rail words at the riding floor, or the desk class the caller names. */
 export const railText = (riding: boolean, desk: string) =>
 	riding ? 'text-2xl leading-7' : desk;
+
+/** An icon-only button: the kit's 40 px at the desk, 44 px while riding. */
+export const railIcon = (riding: boolean) =>
+	riding ? 'icon-btn icon-btn-lg' : 'icon-btn';
+
+/** A standalone text link (`btn-link`): 44 px tall while riding, inline at the desk. */
+export const railLink = (riding: boolean) => (riding ? 'min-h-11' : '');

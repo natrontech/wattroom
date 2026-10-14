@@ -194,11 +194,12 @@
 	}}
 >
 	<!-- The placeholder fits the people column at its narrowest, 240 px: the
-	     longer one was cut mid-word (#3912). The label says the rest. -->
+	     longer one was cut mid-word (#3912); at riding size only two words fit.
+	     The label says the rest. -->
 	<input
 		value={text}
 		oninput={(e) => search(e.currentTarget.value)}
-		placeholder="Search or paste a link…"
+		placeholder={riding ? 'Add music…' : 'Search or paste a link…'}
 		class="input {railField(riding)} min-w-0 flex-1"
 		aria-label="add music: search your library, or paste a YouTube link"
 	/>
