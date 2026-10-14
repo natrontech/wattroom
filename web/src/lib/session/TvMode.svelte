@@ -98,22 +98,30 @@
 			<h1 class="font-display text-[3.4vh] leading-none font-bold">
 				{placeName}
 			</h1>
-			<span class="text-muted text-[3vh]">{workoutName}</span>
-			<span
-				class="font-display ml-auto text-[5vh] leading-none font-bold tabular-nums"
-				>{formatClock(elapsed)}</span
-			>
-			{@render exit?.()}
+			<!-- With a block, slot 1 names it and holds the clock (one home per
+			     number, TARGETS D17). -->
+			{#if workoutName !== block?.label}
+				<span class="text-muted text-[3vh]">{workoutName}</span>
+			{/if}
+			<div class="ml-auto flex items-center gap-[2vw]">
+				{#if !block}
+					<span
+						class="font-display text-[5vh] leading-none font-bold tabular-nums"
+						>{formatClock(elapsed)}</span
+					>
+				{/if}
+				{@render exit?.()}
+			</div>
 		</header>
 
 		<!-- The riding surface's panels at three metres (ADR-0046, #3677): the
-		     bike computer — page control, head, fields — beside slot 1 and the
-		     roster, one column each, as tall as the tallest; the graph takes
-		     the rest along the bottom. -->
+		     bike computer — page control, head, fields — as wide as it needs,
+		     slot 1 and the roster sharing the rest, all as tall as the
+		     tallest; the graph takes what is left along the bottom. -->
 		<div
-			class="mt-[2vh] grid auto-cols-fr grid-flow-col gap-[1.5vw] {seated
-				? 'pr-[27vw]'
-				: ''}"
+			class="mt-[2vh] grid grid-flow-col gap-[1.5vw] {block || others.length
+				? 'auto-cols-fr grid-cols-[auto]'
+				: ''} {seated ? 'pr-[27vw]' : ''}"
 		>
 			<!-- Slot 3 at three metres (#3088): the same pages, turned by the
 			     same keys. -->
@@ -138,7 +146,15 @@
 				{/if}
 			</section>
 			{#if block}
-				<IntervalStrip {block} bias={1} cadence={you.cadence} hr={you.hr} big />
+				<IntervalStrip
+					{block}
+					bias={1}
+					cadence={you.cadence}
+					hr={you.hr}
+					{elapsed}
+					{total}
+					big
+				/>
 			{/if}
 
 			<!-- Everyone else, one row per rider. No faces: at 3 m you read names and

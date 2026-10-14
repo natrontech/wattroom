@@ -256,62 +256,76 @@
 				</div>
 			{/if}
 		</div>
-		<ComputerHead
-			power={ctx.stats?.seconds ? ctx.stats.power3 : Math.round(ctx.watts)}
-			kg={ctx.kg}
-			{ftp}
-			stale={ctx.stale}
-			target={ctx.target}
-			blockExecution={ctx.stats?.blockExecution ?? null}
-			{tv}
-		/>
 	{/if}
 	{#if phone}{@render name()}{/if}
-	<div
-		class={docked
-			? `border-neon/20 grid grid-cols-2 border-t ${tv ? 'gap-x-[2vw] gap-y-[1.5vh] pt-[1.5vh]' : 'gap-x-6 gap-y-3 pt-3'}`
-			: layout}
-	>
-		{#if !phone && !docked}{@render name()}{/if}
-		{#each fields as field (field.key)}
-			<div data-testid="computer-field" data-field={field.key} class="min-w-0">
-				<span
-					class="{docked
-						? label
-						: `${size.word} text-muted`} flex items-center gap-2 leading-none"
-					>{field.label}{#if field.zone}<ZoneDot
-							zone={field.zone}
-							class={tv ? 'size-[1.4vh]' : 'size-2'}
-						/>{/if}</span
+	<!-- On the TV the fields stand beside the head, not under it (#3677): a
+	     wide screen, and a panel as tall as slot 1 beside it. -->
+	<div class={docked && tv ? 'flex items-start gap-[2vw]' : 'contents'}>
+		{#if docked}
+			<div class={tv ? 'min-w-0 flex-1' : 'contents'}>
+				<ComputerHead
+					power={ctx.stats?.seconds ? ctx.stats.power3 : Math.round(ctx.watts)}
+					kg={ctx.kg}
+					{ftp}
+					stale={ctx.stale}
+					target={ctx.target}
+					blockExecution={ctx.stats?.blockExecution ?? null}
+					{tv}
+				/>
+			</div>
+		{/if}
+		<div
+			class={docked
+				? tv
+					? 'border-neon/20 flex flex-col gap-[1.5vh] self-stretch border-l pl-[2vw]'
+					: 'border-neon/20 grid grid-cols-2 gap-x-6 gap-y-3 border-t pt-3'
+				: layout}
+		>
+			{#if !phone && !docked}{@render name()}{/if}
+			{#each fields as field (field.key)}
+				<div
+					data-testid="computer-field"
+					data-field={field.key}
+					class="min-w-0"
 				>
-				{#if field.key === 'gear'}
 					<span
-						bind:this={gearField}
-						aria-live="polite"
-						class="num text-neon mt-1 block {size.value} leading-none font-bold"
-						>{field.value}</span
+						class="{docked
+							? label
+							: `${size.word} text-muted`} flex items-center gap-2 leading-none"
+						>{field.label}{#if field.zone}<ZoneDot
+								zone={field.zone}
+								class={tv ? 'size-[1.4vh]' : 'size-2'}
+							/>{/if}</span
 					>
-				{:else}
-					<!-- A space, not a margin, between number and unit: "78 rpm"
+					{#if field.key === 'gear'}
+						<span
+							bind:this={gearField}
+							aria-live="polite"
+							class="num text-neon mt-1 block {size.value} leading-none font-bold"
+							>{field.value}</span
+						>
+					{:else}
+						<!-- A space, not a margin, between number and unit: "78 rpm"
 					     is what a screen reader and a search both read. Neon is a
 					     model's number, flat: only live data glows (ADR-0005). The
 					     unit's own line-height would make a page with units 2 px
 					     taller than one without, so a turn would move the panel. -->
-					<span
-						class="num mt-1 block {size.value} leading-none font-bold {field.glow
-							? 'text-watt glow-text'
-							: field.neon
-								? 'text-neon'
-								: 'text-ink'}"
-						>{field.value}{#if field.unit}{' '}<span
-								class="text-muted {size.unit} leading-none font-normal"
-								>{field.unit}</span
-							>{/if}</span
-					>
-				{/if}
-			</div>
-		{/each}
-		{#if turns && !tv && !phone && !docked && !profile}{@render dots()}{/if}
+						<span
+							class="num mt-1 block {size.value} leading-none font-bold {field.glow
+								? 'text-watt glow-text'
+								: field.neon
+									? 'text-neon'
+									: 'text-ink'}"
+							>{field.value}{#if field.unit}{' '}<span
+									class="text-muted {size.unit} leading-none font-normal"
+									>{field.unit}</span
+								>{/if}</span
+						>
+					{/if}
+				</div>
+			{/each}
+			{#if turns && !tv && !phone && !docked && !profile}{@render dots()}{/if}
+		</div>
 	</div>
 	{#if zoneStrip}{@render strip(zoneStrip)}{/if}
 	{#if profile && ctx.climb}

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { formatClock } from '$lib/format';
 	import type { Block } from '$lib/workout/block';
-	import { blockBands, nextFor } from '$lib/workout/block';
+	import { blockBands, nextFor, trainerChip } from '$lib/workout/block';
 	import { TV_LABEL } from '$lib/session/computer-pages';
 
 	let {
@@ -11,6 +11,8 @@
 		big = false,
 		cadence = 0,
 		hr = 0,
+		elapsed = 0,
+		total = 0,
 	}: {
 		block: Block | null;
 		bias: number;
@@ -21,6 +23,9 @@
 		cadence?: number;
 		/** Your live bpm — colours the HR band in or out (#67). */
 		hr?: number;
+		/** The workout clock, slot 1's "elapsed of total" on the TV (#3677). */
+		elapsed?: number;
+		total?: number;
 	} = $props();
 
 	const bands = $derived(blockBands(block, cadence, hr));
@@ -32,46 +37,67 @@
 	both put that front and centre; the first version of the group ride had neither.
 -->
 {#if block && big}
-	<!-- Slot 1 at three metres (#3677): one panel, stacked beside the
-	     computer, as tall as it; NEXT is describeBlock's line (D16). -->
+	<!-- Slot 1 at three metres (#3677), v2-erg's work band: time left beside
+	     the block and its target, then NEXT as describeBlock says it (D16)
+	     and the trainer chip. Centred in a panel as tall as the computer. -->
 	<div
-		class="ride-panel flex h-full flex-col justify-between gap-[1.5vh] px-[1.5vw] py-[1.5vh]"
+		class="ride-panel flex h-full flex-col justify-center gap-[3vh] px-[1.5vw] py-[1.5vh]"
 	>
-		<div class="min-w-0">
-			<p class={TV_LABEL}>block {block.index} of {block.count}</p>
-			<p
-				class="font-display mt-[1vh] truncate text-[5vh] leading-none font-bold"
-			>
-				{block.label}
-			</p>
-			{#each bands as b (b.text)}
+		<div class="flex items-end gap-[3vw]">
+			<div>
 				<p
-					class="font-display mt-[1vh] text-[3vh] font-semibold tabular-nums {b.inBand
-						? 'text-ok'
-						: 'text-warn'}"
+					class="font-display text-[15vh] leading-[0.85] font-bold tabular-nums"
 				>
-					at {b.text}
+					{formatClock(block.secondsLeft)}
 				</p>
-			{/each}
+				<p class="{TV_LABEL} mt-[1vh]">left in block</p>
+			</div>
+			<div class="min-w-0">
+				<p class={TV_LABEL}>block {block.index} of {block.count}</p>
+				<p
+					class="font-display mt-[1vh] truncate text-[6vh] leading-none font-bold"
+				>
+					{block.label}
+				</p>
+				{#if block.band}
+					<!-- Prescribed, so neon: watt is only measured live data. -->
+					<p class="mt-[1vh] text-[3vh] leading-none">
+						Target <span class="num text-neon font-bold">{block.watts} W</span>
+						· <span class="num">{block.band.low}–{block.band.high}</span>
+					</p>
+				{/if}
+				<p class="num text-muted mt-[1vh] text-[3vh] leading-none">
+					{formatClock(
+						elapsed,
+					)}{#if total > 0}{` of ${formatClock(total)}`}{/if}
+				</p>
+				{#each bands as b (b.text)}
+					<p
+						class="font-display mt-[1vh] text-[3vh] leading-none font-semibold tabular-nums {b.inBand
+							? 'text-ok'
+							: 'text-warn'}"
+					>
+						at {b.text}
+					</p>
+				{/each}
+			</div>
 		</div>
-		<div>
-			<p class="font-display text-[14vh] leading-[0.85] font-bold tabular-nums">
-				{formatClock(block.secondsLeft)}
-			</p>
-			<p class="{TV_LABEL} mt-[1vh]">left in block</p>
-		</div>
-		{#if block.next}
-			<p
-				class="border-ink/10 flex items-baseline gap-[1vw] border-t pt-[1.5vh] text-[4vh] leading-none"
-			>
+		<div
+			class="border-ink/10 flex items-baseline gap-[1vw] border-t pt-[1.5vh] text-[5vh] leading-none"
+		>
+			{#if block.next}
 				<span class={TV_LABEL}>next</span>
 				<span class="font-display min-w-0 truncate font-semibold"
 					>{block.next.label}{#if block.next.watts > 0}
 						· <span class="num text-neon">{block.next.watts} W</span>{/if}
 					· <span class="num">{nextFor(block.next.seconds)}</span></span
 				>
-			</p>
-		{/if}
+			{/if}
+			<span
+				class="border-neon/40 ml-auto shrink-0 rounded border px-[1vw] py-[0.6vh] text-[3vh]"
+				>{trainerChip(block)}</span
+			>
+		</div>
 	</div>
 {:else if block}
 	<div

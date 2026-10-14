@@ -55,7 +55,8 @@
 					value: 'text-[6vh]',
 					words: 'text-[3vh] leading-none',
 					dot: 'size-[1.8vh]',
-					track: 'mt-[1vh] h-[2vh]',
+					track: 'mt-[0.5vh] h-[2vh]',
+					gap: 'gap-[0.5vh]',
 				}
 			: {
 					power: 'text-[6.5rem]',
@@ -65,11 +66,12 @@
 					words: 'text-2xl leading-7',
 					dot: 'size-3',
 					track: 'mt-1 h-3',
+					gap: 'gap-2',
 				},
 	);
 </script>
 
-<div data-testid="computer-head" class="flex flex-col gap-2">
+<div data-testid="computer-head" class="flex flex-col {size.gap}">
 	<div class="flex flex-wrap items-end justify-between gap-x-2 gap-y-2">
 		<p class="num leading-[0.85] font-bold whitespace-nowrap">
 			<span
