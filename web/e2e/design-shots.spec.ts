@@ -736,6 +736,30 @@ surface(
 		await o.page.waitForURL('**/history/*');
 		await o.page.waitForTimeout(2500);
 		await s.shot(o, { name: 'route-best-opens' });
+		// Workout on it (#3681): the row picked, the shelf picking for this
+		// road, and a card's Ride opening on it; then the shelf on a phone.
+		await o.page.goto(`/workouts/routes/${id}`);
+		await o.page.getByRole('button', { name: /Workout on it/ }).click();
+		await o.page.waitForTimeout(500);
+		await s.shot(o, { name: 'route-workout-on' });
+		await o.page.getByRole('link', { name: 'Pick a workout' }).click();
+		await o.page.waitForURL(/\/workouts\?on=/);
+		await o.page.waitForTimeout(2500);
+		await s.shot(o, { name: 'workouts-on' });
+		await o.page
+			.getByRole('listitem')
+			.filter({
+				has: o.page.getByRole('link', { name: 'Recovery Spin', exact: true }),
+			})
+			.getByRole('button', { name: 'Ride', exact: true })
+			.click();
+		await o.page.getByText(/where to start\?/).waitFor({ timeout: 15_000 });
+		await s.shot(o, { name: 'workouts-on-ride' });
+		// A phone that rides: one that cannot never reaches the pick.
+		const p = await s.open(RIDING_PHONE);
+		await page(s, p, `/workouts?on=${await fixtureRoad(p.page, 'hairpin')}`, {
+			name: 'phone-workouts-on',
+		});
 	},
 	{ also: ['phone-route'] },
 );
