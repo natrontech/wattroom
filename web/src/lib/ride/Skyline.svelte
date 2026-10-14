@@ -26,6 +26,7 @@
 		createAheadEase,
 		frameFor,
 		GRADE_FILL,
+		leadM,
 		pagedFrame,
 		SKYLINE,
 		stepsPerTick,
@@ -127,14 +128,14 @@
 			? m
 			: Math.min(road.length, m + mps * Math.min(1, (now - secondAt) / 1000)),
 	);
-	// Scrolling, the road moves under a dot that stays; paged, the dot walks.
-	const shift = $derived(
-		!frame ? 0 : (paged ? frame.fromM : shown - SKYLINE.behindM) * frame.scale,
-	);
+	// Scrolling, the road moves under a dot that stays, once it is 0.5 km in;
+	// paged, and before that, the dot walks.
+	const lead = $derived(paged ? shown - (frame?.fromM ?? 0) : leadM(shown));
+	const shift = $derived(!frame ? 0 : (shown - lead) * frame.scale);
 	const dot = $derived(
 		frame
 			? {
-					x: (paged ? shown - frame.fromM : SKYLINE.behindM) * frame.scale,
+					x: lead * frame.scale,
 					y: yOf(frame, heightAt(road, shown)),
 				}
 			: null,
