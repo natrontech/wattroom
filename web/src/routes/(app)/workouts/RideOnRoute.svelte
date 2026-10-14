@@ -46,8 +46,10 @@
 		if (result.ok) routes = result.routes;
 		else error = result.error;
 	}
-	void load();
+	// On a preselected road the list waits for Another route.
 	if (road) void pick(road);
+	else void load();
+	const retry = () => (road && routes === null ? pick(road) : load());
 
 	async function pick(routeId: string) {
 		loading = routeId;
@@ -79,7 +81,7 @@
 			<Banner tone="error">
 				{error}
 				{#snippet action()}
-					<button onclick={() => void load()} class="btn-link text-xs"
+					<button onclick={() => void retry()} class="btn-link text-xs"
 						>Try again</button
 					>
 				{/snippet}
@@ -99,8 +101,12 @@
 					class="btn {picked.bestM === null ? 'btn-primary' : 'btn-secondary'}"
 					>From km 0</a
 				>
-				<button onclick={() => (picked = null)} class="btn btn-ghost"
-					>Another route</button
+				<button
+					onclick={() => {
+						picked = null;
+						if (routes === null) void load();
+					}}
+					class="btn btn-ghost">Another route</button
 				>
 			</div>
 		{:else if routes === null || (road && loading === road)}

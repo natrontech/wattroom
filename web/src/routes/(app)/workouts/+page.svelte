@@ -83,11 +83,15 @@
 	const on = $derived(onRoads ? page.url.searchParams.get('on') : null);
 	let onName = $state<string | null>(null);
 	$effect(() => {
-		if (!on) return;
+		onName = null;
+		const id = on;
+		if (!id) return;
 		// ponytail: a name that could not be read leaves "your road"; picking
 		// a workout reads the road again and says why it failed.
-		void api<{ name: string }>(`/api/routes/${encodeURIComponent(on)}`).then(
-			(res) => (onName = res.ok ? res.data.name : null),
+		void api<{ name: string }>(`/api/routes/${encodeURIComponent(id)}`).then(
+			(res) => {
+				if (id === on) onName = res.ok ? res.data.name : null;
+			},
 		);
 	});
 	const routeItems = (id: string, workout: Workout): MenuEntry[] =>
