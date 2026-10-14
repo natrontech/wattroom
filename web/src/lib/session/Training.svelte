@@ -256,6 +256,7 @@
 					road={channel.ridden.road}
 					metre={() => channel.ridden ?? { m: 0, mps: 0 }}
 					bunch={() => channel.ridden?.bunch ?? null}
+					loop={channel.ridden.loop}
 					watts={channel.you.watts}
 					silent={channel.youStale}
 					ftp={channel.you.ftp}

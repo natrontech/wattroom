@@ -117,6 +117,8 @@ export function buildStage(
 	style: Style,
 	sight: Sight,
 	stream: GroundStream,
+	/** The road ends under a finish arch; a lapped one does not. */
+	finish = true,
 ): Stage {
 	const group = new THREE.Group();
 	const gradient = ramp(PROP_RAMP);
@@ -224,7 +226,7 @@ export function buildStage(
 	const boards = batchBoards(route, style);
 	group.add(tag('dressing', boards.root));
 	// The road's end (#3623): the world's route is the road the way it is ridden, so the finish is its last metre. A loop has none.
-	if (!route.loop)
+	if (finish && !route.loop)
 		group.add(
 			tag('dressing', archOnRoad(route, route.length, 'FINISH', style), 'arch'),
 		);
