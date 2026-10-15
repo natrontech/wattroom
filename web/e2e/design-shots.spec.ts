@@ -381,12 +381,73 @@ surface(
 					remoteEnabled: buttons
 						.filter((b) => !b.disabled)
 						.map((b) => b.textContent?.trim()),
+					remotePair: buttons.some((b) => b.textContent?.trim() === 'Pause'),
 					remoteScrollWidth: el.scrollWidth,
 					remoteClientWidth: el.clientWidth,
 				};
 			});
 		await s.shot(phone, { name: 'ride-phone-remote', extra: remote });
 		await desk.page.getByRole('button', { name: 'End ride' }).click();
+		// A solo ride is the one a phone may pause (#3217): the desk rides
+		// Openers beside the channel, the phone pauses it, and both say so.
+		await desk.page
+			.getByRole('button', { name: 'Ride a workout' })
+			.click({ timeout: 15_000 });
+		const ride = desk.page.getByRole('dialog', { name: 'Ride a workout' });
+		await ride.getByRole('textbox', { name: 'find a workout' }).fill('Openers');
+		await ride
+			.getByRole('button', { name: /Openers/ })
+			.first()
+			.click();
+		await ride.getByRole('button', { name: 'Ride Openers' }).click();
+		const pause = phone.page
+			.getByTestId('phone-remote')
+			.getByRole('button', { name: 'Pause' });
+		await pause.waitFor({ timeout: 30_000 });
+		await s.shot(phone, {
+			name: 'ride-phone-remote-solo',
+			extra: {
+				remotePair: true,
+				pauseDisabled: await pause.isDisabled(),
+			},
+		});
+		await pause.click();
+		await phone.page
+			.getByTestId('phone-remote')
+			.getByText('Paused', { exact: true })
+			.waitFor({ timeout: 10_000 });
+		const paused = await phone.page
+			.getByTestId('phone-remote')
+			.evaluate((el) => {
+				const b = (name: string) =>
+					[...el.querySelectorAll('button')].find(
+						(x) => x.textContent?.trim() === name,
+					);
+				return {
+					pauseResumeHeight: Math.round(
+						b('Resume')?.getBoundingClientRect().height ?? 0,
+					),
+					pauseDisabled: b('Pause')?.disabled ?? null,
+					resumeDisabled: b('Resume')?.disabled ?? null,
+				};
+			});
+		await s.shot(phone, { name: 'ride-phone-remote-paused', extra: paused });
+		await desk.page.getByText('Paused', { exact: true }).first().waitFor();
+		const line = await desk.page
+			.getByText('Paused', { exact: true })
+			.first()
+			.evaluate((n) => {
+				const row = n.closest('[role=status]') ?? n.parentElement;
+				const resume = row?.querySelector('button');
+				return {
+					pausedLine: n.textContent?.trim(),
+					pausedResumeHeight: Math.round(
+						resume?.getBoundingClientRect().height ?? 0,
+					),
+					pausedResumeText: resume?.textContent?.trim() ?? null,
+				};
+			});
+		await s.shot(desk, { name: 'ride-status-paused', extra: line });
 	},
 	{ once: true },
 );
