@@ -20,6 +20,7 @@ func (h *Hub) handleMessage(c *client, rm *channelState, channel string, rider p
 		if rm.claimSensors(c, *msg.Sensors) {
 			rm.announcePairing(rider.ID)
 		}
+		rm.announcePairingFirst(c)
 	}
 	if msg.Poke != nil {
 		h.poke(c, rm, rider, *msg.Poke)

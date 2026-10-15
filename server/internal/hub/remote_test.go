@@ -136,3 +136,16 @@ func TestGearStateFromANonHolderIsDropped(t *testing.T) {
 		t.Errorf("the holder heard %+v from a screen that does not hold the trainer", got)
 	}
 }
+
+func TestALateScreenIsToldWhatTheTrainerHolderHolds(t *testing.T) {
+	r := newRemoteRig(t)
+	late := &client{rider: protocol.Rider{ID: "jan"}, tab: "late", out: make(chan []byte, 8)}
+	r.rm.join(late)
+	r.h.handleMessage(late, r.rm, "test", late.rider, protocol.ClientMessage{Sensors: &protocol.SensorClaim{Tab: "late"}})
+	r.rm.mu.Lock()
+	got, queued := r.rm.pendingPairing[late]
+	r.rm.mu.Unlock()
+	if _, held := got.Elsewhere["trainer"]; !queued || !held {
+		t.Fatalf("the late screen was queued %+v (queued %v), want the trainer held elsewhere", got, queued)
+	}
+}
