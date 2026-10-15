@@ -154,12 +154,6 @@
 	// The climb card on a road (#3645): CLIMB opens by itself, and says so.
 	const climb = $derived(climbView(skyline));
 	watchClimbCues(() => climb);
-	const rideWorld = () =>
-		import('$lib/world/RideWorld.svelte').catch((err: unknown) => {
-			console.error('world: the renderer did not load', err);
-			world.fail('build-failed');
-			throw err;
-		});
 
 	// The HUD feed (ADR-0041): what this screen shows, once a second, for a
 	// second window to mirror — the shell's overlay, or another tab.
@@ -292,7 +286,7 @@
 {/snippet}
 
 {#snippet road()}
-	{#await rideWorld() then { default: RideWorld }}
+	{#await world.load() then { default: RideWorld }}
 		{#if session.road}
 			{@const on = session.road}
 			<RideWorld

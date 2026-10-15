@@ -211,6 +211,7 @@ describe('SimulatedTrainer', () => {
 			expect(samples.slice(-10).map((s) => s.watts)).toEqual(
 				Array(10).fill(250),
 			);
+			expect(samples.at(-1)?.heartRate).toBe(153);
 		} finally {
 			vi.unstubAllGlobals();
 		}

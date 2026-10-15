@@ -72,14 +72,16 @@ test('a road ridden once races its ghost from the start', async ({ page }) => {
 	await expect(computer).toHaveAttribute('data-page', 'climb', {
 		timeout: 15_000,
 	});
-	await computer.getByRole('button', { name: 'RIDE page' }).click();
-	await expect(computer.locator('[data-field=distance]')).toBeVisible({
+	await computer
+		.getByRole('button', { name: /(previous|next) page, RIDE/ })
+		.click();
+	await expect(computer.locator('[data-field=speed]')).toBeVisible({
 		timeout: 15_000,
 	});
 	await page.waitForTimeout(A_MINUTE_MS);
 	await expect(split).toHaveCount(0);
 	await expect(page.getByRole('alert')).toHaveCount(0);
-	await page.getByRole('button', { name: /^Save at km / }).click();
+	await page.getByRole('button', { name: 'End ride' }).click();
 	await expect(page.getByText('See your ride')).toBeVisible({
 		timeout: 20_000,
 	});
@@ -91,7 +93,9 @@ test('a road ridden once races its ghost from the start', async ({ page }) => {
 	await expect(computer).toHaveAttribute('data-page', 'climb', {
 		timeout: 15_000,
 	});
-	await computer.getByRole('button', { name: 'RIDE page' }).click();
+	await computer
+		.getByRole('button', { name: /(previous|next) page, RIDE/ })
+		.click();
 	await expect(split).toBeVisible({ timeout: 15_000 });
 	await expect(split).toContainText('vs last');
 	// The same simulated watts on the same road is level: "0:00", unsigned.

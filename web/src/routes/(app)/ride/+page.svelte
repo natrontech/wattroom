@@ -211,7 +211,10 @@
 			const res = await fetch(`/fixtures/${replayName}.json`);
 			if (!res.ok) throw new Error(`No fixture named ${replayName}.`);
 			const fixture = await res.json();
-			await begin(new SimulatedTrainer({ replay: fixture.samples }));
+			const replaying = new SimulatedTrainer({ replay: fixture.samples });
+			// A free ride on a road takes the trainer as the card's Start does.
+			if (kind === 'free' && road) start(replaying);
+			else await begin(replaying);
 		} catch (cause) {
 			error = cause instanceof Error ? cause.message : String(cause);
 		}

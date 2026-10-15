@@ -73,6 +73,20 @@ describe('a free ride on a road, alone at /ride?road= (#3027)', () => {
 		dispose();
 	});
 
+	it('rides on with another trainer, the road carrying on (#1847)', async () => {
+		const { free, solo, dispose } = await riding('grade');
+		await vi.advanceTimersByTimeAsync(5000);
+		const next = new SimulatedTrainer({ baseWatts: 200, rng: () => 0.5 });
+		await next.connect();
+		solo.repair(next);
+		expect(solo.trainer).toBe(next);
+		const at = free.road!.m;
+		await vi.advanceTimersByTimeAsync(5000);
+		expect(free.road!.m).toBeGreaterThan(at);
+		await solo.end();
+		dispose();
+	});
+
 	it('holds ERG by the road in watts mode', async () => {
 		const { trainer, solo, dispose } = await riding('watts');
 		await vi.advanceTimersByTimeAsync(10_000);

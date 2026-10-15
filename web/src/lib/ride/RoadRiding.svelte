@@ -13,35 +13,28 @@
 	import { FtmsTrainer } from '$lib/ble/ftms';
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { formatClock } from '$lib/format';
+	import { formatClock, formatKm } from '$lib/format';
 	import { createProfileStore } from '$lib/profile.svelte';
-	import type { FreeMode } from '$lib/ride/free-ride-controls';
-	import { createFreeRide } from '$lib/ride/free-ride.svelte';
-	import GearShift from '$lib/ride/GearShift.svelte';
+	import { createRideFlags } from '$lib/ride/flags.svelte';
+	import { createFreeRide, freeRideLabel } from '$lib/ride/free-ride.svelte';
+	import FreeRiding from '$lib/ride/FreeRiding.svelte';
 	import { guardLeaving } from '$lib/ride/leave-guard.svelte';
 	import { createGhostSplit } from '$lib/ride/ghost-split.svelte';
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
 	import { bindShiftKeys } from '$lib/ride/keys';
-	import { modeLine } from '$lib/ride/mode-copy';
-	import RoadEnd from '$lib/ride/RoadEnd.svelte';
-	import RideNarrator from '$lib/ride/RideNarrator.svelte';
+	import { carriesOn } from '$lib/ride/road-end';
 	import SessionSummary from '$lib/ride/SessionSummary.svelte';
-	import { endRideLabel, roadEndOffered } from '$lib/ride/road-end';
-	import RoadPick from '$lib/ride/RoadPick.svelte';
-	import Skyline from '$lib/ride/Skyline.svelte';
-	import { climbView } from '$lib/ride/climb-view';
-	import { watchClimbCues } from '$lib/ride/climb-cues.svelte';
+	import RideFlags from '$lib/ride/RideFlags.svelte';
 	import type { RideableRoute } from '$lib/ride/roads';
 	import { rememberRoad } from '$lib/ride/last-ride';
 	import type { Trainer } from '$lib/ble/trainer';
 	import { createSoloRoadRide } from '$lib/ride/solo-road.svelte';
 	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
-	import BikeComputer from '$lib/session/BikeComputer.svelte';
-	import { roadContext } from '$lib/session/computer-pages';
-	import Instrument from '$lib/session/Instrument.svelte';
 	import SensorOverview from '$lib/session/SensorOverview.svelte';
 	import { heldTrainer } from '$lib/session/sensor-status';
+	import TvOverlay from '$lib/session/TvOverlay.svelte';
 	import { sensors } from '$lib/sensors.svelte';
+	import { skylineOf } from '$lib/workout/road-workout';
 	import { SIGNAL_LOST_MS } from '$lib/workout/ride-state';
 
 	let {
@@ -71,6 +64,9 @@
 	const ghost = createGhostSplit(() => free);
 	const trainers = soloTrainer();
 	const held = $derived(heldTrainer(trainers, channelConnection.current?.ride));
+	// The ⚑ and what it sends afterwards (#52), as a workout ride has them.
+	const flags = createRideFlags('/ride');
+	let tv = $state(false);
 
 	let watts = $state(0);
 	let ended = $state(false);
@@ -86,25 +82,18 @@
 		const off = trainer.onSample((s) => {
 			watts = s.watts;
 			lastAt = Date.now();
+			flags.recorder.tick({
+				watts: s.watts,
+				cadence: s.cadence,
+				target: free.targetWatts,
+				state: free.recording ? 'riding' : 'armed',
+			});
 		});
 		return () => {
 			clearInterval(tick);
 			off();
 		};
 	});
-	// The road as the Skyline and the climb card read it (#3059, #3645).
-	const skyline = $derived(
-		free.road
-			? {
-					road: route.road,
-					m: free.road.m,
-					mps: free.road.virtualMps,
-					reverse: free.road.reverse,
-				}
-			: null,
-	);
-	const climb = $derived(climbView(skyline));
-	watchClimbCues(() => climb);
 	const stale = $derived(!!solo.trainer && now - lastAt > SIGNAL_LOST_MS);
 	// Easier / Harder from the keys and any clicker, wherever the pair and its
 	// hint are drawn (#3329, #3661).
@@ -117,12 +106,14 @@
 	function start(at?: number, trainer = trainers.handOff()) {
 		if (!trainer) return;
 		solo.start(trainer, at);
+		flags.riding(trainer.name, freeRideLabel(route));
 		// The card's “your last road” (#3671); a crew's road is not yours.
 		if (!route.borrowed) rememberRoad(route.id);
 	}
 	untrack(() => handed && start(from, handed));
 	async function end() {
 		ended = true;
+		tv = false;
 		await solo.end();
 	}
 	// Leaving the page is not End ride: the trainer is let go, and the crash
@@ -138,20 +129,31 @@
 		if (solo.trainer) void solo.trainer.disconnect();
 	});
 
-	const modes: { id: FreeMode; label: string }[] = [
-		{ id: 'grade', label: 'Road' },
-		{ id: 'watts', label: 'Watts' },
-	];
-	const value = $derived(
-		free.mode === 'watts'
-			? `${free.targetWatts} W`
-			: `${(free.road?.roadPct ?? 0).toFixed(1)} %`,
-	);
+	// You, in the shape the TV renders (#1632): a roster of one.
+	const tvRider = $derived({
+		id: 'you',
+		name: 'You',
+		ftp: profile.current.ftp,
+		kg: profile.current.kg,
+		you: true,
+		coach: false,
+		cameraOn: false,
+		muted: false,
+		speaking: false,
+		hue: 0,
+		watts,
+		cadence: solo.metrics?.cadence ?? 0,
+		hr: solo.metrics?.heartRate ?? 0,
+		stale,
+		target: free.targetWatts,
+		trace: [],
+	});
 </script>
 
-{#if solo.trainer && !ended}
-	<RideNarrator view={skyline} {watts} ftp={profile.current.ftp} {stale} />
-{/if}
+<svelte:window
+	onkeydown={(e) => e.key === 'Escape' && (tv = false)}
+	onpagehide={() => flags.flush(true)}
+/>
 
 {#if ended && free.outcome && !('short' in free.outcome)}
 	{@const outcome = free.outcome}
@@ -167,6 +169,15 @@
 		savedXp={'saved' in outcome ? outcome.saved.xp : undefined}
 	>
 		{#snippet actions()}
+			{#if free.road && carriesOn(free.road)}
+				<!-- Partway up your own road, the offer is this card's (#3205, TARGETS
+				     ride-road-end 2): the same road from where you stopped. -->
+				<a
+					href="/ride?road={route.id}&from={Math.round(free.road.m)}"
+					class="btn btn-secondary"
+					>Carry on from km {formatKm(free.road.m)} next time</a
+				>
+			{/if}
 			{#if 'saved' in outcome}
 				<a href="/history/{outcome.saved.id}" class="btn btn-secondary"
 					>See your ride</a
@@ -183,6 +194,56 @@
 			{/if}
 		{/snippet}
 	</SessionSummary>
+{:else if solo.trainer}
+	<!-- The riding surface (ADR-0046, #3669): the road free ride rides what a
+	     workout on a road rides, world and all. The page's gutters are undone
+	     where the world fills the frame, as RidingScreen does. -->
+	<FreeRiding
+		{free}
+		{watts}
+		cadence={solo.metrics?.cadence ?? 0}
+		hr={solo.metrics?.heartRate ?? 0}
+		kg={profile.current.kg}
+		lthr={profile.current.lthr}
+		ftp={profile.current.ftp}
+		{stale}
+		gear={gearsEnabled() ? solo.gear : undefined}
+		shift={solo.shift}
+		cassette={!profile.current.singleSpeed}
+		split={ghost.split ?? undefined}
+		onend={() => void end()}
+		onrepair={(next) => solo.repair(next)}
+		onflag={() => flags.recorder.flag()}
+		ontv={() => (tv = true)}
+		worldClass="-mx-4 -my-5 sm:-mx-6"
+	/>
+	{#if tv}
+		<!-- The TV at three metres (#1632): a free ride has no block, so the
+		     frame reads the road ahead, your numbers and the clock. -->
+		<TvOverlay
+			stats={free.live}
+			skyline={free.road
+				? skylineOf(
+						{
+							road: free.road.profile,
+							along: free.road.m,
+							mps: free.road.virtualMps,
+							startM: 0,
+						},
+						[],
+						profile.current.ftp,
+					)
+				: null}
+			riders={[tvRider]}
+			segments={[]}
+			total={0}
+			elapsed={free.seconds}
+			block={null}
+			placeName={freeRideLabel(route)}
+			live
+			onExit={() => (tv = false)}
+		/>
+	{/if}
 {:else}
 	<div class="m-auto flex w-full max-w-2xl flex-col gap-6">
 		<header class="flex flex-wrap items-center gap-3">
@@ -203,7 +264,7 @@
 			>
 		</header>
 
-		{#if !solo.trainer && !ended}
+		{#if !ended}
 			<SensorOverview
 				trainer={{
 					state: held.state,
@@ -242,87 +303,16 @@
 					ride.
 				</p>
 			{/if}
-		{:else if solo.trainer}
-			{#if roadEndOffered(free, false)}
-				<RoadEnd {free} onsave={() => void end()} />
-			{/if}
-			<Instrument
-				{watts}
-				{stale}
-				idle={!solo.trainer}
-				target={free.mode === 'watts' ? free.targetWatts : 0}
-				ftp={profile.current.ftp}
-				kg={profile.current.kg}
-			/>
-			<div class="flex flex-wrap items-center justify-center gap-4">
-				<div
-					class="border-muted/20 flex rounded-lg border p-1"
-					role="group"
-					aria-label="what you set"
-				>
-					{#each modes as mode (mode.id)}
-						<button
-							onclick={() => free.setMode(mode.id)}
-							aria-pressed={free.mode === mode.id}
-							class="btn btn-ride {free.mode === mode.id
-								? 'btn-secondary'
-								: 'btn-ghost'}">{mode.label}</button
-						>
-					{/each}
-				</div>
-				<span
-					class="font-display w-28 text-center text-3xl font-bold tabular-nums"
-					aria-live="polite">{value}</span
-				>
-			</div>
-			<p class="text-muted -mt-3 text-center text-sm">
-				{modeLine(free.mode, profile.current.singleSpeed, true)}
-			</p>
-			<RoadPick {free} />
-			{#if free.mode === 'grade' && gearsEnabled()}
-				<GearShift
-					shift={solo.shift}
-					gear={solo.gear}
-					off={null}
-					resetAt={0}
-					cassette={!profile.current.singleSpeed}
-				/>
-			{/if}
-			<!-- The bike computer, as a ride in a channel has it (ADR-0046, #3628):
-			     the road's speed, grade and distance on RIDE. -->
-			<!-- The instrument above is the head: RIDE leaves the watts to it. -->
-			<BikeComputer
-				head
-				{watts}
-				cadence={solo.metrics?.cadence ?? 0}
-				hr={solo.metrics?.heartRate ?? 0}
-				kg={profile.current.kg}
-				lthr={profile.current.lthr}
-				{stale}
-				stats={free.live}
-				gear={free.mode === 'grade' && gearsEnabled()
-					? solo.gear.label
-					: undefined}
-				{...free.road && roadContext(free.road)}
-				split={ghost.split ?? undefined}
-				{climb}
-				climbOpens
-			/>
-			{#if skyline}
-				<!-- The horizon (#3059): the road ahead and your dot. -->
-				<div class="h-40">
-					<Skyline {...skyline} />
-				</div>
-			{/if}
-			<button onclick={() => void end()} class="btn btn-primary btn-ride"
-				>{endRideLabel(free)}</button
-			>
 		{:else if free.saving}
 			<p class="text-muted text-sm" role="status">Saving your ride…</p>
 		{:else}
 			<p class="text-muted text-sm" role="status">
 				Under a minute — nothing to save.
 			</p>
+		{/if}
+		{#if ended}
+			<!-- The flags the ride raised, sent with their notes (#52). -->
+			<RideFlags {flags} />
 		{/if}
 	</div>
 {/if}
