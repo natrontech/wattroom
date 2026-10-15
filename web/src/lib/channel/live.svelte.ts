@@ -3,6 +3,7 @@ import type {
 	ControlRoute,
 	Moved,
 	Poke,
+	RemoteCommand,
 	RiderMetrics,
 	ChannelEvent,
 	SensorClaim,
@@ -101,8 +102,13 @@ export function createChannelLive(address: PlaceAddress) {
 	// A refusal a surface shows beside its own control, by its code's prefix
 	// (errors.md): the jukebox's, the roadside's. Each stays six seconds.
 	const routed = $state<
-		Record<'jukebox' | 'roadside', { message: string; at: number } | null>
-	>({ jukebox: null, roadside: null });
+		Record<
+			'jukebox' | 'roadside' | 'remote',
+			{ message: string; at: number } | null
+		>
+	>({ jukebox: null, roadside: null, remote: null });
+	// Who wants a phone remote's press, off the tick like pairing (#3217).
+	const remoteListeners = new Set<(cmd: RemoteCommand) => void>();
 	// What the hub says this tab holds, and where the rider's other screens
 	// hold the rest (#610). Server truth: a tab learns here that its claim
 	// was refused, so nothing renders "paired" off its own click alone.
@@ -387,6 +393,7 @@ export function createChannelLive(address: PlaceAddress) {
 			if (msg.poke?.kind === PokeKindBottle) lastBottle = msg.poke;
 			else if (msg.poke) lastPoke = msg.poke;
 			if (msg.moved) lastMove = msg.moved;
+			if (msg.remote) for (const hear of remoteListeners) hear(msg.remote);
 			if (msg.pairing) {
 				// Off the tick by design (#610) — it is addressed to this
 				// rider's sockets, not to the channel.
@@ -441,7 +448,7 @@ export function createChannelLive(address: PlaceAddress) {
 			// enough to read (ticks arrive every second; clearing on each one
 			// made refusals subliminal — audit #219).
 			if (msg.error) {
-				const surface = (['jukebox', 'roadside'] as const).find((s) =>
+				const surface = (['jukebox', 'roadside', 'remote'] as const).find((s) =>
 					msg.error!.code.startsWith(`${s}_`),
 				);
 				if (surface)
@@ -455,7 +462,7 @@ export function createChannelLive(address: PlaceAddress) {
 			} else {
 				const now = Date.now();
 				if (refusal && now - refusalAt > 6_000) refusal = null;
-				for (const s of ['jukebox', 'roadside'] as const)
+				for (const s of ['jukebox', 'roadside', 'remote'] as const)
 					if (routed[s] && now - routed[s].at > 6_000) routed[s] = null;
 			}
 		};
@@ -575,6 +582,11 @@ export function createChannelLive(address: PlaceAddress) {
 		},
 		get lastBottle() {
 			return lastBottle;
+		},
+		/** Hear every remote press addressed to this tab; returns the way out. */
+		onRemote(hear: (cmd: RemoteCommand) => void) {
+			remoteListeners.add(hear);
+			return () => void remoteListeners.delete(hear);
 		},
 		get lastMove() {
 			return lastMove;

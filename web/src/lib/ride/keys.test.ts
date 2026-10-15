@@ -1,6 +1,12 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { bindShiftKeys, shiftOf, shiftsGears } from './keys';
+import {
+	bindShiftKeys,
+	createRemoteRunner,
+	shiftOf,
+	shiftsGears,
+	TALK_KEEPALIVE_MS,
+} from './keys';
 import { createShiftDriver, SHIFTER } from './shifter';
 
 const key = (init: KeyboardEventInit) => ({
@@ -148,5 +154,63 @@ describe('a held shift key', () => {
 		vi.advanceTimersByTime(SHIFTER.minGapMs);
 		window.dispatchEvent(taken);
 		expect(moves).toEqual([-1]);
+	});
+});
+
+describe('the phone remote (#3217)', () => {
+	beforeEach(() => vi.useFakeTimers());
+	afterEach(() => vi.useRealTimers());
+
+	const rig = () => {
+		const driver = { press: vi.fn(), release: vi.fn() };
+		const talk = vi.fn();
+		const page = vi.fn();
+		return {
+			driver,
+			talk,
+			page,
+			...createRemoteRunner(driver, talk, { page }),
+		};
+	};
+
+	it('shifts with a tap: a press and its release together', () => {
+		const { driver, run } = rig();
+		run({ action: 'harder' });
+		run({ action: 'easier' });
+		expect(driver.press.mock.calls).toEqual([
+			[1, 'remote'],
+			[-1, 'remote'],
+		]);
+		expect(driver.release).toHaveBeenCalledTimes(2);
+	});
+
+	it('runs the other keymap actions it is given and ignores the rest', () => {
+		const { page, run } = rig();
+		run({ action: 'page' });
+		run({ action: 'camera' });
+		expect(page).toHaveBeenCalledTimes(1);
+	});
+
+	it('lets go of Talk 1 s after the last beat, not before', () => {
+		const { talk, run } = rig();
+		run({ action: 'talk-down' });
+		vi.advanceTimersByTime(TALK_KEEPALIVE_MS - 100);
+		run({ action: 'talk-keepalive' });
+		vi.advanceTimersByTime(TALK_KEEPALIVE_MS - 100);
+		expect(talk).toHaveBeenLastCalledWith(true);
+		vi.advanceTimersByTime(200);
+		expect(talk).toHaveBeenLastCalledWith(false);
+		expect(vi.getTimerCount()).toBe(0);
+	});
+
+	it('lets go of Talk at once on talk-up, and a late beat does not reopen it', () => {
+		const { talk, run } = rig();
+		run({ action: 'talk-down' });
+		run({ action: 'talk-up' });
+		expect(talk).toHaveBeenLastCalledWith(false);
+		talk.mockClear();
+		run({ action: 'talk-keepalive' });
+		vi.advanceTimersByTime(TALK_KEEPALIVE_MS * 2);
+		expect(talk).not.toHaveBeenCalled();
 	});
 });

@@ -1,6 +1,7 @@
 import { isTyping } from '$lib/keys';
 import { createRideShift } from '$lib/ride/ride-shift';
 import type { ShiftDir, ShiftDriver } from '$lib/ride/shifter';
+import type { RemoteCommand } from '$lib/protocol';
 
 /**
  * Easier / Harder from the keyboard (ADR-0084, #3329), and from anything that
@@ -84,5 +85,61 @@ export function bindRideShift(
 	return () => {
 		unbind();
 		driver.stop();
+	};
+}
+
+/** Talk's hold ends this long after the last beat from the phone (#3217). */
+export const TALK_KEEPALIVE_MS = 1000;
+
+/**
+ * What a phone remote's press does here (#3217): the same inputs the keys
+ * reach, so a command and its key are one path. Easier and Harder are taps,
+ * never holds, because a lost release measured up to 5 phantom shifts. Talk
+ * is held and lets go by itself when the phone goes quiet for a second; the
+ * hub sends talk-up at once when the phone's socket drops. Actions with no
+ * handler (the other keymap actions, #3216) do nothing.
+ */
+export function createRemoteRunner(
+	driver: Pick<ShiftDriver, 'press' | 'release'>,
+	talk: (held: boolean) => void,
+	others: Partial<Record<string, () => void>> = {},
+) {
+	let watchdog: ReturnType<typeof setTimeout> | undefined;
+	const stopTalk = () => {
+		clearTimeout(watchdog);
+		watchdog = undefined;
+		talk(false);
+	};
+	const beat = () => {
+		clearTimeout(watchdog);
+		watchdog = setTimeout(stopTalk, TALK_KEEPALIVE_MS);
+	};
+	return {
+		run({ action }: RemoteCommand) {
+			switch (action) {
+				case 'easier':
+				case 'harder': {
+					const dir: ShiftDir = action === 'harder' ? 1 : -1;
+					driver.press(dir, 'remote');
+					driver.release('remote');
+					break;
+				}
+				case 'talk-down':
+					talk(true);
+					beat();
+					break;
+				case 'talk-keepalive':
+					// A beat with no hold running is a stale one: the release
+					// already landed, and it must not reopen the mic.
+					if (watchdog) beat();
+					break;
+				case 'talk-up':
+					stopTalk();
+					break;
+				default:
+					others[action]?.();
+			}
+		},
+		stop: stopTalk,
 	};
 }
