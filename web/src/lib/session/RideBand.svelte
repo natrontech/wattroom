@@ -98,7 +98,7 @@
 			{#if context}
 				<p
 					data-testid="ride-context"
-					class="ride-label group-has-[[data-status-line]]/status:hidden"
+					class="ride-label truncate group-has-[[data-status-line]]/status:hidden"
 				>
 					{context}
 				</p>
