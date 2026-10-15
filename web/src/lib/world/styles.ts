@@ -185,12 +185,14 @@ export function terrainMaterial(style: Style): THREE.ShaderMaterial {
 				vec3 n = normalize(cross(dFdx(vPos), dFdy(vPos)));
 				float dist = length(vPos - cameraPosition);
 				vec3 base = vColor;
-				// Slope-keyed rock: a face steeper than the earthworks' 45 degrees (n.y 0.71) reads as stone,
+				// Slope-keyed rock: a face from about 30 degrees up, solid rock by the earthworks' 45 (n.y 0.71) reads as stone,
 				// textured along the face over the horizontal axis it leans on, never the ground's colour
 				// smeared down a vertical.
-				float steep = smoothstep(0.80, 0.62, n.y + (vnoise(vPos.xz * 0.15 + vPos.y * 0.1) - 0.5) * 0.12); // a ragged seam, never a ruled line
+				float steep = smoothstep(0.86, 0.66, n.y + (vnoise(vPos.xz * 0.15 + vPos.y * 0.1) - 0.5) * 0.12); // a ragged seam, never a ruled line
+				base *= 0.9 + 0.2 * vnoise(vPos.xz * 0.7 + vPos.y * 0.4); // no facet of ground is one flat colour
 				if (steep > 0.0) {
-					vec2 fuv = vec2(abs(n.x) > abs(n.z) ? vPos.z : vPos.x, vPos.y);
+					vec2 along = normalize(vec2(-n.z, n.x) + vec2(1e-4, 0.0)); // the face's own horizontal, so courses never shear
+					vec2 fuv = vec2(dot(vPos.xz, along), vPos.y);
 					vec2 blk = fuv / vec2(2.4, 1.1); // courses 1.1 m high, blocks 2.4 m long, each course offset
 					float row = floor(blk.y);
 					blk.x += hash(vec2(row, 3.0));

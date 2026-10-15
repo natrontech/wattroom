@@ -14,7 +14,7 @@ describe('the ground material keys rock to slope (#3728)', () => {
 
 	it('mixes rock in past the earthworks’ 45° face, textured along the face', () => {
 		const f = m.fragmentShader;
-		expect(f).toContain('smoothstep(0.80, 0.62, n.y');
+		expect(f).toContain('smoothstep(0.86, 0.66, n.y');
 		expect(f).toContain('mix(base, stone, steep)');
 		expect(f).toContain('vPos.y');
 	});
