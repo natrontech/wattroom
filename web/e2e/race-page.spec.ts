@@ -79,7 +79,9 @@ test('a race shows its RACE page and calls it on the team-car radio', async ({
 		await expect(page.getByTestId('race-radio')).toBeVisible({
 			timeout: COUNTDOWN_MS + 30_000,
 		});
-		await page.getByRole('button', { name: 'RACE page', exact: true }).click();
+		// Docked, the arrows name the page they turn to (D15); RACE is last, so
+		// ← from RIDE reaches it.
+		await page.getByRole('button', { name: 'previous page, RACE' }).click();
 		await expect(page.getByTestId('bike-computer')).toHaveAttribute(
 			'data-page',
 			'race',

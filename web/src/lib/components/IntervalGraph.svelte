@@ -27,6 +27,7 @@
 		compact = false,
 		marker = true,
 		tv = false,
+		ride = false,
 		ceiling = CEILING,
 		selectedPath = null,
 		onSelect,
@@ -47,6 +48,8 @@
 		marker?: boolean;
 		/** TV mode (#3407): the FTP label reads at 3 m, like every TV word. */
 		tv?: boolean;
+		/** On a riding surface the FTP label is SPEC's 24 px word (TARGETS G4). */
+		ride?: boolean;
 		/**
 		 * Top of the vertical scale, as a fraction of FTP. The ramp test rides
 		 * far above the FTP it exists to correct, so 1.5 × FTP flat-tops its
@@ -69,7 +72,8 @@
 	} = $props();
 
 	const W = VIEW.width;
-	const H = VIEW.height;
+	// A riding surface's plot fills its panel: no 8-unit margin under the baseline.
+	const H = $derived(ride ? VIEW.base + 1 : VIEW.height);
 	const BASE = VIEW.base;
 
 	interface Drag {
@@ -263,11 +267,11 @@
 </script>
 
 <!-- On the TV the graph takes what height its panel is given (#3677). -->
-<div class="relative {tv ? 'h-full' : ''}">
+<div class="relative {tv || ride ? 'h-full' : ''}">
 	<svg
 		bind:this={svg}
 		viewBox="0 0 {W} {H}"
-		class="w-full {compact ? 'h-14' : tv ? 'h-full' : 'h-28'}"
+		class="w-full {compact ? 'h-14' : tv || ride ? 'h-full' : 'h-28'}"
 		preserveAspectRatio="none"
 	>
 		{#each blocks as block, i (i)}
@@ -382,7 +386,9 @@
 		<span
 			class="text-muted pointer-events-none absolute right-1.5 -translate-y-full font-mono tracking-widest {tv
 				? 'text-[3vh] leading-none'
-				: 'text-[9px]'}"
+				: ride
+					? 'text-2xl leading-none'
+					: 'text-[9px]'}"
 			style="top: {(y(1) / H) * 100}%">FTP</span
 		>
 	{/if}

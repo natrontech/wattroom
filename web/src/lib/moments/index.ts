@@ -12,7 +12,7 @@ import { DUR, HOLD_ANNOUNCE } from '$lib/motion/tokens';
  */
 
 /** Lower is more important (#3210). A higher moment cuts a lower one short. */
-const PRIORITY = { finish: 1, result: 2, summit: 3, pr: 4 } as const;
+const PRIORITY = { finish: 1, result: 2, summit: 3, pr: 4, dockin: 5 } as const;
 
 /** Same-kind moments this close together are one moment (#3210). */
 export const MERGE_MS = 1500;
@@ -36,7 +36,9 @@ export type Moment<P = unknown> =
 			category: 'HC' | '1' | '2' | '3' | '4' | null;
 			payload: P;
 	  }
-	| { kind: 'pr'; payload: P };
+	| { kind: 'pr'; payload: P }
+	/** The count-in's slots flying to their docks (#3087): cue the count-in's first frame, hit when `enter` ends. */
+	| { kind: 'dockin'; payload: P };
 
 export type MomentKind = Moment['kind'];
 

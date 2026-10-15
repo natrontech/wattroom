@@ -88,7 +88,7 @@ test('a rider rides their own workout beside the session, and nothing of it coun
 	// Openers is twelve blocks and 35 minutes; the session's Recovery Spin
 	// is three and 40 — B's screen, and B's trainer, are on B's.
 	await expect(b.getByText('block 1 of 12')).toBeVisible();
-	await expect(b.getByText(/\/ 35:00/)).toBeVisible();
+	await expect(b.getByText(/of 35:00/)).toBeVisible();
 	await expect(
 		b.getByRole('link', { name: 'Join the ride' }),
 		'the session beside B is not offered',

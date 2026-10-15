@@ -8,7 +8,6 @@
 			"web/src/lib/components/TabularFigures.svelte",
 			"web/src/lib/ride/ClimbProfile.svelte",
 			"web/src/lib/session/computer-pages.ts",
-			"web/src/lib/session/RideHeader.svelte",
 			"web/src/lib/components/IntervalGraph.svelte",
 			"web/src/lib/session/Instrument.svelte",
 			"web/src/lib/ride/RidingScreen.svelte"

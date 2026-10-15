@@ -110,8 +110,9 @@ test('the numbers row fits 360px once heart rate and execution are on it', async
 	const wide = () => body.evaluate((el) => el.scrollWidth - el.clientWidth);
 	expect(await wide(), 'RIDE is wider than the window').toBe(0);
 	// Execution lives on POWER under a head (D17) and counts from the first
-	// scored second: past the 30 s warm-up.
-	await page.getByRole('button', { name: 'POWER page' }).click();
+	// scored second: past the 30 s warm-up. Docked, the arrows are the named
+	// way to turn a page (D15); the dots are for the eye.
+	await page.getByRole('button', { name: 'next page, POWER' }).click();
 	await expect(row.getByText('Execution', { exact: true })).toBeVisible({
 		timeout: 45_000,
 	});

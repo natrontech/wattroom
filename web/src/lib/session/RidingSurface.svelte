@@ -16,6 +16,8 @@
 	 * seat (D12). A shared screen takes the stage while the world holds.
 	 */
 	import type { Snippet } from 'svelte';
+	import { createMoments } from '$lib/moments';
+	import { prefersReducedMotion } from '$lib/motion';
 	import { COLUMN_SEAT, offerSeat } from '$lib/channel/stage-slot.svelte';
 	import {
 		CORRIDOR,
@@ -34,7 +36,7 @@
 	let {
 		header,
 		headerFit = false,
-		status,
+		own = false,
 		focus,
 		numbers,
 		crew,
@@ -42,6 +44,7 @@
 		world,
 		moment,
 		centre,
+		dockIn = false,
 		seat,
 		stage = false,
 		clean = false,
@@ -52,8 +55,8 @@
 		header: Snippet;
 		/** Slot 1 is its content's size (the box table), not the strip's width. */
 		headerFit?: boolean;
-		/** The flat layout's status row; over the world it is slot 1's first line, the caller's. */
-		status?: Snippet;
+		/** The caller draws its own panels in the header and focus slots, flat (the free ride's, #3893). */
+		own?: boolean;
 		focus: Snippet;
 		numbers?: Snippet;
 		crew?: Snippet;
@@ -64,6 +67,8 @@
 		moment?: Snippet;
 		/** The one thing the corridor holds: the count-in's digit (TARGETS ride-countin 2). */
 		centre?: Snippet;
+		/** The count-in is on: the slots fly to their docks through the moments queue (#3087). */
+		dockIn?: boolean;
 		/**
 		 * A session's jukebox seat, offered to the player while the people
 		 * column is folded away (#3668), with the now-playing line under it.
@@ -79,6 +84,28 @@
 		cleanLine?: string;
 		class?: string;
 	} = $props();
+
+	// The dock-in is a queued moment: cue the count-in's first frame, hit when
+	// its `enter` ends. Reduced motion never stages it: the slots stand held.
+	let docking = $state(false);
+	$effect(() => {
+		if (!dockIn || !world || prefersReducedMotion.current) return;
+		const queue = createMoments({ now: () => performance.now() });
+		queue.stage({ kind: 'dockin', payload: null });
+		const step = () => {
+			for (const e of queue.tick())
+				if (e.kind === 'dockin') docking = e.stage === 'enter';
+		};
+		step();
+		const id = setInterval(step, 50);
+		return () => {
+			clearInterval(id);
+			docking = false;
+		};
+	});
+	const dock = (i: number, x: string, y: string) =>
+		docking ? `--dock-i:${i};--dock-x:${x};--dock-y:${y};` : '';
+	const dockClass = $derived(docking ? 'dock-in' : '');
 
 	// What slot 1 leaves free decides where the moment card goes (D12): a
 	// measured fit, not a breakpoint (Jan, 2026-10-06).
@@ -108,7 +135,7 @@
 			<!-- In the corridor's upper half, above where the chase camera
 			     draws you (RIDER_BOX), as v3-motion's GO stands. -->
 			<div
-				class="absolute grid items-start justify-items-center pt-[6%]"
+				class="absolute grid items-start justify-items-center pt-[9%]"
 				style={place(CORRIDOR)}
 			>
 				{@render centre()}
@@ -129,8 +156,12 @@
 		{:else}
 			<div
 				data-dock="header"
-				class={panel}
-				style="left:{INSET_PX}px;top:{INSET_PX}px;{headerFit
+				class="{panel} {dockClass}"
+				style="{dock(
+					0,
+					'0',
+					'-40px',
+				)}left:{INSET_PX}px;top:{INSET_PX}px;{headerFit
 					? 'width:fit-content;max-width'
 					: 'width'}:min({BAND_MAX_PX}px, calc({seatLeft} - {INSET_PX +
 					GAP_PX}px))"
@@ -185,12 +216,20 @@
 					</div>
 				{/if}
 				{#if !stage}
-					<div data-dock="focus" class="ride-panel [&:not(:has(*))]:hidden">
+					<div
+						data-dock="focus"
+						class="ride-panel [&:not(:has(*))]:hidden {dockClass}"
+						style={dock(1, '40px', '0')}
+					>
 						{@render focus()}
 					</div>
 				{/if}
 				{#if crew}
-					<div data-dock="crew" class="ride-panel [&:not(:has(*))]:hidden">
+					<div
+						data-dock="crew"
+						class="ride-panel [&:not(:has(*))]:hidden {dockClass}"
+						style={dock(2, '40px', '0')}
+					>
 						{@render crew()}
 					</div>
 				{/if}
@@ -205,8 +244,8 @@
 			<!-- Your numbers stand on the Skyline at the left edge. -->
 			<div
 				data-dock="numbers"
-				class="{panel} w-fit"
-				style="left:{INSET_PX}px;bottom:{INSET_PX +
+				class="{panel} {dockClass} w-fit"
+				style="{dock(3, '-40px', '0')}left:{INSET_PX}px;bottom:{INSET_PX +
 					(stage ? STRIP_PX : SKYLINE_PX) +
 					GAP_PX}px;{side}"
 			>
@@ -216,8 +255,12 @@
 		{#if horizon}
 			<div
 				data-dock="horizon"
-				class="{panel} overflow-hidden"
-				style="left:{INSET_PX}px;right:{INSET_PX}px;bottom:{INSET_PX}px;height:{stage
+				class="{panel} {dockClass} overflow-hidden"
+				style="{dock(
+					4,
+					'0',
+					'40px',
+				)}left:{INSET_PX}px;right:{INSET_PX}px;bottom:{INSET_PX}px;height:{stage
 					? STRIP_PX
 					: SKYLINE_PX}px"
 			>
@@ -226,17 +269,49 @@
 		{/if}
 	</div>
 {:else}
-	<div
-		class="grid min-h-0 grid-cols-[minmax(0,1fr)] grid-rows-[auto_auto_1fr_auto_auto_auto] {extra}"
-	>
-		<div class="row-start-1 min-w-0">{@render header()}</div>
-		{#if status}<div class="row-start-2 min-w-0">{@render status()}</div>{/if}
-		<!-- The focus fills its row: one stretched cell, allowed to shrink below its content. -->
-		<div class="row-start-3 grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)]">
+	<!-- No world: the same slots as flat panels in one column (#3670, TARGETS
+	     ride-workout-flat). Panels touch at one gap, so no band opens between
+	     them: the horizon takes the free height, or the focus does when a
+	     screen has the stage. -->
+	<div class="flex min-h-0 flex-col gap-3 {extra}" data-surface="flat">
+		<div data-dock="header" class="shrink-0 {own ? '' : 'ride-panel'}">
+			{@render header()}
+		</div>
+		<div
+			data-dock="focus"
+			class="{own
+				? ''
+				: 'ride-panel'} min-h-0 overflow-y-auto [&:not(:has(*))]:hidden {stage
+				? 'grow'
+				: 'shrink-0'}"
+		>
 			{@render focus()}
 		</div>
-		{#if numbers}<div class="row-start-4 min-w-0">{@render numbers()}</div>{/if}
-		{#if crew}<div class="row-start-5 min-w-0">{@render crew()}</div>{/if}
-		{#if horizon}<div class="row-start-6 min-w-0">{@render horizon()}</div>{/if}
+		{#if numbers}
+			<!-- One row at content height (TARGETS ride-workout-flat 8): the page
+			     control on its own header line, then the head and the fields packed
+			     left and the trim at the right end. -->
+			<div
+				data-dock="numbers"
+				class="ride-panel relative flex shrink-0 flex-row flex-wrap items-center gap-x-8 gap-y-1 px-4 py-3 [&_[data-testid=bike-computer]]:contents [&_[data-testid=computer-fields]]:flex [&_[data-testid=computer-fields]]:flex-wrap [&_[data-testid=computer-fields]]:gap-x-8 [&_[data-testid=computer-fields]]:gap-y-3 [&_[data-testid=computer-fields]]:border-t-0 [&_[data-testid=computer-fields]]:pt-0 [&_[data-testid=computer-head]]:w-84 [&_[data-testid=computer-head]]:min-w-max [&_[data-testid=computer-head]>div:first-child]:justify-start [&_[data-testid=computer-head]>div:first-child]:gap-x-8 [&_[data-testid=computer-page-row]]:basis-full [&_[data-testid=zone-strip]]:basis-full [&:not(:has(*))]:hidden [&>div]:ml-auto"
+			>
+				{@render numbers()}
+			</div>
+		{/if}
+		{#if crew}
+			<div data-dock="crew" class="ride-panel shrink-0 [&:not(:has(*))]:hidden">
+				{@render crew()}
+			</div>
+		{/if}
+		{#if horizon}
+			<div
+				data-dock="horizon"
+				class="ride-panel flex min-h-28 flex-col overflow-hidden [&:not(:has(*))]:hidden {stage
+					? 'shrink-0'
+					: 'grow'}"
+			>
+				{@render horizon()}
+			</div>
+		{/if}
 	</div>
 {/if}

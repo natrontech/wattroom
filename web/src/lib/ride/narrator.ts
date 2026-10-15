@@ -80,6 +80,8 @@ export function momentLine(e: MomentEvent): string | null {
 			return 'Result in';
 		case 'pr':
 			return 'Personal record';
+		case 'dockin':
+			return null;
 	}
 }
 

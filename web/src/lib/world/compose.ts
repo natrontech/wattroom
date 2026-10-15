@@ -17,6 +17,7 @@ import { DEFAULT_DARK_ID, themeById } from '$lib/themes';
 import { disposeTree } from './dispose';
 import { makeSight } from './materials';
 import { makeRig, type Follow } from './rig';
+import { HOLD_S, type RevealView } from './reveal';
 import { type Route } from '$lib/road/route';
 import { at, leftOf } from '$lib/road/along';
 import {
@@ -46,6 +47,8 @@ export type Hud = {
 	ele: number;
 	toTop: number; // km to the summit, negative once past it
 	riders: { id: string; name: string; you: boolean; d: number; lane: number }[];
+	/** The count-in's shot on this frame (#3087): flying the reveal, or standing on the arch; null off the count-in. */
+	shot: 'flying' | 'still' | null;
 };
 
 export type MountOptions = {
@@ -92,6 +95,12 @@ export type MountOptions = {
 	 * one moment are one frame. `p` is the ride's progress, 0–1, for the light.
 	 */
 	moment?: Moment;
+	/**
+	 * The ride's count-in, a ride's world only (#3087): the seconds left and
+	 * its length, null once it is over. The eye flies a reveal to the start
+	 * arch over it, or stands on the arch under reduced motion (ADR-0079).
+	 */
+	countIn?: () => { left: number; total: number } | null;
 };
 
 export type Moment = { m: number; p: number };
@@ -233,6 +242,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 			trainer: trainerFor(route, you, env),
 			km: you.d / 1000,
 			ele: p.ele,
+			shot,
 			toTop: summit ? (summit.d - lap(you.d)) / 1000 : 0,
 			riders: riders.map((r) => ({
 				id: r.id,
@@ -245,6 +255,22 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	}
 
 	let t = 0;
+	let wallClock = 0;
+	// The count-in's seconds arrive whole from a session: between two of them the shot runs on the frame clock.
+	let counted: { left: number; at: number } | null = null;
+	let shot: Hud['shot'] = null;
+	function countingIn(): RevealView | null {
+		const c = opts.countIn?.();
+		if (!c || c.left <= 0) {
+			shot = null;
+			return (counted = null);
+		}
+		if (counted?.left !== c.left) counted = { left: c.left, at: wallClock };
+		const left = Math.max(0, c.left - Math.min(1, wallClock - counted.at));
+		const still = opts.steady?.() ?? false;
+		shot = still || c.total - left >= c.total - HOLD_S ? 'still' : 'flying';
+		return { left, total: c.total, still };
+	}
 	let sinceHud = HUD_EVERY;
 	/** `wall` is the real time the frame took, unclamped: what the bunch is laid out by (#3098). */
 	function advanceBy(seconds: number, wall = seconds) {
@@ -253,6 +279,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		const real = moment ? 0 : seconds;
 		const dt = real * speedup;
 		t += dt;
+		wallClock += wall;
 		sight.uTime.value += real;
 		const n = Math.max(1, Math.ceil(dt / SUBSTEP));
 		for (let k = 0; k < n; k++) advance(route, stepped, dt / n, t);
@@ -262,7 +289,15 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		const me = crew.update(route, riders, pedal, dt, real, mode === 'orbit');
 		crew.drive(route, car, mode === 'orbit');
 		if (controls) controls.update();
-		else rig.update(camera, mode === 'orbit' ? 'chase' : mode, you, me, real);
+		else
+			rig.update(
+				camera,
+				mode === 'orbit' ? 'chase' : mode,
+				you,
+				me,
+				real,
+				countingIn(),
+			);
 		game?.follow(camera.position);
 		tags?.update(riders, (r) => crew!.at(r), camera, mode === 'orbit');
 		sight.uCam.value.copy(camera.position);
@@ -408,7 +443,8 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		/** Nothing moves: a held moment, or you have stopped pedalling, every rider stands, nobody turns the model and no cheer blinks. */
 		idle: () =>
 			!!moment ||
-			(you.watts === 0 &&
+			(!(opts.countIn?.() && !opts.steady?.()) &&
+				you.watts === 0 &&
 				!controls &&
 				cheered.size === 0 &&
 				riders.every((r) => r.v < 0.05)),
@@ -463,7 +499,10 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 			}
 			return {
 				asphaltAt,
-				camera: { fov: Math.round(camera.fov * 100) / 100 },
+				camera: {
+					fov: Math.round(camera.fov * 100) / 100,
+					at: camera.position.toArray().map((v) => Math.round(v * 10) / 10),
+				},
 				moment: moment ?? null,
 				// What a capture waits on before it shoots: the ground around the eye, whole (#3699).
 				ground: { pending: stream.pending() },

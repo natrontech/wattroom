@@ -41,6 +41,7 @@ import {
 	type Opened,
 } from './design/shoot';
 import { hudScale } from './design/probe';
+import { holdCountIn } from './hold-count-in';
 
 /**
  * The design shots (#3666, docs/design/DESIGN-CHECK.md): every surface in
@@ -421,19 +422,32 @@ surface(
 		// scheme: it holds from the count-in's first frame (G1, #3667).
 		const o = await s.open({ ...DESK, colorScheme: 'light' }, { world: true });
 		const road = await fixtureRoad(o.page, 'hairpin');
+		const count = await holdCountIn(o.page);
 		await o.page.goto(`/ride?w=openers&road=${road}`);
 		await o.page
 			.getByRole('button', { name: 'Ride simulated' })
 			.first()
 			.click({ timeout: 15_000 });
+		await count.hold();
 		await o.page
 			.getByRole('button', { name: /^Start (riding|the ride)$/ })
 			.first()
 			.click();
-		// The digit, flat or over the world (#3668).
+		// The digit, flat or over the world (#3668), the ground whole around the eye.
 		await o.page.getByTestId('count-in').waitFor({ timeout: 5000 });
+		await o.page.waitForFunction(
+			() =>
+				(
+					window as unknown as {
+						__worldProbe?: () => { ground?: { pending: number } };
+					}
+				).__worldProbe?.().ground?.pending === 0,
+			null,
+			{ timeout: 120_000 },
+		);
 		await s.shot(o, { name: 'ride-countin-first' });
-		await o.page.waitForTimeout(1000);
+		// One second into the 3 s count-in: the held pose, the arch and the digit.
+		await count.tick();
 		await s.shot(o);
 	},
 	{ once: true },

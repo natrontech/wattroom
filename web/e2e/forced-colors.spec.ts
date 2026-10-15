@@ -79,15 +79,19 @@ test("the bike computer's page dots stay drawn in forced colours", async ({
 	await page.getByRole('button', { name: 'Start the ride' }).click({
 		timeout: 15_000,
 	});
-	const current = page.getByRole('button', { name: 'RIDE page' });
-	await expect(current).toHaveAttribute('aria-current', 'page', {
-		timeout: 15_000,
-	});
+	// Docked in the flat panel the dots are drawn marks, not buttons (D15): the
+	// arrows turn the page, and RIDE is the first dot.
+	await expect(page.getByTestId('bike-computer')).toHaveAttribute(
+		'data-page',
+		'ride',
+		{ timeout: 15_000 },
+	);
+	const dots = page.getByTestId('computer-dot');
+	const current = dots.nth(0);
 	// Each dot keeps its ring, and the page you are on keeps its fill: a
 	// background alone is painted over with Canvas (#3088).
 	const mark = (dot: Locator) =>
-		dot.evaluate((button) => {
-			const dotMark = button.querySelector('span')!;
+		dot.evaluate((dotMark) => {
 			const probe = document.createElement('div');
 			probe.style.cssText =
 				'background-color: Canvas; forced-color-adjust: none';
@@ -103,9 +107,7 @@ test("the bike computer's page dots stay drawn in forced colours", async ({
 			};
 		});
 	expect(await mark(current)).toEqual({ ring: true, fill: true });
-	expect(
-		(await mark(page.getByRole('button', { name: 'POWER page' }))).ring,
-	).toBe(true);
+	expect((await mark(dots.nth(1))).ring).toBe(true);
 });
 
 // The HUD's strip of the road ahead (#3092) is drawn in SVG fills, which

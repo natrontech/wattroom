@@ -54,7 +54,7 @@ test('the bike computer turns its pages and reads from the saddle', async ({
 	await page.getByRole('button', { name: 'next page, RIDE' }).click();
 	await expect(computer).toHaveAttribute('data-page', 'ride');
 
-	await page.getByRole('button', { name: 'POWER page' }).click();
+	await page.getByRole('button', { name: 'next page, POWER' }).click();
 	await expect(computer).toHaveAttribute('data-page', 'power');
 });
 
