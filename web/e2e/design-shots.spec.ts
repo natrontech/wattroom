@@ -279,6 +279,16 @@ surface(
 		await s.shot(phone, { name: 'ride-phone-remote-offer' });
 		await offer.click();
 		await phone.page.getByTestId('phone-remote').waitFor();
+		// The desk rides SIM with gears on (dev login); one Harder tap makes
+		// the holding tab answer with its GearState, so the gear line shows.
+		await phone.page
+			.getByTestId('phone-remote')
+			.getByRole('button', { name: 'Harder' })
+			.click();
+		await phone.page
+			.getByTestId('phone-remote')
+			.locator('p[aria-live=polite]')
+			.waitFor({ timeout: 10_000 });
 		const remote = await phone.page
 			.getByTestId('phone-remote')
 			.evaluate((el) => {
