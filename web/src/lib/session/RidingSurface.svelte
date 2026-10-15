@@ -213,7 +213,7 @@
 			     left and the trim at the right end. -->
 			<div
 				data-dock="numbers"
-				class="ride-panel flex shrink-0 flex-row flex-wrap items-center gap-x-8 gap-y-1 px-4 py-3 [&_[data-testid=bike-computer]]:contents [&_[data-testid=computer-fields]]:flex [&_[data-testid=computer-fields]]:gap-x-8 [&_[data-testid=computer-fields]]:border-t-0 [&_[data-testid=computer-fields]]:pt-0 [&_[data-testid=computer-page-row]]:basis-full [&:not(:has(*))]:hidden [&>div]:ml-auto"
+				class="ride-panel flex shrink-0 flex-row flex-wrap items-center gap-x-8 gap-y-1 px-4 py-3 [&_[data-testid=bike-computer]]:contents [&_[data-testid=computer-fields]]:flex [&_[data-testid=computer-fields]]:gap-x-8 [&_[data-testid=computer-fields]]:border-t-0 [&_[data-testid=computer-fields]]:pt-0 [&_[data-testid=computer-head]]:w-84 [&_[data-testid=computer-head]]:max-w-full [&_[data-testid=computer-page-row]]:basis-full [&:not(:has(*))]:hidden [&>div]:ml-auto"
 			>
 				{@render numbers()}
 			</div>
