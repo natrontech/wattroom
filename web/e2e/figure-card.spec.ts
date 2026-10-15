@@ -12,7 +12,7 @@ test('Skip answers the card for good', async ({ page }) => {
 		'the ?as= dev provider only exists on a dev server',
 	);
 	await signInAs(page, 'Unasked', '/');
-	const road = await fixtureRoad(page, 'hairpin');
+	const road = await fixtureRoad(page, 'rolling');
 	await page.goto(`/ride?road=${road}`);
 	await page
 		.getByRole('button', { name: 'Ride simulated' })
@@ -25,6 +25,15 @@ test('Skip answers the card for good', async ({ page }) => {
 	await expect(card).toBeHidden();
 
 	await page.goto(`/ride?road=${road}`);
+	await page
+		.getByRole('button', { name: 'Ride simulated' })
+		.first()
+		.click({ timeout: 15_000 });
 	await page.getByRole('button', { name: 'Start the ride' }).click();
+	await expect(page.getByRole('button', { name: 'Start the ride' })).toBeHidden(
+		{
+			timeout: 15_000,
+		},
+	);
 	await expect(card).toBeHidden();
 });
