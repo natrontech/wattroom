@@ -21,6 +21,7 @@
 	import BiasTrim from '$lib/session/BiasTrim.svelte';
 	import BikeComputer from '$lib/session/BikeComputer.svelte';
 	import { climbView } from '$lib/ride/climb-view';
+	import { mapView } from '$lib/ride/map-view';
 	import RideNarrator from '$lib/ride/RideNarrator.svelte';
 	import { watchClimbCues } from '$lib/ride/climb-cues.svelte';
 	import RaceRadio from '$lib/race/RaceRadio.svelte';
@@ -113,6 +114,7 @@
 	const inWorld = $derived(world.on && !!channel.ridden);
 	// The climb card on a session's road (#3645), on either layout.
 	const climb = $derived(climbView(channel.ridden));
+	const map = $derived(mapView(channel.ridden));
 	watchClimbCues(() => climb);
 	// The sprint carries its own numbers and Watt Golf hides the meter:
 	// slots 3 to 5 stand empty while either has the focus.
@@ -164,7 +166,7 @@
 	</CountdownScreen>
 {:else if device.narrow}
 	<!-- One column, the followed rider's instrument, the crew strip (#412). -->
-	<TrainingPhone {climb} />
+	<TrainingPhone {climb} {map} />
 {:else}
 	{#snippet worldControls()}
 		<!-- One row in slot 1 (TARGETS ride-road-world 7), and the people
@@ -345,6 +347,7 @@
 				<BikeComputer
 					docked
 					{climb}
+					{map}
 					roadLine={!!channel.block?.road}
 					road={channel.ridden
 						? {

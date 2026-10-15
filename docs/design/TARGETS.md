@@ -169,6 +169,7 @@ Pages:
 
 28. Turned to CLIMB on the climb: ← CLIMB with the class chip → and dots (D15) over the head; under the hairline To top · Ascent · Avg left in two columns, each label on one line at 24 px; on the other pages the same chip beside the page's name, taking no row; while a target is asked no profile, as the Skyline below draws the climb and your dot; the panel between slot 1 and the Skyline, whole. [#3645] [multi:ride-road-world-climb]
 29. The road's last metre stands a FINISH arch across it: the KOM arch's chrome and banner, never glowing; none on a road the session laps. [multi:world-finish] [test:web/src/lib/world/ride-scene.test.ts] [#3623]
+30. Turned to MAP with M: ← MAP → and dots (D15) over the head; under the hairline the road from above as its turns draw it, 3 px in the muted line (the ramp is neon at five strengths, so a neon road would hide its climbs), classed climbs overpainted in the grade ramp, your dot in ink; no north, tile, name, coordinate or number (ADR-0063's crew tier; the numbers stay slot 1's road line); the panel is no taller than CLIMB's, whole between slot 1 and the Skyline. [#3645] [multi:ride-road-world-map] [multi:ride-road-world-map-rolling]
 
 Crew and computer:
 
