@@ -85,6 +85,15 @@ export const GRADE_FILL = [
 	'fill-grade-5',
 ];
 
+/** The same ramp as a stroke: a climb overpainted on the road's shape (#3645, #3679). */
+export const GRADE_STROKE = [
+	'stroke-grade-1',
+	'stroke-grade-2',
+	'stroke-grade-3',
+	'stroke-grade-4',
+	'stroke-grade-5',
+];
+
 /** The same ramp as a background: the climb card's 100 m bars (#3645). */
 export const GRADE_BG = [
 	'bg-grade-1',

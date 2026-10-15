@@ -320,6 +320,24 @@ describe('CLIMB (#3645)', () => {
 	});
 });
 
+describe('MAP (#3645)', () => {
+	const map = {
+		road: { length: 40, heights: [0, 1, 2], turns: [0, 0] },
+		m: 0,
+		climbs: [],
+	};
+
+	it('is a page on a road, after POWER and before RACE', () => {
+		expect(pagesFor({ stats, map })).toEqual(['ride', 'power', 'map']);
+		expect(pagesFor({ stats, map: null })).toEqual(['ride', 'power']);
+		expect(pagesFor({ map, race: undefined })).toEqual(['ride', 'map']);
+	});
+
+	it('shows no fields: its numbers are slot 1 road line', () => {
+		expect(fieldsFor('map', ride({ map }))).toEqual([]);
+	});
+});
+
 describe('RACE (#3174)', () => {
 	const race = (over: Partial<RaceReadout> = {}): RaceReadout => ({
 		at: 0,
