@@ -1,0 +1,1 @@
+- The flat road at 1280 × 720 names the next block ("Sprint · 15 s") instead of "S.", and the bike computer no longer leaves an empty band under its head.

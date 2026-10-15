@@ -219,6 +219,23 @@ surface(
 		await ride(o.page, `/ride?w=openers&road=${road}&from=1500`);
 		await assertRiding(o.page, true);
 		await s.shot(o, { name: 'world-hairpins-trench' });
+		// multi:ride-road-world-flamme — #3645: the last kilometre to the top, the
+		// flamme rouge flagged on the CLIMB page.
+		await ride(o.page, `/ride?w=openers&road=${road}&from=6200`);
+		await assertRiding(o.page, true);
+		await o.page.getByTestId('bike-computer').getByTitle('Next page').click();
+		await o.page.getByTestId('flamme-rouge').waitFor();
+		await s.shot(o, { name: 'ride-road-world-flamme' });
+		// multi:ride-road-world-summit — #3645: over the top of the rolling road's
+		// first climb (km 3.0, class IV: no confetti, the budget is HC and I), the
+		// strip above the Skyline.
+		const rollingRoad = await fixtureRoad(o.page, 'rolling');
+		await ride(o.page, `/ride?w=openers&road=${rollingRoad}&from=2900`);
+		await assertRiding(o.page, true);
+		await o.page.getByTestId('summit-strip').waitFor({ timeout: 60_000 });
+		// The strip has risen: its `--dur-stage` rise, not a frame in it.
+		await o.page.waitForTimeout(900);
+		await s.shot(o, { name: 'ride-road-world-summit' });
 		// multi:world-finish — item 29: about 150 m from the road’s end, the finish arch ahead (#3623).
 		await ride(o.page, `/ride?w=openers&road=${road}&from=6950`);
 		await assertRiding(o.page, true);
@@ -381,12 +398,74 @@ surface(
 					remoteEnabled: buttons
 						.filter((b) => !b.disabled)
 						.map((b) => b.textContent?.trim()),
+					remotePair: buttons.some((b) => b.textContent?.trim() === 'Pause'),
 					remoteScrollWidth: el.scrollWidth,
 					remoteClientWidth: el.clientWidth,
 				};
 			});
 		await s.shot(phone, { name: 'ride-phone-remote', extra: remote });
 		await desk.page.getByRole('button', { name: 'End ride' }).click();
+		// A solo ride is the one a phone may pause (#3217): the desk rides
+		// Openers beside the channel, the phone pauses it, and both say so.
+		await desk.page
+			.getByRole('button', { name: 'Ride a workout' })
+			.click({ timeout: 15_000 });
+		const ride = desk.page.getByRole('dialog', { name: 'Ride a workout' });
+		await ride.getByRole('textbox', { name: 'find a workout' }).fill('Openers');
+		await ride
+			.getByRole('button', { name: /Openers/ })
+			.first()
+			.click();
+		await ride.getByRole('button', { name: 'Ride Openers' }).click();
+		const pause = phone.page
+			.getByTestId('phone-remote')
+			.getByRole('button', { name: 'Pause' });
+		await pause.waitFor({ timeout: 30_000 });
+		await s.shot(phone, {
+			name: 'ride-phone-remote-solo',
+			extra: {
+				remotePair: true,
+				pauseDisabled: await pause.isDisabled(),
+			},
+		});
+		await s.shot(desk, { name: 'ride-status-solo' });
+		await pause.click();
+		await phone.page
+			.getByTestId('phone-remote')
+			.getByText('Paused', { exact: true })
+			.waitFor({ timeout: 10_000 });
+		const paused = await phone.page
+			.getByTestId('phone-remote')
+			.evaluate((el) => {
+				const b = (name: string) =>
+					[...el.querySelectorAll('button')].find(
+						(x) => x.textContent?.trim() === name,
+					);
+				return {
+					pauseResumeHeight: Math.round(
+						b('Resume')?.getBoundingClientRect().height ?? 0,
+					),
+					pauseDisabled: b('Pause')?.disabled ?? null,
+					resumeDisabled: b('Resume')?.disabled ?? null,
+				};
+			});
+		await s.shot(phone, { name: 'ride-phone-remote-paused', extra: paused });
+		await desk.page.getByText('Paused', { exact: true }).first().waitFor();
+		const line = await desk.page
+			.getByText('Paused', { exact: true })
+			.first()
+			.evaluate((n) => {
+				const row = n.closest('[role=status]') ?? n.parentElement;
+				const resume = row?.querySelector('button');
+				return {
+					pausedLine: n.textContent?.trim(),
+					pausedResumeHeight: Math.round(
+						resume?.getBoundingClientRect().height ?? 0,
+					),
+					pausedResumeText: resume?.textContent?.trim() ?? null,
+				};
+			});
+		await s.shot(desk, { name: 'ride-status-paused', extra: line });
 	},
 	{ once: true },
 );

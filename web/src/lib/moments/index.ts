@@ -12,7 +12,15 @@ import { DUR, HOLD_ANNOUNCE } from '$lib/motion/tokens';
  */
 
 /** Lower is more important (#3210). A higher moment cuts a lower one short. */
-const PRIORITY = { finish: 1, result: 2, summit: 3, pr: 4, dockin: 5 } as const;
+const PRIORITY = {
+	finish: 1,
+	result: 2,
+	summit: 3,
+	pr: 4,
+	dockin: 5,
+	climb: 6,
+	flamme: 7,
+} as const;
 
 /** Same-kind moments this close together are one moment (#3210). */
 export const MERGE_MS = 1500;
@@ -38,7 +46,11 @@ export type Moment<P = unknown> =
 	  }
 	| { kind: 'pr'; payload: P }
 	/** The count-in's slots flying to their docks (#3087): cue the count-in's first frame, hit when `enter` ends. */
-	| { kind: 'dockin'; payload: P };
+	| { kind: 'dockin'; payload: P }
+	/** The climb card slides in (#3645): cue as the card opens, hit when `enter` ends. */
+	| { kind: 'climb'; payload: P }
+	/** The flamme rouge unfurls at one kilometre to the top (#3645): a held stamp on the CLIMB page. */
+	| { kind: 'flamme'; payload: P };
 
 export type MomentKind = Moment['kind'];
 

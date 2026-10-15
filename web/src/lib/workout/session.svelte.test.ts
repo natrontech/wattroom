@@ -278,6 +278,26 @@ describe('createRideSession', () => {
 		session.stop();
 	});
 
+	it('a rider pause holds the clock and the target while pedalling, until Resume (#3217)', async () => {
+		const session = ride();
+		await startRiding(session);
+		pedal(session, 200, 90, 3);
+		const at = session.elapsed;
+		session.pause();
+		expect(session.held).toBe(true);
+		expect(session.state).toBe('autopaused');
+		expect(session.target).toBe(0);
+		pedal(session, 200, 90, 5);
+		expect(session.state).toBe('autopaused');
+		expect(session.elapsed).toBe(at);
+		session.resume();
+		expect(session.held).toBe(false);
+		expect(session.state).toBe('resuming');
+		for (let i = 0; i < DEFAULTS.resumeCountdown; i++) session.tick();
+		expect(session.state).toBe('running');
+		session.stop();
+	});
+
 	it('counts down before resuming rather than snapping back to target', async () => {
 		const session = ride();
 		await startRiding(session);

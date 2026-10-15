@@ -175,6 +175,8 @@ Crew and computer:
 
 30. The crew list shows you and the 3 nearest riders while no rider's offset has changed by more than 5 m in the last 10 s, and every rider otherwise. [ride-surface] [#3215] [test:web/src/lib/session/peloton-list.test.ts]
 31. A secondary bike-computer field dims to ink/60 after 20 s without change and returns to full ink on its next change; the 3 s power and the zone never dim. [ride-surface] [#3215] [test:web/src/lib/session/field-dim.test.ts]
+32. Inside the last kilometre to the top, CLIMB's chip row carries the flamme rouge: a small red pennant hanging above the class chip's right half, 16 px or more clear of the → arrow, in the danger token, never blinking, taking no row. It stamps in once on `--ease-pop` and stays. [#3645] [multi:ride-road-world-flamme] [test:web/src/lib/ride/climb-cues.svelte.test.ts]
+33. Over the top a summit strip stands above the Skyline, a centred pill at the computer chip size, for `--hold-announce`: “Summit” and the class chip, flat and quiet; clear of the computer and its bias trim; no watt, no glow; the Skyline and the bike computer keep their place under it. HC and I add confetti falling from the strip, none at II to IV, none in Steady. The CLIMB page slides in from its edge on `--dur-stage` (a still shows it landed). [#3645] [multi:ride-road-world-summit] [test:web/src/lib/ride/climb-cues.svelte.test.ts]
 
 #### ride-workout-world
 
@@ -215,6 +217,7 @@ Capture: ride-road-world and ride-workout-flat, simulated trainer silenced past 
 
 1. The fault: one persistent line atop slot 1, one ≥ 44 px recovery button; not a toast; over the world nothing enters the corridor (G3). [ride-surface] [ride-flat]
 2. Numbers read stale (“—”); nothing stale keeps its watt or glow.
+3. A rider's own pause (`ride-status-paused`, the desk's solo ride after the phone's Pause): the line “Paused” with one `btn-ride` Resume, persistent, not a toast, nothing in the corridor. The capture is the channel's riding surface, so its sidebar and numbers are that surface's items, not this one's. [probe:pausedResumeHeight] [3217]
 
 #### ride-phone-remote
 
@@ -225,6 +228,7 @@ Capture: desk context rides the channel's free ride on a simulated trainer; a se
 3. A button the holding tab cannot run is disabled and one line says so; no button fails on tap (ux.md). [probe:remoteDisabled] [3217]
 4. Chrome stays neon and nothing glows; with gears on, the gear line reads in neon too (ADR-0005). [3217]
 5. Phone width 375 × 812: the page body does not scroll sideways, and Done is reachable without scrolling. [probe:remoteClientWidth] [3217]
+6. On a solo ride only (`ride-phone-remote-paused`), a Pause and Resume pair of `btn-ride` cells, the one that cannot act disabled, and a persistent “Paused” line in neon once paused. A free ride never shows the pair (`ride-phone-remote`'s `remotePair` is false; `ride-phone-remote-solo` shows it live). [probe:pauseResumeHeight] [probe:remotePair] [3217]
 
 #### ride-countin
 

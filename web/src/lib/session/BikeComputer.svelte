@@ -19,6 +19,7 @@
 	import { pulse } from '$lib/motion/transitions';
 	import { fieldDimmer } from '$lib/session/field-dim';
 	import ClimbProfile from '$lib/ride/ClimbProfile.svelte';
+	import { climbStage } from '$lib/ride/climb-cues.svelte';
 	import ComputerMap from '$lib/ride/ComputerMap.svelte';
 	import {
 		PAGE_NAMES,
@@ -181,13 +182,13 @@
 	data-testid="bike-computer"
 	data-page={shown}
 	aria-label="bike computer, {PAGE_NAMES[shown]} page"
-	class={docked
+	class="{shown === 'climb' && climbStage.slide ? 'climb-in ' : ''}{docked
 		? tv
 			? 'relative flex min-h-0 flex-1 flex-col gap-[1.5vh] px-[1.5vw] py-[1.5vh]'
 			: wide || narrow
 				? 'relative flex w-full flex-col gap-3 px-4 py-3'
 				: 'relative flex w-[21rem] max-w-full flex-col gap-3 px-4 py-3'
-		: 'panel relative'}
+		: 'panel relative'}"
 >
 	<!-- The page's name and its dots sit in the row of numbers, so a page is
 	     one row tall where it fits and the focus above keeps its height (#3597);
@@ -198,9 +199,17 @@
 		     others it offers it (#3645), and it takes no row of its own. -->
 		{#if ctx.climb}<span
 				data-testid={shown === 'climb' ? 'climb-class' : 'climb-chip'}
-				class="border-neon bg-surface text-ink rounded border px-1 leading-none font-bold tracking-normal"
+				class="border-neon bg-surface text-ink relative rounded border px-1 leading-none font-bold tracking-normal"
 				>{#if shown !== 'climb'}<span class="sr-only">{'climb '}</span>{/if}{ctx
-					.climb.card.cls}</span
+					.climb.card
+					.cls}{#if shown === 'climb' && ctx.climb.card.flammeRouge}<!-- The pennant hangs off the chip's corner, so it takes no width from the page dots. --><span
+						data-testid="flamme-rouge"
+						role="img"
+						aria-label="flamme rouge, the last kilometre"
+						class="bg-danger absolute -top-3 right-3 h-3 w-3 [clip-path:polygon(0_0,100%_50%,0_100%)] {climbStage.flammeStamp
+							? 'flamme-stamp'
+							: ''}"
+					></span>{/if}</span
 			>{/if}
 	{/snippet}
 	{#snippet name()}

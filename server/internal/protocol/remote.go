@@ -10,7 +10,9 @@ package protocol
 //
 // Taps never hold: a lost release under Talk's 1 s keepalive measured up to 5
 // phantom shifts, so Easier and Harder are one tap each. Only Talk holds, as
-// talk-down, a talk-keepalive while it lasts, and talk-up.
+// talk-down, a talk-keepalive while it lasts, and talk-up. Sync presses
+// nothing: the phone sends it when it opens, and the holder answers with its
+// gear and pause state.
 type RemoteCommand struct {
 	// One of RemoteActions.
 	Action string `json:"action"`
@@ -23,6 +25,7 @@ var RemoteActions = []string{
 	"page", "camera", "photo", "cheer-back", "map",
 	"talk-down", "talk-keepalive", "talk-up",
 	"easier", "harder", "pause", "resume",
+	"sync",
 }
 
 // IsRemoteAction reports whether s is one of RemoteActions.
@@ -46,3 +49,12 @@ type GearState struct {
 
 // MaxGearLabel bounds Label: it is rendered on another screen.
 const MaxGearLabel = 16
+
+// PauseState is the holding tab's answer about its ride (#3217): whether it
+// is a solo ride the remote may pause, and whether it is paused by the rider.
+// It travels the way GearState does. A session is never paused by one rider,
+// so a holder in a session says Pausable false.
+type PauseState struct {
+	Pausable bool `json:"pausable"`
+	Paused   bool `json:"paused"`
+}

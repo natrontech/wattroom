@@ -812,9 +812,69 @@ body {
 	animation-delay: calc(var(--dock-i, 0) * var(--stagger));
 }
 
+/* The climb's moments (#3645, ADR-0079): the CLIMB page slides in from its edge
+ * on --dur-stage, the flamme rouge stamps on --ease-pop, the summit strip rises
+ * and confetti falls over --dur-draw from the strip, staggered. Reduced motion
+ * holds each landed stamp. */
+@keyframes climb-in {
+	from {
+		opacity: 0;
+		transform: translateX(40px);
+	}
+}
+.climb-in {
+	animation: climb-in var(--dur-stage) var(--ease-arrive) both;
+}
+@keyframes flamme-stamp {
+	from {
+		opacity: 0;
+		transform: scale(0.6);
+	}
+}
+.flamme-stamp {
+	animation: flamme-stamp var(--dur-base) var(--ease-pop) both;
+}
+@keyframes summit-rise {
+	from {
+		opacity: 0;
+		transform: translateY(12px);
+	}
+}
+.summit-strip {
+	animation: summit-rise var(--dur-stage) var(--ease-arrive) both;
+}
+@keyframes confetti-fall {
+	from {
+		opacity: 1;
+		transform: translateY(0) rotate(0);
+	}
+	to {
+		opacity: 0;
+		transform: translateY(60px) rotate(240deg);
+	}
+}
+.confetti-piece {
+	position: absolute;
+	top: 0;
+	left: var(--c-x);
+	width: 6px;
+	height: 10px;
+	opacity: 0;
+	animation: confetti-fall var(--dur-draw) var(--ease-leave) both;
+	animation-delay: calc(var(--c-i) * var(--stagger) / 3);
+}
+
 @media (prefers-reduced-motion: reduce) {
 	.dock-in {
 		animation: none;
+	}
+	.climb-in,
+	.flamme-stamp,
+	.summit-strip {
+		animation: none;
+	}
+	.confetti-piece {
+		display: none;
 	}
 	.skeleton::after {
 		animation: none;

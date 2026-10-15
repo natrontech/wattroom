@@ -1,0 +1,1 @@
+- The phone remote pauses and resumes a solo ride: the clock, score and trainer target wait until Resume.
