@@ -468,7 +468,7 @@ surface('ride-figure-card', async (s) => {
 		card.getByRole('button', { name, exact: true }).boundingBox();
 	const skip = await box('Skip');
 	const save = await box('Save');
-	const build = await box('Slim');
+	const build = await box('slim');
 	const swatch = await card
 		.getByRole('button', { name: /^Skin tone 1 of/ })
 		.boundingBox();
