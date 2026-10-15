@@ -265,7 +265,7 @@
 		<!-- D15: the current page's name between ← and →, with position dots. -->
 		<div
 			data-testid="computer-page-row"
-			class="relative flex items-center gap-1 {narrow ? 'flex-wrap' : ''}"
+			class="relative flex items-center {narrow ? 'flex-wrap' : ''}"
 		>
 			{#if turns}
 				<button
@@ -294,7 +294,7 @@
 				<!-- In the world's column the dots take the right edge; in a wide
 				     flat panel they stay beside the name (#3669). -->
 				<div
-					class="flex gap-2 {narrow
+					class="flex gap-1 {narrow
 						? 'basis-full justify-center'
 						: 'ml-auto @2xl:ml-4'}"
 					aria-hidden="true"

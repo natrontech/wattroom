@@ -296,6 +296,17 @@ export function probe(corridor: Box) {
 		glows,
 		panels,
 		flat,
+		// How far the computer's page row runs past its panel's padding (#4042).
+		pageRowOverflow: (() => {
+			const row = document.querySelector('[data-testid=computer-page-row]');
+			const last = row?.lastElementChild;
+			if (!row || !last) return null;
+			const pad = parseFloat(getComputedStyle(row.parentElement!).paddingRight);
+			const panel = row.parentElement!.getBoundingClientRect();
+			return round(
+				Math.max(0, last.getBoundingClientRect().right - (panel.right - pad)),
+			);
+		})(),
 		minTarget: {
 			px: Number.isFinite(smallest.px) ? smallest.px : null,
 			label: smallest.label,

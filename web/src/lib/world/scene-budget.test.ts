@@ -40,7 +40,9 @@ type Line = keyof typeof HIGH;
 const OVER: Partial<Record<Line, string>> = {};
 
 /** Dressing drawn as plain meshes, and who batches it. */
-const UNBATCHED: Record<string, string> = {};
+const UNBATCHED: Record<string, string> = {
+	arch: 'the start and finish arches: two three-mesh groups the count-in reveal lands on (#3087)',
+};
 
 type Count = { draws: number; triangles: number };
 

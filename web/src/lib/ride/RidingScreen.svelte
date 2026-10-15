@@ -48,6 +48,7 @@
 	import MonitorUp from '@lucide/svelte/icons/monitor-up';
 	import AlarmClockPlus from '@lucide/svelte/icons/alarm-clock-plus';
 	import SkipForward from '@lucide/svelte/icons/skip-forward';
+	import { COUNTDOWN_SECONDS } from '$lib/workout/ride-state';
 	import type { Block } from '$lib/workout/block';
 	import type { createRideSession } from '$lib/workout/session.svelte';
 	import type { Workout } from '$lib/workout/types';
@@ -256,6 +257,9 @@
 				progress={session.total > 0 ? session.elapsed / session.total : null}
 				look={world.look}
 				{camera}
+				countIn={countIn
+					? { left: countIn.remaining, total: COUNTDOWN_SECONDS }
+					: null}
 				onfail={world.fail}
 				onflat={world.flatten}
 			/>
@@ -291,6 +295,7 @@
 		world={drawn ? road : undefined}
 		moment={inWorld && session.sprint ? moment : undefined}
 		centre={countIn ? digit : undefined}
+		dockIn={!!countIn}
 	>
 		{#snippet header()}
 			<RideBand
