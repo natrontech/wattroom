@@ -210,6 +210,16 @@ Capture: ride-road-world and ride-workout-flat, simulated trainer silenced past 
 1. The fault: one persistent line atop slot 1, one ≥ 44 px recovery button; not a toast; over the world nothing enters the corridor (G3). [ride-surface] [ride-flat]
 2. Numbers read stale (“—”); nothing stale keeps its watt or glow.
 
+#### ride-phone-remote
+
+Capture: desk context rides the channel's free ride on a simulated trainer; a second 375 × 812 touch context of the same rider opens the channel's Training place, taps "Use this phone as your remote", and shoots the remote. Target: none drawn, canon is the bar. Canon: ADR-0025 (the claim), ADR-0084 (gears), ux.md (mid-ride, phone width), errors.md.
+
+1. The offer (`ride-phone-remote-offer`) is one full-width `btn-ride` in the Lounge's empty state, only on a phone-width screen that sees the trainer held by another screen. [3217]
+2. The grid fills the screen in two columns, words at 24 px, of buttons at least 64 px high; every button is a tap target of at least 44 px and nothing scrolls sideways. [probe:remoteMinHeight] [probe:remoteScrollWidth] [3217]
+3. A button the holding tab cannot run is disabled and one line says so; no button fails on tap (ux.md). [probe:remoteDisabled] [3217]
+4. Chrome stays neon and nothing glows; with gears on, the gear line reads in neon too (ADR-0005). [3217]
+5. Phone width 375 × 812: the page body does not scroll sideways, and Done is reachable without scrolling. [probe:remoteClientWidth] [3217]
+
 #### ride-countin
 
 Capture: world on, OS scheme light, `/ride?w=openers&road=<hairpin>`: `ride-countin-first` as the count-in appears, `ride-countin` a second in. Target: v3-motion's count-in frame.

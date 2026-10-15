@@ -268,6 +268,93 @@ surface(
 );
 
 surface(
+	'ride-phone-remote',
+	async (s) => {
+		// The desk holds the trainer; the same rider's phone sees the claim
+		// (ADR-0025) and offers to be its remote (#3217).
+		const desk = await s.open(DESK, { world: false });
+		const crew = await designCrew(desk.page);
+		await toTraining(desk.page, crew);
+		const phone = await s.open(PHONE, { world: false });
+		await phone.page.goto(`${voicePath(crew)}/training`);
+		const offer = phone.page.getByRole('button', {
+			name: 'Use this phone as your remote',
+		});
+		await offer.waitFor({ timeout: 20_000 });
+		const box = await offer.boundingBox();
+		await s.shot(phone, {
+			name: 'ride-phone-remote-offer',
+			extra: {
+				offerWidth: Math.round(box?.width ?? 0),
+				offerHeight: Math.round(box?.height ?? 0),
+				offerTextPx: await offer.evaluate((b) =>
+					parseFloat(getComputedStyle(b).fontSize),
+				),
+				offerViewport: phone.page.viewportSize()?.width ?? 0,
+			},
+		});
+		await offer.click();
+		await phone.page.getByTestId('phone-remote').waitFor();
+		// The desk rides SIM with gears on (dev login); one Harder tap makes
+		// the holding tab answer with its GearState, so the gear line shows.
+		await phone.page
+			.getByTestId('phone-remote')
+			.getByRole('button', { name: 'Harder' })
+			.click();
+		await phone.page
+			.getByTestId('phone-remote')
+			.locator('p[aria-live=polite]')
+			.waitFor({ timeout: 10_000 });
+		const remote = await phone.page
+			.getByTestId('phone-remote')
+			.evaluate((el) => {
+				const buttons = [...el.querySelectorAll('button')].filter(
+					(b) => b.textContent?.trim() !== 'Done',
+				);
+				const px = (n: number) => Math.round(n * 10) / 10;
+				return {
+					remoteCells: buttons.length,
+					remoteMinHeight: px(
+						Math.min(...buttons.map((b) => b.getBoundingClientRect().height)),
+					),
+					remoteMinWidth: px(
+						Math.min(...buttons.map((b) => b.getBoundingClientRect().width)),
+					),
+					remoteDisabled: buttons.filter((b) => b.disabled).length,
+					remoteTextMinPx: px(
+						Math.min(
+							...[...el.querySelectorAll('h2, p, button')].map((n) =>
+								parseFloat(getComputedStyle(n).fontSize),
+							),
+						),
+					),
+					remoteGearPx: px(
+						parseFloat(
+							getComputedStyle(el.querySelector('p[aria-live=polite]') ?? el)
+								.fontSize,
+						),
+					),
+					remoteGearLine:
+						el.querySelector('p[aria-live=polite]')?.textContent?.trim() ??
+						null,
+					remoteHint:
+						[...el.querySelectorAll('p:not([aria-live])')].map((n) =>
+							n.textContent?.trim(),
+						)[0] ?? null,
+					remoteEnabled: buttons
+						.filter((b) => !b.disabled)
+						.map((b) => b.textContent?.trim()),
+					remoteScrollWidth: el.scrollWidth,
+					remoteClientWidth: el.clientWidth,
+				};
+			});
+		await s.shot(phone, { name: 'ride-phone-remote', extra: remote });
+		await desk.page.getByRole('button', { name: 'End ride' }).click();
+	},
+	{ once: true },
+);
+
+surface(
 	'ride-skyline-fallback',
 	async (s) => {
 		// Forced onto the Skyline as the rider sets it on this device, then again

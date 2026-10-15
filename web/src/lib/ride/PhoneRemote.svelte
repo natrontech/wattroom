@@ -1,0 +1,131 @@
+<script lang="ts">
+	/**
+	 * This phone as the remote for the rider's other screen (#3217, ADR-0025):
+	 * a 2×4 grid of 64 px buttons, thumb-sized for a rider on a bike (ux.md).
+	 * Every press is a closed-set RemoteCommand the holding tab runs through its
+	 * keymap. Easier and Harder tap and never hold: a lost release measured up
+	 * to 5 phantom shifts. Only Talk holds, with a beat (remote-talk.ts).
+	 *
+	 * Chrome, not live data: neon, never the watt accent (ADR-0005).
+	 */
+	import { onDestroy } from 'svelte';
+	import type { createChannelLive } from '$lib/channel/live.svelte';
+	import { gearsEnabled } from '$lib/ride/gears-enabled';
+	import { createTalkHold } from '$lib/ride/remote-talk';
+
+	let {
+		live,
+		onclose,
+	}: {
+		live: ReturnType<typeof createChannelLive>;
+		onclose: () => void;
+	} = $props();
+
+	// The actions the holding tab runs today. The rest of the keymap (#3216)
+	// joins this list as it lands; until then its buttons say so, disabled.
+	const RUNS = new Set(['talk', 'easier', 'harder']);
+	const CELLS = [
+		{ action: 'page', label: 'Page' },
+		{ action: 'camera', label: 'Camera' },
+		{ action: 'photo', label: 'Photo' },
+		{ action: 'cheer-back', label: 'Cheer back' },
+		{ action: 'map', label: 'Map' },
+	];
+	const geared = gearsEnabled();
+	const talk = createTalkHold((action) => live.sendRemote(action));
+	onDestroy(talk.up);
+
+	const cell =
+		'btn btn-accent btn-ride min-h-16 text-2xl! disabled:cursor-not-allowed disabled:opacity-60';
+</script>
+
+<div
+	class="bg-surface fixed inset-0 z-50 flex flex-col gap-3 overflow-y-auto p-4"
+	role="dialog"
+	aria-label="Phone remote"
+	data-testid="phone-remote"
+>
+	<div class="flex items-center justify-between">
+		<h2 class="text-2xl font-semibold">Remote</h2>
+		<button
+			type="button"
+			class="btn btn-accent btn-ride text-2xl!"
+			onclick={onclose}
+		>
+			Done
+		</button>
+	</div>
+
+	<div class="grid flex-1 auto-rows-fr grid-cols-2 gap-3">
+		{#each CELLS as c (c.action)}
+			<button
+				type="button"
+				class={cell}
+				disabled={!RUNS.has(c.action)}
+				onclick={() => live.sendRemote(c.action)}
+			>
+				{c.label}
+			</button>
+		{/each}
+		<button
+			type="button"
+			class={cell}
+			style="touch-action: none"
+			onpointerdown={talk.down}
+			onpointerup={talk.up}
+			onpointerleave={talk.up}
+			onpointercancel={talk.up}
+			oncontextmenu={(event) => event.preventDefault()}
+		>
+			Talk
+		</button>
+		{#if !geared}
+			<button
+				type="button"
+				class={cell}
+				onclick={() => live.sendRemote('easier')}
+			>
+				Bias −
+			</button>
+			<button
+				type="button"
+				class={cell}
+				onclick={() => live.sendRemote('harder')}
+			>
+				Bias +
+			</button>
+		{/if}
+	</div>
+
+	{#if geared}
+		<div class="grid flex-1 auto-rows-fr grid-cols-2 gap-3">
+			<button
+				type="button"
+				class={cell}
+				onclick={() => live.sendRemote('easier')}
+			>
+				Easier
+			</button>
+			<button
+				type="button"
+				class={cell}
+				onclick={() => live.sendRemote('harder')}
+			>
+				Harder
+			</button>
+		</div>
+		{#if live.gear}
+			<p class="text-neon text-center text-2xl" aria-live="polite">
+				{live.gear.label}{live.gear.atEnd ? ' · end' : ''}
+			</p>
+		{/if}
+	{/if}
+
+	{#if live.remoteRefusal}
+		<p class="text-danger text-2xl leading-7" role="alert">
+			{live.remoteRefusal}
+		</p>
+	{:else if CELLS.some((c) => !RUNS.has(c.action))}
+		<p class="text-ink-muted text-2xl leading-7">Dimmed: not on this ride.</p>
+	{/if}
+</div>

@@ -20,12 +20,16 @@ func (h *Hub) handleMessage(c *client, rm *channelState, channel string, rider p
 		if rm.claimSensors(c, *msg.Sensors) {
 			rm.announcePairing(rider.ID)
 		}
+		rm.announcePairingFirst(c)
 	}
 	if msg.Poke != nil {
 		h.poke(c, rm, rider, *msg.Poke)
 	}
 	if msg.Remote != nil {
 		h.remote(c, rm, rider, *msg.Remote)
+	}
+	if msg.Gear != nil {
+		h.gearState(c, rm, rider, *msg.Gear)
 	}
 	if msg.Roadside != nil {
 		h.roadside(c, rm, rider, *msg.Roadside)
