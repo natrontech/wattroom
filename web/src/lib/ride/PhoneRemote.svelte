@@ -36,7 +36,7 @@
 	onDestroy(talk.up);
 
 	const cell =
-		'btn btn-accent btn-ride min-h-16 disabled:cursor-not-allowed disabled:opacity-40';
+		'btn btn-accent btn-ride min-h-16 text-2xl! disabled:cursor-not-allowed disabled:opacity-60';
 </script>
 
 <div
@@ -46,8 +46,12 @@
 	data-testid="phone-remote"
 >
 	<div class="flex items-center justify-between">
-		<h2 class="text-lg font-semibold">Remote</h2>
-		<button type="button" class="btn btn-accent btn-ride" onclick={onclose}>
+		<h2 class="text-2xl font-semibold">Remote</h2>
+		<button
+			type="button"
+			class="btn btn-accent btn-ride text-2xl!"
+			onclick={onclose}
+		>
 			Done
 		</button>
 	</div>
@@ -111,15 +115,17 @@
 			</button>
 		</div>
 		{#if live.gear}
-			<p class="text-neon text-center text-lg" aria-live="polite">
+			<p class="text-neon text-center text-2xl" aria-live="polite">
 				{live.gear.label}{live.gear.atEnd ? ' · end' : ''}
 			</p>
 		{/if}
 	{/if}
 
 	{#if live.remoteRefusal}
-		<p class="text-danger ride-word" role="alert">{live.remoteRefusal}</p>
+		<p class="text-danger text-2xl leading-7" role="alert">
+			{live.remoteRefusal}
+		</p>
 	{:else if CELLS.some((c) => !RUNS.has(c.action))}
-		<p class="text-ink-muted ride-word">Dimmed: not on this ride.</p>
+		<p class="text-ink-muted text-2xl leading-7">Dimmed: not on this ride.</p>
 	{/if}
 </div>

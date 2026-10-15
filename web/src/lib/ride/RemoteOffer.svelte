@@ -20,7 +20,7 @@
 {#if offered && live}
 	<button
 		type="button"
-		class="btn btn-accent btn-ride w-full {cls}"
+		class="btn btn-accent btn-ride w-full text-2xl! {cls}"
 		onclick={() => (open = true)}
 	>
 		Use this phone as your remote
