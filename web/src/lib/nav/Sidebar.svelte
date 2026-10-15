@@ -249,13 +249,15 @@
 				onclick={toggleDms}
 				aria-expanded={!dmsFolded}
 				aria-current={dmsOn ? 'page' : undefined}
-				class="-mx-2 -my-1.5 flex w-full items-center rounded px-2 py-1.5 text-left uppercase {dmsOn
+				class="cave:min-h-11 -mx-2 -my-1.5 flex w-full items-center rounded px-2 py-1.5 text-left uppercase {dmsOn
 					? 'bg-ink/10 text-ink'
 					: 'hover:text-ink'}"
 				title={dmsFolded
 					? 'show your conversations'
 					: 'hide your conversations'}
-				>direct messages{#if dmsFolded && dmsUnread}<span
+				><span class="cave:hidden">direct messages</span><span
+					class="cave:inline hidden">messages</span
+				>{#if dmsFolded && dmsUnread}<span
 						class="{UNREAD_DOT} ml-2"
 						title="someone wrote"
 					></span>{/if}<ChevronRight

@@ -102,13 +102,15 @@
 					class:opacity-60={mover.inFlight(o.id)}
 					class="flex min-w-0 items-center rounded transition-opacity duration-(--dur-quick) motion-reduce:transition-none"
 				>
-					{#if i > 0}<span class="shrink-0">,&nbsp;</span>{/if}
 					<span
 						{...mover.grab(channel, o)}
 						{@attach contextMenu(() => mover.menu(channel, o))}
 						class="truncate">{o.name}</span
 					>
 					<StatusMark line={o.statusLine} size={9} />
+					<!-- The comma trails its own name, so a wrapped line never opens with one. -->
+					{#if i < people.shown.length - 1}<span class="shrink-0">,&nbsp;</span
+						>{:else if people.more > 0}<span class="shrink-0">,</span>{/if}
 				</span>
 			{/each}
 			{#if people.more > 0}<span class="shrink-0">&nbsp;+{people.more}</span
