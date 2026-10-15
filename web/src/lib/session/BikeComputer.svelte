@@ -186,17 +186,18 @@
 		     others it offers it (#3645), and it takes no row of its own. -->
 		{#if ctx.climb}<span
 				data-testid={shown === 'climb' ? 'climb-class' : 'climb-chip'}
-				class="border-neon bg-surface text-ink rounded border px-1 leading-none font-bold tracking-normal"
+				class="border-neon bg-surface text-ink relative rounded border px-1 leading-none font-bold tracking-normal"
 				>{#if shown !== 'climb'}<span class="sr-only">{'climb '}</span>{/if}{ctx
-					.climb.card.cls}</span
-			>{#if shown === 'climb' && ctx.climb.card.flammeRouge}<span
-					data-testid="flamme-rouge"
-					role="img"
-					aria-label="flamme rouge, the last kilometre"
-					class="bg-danger inline-block h-3 w-4 [clip-path:polygon(0_0,100%_50%,0_100%)] {climbStage.flammeStamp
-						? 'flamme-stamp'
-						: ''}"
-				></span>{/if}{/if}
+					.climb.card
+					.cls}{#if shown === 'climb' && ctx.climb.card.flammeRouge}<!-- The pennant hangs off the chip's corner, so it takes no width from the page dots. --><span
+						data-testid="flamme-rouge"
+						role="img"
+						aria-label="flamme rouge, the last kilometre"
+						class="bg-danger absolute -top-2 -right-2 h-3 w-3 [clip-path:polygon(0_0,100%_50%,0_100%)] {climbStage.flammeStamp
+							? 'flamme-stamp'
+							: ''}"
+					></span>{/if}</span
+			>{/if}
 	{/snippet}
 	{#snippet name()}
 		<!-- CLIMB's name counts the climbs. -->
