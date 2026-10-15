@@ -15,6 +15,8 @@ import { makeTags, type Tags } from './tags';
 import type { BunchView } from '$lib/channel/bunch-view';
 import { DEFAULT_DARK_ID, themeById } from '$lib/themes';
 import { disposeTree } from './dispose';
+import { CAMERA } from './camera';
+import { exponentialFog, propFogDensity } from './fog';
 import { makeSight } from './materials';
 import { makeRig, type Follow } from './rig';
 import { HOLD_S, type RevealView } from './reveal';
@@ -33,12 +35,7 @@ import { buildStage, summitOf, type Stage } from './stage';
 import { yOf } from './geometry';
 import { placeGrids } from './chunks/grids';
 import { streamGround, type GotGrid, type Grids } from './ground-stream';
-import {
-	CAMERA_FAR_M,
-	CAMERA_NEAR_M,
-	OBJECT_FOG_K,
-	type Style,
-} from './styles';
+import type { Style } from './styles';
 import type { Failure } from './ride-view';
 import type { World } from './world';
 
@@ -173,12 +170,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	let chalk: ChalkLayer | null = null;
 	// Near at 1 m: at 0.5 the depth buffer resolved 0.12 m at 1 km, and the
 	// road's shoulder z-fought from about 1.26 km (#3078).
-	const camera = new THREE.PerspectiveCamera(
-		52,
-		1,
-		CAMERA_NEAR_M,
-		CAMERA_FAR_M,
-	);
+	const camera = new THREE.PerspectiveCamera(52, 1, CAMERA.near, CAMERA.far);
 	const sight = makeSight();
 	const rig = makeRig(route, world);
 	const stream = streamGround(
@@ -233,7 +225,11 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 			chalk = makeChalk(route, style);
 			scene.add(chalk.group);
 		}
-		scene.fog = new THREE.FogExp2(style.sky.horizon, style.fogK * OBJECT_FOG_K);
+		exponentialFog();
+		scene.fog = new THREE.FogExp2(
+			style.sky.horizon,
+			propFogDensity(style.fogK),
+		);
 		light();
 		applyMode();
 	}

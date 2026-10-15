@@ -5,7 +5,13 @@ import * as THREE from 'three';
 import { backdrop } from './backdrop';
 import { tag } from './family';
 import { chunkId, LEAVE, roadPieces, type GroundStream } from './ground-stream';
-import { batchProps, FAR_M, NEAR_M, type Drawn } from './props/batch';
+import {
+	batchProps,
+	FAR_M,
+	FETCH_AHEAD,
+	NEAR_M,
+	type Drawn,
+} from './props/batch';
 import { TILE_M, tileCentre, tileKey, tileOf } from './props/tiles';
 import { batchBoards } from './boards';
 import { archOnRoad } from './furniture';
@@ -28,7 +34,7 @@ import type { World } from './world';
  * tile, so the batch's rings, measured from the eye itself, always find a
  * tile there to show.
  */
-const DRESS_M = FAR_M + 1.5 * TILE_M;
+export const DRESS_M = FAR_M * FETCH_AHEAD + 1.5 * TILE_M;
 
 /** A set piece as the batch draws it: a flag by its colour's model. */
 const drawn = (p: Piece): Drawn => ({

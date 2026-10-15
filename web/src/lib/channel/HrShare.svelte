@@ -20,7 +20,7 @@
 		ride = false,
 	}: {
 		class?: string;
-		/** A riding surface outside the Lounge's stage: words at riding size without it. */
+		/** A riding surface outside the Lounge's stage: the button alone, its sentence read aloud (ux.md: no sentence but a canon status line). */
 		ride?: boolean;
 	} = $props();
 
@@ -52,7 +52,7 @@
 	>
 		<p
 			class="ride-stage:ride-word flex items-center gap-1.5 {ride
-				? 'ride-word'
+				? 'sr-only'
 				: 'text-sm'} {view.shared ? 'text-ink' : 'text-muted'}"
 			role="status"
 		>
@@ -68,13 +68,20 @@
 		     Named in full: a screen share's button says "Stop sharing" too. -->
 		<button
 			onclick={toggle}
-			class="btn btn-secondary btn-lg ride-stage:ride-word {ride
+			class="btn btn-secondary btn-lg ride-stage:ride-word inline-flex items-center gap-2 {ride
 				? 'btn-ride'
 				: ''}"
 			aria-label="{view.action} heart rate"
 			title={view.shared
 				? 'Nobody in the call sees your bpm while it is off. A session ride saved meanwhile has none either; a free ride keeps it.'
-				: 'Everyone in the call sees your bpm again.'}>{view.action}</button
+				: 'Everyone in the call sees your bpm again.'}
+			>{#if ride}{#if view.shared}<HeartPulse
+						size={20}
+						aria-hidden="true"
+					/>{:else}<HeartOff
+						size={20}
+						aria-hidden="true"
+					/>{/if}{/if}{view.action}</button
 		>
 		{#if error}
 			<!-- Where the tap was (errors.md): a storage-blocked browser cannot

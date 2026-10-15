@@ -136,13 +136,6 @@ export function setLight(m: THREE.ShaderMaterial, light: Light) {
 	if (u.uPeach) u.uPeach.value = light.peach;
 }
 
-/** The camera's clip planes, metres. Near stays at a metre: a 24-bit depth buffer resolves `far² / (near · 2²⁴)` at distance `far`, and the props reach 2.5 km (props/batch.ts), so a nearer plane z-fights them. */
-export const CAMERA_NEAR_M = 1;
-export const CAMERA_FAR_M = 60_000;
-
-/** The scene fog's density over `fogK`, for what stands on the ground: inside the terrain shader's per-channel factors, so a prop fades as the ground behind it does. */
-export const OBJECT_FOG_K = 1.1;
-
 // The shared light: one chunk, every terrain, every style.
 export function terrainMaterial(style: Style): THREE.ShaderMaterial {
 	return new THREE.ShaderMaterial({
