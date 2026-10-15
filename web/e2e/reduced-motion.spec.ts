@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { openAWorkoutOnARoad } from './route';
 import { signInTo } from './signin';
 
 /**
@@ -82,6 +83,35 @@ test.describe('reduced motion', () => {
 		const moved = await movedOver(page, 12_000);
 		await expect(page.getByText('all out').first()).toBeVisible();
 		expect([...moved, ...(await movedOver(page, 4_000))]).toEqual([]);
+	});
+
+	test('stills the count-in reveal on the start arch (#3087)', async ({
+		page,
+	}) => {
+		await page.addInitScript(() => {
+			localStorage.setItem('wattroom.world-slot.v1', '1');
+			localStorage.setItem('wattroom.world.mode.v1', 'steady');
+			localStorage.setItem(
+				'wattroom.mixer.v1',
+				JSON.stringify({ music: 0, cues: 0, board: 0, share: 0 }),
+			);
+		});
+		await signInTo(page, '/ride');
+		await page.getByRole('button', { name: 'Ride simulated' }).waitFor();
+		await openAWorkoutOnARoad(page);
+		await page.getByRole('button', { name: 'Ride simulated' }).click();
+		await page.getByRole('button', { name: 'Start the ride' }).click();
+		// The shot the world draws through the count-in: one frame, never the flight.
+		const canvas = page.locator('canvas[data-shot]');
+		await expect(canvas).toHaveAttribute('data-shot', 'still', {
+			timeout: 30_000,
+		});
+		const seen = new Set<string>();
+		while (await page.getByTestId('count-in').isVisible()) {
+			seen.add((await canvas.getAttribute('data-shot')) ?? '');
+			await page.waitForTimeout(100);
+		}
+		expect(seen.has('flying')).toBe(false);
 	});
 });
 

@@ -538,15 +538,19 @@ describe('a ride’s world', () => {
 		w.scene.traverse((o) => {
 			if (o.userData.kind === 'arch') arches.push(o);
 		});
-		expect(arches).toHaveLength(1);
+		// The start arch the count-in reveal lands on (#3087), and the finish.
+		expect(arches).toHaveLength(2);
 		const end = at(route, route.length);
-		expect(arches[0].position.x).toBeCloseTo(end.x, 3);
-		expect(arches[0].position.z).toBeCloseTo(end.z, 3);
-		const turn = arches[0].rotation.y - end.heading;
+		const finish = arches.find(
+			(a) => Math.hypot(a.position.x - end.x, a.position.z - end.z) < 1,
+		)!;
+		expect(finish.position.x).toBeCloseTo(end.x, 3);
+		expect(finish.position.z).toBeCloseTo(end.z, 3);
+		const turn = finish.rotation.y - end.heading;
 		expect(Math.cos(turn)).toBeCloseTo(1, 6);
 		w.dispose();
 
-		// A session that laps the road rides on through its end: no finish there.
+		// A session that laps the road rides on through its end: no finish there, the start stays.
 		const lapped = compose(
 			{
 				route,
@@ -562,7 +566,33 @@ describe('a ride’s world', () => {
 		lapped.scene.traverse((o) => {
 			if (o.userData.kind === 'arch') n++;
 		});
-		expect(n).toBe(0);
+		expect(n).toBe(1);
 		lapped.dispose();
+	});
+
+	it('flies the count-in reveal, or holds its still frame under reduced motion (#3087)', () => {
+		const shotsOf = (steady: boolean) => {
+			let left = 10;
+			const shots: (string | null)[] = [];
+			const w = compose(
+				{
+					route,
+					world,
+					style,
+					ftp: 250,
+					metre: () => ({ m: 0, mps: 0 }),
+					countIn: () => (left > 0 ? { left, total: 10 } : null),
+					steady: () => steady,
+					onTick: (hud) => shots.push(hud.shot),
+				},
+				null,
+			);
+			for (; left > 0; left -= 0.5) w.advanceBy(0.5);
+			w.advanceBy(0.5);
+			w.dispose();
+			return new Set(shots);
+		};
+		expect(shotsOf(false)).toEqual(new Set(['flying', 'still', null]));
+		expect(shotsOf(true)).toEqual(new Set(['still', null]));
 	});
 });
