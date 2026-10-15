@@ -118,7 +118,7 @@
 				</fieldset>
 
 				<label class="block">
-					<span class="text-muted mb-2 flex justify-between text-xs"
+					<span class="text-muted mb-2 flex gap-2 text-xs"
 						>Height <span class="text-ink">{metres(heightCm)}</span></span
 					>
 					<input
@@ -133,7 +133,7 @@
 
 				<fieldset>
 					<legend class="text-muted mb-2 text-xs">Skin tone</legend>
-					<div class="flex flex-wrap gap-2">
+					<div class="grid grid-cols-4 gap-2 sm:flex sm:flex-wrap">
 						{#each SKIN_VARS as colour, i (i)}
 							<button
 								type="button"

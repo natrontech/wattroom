@@ -403,10 +403,10 @@ Capture: a rider who has not answered the card (`?as=Unasked`), `/ride?road=<hai
 
 1. One card, titled “Your rider”, with a still preview of the figure and three controls: Build (slim, athletic, strong), Height (1.50 to 2.05 m, the value beside its label) and Skin tone (the 8 swatches). [#3342]
 2. “Skip” and “Save” sit side by side, the same size, both ≥ 44 px tall. [#3342] [probe:figure-card]
-3. With nothing chosen the preview wears the neutral tone (`--world-kit-skin`), the athletic build and 1.78 m; a swatch tap recolours it, none of the 8 equals the neutral. [#3342] [probe:figure-card]
+3. With nothing chosen the preview wears the neutral tone (`--world-kit-skin`), the athletic build and 1.78 m; a swatch tap recolours it (`tappedFill` equals that swatch's `swatchFill`, and differs from `neutralFill`), and no swatch is the neutral. [#3342] [probe:figure-card]
 4. Build buttons and swatches ≥ 44 px; the height control keeps the desk slider's 24 px hit box, since the card is answered before the ride, not while pedalling (ux.md). [#3342] [probe:figure-card]
 5. Starts top left in the page body's column, no sideways scroll at 375 px. [#3342]
-6. Nothing animates: the preview is a still, so reduced motion changes nothing. [#3342]
+6. Nothing animates: the preview is a still, so reduced motion changes nothing. [#3342] [test:web/src/lib/ride/FigureCard.test.ts]
 7. Copy names no weight and no price. [#3342]
 
 #### ride-roadpick

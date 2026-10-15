@@ -472,11 +472,23 @@ surface(
 			await card.waitFor();
 			const box = (label: string) =>
 				card.getByRole('button', { name: label, exact: true }).boundingBox();
+			const circle = card.getByTestId('figure-preview').locator('circle');
+			const fill = () => circle.evaluate((c) => getComputedStyle(c).fill);
+			const neutralFill = await fill();
+			const swatch = card.getByRole('button', { name: /^Skin tone 4 of/ });
+			const swatchFill = await swatch.evaluate(
+				(b) => getComputedStyle(b).backgroundColor,
+			);
+			await swatch.click();
+			const tappedFill = await fill();
 			await s.shot(o, {
 				name,
 				full: true,
 				extra: {
 					'figure-card': {
+						neutralFill,
+						swatchFill,
+						tappedFill,
 						skip: await box('Skip'),
 						save: await box('Save'),
 						build: await box('slim'),
@@ -484,10 +496,6 @@ surface(
 						swatch: await card
 							.getByRole('button', { name: /^Skin tone 1 of/ })
 							.boundingBox(),
-						neutralFill: await card
-							.getByTestId('figure-preview')
-							.locator('circle')
-							.evaluate((c) => getComputedStyle(c).fill),
 					},
 				},
 			});
