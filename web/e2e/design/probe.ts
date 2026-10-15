@@ -315,7 +315,9 @@ export function probe(corridor: Box) {
 						const el = document.querySelector(sel);
 						return el ? parseFloat(getComputedStyle(el).fontSize) : null;
 					};
-					const docks = [...document.querySelectorAll('[data-dock]')];
+					const docks = [...document.querySelectorAll('[data-dock]')].filter(
+						(el) => el.getBoundingClientRect().height > 0,
+					);
 					const last = docks[docks.length - 1]?.getBoundingClientRect();
 					const page = body ?? root;
 					return {
