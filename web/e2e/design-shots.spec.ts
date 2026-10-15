@@ -172,10 +172,17 @@ surface(
 		await ride(o.page, `/ride?w=openers&road=${road}&from=2300`);
 		await assertRiding(o.page, true);
 		await s.shot(o, { name: 'world-hairpins' });
-		// multi:world-hairpins-trench — #3728: the first leg between two retaining walls, from km 1.5.
-		await ride(o.page, `/ride?w=openers&road=${road}&from=1500`);
-		await assertRiding(o.page, true);
-		await s.shot(o, { name: 'world-hairpins-trench' });
+		// multi:ride-keys-sheet and multi:ride-keys-clean — the ? sheet over the
+		// ride, then H's clean view (#3216).
+		await o.page.keyboard.press('?');
+		await o.page.getByTestId('key-sheet').waitFor();
+		await s.shot(o, { name: 'ride-keys-sheet' });
+		await o.page.keyboard.press('Escape');
+		await o.page.keyboard.press('h');
+		await o.page.locator('[data-dock=header]').waitFor({ state: 'detached' });
+		await s.shot(o, { name: 'ride-keys-clean' });
+		await o.page.keyboard.press('h');
+
 		// multi:ride-road-world-climb — item 28: on the climb, turned to CLIMB,
 		// which a workout leaves to the rider (#3645).
 		await o.page.getByTestId('bike-computer').getByTitle('Next page').click();
@@ -183,6 +190,10 @@ surface(
 			.locator('[data-testid=bike-computer][data-page=climb]')
 			.waitFor();
 		await s.shot(o, { name: 'ride-road-world-climb' });
+		// multi:world-hairpins-trench — #3728: the first leg between two retaining walls, from km 1.5.
+		await ride(o.page, `/ride?w=openers&road=${road}&from=1500`);
+		await assertRiding(o.page, true);
+		await s.shot(o, { name: 'world-hairpins-trench' });
 		// multi:world-finish — item 29: about 150 m from the road’s end, the finish arch ahead (#3623).
 		await ride(o.page, `/ride?w=openers&road=${road}&from=6950`);
 		await assertRiding(o.page, true);
