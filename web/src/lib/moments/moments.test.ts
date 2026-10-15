@@ -168,3 +168,14 @@ describe('a consumer with no world', () => {
 		expect(said).toEqual(['Stelvio 🎉', '20 min']);
 	});
 });
+
+describe('the count-in dock-in (#3087)', () => {
+	it('enters on the count-in cue and holds at its hit time, behind a finish', () => {
+		const q = rig();
+		q.moments.stage({ kind: 'dockin', payload: 'slots' });
+		expect(q.at(0)).toEqual(['enter dockin slots']);
+		expect(q.at(DUR.stage)).toEqual(['hold dockin slots']);
+		q.moments.stage(finish('done'));
+		expect(q.at(DUR.stage + 1)).toEqual(['exit dockin slots']);
+	});
+});

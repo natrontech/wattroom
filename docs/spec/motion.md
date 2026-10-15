@@ -39,13 +39,13 @@ lean **0.3 s**, steer **0.15 s**.
 
 **Durations and timings** (`app.css` `@theme`, mirrored in `$lib/motion`):
 
-| Token              | Value      | Token             | Value      |
-| ------------------ | ---------- | ----------------- | ---------- |
-| `--dur-press`      | **90 ms**  | `--dur-stage`     | **700 ms** |
-| `--dur-quick`      | **160 ms** | `--dur-draw`      | **1200 ms** |
-| `--dur-base`       | **240 ms** | `--hold-announce` | **2400 ms** |
-| `--dur-reveal`     | **400 ms** | `--stagger`       | **60 ms**  |
-| `--dur-live`       | **500 ms** | `--stagger-podium` | **400 ms** |
+| Token          | Value      | Token              | Value       |
+| -------------- | ---------- | ------------------ | ----------- |
+| `--dur-press`  | **90 ms**  | `--dur-stage`      | **700 ms**  |
+| `--dur-quick`  | **160 ms** | `--dur-draw`       | **1200 ms** |
+| `--dur-base`   | **240 ms** | `--hold-announce`  | **2400 ms** |
+| `--dur-reveal` | **400 ms** | `--stagger`        | **60 ms**   |
+| `--dur-live`   | **500 ms** | `--stagger-podium` | **400 ms**  |
 
 **Easings**: `--ease-arrive` cubic-bezier(0.05, 0.7, 0.1, 1); `--ease-leave`
 cubic-bezier(0.3, 0, 0.8, 0.15); `--ease-move` cubic-bezier(0.2, 0, 0, 1);
@@ -61,6 +61,19 @@ fog-dip.
 particles), Light (the lowest 3D tier), Flat (the Skyline). Per device, stored
 in `wattroom.world.mode.v1`; reduced motion opens on Flat, with one tap to
 Steady.
+
+**Count-in reveal** (#3087, `world/reveal.ts`): cue the count-in's first frame,
+hit time the start of its last **3 s**. The eye opens **200 m** back and
+**100 m** up looking at the first climb's top (**3 km** ahead with no climb
+within **8 km**), and descends to a pose 11 m back of the START arch, capped at
+**60 m/s** and **20°/s**. The last 3 s hold still with the digit on the arch's
+banner. A late opener lands mid-path. Steady and reduced motion: that held
+pose for the whole count-in.
+
+**Slots dock in** (#3087, `moments` kind `dockin`, `RidingSurface`): cue the
+count-in's first frame, hit time **`--dur-stage`** (700 ms) later. Each slot
+flies **40 px** from its edge on `--ease-arrive`, staggered by `--stagger`.
+Reduced motion: the slots stand in place from the first frame.
 
 **Steady** (default; `world/rig.ts`): heli camera **260 m** back and **190 m**
 up, fixed FOV **45°**, cuts instead of moves, no particles or confetti, lean
