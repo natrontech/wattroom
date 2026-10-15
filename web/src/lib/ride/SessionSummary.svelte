@@ -155,7 +155,7 @@
 		</div>
 
 		<section
-			class="panel panel-lg xl:col-start-1 xl:row-span-2 xl:row-start-1 xl:self-stretch"
+			class="panel panel-lg xl:col-start-1 xl:row-span-2 xl:row-start-1 xl:self-start"
 			data-testid="recap-trace"
 		>
 			{#if trace}

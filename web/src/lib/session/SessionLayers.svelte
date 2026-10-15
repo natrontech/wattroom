@@ -45,7 +45,7 @@
 	import { flatten } from '$lib/workout/engine';
 	import type { Workout, Segment } from '$lib/workout/types';
 	import type { SessionState } from '$lib/protocol';
-	import Modal from '$lib/components/Modal.svelte';
+	import { countModal, modals } from '$lib/modals.svelte';
 	import SessionSummary from '$lib/ride/SessionSummary.svelte';
 	import ChannelStatus from '$lib/channel/ChannelStatus.svelte';
 	import type { channelConnection } from '$lib/channel/connection.svelte';
@@ -300,6 +300,14 @@
 
 {#snippet trainerCard()}<TrainerOverview compact />{/snippet}
 
+<svelte:window
+	onkeydown={(event) =>
+		event.key === 'Escape' &&
+		summary.card &&
+		modals.open <= 1 &&
+		summary.dismiss()}
+/>
+
 {#if summary.card}
 	{@const card = summary.card}
 	<!-- The summary has to call out (#359). It used to render at the bottom of
@@ -307,12 +315,16 @@
 	     and nothing said so — a modal is the session telling you it is over.
 	     It draws the close, not the live values (#2603): the coach's next pick
 	     turned the phase back to idle and took everyone's summary with it. -->
-	<!-- No width cap and no floating box (#3686): the card spans the window
-	     from its top, the way it spans the content column on /ride. -->
-	<Modal
-		label="Session summary"
-		class="max-w-none self-start"
-		onclose={() => summary.dismiss()}
+	<!-- It fills the content column, not the window (#4041): the sidebar stays
+	     on screen. SessionLayers sits inside the shell's relative <main>, so
+	     absolute inset-0 is that column. Escape answers only while no Modal
+	     is above it. -->
+	<div
+		{@attach countModal}
+		role="dialog"
+		aria-label="Session summary"
+		data-testid="session-card"
+		class="bg-surface absolute inset-0 z-40 overflow-y-auto p-4"
 	>
 		<SessionSummary
 			title={card.workoutName || placeName}
@@ -366,5 +378,5 @@
 				>
 			{/snippet}
 		</SessionSummary>
-	</Modal>
+	</div>
 {/if}

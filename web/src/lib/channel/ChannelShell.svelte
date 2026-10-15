@@ -348,23 +348,22 @@
 	}}
 />
 
-<SessionLayers
-	{layers}
-	{connection}
-	{roster}
-	{shared}
-	{segments}
-	{phase}
-	placeName={props.name}
-	crewName={props.crewName}
-	code={props.code}
-	onSchedule={props.onSchedule}
-/>
-
 <!-- The sidebar is the layout's (ADR-0020 — one instance across navigation);
      the voice channel is content | people inside that frame. -->
 <div class="bg-surface text-ink flex h-full overflow-hidden">
 	<main class="relative flex min-w-0 flex-1 flex-col overflow-hidden">
+		<SessionLayers
+			{layers}
+			{connection}
+			{roster}
+			{shared}
+			{segments}
+			{phase}
+			placeName={props.name}
+			crewName={props.crewName}
+			code={props.code}
+			onSchedule={props.onSchedule}
+		/>
 		<CheerLayer cheers={live.tick?.cheers} />
 		<!-- The board floats over the channel and is dragged where the rider
 		     wants it (#877); it plays whether or not it is on screen. -->
