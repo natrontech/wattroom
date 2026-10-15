@@ -1,0 +1,1 @@
+- The chase camera sits a little further back and its field of view widens by at most 4° with speed, so your rider fills at most 30 % of the frame.
