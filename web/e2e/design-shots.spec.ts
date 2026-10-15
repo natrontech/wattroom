@@ -219,6 +219,23 @@ surface(
 		await ride(o.page, `/ride?w=openers&road=${road}&from=1500`);
 		await assertRiding(o.page, true);
 		await s.shot(o, { name: 'world-hairpins-trench' });
+		// multi:ride-road-world-flamme — #3645: the last kilometre to the top, the
+		// flamme rouge flagged on the CLIMB page.
+		await ride(o.page, `/ride?w=openers&road=${road}&from=6200`);
+		await assertRiding(o.page, true);
+		await o.page.getByTestId('bike-computer').getByTitle('Next page').click();
+		await o.page.getByTestId('flamme-rouge').waitFor();
+		await s.shot(o, { name: 'ride-road-world-flamme' });
+		// multi:ride-road-world-summit — #3645: over the top of the rolling road's
+		// first climb (km 3.0, class IV: no confetti, the budget is HC and I), the
+		// strip above the Skyline.
+		const rollingRoad = await fixtureRoad(o.page, 'rolling');
+		await ride(o.page, `/ride?w=openers&road=${rollingRoad}&from=2900`);
+		await assertRiding(o.page, true);
+		await o.page.getByTestId('summit-strip').waitFor({ timeout: 60_000 });
+		// The strip has risen: its `--dur-stage` rise, not a frame in it.
+		await o.page.waitForTimeout(900);
+		await s.shot(o, { name: 'ride-road-world-summit' });
 		// multi:world-finish — item 29: about 150 m from the road’s end, the finish arch ahead (#3623).
 		await ride(o.page, `/ride?w=openers&road=${road}&from=6950`);
 		await assertRiding(o.page, true);

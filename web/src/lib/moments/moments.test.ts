@@ -179,3 +179,14 @@ describe('the count-in dock-in (#3087)', () => {
 		expect(q.at(DUR.stage + 1)).toEqual(['exit dockin slots']);
 	});
 });
+
+describe('the climb card moments (#3645)', () => {
+	it('slides the card in, then the flamme rouge waits behind it, a summit outranks both', () => {
+		const q = rig();
+		q.moments.stage({ kind: 'flamme', payload: 'IV' });
+		q.moments.stage({ kind: 'climb', payload: 'IV' });
+		expect(q.at(0)).toEqual(['enter climb IV']);
+		q.moments.stage({ kind: 'summit', category: '2', payload: 'II' });
+		expect(q.at(1)).toEqual(['exit climb IV']);
+	});
+});

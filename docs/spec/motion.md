@@ -75,6 +75,19 @@ count-in's first frame, hit time **`--dur-stage`** (700 ms) later. Each slot
 flies **40 px** from its edge on `--ease-arrive`, staggered by `--stagger`.
 Reduced motion: the slots stand in place from the first frame.
 
+**The climb's moments** (#3645, `moments` kinds `climb`, `flamme`, `summit`,
+`ride/climb-cues.svelte.ts`): one at a time, lowest priority after the summit.
+
+- `climb`: cue `climb` as the card opens, hit when the CLIMB page's slide-in
+  ends (**`--dur-stage`**, **40 px** from its edge, `--ease-arrive`).
+- `flamme`: no sound. The flamme rouge flag stamps on `--ease-pop` over
+  **`--dur-base`** when the last kilometre begins, then stays while it lasts.
+- `summit`: cue `summit` as the strip rises above the Skyline, hit when its
+  **`--dur-stage`** ends, held **`--hold-announce`**. Confetti falls from the
+  strip over **`--dur-draw`** at HC and I only, staggered by **`--stagger`** ÷ 3.
+  Steady carries no confetti. Reduced motion keeps every cue and holds each
+  stamp.
+
 **Steady** (default; `world/rig.ts`): heli camera **260 m** back and **190 m**
 up, fixed FOV **45°**, cuts instead of moves, no particles or confetti, lean
 ×**0.5**, vegetation sway ×**0.3**. Crank and wheels keep turning, because they

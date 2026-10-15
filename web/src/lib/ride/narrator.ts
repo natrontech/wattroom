@@ -81,6 +81,8 @@ export function momentLine(e: MomentEvent): string | null {
 		case 'pr':
 			return 'Personal record';
 		case 'dockin':
+		case 'climb':
+		case 'flamme':
 			return null;
 	}
 }

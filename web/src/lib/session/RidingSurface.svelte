@@ -23,6 +23,7 @@
 	import type { Snippet } from 'svelte';
 	import { device } from '$lib/device.svelte';
 	import { createMoments } from '$lib/moments';
+	import SummitStrip from '$lib/ride/SummitStrip.svelte';
 	import { prefersReducedMotion } from '$lib/motion';
 	import { COLUMN_SEAT, offerSeat } from '$lib/channel/stage-slot.svelte';
 	import {
@@ -164,6 +165,7 @@
 				{@render crew()}
 			</div>
 		{/if}
+		<SummitStrip />
 		{#if horizon}
 			<div
 				data-dock="horizon"
@@ -301,6 +303,12 @@
 				{@render numbers()}
 			</div>
 		{/if}
+		<div
+			class="absolute right-0 left-0 z-10 flex justify-center"
+			style="bottom:{INSET_PX + (stage ? STRIP_PX : SKYLINE_PX) + GAP_PX}px"
+		>
+			<SummitStrip />
+		</div>
 		{#if horizon}
 			<div
 				data-dock="horizon"
@@ -352,6 +360,7 @@
 				{@render crew()}
 			</div>
 		{/if}
+		<SummitStrip />
 		{#if horizon}
 			<div
 				data-dock="horizon"
