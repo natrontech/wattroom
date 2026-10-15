@@ -407,7 +407,7 @@
 		{#if !inWorld}
 			<!-- Flat, in slot order: the Skyline a strip along the bottom as
 			     over the world, on screen with the dot inside (ride-free-road 9). -->
-			<div class="flex h-full min-h-0 flex-col gap-3">
+			<div class="flex min-h-0 flex-col gap-3">
 				{#if setup && !free.recording}{@render setup()}{/if}
 				{#if roadEndOffered(free, false)}
 					<div class="ride-panel">{@render roadEnd()}</div>
@@ -415,7 +415,7 @@
 				<!-- The container the computer's wide layout answers to (its @2xl
 				     variants): here, never on the computer itself, whose own inline
 				     size would then collapse inside the world's w-fit dock. -->
-				<div class="ride-panel grow">
+				<div class="ride-panel shrink-0">
 					{@render computer()}
 					{@render foot?.()}
 				</div>

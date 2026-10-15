@@ -330,8 +330,7 @@
 			data-dock="focus"
 			class="{own
 				? ''
-				: 'ride-panel'} min-h-0 overflow-y-auto [&:not(:has(*))]:hidden {stage ||
-			own
+				: 'ride-panel'} min-h-0 overflow-y-auto [&:not(:has(*))]:hidden {stage
 				? 'grow'
 				: 'shrink-0'}"
 		>
