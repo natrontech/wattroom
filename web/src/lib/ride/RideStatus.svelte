@@ -12,6 +12,7 @@
 	import FaultBanner from '$lib/channel/FaultBanner.svelte';
 	import { faultCopy } from '$lib/channel/fault-copy';
 	import { FtmsTrainer } from '$lib/ble/ftms';
+	import { statusLine } from '$lib/ride/status-lines';
 	import { pairError } from '$lib/ble/pair-error';
 	import type { createRideSession } from '$lib/workout/session.svelte';
 
@@ -54,13 +55,16 @@
 			: null,
 	);
 	// Ride-critical first (errors.md), then the guard, then the missing copy.
+	// A trainer that is not connected has no line of its own in fault-copy:
+	// the one copy module says it and names the one button (#3212).
+	const quiet = statusLine('trainer-quiet');
 	const held = $derived(
 		fault
 			? {
-					text: repairError ?? fault.line ?? fault.title,
+					text: repairError ?? fault.line ?? quiet.text,
 					alert: true,
-					recover: fault.lineAction ?? fault.action,
-					recoverName: fault.action,
+					recover: fault.line ? fault.lineAction : quiet.action,
+					recoverName: fault.line ? fault.action : quiet.action,
 				}
 			: session.state === 'autopaused'
 				? { text: 'Paused — you stopped pedalling' }
@@ -69,7 +73,7 @@
 					: session.hrHoldLost
 						? { text: 'Heart-rate hold waiting — no heart rate' }
 						: session.spiralActive
-							? { text: 'Spiral guard — spin back up to get the target back' }
+							? { text: statusLine('guard-released').text }
 							: noCrashSafety
 								? { text: 'Not keeping its own copy of this ride' }
 								: null,
