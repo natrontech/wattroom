@@ -1,0 +1,1 @@
+- A free ride's sidebar and jukebox headings stay on one line while you pedal, and the jukebox search reads at the riding size.

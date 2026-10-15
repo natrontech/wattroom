@@ -15,7 +15,7 @@ export const railButton = (riding: boolean) => (riding ? 'min-h-11' : 'btn-xs');
 
 /** A text field beside a railButton, as tall as it. */
 export const railField = (riding: boolean) =>
-	riding ? 'input-xs min-h-11' : 'input-xs';
+	riding ? 'input-xs min-h-11 text-2xl leading-7' : 'input-xs';
 
 /**
  * A heading: TARGETS G4's 24 px label while riding, the kit's 10 px eyebrow at
