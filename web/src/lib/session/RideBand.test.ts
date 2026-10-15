@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { render } from 'svelte/server';
-import RideHeader from './RideHeader.svelte';
+import RideBand from './RideBand.svelte';
 import type { Block, BlockTrainer } from '$lib/workout/block';
 
 const block = (trainer: BlockTrainer): Block => ({
@@ -16,7 +16,7 @@ const block = (trainer: BlockTrainer): Block => ({
 });
 
 const chip = (trainer: BlockTrainer, drives = true) => {
-	const body = render(RideHeader, {
+	const body = render(RideBand, {
 		props: { block: block(trainer), elapsed: 60, total: 600, drives },
 	}).body;
 	const match = body.match(/data-testid="trainer-chip"[^>]*>([^<]*)</);
@@ -52,7 +52,7 @@ describe('the trainer chip', () => {
 // TARGETS Flows rule 2: the workout keeps its name once the block has one.
 describe('the context eyebrow', () => {
 	const body = (context?: string) =>
-		render(RideHeader, {
+		render(RideBand, {
 			props: {
 				block: block({ kind: 'erg' }),
 				elapsed: 60,

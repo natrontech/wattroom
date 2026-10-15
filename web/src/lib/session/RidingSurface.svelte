@@ -36,7 +36,7 @@
 	let {
 		header,
 		headerFit = false,
-		status,
+		own = false,
 		focus,
 		numbers,
 		crew,
@@ -55,8 +55,8 @@
 		header: Snippet;
 		/** Slot 1 is its content's size (the box table), not the strip's width. */
 		headerFit?: boolean;
-		/** The flat layout's status row; over the world it is slot 1's first line, the caller's. */
-		status?: Snippet;
+		/** The caller draws its own panels in the header and focus slots, flat (the free ride's, #3893). */
+		own?: boolean;
 		focus: Snippet;
 		numbers?: Snippet;
 		crew?: Snippet;
@@ -269,17 +269,49 @@
 		{/if}
 	</div>
 {:else}
-	<div
-		class="grid min-h-0 grid-cols-[minmax(0,1fr)] grid-rows-[auto_auto_1fr_auto_auto_auto] {extra}"
-	>
-		<div class="row-start-1 min-w-0">{@render header()}</div>
-		{#if status}<div class="row-start-2 min-w-0">{@render status()}</div>{/if}
-		<!-- The focus fills its row: one stretched cell, allowed to shrink below its content. -->
-		<div class="row-start-3 grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)]">
+	<!-- No world: the same slots as flat panels in one column (#3670, TARGETS
+	     ride-workout-flat). Panels touch at one gap, so no band opens between
+	     them: the horizon takes the free height, or the focus does when a
+	     screen has the stage. -->
+	<div class="flex min-h-0 flex-col gap-3 {extra}" data-surface="flat">
+		<div data-dock="header" class="shrink-0 {own ? '' : 'ride-panel'}">
+			{@render header()}
+		</div>
+		<div
+			data-dock="focus"
+			class="{own
+				? ''
+				: 'ride-panel'} min-h-0 overflow-y-auto [&:not(:has(*))]:hidden {stage
+				? 'grow'
+				: 'shrink-0'}"
+		>
 			{@render focus()}
 		</div>
-		{#if numbers}<div class="row-start-4 min-w-0">{@render numbers()}</div>{/if}
-		{#if crew}<div class="row-start-5 min-w-0">{@render crew()}</div>{/if}
-		{#if horizon}<div class="row-start-6 min-w-0">{@render horizon()}</div>{/if}
+		{#if numbers}
+			<!-- One row at content height (TARGETS ride-workout-flat 8): the page
+			     control on its own header line, then the head and the fields packed
+			     left and the trim at the right end. -->
+			<div
+				data-dock="numbers"
+				class="ride-panel relative flex shrink-0 flex-row flex-wrap items-center gap-x-8 gap-y-1 px-4 py-3 [&_[data-testid=bike-computer]]:contents [&_[data-testid=computer-fields]]:flex [&_[data-testid=computer-fields]]:flex-wrap [&_[data-testid=computer-fields]]:gap-x-8 [&_[data-testid=computer-fields]]:gap-y-3 [&_[data-testid=computer-fields]]:border-t-0 [&_[data-testid=computer-fields]]:pt-0 [&_[data-testid=computer-head]]:w-84 [&_[data-testid=computer-head]]:min-w-max [&_[data-testid=computer-head]>div:first-child]:justify-start [&_[data-testid=computer-head]>div:first-child]:gap-x-8 [&_[data-testid=computer-page-row]]:basis-full [&_[data-testid=zone-strip]]:basis-full [&:not(:has(*))]:hidden [&>div]:ml-auto"
+			>
+				{@render numbers()}
+			</div>
+		{/if}
+		{#if crew}
+			<div data-dock="crew" class="ride-panel shrink-0 [&:not(:has(*))]:hidden">
+				{@render crew()}
+			</div>
+		{/if}
+		{#if horizon}
+			<div
+				data-dock="horizon"
+				class="ride-panel flex min-h-28 flex-col overflow-hidden [&:not(:has(*))]:hidden {stage
+					? 'shrink-0'
+					: 'grow'}"
+			>
+				{@render horizon()}
+			</div>
+		{/if}
 	</div>
 {/if}

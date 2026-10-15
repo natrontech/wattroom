@@ -23,14 +23,9 @@ const surfaces = FILES.filter(
 describe('the instrument knows when its numbers are not live (#2851)', () => {
 	it('finds the riding surfaces', () => {
 		expect(surfaces).toEqual(
-			// The free ride's head is the bike computer's (#3669), whose
-			// `stale` the type checker requires.
-			expect.arrayContaining([
-				'lib/ride/RidingScreen.svelte',
-				'lib/session/Training.svelte',
-				'lib/session/TrainingPhone.svelte',
-				'routes/(app)/ramp/+page.svelte',
-			]),
+			// The free ride's head (#3669) and every other riding panel's (#3670)
+			// is the bike computer's, whose `stale` the type checker requires.
+			expect.arrayContaining(['lib/session/TrainingPhone.svelte']),
 		);
 	});
 
@@ -43,17 +38,11 @@ describe('the instrument knows when its numbers are not live (#2851)', () => {
 
 /**
  * A voice channel's places draw your instrument before anything is paired,
- * and its 0 glowed as though measured (#2941). The solo ride and the ramp
- * test start only with a trainer in hand, so they always have one to read.
+ * and its 0 glowed as though measured (#2941).
  */
-const SOLO = ['lib/ride/RidingScreen.svelte', 'routes/(app)/ramp/+page.svelte'];
-
 describe('the instrument knows when nothing is paired (#2941)', () => {
-	it.each(surfaces.filter((file) => !SOLO.includes(file)))(
-		'%s tells every instrument',
-		(file) => {
-			const tags = read(file).match(/<Instrument\b[\s\S]*?\/>/g) ?? [];
-			for (const tag of tags) expect(tag).toMatch(/\bidle\b/);
-		},
-	);
+	it.each(surfaces)('%s tells every instrument', (file) => {
+		const tags = read(file).match(/<Instrument\b[\s\S]*?\/>/g) ?? [];
+		for (const tag of tags) expect(tag).toMatch(/\bidle\b/);
+	});
 });

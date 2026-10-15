@@ -1,0 +1,1 @@
+- A ride with no road rides in the same panels as the world: one full-width top panel, the watts once in the bike computer's head, the bias trim and graph in panels.

@@ -49,7 +49,7 @@ export const REASONS: Record<SkylineReason, { line: string; retry: boolean }> =
 	{
 		chosen: { line: 'Flat road — as you set it on this device', retry: true },
 		motion: {
-			line: 'Flat road — this device asks for reduced motion',
+			line: 'Flat road — reduced motion is on',
 			retry: true,
 		},
 		capability: {

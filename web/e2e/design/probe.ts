@@ -155,6 +155,41 @@ export function probe(corridor: Box) {
 	const surface = document
 		.querySelector('[data-surface=docked]')
 		?.getBoundingClientRect();
+	// The flat layout's panels in px (#3670): the gap between neighbours, and
+	// the slack under each one's last child, which is the empty band G3 caps.
+	const flatEl = document.querySelector<HTMLElement>('[data-surface=flat]');
+	const flatPanels = flatEl
+		? [...flatEl.querySelectorAll<HTMLElement>(':scope > [data-dock]')].filter(
+				shown,
+			)
+		: [];
+	const flat = flatEl
+		? {
+				panels: flatPanels.map((el) => {
+					const r = el.getBoundingClientRect();
+					const last = Math.max(
+						r.top,
+						...[...el.querySelectorAll<HTMLElement>('*')]
+							.filter(shown)
+							.map((c) => c.getBoundingClientRect().bottom),
+					);
+					return {
+						dock: el.dataset.dock,
+						top: round(r.top),
+						height: round(r.height),
+						slack: round(Math.max(0, r.bottom - last)),
+					};
+				}),
+				gaps: flatPanels
+					.slice(1)
+					.map((el, i) =>
+						round(
+							el.getBoundingClientRect().top -
+								flatPanels[i].getBoundingClientRect().bottom,
+						),
+					),
+			}
+		: null;
 	const panels = surface
 		? [...document.querySelectorAll<HTMLElement>('[data-dock]')]
 				.filter(shown)
@@ -260,6 +295,7 @@ export function probe(corridor: Box) {
 		wattMarks,
 		glows,
 		panels,
+		flat,
 		minTarget: {
 			px: Number.isFinite(smallest.px) ? smallest.px : null,
 			label: smallest.label,

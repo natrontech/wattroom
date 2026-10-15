@@ -16,6 +16,7 @@
 	import ComputerHead from '$lib/session/ComputerHead.svelte';
 	import { ZONE_BG } from '$lib/components/zones';
 	import { pulse } from '$lib/motion/transitions';
+	import { fieldDimmer } from '$lib/session/field-dim';
 	import ClimbProfile from '$lib/ride/ClimbProfile.svelte';
 	import {
 		PAGE_NAMES,
@@ -132,6 +133,20 @@
 		if (untrack(() => shown) === 'ride') page = 'climb';
 	});
 
+	// A plain field's number dims to 60 % after 20 s unchanged (#3215): ink at
+	// /60 is the ramp's legible floor, so it is the colour, never an opacity
+	// (no-faded-text). The 3 s power and the neon figures never dim.
+	const dimmer = fieldDimmer();
+	let now = $state(Date.now());
+	$effect(() => {
+		const stamp = Date.now();
+		for (const f of fields)
+			dimmer.see(f.key, `${f.value}${f.unit ?? ''}`, stamp);
+		now = stamp;
+		const tick = setInterval(() => (now = Date.now()), 1000);
+		return () => clearInterval(tick);
+	});
+
 	const zoneStrip = $derived(
 		shown === 'power' && ctx.stats ? ctx.stats.zoneSeconds.slice(1, 8) : null,
 	);
@@ -244,7 +259,10 @@
 	{/if}
 	{#if docked}
 		<!-- D15: the current page's name between ← and →, with position dots. -->
-		<div class="relative flex items-center gap-1">
+		<div
+			data-testid="computer-page-row"
+			class="relative flex items-center gap-1"
+		>
 			{#if turns}
 				<button
 					type="button"
@@ -318,6 +336,7 @@
 						? 'border-neon/20 grid min-w-0 flex-1 auto-cols-fr grid-flow-col gap-x-8 border-l pl-8'
 						: 'border-neon/20 grid grid-cols-2 gap-x-6 gap-y-3 border-t pt-3'
 				: layout}
+			data-testid={docked ? 'computer-fields' : undefined}
 			style:flex-basis={docked && tv ? tvFields : undefined}
 		>
 			{#if !phone && !docked}{@render name()}{/if}
@@ -355,7 +374,9 @@
 								? 'text-watt glow-text'
 								: field.neon
 									? 'text-neon'
-									: 'text-ink'}"
+									: dimmer.dimmed(field.key, now)
+										? 'text-ink/60'
+										: 'text-ink'}"
 							style:font-size={docked && tv ? tvValue(field) : undefined}
 							>{field.value}{#if field.unit}{' '}<span
 									class="text-muted {size.unit} leading-none font-normal"

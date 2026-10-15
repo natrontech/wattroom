@@ -1,8 +1,10 @@
 <script lang="ts">
-	import Instrument from '$lib/session/Instrument.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import CountdownScreen from '$lib/session/CountdownScreen.svelte';
-	import RideHeader from '$lib/session/RideHeader.svelte';
+	import { rideContext } from '$lib/session/ride-context';
+	import BiasTrim from '$lib/session/BiasTrim.svelte';
+	import RideBand from '$lib/session/RideBand.svelte';
+	import RidingSurface from '$lib/session/RidingSurface.svelte';
 	import BikeComputer from '$lib/session/BikeComputer.svelte';
 	import { describeBlock } from '$lib/workout/block';
 	import Banner from '$lib/components/Banner.svelte';
@@ -390,13 +392,56 @@
 
 <svelte:head><title>Ramp test · WattRoom</title></svelte:head>
 
-<main class="page">
+{#snippet rampControls()}
+	<div class="flex flex-wrap items-center justify-end gap-2">
+		<button onclick={() => (tv = true)} class="btn btn-secondary btn-ride"
+			>TV</button
+		>
+		<button onclick={stopTest} class="btn btn-secondary btn-ride"
+			>I'm done</button
+		>
+		<FlagButton onflag={flag} sends="after" />
+	</div>
+{/snippet}
+
+{#snippet rampStatus()}
+	<!-- The guard states and the dropout, as /ride says them (#1799). -->
+	{#if session}<RideStatus {session} {signalLost} {noCrashSafety} line />{/if}
+{/snippet}
+
+{#snippet strip()}
+	<!-- The staircase's cursor, in slot 1. -->
+	{#if session}
+		<IntervalGraph
+			segments={session.segments}
+			total={session.total}
+			elapsed={session.elapsed}
+			ftp={profile.current.ftp}
+			ceiling={rampCeiling}
+			trace={session.trace}
+			compact
+			marker={false}
+		/>
+	{/if}
+{/snippet}
+
+<main
+	class="page flex min-h-full flex-col {session &&
+	!done &&
+	session.state !== 'idle' &&
+	session.state !== 'countdown'
+		? 'sm:px-6'
+		: ''}"
+>
 	<h1 class="page-title">Ramp test</h1>
-	<p class="text-muted mt-2 max-w-xl text-sm">
-		The one workout whose point is to end. Starts at {RAMP.startWatts} W, adds
-		{RAMP.stepWatts} W every minute, and stops when you can't hold the step. Your
-		FTP is {Math.round(RAMP.ftpFraction * 100)} % of your best minute.
-	</p>
+	<!-- A riding surface has no sentences but its status line (G4). -->
+	{#if !session || session.state === 'idle' || done}
+		<p class="text-muted mt-2 max-w-xl text-sm">
+			The one workout whose point is to end. Starts at {RAMP.startWatts} W, adds
+			{RAMP.stepWatts} W every minute, and stops when you can't hold the step. Your
+			FTP is {Math.round(RAMP.ftpFraction * 100)} % of your best minute.
+		</p>
+	{/if}
 
 	{#if !session || session.state === 'idle'}
 		<div class="panel mt-8 max-w-2xl p-8 text-center">
@@ -503,83 +548,71 @@
 		<!-- The bottom padding is the floating navigation button's, as
 		     RidingScreen has it (ux.md: the last item clears the chrome) — the
 		     graph's bottom-left corner sat under it at 375 px (#2161). -->
-		<div class="panel mt-8 flex flex-col gap-5 p-8 pb-16 sm:pb-8">
-			<RideHeader
-				{block}
-				elapsed={session.elapsed}
-				total={session.total}
-				cadence={session.sample?.cadence ?? 0}
-				hr={session.sample?.heartRate ?? 0}
-				title={workout.name}
-				unit="step"
-				drives
-				eyebrow={stepEyebrow}
-			>
-				{#snippet controls()}
-					<div class="flex flex-wrap items-center justify-end gap-2">
-						<button
-							onclick={() => (tv = true)}
-							class="btn btn-secondary btn-ride">TV</button
-						>
-						<button onclick={stopTest} class="btn btn-secondary btn-ride"
-							>I'm done</button
-						>
-						<FlagButton onflag={flag} sends="after" />
-					</div>
-				{/snippet}
-			</RideHeader>
-
-			{#if flagNotice}
-				<!-- Consent in plain words, at the moment of the tap, never blocking. -->
-				<p class="text-muted mt-2 text-xs">{FLAG_SAID.after}</p>
-			{/if}
-
-			<!-- The guard states and the dropout, as /ride says them (#1799):
-			     mid-ramp the resistance can vanish for ten seconds on purpose. -->
-			<RideStatus
-				{session}
-				{signalLost}
-				{noCrashSafety}
-				note="The step resumes the moment it is back, and the test will not end on the gap."
-			/>
-
-			<!-- Scaled to the test's own top, not the FTP it exists to correct
-			     (#1565): at FTP 180 the bar used to pin at 270 W on step 10. -->
-			<Instrument
-				watts={session.sample?.watts ?? 0}
-				stale={signalLost}
-				target={session.target}
-				ftp={profile.current.ftp}
-				targetLabel="step"
-				fullScale={RAMP.startWatts + RAMP.steps * RAMP.stepWatts}
-			/>
-
-			<!-- The test records heart rate for its whole length and reads the
-			     peak to suggest an LTHR, and never showed the rider a bpm
-			     (#1531). -->
-			<BikeComputer
-				cadence={session.sample?.cadence ?? 0}
-				stale={signalLost}
-				hr={session.sample?.heartRate ?? 0}
-				watts={session.sample?.watts ?? 0}
-				kg={profile.current.kg}
-				lthr={profile.current.lthr}
-				target={session.target > 0 ? session.target : undefined}
-				stats={session.live}
-			/>
-
-			<!-- The staircase, and how far up it you are. -->
-			<div class="h-28">
-				<IntervalGraph
-					segments={session.segments}
-					total={session.total}
-					elapsed={session.elapsed}
-					ftp={profile.current.ftp}
-					ceiling={rampCeiling}
-					trace={session.trace}
+		<RidingSurface class="mt-8 min-h-[32rem] flex-1 pb-16 sm:pb-0">
+			{#snippet header()}
+				<RideBand
+					{block}
+					elapsed={session!.elapsed}
+					total={session!.total}
+					title={workout.name}
+					unit="step"
+					context={rideContext('Solo', workout.name)}
+					drives
+					wide
+					eyebrow={stepEyebrow}
+					controls={rampControls}
+					status={rampStatus}
+					{strip}
 				/>
-			</div>
-		</div>
+			{/snippet}
+			{#snippet focus()}{/snippet}
+			{#snippet numbers()}
+				<!-- The test records heart rate for its whole length and reads the
+				     peak to suggest an LTHR, and never showed the rider a bpm
+				     (#1531). The head holds the one watts figure. -->
+				<BikeComputer
+					docked
+					ftp={profile.current.ftp}
+					cadence={session!.sample?.cadence ?? 0}
+					stale={signalLost}
+					hr={session!.sample?.heartRate ?? 0}
+					watts={session!.sample?.watts ?? 0}
+					kg={profile.current.kg}
+					lthr={profile.current.lthr}
+					target={session!.target > 0 ? session!.target : undefined}
+					stats={session!.live}
+				/>
+				<div class="px-4 pb-3">
+					<BiasTrim
+						ride
+						bias={session!.bias}
+						onBias={(step) => session!.nudgeBias(step)}
+					/>
+				</div>
+				{#if flagNotice}
+					<!-- Consent in plain words, at the moment of the tap, never blocking. -->
+					<p class="text-muted px-4 pb-3 text-xs">{FLAG_SAID.after}</p>
+				{/if}
+			{/snippet}
+			{#snippet horizon()}
+				<!-- The staircase, and how far up it you are. Scaled to the test's
+				     own top, not the FTP it exists to correct (#1565). -->
+				<div class="relative min-h-28 flex-1">
+					<div class="absolute inset-0">
+						<IntervalGraph
+							ride
+							marker={!signalLost}
+							segments={session!.segments}
+							total={session!.total}
+							elapsed={session!.elapsed}
+							ftp={profile.current.ftp}
+							ceiling={rampCeiling}
+							trace={session!.trace}
+						/>
+					</div>
+				</div>
+			{/snippet}
+		</RidingSurface>
 	{:else if !usable}
 		<div class="panel mt-8 p-8">
 			<h2 class="font-display text-2xl font-bold">Not enough to measure</h2>
