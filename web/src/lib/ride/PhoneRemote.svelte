@@ -98,7 +98,7 @@
 	</div>
 
 	{#if geared}
-		<div class="grid grid-cols-2 gap-3">
+		<div class="grid flex-1 auto-rows-fr grid-cols-2 gap-3">
 			<button
 				type="button"
 				class={cell}

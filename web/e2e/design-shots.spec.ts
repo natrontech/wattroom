@@ -323,6 +323,12 @@ surface(
 							),
 						),
 					),
+					remoteGearPx: px(
+						parseFloat(
+							getComputedStyle(el.querySelector('p[aria-live=polite]') ?? el)
+								.fontSize,
+						),
+					),
 					remoteGearLine:
 						el.querySelector('p[aria-live=polite]')?.textContent?.trim() ??
 						null,
