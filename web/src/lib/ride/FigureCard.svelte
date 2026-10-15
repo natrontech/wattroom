@@ -127,13 +127,13 @@
 						max={MaxFigureHeightCm}
 						step="1"
 						bind:value={heightCm}
-						class="h-11 w-full"
+						class="w-full"
 					/>
 				</label>
 
 				<fieldset>
 					<legend class="text-muted mb-2 text-xs">Skin tone</legend>
-					<div class="grid grid-cols-8 gap-2">
+					<div class="flex flex-wrap gap-2">
 						{#each SKIN_VARS as colour, i (i)}
 							<button
 								type="button"
@@ -141,8 +141,7 @@
 								aria-label="Skin tone {i + 1} of {SKIN_VARS.length}"
 								onclick={() => (skin = i)}
 								style:background={colour}
-								class="border-muted/30 aspect-square min-h-6 rounded-full border {skin ===
-								i
+								class="border-muted/30 size-11 rounded-full border {skin === i
 									? 'ring-neon ring-2 ring-offset-2'
 									: ''}"
 							></button>
