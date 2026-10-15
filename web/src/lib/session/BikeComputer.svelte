@@ -16,6 +16,7 @@
 	import ComputerHead from '$lib/session/ComputerHead.svelte';
 	import { ZONE_BG } from '$lib/components/zones';
 	import { pulse } from '$lib/motion/transitions';
+	import { fieldDimmer } from '$lib/session/field-dim';
 	import ClimbProfile from '$lib/ride/ClimbProfile.svelte';
 	import {
 		PAGE_NAMES,
@@ -130,6 +131,20 @@
 		if (!climbOpens || climb === null || climb === openedFor) return;
 		openedFor = climb;
 		if (untrack(() => shown) === 'ride') page = 'climb';
+	});
+
+	// A plain field's number dims to 60 % after 20 s unchanged (#3215): ink at
+	// /60 is the ramp's legible floor, so it is the colour, never an opacity
+	// (no-faded-text). The 3 s power and the neon figures never dim.
+	const dimmer = fieldDimmer();
+	let now = $state(Date.now());
+	$effect(() => {
+		const stamp = Date.now();
+		for (const f of fields)
+			dimmer.see(f.key, `${f.value}${f.unit ?? ''}`, stamp);
+		now = stamp;
+		const tick = setInterval(() => (now = Date.now()), 1000);
+		return () => clearInterval(tick);
 	});
 
 	const zoneStrip = $derived(
@@ -359,7 +374,9 @@
 								? 'text-watt glow-text'
 								: field.neon
 									? 'text-neon'
-									: 'text-ink'}"
+									: dimmer.dimmed(field.key, now)
+										? 'text-ink/60'
+										: 'text-ink'}"
 							style:font-size={docked && tv ? tvValue(field) : undefined}
 							>{field.value}{#if field.unit}{' '}<span
 									class="text-muted {size.unit} leading-none font-normal"

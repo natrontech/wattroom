@@ -370,7 +370,9 @@
 			{#if inWorld && inFocus !== 'game'}
 				<!-- Beside the road the crew stays under the seat, a sprint's card
 				     included (the box table): rows at the riding floor. -->
-				<div class="py-2"><CrewRows riders={inRide} /></div>
+				<div class="py-2">
+					<CrewRows riders={inRide} offsets={channel.ridden?.bunch?.offsets} />
+				</div>
 			{:else if !quiet && inFocus !== 'game'}
 				<!-- The crew. A group-training surface that shows only your own
 			     numbers is a solo app with a chat window attached. A game's panel

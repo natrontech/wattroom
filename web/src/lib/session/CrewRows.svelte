@@ -12,13 +12,29 @@
 	import { zoneOf } from '$lib/components/zones';
 	import { wkg } from '$lib/format';
 	import { crewMenu } from '$lib/session/crew-menu';
+	import { offsetWindow, pelotonRows } from '$lib/session/peloton-list';
 
-	let { riders }: { riders: LiveRider[] } = $props();
+	let {
+		riders,
+		offsets = {},
+	}: {
+		riders: LiveRider[];
+		/** Metres from the bunch by rider: the list's distance (#3215). */
+		offsets?: Record<string, number>;
+	} = $props();
 	const channel = useChannel();
+
+	// You and the 3 nearest while the bunch is steady, everyone while it moves.
+	const steady = offsetWindow();
+	let settled = $state(true);
+	$effect(() => {
+		settled = steady.settled(Date.now(), offsets);
+	});
+	const rows = $derived(pelotonRows(riders, offsets, settled));
 </script>
 
 <ul aria-label="the crew" class="flex w-60 flex-col">
-	{#each riders as rider (rider.id)}
+	{#each rows as rider (rider.id)}
 		<li
 			{@attach contextMenu(() => crewMenu(channel, rider))}
 			data-testid="crew-tile"

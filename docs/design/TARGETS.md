@@ -170,6 +170,11 @@ Pages:
 28. Turned to CLIMB on the climb: ← CLIMB with the class chip → and dots (D15) over the head; under the hairline To top · Ascent · Avg left in two columns, each label on one line at 24 px; on the other pages the same chip beside the page's name, taking no row; while a target is asked no profile, as the Skyline below draws the climb and your dot; the panel between slot 1 and the Skyline, whole. [#3645] [multi:ride-road-world-climb]
 29. The road's last metre stands a FINISH arch across it: the KOM arch's chrome and banner, never glowing; none on a road the session laps. [multi:world-finish] [test:web/src/lib/world/ride-scene.test.ts] [#3623]
 
+Crew and computer:
+
+30. The crew list shows you and the 3 nearest riders while no rider's offset has changed by more than 5 m in the last 10 s, and every rider otherwise. [ride-surface] [#3215] [test:web/src/lib/session/peloton-list.test.ts]
+31. A secondary bike-computer field dims to ink/60 after 20 s without change and returns to full ink on its next change; the 3 s power and the zone never dim. [ride-surface] [#3215] [test:web/src/lib/session/field-dim.test.ts]
+
 #### ride-workout-world
 
 Capture: world on, `/ride?w=openers`, no road: a negative check. Canon: ADR-0066.
