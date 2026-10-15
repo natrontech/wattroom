@@ -256,7 +256,9 @@
 				>
 			{/if}
 			<p class="{label} text-ink flex items-center gap-2">
-				{PAGE_NAMES[shown]}{@render badge()}
+				{shown === 'climb' && ctx.climb
+					? climbHeader(ctx.climb)
+					: PAGE_NAMES[shown]}{@render badge()}
 			</p>
 			{#if turns}
 				<button

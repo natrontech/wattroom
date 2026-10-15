@@ -51,10 +51,14 @@
 	     picker, the ride-alone lifecycle. It needs the trainer to hold
 	     its targets, so without one it says so rather than failing. -->
 	{#if !riding}
+		{#if !channel.trainer}<span
+				id="free-ride-workout-hint"
+				class="text-muted text-xs">Pair your trainer first</span
+			>{/if}
 		<button
 			onclick={() => channel.openPicker('ride')}
 			disabled={!channel.trainer}
-			title={channel.trainer ? undefined : 'Pair your trainer first'}
+			aria-describedby={channel.trainer ? undefined : 'free-ride-workout-hint'}
 			class="btn btn-secondary btn-ride disabled:opacity-40"
 			>Ride a workout</button
 		>
@@ -96,11 +100,13 @@
 					>{channel.shared?.workoutName || 'the session'}</strong
 				> here. Leave the ride on its screen to free-ride instead.
 			</p>
-			<a
-				href={ridePath(channel.address, session)}
-				class="btn btn-accent btn-ride ml-auto"
-				><Radio size={15} /> Go to the ride</a
-			>
+			<div class="ml-auto flex flex-wrap items-center gap-2">
+				<SessionControls compact />
+				<a
+					href={ridePath(channel.address, session)}
+					class="btn btn-accent btn-ride"><Radio size={15} /> Go to the ride</a
+				>
+			</div>
 		</div>
 	{:else if session}
 		<div
