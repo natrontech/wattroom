@@ -2,6 +2,7 @@ package hub
 
 import (
 	"time"
+	"unicode/utf8"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
 )
@@ -95,4 +96,31 @@ func tabOf(c *client) string {
 		return c.tab
 	}
 	return c.tabFallback()
+}
+
+// gearState forwards the trainer-holding tab's gear to the rider's other
+// screens (#3217). Only the holder may speak it, so a phone cannot put a gear
+// on the desktop's remote. Quiet when refused: the holder sends it on its own.
+func (h *Hub) gearState(c *client, rm *channelState, rider protocol.Rider, g protocol.GearState) {
+	if g.Label == "" || utf8.RuneCountInString(g.Label) > protocol.MaxGearLabel {
+		return
+	}
+	if !rm.allow("gear", rider.ID, h.now(), remoteMinGap) {
+		return
+	}
+	rm.mu.Lock()
+	owner, taken := rm.claims[rider.ID]["trainer"]
+	var others []*client
+	if taken && owner.tab == tabOf(c) {
+		for other := range rm.clients {
+			if other.rider.ID == rider.ID && tabOf(other) != owner.tab {
+				others = append(others, other)
+			}
+		}
+	}
+	rm.mu.Unlock()
+	frame := protocol.ServerMessage{Gear: &g}
+	for _, other := range others {
+		other.sendJSON(h.log, frame)
+	}
 }

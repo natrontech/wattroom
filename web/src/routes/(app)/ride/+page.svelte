@@ -44,6 +44,7 @@
 	import SessionSummary from '$lib/ride/SessionSummary.svelte';
 	import { downloadRideCard } from '$lib/ride/card';
 	import RideDoors from '$lib/ride/RideDoors.svelte';
+	import FigureCard from '$lib/ride/FigureCard.svelte';
 	import SoloRoadRide from '$lib/ride/SoloRoadRide.svelte';
 	import { roadsEnabled, type RideableRoute } from '$lib/ride/roads';
 	import type { RideKind } from '$lib/ride/RideCard.svelte';
@@ -132,7 +133,15 @@
 		from: number;
 		trainer: Trainer;
 	} | null>(null);
+	// The figure card (ADR-0073, #3342) comes once, before a rider's first ride
+	// with a road; its answer, a save or a skip, then starts the ride.
+	let askFigure = $state.raw<Trainer | null>(null);
 	function start(trainer: Trainer) {
+		const hasRoad = (kind === 'free' || ridesRoute) && !!road;
+		if (hasRoad && account.figureUnasked) {
+			askFigure = trainer;
+			return;
+		}
 		if (kind === 'free' && road) {
 			freeRide = { id: road.id, from, trainer };
 			return;
@@ -584,7 +593,15 @@
 		? 'page'
 		: 'px-4 py-5 sm:px-6'}"
 >
-	{#if freeRide}
+	{#if askFigure}
+		<FigureCard
+			onDone={() => {
+				const trainer = askFigure;
+				askFigure = null;
+				if (trainer) start(trainer);
+			}}
+		/>
+	{:else if freeRide}
 		<SoloRoadRide
 			roadId={freeRide.id}
 			from={freeRide.from}

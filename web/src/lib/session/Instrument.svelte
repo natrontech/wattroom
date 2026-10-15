@@ -156,7 +156,7 @@
 				<!-- Muted words and a zone dot (#2856): the ramp is fitted to a
 				     fill's floor, and Z1 written in its own colour was 2.1:1. -->
 				<span
-					class="eyebrow order-3 flex items-center justify-center gap-1 {tv
+					class="ride-label order-3 flex items-center justify-center gap-1 {tv
 						? 'text-[3vh]'
 						: ''}"
 					><ZoneDot {zone} class={tv ? 'size-[1.8vh]' : 'size-1.5'} />z{zone}

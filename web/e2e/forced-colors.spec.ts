@@ -1,4 +1,5 @@
 import { expect, test, type Locator } from '@playwright/test';
+import { climbGpx } from './road-gpx';
 import { signInAs, signInTo } from './signin';
 
 /**
@@ -140,4 +141,63 @@ test("the HUD's road strip stays drawn in forced colours", async ({
 		return { fill: getComputedStyle(rect).fill, grayText };
 	});
 	expect(fill).toBe(grayText);
+});
+
+// The road's own readouts (#3213): the Skyline's dot, the climb card's bars
+// and dot. Backgrounds are painted over
+// with Canvas, so each fill sits on a system colour, as the dots do. The ring's
+// digit is painted into a WebGL texture, which forced colours cannot repaint:
+// crew.test.ts holds it.
+test('the Skyline and the climb card stay drawn in forced colours', async ({
+	page,
+}) => {
+	test.skip(
+		!!process.env.PLAYWRIGHT_BASE_URL,
+		'the ?as= dev provider only exists on a dev server',
+	);
+	await page.addInitScript(() =>
+		localStorage.setItem(
+			'wattroom.mixer.v1',
+			JSON.stringify({ music: 0, cues: 0, board: 0, share: 0 }),
+		),
+	);
+	await signInAs(page, 'Forced Road Rider', '/workouts/import');
+	await page.locator('input[type=file]').setInputFiles({
+		name: 'climb.gpx',
+		mimeType: 'application/gpx+xml',
+		buffer: Buffer.from(climbGpx()),
+	});
+	await page.getByRole('button', { name: 'Ride it now' }).click();
+	await page.waitForURL(/\/ride\?road=/);
+	await page
+		.getByRole('button', { name: 'Ride simulated' })
+		.click({ timeout: 15_000 });
+	await page.getByRole('button', { name: 'Start the ride' }).click();
+	const computer = page.getByTestId('bike-computer');
+	await expect(computer).toHaveAttribute('data-page', 'climb', {
+		timeout: 15_000,
+	});
+	// Drawn in something other than Canvas, as the live bars are (#2860).
+	const visible = async (testId: string, inner = false) => {
+		const target = page.getByTestId(testId).first();
+		await expect(target).toBeAttached();
+		return target.evaluate((el, inner) => {
+			const rgba = (e: Element) =>
+				(getComputedStyle(e).backgroundColor.match(/[\d.]+/g) ?? []).map(
+					Number,
+				);
+			const probe = document.createElement('div');
+			probe.style.cssText =
+				'background-color: Canvas; forced-color-adjust: none';
+			document.body.append(probe);
+			const canvas = rgba(probe).slice(0, 3).join();
+			probe.remove();
+			const mark = inner ? el.firstElementChild! : el;
+			const [r, g, b, a = 1] = rgba(mark);
+			return a > 0 && [r, g, b].join() !== canvas;
+		}, inner);
+	};
+	expect(await visible('skyline-dot')).toBe(true);
+	expect(await visible('climb-dot')).toBe(true);
+	expect(await visible('climb-profile', true)).toBe(true);
 });

@@ -18,7 +18,16 @@
 	import FlagButton from '$lib/ride/FlagButton.svelte';
 	import RideNarrator from '$lib/ride/RideNarrator.svelte';
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
-	import { bindRideShift } from '$lib/ride/keys';
+	import {
+		bindRideKeys,
+		bindRideShift,
+		type CameraPreset,
+	} from '$lib/ride/keys';
+	import { roadLine } from '$lib/ride/road-readout';
+	import { cleanView } from '$lib/ride/clean-view.svelte';
+	import KeySheet from '$lib/ride/KeySheet.svelte';
+	import { board } from '$lib/board/clips.svelte';
+	import { toasts } from '$lib/toast.svelte';
 	import { confirm } from '$lib/confirm.svelte';
 	import { FLAG_NOTICE_MS, FLAG_SAID } from '$lib/ride/flag';
 	import RideStatus from '$lib/ride/RideStatus.svelte';
@@ -104,6 +113,26 @@
 	// Easier / Harder from the keys and any clicker, while this ride runs (#3329).
 	$effect(() => (gearsEnabled() ? bindRideShift(session) : undefined));
 
+	// The ride keys (#3216). M and O are no-ops with a hint until the MAP
+	// page (#3645) and the photo roll land.
+	let camera = $state<CameraPreset>();
+	let sheet = $state(false);
+	$effect(() =>
+		bindRideKeys(
+			(key) => {
+				if (key.kind === 'sheet') sheet = !sheet;
+				else if (key.kind === 'clean') cleanView.toggle();
+				else if (key.kind === 'camera') {
+					if (inWorld) camera = key.preset;
+					else toasts.push('Cameras need the 3D road.');
+				} else if (key.kind === 'map')
+					toasts.push('The MAP page is not here yet.');
+				else toasts.push('Snap is not here yet.');
+			},
+			(k) => !!board.onKey(k),
+		),
+	);
+
 	/** A 44 px icon control mid-ride (ux.md), skinned as SessionControls' are. */
 	const ICON = 'btn btn-secondary h-11 w-11 p-0';
 
@@ -130,7 +159,14 @@
 	// second window to mirror — the shell's overlay, or another tab.
 </script>
 
-<RideNarrator view={skyline} {watts} {ftp} stale={signalLost} {block} />
+<RideNarrator
+	view={skyline}
+	{watts}
+	{ftp}
+	stale={signalLost}
+	{block}
+	sprintStartsAt={session.sprint?.startsAtMs ?? null}
+/>
 
 {#snippet worldControls()}
 	<!-- Over the world, one row in slot 1 (TARGETS ride-road-world 7): ⚑,
@@ -264,6 +300,7 @@
 				{ftp}
 				progress={session.total > 0 ? session.elapsed / session.total : null}
 				look={world.look}
+				{camera}
 				onfail={world.fail}
 				onflat={world.flatten}
 			/>
@@ -292,6 +329,9 @@
 	</CountdownScreen>
 {:else}
 	<RidingSurface
+		clean={inWorld && cleanView.on && !signalLost && !noCrashSafety}
+		onshow={cleanView.toggle}
+		cleanLine={block?.road ? roadLine(block.road) : undefined}
 		class="flex-1 {inWorld ? '-mx-4 -my-5 sm:-mx-6' : 'pb-16 sm:pb-0'}"
 		world={inWorld ? road : undefined}
 		moment={inWorld && session.sprint ? moment : undefined}
@@ -447,6 +487,8 @@
 		{/snippet}
 	</RidingSurface>
 {/if}
+
+{#if sheet}<KeySheet onclose={() => (sheet = false)} />{/if}
 
 {#snippet moment()}
 	{#if session.sprint}<MomentCard sprint={session.sprint} />{/if}

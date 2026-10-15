@@ -114,13 +114,13 @@ Box table (#3668), measured in the app's fonts at SPEC's sizes. Every panel is i
 
 1440 × 900: canvas 1200 × 900 beside the 240 px sidebar; corridor x 360–840, y 202.5–697.5; seat x 888–1184, y 16–268.
 
-| Panel                | x        | y     | w       | h     | Holds                                                                                                                                                                                                                        |
-| -------------------- | -------- | ----- | ------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| slot 1, band         | 16       | 16    | ≤ 860   | ≤ 186 | eyebrow or status line 24 with the controls 44; time left 72 beside block · target · elapsed of total at 24; the interval strip 40 over NEXT 24 with its 3-2-1 chips; the trainer chip and road line 24. Ends above y 202.5. |
-| moment card          | right 16 | 280   | 300–344 | ≤ 160 | under the seat, its right edge the seat's: top-centre, between slot 1 and the seat, 300 px are not free; at most 30 % wide (D12)                                                                                             |
-| bike computer        | 16       | ≥ 255 | ≤ 344   | ≤ 553 | page control 44, the 3 s power 104 with W/kg 36 beside (under it from 1000 W: one more row of 64, budgeted in h), zone 24, target track and its band 24, block on target 36, fields 24 / 36 (CLIMB's in two columns), bias trim 44. Ends 12 px above the Skyline.                      |
-| crew panel (session) | right 16 | 280   | ≈ 240   | ≤ 520 | rows 44, under the seat and any moment card                                                                                                                                                                                  |
-| Skyline              | 16       | 820   | 1168    | 64    | the dot wholly inside                                                                                                                                                                                                        |
+| Panel                | x        | y     | w       | h     | Holds                                                                                                                                                                                                                                                             |
+| -------------------- | -------- | ----- | ------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| slot 1, band         | 16       | 16    | ≤ 860   | ≤ 186 | eyebrow or status line 24 with the controls 44; time left 72 beside block · target · elapsed of total at 24; the interval strip 40 over NEXT 24 with its 3-2-1 chips; the trainer chip and road line 24. Ends above y 202.5.                                      |
+| moment card          | right 16 | 280   | 300–344 | ≤ 160 | under the seat, its right edge the seat's: top-centre, between slot 1 and the seat, 300 px are not free; at most 30 % wide (D12)                                                                                                                                  |
+| bike computer        | 16       | ≥ 255 | ≤ 344   | ≤ 553 | page control 44, the 3 s power 104 with W/kg 36 beside (under it from 1000 W: one more row of 64, budgeted in h), zone 24, target track and its band 24, block on target 36, fields 24 / 36 (CLIMB's in two columns), bias trim 44. Ends 12 px above the Skyline. |
+| crew panel (session) | right 16 | 280   | ≈ 240   | ≤ 520 | rows 44, under the seat and any moment card                                                                                                                                                                                                                       |
+| Skyline              | 16       | 820   | 1168    | 64    | the dot wholly inside                                                                                                                                                                                                                                             |
 
 1920 × 1080: canvas 1680 × 1080; corridor x 504–1176, y 243–837; seat x 1243–1664, y 16–318.
 
@@ -147,7 +147,7 @@ Layout:
 11. Skyline full width along the bottom, > 56 px tall: ridden part ink or muted, never a fixed zone; road ahead neon; your dot wholly inside the panel; on a road workout (pinned blocks) the block band beneath the line (v2-erg), on a scenery ride none (ADR-0062) [#4003]; place labels above the line where the road has named places [#3134] (none on the hairpin fixture: OPEN-ELSEWHERE). [ride-surface]
 12. Corridor clear; your figure unobstructed in `RIDER_BOX` (docks.ts: x 40–60 %, y 55–82 %; its foot reaches below the corridor by design). [ride-surface] [#3215] [probe:panels]
 13. A moment card top-centre between slot 1 and the seat, above the corridor; border watt while live (D12). [ride-surface] [multi:ride-session-road]
-14. No key hint names PgUp or PgDn (D14). [ride-surface]
+14. No key hint names PgUp or PgDn as page keys (ADR-0071: arrows page); the ? sheet lists them as bias, since they are bound (D14). [ride-surface]
 15. Cave covers the frame, sidebar included. [ride-cave]
 
 World:
@@ -209,6 +209,16 @@ Capture: ride-road-world and ride-workout-flat, simulated trainer silenced past 
 
 1. The fault: one persistent line atop slot 1, one ≥ 44 px recovery button; not a toast; over the world nothing enters the corridor (G3). [ride-surface] [ride-flat]
 2. Numbers read stale (“—”); nothing stale keeps its watt or glow.
+
+#### ride-phone-remote
+
+Capture: desk context rides the channel's free ride on a simulated trainer; a second 375 × 812 touch context of the same rider opens the channel's Training place, taps "Use this phone as your remote", and shoots the remote. Target: none drawn, canon is the bar. Canon: ADR-0025 (the claim), ADR-0084 (gears), ux.md (mid-ride, phone width), errors.md.
+
+1. The offer (`ride-phone-remote-offer`) is one full-width `btn-ride` in the Lounge's empty state, only on a phone-width screen that sees the trainer held by another screen. [3217]
+2. The grid fills the screen in two columns, words at 24 px, of buttons at least 64 px high; every button is a tap target of at least 44 px and nothing scrolls sideways. [probe:remoteMinHeight] [probe:remoteScrollWidth] [3217]
+3. A button the holding tab cannot run is disabled and one line says so; no button fails on tap (ux.md). [probe:remoteDisabled] [3217]
+4. Chrome stays neon and nothing glows; with gears on, the gear line reads in neon too (ADR-0005). [3217]
+5. Phone width 375 × 812: the page body does not scroll sideways, and Done is reachable without scrolling. [probe:remoteClientWidth] [3217]
 
 #### ride-countin
 
@@ -397,6 +407,18 @@ Capture: world off, `/ride`, with and without a remembered road, both schemes; `
 8. Follows the rider's scheme; in dark, cards surface-raised with a hairline.
 9. Solo games one line in the card. [ride-preride]
 10. `/ride?road=<id>` opens this card on Free ride with that road chosen, its `from` the selected chip, never a setup of its own. [#3855] [multi:ride-free-road-setup]
+
+#### ride-figure-card, phone-ride-figure-card (a desk surface)
+
+Capture: a rider who has not answered the card (`?as=Unasked`), `/ride?road=<hairpin>` → Ride simulated → Start the ride, both schemes; `phone-ride-figure-card` the same at 375 px. Target: none drawn, canon is the bar. Canon: ADR-0073; ADR-0048; ADR-0069; docs/spec/garage.md, “The figure”; ux.md.
+
+1. One card, titled “Your rider”, with a still preview of the figure and three controls: Build (slim, athletic, strong), Height (1.50 to 2.05 m, the value beside its label) and Skin tone (the 8 swatches). [#3342]
+2. “Skip” and “Save” sit side by side, the same size, both ≥ 44 px tall. [#3342] [probe:figure-card]
+3. With nothing chosen the preview wears the neutral tone (`--world-kit-skin`), the athletic build and 1.78 m; a swatch tap recolours it (`tappedFill` equals that swatch's `swatchFill`, and differs from `neutralFill`), and no swatch is the neutral. [#3342] [probe:figure-card]
+4. Build buttons and swatches ≥ 44 px; the height control keeps the desk slider's 24 px hit box, since the card is answered before the ride, not while pedalling (ux.md). [#3342] [probe:figure-card]
+5. Starts top left in the page body's column, no sideways scroll at 375 px. [#3342]
+6. Nothing animates: the preview is a still, so reduced motion changes nothing. [#3342] [test:web/src/lib/ride/FigureCard.test.ts]
+7. Copy names no weight and no price. [#3342]
 
 #### ride-roadpick
 
