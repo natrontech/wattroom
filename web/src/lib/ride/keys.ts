@@ -143,3 +143,61 @@ export function createRemoteRunner(
 		stop: stopTalk,
 	};
 }
+
+/** 1-4, in the order the key sheet lists them (#3216). */
+export const CAMERA_PRESETS = ['chase', 'heli', 'side', 'steady'] as const;
+export type CameraPreset = (typeof CAMERA_PRESETS)[number];
+
+export type RideKey =
+	| { kind: 'camera'; preset: CameraPreset }
+	| { kind: 'clean' | 'map' | 'snap' | 'sheet' };
+
+/**
+ * The ride key a press asks for, by `key` so a layout that types ? with Shift
+ * still gets it. Never with Cmd, Ctrl or Alt. Arrows, Space and the shift keys
+ * are not ride keys: the pane divider, the graph's editKeys, push-to-talk and
+ * the shifter keep them.
+ */
+export function rideKeyOf(
+	event: Pick<
+		KeyboardEvent,
+		'key' | 'metaKey' | 'ctrlKey' | 'altKey' | 'shiftKey'
+	>,
+): RideKey | null {
+	if (event.metaKey || event.ctrlKey || event.altKey) return null;
+	if (event.key === '?') return { kind: 'sheet' };
+	// A Shift+digit is a symbol on most layouts (Swiss-German + is Shift+1).
+	if (event.shiftKey) return null;
+	const n = Number(event.key);
+	if (event.key.length === 1 && n >= 1 && n <= CAMERA_PRESETS.length)
+		return { kind: 'camera', preset: CAMERA_PRESETS[n - 1] };
+	switch (event.key.toLowerCase()) {
+		case 'h':
+			return { kind: 'clean' };
+		case 'm':
+			return { kind: 'map' };
+		case 'o':
+			return { kind: 'snap' };
+	}
+	return null;
+}
+
+/**
+ * The ride keys, while a ride runs. A press skips a typing target and a
+ * `defaultPrevented` event, and yields a key a soundboard pad is bound to
+ * (`padBound`), as the narrator's S does.
+ */
+export function bindRideKeys(
+	act: (key: RideKey) => void,
+	padBound: (key: string) => boolean,
+): () => void {
+	const down = (event: KeyboardEvent) => {
+		if (event.defaultPrevented || event.repeat || isTyping(event)) return;
+		const key = rideKeyOf(event);
+		if (!key || padBound(event.key)) return;
+		event.preventDefault();
+		act(key);
+	};
+	window.addEventListener('keydown', down);
+	return () => window.removeEventListener('keydown', down);
+}
