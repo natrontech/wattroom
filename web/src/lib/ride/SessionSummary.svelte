@@ -226,9 +226,11 @@
 		<div
 			class="grid items-start gap-4 sm:grid-cols-2 xl:col-start-2 xl:row-start-2"
 		>
-			<section class="panel panel-lg">
+			<section class="panel panel-lg flex flex-col sm:self-stretch">
 				<h2 class="eyebrow">power curve</h2>
-				<div class="mt-4 grid grid-cols-2 gap-3 2xl:grid-cols-4">
+				<div
+					class="mt-4 grid flex-1 grid-cols-2 content-around gap-3 2xl:grid-cols-4"
+				>
 					{#each reached as point (point.label)}
 						<div>
 							<div
