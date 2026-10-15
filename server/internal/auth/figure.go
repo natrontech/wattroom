@@ -6,6 +6,8 @@ package auth
 // neutral figure's value, which the client owns.
 
 import (
+	"errors"
+	"io"
 	"net/http"
 	"slices"
 
@@ -46,7 +48,8 @@ func (s *Service) handleSetFigure(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req FigureChoice
-	if err := httpx.DecodeStrict(r, &req); err != nil {
+	// A body-less PUT is a skip too.
+	if err := httpx.DecodeStrict(r, &req); err != nil && !errors.Is(err, io.EOF) {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That request could not be read.")
 		return
 	}

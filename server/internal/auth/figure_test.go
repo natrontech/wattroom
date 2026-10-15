@@ -66,6 +66,18 @@ func TestSetFigure(t *testing.T) {
 
 // A skip is an empty answer: asked for good, figure left neutral, and a
 // second session never gets the card back.
+func TestBodylessFigureIsASkip(t *testing.T) {
+	s := testService(t)
+	user := testUser(t, s)
+	cookie := signedIn(t, s, user)
+	if w := putFigure(t, s, cookie, ``); w.Code != http.StatusOK {
+		t.Fatalf("no body = %d %s, want a skip", w.Code, w.Body.String())
+	}
+	if getMe(t, s, cookie)["figureAsked"] != true {
+		t.Fatal("a body-less skip left the card unanswered")
+	}
+}
+
 func TestSkippedFigureIsAskedForGood(t *testing.T) {
 	s := testService(t)
 	user := testUser(t, s)
