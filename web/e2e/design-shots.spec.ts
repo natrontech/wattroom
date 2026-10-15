@@ -1622,6 +1622,10 @@ surface(
 			};
 		});
 		await s.shot(coach, { name: 'closing-card-session', extra });
+		// ux.md phone width: the same card at 375 × 812.
+		await coach.page.setViewportSize({ width: 375, height: 812 });
+		await coach.page.waitForTimeout(800);
+		await s.shot(coach, { name: 'closing-card-session-phone', full: true });
 	},
 	{ also: ['ride-watch', 'closing-card-session'] },
 );

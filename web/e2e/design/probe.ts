@@ -117,11 +117,18 @@ export function probe(corridor: Box) {
 				r.bottom <= m.bottom,
 		);
 	};
+	// A closing card is held to its own content: the crew rail beside it keeps
+	// its live watts tile, which G2 lets glow on any page.
+	const rail = document.querySelector(
+		'[data-testid=closing-card], [data-testid=session-card]',
+	)
+		? document.querySelector('aside')
+		: null;
 	const wattFigures: { text: string; glow: boolean }[] = [];
 	const glows: string[] = [];
 	let wattMarks = 0;
 	for (const el of document.body.querySelectorAll('*')) {
-		if (!shown(el) || covered(el)) continue;
+		if (!shown(el) || covered(el) || rail?.contains(el)) continue;
 		const cs = getComputedStyle(el);
 		const own = ownText(el);
 		const svg = el instanceof SVGElement;
