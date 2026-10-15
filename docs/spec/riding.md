@@ -141,6 +141,16 @@ laptop; TV: **3 m** from a **55-inch** set:
 | Secondary numbers     | **22 arcmin** | **5vh**  | **36 px**  | **5vh**  |
 | "Next", labels, words | **16 arcmin** | **3vh**  | **24 px**  | **3vh**  |
 
+**A phone** (below **768 px**, [#3676](https://github.com/natrontech/wattroom/issues/3676))
+has its own design distance: **0.45 m**, a phone on the stem or in the hand,
+at **0.156 mm** a CSS pixel and a cap height of **0.72 em**. That puts the
+floors, as font sizes, at **52 px** for watts and time left (45 arcmin), **26 px** for
+secondary numbers (22 arcmin) and **19 px** for words (16 arcmin). The phone
+ships, as font sizes, watts at **104 px**, time left at **72 px**, secondary numbers at
+**36 px** and words at **20 px** or more: the desk's sizes, since a full-width
+panel holds them. The watts stay the largest number on the screen and time
+left the second.
+
 Nothing on the TV is smaller than **2.9vh**. **The HUD's design distance**
 is a **second screen 1.3 m away, a 24-inch monitor**, the `/hud` tab of
 [ADR-0041](../decisions/0041-the-hud-mirrors-the-riding-screen.md). A screen

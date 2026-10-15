@@ -124,6 +124,7 @@
 	// road (ADR-0066); a world that cannot draw hands the ride to the Skyline.
 	const world = createWorldView();
 	const inWorld = $derived(world.on && !!road);
+	const drawn = $derived((world.on || world.band) && !!road);
 
 	const modes: { id: FreeMode; label: string }[] = $derived([
 		{ id: 'grade', label: road ? 'Road' : 'Grade' },
@@ -240,7 +241,10 @@
 		</div>
 		{#if road}
 			<!-- Where on the road, once (TARGETS one home: slot 1's road line). -->
-			<p data-testid="block-road" class="num text-4xl leading-none font-bold">
+			<p
+				data-testid="block-road"
+				class="num text-4xl leading-none font-bold max-md:text-2xl"
+			>
 				{roadLine(road.readout)}
 			</p>
 		{/if}
@@ -269,7 +273,7 @@
 			     half filled. No padding inside it — that was 10 px the band
 			     cannot spend above the corridor. -->
 			<div
-				class="border-muted/20 flex rounded-lg border"
+				class="border-muted/20 flex rounded-lg border max-md:basis-full"
 				role="group"
 				aria-label="what you set"
 			>
@@ -277,7 +281,7 @@
 					<button
 						onclick={() => free.setMode(mode.id)}
 						aria-pressed={free.mode === mode.id}
-						class="btn btn-ride {free.mode === mode.id
+						class="btn btn-ride max-md:flex-1 {free.mode === mode.id
 							? 'btn-secondary'
 							: 'btn-ghost'}">{mode.label}</button
 					>
@@ -307,7 +311,7 @@
 			{#if ontv}
 				<button
 					onclick={ontv}
-					class="btn btn-secondary icon-btn-lg p-0"
+					class="btn btn-secondary icon-btn-lg p-0 max-md:w-auto max-md:flex-1"
 					aria-label="TV mode"
 					title="TV mode"><MonitorUp size={20} /></button
 				>
@@ -318,7 +322,7 @@
 				<button
 					onclick={onend}
 					disabled={ending}
-					class="btn btn-secondary btn-ride">End ride</button
+					class="btn btn-secondary btn-ride max-md:basis-full">End ride</button
 				>
 			{/if}
 		</div>
@@ -385,7 +389,7 @@
 	headerFit
 	own
 	class="flex-1 {inWorld ? worldClass : ''} {extra}"
-	world={inWorld ? worldSlot : undefined}
+	world={drawn ? worldSlot : undefined}
 	moment={inWorld && roadEndOffered(free, false) ? roadEnd : undefined}
 >
 	{#snippet header()}

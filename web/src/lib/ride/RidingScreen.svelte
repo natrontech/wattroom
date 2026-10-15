@@ -132,7 +132,7 @@
 	);
 
 	/** A 44 px icon control mid-ride (ux.md), skinned as SessionControls' are. */
-	const ICON = 'btn btn-secondary h-11 w-11 p-0';
+	const ICON = 'btn btn-secondary h-11 w-11 p-0 max-md:w-auto max-md:flex-1';
 
 	let flagNotice = $state(false);
 	function flag() {
@@ -148,6 +148,8 @@
 	// again (#3080).
 	const world = createWorldView();
 	const inWorld = $derived(world.on && !!session.road);
+	// A phone's band is slot 2's place in its own column, not a dock (#3676).
+	const drawn = $derived((world.on || world.band) && !!session.road);
 	const skyline = $derived(skylineOf(session.road, session.segments, ftp));
 	// The climb card on a road (#3645): CLIMB opens by itself, and says so.
 	const climb = $derived(climbView(skyline));
@@ -172,7 +174,7 @@
 	     End ride the one word. A road workout's blocks end at their metres
 	     (#3499), so it shows neither +1 min nor Skip (D13). -->
 	{@const last = session.info.segmentIndex + 1 >= session.segments.length}
-	<div class="flex items-center gap-2">
+	<div class="flex items-center gap-2 max-md:flex-wrap">
 		{#if countIn}
 			<!-- Nothing runs yet: the one way out. -->
 			<button onclick={countIn.cancel} class="btn btn-secondary btn-ride"
@@ -201,8 +203,9 @@
 					><SkipForward size={20} /></button
 				>
 			{/if}
-			<button onclick={endRide} class="btn btn-secondary btn-ride"
-				>End ride</button
+			<button
+				onclick={endRide}
+				class="btn btn-secondary btn-ride max-md:basis-full">End ride</button
 			>
 		{/if}
 	</div>
@@ -289,7 +292,7 @@
 		onshow={cleanView.toggle}
 		cleanLine={block?.road ? roadLine(block.road) : undefined}
 		class="flex-1 {inWorld ? '-mx-4 -my-5 sm:-mx-6' : 'pb-16 sm:pb-0'}"
-		world={inWorld ? road : undefined}
+		world={drawn ? road : undefined}
 		moment={inWorld && session.sprint ? moment : undefined}
 		centre={countIn ? digit : undefined}
 		dockIn={!!countIn}

@@ -489,7 +489,7 @@ surface(
 		const o = await s.open(RIDING_PHONE, { world: true });
 		await ride(o.page, '/ride?w=openers');
 		await assertRiding(o.page);
-		await s.shot(o);
+		await s.shot(o, { full: true });
 	},
 	{ once: true },
 );
@@ -505,9 +505,18 @@ surface('phone-ride-road-flat', async (s) => {
 	await s.shot(o, { full: true });
 });
 
-test.fixme('phone-ride-road', () => {
-	// A free ride on a road draws no world yet: #3669 brings it.
-});
+surface(
+	'phone-ride-road',
+	async (s) => {
+		// The world on: a free ride on a road is a band in slot 2's place (#3676).
+		const o = await s.open(RIDING_PHONE, { world: true });
+		const road = await fixtureRoad(o.page, 'hairpin');
+		await ride(o.page, `/ride?road=${road}`);
+		await assertRiding(o.page, true);
+		await s.shot(o, { full: true });
+	},
+	{ once: true },
+);
 
 surface(
 	'hud',
