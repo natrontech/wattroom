@@ -12,7 +12,8 @@ export function createRideFlags(
 	route: string,
 	recorder = createFlightRecorder(),
 ) {
-	let sent = $state(0);
+	// A handed-in recorder outlives this page: what it holds is already sent.
+	let sent = $state(recorder.flags.length);
 	let sending = $state(false);
 	let error = $state<string | null>(null);
 	let trainer = 'simulated';

@@ -52,7 +52,7 @@
 	// out when the page does, or when the ride ends.
 	const flags = createRideFlags(channel.address.training, channel.recorder);
 	let tv = $state(false);
-	let began = false;
+	let began = untrack(() => !!free?.recording);
 	$effect(() => {
 		const recording = !!free?.recording;
 		untrack(() => {
