@@ -5,8 +5,8 @@ import * as THREE from 'three';
 import { FONT, paintedTexture } from './furniture';
 import type { Style } from './styles';
 
-const SIZE = 0.3;
-const TEX = 64;
+const SIZE = 0.5;
+const TEX = 128;
 
 export function makeZoneDigits(tag: Style['tag']) {
 	const geo = new THREE.PlaneGeometry(SIZE, SIZE).rotateX(-Math.PI / 2);
