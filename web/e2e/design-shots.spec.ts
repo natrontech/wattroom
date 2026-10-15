@@ -253,6 +253,46 @@ surface(
 );
 
 surface(
+	'ride-phone-remote',
+	async (s) => {
+		// The desk holds the trainer; the same rider's phone sees the claim
+		// (ADR-0025) and offers to be its remote (#3217).
+		const desk = await s.open(DESK, { world: false });
+		const crew = await designCrew(desk.page);
+		await toTraining(desk.page, crew);
+		const phone = await s.open(PHONE, { world: false });
+		await phone.page.goto(`${voicePath(crew)}/training`);
+		await phone.page
+			.getByRole('button', { name: 'Use this phone as your remote' })
+			.click({ timeout: 20_000 });
+		await phone.page.getByTestId('phone-remote').waitFor();
+		const remote = await phone.page
+			.getByTestId('phone-remote')
+			.evaluate((el) => {
+				const buttons = [...el.querySelectorAll('button')].filter(
+					(b) => b.textContent?.trim() !== 'Done',
+				);
+				const px = (n: number) => Math.round(n * 10) / 10;
+				return {
+					remoteCells: buttons.length,
+					remoteMinHeight: px(
+						Math.min(...buttons.map((b) => b.getBoundingClientRect().height)),
+					),
+					remoteMinWidth: px(
+						Math.min(...buttons.map((b) => b.getBoundingClientRect().width)),
+					),
+					remoteDisabled: buttons.filter((b) => b.disabled).length,
+					remoteScrollWidth: el.scrollWidth,
+					remoteClientWidth: el.clientWidth,
+				};
+			});
+		await s.shot(phone, { name: 'ride-phone-remote', extra: remote });
+		await desk.page.getByRole('button', { name: 'End ride' }).click();
+	},
+	{ once: true },
+);
+
+surface(
 	'ride-skyline-fallback',
 	async (s) => {
 		// Forced onto the Skyline as the rider sets it on this device, then again
