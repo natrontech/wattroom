@@ -9,6 +9,7 @@
 	import { useChannel } from '$lib/channel/context';
 	import type { LiveRider } from '$lib/channel/types';
 	import { contextMenu } from '$lib/context-menu.svelte';
+	import { zoneOf } from '$lib/components/zones';
 	import { wkg } from '$lib/format';
 	import { crewMenu } from '$lib/session/crew-menu';
 
@@ -28,6 +29,12 @@
 			<span data-testid="crew-name" class="min-w-0 flex-1 truncate"
 				>{rider.name}</span
 			>
+			{#if !rider.stale && rider.ftp > 0}
+				<!-- The zone as a digit: ink, never colour alone (#3213, WCAG 1.4.1). -->
+				<span data-testid="crew-zone" class="num text-muted shrink-0 text-xl"
+					>Z{zoneOf(rider.watts, rider.ftp)}</span
+				>
+			{/if}
 			<span class="num shrink-0 text-4xl leading-none"
 				>{rider.stale ? '—' : wkg(rider.watts, rider.kg)}</span
 			>
