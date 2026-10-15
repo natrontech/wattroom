@@ -18,7 +18,7 @@
 	<div
 		data-testid="summit-strip"
 		role="status"
-		class="summit-strip ride-panel relative flex w-full items-center justify-center gap-3 px-4 py-2 text-2xl"
+		class="summit-strip ride-panel relative flex items-center justify-center gap-3 px-4 py-2 text-2xl"
 	>
 		<span class="text-muted ride-label">Summit</span>
 		<span

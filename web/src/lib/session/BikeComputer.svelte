@@ -206,7 +206,7 @@
 						data-testid="flamme-rouge"
 						role="img"
 						aria-label="flamme rouge, the last kilometre"
-						class="bg-danger absolute -top-2 -right-2 h-3 w-3 [clip-path:polygon(0_0,100%_50%,0_100%)] {climbStage.flammeStamp
+						class="bg-danger absolute -top-4 -right-1 h-3 w-3 [clip-path:polygon(0_0,100%_50%,0_100%)] {climbStage.flammeStamp
 							? 'flamme-stamp'
 							: ''}"
 					></span>{/if}</span

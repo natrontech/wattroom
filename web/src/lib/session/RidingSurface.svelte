@@ -304,10 +304,8 @@
 			</div>
 		{/if}
 		<div
-			class="absolute z-10 flex"
-			style="right:{INSET_PX}px;left:{INSET_PX}px;bottom:{INSET_PX +
-				(stage ? STRIP_PX : SKYLINE_PX) +
-				GAP_PX}px"
+			class="absolute right-0 left-0 z-10 flex justify-center"
+			style="bottom:{INSET_PX + (stage ? STRIP_PX : SKYLINE_PX) + GAP_PX}px"
 		>
 			<SummitStrip />
 		</div>
