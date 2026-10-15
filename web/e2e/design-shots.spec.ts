@@ -190,6 +190,13 @@ surface(
 			.locator('[data-testid=bike-computer][data-page=climb]')
 			.waitFor();
 		await s.shot(o, { name: 'ride-road-world-climb' });
+		// multi:ride-road-world-map — item 30: M turns to MAP, the road from above (#3645).
+		await o.page.keyboard.press('m');
+		await o.page
+			.locator('[data-testid=bike-computer][data-page=map]')
+			.waitFor();
+		await o.page.getByTestId('map-dot').waitFor();
+		await s.shot(o, { name: 'ride-road-world-map' });
 		// multi:world-hairpins-trench — #3728: the first leg between two retaining walls, from km 1.5.
 		await ride(o.page, `/ride?w=openers&road=${road}&from=1500`);
 		await assertRiding(o.page, true);
