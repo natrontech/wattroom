@@ -1598,6 +1598,11 @@ surface(
 		await coach.page
 			.getByRole('dialog', { name: 'Session summary' })
 			.waitFor({ timeout: 30_000 });
+		// The ride's link lands once the save does: shoot the card with it.
+		await coach.page
+			.getByRole('link', { name: 'See your ride' })
+			.waitFor({ timeout: 30_000 })
+			.catch(() => {});
 		await coach.page.waitForTimeout(1500);
 		// probe:closing-card — the card's box against the window, and the dead
 		// band at the bottom of the recap-trace panel (G3: none over 24 px).
