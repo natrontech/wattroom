@@ -324,8 +324,8 @@
 	{
 		"files": [
 			"web/src/lib/ride/PhoneRemote.svelte",
-			"web/src/lib/ride/remote-talk.ts",
-			"web/src/lib/session/TrainerOverview.svelte"
+			"web/src/lib/ride/RemoteOffer.svelte",
+			"web/src/lib/ride/remote-talk.ts"
 		],
 		"surfaces": ["ride-phone-remote"]
 	}

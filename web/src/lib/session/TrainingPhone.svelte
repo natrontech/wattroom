@@ -20,6 +20,7 @@
 	import SprintMoment from '$lib/session/SprintMoment.svelte';
 	import Stage from '$lib/channel/Stage.svelte';
 	import SessionFlag from '$lib/session/SessionFlag.svelte';
+	import RemoteOffer from '$lib/ride/RemoteOffer.svelte';
 	import TrainerOverview from '$lib/session/TrainerOverview.svelte';
 	import HrShare from '$lib/channel/HrShare.svelte';
 	import { device } from '$lib/device.svelte';
@@ -124,6 +125,7 @@
 		<div class="mt-2 flex flex-wrap items-center gap-2 empty:mt-0">
 			<SessionControls compact />
 			<TrainerOverview compact />
+			<RemoteOffer />
 			<HrShare />
 			<SessionFlag />
 		</div>
