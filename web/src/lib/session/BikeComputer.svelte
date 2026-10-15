@@ -19,6 +19,7 @@
 	import { pulse } from '$lib/motion/transitions';
 	import { fieldDimmer } from '$lib/session/field-dim';
 	import ClimbProfile from '$lib/ride/ClimbProfile.svelte';
+	import { climbStage } from '$lib/ride/climb-cues.svelte';
 	import {
 		PAGE_NAMES,
 		TV_LABEL,
@@ -168,13 +169,13 @@
 	data-testid="bike-computer"
 	data-page={shown}
 	aria-label="bike computer, {PAGE_NAMES[shown]} page"
-	class={docked
+	class="{shown === 'climb' && climbStage.slide ? 'climb-in ' : ''}{docked
 		? tv
 			? 'relative flex min-h-0 flex-1 flex-col gap-[1.5vh] px-[1.5vw] py-[1.5vh]'
 			: wide || narrow
 				? 'relative flex w-full flex-col gap-3 px-4 py-3'
 				: 'relative flex w-[21rem] max-w-full flex-col gap-3 px-4 py-3'
-		: 'panel relative'}
+		: 'panel relative'}"
 >
 	<!-- The page's name and its dots sit in the row of numbers, so a page is
 	     one row tall where it fits and the focus above keeps its height (#3597);
@@ -188,7 +189,14 @@
 				class="border-neon bg-surface text-ink rounded border px-1 leading-none font-bold tracking-normal"
 				>{#if shown !== 'climb'}<span class="sr-only">{'climb '}</span>{/if}{ctx
 					.climb.card.cls}</span
-			>{/if}
+			>{#if shown === 'climb' && ctx.climb.card.flammeRouge}<span
+					data-testid="flamme-rouge"
+					role="img"
+					aria-label="flamme rouge, the last kilometre"
+					class="bg-danger inline-block h-3 w-4 [clip-path:polygon(0_0,100%_50%,0_100%)] {climbStage.flammeStamp
+						? 'flamme-stamp'
+						: ''}"
+				></span>{/if}{/if}
 	{/snippet}
 	{#snippet name()}
 		<!-- CLIMB's name counts the climbs. -->
