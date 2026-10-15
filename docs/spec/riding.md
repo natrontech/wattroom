@@ -11,13 +11,20 @@ once cadence recovered to 82 rpm. No false trips across any prior hardware sessi
 
 **Auto-pause** — the rider stopped, so their targets stop (clock does not rewind):
 
-| Parameter               | Value                                                   |
-| ----------------------- | ------------------------------------------------------- |
-| Stopped = cadence below | 5 rpm                                                   |
-| …AND power below        | 20 W (cadence alone unsafe — some trainers report none) |
-| Pause after             | 3 s stopped                                             |
-| Resume countdown        | 3 s (resuming must not be a jump-scare)                 |
+| Parameter                         | Value                                                                         |
+| --------------------------------- | ----------------------------------------------------------------------------- |
+| Stopped = cadence below           | 5 rpm                                                                         |
+| …AND power below                  | 20 W (cadence alone unsafe — some trainers report none)                       |
+| Pause after                       | 3 s stopped                                                                   |
+| Resume countdown                  | 3 s (resuming must not be a jump-scare)                                       |
 | Stopped this long → the ride ends | 10 min paused (default — tune in alpha), solo ride and ramp test only (#2622) |
+
+**Pause** (#3217): a rider alone can pause from the phone remote. It stops the ride
+clock, the score and the recorder's workout second, and releases the trainer target to
+the flat road above, like an auto-pause that pedalling does not end. Resume counts back
+in for 3 s and continues where the ride stopped. A paused ride ends itself after the same
+10 min. A session is never paused by one rider: the remote shows Pause and Resume on a solo
+ride only.
 
 A solo ride that ends itself this way drops its trailing stopped run before it is saved or
 exported: the rider had gone, and those seconds are not in its duration, normalised power or
@@ -46,14 +53,16 @@ ERG 0 W: nobody is riding the trainer then.
 
 When the ride is in SIM (a road, a race, the free ride's grade, a sprint slope), the rider shifts virtual gears with one pair of controls, **Easier** and **Harder**. A virtual gear multiplies whatever real gear is on the bike.
 
-Every number below is a **default**, to be tuned in alpha and re-measured by the gears hardware session, unless it is marked *physics* (not tunable) or *rule* (a hard constraint from ADR-0084).
+Every number below is a **default**, to be tuned in alpha and re-measured by the gears hardware session, unless it is marked _physics_ (not tunable) or _rule_ (a hard constraint from ADR-0084).
 
 **The gear table**
+
 - **Gears (default).** 24 gears, geometric from ratio **0.72** to **5.30**, one step = (5.30/0.72)^(1/23) ≈ **9.07 %**. The code computes the ratios; the display rounds them to 0.72 0.79 0.86 0.93 1.02 1.11 1.21 1.32 1.44 1.57 1.72 1.87 2.04 2.23 2.43 2.65 2.89 3.15 3.43 3.75 4.09 4.46 4.86 5.30.
 - **Start (default).** Every ride starts at k = **1**, the rider's real gear and today's resistance. A Cog on 34×14 is gear 15.
 - **A shift (default).** It goes to the table neighbour of the gear shown, so from a real ratio between two table gears the first step is between half a step and one and a half (**4.4–13.6 %**). With no real ratio known, k steps by **×1.0907**, bounded to **0.30 … 2.2**, and the gear shows as **±n**.
 
 **Real gears**
+
 - **Real ratio (default).** The median of trainer speed ÷ (cadence × **2.096 m**) over the last **7** samples at **60–110 rpm**.
   - A real shift is when that median sits **≥ 5 %** from the current ratio on **3** consecutive samples. k stays, and the gear shown re-anchors.
   - In the lab: no false re-labels in 10 h at 2 % per-sample noise, and a 42×14 → 42×17 move re-labels after 5 s.
@@ -62,6 +71,7 @@ Every number below is a **default**, to be tuned in alpha and re-measured by the
 - **Who reads the trainer's speed (rule).** Only the drivetrain does. The dot, timing and the bike computer's speed never do.
 
 **What goes to the trainer**
+
 - **The transform (physics).** k = virtual ratio ÷ real ratio.
   - sin θ' = k · (m/m_t) · sin θ_felt
   - Crr' · cos θ' = k · (m/m_t) · Crr · cos θ_felt
@@ -69,6 +79,7 @@ Every number below is a **default**, to be tuned in alpha and re-measured by the
   - wind' = wind ÷ k
 
   The base values are Crr **0.004** and Cw **0.51 kg/m** (what ftms.ts sends today). m/m_t is **1** until its own issue decides otherwise.
+
 - **Input (rule).** A road's grade goes through the route-rides felt rule (#3020). A slope the rider set by hand (the free ride) and a sprint slope are felt as given.
 - **Shelter (rule).** Cw carries (1 − shelter) only while "Feel the draft" is on (ADR-0077). The dot always gets the hub's shelter.
 - **Write range (default + rule).** The grade written stays within **MinTrainerGrade (−10 %, until P11)** … **MaxTrainerGrade (+15 %, #3020)**. Both live in protocol/limits.go and are the same for every trainer. A Cw above **2.55 kg/m** (the UINT8 field) folds into grade at the last flywheel speed.
@@ -85,6 +96,7 @@ Every number below is a **default**, to be tuned in alpha and re-measured by the
   - WattRoom never sends a pulse (ADR-0084 defines one).
 
 **The shifter (default)**
+
 - Debounce: **40 ms** per input source.
 - Rate: at most one shift per **100 ms**. Up to **3** more presses queue, and opposite presses cancel out.
 - Hold: a held control repeats after **400 ms**, then every **200 ms**.
@@ -93,6 +105,7 @@ Every number below is a **default**, to be tuned in alpha and re-measured by the
 - There is no auto-shift, no countdown and no easing between gears (rule).
 
 **Controls and feedback**
+
 - **Easier / Harder (rule: Jan, 2026-09-28).**
   - In SIM: a gear.
   - In an ERG workout: bias **±1 %**, within **0.8–1.2** (#795).
@@ -112,11 +125,13 @@ Every number below is a **default**, to be tuned in alpha and re-measured by the
 - **The trainer grant moves (default).** When another of the rider's screens takes the trainer, k restarts at 1 with a cue and "Gear back to your real gear". A reconnect keeps k.
 
 **What the gear never touches (rule)**
+
 - Reported watts are never multiplied by k.
 - The pace model, timing, XP and the tick take no gear.
 - The gear stays on the rider's device and is not stored with the ride.
 
 **Fallbacks**
+
 - **ERG-by-gear (default; only for a trainer without usable SIM).**
   - Target = (felt road force at speed k·v) × k·v, where v is the trainer's own speed.
   - Floor **50 W**. Never ERG 0 W (#2658).

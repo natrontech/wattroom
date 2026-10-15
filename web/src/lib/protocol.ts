@@ -1144,6 +1144,7 @@ export interface ClientMessage {
   drive?: Drive;
   remote?: RemoteCommand;
   gear?: GearState;
+  pause?: PauseState;
 }
 /**
  * ServerTick is a voice channel's coalesced 1 Hz broadcast: every rider's
@@ -1247,6 +1248,10 @@ export interface ServerMessage {
    * The holding tab's gear, to the rider's other screens only (#3217).
    */
   gear?: GearState;
+  /**
+   * The holding tab's ride pause, to the rider's other screens only (#3217).
+   */
+  pause?: PauseState;
   /**
    * This socket's own address, sent once on join and to nobody else (#2131).
    */
@@ -1584,7 +1589,9 @@ export const PokeCooldownSeconds = 10;
  * business.
  * Taps never hold: a lost release under Talk's 1 s keepalive measured up to 5
  * phantom shifts, so Easier and Harder are one tap each. Only Talk holds, as
- * talk-down, a talk-keepalive while it lasts, and talk-up.
+ * talk-down, a talk-keepalive while it lasts, and talk-up. Sync presses
+ * nothing: the phone sends it when it opens, and the holder answers with its
+ * gear and pause state.
  */
 export interface RemoteCommand {
   /**
@@ -1606,6 +1613,16 @@ export interface GearState {
  * MaxGearLabel bounds Label: it is rendered on another screen.
  */
 export const MaxGearLabel = 16;
+/**
+ * PauseState is the holding tab's answer about its ride (#3217): whether it
+ * is a solo ride the remote may pause, and whether it is paused by the rider.
+ * It travels the way GearState does. A session is never paused by one rider,
+ * so a holder in a session says Pausable false.
+ */
+export interface PauseState {
+  pausable: boolean;
+  paused: boolean;
+}
 
 //////////
 // source: rider.go

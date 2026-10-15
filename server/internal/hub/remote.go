@@ -105,7 +105,18 @@ func (h *Hub) gearState(c *client, rm *channelState, rider protocol.Rider, g pro
 	if g.Label == "" || utf8.RuneCountInString(g.Label) > protocol.MaxGearLabel {
 		return
 	}
-	if !rm.allow("gear", rider.ID, h.now(), remoteMinGap) {
+	h.fromHolder(c, rm, rider, "gear", protocol.ServerMessage{Gear: &g})
+}
+
+// pauseState forwards the holder's pause state the same way gearState does.
+func (h *Hub) pauseState(c *client, rm *channelState, rider protocol.Rider, p protocol.PauseState) {
+	h.fromHolder(c, rm, rider, "pause", protocol.ServerMessage{Pause: &p})
+}
+
+// fromHolder sends frame to the rider's screens other than the
+// trainer-holding tab, and only when c is that tab.
+func (h *Hub) fromHolder(c *client, rm *channelState, rider protocol.Rider, kind string, frame protocol.ServerMessage) {
+	if !rm.allow(kind, rider.ID, h.now(), remoteMinGap) {
 		return
 	}
 	rm.mu.Lock()
@@ -119,7 +130,6 @@ func (h *Hub) gearState(c *client, rm *channelState, rider protocol.Rider, g pro
 		}
 	}
 	rm.mu.Unlock()
-	frame := protocol.ServerMessage{Gear: &g}
 	for _, other := range others {
 		other.sendJSON(h.log, frame)
 	}
