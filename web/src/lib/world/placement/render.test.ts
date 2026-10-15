@@ -134,6 +134,7 @@ describe('O7 sightline, with the real rig', () => {
 	const route = toRoute(syntheticPoints());
 	const rig = makeRig(route, {
 		heightAt: () => 0,
+		markers: [],
 	} as unknown as World);
 	// What a kind needs from the road's edge (docs/SPEC.md O1): buildings 8 m, kits 6 m, snow poles and delineators on the verge.
 	const edge = (k: string) =>
