@@ -398,7 +398,7 @@
 				     already lists everyone; a second list of the same people is what
 				     the sprint branch refuses too. Flat, the rows share the column
 				     with the heart-rate button at its end. -->
-				<div class={inWorld ? '' : 'flex flex-wrap items-center gap-x-4'}>
+				<div class={inWorld ? '' : 'flex flex-wrap items-center gap-x-4 px-2'}>
 					{#if rows}
 						<div class="min-w-0 py-2 {inWorld ? '' : 'flex flex-1'}">
 							<CrewRows

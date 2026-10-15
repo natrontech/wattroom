@@ -53,7 +53,7 @@
 			>
 			{#if !rider.stale && rider.ftp > 0}
 				<!-- The zone as a digit: ink, never colour alone (#3213, WCAG 1.4.1). -->
-				<span data-testid="crew-zone" class="num text-muted shrink-0 text-xl"
+				<span data-testid="crew-zone" class="num text-muted shrink-0 text-2xl"
 					>Z{zoneOf(rider.watts, rider.ftp)}</span
 				>
 			{/if}

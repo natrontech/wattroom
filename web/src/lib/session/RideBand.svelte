@@ -145,7 +145,7 @@
 						>
 							{#if block.next}
 								<span class="ride-label">Next</span>
-								<span class="shrink-0">
+								<span class="min-w-0 truncate">
 									{nextText(block.next)}
 								</span>
 								<CountChips secondsLeft={block.secondsLeft} />
