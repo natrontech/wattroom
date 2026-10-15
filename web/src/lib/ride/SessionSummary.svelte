@@ -229,12 +229,12 @@
 			<section class="panel panel-lg flex flex-col sm:self-stretch">
 				<h2 class="eyebrow">power curve</h2>
 				<div
-					class="mt-4 grid flex-1 grid-cols-2 content-around gap-3 2xl:grid-cols-4"
+					class="mt-3 grid flex-1 grid-cols-2 content-evenly gap-3 2xl:grid-cols-4"
 				>
 					{#each reached as point (point.label)}
 						<div>
 							<div
-								class="font-display text-2xl leading-none font-bold tabular-nums"
+								class="font-display text-3xl leading-none font-bold tabular-nums"
 							>
 								{point.watts}
 							</div>
