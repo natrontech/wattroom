@@ -45,7 +45,7 @@
 				class:landed={mover.landed(channel, o)}
 				class:opacity-40={mover.dragging?.rider === o.id}
 				class:opacity-60={mover.inFlight(o.id)}
-				class="text-muted flex items-center gap-1.5 rounded px-2 py-0.5 pl-8 text-xs {CAVE_WORDS} transition-opacity duration-(--dur-quick) motion-reduce:transition-none {grab.draggable
+				class="text-muted flex items-center gap-1.5 rounded px-2 py-0.5 pl-[31px] cave:pl-11 text-xs {CAVE_WORDS} transition-opacity duration-(--dur-quick) motion-reduce:transition-none {grab.draggable
 					? 'cursor-grab active:cursor-grabbing'
 					: ''}"
 			>
@@ -81,7 +81,7 @@
 	     the line's the whole list. Drawn even while empty, so the last name
 	     out can still glide away. -->
 	<p
-		class="text-muted-dim flex items-center gap-1 truncate px-2 pl-8 text-[10px] {CAVE_WORDS} {list.length
+		class="text-muted-dim flex items-center gap-1 truncate px-2 pl-[31px] cave:pl-11 text-[10px] {CAVE_WORDS} {list.length
 			? 'pb-1'
 			: ''}"
 	>

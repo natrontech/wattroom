@@ -1,0 +1,1 @@
+- The sidebar's Direct messages chevron lines up with the voice channels' chevrons, and the people in a voice channel sit under its name.
