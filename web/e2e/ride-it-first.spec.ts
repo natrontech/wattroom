@@ -112,7 +112,9 @@ test('a planned road session’s card rides its road first, for its owner and fo
 	await expect(computer).toHaveAttribute('data-page', 'climb', {
 		timeout: 15_000,
 	});
-	await computer.getByRole('button', { name: 'RIDE page' }).click();
+	await computer
+		.getByRole('button', { name: /(previous|next) page, RIDE/ })
+		.click();
 	await expect(crew.getByText(new RegExp(`^${crewKm} of `))).toBeVisible({
 		timeout: 15_000,
 	});

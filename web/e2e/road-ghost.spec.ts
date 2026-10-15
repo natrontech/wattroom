@@ -72,7 +72,9 @@ test('a road ridden once races its ghost from the start', async ({ page }) => {
 	await expect(computer).toHaveAttribute('data-page', 'climb', {
 		timeout: 15_000,
 	});
-	await computer.getByRole('button', { name: 'RIDE page' }).click();
+	await computer
+		.getByRole('button', { name: /(previous|next) page, RIDE/ })
+		.click();
 	await expect(computer.locator('[data-field=distance]')).toBeVisible({
 		timeout: 15_000,
 	});
@@ -91,7 +93,9 @@ test('a road ridden once races its ghost from the start', async ({ page }) => {
 	await expect(computer).toHaveAttribute('data-page', 'climb', {
 		timeout: 15_000,
 	});
-	await computer.getByRole('button', { name: 'RIDE page' }).click();
+	await computer
+		.getByRole('button', { name: /(previous|next) page, RIDE/ })
+		.click();
 	await expect(split).toBeVisible({ timeout: 15_000 });
 	await expect(split).toContainText('vs last');
 	// The same simulated watts on the same road is level: "0:00", unsigned.

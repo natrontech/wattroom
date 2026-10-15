@@ -32,7 +32,9 @@ async function toRide(page: Page) {
 	await expect(computer).toHaveAttribute('data-page', 'climb', {
 		timeout: 15_000,
 	});
-	await computer.getByRole('button', { name: 'RIDE page' }).click();
+	await computer
+		.getByRole('button', { name: /(previous|next) page, RIDE/ })
+		.click();
 	await expect(computer).toHaveAttribute('data-page', 'ride');
 }
 

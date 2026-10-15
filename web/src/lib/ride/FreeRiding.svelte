@@ -342,6 +342,7 @@
 		{...road && roadContext(road)}
 		{split}
 		{climb}
+		climbOpens
 		gear={gear && !inWatts ? gear.label : undefined}
 	/>
 {/snippet}

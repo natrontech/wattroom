@@ -119,7 +119,9 @@ test('a solo route ride saves at its kilometre, carries on, and rides back from 
 	const computer = page.getByTestId('bike-computer');
 	const km = async () => {
 		if ((await computer.getAttribute('data-page')) === 'climb')
-			await computer.getByRole('button', { name: 'RIDE page' }).click();
+			await computer
+				.getByRole('button', { name: /(previous|next) page, RIDE/ })
+				.click();
 		const text = await page
 			.getByText(/ of 2\.2 km$/)
 			.textContent({ timeout: 2_000 })
