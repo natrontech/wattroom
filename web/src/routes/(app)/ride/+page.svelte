@@ -11,6 +11,7 @@
 		withProfile,
 	} from '$lib/workout/road-workout';
 	import { climbView } from '$lib/ride/climb-view';
+	import { mapView } from '$lib/ride/map-view';
 	import { createSignalWatch } from '$lib/workout/signal-watch.svelte';
 	import {
 		createRideSounds,
@@ -700,6 +701,7 @@
 			stats={session.live}
 			skyline={tvSkyline}
 			climb={climbView(tvSkyline)}
+			map={mapView(tvSkyline)}
 			riders={[tvRider]}
 			segments={session.segments}
 			total={session.total}

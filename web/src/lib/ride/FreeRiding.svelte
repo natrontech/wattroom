@@ -33,6 +33,7 @@
 	import RideNarrator from '$lib/ride/RideNarrator.svelte';
 	import Skyline from '$lib/ride/Skyline.svelte';
 	import { climbView } from '$lib/ride/climb-view';
+	import { mapView } from '$lib/ride/map-view';
 	import { watchClimbCues } from '$lib/ride/climb-cues.svelte';
 	import BikeComputer from '$lib/session/BikeComputer.svelte';
 	import { roadContext } from '$lib/session/computer-pages';
@@ -118,6 +119,7 @@
 			: null,
 	);
 	const climb = $derived(climbView(view));
+	const map = $derived(mapView(view));
 	watchClimbCues(() => climb);
 	const inWatts = $derived(free.mode === 'watts');
 	// The world in slot 2 where this device has it on and the ride has a
@@ -346,6 +348,7 @@
 		{...road && roadContext(road)}
 		{split}
 		{climb}
+		{map}
 		climbOpens
 		gear={gear && !inWatts ? gear.label : undefined}
 	/>

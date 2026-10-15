@@ -19,11 +19,13 @@
 	import { pulse } from '$lib/motion/transitions';
 	import { fieldDimmer } from '$lib/session/field-dim';
 	import ClimbProfile from '$lib/ride/ClimbProfile.svelte';
+	import ComputerMap from '$lib/ride/ComputerMap.svelte';
 	import {
 		PAGE_NAMES,
 		TV_LABEL,
 		claimPageTurn,
 		climbHeader,
+		MAP_ASK,
 		fieldsFor,
 		pagesFor,
 		type Field,
@@ -135,6 +137,17 @@
 		if (!climbOpens || climb === null || climb === openedFor) return;
 		openedFor = climb;
 		if (untrack(() => shown) === 'ride') page = 'climb';
+	});
+
+	// M, the ride key, turns to MAP where this computer has one.
+	$effect(() => {
+		const ask = (event: Event) => {
+			if (!pages.includes('map')) return;
+			page = 'map';
+			event.preventDefault();
+		};
+		window.addEventListener(MAP_ASK, ask);
+		return () => window.removeEventListener(MAP_ASK, ask);
 	});
 
 	// A plain field's number dims to 60 % after 20 s unchanged (#3215): ink at
@@ -294,7 +307,7 @@
 				<!-- In the world's column the dots take the right edge; in a wide
 				     flat panel they stay beside the name (#3669). -->
 				<div
-					class="flex gap-1 {narrow
+					class="flex gap-px {narrow
 						? 'basis-full justify-center'
 						: 'ml-auto @2xl:ml-4'}"
 					aria-hidden="true"
@@ -409,5 +422,6 @@
 			{#if turns && !tv && !phone && !docked}{@render dots()}{/if}
 		</div>
 	{/if}
+	{#if shown === 'map' && ctx.map}<ComputerMap view={ctx.map} {tv} />{/if}
 	{#if turns && phone}{@render dots()}{/if}
 </section>
