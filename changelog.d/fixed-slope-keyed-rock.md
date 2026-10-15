@@ -1,0 +1,1 @@
+- A retaining wall or steep ground face in the world reads as stone, not as meadow stretched down a cliff.

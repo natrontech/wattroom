@@ -8,7 +8,7 @@
 // style, never its values, so the engine carries no palette of its own. How
 // the light falls is light.ts's; the shaders here take it as uniforms.
 import * as THREE from 'three';
-import type { Biome } from './biome';
+import { Biome } from './biome';
 import { sunDir, type Light } from './light';
 import type { SignLook } from './setpieces';
 
@@ -160,6 +160,7 @@ export function terrainMaterial(style: Style): THREE.ShaderMaterial {
 			uImhof: { value: style.imhof ? 1 : 0 },
 			uValley: { value: col(style.imhof?.valley) },
 			uPeak: { value: col(style.imhof?.peak) },
+			uRock: { value: col(style.palette[Biome.Rock]) },
 		},
 		vertexColors: true,
 		vertexShader: /* glsl */ `
@@ -172,13 +173,27 @@ export function terrainMaterial(style: Style): THREE.ShaderMaterial {
 				gl_Position = projectionMatrix * viewMatrix * world;
 			}`,
 		fragmentShader: /* glsl */ `
-			uniform vec3 uSun, uFrom, uKey, uShade, uSkyTop, uHorizon, uSunward, uGridColor, uContour, uIndex, uValley, uPeak;
+			uniform vec3 uSun, uFrom, uKey, uShade, uSkyTop, uHorizon, uSunward, uGridColor, uContour, uIndex, uValley, uPeak, uRock;
 			uniform float uFogK, uBands, uSkyFill, uGridSize, uGridAlpha, uContourStep, uImhof, uDusk;
 			varying vec3 vColor; varying vec3 vPos; varying float vAo;
+			float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+			float vnoise(vec2 p) {
+				vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+				return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+			}
 			void main() {
 				vec3 n = normalize(cross(dFdx(vPos), dFdy(vPos)));
 				float dist = length(vPos - cameraPosition);
 				vec3 base = vColor;
+				// Slope-keyed rock: a face steeper than the earthworks' 45 degrees (n.y 0.71) reads as stone,
+				// textured along the face over the horizontal axis it leans on, never the ground's colour
+				// smeared down a vertical.
+				float steep = smoothstep(0.80, 0.62, n.y);
+				if (steep > 0.0) {
+					vec2 fuv = vec2(abs(n.x) > abs(n.z) ? vPos.z : vPos.x, vPos.y);
+					float grain = vnoise(fuv * vec2(0.35, 1.3)) * 0.6 + vnoise(fuv * vec2(1.7, 5.0)) * 0.4;
+					base = mix(base, uRock * (0.7 + 0.6 * grain), steep);
+				}
 				vec3 col;
 				if (uImhof > 0.5) {
 					float hs = clamp(dot(n, normalize(vec3(-1.0, 1.4, -1.0))), 0.0, 1.0);
