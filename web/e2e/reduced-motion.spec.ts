@@ -85,7 +85,7 @@ test.describe('reduced motion', () => {
 		expect([...moved, ...(await movedOver(page, 4_000))]).toEqual([]);
 	});
 
-	test('stills the count-in reveal on the start arch (#3087)', async ({
+	test('stills the count-in reveal on the start arch (#3087) @world', async ({
 		page,
 	}) => {
 		await page.addInitScript(() => {
