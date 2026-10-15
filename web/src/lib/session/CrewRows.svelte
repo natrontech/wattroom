@@ -3,8 +3,8 @@
 	 * The crew beside the road (TARGETS ride-session-road 1, #3668): one 44 px
 	 * row each at the riding floor's 24 px, yours tinted, and no number in
 	 * watt — the 3 s power is G2's one figure. What more a row carries (gap,
-	 * Category) is the peloton list's (#3107). Over the flat surface the crew
-	 * keeps its camera strip (CrewStrip).
+	 * Category) is the peloton list's (#3107). Over the flat surface the rows
+	 * lie side by side across the column (`row`, TARGETS ride-session-flat 2).
 	 */
 	import { useChannel } from '$lib/channel/context';
 	import type { LiveRider } from '$lib/channel/types';
@@ -17,10 +17,13 @@
 	let {
 		riders,
 		offsets = {},
+		row = false,
 	}: {
 		riders: LiveRider[];
 		/** Metres from the bunch by rider: the list's distance (#3215). */
 		offsets?: Record<string, number>;
+		/** Side by side, each growing to share the width, instead of one column. */
+		row?: boolean;
 	} = $props();
 	const channel = useChannel();
 
@@ -33,14 +36,17 @@
 	const rows = $derived(pelotonRows(riders, offsets, settled));
 </script>
 
-<ul aria-label="the crew" class="flex w-60 flex-col">
+<ul
+	aria-label="the crew"
+	class={row ? 'flex min-w-0 flex-1 flex-wrap' : 'flex w-60 flex-col'}
+>
 	{#each rows as rider (rider.id)}
 		<li
 			{@attach contextMenu(() => crewMenu(channel, rider))}
 			data-testid="crew-tile"
-			class="flex min-h-11 items-center gap-3 rounded px-3 text-2xl leading-7 {rider.you
-				? 'bg-neon/16'
-				: ''}"
+			class="flex min-h-11 items-center gap-3 rounded px-3 text-2xl leading-7 {row
+				? 'w-60 flex-1'
+				: ''} {rider.you ? 'bg-neon/16' : ''}"
 		>
 			<span data-testid="crew-name" class="min-w-0 flex-1 truncate"
 				>{rider.name}</span

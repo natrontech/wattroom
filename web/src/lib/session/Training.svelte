@@ -391,17 +391,27 @@
 		{/snippet}
 
 		{#snippet crew()}
-			{#if (inWorld || !quiet) && inFocus !== 'game'}
+			{@const rows = (inWorld || !quiet) && inFocus !== 'game'}
+			{#if rows || !quiet}
 				<!-- The crew, one list with or without a road: rows at the riding
 				     floor, a sprint's card included (the box table). A game's panel
 				     already lists everyone; a second list of the same people is what
-				     the sprint branch refuses too. -->
-				<div class="py-2">
-					<CrewRows riders={inRide} offsets={channel.ridden?.bunch?.offsets} />
+				     the sprint branch refuses too. Flat, the rows share the column
+				     with the heart-rate button at its end. -->
+				<div class={inWorld ? '' : 'flex flex-wrap items-center gap-x-4'}>
+					{#if rows}
+						<div class="min-w-0 py-2 {inWorld ? '' : 'flex flex-1'}">
+							<CrewRows
+								row={!inWorld}
+								riders={inRide}
+								offsets={channel.ridden?.bunch?.offsets}
+							/>
+						</div>
+					{/if}
+					{#if !quiet}
+						<HrShare ride class="px-4 pb-3 {inWorld ? '' : 'ml-auto pt-3'}" />
+					{/if}
 				</div>
-			{/if}
-			{#if !quiet}
-				<HrShare ride class="px-4 pb-3" />
 			{/if}
 		{/snippet}
 
