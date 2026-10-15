@@ -1,0 +1,1 @@
+- A hidden stretch's ground relief is keyed by its own secret in its own frame, blending into the public ground at its edges.
