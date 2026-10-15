@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { readFileSync } from 'node:fs';
 import { tick } from 'svelte';
 import { describe, expect, it, vi } from 'vitest';
 import type { ClimbView } from './climb-view';
@@ -7,10 +8,15 @@ const played: string[] = [];
 vi.mock('$lib/sound/cues', () => ({ play: (id: string) => played.push(id) }));
 const { watchClimbCues, climbStage } = await import('./climb-cues.svelte');
 
-const at = (startM: number, summited = false, flammeRouge = false) =>
+const at = (
+	startM: number,
+	summited = false,
+	flammeRouge = false,
+	cls = 'IV',
+) =>
 	({
 		card: { summited, flammeRouge },
-		climb: { startM, topM: startM + 1000, gainM: 80, cls: 'IV' },
+		climb: { startM, topM: startM + 1000, gainM: 80, cls },
 	}) as unknown as ClimbView;
 
 describe('the climb card says so (#3645)', () => {
@@ -38,5 +44,31 @@ describe('the climb card says so (#3645)', () => {
 		expect(climbStage.summit).toBeNull();
 		stop();
 		vi.useRealTimers();
+	});
+
+	it('spends confetti at HC and I only, and stamps the flamme once on ease-pop', async () => {
+		vi.useFakeTimers();
+		vi.spyOn(performance, 'now').mockImplementation(() => Date.now());
+		for (const [cls, confetti] of [
+			['HC', true],
+			['IV', false],
+		] as const) {
+			let view = $state<ClimbView | null>(null);
+			const stop = $effect.root(() => watchClimbCues(() => view));
+			view = at(1000, false, false, cls);
+			await tick();
+			vi.advanceTimersByTime(4000);
+			view = at(1000, true, false, cls);
+			await tick();
+			vi.advanceTimersByTime(500);
+			expect(climbStage.summit?.confetti).toBe(confetti);
+			vi.advanceTimersByTime(9000);
+			stop();
+		}
+		vi.useRealTimers();
+		const css = readFileSync('src/app.css', 'utf8');
+		expect(css).toMatch(
+			/\.flamme-stamp \{\s*animation: flamme-stamp var\(--dur-base\) var\(--ease-pop\) both;/,
+		);
 	});
 });
