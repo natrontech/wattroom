@@ -147,7 +147,7 @@ Layout:
 11. Skyline full width along the bottom, > 56 px tall: ridden part ink or muted, never a fixed zone; road ahead neon; your dot wholly inside the panel; on a road workout (pinned blocks) the block band beneath the line (v2-erg), on a scenery ride none (ADR-0062) [#4003]; place labels above the line where the road has named places [#3134] (none on the hairpin fixture: OPEN-ELSEWHERE). [ride-surface]
 12. Corridor clear; your figure unobstructed in `RIDER_BOX` (docks.ts: x 40–60 %, y 55–82 %; its foot reaches below the corridor by design). [ride-surface] [#3215] [probe:panels]
 13. A moment card top-centre between slot 1 and the seat, above the corridor; border watt while live (D12). [ride-surface] [multi:ride-session-road]
-14. No key hint names PgUp or PgDn (D14). [ride-surface]
+14. No key hint names PgUp or PgDn as page keys (ADR-0071: arrows page); the ? sheet lists them as bias, since they are bound (D14). [ride-surface]
 15. Cave covers the frame, sidebar included. [ride-cave]
 
 World:
