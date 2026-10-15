@@ -174,7 +174,7 @@
 				     ride-road-end 2): the same road from where you stopped. -->
 				<a
 					href="/ride?road={route.id}&from={Math.round(free.road.m)}"
-					class="btn btn-primary"
+					class="btn btn-secondary"
 					>Carry on from km {formatKm(free.road.m)} next time</a
 				>
 			{/if}
