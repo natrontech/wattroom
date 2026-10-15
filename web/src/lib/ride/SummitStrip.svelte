@@ -18,11 +18,11 @@
 	<div
 		data-testid="summit-strip"
 		role="status"
-		class="summit-strip ride-panel relative flex items-center justify-center gap-3 px-4 py-2"
+		class="summit-strip ride-panel relative flex w-full items-center justify-center gap-3 px-4 py-2 text-2xl"
 	>
 		<span class="text-muted ride-label">Summit</span>
 		<span
-			class="border-neon bg-surface text-ink rounded border px-1 leading-none font-bold"
+			class="border-neon bg-surface text-ink rounded border px-1 leading-none font-bold tracking-normal"
 			>{climbStage.summit.cls}</span
 		>
 		{#if confetti}

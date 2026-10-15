@@ -174,8 +174,8 @@ Crew and computer:
 
 30. The crew list shows you and the 3 nearest riders while no rider's offset has changed by more than 5 m in the last 10 s, and every rider otherwise. [ride-surface] [#3215] [test:web/src/lib/session/peloton-list.test.ts]
 31. A secondary bike-computer field dims to ink/60 after 20 s without change and returns to full ink on its next change; the 3 s power and the zone never dim. [ride-surface] [#3215] [test:web/src/lib/session/field-dim.test.ts]
-32. Inside the last kilometre to the top, CLIMB's chip row carries the flamme rouge: a small red pennant beside the class chip, in the danger token, never blinking, taking no row. It stamps in once on `--ease-pop` and stays. [#3645] [multi:ride-road-world-flamme] [test:web/src/lib/ride/climb-cues.svelte.test.ts]
-33. Over the top a summit strip stands above the Skyline for `--hold-announce`: “Summit” and the class chip, flat and quiet; no watt, no glow; the Skyline and the bike computer keep their place under it. HC and I add confetti falling from the strip, none at II to IV, none in Steady. The CLIMB page slides in from its edge on `--dur-stage` (a still shows it landed). [#3645] [multi:ride-road-world-summit] [test:web/src/lib/ride/climb-cues.svelte.test.ts]
+32. Inside the last kilometre to the top, CLIMB's chip row carries the flamme rouge: a small red pennant hanging off the class chip's top-right corner, in the danger token, never blinking, taking no row. It stamps in once on `--ease-pop` and stays. [#3645] [multi:ride-road-world-flamme] [test:web/src/lib/ride/climb-cues.svelte.test.ts]
+33. Over the top a summit strip stands above the Skyline, as wide as it, for `--hold-announce`: “Summit” and the class chip in the computer's chip size, flat and quiet; no watt, no glow; the Skyline and the bike computer keep their place under it. HC and I add confetti falling from the strip, none at II to IV, none in Steady. The CLIMB page slides in from its edge on `--dur-stage` (a still shows it landed). [#3645] [multi:ride-road-world-summit] [test:web/src/lib/ride/climb-cues.svelte.test.ts]
 
 #### ride-workout-world
 
