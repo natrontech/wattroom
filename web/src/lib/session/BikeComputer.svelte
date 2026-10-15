@@ -271,7 +271,7 @@
 				>
 				<!-- In the world's column the dots take the right edge; in a wide
 				     flat panel they stay beside the name (#3669). -->
-				<div class="ml-auto flex gap-1.5 @2xl:ml-4" aria-hidden="true">
+				<div class="ml-auto flex gap-1 @2xl:ml-4" aria-hidden="true">
 					{#each pages as p (p)}
 						<span
 							data-testid="computer-dot"
