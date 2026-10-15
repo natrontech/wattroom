@@ -451,6 +451,59 @@ surface('ride-preride', async (s) => {
 	await page(s, fresh, '/ride?alone', { name: 'ride-preride-no-road' });
 });
 
+surface(
+	'ride-figure-card',
+	async (s) => {
+		// A rider who has not answered the card meets it at Start on a road
+		// (#3342); the card measures its own targets for the probe.
+		for (const [device, name] of variants([
+			[DESK, 'ride-figure-card'],
+			[RIDING_PHONE, 'phone-ride-figure-card'],
+		] as const)) {
+			const o = await s.open(device, { as: 'Unasked', world: false });
+			const road = await fixtureRoad(o.page, 'hairpin');
+			await o.page.goto(`/ride?road=${road}`);
+			await o.page
+				.getByRole('button', { name: 'Ride simulated' })
+				.first()
+				.click({ timeout: 15_000 });
+			await o.page.getByRole('button', { name: 'Start the ride' }).click();
+			const card = o.page.getByTestId('figure-card');
+			await card.waitFor();
+			const box = (label: string) =>
+				card.getByRole('button', { name: label, exact: true }).boundingBox();
+			const circle = card.getByTestId('figure-preview').locator('circle');
+			const fill = () => circle.evaluate((c) => getComputedStyle(c).fill);
+			const neutralFill = await fill();
+			const swatch = card.getByRole('button', { name: /^Skin tone 4 of/ });
+			const swatchFill = await swatch.evaluate(
+				(b) => getComputedStyle(b).backgroundColor,
+			);
+			await swatch.click();
+			const tappedFill = await fill();
+			await s.shot(o, {
+				name,
+				full: true,
+				extra: {
+					'figure-card': {
+						neutralFill,
+						swatchFill,
+						tappedFill,
+						skip: await box('Skip'),
+						save: await box('Save'),
+						build: await box('slim'),
+						height: await card.getByRole('slider').boundingBox(),
+						swatch: await card
+							.getByRole('button', { name: /^Skin tone 1 of/ })
+							.boundingBox(),
+					},
+				},
+			});
+		}
+	},
+	{ also: ['phone-ride-figure-card'] },
+);
+
 surface('ride-roadpick', async (s) => {
 	// The road picker, with both roads seeded, opened from /ride's
 	// “Change” (#3671).

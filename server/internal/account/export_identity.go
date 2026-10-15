@@ -73,6 +73,9 @@ func (x *export) profile() (map[string]any, error) {
 		"unsubscribeToken": store.UUIDString(user.UnsubToken),
 		// The reactions they picked (#2722), as the icons they react with.
 		"cheers": auth.CheerSet(user.Cheers),
+		// The figure they chose (#3342): null is the neutral value.
+		"figure":        auth.FigureOf(user),
+		"figureAskedAt": timeOrNil(user.FigureAskedAt),
 		// The last of the row (#2863): the crew the sidebar opens in, the
 		// invite they were sent and have not taken up (Home offers it back),
 		// and whether the account had to confirm an address before it rode.

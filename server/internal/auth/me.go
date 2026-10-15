@@ -117,6 +117,11 @@ type meResponse struct {
 	StatusLine *protocol.StatusLine `json:"statusLine"`
 	// The rider's own reaction set (#2722), the base set until they pick.
 	Cheers []string `json:"cheers"`
+	// The rider's figure (ADR-0073, #3342). Null fields ride the neutral
+	// figure's value; FigureAsked is true once a save or a skip has answered
+	// the card, on any device.
+	Figure      FigureChoice `json:"figure"`
+	FigureAsked bool         `json:"figureAsked"`
 }
 
 func (s *Service) handleMe(w http.ResponseWriter, r *http.Request) {
@@ -432,6 +437,8 @@ func (s *Service) toMe(u db.User) meResponse {
 		HomeCrewID:    homeCrew(u),
 		StatusLine:    status.OfUser(u, time.Now()),
 		Cheers:        CheerSet(u.Cheers),
+		Figure:        FigureOf(u),
+		FigureAsked:   u.FigureAskedAt.Valid,
 	}
 }
 
