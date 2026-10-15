@@ -14,8 +14,14 @@
 	 * the left edge, the crew and what has the focus under the jukebox seat,
 	 * and the moment card top-centre when it fits there, otherwise under the
 	 * seat (D12). A shared screen takes the stage while the world holds.
+	 *
+	 * A phone (below ADR-0020's md) is neither: one column of full-width
+	 * panels in the slot order, the page scrolling down only, and the world —
+	 * where it draws — a band in slot 2's place with nothing over it (#3676,
+	 * v2-phone's riding screen).
 	 */
 	import type { Snippet } from 'svelte';
+	import { device } from '$lib/device.svelte';
 	import { COLUMN_SEAT, offerSeat } from '$lib/channel/stage-slot.svelte';
 	import {
 		CORRIDOR,
@@ -23,6 +29,7 @@
 		INSET_PX,
 		BAND_MAX_PX,
 		JUKEBOX_SEAT,
+		PHONE_WORLD_PX,
 		SIDE_MAX,
 		SKYLINE_PX,
 		STAGE,
@@ -97,7 +104,48 @@
 	const panel = 'ride-panel absolute [&:not(:has(*))]:hidden';
 </script>
 
-{#if world}
+{#if device.narrow}
+	<!-- Phone: the flat slots in one column the page scrolls, at about 10 px
+	     apart (TARGETS phone-ride 1). -->
+	<div class="flex flex-col gap-2.5 {extra}" data-surface="phone">
+		<div data-dock="header" class={own ? '' : 'ride-panel'}>
+			{@render header()}
+		</div>
+		{#if world}
+			<div
+				data-dock="world"
+				class="relative shrink-0 overflow-hidden rounded-lg"
+				style="height:{PHONE_WORLD_PX}px"
+			>
+				{@render world()}
+			</div>
+		{/if}
+		<div
+			data-dock="focus"
+			class="{own ? '' : 'ride-panel'} [&:not(:has(*))]:hidden"
+		>
+			{@render focus()}
+		</div>
+		{#if numbers}
+			<div data-dock="numbers" class="ride-panel [&:not(:has(*))]:hidden">
+				{@render numbers()}
+			</div>
+		{/if}
+		{#if crew}
+			<div data-dock="crew" class="ride-panel [&:not(:has(*))]:hidden">
+				{@render crew()}
+			</div>
+		{/if}
+		{#if horizon}
+			<div
+				data-dock="horizon"
+				class="ride-panel flex flex-col overflow-hidden [&:not(:has(*))]:hidden"
+			>
+				{@render horizon()}
+			</div>
+		{/if}
+	</div>
+{:else if world}
 	<div
 		class="relative min-h-0 overflow-hidden {extra}"
 		data-surface="docked"

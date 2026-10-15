@@ -82,7 +82,9 @@
 				</p>
 			{/if}
 		</div>
-		{#if controls}<div class="shrink-0">{@render controls()}</div>{/if}
+		{#if controls}<div class="shrink-0 max-md:w-full">
+				{@render controls()}
+			</div>{/if}
 	</div>
 	{#if block}
 		<div

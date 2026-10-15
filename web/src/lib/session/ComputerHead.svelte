@@ -22,6 +22,7 @@
 		target,
 		blockExecution = null,
 		tv = false,
+		centred = false,
 	}: {
 		/** The 3 s power, or this second's watts before three have passed. */
 		power: number;
@@ -35,6 +36,8 @@
 		blockExecution?: number | null;
 		/** At three metres (TvMode): SPEC's TV sizes, in vh. */
 		tv?: boolean;
+		/** A phone's column (#3676): the power centred, W/kg and the zone on one line under it. */
+		centred?: boolean;
 	} = $props();
 
 	const shown = $derived(stale ? 0 : power);
@@ -88,7 +91,11 @@
 </script>
 
 <div data-testid="computer-head" class="flex min-h-0 flex-col {size.gap}">
-	<div class="flex justify-between gap-x-2 gap-y-2 {size.row}">
+	<div
+		class="flex gap-x-2 gap-y-2 {size.row} {centred
+			? 'justify-center'
+			: 'justify-between'}"
+	>
 		<p class="num leading-[0.85] font-bold whitespace-nowrap">
 			<span
 				data-testid="head-power"
@@ -98,14 +105,33 @@
 				><TabularFigures value={stale ? '—' : power} /></span
 			>{' '}<span class="text-muted {size.unit} font-normal">W</span>
 		</p>
-		<div class={size.side}>
-			<p class={size.label}>W/kg</p>
-			<p data-field="wkg" class="num {size.value} leading-none font-bold">
-				{stale ? '—' : wkg(power, kg)}
-			</p>
-		</div>
+		{#if !centred}
+			<div class={size.side}>
+				<p class={size.label}>W/kg</p>
+				<p data-field="wkg" class="num {size.value} leading-none font-bold">
+					{stale ? '—' : wkg(power, kg)}
+				</p>
+			</div>
+		{/if}
 	</div>
-	{#if shown > 0}
+	{#if centred}
+		<!-- One line, never two (TARGETS phone-ride 3). Silent zone at 0 W, as below. -->
+		<p class="flex items-baseline justify-center gap-x-3 text-xl leading-7">
+			<span class="flex items-baseline gap-1.5"
+				><span data-field="wkg" class="num text-2xl leading-none font-bold"
+					>{stale ? '—' : wkg(power, kg)}</span
+				><span class="text-muted">W/kg</span></span
+			>
+			{#if shown > 0}
+				<span
+					data-testid="head-zone"
+					class="flex min-w-0 items-center gap-1.5 truncate"
+					><ZoneDot {zone} class={size.dot} />Z{zone}
+					{ZONE_NAMES[zone]}</span
+				>
+			{/if}
+		</p>
+	{:else if shown > 0}
 		<!-- Silent at 0 W: Z1 for a rider who stopped is a lie. -->
 		<p data-testid="head-zone" class="{size.label} flex items-center gap-2">
 			<ZoneDot {zone} class={size.dot} />Z{zone}

@@ -44,10 +44,19 @@ export const MOMENT_MIN_PX = 300;
  * (176), the computer at its tallest (553: CLIMB under a scored target,
  * #3645) and the Skyline (64), with their insets and gaps. A shorter window
  * rides the flat surface and says why (Jan, 2026-10-07, #3668; raised from
- * 820 for CLIMB, #3645). ponytail: a constant from the box table; measure
- * the stack itself if the computer's pages grow again.
+ * 820 for CLIMB, #3645). A phone is exempt: its panels stack in one column
+ * the page scrolls, so its height holds nothing the world must clear (#3676).
+ * ponytail: a constant from the box table; measure the stack itself if the
+ * computer's pages grow again.
  */
 export const WORLD_MIN_PX = 860;
+
+/** Whether a window of this size draws the world, or rides the flat surface (#3676). */
+export const worldFits = (phone: boolean, height: number): boolean =>
+	phone || height >= WORLD_MIN_PX;
+
+/** A phone's world: a band as wide as the column, in slot 2's place (#3676). */
+export const PHONE_WORLD_PX = 240;
 
 /** A shared screen's stage, between the columns, over the paused world. */
 export const STAGE: Box = { x0: 0.3, y0: 0.23, x1: 0.71, y1: 0.84 };

@@ -12,6 +12,7 @@
 	import { untrack } from 'svelte';
 	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
+	import { device } from '$lib/device.svelte';
 	import ZoneDot from '$lib/components/ZoneDot.svelte';
 	import ComputerHead from '$lib/session/ComputerHead.svelte';
 	import { ZONE_BG } from '$lib/components/zones';
@@ -59,6 +60,9 @@
 		ftp?: number;
 	} = $props();
 
+	// Docked in a phone's column (#3676): the column wide, the power centred, the
+	// fields two to a row, whatever the caller's `wide` asked of a desk's panel.
+	const narrow = $derived(docked && !tv && device.narrow);
 	let page = $state<ComputerPage>('ride');
 	const pages = $derived(pagesFor(ctx));
 	const shown = $derived(pages.includes(page) ? page : 'ride');
@@ -167,7 +171,7 @@
 	class={docked
 		? tv
 			? 'relative flex min-h-0 flex-1 flex-col gap-[1.5vh] px-[1.5vw] py-[1.5vh]'
-			: wide
+			: wide || narrow
 				? 'relative flex w-full flex-col gap-3 px-4 py-3'
 				: 'relative flex w-[21rem] max-w-full flex-col gap-3 px-4 py-3'
 		: 'panel relative'}
@@ -269,7 +273,7 @@
 					onclick={() => turn(-1)}
 					aria-label="previous page, {PAGE_NAMES[turned(pages, shown, -1)]}"
 					title="Previous page"
-					class="icon-btn-lg -ml-2"
+					class="icon-btn-lg -ml-2 shrink-0"
 					><ChevronLeft size={24} class={tv ? 'size-[3.4vh]' : ''} /></button
 				>
 			{/if}
@@ -284,7 +288,7 @@
 					onclick={() => turn(1)}
 					aria-label="next page, {PAGE_NAMES[turned(pages, shown, 1)]}"
 					title="Next page"
-					class="icon-btn-lg"
+					class="icon-btn-lg shrink-0"
 					><ChevronRight size={24} class={tv ? 'size-[3.4vh]' : ''} /></button
 				>
 				<!-- In the world's column the dots take the right edge; in a wide
@@ -311,7 +315,7 @@
 	<div
 		class={docked && tv
 			? 'flex min-h-0 flex-1 flex-col gap-[2vh]'
-			: docked && wide
+			: docked && wide && !narrow
 				? 'flex flex-wrap items-end gap-x-8 gap-y-3'
 				: 'contents'}
 	>
@@ -325,6 +329,7 @@
 					target={ctx.target}
 					blockExecution={ctx.stats?.blockExecution ?? null}
 					{tv}
+					centred={narrow}
 				/>
 			</div>
 		{/if}
@@ -332,7 +337,7 @@
 			class={docked
 				? tv
 					? `border-neon/20 [container-type:size] grid min-h-0 shrink grow ${TV_COLS[tvCols]} gap-x-[2vw] gap-y-[1.5vh] border-t pt-[2vh]`
-					: wide
+					: wide && !narrow
 						? 'border-neon/20 grid min-w-0 flex-1 auto-cols-fr grid-flow-col gap-x-8 border-l pl-8'
 						: 'border-neon/20 grid grid-cols-2 gap-x-6 gap-y-3 border-t pt-3'
 				: layout}
