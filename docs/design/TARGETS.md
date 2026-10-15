@@ -475,7 +475,7 @@ Capture: `/workouts/routes/<id>` for the hairpin and the rolling route (≥ 2 cl
 1. Header: “← Workouts” in xs muted text over the name as `page-title`; one stat row in the display face: km, m climbed, classed climbs, loop or point to point. [route-page]
 2. At ≥ 1024 px two columns: the road left; a How column of ~300 px right, top-aligned with the first drawing. [route-page]
 3. At 1440 × 900 title, stats, shape, profile, How and the primary button show without scrolling. [route-page]
-4. How: a stack of hairline rows, each an icon, a label, one line; the selected row a 1 px neon border: “Ride it” [route-page], “Workout on it” [route-workout-on], “Plan it for a crew” [route-plan-crew]. A row exists only once its flow works; never a disabled promise.
+4. How: a stack of hairline rows, each an icon, a label, one line; the selected row a 1 px neon border: “Ride it” [route-page], “Ride its workout” [route-leg], “Workout on it” [route-workout-on], “Plan it for a crew” [route-plan-crew]. “Ride its workout” is the road's own compiled workout at the rider's FTP and weight, by Jan's 2026-10-06 decision on #3601 and ADR-0062's parity rule; it opens `/ride?road=<id>&leg=1` and Which stretch is absent. A row exists only once its flow works; never a disabled promise.
 5. Which-stretch chips ≥ 28 px, selected in a neon border: Whole road; From km X, only when there is somewhere to carry on; One climb, only when the road has a classed climb. [route-page]
 6. Exactly one primary: `btn-primary btn-lg`, the column's full width, enabled; Ride it opens `/ride?road=<id>&from=<m>`. [route-page]
 7. “arrives with” nowhere. [#3660]
@@ -488,6 +488,8 @@ Capture: `/workouts/routes/<id>` for the hairpin and the rolling route (≥ 2 cl
 14. Phone order: back link, title, stats, primary, How, stretch, profile, shape, climbs, rides, rename, privacy, Delete; drawings `width="100%"`; the table scrolls in its own box. [route-page] [road-drawing]
 15. No watt, glow, shadow or blur anywhere.
 16. With “Workout on it” selected (`route-workout-on`): its line reads “Pick a workout; Terrain Match picks the start”, the primary reads “Pick a workout” and opens `/workouts?on=<id>`, and Which stretch is absent, since Terrain Match picks the start. [route-workout-on]
+17. With “Ride its workout” selected (`route-leg`): the primary reads “Ride its workout” and opens `/ride?road=<id>&leg=1`; Which stretch is absent, since the legs cover the road. The leg's setup at that url is a desk surface on the leg's workout, not the free-ride card. [route-leg]
+18. A leg's summary (`route-leg-summary`) offers “Ride leg k+1 of n” as a `btn-secondary` beside Pick another workout and Done, only while the road runs on past leg k; the last leg has no such button. [route-leg] [test:web/src/lib/road/leg.test.ts]
 
 #### import-idle, import, import-saved
 

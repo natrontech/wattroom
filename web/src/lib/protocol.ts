@@ -1142,6 +1142,7 @@ export interface ClientMessage {
   device?: DeviceKind;
   roadside?: Roadside;
   drive?: Drive;
+  remote?: RemoteCommand;
 }
 /**
  * ServerTick is a voice channel's coalesced 1 Hz broadcast: every rider's
@@ -1237,6 +1238,10 @@ export interface ServerMessage {
   pairing?: SensorPairing;
   poke?: Poke;
   moved?: Moved;
+  /**
+   * A phone remote's press, to the rider's trainer-holding tab only (#3217).
+   */
+  remote?: RemoteCommand;
   /**
    * This socket's own address, sent once on join and to nobody else (#2131).
    */
@@ -1561,6 +1566,27 @@ export const PokeKindBottle: PokeKind = "bottle";
  * one up never spends the poke.
  */
 export const PokeCooldownSeconds = 10;
+
+//////////
+// source: remote.go
+
+/**
+ * RemoteCommand is one press on a rider's phone remote (#3217), relayed to the
+ * tab that holds the rider's trainer. It travels both ways in the same shape:
+ * the phone sends it, the hub forwards it unchanged.
+ * Addressed to that rider's own sockets only and never on the tick, for the
+ * reason SensorPairing is: what a rider's second screen does is nobody else's
+ * business.
+ * Taps never hold: a lost release under Talk's 1 s keepalive measured up to 5
+ * phantom shifts, so Easier and Harder are one tap each. Only Talk holds, as
+ * talk-down, a talk-keepalive while it lasts, and talk-up.
+ */
+export interface RemoteCommand {
+  /**
+   * One of RemoteActions.
+   */
+  action: string;
+}
 
 //////////
 // source: rider.go

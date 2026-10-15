@@ -18,6 +18,8 @@ export function roadsEnabled(): boolean {
 export interface RideableRoute {
 	id: string;
 	name: string;
+	/** The generated name legs go out under, never the owner's rename (#3055). */
+	generatedName?: string;
 	road: Road;
 	/**
 	 * Someone else's road, the crew's cut of it (#3621): ridden, never saved
@@ -68,6 +70,25 @@ export function carryOnOf(
 	return m + 1 < length ? m : null;
 }
 
+/** /ride?road=intro (#3218): the first-run card's road, built in, on no account. */
+export const INTRO_ROAD_ID = 'intro';
+
+// ponytail: the synthetic pass loop until #3149's library has a gentle
+// public climb; the swap is this one function. Borrowed, so the ride saves
+// as a free ride: there is no route row to save it against.
+async function introRoute(): Promise<RideableRoute> {
+	const [{ toRoute }, { syntheticPoints }] = await Promise.all([
+		import('$lib/road/route'),
+		import('$lib/world/synthetic'),
+	]);
+	return {
+		id: INTRO_ROAD_ID,
+		name: 'Your first road',
+		road: toRoute(syntheticPoints()).road,
+		borrowed: true,
+	};
+}
+
 /**
  * One route and its road. The owner's own read carries the whole road,
  * packed (road.ts); nothing else is needed to ride it.
@@ -75,12 +96,21 @@ export function carryOnOf(
 export async function loadRoad(
 	id: string,
 ): Promise<{ ok: true; route: RideableRoute } | { ok: false; error: string }> {
+	if (id === INTRO_ROAD_ID) return { ok: true, route: await introRoute() };
 	const res = await api<StoredRoute>(`/api/routes/${encodeURIComponent(id)}`);
 	if (!res.ok) return { ok: false, error: res.error.message };
 	try {
 		const road = roadOf(res.data);
 		if (!road) return { ok: false, error: 'That route has no road to ride.' };
-		return { ok: true, route: { id: res.data.id, name: res.data.name, road } };
+		return {
+			ok: true,
+			route: {
+				id: res.data.id,
+				name: res.data.name,
+				generatedName: res.data.generatedName,
+				road,
+			},
+		};
 	} catch {
 		return { ok: false, error: 'That road could not be read. Try again.' };
 	}

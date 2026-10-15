@@ -5,7 +5,7 @@ import { account } from '$lib/account.svelte';
 import { createProfileStore } from '$lib/profile.svelte';
 import { spaceBelongsTo } from '$lib/channel/ptt-keys';
 import { gearsEnabled } from '$lib/ride/gears-enabled';
-import { bindShiftKeys } from '$lib/ride/keys';
+import { bindShiftKeys, createRemoteRunner } from '$lib/ride/keys';
 import { createRideShift, type RideShift } from '$lib/ride/ride-shift';
 import { pullProfile } from '$lib/profile-sync.svelte';
 import { createChannelLive } from '$lib/channel/live.svelte';
@@ -316,6 +316,24 @@ function connect(address: PlaceAddress): Connection {
 		// this channel's ride shifts (#3329) — a clicker cannot see the page.
 		shift = createRideShift(ride);
 		$effect(() => (ride.shifting ? bindShiftKeys(shift) : undefined));
+
+		// The phone remote's presses, off the tick, through the same inputs as
+		// the keys (#3217). The hub sends them to this tab only while it holds
+		// the trainer.
+		const remote = createRemoteRunner(
+			{
+				press: (dir, source) => ride.shifting && shift.press(dir, source),
+				release: (source) => shift.release(source),
+			},
+			(held) => av.setPtt(held),
+		);
+		$effect(() => {
+			const off = live.onRemote(remote.run);
+			return () => {
+				off();
+				remote.stop();
+			};
+		});
 
 		// LiveKit dropping us while live gets ONE automatic rejoin with a
 		// fresh token — covers token expiry and transient drops (#219). It is

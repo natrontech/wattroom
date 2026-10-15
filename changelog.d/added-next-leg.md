@@ -1,0 +1,1 @@
+- A route's page rides its own workout (**Ride its workout**), and a leg's summary offers the next leg when the route runs on.
