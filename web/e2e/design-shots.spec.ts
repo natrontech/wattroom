@@ -229,8 +229,8 @@ surface(
 		// multi:ride-road-world-summit — #3645: over the top of the rolling road's
 		// first climb (km 3.0, class IV: no confetti, the budget is HC and I), the
 		// strip above the Skyline.
-		const rolling = await fixtureRoad(o.page, 'rolling');
-		await ride(o.page, `/ride?w=openers&road=${rolling}&from=2900`);
+		const rollingRoad = await fixtureRoad(o.page, 'rolling');
+		await ride(o.page, `/ride?w=openers&road=${rollingRoad}&from=2900`);
 		await assertRiding(o.page, true);
 		await o.page.getByTestId('summit-strip').waitFor({ timeout: 60_000 });
 		// The strip has risen: its `--dur-stage` rise, not a frame in it.
