@@ -169,22 +169,25 @@
 				<div class="mt-3"><RoadPick onpick={(next) => onto(next)} /></div>
 			{/if}
 			{#if road}
-				<div
-					class="mt-3 flex flex-wrap gap-2"
-					role="group"
-					aria-label="where to start"
-				>
-					{#each starts as m (m)}
-						<button
-							onclick={() => (from = m)}
-							aria-pressed={from === m}
-							class="btn btn-lg rounded-full border {from === m
-								? 'border-neon text-ink'
-								: 'border-muted/30 hover:border-muted/60'}"
-							>{m === 0 ? 'Whole road' : `From km ${formatKm(m)}`}</button
-						>
-					{/each}
-				</div>
+				<!-- A road's own workout starts where its leg does (#3601). -->
+				{#if kind !== 'workout' || !workout.road?.stepEndM}
+					<div
+						class="mt-3 flex flex-wrap gap-2"
+						role="group"
+						aria-label="where to start"
+					>
+						{#each starts as m (m)}
+							<button
+								onclick={() => (from = m)}
+								aria-pressed={from === m}
+								class="btn btn-lg rounded-full border {from === m
+									? 'border-neon text-ink'
+									: 'border-muted/30 hover:border-muted/60'}"
+								>{m === 0 ? 'Whole road' : `From km ${formatKm(m)}`}</button
+							>
+						{/each}
+					</div>
+				{/if}
 				{#if kind === 'free' && felt}
 					<p class="text-muted num mt-3 text-sm">
 						Feel: road {pct(felt.road)}, you feel {pct(felt.you)}
