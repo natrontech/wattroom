@@ -44,7 +44,7 @@ export function shapeOf(road: Road): { x: number[]; z: number[] } {
 }
 
 /**
- * The shape turned, in 10° steps, to where it fills a w × h panel best: the
+ * The shape turned, in 2° steps, to where it fills a w × h panel best: the
  * largest scale of the aspect-kept fit. A map has no north to keep (ADR-0063).
  */
 export function bestTurn(
@@ -56,7 +56,7 @@ export function bestTurn(
 ): { x: number[]; z: number[] } {
 	let best = { x, z };
 	let top = 0;
-	for (let deg = 0; deg < 180; deg += 10) {
+	for (let deg = 0; deg < 180; deg += 2) {
 		const [c, s] = [
 			Math.cos((deg * Math.PI) / 180),
 			Math.sin((deg * Math.PI) / 180),
