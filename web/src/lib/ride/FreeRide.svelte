@@ -4,7 +4,7 @@
 	// End ride saves it like any ride. ADR-0046's one surface: the riding
 	// surface a road free ride draws (FreeRiding, #3669), with the rider's
 	// own control where the workout's transport would be.
-	import { onMount } from 'svelte';
+	import { onDestroy, onMount, untrack } from 'svelte';
 	import { useChannel } from '$lib/channel/context';
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { ridePath } from '$lib/channel/address';
@@ -15,7 +15,10 @@
 	import TrainerOverview from '$lib/session/TrainerOverview.svelte';
 	import { trainerTargetsNote } from '$lib/session/sensor-status';
 	import { deviceWord } from '$lib/device.svelte';
+	import { createRideFlags } from '$lib/ride/flags.svelte';
 	import FreeRiding from '$lib/ride/FreeRiding.svelte';
+	import FreeRideTv from '$lib/ride/FreeRideTv.svelte';
+	import { freeRideLabel } from '$lib/ride/free-ride.svelte';
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
 	import { createGhostSplit } from '$lib/ride/ghost-split.svelte';
 	import RoadPick from '$lib/ride/RoadPick.svelte';
@@ -43,6 +46,27 @@
 	// Your ghost on your own road, raced alone — never in a session (#3615,
 	// ADR-0068).
 	const ghost = createGhostSplit(() => (riding ? null : free));
+
+	// The ⚑ as a workout ride has it (#3894): the channel's own recorder
+	// ticks from pairing on, so the ride only marks where it began; flags go
+	// out when the page does, or when the ride ends.
+	const flags = createRideFlags(channel.address.training, channel.recorder);
+	let tv = $state(false);
+	let began = untrack(() => !!free?.recording);
+	$effect(() => {
+		const recording = !!free?.recording;
+		untrack(() => {
+			if (recording && !began) {
+				began = true;
+				flags.riding(channel.trainerName || 'none', freeRideLabel(free?.road));
+			} else if (!recording && began) {
+				began = false;
+				tv = false;
+				flags.flush();
+			}
+		});
+	});
+	onDestroy(() => flags.flush());
 </script>
 
 {#snippet controls()}
@@ -83,6 +107,11 @@
 	     included, so it says so under them (ADR-0008, #2804). -->
 	<HrShare ride class="px-4 pb-3" />
 {/snippet}
+
+<svelte:window
+	onkeydown={(e) => e.key === 'Escape' && (tv = false)}
+	onpagehide={() => flags.flush(true)}
+/>
 
 <div class="page flex h-full min-h-0 flex-col gap-6 overflow-y-auto pb-20">
 	{#if conn?.ownRide.error}
@@ -146,8 +175,19 @@
 			{controls}
 			{setup}
 			{foot}
+			onflag={() => flags.recorder.flag()}
+			ontv={() => (tv = true)}
 			worldClass="-mx-4 -my-6 sm:-mx-8 sm:-my-8"
 		/>
+		{#if tv}
+			<FreeRideTv
+				{free}
+				rider={channel.you}
+				ftp={channel.you.ftp}
+				placeName={freeRideLabel(free.road)}
+				onExit={() => (tv = false)}
+			/>
+		{/if}
 
 		{#if free.saving}
 			<p class="text-muted text-sm" role="status">Saving your free ride…</p>

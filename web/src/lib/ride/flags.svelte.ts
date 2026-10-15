@@ -4,11 +4,16 @@ import { createFlightRecorder } from '$lib/ride/flightrecorder.svelte';
  * The ⚑ for one riding page (#52, ADR-0006): a flight recorder, the flags
  * pressed during the ride, and sending them afterwards. Lived inline on
  * /ride; /ramp had no ⚑ at all (#1799), so a ramp that went wrong could not
- * be reported with the one mechanism built for exactly that.
+ * be reported with the one mechanism built for exactly that. A voice
+ * channel's free ride hands in the channel's own recorder, which ticks from
+ * pairing on (#2657).
  */
-export function createRideFlags(route: string) {
-	const recorder = createFlightRecorder();
-	let sent = $state(0);
+export function createRideFlags(
+	route: string,
+	recorder = createFlightRecorder(),
+) {
+	// A handed-in recorder outlives this page: what it holds is already sent.
+	let sent = $state(recorder.flags.length);
 	let sending = $state(false);
 	let error = $state<string | null>(null);
 	let trainer = 'simulated';

@@ -91,7 +91,7 @@
 		ending?: boolean;
 		/** Ride on with another trainer; absent where the page reattaches by itself. */
 		onrepair?: (next: Trainer) => void;
-		/** The ⚑ and TV (#52, #1632); absent where the page has its own — a voice channel's. */
+		/** The ⚑ and TV (#52, #1632, #3894), the road ride's and a voice channel's alike. */
 		onflag?: () => void;
 		ontv?: () => void;
 		/** The caller's own controls, on the label's row. */
