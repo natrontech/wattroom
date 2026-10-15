@@ -94,4 +94,22 @@ describe('createRideFlags', () => {
 		flags.flush(true);
 		expect(fake.submitted).toMatchObject([{ clientMs: 1, keepalive: true }]);
 	});
+
+	// A voice channel's ride ticks its own recorder from pairing on (#3894).
+	it('flags on the recorder it is handed', () => {
+		fake.flags.length = 0;
+		const handed = {
+			flags: fake.flags,
+			event: vi.fn(),
+			flag: vi.fn(),
+			tick: () => {},
+			submit: async () => ({ ok: true as const }),
+		};
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const flags = createRideFlags('/crew/x/training', handed as any);
+		flags.riding('Kickr', 'Free ride');
+		flags.recorder.flag();
+		expect(handed.event).toHaveBeenCalledWith('ride', 'Free ride');
+		expect(handed.flag).toHaveBeenCalledOnce();
+	});
 });
