@@ -107,7 +107,8 @@
 {#if device.narrow}
 	<!-- Phone: the flat slots in one column the page scrolls, at one gap
 	     (TARGETS phone-ride 1). -->
-	<div class="flex flex-col gap-3 {extra}" data-surface="phone">
+	<!-- The last panel clears the floating navigation button (44 px and its inset). -->
+	<div class="flex flex-col gap-3 pb-16 {extra}" data-surface="phone">
 		<div data-dock="header" class={own ? '' : 'ride-panel'}>
 			{@render header()}
 		</div>

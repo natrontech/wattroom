@@ -475,7 +475,7 @@ surface(
 		const o = await s.open(RIDING_PHONE, { world: true });
 		await ride(o.page, '/ride?w=openers');
 		await assertRiding(o.page);
-		await s.shot(o);
+		await s.shot(o, { full: true });
 	},
 	{ once: true },
 );

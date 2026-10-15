@@ -241,7 +241,10 @@
 		</div>
 		{#if road}
 			<!-- Where on the road, once (TARGETS one home: slot 1's road line). -->
-			<p data-testid="block-road" class="num text-4xl leading-none font-bold">
+			<p
+				data-testid="block-road"
+				class="num text-4xl leading-none font-bold max-md:text-2xl"
+			>
 				{roadLine(road.readout)}
 			</p>
 		{/if}
