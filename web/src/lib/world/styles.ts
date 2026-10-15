@@ -136,6 +136,9 @@ export function setLight(m: THREE.ShaderMaterial, light: Light) {
 	if (u.uPeach) u.uPeach.value = light.peach;
 }
 
+/** The scene fog's density over `fogK`, for what stands on the ground: inside the terrain shader's per-channel factors, so a prop fades as the ground behind it does. */
+export const OBJECT_FOG_K = 1.1;
+
 // The shared light: one chunk, every terrain, every style.
 export function terrainMaterial(style: Style): THREE.ShaderMaterial {
 	return new THREE.ShaderMaterial({

@@ -33,7 +33,7 @@ import { buildStage, summitOf, type Stage } from './stage';
 import { yOf } from './geometry';
 import { placeGrids } from './chunks/grids';
 import { streamGround, type GotGrid, type Grids } from './ground-stream';
-import type { Style } from './styles';
+import { OBJECT_FOG_K, type Style } from './styles';
 import type { Failure } from './ride-view';
 import type { World } from './world';
 
@@ -223,7 +223,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 			chalk = makeChalk(route, style);
 			scene.add(chalk.group);
 		}
-		scene.fog = new THREE.FogExp2(style.sky.horizon, style.fogK * 1.1);
+		scene.fog = new THREE.FogExp2(style.sky.horizon, style.fogK * OBJECT_FOG_K);
 		light();
 		applyMode();
 	}
