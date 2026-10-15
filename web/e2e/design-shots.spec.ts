@@ -461,6 +461,59 @@ surface('ride-preride', async (s) => {
 	await page(s, fresh, '/ride?alone', { name: 'ride-preride-no-road' });
 });
 
+surface(
+	'ride-figure-card',
+	async (s) => {
+		// A rider who has not answered the card meets it at Start on a road
+		// (#3342); the card measures its own targets for the probe.
+		for (const [device, name] of variants([
+			[DESK, 'ride-figure-card'],
+			[RIDING_PHONE, 'phone-ride-figure-card'],
+		] as const)) {
+			const o = await s.open(device, { as: 'Unasked', world: false });
+			const road = await fixtureRoad(o.page, 'hairpin');
+			await o.page.goto(`/ride?road=${road}`);
+			await o.page
+				.getByRole('button', { name: 'Ride simulated' })
+				.first()
+				.click({ timeout: 15_000 });
+			await o.page.getByRole('button', { name: 'Start the ride' }).click();
+			const card = o.page.getByTestId('figure-card');
+			await card.waitFor();
+			const box = (label: string) =>
+				card.getByRole('button', { name: label, exact: true }).boundingBox();
+			const circle = card.getByTestId('figure-preview').locator('circle');
+			const fill = () => circle.evaluate((c) => getComputedStyle(c).fill);
+			const neutralFill = await fill();
+			const swatch = card.getByRole('button', { name: /^Skin tone 4 of/ });
+			const swatchFill = await swatch.evaluate(
+				(b) => getComputedStyle(b).backgroundColor,
+			);
+			await swatch.click();
+			const tappedFill = await fill();
+			await s.shot(o, {
+				name,
+				full: true,
+				extra: {
+					'figure-card': {
+						neutralFill,
+						swatchFill,
+						tappedFill,
+						skip: await box('Skip'),
+						save: await box('Save'),
+						build: await box('slim'),
+						height: await card.getByRole('slider').boundingBox(),
+						swatch: await card
+							.getByRole('button', { name: /^Skin tone 1 of/ })
+							.boundingBox(),
+					},
+				},
+			});
+		}
+	},
+	{ also: ['phone-ride-figure-card'] },
+);
+
 surface('ride-roadpick', async (s) => {
 	// The road picker, with both roads seeded, opened from /ride's
 	// “Change” (#3671).
@@ -753,6 +806,41 @@ surface(
 		await o.page.waitForURL('**/history/*');
 		await o.page.waitForTimeout(2500);
 		await s.shot(o, { name: 'route-best-opens' });
+		// Ride its workout (#3601): the row picked, leg 1's setup, and its
+		// summary with the offer of leg 2.
+		const haul = await fixtureRoad(o.page, 'longHaul');
+		await o.page.goto(`/workouts/routes/${haul}`);
+		await o.page.getByRole('button', { name: /Ride its workout/ }).click();
+		await o.page.waitForTimeout(500);
+		await s.shot(o, { name: 'route-leg' });
+		await o.page.getByRole('link', { name: 'Ride its workout' }).click();
+		await o.page.waitForURL(/\/ride\?road=.+&leg=1/);
+		await o.page
+			.getByRole('button', { name: 'Ride simulated' })
+			.first()
+			.waitFor({ timeout: 15_000 });
+		await s.shot(o, { name: 'route-leg-setup' });
+		await ride(o.page, `/ride?road=${haul}&leg=1`, { second: 65 });
+		await o.page
+			.getByRole('button', { name: /^(End ride|Save at km)/ })
+			.first()
+			.click();
+		await o.page.getByRole('button', { name: 'End the ride' }).click();
+		const saveLeg = o.page.getByRole('button', { name: 'Save the ride' });
+		if (await saveLeg.count()) await saveLeg.first().click();
+		await o.page
+			.getByRole('link', { name: /^Ride leg 2 of \d+$/ })
+			.waitFor({ timeout: 30_000 });
+		// The save settles into its banner before the shot.
+		await o.page.waitForTimeout(2500);
+		await s.shot(o, { name: 'route-leg-summary', full: true });
+		// The offer rides the next leg: the same page, a new leg in its url.
+		await o.page.getByRole('link', { name: /^Ride leg 2 of \d+$/ }).click();
+		await o.page.waitForURL(/&leg=2/);
+		await o.page
+			.getByText(/leg 2 of \d+/)
+			.first()
+			.waitFor({ timeout: 15_000 });
 		// Workout on it (#3681): the row picked, the shelf picking for this
 		// road, and a card's Ride opening on it; then the shelf on a phone.
 		await o.page.goto(`/workouts/routes/${id}`);

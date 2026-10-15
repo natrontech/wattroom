@@ -98,3 +98,20 @@ export function rollingGpx(): string {
 		}
 	return gpx('Rolling', 30.5, points);
 }
+
+/**
+ * A road too long for one leg (MaxLegSeconds is six hours): 199.9 km due east
+ * at a steady 4 %, under MaxRouteMeters and well over six hours, so its own
+ * workout runs to a second leg (#3601).
+ */
+export function longHaulGpx(): string {
+	return gpx(
+		'Long haul',
+		30.2,
+		Array.from({ length: 2000 }, (_, i) => ({
+			x: i * 100,
+			y: 0,
+			ele: 100 + 4 * i,
+		})),
+	);
+}

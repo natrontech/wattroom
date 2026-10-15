@@ -160,12 +160,14 @@
 		"surfaces": [
 			"ride-preride",
 			"ride-roadpick",
+			"ride-figure-card",
 			"ride-workout-flat",
 			"ride-road-world",
 			"ride-free-road",
 			"ride-countin",
 			"ride-road-end",
-			"closing-card"
+			"closing-card",
+			"route"
 		]
 	},
 	{
@@ -190,6 +192,13 @@
 			"web/src/lib/ride/RoadPick.svelte"
 		],
 		"surfaces": ["ride-preride", "ride-roadpick"]
+	},
+	{
+		"files": [
+			"web/src/lib/ride/FigureCard.svelte",
+			"web/src/lib/ride/figure-choice.ts"
+		],
+		"surfaces": ["ride-figure-card", "phone-ride-figure-card"]
 	},
 	{
 		"files": [

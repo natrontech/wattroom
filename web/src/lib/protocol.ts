@@ -499,6 +499,21 @@ export const MaxCrewPins = 20;
  */
 export const MaxCheers = 8;
 /**
+ * The rider's figure (ADR-0073, docs/spec/garage.md): height in cm and the
+ * free skin swatches. The three builds are FigureBuilds.
+ */
+export const MinFigureHeightCm = 150;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const MaxFigureHeightCm = 205;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const SkinSwatches = 8;
+/**
  * A crew's own emoji (#2643, docs/SPEC.md): how many a crew holds and how
  * big one picture may be. The upload refuses past both, and the crew's
  * settings disable "Add emoji" at the count rather than offering an

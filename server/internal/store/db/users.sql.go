@@ -33,7 +33,7 @@ set email = null, email_verified_at = null, email_pending = null,
     email_verify_hash = null, email_verify_expires = null,
     recover_hash = null, recover_expires = null, notify_planned = false
 where id = $1
-returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires, pending_crew_code, home_crew_id, status_emoji, status_emoji_id, status_text, status_expires_at, cheers, weight_changed_at, weight_confirmed_at
+returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires, pending_crew_code, home_crew_id, status_emoji, status_emoji_id, status_text, status_expires_at, cheers, weight_changed_at, weight_confirmed_at, build, height_cm, skin, figure_asked_at
 `
 
 // Removing the address takes the verification and anything in flight with it
@@ -77,6 +77,10 @@ func (q *Queries) ClearUserEmail(ctx context.Context, id pgtype.UUID) (User, err
 		&i.Cheers,
 		&i.WeightChangedAt,
 		&i.WeightConfirmedAt,
+		&i.Build,
+		&i.HeightCm,
+		&i.Skin,
+		&i.FigureAskedAt,
 	)
 	return i, err
 }
@@ -85,7 +89,7 @@ const consumeAccountRecovery = `-- name: ConsumeAccountRecovery :one
 update users
 set recover_hash = null, recover_expires = null
 where recover_hash = $1 and recover_expires > now()
-returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires, pending_crew_code, home_crew_id, status_emoji, status_emoji_id, status_text, status_expires_at, cheers, weight_changed_at, weight_confirmed_at
+returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires, pending_crew_code, home_crew_id, status_emoji, status_emoji_id, status_text, status_expires_at, cheers, weight_changed_at, weight_confirmed_at, build, height_cm, skin, figure_asked_at
 `
 
 // Single use and time-bounded, like VerifyEmail: the row that matches is the
@@ -129,6 +133,10 @@ func (q *Queries) ConsumeAccountRecovery(ctx context.Context, recoverHash []byte
 		&i.Cheers,
 		&i.WeightChangedAt,
 		&i.WeightConfirmedAt,
+		&i.Build,
+		&i.HeightCm,
+		&i.Skin,
+		&i.FigureAskedAt,
 	)
 	return i, err
 }
@@ -139,7 +147,7 @@ insert into users (id, display_name, avatar_url, ftp_watts, weight_kg, email_req
 values (coalesce($1::uuid, gen_random_uuid()), $2,
         $3, $4, $5, true, 'default', 'default')
 on conflict (id) do update set id = excluded.id
-returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires, pending_crew_code, home_crew_id, status_emoji, status_emoji_id, status_text, status_expires_at, cheers, weight_changed_at, weight_confirmed_at
+returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires, pending_crew_code, home_crew_id, status_emoji, status_emoji_id, status_text, status_expires_at, cheers, weight_changed_at, weight_confirmed_at, build, height_cm, skin, figure_asked_at
 `
 
 type CreateUserParams struct {
@@ -205,6 +213,10 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.Cheers,
 		&i.WeightChangedAt,
 		&i.WeightConfirmedAt,
+		&i.Build,
+		&i.HeightCm,
+		&i.Skin,
+		&i.FigureAskedAt,
 	)
 	return i, err
 }
@@ -231,7 +243,7 @@ func (q *Queries) EmailVerifiedElsewhere(ctx context.Context, arg EmailVerifiedE
 }
 
 const getUser = `-- name: GetUser :one
-select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires, pending_crew_code, home_crew_id, status_emoji, status_emoji_id, status_text, status_expires_at, cheers, weight_changed_at, weight_confirmed_at from users where id = $1
+select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires, pending_crew_code, home_crew_id, status_emoji, status_emoji_id, status_text, status_expires_at, cheers, weight_changed_at, weight_confirmed_at, build, height_cm, skin, figure_asked_at from users where id = $1
 `
 
 func (q *Queries) GetUser(ctx context.Context, id pgtype.UUID) (User, error) {
@@ -272,6 +284,10 @@ func (q *Queries) GetUser(ctx context.Context, id pgtype.UUID) (User, error) {
 		&i.Cheers,
 		&i.WeightChangedAt,
 		&i.WeightConfirmedAt,
+		&i.Build,
+		&i.HeightCm,
+		&i.Skin,
+		&i.FigureAskedAt,
 	)
 	return i, err
 }
@@ -310,7 +326,7 @@ func (q *Queries) GetUserAvatarSetAt(ctx context.Context, userID pgtype.UUID) (p
 }
 
 const getUserByIcsToken = `-- name: GetUserByIcsToken :one
-select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires, pending_crew_code, home_crew_id, status_emoji, status_emoji_id, status_text, status_expires_at, cheers, weight_changed_at, weight_confirmed_at from users where ics_token = $1
+select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires, pending_crew_code, home_crew_id, status_emoji, status_emoji_id, status_text, status_expires_at, cheers, weight_changed_at, weight_confirmed_at, build, height_cm, skin, figure_asked_at from users where ics_token = $1
 `
 
 func (q *Queries) GetUserByIcsToken(ctx context.Context, icsToken string) (User, error) {
@@ -351,6 +367,10 @@ func (q *Queries) GetUserByIcsToken(ctx context.Context, icsToken string) (User,
 		&i.Cheers,
 		&i.WeightChangedAt,
 		&i.WeightConfirmedAt,
+		&i.Build,
+		&i.HeightCm,
+		&i.Skin,
+		&i.FigureAskedAt,
 	)
 	return i, err
 }
@@ -452,7 +472,7 @@ with saved as (
         set mime = excluded.mime, image = excluded.image, set_at = excluded.set_at
 )
 update users set avatar_url = $5 where id = $1
-returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires, pending_crew_code, home_crew_id, status_emoji, status_emoji_id, status_text, status_expires_at, cheers, weight_changed_at, weight_confirmed_at
+returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires, pending_crew_code, home_crew_id, status_emoji, status_emoji_id, status_text, status_expires_at, cheers, weight_changed_at, weight_confirmed_at, build, height_cm, skin, figure_asked_at
 `
 
 type SetUserAvatarParams struct {
@@ -510,6 +530,10 @@ func (q *Queries) SetUserAvatar(ctx context.Context, arg SetUserAvatarParams) (U
 		&i.Cheers,
 		&i.WeightChangedAt,
 		&i.WeightConfirmedAt,
+		&i.Build,
+		&i.HeightCm,
+		&i.Skin,
+		&i.FigureAskedAt,
 	)
 	return i, err
 }
@@ -535,7 +559,7 @@ func (q *Queries) SetUserAvatarURL(ctx context.Context, arg SetUserAvatarURLPara
 }
 
 const setUserCheers = `-- name: SetUserCheers :one
-update users set cheers = $2 where id = $1 returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires, pending_crew_code, home_crew_id, status_emoji, status_emoji_id, status_text, status_expires_at, cheers, weight_changed_at, weight_confirmed_at
+update users set cheers = $2 where id = $1 returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires, pending_crew_code, home_crew_id, status_emoji, status_emoji_id, status_text, status_expires_at, cheers, weight_changed_at, weight_confirmed_at, build, height_cm, skin, figure_asked_at
 `
 
 type SetUserCheersParams struct {
@@ -582,12 +606,82 @@ func (q *Queries) SetUserCheers(ctx context.Context, arg SetUserCheersParams) (U
 		&i.Cheers,
 		&i.WeightChangedAt,
 		&i.WeightConfirmedAt,
+		&i.Build,
+		&i.HeightCm,
+		&i.Skin,
+		&i.FigureAskedAt,
+	)
+	return i, err
+}
+
+const setUserFigure = `-- name: SetUserFigure :one
+update users set build = $2, height_cm = $3, skin = $4,
+    figure_asked_at = coalesce(figure_asked_at, now())
+where id = $1 returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires, pending_crew_code, home_crew_id, status_emoji, status_emoji_id, status_text, status_expires_at, cheers, weight_changed_at, weight_confirmed_at, build, height_cm, skin, figure_asked_at
+`
+
+type SetUserFigureParams struct {
+	ID       pgtype.UUID
+	Build    *string
+	HeightCm *int16
+	Skin     *int16
+}
+
+// A save or a skip (#3342): the first answer stamps figure_asked_at and a later
+// one never moves it.
+func (q *Queries) SetUserFigure(ctx context.Context, arg SetUserFigureParams) (User, error) {
+	row := q.db.QueryRow(ctx, setUserFigure,
+		arg.ID,
+		arg.Build,
+		arg.HeightCm,
+		arg.Skin,
+	)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.DisplayName,
+		&i.AvatarUrl,
+		&i.FtpWatts,
+		&i.WeightKg,
+		&i.CreatedAt,
+		&i.StravaUpload,
+		&i.Email,
+		&i.NotifyPlanned,
+		&i.UnsubToken,
+		&i.FriendCode,
+		&i.IcsToken,
+		&i.AccentPalette,
+		&i.ColorScheme,
+		&i.EmailVerifiedAt,
+		&i.EmailPending,
+		&i.EmailVerifyHash,
+		&i.EmailVerifyExpires,
+		&i.EmailRequired,
+		&i.Timezone,
+		&i.Lthr,
+		&i.FtpSource,
+		&i.WeightSource,
+		&i.RecoverHash,
+		&i.RecoverExpires,
+		&i.PendingCrewCode,
+		&i.HomeCrewID,
+		&i.StatusEmoji,
+		&i.StatusEmojiID,
+		&i.StatusText,
+		&i.StatusExpiresAt,
+		&i.Cheers,
+		&i.WeightChangedAt,
+		&i.WeightConfirmedAt,
+		&i.Build,
+		&i.HeightCm,
+		&i.Skin,
+		&i.FigureAskedAt,
 	)
 	return i, err
 }
 
 const setUserHomeCrew = `-- name: SetUserHomeCrew :one
-update users set home_crew_id = $2 where id = $1 returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires, pending_crew_code, home_crew_id, status_emoji, status_emoji_id, status_text, status_expires_at, cheers, weight_changed_at, weight_confirmed_at
+update users set home_crew_id = $2 where id = $1 returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires, pending_crew_code, home_crew_id, status_emoji, status_emoji_id, status_text, status_expires_at, cheers, weight_changed_at, weight_confirmed_at, build, height_cm, skin, figure_asked_at
 `
 
 type SetUserHomeCrewParams struct {
@@ -634,6 +728,10 @@ func (q *Queries) SetUserHomeCrew(ctx context.Context, arg SetUserHomeCrewParams
 		&i.Cheers,
 		&i.WeightChangedAt,
 		&i.WeightConfirmedAt,
+		&i.Build,
+		&i.HeightCm,
+		&i.Skin,
+		&i.FigureAskedAt,
 	)
 	return i, err
 }
@@ -660,7 +758,7 @@ const startEmailVerification = `-- name: StartEmailVerification :one
 update users
 set email_pending = $2, email_verify_hash = $3, email_verify_expires = $4
 where id = $1
-returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires, pending_crew_code, home_crew_id, status_emoji, status_emoji_id, status_text, status_expires_at, cheers, weight_changed_at, weight_confirmed_at
+returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires, pending_crew_code, home_crew_id, status_emoji, status_emoji_id, status_text, status_expires_at, cheers, weight_changed_at, weight_confirmed_at, build, height_cm, skin, figure_asked_at
 `
 
 type StartEmailVerificationParams struct {
@@ -715,6 +813,10 @@ func (q *Queries) StartEmailVerification(ctx context.Context, arg StartEmailVeri
 		&i.Cheers,
 		&i.WeightChangedAt,
 		&i.WeightConfirmedAt,
+		&i.Build,
+		&i.HeightCm,
+		&i.Skin,
+		&i.FigureAskedAt,
 	)
 	return i, err
 }
@@ -737,7 +839,7 @@ func (q *Queries) UnsubscribePlanned(ctx context.Context, arg UnsubscribePlanned
 }
 
 const updateUserAppearance = `-- name: UpdateUserAppearance :one
-update users set accent_palette = $2, color_scheme = $3 where id = $1 returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires, pending_crew_code, home_crew_id, status_emoji, status_emoji_id, status_text, status_expires_at, cheers, weight_changed_at, weight_confirmed_at
+update users set accent_palette = $2, color_scheme = $3 where id = $1 returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires, pending_crew_code, home_crew_id, status_emoji, status_emoji_id, status_text, status_expires_at, cheers, weight_changed_at, weight_confirmed_at, build, height_cm, skin, figure_asked_at
 `
 
 type UpdateUserAppearanceParams struct {
@@ -784,6 +886,10 @@ func (q *Queries) UpdateUserAppearance(ctx context.Context, arg UpdateUserAppear
 		&i.Cheers,
 		&i.WeightChangedAt,
 		&i.WeightConfirmedAt,
+		&i.Build,
+		&i.HeightCm,
+		&i.Skin,
+		&i.FigureAskedAt,
 	)
 	return i, err
 }
@@ -797,7 +903,7 @@ set display_name = $2, ftp_watts = $3, weight_kg = $4, strava_upload = $5,
     weight_confirmed_at = case when weight_kg <> $4 or $10::bool
         then now() else weight_confirmed_at end
 where id = $1
-returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires, pending_crew_code, home_crew_id, status_emoji, status_emoji_id, status_text, status_expires_at, cheers, weight_changed_at, weight_confirmed_at
+returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires, pending_crew_code, home_crew_id, status_emoji, status_emoji_id, status_text, status_expires_at, cheers, weight_changed_at, weight_confirmed_at, build, height_cm, skin, figure_asked_at
 `
 
 type UpdateUserProfileParams struct {
@@ -874,6 +980,10 @@ func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfilePa
 		&i.Cheers,
 		&i.WeightChangedAt,
 		&i.WeightConfirmedAt,
+		&i.Build,
+		&i.HeightCm,
+		&i.Skin,
+		&i.FigureAskedAt,
 	)
 	return i, err
 }
@@ -896,7 +1006,7 @@ func (q *Queries) UpdateUserTimezone(ctx context.Context, arg UpdateUserTimezone
 }
 
 const userByEmailVerifyHash = `-- name: UserByEmailVerifyHash :one
-select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires, pending_crew_code, home_crew_id, status_emoji, status_emoji_id, status_text, status_expires_at, cheers, weight_changed_at, weight_confirmed_at from users where email_verify_hash = $1 and email_verify_expires > now()
+select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires, pending_crew_code, home_crew_id, status_emoji, status_emoji_id, status_text, status_expires_at, cheers, weight_changed_at, weight_confirmed_at, build, height_cm, skin, figure_asked_at from users where email_verify_hash = $1 and email_verify_expires > now()
 `
 
 // A read-only peek at the row a confirmation link is about to promote, so the
@@ -941,12 +1051,16 @@ func (q *Queries) UserByEmailVerifyHash(ctx context.Context, emailVerifyHash []b
 		&i.Cheers,
 		&i.WeightChangedAt,
 		&i.WeightConfirmedAt,
+		&i.Build,
+		&i.HeightCm,
+		&i.Skin,
+		&i.FigureAskedAt,
 	)
 	return i, err
 }
 
 const userByVerifiedEmail = `-- name: UserByVerifiedEmail :one
-select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires, pending_crew_code, home_crew_id, status_emoji, status_emoji_id, status_text, status_expires_at, cheers, weight_changed_at, weight_confirmed_at from users
+select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires, pending_crew_code, home_crew_id, status_emoji, status_emoji_id, status_text, status_expires_at, cheers, weight_changed_at, weight_confirmed_at, build, height_cm, skin, figure_asked_at from users
 where lower(email) = lower($1::text) and email_verified_at is not null
 `
 
@@ -992,6 +1106,10 @@ func (q *Queries) UserByVerifiedEmail(ctx context.Context, email string) (User, 
 		&i.Cheers,
 		&i.WeightChangedAt,
 		&i.WeightConfirmedAt,
+		&i.Build,
+		&i.HeightCm,
+		&i.Skin,
+		&i.FigureAskedAt,
 	)
 	return i, err
 }
@@ -1020,7 +1138,7 @@ set email = email_pending,
     recover_hash = null,
     recover_expires = null
 where email_verify_hash = $1 and email_verify_expires > now()
-returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires, pending_crew_code, home_crew_id, status_emoji, status_emoji_id, status_text, status_expires_at, cheers, weight_changed_at, weight_confirmed_at
+returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires, pending_crew_code, home_crew_id, status_emoji, status_emoji_id, status_text, status_expires_at, cheers, weight_changed_at, weight_confirmed_at, build, height_cm, skin, figure_asked_at
 `
 
 // Single use and time-bounded: the row that matches is also the row that
@@ -1068,6 +1186,10 @@ func (q *Queries) VerifyEmail(ctx context.Context, emailVerifyHash []byte) (User
 		&i.Cheers,
 		&i.WeightChangedAt,
 		&i.WeightConfirmedAt,
+		&i.Build,
+		&i.HeightCm,
+		&i.Skin,
+		&i.FigureAskedAt,
 	)
 	return i, err
 }
