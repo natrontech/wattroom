@@ -43,7 +43,7 @@
 	{#if actions}
 		<div
 			data-testid="recap-actions"
-			class="flex flex-wrap items-center gap-2 sm:ml-auto sm:justify-end [&_.btn]:min-h-11"
+			class="flex w-full flex-wrap items-center justify-end gap-2 sm:ml-auto sm:w-auto [&_.btn]:min-h-11"
 		>
 			{@render actions()}
 		</div>

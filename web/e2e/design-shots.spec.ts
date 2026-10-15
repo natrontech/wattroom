@@ -1677,8 +1677,54 @@ surface(
 		await coach.page
 			.getByRole('dialog', { name: 'Session summary' })
 			.waitFor({ timeout: 30_000 });
+		// The ride's link lands once the save does: shoot the card with it.
+		await coach.page
+			.getByRole('link', { name: 'See your ride' })
+			.waitFor({ timeout: 30_000 })
+			.catch(() => {});
 		await coach.page.waitForTimeout(1500);
-		await s.shot(coach, { name: 'closing-card-session' });
+		// probe:closing-card — the card's box against the window, and the dead
+		// band at the bottom of the recap-trace panel (G3: none over 24 px).
+		const extra = await coach.page.evaluate(() => {
+			const box = (el: Element | null) => {
+				const r = el?.getBoundingClientRect();
+				return r && { left: r.left, width: r.width, top: r.top };
+			};
+			const panel = document.querySelector('[data-testid=recap-trace]');
+			const last = panel?.lastElementChild?.getBoundingClientRect();
+			const pad = panel ? parseFloat(getComputedStyle(panel).paddingBottom) : 0;
+			return {
+				card: box(document.querySelector('[data-testid=session-card]')),
+				sidebarRight: document.querySelector('aside')?.getBoundingClientRect()
+					.right,
+				deadBand:
+					panel && last
+						? Math.round(
+								panel.getBoundingClientRect().bottom - last.bottom - pad,
+							)
+						: null,
+			};
+		});
+		await s.shot(coach, { name: 'closing-card-session', extra });
+		// ux.md phone width: the same card at 375 × 812.
+		await coach.page.setViewportSize({ width: 375, height: 812 });
+		await coach.page.waitForTimeout(800);
+		// probe:phoneOrder — [multi:reduced-motion] item 13: the card's blocks top to bottom.
+		const phoneOrder = await coach.page.evaluate(() =>
+			[
+				...document.querySelectorAll(
+					'[data-testid=closing-card] h1, [data-testid=closing-card] h2, [data-testid=closing-card] [data-testid=recap-tiles]',
+				),
+			].map((e) => ({
+				block: e.getAttribute('data-testid') ?? e.textContent?.trim(),
+				top: Math.round(e.getBoundingClientRect().top),
+			})),
+		);
+		await s.shot(coach, {
+			name: 'closing-card-session-phone',
+			full: true,
+			extra: { phoneOrder },
+		});
 	},
 	{ also: ['ride-watch', 'closing-card-session'] },
 );
