@@ -424,6 +424,11 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 			if (figure) {
 				figure.updateWorldMatrix(true, false);
 				camera.updateMatrixWorld();
+				// three caches a SkinnedMesh's box at the first call, in whatever pose it held then (#3211).
+				figure.traverse((o) => {
+					if ((o as THREE.SkinnedMesh).isSkinnedMesh)
+						(o as THREE.SkinnedMesh).computeBoundingBox();
+				});
 				box.setFromObject(figure);
 				let lo = Infinity;
 				let hi = -Infinity;

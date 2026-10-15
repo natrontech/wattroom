@@ -263,6 +263,18 @@ surface(
 			await s.shot(o, { name });
 			await o.ctx.close();
 		}
+		// The free ride's own line atop slot 1 (#3669): the road, trainer silent.
+		const f = await s.open(DESK, { world: true });
+		await f.page.route('**/fixtures/design-silence.json', (route) =>
+			route.fulfill({ json: SILENCE }),
+		);
+		const id = await fixtureRoad(f.page, 'hairpin');
+		await f.page.goto(`/ride?road=${id}&replay=design-silence`);
+		await f.page.getByText(ROADS.hairpin.name).first().waitFor();
+		await f.page.getByTestId('ride-replay').click({ timeout: 15_000 });
+		await f.page.waitForTimeout(30_000);
+		await s.shot(f, { name: 'ride-status-free-road' });
+		await f.ctx.close();
 	},
 	{ once: true },
 );
@@ -427,11 +439,11 @@ surface(
 surface(
 	'ride-free-road-world',
 	async (s) => {
-		// The world on: until #3669 a free ride on a road draws none, and the probe's world.mounted says so.
+		// The world on: a free ride on a road draws it in slot 2 (#3669).
 		const o = await s.open(DESK, { world: true });
 		const road = await fixtureRoad(o.page, 'hairpin');
 		await ride(o.page, `/ride?road=${road}`);
-		await assertRiding(o.page);
+		await assertRiding(o.page, true);
 		await s.shot(o);
 	},
 	{ once: true },

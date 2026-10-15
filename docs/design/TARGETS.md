@@ -329,6 +329,7 @@ Capture: the voice channel's free ride (`lib/ride/FreeRide.svelte`), world off.
 
 1. ride-free-road's items 2–9 hold if the channel's free ride shares the road ride's component; otherwise the follow-up issue design/ride-free-road-surface files owns them. [ride-free-road-surface]
 2. Cave covers the frame.
+3. ⚑ and TV in slot 1's row (ride-free-road item 7) are owned by #3894: the channel's free ride has no flight recorder or TV yet. [#3894]
 
 #### ride-ramp
 

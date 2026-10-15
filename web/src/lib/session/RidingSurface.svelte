@@ -33,6 +33,8 @@
 
 	let {
 		header,
+		headerFit = false,
+		own = false,
 		focus,
 		numbers,
 		crew,
@@ -48,6 +50,10 @@
 		class: extra = '',
 	}: {
 		header: Snippet;
+		/** Slot 1 is its content's size (the box table), not the strip's width. */
+		headerFit?: boolean;
+		/** The caller draws its own panels in the header and focus slots, flat (the free ride's, #3893). */
+		own?: boolean;
 		focus: Snippet;
 		numbers?: Snippet;
 		crew?: Snippet;
@@ -124,7 +130,9 @@
 			<div
 				data-dock="header"
 				class={panel}
-				style="left:{INSET_PX}px;top:{INSET_PX}px;width:min({BAND_MAX_PX}px, calc({seatLeft} - {INSET_PX +
+				style="left:{INSET_PX}px;top:{INSET_PX}px;{headerFit
+					? 'width:fit-content;max-width'
+					: 'width'}:min({BAND_MAX_PX}px, calc({seatLeft} - {INSET_PX +
 					GAP_PX}px))"
 				bind:offsetWidth={slotWidth}
 			>
@@ -223,10 +231,14 @@
 	     them: the horizon takes the free height, or the focus does when a
 	     screen has the stage. -->
 	<div class="flex min-h-0 flex-col gap-3 {extra}" data-surface="flat">
-		<div data-dock="header" class="ride-panel shrink-0">{@render header()}</div>
+		<div data-dock="header" class="shrink-0 {own ? '' : 'ride-panel'}">
+			{@render header()}
+		</div>
 		<div
 			data-dock="focus"
-			class="ride-panel min-h-0 overflow-y-auto [&:not(:has(*))]:hidden {stage
+			class="{own
+				? ''
+				: 'ride-panel'} min-h-0 overflow-y-auto [&:not(:has(*))]:hidden {stage
 				? 'grow'
 				: 'shrink-0'}"
 		>

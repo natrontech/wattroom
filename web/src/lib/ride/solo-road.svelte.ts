@@ -127,6 +127,14 @@ export function createSoloRoadRide(deps: {
 			off = next.onSample(onSample);
 			wakeLock = acquireWakeLock();
 		},
+		/** Ride on with another trainer (#1847): the road and the recording carry on. */
+		repair(next: Trainer) {
+			if (!trainer) return;
+			off?.();
+			void trainer.disconnect();
+			trainer = next;
+			off = next.onSample(onSample);
+		},
 		/** End ride: saved, or let go under the minute, and the trainer released. */
 		async end() {
 			const held = trainer;

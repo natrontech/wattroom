@@ -1,0 +1,1 @@
+- The ride's status lines come from one copy module: a quiet trainer reads "Your trainer went quiet." with a Reconnect trainer button, and a released guard reads "Trainer released for 10 s, spin up."

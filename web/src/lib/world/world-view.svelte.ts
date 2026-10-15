@@ -75,6 +75,17 @@ export function createWorldView() {
 			failure = why;
 			view = decide();
 		},
+		/**
+		 * The world's own chunk (three.js), loaded for the ride; a renderer
+		 * that does not load is this ride's failure, and the Skyline's.
+		 */
+		load() {
+			return import('$lib/world/RideWorld.svelte').catch((err: unknown) => {
+				console.error('world: the renderer did not load', err);
+				this.fail('build-failed');
+				throw err;
+			});
+		},
 		/** Full, Steady or Light, as the rider chose; Full while nothing was. */
 		get look(): Exclude<WorldMode, 'flat'> {
 			const m = worldMode();

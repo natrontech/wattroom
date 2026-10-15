@@ -113,12 +113,6 @@
 	// The climb card on a session's road (#3645), on either layout.
 	const climb = $derived(climbView(channel.ridden));
 	watchClimbCues(() => climb);
-	const rideWorld = () =>
-		import('$lib/world/RideWorld.svelte').catch((err: unknown) => {
-			console.error('world: the renderer did not load', err);
-			world.fail('build-failed');
-			throw err;
-		});
 	// The sprint carries its own numbers and Watt Golf hides the meter:
 	// slots 3 to 5 stand empty while either has the focus.
 	// Over the world a sprint is a moment card and your numbers stay (D12).
@@ -235,7 +229,7 @@
 			/>{/if}
 	{/snippet}
 	{#snippet road()}
-		{#await rideWorld() then { default: RideWorld }}
+		{#await world.load() then { default: RideWorld }}
 			{#if channel.ridden}
 				<RideWorld
 					road={channel.ridden.road}

@@ -35,6 +35,7 @@
 		phone = false,
 		climbOpens = false,
 		docked = false,
+		wide = false,
 		ftp = 0,
 		...ctx
 	}: ComputerContext & {
@@ -51,6 +52,8 @@
 		 * The dock is the panel, so this draws none of its own.
 		 */
 		docked?: boolean;
+		/** Docked in a flat panel the column wide: the head and the fields side by side. */
+		wide?: boolean;
 		/** For the head's zone and target track; read only when docked. */
 		ftp?: number;
 	} = $props();
@@ -149,7 +152,9 @@
 	class={docked
 		? tv
 			? 'relative flex min-h-0 flex-1 flex-col gap-[1.5vh] px-[1.5vw] py-[1.5vh]'
-			: 'relative flex w-[21rem] max-w-full flex-col gap-3 px-4 py-3'
+			: wide
+				? 'relative flex w-full flex-col gap-3 px-4 py-3'
+				: 'relative flex w-[21rem] max-w-full flex-col gap-3 px-4 py-3'
 		: 'panel relative'}
 >
 	<!-- The page's name and its dots sit in the row of numbers, so a page is
@@ -254,7 +259,9 @@
 				>
 			{/if}
 			<p class="{label} text-ink flex items-center gap-2">
-				{PAGE_NAMES[shown]}{@render badge()}
+				{shown === 'climb' && ctx.climb
+					? climbHeader(ctx.climb)
+					: PAGE_NAMES[shown]}{@render badge()}
 			</p>
 			{#if turns}
 				<button
@@ -265,7 +272,9 @@
 					class="icon-btn-lg"
 					><ChevronRight size={24} class={tv ? 'size-[3.4vh]' : ''} /></button
 				>
-				<div class="ml-auto flex gap-2" aria-hidden="true">
+				<!-- In the world's column the dots take the right edge; in a wide
+				     flat panel they stay beside the name (#3669). -->
+				<div class="ml-auto flex gap-2 @2xl:ml-4" aria-hidden="true">
 					{#each pages as p (p)}
 						<span
 							data-testid="computer-dot"
@@ -285,7 +294,11 @@
 	<!-- On the TV the fields stand under the head (#3677): its watts take the
 	     width, and the height the panel has after every word (ride-tv 9). -->
 	<div
-		class={docked && tv ? 'flex min-h-0 flex-1 flex-col gap-[2vh]' : 'contents'}
+		class={docked && tv
+			? 'flex min-h-0 flex-1 flex-col gap-[2vh]'
+			: docked && wide
+				? 'flex flex-wrap items-end gap-x-8 gap-y-3'
+				: 'contents'}
 	>
 		{#if docked}
 			<div class={tv ? 'flex min-h-0 min-w-0 flex-col' : 'contents'}>
@@ -304,7 +317,9 @@
 			class={docked
 				? tv
 					? `border-neon/20 [container-type:size] grid min-h-0 shrink grow ${TV_COLS[tvCols]} gap-x-[2vw] gap-y-[1.5vh] border-t pt-[2vh]`
-					: 'border-neon/20 grid grid-cols-2 gap-x-6 gap-y-3 border-t pt-3'
+					: wide
+						? 'border-neon/20 grid min-w-0 flex-1 auto-cols-fr grid-flow-col gap-x-8 border-l pl-8'
+						: 'border-neon/20 grid grid-cols-2 gap-x-6 gap-y-3 border-t pt-3'
 				: layout}
 			data-testid={docked ? 'computer-fields' : undefined}
 			style:flex-basis={docked && tv ? tvFields : undefined}
