@@ -327,8 +327,21 @@ function connect(address: PlaceAddress): Connection {
 			},
 			(held) => av.setPtt(held),
 		);
+		// The holder answers with its gear on a change and after each press, so
+		// a phone that joined late still learns where it is (#3217).
+		const sayGear = () => {
+			if (!ride.shifting) return;
+			live.sendGear({
+				label: ride.gear.label,
+				atEnd: ride.atEnd(1) || ride.atEnd(-1),
+			});
+		};
+		$effect(sayGear);
 		$effect(() => {
-			const off = live.onRemote(remote.run);
+			const off = live.onRemote((cmd) => {
+				remote.run(cmd);
+				if (cmd.action !== 'talk-keepalive') sayGear();
+			});
 			return () => {
 				off();
 				remote.stop();

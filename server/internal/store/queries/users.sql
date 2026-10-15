@@ -68,6 +68,13 @@ where id = $1 returning ics_token;
 -- name: UpdateUserAppearance :one
 update users set accent_palette = $2, color_scheme = $3 where id = $1 returning *;
 
+-- name: SetUserFigure :one
+-- A save or a skip (#3342): the first answer stamps figure_asked_at and a later
+-- one never moves it.
+update users set build = $2, height_cm = $3, skin = $4,
+    figure_asked_at = coalesce(figure_asked_at, now())
+where id = $1 returning *;
+
 -- name: StartEmailVerification :one
 -- Writes the pending address and the token, never `email` — the address only
 -- moves across in VerifyEmail. Replaces any verification already in flight.

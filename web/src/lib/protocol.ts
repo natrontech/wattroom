@@ -499,6 +499,21 @@ export const MaxCrewPins = 20;
  */
 export const MaxCheers = 8;
 /**
+ * The rider's figure (ADR-0073, docs/spec/garage.md): height in cm and the
+ * free skin swatches. The three builds are FigureBuilds.
+ */
+export const MinFigureHeightCm = 150;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const MaxFigureHeightCm = 205;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const SkinSwatches = 8;
+/**
  * A crew's own emoji (#2643, docs/SPEC.md): how many a crew holds and how
  * big one picture may be. The upload refuses past both, and the crew's
  * settings disable "Add emoji" at the count rather than offering an
@@ -1128,6 +1143,7 @@ export interface ClientMessage {
   roadside?: Roadside;
   drive?: Drive;
   remote?: RemoteCommand;
+  gear?: GearState;
 }
 /**
  * ServerTick is a voice channel's coalesced 1 Hz broadcast: every rider's
@@ -1227,6 +1243,10 @@ export interface ServerMessage {
    * A phone remote's press, to the rider's trainer-holding tab only (#3217).
    */
   remote?: RemoteCommand;
+  /**
+   * The holding tab's gear, to the rider's other screens only (#3217).
+   */
+  gear?: GearState;
   /**
    * This socket's own address, sent once on join and to nobody else (#2131).
    */
@@ -1572,6 +1592,20 @@ export interface RemoteCommand {
    */
   action: string;
 }
+/**
+ * GearState is the holding tab's answer to a phone remote (#3217): the gear it
+ * is in and whether the next press would hit an end. It travels the way
+ * RemoteCommand does, to the same rider's other screens only, so the phone's
+ * Easier and Harder can say where they are without a screen to look at.
+ */
+export interface GearState {
+  label: string;
+  atEnd: boolean;
+}
+/**
+ * MaxGearLabel bounds Label: it is rendered on another screen.
+ */
+export const MaxGearLabel = 16;
 
 //////////
 // source: rider.go

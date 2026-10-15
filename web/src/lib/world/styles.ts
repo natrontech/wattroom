@@ -8,7 +8,7 @@
 // style, never its values, so the engine carries no palette of its own. How
 // the light falls is light.ts's; the shaders here take it as uniforms.
 import * as THREE from 'three';
-import type { Biome } from './biome';
+import { Biome } from './biome';
 import { sunDir, type Light } from './light';
 import type { SignLook } from './setpieces';
 
@@ -160,6 +160,7 @@ export function terrainMaterial(style: Style): THREE.ShaderMaterial {
 			uImhof: { value: style.imhof ? 1 : 0 },
 			uValley: { value: col(style.imhof?.valley) },
 			uPeak: { value: col(style.imhof?.peak) },
+			uRock: { value: col(style.palette[Biome.Rock]) },
 		},
 		vertexColors: true,
 		vertexShader: /* glsl */ `
@@ -172,13 +173,37 @@ export function terrainMaterial(style: Style): THREE.ShaderMaterial {
 				gl_Position = projectionMatrix * viewMatrix * world;
 			}`,
 		fragmentShader: /* glsl */ `
-			uniform vec3 uSun, uFrom, uKey, uShade, uSkyTop, uHorizon, uSunward, uGridColor, uContour, uIndex, uValley, uPeak;
+			uniform vec3 uSun, uFrom, uKey, uShade, uSkyTop, uHorizon, uSunward, uGridColor, uContour, uIndex, uValley, uPeak, uRock;
 			uniform float uFogK, uBands, uSkyFill, uGridSize, uGridAlpha, uContourStep, uImhof, uDusk;
 			varying vec3 vColor; varying vec3 vPos; varying float vAo;
+			float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+			float vnoise(vec2 p) {
+				vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+				return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+			}
 			void main() {
 				vec3 n = normalize(cross(dFdx(vPos), dFdy(vPos)));
 				float dist = length(vPos - cameraPosition);
 				vec3 base = vColor;
+				// Slope-keyed rock: a face from about 30 degrees up, solid rock by the earthworks' 45 (n.y 0.71) reads as stone,
+				// textured along the face over the horizontal axis it leans on, never the ground's colour
+				// smeared down a vertical.
+				float steep = smoothstep(0.86, 0.66, n.y + (vnoise(vPos.xz * 0.15 + vPos.y * 0.1) - 0.5) * 0.12); // a ragged seam, never a ruled line
+				base *= 0.9 + 0.2 * vnoise(vPos.xz * 0.7 + vPos.y * 0.4); // no facet of ground is one flat colour
+				if (steep > 0.0) {
+					vec2 along = normalize(vec2(-n.z, n.x) + vec2(1e-4, 0.0)); // the face's own horizontal, so courses never shear
+					vec2 fuv = vec2(dot(vPos.xz, along), vPos.y);
+					vec2 blk = fuv / vec2(2.4, 1.1); // courses 1.1 m high, blocks 2.4 m long, each course offset
+					float row = floor(blk.y);
+					blk.x += hash(vec2(row, 3.0));
+					vec2 cell = floor(blk);
+					vec2 q = fract(blk);
+					float joint = min(min(q.x, 1.0 - q.x) * 2.4, min(q.y, 1.0 - q.y) * 1.1);
+					float mortar = (1.0 - smoothstep(0.04, 0.12, joint)) * (1.0 - smoothstep(60.0, 160.0, dist)); // fades before it can crawl
+					float tone = 0.62 + 0.5 * hash(cell) + 0.3 * (vnoise(fuv * vec2(1.7, 5.0)) - 0.5);
+					vec3 stone = mix(uRock, base, 0.18) * tone * (1.0 - 0.45 * mortar);
+					base = mix(base, stone, steep);
+				}
 				vec3 col;
 				if (uImhof > 0.5) {
 					float hs = clamp(dot(n, normalize(vec3(-1.0, 1.4, -1.0))), 0.0, 1.0);

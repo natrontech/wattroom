@@ -5,7 +5,7 @@ vi.mock('$lib/api', () => ({ api }));
 const account = vi.hoisted(() => ({ load: vi.fn() }));
 vi.mock('$lib/account.svelte', () => ({ account }));
 
-const { uploadRide } = await import('./save');
+const { uploadRide, recordingUpload } = await import('./save');
 
 const ride = {
 	workoutName: 'Openers',
@@ -92,5 +92,21 @@ describe('a saved ride', () => {
 		});
 		await uploadRide(ride);
 		expect(account.load).not.toHaveBeenCalled();
+	});
+});
+
+describe('recordingUpload', () => {
+	it("sends a road workout's fractional clock as a whole second", () => {
+		const up = recordingUpload({ name: 'Leg', steps: [] }, new Date(0), [
+			{
+				watts: 100,
+				cadence: 80,
+				heartRate: 0,
+				bias: 1,
+				clock: 0.9,
+				released: false,
+			},
+		]);
+		expect(up.samples[0].clock).toBe(0);
 	});
 });

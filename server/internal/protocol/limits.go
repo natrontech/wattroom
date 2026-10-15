@@ -73,6 +73,12 @@ const (
 	// and the server refuses past it.
 	MaxCheers = 8
 
+	// The rider's figure (ADR-0073, docs/spec/garage.md): height in cm and the
+	// free skin swatches. The three builds are FigureBuilds.
+	MinFigureHeightCm = 150
+	MaxFigureHeightCm = 205
+	SkinSwatches      = 8
+
 	// A crew's own emoji (#2643, docs/SPEC.md): how many a crew holds and how
 	// big one picture may be. The upload refuses past both, and the crew's
 	// settings disable "Add emoji" at the count rather than offering an

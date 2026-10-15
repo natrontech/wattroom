@@ -42,6 +42,9 @@
 		centre,
 		seat,
 		stage = false,
+		clean = false,
+		onshow,
+		cleanLine,
 		class: extra = '',
 	}: {
 		header: Snippet;
@@ -62,6 +65,12 @@
 		seat?: Snippet;
 		/** A shared screen has the focus: it takes the stage, the horizon a strip. */
 		stage?: boolean;
+		/** Clean view (#3216): over the world, only your numbers, the road and the Skyline. */
+		clean?: boolean;
+		/** Clean view's way back: one chip, so a hidden control keeps a hint (ADR-0062). */
+		onshow?: () => void;
+		/** Slot 1's road line, which Clean view keeps beside the chip. */
+		cleanLine?: string;
 		class?: string;
 	} = $props();
 
@@ -99,16 +108,30 @@
 				{@render centre()}
 			</div>
 		{/if}
-		<div
-			data-dock="header"
-			class={panel}
-			style="left:{INSET_PX}px;top:{INSET_PX}px;width:min({BAND_MAX_PX}px, calc({seatLeft} - {INSET_PX +
-				GAP_PX}px))"
-			bind:offsetWidth={slotWidth}
-		>
-			{@render header()}
-		</div>
-		{#if moment && momentPlace === 'top'}
+		{#if clean}
+			<div
+				class="ride-panel ride-word absolute flex items-center gap-4 px-4"
+				style="left:{INSET_PX}px;top:{INSET_PX}px"
+			>
+				<button
+					data-testid="clean-exit"
+					class="text-ink min-h-11 font-semibold"
+					onclick={onshow}>Show panels · H</button
+				>
+				{#if cleanLine}<span class="num text-muted">{cleanLine}</span>{/if}
+			</div>
+		{:else}
+			<div
+				data-dock="header"
+				class={panel}
+				style="left:{INSET_PX}px;top:{INSET_PX}px;width:min({BAND_MAX_PX}px, calc({seatLeft} - {INSET_PX +
+					GAP_PX}px))"
+				bind:offsetWidth={slotWidth}
+			>
+				{@render header()}
+			</div>
+		{/if}
+		{#if !clean && moment && momentPlace === 'top'}
 			<!-- Top-centre, in what slot 1 leaves before the seat. -->
 			<div
 				class="absolute flex justify-center"
@@ -119,7 +142,7 @@
 				<div data-dock="moment" class="ride-panel">{@render moment()}</div>
 			</div>
 		{/if}
-		{#if seat}
+		{#if seat && !clean}
 			<!-- The hole the player flies to: nothing is drawn over it (RMF). -->
 			<div
 				data-seat="jukebox"
@@ -140,30 +163,32 @@
 		<!-- The right column under the seat and any now-playing line: the
 		     moment card when it does not fit top-centre, what has the focus,
 		     then the crew. -->
-		<div
-			class="absolute flex flex-col items-end gap-3"
-			style="right:{INSET_PX}px;top:calc({underSeat} + {playingH
-				? playingH + GAP_PX
-				: 0}px);{side};bottom:{INSET_PX + SKYLINE_PX + GAP_PX}px"
-		>
-			{#if moment && momentPlace === 'seat'}
-				<!-- Never wider than the column, so never into the corridor (G3). -->
-				<div data-dock="moment" class="ride-panel max-w-full">
-					{@render moment()}
-				</div>
-			{/if}
-			{#if !stage}
-				<div data-dock="focus" class="ride-panel [&:not(:has(*))]:hidden">
-					{@render focus()}
-				</div>
-			{/if}
-			{#if crew}
-				<div data-dock="crew" class="ride-panel [&:not(:has(*))]:hidden">
-					{@render crew()}
-				</div>
-			{/if}
-		</div>
-		{#if stage}
+		{#if !clean}
+			<div
+				class="absolute flex flex-col items-end gap-3"
+				style="right:{INSET_PX}px;top:calc({underSeat} + {playingH
+					? playingH + GAP_PX
+					: 0}px);{side};bottom:{INSET_PX + SKYLINE_PX + GAP_PX}px"
+			>
+				{#if moment && momentPlace === 'seat'}
+					<!-- Never wider than the column, so never into the corridor (G3). -->
+					<div data-dock="moment" class="ride-panel max-w-full">
+						{@render moment()}
+					</div>
+				{/if}
+				{#if !stage}
+					<div data-dock="focus" class="ride-panel [&:not(:has(*))]:hidden">
+						{@render focus()}
+					</div>
+				{/if}
+				{#if crew}
+					<div data-dock="crew" class="ride-panel [&:not(:has(*))]:hidden">
+						{@render crew()}
+					</div>
+				{/if}
+			</div>
+		{/if}
+		{#if stage && !clean}
 			<div data-dock="focus" class="{panel} grid" style={place(STAGE)}>
 				{@render focus()}
 			</div>

@@ -9,6 +9,7 @@
 import * as THREE from 'three';
 import { tag } from './family';
 import { zoneOf } from '$lib/components/zones';
+import { makeZoneDigits } from './zone-digit';
 import { RiderAnimator, type RideInput } from './figure/animator';
 import { buildFigure, paint, type Figure, type Palette } from './figure/figure';
 import {
@@ -110,6 +111,7 @@ type View = {
 	wears?: Loadout;
 	faded: boolean;
 	ring: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
+	digit: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
 	shadow: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
 	bead: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
 	chevron: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
@@ -172,6 +174,7 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 		.rotateX(-Math.PI / 2)
 		.scale(0.9, 1, 2.1);
 	const ringGeo = zoneRing(RING_ACROSS, RING_ALONG);
+	const digits = makeZoneDigits(style.tag);
 	const beadGeo = new THREE.SphereGeometry(1, 16, 12);
 	const chevronGeo = chevronGeometry();
 	const thumbGeo = thumbGeometry(
@@ -245,6 +248,9 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 			}),
 		);
 		ring.position.y = 0.16; // above a banked road, never half-buried
+		// Ahead of the front wheel at the ring's far end, where neither figure nor trail covers it (forward is +Z).
+		const digit = digits.mesh();
+		digit.position.set(0, 0.17, RING_ALONG - 0.2);
 		const shadow = new THREE.Mesh(
 			shadowGeo,
 			new THREE.MeshBasicMaterial({
@@ -291,6 +297,7 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 			tag('figures', figure),
 			tag('marks', shadow),
 			tag('marks', ring, 'zone-ring'),
+			tag('marks', digit, 'zone-digit'),
 			tag('marks', bead),
 			tag('marks', chevron, 'chevron'),
 			tag('marks', thumb, 'cheer'),
@@ -307,6 +314,7 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 			wears: r.look,
 			faded: false,
 			ring,
+			digit,
 			shadow,
 			bead,
 			chevron,
@@ -322,6 +330,7 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 		v.figure.skeleton.dispose();
 		for (const m of [v.material, v.ring.material, v.shadow.material])
 			m.dispose();
+		v.digit.material.dispose();
 		v.bead.material.dispose();
 		v.chevron.material.dispose();
 		v.thumb.material.dispose();
@@ -423,9 +432,11 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 			v.bead.visible = overview;
 			v.bead.scale.setScalar(overview ? 22 : 1);
 			v.bead.position.y = overview ? 22 : 0;
-			v.ring.material.color.copy(
-				r.silent ? neutral : zones[zoneOf(r.watts, r.ftp) - 1],
-			);
+			const zone = zoneOf(r.watts, r.ftp);
+			v.ring.material.color.copy(r.silent ? neutral : zones[zone - 1]);
+			digits.set(v.digit, r.silent ? undefined : zone);
+			v.digit.visible &&= v.ring.visible;
+			v.digit.material.opacity = alpha;
 			// The animator turns the legs at the rider's cadence, sits or stands them by SPEC's thresholds.
 			const state = v.anim.update(dt, inputOf(r, route));
 			pedal(r).crank = state.crank;

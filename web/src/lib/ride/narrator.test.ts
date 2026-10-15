@@ -2,6 +2,7 @@ import type { MomentEvent } from '$lib/moments';
 import { describe, expect, it } from 'vitest';
 import {
 	createNarrator,
+	crewLines,
 	momentLine,
 	POLITE_GAP_MS,
 	stateLine,
@@ -69,5 +70,29 @@ describe('the ride narrator (#3213)', () => {
 		};
 		expect(momentLine(e)).toBe('Summit');
 		expect(momentLine({ ...e, stage: 'hold' })).toBeNull();
+	});
+});
+
+describe('the narrator feeds (#3213)', () => {
+	it('names who joined and who left, and says nothing for an unchanged crew', () => {
+		const a = new Map([['1', 'Anna']]);
+		const b = new Map([
+			['1', 'Anna'],
+			['2', 'Tom'],
+			['3', 'Kim'],
+		]);
+		expect(crewLines(a, b)).toEqual(['Tom and Kim joined']);
+		expect(crewLines(b, a)).toEqual(['Tom and Kim left']);
+		expect(crewLines(a, a)).toEqual([]);
+	});
+
+	it('does not say the same polite line twice inside the gap', () => {
+		const r = rig();
+		r.n.polite('Summit');
+		r.at(1000);
+		r.n.polite('Summit');
+		r.at(POLITE_GAP_MS);
+		r.n.tick();
+		expect(r.get().politeSeq).toBe(1);
 	});
 });

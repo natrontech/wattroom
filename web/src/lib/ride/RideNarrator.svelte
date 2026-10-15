@@ -6,6 +6,7 @@
 	 * state. Mounted once by the surface that rides, like watchClimbCues: a TV
 	 * beside the desk would say it twice.
 	 */
+	import type { MomentEvent } from '$lib/moments';
 	import { board } from '$lib/board/clips.svelte';
 	import { zoneOf } from '$lib/components/zones';
 	import { isTyping } from '$lib/keys';
@@ -14,7 +15,10 @@
 		blockLine,
 		climbStartLine,
 		createNarrator,
+		crewLines,
+		momentLine,
 		stateLine,
+		SPRINT_LINE,
 		SUMMIT_LINE,
 		toTopLine,
 		trainerLine,
@@ -30,6 +34,9 @@
 		ftp,
 		stale = false,
 		block = null,
+		moment = null,
+		crew = [],
+		sprintStartsAt = null,
 	}: {
 		view: SkylineView | null;
 		watts: number;
@@ -37,6 +44,12 @@
 		stale?: boolean;
 		/** The workout block now riding, when there is a workout. */
 		block?: { index: number; label: string } | null;
+		/** The moments queue's latest event (#3210): a finish, a result, a PR. */
+		moment?: MomentEvent | null;
+		/** The other riders on the session, for "Anna joined". */
+		crew?: { id: string; name: string }[];
+		/** The armed sprint's start (server ms), while one is armed. */
+		sprintStartsAt?: number | null;
 	} = $props();
 
 	let said = $state<Narration>({
@@ -89,6 +102,26 @@
 		if (lastBlock !== undefined && block && index !== lastBlock)
 			narrator.polite(blockLine(block.label));
 		lastBlock = index;
+	});
+
+	$effect(() => {
+		const line = moment && momentLine(moment);
+		if (line) narrator.polite(line);
+	});
+
+	let roster: Map<string, string> | undefined;
+	$effect(() => {
+		const now = new Map(crew.map((r) => [r.id, r.name]));
+		if (roster)
+			for (const line of crewLines(roster, now)) narrator.polite(line);
+		roster = now;
+	});
+
+	let armed: number | null = null;
+	$effect(() => {
+		if (sprintStartsAt !== null && sprintStartsAt !== armed)
+			narrator.alert(SPRINT_LINE);
+		armed = sprintStartsAt;
 	});
 
 	let lastStale: boolean | undefined;

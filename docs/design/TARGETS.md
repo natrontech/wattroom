@@ -147,7 +147,7 @@ Layout:
 11. Skyline full width along the bottom, > 56 px tall: ridden part ink or muted, never a fixed zone; road ahead neon; your dot wholly inside the panel; on a road workout (pinned blocks) the block band beneath the line (v2-erg), on a scenery ride none (ADR-0062) [#4003]; place labels above the line where the road has named places [#3134] (none on the hairpin fixture: OPEN-ELSEWHERE). [ride-surface]
 12. Corridor clear; your figure unobstructed in `RIDER_BOX` (docks.ts: x 40–60 %, y 55–82 %; its foot reaches below the corridor by design). [ride-surface] [#3215] [probe:panels]
 13. A moment card top-centre between slot 1 and the seat, above the corridor; border watt while live (D12). [ride-surface] [multi:ride-session-road]
-14. No key hint names PgUp or PgDn (D14). [ride-surface]
+14. No key hint names PgUp or PgDn as page keys (ADR-0071: arrows page); the ? sheet lists them as bias, since they are bound (D14). [ride-surface]
 15. Cave covers the frame, sidebar included. [ride-cave]
 
 World:
@@ -209,6 +209,16 @@ Capture: ride-road-world and ride-workout-flat, simulated trainer silenced past 
 
 1. The fault: one persistent line atop slot 1, one ≥ 44 px recovery button; not a toast; over the world nothing enters the corridor (G3). [ride-surface] [ride-flat]
 2. Numbers read stale (“—”); nothing stale keeps its watt or glow.
+
+#### ride-phone-remote
+
+Capture: desk context rides the channel's free ride on a simulated trainer; a second 375 × 812 touch context of the same rider opens the channel's Training place, taps "Use this phone as your remote", and shoots the remote. Target: none drawn, canon is the bar. Canon: ADR-0025 (the claim), ADR-0084 (gears), ux.md (mid-ride, phone width), errors.md.
+
+1. The offer (`ride-phone-remote-offer`) is one full-width `btn-ride` in the Lounge's empty state, only on a phone-width screen that sees the trainer held by another screen. [3217]
+2. The grid fills the screen in two columns, words at 24 px, of buttons at least 64 px high; every button is a tap target of at least 44 px and nothing scrolls sideways. [probe:remoteMinHeight] [probe:remoteScrollWidth] [3217]
+3. A button the holding tab cannot run is disabled and one line says so; no button fails on tap (ux.md). [probe:remoteDisabled] [3217]
+4. Chrome stays neon and nothing glows; with gears on, the gear line reads in neon too (ADR-0005). [3217]
+5. Phone width 375 × 812: the page body does not scroll sideways, and Done is reachable without scrolling. [probe:remoteClientWidth] [3217]
 
 #### ride-countin
 
@@ -397,6 +407,18 @@ Capture: world off, `/ride`, with and without a remembered road, both schemes; `
 9. Solo games one line in the card. [ride-preride]
 10. `/ride?road=<id>` opens this card on Free ride with that road chosen, its `from` the selected chip, never a setup of its own. [#3855] [multi:ride-free-road-setup]
 
+#### ride-figure-card, phone-ride-figure-card (a desk surface)
+
+Capture: a rider who has not answered the card (`?as=Unasked`), `/ride?road=<hairpin>` → Ride simulated → Start the ride, both schemes; `phone-ride-figure-card` the same at 375 px. Target: none drawn, canon is the bar. Canon: ADR-0073; ADR-0048; ADR-0069; docs/spec/garage.md, “The figure”; ux.md.
+
+1. One card, titled “Your rider”, with a still preview of the figure and three controls: Build (slim, athletic, strong), Height (1.50 to 2.05 m, the value beside its label) and Skin tone (the 8 swatches). [#3342]
+2. “Skip” and “Save” sit side by side, the same size, both ≥ 44 px tall. [#3342] [probe:figure-card]
+3. With nothing chosen the preview wears the neutral tone (`--world-kit-skin`), the athletic build and 1.78 m; a swatch tap recolours it (`tappedFill` equals that swatch's `swatchFill`, and differs from `neutralFill`), and no swatch is the neutral. [#3342] [probe:figure-card]
+4. Build buttons and swatches ≥ 44 px; the height control keeps the desk slider's 24 px hit box, since the card is answered before the ride, not while pedalling (ux.md). [#3342] [probe:figure-card]
+5. Starts top left in the page body's column, no sideways scroll at 375 px. [#3342]
+6. Nothing animates: the preview is a still, so reduced motion changes nothing. [#3342] [test:web/src/lib/ride/FigureCard.test.ts]
+7. Copy names no weight and no price. [#3342]
+
 #### ride-roadpick
 
 Capture: `/ride` with “Change” opened, the hairpin and rolling route seeded. Target: v2-routes' rail rows.
@@ -463,7 +485,7 @@ Capture: `/workouts/routes/<id>` for the hairpin and the rolling route (≥ 2 cl
 1. Header: “← Workouts” in xs muted text over the name as `page-title`; one stat row in the display face: km, m climbed, classed climbs, loop or point to point. [route-page]
 2. At ≥ 1024 px two columns: the road left; a How column of ~300 px right, top-aligned with the first drawing. [route-page]
 3. At 1440 × 900 title, stats, shape, profile, How and the primary button show without scrolling. [route-page]
-4. How: a stack of hairline rows, each an icon, a label, one line; the selected row a 1 px neon border: “Ride it” [route-page], “Workout on it” [route-workout-on], “Plan it for a crew” [route-plan-crew]. A row exists only once its flow works; never a disabled promise.
+4. How: a stack of hairline rows, each an icon, a label, one line; the selected row a 1 px neon border: “Ride it” [route-page], “Ride its workout” [route-leg], “Workout on it” [route-workout-on], “Plan it for a crew” [route-plan-crew]. “Ride its workout” is the road's own compiled workout at the rider's FTP and weight, by Jan's 2026-10-06 decision on #3601 and ADR-0062's parity rule; it opens `/ride?road=<id>&leg=1` and Which stretch is absent. A row exists only once its flow works; never a disabled promise.
 5. Which-stretch chips ≥ 28 px, selected in a neon border: Whole road; From km X, only when there is somewhere to carry on; One climb, only when the road has a classed climb. [route-page]
 6. Exactly one primary: `btn-primary btn-lg`, the column's full width, enabled; Ride it opens `/ride?road=<id>&from=<m>`. [route-page]
 7. “arrives with” nowhere. [#3660]
@@ -476,6 +498,8 @@ Capture: `/workouts/routes/<id>` for the hairpin and the rolling route (≥ 2 cl
 14. Phone order: back link, title, stats, primary, How, stretch, profile, shape, climbs, rides, rename, privacy, Delete; drawings `width="100%"`; the table scrolls in its own box. [route-page] [road-drawing]
 15. No watt, glow, shadow or blur anywhere.
 16. With “Workout on it” selected (`route-workout-on`): its line reads “Pick a workout; Terrain Match picks the start”, the primary reads “Pick a workout” and opens `/workouts?on=<id>`, and Which stretch is absent, since Terrain Match picks the start. [route-workout-on]
+17. With “Ride its workout” selected (`route-leg`): the primary reads “Ride its workout” and opens `/ride?road=<id>&leg=1`; Which stretch is absent, since the legs cover the road. The leg's setup at that url is a desk surface on the leg's workout, not the free-ride card. [route-leg]
+18. A leg's summary (`route-leg-summary`) offers “Ride leg k+1 of n” as a `btn-secondary` beside Pick another workout and Done, only while the road runs on past leg k; the last leg has no such button. [route-leg] [test:web/src/lib/road/leg.test.ts]
 
 #### import-idle, import, import-saved
 

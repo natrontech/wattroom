@@ -1,8 +1,10 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+	bindRideKeys,
 	bindShiftKeys,
 	createRemoteRunner,
+	rideKeyOf,
 	shiftOf,
 	shiftsGears,
 	TALK_KEEPALIVE_MS,
@@ -212,5 +214,98 @@ describe('the phone remote (#3217)', () => {
 		run({ action: 'talk-keepalive' });
 		vi.advanceTimersByTime(TALK_KEEPALIVE_MS * 2);
 		expect(talk).not.toHaveBeenCalled();
+	});
+});
+
+describe('the ride keys (#3216)', () => {
+	const press = (init: KeyboardEventInit) =>
+		rideKeyOf({
+			metaKey: false,
+			ctrlKey: false,
+			altKey: false,
+			shiftKey: false,
+			key: '',
+			...init,
+		});
+
+	it.each([
+		['1', { kind: 'camera', preset: 'chase' }],
+		['4', { kind: 'camera', preset: 'steady' }],
+		['h', { kind: 'clean' }],
+		['H', { kind: 'clean' }],
+		['m', { kind: 'map' }],
+		['o', { kind: 'snap' }],
+		['?', { kind: 'sheet' }],
+	])('%s is a ride key', (k, want) => {
+		expect(press({ key: k, shiftKey: k === '?' })).toEqual(want);
+	});
+
+	it.each([
+		// Push-to-talk, the divider, editKeys and the page keys.
+		{ key: ' ' },
+		{ key: 'ArrowLeft' },
+		{ key: 'ArrowRight' },
+		{ key: 'PageUp' },
+		{ key: 'PageDown' },
+		// The shift keys, and Swiss-German + (Shift+1).
+		{ key: '.' },
+		{ key: '+', shiftKey: true },
+		{ key: '5' },
+		{ key: 'h', metaKey: true },
+		{ key: '1', ctrlKey: true },
+	])('leaves %o alone', (init) => {
+		expect(press(init)).toBeNull();
+	});
+
+	it('no ride key is a shift key', () => {
+		for (const k of ['1', '2', '3', '4', 'h', 'm', 'o', '?', ' '])
+			expect(shiftsGears(k)).toBe(false);
+	});
+
+	describe('bound to the window', () => {
+		const acts: string[] = [];
+		let off: () => void;
+		let bound = false;
+		beforeEach(() => {
+			acts.length = 0;
+			bound = false;
+			off = bindRideKeys(
+				(k) => acts.push(k.kind),
+				() => bound,
+			);
+		});
+		afterEach(() => off());
+		const fire = (init: KeyboardEventInit, target: EventTarget = window) => {
+			const e = new KeyboardEvent('keydown', {
+				bubbles: true,
+				cancelable: true,
+				...init,
+			});
+			target.dispatchEvent(e);
+			return e;
+		};
+
+		it('acts on h and swallows it', () => {
+			expect(fire({ key: 'h' }).defaultPrevented).toBe(true);
+			expect(acts).toEqual(['clean']);
+		});
+		it('skips a typing target, a repeat and a handled event', () => {
+			const input = document.createElement('input');
+			document.body.append(input);
+			fire({ key: 'h' }, input);
+			fire({ key: 'h', repeat: true });
+			window.addEventListener('keydown', (e) => e.preventDefault(), {
+				once: true,
+				capture: true,
+			});
+			fire({ key: 'h' });
+			expect(acts).toEqual([]);
+			input.remove();
+		});
+		it('yields a key a soundboard pad is bound to', () => {
+			bound = true;
+			expect(fire({ key: '2' }).defaultPrevented).toBe(false);
+			expect(acts).toEqual([]);
+		});
 	});
 });
