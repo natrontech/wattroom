@@ -111,7 +111,7 @@
 		{#if clean}
 			<button
 				data-testid="clean-exit"
-				class="btn btn-secondary btn-ride absolute"
+				class="ride-panel ride-word text-ink absolute min-h-11 px-4 font-semibold"
 				style="left:{INSET_PX}px;top:{INSET_PX}px"
 				onclick={onshow}>Show panels · H</button
 			>
