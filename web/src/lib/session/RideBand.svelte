@@ -61,10 +61,14 @@
 	// time left, so the band ends above the corridor (the box table's 186).
 	const WORDS = 'text-2xl leading-6';
 	const CHIP = `${WORDS} shrink-0 border-neon/40 text-muted rounded border px-2 whitespace-nowrap`;
+	// On NEXT's line the chip gives way before NEXT's text does.
+	const CHIP_FIT = CHIP.replace('shrink-0', 'min-w-0 truncate');
 </script>
 
-{#snippet trainerChipEl(b: Block)}
-	<span data-testid="trainer-chip" class={CHIP}>{trainerChip(b)}</span>
+{#snippet trainerChipEl(b: Block, fit = false)}
+	<span data-testid="trainer-chip" class={fit ? CHIP_FIT : CHIP}
+		>{trainerChip(b)}</span
+	>
 {/snippet}
 
 <header data-testid="ride-band" class="flex flex-col gap-2 px-4 py-2">
@@ -131,7 +135,7 @@
 					{#if strip}<div class={wide ? 'h-14' : 'h-10'}>
 							{@render strip()}
 						</div>{/if}
-					{#if block.next || (wide && drives)}
+					{#if block.next || (wide && drives && !block.road)}
 						<!-- A name and an absolute target, never a delta (#1531, D16). One
 						     line (TARGETS ride-workout-flat 2): NEXT's text gives way before
 						     a chip wraps, and the trainer chip stays on it when no block is
@@ -141,12 +145,15 @@
 						>
 							{#if block.next}
 								<span class="ride-label">Next</span>
-								<span class="min-w-0 truncate">
+								<span class="shrink-0">
 									{nextText(block.next)}
 								</span>
 								<CountChips secondsLeft={block.secondsLeft} />
 							{/if}
-							{#if wide && drives}{@render trainerChipEl(block)}{/if}
+							{#if wide && drives && !block.road}{@render trainerChipEl(
+									block,
+									true,
+								)}{/if}
 						</p>
 					{/if}
 				</div>
@@ -157,9 +164,11 @@
 			{title}
 		</h2>
 	{/if}
-	{#if (drives && block && !wide) || block?.road || hint}
+	{#if (drives && block && (!wide || block.road)) || block?.road || hint}
 		<div class="flex items-center gap-4">
-			{#if drives && block && !wide}{@render trainerChipEl(block)}{/if}
+			{#if drives && block && (!wide || block.road)}{@render trainerChipEl(
+					block,
+				)}{/if}
 			{#if block?.road}
 				<!-- Where on the road, once (TARGETS one home: slot 1's road line). -->
 				<p data-testid="block-road" class="num text-muted {WORDS} truncate">
