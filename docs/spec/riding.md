@@ -144,10 +144,10 @@ laptop; TV: **3 m** from a **55-inch** set:
 **A phone** (below **768 px**, [#3676](https://github.com/natrontech/wattroom/issues/3676))
 has its own design distance: **0.45 m**, a phone on the stem or in the hand,
 at **0.156 mm** a CSS pixel and a cap height of **0.72 em**. That puts the
-floors at **52 px** for watts and time left (45 arcmin), **26 px** for
+floors, as font sizes, at **52 px** for watts and time left (45 arcmin), **26 px** for
 secondary numbers (22 arcmin) and **19 px** for words (16 arcmin). The phone
-ships watts at **104 px**, time left at **72 px**, secondary numbers at
-**36 px** and words at **24 px**: the desk's sizes, since a full-width
+ships, as font sizes, watts at **104 px**, time left at **72 px**, secondary numbers at
+**36 px** and words at **20 px** or more: the desk's sizes, since a full-width
 panel holds them. The watts stay the largest number on the screen and time
 left the second.
 
