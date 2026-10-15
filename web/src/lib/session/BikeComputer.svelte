@@ -254,11 +254,11 @@
 					onclick={() => turn(-1)}
 					aria-label="previous page, {PAGE_NAMES[turned(pages, shown, -1)]}"
 					title="Previous page"
-					class="icon-btn-lg -ml-2"
+					class="icon-btn-lg -ml-2 shrink-0"
 					><ChevronLeft size={24} class={tv ? 'size-[3.4vh]' : ''} /></button
 				>
 			{/if}
-			<p class="{label} text-ink flex items-center gap-2">
+			<p class="{label} text-ink flex items-center gap-2 whitespace-nowrap">
 				{shown === 'climb' && ctx.climb
 					? climbHeader(ctx.climb)
 					: PAGE_NAMES[shown]}{@render badge()}
@@ -269,7 +269,7 @@
 					onclick={() => turn(1)}
 					aria-label="next page, {PAGE_NAMES[turned(pages, shown, 1)]}"
 					title="Next page"
-					class="icon-btn-lg"
+					class="icon-btn-lg shrink-0"
 					><ChevronRight size={24} class={tv ? 'size-[3.4vh]' : ''} /></button
 				>
 				<!-- In the world's column the dots take the right edge; in a wide

@@ -51,4 +51,19 @@ describe('where heart rate reaches the call (#2804)', () => {
 		expect(line).toContain('profile.current.shareHr');
 		expect(line).toContain('profile.update({ shareHr');
 	});
+
+	it('a riding surface draws the button, not the sentence (#4042)', () => {
+		const line = read('lib/channel/HrShare.svelte');
+		expect(line).toMatch(/ride\s*\?\s*'sr-only'/);
+	});
+
+	it('the computer keeps its page arrows 44 px and its title on one line (#4042)', () => {
+		const computer = read('lib/session/BikeComputer.svelte');
+		expect(
+			computer.match(/class="icon-btn-lg(?: -ml-2)? shrink-0"/g),
+		).toHaveLength(2);
+		expect(computer).toContain(
+			'text-ink flex items-center gap-2 whitespace-nowrap',
+		);
+	});
 });
