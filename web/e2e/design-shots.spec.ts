@@ -1693,7 +1693,19 @@ surface(
 			const panel = document.querySelector('[data-testid=recap-trace]');
 			const last = panel?.lastElementChild?.getBoundingClientRect();
 			const pad = panel ? parseFloat(getComputedStyle(panel).paddingBottom) : 0;
+			const bottomOf = (eyebrow: string) =>
+				[...document.querySelectorAll('[data-testid=closing-card] h2')]
+					.find((h) => h.textContent?.trim() === eyebrow)
+					?.closest('section')
+					?.getBoundingClientRect().bottom;
+			const curve = bottomOf('power curve');
+			const progress = bottomOf('progress');
 			return {
+				// G3 / v2-summary: the right column's two panels end level.
+				rightColumnGap:
+					curve !== undefined && progress !== undefined
+						? Math.round(Math.abs(curve - progress))
+						: null,
 				card: box(document.querySelector('[data-testid=session-card]')),
 				sidebarRight: document.querySelector('aside')?.getBoundingClientRect()
 					.right,
