@@ -202,9 +202,9 @@ surface(
 		);
 		await s.shot(o, { name: 'ride-road-world-map' });
 		// multi:ride-road-world-map-rolling — item 30's muted road beside the ramp:
-		// the swells' dot inside the first climb, flats and a descent in the same frame (#3645).
+		// the swells' dot inside the last climb, flats and a descent in the same frame (#3645).
 		const rolling = await fixtureRoad(o.page, 'rolling');
-		await ride(o.page, `/ride?w=openers&road=${rolling}&from=1500`);
+		await ride(o.page, `/ride?w=openers&road=${rolling}&from=5800`);
 		await assertRiding(o.page, true);
 		await o.page.keyboard.press('m');
 		await o.page
