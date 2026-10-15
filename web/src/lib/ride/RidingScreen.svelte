@@ -328,6 +328,7 @@
 {:else}
 	<RidingSurface
 		clean={inWorld && cleanView.on && !signalLost && !noCrashSafety}
+		onshow={cleanView.toggle}
 		class="flex-1 {inWorld ? '-mx-4 -my-5 sm:-mx-6' : 'pb-16 sm:pb-0'}"
 		world={inWorld ? road : undefined}
 		moment={inWorld && session.sprint ? moment : undefined}

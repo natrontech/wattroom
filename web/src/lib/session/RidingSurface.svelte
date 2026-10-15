@@ -44,6 +44,7 @@
 		seat,
 		stage = false,
 		clean = false,
+		onshow,
 		class: extra = '',
 	}: {
 		header: Snippet;
@@ -68,6 +69,8 @@
 		stage?: boolean;
 		/** Clean view (#3216): over the world, only your numbers, the road and the Skyline. */
 		clean?: boolean;
+		/** Clean view's way back: one chip, so a hidden control keeps a hint (ADR-0062). */
+		onshow?: () => void;
 		class?: string;
 	} = $props();
 
@@ -105,7 +108,14 @@
 				{@render centre()}
 			</div>
 		{/if}
-		{#if !clean}
+		{#if clean}
+			<button
+				data-testid="clean-exit"
+				class="btn btn-secondary btn-ride absolute"
+				style="left:{INSET_PX}px;top:{INSET_PX}px"
+				onclick={onshow}>Show panels · H</button
+			>
+		{:else}
 			<div
 				data-dock="header"
 				class={panel}

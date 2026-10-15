@@ -18,7 +18,7 @@
 </script>
 
 <Modal label="Ride keys" {onclose} class="max-w-sm">
-	<h2 class="text-lg font-semibold">Ride keys</h2>
+	<h2 class="ride-label">Ride keys</h2>
 	<dl
 		data-testid="key-sheet"
 		class="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2"
