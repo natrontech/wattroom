@@ -12,7 +12,7 @@
 
 	let { view, tv = false }: { view: MapView; tv?: boolean } = $props();
 
-	const PAD = 12;
+	const PAD = 6;
 	let w = $state(0);
 	let h = $state(0);
 	const shape = $derived(shapeOf(view.road));
@@ -35,7 +35,7 @@
 
 <div
 	data-testid="computer-map"
-	class="relative mt-3 {tv ? 'h-[22vh]' : 'h-28'}"
+	class="relative {tv ? 'h-[22vh]' : 'h-[136px]'}"
 	bind:clientWidth={w}
 	bind:clientHeight={h}
 >
