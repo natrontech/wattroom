@@ -5,7 +5,8 @@
  * mid-ride, never a second that drew well again. Loads no three.js.
  */
 import { prefersReducedMotion } from '$lib/motion';
-import { WORLD_MIN_PX } from '$lib/session/docks';
+import { PHONE_MAX_PX } from '$lib/device.svelte';
+import { worldFits } from '$lib/session/docks';
 import { worldSlotOn } from './flag';
 import { setWorldMode, worldMode, type WorldMode } from './mode';
 import {
@@ -15,15 +16,16 @@ import {
 	type SkylineReason,
 } from './ride-view';
 
-// The window's height, kept for every ride on the page by one listener.
+// The window's size, kept for every ride on the page by one listener.
 const viewport = $state({
+	width: typeof window === 'undefined' ? Infinity : window.innerWidth,
 	height: typeof window === 'undefined' ? Infinity : window.innerHeight,
 });
 if (typeof window !== 'undefined')
-	window.addEventListener(
-		'resize',
-		() => (viewport.height = window.innerHeight),
-	);
+	window.addEventListener('resize', () => {
+		viewport.width = window.innerWidth;
+		viewport.height = window.innerHeight;
+	});
 
 let caps: { webgl2: boolean; multiDraw: boolean } | null = null;
 
@@ -55,7 +57,8 @@ export function createWorldView() {
 	// The window's height is live, unlike a failure: the world comes back
 	// the moment the window holds its panels again.
 	const shown = (): RideView | null =>
-		view === 'world' && viewport.height < WORLD_MIN_PX
+		view === 'world' &&
+		!worldFits(viewport.width <= PHONE_MAX_PX, viewport.height)
 			? { skyline: 'short' }
 			: view;
 	const reason = (): SkylineReason | null => {
@@ -63,9 +66,13 @@ export function createWorldView() {
 		return v === null || v === 'world' ? null : v.skyline;
 	};
 	return {
-		/** The world draws in slot 2. */
+		/** The world draws in slot 2, docked around the road: a desk or a TV. */
 		get on() {
-			return shown() === 'world';
+			return shown() === 'world' && viewport.width > PHONE_MAX_PX;
+		},
+		/** The world draws as a band in a phone's column (#3676); the slots stay flat. */
+		get band() {
+			return shown() === 'world' && viewport.width <= PHONE_MAX_PX;
 		},
 		/** Why this ride is on the Skyline; null in the world, or where this device has no world slot. */
 		get reason() {

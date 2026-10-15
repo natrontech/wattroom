@@ -318,6 +318,35 @@ export function probe(corridor: Box) {
 			minPx: words.length ? Math.min(...words.map((w) => w.wordPx!)) : null,
 			under24: words.filter((w) => w.wordPx! < 24).map((w) => w.label),
 		},
+		// A phone's column (#3676): the head's font sizes against SPEC's phone row,
+		// and the room under the last panel for the floating navigation button.
+		phone: document.querySelector('[data-surface=phone]')
+			? (() => {
+					const px = (sel: string) => {
+						const el = document.querySelector(sel);
+						return el ? parseFloat(getComputedStyle(el).fontSize) : null;
+					};
+					const docks = [...document.querySelectorAll('[data-dock]')].filter(
+						(el) => el.getBoundingClientRect().height > 0,
+					);
+					const last = docks[docks.length - 1]?.getBoundingClientRect();
+					const page = body ?? root;
+					return {
+						watts: px('[data-testid=head-power]'),
+						timeLeft: px('[data-testid=block-left]'),
+						wkg: px('[data-field=wkg]'),
+						zone: px('[data-testid=head-zone]'),
+						bottomClear: last
+							? Math.round(
+									page.scrollHeight -
+										(last.bottom +
+											window.scrollY -
+											page.getBoundingClientRect().top),
+								)
+							: null,
+					};
+				})()
+			: null,
 		world: {
 			mounted: !!document.querySelector('canvas'),
 			fallback: document.body.innerText.match(/Flat road —[^\n]*/)?.[0] ?? null,
