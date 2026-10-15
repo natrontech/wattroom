@@ -25,14 +25,13 @@
 	>
 		{#each KEYS as [keys, does] (keys)}
 			<dt>
-				<kbd class="border-ink/30 rounded border px-2 py-1 text-sm"
-					>{keys}</kbd
+				<kbd class="border-ink/30 rounded border px-2 py-1 text-2xl">{keys}</kbd
 				>
 			</dt>
-			<dd class="text-sm">{does}</dd>
+			<dd class="text-2xl">{does}</dd>
 		{/each}
 	</dl>
-	<button class="btn btn-secondary btn-lg mt-4 w-full" onclick={onclose}
+	<button class="btn btn-secondary btn-ride mt-4 w-full" onclick={onclose}
 		>Close</button
 	>
 </Modal>
