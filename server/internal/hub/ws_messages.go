@@ -27,6 +27,9 @@ func (h *Hub) handleMessage(c *client, rm *channelState, channel string, rider p
 	if msg.Remote != nil {
 		h.remote(c, rm, rider, *msg.Remote)
 	}
+	if msg.Gear != nil {
+		h.gearState(c, rm, rider, *msg.Gear)
+	}
 	if msg.Roadside != nil {
 		h.roadside(c, rm, rider, *msg.Roadside)
 	}

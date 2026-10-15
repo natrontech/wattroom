@@ -6,6 +6,7 @@ import type {
 	RemoteCommand,
 	RiderMetrics,
 	ChannelEvent,
+	GearState,
 	SensorClaim,
 	SensorPairing,
 	ServerMessage,
@@ -109,6 +110,8 @@ export function createChannelLive(address: PlaceAddress) {
 	>({ jukebox: null, roadside: null, remote: null });
 	// Who wants a phone remote's press, off the tick like pairing (#3217).
 	const remoteListeners = new Set<(cmd: RemoteCommand) => void>();
+	// The holding tab's gear, as it last said it to this rider's other screens.
+	let gear = $state<GearState | null>(null);
 	// What the hub says this tab holds, and where the rider's other screens
 	// hold the rest (#610). Server truth: a tab learns here that its claim
 	// was refused, so nothing renders "paired" off its own click alone.
@@ -393,6 +396,7 @@ export function createChannelLive(address: PlaceAddress) {
 			if (msg.poke?.kind === PokeKindBottle) lastBottle = msg.poke;
 			else if (msg.poke) lastPoke = msg.poke;
 			if (msg.moved) lastMove = msg.moved;
+			if (msg.gear) gear = msg.gear;
 			if (msg.remote) for (const hear of remoteListeners) hear(msg.remote);
 			if (msg.pairing) {
 				// Off the tick by design (#610) — it is addressed to this
@@ -570,6 +574,10 @@ export function createChannelLive(address: PlaceAddress) {
 		get jukeboxRefusal() {
 			return routed.jukebox?.message ?? null;
 		},
+		/** Why the phone remote's last press was refused (#3217). */
+		get remoteRefusal() {
+			return routed.remote?.message ?? null;
+		},
 		get roadsideRefusal() {
 			return routed.roadside?.message ?? null;
 		},
@@ -582,6 +590,18 @@ export function createChannelLive(address: PlaceAddress) {
 		},
 		get lastBottle() {
 			return lastBottle;
+		},
+		/** The gear the holding tab last reported (#3217), or null. */
+		get gear() {
+			return gear;
+		},
+		/** One press on the phone remote, for the tab holding the trainer. */
+		sendRemote(action: string) {
+			send({ remote: { action } });
+		},
+		/** The holder's gear, for the rider's other screens. */
+		sendGear(state: GearState) {
+			send({ gear: state });
 		},
 		/** Hear every remote press addressed to this tab; returns the way out. */
 		onRemote(hear: (cmd: RemoteCommand) => void) {

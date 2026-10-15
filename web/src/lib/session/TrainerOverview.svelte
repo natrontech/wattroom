@@ -24,6 +24,8 @@
 		trainerTargetsNote,
 	} from '$lib/session/sensor-status';
 	import { trainerHint } from '$lib/session/sensor-status';
+	import { device } from '$lib/device.svelte';
+	import PhoneRemote from '$lib/ride/PhoneRemote.svelte';
 
 	// The trainer alone as one row, for a running session's header (#1000) —
 	// what `TrainerButton` used to draw with its own vocabulary.
@@ -41,6 +43,11 @@
 	const targetsNote = $derived(
 		trainerTargetsNote(channel.pairing, deviceWord()),
 	);
+
+	// The offer: this phone sees another of the rider's screens hold the
+	// trainer (ADR-0025), so it can be that screen's remote (#3217).
+	let remoteOpen = $state(false);
+	const live = $derived(channelConnection.current?.live);
 
 	// "Connecting…" is the ride store's answer, not this component's (#1716):
 	// the channel's shell can unmount while the chooser is open.
@@ -71,3 +78,16 @@
 		onSimulate: canSimulate() ? () => void pairSimulatedTrainer() : undefined,
 	}}
 />
+
+{#if targetsNote && device.narrow && live && !compact}
+	<button
+		type="button"
+		class="btn btn-accent btn-lg mt-3 w-full"
+		onclick={() => (remoteOpen = true)}
+	>
+		Use this phone as your remote
+	</button>
+{/if}
+{#if remoteOpen && live}
+	<PhoneRemote {live} onclose={() => (remoteOpen = false)} />
+{/if}
