@@ -68,10 +68,10 @@
 {/snippet}
 
 <header data-testid="ride-band" class="flex flex-col gap-2 px-4 py-2">
-	<div class="flex min-h-11 flex-wrap items-center gap-x-6 gap-y-2">
+	<div class="flex min-h-11 items-center gap-x-6 gap-y-2 max-sm:flex-wrap">
 		<!-- The status draws its line only while one holds; the eyebrow steps
 		     aside for it. -->
-		<div class="group/status min-w-32 flex-1">
+		<div class="group/status min-w-0 flex-1 max-sm:min-w-32">
 			{@render status?.()}
 			{#if context}
 				<p
@@ -86,7 +86,9 @@
 	</div>
 	{#if block}
 		<div
-			class="flex flex-wrap items-center gap-y-2 {wide ? 'gap-x-4' : 'gap-x-6'}"
+			class="flex items-center gap-y-2 max-sm:flex-wrap {wide
+				? 'gap-x-4'
+				: 'gap-x-6'}"
 		>
 			<p
 				data-testid="block-left"
@@ -133,7 +135,7 @@
 						     a chip wraps, and the trainer chip stays on it when no block is
 						     left. -->
 						<p
-							class="{WORDS} flex flex-wrap items-center gap-x-2 whitespace-nowrap"
+							class="{WORDS} flex items-center gap-x-2 whitespace-nowrap max-sm:flex-wrap"
 						>
 							{#if block.next}
 								<span class="ride-label">Next</span>
