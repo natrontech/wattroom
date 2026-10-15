@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Biome } from './biome';
-import { OBJECT_FOG_K, terrainMaterial } from './styles';
+import { FAR_M } from './props/batch';
+import { CAMERA_NEAR_M, OBJECT_FOG_K, terrainMaterial } from './styles';
 import { RIDE } from './look.test-helper';
 
 describe('the ground material keys rock to slope (#3728)', () => {
@@ -28,5 +29,11 @@ describe('the scene fog agrees with the ground’s (#3222)', () => {
 		const k = m!.slice(1).map(Number);
 		expect(OBJECT_FOG_K).toBeGreaterThanOrEqual(Math.min(...k));
 		expect(OBJECT_FOG_K).toBeLessThanOrEqual(Math.max(...k));
+	});
+});
+
+describe('the camera keeps the props out of z-fighting (#3222)', () => {
+	it('resolves depth to half a metre at the props’ far ring on a 24-bit buffer', () => {
+		expect(FAR_M ** 2 / (CAMERA_NEAR_M * 2 ** 24)).toBeLessThanOrEqual(0.5);
 	});
 });

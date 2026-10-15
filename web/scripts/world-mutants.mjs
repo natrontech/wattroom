@@ -23,7 +23,7 @@ const MUTANTS = [
 	['centre-clearance', 'clearance measured from the footprint centre', 'placement/rules.ts', [['polygonPolyline(poly, road.points) - road.halfWidth', 'polygonPolyline([centroid(poly)], road.points) - road.halfWidth']]],
 	['constant-sink', 'every kit model sunk by one constant', 'props/placer.ts', [[': Math.max(lo, hi - bury);', ': lo - 0.3;']]],
 	['two-fog', 'the scene fog and the ground shader disagree', 'styles.ts', [['OBJECT_FOG_K = 1.1', 'OBJECT_FOG_K = 2.5']]],
-	['near-0.1', 'camera near plane 0.1 m', 'compose.ts', [['PerspectiveCamera(52, 1, 1, 60000)', 'PerspectiveCamera(52, 1, 0.1, 60000)']]],
+	['near-0.1', 'camera near plane 0.1 m', 'styles.ts', [['CAMERA_NEAR_M = 1;', 'CAMERA_NEAR_M = 0.1;']]],
 	['lod-props-no-hysteresis', 'props tiles leave their ring at the radius they enter', 'props/batch.ts', [['const LEAVE = 1.1;', 'const LEAVE = 1;']]],
 	['lod-ground-no-hysteresis', 'ground chunks leave at the radius they enter', 'ground-stream.ts', [['export const LEAVE = 1.1;', 'export const LEAVE = 1;']]],
 	['math-random', 'Math.random in placement', 'setpieces-stroke.ts', [['unit(key(stroke, slot, d));', 'Math.random();']]],

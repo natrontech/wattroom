@@ -33,7 +33,12 @@ import { buildStage, summitOf, type Stage } from './stage';
 import { yOf } from './geometry';
 import { placeGrids } from './chunks/grids';
 import { streamGround, type GotGrid, type Grids } from './ground-stream';
-import { OBJECT_FOG_K, type Style } from './styles';
+import {
+	CAMERA_FAR_M,
+	CAMERA_NEAR_M,
+	OBJECT_FOG_K,
+	type Style,
+} from './styles';
 import type { Failure } from './ride-view';
 import type { World } from './world';
 
@@ -168,7 +173,12 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	let chalk: ChalkLayer | null = null;
 	// Near at 1 m: at 0.5 the depth buffer resolved 0.12 m at 1 km, and the
 	// road's shoulder z-fought from about 1.26 km (#3078).
-	const camera = new THREE.PerspectiveCamera(52, 1, 1, 60000);
+	const camera = new THREE.PerspectiveCamera(
+		52,
+		1,
+		CAMERA_NEAR_M,
+		CAMERA_FAR_M,
+	);
 	const sight = makeSight();
 	const rig = makeRig(route, world);
 	const stream = streamGround(
