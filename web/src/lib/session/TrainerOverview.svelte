@@ -79,7 +79,7 @@
 	}}
 />
 
-{#if targetsNote && device.narrow && live && !compact}
+{#if targetsNote && device.narrow && live}
 	<button
 		type="button"
 		class="btn btn-accent btn-lg mt-3 w-full"
