@@ -136,7 +136,14 @@
 	// second window to mirror — the shell's overlay, or another tab.
 </script>
 
-<RideNarrator view={skyline} {watts} {ftp} stale={signalLost} {block} />
+<RideNarrator
+	view={skyline}
+	{watts}
+	{ftp}
+	stale={signalLost}
+	{block}
+	sprintStartsAt={session.sprint?.startsAtMs ?? null}
+/>
 
 {#snippet worldControls()}
 	<!-- Over the world, one row in slot 1 (TARGETS ride-road-world 7): ⚑,

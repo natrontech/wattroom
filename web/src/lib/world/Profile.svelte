@@ -6,6 +6,8 @@
 
 	let { route, riders }: { route: Route; riders: Hud['riders'] } = $props();
 
+	const initial = (name: string) => name.trim().slice(0, 1).toUpperCase();
+
 	const W = 1000;
 	const H = 140;
 	const PAD = 8;
@@ -58,16 +60,18 @@
 	<!-- Dots are HTML over the stretched SVG, so they stay round. -->
 	{#each dots.filter((d) => !d.you) as d (d.id)}
 		<span
-			class="bg-muted absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full"
+			data-testid="profile-dot"
+			class="bg-muted text-ink absolute grid size-4 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full text-[10px] leading-none font-bold"
 			style="left: {d.left}%; top: {d.top}%"
-			title={d.name}
-		></span>
+			title={d.name}>{initial(d.name)}</span
+		>
 	{/each}
 	{#each dots.filter((d) => d.you) as d (d.id)}
 		<span
-			class="bg-watt absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-full"
+			data-testid="profile-dot"
+			class="bg-watt text-ink absolute grid size-5 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full text-xs leading-none font-bold"
 			style="left: {d.left}%; top: {d.top}%"
-			title={d.name}
-		></span>
+			title={d.name}>{initial(d.name)}</span
+		>
 	{/each}
 </div>
