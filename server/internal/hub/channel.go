@@ -129,6 +129,9 @@ type channelState struct {
 	// Pokes waiting for the same writer. A slice preserves simultaneous pokes
 	// from different riders instead of letting the last one erase the first.
 	pendingPokes map[*client][]protocol.Poke
+	// The tab of each rider whose phone remote holds Talk (#3217), so its
+	// socket dropping releases the mic at once.
+	talking map[string]string
 	// Who has stepped out (#706). Keyed by rider, not by socket: the same
 	// person on a desktop and a phone is one presence, and a rider is away
 	// because they said so on one of their screens, not because one of them
