@@ -30,6 +30,7 @@
 	import { roadLine } from '$lib/ride/road-readout';
 	import { roadEndOffered } from '$lib/ride/road-end';
 	import RoadEnd from '$lib/ride/RoadEnd.svelte';
+	import RideNarrator from '$lib/ride/RideNarrator.svelte';
 	import Skyline from '$lib/ride/Skyline.svelte';
 	import { climbView } from '$lib/ride/climb-view';
 	import { watchClimbCues } from '$lib/ride/climb-cues.svelte';
@@ -106,18 +107,17 @@
 
 	const road = $derived(free.road);
 	// The climb card on a road (#3645): CLIMB opens by itself, and says so.
-	const climb = $derived(
-		climbView(
-			road
-				? {
-						road: road.profile,
-						m: road.m,
-						mps: road.virtualMps,
-						reverse: road.reverse,
-					}
-				: null,
-		),
+	const view = $derived(
+		road
+			? {
+					road: road.profile,
+					m: road.m,
+					mps: road.virtualMps,
+					reverse: road.reverse,
+				}
+			: null,
 	);
+	const climb = $derived(climbView(view));
 	watchClimbCues(() => climb);
 	const inWatts = $derived(free.mode === 'watts');
 	// The world in slot 2 where this device has it on and the ride has a
@@ -377,6 +377,8 @@
 {#snippet roadEnd()}
 	<RoadEnd {free} onsave={() => onend?.()} />
 {/snippet}
+
+<RideNarrator {view} {watts} {ftp} {stale} />
 
 <RidingSurface
 	headerFit

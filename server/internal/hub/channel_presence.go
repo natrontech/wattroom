@@ -73,6 +73,7 @@ func (rm *channelState) leave(c *client) {
 	delete(rm.clients, c)
 	delete(rm.pendingPairing, c)
 	delete(rm.pendingPokes, c)
+	rm.releaseTalkLocked(c)
 	// Closing a tab frees its sensors, so the rider's other screens can pair
 	// (#610). Queued after the delete above, so the leaver is not told.
 	if rm.releaseSensorsLocked(c) {
@@ -89,6 +90,7 @@ func (rm *channelState) leave(c *client) {
 	}
 	if last {
 		delete(rm.metrics, c.rider.ID)
+		delete(rm.talking, c.rider.ID)
 		// Away is presence, and the rider is no longer present (#706).
 		// Left behind, it would greet them as away on the next join.
 		delete(rm.away, c.rider.ID)

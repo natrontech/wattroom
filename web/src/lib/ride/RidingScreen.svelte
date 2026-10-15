@@ -16,6 +16,7 @@
 	 * deserves the screen a rider in a session gets.
 	 */
 	import FlagButton from '$lib/ride/FlagButton.svelte';
+	import RideNarrator from '$lib/ride/RideNarrator.svelte';
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
 	import { bindRideShift } from '$lib/ride/keys';
 	import { confirm } from '$lib/confirm.svelte';
@@ -128,6 +129,8 @@
 	// The HUD feed (ADR-0041): what this screen shows, once a second, for a
 	// second window to mirror — the shell's overlay, or another tab.
 </script>
+
+<RideNarrator view={skyline} {watts} {ftp} stale={signalLost} {block} />
 
 {#snippet worldControls()}
 	<!-- Over the world, one row in slot 1 (TARGETS ride-road-world 7): ⚑,
