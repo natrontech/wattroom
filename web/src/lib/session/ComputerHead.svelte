@@ -92,7 +92,9 @@
 		<p class="num leading-[0.85] font-bold whitespace-nowrap">
 			<span
 				data-testid="head-power"
-				class="{size.power} {stale ? 'text-muted' : 'text-watt glow-text'}"
+				class="{size.power} inline-block {stale
+					? 'text-muted'
+					: 'text-watt glow-text'}"
 				><TabularFigures value={stale ? '—' : power} /></span
 			>{' '}<span class="text-muted {size.unit} font-normal">W</span>
 		</p>

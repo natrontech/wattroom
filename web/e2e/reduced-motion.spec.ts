@@ -80,7 +80,7 @@ test.describe('reduced motion', () => {
 		// The count-in (3 s), five seconds of riding with the sprint armed over
 		// them, then its window: every surface the riding screen shows.
 		const moved = await movedOver(page, 12_000);
-		await expect(page.getByText('all out').first()).toBeVisible();
+		await expect(page.getByText('Sprint · all out')).toBeVisible();
 		expect([...moved, ...(await movedOver(page, 4_000))]).toEqual([]);
 	});
 });

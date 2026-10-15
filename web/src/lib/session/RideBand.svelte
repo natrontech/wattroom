@@ -68,10 +68,10 @@
 {/snippet}
 
 <header data-testid="ride-band" class="flex flex-col gap-2 px-4 py-2">
-	<div class="flex min-h-11 items-center gap-6">
+	<div class="flex min-h-11 flex-wrap items-center gap-x-6 gap-y-2">
 		<!-- The status draws its line only while one holds; the eyebrow steps
 		     aside for it. -->
-		<div class="group/status min-w-0 flex-1">
+		<div class="group/status min-w-32 flex-1">
 			{@render status?.()}
 			{#if context}
 				<p
@@ -85,7 +85,9 @@
 		{#if controls}<div class="shrink-0">{@render controls()}</div>{/if}
 	</div>
 	{#if block}
-		<div class="flex items-center {wide ? 'gap-4' : 'gap-6'}">
+		<div
+			class="flex flex-wrap items-center gap-y-2 {wide ? 'gap-x-4' : 'gap-x-6'}"
+		>
 			<p
 				data-testid="block-left"
 				aria-label="left in {unit}"
@@ -118,7 +120,9 @@
 				<!-- As wide as NEXT and its chips, not as wide as the band may grow:
 				     the moment card's top-centre room is what slot 1 leaves (D12). -->
 				<div
-					class="flex min-w-0 flex-col gap-2 {wide ? 'flex-1' : 'w-88 shrink'}"
+					class="flex min-w-0 flex-col gap-2 {wide
+						? 'flex-1 basis-60'
+						: 'w-88 shrink'}"
 				>
 					{#if strip}<div class={wide ? 'h-14' : 'h-10'}>
 							{@render strip()}
@@ -128,7 +132,9 @@
 						     line (TARGETS ride-workout-flat 2): NEXT's text gives way before
 						     a chip wraps, and the trainer chip stays on it when no block is
 						     left. -->
-						<p class="{WORDS} flex items-center gap-x-2 whitespace-nowrap">
+						<p
+							class="{WORDS} flex flex-wrap items-center gap-x-2 whitespace-nowrap"
+						>
 							{#if block.next}
 								<span class="ride-label">Next</span>
 								<span class="min-w-0 truncate">
