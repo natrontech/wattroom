@@ -1,0 +1,1 @@
+- The count-in over the world opens with a heli shot from the first climb's top down to a new START arch, and the digit hangs on its banner; with reduced motion it is one still frame.

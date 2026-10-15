@@ -231,6 +231,8 @@ export function buildStage(
 	// Each tile's signs and arch, stood with its tile and let go with it.
 	const boards = batchBoards(route, style);
 	group.add(tag('dressing', boards.root));
+	// The count-in's reveal lands here (#3087): its digit hangs on this banner.
+	group.add(tag('dressing', archOnRoad(route, 0, 'START', style), 'arch'));
 	// The road's end (#3623): the world's route is the road the way it is ridden, so the finish is its last metre. A loop has none.
 	if (finish && !route.loop)
 		group.add(

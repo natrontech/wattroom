@@ -46,6 +46,7 @@
 	import { useChannel } from '$lib/channel/context';
 	import { endGame } from '$lib/session/end-game';
 	import { account } from '$lib/account.svelte';
+	import { SESSION_COUNTDOWN_SECONDS } from '$lib/workout/ride-state';
 	import { serverNow } from '$lib/server-clock';
 	import { channelConnection } from '$lib/channel/connection.svelte';
 
@@ -128,6 +129,8 @@
 		peopleFold.folded = docked;
 		return () => (peopleFold.folded = false);
 	});
+	// The count-in over the world: the reveal flies, the digit hangs on the arch's banner (#3087, ADR-0046).
+	const countingIn = $derived(inWorld && channel.phase === 'countdown');
 	const ICON = 'btn btn-secondary h-11 w-11 p-0';
 </script>
 
@@ -141,7 +144,7 @@
 
 {#if channel.phase === 'lounge'}
 	<TrainingLounge {targetsNote} />
-{:else if channel.phase === 'countdown'}
+{:else if channel.phase === 'countdown' && !inWorld}
 	<!-- One count-in for the surface (ADR-0046, #1800): the same screen a solo
 	     ride draws, with a rider count instead of what is first up. -->
 	<CountdownScreen
@@ -228,6 +231,18 @@
 				roster={inRide}
 			/>{/if}
 	{/snippet}
+	{#snippet digit()}
+		<!-- A count to the start, not a reading: ink, no glow (G2). -->
+		<p class="sr-only" role="status">
+			Starting {channel.shared?.workoutName ?? 'the session'} in a moment
+		</p>
+		<span
+			aria-hidden="true"
+			data-testid="count-in"
+			class="font-display text-ink text-[9rem] leading-none font-bold tabular-nums"
+			>{channel.shared?.countdownRemaining}</span
+		>
+	{/snippet}
 	{#snippet road()}
 		{#await world.load() then { default: RideWorld }}
 			{#if channel.ridden}
@@ -241,6 +256,12 @@
 					ftp={channel.you.ftp}
 					progress={total > 0 ? elapsed / total : null}
 					paused={inFocus === 'media'}
+					countIn={countingIn
+						? {
+								left: channel.shared?.countdownRemaining ?? 0,
+								total: SESSION_COUNTDOWN_SECONDS,
+							}
+						: null}
 					look={world.look}
 					onfail={world.fail}
 					onflat={world.flatten}
@@ -253,6 +274,8 @@
 		world={inWorld ? road : undefined}
 		stage={inFocus === 'media'}
 		moment={inWorld && inFocus === 'sprint' ? moment : undefined}
+		centre={countingIn ? digit : undefined}
+		dockIn={countingIn}
 		seat={docked ? nowPlaying : undefined}
 	>
 		{#snippet header()}
