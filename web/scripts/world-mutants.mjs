@@ -24,7 +24,7 @@ const MUTANTS = [
 	['constant-sink', 'every kit model sunk by one constant', 'props/placer.ts', [[': Math.max(lo, hi - bury);', ': lo - 0.3;']]],
 	['two-fog', 'the scene fog and the ground shader disagree', 'fog.ts', [['propFogDensity = (fogK: number) => fogK;', 'propFogDensity = (fogK: number) => fogK * 2.5;']]],
 	['near-0.1', 'camera near plane 0.1 m', 'camera.ts', [['near: 1,', 'near: 0.1,']]],
-	['lod-props-no-hysteresis', 'props tiles leave their ring at the radius they enter', 'props/batch.ts', [['const LEAVE = 1.1;', 'const LEAVE = 1;']]],
+	['lod-props-no-hysteresis', 'props tiles leave their ring at the radius they enter', 'props/batch.ts', [['held ? d <= r * LEAVE : d < r', 'held ? d <= r : d < r']]],
 	['lod-ground-no-hysteresis', 'ground chunks leave at the radius they enter', 'ground-stream.ts', [['export const LEAVE = 1.1;', 'export const LEAVE = 1;']]],
 	['math-random', 'Math.random in placement', 'setpieces-stroke.ts', [['unit(key(stroke, slot, d));', 'Math.random();']]],
 	['emissive', 'an emissive world material', 'materials.ts', [['new THREE.MeshToonMaterial({ vertexColors: true, gradientMap })', 'new THREE.MeshToonMaterial({ vertexColors: true, gradientMap, emissive: 0x222222 })']]],
