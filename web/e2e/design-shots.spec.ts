@@ -276,7 +276,18 @@ surface(
 			name: 'Use this phone as your remote',
 		});
 		await offer.waitFor({ timeout: 20_000 });
-		await s.shot(phone, { name: 'ride-phone-remote-offer' });
+		const box = await offer.boundingBox();
+		await s.shot(phone, {
+			name: 'ride-phone-remote-offer',
+			extra: {
+				offerWidth: Math.round(box?.width ?? 0),
+				offerHeight: Math.round(box?.height ?? 0),
+				offerTextPx: await offer.evaluate((b) =>
+					parseFloat(getComputedStyle(b).fontSize),
+				),
+				offerViewport: phone.page.viewportSize()?.width ?? 0,
+			},
+		});
 		await offer.click();
 		await phone.page.getByTestId('phone-remote').waitFor();
 		// The desk rides SIM with gears on (dev login); one Harder tap makes
@@ -305,6 +316,23 @@ surface(
 						Math.min(...buttons.map((b) => b.getBoundingClientRect().width)),
 					),
 					remoteDisabled: buttons.filter((b) => b.disabled).length,
+					remoteTextMinPx: px(
+						Math.min(
+							...[...el.querySelectorAll('h2, p, button')].map((n) =>
+								parseFloat(getComputedStyle(n).fontSize),
+							),
+						),
+					),
+					remoteGearLine:
+						el.querySelector('p[aria-live=polite]')?.textContent?.trim() ??
+						null,
+					remoteHint:
+						[...el.querySelectorAll('p:not([aria-live])')].map((n) =>
+							n.textContent?.trim(),
+						)[0] ?? null,
+					remoteEnabled: buttons
+						.filter((b) => !b.disabled)
+						.map((b) => b.textContent?.trim()),
 					remoteScrollWidth: el.scrollWidth,
 					remoteClientWidth: el.clientWidth,
 				};
