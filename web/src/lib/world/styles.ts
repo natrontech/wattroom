@@ -188,11 +188,19 @@ export function terrainMaterial(style: Style): THREE.ShaderMaterial {
 				// Slope-keyed rock: a face steeper than the earthworks' 45 degrees (n.y 0.71) reads as stone,
 				// textured along the face over the horizontal axis it leans on, never the ground's colour
 				// smeared down a vertical.
-				float steep = smoothstep(0.80, 0.62, n.y);
+				float steep = smoothstep(0.80, 0.62, n.y + (vnoise(vPos.xz * 0.15 + vPos.y * 0.1) - 0.5) * 0.12); // a ragged seam, never a ruled line
 				if (steep > 0.0) {
 					vec2 fuv = vec2(abs(n.x) > abs(n.z) ? vPos.z : vPos.x, vPos.y);
-					float grain = vnoise(fuv * vec2(0.35, 1.3)) * 0.6 + vnoise(fuv * vec2(1.7, 5.0)) * 0.4;
-					base = mix(base, uRock * (0.7 + 0.6 * grain), steep);
+					vec2 blk = fuv / vec2(2.4, 1.1); // courses 1.1 m high, blocks 2.4 m long, each course offset
+					float row = floor(blk.y);
+					blk.x += hash(vec2(row, 3.0));
+					vec2 cell = floor(blk);
+					vec2 q = fract(blk);
+					float joint = min(min(q.x, 1.0 - q.x) * 2.4, min(q.y, 1.0 - q.y) * 1.1);
+					float mortar = (1.0 - smoothstep(0.04, 0.12, joint)) * (1.0 - smoothstep(60.0, 160.0, dist)); // fades before it can crawl
+					float tone = 0.62 + 0.5 * hash(cell) + 0.3 * (vnoise(fuv * vec2(1.7, 5.0)) - 0.5);
+					vec3 stone = mix(uRock, base, 0.18) * tone * (1.0 - 0.45 * mortar);
+					base = mix(base, stone, steep);
 				}
 				vec3 col;
 				if (uImhof > 0.5) {

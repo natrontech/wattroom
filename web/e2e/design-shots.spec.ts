@@ -172,6 +172,10 @@ surface(
 		await ride(o.page, `/ride?w=openers&road=${road}&from=2300`);
 		await assertRiding(o.page, true);
 		await s.shot(o, { name: 'world-hairpins' });
+		// multi:world-hairpins-trench — #3728: the first leg between two retaining walls, from km 1.5.
+		await ride(o.page, `/ride?w=openers&road=${road}&from=1500`);
+		await assertRiding(o.page, true);
+		await s.shot(o, { name: 'world-hairpins-trench' });
 		// multi:ride-road-world-climb — item 28: on the climb, turned to CLIMB,
 		// which a workout leaves to the rider (#3645).
 		await o.page.getByTestId('bike-computer').getByTitle('Next page').click();
