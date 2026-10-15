@@ -135,7 +135,7 @@
 			<!-- In the corridor's upper half, above where the chase camera
 			     draws you (RIDER_BOX), as v3-motion's GO stands. -->
 			<div
-				class="absolute grid items-start justify-items-center pt-[6%]"
+				class="absolute grid items-start justify-items-center pt-[9%]"
 				style={place(CORRIDOR)}
 			>
 				{@render centre()}

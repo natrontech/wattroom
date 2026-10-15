@@ -397,24 +397,64 @@ surface(
 		// scheme: it holds from the count-in's first frame (G1, #3667).
 		const o = await s.open({ ...DESK, colorScheme: 'light' }, { world: true });
 		const road = await fixtureRoad(o.page, 'hairpin');
-		// A held clock: a shot takes seconds, longer than the 3 s count-in, so
-		// the page's time moves only where this probe moves it.
-		await o.page.clock.install();
+		// A held count-in: the world takes longer to build than the 3 s count-in
+		// lasts. After Start the ticker (no worker, which ticks on real time)
+		// fires only when the probe calls it, with Date.now frozen so a tick is
+		// one second: the shots land inside the count-in, a second apart.
+		await o.page.addInitScript(() => {
+			const w = window as unknown as {
+				__hold: () => void;
+				__tick: () => void;
+			};
+			Object.defineProperty(window, 'Worker', { value: undefined });
+			const real = Date.now.bind(Date);
+			const every = window.setInterval.bind(window);
+			const ticks: (() => void)[] = [];
+			let frozen: number | null = null;
+			Date.now = () => frozen ?? real();
+			window.setInterval = ((
+				fn: TimerHandler,
+				ms?: number,
+				...a: unknown[]
+			) => {
+				if (frozen === null || ms !== 1000) return every(fn, ms, ...a);
+				ticks.push(fn as () => void);
+				return 0;
+			}) as typeof every;
+			w.__hold = () => {
+				frozen = real();
+			};
+			w.__tick = () => ticks.forEach((fn) => fn());
+		});
 		await o.page.goto(`/ride?w=openers&road=${road}`);
 		await o.page
 			.getByRole('button', { name: 'Ride simulated' })
 			.first()
 			.click({ timeout: 15_000 });
+		await o.page.evaluate(() => {
+			(window as unknown as { __hold: () => void }).__hold();
+		});
 		await o.page
 			.getByRole('button', { name: /^Start (riding|the ride)$/ })
 			.first()
 			.click();
-		// The digit, flat or over the world (#3668).
+		// The digit, flat or over the world (#3668), the ground whole around the eye.
 		await o.page.getByTestId('count-in').waitFor({ timeout: 5000 });
-		await o.page.clock.pauseAt(new Date(Date.now() + 50));
+		await o.page.waitForFunction(
+			() =>
+				(
+					window as unknown as {
+						__worldProbe?: () => { ground?: { pending: number } };
+					}
+				).__worldProbe?.().ground?.pending === 0,
+			null,
+			{ timeout: 120_000 },
+		);
 		await s.shot(o, { name: 'ride-countin-first' });
 		// One second into the 3 s count-in: the held pose, the arch and the digit.
-		await o.page.clock.runFor(1000);
+		await o.page.evaluate(() =>
+			(window as unknown as { __tick: () => void }).__tick(),
+		);
 		await s.shot(o);
 	},
 	{ once: true },
