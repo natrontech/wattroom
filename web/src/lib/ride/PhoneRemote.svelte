@@ -36,7 +36,7 @@
 	onDestroy(talk.up);
 
 	const cell =
-		'btn btn-accent h-16 min-w-16 text-base disabled:cursor-not-allowed disabled:opacity-40';
+		'btn btn-accent btn-ride min-h-16 disabled:cursor-not-allowed disabled:opacity-40';
 </script>
 
 <div
@@ -47,12 +47,12 @@
 >
 	<div class="flex items-center justify-between">
 		<h2 class="text-lg font-semibold">Remote</h2>
-		<button type="button" class="btn btn-ghost btn-lg" onclick={onclose}>
+		<button type="button" class="btn btn-accent btn-ride" onclick={onclose}>
 			Done
 		</button>
 	</div>
 
-	<div class="grid grid-cols-2 gap-3">
+	<div class="grid flex-1 auto-rows-fr grid-cols-2 gap-3">
 		{#each CELLS as c (c.action)}
 			<button
 				type="button"
@@ -118,10 +118,8 @@
 	{/if}
 
 	{#if live.remoteRefusal}
-		<p class="text-danger text-sm" role="alert">{live.remoteRefusal}</p>
+		<p class="text-danger ride-word" role="alert">{live.remoteRefusal}</p>
 	{:else if CELLS.some((c) => !RUNS.has(c.action))}
-		<p class="text-ink-muted text-sm">
-			Page, Camera, Photo, Cheer back and Map are not on this ride yet.
-		</p>
+		<p class="text-ink-muted ride-word">Dimmed: not on this ride.</p>
 	{/if}
 </div>

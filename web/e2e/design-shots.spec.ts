@@ -262,9 +262,12 @@ surface(
 		await toTraining(desk.page, crew);
 		const phone = await s.open(PHONE, { world: false });
 		await phone.page.goto(`${voicePath(crew)}/training`);
-		await phone.page
-			.getByRole('button', { name: 'Use this phone as your remote' })
-			.click({ timeout: 20_000 });
+		const offer = phone.page.getByRole('button', {
+			name: 'Use this phone as your remote',
+		});
+		await offer.waitFor({ timeout: 20_000 });
+		await s.shot(phone, { name: 'ride-phone-remote-offer' });
+		await offer.click();
 		await phone.page.getByTestId('phone-remote').waitFor();
 		const remote = await phone.page
 			.getByTestId('phone-remote')
