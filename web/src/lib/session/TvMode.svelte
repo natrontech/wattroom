@@ -10,6 +10,7 @@
 	import Skyline from '$lib/ride/Skyline.svelte';
 	import type { SkylineView } from '$lib/road/skyline';
 	import type { ClimbView } from '$lib/ride/climb-view';
+	import type { MapView } from '$lib/ride/map-view';
 	import { TV_LABEL } from '$lib/session/computer-pages';
 
 	let {
@@ -26,6 +27,7 @@
 		stats,
 		skyline = null,
 		climb = null,
+		map = null,
 		exit,
 		status,
 		seated = false,
@@ -50,6 +52,8 @@
 		skyline?: SkylineView | null;
 		/** The climb card, for the bike computer (#3645). */
 		climb?: ClimbView | null;
+		/** The road from above, for its MAP page (#3645). */
+		map?: MapView | null;
 		/** The way out, in the work panel's top row beside the eyebrow (#3677). */
 		exit?: import('svelte').Snippet;
 		/** Ride-critical status: one persistent row above the panels (G3). */
@@ -159,6 +163,7 @@
 						target={you.target > 0 ? you.target : undefined}
 						{stats}
 						{climb}
+						{map}
 					/>
 					{#if idle}
 						<p class="text-muted px-[1.5vw] pb-[1.5vh] text-[3vh]">

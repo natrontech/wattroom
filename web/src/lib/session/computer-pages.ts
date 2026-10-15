@@ -1,6 +1,7 @@
 import { hrZoneOf } from '$lib/components/zones';
 import { wkg } from '$lib/format';
 import type { ClimbView } from '$lib/ride/climb-view';
+import type { MapView } from '$lib/ride/map-view';
 import { formatSplit } from '$lib/road/ghost';
 import { ordinal, type RaceReadout } from '$lib/race/race-view';
 import { isTyping } from '$lib/keys';
@@ -9,10 +10,16 @@ import type { LiveStats } from '$lib/ride/live-stats.svelte';
 /**
  * The bike computer's page table (ADR-0071, docs/SPEC.md "The bike
  * computer"): which numbers each page of slot 3 shows, and nothing a rider
- * picks. RIDE is where every ride starts. CLIMB and MAP arrive with the
- * climb card (#3089); RACE shows while you race (#3174).
+ * picks. RIDE is where every ride starts. CLIMB shows with a climb near
+ * (#3645), MAP on a road; RACE shows while you race (#3174).
  */
-export const PAGES = ['ride', 'climb', 'power', 'race'] as const;
+export const PAGES = ['ride', 'climb', 'power', 'map', 'race'] as const;
+/**
+ * The M key (#3216) asks every computer for its MAP page. A computer with one
+ * takes the event; with none the key says why (RidingScreen).
+ */
+export const MAP_ASK = 'wattroom:computer-map';
+
 /** ride-label at three metres: SPEC's 3vh, where ride-label's 24 px is under the TV's 2.9vh floor. */
 export const TV_LABEL =
 	'text-muted text-[3vh] leading-none font-semibold tracking-[0.08em] uppercase';
@@ -22,6 +29,7 @@ export const PAGE_NAMES: Record<ComputerPage, string> = {
 	ride: 'RIDE',
 	climb: 'CLIMB',
 	power: 'POWER',
+	map: 'MAP',
 	race: 'RACE',
 };
 
@@ -52,6 +60,8 @@ export interface ComputerContext {
 	stats?: LiveStats;
 	/** The climb card while a classed climb is near (#3645). */
 	climb?: ClimbView | null;
+	/** The road from above, on a road (#3645): the tier a crew is sent (ADR-0063). */
+	map?: MapView | null;
 	/** Your race, while you race one (#3174). */
 	race?: RaceReadout;
 	/**
@@ -104,17 +114,18 @@ export function roadContext(road: {
 
 /**
  * The pages this ride has now: RIDE always, CLIMB while a classed climb is
- * near (#3645), POWER where the screen has its own live numbers, and RACE
- * while you race (#3174).
+ * near (#3645), POWER where the screen has its own live numbers, MAP on a
+ * road, and RACE while you race (#3174).
  */
 export function pagesFor(
-	ctx: Pick<ComputerContext, 'stats' | 'climb' | 'race'>,
+	ctx: Pick<ComputerContext, 'stats' | 'climb' | 'map' | 'race'>,
 ): ComputerPage[] {
 	return PAGES.filter(
 		(page) =>
 			page === 'ride' ||
 			(page === 'climb' && !!ctx.climb) ||
 			(page === 'power' && !!ctx.stats) ||
+			(page === 'map' && !!ctx.map) ||
 			(page === 'race' && !!ctx.race),
 	);
 }
@@ -147,6 +158,8 @@ export function fieldsFor(page: ComputerPage, ctx: ComputerContext): Field[] {
 	const measured = (value: string) => (ctx.stale ? '—' : value);
 	const stats = ctx.stats?.seconds ? ctx.stats : undefined;
 	if (page === 'race') return raceFields(ctx);
+	// The drawing is the page: its numbers are slot 1's road line (D17).
+	if (page === 'map') return [];
 	if (page === 'climb') {
 		const climb = ctx.climb;
 		if (!climb) return [];
