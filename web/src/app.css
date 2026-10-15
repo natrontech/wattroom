@@ -799,7 +799,23 @@ body {
 	}
 }
 
+/* The count-in's slots dock in (#3087, ADR-0079): each flies from its edge,
+ * staggered, and lands on --dur-stage. Reduced motion holds the landed stamp. */
+@keyframes dock-in {
+	from {
+		opacity: 0;
+		transform: translate(var(--dock-x, 0), var(--dock-y, 0));
+	}
+}
+.dock-in {
+	animation: dock-in var(--dur-stage) var(--ease-arrive) both;
+	animation-delay: calc(var(--dock-i, 0) * var(--stagger));
+}
+
 @media (prefers-reduced-motion: reduce) {
+	.dock-in {
+		animation: none;
+	}
 	.skeleton::after {
 		animation: none;
 	}

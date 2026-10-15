@@ -340,6 +340,7 @@
 		world={inWorld ? road : undefined}
 		moment={inWorld && session.sprint ? moment : undefined}
 		centre={countIn ? digit : undefined}
+		dockIn={!!countIn}
 	>
 		{#snippet header()}
 			{#if inWorld}

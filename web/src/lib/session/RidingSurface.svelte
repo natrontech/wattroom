@@ -16,6 +16,8 @@
 	 * seat (D12). A shared screen takes the stage while the world holds.
 	 */
 	import type { Snippet } from 'svelte';
+	import { createMoments } from '$lib/moments';
+	import { prefersReducedMotion } from '$lib/motion';
 	import { COLUMN_SEAT, offerSeat } from '$lib/channel/stage-slot.svelte';
 	import {
 		CORRIDOR,
@@ -42,6 +44,7 @@
 		world,
 		moment,
 		centre,
+		dockIn = false,
 		seat,
 		stage = false,
 		clean = false,
@@ -64,6 +67,8 @@
 		moment?: Snippet;
 		/** The one thing the corridor holds: the count-in's digit (TARGETS ride-countin 2). */
 		centre?: Snippet;
+		/** The count-in is on: the slots fly to their docks through the moments queue (#3087). */
+		dockIn?: boolean;
 		/**
 		 * A session's jukebox seat, offered to the player while the people
 		 * column is folded away (#3668), with the now-playing line under it.
@@ -79,6 +84,28 @@
 		cleanLine?: string;
 		class?: string;
 	} = $props();
+
+	// The dock-in is a queued moment: cue the count-in's first frame, hit when
+	// its `enter` ends. Reduced motion never stages it: the slots stand held.
+	let docking = $state(false);
+	$effect(() => {
+		if (!dockIn || !world || prefersReducedMotion.current) return;
+		const queue = createMoments({ now: () => performance.now() });
+		queue.stage({ kind: 'dockin', payload: null });
+		const step = () => {
+			for (const e of queue.tick())
+				if (e.kind === 'dockin') docking = e.stage === 'enter';
+		};
+		step();
+		const id = setInterval(step, 50);
+		return () => {
+			clearInterval(id);
+			docking = false;
+		};
+	});
+	const dock = (i: number, x: string, y: string) =>
+		docking ? `--dock-i:${i};--dock-x:${x};--dock-y:${y};` : '';
+	const dockClass = $derived(docking ? 'dock-in' : '');
 
 	// What slot 1 leaves free decides where the moment card goes (D12): a
 	// measured fit, not a breakpoint (Jan, 2026-10-06).
@@ -129,8 +156,12 @@
 		{:else}
 			<div
 				data-dock="header"
-				class={panel}
-				style="left:{INSET_PX}px;top:{INSET_PX}px;{headerFit
+				class="{panel} {dockClass}"
+				style="{dock(
+					0,
+					'0',
+					'-40px',
+				)}left:{INSET_PX}px;top:{INSET_PX}px;{headerFit
 					? 'width:fit-content;max-width'
 					: 'width'}:min({BAND_MAX_PX}px, calc({seatLeft} - {INSET_PX +
 					GAP_PX}px))"
@@ -185,12 +216,20 @@
 					</div>
 				{/if}
 				{#if !stage}
-					<div data-dock="focus" class="ride-panel [&:not(:has(*))]:hidden">
+					<div
+						data-dock="focus"
+						class="ride-panel [&:not(:has(*))]:hidden {dockClass}"
+						style={dock(1, '40px', '0')}
+					>
 						{@render focus()}
 					</div>
 				{/if}
 				{#if crew}
-					<div data-dock="crew" class="ride-panel [&:not(:has(*))]:hidden">
+					<div
+						data-dock="crew"
+						class="ride-panel [&:not(:has(*))]:hidden {dockClass}"
+						style={dock(2, '40px', '0')}
+					>
 						{@render crew()}
 					</div>
 				{/if}
@@ -205,8 +244,8 @@
 			<!-- Your numbers stand on the Skyline at the left edge. -->
 			<div
 				data-dock="numbers"
-				class="{panel} w-fit"
-				style="left:{INSET_PX}px;bottom:{INSET_PX +
+				class="{panel} {dockClass} w-fit"
+				style="{dock(3, '-40px', '0')}left:{INSET_PX}px;bottom:{INSET_PX +
 					(stage ? STRIP_PX : SKYLINE_PX) +
 					GAP_PX}px;{side}"
 			>
@@ -216,8 +255,12 @@
 		{#if horizon}
 			<div
 				data-dock="horizon"
-				class="{panel} overflow-hidden"
-				style="left:{INSET_PX}px;right:{INSET_PX}px;bottom:{INSET_PX}px;height:{stage
+				class="{panel} {dockClass} overflow-hidden"
+				style="{dock(
+					4,
+					'0',
+					'40px',
+				)}left:{INSET_PX}px;right:{INSET_PX}px;bottom:{INSET_PX}px;height:{stage
 					? STRIP_PX
 					: SKYLINE_PX}px"
 			>

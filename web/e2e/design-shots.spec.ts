@@ -397,6 +397,9 @@ surface(
 		// scheme: it holds from the count-in's first frame (G1, #3667).
 		const o = await s.open({ ...DESK, colorScheme: 'light' }, { world: true });
 		const road = await fixtureRoad(o.page, 'hairpin');
+		// A held clock: a shot takes seconds, longer than the 3 s count-in, so
+		// the page's time moves only where this probe moves it.
+		await o.page.clock.install();
 		await o.page.goto(`/ride?w=openers&road=${road}`);
 		await o.page
 			.getByRole('button', { name: 'Ride simulated' })
@@ -408,8 +411,10 @@ surface(
 			.click();
 		// The digit, flat or over the world (#3668).
 		await o.page.getByTestId('count-in').waitFor({ timeout: 5000 });
+		await o.page.clock.pauseAt(new Date(Date.now() + 50));
 		await s.shot(o, { name: 'ride-countin-first' });
-		await o.page.waitForTimeout(1000);
+		// One second into the 3 s count-in: the held pose, the arch and the digit.
+		await o.page.clock.runFor(1000);
 		await s.shot(o);
 	},
 	{ once: true },

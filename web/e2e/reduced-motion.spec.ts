@@ -109,6 +109,8 @@ test.describe('reduced motion', () => {
 		const seen = new Set<string>();
 		while (await page.getByTestId('count-in').isVisible()) {
 			seen.add((await canvas.getAttribute('data-shot')) ?? '');
+			// The slots' dock-in is a held stamp too (#3087): in place, never flown.
+			expect(await page.locator('.dock-in').count()).toBe(0);
 			await page.waitForTimeout(100);
 		}
 		expect(seen.has('flying')).toBe(false);

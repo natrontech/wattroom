@@ -298,6 +298,7 @@
 		stage={inFocus === 'media'}
 		moment={inWorld && inFocus === 'sprint' ? moment : undefined}
 		centre={countingIn ? digit : undefined}
+		dockIn={countingIn}
 		seat={docked ? nowPlaying : undefined}
 	>
 		{#snippet header()}
