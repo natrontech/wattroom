@@ -129,6 +129,28 @@ func TestGearStateReachesOnlyTheRidersOtherScreens(t *testing.T) {
 	}
 }
 
+func TestPauseStateReachesOnlyTheRidersOtherScreens(t *testing.T) {
+	r := newRemoteRig(t)
+	p := protocol.PauseState{Pausable: true, Paused: true}
+	r.h.pauseState(r.desktop, r.rm, r.desktop.rider, p)
+	if got := heard(r.phone); got == nil || got.Pause == nil || *got.Pause != p {
+		t.Fatalf("the phone heard %+v, want %+v", got, p)
+	}
+	for name, c := range map[string]*client{"holder": r.desktop, "other rider": r.you} {
+		if got := heard(c); got != nil {
+			t.Errorf("%s heard %+v, want nothing", name, got)
+		}
+	}
+}
+
+func TestPauseStateFromANonHolderIsDropped(t *testing.T) {
+	r := newRemoteRig(t)
+	r.h.pauseState(r.phone, r.rm, r.phone.rider, protocol.PauseState{Pausable: true})
+	if got := heard(r.desktop); got != nil {
+		t.Errorf("the holder heard %+v from a screen that does not hold the trainer", got)
+	}
+}
+
 func TestGearStateFromANonHolderIsDropped(t *testing.T) {
 	r := newRemoteRig(t)
 	r.h.gearState(r.phone, r.rm, r.phone.rider, protocol.GearState{Label: "G9"})

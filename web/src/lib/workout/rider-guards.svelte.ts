@@ -15,6 +15,7 @@ export function createRiderGuards() {
 	let phase = $state<GuardPhase>('running');
 	let released = $state(false);
 	let resumeIn = $state(0);
+	let held = $state(false);
 	// The spiral release (docs/SPEC.md) fires in a session exactly as it does
 	// solo; solo had a banner and a cue for it and the session had nothing —
 	// the resistance vanished for ten seconds unexplained (audit 2026-09-09).
@@ -26,6 +27,7 @@ export function createRiderGuards() {
 		phase = guards.phase;
 		released = guards.released;
 		resumeIn = guards.resumeIn;
+		held = guards.held;
 		spiralActive = guards.spiralActive;
 		if (phase !== 'autopaused') pausedSeconds = 0;
 	}
@@ -39,6 +41,10 @@ export function createRiderGuards() {
 		},
 		get resumeIn() {
 			return resumeIn;
+		},
+		/** The rider paused it themselves (#3217); the pedals do not end it. */
+		get held() {
+			return held;
 		},
 		get spiralActive() {
 			return spiralActive;
@@ -61,6 +67,16 @@ export function createRiderGuards() {
 			const actuate = guards.tick(seconds);
 			sync();
 			return actuate;
+		},
+		/** guards.ts's hold(); true when the trainer has to be told. */
+		hold(): boolean {
+			const actuate = guards.hold();
+			sync();
+			return actuate;
+		},
+		resume() {
+			guards.resume();
+			sync();
 		},
 		reset() {
 			guards.reset();

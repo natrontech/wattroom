@@ -66,17 +66,19 @@
 					recover: fault.line ? fault.lineAction : quiet.action,
 					recoverName: fault.line ? fault.action : quiet.action,
 				}
-			: session.state === 'autopaused'
-				? { text: 'Paused — you stopped pedalling' }
-				: session.state === 'resuming'
-					? { text: `Picking back up in ${session.resumeIn} — ease in` }
-					: session.hrHoldLost
-						? { text: 'Heart-rate hold waiting — no heart rate' }
-						: session.spiralActive
-							? { text: statusLine('guard-released').text }
-							: noCrashSafety
-								? { text: 'Not keeping its own copy of this ride' }
-								: null,
+			: session.held
+				? { text: 'Paused', resume: true }
+				: session.state === 'autopaused'
+					? { text: 'Paused — you stopped pedalling' }
+					: session.state === 'resuming'
+						? { text: `Picking back up in ${session.resumeIn} — ease in` }
+						: session.hrHoldLost
+							? { text: 'Heart-rate hold waiting — no heart rate' }
+							: session.spiralActive
+								? { text: statusLine('guard-released').text }
+								: noCrashSafety
+									? { text: 'Not keeping its own copy of this ride' }
+									: null,
 	);
 
 	async function repair() {
@@ -107,6 +109,12 @@
 					: 'bg-z5'}"
 			></span>
 			<p class="min-w-0 truncate text-2xl leading-7">{held.text}</p>
+			{#if 'resume' in held}
+				<button
+					onclick={() => session.resume()}
+					class="btn btn-primary btn-ride shrink-0">Resume</button
+				>
+			{/if}
 			{#if 'recover' in held}
 				<button
 					onclick={() => void repair()}
@@ -120,7 +128,17 @@
 		</div>
 	{/if}
 {:else}
-	{#if session.state === 'autopaused'}
+	{#if session.held}
+		<div
+			class="border-z5/40 bg-z5/10 mt-4 flex items-center gap-4 rounded-lg border px-5 py-3"
+			role="status"
+		>
+			<p class="min-w-0 flex-1 text-sm font-medium">Paused</p>
+			<button class="btn btn-primary btn-ride" onclick={() => session.resume()}
+				>Resume</button
+			>
+		</div>
+	{:else if session.state === 'autopaused'}
 		<div class="border-z5/40 bg-z5/10 mt-4 rounded-lg border px-5 py-3">
 			<p class="text-sm font-medium">Paused — you stopped pedalling</p>
 			<p class="text-muted text-xs">

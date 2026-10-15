@@ -7,6 +7,7 @@ import type {
 	RiderMetrics,
 	ChannelEvent,
 	GearState,
+	PauseState,
 	SensorClaim,
 	SensorPairing,
 	ServerMessage,
@@ -112,6 +113,8 @@ export function createChannelLive(address: PlaceAddress) {
 	const remoteListeners = new Set<(cmd: RemoteCommand) => void>();
 	// The holding tab's gear, as it last said it to this rider's other screens.
 	let gear = $state<GearState | null>(null);
+	// Whether the holding tab rides solo, and whether it is paused (#3217).
+	let pause = $state<PauseState | null>(null);
 	// What the hub says this tab holds, and where the rider's other screens
 	// hold the rest (#610). Server truth: a tab learns here that its claim
 	// was refused, so nothing renders "paired" off its own click alone.
@@ -397,6 +400,7 @@ export function createChannelLive(address: PlaceAddress) {
 			else if (msg.poke) lastPoke = msg.poke;
 			if (msg.moved) lastMove = msg.moved;
 			if (msg.gear) gear = msg.gear;
+			if (msg.pause) pause = msg.pause;
 			if (msg.remote) for (const hear of remoteListeners) hear(msg.remote);
 			if (msg.pairing) {
 				// Off the tick by design (#610) — it is addressed to this
@@ -598,6 +602,13 @@ export function createChannelLive(address: PlaceAddress) {
 		/** One press on the phone remote, for the tab holding the trainer. */
 		sendRemote(action: string) {
 			send({ remote: { action } });
+		},
+		/** The holding tab's pause state (#3217), or null before it has said. */
+		get pause() {
+			return pause;
+		},
+		sendPause(state: PauseState) {
+			send({ pause: state });
 		},
 		/** The holder's gear, for the rider's other screens. */
 		sendGear(state: GearState) {

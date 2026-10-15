@@ -8,7 +8,7 @@
 	 *
 	 * Chrome, not live data: neon, never the watt accent (ADR-0005).
 	 */
-	import { onDestroy } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import type { createChannelLive } from '$lib/channel/live.svelte';
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
 	import { createTalkHold } from '$lib/ride/remote-talk';
@@ -34,6 +34,9 @@
 	const geared = gearsEnabled();
 	const talk = createTalkHold((action) => live.sendRemote(action));
 	onDestroy(talk.up);
+	// A phone that opens late asks the holder where it is: its gear and
+	// whether the ride is a solo one it may pause.
+	onMount(() => live.sendRemote('sync'));
 
 	const cell =
 		'btn btn-accent btn-ride min-h-16 text-2xl! disabled:cursor-not-allowed disabled:opacity-60';
@@ -121,11 +124,37 @@
 		{/if}
 	{/if}
 
+	{#if live.pause?.pausable}
+		<div class="grid grid-cols-2 gap-3">
+			<button
+				type="button"
+				class={cell}
+				disabled={live.pause.paused}
+				onclick={() => live.sendRemote('pause')}
+			>
+				Pause
+			</button>
+			<button
+				type="button"
+				class={cell}
+				disabled={!live.pause.paused}
+				onclick={() => live.sendRemote('resume')}
+			>
+				Resume
+			</button>
+		</div>
+		{#if live.pause.paused}
+			<p class="text-neon text-center text-2xl" aria-live="polite">Paused</p>
+		{/if}
+	{/if}
+
 	{#if live.remoteRefusal}
 		<p class="text-danger text-2xl leading-7" role="alert">
 			{live.remoteRefusal}
 		</p>
 	{:else if CELLS.some((c) => !RUNS.has(c.action))}
-		<p class="text-ink-muted text-2xl leading-7">Dimmed: not on this ride.</p>
+		<p class="text-ink-muted text-2xl leading-7">
+			Dimmed: not available right now.
+		</p>
 	{/if}
 </div>
