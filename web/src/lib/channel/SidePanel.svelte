@@ -308,7 +308,9 @@
 					<div class="{railLabel(riding)} px-3 pt-3 pb-1">
 						{live
 							? `not pedalling — ${away.length}`
-							: `in the channel — ${away.length}`}
+							: riding
+								? `here — ${away.length}`
+								: `in the channel — ${away.length}`}
 					</div>
 					<ul class="px-1">
 						{#each away as rider (rider.id)}{@render person(rider)}{/each}

@@ -153,7 +153,10 @@
 
 {#snippet section(label: string, kind: 'text' | 'voice')}
 	<div class="eyebrow cave:ride-label flex items-center px-2 pt-4 pb-1">
-		{label}
+		<!-- At the 24 px riding label, the whole phrase wraps in this column (#4046). -->
+		<span class="cave:hidden">{label}</span><span class="cave:inline hidden"
+			>{kind === 'text' ? 'chat' : kind}</span
+		>
 		{#if admin}
 			<!-- Naming a channel is typing: never mid-ride (ux.md). -->
 			<button

@@ -1,0 +1,1 @@
+- A free ride in a voice channel fills its column, and while you pedal the sidebar and jukebox headings stay on one line and the jukebox search reads at the riding size.

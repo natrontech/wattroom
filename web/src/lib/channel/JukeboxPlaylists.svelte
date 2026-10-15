@@ -118,9 +118,11 @@
 		>
 			<input
 				bind:value={newName}
-				placeholder={tab === 'crew'
-					? 'New crew playlist…'
-					: 'New personal playlist…'}
+				placeholder={riding
+					? 'New playlist'
+					: tab === 'crew'
+						? 'New crew playlist…'
+						: 'New personal playlist…'}
 				class="input {railField(riding)} min-w-0 flex-1"
 				aria-label="new playlist name"
 			/>

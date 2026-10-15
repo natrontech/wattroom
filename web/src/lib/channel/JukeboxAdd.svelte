@@ -198,7 +198,7 @@
 	<input
 		value={text}
 		oninput={(e) => search(e.currentTarget.value)}
-		placeholder="Search or paste a link…"
+		placeholder={riding ? 'Search' : 'Search or paste a link…'}
 		class="input {railField(riding)} min-w-0 flex-1"
 		aria-label="add music: search your library, or paste a YouTube link"
 	/>
