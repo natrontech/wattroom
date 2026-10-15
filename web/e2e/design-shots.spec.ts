@@ -1693,43 +1693,7 @@ surface(
 			const panel = document.querySelector('[data-testid=recap-trace]');
 			const last = panel?.lastElementChild?.getBoundingClientRect();
 			const pad = panel ? parseFloat(getComputedStyle(panel).paddingBottom) : 0;
-			const bottomOf = (eyebrow: string) =>
-				[...document.querySelectorAll('[data-testid=closing-card] h2')]
-					.find((h) => h.textContent?.trim() === eyebrow)
-					?.closest('section')
-					?.getBoundingClientRect().bottom;
-			const curve = bottomOf('power curve');
-			const progress = bottomOf('progress');
-			const curvePanel = [
-				...document.querySelectorAll('[data-testid=closing-card] h2'),
-			]
-				.find((h) => h.textContent?.trim() === 'power curve')
-				?.closest('section');
-			// G3: the widest gap between what the panel holds, header to note.
-			let powerCurveMaxGap: number | null = null;
-			if (curvePanel) {
-				const rows = [
-					curvePanel.querySelector('h2'),
-					...(curvePanel.querySelector('h2 ~ div')?.children ?? []),
-					curvePanel.querySelector('p'),
-				].filter((e): e is Element => !!e);
-				const tops = rows.map((e) => e.getBoundingClientRect());
-				powerCurveMaxGap = 0;
-				for (let i = 1; i < tops.length; i++) {
-					if (tops[i].top > tops[i - 1].bottom - 1)
-						powerCurveMaxGap = Math.max(
-							powerCurveMaxGap,
-							Math.round(tops[i].top - tops[i - 1].bottom),
-						);
-				}
-			}
 			return {
-				powerCurveMaxGap,
-				// G3 / v2-summary: the right column's two panels end level.
-				rightColumnGap:
-					curve !== undefined && progress !== undefined
-						? Math.round(Math.abs(curve - progress))
-						: null,
 				card: box(document.querySelector('[data-testid=session-card]')),
 				sidebarRight: document.querySelector('aside')?.getBoundingClientRect()
 					.right,

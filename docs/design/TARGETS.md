@@ -555,7 +555,7 @@ Capture: a simulated ride of ≥ 65 s, then End ride; as a workout ride, a road 
 9. Road ride: the map shows the ridden trace in zones with climb labels such as “III · 11:06”; profile ~120 px tall, climbs labelled; climbs table CLIMB, CLASS, TIME, W/KG, VAM, TRY, VS BEST; “BEST −0:18” in the ok token only where SPEC's PB-highlight rule allows (≥ 35 m of gain, ≤ 3 per ride). [3141-road-recap]
 10. The right column keeps a place for the crew climb board [#3147] and photos [#3230]. [3141-road-recap]
 11. On the rider's own card only, a wallet panel bottom right: WALLET with the outlined Batzen mark; “+48 Batzen · now 1,284”; the wish line over a 6 px neon bar; “<n> Batzen to go, about <n> rides like this one”. [3158-wallet-panel]
-12. A session's card: the same frame grows a roster section; no other rider's number in watt (ADR-0046). [closing-card]
+12. A session's card: the same frame grows a roster section; no other rider's number in watt (ADR-0046).  The right column's panels end at their content's height and need not end level. [closing-card]
 13. Phone: one column, header, actions, tiles, the left column's content, then the rest. Reduced motion: the finished card at once. [closing-card] [multi:reduced-motion]
 
 #### ride-detail
