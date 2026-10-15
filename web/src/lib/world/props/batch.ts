@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { Route } from '$lib/road/route';
 import { yOf } from '../geometry';
+import { LEAVE } from '../ground-stream';
 import * as P from '../props';
 import type { PieceKind } from '../setpieces';
 import type { PropColors } from '../styles';
@@ -29,22 +30,22 @@ export const FAMILY: Record<DrawKind, Family> = {
 	barn: 'buildings',
 	hut: 'buildings',
 	chapel: 'buildings',
-	// Low kits never block (≤ 2 m under a 4.4 m eye): no fade.
+	// Anything over 2 m fades near the sightline (#3220 O7), so it sits in a fading family; the stock below is low and never blocks.
 	cow: 'stock',
 	rock: 'stock',
 	bench: 'stock',
 	woodpile: 'stock',
 	bales: 'stock',
-	wayside: 'stock',
-	signpost: 'stock',
+	wayside: 'buildings',
+	signpost: 'buildings',
 	fountain: 'stock',
 	fence: 'stock',
-	snowpole: 'stock',
+	snowpole: 'buildings',
 	delineator: 'stock',
-	flag0: 'stock',
-	flag1: 'stock',
-	flag2: 'stock',
-	flag3: 'stock',
+	flag0: 'buildings',
+	flag1: 'buildings',
+	flag2: 'buildings',
+	flag3: 'buildings',
 };
 
 type Models = (c: PropColors) => THREE.BufferGeometry;
@@ -97,7 +98,8 @@ export type Drawn = {
 export const NEAR_M = 600;
 /** Past this nothing is drawn: the objects' coverage (docs/SPEC.md proposals, #3082 measures them). */
 export const FAR_M = 2500;
-const LEAVE = 1.1;
+/** Tiles are settled out to this many far rings, so a tile is standing before the eye is within its fade (#3220 O8). */
+export const FETCH_AHEAD = 1.2;
 /** Instances a family's batch makes room for at first; it grows by half when it runs out. */
 const ROOM = 4096;
 
