@@ -56,14 +56,25 @@ function once<T>(cache: WeakMap<Road, T>, road: Road, make: () => T): T {
 	return value;
 }
 
+/** The road as this lap rides it, and the dot's metre on it. */
+export function riddenOf(view: SkylineView): { road: Road; m: number } {
+	return {
+		road: view.reverse
+			? once(turnedOnce, view.road, () => turnedRound(view.road))
+			: view.road,
+		m: view.reverse ? view.road.length - view.m : view.m,
+	};
+}
+
+/** The road's climbs, once per road. */
+export const climbsOnRoad = (road: Road) =>
+	once(climbsOnce, road, () => climbsOf(road));
+
 /** The climb card for a ride on a road, or null. */
 export function climbView(view: SkylineView | null): ClimbView | null {
 	if (!view) return null;
-	const road = view.reverse
-		? once(turnedOnce, view.road, () => turnedRound(view.road))
-		: view.road;
-	const m = view.reverse ? view.road.length - view.m : view.m;
-	const climbs = once(climbsOnce, road, () => climbsOf(road));
+	const { road, m } = riddenOf(view);
+	const climbs = climbsOnRoad(road);
 	const card = climbCard(road, climbs, m, view.mps);
 	if (!card) return null;
 	const climb = classedOf(climbs)[card.n - 1];

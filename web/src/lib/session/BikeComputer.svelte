@@ -17,11 +17,13 @@
 	import { ZONE_BG } from '$lib/components/zones';
 	import { pulse } from '$lib/motion/transitions';
 	import ClimbProfile from '$lib/ride/ClimbProfile.svelte';
+	import ComputerMap from '$lib/ride/ComputerMap.svelte';
 	import {
 		PAGE_NAMES,
 		TV_LABEL,
 		claimPageTurn,
 		climbHeader,
+		MAP_ASK,
 		fieldsFor,
 		pagesFor,
 		type Field,
@@ -130,6 +132,17 @@
 		if (!climbOpens || climb === null || climb === openedFor) return;
 		openedFor = climb;
 		if (untrack(() => shown) === 'ride') page = 'climb';
+	});
+
+	// M, the ride key, turns to MAP where this computer has one.
+	$effect(() => {
+		const ask = (event: Event) => {
+			if (!pages.includes('map')) return;
+			page = 'map';
+			event.preventDefault();
+		};
+		window.addEventListener(MAP_ASK, ask);
+		return () => window.removeEventListener(MAP_ASK, ask);
 	});
 
 	const zoneStrip = $derived(
@@ -378,5 +391,6 @@
 			{#if turns && !tv && !phone && !docked}{@render dots()}{/if}
 		</div>
 	{/if}
+	{#if shown === 'map' && ctx.map}<ComputerMap view={ctx.map} {tv} />{/if}
 	{#if turns && phone}{@render dots()}{/if}
 </section>

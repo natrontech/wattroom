@@ -22,6 +22,7 @@
 	import BiasTrim from '$lib/session/BiasTrim.svelte';
 	import BikeComputer from '$lib/session/BikeComputer.svelte';
 	import { climbView } from '$lib/ride/climb-view';
+	import { mapView } from '$lib/ride/map-view';
 	import RideNarrator from '$lib/ride/RideNarrator.svelte';
 	import { watchClimbCues } from '$lib/ride/climb-cues.svelte';
 	import RaceRadio from '$lib/race/RaceRadio.svelte';
@@ -115,6 +116,7 @@
 	const inWorld = $derived(world.on && !!channel.ridden);
 	// The climb card on a session's road (#3645), on either layout.
 	const climb = $derived(climbView(channel.ridden));
+	const map = $derived(mapView(channel.ridden));
 	watchClimbCues(() => climb);
 	// The compact instrument heads your numbers here, so the computer leaves
 	// the watts to it: one number, one home (#3662).
@@ -167,7 +169,7 @@
 	</CountdownScreen>
 {:else if device.narrow}
 	<!-- One column, the followed rider's instrument, the crew strip (#412). -->
-	<TrainingPhone {climb} />
+	<TrainingPhone {climb} {map} />
 {:else}
 	{#snippet trainerCard()}
 		{#if !channel.trainer || targetsNote}<TrainerOverview compact />{/if}
@@ -387,6 +389,7 @@
 				<BikeComputer
 					docked
 					{climb}
+					{map}
 					roadLine={!!channel.block?.road}
 					road={channel.ridden
 						? {
@@ -454,6 +457,7 @@
 								target={channel.you.target > 0 ? channel.you.target : undefined}
 								stats={channelConnection.current?.recording.live}
 								{climb}
+								{map}
 								race={channel.race ?? undefined}
 							/>
 						</div>

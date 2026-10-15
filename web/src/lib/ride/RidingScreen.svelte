@@ -35,6 +35,8 @@
 	import Skyline from '$lib/ride/Skyline.svelte';
 	import { skylineOf } from '$lib/workout/road-workout';
 	import { climbView } from '$lib/ride/climb-view';
+	import { mapView } from '$lib/ride/map-view';
+	import { MAP_ASK } from '$lib/session/computer-pages';
 	import { watchClimbCues } from '$lib/ride/climb-cues.svelte';
 	import Instrument from '$lib/session/Instrument.svelte';
 	import RideHeader from '$lib/session/RideHeader.svelte';
@@ -113,8 +115,7 @@
 	// Easier / Harder from the keys and any clicker, while this ride runs (#3329).
 	$effect(() => (gearsEnabled() ? bindRideShift(session) : undefined));
 
-	// The ride keys (#3216). M and O are no-ops with a hint until the MAP
-	// page (#3645) and the photo roll land.
+	// The ride keys (#3216). O is a no-op with a hint until the photo roll lands.
 	let camera = $state<CameraPreset>();
 	let sheet = $state(false);
 	$effect(() =>
@@ -125,9 +126,12 @@
 				else if (key.kind === 'camera') {
 					if (inWorld) camera = key.preset;
 					else toasts.push('Cameras need the 3D road.');
-				} else if (key.kind === 'map')
-					toasts.push('The MAP page is not here yet.');
-				else toasts.push('Snap is not here yet.');
+				} else if (key.kind === 'map') {
+					const taken = !window.dispatchEvent(
+						new CustomEvent(MAP_ASK, { cancelable: true }),
+					);
+					if (!taken) toasts.push('The MAP page needs a road.');
+				} else toasts.push('Snap is not here yet.');
 			},
 			(k) => !!board.onKey(k),
 		),
@@ -153,6 +157,7 @@
 	const skyline = $derived(skylineOf(session.road, session.segments, ftp));
 	// The climb card on a road (#3645): CLIMB opens by itself, and says so.
 	const climb = $derived(climbView(skyline));
+	const map = $derived(mapView(skyline));
 	watchClimbCues(() => climb);
 
 	// The HUD feed (ADR-0041): what this screen shows, once a second, for a
@@ -425,6 +430,7 @@
 					target={target > 0 ? target : undefined}
 					stats={session.live}
 					{climb}
+					{map}
 				/>
 				<div class="px-4 pb-3">
 					<BiasTrim
@@ -441,6 +447,7 @@
 						<BikeComputer
 							head={!session.sprint}
 							{climb}
+							{map}
 							cadence={session.sample?.cadence ?? 0}
 							stale={signalLost}
 							hr={session.sample?.heartRate ?? 0}

@@ -12,7 +12,7 @@ import { cosDeg, sinDeg } from './sine';
 /** Metres between a stroke's vertices. */
 export const STROKE_STEP_M = 2;
 /** A stored step is walked in this many parts, so a turn bends over its ~20 m rather than at a corner. */
-const PARTS = 10;
+export const PARTS = 10;
 
 export type Stroke = {
 	/** Opaque: it names the stroke's data, never its place. */
