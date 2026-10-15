@@ -46,9 +46,9 @@ test('the first-run card rides the intro road on the simulated trainer', async (
 		.getByRole('button', { name: 'Ride simulated' })
 		.click({ timeout: 15_000 });
 	await page.getByRole('button', { name: 'Start the ride' }).click();
-	await expect(
-		page.getByRole('heading', { name: 'Your first road' }),
-	).toBeVisible();
+	await expect(page.getByTestId('ride-context')).toContainText(
+		'Your first road',
+	);
 	await expect(page.getByTestId('bike-computer')).toBeVisible({
 		timeout: 15_000,
 	});

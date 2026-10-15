@@ -5,7 +5,7 @@ import { signInAs } from './signin';
 /**
  * Easier and Harder on screen (#3330): a free ride on its grade shifts a
  * virtual gear from the pair and from the keys, each shift is heard once,
- * and the gear field is there between them. The cues are read from the
+ * and the gear field is on the computer. The cues are read from the
  * engine's own log line — the mixer is at zero, so nothing sounds.
  */
 test('a free ride on a grade shifts from the pair and the keys, one cue a shift', async ({
@@ -36,9 +36,9 @@ test('a free ride on a grade shifts from the pair and the keys, one cue a shift'
 
 	const harder = rider.getByRole('button', { name: 'Harder', exact: true });
 	await expect(harder).toBeEnabled({ timeout: 15_000 });
-	await expect(rider.locator('output[aria-live="polite"]')).toBeVisible();
+	// The gear's one home is the computer's RIDE page (D17); no hint names keys (D14).
 	await expect(
-		rider.getByText('Shift with Easier and Harder, or − and + on a keyboard'),
+		rider.getByTestId('bike-computer').locator('[data-field=gear]'),
 	).toBeVisible();
 
 	await harder.click();
@@ -69,12 +69,10 @@ test('a free ride on a grade shifts from the pair and the keys, one cue a shift'
 });
 
 /**
- * The solo road ride draws the same pair and the same hint (#3661): its keys
+ * The solo road ride draws the same pair (#3661): its keys
  * shift too, from a real keydown, one cue a shift.
  */
-test('a solo ride on your road shifts from the keys its hint names', async ({
-	page,
-}) => {
+test('a solo ride on your road shifts from the keys', async ({ page }) => {
 	test.skip(
 		!!process.env.PLAYWRIGHT_BASE_URL,
 		'the ?as= dev provider only exists on a dev server',
@@ -103,8 +101,8 @@ test('a solo ride on your road shifts from the keys its hint names', async ({
 		.click({ timeout: 15_000 });
 	await page.getByRole('button', { name: 'Start the ride' }).click();
 	await expect(
-		page.getByText('Shift with Easier and Harder, or − and + on a keyboard'),
-	).toBeVisible({ timeout: 15_000 });
+		page.getByRole('button', { name: 'Harder', exact: true }),
+	).toBeEnabled({ timeout: 15_000 });
 
 	await page.keyboard.press('.');
 	await expect.poll(() => cues).toEqual(['shift-up']);

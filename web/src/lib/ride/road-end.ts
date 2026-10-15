@@ -1,5 +1,3 @@
-import { formatKm } from '$lib/format';
-
 /** #3205: at the end of the road, Ride back is what happens after this long. */
 export const RIDE_BACK_AFTER_S = 10;
 
@@ -17,14 +15,6 @@ export function roadEndOffered(
 	inSession: boolean,
 ): boolean {
 	return !inSession && ride.recording && !!ride.road?.atEnd;
-}
-
-/**
- * End ride's own words: partway up a road's first lap it saves where you are,
- * to carry on from next time (#3205).
- */
-export function endRideLabel({ road }: OnRoad): string {
-	return carriesOn(road) ? `Save at km ${formatKm(road!.m)}` : 'End ride';
 }
 
 /**

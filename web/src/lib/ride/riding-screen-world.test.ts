@@ -16,6 +16,8 @@ vi.mock('$lib/world/world-view.svelte', () => ({
 		fail() {},
 		flatten() {},
 		retry() {},
+		// Never resolves: a server render draws the pending branch.
+		load: () => new Promise(() => {}),
 	}),
 }));
 

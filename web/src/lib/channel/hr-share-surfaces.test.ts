@@ -17,7 +17,12 @@ const read = (file: string) => code(readFileSync(join(SRC, file), 'utf8'));
 const riding = FILES.filter((file) => file.endsWith('.svelte')).filter(
 	(file) => {
 		const source = read(file);
-		return source.includes('<BikeComputer') && source.includes('useChannel()');
+		// A channel screen draws its numbers itself, or through the free
+		// ride's surface (FreeRiding, #3669), which takes the line as its foot.
+		return (
+			(source.includes('<BikeComputer') || source.includes('<FreeRiding')) &&
+			source.includes('useChannel()')
+		);
 	},
 );
 

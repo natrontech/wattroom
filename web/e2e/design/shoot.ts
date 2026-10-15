@@ -172,6 +172,15 @@ export class Shoot {
 				// The simulated rider holds the watts without noise, so BEFORE and
 				// AFTER show the numeral at one place on its glide (#4000).
 				localStorage.setItem('wattroom.sim-steady.v1', '1');
+				// Its strap streams a heart rate (#3669); a rider with a threshold
+				// has the zone that bpm falls in.
+				const profile = JSON.parse(
+					localStorage.getItem('wattroom.profile.v1') ?? '{}',
+				);
+				localStorage.setItem(
+					'wattroom.profile.v1',
+					JSON.stringify({ ...profile, lthr: 165 }),
+				);
 				if (world === false) localStorage.removeItem('wattroom.world-slot.v1');
 			},
 			[MUTED, world ?? null] as const,

@@ -95,6 +95,7 @@ export class SimulatedTrainer implements Trainer {
 	#tau: number;
 	#noise: number;
 	#tickMs: number;
+	#steady = simulatedSteady();
 	#rng: () => number;
 	#now: () => number;
 	#replay?: { watts: number; cadence: number; hr?: number }[];
@@ -269,6 +270,8 @@ export class SimulatedTrainer implements Trainer {
 			speedMps: this.#speed,
 			at: this.#now(),
 		};
+		// The design shots' rider wears a strap, so the Heart home has data (#3669).
+		if (this.#steady) sample.heartRate = Math.round(90 + watts / 4);
 		for (const cb of this.#sampleCbs) cb(sample);
 	}
 

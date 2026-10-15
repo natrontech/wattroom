@@ -23,9 +23,10 @@ const surfaces = FILES.filter(
 describe('the instrument knows when its numbers are not live (#2851)', () => {
 	it('finds the riding surfaces', () => {
 		expect(surfaces).toEqual(
+			// The free ride's head is the bike computer's (#3669), whose
+			// `stale` the type checker requires.
 			expect.arrayContaining([
 				'lib/ride/RidingScreen.svelte',
-				'lib/ride/FreeRide.svelte',
 				'lib/session/Training.svelte',
 				'lib/session/TrainingPhone.svelte',
 				'routes/(app)/ramp/+page.svelte',
