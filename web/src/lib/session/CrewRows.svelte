@@ -57,9 +57,12 @@
 					>Z{zoneOf(rider.watts, rider.ftp)}</span
 				>
 			{/if}
-			<span class="num shrink-0 text-4xl leading-none"
-				>{rider.stale ? '—' : wkg(rider.watts, rider.kg)}</span
-			>
+			{#if !rider.you}
+				<!-- Your W/kg has one home, beside the 3 s power in the head (D17). -->
+				<span class="num shrink-0 text-4xl leading-none"
+					>{rider.stale ? '—' : wkg(rider.watts, rider.kg)}</span
+				>
+			{/if}
 		</li>
 	{/each}
 </ul>
