@@ -14,7 +14,6 @@
 	import RoadsideDeck from '$lib/channel/RoadsideDeck.svelte';
 	import ExecutionMeter from '$lib/session/ExecutionMeter.svelte';
 	import GamePanel from '$lib/session/GamePanel.svelte';
-	import Instrument from '$lib/session/Instrument.svelte';
 	import RidingSurface from '$lib/session/RidingSurface.svelte';
 	import FlatRoad from '$lib/world/FlatRoad.svelte';
 	import { createWorldView } from '$lib/world/world-view.svelte';
@@ -26,7 +25,6 @@
 	import { watchClimbCues } from '$lib/ride/climb-cues.svelte';
 	import RaceRadio from '$lib/race/RaceRadio.svelte';
 	import HrShare from '$lib/channel/HrShare.svelte';
-	import RideHeader from '$lib/session/RideHeader.svelte';
 	import RideBand from '$lib/session/RideBand.svelte';
 	import MomentCard from '$lib/session/MomentCard.svelte';
 	import Skyline from '$lib/ride/Skyline.svelte';
@@ -34,7 +32,6 @@
 	import { peopleFold } from '$lib/channel/people-fold.svelte';
 	import { rideContext } from './ride-context';
 	import MonitorUp from '@lucide/svelte/icons/monitor-up';
-	import LogOut from '@lucide/svelte/icons/log-out';
 	import { goto } from '$app/navigation';
 	import SessionFlag from '$lib/session/SessionFlag.svelte';
 	import TrainerOverview from '$lib/session/TrainerOverview.svelte';
@@ -116,9 +113,6 @@
 	// The climb card on a session's road (#3645), on either layout.
 	const climb = $derived(climbView(channel.ridden));
 	watchClimbCues(() => climb);
-	// The compact instrument heads your numbers here, so the computer leaves
-	// the watts to it: one number, one home (#3662).
-	const headed = $derived(inFocus === 'media' || inFocus === 'game' || inWorld);
 	// The sprint carries its own numbers and Watt Golf hides the meter:
 	// slots 3 to 5 stand empty while either has the focus.
 	// Over the world a sprint is a moment card and your numbers stay (D12).
@@ -169,28 +163,6 @@
 	<!-- One column, the followed rider's instrument, the crew strip (#412). -->
 	<TrainingPhone {climb} />
 {:else}
-	{#snippet trainerCard()}
-		{#if !channel.trainer || targetsNote}<TrainerOverview compact />{/if}
-	{/snippet}
-	{#snippet sessionControls()}
-		<SessionControls compact />
-		<!-- The 3 m view, from the place the rider is on (#1667): the
-		     Lounge had the only button, off the numbers, mid-interval. -->
-		<!-- btn-ride, as /ride and /ramp give the same control (#2161,
-		     #3896): it is pressed while pedalling, which is what ux.md's
-		     44 px and TARGETS G4's 24 px word are about. -->
-		<button
-			onclick={() => channel.openTv()}
-			class="btn btn-secondary btn-ride"
-			aria-label="TV mode"><MonitorUp size={15} /> TV</button
-		>
-		{#if channel.you.inSession}
-			<button onclick={leaveRide} class="btn btn-ghost btn-ride"
-				><LogOut size={15} /> Leave the ride</button
-			>
-		{/if}
-		<SessionFlag />
-	{/snippet}
 	{#snippet worldControls()}
 		<!-- One row in slot 1 (TARGETS ride-road-world 7), and the people
 		     column's sheet, folded away while the world rides. -->
@@ -202,12 +174,14 @@
 				aria-label="TV mode"
 				title="TV mode"><MonitorUp size={20} /></button
 			>
-			<button
-				onclick={() => (peopleFold.open = true)}
-				class={ICON}
-				aria-label="who is here"
-				title="Who is here"><Users size={20} /></button
-			>
+			{#if inWorld}
+				<button
+					onclick={() => (peopleFold.open = true)}
+					class={ICON}
+					aria-label="who is here"
+					title="Who is here"><Users size={20} /></button
+				>
+			{/if}
 			<SessionFlag />
 			{#if channel.you.inSession}
 				<!-- One short word, so the eyebrow keeps the row (slot 1's 860 px). -->
@@ -223,6 +197,9 @@
 	{#snippet trainerLine()}
 		{#if !channel.trainer || targetsNote}
 			<div data-status-line><TrainerOverview compact /></div>
+		{/if}
+		{#if !inWorld && channel.ridden && world.reason}
+			<FlatRoad reason={world.reason} onretry={world.retry} />
 		{/if}
 	{/snippet}
 	{#snippet strip()}
@@ -279,48 +256,24 @@
 		seat={docked ? nowPlaying : undefined}
 	>
 		{#snippet header()}
-			{#if inWorld}
-				<RideBand
-					block={channel.block}
-					{elapsed}
-					{total}
-					title={channel.shared?.workoutName ?? ''}
-					context={rideContext(
-						'Session',
-						channel.shared?.workoutName ?? '',
-						inRide.length,
-					)}
-					drives={!!channel.trainer && channel.actuating}
-					controls={worldControls}
-					status={trainerLine}
-					{strip}
-				/>
-			{:else}
-				<div class="px-6 pt-5 pb-4">
-					<!-- The Flat-road reason is a status line: atop slot 1 (G3, G4). -->
-					{#if channel.ridden && world.reason}
-						<FlatRoad reason={world.reason} onretry={world.retry} />
-					{/if}
-					<RideHeader
-						block={channel.block}
-						{elapsed}
-						{total}
-						cadence={channel.you.cadence}
-						hr={channel.you.hr}
-						title={channel.shared?.workoutName ?? ''}
-						context={rideContext(
-							'Session',
-							channel.shared?.workoutName ?? '',
-							inRide.length,
-						)}
-						drives={!!channel.trainer && channel.actuating}
-						aside={trainerCard}
-						controls={sessionControls}
-					/>
-				</div>
-			{/if}
+			<RideBand
+				block={channel.block}
+				{elapsed}
+				{total}
+				title={channel.shared?.workoutName ?? ''}
+				context={rideContext(
+					'Session',
+					channel.shared?.workoutName ?? '',
+					inRide.length,
+				)}
+				drives={!!channel.trainer && channel.actuating}
+				wide={!inWorld}
+				controls={worldControls}
+				status={trainerLine}
+				{strip}
+			/>
 			{#if channel.race}
-				<div class={inWorld ? 'px-4 pb-3' : 'px-6'}>
+				<div class="px-4 pb-3">
 					<RaceRadio race={channel.race} />
 				</div>
 			{/if}
@@ -359,29 +312,11 @@
 						attach={(node) => channel.attachStage(node, share.key)}
 					/>
 				</section>
-			{:else if !inWorld}
-				<!-- The focus row gives way first on a short window (#3611): centred
-				     without the safe keyword, the Instrument overflowed it both ways,
-				     up over the header, and the coach's controls stopped taking
-				     clicks. Clipped to its row, and centred safely, it keeps its top
-				     — the watts — and covers nothing else. -->
-				<section
-					class="grid min-h-0 [align-content:safe_center] overflow-y-clip px-6"
-				>
-					<Instrument
-						watts={channel.you.watts}
-						stale={channel.youStale}
-						idle={channel.youUnmeasured}
-						target={channel.you.target}
-						ftp={channel.you.ftp}
-						kg={channel.you.kg}
-					/>
-				</section>
 			{/if}
 		{/snippet}
 
 		{#snippet numbers()}
-			{#if !quiet && inWorld}
+			{#if !quiet}
 				<!-- One panel: the computer with its head, the trim, and whether
 				     your heart rate reaches the call (ADR-0008, #2804). -->
 				<BikeComputer
@@ -419,66 +354,14 @@
 						hint={targetsNote ? `${targetsNote} — trim them there` : undefined}
 					/>
 					<HrShare />
-				</div>
-			{:else if !quiet}
-				<!-- Your numbers (ADR-0046 slot 3), and under them whether your heart
-			     rate is reaching the call — the line ADR-0008 requires (#2804). -->
-				<div class="mt-4 px-6">
-					<div class="flex flex-wrap items-center gap-6">
-						{#if headed}
-							<!-- Under the player, never over it (RMF). -->
-							<div class="min-w-0 flex-1">
-								<Instrument
-									watts={channel.you.watts}
-									stale={channel.youStale}
-									idle={channel.youUnmeasured}
-									target={channel.you.target}
-									ftp={channel.you.ftp}
-									kg={channel.you.kg}
-									compact
-								/>
-							</div>
-						{/if}
-						<div class="min-w-0 flex-1">
-							<BikeComputer
-								head={headed}
-								cadence={channel.you.cadence}
-								stale={channel.youStale}
-								hr={channel.you.hr}
-								watts={channel.you.watts}
-								kg={channel.you.kg}
-								lthr={channelConnection.current?.profile.current.lthr}
-								execution={riding.length <= 1 && channel.you.inSession
-									? channel.you.execution
-									: undefined}
-								target={channel.you.target > 0 ? channel.you.target : undefined}
-								stats={channelConnection.current?.recording.live}
-								{climb}
-								race={channel.race ?? undefined}
-							/>
-						</div>
-						<BiasTrim
-							bias={channel.bias}
-							onBias={channel.trainer && channel.actuating
-								? (step) => channel.nudgeBias(step)
-								: undefined}
-							hint={targetsNote
-								? `${targetsNote} — trim them there`
-								: undefined}
-						/>
+					{#if riding.length > 1 && inFocus !== 'media' && inFocus !== 'game' && !inWorld}
 						<!-- The live half of the execution score (#543), alone not a
 						     leaderboard (#2635); below xl only, where the people column
-						     does not carry it (#2882 L6-09). Not while a screen has the
-						     focus: the player's own floor (RMF) is what the width is for. -->
-						{#if riding.length > 1 && inFocus !== 'media' && inFocus !== 'game'}
-							<div
-								class="ml-auto max-h-32 w-64 shrink-0 overflow-y-auto xl:hidden"
-							>
-								<ExecutionMeter riders={riding} />
-							</div>
-						{/if}
-					</div>
-					<HrShare class="mt-2" />
+						     does not carry it (#2882 L6-09). -->
+						<div class="max-h-32 w-64 overflow-y-auto xl:hidden">
+							<ExecutionMeter riders={riding} />
+						</div>
+					{/if}
 				</div>
 			{/if}
 		{/snippet}
@@ -493,7 +376,7 @@
 			     numbers is a solo app with a chat window attached. A game's panel
 			     already lists everyone; a second list of the same people is what
 			     the sprint branch refuses too. -->
-				<div class="mt-4">
+				<div class="p-4">
 					<CrewStrip riders={crewOf(inRide, false)} />
 				</div>
 			{/if}
@@ -516,14 +399,18 @@
 			     not another card. It gives way to the player when media has
 			     the focus — two grounds is one too many — and a game's
 			     session has no timeline to draw (#2597). -->
-				<div class="mt-3 h-28">
-					<IntervalGraph
-						segments={channel.segments}
-						{total}
-						{elapsed}
-						ftp={channel.you.ftp}
-						trace={channel.you.trace}
-					/>
+				<div class="relative min-h-28 flex-1">
+					<div class="absolute inset-0">
+						<IntervalGraph
+							ride
+							marker={!channel.youStale}
+							segments={channel.segments}
+							{total}
+							{elapsed}
+							ftp={channel.you.ftp}
+							trace={channel.you.trace}
+						/>
+					</div>
 				</div>
 			{/if}
 		{/snippet}

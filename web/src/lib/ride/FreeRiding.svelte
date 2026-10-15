@@ -383,6 +383,7 @@
 
 <RidingSurface
 	headerFit
+	own
 	class="flex-1 {inWorld ? worldClass : ''} {extra}"
 	world={inWorld ? worldSlot : undefined}
 	moment={inWorld && roadEndOffered(free, false) ? roadEnd : undefined}
@@ -399,7 +400,7 @@
 		{#if !inWorld}
 			<!-- Flat, in slot order: the Skyline a strip along the bottom as
 			     over the world, on screen with the dot inside (ride-free-road 9). -->
-			<div class="flex min-h-0 flex-col gap-3 pt-3">
+			<div class="flex min-h-0 flex-col gap-3">
 				{#if setup && !free.recording}{@render setup()}{/if}
 				{#if roadEndOffered(free, false)}
 					<div class="ride-panel">{@render roadEnd()}</div>

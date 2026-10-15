@@ -14,9 +14,9 @@ test('the readout does not spill out of its box', async ({ page }) => {
 		page.getByText('Simulated Trainer').locator('..').getByText(/\d+ W/),
 	).toBeVisible({ timeout: 15_000 });
 	await page.getByRole('button', { name: 'Start the ride' }).click();
-	const box = page.getByTestId('instrument-readout').first();
-	// Pedalling, so all three lines are there: number, "watts", the zone.
-	await expect(box.getByText(/^z\d/i)).toBeVisible({ timeout: 15_000 });
+	const box = page.getByTestId('computer-head').first();
+	// Pedalling, so the lines are there: number with its unit, W/kg, the zone.
+	await expect(box.getByTestId('head-zone')).toBeVisible({ timeout: 15_000 });
 	const spill = await box.evaluate((el) => {
 		const top = el.getBoundingClientRect().top;
 		const highest = Math.min(
@@ -56,19 +56,19 @@ test('four digits keep one width, inside the box', async ({ page }) => {
 		await page.goto(`/ride?w=${id}`);
 		await page.getByRole('button', { name: 'Ride simulated' }).click();
 		await page.getByRole('button', { name: 'Start the ride' }).click();
-		const box = page.getByTestId('instrument-readout').first();
-		// The readout is as wide as its widest line, at four digits the number.
+		const box = page.getByTestId('computer-head').first();
+		// The numeral and its unit are the readout; the head's W/kg sits beside it (D17).
 		const seen = new Map<string, { width: number; inside: boolean }>();
 		await expect
 			.poll(
 				async () => {
 					const read = await box.evaluate((el) => {
 						const outer = el.getBoundingClientRect();
-						const readout = el.firstElementChild!.getBoundingClientRect();
+						const numeral = el.querySelector('[data-testid=head-power]')!;
+						const readout = numeral.parentElement!.getBoundingClientRect();
 						return {
-							// The numeral, not the head's W/kg beside or under it (D17).
-							watts: el.querySelector('.font-display')!.textContent!,
-							width: readout.width,
+							watts: numeral.textContent!,
+							width: numeral.getBoundingClientRect().width,
 							inside:
 								readout.left >= outer.left - 0.5 &&
 								readout.right <= outer.right + 0.5,

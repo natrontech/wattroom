@@ -244,7 +244,10 @@
 	{/if}
 	{#if docked}
 		<!-- D15: the current page's name between ← and →, with position dots. -->
-		<div class="relative flex items-center gap-1">
+		<div
+			data-testid="computer-page-row"
+			class="relative flex items-center gap-1"
+		>
 			{#if turns}
 				<button
 					type="button"
@@ -318,6 +321,7 @@
 						? 'border-neon/20 grid min-w-0 flex-1 auto-cols-fr grid-flow-col gap-x-8 border-l pl-8'
 						: 'border-neon/20 grid grid-cols-2 gap-x-6 gap-y-3 border-t pt-3'
 				: layout}
+			data-testid={docked ? 'computer-fields' : undefined}
 			style:flex-basis={docked && tv ? tvFields : undefined}
 		>
 			{#if !phone && !docked}{@render name()}{/if}
