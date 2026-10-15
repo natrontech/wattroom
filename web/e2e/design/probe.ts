@@ -325,16 +325,20 @@ export function probe(corridor: Box) {
 			...document.querySelectorAll<HTMLElement>('.eyebrow, .ride-label'),
 		]
 			.filter((el) => {
-				const lh = parseFloat(getComputedStyle(el).lineHeight);
-				return (
-					shown(el) &&
-					Number.isFinite(lh) &&
-					el.getBoundingClientRect().height > lh * 1.5 + 8
-				);
+				if (!shown(el)) return false;
+				// Lines drawn: the distinct tops of its text's boxes, not its icons'.
+				const tops = new Set<number>();
+				const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+				for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+					if (!n.textContent?.trim()) continue;
+					const range = document.createRange();
+					range.selectNodeContents(n);
+					for (const r of range.getClientRects())
+						if (r.width > 1 && r.height > 1) tops.add(Math.round(r.top / 4));
+				}
+				return tops.size > 1;
 			})
-			.map((el) =>
-				(el.textContent ?? '').trim().replace(/\s+/g, ' ').slice(0, 40),
-			),
+			.map((el) => el.innerText.trim().replace(/\s+/g, ' ').slice(0, 40)),
 		// G4's floor for a riding surface's words; a desk page reads it as data.
 		buttonWords: {
 			minPx: words.length ? Math.min(...words.map((w) => w.wordPx!)) : null,
