@@ -251,10 +251,17 @@ export function probe(corridor: Box) {
 		for (let n = walk.nextNode(); n; n = walk.nextNode()) {
 			const host = n.parentElement;
 			if (!host || !/\p{L}/u.test(n.textContent ?? '')) continue;
+			// An avatar's initial stands in for a picture; its name is read by sr-only text (#4046).
+			if (host.closest('[data-avatar]')) continue;
 			const box = host.getBoundingClientRect();
 			// sr-only text is 1 px and read aloud, not seen.
 			if (!host.checkVisibility() || !shown(host) || box.width <= 1) continue;
 			const px = parseFloat(getComputedStyle(host).fontSize);
+			min = min === null ? px : Math.min(min, px);
+		}
+		// A field's placeholder is a word while it shows (#4046).
+		if (el instanceof HTMLInputElement && el.placeholder && !el.value) {
+			const px = parseFloat(getComputedStyle(el).fontSize);
 			min = min === null ? px : Math.min(min, px);
 		}
 		return min;
@@ -325,6 +332,25 @@ export function probe(corridor: Box) {
 			under24: sizes.filter((s) => s.px < 24).length,
 			under44: sizes.filter((s) => s.px < 44).length,
 		},
+		// Headings drawn on more than one line (#4046): a label is one line (G4).
+		wrappedLabels: [
+			...document.querySelectorAll<HTMLElement>('.eyebrow, .ride-label'),
+		]
+			.filter((el) => {
+				if (!shown(el)) return false;
+				// Lines drawn: the distinct tops of its text's boxes, not its icons'.
+				const tops = new Set<number>();
+				const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+				for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+					if (!n.textContent?.trim()) continue;
+					const range = document.createRange();
+					range.selectNodeContents(n);
+					for (const r of range.getClientRects())
+						if (r.width > 1 && r.height > 1) tops.add(Math.round(r.top / 4));
+				}
+				return tops.size > 1;
+			})
+			.map((el) => el.innerText.trim().replace(/\s+/g, ' ').slice(0, 40)),
 		// G4's floor for a riding surface's words; a desk page reads it as data.
 		buttonWords: {
 			minPx: words.length ? Math.min(...words.map((w) => w.wordPx!)) : null,

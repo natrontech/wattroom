@@ -242,7 +242,7 @@ Capture: world on, OS scheme light, `/ride?w=openers&road=<hairpin>`: `ride-coun
 Capture: world off, `/ride?road=<hairpin>`, 14 s in, OS scheme light. Targets: v2-ride; v3-modes for the feel line. Canon: ADR-0005, ADR-0046 (parity), ADR-0062, ADR-0084.
 
 1. Cave from the first stroke to End ride, with the OS in light mode. [ride-cave] [probe:cave]
-2. The flat riding surface, `ride-panel`s filling the column; no centred block. [ride-free-road-surface]
+2. The flat riding surface: `ride-panel`s spanning the column's width at their content's height (G3); the Skyline strip pinned at the bottom; the world, when on, takes the free height; on a flat free ride with no road the column's free height below the panels is background, not a band; no centred block. [ride-free-road-surface]
 3. Slot 1 is the road line, in order: “FREE RIDE · <road>”; “km x of y · grade · <next climb> in z km” at display size; trainer chip, “SIM · you feel y %” or “Watts · n W”; “elapsed · m climbed”. [ride-free-road-surface]
 4. Road name, gear, grade and watts each once (D17). [ride-free-road-surface]
 5. No 0–300 W track, no “no target — spin easy”. [ride-free-road-surface]
