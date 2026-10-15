@@ -196,6 +196,9 @@ surface(
 			.locator('[data-testid=bike-computer][data-page=map]')
 			.waitFor();
 		await o.page.getByTestId('map-dot').waitFor();
+		await o.page.evaluate(() =>
+			(document.activeElement as HTMLElement)?.blur(),
+		);
 		await s.shot(o, { name: 'ride-road-world-map' });
 		// multi:world-hairpins-trench — #3728: the first leg between two retaining walls, from km 1.5.
 		await ride(o.page, `/ride?w=openers&road=${road}&from=1500`);

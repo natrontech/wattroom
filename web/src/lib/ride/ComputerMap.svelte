@@ -12,7 +12,7 @@
 
 	let { view, tv = false }: { view: MapView; tv?: boolean } = $props();
 
-	const PAD = 6;
+	const PAD = 4;
 	let w = $state(0);
 	let h = $state(0);
 	const shape = $derived(shapeOf(view.road));
@@ -51,7 +51,7 @@
 			<path
 				d={line.between(0, 1)}
 				fill="none"
-				class="stroke-neon forced-colors:stroke-[CanvasText]"
+				class="stroke-muted/60 forced-colors:stroke-[CanvasText]"
 				stroke-width="3"
 				stroke-linejoin="round"
 				stroke-linecap="round"
