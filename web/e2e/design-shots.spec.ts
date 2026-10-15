@@ -1575,7 +1575,29 @@ surface(
 			.getByRole('dialog', { name: 'Session summary' })
 			.waitFor({ timeout: 30_000 });
 		await coach.page.waitForTimeout(1500);
-		await s.shot(coach, { name: 'closing-card-session' });
+		// probe:closing-card — the card's box against the window, and the dead
+		// band at the bottom of the recap-trace panel (G3: none over 24 px).
+		const extra = await coach.page.evaluate(() => {
+			const box = (el: Element | null) => {
+				const r = el?.getBoundingClientRect();
+				return r && { left: r.left, width: r.width, top: r.top };
+			};
+			const panel = document.querySelector('[data-testid=recap-trace]');
+			const last = panel?.lastElementChild?.getBoundingClientRect();
+			const pad = panel ? parseFloat(getComputedStyle(panel).paddingBottom) : 0;
+			return {
+				card: box(document.querySelector('[data-testid=session-card]')),
+				sidebarRight: document.querySelector('aside')?.getBoundingClientRect()
+					.right,
+				deadBand:
+					panel && last
+						? Math.round(
+								panel.getBoundingClientRect().bottom - last.bottom - pad,
+							)
+						: null,
+			};
+		});
+		await s.shot(coach, { name: 'closing-card-session', extra });
 	},
 	{ also: ['ride-watch', 'closing-card-session'] },
 );
