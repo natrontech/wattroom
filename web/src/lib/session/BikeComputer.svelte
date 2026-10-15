@@ -239,7 +239,10 @@
 	{/if}
 	{#if docked}
 		<!-- D15: the current page's name between ← and →, with position dots. -->
-		<div class="relative flex items-center gap-1">
+		<div
+			data-testid="computer-page-row"
+			class="relative flex items-center gap-1"
+		>
 			{#if turns}
 				<button
 					type="button"

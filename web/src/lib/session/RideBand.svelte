@@ -99,7 +99,7 @@
 						>{:else}{unit[0].toUpperCase() + unit.slice(1)}
 						<span class="num">{block.index} of {block.count}</span
 						>{/if}{#if (block.label || title).toLowerCase() !== eyebrow.toLowerCase()}
-						· {block.label || title}{/if}
+						{' '}· {block.label || title}{/if}
 				</p>
 				{#if block.band}
 					<!-- Prescribed, so neon: watt is only measured live data (#3090). -->

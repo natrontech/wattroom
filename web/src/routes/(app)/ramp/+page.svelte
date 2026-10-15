@@ -424,7 +424,7 @@
 	{/if}
 {/snippet}
 
-<main class="page">
+<main class="page flex min-h-full flex-col">
 	<h1 class="page-title">Ramp test</h1>
 	<!-- A riding surface has no sentences but its status line (G4). -->
 	{#if !session || session.state === 'idle' || done}
@@ -540,7 +540,7 @@
 		<!-- The bottom padding is the floating navigation button's, as
 		     RidingScreen has it (ux.md: the last item clears the chrome) — the
 		     graph's bottom-left corner sat under it at 375 px (#2161). -->
-		<RidingSurface class="mt-8 min-h-[32rem] pb-16 sm:pb-0">
+		<RidingSurface class="mt-8 min-h-[32rem] flex-1 pb-16 sm:pb-0">
 			{#snippet header()}
 				<RideBand
 					{block}
