@@ -147,6 +147,8 @@
 	view={channel.ridden}
 	watts={channel.you.watts}
 	ftp={channel.you.ftp}
+	crew={inRide.filter((r) => !r.you)}
+	sprintStartsAt={channel.sprint?.startsAtMs ?? null}
 />
 
 {#if channel.phase === 'lounge'}

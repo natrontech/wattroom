@@ -36,6 +36,8 @@ export function createNarrator(
 	};
 	return {
 		polite(text: string) {
+			// The climb and the moments queue both say "Summit": once is enough.
+			if (text === state.polite && now() - lastPoliteAt < POLITE_GAP_MS) return;
 			if (now() - lastPoliteAt >= POLITE_GAP_MS) speak(text);
 			else waiting = text;
 		},
@@ -79,6 +81,23 @@ export function momentLine(e: MomentEvent): string | null {
 		case 'pr':
 			return 'Personal record';
 	}
+}
+
+export const SPRINT_LINE = 'Sprint armed';
+
+/** Who came and went between two rosters (yours is not in them): "Anna joined", "Anna and Tom left". */
+export function crewLines(
+	before: ReadonlyMap<string, string>,
+	after: ReadonlyMap<string, string>,
+): string[] {
+	const names = (from: ReadonlyMap<string, string>, not: typeof from) =>
+		[...from].filter(([id]) => !not.has(id)).map(([, name]) => name);
+	const say = (who: string[], verb: string) =>
+		who.length ? [`${who.join(' and ')} ${verb}`] : [];
+	return [
+		...say(names(after, before), 'joined'),
+		...say(names(before, after), 'left'),
+	];
 }
 
 export const blockLine = (label: string) => `Block: ${label}`;

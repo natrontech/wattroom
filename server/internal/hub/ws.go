@@ -78,6 +78,10 @@ type client struct {
 	// never leaves them: this one is room-visible and arrives whether or not
 	// anything was ever paired. Read under rm.mu like the pair above it.
 	deviceKind string
+	// toldPairing: this socket has been sent its SensorPairing once. A screen
+	// that joins after another already holds the trainer claims nothing, so
+	// nothing changes, and it would never learn it (#3217).
+	toldPairing bool
 	// "Don't make me shift" on this screen (#3658): WattRoom holds the watts
 	// on a road, so a race rides the rider unranked. Read under rm.mu.
 	ergByRoad bool

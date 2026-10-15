@@ -1143,6 +1143,7 @@ export interface ClientMessage {
   roadside?: Roadside;
   drive?: Drive;
   remote?: RemoteCommand;
+  gear?: GearState;
 }
 /**
  * ServerTick is a voice channel's coalesced 1 Hz broadcast: every rider's
@@ -1242,6 +1243,10 @@ export interface ServerMessage {
    * A phone remote's press, to the rider's trainer-holding tab only (#3217).
    */
   remote?: RemoteCommand;
+  /**
+   * The holding tab's gear, to the rider's other screens only (#3217).
+   */
+  gear?: GearState;
   /**
    * This socket's own address, sent once on join and to nobody else (#2131).
    */
@@ -1587,6 +1592,20 @@ export interface RemoteCommand {
    */
   action: string;
 }
+/**
+ * GearState is the holding tab's answer to a phone remote (#3217): the gear it
+ * is in and whether the next press would hit an end. It travels the way
+ * RemoteCommand does, to the same rider's other screens only, so the phone's
+ * Easier and Harder can say where they are without a screen to look at.
+ */
+export interface GearState {
+  label: string;
+  atEnd: boolean;
+}
+/**
+ * MaxGearLabel bounds Label: it is rendered on another screen.
+ */
+export const MaxGearLabel = 16;
 
 //////////
 // source: rider.go

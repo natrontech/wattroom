@@ -114,3 +114,38 @@ func TestRemoteTalkStaysHeldAfterAnOrderlyRelease(t *testing.T) {
 		t.Errorf("a phone that released before dropping sent %+v, want nothing", got)
 	}
 }
+
+func TestGearStateReachesOnlyTheRidersOtherScreens(t *testing.T) {
+	r := newRemoteRig(t)
+	g := protocol.GearState{Label: "G3", AtEnd: true}
+	r.h.gearState(r.desktop, r.rm, r.desktop.rider, g)
+	if got := heard(r.phone); got == nil || got.Gear == nil || *got.Gear != g {
+		t.Fatalf("the phone heard %+v, want %+v", got, g)
+	}
+	for name, c := range map[string]*client{"holder": r.desktop, "other rider": r.you} {
+		if got := heard(c); got != nil {
+			t.Errorf("%s heard %+v, want nothing", name, got)
+		}
+	}
+}
+
+func TestGearStateFromANonHolderIsDropped(t *testing.T) {
+	r := newRemoteRig(t)
+	r.h.gearState(r.phone, r.rm, r.phone.rider, protocol.GearState{Label: "G9"})
+	if got := heard(r.desktop); got != nil {
+		t.Errorf("the holder heard %+v from a screen that does not hold the trainer", got)
+	}
+}
+
+func TestALateScreenIsToldWhatTheTrainerHolderHolds(t *testing.T) {
+	r := newRemoteRig(t)
+	late := &client{rider: protocol.Rider{ID: "jan"}, tab: "late", out: make(chan []byte, 8)}
+	r.rm.join(late)
+	r.h.handleMessage(late, r.rm, "test", late.rider, protocol.ClientMessage{Sensors: &protocol.SensorClaim{Tab: "late"}})
+	r.rm.mu.Lock()
+	got, queued := r.rm.pendingPairing[late]
+	r.rm.mu.Unlock()
+	if _, held := got.Elsewhere["trainer"]; !queued || !held {
+		t.Fatalf("the late screen was queued %+v (queued %v), want the trainer held elsewhere", got, queued)
+	}
+}

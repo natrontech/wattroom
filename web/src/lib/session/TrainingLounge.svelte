@@ -6,6 +6,7 @@
 	import HrShare from '$lib/channel/HrShare.svelte';
 	import SessionControls from '$lib/session/SessionControls.svelte';
 	import SessionRecapCard from '$lib/session/SessionRecapCard.svelte';
+	import RemoteOffer from '$lib/ride/RemoteOffer.svelte';
 	import TrainerOverview from '$lib/session/TrainerOverview.svelte';
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { useChannel } from '$lib/channel/context';
@@ -86,6 +87,7 @@
 					<SessionRecapCard recap={channelConnection.current.live.recap} />
 				</div>
 			{/if}
+			<RemoteOffer class="mt-5" />
 			<div class="mt-5">
 				<TrainerOverview />
 				<!-- The pairing screen says what it is transmitting (ADR-0008),
