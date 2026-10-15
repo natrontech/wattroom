@@ -234,7 +234,7 @@
 					{#each reached as point (point.label)}
 						<div>
 							<div
-								class="font-display text-4xl leading-none font-bold tabular-nums"
+								class="font-display text-5xl leading-none font-bold tabular-nums"
 							>
 								{point.watts}
 							</div>
