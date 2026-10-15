@@ -9,7 +9,10 @@ const SIZE = 0.5;
 const TEX = 128;
 
 export function makeZoneDigits(tag: Style['tag']) {
-	const geo = new THREE.PlaneGeometry(SIZE, SIZE).rotateX(-Math.PI / 2);
+	const geo = new THREE.PlaneGeometry(SIZE, SIZE)
+		.rotateX(-Math.PI / 2)
+		// Upright for the chase camera: the digit's top points ahead, down the road (+Z).
+		.rotateY(Math.PI);
 	const textures = new Map<number, THREE.Texture>();
 	const textureOf = (zone: number) => {
 		let t = textures.get(zone);

@@ -248,9 +248,9 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 			}),
 		);
 		ring.position.y = 0.16; // above a banked road, never half-buried
-		// Ahead of the front wheel at the ring's far end, where neither figure nor trail covers it (forward is -Z).
+		// Ahead of the front wheel at the ring's far end, where neither figure nor trail covers it (forward is +Z).
 		const digit = digits.mesh();
-		digit.position.set(0, 0.17, -(RING_ALONG - 0.2));
+		digit.position.set(0, 0.17, RING_ALONG - 0.2);
 		const shadow = new THREE.Mesh(
 			shadowGeo,
 			new THREE.MeshBasicMaterial({
