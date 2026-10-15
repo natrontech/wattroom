@@ -54,6 +54,7 @@
 		rememberWorkout,
 	} from '$lib/ride/last-ride';
 	import { onRoute } from '$lib/road/compile';
+	import { legsOf, nextLeg } from '$lib/road/leg';
 	import { formatKm } from '$lib/format';
 	import { doorsFor } from '$lib/crew-lounge';
 	import { crewLive } from '$lib/nav/crew-live.svelte';
@@ -66,12 +67,19 @@
 	// where on it to start: a recovered ride's stop, or the route page's chip.
 	const roadId = roadsEnabled() ? page.url.searchParams.get('road') : null;
 	const roadFrom = Math.max(0, Number(page.url.searchParams.get('from')) || 0);
+	// The road's own workout, leg k of it (#3601), from the route page's Ride
+	// its workout: compiled at this rider's FTP and weight once the road is in.
+	const leg = roadId
+		? Math.max(0, Math.floor(Number(page.url.searchParams.get('leg'))) || 0)
+		: 0;
 	// A planned session's road, ridden first (#3621): the crew's cut of it.
 	const planRoad = (() => {
 		const crew = page.url.searchParams.get('crew');
 		const id = page.url.searchParams.get('plan');
 		return roadsEnabled() && crew && id ? { crew, id } : null;
 	})();
+	const profile = createProfileStore();
+	const ftp = $derived(profile.current.ftp);
 	// What this device rode alone last (#3671): the Ride card opens on it.
 	const remembered = roadsEnabled() ? lastRoad() : undefined;
 	const rememberedWorkout = lastWorkout();
@@ -101,17 +109,22 @@
 	// that road (#3594); road= alone opens on a free ride on it, the one setup
 	// a road ride has (#3855); otherwise a remembered road opens on a free ride.
 	let kind = $state<RideKind>(
-		!requested && (roadId || remembered) ? 'free' : 'workout',
+		!requested && !leg && (roadId || remembered) ? 'free' : 'workout',
 	);
 	let road = $state.raw<RideableRoute | null>(null);
 	let from = $state(roadFrom);
 	// Any workout on one of your own roads (#3594), from Terrain Match's
 	// start or km 0. Blocks end by the clock; the dot rides the road.
 	const ridesRoute = $derived(kind === 'workout' && !!road);
+	const legs = $derived(
+		leg && road ? legsOf(road, ftp, profile.current.kg) : [],
+	);
 	const workout = $derived(
-		ridesRoute && road
-			? withProfile(onRoute(selected.workout, road, from), road.road)
-			: selected.workout,
+		legs.length > 0
+			? legs[Math.min(leg, legs.length) - 1]
+			: ridesRoute && road
+				? withProfile(onRoute(selected.workout, road, from), road.road)
+				: selected.workout,
 	);
 	// A free ride on a road, started from the card with the paired trainer.
 	let freeRide = $state.raw<{
@@ -144,11 +157,9 @@
 	const doors = $derived(!alone && doorsFor(crewLive));
 
 	// FTP comes from the profile, set by hand or measured by a ramp test (#14).
-	const profile = createProfileStore();
 	const history = createHistoryStore(() => account.me?.id);
 	// The profile is FTP's only home — the field below writes through to it, so a
 	// rider who corrects the number here does not find the old one on /settings/profile.
-	const ftp = $derived(profile.current.ftp);
 	let recorded = false;
 	// Set once the page is gone: a save that answers after that has no
 	// summary to land on, so its outcome becomes a toast (#1544).
@@ -611,9 +622,11 @@
 				{remembered}
 				lastWorkout={lastName}
 				{workout}
-				summary={ridesRoute && road
-					? `${selected.summary} On ${road.name}, from km ${formatKm(from)}.`
-					: selected.summary}
+				summary={legs.length > 0
+					? `ERG by the road, at your FTP: leg ${Math.min(leg, legs.length)} of ${legs.length}.`
+					: ridesRoute && road
+						? `${selected.summary} On ${road.name}, from km ${formatKm(from)}.`
+						: selected.summary}
 				{ftp}
 				{solo}
 				{replayName}
@@ -729,6 +742,18 @@
 							class="btn btn-secondary"
 							>{carding ? 'Drawing…' : 'Ride card'}</button
 						>
+					{/if}
+					{#if road && legs.length > 0}
+						{@const next = nextLeg(
+							road.id,
+							Math.min(leg, legs.length),
+							legs.length,
+						)}
+						{#if next}<a
+								href={next.href}
+								data-sveltekit-reload
+								class="btn btn-secondary">{next.label}</a
+							>{/if}
 					{/if}
 					<a href="/workouts" class="btn btn-secondary">Pick another workout</a>
 					<a href="/home" class="btn btn-primary">Done</a>
