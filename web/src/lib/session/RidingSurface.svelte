@@ -45,6 +45,7 @@
 		stage = false,
 		clean = false,
 		onshow,
+		cleanLine,
 		class: extra = '',
 	}: {
 		header: Snippet;
@@ -71,6 +72,8 @@
 		clean?: boolean;
 		/** Clean view's way back: one chip, so a hidden control keeps a hint (ADR-0062). */
 		onshow?: () => void;
+		/** Slot 1's road line, which Clean view keeps beside the chip. */
+		cleanLine?: string;
 		class?: string;
 	} = $props();
 
@@ -109,12 +112,17 @@
 			</div>
 		{/if}
 		{#if clean}
-			<button
-				data-testid="clean-exit"
-				class="ride-panel ride-word text-ink absolute min-h-11 px-4 font-semibold"
+			<div
+				class="ride-panel ride-word absolute flex items-center gap-4 px-4"
 				style="left:{INSET_PX}px;top:{INSET_PX}px"
-				onclick={onshow}>Show panels · H</button
 			>
+				<button
+					data-testid="clean-exit"
+					class="text-ink min-h-11 font-semibold"
+					onclick={onshow}>Show panels · H</button
+				>
+				{#if cleanLine}<span class="num text-muted">{cleanLine}</span>{/if}
+			</div>
 		{:else}
 			<div
 				data-dock="header"

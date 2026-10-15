@@ -12,12 +12,11 @@
 		['M', 'Map page'],
 		['O', 'Snapshot'],
 		['S', 'Say the ride'],
-		['Space', 'Push to talk'],
 		['?', 'This sheet'],
 	];
 </script>
 
-<Modal label="Ride keys" {onclose} class="max-w-2xl">
+<Modal label="Ride keys" {onclose} class="w-fit! max-w-full">
 	<h2 class="ride-label">Ride keys</h2>
 	<dl
 		data-testid="key-sheet"
@@ -33,7 +32,7 @@
 			<dd class="text-2xl">{does}</dd>
 		{/each}
 	</dl>
-	<button class="btn btn-secondary btn-ride mt-4 w-full" onclick={onclose}
+	<button class="btn btn-secondary btn-ride mt-4" onclick={onclose}
 		>Close</button
 	>
 </Modal>

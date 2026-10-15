@@ -23,6 +23,7 @@
 		bindRideShift,
 		type CameraPreset,
 	} from '$lib/ride/keys';
+	import { roadLine } from '$lib/ride/road-readout';
 	import { cleanView } from '$lib/ride/clean-view.svelte';
 	import KeySheet from '$lib/ride/KeySheet.svelte';
 	import { board } from '$lib/board/clips.svelte';
@@ -329,6 +330,7 @@
 	<RidingSurface
 		clean={inWorld && cleanView.on && !signalLost && !noCrashSafety}
 		onshow={cleanView.toggle}
+		cleanLine={block?.road ? roadLine(block.road) : undefined}
 		class="flex-1 {inWorld ? '-mx-4 -my-5 sm:-mx-6' : 'pb-16 sm:pb-0'}"
 		world={inWorld ? road : undefined}
 		moment={inWorld && session.sprint ? moment : undefined}
