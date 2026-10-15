@@ -85,11 +85,11 @@
 		{#if controls}<div class="shrink-0">{@render controls()}</div>{/if}
 	</div>
 	{#if block}
-		<div class="flex items-center gap-6">
+		<div class="flex items-center {wide ? 'gap-4' : 'gap-6'}">
 			<p
 				data-testid="block-left"
 				aria-label="left in {unit}"
-				class="num min-w-[4.5ch] shrink-0 text-7xl leading-none font-bold"
+				class="num min-w-[4ch] shrink-0 text-7xl leading-none font-bold"
 			>
 				{formatClock(block.secondsLeft)}
 			</p>

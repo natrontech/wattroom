@@ -2,6 +2,7 @@
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import CountdownScreen from '$lib/session/CountdownScreen.svelte';
 	import { rideContext } from '$lib/session/ride-context';
+	import BiasTrim from '$lib/session/BiasTrim.svelte';
 	import RideBand from '$lib/session/RideBand.svelte';
 	import RidingSurface from '$lib/session/RidingSurface.svelte';
 	import BikeComputer from '$lib/session/BikeComputer.svelte';
@@ -581,6 +582,13 @@
 					target={session!.target > 0 ? session!.target : undefined}
 					stats={session!.live}
 				/>
+				<div class="px-4 pb-3">
+					<BiasTrim
+						ride
+						bias={session!.bias}
+						onBias={(step) => session!.nudgeBias(step)}
+					/>
+				</div>
 				{#if flagNotice}
 					<!-- Consent in plain words, at the moment of the tap, never blocking. -->
 					<p class="text-muted px-4 pb-3 text-xs">{FLAG_SAID.after}</p>
