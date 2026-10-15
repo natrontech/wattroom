@@ -234,7 +234,7 @@
 							>
 								{point.watts}
 							</div>
-							<div class="eyebrow mt-1">
+							<div class="eyebrow mt-1 whitespace-nowrap">
 								{point.label}
 							</div>
 						</div>
@@ -289,7 +289,7 @@
 			{#if together.length > 1}
 				<!-- The moment the session ends is when who was there matters
 				     (#1559): the card used to report one person's numbers. -->
-				<section class="panel panel-lg">
+				<section class="panel panel-lg sm:col-span-2">
 					<h2 class="eyebrow">who rode</h2>
 					<ul class="mt-3 grid gap-2">
 						{#each together as rider (rider.id)}

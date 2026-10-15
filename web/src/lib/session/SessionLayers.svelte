@@ -324,7 +324,7 @@
 		role="dialog"
 		aria-label="Session summary"
 		data-testid="session-card"
-		class="bg-surface absolute inset-0 z-40 overflow-y-auto p-4"
+		class="bg-surface page absolute inset-0 z-40 overflow-y-auto"
 	>
 		<SessionSummary
 			title={card.workoutName || placeName}
