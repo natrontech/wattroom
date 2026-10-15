@@ -18,6 +18,7 @@
 	import { createRideFlags } from '$lib/ride/flags.svelte';
 	import { createFreeRide, freeRideLabel } from '$lib/ride/free-ride.svelte';
 	import FreeRiding from '$lib/ride/FreeRiding.svelte';
+	import FreeRideTv from '$lib/ride/FreeRideTv.svelte';
 	import { guardLeaving } from '$lib/ride/leave-guard.svelte';
 	import { createGhostSplit } from '$lib/ride/ghost-split.svelte';
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
@@ -32,9 +33,7 @@
 	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
 	import SensorOverview from '$lib/session/SensorOverview.svelte';
 	import { heldTrainer } from '$lib/session/sensor-status';
-	import TvOverlay from '$lib/session/TvOverlay.svelte';
 	import { sensors } from '$lib/sensors.svelte';
-	import { skylineOf } from '$lib/workout/road-workout';
 	import { SIGNAL_LOST_MS } from '$lib/workout/ride-state';
 
 	let {
@@ -218,29 +217,11 @@
 		worldClass="-mx-4 -my-5 sm:-mx-6"
 	/>
 	{#if tv}
-		<!-- The TV at three metres (#1632): a free ride has no block, so the
-		     frame reads the road ahead, your numbers and the clock. -->
-		<TvOverlay
-			stats={free.live}
-			skyline={free.road
-				? skylineOf(
-						{
-							road: free.road.profile,
-							along: free.road.m,
-							mps: free.road.virtualMps,
-							startM: 0,
-						},
-						[],
-						profile.current.ftp,
-					)
-				: null}
-			riders={[tvRider]}
-			segments={[]}
-			total={0}
-			elapsed={free.seconds}
-			block={null}
+		<FreeRideTv
+			{free}
+			rider={tvRider}
+			ftp={profile.current.ftp}
 			placeName={freeRideLabel(route)}
-			live
 			onExit={() => (tv = false)}
 		/>
 	{/if}
