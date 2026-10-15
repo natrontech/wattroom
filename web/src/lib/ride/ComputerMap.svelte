@@ -6,7 +6,7 @@
 	 * your place once, on the Skyline (TARGETS G2). No north, no names, no
 	 * coordinates: the shape a crew is sent (ADR-0063).
 	 */
-	import { shapeOf, type MapView } from '$lib/ride/map-view';
+	import { bestTurn, shapeOf, type MapView } from '$lib/ride/map-view';
 	import { planPoints, walk } from '$lib/road/draw';
 	import { GRADE_STROKE, gradeStep } from '$lib/road/skyline';
 
@@ -16,21 +16,13 @@
 	let w = $state(0);
 	let h = $state(0);
 	const shape = $derived(shapeOf(view.road));
-	// The drawing fills the panel's height (G3): the aspect-kept fit leaves
-	// bands above and below a near-straight road, so the height is stretched
-	// to the panel's; a turn only reads sharper, a straight road stays a line.
+	// The drawing fills the panel (G3): the shape has no north, so it is
+	// turned to the angle where its aspect-kept fit is largest. A straight
+	// road runs corner to corner rather than as a hairline with bands round it.
 	const line = $derived.by(() => {
 		if (w <= 0 || h <= 0 || shape.x.length < 2) return null;
-		const pts = planPoints(shape.x, shape.z, w, h, PAD);
-		const ys = pts.map((p) => p[1]);
-		const [lo, hi] = [Math.min(...ys), Math.max(...ys)];
-		const k = hi - lo > 1 ? (h - 2 * PAD) / (hi - lo) : 1;
-		return walk(
-			pts.map(([px, py]): [number, number] => [
-				px,
-				hi - lo > 1 ? PAD + (py - lo) * k : py,
-			]),
-		);
+		const best = bestTurn(shape.x, shape.z, w, h, PAD);
+		return walk(planPoints(best.x, best.z, w, h, PAD));
 	});
 	const length = $derived(view.road.length || 1);
 	const climbs = $derived(

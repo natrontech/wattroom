@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { render } from 'svelte/server';
 import type { Road } from '$lib/road/road';
 import ComputerMap from './ComputerMap.svelte';
-import { mapView, shapeOf } from './map-view';
+import { bestTurn, mapView, shapeOf } from './map-view';
 
 /** A road that climbs 8 % for 1.5 km and bends right by 90° at the top. */
 const heights = [
@@ -40,5 +40,12 @@ describe('the MAP page as the crew tier draws it (#3645, ADR-0063)', () => {
 		// Sized by the browser: the server render holds the panel, not a shape.
 		expect(body).toContain('data-testid="computer-map"');
 		expect(body).not.toMatch(/-?\d+\.\d{4,}/);
+	});
+
+	it('turns a straight road corner to corner so it fills the panel', () => {
+		const x = [0, 500, 1000];
+		const t = bestTurn(x, [0, 0, 0], 400, 128, 4);
+		const span = Math.max(...t.z) - Math.min(...t.z);
+		expect(span).toBeGreaterThan(100);
 	});
 });
