@@ -1709,7 +1709,22 @@ surface(
 		// ux.md phone width: the same card at 375 × 812.
 		await coach.page.setViewportSize({ width: 375, height: 812 });
 		await coach.page.waitForTimeout(800);
-		await s.shot(coach, { name: 'closing-card-session-phone', full: true });
+		// probe:phoneOrder — [multi:reduced-motion] item 13: the card's blocks top to bottom.
+		const phoneOrder = await coach.page.evaluate(() =>
+			[
+				...document.querySelectorAll(
+					'[data-testid=closing-card] h1, [data-testid=closing-card] h2, [data-testid=closing-card] [data-testid=recap-tiles]',
+				),
+			].map((e) => ({
+				block: e.getAttribute('data-testid') ?? e.textContent?.trim(),
+				top: Math.round(e.getBoundingClientRect().top),
+			})),
+		);
+		await s.shot(coach, {
+			name: 'closing-card-session-phone',
+			full: true,
+			extra: { phoneOrder },
+		});
 	},
 	{ also: ['ride-watch', 'closing-card-session'] },
 );
