@@ -424,7 +424,14 @@
 	{/if}
 {/snippet}
 
-<main class="page flex min-h-full flex-col">
+<main
+	class="page flex min-h-full flex-col {session &&
+	!done &&
+	session.state !== 'idle' &&
+	session.state !== 'countdown'
+		? 'sm:px-6'
+		: ''}"
+>
 	<h1 class="page-title">Ramp test</h1>
 	<!-- A riding surface has no sentences but its status line (G4). -->
 	{#if !session || session.state === 'idle' || done}

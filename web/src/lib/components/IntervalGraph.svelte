@@ -72,7 +72,8 @@
 	} = $props();
 
 	const W = VIEW.width;
-	const H = VIEW.height;
+	// A riding surface's plot fills its panel: no 8-unit margin under the baseline.
+	const H = $derived(ride ? VIEW.base + 1 : VIEW.height);
 	const BASE = VIEW.base;
 
 	interface Drag {
