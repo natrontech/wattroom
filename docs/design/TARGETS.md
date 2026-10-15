@@ -397,9 +397,9 @@ Capture: world off, `/ride`, with and without a remembered road, both schemes; `
 9. Solo games one line in the card. [ride-preride]
 10. `/ride?road=<id>` opens this card on Free ride with that road chosen, its `from` the selected chip, never a setup of its own. [#3855] [multi:ride-free-road-setup]
 
-#### ride-figure-card (a desk surface)
+#### ride-figure-card, phone-ride-figure-card (a desk surface)
 
-Capture: a rider who has not answered the card (`?as=Unasked`), `/ride?road=<hairpin>` → Ride simulated → Start the ride, both schemes. Target: none drawn, canon is the bar. Canon: ADR-0073; ADR-0048; ADR-0069; docs/spec/garage.md, “The figure”; ux.md.
+Capture: a rider who has not answered the card (`?as=Unasked`), `/ride?road=<hairpin>` → Ride simulated → Start the ride, both schemes; `phone-ride-figure-card` the same at 375 px. Target: none drawn, canon is the bar. Canon: ADR-0073; ADR-0048; ADR-0069; docs/spec/garage.md, “The figure”; ux.md.
 
 1. One card, titled “Your rider”, with a still preview of the figure and three controls: Build (slim, athletic, strong), Height (1.50 to 2.05 m, the value beside its label) and Skin tone (the 8 swatches). [#3342]
 2. “Skip” and “Save” sit side by side, the same size, both ≥ 44 px tall. [#3342] [probe:figure-card]

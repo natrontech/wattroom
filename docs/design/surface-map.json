@@ -197,7 +197,7 @@
 			"web/src/lib/ride/FigureCard.svelte",
 			"web/src/lib/ride/figure-choice.ts"
 		],
-		"surfaces": ["ride-figure-card"]
+		"surfaces": ["ride-figure-card", "phone-ride-figure-card"]
 	},
 	{
 		"files": [

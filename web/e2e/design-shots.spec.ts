@@ -451,43 +451,49 @@ surface('ride-preride', async (s) => {
 	await page(s, fresh, '/ride?alone', { name: 'ride-preride-no-road' });
 });
 
-surface('ride-figure-card', async (s) => {
-	// A rider who has not answered the card meets it at Start on a road
-	// (#3342); the card measures its own targets for the probe.
-	const o = await s.open(DESK, { as: 'Unasked', world: false });
-	const road = await fixtureRoad(o.page, 'hairpin');
-	await o.page.goto(`/ride?road=${road}`);
-	await o.page
-		.getByRole('button', { name: 'Ride simulated' })
-		.first()
-		.click({ timeout: 15_000 });
-	await o.page.getByRole('button', { name: 'Start the ride' }).click();
-	const card = o.page.getByTestId('figure-card');
-	await card.waitFor();
-	const box = (name: string) =>
-		card.getByRole('button', { name, exact: true }).boundingBox();
-	const skip = await box('Skip');
-	const save = await box('Save');
-	const build = await box('slim');
-	const swatch = await card
-		.getByRole('button', { name: /^Skin tone 1 of/ })
-		.boundingBox();
-	await s.shot(o, {
-		full: true,
-		extra: {
-			'figure-card': {
-				skip,
-				save,
-				build,
-				swatch,
-				neutralFill: await card
-					.getByTestId('figure-preview')
-					.locator('circle')
-					.evaluate((c) => getComputedStyle(c).fill),
-			},
-		},
-	});
-});
+surface(
+	'ride-figure-card',
+	async (s) => {
+		// A rider who has not answered the card meets it at Start on a road
+		// (#3342); the card measures its own targets for the probe.
+		for (const [device, name] of variants([
+			[DESK, 'ride-figure-card'],
+			[RIDING_PHONE, 'phone-ride-figure-card'],
+		] as const)) {
+			const o = await s.open(device, { as: 'Unasked', world: false });
+			const road = await fixtureRoad(o.page, 'hairpin');
+			await o.page.goto(`/ride?road=${road}`);
+			await o.page
+				.getByRole('button', { name: 'Ride simulated' })
+				.first()
+				.click({ timeout: 15_000 });
+			await o.page.getByRole('button', { name: 'Start the ride' }).click();
+			const card = o.page.getByTestId('figure-card');
+			await card.waitFor();
+			const box = (label: string) =>
+				card.getByRole('button', { name: label, exact: true }).boundingBox();
+			await s.shot(o, {
+				name,
+				full: true,
+				extra: {
+					'figure-card': {
+						skip: await box('Skip'),
+						save: await box('Save'),
+						build: await box('slim'),
+						swatch: await card
+							.getByRole('button', { name: /^Skin tone 1 of/ })
+							.boundingBox(),
+						neutralFill: await card
+							.getByTestId('figure-preview')
+							.locator('circle')
+							.evaluate((c) => getComputedStyle(c).fill),
+					},
+				},
+			});
+		}
+	},
+	{ also: ['phone-ride-figure-card'] },
+);
 
 surface('ride-roadpick', async (s) => {
 	// The road picker, with both roads seeded, opened from /ride's
