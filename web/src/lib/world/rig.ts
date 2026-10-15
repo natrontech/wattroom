@@ -9,6 +9,7 @@ import { type Route } from '$lib/road/route';
 import { at, leftOf } from '$lib/road/along';
 import type { SimRider } from './sim';
 import type { World } from './world';
+import { makeReveal, REVEAL, type RevealView } from './reveal';
 
 /** chase, heli and steady follow you; side stands off your right shoulder, a held moment's view of the figure and bike. */
 export type Follow = 'chase' | 'heli' | 'side' | 'steady';
@@ -45,6 +46,14 @@ export function makeRig(route: Route, world: World) {
 	const look = new THREE.Vector3();
 	let started = false;
 	const ground = (x: number, z: number) => yOf(route, world.heightAt(x, z));
+	const climb = world.markers.find(
+		(m) => m.kind === 'summit' && m.d > 0 && m.d <= REVEAL.reach,
+	);
+	const reveal = makeReveal((d) => {
+		const p = along(route, d);
+		return new THREE.Vector3(p.x, yOf(route, p.ele), p.z);
+	}, climb?.d ?? null);
+	const spin = new THREE.Quaternion();
 
 	return {
 		// Snap on the next update instead of easing in from wherever it was.
@@ -57,7 +66,21 @@ export function makeRig(route: Route, world: World) {
 			rider: SimRider,
 			you: THREE.Vector3,
 			real: number,
+			countIn: RevealView | null = null,
 		) {
+			if (countIn && mode !== 'side') {
+				reveal(countIn, eye, spin, gaze);
+				eye.y = Math.max(eye.y, ground(eye.x, eye.z) + EYE_FLOOR);
+				camera.position.copy(eye);
+				camera.quaternion.copy(spin);
+				if (camera.fov !== REVEAL.fov) {
+					camera.fov = REVEAL.fov;
+					camera.updateProjectionMatrix();
+				}
+				// The ride's first frames ease on from where the shot stood.
+				started = true;
+				return;
+			}
 			if (mode === 'side') {
 				const p = along(route, rider.d);
 				const { lx, lz } = leftOf(p.heading);

@@ -62,6 +62,14 @@ particles), Light (the lowest 3D tier), Flat (the Skyline). Per device, stored
 in `wattroom.world.mode.v1`; reduced motion opens on Flat, with one tap to
 Steady.
 
+**Count-in reveal** (#3087, `world/reveal.ts`): cue the count-in's first frame,
+hit time the start of its last **3 s**. The eye opens **200 m** back and
+**100 m** up looking at the first climb's top (**3 km** ahead with no climb
+within **8 km**), and descends to a pose 16 m back of the START arch, capped at
+**60 m/s** and **20°/s**. The last 3 s hold still with the digit on the arch's
+banner. A late opener lands mid-path. Steady and reduced motion: that held
+pose for the whole count-in.
+
 **Steady** (default; `world/rig.ts`): heli camera **260 m** back and **190 m**
 up, fixed FOV **45°**, cuts instead of moves, no particles or confetti, lean
 ×**0.5**, vegetation sway ×**0.3**. Crank and wheels keep turning, because they

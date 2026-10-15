@@ -18,6 +18,9 @@ export type RideState =
  */
 export const COUNTDOWN_SECONDS = 3;
 
+/** A group session's count-in (docs/SPEC.md's session lifecycle): the server's `countdownSeconds`. */
+export const SESSION_COUNTDOWN_SECONDS = 10;
+
 /** Past this without a sample the dashboard, and the HUD, say so (#37). */
 export const SIGNAL_LOST_MS = 3000;
 
