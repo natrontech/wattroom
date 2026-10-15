@@ -36,135 +36,135 @@
 	}
 </script>
 
-<section
-	class="panel panel-xl mx-auto w-full max-w-xl"
-	data-testid="figure-card"
->
-	<h2 class="font-display text-lg font-bold">Your rider</h2>
-	<p class="text-muted mt-2 text-sm">
-		The figure other riders see on the road. Pick a build, height and skin tone,
-		or skip and ride the default.
-	</p>
+<div class="flex w-full flex-col gap-6">
+	<h1 class="page-title">Ride</h1>
+	<section class="panel panel-xl w-full" data-testid="figure-card">
+		<h2 class="font-display text-lg font-bold">Your rider</h2>
+		<p class="text-muted mt-2 text-sm">
+			The figure other riders see on the road. Pick a build, height and skin
+			tone, or skip and ride the default.
+		</p>
 
-	<div class="mt-4 flex flex-col items-center gap-4 sm:flex-row sm:items-end">
-		<svg
-			viewBox="0 0 100 220"
-			class="h-56 w-28 shrink-0"
-			role="img"
-			aria-label="Preview, {build}, {metres(heightCm)}"
-		>
-			<g
-				transform="translate(50 220) scale({scale}) translate(-50 -220)"
-				data-testid="figure-preview"
+		<div class="mt-4 flex flex-col items-center gap-4 sm:flex-row sm:items-end">
+			<svg
+				viewBox="0 0 100 220"
+				class="h-56 w-28 shrink-0"
+				role="img"
+				aria-label="Preview, {build}, {metres(heightCm)}"
 			>
-				<circle cx="50" cy="24" r="14" fill={tone} />
-				<rect
-					x={50 - 17 * w}
-					y="42"
-					width={34 * w}
-					height="66"
-					rx="12"
-					class="fill-neon"
-				/>
-				<rect
-					x={50 - 17 * w - 9}
-					y="44"
-					width="9"
-					height="56"
-					rx="4.5"
-					fill={tone}
-				/>
-				<rect
-					x={50 + 17 * w}
-					y="44"
-					width="9"
-					height="56"
-					rx="4.5"
-					fill={tone}
-				/>
-				<rect
-					x={50 - 15 * w}
-					y="104"
-					width={13 * w}
-					height="116"
-					rx="6"
-					fill={tone}
-				/>
-				<rect
-					x={50 + 2 * w}
-					y="104"
-					width={13 * w}
-					height="116"
-					rx="6"
-					fill={tone}
-				/>
-			</g>
-		</svg>
-
-		<div class="flex w-full flex-col gap-4">
-			<fieldset>
-				<legend class="text-muted mb-2 text-xs">Build</legend>
-				<div class="grid grid-cols-3 gap-2">
-					{#each BUILDS as b (b)}
-						<button
-							type="button"
-							aria-pressed={build === b}
-							onclick={() => (build = b)}
-							class="btn btn-lg capitalize {build === b
-								? 'btn-primary'
-								: 'btn-secondary'}">{b}</button
-						>
-					{/each}
-				</div>
-			</fieldset>
-
-			<label class="block">
-				<span class="text-muted mb-2 flex justify-between text-xs"
-					>Height <span class="text-ink">{metres(heightCm)}</span></span
+				<g
+					transform="translate(50 220) scale({scale}) translate(-50 -220)"
+					data-testid="figure-preview"
 				>
-				<input
-					type="range"
-					min={MinFigureHeightCm}
-					max={MaxFigureHeightCm}
-					step="1"
-					bind:value={heightCm}
-					class="h-11 w-full"
-				/>
-			</label>
+					<circle cx="50" cy="24" r="14" fill={tone} />
+					<rect
+						x={50 - 17 * w}
+						y="42"
+						width={34 * w}
+						height="66"
+						rx="12"
+						class="fill-neon"
+					/>
+					<rect
+						x={50 - 17 * w - 9}
+						y="44"
+						width="9"
+						height="56"
+						rx="4.5"
+						fill={tone}
+					/>
+					<rect
+						x={50 + 17 * w}
+						y="44"
+						width="9"
+						height="56"
+						rx="4.5"
+						fill={tone}
+					/>
+					<rect
+						x={50 - 15 * w}
+						y="104"
+						width={13 * w}
+						height="116"
+						rx="6"
+						fill={tone}
+					/>
+					<rect
+						x={50 + 2 * w}
+						y="104"
+						width={13 * w}
+						height="116"
+						rx="6"
+						fill={tone}
+					/>
+				</g>
+			</svg>
 
-			<fieldset>
-				<legend class="text-muted mb-2 text-xs">Skin tone</legend>
-				<div class="grid grid-cols-8 gap-2">
-					{#each SKIN_VARS as colour, i (i)}
-						<button
-							type="button"
-							aria-pressed={skin === i}
-							aria-label="Skin tone {i + 1} of {SKIN_VARS.length}"
-							onclick={() => (skin = i)}
-							style:background={colour}
-							class="border-muted/30 aspect-square min-h-6 rounded-full border {skin ===
-							i
-								? 'ring-neon ring-2 ring-offset-2'
-								: ''}"
-						></button>
-					{/each}
-				</div>
-			</fieldset>
+			<div class="flex w-full flex-col gap-4">
+				<fieldset>
+					<legend class="text-muted mb-2 text-xs">Build</legend>
+					<div class="grid grid-cols-3 gap-2">
+						{#each BUILDS as b (b)}
+							<button
+								type="button"
+								aria-pressed={build === b}
+								onclick={() => (build = b)}
+								class="btn btn-lg capitalize {build === b
+									? 'btn-primary'
+									: 'btn-secondary'}">{b}</button
+							>
+						{/each}
+					</div>
+				</fieldset>
+
+				<label class="block">
+					<span class="text-muted mb-2 flex justify-between text-xs"
+						>Height <span class="text-ink">{metres(heightCm)}</span></span
+					>
+					<input
+						type="range"
+						min={MinFigureHeightCm}
+						max={MaxFigureHeightCm}
+						step="1"
+						bind:value={heightCm}
+						class="h-11 w-full"
+					/>
+				</label>
+
+				<fieldset>
+					<legend class="text-muted mb-2 text-xs">Skin tone</legend>
+					<div class="grid grid-cols-8 gap-2">
+						{#each SKIN_VARS as colour, i (i)}
+							<button
+								type="button"
+								aria-pressed={skin === i}
+								aria-label="Skin tone {i + 1} of {SKIN_VARS.length}"
+								onclick={() => (skin = i)}
+								style:background={colour}
+								class="border-muted/30 aspect-square min-h-6 rounded-full border {skin ===
+								i
+									? 'ring-neon ring-2 ring-offset-2'
+									: ''}"
+							></button>
+						{/each}
+					</div>
+				</fieldset>
+			</div>
 		</div>
-	</div>
 
-	<div class="mt-5 grid grid-cols-2 gap-2">
-		<button
-			type="button"
-			disabled={busy}
-			onclick={() => answer({})}
-			class="btn btn-secondary btn-lg">Skip</button
-		>
-		<button
-			type="button"
-			disabled={busy}
-			onclick={() => answer({ build, heightCm, skin })}
-			class="btn btn-primary btn-lg">Save</button
-		>
-	</div>
-</section>
+		<div class="mt-5 grid grid-cols-2 gap-2">
+			<button
+				type="button"
+				disabled={busy}
+				onclick={() => answer({})}
+				class="btn btn-secondary btn-lg">Skip</button
+			>
+			<button
+				type="button"
+				disabled={busy}
+				onclick={() => answer({ build, heightCm, skin })}
+				class="btn btn-primary btn-lg">Save</button
+			>
+		</div>
+	</section>
+</div>

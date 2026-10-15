@@ -480,6 +480,7 @@ surface(
 						skip: await box('Skip'),
 						save: await box('Save'),
 						build: await box('slim'),
+						height: await card.getByRole('slider').boundingBox(),
 						swatch: await card
 							.getByRole('button', { name: /^Skin tone 1 of/ })
 							.boundingBox(),
