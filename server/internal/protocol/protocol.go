@@ -19,6 +19,7 @@ type ClientMessage struct {
 	Drive    *Drive          `json:"drive,omitempty"`
 	Remote   *RemoteCommand  `json:"remote,omitempty"`
 	Gear     *GearState      `json:"gear,omitempty"`
+	Pause    *PauseState     `json:"pause,omitempty"`
 }
 
 // ServerTick is a voice channel's coalesced 1 Hz broadcast: every rider's
@@ -92,6 +93,8 @@ type ServerMessage struct {
 	Remote *RemoteCommand `json:"remote,omitempty"`
 	// The holding tab's gear, to the rider's other screens only (#3217).
 	Gear *GearState `json:"gear,omitempty"`
+	// The holding tab's ride pause, to the rider's other screens only (#3217).
+	Pause *PauseState `json:"pause,omitempty"`
 	// This socket's own address, sent once on join and to nobody else (#2131).
 	Connection *OwnConnection `json:"connection,omitempty"`
 }

@@ -326,6 +326,10 @@ function connect(address: PlaceAddress): Connection {
 				release: (source) => shift.release(source),
 			},
 			(held) => av.setPtt(held),
+			{
+				pause: () => ownRide.session?.pause(),
+				resume: () => ownRide.session?.resume(),
+			},
 		);
 		// The holder answers with its gear on a change and after each press, so
 		// a phone that joined late still learns where it is (#3217).
@@ -337,10 +341,23 @@ function connect(address: PlaceAddress): Connection {
 			});
 		};
 		$effect(sayGear);
+		// Pause is a solo ride's alone: a session is never paused by one rider
+		// (#3217), so the phone is told there is nothing to pause.
+		const sayPause = () => {
+			const solo = ownRide.session;
+			live.sendPause({
+				pausable: !!solo && solo.state !== 'done' && solo.state !== 'countdown',
+				paused: !!solo?.held,
+			});
+		};
+		$effect(sayPause);
 		$effect(() => {
 			const off = live.onRemote((cmd) => {
 				remote.run(cmd);
-				if (cmd.action !== 'talk-keepalive') sayGear();
+				if (cmd.action !== 'talk-keepalive') {
+					sayGear();
+					sayPause();
+				}
 			});
 			return () => {
 				off();
