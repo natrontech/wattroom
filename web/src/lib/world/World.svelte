@@ -222,8 +222,8 @@
 						<dd class="num m-0 text-lg">{hud.kmh.toFixed(1)}</dd>
 					</div>
 					<div>
-						<dt class="text-muted text-xs">road %</dt>
-						<dd class="num m-0 text-lg">{hud.grade.toFixed(1)}</dd>
+						<dt class="text-muted text-xs">road</dt>
+						<dd class="num m-0 text-lg">{hud.grade.toFixed(1)} %</dd>
 					</div>
 					<div>
 						<dt class="text-muted text-xs">km</dt>

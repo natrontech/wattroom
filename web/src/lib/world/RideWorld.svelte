@@ -46,6 +46,7 @@
 		progress = null,
 		paused = false,
 		look = 'full',
+		camera,
 		onfail,
 		onflat,
 	}: {
@@ -67,6 +68,8 @@
 		paused?: boolean;
 		/** The World control's choice (#3214): Steady's camera, Light's budget. */
 		look?: 'full' | 'steady' | 'light';
+		/** The rider's camera preset (keys 1-4, #3216); the look's own until they pick one. */
+		camera?: 'chase' | 'heli' | 'side' | 'steady';
 		onfail: (why: Failure) => void;
 		/** The rider asked for the flat road on this device. */
 		onflat: () => void;
@@ -74,6 +77,10 @@
 
 	let canvas = $state<HTMLCanvasElement>();
 	let scene = $state.raw<WorldScene | null>(null);
+
+	$effect(() => {
+		if (camera) scene?.setCamera(camera);
+	});
 
 	onMount(() => {
 		// Building holds the main thread for a moment: let the surface paint first.
@@ -89,7 +96,7 @@
 					metre,
 					bunch,
 					loop,
-					camera: look === 'steady' ? 'steady' : 'chase',
+					camera: camera ?? (look === 'steady' ? 'steady' : 'chase'),
 					light: look === 'light',
 					steady: () => prefersReducedMotion.current || look === 'steady',
 					onCue: play,
