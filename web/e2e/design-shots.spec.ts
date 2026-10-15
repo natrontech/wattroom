@@ -41,6 +41,7 @@ import {
 	type Opened,
 } from './design/shoot';
 import { hudScale } from './design/probe';
+import { holdCountIn } from './hold-count-in';
 
 /**
  * The design shots (#3666, docs/design/DESIGN-CHECK.md): every surface in
@@ -397,43 +398,13 @@ surface(
 		// scheme: it holds from the count-in's first frame (G1, #3667).
 		const o = await s.open({ ...DESK, colorScheme: 'light' }, { world: true });
 		const road = await fixtureRoad(o.page, 'hairpin');
-		// A held count-in: the world takes longer to build than the 3 s count-in
-		// lasts. After Start the ticker (no worker, which ticks on real time)
-		// fires only when the probe calls it, with Date.now frozen so a tick is
-		// one second: the shots land inside the count-in, a second apart.
-		await o.page.addInitScript(() => {
-			const w = window as unknown as {
-				__hold: () => void;
-				__tick: () => void;
-			};
-			Object.defineProperty(window, 'Worker', { value: undefined });
-			const real = Date.now.bind(Date);
-			const every = window.setInterval.bind(window);
-			const ticks: (() => void)[] = [];
-			let frozen: number | null = null;
-			Date.now = () => frozen ?? real();
-			window.setInterval = ((
-				fn: TimerHandler,
-				ms?: number,
-				...a: unknown[]
-			) => {
-				if (frozen === null || ms !== 1000) return every(fn, ms, ...a);
-				ticks.push(fn as () => void);
-				return 0;
-			}) as typeof every;
-			w.__hold = () => {
-				frozen = real();
-			};
-			w.__tick = () => ticks.forEach((fn) => fn());
-		});
+		const count = await holdCountIn(o.page);
 		await o.page.goto(`/ride?w=openers&road=${road}`);
 		await o.page
 			.getByRole('button', { name: 'Ride simulated' })
 			.first()
 			.click({ timeout: 15_000 });
-		await o.page.evaluate(() => {
-			(window as unknown as { __hold: () => void }).__hold();
-		});
+		await count.hold();
 		await o.page
 			.getByRole('button', { name: /^Start (riding|the ride)$/ })
 			.first()
@@ -452,9 +423,7 @@ surface(
 		);
 		await s.shot(o, { name: 'ride-countin-first' });
 		// One second into the 3 s count-in: the held pose, the arch and the digit.
-		await o.page.evaluate(() =>
-			(window as unknown as { __tick: () => void }).__tick(),
-		);
+		await count.tick();
 		await s.shot(o);
 	},
 	{ once: true },

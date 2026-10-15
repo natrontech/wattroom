@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { holdCountIn } from './hold-count-in';
 import { openAWorkoutOnARoad } from './route';
 import { signInTo } from './signin';
 
@@ -96,10 +97,14 @@ test.describe('reduced motion', () => {
 				JSON.stringify({ music: 0, cues: 0, board: 0, share: 0 }),
 			);
 		});
+		// Tall enough for the world: a shorter window rides the flat road.
+		await page.setViewportSize({ width: 1440, height: 900 });
+		const count = await holdCountIn(page);
 		await signInTo(page, '/ride');
 		await page.getByRole('button', { name: 'Ride simulated' }).waitFor();
 		await openAWorkoutOnARoad(page);
 		await page.getByRole('button', { name: 'Ride simulated' }).click();
+		await count.hold();
 		await page.getByRole('button', { name: 'Start the ride' }).click();
 		// The shot the world draws through the count-in: one frame, never the flight.
 		const canvas = page.locator('canvas[data-shot]');
@@ -107,11 +112,11 @@ test.describe('reduced motion', () => {
 			timeout: 30_000,
 		});
 		const seen = new Set<string>();
-		while (await page.getByTestId('count-in').isVisible()) {
+		for (let second = 0; second < 3; second++) {
 			seen.add((await canvas.getAttribute('data-shot')) ?? '');
 			// The slots' dock-in is a held stamp too (#3087): in place, never flown.
 			expect(await page.locator('.dock-in').count()).toBe(0);
-			await page.waitForTimeout(100);
+			await count.tick();
 		}
 		expect(seen.has('flying')).toBe(false);
 	});
