@@ -749,8 +749,10 @@
 							Math.min(leg, legs.length),
 							legs.length,
 						)}
-						{#if next}<a href={next.href} class="btn btn-secondary"
-								>{next.label}</a
+						{#if next}<a
+								href={next.href}
+								data-sveltekit-reload
+								class="btn btn-secondary">{next.label}</a
 							>{/if}
 					{/if}
 					<a href="/workouts" class="btn btn-secondary">Pick another workout</a>

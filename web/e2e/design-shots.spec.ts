@@ -771,6 +771,13 @@ surface(
 		// The save settles into its banner before the shot.
 		await o.page.waitForTimeout(2500);
 		await s.shot(o, { name: 'route-leg-summary', full: true });
+		// The offer rides the next leg: the same page, a new leg in its url.
+		await o.page.getByRole('link', { name: /^Ride leg 2 of \d+$/ }).click();
+		await o.page.waitForURL(/&leg=2/);
+		await o.page
+			.getByText(/leg 2 of \d+/)
+			.first()
+			.waitFor({ timeout: 15_000 });
 		// Workout on it (#3681): the row picked, the shelf picking for this
 		// road, and a card's Ride opening on it; then the shelf on a phone.
 		await o.page.goto(`/workouts/routes/${id}`);
