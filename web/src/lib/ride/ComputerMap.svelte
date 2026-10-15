@@ -51,7 +51,7 @@
 			<path
 				d={line.between(0, 1)}
 				fill="none"
-				class="stroke-muted/60 forced-colors:stroke-[CanvasText]"
+				class="stroke-muted-dim forced-colors:stroke-[CanvasText]"
 				stroke-width="3"
 				stroke-linejoin="round"
 				stroke-linecap="round"
