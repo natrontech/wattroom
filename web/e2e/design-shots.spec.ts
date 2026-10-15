@@ -411,6 +411,7 @@ surface(
 				pauseDisabled: await pause.isDisabled(),
 			},
 		});
+		await s.shot(desk, { name: 'ride-status-solo' });
 		await pause.click();
 		await phone.page
 			.getByTestId('phone-remote')
