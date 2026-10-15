@@ -288,7 +288,7 @@
 						{href}
 						aria-current={on ? 'page' : undefined}
 						title="join the ride"
-						class="flex min-h-11 items-center gap-1 rounded py-1 pr-0 pl-[31px] cave:pl-11 text-[10px] md:min-h-6 {CAVE_ROW} {on
+						class="cave:pl-[44px] flex min-h-11 items-center gap-1 rounded py-1 pr-0 pl-8 text-[10px] md:min-h-6 {CAVE_ROW} {on
 							? 'bg-ink/10 text-ink'
 							: 'text-ink/85 hover:bg-ink/5 hover:text-ink'}"
 					>
