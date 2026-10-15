@@ -117,7 +117,7 @@
 	{#if centred}
 		<!-- One line, never two (TARGETS phone-ride 3). Silent zone at 0 W, as below. -->
 		<p class="flex items-baseline justify-center gap-x-3 text-xl leading-7">
-			<span class="flex items-baseline gap-1.5"
+			<span class="flex items-baseline gap-2"
 				><span data-field="wkg" class="num text-2xl leading-none font-bold"
 					>{stale ? '—' : wkg(power, kg)}</span
 				><span class="text-muted">W/kg</span></span
@@ -125,7 +125,7 @@
 			{#if shown > 0}
 				<span
 					data-testid="head-zone"
-					class="flex min-w-0 items-center gap-1.5 truncate"
+					class="flex min-w-0 items-center gap-2 truncate"
 					><ZoneDot {zone} class={size.dot} />Z{zone}
 					{ZONE_NAMES[zone]}</span
 				>

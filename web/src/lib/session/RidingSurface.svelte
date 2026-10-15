@@ -105,9 +105,9 @@
 </script>
 
 {#if device.narrow}
-	<!-- Phone: the flat slots in one column the page scrolls, at about 10 px
-	     apart (TARGETS phone-ride 1). -->
-	<div class="flex flex-col gap-2.5 {extra}" data-surface="phone">
+	<!-- Phone: the flat slots in one column the page scrolls, at one gap
+	     (TARGETS phone-ride 1). -->
+	<div class="flex flex-col gap-3 {extra}" data-surface="phone">
 		<div data-dock="header" class={own ? '' : 'ride-panel'}>
 			{@render header()}
 		</div>
