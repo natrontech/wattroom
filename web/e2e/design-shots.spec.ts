@@ -1413,7 +1413,7 @@ async function session(
 	const coachJoins = coach.page.getByRole('link', { name: 'Join the ride' });
 	if (await coachJoins.isVisible({ timeout: 5000 }).catch(() => false))
 		await coachJoins.click();
-	await atRoundSecond(coach.page, RIDE_SECOND);
+	await atSecond(coach.page, RIDE_SECOND);
 	return { coach, rider, crew };
 }
 
