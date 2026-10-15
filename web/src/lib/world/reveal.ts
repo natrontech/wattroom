@@ -14,7 +14,7 @@ export const REVEAL = {
 	ahead: 3000,
 	maxMps: 60,
 	maxDegPerS: 20,
-	hold: { back: 16, up: 4, banner: 7 },
+	hold: { back: 11, up: 3, banner: 4.5 },
 	fov: 50,
 };
 
