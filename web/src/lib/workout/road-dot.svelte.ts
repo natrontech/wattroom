@@ -12,14 +12,14 @@ export function createRoadDot(workout: Workout, kg: () => number) {
 	const pinned = roadOf(workout);
 	// Blocks end at the dot's metres only on a road that pins them (#3499).
 	const pins = pinned?.stepEndM;
-	const ride = pinned
+	let ride = pinned
 		? createRoadRide(pinned.road, { kg, from: pinned.fromM - pinned.originM })
 		: null;
+	let start = $state(pinned?.fromM ?? 0);
+	let entered: Segment | undefined;
 	let here = $state.raw<RoadSecond | null>(null);
 	/** Metres along the owner's road, where the pins are. */
-	const m = $derived(
-		pinned ? pinned.originM + (here?.m ?? pinned.fromM - pinned.originM) : 0,
-	);
+	const m = $derived(pinned ? (here ? pinned.originM + here.m : start) : 0);
 	// One readout a second, for slot 1 and the HUD alike (#3639).
 	const readoutAt = createRoadReadout();
 	const readout = $derived(
@@ -27,6 +27,19 @@ export function createRoadDot(workout: Workout, kg: () => number) {
 	);
 	return {
 		pinned,
+		/** Enter a new block once, including each expanded repeat. */
+		enter(segment: Segment) {
+			if (entered === segment) return;
+			entered = segment;
+			if (!pinned || segment.kind !== 'road' || segment.fromM === undefined)
+				return;
+			ride = createRoadRide(pinned.road, {
+				kg,
+				from: segment.fromM - pinned.originM,
+			});
+			start = pinned.originM + ride.from;
+			here = null;
+		},
 		get m() {
 			return m;
 		},

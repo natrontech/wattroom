@@ -1,0 +1,1 @@
+- Workout road steps ride the road in SIM, keep their time untargeted and unscored, and return to ERG for the next target.

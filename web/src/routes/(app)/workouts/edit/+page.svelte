@@ -581,6 +581,10 @@
 				<p class="text-muted text-[11px]">
 					Its steps sit indented under it in the list — click one to edit it.
 				</p>
+			{:else if current.type === 'road'}
+				<p class="text-muted text-xs">
+					Ride the road in SIM at its felt grade.
+				</p>
 			{:else if current.type !== 'sprint'}
 				<div class="grid grid-cols-2 gap-3">
 					{#each [{ key: 'from', label: 'from' }, { key: 'to', label: 'to' }] as field (field.key)}

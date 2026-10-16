@@ -8,7 +8,7 @@
 import { CEILING } from './zones';
 import { stepAt, reorder } from '$lib/workout/tree';
 import { LIMITS } from '$lib/workout/validate';
-import type { Workout } from '$lib/workout/types';
+import type { Segment, Workout } from '$lib/workout/types';
 
 /**
  * The graph's viewBox. The SVG stretches to its box (`preserveAspectRatio="none"`),
@@ -70,7 +70,7 @@ export interface Block {
 	/** Top edge in viewBox units, at the block's left and right ends. */
 	yFrom: number;
 	yTo: number;
-	kind: 'steady' | 'ramp' | 'sprint';
+	kind: Segment['kind'];
 }
 
 /**
@@ -86,7 +86,11 @@ export function grabAt(vx: number, vy: number, block: Block): GrabKind {
 	const top =
 		block.yFrom + ((block.yTo - block.yFrom) * (vx - block.x0)) / width;
 	// A sprint is all-out by definition: it has no target to drag.
-	if (block.kind !== 'sprint' && Math.abs(vy - top) <= EDGE) {
+	if (
+		block.kind !== 'sprint' &&
+		block.kind !== 'road' &&
+		Math.abs(vy - top) <= EDGE
+	) {
 		if (block.kind !== 'ramp') return 'target';
 		// A ramp's two ends move independently — that is what a ramp is.
 		return vx - block.x0 < block.x1 - vx ? 'rampFrom' : 'rampTo';
@@ -110,7 +114,13 @@ export function applyEdit(
 		return;
 	}
 	const step = stepAt(workout, edit.path);
-	if (!step || step.type === 'repeat' || step.type === 'sprint') return;
+	if (
+		!step ||
+		step.type === 'repeat' ||
+		step.type === 'sprint' ||
+		step.type === 'road'
+	)
+		return;
 	if (edit.kind === 'seconds') {
 		step.seconds = edit.seconds;
 		return;
