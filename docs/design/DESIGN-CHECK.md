@@ -9,7 +9,7 @@ A PR a rider can see leaves draft only after this check: a reviewer that did not
 5. **Review**: a fresh reviewer each round, never resumed, given the prompt below verbatim with its slots filled and `node web/scripts/design-surfaces.mjs --targets <ids> > <scratch>/canon.md` as its canon. Never the diff, the PR body, your intent or an earlier verdict; never your own review. No fresh session possible: put the filled prompt in `web/design-shots/<slug>/review-bundle.md`, keep the PR draft with "Design check: pending", and the orchestrator runs it.
 6. **Fix, three rounds at most.** Fix every blocker and major you caused, and minors where cheap. A minor you leave stays in the findings comment, never a new issue. Re-capture into `after-<n+1>/` only the surfaces not PASSed, plus those `node web/scripts/design-surfaces.mjs $(git diff --name-only <last round's commit>)` selects, and review those; a PASSed surface keeps its verdict. Never edit a must-match item to pass; a wrong one gets its own PR citing canon.
 7. **A blocker or major after round 3**: the PR stays draft with FAIL. Comment the evidence on the issue, name the two canon lines that conflict, add `needs-human-input`, mention @janlauber, take the next independent issue.
-8. **When a deviation may stand.** Justified (the next reviewer accepts or rejects it): J1 canon outranks the target (cite it); J2 an open issue owns the item, left no worse; J3 the capture cannot show the state (CANNOT-TELL, never PASS; file the fixture); J4 measured (by how much, from the probe; never into the corridor); J5 platform or law (YouTube tile, WCAG, reduced motion). **Never justifiable**: what the prompt's checklist says no justification covers, and "better than before". **Inherited** (#3720) never fails a PR: the same on BEFORE, no worse; no item of it owned by this issue; an open issue owns the fix (search first, and comment there; if none owns it, file one per rule, listing every place). Worse on AFTER is a regression.
+8. **When a deviation may stand.** Justified (the next reviewer accepts or rejects it): J1 canon outranks the target (cite it); J2 an open issue owns the item, left no worse; J3 the capture cannot show the state (CANNOT-TELL, never PASS; file the fixture); J4 measured (by how much, from the probe; never into the corridor); J5 platform or law (YouTube tile, WCAG, reduced motion). **Never justifiable**: what the prompt's checklist says no justification covers, and "better than before". **Inherited** (#3720) never fails a PR: the same on BEFORE, no worse; no item of it owned by this issue; an open issue owns the fix (search first, and comment there; if none owns it, file one per rule, listing every place). Worse on AFTER is a regression. The reviewer judges the first two itself and lists such a failure as PRE-EXISTING, uncounted, so what main already fails costs no round; before ready, the findings comment names each one's open issue (#4064).
 9. **PR body**: six lines at most; findings go in a PR review comment.
     ```md
     ## Design check
@@ -45,6 +45,8 @@ so, and none covers: the cave, glow or watt beyond G2, a clipped or unreachable 
 scroll, text over text, a duplicated live number, a stand-in rider, a size under SPEC's floor, a
 capped or centred desk page, a sidebar card, strip or sub-row, a privacy leak (G10). An inherited claim stands only if BEFORE fails the same and
 no better, no item is OWNED, and the cited open issue owns it; it is then OPEN-ELSEWHERE, uncounted.
+A failure no claim names, on an OTHER item or a global rule, that BEFORE fails the same and no
+better and that touches no OWNED item, is PRE-EXISTING: list it with BEFORE's evidence, uncounted.
 
 Method. 1 Open every image; trust no file name. 2 Per surface, the five largest differences between
 the TARGET's framed mock (ignore its data) and AFTER. 3 Owned items: PASS/FAIL/CANNOT-TELL with
@@ -68,9 +70,9 @@ SURFACES: <surface>: PASS | FAIL | CANNOT-TELL, one line each
 FIRST-LOOK: <surface>: <five differences>
 OWNED: | surface | # | item | verdict | severity | evidence |
 GLOBAL: | rule | verdict | severity | evidence |
-REGRESSIONS, UNNAMED, JUSTIFICATIONS, INHERITED, OPEN-ELSEWHERE, CONFLICTS (two canon lines that
-cannot both hold, quoted): a line each, or none
+REGRESSIONS, UNNAMED, JUSTIFICATIONS, INHERITED, OPEN-ELSEWHERE, PRE-EXISTING, CONFLICTS (two canon
+lines that cannot both hold, quoted): a line each, or none
 TO FIX FIRST: three changes, most important first
-PASS only with blocker=0 and major=0 across all of it, confirmed inherited left out. Improvement
+PASS only with blocker=0 and major=0 across all of it, confirmed inherited and pre-existing left out. Improvement
 is not the bar; the target is. Propose no code. Ask nothing.
 ```

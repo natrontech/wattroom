@@ -47,7 +47,7 @@ description: Run the design check on a rider-visible change: capture its surface
 ## 5. Images, findings, PR body
 
 - Load the `artifact-design` skill, then publish one private page with the **Artifact** tool: per surface a full-size row of target | before | after, then the verdict. Pass the images through `files`, copied into a folder in `$S`. Unavailable: send them to the maintainer with **SendUserFile**.
-- The last reviewer's findings go in a PR review comment: `gh pr review <n> --comment --body-file $S/findings.md`.
+- The last reviewer's findings go in a PR review comment: `gh pr review <n> --comment --body-file $S/findings.md`. Each PRE-EXISTING line names its open issue there (DESIGN-CHECK step 8); it never costs another round.
 - The PR body's `## Design check` is DESIGN-CHECK step 9's six lines: verdict and round, surfaces, the captures link (private), the findings link.
 - Never commit captures; `web/design-shots/` is ignored.
 
