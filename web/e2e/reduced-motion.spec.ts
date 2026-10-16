@@ -90,7 +90,6 @@ test.describe('reduced motion', () => {
 		page,
 	}) => {
 		await page.addInitScript(() => {
-			localStorage.setItem('wattroom.world-slot.v1', '1');
 			localStorage.setItem('wattroom.world.mode.v1', 'steady');
 			localStorage.setItem(
 				'wattroom.mixer.v1',

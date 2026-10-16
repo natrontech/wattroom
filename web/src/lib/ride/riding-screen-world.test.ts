@@ -8,7 +8,7 @@ import type { Workout } from '$lib/workout/types';
 import RidingScreen from './RidingScreen.svelte';
 
 vi.mock('$lib/hud/feed', () => ({ publishHud: () => {} }));
-// This device draws the world: the flag on and a browser that can (#3031).
+// This device draws the world: 3D turned on and a browser that can (#3084).
 vi.mock('$lib/world/world-view.svelte', () => ({
 	createWorldView: () => ({
 		on: true,
@@ -59,7 +59,10 @@ function screen(
 
 describe('the world on a ride', () => {
 	it('is not mounted on a ride with no road', () => {
-		expect(screen(openers)).not.toContain('data-surface="docked"');
+		const html = screen(openers);
+		expect(html).not.toContain('data-surface="docked"');
+		// No world, no Flat / 3D switch (#3084).
+		expect(html).not.toContain('aria-label="Flat road"');
 	});
 
 	it('is mounted on a ride on a road', () => {
@@ -80,7 +83,12 @@ describe('the world on a ride', () => {
 		expect(html).toMatch(
 			/<button[^>]*title="[^"]+"[^>]*aria-label="Flag a problem"/,
 		);
-		for (const name of ['TV mode', 'One more minute', 'Skip block'])
+		for (const name of [
+			'Flat road',
+			'TV mode',
+			'One more minute',
+			'Skip block',
+		])
 			expect(html).toMatch(
 				new RegExp(
 					`<button[^>]*class="[^"]*h-11 w-11[^"]*" aria-label="${name}" title="[^"]+"`,

@@ -75,7 +75,7 @@ test('W/kg wraps under a four-digit power @world', async ({ page }) => {
 			JSON.stringify({ music: 0, cues: 0, board: 0, share: 0 }),
 		);
 		// The docked head lives in the world (design/shoot.ts).
-		localStorage.setItem('wattroom.world-slot.v1', '1');
+		localStorage.setItem('wattroom.world.mode.v1', 'full');
 	});
 	await signInTo(page, '/ride');
 	await page.getByRole('button', { name: 'Ride simulated' }).waitFor();
