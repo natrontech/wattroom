@@ -1,6 +1,6 @@
 ---
 name: design-check
-description: Run the design check on a rider-visible change: capture its surfaces, have a fresh subagent review them against docs/design/TARGETS.md, fix up to three rounds, and write the PR's Design check section.
+description: Run the design check when the PR's issue is labelled design or names Surfaces: capture its surfaces once, have one fresh subagent review them against docs/design/TARGETS.md, fix the blockers, and write the PR's Design check section.
 ---
 
 # Design check
@@ -15,7 +15,7 @@ description: Run the design check on a rider-visible change: capture its surface
 
 ## 2. Capture, in the background
 
-- Rebase on `origin/main` first, so the merge base is main's head.
+- First merge main's newest finished shots, so the before below is your merge base's own and arrives at once: `sha=$(scripts/design-before.sh --base) && git merge --no-edit "$sha"`. Exit 1 merges nothing; carry on. Never rebase on main's head: its shots are usually still being taken, and 25 of 27 checks that did waited on CI or captured main again (#4064).
 - Every background call here passes `timeout: 3600000`. Otherwise a headless run (`claude -p`, `scripts/issue-runs.sh`) stops a background command at 10 minutes, mid-build.
 - After: one Bash call with `run_in_background: true`, then carry on until its notification arrives. Never poll it with `sleep`.
   ```sh
@@ -32,22 +32,21 @@ description: Run the design check on a rider-visible change: capture its surface
 - When a finding asks whether something is new and the before is CI's, capture main locally the same way and hand both sets over as MULTI.
 - Measurements come only from each `<id>.json`. Never type a number from a screenshot or the browser pane.
 
-## 3. The reviewer: a fresh Agent every round
+## 3. The reviewer: one fresh Agent
 
-- `node web/scripts/design-surfaces.mjs --targets $ids > $S/canon-<n>.md`.
-- Launch a `general-purpose` Agent (`run_in_background: false`) with DESIGN-CHECK's reviewer prompt **verbatim**, only the `{{…}}` slots filled: issue key and round, `surfaces.txt`'s lines, the canon file's absolute path, absolute paths to the target (`docs/design/targets/`), before, after and probe files, MULTI captures, your J1–J5 justifications with citations, inherited claims with their open issues.
+- `node web/scripts/design-surfaces.mjs --targets $ids > $S/canon.md`.
+- Launch a `general-purpose` Agent (`run_in_background: false`) with DESIGN-CHECK's reviewer prompt **verbatim**, only the `{{…}}` slots filled: issue key, `surfaces.txt`'s lines, the canon file's absolute path, absolute paths to the target (`docs/design/targets/`), before, after and probe files, MULTI captures, your J1–J5 justifications with citations, inherited claims with their open issues.
 - Never give it the diff, the PR body, your intent or an earlier verdict. Never resume one with SendMessage: a reviewer that knows the story grades the story.
 
-## 4. Rounds 2 and 3
+## 4. After the review: one round
 
-- Before each round's capture, note its commit: `git rev-parse HEAD > $S/round-<n>.sha`.
-- Fix what DESIGN-CHECK step 6 says. The next round's ids are the surfaces the reviewer's `SURFACES:` lines did not PASS, plus those `node web/scripts/design-surfaces.mjs $(git diff --name-only $(cat $S/round-<n>.sha))` selects that this check captured. Capture them into `after-<n+1>/` and review them with a new Agent.
-- A blocker or major after round 3: DESIGN-CHECK step 7, then the next independent issue.
+- Fix what DESIGN-CHECK step 6 says: each blocker you caused, shown fixed in a probe `.json` (re-capture only those surfaces) or a test. No second reviewer.
+- Leave the rest in the findings comment and land the PR (DESIGN-CHECK step 7).
 
 ## 5. Images, findings, PR body
 
 - Load the `artifact-design` skill, then publish one private page with the **Artifact** tool: per surface a full-size row of target | before | after, then the verdict. Pass the images through `files`, copied into a folder in `$S`. Unavailable: send them to the maintainer with **SendUserFile**.
-- The last reviewer's findings go in a PR review comment: `gh pr review <n> --comment --body-file $S/findings.md`.
+- The reviewer's findings, and the blockers you fixed after it, go in a PR review comment: `gh pr review <n> --comment --body-file $S/findings.md`. Each PRE-EXISTING line names its open issue there (DESIGN-CHECK step 8); it never holds the PR.
 - The PR body's `## Design check` is DESIGN-CHECK step 9's six lines: verdict and round, surfaces, the captures link (private), the findings link.
 - Never commit captures; `web/design-shots/` is ignored.
 

@@ -101,13 +101,18 @@ export function probe(corridor: Box) {
 		(cs.boxShadow !== 'none' && !cs.boxShadow.includes('inset'));
 	// An open modal's opaque box hides what lies wholly under it (#3989): the
 	// stage's own tile still glows behind a session's closing card, unseen.
-	const modals = [...document.querySelectorAll('[aria-modal=true]')]
+	const modals = [
+		...document.querySelectorAll(
+			'[aria-modal=true], [data-testid=session-card]',
+		),
+	]
 		.filter(
 			(el) => shown(el) && rgba(getComputedStyle(el).backgroundColor).a > 0.9,
 		)
 		.map((el) => el.getBoundingClientRect());
 	const covered = (el: Element) => {
-		if (el.closest('[aria-modal=true]')) return false;
+		if (el.closest('[aria-modal=true], [data-testid=session-card]'))
+			return false;
 		const r = el.getBoundingClientRect();
 		return modals.some(
 			(m) =>
@@ -117,11 +122,18 @@ export function probe(corridor: Box) {
 				r.bottom <= m.bottom,
 		);
 	};
+	// A closing card is held to its own content: the crew rail beside it keeps
+	// its live watts tile, which G2 lets glow on any page.
+	const rail = document.querySelector(
+		'[data-testid=closing-card], [data-testid=session-card]',
+	)
+		? document.querySelector('aside')
+		: null;
 	const wattFigures: { text: string; glow: boolean }[] = [];
 	const glows: string[] = [];
 	let wattMarks = 0;
 	for (const el of document.body.querySelectorAll('*')) {
-		if (!shown(el) || covered(el)) continue;
+		if (!shown(el) || covered(el) || rail?.contains(el)) continue;
 		const cs = getComputedStyle(el);
 		const own = ownText(el);
 		const svg = el instanceof SVGElement;

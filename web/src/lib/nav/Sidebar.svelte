@@ -249,7 +249,7 @@
 				onclick={toggleDms}
 				aria-expanded={!dmsFolded}
 				aria-current={dmsOn ? 'page' : undefined}
-				class="cave:min-h-11 -mx-2 -my-1.5 flex w-full items-center rounded px-2 py-1.5 text-left uppercase {dmsOn
+				class="cave:min-h-11 -mx-2 -my-1.5 flex w-[calc(100%+1rem)] items-center rounded px-2 py-1.5 text-left uppercase {dmsOn
 					? 'bg-ink/10 text-ink'
 					: 'hover:text-ink'}"
 				title={dmsFolded
@@ -260,12 +260,15 @@
 				>{#if dmsFolded && dmsUnread}<span
 						class="{UNREAD_DOT} ml-2"
 						title="someone wrote"
-					></span>{/if}<ChevronRight
-					size={14}
-					class="-my-2 ml-auto shrink-0 {CAVE_MARK} transition-transform motion-reduce:transition-none {dmsFolded
-						? ''
-						: 'rotate-90'}"
-				/></button
+					></span>{/if}<span
+					class="cave:h-11 cave:w-11 -my-2 -mr-2 ml-auto grid h-6 w-6 shrink-0 place-items-center"
+					><ChevronRight
+						size={14}
+						class="{CAVE_MARK} transition-transform motion-reduce:transition-none {dmsFolded
+							? ''
+							: 'rotate-90'}"
+					/></span
+				></button
 			>
 		</div>
 		{#if dmHeads.error && dmHeads.heads.length === 0 && !dmsFolded}
