@@ -378,7 +378,9 @@
 							onBias={channel.trainer && channel.actuating
 								? (step) => channel.nudgeBias(step)
 								: undefined}
-							hint={targetsNote ? `${targetsNote} — trim them there` : undefined}
+							hint={targetsNote
+								? `${targetsNote} — trim them there`
+								: undefined}
 						/>
 						<HrShare ride icon />
 					</div>

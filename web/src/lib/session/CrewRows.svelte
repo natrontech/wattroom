@@ -59,12 +59,14 @@
 					>Z{zoneOf(rider.watts, rider.ftp)}</span
 				>
 			{/if}
-			{#if !rider.you}
-				<!-- Your W/kg has one home, beside the 3 s power in the head (D17). -->
-				<span class="num shrink-0 text-4xl leading-none"
-					>{rider.stale ? '—' : wkg(rider.watts, rider.kg)}</span
-				>
-			{/if}
+			<!-- Your W/kg has one home, beside the 3 s power in the head (D17):
+			     your row keeps the place, unseen, so the zones stay one column. -->
+			<span
+				aria-hidden={rider.you}
+				class="num shrink-0 text-4xl leading-none {rider.you
+					? 'invisible'
+					: ''}">{rider.stale ? '—' : wkg(rider.watts, rider.kg)}</span
+			>
 		</li>
 	{/each}
 </ul>
