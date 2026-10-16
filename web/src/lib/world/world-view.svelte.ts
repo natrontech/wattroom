@@ -1,13 +1,12 @@
 /**
- * A ride's view on a road, held for the ride (#3080, ADR-0066): both riding
- * surfaces ask rideView() once, and after that only a failure, the rider's
- * Flat road or "Try 3D again" moves it — never reduced motion switched on
- * mid-ride, never a second that drew well again. Loads no three.js.
+ * A ride's view on a road, held for the ride (#3080, ADR-0066): the riding
+ * surfaces ask rideView() once, and after that only a failure or the rider's
+ * own Flat / 3D tap moves it — never reduced motion switched on mid-ride,
+ * never a second that drew well again. Loads no three.js.
  */
 import { prefersReducedMotion } from '$lib/motion';
 import { PHONE_MAX_PX } from '$lib/device.svelte';
 import { worldFits } from '$lib/session/docks';
-import { worldSlotOn } from './flag';
 import { setWorldMode, worldMode, type WorldMode } from './mode';
 import {
 	rideView,
@@ -44,26 +43,24 @@ function capabilities() {
 
 export function createWorldView() {
 	let failure: Failure | null = null;
-	const decide = (): RideView | null =>
-		worldSlotOn()
-			? rideView({
-					mode: worldMode(),
-					reducedMotion: prefersReducedMotion.current,
-					...capabilities(),
-					failure,
-				})
-			: null;
-	let view = $state<RideView | null>(decide());
+	const decide = (): RideView =>
+		rideView({
+			mode: worldMode(),
+			reducedMotion: prefersReducedMotion.current,
+			...capabilities(),
+			failure,
+		});
+	let view = $state<RideView>(decide());
 	// The window's height is live, unlike a failure: the world comes back
 	// the moment the window holds its panels again.
-	const shown = (): RideView | null =>
+	const shown = (): RideView =>
 		view === 'world' &&
 		!worldFits(viewport.width <= PHONE_MAX_PX, viewport.height)
 			? { skyline: 'short' }
 			: view;
 	const reason = (): SkylineReason | null => {
 		const v = shown();
-		return v === null || v === 'world' ? null : v.skyline;
+		return v === 'world' ? null : v.skyline;
 	};
 	return {
 		/** The world draws in slot 2, docked around the road: a desk or a TV. */
@@ -74,7 +71,7 @@ export function createWorldView() {
 		get band() {
 			return shown() === 'world' && viewport.width <= PHONE_MAX_PX;
 		},
-		/** Why this ride is on the Skyline; null in the world, or where this device has no world slot. */
+		/** Why this ride is on the Skyline; null in the world. */
 		get reason() {
 			return reason();
 		},
@@ -98,14 +95,15 @@ export function createWorldView() {
 			const m = worldMode();
 			return m === null || m === 'flat' ? 'full' : m;
 		},
-		/** The world's context menu: the flat road, from now on, on this device. */
+		/** The flat road, from now on, on this device: the world's Flat button and its context menu. */
 		flatten() {
 			setWorldMode('flat');
 			view = decide();
 		},
 		/**
-		 * The only way back to the world this ride; a choice it overrides is the
-		 * rider's new one. Reduced motion's one tap lands on Steady (ADR-0079).
+		 * The only way into the world this ride; a choice it overrides is the
+		 * rider's new one: Full from Flat, Steady under reduced motion
+		 * (ADR-0079), and what they had after a failure.
 		 */
 		retry() {
 			const was = reason();

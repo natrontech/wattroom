@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { softwareDrawing } from './flag';
+import { softwareDrawing } from './software-drawing';
 
 const stored = new Map<string, string>();
 vi.stubGlobal('localStorage', {

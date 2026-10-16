@@ -53,7 +53,7 @@ test('two screens draw one bunch: each rider where the other screen has them @wo
 	for (const page of [coach, guest]) {
 		await page
 			.context()
-			.addInitScript(() => localStorage.setItem('wattroom.world-slot.v1', '1'));
+			.addInitScript(() => localStorage.setItem('wattroom.world.mode.v1', 'full'));
 		// A world that falls back says why in the console; a red run carries it.
 		page.on('console', (m) => said.push(`${m.type()}: ${m.text()}`));
 	}

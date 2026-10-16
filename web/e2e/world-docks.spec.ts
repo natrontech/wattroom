@@ -31,7 +31,7 @@ for (const [width, height] of [
 		page.on('console', (m) => said.push(`${m.type()}: ${m.text()}`));
 		page.on('pageerror', (e) => said.push(`pageerror: ${e.message}`));
 		await page.addInitScript(() => {
-			localStorage.setItem('wattroom.world-slot.v1', '1');
+			localStorage.setItem('wattroom.world.mode.v1', 'full');
 			localStorage.setItem(
 				'wattroom.mixer.v1',
 				JSON.stringify({ music: 0, cues: 0, board: 0, share: 0 }),
@@ -147,7 +147,7 @@ test('a window too short for the world rides the flat road and says so @world', 
 }) => {
 	await page.setViewportSize({ width: 1280, height: 720 });
 	await page.addInitScript(() => {
-		localStorage.setItem('wattroom.world-slot.v1', '1');
+		localStorage.setItem('wattroom.world.mode.v1', 'full');
 		localStorage.setItem(
 			'wattroom.mixer.v1',
 			JSON.stringify({ music: 0, cues: 0, board: 0, share: 0 }),
@@ -201,7 +201,7 @@ test('RIDE and CLIMB under a scored target fit the shortest world @world', async
 }) => {
 	await page.setViewportSize({ width: 1440, height: 860 });
 	await page.addInitScript(() => {
-		localStorage.setItem('wattroom.world-slot.v1', '1');
+		localStorage.setItem('wattroom.world.mode.v1', 'full');
 		localStorage.setItem(
 			'wattroom.mixer.v1',
 			JSON.stringify({ music: 0, cues: 0, board: 0, share: 0 }),

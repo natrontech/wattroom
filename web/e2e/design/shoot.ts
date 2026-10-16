@@ -163,9 +163,8 @@ export class Shoot {
 		await ctx.addInitScript(
 			([muted, world]) => {
 				localStorage.setItem('wattroom.mixer.v1', muted);
-				// World on is the device's World control at Full: this flag until
-				// #3214 replaces it.
-				if (world === true) localStorage.setItem('wattroom.world-slot.v1', '1');
+				// World on is the device's World control at Full (#3084).
+				if (world === true) localStorage.setItem('wattroom.world.mode.v1', 'full');
 				// Software GL misses every frame; the dev build's frame judge
 				// stands down for the capture (#3823).
 				localStorage.setItem('wattroom.world-software.v1', '1');
@@ -181,7 +180,7 @@ export class Shoot {
 					'wattroom.profile.v1',
 					JSON.stringify({ ...profile, lthr: 165 }),
 				);
-				if (world === false) localStorage.removeItem('wattroom.world-slot.v1');
+				if (world === false) localStorage.removeItem('wattroom.world.mode.v1');
 			},
 			[MUTED, world ?? null] as const,
 		);

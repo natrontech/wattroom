@@ -262,7 +262,7 @@
 			"web/src/lib/profile/Appearance.svelte",
 			"web/src/routes/(app)/settings/appearance/**"
 		],
-		"surfaces": ["appearance", "appearance-advanced"]
+		"surfaces": ["appearance"]
 	},
 	{
 		"files": [

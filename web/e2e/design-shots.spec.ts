@@ -475,11 +475,12 @@ surface(
 	async (s) => {
 		// Forced onto the Skyline as the rider sets it on this device, then again
 		// under reduced motion.
+		// Never chosen, reduced motion opens on Flat by itself (ADR-0079).
 		for (const [name, reducedMotion, flat] of [
 			['ride-skyline-fallback', undefined, true],
 			['ride-skyline-fallback-reduced', 'reduce', false],
 		] as const) {
-			const o = await s.open(DESK, { world: true, reducedMotion });
+			const o = await s.open(DESK, { world: false, reducedMotion });
 			if (flat)
 				await o.ctx.addInitScript(() =>
 					localStorage.setItem('wattroom.world.mode.v1', 'flat'),
@@ -1307,20 +1308,12 @@ surface(
 			await page(s, o, '/settings/appearance', {
 				name: `appearance${suffix}`,
 			});
-			// The Advanced expander comes with the World control (#3214).
-			const advanced = o.page.getByText('Advanced', { exact: true });
-			if (await advanced.count()) {
-				await advanced.first().click();
-				await o.page.waitForTimeout(500);
-				await s.shot(o, { name: `appearance-advanced${suffix}`, full: true });
-			}
 		}
 		const reduced = await s.open(DESK, { reducedMotion: 'reduce' });
 		await page(s, reduced, '/settings/appearance', {
 			name: 'appearance-reduced',
 		});
 	},
-	{ also: ['appearance-advanced'] },
 );
 
 surface('settings-this-computer', async (s) => {
