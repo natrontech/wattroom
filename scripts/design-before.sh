@@ -10,16 +10,47 @@
 # Exit 1: no such artifact; DESIGN-CHECK.md says how to capture main locally.
 # Exit 2: the merge base's own run is still going; its id is printed, so
 #         `gh run watch <id>` can wait for it in the background.
+#
+# Usage: scripts/design-before.sh --base
+#        prints the newest main commit at or after the merge base whose shots
+#        are finished. Merged into the branch before its capture, it is the
+#        merge base, so the fetch above finds its artifact at once. Main's
+#        head is usually still being shot: rebasing on it left 25 of 27 checks
+#        waiting on CI or capturing main again (#4064).
+# Exit 1: none yet; capture and fetch as the branch stands.
 set -eu
 
-out=${1:?usage: design-before.sh <out-dir>}
-case $out in /*) ;; *) out="$PWD/$out" ;; esac
+base_only=''
+if [ "${1:-}" = --base ]; then
+	base_only=1
+else
+	out=${1:?usage: design-before.sh <out-dir> | --base}
+	case $out in /*) ;; *) out="$PWD/$out" ;; esac
+fi
 git fetch --quiet origin main
 base=$(git merge-base origin/main HEAD)
 
 runs=$(gh run list --workflow design-shots.yml --branch main --event push --limit 50 \
 	--json databaseId,headSha,status,conclusion \
 	--jq '.[] | "\(.databaseId) \(.headSha) \(.status) \(.conclusion)"')
+
+if [ -n "$base_only" ]; then
+	while read -r id sha status conclusion; do
+		[ -n "$id" ] && [ "$status" = completed ] || continue
+		case $conclusion in success | failure) ;; *) continue ;; esac
+		git cat-file -e "$sha^{commit}" 2>/dev/null || continue
+		git merge-base --is-ancestor "$base" "$sha" || continue
+		# The merge job uploads nothing when every shard failed.
+		gh api "repos/{owner}/{repo}/actions/runs/$id/artifacts" --jq '.artifacts[].name' |
+			grep -qx "design-shots-$sha" || continue
+		echo "$sha"
+		exit 0
+	done <<EOF
+$runs
+EOF
+	echo "no finished design shots on main at or after $base: capture and fetch as the branch stands" >&2
+	exit 1
+fi
 
 pending=''
 while read -r id sha status conclusion; do

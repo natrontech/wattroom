@@ -15,7 +15,7 @@ description: Run the design check on a rider-visible change: capture its surface
 
 ## 2. Capture, in the background
 
-- Rebase on `origin/main` first, so the merge base is main's head.
+- First merge main's newest finished shots, so the before below is your merge base's own and arrives at once: `sha=$(scripts/design-before.sh --base) && git merge --no-edit "$sha"`. Exit 1 merges nothing; carry on. Never rebase on main's head: its shots are usually still being taken, and 25 of 27 checks that did waited on CI or captured main again (#4064).
 - Every background call here passes `timeout: 3600000`. Otherwise a headless run (`claude -p`, `scripts/issue-runs.sh`) stops a background command at 10 minutes, mid-build.
 - After: one Bash call with `run_in_background: true`, then carry on until its notification arrives. Never poll it with `sleep`.
   ```sh
