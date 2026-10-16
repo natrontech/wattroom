@@ -80,6 +80,7 @@ export function createRideSession({
 		sample: () => sample,
 		sprint,
 		ftp,
+		road: dot,
 	});
 	const applyTarget = aim.apply;
 	const guarding = wireSoloGuards(guards, {

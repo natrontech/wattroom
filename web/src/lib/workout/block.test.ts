@@ -98,3 +98,33 @@ describe('describeBlock for slot 1', () => {
 		expect(at(62).last).toBeNull();
 	});
 });
+
+it('describes road steps as unscored SIM blocks, including the previous and next blocks', () => {
+	const workout: Workout = {
+		name: 'Road steps',
+		steps: [
+			{ type: 'road', seconds: 10 },
+			{ type: 'steady', seconds: 10, target: 0.7 },
+			{ type: 'road', seconds: 10 },
+		],
+	};
+	const segments = flatten(workout);
+	const road = describeBlock(
+		targetAt(segments, 250, 0),
+		segments,
+		workout,
+		250,
+	);
+	expect(road.label).toBe('Road');
+	expect(road.trainer.kind).toBe('road');
+	expect(road.band).toBeNull();
+	const next = describeBlock(
+		targetAt(segments, 250, 11),
+		segments,
+		workout,
+		250,
+		[{ t: 5, w: 200 }],
+	);
+	expect(next.last).toBeNull();
+	expect(next.next).toEqual({ label: 'Road', watts: 0, seconds: 10 });
+});

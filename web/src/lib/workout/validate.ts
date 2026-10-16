@@ -1,3 +1,4 @@
+import { MaxRouteMeters } from '$lib/protocol';
 import type { RepeatStep, Workout, WorkoutStep } from './types';
 
 /**
@@ -156,6 +157,19 @@ function checkStep(
 			}
 			return fail(checkFraction(value.target, where, 'target'));
 		}
+
+		case 'road':
+			if (
+				value.fromM !== undefined &&
+				(typeof value.fromM !== 'number' ||
+					!Number.isFinite(value.fromM) ||
+					value.fromM < 0 ||
+					value.fromM > MaxRouteMeters)
+			)
+				return fail(
+					`${where}: a road step must start between 0 and ${MaxRouteMeters} metres along the road`,
+				);
+			return fail(checkSeconds(value.seconds, where));
 
 		case 'sprint':
 			return fail(checkSeconds(value.seconds, where));
