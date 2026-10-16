@@ -57,10 +57,14 @@ transform glide (#3200).
 over base with a **2 s** half-life; a shot change is a cut or a **300 ms**
 fog-dip.
 
-**The World control**: Full, Steady (heli camera, fixed FOV, cuts, no
-particles), Light (the lowest 3D tier), Flat (the Skyline). Per device, stored
-in `wattroom.world.mode.v1`; reduced motion opens on Flat, with one tap to
-Steady.
+**The World control**: Flat (the Skyline), Full, Steady (heli camera, fixed
+FOV, cuts, no particles), Light (the lowest 3D tier). Per device, stored in
+`wattroom.world.mode.v1`, shown in Settings → Appearance as "3D world". Never
+chosen is **Flat**: 3D is the rider's to turn on (ADR-0066 amended, #3084).
+On a road ride the flat road offers **Ride in 3D** (sets Full) and the world
+offers a 44 px **Flat road** button (sets Flat); both apply at once. Reduced
+motion, never chosen, opens on Flat with one tap to Steady. A browser that
+cannot draw the world is offered no 3D button.
 
 **Count-in reveal** (#3087, `world/reveal.ts`): cue the count-in's first frame,
 hit time the start of its last **3 s**. The eye opens **200 m** back and
