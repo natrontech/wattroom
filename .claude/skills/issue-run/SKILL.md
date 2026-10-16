@@ -19,7 +19,7 @@ Not workable: labelled `needs-human-input`, `blocked`, `backlog` or `feedback` (
 
 If `$AGENT_COUNT` is above 1, prefer issues where `number % AGENT_COUNT == AGENT_INDEX`, so the agents beside you start apart. Take the first source that yields an issue:
 
-0. **Decided drafts.** A draft PR parked by a round-3 design FAIL whose issue has since lost `needs-human-input`, with a maintainer comment after the draft's last push. The comment is the decision. Apply it, then run a fresh design check from round 1 against the canon as it stands now, and land it. Nothing else resumes these, because the open draft reads as a claim.
+0. **Decided drafts.** A draft PR parked by a round-3 design FAIL whose issue has since lost `needs-human-input`, with a maintainer comment after the draft's last push. The comment is the decision. Apply it, then run a fresh design check (one round) against the canon as it stands now, and land it. Nothing else resumes these, because the open draft reads as a claim.
    ```sh
    gh pr list --draft --author jlaubot --json number,title,closingIssuesReferences
    ```
@@ -56,13 +56,13 @@ If `$AGENT_COUNT` is above 1, prefer issues where `number % AGENT_COUNT == AGENT
 
 - Reproduce first: a test or a design-shot probe that fails on main. Watch it fail.
 - Make the smallest diff that meets the issue: no refactor, no cleanup next to it.
-- If a rider can see the change, start the design check's capture (`design-check` §2) as soon as the fix builds, not after everything else. Run it in the background with `timeout: 3600000`, because a headless run otherwise stops it at 10 minutes. Seven of the 13 PRs closed unmerged around 2026-10-09 stopped with this step still to run.
+- If the design check applies (DESIGN-CHECK step 1), start its capture (`design-check` §2) as soon as the fix builds, not after everything else. Run it in the background with `timeout: 3600000`, because a headless run otherwise stops it at 10 minutes. Seven of the 13 PRs closed unmerged around 2026-10-09 stopped with this step still to run.
 
 ## 4. Prove
 
 - Run `make test > $S/test.log 2>&1; echo exit=$?` with the Bash timeout at 600000, then the same for `make lint`, as separate commands. `make ci` stops at the first failure and hides the rest. Read failures with `grep -nE 'FAIL|Error|panic' $S/test.log | head -40`, not the whole log.
 - On a fresh worktree, a DB test that fails at about 3 s is the migrate lock: rerun it once. A failure that passes on one rerun is a flake. If an open issue owns it, comment there; otherwise move on.
-- Run the `verify` skill for server or web behaviour, the `go-review` skill for hub, protocol, BLE or stats Go, and the `design-check` skill for anything a rider sees. Its round-3 rule ends the run.
+- Run the `verify` skill for server or web behaviour, the `go-review` skill for hub, protocol, BLE or stats Go, and the `design-check` skill when the PR's issue is labelled `design` or names Surfaces: one round, then land.
 - A logic change (not markup or CSS alone) gets one fresh review before ready: the `code-review` skill, or else a fresh Agent given only the issue and `git diff origin/main...`. Fix what it confirms.
 - Wait for CI in one call: `scripts/wait-checks.sh <pr>` with the Bash timeout at 600000. It waits for every check, e2e included, because auto-merge ignores e2e. Exit 2 means run it again. Exit 1 names the failing job, so read only that: `gh run view <run-id> --log-failed | tail -n 80`.
 
@@ -95,7 +95,7 @@ Run `date` when you start. At two hours without a green PR, or on the third fail
 
 If the issue already has two stand-downs, add `needs-human-input` and mention @janlauber with the blocker instead, so no run takes it up a third time.
 
-A design check that ends FAIL at round 3 is not a stand-down. Follow design-check §7: the PR stays draft, and the issue keeps `needs-human-input` and the mention. Never close that PR or remove that label. On #3677 doing so cost a whole second run that failed the same way.
+A design finding is never a stand-down and never holds a PR in draft: fix the blockers you caused, leave the rest in the findings comment and land (DESIGN-CHECK steps 6 and 7).
 
 Kill only processes you started, by PID.
 

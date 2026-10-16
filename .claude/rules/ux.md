@@ -2,7 +2,7 @@
 
 The rider is on a bike, sweating, the screen at arm's length or three metres away. Design for that first, the desk second.
 
-Every surface has a target and a must-match list in [docs/design/TARGETS.md](../../docs/design/TARGETS.md). A rider-visible PR is marked ready only after a passing design check ([DESIGN-CHECK.md](../../docs/design/DESIGN-CHECK.md)).
+Every surface has a target and a must-match list in [docs/design/TARGETS.md](../../docs/design/TARGETS.md). A PR whose issue is labelled `design` or names Surfaces is marked ready only after its one-round design check ([DESIGN-CHECK.md](../../docs/design/DESIGN-CHECK.md)).
 
 ## Defaults
 
