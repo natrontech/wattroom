@@ -1,1 +1,0 @@
-- On a road ride the crew list shows you and the 3 nearest riders while the bunch is steady, and a bike-computer field that has not changed for 20 s dims.

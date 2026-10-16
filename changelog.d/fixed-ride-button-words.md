@@ -1,1 +1,0 @@
-- The words on a ride's buttons (End ride, Easier, Harder, TV, +1 min, Skip block, Cancel) are 24 px, readable from the saddle.

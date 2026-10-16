@@ -1,1 +1,0 @@
-- A free ride, on a road or in a voice channel, has the ⚑ and TV mode in its control row, as a workout ride does.
