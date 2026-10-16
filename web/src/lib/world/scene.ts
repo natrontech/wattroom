@@ -50,7 +50,7 @@ const MAX_DT = 0.1; // the most one frame moves the ride on, after a stall
 /** Frames kept for frames() between two reads: a minute at 30 fps, then the oldest go. */
 const FRAMES_KEPT = 1800;
 
-export type Frame = { at: number; ms: number };
+type Frame = { at: number; ms: number };
 
 export function mount(
 	canvas: HTMLCanvasElement,

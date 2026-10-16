@@ -34,9 +34,9 @@ export type Sample = {
 };
 
 /** docs/spec/world.md "Soak": the last window's mean at most 10 % over the first's. */
-export const GROWTH = 0.1;
+const GROWTH = 0.1;
 /** Simulated minutes in each window; a shorter soak takes a third of its length. */
-export const WINDOW_MIN = 30;
+const WINDOW_MIN = 30;
 /** A count's growth under one whole handle or object is noise, not a trend. */
 const COUNT_SLACK = 1;
 
@@ -45,7 +45,7 @@ const COUNT_SLACK = 1;
  * time: those wait for a GPU, since software GL's frames time the machine's
  * other work as much as the world's.
  */
-export const GATED: { key: keyof Sample; count: boolean; frame?: true }[] = [
+const GATED: { key: keyof Sample; count: boolean; frame?: true }[] = [
 	{ key: 'heapMB', count: false },
 	{ key: 'geometries', count: true },
 	{ key: 'textures', count: true },
@@ -59,7 +59,7 @@ export const GATED: { key: keyof Sample; count: boolean; frame?: true }[] = [
 	{ key: 'frameP95', count: false, frame: true },
 ];
 
-export type Row = {
+type Row = {
 	metric: string;
 	first: number;
 	last: number;
@@ -67,7 +67,7 @@ export type Row = {
 	ok: boolean;
 };
 
-export type Verdict = {
+type Verdict = {
 	ok: boolean;
 	window: number;
 	/** False when the frames were drawn in software: reported, not judged. */
