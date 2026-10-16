@@ -12,7 +12,6 @@ test.use({ viewport: { width: 1440, height: 900 } });
  * other screen does — within a metre along the road and across it. What
  * either screen draws came through the hub: one bunch position, each rider's
  * offset, and the order they joined in, laid out the same way twice.
- * Behind the roads dev gate, which a dev server opens.
  */
 const COUNTDOWN_MS = 10_000;
 const SETTLE_MS = 30_000;

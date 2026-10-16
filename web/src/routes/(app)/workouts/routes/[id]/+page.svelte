@@ -14,7 +14,7 @@
 	import { confirm } from '$lib/confirm.svelte';
 	import { device, isSpectator } from '$lib/device.svelte';
 	import { routeNameLine, routePrivacyLine } from '$lib/privacy-copy';
-	import { carryOnOf, roadsEnabled } from '$lib/ride/roads';
+	import { carryOnOf } from '$lib/ride/roads';
 	import type { Attempt, ClimbBest } from '$lib/road/attempts';
 	import { classedOf } from '$lib/road/climbs';
 	import { isLoop } from '$lib/road/line';
@@ -98,7 +98,6 @@
 	const carry = $derived(
 		attempts && road ? carryOnOf(attempts.attempts, road.length) : null,
 	);
-	const ridable = $derived(roadsEnabled());
 	const renamed = $derived(
 		route !== null && name.trim() !== '' && name.trim() !== route.name,
 	);
@@ -207,7 +206,7 @@
 		<div
 			class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start"
 		>
-			{#if ridable && road}
+			{#if road}
 				<aside
 					class="lg:col-start-2 lg:row-start-1"
 					aria-label="how to ride it"

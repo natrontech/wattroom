@@ -1,0 +1,1 @@
+- Roads, in beta: import a GPX, TCX or FIT route and ride it from the importer, the route page or the Ride card, alone or in a voice channel. How a road feels on your trainer is still being tuned on real hardware.

@@ -4,8 +4,7 @@ import { signInAs } from './signin';
 
 /**
  * Workout on it (#3681): from a route page, pick a workout on /workouts?on=,
- * and its Ride opens the road's start, not a second list of roads. Behind the
- * roads dev gate, which a dev server opens.
+ * and its Ride opens the road's start, not a second list of roads.
  */
 test('the route page picks a workout for its road and rides it', async ({
 	page,
