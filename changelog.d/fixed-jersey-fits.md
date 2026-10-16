@@ -1,1 +1,0 @@
-- Riders' jerseys fit in the world: the hem ends on the shorts instead of flaring over the saddle, the shoulders sit flush, and a bottle's cap no longer reads as an open sock.

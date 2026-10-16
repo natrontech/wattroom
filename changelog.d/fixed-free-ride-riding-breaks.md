@@ -1,1 +1,0 @@
-- A free ride's heart-rate share is one button instead of a sentence, the climb page's title stays on one line, and its page arrows are the full 44 px.

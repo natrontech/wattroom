@@ -1,1 +1,0 @@
-- Ride in 3D: turn the world on in Settings → Appearance or mid-ride. A road ride opens on the flat road until you do, and one tap switches back.
