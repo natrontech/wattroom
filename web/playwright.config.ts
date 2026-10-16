@@ -88,6 +88,7 @@ export default defineConfig({
 				'voice-click-join.spec.ts',
 				'design-shots.spec.ts',
 				'design-seed.spec.ts',
+				'world-soak.spec.ts',
 			],
 			use: { ...devices['Desktop Chrome'], launchOptions: { args: [MUTE] } },
 		},
@@ -134,6 +135,18 @@ export default defineConfig({
 				// A control that never comes fails its surface in seconds, not
 				// the five minutes a ride's test is allowed.
 				actionTimeout: 15_000,
+				launchOptions: { args: [MUTE, ...GL] },
+			},
+		},
+		{
+			// The world soak (#3851): /dev/world ridden for hours, judged flat.
+			// Run by `make world-soak`, which builds with the dev hooks on as
+			// the design shots do; the spec skips without WORLD_SOAK_OUT.
+			name: 'soak',
+			testMatch: ['world-soak.spec.ts'],
+			retries: 0,
+			use: {
+				...devices['Desktop Chrome'],
 				launchOptions: { args: [MUTE, ...GL] },
 			},
 		},
@@ -212,10 +225,12 @@ export default defineConfig({
 			testMatch: ['world-place.spec.ts'],
 			use: { ...devices['Desktop Firefox'] },
 		},
-		// Without somewhere to write, every design shot skips — and CI's shards
+		// Without somewhere to write, every design shot and the soak skip — and CI's shards
 		// split by test count, so 43 skips would leave the last one half idle.
 	].filter(
-		(p) => !p.name.startsWith('design') || !!process.env.DESIGN_SHOTS_OUT,
+		(p) =>
+			(!p.name.startsWith('design') || !!process.env.DESIGN_SHOTS_OUT) &&
+			(p.name !== 'soak' || !!process.env.WORLD_SOAK_OUT),
 	),
 	// Serves the built SPA and proxies /api to the Go server, matching production.
 	//

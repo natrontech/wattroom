@@ -31,3 +31,5 @@ blob-report/
 
 # staged from the repo root by `make changelog`
 static/changelog.md
+# `make world-soak` (#3851): its reports and samples.
+/world-soak/

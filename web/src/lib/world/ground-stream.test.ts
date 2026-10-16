@@ -69,7 +69,11 @@ describe('the ground a ride draws around it', () => {
 					dropped++;
 				},
 			});
-			for (eye = 0; eye <= 3000; eye += 100) stream.update(eye, 0);
+			for (eye = 0; eye <= 3000; eye += 100) {
+				stream.update(eye, 0);
+				// What the soak holds a ride's ground to (#3851).
+				expect(stream.held().length).toBeLessThanOrEqual(stream.window());
+			}
 			expect(dropped).toBeGreaterThan(0);
 		},
 		BUILD_MS,
