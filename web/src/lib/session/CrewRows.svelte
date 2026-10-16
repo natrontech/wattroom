@@ -38,7 +38,9 @@
 
 <ul
 	aria-label="the crew"
-	class={row ? 'flex min-w-0 flex-1 flex-wrap' : 'flex w-60 flex-col'}
+	class={row
+		? 'flex min-w-0 flex-1 flex-wrap'
+		: 'flex w-max max-w-full min-w-60 flex-col'}
 >
 	{#each rows as rider (rider.id)}
 		<li

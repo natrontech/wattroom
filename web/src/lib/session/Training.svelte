@@ -340,9 +340,10 @@
 
 		{#snippet numbers()}
 			{#if !quiet}
-				<!-- One panel: the computer with its head and the trim. Whether
-				     your heart rate reaches the call sits in the crew panel (ADR-0008,
-				     #2804): its 44 px button would take the panel into slot 1. -->
+				<!-- One panel: the computer with its head, the trim, and whether
+				     your heart rate reaches the call beside it (ADR-0008, #2804): the
+				     button's heart alone, since its words would wrap the trim to a
+				     second row, on a road into slot 1 (#4056). -->
 				<BikeComputer
 					docked
 					{climb}
@@ -370,14 +371,17 @@
 					race={channel.race ?? undefined}
 				/>
 				<div class="flex flex-col gap-2 px-4 pb-3">
-					<BiasTrim
-						ride
-						bias={channel.bias}
-						onBias={channel.trainer && channel.actuating
-							? (step) => channel.nudgeBias(step)
-							: undefined}
-						hint={targetsNote ? `${targetsNote} — trim them there` : undefined}
-					/>
+					<div class="flex items-center gap-2">
+						<BiasTrim
+							ride
+							bias={channel.bias}
+							onBias={channel.trainer && channel.actuating
+								? (step) => channel.nudgeBias(step)
+								: undefined}
+							hint={targetsNote ? `${targetsNote} — trim them there` : undefined}
+						/>
+						<HrShare ride icon />
+					</div>
 					{#if riding.length > 1 && inFocus !== 'media' && inFocus !== 'game' && !inWorld}
 						<!-- The live half of the execution score (#543), alone not a
 						     leaderboard (#2635); below xl only, where the people column
@@ -391,26 +395,17 @@
 		{/snippet}
 
 		{#snippet crew()}
-			{@const rows = (inWorld || !quiet) && inFocus !== 'game'}
-			{#if rows || !quiet}
+			{#if (inWorld || !quiet) && inFocus !== 'game'}
 				<!-- The crew, one list with or without a road: rows at the riding
 				     floor, a sprint's card included (the box table). A game's panel
 				     already lists everyone; a second list of the same people is what
-				     the sprint branch refuses too. Flat, the rows share the column
-				     with the heart-rate button at its end. -->
-				<div class={inWorld ? '' : 'flex flex-wrap items-center gap-x-4 px-2'}>
-					{#if rows}
-						<div class="min-w-0 py-2 {inWorld ? '' : 'flex flex-1'}">
-							<CrewRows
-								row={!inWorld}
-								riders={inRide}
-								offsets={channel.ridden?.bunch?.offsets}
-							/>
-						</div>
-					{/if}
-					{#if !quiet}
-						<HrShare ride class="px-4 pb-3 {inWorld ? '' : 'ml-auto pt-3'}" />
-					{/if}
+				     the sprint branch refuses too. Flat, the rows lie side by side. -->
+				<div class="py-2 {inWorld ? '' : 'flex px-2'}">
+					<CrewRows
+						row={!inWorld}
+						riders={inRide}
+						offsets={channel.ridden?.bunch?.offsets}
+					/>
 				</div>
 			{/if}
 		{/snippet}
