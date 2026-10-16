@@ -23,7 +23,6 @@
 	import type { Workout } from '$lib/workout/types';
 	import { api } from '$lib/api';
 	import type { ControlRoute } from '$lib/protocol';
-	import { roadsEnabled } from '$lib/ride/roads';
 	import { onRoute } from '$lib/road/compile';
 	import type { Road } from '$lib/road/road';
 	import type { StoredRoute } from '$lib/road/stored';
@@ -160,10 +159,9 @@
 	const zones = $derived(zoneChips(segments, ftp));
 	const bands = $derived(bandChips(segments));
 
-	// Roads (#3105): behind the roads dev gate like every route ride, and
-	// never in the solo 'ride' mode — riding your own workout on a road is
-	// its own door (#3594).
-	const roadsOn = $derived(roadsEnabled() && mode !== 'ride');
+	// Roads (#3105), never in the solo 'ride' mode — riding your own workout
+	// on a road is its own door (#3594).
+	const roadsOn = $derived(mode !== 'ride');
 	// Workouts, then your roads, then games — the tabs this picker has.
 	const tabs = $derived([
 		{ id: 'workouts' as const, label: 'Workouts' },
@@ -180,7 +178,7 @@
 		if (res.ok) routes = res.data.routes;
 		else routesError = res.error.message;
 	}
-	if (roadsEnabled()) void loadRoutes();
+	void loadRoutes();
 	let roadChoice = $state<{
 		workout: Workout;
 		route: ControlRoute;
