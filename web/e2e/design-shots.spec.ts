@@ -1297,24 +1297,21 @@ surface('flow-f1', async (s) => {
 	await s.shot(o, { name: 'flow-f1-2-ride' });
 });
 
-surface(
-	'appearance',
-	async (s) => {
-		for (const [device, suffix] of variants([
-			[DESK, ''],
-			[PHONE, '-phone'],
-		] as const)) {
-			const o = await s.open(device);
-			await page(s, o, '/settings/appearance', {
-				name: `appearance${suffix}`,
-			});
-		}
-		const reduced = await s.open(DESK, { reducedMotion: 'reduce' });
-		await page(s, reduced, '/settings/appearance', {
-			name: 'appearance-reduced',
+surface('appearance', async (s) => {
+	for (const [device, suffix] of variants([
+		[DESK, ''],
+		[PHONE, '-phone'],
+	] as const)) {
+		const o = await s.open(device);
+		await page(s, o, '/settings/appearance', {
+			name: `appearance${suffix}`,
 		});
-	},
-);
+	}
+	const reduced = await s.open(DESK, { reducedMotion: 'reduce' });
+	await page(s, reduced, '/settings/appearance', {
+		name: 'appearance-reduced',
+	});
+});
 
 surface('settings-this-computer', async (s) => {
 	// "This computer" draws only inside the desktop shell, so the capture

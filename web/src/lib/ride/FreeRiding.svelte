@@ -313,17 +313,11 @@
 			{/if}
 			{#if onflag}<FlagButton onflag={flag} sends="after" />{/if}
 			{#if drawn}
-				<FlatButton
-					onflat={world.flatten}
-					class={ICON}
-				/>
+				<FlatButton onflat={world.flatten} class={ICON} />
 			{/if}
 			{#if ontv}
-				<button
-					onclick={ontv}
-					class={ICON}
-					aria-label="TV mode"
-					title="TV mode"><MonitorUp size={20} /></button
+				<button onclick={ontv} class={ICON} aria-label="TV mode" title="TV mode"
+					><MonitorUp size={20} /></button
 				>
 			{/if}
 			{#if onend}

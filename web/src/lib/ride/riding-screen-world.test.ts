@@ -83,7 +83,12 @@ describe('the world on a ride', () => {
 		expect(html).toMatch(
 			/<button[^>]*title="[^"]+"[^>]*aria-label="Flag a problem"/,
 		);
-		for (const name of ['Flat road', 'TV mode', 'One more minute', 'Skip block'])
+		for (const name of [
+			'Flat road',
+			'TV mode',
+			'One more minute',
+			'Skip block',
+		])
 			expect(html).toMatch(
 				new RegExp(
 					`<button[^>]*class="[^"]*h-11 w-11[^"]*" aria-label="${name}" title="[^"]+"`,

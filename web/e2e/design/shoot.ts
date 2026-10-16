@@ -164,7 +164,8 @@ export class Shoot {
 			([muted, world]) => {
 				localStorage.setItem('wattroom.mixer.v1', muted);
 				// World on is the device's World control at Full (#3084).
-				if (world === true) localStorage.setItem('wattroom.world.mode.v1', 'full');
+				if (world === true)
+					localStorage.setItem('wattroom.world.mode.v1', 'full');
 				// Software GL misses every frame; the dev build's frame judge
 				// stands down for the capture (#3823).
 				localStorage.setItem('wattroom.world-software.v1', '1');

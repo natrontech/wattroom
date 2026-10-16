@@ -6,7 +6,11 @@
 export type WorldMode = 'full' | 'steady' | 'light' | 'flat';
 
 export const WORLD_MODES: { mode: WorldMode; label: string; line: string }[] = [
-	{ mode: 'flat', label: 'Flat', line: 'the road as a 2D profile, the Skyline' },
+	{
+		mode: 'flat',
+		label: 'Flat',
+		line: 'the road as a 2D profile, the Skyline',
+	},
 	{ mode: 'full', label: 'Full', line: 'the 3D world as designed' },
 	{
 		mode: 'steady',
