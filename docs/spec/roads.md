@@ -28,6 +28,9 @@ At the default difficulty a −6 % descent feels −1.5 %. A route ride is unsco
 distance and descent pay nothing, and a scored workout on a road pays like any
 scored workout (ADR-0062's table).
 
+Riders ride these numbers marked Beta until the Kickr sessions measure them
+(#3351, ADR-0062's 2026-10-16 amendment).
+
 **Climbs** (the Garmin Edge 1050 manual's rule, fetched 2026-09-26):
 
 - a climb is at least **500 m** long, averages at least **3 %**, and scores
