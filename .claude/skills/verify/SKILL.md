@@ -25,7 +25,7 @@ Hard rules.
 2. Static path (fastest full-stack check):
    - `make build` (embeds the frontend), run `./bin/wattroom-server`
    - `curl localhost:8080/api/healthz` → `ok`
-   - Open `http://localhost:8080` — the page loads and "ping server" returns ok (proves SPA embed + API wiring)
+   - Open `http://localhost:8080` — the page loads with no API error (proves SPA embed + API wiring)
    - SPA fallback: `curl -s localhost:8080/anything` returns index.html
 3. Dev path (for iterating on the change): `make infra` once, then `make dev-server` + `make dev-web`, exercise the changed flow at the URL `make dev-web` prints on its first line (`http://localhost:5174` in the main clone; a worktree derives its own port and its own database — `make dev-env`).
 4. WS/channel changes: open two browser tabs on the same voice channel (`/crew/{id}/v/{channel}`, two riders via `?as=`) and confirm both receive ticks; kill one tab and confirm the server logs the leave and the other tab keeps ticking.
