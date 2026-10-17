@@ -7,9 +7,7 @@
 	// the workout, a shared screen replaces both, and the instrument is what
 	// returns. The player is never overlaid — RMF — so the numbers go below it.
 	import CountdownScreen from '$lib/session/CountdownScreen.svelte';
-	import CrewStrip from '$lib/session/CrewStrip.svelte';
 	import CrewRows from '$lib/session/CrewRows.svelte';
-	import { crewOf } from '$lib/session/follow';
 	import { bottleFor } from '$lib/roadside';
 	import RoadsideDeck from '$lib/channel/RoadsideDeck.svelte';
 	import ExecutionMeter from '$lib/session/ExecutionMeter.svelte';
@@ -274,7 +272,7 @@
 		{/await}
 	{/snippet}
 	<RidingSurface
-		class="h-full overflow-hidden"
+		class="h-full overflow-hidden {inWorld ? '' : 'p-4'}"
 		world={inWorld ? road : undefined}
 		stage={inFocus === 'media'}
 		moment={inWorld && inFocus === 'sprint' ? moment : undefined}
@@ -345,7 +343,9 @@
 		{#snippet numbers()}
 			{#if !quiet}
 				<!-- One panel: the computer with its head, the trim, and whether
-				     your heart rate reaches the call (ADR-0008, #2804). -->
+				     your heart rate reaches the call beside it (ADR-0008, #2804): the
+				     button's heart alone, since its words would wrap the trim to a
+				     second row, on a road into slot 1 (#4056). -->
 				<BikeComputer
 					docked
 					{climb}
@@ -373,15 +373,19 @@
 					race={channel.race ?? undefined}
 				/>
 				<div class="flex flex-col gap-2 px-4 pb-3">
-					<BiasTrim
-						ride
-						bias={channel.bias}
-						onBias={channel.trainer && channel.actuating
-							? (step) => channel.nudgeBias(step)
-							: undefined}
-						hint={targetsNote ? `${targetsNote} — trim them there` : undefined}
-					/>
-					<HrShare />
+					<div class="flex items-center gap-2">
+						<BiasTrim
+							ride
+							bias={channel.bias}
+							onBias={channel.trainer && channel.actuating
+								? (step) => channel.nudgeBias(step)
+								: undefined}
+							hint={targetsNote
+								? `${targetsNote} — trim them there`
+								: undefined}
+						/>
+						<HrShare ride icon />
+					</div>
 					{#if riding.length > 1 && inFocus !== 'media' && inFocus !== 'game' && !inWorld}
 						<!-- The live half of the execution score (#543), alone not a
 						     leaderboard (#2635); below xl only, where the people column
@@ -395,19 +399,17 @@
 		{/snippet}
 
 		{#snippet crew()}
-			{#if inWorld && inFocus !== 'game'}
-				<!-- Beside the road the crew stays under the seat, a sprint's card
-				     included (the box table): rows at the riding floor. -->
-				<div class="py-2">
-					<CrewRows riders={inRide} offsets={channel.ridden?.bunch?.offsets} />
-				</div>
-			{:else if !quiet && inFocus !== 'game'}
-				<!-- The crew. A group-training surface that shows only your own
-			     numbers is a solo app with a chat window attached. A game's panel
-			     already lists everyone; a second list of the same people is what
-			     the sprint branch refuses too. -->
-				<div class="p-4">
-					<CrewStrip riders={crewOf(inRide, false)} />
+			{#if (inWorld || !quiet) && inFocus !== 'game'}
+				<!-- The crew, one list with or without a road: rows at the riding
+				     floor, a sprint's card included (the box table). A game's panel
+				     already lists everyone; a second list of the same people is what
+				     the sprint branch refuses too. Flat, the rows lie side by side. -->
+				<div class="py-2 {inWorld ? '' : 'flex px-2'}">
+					<CrewRows
+						row={!inWorld}
+						riders={inRide}
+						offsets={channel.ridden?.bunch?.offsets}
+					/>
 				</div>
 			{/if}
 		{/snippet}

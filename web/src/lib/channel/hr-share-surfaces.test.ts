@@ -57,6 +57,19 @@ describe('where heart rate reaches the call (#2804)', () => {
 		expect(line).toMatch(/ride\s*\?\s*'sr-only'/);
 	});
 
+	it("a session's button stands beside the trim, its heart alone (#4063)", () => {
+		const training = read('lib/session/Training.svelte');
+		const numbers = training.slice(
+			training.indexOf('{#snippet numbers()}'),
+			training.indexOf('{#snippet crew()}'),
+		);
+		expect(numbers).toMatch(/<BiasTrim[\s\S]*<HrShare ride icon \/>/);
+		expect(training.match(/<HrShare/g)).toHaveLength(1);
+		expect(read('lib/channel/HrShare.svelte')).toContain(
+			'{#if !icon}{view.action}{/if}',
+		);
+	});
+
 	it('the computer keeps its page arrows 44 px and its title on one line (#4042)', () => {
 		const computer = read('lib/session/BikeComputer.svelte');
 		expect(
