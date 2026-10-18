@@ -268,13 +268,12 @@ test('the header controls a pedalling rider uses are riding size', async ({
 });
 
 /**
- * The voice channel's people column (#3828, #3912). On a ride it is part of
- * the riding surface, so everything in it is 44 px each way: the cheers had
- * shrunk to 35 px wide to fit one row, and the jukebox and the soundboard were
- * 30 px. At any width its search field says its whole placeholder: the old one
- * was cut mid-word at the column's default 272 px.
+ * The voice channel's people column (#3912, ADR-0087). It is chrome, so a ride
+ * leaves its controls at their desk sizes. At any width its search field says
+ * its whole placeholder: the old one was cut mid-word at the column's default
+ * 272 px.
  */
-test('the people column is riding size on a ride, and its search placeholder fits', async ({
+test('the people column keeps its desk sizes on a ride, and its search placeholder fits', async ({
 	riders,
 	channels,
 }) => {
@@ -320,23 +319,7 @@ test('the people column is riding size on a ride, and its search placeholder fit
 			.soft(text, `the search placeholder ${where}: ${text}px in ${room}px`)
 			.toBeLessThanOrEqual(room);
 	};
-	/** Every control in the column under 44 px either way. */
-	const short = async () => {
-		const found: string[] = [];
-		for (const control of await column
-			.locator('button, a[href], input, select, textarea, summary')
-			.filter({ visible: true })
-			.all()) {
-			const { width, height } = await box(control);
-			if (Math.min(width, height) >= RIDING) continue;
-			const name =
-				(await control.getAttribute('aria-label')) ??
-				(await control.innerText()).trim();
-			found.push(`${name || 'a control'} is ${width}×${height}px`);
-		}
-		return found;
-	};
-
+	const desk = (await box(field)).height;
 	await fits('at the desk');
 	await narrowest();
 	await fits('at the desk, the column at its narrowest');
@@ -347,9 +330,7 @@ test('the people column is riding size on a ride, and its search placeholder fit
 	await expect(rider.getByRole('button', { name: 'End ride' })).toBeVisible({
 		timeout: 15_000,
 	});
-	await expect
-		.poll(short, { message: 'people column controls under 44px on a ride' })
-		.toEqual([]);
+	expect((await box(field)).height, 'the column zoomed on a ride').toBe(desk);
 	await narrowest();
 	await fits('riding, the column at its narrowest');
 });

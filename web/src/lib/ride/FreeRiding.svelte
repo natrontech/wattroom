@@ -391,7 +391,6 @@
 <RideNarrator {view} {watts} {ftp} {stale} />
 
 <RidingSurface
-	headerFit
 	own
 	class="flex-1 {inWorld ? worldClass : ''} {extra}"
 	world={drawn ? worldSlot : undefined}

@@ -13,7 +13,6 @@
 	import JukeboxTrack from '$lib/channel/JukeboxTrack.svelte';
 	import { IN_SYNC_SEC, playerInfo } from '$lib/channel/jukebox-player.svelte';
 	import { listening } from '$lib/channel/listening.svelte';
-	import { railLabel, railText } from '$lib/channel/rail-size';
 	import {
 		createPlaylistStore,
 		type SaveTarget,
@@ -114,16 +113,15 @@
 
 <section class="flex min-w-0 flex-col gap-3">
 	<div class="flex min-w-0 items-center justify-between gap-2">
-		<span class={railLabel(riding)}>jukebox</span>
+		<span class="eyebrow">jukebox</span>
 		{#if current && jukebox?.playing && !playerInfo.live && !listening.out}
 			<!-- Proof everyone is together, in the one place riders look for it.
 			     A rider who has stepped out is not with it and must not be told
 			     they are: the badge goes, and comes back when they rejoin. -->
 			<span
-				class="flex shrink-0 items-center gap-1.5 font-mono {railText(
-					riding,
-					'text-[10px]',
-				)} {inSync ? 'text-watt' : 'text-muted'}"
+				class="flex shrink-0 items-center gap-1.5 font-mono text-[10px] {inSync
+					? 'text-watt'
+					: 'text-muted'}"
 			>
 				<span
 					class="h-1.5 w-1.5 rounded-full {inSync
@@ -144,11 +142,11 @@
 		</p>
 	{/if}
 
-	<JukeboxAdd {send} {refusal} {riding} />
+	<JukeboxAdd {send} {refusal} />
 
 	{#if queue.length}
 		<div class="min-w-0">
-			<p class="{railLabel(riding)} flex items-center justify-between">
+			<p class="eyebrow flex items-center justify-between">
 				<span>up next</span>
 				<span class="num">{queue.length}</span>
 			</p>
@@ -156,7 +154,6 @@
 				{#each queue.slice(0, showAllQueue ? queue.length : QUEUE_PEEK) as entry, i (entry.id)}
 					<JukeboxTrack
 						{entry}
-						{riding}
 						position={i + 1}
 						myId={account.me?.id}
 						onVote={() => send({ action: 'vote', entryId: entry.id })}
@@ -170,9 +167,7 @@
 					/>
 				{/each}
 			</ul>
-			<div
-				class="mt-1.5 flex items-center gap-3 {railText(riding, 'text-[11px]')}"
-			>
+			<div class="mt-1.5 flex items-center gap-3 text-[11px]">
 				{#if queue.length > QUEUE_PEEK}
 					<button
 						onclick={() => (showAllQueue = !showAllQueue)}
@@ -202,11 +197,11 @@
 
 	<!-- What is saved comes after what is live (#1423): the queue is what the
 	     channel is about to hear; the playlists are where it can reach next. -->
-	<JukeboxPlaylists {address} {crewStore} {mineStore} {riding} />
+	<JukeboxPlaylists {address} {crewStore} {mineStore} />
 
 	{#if history.length}
 		<details class="min-w-0">
-			<summary class="{railLabel(riding)} cursor-pointer py-2 select-none"
+			<summary class="eyebrow cursor-pointer py-2 select-none"
 				>just played · {history.length}</summary
 			>
 			<ul class="mt-1.5 flex flex-col gap-1.5">
@@ -216,7 +211,6 @@
 					     videoId made the hub read it as a blank YouTube add (#1144). -->
 					<JukeboxTrack
 						{entry}
-						{riding}
 						onRequeue={() =>
 							send({
 								action: 'add',

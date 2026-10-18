@@ -76,7 +76,7 @@
 					gap: 'gap-[1vh]',
 				}
 			: {
-					power: 'text-[6.5rem]',
+					power: 'text-watts',
 					row: 'flex-wrap items-end',
 					side: 'pb-1',
 					unit: 'text-2xl',

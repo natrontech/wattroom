@@ -128,7 +128,7 @@
 				<span
 					class="font-display {numeral} block leading-[0.85] font-bold tabular-nums {tv
 						? 'text-[16vh]'
-						: 'text-[6.5rem]'}"
+						: 'text-watts'}"
 					><TabularFigures value={quiet ? '—' : watts} /></span
 				>
 				{#if kg !== undefined}

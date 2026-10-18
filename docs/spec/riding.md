@@ -151,10 +151,15 @@ laptop; TV: **3 m** from a **55-inch** set:
 
 | Text                  | At least      | TV       | Desk       | HUD      |
 | --------------------- | ------------- | -------- | ---------- | -------- |
-| Watts                 | **45 arcmin** | **12vh** | **104 px** | **12vh** |
-| Time left             | **45 arcmin** | **9vh**  | **72 px**  | **9vh**  |
-| Secondary numbers     | **22 arcmin** | **5vh**  | **36 px**  | **5vh**  |
-| "Next", labels, words | **16 arcmin** | **3vh**  | **24 px**  | **3vh**  |
+| Watts                 | **45 arcmin** | **12vh** | **76 px**  | **12vh** |
+| Time left             | **45 arcmin** | **9vh**  | **52 px**  | **9vh**  |
+| Secondary numbers     | **22 arcmin** | **5vh**  | **24 px**  | **5vh**  |
+| "Next", words         | **16 arcmin** | **3vh**  | **14 px**  | **3vh**  |
+| Labels                | **16 arcmin** | **3vh**  | **11 px**  | **3vh**  |
+
+The desk column is the v2 mocks' proportions, under the arcmin floors (Jan,
+2026-10-18, [ADR-0087](../decisions/0087-a-desk-ride-takes-the-mocks-sizes.md)): a rider
+who rides from further back uses TV mode.
 
 **A phone** (below **768 px**, [#3676](https://github.com/natrontech/wattroom/issues/3676))
 has its own design distance: **0.45 m**, a phone on the stem or in the hand,
@@ -162,8 +167,7 @@ at **0.156 mm** a CSS pixel and a cap height of **0.72 em**. That puts the
 floors, as font sizes, at **52 px** for watts and time left (45 arcmin), **26 px** for
 secondary numbers (22 arcmin) and **19 px** for words (16 arcmin). The phone
 ships, as font sizes, watts at **104 px**, time left at **72 px**, secondary numbers at
-**36 px** and words at **20 px** or more: the desk's sizes, since a full-width
-panel holds them. The watts stay the largest number on the screen and time
+**36 px** and words at **20 px** or more, since a full-width panel holds them. The watts stay the largest number on the screen and time
 left the second.
 
 Nothing on the TV is smaller than **2.9vh**. **The HUD's design distance**
