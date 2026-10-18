@@ -1,0 +1,1 @@
+- On a ride the sidebar, the people column and right-click menus keep their desk sizes, in the dark riding scheme. The ride's own panels keep their large numbers and labels.

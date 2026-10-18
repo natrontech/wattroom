@@ -30,7 +30,7 @@ Every surface outside a session, including history, settings, workouts and profi
 - Measure the page body, never `documentElement.scrollWidth`.
 - An SVG measured with `bind:clientWidth` gets `width="100%"` and a `viewBox`, never a pixel width; any floor stays below the narrowest real column.
 - Primary work stacks first on a phone, before any sidebar. The workout editor never stacks library-first.
-- Tap targets: 24 px minimum (WCAG 2.5.8), 44 px for controls used while pedalling (2.5.5). `btn-lg` is 44, `btn` 36–38, `btn-xs` 28–30, `btn-link` 16 (inline text, exempt). A worded button on a riding surface is `btn-ride` (44 px, 24 px word); use it mid-ride, not everywhere.
+- Tap targets: 24 px minimum (WCAG 2.5.8), 44 px for the ride's own controls, used while pedalling (2.5.5). The chrome around a ride (sidebar, people column, menus) keeps its desk sizes ([ADR-0087](../../docs/decisions/0087-the-chrome-keeps-its-desk-size-on-a-ride.md)). `btn-lg` is 44, `btn` 36–38, `btn-xs` 28–30, `btn-link` 16 (inline text, exempt). A worded button on a riding surface is `btn-ride` (44 px, 24 px word); use it mid-ride, not everywhere.
 - The last item clears the browser chrome.
 
 ## Keyboard focus
