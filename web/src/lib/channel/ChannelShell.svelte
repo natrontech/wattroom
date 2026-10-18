@@ -173,6 +173,11 @@
 		// session beside it, whose numbers are the ones that count.
 		if (!session && !free.recording) return;
 		const you = roster.you;
+		// The roster says 0 for a heart rate nobody sends.
+		const pulse = {
+			cadence: you.cadence,
+			heartRate: you.hr > 0 ? you.hr : undefined,
+		};
 		const fault =
 			live.status !== 'live'
 				? ('channel' as const)
@@ -182,6 +187,7 @@
 		if (free.recording && !connection.joined()) {
 			publishHud({
 				watts: you.watts,
+				...pulse,
 				target: free.mode === 'watts' ? free.watts : 0,
 				remaining: 0,
 				elapsed: free.seconds,
@@ -193,6 +199,7 @@
 		}
 		publishHud({
 			watts: you.watts,
+			...pulse,
 			target: you.target,
 			remaining: Math.max(
 				0,
