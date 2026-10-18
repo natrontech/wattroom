@@ -1,1 +1,1 @@
-- A session ride no longer overlaps slot 1 beside a road, keeps its panels 16 px in from the sidebar on the flat surface, reads the crew as 24 px rows with full names, and keeps the heart-rate button beside the bias trim.
+- A session ride no longer overlaps slot 1 beside a road, keeps its panels 16 px in from the sidebar on the flat surface, shows the road crew's names in full, and keeps the heart-rate button beside the bias trim.

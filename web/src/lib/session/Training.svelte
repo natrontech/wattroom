@@ -7,7 +7,9 @@
 	// the workout, a shared screen replaces both, and the instrument is what
 	// returns. The player is never overlaid — RMF — so the numbers go below it.
 	import CountdownScreen from '$lib/session/CountdownScreen.svelte';
+	import CrewStrip from '$lib/session/CrewStrip.svelte';
 	import CrewRows from '$lib/session/CrewRows.svelte';
+	import { crewOf } from '$lib/session/follow';
 	import { bottleFor } from '$lib/roadside';
 	import RoadsideDeck from '$lib/channel/RoadsideDeck.svelte';
 	import ExecutionMeter from '$lib/session/ExecutionMeter.svelte';
@@ -399,17 +401,19 @@
 		{/snippet}
 
 		{#snippet crew()}
-			{#if (inWorld || !quiet) && inFocus !== 'game'}
-				<!-- The crew, one list with or without a road: rows at the riding
-				     floor, a sprint's card included (the box table). A game's panel
-				     already lists everyone; a second list of the same people is what
-				     the sprint branch refuses too. Flat, the rows lie side by side. -->
-				<div class="py-2 {inWorld ? '' : 'flex px-2'}">
-					<CrewRows
-						row={!inWorld}
-						riders={inRide}
-						offsets={channel.ridden?.bunch?.offsets}
-					/>
+			{#if inWorld && inFocus !== 'game'}
+				<!-- Beside the road the crew stays under the seat, a sprint's card
+				     included (the box table): rows at the riding floor. -->
+				<div class="py-2">
+					<CrewRows riders={inRide} offsets={channel.ridden?.bunch?.offsets} />
+				</div>
+			{:else if !quiet && inFocus !== 'game'}
+				<!-- The crew. A group-training surface that shows only your own
+			     numbers is a solo app with a chat window attached. A game's panel
+			     already lists everyone; a second list of the same people is what
+			     the sprint branch refuses too. -->
+				<div class="p-4">
+					<CrewStrip riders={crewOf(inRide, false)} />
 				</div>
 			{/if}
 		{/snippet}
