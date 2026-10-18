@@ -42,6 +42,16 @@ test('a road ride opens flat, and the rider switches to 3D and back @world', asy
 		timeout: 60_000,
 	});
 	expect(await stored()).toBe('full');
+	// The world fills the page body edge to edge (G3): its negative margins
+	// cancel the page's padding at the desk's spacing, never the ride's
+	// smaller scale, which left a 6 px frame (ADR-0087).
+	const world = await page.locator('[data-surface=docked]').boundingBox();
+	const body = await page.locator('#page-body').boundingBox();
+	expect(Math.round(world!.x)).toBe(Math.round(body!.x));
+	expect(Math.round(world!.y)).toBe(Math.round(body!.y));
+	expect(Math.round(world!.x + world!.width)).toBe(
+		Math.round(body!.x + body!.width),
+	);
 
 	const flat = page.getByRole('button', { name: 'Flat road' });
 	// A ride's control on a desk is 33 px, on the ride's scale (ADR-0087).
