@@ -3,6 +3,8 @@
 	// it; Escape, a click anywhere else, a scroll or a resize close it.
 	// Mid-ride it wears the riding kit (#3943): `ride-panel`, SPEC's 24 px
 	// words, 44 px rows, and a place clear of the corridor and of its object.
+	// Opaque, unlike a panel over the world: it floats over 24 px words, and
+	// at 86 % they read through its rows.
 	import { tick } from 'svelte';
 	import {
 		closeMenu,
@@ -145,7 +147,7 @@
 		tabindex="-1"
 		onkeydown={onKey}
 		class="{riding
-			? 'ride-panel'
+			? 'ride-panel bg-surface!'
 			: 'panel'} fixed z-[70] max-h-[70vh] min-w-44 overflow-y-auto p-1"
 		style="left: {pos.left}px; top: {pos.top}px{maxW
 			? `; max-width: ${maxW}px`
