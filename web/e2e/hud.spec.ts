@@ -26,9 +26,14 @@ test('the HUD waits, then shows what the riding screen publishes', async ({
 			target: 230,
 			remaining: 754,
 			label: 'Sweet Spot',
+			cadence: 88,
+			heartRate: 142,
 		});
 	});
 	await expect(page.getByTestId('hud-watts')).toHaveText('245');
+	await expect(page.getByTestId('hud-secondary')).toHaveText(
+		'88 rpm · 142 bpm',
+	);
 	await expect(page.getByTestId('hud-target')).toContainText('230');
 	await expect(page.getByTestId('hud-remaining')).toHaveText('12:34 left');
 	await expect(page.getByTestId('hud-label')).toHaveText('Sweet Spot');
@@ -90,6 +95,7 @@ test('the HUD draws the road a ride is on', async ({ context, page }) => {
 			remaining: 0,
 			elapsed: 1800,
 			label: 'Free ride',
+			cadence: 92,
 			road: {
 				grade: 8.94,
 				km: 12.4,
@@ -101,6 +107,14 @@ test('the HUD draws the road a ride is on', async ({ context, page }) => {
 		});
 	});
 	await expect(page.getByTestId('hud-road')).toHaveText('8.9 % · top 6.0 km');
+	// Heart rate only with a source; cadence beside the grade, inside the
+	// shell's window and clear of the grade line.
+	const secondary = page.getByTestId('hud-secondary');
+	await expect(secondary).toHaveText('92 rpm');
+	const grade = await page.getByTestId('hud-road').boundingBox();
+	const beside = await secondary.boundingBox();
+	expect(beside!.x).toBeGreaterThan(grade!.x + grade!.width);
+	expect(beside!.x + beside!.width).toBeLessThanOrEqual(320);
 	await expect(page.getByTestId('hud-remaining')).toHaveText('30:00 ridden');
 	const strip = page.getByTestId('hud-ahead');
 	await expect(strip.locator('rect')).toHaveCount(20);
