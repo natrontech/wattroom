@@ -70,9 +70,10 @@ type Connection = {
 	/** You are riding the channel's session, not standing beside it. */
 	joined: () => boolean;
 	/**
-	 * A ride is under way on this connection: a session live in the channel,
-	 * or your free ride recording (ADR-0059, #2843). What the frame darkens
-	 * for, the HUD follows and the leave guard protects.
+	 * You are riding on this connection: a live session you joined, your free
+	 * ride recording or your own workout (ADR-0059, #2843). What the frame
+	 * darkens for, the HUD follows and the leave guard protects. A spectator
+	 * stays at the desk.
 	 */
 	riding: () => boolean;
 	/** Easier / Harder acts on a ride here: the soundboard yields its keys (#3329). */
@@ -407,7 +408,7 @@ function connect(address: PlaceAddress): Connection {
 		ownRide,
 		joined,
 		riding: () =>
-			isLivePhase(live.tick?.state.phase) ||
+			(isLivePhase(live.tick?.state.phase) && joined()) ||
 			freeRide.recording ||
 			ownRide.riding,
 		shifting: () => ride.shifting || (gearsEnabled() && ownRide.riding),
