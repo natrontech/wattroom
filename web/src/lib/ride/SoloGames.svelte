@@ -12,7 +12,7 @@
 	import { lounge, loungeCrew } from '$lib/crew-lounge';
 	import { crewLive } from '$lib/nav/crew-live.svelte';
 	import { GAME_MODES } from '$lib/session/modes';
-	import { gameDoor } from '$lib/session/game-door';
+	import { gameDoor } from '$lib/session/doors';
 
 	/** The modes a rider can play with nobody else there. */
 	const SOLO = ['watt-golf', 'floor-is-lava', 'backyard-ramp'];

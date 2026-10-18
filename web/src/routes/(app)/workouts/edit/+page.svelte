@@ -31,6 +31,7 @@
 		wrapInRepeat,
 	} from '$lib/workout/tree';
 	import { byId, library } from '$lib/workout/library';
+	import { backFrom, withPick } from '$lib/session/doors';
 	import type { RampStep, SteadyStep, Workout } from '$lib/workout/types';
 	import { validateWorkout } from '$lib/workout/validate';
 
@@ -50,6 +51,8 @@
 	let editingId = $state(requestedId);
 	const fromId = page.url.searchParams.get('from') ?? '';
 	const source = requestedId ? undefined : byId(fromId)?.workout;
+	// Opened from a session picker (#4082): Save and Discard go back to it.
+	const back = backFrom(page.url);
 
 	let workout = $state<Workout>(
 		source
@@ -205,6 +208,11 @@
 		}
 		saveError = null;
 		saved = true;
+		// The picker opening on it is the confirmation, one tap from Start.
+		if (back) {
+			void goto(withPick(back, result.id));
+			return;
+		}
 		// The toast is the confirmation and the way to ride it; nothing read
 		// the ?saved= the page used to carry.
 		toasts.push(`Saved “${workout.name}” — ride it.`, {
@@ -251,7 +259,7 @@
 				class="btn btn-secondary btn-xs"
 				title="Redo (⇧⌘Z)">Redo</button
 			>
-			<a href="/workouts" class="btn btn-ghost">Discard</a>
+			<a href={back ?? '/workouts'} class="btn btn-ghost">Discard</a>
 			<button
 				onclick={save}
 				disabled={!check.ok || !hydrated || shelfFull}
