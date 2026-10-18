@@ -44,7 +44,8 @@ test('a road ride opens flat, and the rider switches to 3D and back @world', asy
 	expect(await stored()).toBe('full');
 
 	const flat = page.getByRole('button', { name: 'Flat road' });
-	expect((await flat.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+	// A ride's control on a desk is 33 px, on the ride's scale (ADR-0087).
+	expect((await flat.boundingBox())?.height).toBeGreaterThanOrEqual(32);
 	await flat.click();
 	await expect(page.getByTestId('flat-road')).toBeVisible();
 	await expect(page.locator('[data-surface=docked]')).toHaveCount(0);

@@ -28,6 +28,10 @@
 }
 
 @theme {
+	/* The 3 s power's figure on a desk ride (SPEC "The bike computer"). */
+	--text-watts: 6.5rem;
+	/* A riding surface's label (ride-label). */
+	--text-label: 1.5rem;
 	/* Tailwind's pulse, sampled 44 times in its 2 s instead of on every frame
 	 * (#3199): the same opacity curve, but the window only has to be
 	 * recomposited ~22 times a second rather than at the display's 120 or
@@ -640,23 +644,40 @@ body {
 @utility eyebrow {
 	@apply text-muted text-[10px] tracking-[0.2em] uppercase;
 }
-/* A riding surface's label (TARGETS G4): SPEC's 24 px words on a desk; the
- * kit's 10 px eyebrow is for desk pages only. */
+/* A riding surface's label (TARGETS G4): SPEC's label row (`--text-label`);
+ * the kit's 10 px eyebrow is for desk pages only. */
 @utility ride-label {
-	@apply text-muted text-2xl leading-7 font-semibold tracking-[0.08em] uppercase;
+	@apply text-muted text-label leading-7 font-semibold tracking-[0.08em] uppercase;
 }
 /* A word on a riding surface that is not a label: a button's, a status
- * line's, a name (TARGETS G4). 24 px from `sm`; a phone has no SPEC size row
- * yet (D1), so there it steps down and may wrap rather than scroll (G5). */
+ * line's, a name (TARGETS G4). text-2xl from `sm`, SPEC's word row under the
+ * ride's scale below; a phone steps down and may wrap rather than scroll (G5). */
 @utility ride-word {
 	@apply text-xl leading-7 sm:text-2xl sm:leading-7;
 }
-/* A worded button on a riding surface (TARGETS G4, #3896): btn-lg's 44 px
- * box with ride-word's 24 px word, where btn-lg's 14 px sat under the floor.
- * Icon buttons keep their 44 × 44 square. */
+/* A worded button on a riding surface (TARGETS G4, #3896): btn-lg's box with
+ * ride-word's word, both on the ride's scale (44 px on a phone). */
 @utility btn-ride {
 	@apply ride-word min-h-11 px-4 py-2 font-semibold;
 }
+/* The ride on a desk takes the mocks' proportions (ADR-0087): the theme's
+ * scale is redefined under the surface, so every text-* and spacing utility in
+ * it follows. The phone's surface, TV mode and the HUD keep their distance
+ * sizes; the chrome around the ride keeps the desk's. */
+:is([data-surface='docked'], [data-surface='flat'], [data-ride-stage]) {
+	--spacing: 0.1875rem;
+	--text-xl: 0.75rem;
+	--text-2xl: 0.875rem;
+	--text-3xl: 1.125rem;
+	--text-4xl: 1.5rem;
+	--text-5xl: 2rem;
+	--text-6xl: 2.5rem;
+	--text-7xl: 3.25rem;
+	--text-8xl: 4rem;
+	--text-watts: 4.75rem;
+	--text-label: 0.6875rem;
+}
+
 /* The voice channel's stage while a ride runs (TARGETS G1, #3890): the Lounge
  * marks its root, and the components it shares with desk pages take riding
  * size inside it only, e.g. `ride-stage:ride-word`. */

@@ -28,7 +28,7 @@ test('the bike computer turns its pages and reads from the saddle', async ({
 		timeout: 15_000,
 	});
 
-	// docs/SPEC.md: secondary numbers 36 px, words 24 px, a unit at most half.
+	// docs/SPEC.md's desk row: secondary numbers 24 px, labels 11 px, a unit at most half.
 	// RIDE leaves the watts to the instrument above it (D17); cadence carries a unit.
 	const cadence = computer.locator('[data-field=cadence]');
 	await expect(cadence).toBeVisible();
@@ -37,8 +37,8 @@ test('the bike computer turns its pages and reads from the saddle', async ({
 		const [label, value] = field.children;
 		return { label: px(label), value: px(value), unit: px(value.children[0]) };
 	});
-	expect(sizes.value).toBeGreaterThanOrEqual(36);
-	expect(sizes.label).toBeGreaterThanOrEqual(24);
+	expect(sizes.value).toBeGreaterThanOrEqual(24);
+	expect(sizes.label).toBeGreaterThanOrEqual(11);
 	expect(sizes.unit).toBeLessThanOrEqual(sizes.value / 2);
 
 	await page.keyboard.press('ArrowRight');
@@ -61,7 +61,7 @@ test('the bike computer turns its pages and reads from the saddle', async ({
 /**
  * TARGETS ride-road-world 9 (#3898): W/kg sits beside the 3 s power up to
  * 999 W and wraps under it at four digits, which no row beside can hold at
- * 104 px. The watts are drawn figure by figure, so the test redraws them.
+ * SPEC's desk size. The watts are drawn figure by figure, so the test redraws them.
  */
 test('W/kg wraps under a four-digit power @world', async ({ page }) => {
 	test.skip(
