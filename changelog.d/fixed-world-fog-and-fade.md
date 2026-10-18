@@ -1,1 +1,0 @@
-- Far props fog the way the ground does, and flags, signposts and wayside crosses fade out of your sightline like trees.

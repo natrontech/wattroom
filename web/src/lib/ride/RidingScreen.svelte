@@ -42,6 +42,7 @@
 	import RidingSurface from '$lib/session/RidingSurface.svelte';
 	import BiasTrim from '$lib/session/BiasTrim.svelte';
 	import BikeComputer from '$lib/session/BikeComputer.svelte';
+	import FlatButton from '$lib/world/FlatButton.svelte';
 	import FlatRoad from '$lib/world/FlatRoad.svelte';
 	import { createWorldView } from '$lib/world/world-view.svelte';
 	import MomentCard from '$lib/session/MomentCard.svelte';
@@ -187,6 +188,7 @@
 			>
 		{:else}
 			{#if onFlag}<FlagButton onflag={flag} sends="after" />{/if}
+			{#if drawn}<FlatButton onflat={world.flatten} class={ICON} />{/if}
 			{#if onTv}
 				<button onclick={onTv} class={ICON} aria-label="TV mode" title="TV mode"
 					><MonitorUp size={20} /></button

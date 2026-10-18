@@ -47,7 +47,7 @@
 	import RideDoors from '$lib/ride/RideDoors.svelte';
 	import FigureCard from '$lib/ride/FigureCard.svelte';
 	import SoloRoadRide from '$lib/ride/SoloRoadRide.svelte';
-	import { roadsEnabled, type RideableRoute } from '$lib/ride/roads';
+	import type { RideableRoute } from '$lib/ride/roads';
 	import type { RideKind } from '$lib/ride/RideCard.svelte';
 	import {
 		lastRoad,
@@ -65,9 +65,9 @@
 	// is the session most people ride.
 	const custom = customWorkouts();
 	const requested = page.url.searchParams.get('w') ?? '';
-	// One of your own roads (#3027), behind the roads dev gate; `from` is
-	// where on it to start: a recovered ride's stop, or the route page's chip.
-	const roadId = roadsEnabled() ? page.url.searchParams.get('road') : null;
+	// One of your own roads (#3027); `from` is where on it to start: a
+	// recovered ride's stop, or the route page's chip.
+	const roadId = page.url.searchParams.get('road');
 	const roadFrom = Math.max(0, Number(page.url.searchParams.get('from')) || 0);
 	// The road's own workout, leg k of it (#3601), from the route page's Ride
 	// its workout: compiled at this rider's FTP and weight once the road is in.
@@ -78,12 +78,12 @@
 	const planRoad = (() => {
 		const crew = page.url.searchParams.get('crew');
 		const id = page.url.searchParams.get('plan');
-		return roadsEnabled() && crew && id ? { crew, id } : null;
+		return crew && id ? { crew, id } : null;
 	})();
 	const profile = createProfileStore();
 	const ftp = $derived(profile.current.ftp);
 	// What this device rode alone last (#3671): the Ride card opens on it.
-	const remembered = roadsEnabled() ? lastRoad() : undefined;
+	const remembered = lastRoad();
 	const rememberedWorkout = lastWorkout();
 	const pick = requested || rememberedWorkout || '';
 	// Derived, not once: the shelf loads async — read at init it is always

@@ -1,1 +1,0 @@
-- One World control under Settings › Appearance › Advanced: Full, Steady, Light or Flat, remembered per device; reduced motion opens on Flat with one tap to a steady camera.

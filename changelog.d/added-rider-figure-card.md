@@ -1,1 +1,0 @@
-- Before your first ride on a road, one card asks for your rider's build, height and skin tone. Skip it as easily as you save it; it never comes back.

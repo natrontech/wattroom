@@ -12,7 +12,6 @@
 		worldMode,
 		type WorldMode,
 	} from '$lib/world/mode';
-	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import Monitor from '@lucide/svelte/icons/monitor';
 	import Moon from '@lucide/svelte/icons/moon';
 	import Sun from '@lucide/svelte/icons/sun';
@@ -24,11 +23,9 @@
 			{ value: 'light', label: 'Light', icon: Sun },
 		];
 
-	// The World control (#3214, ADR-0079): how much the world moves on this
-	// device. Never chosen, reduced motion opens on Flat.
-	let mode = $state<WorldMode>(
-		worldMode() ?? (prefersReducedMotion.current ? 'flat' : 'full'),
-	);
+	// The World control (#3214, ADR-0079): where a rider turns 3D on for this
+	// device, and how much the world moves. Never chosen is Flat (#3084).
+	let mode = $state<WorldMode>(worldMode() ?? 'flat');
 	let chosen = $state(worldMode() !== null);
 	function choose(next: WorldMode) {
 		mode = next;
@@ -72,40 +69,36 @@
 			<span class={HINT}>auto follows your OS — the ride is always dark</span>
 		</div>
 	</div>
-	<details class="group mt-5" open={!chosen && prefersReducedMotion.current}>
-		<summary class="eyebrow flex min-h-7 cursor-pointer items-center gap-1">
-			<ChevronRight size={12} class="group-open:rotate-90" />
-			Advanced
-		</summary>
-		<div class={ROW}>
-			<span class="eyebrow">world</span>
-			<div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
-				{#each WORLD_MODES as option (option.mode)}
-					<button
-						onclick={() => choose(option.mode)}
-						aria-pressed={mode === option.mode}
-						title={option.line}
-						class="btn btn-xs {mode === option.mode
-							? 'btn-primary'
-							: 'btn-secondary'}"
-					>
-						{option.label}
-					</button>
-				{/each}
-				<p class="{HINT} col-span-2 sm:col-span-1">
-					{#each WORLD_MODES as option (option.mode)}
-						{#if option.mode === mode}{option.label} — {option.line}{/if}
-					{/each}
-				</p>
-			</div>
-			{#if !chosen && prefersReducedMotion.current}
+	<!-- 3D is the rider's to turn on (#3084, ADR-0066 amended): Flat until
+	     they pick a 3D look, here or with "Ride in 3D" on a road ride. -->
+	<div class={ROW}>
+		<span class="eyebrow">3D world</span>
+		<div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+			{#each WORLD_MODES as option (option.mode)}
 				<button
-					onclick={() => choose('steady')}
-					class="btn btn-secondary btn-lg justify-self-start sm:col-start-2"
+					onclick={() => choose(option.mode)}
+					aria-pressed={mode === option.mode}
+					title={option.line}
+					class="btn btn-xs {mode === option.mode
+						? 'btn-primary'
+						: 'btn-secondary'}"
 				>
-					{STEADY_BUTTON}
+					{option.label}
 				</button>
-			{/if}
+			{/each}
+			<p class="{HINT} col-span-2 sm:col-span-1">
+				{#each WORLD_MODES as option (option.mode)}
+					{#if option.mode === mode}{option.label} — {option.line}{/if}
+				{/each}
+			</p>
 		</div>
-	</details>
+		{#if !chosen && prefersReducedMotion.current}
+			<button
+				onclick={() => choose('steady')}
+				class="btn btn-secondary btn-lg justify-self-start sm:col-start-2"
+			>
+				{STEADY_BUTTON}
+			</button>
+		{/if}
+	</div>
 </section>

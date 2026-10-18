@@ -2,8 +2,7 @@
 	/**
 	 * /ride?road=<id> (#3027): one of your own roads, loaded, then ridden
 	 * alone — or /ride?crew=&plan= (#3621), a planned session's road as the
-	 * crew will receive it. Behind the roads dev gate, which /ride checks
-	 * before this draws.
+	 * crew will receive it.
 	 */
 	import Banner from '$lib/components/Banner.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';

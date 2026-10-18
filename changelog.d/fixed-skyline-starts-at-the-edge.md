@@ -1,1 +1,0 @@
-- At the start of a ride on a road, the Skyline's profile now starts at the panel's left edge instead of leaving an empty band, and your dot walks its first half kilometre.

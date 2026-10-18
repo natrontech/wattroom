@@ -7,8 +7,7 @@ import { climbGpx } from './road-gpx';
  * The route ride in a voice channel (#3027), on the SimulatedTrainer: a road
  * of the rider's own becomes the free ride's grade, the dot moves by the
  * watts, and the ride saves against the route, where the server's replay
- * (ADR-0074) keeps its distance and climbing. Behind the roads dev gate,
- * which a dev server opens.
+ * (ADR-0074) keeps its distance and climbing.
  *
  * The road is invented, in the open South Atlantic (#3054): three kilometres
  * climbing 4 %, nobody's street.
@@ -165,7 +164,7 @@ test('a free ride on your own road moves along it and saves against it', async (
 	expect(saved.climbedM, 'the replay kept no climbing').toBeGreaterThan(0);
 });
 
-test('Ride it now rides your road alone, from where you left it', async ({
+test('Ride it now rides your road alone, marked beta, from where you left it', async ({
 	page,
 }) => {
 	test.skip(
@@ -185,9 +184,15 @@ test('Ride it now rides your road alone, from where you left it', async ({
 		mimeType: 'application/gpx+xml',
 		buffer: Buffer.from(climbGpx()),
 	});
+	// Roads reach every rider marked beta (#3352): where it is chosen, and
+	// on the Ride card it lands on.
+	await expect(page.getByTestId('roads-beta')).toContainText('Beta');
 	await page.getByRole('button', { name: 'Ride it now' }).click();
 	await page.waitForURL(/\/ride\?road=/);
 	const road = new URL(page.url()).searchParams.get('road')!;
+	await expect(page.getByTestId('roads-beta')).toContainText(
+		'still being tuned on real trainers',
+	);
 
 	// Carrying on from a metre, as the recovered card's Resume at km does.
 	await page.goto(`/ride?road=${road}&from=1000`);

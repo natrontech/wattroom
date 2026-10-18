@@ -13,6 +13,7 @@
 	import ExecutionMeter from '$lib/session/ExecutionMeter.svelte';
 	import GamePanel from '$lib/session/GamePanel.svelte';
 	import RidingSurface from '$lib/session/RidingSurface.svelte';
+	import FlatButton from '$lib/world/FlatButton.svelte';
 	import FlatRoad from '$lib/world/FlatRoad.svelte';
 	import { createWorldView } from '$lib/world/world-view.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
@@ -171,6 +172,7 @@
 		     column's sheet, folded away while the world rides. -->
 		<div class="flex items-center gap-2">
 			<SessionControls compact />
+			{#if inWorld}<FlatButton onflat={world.flatten} class={ICON} />{/if}
 			<button
 				onclick={() => channel.openTv()}
 				class={ICON}

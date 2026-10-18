@@ -17,6 +17,75 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.10.2] - 2026-10-16
+
+### Added
+
+- The climb card slides in, a red flag marks the last kilometre to the top, and a strip above the Skyline celebrates a summit, with confetti at HC and category I.
+- On a road, the bike computer has a MAP page: the road from above, its climbs in the grade ramp and your dot on it. M opens it.
+- The count-in over the world opens with a heli shot from the first climb's top down to a new START arch, and the digit hangs on its banner; with reduced motion it is one still frame.
+- A road ridden in the world ends under a FINISH arch at its last metre.
+- The first-run card's third step is "Ride your first road": three lines say how to read it, then it opens a short built-in road on the simulated trainer.
+- A free ride, on a road or in a voice channel, has the ⚑ and TV mode in its control row, as a workout ride does.
+- The ride narrator announces riders joining and leaving and an armed sprint, and the zone shows as a digit on the ground ring and in the crew rows, with initials on the crew dots.
+- A route's page rides its own workout (**Ride its workout**), and a leg's summary offers the next leg when the route runs on.
+- A second screen of yours that sees the trainer held elsewhere can be its remote: Talk, Easier and Harder from a 2×4 grid of big buttons, with the gear shown back.
+- Ride in 3D: turn the world on in Settings → Appearance or mid-ride. A road ride opens on the flat road until you do, and one tap switches back.
+- Ride keys: 1-4 pick a camera, H toggles a clean view that is remembered on
+  this device, and ? lists every key on the ride. M and O answer with a hint
+  until the MAP page and snap arrive.
+- A screen reader now hears a ride: blocks, climbs, kilometres to the top and the summit, and the S key speaks your km, grade, watts and zone.
+- Before your first ride on a road, one card asks for your rider's build, height and skin tone. Skip it as easily as you save it; it never comes back.
+- Roads, in beta: import a GPX, TCX or FIT route and ride it from the importer, the route page or the Ride card, alone or in a voice channel. How a road feels on your trainer is still being tuned on real hardware.
+- The phone remote pauses and resumes a solo ride: the clock, score and trainer target wait until Resume.
+- A route page offers **Workout on it**: pick any workout from your shelf or the library, and it opens on that road at the start Terrain Match picks.
+- One World control under Settings › Appearance › Advanced: Full, Steady, Light or Flat, remembered per device; reduced motion opens on Flat with one tap to a steady camera.
+
+### Changed
+
+- A road's signs and KOM arches draw in two batches instead of up to eight draws each, so a climb full of hairpin numbers stays inside the world's draw budget.
+- A ride with no road rides in the same panels as the world: one full-width top panel, the watts once in the bike computer's head, the bias trim and graph in panels.
+- A free ride — on one of your roads at Ride, or in a voice channel — rides the riding surface a workout has: the road line, how the trainer rides it and the clock in one band with Road | Watts, Easier, Harder and End ride in its row; the bike computer with your 3 s power as the one watts figure; the world where your device draws it; the Skyline on screen. The 0–300 W target track and the teaching lines are gone.
+- On a phone the riding screen is one column of full-width panels with the power centred, and a road ride draws its world as a band.
+- A hidden stretch's ground relief is keyed by its own secret in its own frame, blending into the public ground at its edges.
+- On a road ride the crew list shows you and the 3 nearest riders while the bunch is steady, and a bike-computer field that has not changed for 20 s dims.
+- A ride's page now has the closing card's header and number tiles: Share, the poster or ride card, and Export sit on one row, with Delete ride last after a separator.
+- The ride's status lines come from one copy module: a quiet trainer reads "Your trainer went quiet." with a Reconnect trainer button, and a released guard reads "Trainer released for 10 s, spin up."
+- W/kg sits beside the watts on the ride screen, and NEXT reads the same on every surface.
+- A road free ride's closing card now fills only Done; "Carry on from km … next time" sits beside "See your ride" as a secondary button.
+- The card that closes a crew session now fills the content column beside the sidebar instead of covering the whole window, and its left column ends where its content does.
+- The public site no longer glows outside the landing hero: the game-mode traces, the FTP and sprint demos and the online dot are flat.
+- The figure's eight skin swatches now span the full Monk Skin Tone Scale, lighter at one end and darker at the other.
+- The Workouts page puts its search on its own row, and it finds your routes as well as your workouts; each shelf has one header row with its buttons, and an empty one says what lands there in one line.
+
+### Removed
+
+- Personal-token tooling: the ride list, the ride detail and the MCP `list_rides` tool no longer carry `room`; read `inSession`, the same flag, which shipped beside it in 2026.10.1.
+
+### Fixed
+
+- Miami Nights, Miami Day and Tron Ice draw their watt clear of the zone colours, so a Z6 or Z3 bar no longer reads as live data.
+- The chase camera sits a little further back and its field of view widens by at most 4° with speed, so your rider fills at most 30 % of the frame.
+- The flat road at 1280 × 720 names the next block ("Sprint · 15 s") instead of "S.", and the bike computer no longer leaves an empty band under its head.
+- A free ride's sidebar and jukebox headings stay on one line while you pedal, and the jukebox search reads at the riding size.
+- A free ride's heart-rate share is one button instead of a sentence, the climb page's title stays on one line, and its page arrows are the full 44 px.
+- On a voice channel's free ride, a greyed "Ride a workout" now says "Pair your trainer first" beside it.
+- The import page's drop card has a title and left-aligned copy like its design target, and the phone title no longer wraps badly.
+- Riders' jerseys fit in the world: the hem ends on the shorts instead of flaring over the saddle, the shoulders sit flush, and a bottle's cap no longer reads as an open sock.
+- A right-click menu opened just after scrolling a list stays open instead of closing at once.
+- The words on a ride's buttons (End ride, Easier, Harder, TV, +1 min, Skip block, Cancel) are 24 px, readable from the saddle.
+- The road-end card's title opens the road's page again.
+- The sidebar's Direct messages chevron lines up with the voice channels' chevrons, and the people in a voice channel sit under its name.
+- At the start of a ride on a road, the Skyline's profile now starts at the panel's left edge instead of leaving an empty band, and your dot walks its first half kilometre.
+- A retaining wall or steep ground face in the world reads as stone, not as meadow stretched down a cliff.
+- A spectator beside a session sees the cheers once, on the roadside deck; riders keep theirs in the people column.
+- A road's valley side carries a white post every 25 m wherever the ground falls away, so a climb's stacked switchback legs read as road from below.
+- The slope between stacked switchback legs is grass and trees with rock outcrops, no longer one bare grey wall beside the road.
+- Clocks, watts and every other number now keep their width as their digits change, instead of shifting on each tick.
+- TV mode shows your watts once, large, with W/kg and your zone beside the block, what comes next and a 3-2-1 count; the workout graph is a slim band along the bottom, and the exit button sits in the top row, readable from the sofa.
+- The world capture frames draw the rider alone, with no stand-in beside them.
+- Far props fog the way the ground does, and flags, signposts and wayside crosses fade out of your sightline like trees.
+
 ## [2026.10.1] - 2026-10-11
 
 ### Added
@@ -3853,7 +3922,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.10.1...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.10.2...HEAD
+[2026.10.2]: https://github.com/natrontech/wattroom/compare/2026.10.1...2026.10.2
 [2026.10.1]: https://github.com/natrontech/wattroom/compare/2026.09.147...2026.10.1
 [2026.09.147]: https://github.com/natrontech/wattroom/compare/2026.09.146...2026.09.147
 [2026.09.146]: https://github.com/natrontech/wattroom/compare/2026.09.145...2026.09.146

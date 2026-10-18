@@ -1,1 +1,0 @@
-- A road free ride's closing card now fills only Done; "Carry on from km … next time" sits beside "See your ride" as a secondary button.

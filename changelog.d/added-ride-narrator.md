@@ -1,1 +1,0 @@
-- A screen reader now hears a ride: blocks, climbs, kilometres to the top and the summit, and the S key speaks your km, grade, watts and zone.

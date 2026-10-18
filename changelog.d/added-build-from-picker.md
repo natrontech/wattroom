@@ -1,0 +1,1 @@
+- Build a workout from the session picker: the editor returns you to the voice channel with the picker open on it, one tap from Start.

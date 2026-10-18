@@ -102,7 +102,7 @@ Every step of every flow:
 
 Capture recipes are the design-shots spec's. Every id below is in `docs/design/surface-map.json`, which maps changed files to the surfaces they draw (`node web/scripts/design-surfaces.mjs` prints a branch's; `web/scripts/design-surfaces.test.mjs` keeps map and file in step). A new surface gets a section here and a row there in one change. A section is a Capture, Target(s) and Canon line, then its numbered must-match items.
 
-Desk: 1440 × 900. Phone: 375 × 812 with touch. World on: the device's World control at Full (`wattroom.world.mode.v1`), with the `wattroom.world-slot.v1` flag on until the default flips; every world surface asserts the world mounted and did not fall back, or the shot is FAILED [probe:world].
+Desk: 1440 × 900. Phone: 375 × 812 with touch. World on: the device's World control at Full (`wattroom.world.mode.v1`; never chosen is Flat, #3084); every world surface asserts the world mounted and did not fall back, or the shot is FAILED [probe:world].
 
 ### A. Riding surfaces (the cave)
 
@@ -140,7 +140,7 @@ Layout:
 4. Insets 16 px, gaps 12–16 px. Computer, Skyline, and slot 1 when in the left column, share a left edge; seat, crew panel and Skyline share a right edge. [ride-surface]
 5. Panels content-sized: nothing clipped or scrolling, no empty band > 24 px. Cadence, heart and bias trim visible and reachable. [ride-surface] [probe:panels]
 6. Slot 1: one panel top left, outside the corridor, shaped as the box table shows holding SPEC's sizes (a wide band ending above y 22.5 %, or a column ≤ 30 % wide above the computer). It opens with a `ride-label` eyebrow, mode · workout or road · riders; then v2-erg's work panel: time left ≥ 72 px with “Block n of m · name”, “Target W · range”, “elapsed of total”; interval strip with cursor; NEXT (D16) with the 3-2-1 chips; the trainer chip. On a road, the road line “km x of y · grade % · <next climb> in z km” once, here. [ride-surface]
-7. Controls one row inside slot 1, no separate panel: ⚑, TV, +1 min, Skip block as ≥ 44 × 44 px icon buttons with accessible names and tooltips; End ride the one text button; +1 min and Skip block only where the rider owns the clock (D13). [ride-surface] [probe:minTarget] [test:web/src/lib/ride/riding-screen-world.test.ts]
+7. Controls one row inside slot 1, no separate panel: ⚑, Flat road (#3084), TV, +1 min, Skip block as ≥ 44 × 44 px icon buttons with accessible names and tooltips; End ride the one text button; +1 min and Skip block only where the rider owns the clock (D13). [ride-surface] [probe:minTarget] [test:web/src/lib/ride/riding-screen-world.test.ts]
 8. Persistent status (G3): one line atop slot 1 with its one recovery button, never covering the corridor. [ride-surface] [multi:ride-status]
 9. Bike computer: one panel bottom left, ≤ 30 % wide, directly above the Skyline. Top down: page control (D15), ← name → with dots, arrows ≥ 44 px; head: 3 s power in watt (≥ 104 px), W/kg beside it up to 999 W and under it from 1000 W, where four figures leave no room beside (#3898), live zone as digit and name under; while a target is asked, target track (low · target · high, a needle) and “Block · n % on target”; the page's fields per the one-home table, a grid under a hairline. [ride-surface]
 10. Only watt marks: G2's three, one power figure, your Skyline dot, your trail. [ride-surface] [probe:wattCount]
@@ -208,7 +208,7 @@ Capture: world off, `/ride?w=openers`, 14 s in; a second frame at four-digit wat
 Capture: world on, a road ride forced onto the Skyline; again under `reducedMotion: 'reduce'`. Target: v2-ride's “Flat road” inset.
 
 1. ride-workout-flat's items hold, the Skyline in the horizon panel at full width, the dot inside. [ride-flat]
-2. The Flat-road line is `REASONS`' line for the reason (`lib/world/ride-view.ts`), not new copy: atop slot 1 at `ride-label` size; “Try 3D again” where `REASONS` offers a retry; wording changes go through #3212. [ride-flat]
+2. The Flat-road line is `REASONS`' line for the reason (`lib/world/ride-view.ts`), not new copy: atop slot 1 at `ride-label` size; the button `REASONS` names (“Ride in 3D” on Flat, “Try 3D again” after a failure), ≥ 44 px, and none where the browser cannot draw the world; wording changes go through #3212. [ride-flat]
 3. Reduced motion: `REASONS.motion`'s line, with one “Show the world (steady camera)” button that sets Steady (ADR-0079). [#3214] [multi:reduced-motion]
 
 #### ride-status
@@ -247,7 +247,7 @@ Capture: world off, `/ride?road=<hairpin>`, 14 s in, OS scheme light. Targets: v
 4. Road name, gear, grade and watts each once (D17). [ride-free-road-surface]
 5. No 0–300 W track, no “no target — spin easy”. [ride-free-road-surface]
 6. RIDE page per the one-home table: Speed, Cadence, Heart, Gear where gears are on, vs best / vs last with a ghost. [ride-free-road-surface]
-7. Road | Watts, Easier and Harder ≥ 44 px, in slot 1's row beside ⚑, TV and End ride. [ride-free-road-surface]
+7. Road | Watts, Easier and Harder ≥ 44 px, in slot 1's row beside ⚑, Flat road (in the world, #3084), TV and End ride. [ride-free-road-surface]
 8. No teaching sentence (G4), no hint naming unbound keys (D14). [ride-free-road-surface]
 9. At 1440 × 900 the Skyline on screen, full width, the dot inside. [ride-free-road-surface]
 10. Carrying on next time is offered on the road-end card, not while riding. [ride-free-road-surface]
@@ -613,15 +613,15 @@ Capture: `/home` for Designer, in one crew with two sessions planned this week; 
 8. Nothing this week: the next planned session under NEXT. Nothing at all: one teaching line and a link to a crew's Schedule. [home-week]
 9. Phone: tiles 2 × 2, columns stacked; action buttons ≥ 44 px; nothing scrolls sideways. [home]
 
-#### appearance, appearance-advanced
+#### appearance
 
-Capture: `/settings/appearance` whole page body; again with Advanced open; again under reduced motion; desk and phone, both schemes. Target: none drawn; the bar is ADR-0079's table and the Settings kit.
+Capture: `/settings/appearance` whole page body; again under reduced motion; desk and phone, both schemes. Target: none drawn; the bar is ADR-0079's table and the Settings kit.
 
 1. One fixed-width label column: every row's first control at the same x. [appearance]
 2. Theme eyebrow “THEME · LIGHT” or “THEME · DARK”; “White” nowhere. [appearance]
 3. Every single-choice row: one selected style (`btn-primary`), one unselected (`btn-secondary`), each ≥ 28 px. [appearance]
 4. Theme cards: two equal columns, each a 64 × 44 swatch; the chosen card an ink border. [appearance]
-5. The ROAD row is gone. A collapsed “Advanced” at the panel's foot holds World: Full · Steady · Light · Flat, each with ADR-0079's line. [3214-world-control]
+5. The ROAD row is gone. A “3D WORLD” row in the open, no Advanced expander: Flat · Full · Steady · Light, each with ADR-0079's line; never chosen, Flat is selected (ADR-0066 amended, #3084). [3214-world-control]
 6. Reduced motion: Flat chosen, with one “Show the world (steady camera)” button. [3214-world-control] [multi:reduced-motion]
 7. Hints one muted line: right of the row at ≥ 1024 px, below it on a phone; nothing scrolls sideways. [appearance]
 

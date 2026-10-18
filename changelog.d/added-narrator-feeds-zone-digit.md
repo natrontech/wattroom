@@ -1,1 +1,0 @@
-- The ride narrator announces riders joining and leaving and an armed sprint, and the zone shows as a digit on the ground ring and in the crew rows, with initials on the crew dots.

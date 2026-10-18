@@ -198,8 +198,9 @@ test('import a .gpx route, read its preview, and save it', async ({ page }) => {
 	await expect(page.getByText('At the reference pace')).toBeVisible();
 	await expect(page.getByText(/smoothing every route gets/)).toBeVisible();
 	await expect(page.getByText(/map is sealed/)).toBeVisible();
-	// Behind the roads dev gate, which a dev server opens (#3027).
+	// Every rider rides a road (#3352), marked beta until #3351 tunes it.
 	await expect(page.getByRole('button', { name: 'Ride it now' })).toBeEnabled();
+	await expect(page.getByTestId('roads-beta')).toContainText('Beta');
 	// A crew plans a road from its session picker; nothing here promises it.
 	await expect(
 		page.getByRole('button', { name: 'Plan it for a crew' }),

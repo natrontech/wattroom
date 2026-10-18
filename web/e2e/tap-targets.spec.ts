@@ -172,7 +172,7 @@ test('the browse surfaces’ links and folds clear the floor on a phone', async 
  * sat at 28 px beside the coach's controls in a running session — small to
  * hit on purpose and easy to hit by mistake.
  */
-test('Try 3D again, on a ride held on the flat road, is riding size (#3080) @world', async ({
+test('Ride in 3D, on a ride on the flat road, is riding size (#3080, #3084) @world', async ({
 	riders,
 }) => {
 	test.skip(
@@ -182,19 +182,18 @@ test('Try 3D again, on a ride held on the flat road, is riding size (#3080) @wor
 	const rider = await riders('Tap Flat Road Rider');
 	await rider.setViewportSize(PHONE);
 	await rider.addInitScript(() => {
-		localStorage.setItem('wattroom.world-slot.v1', '1');
 		localStorage.setItem('wattroom.world.mode.v1', 'flat');
 	});
 	// Only a ride on a road has a world to hold on the flat road (#3663).
 	await openAWorkoutOnARoad(rider);
 	await rider.getByRole('button', { name: 'Ride simulated' }).click();
 	await rider.getByRole('button', { name: 'Start the ride' }).click();
-	const retry = rider.getByRole('button', { name: 'Try 3D again' });
+	const retry = rider.getByRole('button', { name: 'Ride in 3D' });
 	await expect(retry).toBeVisible({ timeout: 30_000 });
 	const retryBox = await box(retry);
 	expect(
 		retryBox.height,
-		`'Try 3D again' is ${retryBox.height}px tall`,
+		`'Ride in 3D' is ${retryBox.height}px tall`,
 	).toBeGreaterThanOrEqual(RIDING);
 });
 

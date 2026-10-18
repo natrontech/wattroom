@@ -90,6 +90,7 @@ export function zoneOf(watts: number, ftp: number): number {
  */
 export function zoneOfSegment(seg: Segment, ftp: number): number {
 	if (seg.kind === 'sprint') return 7;
+	if (seg.kind === 'road') return 0;
 	const from =
 		seg.watts !== undefined ? seg.watts / ftp : (seg.fromFraction ?? 0);
 	const to = seg.watts !== undefined ? from : (seg.toFraction ?? from);
@@ -102,7 +103,8 @@ export function zoneOfSegment(seg: Segment, ftp: number): number {
  * sprint is all-out by definition).
  */
 export function zoneOfStep(step: WorkoutStep, ftp: number): number {
-	if (step.type === 'repeat' || step.type === 'sprint') return 0;
+	if (step.type === 'repeat' || step.type === 'sprint' || step.type === 'road')
+		return 0;
 	if (step.type === 'steady') {
 		// An absolute-watt step has no fraction to read; scoring it as 0 %
 		// painted every one of them Z1 whatever it actually asked for.
@@ -117,6 +119,7 @@ export function zoneOfStep(step: WorkoutStep, ftp: number): number {
 export function plannedZoneSeconds(segments: Segment[], ftp: number): number[] {
 	const out = [0, 0, 0, 0, 0, 0, 0, 0];
 	for (const seg of segments) {
+		if (seg.kind === 'road') continue;
 		if (seg.kind === 'sprint') {
 			out[7] += seg.seconds;
 			continue;
