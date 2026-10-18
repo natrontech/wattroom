@@ -22,6 +22,8 @@
 	import type { ShelfEntry } from '$lib/workout/shelf';
 	import type { Workout } from '$lib/workout/types';
 	import { api } from '$lib/api';
+	import { page } from '$app/state';
+	import { buildFromPicker } from './doors';
 	import type { ControlRoute } from '$lib/protocol';
 	import { onRoute } from '$lib/road/compile';
 	import type { Road } from '$lib/road/road';
@@ -46,6 +48,7 @@
 		where,
 		trainer,
 		channelName = 'this voice channel',
+		pick,
 	}: {
 		shelf: ShelfEntry[];
 		/** Why your own workouts are missing from the shelf, when they are. */
@@ -81,6 +84,8 @@
 		trainer?: Snippet;
 		/** The voice channel a session started here runs in (#2634). */
 		channelName?: string;
+		/** The workout it opens on: one just built from here (#4082). */
+		pick?: string;
 		onClose: () => void;
 	} = $props();
 
@@ -146,7 +151,7 @@
 	// Initial selection only — picked falls back to shelf[0] if the shelf
 	// re-sorts under it (recency loads async).
 	// svelte-ignore state_referenced_locally
-	let pickedId = $state(shelf[0]?.id ?? '');
+	let pickedId = $state(pick ?? shelf[0]?.id ?? '');
 	const picked = $derived(
 		shelf.find((entry) => entry.id === pickedId) ?? shelf[0],
 	);
@@ -155,6 +160,10 @@
 	// says so rather than offering a start that would fail (ux.md).
 	const ridesAlone = $derived(segments.some((seg) => seg.hrHold));
 	const total = $derived(picked ? durationSeconds(picked.workout) : 0);
+
+	// A one-off workout, built without finding the channel again (#4082):
+	// the editor comes back here with the picker open on it.
+	const buildHref = $derived(buildFromPicker(page.url, mode));
 
 	const zones = $derived(zoneChips(segments, ftp));
 	const bands = $derived(bandChips(segments));
@@ -364,7 +373,7 @@
 			<div
 				class="border-ink/5 flex max-h-[38dvh] w-full shrink-0 flex-col border-b md:max-h-none md:w-72 md:border-r md:border-b-0"
 			>
-				<div class="p-2">
+				<div class="flex gap-2 p-2">
 					<!-- Focused on open: the fastest way through 27 workouts is to
 					     start typing, and nobody should have to click into the box
 					     first. -->
@@ -372,9 +381,12 @@
 						{@attach (node) => node.focus()}
 						bind:value={query}
 						placeholder="Find a workout…"
-						class="input input-xs w-full"
+						class="input input-xs min-w-0 flex-1"
 						aria-label="find a workout"
 					/>
+					<a href={buildHref} class="btn btn-secondary btn-xs shrink-0"
+						>Build a workout</a
+					>
 				</div>
 				{#if shelfError}
 					<!-- The curated list still draws; the rider is told theirs are
@@ -423,7 +435,7 @@
 								     curated library plus your own, so an empty one means
 								     there is one to build. -->
 								Your own workouts land here beside the curated ones.
-								<a href="/workouts/edit" class="btn-link">Build a workout</a>
+								<a href={buildHref} class="btn-link">Build a workout</a>
 							{/if}
 						</li>
 					{/each}

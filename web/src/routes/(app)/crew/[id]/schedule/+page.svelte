@@ -48,6 +48,7 @@
 	import { crewLive } from '$lib/nav/crew-live.svelte';
 	import RsvpRow from '$lib/session/RsvpRow.svelte';
 	import SessionPicker from '$lib/session/SessionPicker.svelte';
+	import { takePickerDoor } from '$lib/session/doors';
 	import type { RsvpAnswer } from '$lib/session/rsvp';
 	import { parseSharedSegments } from '$lib/workout/shared';
 	import { serverNow } from '$lib/server-clock';
@@ -135,7 +136,12 @@
 	// The picker, plan-only: a calendar starts nothing (#1767). "Plan a
 	// session" on the crew's Home and on yours lands here with it open
 	// (#2572), so the plan is made where it will be listed.
-	let picking = $state(untrack(() => page.url.searchParams.has('plan')));
+	// The editor, opened from this picker, comes back with it open on what
+	// the rider built (#4082).
+	const door = untrack(() => takePickerDoor(page.url));
+	let picking = $state(
+		untrack(() => page.url.searchParams.has('plan')) || !!door,
+	);
 	const custom = customWorkouts();
 	const shelf = $derived(buildShelf(custom.all));
 
@@ -539,6 +545,7 @@
 {#if picking}
 	<SessionPicker
 		{shelf}
+		pick={door?.pick}
 		shelfError={custom.error}
 		onRetryShelf={() => void custom.retry()}
 		intent="plan"
