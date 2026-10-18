@@ -662,10 +662,13 @@ body {
 }
 /* The ride on a desk takes the mocks' proportions (ADR-0087): the theme's
  * scale is redefined under the surface, so every text-* and spacing utility in
- * it follows. The phone's surface, TV mode and the HUD keep their distance
- * sizes; the chrome around the ride keeps the desk's. */
-:is([data-surface='docked'], [data-surface='flat'], [data-ride-stage]) {
+ * it follows. On the children: the surface's own margins, inset and gaps place
+ * it in the page at the desk's spacing (G3). The phone's surface, TV mode and
+ * the HUD keep their distance sizes; the chrome around the ride the desk's. */
+:is([data-surface='docked'], [data-surface='flat'], [data-ride-stage]) > * {
 	--spacing: 0.1875rem;
+	/* A unit at half its 24 px number (SPEC). */
+	--text-lg: 0.75rem;
 	--text-xl: 0.75rem;
 	--text-2xl: 0.875rem;
 	--text-3xl: 1.125rem;

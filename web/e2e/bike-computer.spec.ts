@@ -59,11 +59,14 @@ test('the bike computer turns its pages and reads from the saddle', async ({
 });
 
 /**
- * TARGETS ride-road-world 9 (#3898): W/kg sits beside the 3 s power up to
- * 999 W and wraps under it at four digits, which no row beside can hold at
- * SPEC's desk size. The watts are drawn figure by figure, so the test redraws them.
+ * TARGETS ride-road-world 9 (#3898): W/kg sits beside the 3 s power, and goes
+ * under it only where four figures leave no room. At SPEC's desk size
+ * (ADR-0087) a four-digit power still leaves room, so W/kg stays beside and
+ * inside the head. The watts are drawn figure by figure, so the test redraws them.
  */
-test('W/kg wraps under a four-digit power @world', async ({ page }) => {
+test('W/kg stays beside a four-digit power, inside the head @world', async ({
+	page,
+}) => {
 	test.skip(
 		!!process.env.PLAYWRIGHT_BASE_URL,
 		'the ?as= dev provider only exists on a dev server',
@@ -101,11 +104,13 @@ test('W/kg wraps under a four-digit power @world', async ({ page }) => {
 				.forEach((f, i) => f.setAttribute('data-figure', d[i]));
 			const wkg = el.querySelector('[data-field=wkg]')!.getBoundingClientRect();
 			const p = power.getBoundingClientRect();
-			return { besideRow: wkg.top < p.bottom, width: el.clientWidth };
+			const head = el.getBoundingClientRect();
+			return { besideRow: wkg.top < p.bottom, inside: wkg.right <= head.right };
 		}, digits);
 
 	const three = await rows('888');
 	expect(three.besideRow).toBe(true);
 	const four = await rows('1250');
-	expect(four.besideRow).toBe(false);
+	expect(four.besideRow).toBe(true);
+	expect(four.inside).toBe(true);
 });

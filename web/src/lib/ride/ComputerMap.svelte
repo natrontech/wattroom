@@ -38,7 +38,7 @@
 
 <div
 	data-testid="computer-map"
-	class="relative -my-3 {tv ? 'min-h-[22vh] flex-1' : 'min-h-[9.5rem] flex-1'}"
+	class="relative -my-3 {tv ? 'min-h-[22vh] flex-1' : 'min-h-38 flex-1'}"
 	bind:clientWidth={w}
 	bind:clientHeight={h}
 >

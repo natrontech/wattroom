@@ -43,7 +43,6 @@
 
 	let {
 		header,
-		headerFit = false,
 		own = false,
 		focus,
 		numbers,
@@ -61,8 +60,6 @@
 		class: extra = '',
 	}: {
 		header: Snippet;
-		/** Slot 1 is its content's size (the box table), not the strip's width. */
-		headerFit?: boolean;
 		/** The caller draws its own panels in the header and focus slots, flat (the free ride's, #3893). */
 		own?: boolean;
 		focus: Snippet;
@@ -212,9 +209,7 @@
 					0,
 					'0',
 					'-40px',
-				)}left:{INSET_PX}px;top:{INSET_PX}px;{headerFit
-					? 'width:fit-content;max-width'
-					: 'width'}:min({BAND_MAX_PX}px, calc({seatLeft} - {INSET_PX +
+				)}left:{INSET_PX}px;top:{INSET_PX}px;width:fit-content;max-width:min({BAND_MAX_PX}px, calc({seatLeft} - {INSET_PX +
 					GAP_PX}px))"
 				bind:offsetWidth={slotWidth}
 			>
