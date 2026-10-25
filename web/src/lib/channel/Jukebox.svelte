@@ -110,6 +110,8 @@
 	// column is shared with the chat, and the chat loses every time.
 	const QUEUE_PEEK = 3;
 	let showAllQueue = $state(false);
+	// Riding, whether the sheet is open outlives the deck coming and going.
+	let sheetOpen = $state(false);
 </script>
 
 <section class="flex min-w-0 flex-col gap-3">
@@ -148,9 +150,10 @@
 			{riding}
 			next={queue.length}
 			behind={riding ? below : undefined}
+			bind:sheet={sheetOpen}
 		/>
 	{:else if riding}
-		<RailSheet>
+		<RailSheet bind:open={sheetOpen}>
 			{#snippet label()}<span class="eyebrow">jukebox</span>{/snippet}
 			{@render below()}
 		</RailSheet>

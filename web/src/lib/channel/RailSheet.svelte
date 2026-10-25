@@ -8,21 +8,31 @@
 	// straight under the seat, and a fold that grew the column moved the
 	// crew off the frame. `label` is what opens it: the seat's strip, or the
 	// jukebox's name while nothing plays.
-	let { label, children }: { label: Snippet; children: Snippet } = $props();
+	let {
+		label,
+		children,
+		open = $bindable(false),
+	}: { label: Snippet; children: Snippet; open?: boolean } = $props();
 
 	// Fixed, at the rect the fold has when it opens: the deck's capped scroll
 	// box and the people panel both clip, and an absolute sheet inside them
 	// was cut to a sliver.
 	// ponytail: placed on open only; a resize while open leaves it where it was.
 	let at = $state({ top: 0, left: 0, width: 0 });
-	// Mounted only while open: a shut fold keeps its contents laid out, and a
-	// fixed box there measured as a 26 px add field nobody can see.
-	let open = $state(false);
+	// Its contents are mounted only while open: a shut fold keeps its
+	// contents laid out, and a fixed box there measured as a 26 px add field
+	// nobody can see.
 	function place(e: Event) {
 		const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
 		at = { top: r.bottom, left: r.left, width: r.width };
 	}
 </script>
+
+<svelte:window
+	onkeydown={(e) => {
+		if (open && e.key === 'Escape') open = false;
+	}}
+/>
 
 <details class="min-w-0" bind:open ontoggle={place}>
 	<summary

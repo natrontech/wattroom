@@ -51,6 +51,7 @@
 		riding = false,
 		next = 0,
 		behind,
+		sheet = $bindable(false),
 	}: {
 		jukebox: JukeboxState;
 		/** `jukebox.current`, already narrowed: no deck is drawn without one. */
@@ -64,6 +65,9 @@
 		/** Riding, what folds behind the seat with the transport (#3983):
 		 *  the add box, the queue and the playlists. */
 		behind?: Snippet;
+		/** The riding sheet is open, held by the jukebox so the first add,
+		 *  which swaps its empty sheet for this one, keeps it open. */
+		sheet?: boolean;
 	} = $props();
 
 	// A stable attachment: a fresh arrow every render would tear the offer
@@ -241,26 +245,7 @@
 			>
 		</div>
 	{/if}
-	{#if riding}
-		<!-- v2-ride's seat (#3983): the tile and one strip, the crew straight
-		     under it. The strip opens the transport and the queue over the
-		     crew; its count is whole, the names give way. -->
-		<RailSheet>
-			{#snippet label()}
-				<span class="block min-w-0" title={MENU_HINT}>
-					<span class="block truncate text-sm leading-tight font-medium"
-						>{current.title}</span
-					>
-					<span class="text-muted flex min-w-0 gap-2 text-[11px]">
-						<span class="min-w-0 truncate">by {current.addedBy}</span>
-						{#if next}<span class="num shrink-0">· {next} next</span>{/if}
-					</span>
-				</span>
-			{/snippet}
-			{@render controls()}
-			{@render behind?.()}
-		</RailSheet>
-	{:else}
+	{#if !riding}
 		<!-- The hint sits on the words, never over the player (RMF). -->
 		<div class="min-w-0" title={MENU_HINT}>
 			{#if setTracks}
@@ -290,6 +275,33 @@
 		{@render controls()}
 	{/if}
 </div>
+
+<!-- Riding, the sheet sits outside the deck's menu: a right-click or a
+     long-press in its add box or playlists is theirs, not the transport's. -->
+{#if riding}
+	<!-- v2-ride's seat (#3983): the tile and one strip, the crew straight
+	     under it. The strip opens the transport and the queue over the
+	     crew; its count is whole, the names give way. -->
+	<RailSheet bind:open={sheet}>
+		{#snippet label()}
+			<span
+				class="block min-w-0"
+				title={MENU_HINT}
+				{@attach contextMenu(deckMenu)}
+			>
+				<span class="block truncate text-sm leading-tight font-medium"
+					>{current.title}</span
+				>
+				<span class="text-muted flex min-w-0 gap-2 text-[11px]">
+					<span class="min-w-0 truncate">by {current.addedBy}</span>
+					{#if next}<span class="num shrink-0">· {next} next</span>{/if}
+				</span>
+			</span>
+		{/snippet}
+		{@render controls()}
+		{@render behind?.()}
+	</RailSheet>
+{/if}
 
 {#snippet controls()}
 	{#if streaming}
