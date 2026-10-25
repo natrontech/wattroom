@@ -279,11 +279,11 @@
 					{#if unsaved}
 						None of this is on your account: the ride has not been saved.
 					{:else if savedXp === undefined}
-						Your own streak bonus and level land on your account with the ride —
-						your weeks, not the crew's.
+						Your own streak bonus and level land on your account with the ride.
+						Your streak counts your own weeks.
 					{:else}
-						This is the XP the ride put on your account — your streak counts
-						your weeks, not the crew's.
+						This is the XP the ride put on your account. Your streak counts your
+						own weeks.
 					{/if}
 				</p>
 			</section>
