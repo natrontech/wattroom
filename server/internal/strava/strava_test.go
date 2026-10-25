@@ -369,7 +369,7 @@ func TestRevokeSendsTheTokenInTheBodyNotTheURL(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := svc.RevokeGrant(t.Context(), db.GetUserIdentityRow(ident)); err != nil {
+	if err := svc.RevokeGrant(t.Context(), ident); err != nil {
 		t.Fatalf("revoke: %v", err)
 	}
 
@@ -418,7 +418,7 @@ func TestRevokeReportsARefusal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := svc.RevokeGrant(t.Context(), db.GetUserIdentityRow(ident)); err == nil {
+	if err := svc.RevokeGrant(t.Context(), ident); err == nil {
 		t.Fatal("a 401 from revoke was swallowed — bad client credentials must not read as success")
 	}
 }

@@ -45,7 +45,7 @@ type CrewReleaser interface {
 // disconnect (server/internal/strava). A purge that dropped our row while
 // Strava still listed the app told the rider something untrue (#1825).
 type GrantRevoker interface {
-	RevokeGrant(ctx context.Context, ident db.GetUserIdentityRow) error
+	RevokeGrant(ctx context.Context, ident db.Identity) error
 }
 
 // Live is the hub, as far as a purge reaches it (#2807): the cascade takes

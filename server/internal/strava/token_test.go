@@ -33,23 +33,22 @@ func cipherWith(t *testing.T, fill byte) *secrets.Cipher {
 
 // storedToken reads the row back through SQL rather than through the code
 // under test, so an assertion about "what is in the database" is exactly that.
-func storedToken(t *testing.T, st *store.Store) (plain *string, sealed []byte) {
+func storedToken(t *testing.T, st *store.Store) (sealed []byte) {
 	t.Helper()
 	row := st.Pool.QueryRow(context.Background(),
-		"select refresh_token, refresh_token_enc from identities where provider = 'strava' and provider_user_id = 'athlete-1'")
-	if err := row.Scan(&plain, &sealed); err != nil {
+		"select refresh_token_enc from identities where provider = 'strava' and provider_user_id = 'athlete-1'")
+	if err := row.Scan(&sealed); err != nil {
 		t.Fatalf("read identity: %v", err)
 	}
-	return plain, sealed
+	return sealed
 }
 
-// A row from before the key holds its token only in the plaintext column.
-// There is no such thing to read any more (#1038): the token is not used, and
-// the rider is told what any rider without a stored grant is.
-func TestAPlaintextRowHasNoToken(t *testing.T) {
-	st, _, _ := seedRide(t, "strava-plaintext")
+// A row with nothing sealed has no token (#1038): the rider is told what any
+// rider without a stored grant is.
+func TestAnUnsealedRowHasNoToken(t *testing.T) {
+	st, _, _ := seedRide(t, "strava-unsealed")
 	if _, err := st.Pool.Exec(t.Context(),
-		"update identities set refresh_token = 'refresh-1', refresh_token_enc = null where provider = 'strava' and provider_user_id = 'athlete-1'"); err != nil {
+		"update identities set refresh_token_enc = null where provider = 'strava' and provider_user_id = 'athlete-1'"); err != nil {
 		t.Fatal(err)
 	}
 	ident, err := st.Queries.GetIdentity(t.Context(), db.GetIdentityParams{
@@ -59,7 +58,7 @@ func TestAPlaintextRowHasNoToken(t *testing.T) {
 		t.Fatal(err)
 	}
 	svc := &Service{store: st, log: slog.New(slog.DiscardHandler), keys: testKeys}
-	if got, err := svc.refreshToken(db.GetUserIdentityRow(ident)); err == nil || !strings.Contains(err.Error(), "no refresh token stored") {
+	if got, err := svc.refreshToken(ident); err == nil || !strings.Contains(err.Error(), "no refresh token stored") {
 		t.Fatalf("refreshToken = (%q, %v), want no token stored", got, err)
 	}
 }
@@ -77,15 +76,11 @@ func TestRefreshLeavesNothingReadable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := svc.freshToken(t.Context(), db.GetUserIdentityRow(ident)); err != nil {
+	if _, err := svc.freshToken(t.Context(), ident); err != nil {
 		t.Fatal(err)
 	}
 
-	plain, sealed := storedToken(t, st)
-	if plain != nil {
-		t.Fatalf("refresh_token = %q, want null", *plain)
-	}
-	if strings.Contains(string(sealed), "refresh-2") {
+	if sealed := storedToken(t, st); strings.Contains(string(sealed), "refresh-2") {
 		t.Fatal("the rotated token is readable in the stored bytes")
 	}
 
@@ -99,7 +94,7 @@ func TestRefreshLeavesNothingReadable(t *testing.T) {
 	if len(ident.RefreshTokenEnc) == 0 {
 		t.Fatal("nothing was sealed")
 	}
-	got, err := svc.refreshToken(db.GetUserIdentityRow(ident))
+	got, err := svc.refreshToken(ident)
 	if err != nil || got != "refresh-2" {
 		t.Fatalf("refreshToken = (%q, %v), want the rotated token", got, err)
 	}
@@ -119,7 +114,7 @@ func TestNewKeepsTheKey(t *testing.T) {
 	}
 
 	svc := New(nil, slog.New(slog.DiscardHandler), keys)
-	got, err := svc.refreshToken(db.GetUserIdentityRow{RefreshTokenEnc: sealed})
+	got, err := svc.refreshToken(db.Identity{RefreshTokenEnc: sealed})
 	if err != nil || got != "refresh-1" {
 		t.Fatalf("refreshToken = (%q, %v), want the sealed token opened", got, err)
 	}
@@ -148,7 +143,7 @@ func TestWrongKeyIsNotMistakenForNoToken(t *testing.T) {
 		t.Fatal(err)
 	}
 	svc := &Service{store: st, log: slog.New(slog.DiscardHandler), keys: cipherWith(t, 5)}
-	_, err = svc.refreshToken(db.GetUserIdentityRow(ident))
+	_, err = svc.refreshToken(ident)
 	if err == nil {
 		t.Fatal("a foreign key opened the token")
 	}

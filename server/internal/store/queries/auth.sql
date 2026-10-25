@@ -1,6 +1,6 @@
 -- No `*` on identities (#1038): sqlc expands it into the generated SQL, so
--- the plaintext token column would stay named in this release's binary and its drop (#3355)
--- would break the rollback to it (ADR-0019). The reads list their columns.
+-- every column stays named in the binary and a later drop would break the
+-- rollback to it (ADR-0019). The reads list their columns.
 
 -- name: GetIdentity :one
 select provider, provider_user_id, user_id, access_token, token_expires_at, created_at, refresh_token_enc
