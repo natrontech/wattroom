@@ -289,9 +289,10 @@ test('the people column keeps its desk sizes on a ride, and its search placehold
 	);
 	await rider.goto(`${voicePath(opened)}/training`);
 	const field = rider.getByRole('textbox', { name: /^add music/ });
+	// Riding, the field is mounted only while the jukebox's sheet is open.
 	const column = rider
 		.getByRole('complementary')
-		.filter({ has: field })
+		.filter({ has: field.or(rider.getByTestId('rail-sheet')) })
 		.first();
 	await expect(field).toBeVisible({ timeout: 15_000 });
 
@@ -330,8 +331,11 @@ test('the people column keeps its desk sizes on a ride, and its search placehold
 	await expect(rider.getByRole('button', { name: 'End ride' })).toBeVisible({
 		timeout: 15_000,
 	});
-	expect((await box(field)).height, 'the column zoomed on a ride').toBe(desk);
+	// Riding, the add box sits in the jukebox's sheet (#3983), placed at the
+	// column's width when it opens.
 	await narrowest();
+	await rider.getByTestId('rail-sheet').filter({ visible: true }).click();
+	expect((await box(field)).height, 'the column zoomed on a ride').toBe(desk);
 	await fits('riding, the column at its narrowest');
 });
 
