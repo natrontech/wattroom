@@ -22,6 +22,8 @@ export interface ClimbView {
 	/** The climb's lowest and highest heights, the bars' scale. */
 	lo: number;
 	hi: number;
+	/** On a workout, before the foot: the block that lands on the climb (#3101). */
+	lands?: string;
 }
 
 /** 100 m of a climb (#3645): where it ends, how high, and its grade step. */
@@ -90,4 +92,13 @@ export function climbView(view: SkylineView | null): ClimbView | null {
 		lo: Math.min(...heights),
 		hi: Math.max(...heights),
 	};
+}
+
+/** The climb card with the block that lands on its climb (#3101): a workout's, before the foot. */
+export function landed(
+	view: ClimbView | null,
+	lands: ((toFootM: number) => string | null) | undefined,
+): ClimbView | null {
+	const line = view && lands?.(view.toFootM);
+	return view && line ? { ...view, lands: line } : view;
 }
