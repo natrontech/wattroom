@@ -321,7 +321,7 @@
 				</section>
 			{:else if inFocus === 'game' && channel.game}
 				<section
-					class="min-h-0 overflow-y-auto {inWorld ? 'px-4 py-3' : 'px-6'}"
+					class="min-h-0 overflow-y-auto {inWorld ? 'px-4 py-3' : 'px-4'}"
 				>
 					<GamePanel
 						flat

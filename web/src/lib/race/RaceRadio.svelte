@@ -26,10 +26,10 @@
 	<p
 		data-testid="race-radio"
 		role="status"
-		class="text-label flex flex-wrap items-baseline gap-x-3 pt-2 leading-7"
+		class="flex flex-wrap items-baseline gap-x-3 pt-2"
 	>
-		<!-- A status line canon allows on a riding surface, at label size (TARGETS G4). -->
+		<!-- Slot 1's one label style, then the phrase at SPEC's word size (TARGETS ride-race 4). -->
 		<span class="ride-label">Team-car radio</span>
-		<span class="text-ink">{call.text}</span>
+		<span class="text-ink ride-word">{call.text}</span>
 	</p>
 {/if}
