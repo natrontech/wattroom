@@ -34,7 +34,9 @@
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import Skyline from '$lib/ride/Skyline.svelte';
 	import { skylineOf } from '$lib/workout/road-workout';
-	import { climbView } from '$lib/ride/climb-view';
+	import { climbView, landed } from '$lib/ride/climb-view';
+	import { blocksAhead } from '$lib/road/gates';
+	import { BikeKg } from '$lib/protocol';
 	import { mapView } from '$lib/ride/map-view';
 	import { MAP_ASK } from '$lib/session/computer-pages';
 	import { watchClimbCues } from '$lib/ride/climb-cues.svelte';
@@ -156,8 +158,29 @@
 	// A phone's band is slot 2's place in its own column, not a dock (#3676).
 	const drawn = $derived((world.on || world.band) && !!session.road);
 	const skyline = $derived(skylineOf(session.road, session.segments, ftp));
+	// The next blocks on the road (#3101): ridden ahead from the dot at your
+	// own target on your own weight, as the dot moves; a road workout's at its pins.
+	const ahead = $derived.by(() => {
+		const on = session.road;
+		if (!on) return null;
+		return blocksAhead(
+			{
+				segments: session.segments,
+				t: session.elapsed,
+				m: on.along,
+				mps: on.mps,
+				road: on.road,
+				pacer: { ftp, bias: session.bias, kg: kg + BikeKg },
+				...(on.blockEndsM && {
+					pins: { fromM: on.startM, stepEndM: on.blockEndsM },
+				}),
+			},
+			workout,
+			{ ftp, bias: session.bias },
+		);
+	});
 	// The climb card on a road (#3645): CLIMB opens by itself, and says so.
-	const climb = $derived(climbView(skyline));
+	const climb = $derived(landed(climbView(skyline), ahead?.lands));
 	const map = $derived(mapView(skyline));
 	watchClimbCues(() => climb);
 
@@ -267,6 +290,7 @@
 				countIn={countIn
 					? { left: countIn.remaining, total: COUNTDOWN_SECONDS }
 					: null}
+				gates={() => ahead?.gates ?? []}
 				onfail={world.fail}
 				onflat={world.flatten}
 			/>

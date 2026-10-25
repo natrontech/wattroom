@@ -21,7 +21,7 @@
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import BiasTrim from '$lib/session/BiasTrim.svelte';
 	import BikeComputer from '$lib/session/BikeComputer.svelte';
-	import { climbView } from '$lib/ride/climb-view';
+	import { climbView, landed } from '$lib/ride/climb-view';
 	import { mapView } from '$lib/ride/map-view';
 	import RideNarrator from '$lib/ride/RideNarrator.svelte';
 	import { watchClimbCues } from '$lib/ride/climb-cues.svelte';
@@ -114,7 +114,9 @@
 	// Only on a session that rides a road (ADR-0066, #3663).
 	const inWorld = $derived(world.on && !!channel.ridden);
 	// The climb card on a session's road (#3645), on either layout.
-	const climb = $derived(climbView(channel.ridden));
+	const climb = $derived(
+		landed(climbView(channel.ridden), channel.ridden?.lands),
+	);
 	const map = $derived(mapView(channel.ridden));
 	watchClimbCues(() => climb);
 	// The sprint carries its own numbers and Watt Golf hides the meter:
@@ -255,6 +257,7 @@
 					metre={() => channel.ridden ?? { m: 0, mps: 0 }}
 					bunch={() => channel.ridden?.bunch ?? null}
 					loop={channel.ridden.loop}
+					gates={() => channel.ridden?.gates ?? []}
 					watts={channel.you.watts}
 					silent={channel.youStale}
 					ftp={channel.you.ftp}

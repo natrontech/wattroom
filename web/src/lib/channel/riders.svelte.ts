@@ -4,6 +4,7 @@ import type { LiveRider } from '$lib/channel/types';
 import { bunchOf } from '$lib/channel/bunch-view';
 import { raceOf } from '$lib/race/race-view';
 import { placeOnRoad } from '$lib/channel/road-place';
+import { blocksAhead, REFERENCE } from '$lib/road/gates';
 import { coachOf } from '$lib/channel/tick-session';
 import { scoredTarget } from '$lib/channel/types';
 import { createRoadReadout } from '$lib/ride/road-readout';
@@ -185,8 +186,25 @@ export function createRiders(deps: RiderDeps) {
 	// The road as the bunch rides it, and where on it: what the world draws (#3663).
 	const ridden = $derived.by(() => {
 		const place = placeOnRoad(deps.live.tick, cut, you.id);
+		if (!place) return null;
 		// Everyone on it, as the world lays them out (#3098).
-		return place && { ...place, bunch: bunchOf(deps.live.tick, riders) };
+		const bunch = bunchOf(deps.live.tick, riders);
+		// The next blocks on it (#3101): the bunch ridden ahead as the hub
+		// paces it, worded at your FTP and trim.
+		const ahead = blocksAhead(
+			{
+				segments: deps.segments(),
+				t: bunch?.elapsed ?? deps.shared()?.elapsed ?? 0,
+				m: bunch?.m ?? place.m,
+				mps: bunch?.mps ?? place.mps,
+				road: place.road,
+				loop: place.loop,
+				pacer: REFERENCE,
+			},
+			deps.workout(),
+			{ ftp: you.ftp, bias: deps.bias() },
+		);
+		return { ...place, bunch, ...ahead };
 	});
 	// Your race, while you race one (#3174): the RACE page's and the radio's.
 	const race = $derived(raceOf(deps.live.tick, you.id));

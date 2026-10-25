@@ -178,6 +178,13 @@ Crew and computer:
 32. Inside the last kilometre to the top, CLIMB's chip row carries the flamme rouge: a small red pennant hanging above the class chip's right half, 16 px or more clear of the → arrow, in the danger token, never blinking, taking no row. It stamps in once on `--ease-pop` and stays. [#3645] [multi:ride-road-world-flamme] [test:web/src/lib/ride/climb-cues.svelte.test.ts]
 33. Over the top a summit strip stands above the Skyline, a centred pill at the computer chip size, for `--hold-announce`: “Summit” and the class chip, flat and quiet; clear of the computer and its bias trim; no watt, no glow; the Skyline and the bike computer keep their place under it. HC and I add confetti falling from the strip, none at II to IV, none in Steady. The CLIMB page slides in from its edge on `--dur-stage` (a still shows it landed). [#3645] [multi:ride-road-world-summit] [test:web/src/lib/ride/climb-cues.svelte.test.ts]
 
+A workout on the road:
+
+34. The next three blocks are painted on the road where each starts: a bar across the asphalt, the block's words beyond it reading up the road, describeBlock's name and your target in capitals (D16, “TEMPO 195 W”), in the road line's token, flat, lit by the sky as the road's paint is (ADR-0072), never glowing; chevrons in the same paint point up the road over each block's last 100 m. [#3101] [multi:ride-road-world-gate] [probe:gates] [test:web/src/lib/world/gates.test.ts]
+35. A sprint block stands a SPRINT banner across the road where it starts, from 1 km out until it is ridden under: the KOM arch's chrome and banner, never glowing. [#3101] [test:web/src/lib/world/gates.test.ts]
+36. Each gate lands within 1 s of its block starting: alone at your own target and weight, in a session at the reference rider the hub paces the bunch at; a road workout's on its pins. [#3101] [test:web/src/lib/road/gates.test.ts]
+37. Before a classed climb's foot on a workout, CLIMB carries one muted line under its fields at the computer's word size, naming the block that lands on the climb: “Starts in 0:45, during Threshold 2”; gone once on the climb. [#3101] [test:web/src/lib/road/gates.test.ts]
+
 #### ride-workout-world
 
 Capture: world on, `/ride?w=openers`, no road: a negative check. Canon: ADR-0066.
@@ -293,6 +300,7 @@ Capture: two dev riders (Designer and a second, name letters only) in one crew's
 9. Each screen draws each rider where the other does, within 1 m along the road and across it. [test:web/e2e/bunch-world.spec.ts] [#3098]
 10. A cheer for one rider, sent from their crew tile's menu, draws a thumbs-up over their head (a light disc, a dark thumb, flat, unlit, clear of the chevron); their tail light blinks at 2 Hz for 10 s in amber, neither danger's red nor any watt, steady under reduced motion; nothing about it glows. [multi:ride-session-cheer] [test:web/src/lib/world/ride-scene.test.ts] [#3116]
 11. A crew tile's menu mid-ride keeps the desk's menu (ADR-0087), placed clear of the corridor and of the tile it opened from; in the cave in either scheme. [#3943] [multi:ride-session-cheer-menu] [test:web/src/lib/context-menu.test.ts]
+12. A session's workout paints its next blocks on the road as ride-road-world 34–37 say, the bunch paced as the hub paces it and the words in your own target. [#3101] [test:web/src/lib/road/gates.test.ts]
 
 #### roadside-chalk
 

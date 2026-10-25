@@ -240,6 +240,13 @@ surface(
 		await ride(o.page, `/ride?w=openers&road=${road}&from=6950`);
 		await assertRiding(o.page, true);
 		await s.shot(o, { name: 'world-finish' });
+		// multi:ride-road-world-gate — item 34: Smoke Test's second block starts
+		// at 30 s, so a few seconds in it is painted on the road ahead (#3101).
+		await ride(o.page, `/ride?w=smoke-test&road=${road}&from=0`, {
+			second: 6,
+		});
+		await assertRiding(o.page, true);
+		await s.shot(o, { name: 'ride-road-world-gate' });
 	},
 	{ once: true },
 );
