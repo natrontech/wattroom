@@ -7,7 +7,7 @@ WattRoom: collaborative indoor cycling. Go server + SvelteKit SPA + Postgres + L
 - [WATTROOM.md](WATTROOM.md): every product and architecture decision, locked. Don't re-decide; a new decision is an ADR in `docs/decisions/`.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): the client owns the trainer, the server owns live state in memory, Postgres owns durable data only.
 - [docs/SPEC.md](docs/SPEC.md): the index of `docs/spec/`, one file per area (glossary, roles, workout JSON, formulas, game parameters…); load only your area. Never invent a product number.
-- [docs/HARDWARE-SESSIONS.md](docs/HARDWARE-SESSIONS.md): read it before asking anyone to plug in hardware.
+- [docs/HARDWARE-SESSIONS.md](docs/HARDWARE-SESSIONS.md): how someone with a trainer reports. No gate waits on it: research, a test and a simulation meet the gate, then it ships ([ADR-0088](docs/decisions/0088-ship-on-research-and-simulation.md)).
 - [docs/design/TARGETS.md](docs/design/TARGETS.md): the target and must-match list for every rider-visible surface. Canon outranks the image; the image outranks today's app ([ADR-0086](docs/decisions/0086-a-rider-visible-change-is-held-to-its-target.md)).
 - `.claude/rules/` is vendor-neutral canon: `git.md` before your first commit, `errors.md` before API or frontend work, `code-quality.md` and `ux.md` before any feature.
 
@@ -61,7 +61,7 @@ Standing down: withdraw your claim and write "proceed, do not stand down on acco
 
 - Area: `ble` `channels` `workouts` `game-modes` `jukebox` `infra` `docs` `design`.
 - Kind: `bug` `enhancement` `security` `feedback` (a rider report, ADR-0006; the `pickup-feedback` skill works it).
-- State: `blocked` (the body names the blocker), `backlog` (parked: ask first), `needs-human-input` (needs taste, money, legal exposure, risk appetite or roadmap priority: don't build what it proposes). If WATTROOM.md, SPEC, an ADR or a rule already answers it, it is a defect: amend the stale doc, drop the label, build it. Two plausible options is not enough for the label. Ask the maintainer while they are there; the issue is the fallback.
+- State: `blocked` (the body names the blocker), `backlog` (parked: ask first), `needs-human-input` (needs taste, money, legal exposure, risk appetite, roadmap priority or the operator's own accounts: don't build what it proposes; never for hardware, a rig, a ride or a listening pass, ADR-0088). If WATTROOM.md, SPEC, an ADR or a rule already answers it, it is a defect: amend the stale doc, drop the label, build it. Two plausible options is not enough for the label. Ask the maintainer while they are there; the issue is the fallback.
 - Process: `no-changelog` (no rider sees it), `good-first-issue`.
 
 ## Releases
