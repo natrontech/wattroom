@@ -3,6 +3,7 @@
 - Status: accepted; settles [#3064](https://github.com/natrontech/wattroom/issues/3064)
 - Date: 2026-09-29
 - Amends: [0005](0005-synthwave-visual-identity.md) — the cave rule and the glow rule, for a 3D world
+- Amended by: [0005](0005-synthwave-visual-identity.md)'s 2026-10-25 amendment (#4160) — the app around the world keeps the rider's scheme; the world's sky stays blue hour
 - Beside: [0066](0066-the-world-is-the-ride-view.md) (the world is the ride view), [0064](0064-the-roadside.md) (the roadside's flash limit), [0079](0079-motion-announces-the-camera-stays-still.md) (reduced motion)
 - Decided by Jan: Alpine blue hour for the ride, golden hour and a pastel diorama for desk previews (2026-09-26); the light darkens with the ride (2026-09-29)
 

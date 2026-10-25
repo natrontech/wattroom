@@ -424,6 +424,12 @@ interface MicHardware {
 	plugIn(devices: Partial<MediaDeviceInfo>[]): Promise<void>;
 	/** How many audio graphs were built — a handheld must build none (#2142). */
 	graphs(): number;
+	/** The device each capture asked for, in order: '' for the default (#4161). */
+	asked(): string[];
+	/** How many captures the browser handed out are still running (#4161). */
+	running(): number;
+	/** The next capture is the grant that names the devices: these, after it. */
+	nameOnGrant(devices: Partial<MediaDeviceInfo>[]): void;
 }
 
 /** Enough of Web Audio and getUserMedia for `openMic` to succeed — or, given
@@ -455,18 +461,29 @@ function withMicHardware<T>(
 	// The capture track is an EventTarget so `ended` can arrive the way the
 	// browser sends it; stop() stays silent, as the real one does.
 	class FakeCapture extends EventTarget {
-		stop() {}
+		stopped = false;
+		stop() {
+			this.stopped = true;
+		}
 	}
 	let capture: FakeCapture | null = null;
+	const captures: FakeCapture[] = [];
+	const asked: string[] = [];
 	let devices = initialDevices;
+	let named: Partial<MediaDeviceInfo>[] | null = null;
 	const listeners = new Map<string, () => unknown>();
 	const had = Object.getOwnPropertyDescriptor(navigator, 'mediaDevices');
 	Object.defineProperty(navigator, 'mediaDevices', {
 		configurable: true,
 		value: {
-			getUserMedia: async () => {
+			getUserMedia: async (constraints: {
+				audio: { deviceId?: { exact: string } };
+			}) => {
+				asked.push(constraints.audio.deviceId?.exact ?? '');
 				if (refuse) throw refuse;
 				capture = new FakeCapture();
+				captures.push(capture);
+				if (named) [devices, named] = [named, null];
 				return {
 					getTracks: () => [capture],
 					getAudioTracks: () => [capture],
@@ -483,6 +500,11 @@ function withMicHardware<T>(
 	});
 	const hw: MicHardware = {
 		graphs: () => graphs,
+		asked: () => asked,
+		running: () => captures.filter((c) => !c.stopped).length,
+		nameOnGrant(next) {
+			named = next;
+		},
 		unplug() {
 			capture?.dispatchEvent(new Event('ended'));
 		},
@@ -1074,6 +1096,149 @@ describe('createChannelAv', () => {
 				expect(av.micId).toBe('');
 				dispose();
 			});
+		});
+	});
+
+	// #4161, docs/spec/voice.md: while anything captures a Bluetooth headset's
+	// mic, the headset drops all it plays to call quality, the jukebox, YouTube
+	// and the crew's voices alike. Both ways out are at the capture.
+	describe('Bluetooth headphones keep music quality (#4161)', () => {
+		const airpods = [
+			['audioinput', 'default', 'Default - AirPods Pro (Bluetooth)', 'pods'],
+			['audioinput', 'pods', 'AirPods Pro (Bluetooth)', 'pods'],
+			['audioinput', 'mac', 'MacBook Pro Microphone (Built-in)', 'mac'],
+			['audiooutput', 'default', 'Default - AirPods Pro (Bluetooth)', 'pods'],
+			['audiooutput', 'pods', 'AirPods Pro (Bluetooth)', 'pods'],
+		].map(([kind, deviceId, label, groupId]) => ({
+			kind,
+			deviceId,
+			label,
+			groupId,
+		})) as Partial<MediaDeviceInfo>[];
+
+		describe.each([
+			{
+				what: 'muting',
+				quiet: (av: ReturnType<typeof createChannelAv>) => av.toggleMic(),
+				back: (av: ReturnType<typeof createChannelAv>) => av.toggleMic(),
+			},
+			{
+				what: 'stepping away',
+				quiet: (av: ReturnType<typeof createChannelAv>) => av.setAway(true),
+				back: (av: ReturnType<typeof createChannelAv>) => av.setAway(false),
+			},
+		])('$what', ({ quiet, back }) => {
+			// The silent one: a muted track with its capture still open sends
+			// nothing, and the headset stays on its call profile all the same.
+			it('stops the capture, and coming back opens a fresh one, saying so', async () => {
+				await withMicHardware(async (hw) => {
+					let av!: ReturnType<typeof createChannelAv>;
+					const dispose = $effect.root(() => {
+						av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
+					});
+					await av.join();
+					expect(hw.running()).toBe(1);
+
+					await quiet(av);
+					expect(av.micOn).toBe(false);
+					expect(hw.running()).toBe(0);
+
+					const reopening = back(av);
+					expect(av.micStarting).toBe(true);
+					await reopening;
+					expect(av.micStarting).toBe(false);
+					expect(av.micOn).toBe(true);
+					expect(hw.running()).toBe(1);
+					dispose();
+				});
+			});
+		});
+
+		// The open takes seconds on a Bluetooth mic, and the button reads
+		// "starting" all the while: a tap or Away inside it is the rider saying no.
+		describe.each([
+			{
+				what: 'a second tap',
+				quiet: (av: ReturnType<typeof createChannelAv>) => av.toggleMic(),
+			},
+			{
+				what: 'Away',
+				quiet: (av: ReturnType<typeof createChannelAv>) => av.setAway(true),
+			},
+		])('$what while the mic is starting', ({ quiet }) => {
+			it('leaves it closed, with no capture behind it', async () => {
+				await withMicHardware(async (hw) => {
+					let av!: ReturnType<typeof createChannelAv>;
+					const dispose = $effect.root(() => {
+						av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
+					});
+					await av.join({ mic: false });
+					const opening = av.toggleMic();
+					expect(av.micStarting).toBe(true);
+					await quiet(av);
+					await opening;
+					expect(av.micOn).toBe(false);
+					expect(av.micStarting).toBe(false);
+					expect(hw.running()).toBe(0);
+					if (av.away) await av.setAway(false);
+					dispose();
+				});
+			});
+		});
+
+		it('opens the computer’s mic, not the headset’s, when nobody picked one', async () => {
+			await withMicHardware(async (hw) => {
+				let av!: ReturnType<typeof createChannelAv>;
+				const dispose = $effect.root(() => {
+					av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
+				});
+				await av.join();
+				expect(hw.asked()).toEqual(['mac']);
+				expect(av.micOn).toBe(true);
+				dispose();
+			}, airpods);
+		});
+
+		// Chrome's "Allow this time" names nothing until the capture is granted,
+		// so the first open can only take the default.
+		it('moves off the headset once, when the first grant is what names the devices', async () => {
+			await withMicHardware(
+				async (hw) => {
+					let av!: ReturnType<typeof createChannelAv>;
+					const dispose = $effect.root(() => {
+						av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
+					});
+					hw.nameOnGrant(airpods);
+					await av.join();
+					expect(hw.asked()).toEqual(['', 'mac']);
+					expect(hw.running()).toBe(1);
+					dispose();
+				},
+				[{ kind: 'audioinput', deviceId: '', label: '', groupId: '' }],
+			);
+		});
+
+		it('keeps the rider’s own pick, the headset’s too, and remembers it', async () => {
+			await withMicHardware(async (hw) => {
+				let av!: ReturnType<typeof createChannelAv>;
+				const dispose = $effect.root(() => {
+					av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
+				});
+				await av.join();
+				await av.setMic('pods');
+				expect(hw.asked().at(-1)).toBe('pods');
+
+				await av.toggleMic();
+				await av.toggleMic();
+				expect(hw.asked().at(-1)).toBe('pods');
+				expect(
+					JSON.parse(localStorage.getItem('wattroom.devices.v1') ?? '{}').mic,
+				).toBe('pods');
+
+				// The store is shared above the router: hand the next test a clean one.
+				await av.setMic('');
+				dispose();
+			}, airpods);
 		});
 	});
 

@@ -77,6 +77,12 @@ func sweeps() []sweep {
 		run: func(ctx context.Context, st *store.Store) error {
 			return batched(ctx, st.Queries.PruneOrphanChatImages)
 		},
+	}, {
+		// Every changed outfit adds a look and nothing took one away (#4151).
+		name: "unworn looks",
+		run: func(ctx context.Context, st *store.Store) error {
+			return batched(ctx, st.Queries.PruneUnwornLooks)
+		},
 	}}
 }
 

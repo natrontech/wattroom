@@ -11,13 +11,14 @@ A PR whose issue is labelled `design` or names Surfaces leaves draft only after 
 7. **What stays open never holds the PR in draft.** Two canon lines that conflict go in a comment on the issue, quoted, mentioning @janlauber; the PR lands.
 8. **When a deviation may stand.** Justified (hand it to the reviewer, which accepts or rejects it): J1 canon outranks the target (cite it); J2 an open issue owns the item, left no worse; J3 the capture cannot show the state (CANNOT-TELL, never PASS; file the fixture); J4 measured (by how much, from the probe; never into the corridor); J5 platform or law (YouTube tile, WCAG, reduced motion). **Never justifiable**: what the prompt's checklist says no justification covers, and "better than before". **Inherited** (#3720) never fails a PR: the same on BEFORE, no worse; no item of it owned by this issue; an open issue owns the fix (search first, and comment there; if none owns it, file one per rule, listing every place). Worse on AFTER is a regression. The reviewer judges the first two itself and lists such a failure as PRE-EXISTING, uncounted, so what main already fails costs no round; before ready, the findings comment names each one's open issue (#4064).
 9. **PR body**: six lines at most; findings go in a PR review comment.
-    ```md
-    ## Design check
-    Verdict: FAIL · blocker 1, fixed after review (probe buttonWords) · major 1 · minor 2
-    Surfaces: ride-road-world, world-start, world-end
-    Captures: <private link> (target | before | after per surface)
-    Findings: <review comment link>
-    ```
+   ```md
+   ## Design check
+
+   Verdict: FAIL · blocker 1, fixed after review (probe buttonWords) · major 1 · minor 2
+   Surfaces: ride-road-world, world-start, world-end
+   Captures: <private link> (target | before | after per surface)
+   Findings: <review comment link>
+   ```
 10. **Captures** live under `web/design-shots/` (ignored; never `web/test-results/`) and on one private page. Never commit or push them; main's are CI artifacts for 14 days.
 11. **Ready** with no blocker you caused left open, the section above, `make test` and `make lint` green and the flow seen in the running app.
 
@@ -41,7 +42,7 @@ Checklist. OWNED: must-match items on these surfaces tagged [{{ISSUE_KEY_SHORT}}
 plus the global rules. Standing deviations are never findings. Check tags: none = the image,
 [probe:k] = that probe key, [test:f] = f asserts it, [multi:c] = that capture; source missing =
 CANNOT-TELL; never infer motion from one still. A justification stands only if its citation says
-so, and none covers: the cave, glow or watt beyond G2, a clipped or unreachable control, sideways
+so, and none covers: a scheme a surface did not keep (G1), glow or watt beyond G2, a clipped or unreachable control, sideways
 scroll, text over text, a duplicated live number, a stand-in rider, a size under SPEC's floor, a
 capped or centred desk page, a sidebar card, strip or sub-row, a privacy leak (G10). An inherited claim stands only if BEFORE fails the same and
 no better, no item is OWNED, and the cited open issue owns it; it is then OPEN-ELSEWHERE, uncounted.
@@ -51,7 +52,7 @@ better and that touches no OWNED item, is PRE-EXISTING: list it with BEFORE's ev
 Method. 1 Open every image; trust no file name. 2 Per surface, the five largest differences between
 the TARGET's framed mock (ignore its data) and AFTER. 3 Owned items: PASS/FAIL/CANNOT-TELL with
 evidence (where, what you see, what it asks, probe value). 4 Global rules likewise. Riding: whole
-frame dark, sidebar too; watt on G2's three marks only; one watts figure; each number in its home;
+frame in the capture's scheme, sidebar too (TV and HUD dark); watt on G2's three marks only; one watts figure; each number in its home;
 no neon glow; panels flat, unnested, unclipped, no empty band over 24 px; nothing in the corridor;
 SPEC sizes; no sentence but a canon status line. Desk: fills the column; left edges aligned; no
 glow; four states; no sideways scroll at 375 px. 5 AFTER against BEFORE: anything worse is a

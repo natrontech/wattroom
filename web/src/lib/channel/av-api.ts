@@ -144,6 +144,10 @@ export function channelAvApi(parts: AvParts) {
 		get micFault() {
 			return chain.fault;
 		},
+		/** The mic is opening: a muted mic holds no capture (#4161). */
+		get micStarting() {
+			return chain.starting;
+		},
 		reconnectMic: tabs.reconnectMic,
 		// ── Devices: what's plugged in, what's chosen, and switching live ──────
 		get mics() {

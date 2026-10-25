@@ -35,7 +35,7 @@
 	import { prefersReducedMotion } from '$lib/motion';
 	import { play } from '$lib/sound/cues';
 	import { generate } from './world';
-	import { readLook } from './look';
+	import { rideLook, worldPaint } from './look';
 
 	let {
 		road,
@@ -103,10 +103,11 @@
 		const t = setTimeout(() => {
 			try {
 				const route = routeOfRoad(road);
+				const paint = worldPaint(canvas!.parentElement ?? document.body);
 				scene = mount(canvas!, {
 					route,
 					world: generate(route),
-					style: readLook(canvas!.parentElement ?? document.body),
+					style: rideLook(paint),
 					watts,
 					ftp,
 					metre,
@@ -121,8 +122,8 @@
 					onCue: play,
 					// Your kit is keyed by who you are, solo or in a bunch: the crew sees the one you see.
 					youId: account.me?.id,
-					// The theme's neon as the canvas resolves it, for the coach's chevron.
-					neon: getComputedStyle(canvas!).color,
+					// The theme's neon as the world resolves it, for the coach's chevron.
+					neon: paint('color-neon'),
 					// When, at what speed, and where: two screens read a moment apart still compare.
 					onTick: (hud) => {
 						if (hud.shot) canvas!.dataset.shot = hud.shot;
@@ -175,7 +176,7 @@
 	{@attach contextMenu(() => [
 		{ label: 'Ride the flat road on this device', onSelect: onflat },
 	])}
-	class="text-neon block h-full w-full"
+	class="block h-full w-full"
 	class:invisible={paused}
 	aria-hidden="true"
 ></canvas>

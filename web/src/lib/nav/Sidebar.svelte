@@ -212,7 +212,7 @@
 				<!-- In no crew at all (#2144): the way in is joining one, and
 				     starting a crew of your own is the option, not the ask. Desk
 				     teaching, so never on a riding surface (G4, #3723). -->
-				<p class="text-muted cave:hidden px-2 pt-3 text-xs">
+				<p class="text-muted ride:hidden px-2 pt-3 text-xs">
 					Not in a crew yet —
 					<button onclick={() => (opening = true)} class="btn-link"
 						>join one with its code</button
@@ -281,7 +281,7 @@
 			     starts on a friend's page. Not mid-ride (G4, #3723). -->
 			<a
 				href="/friends"
-				class="text-muted hover:text-ink cave:hidden mx-2 mb-2 block rounded px-2 py-1 text-xs"
+				class="text-muted hover:text-ink ride:hidden mx-2 mb-2 block rounded px-2 py-1 text-xs"
 				>Message a friend to start one</a
 			>
 		{:else if dmHeads.heads.length > 0 && !dmsFolded}
@@ -364,7 +364,7 @@
 		     which is not the desk it is for (G4, #3723). -->
 		<a
 			href="/download"
-			class="text-muted hover:text-ink border-ink/5 cave:hidden flex items-center gap-2 border-t px-4 py-2.5 text-xs"
+			class="text-muted hover:text-ink border-ink/5 ride:hidden flex items-center gap-2 border-t px-4 py-2.5 text-xs"
 		>
 			<Monitor size={14} />
 			Get the desktop app

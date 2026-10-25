@@ -1,7 +1,7 @@
 // The ride's look (ADR-0072, #3085): Alpine blue hour, every colour an
 // app.css token. The world's own are --world-*, single values that follow no
-// theme; its accents — watt, neon, the zones — are the rider's theme's, read
-// where the world is drawn, so inside the cave they are the dark half. The
+// theme; its accents — watt, neon, the zones — are the rider's theme's dark
+// half, read inside the cave where the world is drawn. The
 // dev gallery's blue hour is this look, so what it shows is what a rider sees.
 import { Biome } from './biome';
 import { sunAzimuth, sunElevation } from './light';
@@ -131,17 +131,28 @@ export function rideLook(
 	};
 }
 
-/** The ride's look as the page paints it under `el`: inside the cave, its accents are the dark half. */
-export function readLook(el: Element): Style {
-	const probe = document.createElement('span');
-	probe.hidden = true;
-	el.append(probe);
-	try {
-		return rideLook((token) => {
-			probe.style.color = `var(--${token})`;
+/**
+ * The world's colours as the page paints them under `el`, read inside the
+ * cave: the world is blue hour in either scheme (ADR-0072), so its accents
+ * and name tags are the dark half even while the page around it is light
+ * (#4160).
+ */
+export function worldPaint(el: Element): Paint {
+	return (token) => {
+		const probe = document.createElement('span');
+		probe.className = 'cave';
+		probe.hidden = true;
+		probe.style.color = `var(--${token})`;
+		el.append(probe);
+		try {
 			return getComputedStyle(probe).color;
-		});
-	} finally {
-		probe.remove();
-	}
+		} finally {
+			probe.remove();
+		}
+	};
+}
+
+/** The ride's look as the world paints it under `el`. */
+export function readLook(el: Element): Style {
+	return rideLook(worldPaint(el));
 }
