@@ -412,8 +412,9 @@
 			     numbers is a solo app with a chat window attached. A game's panel
 			     already lists everyone; a second list of the same people is what
 			     the sprint branch refuses too. -->
+				<!-- The panel's own 12 px in, as the numbers beside it (#4159). -->
 				<div class="p-4">
-					<CrewStrip riders={crewOf(inRide, false)} />
+					<CrewStrip riders={crewOf(inRide, false)} pad="" />
 				</div>
 			{/if}
 		{/snippet}

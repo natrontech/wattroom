@@ -310,6 +310,7 @@ Capture: as ride-session-road, on a session with no road.
 
 1. ride-workout-flat's items hold in the session's Training place. [ride-flat]
 2. Crew rows G5-sized; no crew number in watt (G2). [ride-flat]
+3. Your numbers and the crew share one row, each panel its content's size, as v2-ride's Flat road inset sets them: the numbers panel ends at its trim, the crew panel at its last tile; a column too narrow for both wraps the crew under the numbers. Holds at 2000 × 1150 as at 1440 × 900 (Jan, 2026-10-25, #4159). [#4159] [probe:flat] [multi:ride-session-flat-wide]
 
 #### ride-race
 

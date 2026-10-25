@@ -1,0 +1,1 @@
+- On a ride without the world at a wide desk window, your numbers and the crew's tiles sit side by side, each panel its own size, instead of two panels stretched across the window with empty bands in them.
