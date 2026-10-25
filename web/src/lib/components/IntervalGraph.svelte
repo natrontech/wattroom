@@ -428,7 +428,7 @@
 					100}%"
 			>
 				<span class="h-full"></span><span class="shrink-0">{target}</span><span
-					class="ml-1.5 shrink-0">· {length}</span
+					class="ml-2 shrink-0">· {length}</span
 				>
 			</p>
 		{/each}
