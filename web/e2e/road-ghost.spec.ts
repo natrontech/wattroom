@@ -98,6 +98,9 @@ test('a road ridden once races its ghost from the start', async ({ page }) => {
 		.click();
 	await expect(split).toBeVisible({ timeout: 15_000 });
 	await expect(split).toContainText('vs last');
-	// The same simulated watts on the same road is level: "0:00", unsigned.
-	await expect(split).toContainText(/[−+]?\d:\d\d/);
+	// The gap in words (#3246): the same simulated watts on the same road is
+	// level, or a few seconds either way.
+	await expect(split).toContainText(/level|\d+ s (ahead|behind)/);
+	// Your ghost rides beside you (#3245): hollow on the Skyline, named for its day.
+	await expect(page.getByTestId('skyline-ghost')).toContainText(/-you, /);
 });

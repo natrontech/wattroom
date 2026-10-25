@@ -20,6 +20,7 @@ type ClientMessage struct {
 	Remote   *RemoteCommand  `json:"remote,omitempty"`
 	Gear     *GearState      `json:"gear,omitempty"`
 	Pause    *PauseState     `json:"pause,omitempty"`
+	Voice    *VoiceClaim     `json:"voice,omitempty"`
 	FreeRoad *FreeRoad       `json:"freeRoad,omitempty"`
 }
 

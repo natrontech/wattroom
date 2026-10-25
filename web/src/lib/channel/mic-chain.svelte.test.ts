@@ -252,6 +252,23 @@ describe('what the call hears', () => {
 		expect(chain.transmitting).toBe(false);
 	});
 
+	it('opens for a held Talk in voice activation, and shuts after it over a quiet room (#4163)', async () => {
+		const deps = host();
+		const chain = createMicChain(deps);
+		await chain.open();
+		meterLevel(0);
+		expect(chain.transmitting).toBe(false);
+
+		chain.setPttHeld(true);
+		expect(chain.transmitting).toBe(true);
+		// Under the threshold, and still you speaking: your own tile lights.
+		meterLevel(0.01);
+		expect(deps.heard).toHaveBeenLastCalledWith(0.01);
+		chain.setPttHeld(false);
+		meterLevel(0);
+		expect(chain.transmitting).toBe(false);
+	});
+
 	it('leaves push-to-talk with the gate shut, not with the button stuck', async () => {
 		const chain = createMicChain(host());
 		await chain.open();

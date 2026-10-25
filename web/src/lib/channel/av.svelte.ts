@@ -9,7 +9,7 @@ import { createMic } from '$lib/channel/av-mic';
 import { createPublish } from '$lib/channel/av-publish';
 import { createTabs } from '$lib/channel/av-tabs';
 import { createListeners } from '$lib/channel/av-listeners';
-import { createSession } from '$lib/channel/av-session';
+import { createSession, type VoiceSeatHost } from '$lib/channel/av-session';
 import { wireLiveKitRoom } from '$lib/channel/av-wire';
 import { channelAvApi } from '$lib/channel/av-api';
 import { type MediaDevice, describeMediaError } from '$lib/channel/media-error';
@@ -55,7 +55,7 @@ export { JOIN_TIMEOUT_MS } from '$lib/channel/av-session';
  * interface turned out to cost the parts rather than the closure — the shape
  * `ClaimHost` and `MicChainHost` were already using.
  */
-export function createChannelAv(address: PlaceAddress) {
+export function createChannelAv(address: PlaceAddress, seat?: VoiceSeatHost) {
 	// One named place for what the UI watches, one for what the connection
 	// keeps to itself (#892) — av-state.svelte.ts says why they are two.
 	const av = createAvState();
@@ -161,6 +161,7 @@ export function createChannelAv(address: PlaceAddress) {
 		claimantOf: tabs.claimantOf,
 		tryOpenMic: mic.tryOpen,
 		setVoice,
+		seat,
 	});
 
 	return channelAvApi({

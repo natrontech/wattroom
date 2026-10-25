@@ -1177,6 +1177,7 @@ export interface ClientMessage {
   remote?: RemoteCommand;
   gear?: GearState;
   pause?: PauseState;
+  voice?: VoiceClaim;
   freeRoad?: FreeRoad;
 }
 /**
@@ -2083,6 +2084,32 @@ export interface SensorClaim {
   /**
    * A coarse word for the rider's OTHER screens to render: "phone",
    * "tablet" or "desktop". Never leaves the rider's own sockets.
+   */
+  device?: string;
+}
+/**
+ * VoiceClaim is one screen asking to carry its rider's voice and camera in
+ * this voice channel, or letting go of them (ADR-0089). A rider is one
+ * presence: the first screen to claim carries it, and every other screen of
+ * theirs is a controller with no call. The answer is the rider's
+ * SensorPairing: "voice" in Held on the screen that carries it, and
+ * Elsewhere["voice"] on every other.
+ */
+export interface VoiceClaim {
+  /**
+   * This screen is joining the call (true) or has left it (false).
+   */
+  on: boolean;
+  /**
+   * Move the voice here from another of the rider's screens: the one tap.
+   */
+  take?: boolean;
+  /**
+   * Which tab this is, as in SensorClaim.
+   */
+  tab?: string;
+  /**
+   * The coarse device word, as in SensorClaim.
    */
   device?: string;
 }

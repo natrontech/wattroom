@@ -127,8 +127,8 @@ describe('RIDE on a road (#3628)', () => {
 	});
 });
 
-describe('RIDE against your ghost (#3615)', () => {
-	it('shows the split beside the road, plain — a ghost is a memory', () => {
+describe('RIDE against your ghost (#3615, #3246)', () => {
+	it('shows the gap beside the road in words, plain — a ghost is a memory', () => {
 		const fields = fieldsFor(
 			'ride',
 			ride({ split: { seconds: -12.3, best: true } }),
@@ -136,14 +136,16 @@ describe('RIDE against your ghost (#3615)', () => {
 		expect(field(fields, 'split')).toEqual({
 			key: 'split',
 			label: 'vs best',
-			value: '−0:12',
+			value: '12',
+			unit: 's ahead',
 		});
 		const last = fieldsFor(
 			'ride',
 			ride({ split: { seconds: 8, best: false } }),
 		);
 		expect(field(last, 'split').label).toBe('vs last');
-		expect(field(last, 'split').value).toBe('+0:08');
+		expect(field(last, 'split').value).toBe('8');
+		expect(field(last, 'split').unit).toBe('s behind');
 	});
 });
 

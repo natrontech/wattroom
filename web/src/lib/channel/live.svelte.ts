@@ -24,6 +24,8 @@ import type { PlaceAddress } from '$lib/channel/address';
 import { fillDeck, type DeckHeard } from '$lib/channel/deck-heard';
 import { account } from '$lib/account.svelte';
 import { deviceWord } from '$lib/device.svelte';
+import { createVoiceSeat } from '$lib/channel/voice-seat';
+import { tabId } from '$lib/channel/rejoin';
 import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
 import {
 	observeServerTime,
@@ -109,10 +111,10 @@ export function createChannelLive(address: PlaceAddress) {
 	// (errors.md): the jukebox's, the roadside's. Each stays six seconds.
 	const routed = $state<
 		Record<
-			'jukebox' | 'roadside' | 'remote',
+			'jukebox' | 'roadside' | 'remote' | 'voice',
 			{ message: string; at: number } | null
 		>
-	>({ jukebox: null, roadside: null, remote: null });
+	>({ jukebox: null, roadside: null, remote: null, voice: null });
 	// Who wants a phone remote's press, off the tick like pairing (#3217).
 	const remoteListeners = new Set<(cmd: RemoteCommand) => void>();
 	// The holding tab's gear, as it last said it to this rider's other screens.
@@ -123,6 +125,14 @@ export function createChannelLive(address: PlaceAddress) {
 	// hold the rest (#610). Server truth: a tab learns here that its claim
 	// was refused, so nothing renders "paired" off its own click alone.
 	let pairing = $state<SensorPairing>({});
+	// Which of the rider's screens carries their voice (ADR-0089), asked
+	// before this one joins the call.
+	const voiceSeat = createVoiceSeat(
+		(message) => send(message),
+		() => (tabId() === 'no-storage' ? '' : tabId()),
+		deviceWord,
+		() => socket?.readyState === WebSocket.OPEN,
+	);
 	// Addressed off the tick like pairing: every update is one new request for
 	// this rider's attention, carrying the authenticated sender and server time.
 	let lastPoke = $state<Poke | null>(null);
@@ -382,6 +392,7 @@ export function createChannelLive(address: PlaceAddress) {
 			// Before the backfill: the replay below is metrics, and the hub
 			// only takes metrics from the screen holding the trainer.
 			if (claim) send({ sensors: claim });
+			voiceSeat.replay();
 			// The hub drops away with the rider's last socket (#706), and a
 			// reconnect is a new socket. Re-declare it, or a rider who stepped
 			// out quietly comes back on everyone else's screen but their own.
@@ -412,6 +423,7 @@ export function createChannelLive(address: PlaceAddress) {
 				// rider's sockets, not to the channel.
 				pairing = msg.pairing;
 			}
+			voiceSeat.heard(msg);
 			if (msg.connection) ownIp = msg.connection.ip;
 			if (msg.tick) {
 				// Before anything reads it: the tick's own timestamp is what
@@ -461,9 +473,9 @@ export function createChannelLive(address: PlaceAddress) {
 			// enough to read (ticks arrive every second; clearing on each one
 			// made refusals subliminal — audit #219).
 			if (msg.error) {
-				const surface = (['jukebox', 'roadside', 'remote'] as const).find((s) =>
-					msg.error!.code.startsWith(`${s}_`),
-				);
+				const surface = (
+					['jukebox', 'roadside', 'remote', 'voice'] as const
+				).find((s) => msg.error!.code.startsWith(`${s}_`));
 				if (surface)
 					routed[surface] = { message: msg.error.message, at: Date.now() };
 				else {
@@ -475,7 +487,7 @@ export function createChannelLive(address: PlaceAddress) {
 			} else {
 				const now = Date.now();
 				if (refusal && now - refusalAt > 6_000) refusal = null;
-				for (const s of ['jukebox', 'roadside', 'remote'] as const)
+				for (const s of ['jukebox', 'roadside', 'remote', 'voice'] as const)
 					if (routed[s] && now - routed[s].at > 6_000) routed[s] = null;
 			}
 		};
@@ -596,6 +608,13 @@ export function createChannelLive(address: PlaceAddress) {
 		get pairing() {
 			return pairing;
 		},
+		/**
+		 * Ask to carry this rider's voice here before joining the call
+		 * (ADR-0089); `take` moves it from another of their screens.
+		 */
+		claimVoice: (take: boolean) => voiceSeat.claim(take, pairing),
+		/** This screen left the call. */
+		releaseVoice: () => voiceSeat.release(),
 		get lastPoke() {
 			return lastPoke;
 		},

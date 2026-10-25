@@ -363,13 +363,23 @@ surface(
 		const desk = await s.open(DESK, { world: false });
 		const crew = await designCrew(desk.page);
 		await toTraining(desk.page, crew);
+		// The desk is in voice too, so the phone is a controller (ADR-0089).
+		await desk.page.getByRole('button', { name: 'Join voice' }).click();
+		await desk.page
+			.getByRole('button', { name: 'microphone' })
+			.waitFor({ timeout: 20_000 });
 		const phone = await s.open(PHONE, { world: false });
 		await phone.page.goto(`${voicePath(crew)}/training`);
 		const offer = phone.page.getByRole('button', {
 			name: 'Use this phone as your remote',
 		});
 		await offer.waitFor({ timeout: 20_000 });
+		const moveVoice = phone.page
+			.getByTestId('controller')
+			.getByRole('button', { name: 'Use this device for voice' });
+		await moveVoice.waitFor({ timeout: 20_000 });
 		const box = await offer.boundingBox();
+		const moveBox = await moveVoice.boundingBox();
 		await s.shot(phone, {
 			name: 'ride-phone-remote-offer',
 			extra: {
@@ -379,8 +389,40 @@ surface(
 					parseFloat(getComputedStyle(b).fontSize),
 				),
 				offerViewport: phone.page.viewportSize()?.width ?? 0,
+				moveVoiceHeight: Math.round(moveBox?.height ?? 0),
+				moveVoiceTextPx: await moveVoice.evaluate((b) =>
+					parseFloat(getComputedStyle(b).fontSize),
+				),
+				controllerLine:
+					(await phone.page
+						.getByTestId('controller')
+						.locator('p')
+						.first()
+						.textContent()) ?? null,
+				// No call on a controller (ADR-0089): the mic and camera
+				// controls exist only in voice, drawer or not.
+				controllerCallControls: await phone.page
+					.locator('[aria-label="microphone"], [aria-label="camera"]')
+					.count(),
 			},
 		});
+		// The drawer's voice row says the same (YouPanel).
+		await phone.page.getByRole('button', { name: 'open navigation' }).click();
+		await phone.page
+			.getByRole('navigation', { name: 'crews and channels' })
+			.getByText(/Your voice is on your/)
+			.waitFor({ timeout: 10_000 });
+		// The drawer slides in; shoot it once it has landed.
+		await phone.page.waitForTimeout(1_000);
+		await s.shot(phone, {
+			name: 'ride-phone-remote-drawer',
+			extra: {
+				controllerCallControls: await phone.page
+					.locator('[aria-label="microphone"], [aria-label="camera"]')
+					.count(),
+			},
+		});
+		await phone.page.keyboard.press('Escape');
 		await offer.click();
 		await phone.page.getByTestId('phone-remote').waitFor();
 		// The desk rides SIM with gears on (dev login); one Harder tap makes
@@ -567,12 +609,22 @@ surface(
 	{ once: true },
 );
 
+/** No ghost on this ride: the free road's own surfaces stay ride-free-road-ghost's baseline (#3245). */
+const withoutGhost = (page: Page) =>
+	page.route('**/api/routes/*/ghost', (r) =>
+		r.fulfill({
+			status: 404,
+			json: { error: 'not_found', message: 'No ghost in this capture.' },
+		}),
+	);
+
 surface(
 	'ride-free-road',
 	async (s) => {
 		// World off, with the OS set to light: the ride keeps it (G1, #4160).
 		const o = await s.open({ ...DESK, colorScheme: 'light' }, { world: false });
 		const road = await fixtureRoad(o.page, 'hairpin');
+		await withoutGhost(o.page);
 		// Before the first stroke the setup is a desk surface; the ride starts
 		// with the first stroke, not with the page (G1, #3667).
 		await o.page.goto(`/ride?road=${road}`);
@@ -594,6 +646,7 @@ surface(
 		// The world on: a free ride on a road draws it in slot 2 (#3669).
 		const o = await s.open(DESK, { world: true });
 		const road = await fixtureRoad(o.page, 'hairpin');
+		await withoutGhost(o.page);
 		await ride(o.page, `/ride?road=${road}`);
 		await assertRiding(o.page, true);
 		await s.shot(o);
@@ -601,9 +654,40 @@ surface(
 	{ once: true },
 );
 
-test.fixme('ride-free-road-ghost', () => {
-	// Added by the ghost issue (#3245), with its seeded effort.
-});
+surface(
+	'ride-free-road-ghost',
+	async (s) => {
+		// Your ghost beside you (#3245). The designer's seeded timed ride up the
+		// hairpin road's approach (design-seed's timedRide) rides behind the
+		// chase camera by the shot, so the earlier effort here is a synthetic
+		// line a little faster than the simulated rider: in frame, just ahead.
+		const o = await s.open(DESK, { world: true });
+		const road = await fixtureRoad(o.page, 'hairpin');
+		await o.page.route('**/api/routes/*/ghost', (r) =>
+			r.fulfill({
+				json: {
+					best: true,
+					startedAt: new Date(Date.now() - 13 * 86_400_000).toISOString(),
+					seconds: 600,
+					metres: Array.from({ length: 601 }, (_, i) => i * 4.2),
+				},
+			}),
+		);
+		await ride(o.page, `/ride?road=${road}`);
+		await assertRiding(o.page, true);
+		await o.page.getByTestId('skyline-ghost').waitFor({ timeout: 15_000 });
+		await s.shot(o);
+		// The RIDE page with a ghost: vs best, in words (#3246, the one-home table).
+		const computer = o.page.getByTestId('bike-computer').first();
+		if ((await computer.getAttribute('data-page')) !== 'ride')
+			await computer
+				.getByRole('button', { name: /(previous|next) page, RIDE/ })
+				.click();
+		await computer.locator('[data-field=split]').waitFor({ timeout: 15_000 });
+		await s.shot(o, { name: 'ride-free-road-ghost-ride' });
+	},
+	{ once: true },
+);
 
 surface(
 	'ride-tv',
@@ -1845,6 +1929,12 @@ surface(
 			// multi:ride-session-deck-playlists — the queue saved, and that
 			// playlist open in the sheet.
 			await s.shot(coach);
+			// multi:ride-session-flat-wide — the same frame in a wide desk
+			// window, where the panels had stretched across it (#4159).
+			await coach.page.setViewportSize({ width: 2000, height: 1150 });
+			await coach.page.waitForTimeout(500);
+			await s.shot(coach, { name: 'ride-session-flat-wide' });
+			await coach.page.setViewportSize(DESK.viewport!);
 			await fold.click();
 			await s.shot(coach, { name: 'ride-session-deck' });
 			await coach.page

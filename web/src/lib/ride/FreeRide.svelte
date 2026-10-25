@@ -177,6 +177,7 @@
 			shiftOff={conn.ride.shiftOff}
 			cassette={!conn.profile.current.singleSpeed}
 			split={ghost.split ?? undefined}
+			ghost={ghost.rider}
 			onend={free.recording ? () => void free?.end() : undefined}
 			ending={free.saving}
 			{controls}

@@ -31,6 +31,7 @@
 	} from '$lib/ride/free-ride-controls';
 	import { freeRideLabel, type FreeRide } from '$lib/ride/free-ride.svelte';
 	import GearShift from '$lib/ride/GearShift.svelte';
+	import type { GhostRider } from '$lib/ride/ghost-split.svelte';
 	import { ONE_GEAR_LINE } from '$lib/ride/mode-copy';
 	import type { RideShift } from '$lib/ride/ride-shift';
 	import { roadLine } from '$lib/ride/road-readout';
@@ -66,6 +67,7 @@
 		shiftOff = null,
 		cassette = true,
 		split,
+		ghost,
 		onend,
 		onrepair,
 		ending = false,
@@ -96,6 +98,8 @@
 		cassette?: boolean;
 		/** Your ghost's split (ADR-0068). */
 		split?: { seconds: number; best: boolean };
+		/** Where your ghost rides now, see-through in the world and hollow on the Skyline (#3245). */
+		ghost?: GhostRider | null;
 		/** End ride; absent while there is nothing to end. */
 		onend?: () => void;
 		ending?: boolean;
@@ -425,6 +429,7 @@
 		m={on.m}
 		mps={on.virtualMps}
 		reverse={on.reverse}
+		{ghost}
 	/>
 {/snippet}
 
@@ -440,6 +445,7 @@
 				silent={stale}
 				{ftp}
 				progress={null}
+				ghosts={() => (ghost ? [ghost] : [])}
 				onfail={world.fail}
 				onflat={world.flatten}
 			/>
