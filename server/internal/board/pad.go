@@ -227,6 +227,11 @@ func (s *Service) handleKey(w http.ResponseWriter, r *http.Request) {
 				"A key is one character — a letter, a digit or a symbol.", "key")
 			return
 		}
+		if strings.Contains(ShiftKeys, normalised) {
+			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
+				normalised+" shifts gears while you ride. Pick another key.", "key")
+			return
+		}
 		body.Key = &normalised
 		if err := s.store.Queries.ClearBoardKey(r.Context(), db.ClearBoardKeyParams{UserID: me.ID, Key: &normalised}); err != nil {
 			httpx.Fail(w, s.log, "clear board key", err, "The key could not be set.", "user", store.UUIDString(me.ID))
@@ -244,6 +249,11 @@ func (s *Service) handleKey(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
+
+// ShiftKeys shift gears while a ride runs (ADR-0084; web/src/lib/ride/keys.ts),
+// so no pad takes one (#3333). A pad bound to one before gears keeps it, and
+// fires on it outside a ride.
+const ShiftKeys = ".,+-="
 
 // NormaliseKey is the one place a key's shape is decided: exactly one
 // printable character, lower-cased so "Q" and "q" are the same binding rather

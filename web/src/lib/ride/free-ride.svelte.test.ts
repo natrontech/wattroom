@@ -10,6 +10,9 @@ vi.mock('$lib/ride/save', () => ({
 		return { saved: { id: 'r1' } };
 	}),
 }));
+// A production rider (#3333): no dev build and no dev sign-in door, which
+// is where gears used to stop.
+vi.mock('$lib/ble/can-simulate', () => ({ canSimulate: () => false }));
 const ended: string[] = [];
 vi.mock('$lib/ride/buffer', () => ({
 	openRideBuffer: vi.fn(async () => ({
@@ -42,24 +45,7 @@ describe('the free ride’s control (docs/SPEC.md)', () => {
 });
 
 describe('where a free ride opens (#3203)', () => {
-	// A one-gear setup (Zwift Cog) has no usable slope, so it opens in watts.
-	it.each([
-		{ singleSpeed: undefined, opens: 'grade' },
-		{ singleSpeed: false, opens: 'grade' },
-		{ singleSpeed: true, opens: 'watts' },
-	] as const)(
-		'singleSpeed $singleSpeed opens in $opens',
-		({ singleSpeed, opens }) => {
-			const free = createFreeRide({
-				ftp: () => 200,
-				singleSpeed: singleSpeed === undefined ? undefined : () => singleSpeed,
-			});
-			expect(free.mode).toBe(opens);
-			expect(free.watts).toBe(openingWatts(200));
-		},
-	);
-
-	it('keeps grade one tap away on one gear, and the pick sticks', () => {
+	it("keeps grade one tap away on Don't make me shift, and the pick sticks", () => {
 		const free = createFreeRide({ ftp: () => 200, singleSpeed: () => true });
 		free.setMode('grade');
 		expect(free.mode).toBe('grade');
@@ -228,6 +214,30 @@ describe('a free ride on a road', () => {
 			free.second({ watts, cadence: 85, hr: 120, at: t0 + s * 1000 });
 	}
 
+	// "Don't make me shift" × where the ride opens (#3333): without it, grade
+	// with gears for every rider; with it, watts, ERG by the road, untimed.
+	it.each([
+		{ dontShift: undefined, opens: 'grade', drive: 'gears' },
+		{ dontShift: false, opens: 'grade', drive: 'gears' },
+		{ dontShift: true, opens: 'watts', drive: 'ergByRoad' },
+	] as const)(
+		"Don't make me shift $dontShift opens in $opens and saves its road by $drive",
+		async ({ dontShift, opens, drive }) => {
+			const free = createFreeRide({
+				ftp: () => 250,
+				kg: () => 75,
+				singleSpeed: dontShift === undefined ? undefined : () => dontShift,
+			});
+			expect(free.mode).toBe(opens);
+			expect(free.watts).toBe(openingWatts(250));
+			free.arm();
+			free.ride(climb);
+			ride(free, 200, 61);
+			expect(await free.end()).toEqual({ saved: { id: 'r1' } });
+			expect(uploads[0]).toMatchObject({ routeId: 'route-1', drive });
+		},
+	);
+
 	it('moves along the road, and saves against the route with its metres', async () => {
 		const free = createFreeRide({ ftp: () => 250, kg: () => 75 });
 		free.arm();
@@ -244,7 +254,7 @@ describe('a free ride on a road', () => {
 			samples: { m: number; alt: number }[];
 		};
 		expect(saved.routeId).toBe('route-1');
-		expect(['sim', 'gears']).toContain(saved.drive);
+		expect(saved.drive).toBe('gears');
 		expect(saved.samples).toHaveLength(90);
 		// A sample keeps where its second began, as the server's replay steps
 		// it (#3615): a ride from km 0 starts at 0, and the last is a second
