@@ -6,44 +6,44 @@ Part of the product spec. [docs/SPEC.md](../SPEC.md) indexes every section and s
 
 One table, because there is one place roles live: the crew ([ADR-0058](../decisions/0058-the-room-dissolves-into-the-crew.md)). A channel has no roles of its own, and **coach** is not a role — it is whoever is running a session (‡).
 
-| Capability | Crew owner | Crew admin | Member | On a phone † |
-| --- | --- | --- | --- | --- |
-| Rename the crew, set its icon and picture (#1237) | ✓ | ✓ | – | ✓ |
-| Edit the crew — directory listing, weekly board (#2454) | ✓ | ✓ | – | ✓ |
-| Make / unmake a crew admin | ✓ | ✓ | – | ✓ |
-| Ban / unban from the crew (#1150) — never the owner | ✓ | ✓ | – | ✓ |
-| See the crew's ban list | ✓ | ✓ | – | ✓ |
-| Hand the crew to someone in it (#1208) | ✓ | – | – | ✓ |
-| Make a new crew code (#1930) — the old one stops working at once | ✓ | ✓ | – | ✓ |
-| Invite — share the crew's code or link (#1236) | ✓ | ✓ | ✓ | ✓ |
-| Leave the crew (#1228) — the owner hands it on first | – | ✓ | ✓ | ✓ |
-| Create, rename, reorder, open / make private, delete a channel; set a voice channel's sound pack (#2434) | ✓ | ✓ | – | ✓ |
-| Name a member into a private channel, or take them out (#2434) | ✓ | ✓ | – | ✓ |
-| Move a rider from one voice channel to another — drag their name, or its menu (#2730). Never one who is pedalling, and only through a door they may walk through | ✓ | ✓ | – | ✓ |
-| Enter an open channel | ✓ | ✓ | ✓ | ✓ |
-| Enter a private channel | ✓ | ✓ | if named | ✓ |
-| Delete any message in a text channel ([#2417](https://github.com/natrontech/wattroom/issues/2417)) — anyone may delete **their own** | ✓ | ✓ | – | ✓ |
-| Put up and take down a text channel's announcement ([ADR-0057](../decisions/0057-an-announcement-is-a-chat-message-marked.md)) | ✓ | ✓ | – | ✓ |
-| Pin, edit and unpin on the crew's board ([ADR-0056](../decisions/0056-a-crew-pins-what-it-keeps-needing.md)) | ✓ | ✓ | ✓ | ✓ |
-| Start a session — planned or not — in a voice channel you may enter (#2438, #2440) | ✓ | ✓ | ✓ | – |
-| Join or leave a running session, or free-ride in a voice channel you may enter ([ADR-0059](../decisions/0059-a-voice-channel-rides-without-a-session.md)) | ✓ | ✓ | ✓ | – |
-| Pick the workout or mode, start the countdown, pause, resume and end, arm sprint moments, hand the session off ‡ | ✓ ‡ | ✓ ‡ | ✓ ‡ | – |
-| End anyone's session (#2438) | ✓ | ✓ | – | ✓ |
-| Plan a session, naming a voice channel or none yet (#116, #2440) | ✓ | ✓ | ✓ | ✓ |
-| Move / cancel a planned session (#116) | ✓ | ✓ | their own | ✓ |
-| Say you are in for a planned session (#450) | ✓ | ✓ | ✓ | ✓ |
-| Add to a voice channel's jukebox queue | ✓ | ✓ | ✓ | ✓ |
-| Jukebox play/pause/skip/back/seek | ✓ | ✓ | ✓ (default — tune in alpha) | ✓ |
-| Skip the rest of a queued playlist (#615) | ✓ | ✓ | ✓ | ✓ |
-| Jukebox upvote / reorder / remove a queued track (#286) | ✓ | ✓ | ✓ | ✓ |
-| Create a crew playlist, add a track to one, reorder its tracks (#627, #1428) | ✓ | ✓ | ✓ | ✓ |
-| Rename / delete a crew playlist, remove one of its tracks, make it a voice channel's active one (#627, #695) | ✓ | ✓ | – | ✓ |
-| Change a voice channel's autoplay settings (#627, #695) | ✓ | ✓ | – | ✓ |
-| Manage own personal playlists (#627) | ✓ | ✓ | ✓ | ✓ |
-| Ride (metrics on dashboard) | ✓ | ✓ | ✓ | – |
-| Voice/camera | ✓ | ✓ | ✓ | ✓ |
-| Cheers | ✓ | ✓ | ✓ | ✓ |
-| Hand a bottle up to a rider riding the session (#3022) | ✓ | ✓ | ✓ | ✓ |
+| Capability                                                                                                                                                       | Crew owner | Crew admin | Member                      | On a phone † |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ---------- | --------------------------- | ------------ |
+| Rename the crew, set its icon and picture (#1237)                                                                                                                | ✓          | ✓          | –                           | ✓            |
+| Edit the crew — directory listing, weekly board (#2454)                                                                                                          | ✓          | ✓          | –                           | ✓            |
+| Make / unmake a crew admin                                                                                                                                       | ✓          | ✓          | –                           | ✓            |
+| Ban / unban from the crew (#1150) — never the owner                                                                                                              | ✓          | ✓          | –                           | ✓            |
+| See the crew's ban list                                                                                                                                          | ✓          | ✓          | –                           | ✓            |
+| Hand the crew to someone in it (#1208)                                                                                                                           | ✓          | –          | –                           | ✓            |
+| Make a new crew code (#1930) — the old one stops working at once                                                                                                 | ✓          | ✓          | –                           | ✓            |
+| Invite — share the crew's code or link (#1236)                                                                                                                   | ✓          | ✓          | ✓                           | ✓            |
+| Leave the crew (#1228) — the owner hands it on first                                                                                                             | –          | ✓          | ✓                           | ✓            |
+| Create, rename, reorder, open / make private, delete a channel; set a voice channel's sound pack (#2434)                                                         | ✓          | ✓          | –                           | ✓            |
+| Name a member into a private channel, or take them out (#2434)                                                                                                   | ✓          | ✓          | –                           | ✓            |
+| Move a rider from one voice channel to another — drag their name, or its menu (#2730). Never one who is pedalling, and only through a door they may walk through | ✓          | ✓          | –                           | ✓            |
+| Enter an open channel                                                                                                                                            | ✓          | ✓          | ✓                           | ✓            |
+| Enter a private channel                                                                                                                                          | ✓          | ✓          | if named                    | ✓            |
+| Delete any message in a text channel ([#2417](https://github.com/natrontech/wattroom/issues/2417)) — anyone may delete **their own**                             | ✓          | ✓          | –                           | ✓            |
+| Put up and take down a text channel's announcement ([ADR-0057](../decisions/0057-an-announcement-is-a-chat-message-marked.md))                                   | ✓          | ✓          | –                           | ✓            |
+| Pin, edit and unpin on the crew's board ([ADR-0056](../decisions/0056-a-crew-pins-what-it-keeps-needing.md))                                                     | ✓          | ✓          | ✓                           | ✓            |
+| Start a session — planned or not — in a voice channel you may enter (#2438, #2440)                                                                               | ✓          | ✓          | ✓                           | –            |
+| Join or leave a running session, or free-ride in a voice channel you may enter ([ADR-0059](../decisions/0059-a-voice-channel-rides-without-a-session.md))        | ✓          | ✓          | ✓                           | –            |
+| Pick the workout or mode, start the countdown, pause, resume and end, arm sprint moments, hand the session off ‡                                                 | ✓ ‡        | ✓ ‡        | ✓ ‡                         | –            |
+| End anyone's session (#2438)                                                                                                                                     | ✓          | ✓          | –                           | ✓            |
+| Plan a session, naming a voice channel or none yet (#116, #2440)                                                                                                 | ✓          | ✓          | ✓                           | ✓            |
+| Move / cancel a planned session (#116)                                                                                                                           | ✓          | ✓          | their own                   | ✓            |
+| Say you are in for a planned session (#450)                                                                                                                      | ✓          | ✓          | ✓                           | ✓            |
+| Add to a voice channel's jukebox queue                                                                                                                           | ✓          | ✓          | ✓                           | ✓            |
+| Jukebox play/pause/skip/back/seek                                                                                                                                | ✓          | ✓          | ✓ (default — tune in alpha) | ✓            |
+| Skip the rest of a queued playlist (#615)                                                                                                                        | ✓          | ✓          | ✓                           | ✓            |
+| Jukebox upvote / reorder / remove a queued track (#286)                                                                                                          | ✓          | ✓          | ✓                           | ✓            |
+| Create a crew playlist, add a track to one, reorder its tracks (#627, #1428)                                                                                     | ✓          | ✓          | ✓                           | ✓            |
+| Rename / delete a crew playlist, remove one of its tracks, make it a voice channel's active one (#627, #695)                                                     | ✓          | ✓          | –                           | ✓            |
+| Change a voice channel's autoplay settings (#627, #695)                                                                                                          | ✓          | ✓          | –                           | ✓            |
+| Manage own personal playlists (#627)                                                                                                                             | ✓          | ✓          | ✓                           | ✓            |
+| Ride (metrics on dashboard)                                                                                                                                      | ✓          | ✓          | ✓                           | –            |
+| Voice/camera                                                                                                                                                     | ✓          | ✓          | ✓                           | ✓            |
+| Cheers                                                                                                                                                           | ✓          | ✓          | ✓                           | ✓            |
+| Hand a bottle up to a rider riding the session (#3022)                                                                                                           | ✓          | ✓          | ✓                           | ✓            |
 
 ‡ **Only while they are the session's coach** — whoever started it, until they hand it to someone in the session (#2438). Being the crew's owner or an admin does not make anyone coach. The one lever the owner and admins hold over a session somebody else is running is **ending** it, which is what a voice channel needs when a session is left running in it: there is one session per channel, so an abandoned one would hold the channel shut.
 
@@ -126,6 +126,6 @@ Session lifecycle: a voice channel idles (voice and jukebox) → a member who ma
 
 A ride **alone** has the same lifecycle with the roster removed: rider picks workout → **3 s count-in** → their own timeline runs → closes when it ends (or they end it) → the ride is saved to their account. The count-in is a session's, shortened because nobody else is being waited for — same 3-2-1-go cues, same one-digit screen, and the same three seconds the resume countdown gets below. It is **not** an exception to ADR-0046's parity rule: the clock starts when the count-in ends, so the first block's target reaches the trainer then and not at the tap. A rider who changes their mind during it cancels back to the setup screen with the trainer still paired — nothing was ridden, so nothing is saved. The ramp test counts in the same way; it is a workout, not a third thing.
 
-A **free ride** ([ADR-0059](../decisions/0059-a-voice-channel-rides-without-a-session.md)) has no timeline and no count-in. One control, one toggle between two modes: **grade** in **0.5 %** steps from **−5 %** to **+15 %**, where it opens, at **0 %**; and **watts** in **10 W** steps from **50 W** to **1000 W**, opening at **55 % of FTP** rounded to 10 W (defaults — tune in alpha). A one-gear setup (`singleSpeed`, a Zwift Cog) opens in **watts** instead, since the slope has no usable range there; grade stays one tap away. The ride guards below apply in watts mode only, since grade holds no target to release. It records from the first pedal stroke to **End ride**, is saved as the empty, unscored workout "Free ride", and follows the solo ride's minute rule. A session in the channel leaves it alone; joining one saves the free ride first. A third mode rides a **road** ([ADR-0062](../decisions/0062-the-horizon-may-be-a-road.md)): the grade is the road's **felt grade**, the step control goes, and the numbers are under Route rides. The free ride rides alone on `/ride` too, in all three modes. In grade mode the rider also shifts: Easier and Harder move a virtual gear (see Virtual gears).
+A **free ride** ([ADR-0059](../decisions/0059-a-voice-channel-rides-without-a-session.md)) has no timeline and no count-in. One control, one toggle between two modes: **grade** in **0.5 %** steps from **−5 %** to **+15 %**, where it opens, at **0 %**; and **watts** in **10 W** steps from **50 W** to **1000 W**, opening at **55 % of FTP** rounded to 10 W (defaults — tune in alpha). A one-gear setup (`singleSpeed`, a Zwift Cog) opens in **watts** instead, since the slope has no usable range there; grade stays one tap away. The ride guards below apply in watts mode only, since grade holds no target to release. It records from the first pedal stroke to **End ride**, is saved as the empty, unscored workout "Free ride", and follows the solo ride's minute rule. A session in the channel leaves it alone; joining one saves the free ride first. A third mode rides a **road** ([ADR-0062](../decisions/0062-the-horizon-may-be-a-road.md)): the grade is the road's **felt grade**, the step control goes, and the numbers are under Route rides. The free ride rides alone on `/ride` too, in all three modes. In grade mode the rider also shifts: Easier and Harder move a virtual gear (see Virtual gears). Off a road the free ride also offers **Warm up** and **Cool down**, each **5** or **10 minutes** (#4100): an ERG ramp, interpolated per counted second as a workout's ramp is and snapped to the 10 W grid. Warm up rises from **40 %** to **70 % of FTP**; Cool down falls from the current target (in grade mode, the last second's watts) to a floor of **35 % of FTP**. Its end carries on in watts at the ramp's last target, or hands back to grade at the grade the rider left; a tap on − or +, a mode switch or Stop ends it early at the current target. Cool down never ends the ride, and the guards apply during a ramp.
 
 The free ride is not the only way to ride a voice channel with no session of your own: **your own workout** rides there too, beside any session (ADR-0059 amended, #3340). It is picked from the same library as `/ride`, and it follows the ride-alone lifecycle above — the **3 s** count-in, the rider's own clock with `+1 min` and `Skip block`, saved and scored like a ride alone. Its audience is the free ride's, and the workout's name and steps are shown to nobody. It is a spectator of the session: its trainer is not driven, nothing of it counts, and joining the session saves it first.

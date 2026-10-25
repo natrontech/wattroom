@@ -20,10 +20,7 @@ const clamp = (value: number, { min, max }: { min: number; max: number }) =>
 
 /** Where watts mode opens: an easy spin, on the 10 W grid. */
 export function openingWatts(ftp: number): number {
-	return clamp(
-		Math.round((OPENING_FTP_FRACTION * ftp) / WATTS.step) * WATTS.step,
-		WATTS,
-	);
+	return snappedWatts(OPENING_FTP_FRACTION * ftp);
 }
 
 /** One press of − or +, snapped to the mode's grid and held in its bounds. */
@@ -31,4 +28,28 @@ export function nudged(mode: FreeMode, value: number, dir: 1 | -1): number {
 	const range = mode === 'grade' ? GRADE : WATTS;
 	const next = Math.round((value + dir * range.step) / range.step) * range.step;
 	return clamp(next, range);
+}
+
+/** docs/SPEC.md's free-ride ramps (#4100): fractions of FTP, minutes at a tap. */
+export const RAMP = {
+	minutes: [5, 10],
+	warmup: { from: 0.4, to: 0.7 },
+	cooldownFloor: 0.35,
+} as const;
+export type RampKind = 'warmup' | 'cooldown';
+
+/** On the 10 W grid and in watts mode's bounds. */
+export const snappedWatts = (w: number): number =>
+	clamp(Math.round(w / WATTS.step) * WATTS.step, WATTS);
+
+/**
+ * A ramp's watts `t` counted seconds in, interpolated as a workout's ramp is
+ * (docs/spec/workouts.md); at or past its length, its `to`.
+ */
+export function rampWatts(
+	ramp: { from: number; to: number; seconds: number },
+	t: number,
+): number {
+	const into = Math.min(Math.max(t, 0), ramp.seconds) / ramp.seconds;
+	return snappedWatts(ramp.from + (ramp.to - ramp.from) * into);
 }

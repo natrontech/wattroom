@@ -22,7 +22,13 @@
 	import type { Clamp } from '$lib/ride/drivetrain';
 	import { FLAG_NOTICE_MS, FLAG_SAID } from '$lib/ride/flag';
 	import FlagButton from '$lib/ride/FlagButton.svelte';
-	import { GRADE, WATTS, type FreeMode } from '$lib/ride/free-ride-controls';
+	import {
+		GRADE,
+		RAMP,
+		WATTS,
+		type FreeMode,
+		type RampKind,
+	} from '$lib/ride/free-ride-controls';
 	import { freeRideLabel, type FreeRide } from '$lib/ride/free-ride.svelte';
 	import GearShift from '$lib/ride/GearShift.svelte';
 	import { ONE_GEAR_LINE } from '$lib/ride/mode-copy';
@@ -43,6 +49,7 @@
 	import FlatRoad from '$lib/world/FlatRoad.svelte';
 	import { JUMP_M } from '$lib/world/sim';
 	import { createWorldView } from '$lib/world/world-view.svelte';
+	import { play } from '$lib/sound/cues';
 
 	let {
 		free,
@@ -148,6 +155,23 @@
 			? `Watts · ${free.targetWatts} W`
 			: `SIM · you feel ${(road ? road.felt : free.grade).toFixed(1)} %`,
 	);
+	// Warm up and Cool down (#4100): off a road, a length picked once.
+	const RAMPS: { kind: RampKind; label: string }[] = [
+		{ kind: 'warmup', label: 'Warm up' },
+		{ kind: 'cooldown', label: 'Cool down' },
+	];
+	let rampMinutes = $state<number>(RAMP.minutes[0]);
+	const rampLabel = $derived(
+		RAMPS.find((r) => r.kind === free.ramp?.kind)?.label,
+	);
+	// A ramp's start and end announce themselves (ux.md): the line below,
+	// and the block cue, falling when it ends.
+	let rampWas: RampKind | null = null;
+	$effect(() => {
+		const now = free.ramp?.kind ?? null;
+		if (now !== rampWas) play('block', { semitones: now ? 0 : -5 });
+		rampWas = now;
+	});
 	let repairing = $state(false);
 	let repairError = $state<string | null>(null);
 	async function repair() {
@@ -260,6 +284,11 @@
 						free.seconds,
 					)}{#if road}{` · ${Math.round(climbed)} m climbed`}{/if}
 				</p>
+				{#if free.ramp}
+					<p data-testid="ramp-line" class="num truncate" aria-live="polite">
+						{rampLabel} · {formatClock(free.ramp.left)} left
+					</p>
+				{/if}
 				{#if flagNotice}
 					<p class="text-muted truncate">{FLAG_SAID.after}</p>
 				{:else if hint}
@@ -307,6 +336,33 @@
 					aria-label={inWatts ? 'more watts' : 'steeper grade'}
 					><Plus size={18} /></button
 				>
+				{#if free.ramp}
+					<button onclick={free.stopRamp} class="btn btn-secondary btn-ride"
+						>Stop {rampLabel?.toLowerCase()}</button
+					>
+				{:else}
+					<div
+						class="border-muted/20 flex rounded-lg border"
+						role="group"
+						aria-label="ramp length"
+					>
+						{#each RAMP.minutes as minutes (minutes)}
+							<button
+								onclick={() => (rampMinutes = minutes)}
+								aria-pressed={rampMinutes === minutes}
+								class="btn btn-ride {rampMinutes === minutes
+									? 'btn-secondary'
+									: 'btn-ghost'}">{minutes} min</button
+							>
+						{/each}
+					</div>
+					{#each RAMPS as r (r.kind)}
+						<button
+							onclick={() => free.startRamp(r.kind, rampMinutes)}
+							class="btn btn-secondary btn-ride">{r.label}</button
+						>
+					{/each}
+				{/if}
 			{/if}
 			{#if gear && shift && !inWatts}
 				<GearShift {shift} {gear} off={shiftOff} {cassette} />

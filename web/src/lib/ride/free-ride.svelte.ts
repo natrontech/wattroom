@@ -3,7 +3,11 @@ import { MinRideSamples } from '$lib/protocol';
 import {
 	openingWatts,
 	nudged,
+	RAMP,
+	rampWatts,
+	snappedWatts,
 	type FreeMode,
+	type RampKind,
 } from '$lib/ride/free-ride-controls';
 import { ergByRoad } from '$lib/ride/ride-grade';
 import { gearsEnabled } from '$lib/ride/gears-enabled';
@@ -56,10 +60,31 @@ export function createFreeRide(deps: {
 	/** The mode the rider picked; null until they pick one. */
 	let picked = $state<FreeMode | null>(null);
 	const mode = $derived<FreeMode>(
-		picked ?? (deps.singleSpeed?.() ? 'watts' : 'grade'),
+		ramp ? 'watts' : (picked ?? (deps.singleSpeed?.() ? 'watts' : 'grade')),
 	);
 	let grade = $state(0);
 	let watts = $state<number | null>(null);
+	/**
+	 * A warm-up or cool-down (#4100): ERG for its length, whatever the mode,
+	 * then back to the mode it started from. `t` counts ridden seconds.
+	 */
+	let ramp = $state<{
+		kind: RampKind;
+		from: number;
+		to: number;
+		seconds: number;
+		t: number;
+		back: FreeMode;
+	} | null>(null);
+	let lastWatts = 0;
+	const rampTarget = $derived(ramp && rampWatts(ramp, ramp.t));
+	/** Ends a ramp at its current target, which manual control takes over. */
+	function endRamp() {
+		if (!ramp || rampTarget === null) return;
+		watts = rampTarget;
+		picked = ramp.back;
+		ramp = null;
+	}
 	let startedAt = $state<number | null>(null);
 	let seconds = $state(0);
 	let saving = $state(false);
@@ -114,7 +139,13 @@ export function createFreeRide(deps: {
 			return grade;
 		},
 		get watts() {
-			return watts ?? openingWatts(deps.ftp());
+			return rampTarget ?? watts ?? openingWatts(deps.ftp());
+		},
+		/** The ramp running, its target and seconds left; null when none. */
+		get ramp() {
+			return ramp && rampTarget !== null
+				? { kind: ramp.kind, target: rampTarget, left: ramp.seconds - ramp.t }
+				: null;
 		},
 		/** The road under the ride, and where on it; null off a road. */
 		get road() {
@@ -128,7 +159,7 @@ export function createFreeRide(deps: {
 			if (mode !== 'watts') return 0;
 			return road
 				? ergByRoad(deps.ftp(), road.roadPct)
-				: (watts ?? openingWatts(deps.ftp()));
+				: (rampTarget ?? watts ?? openingWatts(deps.ftp()));
 		},
 		/** Pedalled at least once since it was armed. */
 		get recording() {
@@ -158,6 +189,7 @@ export function createFreeRide(deps: {
 			armed = true;
 		},
 		setMode(next: FreeMode) {
+			endRamp();
 			if (next === 'watts' && watts === null) watts = openingWatts(deps.ftp());
 			picked = next;
 		},
@@ -171,6 +203,7 @@ export function createFreeRide(deps: {
 				kg: () => deps.kg?.() ?? 0,
 				from,
 			});
+			ramp = null;
 			onRoad = { route, laps };
 			here = laps.second(0, Date.now());
 		},
@@ -189,7 +222,32 @@ export function createFreeRide(deps: {
 			onRoad.laps.turn(way);
 			here = { ...here, atEnd: false };
 		},
+		/**
+		 * Warm up or Cool down, off a road. Cool down falls from the target
+		 * held, or in grade mode from the last second's watts.
+		 */
+		startRamp(kind: RampKind, minutes: number) {
+			if (onRoad) return;
+			const ftp = deps.ftp();
+			const held = mode === 'watts' ? (watts ?? openingWatts(ftp)) : lastWatts;
+			const floor = RAMP.cooldownFloor * ftp;
+			ramp = {
+				kind,
+				...(kind === 'warmup'
+					? { from: RAMP.warmup.from * ftp, to: RAMP.warmup.to * ftp }
+					: { from: Math.max(snappedWatts(held), floor), to: floor }),
+				seconds: minutes * 60,
+				t: 0,
+				back: mode,
+			};
+		},
+		/** Stop, or any manual control: the ramp's target stays held. */
+		stopRamp: endRamp,
 		nudge(dir: 1 | -1) {
+			if (ramp) {
+				endRamp();
+				return;
+			}
 			if (mode === 'grade') grade = nudged('grade', grade, dir);
 			else watts = nudged('watts', watts ?? openingWatts(deps.ftp()), dir);
 		},
@@ -214,6 +272,8 @@ export function createFreeRide(deps: {
 			const rolling = virtualMps > DEFAULTS.ridingMps;
 			if (!armed || (sample.watts <= 0 && sample.cadence <= 0 && !rolling))
 				return;
+			lastWatts = sample.watts;
+			if (ramp && ++ramp.t >= ramp.seconds) endRamp();
 			if (startedAt === null) {
 				startedAt = Date.now();
 				outcome = null;
@@ -260,6 +320,7 @@ export function createFreeRide(deps: {
 		 */
 		async end(): Promise<FreeRideOutcome | null> {
 			armed = false;
+			ramp = null;
 			if (startedAt === null || saving) return null;
 			const ride: RideUpload = {
 				workoutName: FREE_RIDE_NAME,
