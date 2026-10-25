@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { formatClock } from '$lib/format';
+	import { blockWords } from '$lib/workout/block';
 	import type { Segment } from '$lib/workout/types';
 	import { splitTrace, type TracePoint, thinRun } from './trace';
 	import { CEILING, ZONE_NAMES, ZONE_VAR, zoneOfSegment } from './zones';
@@ -28,6 +29,7 @@
 		marker = true,
 		tv = false,
 		ride = false,
+		words,
 		ceiling = CEILING,
 		selectedPath = null,
 		onSelect,
@@ -50,6 +52,12 @@
 		tv?: boolean;
 		/** On a riding surface the FTP label is SPEC's 24 px word (TARGETS G4). */
 		ride?: boolean;
+		/**
+		 * Each block says what it is, its target and its length (#4159): the
+		 * ride's one picture of the workout. The rider's trim, so a block's
+		 * watts read as slot 1's target does.
+		 */
+		words?: { bias: number };
 		/**
 		 * Top of the vertical scale, as a fraction of FTP. The ramp test rides
 		 * far above the FTP it exists to correct, so 1.5 × FTP flat-tops its
@@ -255,6 +263,18 @@
 		});
 	}
 
+	// Your position: watt where it is your marker (G2), ink where it is not.
+	const cursor = $derived({
+		x1: x(elapsed),
+		y1: 0,
+		x2: x(elapsed),
+		y2: BASE,
+		class: marker ? 'text-watt glow-stroke' : 'text-ink',
+		stroke: 'currentColor',
+		'stroke-width': 2,
+		'vector-effect': 'non-scaling-stroke' as const,
+	});
+
 	// One polyline per continuously-ridden run: skip and extend make the clock jump,
 	// and a single line across those jumps draws work that never happened. Each
 	// run is thinned to one low and one high per viewBox unit (#2878): the graph cannot
@@ -351,18 +371,9 @@
 			/>
 		{/each}
 
-		{#if elapsed > 0}
+		{#if elapsed > 0 && !words}
 			<!-- watt marks live data only — previews pass elapsed 0 and get no cursor. -->
-			<line
-				x1={x(elapsed)}
-				y1="0"
-				x2={x(elapsed)}
-				y2={BASE}
-				class={marker ? 'text-watt glow-stroke' : 'text-ink'}
-				stroke="currentColor"
-				stroke-width="2"
-				vector-effect="non-scaling-stroke"
-			/>
+			<line {...cursor} />
 		{/if}
 		<line
 			x1="0"
@@ -393,5 +404,43 @@
 					: 'text-[9px]'}"
 			style="top: {(y(1) / H) * 100}%">FTP</span
 		>
+	{/if}
+	{#if words}
+		<!-- What each block is, inside it halfway up its lower end (#4159), off
+		     the rider's trace along its top: target and length
+		     in neon lifted toward ink to read over the fill, a target's colour
+		     (G2), the current block's bold. One line
+		     the block's width: a part that does not fit wraps onto a clipped
+		     second line, the length first, so a narrow block says less or
+		     nothing rather than overrun its neighbour. The empty first span,
+		     a line tall, keeps even the target off line one when it is too
+		     wide (an empty line would be 0 px and show line two). -->
+		{#each segments as seg, i (i)}
+			{@const [target, length] = blockWords(seg, ftp, words.bias)}
+			{@const block = blocks[i]}
+			<p
+				data-testid="block-words"
+				data-now={elapsed >= seg.startSeconds &&
+					elapsed < seg.startSeconds + seg.seconds}
+				class="num text-label pointer-events-none absolute flex h-[1lh] -translate-y-1/2 flex-wrap justify-center overflow-hidden px-1 leading-tight tracking-wide whitespace-nowrap text-[color-mix(in_oklab,var(--color-neon)_65%,var(--color-ink))] data-[now=false]:font-medium data-[now=false]:opacity-80 data-[now=true]:font-bold"
+				style="left:{(block.x0 / W) * 100}%;width:{((block.x1 - block.x0) / W) *
+					100}%;top:{((Math.max(block.yFrom, block.yTo) + BASE) / 2 / H) *
+					100}%"
+			>
+				<span class="h-full"></span><span class="shrink-0">{target}</span><span
+					class="ml-2 shrink-0">· {length}</span
+				>
+			</p>
+		{/each}
+		{#if elapsed > 0}
+			<!-- The cursor over the words, so no word cuts your marker (G2). -->
+			<svg
+				viewBox="0 0 {W} {H}"
+				preserveAspectRatio="none"
+				aria-hidden="true"
+				class="pointer-events-none absolute inset-0 h-full w-full"
+				><line {...cursor} /></svg
+			>
+		{/if}
 	{/if}
 </div>

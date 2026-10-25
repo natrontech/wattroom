@@ -13,7 +13,5 @@
 </script>
 
 <p class="text-muted mt-1.5 text-xs">
-	The mic button is your gate here. A phone plays the call through its earpiece
-	while anything is capturing, so the mic opens when you tap it and the
-	loudspeaker comes back when you tap it again.
+	Tap the mic to talk. Tap again for the loudspeaker.
 </p>

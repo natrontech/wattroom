@@ -6,6 +6,7 @@
 	// the device refresh, and none of that is the page's business (#686).
 	import DevicePickers from '$lib/channel/DevicePickers.svelte';
 	import MixFaders from '$lib/channel/MixFaders.svelte';
+	import RiderVolumes from '$lib/channel/RiderVolumes.svelte';
 	import VoiceSettings from '$lib/channel/VoiceSettings.svelte';
 	import { account } from '$lib/account.svelte';
 	import { deviceChoices } from '$lib/channel/av-devices.svelte';
@@ -105,6 +106,9 @@
 				     not be the only way to reach one (ux.md). -->
 			<div class="mt-5 max-w-sm">
 				<MixFaders />
+				<div class="mt-4">
+					<RiderVolumes />
+				</div>
 			</div>
 			<p class="text-muted mt-4 text-sm">
 				Join a voice channel to set your gate — the meter needs a live mic to

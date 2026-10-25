@@ -22,6 +22,10 @@ func (h *Hub) handleMessage(c *client, rm *channelState, channel string, rider p
 		}
 		rm.announcePairingFirst(c)
 	}
+	if msg.Voice != nil {
+		// After the sensors: a message carrying both names its tab once.
+		h.voiceClaim(c, rm, rider, *msg.Voice)
+	}
 	if msg.Poke != nil {
 		h.poke(c, rm, rider, *msg.Poke)
 	}
