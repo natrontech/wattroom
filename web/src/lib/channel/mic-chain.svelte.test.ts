@@ -38,7 +38,16 @@ function fakeTrack() {
 }
 
 let capture: ReturnType<typeof fakeTrack>;
-let gain: { gain: { value: number; cancelScheduledValues: unknown } };
+type FakeGain = {
+	gain: { value: number; setTargetAtTime: ReturnType<typeof vi.fn> };
+};
+/** Every gain node built, in order: the starting gain, then the gate's. */
+let gains: FakeGain[];
+const stored = new Map<string, string>();
+vi.stubGlobal('localStorage', {
+	getItem: (k: string) => stored.get(k) ?? null,
+	setItem: (k: string, v: string) => void stored.set(k, v),
+});
 const ctxClose = vi.fn();
 /** Whether anything built an audio graph at all — a handheld must not. */
 const ctxMade = vi.fn();
@@ -49,20 +58,21 @@ function stubAudio() {
 	const track = fakeTrack();
 	capture = track;
 	const stream = { getAudioTracks: () => [track], getTracks: () => [track] };
-	gain = {
-		gain: {
-			value: 0,
-			setTargetAtTime: vi.fn(),
-		},
-		connect: vi.fn(),
-	} as never;
+	gains = [];
 	vi.stubGlobal('AudioContext', function AudioContextStub(this: unknown) {
 		ctxMade();
 		return {
 			currentTime: 0,
 			state: 'running',
-			createMediaStreamSource: () => ({}),
-			createGain: () => gain,
+			createMediaStreamSource: () => ({ connect: vi.fn() }),
+			createGain: () => {
+				const node = {
+					gain: { value: 1, setTargetAtTime: vi.fn() },
+					connect: vi.fn(),
+				};
+				gains.push(node);
+				return node;
+			},
 			createMediaStreamDestination: () => ({
 				stream: { getAudioTracks: () => [{ id: 'transmit' }] },
 			}),
@@ -92,6 +102,7 @@ function host(over: Partial<MicChainHost> = {}): MicChainHost {
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	stored.clear();
 	stubAudio();
 });
 
@@ -226,5 +237,27 @@ describe('the mic test (#178)', () => {
 		expect(chain.testing).toBe(false);
 		expect(capture.stop).toHaveBeenCalled();
 		expect(deps.silenced).toHaveBeenCalled();
+	});
+});
+
+describe('the starting gain (#2120)', () => {
+	it('lifts a quiet start toward where this device last settled', async () => {
+		stored.set('wattroom.voice.settled.v1', '0.3');
+		const chain = createMicChain(host());
+		await chain.open();
+		meterLevel(0.15); // AGC's quiet first minute
+		const [lift] = gains;
+		expect(lift.gain.setTargetAtTime).toHaveBeenLastCalledWith(
+			2,
+			0,
+			expect.any(Number),
+		);
+	});
+
+	it('leaves a device with no settled call alone', async () => {
+		const chain = createMicChain(host());
+		await chain.open();
+		meterLevel(0.15);
+		expect(gains[0].gain.setTargetAtTime).not.toHaveBeenCalled();
 	});
 });
