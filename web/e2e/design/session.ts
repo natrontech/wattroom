@@ -11,7 +11,7 @@ import { voicePath, type DesignCrew } from './seed';
  * A click from inside the page: the session picker is a modal whose buttons
  * Playwright resolves, finds stable, and then cannot scroll to.
  */
-async function press(control: Locator): Promise<void> {
+export async function press(control: Locator): Promise<void> {
 	await control.waitFor();
 	await control.evaluate((el) => (el as HTMLElement).click());
 }

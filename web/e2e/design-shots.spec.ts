@@ -16,6 +16,7 @@ import {
 	endSession,
 	joinSession,
 	pickRoad,
+	press,
 	startSession,
 	toTraining,
 } from './design/session';
@@ -789,6 +790,22 @@ surface('picker-race', async (s) => {
 	await picker.getByRole('button', { name: 'Games', exact: true }).click();
 	await o.page.waitForTimeout(500);
 	await s.shot(o, { name: 'picker-race-games' });
+	// Its one line opens Race it on the roads.
+	await press(picker.getByRole('button', { name: 'Race on a road' }));
+	const races = picker.getByRole('group', { name: 'which race' });
+	await races.waitFor();
+	await s.shot(o, { name: 'picker-race-door' });
+	// A Wheelrace's par the hub refuses is refused under the field, and
+	// nothing is offered to start.
+	await press(races.getByRole('button', { name: /^Wheelrace / }));
+	await picker.getByRole('spinbutton', { name: /^par/ }).fill('50');
+	await picker
+		.getByRole('alert')
+		.filter({ hasText: 'par is 15 to 45 minutes' })
+		.waitFor();
+	if (await picker.getByRole('button', { name: /^Start / }).count())
+		throw new Error('a par of 50 minutes still offers a Start');
+	await s.shot(o, { name: 'picker-race-par' });
 });
 
 surface(
