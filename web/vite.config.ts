@@ -152,6 +152,9 @@ export default defineConfig({
 		// `make dev-web` sets both PORT and WATTROOM_API from the checkout's
 		// derived pair (scripts/dev-env.sh, #552) so the two always agree.
 		port: Number(process.env.PORT) || 5174,
+		// A taken port fails loudly: a quiet rebind proxied a worktree to its
+		// neighbour's server (#4074).
+		strictPort: true,
 		proxy: {
 			// Go backend during development (make dev). WS needs ws: true.
 			// changeOrigin must stay OFF: the string shorthand turns it on, which
