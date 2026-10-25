@@ -76,3 +76,26 @@ describe('the context eyebrow', () => {
 		expect(body()).not.toContain('ride-context');
 	});
 });
+
+// #4159: flat, the graph below is the workout's one picture. With no strip,
+// NEXT stands beside the clock in the block's row, not in a row of its own
+// under an empty column.
+describe('flat slot 1 without a strip', () => {
+	it('sets NEXT in the clock row', () => {
+		const html = render(RideBand, {
+			props: {
+				block: {
+					...block({ kind: 'erg' }),
+					next: { label: 'Recovery', watts: 120, seconds: 300 },
+				},
+				elapsed: 60,
+				total: 600,
+				drives: true,
+				wide: true,
+			},
+		}).body;
+		const after = html.slice(html.indexOf('Recovery · 120 W · 5 min'));
+		expect(after.indexOf('</div>')).toBeGreaterThan(-1);
+		expect(after.indexOf('</div>')).toBeLessThan(after.indexOf('</header>'));
+	});
+});
