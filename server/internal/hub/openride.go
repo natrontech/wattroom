@@ -182,7 +182,7 @@ func (o *openRide) leave(c *client) {
 // sample takes one rider's second: watts and bias, bounded, once per seq.
 // The bunch reads it; nothing sends it on.
 func (o *openRide) sample(c *client, s protocol.OpenRideSample) {
-	if s.Watts < 0 || s.Watts > protocol.MaxWatts || s.Bias != 0 && (s.Bias < protocol.MinBias || s.Bias > protocol.MaxBias) {
+	if s.Watts < 0 || s.Watts > protocol.MaxWatts || !protocol.BiasInBounds(s.Bias) {
 		return
 	}
 	o.mu.Lock()

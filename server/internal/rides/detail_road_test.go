@@ -111,6 +111,31 @@ func TestARideNamesItsRoadOnlyToTheRoadsOwner(t *testing.T) {
 	}
 }
 
+// A personal token is how a coach's AI reads (ADR-0017), and a route ride
+// reaches an AI as "Route ride" plus km and gain (AGENTS.md, ADR-0063): the
+// owner's own list names their road on the account only, never to a bearer.
+func TestABearersListNamesNoRoad(t *testing.T) {
+	h := setup(t)
+	routeID, _ := storeRoute(t, h, "alice")
+	if _, err := h.store.Pool.Exec(t.Context(), "update routes set name = $1 where id = $2::uuid",
+		testx.Corridor.Route, routeID); err != nil {
+		t.Fatal(err)
+	}
+	if status, got := call(t, h.mux, "alice", http.MethodPost, "/api/rides", freeRideOn(routeID, 8, "")); status != http.StatusCreated {
+		t.Fatalf("save: %d %v", status, got)
+	}
+	status, body := rawGet(t, h, "/api/rides", true)
+	if status != http.StatusOK {
+		t.Fatalf("the list with a bearer: %d %s", status, body)
+	}
+	if strings.Contains(body, routeID) {
+		t.Errorf("a bearer's list carries the route id: %s", body)
+	}
+	if leak := testx.Leak(body); leak != "" {
+		t.Errorf("a bearer's list carries %q", leak)
+	}
+}
+
 // A ride titled by its road is set beside the rider's best of that road
 // (#3874), as the route page has it (#3680): the fastest timed ride, else
 // the hardest; never a ride off the road, nor a road someone else owns.

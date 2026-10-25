@@ -441,7 +441,7 @@ function withMicHardware<T>(
 			graphs += 1;
 		}
 		createMediaStreamSource() {
-			return {};
+			return { connect() {} };
 		}
 		createGain() {
 			return { gain: { value: 0, setTargetAtTime() {} }, connect() {} };

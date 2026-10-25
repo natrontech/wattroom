@@ -21,6 +21,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
+	"github.com/natrontech/wattroom/server/internal/tokens"
 )
 
 // An attacker-controlled series, capped before any of it is believed: the
@@ -177,7 +178,11 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 		out = append(out, rideJSONOf(row))
 		ids = append(ids, row.ID)
 	}
-	s.nameOwnRoads(r.Context(), user.ID, ids, out)
+	// A personal token is how a coach's AI reads (ADR-0017), and a route's
+	// id and its owner's rename never reach an AI context (ADR-0063).
+	if !tokens.Bearer(r) {
+		s.nameOwnRoads(r.Context(), user.ID, ids, out)
+	}
 	body := map[string]any{"rides": out, "more": len(rows) == listPage}
 	// A full page means there may be more, and the cursor comes from the
 	// server rather than from the rider's own `startedAt`: that field is

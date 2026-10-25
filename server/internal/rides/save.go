@@ -147,7 +147,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		}
 		// The bounds are the trim's own, the ones protocol.BiasOr clamps to;
 		// 0 is a sample from a ride that sends none.
-		if sample.Bias != 0 && (sample.Bias < protocol.MinBias || sample.Bias > protocol.MaxBias) {
+		if !protocol.BiasInBounds(sample.Bias) {
 			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
 				fmt.Sprintf("A sample's bias is out of range — %.1f to %.1f.", protocol.MinBias, protocol.MaxBias), "samples")
 			return

@@ -3,9 +3,10 @@
  * and everything that decides whether anything reaches the call.
  *
  * The mic path (#151, SPEC voice channel audio): capture (browser DSP on) →
- * gain → published track. The gate drives the GAIN, never the track's mute —
- * a muted track broadcasts state, and a gate that flaps everyone's muted chip
- * per pause in speech is worse than no gate.
+ * starting gain (#2120) → meter → gate gain → published track. The gate
+ * drives the GAIN, never the track's mute — a muted track broadcasts state,
+ * and a gate that flaps everyone's muted chip per pause in speech is worse
+ * than no gate.
  *
  * A HANDHELD takes none of that: it publishes the capture as it comes and the
  * mic button is the gate, because holding a capture open is what puts the
@@ -27,6 +28,11 @@ import {
 import { MIC_CONSTRAINTS } from '$lib/channel/capture';
 import { createGateSettings } from '$lib/channel/gate-settings.svelte';
 import { type MicMeter, createMicMeter } from '$lib/channel/mic-level';
+import {
+	STARTING_GAIN_GLIDE_MS,
+	type StartingGain,
+	createStartingGain,
+} from '$lib/channel/starting-gain';
 
 export interface MicChainHost {
 	/** The rider's chosen input, and what to do when that choice is gone. */
@@ -58,6 +64,8 @@ interface Chain {
 	ctx: AudioContext | null;
 	raw: MediaStream;
 	gain: GainNode | null;
+	/** The starting gain's node and its model; null on a handheld. */
+	lift: { node: GainNode; model: StartingGain; aimed: number } | null;
 	meter: MicMeter | null;
 	track: MediaStreamTrack;
 	/** The capture track being watched for `ended` (#640). */
@@ -126,6 +134,7 @@ export function createMicChain(host: MicChainHost) {
 	/** Every level the audio thread reports: the meter's number and the gate's. */
 	function onLevel(next: number) {
 		level = next;
+		liftStart();
 		runGate();
 		// Your own tile lights on the same measurement as everybody else's
 		// (#987). What the call hears is what the gate lets through, so a level
@@ -135,8 +144,32 @@ export function createMicChain(host: MicChainHost) {
 	}
 
 	/**
-	 * capture → level → gate gain. The caller connects the gain to wherever the
-	 * audio is going: the call, or your own ears.
+	 * Lifts a quiet start toward where this device last settled. Re-aimed only
+	 * on a real move: each glide is an automation event the param keeps.
+	 */
+	function liftStart() {
+		const lift = chain?.lift;
+		if (!lift || !chain?.ctx) return;
+		const now = performance.now();
+		const next = lift.model.step(
+			level,
+			lift.node.gain.value,
+			settings.effective,
+			now,
+		);
+		if (Math.abs(next - lift.aimed) < 0.02) return;
+		lift.aimed = next;
+		glideTo(
+			lift.node.gain,
+			next,
+			chain.ctx.currentTime,
+			STARTING_GAIN_GLIDE_MS,
+		);
+	}
+
+	/**
+	 * capture → starting gain → level → gate gain. The caller connects the gain
+	 * to wherever the audio is going: the call, or your own ears.
 	 */
 	async function build() {
 		const raw = await capture();
@@ -145,12 +178,20 @@ export function createMicChain(host: MicChainHost) {
 		// and the mic is then resampled 48 → 44.1 → 48 on its way to the wire.
 		const ctx = new AudioContext({ sampleRate: 48_000 });
 		const source = ctx.createMediaStreamSource(raw);
+		// Before the meter: the gate's thresholds were set against the settled
+		// level this lifts toward, so the gate has to see the lifted signal.
+		const lift = {
+			node: ctx.createGain(),
+			model: createStartingGain(performance.now(), host.devices.micId),
+			aimed: 1,
+		};
+		source.connect(lift.node);
 		const gain = ctx.createGain();
 		gain.gain.value = 0; // closed until the gate opens
-		const meter = await createMicMeter(ctx, source, onLevel);
+		const meter = await createMicMeter(ctx, lift.node, onLevel);
 		meter.out.connect(gain);
 		gate = GATE_SHUT;
-		return { ctx, raw, gain, meter };
+		return { ctx, raw, gain, lift, meter };
 	}
 
 	function setGate(openNow: boolean) {
@@ -212,6 +253,7 @@ export function createMicChain(host: MicChainHost) {
 				ctx: null,
 				raw,
 				gain: null,
+				lift: null,
 				meter: null,
 				track: raw.getAudioTracks()[0],
 				capture: watchCapture(raw),
@@ -221,11 +263,11 @@ export function createMicChain(host: MicChainHost) {
 			fault = false;
 			return;
 		}
-		const { ctx, raw, gain, meter } = await build();
+		const { ctx, raw, gain, lift, meter } = await build();
 		const dest = ctx.createMediaStreamDestination();
 		gain.connect(dest);
 		const track = dest.stream.getAudioTracks()[0];
-		chain = { ctx, raw, gain, meter, track, capture: watchCapture(raw) };
+		chain = { ctx, raw, gain, lift, meter, track, capture: watchCapture(raw) };
 		await host.publish(track);
 		// Opening again is the only thing that clears the fault — the rider
 		// pressing Reconnect, tapping the mic, or the next join finding it.
@@ -240,7 +282,7 @@ export function createMicChain(host: MicChainHost) {
 	 */
 	async function startTest() {
 		if (chain || testing) return;
-		const { ctx, raw, gain, meter } = await build();
+		const { ctx, raw, gain, lift, meter } = await build();
 		host.devices.refresh(); // the grant just made the labels readable (#658)
 		gain.connect(ctx.destination); // your own ears, not the call
 		const dest = ctx.createMediaStreamDestination();
@@ -248,6 +290,7 @@ export function createMicChain(host: MicChainHost) {
 			ctx,
 			raw,
 			gain,
+			lift,
 			meter,
 			track: dest.stream.getAudioTracks()[0],
 			capture: watchCapture(raw),
@@ -267,6 +310,7 @@ export function createMicChain(host: MicChainHost) {
 			// Unhook before stopping: a close the rider asked for is not a fault.
 			watched?.removeEventListener('ended', onCaptureEnded);
 			chain.meter?.stop();
+			chain.lift?.model.close();
 			host.unpublish(track);
 			for (const t of raw.getTracks()) t.stop();
 			void ctx?.close();

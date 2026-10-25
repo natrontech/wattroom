@@ -3,6 +3,7 @@ import { MaxClimbs } from '$lib/protocol';
 import { classOf, climbsOf, hairpinsOf, type Climb } from './climbs';
 import {
 	HAIRPINS,
+	alpineTrack,
 	legsRoad,
 	bridgeAndTunnel,
 	hairpinClimb,
@@ -113,5 +114,30 @@ describe('the synthetic roads', () => {
 		expect(climb.topM).toBeCloseTo(r.length, -2);
 		expect(climb.gainM).toBeCloseTo(r.maxEle - r.minEle, 0);
 		expect(climb.cls).toBe('II');
+	});
+});
+
+// #3414: the reference loop's check, run on its synthetic twin from the GPX
+// fixes through the whole pipeline. Tolerance: the foot and the summit within
+// 150 m, the gain within 5 m, the average within 0.2 %. The 200 m median and
+// 120 m average round each corner of the profile, and nothing else may move.
+describe('the Alpine loop, from its GPX fixes', () => {
+	const { climbs } = toRoute(alpineTrack());
+
+	it.each([
+		['the 6.5 % pass from km 0', 0, 0, 12_000, 780, 6.5, 'I'],
+		['the 5 % climb after the valley', 1, 41_000, 49_000, 400, 5, 'II'],
+	] as const)('finds %s', (_, k, startM, topM, gainM, pct, cls) => {
+		const c = climbs[k];
+		expect(Math.abs(c.startM - startM)).toBeLessThanOrEqual(150);
+		expect(Math.abs(c.topM - topM)).toBeLessThanOrEqual(150);
+		expect(Math.abs(c.gainM - gainM)).toBeLessThanOrEqual(5);
+		const avg = (100 * c.gainM) / (c.topM - c.startM);
+		expect(Math.abs(avg - pct)).toBeLessThanOrEqual(0.2);
+		expect(c.cls).toBe(cls);
+	});
+
+	it('finds those two and no others', () => {
+		expect(climbs).toHaveLength(2);
 	});
 });
