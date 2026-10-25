@@ -292,7 +292,7 @@
 				<span class="block truncate text-sm leading-tight font-medium"
 					>{current.title}</span
 				>
-				<span class="text-muted flex min-w-0 gap-2 text-[11px]">
+				<span class="text-muted flex min-w-0 gap-1 text-[11px]">
 					<span class="min-w-0 truncate">by {current.addedBy}</span>
 					{#if next}<span class="num shrink-0">· {next} next</span>{/if}
 				</span>
