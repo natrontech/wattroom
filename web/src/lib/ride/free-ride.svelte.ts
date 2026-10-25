@@ -131,6 +131,8 @@ export function createFreeRide(deps: {
 					profile: onRoad.route.road,
 					/** This lap rides it back from the far end: `m` counts down. */
 					reverse: onRoad.laps.reverse,
+					/** Where this lap began: past 0 a resumed ride's or a mate's metre. */
+					from: onRoad.laps.from,
 					/** Where it is, as the HUD says it (#3639). */
 					readout: readoutAt(onRoad.route.road, here.m, onRoad.laps.reverse),
 					...here,
@@ -234,7 +236,28 @@ export function createFreeRide(deps: {
 		turn(way: 'back' | 'again') {
 			if (!onRoad || !here?.atEnd) return;
 			onRoad.laps.turn(way);
-			here = { ...here, atEnd: false };
+			// The lap's first sample stands where it starts (#3117): the
+			// server's replay rides each lap from there.
+			here = onRoad.laps.start();
+		},
+		/**
+		 * "Ride with <name>" (#3117): to a channel-mate's metre on this road,
+		 * their way along it. Before the ride starts, the road starts there;
+		 * once it has, the next lap does, at the speed you were riding.
+		 */
+		rideWith(m: number, reverse: boolean) {
+			if (!onRoad) return;
+			if (startedAt === null)
+				onRoad = {
+					route: onRoad.route,
+					laps: createRoadLaps(onRoad.route.road, {
+						kg: () => deps.kg?.() ?? 0,
+						from: m,
+						reverse,
+					}),
+				};
+			else onRoad.laps.jump(m, reverse);
+			here = onRoad.laps.start();
 		},
 		/**
 		 * Warm up or Cool down, off a road. Cool down falls from the target

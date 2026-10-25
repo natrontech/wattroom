@@ -53,7 +53,7 @@ func (h *Hub) handleMessage(c *client, rm *channelState, channel string, rider p
 		rm.setDrive(c, *msg.Drive)
 	}
 	if msg.FreeRoad != nil {
-		rm.setFreeRoad(c, msg.FreeRoad.Key)
+		rm.setFreeRoad(c, *msg.FreeRoad)
 	}
 	if msg.Away != nil {
 		// Unlimited like a sensor claim, and for the same reason: it is

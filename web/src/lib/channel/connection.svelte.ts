@@ -235,15 +235,21 @@ function connect(address: PlaceAddress): Connection {
 			wasJoined = now;
 		});
 		// A free ride on a road says which road (#3117): channel-mates on the
-		// same one draw each other. The key is read off the road once a road.
+		// same one draw each other. The key is read off the road once a road;
+		// the way along it is said again at every lap that turns.
 		const freeRoad = $derived(
 			freeRide.armed && !joined() ? freeRide.road?.profile : undefined,
 		);
+		const freeWay = $derived(!!freeRide.road?.reverse);
 		$effect(() => {
 			const road = freeRoad;
+			const reverse = freeWay;
 			let gone = false;
-			if (road) void roadHash(road).then((key) => gone || live.rideRoad(key));
-			else live.rideRoad('');
+			if (road)
+				void roadHash(road).then(
+					(key) => gone || live.rideRoad({ key, ...(reverse && { reverse }) }),
+				);
+			else live.rideRoad({ key: '' });
 			return () => {
 				gone = true;
 			};

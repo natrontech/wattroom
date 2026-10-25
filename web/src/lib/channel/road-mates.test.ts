@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { LiveRider } from '$lib/channel/types';
 import type { FreeRoadPlace } from '$lib/protocol';
-import { createRoadMates } from './road-mates';
+import { JUMP_M } from '$lib/world/sim';
+import { createRoadMates, mateOnRoad, rideWith } from './road-mates';
 
 const rider = (id: string, name: string, watts = 0) =>
 	({ id, name, watts, ftp: 250, speaking: id === 'kim' }) as LiveRider;
@@ -65,5 +66,34 @@ describe('your channel-mates on your road (#3117)', () => {
 		expect(at(5000, 108)).toBe(0);
 		// A lap back down the road counts down.
 		expect(at(6000, 102)).toBeCloseTo(-6 / 4);
+	});
+});
+
+describe('Ride with <name> (#3117)', () => {
+	const places = {
+		me: { road: 1, m: 300 },
+		kim: { road: 1, m: 1420, reverse: true },
+		tom: { road: 2, m: 50 },
+	};
+
+	it('finds a mate on your road, never you, never another road', () => {
+		expect(mateOnRoad(tick(1000, places), 'me', 'kim')).toEqual(places.kim);
+		expect(mateOnRoad(tick(1000, places), 'me', 'tom')).toBeNull();
+		expect(mateOnRoad(tick(1000, places), 'me', 'me')).toBeNull();
+		expect(mateOnRoad(tick(1000, { kim: places.kim }), 'me', 'kim')).toBeNull();
+	});
+
+	it('jumps to their metre, their way, and is not offered beside them', () => {
+		const jumps: [number, boolean][] = [];
+		const free = (m: number) => ({
+			road: { m } as never,
+			rideWith: (to: number, reverse: boolean) =>
+				void jumps.push([to, reverse]),
+		});
+		rideWith(places.kim, free(300))?.();
+		expect(jumps).toEqual([[1420, true]]);
+		expect(rideWith(places.kim, free(1420 - JUMP_M))).toBeNull();
+		expect(rideWith(places.kim, { road: null, rideWith: () => {} })).toBeNull();
+		expect(rideWith(places.kim, undefined)).toBeNull();
 	});
 });

@@ -21,6 +21,7 @@ vi.mock('$lib/ride/buffer', () => ({
 	})),
 }));
 
+import { MaxRoadSpeedMps } from '$lib/protocol';
 import { ergByRoad } from './ride-grade';
 import type { RideableRoute } from './roads';
 import { nudged, openingWatts } from './free-ride-controls';
@@ -303,6 +304,101 @@ describe('a free ride on a road', () => {
 		// Down the stored road, as the server's bound holds a reversed lap.
 		for (let i = back + 1; i < samples.length; i++)
 			expect(samples[i].m).toBeLessThanOrEqual(samples[i - 1].m);
+	});
+
+	type Sample = { m: number; lap?: number; reverse?: boolean };
+	/**
+	 * The server's bound on a road ride's samples (rides/save.go's
+	 * lapFollows): the first is lap 0, a lap's first sample stands anywhere,
+	 * and within a lap m moves only the lap's way, at most MaxRoadSpeedMps a
+	 * second.
+	 */
+	function heldToTheServersBound(samples: Sample[]) {
+		expect(samples[0].lap ?? 0).toBe(0);
+		let reverse = !!samples[0].reverse;
+		for (let i = 1; i < samples.length; i++) {
+			const [prev, next] = [samples[i - 1], samples[i]];
+			if ((next.lap ?? 0) === (prev.lap ?? 0) + 1) {
+				reverse = !!next.reverse;
+				continue;
+			}
+			expect(next.lap ?? 0, `sample ${i}'s lap`).toBe(prev.lap ?? 0);
+			const along = reverse ? prev.m - next.m : next.m - prev.m;
+			expect(along, `sample ${i} moves the lap's way`).toBeGreaterThanOrEqual(
+				0,
+			);
+			expect(along, `sample ${i} moves a rider's metres`).toBeLessThanOrEqual(
+				MaxRoadSpeedMps,
+			);
+		}
+	}
+	const samplesOf = (upload: unknown) =>
+		(upload as { samples: Sample[] }).samples;
+
+	it('rides it again from the start: the new lap starts where it rides from (#3117)', async () => {
+		const free = createFreeRide({ ftp: () => 250, kg: () => 75 });
+		free.arm();
+		free.ride(climb, 1900);
+		let t = 1_000_000;
+		while (!free.road!.atEnd) {
+			expect(t, 'never reached the end').toBeLessThan(2_000_000);
+			ride(free, 400, 1, t);
+			t += 1000;
+		}
+		free.turn('again');
+		expect(free.road!.m).toBe(0);
+		ride(free, 250, 61, t);
+		await free.end();
+		const samples = samplesOf(uploads[0]);
+		const again = samples.findIndex((s) => s.lap === 1);
+		expect(samples[again].m).toBe(0);
+		heldToTheServersBound(samples);
+	});
+
+	it('rides with a mate before the ride starts: the road starts at their metre, their way (#3117)', async () => {
+		const free = createFreeRide({ ftp: () => 250, kg: () => 75 });
+		free.arm();
+		free.ride(climb);
+		free.rideWith(1500, true);
+		expect(free.road).toMatchObject({
+			m: 1500,
+			reverse: true,
+			lap: 0,
+			from: 1500,
+		});
+		ride(free, 250, 61);
+		await free.end();
+		const samples = samplesOf(uploads[0]);
+		expect(samples[0]).toMatchObject({ m: 1500, reverse: true });
+		expect(samples.every((s) => s.lap === undefined)).toBe(true);
+		heldToTheServersBound(samples);
+	});
+
+	it('rides with a mate mid-ride: a new lap from their metre, at your speed (#3117)', async () => {
+		const free = createFreeRide({ ftp: () => 250, kg: () => 75 });
+		free.arm();
+		free.ride(climb);
+		ride(free, 250, 40);
+		const speed = free.road!.virtualMps;
+		expect(speed).toBeGreaterThan(3);
+		// A jump taken back before a second was ridden on it is no lap.
+		free.rideWith(600, true);
+		free.rideWith(1200, false);
+		// You are there at once, still rolling.
+		expect(free.road).toMatchObject({
+			m: 1200,
+			lap: 1,
+			reverse: false,
+			from: 1200,
+		});
+		expect(free.road!.virtualMps).toBeCloseTo(speed, 9);
+		ride(free, 250, 30, 1_040_000);
+		expect(free.road!.m - 1200).toBeGreaterThan(30 * speed * 0.8);
+		await free.end();
+		const samples = samplesOf(uploads[0]);
+		expect(samples).toHaveLength(70);
+		expect(samples[40]).toMatchObject({ m: 1200, lap: 1 });
+		heldToTheServersBound(samples);
 	});
 
 	it('rides a borrowed road without saving against it (#3621)', async () => {

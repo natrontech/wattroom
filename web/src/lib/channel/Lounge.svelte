@@ -32,6 +32,7 @@
 	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { type MenuEntry } from '$lib/context-menu.svelte';
+	import { mateOnRoad, rideWith } from '$lib/channel/road-mates';
 	import { personMenu } from '$lib/person-menu';
 	import { clampSize, dividerDrag } from '$lib/divider';
 	import { goto } from '$app/navigation';
@@ -90,6 +91,7 @@
 					icon: ScreenShare,
 					onSelect: () => channel.pickStage(source.key),
 				})),
+			...rideWithEntries(rider()),
 			...personMenu(rider().id, goto, {
 				you: rider().you,
 				volume: rider().inVoice ? { name: rider().name } : undefined,
@@ -97,6 +99,19 @@
 				handoff: channel.handOffOf(rider().id, rider().name),
 			}),
 		];
+	}
+
+	// A channel-mate on your free ride's road, off where you ride (#3117):
+	// the shortcut to the Free ride surface's own Ride with button.
+	function rideWithEntries(
+		rider: (typeof channel.riders)[number],
+	): MenuEntry[] {
+		const conn = channelConnection.current;
+		const place = mateOnRoad(conn?.live.tick, channel.you.id, rider.id);
+		const jump = place && rideWith(place, conn?.freeRide);
+		return jump
+			? [{ label: `Ride with ${rider.name}`, icon: Bike, onSelect: jump }]
+			: [];
 	}
 
 	// Quick layouts for watching together (#464, reworked #427): what deserves

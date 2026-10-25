@@ -49,9 +49,9 @@ const fakeLive = {
 	cheer() {},
 	setDrive() {},
 	// The road this tab free-rides, as the hub would be told it (#3117).
-	roads: [] as string[],
-	rideRoad(key: string) {
-		this.roads.push(key);
+	roads: [] as { key: string; reverse?: boolean }[],
+	rideRoad(road: { key: string; reverse?: boolean }) {
+		this.roads.push(road);
 	},
 	onRemote: () => () => {},
 	sendPause: () => {},
@@ -156,11 +156,18 @@ describe('channelConnection', () => {
 		connection.freeRide.ride({ id: 'route-1', name: 'Test climb', road });
 		flushSync();
 		await vi.waitFor(() =>
-			expect(fakeLive.roads.at(-1)).toMatch(/^[0-9a-f]{64}$/),
+			expect(fakeLive.roads.at(-1)?.key).toMatch(/^[0-9a-f]{64}$/),
 		);
-		expect(fakeLive.roads.at(-1)).toBe(await roadHash(road));
+		const key = await roadHash(road);
+		expect(fakeLive.roads.at(-1)).toEqual({ key });
+		// Ride with a mate riding it back (#3117): the hub hears the new way.
+		connection.freeRide.rideWith(1500, true);
+		flushSync();
+		await vi.waitFor(() =>
+			expect(fakeLive.roads.at(-1)).toEqual({ key, reverse: true }),
+		);
 		connection.freeRide.leaveRoad();
-		await vi.waitFor(() => expect(fakeLive.roads.at(-1)).toBe(''));
+		await vi.waitFor(() => expect(fakeLive.roads.at(-1)).toEqual({ key: '' }));
 	});
 
 	it('keeps one ride and one recording across repeated joins', () => {
