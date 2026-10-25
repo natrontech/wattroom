@@ -31,19 +31,58 @@ const CLIP_GAIN_MAX_DB = 12;
 const RIDER_GAIN_MAX = 2;
 const BOARD_WORST = RIDER_GAIN_MAX * 10 ** (CLIP_GAIN_MAX_DB / 20);
 
-type Measured = { id: string; peakDb: number; loudness: number };
+// The cue targets (docs/spec/voice.md, "Cue loudness"): every cue's
+// integrated loudness inside one band, its true peak at most -1 dBTP.
+const CUE_LUFS_MIN = -46;
+const CUE_LUFS_MAX = -18;
+const CUE_TRUE_PEAK_MAX = -1;
+
+type Measured = {
+	id: string;
+	peakDb: number;
+	truePeakDb: number;
+	loudness: number;
+	integrated: number;
+};
 
 declare global {
 	interface Window {
 		makeLimiter: typeof makeLimiter;
+		truePeak: typeof truePeak;
 		makeNoise: typeof makeNoise;
 		scheduleVoices: typeof scheduleVoices;
 	}
 }
 
+/**
+ * True peak (BS.1770 Annex 2): the samples between the samples, 4× over, by a
+ * Hann-windowed sinc 12 taps a phase. Not Chromium's resampler: it
+ * interpolates linearly, so it finds nothing between.
+ */
+function truePeak(raw: Float32Array): number {
+	const TAPS = 6;
+	const phases = [0.25, 0.5, 0.75].map((frac) =>
+		Array.from({ length: 2 * TAPS }, (_, j) => {
+			const x = j - TAPS + 1 - frac;
+			return (
+				(Math.sin(Math.PI * x) / (Math.PI * x)) *
+				(0.5 + 0.5 * Math.cos((Math.PI * x) / TAPS))
+			);
+		}),
+	);
+	let peak = 0;
+	for (let n = TAPS - 1; n + TAPS < raw.length; n++)
+		for (const h of phases) {
+			let y = 0;
+			for (let j = 0; j < h.length; j++) y += raw[n + j - TAPS + 1] * h[j];
+			peak = Math.max(peak, Math.abs(y));
+		}
+	return peak;
+}
+
 async function loadGraph(page: Page): Promise<void> {
 	await page.addScriptTag({
-		content: `window.makeLimiter = ${makeLimiter};\nwindow.makeNoise = ${makeNoise};\nwindow.scheduleVoices = ${scheduleVoices};`,
+		content: `window.makeLimiter = ${makeLimiter};\nwindow.truePeak = ${truePeak};\nwindow.makeNoise = ${makeNoise};\nwindow.scheduleVoices = ${scheduleVoices};`,
 	});
 }
 
@@ -80,18 +119,27 @@ function measureCues(page: Page): Promise<Measured[]> {
 			const k = out.getChannelData(1);
 			let peak = 0;
 			for (const x of raw) peak = Math.max(peak, Math.abs(x));
+			const truePeak = Math.max(peak, window.truePeak(raw));
 			const win = Math.round(0.4 * RATE);
 			const hop = Math.round(0.1 * RATE);
-			let loudest = 0;
+			const blocks: number[] = [];
 			for (let s = 0; s + win <= k.length; s += hop) {
 				let energy = 0;
 				for (let i = s; i < s + win; i++) energy += k[i] * k[i];
-				loudest = Math.max(loudest, energy / win);
+				blocks.push(energy / win);
 			}
+			const lufs = (z: number) => -0.691 + 10 * Math.log10(z);
+			const mean = (zs: number[]) => zs.reduce((a, b) => a + b, 0) / zs.length;
+			// Integrated (BS.1770): gated at -70 LUFS, then at 10 LU under the
+			// mean of what passed.
+			const audible = blocks.filter((z) => lufs(z) > -70);
+			const relative = lufs(mean(audible)) - 10;
 			rows.push({
 				id: cue.id,
 				peakDb: 20 * Math.log10(peak),
-				loudness: -0.691 + 10 * Math.log10(loudest),
+				truePeakDb: 20 * Math.log10(truePeak),
+				loudness: lufs(Math.max(...blocks)),
+				integrated: lufs(mean(audible.filter((z) => lufs(z) > relative))),
 			});
 		}
 		return rows;
@@ -137,6 +185,40 @@ test.describe('the mix', () => {
 		for (const r of rows) {
 			expect(r.loudness, r.id).toBeGreaterThanOrEqual(spread.lo);
 			expect(r.loudness, r.id).toBeLessThanOrEqual(spread.hi);
+		}
+	});
+
+	test('the true-peak meter finds the peak between two samples', async ({
+		page,
+	}) => {
+		// A sine at a quarter of the rate, sampled 45° off its crests: every
+		// sample reads 0.707, the wave between them reaches 1.
+		const found = await page.evaluate(() =>
+			window.truePeak(
+				Float32Array.from({ length: 4800 }, (_, i) =>
+					Math.sin((Math.PI / 2) * i + Math.PI / 4),
+				),
+			),
+		);
+		expect(found).toBeCloseTo(1, 1);
+	});
+
+	test('every cue meets the stated loudness and true-peak target', async ({
+		page,
+	}) => {
+		const rows = await measureCues(page);
+		console.log(
+			rows
+				.map(
+					(r) =>
+						`${r.id.padEnd(12)} true peak ${r.truePeakDb.toFixed(1).padStart(6)} dBTP  integrated ${r.integrated.toFixed(1).padStart(6)} LUFS`,
+				)
+				.join('\n'),
+		);
+		for (const r of rows) {
+			expect(r.integrated, r.id).toBeGreaterThanOrEqual(CUE_LUFS_MIN);
+			expect(r.integrated, r.id).toBeLessThanOrEqual(CUE_LUFS_MAX);
+			expect(r.truePeakDb, r.id).toBeLessThanOrEqual(CUE_TRUE_PEAK_MAX);
 		}
 	});
 

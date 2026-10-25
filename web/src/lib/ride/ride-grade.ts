@@ -5,8 +5,8 @@ import type { Road } from '$lib/road/road';
 import type { Route } from '$lib/road/route';
 
 /**
- * docs/SPEC.md's route-ride numbers (ADR-0062), defaults until the Kickr
- * sitting (#3350) makes them final (#3351). No road number appears here
+ * docs/SPEC.md's route-ride numbers (ADR-0062), final from research
+ * (#3351) and tuned from riders' reports. No road number appears here
  * before it appears there.
  */
 export const ROAD = {

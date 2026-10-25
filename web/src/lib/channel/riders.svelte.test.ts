@@ -28,7 +28,7 @@ const workout: Workout = {
 	},
 };
 
-function riding(bunchM: number, reverse = false) {
+function riding(bunchM: number, reverse = false, ridden = workout) {
 	const live = $state<{ tick: ServerTick | null }>({ tick: null });
 	let roster!: ReturnType<typeof createRiders>;
 	const stop = $effect.root(() => {
@@ -43,8 +43,8 @@ function riding(bunchM: number, reverse = false) {
 			running: () => true,
 			shared: () => ({ elapsed: 60 }),
 			bias: () => 1,
-			segments: () => flatten(workout),
-			workout: () => workout,
+			segments: () => flatten(ridden),
+			workout: () => ridden,
 		});
 	});
 	live.tick = {
@@ -71,6 +71,24 @@ describe('a session on a road says where the bunch is, in slot 1 (#3639)', () =>
 		const { roster, stop } = riding(1500);
 		expect(roster.block?.road).toMatchObject({ km: 1.5, totalKm: 3 });
 		expect(roster.block!.road!.grade).toBeCloseTo(5, 5);
+		stop();
+	});
+
+	it('paints the next block where the bunch will be when it starts, in your words (#3101)', () => {
+		const twoBlocks: Workout = {
+			...workout,
+			steps: [
+				{ type: 'steady', seconds: 90, target: 0.7 },
+				{ type: 'steady', seconds: 600, target: 0.5 },
+			],
+		};
+		// 60 s in at 8 m/s: the recovery starts 30 s on, up the 5 %.
+		const { roster, stop } = riding(1500, false, twoBlocks);
+		const [gate, ...more] = roster.ridden!.gates;
+		expect(more).toEqual([]);
+		expect(gate.words).toBe('ACTIVE RECOVERY 125 W');
+		expect(gate.m).toBeGreaterThan(1500 + 30 * 2);
+		expect(gate.m).toBeLessThan(1500 + 30 * 8);
 		stop();
 	});
 

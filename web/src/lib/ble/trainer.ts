@@ -1,3 +1,10 @@
+import {
+	PaceAirDensity,
+	PaceCrr,
+	PaceDefaultCdA,
+	PaceGravity,
+} from '$lib/protocol';
+
 export type TrainerStatus = 'disconnected' | 'connecting' | 'connected';
 
 export type ControlMode = 'erg' | 'sim';
@@ -32,8 +39,7 @@ export interface TrainerSample {
 
 /**
  * What a SIM write carries (FTMS op 0x11 / WCPS op 0x46). An absent field is
- * SIM_DEFAULTS' value, so a grade alone sends the bytes every trainer has
- * always been sent.
+ * SIM_DEFAULTS' value, so a grade alone sends the default road.
  */
 export interface SimParams {
 	/** Signed grade, percent. */
@@ -46,8 +52,37 @@ export interface SimParams {
 	windMps?: number;
 }
 
-/** The road every SIM write described before it could say otherwise. */
-export const SIM_DEFAULTS = { crr: 0.004, cw: 0.51, windMps: 0 } as const;
+/**
+ * The road a SIM write describes unless it says otherwise: the pace model's
+ * own (docs/SPEC.md "Route rides"), so the trainer resists with the air the
+ * dot rides through. FTMS gives Cw in kg/m and no formula; its meaning is
+ * ANT+ FE-C's, Cw = ρ·CdA with an aero force of ½·Cw·(v + wind)² (RESEARCH.md
+ * §11, #3351). So Cw is ρ·CdA, 0.39 kg/m on the wire, and never ½·ρ·CdA.
+ */
+export const SIM_DEFAULTS = {
+	crr: PaceCrr,
+	cw: PaceAirDensity * PaceDefaultCdA,
+	windMps: 0,
+} as const;
+
+/**
+ * The force a trainer resists with at flywheel speed v, newtons, for the road
+ * it was sent and the rider and bike it assumes: FE-C's model, which FTMS's
+ * fields carry. Negative on a descent steep enough that a brake-only trainer
+ * has nothing left to brake.
+ */
+export function trainerForce(
+	road: Required<SimParams>,
+	massKg: number,
+	v: number,
+): number {
+	const theta = Math.atan(road.gradePct / 100);
+	const air = v + road.windMps;
+	return (
+		massKg * PaceGravity * (Math.sin(theta) + road.crr * Math.cos(theta)) +
+		0.5 * road.cw * air * Math.abs(air)
+	);
+}
 
 /** Every field of a SIM write, the absent ones at their defaults. */
 export function resolveSim(road: SimParams): Required<SimParams> {

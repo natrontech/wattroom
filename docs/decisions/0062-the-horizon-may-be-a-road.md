@@ -184,3 +184,5 @@ and unmeasured.
 ## Amendment, 2026-10-25 (ADR-0088): the numbers are final from research and simulation
 
 The Kickr sitting will not happen ([ADR-0088](0088-ship-on-research-and-simulation.md)). SPEC's road numbers become final from published sources and the `SimulatedTrainer` instead (#3351), and the Beta marker goes in that change, as above.
+
+#3351 settled the factor this ADR left to the sitting. FTMS's Cw is FE-C's ρ·CdA, with a drag force of ½·Cw·v² (RESEARCH.md §11, "The road and gears numbers"). So the one CdA, 0.32 m², is sent as 1.225 × 0.32 = 0.39 kg/m, where 0.51 had been sent since the first FTMS write. MinTrainerGrade stays −10 %, the floor Wahoo publishes for the Kickr Core 2.

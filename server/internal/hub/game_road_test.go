@@ -16,7 +16,7 @@ func gameOnRoad(t *testing.T, mode string, route *routeRide, seconds int, watts 
 	ben := protocol.Rider{ID: "ben", Name: "ben", Role: "member", FtpWatts: 250}
 	rm, clients := inChannel(t, "game-road", ana, ben)
 	now := time.Unix(1_700_000_000, 0)
-	if refusal := rm.startGameOn(mode, route, 0, ana, now); refusal != "" {
+	if _, refusal := rm.startGameOn(mode, route, 0, ana, now); refusal != "" {
 		t.Fatalf("start %s: %s", mode, refusal)
 	}
 	joinRide(rm, "ana", "ben")
