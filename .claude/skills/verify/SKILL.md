@@ -21,12 +21,12 @@ The store reads it on load, so do this before the channel page mounts, or reload
 after. Skip it only when the audio is what you are verifying. See AGENTS.md,
 Hard rules.
 
-1. `make test && make lint` — baseline. Race detector is on; flaky-under-race means broken.
+1. Baseline: the `make test` and `make lint` runs from issue-run §4 (each redirected to a log, run once). Run them here only if nothing has yet; race detector is on, so flaky-under-race means broken.
 2. Static path (fastest full-stack check):
-   - `make build` (embeds the frontend), run `./bin/wattroom-server`
-   - `curl localhost:8080/api/healthz` → `ok`
-   - Open `http://localhost:8080` — the page loads with no API error (proves SPA embed + API wiring)
-   - SPA fallback: `curl -s localhost:8080/anything` returns index.html
+   - `make build` (embeds the frontend), then run the server on this tree's verify port (`make dev-env`; :8082 in the main clone): `eval "$(scripts/dev-env.sh print)"; scripts/dev-env.sh ensure-db; WATTROOM_ADDR=":$WATTROOM_DEV_VERIFY_PORT" WATTROOM_METRICS_ADDR= WATTROOM_BASE_URL="http://localhost:$WATTROOM_DEV_VERIFY_PORT" WATTROOM_DB="$WATTROOM_DEV_DSN" WATTROOM_DEV_LOGIN=1 ./bin/wattroom-server` (the `verify` entry in `.claude/launch.json`)
+   - `curl localhost:$WATTROOM_DEV_VERIFY_PORT/api/healthz` → `ok`
+   - Open `http://localhost:$WATTROOM_DEV_VERIFY_PORT` — the page loads with no API error (proves SPA embed + API wiring)
+   - SPA fallback: `curl -s localhost:$WATTROOM_DEV_VERIFY_PORT/anything` returns index.html
 3. Dev path (for iterating on the change): `make infra` once, then `make dev-server` + `make dev-web`, exercise the changed flow at the URL `make dev-web` prints on its first line (`http://localhost:5174` in the main clone; a worktree derives its own port and its own database — `make dev-env`).
 4. WS/channel changes: open two browser tabs on the same voice channel (`/crew/{id}/v/{channel}`, two riders via `?as=`) and confirm both receive ticks; kill one tab and confirm the server logs the leave and the other tab keeps ticking.
 5. Protocol changes: `make protocol` then `git diff --exit-code web/src/lib/protocol.ts` must show the regenerated file was committed.

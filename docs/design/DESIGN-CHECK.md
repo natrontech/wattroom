@@ -19,7 +19,7 @@ A PR whose issue is labelled `design` or names Surfaces leaves draft only after 
     Findings: <review comment link>
     ```
 10. **Captures** live under `web/design-shots/` (ignored; never `web/test-results/`) and on one private page. Never commit or push them; main's are CI artifacts for 14 days.
-11. **Ready** with no blocker you caused left open, the section above, `make ci` green and the flow seen in the running app.
+11. **Ready** with no blocker you caused left open, the section above, `make test` and `make lint` green and the flow seen in the running app.
 
 ## Reviewer prompt
 

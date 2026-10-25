@@ -86,14 +86,17 @@ export function surfacesFor(files, map = loadMap()) {
 
 function changedFiles() {
 	const root = fileURLToPath(new URL('../../', import.meta.url));
-	const diff = (...args) =>
-		execFileSync('git', ['diff', '--name-only', ...args], {
-			cwd: root,
-			encoding: 'utf8',
-		})
+	const git = (...args) =>
+		execFileSync('git', args, { cwd: root, encoding: 'utf8' })
 			.split('\n')
 			.filter(Boolean);
-	return [...new Set([...diff('origin/main...HEAD'), ...diff('HEAD')])];
+	return [
+		...new Set([
+			...git('diff', '--name-only', 'origin/main...HEAD'),
+			...git('diff', '--name-only', 'HEAD'),
+			...git('ls-files', '--others', '--exclude-standard'),
+		]),
+	];
 }
 
 if (
@@ -112,7 +115,7 @@ if (
 	const named = process.argv.slice(2);
 	const hits = surfacesFor(named.length ? named : changedFiles());
 	if (!hits.size)
-		console.log(
+		console.error(
 			'No design surface: no changed file is in docs/design/surface-map.json.',
 		);
 	for (const [surface, files] of hits)
