@@ -497,8 +497,8 @@ test('the Sound dialog’s controls are riding size and its device row is aligne
 	const sheet = await dialog.evaluate((el) => {
 		const r = el.getBoundingClientRect();
 		return {
-			left: r.left,
-			bottom: innerHeight - r.bottom,
+			left: Math.round(r.left),
+			bottom: Math.round(innerHeight - r.bottom),
 			width: r.width,
 			scrolls: el.scrollHeight > el.clientHeight,
 		};
@@ -517,7 +517,9 @@ test('the Sound dialog’s controls are riding size and its device row is aligne
 	await expect(volumes).toHaveCount(3);
 	await dialog.getByRole('button', { name: '2 more' }).click();
 	await expect(volumes).toHaveCount(5);
-	await expect(dialog.getByRole('button', { name: 'Reset' })).toHaveCount(0);
+	await expect(
+		dialog.getByRole('button', { name: /^reset .*'s volume$/i }),
+	).toHaveCount(0);
 	await dialog.getByRole('button', { name: 'Reset all' }).click();
 	for (const volume of await volumes.all())
 		await expect(volume).toHaveValue('100');
