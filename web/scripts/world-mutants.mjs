@@ -36,6 +36,9 @@ const MUTANTS = [
 	['region-world-cells', 'a private region keyed in world cells', 'place/region.ts', [['if (region)\n\t\treturn keyed(', 'if (false && region)\n\t\treturn keyed(']]],
 	['region-world-secret', "a private region keyed with the world's secret", 'place/region.ts', [['\t\t\tregion.salt,\n', '\t\t\tkeying.salt,\n']]],
 	['utm-tile-local', 'UTM keyed in a tile-local frame', 'place/project.ts', [['return [500000 + K0 * A_ * e, (south ? 10000000 : 0) + K0 * A_ * n];', 'return [(500000 + K0 * A_ * e) % 5000, ((south ? 10000000 : 0) + K0 * A_ * n) % 5000];']]],
+	['flagpole-low', 'an 8 m flagpole in the low, unfaded set', 'props/batch.ts', [["\tflag0: 'buildings',", "\tflag0: 'stock',"]]],
+	['unbanked-furniture', 'chalk laid flat across a banked road', 'chalk.ts', [['across(BESIDE, bank)', 'across(BESIDE, 0)'], ["p.heading + Math.PI, bank, 'YXZ'", "p.heading + Math.PI, 0, 'YXZ'"]]],
+	['rigid-fence', 'a rigid 10 m fence measured at its corners only', 'placement/rules.ts', [["['base', samples(p.footprint)],", "['base', p.footprint],"]]],
 	['salt-in-bundle', 'a salt compiled into the bundle', 'place/keyed.ts', [['const p = prefix(salt, kind);', 'const p = prefix([0x57a770e0, 0x0de5a1e0, 0x5eed5eed, 0x00c0ffee], kind);']]],
 ];
 

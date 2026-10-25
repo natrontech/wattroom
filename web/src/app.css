@@ -300,6 +300,7 @@
  * The scheme itself (#113 + rider-requested toggle): the OS decides by
  * default, data-theme (set by the rail's toggle, persisted) overrides it,
  * and .cave forces dark — which is the entire cave implementation now.
+ * A ride follows the same two (#4160); only TV mode and the HUD are caves.
  */
 :root {
 	color-scheme: light dark;
@@ -481,17 +482,20 @@ body {
 	min-height: 100vh;
 }
 
-/* The cave (#113, ADR-0005 amended): where the ride lives, daylight never
-   reaches — forcing the scheme flips every light-dark() token at once. */
+/* The cave (#113, ADR-0005 amended): the dark family whatever the scheme
+   says, for TV mode, the HUD, camera frames and the brand pages. Forcing the
+   scheme flips every light-dark() token at once. A ride is not a cave: it
+   keeps the rider's scheme (Jan, 2026-10-25, #4160). */
 .cave {
 	color-scheme: dark;
 	/* Inherited text color restarts here — body's follows the daylight side. */
 	color: var(--color-ink);
 }
-/* What chrome shared with the desk — the sidebar — does on a riding surface
-   (TARGETS G4): `cave:hidden` takes a desk sentence off the ride. `:is` and
+/* A ride is under way: the app layout marks its frame `data-ride`. What
+   chrome shared with the desk — the sidebar — does on a riding surface
+   (TARGETS G4): `ride:hidden` takes a desk sentence off the ride. `:is` and
    not `:where`: the ride outranks the desk's own `md:` sizes. */
-@custom-variant cave (&:is(.cave *));
+@custom-variant ride (&:is([data-ride] *));
 
 /*
  * Keyboard focus. Deliberately unlayered: Tailwind's utilities live in @layer, and

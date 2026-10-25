@@ -72,9 +72,10 @@ test.skip(!OUT, 'the design shots run through `make design-shots`');
  * One test per surface and scheme; `take` gets a Shoot that cleans up after
  * it. `also`: the other TARGETS.md ids its shots carry (`#### workouts,
  * phone-workouts`), so naming any of them takes it. `once`: shot in the run's
- * first scheme only — a riding surface is the cave whatever the OS says (G1;
- * ride-free-road and ride-countin fix the OS to light to show it), and a
- * poster is an image.
+ * first scheme only — a riding surface's layout is the same in either scheme
+ * (G1; ride-free-road and ride-countin fix the OS to light to show it keeps
+ * the rider's), TV mode and the HUD are dark in both, and a poster is an
+ * image.
  */
 function surface(
 	id: string,
@@ -531,8 +532,8 @@ surface(
 surface(
 	'ride-countin',
 	async (s) => {
-		// With the OS set to light, so the frame shows the cave and not the
-		// scheme: it holds from the count-in's first frame (G1, #3667).
+		// With the OS set to light, so the frame shows it keeps the rider's
+		// scheme from the count-in's first frame (G1, #4160).
 		const o = await s.open({ ...DESK, colorScheme: 'light' }, { world: true });
 		const road = await fixtureRoad(o.page, 'hairpin');
 		const count = await holdCountIn(o.page);
@@ -569,11 +570,11 @@ surface(
 surface(
 	'ride-free-road',
 	async (s) => {
-		// World off, with the OS set to light: the cave has to hold anyway (G1).
+		// World off, with the OS set to light: the ride keeps it (G1, #4160).
 		const o = await s.open({ ...DESK, colorScheme: 'light' }, { world: false });
 		const road = await fixtureRoad(o.page, 'hairpin');
-		// Before the first stroke the setup is a desk surface, in the rider's
-		// scheme: the cave starts with the ride, not with the page (G1, #3667).
+		// Before the first stroke the setup is a desk surface; the ride starts
+		// with the first stroke, not with the page (G1, #3667).
 		await o.page.goto(`/ride?road=${road}`);
 		await o.page
 			.getByRole('button', { name: 'Ride simulated' })
@@ -2039,7 +2040,8 @@ surface(
 			await endSession(coach.page);
 		}
 	},
-	{ once: true },
+	// Both schemes: the ride keeps the rider's, on the session where the
+	// cave used to darken the whole app (G1, #4160).
 );
 
 surface(

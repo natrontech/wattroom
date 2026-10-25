@@ -4,8 +4,8 @@ import { createTicker, type Ticker } from './ticker';
 import { acquireWakeLock, type WakeLock } from './wakelock';
 
 /**
- * The frame caves while a solo session is live (ADR-0020: the ride is the
- * cave, sidebar included). The layout cannot see a page's session, so the
+ * The frame is a ride while a solo session is live (ADR-0020: the ride is
+ * the whole frame, sidebar included). The layout cannot see a page's session, so the
  * last one started is published here; /ride and /ramp stop theirs on destroy.
  */
 let latest = $state.raw<{ state: RideState } | null>(null);
@@ -39,7 +39,7 @@ export type RideLife = 'idle' | 'countdown' | 'riding' | 'done';
  * A solo ride's life (#3369): idle, the count-in, riding, done — and what it
  * takes hold of while it lives and lets go of at its end: its trainer's
  * samples and status, the ticker, the screen's wake lock (#58) and the
- * frame's cave, owned in one place so /ride and /ramp cannot each forget one
+ * frame's ride, owned in one place so /ride and /ramp cannot each forget one
  * of them separately. How the ride is going while it rides — running, paused,
  * counting back in — is the guards' to say, not this.
  */

@@ -157,7 +157,7 @@
 			<!-- Naming a channel is typing: never mid-ride (ux.md). -->
 			<button
 				onclick={() => (creating = kind)}
-				class="hover:text-ink cave:hidden -my-2 ml-auto grid h-11 w-11 place-items-center md:h-6 md:w-6"
+				class="hover:text-ink ride:hidden -my-2 ml-auto grid h-11 w-11 place-items-center md:h-6 md:w-6"
 				title={newLabel(kind).toLowerCase()}
 				aria-label={newLabel(kind).toLowerCase()}><Plus size={16} /></button
 			>
@@ -227,7 +227,7 @@
 		{:else}
 			<!-- Empty states teach (ux.md): what a chat channel is, and who makes
 			     one. Desk teaching, so never on a riding surface (G4, #3723). -->
-			<li class="text-muted cave:hidden px-2 py-1 text-xs">
+			<li class="text-muted ride:hidden px-2 py-1 text-xs">
 				{admin
 					? 'No chat channels yet — the + makes the first place to write.'
 					: 'No chat channels yet. The crew’s owner or an admin makes them.'}
@@ -294,7 +294,7 @@
 				<VoiceOccupants channel={c} {open} {mover} />
 			</li>
 		{:else}
-			<li class="text-muted cave:hidden px-2 py-1 text-xs">
+			<li class="text-muted ride:hidden px-2 py-1 text-xs">
 				{admin
 					? 'No voice channels yet — the + makes the first place to ride together.'
 					: 'No voice channels yet. The crew’s owner or an admin makes them.'}

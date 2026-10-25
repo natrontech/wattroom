@@ -2,8 +2,10 @@ package housekeeping_test
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
+	"math/rand/v2"
 	"testing"
 	"time"
 
@@ -163,4 +165,39 @@ func TestAFailingSweepIsSurvivable(t *testing.T) {
 	st := open(t)
 	st.Close()
 	housekeeping.Once(t.Context(), st, quiet())
+}
+
+// A look nobody wears goes a month after it was last put on (#4151). The one
+// an outfit names stays however old, and so does an old one put on again.
+func TestSweepPrunesLooksNobodyWears(t *testing.T) {
+	st := open(t)
+	rider := user(t, st)
+	month := 31 * 24 * time.Hour
+	hash := func() string { return fmt.Sprintf("%016x", rand.Uint64()) } //nolint:gosec // a test's unique key, not a secret
+	unworn, worn, recent, again := hash(), hash(), hash(), hash()
+	for h, age := range map[string]time.Duration{unworn: month, worn: month, recent: time.Hour, again: month} {
+		if _, err := st.Pool.Exec(t.Context(),
+			"insert into looks (hash, loadout, created_at) values ($1, '{}', $2)", h, stamp(time.Now().Add(-age))); err != nil {
+			t.Fatalf("look: %v", err)
+		}
+		t.Cleanup(func() { _, _ = st.Pool.Exec(context.Background(), "delete from looks where hash = $1", h) })
+	}
+	if err := st.Queries.SetOutfit(t.Context(), db.SetOutfitParams{UserID: rider.ID, Loadout: []byte(`{}`), LookHash: &worn}); err != nil {
+		t.Fatalf("outfit: %v", err)
+	}
+	if err := st.Queries.PutLook(t.Context(), db.PutLookParams{Hash: again, Loadout: "{}"}); err != nil {
+		t.Fatalf("put on again: %v", err)
+	}
+
+	housekeeping.Once(t.Context(), st, quiet())
+
+	for h, want := range map[string]bool{unworn: false, worn: true, recent: true, again: true} {
+		var n int
+		if err := st.Pool.QueryRow(t.Context(), "select count(*) from looks where hash = $1", h).Scan(&n); err != nil {
+			t.Fatalf("count: %v", err)
+		}
+		if got := n == 1; got != want {
+			t.Errorf("look %s kept = %v, want %v", h, got, want)
+		}
+	}
 }

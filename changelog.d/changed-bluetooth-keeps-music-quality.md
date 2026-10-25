@@ -1,0 +1,1 @@
+- Bluetooth headphones keep music quality in voice: WattRoom opens the computer's own mic instead of the headset's when it has one, so the jukebox, YouTube and your crew's voices stay in stereo. A mic you pick yourself always wins, and the mic button says "starting" while the mic opens.
