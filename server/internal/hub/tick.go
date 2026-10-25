@@ -213,11 +213,12 @@ func (rm *channelState) tickLocked(now func() time.Time, dt time.Duration, savin
 			}
 			return out
 		}(),
-		Voice:    rm.voiceIDsLocked(),
-		World:    rm.worldLocked(),
-		Roadside: rm.roadsideLocked(),
-		Riders:   rm.metrics,
-		Roster:   make([]protocol.Rider, 0, len(rm.clients)),
+		Voice:     rm.voiceIDsLocked(),
+		World:     rm.worldLocked(),
+		Roadside:  rm.roadsideLocked(),
+		FreeRoads: rm.freeRoadsLocked(),
+		Riders:    rm.metrics,
+		Roster:    make([]protocol.Rider, 0, len(rm.clients)),
 	}
 	rm.metrics = make(map[string]protocol.RiderMetrics)
 	cheerFrom := rm.cheerFrom

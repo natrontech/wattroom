@@ -1,6 +1,7 @@
 import { untrack } from 'svelte';
 import { placeOnRoad } from '$lib/channel/road-place';
 import { roadOf } from '$lib/workout/road-workout';
+import { roadHash } from '$lib/road/road';
 import { rememberRodeIn } from '$lib/crew-lounge';
 import { account } from '$lib/account.svelte';
 import { createProfileStore } from '$lib/profile.svelte';
@@ -232,6 +233,20 @@ function connect(address: PlaceAddress): Connection {
 			if (now && !wasJoined && freeRide.armed)
 				void freeRide.end().then(sayFreeRide);
 			wasJoined = now;
+		});
+		// A free ride on a road says which road (#3117): channel-mates on the
+		// same one draw each other. The key is read off the road once a road.
+		const freeRoad = $derived(
+			freeRide.armed && !joined() ? freeRide.road?.profile : undefined,
+		);
+		$effect(() => {
+			const road = freeRoad;
+			let gone = false;
+			if (road) void roadHash(road).then((key) => gone || live.rideRoad(key));
+			else live.rideRoad('');
+			return () => {
+				gone = true;
+			};
 		});
 
 		// One sensor, one screen (#610). The claim belongs to the CONNECTION

@@ -398,6 +398,7 @@ export function createChannelLive(address: PlaceAddress) {
 			// out quietly comes back on everyone else's screen but their own.
 			if (away) send({ away: { away } });
 			if (ergByRoad) send({ drive: { ergByRoad } });
+			if (freeRoad) send({ freeRoad: { key: freeRoad } });
 			if (gapSeq !== null && buffer) {
 				const since = gapSeq;
 				gapSeq = null;
@@ -510,6 +511,8 @@ export function createChannelLive(address: PlaceAddress) {
 	// "Don't make me shift" (#3658), kept for the same reason: a race reads
 	// it off the socket at its flag, and a reconnect is a new socket.
 	let ergByRoad = false;
+	// The road a free ride here rides (#3117), its key; kept for the same reason.
+	let freeRoad = '';
 	/** On the wire, or waiting for it; past the bound, dropped. Metrics are
 	 * never queued: the next sample supersedes a lost one. */
 	// One frame a replay, a frame at a time — the hub takes one a second — and
@@ -757,6 +760,12 @@ export function createChannelLive(address: PlaceAddress) {
 			if (next === ergByRoad) return;
 			ergByRoad = next;
 			send({ drive: { ergByRoad } });
+		},
+		/** The road this screen free-rides, by key; '' off one (#3117). */
+		rideRoad(key: string) {
+			if (key === freeRoad) return;
+			freeRoad = key;
+			send({ freeRoad: { key } });
 		},
 		get channelEvents() {
 			return channelEvents;
