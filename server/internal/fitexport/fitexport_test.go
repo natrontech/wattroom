@@ -214,12 +214,24 @@ func roadFixture() Ride {
 // (scripts/fit-sdk-check.py, #2330), so these are also the files that check
 // sees: a ride shape worth that check gets a golden file here.
 func TestGoldenFile(t *testing.T) {
-	for name, ride := range map[string]Ride{
+	goldens := map[string]Ride{
 		"ride.fit":   fixture(),
 		"paused.fit": pausedFixture(),
 		"road.fit":   roadFixture(),
-	} {
+	}
+	for name, ride := range goldens {
 		t.Run(name, func(t *testing.T) { checkGolden(t, name, ride) })
+	}
+	// The SDK check reads every .fit here, so one no fixture writes would
+	// pass it while saying nothing about Encode.
+	files, err := filepath.Glob(filepath.Join("testdata", "*.fit"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range files {
+		if _, ok := goldens[filepath.Base(path)]; !ok {
+			t.Errorf("%s has no fixture in TestGoldenFile: give it one or delete it", path)
+		}
 	}
 }
 

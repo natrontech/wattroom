@@ -53,15 +53,16 @@ def check(data: bytes) -> tuple[list[str], str]:
     records = mesgs.get("record_mesgs", [])
 
     # The required messages: one File Id, one Activity, a Session, a Lap for
-    # every Session, and Records.
+    # every Session, and Records. WattRoom writes one sport per ride, so one
+    # session: a multi-sport file would need the checks below per session.
     if len(file_ids) != 1:
         problems.append(f"{len(file_ids)} file_id messages, want 1")
     if len(activities) != 1:
         problems.append(f"{len(activities)} activity messages, want 1")
-    if not sessions:
-        problems.append("no session message")
-    if not laps or len(laps) < len(sessions):
-        problems.append(f"{len(laps)} lap messages for {len(sessions)} sessions")
+    if len(sessions) != 1:
+        problems.append(f"{len(sessions)} session messages, want 1")
+    if not laps:
+        problems.append("no lap message")
     if not records:
         problems.append("no record messages")
     if problems:
@@ -95,21 +96,35 @@ def check(data: bytes) -> tuple[list[str], str]:
             for field in SUMMARY_FIELDS:
                 if not has(mesg, field):
                     problems.append(f"{kind} {i}: {field} is absent")
-            if has(mesg, "total_timer_time") and has(mesg, "total_elapsed_time"):
-                if mesg["total_timer_time"] > mesg["total_elapsed_time"]:
-                    problems.append(f"{kind} {i}: timer {mesg['total_timer_time']} s exceeds elapsed {mesg['total_elapsed_time']} s")
     if problems:
         return problems, ""
 
-    session = sessions[0]
-    for field in ("total_elapsed_time", "total_distance"):
-        if has(session, field):
-            total = sum(lap.get(field) or 0 for lap in laps)
-            if abs(total - session[field]) > 1e-6:
-                problems.append(f"laps' {field} sums to {total}, session says {session[field]}")
+    # A summary covers start_time to start_time + elapsed and is written at
+    # its end, so its timestamp is not earlier (a second's grace: timestamps
+    # are whole seconds, durations are not). Laps run in order, inside the
+    # session, and add up to it.
+    def end_of(mesg: dict):
+        return mesg["start_time"] + timedelta(seconds=mesg["total_elapsed_time"])
 
-    start = session["start_time"]
-    end = start + timedelta(seconds=session["total_elapsed_time"])
+    grace = timedelta(seconds=1)
+    session = sessions[0]
+    for kind, i, mesg in [("session", 0, session)] + [("lap", i, lap) for i, lap in enumerate(laps)]:
+        if mesg["total_timer_time"] > mesg["total_elapsed_time"]:
+            problems.append(f"{kind} {i}: timer {mesg['total_timer_time']} s exceeds elapsed {mesg['total_elapsed_time']} s")
+        if end_of(mesg) > mesg["timestamp"] + grace:
+            problems.append(f"{kind} {i}: ends {end_of(mesg)}, after its timestamp {mesg['timestamp']}")
+    for i, lap in enumerate(laps):
+        if lap["start_time"] < session["start_time"] or end_of(lap) > end_of(session):
+            problems.append(f"lap {i}: {lap['start_time']} to {end_of(lap)} is outside the session")
+        if i > 0 and lap["start_time"] < end_of(laps[i - 1]):
+            problems.append(f"lap {i}: starts {lap['start_time']}, before lap {i - 1} ends")
+    for field in ("total_elapsed_time", "total_distance"):
+        if has(session, field) or any(has(lap, field) for lap in laps):
+            total = sum(lap.get(field) or 0 for lap in laps)
+            if abs(total - (session.get(field) or 0)) > 1e-6:
+                problems.append(f"laps' {field} sums to {total}, session says {session.get(field)}")
+
+    start, end = session["start_time"], end_of(session)
     previous = None
     for i, record in enumerate(records):
         values = [k for k, v in record.items() if k != "timestamp" and v is not None]
@@ -130,13 +145,23 @@ def check(data: bytes) -> tuple[list[str], str]:
     unpowered = [i for i, r in enumerate(records) if not has(r, "power")]
     if unpowered:
         problems.append(f"{len(unpowered)} records have no power, the first is record {unpowered[0]}")
+    if problems:
+        return problems, ""
 
     def count(field: str) -> int:
         return sum(has(r, field) for r in records)
 
+    # The order as it is, runs folded: "file_id, record x120, lap, ...".
+    runs: list[list] = []
+    for name in order:
+        if runs and runs[-1][0] == name:
+            runs[-1][1] += 1
+        else:
+            runs.append([name, 1])
+    sequence = ", ".join(name if n == 1 else f"{name} x{n}" for name, n in runs)
     zero = sum(r.get("power") == 0 for r in records)
     summary = (
-        f"{len(records)} records, then lap, session, activity; "
+        f"{sequence}; "
         f"{session['sport']}/{session['sub_sport']}; start {start.isoformat()}; "
         f"elapsed {session['total_elapsed_time']:g} s, timer {session['total_timer_time']:g} s; "
         f"power on {count('power')} ({zero} at 0 W), cadence on {count('cadence')}, "
