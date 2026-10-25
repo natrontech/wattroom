@@ -10,6 +10,11 @@
 	// with push-to-talk's explanation and the rest. A modal
 	// rather than a popover because the targets have to survive being tapped
 	// from a bike, and `Modal` already keeps the jukebox dock clear of it.
+	//
+	// It rises from the you-panel that opens it, over the sidebar, and leaves
+	// the ride beside it undimmed (#4170). On a desk two columns keep it short
+	// enough to need no scroll: what you send and the devices on the left,
+	// what you hear and whom on the right. A phone stacks them in that order.
 	import Sliders from '@lucide/svelte/icons/sliders';
 	import Modal from '$lib/components/Modal.svelte';
 	import DevicePickers from '$lib/channel/DevicePickers.svelte';
@@ -28,6 +33,7 @@
 	const av = $derived(channelConnection.current?.av);
 	// The mic's menu opens this too (#914), so the flag lives outside.
 	const open = $derived(soundPanel.open);
+	const close = () => (soundPanel.open = false);
 </script>
 
 {#if av}
@@ -47,110 +53,107 @@
 	{@const voice = av}
 	<Modal
 		label="Sound — the mix and your gate"
-		onclose={() => (soundPanel.open = false)}
-		class="riding max-w-md"
+		onclose={close}
+		placement="corner"
+		class="riding sm:w-[26rem] md:w-max"
 	>
-		<h2 class="font-display font-bold">Sound</h2>
-		<p class="text-muted mt-1 text-xs">
-			The levels you reach for mid-ride. Everything else lives on <a
+		<div class="flex items-center gap-4">
+			<h2 class="font-display font-bold">Sound</h2>
+			<a
 				href="/settings/voice#gate"
-				onclick={() => (soundPanel.open = false)}
-				class="underline">Voice &amp; audio</a
-			>.
-		</p>
+				onclick={close}
+				class="text-muted hover:text-ink ml-auto text-xs underline"
+				>Voice &amp; audio</a
+			>
+			<button onclick={close} class="btn btn-lg btn-secondary">Done</button>
+		</div>
 
-		<div class="border-ink/5 mt-4 border-t pt-4">
-			<span class="eyebrow">how you transmit</span>
-			{#if device.coarse}
-				<HandheldMicNote />
-			{:else}
-				<!-- Two big targets, not radios: this is tapped at 160 bpm (ux.md). -->
-				<div class="mt-1.5 flex gap-2">
-					<button
-						onclick={() => voice.setMode('gate')}
-						aria-pressed={voice.mode === 'gate'}
-						class="btn flex-1 {voice.mode === 'gate'
-							? 'btn-primary'
-							: 'btn-secondary'}">Voice activation</button
-					>
-					<!-- Space is the key, and the button says so (#1879); where there
-				     is no key to hold, the mode is not offered. -->
-					{#if canHoldToTalk()}
-						<button
-							onclick={() => voice.setMode('ptt')}
-							aria-pressed={voice.mode === 'ptt'}
-							class="btn flex-1 flex-col gap-0 leading-tight {voice.mode ===
-							'ptt'
-								? 'btn-primary'
-								: 'btn-secondary'}"
-							>Push to talk
-							<span class="block text-[10px] font-normal">hold Space</span
-							></button
-						>
+		<div class="mt-3 grid gap-x-8 gap-y-5 md:grid-cols-[18rem_22rem]">
+			<div class="space-y-5">
+				<section>
+					<span class="eyebrow">how you transmit</span>
+					{#if device.coarse}
+						<HandheldMicNote />
+					{:else}
+						<!-- Two big targets, not radios: this is tapped at 160 bpm (ux.md). -->
+						<div class="mt-2 flex gap-2">
+							<button
+								onclick={() => voice.setMode('gate')}
+								aria-pressed={voice.mode === 'gate'}
+								class="btn flex-1 px-3 whitespace-nowrap {voice.mode === 'gate'
+									? 'btn-primary'
+									: 'btn-secondary'}">Voice activation</button
+							>
+							<!-- Space is the key, and the button says so (#1879); where there
+						     is no key to hold, the mode is not offered. -->
+							{#if canHoldToTalk()}
+								<button
+									onclick={() => voice.setMode('ptt')}
+									aria-pressed={voice.mode === 'ptt'}
+									class="btn flex-1 px-3 whitespace-nowrap {voice.mode === 'ptt'
+										? 'btn-primary'
+										: 'btn-secondary'}"
+									>Push to talk <span class="text-xs font-normal opacity-70"
+										>Space</span
+									></button
+								>
+							{/if}
+						</div>
+						<div class="mt-4">
+							<GateTune
+								micOn={voice.micOn}
+								micLevel={voice.micLevel}
+								transmitting={voice.transmitting}
+								voiceMode={voice.mode}
+								gateThreshold={voice.gateThreshold}
+								effectiveThreshold={voice.effectiveGateThreshold}
+								onGateThreshold={(t) => voice.setGateThreshold(t)}
+								micTesting={voice.micTesting}
+							/>
+						</div>
+						{#if !voice.micOn}
+							<button
+								onclick={() => void voice.toggleMicTest()}
+								class="btn btn-secondary btn-xs mt-2 {voice.micTesting
+									? 'border-z4/60'
+									: ''}"
+								>{voice.micTesting
+									? 'testing — you hear yourself · stop'
+									: 'test my mic'}</button
+							>
+						{/if}
 					{/if}
-				</div>
-				<div class="mt-3">
-					<GateTune
-						micOn={voice.micOn}
-						micLevel={voice.micLevel}
-						transmitting={voice.transmitting}
-						voiceMode={voice.mode}
-						gateThreshold={voice.gateThreshold}
-						effectiveThreshold={voice.effectiveGateThreshold}
-						onGateThreshold={(t) => voice.setGateThreshold(t)}
-						micTesting={voice.micTesting}
+				</section>
+				<!-- The camera sits here too (#945): the you-panel puts its button
+				     next to the mic's, so the device it opens belongs next to the
+				     mic's device, not one page away. The same pickers as
+				     /settings/voice (#1883), unnamed-device hint included. -->
+				<section>
+					<DevicePickers
+						stacked
+						devices={{ mics: voice.mics, cams: voice.cams, outs: voice.outs }}
+						micId={voice.micId}
+						camId={voice.camId}
+						outId={voice.outId}
+						canPickOutput={voice.canPickOutput}
+						onDevice={(kind, id) =>
+							kind === 'mic'
+								? void voice.setMic(id)
+								: kind === 'cam'
+									? void voice.setCam(id)
+									: voice.setOut(id)}
+					/>
+				</section>
+			</div>
+			<section>
+				<span class="eyebrow">mix, yours only</span>
+				<div class="mt-2">
+					<MixFaders
+						onRiderGain={(id, gain) => voice.setRiderGain(id, gain)}
+						onShareGain={(gain) => voice.setShareGain(gain)}
 					/>
 				</div>
-				{#if !voice.micOn}
-					<button
-						onclick={() => void voice.toggleMicTest()}
-						class="btn btn-secondary btn-xs mt-3 {voice.micTesting
-							? 'border-z4/60'
-							: ''}"
-						>{voice.micTesting
-							? 'testing — you hear yourself · stop'
-							: 'test my mic'}</button
-					>
-				{/if}
-			{/if}
-		</div>
-
-		<div class="border-ink/5 mt-4 border-t pt-4">
-			<span class="eyebrow">mixer</span>
-			<div class="mt-2">
-				<MixFaders
-					onRiderGain={(id, gain) => voice.setRiderGain(id, gain)}
-					onShareGain={(gain) => voice.setShareGain(gain)}
-				/>
-			</div>
-		</div>
-
-		<div class="border-ink/5 mt-4 border-t pt-4">
-			<!-- The camera sits here too (#945): the you-panel puts its button
-			     next to the mic's, so the device it opens belongs next to the
-			     mic's device, not one page away. The same pickers as
-			     /settings/voice (#1883), unnamed-device hint included. -->
-			<DevicePickers
-				stacked
-				devices={{ mics: voice.mics, cams: voice.cams, outs: voice.outs }}
-				micId={voice.micId}
-				camId={voice.camId}
-				outId={voice.outId}
-				canPickOutput={voice.canPickOutput}
-				onDevice={(kind, id) =>
-					kind === 'mic'
-						? void voice.setMic(id)
-						: kind === 'cam'
-							? void voice.setCam(id)
-							: voice.setOut(id)}
-			/>
-		</div>
-
-		<div class="mt-5 flex justify-end">
-			<button
-				onclick={() => (soundPanel.open = false)}
-				class="btn btn-lg btn-secondary">Done</button
-			>
+			</section>
 		</div>
 	</Modal>
 {/if}

@@ -635,14 +635,17 @@ Capture: `/settings/notifications` whole page body with a stand-in desktop bridg
 4. Icon off on Windows or Linux: the launch-at-login hint says WattRoom opens when you sign in, names no tray. [3843] [multi:linux-off]
 5. Nothing glows; nothing scrolls sideways at 375 px. [3843]
 
-#### sound-dialog
+#### sound-dialog, phone-sound-dialog
 
-Capture: a voice channel at 1440 × 900, the sidebar's Sound button, the dialog open without a call, at the top (`sound-dialog`) and scrolled to its foot (`sound-dialog-bottom`); then `/settings/voice` whole page body; both schemes. Both dialog shots carry `dialogTargets` in their probe JSON: every slider's and Done's height, each select's x and width, the dialog's scrollHeight against clientHeight. Target: none drawn; the bar is ux.md's tap-target rule and the dialog's own line, “the levels you reach for mid-ride”.
+Capture: a flat crew session (as ride-session-flat), Designer having set five riders away from 100 %; the sidebar's Sound button opens the sheet at 1440 × 900 (`sound-dialog`) and again at 2000 × 1150 (`sound-dialog-wide`); a phone's from a voice channel (`phone-sound-dialog`); then `/settings/voice` whole page body; both schemes. Each sheet shot carries `dialogTargets`: the sheet's box against the window, every slider's and Done's height, each select's x and width, its scrollHeight against clientHeight. Target: none drawn; the bar is ADR-0087 (opened from the sidebar, the sheet is chrome: desk sizes, the kit's `eyebrow`, the cave's scheme) and ux.md's tap targets.
 
-1. The five faders, the gate slider and Done have hit boxes ≥ 44 px tall (`btn-lg` for Done); thumb and track keep their drawn size, centred in the box. [3748] [probe:dialogTargets]
-2. Device row: one column of full-width selects; no label wraps, none truncates to a stub; the three selects line up. [3748] [probe:dialogTargets]
-3. `/settings/voice` draws the same faders at the 24 px desk floor, not 44; it does not grow with the dialog. [3748]
-4. Nothing in the dialog glows; at 1440 × 900 it scrolls inside the window rather than clipping Done. [3748] [probe:dialogTargets]
+1. Desk: the sheet rises from the sidebar's foot, where its button is: 12 px from the window's left and bottom edges, the ride beside it undimmed. It is its content's width, at most 720 px, and with three riders showing it needs no scroll at 1440 × 900 or 2000 × 1150. [4170] [probe:dialogTargets]
+2. Desk: two columns. Left, what you send: how you transmit, level & gate, then the microphone, camera and speakers. Right, what you hear: the mix, then the riders. Labels in each column share one left edge; the gaps between groups match. Phone: one bottom sheet at full width in that order, scrolling inside the window, nothing sideways. [4170] [multi:phone-sound-dialog]
+3. A fader is one row: its name in a fixed column, the fader, its value right-aligned in `font-display` tabular numerals. The dip row reads “dip under voices” with “−n%” or “off”. [4170]
+4. Riders: one “Reset all”, no Reset per rider; past three, the rest fold behind “n more”. [4170] [test:web/e2e/tap-targets.spec.ts]
+5. Words are labels and numbers, plus one line where a control needs it: the gate's status, a phone's mic note, the empty riders list. [4170]
+6. The faders, the gate slider and Done have hit boxes ≥ 44 px tall (`btn-lg` for Done); thumb and track keep their drawn size, centred in the box. The selects line up, none truncated to a stub, no label wrapped. [3748] [probe:dialogTargets]
+7. `/settings/voice` draws the same rows at the 24 px desk floor, not 44. Nothing in the sheet glows. [3748]
 
 #### landing
 

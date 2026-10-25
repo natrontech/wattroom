@@ -290,10 +290,11 @@
 			"web/src/lib/channel/GateTune.svelte",
 			"web/src/lib/channel/GateMeter.svelte",
 			"web/src/lib/channel/DevicePickers.svelte",
+			"web/src/lib/channel/HandheldMicNote.svelte",
 			"web/src/lib/channel/VoiceSettings.svelte",
 			"web/src/lib/channel/sound-panel.svelte.ts"
 		],
-		"surfaces": ["sound-dialog"]
+		"surfaces": ["sound-dialog", "phone-sound-dialog"]
 	},
 	{
 		"files": ["web/src/routes/(app)/open-rides/**"],

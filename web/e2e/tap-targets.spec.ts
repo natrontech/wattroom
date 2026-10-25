@@ -430,6 +430,9 @@ test("Home's All rides link and a ride's back link clear the floor", async ({
  * The panel opens without a call: its Sound button needs the channel's av
  * store, which exists before LiveKit answers. /settings/voice draws the same
  * faders at desk size and keeps them there.
+ *
+ * It rises from the sidebar's foot and fits a 900 px window with three
+ * riders showing; the rest fold, and one Reset all undoes them (#4170).
  */
 test('the Sound dialog’s controls are riding size and its device row is aligned', async ({
 	riders,
@@ -444,7 +447,14 @@ test('the Sound dialog’s controls are riding size and its device row is aligne
 	await a.addInitScript(() =>
 		localStorage.setItem(
 			'wattroom.mixer.v1',
-			JSON.stringify({ music: 0, cues: 0, board: 0, share: 0 }),
+			JSON.stringify({
+				music: 0,
+				cues: 0,
+				board: 0,
+				share: 0,
+				riders: { a: 0.75, b: 0.74, c: 0.69, d: 0.46, e: 1.3 },
+				names: { a: 'Ana', b: 'Ben', c: 'Cleo', d: 'Dino', e: 'Eva' },
+			}),
 		),
 	);
 	await a.setViewportSize({ width: 1440, height: 900 });
@@ -483,4 +493,32 @@ test('the Sound dialog’s controls are riding size and its device row is aligne
 	}
 	const eyebrow = await dialog.getByText('speakers · voice only').boundingBox();
 	expect(eyebrow!.height, 'the speakers label wrapped').toBeLessThan(20);
+
+	const sheet = await dialog.evaluate((el) => {
+		const r = el.getBoundingClientRect();
+		return {
+			left: r.left,
+			bottom: innerHeight - r.bottom,
+			width: r.width,
+			scrolls: el.scrollHeight > el.clientHeight,
+		};
+	});
+	expect(sheet, 'the sheet at the sidebar’s foot, unscrolled').toEqual({
+		left: 12,
+		bottom: 12,
+		width: expect.any(Number),
+		scrolls: false,
+	});
+	expect(sheet.width, 'the sheet is its content’s width').toBeLessThanOrEqual(
+		720,
+	);
+
+	const volumes = dialog.getByRole('slider', { name: /'s volume$/ });
+	await expect(volumes).toHaveCount(3);
+	await dialog.getByRole('button', { name: '2 more' }).click();
+	await expect(volumes).toHaveCount(5);
+	await expect(dialog.getByRole('button', { name: 'Reset' })).toHaveCount(0);
+	await dialog.getByRole('button', { name: 'Reset all' }).click();
+	for (const volume of await volumes.all())
+		await expect(volume).toHaveValue('100');
 });
