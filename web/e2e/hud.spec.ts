@@ -240,7 +240,9 @@ test('the HUD fills a second screen as one centred block', async ({
 	expect(Math.abs(block!.y0 - (100 - block!.y1))).toBeLessThanOrEqual(0.5);
 	expect(block!.y0).toBeGreaterThan(2);
 	expect(Math.min(...texts.map((t) => t.vh))).toBeGreaterThanOrEqual(2.9);
-	expect(texts.find((t) => t.text === 'ridden')?.vh).toBeGreaterThanOrEqual(9);
+	// SPEC's 9vh is the time's; its word is a unit, at most half (G4).
+	expect(texts.find((t) => t.text === '8:00')?.vh).toBeGreaterThanOrEqual(9);
+	expect(texts.find((t) => t.text === 'ridden')?.vh).toBeLessThanOrEqual(4.5);
 	// The road's name wraps onto a second line rather than truncating away.
 	const label = await page
 		.getByTestId('hud-label')

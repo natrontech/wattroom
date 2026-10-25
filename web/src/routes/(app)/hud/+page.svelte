@@ -59,7 +59,8 @@
      16 px, and any larger window scales that same block as one centred unit
      (#3678), so a browser tab on a second screen reads from the saddle. -->
 {#snippet clockText()}
-	{#if clock}<span class="num">{clock.time}</span> {clock.word}{/if}
+	{#if clock}<span class="num">{clock.time}</span>
+		<span class="unit">{clock.word}</span>{/if}
 {/snippet}
 <!-- The Apple Watch workout view's structure (#4099): the watts dominate,
      the other readings stack beside them, each with its unit, and a reading
@@ -116,7 +117,7 @@
 						class="h-[0.375em] flex-1 rounded-full {ZONE_BG[z]} {z ===
 						snapshot.zone
 							? ''
-							: 'opacity-25'}"
+							: 'opacity-40'}"
 						data-lit={z === snapshot.zone || undefined}
 					></span>
 				{/each}
@@ -199,10 +200,11 @@
 				     display face, units at half their size (TARGETS G4). -->
 				<p class="text-ink mt-[0.25em] text-[0.75em]" data-testid="hud-road">
 					<span class="num">{road.grade.toFixed(1)}</span>
-					<span class="unit">%</span>
+					<span class="unit text-muted">%</span>
 					{#if road.toTopM !== undefined}
-						· top <span class="num">{formatKm(road.toTopM)}</span>
-						<span class="unit">km</span>
+						<span class="unit text-muted">· top</span>
+						<span class="num">{formatKm(road.toTopM)}</span>
+						<span class="unit text-muted">km</span>
 					{/if}
 				</p>
 				{#if road.ahead}
