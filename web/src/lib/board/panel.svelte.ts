@@ -19,6 +19,14 @@ let open = $state(false);
 let face = $state<Face>('board');
 /** Which clip the trim face is editing; nothing on any other face. */
 let trimming = $state<string | null>(null);
+/**
+ * The newest fire in the voice channel. Module state, not the board's own:
+ * the toggle beside the cheers says it too (#4094), so a rider with the board
+ * closed sees who is playing a sound without hunting the roster for a drum.
+ */
+let lastFire = $state<
+	{ from: string; fromId: string; clipId: string } | undefined
+>();
 
 export const boardPanel = {
 	get open() {
@@ -29,6 +37,24 @@ export const boardPanel = {
 	},
 	get trimming() {
 		return trimming;
+	},
+	get lastFire() {
+		return lastFire;
+	},
+	fired(from: string, fromId: string, clipId: string) {
+		lastFire = { from, fromId, clipId };
+	},
+	/**
+	 * The newest fire while its clip still sounds. The roster's `sounding` is
+	 * the clip's life, so this goes when the sound does, and a stop or a newer
+	 * clip from the same rider ends it.
+	 */
+	sounding(roster: { id: string; sounding?: string }[]) {
+		const last = lastFire;
+		return last &&
+			roster.some((r) => r.id === last.fromId && r.sounding === last.clipId)
+			? last
+			: undefined;
 	},
 	show() {
 		open = true;

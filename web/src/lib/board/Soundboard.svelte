@@ -22,7 +22,8 @@
 		Volume2,
 		X,
 	} from '@lucide/svelte';
-	import { dragPane } from '$lib/pane';
+	import { dragPane, keepSize } from '$lib/pane';
+	import { edgeDivider } from '$lib/divider';
 	import { account } from '$lib/account.svelte';
 	import { board, keptMillis, type Clip } from '$lib/board/clips.svelte';
 	import { isToggle } from '$lib/board/toggle-key.svelte';
@@ -68,7 +69,6 @@
 
 	const PANE = 'soundboard';
 
-	let last = $state<{ from: string; clipId: string; at: number } | undefined>();
 	let seenTick: Board[] | undefined;
 
 	// This tick's fires and then the voice channel's standing state, in one
@@ -98,11 +98,11 @@
 				newest = shot;
 			}
 			if (newest) {
-				last = {
-					from: newest.from ?? 'someone',
-					clipId: newest.clipId,
-					at: Date.now(),
-				};
+				boardPanel.fired(
+					newest.from ?? 'someone',
+					newest.fromId ?? '',
+					newest.clipId,
+				);
 			}
 		}
 		// A rider whose clip is still going when you walk in (#1681), and a
@@ -119,6 +119,7 @@
 	let mine = $state<{ clipId: string; pad?: number } | undefined>();
 
 	const me = $derived(account.me?.id ?? '');
+	const last = $derived(boardPanel.lastFire);
 	const face = $derived(boardPanel.face);
 	const trimmed = $derived(
 		boardPanel.trimming
@@ -224,9 +225,11 @@
 <svelte:window onkeydown={keys} />
 
 {#if boardPanel.open}
-	<!-- The trim face needs space for a waveform with two handles in it; the
-	     other two are a 364 px column. `motion-reduce` takes the width without
-	     the slide.
+	<!-- 364 px by default and wider from its right edge (#4094), the pads
+	     filling the width; keepSize remembers it per device. The trim face
+	     needs space for a waveform with two handles in it, so it raises the
+	     floor rather than the width. `motion-reduce` takes it without the
+	     slide, and only the floor slides: a drag must not trail the pointer.
 	     Above the seated player, below the drawers (#2379): the board is a
 	     surface the rider pulled open, which the stacking rule (#483,
 	     stacking.test.ts) puts over the player — never our chrome, which stays
@@ -235,11 +238,19 @@
 	     under the player with no grip left to reach. -->
 	<div
 		data-pane={PANE}
-		class="bg-surface ring-ink/15 fixed top-32 left-4 rounded-lg p-1.5 ring-1 transition-[width] duration-(--dur-base) motion-reduce:transition-none md:left-72 {face ===
+		{@attach (node) => keepSize(node, PANE)}
+		class="bg-surface ring-ink/15 fixed top-32 left-4 w-[364px] max-w-[calc(100vw-2rem)] rounded-lg p-1.5 ring-1 transition-[min-width] duration-(--dur-base) motion-reduce:transition-none md:left-72 {face ===
 		'trim'
-			? 'w-[min(600px,calc(100vw-2rem))]'
-			: 'w-[364px]'} {covered ? 'z-30' : 'z-[57]'}"
+			? 'min-w-[min(600px,calc(100vw-2rem))]'
+			: 'min-w-[min(364px,calc(100vw-2rem))]'} {covered ? 'z-30' : 'z-[57]'}"
 	>
+		<div
+			{@attach edgeDivider}
+			class="hover:bg-neon/40 active:bg-neon/60 absolute inset-y-0 right-0 z-10 w-1.5 cursor-col-resize touch-none rounded-r-lg transition-colors"
+			role="separator"
+			aria-orientation="vertical"
+			aria-label="resize the soundboard"
+		></div>
 		<div
 			{@attach dragPane}
 			class="text-muted flex cursor-grab touch-none items-center gap-2 px-1 pb-1.5 text-[11px] active:cursor-grabbing"
@@ -249,19 +260,19 @@
 				<span class="truncate">soundboard</span>
 				<button
 					onclick={() => boardPanel.go('clips')}
-					class="hover:text-ink ml-auto shrink-0"
-					aria-label="your clips"><Library size={13} /></button
+					class="icon-btn hover:text-ink hover:bg-ink/5 ml-auto"
+					aria-label="your clips"><Library size={16} /></button
 				>
 				<button
 					onclick={() => boardPanel.hide()}
-					class="hover:text-ink shrink-0"
-					aria-label="close the soundboard"><X size={13} /></button
+					class="icon-btn hover:text-ink hover:bg-ink/5"
+					aria-label="close the soundboard"><X size={16} /></button
 				>
 			{:else}
 				<button
 					onclick={() => boardPanel.back()}
-					class="hover:text-ink shrink-0"
-					aria-label="back to the pads"><ArrowLeft size={14} /></button
+					class="icon-btn hover:text-ink hover:bg-ink/5"
+					aria-label="back to the pads"><ArrowLeft size={16} /></button
 				>
 				<span class="truncate"
 					>{face === 'clips'
