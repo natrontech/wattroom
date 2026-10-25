@@ -10,6 +10,8 @@
 	import CheerDeck from '$lib/channel/CheerDeck.svelte';
 	import { roadsideShown } from '$lib/channel/RoadsideDeck.svelte';
 	import BoardToggle from '$lib/board/BoardToggle.svelte';
+	import { boardPanel } from '$lib/board/panel.svelte';
+	import { nameOf } from '$lib/sound/board.svelte';
 	import EmojiPicker from '$lib/emoji/EmojiPicker.svelte';
 	import { emojiCrew } from '$lib/emoji/crew-emoji.svelte';
 	import { account } from '$lib/account.svelte';
@@ -88,6 +90,8 @@
 	const groups = $derived(
 		rosterGroups(live, riders, members, elsewhere, account.me?.id),
 	);
+
+	const fired = $derived(boardPanel.sounding(riders));
 
 	// Every other reaction beside the four (#2692): the crew's own emoji most
 	// of all, which were a cheer only if an admin put them in those four.
@@ -369,6 +373,16 @@
 					><SmilePlus size={18} /></button
 				>
 			</div>
+			{#if fired}
+				<p class="text-muted flex items-center gap-2 px-1 text-xs">
+					<Drum size={12} class="{BOARD_MARK} shrink-0" />
+					<span class="text-ink/85 truncate">{fired.from}</span>
+					<span class="shrink-0">fired</span>
+					<span class="font-display text-ink/85 min-w-0 flex-1 truncate"
+						>{nameOf(fired.clipId) ?? 'a sound'}</span
+					>
+				</p>
+			{/if}
 			{#if pickerAt}
 				<EmojiPicker
 					anchor={pickerAt}

@@ -1,0 +1,1 @@
+- The soundboard widens from its right edge with the pads filling the width, its header buttons are full-size, and who fired which sound shows under the Soundboard button while it plays.
