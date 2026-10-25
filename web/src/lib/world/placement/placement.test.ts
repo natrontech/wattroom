@@ -184,6 +184,19 @@ describe('the placement gates (#3219)', () => {
 		expect(rules([low], [], ground)).toEqual([]);
 	});
 
+	it('O2: a rigid 10 m fence across a hollow floats at its middle; a 2 m panel beside it does not (#3222)', () => {
+		// A dip 0.4 m deep and 2 m wide under the fence's middle; its ends stand on the ground.
+		const hollow: Ground = (x) => 100 - 0.4 * Math.exp(-((x / 2) ** 2));
+		const rigid = kit('fence', 'fence', rect(0, 30, 10, 0.2), hollow, {
+			base: hollow(5, 30),
+		});
+		const panel = kit('fence', 'fence', rect(6, 30, 2, 0.2), hollow, {
+			base: hollow(6, 30),
+		});
+		expect(rules([rigid], [], hollow)).toContain('O2');
+		expect(rules([panel], [], hollow)).toEqual([]);
+	});
+
 	it('O2 and O3: a barn hanging 2.75 m fails, and one buried 7.6 m fails', () => {
 		const footprint = rect(0, 40, 10, 14);
 		const barn = (base: number): Placement => ({

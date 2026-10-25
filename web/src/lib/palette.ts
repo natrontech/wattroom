@@ -67,7 +67,7 @@ export interface Theme {
 	/**
 	 * What the rider actually chose. Each identity exists in both families, so
 	 * the scheme setting can flip between them without losing the choice — and
-	 * `.cave`, which is always dark (ADR-0005, amended in #113), can render the
+	 * `.cave` (TV mode, the HUD, the world), which is always dark (ADR-0005), can render the
 	 * dark half of the same identity rather than something unrelated.
 	 */
 	identity: string;

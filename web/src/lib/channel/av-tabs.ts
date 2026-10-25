@@ -120,7 +120,9 @@ export function createTabs(host: TabsHost) {
 				await takeOver();
 				return;
 			}
-			if (av.micOn) {
+			// A tap while the mic is still starting means "no": the open stands
+			// down instead of going live a second later (#4161).
+			if (av.micOn || chain.starting) {
 				chain.close();
 				av.micOn = false;
 			} else {

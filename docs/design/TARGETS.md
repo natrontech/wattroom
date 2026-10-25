@@ -19,7 +19,7 @@ What every rider-visible change is held to. Per surface: an id (its capture's fi
   - `<hairpin>` “Design switchbacks”: 1 km approach at 3 %, then eight legs at 8.8 % joined by seven hairpins; the app reads 7.1 km · 571 m, one class II climb, first hairpin ~1.7 km in.
   - `<rolling>` “Design swells”: 7.5 km · 237 m, two class IV climbs.
   - An item quoting a fixture's number takes it from a capture, never memory; a fixture change updates those items in the same PR.
-- Targets are drawn dark: desk surfaces compare on a dark capture, a light capture holds the same layout; riding surfaces are always dark.
+- Targets are drawn dark: a surface compares on a dark capture, and a light capture holds the same layout, a riding surface's too (G1). TV mode and the HUD are always dark.
 - Owner tags: `[key]` = the `design/<key>` issue that delivers it; `[#n]` = an existing issue; untagged = holds today, guarded against regression. A PR is held to its own issue's items, the global rules, and no regression elsewhere. A global-rule failure is _inherited_, not counted against a PR only passing through the surface, when main fails it the same way and an open issue owns the fix (DESIGN-CHECK §8).
 - Check tags: none = the image; `[probe:<key>]` = the measurement JSON the capture run writes beside each image; `[test:<file>]` = a repository test asserting it; `[multi:<capture>]` = a named second capture (frame sequence, second rider, other scheme, reduced-motion run). A motion or state item whose source is missing is CANNOT-TELL, never guessed from one still.
 
@@ -72,10 +72,10 @@ So the RIDE page holds: a workout with no road, Cadence and Heart; a workout on 
 
 |     | Rule                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| G1  | **The cave.** From the count-in to End ride the whole frame, content and sidebar, uses the dark family (surface OKLCH L ≤ 0.30), whatever the OS scheme or theme toggle says [probe:cave]. TV mode, the spectator's Watch view and `/hud` are cave too, and so is the voice channel stage of a rider on a session who is not riding it (the roadside deck): a riding surface, labelled per G4, since a rider a game put out uses it on the bike (Jan, 2026-10-07, #3029). A rider who has not joined a live session watches it at the desk (Jan, 2026-10-18, #4080). The setup before a ride, and the closing or road-end card after it, are desk surfaces following the rider's scheme (ADR-0005, amendments #113, #331).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| G1  | **A ride keeps the rider's scheme.** From the count-in to End ride the whole frame, content and sidebar, follows the rider's scheme as every desk surface does: the theme toggle, else the OS (Jan, 2026-10-25, #4160). A dark capture's surface tokens sit at OKLCH L ≤ 0.30, a light capture's at L ≥ 0.90 [probe:scheme], a panel's before G3's 86 % lets the world through; the world, a camera frame and a video are not surfaces. The world is blue hour in either scheme, its name tags and accents the theme's dark half (ADR-0072). The cave, the dark family whatever the scheme says, is left to the full-screen surfaces built for distance: TV mode and `/hud` (ADR-0005, amended 2026-10-25). The spectator's Watch view is a riding surface, and so is the voice channel stage of a rider on a session who is not riding it (the roadside deck), labelled per G4, since a rider a game put out uses it on the bike (Jan, 2026-10-07, #3029). A rider who has not joined a live session watches it at the desk (Jan, 2026-10-18, #4080). The setup before a ride, and the closing or road-end card after it, are desk surfaces.                                                                                                                                                                                                                                                                                        |
 | G2  | **Glow and accents.** `--color-watt` marks live data and alone glows. On a riding surface it marks exactly three things, nothing else (no crew-row number, no target, no second power figure): the 3 s power; your position marker on the horizon (the Skyline dot or the interval graph's cursor); your trail in the world [probe:wattCount]; and, while a sprint's window is open, the moment card's border (D12; Jan, 2026-10-07). `--color-neon` is structure and prescription (frames, hairlines, selected borders, grade and record ramps, rider state such as the gear, targets, a model's outputs such as a race's gap to par and place, #3174), never a measured reading, never glowing. Zone tokens carry zone readings only: a zone-coloured line or fill shows the zone actually ridden there, never a fixed zone as decoration. The one exception is the plan: the interval graph's prescribed blocks take their zone's colour, docs/spec/stats.md's ramp (Jan, 2026-10-07). Desk surfaces glow nothing of their own content, though the crew rail's live data glows on every page (Jan, 2026-10-15, #4041). The public site glows nothing except the landing hero, a forced-dark brand surface whose watts numeral, bar and trace glow in watt (Jan, 2026-10-06, #3730). Records (history, collections, class chips, progress bars) use the neon ramp. `danger` is its own token. z6, z7, danger and watt never blink. |
 | G3  | **Panels over the world.** One kit, the `ride-panel` utility: surface at 86 % opacity (floor 85 %, ADR-0071), 1 px neon hairline at ~38 % alpha, 12 px radius, no backdrop blur, no shadow; never nested [probe:panels]. Panels 16 px in from the canvas edges, 12–16 px apart; panels in one column share an edge. Each panel its content's size: no empty band > 24 px, nothing scrolls or clips [probe:panels]. The keep-clear corridor (x 30–70 %, y 22.5–77.5 % of the canvas; `CORRIDOR` in `lib/session/docks.ts`) holds no panel, chip or text wherever a world is drawn in the canvas (world surfaces; TV and the HUD over the world; ADR-0066, ADR-0071); a flat surface uses its whole column [probe:panels]. A panel over the world is ≤ 30 % of the canvas wide against a side edge, ends above y 22.5 %, or starts below y 77.5 %. The world fills its canvas edge to edge. The jukebox seat (top right, `JUKEBOX_SEAT`) has nothing over it; with no jukebox it stays empty and nothing grows into it. Ride-critical status (trainer silent or lost, reconnecting, socket dropped; errors.md, SPEC's `SIGNAL_LOST_MS`) is one persistent line atop slot 1 with at most one G5-sized recovery button; never a toast, never in the corridor.                                                                                                                                                                            |
-| G4  | **Legibility at the design distance.** Desk 0.8 m from a 14-inch laptop; TV 3 m from a 55-inch set. Sizes are D1's; a unit ≤ half its number. Riding surfaces label with `ride-label` (11 px desk, ≥ 3vh TV); the kit's `eyebrow` (10 px) is for desk pages only. Numerals `font-display` (Chakra Petch), tabular; distance reads “x of y”. Every word on a riding surface is a label or a number, except a status or recovery line canon requires (G3's ride-critical status, ADR-0062's hint for a hidden control, the Flat-road reason from `REASONS` in `lib/world/ride-view.ts`, the team-car radio's closed phrases in SPEC “Races”): one line, label size, at most one G5-sized button. The watts is one figure, the 3 s power, never repeated (D17). The sidebar, the people column and menus are chrome: on a ride they take the cave's scheme and hide the desk's sentences, at their desk sizes (ADR-0087).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| G4  | **Legibility at the design distance.** Desk 0.8 m from a 14-inch laptop; TV 3 m from a 55-inch set. Sizes are D1's; a unit ≤ half its number. Riding surfaces label with `ride-label` (11 px desk, ≥ 3vh TV); the kit's `eyebrow` (10 px) is for desk pages only. Numerals `font-display` (Chakra Petch), tabular; distance reads “x of y”. Every word on a riding surface is a label or a number, except a status or recovery line canon requires (G3's ride-critical status, ADR-0062's hint for a hidden control, the Flat-road reason from `REASONS` in `lib/world/ride-view.ts`, the team-car radio's closed phrases in SPEC “Races”): one line, label size, at most one G5-sized button. The watts is one figure, the 3 s power, never repeated (D17). The sidebar, the people column and menus are chrome: on a ride they keep the rider's scheme with the frame (G1) and hide the desk's sentences, at their desk sizes (ADR-0087).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | G5  | **Phone width is 375 × 812.** The page body scrolls down, never sideways; measure `[data-testid=page-body]`, never the document [probe:overflowX]. No pixel width on an SVG that is also measured. Primary work first in the stacking order. Tap targets 24 px on a browse surface, 44 px (`btn-lg`, `icon-btn-lg`) for the ride's own controls on a phone, 33 px on a desk; the chrome keeps its desk targets (ADR-0087) [probe:minTarget]. The last item clears the floating navigation button and the browser chrome.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | G6  | **Motion** (ADR-0079, SPEC “Motion”). The camera is a tripod on a rail: no shake, bob, roll, overshoot, motion blur or speed lines; field of view rises ≤ +4° [probe:camera.fov]. Live numbers snap, except the watts numeral's 250 ms transform glide (#3200). Bars settle through `transform` over `--dur-live`. Only results roll, only once. One stage moment at a time. Durations and easings are tokens. Reduced motion: the world opens on Flat with one “Show the world (steady camera)” tap; every motion a held stamp; sounds stay. In a still capture, something mid-transition is a defect only if it shows in two captures.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | G7  | **The page frame** (desk pages in the app layout). Pages fill the content column (`page`: 16 px gutters on a phone, 32 px from `sm`), no max-width, never centred; a section that would stretch too far goes multi-column at `xl`. `/hud` and the TV centre their block by design. Every section's left edge on the title's. The kit: one `page-title`, `eyebrow` for section labels, `panel`, `btn-*`, `input`; never a retyped class string. Four states: loading (a skeleton in the content's shape); error, with a retry; empty (teaches in one line, plus the button that creates the first one); content.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
@@ -104,7 +104,7 @@ Capture recipes are the design-shots spec's. Every id below is in `docs/design/s
 
 Desk: 1440 × 900. Phone: 375 × 812 with touch. World on: the device's World control at Full (`wattroom.world.mode.v1`; never chosen is Flat, #3084); every world surface asserts the world mounted and did not fall back, or the shot is FAILED [probe:world].
 
-### A. Riding surfaces (the cave)
+### A. Riding surfaces
 
 #### ride-road-world
 
@@ -148,7 +148,7 @@ Layout:
 12. Corridor clear; your figure unobstructed in `RIDER_BOX` (docks.ts: x 40–60 %, y 55–82 %; its foot reaches below the corridor by design). [ride-surface] [#3215] [probe:panels]
 13. A moment card top-centre between slot 1 and the seat, above the corridor; border watt while live (D12). [ride-surface] [multi:ride-session-road]
 14. No key hint names PgUp or PgDn as page keys (ADR-0071: arrows page); the ? sheet lists them as bias, since they are bound (D14). [ride-surface]
-15. Cave covers the frame, sidebar included. [ride-cave]
+15. The frame, sidebar included, keeps the capture's scheme (G1). [#4160] [probe:scheme]
 
 World:
 
@@ -192,7 +192,7 @@ Capture: world on, `/ride?w=openers`, no road: a negative check. Canon: ADR-0066
 1. No world canvas mounts; the capture has ride-workout-flat's layout. [3663-world-is-your-ride] [probe:world]
 2. No figure, ring, trail or synthetic pass anywhere. [3663-world-is-your-ride]
 3. No Flat-road line: nothing fell back. [3663-world-is-your-ride]
-4. Cave covers the frame.
+4. The frame keeps the capture's scheme (G1).
 
 #### ride-workout-flat
 
@@ -208,7 +208,7 @@ Capture: world off, `/ride?w=openers`, 14 s in; a second frame at four-digit wat
 8. The graph panel takes the free height and its plot fills it (no aspect lock); the numbers panel lays its fields in one row at content height, packed left with gaps of at most 48 px between the fields (item 5); the bias trim (item 6) stands as its own group at the row's right end and that gap is not counted; no band between panels > 16 px (Jan, 2026-10-15, #3670). [ride-flat]
 9. At four digits the numeral stays inside its panel, covering no other text. [multi:four-digit] [ride-flat]
 10. Persistent status per G3. [multi:ride-status] [ride-flat]
-11. Cave covers the frame.
+11. The frame keeps the capture's scheme (G1).
 12. Each block on the graph says what it is, drawn into it: its target in watts (a ramp's two ends, trimmed by the bias as slot 1's target is) and its length in NEXT's words, inside the block halfway up its lower end, at label size, in neon, never watt (G2); a part that does not fit the block's width drops, the length first; the current block's words bold. No chip, no legend (Jan, 2026-10-25, #4159). [#4159] [test:web/src/lib/workout/block.test.ts]
 
 #### ride-skyline-fallback
@@ -242,14 +242,14 @@ Capture: desk context rides the channel's free ride on a simulated trainer; a se
 
 Capture: world on, OS scheme light, `/ride?w=openers&road=<hairpin>`: `ride-countin-first` as the count-in appears, `ride-countin` a second in. Target: v3-motion's count-in frame.
 
-1. Cave from the count-in's first frame. [ride-cave]
+1. The frame keeps the OS's light scheme from the count-in's first frame (G1). [#4160] [probe:scheme]
 2. Slots already in their places, as v3-motion draws them; during the count-in the one digit is the only thing in the corridor. The dock-in motion belongs to #3087. [ride-surface]
 
 #### ride-free-road
 
 Capture: world off, `/ride?road=<hairpin>`, 14 s in, OS scheme light. Targets: v2-ride; v3-modes for the feel line. Canon: ADR-0005, ADR-0046 (parity), ADR-0062, ADR-0084.
 
-1. Cave from the first stroke to End ride, with the OS in light mode. [ride-cave] [probe:cave]
+1. The frame keeps the OS's light scheme from the first stroke to End ride (G1). [#4160] [probe:scheme]
 2. The flat riding surface: `ride-panel`s spanning the column's width at their content's height (G3); the Skyline strip pinned at the bottom; the world, when on, takes the free height; on a flat free ride with no road the column's free height below the panels is background, not a band; no centred block. [ride-free-road-surface]
 3. Slot 1 is the road line, in order: “FREE RIDE · <road>”; “km x of y · grade · <next climb> in z km” at display size; trainer chip, “SIM · you feel y %” or “Watts · n W”; “elapsed · m climbed”. [ride-free-road-surface]
 4. Road name, gear, grade and watts each once (D17). [ride-free-road-surface]
@@ -282,7 +282,7 @@ Capture: as ride-free-road-world, after a seeded earlier effort on the same road
 
 Capture: ride-free-road, then End ride.
 
-1. A desk surface: follows the rider's scheme, the frame leaves the cave. [ride-cave]
+1. A desk surface: the frame leaves the ride, and the sidebar's desk sentences are back (G4). [#4160]
 2. “Carry on from km x next time” offered here, as one button. [ride-free-road-surface]
 3. The road's name links to its route page (F1). [route-page]
 
@@ -300,7 +300,7 @@ Capture: two dev riders (Designer and a second, name letters only) in one crew's
 8. Formation, the front row's turn every 120 s, a far rider dithering to their place, the pull-over and the team car hold as SPEC “Riding a road together” says. [test:web/src/lib/world/bunch.test.ts] [#3098]
 9. Each screen draws each rider where the other does, within 1 m along the road and across it. [test:web/e2e/bunch-world.spec.ts] [#3098]
 10. A cheer for one rider, sent from their crew tile's menu, draws a thumbs-up over their head (a light disc, a dark thumb, flat, unlit, clear of the chevron); their tail light blinks at 2 Hz for 10 s in amber, neither danger's red nor any watt, steady under reduced motion; nothing about it glows. [multi:ride-session-cheer] [test:web/src/lib/world/ride-scene.test.ts] [#3116]
-11. A crew tile's menu mid-ride keeps the desk's menu (ADR-0087), placed clear of the corridor and of the tile it opened from; in the cave in either scheme. [#3943] [multi:ride-session-cheer-menu] [test:web/src/lib/context-menu.test.ts]
+11. A crew tile's menu mid-ride keeps the desk's menu (ADR-0087), placed clear of the corridor and of the tile it opened from; in the rider's scheme, either one. [#3943] [multi:ride-session-cheer-menu] [test:web/src/lib/context-menu.test.ts]
 12. A session's workout paints its next blocks on the road as ride-road-world 34–37 say, the bunch paced as the hub paces it and the words in your own target. [#3101] [test:web/src/lib/road/gates.test.ts]
 
 #### roadside-chalk
@@ -348,7 +348,7 @@ Capture: Designer coaching and Design Partner riding along in one crew's voice c
 Capture: the voice channel's free ride (`lib/ride/FreeRide.svelte`), world off.
 
 1. ride-free-road's items 2–9 hold if the channel's free ride shares the road ride's component; otherwise the follow-up issue design/ride-free-road-surface files owns them. [ride-free-road-surface]
-2. Cave covers the frame.
+2. The frame keeps the capture's scheme (G1).
 3. ⚑ and TV in slot 1's row (ride-free-road item 7) are owned by #3894: the channel's free ride has no flight recorder or TV yet. [#3894]
 
 #### ride-ramp
@@ -356,7 +356,7 @@ Capture: the voice channel's free ride (`lib/ride/FreeRide.svelte`), world off.
 Capture: `/ramp`, simulated trainer, 14 s in. Canon: ADR-0046 (a riding surface).
 
 1. Riding panel kit and one-home table hold: ride-workout-flat items 1–8. [ride-flat]
-2. Cave covers the frame.
+2. The frame keeps the capture's scheme (G1).
 
 #### ride-tv
 
@@ -377,7 +377,7 @@ Capture: world on, `/ride?w=openers` (no road: the flat TV), TV pressed, 1920 ×
 
 Capture: the crew session's Watch view (`/crew/<id>/s/<session>/watch`) while a second dev rider rides; desk and phone.
 
-1. Cave covers the frame (G1).
+1. The frame keeps the capture's scheme (G1).
 2. Only the followed rider's trail and dot glow (ADR-0072); nothing else in watt.
 3. At 375 nothing scrolls sideways.
 
@@ -392,7 +392,7 @@ Capture: phone, world on, `/ride?w=openers`. Target: v2-phone's third phone (“
 5. Controls: full-width rows of equal buttons ≥ 44 px tall; no label wraps; ⚑ visible without scrolling inside a panel. [ride-phone]
 6. No road, no world. [3663-world-is-your-ride]
 7. Floating navigation button covers no panel; the page scrolls down only. [ride-phone] [probe:overflowX]
-8. Cave covers the frame.
+8. The frame keeps the capture's scheme (G1).
 
 #### phone-ride-road
 

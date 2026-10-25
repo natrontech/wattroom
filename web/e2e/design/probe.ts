@@ -52,47 +52,64 @@ export function probe(corridor: Box) {
 			.map((n) => n.textContent)
 			.join('')
 			.trim();
-	const cave = document.querySelector('.cave');
-
-	// G1: the lightest surface under a 6 × 5 grid of points, the world excepted.
-	// A surface is a large box: a zone bar or a chip on it is not.
+	// G1: the lightest and the darkest surface under a 6 × 5 grid of points.
+	// A surface is a large box: a zone bar or a chip on it is not. A ride keeps
+	// the capture's scheme (#4160); TV mode and the HUD are the cave, dark in
+	// either. The world, a camera frame and a video are not surfaces: a
+	// canvas, a cave smaller than half the window, a video's black ground.
+	const area = innerWidth * innerHeight;
+	const notSurface = (el: Element) => {
+		if (el.closest('canvas, video, iframe')) return true;
+		const frame = el.closest('.cave')?.getBoundingClientRect();
+		return !!frame && frame.width * frame.height < 0.5 * area;
+	};
 	let maxL = 0;
+	let minL = 1;
 	for (const fx of [0.02, 0.2, 0.4, 0.6, 0.8, 0.98])
 		for (const fy of [0.02, 0.25, 0.5, 0.75, 0.98]) {
 			let el = document.elementFromPoint(fx * innerWidth, fy * innerHeight);
-			if (!el || el.closest('canvas')) continue;
+			if (!el || notSurface(el)) continue;
 			let bg: Rgba | null = null;
 			for (; el; el = el.parentElement) {
 				const r = el.getBoundingClientRect();
-				if (r.width * r.height < 0.05 * innerWidth * innerHeight) continue;
+				if (r.width * r.height < 0.05 * area) continue;
 				const c = rgba(getComputedStyle(el).backgroundColor);
 				if (c.a > 0.5) {
 					bg = c;
 					break;
 				}
 			}
-			maxL = Math.max(
-				maxL,
-				lightness(
-					bg ??
-						rgba(getComputedStyle(document.documentElement).backgroundColor),
-				),
+			if (bg && bg.r + bg.g + bg.b === 0) continue;
+			const l = lightness(
+				bg ?? rgba(getComputedStyle(document.body).backgroundColor),
 			);
+			maxL = Math.max(maxL, l);
+			minL = Math.min(minL, l);
 		}
 
-	// G2: what is in watt, and what glows. The token is read inside the cave,
-	// where it may differ from the desk's.
-	const swatch = document.createElement('span');
-	swatch.style.color = 'var(--color-watt)';
-	(cave ?? document.body).append(swatch);
-	const watt = rgba(getComputedStyle(swatch).color);
-	swatch.remove();
+	// G2: what is in watt, and what glows. The token is read twice, as the
+	// page paints it and as the cave does (TV mode, a camera frame), where it
+	// is the dark half even on a light page.
+	const watts = ['', 'cave'].map((className) => {
+		const swatch = document.createElement('span');
+		swatch.className = className;
+		swatch.style.color = 'var(--color-watt)';
+		document.body.append(swatch);
+		const watt = rgba(getComputedStyle(swatch).color);
+		swatch.remove();
+		return watt;
+	});
 	const isWatt = (color: string) => {
 		const c = rgba(color);
 		return (
 			c.a > 0.3 &&
-			Math.abs(c.r - watt.r) + Math.abs(c.g - watt.g) + Math.abs(c.b - watt.b) <
-				24
+			watts.some(
+				(watt) =>
+					Math.abs(c.r - watt.r) +
+						Math.abs(c.g - watt.g) +
+						Math.abs(c.b - watt.b) <
+					24,
+			)
 		);
 	};
 	const glowing = (cs: CSSStyleDeclaration) =>
@@ -365,7 +382,11 @@ export function probe(corridor: Box) {
 	const words = sizes.filter((s) => s.wordPx !== null);
 
 	return {
-		cave: { present: !!cave, maxSurfaceL: round(maxL) },
+		scheme: {
+			ride: !!document.querySelector('[data-ride]'),
+			minSurfaceL: round(minL),
+			maxSurfaceL: round(maxL),
+		},
 		overflowX: body
 			? body.scrollWidth - body.clientWidth
 			: root.scrollWidth - root.clientWidth,
