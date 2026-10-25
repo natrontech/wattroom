@@ -127,7 +127,7 @@
 	</div>
 	<Screen
 		name="crew"
-		alt="A WattRoom crew: the sidebar with its text and voice channels, and a text channel"
+		alt="A WattRoom crew: the sidebar with its chat and voice channels, and a chat channel"
 	/>
 </section>
 
