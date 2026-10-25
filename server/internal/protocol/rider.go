@@ -101,6 +101,10 @@ type Rider struct {
 	// See DeviceKind for why this is the client's word and why that is fine
 	// here when it would not be for the ping.
 	Device string `json:"device,omitempty"`
+	// Their socket has gone while LiveKit still carries their voice (#4090):
+	// the channel hears them, so they stay on the roster, with no live data
+	// until the socket redials.
+	LinkLost bool `json:"linkLost,omitempty"`
 }
 
 // A rider's standing in a crew (ADR-0058), as its membership row and a voice

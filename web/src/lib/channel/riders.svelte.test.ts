@@ -82,3 +82,39 @@ describe('a session on a road says where the bunch is, in slot 1 (#3639)', () =>
 		stop();
 	});
 });
+
+describe('a rider whose socket dropped while voice holds them (#4090)', () => {
+	it('stays on the roster, read as voice only with no live numbers', () => {
+		const live = $state<{ tick: ServerTick | null }>({ tick: null });
+		let roster!: ReturnType<typeof createRiders>;
+		const stop = $effect.root(() => {
+			roster = createRiders({
+				live,
+				av: { videoOf: {}, voice: {}, speaking: {}, stageSources: [] },
+				recording: { trace: [] } as never,
+				myId: () => 'me',
+				myName: () => 'Me',
+				myTarget: () => 0,
+				fallback: () => ({ ftp: 250, kg: 75, coach: false }),
+				running: () => false,
+				shared: () => undefined,
+				bias: () => 1,
+				segments: () => [],
+				workout: () => null,
+			});
+		});
+		live.tick = {
+			at: 1,
+			roster: [{ id: 'kim', name: 'Kim', linkLost: true }],
+			voice: ['kim'],
+		} as unknown as ServerTick;
+		flushSync();
+		expect(roster.riders[0]).toMatchObject({
+			id: 'kim',
+			inVoice: true,
+			linkLost: true,
+			stale: true,
+		});
+		stop();
+	});
+});

@@ -25,7 +25,7 @@ func (rm *channelState) join(c *client) {
 	// leave either, so the room hears nothing about the round trip.
 	if _, flapped := rm.departed[c.rider.ID]; flapped {
 		delete(rm.departed, c.rider.ID)
-		delete(rm.departedNames, c.rider.ID)
+		delete(rm.departedRiders, c.rider.ID)
 		return
 	}
 	now := rm.now()
@@ -46,14 +46,17 @@ func (rm *channelState) presentLocked(riderID string) bool {
 // from the tick, which is the only clock the room has.
 func (rm *channelState) sayDepartedLocked(now time.Time) {
 	for riderID, at := range rm.departed {
-		if now.Sub(at) < presenceGrace {
+		// LiveKit still has them (#4090): the socket is stalled, not the
+		// rider, who stays on the roster until voice lets go too.
+		_, inVoice := rm.voiceNow[riderID]
+		if inVoice || now.Sub(at) < presenceGrace {
 			continue
 		}
 		delete(rm.departed, riderID)
-		if name := rm.departedNames[riderID]; name != "" {
-			rm.events.add(presenceLine("left", name, now), now)
-			delete(rm.departedNames, riderID)
+		if rider, ok := rm.departedRiders[riderID]; ok && rider.Name != "" {
+			rm.events.add(presenceLine("left", rider.Name, now), now)
 		}
+		delete(rm.departedRiders, riderID)
 		if riderID == rm.session.coach && rm.session.open() {
 			rm.passSessionLocked(now)
 		}
@@ -101,7 +104,7 @@ func (rm *channelState) leave(c *client) {
 		// Not announced yet — nor out of the game: the tick does both once
 		// the grace window is out (sayDepartedLocked).
 		rm.departed[c.rider.ID] = rm.now()
-		rm.departedNames[c.rider.ID] = c.rider.Name
+		rm.departedRiders[c.rider.ID] = c.rider
 	}
 	metricRiders.Dec()
 }
