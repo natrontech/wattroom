@@ -32,9 +32,7 @@
 	const metering = $derived(micOn || micTesting);
 </script>
 
-<span class="eyebrow"
-	>{voiceMode === 'gate' ? 'your level & gate threshold' : 'your level'}</span
->
+<span class="eyebrow">{voiceMode === 'gate' ? 'level & gate' : 'level'}</span>
 <GateMeter
 	level={micLevel}
 	effective={gateNow}
@@ -43,23 +41,20 @@
 	onThreshold={voiceMode === 'gate' ? onGateThreshold : undefined}
 	class="mt-1.5"
 />
+<!-- One status line (#4170). SPEC doubles the gate under music; the mark
+     shows where it actually sits, and the line says why it moved. -->
 <p class="text-muted mt-1 text-xs leading-snug">
 	{#if !metering}
-		Join voice — or test your mic — to see your level here.
+		Join voice or test your mic to see your level.
 	{:else if voiceMode === 'ptt'}
-		{transmitting
-			? 'transmitting — the call hears you'
-			: 'closed until you hold Space to talk'}
-	{:else if transmitting}
-		<span class="text-ok">gate open</span> — the call hears you
+		{transmitting ? 'transmitting' : 'hold Space to talk'}
 	{:else}
-		gate closed — speak up, or drag the gate left
+		{#if transmitting}<span class="text-ok">gate open</span>{:else}gate closed{/if}
+		·
+		{gateNow !== gateThreshold
+			? 'held higher under music'
+			: transmitting
+				? 'the call hears you'
+				: 'speak up or drag the mark left'}
 	{/if}
 </p>
-{#if voiceMode === 'gate' && gateNow !== gateThreshold}
-	<!-- SPEC doubles the gate under music; the mark shows where it actually
-	     sits, or the panel would be lying. -->
-	<p class="text-muted-dim mt-0.5 text-xs leading-snug">
-		Music is playing — the gate is held at the mark, above where you set it.
-	</p>
-{/if}

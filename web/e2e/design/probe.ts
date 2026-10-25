@@ -186,12 +186,57 @@ export function probe(corridor: Box) {
 		?.getBoundingClientRect();
 	// The flat layout's panels in px (#3670): the gap between neighbours, and
 	// the slack under each one's last child, which is the empty band G3 caps.
+	// A row of panels (#4159) counts each one; a dock inside a dock does not.
 	const flatEl = document.querySelector<HTMLElement>('[data-surface=flat]');
 	const flatPanels = flatEl
-		? [...flatEl.querySelectorAll<HTMLElement>(':scope > [data-dock]')].filter(
-				shown,
+		? [...flatEl.querySelectorAll<HTMLElement>('[data-dock]')].filter(
+				(el) => shown(el) && !el.parentElement?.closest('[data-dock]'),
 			)
 		: [];
+	const boxes = flatPanels.map((el) => el.getBoundingClientRect());
+	// The gap to the nearest panel above that it overlaps (a column's
+	// neighbour), and to the nearest one on its left (a row's).
+	const nearest = (
+		i: number,
+		before: (q: DOMRect, p: DOMRect) => boolean,
+		gap: (q: DOMRect, p: DOMRect) => number,
+	) => {
+		const ds = boxes
+			.filter((q, j) => j !== i && before(q, boxes[i]))
+			.map((q) => gap(q, boxes[i]));
+		return ds.length ? round(Math.min(...ds)) : null;
+	};
+	const overlapX = (q: DOMRect, p: DOMRect) =>
+		q.left < p.right && q.right > p.left;
+	const overlapY = (q: DOMRect, p: DOMRect) =>
+		q.top < p.bottom && q.bottom > p.top;
+	// The widest stripe down a panel that nothing drawn reaches into (#4159):
+	// G3's band, sideways. What is drawn is a box with its own text, an empty
+	// box, or a picture; a container spanning the row would hide the stripe,
+	// and so would a tap target laid over the whole panel (ADR-0071's page turn).
+	const drawn = (c: Element) =>
+		!c.parentElement?.closest('svg') &&
+		(c.matches('svg, img, video, canvas, input') ||
+			!!ownText(c) ||
+			![...c.children].some(shown));
+	const bandX = (el: Element, r: DOMRect) => {
+		const covers = (b: DOMRect) =>
+			b.width >= 0.9 * r.width && b.height >= 0.9 * r.height;
+		const runs = [...el.querySelectorAll('*')]
+			.filter((c) => shown(c) && drawn(c))
+			.filter(
+				(c) => !(c.matches('button') && covers(c.getBoundingClientRect())),
+			)
+			.map((c) => c.getBoundingClientRect())
+			.sort((a, b) => a.left - b.left);
+		let reach = r.left;
+		let band = 0;
+		for (const c of runs) {
+			band = Math.max(band, c.left - reach);
+			reach = Math.max(reach, c.right);
+		}
+		return round(Math.max(band, r.right - reach));
+	};
 	const flat = flatEl
 		? {
 				panels: flatPanels.map((el) => {
@@ -205,18 +250,31 @@ export function probe(corridor: Box) {
 					return {
 						dock: el.dataset.dock,
 						top: round(r.top),
+						left: round(r.left),
+						width: round(r.width),
 						height: round(r.height),
 						slack: round(Math.max(0, r.bottom - last)),
+						bandX: bandX(el, r),
 					};
 				}),
-				gaps: flatPanels
-					.slice(1)
-					.map((el, i) =>
-						round(
-							el.getBoundingClientRect().top -
-								flatPanels[i].getBoundingClientRect().bottom,
+				gaps: boxes
+					.map((_, i) =>
+						nearest(
+							i,
+							(q, p) => overlapX(q, p) && q.bottom <= p.top + 1,
+							(q, p) => p.top - q.bottom,
 						),
-					),
+					)
+					.filter((g) => g !== null),
+				gapsX: boxes
+					.map((_, i) =>
+						nearest(
+							i,
+							(q, p) => overlapY(q, p) && q.right <= p.left + 1,
+							(q, p) => p.left - q.right,
+						),
+					)
+					.filter((g) => g !== null),
 			}
 		: null;
 	const panels = surface
@@ -338,6 +396,17 @@ export function probe(corridor: Box) {
 		glows,
 		panels,
 		flat,
+		// How far your ghost's name runs past the Skyline's edges (#3245): 0 inside.
+		ghostLabelOverflow: (() => {
+			const label = document.querySelector(
+				'[data-testid=skyline-ghost] [data-testid=skyline-ghost-label]',
+			);
+			const strip = document.querySelector('[data-testid=skyline]');
+			if (!label || !strip) return null;
+			const l = label.getBoundingClientRect();
+			const s = strip.getBoundingClientRect();
+			return round(Math.max(0, s.left - l.left, l.right - s.right));
+		})(),
 		// How far the computer's page row runs past its panel's padding (#4042).
 		pageRowOverflow: (() => {
 			const row = document.querySelector('[data-testid=computer-page-row]');

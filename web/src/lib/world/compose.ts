@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createBunch, type Car } from './bunch';
+import { createAlongside } from './alongside';
 import { MOST_ABREAST } from './lanes';
 import { CHEER_S, cheerLook } from './cheer';
 import { makeChalk, type ChalkLayer } from './chalk';
@@ -11,10 +12,18 @@ import { makeGates, type GatesLayer } from './gates';
 import type { PaintedGate } from '$lib/road/gates';
 import { makeGameRoad, type GameRoad } from './game-road';
 import { roadsideSound } from '$lib/roadside';
-import { makeCrew, RING_BAND_M, type Crew, type Pedalling } from './crew';
+import {
+	loadoutOf,
+	makeCrew,
+	RING_BAND_M,
+	type Crew,
+	type Pedalling,
+} from './crew';
+import { makeGhosts, MOST_GHOSTS, type GhostAt, type Ghosts } from './ghosts';
 import { bunchLooks, type Loadout } from './loadout';
 import { makeTags, type Tags } from './tags';
 import type { BunchView } from '$lib/channel/bunch-view';
+import type { RoadMate } from '$lib/channel/road-mates';
 import { DEFAULT_DARK_ID, themeById } from '$lib/themes';
 import { disposeTree } from './dispose';
 import { CAMERA } from './camera';
@@ -79,6 +88,11 @@ export type MountOptions = {
 	 * bunch places every joined rider, you among them, and the team car.
 	 */
 	bunch?: () => BunchView | null;
+	/**
+	 * Channel-mates free-riding this road (#3117), a free ride's world only:
+	 * each at their own metre, never in a bunch and never ranked.
+	 */
+	mates?: () => readonly RoadMate[];
 	/** The session laps the road (#3623): no finish arch on it. */
 	loop?: boolean;
 	/** Your rider id: which of the bunch is you. */
@@ -105,6 +119,11 @@ export type MountOptions = {
 	 * arch over it, or stands on the arch under reduced motion (ADR-0079).
 	 */
 	countIn?: () => { left: number; total: number } | null;
+	/**
+	 * Your ghosts on this road, a solo ride's world only (#3245, ADR-0068):
+	 * where each is now. Each rides see-through in your kit, beside you.
+	 */
+	ghosts?: () => RideMetre[];
 	/** A workout's next blocks on this road (#3101), in the ride's metres: painted where each starts. */
 	gates?: () => readonly PaintedGate[];
 };
@@ -119,7 +138,10 @@ const SUBSTEP = 0.1; // sim seconds per integration step, so 16× does not tunne
 
 /** The scene for `opts`; `dom` is what the orbit view's controls listen on, when there is one. */
 export function compose(opts: MountOptions, dom: HTMLElement | null) {
-	const { route, world } = opts;
+	const { world } = opts;
+	// A session that laps the road rides it round (#3623): the bunch, its chalk
+	// and its gates count laps unrolled, and past the end each is on the next lap.
+	const route = opts.loop ? { ...opts.route, loop: true } : opts.route;
 	let mode: CameraMode = opts.camera ?? 'chase';
 	let speedup = opts.speedup ?? 1;
 	const env: Env = { difficulty: 0.5 };
@@ -148,6 +170,8 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	const bunch = opts.bunch ? createBunch() : null;
 	// The bunch's riders by id, so a figure keeps its legs from frame to frame.
 	const crewmates = new Map<string, SimRider>();
+	// Channel-mates on a free ride's road, each on their own metre (#3117).
+	const alongside = opts.mates ? createAlongside() : null;
 	// What each of them wears, spread over the bunch in its join order (#3791); worked out again only when that order changes.
 	let looks = new Map<string, Loadout>();
 	let lookedAt = '';
@@ -186,6 +210,18 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	let crew: Crew | null = null;
 	let game: GameRoad | null = null;
 	let tags: Tags | null = null;
+	let ghosts: Ghosts | null = null;
+	// Each ghost eases onto its metre as your figure does (#3663).
+	const haunts = Array.from({ length: MOST_GHOSTS }, () => ({
+		at: { d: 0, at: 0, v: 0 },
+		follow: followMetre(),
+	}));
+	function ghostsNow(real: number): GhostAt[] {
+		return (opts.ghosts?.() ?? []).slice(0, MOST_GHOSTS).map((g, i) => {
+			haunts[i].follow(haunts[i].at, g, real);
+			return haunts[i].at;
+		});
+	}
 	let progress: number | null = moment ? moment.p : null;
 	let controls: OrbitControls | null = null;
 
@@ -216,17 +252,23 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 			game?.group,
 			tags?.group,
 			chalk?.group,
+			ghosts?.group,
 			gates?.group,
 		]) {
 			if (!old) continue;
 			scene.remove(old);
 			disposeTree(old);
 		}
-		stage = buildStage(route, world, style, sight, stream, !opts.loop);
+		// The road itself is drawn as it is, its ends where they lie.
+		stage = buildStage(opts.route, world, style, sight, stream, !opts.loop);
 		crew = makeCrew(style, neon);
 		game = makeGameRoad(route, world, style);
 		tags = makeTags(style);
 		scene.add(stage.group, crew.group, game.group, tags.group);
+		if (opts.ghosts) {
+			ghosts = makeGhosts(style, loadoutOf(you), opts.ftp);
+			scene.add(ghosts.group);
+		}
 		if (bunch) {
 			chalk = makeChalk(route, style);
 			scene.add(chalk.group);
@@ -302,9 +344,11 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		const view = opts.bunch?.();
 		if (bunch && view) ride(view, moment ? 0 : wall);
 		else if (opts.metre) follow(you, opts.metre(), real);
+		if (alongside) riders = alongside.step(you, opts.mates!(), real);
 		gates?.update(opts.gates!(), you.d);
 		const me = crew.update(route, riders, pedal, dt, real, mode === 'orbit');
 		crew.drive(route, car, mode === 'orbit');
+		ghosts?.update(route, ghostsNow(real), dt, mode === 'orbit');
 		if (controls) controls.update();
 		else
 			rig.update(
@@ -531,6 +575,8 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 				clock: t,
 				d: you.d,
 				figure: { bboxH, kitCollisions: crew?.kitCollisions() ?? 0 },
+				/** Ghosts drawn, all in one instanced draw (#3245). */
+				ghosts: ghosts?.shown ?? 0,
 				ring: { bandM: RING_BAND_M },
 				/** The blocks painted ahead (#3101): their words and metres ahead of you. */
 				gates: (opts.gates?.() ?? []).map((g) => ({

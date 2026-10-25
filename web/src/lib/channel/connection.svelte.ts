@@ -1,5 +1,7 @@
+import { untrack } from 'svelte';
 import { placeOnRoad } from '$lib/channel/road-place';
 import { roadOf } from '$lib/workout/road-workout';
+import { roadHash } from '$lib/road/road';
 import { rememberRodeIn } from '$lib/crew-lounge';
 import { account } from '$lib/account.svelte';
 import { createProfileStore } from '$lib/profile.svelte';
@@ -106,7 +108,8 @@ let statusShown = $state(0);
 type ChannelAv = ReturnType<
 	typeof import('$lib/channel/av.svelte').createChannelAv
 >;
-let createChannelAv: ((address: PlaceAddress) => ChannelAv) | null = null;
+let createChannelAv:
+	typeof import('$lib/channel/av.svelte').createChannelAv | null = null;
 export async function prepareChannelAv(): Promise<void> {
 	if (createChannelAv) return;
 	({ createChannelAv } = await import('$lib/channel/av.svelte'));
@@ -119,7 +122,11 @@ function connect(address: PlaceAddress): Connection {
 		);
 	}
 	const live = createChannelLive(address);
-	const av = createChannelAv(address);
+	// One rider, one voice (ADR-0089): the hub says which screen carries it.
+	const av = createChannelAv(address, {
+		claim: (take) => live.claimVoice(take),
+		release: () => live.releaseVoice(),
+	});
 	// Assigned inside the root below, which runs synchronously.
 	let profile!: ReturnType<typeof createProfileStore>;
 	let recording!: ReturnType<typeof createRecording>;
@@ -228,6 +235,20 @@ function connect(address: PlaceAddress): Connection {
 				void freeRide.end().then(sayFreeRide);
 			wasJoined = now;
 		});
+		// A free ride on a road says which road (#3117): channel-mates on the
+		// same one draw each other. The key is read off the road once a road.
+		const freeRoad = $derived(
+			freeRide.armed && !joined() ? freeRide.road?.profile : undefined,
+		);
+		$effect(() => {
+			const road = freeRoad;
+			let gone = false;
+			if (road) void roadHash(road).then((key) => gone || live.rideRoad(key));
+			else live.rideRoad('');
+			return () => {
+				gone = true;
+			};
+		});
 
 		// One sensor, one screen (#610). The claim belongs to the CONNECTION
 		// for the same reason the trainer does: it has to survive the channel's
@@ -276,6 +297,17 @@ function connect(address: PlaceAddress): Connection {
 			awayEcho = step.echo;
 			if (!step.apply) return;
 			void av.setAway(server);
+		});
+
+		// Another of the rider's screens took the voice (ADR-0089): this one
+		// leaves the call, so nothing doubles and nothing echoes, and stays a
+		// controller until it takes the voice back. A join in flight is the
+		// seat's to answer, so only a call already up stands down.
+		$effect(() => {
+			const elsewhere = live.pairing.elsewhere?.voice;
+			if (!elsewhere) return;
+			if (av.status === 'live' || av.status === 'reconnecting')
+				untrack(() => av.leave());
 		});
 
 		// Everything the connection says out loud (connection-cues.svelte.ts).

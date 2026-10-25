@@ -7,8 +7,10 @@ export function disposeTree(root: THREE.Object3D): void {
 	const textures = new Set<THREE.Texture>();
 	const materials = new Set<THREE.Material>();
 	root.traverse((o) => {
-		if (o instanceof THREE.InstancedMesh || o instanceof THREE.BatchedMesh)
-			o.dispose();
+		// By its flag: a ghost is a skinned figure drawn instanced (ghosts.ts).
+		if ((o as THREE.InstancedMesh).isInstancedMesh)
+			(o as THREE.InstancedMesh).dispose();
+		if (o instanceof THREE.BatchedMesh) o.dispose();
 		if (o instanceof THREE.SkinnedMesh) o.skeleton.dispose();
 		if (o instanceof THREE.Mesh || o instanceof THREE.Points) {
 			o.geometry.dispose();

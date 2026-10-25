@@ -300,9 +300,18 @@ describe('the ride’s scene budget, high tier (#3083)', () => {
 	beforeAll(() => {
 		route = toRoute(syntheticPoints());
 		world = generate(route);
-		// Every chunk within reach, built at once: the ground as a ride holds it once the worker is done.
+		// Every chunk within reach, built at once: the ground as a ride holds it
+		// once the worker is done. Three ghosts ride just ahead, the most a
+		// ride draws (#3245).
 		w = compose(
-			{ route, world, style, ftp: 250, grids: pageGrids(world) },
+			{
+				route,
+				world,
+				style,
+				ftp: 250,
+				grids: pageGrids(world),
+				ghosts: () => [12, 25, 40].map((m) => ({ m, mps: 8 })),
+			},
 			null,
 		);
 		w.camera.aspect = 16 / 9;
@@ -403,6 +412,15 @@ describe('the ride’s scene budget, high tier (#3083)', () => {
 	it('draws the riders it counts', () => {
 		expect(worst('figures.triangles')).toBeGreaterThan(0);
 		expect(frames[0].lines.uploads).toBeGreaterThan(0);
+	});
+
+	it('draws three ghosts in one draw (#3245)', () => {
+		expect(w.probe().ghosts).toBe(3);
+		let ghosts = 0;
+		w.scene.traverse((o) => {
+			if (o.userData.kind === 'ghost') ghosts++;
+		});
+		expect(ghosts).toBe(1);
 	});
 
 	it('keeps its unbatched exceptions real', () => {

@@ -22,6 +22,10 @@ func (h *Hub) handleMessage(c *client, rm *channelState, channel string, rider p
 		}
 		rm.announcePairingFirst(c)
 	}
+	if msg.Voice != nil {
+		// After the sensors: a message carrying both names its tab once.
+		h.voiceClaim(c, rm, rider, *msg.Voice)
+	}
 	if msg.Poke != nil {
 		h.poke(c, rm, rider, *msg.Poke)
 	}
@@ -47,6 +51,9 @@ func (h *Hub) handleMessage(c *client, rm *channelState, channel string, rider p
 	}
 	if msg.Drive != nil {
 		rm.setDrive(c, *msg.Drive)
+	}
+	if msg.FreeRoad != nil {
+		rm.setFreeRoad(c, msg.FreeRoad.Key)
 	}
 	if msg.Away != nil {
 		// Unlimited like a sensor claim, and for the same reason: it is

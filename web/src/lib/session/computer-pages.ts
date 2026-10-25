@@ -2,7 +2,7 @@ import { hrZoneOf } from '$lib/components/zones';
 import { wkg } from '$lib/format';
 import type { ClimbView } from '$lib/ride/climb-view';
 import type { MapView } from '$lib/ride/map-view';
-import { formatSplit } from '$lib/road/ghost';
+import { formatSplit, gapWords } from '$lib/road/ghost';
 import { ordinal, type RaceReadout } from '$lib/race/race-view';
 import { isTyping } from '$lib/keys';
 import type { LiveStats } from '$lib/ride/live-stats.svelte';
@@ -287,11 +287,12 @@ export function fieldsFor(page: ComputerPage, ctx: ComputerContext): Field[] {
 		});
 	// After the sensors and the gear, as the one-home table orders RIDE.
 	if (ctx.split)
-		// A ghost is a memory, not live data: no watt, no glow (ADR-0068).
+		// A ghost is a memory, not live data: no watt, no glow (ADR-0068). The
+		// gap reads in words, whole seconds at the same metre (#3246).
 		fields.push({
 			key: 'split',
 			label: ctx.split.best ? 'vs best' : 'vs last',
-			value: formatSplit(ctx.split.seconds),
+			...gapWords(ctx.split.seconds),
 		});
 	return fields;
 }

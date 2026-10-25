@@ -363,13 +363,23 @@ surface(
 		const desk = await s.open(DESK, { world: false });
 		const crew = await designCrew(desk.page);
 		await toTraining(desk.page, crew);
+		// The desk is in voice too, so the phone is a controller (ADR-0089).
+		await desk.page.getByRole('button', { name: 'Join voice' }).click();
+		await desk.page
+			.getByRole('button', { name: 'microphone' })
+			.waitFor({ timeout: 20_000 });
 		const phone = await s.open(PHONE, { world: false });
 		await phone.page.goto(`${voicePath(crew)}/training`);
 		const offer = phone.page.getByRole('button', {
 			name: 'Use this phone as your remote',
 		});
 		await offer.waitFor({ timeout: 20_000 });
+		const moveVoice = phone.page
+			.getByTestId('controller')
+			.getByRole('button', { name: 'Use this device for voice' });
+		await moveVoice.waitFor({ timeout: 20_000 });
 		const box = await offer.boundingBox();
+		const moveBox = await moveVoice.boundingBox();
 		await s.shot(phone, {
 			name: 'ride-phone-remote-offer',
 			extra: {
@@ -379,8 +389,40 @@ surface(
 					parseFloat(getComputedStyle(b).fontSize),
 				),
 				offerViewport: phone.page.viewportSize()?.width ?? 0,
+				moveVoiceHeight: Math.round(moveBox?.height ?? 0),
+				moveVoiceTextPx: await moveVoice.evaluate((b) =>
+					parseFloat(getComputedStyle(b).fontSize),
+				),
+				controllerLine:
+					(await phone.page
+						.getByTestId('controller')
+						.locator('p')
+						.first()
+						.textContent()) ?? null,
+				// No call on a controller (ADR-0089): the mic and camera
+				// controls exist only in voice, drawer or not.
+				controllerCallControls: await phone.page
+					.locator('[aria-label="microphone"], [aria-label="camera"]')
+					.count(),
 			},
 		});
+		// The drawer's voice row says the same (YouPanel).
+		await phone.page.getByRole('button', { name: 'open navigation' }).click();
+		await phone.page
+			.getByRole('navigation', { name: 'crews and channels' })
+			.getByText(/Your voice is on your/)
+			.waitFor({ timeout: 10_000 });
+		// The drawer slides in; shoot it once it has landed.
+		await phone.page.waitForTimeout(1_000);
+		await s.shot(phone, {
+			name: 'ride-phone-remote-drawer',
+			extra: {
+				controllerCallControls: await phone.page
+					.locator('[aria-label="microphone"], [aria-label="camera"]')
+					.count(),
+			},
+		});
+		await phone.page.keyboard.press('Escape');
 		await offer.click();
 		await phone.page.getByTestId('phone-remote').waitFor();
 		// The desk rides SIM with gears on (dev login); one Harder tap makes
@@ -567,12 +609,22 @@ surface(
 	{ once: true },
 );
 
+/** No ghost on this ride: the free road's own surfaces stay ride-free-road-ghost's baseline (#3245). */
+const withoutGhost = (page: Page) =>
+	page.route('**/api/routes/*/ghost', (r) =>
+		r.fulfill({
+			status: 404,
+			json: { error: 'not_found', message: 'No ghost in this capture.' },
+		}),
+	);
+
 surface(
 	'ride-free-road',
 	async (s) => {
 		// World off, with the OS set to light: the ride keeps it (G1, #4160).
 		const o = await s.open({ ...DESK, colorScheme: 'light' }, { world: false });
 		const road = await fixtureRoad(o.page, 'hairpin');
+		await withoutGhost(o.page);
 		// Before the first stroke the setup is a desk surface; the ride starts
 		// with the first stroke, not with the page (G1, #3667).
 		await o.page.goto(`/ride?road=${road}`);
@@ -594,6 +646,7 @@ surface(
 		// The world on: a free ride on a road draws it in slot 2 (#3669).
 		const o = await s.open(DESK, { world: true });
 		const road = await fixtureRoad(o.page, 'hairpin');
+		await withoutGhost(o.page);
 		await ride(o.page, `/ride?road=${road}`);
 		await assertRiding(o.page, true);
 		await s.shot(o);
@@ -601,9 +654,40 @@ surface(
 	{ once: true },
 );
 
-test.fixme('ride-free-road-ghost', () => {
-	// Added by the ghost issue (#3245), with its seeded effort.
-});
+surface(
+	'ride-free-road-ghost',
+	async (s) => {
+		// Your ghost beside you (#3245). The designer's seeded timed ride up the
+		// hairpin road's approach (design-seed's timedRide) rides behind the
+		// chase camera by the shot, so the earlier effort here is a synthetic
+		// line a little faster than the simulated rider: in frame, just ahead.
+		const o = await s.open(DESK, { world: true });
+		const road = await fixtureRoad(o.page, 'hairpin');
+		await o.page.route('**/api/routes/*/ghost', (r) =>
+			r.fulfill({
+				json: {
+					best: true,
+					startedAt: new Date(Date.now() - 13 * 86_400_000).toISOString(),
+					seconds: 600,
+					metres: Array.from({ length: 601 }, (_, i) => i * 4.2),
+				},
+			}),
+		);
+		await ride(o.page, `/ride?road=${road}`);
+		await assertRiding(o.page, true);
+		await o.page.getByTestId('skyline-ghost').waitFor({ timeout: 15_000 });
+		await s.shot(o);
+		// The RIDE page with a ghost: vs best, in words (#3246, the one-home table).
+		const computer = o.page.getByTestId('bike-computer').first();
+		if ((await computer.getAttribute('data-page')) !== 'ride')
+			await computer
+				.getByRole('button', { name: /(previous|next) page, RIDE/ })
+				.click();
+		await computer.locator('[data-field=split]').waitFor({ timeout: 15_000 });
+		await s.shot(o, { name: 'ride-free-road-ghost-ride' });
+	},
+	{ once: true },
+);
 
 surface(
 	'ride-tv',
@@ -1434,51 +1518,6 @@ surface('settings-this-computer', async (s) => {
 	});
 });
 
-surface('sound-dialog', async (s) => {
-	// The in-channel Sound dialog, opened without a call (its button needs the
-	// channel's av store, not LiveKit), and /settings/voice beside it, which
-	// draws the same faders at desk size.
-	const o = await s.open(DESK);
-	const crew = await designCrew(o.page);
-	await o.page.goto(voicePath(crew));
-	await o.page
-		.getByRole('button', { name: /^sound — the mix/ })
-		.first()
-		.click({ timeout: 15_000 });
-	await o.page.getByRole('dialog', { name: /^Sound/ }).waitFor();
-	await o.page.waitForTimeout(500);
-	const dialog = o.page.getByRole('dialog', { name: /^Sound/ });
-	// The dialog's own measurements: the page-wide probe cannot attribute them.
-	const dialogTargets = async () => ({
-		dialogTargets: await dialog.evaluate((el) => {
-			const high = (e: Element) =>
-				Math.round(e.getBoundingClientRect().height * 10) / 10;
-			return {
-				sliders: [...el.querySelectorAll('input[type=range]')].map(high),
-				done: high(
-					[...el.querySelectorAll('button')].find(
-						(b) => b.textContent?.trim() === 'Done',
-					)!,
-				),
-				selects: [...el.querySelectorAll('[role=combobox]')].map((e) => {
-					const r = e.getBoundingClientRect();
-					return { x: Math.round(r.x), width: Math.round(r.width) };
-				}),
-				scrollHeight: el.scrollHeight,
-				clientHeight: el.clientHeight,
-			};
-		}),
-	});
-	await s.shot(o, { name: 'sound-dialog', extra: await dialogTargets() });
-	await dialog.evaluate((el) => el.scrollTo(0, el.scrollHeight));
-	await o.page.waitForTimeout(300);
-	await s.shot(o, {
-		name: 'sound-dialog-bottom',
-		extra: await dialogTargets(),
-	});
-	await page(s, o, '/settings/voice', { name: 'sound-dialog-settings-voice' });
-});
-
 alone(() => {
 	surface('landing', async (s) => {
 		// Signed out, as a stranger meets it: the landing on the desk and a phone,
@@ -1785,13 +1824,18 @@ async function queueDeck(page: Page, tracks: [string, string][]) {
 	return fold;
 }
 
-/** Designer coaching, Design Partner riding along, a session started. */
+/**
+ * Designer coaching, Design Partner riding along, a session started.
+ * `prepare`: the coach's context before its first page of the crew.
+ */
 async function session(
 	s: Shoot,
 	pick: Parameters<typeof startSession>[1],
 	world: boolean,
+	prepare?: (coach: Opened) => Promise<void>,
 ) {
 	const coach = await s.open(DESK, { world });
+	await prepare?.(coach);
 	const crew = await designCrew(coach.page);
 	const rider = await s.open(DESK, { as: 'Design Partner', world });
 	await toTraining(coach.page, crew);
@@ -1845,6 +1889,12 @@ surface(
 			// multi:ride-session-deck-playlists — the queue saved, and that
 			// playlist open in the sheet.
 			await s.shot(coach);
+			// multi:ride-session-flat-wide — the same frame in a wide desk
+			// window, where the panels had stretched across it (#4159).
+			await coach.page.setViewportSize({ width: 2000, height: 1150 });
+			await coach.page.waitForTimeout(500);
+			await s.shot(coach, { name: 'ride-session-flat-wide' });
+			await coach.page.setViewportSize(DESK.viewport!);
 			await fold.click();
 			await s.shot(coach, { name: 'ride-session-deck' });
 			await coach.page
@@ -1934,6 +1984,115 @@ surface(
 		});
 	},
 	{ also: ['ride-watch', 'closing-card-session'] },
+);
+
+/**
+ * Five riders this device has set away from 100 %, on top of the shoot's
+ * muted mix: the Sound sheet lists three and folds two (#4170).
+ */
+const MOVED_RIDERS = () => {
+	const mix = JSON.parse(localStorage.getItem('wattroom.mixer.v1') ?? '{}');
+	localStorage.setItem(
+		'wattroom.mixer.v1',
+		JSON.stringify({
+			...mix,
+			riders: { a: 0.75, b: 0.74, c: 0.69, d: 0.46, e: 1.3 },
+			names: { a: 'Ana', b: 'Ben', c: 'Cleo', d: 'Dino', e: 'Eva' },
+		}),
+	);
+};
+
+/** The Sound sheet's own measurements: the page-wide probe cannot attribute them. */
+async function soundSheet(page: Page) {
+	await page
+		.getByRole('button', { name: /^sound — the mix/ })
+		.first()
+		.click({ timeout: 15_000 });
+	const dialog = page.getByRole('dialog', { name: /^Sound/ });
+	await dialog.waitFor();
+	await page.waitForTimeout(500);
+	return async () => ({
+		dialogTargets: await dialog.evaluate((el) => {
+			const high = (e: Element) =>
+				Math.round(e.getBoundingClientRect().height * 10) / 10;
+			const r = el.getBoundingClientRect();
+			// The bike computer's head on a ride: the sheet's top clears it.
+			const head = document
+				.querySelector('[data-testid=computer-head]')
+				?.getBoundingClientRect();
+			return {
+				box: {
+					left: r.left,
+					top: r.top,
+					bottom: innerHeight - r.bottom,
+					width: r.width,
+					height: r.height,
+				},
+				headBottom: head ? Math.round(head.bottom) : null,
+				sliders: [...el.querySelectorAll('input[type=range]')].map(high),
+				done: high(
+					[...el.querySelectorAll('button')].find(
+						(b) => b.textContent?.trim() === 'Done',
+					)!,
+				),
+				selects: [...el.querySelectorAll('[role=combobox]')].map((e) => {
+					const s = e.getBoundingClientRect();
+					return { x: Math.round(s.x), width: Math.round(s.width) };
+				}),
+				scrollHeight: el.scrollHeight,
+				clientHeight: el.clientHeight,
+			};
+		}),
+	});
+}
+
+surface(
+	'sound-dialog',
+	async (s) => {
+		// The Sound sheet as a rider opens it mid-ride (#4170): over a flat crew
+		// session, at 1440 × 900 and at 2000 × 1150; then a phone's, from a voice
+		// channel; then /settings/voice, which draws the same faders at desk size.
+		const { coach, crew } = await session(
+			s,
+			{ workout: 'Recovery Spin' },
+			false,
+			async (o) => {
+				await o.ctx.addInitScript(MOVED_RIDERS);
+			},
+		);
+		try {
+			await assertRiding(coach.page);
+			const measure = await soundSheet(coach.page);
+			await s.shot(coach, { name: 'sound-dialog', extra: await measure() });
+			await coach.page.setViewportSize({ width: 2000, height: 1150 });
+			await coach.page.waitForTimeout(800);
+			await s.shot(coach, {
+				name: 'sound-dialog-wide',
+				extra: await measure(),
+			});
+			await coach.page.keyboard.press('Escape');
+		} finally {
+			await endSession(coach.page);
+		}
+		for (const [device, name] of variants([
+			[PHONE, 'phone-sound-dialog'],
+		] as const)) {
+			const phone = await s.open(device);
+			await phone.ctx.addInitScript(MOVED_RIDERS);
+			await phone.page.goto(voicePath(crew));
+			await phone.page
+				.getByRole('button', { name: 'open navigation' })
+				.first()
+				.click({ timeout: 15_000 });
+			const measure = await soundSheet(phone.page);
+			await s.shot(phone, { name, extra: await measure() });
+		}
+		const desk = await s.open(DESK);
+		await page(s, desk, '/settings/voice', {
+			name: 'sound-dialog-settings-voice',
+		});
+	},
+	{ also: ['phone-sound-dialog'] },
 );
 
 surface(

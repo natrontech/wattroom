@@ -71,6 +71,15 @@ export interface SessionHost {
 	tryOpenMic(): Promise<void>;
 	/** Who is in voice and whether their mic is open (#151). */
 	setVoice(id: string, state: 'live' | 'muted' | null): void;
+	/** Which of the rider's screens carries their voice (ADR-0089). */
+	seat?: VoiceSeatHost;
+}
+
+/** The hub's one-voice-per-rider claim, as the join needs it (ADR-0089). */
+export interface VoiceSeatHost {
+	/** Whether this screen may join; `take` moves the voice here. */
+	claim(take: boolean): Promise<boolean>;
+	release(): void;
 }
 
 export type Session = ReturnType<typeof createSession>;
@@ -91,6 +100,7 @@ export function createSession(host: SessionHost) {
 		claimantOf,
 		tryOpenMic,
 		setVoice,
+		seat,
 	} = host;
 
 	/**
@@ -105,10 +115,15 @@ export function createSession(host: SessionHost) {
 	 * joined to listen could not hear it. They land on the loudspeaker, and
 	 * the mic button is the way into voice — which is also the only way back
 	 * off the earpiece.
+	 *
+	 * A rider is one voice (ADR-0089): while another of their screens carries
+	 * it, this one stays out of the call, a controller, unless `take` moves
+	 * the voice here.
 	 */
 	async function join({
 		mic: wantMic = !device.coarse,
-	}: { mic?: boolean } = {}) {
+		take = false,
+	}: { mic?: boolean; take?: boolean } = {}) {
 		// Double-click or an impatient rail tap must not build a second
 		// participant with the same identity (audit #219) — nor race the
 		// SDK's own retry while it is reconnecting (#234).
@@ -121,6 +136,12 @@ export function createSession(host: SessionHost) {
 		void conn.liveKitRoom?.disconnect();
 		av.status = 'connecting';
 		av.error = null;
+		if (seat && !(await seat.claim(take))) {
+			if (av.status === 'connecting') av.status = 'off';
+			return;
+		}
+		// A leave while the hub answered.
+		if (av.status !== 'connecting') return;
 		// A fault from a previous call, or from a mic test that died, is not
 		// this join's — it surfaced as "your microphone stopped" on a
 		// listen-only join that never opened one (#824).
@@ -239,6 +260,7 @@ export function createSession(host: SessionHost) {
 	function leave() {
 		// Hanging up is the rider saying so: leaving and then reloading
 		// must not drag them back in (#480).
+		seat?.release();
 		note.stop();
 		note.clear();
 		// Same for leaving: every local capture goes back to the machine.

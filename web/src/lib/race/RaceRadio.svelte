@@ -26,10 +26,10 @@
 	<p
 		data-testid="race-radio"
 		role="status"
-		class="flex flex-wrap items-baseline gap-x-3 pt-2 text-2xl"
+		class="flex flex-wrap items-baseline gap-x-3 pt-2"
 	>
-		<!-- A word on a riding surface: SPEC's 24 px, never the 10 px eyebrow. -->
-		<span class="text-muted tracking-[0.2em] uppercase">Team-car radio</span>
-		<span class="text-ink">{call.text}</span>
+		<!-- Slot 1's one label style, then the phrase at SPEC's word size (TARGETS ride-race 4). -->
+		<span class="ride-label">Team-car radio</span>
+		<span class="text-ink ride-word">{call.text}</span>
 	</p>
 {/if}

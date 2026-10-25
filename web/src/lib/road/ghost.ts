@@ -39,3 +39,41 @@ export function formatSplit(split: number): string {
 	const sign = s === 0 ? '' : split < 0 ? '−' : '+';
 	return `${sign}${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
+
+/**
+ * The split in words (#3246): "12 s ahead", "8 s behind", "1:15 behind" from
+ * a minute, "level" between. A rider three metres away reads a word faster
+ * than a sign, and a colour alone fails WCAG 1.4.1.
+ */
+export function gapWords(split: number): { value: string; unit: string } {
+	const s = Math.round(Math.abs(split));
+	if (s === 0) return { value: 'level', unit: '' };
+	const side = split < 0 ? 'ahead' : 'behind';
+	return s < 60
+		? { value: `${s}`, unit: `s ${side}` }
+		: {
+				value: `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`,
+				unit: side,
+			};
+}
+
+/**
+ * Where the ghost was `seconds` into its ride, between its samples. Null
+ * once it has finished: a ghost leaves at its stretch's end (#3245).
+ */
+export function ghostMetreAt(metres: number[], seconds: number): number | null {
+	if (seconds < 0 || seconds > metres.length - 1) return null;
+	const i = Math.floor(seconds);
+	const next = metres[Math.min(i + 1, metres.length - 1)];
+	return metres[i] + (next - metres[i]) * (seconds - i);
+}
+
+/** "Tuesday-you, 12 Aug": the ride your ghost is, by its weekday and date (#3615). */
+export function ghostLabel(startedAt: Date): string {
+	const day = startedAt.toLocaleDateString(undefined, { weekday: 'long' });
+	const date = startedAt.toLocaleDateString(undefined, {
+		day: 'numeric',
+		month: 'short',
+	});
+	return `${day}-you, ${date}`;
+}

@@ -29,6 +29,7 @@
 	import { mount, type WorldScene } from './scene';
 	import type { RideMetre } from './sim';
 	import type { BunchView } from '$lib/channel/bunch-view';
+	import type { RoadMate } from '$lib/channel/road-mates';
 	import type { PaintedGate } from '$lib/road/gates';
 	import { account } from '$lib/account.svelte';
 	import { prefersReducedMotion } from '$lib/motion';
@@ -40,6 +41,7 @@
 		road,
 		metre,
 		bunch,
+		mates,
 		loop = false,
 		watts,
 		silent = false,
@@ -49,6 +51,7 @@
 		look = 'full',
 		camera,
 		countIn = null,
+		ghosts,
 		gates,
 		onfail,
 		onflat,
@@ -59,6 +62,8 @@
 		metre: () => RideMetre;
 		/** Everyone on the road with you, on a session's road. */
 		bunch?: () => BunchView | null;
+		/** Channel-mates free-riding this road with you, each at their own metre (#3117). */
+		mates?: () => readonly RoadMate[];
 		/** The session laps the road: it has no finish. */
 		loop?: boolean;
 		watts: number;
@@ -75,6 +80,8 @@
 		camera?: 'chase' | 'heli' | 'side' | 'steady';
 		/** The count-in's seconds left and its length (#3087): the eye flies its reveal to the start arch over it. */
 		countIn?: { left: number; total: number } | null;
+		/** Your ghosts on a solo ride of your own road, where each is now (#3245); absent, the world has none. */
+		ghosts?: () => RideMetre[];
 		/** A workout's next blocks on this road (#3101), in the ride's metres. */
 		gates?: () => readonly PaintedGate[];
 		onfail: (why: Failure) => void;
@@ -108,8 +115,10 @@
 					ftp,
 					metre,
 					bunch,
+					mates,
 					loop,
 					countIn: () => counting,
+					ghosts,
 					gates,
 					camera: camera ?? (look === 'steady' ? 'steady' : 'chase'),
 					light: look === 'light',
