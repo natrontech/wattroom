@@ -37,7 +37,7 @@
 		{
 			n: '1',
 			title: 'Start a crew',
-			body: 'Your crew gets text channels and voice channels, like a Discord server for your pain cave. Send its six-character code and everyone is in.',
+			body: 'Your crew gets chat channels and voice channels, like a Discord server for your pain cave. Send its six-character code and everyone is in.',
 		},
 		{
 			n: '2',
@@ -63,8 +63,8 @@
 			screen: 'crew',
 			eyebrow: 'The crew',
 			title: 'A crew is a place, not an event',
-			body: 'Text channels for the week, voice channels for ride night, a schedule everyone can say yes to, and a board for the things you keep asking about. It is still there tomorrow.',
-			alt: 'A crew in WattRoom: the sidebar with text and voice channels, and a text channel with messages',
+			body: 'Chat channels for the week, voice channels for ride night, a schedule everyone can say yes to, and a board for the things you keep asking about. It is still there tomorrow.',
+			alt: 'A crew in WattRoom: the sidebar with chat and voice channels, and a chat channel with messages',
 		},
 		{
 			screen: 'jukebox',
