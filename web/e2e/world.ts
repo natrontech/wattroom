@@ -48,3 +48,19 @@ export async function onTheRoad(page: Page, stop = 'End ride'): Promise<void> {
 	if (await flat.count()) await expect(flat).toHaveText(/dropped frames/);
 	else await expect(page.locator(WORLD)).toBeVisible();
 }
+
+/** The rider's newest ride, as their list has it. */
+export async function latestRide(page: Page) {
+	return page.evaluate(async () => {
+		const res = await fetch('/api/rides');
+		const { rides } = (await res.json()) as {
+			rides: {
+				id: string;
+				distanceM?: number;
+				climbedM?: number;
+				road?: { routeId: string };
+			}[];
+		};
+		return rides[0];
+	});
+}
