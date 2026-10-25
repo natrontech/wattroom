@@ -49,14 +49,18 @@ export type LiveStatus = 'connecting' | 'live' | 'reconnecting' | 'offline';
 
 /**
  * How long an open socket may hear nothing before it counts as dropped
- * (#2135): five of the hub's 1 Hz ticks (docs/SPEC.md). A network path that
+ * (#2135): ten of the hub's 1 Hz ticks (docs/SPEC.md). A network path that
  * dies under an open socket — wifi traded for ethernet, a NAT forgetting the
  * flow — sends no close, so the browser keeps the socket OPEN for as long as
- * TCP takes to give up. The hub pings every 5 s and lets an unanswering rider
- * go, so without this the rider left everyone's roster while their own tab
- * still said live, and voice carried on underneath on its own connection.
+ * TCP takes to give up. The hub lets a rider go who leaves its ping unanswered
+ * for 10 s, so without this the rider left everyone's roster while their own
+ * tab still said live, and voice carried on underneath on its own connection.
+ *
+ * Not five (#4090): a lossy link that retransmits one segment three times
+ * stalls the socket 1+2+4 s while voice carries on over UDP, and five seconds
+ * dropped and redialled that rider forty times in a ride.
  */
-export const SILENCE_MS = 5_000;
+export const SILENCE_MS = 10_000;
 
 /**
  * Reconnects failed before the banner turns from "reconnecting" to "lost".

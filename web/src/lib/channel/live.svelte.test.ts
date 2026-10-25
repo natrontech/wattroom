@@ -651,6 +651,20 @@ describe('channel live silence and offline (#2135, #2121)', () => {
 		vi.useRealTimers();
 	});
 
+	// The report (#4090): a lossy link stalls TCP through three retransmits,
+	// 1+2+4 s, then delivers the late ticks, while voice carries on over UDP.
+	it('rides out a stall of three TCP retransmits', async () => {
+		const live = createChannelLive(channelAddress('c', 'stall', 'stall'));
+		const socket = FakeSocket.last!;
+		socket.open();
+		tick(socket);
+		await vi.advanceTimersByTimeAsync(7_000);
+		tick(socket);
+		expect(live.status).toBe('live');
+		expect(FakeSocket.last).toBe(socket);
+		vi.useRealTimers();
+	});
+
 	it('says offline when the device is, and dials the moment it is back', async () => {
 		const live = createChannelLive(channelAddress('c', 'offline', 'offline'));
 		const socket = FakeSocket.last!;
