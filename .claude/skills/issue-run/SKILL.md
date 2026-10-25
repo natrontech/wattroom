@@ -17,7 +17,7 @@ A run takes one issue, or one batch (§1), to **merged** or **closed with eviden
 
 Not workable: labelled `needs-human-input`, `blocked`, `backlog` or `feedback` (the `pickup-feedback` skill owns that one); assigned; covered by an open PR; or named by a live branch or worktree. A branch whose PR closed standing down is not a claim but kept work. So is a decided draft (source 0).
 
-If `$AGENT_COUNT` is above 1, prefer issues where `number % AGENT_COUNT == AGENT_INDEX`, so the agents beside you start apart. Take the first source that yields an issue, among only those `$ISSUE_RUN_SOURCES` lists when it is set (`0,1` is the kept-work runner; none yields: `run: queue empty`):
+If `$AGENT_COUNT` is above 1, prefer issues where `number % AGENT_COUNT == AGENT_INDEX`, so the agents beside you start apart. Take the first source that yields an issue:
 
 0. **Decided drafts.** A draft PR parked by a round-3 design FAIL whose issue has since lost `needs-human-input`, with a maintainer comment after the draft's last push. The comment is the decision. Apply it, then run a fresh design check (one round) against the canon as it stands now, and land it. Nothing else resumes these, because the open draft reads as a claim.
    ```sh
