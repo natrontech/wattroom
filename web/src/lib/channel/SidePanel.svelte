@@ -307,28 +307,27 @@
 						{#each away as rider (rider.id)}{@render person(rider)}{/each}
 					</ul>
 				{/if}
-				{#if others.length > 0}
-					<!-- Online, just not here (#2536): a crew with two voice
-					     channels puts half its people in the other one. -->
-					<div class="eyebrow px-3 pt-3 pb-1">
-						in another channel — {others.length}
-					</div>
-					<ul class="px-1">
-						{#each others as member (member.id)}{@render absent(
-								member,
-								member,
-							)}{/each}
-					</ul>
-				{/if}
-				{#if notHere.length > 0}
-					<!-- Not "offline" (#2849): this channel only knows they are not
-					     in it. A friend's dot says more, from the friends list. -->
-					<div class="eyebrow px-3 pt-3 pb-1">
-						not here — {notHere.length}
-					</div>
-					<ul class="px-1 pb-2">
-						{#each notHere as member (member.id)}{@render absent(member)}{/each}
-					</ul>
+				{#if others.length + notHere.length > 0}
+					<!-- Who is not in this channel, folded (#4093): open, a crew with
+					     more absent than present gave them the column's height, and
+					     the sidebar's voice rows already say who is where. Online
+					     elsewhere first, each row naming its channel (#2536); never
+					     "offline" (#2849), this channel only knows they are not in it. -->
+					<details>
+						<summary
+							class="eyebrow flex min-h-8 cursor-pointer items-center px-3 pt-2 select-none"
+							>rest of the crew — {others.length + notHere.length}</summary
+						>
+						<ul class="px-1 pb-2">
+							{#each others as member (member.id)}{@render absent(
+									member,
+									member,
+								)}{/each}
+							{#each notHere as member (member.id)}{@render absent(
+									member,
+								)}{/each}
+						</ul>
+					</details>
 				{/if}
 			</div>
 		{/if}

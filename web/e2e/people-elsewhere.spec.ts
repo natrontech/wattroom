@@ -30,13 +30,14 @@ test("the people column names a member's other channel, not offline", async ({
 	await a.goto(voicePath(here));
 	const column = a
 		.getByRole('complementary')
-		.filter({ hasText: /not here|in another channel/ });
-	await expect(column.getByText('in another channel — 1')).toBeVisible({
-		timeout: 15_000,
-	});
+		.filter({ hasText: /rest of the crew/ });
+	// Folded by default (#4093): the absent take one row, not the column.
+	const rest = column.getByText('rest of the crew — 1');
+	await expect(rest).toBeVisible({ timeout: 15_000 });
 	const row = column.getByRole('listitem').filter({ hasText: B });
+	await expect(row).toBeHidden();
+	await rest.click();
 	await expect(row).toContainText(`in ${there.name}`);
-	// And nobody is filed as not here: both riders are connected somewhere,
-	// and the viewer is never in that group (#2849).
-	await expect(column.getByText(/^not here —/)).toHaveCount(0);
+	// And B is the only one in it: the viewer is never filed there (#2849).
+	await expect(column.locator('details li')).toHaveCount(1);
 });
