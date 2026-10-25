@@ -276,6 +276,9 @@ Capture: as ride-free-road-world, after a seeded earlier effort on the same road
 2. A ghost has no name tag, ring, shadow, trail or glow; ≤ three show, in one instanced draw. [probe:renderer.draws] [3245-ghosts]
 3. No ghost in an ERG workout, session, bunch, race, game or tow. [test:ghost placement] [3245-ghosts]
 4. A faded live rider (#3227) is never drawn like a ghost. [multi:ride-session-road] [3245-ghosts]
+5. On the climb, CLIMB lists your ghost's gap since the climb's foot as a line under its fields, “Your best · 12 s ahead” (“Your last” racing your last ride), in neon; no watt, no glow. [multi:ride-free-road-ghost-call] [#3246]
+6. At a quarter, halfway and three quarters along and 500 m from the end, the strip above the Skyline calls the gap as the summit strip stands (ride-road-world 33): “Halfway” and “Your best · 12 s ahead”, centred, flat; no watt, no glow. The narrator says it, “Halfway, 12 seconds ahead of your best”. [multi:ride-free-road-ghost-call] [test:web/src/lib/ride/climb-cues.svelte.test.ts] [test:web/src/lib/ride/ghost-split.svelte.test.ts] [#3246]
+7. At the road's end ahead of your best: the strip reads “New best” and “14 s faster”, the narrator “New best on <road>, 14 seconds faster”, and the closing card says “New best on <road>, 14 s faster” under its header, in neon. [test:web/src/lib/ride/ghost-split.svelte.test.ts] [#3246]
 
 #### ride-road-end
 

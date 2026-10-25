@@ -168,8 +168,7 @@
 			shift={conn.shift}
 			shiftOff={conn.ride.shiftOff}
 			cassette={!conn.profile.current.singleSpeed}
-			split={ghost.split ?? undefined}
-			ghost={ghost.rider}
+			{ghost}
 			onend={free.recording ? () => void free?.end() : undefined}
 			ending={free.saving}
 			{controls}
@@ -189,6 +188,15 @@
 			/>
 		{/if}
 
+		{#if ghost.newBest && !free.recording}
+			<!-- Your best beaten, end to end (#3246): a record, so the neon ramp (G2). -->
+			<p
+				data-testid="new-best"
+				class="font-display text-neon text-lg font-bold"
+			>
+				{ghost.newBest}
+			</p>
+		{/if}
 		{#if free.saving}
 			<p class="text-muted text-sm" role="status">Saving your free ride…</p>
 		{:else if free.outcome && 'saved' in free.outcome}

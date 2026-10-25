@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { tick } from 'svelte';
 import { describe, expect, it, vi } from 'vitest';
 import type { ClimbView } from './climb-view';
+import type { GhostCall } from './ghost-split.svelte';
 
 const played: string[] = [];
 vi.mock('$lib/sound/cues', () => ({ play: (id: string) => played.push(id) }));
@@ -70,5 +71,53 @@ describe('the climb card says so (#3645)', () => {
 		expect(css).toMatch(
 			/\.flamme-stamp \{\s*animation: flamme-stamp var\(--dur-base\) var\(--ease-pop\) both;/,
 		);
+	});
+});
+
+describe('your ghost’s calls take the strip (#3246)', () => {
+	it('stages each call once, on its own cue, a new best on the fanfare', async () => {
+		vi.useFakeTimers();
+		vi.spyOn(performance, 'now').mockImplementation(() => Date.now());
+		played.length = 0;
+		let call = $state.raw<GhostCall | null>(null);
+		// The ride's clock: the getter is read again every second.
+		let second = $state(0);
+		const stop = $effect.root(() =>
+			watchClimbCues(
+				() => null,
+				() => (second >= 0 ? call : null),
+			),
+		);
+		const halfway: GhostCall = {
+			kind: 'split',
+			name: 'Halfway',
+			line: 'Your best · 12 s ahead',
+			said: 'Halfway, 12 seconds ahead of your best',
+		};
+		call = halfway;
+		await tick();
+		vi.advanceTimersByTime(100);
+		expect(climbStage.call).toMatchObject({ name: 'Halfway' });
+		// The same call read again, past the queue's merge window: never a
+		// second entrance.
+		vi.advanceTimersByTime(2000);
+		second += 1;
+		await tick();
+		vi.advanceTimersByTime(12_000);
+		expect(climbStage.call).toBeNull();
+		expect(played).toEqual(['split']);
+		call = {
+			kind: 'pr',
+			name: 'New best',
+			line: '14 s faster',
+			said: 'New best on The Pass, 14 seconds faster',
+		};
+		await tick();
+		vi.advanceTimersByTime(100);
+		expect(climbStage.call).toMatchObject({ line: '14 s faster' });
+		expect(played).toEqual(['split', 'fanfare']);
+		stop();
+		expect(climbStage.call).toBeNull();
+		vi.useRealTimers();
 	});
 });

@@ -24,6 +24,8 @@ export interface ClimbView {
 	hi: number;
 	/** On a workout, before the foot: the block that lands on the climb (#3101). */
 	lands?: string;
+	/** On the climb, racing your ghost: the gap since its foot, seconds behind (+) or ahead (−) (#3246). */
+	ghost?: { seconds: number; best: boolean };
 }
 
 /** 100 m of a climb (#3645): where it ends, how high, and its grade step. */
@@ -101,4 +103,13 @@ export function landed(
 ): ClimbView | null {
 	const line = view && lands?.(view.toFootM);
 	return view && line ? { ...view, lands: line } : view;
+}
+
+/** The climb card with your ghost's gap since the climb's foot (#3246), once you are past it. */
+export function raced(
+	view: ClimbView | null,
+	since: ((fromM: number) => ClimbView['ghost'] | null) | undefined,
+): ClimbView | null {
+	const ghost = view && since?.(view.climb.startM);
+	return view && ghost ? { ...view, ghost } : view;
 }

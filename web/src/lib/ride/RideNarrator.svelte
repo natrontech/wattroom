@@ -2,14 +2,15 @@
 	/**
 	 * The ride narrator (#3213, WCAG 4.1.3): the world and the Skyline say what
 	 * happens to a rider who cannot see them. Two sr-only live regions, polite
-	 * for a block, a climb and a summit, an alert for the trainer. S speaks the
-	 * state. Mounted once by the surface that rides, like watchClimbCues: a TV
-	 * beside the desk would say it twice.
+	 * for a block, a climb, a summit and your ghost's calls, an alert for the
+	 * trainer. S speaks the state. Mounted once by the surface that rides,
+	 * like watchClimbCues: a TV beside the desk would say it twice.
 	 */
 	import type { MomentEvent } from '$lib/moments';
 	import { board } from '$lib/board/clips.svelte';
 	import { zoneOf } from '$lib/components/zones';
 	import { isTyping } from '$lib/keys';
+	import { climbStage } from '$lib/ride/climb-cues.svelte';
 	import { climbView } from '$lib/ride/climb-view';
 	import {
 		blockLine,
@@ -94,6 +95,12 @@
 			kmLeft = whole;
 			narrator.polite(toTopLine(whole));
 		}
+	});
+
+	// Your ghost's calls (#3246), as the strip above the Skyline shows them.
+	$effect(() => {
+		const call = climbStage.call;
+		if (call) narrator.polite(call.said);
 	});
 
 	let lastBlock: number | null | undefined;

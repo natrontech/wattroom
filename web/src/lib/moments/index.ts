@@ -20,6 +20,7 @@ const PRIORITY = {
 	dockin: 5,
 	climb: 6,
 	flamme: 7,
+	split: 8,
 } as const;
 
 /** Same-kind moments this close together are one moment (#3210). */
@@ -50,7 +51,9 @@ export type Moment<P = unknown> =
 	/** The climb card slides in (#3645): cue as the card opens, hit when `enter` ends. */
 	| { kind: 'climb'; payload: P }
 	/** The flamme rouge unfurls at one kilometre to the top (#3645): a held stamp on the CLIMB page. */
-	| { kind: 'flamme'; payload: P };
+	| { kind: 'flamme'; payload: P }
+	/** Your ghost's gap is called along the road (#3246): cue as the strip enters, hit when `enter` ends. */
+	| { kind: 'split'; payload: P };
 
 export type MomentKind = Moment['kind'];
 

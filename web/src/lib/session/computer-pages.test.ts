@@ -128,7 +128,7 @@ describe('RIDE on a road (#3628)', () => {
 });
 
 describe('RIDE against your ghost (#3615, #3246)', () => {
-	it('shows the gap beside the road in words, plain — a ghost is a memory', () => {
+	it('shows the gap beside the road in words, neon as a model’s output, never watt (G2)', () => {
 		const fields = fieldsFor(
 			'ride',
 			ride({ split: { seconds: -12.3, best: true } }),
@@ -138,6 +138,7 @@ describe('RIDE against your ghost (#3615, #3246)', () => {
 			label: 'vs best',
 			value: '12',
 			unit: 's ahead',
+			neon: true,
 		});
 		const last = fieldsFor(
 			'ride',

@@ -83,6 +83,8 @@ export function momentLine(e: MomentEvent): string | null {
 		case 'dockin':
 		case 'climb':
 		case 'flamme':
+		// A call carries its own words (#3246): the narrator says those.
+		case 'split':
 			return null;
 	}
 }
