@@ -35,7 +35,7 @@ func (f *tickFrames) frame(kind frameKind) []byte {
 	if b, done := f.built[kind]; done {
 		return b
 	}
-	b := f.marshal(kind, f.tick.Cheers)
+	b := f.marshal(kind, f.tick.Cheers, f.tick.Roadside)
 	if f.built == nil {
 		f.built = make(map[frameKind][]byte, 8)
 	}
@@ -43,15 +43,12 @@ func (f *tickFrames) frame(kind frameKind) []byte {
 	return b
 }
 
-// withCheers is one socket's own copy of the frame, carrying only the cheers
-// it may hear (#3202). Never cached: it is that socket's alone.
-func (f *tickFrames) withCheers(kind frameKind, cheers []protocol.Cheer) []byte {
-	return f.marshal(kind, cheers)
-}
-
-func (f *tickFrames) marshal(kind frameKind, cheers []protocol.Cheer) []byte {
+// marshal is the tick as one kind of socket is sent it, carrying the cheers
+// and the roadside given: the room's, or one socket's own cut of them.
+func (f *tickFrames) marshal(kind frameKind, cheers []protocol.Cheer, roadside *protocol.RoadsideState) []byte {
 	t := *f.tick
 	t.Cheers = cheers
+	t.Roadside = roadside
 	if !kind.workout {
 		t.State.WorkoutJSON = ""
 	}
@@ -111,12 +108,14 @@ func (rm *channelState) sendTick(log *slog.Logger, out *tickOut) {
 				kind = light
 			}
 		}
-		// A cheer from someone hidden from this rider, or whom they hid,
-		// is cut from their copy alone (#3202) — a rare second, so the
-		// frame is marshalled for them rather than cached for the room.
+		// A cheer or chalk from someone hidden from this rider, or whom
+		// they hid, is cut from their copy alone (#3202, #4152). Rare, so
+		// the frame is marshalled for them rather than cached for the room.
 		if frame != nil {
-			if own, cut := rm.cheersFor(c.rider.ID, out.tick.Cheers, out.cheerFrom); cut {
-				frame = frames.withCheers(kind, own)
+			cheers, cheersCut := rm.cheersFor(c.rider.ID, out.tick.Cheers, out.cheerFrom)
+			roadside, chalkCut := rm.roadsideFor(c.rider.ID, out.tick.Roadside)
+			if cheersCut || chalkCut {
+				frame = frames.marshal(kind, cheers, roadside)
 			}
 		}
 		// Marked heard only when the frame was actually queued: a dropped
