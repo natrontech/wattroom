@@ -202,7 +202,7 @@ Capture: world off, `/ride?w=openers`, 14 s in; a second frame at four-digit wat
 9. At four digits the numeral stays inside its panel, covering no other text. [multi:four-digit] [ride-flat]
 10. Persistent status per G3. [multi:ride-status] [ride-flat]
 11. Cave covers the frame.
-12. Each block on the graph says what it is, drawn into it: its target in watts (a ramp's two ends, trimmed by the bias as slot 1's target is) and its length in NEXT's words, at the block's foot at label size, in neon, never watt (G2); a part that does not fit the block's width drops, the length first; the current block's words bold. No chip, no legend (Jan, 2026-10-25, #4159). [#4159] [test:web/src/lib/workout/block.test.ts]
+12. Each block on the graph says what it is, drawn into it: its target in watts (a ramp's two ends, trimmed by the bias as slot 1's target is) and its length in NEXT's words, inside the block halfway up its lower end, at label size, in neon, never watt (G2); a part that does not fit the block's width drops, the length first; the current block's words bold. No chip, no legend (Jan, 2026-10-25, #4159). [#4159] [test:web/src/lib/workout/block.test.ts]
 
 #### ride-skyline-fallback
 

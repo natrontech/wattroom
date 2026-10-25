@@ -403,8 +403,10 @@
 		>
 	{/if}
 	{#if words}
-		<!-- What each block is, at its foot inside it (#4159): target and length
-		     in neon, a target's colour (G2), the current block's bold. One line
+		<!-- What each block is, inside it halfway up its lower end (#4159), off
+		     the rider's trace along its top: target and length
+		     in neon lifted toward ink to read over the fill, a target's colour
+		     (G2), the current block's bold. One line
 		     the block's width: a part that does not fit wraps onto a clipped
 		     second line, the length first, so a narrow block says less or
 		     nothing rather than overrun its neighbour. The empty first span,
@@ -417,8 +419,9 @@
 				data-testid="block-words"
 				data-now={elapsed >= seg.startSeconds &&
 					elapsed < seg.startSeconds + seg.seconds}
-				class="num text-neon text-label pointer-events-none absolute bottom-1 flex h-[1lh] flex-wrap justify-center overflow-hidden px-1 leading-tight tracking-wide whitespace-nowrap [text-shadow:0_0_3px_var(--color-paper)] data-[now=false]:font-medium data-[now=false]:opacity-80 data-[now=true]:font-bold"
+				class="num text-label pointer-events-none absolute flex h-[1lh] -translate-y-1/2 flex-wrap justify-center overflow-hidden px-1 leading-tight tracking-wide whitespace-nowrap text-[color-mix(in_oklab,var(--color-neon)_65%,var(--color-ink))] [text-shadow:0_0_3px_var(--color-paper)] data-[now=false]:font-medium data-[now=false]:opacity-80 data-[now=true]:font-bold"
 				style="left:{(block.x0 / W) * 100}%;width:{((block.x1 - block.x0) / W) *
+					100}%;top:{((Math.max(block.yFrom, block.yTo) + BASE) / 2 / H) *
 					100}%"
 			>
 				<span class="h-full"></span><span class="shrink-0">{target}</span><span
