@@ -58,13 +58,13 @@
 			eyebrow: 'Workouts on the road',
 			title: 'The next blocks are painted on the road ahead',
 			body: 'Ride a workout on one of your roads and its next three blocks are painted on the asphalt, each with its name and your target where it starts. A sprint gets a banner across the road from 1 km out.',
-			alt: 'A workout ridden on the hairpin road in the 3D world: the next block painted across the road ahead with its target, the bike computer and the interval graph docked at the sides',
+			alt: 'A workout ridden on a mountain road in the 3D world: the next block painted across the road ahead with its target, the workout’s clock and graph above, the bike computer at the left',
 		},
 		{
 			screen: 'workout-flat',
 			eyebrow: 'Or on the graph',
-			title: 'No road, no world: the workout is the picture',
-			body: 'A workout without a road rides on its interval graph. Every block is labelled, your watts trace across it, and the panel above holds the target. The library, an editor and .zwo and .erg import fill the shelf.',
+			title: 'Without a road, the workout is the picture',
+			body: 'Every block on the interval graph is labelled, your watts trace across it, and the panel above holds the target. Fill the shelf from the library, the editor, or the .zwo and .erg files you already have.',
 			alt: 'A workout ridden without a road: the interval graph with labelled blocks, the rider’s trace, and the watts and target in the panels above',
 		},
 		{
@@ -72,7 +72,7 @@
 			eyebrow: 'Your ghost',
 			title: 'Ride a road again and race your earlier self',
 			body: 'Start a road of yours from the beginning and the rider you were last time rides beside you, a see-through figure in your own kit. The bike computer says the gap in words: “12 s ahead”.',
-			alt: 'A free ride on the hairpin road: the rider’s ghost from an earlier ride just ahead in the 3D world, with Easier and Harder for the gears beside the road',
+			alt: 'A free ride on a mountain road in the 3D world: the rider’s ghost from an earlier ride up the road ahead, and Easier and Harder for the gears in the panel above',
 		},
 	];
 
@@ -169,7 +169,7 @@
 	<div class="mt-10">
 		<Screen
 			name="world-crew"
-			alt="Two riders of a crew in a session on the hairpin road in the 3D world: the road climbing ahead, the riders’ tiles, the bike computer and the interval graph at the edges"
+			alt="Two riders of a crew side by side in a session on a mountain road in the 3D world, the workout’s clock above, the bike computer at the left and the riders’ watts per kilo at the right"
 			width={1440}
 			height={900}
 		/>
@@ -218,7 +218,7 @@
 	/>
 	<Screen
 		name="phone-remote"
-		alt="A phone beside the desk as the rider’s remote: Easier and Harder, the gear, and the button that moves voice to the phone"
+		alt="A phone as the rider’s remote while the desk rides: big Easier and Harder buttons with the gear under them, and buttons to turn the bike computer’s page, cheer back and talk"
 		width={375}
 		height={812}
 		narrow

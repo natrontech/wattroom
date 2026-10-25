@@ -84,7 +84,7 @@ bike computer says the gap in words.
 from the screen, the `−` and `+` keys or a Zwift Cog. Open WattRoom on your
 phone while the desk rides and the phone becomes your remote.
 
-<p align="center"><img src="web/static/screens/phone-remote.webp" alt="A phone as the rider's remote: Easier, Harder and the gear" width="220" /></p>
+<p align="center"><img src="web/static/screens/phone-remote.webp" alt="A phone as the rider's remote while the desk rides: big Easier and Harder buttons with the gear under them" width="220" /></p>
 
 </td>
 </tr>
