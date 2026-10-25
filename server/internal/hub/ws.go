@@ -179,8 +179,8 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 	// back to life. The check is async — never block this rider's upgrade on
 	// a database read.
 	h.triggerAutoplay(rm, channel)
-	// Why the socket ended (#4090): a close code is the browser hanging up,
-	// -1 is this side or the network (an unanswered ping, a failed write).
+	// Why the socket ended (#4090): a close code is the browser hanging up;
+	// -1 is anything else (an unanswered ping, a failed write, a bad frame).
 	var readErr error
 	defer func() {
 		rm.leave(c)
