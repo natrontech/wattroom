@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { expect, test, voicePath } from './crew';
 import { signInAs } from './signin';
 import { H, W, verdict, type Frame } from './flash';
 
@@ -6,9 +7,9 @@ import { H, W, verdict, type Frame } from './flash';
  * An advisory flash gate (#3223, WCAG 2.3.1, ADR-0064, ADR-0072): a
  * SimulatedTrainer rides a short hill (count-in, the climb, the summit, the
  * run down to the end of the road) while 10 fps frames are judged for flashes.
+ * A second ride puts what a solo road cannot on the stage: a coach's sprint
+ * (klaxon, window, podium) and a burst of cheers from the other rider.
  * Tagged @flash: the e2e workflow runs it in its own non-required job.
- * ponytail: the sprint result and the cheer burst are not on the stage of a
- * solo road ride yet; add them to the timeline when a surface draws them.
  */
 const FRAME_MS = 100;
 
@@ -118,6 +119,72 @@ test.describe('@flash the flash gate', () => {
 		const v = verdict(frames);
 		console.log(
 			`flash gate: ${frames.length} frames, flashes at ${v.times.join(', ')} ms`,
+		);
+		expect(v.per10s, 'more than 1 flash in 10 s').toBeLessThanOrEqual(1);
+		expect(v.perSecond, '3 flashes in 1 s').toBeLessThan(3);
+	});
+
+	test('a sprint and a cheer burst flash at most once per 10 s, never 3 per second', async ({
+		riders,
+		channels,
+	}) => {
+		test.setTimeout(300_000);
+		const a = await riders('Flash Gate Coach');
+		const opened = await channels.open(a, `Flash Gate ${Date.now() % 100000}`);
+		const b = await riders('Flash Gate Cheerer');
+		await channels.enter(b, opened);
+		for (const rider of [a, b]) {
+			await rider.goto(`${voicePath(opened)}/training`);
+			await rider
+				.getByRole('button', { name: 'Ride simulated' })
+				.click({ timeout: 15_000 });
+		}
+		await a.getByRole('button', { name: 'Start a session' }).click();
+		await a
+			.getByRole('textbox', { name: 'find a workout' })
+			.fill('Recovery Spin');
+		await a
+			.getByRole('button', { name: /Recovery Spin/ })
+			.first()
+			.click();
+		await a.getByRole('button', { name: 'Start Recovery Spin' }).click();
+		await b
+			.getByRole('link', { name: 'Join the ride' })
+			.click({ timeout: 30_000 });
+		await expect(a.getByTestId('crew-tile')).toHaveCount(1, {
+			timeout: 30_000,
+		});
+
+		// The people column folds while a session rides; its sheet holds B's cheers.
+		await b
+			.getByRole('button', { name: 'who is here' })
+			.filter({ visible: true })
+			.click();
+		const bell = b.getByRole('button', { name: 'Ring the cowbell' });
+		await expect(bell).toBeVisible();
+
+		await a.setViewportSize({ width: 1024, height: 768 });
+		const scratch = await a.context().newPage();
+		await scratch.goto('about:blank');
+		const podium = a.getByText('sprint podium');
+		let stop = false;
+		const filming = film(a, scratch, async () => stop, 90_000);
+		await a.getByRole('button', { name: 'arm a sprint' }).click();
+		await expect(a.getByText('all out')).toBeVisible({ timeout: 25_000 });
+		for (let i = 0; i < 6; i++) await bell.click();
+		await expect(
+			a.locator('.cheer', { hasText: 'Flash Gate Cheerer' }).first(),
+			'the cheer burst never reached the filmed screen',
+		).toBeVisible();
+		await expect(podium).toBeVisible({ timeout: 30_000 });
+		// Five more seconds of the podium and the cheers' fall.
+		await a.waitForTimeout(5_000);
+		stop = true;
+		const frames = await filming;
+		expect(frames.length, 'the sprint filmed nothing').toBeGreaterThan(50);
+		const v = verdict(frames);
+		console.log(
+			`flash gate (sprint): ${frames.length} frames, flashes at ${v.times.join(', ')} ms`,
 		);
 		expect(v.per10s, 'more than 1 flash in 10 s').toBeLessThanOrEqual(1);
 		expect(v.perSecond, '3 flashes in 1 s').toBeLessThan(3);
