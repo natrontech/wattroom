@@ -158,6 +158,41 @@ if git_dir=$(git rev-parse --absolute-git-dir 2>/dev/null); then
 	[ "$git_dir" = "$common_dir" ] || is_main_tree=0
 fi
 
+# port_offset is this worktree's CRC offset, stepped past every older linked
+# worktree's. 200 offsets fill fast: on 2026-10-17 two pairs of live worktrees
+# shared one, and the second `make dev-web` quietly took the neighbour's server
+# (#4074). The steps come from the worktree list, not from probing the ports,
+# because a probe sees this checkout's own server and would move it off its
+# own port. Oldest first (each admin dir's `commondir`, written once by
+# `git worktree add`), so a newcomer steps and an incumbent never moves.
+# ponytail: removing the older of a colliding pair moves the newer one back to
+# its CRC offset; restart its servers if that happens mid-run.
+port_offset() {
+	mine=$(basename "$git_dir")
+	taken=' '
+	# shellcheck disable=SC2045 # ls -tr is the portable oldest-first sort
+	for f in $(ls -tr "$common_dir"/worktrees/*/commondir); do
+		admin=$(dirname "$f")
+		path=$toplevel
+		if [ "$(basename "$admin")" != "$mine" ]; then
+			path=$(dirname "$(cat "$admin/gitdir")")
+			# A worktree deleted without `git worktree remove` runs no server.
+			[ -d "$path" ] || continue
+		fi
+		o=$(($(crc "$path") % PORT_SPAN))
+		while [ "${taken#* "$o" }" != "$taken" ]; do
+			o=$(((o + 1) % PORT_SPAN))
+		done
+		[ "$path" != "$toplevel" ] || {
+			echo "$o"
+			return 0
+		}
+		taken="$taken$o "
+	done
+	# Not in the list (a worktree git has not registered): the plain CRC.
+	echo $(($(crc "$toplevel") % PORT_SPAN))
+}
+
 if [ "$is_main_tree" = 1 ]; then
 	worktree_name=main
 	server_port=8080
@@ -176,7 +211,7 @@ if [ "$is_main_tree" = 1 ]; then
 else
 	worktree_name=$(basename "$toplevel")
 	hash=$(crc "$toplevel")
-	offset=$((hash % PORT_SPAN))
+	offset=$(port_offset)
 	server_port=$((SERVER_PORT_BASE + offset))
 	web_port=$((WEB_PORT_BASE + offset))
 	verify_port=$((VERIFY_PORT_BASE + offset))
