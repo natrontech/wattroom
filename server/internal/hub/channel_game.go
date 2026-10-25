@@ -21,28 +21,35 @@ import (
 // coaching, so its riders' rides, XP and recap are kept like a workout's. A
 // game inside a workout session already running rides that session.
 func (rm *channelState) startGame(mode string, rider protocol.Rider, now time.Time) string {
-	return rm.startGameOn(mode, nil, 0, rider, now)
+	_, refusal := rm.startGameOn(mode, nil, 0, rider, now)
+	return refusal
 }
 
 // startGameOn is startGame on a road (#3095). The road is the session's, so
 // only a game that opens the session sets it; one inside a running session
-// rides that session's road.
-func (rm *channelState) startGameOn(mode string, route *routeRide, minutes int, rider protocol.Rider, now time.Time) string {
+// rides that session's road. Returns errors.md's code and the refusal, or
+// two empty strings when it started.
+func (rm *channelState) startGameOn(mode string, route *routeRide, minutes int, rider protocol.Rider, now time.Time) (code, refusal string) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
+	// Again under the lock (#4153): the socket's check ran before the road's
+	// database reads, and a pick or start may have landed since.
+	if code, refusal := rm.refusalLocked("game", rider); code != "" {
+		return code, refusal
+	}
 	if rm.game != nil && !rm.game.done() {
-		return refuseGameRunning
+		return "invalid_request", refuseGameRunning
 	}
 	opens := !rm.session.open() || rm.session.phase == "idle"
 	if route != nil && !opens {
-		return "A game inside a running session rides the session's road."
+		return "invalid_request", "A game inside a running session rides the session's road."
 	}
 	next := newGameMode(mode, now)
 	if isRace(mode) {
 		// Opt-in and on a road of its own (ADR-0067): it opens its session,
 		// never rides inside a workout or a bunch.
 		if route == nil || !opens {
-			return refuseRaceRoad
+			return "invalid_request", refuseRaceRoad
 		}
 		switch {
 		case mode == modeRace:
@@ -55,7 +62,7 @@ func (rm *channelState) startGameOn(mode string, route *routeRide, minutes int, 
 		next = newSampledGame(newRaceRun(route.profile, mode, minutes, now), now)
 	}
 	if next == nil {
-		return refuseNoSuchMode
+		return "invalid_request", refuseNoSuchMode
 	}
 	rm.gameHost = rm.session.id
 	if opens {
@@ -75,7 +82,7 @@ func (rm *channelState) startGameOn(mode string, route *routeRide, minutes int, 
 	// session start — which resets rm.seen for the new ride — does not blank
 	// the names and FTPs the running game scores against.
 	rm.gameRoster = make(map[string]protocol.Rider)
-	return ""
+	return "", ""
 }
 
 // bunchLeaderLocked is who sets the bunch's pace in the seconds its plan

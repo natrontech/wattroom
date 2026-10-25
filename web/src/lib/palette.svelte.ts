@@ -1,8 +1,8 @@
 /**
  * The rider's theme (#331), applied to the document. Everything a theme owns
  * is a custom property, so applying one is writing two rule blocks: `:root`
- * for the app, and `.cave` for the ride — which stays dark whatever the rider
- * picked, because ride legibility was designed against black (ADR-0005,
+ * for the app, ride included (#4160), and `.cave` for TV mode, the HUD and
+ * camera frames — which stay dark whatever the rider picked (ADR-0005,
  * amended in #113).
  *
  * The stored choice is an identity, never a family. Which family renders is

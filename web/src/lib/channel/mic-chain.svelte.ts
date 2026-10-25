@@ -25,7 +25,7 @@ import {
 	type GateState,
 	gateStep,
 } from '$lib/channel/gate';
-import { MIC_CONSTRAINTS } from '$lib/channel/capture';
+import { type MicDevices, captureMic } from '$lib/channel/capture';
 import { createGateSettings } from '$lib/channel/gate-settings.svelte';
 import { type MicMeter, createMicMeter } from '$lib/channel/mic-level';
 import {
@@ -36,11 +36,7 @@ import {
 
 export interface MicChainHost {
 	/** The rider's chosen input, and what to do when that choice is gone. */
-	devices: {
-		readonly micId: string;
-		forgetMicIfUnplugged(): void;
-		refresh(): void;
-	};
+	devices: MicDevices;
 	/** Put the transmit track on the wire. A no-op outside a call. */
 	publish(track: MediaStreamTrack): Promise<void>;
 	unpublish(track: MediaStreamTrack): void;
@@ -63,6 +59,10 @@ interface Chain {
 	/** null on a handheld: there is no graph, the capture IS the track. */
 	ctx: AudioContext | null;
 	raw: MediaStream;
+	/** The input it opened, '' for the browser's default. */
+	mic: string;
+	/** Whether the meter has seen anything but digital silence (#4161). */
+	heard: boolean;
 	gain: GainNode | null;
 	/** The starting gain's node and its model; null on a handheld. */
 	lift: { node: GainNode; model: StartingGain; aimed: number } | null;
@@ -74,13 +74,20 @@ interface Chain {
 
 export type MicChain = ReturnType<typeof createMicChain>;
 
+/** SPEC (#4161): a chosen mic that sends pure silence this long is cut off. */
+export const SILENT_MS = 3000;
+
 export function createMicChain(host: MicChainHost) {
 	const settings = createGateSettings();
 	let chain: Chain | null = null;
+	/** Bumped by every close: an open still on its way that finds it moved stands down. */
+	let epoch = 0;
 	let gate: GateState = GATE_SHUT;
 	let level = $state(0);
 	let transmitting = $state(false);
 	let testing = $state(false);
+	/** The mic is opening: the device takes from ~0.1 s to a few seconds. */
+	let starting = $state(false);
 	/**
 	 * The capture died under us (#640): a headset unplugged, Bluetooth dropping
 	 * to its phone profile, another app taking the device. Where we publish our
@@ -111,29 +118,12 @@ export function createMicChain(host: MicChainHost) {
 		return capture;
 	}
 
-	/**
-	 * The capture constraints, honouring the chosen mic; an unplugged choice
-	 * falls back to the default instead of failing the join.
-	 */
-	async function capture(): Promise<MediaStream> {
-		const base = MIC_CONSTRAINTS;
-		if (host.devices.micId) {
-			try {
-				return await navigator.mediaDevices.getUserMedia({
-					audio: { ...base, deviceId: { exact: host.devices.micId } },
-				});
-			} catch {
-				// The open still falls back to the default below either way; the
-				// store decides whether the pick itself is forgotten (#824).
-				host.devices.forgetMicIfUnplugged();
-			}
-		}
-		return navigator.mediaDevices.getUserMedia({ audio: base });
-	}
+	const capture = () => captureMic(host.devices);
 
 	/** Every level the audio thread reports: the meter's number and the gate's. */
 	function onLevel(next: number) {
 		level = next;
+		if (next > 0 && chain) chain.heard = true;
 		liftStart();
 		runGate();
 		// Your own tile lights on the same measurement as everybody else's
@@ -173,7 +163,7 @@ export function createMicChain(host: MicChainHost) {
 	 * to wherever the audio is going: the call, or your own ears.
 	 */
 	async function build() {
-		const raw = await capture();
+		const { raw, mic } = await capture();
 		// Opus's rate, not the output device's (#1340): a context left to
 		// default follows the speakers — 44.1 kHz on plenty of Macs and DACs —
 		// and the mic is then resampled 48 → 44.1 → 48 on its way to the wire.
@@ -181,9 +171,10 @@ export function createMicChain(host: MicChainHost) {
 		const source = ctx.createMediaStreamSource(raw);
 		// Before the meter: the gate's thresholds were set against the settled
 		// level this lifts toward, so the gate has to see the lifted signal.
+		// Keyed by the mic it opened, which #4161 may have chosen.
 		const lift = {
 			node: ctx.createGain(),
-			model: createStartingGain(performance.now(), host.devices.micId),
+			model: createStartingGain(performance.now(), mic),
 			aimed: 1,
 		};
 		source.connect(lift.node);
@@ -192,7 +183,7 @@ export function createMicChain(host: MicChainHost) {
 		const meter = await createMicMeter(ctx, lift.node, onLevel);
 		meter.out.connect(gain);
 		gate = GATE_SHUT;
-		return { ctx, raw, gain, lift, meter };
+		return { ctx, raw, mic, gain, lift, meter };
 	}
 
 	function setGate(openNow: boolean) {
@@ -226,9 +217,63 @@ export function createMicChain(host: MicChainHost) {
 		if (gate.open !== transmitting) setGate(gate.open);
 	}
 
-	/** Opens the mic onto the wire. Throws what the browser refused. */
-	async function open() {
+	/**
+	 * Opens the mic onto the wire. Throws what the browser refused; resolves
+	 * false when a close landed first.
+	 *
+	 * A muted mic holds no capture (#4161): `close()` stops it, because a
+	 * Bluetooth headset stays on its call profile for as long as anything
+	 * captures its mic. So every unmute is a fresh open, and `starting` says so
+	 * on the mic button while the device comes up. That can take seconds, so a
+	 * mute, Away or leave in the meantime wins: the open finds `epoch` moved,
+	 * hands its capture back and stands down, rather than going live behind it.
+	 */
+	async function open(): Promise<boolean> {
 		if (chain) close(); // a mic test or stale chain must not orphan a stream
+		const mine = ++epoch;
+		starting = true;
+		try {
+			const next = await openChain();
+			if (mine !== epoch) {
+				release(next);
+				return false;
+			}
+			chain = next;
+			await host.publish(next.track);
+			if (mine !== epoch) {
+				host.unpublish(next.track); // closed mid-publish: take it back off
+				return false;
+			}
+			if (!next.ctx) transmitting = true; // a handheld's mic button is its gate
+			// Opening again is the only thing that clears the fault — the rider
+			// pressing Reconnect, tapping the mic, or the next join finding it.
+			fault = false;
+			if (next.mic && next.mic !== host.devices.micId) watchSilence(next);
+			// The grant just made the labels readable (#658).
+			void host.devices.refresh();
+			return true;
+		} finally {
+			if (mine === epoch) starting = false;
+		}
+	}
+
+	/**
+	 * The computer's mic chosen beside Bluetooth headphones (#4161) can be cut
+	 * off in hardware and still listed: a MacBook's is while its lid is shut.
+	 * Pure digital silence for SILENT_MS is that, and a mic that hears nothing
+	 * is worse than call-quality music, so the chain goes back to the default
+	 * and the store leaves that mic alone for this page.
+	 */
+	function watchSilence(opened: Chain) {
+		setTimeout(() => {
+			if (chain !== opened || opened.heard) return;
+			host.devices.heardNothing(opened.mic);
+			void open().catch(() => {});
+		}, SILENT_MS);
+	}
+
+	/** Builds the chain without putting it anywhere: `open` decides that. */
+	async function openChain(): Promise<Chain> {
 		if (host.handheld()) {
 			// A phone publishes what getUserMedia handed over — no meter, no
 			// gate (#2142). Two reasons, and they are the same reason:
@@ -251,30 +296,33 @@ export function createMicChain(host: MicChainHost) {
 			// upgrade path would be a meter cheap enough to run there — which
 			// still would not buy the loudspeaker back, so it is not on the
 			// way to anything.
-			const raw = await capture();
-			chain = {
+			const { raw, mic } = await capture();
+			return {
 				ctx: null,
 				raw,
+				mic,
+				heard: false,
 				gain: null,
 				lift: null,
 				meter: null,
 				track: raw.getAudioTracks()[0],
 				capture: watchCapture(raw),
 			};
-			await host.publish(chain.track);
-			transmitting = true;
-			fault = false;
-			return;
 		}
-		const { ctx, raw, gain, lift, meter } = await build();
+		const { ctx, raw, mic, gain, lift, meter } = await build();
 		const dest = ctx.createMediaStreamDestination();
 		gain.connect(dest);
-		const track = dest.stream.getAudioTracks()[0];
-		chain = { ctx, raw, gain, lift, meter, track, capture: watchCapture(raw) };
-		await host.publish(track);
-		// Opening again is the only thing that clears the fault — the rider
-		// pressing Reconnect, tapping the mic, or the next join finding it.
-		fault = false;
+		return {
+			ctx,
+			raw,
+			mic,
+			heard: false,
+			gain,
+			lift,
+			meter,
+			track: dest.stream.getAudioTracks()[0],
+			capture: watchCapture(raw),
+		};
 	}
 
 	/**
@@ -285,13 +333,15 @@ export function createMicChain(host: MicChainHost) {
 	 */
 	async function startTest() {
 		if (chain || testing) return;
-		const { ctx, raw, gain, lift, meter } = await build();
-		host.devices.refresh(); // the grant just made the labels readable (#658)
+		const { ctx, raw, mic, gain, lift, meter } = await build();
+		void host.devices.refresh(); // the grant just made the labels readable (#658)
 		gain.connect(ctx.destination); // your own ears, not the call
 		const dest = ctx.createMediaStreamDestination();
 		chain = {
 			ctx,
 			raw,
+			mic,
+			heard: false,
 			gain,
 			lift,
 			meter,
@@ -307,17 +357,21 @@ export function createMicChain(host: MicChainHost) {
 		close();
 	}
 
+	/** Hands a chain's capture, graph and track back to the machine. */
+	function release(c: Chain) {
+		// Unhook before stopping: a close the rider asked for is not a fault.
+		c.capture?.removeEventListener('ended', onCaptureEnded);
+		c.meter?.stop();
+		c.lift?.model.close();
+		host.unpublish(c.track);
+		for (const t of c.raw.getTracks()) t.stop();
+		void c.ctx?.close();
+	}
+
 	function close() {
-		if (chain) {
-			const { ctx, raw, track, capture: watched } = chain;
-			// Unhook before stopping: a close the rider asked for is not a fault.
-			watched?.removeEventListener('ended', onCaptureEnded);
-			chain.meter?.stop();
-			chain.lift?.model.close();
-			host.unpublish(track);
-			for (const t of raw.getTracks()) t.stop();
-			void ctx?.close();
-		}
+		epoch += 1; // an open still on its way stands down
+		starting = false;
+		if (chain) release(chain);
 		chain = null;
 		gate = GATE_SHUT;
 		level = 0;
@@ -335,6 +389,9 @@ export function createMicChain(host: MicChainHost) {
 		},
 		get testing() {
 			return testing;
+		},
+		get starting() {
+			return starting;
 		},
 		get fault() {
 			return fault;

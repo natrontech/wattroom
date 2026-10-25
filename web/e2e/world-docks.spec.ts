@@ -121,7 +121,7 @@ for (const [width, height] of [
 		const inWatt = await page.evaluate(() => {
 			const swatch = document.createElement('span');
 			swatch.style.color = 'var(--color-watt)';
-			document.querySelector('.cave, [data-surface=docked]')!.append(swatch);
+			document.querySelector('[data-surface=docked]')!.append(swatch);
 			const watt = getComputedStyle(swatch).color;
 			swatch.remove();
 			return [...document.querySelectorAll('[data-surface=docked] *')]

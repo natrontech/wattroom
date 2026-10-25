@@ -42,18 +42,20 @@ describe('the root layout (#2406)', () => {
 
 /**
  * The menu, rider card, confirm and toast hosts mount outside the frame that
- * wears `.cave` while riding (#3788), so a light desk drew them white over
- * the dark ride. They sit in wrappers that take the cave themselves.
+ * wears `data-ride` while riding (#3788), so they sit in wrappers that mark
+ * the ride themselves. Neither the frame nor a wrapper forces a scheme: a
+ * ride keeps the rider's (Jan, 2026-10-25, #4160), where the cave turned the
+ * whole app dark the moment a session started.
  */
-describe('the overlay hosts while riding (#3788)', () => {
-	const caveWrapped = (inner: string) =>
+describe('the overlay hosts while riding (#3788, #4160)', () => {
+	const rideWrapped = (inner: string) =>
 		new RegExp(
-			`<div class="contents \\{riding \\? 'cave' : ''\\}">\\s*${inner}\\s*</div>`,
+			`<div class="contents" data-ride=\\{riding \\? '' : undefined\\}>\\s*${inner}\\s*</div>`,
 		);
 
-	it('mount inside a wrapper that carries the cave when riding', () => {
+	it('mount inside a wrapper that marks the ride', () => {
 		expect(layout).toMatch(
-			caveWrapped(
+			rideWrapped(
 				'<ContextMenuHost \\{riding\\} />\\s*<RiderCardHost />\\s*<ConfirmHost />',
 			),
 		);
@@ -61,6 +63,15 @@ describe('the overlay hosts while riding (#3788)', () => {
 
 	it('wraps the framed toast host too, still right after the skip link', () => {
 		const framed = branches(layout).find((b) => b.includes('Skip to the page'));
-		expect(framed).toMatch(caveWrapped('<Toasts />'));
+		expect(framed).toMatch(rideWrapped('<Toasts />'));
+	});
+
+	it('marks the frame itself, and darkens nothing for the ride', () => {
+		expect(layout).toMatch(
+			/<div\s+class="flex h-dvh overflow-hidden"\s+data-ride=\{riding \? '' : undefined\}/,
+		);
+		// No `cave` class, spelled in the attribute or in a class expression.
+		expect(layout).not.toMatch(/class="[^"]*\bcave\b/);
+		expect(layout).not.toMatch(/'[^'\n]*\bcave\b[^'\n]*'/);
 	});
 });

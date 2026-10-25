@@ -4,7 +4,8 @@ import { palette } from './palette.svelte';
 /**
  * The scheme toggle (#113, rider-requested): auto follows the OS, dark and
  * light force it via data-theme + color-scheme — every light-dark() token
- * flips at once. The cave ignores all of this (app.css forces it dark).
+ * flips at once, a ride's included (#4160). The cave (TV mode, the HUD)
+ * ignores all of this (app.css forces it dark).
  * The choice follows the account (#326); the local key is the pre-sign-in
  * fallback and what app.html paints before the bundle.
  */

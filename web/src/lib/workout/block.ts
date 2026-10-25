@@ -92,8 +92,13 @@ export function blockBands(block: Block | null, cadence: number, hr: number) {
 const samePath = (a: number[], b: number[]) =>
 	a.length === b.length && a.every((n, i) => n === b[i]);
 
-/** The target a segment prescribed at workout-clock second `t`, with the rider's bias. */
-function targetOf(seg: Segment, t: number, ftp: number, bias: number): number {
+/** The target a segment prescribed at workout-clock second `t`, with the rider's bias, unrounded. */
+export function targetOf(
+	seg: Segment,
+	t: number,
+	ftp: number,
+	bias: number,
+): number {
 	if (seg.watts !== undefined) return seg.watts * bias;
 	const from = seg.fromFraction ?? 0;
 	const to = seg.toFraction ?? from;
@@ -122,6 +127,57 @@ function lastBlock(
 	};
 }
 
+/** A block's name, as NEXT and the road's paint say it (D16): "Warm-up", "Sprint", the zone's name. */
+export function blockLabel(
+	seg: Segment | undefined,
+	workout: Workout | null,
+	ftp: number,
+): string {
+	if (!seg) return '';
+	if (seg.kind === 'sprint') return 'Sprint';
+	if (seg.kind === 'road') return 'Road';
+	const step = workout?.steps[seg.stepPath[0]];
+	if (step?.type === 'warmup') return 'Warm-up';
+	if (step?.type === 'cooldown') return 'Cool-down';
+	const mid =
+		((seg.fromFraction ?? 0) + (seg.toFraction ?? seg.fromFraction ?? 0)) / 2;
+	return ZONE_NAMES[zoneOf(mid * ftp, ftp)];
+}
+
+/**
+ * A block's watts, trimmed as the current block is (#2835), absolute watts
+ * included — targetAt's rule, so the two numbers side by side agree. 0 for
+ * a sprint, which has none.
+ */
+export function blockWatts(
+	seg: Segment | undefined,
+	ftp: number,
+	bias: number,
+): number {
+	if (!seg || seg.kind === 'sprint') return 0;
+	const mid =
+		((seg.fromFraction ?? 0) + (seg.toFraction ?? seg.fromFraction ?? 0)) / 2;
+	return Math.round((seg.watts ?? mid * ftp) * bias);
+}
+
+/** "rep 3 of 5": which pass of a repeated step segment `index` is; absent outside a repeat. */
+export function repOf(
+	segments: readonly Segment[],
+	index: number,
+): Block['rep'] {
+	const path = segments[index]?.stepPath;
+	if (!path) return undefined;
+	const passes = segments.filter((s) => samePath(s.stepPath, path));
+	return passes.length > 1
+		? {
+				index:
+					segments.slice(0, index).filter((s) => samePath(s.stepPath, path))
+						.length + 1,
+				count: passes.length,
+			}
+		: undefined;
+}
+
 /** What a rider reads mid-interval: what this block is, how long is left, what's next. */
 export function describeBlock(
 	info: TargetInfo,
@@ -135,52 +191,19 @@ export function describeBlock(
 	/** Where on its road the ride is this second (#3639); off a road, none. */
 	road?: RoadReadout,
 ): Block {
-	const label = (seg: Segment | undefined): string => {
-		if (!seg) return '';
-		if (seg.kind === 'sprint') return 'Sprint';
-		if (seg.kind === 'road') return 'Road';
-		const step = workout?.steps[seg.stepPath[0]];
-		if (step?.type === 'warmup') return 'Warm-up';
-		if (step?.type === 'cooldown') return 'Cool-down';
-		const mid =
-			((seg.fromFraction ?? 0) + (seg.toFraction ?? seg.fromFraction ?? 0)) / 2;
-		return ZONE_NAMES[zoneOf(mid * ftp, ftp)];
-	};
-	// Trimmed as the current block is (#2835), absolute watts included —
-	// targetAt's rule, so the two numbers side by side agree.
-	const wattsOf = (seg: Segment | undefined): number => {
-		if (!seg || seg.kind === 'sprint') return 0;
-		const mid =
-			((seg.fromFraction ?? 0) + (seg.toFraction ?? seg.fromFraction ?? 0)) / 2;
-		return Math.round((seg.watts ?? mid * ftp) * info.bias);
-	};
-
 	const upcoming = segments[info.segmentIndex + 1];
 	const watts = info.targetWatts ?? 0;
-	const passes = segments.filter((s) =>
-		samePath(s.stepPath, info.segment.stepPath),
-	);
 	const band = watts > 0 ? toleranceBand(watts) : 0;
 	return {
 		index: info.segmentIndex + 1,
 		count: segments.length,
-		label: label(info.segment),
+		label: blockLabel(info.segment, workout, ftp),
 		watts,
 		band:
 			watts > 0
 				? { low: Math.round(watts - band), high: Math.round(watts + band) }
 				: null,
-		rep:
-			passes.length > 1
-				? {
-						index:
-							segments
-								.slice(0, info.segmentIndex)
-								.filter((s) => samePath(s.stepPath, info.segment.stepPath))
-								.length + 1,
-						count: passes.length,
-					}
-				: undefined,
+		rep: repOf(segments, info.segmentIndex),
 		last:
 			info.segmentIndex > 0 && info.secondsIntoSegment < LAST_BLOCK_SECONDS
 				? lastBlock(segments[info.segmentIndex - 1], trace, ftp, info.bias)
@@ -200,8 +223,8 @@ export function describeBlock(
 		hrHigh: info.segment.hrHigh,
 		next: upcoming
 			? {
-					label: label(upcoming),
-					watts: wattsOf(upcoming),
+					label: blockLabel(upcoming, workout, ftp),
+					watts: blockWatts(upcoming, ftp, info.bias),
 					seconds: upcoming.seconds,
 				}
 			: null,

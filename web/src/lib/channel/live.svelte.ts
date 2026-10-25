@@ -787,7 +787,11 @@ export function createChannelLive(address: PlaceAddress) {
 				/** The road the pick rides, when it rides one (#3095, #3105). */
 				route?: import('$lib/protocol').ControlRoute;
 			},
-			gameMode?: string,
+			/** For "game": the mode, and a race's road and minutes (#3777). */
+			game?: Pick<
+				import('$lib/protocol').Control,
+				'gameMode' | 'route' | 'minutes'
+			>,
 		) {
 			send({
 				control: {
@@ -795,8 +799,9 @@ export function createChannelLive(address: PlaceAddress) {
 					workoutName: workout?.name,
 					workoutJson: workout?.json,
 					totalSeconds: workout?.totalSeconds,
-					route: workout?.route,
-					gameMode,
+					route: workout?.route ?? game?.route,
+					gameMode: game?.gameMode,
+					minutes: game?.minutes,
 				},
 			});
 		},

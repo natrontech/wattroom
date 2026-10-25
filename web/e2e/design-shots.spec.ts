@@ -15,6 +15,8 @@ import { homeProbe } from './design/home-probe';
 import {
 	endSession,
 	joinSession,
+	pickRoad,
+	press,
 	startSession,
 	toTraining,
 } from './design/session';
@@ -70,9 +72,10 @@ test.skip(!OUT, 'the design shots run through `make design-shots`');
  * One test per surface and scheme; `take` gets a Shoot that cleans up after
  * it. `also`: the other TARGETS.md ids its shots carry (`#### workouts,
  * phone-workouts`), so naming any of them takes it. `once`: shot in the run's
- * first scheme only — a riding surface is the cave whatever the OS says (G1;
- * ride-free-road and ride-countin fix the OS to light to show it), and a
- * poster is an image.
+ * first scheme only — a riding surface's layout is the same in either scheme
+ * (G1; ride-free-road and ride-countin fix the OS to light to show it keeps
+ * the rider's), TV mode and the HUD are dark in both, and a poster is an
+ * image.
  */
 function surface(
 	id: string,
@@ -240,6 +243,37 @@ surface(
 		await ride(o.page, `/ride?w=openers&road=${road}&from=6950`);
 		await assertRiding(o.page, true);
 		await s.shot(o, { name: 'world-finish' });
+		// multi:ride-road-world-climb-lands — item 37: a workout 200 m or so
+		// before the rolling road's first climb, turned to CLIMB (#3101).
+		await ride(o.page, `/ride?w=openers&road=${rollingRoad}&from=700`);
+		await assertRiding(o.page, true);
+		await o.page.getByTestId('bike-computer').getByTitle('Next page').click();
+		await o.page
+			.locator('[data-testid=bike-computer][data-page=climb]')
+			.waitFor();
+		await o.page.getByTestId('climb-lands').waitFor();
+		await s.shot(o, { name: 'ride-road-world-climb-lands' });
+		// multi:ride-road-world-gate — item 34: Smoke Test's second block starts
+		// at 30 s, painted on the road ahead; shot once it is 20–35 m off, as
+		// the world's probe measures it (#3101). The first block's 0:30 left
+		// reads as a clock past any early second, so no second is waited for.
+		await ride(o.page, `/ride?w=smoke-test&road=${road}&from=0`, {
+			second: 0,
+		});
+		await o.page.waitForFunction(
+			() => {
+				const probe = (
+					window as {
+						__worldProbe?: () => { gates?: { aheadM: number }[] };
+					}
+				).__worldProbe?.();
+				const ahead = probe?.gates?.[0]?.aheadM ?? Infinity;
+				return ahead >= 20 && ahead <= 35;
+			},
+			undefined,
+			{ polling: 100, timeout: 90_000 },
+		);
+		await s.shot(o, { name: 'ride-road-world-gate' });
 	},
 	{ once: true },
 );
@@ -540,8 +574,8 @@ surface(
 surface(
 	'ride-countin',
 	async (s) => {
-		// With the OS set to light, so the frame shows the cave and not the
-		// scheme: it holds from the count-in's first frame (G1, #3667).
+		// With the OS set to light, so the frame shows it keeps the rider's
+		// scheme from the count-in's first frame (G1, #4160).
 		const o = await s.open({ ...DESK, colorScheme: 'light' }, { world: true });
 		const road = await fixtureRoad(o.page, 'hairpin');
 		const count = await holdCountIn(o.page);
@@ -578,11 +612,11 @@ surface(
 surface(
 	'ride-free-road',
 	async (s) => {
-		// World off, with the OS set to light: the cave has to hold anyway (G1).
+		// World off, with the OS set to light: the ride keeps it (G1, #4160).
 		const o = await s.open({ ...DESK, colorScheme: 'light' }, { world: false });
 		const road = await fixtureRoad(o.page, 'hairpin');
-		// Before the first stroke the setup is a desk surface, in the rider's
-		// scheme: the cave starts with the ride, not with the page (G1, #3667).
+		// Before the first stroke the setup is a desk surface; the ride starts
+		// with the first stroke, not with the page (G1, #3667).
 		await o.page.goto(`/ride?road=${road}`);
 		await o.page
 			.getByRole('button', { name: 'Ride simulated' })
@@ -808,6 +842,44 @@ surface('ride-roadpick', async (s) => {
 	await o.page.waitForURL('**/workouts/routes/*');
 	await o.page.waitForTimeout(1500);
 	await s.shot(o, { name: 'ride-roadpick-name-opens' });
+});
+
+surface('picker-race', async (s) => {
+	// The session picker's Race it (#3777): Designer's voice channel, the
+	// hairpin road picked, Last Light chosen so its clock shows. Then the
+	// Games tab, which sends a race to the roads.
+	const o = await s.open(DESK, { world: false });
+	const crew = await designCrew(o.page);
+	await fixtureRoad(o.page, 'hairpin');
+	await toTraining(o.page, crew);
+	if (await o.page.getByRole('button', { name: 'end the session' }).count()) {
+		await endSession(o.page);
+		await toTraining(o.page, crew);
+	}
+	await o.page.getByRole('button', { name: 'Start a session' }).click();
+	const picker = o.page.getByRole('dialog', { name: 'Start a session' });
+	await pickRoad(picker, ROADS.hairpin.name, 'Last Light');
+	await o.page.waitForTimeout(1500);
+	await s.shot(o);
+	await picker.getByRole('button', { name: 'Games', exact: true }).click();
+	await o.page.waitForTimeout(500);
+	await s.shot(o, { name: 'picker-race-games' });
+	// Its one line opens Race it on the roads.
+	await press(picker.getByRole('button', { name: 'Race on a road' }));
+	const races = picker.getByRole('group', { name: 'which race' });
+	await races.waitFor();
+	await s.shot(o, { name: 'picker-race-door' });
+	// A Wheelrace's par the hub refuses is refused under the field, and
+	// nothing is offered to start.
+	await press(races.getByRole('button', { name: /^Wheelrace / }));
+	await picker.getByRole('spinbutton', { name: /^par/ }).fill('50');
+	await picker
+		.getByRole('alert')
+		.filter({ hasText: 'par is 15 to 45 minutes' })
+		.waitFor();
+	if (await picker.getByRole('button', { name: /^Start / }).count())
+		throw new Error('a par of 50 minutes still offers a Start');
+	await s.shot(o, { name: 'picker-race-par' });
 });
 
 surface(
@@ -1941,7 +2013,8 @@ surface(
 			await endSession(coach.page);
 		}
 	},
-	{ once: true },
+	// Both schemes: the ride keeps the rider's, on the session where the
+	// cave used to darken the whole app (G1, #4160).
 );
 
 surface(
@@ -2049,18 +2122,14 @@ surface(
 surface(
 	'ride-race',
 	async (s) => {
-		// Designer and Design Partner race the hairpin road (#3174). No screen
-		// starts a race yet, so Designer's socket sends the start the hub takes.
-		// The 3-minute neutral zone alone is most of the default 5 minutes.
+		// Designer and Design Partner race the hairpin road (#3174), started
+		// from the session picker's Race it (#3777). The 3-minute neutral zone
+		// alone is most of the default 5 minutes.
 		test.setTimeout(10 * 60_000);
 		const coach = await s.open(DESK, { world: false });
 		const crew = await designCrew(coach.page);
-		const road = await fixtureRoad(coach.page, 'hairpin');
+		await fixtureRoad(coach.page, 'hairpin');
 		const rider = await s.open(DESK, { as: 'Design Partner', world: false });
-		let socket: WebSocketRoute | undefined;
-		await coach.page.routeWebSocket(/\/ws\/channels\//, (ws) => {
-			socket = ws.connectToServer();
-		});
 		await toTraining(coach.page, crew);
 		// A run that failed mid-race left it running: end it first.
 		if (
@@ -2070,23 +2139,18 @@ surface(
 			await toTraining(coach.page, crew);
 		}
 		await toTraining(rider.page, crew);
-		// Sent until the session opens: a page that reconnected has a new socket.
-		const start = JSON.stringify({
-			control: { action: 'game', gameMode: 'race', route: { id: road } },
-		});
-		const open = coach.page.getByRole('button', { name: 'end the session' });
-		for (let k = 0; k < 5 && !(await open.count()); k++) {
-			socket?.send(start);
-			await open.waitFor({ timeout: 4000 }).catch(() => {});
-		}
+		await startSession(coach.page, { road: ROADS.hairpin.name, race: 'Race' });
 		await joinSession(rider.page);
-		await coach.page
-			.getByRole('link', { name: 'Go to the ride' })
-			.click({ timeout: 15_000 });
+		// Started "without a trainer", the coach lines up as the partner does.
+		const coachJoins = coach.page.getByRole('link', { name: 'Join the ride' });
+		if (await coachJoins.isVisible({ timeout: 5000 }).catch(() => false))
+			await coachJoins.click();
 		try {
 			await coach.page.getByTestId('race-radio').waitFor({ timeout: 40_000 });
+			// Docked, the arrows name the page they turn to (D15); RACE is last,
+			// so ← from RIDE reaches it, and → from RACE comes back.
 			await coach.page
-				.getByRole('button', { name: 'RACE page', exact: true })
+				.getByRole('button', { name: 'previous page, RACE' })
 				.click();
 			// Through the 3-minute neutral zone to km 0, then 20 s of racing.
 			await coach.page.waitForFunction(
@@ -2101,9 +2165,7 @@ surface(
 			await s.shot(coach);
 			// multi:ride-race-ride — the same race on RIDE: a page turn keeps the
 			// computer's shape (ADR-0071).
-			await coach.page
-				.getByRole('button', { name: 'RIDE page', exact: true })
-				.click();
+			await coach.page.getByRole('button', { name: 'next page, RIDE' }).click();
 			await coach.page.waitForTimeout(1000);
 			await s.shot(coach, { name: 'ride-race-ride' });
 		} finally {

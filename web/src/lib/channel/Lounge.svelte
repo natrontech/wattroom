@@ -44,7 +44,7 @@
 
 	const channel = useChannel();
 	const EVENTS_SHOWN = 8;
-	// While a ride runs the frame is the cave and this stage a riding surface
+	// While a ride runs the frame is the ride and this stage a riding surface
 	// (TARGETS G1): a rider a game put out uses it on the bike, so its words
 	// take riding size through the `ride-stage:` variant (#3890, #3882).
 	const riding = $derived(!!channelConnection.current?.riding());

@@ -177,13 +177,71 @@ func TestEncodeOmitsUnmeasuredFields(t *testing.T) {
 	}
 }
 
+// pausedFixture is a ride with a real pause in it, as the stateless export
+// writes it from the client's offsets: a minute that ends coasting at 0 W, no
+// samples for 30 s, then a minute more. A saved ride numbers its samples
+// `Second: i` and so never has the gap (ADR-0044).
+func pausedFixture() Ride {
+	samples := make([]Sample, 0, 120)
+	for i := range 120 {
+		s := Sample{Second: i, Watts: 210, Cadence: 90, HeartRate: 140}
+		if i >= 50 && i < 60 {
+			s.Watts, s.Cadence = 0, 0
+		}
+		if i >= 60 {
+			s.Second = i + 30
+		}
+		samples = append(samples, s)
+	}
+	return Ride{StartedAt: time.Date(2026, 10, 25, 6, 0, 0, 0, time.UTC), Samples: samples}
+}
+
+// roadFixture is a ride on a road: 8 m a second up a steady 5 % grade. The
+// numbers are invented, so no route reaches the file (ADR-0063).
+func roadFixture() Ride {
+	samples := make([]Sample, 0, 120)
+	for i := range 120 {
+		samples = append(samples, Sample{
+			Second: i, Watts: 250, Cadence: 85,
+			Distance: float64(i) * 8, Altitude: 400 + float64(i)*0.4,
+		})
+	}
+	return Ride{StartedAt: time.Date(2026, 10, 25, 7, 0, 0, 0, time.UTC), Samples: samples, Road: true}
+}
+
 // TestGoldenFile pins the bytes. Regenerate deliberately with UPDATE_GOLDEN=1.
+// CI's server job decodes every file in testdata with Garmin's own FIT SDK
+// (scripts/fit-sdk-check.py, #2330), so these are also the files that check
+// sees: a ride shape worth that check gets a golden file here.
 func TestGoldenFile(t *testing.T) {
-	data, err := Encode(fixture())
+	goldens := map[string]Ride{
+		"ride.fit":   fixture(),
+		"paused.fit": pausedFixture(),
+		"road.fit":   roadFixture(),
+	}
+	for name, ride := range goldens {
+		t.Run(name, func(t *testing.T) { checkGolden(t, name, ride) })
+	}
+	// The SDK check reads every .fit here, so one no fixture writes would
+	// pass it while saying nothing about Encode.
+	files, err := filepath.Glob(filepath.Join("testdata", "*.fit"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range files {
+		if _, ok := goldens[filepath.Base(path)]; !ok {
+			t.Errorf("%s has no fixture in TestGoldenFile: give it one or delete it", path)
+		}
+	}
+}
+
+func checkGolden(t *testing.T, name string, ride Ride) {
+	t.Helper()
+	data, err := Encode(ride)
 	if err != nil {
 		t.Fatalf("Encode: %v", err)
 	}
-	path := filepath.Join("testdata", "ride.fit")
+	path := filepath.Join("testdata", name)
 
 	if update {
 		if err := os.MkdirAll("testdata", 0o750); err != nil {

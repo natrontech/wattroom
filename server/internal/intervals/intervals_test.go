@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -45,11 +46,14 @@ type fakeIntervals struct {
 	events string
 	status int
 	asked  url.Values
+	// exchanges counts the code exchanges that reached it.
+	exchanges atomic.Int32
 }
 
 func (f *fakeIntervals) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
 	case "/api/oauth/token":
+		f.exchanges.Add(1)
 		if err := r.ParseForm(); err != nil {
 			f.t.Fatal(err)
 		}
@@ -241,6 +245,30 @@ func TestCallbackLandsEveryOutcomeOnTheImportPage(t *testing.T) {
 				t.Errorf("landed on %q, want %q", got, tc.want)
 			}
 		})
+	}
+}
+
+// Each callback with a code is a call out to intervals.icu, so one account
+// gets a few in ten minutes (#4151), then lands on the import page told to
+// wait. Another rider's pull is not in the way.
+func TestTheCodeExchangeHasAPerAccountCeiling(t *testing.T) {
+	mux, fake, _ := setup(t, true)
+	for i := range exchangesPerWindow {
+		state := start(t, mux, "ana")
+		if got := landing(t, get(mux, "/api/intervals/callback?code=wrong&state="+state.Value, "ana", state)); got != "failed" {
+			t.Fatalf("callback %d landed on %q, want failed", i+1, got)
+		}
+	}
+	state := start(t, mux, "ana")
+	if got := landing(t, get(mux, "/api/intervals/callback?code=wrong&state="+state.Value, "ana", state)); got != "busy" {
+		t.Errorf("a callback past the ceiling landed on %q, want busy", got)
+	}
+	if n := fake.exchanges.Load(); n != exchangesPerWindow {
+		t.Errorf("%d exchanges reached intervals.icu, want %d", n, exchangesPerWindow)
+	}
+	state = start(t, mux, "bea")
+	if got := landing(t, get(mux, "/api/intervals/callback?code=wrong&state="+state.Value, "bea", state)); got != "failed" {
+		t.Errorf("another rider's callback landed on %q, want failed", got)
 	}
 }
 

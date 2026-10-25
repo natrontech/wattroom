@@ -24,7 +24,7 @@ func wheelrace(t *testing.T, lengthM float64, par int) *raceRoom {
 	rm, clients := inChannel(t, "wheelrace", ana, ben)
 	r := &raceRoom{rm: rm, clients: clients, now: raceStart}
 	rm.now = func() time.Time { return r.now }
-	if refusal := rm.startGameOn(modeWheelrace, rideOn(slope(0, lengthM), 0, false, false), par, ana, raceStart); refusal != "" {
+	if _, refusal := rm.startGameOn(modeWheelrace, rideOn(slope(0, lengthM), 0, false, false), par, ana, raceStart); refusal != "" {
 		t.Fatalf("start: %s", refusal)
 	}
 	joinRide(rm, "ben")
