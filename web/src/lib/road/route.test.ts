@@ -10,7 +10,7 @@ import {
 	spiky,
 	switchback,
 } from './fixtures';
-import type { TrackPoint } from './parse';
+import { RouteError, type TrackPoint } from './parse';
 import { decodePolyline6, packRoad, roadHash, roadStep } from './road';
 import { kmAndClimb, roadName } from './profile';
 import { toRoute, type Route } from './route';
@@ -190,6 +190,11 @@ describe('toRoute', () => {
 	it('refuses a route under 2 km or over 200 km, saying why', () => {
 		expect(() => toRoute(eastward(1900, 20))).toThrow(/at least 2 km/);
 		expect(() => toRoute(eastward(201_000, 200))).toThrow(/at most 200 km/);
+	});
+
+	it('refuses a fix off the globe as the file’s, before it resamples (#4125)', () => {
+		const [start] = eastward(0, 1);
+		expect(() => toRoute([start, { ...start, lat: 1e9 }])).toThrow(RouteError);
 	});
 
 	it('reads a steady approach at its grade from the first metres to the last (#3832)', () => {

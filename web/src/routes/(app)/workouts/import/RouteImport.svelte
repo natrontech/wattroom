@@ -13,8 +13,7 @@
 	/**
 	 * A route file on the import page (#3057): what the rider must choose
 	 * first — which track, or a flat road — then the preview, then Save
-	 * through POST /api/routes. Riding it and planning it wait for route
-	 * rides, and say so rather than failing on a tap (errors.md).
+	 * through POST /api/routes, which leaves a way into the saved route.
 	 */
 	let {
 		source,
@@ -37,7 +36,8 @@
 		renameError: string | null;
 	} | null>(null);
 
-	// A phone watching from the sofa has no trainer to ride it on.
+	// A phone watching from the sofa has no trainer to ride it on, and a
+	// screen that may not ride a road is not offered one (ux.md).
 	const spectator = $derived(isSpectator(device));
 
 	async function save(): Promise<string | null> {
@@ -127,6 +127,20 @@
 	<div class="mt-4 space-y-3">
 		<Banner tone="ok">
 			“{saved.name}” is on your routes.
+			{#snippet action()}
+				<span class="flex shrink-0 gap-2">
+					<a
+						href="/workouts/routes/{encodeURIComponent(saved!.id)}"
+						class="btn btn-secondary btn-xs">Open it</a
+					>
+					{#if !spectator}
+						<a
+							href="/ride?road={encodeURIComponent(saved!.id)}"
+							class="btn btn-secondary btn-xs">Ride it</a
+						>
+					{/if}
+				</span>
+			{/snippet}
 		</Banner>
 		{#if saved.renameError}
 			<Banner tone="warn"
@@ -144,50 +158,44 @@
 			ftp={account.me?.ftpWatts || null}
 			riderKg={account.me?.weightKg || null}
 			bind:rename
-		/>
-	</div>
-
-	{#if saveError}
-		<!-- Atop the form it failed to submit (errors.md). -->
-		<div class="mt-5">
-			<Banner tone="error">
-				{saveError}
-				{#snippet action()}
+		>
+			{#snippet actions()}
+				{#if saveError}
+					<!-- Atop the actions it failed to submit (errors.md). -->
+					<Banner tone="error">
+						{saveError}
+						{#snippet action()}
+							<button
+								onclick={() => void save()}
+								disabled={saving}
+								class="btn-link text-xs">Try again</button
+							>
+						{/snippet}
+					</Banner>
+				{/if}
+				<!-- The actions stack full width, primary first. A crew plans a
+				     road from its session picker, not from here. -->
+				<div class="flex flex-col gap-3">
 					<button
 						onclick={() => void save()}
 						disabled={saving}
-						class="btn-link text-xs">Try again</button
+						class="btn btn-primary btn-lg w-full">Save to my routes</button
 					>
-				{/snippet}
-			</Banner>
-		</div>
-	{/if}
-	<div class="mt-5 flex flex-wrap items-center gap-3">
-		<button
-			onclick={() => void save()}
-			disabled={saving}
-			class="btn btn-primary btn-lg">Save to my routes</button
-		>
-		{#if !spectator}
-			<!-- A screen that may not ride a road is not offered one (ux.md). A
-			     crew plans a road from its session picker, not from here. -->
-			<button
-				onclick={() => void rideNow()}
-				disabled={saving}
-				class="btn btn-ghost btn-lg">Ride it now</button
-			>
-		{/if}
-		{#if imported.src === 'stravagpx'}
-			<span
-				class="border-frame text-muted inline-flex items-center gap-1 rounded border px-2 text-xs"
-			>
-				<Lock size={12} /> Only you can ride this one
-			</span>
-		{/if}
+					{#if !spectator}
+						<button
+							onclick={() => void rideNow()}
+							disabled={saving}
+							class="btn btn-secondary btn-lg w-full">Ride it now</button
+						>
+					{/if}
+					{#if imported.src === 'stravagpx'}
+						<p class="text-muted flex items-start gap-1 text-xs">
+							<Lock size={12} class="mt-px shrink-0" />
+							Files from Strava ride with you alone, never in a crew's plan.
+						</p>
+					{/if}
+				</div>
+			{/snippet}
+		</RoutePreview>
 	</div>
-	{#if imported.src === 'stravagpx'}
-		<p class="text-muted mt-2 text-xs">
-			Files from Strava ride with you alone, never in a crew's plan.
-		</p>
-	{/if}
 {/if}

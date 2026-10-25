@@ -126,7 +126,7 @@
 				>Your roads ride here — import a GPX, TCX or FIT.</span
 			>
 			<a
-				href="/workouts/import"
+				href="/workouts/import?as=route"
 				class="btn btn-secondary {onpick ? 'btn-lg' : 'btn-xs'}"
 				>Import a route</a
 			>
