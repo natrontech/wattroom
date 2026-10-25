@@ -36,7 +36,7 @@ import type { Style } from './styles';
 
 // Alone you keep to the right lane's middle, as on a Swiss road; the dev
 // gallery's crew spreads abreast; a bunch rides its formation (bunch.ts).
-const KEEP_RIGHT = -ROAD_W / 4;
+export const KEEP_RIGHT = -ROAD_W / 4;
 /** Where the coach's chevron sits: just over a rider's helmet. */
 export const CHEVRON_Y = 1.82;
 /** About a helmet wide on a rider: worn, not a marker on the road ahead. */
@@ -131,7 +131,17 @@ function greyed(pal: Palette): Palette {
 }
 
 /** What a rider wears: their look, or one seeded from their id. */
-const loadoutOf = (r: SimRider): Loadout => r.look ?? seededLoadout(r.id);
+export const loadoutOf = (r: SimRider): Loadout =>
+	r.look ?? seededLoadout(r.id);
+
+/** Whoever looks at this world: their live data is the look's trail and zones, which no kit may wear. */
+export function viewerOf(style: Style): Viewer {
+	const hex = (c: string) => `#${new THREE.Color(c).getHexString()}`;
+	return {
+		watt: hex(style.trail ?? themeById(DEFAULT_DARK_ID)!.tokens.watt),
+		zones: style.zones.map(hex),
+	};
+}
 
 /** What the animator reads from a rider on the road. */
 const inputOf = (r: SimRider, route: Route): RideInput => ({
@@ -161,11 +171,7 @@ export function placeOn(
  * look's trail and zones: the theme's, on a ride.
  */
 export function makeCrew(style: Style, neon: THREE.Color) {
-	const hex = (c: string) => `#${new THREE.Color(c).getHexString()}`;
-	const viewer: Viewer = {
-		watt: hex(style.trail ?? themeById(DEFAULT_DARK_ID)!.tokens.watt),
-		zones: style.zones.map(hex),
-	};
+	const viewer = viewerOf(style);
 	const group = new THREE.Group();
 	const gradient = ramp(TOON_BANDS.map((b) => b / 255));
 	// A sun's contact shadow grounds each rider; under the sky alone nothing casts one (ADR-0072).

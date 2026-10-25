@@ -203,3 +203,72 @@ test('the Skyline and the climb card stay drawn in forced colours', async ({
 	expect(await visible('climb-dot')).toBe(true);
 	expect(await visible('climb-profile', true)).toBe(true);
 });
+
+// Your ghost (#3245, #3246): the Skyline's hollow tick is a border and the
+// gap is words, so each must keep a system colour other than Canvas. The
+// ghost is a synthetic line, 3 m a second from the road's start.
+test('your ghost’s tick and its gap stay drawn in forced colours', async ({
+	page,
+}) => {
+	test.skip(
+		!!process.env.PLAYWRIGHT_BASE_URL,
+		'the ?as= dev provider only exists on a dev server',
+	);
+	await page.addInitScript(() =>
+		localStorage.setItem(
+			'wattroom.mixer.v1',
+			JSON.stringify({ music: 0, cues: 0, board: 0, share: 0 }),
+		),
+	);
+	await page.route('**/api/routes/*/ghost', (r) =>
+		r.fulfill({
+			json: {
+				best: true,
+				startedAt: '2026-08-11T16:30:00Z',
+				seconds: 1000,
+				metres: Array.from({ length: 1001 }, (_, i) => i * 3),
+			},
+		}),
+	);
+	await signInAs(page, 'Forced Ghost Rider', '/workouts/import');
+	await page.locator('input[type=file]').setInputFiles({
+		name: 'climb.gpx',
+		mimeType: 'application/gpx+xml',
+		buffer: Buffer.from(climbGpx()),
+	});
+	await page.getByRole('button', { name: 'Ride it now' }).click();
+	await page.waitForURL(/\/ride\?road=/);
+	await page
+		.getByRole('button', { name: 'Ride simulated' })
+		.click({ timeout: 15_000 });
+	await page.getByRole('button', { name: 'Start the ride' }).click();
+	const tick = page.getByTestId('skyline-ghost');
+	await expect(tick).toContainText('-you, ', { timeout: 15_000 });
+	const computer = page.getByTestId('bike-computer');
+	await expect(computer).toHaveAttribute('data-page', 'climb', {
+		timeout: 15_000,
+	});
+	await computer
+		.getByRole('button', { name: /(previous|next) page, RIDE/ })
+		.click();
+	const gap = computer.locator('[data-field=split]');
+	await expect(gap).toContainText(/level|\d+ s (ahead|behind)/, {
+		timeout: 15_000,
+	});
+	// The ring's border and the gap's words, each against Canvas.
+	const [ring, words] = await page.evaluate(() => {
+		const probe = document.createElement('div');
+		probe.style.cssText = 'color: Canvas; forced-color-adjust: none';
+		document.body.append(probe);
+		const canvas = getComputedStyle(probe).color;
+		probe.remove();
+		const tick = document.querySelector('[data-testid=skyline-ghost]');
+		const gap = document.querySelector('[data-field=split]');
+		return [
+			getComputedStyle(tick!.firstElementChild!).borderTopColor !== canvas,
+			getComputedStyle(gap!).color !== canvas,
+		];
+	});
+	expect(ring).toBe(true);
+	expect(words).toBe(true);
+});

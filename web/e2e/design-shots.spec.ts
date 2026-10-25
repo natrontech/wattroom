@@ -567,12 +567,22 @@ surface(
 	{ once: true },
 );
 
+/** No ghost on this ride: the free road's own surfaces stay ride-free-road-ghost's baseline (#3245). */
+const withoutGhost = (page: Page) =>
+	page.route('**/api/routes/*/ghost', (r) =>
+		r.fulfill({
+			status: 404,
+			json: { error: 'not_found', message: 'No ghost in this capture.' },
+		}),
+	);
+
 surface(
 	'ride-free-road',
 	async (s) => {
 		// World off, with the OS set to light: the ride keeps it (G1, #4160).
 		const o = await s.open({ ...DESK, colorScheme: 'light' }, { world: false });
 		const road = await fixtureRoad(o.page, 'hairpin');
+		await withoutGhost(o.page);
 		// Before the first stroke the setup is a desk surface; the ride starts
 		// with the first stroke, not with the page (G1, #3667).
 		await o.page.goto(`/ride?road=${road}`);
@@ -594,6 +604,7 @@ surface(
 		// The world on: a free ride on a road draws it in slot 2 (#3669).
 		const o = await s.open(DESK, { world: true });
 		const road = await fixtureRoad(o.page, 'hairpin');
+		await withoutGhost(o.page);
 		await ride(o.page, `/ride?road=${road}`);
 		await assertRiding(o.page, true);
 		await s.shot(o);
@@ -601,9 +612,40 @@ surface(
 	{ once: true },
 );
 
-test.fixme('ride-free-road-ghost', () => {
-	// Added by the ghost issue (#3245), with its seeded effort.
-});
+surface(
+	'ride-free-road-ghost',
+	async (s) => {
+		// Your ghost beside you (#3245). The designer's seeded timed ride up the
+		// hairpin road's approach (design-seed's timedRide) rides behind the
+		// chase camera by the shot, so the earlier effort here is a synthetic
+		// line a little faster than the simulated rider: in frame, just ahead.
+		const o = await s.open(DESK, { world: true });
+		const road = await fixtureRoad(o.page, 'hairpin');
+		await o.page.route('**/api/routes/*/ghost', (r) =>
+			r.fulfill({
+				json: {
+					best: true,
+					startedAt: new Date(Date.now() - 13 * 86_400_000).toISOString(),
+					seconds: 600,
+					metres: Array.from({ length: 601 }, (_, i) => i * 4.2),
+				},
+			}),
+		);
+		await ride(o.page, `/ride?road=${road}`);
+		await assertRiding(o.page, true);
+		await o.page.getByTestId('skyline-ghost').waitFor({ timeout: 15_000 });
+		await s.shot(o);
+		// The RIDE page with a ghost: vs best, in words (#3246, the one-home table).
+		const computer = o.page.getByTestId('bike-computer').first();
+		if ((await computer.getAttribute('data-page')) !== 'ride')
+			await computer
+				.getByRole('button', { name: /(previous|next) page, RIDE/ })
+				.click();
+		await computer.locator('[data-field=split]').waitFor({ timeout: 15_000 });
+		await s.shot(o, { name: 'ride-free-road-ghost-ride' });
+	},
+	{ once: true },
+);
 
 surface(
 	'ride-tv',
