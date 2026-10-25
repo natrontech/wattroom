@@ -98,9 +98,18 @@ export const TALK_KEEPALIVE_MS = 1000;
  * is held and lets go by itself when the phone goes quiet for a second; the
  * hub sends talk-up at once when the phone's socket drops. Actions with no
  * handler (the other keymap actions, #3216) do nothing.
+ *
+ * A ride that does not shift takes Easier and Harder as its bias trim
+ * (#4163): with gears off the phone labels them Bias − and +, and the
+ * shifter is never bound there.
  */
 export function createRemoteRunner(
-	driver: Pick<ShiftDriver, 'press' | 'release'>,
+	driver: Pick<ShiftDriver, 'press' | 'release'> & {
+		/** The shifter takes the tap: this ride shifts. */
+		shifts(): boolean;
+		/** The bias trim's one step, for a ride that does not shift. */
+		trim(dir: ShiftDir): void;
+	},
 	talk: (held: boolean) => void,
 	others: Partial<Record<string, () => void>> = {},
 ) {
@@ -120,6 +129,10 @@ export function createRemoteRunner(
 				case 'easier':
 				case 'harder': {
 					const dir: ShiftDir = action === 'harder' ? 1 : -1;
+					if (!driver.shifts()) {
+						driver.trim(dir);
+						break;
+					}
 					driver.press(dir, 'remote');
 					driver.release('remote');
 					break;
