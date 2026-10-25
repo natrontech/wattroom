@@ -72,15 +72,18 @@ while [ ! -e "$runs/STOP" ]; do
 	started=$(date +%s)
 	err=$(mktemp)
 	json=$(claude -p "${RUN:-/issue-run}" --output-format json "$@" 2>"$err")
-	status=$? cost=
-	# A run that dies before printing its JSON logs its raw output, as before.
-	if out=$(jq -er .result <<<"$json" 2>/dev/null); then
+	status=$? cost='' model=''
+	# An error result carries its cost but no .result; a run that dies before
+	# printing its JSON logs its raw output, as before.
+	if jq -e 'type == "object"' <<<"$json" >/dev/null 2>&1; then
+		out=$(jq -r '.result // tojson' <<<"$json")
 		cost=$(jq -r '.total_cost_usd // empty | "$\(.)"' <<<"$json")
+		model=$(jq -r '[.modelUsage // {} | to_entries[]] | max_by(.value.costUSD // 0) | .key // empty' <<<"$json")
 	else
 		out=$(cat - "$err" <<<"$json")
 	fi
 	rm -f "$err"
-	printf '== %s runner %s exit %s cost %s\n%s\n' "$(date '+%F %H:%M')" "$AGENT_INDEX" "$status" "${cost:-?}" "$out" >>"$runs/$(date +%F).log"
+	printf '== %s runner %s exit %s model %s cost %s\n%s\n' "$(date '+%F %H:%M')" "$AGENT_INDEX" "$status" "${model:-?}" "${cost:-?}" "$out" >>"$runs/$(date +%F).log"
 	case $out in
 	*"run: queue empty"*) sleep 1800 ;;
 	*)
