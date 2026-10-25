@@ -3,7 +3,7 @@
 
 	// A finished ride's numbers (#3686), three by two: the closing card's and
 	// the ride page's, in the same order (`recapTiles`); and the importer's
-	// times over a road (#3684), two at most.
+	// times over a road (#3684), two at most, stacked in its 300 px column.
 	let {
 		tiles,
 		label = 'the ride in numbers',
@@ -14,7 +14,7 @@
 	aria-label={label}
 	class="grid gap-2 {tiles.length > 2
 		? 'grid-cols-2 sm:grid-cols-3'
-		: 'grid-cols-1 sm:grid-cols-2'}"
+		: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-1'}"
 >
 	{#each tiles as tile (tile.label)}
 		<div class="panel py-2" data-testid="recap-tile">
