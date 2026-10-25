@@ -40,7 +40,10 @@ const flag = (name, fallback) => {
 	return at >= 0 ? args[at + 1] : fallback;
 };
 const leak = flag('leak', null);
-const minutes = Number(flag('minutes', leak ? 20 : 120));
+// Two hours for a leak too: a shorter ride ends while the ground around the
+// eye is still filling in, so a sound world fails it, and a sign's texture
+// page leaks too slowly to show (#3851).
+const minutes = Number(flag('minutes', 120));
 const speed = Number(flag('speed', 16));
 const out = resolve(
 	flag(

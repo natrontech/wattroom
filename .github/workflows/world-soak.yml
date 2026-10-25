@@ -3,9 +3,10 @@
 # geometries and textures, the ground held, or the page's listeners and
 # timers climb (docs/spec/world.md "Soak"). Software GL's frame times are
 # reported, not judged. About 45 minutes, so it runs on main when the world
-# changes and once a week; a pull request that edits the soak itself rides
-# 30 minutes to prove it. Advisory: no ruleset requires it. The report is
-# attached as `world-soak`.
+# changes and once a week, and on a pull request that edits the soak itself.
+# Always the two hours: a shorter ride ends while the ground around the eye is
+# still filling in, and judges that. Advisory: no ruleset requires it. The
+# report is attached as `world-soak`.
 name: world-soak
 
 on:
@@ -58,7 +59,7 @@ jobs:
           --health-retries 10
     env:
       WATTROOM_DB: postgres://wattroom:wattroom@localhost:5432/wattroom
-      MINUTES: ${{ github.event_name == 'pull_request' && '30' || inputs.minutes || '120' }}
+      MINUTES: ${{ inputs.minutes || '120' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
