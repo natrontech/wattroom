@@ -2095,6 +2095,9 @@ surface(
 	// cave used to darken the whole app (G1, #4160).
 );
 
+/** Three of the seat's 100 ms measures: the player has caught up with a scroll. */
+const SEAT_MS = 300;
+
 surface(
 	'roadside-chalk',
 	async (s) => {
@@ -2108,9 +2111,6 @@ surface(
 			true,
 		);
 		try {
-			// A track playing: on a phone the corner player sits clear of the
-			// deck, never over it (#4185).
-			await queueDeck(coach.page, [['fJ9rUzIMcZQ', 'Bohemian Rhapsody']]);
 			const watcher = await s.open(DESK, { as: 'Design Watcher' });
 			let socket: WebSocketRoute | undefined;
 			await watcher.page.routeWebSocket(/\/ws\/channels\//, (ws) => {
@@ -2121,10 +2121,28 @@ surface(
 			await watcher.page
 				.getByRole('button', { name: 'Chalk Allez' })
 				.waitFor({ timeout: 20_000 });
+			// A track playing, from the people column's deck unless another shot
+			// left one there: on a phone the corner player sits clear of the
+			// deck, never over it (#4185).
+			const player = watcher.page.locator('[data-pane=jukebox-dock]');
+			if (!(await player.isVisible())) {
+				const add = watcher.page
+					.getByRole('textbox', {
+						name: 'add music: search your library, or paste a YouTube link',
+					})
+					.filter({ visible: true })
+					.first();
+				await add.fill('https://www.youtube.com/watch?v=fJ9rUzIMcZQ');
+				await add.press('Enter');
+			}
+			await player.waitFor({ timeout: 20_000 });
 			// The deck sits low on the page: its last line in view for each shot.
 			await watcher.page
 				.getByRole('group', { name: 'chalk the next climb' })
 				.scrollIntoViewIfNeeded();
+			// The player follows its seat a tenth of a second behind a scroll
+			// (stage-slot.svelte.ts).
+			await watcher.page.waitForTimeout(SEAT_MS);
 			await s.shot(watcher);
 			// The same deck on a phone propped beside the bike (SPEC "The roadside").
 			const phone = await s.open(PHONE, { as: 'Design Watcher' });
@@ -2132,10 +2150,18 @@ surface(
 			await phone.page.goto(voicePath(crew));
 			await phone.page
 				.getByRole('group', { name: 'chalk the next climb' })
-				.scrollIntoViewIfNeeded({ timeout: 20_000 });
+				.waitFor({ timeout: 20_000 });
 			await phone.page
 				.locator('[data-pane=jukebox-dock]')
 				.waitFor({ timeout: 20_000 });
+			// The page's end, twice: the stage scrolls away, the corner takes the
+			// player, and the page that stops above it has an end of its own.
+			for (let i = 0; i < 2; i++) {
+				await phone.page
+					.getByTestId('place-body')
+					.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+				await phone.page.waitForTimeout(SEAT_MS);
+			}
 			await s.shot(phone, { name: 'roadside-chalk-phone' });
 			// A double tap while the climb is still open: the second stamp,
 			// inside the hub's quarter second, is refused, and the deck says why
