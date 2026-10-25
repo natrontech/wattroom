@@ -42,8 +42,22 @@ set loadout = excluded.loadout, look_hash = excluded.look_hash, updated_at = now
 update outfits set look_hash = $2 where user_id = $1;
 
 -- name: PutLook :exec
--- A look, by its content (#3155): the same outfit is the same row.
-insert into looks (hash, loadout) values ($1, $2) on conflict (hash) do nothing;
+-- A look, by its content (#3155): the same outfit is the same row. Putting
+-- one on again dates it anew, so PruneUnwornLooks never takes a look in the
+-- moment it is being worn: its delete finds the row changed and skips it.
+insert into looks (hash, loadout) values ($1, $2)
+on conflict (hash) do update set created_at = now();
+
+-- name: PruneUnwornLooks :execrows
+-- A look nobody wears, a month after it was last put on (#4151): a changed
+-- outfit is a new row, and nothing else ever deleted one, not even the
+-- account's deletion, since a look carries no owner. A month leaves every
+-- roster that still names it long gone.
+delete from looks l
+ where l.ctid in (select ctid from looks x
+                   where x.created_at < now() - interval '30 days'
+                     and not exists (select 1 from outfits o where o.look_hash = x.hash)
+                   limit 10000);
 
 -- name: GetLook :one
 select loadout from looks where hash = $1;

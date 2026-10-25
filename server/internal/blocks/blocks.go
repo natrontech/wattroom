@@ -18,10 +18,12 @@ import (
 	"log/slog"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/audience"
+	"github.com/natrontech/wattroom/server/internal/budget"
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
@@ -51,11 +53,28 @@ type Service struct {
 
 	mu    sync.RWMutex
 	pairs map[[2]string]struct{} // {blocker, blocked}
+
+	toggles *budget.Budget[pgtype.UUID]
 }
+
+// togglesPerMinute bounds one account's hides and unhides together (#4151):
+// each pings both riders' lobbies, so the hidden rider's friends list and DM
+// heads refetch on every toggle. An operational guard, not a product number.
+const togglesPerMinute = 20
 
 func New(st *store.Store, users UserSource, presence Pinger, log *slog.Logger) *Service {
 	return &Service{store: st, users: users, presence: presence, log: log,
-		pairs: make(map[[2]string]struct{})}
+		pairs:   make(map[[2]string]struct{}),
+		toggles: budget.New[pgtype.UUID](togglesPerMinute, time.Minute)}
+}
+
+// spend takes one of the minute's toggles, or says there are none left.
+func (s *Service) spend(w http.ResponseWriter, me pgtype.UUID) bool {
+	if !s.toggles.Spend(me) {
+		httpx.WriteCeiling(w, "That is a lot of hiding and showing in one minute. Wait a minute, then try again.")
+		return false
+	}
+	return true
 }
 
 // Load fills the in-memory copy from the table, once, before the first room
@@ -126,7 +145,7 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 
 func (s *Service) handleHide(w http.ResponseWriter, r *http.Request) {
 	me, ok := s.users.RequireUser(w, r, "Not signed in.")
-	if !ok {
+	if !ok || !s.spend(w, me.ID) {
 		return
 	}
 	var body struct {
@@ -161,7 +180,7 @@ func (s *Service) handleHide(w http.ResponseWriter, r *http.Request) {
 
 func (s *Service) handleUnhide(w http.ResponseWriter, r *http.Request) {
 	me, ok := s.users.RequireUser(w, r, "Not signed in.")
-	if !ok {
+	if !ok || !s.spend(w, me.ID) {
 		return
 	}
 	target, err := store.ParseUUID(r.PathValue("id"))

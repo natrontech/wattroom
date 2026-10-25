@@ -208,8 +208,29 @@ func (q *Queries) MarkOutfitWorn(ctx context.Context, userID pgtype.UUID) error 
 	return err
 }
 
+const pruneUnwornLooks = `-- name: PruneUnwornLooks :execrows
+delete from looks l
+ where l.ctid in (select ctid from looks x
+                   where x.created_at < now() - interval '30 days'
+                     and not exists (select 1 from outfits o where o.look_hash = x.hash)
+                   limit 10000)
+`
+
+// A look nobody wears, a month after it was last put on (#4151): a changed
+// outfit is a new row, and nothing else ever deleted one, not even the
+// account's deletion, since a look carries no owner. A month leaves every
+// roster that still names it long gone.
+func (q *Queries) PruneUnwornLooks(ctx context.Context) (int64, error) {
+	result, err := q.db.Exec(ctx, pruneUnwornLooks)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const putLook = `-- name: PutLook :exec
-insert into looks (hash, loadout) values ($1, $2) on conflict (hash) do nothing
+insert into looks (hash, loadout) values ($1, $2)
+on conflict (hash) do update set created_at = now()
 `
 
 type PutLookParams struct {
@@ -217,7 +238,9 @@ type PutLookParams struct {
 	Loadout string
 }
 
-// A look, by its content (#3155): the same outfit is the same row.
+// A look, by its content (#3155): the same outfit is the same row. Putting
+// one on again dates it anew, so PruneUnwornLooks never takes a look in the
+// moment it is being worn: its delete finds the row changed and skips it.
 func (q *Queries) PutLook(ctx context.Context, arg PutLookParams) error {
 	_, err := q.db.Exec(ctx, putLook, arg.Hash, arg.Loadout)
 	return err

@@ -29,6 +29,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"golang.org/x/oauth2"
 
+	"github.com/natrontech/wattroom/server/internal/budget"
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -52,6 +53,11 @@ const (
 	callTimeout = 20 * time.Second
 	defaultAPI  = "https://intervals.icu"
 	importPage  = "/workouts/import?intervals="
+	// One account's code exchanges (#4151): each is a call out to
+	// intervals.icu, and one pull brings the whole week. An operational
+	// guard, not a product number.
+	exchangesPerWindow = 6
+	exchangeWindow     = 10 * time.Minute
 )
 
 // UserSource resolves the signed-in rider — the shape every service takes.
@@ -88,6 +94,8 @@ type Service struct {
 
 	mu    sync.Mutex
 	pulls map[string]pulled
+
+	exchanges *budget.Budget[pgtype.UUID]
 }
 
 // New reads the client from WATTROOM_OAUTH_INTERVALS_ID and _SECRET, like
@@ -106,6 +114,8 @@ func newService(users UserSource, log *slog.Logger, baseURL, api, id, secret str
 		client: &http.Client{Timeout: callTimeout},
 		now:    time.Now,
 		pulls:  map[string]pulled{},
+
+		exchanges: budget.New[pgtype.UUID](exchangesPerWindow, exchangeWindow),
 	}
 	if id != "" && secret != "" {
 		s.cfg = &oauth2.Config{
@@ -179,9 +189,15 @@ func (s *Service) handleCallback(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, importPage+"denied", http.StatusFound)
 		return
 	}
+	if !s.exchanges.Spend(user.ID) {
+		http.Redirect(w, r, importPage+"busy", http.StatusFound)
+		return
+	}
 	workouts, skipped, err := s.fetch(r.Context(), query.Get("code"))
 	if err != nil {
-		s.log.Error("intervals: pull failed", "err", err)
+		// Warn: a callback with a made-up code lands here too, so a failure
+		// is a stranger's doing as often as intervals.icu's.
+		s.log.Warn("intervals: pull failed", "err", err)
 		http.Redirect(w, r, importPage+"failed", http.StatusFound)
 		return
 	}
