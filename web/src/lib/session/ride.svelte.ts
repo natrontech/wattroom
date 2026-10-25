@@ -170,6 +170,10 @@ export function createRide(deps: RideDeps) {
 			else actuator.sprint({ grade: sprintGrade, singleSpeed }, ftp);
 			return;
 		}
+		if (aim.road) {
+			actuator.road(feltOnRoad() ?? 0);
+			return;
+		}
 		// A free ride on a grade is a slope the rider chose, not a target
 		// to hold — and nothing for the guards to release (docs/SPEC.md).
 		if (!deps.joined() && deps.free.armed && deps.free.mode === 'grade') {

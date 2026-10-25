@@ -1,1 +1,0 @@
-- On a phone the riding screen is one column of full-width panels with the power centred, and a road ride draws its world as a band.

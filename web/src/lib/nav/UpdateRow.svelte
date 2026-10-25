@@ -18,7 +18,6 @@
 	import X from '@lucide/svelte/icons/x';
 	import type { Icon } from '$lib/icons';
 	import type { UpdateRowState } from './update-row';
-	import { CAVE_WORDS } from './cave-sizes';
 
 	let {
 		state,
@@ -46,13 +45,10 @@
 			: 'bg-neon text-on-neon'}"><Glyph size={17} /></span
 	>
 	<span class="min-w-0 flex-1 text-left">
-		<span
-			class="block truncate text-sm leading-tight font-semibold {CAVE_WORDS}"
+		<span class="block truncate text-sm leading-tight font-semibold"
 			>{title}</span
 		>
-		<span
-			class="text-muted block truncate text-[11px] leading-snug {CAVE_WORDS}"
-			>{sub}</span
+		<span class="text-muted block truncate text-[11px] leading-snug">{sub}</span
 		>
 	</span>
 {/snippet}
@@ -69,9 +65,7 @@
 {:else if state.kind === 'live'}
 	<button type="button" class="update-row" onclick={onreload}>
 		{@render face(RefreshCw, `${state.version} is live`, 'Reload to get it')}
-		<span class="text-ink shrink-0 text-[11px] font-semibold {CAVE_WORDS}"
-			>Reload</span
-		>
+		<span class="text-ink shrink-0 text-[11px] font-semibold">Reload</span>
 	</button>
 {:else if state.kind === 'desktop'}
 	<button type="button" class="update-row" onclick={oninstall}>
@@ -96,7 +90,7 @@
 		<button
 			type="button"
 			onclick={onskip}
-			class="text-muted hover:text-ink cave:size-11 grid size-6 shrink-0 place-items-center rounded"
+			class="text-muted hover:text-ink grid size-6 shrink-0 place-items-center rounded"
 			title="Not now"
 			aria-label="not now"><X size={14} /></button
 		>

@@ -86,6 +86,8 @@ export function createSoloRoadRide(deps: {
 		if (deps.free.recording)
 			publishHud({
 				watts: ranked.watts,
+				cadence: ranked.cadence,
+				heartRate: ranked.heartRate,
 				target: deps.free.targetWatts,
 				remaining: 0,
 				elapsed: deps.free.seconds,

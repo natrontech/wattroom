@@ -12,7 +12,7 @@ import * as THREE from 'three';
 import { LIGHT_PIXEL_BUDGET, pixelRatio } from './budget';
 import { compose, type CameraMode, type MountOptions } from './compose';
 import { createLoop, type LoopStats, missWatch, watchPage } from './loop';
-import { softwareDrawing } from './flag';
+import { softwareDrawing } from './software-drawing';
 import type { Failure } from './ride-view';
 import type { Style } from './styles';
 

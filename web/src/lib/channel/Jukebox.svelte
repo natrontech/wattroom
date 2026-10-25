@@ -11,9 +11,9 @@
 	import JukeboxDeck from '$lib/channel/JukeboxDeck.svelte';
 	import JukeboxPlaylists from '$lib/channel/JukeboxPlaylists.svelte';
 	import JukeboxTrack from '$lib/channel/JukeboxTrack.svelte';
+	import RailSheet from '$lib/channel/RailSheet.svelte';
 	import { IN_SYNC_SEC, playerInfo } from '$lib/channel/jukebox-player.svelte';
 	import { listening } from '$lib/channel/listening.svelte';
-	import { railLabel, railText } from '$lib/channel/rail-size';
 	import {
 		createPlaylistStore,
 		type SaveTarget,
@@ -110,45 +110,71 @@
 	// column is shared with the chat, and the chat loses every time.
 	const QUEUE_PEEK = 3;
 	let showAllQueue = $state(false);
+	// Riding, whether the sheet is open outlives the deck coming and going.
+	let sheetOpen = $state(false);
 </script>
 
 <section class="flex min-w-0 flex-col gap-3">
-	<div class="flex min-w-0 items-center justify-between gap-2">
-		<span class={railLabel(riding)}>jukebox</span>
-		{#if current && jukebox?.playing && !playerInfo.live && !listening.out}
-			<!-- Proof everyone is together, in the one place riders look for it.
-			     A rider who has stepped out is not with it and must not be told
-			     they are: the badge goes, and comes back when they rejoin. -->
-			<span
-				class="flex shrink-0 items-center gap-1.5 font-mono {railText(
-					riding,
-					'text-[10px]',
-				)} {inSync ? 'text-watt' : 'text-muted'}"
-			>
+	<!-- Riding, the seat is the tile and its strip (#3983): the heading is
+	     the sheet's, and whether the deck is in sync is desk detail. -->
+	{#if !riding}
+		<div class="flex min-w-0 items-center justify-between gap-2">
+			<span class="eyebrow">jukebox</span>
+			{#if current && jukebox?.playing && !playerInfo.live && !listening.out}
+				<!-- Proof everyone is together, in the one place riders look for it.
+				     A rider who has stepped out is not with it and must not be told
+				     they are: the badge goes, and comes back when they rejoin. -->
 				<span
-					class="h-1.5 w-1.5 rounded-full {inSync
-						? 'bg-watt glow-stroke'
-						: 'bg-muted motion-safe:animate-pulse'}"
-				></span>
-				{inSync ? 'in sync' : 'catching up'}
-			</span>
-		{/if}
-	</div>
+					class="flex shrink-0 items-center gap-1.5 font-mono text-[10px] {inSync
+						? 'text-watt'
+						: 'text-muted'}"
+				>
+					<span
+						class="h-1.5 w-1.5 rounded-full {inSync
+							? 'bg-watt glow-stroke'
+							: 'bg-muted motion-safe:animate-pulse'}"
+					></span>
+					{inSync ? 'in sync' : 'catching up'}
+				</span>
+			{/if}
+		</div>
+	{/if}
 
 	{#if jukebox && current}
-		<JukeboxDeck {jukebox} {current} {send} />
-	{:else if !riding}
+		<!-- Riding, the deck is v2-ride's seat and everything below opens
+		     over the crew from it, so the crew sits under the music (#3983). -->
+		<JukeboxDeck
+			{jukebox}
+			{current}
+			{send}
+			{riding}
+			next={queue.length}
+			behind={riding ? below : undefined}
+			bind:sheet={sheetOpen}
+		/>
+	{:else if riding}
+		<RailSheet bind:open={sheetOpen}>
+			{#snippet label()}<span class="eyebrow">jukebox</span>{/snippet}
+			{@render below()}
+		</RailSheet>
+	{:else}
 		<p class="text-muted text-xs leading-relaxed">
 			Nothing is playing. Search your library or paste a YouTube link, and
 			everyone hears it on the same second.
 		</p>
 	{/if}
 
-	<JukeboxAdd {send} {refusal} {riding} />
+	{#if !riding}
+		{@render below()}
+	{/if}
+</section>
+
+{#snippet below()}
+	<JukeboxAdd {send} {refusal} />
 
 	{#if queue.length}
 		<div class="min-w-0">
-			<p class="{railLabel(riding)} flex items-center justify-between">
+			<p class="eyebrow flex items-center justify-between">
 				<span>up next</span>
 				<span class="num">{queue.length}</span>
 			</p>
@@ -156,7 +182,6 @@
 				{#each queue.slice(0, showAllQueue ? queue.length : QUEUE_PEEK) as entry, i (entry.id)}
 					<JukeboxTrack
 						{entry}
-						{riding}
 						position={i + 1}
 						myId={account.me?.id}
 						onVote={() => send({ action: 'vote', entryId: entry.id })}
@@ -170,9 +195,7 @@
 					/>
 				{/each}
 			</ul>
-			<div
-				class="mt-1.5 flex items-center gap-3 {railText(riding, 'text-[11px]')}"
-			>
+			<div class="mt-1.5 flex items-center gap-3 text-[11px]">
 				{#if queue.length > QUEUE_PEEK}
 					<button
 						onclick={() => (showAllQueue = !showAllQueue)}
@@ -202,11 +225,11 @@
 
 	<!-- What is saved comes after what is live (#1423): the queue is what the
 	     channel is about to hear; the playlists are where it can reach next. -->
-	<JukeboxPlaylists {address} {crewStore} {mineStore} {riding} />
+	<JukeboxPlaylists {address} {crewStore} {mineStore} />
 
 	{#if history.length}
 		<details class="min-w-0">
-			<summary class="{railLabel(riding)} cursor-pointer py-2 select-none"
+			<summary class="eyebrow cursor-pointer py-2 select-none"
 				>just played · {history.length}</summary
 			>
 			<ul class="mt-1.5 flex flex-col gap-1.5">
@@ -216,7 +239,6 @@
 					     videoId made the hub read it as a blank YouTube add (#1144). -->
 					<JukeboxTrack
 						{entry}
-						{riding}
 						onRequeue={() =>
 							send({
 								action: 'add',
@@ -234,4 +256,4 @@
 			</ul>
 		</details>
 	{/if}
-</section>
+{/snippet}

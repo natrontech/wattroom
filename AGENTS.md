@@ -55,7 +55,7 @@ Standing down: withdraw your claim and write "proceed, do not stand down on acco
 - The databases are created on demand and nothing removes them but `make dev-db-drop`.
 - A whole `go test ./...` run, and the next one, share one test database: a fixture that must be alone needs a run-unique name, and one that must survive a retention sweep is dated inside the retention. `WATTROOM_TEST_DB` overrides the name; a bare `go test` hits the main tree's.
 - Still shared: one Postgres server and one LiveKit. Say so when you verify audio.
-- `make infra` always starts the one compose project `wattroom`, wherever you run it. Never `docker compose up` by hand and never bring a compose project down. `make worktree-gc` names stray postgres containers and prints the `docker rm -f`; it stops nothing itself.
+- `make infra` always starts the one compose project `wattroom`, wherever you run it. Never `docker compose up` by hand and never bring a compose project down. `make worktree-gc` removes finished worktrees (squash-merged, or empty and older than 12 h) with their databases and deletes their branches; it keeps dirty or unpushed ones. Stray postgres containers it only names, printing the `docker rm -f`.
 
 ## Labels
 

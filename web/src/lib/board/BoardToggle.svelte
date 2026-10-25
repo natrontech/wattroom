@@ -17,18 +17,12 @@
 	 */
 	import Drum from '@lucide/svelte/icons/drum';
 	import { boardPanel } from '$lib/board/panel.svelte';
-	import { railText } from '$lib/channel/rail-size';
-
-	let { riding = false }: { riding?: boolean } = $props();
 </script>
 
 <button
 	onclick={() => boardPanel.toggle()}
 	aria-expanded={boardPanel.open}
-	class="btn btn-lg min-w-0 flex-1 border {railText(
-		riding,
-		'',
-	)} {boardPanel.open
+	class="btn btn-lg min-w-0 flex-1 border {boardPanel.open
 		? 'btn-primary border-transparent'
 		: 'border-muted/20 hover:border-muted/50'}"
 	title="your soundboard"><Drum size={13} /> Soundboard</button

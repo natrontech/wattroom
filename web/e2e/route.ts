@@ -45,12 +45,13 @@ export async function importARoute(page: Page): Promise<string> {
 
 /**
  * Opens a workout on a freshly stored road: since #3663 the only ride that
- * draws a world, because a ride with no road has none to draw.
+ * draws a world, because a ride with no road has none to draw. Answers the road's id.
  */
 export async function openAWorkoutOnARoad(
 	page: Page,
 	workout = 'openers',
-): Promise<void> {
+): Promise<string> {
 	const road = await importARoute(page);
 	await page.goto(`/ride?w=${workout}&road=${road}`);
+	return road;
 }

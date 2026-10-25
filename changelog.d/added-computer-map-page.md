@@ -1,1 +1,0 @@
-- On a road, the bike computer has a MAP page: the road from above, its climbs in the grade ramp and your dot on it. M opens it.

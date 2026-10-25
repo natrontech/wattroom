@@ -1,1 +1,0 @@
-- A road's valley side carries a white post every 25 m wherever the ground falls away, so a climb's stacked switchback legs read as road from below.

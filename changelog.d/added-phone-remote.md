@@ -1,1 +1,0 @@
-- A second screen of yours that sees the trainer held elsewhere can be its remote: Talk, Easier and Harder from a 2×4 grid of big buttons, with the gear shown back.

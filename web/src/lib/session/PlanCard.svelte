@@ -14,7 +14,6 @@
 	} from '$lib/crew-schedule';
 	import { device } from '$lib/device.svelte';
 	import { formatWhen } from '$lib/format';
-	import { roadsEnabled } from '$lib/ride/roads';
 	import { rideFirstHref } from '$lib/session/ride-first';
 	import { serverNow } from '$lib/server-clock';
 	import RsvpRow from '$lib/session/RsvpRow.svelte';
@@ -40,7 +39,7 @@
 	const canStart = $derived(channel.canDrive);
 	// The road before the session (#3621): alone, on the road it will ride.
 	const rideFirst = $derived(
-		plan && roadsEnabled() && !device.spectator
+		plan && !device.spectator
 			? rideFirstHref(plan, channel.address.crew)
 			: null,
 	);

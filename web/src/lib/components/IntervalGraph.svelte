@@ -139,9 +139,11 @@
 				fromFraction: from,
 				toFraction: to,
 				label:
-					seg.kind === 'sprint'
-						? `Sprint — all out · ${formatClock(seg.seconds)}`
-						: `Z${zone} ${ZONE_NAMES[zone]} · ${targetText(seg, from, to)} · ${formatClock(seg.seconds)}`,
+					seg.kind === 'road'
+						? `Road · SIM · ${formatClock(seg.seconds)}`
+						: seg.kind === 'sprint'
+							? `Sprint — all out · ${formatClock(seg.seconds)}`
+							: `Z${zone} ${ZONE_NAMES[zone]} · ${targetText(seg, from, to)} · ${formatClock(seg.seconds)}`,
 			};
 		}),
 	);
@@ -158,7 +160,7 @@
 	}
 
 	function startDrag(event: PointerEvent, block: (typeof blocks)[number]) {
-		if (!editable || !onEdit) return;
+		if (!editable || !onEdit || block.kind === 'road') return;
 		const { vx, vy } = view(event);
 		// Selecting on the way down is what makes the inspector track the drag.
 		onSelect?.(block.path);
@@ -215,7 +217,7 @@
 	 * path on its own; this is the shortcut for a rider already on the graph.
 	 */
 	function editKeys(event: KeyboardEvent, block: (typeof blocks)[number]) {
-		if (!editable || !onEdit) return;
+		if (!editable || !onEdit || block.kind === 'road') return;
 		const by = event.altKey ? 1 : SNAP_SECONDS;
 		if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
 			const now = block.seconds;
@@ -284,7 +286,7 @@
 			<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 			<polygon
 				points={block.points}
-				style:color={ZONE_VAR[block.zone]}
+				style:color={ZONE_VAR[block.zone] || 'var(--color-muted)'}
 				class="{picked
 					? 'opacity-80'
 					: block.sprint
@@ -314,7 +316,7 @@
 		{#each blocks as block, i (i)}
 			<polyline
 				points={block.edge}
-				style:color={ZONE_VAR[block.zone]}
+				style:color={ZONE_VAR[block.zone] || 'var(--color-muted)'}
 				fill="none"
 				stroke="currentColor"
 				stroke-width={compact ? 1.5 : 2}

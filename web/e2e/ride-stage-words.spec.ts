@@ -4,11 +4,11 @@ import { expect, test, voicePath } from './crew';
  * A voice channel's stage is a riding surface while its session runs
  * (TARGETS G1, #3890, #3882): the frame is the cave, and a rider a game put
  * out uses the page on the bike. Its tiles, the session's controls and the
- * door to the ride kept the desk's 9–16 px words, which nobody reads from
- * the saddle. G4's floor is 24 px for every word there at a desk's width.
+ * door to the ride kept the desk's 9–16 px words. On a desk the ride takes
+ * SPEC's desk row (ADR-0087), whose smallest word is a label's 11 px.
  */
 const RIDER = 'Ride Stage Coach';
-const WORD = 24;
+const WORD = 11;
 
 test("a voice channel's stage words are riding size while its session runs", async ({
 	riders,
@@ -65,6 +65,6 @@ test("a voice channel's stage words are riding size while its session runs", asy
 			return found;
 		}, WORD);
 	await expect
-		.poll(small, { message: 'words on the ridden stage under 24 px' })
+		.poll(small, { message: 'words on the ridden stage under 11 px' })
 		.toEqual([]);
 });

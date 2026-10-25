@@ -1,1 +1,0 @@
-- On a voice channel's free ride, a greyed "Ride a workout" now says "Pair your trainer first" beside it.

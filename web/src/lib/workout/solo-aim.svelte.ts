@@ -4,6 +4,7 @@ import { biasPress } from '$lib/ride/easier-harder';
 import { nudgedBias, toleranceBand } from './guards';
 import type { createHrHold } from './hr-hold.svelte';
 import type { createRideClock } from './ride-clock.svelte';
+import type { createRoadDot } from './road-dot.svelte';
 import type { RideState } from './ride-state';
 import type { createRiderGuards } from './rider-guards.svelte';
 
@@ -21,6 +22,7 @@ export function createSoloAim(deps: {
 	sample: () => TrainerSample | null;
 	sprint: () => SprintSetup;
 	ftp: number;
+	road: ReturnType<typeof createRoadDot>;
 }) {
 	let bias = $state(1);
 
@@ -57,7 +59,15 @@ export function createSoloAim(deps: {
 		// A sprint outranks the guards, for the reason a group session gives
 		// (session/ride.svelte.ts): auto-pause is an INFERENCE that the rider
 		// left, a sprint is an announced effort they are about to answer.
+		const segment = deps.clock().info.segment;
+		if (deps.state() === 'running' && segment) deps.road.enter(segment);
 		if (deps.clock().sprinting) deps.actuator.sprint(deps.sprint(), deps.ftp);
+		else if (
+			deps.state() === 'running' &&
+			!deps.guards.released &&
+			segment?.kind === 'road'
+		)
+			deps.actuator.road(deps.road.here?.felt ?? 0);
 		else deps.actuator.hold(target);
 	}
 

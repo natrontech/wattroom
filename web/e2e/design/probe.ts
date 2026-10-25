@@ -290,9 +290,11 @@ export function probe(corridor: Box) {
 			return {
 				px: Math.round(Math.min(r.width, r.height)),
 				label: label.trim().slice(0, 40),
-				// The sidebar is app chrome, not a riding surface (G4, D6): its
-				// rows are not held to the 24 px word.
-				wordPx: el.closest('nav[aria-label="crews and channels"]')
+				// The sidebar, the people column and a menu are app chrome, not a
+				// riding surface (G4, ADR-0087): they keep the desk's words.
+				wordPx: el.closest(
+					'nav[aria-label="crews and channels"], aside, [role=menu]',
+				)
 					? null
 					: wordPx(el),
 			};

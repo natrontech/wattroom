@@ -1,1 +1,0 @@
-- The public site no longer glows outside the landing hero: the game-mode traces, the FTP and sprint demos and the online dot are flat.

@@ -7,7 +7,7 @@ description: Turn one rider feedback report into a draft PR with a regression te
 
 A rider tapped `⚑` mid-ride and kept pedalling. The report arrived as a GitHub issue labelled
 `feedback` with a payload attached ([ADR-0006](../../../docs/decisions/0006-alpha-feedback-loop.md)).
-Your job this tick: **one** issue, from report to draft PR. Not two. Not a sweep of the queue.
+Your job this run: **one** issue, from report to draft PR. Not two. Not a sweep of the queue.
 
 ## 1. Find work, or do nothing
 
@@ -31,7 +31,7 @@ errors, the session's server log lines, build SHA, browser/OS, trainer model. Ch
 too — dedup means one issue can carry "also hit by three other riders", and how many riders and how
 many builds it spans tells you whether it is a race or a regression.
 
-Read the Grafana deep-link before forming a theory. It is windowed on the incident and it is the
+If the report carries a Grafana deep-link, read it before forming a theory. It is windowed on the incident and it is the
 cheapest way to tell "this rider's trainer dropped out" from "the hub stopped ticking for everyone".
 
 ## 4. Reproduce before you fix — this is the gate
@@ -54,8 +54,9 @@ Branch `fix/<slug>`, draft PR early with `Closes #<n>`. The replay from step 4 *
 commit it as a fixture, with user, crew and channel identifiers stripped and the numeric series kept. The
 fix is done when that test goes from failing to passing, and it stays in the suite afterwards.
 
-Scope discipline is the whole point of one-issue-per-tick: anything else you notice becomes a new
-issue on the right milestone, never extra commits on this PR.
+Scope discipline is the whole point of one report per run: anything else you notice follows AGENTS.md
+"Doing it" (comment on the issue that owns it; file only what a rider would notice or what breaks CI),
+never extra commits on this PR.
 
 ## 6. Verify like a human would, then hand over
 

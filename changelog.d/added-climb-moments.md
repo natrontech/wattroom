@@ -1,1 +1,0 @@
-- The climb card slides in, a red flag marks the last kilometre to the top, and a strip above the Skyline celebrates a summit, with confetti at HC and category I.

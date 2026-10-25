@@ -203,3 +203,19 @@ describe('validateWorkout total', () => {
 		).toBe(true);
 	});
 });
+
+it('accepts road steps and bounds their optional starting metre', () => {
+	for (const fromM of [undefined, 0, 500, 200000]) {
+		expect(validateWorkout(ok([{ type: 'road', seconds: 60, fromM }])).ok).toBe(
+			true,
+		);
+	}
+	for (const fromM of [-1, 200001, NaN, Infinity, '500', null]) {
+		expect(validateWorkout(ok([{ type: 'road', seconds: 60, fromM }])).ok).toBe(
+			false,
+		);
+	}
+	for (const seconds of [4, 14401, NaN, '60']) {
+		expect(validateWorkout(ok([{ type: 'road', seconds }])).ok).toBe(false);
+	}
+});

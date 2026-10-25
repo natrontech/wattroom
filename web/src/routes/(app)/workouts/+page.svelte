@@ -17,7 +17,6 @@
 	import RouteShelf from './RouteShelf.svelte';
 	import RouteIcon from '@lucide/svelte/icons/route';
 	import { device, isSpectator } from '$lib/device.svelte';
-	import { roadsEnabled } from '$lib/ride/roads';
 	import WorkoutCard from './WorkoutCard.svelte';
 	import { durationSeconds } from '$lib/workout/engine';
 	import { byFocus, focuses, library, type Focus } from '$lib/workout/library';
@@ -75,8 +74,8 @@
 			on ? (routeFor = { id, workout }) : void goto(`/ride?w=${id}`),
 	});
 	// Any workout on one of your roads (#3594) — not from a phone spectator,
-	// who rides nothing, and behind the roads dev gate.
-	const onRoads = $derived(roadsEnabled() && !isSpectator(device));
+	// who rides nothing.
+	const onRoads = $derived(!isSpectator(device));
 	let routeFor = $state<{ id: string; workout: Workout } | null>(null);
 	// Picking a workout for one road, from its route page (#3681): each
 	// card's Ride opens RideOnRoute already on that road.

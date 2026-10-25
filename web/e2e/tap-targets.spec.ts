@@ -172,7 +172,7 @@ test('the browse surfaces’ links and folds clear the floor on a phone', async 
  * sat at 28 px beside the coach's controls in a running session — small to
  * hit on purpose and easy to hit by mistake.
  */
-test('Try 3D again, on a ride held on the flat road, is riding size (#3080) @world', async ({
+test('Ride in 3D, on a ride on the flat road, is riding size (#3080, #3084) @world', async ({
 	riders,
 }) => {
 	test.skip(
@@ -182,19 +182,18 @@ test('Try 3D again, on a ride held on the flat road, is riding size (#3080) @wor
 	const rider = await riders('Tap Flat Road Rider');
 	await rider.setViewportSize(PHONE);
 	await rider.addInitScript(() => {
-		localStorage.setItem('wattroom.world-slot.v1', '1');
 		localStorage.setItem('wattroom.world.mode.v1', 'flat');
 	});
 	// Only a ride on a road has a world to hold on the flat road (#3663).
 	await openAWorkoutOnARoad(rider);
 	await rider.getByRole('button', { name: 'Ride simulated' }).click();
 	await rider.getByRole('button', { name: 'Start the ride' }).click();
-	const retry = rider.getByRole('button', { name: 'Try 3D again' });
+	const retry = rider.getByRole('button', { name: 'Ride in 3D' });
 	await expect(retry).toBeVisible({ timeout: 30_000 });
 	const retryBox = await box(retry);
 	expect(
 		retryBox.height,
-		`'Try 3D again' is ${retryBox.height}px tall`,
+		`'Ride in 3D' is ${retryBox.height}px tall`,
 	).toBeGreaterThanOrEqual(RIDING);
 });
 
@@ -269,13 +268,12 @@ test('the header controls a pedalling rider uses are riding size', async ({
 });
 
 /**
- * The voice channel's people column (#3828, #3912). On a ride it is part of
- * the riding surface, so everything in it is 44 px each way: the cheers had
- * shrunk to 35 px wide to fit one row, and the jukebox and the soundboard were
- * 30 px. At any width its search field says its whole placeholder: the old one
- * was cut mid-word at the column's default 272 px.
+ * The voice channel's people column (#3912, ADR-0087). It is chrome, so a ride
+ * leaves its controls at their desk sizes. At any width its search field says
+ * its whole placeholder: the old one was cut mid-word at the column's default
+ * 272 px.
  */
-test('the people column is riding size on a ride, and its search placeholder fits', async ({
+test('the people column keeps its desk sizes on a ride, and its search placeholder fits', async ({
 	riders,
 	channels,
 }) => {
@@ -291,9 +289,10 @@ test('the people column is riding size on a ride, and its search placeholder fit
 	);
 	await rider.goto(`${voicePath(opened)}/training`);
 	const field = rider.getByRole('textbox', { name: /^add music/ });
+	// Riding, the field is mounted only while the jukebox's sheet is open.
 	const column = rider
 		.getByRole('complementary')
-		.filter({ has: field })
+		.filter({ has: field.or(rider.getByTestId('rail-sheet')) })
 		.first();
 	await expect(field).toBeVisible({ timeout: 15_000 });
 
@@ -321,23 +320,7 @@ test('the people column is riding size on a ride, and its search placeholder fit
 			.soft(text, `the search placeholder ${where}: ${text}px in ${room}px`)
 			.toBeLessThanOrEqual(room);
 	};
-	/** Every control in the column under 44 px either way. */
-	const short = async () => {
-		const found: string[] = [];
-		for (const control of await column
-			.locator('button, a[href], input, select, textarea, summary')
-			.filter({ visible: true })
-			.all()) {
-			const { width, height } = await box(control);
-			if (Math.min(width, height) >= RIDING) continue;
-			const name =
-				(await control.getAttribute('aria-label')) ??
-				(await control.innerText()).trim();
-			found.push(`${name || 'a control'} is ${width}×${height}px`);
-		}
-		return found;
-	};
-
+	const desk = (await box(field)).height;
 	await fits('at the desk');
 	await narrowest();
 	await fits('at the desk, the column at its narrowest');
@@ -348,10 +331,11 @@ test('the people column is riding size on a ride, and its search placeholder fit
 	await expect(rider.getByRole('button', { name: 'End ride' })).toBeVisible({
 		timeout: 15_000,
 	});
-	await expect
-		.poll(short, { message: 'people column controls under 44px on a ride' })
-		.toEqual([]);
+	// Riding, the add box sits in the jukebox's sheet (#3983), placed at the
+	// column's width when it opens.
 	await narrowest();
+	await rider.getByTestId('rail-sheet').filter({ visible: true }).click();
+	expect((await box(field)).height, 'the column zoomed on a ride').toBe(desk);
 	await fits('riding, the column at its narrowest');
 });
 

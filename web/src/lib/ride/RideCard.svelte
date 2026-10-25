@@ -15,12 +15,8 @@
 	import { gradeAt } from '$lib/road/at-metre';
 	import { feltGrade } from '$lib/ride/ride-grade';
 	import RoadPick from '$lib/ride/RoadPick.svelte';
-	import {
-		carryOnFrom,
-		loadRoad,
-		roadsEnabled,
-		type RideableRoute,
-	} from '$lib/ride/roads';
+	import { carryOnFrom, loadRoad, type RideableRoute } from '$lib/ride/roads';
+	import RoadsBeta from '$lib/ride/RoadsBeta.svelte';
 	import SoloGames from '$lib/ride/SoloGames.svelte';
 	import { durationSeconds, flatten } from '$lib/workout/engine';
 	import type { Workout } from '$lib/workout/types';
@@ -54,13 +50,12 @@
 		ftp: number;
 	} = $props();
 
-	const roads = roadsEnabled();
 	let roadError = $state<string | null>(null);
 	let picking = $state(false);
 	let carry = $state<number | null>(null);
 
 	untrack(() => {
-		if (!roads || !roadId) return;
+		if (!roadId) return;
 		const id = roadId;
 		pending = true;
 		void loadRoad(id).then((result) => {
@@ -105,100 +100,94 @@
 </script>
 
 <section class="panel panel-lg" aria-label="the ride">
-	{#if roads}
-		<div
-			class="grid gap-3 sm:grid-cols-2"
-			role="group"
-			aria-label="how you ride"
-		>
-			{#each KINDS as k (k.id)}
-				<button
-					onclick={() => (kind = k.id)}
-					aria-pressed={kind === k.id}
-					class="{tile} {kind === k.id
-						? 'border-neon'
-						: 'border-frame hover:border-muted'}"
-				>
-					<span class="font-display text-2xl font-bold">{k.name}</span>
-					<span class="text-muted mt-1 text-sm">
-						{#if k.id === 'free'}
-							You drive the trainer. Hold a grade, or hold your watts.
-						{:else}
-							The plan drives it.{lastWorkout ? ` Last: ${lastWorkout}.` : ''}
-						{/if}
-					</span>
-				</button>
-			{/each}
-		</div>
-
-		<div class="border-frame mt-4 rounded-lg border p-4">
-			<div class="flex flex-wrap items-center gap-x-3 gap-y-2">
-				<span class="eyebrow">road</span>
-				{#if pending}
-					<Skeleton class="h-5 w-48" />
-				{:else if road}
-					<span class="min-w-0 truncate font-semibold">{road.name}</span>
-					{#if road.id === remembered}
-						<span class="text-muted text-sm">your last road</span>
+	<div class="grid gap-3 sm:grid-cols-2" role="group" aria-label="how you ride">
+		{#each KINDS as k (k.id)}
+			<button
+				onclick={() => (kind = k.id)}
+				aria-pressed={kind === k.id}
+				class="{tile} {kind === k.id
+					? 'border-neon'
+					: 'border-frame hover:border-muted'}"
+			>
+				<span class="font-display text-2xl font-bold">{k.name}</span>
+				<span class="text-muted mt-1 text-sm">
+					{#if k.id === 'free'}
+						You drive the trainer. Hold a grade, or hold your watts.
+					{:else}
+						The plan drives it.{lastWorkout ? ` Last: ${lastWorkout}.` : ''}
 					{/if}
-				{:else}
-					<span class="text-muted">No road</span>
+				</span>
+			</button>
+		{/each}
+	</div>
+
+	<div class="border-frame mt-4 rounded-lg border p-4">
+		<div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+			<span class="eyebrow">road</span>
+			{#if pending}
+				<Skeleton class="h-5 w-48" />
+			{:else if road}
+				<span class="min-w-0 truncate font-semibold">{road.name}</span>
+				{#if road.id === remembered}
+					<span class="text-muted text-sm">your last road</span>
 				{/if}
-			</div>
-			<div class="mt-3 flex flex-wrap gap-2">
-				<button
-					onclick={() => (picking = !picking)}
-					aria-expanded={picking}
-					class="btn btn-secondary btn-lg"
-					>{picking ? 'Close' : 'Change'}</button
-				>
-				{#if road}
-					<button
-						onclick={() => {
-							road = null;
-							from = 0;
-						}}
-						class="btn btn-secondary btn-lg">No road</button
-					>
-				{/if}
-			</div>
-			{#if roadError}
-				<p class="text-danger mt-2 text-sm">{roadError}</p>
-			{/if}
-			{#if picking}
-				<div class="mt-3"><RoadPick onpick={(next) => onto(next)} /></div>
-			{/if}
-			{#if road}
-				<!-- A road's own workout starts where its leg does (#3601). -->
-				{#if kind !== 'workout' || !workout.road?.stepEndM}
-					<div
-						class="mt-3 flex flex-wrap gap-2"
-						role="group"
-						aria-label="where to start"
-					>
-						{#each starts as m (m)}
-							<button
-								onclick={() => (from = m)}
-								aria-pressed={from === m}
-								class="btn btn-lg rounded-full border {from === m
-									? 'border-neon text-ink'
-									: 'border-muted/30 hover:border-muted/60'}"
-								>{m === 0 ? 'Whole road' : `From km ${formatKm(m)}`}</button
-							>
-						{/each}
-					</div>
-				{/if}
-				{#if kind === 'free' && felt}
-					<p class="text-muted num mt-3 text-sm">
-						Feel: road {pct(felt.road)}, you feel {pct(felt.you)}
-					</p>
-				{/if}
+			{:else}
+				<span class="text-muted">No road</span>
 			{/if}
 		</div>
-	{/if}
+		<RoadsBeta class="mt-2" />
+		<div class="mt-3 flex flex-wrap gap-2">
+			<button
+				onclick={() => (picking = !picking)}
+				aria-expanded={picking}
+				class="btn btn-secondary btn-lg">{picking ? 'Close' : 'Change'}</button
+			>
+			{#if road}
+				<button
+					onclick={() => {
+						road = null;
+						from = 0;
+					}}
+					class="btn btn-secondary btn-lg">No road</button
+				>
+			{/if}
+		</div>
+		{#if roadError}
+			<p class="text-danger mt-2 text-sm">{roadError}</p>
+		{/if}
+		{#if picking}
+			<div class="mt-3"><RoadPick onpick={(next) => onto(next)} /></div>
+		{/if}
+		{#if road}
+			<!-- A road's own workout starts where its leg does (#3601). -->
+			{#if kind !== 'workout' || !workout.road?.stepEndM}
+				<div
+					class="mt-3 flex flex-wrap gap-2"
+					role="group"
+					aria-label="where to start"
+				>
+					{#each starts as m (m)}
+						<button
+							onclick={() => (from = m)}
+							aria-pressed={from === m}
+							class="btn btn-lg rounded-full border {from === m
+								? 'border-neon text-ink'
+								: 'border-muted/30 hover:border-muted/60'}"
+							>{m === 0 ? 'Whole road' : `From km ${formatKm(m)}`}</button
+						>
+					{/each}
+				</div>
+			{/if}
+			{#if kind === 'free' && felt}
+				<p class="text-muted num mt-3 text-sm">
+					Feel: road {pct(felt.road)}, you feel {pct(felt.you)}
+				</p>
+			{/if}
+		{/if}
+	</div>
 
 	{#if kind === 'workout'}
-		<div class={roads ? 'mt-4' : ''}>
+		<div class="mt-4">
 			<h2 class="page-title-sm">{workout.name}</h2>
 			<p class="text-muted num mt-1 text-sm">
 				{formatClock(durationSeconds(workout))} · targets scale to your FTP
