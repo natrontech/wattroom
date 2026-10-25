@@ -1,0 +1,1 @@
+- A screen share or cam on the stage in full screen now has an Exit full screen button; before, only Escape got you out.

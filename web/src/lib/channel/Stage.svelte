@@ -1,6 +1,7 @@
 <script lang="ts">
 	import GripHorizontal from '@lucide/svelte/icons/grip-horizontal';
 	import Maximize from '@lucide/svelte/icons/maximize';
+	import Minimize from '@lucide/svelte/icons/minimize';
 	import Music from '@lucide/svelte/icons/music';
 	import PictureInPicture2 from '@lucide/svelte/icons/picture-in-picture-2';
 	import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
@@ -181,6 +182,22 @@
 		if (seated) popped = false;
 	});
 
+	/** True while the frame is the full-screen element. Inside full screen
+	 *  the frame's own chrome is the only way out but Escape (#4092): the
+	 *  context menu draws outside it, and popping out would flip the docked
+	 *  state underneath. */
+	let full = $state(false);
+	$effect(() => {
+		const check = () =>
+			(full = !!frame && document.fullscreenElement === frame);
+		document.addEventListener('fullscreenchange', check);
+		return () => document.removeEventListener('fullscreenchange', check);
+	});
+	function toggleFullscreen() {
+		if (full) void document.exitFullscreen();
+		else void frame?.requestFullscreen?.();
+	}
+
 	let dragging = $state(false);
 	function startPan(event: PointerEvent) {
 		if (view.zoom === 1) return;
@@ -231,12 +248,12 @@
 				label: popped ? 'Dock the stage' : 'Pop the stage out',
 				icon: PictureInPicture2,
 				onSelect: () => (popped = !popped),
-				disabled: seated,
+				disabled: seated || full,
 			},
 			{
-				label: 'Fullscreen',
-				icon: Maximize,
-				onSelect: () => void frame?.requestFullscreen?.(),
+				label: full ? 'Exit full screen' : 'Fullscreen',
+				icon: full ? Minimize : Maximize,
+				onSelect: toggleFullscreen,
 			},
 		])}
 		{@attach wheelZoom}
@@ -314,16 +331,21 @@
 					class="text-muted hover:text-ink grid h-11 w-11 place-items-center disabled:opacity-30"
 					aria-label="fit to frame"><RotateCcw size={13} /></button
 				>
+				{#if !full}
+					<button
+						onclick={() => (popped = !popped)}
+						class="text-muted hover:text-ink grid h-11 w-11 place-items-center"
+						aria-label={popped ? 'dock the stage' : 'pop the stage out'}
+						><PictureInPicture2 size={13} /></button
+					>
+				{/if}
 				<button
-					onclick={() => (popped = !popped)}
+					onclick={toggleFullscreen}
 					class="text-muted hover:text-ink grid h-11 w-11 place-items-center"
-					aria-label={popped ? 'dock the stage' : 'pop the stage out'}
-					><PictureInPicture2 size={13} /></button
-				>
-				<button
-					onclick={() => void frame?.requestFullscreen?.()}
-					class="text-muted hover:text-ink grid h-11 w-11 place-items-center"
-					aria-label="fullscreen"><Maximize size={13} /></button
+					aria-label={full ? 'exit full screen' : 'fullscreen'}
+					>{#if full}<Minimize size={13} />{:else}<Maximize
+							size={13}
+						/>{/if}</button
 				>
 			</div>
 		{/if}
