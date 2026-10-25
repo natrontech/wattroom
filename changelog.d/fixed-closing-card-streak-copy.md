@@ -1,1 +1,0 @@
-- The closing card's XP line says what your streak counts, your own weeks, instead of what it doesn't.

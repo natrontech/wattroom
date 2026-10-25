@@ -1,1 +1,0 @@
-- A ride on a desk or laptop is drawn at the mockups' sizes: smaller numbers, words and buttons, more room for the road. The sidebar, the people column and right-click menus keep their desk sizes in the dark riding scheme. TV mode, the HUD and phones keep their large sizes.

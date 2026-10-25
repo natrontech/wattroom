@@ -1,1 +1,0 @@
-- Home says what each ride door does instead of who doesn't see it, and the voice-channel line no longer reads as if nobody is riding while a session runs.

@@ -1,1 +1,0 @@
-- The floating HUD shows your cadence and heart rate beside the time left, or beside the grade on a road.

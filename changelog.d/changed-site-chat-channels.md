@@ -1,1 +1,0 @@
-- The public site calls a crew's written channels chat channels, the word the app uses.
