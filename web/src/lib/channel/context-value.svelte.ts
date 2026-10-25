@@ -189,8 +189,7 @@ export function channelContextValue(deps: ContextDeps): ChannelContext {
 		get pairing() {
 			return live.pairing;
 		},
-		control: (kind, payload, id) =>
-			live.control(kind as never, payload as never, id),
+		control: (kind, payload) => live.control(kind as never, payload as never),
 		openPicker: (intent = 'start') => deps.openPicker(intent),
 		openTv: () => deps.openTv(),
 		get stageSources() {
