@@ -96,7 +96,9 @@
 			"web/src/lib/board/BoardToggle.svelte",
 			"web/src/lib/channel/Jukebox.svelte",
 			"web/src/lib/channel/JukeboxAdd.svelte",
-			"web/src/lib/channel/JukeboxPlaylists.svelte"
+			"web/src/lib/channel/JukeboxPlaylists.svelte",
+			"web/src/lib/channel/JukeboxDeck.svelte",
+			"web/src/lib/channel/RailSheet.svelte"
 		],
 		"surfaces": ["ride-session-flat", "ride-channel-free"]
 	},

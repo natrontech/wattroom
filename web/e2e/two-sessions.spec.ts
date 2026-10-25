@@ -200,11 +200,12 @@ test('two voice channels run two sessions, each with its own numbers and its own
 
 	// --- one deck each -------------------------------------------------------
 	const queue = async (page: Page, id: string) => {
-		await page
-			.getByRole('textbox', {
-				name: 'add music: search your library, or paste a YouTube link',
-			})
-			.fill(`https://www.youtube.com/watch?v=${id}`);
+		// Riding, the add box sits in the jukebox's sheet (#3983).
+		await page.getByTestId('rail-sheet').filter({ visible: true }).click();
+		const add = page.getByRole('textbox', {
+			name: 'add music: search your library, or paste a YouTube link',
+		});
+		await add.fill(`https://www.youtube.com/watch?v=${id}`);
 		await page.keyboard.press('Enter');
 		// The visible copy: the jukebox rail holds the track too, and steps
 		// aside on the live channel's own pages (#2460), so its copy is hidden.
@@ -212,6 +213,8 @@ test('two voice channels run two sessions, each with its own numbers and its own
 			page.getByText(id).filter({ visible: true }).first(),
 			`what was queued never reached the deck: ${id}`,
 		).toBeVisible({ timeout: SETTLE_MS });
+		// The first track swaps the empty sheet for the deck's: it stays open.
+		await expect(add, 'the sheet shut when the deck filled').toBeVisible();
 	};
 	await queue(a, TRACK.one);
 	await queue(b, TRACK.two);

@@ -11,6 +11,7 @@
 	import JukeboxDeck from '$lib/channel/JukeboxDeck.svelte';
 	import JukeboxPlaylists from '$lib/channel/JukeboxPlaylists.svelte';
 	import JukeboxTrack from '$lib/channel/JukeboxTrack.svelte';
+	import RailSheet from '$lib/channel/RailSheet.svelte';
 	import { IN_SYNC_SEC, playerInfo } from '$lib/channel/jukebox-player.svelte';
 	import { listening } from '$lib/channel/listening.svelte';
 	import {
@@ -109,39 +110,66 @@
 	// column is shared with the chat, and the chat loses every time.
 	const QUEUE_PEEK = 3;
 	let showAllQueue = $state(false);
+	// Riding, whether the sheet is open outlives the deck coming and going.
+	let sheetOpen = $state(false);
 </script>
 
 <section class="flex min-w-0 flex-col gap-3">
-	<div class="flex min-w-0 items-center justify-between gap-2">
-		<span class="eyebrow">jukebox</span>
-		{#if current && jukebox?.playing && !playerInfo.live && !listening.out}
-			<!-- Proof everyone is together, in the one place riders look for it.
-			     A rider who has stepped out is not with it and must not be told
-			     they are: the badge goes, and comes back when they rejoin. -->
-			<span
-				class="flex shrink-0 items-center gap-1.5 font-mono text-[10px] {inSync
-					? 'text-watt'
-					: 'text-muted'}"
-			>
+	<!-- Riding, the seat is the tile and its strip (#3983): the heading is
+	     the sheet's, and whether the deck is in sync is desk detail. -->
+	{#if !riding}
+		<div class="flex min-w-0 items-center justify-between gap-2">
+			<span class="eyebrow">jukebox</span>
+			{#if current && jukebox?.playing && !playerInfo.live && !listening.out}
+				<!-- Proof everyone is together, in the one place riders look for it.
+				     A rider who has stepped out is not with it and must not be told
+				     they are: the badge goes, and comes back when they rejoin. -->
 				<span
-					class="h-1.5 w-1.5 rounded-full {inSync
-						? 'bg-watt glow-stroke'
-						: 'bg-muted motion-safe:animate-pulse'}"
-				></span>
-				{inSync ? 'in sync' : 'catching up'}
-			</span>
-		{/if}
-	</div>
+					class="flex shrink-0 items-center gap-1.5 font-mono text-[10px] {inSync
+						? 'text-watt'
+						: 'text-muted'}"
+				>
+					<span
+						class="h-1.5 w-1.5 rounded-full {inSync
+							? 'bg-watt glow-stroke'
+							: 'bg-muted motion-safe:animate-pulse'}"
+					></span>
+					{inSync ? 'in sync' : 'catching up'}
+				</span>
+			{/if}
+		</div>
+	{/if}
 
 	{#if jukebox && current}
-		<JukeboxDeck {jukebox} {current} {send} />
-	{:else if !riding}
+		<!-- Riding, the deck is v2-ride's seat and everything below opens
+		     over the crew from it, so the crew sits under the music (#3983). -->
+		<JukeboxDeck
+			{jukebox}
+			{current}
+			{send}
+			{riding}
+			next={queue.length}
+			behind={riding ? below : undefined}
+			bind:sheet={sheetOpen}
+		/>
+	{:else if riding}
+		<RailSheet bind:open={sheetOpen}>
+			{#snippet label()}<span class="eyebrow">jukebox</span>{/snippet}
+			{@render below()}
+		</RailSheet>
+	{:else}
 		<p class="text-muted text-xs leading-relaxed">
 			Nothing is playing. Search your library or paste a YouTube link, and
 			everyone hears it on the same second.
 		</p>
 	{/if}
 
+	{#if !riding}
+		{@render below()}
+	{/if}
+</section>
+
+{#snippet below()}
 	<JukeboxAdd {send} {refusal} />
 
 	{#if queue.length}
@@ -228,4 +256,4 @@
 			</ul>
 		</details>
 	{/if}
-</section>
+{/snippet}

@@ -1,0 +1,1 @@
+- On a ride the jukebox in the people column is a seat: the picture and one line (title, who queued it, how many are next), with the crew straight under it. Its transport, volume, search, queue and playlists open from that line over the crew, with no live-power colour on its progress bar. At the desk nothing changes.
