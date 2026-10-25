@@ -1,0 +1,1 @@
+- A rider on a lossy Wi-Fi link stays on the voice channel's roster through a few seconds' stall instead of flickering off and back while their voice carries on.

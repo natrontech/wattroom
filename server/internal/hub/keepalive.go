@@ -25,9 +25,16 @@ import (
 // trigger-happy: the peer still gets socketPingTimeout to answer each one.
 // The cost is a ping frame per socket per interval, against a room socket
 // that already writes a whole tick every second.
+//
+// The answer gets longer than the interval (#4090). A ping rides TCP, and a
+// lossy Wi-Fi link that loses the same segment three times stalls it for the
+// retransmit backoff, 1+2+4 s, while the rider's voice carries on over UDP.
+// Five seconds dropped that rider and took them back a second later, forty
+// times in a ride. Ten rides out the stall and still finds a half-open socket
+// inside presenceGrace.
 const (
 	socketKeepalive   = 5 * time.Second
-	socketPingTimeout = 5 * time.Second
+	socketPingTimeout = 10 * time.Second
 )
 
 // keepalive is a socket's ping schedule. Carried on the Hub like h.now rather
