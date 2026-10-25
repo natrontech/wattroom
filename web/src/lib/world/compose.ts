@@ -119,7 +119,10 @@ const SUBSTEP = 0.1; // sim seconds per integration step, so 16× does not tunne
 
 /** The scene for `opts`; `dom` is what the orbit view's controls listen on, when there is one. */
 export function compose(opts: MountOptions, dom: HTMLElement | null) {
-	const { route, world } = opts;
+	const { world } = opts;
+	// A session that laps the road rides it round (#3623): the bunch, its chalk
+	// and its gates count laps unrolled, and past the end each is on the next lap.
+	const route = opts.loop ? { ...opts.route, loop: true } : opts.route;
 	let mode: CameraMode = opts.camera ?? 'chase';
 	let speedup = opts.speedup ?? 1;
 	const env: Env = { difficulty: 0.5 };
@@ -222,7 +225,8 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 			scene.remove(old);
 			disposeTree(old);
 		}
-		stage = buildStage(route, world, style, sight, stream, !opts.loop);
+		// The road itself is drawn as it is, its ends where they lie.
+		stage = buildStage(opts.route, world, style, sight, stream, !opts.loop);
 		crew = makeCrew(style, neon);
 		game = makeGameRoad(route, world, style);
 		tags = makeTags(style);

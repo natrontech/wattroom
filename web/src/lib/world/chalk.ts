@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import type { Chalk } from '$lib/channel/bunch-view';
 import type { RoadsideStamp } from '$lib/protocol';
-import { at, curvature, leftOf } from '$lib/road/along';
+import { at, curvature, leftOf, sampleAt } from '$lib/road/along';
 import { type Route } from '$lib/road/route';
 import { disposeTree } from './dispose';
 import { tag } from './family';
@@ -84,10 +84,7 @@ function draw(
 function stampMesh(route: Route, c: Chalk, chalk: string): THREE.Mesh {
 	const p = at(route, c.u);
 	const { lx, lz } = leftOf(p.heading);
-	const n = route.x.length - 1;
-	const bank = bankOf(
-		curvature(route, Math.min(Math.max(Math.round(c.u / route.step), 0), n)),
-	);
+	const bank = bankOf(curvature(route, sampleAt(route, c.u)));
 	const mesh = new THREE.Mesh(
 		new THREE.PlaneGeometry(ACROSS, ALONG).rotateX(-Math.PI / 2),
 		// The road's paint is Lambert (roadMaterial): the same light, the same tone.

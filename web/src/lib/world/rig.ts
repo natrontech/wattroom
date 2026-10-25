@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { damp } from '$lib/motion/damp';
 import { yOf } from './geometry';
 import { type Route } from '$lib/road/route';
-import { at, leftOf } from '$lib/road/along';
+import { at, closes, lastMetre, leftOf } from '$lib/road/along';
 import type { SimRider } from './sim';
 import type { World } from './world';
 import { makeReveal, REVEAL, type RevealView } from './reveal';
@@ -21,21 +21,27 @@ const SIDE = { out: 3.2, ahead: 1.6, up: 0.3, fov: 40 };
 const STEADY = { back: 260, up: 190, fov: 45 };
 
 const EYE_FLOOR = 1.5; // metres the eye keeps above the drawn ground
+/** Past the heli's 70 m and 42 m, the widest a camera change moves the goal. */
+const CUT_M = 500;
 const GOAL_FLOOR = 1.8;
 
 /**
- * The route `d` metres along; off either end of a road that is not a loop,
- * straight on from that end — at a ride's first metre the eye stands
- * behind you, not on you (#3663).
+ * The route `d` metres along, in the lap that starts at `from`; off either
+ * end of a road that does not close, straight on from that end — at a
+ * ride's first metre, or a lap's, the eye stands behind you, not on you
+ * (#3663, #3623).
  */
-function along(route: Route, d: number) {
-	if (route.loop || (d >= 0 && d <= route.length)) return at(route, d);
-	const end = d < 0 ? 0 : route.length;
+function along(route: Route, d: number, from = 0) {
+	if (closes(route)) return at(route, d);
+	const u = d - from;
+	// Its last metre short of the end: on a lapped road the end is the next lap's start.
+	const end = u < 0 ? 0 : lastMetre(route);
+	if (u >= 0 && u <= end) return at(route, u);
 	const p = at(route, end);
 	return {
 		...p,
-		x: p.x + Math.sin(p.heading) * (d - end),
-		z: p.z + Math.cos(p.heading) * (d - end),
+		x: p.x + Math.sin(p.heading) * (u - end),
+		z: p.z + Math.cos(p.heading) * (u - end),
 	};
 }
 
@@ -68,6 +74,10 @@ export function makeRig(route: Route, world: World) {
 			real: number,
 			countIn: RevealView | null = null,
 		) {
+			// Where the rider's lap began, on a lapped road (#3623).
+			const lap = route.loop
+				? Math.floor(rider.d / route.length) * route.length
+				: 0;
 			if (countIn && mode !== 'side') {
 				reveal(countIn, eye, spin, gaze);
 				eye.y = Math.max(eye.y, ground(eye.x, eye.z) + EYE_FLOOR);
@@ -82,7 +92,7 @@ export function makeRig(route: Route, world: World) {
 				return;
 			}
 			if (mode === 'side') {
-				const p = along(route, rider.d);
+				const p = along(route, rider.d, lap);
 				const { lx, lz } = leftOf(p.heading);
 				camera.position.set(
 					you.x - lx * SIDE.out + Math.sin(p.heading) * SIDE.ahead,
@@ -103,17 +113,17 @@ export function makeRig(route: Route, world: World) {
 					? 7.2 + Math.min(3, rider.v * 0.15)
 					: 70;
 			// The eye rides your lane, not the centre line, so your lane leaves you in RIDER_BOX.
-			const c = along(route, rider.d);
+			const c = along(route, rider.d, lap);
 			const sx = you.x - c.x;
 			const sz = you.z - c.z;
-			const b = along(route, rider.d - back);
+			const b = along(route, rider.d - back, lap);
 			want.set(
 				b.x + sx,
 				yOf(route, b.ele) + (steady ? STEADY.up : chase ? 2.4 : 42),
 				b.z + sz,
 			);
 			want.y = Math.max(want.y, ground(want.x, want.z) + GOAL_FLOOR);
-			const a = along(route, rider.d + (chase ? 18 : 10));
+			const a = along(route, rider.d + (chase ? 18 : 10), lap);
 			look
 				.set(a.x + sx, yOf(route, a.ele) + 1.0, a.z + sz)
 				.lerp(you, chase ? 0.45 : 0.8);
@@ -123,7 +133,8 @@ export function makeRig(route: Route, world: World) {
 				: chase
 					? 50 + Math.min(4, Math.max(0, kmh - 25) * 0.2)
 					: 45;
-			if (!started) {
+			// A goal this far off is a cut — a lap starting where the road began — never a swoop over the map.
+			if (!started || eye.distanceTo(want) > CUT_M) {
 				eye.copy(want);
 				gaze.copy(look);
 				camera.fov = fov;

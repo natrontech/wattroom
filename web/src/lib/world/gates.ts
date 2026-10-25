@@ -5,7 +5,7 @@
 // as the road's own paint is (ADR-0072), and nothing glows.
 import * as THREE from 'three';
 import { GATES, type PaintedGate } from '$lib/road/gates';
-import { at, curvature } from '$lib/road/along';
+import { at, curvature, lapEnd, sampleAt } from '$lib/road/along';
 import { type Route } from '$lib/road/route';
 import { disposeTree } from './dispose';
 import { tag } from './family';
@@ -73,11 +73,9 @@ function chevron(): THREE.BufferGeometry {
  */
 function lay(route: Route, o: THREE.Object3D, m: number, long: number) {
 	const p = at(route, m);
-	const rise = yOf(route, at(route, m + long).ele) - yOf(route, p.ele);
-	const n = route.x.length - 1;
-	const bank = bankOf(
-		curvature(route, Math.min(Math.max(Math.round(m / route.step), 0), n)),
-	);
+	const far = Math.min(m + long, lapEnd(route, m));
+	const rise = yOf(route, at(route, far).ele) - yOf(route, p.ele);
+	const bank = bankOf(curvature(route, sampleAt(route, m)));
 	o.position.set(p.x, yOf(route, p.ele) + ROAD_LIFT + 0.03, p.z);
 	o.rotation.set(Math.atan2(rise, long), p.heading + Math.PI, bank, 'YXZ');
 }
