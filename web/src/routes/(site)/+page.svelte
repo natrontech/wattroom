@@ -74,6 +74,14 @@
 			body: 'Start a road of yours from the beginning and the rider you were last time rides beside you, a see-through figure in your own kit. The bike computer says the gap in words: “4 s behind”.',
 			alt: 'A free ride on a mountain road in the 3D world: the rider’s ghost from an earlier ride just ahead, the bike computer reading 4 s behind, and Easier and Harder in the panel above',
 		},
+		{
+			screen: 'phone-remote',
+			portrait: true,
+			eyebrow: 'Gears and your phone',
+			title: 'Shift from the screen, the keys, a Cog or your phone',
+			body: 'On a road, Easier and Harder shift virtual gears: tap them, press − and +, or ride a Zwift Cog. In an ERG workout the same controls trim your target. Open WattRoom on your phone while the desk rides and the phone becomes your remote, and one tap moves your voice to it.',
+			alt: 'A phone as the rider’s remote while the desk rides: big Easier and Harder buttons, and buttons to turn the bike computer’s page, cheer back and talk',
+		},
 	];
 
 	const faq = [
@@ -158,34 +166,37 @@
 	</div>
 </section>
 
-<!-- The world: a crew on one road (#4198). -->
-<section id="world" class="mx-auto mt-28 w-full max-w-6xl px-4 sm:px-6">
-	<SectionHead
-		center
-		eyebrow="Ride a road together"
-		title="Your roads in 3D, with your crew on them"
-		lede="Import a route and ride it in a 3D world: the climbs, the hairpins and every crewmate where their own watts have taken them. The numbers sit at the edges, so the road stays in view."
-	/>
-	<div class="mt-10">
-		<Screen
-			name="world-crew"
-			alt="Two riders of a crew side by side in a session on a mountain road in the 3D world, the workout’s clock above, the bike computer at the left and the riders’ watts per kilo at the right"
-			width={1440}
-			height={900}
-		/>
-	</div>
-</section>
-
-<!-- Workouts and the ghost, as they look. -->
+<!-- The world, then what a rider does on it (#4198). -->
 <section
+	id="world"
 	class="mx-auto mt-28 flex w-full max-w-6xl flex-col gap-24 px-4 sm:px-6"
 >
+	<div>
+		<SectionHead
+			center
+			eyebrow="Ride a road together"
+			title="Your roads in 3D, with your crew on them"
+			lede="Import a route and ride it in a 3D world: the climbs, the hairpins and every crewmate where their own watts have taken them. The numbers sit at the edges, so the road stays in view."
+		/>
+		<div class="mt-8">
+			<Screen
+				name="world-crew"
+				alt="Two riders of a crew side by side in a session on a mountain road in the 3D world, the workout’s clock above, the bike computer at the left and the riders’ watts per kilo at the right"
+				width={1440}
+				height={900}
+			/>
+		</div>
+	</div>
 	{#each features as f, i (f.screen)}
 		<div class="grid items-center gap-8 lg:grid-cols-2 lg:gap-14">
 			<div class={i % 2 ? 'lg:order-2' : ''}>
 				<SectionHead eyebrow={f.eyebrow} title={f.title} lede={f.body} />
 			</div>
-			<Screen name={f.screen} alt={f.alt} width={1440} height={900} />
+			{#if f.portrait}
+				<Screen name={f.screen} alt={f.alt} width={375} height={698} narrow />
+			{:else}
+				<Screen name={f.screen} alt={f.alt} width={1440} height={900} />
+			{/if}
 		</div>
 	{/each}
 </section>
@@ -205,24 +216,6 @@
 		>
 	</div>
 	<FtpSlider />
-</section>
-
-<!-- Gears, and the phone as the remote. -->
-<section
-	class="mx-auto mt-28 grid w-full max-w-6xl items-center gap-8 px-4 sm:px-6 lg:grid-cols-2 lg:gap-14"
->
-	<SectionHead
-		eyebrow="Gears and your phone"
-		title="Shift from the screen, the keys, a Cog or your phone"
-		lede="On a road, Easier and Harder shift virtual gears: tap them, press − and +, or ride a Zwift Cog. In an ERG workout the same controls trim your target. Open WattRoom on your phone while the desk rides and the phone becomes your remote, and one tap moves your voice to it."
-	/>
-	<Screen
-		name="phone-remote"
-		alt="A phone as the rider’s remote while the desk rides: big Easier and Harder buttons, and buttons to turn the bike computer’s page, cheer back and talk"
-		width={375}
-		height={698}
-		narrow
-	/>
 </section>
 
 <!-- Sessions with voice. -->
@@ -270,7 +263,7 @@
 			caption="A sprint lands mid-session."
 		/>
 	</div>
-	<div class="mt-12">
+	<div class="mt-8">
 		<GameModeCards tryHref="#sprint" />
 	</div>
 	<p class="mt-6 text-center">
