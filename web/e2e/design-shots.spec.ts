@@ -1900,7 +1900,8 @@ surface(
 			await endSession(coach.page);
 		}
 	},
-	{ once: true },
+	// Both schemes: the ride keeps the rider's, on the session where the
+	// cave used to darken the whole app (G1, #4160).
 );
 
 surface(

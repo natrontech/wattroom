@@ -52,26 +52,34 @@ export function probe(corridor: Box) {
 			.map((n) => n.textContent)
 			.join('')
 			.trim();
-	// G1: the lightest and the darkest surface under a 6 × 5 grid of points,
-	// the world excepted. A surface is a large box: a zone bar or a chip on it
-	// is not. A ride keeps the capture's scheme (#4160); TV mode and the HUD
-	// are the cave, dark in either.
+	// G1: the lightest and the darkest surface under a 6 × 5 grid of points.
+	// A surface is a large box: a zone bar or a chip on it is not. A ride keeps
+	// the capture's scheme (#4160); TV mode and the HUD are the cave, dark in
+	// either. The world, a camera frame and a video are not surfaces: a
+	// canvas, a cave smaller than half the window, a video's black ground.
+	const area = innerWidth * innerHeight;
+	const notSurface = (el: Element) => {
+		if (el.closest('canvas, video, iframe')) return true;
+		const frame = el.closest('.cave')?.getBoundingClientRect();
+		return !!frame && frame.width * frame.height < 0.5 * area;
+	};
 	let maxL = 0;
 	let minL = 1;
 	for (const fx of [0.02, 0.2, 0.4, 0.6, 0.8, 0.98])
 		for (const fy of [0.02, 0.25, 0.5, 0.75, 0.98]) {
 			let el = document.elementFromPoint(fx * innerWidth, fy * innerHeight);
-			if (!el || el.closest('canvas')) continue;
+			if (!el || notSurface(el)) continue;
 			let bg: Rgba | null = null;
 			for (; el; el = el.parentElement) {
 				const r = el.getBoundingClientRect();
-				if (r.width * r.height < 0.05 * innerWidth * innerHeight) continue;
+				if (r.width * r.height < 0.05 * area) continue;
 				const c = rgba(getComputedStyle(el).backgroundColor);
 				if (c.a > 0.5) {
 					bg = c;
 					break;
 				}
 			}
+			if (bg && bg.r + bg.g + bg.b === 0) continue;
 			const l = lightness(
 				bg ?? rgba(getComputedStyle(document.body).backgroundColor),
 			);
