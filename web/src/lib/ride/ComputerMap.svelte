@@ -36,9 +36,13 @@
 	const dot = $derived(line ? line.point(view.m / length) : null);
 </script>
 
+<!-- A floor on its width, as CLIMB's profile has: a flat ride's dock is a
+     row sized to its content, where a drawing still 0 wide would stay so. -->
 <div
 	data-testid="computer-map"
-	class="relative -my-3 {tv ? 'min-h-[22vh] flex-1' : 'min-h-38 flex-1'}"
+	class="relative -my-3 {tv
+		? 'min-h-[22vh] flex-1'
+		: 'min-h-38 min-w-60 flex-1'}"
 	bind:clientWidth={w}
 	bind:clientHeight={h}
 >

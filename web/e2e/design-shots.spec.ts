@@ -2293,8 +2293,9 @@ surface(
 				if ((await computer.getAttribute('data-page')) === 'map') break;
 				await coach.page.getByRole('button', { name: /^next page, / }).click();
 			}
+			// The page draws the road, in the flat dock's row too.
 			await coach.page
-				.locator('[data-testid="bike-computer"][data-page="map"]')
+				.locator('[data-testid="computer-map"] svg')
 				.waitFor({ timeout: 5000 });
 			await coach.page.waitForTimeout(1000);
 			await s.shot(coach, { name: 'ride-race-map' });
