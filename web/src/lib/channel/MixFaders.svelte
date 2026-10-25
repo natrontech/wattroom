@@ -72,7 +72,7 @@
      rider their countdown cue. -->
 <label class="mt-1.5 block text-xs">
 	<span class="text-muted"
-		>soundboard · <span class="font-display tabular-nums"
+		>soundboard, yours only · <span class="font-display tabular-nums"
 			>{Math.round(mixer.board * 100)}%</span
 		></span
 	>
@@ -149,7 +149,7 @@
      they appear. Here so it is never ONLY in a menu (ux.md), and so the
      riders you have moved are in one list to undo. -->
 <div class="mt-3">
-	<span class="text-muted text-xs">riders</span>
+	<span class="text-muted text-xs">riders, yours only</span>
 	{#if listed.length > 0}
 		<ul class="mt-1 space-y-1.5">
 			{#each listed as rider (rider.id)}
