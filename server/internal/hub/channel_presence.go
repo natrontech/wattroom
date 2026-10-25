@@ -46,17 +46,22 @@ func (rm *channelState) presentLocked(riderID string) bool {
 // from the tick, which is the only clock the room has.
 func (rm *channelState) sayDepartedLocked(now time.Time) {
 	for riderID, at := range rm.departed {
-		// LiveKit still has them (#4090): the socket is stalled, not the
-		// rider, who stays on the roster until voice lets go too.
-		_, inVoice := rm.voiceNow[riderID]
-		if inVoice || now.Sub(at) < presenceGrace {
+		if now.Sub(at) < presenceGrace {
 			continue
 		}
-		delete(rm.departed, riderID)
-		if rider, ok := rm.departedRiders[riderID]; ok && rider.Name != "" {
-			rm.events.add(presenceLine("left", rider.Name, now), now)
+		// LiveKit still has them (#4090): the channel hears them, so they
+		// stay on the roster and nobody is told they left until voice lets
+		// go too.
+		if _, inVoice := rm.voiceNow[riderID]; !inVoice {
+			delete(rm.departed, riderID)
+			if rider, ok := rm.departedRiders[riderID]; ok && rider.Name != "" {
+				rm.events.add(presenceLine("left", rider.Name, now), now)
+			}
+			delete(rm.departedRiders, riderID)
 		}
-		delete(rm.departedRiders, riderID)
+		// Both idempotent, so a rider voice still holds is settled again on
+		// every tick: a socket that cannot coach or pedal holds neither the
+		// session nor the paceline, whatever voice says (#4090).
 		if riderID == rm.session.coach && rm.session.open() {
 			rm.passSessionLocked(now)
 		}
