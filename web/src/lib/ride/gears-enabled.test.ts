@@ -9,7 +9,7 @@ import {
 import { createRideShift } from './ride-shift';
 
 // A production rider (#3333): no dev build, no dev sign-in door, so no
-// simulated trainer, the gate gears used to share with it.
+// simulated trainer. A gate that came back through canSimulate fails here.
 vi.mock('$lib/ble/can-simulate', () => ({ canSimulate: () => false }));
 
 const INPUTS = Object.keys(GEAR_INPUTS) as GearInput[];
@@ -31,14 +31,17 @@ describe('gears reach every rider (#3333, ADR-0088)', () => {
 		expect(gearsEnabled(undefined, inputs)).toBe(true);
 	});
 
-	it('names the input of every source the shifter hears', () => {
+	it('names the input of every source the shifter hears, and of no other', () => {
 		expect(inputOf('screen:1')).toBe('screen');
 		expect(inputOf('key:Period')).toBe('keys');
 		expect(inputOf('key:NumpadAdd')).toBe('keys');
 		expect(inputOf('remote')).toBe('phone');
+		expect(inputOf('controller')).toBeNull();
+		expect(gearsEnabled(inputOf('controller'))).toBe(false);
 	});
 
-	it('shifts a production ride from the pair, a key and the phone', () => {
+	/** Gears moved by one press from each source, with `inputs` as the switches. */
+	function pressEach(inputs = GEAR_INPUTS) {
 		const cues: CueId[] = [];
 		let gear = 0;
 		const shift = createRideShift(
@@ -48,6 +51,7 @@ describe('gears reach every rider (#3333, ADR-0088)', () => {
 			},
 			(id) => cues.push(id),
 			() => Date.now(),
+			inputs,
 		);
 		for (const source of ['screen:1', 'key:Equal', 'remote']) {
 			shift.press(1, source);
@@ -55,7 +59,17 @@ describe('gears reach every rider (#3333, ADR-0088)', () => {
 			vi.advanceTimersByTime(1_000);
 		}
 		shift.stop();
-		expect(gear).toBe(3);
-		expect(cues).toEqual(['shift-up', 'shift-up', 'shift-up']);
+		return { gear, cues };
+	}
+
+	it('shifts a production ride from the pair, a key and the phone', () => {
+		expect(pressEach()).toEqual({
+			gear: 3,
+			cues: ['shift-up', 'shift-up', 'shift-up'],
+		});
+	});
+
+	it.each(INPUTS)('drops a press from %s alone once it is off', (off) => {
+		expect(pressEach({ ...GEAR_INPUTS, [off]: false }).gear).toBe(2);
 	});
 });

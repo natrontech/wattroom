@@ -1,7 +1,7 @@
 import { play } from '$lib/sound/cues';
 import type { CueId } from '$lib/sound/cue-catalogue';
 import type { EasierHarder } from '$lib/ride/easier-harder';
-import { gearsEnabled, inputOf } from '$lib/ride/gears-enabled';
+import { GEAR_INPUTS, gearsEnabled, inputOf } from '$lib/ride/gears-enabled';
 import { createShiftDriver, type ShiftDir } from '$lib/ride/shifter';
 
 /**
@@ -19,6 +19,7 @@ export function createRideShift(
 	},
 	cue: (id: CueId) => void = play,
 	now?: () => number,
+	inputs = GEAR_INPUTS,
 ) {
 	const driver = createShiftDriver(
 		(event) => {
@@ -33,7 +34,7 @@ export function createRideShift(
 	return {
 		...driver,
 		press(dir: ShiftDir, source: string) {
-			if (gearsEnabled(inputOf(source))) driver.press(dir, source);
+			if (gearsEnabled(inputOf(source), inputs)) driver.press(dir, source);
 		},
 	};
 }

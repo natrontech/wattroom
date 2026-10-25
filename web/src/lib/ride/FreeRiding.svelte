@@ -31,6 +31,8 @@
 	} from '$lib/ride/free-ride-controls';
 	import { freeRideLabel, type FreeRide } from '$lib/ride/free-ride.svelte';
 	import GearShift from '$lib/ride/GearShift.svelte';
+	import { EASIER_HARDER_OFF } from '$lib/ride/easier-harder';
+	import { gearsEnabled } from '$lib/ride/gears-enabled';
 	import { gearsNews } from '$lib/ride/gears-news';
 	import type { RideShift } from '$lib/ride/ride-shift';
 	import { roadLine } from '$lib/ride/road-readout';
@@ -335,7 +337,12 @@
 				>
 			{/if}
 			{#if gear && shift && !inWatts}
-				<GearShift {shift} {gear} off={shiftOff} {cassette} />
+				<GearShift
+					{shift}
+					{gear}
+					off={gearsEnabled('screen') ? shiftOff : EASIER_HARDER_OFF.gated}
+					{cassette}
+				/>
 			{/if}
 			{#if onflag}<FlagButton onflag={flag} sends="after" />{/if}
 			{#if drawn}

@@ -8,7 +8,6 @@
 	 * is also how a rider says "no key at all".
 	 */
 	import { bindKey, type Clip } from '$lib/board/clips.svelte';
-	import { gearsEnabled } from '$lib/ride/gears-enabled';
 	import { shiftsGears } from '$lib/ride/keys';
 
 	let { clip }: { clip: Clip } = $props();
@@ -16,9 +15,7 @@
 	// A ride's shift keys win over a pad's (#3329). The server refuses a new
 	// binding to one (#3333); a pad bound before gears keeps it outside a
 	// ride, and says so where it is bound.
-	const shifts = $derived(
-		gearsEnabled('keys') && !!clip.key && shiftsGears(clip.key),
-	);
+	const shifts = $derived(!!clip.key && shiftsGears(clip.key));
 	const kept = $derived(
 		`${clip.key} fires this pad outside a ride; while you ride it shifts gears.`,
 	);

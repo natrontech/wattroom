@@ -1,4 +1,5 @@
 import { isTyping } from '$lib/keys';
+import { gearsEnabled } from '$lib/ride/gears-enabled';
 import { createRideShift } from '$lib/ride/ride-shift';
 import type { ShiftDir, ShiftDriver } from '$lib/ride/shifter';
 import type { RemoteCommand } from '$lib/protocol';
@@ -14,20 +15,25 @@ import type { RemoteCommand } from '$lib/protocol';
 const HARDER = ['.', '+', '=', 'PageUp'];
 const EASIER = [',', '-', 'PageDown'];
 
-/** A key a ride shifts with, so the soundboard yields it while one does. */
+/**
+ * A key a ride shifts with, so the soundboard yields it while one does.
+ * None while the keys' switch is off (ADR-0084 "Inputs").
+ */
 export function shiftsGears(key: string): boolean {
-	return HARDER.includes(key) || EASIER.includes(key);
+	return gearsEnabled('keys') && (HARDER.includes(key) || EASIER.includes(key));
 }
 
 /**
  * The shift a key asks for: 1 Harder, −1 Easier, null for any other. By
  * `key`, so a Swiss-German + (Shift+1) shifts; the keypad by `code`. Never
- * with Cmd, Ctrl or Alt: Cmd/Ctrl+= is the shell's zoom (#3016).
+ * with Cmd, Ctrl or Alt: Cmd/Ctrl+= is the shell's zoom (#3016), and none
+ * while the keys' switch is off.
  */
 export function shiftOf(
 	event: Pick<KeyboardEvent, 'key' | 'code' | 'metaKey' | 'ctrlKey' | 'altKey'>,
 ): ShiftDir | null {
 	if (event.metaKey || event.ctrlKey || event.altKey) return null;
+	if (!gearsEnabled('keys')) return null;
 	if (event.code === 'NumpadAdd' || HARDER.includes(event.key)) return 1;
 	if (event.code === 'NumpadSubtract' || EASIER.includes(event.key)) return -1;
 	return null;
@@ -165,6 +171,7 @@ export function rideKeyOf(
 	>,
 ): RideKey | null {
 	if (event.metaKey || event.ctrlKey || event.altKey) return null;
+	if (!gearsEnabled('keys')) return null;
 	if (event.key === '?') return { kind: 'sheet' };
 	// A Shift+digit is a symbol on most layouts (Swiss-German + is Shift+1).
 	if (event.shiftKey) return null;

@@ -12,22 +12,28 @@ export const GEAR_INPUTS: Readonly<Record<GearInput, boolean>> = {
 	phone: true,
 };
 
-/** The input a shifter source belongs to: `key:<code>`, `remote`, `screen:<dir>`. */
-export function inputOf(source: string): GearInput {
+/**
+ * The input a shifter source belongs to: `screen:<dir>`, `key:<code>`,
+ * `remote`. Any other source is no input, so a new one shifts nothing until
+ * it has its own switch.
+ */
+export function inputOf(source: string): GearInput | null {
+	if (source.startsWith('screen')) return 'screen';
 	if (source.startsWith('key:')) return 'keys';
 	if (source === 'remote') return 'phone';
-	return 'screen';
+	return null;
 }
 
 /**
  * May this screen shift virtual gears (ADR-0084)? Every rider may, since
  * the HUD, the keys, the ERG routing and the P1–P12 tests landed (#3333,
  * ADR-0088): from `input` while its switch is on, or from any input when
- * none is named.
+ * none is named. A source that is no input never shifts.
  */
 export function gearsEnabled(
-	input?: GearInput,
+	input?: GearInput | null,
 	inputs: Readonly<Record<GearInput, boolean>> = GEAR_INPUTS,
 ): boolean {
+	if (input === null) return false;
 	return input ? inputs[input] : Object.values(inputs).some(Boolean);
 }
