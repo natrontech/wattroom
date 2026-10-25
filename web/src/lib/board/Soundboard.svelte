@@ -290,7 +290,7 @@
 			     ride never silences it, and this never costs you the countdown. -->
 			<label class="flex items-center gap-2 px-1.5 pt-3 pb-1.5">
 				<Volume2 size={14} class="text-muted shrink-0" />
-				<span class="sr-only">soundboard volume</span>
+				<span class="sr-only">soundboard volume, yours only</span>
 				<input
 					type="range"
 					{...UNIT_FADER}
@@ -300,7 +300,7 @@
 						applyLevels();
 					}}
 					class="min-w-0 flex-1"
-					aria-label="soundboard volume"
+					aria-label="soundboard volume, yours only"
 				/>
 				<span
 					class="font-display w-9 shrink-0 text-right text-[11px] tabular-nums"
