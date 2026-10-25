@@ -7,7 +7,9 @@ f=$(jq -r '.tool_input.file_path // empty')
 case $f in
 *.go) out=$(gofmt -w "$f" 2>&1) || { echo "format: gofmt failed on $f: $out" | head -n 1 >&2; exit 2; } ;;
 */web/*)
-	web=$(git -C "$(dirname "$f")" rev-parse --show-toplevel 2>/dev/null)/web
+	top=$(git -C "$(dirname "$f")" rev-parse --show-toplevel 2>/dev/null) || exit 0
+	web=$top/web
+	[ -f "$web/package.json" ] || exit 0 # another repository's web/
 	if [ ! -x "$web/node_modules/.bin/prettier" ]; then
 		echo "format: $f left unformatted, $web has no node_modules: run pnpm install there" >&2
 		exit 2
