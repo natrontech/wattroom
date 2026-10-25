@@ -57,13 +57,6 @@ export function createFreeRide(deps: {
 	kg?: () => number;
 }) {
 	let armed = $state(false);
-	/** The mode the rider picked; null until they pick one. */
-	let picked = $state<FreeMode | null>(null);
-	const mode = $derived<FreeMode>(
-		ramp ? 'watts' : (picked ?? (deps.singleSpeed?.() ? 'watts' : 'grade')),
-	);
-	let grade = $state(0);
-	let watts = $state<number | null>(null);
 	/**
 	 * A warm-up or cool-down (#4100): ERG for its length, whatever the mode,
 	 * then back to the mode it started from. `t` counts ridden seconds.
@@ -76,6 +69,13 @@ export function createFreeRide(deps: {
 		t: number;
 		back: FreeMode;
 	} | null>(null);
+	/** The mode the rider picked; null until they pick one. */
+	let picked = $state<FreeMode | null>(null);
+	const mode = $derived<FreeMode>(
+		ramp ? 'watts' : (picked ?? (deps.singleSpeed?.() ? 'watts' : 'grade')),
+	);
+	let grade = $state(0);
+	let watts = $state<number | null>(null);
 	let lastWatts = 0;
 	const rampTarget = $derived(ramp && rampWatts(ramp, ramp.t));
 	/** Ends a ramp at its current target, which manual control takes over. */
