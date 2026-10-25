@@ -5,6 +5,8 @@
   as not planned on 2026-09-10 and #806, which had consolidated it, closed on 2026-09-17,
   so this line pointed at no live home. The validation is still pending and now lives on
   [#2330](https://github.com/natrontech/wattroom/issues/2330).
+  **Diverged 2026-10-25 (#3341, ADR-0088)**: the validation is done, by Garmin's FIT SDK
+  decoder in CI rather than a Garmin import. What it showed is in the amendment at the end.
 - Date: 2026-09-08
 
 ## Context
@@ -78,3 +80,30 @@ uploading a file.
   2026-09-17. Neither gate moved — both now live on
   [#2330](https://github.com/natrontech/wattroom/issues/2330), the manual Garmin import a
   person with a Garmin account has to run.
+
+## Amendment, 2026-10-25 (#3341): Garmin's FIT SDK meets the gate ([ADR-0088](0088-ship-on-research-and-simulation.md))
+
+ADR-0088 meets the validation gate with the FIT SDK's own decoder instead of an import
+into a Garmin account. CI's `server` job runs Garmin's Python FIT SDK 21.218.0 over the
+export's golden files (`scripts/fit-sdk-check.py`, [#2330](https://github.com/natrontech/wattroom/issues/2330)):
+a continuous ride, one with a 30 s pause, and a road ride, all synthetic. Each decodes with
+both CRCs intact and carries the Activity file's required messages in summary-last order:
+File Id first, then records, lap, session, and activity last. The checklist above, item by item:
+
+- **Start time and timezone:** the start is written in UTC. The activity message has no
+  `local_timestamp`, so an importer shows the start in its own timezone.
+- **Elapsed vs timer:** a saved ride numbers its samples one per second, so the two are
+  equal. The stateless export keeps a pause: 150 s elapsed, 120 s timer. Neither writes timer
+  events, which Garmin calls a best practice rather than a requirement.
+- **Power:** on every record, 0 W included.
+- **Cadence and HR:** a zero is left out as not measured, so a ride without a strap has no
+  heart rate at all.
+- **Energy:** `total_calories` is the kJ of mechanical work, rounded down, read as kcal.
+- **Classification:** cycling / virtual_activity.
+
+What Garmin Connect displays for each item is still unobserved. Under ADR-0088 that no
+longer holds the gate, and a rider's report after release is how a difference would surface.
+The shared gate [#806](https://github.com/natrontech/wattroom/issues/806) named for every
+export destination, a WattRoom FIT validated through one manual import, is lifted on these
+terms: the encoder's own output, from synthetic rides, through Garmin's decoder. Whether a
+closed destination comes back is a roadmap question, and this amendment does not decide it.
