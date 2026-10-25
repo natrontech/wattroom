@@ -23,12 +23,12 @@ ${rows.join('\n')}
 </gpx>`;
 }
 
-/** Three kilometres climbing 4 %. */
-export function climbGpx(): string {
+/** Three kilometres climbing 4 %, or `metres` of it. */
+export function climbGpx(metres = 3000): string {
 	return gpx(
 		'A made-up climb',
 		30,
-		Array.from({ length: 301 }, (_, i) => ({
+		Array.from({ length: metres / 10 + 1 }, (_, i) => ({
 			x: i * 10,
 			y: 0,
 			ele: 100 + 0.4 * i,
