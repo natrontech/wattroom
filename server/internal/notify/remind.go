@@ -14,6 +14,7 @@ import (
 
 	"github.com/natrontech/wattroom/server/internal/jobmetrics"
 	"github.com/natrontech/wattroom/server/internal/store"
+	"github.com/natrontech/wattroom/server/internal/workout"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -94,7 +95,7 @@ func (s *Service) remindDue(ctx context.Context) {
 			// off switch short of muting the whole room.
 			s.sessionMail(one, sessionNote{
 				crew: session.CrewID, channel: session.ChannelID,
-				workout: session.WorkoutName, startsAt: session.StartsAt.Time,
+				workout: workout.PlainName(string(session.WorkoutJson), session.WorkoutName), startsAt: session.StartsAt.Time,
 				actor: noActor, session: session.ID, change: sessionReminder,
 			})
 		})

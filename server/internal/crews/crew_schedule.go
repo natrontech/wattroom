@@ -15,6 +15,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
+	"github.com/natrontech/wattroom/server/internal/workout"
 )
 
 // The crew's schedule (#2440, ADR-0058): one calendar for the crew, a plan
@@ -217,7 +218,7 @@ func (s *Service) handleCrewPlan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if s.notifier != nil {
-		s.notifier.SessionPlanned(crew.ID, channel, name, req.StartsAt, user.ID)
+		s.notifier.SessionPlanned(crew.ID, channel, workout.PlainName(req.WorkoutJSON, name), req.StartsAt, user.ID)
 	}
 	s.announceIn(r.Context(), crew.ID, channel, "planned", user.DisplayName, name, req.StartsAt)
 	out := scheduledJSON{
@@ -309,7 +310,7 @@ func (s *Service) handleCrewMove(w http.ResponseWriter, r *http.Request) {
 			s.log.Warn("clearing declines after a move failed", "err", err, "session", store.UUIDString(plan.ID))
 		}
 		if s.notifier != nil {
-			s.notifier.SessionRescheduled(crew.ID, plan.ChannelID, plan.WorkoutName, req.StartsAt, user.ID)
+			s.notifier.SessionRescheduled(crew.ID, plan.ChannelID, workout.PlainName(string(plan.WorkoutJson), plan.WorkoutName), req.StartsAt, user.ID)
 		}
 		s.announceIn(r.Context(), crew.ID, plan.ChannelID, "moved", user.DisplayName, plan.WorkoutName, req.StartsAt)
 	}
@@ -336,7 +337,7 @@ func (s *Service) handleCrewCancel(w http.ResponseWriter, r *http.Request) {
 	}
 	// A session already been and gone is not news (#839).
 	if s.notifier != nil && row.StartsAt.Time.After(time.Now()) {
-		s.notifier.SessionCancelled(crew.ID, row.ChannelID, row.WorkoutName, row.StartsAt.Time, user.ID)
+		s.notifier.SessionCancelled(crew.ID, row.ChannelID, workout.PlainName(string(plan.WorkoutJson), row.WorkoutName), row.StartsAt.Time, user.ID)
 	}
 	s.announceIn(r.Context(), crew.ID, row.ChannelID, "cancelled", user.DisplayName, row.WorkoutName, time.Time{})
 	w.WriteHeader(http.StatusNoContent)

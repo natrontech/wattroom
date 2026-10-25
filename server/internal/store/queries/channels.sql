@@ -91,7 +91,7 @@ update channels set position = $2 where id = $1;
 delete from scheduled_sessions s
 using channels c
 where c.id = $1 and c.private and s.channel_id = c.id
-returning s.workout_name, s.starts_at, s.started_at;
+returning s.workout_name, s.workout_json, s.starts_at, s.started_at;
 
 -- name: DeleteChannel :exec
 -- Takes its chat, its play log and its recaps with it (the cascades on

@@ -266,7 +266,7 @@ where id in (
     order by starts_at
     limit 100
 )
-returning id, crew_id, channel_id, workout_name, starts_at;
+returning id, crew_id, channel_id, workout_name, workout_json, starts_at;
 
 -- name: SetRsvp :exec
 -- Planned sessions (#450). One row per rider per session, and the row is an

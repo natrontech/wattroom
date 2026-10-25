@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/store/db"
+	"github.com/natrontech/wattroom/server/internal/testx"
 )
 
 // plan writes a session straight into the table: the API refuses the past and
@@ -61,6 +62,43 @@ func TestRemindDueMailsTheHourAheadOnce(t *testing.T) {
 	s.remindDue(t.Context())
 	if again := fake.subjectsTo(h.email(h.optIn)); len(again) != 1 {
 		t.Fatalf("a second pass sent %d more reminders: %v", len(again)-1, again)
+	}
+}
+
+// A planned road's reminder carries no place, generated or not (#4154,
+// ADR-0063): the plan's name may come to name one, and the mail says only the
+// road's numbers.
+func TestARoadsReminderCarriesNoPlace(t *testing.T) {
+	h := setup(t)
+	fake := &fakeResend{}
+	srv := httptest.NewServer(fake.handler())
+	defer srv.Close()
+	s := service(h, srv.URL)
+	road := `{"road":{"routeId":"3f0c2a4e-8b1d-4c5e-9f6a-7b8c9d0e1f2a","fromM":0,"toM":3000},"steps":[{"type":"road","seconds":600}]}`
+	if _, err := h.store.Pool.Exec(t.Context(),
+		`insert into scheduled_sessions (crew_id, channel_id, workout_name, workout_json, starts_at, created_by)
+		 values ($1, $2, $3, $4::jsonb, now() + interval '30 minutes', $5)`,
+		h.crew.ID, h.channel.ID, "Road · "+testx.Corridor.Places[0], road, h.planner.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	s.remindDue(t.Context())
+
+	fake.mu.Lock()
+	defer fake.mu.Unlock()
+	sent := 0
+	for _, p := range fake.payloads {
+		if to, ok := p["to"].([]any); !ok || len(to) != 1 || to[0] != h.email(h.optIn) {
+			continue
+		}
+		sent++
+		mail := fmt.Sprint(p["subject"], p["text"], p["html"])
+		if leak := testx.Leak(mail); leak != "" || !strings.Contains(fmt.Sprint(p["subject"]), "Route ride · 3.0 km") {
+			t.Errorf("the reminder carries %q, want the road's numbers alone: %v", leak, p["subject"])
+		}
+	}
+	if sent != 1 {
+		t.Fatalf("sent %d reminders, want 1", sent)
 	}
 }
 
