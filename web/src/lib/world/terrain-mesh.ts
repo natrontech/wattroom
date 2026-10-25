@@ -364,5 +364,14 @@ export function createTerrain(
 		return out;
 	}
 
-	return { heightAt, biomeAt, mesh, rim, chunk, peek };
+	/** Lets go of every chunk farther than `r` from (x, z): built again, the same, if asked again (#3851). */
+	function forget(x: number, z: number, r: number) {
+		for (const kept of [built, partial])
+			for (const id of kept.keys()) {
+				const [ci, cj] = id.split(':').map(Number);
+				if (toChunk(x, z, ci, cj) > r) kept.delete(id);
+			}
+	}
+
+	return { heightAt, biomeAt, mesh, rim, chunk, peek, forget };
 }

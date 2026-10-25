@@ -33,12 +33,24 @@ export type WorldScene = {
 	stats(): LoopStats;
 	/** What a design capture measures (#3672): the composed scene's, and what the last frame drew. */
 	probe(): ReturnType<ReturnType<typeof compose>['probe']> & {
-		renderer: { draws: number; triangles: number };
+		renderer: {
+			draws: number;
+			triangles: number;
+			geometries: number;
+			textures: number;
+			programs: number;
+		};
 	};
+	/** A dev build's frames since the last call: when each began and its JS ms, for the soak (#3851). Always empty in a built app. */
+	frames(): Frame[];
 	dispose(): void;
 };
 
 const MAX_DT = 0.1; // the most one frame moves the ride on, after a stall
+/** Frames kept for frames() between two reads: a minute at 30 fps, then the oldest go. */
+const FRAMES_KEPT = 1800;
+
+type Frame = { at: number; ms: number };
 
 export function mount(
 	canvas: HTMLCanvasElement,
@@ -87,10 +99,16 @@ export function mount(
 		camera.updateProjectionMatrix();
 	}
 
+	let frames: Frame[] = [];
 	const loop = createLoop((seconds) => {
+		const at = performance.now();
 		// The bunch keeps the wall's time: where the hub has everyone does not wait for a slow frame.
 		world.advanceBy(Math.min(seconds, MAX_DT), seconds);
 		renderer.render(scene, camera);
+		if (import.meta.env.DEV) {
+			frames.push({ at, ms: performance.now() - at });
+			if (frames.length > FRAMES_KEPT) frames.shift();
+		}
 	}, world.idle);
 	let failed = false;
 	function fail(why: Failure) {
@@ -143,8 +161,16 @@ export function mount(
 			renderer: {
 				draws: renderer.info.render.calls,
 				triangles: renderer.info.render.triangles,
+				geometries: renderer.info.memory.geometries,
+				textures: renderer.info.memory.textures,
+				programs: renderer.info.programs?.length ?? 0,
 			},
 		}),
+		frames() {
+			const out = frames;
+			frames = [];
+			return out;
+		},
 		dispose() {
 			failed = true; // what follows is ours, not a failure to report
 			loop.stop();

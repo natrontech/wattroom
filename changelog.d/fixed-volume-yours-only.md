@@ -1,0 +1,1 @@
+- A rider's Volume, the mixer's rider list and the soundboard fader now say "yours only", so turning someone down plainly changes only what you hear.

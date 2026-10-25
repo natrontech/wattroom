@@ -305,7 +305,7 @@ describe('personMenu volume', () => {
 		expect(labels(entries)).toEqual([
 			'Rider page',
 			'Message',
-			'Volume',
+			'Volume, yours only',
 			'Add friend',
 			'Hide this rider',
 		]);
@@ -396,14 +396,14 @@ describe('personMenu connection (#2131)', () => {
 			personMenu('u1', () => {}, { volume: { name: 'Ruben' } }),
 		);
 		expect(withFriend.slice(-2)).toEqual(['Add friend', 'Hide this rider']);
-		expect(withFriend).toContain('Volume');
+		expect(withFriend).toContain('Volume, yours only');
 		const without = labels(
 			personMenu('u1', () => {}, {
 				volume: { name: 'Ruben' },
 				friendship: 'accepted',
 			}),
 		);
-		expect(without).toContain('Volume');
+		expect(without).toContain('Volume, yours only');
 		expect(without).not.toContain('Add friend');
 	});
 });

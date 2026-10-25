@@ -510,8 +510,15 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 					at: camera.position.toArray().map((v) => Math.round(v * 10) / 10),
 				},
 				moment: moment ?? null,
-				// What a capture waits on before it shoots: the ground around the eye, whole (#3699).
-				ground: { pending: stream.pending() },
+				// What a capture waits on before it shoots: the ground around the eye, whole (#3699); and what the soak holds flat (#3851).
+				ground: {
+					pending: stream.pending(),
+					held: stream.held().length,
+					window: stream.window(),
+				},
+				/** Seconds of ride the sim has stepped, and your metres along the road: the soak's clock (#3851). */
+				clock: t,
+				d: you.d,
 				figure: { bboxH, kitCollisions: crew?.kitCollisions() ?? 0 },
 				ring: { bandM: RING_BAND_M },
 			};
