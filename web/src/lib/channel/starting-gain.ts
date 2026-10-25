@@ -35,19 +35,23 @@ export function startingGain(
 	return Math.min(STARTING_GAIN_MAX, Math.max(1, settled / speech));
 }
 
-function load(): number | null {
+/** Settled levels by mic: each one's AGC settles somewhere of its own. */
+function load(): Record<string, unknown> {
 	try {
-		const saved = JSON.parse(localStorage.getItem(KEY) ?? 'null');
-		return typeof saved === 'number' && saved > 0 && saved <= 1 ? saved : null;
+		const saved = JSON.parse(localStorage.getItem(KEY) ?? '{}');
+		return saved && typeof saved === 'object' ? saved : {};
 	} catch {
-		return null;
+		return {};
 	}
 }
 
 export type StartingGain = ReturnType<typeof createStartingGain>;
 
-export function createStartingGain(openedAt: number) {
-	const settled = load();
+/** `mic` is the chosen input's id, or '' for the browser's default. */
+export function createStartingGain(openedAt: number, mic: string) {
+	const saved = load()[mic];
+	const settled =
+		typeof saved === 'number' && saved > 0 && saved <= 1 ? saved : null;
 	let last = openedAt;
 	let speech = 0;
 	let gain = 1;
@@ -56,14 +60,15 @@ export function createStartingGain(openedAt: number) {
 
 	return {
 		/**
-		 * One meter reading (after the lift); returns the lift to apply. Only
-		 * speech moves it: a level under the gate's mark is a pause or the fan.
+		 * One meter reading, taken after the lift the node `applied`; returns
+		 * the lift to aim for. Only speech moves it, judged before the lift: a
+		 * fan the lift pushed over the gate's mark is still the fan.
 		 */
-		step(level: number, openAt: number, at: number): number {
+		step(level: number, applied: number, openAt: number, at: number): number {
 			const dt = at - last;
 			last = at;
-			if (level < openAt) return gain;
-			const raw = level / gain;
+			const raw = level / applied;
+			if (raw < openAt) return gain;
 			const since = at - openedAt;
 			if (since >= STARTING_GAIN_MS) {
 				settledSum += raw * dt;
@@ -78,7 +83,9 @@ export function createStartingGain(openedAt: number) {
 		close() {
 			if (settledMs < SETTLED_SPEECH_MS) return;
 			try {
-				localStorage.setItem(KEY, JSON.stringify(settledSum / settledMs));
+				const all = load();
+				all[mic] = settledSum / settledMs;
+				localStorage.setItem(KEY, JSON.stringify(all));
 			} catch {
 				// per-device convenience only
 			}

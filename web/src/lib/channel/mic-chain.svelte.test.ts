@@ -242,7 +242,7 @@ describe('the mic test (#178)', () => {
 
 describe('the starting gain (#2120)', () => {
 	it('lifts a quiet start toward where this device last settled', async () => {
-		stored.set('wattroom.voice.settled.v1', '0.3');
+		stored.set('wattroom.voice.settled.v1', JSON.stringify({ '': 0.3 }));
 		const chain = createMicChain(host());
 		await chain.open();
 		meterLevel(0.15); // AGC's quiet first minute

@@ -151,7 +151,12 @@ export function createMicChain(host: MicChainHost) {
 		const lift = chain?.lift;
 		if (!lift || !chain?.ctx) return;
 		const now = performance.now();
-		const next = lift.model.step(level, settings.effective, now);
+		const next = lift.model.step(
+			level,
+			lift.node.gain.value,
+			settings.effective,
+			now,
+		);
 		if (Math.abs(next - lift.aimed) < 0.02) return;
 		lift.aimed = next;
 		glideTo(
@@ -177,7 +182,7 @@ export function createMicChain(host: MicChainHost) {
 		// level this lifts toward, so the gate has to see the lifted signal.
 		const lift = {
 			node: ctx.createGain(),
-			model: createStartingGain(performance.now()),
+			model: createStartingGain(performance.now(), host.devices.micId),
 			aimed: 1,
 		};
 		source.connect(lift.node);

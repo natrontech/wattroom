@@ -13,6 +13,10 @@ vi.stubGlobal('localStorage', {
 	setItem: (k: string, v: string) => void store.set(k, v),
 });
 
+function settle(levels: Record<string, number>) {
+	store.set(KEY, JSON.stringify(levels));
+}
+
 const MARK = 0.02; // the gate's SPEC default
 const POST = 20; // the meter's post interval
 
@@ -25,7 +29,7 @@ function speak(
 ) {
 	let gain = 1;
 	for (let t = from; t < from + ms; t += POST) {
-		gain = lift.step(raw * gain, MARK, t + POST);
+		gain = lift.step(raw * gain, gain, MARK, t + POST);
 	}
 	return gain;
 }
@@ -47,45 +51,62 @@ describe('the starting gain over a call', () => {
 	beforeEach(() => store.clear());
 
 	it('lifts a quiet start toward the level the last call settled at', () => {
-		store.set(KEY, '0.3');
-		const lift = createStartingGain(0);
+		settle({ '': 0.3 });
+		const lift = createStartingGain(0, '');
 		// AGC hands over 0.17 on a quiet mic: the call should hear ~0.3.
 		const gain = speak(lift, 0.17, 0, 3_000);
 		expect(0.17 * gain).toBeCloseTo(0.3, 2);
 	});
 
 	it('lets go once AGC has caught up', () => {
-		store.set(KEY, '0.3');
-		const lift = createStartingGain(0);
+		settle({ '': 0.3 });
+		const lift = createStartingGain(0, '');
 		speak(lift, 0.17, 0, 3_000);
 		expect(speak(lift, 0.3, 3_000, 10_000)).toBeCloseTo(1, 2);
 	});
 
 	it('holds still through pauses and the fan', () => {
-		store.set(KEY, '0.3');
-		const lift = createStartingGain(0);
+		settle({ '': 0.3 });
+		const lift = createStartingGain(0, '');
 		const talking = speak(lift, 0.17, 0, 3_000);
 		expect(speak(lift, 0.005, 3_000, 5_000)).toBeCloseTo(talking);
 	});
 
-	it('remembers where a long call settled', () => {
-		const lift = createStartingGain(0);
+	it('takes a fan the lift pushed over the mark for the fan', () => {
+		settle({ '': 0.3 });
+		const lift = createStartingGain(0, '');
+		const talking = speak(lift, 0.17, 0, 3_000);
+		// 0.015 lifted ~1.76× reads 0.026 at the meter, over the mark.
+		expect(speak(lift, 0.015, 3_000, 5_000)).toBeCloseTo(talking);
+	});
+
+	it('lifts each mic toward its own settled level', () => {
+		settle({ headset: 0.4 });
+		const lift = createStartingGain(0, 'laptop');
+		expect(speak(lift, 0.17, 0, 3_000)).toBe(1);
+	});
+
+	it('remembers where a long call settled, per mic', () => {
+		settle({ headset: 0.4 });
+		const lift = createStartingGain(0, 'laptop');
 		speak(lift, 0.17, 0, STARTING_GAIN_MS);
 		speak(lift, 0.32, STARTING_GAIN_MS, 20_000);
 		lift.close();
-		expect(Number(store.get(KEY))).toBeCloseTo(0.32, 2);
+		const saved = JSON.parse(store.get(KEY)!);
+		expect(saved.laptop).toBeCloseTo(0.32, 2);
+		expect(saved.headset).toBe(0.4);
 	});
 
 	it('remembers nothing from a call too short to have settled', () => {
-		const lift = createStartingGain(0);
+		const lift = createStartingGain(0, '');
 		speak(lift, 0.17, 0, STARTING_GAIN_MS + 5_000);
 		lift.close();
 		expect(store.has(KEY)).toBe(false);
 	});
 
 	it('ignores a stored level that cannot be one', () => {
-		store.set(KEY, '7');
-		const lift = createStartingGain(0);
+		settle({ '': 7 });
+		const lift = createStartingGain(0, '');
 		expect(speak(lift, 0.17, 0, 3_000)).toBe(1);
 	});
 });
