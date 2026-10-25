@@ -123,22 +123,12 @@ type GetIdentityParams struct {
 	ProviderUserID string
 }
 
-type GetIdentityRow struct {
-	Provider        string
-	ProviderUserID  string
-	UserID          pgtype.UUID
-	AccessToken     *string
-	TokenExpiresAt  pgtype.Timestamptz
-	CreatedAt       pgtype.Timestamptz
-	RefreshTokenEnc []byte
-}
-
 // No `*` on identities (#1038): sqlc expands it into the generated SQL, so
-// the plaintext token column would stay named in this release's binary and its drop (#3355)
-// would break the rollback to it (ADR-0019). The reads list their columns.
-func (q *Queries) GetIdentity(ctx context.Context, arg GetIdentityParams) (GetIdentityRow, error) {
+// every column stays named in the binary and a later drop would break the
+// rollback to it (ADR-0019). The reads list their columns.
+func (q *Queries) GetIdentity(ctx context.Context, arg GetIdentityParams) (Identity, error) {
 	row := q.db.QueryRow(ctx, getIdentity, arg.Provider, arg.ProviderUserID)
-	var i GetIdentityRow
+	var i Identity
 	err := row.Scan(
 		&i.Provider,
 		&i.ProviderUserID,
@@ -214,19 +204,9 @@ type GetUserIdentityParams struct {
 	Provider string
 }
 
-type GetUserIdentityRow struct {
-	Provider        string
-	ProviderUserID  string
-	UserID          pgtype.UUID
-	AccessToken     *string
-	TokenExpiresAt  pgtype.Timestamptz
-	CreatedAt       pgtype.Timestamptz
-	RefreshTokenEnc []byte
-}
-
-func (q *Queries) GetUserIdentity(ctx context.Context, arg GetUserIdentityParams) (GetUserIdentityRow, error) {
+func (q *Queries) GetUserIdentity(ctx context.Context, arg GetUserIdentityParams) (Identity, error) {
 	row := q.db.QueryRow(ctx, getUserIdentity, arg.UserID, arg.Provider)
-	var i GetUserIdentityRow
+	var i Identity
 	err := row.Scan(
 		&i.Provider,
 		&i.ProviderUserID,

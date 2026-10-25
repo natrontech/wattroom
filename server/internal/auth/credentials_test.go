@@ -18,12 +18,12 @@ import (
 )
 
 type fakeRevoker struct {
-	called db.GetUserIdentityRow
+	called db.Identity
 	calls  int
 	err    error
 }
 
-func (f *fakeRevoker) RevokeGrant(_ context.Context, ident db.GetUserIdentityRow) error {
+func (f *fakeRevoker) RevokeGrant(_ context.Context, ident db.Identity) error {
 	f.calls++
 	f.called = ident
 	return f.err

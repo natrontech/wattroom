@@ -62,9 +62,9 @@ func refusingStrava(t *testing.T) (srv *httptest.Server, refusal *atomic.Pointer
 }
 
 // forgetting records what the auth routine would have been handed.
-func forgetting(svc *Service) chan db.GetUserIdentityRow {
-	forgot := make(chan db.GetUserIdentityRow, 4)
-	svc.SetGrantForgetter(func(_ context.Context, ident db.GetUserIdentityRow) error {
+func forgetting(svc *Service) chan db.Identity {
+	forgot := make(chan db.Identity, 4)
+	svc.SetGrantForgetter(func(_ context.Context, ident db.Identity) error {
 		forgot <- ident
 		return nil
 	})

@@ -25,7 +25,7 @@ import (
 // A sealed value that will not open is NOT reported as "no token stored":
 // that is a wrong or rotated key, and answering it with "reconnect your Strava
 // account" would have every rider re-authorise over an operator's mistake.
-func (s *Service) refreshToken(ident db.GetUserIdentityRow) (string, error) {
+func (s *Service) refreshToken(ident db.Identity) (string, error) {
 	if len(ident.RefreshTokenEnc) == 0 {
 		return "", fmt.Errorf("no refresh token stored")
 	}
@@ -37,7 +37,7 @@ func (s *Service) refreshToken(ident db.GetUserIdentityRow) (string, error) {
 }
 
 // freshToken refreshes when the stored access token is at or past expiry.
-func (s *Service) freshToken(ctx context.Context, ident db.GetUserIdentityRow) (string, error) {
+func (s *Service) freshToken(ctx context.Context, ident db.Identity) (string, error) {
 	valid := ident.TokenExpiresAt.Valid &&
 		ident.TokenExpiresAt.Time.After(s.now().Add(60*time.Second))
 	if valid && ident.AccessToken != nil && *ident.AccessToken != "" {
@@ -100,7 +100,7 @@ func (s *Service) freshToken(ctx context.Context, ident db.GetUserIdentityRow) (
 	return tok.AccessToken, nil
 }
 
-func (s *Service) RevokeGrant(ctx context.Context, ident db.GetUserIdentityRow) error {
+func (s *Service) RevokeGrant(ctx context.Context, ident db.Identity) error {
 	token, err := s.freshToken(ctx, ident)
 	if err != nil {
 		return fmt.Errorf("strava: no usable token to revoke: %w", err)
