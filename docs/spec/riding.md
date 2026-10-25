@@ -175,8 +175,8 @@ is a **second screen 1.3 m away, a 24-inch monitor**, the `/hud` tab of
 [ADR-0041](../decisions/0041-the-hud-mirrors-the-riding-screen.md). A screen
 height subtends the same angle there as a 55-inch TV does at 3 m, so a vh
 reads the same, and the HUD takes the TV's column. It holds that in any
-landscape window. The shell's own 320 × 132 window is the floor the block
-never shrinks below ([#3678](https://github.com/natrontech/wattroom/issues/3678)). Panels are at least **85 %**
+landscape window. The shell's own **320 × 152** window is the floor the block
+never shrinks below ([#3678](https://github.com/natrontech/wattroom/issues/3678); 132 until the zone strip, [#4099](https://github.com/natrontech/wattroom/issues/4099)). Panels are at least **85 %**
 opaque; a unit is at most half its number's size. The big watts figure is a
 **3 s** average; scoring still reads every second.
 

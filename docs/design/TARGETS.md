@@ -395,12 +395,12 @@ Capture: phone, world on, `/ride?road=<hairpin>`.
 
 #### hud, hud-shell
 
-Capture: `/hud` in a second page while a road free ride runs: `hud-shell` at 320 × 132, the desktop shell's window; `hud` at 1440 × 900, ADR-0041's second-screen tab. Target: v2-phone's Team-car card, as the language for a compact numbers card. Canon: ADR-0041.
+Capture: `/hud` in a second page while a road free ride runs: `hud-shell` at 320 × 152, the desktop shell's window; `hud` at 1440 × 900, ADR-0041's second-screen tab. Target: v2-phone's Team-car card, as the language for a compact numbers card. Canon: ADR-0041.
 
-1. At 320 × 132 nothing changes; the shell shows the label row, clock at its right; the watts in watt, the target beside it when there is one; cadence and heart rate (heart rate only with a source) at the right of the clock's line, or of the grade line on a road (Jan, 2026-10-18); on a road, the grade line and next-2 km bars; nothing clipped.
+1. At 320 × 152 nothing is clipped. The label row, the clock at its right; the watts in watt, the one dominant number; beside them a right-aligned column of target (when there is one), cadence and heart rate, each with its small unit, a reading with no sensor behind it not drawn, and heart rate's zone dot with an LTHR (#4099); on a road, the grade line and next-2 km bars; last, seven segments in the zone ramp, the current one lit, its zone and the time held in it at the strip's right.
 2. In a large window the same block scales as one centred unit; the watts the largest element, ~a quarter of the window's height; words per the HUD row the PR adds to SPEC (D1). [ride-hud]
 3. On a road ride the label reads “FREE RIDE · <road>”. [ride-hud]
-4. Only the watts glows. Grade bars use the Skyline's grade ramp.
+4. Only the watts glows. Grade bars use the Skyline's grade ramp; the zone strip, the Coggan ramp, unlit segments faint.
 5. The cave's surface fills the window; the waiting and signed-out states scale the same way. [ride-hud]
 
 #### ride-preride (a desk surface)
