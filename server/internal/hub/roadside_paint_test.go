@@ -76,6 +76,31 @@ func TestTheRoadsidePaintsAClimbAheadInChalk(t *testing.T) {
 	}
 }
 
+// A loop unrolls without end, so its chalk keeps to this lap and the next:
+// a stamp a million laps on held one of the road's live slots all ride, and
+// two spectators filled all twelve (audit #4125).
+func TestALoopsChalkKeepsToTheNextLap(t *testing.T) {
+	for _, c := range []struct {
+		name string
+		lap  int
+		code string
+	}{
+		{"this lap's next climb", 0, ""},
+		{"the next lap's", 1, ""},
+		{"two laps on", 2, "validation_error"},
+		{"a million laps on", 1_000_000, "validation_error"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			rm, _, now := onTheRoad(t, rideOn(hills(), 1000, true, false))
+			verb := paint(protocol.RoadsideStampHeart, 5000)
+			verb.Lap = c.lap
+			if code, message := rm.roadsideVerb("ben", verb, now); code != c.code {
+				t.Fatalf("answered %q %q, want %q", code, message, c.code)
+			}
+		})
+	}
+}
+
 // Chalk stays where it was painted until the last rider rides over it, and
 // the revision says when it goes.
 func TestChalkGoesOnceTheBunchRidesOverIt(t *testing.T) {
