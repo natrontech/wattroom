@@ -1,5 +1,5 @@
 import type { ServerTick } from '$lib/protocol';
-import { turnedRound, type Road } from '$lib/road/road';
+import { roadStep, turnedRound, type Road } from '$lib/road/road';
 import type { PinnedRoad } from '$lib/workout/road-workout';
 
 /** Where a rider is on the session's road. */
@@ -19,16 +19,37 @@ export interface RoadPlace {
 /**
  * A rider's place on the session's road (#3663, #3553): what the world draws
  * them at and what their trainer rides. Null off a road: no pick carrying
- * one, or no bunch on the tick.
+ * one, or no bunch on the tick. In a race it is your own racer's (#3778,
+ * ADR-0067): a race rides no bunch, so a rider it did not line up has none.
  */
 export function placeOnRoad(
-	tick: Pick<ServerTick, 'at' | 'state' | 'world'> | null | undefined,
+	tick: Pick<ServerTick, 'at' | 'state' | 'world' | 'game'> | null | undefined,
 	cut: PinnedRoad | null,
 	you: string,
 ): RoadPlace | null {
 	const route = tick?.state?.route;
 	const world = tick?.world;
 	if (!cut || !route || !world) return null;
+	if (world.racers) {
+		const me = world.racers[you];
+		const race = tick.game?.race;
+		if (!me) return null;
+		// The hub steps no one in the neutral zone, through a hold or once it
+		// is over, and the line stops each racer: a Wheelrace's short of the
+		// road's end (#3172).
+		const held =
+			tick.at < (race?.klaxonAtMs ?? 0) ||
+			!!race?.neutralised ||
+			tick.game?.phase === 'done' ||
+			me.m >= (race?.lineM || route.lengthM);
+		return {
+			road: toLine(cut.road, race?.lineM),
+			m: me.m,
+			mps: held ? 0 : me.v,
+			at: tick.at,
+			loop: false,
+		};
+	}
 	// The bunch's speed, never the trainer's (ADR-0084: that is the drivetrain's alone).
 	const { bunchM, speedMps: bunchMps, offsets } = world;
 	return {
@@ -39,6 +60,27 @@ export function placeOnRoad(
 		at: tick.at,
 		loop: !!route.loop,
 	};
+}
+
+const cutAtLines = new WeakMap<Road, { lineM: number; road: Road }>();
+
+/**
+ * A Wheelrace's road ends at its line (#3172), as the hub cuts it: the
+ * heights up to the step the line sits on. Kept per road, so every tick
+ * hands the world and the map the same one.
+ */
+function toLine(road: Road, lineM: number | undefined): Road {
+	if (!lineM || lineM >= road.length) return road;
+	const kept = cutAtLines.get(road);
+	if (kept?.lineM === lineM) return kept.road;
+	const steps = Math.round(lineM / roadStep(road));
+	const cut = {
+		length: lineM,
+		heights: road.heights.slice(0, steps + 1),
+		turns: road.turns.slice(0, steps),
+	};
+	cutAtLines.set(road, { lineM, road: cut });
+	return cut;
 }
 
 /** docs/SPEC.md "Riding a road together": this long without a tick, and the felt grade relaxes to 0 %. */

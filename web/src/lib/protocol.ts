@@ -176,6 +176,11 @@ export interface Control {
  */
 export interface FreeRoad {
   key?: string;
+  /**
+   * This lap runs down the stored road, from its far end (#3205): its
+   * metres count down. Said again at every lap that turns.
+   */
+  reverse?: boolean;
 }
 /**
  * FreeRoadKeyLen is a road key's length: SHA-256 in hex.
@@ -191,6 +196,11 @@ export const FreeRoadKeyLen = 64;
 export interface FreeRoadPlace {
   road: number /* int */;
   m: number /* float64 */;
+  /**
+   * Down the stored road, as the rider's FreeRoad says: "Ride with
+   * <name>" rides a mate's way (#3117).
+   */
+  reverse?: boolean;
 }
 
 //////////

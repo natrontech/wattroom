@@ -1,0 +1,1 @@
+- On a phone beside a session, the roadside deck stays clear of the jukebox's player: the page stops above it, so every cheer, the bottle and the chalk stamps stay in reach while a track plays.

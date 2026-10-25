@@ -18,6 +18,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
+	"github.com/natrontech/wattroom/server/internal/workout"
 )
 
 // capOf is how many channels of a kind one crew may hold, and whether the
@@ -314,7 +315,7 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 	for _, plan := range plans {
 		// A session already ridden or gone is not news (#839).
 		if s.notifier != nil && !plan.StartedAt.Valid && plan.StartsAt.Time.After(time.Now()) {
-			s.notifier.SessionCancelled(channel.CrewID, channel.ID, plan.WorkoutName, plan.StartsAt.Time, user.ID)
+			s.notifier.SessionCancelled(channel.CrewID, channel.ID, workout.PlainName(string(plan.WorkoutJson), plan.WorkoutName), plan.StartsAt.Time, user.ID)
 		}
 	}
 	swept, err := s.deleteChannel(r.Context(), channel)

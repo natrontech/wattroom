@@ -334,12 +334,14 @@
 
 {#if conn}
 	<!-- With no seat on offer the dock sits in the corner, above the chat
-	     button below xl (#219). Stacking (#483): floating, it sits BELOW
-	     dialogs, drawers and toasts (z-40/z-50) — RMF forbids OUR chrome over
-	     the player, not a dialog the rider opened over it. Seated, it has to
-	     clear the surface it sits in — a popped-out stage is z-[55] — but not
-	     the chat sheet, which is a drawer the rider opened and passes above at
-	     z-[60]. -->
+	     button below xl (#219). On a phone it is the phone's width less the
+	     people button beside it, and the drawer button too while riding:
+	     the voice channel's page stops above it (#4185). Stacking (#483):
+	     floating, it sits BELOW dialogs, drawers and toasts (z-40/z-50) — RMF
+	     forbids OUR chrome over the player, not a dialog the rider opened
+	     over it. Seated, it has to clear the surface it sits in — a popped-out
+	     stage is z-[55] — but not the chat sheet, which is a drawer the rider
+	     opened and passes above at z-[60]. -->
 	<div
 		bind:this={shell}
 		data-pane={PANE}
@@ -351,11 +353,10 @@
 			? ''
 			: 'ring-ink/15 ring-1'} {showPlayer
 			? ''
-			: 'hidden'} {channelConnection.onPlacePath(page.url.pathname)
-			? 'right-4 bottom-20 xl:right-[calc(var(--pane-side-panel-w,272px)+1.25rem)] xl:bottom-4'
+			: 'hidden'} max-w-[96vw] {channelConnection.onPlacePath(page.url.pathname)
+			? `right-4 bottom-20 max-md:right-[4.5rem] max-md:bottom-4 xl:right-[calc(var(--pane-side-panel-w,272px)+1.25rem)] xl:bottom-4 ${seat ? '' : 'max-md:ride:max-w-[calc(100vw-9rem)] max-md:max-w-[calc(100vw-5.5rem)]'}`
 			: 'right-4 bottom-4'}"
-		style="width: {CORNER.w}px; height: {CORNER.h}px; max-width: 96vw;
-			max-height: 90vh"
+		style="width: {CORNER.w}px; height: {CORNER.h}px; max-height: 90vh"
 	>
 		<div class="flex min-h-0 flex-1 bg-black {listening.out ? 'hidden' : ''}">
 			<!-- ≥200×200, always visible while media plays, nothing overlaid. -->

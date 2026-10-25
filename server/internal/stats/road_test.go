@@ -118,6 +118,48 @@ func TestARoadRideWithLapsRidesEachLapItsWay(t *testing.T) {
 	}
 }
 
+// "Ride with <name>" (#3117): a lap may start anywhere on the road, here at
+// a channel-mate's metre mid-road, and it rides on at the speed the lap
+// before it ended at, as the client's dot rolls on beside them. A lap after
+// the road's end starts from standstill, where the dot stopped.
+func TestALapFromAMetreKeepsTheSpeedOfTheLapBefore(t *testing.T) {
+	up := storedRoad(t, 2000, 40)
+	const mass = 83.0
+	paced := func(seconds int) float64 {
+		p := road.Pace{}
+		for range seconds {
+			p.Step(300, up.GradeAt(1000), mass, protocol.PaceDefaultCdA, 0)
+		}
+		return p.Distance
+	}
+	for _, c := range []struct {
+		name    string
+		samples []protocol.RiderMetrics
+		from    float64
+		dist    float64
+	}{
+		{
+			// A minute up the road, then a minute on from 1,207 m: two
+			// minutes' riding, as if never interrupted.
+			"a jump to a mate mid-road",
+			append(rodeAt(60, 300, 0, 7), rodeAt(60, 300, 1200, 7)...),
+			7, paced(120),
+		},
+		{
+			// To the end from 1,907 m, then again from the start: the second
+			// lap rides off from standstill.
+			"again after the road's end",
+			append(rodeAt(60, 300, 1900, 7), rodeAt(30, 300, -7, 7)...),
+			1907, 93 + paced(30),
+		},
+	} {
+		got := ReplayRoad(up, c.samples, []Lap{{Start: 0}, {Start: 60}}, mass)
+		if got.FromM != c.from || math.Abs(got.DistanceM-c.dist) > 1e-6 {
+			t.Errorf("%s: from %v m, %.3f m; want from %v, %.3f m", c.name, got.FromM, got.DistanceM, c.from, c.dist)
+		}
+	}
+}
+
 func TestRideMode(t *testing.T) {
 	steps := `{"steps":[{"type":"steady","seconds":60,"target":0.6}]}`
 	empty := `{"name":"Free ride","unscored":true,"steps":[]}`

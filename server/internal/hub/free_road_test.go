@@ -2,9 +2,15 @@ package hub
 
 import (
 	"encoding/json"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/coder/websocket"
+	"github.com/coder/websocket/wsjson"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
 )
@@ -27,7 +33,7 @@ func freeRoadTick(t *testing.T, roads map[string]string, m map[string]float64, i
 	for id, key := range roads {
 		c := &client{rider: protocol.Rider{ID: id, Name: id}, out: make(chan []byte, clientQueue)}
 		rm.join(c)
-		rm.setFreeRoad(c, key)
+		rm.setFreeRoad(c, protocol.FreeRoad{Key: key})
 		if at, sent := m[id]; sent {
 			rm.setMetrics(c, protocol.RiderMetrics{Watts: 180, Seq: 1, M: at, Alt: 640})
 		}
@@ -157,7 +163,7 @@ func TestAScreenTheTrainerLeftNoLongerPlacesItsRider(t *testing.T) {
 	cat := &client{rider: protocol.Rider{ID: "cat"}, out: make(chan []byte, clientQueue)}
 	for _, c := range []*client{desk, cat} {
 		rm.join(c)
-		rm.setFreeRoad(c, roadA)
+		rm.setFreeRoad(c, protocol.FreeRoad{Key: roadA})
 		rm.setMetrics(c, protocol.RiderMetrics{Watts: 180, Seq: 1, M: 50})
 	}
 	// Ana's phone takes the trainer: the desk keeps its last metre, unsaid.
@@ -168,5 +174,69 @@ func TestAScreenTheTrainerLeftNoLongerPlacesItsRider(t *testing.T) {
 	defer rm.mu.Unlock()
 	if got := rm.freeRoadsLocked(); got != nil {
 		t.Fatalf("free roads %v: the desk the trainer left still places ana", got)
+	}
+}
+
+// "Ride with <name>" over the socket (#3117): cat sees ana on their road at
+// her metre and her way, jumps there — a sample at her metre, her way said
+// on the road — and the next tick puts them side by side, both riding it
+// back down the road. The hub runs no physics: the jump is cat's own sample.
+func TestRideWithAMateLandsAtTheirMetreTheirWay(t *testing.T) {
+	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/evening"
+	ana, cat := dial(t, url, "ana:member"), dial(t, url, "cat:member")
+	say := func(conn *websocket.Conn, msg protocol.ClientMessage) {
+		t.Helper()
+		if err := wsjson.Write(t.Context(), conn, msg); err != nil {
+			t.Fatalf("send: %v", err)
+		}
+	}
+	say(ana, protocol.ClientMessage{FreeRoad: &protocol.FreeRoad{Key: roadA, Reverse: true}})
+	say(ana, protocol.ClientMessage{Metrics: &protocol.RiderMetrics{Watts: 220, Seq: 1, M: 3000}})
+	say(cat, protocol.ClientMessage{FreeRoad: &protocol.FreeRoad{Key: roadA}})
+	say(cat, protocol.ClientMessage{Metrics: &protocol.RiderMetrics{Watts: 200, Seq: 1, M: 400}})
+	until := func(what string, want func(map[string]protocol.FreeRoadPlace) bool) map[string]protocol.FreeRoadPlace {
+		t.Helper()
+		deadline := time.Now().Add(5 * time.Second)
+		for time.Now().Before(deadline) {
+			if got := readTick(t, cat).FreeRoads; want(got) {
+				return got
+			}
+		}
+		t.Fatalf("%s: never on the tick", what)
+		return nil
+	}
+	seen := until("ana on cat's road", func(p map[string]protocol.FreeRoadPlace) bool { return p["ana"].M == 3000 })
+	if !seen["ana"].Reverse || seen["cat"].Reverse || seen["cat"].M != 400 {
+		t.Fatalf("cat sees %v: want ana at 3000 m riding back, cat at 400 m riding up", seen)
+	}
+
+	// Ride with Ana: her metre, her way.
+	say(cat, protocol.ClientMessage{FreeRoad: &protocol.FreeRoad{Key: roadA, Reverse: true}})
+	say(cat, protocol.ClientMessage{Metrics: &protocol.RiderMetrics{Watts: 200, Seq: 2, M: seen["ana"].M}})
+	side := until("cat beside ana", func(p map[string]protocol.FreeRoadPlace) bool { return p["cat"].M == 3000 })
+	if !side["cat"].Reverse || side["cat"].Road != side["ana"].Road {
+		t.Fatalf("after the jump %v: want cat on ana's road, riding back with her", side)
+	}
+}
+
+func TestATurnKeepsItsPlaceAndLeavingTheRoadKeepsNoWay(t *testing.T) {
+	rm := newChannelState("evening")
+	c := &client{rider: protocol.Rider{ID: "ana"}, out: make(chan []byte, clientQueue)}
+	rm.join(c)
+	rm.setFreeRoad(c, protocol.FreeRoad{Key: roadA, Reverse: true})
+	rm.setMetrics(c, protocol.RiderMetrics{Watts: 180, Seq: 1, M: 50})
+	// The lap turns on the same road: the place stays, the way changes.
+	rm.setFreeRoad(c, protocol.FreeRoad{Key: roadA})
+	if c.road.reverse || !c.road.placed || c.road.m != 50 {
+		t.Fatalf("after the turn %+v: want placed at 50 m, riding up", c.road)
+	}
+	rm.setFreeRoad(c, protocol.FreeRoad{Reverse: true})
+	if c.road != (roadPresence{}) {
+		t.Fatalf("off the road %+v: want no road, no way", c.road)
 	}
 }

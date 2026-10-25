@@ -305,3 +305,40 @@ func TestARoadRideSavesWithLaps(t *testing.T) {
 		}
 	}
 }
+
+// "Ride with <name>" (#3117): mid-ride a rider jumps to a channel-mate's
+// metre, and the ride saves as one, the jump a new lap from that metre. The
+// replay rides each lap from where it starts, so the ride keeps the metres
+// pedalled and never the 2,200 m jumped.
+func TestARideWithAMateSavesTheJumpAsALap(t *testing.T) {
+	h := setup(t)
+	routeID, _ := storeRoute(t, h, "alice")
+	status, got := call(t, h.mux, "alice", http.MethodPost, "/api/rides", lappedRide(routeID,
+		lapJSON{lap: 0, seconds: 60, from: 1000, mps: 8},
+		lapJSON{lap: 1, seconds: 60, from: 3200, mps: 8}))
+	if status != http.StatusCreated {
+		t.Fatalf("a ride with a jump: %d %v", status, got)
+	}
+	id, _ := got["id"].(string)
+	s := readSummary(t, h, id)
+
+	ridden, err := road.UnpackRoad(testx.FlatRoad(5000, 100))
+	if err != nil {
+		t.Fatal(err)
+	}
+	samples := make([]protocol.RiderMetrics, 120)
+	for i := range samples {
+		samples[i] = protocol.RiderMetrics{Watts: 250, M: 1000 + 8*float64(i)}
+		if i >= 60 {
+			samples[i].M = 3200 + 8*float64(i-60)
+		}
+	}
+	want := stats.ReplayRoad(ridden, samples, []stats.Lap{{Start: 0}, {Start: 60}}, 70+protocol.BikeKg)
+	if s.fromM == nil || *s.fromM != 1000 || s.distanceM == nil || int(*s.distanceM) != int(want.DistanceM+0.5) ||
+		s.climbedM == nil || int(*s.climbedM) != int(want.ClimbedM+0.5) {
+		t.Errorf("from %v, %v m ridden, %v m climbed; want 1000, the laps' %.0f m and %.0f m", s.fromM, s.distanceM, s.climbedM, want.DistanceM, want.ClimbedM)
+	}
+	if want.DistanceM > 2*60*float64(protocol.MaxRoadSpeedMps) {
+		t.Errorf("the replay rode %.0f m in two minutes: the jump was counted", want.DistanceM)
+	}
+}

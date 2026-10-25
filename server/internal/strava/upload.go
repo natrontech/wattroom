@@ -19,6 +19,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
+	"github.com/natrontech/wattroom/server/internal/workout"
 )
 
 // upload runs one delivery attempt. A nil activity id with a nil error means
@@ -92,7 +93,7 @@ func (s *Service) post(ctx context.Context, token string, ride db.GetRideForUplo
 	}
 	fields := map[string]string{
 		"data_type":   "fit",
-		"name":        ride.WorkoutName,
+		"name":        activityName(ride),
 		"description": activityDescription(ride),
 		"external_id": "wattroom-" + store.UUIDString(ride.ID),
 	}
@@ -222,6 +223,19 @@ func exportFailure(err error) string {
 	default:
 		return "Strava could not be reached. It will be retried; you can also retry now."
 	}
+}
+
+// activityName is the activity's title. A route ride's never carries a
+// place, generated or not (ADR-0063), so its distance stands in for the
+// generated name it was saved under (#4154).
+func activityName(ride db.GetRideForUploadRow) string {
+	switch {
+	case ride.RouteKey == nil:
+		return ride.WorkoutName
+	case ride.DistanceM == nil:
+		return workout.RouteRide(0)
+	}
+	return workout.RouteRide(float64(*ride.DistanceM))
 }
 
 // activityDescription is what the Strava activity says about where it was

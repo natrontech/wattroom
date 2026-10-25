@@ -181,8 +181,7 @@ func TestStartingARoadPlanSendsTheCrewCut(t *testing.T) {
 
 // A planned road goes out under its route's generated name (#3055): alice
 // named her route "Home loop", and neither the plan nor the crew's schedule
-// nor its calendar feed says so — nor the reminder emails, which read the
-// same row.
+// says so. Mail and the calendar say less still (the test below).
 func TestAPlannedRoadGoesOutUnderItsGeneratedName(t *testing.T) {
 	h := setup(t)
 	h.svc.SetRoads(routes.NewAttacher(h.store.Queries, nil))
@@ -193,17 +192,63 @@ func TestAPlannedRoadGoesOutUnderItsGeneratedName(t *testing.T) {
 		t.Fatalf("alice plans her road: %d %v", status, body)
 	}
 	plan, _ := body["id"].(string)
-	_, member := h.call(t, "bob", http.MethodGet, crewPath(crew), "")
-	token, _ := member["icsToken"].(string)
-	_, ics, _ := h.rawGet(t, crewPath(crew, "/calendar/", token, ".ics"))
 	const generated = "Road · 3.0 km · 50 m"
 	for surface, text := range map[string]string{
-		"the plan":          fmt.Sprint(body["workoutName"]),
-		"bob's schedule":    fmt.Sprint(h.crewSchedule(t, "bob", crew)[plan]["workoutName"]),
-		"the calendar feed": ics,
+		"the plan":       fmt.Sprint(body["workoutName"]),
+		"bob's schedule": fmt.Sprint(h.crewSchedule(t, "bob", crew)[plan]["workoutName"]),
 	} {
 		if strings.Contains(text, "Home loop") || !strings.Contains(text, generated) {
 			t.Errorf("%s says %q, want %q and never the route's own name", surface, text, generated)
+		}
+	}
+}
+
+// Mail and the calendar never carry a place, generated or not (#4154,
+// ADR-0063): once a generated name can name one, a planned road's mails and
+// both calendar feeds still say only the road's numbers.
+func TestAPlannedRoadsMailAndCalendarCarryNoPlace(t *testing.T) {
+	h := setup(t)
+	notifier := &fakeNotifier{}
+	h.svc.SetNotifier(notifier)
+	h.svc.SetRoads(routes.NewAttacher(h.store.Queries, nil))
+	crew, _ := h.crewWithChannel(t)
+	route := h.tellingRoute(t, "alice", "gpx")
+	if _, err := h.store.Pool.Exec(t.Context(), "update routes set gen_name = $1 where id = $2",
+		"Road · "+testx.Corridor.Places[0]+" · 3.0 km", route); err != nil {
+		t.Fatal(err)
+	}
+	at := time.Now().Add(24 * time.Hour)
+	status, body := h.call(t, "alice", http.MethodPost, schedulePath(crew), roadPlanBody(route, at))
+	if status != http.StatusCreated {
+		t.Fatalf("alice plans her road: %d %v", status, body)
+	}
+	plan, _ := body["id"].(string)
+	if status, body := h.call(t, "alice", http.MethodPatch, schedulePath(crew, "/", plan),
+		fmt.Sprintf(`{"startsAt":%q}`, at.Add(time.Hour).UTC().Format(time.RFC3339))); status != http.StatusNoContent {
+		t.Fatalf("alice moves it: %d %v", status, body)
+	}
+	_, member := h.call(t, "bob", http.MethodGet, crewPath(crew), "")
+	crewToken, _ := member["icsToken"].(string)
+	_, crewFeed, _ := h.rawGet(t, crewPath(crew, "/calendar/", crewToken, ".ics"))
+	_, mine := h.call(t, "bob", http.MethodGet, "/api/schedule", "")
+	riderToken, _ := mine["icsToken"].(string)
+	_, riderFeed, _ := h.rawGet(t, "/api/calendar/"+riderToken+".ics")
+	if status, _ := h.call(t, "alice", http.MethodDelete, schedulePath(crew, "/", plan), ""); status != http.StatusNoContent {
+		t.Fatalf("alice cancels it: %d", status)
+	}
+
+	notifier.mu.Lock()
+	surfaces := map[string]string{
+		"the plan mail":    fmt.Sprint(notifier.planned),
+		"the move mail":    fmt.Sprint(notifier.moved),
+		"the cancel mail":  fmt.Sprint(notifier.cancelled),
+		"the crew feed":    crewFeed,
+		"bob's rider feed": riderFeed,
+	}
+	notifier.mu.Unlock()
+	for surface, text := range surfaces {
+		if leak := testx.Leak(text); leak != "" || !strings.Contains(text, "Route ride · 3.0 km") {
+			t.Errorf("%s carries %q, want the road's numbers alone: %s", surface, leak, text)
 		}
 	}
 }

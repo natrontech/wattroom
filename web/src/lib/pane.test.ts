@@ -225,10 +225,11 @@ describe('the jukebox gutter (#1702)', () => {
 			'utf8',
 		);
 		const gutters = [...shell.matchAll(/var\(--pane-jukebox-dock-h([^)]*)\)/g)];
-		expect(gutters, 'the gutter moved out of ChannelShell').toHaveLength(1);
+		// The phone's band and the desk's gutter (#4185).
+		expect(gutters, 'the gutter moved out of ChannelShell').toHaveLength(2);
 		expect(
-			gutters[0][1],
+			gutters.map((gutter) => gutter[1]),
 			'no dock, no gutter — the variable is the signal',
-		).toBe('');
+		).toEqual(['', '']);
 	});
 });

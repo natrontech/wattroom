@@ -12,6 +12,7 @@ import {
 	voicePath,
 } from './design/seed';
 import { homeProbe } from './design/home-probe';
+import { stubYouTube } from './youtube-stub';
 import {
 	endSession,
 	joinSession,
@@ -1737,52 +1738,12 @@ surface('closing-card', async (s) => {
 });
 
 /**
- * The IFrame API, standing in for YouTube's (#3927): a player that plays what
- * it is given from where it is told, never ends and never errors, and shows
- * the video's own thumbnail where the video would be.
- */
-const YOUTUBE_STUB = `
-window.YT = { Player: class {
-	constructor(node, opts) {
-		this.node = typeof node === 'string' ? document.getElementById(node) : node;
-		this.events = opts.events || {};
-		this.state = -1; this.at = 0; this.since = 0;
-		setTimeout(() => this.events.onReady?.({ target: this }));
-	}
-	show(id) {
-		this.node.innerHTML = '<img src="https://i.ytimg.com/vi/' + id +
-			'/mqdefault.jpg" alt="" style="width:100%;height:100%;object-fit:cover">';
-	}
-	go(state) { this.state = state; this.events.onStateChange?.({ data: state, target: this }); }
-	loadVideoById(id, at = 0) { this.show(id); this.seekTo(at); this.go(1); }
-	cueVideoById(id, at = 0) { this.show(id); this.seekTo(at); this.go(5); }
-	playVideo() { this.since = Date.now(); this.go(1); }
-	pauseVideo() { this.at = this.getCurrentTime(); this.go(2); }
-	stopVideo() { this.pauseVideo(); }
-	seekTo(at) { this.at = at; this.since = Date.now(); }
-	getCurrentTime() { return this.state === 1 ? this.at + (Date.now() - this.since) / 1000 : this.at; }
-	getDuration() { return 213; }
-	getPlayerState() { return this.state; }
-	getPlaybackRate() { return 1; }
-	setPlaybackRate() {}
-	getVideoData() { return { isLive: false }; }
-	getVolume() { return 0; }
-	setVolume() {}
-	unloadModule() {}
-	destroy() { this.node.innerHTML = ''; }
-} };
-window.onYouTubeIframeAPIReady?.();
-`;
-
-/**
  * Queues YouTube tracks on a riding page's deck through the jukebox's sheet
- * (#3983), stood in for by YOUTUBE_STUB, and leaves the sheet shut. A
+ * (#3983), stood in for by the IFrame API's stub, and leaves the sheet shut. A
  * channel's deck outlives its session.
  */
 async function queueDeck(page: Page, tracks: [string, string][]) {
-	await page.route('https://www.youtube.com/iframe_api', (route) =>
-		route.fulfill({ contentType: 'text/javascript', body: YOUTUBE_STUB }),
-	);
+	await stubYouTube(page);
 	const add = page.getByRole('textbox', {
 		name: 'add music: search your library, or paste a YouTube link',
 	});
@@ -1875,7 +1836,7 @@ surface(
 			// queue's rows and their vote and remove controls are what a rider
 			// pedals with (#3927). Muted by the shoot's mixer. YouTube's own
 			// player skips tracks at random in a headless browser, which empties
-			// the deck, so it is stood in for by YOUTUBE_STUB; titles and
+			// the deck, so it is stood in for by a stub; titles and
 			// thumbnails are YouTube's.
 			const fold = await queueDeck(coach.page, [
 				['dQw4w9WgXcQ', 'Never Gonna Give You Up'],
@@ -2134,6 +2095,9 @@ surface(
 	// cave used to darken the whole app (G1, #4160).
 );
 
+/** Three of the seat's 100 ms measures: the player has caught up with a scroll. */
+const SEAT_MS = 300;
+
 surface(
 	'roadside-chalk',
 	async (s) => {
@@ -2152,21 +2116,52 @@ surface(
 			await watcher.page.routeWebSocket(/\/ws\/channels\//, (ws) => {
 				socket = ws.connectToServer();
 			});
+			await stubYouTube(watcher.page);
 			await watcher.page.goto(voicePath(crew));
 			await watcher.page
 				.getByRole('button', { name: 'Chalk Allez' })
 				.waitFor({ timeout: 20_000 });
+			// A track playing, from the people column's deck unless another shot
+			// left one there: on a phone the corner player sits clear of the
+			// deck, never over it (#4185).
+			const player = watcher.page.locator('[data-pane=jukebox-dock]');
+			if (!(await player.isVisible())) {
+				const add = watcher.page
+					.getByRole('textbox', {
+						name: 'add music: search your library, or paste a YouTube link',
+					})
+					.filter({ visible: true })
+					.first();
+				await add.fill('https://www.youtube.com/watch?v=fJ9rUzIMcZQ');
+				await add.press('Enter');
+			}
+			await player.waitFor({ timeout: 20_000 });
 			// The deck sits low on the page: its last line in view for each shot.
 			await watcher.page
 				.getByRole('group', { name: 'chalk the next climb' })
 				.scrollIntoViewIfNeeded();
+			// The player follows its seat a tenth of a second behind a scroll
+			// (stage-slot.svelte.ts).
+			await watcher.page.waitForTimeout(SEAT_MS);
 			await s.shot(watcher);
 			// The same deck on a phone propped beside the bike (SPEC "The roadside").
 			const phone = await s.open(PHONE, { as: 'Design Watcher' });
+			await stubYouTube(phone.page);
 			await phone.page.goto(voicePath(crew));
 			await phone.page
 				.getByRole('group', { name: 'chalk the next climb' })
-				.scrollIntoViewIfNeeded({ timeout: 20_000 });
+				.waitFor({ timeout: 20_000 });
+			await phone.page
+				.locator('[data-pane=jukebox-dock]')
+				.waitFor({ timeout: 20_000 });
+			// The page's end, twice: the stage scrolls away, the corner takes the
+			// player, and the page that stops above it has an end of its own.
+			for (let i = 0; i < 2; i++) {
+				await phone.page
+					.getByTestId('place-body')
+					.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+				await phone.page.waitForTimeout(SEAT_MS);
+			}
 			await s.shot(phone, { name: 'roadside-chalk-phone' });
 			// A double tap while the climb is still open: the second stamp,
 			// inside the hub's quarter second, is refused, and the deck says why
@@ -2283,8 +2278,22 @@ surface(
 			// multi:ride-race-ride — the same race on RIDE: a page turn keeps the
 			// computer's shape (ADR-0071).
 			await coach.page.getByRole('button', { name: 'next page, RIDE' }).click();
+			// A race has its road on every screen (#3778): RIDE reads your speed on it.
+			await coach.page.locator('[data-field="speed"]').waitFor();
 			await coach.page.waitForTimeout(1000);
 			await s.shot(coach, { name: 'ride-race-ride' });
+			// multi:ride-race-map — the race's road from above, among its pages.
+			const computer = coach.page.getByTestId('bike-computer');
+			for (let turn = 0; turn < 4; turn++) {
+				if ((await computer.getAttribute('data-page')) === 'map') break;
+				await coach.page.getByRole('button', { name: /^next page, / }).click();
+			}
+			// The page draws the road, in the flat dock's row too.
+			await coach.page
+				.locator('[data-testid="computer-map"] svg')
+				.waitFor({ timeout: 5000 });
+			await coach.page.waitForTimeout(1000);
+			await s.shot(coach, { name: 'ride-race-map' });
 		} finally {
 			await endSession(coach.page);
 		}

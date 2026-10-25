@@ -128,6 +128,7 @@ describe('the end of the road, and laps (#3205)', () => {
 
 	it('rides it again from the start, up the road', () => {
 		const laps = createRoadLaps(upThenDown, { kg });
+		laps.fields(laps.second(400, 0));
 		toTheEnd(laps.second);
 		laps.turn('again');
 		const again = laps.fields(laps.second(400, 0));

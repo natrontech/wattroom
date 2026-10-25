@@ -7,6 +7,9 @@ package protocol
 // the tick's FreeRoads, by number.
 type FreeRoad struct {
 	Key string `json:"key,omitempty"`
+	// This lap runs down the stored road, from its far end (#3205): its
+	// metres count down. Said again at every lap that turns.
+	Reverse bool `json:"reverse,omitempty"`
 }
 
 // FreeRoadKeyLen is a road key's length: SHA-256 in hex.
@@ -20,4 +23,7 @@ const FreeRoadKeyLen = 64
 type FreeRoadPlace struct {
 	Road int     `json:"road"`
 	M    float64 `json:"m"`
+	// Down the stored road, as the rider's FreeRoad says: "Ride with
+	// <name>" rides a mate's way (#3117).
+	Reverse bool `json:"reverse,omitempty"`
 }
