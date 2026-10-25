@@ -200,6 +200,8 @@ test('two voice channels run two sessions, each with its own numbers and its own
 
 	// --- one deck each -------------------------------------------------------
 	const queue = async (page: Page, id: string) => {
+		// Riding, the add box sits in the jukebox's sheet (#3983).
+		await page.getByTestId('rail-sheet').filter({ visible: true }).click();
 		await page
 			.getByRole('textbox', {
 				name: 'add music: search your library, or paste a YouTube link',
