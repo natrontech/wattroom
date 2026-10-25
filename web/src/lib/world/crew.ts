@@ -36,7 +36,7 @@ import type { Style } from './styles';
 
 // Alone you keep to the right lane's middle, as on a Swiss road; the dev
 // gallery's crew spreads abreast; a bunch rides its formation (bunch.ts).
-const KEEP_RIGHT = -ROAD_W / 4;
+export const KEEP_RIGHT = -ROAD_W / 4;
 /** Where the coach's chevron sits: just over a rider's helmet. */
 export const CHEVRON_Y = 1.82;
 /** About a helmet wide on a rider: worn, not a marker on the road ahead. */

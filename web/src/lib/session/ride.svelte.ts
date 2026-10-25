@@ -250,14 +250,18 @@ export function createRide(deps: RideDeps) {
 						metrics.from.heartRate === 'trainer'
 							? metrics.from.heartRate
 							: null;
-					deps.live.sendMetrics(
-						wireMetrics(
+					const freeRoad = !deps.joined() ? deps.free.road : null;
+					deps.live.sendMetrics({
+						...wireMetrics(
 							metrics,
 							deps.profile.current.shareHr,
 							aim.bias,
 							!aim.scoring,
 						),
-					);
+						// A free rider on a road says where (#3117): the hub shows it
+						// only to riders here on the same road.
+						...(freeRoad && { m: Math.round(freeRoad.m * 10) / 10 }),
+					});
 					const shared = deps.shared();
 					if (shared?.phase === 'running' && deps.joined()) {
 						// The block and the scored target, for the bike computer's

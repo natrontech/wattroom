@@ -22,6 +22,7 @@
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
 	import { createGhostSplit } from '$lib/ride/ghost-split.svelte';
 	import RoadPick from '$lib/ride/RoadPick.svelte';
+	import { createRoadMates } from '$lib/channel/road-mates';
 	import Radio from '@lucide/svelte/icons/radio';
 
 	const channel = useChannel();
@@ -45,6 +46,13 @@
 	// Your ghost on your own road, raced alone — never in a session (#3615,
 	// ADR-0068).
 	const ghost = createGhostSplit(() => (riding ? null : free));
+	// Channel-mates free-riding your road (#3117): the hub puts them on it.
+	const roadMates = createRoadMates();
+	const mates = $derived(
+		free?.road
+			? roadMates(conn?.live.tick, channel.riders, channel.you.id)
+			: [],
+	);
 
 	// The ⚑ as a workout ride has it (#3894): the channel's own recorder
 	// ticks from pairing on, so the ride only marks where it began; flags go
@@ -177,6 +185,7 @@
 			onflag={() => flags.recorder.flag()}
 			ontv={() => (tv = true)}
 			worldClass="-mx-4 -my-6 sm:-mx-8 sm:-my-8"
+			mates={() => mates}
 		/>
 		{#if tv}
 			<FreeRideTv

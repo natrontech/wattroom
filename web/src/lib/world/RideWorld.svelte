@@ -29,6 +29,7 @@
 	import { mount, type WorldScene } from './scene';
 	import type { RideMetre } from './sim';
 	import type { BunchView } from '$lib/channel/bunch-view';
+	import type { RoadMate } from '$lib/channel/road-mates';
 	import type { PaintedGate } from '$lib/road/gates';
 	import { account } from '$lib/account.svelte';
 	import { prefersReducedMotion } from '$lib/motion';
@@ -40,6 +41,7 @@
 		road,
 		metre,
 		bunch,
+		mates,
 		loop = false,
 		watts,
 		silent = false,
@@ -59,6 +61,8 @@
 		metre: () => RideMetre;
 		/** Everyone on the road with you, on a session's road. */
 		bunch?: () => BunchView | null;
+		/** Channel-mates free-riding this road with you, each at their own metre (#3117). */
+		mates?: () => readonly RoadMate[];
 		/** The session laps the road: it has no finish. */
 		loop?: boolean;
 		watts: number;
@@ -107,6 +111,7 @@
 					ftp,
 					metre,
 					bunch,
+					mates,
 					loop,
 					countIn: () => counting,
 					gates,

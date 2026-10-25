@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createBunch, type Car } from './bunch';
+import { createAlongside } from './alongside';
 import { MOST_ABREAST } from './lanes';
 import { CHEER_S, cheerLook } from './cheer';
 import { makeChalk, type ChalkLayer } from './chalk';
@@ -15,6 +16,7 @@ import { makeCrew, RING_BAND_M, type Crew, type Pedalling } from './crew';
 import { bunchLooks, type Loadout } from './loadout';
 import { makeTags, type Tags } from './tags';
 import type { BunchView } from '$lib/channel/bunch-view';
+import type { RoadMate } from '$lib/channel/road-mates';
 import { DEFAULT_DARK_ID, themeById } from '$lib/themes';
 import { disposeTree } from './dispose';
 import { CAMERA } from './camera';
@@ -79,6 +81,11 @@ export type MountOptions = {
 	 * bunch places every joined rider, you among them, and the team car.
 	 */
 	bunch?: () => BunchView | null;
+	/**
+	 * Channel-mates free-riding this road (#3117), a free ride's world only:
+	 * each at their own metre, never in a bunch and never ranked.
+	 */
+	mates?: () => readonly RoadMate[];
 	/** The session laps the road (#3623): no finish arch on it. */
 	loop?: boolean;
 	/** Your rider id: which of the bunch is you. */
@@ -151,6 +158,8 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	const bunch = opts.bunch ? createBunch() : null;
 	// The bunch's riders by id, so a figure keeps its legs from frame to frame.
 	const crewmates = new Map<string, SimRider>();
+	// Channel-mates on a free ride's road, each on their own metre (#3117).
+	const alongside = opts.mates ? createAlongside() : null;
 	// What each of them wears, spread over the bunch in its join order (#3791); worked out again only when that order changes.
 	let looks = new Map<string, Loadout>();
 	let lookedAt = '';
@@ -306,6 +315,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		const view = opts.bunch?.();
 		if (bunch && view) ride(view, moment ? 0 : wall);
 		else if (opts.metre) follow(you, opts.metre(), real);
+		if (alongside) riders = alongside.step(you, opts.mates!(), real);
 		gates?.update(opts.gates!(), you.d);
 		const me = crew.update(route, riders, pedal, dt, real, mode === 'orbit');
 		crew.drive(route, car, mode === 'orbit');
