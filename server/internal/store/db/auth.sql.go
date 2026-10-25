@@ -11,31 +11,9 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const countPlaintextRefreshTokens = `-- name: CountPlaintextRefreshTokens :one
-select count(*) from identities
-where refresh_token is not null and refresh_token <> ''
-`
-
-// How many credentials the sealing of ADR-0035 has not reached. This is
-// literally the count #1038 asked an operator to run in psql against the live
-// database, and the reason that issue sat parked for eleven releases: the fact
-// was cheap, reaching the database was not.
-//
-// Deliberately NOT the predicate ListPlaintextRefreshTokens uses. That one adds
-// `refresh_token_enc is null` because it selects work to do; a row holding both
-// a sealed value and a live plaintext one is nothing left to seal, and still a
-// credential in the clear in every dump. The column cannot be dropped while one
-// exists, so the completeness signal must see it.
-func (q *Queries) CountPlaintextRefreshTokens(ctx context.Context) (int64, error) {
-	row := q.db.QueryRow(ctx, countPlaintextRefreshTokens)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
 const createIdentity = `-- name: CreateIdentity :exec
-insert into identities (provider, provider_user_id, user_id, access_token, refresh_token, refresh_token_enc, token_expires_at)
-values ($1, $2, $3, $4, $5, $6, $7)
+insert into identities (provider, provider_user_id, user_id, access_token, refresh_token_enc, token_expires_at)
+values ($1, $2, $3, $4, $5, $6)
 `
 
 type CreateIdentityParams struct {
@@ -43,7 +21,6 @@ type CreateIdentityParams struct {
 	ProviderUserID  string
 	UserID          pgtype.UUID
 	AccessToken     *string
-	RefreshToken    *string
 	RefreshTokenEnc []byte
 	TokenExpiresAt  pgtype.Timestamptz
 }
@@ -54,7 +31,6 @@ func (q *Queries) CreateIdentity(ctx context.Context, arg CreateIdentityParams) 
 		arg.ProviderUserID,
 		arg.UserID,
 		arg.AccessToken,
-		arg.RefreshToken,
 		arg.RefreshTokenEnc,
 		arg.TokenExpiresAt,
 	)
@@ -137,7 +113,9 @@ func (q *Queries) DeleteUserSessionsExcept(ctx context.Context, arg DeleteUserSe
 }
 
 const getIdentity = `-- name: GetIdentity :one
-select provider, provider_user_id, user_id, access_token, refresh_token, token_expires_at, created_at, refresh_token_enc from identities where provider = $1 and provider_user_id = $2
+
+select provider, provider_user_id, user_id, access_token, token_expires_at, created_at, refresh_token_enc
+from identities where provider = $1 and provider_user_id = $2
 `
 
 type GetIdentityParams struct {
@@ -145,15 +123,27 @@ type GetIdentityParams struct {
 	ProviderUserID string
 }
 
-func (q *Queries) GetIdentity(ctx context.Context, arg GetIdentityParams) (Identity, error) {
+type GetIdentityRow struct {
+	Provider        string
+	ProviderUserID  string
+	UserID          pgtype.UUID
+	AccessToken     *string
+	TokenExpiresAt  pgtype.Timestamptz
+	CreatedAt       pgtype.Timestamptz
+	RefreshTokenEnc []byte
+}
+
+// No `*` on identities (#1038): sqlc expands it into the generated SQL, so
+// the plaintext token column would stay named in this release's binary and its drop (#3355)
+// would break the rollback to it (ADR-0019). The reads list their columns.
+func (q *Queries) GetIdentity(ctx context.Context, arg GetIdentityParams) (GetIdentityRow, error) {
 	row := q.db.QueryRow(ctx, getIdentity, arg.Provider, arg.ProviderUserID)
-	var i Identity
+	var i GetIdentityRow
 	err := row.Scan(
 		&i.Provider,
 		&i.ProviderUserID,
 		&i.UserID,
 		&i.AccessToken,
-		&i.RefreshToken,
 		&i.TokenExpiresAt,
 		&i.CreatedAt,
 		&i.RefreshTokenEnc,
@@ -215,7 +205,8 @@ func (q *Queries) GetSessionUser(ctx context.Context, tokenHash []byte) (User, e
 }
 
 const getUserIdentity = `-- name: GetUserIdentity :one
-select provider, provider_user_id, user_id, access_token, refresh_token, token_expires_at, created_at, refresh_token_enc from identities where user_id = $1 and provider = $2
+select provider, provider_user_id, user_id, access_token, token_expires_at, created_at, refresh_token_enc
+from identities where user_id = $1 and provider = $2
 `
 
 type GetUserIdentityParams struct {
@@ -223,54 +214,29 @@ type GetUserIdentityParams struct {
 	Provider string
 }
 
-func (q *Queries) GetUserIdentity(ctx context.Context, arg GetUserIdentityParams) (Identity, error) {
+type GetUserIdentityRow struct {
+	Provider        string
+	ProviderUserID  string
+	UserID          pgtype.UUID
+	AccessToken     *string
+	TokenExpiresAt  pgtype.Timestamptz
+	CreatedAt       pgtype.Timestamptz
+	RefreshTokenEnc []byte
+}
+
+func (q *Queries) GetUserIdentity(ctx context.Context, arg GetUserIdentityParams) (GetUserIdentityRow, error) {
 	row := q.db.QueryRow(ctx, getUserIdentity, arg.UserID, arg.Provider)
-	var i Identity
+	var i GetUserIdentityRow
 	err := row.Scan(
 		&i.Provider,
 		&i.ProviderUserID,
 		&i.UserID,
 		&i.AccessToken,
-		&i.RefreshToken,
 		&i.TokenExpiresAt,
 		&i.CreatedAt,
 		&i.RefreshTokenEnc,
 	)
 	return i, err
-}
-
-const listPlaintextRefreshTokens = `-- name: ListPlaintextRefreshTokens :many
-select provider, provider_user_id, refresh_token from identities
-where refresh_token is not null and refresh_token <> '' and refresh_token_enc is null
-limit 500
-`
-
-type ListPlaintextRefreshTokensRow struct {
-	Provider       string
-	ProviderUserID string
-	RefreshToken   *string
-}
-
-// Rows still holding a plaintext refresh token, for the one-time backfill
-// (#697). Bounded by the number of third-party connections, not by riders.
-func (q *Queries) ListPlaintextRefreshTokens(ctx context.Context) ([]ListPlaintextRefreshTokensRow, error) {
-	rows, err := q.db.Query(ctx, listPlaintextRefreshTokens)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListPlaintextRefreshTokensRow
-	for rows.Next() {
-		var i ListPlaintextRefreshTokensRow
-		if err := rows.Scan(&i.Provider, &i.ProviderUserID, &i.RefreshToken); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 const listUserProviders = `-- name: ListUserProviders :many
@@ -297,30 +263,9 @@ func (q *Queries) ListUserProviders(ctx context.Context, userID pgtype.UUID) ([]
 	return items, nil
 }
 
-const sealRefreshToken = `-- name: SealRefreshToken :exec
-
-update identities set refresh_token_enc = $3, refresh_token = null
-where provider = $1 and provider_user_id = $2
-`
-
-type SealRefreshTokenParams struct {
-	Provider        string
-	ProviderUserID  string
-	RefreshTokenEnc []byte
-}
-
-// a page (audit 2026-09-09); the backfill loops while pages are full
-// Seal one row in place. The plaintext goes in the same statement it is
-// replaced by, so a crash mid-backfill leaves every row either sealed or
-// untouched, never neither.
-func (q *Queries) SealRefreshToken(ctx context.Context, arg SealRefreshTokenParams) error {
-	_, err := q.db.Exec(ctx, sealRefreshToken, arg.Provider, arg.ProviderUserID, arg.RefreshTokenEnc)
-	return err
-}
-
 const updateIdentityTokens = `-- name: UpdateIdentityTokens :exec
 update identities
-set access_token = $3, refresh_token = $4, refresh_token_enc = $5, token_expires_at = $6
+set access_token = $3, refresh_token_enc = $4, token_expires_at = $5
 where provider = $1 and provider_user_id = $2
 `
 
@@ -328,7 +273,6 @@ type UpdateIdentityTokensParams struct {
 	Provider        string
 	ProviderUserID  string
 	AccessToken     *string
-	RefreshToken    *string
 	RefreshTokenEnc []byte
 	TokenExpiresAt  pgtype.Timestamptz
 }
@@ -338,7 +282,6 @@ func (q *Queries) UpdateIdentityTokens(ctx context.Context, arg UpdateIdentityTo
 		arg.Provider,
 		arg.ProviderUserID,
 		arg.AccessToken,
-		arg.RefreshToken,
 		arg.RefreshTokenEnc,
 		arg.TokenExpiresAt,
 	)

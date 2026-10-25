@@ -19,30 +19,25 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
 
-// refreshToken reads the stored refresh token from whichever column holds it
-// (#697). Sealed wins: during the release that introduces the key, rows
-// written since have only the sealed one and rows not yet touched have only
-// the plaintext, and both have to keep working.
+// refreshToken opens the stored refresh token. Sealed is the only way one is
+// stored (#1038), so a row without one has no grant to refresh.
 //
 // A sealed value that will not open is NOT reported as "no token stored":
 // that is a wrong or rotated key, and answering it with "reconnect your Strava
 // account" would have every rider re-authorise over an operator's mistake.
-func (s *Service) refreshToken(ident db.Identity) (string, error) {
-	if len(ident.RefreshTokenEnc) > 0 {
-		token, err := s.keys.Open(ident.RefreshTokenEnc)
-		if err != nil {
-			return "", fmt.Errorf("stored refresh token cannot be read — is %s the key it was sealed with? %w", secrets.KeyEnv, err)
-		}
-		return token, nil
-	}
-	if ident.RefreshToken == nil || *ident.RefreshToken == "" {
+func (s *Service) refreshToken(ident db.GetUserIdentityRow) (string, error) {
+	if len(ident.RefreshTokenEnc) == 0 {
 		return "", fmt.Errorf("no refresh token stored")
 	}
-	return *ident.RefreshToken, nil
+	token, err := s.keys.Open(ident.RefreshTokenEnc)
+	if err != nil {
+		return "", fmt.Errorf("stored refresh token cannot be read — is %s the key it was sealed with? %w", secrets.KeyEnv, err)
+	}
+	return token, nil
 }
 
 // freshToken refreshes when the stored access token is at or past expiry.
-func (s *Service) freshToken(ctx context.Context, ident db.Identity) (string, error) {
+func (s *Service) freshToken(ctx context.Context, ident db.GetUserIdentityRow) (string, error) {
 	valid := ident.TokenExpiresAt.Valid &&
 		ident.TokenExpiresAt.Time.After(s.now().Add(60*time.Second))
 	if valid && ident.AccessToken != nil && *ident.AccessToken != "" {
@@ -89,15 +84,14 @@ func (s *Service) freshToken(ctx context.Context, ident db.Identity) (string, er
 		return "", err
 	}
 	// Strava rotates the refresh token on every use, so this write is the one
-	// that matters: seal the new one rather than replacing a sealed row with a
-	// readable one (#697).
-	stored, sealed, err := s.keys.Columns(tok.RefreshToken)
+	// that matters (#697).
+	sealed, err := s.keys.SealToken(tok.RefreshToken)
 	if err != nil {
 		return "", fmt.Errorf("seal refreshed token: %w", err)
 	}
 	err = s.store.Queries.UpdateIdentityTokens(ctx, db.UpdateIdentityTokensParams{
 		Provider: "strava", ProviderUserID: ident.ProviderUserID,
-		AccessToken: &tok.AccessToken, RefreshToken: stored, RefreshTokenEnc: sealed,
+		AccessToken: &tok.AccessToken, RefreshTokenEnc: sealed,
 		TokenExpiresAt: pgtype.Timestamptz{Time: time.Unix(tok.ExpiresAt, 0), Valid: true},
 	})
 	if err != nil {
@@ -106,7 +100,7 @@ func (s *Service) freshToken(ctx context.Context, ident db.Identity) (string, er
 	return tok.AccessToken, nil
 }
 
-func (s *Service) RevokeGrant(ctx context.Context, ident db.Identity) error {
+func (s *Service) RevokeGrant(ctx context.Context, ident db.GetUserIdentityRow) error {
 	token, err := s.freshToken(ctx, ident)
 	if err != nil {
 		return fmt.Errorf("strava: no usable token to revoke: %w", err)

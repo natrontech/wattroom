@@ -14,9 +14,8 @@ import (
 )
 
 // The refresh token is the only credential stored to be used again rather than
-// merely checked (#697). These cover the two things that have to hold while it
-// stops being readable: nothing loses its Strava connection on the way, and
-// afterwards the database no longer holds a usable copy.
+// merely checked (#697). It is stored sealed or not at all (#1038), and the
+// database never holds a usable copy.
 
 func cipherWith(t *testing.T, fill byte) *secrets.Cipher {
 	t.Helper()
@@ -44,33 +43,24 @@ func storedToken(t *testing.T, st *store.Store) (plain *string, sealed []byte) {
 	return plain, sealed
 }
 
-// The release that turns encryption on meets rows written before it. Those
-// have only the plaintext column, and a rider must not be asked to reconnect.
-func TestPlaintextRowStillWorksOnceTheKeyExists(t *testing.T) {
+// A row from before the key holds its token only in the plaintext column.
+// There is no such thing to read any more (#1038): the token is not used, and
+// the rider is told what any rider without a stored grant is.
+func TestAPlaintextRowHasNoToken(t *testing.T) {
 	st, _, _ := seedRide(t, "strava-plaintext")
-	srv, _, _ := fakeStrava(t)
-	svc := newService(st, srv)
-	svc.keys = cipherWith(t, 1)
-
+	if _, err := st.Pool.Exec(t.Context(),
+		"update identities set refresh_token = 'refresh-1', refresh_token_enc = null where provider = 'strava' and provider_user_id = 'athlete-1'"); err != nil {
+		t.Fatal(err)
+	}
 	ident, err := st.Queries.GetIdentity(t.Context(), db.GetIdentityParams{
 		Provider: "strava", ProviderUserID: "athlete-1",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := svc.freshToken(t.Context(), ident); err != nil {
-		t.Fatalf("refreshing from a plaintext row: %v", err)
-	}
-
-	// And the refresh it just did leaves the new token sealed — the row heals
-	// itself the first time it is used, backfill or no backfill.
-	plain, sealed := storedToken(t, st)
-	if plain != nil {
-		t.Fatalf("refresh_token = %q, want null after a sealed write", *plain)
-	}
-	got, err := svc.keys.Open(sealed)
-	if err != nil || got != "refresh-2" {
-		t.Fatalf("sealed value = (%q, %v), want the rotated token", got, err)
+	svc := &Service{store: st, log: slog.New(slog.DiscardHandler), keys: testKeys}
+	if got, err := svc.refreshToken(db.GetUserIdentityRow(ident)); err == nil || !strings.Contains(err.Error(), "no refresh token stored") {
+		t.Fatalf("refreshToken = (%q, %v), want no token stored", got, err)
 	}
 }
 
@@ -80,7 +70,6 @@ func TestRefreshLeavesNothingReadable(t *testing.T) {
 	st, _, _ := seedRide(t, "strava-sealed")
 	srv, _, _ := fakeStrava(t)
 	svc := newService(st, srv)
-	svc.keys = cipherWith(t, 2)
 
 	ident, err := st.Queries.GetIdentity(t.Context(), db.GetIdentityParams{
 		Provider: "strava", ProviderUserID: "athlete-1",
@@ -88,11 +77,14 @@ func TestRefreshLeavesNothingReadable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := svc.freshToken(t.Context(), ident); err != nil {
+	if _, err := svc.freshToken(t.Context(), db.GetUserIdentityRow(ident)); err != nil {
 		t.Fatal(err)
 	}
 
-	_, sealed := storedToken(t, st)
+	plain, sealed := storedToken(t, st)
+	if plain != nil {
+		t.Fatalf("refresh_token = %q, want null", *plain)
+	}
 	if strings.Contains(string(sealed), "refresh-2") {
 		t.Fatal("the rotated token is readable in the stored bytes")
 	}
@@ -107,40 +99,9 @@ func TestRefreshLeavesNothingReadable(t *testing.T) {
 	if len(ident.RefreshTokenEnc) == 0 {
 		t.Fatal("nothing was sealed")
 	}
-	got, err := svc.refreshToken(ident)
+	got, err := svc.refreshToken(db.GetUserIdentityRow(ident))
 	if err != nil || got != "refresh-2" {
 		t.Fatalf("refreshToken = (%q, %v), want the rotated token", got, err)
-	}
-}
-
-// The backfill is what lets the plaintext column be dropped a release later:
-// without it, rows nobody has ridden with keep their credential in the clear.
-func TestBackfillSealsRowsWrittenBeforeTheKey(t *testing.T) {
-	st, _, _ := seedRide(t, "strava-backfill")
-	keys := cipherWith(t, 3)
-
-	plain, sealed := storedToken(t, st)
-	if plain == nil || *plain != "refresh-1" || sealed != nil {
-		t.Fatalf("fixture is not the pre-key shape: (%v, %v)", plain, sealed)
-	}
-
-	secrets.Backfill(context.Background(), st, keys, slog.New(slog.NewTextHandler(io.Discard, nil)))
-
-	plain, sealed = storedToken(t, st)
-	if plain != nil {
-		t.Fatalf("refresh_token = %q, want null after the backfill", *plain)
-	}
-	got, err := keys.Open(sealed)
-	if err != nil || got != "refresh-1" {
-		t.Fatalf("sealed value = (%q, %v), want the original token", got, err)
-	}
-
-	// Idempotent: a second boot finds nothing to do and changes nothing.
-	before := string(sealed)
-	secrets.Backfill(context.Background(), st, keys, slog.New(slog.NewTextHandler(io.Discard, nil)))
-	_, sealed = storedToken(t, st)
-	if string(sealed) != before {
-		t.Fatal("a second backfill rewrote a row it had already sealed")
 	}
 }
 
@@ -152,15 +113,25 @@ func TestNewKeepsTheKey(t *testing.T) {
 	t.Setenv("WATTROOM_OAUTH_STRAVA_ID", "id")
 	t.Setenv("WATTROOM_OAUTH_STRAVA_SECRET", "secret")
 	keys := cipherWith(t, 6)
-	_, sealed, err := keys.Columns("refresh-1")
+	sealed, err := keys.SealToken("refresh-1")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	svc := New(nil, slog.New(slog.DiscardHandler), keys)
-	got, err := svc.refreshToken(db.Identity{RefreshTokenEnc: sealed})
+	got, err := svc.refreshToken(db.GetUserIdentityRow{RefreshTokenEnc: sealed})
 	if err != nil || got != "refresh-1" {
 		t.Fatalf("refreshToken = (%q, %v), want the sealed token opened", got, err)
+	}
+}
+
+// Without a key there is nowhere to keep a refresh token (#1038), so Strava
+// is absent rather than a connection that fails at its first refresh.
+func TestNewWithoutAKeyIsAbsent(t *testing.T) {
+	t.Setenv("WATTROOM_OAUTH_STRAVA_ID", "id")
+	t.Setenv("WATTROOM_OAUTH_STRAVA_SECRET", "secret")
+	if svc := New(nil, slog.New(slog.DiscardHandler), nil); svc != nil {
+		t.Fatal("Strava is configured on a server with no token key")
 	}
 }
 
@@ -169,7 +140,6 @@ func TestNewKeepsTheKey(t *testing.T) {
 // account over an operator's mistake.
 func TestWrongKeyIsNotMistakenForNoToken(t *testing.T) {
 	st, _, _ := seedRide(t, "strava-wrong-key")
-	secrets.Backfill(context.Background(), st, cipherWith(t, 4), slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 	ident, err := st.Queries.GetIdentity(t.Context(), db.GetIdentityParams{
 		Provider: "strava", ProviderUserID: "athlete-1",
@@ -178,7 +148,7 @@ func TestWrongKeyIsNotMistakenForNoToken(t *testing.T) {
 		t.Fatal(err)
 	}
 	svc := &Service{store: st, log: slog.New(slog.DiscardHandler), keys: cipherWith(t, 5)}
-	_, err = svc.refreshToken(ident)
+	_, err = svc.refreshToken(db.GetUserIdentityRow(ident))
 	if err == nil {
 		t.Fatal("a foreign key opened the token")
 	}

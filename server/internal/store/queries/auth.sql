@@ -1,42 +1,19 @@
+-- No `*` on identities (#1038): sqlc expands it into the generated SQL, so
+-- the plaintext token column would stay named in this release's binary and its drop (#3355)
+-- would break the rollback to it (ADR-0019). The reads list their columns.
+
 -- name: GetIdentity :one
-select * from identities where provider = $1 and provider_user_id = $2;
+select provider, provider_user_id, user_id, access_token, token_expires_at, created_at, refresh_token_enc
+from identities where provider = $1 and provider_user_id = $2;
 
 -- name: CreateIdentity :exec
-insert into identities (provider, provider_user_id, user_id, access_token, refresh_token, refresh_token_enc, token_expires_at)
-values ($1, $2, $3, $4, $5, $6, $7);
+insert into identities (provider, provider_user_id, user_id, access_token, refresh_token_enc, token_expires_at)
+values ($1, $2, $3, $4, $5, $6);
 
 -- name: UpdateIdentityTokens :exec
 update identities
-set access_token = $3, refresh_token = $4, refresh_token_enc = $5, token_expires_at = $6
+set access_token = $3, refresh_token_enc = $4, token_expires_at = $5
 where provider = $1 and provider_user_id = $2;
-
--- Rows still holding a plaintext refresh token, for the one-time backfill
--- (#697). Bounded by the number of third-party connections, not by riders.
--- name: ListPlaintextRefreshTokens :many
-select provider, provider_user_id, refresh_token from identities
-where refresh_token is not null and refresh_token <> '' and refresh_token_enc is null
-limit 500; -- a page (audit 2026-09-09); the backfill loops while pages are full
-
--- Seal one row in place. The plaintext goes in the same statement it is
--- replaced by, so a crash mid-backfill leaves every row either sealed or
--- untouched, never neither.
--- name: SealRefreshToken :exec
-update identities set refresh_token_enc = $3, refresh_token = null
-where provider = $1 and provider_user_id = $2;
-
--- How many credentials the sealing of ADR-0035 has not reached. This is
--- literally the count #1038 asked an operator to run in psql against the live
--- database, and the reason that issue sat parked for eleven releases: the fact
--- was cheap, reaching the database was not.
---
--- Deliberately NOT the predicate ListPlaintextRefreshTokens uses. That one adds
--- `refresh_token_enc is null` because it selects work to do; a row holding both
--- a sealed value and a live plaintext one is nothing left to seal, and still a
--- credential in the clear in every dump. The column cannot be dropped while one
--- exists, so the completeness signal must see it.
--- name: CountPlaintextRefreshTokens :one
-select count(*) from identities
-where refresh_token is not null and refresh_token <> '';
 
 -- name: CreateSession :exec
 insert into sessions (token_hash, user_id, expires_at)
@@ -65,7 +42,8 @@ delete from sessions
 select provider from identities where user_id = $1 order by created_at;
 
 -- name: GetUserIdentity :one
-select * from identities where user_id = $1 and provider = $2;
+select provider, provider_user_id, user_id, access_token, token_expires_at, created_at, refresh_token_enc
+from identities where user_id = $1 and provider = $2;
 
 -- name: DeleteIdentity :execrows
 delete from identities where user_id = $1 and provider = $2;
