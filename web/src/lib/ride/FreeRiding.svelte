@@ -223,7 +223,8 @@
 	<!-- Four rows, so the road's name is never cut for the controls: the
 	     label with the caller's own controls, the road line, the chip row,
 	     then the ride's controls — 176 px at SPEC's sizes, above the corridor
-	     (the box table's 200). -->
+	     (the box table's 200). Off a road, where nothing draws a world or a
+	     corridor, a fifth holds Warm up and Cool down. -->
 	<header data-testid="ride-band" class="flex flex-col gap-2 px-4 py-2">
 		<div class="flex min-w-0 flex-wrap items-center gap-x-6 gap-y-2">
 			{#if fault}
@@ -331,6 +332,33 @@
 					aria-label={inWatts ? 'more watts' : 'steeper grade'}
 					><Plus size={18} /></button
 				>
+			{/if}
+			{#if gear && shift && !inWatts}
+				<GearShift {shift} {gear} off={shiftOff} {cassette} />
+			{/if}
+			{#if onflag}<FlagButton onflag={flag} sends="after" />{/if}
+			{#if drawn}
+				<FlatButton onflat={world.flatten} class={ICON} />
+			{/if}
+			{#if ontv}
+				<button onclick={ontv} class={ICON} aria-label="TV mode" title="TV mode"
+					><MonitorUp size={20} /></button
+				>
+			{/if}
+			{#if onend}
+				<!-- End ride saves where you are; carrying on is the road-end
+				     card's offer, not this button's (TARGETS ride-free-road 10). -->
+				<button
+					onclick={onend}
+					disabled={ending}
+					class="btn btn-secondary btn-ride max-md:basis-full">End ride</button
+				>
+			{/if}
+		</div>
+		{#if !road}
+			<!-- Warm up and Cool down (#4100) in a row of their own, so the
+			     ride's controls keep End ride beside ⚑ and TV. -->
+			<div class="flex min-w-0 flex-wrap items-center gap-2">
 				{#if free.ramp}
 					<button onclick={free.stopRamp} class="btn btn-secondary btn-ride"
 						>Stop {rampLabel?.toLowerCase()}</button
@@ -358,29 +386,8 @@
 						>
 					{/each}
 				{/if}
-			{/if}
-			{#if gear && shift && !inWatts}
-				<GearShift {shift} {gear} off={shiftOff} {cassette} />
-			{/if}
-			{#if onflag}<FlagButton onflag={flag} sends="after" />{/if}
-			{#if drawn}
-				<FlatButton onflat={world.flatten} class={ICON} />
-			{/if}
-			{#if ontv}
-				<button onclick={ontv} class={ICON} aria-label="TV mode" title="TV mode"
-					><MonitorUp size={20} /></button
-				>
-			{/if}
-			{#if onend}
-				<!-- End ride saves where you are; carrying on is the road-end
-				     card's offer, not this button's (TARGETS ride-free-road 10). -->
-				<button
-					onclick={onend}
-					disabled={ending}
-					class="btn btn-secondary btn-ride max-md:basis-full">End ride</button
-				>
-			{/if}
-		</div>
+			</div>
+		{/if}
 	</header>
 {/snippet}
 
