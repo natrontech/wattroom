@@ -49,6 +49,9 @@ describe('a road on the SimulatedTrainer', () => {
 	);
 });
 
+/** The rider weight the Wahoo apps default to (RESEARCH.md §11). */
+const WAHOO_DEFAULT_KG = 75;
+
 /**
  * The trainer's road is the dot's (#3351, docs/SPEC.md "Route rides"): FTMS's
  * Cw read as FE-C's ρ·CdA, at the pace model's one CdA, off the wire as a
@@ -86,24 +89,25 @@ describe('the default road on the SimulatedTrainer', () => {
 		expect(Math.abs(speed / leg.speed - 1)).toBeLessThan(0.005);
 	});
 
-	it('sits inside the range Wahoo publishes for the Kickr Core, −10 … +16 %', () => {
+	it('sits inside the range Wahoo publishes for the Kickr Core 2, −10 … +16 %', () => {
 		expect(MinTrainerGrade).toBe(-10);
 		expect(MaxTrainerGrade).toBeLessThanOrEqual(16);
 	});
 
 	// A Kickr Core brakes and never drives: past the grade where its road
 	// force reaches zero it renders its own floor, whatever the write says.
-	it('asks a brake-only trainer for nothing to brake at MinTrainerGrade below 70 km/h', async () => {
+	// 75 kg is the Wahoo app's default rider; a heavier one only falls faster.
+	it('asks a brake-only trainer at 75 kg for nothing to brake at MinTrainerGrade', async () => {
 		const floor = { ...decoded(MinTrainerGrade), gradePct: MinTrainerGrade };
-		for (let kph = 0; kph <= 70; kph++)
-			expect(
-				trainerForce(floor, ReferenceRiderKg + BikeKg, kph / 3.6),
-			).toBeLessThan(0);
-		// 53×11 at 110 rpm, the fastest flywheel a real gear turns: 67 km/h.
+		// 53×11 at 110 rpm, the fastest flywheel a real gear turns: 66.7 km/h.
+		const fastest = (110 / 60) * (53 / 11) * 2.096;
+		for (let v = 0; v <= fastest; v += 0.1)
+			expect(trainerForce(floor, WAHOO_DEFAULT_KG, v)).toBeLessThan(0);
 		const trainer = new SimulatedTrainer({
 			rng: () => 0.5,
 			cadence: 110,
 			ratio: { chainring: 53, cog: 11 },
+			massKg: WAHOO_DEFAULT_KG,
 		});
 		let watts = -1;
 		trainer.onSample((s) => (watts = s.watts));

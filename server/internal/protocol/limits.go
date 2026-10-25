@@ -186,10 +186,10 @@ const (
 	// ADR-0062): one range for every trainer, since FTMS cannot report an
 	// indoor bike's. MaxTrainerGrade is also the free ride's top and the felt
 	// grade's, inside the Kickr Core's published +16 %. MinTrainerGrade is the
-	// Kickr Core's published −10 %; a brake-only Core already has nothing to
-	// brake there at any real flywheel speed, so the floor cuts no descent it
-	// renders (#3351). The room below the felt floor is for virtual gears
-	// (ADR-0084).
+	// −10 % Wahoo publishes for the Kickr Core 2; a brake-only Core simulating
+	// 75 kg or more already has nothing to brake there at any real flywheel
+	// speed, so the floor cuts no descent it renders (#3351). The room below
+	// the felt floor is for virtual gears (ADR-0084).
 	MinTrainerGrade = -10
 	MaxTrainerGrade = 15
 

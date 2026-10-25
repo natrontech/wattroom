@@ -164,7 +164,7 @@ test('a free ride on your own road moves along it and saves against it', async (
 	expect(saved.climbedM, 'the replay kept no climbing').toBeGreaterThan(0);
 });
 
-test('Ride it now rides your road alone, marked beta, from where you left it', async ({
+test('Ride it now rides your road alone, from where you left it', async ({
 	page,
 }) => {
 	test.skip(
@@ -186,8 +186,10 @@ test('Ride it now rides your road alone, marked beta, from where you left it', a
 	});
 	// Roads reach every rider (#3352), out of beta since #3351: neither
 	// where it is chosen nor on the Ride card it lands on says Beta.
+	const rideIt = page.getByRole('button', { name: 'Ride it now' });
+	await expect(rideIt).toBeVisible();
 	await expect(page.getByText('Beta', { exact: true })).toHaveCount(0);
-	await page.getByRole('button', { name: 'Ride it now' }).click();
+	await rideIt.click();
 	await page.waitForURL(/\/ride\?road=/);
 	const road = new URL(page.url()).searchParams.get('road')!;
 	await expect(

@@ -65,8 +65,8 @@ Every number below is a **default**, to be tuned in alpha from riders' reports, 
 
 - **Real ratio (default).** The median of trainer speed ÷ (cadence × **2.096 m**, a 700×23c wheel) over the last **9** samples at **60–110 rpm**.
   - A real shift is when that median sits **≥ 5 %** from the current ratio on **3** consecutive samples. k stays, and the gear shown re-anchors.
-  - In the lab: no false re-labels in 10 h at 2 % per-sample noise or over the #10 Kickr Core's own samples, and a 42×14 → 42×17 move re-labels within 7 s.
-  - The window is 9 because the #10 Kickr Core's per-sample noise is **2.4 %**, above the 2 % that 7 samples hold. Its cadence is estimated from the flywheel, and it lags after a sprint.
+  - In the lab: no false re-labels in 10 h at 2.4 % per-sample noise or over the #10 Kickr Core's own samples, and a 42×14 → 42×17 move re-labels within 7 s.
+  - The window is 9 by the hardware checklist's rule (P1: over 2 % per-sample noise, 9 samples), since the #10 Kickr Core's noise is **2.4 %**. Its cadence is estimated from the flywheel, and it lags after a sprint.
   - A Kickr reports speed at the circumference an app sent it with 0x12, and WattRoom sends none. A road wheel another app set (700×23–32c, 2096–2155 mm) reads within 3 % of the teeth ratio.
   - If the ratio moves with grade (a trainer that reports modelled speed), detection is off and the gear shows as ±n.
 - **Who reads the trainer's speed (rule).** Only the drivetrain does. The dot, timing and the bike computer's speed never do.
@@ -83,7 +83,7 @@ Every number below is a **default**, to be tuned in alpha from riders' reports, 
 
 - **Input (rule).** A road's grade goes through the route-rides felt rule (#3020). A slope the rider set by hand (the free ride) and a sprint slope are felt as given.
 - **Shelter (rule).** Cw carries (1 − shelter) only while "Feel the draft" is on (ADR-0077). The dot always gets the hub's shelter.
-- **Write range (default + rule).** The grade written stays within **MinTrainerGrade (−10 %, the Kickr Core's published floor)** … **MaxTrainerGrade (+15 %, #3020)**. Both live in protocol/limits.go and are the same for every trainer. A Cw above **2.55 kg/m** (the UINT8 field) folds into grade at the last flywheel speed: its excess force, ½ × (Cw − 2.55) × v², over the reference rider's **83 kg**.
+- **Write range (default + rule).** The grade written stays within **MinTrainerGrade (−10 %, the Kickr Core 2's published floor)** … **MaxTrainerGrade (+15 %, #3020)**. Both live in protocol/limits.go and are the same for every trainer. A Cw above **2.55 kg/m** (the UINT8 field) folds into grade at the last flywheel speed: its excess force, ½ × (Cw − 2.55) × v², over the reference rider's **83 kg**.
 - **At the limit (default).** After **3 s** clamped, one persistent status line shows. It goes after **3 s** clear.
   - "Your trainer is at its limit in this gear — shift easier."
   - At the ceiling with a cassette: "Your trainer is at its limit in this gear — shift easier, or move your chain to a smaller cog."

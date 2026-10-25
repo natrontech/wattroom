@@ -136,7 +136,7 @@ export interface RatioState {
 	detect: boolean;
 	/** The last flywheel speed, m/s, for folding Cw into grade. */
 	speed: number;
-	/** The real ratio, once 7 in-band samples have agreed on one. */
+	/** The real ratio, once a full window of in-band samples has agreed on one. */
 	ratio: number | null;
 	window: number[];
 	refine: number[];

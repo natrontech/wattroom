@@ -174,12 +174,12 @@ describe('real-ratio detection', () => {
 	const normal = (rand: () => number) =>
 		Math.sqrt(-2 * Math.log(1 - rand())) * Math.cos(2 * Math.PI * rand());
 
-	it('re-labels nothing in 10 h of 2 % per-sample noise', () => {
+	it('re-labels nothing in 10 h of the Kickr Core’s 2.4 % per-sample noise', () => {
 		const rand = seeded(10);
 		const state = ratioState();
 		let relabels = 0;
 		for (let s = 0; s < 10 * 3600; s++)
-			if (trackRatio(state, sample(3, 90, 0.02 * normal(rand)))) relabels++;
+			if (trackRatio(state, sample(3, 90, 0.024 * normal(rand)))) relabels++;
 		expect(relabels).toBe(0);
 		expect(state.ratio).toBeCloseTo(3, 1);
 	});
