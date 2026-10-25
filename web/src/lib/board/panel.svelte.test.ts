@@ -68,15 +68,19 @@ describe('the board panel’s three faces', () => {
 	});
 
 	// #4094: the toggle says who fired what while it sounds, and only then.
-	it('names the newest fire only while its clip sounds', () => {
+	it('names the newest fire only while its rider sounds', () => {
 		boardPanel.fired('Ana', 'ana', 'horn');
-		expect(boardPanel.sounding([{ id: 'ana', sounding: 'horn' }])).toEqual({
+		expect(boardPanel.sounding([{ id: 'ana', sounding: true }])).toEqual({
 			from: 'Ana',
 			fromId: 'ana',
 			clipId: 'horn',
 		});
 		expect(boardPanel.sounding([{ id: 'ana' }])).toBeUndefined();
-		expect(boardPanel.sounding([{ id: 'ana', sounding: 'bell' }])).toBeUndefined();
-		expect(boardPanel.sounding([{ id: 'bo', sounding: 'horn' }])).toBeUndefined();
+		expect(
+			boardPanel.sounding([
+				{ id: 'ana', sounding: false },
+				{ id: 'bo', sounding: true },
+			]),
+		).toBeUndefined();
 	});
 });

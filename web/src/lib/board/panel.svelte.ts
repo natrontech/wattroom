@@ -45,14 +45,13 @@ export const boardPanel = {
 		lastFire = { from, fromId, clipId };
 	},
 	/**
-	 * The newest fire while its clip still sounds. The roster's `sounding` is
-	 * the clip's life, so this goes when the sound does, and a stop or a newer
-	 * clip from the same rider ends it.
+	 * The newest fire while its rider still sounds. `sounding` is this
+	 * machine's audio, so the line goes when the sound does; one rider is one
+	 * voice, so their sound is this fire until a newer one replaces it.
 	 */
-	sounding(roster: { id: string; sounding?: string }[]) {
+	sounding(riders: { id: string; sounding?: boolean }[]) {
 		const last = lastFire;
-		return last &&
-			roster.some((r) => r.id === last.fromId && r.sounding === last.clipId)
+		return last && riders.some((r) => r.id === last.fromId && r.sounding)
 			? last
 			: undefined;
 	},
