@@ -1,7 +1,6 @@
 import {
 	BikeKg,
 	PaceDrivetrainEfficiency,
-	PaceGravity,
 	PaceSubsteps,
 	ReferenceRiderKg,
 } from '$lib/protocol';
@@ -9,6 +8,7 @@ import { nextSpeed } from '$lib/road/pace';
 import { simulatedSteady } from './simulated-steady';
 import {
 	resolveSim,
+	trainerForce,
 	type ControlMode,
 	type SimParams,
 	type Trainer,
@@ -70,8 +70,9 @@ export interface SimulatedTrainerOptions {
  *
  * In ERG it holds the target and the rider's cadence follows the power. In SIM
  * it rides the road it was last sent — all four SimParams fields, as a trainer
- * resists: m·g·(sinθ + Crr·cosθ) + Cw·(v + wind)² — on the pace model's own
- * integration, and reports the flywheel's speed through a real gear (#3050).
+ * resists: m·g·(sinθ + Crr·cosθ) + ½·Cw·(v + wind)², trainerForce — on the
+ * pace model's own integration, and reports the flywheel's speed through a
+ * real gear (#3050).
  * A rider holds either power (the road decides speed and cadence) or cadence
  * (the road and the gear decide the watts).
  */
@@ -277,13 +278,7 @@ export class SimulatedTrainer implements Trainer {
 
 	/** The trainer's road at speed v, newtons: FTMS's model, not the dot's. */
 	#force(v: number): number {
-		const { gradePct, crr, cw, windMps } = this.#road;
-		const theta = Math.atan(gradePct / 100);
-		const air = v + windMps;
-		return (
-			this.#mass * PaceGravity * (Math.sin(theta) + crr * Math.cos(theta)) +
-			cw * air * Math.abs(air)
-		);
+		return trainerForce(this.#road, this.#mass, v);
 	}
 
 	#setStatus(s: TrainerStatus): void {

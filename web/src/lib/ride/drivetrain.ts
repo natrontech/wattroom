@@ -34,8 +34,8 @@ export const GEARS = {
 export const REAL_RATIO = {
 	/** "Real ratio": trainer speed ÷ (cadence × 2.096 m)… */
 	wheelMetres: 2.096,
-	/** …the median over the last 7 samples… */
-	window: 7,
+	/** …the median over the last 9 samples (the Kickr Core's noise is above 2 %)… */
+	window: 9,
 	/** …at 60–110 rpm. */
 	minRpm: 60,
 	maxRpm: 110,
@@ -50,9 +50,9 @@ export const REAL_RATIO = {
 /** "Write range": a Cw above the UINT8 field folds into grade (the FTMS width, 0.01 kg/m). */
 const MAX_CW = 2.55;
 /**
- * The mass a trainer is assumed to simulate, for folding Cw into grade:
- * m/m_t is 1 (SPEC), and until its own issue decides otherwise the reference
- * rider on the reference bike stands in for m.
+ * The mass a trainer is assumed to simulate, for folding Cw into grade. FTMS
+ * carries none and the trainer takes its own from its maker's app (SPEC), so
+ * m/m_t is 1 and the reference rider on the reference bike stands in for m_t.
  */
 const TRAINER_MASS = ReferenceRiderKg + BikeKg;
 
@@ -216,7 +216,10 @@ export function simTransform(
 	let sin = k * Math.sin(theta);
 	if (cw > MAX_CW) {
 		const air = vFwLast + windMps;
-		sin += ((cw - MAX_CW) * air * Math.abs(air)) / (TRAINER_MASS * PaceGravity);
+		// FE-C's drag, ½·Cw·v² (SIM_DEFAULTS): the excess Cw's force, as grade.
+		sin +=
+			(0.5 * (cw - MAX_CW) * air * Math.abs(air)) /
+			(TRAINER_MASS * PaceGravity);
 		cw = MAX_CW;
 	}
 	sin = Math.max(-0.999, Math.min(0.999, sin));

@@ -185,9 +185,11 @@ const (
 	// The range every SIM write is clamped to (docs/SPEC.md "Route rides",
 	// ADR-0062): one range for every trainer, since FTMS cannot report an
 	// indoor bike's. MaxTrainerGrade is also the free ride's top and the felt
-	// grade's; MinTrainerGrade is a default until hardware check P11 measures
-	// a trainer's descent, and the room below the felt floor is for virtual
-	// gears (ADR-0084).
+	// grade's, inside the Kickr Core's published +16 %. MinTrainerGrade is the
+	// Kickr Core's published −10 %; a brake-only Core already has nothing to
+	// brake there at any real flywheel speed, so the floor cuts no descent it
+	// renders (#3351). The room below the felt floor is for virtual gears
+	// (ADR-0084).
 	MinTrainerGrade = -10
 	MaxTrainerGrade = 15
 
@@ -212,9 +214,10 @@ const (
 	PaceAirDensity           = 1.225 // kg/m³
 	PaceDrivetrainEfficiency = 0.97
 	PaceGravity              = 9.80665 // m/s², standard gravity
-	// The CdA a road is ridden at, m², until the Kickr sessions measure one
-	// (#3025, #3331). The golden vectors carry CdA as an input, so a measured
-	// value adds vectors at it and moves this default.
+	// The CdA a road is ridden at, m², a stated default (docs/SPEC.md "Route
+	// rides"). The trainer is sent the same air: Cw = PaceAirDensity × this,
+	// FE-C's convention (#3351). The golden vectors carry CdA as an input, so
+	// another value adds vectors at it and moves this default.
 	PaceDefaultCdA = 0.32
 	// Substeps in each one-second step. Not a SPEC number, but both twins
 	// have to take the same ones to land on the same metre.

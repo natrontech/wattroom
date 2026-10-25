@@ -111,7 +111,8 @@ export function encodeSimulation(road: SimParams): ArrayBuffer {
 
 /**
  * Set Wheel Circumference (op 0x12): UINT16 at 0.1 mm. Only the Gears
- * probe sends it (#3331, P5): what a trainer does with it is the question.
+ * probe sends it (#3331, P5). FTMS says nothing of what it changes, and on a
+ * Kickr it moves the speed and distance reported (#3351), so no ride does.
  */
 export function encodeWheelCircumference(mm: number): ArrayBuffer {
 	const payload = new DataView(new ArrayBuffer(3));

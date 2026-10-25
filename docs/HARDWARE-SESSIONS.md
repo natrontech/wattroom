@@ -67,8 +67,8 @@ not *"not there"*. The probe list lives in `web/src/lib/ble/enumerate.ts`.
 
 ### 3. The route checklist (#3025, on every trainer a road will ride)
 
-Roads ride in SIM at a felt grade, so this is what decides SPEC's "Route rides"
-numbers (#3351). Hold **one real gear and a steady cadence** throughout unless a
+Roads ride in SIM at a felt grade, so this is what can correct SPEC's "Route
+rides" numbers, which #3351 set from research. Hold **one real gear and a steady cadence** throughout unless a
 step says otherwise; everything below logs itself.
 
 - **Cw factor.** At **0 %**, ride three steady powers (about 150, 200 and 250 W)
