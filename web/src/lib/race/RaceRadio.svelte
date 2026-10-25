@@ -26,10 +26,10 @@
 	<p
 		data-testid="race-radio"
 		role="status"
-		class="flex flex-wrap items-baseline gap-x-3 pt-2 text-2xl"
+		class="text-label flex flex-wrap items-baseline gap-x-3 pt-2 leading-7"
 	>
-		<!-- A word on a riding surface: SPEC's 24 px, never the 10 px eyebrow. -->
-		<span class="text-muted tracking-[0.2em] uppercase">Team-car radio</span>
+		<!-- A status line canon allows on a riding surface, at label size (TARGETS G4). -->
+		<span class="ride-label">Team-car radio</span>
 		<span class="text-ink">{call.text}</span>
 	</p>
 {/if}

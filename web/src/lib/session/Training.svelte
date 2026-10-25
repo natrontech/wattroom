@@ -324,6 +324,7 @@
 					class="min-h-0 overflow-y-auto {inWorld ? 'px-4 py-3' : 'px-6'}"
 				>
 					<GamePanel
+						flat
 						game={channel.game}
 						roster={channelConnection.current?.live.tick?.roster ?? []}
 						canControl={channel.canControl}
