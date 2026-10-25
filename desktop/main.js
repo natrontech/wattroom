@@ -340,7 +340,7 @@ function guardNavigation(win) {
 }
 
 bluetooth.install({ ipc });
-permissions.install({ appOrigin: APP_ORIGIN, isOurs });
+permissions.install({ isOurs });
 updater.install({ ipc });
 hud.install({
 	ipc,
