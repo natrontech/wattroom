@@ -16,8 +16,13 @@ test.use({ viewport: { width: 1440, height: 900 } });
  */
 const COUNTDOWN_MS = 10_000;
 const SETTLE_MS = 30_000;
-/** The saver keeps a ride from a minute (docs/SPEC.md's minute rule). */
-const A_MINUTE_S = 65;
+/**
+ * The saver keeps a ride from a minute of its rider's own samples (docs/SPEC.md's
+ * minute rule), and the summary shows from one. Two worlds on CI's software GL
+ * stall each page's simulated trainer for seconds at a time (#3877), so a
+ * minute on the session's clock is not yet a minute recorded: ride two.
+ */
+const RIDE_S = 120;
 
 type Drawn = { id: string; d: number; lane: number };
 type Snapshot = { t: number; mps: number; riders: Drawn[] };
@@ -91,7 +96,7 @@ test('two screens draw one bunch, and the session ends with both rides saved on 
 		!!process.env.PLAYWRIGHT_BASE_URL,
 		'the ?as= dev provider only exists on a dev server',
 	);
-	test.setTimeout(300_000);
+	test.setTimeout(360_000);
 	const coach = await riders('Bunch World Coach');
 	const guest = await riders('Bunch World Guest');
 	const said: string[] = [];
@@ -156,15 +161,15 @@ test('two screens draw one bunch, and the session ends with both rides saved on 
 			coach.locator('[data-surface=docked] [data-testid=climb-chip]'),
 		).toHaveText('climb IV');
 
-		// A minute in for both, the coach ends it, and each keeps a ride on
+		// Two minutes in for both, the coach ends it, and each keeps a ride on
 		// the one road they rode together.
 		for (const page of [coach, guest])
 			await expect
 				.poll(() => clock(page), {
-					message: 'the session never reached a minute',
-					timeout: 90_000,
+					message: 'the session never reached two minutes',
+					timeout: 150_000,
 				})
-				.toBeGreaterThanOrEqual(A_MINUTE_S);
+				.toBeGreaterThanOrEqual(RIDE_S);
 		await coach.getByRole('button', { name: 'end the session' }).click();
 		await coach
 			.getByRole('dialog')
