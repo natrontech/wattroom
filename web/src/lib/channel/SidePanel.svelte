@@ -313,12 +313,12 @@
 					     the sidebar's voice rows already say who is where. Online
 					     elsewhere first, each row naming its channel (#2536); never
 					     "offline" (#2849), this channel only knows they are not in it. -->
-					<details>
+					<details class="pb-2">
 						<summary
-							class="eyebrow flex min-h-8 cursor-pointer items-center px-3 pt-2 select-none"
+							class="eyebrow cursor-pointer px-3 pt-3 pb-1 select-none"
 							>rest of the crew — {others.length + notHere.length}</summary
 						>
-						<ul class="px-1 pb-2">
+						<ul class="px-1">
 							{#each others as member (member.id)}{@render absent(
 									member,
 									member,
