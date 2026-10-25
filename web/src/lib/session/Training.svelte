@@ -287,6 +287,7 @@
 		centre={countingIn ? digit : undefined}
 		dockIn={countingIn}
 		seat={docked ? nowPlaying : undefined}
+		headerFit={graphed}
 	>
 		{#snippet header()}
 			<RideBand

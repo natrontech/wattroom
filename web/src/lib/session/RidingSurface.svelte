@@ -44,6 +44,7 @@
 	let {
 		header,
 		own = false,
+		headerFit = false,
 		focus,
 		numbers,
 		crew,
@@ -62,6 +63,11 @@
 		header: Snippet;
 		/** The caller draws its own panels in the header and focus slots, flat (the free ride's, #3893). */
 		own?: boolean;
+		/**
+		 * Flat, slot 1 is its content's size: nothing in it stretches once the
+		 * horizon's graph is the workout's picture and the strip is gone (#4159).
+		 */
+		headerFit?: boolean;
 		focus: Snippet;
 		numbers?: Snippet;
 		crew?: Snippet;
@@ -327,7 +333,12 @@
 	     screen has the stage or the caller draws its own (the free ride pins
 	     its Skyline at the focus's foot, #4088). -->
 	<div class="flex min-h-0 flex-col gap-3 {extra}" data-surface="flat">
-		<div data-dock="header" class="shrink-0 {own ? '' : 'ride-panel'}">
+		<div
+			data-dock="header"
+			class="shrink-0 {own ? '' : 'ride-panel'} {headerFit
+				? 'max-w-full self-start'
+				: ''}"
+		>
 			{@render header()}
 		</div>
 		<div

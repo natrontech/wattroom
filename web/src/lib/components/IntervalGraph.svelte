@@ -407,8 +407,9 @@
 		     in neon, a target's colour (G2), the current block's bold. One line
 		     the block's width: a part that does not fit wraps onto a clipped
 		     second line, the length first, so a narrow block says less or
-		     nothing rather than overrun its neighbour. The empty first span
-		     keeps even the target off line one when it is too wide. -->
+		     nothing rather than overrun its neighbour. The empty first span,
+		     a line tall, keeps even the target off line one when it is too
+		     wide (an empty line would be 0 px and show line two). -->
 		{#each segments as seg, i (i)}
 			{@const [target, length] = blockWords(seg, ftp, words.bias)}
 			{@const block = blocks[i]}
@@ -416,11 +417,11 @@
 				data-testid="block-words"
 				data-now={elapsed >= seg.startSeconds &&
 					elapsed < seg.startSeconds + seg.seconds}
-				class="num text-neon text-label pointer-events-none absolute bottom-1 flex h-[1lh] flex-wrap justify-center overflow-hidden px-1 leading-tight tracking-wide whitespace-nowrap [text-shadow:0_0_3px_var(--color-paper)] data-[now=false]:font-medium data-[now=false]:opacity-75 data-[now=true]:font-bold"
+				class="num text-neon text-label pointer-events-none absolute bottom-1 flex h-[1lh] flex-wrap justify-center overflow-hidden px-1 leading-tight tracking-wide whitespace-nowrap [text-shadow:0_0_3px_var(--color-paper)] data-[now=false]:font-medium data-[now=false]:opacity-80 data-[now=true]:font-bold"
 				style="left:{(block.x0 / W) * 100}%;width:{((block.x1 - block.x0) / W) *
 					100}%"
 			>
-				<span></span><span class="shrink-0">{target}</span><span
+				<span class="h-full"></span><span class="shrink-0">{target}</span><span
 					class="ml-1.5 shrink-0">· {length}</span
 				>
 			</p>

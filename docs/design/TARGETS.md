@@ -192,7 +192,7 @@ Capture: world on, `/ride?w=openers`, no road: a negative check. Canon: ADR-0066
 Capture: world off, `/ride?w=openers`, 14 s in; a second frame at four-digit watts (the spec drives the simulated trainer past 1,000 W). Targets: v2-erg (work panel, computer); v2-ride's “Flat road” inset.
 
 1. Every slot a `ride-panel`; nothing floats unframed. [ride-flat]
-2. Slot 1 one full-width panel. Left: time left at SPEC's desk size with block, target, elapsed of total. Right: NEXT (D16), the 3-2-1 chips and the ERG chip, all on one line. Where the graph (item 7) is drawn it is the workout's one picture and slot 1 has no interval strip; where the Skyline holds the horizon, the strip with its cursor stands over NEXT's line (Jan, 2026-10-25, #4159). [ride-flat]
+2. Slot 1 one panel. Left: time left at SPEC's desk size with block, target, elapsed of total. Right: NEXT (D16), the 3-2-1 chips and the ERG chip, all on one line. Where the graph (item 7) is drawn it is the workout's one picture: slot 1 has no interval strip and is its content's size (G3). Where the Skyline holds the horizon, slot 1 spans the column with the strip and its cursor over NEXT's line (Jan, 2026-10-25, #4159). [ride-flat]
 3. Controls one row inside slot 1, as ride-road-world item 7, flush with the panel's inner right edge. [ride-flat]
 4. Head as ride-road-world item 9: one watts figure at SPEC's desk size, W/kg beside, zone as digit and name, the track while a target is asked. [ride-flat]
 5. RIDE page fields per the one-home table (workout, no road: Cadence, Heart), in the head's panel, no gap wider than ~48 px; page control (D15) in that panel's header row. [ride-flat]

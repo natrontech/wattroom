@@ -303,6 +303,7 @@
 		moment={inWorld && session.sprint ? moment : undefined}
 		centre={countIn ? digit : undefined}
 		dockIn={!!countIn}
+		headerFit={!skyline}
 	>
 		{#snippet header()}
 			<!-- The strip only beside a Skyline: without a road the graph below is
