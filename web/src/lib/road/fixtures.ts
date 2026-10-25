@@ -198,3 +198,18 @@ export function legsRoad(...legs: [number, number][]): Road {
 		turns: new Array(heights.length - 1).fill(0),
 	};
 }
+
+/**
+ * An Alpine loop, made up in the shape of the maintainer's reference loop
+ * (#3581): a 6.5 % pass straight from km 0, 2 km over the top, 13 km down,
+ * 14 km of valley, then a 5 % climb and its descent back to the start. 57 km.
+ */
+export const alpineLoop = () =>
+	legsRoad(
+		[12_000, 6.5],
+		[2_000, 0],
+		[13_000, -6],
+		[14_000, 0],
+		[8_000, 5],
+		[8_000, -5],
+	);

@@ -795,20 +795,20 @@ func TestExportCarriesEveryCategoryTheLawAsksFor(t *testing.T) {
 // fakeRevoker records what a purge handed back to Strava.
 type fakeRevoker struct {
 	mu      sync.Mutex
-	revoked []db.GetUserIdentityRow
+	revoked []db.Identity
 }
 
-func (f *fakeRevoker) RevokeGrant(_ context.Context, ident db.GetUserIdentityRow) error {
+func (f *fakeRevoker) RevokeGrant(_ context.Context, ident db.Identity) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.revoked = append(f.revoked, ident)
 	return nil
 }
 
-func (f *fakeRevoker) all() []db.GetUserIdentityRow {
+func (f *fakeRevoker) all() []db.Identity {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return append([]db.GetUserIdentityRow(nil), f.revoked...)
+	return append([]db.Identity(nil), f.revoked...)
 }
 
 // The music the rider uploaded is theirs to take (#1089): the export used to

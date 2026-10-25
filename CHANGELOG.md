@@ -17,6 +17,41 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.10.3] - 2026-10-25
+
+### Added
+
+- Build a workout from the session picker: the editor returns you to the voice channel with the picker open on it, one tap from Start.
+- A free ride warms up and cools down: Warm up (40 → 70 % FTP) or Cool down (to 35 % FTP) over 5 or 10 minutes at a tap, then carries on where the ramp ended.
+- The floating HUD shows your cadence and heart rate beside the time left, or beside the grade on a road.
+- The HUD shows your power zone as a seven-segment strip with the time you
+  have held it, stacks target, cadence and heart rate beside the watts, and
+  marks heart rate's zone when you have set an LTHR. The desktop shell's HUD
+  window is 20 px taller for it and opens in your colour identity.
+- Workout road steps ride the road in SIM, keep their time untargeted and unscored, and return to ERG for the next target.
+
+### Changed
+
+- A ride on a desk or laptop is drawn at the mockups' sizes: smaller numbers, words and buttons, more room for the road. The sidebar, the people column and right-click menus keep their desk sizes in the dark riding scheme. TV mode, the HUD and phones keep their large sizes.
+- The public site calls a crew's written channels chat channels, the word the app uses.
+- Self-hosting: Strava now needs `WATTROOM_TOKEN_KEY`; set it before upgrading. Without it the server still boots but offers no Strava sign-in or connection, and tokens stored in the clear are no longer read, so riders reconnect. The plaintext-token gauge and its alerts `WattroomPlaintextRefreshTokens` and `WattroomTokenSealCountStale` are gone.
+
+### Fixed
+
+- The closing card's XP line says what your streak counts, your own weeks, instead of what it doesn't.
+- A free ride with no world keeps its Skyline pinned at the bottom of the screen instead of floating under the panels.
+- Home says what each ride door does instead of who doesn't see it, and the voice-channel line no longer reads as if nobody is riding while a session runs.
+- On a ride the jukebox in the people column is a seat: the picture and one line (title, who queued it, how many are next), with the crew straight under it. Its transport, volume, search, queue and playlists open from that line over the crew, with no live-power colour on its progress bar. At the desk nothing changes.
+- Outside a ride, the people column folds the crew members who are not in the voice channel into one closed "rest of the crew" row, so the people here and the jukebox queue keep the height.
+- A rider on a lossy Wi-Fi link stays on the voice channel's roster through a few seconds' stall instead of flickering off and back while their voice carries on.
+- A session ride no longer overlaps slot 1 beside a road, keeps its panels 16 px in from the sidebar on the flat surface, shows the road crew's names in full, and keeps the heart-rate button beside the bias trim.
+- The soundboard widens from its right edge with the pads filling the width, its header buttons are full-size, and who fired which sound shows under the Soundboard button while it plays.
+- Watching a session keeps your own theme and text size until you join the ride, and a rider's menu mid-ride is solid, so the words behind it stay hidden.
+- A screen share or cam on the stage in full screen now has an Exit full screen button; before, only Escape got you out.
+- A rider whose connection stalls while their voice still comes through stays on the voice channel's roster, marked "voice only", instead of vanishing.
+- A rider's Volume, the mixer's rider list and the soundboard fader now say "yours only", so turning someone down plainly changes only what you hear.
+- A long ride in the 3D world holds only the ground and dressing around you in memory, however far you ride: two hours used to grow the page by about half a megabyte a kilometre.
+
 ## [2026.10.2] - 2026-10-16
 
 ### Added
@@ -3922,7 +3957,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.10.2...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.10.3...HEAD
+[2026.10.3]: https://github.com/natrontech/wattroom/compare/2026.10.2...2026.10.3
 [2026.10.2]: https://github.com/natrontech/wattroom/compare/2026.10.1...2026.10.2
 [2026.10.1]: https://github.com/natrontech/wattroom/compare/2026.09.147...2026.10.1
 [2026.09.147]: https://github.com/natrontech/wattroom/compare/2026.09.146...2026.09.147

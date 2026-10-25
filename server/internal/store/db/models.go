@@ -192,7 +192,6 @@ type Identity struct {
 	ProviderUserID  string
 	UserID          pgtype.UUID
 	AccessToken     *string
-	RefreshToken    *string
 	TokenExpiresAt  pgtype.Timestamptz
 	CreatedAt       pgtype.Timestamptz
 	RefreshTokenEnc []byte

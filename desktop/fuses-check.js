@@ -8,9 +8,8 @@
 //
 // Run: `node fuses-check.js <app>` after `electron-builder`, with the .app on
 // macOS or the executable elsewhere. Not packaged (package.json `files`).
-const { getCurrentFuseWire, FuseV1Options } = require('@electron/fuses');
-// Not re-exported from the package root.
-const { FuseState } = require('@electron/fuses/dist/constants');
+// 2.x is ESM and exports only its root, which now carries FuseState too.
+const { getCurrentFuseWire, FuseV1Options, FuseState } = require('@electron/fuses');
 
 const OFF = [
 	'RunAsNode',

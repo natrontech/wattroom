@@ -1,1 +1,0 @@
-- A free ride with no world keeps its Skyline pinned at the bottom of the screen instead of floating under the panels.

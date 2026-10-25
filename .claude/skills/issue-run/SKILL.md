@@ -11,7 +11,7 @@ A run takes one issue, or one batch (§1), to **merged** or **closed with eviden
 
 ## 0. Main first
 
-`gh run list --branch main --workflow ci.yml --limit 1`, and the same for `e2e.yml`. If either is red, fixing it is this run: find or file its issue, fix it, nothing else. Other workflows (`feedback-canary`, `design-shots`) are not main's health.
+`gh run list --branch main --workflow ci.yml --limit 1`, and the same for `e2e.yml`. If either is red, fixing it is this run: find or file its issue, fix it, nothing else. Other workflows (`design-shots`) are not main's health.
 
 ## 1. Pick
 

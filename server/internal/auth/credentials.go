@@ -22,7 +22,7 @@ import (
 // GrantRevoker hands a third-party grant back before we drop our copy of it.
 // Only Strava keeps tokens, so only Strava has one (server/internal/strava).
 type GrantRevoker interface {
-	RevokeGrant(ctx context.Context, ident db.GetUserIdentityRow) error
+	RevokeGrant(ctx context.Context, ident db.Identity) error
 }
 
 // SetStravaRevoker wires the uploader in after construction, the same shape
@@ -178,7 +178,7 @@ func forgetStrava(ctx context.Context, q *db.Queries, userID pgtype.UUID) (int64
 // tokens: deleting it would lock them out of their own account, and signing in
 // with Strava again is exactly how they re-grant (link and upsert refresh the
 // tokens of an identity they find).
-func (s *Service) ForgetStravaGrant(ctx context.Context, ident db.GetUserIdentityRow) error {
+func (s *Service) ForgetStravaGrant(ctx context.Context, ident db.Identity) error {
 	rows, last, err := s.removeCredential(ctx, ident.UserID, func(q *db.Queries) (int64, error) {
 		return forgetStrava(ctx, q, ident.UserID)
 	})

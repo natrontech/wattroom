@@ -1,1 +1,0 @@
-- Self-hosting: Strava now needs `WATTROOM_TOKEN_KEY`; set it before upgrading. Without it the server still boots but offers no Strava sign-in or connection, and tokens stored in the clear are no longer read, so riders reconnect. The plaintext-token gauge and its alerts `WattroomPlaintextRefreshTokens` and `WattroomTokenSealCountStale` are gone.

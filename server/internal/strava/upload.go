@@ -225,12 +225,12 @@ func exportFailure(err error) string {
 }
 
 // activityDescription is what the Strava activity says about where it was
-// ridden: the crew and a link to it (#2443), or the link alone for a solo
-// ride. The crew is the rider's own ride metadata; other riders never appear
-// here (privacy: metrics are session-scoped, WATTROOM.md).
+// ridden: the crew's name for a crew ride (#2443), and only ever the site's
+// own link. A Strava activity is often public, so no crew link or id goes in
+// (#4139), and other riders never appear here (WATTROOM.md privacy).
 func activityDescription(ride db.GetRideForUploadRow) string {
-	if ride.CrewName == nil || !ride.CrewID.Valid {
-		return "Ridden on WattRoom — https://wattroom.ch"
+	if ride.CrewName == nil {
+		return "Ridden on https://wattroom.ch"
 	}
-	return "Ridden with " + *ride.CrewName + " on WattRoom — https://wattroom.ch/crew/" + store.UUIDString(ride.CrewID)
+	return "Ridden with " + *ride.CrewName + " on https://wattroom.ch"
 }
