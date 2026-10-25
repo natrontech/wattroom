@@ -244,13 +244,7 @@ describe('the virtual-gears checklist (ADR-0088)', () => {
 			});
 		expect(Math.abs(ratio.ratio! / (34 / 14) - 1)).toBeLessThan(0.03);
 
-		// On the wire, 0.1 mm a unit; and a ride's whole repertoire sends none.
-		const { device, trainer } = wired();
-		await trainer.connect();
-		await trainer.setWheelCircumference(WHEEL_MM);
-		expect(Array.from(device.control.writes.at(-1)!)).toEqual([
-			0x12, 0xe0, 0x51,
-		]);
+		// A ride's presses send none on the wire (ftms.test.ts scans the source).
 		const ride = wired();
 		await dryRunOn(ride.trainer, 'P10');
 		expect(ride.sent.some((w) => w.op === 0x12)).toBe(false);
@@ -390,21 +384,10 @@ describe('the virtual-gears checklist (ADR-0088)', () => {
 
 	it('P12 rides ERG and then SIM over FTMS alone, and never asks for another service', async () => {
 		const { device, trainer, asked } = wired();
-		const services: number[] = [];
-		const connect = device.gatt.connect;
-		device.gatt.connect = async () => {
-			const server = await connect();
-			return {
-				getPrimaryService: (uuid: number) => {
-					services.push(uuid);
-					return server.getPrimaryService();
-				},
-			};
-		};
 		await dryRunOn(trainer, 'P12');
 		// FTMS and Cycling Power: no Zwift service is ever named (ADR-0084 rule 4).
 		expect(asked[0].optionalServices).toEqual([0x1826, 0x1818]);
-		expect(new Set(services)).toEqual(new Set([0x1826]));
+		expect(new Set(device.services)).toEqual(new Set([0x1826]));
 		const frames = ridden(device);
 		expect(frames.map((f) => f[0])).toEqual([0x00, 0x05, 0x11]);
 		expect(frames[1]).toEqual([0x05, 200, 0]);

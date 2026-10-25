@@ -43,6 +43,8 @@ export class FakeDevice extends EventTarget {
 	name = 'Fake Kickr';
 	/** GATT connect count — the reattach loop's tell. */
 	connects = 0;
+	/** Every primary service asked for, in order. */
+	services: number[] = [];
 	bikeData = new FakeCharacteristic();
 	control = new FakeCharacteristic();
 	machineStatus = new FakeCharacteristic();
@@ -74,7 +76,12 @@ export class FakeDevice extends EventTarget {
 	gatt = {
 		connect: async () => {
 			this.connects++;
-			return { getPrimaryService: async () => this.#service };
+			return {
+				getPrimaryService: async (uuid: number) => {
+					this.services.push(uuid);
+					return this.#service;
+				},
+			};
 		},
 		disconnect: () => this.drop(),
 	};
