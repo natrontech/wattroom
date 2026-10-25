@@ -365,8 +365,30 @@ surface(
 						.locator('p')
 						.first()
 						.textContent()) ?? null,
+				// No call on a controller (ADR-0089): the mic and camera
+				// controls exist only in voice, drawer or not.
+				controllerCallControls: await phone.page
+					.locator('[aria-label="microphone"], [aria-label="camera"]')
+					.count(),
 			},
 		});
+		// The drawer's voice row says the same (YouPanel).
+		await phone.page.getByRole('button', { name: 'open navigation' }).click();
+		await phone.page
+			.getByRole('navigation', { name: 'crews and channels' })
+			.getByText(/Your voice is on your/)
+			.waitFor({ timeout: 10_000 });
+		// The drawer slides in; shoot it once it has landed.
+		await phone.page.waitForTimeout(1_000);
+		await s.shot(phone, {
+			name: 'ride-phone-remote-drawer',
+			extra: {
+				controllerCallControls: await phone.page
+					.locator('[aria-label="microphone"], [aria-label="camera"]')
+					.count(),
+			},
+		});
+		await phone.page.keyboard.press('Escape');
 		await offer.click();
 		await phone.page.getByTestId('phone-remote').waitFor();
 		// The desk rides SIM with gears on (dev login); one Harder tap makes

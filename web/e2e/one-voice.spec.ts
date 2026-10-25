@@ -68,7 +68,7 @@ test('a second device is a controller, and one tap moves the voice', async ({
 			controller.getByText('Your voice is on your desktop.'),
 		).toBeVisible({ timeout: 20_000 });
 		await expect(
-			phone.getByRole('button', { name: 'microphone' }),
+			phone.locator('[aria-label="microphone"]'),
 			'the phone joined the call beside the desk',
 		).toHaveCount(0);
 		await expect(deskMic).toBeVisible();

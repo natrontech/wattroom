@@ -234,7 +234,9 @@
 							: undefined}
 						class="btn {riding
 							? 'btn-secondary'
-							: 'btn-primary'} min-h-11 flex-1"
+							: 'btn-primary'} min-h-11 flex-1 {voiceElsewhere
+							? 'basis-full'
+							: ''}"
 						><Headphones size={13} />
 						{voiceElsewhere
 							? 'Use this device for voice'
