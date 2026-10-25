@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dhowden/tag"
 	"github.com/jackc/pgx/v5"
 
 	"github.com/natrontech/wattroom/server/internal/audio"
@@ -98,6 +97,10 @@ func (s *Service) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Read before the transaction opens, so a tag holds no connection and no
+	// lock however long it takes (#4148).
+	title, artist, album, bpm, tags := metadata(file, r.URL.Query().Get("name"))
+
 	// The quota is asked with the rider's row locked, in the transaction that
 	// inserts (#1413): parallel uploads each read the same "used" and each
 	// landed, bypassing it by about the quota.
@@ -126,7 +129,6 @@ func (s *Service) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	title, artist, album, bpm, tags := metadata(rewound(file), r.URL.Query().Get("name"))
 	if _, err := s.place(sha, file); err != nil {
 		httpx.Fail(w, s.log, "track write", err, "The track could not be saved.", "sha", sha)
 		return
@@ -172,7 +174,7 @@ func rewound(f *os.File) *os.File {
 func metadata(file io.ReadSeeker, filename string) (title, artist, album string, bpm *int16, tags []string) {
 	fallback := strings.TrimSuffix(strings.TrimSpace(filename), ".mp3")
 	tags = []string{}
-	if m, err := tag.ReadFrom(file); err == nil {
+	if m, err := readTag(file); err == nil {
 		title, artist, album = clip(m.Title()), clip(m.Artist()), clip(m.Album())
 		tags = normalizeTags(strings.Split(m.Genre(), "/"))
 		if raw, ok := m.Raw()["TBPM"]; ok {

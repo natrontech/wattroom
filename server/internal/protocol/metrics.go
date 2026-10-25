@@ -52,6 +52,13 @@ func (m RiderMetrics) RoadInBounds() bool {
 		m.Alt >= MinRoadAltM && m.Alt <= MaxRoadAltM
 }
 
+// BiasInBounds reports whether a sample's trim is one the control can make:
+// MinBias–MaxBias, or 0 for a sample that sends none. BiasOr clamps for a
+// score; every reader that takes the trim raw refuses outside these.
+func BiasInBounds(bias float64) bool {
+	return bias == 0 || bias >= MinBias && bias <= MaxBias
+}
+
 // RoadFollows reports whether next is somewhere a rider can be `seconds` after
 // prev on the same road: never behind it, and no further on than
 // MaxRoadSpeedMps allows.

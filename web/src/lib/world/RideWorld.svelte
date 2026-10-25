@@ -29,6 +29,7 @@
 	import { mount, type WorldScene } from './scene';
 	import type { RideMetre } from './sim';
 	import type { BunchView } from '$lib/channel/bunch-view';
+	import type { PaintedGate } from '$lib/road/gates';
 	import { account } from '$lib/account.svelte';
 	import { prefersReducedMotion } from '$lib/motion';
 	import { play } from '$lib/sound/cues';
@@ -48,6 +49,7 @@
 		look = 'full',
 		camera,
 		countIn = null,
+		gates,
 		onfail,
 		onflat,
 	}: {
@@ -73,6 +75,8 @@
 		camera?: 'chase' | 'heli' | 'side' | 'steady';
 		/** The count-in's seconds left and its length (#3087): the eye flies its reveal to the start arch over it. */
 		countIn?: { left: number; total: number } | null;
+		/** A workout's next blocks on this road (#3101), in the ride's metres. */
+		gates?: () => readonly PaintedGate[];
 		onfail: (why: Failure) => void;
 		/** The rider asked for the flat road on this device. */
 		onflat: () => void;
@@ -106,6 +110,7 @@
 					bunch,
 					loop,
 					countIn: () => counting,
+					gates,
 					camera: camera ?? (look === 'steady' ? 'steady' : 'chase'),
 					light: look === 'light',
 					steady: () => prefersReducedMotion.current || look === 'steady',

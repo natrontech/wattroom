@@ -236,8 +236,14 @@ func (b *bunch) paintAt(riderID string, verb protocol.Roadside) (code, message s
 	if !ok {
 		return "validation_error", "That is not a place on this road."
 	}
+	front := b.fromM + b.pace.Distance
+	// A loop unrolls without end, and chalk goes only once ridden over: laps
+	// ahead, a stamp would hold one of the road's live slots all ride.
+	if b.loop && verb.Lap > int(front/b.road.LengthM)+1 {
+		return "validation_error", "Chalk goes on this lap or the next."
+	}
 	climb := climbStart(climbsRidden(b.road, b.reverse), verb.AtM, float64(verb.Lap)*b.road.LengthM)
-	return b.roadside.chalkUp(riderID, verb, u, b.fromM+b.pace.Distance, climb, "the bunch")
+	return b.roadside.chalkUp(riderID, verb, u, front, climb, "the bunch")
 }
 
 // settleRoadsideLocked lets go of every stand the riders have passed, and of

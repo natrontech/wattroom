@@ -7,6 +7,11 @@ import Star from '@lucide/svelte/icons/star';
 import Users from '@lucide/svelte/icons/users';
 import Zap from '@lucide/svelte/icons/zap';
 import type { Icon } from '$lib/icons';
+import {
+	WheelraceMaxMinutes,
+	WheelraceMinMinutes,
+	type Control,
+} from '$lib/protocol';
 
 /**
  * The seven game modes, one home (#458) — the picker that starts one and the
@@ -82,15 +87,59 @@ export const GAME_MODES: GameMode[] = [
 ];
 
 /**
- * The races (ADR-0067): game modes on a road, which the picker cannot start
- * yet — a race needs a road — named here so a running one reads by its name
- * (#3174). The names are the hub's.
+ * The races (ADR-0067): game modes on a road, started from the picker's
+ * Roads tab with Race it (#3777), and named here so a running one reads by
+ * its name (#3174). The ids are the hub's; each blurb is docs/SPEC.md
+ * "Races" in one line.
  */
-const RACES: Omit<GameMode, 'blurb'>[] = [
-	{ id: 'race', label: 'Race', icon: Trophy },
-	{ id: 'last-light', label: 'Last Light', icon: Trophy },
-	{ id: 'wheelrace', label: 'Wheelrace', icon: Trophy },
+export const RACES: GameMode[] = [
+	{
+		id: 'race',
+		label: 'Race',
+		blurb: 'First over the line on W/kg, placed within your Category, D to A.',
+		icon: Trophy,
+	},
+	{
+		id: 'last-light',
+		label: 'Last Light',
+		blurb:
+			'Farthest when the clock runs out. The fog closes in over the final minute.',
+		icon: Trophy,
+	},
+	{
+		id: 'wheelrace',
+		label: 'Wheelrace',
+		blurb:
+			'Head starts from your race FTP: ridden at par, the field meets at the line.',
+		icon: Trophy,
+	},
 ];
+
+/** docs/SPEC.md "Races": Last Light's clock, in minutes. */
+export const LAST_LIGHT_MINUTES = [10, 20, 30];
+
+/** A game to start: the control's own fields (#3777). */
+export type GameStart = Required<Pick<Control, 'gameMode'>> &
+	Pick<Control, 'route' | 'minutes'>;
+
+/**
+ * The race asked for, but its road: Last Light on its clock, a Wheelrace on
+ * its par, and null for a par the hub refuses (docs/SPEC.md "Races").
+ */
+export function raceStart(
+	mode: string,
+	clock: number,
+	par: number | null,
+): Omit<GameStart, 'route'> | null {
+	if (mode === 'last-light') return { gameMode: mode, minutes: clock };
+	if (mode !== 'wheelrace') return { gameMode: mode };
+	return par !== null &&
+		Number.isInteger(par) &&
+		par >= WheelraceMinMinutes &&
+		par <= WheelraceMaxMinutes
+		? { gameMode: mode, minutes: par }
+		: null;
+}
 
 const BY_ID = new Map([...GAME_MODES, ...RACES].map((mode) => [mode.id, mode]));
 

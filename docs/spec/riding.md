@@ -53,7 +53,7 @@ ERG 0 W: nobody is riding the trainer then.
 
 When the ride is in SIM (a road, a race, the free ride's grade, a sprint slope), the rider shifts virtual gears with one pair of controls, **Easier** and **Harder**. A virtual gear multiplies whatever real gear is on the bike.
 
-Every number below is a **default**, to be tuned in alpha and re-measured by the gears hardware session, unless it is marked _physics_ (not tunable) or _rule_ (a hard constraint from ADR-0084).
+Every number below is a **default**, to be tuned in alpha from riders' reports, unless it is marked _physics_ (not tunable) or _rule_ (a hard constraint from ADR-0084). What the trainer does with them comes from published sources and the #10 Kickr Core's own samples (RESEARCH.md §11, "The road and gears numbers"; #3351, ADR-0088).
 
 **The gear table**
 
@@ -63,10 +63,11 @@ Every number below is a **default**, to be tuned in alpha and re-measured by the
 
 **Real gears**
 
-- **Real ratio (default).** The median of trainer speed ÷ (cadence × **2.096 m**) over the last **7** samples at **60–110 rpm**.
+- **Real ratio (default).** The median of trainer speed ÷ (cadence × **2.096 m**, a 700×23c wheel) over the last **9** samples at **60–110 rpm**.
   - A real shift is when that median sits **≥ 5 %** from the current ratio on **3** consecutive samples. k stays, and the gear shown re-anchors.
-  - In the lab: no false re-labels in 10 h at 2 % per-sample noise, and a 42×14 → 42×17 move re-labels after 5 s.
-  - If P1 measures per-sample noise above 2 %, the window becomes **9**.
+  - In the lab: no false re-labels in 10 h at 2.4 % per-sample noise or over the #10 Kickr Core's own samples, and a 42×14 → 42×17 move re-labels within 7 s.
+  - The window is 9 by the hardware checklist's rule (P1: over 2 % per-sample noise, 9 samples), since the #10 Kickr Core's noise is **2.4 %**. Its cadence is estimated from the flywheel, and it lags after a sprint.
+  - A Kickr reports speed at the circumference an app sent it with 0x12, and WattRoom sends none. A road wheel another app set (700×23–32c, 2096–2155 mm) reads within 3 % of the teeth ratio.
   - If the ratio moves with grade (a trainer that reports modelled speed), detection is off and the gear shows as ±n.
 - **Who reads the trainer's speed (rule).** Only the drivetrain does. The dot, timing and the bike computer's speed never do.
 
@@ -78,11 +79,11 @@ Every number below is a **default**, to be tuned in alpha and re-measured by the
   - Cw' = k³ · Cw · (1 − shelter)
   - wind' = wind ÷ k
 
-  The base values are Crr **0.004** and Cw **0.51 kg/m** (what ftms.ts sends today). m/m_t is **1** until its own issue decides otherwise.
+  The base values are the trainer's road from "Route rides": Crr **0.004** and Cw **0.39 kg/m**, ρ·CdA. m/m_t is **1**: FTMS carries no mass, and a Kickr simulates the weight its maker's app gave it, so m_t is no constant WattRoom can know (#3332 owns any change).
 
 - **Input (rule).** A road's grade goes through the route-rides felt rule (#3020). A slope the rider set by hand (the free ride) and a sprint slope are felt as given.
 - **Shelter (rule).** Cw carries (1 − shelter) only while "Feel the draft" is on (ADR-0077). The dot always gets the hub's shelter.
-- **Write range (default + rule).** The grade written stays within **MinTrainerGrade (−10 %, until P11)** … **MaxTrainerGrade (+15 %, #3020)**. Both live in protocol/limits.go and are the same for every trainer. A Cw above **2.55 kg/m** (the UINT8 field) folds into grade at the last flywheel speed.
+- **Write range (default + rule).** The grade written stays within **MinTrainerGrade (−10 %, the Kickr Core 2's published floor)** … **MaxTrainerGrade (+15 %, #3020)**. Both live in protocol/limits.go and are the same for every trainer. A Cw above **2.55 kg/m** (the UINT8 field) folds into grade at the last flywheel speed: its excess force, ½ × (Cw − 2.55) × v², over the reference rider's **83 kg**.
 - **At the limit (default).** After **3 s** clamped, one persistent status line shows. It goes after **3 s** clear.
   - "Your trainer is at its limit in this gear — shift easier."
   - At the ceiling with a cassette: "Your trainer is at its limit in this gear — shift easier, or move your chain to a smaller cog."

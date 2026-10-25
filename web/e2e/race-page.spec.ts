@@ -1,14 +1,13 @@
-import type { WebSocketRoute } from '@playwright/test';
 import { expect, test, voicePath } from './crew';
 import { climbGpx } from './road-gpx';
 
 /**
  * The RACE page and the team-car radio (#3174): two riders race the coach's
- * road on simulated trainers. Through the neutral zone the page has no par
- * yet and the radio calls it; from km 0 the page reads the gap to par, the
- * rider's place in their Category, and the radio says the race is
- * on. No screen starts a race yet, so the coach's socket sends the start the
- * hub takes from a client (ADR-0067: a race opens its own session on a road).
+ * road on simulated trainers, started from the session picker (#3777;
+ * ADR-0067: a race opens its own session on a road). Through the neutral
+ * zone the page has no par yet and the radio calls it; from km 0 the page
+ * reads the gap to par, the rider's place in their Category, and the radio
+ * says the race is on.
  */
 const COUNTDOWN_MS = 10_000;
 const NEUTRAL_MS = 180_000;
@@ -45,33 +44,38 @@ test('a race shows its RACE page and calls it on the team-car radio', async ({
 
 	const opened = await channels.open(coach, `Race ${Date.now() % 100000}`);
 	await channels.enter(guest, opened);
-	let socket: WebSocketRoute | undefined;
-	await coach.routeWebSocket(/\/ws\/channels\//, (ws) => {
-		socket = ws.connectToServer();
-	});
 	for (const page of [coach, guest]) {
 		await page.goto(`${voicePath(opened)}/training`);
 		await page
 			.getByRole('button', { name: 'Ride simulated' })
 			.click({ timeout: 15_000 });
 	}
-	// Sent until the session opens: a page that reconnected has a new socket.
-	const start = JSON.stringify({
-		control: { action: 'game', gameMode: 'race', route: { id: routeId } },
-	});
-	const open = coach.getByRole('button', { name: 'end the session' });
-	for (let k = 0; k < 5 && !(await open.count()); k++) {
-		socket?.send(start);
-		await open.waitFor({ timeout: 4000 }).catch(() => {});
-	}
-	await expect(open).toBeVisible();
+	// The coach races the road from the picker (#3777): Roads, the road,
+	// Race it, and the race to the line it opens on.
+	await coach
+		.getByRole('button', { name: 'Start a session' })
+		.click({ timeout: 15_000 });
+	const picker = coach.getByRole('dialog', { name: 'Start a session' });
+	await picker.getByRole('button', { name: 'Roads' }).click();
+	await picker
+		.getByRole('list', { name: 'your routes' })
+		.getByRole('listitem')
+		.filter({ hasText: NAME })
+		.getByRole('button', { name: 'Pick' })
+		.click();
+	await picker.getByRole('button', { name: 'Race it' }).click();
+	await expect(
+		picker
+			.getByRole('group', { name: 'which race' })
+			.getByRole('button', { name: /^Race / }),
+	).toHaveAttribute('aria-pressed', 'true');
+	await picker.getByRole('button', { name: 'Start Race' }).click();
+	await expect(
+		coach.getByRole('button', { name: 'end the session' }),
+	).toBeVisible();
 	// The field freezes at the flag, so the guest lines up in the countdown.
 	await guest
 		.getByRole('link', { name: 'Join the ride' })
-		.click({ timeout: COUNTDOWN_MS });
-	// The race opened at its own address; the picker would have followed it.
-	await coach
-		.getByRole('link', { name: 'Go to the ride' })
 		.click({ timeout: COUNTDOWN_MS });
 
 	for (const page of [coach, guest]) {

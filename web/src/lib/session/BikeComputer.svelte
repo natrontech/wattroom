@@ -422,6 +422,12 @@
 		</div>
 	</div>
 	{#if zoneStrip}{@render strip(zoneStrip)}{/if}
+	{#if shown === 'climb' && ctx.climb?.lands}
+		<!-- A workout's block that lands on the climb, until its foot (#3101). -->
+		<p data-testid="climb-lands" class="{size.word} text-muted leading-none">
+			{ctx.climb.lands}
+		</p>
+	{/if}
 	{#if profile && ctx.climb}
 		<!-- Flat, the dots ride beside the profile, so CLIMB is no taller than
 		     RIDE and the Skyline under it keeps its place; a narrow panel wraps
