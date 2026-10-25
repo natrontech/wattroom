@@ -159,53 +159,45 @@
 			ftp={account.me?.ftpWatts || null}
 			riderKg={account.me?.weightKg || null}
 			bind:rename
-		/>
-	</div>
-
-	{#if saveError}
-		<!-- Atop the form it failed to submit (errors.md). -->
-		<div class="mt-5">
-			<Banner tone="error">
-				{saveError}
-				{#snippet action()}
+		>
+			{#snippet actions()}
+				{#if saveError}
+					<!-- Atop the actions it failed to submit (errors.md). -->
+					<Banner tone="error">
+						{saveError}
+						{#snippet action()}
+							<button
+								onclick={() => void save()}
+								disabled={saving}
+								class="btn-link text-xs">Try again</button
+							>
+						{/snippet}
+					</Banner>
+				{/if}
+				<!-- The actions stack full width, primary first. A crew plans a
+				     road from its session picker, not from here. -->
+				<div class="flex flex-col gap-3">
 					<button
 						onclick={() => void save()}
 						disabled={saving}
-						class="btn-link text-xs">Try again</button
+						class="btn btn-primary btn-lg w-full">Save to my routes</button
 					>
-				{/snippet}
-			</Banner>
-		</div>
-	{/if}
-	<!-- On a phone the actions stack full width, primary first. A crew plans
-	     a road from its session picker, not from here. -->
-	<div
-		class="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center"
-	>
-		<button
-			onclick={() => void save()}
-			disabled={saving}
-			class="btn btn-primary btn-lg w-full sm:w-auto">Save to my routes</button
-		>
-		{#if !spectator}
-			<button
-				onclick={() => void rideNow()}
-				disabled={saving}
-				class="btn btn-secondary btn-lg w-full sm:w-auto">Ride it now</button
-			>
-		{/if}
-		{#if imported.src === 'stravagpx'}
-			<span
-				class="border-frame text-muted inline-flex items-center gap-1 self-start rounded border px-2 text-xs sm:self-auto"
-			>
-				<Lock size={12} /> Only you can ride this one
-			</span>
-		{/if}
+					{#if !spectator}
+						<button
+							onclick={() => void rideNow()}
+							disabled={saving}
+							class="btn btn-secondary btn-lg w-full">Ride it now</button
+						>
+						<RoadsBeta />
+					{/if}
+					{#if imported.src === 'stravagpx'}
+						<p class="text-muted flex items-start gap-1 text-xs">
+							<Lock size={12} class="mt-0.5 shrink-0" />
+							Files from Strava ride with you alone, never in a crew's plan.
+						</p>
+					{/if}
+				</div>
+			{/snippet}
+		</RoutePreview>
 	</div>
-	{#if !spectator}<RoadsBeta class="mt-2" />{/if}
-	{#if imported.src === 'stravagpx'}
-		<p class="text-muted mt-2 text-xs">
-			Files from Strava ride with you alone, never in a crew's plan.
-		</p>
-	{/if}
 {/if}
