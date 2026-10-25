@@ -76,7 +76,11 @@ export async function pickRoad(
 	);
 	if (!race) return;
 	await press(picker.getByRole('button', { name: 'Race it' }));
-	await press(picker.getByRole('button', { name: new RegExp(`^${race} `) }));
+	await press(
+		picker
+			.getByRole('group', { name: 'which race' })
+			.getByRole('button', { name: new RegExp(`^${race} `) }),
+	);
 }
 
 /** The second rider rides along. */

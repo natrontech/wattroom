@@ -65,7 +65,9 @@ test('a race shows its RACE page and calls it on the team-car radio', async ({
 		.click();
 	await picker.getByRole('button', { name: 'Race it' }).click();
 	await expect(
-		picker.getByRole('button', { name: /^Race First over the line/ }),
+		picker
+			.getByRole('group', { name: 'which race' })
+			.getByRole('button', { name: /^Race / }),
 	).toHaveAttribute('aria-pressed', 'true');
 	await picker.getByRole('button', { name: 'Start Race' }).click();
 	await expect(

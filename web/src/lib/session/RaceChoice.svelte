@@ -30,7 +30,11 @@
 </script>
 
 <p class="eyebrow mt-4">which race</p>
-<div class="mt-2 grid gap-2 sm:grid-cols-3">
+<div
+	role="group"
+	aria-label="which race"
+	class="mt-2 grid gap-2 sm:grid-cols-3"
+>
 	{#each RACES as r (r.id)}
 		<button
 			onclick={() => (mode = r.id)}
