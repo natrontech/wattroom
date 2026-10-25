@@ -22,7 +22,13 @@
 	import type { Clamp } from '$lib/ride/drivetrain';
 	import { FLAG_NOTICE_MS, FLAG_SAID } from '$lib/ride/flag';
 	import FlagButton from '$lib/ride/FlagButton.svelte';
-	import { GRADE, WATTS, type FreeMode } from '$lib/ride/free-ride-controls';
+	import {
+		GRADE,
+		RAMP,
+		WATTS,
+		type FreeMode,
+		type RampKind,
+	} from '$lib/ride/free-ride-controls';
 	import { freeRideLabel, type FreeRide } from '$lib/ride/free-ride.svelte';
 	import GearShift from '$lib/ride/GearShift.svelte';
 	import { ONE_GEAR_LINE } from '$lib/ride/mode-copy';
@@ -148,6 +154,15 @@
 			? `Watts · ${free.targetWatts} W`
 			: `SIM · you feel ${(road ? road.felt : free.grade).toFixed(1)} %`,
 	);
+	// Warm up and Cool down (#4100): off a road, a length picked once.
+	const RAMPS: { kind: RampKind; label: string }[] = [
+		{ kind: 'warmup', label: 'Warm up' },
+		{ kind: 'cooldown', label: 'Cool down' },
+	];
+	let rampMinutes = $state<number>(RAMP.minutes[0]);
+	const rampLabel = $derived(
+		RAMPS.find((r) => r.kind === (free.ramp?.kind ?? free.rampDone))?.label,
+	);
 	let repairing = $state(false);
 	let repairError = $state<string | null>(null);
 	async function repair() {
@@ -208,7 +223,8 @@
 	<!-- Four rows, so the road's name is never cut for the controls: the
 	     label with the caller's own controls, the road line, the chip row,
 	     then the ride's controls — 176 px at SPEC's sizes, above the corridor
-	     (the box table's 200). -->
+	     (the box table's 200). Off a road, where nothing draws a world or a
+	     corridor, a fifth holds Warm up and Cool down. -->
 	<header data-testid="ride-band" class="flex flex-col gap-2 px-4 py-2">
 		<div class="flex min-w-0 flex-wrap items-center gap-x-6 gap-y-2">
 			{#if fault}
@@ -260,6 +276,15 @@
 						free.seconds,
 					)}{#if road}{` · ${Math.round(climbed)} m climbed`}{/if}
 				</p>
+				{#if free.ramp}
+					<p data-testid="ramp-line" class="num truncate" aria-live="polite">
+						{rampLabel} · {formatClock(free.ramp.left)} left
+					</p>
+				{:else if free.rampDone}
+					<p data-testid="ramp-line" class="truncate" aria-live="polite">
+						{rampLabel} done
+					</p>
+				{/if}
 				{#if flagNotice}
 					<p class="text-muted truncate">{FLAG_SAID.after}</p>
 				{:else if hint}
@@ -330,6 +355,39 @@
 				>
 			{/if}
 		</div>
+		{#if !road}
+			<!-- Warm up and Cool down (#4100) in a row of their own, so the
+			     ride's controls keep End ride beside ⚑ and TV. -->
+			<div class="flex min-w-0 flex-wrap items-center gap-2">
+				{#if free.ramp}
+					<button onclick={free.stopRamp} class="btn btn-secondary btn-ride"
+						>Stop {rampLabel?.toLowerCase()}</button
+					>
+				{:else}
+					<div
+						class="border-muted/20 flex rounded-lg border"
+						role="group"
+						aria-label="ramp length"
+					>
+						{#each RAMP.minutes as minutes (minutes)}
+							<button
+								onclick={() => (rampMinutes = minutes)}
+								aria-pressed={rampMinutes === minutes}
+								class="btn btn-ride {rampMinutes === minutes
+									? 'btn-secondary'
+									: 'btn-ghost'}">{minutes} min</button
+							>
+						{/each}
+					</div>
+					{#each RAMPS as r (r.kind)}
+						<button
+							onclick={() => free.startRamp(r.kind, rampMinutes)}
+							class="btn btn-secondary btn-ride">{r.label}</button
+						>
+					{/each}
+				{/if}
+			</div>
+		{/if}
 	</header>
 {/snippet}
 
