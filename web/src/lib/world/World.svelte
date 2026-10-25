@@ -130,14 +130,22 @@
 			return;
 		}
 		scene = placed.scene;
-		const probe = () => placed.scene.probe();
-		if (import.meta.env.DEV)
-			(window as { __worldProbe?: typeof probe }).__worldProbe = probe;
+		const hooks = window as {
+			__worldProbe?: () => ReturnType<WorldScene['probe']>;
+			__worldFrames?: WorldScene['frames'];
+		};
+		if (import.meta.env.DEV) {
+			hooks.__worldProbe = () => placed.scene.probe();
+			// What the soak reads each simulated minute (#3851).
+			hooks.__worldFrames = () => placed.scene.frames();
+		}
 		return () => {
 			placed.remove();
 			if (scene === placed.scene) scene = null;
-			if (import.meta.env.DEV)
-				delete (window as { __worldProbe?: typeof probe }).__worldProbe;
+			if (import.meta.env.DEV) {
+				delete hooks.__worldProbe;
+				delete hooks.__worldFrames;
+			}
 		};
 	});
 
