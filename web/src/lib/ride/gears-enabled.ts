@@ -1,10 +1,33 @@
-import { canSimulate } from '$lib/ble/can-simulate';
+/** An input that shifts (ADR-0084 "Inputs"). An OpenBikeControl controller joins when it lands. */
+export type GearInput = 'screen' | 'keys' | 'phone';
 
 /**
- * May this screen shift virtual gears (ADR-0084)? One rule, in one place:
- * canSimulate()'s dev-only gate until "gears reach riders" (#3333) lifts it,
- * after the gears hardware session (#3350) and the HUD, keys and ERG pieces.
+ * Each input's own switch: the on-screen pair, the keys (and anything that
+ * types them: a clicker, a foot switch), the phone remote. A grant the
+ * patent watch reads (#3323) turns one off here and leaves the rest.
  */
-export function gearsEnabled(): boolean {
-	return canSimulate();
+export const GEAR_INPUTS: Readonly<Record<GearInput, boolean>> = {
+	screen: true,
+	keys: true,
+	phone: true,
+};
+
+/** The input a shifter source belongs to: `key:<code>`, `remote`, `screen:<dir>`. */
+export function inputOf(source: string): GearInput {
+	if (source.startsWith('key:')) return 'keys';
+	if (source === 'remote') return 'phone';
+	return 'screen';
+}
+
+/**
+ * May this screen shift virtual gears (ADR-0084)? Every rider may, since
+ * the HUD, the keys, the ERG routing and the P1–P12 tests landed (#3333,
+ * ADR-0088): from `input` while its switch is on, or from any input when
+ * none is named.
+ */
+export function gearsEnabled(
+	input?: GearInput,
+	inputs: Readonly<Record<GearInput, boolean>> = GEAR_INPUTS,
+): boolean {
+	return input ? inputs[input] : Object.values(inputs).some(Boolean);
 }

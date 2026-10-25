@@ -31,7 +31,7 @@
 	} from '$lib/ride/free-ride-controls';
 	import { freeRideLabel, type FreeRide } from '$lib/ride/free-ride.svelte';
 	import GearShift from '$lib/ride/GearShift.svelte';
-	import { ONE_GEAR_LINE } from '$lib/ride/mode-copy';
+	import { gearsNews } from '$lib/ride/gears-news';
 	import type { RideShift } from '$lib/ride/ride-shift';
 	import { roadLine } from '$lib/ride/road-readout';
 	import { roadEndOffered } from '$lib/ride/road-end';
@@ -183,7 +183,8 @@
 			? faultCopy({ kind: 'trainer', state: 'silent' }).line
 			: null,
 	);
-	const hint = $derived(!inWatts && !cassette ? ONE_GEAR_LINE : undefined);
+	// Once per device, to a rider who kept "Don't make me shift" (#3333).
+	const hint = untrack(() => gearsNews(!cassette));
 
 	// The ⚑'s own acknowledgement (#52): consent in plain words, at the
 	// moment of the tap, never blocking.

@@ -79,7 +79,7 @@ Every number below is a **default**, to be tuned in alpha from riders' reports, 
   - Cw' = k³ · Cw · (1 − shelter)
   - wind' = wind ÷ k
 
-  The base values are the trainer's road from "Route rides": Crr **0.004** and Cw **0.39 kg/m**, ρ·CdA. m/m_t is **1**: FTMS carries no mass, and a Kickr simulates the weight its maker's app gave it, so m_t is no constant WattRoom can know (#3332 owns any change).
+  The base values are the trainer's road from "Route rides": Crr **0.004** and Cw **0.39 kg/m**, ρ·CdA. m/m_t is **1**: FTMS carries no mass, and a Kickr simulates the weight its maker's app gave it, so m_t is no constant WattRoom can know. #3332 closed on that: SIM does not scale by the rider's weight.
 
 - **Input (rule).** A road's grade goes through the route-rides felt rule (#3020). A slope the rider set by hand (the free ride) and a sprint slope are felt as given.
 - **Shelter (rule).** Cw carries (1 − shelter) only while "Feel the draft" is on (ADR-0077). The dot always gets the hub's shelter.
@@ -137,7 +137,7 @@ Every number below is a **default**, to be tuned in alpha from riders' reports, 
   - Target = (felt road force at speed k·v) × k·v, where v is the trainer's own speed.
   - Floor **50 W**. Never ERG 0 W (#2658).
   - Ceiling: the trainer's Supported Power Range (0x2AD8).
-- **Don't make me shift (default).** The singleSpeed setting, renamed. Wherever SIM would put the rider on a slope, ERG-by-road holds FTP × clamp(0.60 + 0.03 × grade %, 0.50, 0.90), ± bias (#3025). Rides on it are stored but untimeable (rule: Jan, 2026-09-28; ADR-0074's who-chose-the-watts rule, since WattRoom chose the watts).
+- **Don't make me shift (default).** The singleSpeed setting, renamed. Wherever SIM would put the rider on a slope, ERG-by-road holds FTP × clamp(0.60 + 0.03 × grade %, 0.50, 0.90), ± bias (#3025). Rides on it are stored but untimeable (rule: Jan, 2026-09-28; ADR-0074's who-chose-the-watts rule, since WattRoom chose the watts). A rider who had it on before gears keeps it, and the free ride says "Virtual gears are here: pick Grade to shift." once per device (#3333).
 
 ## The bike computer (defaults — tune in alpha; [ADR-0071](../decisions/0071-the-bike-computer-pages-slot-3.md))
 

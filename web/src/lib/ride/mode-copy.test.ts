@@ -1,19 +1,26 @@
-import { describe, expect, it } from 'vitest';
-import { ONE_GEAR_LINE, ONE_GEAR_SETTING } from './mode-copy';
+// @vitest-environment happy-dom
+import { beforeEach, describe, expect, it } from 'vitest';
+import { gearsNews } from './gears-news';
+import { DONT_SHIFT_SETTING, GEARS_NEWS_LINE } from './mode-copy';
 
-// Pinned (#3203): the same words serve the free ride's one-gear hint and
-// Settings › Equipment.
+// Pinned (#3203, #3333): Settings › Equipment's words, and the one line a
+// rider who kept them hears when gears come.
 describe('what the free ride says', () => {
-	it('warns a one-gear rider off grade', () => {
-		expect(ONE_GEAR_LINE).toBe(
-			'One gear: the grade has no range here, use Watts.',
-		);
-	});
+	beforeEach(() => localStorage.clear());
 
 	it('names the setting by what it does', () => {
-		expect(ONE_GEAR_SETTING).toEqual({
-			label: "One gear (Zwift Cog), or don't make me shift",
+		expect(DONT_SHIFT_SETTING).toEqual({
+			label: "Don't make me shift",
 			hint: 'WattRoom holds watts wherever it would put you on a slope.',
 		});
+	});
+
+	it('tells a rider on "Don\'t make me shift" that gears exist, once', () => {
+		expect(GEARS_NEWS_LINE).toBe(
+			'Virtual gears are here: pick Grade to shift.',
+		);
+		expect(gearsNews(false)).toBeUndefined();
+		expect(gearsNews(true)).toBe(GEARS_NEWS_LINE);
+		expect(gearsNews(true)).toBeUndefined();
 	});
 });

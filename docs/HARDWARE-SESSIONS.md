@@ -114,7 +114,10 @@ and never touch the ZAP service. Unless a step says otherwise, ride **85 rpm
 ±3 in one real gear**, in 30 s blocks. Every write is logged with its op,
 grade, Crr, Cw, wind, circumference, k and the time since the press, and
 every sample beside it; the route checklist above shares the Cw steps, so run
-both at one sitting.
+both at one sitting. No sitting gates gears (ADR-0088):
+`web/src/lib/ride/gears-checklist.test.ts` holds every step to its "passes
+when" on the SimulatedTrainer and the fake GATT, and a Kickr run is how a
+rider's trainer can say otherwise.
 
 | Step | What runs | Passes when |
 | --- | --- | --- |
