@@ -20,6 +20,7 @@ type ClientMessage struct {
 	Remote   *RemoteCommand  `json:"remote,omitempty"`
 	Gear     *GearState      `json:"gear,omitempty"`
 	Pause    *PauseState     `json:"pause,omitempty"`
+	Voice    *VoiceClaim     `json:"voice,omitempty"`
 }
 
 // ServerTick is a voice channel's coalesced 1 Hz broadcast: every rider's
