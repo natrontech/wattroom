@@ -12,7 +12,7 @@
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import { createProfileStore, PROFILE_LIMITS } from '$lib/profile.svelte';
 	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
-	import { ONE_GEAR_SETTING } from '$lib/ride/mode-copy';
+	import { DONT_SHIFT_SETTING } from '$lib/ride/mode-copy';
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import SensorOverview from '$lib/session/SensorOverview.svelte';
 	import { deviceWord } from '$lib/device.svelte';
@@ -150,8 +150,8 @@
 		<p class="text-muted mt-1 text-xs">
 			What your trainer does when a sprint is armed.
 		</p>
-		<!-- Labelled by what it does, hinted with the hardware (#1573): "Single-speed
-		     setup (Zwift Cog)" read as "not for me" to the rider it was for. -->
+		<!-- Labelled by what it does (#1573, ADR-0084): a Cog rider shifts
+		     virtual gears now, so the hardware left the label (#3333). -->
 		<label class="mt-4 block">
 			<span class="flex items-center gap-2 text-sm">
 				<input
@@ -159,10 +159,10 @@
 					bind:checked={singleSpeed}
 					onchange={() => saveSprint({ singleSpeed })}
 				/>
-				{ONE_GEAR_SETTING.label}
+				{DONT_SHIFT_SETTING.label}
 			</span>
 			<span class="text-muted mt-1 block text-[11px]">
-				{ONE_GEAR_SETTING.hint}
+				{DONT_SHIFT_SETTING.hint}
 			</span>
 		</label>
 		{#if !singleSpeed}

@@ -41,11 +41,13 @@ func (rm *channelState) setMetrics(c *client, m protocol.RiderMetrics) {
 		return
 	}
 	// The channel sees a rider's numbers but not where they are on a road
-	// (#3052): the ride record below keeps m and alt, the tick carries
-	// neither. A route owner's heights are absolute, and ADR-0063 keeps
-	// absolute height with the owner.
+	// (#3052): the ride record below keeps m and alt, the tick's metrics
+	// carry neither. A route owner's heights are absolute, and ADR-0063
+	// keeps absolute height with the owner. A free rider's m reaches only
+	// riders here on the same road, through the tick's FreeRoads (#3117).
 	live := m
 	live.M, live.Alt = 0, 0
+	c.heardOnRoadLocked(m)
 	rm.metrics[rider.ID] = live
 	rm.lastMetric[rider.ID] = now
 	if m.Watts > 0 {

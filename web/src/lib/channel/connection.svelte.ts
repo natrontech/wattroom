@@ -1,11 +1,13 @@
 import { untrack } from 'svelte';
 import { placeOnRoad } from '$lib/channel/road-place';
 import { roadOf } from '$lib/workout/road-workout';
+import { roadHash } from '$lib/road/road';
 import { rememberRodeIn } from '$lib/crew-lounge';
 import { account } from '$lib/account.svelte';
 import { createProfileStore } from '$lib/profile.svelte';
 import { spaceBelongsTo } from '$lib/channel/ptt-keys';
 import { gearsEnabled } from '$lib/ride/gears-enabled';
+import { EASIER_HARDER_OFF } from '$lib/ride/easier-harder';
 import { bindShiftKeys, createRemoteRunner } from '$lib/ride/keys';
 import { createTalkOpener } from '$lib/ride/remote-talk';
 import { DEFAULTS } from '$lib/workout/guards';
@@ -233,6 +235,20 @@ function connect(address: PlaceAddress): Connection {
 				void freeRide.end().then(sayFreeRide);
 			wasJoined = now;
 		});
+		// A free ride on a road says which road (#3117): channel-mates on the
+		// same one draw each other. The key is read off the road once a road.
+		const freeRoad = $derived(
+			freeRide.armed && !joined() ? freeRide.road?.profile : undefined,
+		);
+		$effect(() => {
+			const road = freeRoad;
+			let gone = false;
+			if (road) void roadHash(road).then((key) => gone || live.rideRoad(key));
+			else live.rideRoad('');
+			return () => {
+				gone = true;
+			};
+		});
 
 		// One sensor, one screen (#610). The claim belongs to the CONNECTION
 		// for the same reason the trainer does: it has to survive the channel's
@@ -337,16 +353,33 @@ function connect(address: PlaceAddress): Connection {
 		shift = createRideShift(ride);
 		$effect(() => (ride.shifting ? bindShiftKeys(shift) : undefined));
 
+		// Your own workout shifts on its riding screen's shifter, which this
+		// connection cannot reach; the phone's taps get one of their own (#3333).
+		const ownShift = createRideShift({
+			easierHarder: (dir) =>
+				ownRide.session?.easierHarder(dir) ?? {
+					disabled: EASIER_HARDER_OFF.idle,
+				},
+			atEnd: (dir) => ownRide.session?.atEnd(dir) ?? false,
+		});
+
 		// The phone remote's presses, off the tick, through the same inputs as
 		// the keys (#3217). The hub sends them to this tab only while it holds
-		// the trainer. With gears off the phone says Bias, and a tap is what
-		// the ride's own − and + move (#4163): a workout's bias, or the free
-		// ride's watts or grade.
+		// the trainer. Easier / Harder is a gear in SIM and the bias in ERG,
+		// for the session's ride and your own workout alike (#3333). With the
+		// phone's gears off it says Bias, and a tap is what the ride's own −
+		// and + move (#4163): a workout's bias, or the free ride's watts or
+		// grade.
 		const remote = createRemoteRunner(
 			{
-				shifts: () => ride.shifting,
-				press: (dir, source) => shift.press(dir, source),
-				release: (source) => shift.release(source),
+				shifts: () =>
+					gearsEnabled('phone') && (ride.shifting || ownRide.riding),
+				press: (dir, source) =>
+					(ride.shifting ? shift : ownShift).press(dir, source),
+				release: (source) => {
+					shift.release(source);
+					ownShift.release(source);
+				},
 				trim: (dir) => {
 					const step = dir * DEFAULTS.biasStep;
 					if (ownRide.riding) ownRide.session?.nudgeBias(step);

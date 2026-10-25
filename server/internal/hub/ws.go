@@ -85,6 +85,9 @@ type client struct {
 	// "Don't make me shift" on this screen (#3658): WattRoom holds the watts
 	// on a road, so a race rides the rider unranked. Read under rm.mu.
 	ergByRoad bool
+	// The road this socket free-rides, and where on it (#3117). Read under
+	// rm.mu.
+	road roadPresence
 	// The workout hash this socket last received the definition for (#1710).
 	// Owned by the tick loop: read and written there alone.
 	workoutSent string

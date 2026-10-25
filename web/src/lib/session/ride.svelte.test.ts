@@ -487,7 +487,7 @@ describe('the personal guards in a group ride (#788)', () => {
 	// #3027: on a road, grade mode rides the road's felt grade, never a
 	// hand-set one, and the dot moves by the watts the trainer reports.
 	it('rides the road’s felt grade on a free ride on a road', async () => {
-		const { live, deps } = inASession();
+		const { live, deps, socket } = inASession();
 		let free!: ReturnType<typeof createFreeRide>;
 		let ride!: ReturnType<typeof createRide>;
 		const dispose = $effect.root(() => {
@@ -515,7 +515,33 @@ describe('the personal guards in a group ride (#788)', () => {
 		trainer.pedal(250, 90);
 		await settle();
 		expect(free.road!.m).toBeGreaterThan(0);
+		// Each sample says where on the road its second began (#3117).
+		const began = free.road!.m;
+		trainer.pedal(250, 90);
+		await settle();
+		const m = socket.sent
+			.map((s) => JSON.parse(s).metrics?.m)
+			.filter((at) => at !== undefined);
+		expect(m.at(-1)).toBeCloseTo(began, 1);
 
+		dispose();
+		live.close();
+	});
+
+	it('says no place on a road while the session rides the trainer (#3117)', async () => {
+		const { live, deps, socket } = inASession();
+		const free = { ...idleFree, armed: true, road: { m: 640 } as never };
+		let ride!: ReturnType<typeof createRide>;
+		const dispose = $effect.root(() => {
+			ride = createRide({ ...deps, free });
+		});
+		const trainer = new FakeTrainer();
+		await ride.ride(trainer);
+		trainer.pedal(250, 90);
+		await settle();
+		const sent = socket.sent.flatMap((s) => JSON.parse(s).metrics ?? []);
+		expect(sent.length).toBeGreaterThan(0);
+		expect(sent.every((s: { m?: number }) => s.m === undefined)).toBe(true);
 		dispose();
 		live.close();
 	});

@@ -190,6 +190,45 @@ func TestAHiddenPairsThreadRefusesExactlyAsAClosedOneDoes(t *testing.T) {
 	}
 }
 
+// A hidden pair's old lines stay as they were (#4152): neither rewrites one
+// the other would read, and the edit fails as any line outside the
+// conversation does. Shown again, the edit goes through.
+func TestAHiddenPairsOldLinesCannotBeRewritten(t *testing.T) {
+	h := setup(t)
+	alice, bob := h.id("alice"), h.id("bob")
+	sent := func(from, to, text string) string {
+		t.Helper()
+		code, body := h.call(t, from, http.MethodPost, "/api/dms/"+to, `{"text":"`+text+`"}`)
+		var line struct{ ID string }
+		if err := json.Unmarshal([]byte(body), &line); code != http.StatusOK || err != nil || line.ID == "" {
+			t.Fatalf("%s's line: %d %s", from, code, body)
+		}
+		return line.ID
+	}
+	bobs, alices := sent("bob", alice, "ride at 6?"), sent("alice", bob, "see you there")
+	h.hide(t, "alice", "bob")
+
+	for _, c := range []struct{ who, peer, line string }{{"bob", alice, bobs}, {"alice", bob, alices}} {
+		code, body := h.call(t, c.who, http.MethodPatch, "/api/dms/"+c.peer+"/messages/"+c.line, `{"text":"rewritten"}`)
+		if code != http.StatusNotFound || !strings.Contains(body, "No such message in this conversation.") {
+			t.Fatalf("%s rewrote a line across the block: %d %s", c.who, code, body)
+		}
+	}
+	for _, who := range []string{"alice", "bob"} {
+		peer := map[string]string{"alice": bob, "bob": alice}[who]
+		if _, thread := h.call(t, who, http.MethodGet, "/api/dms/"+peer, ""); strings.Contains(thread, "rewritten") || !strings.Contains(thread, "ride at 6?") {
+			t.Fatalf("%s's thread reads %s", who, thread)
+		}
+	}
+
+	if code, _ := h.call(t, "alice", http.MethodDelete, "/api/blocks/"+bob, ""); code != http.StatusOK {
+		t.Fatal("unhide")
+	}
+	if code, body := h.call(t, "bob", http.MethodPatch, "/api/dms/"+alice+"/messages/"+bobs, `{"text":"ride at 7?"}`); code != http.StatusOK {
+		t.Fatalf("an unhidden friend's edit: %d %s", code, body)
+	}
+}
+
 // A friendship leaves both lists; the hidden rider's own ask stays pending in
 // front of them and never reaches the other side (#3202).
 func TestAFriendRequestAcrossAHiddenPairStaysPendingAndNeverArrives(t *testing.T) {

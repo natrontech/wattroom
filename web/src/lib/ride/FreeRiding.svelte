@@ -31,8 +31,10 @@
 	} from '$lib/ride/free-ride-controls';
 	import { freeRideLabel, type FreeRide } from '$lib/ride/free-ride.svelte';
 	import GearShift from '$lib/ride/GearShift.svelte';
+	import { EASIER_HARDER_OFF } from '$lib/ride/easier-harder';
+	import { gearsEnabled } from '$lib/ride/gears-enabled';
+	import { gearsNews } from '$lib/ride/gears-news';
 	import type { GhostRider } from '$lib/ride/ghost-split.svelte';
-	import { ONE_GEAR_LINE } from '$lib/ride/mode-copy';
 	import type { RideShift } from '$lib/ride/ride-shift';
 	import { roadLine } from '$lib/ride/road-readout';
 	import { roadEndOffered } from '$lib/ride/road-end';
@@ -48,6 +50,7 @@
 	import RidingSurface from '$lib/session/RidingSurface.svelte';
 	import FlatButton from '$lib/world/FlatButton.svelte';
 	import FlatRoad from '$lib/world/FlatRoad.svelte';
+	import type { RoadMate } from '$lib/channel/road-mates';
 	import { JUMP_M } from '$lib/world/sim';
 	import { createWorldView } from '$lib/world/world-view.svelte';
 
@@ -76,6 +79,7 @@
 		setup,
 		foot,
 		worldClass = '',
+		mates,
 		class: extra = '',
 	}: {
 		free: FreeRide;
@@ -114,6 +118,8 @@
 		foot?: Snippet;
 		/** Undoes the page's gutters so the world fills the frame (TARGETS ride-road-world 2). */
 		worldClass?: string;
+		/** A voice channel's mates on this road (#3117): the world draws them at their own metres. */
+		mates?: () => readonly RoadMate[];
 		class?: string;
 	} = $props();
 
@@ -187,7 +193,8 @@
 			? faultCopy({ kind: 'trainer', state: 'silent' }).line
 			: null,
 	);
-	const hint = $derived(!inWatts && !cassette ? ONE_GEAR_LINE : undefined);
+	// Once per device, to a rider who kept "Don't make me shift" (#3333).
+	const hint = untrack(() => gearsNews(!cassette));
 
 	// The ⚑'s own acknowledgement (#52): consent in plain words, at the
 	// moment of the tap, never blocking.
@@ -338,7 +345,12 @@
 				>
 			{/if}
 			{#if gear && shift && !inWatts}
-				<GearShift {shift} {gear} off={shiftOff} {cassette} />
+				<GearShift
+					{shift}
+					{gear}
+					off={gearsEnabled('screen') ? shiftOff : EASIER_HARDER_OFF.gated}
+					{cassette}
+				/>
 			{/if}
 			{#if onflag}<FlagButton onflag={flag} sends="after" />{/if}
 			{#if drawn}
@@ -436,6 +448,7 @@
 			<RideWorld
 				road={on.profile}
 				metre={() => ({ m: road?.m ?? on.m, mps: road?.virtualMps ?? 0 })}
+				{mates}
 				{watts}
 				silent={stale}
 				{ftp}

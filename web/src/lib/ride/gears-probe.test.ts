@@ -1,12 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SimulatedTrainer } from '$lib/ble/simulated';
 import { GEARS_PROBE } from './gears-probe-steps';
-import {
-	runProbeStep,
-	writesPerShift,
-	type ProbeEvent,
-	type StepId,
-} from './gears-probe';
+import { writesPerShift, type StepId } from './gears-probe';
+import { dryRunOn } from './gears-probe.test-helper';
 
 /**
  * The Gears probe's dry run (#3331): every step, end to end, against the
@@ -17,22 +13,8 @@ describe('the Gears probe on the SimulatedTrainer', () => {
 	beforeEach(() => vi.useFakeTimers());
 	afterEach(() => vi.useRealTimers());
 
-	async function dryRun(id: StepId) {
-		const trainer = new SimulatedTrainer({ cadence: 85, rng: () => 0.5 });
-		await trainer.connect();
-		const events: ProbeEvent[] = [];
-		const step = GEARS_PROBE.find((s) => s.id === id)!;
-		// The simulator ticks for ever, so time is stepped until the step settles.
-		let done = false;
-		void runProbeStep(step, trainer, (e) => events.push(e)).then(
-			() => (done = true),
-		);
-		for (let i = 0; i < 4_000 && !done; i++)
-			await vi.advanceTimersByTimeAsync(1_000);
-		expect(done, `${id} never finished`).toBe(true);
-		await trainer.disconnect();
-		return { trainer, events };
-	}
+	const dryRun = (id: StepId) =>
+		dryRunOn(new SimulatedTrainer({ cadence: 85, rng: () => 0.5 }), id);
 
 	it.each(GEARS_PROBE.filter((s) => s.run).map((s) => s.id))(
 		'runs %s, logging every write with the whole road, the wheel, k and the time',
