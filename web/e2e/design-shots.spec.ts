@@ -1773,6 +1773,12 @@ surface(
 			// multi:ride-session-deck-playlists — the queue saved, and that
 			// playlist open in the sheet.
 			await s.shot(coach);
+			// multi:ride-session-flat-wide — the same frame in a wide desk
+			// window, where the panels had stretched across it (#4159).
+			await coach.page.setViewportSize({ width: 2000, height: 1150 });
+			await coach.page.waitForTimeout(500);
+			await s.shot(coach, { name: 'ride-session-flat-wide' });
+			await coach.page.setViewportSize(DESK.viewport!);
 			await fold.click();
 			await s.shot(coach, { name: 'ride-session-deck' });
 			await coach.page
