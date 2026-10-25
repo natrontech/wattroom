@@ -22,6 +22,7 @@
 	import BiasTrim from '$lib/session/BiasTrim.svelte';
 	import BikeComputer from '$lib/session/BikeComputer.svelte';
 	import { climbView, landed } from '$lib/ride/climb-view';
+	import { NO_GATES } from '$lib/road/gates';
 	import { mapView } from '$lib/ride/map-view';
 	import RideNarrator from '$lib/ride/RideNarrator.svelte';
 	import { watchClimbCues } from '$lib/ride/climb-cues.svelte';
@@ -257,7 +258,7 @@
 					metre={() => channel.ridden ?? { m: 0, mps: 0 }}
 					bunch={() => channel.ridden?.bunch ?? null}
 					loop={channel.ridden.loop}
-					gates={() => channel.ridden?.gates ?? []}
+					gates={() => channel.ridden?.gates ?? NO_GATES}
 					watts={channel.you.watts}
 					silent={channel.youStale}
 					ftp={channel.you.ftp}

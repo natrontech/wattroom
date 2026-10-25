@@ -13,7 +13,7 @@ import {
 	ReferenceRiderWatts,
 } from '$lib/protocol';
 import { formatClock } from '$lib/format';
-import { blockLabel, blockWatts, repOf } from '$lib/workout/block';
+import { blockLabel, blockWatts, repOf, targetOf } from '$lib/workout/block';
 import { segmentsDuration, targetAt } from '$lib/workout/engine';
 import { roadSecond } from '$lib/workout/road-workout';
 import type { Segment, Workout } from '$lib/workout/types';
@@ -72,13 +72,17 @@ export type Ahead = {
 	reach(aheadM: number): { inS: number; index: number } | null;
 };
 
-/** The watts a workout second prescribes this pacer; null where it prescribes none, which holds the speed. */
+/**
+ * The watts a workout second prescribes this pacer, unrounded as the hub
+ * steps its bunch; null where it prescribes none, which holds the speed.
+ */
 function wattsAt(segments: Segment[], t: number, p: Pacer): number | null {
 	const info = targetAt(segments, p.ftp, t, { bias: p.bias });
 	if (info.done) return null;
-	if (info.targetWatts !== null) return info.targetWatts;
 	// A sprint rides at the bunch's most (ADR-0065's table), as Terrain Match times one.
-	return info.segment.kind === 'sprint' ? BunchMaxPct * p.ftp : null;
+	if (info.segment.kind === 'sprint') return BunchMaxPct * p.ftp;
+	if (info.targetWatts === null) return null;
+	return targetOf(info.segment, t, p.ftp, p.bias);
 }
 
 export function rideAhead(plan: Plan): Ahead {
@@ -124,12 +128,19 @@ export function rideAhead(plan: Plan): Ahead {
 		reach(aheadM) {
 			const k = trail.findIndex((d) => d >= aheadM);
 			if (k < 0) return null;
-			if (k === 0) return { inS: 0, index: blocks[0] };
-			const f = (aheadM - trail[k - 1]) / (trail[k] - trail[k - 1]);
-			return { inS: k - 1 + f, index: blocks[k] };
+			const inS =
+				k === 0
+					? 0
+					: k - 1 + (aheadM - trail[k - 1]) / (trail[k] - trail[k - 1]);
+			// The block begun by then, to the fraction of a second a gate stands at.
+			const begun = gates.findLast((g) => g.inS <= inS);
+			return { inS, index: begun?.index ?? blocks[0] };
 		},
 	};
 }
+
+/** No gates: one array, so a world that reads it every frame repaints nothing. */
+export const NO_GATES: readonly PaintedGate[] = [];
 
 /** A gate as the world paints it. */
 export type PaintedGate = {

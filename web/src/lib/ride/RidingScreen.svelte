@@ -35,7 +35,8 @@
 	import Skyline from '$lib/ride/Skyline.svelte';
 	import { skylineOf } from '$lib/workout/road-workout';
 	import { climbView, landed } from '$lib/ride/climb-view';
-	import { blocksAhead } from '$lib/road/gates';
+	import { blocksAhead, NO_GATES } from '$lib/road/gates';
+	import { untrack } from 'svelte';
 	import { BikeKg } from '$lib/protocol';
 	import { mapView } from '$lib/ride/map-view';
 	import { MAP_ASK } from '$lib/session/computer-pages';
@@ -166,7 +167,10 @@
 		return blocksAhead(
 			{
 				segments: session.segments,
-				t: session.elapsed,
+				// Read as the dot moves, never as the clock ticks: the two run on
+				// their own phases, and pairing a new second with an old metre slid
+				// every gate a second of road back and forth.
+				t: untrack(() => session.elapsed),
 				m: on.along,
 				mps: on.mps,
 				road: on.road,
@@ -290,7 +294,7 @@
 				countIn={countIn
 					? { left: countIn.remaining, total: COUNTDOWN_SECONDS }
 					: null}
-				gates={() => ahead?.gates ?? []}
+				gates={() => ahead?.gates ?? NO_GATES}
 				onfail={world.fail}
 				onflat={world.flatten}
 			/>

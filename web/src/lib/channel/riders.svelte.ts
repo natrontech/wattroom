@@ -204,7 +204,14 @@ export function createRiders(deps: RiderDeps) {
 			deps.workout(),
 			{ ftp: you.ftp, bias: deps.bias() },
 		);
-		return { ...place, bunch, ...ahead };
+		// Your place rides your elastic offset from the bunch the plan paces.
+		const offset = bunch?.offsets[you.id] ?? 0;
+		return {
+			...place,
+			bunch,
+			gates: ahead.gates,
+			lands: (toFootM: number) => ahead.lands(toFootM + offset),
+		};
 	});
 	// Your race, while you race one (#3174): the RACE page's and the radio's.
 	const race = $derived(raceOf(deps.live.tick, you.id));

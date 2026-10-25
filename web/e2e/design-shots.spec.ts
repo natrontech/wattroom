@@ -242,10 +242,16 @@ surface(
 		await s.shot(o, { name: 'world-finish' });
 		// multi:ride-road-world-gate — item 34: Smoke Test's second block starts
 		// at 30 s, so a few seconds in it is painted on the road ahead (#3101).
+		// Its first block's 0:30 left already reads as a clock past any early
+		// second, so the shot waits out the count-in instead.
 		await ride(o.page, `/ride?w=smoke-test&road=${road}&from=0`, {
-			second: 6,
+			second: 0,
 		});
+		const countIn = o.page.getByTestId('count-in');
+		await countIn.waitFor({ timeout: 15_000 }).catch(() => undefined);
+		await countIn.waitFor({ state: 'detached', timeout: 30_000 });
 		await assertRiding(o.page, true);
+		await o.page.waitForTimeout(2000);
 		await s.shot(o, { name: 'ride-road-world-gate' });
 	},
 	{ once: true },

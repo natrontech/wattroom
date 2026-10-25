@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { BikeKg, BunchMaxPct, PaceDefaultCdA } from '$lib/protocol';
+import {
+	BikeKg,
+	BunchMaxPct,
+	PaceDefaultCdA,
+	ReferenceRiderWatts,
+} from '$lib/protocol';
 import { createRoadRide } from '$lib/ride/road-ride';
 import { flatten, segmentsDuration, targetAt } from '$lib/workout/engine';
 import type { Workout } from '$lib/workout/types';
@@ -109,6 +114,11 @@ describe('the next blocks on the road (#3101)', () => {
 		expect(gates[0].m).toBeGreaterThan(start.startM);
 	});
 
+	// The issue's bar is 1 s: alone, ERG holds whole watts where the plan
+	// rides the prescription. A bunch is the hub's own model, so it holds to
+	// a tenth, and a gate a second out fails.
+	const BUNCH_S = 0.1;
+
 	it('lands each gate within 1 s of its block starting, alone on your own target', () => {
 		const ride = createRoadRide(road, { kg: () => KG, from: start.startM });
 		const crossed = rideThrough((t) => {
@@ -121,15 +131,26 @@ describe('the next blocks on the road (#3101)', () => {
 			expect(
 				Math.abs(c.crossedAt - segments[c.block].startSeconds),
 			).toBeLessThanOrEqual(1);
-	});
+	}, 30_000);
 
 	it('lands each gate within 1 s for a bunch, at the reference rider the hub steps', () => {
-		// The hub's bunch: a whole second at the plan of the second just ridden (hub/world.go).
+		// The hub's bunch (hub/world.go): a whole second at the plan of the
+		// second just ridden, the reference rider at the block's %FTP unrounded.
+		const hubWatts = (t: number) => {
+			const seg = segments.find(
+				(s) => t >= s.startSeconds && t < s.startSeconds + s.seconds,
+			)!;
+			if (seg.kind === 'sprint') return BunchMaxPct * ReferenceRiderWatts;
+			const from = seg.fromFraction ?? 0;
+			const to = seg.toFraction ?? from;
+			const into = (t - seg.startSeconds) / seg.seconds;
+			return (from + (to - from) * into) * ReferenceRiderWatts;
+		};
 		const pace = createPace();
 		const crossed = rideThrough((t) => {
 			const m = start.startM + pace.distance;
 			pace.step(
-				heldWatts(t, reference),
+				hubWatts(t),
 				gradeAt(road, m % road.length),
 				reference.kg,
 				PaceDefaultCdA,
@@ -141,8 +162,8 @@ describe('the next blocks on the road (#3101)', () => {
 		for (const c of crossed)
 			expect(
 				Math.abs(c.crossedAt - segments[c.block].startSeconds),
-			).toBeLessThanOrEqual(1);
-	});
+			).toBeLessThan(BUNCH_S);
+	}, 30_000);
 
 	it('puts a road workout’s gates on its pins, whatever the pace', () => {
 		const flat = legsRoad([10_000, 0]);

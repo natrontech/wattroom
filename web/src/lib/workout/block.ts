@@ -92,8 +92,13 @@ export function blockBands(block: Block | null, cadence: number, hr: number) {
 const samePath = (a: number[], b: number[]) =>
 	a.length === b.length && a.every((n, i) => n === b[i]);
 
-/** The target a segment prescribed at workout-clock second `t`, with the rider's bias. */
-function targetOf(seg: Segment, t: number, ftp: number, bias: number): number {
+/** The target a segment prescribed at workout-clock second `t`, with the rider's bias, unrounded. */
+export function targetOf(
+	seg: Segment,
+	t: number,
+	ftp: number,
+	bias: number,
+): number {
 	if (seg.watts !== undefined) return seg.watts * bias;
 	const from = seg.fromFraction ?? 0;
 	const to = seg.toFraction ?? from;
