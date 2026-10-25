@@ -39,10 +39,11 @@ export async function drawing(page: Page): Promise<void> {
 /**
  * Still riding the road, in the world or on the Skyline the world handed it
  * to for missed frames — which software GL does seconds in (#3877), and which
- * is the app judging right. Any other reason is a failure.
+ * is the app judging right. Any other reason is a failure. `stop` is the
+ * ride's own way out: End ride alone, Leave the ride in a session.
  */
-export async function onTheRoad(page: Page): Promise<void> {
-	await expect(page.getByRole('button', { name: 'End ride' })).toBeVisible();
+export async function onTheRoad(page: Page, stop = 'End ride'): Promise<void> {
+	await expect(page.getByRole('button', { name: stop })).toBeVisible();
 	const flat = page.getByTestId('flat-road');
 	if (await flat.count()) await expect(flat).toHaveText(/dropped frames/);
 	else await expect(page.locator(WORLD)).toBeVisible();
