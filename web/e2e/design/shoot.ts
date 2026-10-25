@@ -73,7 +73,7 @@ export const DESK_720: BrowserContextOptions = {
 export const TV: BrowserContextOptions = {
 	viewport: { width: 1920, height: 1080 },
 };
-export const HUD_SHELL = { width: 320, height: 132 };
+export const HUD_SHELL = { width: 320, height: 152 };
 const SHOT_TIMEOUT_MS = 60_000;
 
 /**

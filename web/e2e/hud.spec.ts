@@ -31,12 +31,36 @@ test('the HUD waits, then shows what the riding screen publishes', async ({
 		});
 	});
 	await expect(page.getByTestId('hud-watts')).toHaveText('245');
-	await expect(page.getByTestId('hud-secondary')).toHaveText(
-		'88 rpm · 142 bpm',
-	);
+	await expect(page.getByTestId('hud-cadence')).toHaveText('88 rpm');
+	await expect(page.getByTestId('hud-heart')).toHaveText('142 bpm');
+	// A feed older than the zones still draws, without the strip.
+	await expect(page.getByTestId('hud-zones')).toHaveCount(0);
 	await expect(page.getByTestId('hud-target')).toContainText('230');
 	await expect(page.getByTestId('hud-remaining')).toHaveText('12:34 left');
 	await expect(page.getByTestId('hud-label')).toHaveText('Sweet Spot');
+
+	// The zone strip (#4099): seven segments, the current one lit, and the
+	// time held beside it.
+	await rider.evaluate(() => {
+		new BroadcastChannel('wattroom.hud').postMessage({
+			at: Date.now(),
+			watts: 245,
+			target: 230,
+			remaining: 750,
+			label: 'Sweet Spot',
+			heartRate: 150,
+			heartZone: 3,
+			zone: 4,
+			zoneSeconds: 83,
+		});
+	});
+	const zones = page.getByTestId('hud-zones');
+	await expect(page.getByTestId('hud-zone-time')).toHaveText('Z4 1:23');
+	await expect(zones.locator('span[class*="bg-z"]')).toHaveCount(7);
+	await expect(zones.locator('[data-lit]')).toHaveClass(/bg-z4/);
+	await expect(page.getByTestId('hud-secondary')).toHaveText(
+		/^\s*230\s*target\s*150\s*bpm\s*$/,
+	);
 
 	// On target is docs/SPEC.md's band, the one the riding screen scores with
 	// (#2159). 128 W against a 120 W target is 8 W out: inside the ±10 W
@@ -74,14 +98,32 @@ test('the HUD waits, then shows what the riding screen publishes', async ({
 	await expect(page.getByTestId('hud-quiet')).toBeVisible({ timeout: 8000 });
 });
 
+/** Rows outside the block's padding, or the block outside the window. */
+function clippedRows() {
+	const el = document.querySelector('.hud')!;
+	const hud = el.getBoundingClientRect();
+	const pad = getComputedStyle(el);
+	const top = hud.top + parseFloat(pad.paddingTop);
+	const bottom =
+		Math.min(hud.bottom, innerHeight) - parseFloat(pad.paddingBottom);
+	const right = Math.min(hud.right, innerWidth) - parseFloat(pad.paddingRight);
+	return [...el.querySelectorAll('*')]
+		.map((child) => ({ child, r: child.getBoundingClientRect() }))
+		.filter(
+			({ r }) =>
+				r.width > 0 &&
+				(r.top < top - 0.5 || r.bottom > bottom + 0.5 || r.right > right + 0.5),
+		)
+		.map(({ child }) => child.getAttribute('data-testid') ?? child.tagName);
+}
+
 /**
- * On a road (#3092): row 3 is the road — the grade under the rider and, on a
- * classed climb, how far to its top — the next 2 km draw as 20 bars in the
- * grade ramp, and the clock moves up beside the label so the shell's
- * 320×132 window still holds it all.
+ * On a road (#3092): the grade under the rider and, on a classed climb, how
+ * far to its top, then the next 2 km as 20 bars in the grade ramp, and the
+ * zone strip under them: the fullest the shell's 320×152 window gets.
  */
 test('the HUD draws the road a ride is on', async ({ context, page }) => {
-	await page.setViewportSize({ width: 320, height: 132 });
+	await page.setViewportSize({ width: 320, height: 152 });
 	await signInAs(page, 'HUD Roadie', '/hud');
 	await expect(page.getByTestId('hud-quiet')).toBeVisible();
 
@@ -96,6 +138,8 @@ test('the HUD draws the road a ride is on', async ({ context, page }) => {
 			elapsed: 1800,
 			label: 'Free ride',
 			cadence: 92,
+			zone: 5,
+			zoneSeconds: 754,
 			road: {
 				grade: 8.94,
 				km: 12.4,
@@ -107,19 +151,43 @@ test('the HUD draws the road a ride is on', async ({ context, page }) => {
 		});
 	});
 	await expect(page.getByTestId('hud-road')).toHaveText('8.9 % · top 6.0 km');
-	// Heart rate only with a source; cadence beside the grade, inside the
-	// shell's window and clear of the grade line.
-	const secondary = page.getByTestId('hud-secondary');
-	await expect(secondary).toHaveText('92 rpm');
-	const grade = await page.getByTestId('hud-road').boundingBox();
-	const beside = await secondary.boundingBox();
-	expect(beside!.x).toBeGreaterThan(grade!.x + grade!.width);
-	expect(beside!.x + beside!.width).toBeLessThanOrEqual(320);
+	// Heart rate only with a source. Exact text, not a count of nothing: a
+	// count of 0 also passes once the HUD goes quiet.
+	await expect(page.getByTestId('hud-secondary')).toHaveText(
+		/^\s*92\s*rpm\s*$/,
+	);
 	await expect(page.getByTestId('hud-remaining')).toHaveText('30:00 ridden');
-	const strip = page.getByTestId('hud-ahead');
-	await expect(strip.locator('rect')).toHaveCount(20);
-	const box = await strip.boundingBox();
-	expect(box && box.y + box.height).toBeLessThanOrEqual(132);
+	await expect(page.getByTestId('hud-ahead').locator('rect')).toHaveCount(20);
+	await expect(page.getByTestId('hud-zone-time')).toHaveText('Z5 12:34');
+	// Nothing clipped: every row inside the block's padding, which is
+	// inside the window.
+	const clipped = await page.evaluate(clippedRows);
+	expect(clipped).toEqual([]);
+
+	// A lost trainer takes the strip's row, and still fits.
+	await rider.evaluate(() => {
+		new BroadcastChannel('wattroom.hud').postMessage({
+			at: Date.now(),
+			watts: 0,
+			target: 0,
+			remaining: 0,
+			elapsed: 1801,
+			label: 'Free ride',
+			cadence: 0,
+			zone: 0,
+			fault: 'trainer',
+			road: {
+				grade: 8.94,
+				km: 12.4,
+				totalKm: 52.9,
+				toTopM: 6000,
+				ahead: Array.from({ length: 20 }, (_, i) => i * 0.7),
+			},
+		});
+	});
+	await expect(page.getByTestId('hud-fault')).toBeVisible();
+	await expect(page.getByTestId('hud-zones')).toHaveCount(0);
+	expect(await page.evaluate(clippedRows)).toEqual([]);
 });
 
 /**
@@ -147,6 +215,11 @@ test('the HUD fills a second screen as one centred block', async ({
 			remaining: 0,
 			elapsed: 480,
 			label: 'Free ride · Corridor loop',
+			cadence: 92,
+			heartRate: 151,
+			heartZone: 3,
+			zone: 4,
+			zoneSeconds: 83,
 			road: {
 				grade: 8.94,
 				km: 12.4,
@@ -165,8 +238,11 @@ test('the HUD fills a second screen as one centred block', async ({
 	expect(block!.x0).toBeGreaterThan(5);
 	expect(Math.abs(block!.x0 - (100 - block!.x1))).toBeLessThanOrEqual(0.5);
 	expect(Math.abs(block!.y0 - (100 - block!.y1))).toBeLessThanOrEqual(0.5);
+	expect(block!.y0).toBeGreaterThan(2);
 	expect(Math.min(...texts.map((t) => t.vh))).toBeGreaterThanOrEqual(2.9);
-	expect(texts.find((t) => t.text === 'ridden')?.vh).toBeGreaterThanOrEqual(9);
+	// SPEC's 9vh is the time's; its word is a unit, at most half (G4).
+	expect(texts.find((t) => t.text === '8:00')?.vh).toBeGreaterThanOrEqual(9);
+	expect(texts.find((t) => t.text === 'ridden')?.vh).toBeLessThanOrEqual(4.5);
 	// The road's name wraps onto a second line rather than truncating away.
 	const label = await page
 		.getByTestId('hud-label')

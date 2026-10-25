@@ -30,8 +30,9 @@ contextBridge.exposeInMainWorld('wattroom', {
 	// lock keeps the screen on; this keeps the machine from sleeping under it.
 	keepAwake: (on) => ipcRenderer.send('wattroom:keep-awake', on),
 	// The floating HUD (ADR-0041): opened by the layout when a ride starts,
-	// closed when it ends or from the HUD's own close button.
-	hud: (on) => ipcRenderer.send('wattroom:hud', on),
+	// closed when it ends or from the HUD's own close button. `background` is
+	// the cave's surface, so the window's first paint is the rider's identity.
+	hud: (on, background) => ipcRenderer.send('wattroom:hud', on, background),
 	// Notifications with a way back (ADR-0042): the shell shows them, and a
 	// click or a typed reply arrives through onNotification.
 	notify: (n) => ipcRenderer.send('wattroom:notify', n),
