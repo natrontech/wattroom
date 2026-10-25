@@ -29,6 +29,7 @@
 	import { mount, type WorldScene } from './scene';
 	import type { RideMetre } from './sim';
 	import type { BunchView } from '$lib/channel/bunch-view';
+	import type { PaintedGate } from '$lib/road/gates';
 	import { account } from '$lib/account.svelte';
 	import { prefersReducedMotion } from '$lib/motion';
 	import { play } from '$lib/sound/cues';
@@ -49,6 +50,7 @@
 		camera,
 		countIn = null,
 		ghosts,
+		gates,
 		onfail,
 		onflat,
 	}: {
@@ -76,6 +78,8 @@
 		countIn?: { left: number; total: number } | null;
 		/** Your ghosts on a solo ride of your own road, where each is now (#3245); absent, the world has none. */
 		ghosts?: () => RideMetre[];
+		/** A workout's next blocks on this road (#3101), in the ride's metres. */
+		gates?: () => readonly PaintedGate[];
 		onfail: (why: Failure) => void;
 		/** The rider asked for the flat road on this device. */
 		onflat: () => void;
@@ -109,6 +113,7 @@
 					loop,
 					countIn: () => counting,
 					ghosts,
+					gates,
 					camera: camera ?? (look === 'steady' ? 'steady' : 'chase'),
 					light: look === 'light',
 					steady: () => prefersReducedMotion.current || look === 'steady',

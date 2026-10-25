@@ -36,7 +36,7 @@ resistance, nothing it does reaches a trainer, and it picks **when, never who**
   bunch, moved at most once per **60 s**.
 - **Paint**: **6** stamps per spectator, one per climb, ahead of the riders;
   at most **12** live on the road. The stamps are a closed
-  set of chalk (Jan, 2026-10-06): an arrow, a heart, *Allez*, *Hopp*, a cowbell
+  set of chalk (Jan, 2026-10-06): an arrow, a heart, _Allez_, _Hopp_, a cowbell
   and a riding rider's initial. Nothing is typed, so nothing needs moderating.
 - **Backing a rider**: **one** per spectator per ride.
 - **Weather**: in rounds of **5 min**.
@@ -139,19 +139,20 @@ window's 4 Hz ticks. Its pace:
 
 A rider's bias never moves the bunch.
 
-| Parameter         | Value                                                                                                                                                                                                                                              |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Offset decay      | τ **20 s**                                                                                                                                                                                                                                         |
-| Offset clamp      | **−10 … +25 m** while pedalling                                                                                                                                                                                                                    |
-| Resting           | a rider silent past **10 s** (the virtual-speed rule) coasts back to **−40 m** and is marked Resting                                                                                                                                               |
-| Team-car tow back | **20 s**; only in bunch rides and ERG sessions — never in a race, a game or a timeable effort; a towed rider gives no shelter                                                                                                                      |
-| Formation         | rows of Drafting's lanes, filled in the order riders joined, centred on the bunch's metre (#3098)                                                                                                                                                  |
-| Front row         | rotates every **120 s** of elapsed time                                                                                                                                                                                                            |
-| Lanes             | a critically damped spring with a **0.6 s** half-life (#3098)                                                                                                                                                                                      |
-| Client snap       | within **25 m** of their place a rider eases there over **5 s**; further, they dither out (**200 ms**) and back in (**300 ms**) there, never sliding through others (#3098); relaxes to **0 %** grade at **1 %/s** after **5 s** of dead reckoning |
-| Late join         | a **3 s** drop-off                                                                                                                                                                                                                                 |
-| KOM sprints       | open **300 m** before the top of a class **III** climb or harder; at most one per **5 min**, **6** per ride                                                                                                                                        |
-| Terrain Match     | **250 m** step; penalty weight **0.3**; suggestion floor **0.2**                                                                                                                                                                                   |
+| Parameter         | Value                                                                                                                                                                                                                                                                    |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Offset decay      | τ **20 s**                                                                                                                                                                                                                                                               |
+| Offset clamp      | **−10 … +25 m** while pedalling                                                                                                                                                                                                                                          |
+| Resting           | a rider silent past **10 s** (the virtual-speed rule) coasts back to **−40 m** and is marked Resting                                                                                                                                                                     |
+| Team-car tow back | **20 s**; only in bunch rides and ERG sessions — never in a race, a game or a timeable effort; a towed rider gives no shelter                                                                                                                                            |
+| Formation         | rows of Drafting's lanes, filled in the order riders joined, centred on the bunch's metre (#3098)                                                                                                                                                                        |
+| Front row         | rotates every **120 s** of elapsed time                                                                                                                                                                                                                                  |
+| Lanes             | a critically damped spring with a **0.6 s** half-life (#3098)                                                                                                                                                                                                            |
+| Client snap       | within **25 m** of their place a rider eases there over **5 s**; further, they dither out (**200 ms**) and back in (**300 ms**) there, never sliding through others (#3098); relaxes to **0 %** grade at **1 %/s** after **5 s** of dead reckoning                       |
+| Late join         | a **3 s** drop-off                                                                                                                                                                                                                                                       |
+| KOM sprints       | open **300 m** before the top of a class **III** climb or harder; at most one per **5 min**, **6** per ride                                                                                                                                                              |
+| Terrain Match     | **250 m** step; penalty weight **0.3**; suggestion floor **0.2**                                                                                                                                                                                                         |
+| Next blocks       | the next **3** blocks painted where each starts, ridden ahead a second at a time at the pace that moves the rider (a bunch: the reference rider; alone: your own target and weight); chevrons over a block's last **100 m**; a sprint's banner from **1 km** out (#3101) |
 
 ## Crew Tour (defaults — tune in alpha; [ADR-0080](../decisions/0080-a-crews-season-is-a-tour.md))
 

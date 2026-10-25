@@ -197,8 +197,8 @@ func (h *Hub) control(c *client, rm *channelState, rider protocol.Rider, cmd pro
 			}
 			route.road = road
 		}
-		if refusal := rm.startGameOn(cmd.GameMode, route, cmd.Minutes, rider, h.now()); refusal != "" {
-			h.writeError(c, "invalid_request", refusal)
+		if code, refusal := rm.startGameOn(cmd.GameMode, route, cmd.Minutes, rider, h.now()); code != "" {
+			h.writeError(c, code, refusal)
 		}
 		return
 	}

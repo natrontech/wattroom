@@ -7,6 +7,8 @@ import { createBunch, type Car } from './bunch';
 import { MOST_ABREAST } from './lanes';
 import { CHEER_S, cheerLook } from './cheer';
 import { makeChalk, type ChalkLayer } from './chalk';
+import { makeGates, type GatesLayer } from './gates';
+import type { PaintedGate } from '$lib/road/gates';
 import { makeGameRoad, type GameRoad } from './game-road';
 import { roadsideSound } from '$lib/roadside';
 import {
@@ -115,6 +117,8 @@ export type MountOptions = {
 	 * where each is now. Each rides see-through in your kit, beside you.
 	 */
 	ghosts?: () => RideMetre[];
+	/** A workout's next blocks on this road (#3101), in the ride's metres: painted where each starts. */
+	gates?: () => readonly PaintedGate[];
 };
 
 export type Moment = { m: number; p: number };
@@ -180,6 +184,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	const scene = new THREE.Scene();
 	// The roadside's chalk, on a bunch's road only (#3029); painted in the style's road line.
 	let chalk: ChalkLayer | null = null;
+	let gates: GatesLayer | null = null;
 	// Near at 1 m: at 0.5 the depth buffer resolved 0.12 m at 1 km, and the
 	// road's shoulder z-fought from about 1.26 km (#3078).
 	const camera = new THREE.PerspectiveCamera(52, 1, CAMERA.near, CAMERA.far);
@@ -236,6 +241,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 			tags?.group,
 			chalk?.group,
 			ghosts?.group,
+			gates?.group,
 		]) {
 			if (!old) continue;
 			scene.remove(old);
@@ -253,6 +259,10 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		if (bunch) {
 			chalk = makeChalk(route, style);
 			scene.add(chalk.group);
+		}
+		if (opts.gates) {
+			gates = makeGates(route, style);
+			scene.add(gates.group);
 		}
 		exponentialFog();
 		scene.fog = new THREE.FogExp2(
@@ -321,6 +331,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		const view = opts.bunch?.();
 		if (bunch && view) ride(view, moment ? 0 : wall);
 		else if (opts.metre) follow(you, opts.metre(), real);
+		gates?.update(opts.gates!(), you.d);
 		const me = crew.update(route, riders, pedal, dt, real, mode === 'orbit');
 		crew.drive(route, car, mode === 'orbit');
 		ghosts?.update(route, ghostsNow(real), dt, mode === 'orbit');
@@ -553,6 +564,11 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 				/** Ghosts drawn, all in one instanced draw (#3245). */
 				ghosts: ghosts?.shown ?? 0,
 				ring: { bandM: RING_BAND_M },
+				/** The blocks painted ahead (#3101): their words and metres ahead of you. */
+				gates: (opts.gates?.() ?? []).map((g) => ({
+					words: g.words,
+					aheadM: Math.round(g.m - you.d),
+				})),
 			};
 		},
 		dispose() {

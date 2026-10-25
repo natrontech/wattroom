@@ -9,6 +9,7 @@ import type { StageSource } from '$lib/channel/stage';
 import type { CrewPlan } from '$lib/crew-schedule';
 import type { FlightRecorder } from '$lib/ride/flightrecorder.svelte';
 import type { Road } from '$lib/road/road';
+import type { PaintedGate } from '$lib/road/gates';
 import type { BunchView } from '$lib/channel/bunch-view';
 import type { RaceReadout } from '$lib/race/race-view';
 
@@ -57,6 +58,10 @@ export interface ChannelContext {
 		loop: boolean;
 		/** Everyone on the road with you (#3098). */
 		bunch: BunchView | null;
+		/** The session's next blocks on the road (#3101): painted where each starts. */
+		gates: PaintedGate[];
+		/** The climb card's line: the block that lands on a climb that far ahead. */
+		lands: (toFootM: number) => string | null;
 	} | null;
 	/** Your race, while you race one (#3174); null otherwise. */
 	readonly race: RaceReadout | null;
