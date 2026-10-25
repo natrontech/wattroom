@@ -24,6 +24,13 @@ test.skip(
 	'the ?as= dev provider only exists on a dev server',
 );
 
+/**
+ * A rider of its own per repeat: two of one rider riding at once is a ride
+ * the saver refuses. A letter, because a digit folds a dev rider into Dev Rider.
+ */
+const rider = (name: string) =>
+	`${name} ${String.fromCharCode(65 + (test.info().repeatEachIndex % 26))}`;
+
 /** The saver keeps a ride from a minute (docs/SPEC.md's minute rule). */
 const A_MINUTE_MS = 65_000;
 
@@ -88,7 +95,7 @@ test('a free ride on your road draws the world, shifts, and saves against the ro
 	page,
 }) => {
 	test.setTimeout(240_000);
-	const road = await rideMyRoad(page, 'World Road Rider');
+	const road = await rideMyRoad(page, rider('World Road Rider'));
 	await drawing(page);
 
 	// The world moves you along the road it drew.
@@ -145,7 +152,7 @@ test('a workout on your road heads its block and km, holds ERG, and saves agains
 }) => {
 	test.setTimeout(240_000);
 	await worldOn(page);
-	await signInAs(page, 'World Workout Rider', '/ride');
+	await signInAs(page, rider('World Workout Rider'), '/ride');
 	// Openers, ended by hand: the one-minute fixture loses its first seconds
 	// to the world's build on software GL, and falls under the minute rule.
 	const road = await openAWorkoutOnARoad(page);
@@ -189,7 +196,7 @@ for (const [width, height] of [
 		page,
 	}) => {
 		await page.setViewportSize({ width, height });
-		await rideMyRoad(page, 'World Size Rider');
+		await rideMyRoad(page, rider('World Size Rider'));
 		await drawing(page);
 		const off = await page.evaluate(
 			({ width }) =>
@@ -254,7 +261,7 @@ test('a hidden tab stops the world drawing, and the ride keeps its time @world',
 	page,
 }) => {
 	test.setTimeout(180_000);
-	await rideMyRoad(page, 'World Hidden Rider');
+	await rideMyRoad(page, rider('World Hidden Rider'));
 	await drawing(page);
 	// Hidden at once: a hidden second is no evidence for the frame judge, so
 	// software GL cannot hand the ride on while the tab is away.
@@ -286,7 +293,7 @@ test('a trainer that falls silent on your road holds the ride and offers one but
 	page,
 }) => {
 	await worldOn(page);
-	await signInAs(page, 'World Silent Rider', '/ride');
+	await signInAs(page, rider('World Silent Rider'), '/ride');
 	await page.route('**/fixtures/world-silence.json', (route) =>
 		route.fulfill({ json: SILENCE }),
 	);
