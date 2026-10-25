@@ -453,3 +453,11 @@ own ride.
 
 The object model gains the **open ride**: a planned session a crew opened to
 everyone, run in an **open-ride room** of its own beside the voice channels.
+
+## Amendment, 2026-10-25 (#4164): one rider, one voice ([ADR-0089](0089-one-rider-one-voice.md))
+
+"Who is in it" counts riders, not screens. One of a rider's screens carries
+their voice and camera in the call; their other screens in the same voice
+channel or its session are controllers, with no call of their own. The hub
+holds which screen that is, as it holds the trainer
+([0025](0025-one-sensor-one-screen.md)).

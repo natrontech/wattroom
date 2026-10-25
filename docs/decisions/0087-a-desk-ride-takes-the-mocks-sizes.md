@@ -20,3 +20,7 @@ The sidebar, the people column (jukebox, soundboard, the rider list) and the con
 - `nav/cave-sizes.ts` and `channel/rail-size.ts` are gone, along with the size-only `cave:` utilities. `cave:hidden` stays.
 - The design probe exempts the sidebar, the people column and menus from the ride's word floor.
 - Amends the sizing parts of #3770, #3828, #3758 and #3943. G1's spectator line from #3029 now covers riders on the session, a rider a game put out among them.
+
+## Amendment, 2026-10-25 (#4160)
+
+The chrome no longer takes a dark scheme on a ride: the ride keeps the rider's scheme ([ADR-0005](0005-synthwave-visual-identity.md), amended the same day). `cave:hidden` is `ride:hidden`, keyed on the frame's `data-ride`.

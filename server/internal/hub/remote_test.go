@@ -1,8 +1,17 @@
 package hub
 
 import (
+	"context"
 	"encoding/json"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
+
+	"github.com/coder/websocket"
+	"github.com/coder/websocket/wsjson"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
 )
@@ -169,5 +178,66 @@ func TestALateScreenIsToldWhatTheTrainerHolderHolds(t *testing.T) {
 	r.rm.mu.Unlock()
 	if _, held := got.Elsewhere["trainer"]; !queued || !held {
 		t.Fatalf("the late screen was queued %+v (queued %v), want the trainer held elsewhere", got, queued)
+	}
+}
+
+// readUntil reads conn until a frame satisfies want, or nil once within passes.
+func readUntil(t *testing.T, conn *websocket.Conn, within time.Duration, want func(protocol.ServerMessage) bool) *protocol.ServerMessage {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(t.Context(), within)
+	defer cancel()
+	for {
+		var msg protocol.ServerMessage
+		if err := wsjson.Read(ctx, conn, &msg); err != nil {
+			return nil
+		}
+		if want(msg) {
+			return &msg
+		}
+	}
+}
+
+// TestRemoteOverTheWire is Jan's ride (#4163) on real sockets: a desktop
+// holding the trainer, the same rider's phone pressing Bias + and Talk, and
+// a crewmate who must hear none of it.
+func TestRemoteOverTheWire(t *testing.T) {
+	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/lounge"
+
+	desk := dial(t, url, "jan:member")
+	phone := dial(t, url, "jan:member")
+	crewmate := dial(t, url, "sam:member")
+	send := func(conn *websocket.Conn, msg protocol.ClientMessage) {
+		t.Helper()
+		if err := wsjson.Write(t.Context(), conn, msg); err != nil {
+			t.Fatalf("write: %v", err)
+		}
+	}
+	send(desk, protocol.ClientMessage{Sensors: &protocol.SensorClaim{Held: []string{"trainer"}, Tab: "desk", Device: "desktop"}})
+	// The phone learns the desk holds the trainer: what draws its offer.
+	send(phone, protocol.ClientMessage{Sensors: &protocol.SensorClaim{Tab: "phone", Device: "phone"}})
+	if readUntil(t, phone, 5*time.Second, func(m protocol.ServerMessage) bool {
+		return m.Pairing != nil && m.Pairing.Elsewhere["trainer"] != ""
+	}) == nil {
+		t.Fatal("the phone never heard that another of its rider's screens holds the trainer")
+	}
+
+	isRemote := func(action string) func(protocol.ServerMessage) bool {
+		return func(m protocol.ServerMessage) bool { return m.Remote != nil && m.Remote.Action == action }
+	}
+	for _, action := range []string{"harder", "talk-down", "talk-up"} {
+		send(phone, protocol.ClientMessage{Remote: &protocol.RemoteCommand{Action: action}})
+		if readUntil(t, desk, 5*time.Second, isRemote(action)) == nil {
+			t.Fatalf("the desk never heard %s from the phone", action)
+		}
+	}
+	if got := readUntil(t, crewmate, 1500*time.Millisecond, func(m protocol.ServerMessage) bool {
+		return m.Remote != nil
+	}); got != nil {
+		t.Errorf("a crewmate heard the phone's %+v", got.Remote)
 	}
 }

@@ -175,3 +175,31 @@ only. **Only live data glows**: in the world that is the rider's own trail and
 dot (the followed rider's, on a spectator's screen); lamps, windows and fires
 are flat colour, with no bloom and no emissive materials. Warm light in the
 world sits at an OKLCH hue of 58–60°, clear of every dark identity's watt.
+
+## Amendment, 2026-10-25 (#4160): a ride keeps the rider's scheme
+
+Jan, riding a crew session on 2026.10.3 in the desktop app with a light
+scheme: "why is new session making room dark wtf". The forced-dark ride
+ends.
+
+- **A ride follows the rider's scheme**, as every desk surface does: the
+  theme toggle, else the OS. Starting or joining a session, a solo ride or a
+  ramp test leaves the scheme alone, and so do the sidebar, the menus and the
+  dialogs opened mid-ride. The app layout marks the ride's frame with
+  `data-ride`, which takes the desk's sentences off it (`ride:hidden`,
+  TARGETS G4) and changes no colour.
+- **The cave stays where distance is the design**: TV mode, `/hud` and the
+  desktop HUD window, plus camera frames (#2668) and the brand pages. `.cave`
+  still resolves the dark member of the rider's identity there.
+- **The world keeps its blue hour** in either scheme ([ADR-0072](0072-light-in-the-world.md)):
+  its accents and name tags are read inside the cave, so they stay the dark
+  half on a light page, and so does the count-in digit standing in it.
+- **Glow follows the family**: a light ride glows nothing, as any light
+  surface, and saturation marks its live data (the #113 rule for daylight).
+  G2's restraint is unchanged.
+
+Superseded: "the cave never sees daylight — and the cave is the RIDE" and
+"ride legibility was designed against black" (#113), "`.cave` still forces
+dark and ignores the toggle" for the ride (#230), and "so a ride never takes
+on a white surface" (#331). ADR-0072's "the cave never sees daylight" holds
+for the world's sky, not for the app around it.

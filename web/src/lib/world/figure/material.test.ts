@@ -182,7 +182,8 @@ describe('the toon figure material', () => {
 		);
 		expect(sh.vertexShader).toContain('vAux = aux;');
 		expect(sh.fragmentShader).toContain('float blurWin(');
-		expect(sh.fragmentShader).toContain('diffuseColor.a = cov;');
+		// Coverage scales the figure's own opacity: a see-through ghost's spokes stay see-through (#3245).
+		expect(sh.fragmentShader).toContain('diffuseColor.a *= cov;');
 		expect(sh.fragmentShader).toContain('uRimSun * clamp(dot(normal, uSunV)');
 		expect(Object.keys(sh.uniforms)).toEqual(
 			expect.arrayContaining([

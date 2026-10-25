@@ -52,47 +52,64 @@ export function probe(corridor: Box) {
 			.map((n) => n.textContent)
 			.join('')
 			.trim();
-	const cave = document.querySelector('.cave');
-
-	// G1: the lightest surface under a 6 × 5 grid of points, the world excepted.
-	// A surface is a large box: a zone bar or a chip on it is not.
+	// G1: the lightest and the darkest surface under a 6 × 5 grid of points.
+	// A surface is a large box: a zone bar or a chip on it is not. A ride keeps
+	// the capture's scheme (#4160); TV mode and the HUD are the cave, dark in
+	// either. The world, a camera frame and a video are not surfaces: a
+	// canvas, a cave smaller than half the window, a video's black ground.
+	const area = innerWidth * innerHeight;
+	const notSurface = (el: Element) => {
+		if (el.closest('canvas, video, iframe')) return true;
+		const frame = el.closest('.cave')?.getBoundingClientRect();
+		return !!frame && frame.width * frame.height < 0.5 * area;
+	};
 	let maxL = 0;
+	let minL = 1;
 	for (const fx of [0.02, 0.2, 0.4, 0.6, 0.8, 0.98])
 		for (const fy of [0.02, 0.25, 0.5, 0.75, 0.98]) {
 			let el = document.elementFromPoint(fx * innerWidth, fy * innerHeight);
-			if (!el || el.closest('canvas')) continue;
+			if (!el || notSurface(el)) continue;
 			let bg: Rgba | null = null;
 			for (; el; el = el.parentElement) {
 				const r = el.getBoundingClientRect();
-				if (r.width * r.height < 0.05 * innerWidth * innerHeight) continue;
+				if (r.width * r.height < 0.05 * area) continue;
 				const c = rgba(getComputedStyle(el).backgroundColor);
 				if (c.a > 0.5) {
 					bg = c;
 					break;
 				}
 			}
-			maxL = Math.max(
-				maxL,
-				lightness(
-					bg ??
-						rgba(getComputedStyle(document.documentElement).backgroundColor),
-				),
+			if (bg && bg.r + bg.g + bg.b === 0) continue;
+			const l = lightness(
+				bg ?? rgba(getComputedStyle(document.body).backgroundColor),
 			);
+			maxL = Math.max(maxL, l);
+			minL = Math.min(minL, l);
 		}
 
-	// G2: what is in watt, and what glows. The token is read inside the cave,
-	// where it may differ from the desk's.
-	const swatch = document.createElement('span');
-	swatch.style.color = 'var(--color-watt)';
-	(cave ?? document.body).append(swatch);
-	const watt = rgba(getComputedStyle(swatch).color);
-	swatch.remove();
+	// G2: what is in watt, and what glows. The token is read twice, as the
+	// page paints it and as the cave does (TV mode, a camera frame), where it
+	// is the dark half even on a light page.
+	const watts = ['', 'cave'].map((className) => {
+		const swatch = document.createElement('span');
+		swatch.className = className;
+		swatch.style.color = 'var(--color-watt)';
+		document.body.append(swatch);
+		const watt = rgba(getComputedStyle(swatch).color);
+		swatch.remove();
+		return watt;
+	});
 	const isWatt = (color: string) => {
 		const c = rgba(color);
 		return (
 			c.a > 0.3 &&
-			Math.abs(c.r - watt.r) + Math.abs(c.g - watt.g) + Math.abs(c.b - watt.b) <
-				24
+			watts.some(
+				(watt) =>
+					Math.abs(c.r - watt.r) +
+						Math.abs(c.g - watt.g) +
+						Math.abs(c.b - watt.b) <
+					24,
+			)
 		);
 	};
 	const glowing = (cs: CSSStyleDeclaration) =>
@@ -169,12 +186,57 @@ export function probe(corridor: Box) {
 		?.getBoundingClientRect();
 	// The flat layout's panels in px (#3670): the gap between neighbours, and
 	// the slack under each one's last child, which is the empty band G3 caps.
+	// A row of panels (#4159) counts each one; a dock inside a dock does not.
 	const flatEl = document.querySelector<HTMLElement>('[data-surface=flat]');
 	const flatPanels = flatEl
-		? [...flatEl.querySelectorAll<HTMLElement>(':scope > [data-dock]')].filter(
-				shown,
+		? [...flatEl.querySelectorAll<HTMLElement>('[data-dock]')].filter(
+				(el) => shown(el) && !el.parentElement?.closest('[data-dock]'),
 			)
 		: [];
+	const boxes = flatPanels.map((el) => el.getBoundingClientRect());
+	// The gap to the nearest panel above that it overlaps (a column's
+	// neighbour), and to the nearest one on its left (a row's).
+	const nearest = (
+		i: number,
+		before: (q: DOMRect, p: DOMRect) => boolean,
+		gap: (q: DOMRect, p: DOMRect) => number,
+	) => {
+		const ds = boxes
+			.filter((q, j) => j !== i && before(q, boxes[i]))
+			.map((q) => gap(q, boxes[i]));
+		return ds.length ? round(Math.min(...ds)) : null;
+	};
+	const overlapX = (q: DOMRect, p: DOMRect) =>
+		q.left < p.right && q.right > p.left;
+	const overlapY = (q: DOMRect, p: DOMRect) =>
+		q.top < p.bottom && q.bottom > p.top;
+	// The widest stripe down a panel that nothing drawn reaches into (#4159):
+	// G3's band, sideways. What is drawn is a box with its own text, an empty
+	// box, or a picture; a container spanning the row would hide the stripe,
+	// and so would a tap target laid over the whole panel (ADR-0071's page turn).
+	const drawn = (c: Element) =>
+		!c.parentElement?.closest('svg') &&
+		(c.matches('svg, img, video, canvas, input') ||
+			!!ownText(c) ||
+			![...c.children].some(shown));
+	const bandX = (el: Element, r: DOMRect) => {
+		const covers = (b: DOMRect) =>
+			b.width >= 0.9 * r.width && b.height >= 0.9 * r.height;
+		const runs = [...el.querySelectorAll('*')]
+			.filter((c) => shown(c) && drawn(c))
+			.filter(
+				(c) => !(c.matches('button') && covers(c.getBoundingClientRect())),
+			)
+			.map((c) => c.getBoundingClientRect())
+			.sort((a, b) => a.left - b.left);
+		let reach = r.left;
+		let band = 0;
+		for (const c of runs) {
+			band = Math.max(band, c.left - reach);
+			reach = Math.max(reach, c.right);
+		}
+		return round(Math.max(band, r.right - reach));
+	};
 	const flat = flatEl
 		? {
 				panels: flatPanels.map((el) => {
@@ -188,18 +250,31 @@ export function probe(corridor: Box) {
 					return {
 						dock: el.dataset.dock,
 						top: round(r.top),
+						left: round(r.left),
+						width: round(r.width),
 						height: round(r.height),
 						slack: round(Math.max(0, r.bottom - last)),
+						bandX: bandX(el, r),
 					};
 				}),
-				gaps: flatPanels
-					.slice(1)
-					.map((el, i) =>
-						round(
-							el.getBoundingClientRect().top -
-								flatPanels[i].getBoundingClientRect().bottom,
+				gaps: boxes
+					.map((_, i) =>
+						nearest(
+							i,
+							(q, p) => overlapX(q, p) && q.bottom <= p.top + 1,
+							(q, p) => p.top - q.bottom,
 						),
-					),
+					)
+					.filter((g) => g !== null),
+				gapsX: boxes
+					.map((_, i) =>
+						nearest(
+							i,
+							(q, p) => overlapY(q, p) && q.right <= p.left + 1,
+							(q, p) => p.left - q.right,
+						),
+					)
+					.filter((g) => g !== null),
 			}
 		: null;
 	const panels = surface
@@ -307,7 +382,11 @@ export function probe(corridor: Box) {
 	const words = sizes.filter((s) => s.wordPx !== null);
 
 	return {
-		cave: { present: !!cave, maxSurfaceL: round(maxL) },
+		scheme: {
+			ride: !!document.querySelector('[data-ride]'),
+			minSurfaceL: round(minL),
+			maxSurfaceL: round(maxL),
+		},
 		overflowX: body
 			? body.scrollWidth - body.clientWidth
 			: root.scrollWidth - root.clientWidth,
@@ -317,6 +396,17 @@ export function probe(corridor: Box) {
 		glows,
 		panels,
 		flat,
+		// How far your ghost's name runs past the Skyline's edges (#3245): 0 inside.
+		ghostLabelOverflow: (() => {
+			const label = document.querySelector(
+				'[data-testid=skyline-ghost] [data-testid=skyline-ghost-label]',
+			);
+			const strip = document.querySelector('[data-testid=skyline]');
+			if (!label || !strip) return null;
+			const l = label.getBoundingClientRect();
+			const s = strip.getBoundingClientRect();
+			return round(Math.max(0, s.left - l.left, l.right - s.right));
+		})(),
 		// How far the computer's page row runs past its panel's padding (#4042).
 		pageRowOverflow: (() => {
 			const row = document.querySelector('[data-testid=computer-page-row]');

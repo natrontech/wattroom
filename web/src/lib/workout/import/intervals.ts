@@ -22,6 +22,7 @@ export const PULL_OUTCOMES: Record<string, string> = {
 	denied:
 		'Nothing was pulled: intervals.icu was not given access to your calendar.',
 	failed: 'intervals.icu did not answer the pull. Try again in a minute.',
+	busy: 'That is a lot of pulls in a few minutes. Wait ten minutes, then pull again.',
 	expired:
 		'That pull took too long or started in another tab. Pull again from here.',
 };

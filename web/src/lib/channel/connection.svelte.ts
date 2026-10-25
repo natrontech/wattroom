@@ -1,3 +1,4 @@
+import { untrack } from 'svelte';
 import { placeOnRoad } from '$lib/channel/road-place';
 import { roadOf } from '$lib/workout/road-workout';
 import { rememberRodeIn } from '$lib/crew-lounge';
@@ -6,6 +7,8 @@ import { createProfileStore } from '$lib/profile.svelte';
 import { spaceBelongsTo } from '$lib/channel/ptt-keys';
 import { gearsEnabled } from '$lib/ride/gears-enabled';
 import { bindShiftKeys, createRemoteRunner } from '$lib/ride/keys';
+import { createTalkOpener } from '$lib/ride/remote-talk';
+import { DEFAULTS } from '$lib/workout/guards';
 import { createRideShift, type RideShift } from '$lib/ride/ride-shift';
 import { pullProfile } from '$lib/profile-sync.svelte';
 import { createChannelLive } from '$lib/channel/live.svelte';
@@ -103,7 +106,8 @@ let statusShown = $state(0);
 type ChannelAv = ReturnType<
 	typeof import('$lib/channel/av.svelte').createChannelAv
 >;
-let createChannelAv: ((address: PlaceAddress) => ChannelAv) | null = null;
+let createChannelAv:
+	typeof import('$lib/channel/av.svelte').createChannelAv | null = null;
 export async function prepareChannelAv(): Promise<void> {
 	if (createChannelAv) return;
 	({ createChannelAv } = await import('$lib/channel/av.svelte'));
@@ -116,7 +120,11 @@ function connect(address: PlaceAddress): Connection {
 		);
 	}
 	const live = createChannelLive(address);
-	const av = createChannelAv(address);
+	// One rider, one voice (ADR-0089): the hub says which screen carries it.
+	const av = createChannelAv(address, {
+		claim: (take) => live.claimVoice(take),
+		release: () => live.releaseVoice(),
+	});
 	// Assigned inside the root below, which runs synchronously.
 	let profile!: ReturnType<typeof createProfileStore>;
 	let recording!: ReturnType<typeof createRecording>;
@@ -275,6 +283,17 @@ function connect(address: PlaceAddress): Connection {
 			void av.setAway(server);
 		});
 
+		// Another of the rider's screens took the voice (ADR-0089): this one
+		// leaves the call, so nothing doubles and nothing echoes, and stays a
+		// controller until it takes the voice back. A join in flight is the
+		// seat's to answer, so only a call already up stands down.
+		$effect(() => {
+			const elsewhere = live.pairing.elsewhere?.voice;
+			if (!elsewhere) return;
+			if (av.status === 'live' || av.status === 'reconnecting')
+				untrack(() => av.leave());
+		});
+
 		// Everything the connection says out loud (connection-cues.svelte.ts).
 		connectionCues({ address, live, av });
 		// A bottle from the roadside waits for this rider's valley (#3022).
@@ -320,13 +339,22 @@ function connect(address: PlaceAddress): Connection {
 
 		// The phone remote's presses, off the tick, through the same inputs as
 		// the keys (#3217). The hub sends them to this tab only while it holds
-		// the trainer.
+		// the trainer. With gears off the phone says Bias, and a tap is what
+		// the ride's own − and + move (#4163): a workout's bias, or the free
+		// ride's watts or grade.
 		const remote = createRemoteRunner(
 			{
-				press: (dir, source) => ride.shifting && shift.press(dir, source),
+				shifts: () => ride.shifting,
+				press: (dir, source) => shift.press(dir, source),
 				release: (source) => shift.release(source),
+				trim: (dir) => {
+					const step = dir * DEFAULTS.biasStep;
+					if (ownRide.riding) ownRide.session?.nudgeBias(step);
+					else if (joined()) ride.nudgeBias(step);
+					else if (freeRide.armed && !freeRide.road) freeRide.nudge(dir);
+				},
 			},
-			(held) => av.setPtt(held),
+			createTalkOpener(av),
 			{
 				pause: () => ownRide.session?.pause(),
 				resume: () => ownRide.session?.resume(),

@@ -68,6 +68,9 @@
 	// The way into voice; mic and camera only appear once you are in.
 	const voiceStatus = $derived(av?.status ?? 'off');
 	const micOn = $derived(av?.micOn ?? false);
+	// A muted mic holds no capture (#4161), so unmuting opens the device again:
+	// ~0.1 s for a laptop's, seconds for a Bluetooth headset's.
+	const micStarting = $derived(av?.micStarting ?? false);
 	const camOn = $derived(av?.camOn ?? false);
 	const sharing = $derived(av?.sharing ?? false);
 	const handedOff = $derived(av?.handedOff ?? false);
@@ -87,7 +90,10 @@
 	/** The browser muted this tab and the voice channel went silent (#645). */
 	const playbackBlocked = $derived(av?.playbackBlocked ?? false);
 
-	const onJoin = () => void av?.join();
+	// Another of your screens carries your voice (ADR-0089): this one is a
+	// controller, and the way in moves the voice here.
+	const voiceElsewhere = $derived(conn?.live.pairing.elsewhere?.voice ?? '');
+	const onJoin = () => void av?.join(voiceElsewhere ? { take: true } : {});
 	const onMic = () => av?.toggleMic();
 	const onCam = () => av?.toggleCam();
 	const onFlip = () => av?.flipCam();
@@ -231,15 +237,25 @@
 							: undefined}
 						class="btn {riding
 							? 'btn-secondary'
-							: 'btn-primary'} min-h-11 flex-1"
+							: 'btn-primary'} min-h-11 flex-1 {voiceElsewhere
+							? 'basis-full'
+							: ''}"
 						><Headphones size={13} />
-						{voiceStatus === 'failed'
-							? 'Try voice again'
-							: 'Join voice'}</button
+						{voiceElsewhere
+							? 'Use this device for voice'
+							: voiceStatus === 'failed'
+								? 'Try voice again'
+								: 'Join voice'}</button
 					>
 				{/if}
 				<QuickAudio compact />
-				{#if voiceStatus !== 'connecting' && voiceStatus !== 'reconnecting' && (!riding || voiceDown)}
+				{#if voiceElsewhere && voiceStatus !== 'connecting'}
+					<!-- A controller (ADR-0089): where the voice is, so the button
+					     above reads as the move it is. -->
+					<p class="text-muted basis-full px-1 text-[11px]">
+						Your voice is on your {voiceElsewhere}.
+					</p>
+				{:else if voiceStatus !== 'connecting' && voiceStatus !== 'reconnecting' && (!riding || voiceDown)}
 					<!-- The promise at the moment of the decision: AV is transit-only
 					     (WATTROOM.md) and the mic gates on speech (docs/SPEC.md). Said on
 					     the marketing page and in settings, never here — where a rider
@@ -259,12 +275,12 @@
 							     capturing (`mic-chain.svelte.ts`). So the mic button is the
 							     gate here, and the promise says what actually happens. -->
 							<!-- The promise is desk copy, never on a ride (G4). -->
-							<span class="cave:hidden"
+							<span class="ride:hidden"
 								>Never recorded. Tap the mic to talk — while it is open your
 								phone plays the call through the earpiece.</span
 							>
 						{:else}
-							<span class="cave:hidden"
+							<span class="ride:hidden"
 								>Never recorded. Your mic opens when you speak.</span
 							>
 						{/if}
@@ -283,18 +299,26 @@
 				     meter, so the menu offers the way to it instead. -->
 				<button
 					onclick={() => onMic?.()}
-					class="flex h-11 flex-1 items-center justify-center rounded {micOn
-						? 'text-ok'
-						: 'text-danger'}"
-					title="{micOn ? 'mute' : 'unmute'} · {MENU_HINT}"
+					class="flex h-11 flex-1 items-center justify-center rounded {micStarting
+						? 'text-muted'
+						: micOn
+							? 'text-ok'
+							: 'text-danger'}"
+					title="{micStarting
+						? 'mic starting'
+						: micOn
+							? 'mute'
+							: 'unmute'} · {MENU_HINT}"
 					aria-label="microphone"
 					aria-pressed={micOn}
+					aria-busy={micStarting}
 					{@attach contextMenu(() => {
 						const voice = channelConnection.current?.av;
 						return voice ? micMenu(voice, () => onMic?.()) : [];
 					})}
 				>
-					{#if micOn}<Mic size={16} />{:else}<MicOff size={16} />{/if}
+					{#if micStarting}<span class="text-[10px] leading-none">starting</span
+						>{:else if micOn}<Mic size={16} />{:else}<MicOff size={16} />{/if}
 				</button>
 				<button
 					onclick={() => onCam?.()}

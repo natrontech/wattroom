@@ -50,6 +50,9 @@ const fakeLive = {
 	setDrive() {},
 	onRemote: () => () => {},
 	sendPause: () => {},
+	// One rider, one voice (ADR-0089): this screen always carries it here.
+	claimVoice: async () => true,
+	releaseVoice() {},
 };
 vi.mock('$lib/channel/live.svelte', () => ({
 	createChannelLive: () => fakeLive,
@@ -124,7 +127,7 @@ describe('channelConnection', () => {
 		const connection = channelConnection.join(
 			channelAddress('c', 'lounge', 'Lounge'),
 		);
-		// A spectator stays at the desk: no cave, no riding sizes, no HUD.
+		// A spectator stays at the desk: no ride frame, no riding sizes, no HUD.
 		fakeTick = { state: { phase: 'running' }, roster: [{ id: 'me' }] };
 		expect(connection.riding()).toBe(false);
 		fakeTick = {

@@ -1,13 +1,15 @@
 import { expect, test, voicePath } from './crew';
+import { RIDE_FRAME } from './scheme';
 
 /**
- * The sidebar on a ride (ADR-0087). The cave covers it (TARGETS G1) and hides
- * the desk's sentences and its typing, but its rows keep their desk sizes: the
- * riding scale (#3770) zoomed the whole app the moment a ride started.
+ * The sidebar on a ride (ADR-0087). The ride's frame covers it (TARGETS G1)
+ * and hides the desk's sentences and its typing, but its rows keep their desk
+ * sizes: the riding scale (#3770) zoomed the whole app the moment a ride
+ * started.
  */
 const RIDER = 'Ride Sidebar Rider';
 
-test('the sidebar keeps its desk sizes on a ride, in the cave', async ({
+test('the sidebar keeps its desk sizes on a ride', async ({
 	riders,
 	channels,
 }) => {
@@ -31,10 +33,10 @@ test('the sidebar keeps its desk sizes on a ride, in the cave', async ({
 	await expect(page.getByRole('button', { name: 'End ride' })).toBeVisible({
 		timeout: 30_000,
 	});
-	// The frame, page and sidebar; the hosts outside it wear their own (#3788).
+	// The frame, page and sidebar; the hosts outside it mark their own (#3788).
 	await expect(
-		page.locator('.cave:has(#page-body)'),
-		'the lights stayed up',
+		page.locator(RIDE_FRAME),
+		'the ride never marked the frame',
 	).toHaveCount(1);
 	await expect(home, 'the sidebar zoomed on a ride').toHaveCSS(
 		'font-size',
@@ -47,6 +49,6 @@ test('the sidebar keeps its desk sizes on a ride, in the cave', async ({
 	).toBeHidden();
 
 	await page.getByRole('button', { name: 'End ride' }).click();
-	await expect(page.locator('.cave')).toHaveCount(0, { timeout: 15_000 });
+	await expect(page.locator(RIDE_FRAME)).toHaveCount(0, { timeout: 15_000 });
 	await expect(nav.getByRole('button', { name: 'new chat' })).toBeVisible();
 });

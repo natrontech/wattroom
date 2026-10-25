@@ -10,16 +10,17 @@ export interface Device {
  * two drift on what an unnamed device is called.
  *
  * The empty value is "System default" — the browser's own choice, which is
- * also what a device that vanished falls back to. Devices arrive unnamed
- * until a voice join grants mic access, so an unlabelled one is numbered
- * rather than blank.
+ * also what a device that vanished falls back to. `unpicked` renames it when
+ * it opens something else (#4161). Devices arrive unnamed until a voice join
+ * grants mic access, so an unlabelled one is numbered rather than blank.
  */
 export function deviceOptions(
 	list: Device[],
 	kind: string,
+	unpicked = 'System default',
 ): { value: string; label: string }[] {
 	return [
-		{ value: '', label: 'System default' },
+		{ value: '', label: unpicked },
 		...list
 			.filter((d) => d.deviceId && d.deviceId !== 'default')
 			.map((d, i) => ({

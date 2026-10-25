@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/natrontech/wattroom/server/internal/budget"
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
@@ -22,19 +23,36 @@ import (
 // unworn (docs/SPEC.md "Wardrobe" — defaults, tune in alpha).
 const undoWindow = 10 * time.Minute
 
+// writesPerMinute bounds one account's outfit saves, purchases and undos
+// together (#4151): a changed outfit adds a look and a purchase two ledger
+// rows, and neither is ever deleted by the rider. An operational guard, not a
+// product number; a rider dressing by hand is far under it.
+const writesPerMinute = 30
+
 // Users is who is asking: the session source only — the garage is private.
 type Users interface {
 	RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool)
 }
 
 type Service struct {
-	store *store.Store
-	users Users
-	log   *slog.Logger
+	store  *store.Store
+	users  Users
+	log    *slog.Logger
+	writes *budget.Budget[pgtype.UUID]
 }
 
 func New(st *store.Store, users Users, log *slog.Logger) *Service {
-	return &Service{store: st, users: users, log: log}
+	return &Service{store: st, users: users, log: log,
+		writes: budget.New[pgtype.UUID](writesPerMinute, time.Minute)}
+}
+
+// spend takes one of the minute's writes, or says there are none left.
+func (s *Service) spend(w http.ResponseWriter, user pgtype.UUID) bool {
+	if !s.writes.Spend(user) {
+		httpx.WriteCeiling(w, "That is a lot of changes in one minute. Wait a minute, then try again.")
+		return false
+	}
+	return true
 }
 
 func (s *Service) Register(mux *http.ServeMux) {
@@ -71,7 +89,7 @@ func notForSale(it Item) string {
 // once can never take a balance below zero.
 func (s *Service) handleBuy(w http.ResponseWriter, r *http.Request) {
 	user, ok := s.users.RequireUser(w, r, "Sign in to shop.")
-	if !ok {
+	if !ok || !s.spend(w, user.ID) {
 		return
 	}
 	it, ok := Lookup(r.PathValue("item"))
@@ -134,7 +152,7 @@ func (s *Service) short(ctx context.Context, q *db.Queries, user pgtype.UUID, ne
 // outfit if it was on it.
 func (s *Service) handleUndo(w http.ResponseWriter, r *http.Request) {
 	user, ok := s.users.RequireUser(w, r, "Sign in to shop.")
-	if !ok {
+	if !ok || !s.spend(w, user.ID) {
 		return
 	}
 	it, ok := Lookup(r.PathValue("item"))

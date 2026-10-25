@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { formatSplit, ghostSecondsTo, splitAt } from './ghost';
+import {
+	formatSplit,
+	gapWords,
+	ghostLabel,
+	ghostMetreAt,
+	ghostSecondsTo,
+	splitAt,
+} from './ghost';
 
 // Your ghost rode 5 m a second from the start (#3033).
 const ghost = Array.from({ length: 601 }, (_, t) => 5 * t);
@@ -26,5 +33,39 @@ describe('racing your ghost (#3033)', () => {
 		expect(formatSplit(0)).toBe('0:00');
 		expect(formatSplit(-0.3)).toBe('0:00');
 		expect(formatSplit(0.4)).toBe('0:00');
+	});
+});
+
+describe('the gap in words (#3246)', () => {
+	// A synthetic ride against the 5 m/s line, at three metres.
+	it.each([
+		[500, 88, { value: '12', unit: 's ahead' }],
+		[1500, 308, { value: '8', unit: 's behind' }],
+		[2500, 575, { value: '1:15', unit: 'behind' }],
+	])('at %i m after %i s reads %o', (m, seconds, words) => {
+		expect(gapWords(splitAt(ghost, m, seconds)!)).toEqual(words);
+	});
+
+	it('says level, not a sign, within half a second', () => {
+		expect(gapWords(0.4)).toEqual({ value: 'level', unit: '' });
+		expect(gapWords(-0.3)).toEqual({ value: 'level', unit: '' });
+	});
+});
+
+describe('where your ghost is (#3245)', () => {
+	it('rides its metres between its seconds, and leaves at its end', () => {
+		expect(ghostMetreAt(ghost, 0)).toBe(0);
+		expect(ghostMetreAt(ghost, 200.5)).toBeCloseTo(1002.5, 10);
+		expect(ghostMetreAt(ghost, 600)).toBe(3000);
+		expect(ghostMetreAt(ghost, 600.5)).toBeNull();
+		expect(ghostMetreAt([], 0)).toBeNull();
+	});
+
+	it('is named for the day you rode it', () => {
+		// 11 Aug 2026 was a Tuesday, in the rider's own time.
+		const label = ghostLabel(new Date(2026, 7, 11, 18, 30));
+		expect(label).toMatch(/^Tuesday-you, /);
+		expect(label).toContain('11');
+		expect(label).toContain('Aug');
 	});
 });
