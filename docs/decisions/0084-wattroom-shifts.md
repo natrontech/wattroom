@@ -241,6 +241,10 @@ When one grants, its independent claims are read against the rules above and com
 - **Carrying k across a grant move.** Rejected; see above.
 - **Holding to repeat on the phone.** Rejected; the phone sends taps.
 
+## Amendment, 2026-10-25 (ADR-0088): no hardware session holds gears
+
+Gears reach every rider (#3333) once the HUD, the keys and the ERG routing are in and P1 to P12 pass as tests ([ADR-0088](0088-ship-on-research-and-simulation.md)). What the session would have decided (Crr and Cw honoured and the drag convention, the assumed mass, FTMS 0x12, whether a gen-1 Core renders descents and so MinTrainerGrade, the ratio noise) is taken from published sources and stated in docs/SPEC.md with its source (#3351). A rider report that contradicts one of them amends SPEC.
+
 ## Sources
 
 **Patents and applications**

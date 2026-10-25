@@ -180,3 +180,7 @@ and unmeasured.
   felt grade in SIM, as this ADR describes it.
 - The Kickr sitting still tunes the numbers (#3351). When they are final in
   SPEC, the Beta marker goes, in that change, and no other gate returns.
+
+## Amendment, 2026-10-25 (ADR-0088): the numbers are final from research and simulation
+
+The Kickr sitting will not happen ([ADR-0088](0088-ship-on-research-and-simulation.md)). SPEC's road numbers become final from published sources and the `SimulatedTrainer` instead (#3351), and the Beta marker goes in that change, as above.
