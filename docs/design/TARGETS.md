@@ -519,11 +519,11 @@ Capture: `/workouts/import` idle; after the hairpin GPX is read; after Save. Des
 1. Header “Import a workout or a route”, a subline naming .zwo and .erg, and .gpx, .tcx and .fit; with `?as=route`, “Import a route”. [importer]
 2. Dashed border only while idle, or while dragging (then neon dashed on `bg-neon/5`); once a file is loaded the preview is a solid panel. [importer]
 3. Panel's first row: file icon, file name in mono xs, “Choose another file” as a ghost button at the right. [importer]
-4. The name an object title with the route page's stat row; shape and profile the shared drawings, the shape filling its panel. [importer] [road-drawing]
+4. The name an object title with the route page's stat row; shape and profile the shared drawings, the shape filling its panel. On a desk the route page's split: the drawings on the left, a ~300 px column on the right for the tiles, the name and the actions, with Save above the fold at 1440 × 900. [importer] [road-drawing]
 5. “At your pace” and “At the reference pace” two stat tiles; “What we fixed” only when something was fixed. [importer]
 6. Action row: “Save to my routes” (`btn-primary btn-lg`); “Ride it now” (`btn-secondary btn-lg`), enabled; “Plan it for a crew”, linking to the session picker once design/route-plan-crew lands, absent until then. [importer]
 7. After Save a banner “<name> is on your routes.” with Open it and Ride it, plus “Import another file”; nothing says a feature “is coming”. [importer]
-8. Privacy line once; on a phone the actions stack full width, primary first. [importer]
+8. One privacy line, plus the name hint beside the rename box; on a phone the actions stack full width, primary first. [importer]
 
 #### routes
 
