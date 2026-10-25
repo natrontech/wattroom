@@ -115,7 +115,7 @@
 	<summary class="text-muted hover:text-ink cursor-pointer py-1 text-xs"
 		>Advanced</summary
 	>
-	<label class="mt-1 flex items-center gap-2 text-sm">
+	<label class="mt-1 flex min-h-6 items-center gap-2 text-sm">
 		<input
 			type="checkbox"
 			checked={mixer.duckSelf}

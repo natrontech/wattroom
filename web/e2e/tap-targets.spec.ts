@@ -141,8 +141,8 @@ test('the browse surfaces’ links and folds clear the floor on a phone', async 
 	await measure('the mixer’s Advanced', mixerFold);
 	await mixerFold.click();
 	await measure(
-		'the mixer’s “My voice ducks it too”',
-		a.locator('label', { hasText: 'My voice ducks it too' }),
+		'the mixer’s “My voice dips them too”',
+		a.locator('label', { hasText: 'My voice dips them too' }),
 	);
 
 	await a.goto(`/crew/${opened.crew}/schedule`);
@@ -494,6 +494,10 @@ test('the Sound dialog’s controls are riding size and its device row is aligne
 	const eyebrow = await dialog.getByText('speakers · voice only').boundingBox();
 	expect(eyebrow!.height, 'the speakers label wrapped').toBeLessThan(20);
 
+	// Measured once it has risen: its entrance moves it.
+	await dialog.evaluate((el) =>
+		Promise.all(el.getAnimations().map((a) => a.finished)),
+	);
 	const sheet = await dialog.evaluate((el) => {
 		const r = el.getBoundingClientRect();
 		return {
