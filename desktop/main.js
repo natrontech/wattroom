@@ -128,7 +128,7 @@ function canHide() {
  *
  * `getAllWindows()` has no order, so `[0]` was the HUD as often as not once
  * one was open — which would have pointed a wattroom:// hand-off, a second
- * instance and now the tray at a 320×132 frameless panel.
+ * instance and now the tray at a 320×152 frameless panel.
  */
 function mainWindow() {
 	return (

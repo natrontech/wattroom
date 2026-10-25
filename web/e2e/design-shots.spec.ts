@@ -625,7 +625,7 @@ surface(
 surface(
 	'hud',
 	async (s) => {
-		// /hud beside a road free ride: the desktop shell's 320 × 132 window, and
+		// /hud beside a road free ride: the desktop shell's 320 × 152 window, and
 		// ADR-0041's second-screen tab.
 		const o = await s.open(DESK, { world: false });
 		const road = await fixtureRoad(o.page, 'hairpin');

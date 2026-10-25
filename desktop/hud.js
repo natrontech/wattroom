@@ -10,7 +10,9 @@
 const { BrowserWindow, screen } = require('electron');
 const path = require('node:path');
 
-const HUD_SIZE = { width: 320, height: 132 };
+const HUD_SIZE = { width: 320, height: 152 };
+// Outrun's cave, for a web app older than the background it sends (#4099).
+const DEFAULT_BACKGROUND = '#0a0118';
 let hudWindow = null;
 let deps = null;
 
@@ -19,13 +21,19 @@ function current() {
 	return hudWindow;
 }
 
-function set(on) {
+function set(on, background) {
 	if (!on) {
 		if (hudWindow && !hudWindow.isDestroyed()) hudWindow.close();
 		hudWindow = null;
 		return;
 	}
-	if (hudWindow) return;
+	const backgroundColor = /^#[0-9a-f]{6}$/i.test(background)
+		? background
+		: DEFAULT_BACKGROUND;
+	if (hudWindow) {
+		hudWindow.setBackgroundColor(backgroundColor);
+		return;
+	}
 	const main = deps.mainWindow();
 	if (!main) return;
 	hudWindow = new BrowserWindow({
@@ -40,7 +48,7 @@ function set(on) {
 		// A panel is how a window floats over another app's full-screen Space
 		// on macOS without the whole process becoming a UI element (#2660).
 		type: process.platform === 'darwin' ? 'panel' : undefined,
-		backgroundColor: '#0a0118',
+		backgroundColor,
 		show: false,
 		webPreferences: {
 			preload: path.join(__dirname, 'preload.js'),
@@ -98,7 +106,7 @@ function set(on) {
  */
 function install({ ipc, ...rest }) {
 	deps = rest;
-	ipc.on('wattroom:hud', (event, on) => {
+	ipc.on('wattroom:hud', (event, on, background) => {
 		// The HUD's own renderer runs the app's layout and used to answer its
 		// opening with hud(false) (#1938); only the main window drives the HUD.
 		if (
@@ -107,7 +115,7 @@ function install({ ipc, ...rest }) {
 			event.sender === hudWindow.webContents
 		)
 			return;
-		set(Boolean(on));
+		set(Boolean(on), background);
 	});
 }
 

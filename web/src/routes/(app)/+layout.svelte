@@ -20,6 +20,7 @@
 	import '$lib/palette.svelte';
 	import { theme } from '$lib/theme.svelte';
 	import { palette } from '$lib/palette.svelte';
+	import { themeFor } from '$lib/themes';
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { soloRide } from '$lib/workout/ride-life.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
@@ -195,9 +196,13 @@
 		// The HUD window runs this layout too (#1938): with no ride in its own
 		// renderer it told the shell hud(false) and closed itself on load.
 		if (page.url.pathname === '/hud') return;
+		// The cave's surface, so the window opens in the rider's identity.
+		const cave = themeFor(palette.active.identity, 'dark').tokens.surface;
 		(
-			globalThis as { wattroom?: { hud?: (on: boolean) => void } }
-		).wattroom?.hud?.(riding);
+			globalThis as {
+				wattroom?: { hud?: (on: boolean, background: string) => void };
+			}
+		).wattroom?.hud?.(riding, cave);
 	});
 
 	// The shell's tray (#1313): the place it can take the rider back to, and
