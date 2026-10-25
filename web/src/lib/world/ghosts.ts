@@ -11,7 +11,7 @@ import { LANE } from './bunch';
 import { KEEP_RIGHT, placeOn, viewerOf } from './crew';
 import { tag } from './family';
 import { RiderAnimator } from './figure/animator';
-import { buildFigure, type Figure } from './figure/figure';
+import { buildFigure, type Figure, type Palette } from './figure/figure';
 import { figureMaterial } from './figure/material';
 import { pose } from './figure/pose';
 import type { Loadout } from './loadout';
@@ -22,8 +22,13 @@ import type { Style } from './styles';
 export const MOST_GHOSTS = 3;
 /** How much of a ghost shows (#3245): clearly lighter than a live rider. */
 export const GHOST_OPACITY = 0.4;
+/** How far each kit colour goes toward white (#3245, v3-roads): your kit, paled, so a ghost reads lighter than anyone live. */
+export const GHOST_PALE = 0.6;
 /** A ghost rides at about this share of your FTP: its legs turn, nothing reads it. */
 const GHOST_EFFORT = 0.7;
+
+const WHITE = new THREE.Color(1, 1, 1);
+const pale = (c: THREE.Color) => c.clone().lerp(WHITE, GHOST_PALE);
 
 /** Where a ghost is this frame: metres along the road, and its speed. */
 export type GhostAt = { d: number; v: number };
@@ -65,7 +70,15 @@ function instanced(figure: Figure): InstancedFigure {
 /** Your ghosts, in `loadout`: the kit your own figure wears in this look. */
 export function makeGhosts(style: Style, loadout: Loadout, ftp: number) {
 	const outfit = outfitOf(loadout, style.kit, viewerOf(style));
-	const material = figureMaterial(outfit.kit, outfit.decal, outfit.jersey);
+	const palette = Object.fromEntries(
+		Object.entries(outfit.palette).map(([slot, c]) => [slot, pale(c)]),
+	) as Palette;
+	const { jersey } = outfit;
+	const material = figureMaterial(outfit.kit, pale(outfit.decal), {
+		pattern: jersey.pattern,
+		b: pale(jersey.b),
+		c: pale(jersey.c),
+	});
 	// Blended, not dithered: a dithered figure is a rider arriving or leaving
 	// (#3098). It writes no depth, so every part shows through every other
 	// whatever order the figure was built in, and three in one draw need no sort.
@@ -73,10 +86,7 @@ export function makeGhosts(style: Style, loadout: Loadout, ftp: number) {
 	material.opacity = GHOST_OPACITY;
 	material.alphaToCoverage = false;
 	material.depthWrite = false;
-	const figure = buildFigure(outfit.kit, {
-		palette: outfit.palette,
-		material,
-	});
+	const figure = buildFigure(outfit.kit, { palette, material });
 	material.userData.u.uTorso.value = figure.userData.rig.dims.torso;
 	const mesh = instanced(figure);
 	// After the road's own see-through marks: a ghost over your ring reads as in front of it.

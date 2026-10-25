@@ -5,7 +5,7 @@ import { at, leftOf } from '$lib/road/along';
 import { toRoute } from '$lib/road/route';
 import { DEFAULT_DARK_ID, themeById } from '$lib/themes';
 import { KEEP_RIGHT, makeCrew } from './crew';
-import { GHOST_OPACITY, makeGhosts, MOST_GHOSTS } from './ghosts';
+import { GHOST_OPACITY, GHOST_PALE, makeGhosts, MOST_GHOSTS } from './ghosts';
 import { seededLoadout } from './loadout';
 import { RIDE } from './look.test-helper';
 import { simRider } from './sim';
@@ -54,7 +54,7 @@ describe('your ghosts on the road (#3245, ADR-0068)', () => {
 		for (const token of [tokens.watt, tokens.neon])
 			expect(m.color.getHex()).not.toBe(new THREE.Color(token).getHex());
 		expect(ghost.layers.mask).toBe(1);
-		// The same kit your own figure wears: its vertex colours, slot for slot.
+		// The kit your own figure wears, paled toward white, slot for slot: lighter than anyone live.
 		const crew = makeCrew(RIDE, new THREE.Color());
 		const r = simRider({
 			id: 'you',
@@ -67,9 +67,10 @@ describe('your ghosts on the road (#3245, ADR-0068)', () => {
 		});
 		crew.update(route, [r], () => ({ crank: 0 }), 0, 0, false);
 		const yours = crew.you!.geometry.getAttribute('color').array;
-		expect(Array.from(ghost.geometry.getAttribute('color').array)).toEqual(
-			Array.from(yours),
-		);
+		const its = ghost.geometry.getAttribute('color').array;
+		expect(its).toHaveLength(yours.length);
+		for (let i = 0; i < yours.length; i++)
+			expect(its[i]).toBeCloseTo(yours[i] + (1 - yours[i]) * GHOST_PALE, 5);
 	});
 
 	it('rides beside you, a lane to your left, and none on the orbit view', () => {

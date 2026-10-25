@@ -153,7 +153,13 @@
 					road.length,
 					at + ghost.mps * Math.min(1, (now - secondAt) / 1000),
 				);
-		return { x: here * frame.scale, y: yOf(frame, heightAt(road, here)) };
+		const x = here * frame.scale;
+		// Its name runs toward the strip's middle, so it never leaves the panel.
+		return {
+			x,
+			y: yOf(frame, heightAt(road, here)),
+			early: x - shift < width / 2,
+		};
 	});
 </script>
 
@@ -247,9 +253,11 @@
 								: 'size-4'}"
 						></span>
 						<span
-							class="text-muted absolute bottom-full left-1/2 mb-1 -translate-x-1/2 leading-none whitespace-nowrap forced-colors:text-[CanvasText] {tv
-								? 'text-[3vh]'
-								: 'text-sm'}">{ghost.label}</span
+							data-testid="skyline-ghost-label"
+							class="text-muted absolute bottom-full mb-1 leading-none whitespace-nowrap forced-colors:text-[CanvasText] {haunt.early
+								? 'left-1/2'
+								: 'right-1/2'} {tv ? 'text-[3vh]' : 'text-sm'}"
+							>{ghost.label}</span
 						>
 					</span>
 				{/if}

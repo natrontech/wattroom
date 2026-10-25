@@ -317,6 +317,17 @@ export function probe(corridor: Box) {
 		glows,
 		panels,
 		flat,
+		// How far your ghost's name runs past the Skyline's edges (#3245): 0 inside.
+		ghostLabelOverflow: (() => {
+			const label = document.querySelector(
+				'[data-testid=skyline-ghost] [data-testid=skyline-ghost-label]',
+			);
+			const strip = document.querySelector('[data-testid=skyline]');
+			if (!label || !strip) return null;
+			const l = label.getBoundingClientRect();
+			const s = strip.getBoundingClientRect();
+			return round(Math.max(0, s.left - l.left, l.right - s.right));
+		})(),
 		// How far the computer's page row runs past its panel's padding (#4042).
 		pageRowOverflow: (() => {
 			const row = document.querySelector('[data-testid=computer-page-row]');
