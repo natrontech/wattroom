@@ -2283,10 +2283,11 @@ surface(
 			// multi:ride-race-ride — the same race on RIDE: a page turn keeps the
 			// computer's shape (ADR-0071).
 			await coach.page.getByRole('button', { name: 'next page, RIDE' }).click();
+			// A race has its road on every screen (#3778): RIDE reads your speed on it.
+			await coach.page.locator('[data-field="speed"]').waitFor();
 			await coach.page.waitForTimeout(1000);
 			await s.shot(coach, { name: 'ride-race-ride' });
-			// multi:ride-race-map — the race's road from above (#3778): a race has
-			// its road on every screen, so MAP is among its pages.
+			// multi:ride-race-map — the race's road from above, among its pages.
 			const computer = coach.page.getByTestId('bike-computer');
 			for (let turn = 0; turn < 4; turn++) {
 				if ((await computer.getAttribute('data-page')) === 'map') break;
