@@ -251,7 +251,7 @@ surface(
 		await o.page.getByTestId('climb-lands').waitFor();
 		await s.shot(o, { name: 'ride-road-world-climb-lands' });
 		// multi:ride-road-world-gate — item 34: Smoke Test's second block starts
-		// at 30 s, painted on the road ahead; shot once it is 30–50 m off, as
+		// at 30 s, painted on the road ahead; shot once it is 20–35 m off, as
 		// the world's probe measures it (#3101). The first block's 0:30 left
 		// reads as a clock past any early second, so no second is waited for.
 		await ride(o.page, `/ride?w=smoke-test&road=${road}&from=0`, {
@@ -265,7 +265,7 @@ surface(
 					}
 				).__worldProbe?.();
 				const ahead = probe?.gates?.[0]?.aheadM ?? Infinity;
-				return ahead >= 30 && ahead <= 50;
+				return ahead >= 20 && ahead <= 35;
 			},
 			undefined,
 			{ polling: 100, timeout: 90_000 },

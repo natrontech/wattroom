@@ -24,7 +24,7 @@ export const SPRINT = 'SPRINT';
 const CHEVRON_EVERY_M = 20;
 const CHEVRONS = CHEVRONS_M / CHEVRON_EVERY_M;
 const ACROSS = ROAD_W - 0.6;
-const ALONG = 10;
+const ALONG = 16;
 const W = 1024;
 const H = 160;
 /** The bar's share of the paint's length, at its near edge: where the block starts. */
@@ -54,7 +54,7 @@ const CHEVRON_D = 2.4;
 function chevron(): THREE.BufferGeometry {
 	const w = 1.6;
 	const d = CHEVRON_D;
-	const t = 0.55;
+	const t = 0.9;
 	const s = new THREE.Shape();
 	s.moveTo(-w / 2, 0);
 	s.lineTo(0, d);
