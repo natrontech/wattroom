@@ -67,7 +67,8 @@ export type CueId =
 	| 'shift-up'
 	| 'shift-down'
 	| 'climb'
-	| 'summit';
+	| 'summit'
+	| 'split';
 
 /** A minor triad reads as tension, a major one as reward — the whole emotional vocabulary. */
 const A4 = 440;
@@ -185,7 +186,7 @@ export const CUES: Record<CueId, Cue> = {
 	fanfare: {
 		id: 'fanfare',
 		label: 'Medal fanfare',
-		hint: 'A medal, or a category promotion. SPEC: promotions announce, demotions stay silent.',
+		hint: 'A medal, a category promotion, or a new best on a road. SPEC: promotions announce, demotions stay silent.',
 		voices: [
 			{
 				type: 'square',
@@ -575,6 +576,18 @@ export const CUES: Record<CueId, Cue> = {
 			{ type: 'triangle', freq: note(4), at: 0, dur: 0.12, gain: 0.24 },
 			{ type: 'triangle', freq: note(7), at: 0.1, dur: 0.12, gain: 0.26 },
 			{ type: 'triangle', freq: note(12), at: 0.2, dur: 0.3, gain: 0.28 },
+		],
+	},
+
+	// Your ghost's gap called along a road (#3246): a bike computer's lap
+	// beep, the same note twice, so it never reads as a fault or a reward.
+	split: {
+		id: 'split',
+		label: 'Split call',
+		hint: 'Your ghost’s gap, called at a quarter, halfway, three quarters and 500 m to go. The same short note twice.',
+		voices: [
+			{ type: 'sine', freq: note(12), at: 0, dur: 0.08, gain: 0.22 },
+			{ type: 'sine', freq: note(12), at: 0.14, dur: 0.1, gain: 0.22 },
 		],
 	},
 };

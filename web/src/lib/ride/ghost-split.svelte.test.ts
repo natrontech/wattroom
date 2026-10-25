@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { flushSync } from 'svelte';
+import { flushSync, tick } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const api = vi.fn();
@@ -14,6 +14,9 @@ type Road = {
 	lap: number;
 	borrowed: boolean;
 	virtualMps?: number;
+	length?: number;
+	name?: string;
+	atEnd?: boolean;
 };
 
 /** Just the free ride the split reads, reactive as the real one is. */
@@ -141,6 +144,121 @@ describe('the live split against your ghost (#3615)', () => {
 		ride.seconds = 2;
 		ride.road = { ...ride.road!, m: 12 };
 		expect(ghost.split).toBeNull();
+	});
+});
+
+describe('the gap called along the road, and a new best (#3246)', () => {
+	let stop: () => void = () => {};
+	afterEach(() => stop());
+
+	// Your best rode a 200 m road at 5 m a second, saved on arrival: its last
+	// sample 195 m, a second short of the end it reached at 40 s.
+	async function racing(best = true) {
+		api.mockReset();
+		api.mockResolvedValue({
+			ok: true,
+			data: {
+				best,
+				startedAt: '2026-08-11T16:30:00Z',
+				metres: Array.from({ length: 40 }, (_, t) => 5 * t),
+			},
+		});
+		const ride = fakeRide();
+		let ghost!: ReturnType<typeof createGhostSplit>;
+		stop = $effect.root(() => {
+			ghost = createGhostSplit(() => ride as unknown as FreeRide);
+		});
+		ride.road = road(0);
+		flushSync();
+		await vi.waitFor(() => expect(api).toHaveBeenCalled());
+		await Promise.resolve();
+		ride.recording = true;
+		await tick();
+		const calls: string[] = [];
+		// You ride 6 m a second, a second at a time. An effect in a bare root
+		// runs a microtask after the write.
+		const to = async (seconds: number, mps = 6) => {
+			for (let s = ride.seconds + 1; s <= seconds; s++) {
+				ride.seconds = s;
+				ride.road = road(mps * s);
+				await tick();
+				if (ghost.call && calls.at(-1) !== ghost.call.said)
+					calls.push(ghost.call.said);
+			}
+		};
+		return { ride, ghost, calls, to };
+	}
+	const road = (m: number): Road => ({
+		id: 'r1',
+		m: Math.min(m, 200),
+		lap: 0,
+		borrowed: false,
+		length: 200,
+		name: 'The Pass',
+		atEnd: m >= 200,
+	});
+
+	it('reads the climb card’s gap from its foot, once past it', async () => {
+		const { ghost, to } = await racing();
+		await to(8);
+		// The foot at 60 m: not reached at 48 m.
+		expect(ghost.since(60)).toBeNull();
+		await to(20);
+		// At 120 m you are 4 s up, 2 of them won since the foot.
+		expect(ghost.split!.seconds).toBeCloseTo(-4, 9);
+		expect(ghost.since(60)!.seconds).toBeCloseTo(-2, 9);
+		expect(ghost.since(60)!.best).toBe(true);
+	});
+
+	it('calls a quarter, halfway and three quarters, then a new best at the end', async () => {
+		const { ride, ghost, calls, to } = await racing();
+		await to(40);
+		expect(calls).toEqual([
+			'A quarter in, 2 seconds ahead of your best',
+			'Halfway, 3 seconds ahead of your best',
+			'Three quarters in, 5 seconds ahead of your best',
+			'New best on The Pass, 6 seconds faster',
+		]);
+		expect(ghost.call).toMatchObject({
+			kind: 'pr',
+			name: 'New best',
+			line: '6 s faster',
+		});
+		// Pedalling on at the end changes nothing: the time is the arrival's.
+		expect(ghost.newBest).toBe('New best on The Pass, 6 s faster');
+		// Saved in Watts, the trainer held the ride: no time is yours (ADR-0074).
+		ride.mode = 'watts';
+		expect(ghost.newBest).toBeNull();
+	});
+
+	it('keeps your line and the marks in Watts, so nothing is called late', async () => {
+		const { ride, ghost, calls, to } = await racing();
+		await to(9);
+		// The trainer holds you from 54 m to 120 m: halfway passes unraced.
+		ride.mode = 'watts';
+		await to(20);
+		ride.mode = 'grade';
+		await to(22);
+		expect(calls).toEqual(['A quarter in, 2 seconds ahead of your best']);
+		// A foot at 102 m, passed in Watts at 17 s against the ghost's 20.4 s:
+		// 4.4 s up at 132 m, 1 s of it won since.
+		expect(ghost.since(102)!.seconds).toBeCloseTo(-1, 9);
+	});
+
+	it('claims no new best when slower, or against your last ride', async () => {
+		const slower = await racing();
+		await slower.to(50, 4);
+		expect(slower.ghost.newBest).toBeNull();
+		expect(slower.ghost.call?.said).toBe(
+			'Three quarters in, 8 seconds behind your best',
+		);
+		stop();
+		const last = await racing(false);
+		await last.to(40);
+		expect(last.ghost.newBest).toBeNull();
+		expect(last.ghost.call?.said).toBe(
+			'Three quarters in, 5 seconds ahead of your last ride',
+		);
 	});
 });
 

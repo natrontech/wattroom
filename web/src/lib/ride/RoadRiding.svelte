@@ -185,6 +185,15 @@
 			<a href="/home" class="btn btn-primary">Done</a>
 		{/snippet}
 		{#snippet status()}
+			{#if ghost.newBest}
+				<!-- Your best beaten, end to end (#3246): a record, so the neon ramp (G2). -->
+				<p
+					data-testid="new-best"
+					class="font-display text-neon text-lg font-bold"
+				>
+					{ghost.newBest}
+				</p>
+			{/if}
 			{#if 'failure' in outcome}
 				<Banner tone="error">
 					It did not save — {outcome.failure.message} It is kept on this device, and
@@ -209,8 +218,7 @@
 		gear={gearsEnabled() ? solo.gear : undefined}
 		shift={solo.shift}
 		cassette={!profile.current.singleSpeed}
-		split={ghost.split ?? undefined}
-		ghost={ghost.rider}
+		{ghost}
 		onend={() => void end()}
 		onrepair={(next) => solo.repair(next)}
 		onflag={() => flags.recorder.flag()}

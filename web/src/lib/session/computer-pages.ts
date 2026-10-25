@@ -288,11 +288,13 @@ export function fieldsFor(page: ComputerPage, ctx: ComputerContext): Field[] {
 	// After the sensors and the gear, as the one-home table orders RIDE.
 	if (ctx.split)
 		// A ghost is a memory, not live data: no watt, no glow (ADR-0068). The
-		// gap reads in words, whole seconds at the same metre (#3246).
+		// gap reads in words, whole seconds at the same metre, in neon as a
+		// model's output, the race's gap to par's colour (G2, #3246).
 		fields.push({
 			key: 'split',
 			label: ctx.split.best ? 'vs best' : 'vs last',
 			...gapWords(ctx.split.seconds),
+			neon: true,
 		});
 	return fields;
 }

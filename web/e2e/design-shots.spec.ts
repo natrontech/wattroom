@@ -686,6 +686,15 @@ surface(
 				.click();
 		await computer.locator('[data-field=split]').waitFor({ timeout: 15_000 });
 		await s.shot(o, { name: 'ride-free-road-ghost-ride' });
+		// multi:ride-free-road-ghost-call — #3246: a quarter of the way along
+		// the 3 km climb, the strip above the Skyline calls the gap; the same
+		// line rides 4.2 m a second, so you are ahead of it.
+		const short = await fixtureRoad(o.page, 'ownerOnly');
+		await ride(o.page, `/ride?road=${short}`, { second: 100 });
+		await o.page.getByTestId('call-strip').waitFor({ timeout: 120_000 });
+		// The strip has risen: its `--dur-stage` rise, not a frame in it.
+		await o.page.waitForTimeout(900);
+		await s.shot(o, { name: 'ride-free-road-ghost-call' });
 	},
 	{ once: true },
 );

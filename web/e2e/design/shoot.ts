@@ -298,15 +298,18 @@ async function growToBody(page: Page): Promise<boolean> {
 
 /**
  * Every clock-shaped reading on the page, joined; a ghost's split (“+1:05”,
- * “−0:12”) is a difference, not a clock, and a seeded ride on the road puts
- * one on every road ride.
+ * “−0:12”) or its gap in words (“1:05 behind”, “1:05 faster”, #3246) is a
+ * difference, not a clock, and a seeded ride on the road puts one on every
+ * road ride.
  */
 // A read that lands mid-navigation counts as no clock yet, not a failure.
 const clocks = (page: Page) =>
 	page
 		.evaluate(() =>
 			(
-				document.body.innerText.match(/(?<![+\u2212\d:])\d{1,2}:\d{2}\b/g) ?? []
+				document.body.innerText.match(
+					/(?<![+\u2212\d:])\d{1,2}:\d{2}\b(?!\s+(?:ahead|behind|faster)\b)/g,
+				) ?? []
 			).join(' '),
 		)
 		.catch(() => '');

@@ -21,6 +21,7 @@
 	import ClimbProfile from '$lib/ride/ClimbProfile.svelte';
 	import { climbStage } from '$lib/ride/climb-cues.svelte';
 	import ComputerMap from '$lib/ride/ComputerMap.svelte';
+	import { gapLine } from '$lib/road/ghost';
 	import { shifterSlot } from '$lib/ble/controller-slot.svelte';
 	import {
 		PAGE_NAMES,
@@ -436,6 +437,12 @@
 		<!-- A workout's block that lands on the climb, until its foot (#3101). -->
 		<p data-testid="climb-lands" class="{size.word} text-muted leading-none">
 			{ctx.climb.lands}
+		</p>
+	{/if}
+	{#if shown === 'climb' && ctx.climb?.ghost}
+		<!-- Your ghost's gap since the climb's foot (#3246): a model's output, neon (G2). -->
+		<p data-testid="climb-ghost" class="{size.word} text-neon leading-none">
+			{gapLine(ctx.climb.ghost.seconds, ctx.climb.ghost.best)}
 		</p>
 	{/if}
 	{#if profile && ctx.climb}

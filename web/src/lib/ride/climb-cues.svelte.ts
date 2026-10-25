@@ -2,17 +2,19 @@ import { createMoments } from '$lib/moments';
 import type { ClimbClass } from '$lib/road/climbs';
 import { play } from '$lib/sound/cues';
 import type { ClimbView } from '$lib/ride/climb-view';
+import type { GhostCall } from '$lib/ride/ghost-split.svelte';
 
 /**
  * What the climb's moments are doing right now (#3645), for the surfaces that
- * draw them: the CLIMB page's slide-in and flamme rouge, and the summit strip
- * above the Skyline. One ride per tab, so one store; only the surface that
+ * draw them: the CLIMB page's slide-in and flamme rouge, and the strip above
+ * the Skyline with the summit or your ghost's call (#3246). One ride per tab, so one store; only the surface that
  * rides writes it (ponytail: a second rider surface in one tab would share it).
  */
 export const climbStage = $state({
 	slide: false,
 	flammeStamp: false,
 	summit: null as { cls: ClimbClass; confetti: boolean } | null,
+	call: null as GhostCall | null,
 });
 
 const CATEGORY = { HC: 'HC', I: '1', II: '2', III: '3', IV: '4' } as const;
@@ -22,16 +24,24 @@ const CATEGORY = { HC: 'HC', I: '1', II: '2', III: '3', IV: '4' } as const;
  * themselves), through the moments queue, one at a time:
  * - `climb`: cue `climb` as the card opens, hit when its slide-in ends (`--dur-stage`);
  * - `flamme`: the flag's stamp as the last kilometre begins, no sound of its own;
- * - `summit`: cue `summit` as the strip enters, hit when it ends; confetti at HC and I.
+ * - `summit`: cue `summit` as the strip enters, hit when it ends; confetti at HC and I;
+ * - `split`: your ghost's gap called on the strip (#3246), cue `split` as it
+ *   enters, hit when it ends; a new best at the road's end is a `pr`, cue `fanfare`.
  * Called once by the surface that rides the road, never by a display — a
  * TV beside the desk would say it twice. Reduced motion keeps every cue; the
  * stylesheet turns each motion into a held stamp.
  */
-export function watchClimbCues(view: () => ClimbView | null | undefined) {
-	const queue = createMoments<ClimbClass>({ now: () => performance.now() });
+export function watchClimbCues(
+	view: () => ClimbView | null | undefined,
+	ghostCall: () => GhostCall | null | undefined = () => null,
+) {
+	const queue = createMoments<ClimbClass | GhostCall>({
+		now: () => performance.now(),
+	});
 	let opened: number | null = null;
 	let flagged: number | null = null;
 	let topped: number | null = null;
+	let called: GhostCall | null = null;
 
 	$effect(() => {
 		const id = setInterval(() => {
@@ -45,16 +55,27 @@ export function watchClimbCues(view: () => ClimbView | null | undefined) {
 					climbStage.summit =
 						e.stage === 'exit'
 							? null
-							: { cls: e.payloads[0], confetti: e.confetti };
+							: { cls: e.payloads[0] as ClimbClass, confetti: e.confetti };
 					if (on) play('summit');
+				} else if (e.kind === 'split' || e.kind === 'pr') {
+					climbStage.call =
+						e.stage === 'exit' ? null : (e.payloads.at(-1) as GhostCall);
+					if (on) play(e.kind === 'pr' ? 'fanfare' : 'split');
 				}
 			}
 		}, 50);
 		return () => {
 			clearInterval(id);
 			climbStage.slide = climbStage.flammeStamp = false;
-			climbStage.summit = null;
+			climbStage.summit = climbStage.call = null;
 		};
+	});
+
+	$effect(() => {
+		const call = ghostCall();
+		if (!call || call === called) return;
+		called = call;
+		queue.stage({ kind: call.kind, payload: call });
 	});
 
 	$effect(() => {

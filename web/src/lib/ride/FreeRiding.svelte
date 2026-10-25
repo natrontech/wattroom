@@ -34,14 +34,14 @@
 	import { EASIER_HARDER_OFF } from '$lib/ride/easier-harder';
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
 	import { gearsNews } from '$lib/ride/gears-news';
-	import type { GhostRider } from '$lib/ride/ghost-split.svelte';
+	import type { GhostSplit } from '$lib/ride/ghost-split.svelte';
 	import type { RideShift } from '$lib/ride/ride-shift';
 	import { roadLine } from '$lib/ride/road-readout';
 	import { roadEndOffered } from '$lib/ride/road-end';
 	import RoadEnd from '$lib/ride/RoadEnd.svelte';
 	import RideNarrator from '$lib/ride/RideNarrator.svelte';
 	import Skyline from '$lib/ride/Skyline.svelte';
-	import { climbView } from '$lib/ride/climb-view';
+	import { climbView, raced } from '$lib/ride/climb-view';
 	import { mapView } from '$lib/ride/map-view';
 	import { watchClimbCues } from '$lib/ride/climb-cues.svelte';
 	import BikeComputer from '$lib/session/BikeComputer.svelte';
@@ -68,7 +68,6 @@
 		shift,
 		shiftOff = null,
 		cassette = true,
-		split,
 		ghost,
 		onend,
 		onrepair,
@@ -98,10 +97,8 @@
 		shift?: Pick<RideShift, 'press' | 'release' | 'drop'>;
 		shiftOff?: string | null;
 		cassette?: boolean;
-		/** Your ghost's split (ADR-0068). */
-		split?: { seconds: number; best: boolean };
-		/** Where your ghost rides now, see-through in the world and hollow on the Skyline (#3245). */
-		ghost?: GhostRider | null;
+		/** Your ghost (ADR-0068): its split, where it rides (#3245) and its calls (#3246). */
+		ghost?: GhostSplit;
 		/** End ride; absent while there is nothing to end. */
 		onend?: () => void;
 		ending?: boolean;
@@ -135,9 +132,12 @@
 				}
 			: null,
 	);
-	const climb = $derived(climbView(view));
+	const climb = $derived(raced(climbView(view), ghost?.since));
 	const map = $derived(mapView(view));
-	watchClimbCues(() => climb);
+	watchClimbCues(
+		() => climb,
+		() => ghost?.call,
+	);
 	const inWatts = $derived(free.mode === 'watts');
 	// The world in slot 2 where this device has it on and the ride has a
 	// road (ADR-0066); a world that cannot draw hands the ride to the Skyline.
@@ -422,7 +422,7 @@
 		stale={stale || idle}
 		stats={free.live}
 		{...road && roadContext(road)}
-		{split}
+		split={ghost?.split ?? undefined}
 		{climb}
 		{map}
 		climbOpens
@@ -437,7 +437,7 @@
 		m={on.m}
 		mps={on.virtualMps}
 		reverse={on.reverse}
-		{ghost}
+		ghost={ghost?.rider}
 	/>
 {/snippet}
 
@@ -453,7 +453,7 @@
 				silent={stale}
 				{ftp}
 				progress={null}
-				ghosts={() => (ghost ? [ghost] : [])}
+				ghosts={() => (ghost?.rider ? [ghost.rider] : [])}
 				onfail={world.fail}
 				onflat={world.flatten}
 			/>

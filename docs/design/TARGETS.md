@@ -153,7 +153,7 @@ Layout:
 World:
 
 16. The world's road is this ride's: ahead, the fixture's approach, a straight at 3 % toward the face of the switchback stack (no flat valley straight, no church village); distance “0.1 of 7.1”, your figure at the approach's start; your figure's km matches the Skyline dot; from km 2.3, on the second leg, what the chase camera holds (item 24): the road bending into the second hairpin ahead, the slope rising beside it [multi:world-hairpins]. [3663-world-is-your-ride] [probe:world]
-17. A solo ride holds one figure, yours, one ring; no bots. [3663-world-is-your-ride]
+17. A solo ride holds one figure, yours, one ring; no bots. Your ghost may ride beside it: a see-through past you is still yours, and racing it is canon (ADR-0068; supervisor for Jan, 2026-10-25, #3245). [3663-world-is-your-ride]
 18. Sky: top third cool blue-lavender, blue the highest channel, darkening upward; a thin peach band on the horizon, OKLCH hue 58–60°, ≥ 40° from every dark identity's watt, no taller than ~a tenth of the visible sky; nothing brown-mauve or pink; no stars at the start; judged on a frame where the sky shows, not where the stack's face fills it. [3085-ride-light]
 19. No warm key light, no cast shadow; shading soft and cool, from the sky. [3085-ride-light]
 20. Distant ridges opaque, paler and bluer with distance; no translucent pink layers, no white stripes. [3085-ride-light]
@@ -278,6 +278,9 @@ Capture: as ride-free-road-world, after a seeded earlier effort on the same road
 2. A ghost has no name tag, ring, shadow, trail or glow; ≤ three show, in one instanced draw. [probe:renderer.draws] [3245-ghosts]
 3. No ghost in an ERG workout, session, bunch, race, game or tow. [test:ghost placement] [3245-ghosts]
 4. A faded live rider (#3227) is never drawn like a ghost. [multi:ride-session-road] [3245-ghosts]
+5. On the climb, CLIMB lists your ghost's gap since the climb's foot as a line under its fields, “Your best · 12 s ahead” (“Your last” racing your last ride), in neon; no watt, no glow. [multi:ride-free-road-ghost-call] [#3246]
+6. At a quarter, halfway and three quarters along and 500 m from the end, the strip above the Skyline calls the gap as the summit strip stands (ride-road-world 33): “Halfway” and “Your best · 12 s ahead”, centred, flat; no watt, no glow. The narrator says it, “Halfway, 12 seconds ahead of your best”. [multi:ride-free-road-ghost-call] [test:web/src/lib/road/ghost.test.ts] [test:web/src/lib/ride/climb-cues.svelte.test.ts] [test:web/src/lib/ride/ghost-split.svelte.test.ts] [#3246]
+7. At the road's end ahead of your best: the strip reads “New best” and “14 s faster”, the narrator “New best on <road>, 14 seconds faster”, and the closing card says “New best on <road>, 14 s faster” under its header, in neon. [test:web/src/lib/ride/ghost-split.svelte.test.ts] [#3246]
 
 #### ride-road-end
 

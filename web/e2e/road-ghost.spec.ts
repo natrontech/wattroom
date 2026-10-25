@@ -93,6 +93,12 @@ test('a road ridden once races its ghost from the start', async ({ page }) => {
 	await expect(computer).toHaveAttribute('data-page', 'climb', {
 		timeout: 15_000,
 	});
+	// The climb card reads the gap since the climb's foot, here the road's
+	// first metre (#3246).
+	await expect(computer.getByTestId('climb-ghost')).toHaveText(
+		/^Your last · (level|\d+ s (ahead|behind))$/,
+		{ timeout: 15_000 },
+	);
 	await computer
 		.getByRole('button', { name: /(previous|next) page, RIDE/ })
 		.click();

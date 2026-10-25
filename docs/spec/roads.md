@@ -71,6 +71,7 @@ Privacy rules, not alpha defaults: loosening any of these takes an ADR.
 | Private distance  | **1,000 m** from the ride's own ends and from every zone (A route's place)                                                       |
 | The line          | a point every **10 m** at **0.1 s**; kept for **90 days**, plus the all-time best                                                |
 | Ghosts            | at most **3** at once                                                                                                            |
+| Split calls       | the gap to your ghost at **25 %**, **50 %** and **75 %** of the road and **500 m** from its end; the last dropped under **2 km** (#3246) |
 | Visible to others | only efforts that pass `board_ok` (Road times)                                                                                   |
 | A board           | only on climbs of at least **5 %** and **3 min** ([ADR-0083](../decisions/0083-the-road-board.md))                                  |
 | Board entries     | the top **10** per Category and stretch, over a rolling **90 days**, each rider's best only; opt-in, unnamed ([ADR-0083](../decisions/0083-the-road-board.md)) |
