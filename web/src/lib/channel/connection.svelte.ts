@@ -5,6 +5,7 @@ import { account } from '$lib/account.svelte';
 import { createProfileStore } from '$lib/profile.svelte';
 import { spaceBelongsTo } from '$lib/channel/ptt-keys';
 import { gearsEnabled } from '$lib/ride/gears-enabled';
+import { EASIER_HARDER_OFF } from '$lib/ride/easier-harder';
 import { bindShiftKeys, createRemoteRunner } from '$lib/ride/keys';
 import { createTalkOpener } from '$lib/ride/remote-talk';
 import { DEFAULTS } from '$lib/workout/guards';
@@ -320,16 +321,33 @@ function connect(address: PlaceAddress): Connection {
 		shift = createRideShift(ride);
 		$effect(() => (ride.shifting ? bindShiftKeys(shift) : undefined));
 
+		// Your own workout shifts on its riding screen's shifter, which this
+		// connection cannot reach; the phone's taps get one of their own (#3333).
+		const ownShift = createRideShift({
+			easierHarder: (dir) =>
+				ownRide.session?.easierHarder(dir) ?? {
+					disabled: EASIER_HARDER_OFF.idle,
+				},
+			atEnd: (dir) => ownRide.session?.atEnd(dir) ?? false,
+		});
+
 		// The phone remote's presses, off the tick, through the same inputs as
 		// the keys (#3217). The hub sends them to this tab only while it holds
-		// the trainer. With gears off the phone says Bias, and a tap is what
-		// the ride's own − and + move (#4163): a workout's bias, or the free
-		// ride's watts or grade.
+		// the trainer. Easier / Harder is a gear in SIM and the bias in ERG,
+		// for the session's ride and your own workout alike (#3333). With the
+		// phone's gears off it says Bias, and a tap is what the ride's own −
+		// and + move (#4163): a workout's bias, or the free ride's watts or
+		// grade.
 		const remote = createRemoteRunner(
 			{
-				shifts: () => ride.shifting,
-				press: (dir, source) => shift.press(dir, source),
-				release: (source) => shift.release(source),
+				shifts: () =>
+					gearsEnabled('phone') && (ride.shifting || ownRide.riding),
+				press: (dir, source) =>
+					(ride.shifting ? shift : ownShift).press(dir, source),
+				release: (source) => {
+					shift.release(source);
+					ownShift.release(source);
+				},
 				trim: (dir) => {
 					const step = dir * DEFAULTS.biasStep;
 					if (ownRide.riding) ownRide.session?.nudgeBias(step);
