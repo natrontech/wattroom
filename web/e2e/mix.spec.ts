@@ -48,14 +48,41 @@ type Measured = {
 declare global {
 	interface Window {
 		makeLimiter: typeof makeLimiter;
+		truePeak: typeof truePeak;
 		makeNoise: typeof makeNoise;
 		scheduleVoices: typeof scheduleVoices;
 	}
 }
 
+/**
+ * True peak (BS.1770 Annex 2): the samples between the samples, 4× over, by a
+ * Hann-windowed sinc 12 taps a phase. Not Chromium's resampler: it
+ * interpolates linearly, so it finds nothing between.
+ */
+function truePeak(raw: Float32Array): number {
+	const TAPS = 6;
+	const phases = [0.25, 0.5, 0.75].map((frac) =>
+		Array.from({ length: 2 * TAPS }, (_, j) => {
+			const x = j - TAPS + 1 - frac;
+			return (
+				(Math.sin(Math.PI * x) / (Math.PI * x)) *
+				(0.5 + 0.5 * Math.cos((Math.PI * x) / TAPS))
+			);
+		}),
+	);
+	let peak = 0;
+	for (let n = TAPS - 1; n + TAPS < raw.length; n++)
+		for (const h of phases) {
+			let y = 0;
+			for (let j = 0; j < h.length; j++) y += raw[n + j - TAPS + 1] * h[j];
+			peak = Math.max(peak, Math.abs(y));
+		}
+	return peak;
+}
+
 async function loadGraph(page: Page): Promise<void> {
 	await page.addScriptTag({
-		content: `window.makeLimiter = ${makeLimiter};\nwindow.makeNoise = ${makeNoise};\nwindow.scheduleVoices = ${scheduleVoices};`,
+		content: `window.makeLimiter = ${makeLimiter};\nwindow.truePeak = ${truePeak};\nwindow.makeNoise = ${makeNoise};\nwindow.scheduleVoices = ${scheduleVoices};`,
 	});
 }
 
@@ -92,19 +119,7 @@ function measureCues(page: Page): Promise<Measured[]> {
 			const k = out.getChannelData(1);
 			let peak = 0;
 			for (const x of raw) peak = Math.max(peak, Math.abs(x));
-			// True peak (BS.1770 Annex 2): the same samples resampled to 4×,
-			// by Chromium's own resampler.
-			const up = new OfflineAudioContext(1, raw.length * 4, RATE * 4);
-			const mono = up.createBuffer(1, raw.length, RATE);
-			mono.copyToChannel(raw, 0);
-			const source = new AudioBufferSourceNode(up, { buffer: mono });
-			source.connect(up.destination);
-			source.start();
-			// Never under the sample peak: the resampler's lowpass shaves a
-			// click near Nyquist.
-			let truePeak = peak;
-			for (const x of (await up.startRendering()).getChannelData(0))
-				truePeak = Math.max(truePeak, Math.abs(x));
+			const truePeak = Math.max(peak, window.truePeak(raw));
 			const win = Math.round(0.4 * RATE);
 			const hop = Math.round(0.1 * RATE);
 			const blocks: number[] = [];
@@ -171,6 +186,21 @@ test.describe('the mix', () => {
 			expect(r.loudness, r.id).toBeGreaterThanOrEqual(spread.lo);
 			expect(r.loudness, r.id).toBeLessThanOrEqual(spread.hi);
 		}
+	});
+
+	test('the true-peak meter finds the peak between two samples', async ({
+		page,
+	}) => {
+		// A sine at a quarter of the rate, sampled 45° off its crests: every
+		// sample reads 0.707, the wave between them reaches 1.
+		const found = await page.evaluate(() =>
+			window.truePeak(
+				Float32Array.from({ length: 4800 }, (_, i) =>
+					Math.sin((Math.PI / 2) * i + Math.PI / 4),
+				),
+			),
+		);
+		expect(found).toBeCloseTo(1, 1);
 	});
 
 	test('every cue meets the stated loudness and true-peak target', async ({

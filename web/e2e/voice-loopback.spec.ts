@@ -72,7 +72,20 @@ test('a voice through the local LiveKit is RED, whole and audible for a minute',
 			rider.getByRole('button', { name: 'microphone', pressed: true }),
 			`${name} never finished joining voice with an open mic`,
 		).toBeVisible({ timeout: 20_000 });
-	// The first gesture is what starts the audio (voice-duck.spec.ts).
+	// The first gesture plays only the voices attached by then
+	// (voice-duck.spec.ts, #1463): wait for B's on A's screen.
+	await expect
+		.poll(
+			() =>
+				a.evaluate(
+					() =>
+						[...document.querySelectorAll('audio')].filter(
+							(el) => el.srcObject instanceof MediaStream,
+						).length,
+				),
+			{ message: `${B}'s voice never reached ${A}'s screen`, timeout: 20_000 },
+		)
+		.toBe(1);
 	for (const rider of [a, b])
 		await rider.evaluate(() =>
 			document.dispatchEvent(new Event('pointerdown')),
