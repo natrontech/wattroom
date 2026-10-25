@@ -91,8 +91,8 @@ func (s *Service) upsert(r *http.Request, p provider, ident identity, tok *oauth
 		if err != nil {
 			return db.User{}, false, err
 		}
-		create.AccessToken, create.RefreshToken, create.RefreshTokenEnc, create.TokenExpiresAt =
-			tp.AccessToken, tp.RefreshToken, tp.RefreshTokenEnc, tp.TokenExpiresAt
+		create.AccessToken, create.RefreshTokenEnc, create.TokenExpiresAt =
+			tp.AccessToken, tp.RefreshTokenEnc, tp.TokenExpiresAt
 	}
 	if err := q.CreateIdentity(ctx, create); err != nil {
 		// Two callbacks for the same identity can race past the earlier lookup
@@ -189,8 +189,8 @@ func (s *Service) link(r *http.Request, p provider, ident identity, tok *oauth2.
 		if err != nil {
 			return err
 		}
-		create.AccessToken, create.RefreshToken, create.RefreshTokenEnc, create.TokenExpiresAt =
-			tp.AccessToken, tp.RefreshToken, tp.RefreshTokenEnc, tp.TokenExpiresAt
+		create.AccessToken, create.RefreshTokenEnc, create.TokenExpiresAt =
+			tp.AccessToken, tp.RefreshTokenEnc, tp.TokenExpiresAt
 	}
 	if err := q.CreateIdentity(ctx, create); err != nil {
 		// Someone claimed this identity between the lookup and the insert —
@@ -241,13 +241,13 @@ func (s *Service) finishLink(w http.ResponseWriter, r *http.Request, p provider,
 func (s *Service) tokenParams(p provider, ident identity, tok *oauth2.Token) (db.UpdateIdentityTokensParams, error) {
 	expiry := pgtype.Timestamptz{Time: tok.Expiry, Valid: !tok.Expiry.IsZero()}
 	access := tok.AccessToken
-	refresh, sealed, err := s.keys.Columns(tok.RefreshToken)
+	sealed, err := s.keys.SealToken(tok.RefreshToken)
 	if err != nil {
 		return db.UpdateIdentityTokensParams{}, fmt.Errorf("seal refresh token: %w", err)
 	}
 	return db.UpdateIdentityTokensParams{
 		Provider: p.id, ProviderUserID: ident.ProviderUserID,
-		AccessToken: &access, RefreshToken: refresh, RefreshTokenEnc: sealed,
+		AccessToken: &access, RefreshTokenEnc: sealed,
 		TokenExpiresAt: expiry,
 	}, nil
 }

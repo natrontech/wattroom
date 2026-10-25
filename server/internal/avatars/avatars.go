@@ -64,7 +64,7 @@ const (
 	// connections.
 	backfillPage = 50
 	// backfillPasses is the hard stop, for the case a row will not leave the
-	// set because its write keeps failing (secrets.Backfill's shape).
+	// set because its write keeps failing.
 	backfillPasses = 1000
 )
 
@@ -206,7 +206,7 @@ func (m *Mirror) forget(ctx context.Context, id pgtype.UUID) bool {
 // hold a provider's absolute URL, and the enforced img-src refuses to load one
 // — so until a row is converted that rider shows as an initial.
 //
-// Deliberately best-effort and off the boot path, like secrets.Backfill: a row
+// Deliberately best-effort and off the boot path: a row
 // it cannot convert is left as it was and the next boot tries again, and a
 // server that refuses to start because one picture would not download helps
 // nobody. One page at a time, sequentially, so a table of ten thousand riders

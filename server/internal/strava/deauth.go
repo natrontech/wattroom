@@ -27,7 +27,7 @@ var errGrantRevoked = errors.New("strava grant revoked")
 
 // GrantForgetter drops what a revoked grant leaves with us; the auth package
 // owns it because it owns the rule about an account's last credential.
-type GrantForgetter func(ctx context.Context, ident db.Identity) error
+type GrantForgetter func(ctx context.Context, ident db.GetUserIdentityRow) error
 
 // SetGrantForgetter wires auth's routine in after construction, the way
 // SetStravaRevoker wires this package into auth.
@@ -46,24 +46,24 @@ const (
 // revoked asks Strava the one question an unsigned event cannot fake: will it
 // still refresh this grant? The identity is read again first, since the
 // caller's copy may hold a refresh token a refresh has since rotated.
-func (s *Service) revoked(ctx context.Context, providerUserID string) (db.Identity, bool) {
+func (s *Service) revoked(ctx context.Context, providerUserID string) (db.GetUserIdentityRow, bool) {
 	ident, err := s.store.Queries.GetIdentity(ctx, db.GetIdentityParams{
 		Provider: "strava", ProviderUserID: providerUserID,
 	})
 	if err != nil {
-		return db.Identity{}, false
+		return db.GetUserIdentityRow{}, false
 	}
-	stale := ident
+	stale := db.GetUserIdentityRow(ident)
 	stale.TokenExpiresAt = pgtype.Timestamptz{} // expired, so freshToken refreshes
 	_, err = s.freshToken(ctx, stale)
-	return ident, errors.Is(err, errGrantRevoked)
+	return db.GetUserIdentityRow(ident), errors.Is(err, errGrantRevoked)
 }
 
 // grantGone reports whether err means the rider revoked WattRoom on Strava,
 // and forgets the grant when it does. A refused refresh says so outright; a
 // 401 on an upload is also what a missing scope looks like, so that one is
 // asked again before anything is forgotten.
-func (s *Service) grantGone(ctx context.Context, ident db.Identity, err error) bool {
+func (s *Service) grantGone(ctx context.Context, ident db.GetUserIdentityRow, err error) bool {
 	var refused *uploadRefused
 	gone := errors.Is(err, errGrantRevoked)
 	if !gone && errors.As(err, &refused) && refused.status == http.StatusUnauthorized {
@@ -75,7 +75,7 @@ func (s *Service) grantGone(ctx context.Context, ident db.Identity, err error) b
 	return gone
 }
 
-func (s *Service) forgetGrant(ctx context.Context, ident db.Identity) {
+func (s *Service) forgetGrant(ctx context.Context, ident db.GetUserIdentityRow) {
 	if s.forget == nil {
 		return
 	}

@@ -80,7 +80,7 @@ func wire(ctx context.Context, st *store.Store, mux *http.ServeMux, baseURL stri
 	// What a shared /c/{code} link may say about a crew (#2445).
 	var crewCard og.LookupCrew
 	// The key that seals stored third-party credentials (#697). Absent is
-	// allowed and warns; present-but-unusable is fatal, because an
+	// allowed, warns and turns Strava off (#1038); present-but-unusable is fatal, because an
 	// operator who set it believes credentials are encrypted and a server
 	// that boots anyway makes that belief false and silent. Failing here
 	// is what ADR-0019's health gate and rollback are for.
@@ -89,23 +89,6 @@ func wire(ctx context.Context, st *store.Store, mux *http.ServeMux, baseURL stri
 		log.Error("token key", "err", err)
 		os.Exit(1)
 	}
-	// One pass over the rows written before the key existed — off the
-	// boot path, with a budget: sealing is not a precondition for
-	// serving, and it used to block the listener for as long as the read
-	// took (audit 2026-09-09).
-	//
-	// Then the number that says whether it got there (#1038): how many
-	// rows are still in the clear, on /metrics and in the log. Started from
-	// inside this goroutine rather than beside it so the first sample an
-	// operator sees is the post-backfill one, not a pre-backfill count
-	// corrected a quarter of an hour later. Watch supervises its own loop
-	// and returns.
-	safego.Go(log, "token backfill", func() {
-		backfillCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
-		defer cancel()
-		secrets.Backfill(backfillCtx, st, keys, log)
-		secrets.Watch(ctx, st.Queries, log)
-	})
 	// Accounts, signups, riders who ride (#2913). Supervises its own loop.
 	usage.Watch(ctx, st.Queries, log)
 	if err := auth.DevLoginMisconfigured(baseURL); err != nil {

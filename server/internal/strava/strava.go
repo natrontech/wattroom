@@ -30,8 +30,8 @@ import (
 type Service struct {
 	store *store.Store
 	log   *slog.Logger
-	// Opens the sealed refresh token (#697). Nil on a server with no key, and
-	// the plaintext column is then the only place it ever was.
+	// Opens the sealed refresh token (#697). Always configured: New refuses
+	// to run Strava without it (#1038).
 	keys         *secrets.Cipher
 	clientID     string
 	clientSecret string
@@ -55,12 +55,13 @@ type Service struct {
 	confirms    *budget.Budget[string]
 }
 
-// New returns nil when the Strava app is not configured — the saver treats a
-// nil uploader as "feature absent", the same capability gating as everywhere.
+// New returns nil when the Strava app or the token key is not configured —
+// the saver treats a nil uploader as "feature absent", the same capability
+// gating as everywhere. A refresh token is only ever stored sealed (#1038).
 func New(st *store.Store, log *slog.Logger, keys *secrets.Cipher) *Service {
 	id := os.Getenv("WATTROOM_OAUTH_STRAVA_ID")
 	secret := os.Getenv("WATTROOM_OAUTH_STRAVA_SECRET")
-	if id == "" || secret == "" {
+	if id == "" || secret == "" || !keys.Enabled() {
 		return nil
 	}
 	return &Service{ //nolint:gosec // the values come from env, nothing is hardcoded

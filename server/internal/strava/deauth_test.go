@@ -62,9 +62,9 @@ func refusingStrava(t *testing.T) (srv *httptest.Server, refusal *atomic.Pointer
 }
 
 // forgetting records what the auth routine would have been handed.
-func forgetting(svc *Service) chan db.Identity {
-	forgot := make(chan db.Identity, 4)
-	svc.SetGrantForgetter(func(_ context.Context, ident db.Identity) error {
+func forgetting(svc *Service) chan db.GetUserIdentityRow {
+	forgot := make(chan db.GetUserIdentityRow, 4)
+	svc.SetGrantForgetter(func(_ context.Context, ident db.GetUserIdentityRow) error {
 		forgot <- ident
 		return nil
 	})
@@ -153,9 +153,8 @@ func TestAn401ConfirmedByTheRefreshIsForgotten(t *testing.T) {
 	st, userID, rideID := seedRide(t, "strava-401-revoked")
 	// A current access token, so the upload goes out without a refresh.
 	access := "still-looks-valid"
-	refresh := "refresh-1"
 	if err := st.Queries.UpdateIdentityTokens(t.Context(), db.UpdateIdentityTokensParams{
-		Provider: "strava", ProviderUserID: "athlete-1", AccessToken: &access, RefreshToken: &refresh,
+		Provider: "strava", ProviderUserID: "athlete-1", AccessToken: &access, RefreshTokenEnc: sealed(t, "refresh-1"),
 		TokenExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(time.Hour), Valid: true},
 	}); err != nil {
 		t.Fatal(err)
