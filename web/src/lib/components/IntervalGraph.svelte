@@ -263,6 +263,18 @@
 		});
 	}
 
+	// Your position: watt where it is your marker (G2), ink where it is not.
+	const cursor = $derived({
+		x1: x(elapsed),
+		y1: 0,
+		x2: x(elapsed),
+		y2: BASE,
+		class: marker ? 'text-watt glow-stroke' : 'text-ink',
+		stroke: 'currentColor',
+		'stroke-width': 2,
+		'vector-effect': 'non-scaling-stroke' as const,
+	});
+
 	// One polyline per continuously-ridden run: skip and extend make the clock jump,
 	// and a single line across those jumps draws work that never happened. Each
 	// run is thinned to one low and one high per viewBox unit (#2878): the graph cannot
@@ -359,18 +371,9 @@
 			/>
 		{/each}
 
-		{#if elapsed > 0}
+		{#if elapsed > 0 && !words}
 			<!-- watt marks live data only — previews pass elapsed 0 and get no cursor. -->
-			<line
-				x1={x(elapsed)}
-				y1="0"
-				x2={x(elapsed)}
-				y2={BASE}
-				class={marker ? 'text-watt glow-stroke' : 'text-ink'}
-				stroke="currentColor"
-				stroke-width="2"
-				vector-effect="non-scaling-stroke"
-			/>
+			<line {...cursor} />
 		{/if}
 		<line
 			x1="0"
@@ -419,7 +422,7 @@
 				data-testid="block-words"
 				data-now={elapsed >= seg.startSeconds &&
 					elapsed < seg.startSeconds + seg.seconds}
-				class="num text-label pointer-events-none absolute flex h-[1lh] -translate-y-1/2 flex-wrap justify-center overflow-hidden px-1 leading-tight tracking-wide whitespace-nowrap text-[color-mix(in_oklab,var(--color-neon)_65%,var(--color-ink))] [text-shadow:0_0_3px_var(--color-paper)] data-[now=false]:font-medium data-[now=false]:opacity-80 data-[now=true]:font-bold"
+				class="num text-label pointer-events-none absolute flex h-[1lh] -translate-y-1/2 flex-wrap justify-center overflow-hidden px-1 leading-tight tracking-wide whitespace-nowrap text-[color-mix(in_oklab,var(--color-neon)_65%,var(--color-ink))] data-[now=false]:font-medium data-[now=false]:opacity-80 data-[now=true]:font-bold"
 				style="left:{(block.x0 / W) * 100}%;width:{((block.x1 - block.x0) / W) *
 					100}%;top:{((Math.max(block.yFrom, block.yTo) + BASE) / 2 / H) *
 					100}%"
@@ -429,5 +432,15 @@
 				>
 			</p>
 		{/each}
+		{#if elapsed > 0}
+			<!-- The cursor over the words, so no word cuts your marker (G2). -->
+			<svg
+				viewBox="0 0 {W} {H}"
+				preserveAspectRatio="none"
+				aria-hidden="true"
+				class="pointer-events-none absolute inset-0 h-full w-full"
+				><line {...cursor} /></svg
+			>
+		{/if}
 	{/if}
 </div>
