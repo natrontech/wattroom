@@ -67,6 +67,23 @@ test.describe('the Skyline', () => {
 		expect(moving).toEqual({ transitions: 0, animations: 0 });
 	});
 
+	test('is pinned at the bottom of a flat ride, not under the panels (#4088)', async ({
+		page,
+	}) => {
+		await page.setViewportSize({ width: 1440, height: 900 });
+		const skyline = await rideTheRoad(page, 'Pinned Skyline Rider');
+		// TARGETS ride-free-road 2: the free height sits above the strip.
+		const gap = await skyline.evaluate((el) => {
+			const surface = el.closest('[data-surface=flat]')!;
+			const panel = el.closest('.ride-panel')!;
+			return (
+				surface.getBoundingClientRect().bottom -
+				panel.getBoundingClientRect().bottom
+			);
+		});
+		expect(Math.abs(gap)).toBeLessThanOrEqual(4);
+	});
+
 	test('holds the road still for a rider who asked for stillness, and walks the dot across it once a second (#3080)', async ({
 		browser,
 	}) => {

@@ -408,7 +408,7 @@
 		{#if !inWorld}
 			<!-- Flat, in slot order: the Skyline a strip along the bottom as
 			     over the world, on screen with the dot inside (ride-free-road 9). -->
-			<div class="flex min-h-0 flex-col gap-3">
+			<div class="flex grow flex-col gap-3">
 				{#if setup && !free.recording}{@render setup()}{/if}
 				{#if roadEndOffered(free, false)}
 					<div class="ride-panel">{@render roadEnd()}</div>
@@ -422,7 +422,7 @@
 				</div>
 				{#if road}
 					<div
-						class="ride-panel shrink-0 overflow-hidden"
+						class="ride-panel mt-auto shrink-0 overflow-hidden"
 						style:height="{SKYLINE_PX}px"
 					>
 						{@render skyline(road)}
