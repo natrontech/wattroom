@@ -1217,7 +1217,12 @@ surface(
 						const voice = body.crews[0]?.channels.find(
 							(ch) => ch.kind === 'voice',
 						);
-						if (voice) voice.session = RIDING_SESSION();
+						// A session's riders stand in its channel, as the hub
+						// reports them (presence.go Occupants).
+						if (voice) {
+							voice.session = RIDING_SESSION();
+							voice.occupants = [RIDER_TWO];
+						}
 						await route.fulfill({ response: res, json: body });
 					});
 				await page(s, o, '/home', {
@@ -1231,7 +1236,9 @@ surface(
 );
 
 type LiveRead = {
-	crews: { channels: { kind: string; session?: unknown }[] }[];
+	crews: {
+		channels: { kind: string; session?: unknown; occupants?: unknown[] }[];
+	}[];
 };
 const planned = (id: string, hours: number, goingCount: number) => ({
 	id,
@@ -1244,6 +1251,11 @@ const planned = (id: string, hours: number, goingCount: number) => ({
 	channelName: 'Pain Cave',
 	goingCount,
 });
+const RIDER_TWO = {
+	id: '00000000-0000-0000-0000-0000000000bb',
+	name: 'Rider Two',
+	riding: true,
+};
 /** The session riding now in the crew's voice channel, ten minutes in. */
 const RIDING_SESSION = () => ({
 	id: '00000000-0000-0000-0000-0000000000aa',
@@ -1253,8 +1265,8 @@ const RIDING_SESSION = () => ({
 	elapsed: 600,
 	coach: '',
 	coachName: 'Designer',
-	riders: ['Designer', 'Rider Two'],
-	riderIds: ['', ''],
+	riders: ['Designer', RIDER_TWO.name],
+	riderIds: ['', RIDER_TWO.id],
 });
 const WEEK_STATES: [string, () => unknown[], boolean][] = [
 	// Nothing this week: the first plan after it, under NEXT.
