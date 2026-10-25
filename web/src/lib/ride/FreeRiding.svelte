@@ -49,7 +49,6 @@
 	import FlatRoad from '$lib/world/FlatRoad.svelte';
 	import { JUMP_M } from '$lib/world/sim';
 	import { createWorldView } from '$lib/world/world-view.svelte';
-	import { play } from '$lib/sound/cues';
 
 	let {
 		free,
@@ -162,16 +161,8 @@
 	];
 	let rampMinutes = $state<number>(RAMP.minutes[0]);
 	const rampLabel = $derived(
-		RAMPS.find((r) => r.kind === free.ramp?.kind)?.label,
+		RAMPS.find((r) => r.kind === (free.ramp?.kind ?? free.rampDone))?.label,
 	);
-	// A ramp's start and end announce themselves (ux.md): the line below,
-	// and the block cue, falling when it ends.
-	let rampWas: RampKind | null = null;
-	$effect(() => {
-		const now = free.ramp?.kind ?? null;
-		if (now !== rampWas) play('block', { semitones: now ? 0 : -5 });
-		rampWas = now;
-	});
 	let repairing = $state(false);
 	let repairError = $state<string | null>(null);
 	async function repair() {
@@ -287,6 +278,10 @@
 				{#if free.ramp}
 					<p data-testid="ramp-line" class="num truncate" aria-live="polite">
 						{rampLabel} · {formatClock(free.ramp.left)} left
+					</p>
+				{:else if free.rampDone}
+					<p data-testid="ramp-line" class="truncate" aria-live="polite">
+						{rampLabel} done
 					</p>
 				{/if}
 				{#if flagNotice}

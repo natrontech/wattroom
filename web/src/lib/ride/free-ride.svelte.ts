@@ -18,6 +18,7 @@ import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
 import { createLiveStats } from '$lib/ride/live-stats.svelte';
 import { uploadRide, type RideUpload, type SaveFailure } from '$lib/ride/save';
 import { DEFAULTS } from '$lib/workout/guards';
+import { play } from '$lib/sound/cues';
 
 /** The empty, unscored workout a free ride saves as — a game's shape. */
 export const FREE_RIDE_NAME = 'Free ride';
@@ -76,14 +77,23 @@ export function createFreeRide(deps: {
 	);
 	let grade = $state(0);
 	let watts = $state<number | null>(null);
+	/** The ramp that just ran its length, said for RAMP.doneSeconds. */
+	let done = $state<{ kind: RampKind; left: number } | null>(null);
 	let lastWatts = 0;
 	const rampTarget = $derived(ramp && rampWatts(ramp, ramp.t));
-	/** Ends a ramp at its current target, which manual control takes over. */
-	function endRamp() {
+	/**
+	 * Ends a ramp at its current target. Run to its length it hands back to
+	 * the mode it started from; ended early, manual control takes over the
+	 * target in watts.
+	 */
+	function endRamp(early: boolean) {
 		if (!ramp || rampTarget === null) return;
 		watts = rampTarget;
-		picked = ramp.back;
+		picked = early ? 'watts' : ramp.back;
+		if (!early) done = { kind: ramp.kind, left: RAMP.doneSeconds };
 		ramp = null;
+		// A ramp's start and end announce themselves (ux.md): falling here.
+		play('block', { semitones: -5 });
 	}
 	let startedAt = $state<number | null>(null);
 	let seconds = $state(0);
@@ -147,6 +157,10 @@ export function createFreeRide(deps: {
 				? { kind: ramp.kind, target: rampTarget, left: ramp.seconds - ramp.t }
 				: null;
 		},
+		/** The ramp that just ran its length; null a few seconds on. */
+		get rampDone() {
+			return done?.kind ?? null;
+		},
 		/** The road under the ride, and where on it; null off a road. */
 		get road() {
 			return road;
@@ -189,7 +203,7 @@ export function createFreeRide(deps: {
 			armed = true;
 		},
 		setMode(next: FreeMode) {
-			endRamp();
+			endRamp(true);
 			if (next === 'watts' && watts === null) watts = openingWatts(deps.ftp());
 			picked = next;
 		},
@@ -240,14 +254,16 @@ export function createFreeRide(deps: {
 				t: 0,
 				back: mode,
 			};
+			done = null;
+			play('block');
 		},
-		/** Stop, or any manual control: the ramp's target stays held. */
-		stopRamp: endRamp,
+		/** Stop: the ramp's target stays held, in watts. */
+		stopRamp() {
+			endRamp(true);
+		},
 		nudge(dir: 1 | -1) {
-			if (ramp) {
-				endRamp();
-				return;
-			}
+			// A tap in a ramp steps from its target, in watts.
+			endRamp(true);
 			if (mode === 'grade') grade = nudged('grade', grade, dir);
 			else watts = nudged('watts', watts ?? openingWatts(deps.ftp()), dir);
 		},
@@ -273,7 +289,8 @@ export function createFreeRide(deps: {
 			if (!armed || (sample.watts <= 0 && sample.cadence <= 0 && !rolling))
 				return;
 			lastWatts = sample.watts;
-			if (ramp && ++ramp.t >= ramp.seconds) endRamp();
+			if (done && --done.left <= 0) done = null;
+			if (ramp && ++ramp.t >= ramp.seconds) endRamp(false);
 			if (startedAt === null) {
 				startedAt = Date.now();
 				outcome = null;

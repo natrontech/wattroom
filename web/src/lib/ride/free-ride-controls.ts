@@ -35,6 +35,8 @@ export const RAMP = {
 	minutes: [5, 10],
 	warmup: { from: 0.4, to: 0.7 },
 	cooldownFloor: 0.35,
+	/** How long the ride says a ramp is done, in counted seconds. */
+	doneSeconds: 10,
 } as const;
 export type RampKind = 'warmup' | 'cooldown';
 
