@@ -51,7 +51,11 @@
 		controls?: Snippet;
 		/** The ride's persistent status, one line with at most one button (G3). */
 		status?: Snippet;
-		/** The interval strip with its cursor. */
+		/**
+		 * The interval strip with its cursor: over the world, where it is the
+		 * workout's one picture, and the ramp's. A flat ride leaves it to the
+		 * graph below and sets NEXT in its place (#4159).
+		 */
 		strip?: Snippet;
 		/** Why a control is hidden, in one line (D13: the road decides where a block ends). */
 		hint?: string;
@@ -142,7 +146,7 @@
 					)}{#if total > 0}{` of ${formatClock(total)}`}{/if}
 				</p>
 			</div>
-			{#if strip || block.next}
+			{#if strip || block.next || wide}
 				<!-- As wide as NEXT and its chips, not as wide as the band may grow:
 				     the moment card's top-centre room is what slot 1 leaves (D12). -->
 				<div
@@ -153,11 +157,13 @@
 					{#if strip}<div class={wide ? 'h-14' : 'h-10'}>
 							{@render strip()}
 						</div>{/if}
-					{#if !wide}{@render nextLine(block)}{/if}
+					<!-- Flat without a strip (#4159) NEXT takes the strip's place
+					     beside the clock: the graph below is the workout's picture. -->
+					{#if !wide || !strip}{@render nextLine(block)}{/if}
 				</div>
 			{/if}
 		</div>
-		{#if wide}{@render nextLine(block)}{/if}
+		{#if wide && strip}{@render nextLine(block)}{/if}
 	{:else}
 		<h2 class="font-display truncate text-3xl leading-none font-bold">
 			{title}

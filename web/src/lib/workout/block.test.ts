@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { describeBlock } from './block';
+import { blockWords, describeBlock } from './block';
 import { flatten, targetAt } from './engine';
-import type { Workout } from './types';
+import type { Segment, Workout } from './types';
 
 // A trimmed rider is told the watts the trainer will hold (#2835): the
 // target is the prescribed fraction × their bias (docs/SPEC.md), and the
@@ -127,4 +127,33 @@ it('describes road steps as unscored SIM blocks, including the previous and next
 	);
 	expect(next.last).toBeNull();
 	expect(next.next).toEqual({ label: 'Road', watts: 0, seconds: 10 });
+});
+
+// #4159: each block on the ride's graph says its target and its length, the
+// target trimmed as slot 1's is, a ramp's from both ends.
+describe('blockWords', () => {
+	const seg = (s: Partial<Segment>): Segment => ({
+		kind: 'steady',
+		startSeconds: 0,
+		seconds: 600,
+		stepPath: [0],
+		...s,
+	});
+	it('reads a steady block, a ramp, absolute watts, a sprint and a road block', () => {
+		const at = (s: Partial<Segment>) => blockWords(seg(s), 250);
+		expect(at({ fromFraction: 0.6, toFraction: 0.6 })).toEqual([
+			'150 W',
+			'10 min',
+		]);
+		expect(
+			at({ kind: 'ramp', fromFraction: 0.4, toFraction: 0.8, seconds: 300 }),
+		).toEqual(['100–200 W', '5 min']);
+		expect(at({ watts: 300, seconds: 45 })).toEqual(['300 W', '45 s']);
+		expect(at({ kind: 'sprint', seconds: 15 })).toEqual(['Sprint', '15 s']);
+		expect(at({ kind: 'road' })).toEqual(['Road', '10 min']);
+	});
+	it('trims the target by the bias, as slot 1 does', () => {
+		const steady = seg({ fromFraction: 0.6, toFraction: 0.6 });
+		expect(blockWords(steady, 250, 0.85)[0]).toBe('128 W');
+	});
 });
