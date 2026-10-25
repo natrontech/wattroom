@@ -424,6 +424,70 @@ export function probe(corridor: Box) {
 			under24: sizes.filter((s) => s.px < 24).length,
 			under44: sizes.filter((s) => s.px < 44).length,
 		},
+		// The jukebox player (RMF, G3, #4185): its box, whether anything is
+		// drawn over it, and the controls on screen under it.
+		jukebox: (() => {
+			const dock = document.querySelector<HTMLElement>(
+				'[data-pane=jukebox-dock]',
+			);
+			if (!dock || !shown(dock)) return null;
+			const d = dock.getBoundingClientRect();
+			// What of a control is on screen: its box cut by every ancestor
+			// that scrolls or clips.
+			const seen = (el: Element) => {
+				const r = el.getBoundingClientRect();
+				let [l, t, rt, b] = [r.left, r.top, r.right, r.bottom];
+				for (let a = el.parentElement; a; a = a.parentElement) {
+					const cs = getComputedStyle(a);
+					if (cs.overflowX === 'visible' && cs.overflowY === 'visible')
+						continue;
+					const c = a.getBoundingClientRect();
+					[l, t, rt, b] = [
+						Math.max(l, c.left),
+						Math.max(t, c.top),
+						Math.min(rt, c.right),
+						Math.min(b, c.bottom),
+					];
+				}
+				return { l, t, rt, b };
+			};
+			const under = [
+				...document.querySelectorAll<HTMLElement>(
+					'button, a[href], input:not([type=hidden]), select, textarea',
+				),
+			]
+				.filter((el) => !dock.contains(el) && shown(el))
+				.filter((el) => {
+					const r = seen(el);
+					return (
+						Math.max(r.l, d.left) < Math.min(r.rt, d.right) &&
+						Math.max(r.t, d.top) < Math.min(r.b, d.bottom)
+					);
+				})
+				.map((el) =>
+					(el.getAttribute('aria-label') || el.innerText || el.tagName)
+						.trim()
+						.slice(0, 40),
+				);
+			// The middle and four points 8 px in from the corners.
+			const points: [number, number][] = [
+				[d.left + d.width / 2, d.top + d.height / 2],
+				[d.left + 8, d.top + 8],
+				[d.right - 8, d.top + 8],
+				[d.left + 8, d.bottom - 8],
+				[d.right - 8, d.bottom - 8],
+			];
+			return {
+				w: Math.round(d.width),
+				h: Math.round(d.height),
+				seated: dock.dataset.seated !== undefined,
+				overlaid: points.some(([x, y]) => {
+					const top = document.elementFromPoint(x, y);
+					return !!top && !dock.contains(top);
+				}),
+				under: under.slice(0, 10),
+			};
+		})(),
 		// Headings drawn on more than one line (#4046): a label is one line (G4).
 		wrappedLabels: [
 			...document.querySelectorAll<HTMLElement>('.eyebrow, .ride-label'),

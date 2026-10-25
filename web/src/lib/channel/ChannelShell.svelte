@@ -393,19 +393,25 @@
 		     --pane-jukebox-dock-h while the dock is hidden, which is every
 		     track the dock does not show — a pool track (ADR-0015: heard, not
 		     seen) or a muted mix. An absent variable makes the whole calc()
-		     invalid, so padding-bottom falls back to 0 and the gutter goes
+		     invalid, so the gutter falls back to 0 and goes
 		     with the player. A default resurrected it: 332px of nothing on
 		     every place, and the Chat place's h-full column wore it worst —
-		     its composer floated that far up the pane. -->
+		     its composer floated that far up the pane.
+
+		     Below md the player is the phone's width, and a gutter the place
+		     scrolls through left the roadside deck under it mid-scroll (#4185).
+		     There the place stops above the player instead: the dock's height,
+		     its corner's 5rem above the people button (JukeboxDock), and a gap,
+		     so nothing scrolls under it. -->
 		<!-- The place's body: scrolls down, never sideways, and named so the
 		     phone-width walk of the places can measure it (#1376). Not
 		     page-body — the root layout's wraps this whole shell. -->
 		<div
 			data-testid="place-body"
-			class="min-h-0 flex-1 overflow-y-auto"
-			style={live.tick?.jukebox?.current && !stageSlot.seated
-				? 'padding-bottom: calc(var(--pane-jukebox-dock-h) + 1.5rem)'
-				: ''}
+			class="min-h-0 flex-1 overflow-y-auto {live.tick?.jukebox?.current &&
+			!stageSlot.seated
+				? 'max-md:mb-[calc(var(--pane-jukebox-dock-h)+5.5rem)] md:pb-[calc(var(--pane-jukebox-dock-h)+1.5rem)]'
+				: ''}"
 		>
 			{@render props.children()}
 		</div>

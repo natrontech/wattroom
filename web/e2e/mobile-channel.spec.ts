@@ -1,6 +1,8 @@
 import type { Locator, Page } from '@playwright/test';
 import { expect, test, textPath, voicePath } from './crew';
+import { climbGpx } from './road-gpx';
 import { signInAs } from './signin';
+import { stubYouTube } from './youtube-stub';
 
 // The standard, not the project's Pixel 5 (#1624): 393 px hid a Lounge that
 // scrolled sideways at 375. And a spectator — the phone project ships a
@@ -559,4 +561,157 @@ test('a phone in the voice channel is offered the running session to watch', asy
 			message: 'the session page scrolls sideways on a phone',
 		})
 		.toEqual([0, 0]);
+});
+
+/** Every host the YouTube player and its API are served from. */
+const YOUTUBE =
+	/^https:\/\/([a-z0-9-]+\.)*(youtube(-nocookie)?\.com|ytimg\.com)\//;
+
+/**
+ * At the roadside on a phone with a track playing (#4185): below md the
+ * jukebox's corner player is the phone's width, and the voice channel's page
+ * scrolled the roadside deck under it. At every scroll of the page nothing of
+ * the deck lies under the player, the player keeps RMF's 200 × 200 with
+ * nothing over it (WATTROOM.md), and a click reaches every deck control.
+ */
+test('a phone at the roadside reaches every deck control while a track plays', async ({
+	page,
+	riders,
+	channels,
+}) => {
+	test.skip(
+		!!process.env.PLAYWRIGHT_BASE_URL,
+		'the ?as= dev provider only exists on a dev server',
+	);
+	const coach = await riders('Roadside Coach');
+	await coach.setViewportSize({ width: 1440, height: 900 });
+	await page.addInitScript(() =>
+		localStorage.setItem(
+			'wattroom.mixer.v1',
+			JSON.stringify({ music: 0, cues: 0, board: 0, share: 0 }),
+		),
+	);
+	for (const context of [coach.context(), page.context()]) {
+		await context.route(YOUTUBE, (route) => route.abort());
+		await stubYouTube(context);
+	}
+
+	// A road, so the deck chalks: kept on the coach's routes across runs.
+	const ROAD = 'Roadside deck climb';
+	const { routes } = (await (
+		await coach.request.get('/api/routes')
+	).json()) as { routes: { name: string }[] };
+	if (!routes.some((route) => route.name === ROAD)) {
+		await coach.goto('/workouts/import');
+		await coach.locator('input[type=file]').setInputFiles({
+			name: 'climb.gpx',
+			mimeType: 'application/gpx+xml',
+			buffer: Buffer.from(climbGpx()),
+		});
+		await coach.getByLabel('your name for it').fill(ROAD);
+		await coach.getByRole('button', { name: 'Save to my routes' }).click();
+		await expect(coach.getByText(`“${ROAD}” is on your routes`)).toBeVisible();
+	}
+
+	// A track on the channel's deck, which outlives the session it plays under.
+	const opened = await channels.open(coach, `Roadside ${Date.now() % 100000}`);
+	const add = coach
+		.getByRole('textbox', {
+			name: 'add music: search your library, or paste a YouTube link',
+		})
+		.filter({ visible: true })
+		.first();
+	await add.fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+	await add.press('Enter');
+
+	await coach.goto(`${voicePath(opened)}/training`);
+	await coach
+		.getByRole('button', { name: 'Ride simulated' })
+		.click({ timeout: 15_000 });
+	await coach.getByRole('button', { name: 'Start a session' }).click();
+	const picker = coach.getByRole('dialog', { name: 'Start a session' });
+	await picker.getByRole('button', { name: 'Roads' }).click();
+	await picker
+		.getByRole('list', { name: 'your routes' })
+		.getByRole('listitem')
+		.filter({ hasText: ROAD })
+		.first()
+		.getByRole('button', { name: 'Pick' })
+		.click();
+	await picker.getByRole('button', { name: /^Start Road/ }).click();
+
+	await signInAs(page, 'Roadside Phone', '/home');
+	await channels.enter(page, opened);
+	const deck = page.getByTestId('roadside-deck');
+	await expect(
+		deck.getByRole('group', { name: 'chalk the next climb' }),
+		'the phone never stood at the roadside',
+	).toBeVisible({ timeout: 40_000 });
+	await expect(
+		page.locator('[data-pane=jukebox-dock]'),
+		'the track never reached the phone',
+	).toBeVisible({ timeout: 15_000 });
+
+	// The whole page, top to bottom: the stage seats the player while it is on
+	// screen, and the corner takes it once the stage scrolls away.
+	const sweep = await page.evaluate(async () => {
+		const place = document.querySelector<HTMLElement>(
+			'[data-testid=place-body]',
+		)!;
+		const dock = document.querySelector<HTMLElement>(
+			'[data-pane=jukebox-dock]',
+		)!;
+		const deck = document.querySelector('[data-testid=roadside-deck]')!;
+		const under = new Set<string>();
+		const small = new Set<string>();
+		const overlaid = new Set<string>();
+		let cornered = 0;
+		for (let y = 0; ; y += 50) {
+			place.scrollTop = y;
+			// The seat is measured every 100 ms (stage-slot.svelte.ts).
+			await new Promise((resolve) => setTimeout(resolve, 250));
+			const d = dock.getBoundingClientRect();
+			const view = place.getBoundingClientRect();
+			if (dock.dataset.seated === undefined) cornered++;
+			if (d.width < 200 || d.height < 200)
+				small.add(`${Math.round(d.width)} × ${Math.round(d.height)}`);
+			const top = document.elementFromPoint(
+				d.left + d.width / 2,
+				d.top + d.height / 2,
+			);
+			if (!top || !dock.contains(top)) overlaid.add(top?.tagName ?? 'none');
+			for (const control of deck.querySelectorAll('button')) {
+				const r = control.getBoundingClientRect();
+				// Only what of it the page shows: the place clips the rest.
+				const from = Math.max(r.top, view.top, d.top);
+				const to = Math.min(r.bottom, view.bottom, d.bottom);
+				if (from < to && r.left < d.right && r.right > d.left)
+					under.add(
+						control.getAttribute('aria-label') ||
+							control.textContent?.trim() ||
+							'a control',
+					);
+			}
+			if (y >= place.scrollHeight - place.clientHeight) break;
+		}
+		return {
+			cornered,
+			under: [...under],
+			small: [...small],
+			overlaid: [...overlaid],
+		};
+	});
+	expect(sweep.cornered, 'the player never took its corner').toBeGreaterThan(0);
+	expect(sweep.under, 'deck controls under the jukebox player').toEqual([]);
+	expect(sweep.small, 'the player under 200 × 200').toEqual([]);
+	expect(sweep.overlaid, 'drawn over the jukebox player').toEqual([]);
+
+	// A click reaches every control. A chalk spends the road's one climb and
+	// turns the other stamps off, so the stamps are tried, not pressed.
+	const controls = await deck.getByRole('button').all();
+	expect(controls.length, 'the deck lost its controls').toBeGreaterThan(10);
+	for (const control of controls) {
+		const label = (await control.getAttribute('aria-label')) ?? '';
+		await control.click({ trial: label.startsWith('Chalk'), timeout: 5_000 });
+	}
 });
