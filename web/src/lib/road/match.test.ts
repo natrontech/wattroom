@@ -1,20 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Workout } from '$lib/workout/types';
+import { alpineLoop, legsRoad as road } from './fixtures';
 import { matchTerrain } from './match';
-import type { Road } from './road';
-
-/** A road drawn as legs of [metres, percent], a sample every 20 m. */
-function road(...legs: [number, number][]): Road {
-	const heights = [500];
-	for (const [metres, pct] of legs)
-		for (let s = 0; s < metres; s += 20)
-			heights.push(heights[heights.length - 1] + (pct / 100) * 20);
-	return {
-		length: 20 * (heights.length - 1),
-		heights,
-		turns: new Array(heights.length - 1).fill(0),
-	};
-}
 
 const steady = (minutes: number, target: number) =>
 	({ type: 'steady', seconds: minutes * 60, target }) as const;
@@ -64,5 +51,19 @@ describe('matchTerrain', () => {
 		const { fromZero } = matchTerrain(wall, twoByTwenty);
 		expect(fromZero.slow).toBeGreaterThan(0.3);
 		expect(fromZero.score).toBeCloseTo(fromZero.corr - 0.3 * fromZero.slow, 10);
+	});
+
+	it("starts the Alpine loop where #3099's reference loop did", () => {
+		// km 0 sends the warm-up up the pass; #3099 measured 13.5 km, 30 min
+		// under 10 km/h and −0.03 there, and 31.2 km, 5 min and 0.49 from the
+		// matched start.
+		const { best, fromZero } = matchTerrain(alpineLoop(), twoByTwenty, true);
+		const minutes = (s: { slow: number }) => s.slow * 65;
+		expect(fromZero.distanceM).toBeLessThan(15_000);
+		expect(minutes(fromZero)).toBeGreaterThan(20);
+		expect(fromZero.corr).toBeLessThanOrEqual(0.1);
+		expect(best.distanceM).toBeGreaterThan(25_000);
+		expect(minutes(best)).toBeLessThan(10);
+		expect(best.corr).toBeGreaterThanOrEqual(0.45);
 	});
 });

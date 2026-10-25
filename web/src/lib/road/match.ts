@@ -33,6 +33,8 @@ export type Start = {
 	corr: number;
 	/** Share of the ride's seconds under 10 km/h. */
 	slow: number;
+	/** How far the ride goes, in metres. */
+	distanceM: number;
 };
 
 export type TerrainMatch = {
@@ -119,7 +121,14 @@ function ride(
 	}
 	const corr = pearson(fractions, grades);
 	slow /= fractions.length;
-	return { startM, reverse, score: corr - SLOW_WEIGHT * slow, corr, slow };
+	return {
+		startM,
+		reverse,
+		score: corr - SLOW_WEIGHT * slow,
+		corr,
+		slow,
+		distanceM: pace.distance,
+	};
 }
 
 /**
