@@ -9,12 +9,13 @@
 		$props();
 </script>
 
-<!-- One line at the riding floor's 24 px (G4: a canon status line). -->
+<!-- One line at label size (G4: a canon status line; TARGETS
+     ride-skyline-fallback 2). -->
 <div data-status-line class="flex flex-wrap items-center gap-3">
 	<p
 		role="status"
 		data-testid="flat-road"
-		class="text-muted text-2xl leading-7"
+		class="text-muted text-label leading-7"
 	>
 		{REASONS[reason].line}
 	</p>
