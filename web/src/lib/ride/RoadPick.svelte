@@ -14,7 +14,6 @@
 	import type { FreeRide } from '$lib/ride/free-ride.svelte';
 	import { formatKm as km } from '$lib/format';
 	import { carriesOn } from '$lib/ride/road-end';
-	import RoadsBeta from '$lib/ride/RoadsBeta.svelte';
 	import {
 		carryOnFrom,
 		loadRoad,
@@ -111,7 +110,6 @@
 	{:else if !open}
 		<div class="flex flex-wrap items-center gap-3">
 			<button onclick={show} class="btn btn-secondary">Ride a road</button>
-			<RoadsBeta />
 		</div>
 	{:else if error}
 		<Banner tone="error">
@@ -128,7 +126,7 @@
 				>Your roads ride here — import a GPX, TCX or FIT.</span
 			>
 			<a
-				href="/workouts/import"
+				href="/workouts/import?as=route"
 				class="btn btn-secondary {onpick ? 'btn-lg' : 'btn-xs'}"
 				>Import a route</a
 			>

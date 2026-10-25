@@ -29,6 +29,12 @@ func TestValidMetricsBounds(t *testing.T) {
 		{"behind the road's start", protocol.RiderMetrics{M: -1}, false},
 		{"beyond any route", protocol.RiderMetrics{M: protocol.MaxRouteMeters + 1}, false},
 		{"higher than any road", protocol.RiderMetrics{Alt: protocol.MaxRoadAltM + 1}, false},
+		// The trim's own bounds, as a saved ride refuses them: the bunch reads
+		// the bias raw, and −5 at 0 W stood a dot at the front (audit #4125).
+		{"the trim at its floor", protocol.RiderMetrics{Bias: protocol.MinBias}, true},
+		{"the trim at its top", protocol.RiderMetrics{Bias: protocol.MaxBias}, true},
+		{"a negative trim", protocol.RiderMetrics{Bias: -5}, false},
+		{"a trim past the control", protocol.RiderMetrics{Bias: 1.5}, false},
 	}
 	for _, c := range cases {
 		if got := validMetrics(c.m); got != c.ok {

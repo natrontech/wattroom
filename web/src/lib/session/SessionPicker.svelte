@@ -17,7 +17,7 @@
 	import { untrack, type Snippet } from 'svelte';
 	import { countModal, modals } from '$lib/modals.svelte';
 	import { focusTrap } from '$lib/components/focus-trap';
-	import { GAME_MODES } from '$lib/session/modes';
+	import type { GameStart } from '$lib/session/modes';
 	import { durationSeconds, flatten } from '$lib/workout/engine';
 	import type { ShelfEntry } from '$lib/workout/shelf';
 	import type { Workout } from '$lib/workout/types';
@@ -28,8 +28,11 @@
 	import { onRoute } from '$lib/road/compile';
 	import type { Road } from '$lib/road/road';
 	import type { StoredRoute } from '$lib/road/stored';
+	import GameList from './GameList.svelte';
+	import PairFirst from './PairFirst.svelte';
+	import RaceStart from './RaceStart.svelte';
 	import RoadRow from './RoadRow.svelte';
-	import RoutePicker from './RoutePicker.svelte';
+	import RoutePicker, { type RoadChoice } from './RoutePicker.svelte';
 	import { bandChips, zoneChips } from './workout-chips';
 
 	let {
@@ -38,6 +41,7 @@
 		intent = 'start',
 		busy = false,
 		gameRunning = false,
+		sessionOpen = false,
 		onStart,
 		onRide,
 		onPlan,
@@ -61,6 +65,8 @@
 		intent?: PickerIntent;
 		busy?: boolean;
 		gameRunning?: boolean;
+		/** A session holds the channel: a race, which opens its own, waits. */
+		sessionOpen?: boolean;
 		/** Absent when this picker only plans: no voice channel to start it in. */
 		onStart?: (workout: Workout, route?: ControlRoute) => void;
 		/** Your own workout, ridden beside the session (#2329); the 'ride' intent's one action. */
@@ -72,8 +78,9 @@
 			json: string,
 			startsAtIso: string,
 		) => void | string | Promise<void | string>;
-		/** Absent hides the Games tab — games are a voice channel's, not a calendar's. */
-		onStartGame?: (id: string) => void;
+		/** Absent hides the Games tab — games are a voice channel's, not a
+		 *  calendar's — and holds Race it. */
+		onStartGame?: (game: GameStart) => void;
 		/** Where a plan runs, beside when (#2572): the crew's Schedule offers
 		 *  its voice channels here. Absent in a voice channel, which plans
 		 *  into itself. */
@@ -188,11 +195,8 @@
 		else routesError = res.error.message;
 	}
 	void loadRoutes();
-	let roadChoice = $state<{
-		workout: Workout;
-		route: ControlRoute;
-		legs: number;
-	} | null>(null);
+	let roadChoice = $state<RoadChoice | null>(null);
+	let roadHow = $state<'together' | 'race'>('together');
 
 	// The Road row on a workout pick (#3100): which of your roads it rides.
 	let workoutRoad = $state<{ id: string; road: Road } | null>(null);
@@ -244,14 +248,7 @@
 			own, or take the hold off its steps.
 		</p>
 	{:else if mode === 'start' && onStart}
-		{#if trainer}
-			<div class="mb-4">
-				<p class="mb-2 text-sm font-medium">
-					Pair your trainer first — the targets need something to hold them.
-				</p>
-				{@render trainer()}
-			</div>
-		{/if}
+		<PairFirst {trainer} why="the targets need something to hold them" />
 		<div class="flex flex-wrap items-center gap-3">
 			<div class="min-w-0 flex-1">
 				<p class="text-sm font-medium">
@@ -358,9 +355,23 @@
 			error={routesError}
 			onRetry={() => void loadRoutes()}
 			bind:choice={roadChoice}
+			bind:how={roadHow}
+			racing={mode === 'start' && !!onStartGame}
 		>
 			{#snippet footer(choice)}
-				{@render actions(choice.workout, choice.route, false)}
+				{#if 'race' in choice && onStartGame}
+					<RaceStart
+						race={choice.race}
+						{channelName}
+						{gameRunning}
+						{sessionOpen}
+						{busy}
+						{trainer}
+						onStart={onStartGame}
+					/>
+				{:else if 'workout' in choice}
+					{@render actions(choice.workout, choice.route, false)}
+				{/if}
 			{/snippet}
 		</RoutePicker>
 	{:else if tab === 'workouts' || mode === 'plan'}
@@ -487,31 +498,13 @@
 			</div>
 		</div>
 	{:else if onStartGame}
-		<div class="min-h-0 flex-1 overflow-y-auto p-4">
-			{#if gameRunning}
-				<p class="text-muted mb-3 text-xs">
-					A game is already running — end it before starting another.
-				</p>
-			{/if}
-			<div class="grid gap-2 sm:grid-cols-2">
-				{#each GAME_MODES as game (game.id)}
-					<div class="border-frame flex flex-col rounded-lg border px-4 py-3">
-						<p class="font-display flex items-center gap-2 text-sm font-bold">
-							<game.icon size={15} class="text-neon shrink-0" />
-							{game.label}
-						</p>
-						<p class="text-muted mt-1 flex-1 text-xs leading-relaxed">
-							{game.blurb}
-						</p>
-						<button
-							onclick={() => onStartGame(game.id)}
-							disabled={gameRunning}
-							class="btn btn-secondary btn-lg mt-3 self-start disabled:opacity-40"
-							>Start game</button
-						>
-					</div>
-				{/each}
-			</div>
-		</div>
+		<GameList
+			running={gameRunning}
+			onStart={onStartGame}
+			onRace={() => {
+				tab = 'roads';
+				roadHow = 'race';
+			}}
+		/>
 	{/if}
 </div>

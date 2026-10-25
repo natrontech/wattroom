@@ -85,6 +85,7 @@ export default defineConfig({
 				'mobile-channel.spec.ts',
 				'phone-width.spec.ts',
 				'voice-duck.spec.ts',
+				'voice-loopback.spec.ts',
 				'voice-click-join.spec.ts',
 				'design-shots.spec.ts',
 				'design-seed.spec.ts',
@@ -201,7 +202,7 @@ export default defineConfig({
 			// Actions runner has no speaker to reach either way; a developer
 			// running this locally hears one short tone, once, per run.
 			name: 'voice',
-			testMatch: ['voice-duck.spec.ts'],
+			testMatch: ['voice-duck.spec.ts', 'voice-loopback.spec.ts'],
 			use: {
 				...devices['Desktop Chrome'],
 				launchOptions: {

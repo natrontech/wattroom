@@ -179,7 +179,10 @@ test('import a .gpx route, read its preview, and save it', async ({ page }) => {
 			JSON.stringify({ music: 0, cues: 0, board: 0, share: 0 }),
 		),
 	);
-	await signInAs(page, 'Import Verify Route', '/workouts/import');
+	await signInAs(page, 'Import Verify Route', '/workouts/import?as=route');
+	await expect(
+		page.getByRole('heading', { level: 1, name: 'Import a route' }),
+	).toBeVisible();
 
 	await page.locator('input[type=file]').setInputFiles({
 		name: 'commute.gpx',
@@ -195,12 +198,14 @@ test('import a .gpx route, read its preview, and save it', async ({ page }) => {
 	const generated = (await heading.textContent())!.trim();
 	await expect(page.getByText(TRACK_NAME)).toHaveCount(0);
 	await expect(page.getByRole('table', { name: 'Climbs' })).toContainText('IV');
+	await expect(page.getByText('3.0 km · 120 m climbed')).toBeVisible();
 	await expect(page.getByText('At the reference pace')).toBeVisible();
-	await expect(page.getByText(/smoothing every route gets/)).toBeVisible();
+	// A clean file was fixed in nothing, so nothing says it was (#3684).
+	await expect(page.getByText(/what we fixed/i)).toHaveCount(0);
 	await expect(page.getByText(/map is sealed/)).toBeVisible();
-	// Every rider rides a road (#3352), marked beta until #3351 tunes it.
+	// Every rider rides a road (#3352), out of beta since #3351.
 	await expect(page.getByRole('button', { name: 'Ride it now' })).toBeEnabled();
-	await expect(page.getByTestId('roads-beta')).toContainText('Beta');
+	await expect(page.getByText('Beta', { exact: true })).toHaveCount(0);
 	// A crew plans a road from its session picker; nothing here promises it.
 	await expect(
 		page.getByRole('button', { name: 'Plan it for a crew' }),
@@ -212,6 +217,7 @@ test('import a .gpx route, read its preview, and save it', async ({ page }) => {
 	await expect(
 		page.getByText(/“Commute climb” is on your routes/),
 	).toBeVisible();
+	await expect(page.getByRole('link', { name: 'Ride it' })).toBeVisible();
 
 	// Stored: the owner's name on their own read, the generated one beside it.
 	const listed = await page.request.get('/api/routes');
@@ -225,6 +231,12 @@ test('import a .gpx route, read its preview, and save it', async ({ page }) => {
 			generatedName: generated,
 		}),
 	);
+
+	// Open it lands on the route just saved (#3684).
+	await page.getByRole('link', { name: 'Open it' }).click();
+	await expect(
+		page.getByRole('heading', { level: 1, name: 'Commute climb' }),
+	).toBeVisible();
 });
 
 /**

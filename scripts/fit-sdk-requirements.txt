@@ -1,0 +1,5 @@
+# Garmin's FIT SDK for Python, for scripts/fit-sdk-check.py (#2330). Pinned by
+# hash: pip refuses anything else. Bump by hand from
+# https://pypi.org/project/garmin-fit-sdk/ (the wheel's sha256).
+garmin-fit-sdk==21.218.0 \
+    --hash=sha256:7b912cde3b0b8f4acd7b543c202d15ac94f6b37b58eab5bad2186ca787b9ab37

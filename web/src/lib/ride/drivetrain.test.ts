@@ -2,12 +2,14 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { encodeSimulation } from '$lib/ble/ftms';
-import { BikeKg, PaceGravity, ReferenceRiderKg } from '$lib/protocol';
+import { trainerForce, SIM_DEFAULTS, type SimParams } from '$lib/ble/trainer';
+import { BikeKg, ReferenceRiderKg } from '$lib/protocol';
 import {
 	GEAR_RATIOS,
 	GEARS,
 	gearSpace,
 	ratioState,
+	REAL_RATIO,
 	simTransform,
 	trackRatio,
 } from './drivetrain';
@@ -32,17 +34,8 @@ const WHEEL = 2.096;
 const flywheel = (rpm: number, ratio: number) => (rpm / 60) * ratio * WHEEL;
 
 /** A trainer's force at flywheel speed v from the road it was sent. */
-function force(
-	road: { gradePct: number; crr: number; cw: number; windMps: number },
-	v: number,
-) {
-	const theta = Math.atan(road.gradePct / 100);
-	const air = v + road.windMps;
-	return (
-		M * PaceGravity * (Math.sin(theta) + road.crr * Math.cos(theta)) +
-		road.cw * air * Math.abs(air)
-	);
-}
+const force = (road: Required<SimParams>, v: number) =>
+	trainerForce(road, M, v);
 
 /** The road as the trainer reads it back off the wire, at FTMS resolution. */
 function decoded(road: Parameters<typeof encodeSimulation>[0]) {
@@ -57,7 +50,7 @@ function decoded(road: Parameters<typeof encodeSimulation>[0]) {
 
 describe('the transform (ADR-0084)', () => {
 	// Riding speeds: 60–110 rpm on real ratios up to 4.0 keep the flywheel
-	// under 15.4 m/s, where the Cw field's 0.01 kg/m is worth ±1.19 N. No
+	// under 15.4 m/s, where the Cw field's 0.01 kg/m is worth ±0.59 N. No
 	// wind: a WattRoom road carries none yet.
 	it('makes the trainer resist with k·F(k·v) within 1.3 N over 5,000 cases', () => {
 		const rand = seeded(3325);
@@ -73,7 +66,15 @@ describe('the transform (ADR-0084)', () => {
 			if (clamp || road.crr > 0.0255) continue;
 			checked++;
 			const want =
-				k * force({ ...felt, crr: 0.004, cw: 0.51 * (1 - shelter) }, k * v);
+				k *
+				force(
+					{
+						...felt,
+						crr: SIM_DEFAULTS.crr,
+						cw: SIM_DEFAULTS.cw * (1 - shelter),
+					},
+					k * v,
+				);
 			expect(Math.abs(force(decoded(road), v) - want)).toBeLessThanOrEqual(1.3);
 		}
 		// Clamps are the ride's to report, not this property's to hide behind.
@@ -173,33 +174,63 @@ describe('real-ratio detection', () => {
 	const normal = (rand: () => number) =>
 		Math.sqrt(-2 * Math.log(1 - rand())) * Math.cos(2 * Math.PI * rand());
 
-	it('re-labels nothing in 10 h of 2 % per-sample noise', () => {
+	it('re-labels nothing in 10 h of the Kickr Core’s 2.4 % per-sample noise', () => {
 		const rand = seeded(10);
 		const state = ratioState();
 		let relabels = 0;
 		for (let s = 0; s < 10 * 3600; s++)
-			if (trackRatio(state, sample(3, 90, 0.02 * normal(rand)))) relabels++;
+			if (trackRatio(state, sample(3, 90, 0.024 * normal(rand)))) relabels++;
 		expect(relabels).toBe(0);
 		expect(state.ratio).toBeCloseTo(3, 1);
 	});
 
-	it('re-labels a 42×14 → 42×17 move within 5 s of its first sample', () => {
+	it('re-labels a 42×14 → 42×17 move within 7 s of its first sample', () => {
 		const state = ratioState();
 		for (let s = 0; s < 30; s++) trackRatio(state, sample(42 / 14, 90));
 		let at = -1;
 		for (let s = 0; s < 10 && at < 0; s++)
 			if (trackRatio(state, sample(42 / 17, 90))) at = s;
 		expect(at).toBeGreaterThanOrEqual(0);
-		expect(at).toBeLessThanOrEqual(5);
+		expect(at).toBeLessThanOrEqual(7);
 		expect(state.ratio).toBeCloseTo(42 / 17, 6);
 	});
 
-	it("reads 2.87–2.95 off the Kickr Core's own #10 samples", () => {
+	it("reads 2.87–2.95 off the Kickr Core's own #10 samples, and re-labels nothing", () => {
 		const state = ratioState();
+		let relabels = 0;
 		for (const [rpm, kph] of KICKR_CORE_10)
-			trackRatio(state, { watts: 0, cadence: rpm, speedMps: kph / 3.6, at: 0 });
+			if (
+				trackRatio(state, {
+					watts: 0,
+					cadence: rpm,
+					speedMps: kph / 3.6,
+					at: 0,
+				})
+			)
+				relabels++;
 		expect(state.ratio).toBeGreaterThanOrEqual(2.87);
 		expect(state.ratio).toBeLessThanOrEqual(2.95);
+		expect(relabels).toBe(0);
+	});
+
+	// #3351, P1's noise: the #10 Kickr Core rode one Zwift Cog, so every
+	// in-band sample had one true ratio and their spread is the per-sample
+	// noise (a robust σ, 1.4826 × the median absolute deviation). Above 2 %,
+	// SPEC's window is 9.
+	it("measures the Kickr Core's per-sample noise above 2 %, so the window is 9", () => {
+		const median = (xs: number[]) => {
+			const s = [...xs].sort((a, b) => a - b);
+			const mid = s.length >> 1;
+			return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+		};
+		const ratios = KICKR_CORE_10.filter(
+			([rpm]) => rpm >= REAL_RATIO.minRpm && rpm <= REAL_RATIO.maxRpm,
+		).map(([rpm, kph]) => kph / 3.6 / ((rpm / 60) * REAL_RATIO.wheelMetres));
+		const m = median(ratios);
+		const noise = 1.4826 * median(ratios.map((r) => Math.abs(r / m - 1)));
+		expect(noise).toBeGreaterThan(0.02);
+		expect(noise).toBeLessThan(0.03);
+		expect(REAL_RATIO.window).toBe(9);
 	});
 
 	it('ignores samples outside 60–110 rpm, and everything when switched off', () => {

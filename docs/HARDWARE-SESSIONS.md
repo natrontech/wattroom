@@ -67,14 +67,14 @@ not *"not there"*. The probe list lives in `web/src/lib/ble/enumerate.ts`.
 
 ### 3. The route checklist (#3025, on every trainer a road will ride)
 
-Roads ride in SIM at a felt grade, so this is what decides SPEC's "Route rides"
-numbers (#3351). Hold **one real gear and a steady cadence** throughout unless a
+Roads ride in SIM at a felt grade, so this is what can correct SPEC's "Route
+rides" numbers, which #3351 set from research. Hold **one real gear and a steady cadence** throughout unless a
 step says otherwise; everything below logs itself.
 
 - **Cw factor.** At **0 %**, ride three steady powers (about 150, 200 and 250 W)
   for a minute each. Speed against power at a known Cw is how the pace model's
-  CdA and the Cw FTMS sends become one number; the ½ρ factor is measured here,
-  not assumed.
+  CdA and the Cw FTMS sends become one number. SPEC takes FE-C's ½·Cw·v²
+  (#3351); speeds off that line are a trainer that reads Cw another way.
 - **Cw steps.** Run the **Cw steps** probe: 0.51 → 0.33 → 0.26 → 0.51 kg/m at 0 %,
   30 s each. Power should drop at each step down and recover at the last.
 - **Grade slew.** Run the **grade slew** probe: 0 → 8 % at the felt grade's
@@ -128,7 +128,7 @@ both at one sitting.
 | **P8** burst | 5 presses within 1 s, three times. | Writes ≤ presses, one in flight, the final params equal the target, no timeouts. |
 | **P9** torque ceiling | Felt 10 % in gear 1, the smallest practical real gear, 60 rpm. | Within 10 % of the model, or a documented saturation line. |
 | **P10** sprint | Up 4, a 10 s sprint, down 4, three times. | Cadence never 0 while power is above 20 W. |
-| **P11** descent | 2 min at felt −5 % in the top 3 gears, then grades of −2, −5 and −10 %. | Within ±15 %, or a documented floor. The lowest grade rendered becomes MinTrainerGrade. |
+| **P11** descent | 2 min at felt −5 % in the top 3 gears, then grades of −2, −5 and −10 %. | Within ±15 %, or a documented floor. A floor above MinTrainerGrade (−10 %) is worth a report. |
 | **P12** Core 2 only | ERG 200 W, then felt 3 %, with a Cog or Click present. | FTMS control is unaffected. |
 
 Then hand back the file with a few sentences on feel: is a flat-road shift

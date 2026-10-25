@@ -211,7 +211,6 @@
 			"web/src/lib/components/RouteShape.svelte",
 			"web/src/lib/components/RouteProfile.svelte",
 			"web/src/lib/components/RoutePreview.svelte",
-			"web/src/lib/session/RoutePicker.svelte",
 			"web/src/**/RouteRow.svelte"
 		],
 		"surfaces": [
@@ -223,6 +222,17 @@
 			"routes",
 			"ride-roadpick"
 		]
+	},
+	{
+		"files": [
+			"web/src/lib/session/SessionPicker.svelte",
+			"web/src/lib/session/RoutePicker.svelte",
+			"web/src/lib/session/RaceChoice.svelte",
+			"web/src/lib/session/RaceStart.svelte",
+			"web/src/lib/session/GameList.svelte",
+			"web/src/lib/session/PairFirst.svelte"
+		],
+		"surfaces": ["picker-race"]
 	},
 	{
 		"files": ["web/src/routes/(app)/workouts/edit/**"],

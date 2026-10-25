@@ -10,6 +10,7 @@ import {
 } from './ftms';
 import type { TrainerSample } from './trainer';
 import { FakeCharacteristic, FakeDevice } from './fake-gatt.test-helper';
+import { scan, stale } from '$lib/source-scan.test-helper';
 
 /** Little-endian byte builder, so the cases read like the spec's field order. */
 function packet(flags: number, ...bytes: number[]): DataView {
@@ -73,6 +74,22 @@ describe('encodeWheelCircumference (#3331)', () => {
 			0x12, 0xc0, 0xa3,
 		]);
 	});
+
+	// #3351: FTMS says only that the trainer "shall use" it, and on a Kickr
+	// it moves the speed and distance reported, so a gear is never made of
+	// it. Gears go through 0x11; a ride never sends 0x12.
+	it('is sent by the Gears probe alone, never by a ride', () => {
+		const allowlist = {
+			'lib/ble/': 'the drivers that encode it',
+			'lib/ride/gears-probe.ts': 'P5 asks a trainer what it does with it',
+		};
+		const { offenders, used } = scan(
+			/\b(setWheelCircumference|encodeWheelCircumference)\b/g,
+			allowlist,
+		);
+		expect(offenders, offenders.join('\n')).toEqual([]);
+		expect(stale(allowlist, used)).toEqual([]);
+	});
 });
 
 describe('encodeSimulation', () => {
@@ -80,15 +97,16 @@ describe('encodeSimulation', () => {
 		...new Uint8Array(encodeSimulation(road)),
 	];
 
-	it('sends a grade alone as the 7 bytes every trainer was always sent', () => {
+	it('sends a grade alone on the default road, Cw the pace model’s ρ·CdA', () => {
 		// Pinned as literals, not computed from SIM_DEFAULTS: changing a
-		// default changes what every current caller writes (#3324).
-		// op 0x11 | wind 0 | grade 2.5 % = 250 | Crr 0.0040 = 40 | Cw 0.51 = 51
+		// default changes what every current caller writes (#3324). Cw is
+		// 1.225 × 0.32 = 0.392 kg/m, FE-C's convention (#3351).
+		// op 0x11 | wind 0 | grade 2.5 % = 250 | Crr 0.0040 = 40 | Cw 0.39 = 39
 		expect(bytes({ gradePct: 2.5 })).toEqual([
-			0x11, 0x00, 0x00, 0xfa, 0x00, 0x28, 0x33,
+			0x11, 0x00, 0x00, 0xfa, 0x00, 0x28, 0x27,
 		]);
 		expect(bytes({ gradePct: -3 })).toEqual([
-			0x11, 0x00, 0x00, 0xd4, 0xfe, 0x28, 0x33,
+			0x11, 0x00, 0x00, 0xd4, 0xfe, 0x28, 0x27,
 		]);
 	});
 

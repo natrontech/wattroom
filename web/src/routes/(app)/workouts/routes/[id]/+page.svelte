@@ -10,6 +10,7 @@
 	import RouteAttempts from '$lib/components/RouteAttempts.svelte';
 	import RouteProfile from '$lib/components/RouteProfile.svelte';
 	import RouteShape from '$lib/components/RouteShape.svelte';
+	import RouteStatRow from '$lib/components/RouteStatRow.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { confirm } from '$lib/confirm.svelte';
 	import { device, isSpectator } from '$lib/device.svelte';
@@ -191,15 +192,7 @@
 				>
 			{/if}
 		</div>
-		<p class="font-display text-muted mt-1 text-sm tabular-nums">
-			<!-- Numbers in ink, their units muted (v3-roads). -->
-			{#each statRow(route, loop) as part, i (part)}
-				{@const n = part.match(/^([\d.]+)(.*)$/)}{i ? ' · ' : ''}<span
-					class="whitespace-nowrap"
-					>{#if n}<span class="text-ink">{n[1]}</span
-						>{n[2]}{:else}{part}{/if}</span
-				>{/each}
-		</p>
+		<RouteStatRow parts={statRow(route, loop)} />
 
 		<!-- On a phone How comes first, its primary at the top; then the
 		     profile, the shape, the climbs and the rides (TARGETS route 14). -->

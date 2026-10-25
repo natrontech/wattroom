@@ -212,7 +212,7 @@
 		if (!door) return;
 		replaceState(door.rest, page.state);
 		if (device.spectator) return;
-		live.control('game', undefined, door.mode);
+		live.control('game', undefined, { gameMode: door.mode });
 		live.follow();
 	});
 	// The picker door (#4082): the editor, opened from this picker, comes
@@ -268,6 +268,7 @@
 		channelName={placeName}
 		ftp={connection.profile.current.ftp}
 		gameRunning={!!live.tick?.game}
+		sessionOpen={phase !== 'lounge'}
 		busy={planning}
 		onPlan={async (name, json, at) => {
 			if (planning) return;
@@ -303,8 +304,8 @@
 		onStartGame={device.spectator
 			? // A game IS a session, started the same way.
 				undefined
-			: (id) => {
-					live.control('game', undefined, id);
+			: (game) => {
+					live.control('game', undefined, game);
 					live.follow();
 					layers.setup.open = false;
 				}}

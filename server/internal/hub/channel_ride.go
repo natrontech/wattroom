@@ -18,6 +18,7 @@ func validMetrics(m protocol.RiderMetrics) bool {
 	return m.Watts >= 0 && m.Watts <= protocol.MaxWatts &&
 		m.HR >= 0 && m.HR <= protocol.MaxHeartRate &&
 		m.Cadence >= 0 && m.Cadence <= protocol.MaxCadence &&
+		protocol.BiasInBounds(m.Bias) &&
 		m.RoadInBounds()
 }
 

@@ -2,11 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { encodeSimulation, FtmsTrainer } from '$lib/ble/ftms';
 import { FakeDevice } from '$lib/ble/fake-gatt.test-helper';
 import { SimulatedTrainer } from '$lib/ble/simulated';
-import type {
-	SimParams,
-	Trainer,
-	TrainerSample,
-	TrainerStatus,
+import {
+	SIM_DEFAULTS,
+	type SimParams,
+	type Trainer,
+	type TrainerSample,
+	type TrainerStatus,
 } from '$lib/ble/trainer';
 import { BikeKg, PaceDefaultCdA, ReferenceRiderKg } from '$lib/protocol';
 import { at } from '$lib/road/along';
@@ -73,11 +74,11 @@ describe('felt against road (ADR-0084)', () => {
 
 	it('carries no shelter in Cw with "Feel the draft" off', () => {
 		expect(composeSim({ feltPct: 3 }, 0.35, 1, false).road.cw).toBeCloseTo(
-			0.51,
+			SIM_DEFAULTS.cw,
 			9,
 		);
 		expect(composeSim({ feltPct: 3 }, 0.35, 1, true).road.cw).toBeCloseTo(
-			0.51 * 0.65,
+			SIM_DEFAULTS.cw * 0.65,
 			9,
 		);
 	});
@@ -99,7 +100,7 @@ describe('felt against road (ADR-0084)', () => {
 		expect(act.gear.k).toBe(1);
 		expect(resets).toEqual([1]);
 		act.grade(3); // the effect's next word goes out afresh
-		expect(trainer.roads.at(-1)!.cw).toBeCloseTo(0.51, 9);
+		expect(trainer.roads.at(-1)!.cw).toBeCloseTo(SIM_DEFAULTS.cw, 9);
 	});
 });
 

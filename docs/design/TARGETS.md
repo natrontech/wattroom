@@ -313,7 +313,7 @@ Capture: as ride-session-road, on a session with no road.
 
 #### ride-race
 
-Capture: Designer and Design Partner race the hairpin road from Designer's voice channel, world off, the computer on RACE 20 s past km 0; the socket sends the start, as no screen offers a race yet. Then `ride-race-ride`, the same race on RIDE. Targets: v3-race (the RACE page; the radio line in slot 1). Canon: ADR-0067, ADR-0071; SPEC “Races”.
+Capture: Designer and Design Partner race the hairpin road from Designer's voice channel, world off, the computer on RACE 20 s past km 0; Designer starts it from the session picker's Race it (#3777). Then `ride-race-ride`, the same race on RIDE. Targets: v3-race (the RACE page; the radio line in slot 1). Canon: ADR-0067, ADR-0071; SPEC “Races”.
 
 1. RACE reads the gap to your Category's par (“vs par”, “+0:18” ahead, “−0:18” behind), then your place in your Category (“in C”, “2nd of 2”); no W/kg; as tall as RIDE. [#3174] [multi:ride-race-ride]
 2. Gap and place are the race model's: neon, flat, never watt; the page glows nothing. [#3174] [probe:wattCount]
@@ -437,6 +437,18 @@ Capture: `/ride` with “Change” opened, the hairpin and rolling route seeded.
 1. Every road is the shared route row: name, class chips, stat line, story line; the name links to the route page. [route-row]
 2. Empty state one line, “Your roads ride here — import a GPX, TCX or FIT.”, plus an “Import a route” button. [route-row]
 
+#### picker-race (a desk surface)
+
+Capture: Designer's voice channel, the session picker on Roads with the hairpin road picked, Race it on and Last Light chosen; then `picker-race-games`, its Games tab. Target: v3-modes (the “Starting a session, as coach” card). Canon: ADR-0067; SPEC “Races”; errors.md.
+
+1. Roads' “how” is two buttons on one row, “Ride it together” then “Race it”, the chosen one pressed; Race it is enabled. [#3777]
+2. Race it lists Race, Last Light and Wheelrace, each with its blurb from `$lib/session/modes.ts`, one chosen; no stretch to pick, as a race rides the whole road. [#3777] [test:web/src/lib/session/race-it.test.ts]
+3. Last Light offers 10, 20 and 30 min, 20 chosen. [#3777]
+4. A Wheelrace's par takes 15 to 45 min; any other is refused under the field, and nothing starts. [#3777] [test:web/src/lib/session/race-it.test.ts]
+5. The footer's one action names the race (“Start Last Light”), beside where it runs and its countdown and neutral zone; where a race cannot start, it is disabled with a one-line why. [#3777] [test:web/src/lib/session/race-it.test.ts]
+6. Games ends on one line naming the three races, with “Race on a road”, which opens Race it. [#3777] [multi:picker-race-games]
+7. No watt, no glow: the picker is chrome. [#3777]
+
 ### B. The world's look
 
 #### dev-world
@@ -519,11 +531,11 @@ Capture: `/workouts/import` idle; after the hairpin GPX is read; after Save. Des
 1. Header “Import a workout or a route”, a subline naming .zwo and .erg, and .gpx, .tcx and .fit; with `?as=route`, “Import a route”. [importer]
 2. Dashed border only while idle, or while dragging (then neon dashed on `bg-neon/5`); once a file is loaded the preview is a solid panel. [importer]
 3. Panel's first row: file icon, file name in mono xs, “Choose another file” as a ghost button at the right. [importer]
-4. The name an object title with the route page's stat row; shape and profile the shared drawings, the shape filling its panel. [importer] [road-drawing]
+4. The name an object title with the route page's stat row; shape and profile the shared drawings, the shape filling its panel. On a desk the route page's split: the drawings on the left, a ~300 px column on the right for the tiles, the name and the actions, with Save above the fold at 1440 × 900. [importer] [road-drawing]
 5. “At your pace” and “At the reference pace” two stat tiles; “What we fixed” only when something was fixed. [importer]
 6. Action row: “Save to my routes” (`btn-primary btn-lg`); “Ride it now” (`btn-secondary btn-lg`), enabled; “Plan it for a crew”, linking to the session picker once design/route-plan-crew lands, absent until then. [importer]
 7. After Save a banner “<name> is on your routes.” with Open it and Ride it, plus “Import another file”; nothing says a feature “is coming”. [importer]
-8. Privacy line once; on a phone the actions stack full width, primary first. [importer]
+8. One privacy line, plus the name hint beside the rename box; on a phone the actions stack full width, primary first. [importer]
 
 #### routes
 
