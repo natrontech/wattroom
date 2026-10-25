@@ -3,7 +3,6 @@
 	import { account } from '$lib/account.svelte';
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
-	import RoadsBeta from '$lib/ride/RoadsBeta.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import RoutePreview from '$lib/components/RoutePreview.svelte';
 	import { device, isSpectator } from '$lib/device.svelte';
@@ -186,7 +185,6 @@
 			</span>
 		{/if}
 	</div>
-	{#if !spectator}<RoadsBeta class="mt-2" />{/if}
 	{#if imported.src === 'stravagpx'}
 		<p class="text-muted mt-2 text-xs">
 			Files from Strava ride with you alone, never in a crew's plan.
