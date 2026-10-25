@@ -8,8 +8,9 @@ import { createProfileStore } from '$lib/profile.svelte';
 import { spaceBelongsTo } from '$lib/channel/ptt-keys';
 import { gearsEnabled } from '$lib/ride/gears-enabled';
 import { EASIER_HARDER_OFF } from '$lib/ride/easier-harder';
-import { bindShiftKeys, createRemoteRunner } from '$lib/ride/keys';
+import { bindShifters, createRemoteRunner } from '$lib/ride/keys';
 import { createTalkOpener } from '$lib/ride/remote-talk';
+import { shifterSlot } from '$lib/ble/controller-slot.svelte';
 import { DEFAULTS } from '$lib/workout/guards';
 import { createRideShift, type RideShift } from '$lib/ride/ride-shift';
 import { pullProfile } from '$lib/profile-sync.svelte';
@@ -351,7 +352,7 @@ function connect(address: PlaceAddress): Connection {
 		// Easier / Harder from the keys and any clicker, on every page while
 		// this channel's ride shifts (#3329) — a clicker cannot see the page.
 		shift = createRideShift(ride);
-		$effect(() => (ride.shifting ? bindShiftKeys(shift) : undefined));
+		$effect(() => (ride.shifting ? bindShifters(shift) : undefined));
 
 		// Your own workout shifts on its riding screen's shifter, which this
 		// connection cannot reach; the phone's taps get one of their own (#3333).
@@ -370,6 +371,7 @@ function connect(address: PlaceAddress): Connection {
 		// phone's gears off it says Bias, and a tap is what the ride's own −
 		// and + move (#4163): a workout's bias, or the free ride's watts or
 		// grade.
+		const talk = createTalkOpener(av);
 		const remote = createRemoteRunner(
 			{
 				shifts: () =>
@@ -387,11 +389,18 @@ function connect(address: PlaceAddress): Connection {
 					else if (freeRide.armed && !freeRide.road) freeRide.nudge(dir);
 				},
 			},
-			createTalkOpener(av),
+			talk,
 			{
 				pause: () => ownRide.session?.pause(),
 				resume: () => ownRide.session?.resume(),
 			},
+		);
+		// A controller's Talk is held while its button is, and a lost link
+		// lets go (#3335).
+		$effect(() =>
+			shifterSlot.onAction((action, edge) => {
+				if (action === 'talk') talk(edge === 'down');
+			}),
 		);
 		// The holder answers with its gear on a change and after each press, so
 		// a phone that joined late still learns where it is (#3217).

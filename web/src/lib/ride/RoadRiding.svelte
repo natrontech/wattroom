@@ -22,7 +22,7 @@
 	import { guardLeaving } from '$lib/ride/leave-guard.svelte';
 	import { createGhostSplit } from '$lib/ride/ghost-split.svelte';
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
-	import { bindShiftKeys } from '$lib/ride/keys';
+	import { bindShifters } from '$lib/ride/keys';
 	import { carriesOn } from '$lib/ride/road-end';
 	import SessionSummary from '$lib/ride/SessionSummary.svelte';
 	import RideFlags from '$lib/ride/RideFlags.svelte';
@@ -98,7 +98,7 @@
 	// hint are drawn (#3329, #3661).
 	$effect(() =>
 		free.mode === 'grade' && gearsEnabled()
-			? bindShiftKeys(solo.shift)
+			? bindShifters(solo.shift)
 			: undefined,
 	);
 

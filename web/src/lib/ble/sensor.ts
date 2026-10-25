@@ -12,6 +12,7 @@
  * `arbitrate.ts`, not here.
  */
 import { hwlog } from './hwlog';
+import { createReattach } from './reattach';
 
 export type SensorStatus = 'disconnected' | 'connecting' | 'connected';
 
@@ -72,7 +73,6 @@ export function createBleSensor(spec: BleSensorSpec): Sensor {
 	let name = spec.defaultName;
 	/** Set on rider-initiated disconnect, so the retry loop stands down. */
 	let closed = false;
-	let retryDelayMs = 1000;
 	/** Scopes one attach's listener, so a reattach does not stack a second. */
 	let attachment: AbortController | undefined;
 	const readingCbs = new Set<(r: SensorReading) => void>();
@@ -134,7 +134,7 @@ export function createBleSensor(spec: BleSensorSpec): Sensor {
 		);
 
 		if (abandoned(signal)) return;
-		retryDelayMs = 1000;
+		retry.reset();
 		setStatus('connected');
 	}
 
@@ -145,14 +145,10 @@ export function createBleSensor(spec: BleSensorSpec): Sensor {
 		return true;
 	}
 
-	function scheduleReattach(): void {
-		const delay = retryDelayMs;
-		retryDelayMs = Math.min(delay * 2, 30_000);
-		setTimeout(() => {
-			if (closed || status === 'connected') return;
-			void attach().catch(scheduleReattach);
-		}, delay);
-	}
+	const retry = createReattach(
+		() => attach(),
+		() => closed || status === 'connected',
+	);
 
 	return {
 		kind: spec.kind,
@@ -187,7 +183,7 @@ export function createBleSensor(spec: BleSensorSpec): Sensor {
 						return;
 					}
 					setStatus('connecting');
-					scheduleReattach();
+					retry.schedule();
 				});
 
 				await attach();

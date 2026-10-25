@@ -1,3 +1,4 @@
+import { shifterSlot } from '$lib/ble/controller-slot.svelte';
 import { isTyping } from '$lib/keys';
 import { gearsEnabled } from '$lib/ride/gears-enabled';
 import { createRideShift } from '$lib/ride/ride-shift';
@@ -82,12 +83,37 @@ export function bindShiftKeys(
 	};
 }
 
-/** The keys shifting one ride, each move one Easier / Harder press (#3328). */
+/**
+ * A paired OpenBikeControl shifter on a shifter (#3335): its Harder and
+ * Easier are press and release, as a key's are, and a lost link lets go of
+ * whatever it held.
+ */
+export function bindShiftController(
+	driver: Pick<ShiftDriver, 'press' | 'release' | 'drop'>,
+): () => void {
+	return shifterSlot.onAction((action, edge) => {
+		if (action !== 'harder' && action !== 'easier') return;
+		const source = `obc:${action}`;
+		if (edge === 'down') driver.press(action === 'harder' ? 1 : -1, source);
+		else if (edge === 'up') driver.release(source);
+		else driver.drop(source);
+	});
+}
+
+/** Every input that holds a control, bound to one shifter: the keys and a controller. */
+export function bindShifters(
+	driver: Pick<ShiftDriver, 'press' | 'release' | 'drop'>,
+): () => void {
+	const offs = [bindShiftKeys(driver), bindShiftController(driver)];
+	return () => offs.forEach((off) => off());
+}
+
+/** The keys and a controller shifting one ride, each move one Easier / Harder press (#3328). */
 export function bindRideShift(
 	ride: Parameters<typeof createRideShift>[0],
 ): () => void {
 	const driver = createRideShift(ride);
-	const unbind = bindShiftKeys(driver);
+	const unbind = bindShifters(driver);
 	return () => {
 		unbind();
 		driver.stop();
