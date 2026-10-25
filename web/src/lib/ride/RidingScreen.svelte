@@ -305,6 +305,8 @@
 		dockIn={!!countIn}
 	>
 		{#snippet header()}
+			<!-- The strip only beside a Skyline: without a road the graph below is
+			     the workout's one picture, its blocks in words (#4159). -->
 			<RideBand
 				{block}
 				elapsed={session.elapsed}
@@ -318,7 +320,7 @@
 					: undefined}
 				controls={worldControls}
 				status={rideStatus}
-				{strip}
+				strip={skyline ? strip : undefined}
 			/>
 		{/snippet}
 
@@ -385,6 +387,7 @@
 					<div class="absolute inset-0">
 						<IntervalGraph
 							ride
+							words={{ bias: session.bias }}
 							marker={!signalLost}
 							segments={session.segments}
 							total={session.total}

@@ -192,7 +192,7 @@ Capture: world on, `/ride?w=openers`, no road: a negative check. Canon: ADR-0066
 Capture: world off, `/ride?w=openers`, 14 s in; a second frame at four-digit watts (the spec drives the simulated trainer past 1,000 W). Targets: v2-erg (work panel, computer); v2-ride's “Flat road” inset.
 
 1. Every slot a `ride-panel`; nothing floats unframed. [ride-flat]
-2. Slot 1 one full-width panel. Left: time left at SPEC's desk size with block, target, elapsed of total. Right: interval strip with cursor, then NEXT (D16), the 3-2-1 chips and the ERG chip, all on one line. [ride-flat]
+2. Slot 1 one full-width panel. Left: time left at SPEC's desk size with block, target, elapsed of total. Right: NEXT (D16), the 3-2-1 chips and the ERG chip, all on one line. Where the graph (item 7) is drawn it is the workout's one picture and slot 1 has no interval strip; where the Skyline holds the horizon, the strip with its cursor stands over NEXT's line (Jan, 2026-10-25, #4159). [ride-flat]
 3. Controls one row inside slot 1, as ride-road-world item 7, flush with the panel's inner right edge. [ride-flat]
 4. Head as ride-road-world item 9: one watts figure at SPEC's desk size, W/kg beside, zone as digit and name, the track while a target is asked. [ride-flat]
 5. RIDE page fields per the one-home table (workout, no road: Cadence, Heart), in the head's panel, no gap wider than ~48 px; page control (D15) in that panel's header row. [ride-flat]
@@ -202,6 +202,7 @@ Capture: world off, `/ride?w=openers`, 14 s in; a second frame at four-digit wat
 9. At four digits the numeral stays inside its panel, covering no other text. [multi:four-digit] [ride-flat]
 10. Persistent status per G3. [multi:ride-status] [ride-flat]
 11. Cave covers the frame.
+12. Each block on the graph says what it is, drawn into it: its target in watts (a ramp's two ends, trimmed by the bias as slot 1's target is) and its length in NEXT's words, at the block's foot at label size, in neon, never watt (G2); a part that does not fit the block's width drops, the length first; the current block's words bold. No chip, no legend (Jan, 2026-10-25, #4159). [#4159] [test:web/src/lib/workout/block.test.ts]
 
 #### ride-skyline-fallback
 

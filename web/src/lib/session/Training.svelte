@@ -132,6 +132,12 @@
 		peopleFold.folded = docked;
 		return () => (peopleFold.folded = false);
 	});
+	// Flat, the horizon's graph is the workout's one picture, its blocks in
+	// words, and slot 1 drops its strip (#4159). Where the graph gives way (a
+	// screen, a sprint, the world), the strip is the picture again.
+	const graphed = $derived(
+		!inWorld && !quiet && inFocus !== 'media' && channel.segments.length > 0,
+	);
 	// The count-in over the world: the reveal flies, the digit hangs on the arch's banner (#3087, ADR-0046).
 	const countingIn = $derived(inWorld && channel.phase === 'countdown');
 	const ICON = 'btn btn-secondary h-11 w-11 p-0';
@@ -297,7 +303,7 @@
 				wide={!inWorld}
 				controls={worldControls}
 				status={trainerLine}
-				{strip}
+				strip={graphed ? undefined : strip}
 			/>
 			{#if channel.race}
 				<div class="px-4 pb-3">
@@ -431,7 +437,7 @@
 						strip={inFocus === 'media'}
 					/>
 				</div>
-			{:else if !quiet && inFocus !== 'media' && channel.segments.length > 0}
+			{:else if graphed}
 				<!-- The horizon: the session is the ground the numbers stand on,
 			     not another card. It gives way to the player when media has
 			     the focus — two grounds is one too many — and a game's
@@ -440,6 +446,7 @@
 					<div class="absolute inset-0">
 						<IntervalGraph
 							ride
+							words={{ bias: channel.bias }}
 							marker={!channel.youStale}
 							segments={channel.segments}
 							{total}

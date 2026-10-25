@@ -45,4 +45,13 @@ test('the numbers panel ends at its trim in a wide window', async ({
 	expect(fit.beforeTrim).toBeLessThanOrEqual(48);
 	expect(fit.afterTrim).toBeLessThanOrEqual(24);
 	expect(fit.ofSurface).toBeLessThan(0.8);
+
+	// One picture of the workout: the graph, its blocks in words, and no
+	// strip of the same workout in slot 1 (TARGETS ride-workout-flat 2, 12).
+	await expect(
+		page.getByTestId('ride-band').locator('svg[preserveAspectRatio=none]'),
+	).toHaveCount(0);
+	await expect(
+		page.locator('[data-testid=block-words][data-now=true]'),
+	).toContainText(/\d+ W/);
 });
