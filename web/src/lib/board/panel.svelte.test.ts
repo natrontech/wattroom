@@ -82,5 +82,11 @@ describe('the board panel’s three faces', () => {
 				{ id: 'bo', sounding: true },
 			]),
 		).toBeUndefined();
+		// Leaving the voice channel: the next one's sounding riders are not
+		// playing this fire.
+		boardPanel.forgetFire();
+		expect(
+			boardPanel.sounding([{ id: 'ana', sounding: true }]),
+		).toBeUndefined();
 	});
 });

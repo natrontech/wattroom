@@ -215,7 +215,10 @@
 		void board.load();
 		// Leaving the voice channel stops what it was playing: a 60 s clip must
 		// not follow the rider out of the channel that fired it.
-		return stopAll;
+		return () => {
+			stopAll();
+			boardPanel.forgetFire();
+		};
 	});
 
 	const megabytes = (bytes: number) => `${(bytes / (1 << 20)).toFixed(1)} MB`;
@@ -228,7 +231,9 @@
 	<!-- 364 px by default and wider from its right edge (#4094), the pads
 	     filling the width; keepSize remembers it per device. The trim face
 	     needs space for a waveform with two handles in it, so it raises the
-	     floor rather than the width. `motion-reduce` takes it without the
+	     floor rather than the width, and has no edge: a drag there would save
+	     its floor as the pads' width. 720 px keeps the edge on screen from
+	     the default spot on a 1024 px desk. `motion-reduce` takes it without the
 	     slide, and only the floor slides: a drag must not trail the pointer.
 	     Above the seated player, below the drawers (#2379): the board is a
 	     surface the rider pulled open, which the stacking rule (#483,
@@ -239,18 +244,20 @@
 	<div
 		data-pane={PANE}
 		{@attach (node) => keepSize(node, PANE)}
-		class="bg-surface ring-ink/15 fixed top-32 left-4 w-[364px] max-w-[calc(100vw-2rem)] rounded-lg p-1.5 ring-1 transition-[min-width] duration-(--dur-base) motion-reduce:transition-none md:left-72 {face ===
+		class="bg-surface ring-ink/15 fixed top-32 left-4 w-[364px] max-w-[min(720px,calc(100vw-2rem))] rounded-lg p-1.5 ring-1 transition-[min-width] duration-(--dur-base) motion-reduce:transition-none md:left-72 {face ===
 		'trim'
 			? 'min-w-[min(600px,calc(100vw-2rem))]'
 			: 'min-w-[min(364px,calc(100vw-2rem))]'} {covered ? 'z-30' : 'z-[57]'}"
 	>
-		<div
-			{@attach edgeDivider}
-			class="hover:bg-neon/40 active:bg-neon/60 absolute inset-y-0 right-0 z-10 w-1.5 cursor-col-resize touch-none rounded-r-lg transition-colors"
-			role="separator"
-			aria-orientation="vertical"
-			aria-label="resize the soundboard"
-		></div>
+		{#if face !== 'trim'}
+			<div
+				{@attach edgeDivider}
+				class="hover:bg-neon/40 active:bg-neon/60 absolute inset-y-0 right-0 z-10 w-1.5 cursor-col-resize touch-none rounded-r-lg transition-colors"
+				role="separator"
+				aria-orientation="vertical"
+				aria-label="resize the soundboard"
+			></div>
+		{/if}
 		<div
 			{@attach dragPane}
 			class="text-muted flex cursor-grab touch-none items-center gap-2 px-1 pb-1.5 text-[11px] active:cursor-grabbing"

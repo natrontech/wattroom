@@ -44,6 +44,10 @@ export const boardPanel = {
 	fired(from: string, fromId: string, clipId: string) {
 		lastFire = { from, fromId, clipId };
 	},
+	/** Leaving the voice channel: its fires are not the next one's. */
+	forgetFire() {
+		lastFire = undefined;
+	},
 	/**
 	 * The newest fire while its rider still sounds. `sounding` is this
 	 * machine's audio, so the line goes when the sound does; one rider is one

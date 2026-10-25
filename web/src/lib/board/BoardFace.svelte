@@ -146,7 +146,7 @@
 </script>
 
 <div
-	class="grid max-h-[min(60vh,32rem)] grid-cols-[repeat(auto-fill,minmax(104px,1fr))] gap-2 overflow-y-auto px-0.5"
+	class="grid max-h-[min(60vh,32rem)] grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-2 overflow-y-auto px-0.5"
 >
 	{#each pads as { slot, clip } (slot)}
 		{@const playing = mine === slot}
