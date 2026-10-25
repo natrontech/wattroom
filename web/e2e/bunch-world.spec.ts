@@ -1,6 +1,7 @@
-import type { Page } from '@playwright/test';
-import { expect, test, voicePath } from './crew';
+import type { Page, WebSocketRoute } from '@playwright/test';
+import { expect, test, voicePath, type ChannelOwner } from './crew';
 import { climbGpx } from './road-gpx';
+import { drawing, onTheRoad, worldOn } from './world';
 
 // The world draws in a window the box table holds (TARGETS ride-road-world):
 // Desktop Chrome's 1280 × 720 is shorter, and rides the flat road (#3668).
@@ -37,6 +38,49 @@ const drawn = (page: Page) =>
 		);
 	});
 
+/**
+ * The coach saves the invented climb to their routes, opens a voice channel
+ * the guests stand in, and starts a road session on it that every one of them
+ * rides on the simulated trainer.
+ */
+async function rideARoad(coach: Page, guests: Page[], channels: ChannelOwner) {
+	const NAME = `Bunch road ${Date.now() % 100000}`;
+	await coach.goto('/workouts/import');
+	await coach.locator('input[type=file]').setInputFiles({
+		name: 'climb.gpx',
+		mimeType: 'application/gpx+xml',
+		buffer: Buffer.from(climbGpx()),
+	});
+	await coach.getByLabel('your name for it').fill(NAME);
+	await coach.getByRole('button', { name: 'Save to my routes' }).click();
+	await expect(coach.getByText(`“${NAME}” is on your routes`)).toBeVisible();
+
+	const opened = await channels.open(coach, `Bunch ${Date.now() % 100000}`);
+	for (const guest of guests) await channels.enter(guest, opened);
+	for (const page of [coach, ...guests]) {
+		await page.goto(`${voicePath(opened)}/training`);
+		await page
+			.getByRole('button', { name: 'Ride simulated' })
+			.click({ timeout: 15_000 });
+	}
+	await coach
+		.getByRole('button', { name: 'Start a session' })
+		.click({ timeout: 15_000 });
+	const picker = coach.getByRole('dialog', { name: 'Start a session' });
+	await picker.getByRole('button', { name: 'Roads' }).click();
+	await picker
+		.getByRole('list', { name: 'your routes' })
+		.getByRole('listitem')
+		.filter({ hasText: NAME })
+		.getByRole('button', { name: 'Pick' })
+		.click();
+	await picker.getByRole('button', { name: /^Start Road/ }).click();
+	for (const guest of guests)
+		await guest
+			.getByRole('link', { name: 'Join the ride' })
+			.click({ timeout: COUNTDOWN_MS + SETTLE_MS });
+}
+
 test('two screens draw one bunch: each rider where the other screen has them @world', async ({
 	riders,
 	channels,
@@ -65,40 +109,7 @@ test('two screens draw one bunch: each rider where the other screen has them @wo
 		);
 	const [coachId, guestId] = [await idOf(coach), await idOf(guest)];
 
-	const NAME = `Bunch road ${Date.now() % 100000}`;
-	await coach.goto('/workouts/import');
-	await coach.locator('input[type=file]').setInputFiles({
-		name: 'climb.gpx',
-		mimeType: 'application/gpx+xml',
-		buffer: Buffer.from(climbGpx()),
-	});
-	await coach.getByLabel('your name for it').fill(NAME);
-	await coach.getByRole('button', { name: 'Save to my routes' }).click();
-	await expect(coach.getByText(`“${NAME}” is on your routes`)).toBeVisible();
-
-	const opened = await channels.open(coach, `Bunch ${Date.now() % 100000}`);
-	await channels.enter(guest, opened);
-	for (const page of [coach, guest]) {
-		await page.goto(`${voicePath(opened)}/training`);
-		await page
-			.getByRole('button', { name: 'Ride simulated' })
-			.click({ timeout: 15_000 });
-	}
-	await coach
-		.getByRole('button', { name: 'Start a session' })
-		.click({ timeout: 15_000 });
-	const picker = coach.getByRole('dialog', { name: 'Start a session' });
-	await picker.getByRole('button', { name: 'Roads' }).click();
-	await picker
-		.getByRole('list', { name: 'your routes' })
-		.getByRole('listitem')
-		.filter({ hasText: NAME })
-		.getByRole('button', { name: 'Pick' })
-		.click();
-	await picker.getByRole('button', { name: /^Start Road/ }).click();
-	await guest
-		.getByRole('link', { name: 'Join the ride' })
-		.click({ timeout: COUNTDOWN_MS + SETTLE_MS });
+	await rideARoad(coach, [guest], channels);
 
 	try {
 		// Both screens read at once, each snapshot stamped with when it was
@@ -145,4 +156,71 @@ test('two screens draw one bunch: each rider where the other screen has them @wo
 	} finally {
 		await info.attach('console', { body: said.join('\n') });
 	}
+});
+
+/** How long the channel's socket stays cut: the issue's ten seconds (#3850). */
+const CUT_MS = 10_000;
+
+/** The session band's clock, in seconds. */
+const clock = async (page: Page) => {
+	const [m, s] = (await page.getByTestId('ride-clock').textContent())!
+		.trim()
+		.split(' ')[0]
+		.split(':')
+		.map(Number);
+	return m * 60 + s;
+};
+
+test('a road session rides through ten seconds without its socket, and reconnects @world', async ({
+	riders,
+	channels,
+}) => {
+	test.skip(
+		!!process.env.PLAYWRIGHT_BASE_URL,
+		'the ?as= dev provider only exists on a dev server',
+	);
+	test.setTimeout(180_000);
+	const rider = await riders('World Socket Rider');
+	await worldOn(rider.context());
+	// Every channel socket through a hand on the wire: while `cut`, the page's
+	// socket is closed and every redial refused, as a dead network does.
+	let cut = false;
+	let wire: { page: WebSocketRoute; server: WebSocketRoute } | undefined;
+	await rider.routeWebSocket(/\/ws\/channels\//, (ws) => {
+		if (cut) return ws.close();
+		wire = { page: ws, server: ws.connectToServer() };
+	});
+	await rideARoad(rider, [], channels);
+	await drawing(rider);
+	await expect(rider.getByTestId('ride-clock')).toHaveText(/^\s*0:[1-9]/, {
+		timeout: COUNTDOWN_MS + SETTLE_MS,
+	});
+
+	// Lost while it redials, Still can't reach once the backoff has settled.
+	const fault = rider.getByText(
+		/^(Lost the channel|Still can't reach the channel)$/,
+	);
+	const from = await clock(rider);
+	cut = true;
+	const cutAt = Date.now();
+	await wire!.server.close();
+	await wire!.page.close();
+	await expect(fault, 'the drop went unannounced').toBeVisible();
+	// The ride goes on here while the hub cannot hear it: the banner counts
+	// the riding this device holds for it.
+	await expect(
+		rider.getByText(/0:0[5-9] of riding is buffered/),
+		'the ride stopped with the socket',
+	).toBeVisible({ timeout: CUT_MS });
+	await rider.waitForTimeout(cutAt + CUT_MS - Date.now());
+	cut = false;
+
+	// The backoff's next dial, at most ten seconds out, finds the wire back.
+	await expect(fault, 'the channel never came back').toBeHidden({
+		timeout: 15_000,
+	});
+	await expect
+		.poll(() => clock(rider), { message: 'the session lost the cut' })
+		.toBeGreaterThanOrEqual(from + CUT_MS / 1000);
+	await onTheRoad(rider, 'Leave the ride');
 });
