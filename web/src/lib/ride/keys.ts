@@ -184,7 +184,6 @@ export function rideKeyOf(
 	>,
 ): RideKey | null {
 	if (event.metaKey || event.ctrlKey || event.altKey) return null;
-	if (!gearsEnabled('keys')) return null;
 	if (event.key === '?') return { kind: 'sheet' };
 	// A Shift+digit is a symbol on most layouts (Swiss-German + is Shift+1).
 	if (event.shiftKey) return null;
