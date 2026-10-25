@@ -478,6 +478,8 @@ export function probe(corridor: Box) {
 				[d.right - 8, d.bottom - 8],
 			];
 			return {
+				x: Math.round(d.left),
+				y: Math.round(d.top),
 				w: Math.round(d.width),
 				h: Math.round(d.height),
 				seated: dock.dataset.seated !== undefined,

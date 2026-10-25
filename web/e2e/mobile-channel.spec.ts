@@ -665,6 +665,7 @@ test('a phone at the roadside reaches every deck control while a track plays', a
 		const under = new Set<string>();
 		const small = new Set<string>();
 		const overlaid = new Set<string>();
+		const outside = new Set<string>();
 		let cornered = 0;
 		for (let y = 0; ; y += 50) {
 			place.scrollTop = y;
@@ -672,14 +673,31 @@ test('a phone at the roadside reaches every deck control while a track plays', a
 			await new Promise((resolve) => setTimeout(resolve, 250));
 			const d = dock.getBoundingClientRect();
 			const view = place.getBoundingClientRect();
-			if (dock.dataset.seated === undefined) cornered++;
+			// The corner keeps the page's 16 px gutters.
+			if (dock.dataset.seated === undefined) {
+				cornered++;
+				if (d.left < 16 || d.right > innerWidth - 16)
+					outside.add(`x ${Math.round(d.left)}–${Math.round(d.right)}`);
+			}
 			if (d.width < 200 || d.height < 200)
 				small.add(`${Math.round(d.width)} × ${Math.round(d.height)}`);
-			const top = document.elementFromPoint(
-				d.left + d.width / 2,
-				d.top + d.height / 2,
-			);
-			if (!top || !dock.contains(top)) overlaid.add(top?.tagName ?? 'none');
+			// Its middle and four points 8 px in from its corners, those on
+			// screen: the people button sits beside the corner, never on it,
+			// and a seat half scrolled away takes the player with it.
+			for (const [x, at] of [
+				[d.left + d.width / 2, d.top + d.height / 2],
+				[d.left + 8, d.top + 8],
+				[d.right - 8, d.top + 8],
+				[d.left + 8, d.bottom - 8],
+				[d.right - 8, d.bottom - 8],
+			]) {
+				if (at < 0 || at > innerHeight) continue;
+				const top = document.elementFromPoint(x, at);
+				if (!top || !dock.contains(top))
+					overlaid.add(
+						top?.getAttribute('aria-label') ?? top?.tagName ?? 'none',
+					);
+			}
 			for (const control of deck.querySelectorAll('button')) {
 				const r = control.getBoundingClientRect();
 				// Only what of it the page shows: the place clips the rest.
@@ -699,9 +717,11 @@ test('a phone at the roadside reaches every deck control while a track plays', a
 			under: [...under],
 			small: [...small],
 			overlaid: [...overlaid],
+			outside: [...outside],
 		};
 	});
 	expect(sweep.cornered, 'the player never took its corner').toBeGreaterThan(0);
+	expect(sweep.outside, 'the corner past the page gutters').toEqual([]);
 	expect(sweep.under, 'deck controls under the jukebox player').toEqual([]);
 	expect(sweep.small, 'the player under 200 × 200').toEqual([]);
 	expect(sweep.overlaid, 'drawn over the jukebox player').toEqual([]);
