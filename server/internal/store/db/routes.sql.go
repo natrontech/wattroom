@@ -564,7 +564,7 @@ select id, samples
 from rides
 where user_id = $1 and route_key = $2 and timeable
 order by started_at desc
-limit 30
+limit 100
 `
 
 type ListTimedRouteSamplesParams struct {
@@ -578,7 +578,8 @@ type ListTimedRouteSamplesRow struct {
 }
 
 // The per-second records of a rider's timeable rides of one road (#3033),
-// for its per-climb bests: the latest few, their own only.
+// for its per-climb bests and the ghost's (#4193): the page
+// ListRouteAttempts reads, their own only.
 func (q *Queries) ListTimedRouteSamples(ctx context.Context, arg ListTimedRouteSamplesParams) ([]ListTimedRouteSamplesRow, error) {
 	rows, err := q.db.Query(ctx, listTimedRouteSamples, arg.UserID, arg.RouteKey)
 	if err != nil {

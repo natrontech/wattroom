@@ -145,8 +145,8 @@ func (s *Service) climbBests(r *http.Request, user db.User, id pgtype.UUID, key 
 
 // timedMetres is each of the rider's latest timeable rides of the road, by
 // id, as a metre for every second.
-// ponytail: the latest 30 (ListTimedRouteSamples); an older ride is never a
-// climb's best or the ghost — page the query if a road gets ridden that often.
+// ponytail: the latest 100, the page ListRouteAttempts reads; an older ride
+// is never a climb's best or the ghost — page both if a road is ridden more.
 func (s *Service) timedMetres(r *http.Request, user db.User, key string) (map[string][]float64, error) {
 	rides, err := s.store.Queries.ListTimedRouteSamples(r.Context(), db.ListTimedRouteSamplesParams{UserID: user.ID, RouteKey: &key})
 	if err != nil {
@@ -257,7 +257,9 @@ func roadTime(metres []float64, distanceM, lengthM float64) (int, bool) {
 	if len(pass) == 0 {
 		return 0, false
 	}
-	if len(pass) == len(metres) && distanceM > pass[len(pass)-1] {
+	// distance_m is whole metres and a road's length is not: a ride parked
+	// at the end can read up to half a metre past it, and that is no second.
+	if len(pass) == len(metres) && distanceM-pass[len(pass)-1] > 0.5 {
 		pass = append(pass[:len(pass):len(pass)], distanceM)
 	}
 	end := pass[len(pass)-1]

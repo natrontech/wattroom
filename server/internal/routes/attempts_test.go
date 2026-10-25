@@ -158,6 +158,7 @@ func TestRoadTimeIsTheFirstPassToTheEnd(t *testing.T) {
 	}{
 		"saved on arrival":                  {[]float64{0, 5, 10, 15}, 20, 4, true},
 		"rode on past the end":              {[]float64{0, 5, 10, 15, 20, 20, 20}, 20, 4, true},
+		"rode on past an end of 19.9 m":     {[]float64{0, 5, 10, 15, 19.9, 19.9, 19.9}, 20, 4, true},
 		"rode it again":                     {[]float64{0, 5, 10, 15, 20, 0, 5}, 25, 4, true},
 		"rode back the way it came":         {[]float64{0, 5, 10, 15, 20, 15, 10}, 30, 4, true},
 		"waited at the start":               {[]float64{0, 0, 0, 5, 10, 15}, 20, 4, true},
