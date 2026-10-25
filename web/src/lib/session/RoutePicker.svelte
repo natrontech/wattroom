@@ -1,38 +1,54 @@
+<script lang="ts" module>
+	import type { ControlRoute } from '$lib/protocol';
+	import type { Workout } from '$lib/workout/types';
+	import type { GameStart } from './modes';
+
+	/** The road picked, ridden together as its own workout or raced (#3777). */
+	export type RoadChoice =
+		| { workout: Workout; route: ControlRoute; legs: number }
+		| { race: GameStart };
+</script>
+
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import RouteProfile from '$lib/components/RouteProfile.svelte';
 	import RouteRow from '$lib/components/RouteRow.svelte';
 	import { formatDuration } from '$lib/format';
-	import { MaxLegSeconds, type ControlRoute } from '$lib/protocol';
+	import { MaxLegSeconds } from '$lib/protocol';
 	import { loadRoad } from '$lib/ride/roads';
 	import { crewSeconds, rideTogether } from '$lib/road/ride-together';
 	import { roadStep, type Road } from '$lib/road/road';
 	import type { StoredRoute } from '$lib/road/stored';
 	import { durationSeconds } from '$lib/workout/engine';
-	import type { Workout } from '$lib/workout/types';
+	import RaceChoice from './RaceChoice.svelte';
 
 	/**
 	 * Roads in the session picker (#3105): which of your routes, how the crew
 	 * rides it, and which stretch. Its answer is `choice` — the road's own
-	 * workout and the route the pick names — which the picker's one action
-	 * starts or plans, like a workout. A route from Strava is listed and never
-	 * pickable: it rides with its owner alone (ADR-0063).
+	 * workout and the route the pick names, or a race on it (#3777) — which
+	 * the picker's one action starts or plans, like a workout. A route from
+	 * Strava is listed and never pickable: it rides with its owner alone
+	 * (ADR-0063).
 	 */
-	type Choice = { workout: Workout; route: ControlRoute; legs: number };
 	let {
 		routes,
 		error,
 		onRetry,
 		choice = $bindable(),
+		how = $bindable('together'),
+		racing = false,
 		footer,
 	}: {
 		/** Null while the list is read. */
 		routes: StoredRoute[] | null;
 		error: string | null;
 		onRetry: () => void;
-		choice: Choice | null;
+		choice: RoadChoice | null;
+		how?: 'together' | 'race';
+		/** Whether a race can start here: now, from the screen you ride on. */
+		racing?: boolean;
 		/** The picker's one action, for the choice made here. */
-		footer: Snippet<[Choice]>;
+		footer: Snippet<[RoadChoice]>;
 	} = $props();
 	const list = $derived(routes ?? []);
 
@@ -93,7 +109,15 @@
 	let stretch = $state<'whole' | 'climb' | 'from'>('whole');
 	let climbAt = $state(0);
 	let fromKm = $state(0);
+	// A race rides the whole road, which the hub reads (ADR-0067).
+	let race = $state<Omit<GameStart, 'route'> | null>(null);
+	const racingIt = $derived(how === 'race' && racing);
 	$effect(() => {
+		if (racingIt) {
+			choice =
+				picked && race ? { race: { ...race, route: { id: picked.id } } } : null;
+			return;
+		}
 		if (!picked || !road) {
 			choice = null;
 			return;
@@ -230,73 +254,88 @@
 
 					<p class="eyebrow mt-4">how</p>
 					<div class="mt-2 flex flex-wrap gap-2">
-						<button class="btn btn-secondary btn-lg" aria-pressed="true"
+						<button
+							onclick={() => (how = 'together')}
+							aria-pressed={!racingIt}
+							class="btn btn-lg {racingIt ? 'btn-ghost' : 'btn-secondary'}"
 							>Ride it together</button
 						>
-						<button class="btn btn-ghost btn-lg" disabled>Race it</button>
-					</div>
-					<p class="text-muted mt-1 text-xs">
-						The crew rides the road’s own workout, ERG by its grade; racing
-						arrives with races.
-					</p>
-
-					<p class="eyebrow mt-4">which stretch</p>
-					<div class="mt-2 flex flex-wrap items-center gap-2">
 						<button
-							onclick={() => (stretch = 'whole')}
-							aria-pressed={stretch === 'whole'}
-							class="btn {stretch === 'whole' ? 'btn-secondary' : 'btn-ghost'}"
-							>The whole road</button
-						>
-						<button
-							onclick={() => (stretch = 'climb')}
-							aria-pressed={stretch === 'climb'}
-							disabled={classed.length === 0}
-							class="btn {stretch === 'climb' ? 'btn-secondary' : 'btn-ghost'}"
-							>One climb</button
-						>
-						<button
-							onclick={() => (stretch = 'from')}
-							aria-pressed={stretch === 'from'}
-							class="btn {stretch === 'from' ? 'btn-secondary' : 'btn-ghost'}"
-							>From a km</button
+							onclick={() => (how = 'race')}
+							aria-pressed={racingIt}
+							disabled={!racing}
+							class="btn btn-lg {racingIt ? 'btn-secondary' : 'btn-ghost'}"
+							>Race it</button
 						>
 					</div>
-					{#if stretch === 'climb' && classed.length > 0}
-						<select
-							bind:value={climbAt}
-							class="input mt-2"
-							aria-label="which climb"
-						>
-							{#each classed as c, i (c.startM)}
-								<option value={i}
-									>{c.cls} · {((c.topM - c.startM) / 1000).toFixed(1)} km from km
-									{(c.startM / 1000).toFixed(1)}</option
-								>
-							{/each}
-						</select>
-					{:else if stretch === 'from'}
-						<label class="text-muted mt-2 block text-xs">
-							Start at km
-							<input
-								type="number"
-								min="0"
-								step="0.5"
-								bind:value={fromKm}
-								class="input mt-1 w-32"
-							/>
-						</label>
-					{/if}
-
-					{#if choice}
-						<p class="text-muted mt-3 text-xs">
-							<span class="num"
-								>{formatDuration(durationSeconds(choice.workout))}</span
-							>
-							at the crew’s pace{choice.legs > 1
-								? ` — the first of ${choice.legs} legs of at most ${MaxLegSeconds / 3600} h`
-								: ''}.
+					{#if racingIt}
+						<RaceChoice bind:race />
+					{:else}
+						<p class="text-muted mt-1 text-xs">
+							The crew rides the road’s own workout, ERG by its grade.
+							{#if !racing}A race starts now, from the screen you ride on.{/if}
 						</p>
+
+						<p class="eyebrow mt-4">which stretch</p>
+						<div class="mt-2 flex flex-wrap items-center gap-2">
+							<button
+								onclick={() => (stretch = 'whole')}
+								aria-pressed={stretch === 'whole'}
+								class="btn {stretch === 'whole'
+									? 'btn-secondary'
+									: 'btn-ghost'}">The whole road</button
+							>
+							<button
+								onclick={() => (stretch = 'climb')}
+								aria-pressed={stretch === 'climb'}
+								disabled={classed.length === 0}
+								class="btn {stretch === 'climb'
+									? 'btn-secondary'
+									: 'btn-ghost'}">One climb</button
+							>
+							<button
+								onclick={() => (stretch = 'from')}
+								aria-pressed={stretch === 'from'}
+								class="btn {stretch === 'from' ? 'btn-secondary' : 'btn-ghost'}"
+								>From a km</button
+							>
+						</div>
+						{#if stretch === 'climb' && classed.length > 0}
+							<select
+								bind:value={climbAt}
+								class="input mt-2"
+								aria-label="which climb"
+							>
+								{#each classed as c, i (c.startM)}
+									<option value={i}
+										>{c.cls} · {((c.topM - c.startM) / 1000).toFixed(1)} km from km
+										{(c.startM / 1000).toFixed(1)}</option
+									>
+								{/each}
+							</select>
+						{:else if stretch === 'from'}
+							<label class="text-muted mt-2 block text-xs">
+								Start at km
+								<input
+									type="number"
+									min="0"
+									step="0.5"
+									bind:value={fromKm}
+									class="input mt-1 w-32"
+								/>
+							</label>
+						{/if}
+
+						{#if choice && 'workout' in choice}
+							<p class="text-muted mt-3 text-xs">
+								<span class="num"
+									>{formatDuration(durationSeconds(choice.workout))}</span
+								>
+								at the crew’s pace{choice.legs > 1
+									? ` — the first of ${choice.legs} legs of at most ${MaxLegSeconds / 3600} h`
+									: ''}.
+							</p>
+						{/if}
 					{/if}
 				{/if}
 			</div>

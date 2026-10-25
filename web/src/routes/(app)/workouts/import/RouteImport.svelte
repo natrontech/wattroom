@@ -3,7 +3,6 @@
 	import { account } from '$lib/account.svelte';
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
-	import RoadsBeta from '$lib/ride/RoadsBeta.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import RoutePreview from '$lib/components/RoutePreview.svelte';
 	import { device, isSpectator } from '$lib/device.svelte';
@@ -188,7 +187,6 @@
 							disabled={saving}
 							class="btn btn-secondary btn-lg w-full">Ride it now</button
 						>
-						<RoadsBeta />
 					{/if}
 					{#if imported.src === 'stravagpx'}
 						<p class="text-muted flex items-start gap-1 text-xs">

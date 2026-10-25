@@ -14,7 +14,7 @@ vi.mock('$lib/nav/crew-live.svelte', () => ({
 
 const workout = byId('openers')!.workout;
 
-describe('roads reach every rider, marked beta (#3352)', () => {
+describe('roads reach every rider, out of beta (#3352, #3351)', () => {
 	it('offers a production rider the Ride card’s ride kinds and its road', () => {
 		const { body } = render(RideCard, {
 			props: {
@@ -29,14 +29,14 @@ describe('roads reach every rider, marked beta (#3352)', () => {
 		expect(body).toContain('aria-label="how you ride"');
 		expect(body).toContain('Free ride');
 		expect(body).toMatch(/<span class="eyebrow">road<\/span>/);
-		expect(body).toContain('still being tuned on real trainers');
+		expect(body).not.toMatch(/>\s*Beta\s*</);
 	});
 
-	it('marks the route page’s Ride as beta', () => {
+	it('offers the route page’s Ride with no Beta marker', () => {
 		const { body } = render(RideHow, {
 			props: { id: 'r1', length: 7100, climbs: [], carry: null },
 		});
 		expect(body).toContain('href="/ride?road=r1"');
-		expect(body).toContain('Beta');
+		expect(body).not.toMatch(/>\s*Beta\s*</);
 	});
 });

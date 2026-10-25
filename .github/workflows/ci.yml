@@ -79,6 +79,15 @@ jobs:
           # Without this, an unreachable database is 17 skips and a green job
           # rather than a failure (#814).
           WATTROOM_REQUIRE_DB: '1'
+      # Garmin's own decoder over the exported .fit files (#2330, ADR-0088).
+      # The Go tests read them back with the library that wrote them, so a
+      # mistake the two share passes there. TestGoldenFile pins these files
+      # to what Encode writes, so a change to the export reaches this step.
+      - name: the FIT export decodes with Garmin's FIT SDK
+        run: |
+          python3 -m venv "$RUNNER_TEMP/fitsdk"
+          "$RUNNER_TEMP/fitsdk/bin/pip" install --quiet --disable-pip-version-check --require-hashes --only-binary=:all: -r ../scripts/fit-sdk-requirements.txt
+          "$RUNNER_TEMP/fitsdk/bin/python" -I ../scripts/fit-sdk-check.py internal/fitexport/testdata/*.fit
       - name: protocol types are up to date
         run: |
           go tool tygo generate

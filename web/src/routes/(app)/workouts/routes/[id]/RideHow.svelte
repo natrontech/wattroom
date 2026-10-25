@@ -6,7 +6,6 @@
 	import { spectatorRideLine } from '$lib/device.svelte';
 	import { formatKm } from '$lib/format';
 	import { classedOf, type Climb } from '$lib/road/climbs';
-	import RoadsBeta from '$lib/ride/RoadsBeta.svelte';
 
 	/**
 	 * How to ride a route, beside its road (#3680): one row per way to ride,
@@ -176,6 +175,5 @@
 				>{chosen.primary ?? chosen.label}</a
 			>
 		{/if}
-		<RoadsBeta class="mt-2" />
 	</div>
 </div>
