@@ -1894,13 +1894,19 @@ async function soundSheet(page: Page) {
 			const high = (e: Element) =>
 				Math.round(e.getBoundingClientRect().height * 10) / 10;
 			const r = el.getBoundingClientRect();
+			// The bike computer's head on a ride: the sheet's top clears it.
+			const head = document
+				.querySelector('[data-testid=computer-head]')
+				?.getBoundingClientRect();
 			return {
 				box: {
 					left: r.left,
+					top: r.top,
 					bottom: innerHeight - r.bottom,
 					width: r.width,
 					height: r.height,
 				},
+				headBottom: head ? Math.round(head.bottom) : null,
 				sliders: [...el.querySelectorAll('input[type=range]')].map(high),
 				done: high(
 					[...el.querySelectorAll('button')].find(
@@ -1928,7 +1934,9 @@ surface(
 			s,
 			{ workout: 'Recovery Spin' },
 			false,
-			(o) => o.ctx.addInitScript(MOVED_RIDERS),
+			async (o) => {
+				await o.ctx.addInitScript(MOVED_RIDERS);
+			},
 		);
 		try {
 			await assertRiding(coach.page);

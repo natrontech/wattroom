@@ -76,7 +76,7 @@
 		class={placement === 'right'
 			? `bg-surface border-ink/10 h-dvh w-full overflow-y-auto border-l ${cls}`
 			: placement === 'corner'
-				? `panel panel-lg max-h-[calc(100dvh-1.5rem)] w-full overflow-y-auto max-sm:rounded-b-none sm:w-auto ${cls}`
+				? `panel panel-lg max-h-[calc(100dvh-1.5rem)] w-full overflow-y-auto max-sm:rounded-b-none ${cls}`
 				: `panel panel-lg max-h-[calc(100dvh-2rem)] w-full overflow-y-auto ${cls}`}
 		in:enter={placement === 'right'
 			? { x: 48 }

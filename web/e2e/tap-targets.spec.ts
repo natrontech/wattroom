@@ -510,7 +510,7 @@ test('the Sound dialog’s controls are riding size and its device row is aligne
 		scrolls: false,
 	});
 	expect(sheet.width, 'the sheet is its content’s width').toBeLessThanOrEqual(
-		720,
+		1000,
 	);
 
 	const volumes = dialog.getByRole('slider', { name: /'s volume$/ });
