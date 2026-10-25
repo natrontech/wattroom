@@ -15,6 +15,7 @@ import { homeProbe } from './design/home-probe';
 import {
 	endSession,
 	joinSession,
+	pickRoad,
 	startSession,
 	toTraining,
 } from './design/session';
@@ -766,6 +767,28 @@ surface('ride-roadpick', async (s) => {
 	await o.page.waitForURL('**/workouts/routes/*');
 	await o.page.waitForTimeout(1500);
 	await s.shot(o, { name: 'ride-roadpick-name-opens' });
+});
+
+surface('picker-race', async (s) => {
+	// The session picker's Race it (#3777): Designer's voice channel, the
+	// hairpin road picked, Last Light chosen so its clock shows. Then the
+	// Games tab, which sends a race to the roads.
+	const o = await s.open(DESK, { world: false });
+	const crew = await designCrew(o.page);
+	await fixtureRoad(o.page, 'hairpin');
+	await toTraining(o.page, crew);
+	if (await o.page.getByRole('button', { name: 'end the session' }).count()) {
+		await endSession(o.page);
+		await toTraining(o.page, crew);
+	}
+	await o.page.getByRole('button', { name: 'Start a session' }).click();
+	const picker = o.page.getByRole('dialog', { name: 'Start a session' });
+	await pickRoad(picker, ROADS.hairpin.name, 'Last Light');
+	await o.page.waitForTimeout(1500);
+	await s.shot(o);
+	await picker.getByRole('button', { name: 'Games', exact: true }).click();
+	await o.page.waitForTimeout(500);
+	await s.shot(o, { name: 'picker-race-games' });
 });
 
 surface(
@@ -2002,18 +2025,14 @@ surface(
 surface(
 	'ride-race',
 	async (s) => {
-		// Designer and Design Partner race the hairpin road (#3174). No screen
-		// starts a race yet, so Designer's socket sends the start the hub takes.
-		// The 3-minute neutral zone alone is most of the default 5 minutes.
+		// Designer and Design Partner race the hairpin road (#3174), started
+		// from the session picker's Race it (#3777). The 3-minute neutral zone
+		// alone is most of the default 5 minutes.
 		test.setTimeout(10 * 60_000);
 		const coach = await s.open(DESK, { world: false });
 		const crew = await designCrew(coach.page);
-		const road = await fixtureRoad(coach.page, 'hairpin');
+		await fixtureRoad(coach.page, 'hairpin');
 		const rider = await s.open(DESK, { as: 'Design Partner', world: false });
-		let socket: WebSocketRoute | undefined;
-		await coach.page.routeWebSocket(/\/ws\/channels\//, (ws) => {
-			socket = ws.connectToServer();
-		});
 		await toTraining(coach.page, crew);
 		// A run that failed mid-race left it running: end it first.
 		if (
@@ -2023,23 +2042,18 @@ surface(
 			await toTraining(coach.page, crew);
 		}
 		await toTraining(rider.page, crew);
-		// Sent until the session opens: a page that reconnected has a new socket.
-		const start = JSON.stringify({
-			control: { action: 'game', gameMode: 'race', route: { id: road } },
-		});
-		const open = coach.page.getByRole('button', { name: 'end the session' });
-		for (let k = 0; k < 5 && !(await open.count()); k++) {
-			socket?.send(start);
-			await open.waitFor({ timeout: 4000 }).catch(() => {});
-		}
+		await startSession(coach.page, { road: ROADS.hairpin.name, race: 'Race' });
 		await joinSession(rider.page);
-		await coach.page
-			.getByRole('link', { name: 'Go to the ride' })
-			.click({ timeout: 15_000 });
+		// Started "without a trainer", the coach lines up as the partner does.
+		const coachJoins = coach.page.getByRole('link', { name: 'Join the ride' });
+		if (await coachJoins.isVisible({ timeout: 5000 }).catch(() => false))
+			await coachJoins.click();
 		try {
 			await coach.page.getByTestId('race-radio').waitFor({ timeout: 40_000 });
+			// Docked, the arrows name the page they turn to (D15); RACE is last,
+			// so ← from RIDE reaches it, and → from RACE comes back.
 			await coach.page
-				.getByRole('button', { name: 'RACE page', exact: true })
+				.getByRole('button', { name: 'previous page, RACE' })
 				.click();
 			// Through the 3-minute neutral zone to km 0, then 20 s of racing.
 			await coach.page.waitForFunction(
@@ -2054,9 +2068,7 @@ surface(
 			await s.shot(coach);
 			// multi:ride-race-ride — the same race on RIDE: a page turn keeps the
 			// computer's shape (ADR-0071).
-			await coach.page
-				.getByRole('button', { name: 'RIDE page', exact: true })
-				.click();
+			await coach.page.getByRole('button', { name: 'next page, RIDE' }).click();
 			await coach.page.waitForTimeout(1000);
 			await s.shot(coach, { name: 'ride-race-ride' });
 		} finally {

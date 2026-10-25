@@ -25,10 +25,13 @@ export async function toTraining(page: Page, crew: DesignCrew): Promise<void> {
 		.click({ timeout: 15_000 });
 }
 
-/** Starts a library workout for the channel, or rides a road together. */
+/**
+ * Starts a library workout for the channel, rides a road together, or races
+ * it (#3777): `race` is the race's name, as the picker's Race it lists it.
+ */
 export async function startSession(
 	coach: Page,
-	pick: { workout: string } | { road: string },
+	pick: { workout: string } | { road: string; race?: string },
 ): Promise<void> {
 	await coach.getByRole('button', { name: 'Start a session' }).click();
 	const picker = coach.getByRole('dialog', { name: 'Start a session' });
@@ -47,19 +50,33 @@ export async function startSession(
 			}),
 		);
 	} else {
-		await press(picker.getByRole('button', { name: 'Roads', exact: true }));
-		// Pick the road's row; the crew rides its own workout, started from
-		// the picker's footer like any other.
-		await press(
-			picker
-				.getByRole('list', { name: 'your routes' })
-				.getByRole('listitem')
-				.filter({ hasText: pick.road })
-				.getByRole('button', { name: 'Pick' })
-				.first(),
-		);
+		await pickRoad(picker, pick.road, pick.race);
 		await press(picker.getByRole('button', { name: /^Start / }).last());
 	}
+}
+
+/**
+ * The open picker on Roads with `road` picked: the crew rides its own
+ * workout, or with `race` named, Race it on that race (#3777). Either starts
+ * from the picker's footer like any other pick.
+ */
+export async function pickRoad(
+	picker: Locator,
+	road: string,
+	race?: string,
+): Promise<void> {
+	await press(picker.getByRole('button', { name: 'Roads', exact: true }));
+	await press(
+		picker
+			.getByRole('list', { name: 'your routes' })
+			.getByRole('listitem')
+			.filter({ hasText: road })
+			.getByRole('button', { name: 'Pick' })
+			.first(),
+	);
+	if (!race) return;
+	await press(picker.getByRole('button', { name: 'Race it' }));
+	await press(picker.getByRole('button', { name: new RegExp(`^${race} `) }));
 }
 
 /** The second rider rides along. */
