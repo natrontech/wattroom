@@ -113,7 +113,8 @@ blank.
 
 A Strava refresh token is stored sealed with `WATTROOM_TOKEN_KEY` or not at
 all (ADR-0035). Without the key the server boots, logs that Strava is off, and
-offers no Strava button; set it before configuring the Strava app.
+offers neither Strava sign-in nor connection; set it before configuring the
+Strava app, or before upgrading a server that ran Strava without it.
 
 ### Rotating `WATTROOM_TOKEN_KEY`
 

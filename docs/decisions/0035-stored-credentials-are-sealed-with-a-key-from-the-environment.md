@@ -125,10 +125,12 @@ The sealing reached every row: the plaintext count read 0 across all of
 `identities.refresh_token`, and with it the plaintext half of this ADR goes:
 
 - **Absent key: Strava is off.** A credential is stored sealed or not at all,
-  so a server without the key does not offer Strava (its button is hidden, the
-  same as an unconfigured provider), logs why, and still boots. A deployment or
-  a dev box that does not use Strava still needs no key, which was the reason
-  for the absent-key rule.
+  so a server without the key offers neither Strava sign-in nor connection
+  (hidden, the same as an unconfigured provider), logs why, and still boots. A
+  deployment or a dev box that does not use Strava still needs no key, which
+  was the reason for the absent-key rule. One that ran Strava without a key
+  sets it before upgrading: its tokens in the clear are no longer read, so its
+  riders reconnect, and a Strava-only rider signs in again through recovery.
 - Reads take the sealed column only; a row without one has no token. The
   boot-time backfill and the plaintext-count gauge with its two alerts are
   gone, since every one of them named the column.
