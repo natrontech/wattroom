@@ -106,14 +106,17 @@ test('the numbers row fits 360px once heart rate and execution are on it', async
 	await expect(row.getByText('bpm', { exact: true })).toBeVisible({
 		timeout: 20_000,
 	});
-	// Execution counts from the first scored second: past the 30 s warm-up.
+	const body = page.getByTestId('page-body');
+	const wide = () => body.evaluate((el) => el.scrollWidth - el.clientWidth);
+	expect(await wide(), 'RIDE is wider than the window').toBe(0);
+	// Execution lives on POWER under a head (D17) and counts from the first
+	// scored second: past the 30 s warm-up. Docked, the arrows are the named
+	// way to turn a page (D15); the dots are for the eye.
+	await page.getByRole('button', { name: 'next page, POWER' }).click();
 	await expect(row.getByText('Execution', { exact: true })).toBeVisible({
 		timeout: 45_000,
 	});
-
-	const body = page.getByTestId('page-body');
-	const excess = await body.evaluate((el) => el.scrollWidth - el.clientWidth);
-	expect(excess, 'the riding screen is wider than the window').toBe(0);
+	expect(await wide(), 'POWER is wider than the window').toBe(0);
 	// The + is the control reached for mid-interval: on screen, whole.
 	const box = await page
 		.getByRole('button', { name: 'raise the target by one percent' })

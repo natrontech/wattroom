@@ -18,7 +18,6 @@
 		type RecoveredRide,
 	} from '$lib/ride/recovered';
 	import { recoverableRides } from '$lib/ride/recoverable.svelte';
-	import { roadsEnabled } from '$lib/ride/roads';
 	import { uploadRide } from '$lib/ride/save';
 	import { toasts } from '$lib/toast.svelte';
 
@@ -116,7 +115,7 @@
 			>
 			<!-- A ride on a road carries on along it from where it stopped
 			     (#3027) — a new ride from that metre; this one stays to save. -->
-			{#if roadsEnabled() && resumeAt(ride)}
+			{#if resumeAt(ride)}
 				{@const at = resumeAt(ride)!}
 				<a
 					href="/ride?road={encodeURIComponent(at.routeId)}&from={Math.floor(

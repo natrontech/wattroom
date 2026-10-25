@@ -1,1 +1,0 @@
-- A spectator beside a session sees the cheers once, on the roadside deck; riders keep theirs in the people column.

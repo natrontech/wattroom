@@ -27,6 +27,7 @@
 		compact = false,
 		marker = true,
 		tv = false,
+		ride = false,
 		ceiling = CEILING,
 		selectedPath = null,
 		onSelect,
@@ -47,6 +48,8 @@
 		marker?: boolean;
 		/** TV mode (#3407): the FTP label reads at 3 m, like every TV word. */
 		tv?: boolean;
+		/** On a riding surface the FTP label is SPEC's 24 px word (TARGETS G4). */
+		ride?: boolean;
 		/**
 		 * Top of the vertical scale, as a fraction of FTP. The ramp test rides
 		 * far above the FTP it exists to correct, so 1.5 × FTP flat-tops its
@@ -69,7 +72,8 @@
 	} = $props();
 
 	const W = VIEW.width;
-	const H = VIEW.height;
+	// A riding surface's plot fills its panel: no 8-unit margin under the baseline.
+	const H = $derived(ride ? VIEW.base + 1 : VIEW.height);
 	const BASE = VIEW.base;
 
 	interface Drag {
@@ -135,9 +139,11 @@
 				fromFraction: from,
 				toFraction: to,
 				label:
-					seg.kind === 'sprint'
-						? `Sprint — all out · ${formatClock(seg.seconds)}`
-						: `Z${zone} ${ZONE_NAMES[zone]} · ${targetText(seg, from, to)} · ${formatClock(seg.seconds)}`,
+					seg.kind === 'road'
+						? `Road · SIM · ${formatClock(seg.seconds)}`
+						: seg.kind === 'sprint'
+							? `Sprint — all out · ${formatClock(seg.seconds)}`
+							: `Z${zone} ${ZONE_NAMES[zone]} · ${targetText(seg, from, to)} · ${formatClock(seg.seconds)}`,
 			};
 		}),
 	);
@@ -154,7 +160,7 @@
 	}
 
 	function startDrag(event: PointerEvent, block: (typeof blocks)[number]) {
-		if (!editable || !onEdit) return;
+		if (!editable || !onEdit || block.kind === 'road') return;
 		const { vx, vy } = view(event);
 		// Selecting on the way down is what makes the inspector track the drag.
 		onSelect?.(block.path);
@@ -211,7 +217,7 @@
 	 * path on its own; this is the shortcut for a rider already on the graph.
 	 */
 	function editKeys(event: KeyboardEvent, block: (typeof blocks)[number]) {
-		if (!editable || !onEdit) return;
+		if (!editable || !onEdit || block.kind === 'road') return;
 		const by = event.altKey ? 1 : SNAP_SECONDS;
 		if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
 			const now = block.seconds;
@@ -262,11 +268,12 @@
 	);
 </script>
 
-<div class="relative">
+<!-- On the TV the graph takes what height its panel is given (#3677). -->
+<div class="relative {tv || ride ? 'h-full' : ''}">
 	<svg
 		bind:this={svg}
 		viewBox="0 0 {W} {H}"
-		class="w-full {compact ? 'h-14' : 'h-28'}"
+		class="w-full {compact ? 'h-14' : tv || ride ? 'h-full' : 'h-28'}"
 		preserveAspectRatio="none"
 	>
 		{#each blocks as block, i (i)}
@@ -279,7 +286,7 @@
 			<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 			<polygon
 				points={block.points}
-				style:color={ZONE_VAR[block.zone]}
+				style:color={ZONE_VAR[block.zone] || 'var(--color-muted)'}
 				class="{picked
 					? 'opacity-80'
 					: block.sprint
@@ -309,7 +316,7 @@
 		{#each blocks as block, i (i)}
 			<polyline
 				points={block.edge}
-				style:color={ZONE_VAR[block.zone]}
+				style:color={ZONE_VAR[block.zone] || 'var(--color-muted)'}
 				fill="none"
 				stroke="currentColor"
 				stroke-width={compact ? 1.5 : 2}
@@ -381,7 +388,9 @@
 		<span
 			class="text-muted pointer-events-none absolute right-1.5 -translate-y-full font-mono tracking-widest {tv
 				? 'text-[3vh] leading-none'
-				: 'text-[9px]'}"
+				: ride
+					? 'text-2xl leading-none'
+					: 'text-[9px]'}"
 			style="top: {(y(1) / H) * 100}%">FTP</span
 		>
 	{/if}

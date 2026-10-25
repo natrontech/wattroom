@@ -10,7 +10,7 @@ golangci-lint (gosec, errorlint, noctx, bodyclose, errcheck with type assertions
 ## Concurrency (the hub is the hot spot)
 
 - Every goroutine has a defined owner and exit condition. A `go func()` with no way to stop is a leak — name where it terminates.
-- No blocking sends/writes while holding a mutex. The hub pattern is: lock → copy what you need → unlock → do I/O on the copy (see `room.run()`, the hub's loop for one voice channel).
+- No blocking sends/writes while holding a mutex. The hub pattern is: lock → copy what you need → unlock → do I/O on the copy (see `channelState.run()` in `internal/hub/tick.go`, the hub's loop for one voice channel).
 - Slow consumers must never stall a voice channel's tick. Timeouts or drop-the-message, never unbounded blocking.
 - Shared state changes go through the owning goroutine or a mutex — never both patterns for the same field.
 - Tests for concurrent code: deterministic, no `time.Sleep` synchronization; prefer `testing/synctest` for timer-driven logic.

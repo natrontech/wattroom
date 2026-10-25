@@ -9,8 +9,9 @@
 	// card at all, and the one instruction that makes a watt appear went
 	// down with the two that are the owner's alone.
 	import { account, unchosen } from '$lib/account.svelte';
-	import { canSimulate } from '$lib/ble/can-simulate';
 	import { fetchCrew } from '$lib/crew';
+	import { canSimulate } from '$lib/ble/can-simulate';
+	import { INTRO_ROAD_ID } from '$lib/ride/roads';
 	import FtpAsk from '$lib/home/FtpAsk.svelte';
 	import type { CrewRef } from '$lib/crew-types';
 	import Check from '@lucide/svelte/icons/check';
@@ -23,6 +24,8 @@
 		label: string;
 		/** The small grey line under a link row; the ask writes its own. */
 		hint?: string;
+		/** More small grey lines under the hint (#3218). */
+		lines?: string[];
 		href?: string;
 		ask?: boolean;
 	};
@@ -53,17 +56,21 @@
 	// name retired the step when the OWNER renamed themselves (audit 2026-09-09).
 	const named = $derived(!!crew?.named);
 	const invited = $derived(people !== null && people > 1);
-	// Labelled for what it tests (#1857): a finished ride. "Pair your
-	// trainer" stayed open after a rider paired one, with the real rule in
-	// the small grey line.
+	// Labelled for what it tests (#1857): a finished ride, on the intro road
+	// in the world (#3218). The simulated trainer rides it where one exists
+	// (#123); elsewhere it is the rider's own trainer.
 	const first: Step = $derived({
 		done: ridden,
-		label: 'Take your first ride',
-		// The simulator is dev equipment (#123): offered only where it exists.
+		label: 'Ride your first road',
 		hint: canSimulate()
-			? 'pair your trainer, or ride simulated once to see it work'
-			: 'pair your trainer and ride once',
-		href: '/settings/equipment',
+			? 'a short climb on the simulated trainer, or pair your own'
+			: 'pair your trainer and ride a short climb',
+		lines: [
+			'The ring under you is your zone.',
+			'The road ahead shows the climb.',
+			'The climb card opens by itself.',
+		],
+		href: `/ride?road=${INTRO_ROAD_ID}`,
 	});
 	// Above the trainer step, because it is above it in consequence (#1484):
 	// an account is created holding 200 W and 75 kg that nobody chose, and
@@ -132,6 +139,9 @@
 							<span class="min-w-0 flex-1">
 								<span class="block font-medium">{step.label}</span>
 								<span class="text-muted block text-xs">{step.hint}</span>
+								{#each step.lines ?? [] as line (line)}
+									<span class="text-muted block text-xs">{line}</span>
+								{/each}
 							</span>
 							<ChevronRight size={14} class="text-muted shrink-0" />
 						</a>

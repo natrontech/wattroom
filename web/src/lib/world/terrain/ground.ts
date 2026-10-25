@@ -4,6 +4,7 @@ import { smoothstep } from '../rand';
 import { patchJunctions } from './junctions';
 import { canonical, FAR_W, indexLines, type Line } from './lines';
 import { roadFrame } from './road-frame';
+import type { RegionAt } from './region-relief';
 import { across, bankOf, FORMATION } from './road-profile';
 
 /**
@@ -41,6 +42,8 @@ export type GroundOpts = {
 	origin?: Origin;
 	/** A height model, metres above the datum: the natural ground where the place has one. */
 	model?: (x: number, z: number) => number;
+	/** Where a private region keys the relief in its own frame (#3607); none: the world's everywhere. */
+	regions?: RegionAt;
 };
 
 const fade = (t: number) => t * t * t * (t * (t * 6 - 15) + 10);
@@ -69,31 +72,55 @@ function octave(k: Keyer, ground: boolean, size: number, e: number, n: number) {
  * weight, in the key frame whose chunk corner `origin` is. What the ground
  * and the land on it vary by, never a seeded stream.
  */
-export function relief(salt: Salt, origin: Origin = [0, 0]) {
+export function relief(
+	salt: Salt,
+	origin: Origin = [0, 0],
+	regions?: RegionAt,
+) {
 	const [e0, n0] = origin;
-	const keyers = new Map<Kind, Keyer>();
-	return (kind: Kind, sizes: readonly number[], x: number, z: number) => {
-		let k = keyers.get(kind);
-		if (!k) keyers.set(kind, (k = keyer(salt, kind)));
-		let sum = 0;
+	const keyers = new Map<string, Keyer>();
+	const sum = (
+		k: Keyer,
+		kind: Kind,
+		sizes: readonly number[],
+		e: number,
+		n: number,
+	) => {
+		let s = 0;
 		let amp = 1;
 		let norm = 0;
 		for (const size of sizes) {
-			sum += octave(k, kind === 'ground', size, e0 + x, n0 - z) * amp;
+			s += octave(k, kind === 'ground', size, e, n) * amp;
 			norm += amp;
 			amp *= 0.5;
 		}
-		return sum / norm;
+		return s / norm;
+	};
+	const keyerOf = (s: Salt, kind: Kind) => {
+		const id = `${s.join()}/${kind}`;
+		let k = keyers.get(id);
+		if (!k) keyers.set(id, (k = keyer(s, kind)));
+		return k;
+	};
+	return (kind: Kind, sizes: readonly number[], x: number, z: number) => {
+		const at = regions?.(e0 + x, n0 - z);
+		const world = () => sum(keyerOf(salt, kind), kind, sizes, e0 + x, n0 - z);
+		if (!at) return world();
+		// Inside a region only the region's secret and its own cells decide; no world coordinate enters.
+		const own = sum(keyerOf(at.salt, kind), kind, sizes, at.u, at.v);
+		return at.w >= 1 ? own : world() + (own - world()) * at.w;
 	};
 }
 export type Relief = ReturnType<typeof relief>;
 
+/** A lattice cache's slots a side. */
+const SLOTS = 256;
 const HILLS = [8 * CHUNK_M, 4 * CHUNK_M, 2 * CHUNK_M];
 const DETAIL = [CHUNK_M, 2 * COARSE_M, COARSE_M];
 const SIDE = [16 * CHUNK_M];
 
 export function makeGround(given: readonly Line[], opts: GroundOpts) {
-	const noise = relief(opts.salt, opts.origin);
+	const noise = relief(opts.salt, opts.origin, opts.regions);
 	const lines = patchJunctions(canonical(given));
 	const index = indexLines(lines);
 	const frame = roadFrame(index, lines);
@@ -101,13 +128,18 @@ export function makeGround(given: readonly Line[], opts: GroundOpts) {
 
 	/** A value on a lattice of `size` metres, cached per point and read bilinearly between them. */
 	function lattice(size: number, at: (x: number, z: number) => number) {
-		const cache = new Map<number, number>();
-		// ponytail: points wrap at 32,768 a side — 1,300 km of 40 m points, far past any coverage.
+		// One slot per point, 256 a side: the cache stays its size however far a ride goes (#3851).
+		// ponytail: 10 km of 40 m points, wider than the near ground; a far-ring point sharing a slot is worked out again, slots per side up if that shows in a build. Points wrap at 32,768 a side — 1,300 km, far past any coverage.
+		const keys = new Int32Array(SLOTS * SLOTS).fill(-1);
+		const values = new Float64Array(SLOTS * SLOTS);
 		const point = (a: number, b: number) => {
 			const k = ((a & 0x7fff) << 15) | (b & 0x7fff);
-			let v = cache.get(k);
-			if (v === undefined) cache.set(k, (v = at(a * size, b * size)));
-			return v;
+			const s = (a & (SLOTS - 1)) * SLOTS + (b & (SLOTS - 1));
+			if (keys[s] !== k) {
+				keys[s] = k;
+				values[s] = at(a * size, b * size);
+			}
+			return values[s];
 		};
 		return (x: number, z: number) => {
 			const a = Math.floor(x / size);

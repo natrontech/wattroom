@@ -17,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
+	"github.com/natrontech/wattroom/server/internal/secrets"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/store/storetest"
@@ -80,6 +81,26 @@ func fakeStrava(t *testing.T) (*httptest.Server, *atomic.Int32, *atomic.Int32) {
 	return srv, &uploads, &polls
 }
 
+// testKeys seals every fixture's refresh token: sealed is the only way one is
+// stored (#1038).
+var testKeys = func() *secrets.Cipher {
+	c, err := secrets.FromKey("TEST_KEY", base64.StdEncoding.EncodeToString([]byte(strings.Repeat("t", 32))))
+	if err != nil {
+		panic(err)
+	}
+	return c
+}()
+
+// sealed is a refresh token as the database holds it.
+func sealed(t *testing.T, token string) []byte {
+	t.Helper()
+	box, err := testKeys.SealToken(token)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return box
+}
+
 // seedRide gives a test a rider with Strava connected and one saved ride.
 func seedRide(t *testing.T, name string) (*store.Store, pgtype.UUID, pgtype.UUID) {
 	t.Helper()
@@ -95,10 +116,9 @@ func seedRide(t *testing.T, name string) (*store.Store, pgtype.UUID, pgtype.UUID
 		_, _ = st.Pool.Exec(context.Background(), "delete from users where id = $1", user.ID)
 	})
 	stale := "stale"
-	refresh := "refresh-1"
 	err = st.Queries.CreateIdentity(t.Context(), db.CreateIdentityParams{
 		Provider: "strava", ProviderUserID: "athlete-1", UserID: user.ID,
-		AccessToken: &stale, RefreshToken: &refresh,
+		AccessToken: &stale, RefreshTokenEnc: sealed(t, "refresh-1"),
 		TokenExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(-time.Hour), Valid: true},
 	})
 	if err != nil {
@@ -130,7 +150,7 @@ func seedRide(t *testing.T, name string) (*store.Store, pgtype.UUID, pgtype.UUID
 
 func newService(st *store.Store, srv *httptest.Server) *Service {
 	return &Service{
-		store: st, log: slog.New(slog.DiscardHandler),
+		store: st, log: slog.New(slog.DiscardHandler), keys: testKeys,
 		clientID: "id", clientSecret: "secret",
 		apiBase: srv.URL + "/api/v3", tokenURL: srv.URL + "/oauth/token",
 		httpc: srv.Client(), now: time.Now, pollEvery: 10 * time.Millisecond,
@@ -155,8 +175,11 @@ func TestUploadRefreshesPostsAndPolls(t *testing.T) {
 	ident, err := st.Queries.GetUserIdentity(t.Context(), db.GetUserIdentityParams{
 		UserID: userID, Provider: "strava",
 	})
-	if err != nil || *ident.AccessToken != "fresh-token" || *ident.RefreshToken != "refresh-2" {
+	if err != nil || *ident.AccessToken != "fresh-token" {
 		t.Fatalf("tokens not persisted: %+v err %v", ident, err)
+	}
+	if got, err := testKeys.Open(ident.RefreshTokenEnc); err != nil || got != "refresh-2" {
+		t.Fatalf("refresh token = (%q, %v), want the rotated one sealed", got, err)
 	}
 
 	// The rider's off switch short-circuits before any HTTP.
@@ -346,7 +369,7 @@ func TestRevokeSendsTheTokenInTheBodyNotTheURL(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := svc.RevokeGrant(t.Context(), ident); err != nil {
+	if err := svc.RevokeGrant(t.Context(), db.GetUserIdentityRow(ident)); err != nil {
 		t.Fatalf("revoke: %v", err)
 	}
 
@@ -395,7 +418,7 @@ func TestRevokeReportsARefusal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := svc.RevokeGrant(t.Context(), ident); err == nil {
+	if err := svc.RevokeGrant(t.Context(), db.GetUserIdentityRow(ident)); err == nil {
 		t.Fatal("a 401 from revoke was swallowed — bad client credentials must not read as success")
 	}
 }

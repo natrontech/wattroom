@@ -1,1 +1,0 @@
-- A ride's page now has the closing card's header and number tiles: Share, the poster or ride card, and Export sit on one row, with Delete ride last after a separator.

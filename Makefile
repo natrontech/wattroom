@@ -6,7 +6,7 @@
 # tree keeps :8080/:5174 and the `wattroom` database; every linked worktree
 # derives its own from its path. `make dev-env` prints what this one takes.
 
-.PHONY: infra dev-env dev-server dev-web dev-db-drop web web-deps changelog protocol migration sqlc seed screenshots design-targets design-shots build test lint dead-code ci release print-golangci-version desktop desktop-smoke desktop-release perf perf-scenes licenses worktree-gc
+.PHONY: infra dev-env dev-server dev-web dev-db-drop web web-deps changelog protocol migration sqlc seed screenshots design-targets design-shots build test lint dead-code world-mutants world-soak ci release print-golangci-version desktop desktop-smoke desktop-release perf perf-scenes licenses worktree-gc
 
 DEV_ENV := scripts/dev-env.sh
 # "wattroom dev key, never deployed" in base64: 32 bytes, for make dev-server only.
@@ -192,6 +192,12 @@ lint: web-deps
 	cd server && GOTOOLCHAIN=go$(GO_VERSION) GOLANGCI_LINT_CACHE=$(CURDIR)/server/tmp/golangci go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_VERSION) run
 	cd web && pnpm run check
 	cd web && pnpm run format:check
+
+world-mutants: web-deps ## re-inject each known world bug and confirm a gate goes red (#3222, about 20 min); CI's advisory `world-mutants` job runs it
+	cd web && node scripts/world-mutants.mjs
+
+world-soak: web-deps ## ride /dev/world two simulated hours at 16x and fail on a leak (#3851; needs make infra): MINUTES=15 for a short one, SPEED=1 for real time, LEAK=all to see each leak class go red
+	@cd web && node scripts/world-soak.mjs $(if $(MINUTES),--minutes $(MINUTES)) $(if $(SPEED),--speed $(SPEED)) $(if $(LEAK),--leak $(LEAK)) $(if $(OUT),--out $(abspath $(OUT)))
 
 dead-code: web-deps ## unused files, exports and dependencies in web/ (knip); functions no main or test reaches in server/ (deadcode)
 	@# Both run, so one red report does not hide the other. deadcode exits 0

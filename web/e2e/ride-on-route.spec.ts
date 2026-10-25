@@ -9,8 +9,7 @@ import { signInAs } from './signin';
  * on the clock, the dot moves at the rider's watts, and the ride saves on the
  * route with the execution the same ride scores off it. The two rides go side
  * by side, so the comparison costs one minute, not two — by two riders, since
- * nobody rides two at once and the server keeps only the first. Behind the
- * roads dev gate, which a dev server opens.
+ * nobody rides two at once and the server keeps only the first.
  */
 const RIDER = 'Workout Road Rider';
 const FLAT = 'Workout Flat Rider';

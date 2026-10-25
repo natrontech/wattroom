@@ -78,7 +78,7 @@ test('a solo route ride saves at its kilometre, carries on, and rides back from 
 	await pairSimulated(page, routeId);
 	await page.getByRole('button', { name: 'Start the ride' }).click();
 	await page.waitForTimeout(A_MINUTE_MS);
-	await page.getByRole('button', { name: /^Save at km / }).click();
+	await page.getByRole('button', { name: 'End ride' }).click();
 	await expect(page.getByText('See your ride')).toBeVisible({
 		timeout: 20_000,
 	});
@@ -114,17 +114,13 @@ test('a solo route ride saves at its kilometre, carries on, and rides back from 
 		)
 		.toBe(0);
 	await expect(sheet).toHaveCount(0, { timeout: 15_000 });
-	// Back up 8 % is a classed climb: its card opens CLIMB by itself (#3645),
-	// and the road's metres are on RIDE, one dot away.
-	const computer = page.getByTestId('bike-computer');
+	// The road's metres are slot 1's road line, on every page of the computer.
 	const km = async () => {
-		if ((await computer.getAttribute('data-page')) === 'climb')
-			await computer.getByRole('button', { name: 'RIDE page' }).click();
 		const text = await page
-			.getByText(/ of 2\.2 km$/)
+			.getByTestId('block-road')
 			.textContent({ timeout: 2_000 })
 			.catch(() => null);
-		return text === null ? NaN : Number(text.split(' ')[0]);
+		return text === null ? NaN : Number(text.split(' ')[1]);
 	};
 	// Back up 8 % is slow, and the readout is to 100 m.
 	await expect

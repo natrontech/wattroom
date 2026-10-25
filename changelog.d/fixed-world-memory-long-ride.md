@@ -1,0 +1,1 @@
+- A long ride in the 3D world holds only the ground and dressing around you in memory, however far you ride: two hours used to grow the page by about half a megabyte a kilometre.

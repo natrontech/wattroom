@@ -37,7 +37,6 @@
 	import SwitchCamera from '@lucide/svelte/icons/switch-camera';
 	import Video from '@lucide/svelte/icons/video';
 	import VideoOff from '@lucide/svelte/icons/video-off';
-	import { CAVE_MARK, CAVE_WORDS } from './cave-sizes';
 
 	// The route is the one thing the store cannot answer.
 	let { pathname }: { pathname: string } = $props();
@@ -153,7 +152,7 @@
 		<a
 			href="/home"
 			onclick={() => chosenCrew.set('you')}
-			class="hover:bg-ink/5 cave:min-h-11 mr-auto -ml-1 flex min-w-0 items-center gap-2 rounded py-0.5 pr-2 pl-1"
+			class="hover:bg-ink/5 mr-auto -ml-1 flex min-w-0 items-center gap-2 rounded py-0.5 pr-2 pl-1"
 			title="you — your own Home, workouts, rides and music"
 		>
 			<span class="relative shrink-0">
@@ -174,16 +173,14 @@
 				{/if}
 			</span>
 			<span class="min-w-0">
-				<span
-					class="flex min-w-0 items-center gap-1 text-xs font-medium {CAVE_WORDS}"
-				>
+				<span class="flex min-w-0 items-center gap-1 text-xs font-medium">
 					<span class="truncate">{account.me?.displayName ?? ''}</span>
 					<StatusMark line={account.me?.statusLine} size={12} />
 				</span>
 				{#if showAv}
 					<!-- Away is not repeated here: the avatar wears the mark and
 					     the button below says "I'm back" (#807). -->
-					<span class="block truncate text-[10px] {CAVE_WORDS}">
+					<span class="block truncate text-[10px]">
 						{#if voiceStatus === 'live'}
 							<span class="text-ok">in voice</span>{camOn ? ' · camera on' : ''}
 						{:else if voiceStatus === 'connecting'}
@@ -203,12 +200,12 @@
 		     sensors, ramp test, devices, the mixer, the gate, the theme. -->
 		<a
 			href="/settings"
-			class="cave:h-11 cave:w-11 grid h-11 w-11 shrink-0 place-items-center rounded md:h-7 md:w-7 {destination ===
+			class="grid h-11 w-11 shrink-0 place-items-center rounded md:h-7 md:w-7 {destination ===
 				undefined && pathname.startsWith('/settings')
 				? 'text-ink'
 				: 'text-muted hover:bg-ink/5 hover:text-ink'}"
 			title="Settings"
-			aria-label="Settings"><Settings size={16} class={CAVE_MARK} /></a
+			aria-label="Settings"><Settings size={16} /></a
 		>
 	</div>
 	{#if showAv}
@@ -220,7 +217,7 @@
 				     ux.md). Mic, camera and screen appear once you are in,
 				     because that is when they work. -->
 				{#if voiceStatus === 'connecting' || voiceStatus === 'reconnecting'}
-					<span class="text-muted flex-1 px-1 text-[11px] {CAVE_WORDS}"
+					<span class="text-muted flex-1 px-1 text-[11px]"
 						>{voiceStatus === 'connecting'
 							? 'joining voice…'
 							: 'reconnecting…'}</span
@@ -234,8 +231,8 @@
 							: undefined}
 						class="btn {riding
 							? 'btn-secondary'
-							: 'btn-primary'} min-h-11 flex-1 {CAVE_WORDS} cave:flex-none cave:px-2 cave:whitespace-nowrap"
-						><Headphones size={13} class={CAVE_MARK} />
+							: 'btn-primary'} min-h-11 flex-1"
+						><Headphones size={13} />
 						{voiceStatus === 'failed'
 							? 'Try voice again'
 							: 'Join voice'}</button
@@ -248,7 +245,7 @@
 					     the marketing page and in settings, never here — where a rider
 					     first opens a microphone into a voice channel (audit
 					     2026-09-09). -->
-					<p class="text-muted-dim basis-full px-1 text-[10px] {CAVE_WORDS}">
+					<p class="text-muted-dim basis-full px-1 text-[10px]">
 						{#if voiceDown}
 							<!-- Why the button above is off, where the promise would be
 							     (#2850): a join now could only fail. -->
@@ -297,10 +294,7 @@
 						return voice ? micMenu(voice, () => onMic?.()) : [];
 					})}
 				>
-					{#if micOn}<Mic size={16} class={CAVE_MARK} />{:else}<MicOff
-							size={16}
-							class={CAVE_MARK}
-						/>{/if}
+					{#if micOn}<Mic size={16} />{:else}<MicOff size={16} />{/if}
 				</button>
 				<button
 					onclick={() => onCam?.()}
@@ -311,10 +305,7 @@
 					aria-label="camera"
 					aria-pressed={camOn}
 				>
-					{#if camOn}<Video size={16} class={CAVE_MARK} />{:else}<VideoOff
-							size={16}
-							class={CAVE_MARK}
-						/>{/if}
+					{#if camOn}<Video size={16} />{:else}<VideoOff size={16} />{/if}
 				</button>
 				<!-- Front or back, on the machines that have both (#2142). Hidden
 				     rather than disabled on a desk: one webcam has no other side,
@@ -325,8 +316,7 @@
 						onclick={() => onFlip?.()}
 						class="text-muted-dim hover:text-muted flex h-11 flex-1 items-center justify-center rounded"
 						title="front or back camera"
-						aria-label="flip camera"
-						><SwitchCamera size={16} class={CAVE_MARK} /></button
+						aria-label="flip camera"><SwitchCamera size={16} /></button
 					>
 				{/if}
 				<!-- Sharing takes the danger token, like the mic does when it is
@@ -342,10 +332,9 @@
 					aria-label="share screen"
 					aria-pressed={sharing}
 				>
-					{#if sharing}<ScreenShareOff
+					{#if sharing}<ScreenShareOff size={16} />{:else}<ScreenShare
 							size={16}
-							class={CAVE_MARK}
-						/>{:else}<ScreenShare size={16} class={CAVE_MARK} />{/if}
+						/>{/if}
 				</button>
 				<QuickAudio compact />
 				<!-- A hang-up, not the way out: it drew the same door as Leave
@@ -355,8 +344,7 @@
 					onclick={() => onLeaveVoice?.()}
 					class="text-muted-dim hover:text-danger flex h-11 flex-1 items-center justify-center rounded"
 					title="leave voice — stay in the channel"
-					aria-label="leave voice"
-					><PhoneOff size={16} class={CAVE_MARK} /></button
+					aria-label="leave voice"><PhoneOff size={16} /></button
 				>
 			{/if}
 		</div>
@@ -376,15 +364,15 @@
 		     nothing to choose about being back. -->
 		<!-- At 24 px words the three do not fit one 240 px row: Leave takes a
 		     row of its own on a ride. -->
-		<div class="cave:flex-wrap cave:gap-y-2 mt-2 flex gap-px">
+		<div class="mt-2 flex gap-px">
 			<button
 				onclick={() => onAway?.(!away, '')}
 				aria-pressed={away}
 				{@attach contextMenu(awayItems)}
-				class="btn min-h-11 grow {CAVE_WORDS} {away
-					? 'btn-primary'
-					: 'btn-secondary'} {away ? '' : 'rounded-r-none'}"
-				><awayFace.icon size={13} class={CAVE_MARK} />
+				class="btn min-h-11 grow {away ? 'btn-primary' : 'btn-secondary'} {away
+					? ''
+					: 'rounded-r-none'}"
+				><awayFace.icon size={13} />
 				{away ? "I'm back" : 'Away'}</button
 			>
 			{#if !away}
@@ -395,8 +383,8 @@
 					}}
 					aria-label="Choose a state"
 					aria-haspopup="menu"
-					class="btn btn-secondary cave:min-w-11 min-h-11 rounded-l-none px-2"
-					><ChevronDown size={13} class={CAVE_MARK} /></button
+					class="btn btn-secondary min-h-11 rounded-l-none px-2"
+					><ChevronDown size={13} /></button
 				>
 			{/if}
 			<!-- The way out of where you are (#2447): a room's row used to carry it,
@@ -407,9 +395,9 @@
 			     a bare door was not found (#2560). -->
 			<button
 				onclick={leaveChannel}
-				class="btn btn-secondary cave:ml-0 cave:grow ml-1 min-h-11 px-2 {CAVE_WORDS}"
+				class="btn btn-secondary ml-1 min-h-11 px-2"
 				title="leave {conn?.address.name ?? 'the channel'}"
-				><LogOut size={13} class={CAVE_MARK} /> Leave</button
+				><LogOut size={13} /> Leave</button
 			>
 		</div>
 	{/if}
@@ -424,14 +412,13 @@
 		     live data (ADR-0005). Persistent, because it is read a minute
 		     later from three metres away (errors.md). -->
 		<div
-			class="border-ink/10 text-muted mt-2 flex items-center gap-2 rounded border px-2 py-1.5 text-[11px] {CAVE_WORDS}"
+			class="border-ink/10 text-muted mt-2 flex items-center gap-2 rounded border px-2 py-1.5 text-[11px]"
 		>
-			<VolumeX size={13} class="shrink-0 {CAVE_MARK}" />
+			<VolumeX size={13} class="shrink-0" />
 			<span class="min-w-0 flex-1">You cannot hear the call.</span>
 			<button
 				onclick={() => void av?.startPlayback()}
-				class="btn btn-secondary btn-xs shrink-0 {CAVE_WORDS}"
-				>Let me hear</button
+				class="btn btn-secondary btn-xs shrink-0">Let me hear</button
 			>
 		</div>
 	{/if}
@@ -441,13 +428,12 @@
 		     is over and the way back is the login page. Persistent like the
 		     hand-off below — the next attempt replaces it. -->
 		<div class="border-danger/40 mt-2 rounded border px-2 py-1.5">
-			<p class="text-muted text-[10px] leading-snug {CAVE_WORDS}">
+			<p class="text-muted text-[10px] leading-snug">
 				{voiceError.message}
 			</p>
 			{#if voiceError.signIn}
-				<a
-					href="/login"
-					class="btn btn-secondary btn-xs mt-1.5 w-full {CAVE_WORDS}">Sign in</a
+				<a href="/login" class="btn btn-secondary btn-xs mt-1.5 w-full"
+					>Sign in</a
 				>
 			{/if}
 		</div>
@@ -456,12 +442,12 @@
 		<!-- Not a toast: the rider went quiet and needs to still be able to
 		     read why a minute later, mid-interval (errors.md). -->
 		<div class="border-z5/40 mt-2 rounded border px-2 py-1.5">
-			<p class="text-muted text-[10px] leading-snug {CAVE_WORDS}">
+			<p class="text-muted text-[10px] leading-snug">
 				Your mic and camera moved to the voice channel open in another tab.
 			</p>
 			<button
 				onclick={onTakeOver}
-				class="btn btn-secondary btn-xs mt-1.5 w-full {CAVE_WORDS}"
+				class="btn btn-secondary btn-xs mt-1.5 w-full"
 				>Use this tab instead</button
 			>
 		</div>

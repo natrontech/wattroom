@@ -6,6 +6,7 @@ import {
 	ReferenceRiderKg,
 } from '$lib/protocol';
 import { nextSpeed } from '$lib/road/pace';
+import { simulatedSteady } from './simulated-steady';
 import {
 	resolveSim,
 	type ControlMode,
@@ -94,6 +95,7 @@ export class SimulatedTrainer implements Trainer {
 	#tau: number;
 	#noise: number;
 	#tickMs: number;
+	#steady = simulatedSteady();
 	#rng: () => number;
 	#now: () => number;
 	#replay?: { watts: number; cadence: number; hr?: number }[];
@@ -107,7 +109,8 @@ export class SimulatedTrainer implements Trainer {
 		this.#tau = opts.tauSeconds ?? 2;
 		this.#noise = opts.noiseWatts ?? 5;
 		this.#tickMs = opts.tickMs ?? 1000;
-		this.#rng = opts.rng ?? Math.random;
+		// 0.5 is the middle of every noise band: no noise at all.
+		this.#rng = opts.rng ?? (simulatedSteady() ? () => 0.5 : Math.random);
 		this.#now = opts.now ?? Date.now;
 		this.#replay = opts.replay;
 		this.#cadence = opts.cadence;
@@ -267,6 +270,8 @@ export class SimulatedTrainer implements Trainer {
 			speedMps: this.#speed,
 			at: this.#now(),
 		};
+		// The design shots' rider wears a strap, so the Heart home has data (#3669).
+		if (this.#steady) sample.heartRate = Math.round(90 + watts / 4);
 		for (const cb of this.#sampleCbs) cb(sample);
 	}
 

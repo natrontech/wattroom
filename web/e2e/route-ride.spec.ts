@@ -7,8 +7,7 @@ import { climbGpx } from './road-gpx';
  * The route ride in a voice channel (#3027), on the SimulatedTrainer: a road
  * of the rider's own becomes the free ride's grade, the dot moves by the
  * watts, and the ride saves against the route, where the server's replay
- * (ADR-0074) keeps its distance and climbing. Behind the roads dev gate,
- * which a dev server opens.
+ * (ADR-0074) keeps its distance and climbing.
  *
  * The road is invented, in the open South Atlantic (#3054): three kilometres
  * climbing 4 %, nobody's street.
@@ -32,7 +31,9 @@ async function toRide(page: Page) {
 	await expect(computer).toHaveAttribute('data-page', 'climb', {
 		timeout: 15_000,
 	});
-	await computer.getByRole('button', { name: 'RIDE page' }).click();
+	await computer
+		.getByRole('button', { name: /(previous|next) page, RIDE/ })
+		.click();
 	await expect(computer).toHaveAttribute('data-page', 'ride');
 }
 
@@ -41,10 +42,14 @@ async function computerReadsTheRoad(page: Page) {
 	if ((await computer.getAttribute('data-page')) !== 'ride') await toRide(page);
 	const value = (key: string) =>
 		computer.locator(`[data-field=${key}]`).locator('span').nth(1);
+	// Slot 1's road line is the one home of km and grade (D17).
+	const line = page.getByTestId('block-road');
+	await expect(line).toHaveText(/^km \d+\.\d of 3\.0 · /);
 	await expect
-		.poll(async () => parseFloat((await value('grade').textContent()) ?? ''))
+		.poll(async () =>
+			parseFloat(((await line.textContent()) ?? '').split(' · ')[1]),
+		)
 		.toBeGreaterThan(1);
-	await expect(value('distance')).toHaveText(/^\d+\.\d of 3\.0/);
 	await expect
 		.poll(async () => parseFloat((await value('speed').textContent()) ?? ''))
 		.toBeGreaterThan(0);
@@ -107,9 +112,11 @@ test('a free ride on your own road moves along it and saves against it', async (
 	await expect(
 		rider.getByRole('button', { name: 'steeper grade' }),
 	).toHaveCount(0);
-	await expect(rider.getByText(NAME)).toBeVisible();
+	await expect(rider.getByTestId('ride-context')).toContainText(NAME);
 	await toRide(rider);
-	await expect(rider.getByText('0.0 of 3.0 km')).toBeVisible();
+	await expect(rider.getByTestId('block-road')).toHaveText(
+		/^km 0\.0 of 3\.0 · /,
+	);
 
 	// A desk at phone width: the road row and the pair fit (ux.md).
 	await rider.setViewportSize({ width: 375, height: 812 });
@@ -130,7 +137,7 @@ test('a free ride on your own road moves along it and saves against it', async (
 		.poll(
 			async () =>
 				Number(
-					(await rider.getByText(/ of 3\.0 km$/).textContent())?.split(' ')[0],
+					(await rider.getByTestId('block-road').textContent())?.split(' ')[1],
 				),
 			{ message: 'the dot never left the start', timeout: 30_000 },
 		)
@@ -141,7 +148,7 @@ test('a free ride on your own road moves along it and saves against it', async (
 	await computerReadsTheRoad(rider);
 
 	await rider.waitForTimeout(A_MINUTE_MS);
-	await rider.getByRole('button', { name: /^Save at km / }).click();
+	await rider.getByRole('button', { name: 'End ride' }).click();
 	await expect(rider.getByText('See it in your history')).toBeVisible({
 		timeout: 20_000,
 	});
@@ -157,7 +164,7 @@ test('a free ride on your own road moves along it and saves against it', async (
 	expect(saved.climbedM, 'the replay kept no climbing').toBeGreaterThan(0);
 });
 
-test('Ride it now rides your road alone, from where you left it', async ({
+test('Ride it now rides your road alone, marked beta, from where you left it', async ({
 	page,
 }) => {
 	test.skip(
@@ -177,9 +184,15 @@ test('Ride it now rides your road alone, from where you left it', async ({
 		mimeType: 'application/gpx+xml',
 		buffer: Buffer.from(climbGpx()),
 	});
+	// Roads reach every rider marked beta (#3352): where it is chosen, and
+	// on the Ride card it lands on.
+	await expect(page.getByTestId('roads-beta')).toContainText('Beta');
 	await page.getByRole('button', { name: 'Ride it now' }).click();
 	await page.waitForURL(/\/ride\?road=/);
 	const road = new URL(page.url()).searchParams.get('road')!;
+	await expect(page.getByTestId('roads-beta')).toContainText(
+		'still being tuned on real trainers',
+	);
 
 	// Carrying on from a metre, as the recovered card's Resume at km does.
 	await page.goto(`/ride?road=${road}&from=1000`);
@@ -196,7 +209,9 @@ test('Ride it now rides your road alone, from where you left it', async ({
 			.getByRole('button', { name: 'Road' }),
 	).toBeVisible();
 	await toRide(page);
-	await expect(page.getByText(/^1\.0 of 3\.0 km$/)).toBeVisible();
+	await expect(page.getByTestId('block-road')).toHaveText(
+		/^km 1\.0 of 3\.0 · /,
+	);
 	await page.setViewportSize({ width: 375, height: 812 });
 	await expect
 		.poll(() =>
@@ -211,13 +226,13 @@ test('Ride it now rides your road alone, from where you left it', async ({
 		.poll(
 			async () =>
 				Number(
-					(await page.getByText(/ of 3\.0 km$/).textContent())?.split(' ')[0],
+					(await page.getByTestId('block-road').textContent())?.split(' ')[1],
 				),
 			{ message: 'the dot never left km 1.0' },
 		)
 		.toBeGreaterThan(1);
 	await computerReadsTheRoad(page);
-	await page.getByRole('button', { name: /^Save at km / }).click();
+	await page.getByRole('button', { name: 'End ride' }).click();
 	await expect(page.getByText('See your ride')).toBeVisible({
 		timeout: 20_000,
 	});

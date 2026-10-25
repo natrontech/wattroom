@@ -1,0 +1,1 @@
+- Outside a ride, the people column folds the crew members who are not in the voice channel into one closed "rest of the crew" row, so the people here and the jukebox queue keep the height.

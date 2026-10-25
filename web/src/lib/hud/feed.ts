@@ -5,6 +5,8 @@
  * no server, and no claim on the sensor (ADR-0025): the HUD mirrors the
  * screen that holds the trainer, it never reads the trainer itself.
  */
+import { account } from '$lib/account.svelte';
+import { hrZoneOf, zoneOf } from '$lib/components/zones';
 import type { RoadReadout } from '$lib/road/readout';
 
 export interface HudSnapshot {
@@ -21,6 +23,19 @@ export interface HudSnapshot {
 	elapsed?: number;
 	/** The workout's name, solo or in a session. */
 	label: string;
+	/** rpm. Absent from a HUD older than it, and drawn only when sent. */
+	cadence?: number;
+	/** bpm, only with a heart-rate source. */
+	heartRate?: number;
+	/** The heart rate's zone, 1–5, when the account holds an LTHR. */
+	heartZone?: number;
+	/**
+	 * The power zone, 1–7, from the account's FTP; 0 while the rider
+	 * coasts. Absent from a feed older than it, and the strip is not drawn.
+	 */
+	zone?: number;
+	/** Seconds in `zone` since entering it, counted only while pedalling. */
+	zoneSeconds?: number;
 	/**
 	 * What the riding screen would be shouting about (#1665): the trainer's
 	 * signal is gone, or the voice channel's socket is. A HUD that shows a
@@ -49,8 +64,51 @@ function open(): BroadcastChannel | null {
 	return channel;
 }
 
-export function publishHud(snapshot: Omit<HudSnapshot, 'at'>): void {
-	open()?.postMessage({ ...snapshot, at: Date.now() } satisfies HudSnapshot);
+type Derived = 'at' | 'zone' | 'zoneSeconds' | 'heartZone';
+
+/**
+ * How long the rider has held their zone (#4099). From timestamps, not from
+ * calls: a channel publishes on every change it hears, not once a second.
+ * Watts at 0 is no zone, as live-stats counts none; a gap longer than the
+ * stale window is a new ride.
+ */
+export function createZoneClock() {
+	let zone = 0;
+	let since = 0;
+	let last = -Infinity;
+	return (next: number, at: number): number | undefined => {
+		if (next !== zone || at - last > HUD_STALE_MS) {
+			zone = next;
+			since = at;
+		}
+		last = at;
+		return zone > 0 ? Math.floor((at - since) / 1000) : undefined;
+	};
+}
+
+const zoneClock = createZoneClock();
+
+/** The zones the account's FTP and LTHR put the snapshot in. */
+export function withZones(
+	snapshot: Omit<HudSnapshot, Derived>,
+	at: number,
+	rider: { ftpWatts: number; lthr?: number } | null,
+	clock = zoneClock,
+): HudSnapshot {
+	const out: HudSnapshot = { ...snapshot, at };
+	if (!rider) return out;
+	const heartZone = hrZoneOf(snapshot.heartRate ?? 0, rider.lthr);
+	if (heartZone) out.heartZone = heartZone;
+	if (rider.ftpWatts > 0) {
+		out.zone = snapshot.watts > 0 ? zoneOf(snapshot.watts, rider.ftpWatts) : 0;
+		const seconds = clock(out.zone, at);
+		if (seconds !== undefined) out.zoneSeconds = seconds;
+	}
+	return out;
+}
+
+export function publishHud(snapshot: Omit<HudSnapshot, Derived>): void {
+	open()?.postMessage(withZones(snapshot, Date.now(), account.me));
 }
 
 /** Hears every snapshot until the returned function is called. */

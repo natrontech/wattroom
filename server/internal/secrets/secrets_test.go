@@ -148,34 +148,31 @@ func TestUnconfiguredRefusesRatherThanReturningEmpty(t *testing.T) {
 	}
 }
 
-func TestColumns(t *testing.T) {
-	t.Run("no key stores what it always did", func(t *testing.T) {
+func TestSealToken(t *testing.T) {
+	// There is no plaintext column to fall back to any more (#1038): a server
+	// with no key stores nothing rather than a readable copy.
+	t.Run("no key refuses", func(t *testing.T) {
 		var c *Cipher
-		plain, sealed, err := c.Columns("tok")
-		if err != nil || plain == nil || *plain != "tok" || sealed != nil {
-			t.Fatalf("Columns = (%v, %v, %v), want the plaintext and no sealed value", plain, sealed, err)
+		if sealed, err := c.SealToken("tok"); err == nil {
+			t.Fatalf("SealToken = %v with no key, want an error", sealed)
 		}
 	})
-	t.Run("a key clears the plaintext column", func(t *testing.T) {
+	t.Run("a key seals", func(t *testing.T) {
 		c := configured(t)
-		plain, sealed, err := c.Columns("tok")
+		sealed, err := c.SealToken("tok")
 		if err != nil {
-			t.Fatalf("Columns: %v", err)
-		}
-		// The point of the change: after this write there is no readable copy.
-		if plain != nil {
-			t.Fatalf("plaintext column = %q, want null", *plain)
+			t.Fatalf("SealToken: %v", err)
 		}
 		got, err := c.Open(sealed)
 		if err != nil || got != "tok" {
 			t.Fatalf("Open(sealed) = (%q, %v), want the token back", got, err)
 		}
 	})
-	t.Run("an empty token is not sealed", func(t *testing.T) {
+	t.Run("an empty token is not stored", func(t *testing.T) {
 		c := configured(t)
-		plain, sealed, err := c.Columns("")
-		if err != nil || plain == nil || *plain != "" || sealed != nil {
-			t.Fatalf("Columns(\"\") = (%v, %v, %v), want the empty string unchanged", plain, sealed, err)
+		sealed, err := c.SealToken("")
+		if err != nil || sealed != nil {
+			t.Fatalf("SealToken(\"\") = (%v, %v), want null", sealed, err)
 		}
 	})
 }

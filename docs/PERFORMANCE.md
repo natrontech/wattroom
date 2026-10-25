@@ -97,6 +97,23 @@ Measured on an M2 Max in September 2026 (#2998):
 - **Video is cheap on the GPU and a YouTube embed is expensive on the CPU:** 19–29% of one core at the jukebox's size, 40–58% at stage size.
 - **The display multiplies everything.** A HiDPI "looks like" mode renders at twice the panel's resolution and scales down, which makes it the most expensive configuration to animate on.
 
+## A long ride in the world
+
+`make world-soak` rides `/dev/world`'s 29 km synthetic loop for two simulated hours at 16× and judges every metric flat (docs/spec/world.md, "Soak"). Software GL (SwiftShader) on the dev VM, October 2026, 41.3 km a run; heap after a forced collection, MB (#3851):
+
+| minute | km | before | after |
+|---|---|---|---|
+| 0 | 0.0 | 27.9 | 26.7 |
+| 30 | 8.5 | 37.4 | 32.0 |
+| 60 | 22.6 | 43.2 | 30.0 |
+| 90 | 35.5 | 42.0 | 32.3 |
+| 120 | 41.3 | 42.0 | 33.5 |
+| last 30 over first 30 | | **+20 %** | +5 % |
+
+- **Before, the heap followed road covered:** about 0.5 MB a kilometre, every ground chunk, settled tile and 40 m height point kept once made, so a point-to-point route paid for its whole length.
+- **After, it follows the ground around the eye:** the ride lets go of tiles and chunks past the reach it draws, and the ground's height caches are a fixed 256 × 256 slots each.
+- Geometries (20–21), programs, listeners (50), intervals (1) and the ground held (under its ~15.1k window) stayed flat in both. Frame times on SwiftShader are reported, never judged.
+
 ## Adding a case
 
 Add its name to `KNOWN` in `+page@.svelte` and render the real component under it. Put it in `DEFAULT_CASES` in `desktop/perf/main.js` only if it earns the time: something that animates without end, or a media path people use while riding.

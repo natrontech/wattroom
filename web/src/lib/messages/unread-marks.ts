@@ -7,7 +7,7 @@
  * A count on a riding surface is read at SPEC's 24 px (G4, #3770).
  */
 export const UNREAD_COUNT =
-	'bg-muted/25 text-ink shrink-0 rounded-full px-1.5 text-[10px] font-bold tabular-nums cave:px-2 cave:text-2xl';
+	'bg-muted/25 text-ink shrink-0 rounded-full px-1.5 text-[10px] font-bold tabular-nums ';
 
 export const UNREAD_DOT = 'bg-muted/60 h-2 w-2 shrink-0 rounded-full';
 

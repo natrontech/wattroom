@@ -5,10 +5,16 @@ import * as THREE from 'three';
 import { backdrop } from './backdrop';
 import { tag } from './family';
 import { chunkId, LEAVE, roadPieces, type GroundStream } from './ground-stream';
-import { batchProps, FAR_M, NEAR_M, type Drawn } from './props/batch';
+import {
+	batchProps,
+	FAR_M,
+	FETCH_AHEAD,
+	NEAR_M,
+	type Drawn,
+} from './props/batch';
 import { TILE_M, tileCentre, tileKey, tileOf } from './props/tiles';
-import { disposeTree } from './dispose';
-import { arch, board } from './furniture';
+import { batchBoards } from './boards';
+import { archOnRoad } from './furniture';
 import type { Piece } from './setpieces';
 import { plinth, road, roadMaterial, ROAD_W, terrain, yOf } from './geometry';
 import { PROP_RAMP, ramp, toon, type Sight } from './materials';
@@ -28,7 +34,9 @@ import type { World } from './world';
  * tile, so the batch's rings, measured from the eye itself, always find a
  * tile there to show.
  */
-const DRESS_M = FAR_M + 1.5 * TILE_M;
+export const DRESS_M = FAR_M * FETCH_AHEAD + 1.5 * TILE_M;
+/** What a ride keeps of its place round the eye (#3851): the ribbon's reach, and the dressing's with the neighbours a tile settles against, each with its hysteresis. */
+const KEEP_M = Math.max(REACH.near, DRESS_M + 2 * TILE_M) * LEAVE;
 
 /** A set piece as the batch draws it: a flag by its colour's model. */
 const drawn = (p: Piece): Drawn => ({
@@ -117,6 +125,8 @@ export function buildStage(
 	style: Style,
 	sight: Sight,
 	stream: GroundStream,
+	/** The road ends under a finish arch; a lapped one does not. */
+	finish = true,
 ): Stage {
 	const group = new THREE.Group();
 	const gradient = ramp(PROP_RAMP);
@@ -220,8 +230,16 @@ export function buildStage(
 	const starField = style.stars ? stars(style.stars) : null;
 	if (starField) group.add(tag('sky', starField));
 
-	// Each tile's signs and arch, built with its tile and let go with it.
-	const boards = new Map<string, THREE.Object3D[]>();
+	// Each tile's signs and arch, stood with its tile and let go with it.
+	const boards = batchBoards(route, style);
+	group.add(tag('dressing', boards.root));
+	// The count-in's reveal lands here (#3087): its digit hangs on this banner.
+	group.add(tag('dressing', archOnRoad(route, 0, 'START', style), 'arch'));
+	// The road's end (#3623): the world's route is the road the way it is ridden, so the finish is its last metre. A loop has none.
+	if (finish && !route.loop)
+		group.add(
+			tag('dressing', archOnRoad(route, route.length, 'FINISH', style), 'arch'),
+		);
 	function draw(ti: number, tj: number, eye: THREE.Vector3) {
 		const id = tileKey(ti, tj);
 		const t = world.tile(ti, tj);
@@ -231,21 +249,11 @@ export function buildStage(
 			[...t.props, ...t.pieces.map(drawn)],
 			eye,
 		);
-		const shown = [
-			...t.signs.map((s) => tag('dressing', board(route, s, style), 'sign')),
-			...t.arches.map((a) => tag('dressing', arch(route, a, style), 'arch')),
-		];
-		if (shown.length === 0) return;
-		group.add(...shown);
-		boards.set(id, shown);
+		boards.add(id, t.signs, t.arches);
 	}
 	function undraw(id: string) {
 		props.drop(id);
-		for (const o of boards.get(id) ?? []) {
-			group.remove(o);
-			disposeTree(o);
-		}
-		boards.delete(id);
+		boards.drop(id);
 	}
 	let near: string | null = null;
 	let wanted: [number, number][] = [];
@@ -263,6 +271,7 @@ export function buildStage(
 				const [cx, cz] = tileCentre(ti, tj);
 				if (Math.hypot(cx - eye.x, cz - eye.z) > DRESS_M * LEAVE) undraw(id);
 			}
+			world.forget(eye.x, eye.z, KEEP_M);
 		}
 		let spent = false;
 		for (const [ti, tj] of wanted) {

@@ -18,12 +18,12 @@ import (
 )
 
 type fakeRevoker struct {
-	called db.Identity
+	called db.GetUserIdentityRow
 	calls  int
 	err    error
 }
 
-func (f *fakeRevoker) RevokeGrant(_ context.Context, ident db.Identity) error {
+func (f *fakeRevoker) RevokeGrant(_ context.Context, ident db.GetUserIdentityRow) error {
 	f.calls++
 	f.called = ident
 	return f.err
@@ -316,10 +316,10 @@ func TestStravaSideRevocationOfTheLastCredentialEmptiesIt(t *testing.T) {
 	mailer := &fakeMailer{}
 	s.SetMailer(mailer)
 	user := testUser(t, s)
-	access, refresh := "access-token", "refresh-token"
+	access := "access-token"
 	if err := s.store.Queries.CreateIdentity(t.Context(), db.CreateIdentityParams{
 		Provider: "strava", ProviderUserID: "only-way-in", UserID: user.ID,
-		AccessToken: &access, RefreshToken: &refresh, RefreshTokenEnc: []byte("sealed"),
+		AccessToken: &access, RefreshTokenEnc: []byte("sealed"),
 		TokenExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(time.Hour), Valid: true},
 	}); err != nil {
 		t.Fatalf("create identity: %v", err)
@@ -337,7 +337,7 @@ func TestStravaSideRevocationOfTheLastCredentialEmptiesIt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("the only way into the account was removed: %v", err)
 	}
-	if kept.AccessToken != nil || kept.RefreshToken != nil || kept.RefreshTokenEnc != nil || kept.TokenExpiresAt.Valid {
+	if kept.AccessToken != nil || kept.RefreshTokenEnc != nil || kept.TokenExpiresAt.Valid {
 		t.Errorf("tokens outlived the grant: %+v", kept)
 	}
 	if got := readDelivery(t, s, ride).RemoteID; got != nil {

@@ -9,6 +9,7 @@
 	// at a sprint without a resize observer.
 	import { CEILING, fillPct, ZONE_NAMES, zoneOf } from '$lib/components/zones';
 	import { targetState } from '$lib/channel/types';
+	import { wkg } from '$lib/format';
 	import TabularFigures from '$lib/components/TabularFigures.svelte';
 	import ZoneDot from '$lib/components/ZoneDot.svelte';
 	import PowerTrack from '$lib/session/PowerTrack.svelte';
@@ -26,6 +27,7 @@
 		fullScale = undefined,
 		stale = false,
 		idle = false,
+		kg = undefined,
 	}: {
 		watts: number;
 		target: number;
@@ -52,6 +54,8 @@
 		 * signal" — capability gating, not an error (ux.md).
 		 */
 		idle?: boolean;
+		/** Weight, when the surface keeps W/kg beside the watts (TARGETS D17). */
+		kg?: number | null;
 	} = $props();
 
 	const quiet = $derived(stale || idle);
@@ -69,7 +73,10 @@
 				class="font-display {numeral} text-4xl leading-none font-bold tabular-nums"
 				>{quiet ? '—' : watts}</span
 			>
-			<span class="eyebrow">w</span>
+			<span class="eyebrow"
+				>w{#if kg !== undefined}
+					· {quiet ? '—' : wkg(watts, kg)} W/kg{/if}</span
+			>
 		</span>
 		<span class="min-w-0 flex-1"
 			><PowerTrack watts={shown} {target} {ftp} {fullScale} class="h-3" /></span
@@ -105,18 +112,42 @@
 		class="@container flex items-end {tv ? 'min-h-[22vh]' : 'min-h-32'}"
 	>
 		<div
-			class="ease-live w-max text-center transition-transform duration-[250ms]"
+			class="ease-live w-max text-center transition-transform duration-[250ms] {watts >=
+			1000
+				? 'flex flex-col items-center'
+				: ''}"
 			style="transform: translateX(calc(clamp(50%, {pct(
 				shown,
 			)}cqw, 100cqw - 50%) - 50%))"
 		>
-			<span
-				class="font-display {numeral} block leading-[0.85] font-bold tabular-nums {tv
-					? 'text-[16vh]'
-					: 'text-[6.5rem]'}"
-				><TabularFigures value={quiet ? '—' : watts} /></span
+			<div
+				class={watts >= 1000
+					? 'contents'
+					: 'flex items-end justify-center gap-4'}
 			>
-			<span class="eyebrow {tv ? 'text-[3vh]' : ''}">watts</span>
+				<span
+					class="font-display {numeral} block leading-[0.85] font-bold tabular-nums {tv
+						? 'text-[16vh]'
+						: 'text-watts'}"
+					><TabularFigures value={quiet ? '—' : watts} /></span
+				>
+				{#if kg !== undefined}
+					<!-- W/kg beside the 3 s power, under it from 1000 W (D17, ride-road-world item 9). -->
+					<span
+						class="flex flex-col text-left {watts >= 1000
+							? 'order-2 mt-2 items-center'
+							: 'items-start'}"
+					>
+						<span class="ride-label {tv ? 'text-[3vh]' : ''}">W/kg</span>
+						<span
+							class="font-display text-ink leading-none font-bold tabular-nums {tv
+								? 'text-[6vh]'
+								: 'text-4xl'}">{quiet ? '—' : wkg(watts, kg)}</span
+						>
+					</span>
+				{/if}
+			</div>
+			<span class="eyebrow order-1 {tv ? 'text-[3vh]' : ''}">watts</span>
 			<!-- The zone you are actually in, named (#1531, ADR-0046): the gauge
 			     has been tinted by it since #386 and never said which one, so the
 			     colour was a code with no key on the one screen that could give
@@ -125,7 +156,7 @@
 				<!-- Muted words and a zone dot (#2856): the ramp is fitted to a
 				     fill's floor, and Z1 written in its own colour was 2.1:1. -->
 				<span
-					class="eyebrow flex items-center justify-center gap-1 {tv
+					class="ride-label order-3 flex items-center justify-center gap-1 {tv
 						? 'text-[3vh]'
 						: ''}"
 					><ZoneDot {zone} class={tv ? 'size-[1.8vh]' : 'size-1.5'} />z{zone}

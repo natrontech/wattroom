@@ -8,7 +8,7 @@ import { climbGpx } from './road-gpx';
  * climbing 4 % in the open South Atlantic.
  */
 
-async function rideTheRoad(page: Page, name: string) {
+async function rideTheRoad(page: Page, name: string, from = 0) {
 	await page.addInitScript(() =>
 		localStorage.setItem(
 			'wattroom.mixer.v1',
@@ -23,6 +23,7 @@ async function rideTheRoad(page: Page, name: string) {
 	});
 	await page.getByRole('button', { name: 'Ride it now' }).click();
 	await page.waitForURL(/\/ride\?road=/);
+	if (from) await page.goto(`${page.url()}&from=${from}`);
 	await page
 		.getByRole('button', { name: 'Ride simulated' })
 		.click({ timeout: 15_000 });
@@ -49,7 +50,8 @@ test.describe('the Skyline', () => {
 	test('carries your dot, and the road moves under it by steps', async ({
 		page,
 	}) => {
-		const skyline = await rideTheRoad(page, 'Skyline Rider');
+		// Past the first 0.5 km, where the dot walks (#4003).
+		const skyline = await rideTheRoad(page, 'Skyline Rider', 1000);
 		await expect(skyline.locator('svg path').first()).toBeAttached();
 		const start = await shiftOf(skyline);
 		await expect
@@ -63,6 +65,23 @@ test.describe('the Skyline', () => {
 			animations: el.getAnimations({ subtree: true }).length,
 		}));
 		expect(moving).toEqual({ transitions: 0, animations: 0 });
+	});
+
+	test('is pinned at the bottom of a flat ride, not under the panels (#4088)', async ({
+		page,
+	}) => {
+		await page.setViewportSize({ width: 1440, height: 900 });
+		const skyline = await rideTheRoad(page, 'Pinned Skyline Rider');
+		// TARGETS ride-free-road 2: the free height sits above the strip.
+		const gap = await skyline.evaluate((el) => {
+			const surface = el.closest('[data-surface=flat]')!;
+			const panel = el.closest('.ride-panel')!;
+			return (
+				surface.getBoundingClientRect().bottom -
+				panel.getBoundingClientRect().bottom
+			);
+		});
+		expect(Math.abs(gap)).toBeLessThanOrEqual(4);
 	});
 
 	test('holds the road still for a rider who asked for stillness, and walks the dot across it once a second (#3080)', async ({

@@ -220,6 +220,7 @@ func (rm *channelState) queuePairingLocked(riderID string) {
 	for c := range rm.clients {
 		if c.rider.ID == riderID {
 			rm.pendingPairing[c] = rm.pairingForLocked(c)
+			c.toldPairing = true
 		}
 	}
 }
@@ -249,4 +250,14 @@ func (rm *channelState) drainPairingLocked() map[*client]protocol.SensorPairing 
 // socket the way a real tab id does across a reload.
 func (c *client) tabFallback() string {
 	return fmt.Sprintf("sock-%p", c)
+}
+
+// announcePairingFirst tells a socket its pairing the first time it claims,
+// changed or not (#3217).
+func (rm *channelState) announcePairingFirst(c *client) {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+	if !c.toldPairing {
+		rm.queuePairingLocked(c.rider.ID)
+	}
 }

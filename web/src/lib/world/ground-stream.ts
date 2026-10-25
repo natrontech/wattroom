@@ -2,6 +2,7 @@ import { at } from '$lib/road/along';
 import type { Route } from '$lib/road/route';
 import { CHUNK_M } from './place/lattice';
 import {
+	disc,
 	edgesOf,
 	REACH,
 	toChunk,
@@ -134,6 +135,8 @@ export function streamGround(
 		held: () => [...held.values()],
 		/** Chunks asked for and not back yet: none, once the ground around the eye is whole. */
 		pending: () => asked.size,
+		/** The most chunks it means to hold where the eye last crossed: the far reach and its hysteresis. The soak holds held() to it (#3851). */
+		window: () => (eye ? disc(...eye, reach.far * LEAVE).length : 0),
 		dispose() {
 			grids.dispose();
 			sink = null;

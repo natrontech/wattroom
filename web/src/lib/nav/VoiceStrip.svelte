@@ -27,7 +27,6 @@
 		VOICE_DOT,
 	} from '$lib/channel/presence-marks';
 	import { STRIP_MAX, orderBySpoke } from './voice-strip';
-	import { CAVE_WORDS } from './cave-sizes';
 	import MicOff from '@lucide/svelte/icons/mic-off';
 
 	let { pathname }: { pathname: string } = $props();
@@ -83,9 +82,7 @@
 {#if conn && !onPlace && others.length > 0}
 	{@const av = conn.av}
 	<div class="border-ink/5 border-t px-3 pt-2.5 pb-1.5">
-		<div
-			class="eyebrow cave:ride-label flex min-w-0 items-center gap-1.5 pb-1.5"
-		>
+		<div class="eyebrow flex min-w-0 items-center gap-1.5 pb-1.5">
 			<!-- The people column's words for standing in a channel (#2854), and
 			     its count: everyone there, you included. -->
 			<span class="shrink-0">in the channel</span>
@@ -95,7 +92,7 @@
 			>
 		</div>
 		<!-- One tile a row on a ride: a name at 24 px needs the column's width. -->
-		<div class="cave:grid-cols-1 grid grid-cols-2 gap-1.5">
+		<div class="grid grid-cols-2 gap-1.5">
 			{#each shown as rider (rider.id)}
 				{@const video = av.videoOf[rider.id]}
 				<!-- The voice channel's word, not this strip's reading of the current
@@ -141,7 +138,7 @@
 						</div>
 					{/if}
 					<span
-						class="{MARK_SURFACE} absolute inset-x-0 bottom-0 flex items-center gap-1 px-1 py-px text-[9px] {CAVE_WORDS}"
+						class="{MARK_SURFACE} absolute inset-x-0 bottom-0 flex items-center gap-1 px-1 py-px text-[9px]"
 					>
 						<span class="truncate">{rider.name}</span>
 						<StatusMark line={people.face(rider.id)?.statusLine} size={10} />
@@ -164,15 +161,13 @@
 						</span>
 					{/if}
 					{#if rider.away}
-						<span class="{AWAY_MARK} absolute top-1 right-1 {CAVE_WORDS}"
-							>away</span
-						>
+						<span class="{AWAY_MARK} absolute top-1 right-1">away</span>
 					{/if}
 				</a>
 			{/each}
 		</div>
 		{#if more > 0}
-			<p class="text-muted-dim pt-1 text-[10px] {CAVE_WORDS}">+{more} more</p>
+			<p class="text-muted-dim pt-1 text-[10px]">+{more} more</p>
 		{/if}
 	</div>
 {/if}

@@ -3,7 +3,7 @@
 	import { account } from '$lib/account.svelte';
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
-	import { roadsEnabled } from '$lib/ride/roads';
+	import RoadsBeta from '$lib/ride/RoadsBeta.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import RoutePreview from '$lib/components/RoutePreview.svelte';
 	import { device, isSpectator } from '$lib/device.svelte';
@@ -37,10 +37,9 @@
 		renameError: string | null;
 	} | null>(null);
 
-	// A phone watching from the sofa has no trainer to ride it on. Behind the
-	// roads dev gate (#3027) until #3352 lifts it; a screen that may not ride
-	// a road is not offered one (ux.md).
-	const ridable = $derived(roadsEnabled() && !isSpectator(device));
+	// A phone watching from the sofa has no trainer to ride it on, and a
+	// screen that may not ride a road is not offered one (ux.md).
+	const spectator = $derived(isSpectator(device));
 
 	async function save(): Promise<string | null> {
 		if (!imported || saving) return null;
@@ -135,7 +134,7 @@
 						href="/workouts/routes/{encodeURIComponent(saved!.id)}"
 						class="btn btn-secondary btn-xs">Open it</a
 					>
-					{#if ridable}
+					{#if !spectator}
 						<a
 							href="/ride?road={encodeURIComponent(saved!.id)}"
 							class="btn btn-secondary btn-xs">Ride it</a
@@ -178,8 +177,8 @@
 			</Banner>
 		</div>
 	{/if}
-	<!-- On a phone the actions stack full width, primary first. Plan it for
-	     a crew joins them with the session picker's road (#3682). -->
+	<!-- On a phone the actions stack full width, primary first. A crew plans
+	     a road from its session picker, not from here. -->
 	<div
 		class="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center"
 	>
@@ -188,7 +187,7 @@
 			disabled={saving}
 			class="btn btn-primary btn-lg w-full sm:w-auto">Save to my routes</button
 		>
-		{#if ridable}
+		{#if !spectator}
 			<button
 				onclick={() => void rideNow()}
 				disabled={saving}
@@ -203,6 +202,7 @@
 			</span>
 		{/if}
 	</div>
+	{#if !spectator}<RoadsBeta class="mt-2" />{/if}
 	{#if imported.src === 'stravagpx'}
 		<p class="text-muted mt-2 text-xs">
 			Files from Strava ride with you alone, never in a crew's plan.

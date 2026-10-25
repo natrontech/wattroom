@@ -87,8 +87,7 @@
 	</div>
 {:else if door}
 	<p class="text-muted mt-3 text-sm">
-		Nobody is in a voice channel right now. Whoever walks into one next shows up
-		here —
+		Whoever walks into a voice channel shows up here —
 		<a href={voiceChannelPath(door.crew.id, door.channel.id)} class="btn-link"
 			>walk into {door.crew.name} · {door.channel.name}</a
 		>.

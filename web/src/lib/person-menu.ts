@@ -56,7 +56,7 @@ async function askToBeFriends(id: string): Promise<void> {
 function riderVolume(id: string, name: string): MenuSlider {
 	return {
 		kind: 'slider',
-		label: 'Volume',
+		label: 'Volume, yours only',
 		icon: Volume2,
 		...RIDER_FADER,
 		value: Math.round(mixer.riderGain(id) * 100),

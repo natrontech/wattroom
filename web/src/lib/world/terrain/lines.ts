@@ -69,6 +69,10 @@ function thin(starts: number[], x: Float64Array, z: Float64Array, gap: number) {
 	return out;
 }
 
+/** Metres along one axis from `p` to cell `c` of `size` metres: 0 inside it. A cell whose gaps already reach a radius holds no vertex within it. */
+const cellGap = (c: number, p: number, size: number) =>
+	Math.max(0, c * size - p, p - (c + 1) * size);
+
 export function indexLines(lines: readonly Line[]) {
 	const starts = [0];
 	for (const l of lines) starts.push(starts.at(-1)! + l.x.length);
@@ -140,8 +144,14 @@ export function indexLines(lines: readonly Line[]) {
 		};
 		const visit = (k: number) => {
 			const b = near.get(k);
-			// A vertex stands for the segment it starts and the one it ends.
-			if (b) for (const g of b) (segment(g - 1), segment(g));
+			if (!b) return;
+			// A vertex stands for the segment it starts and the one it ends; the one it ends is its neighbour's own when that is in the cell too.
+			let prev = -2;
+			for (const g of b) {
+				if (prev !== g - 1) segment(g - 1);
+				segment(g);
+				prev = g;
+			}
 		};
 		for (
 			let r = 0;
@@ -174,11 +184,17 @@ export function indexLines(lines: readonly Line[]) {
 		const cj = Math.floor(pz / CELL);
 		const R = Math.ceil(reach / CELL);
 		for (let dj = -R; dj <= R; dj++)
-			for (let di = -R; di <= R; di++)
+			for (let di = -R; di <= R; di++) {
+				if (
+					cellGap(ci + di, px, CELL) ** 2 + cellGap(cj + dj, pz, CELL) ** 2 >=
+					reach * reach
+				)
+					continue;
 				for (const g of near.get(key(ci + di, cj + dj)) ?? []) {
 					const d2 = (x[g] - px) ** 2 + (z[g] - pz) ** 2;
 					if (d2 < reach * reach) fn(h[g], Math.sqrt(d2));
 				}
+			}
 	}
 
 	/** Every vertex ~20 m apart within `reach` metres: `fn(height, distance)`. */
@@ -192,13 +208,19 @@ export function indexLines(lines: readonly Line[]) {
 		const cj = Math.floor(pz / WIDE);
 		const R = Math.ceil(reach / WIDE);
 		for (let dj = -R; dj <= R; dj++)
-			for (let di = -R; di <= R; di++)
+			for (let di = -R; di <= R; di++) {
+				if (
+					cellGap(ci + di, px, WIDE) ** 2 + cellGap(cj + dj, pz, WIDE) ** 2 >=
+					reach * reach
+				)
+					continue;
 				for (const g of wide.get(key(ci + di, cj + dj)) ?? []) {
 					const ex = x[g] - px;
 					const ez = z[g] - pz;
 					const d2 = ex * ex + ez * ez;
 					if (d2 < reach * reach) fn(h[g], Math.sqrt(d2));
 				}
+			}
 	}
 
 	/**

@@ -13,7 +13,6 @@
 	import { railPeople } from './rail-people';
 	import type { VoiceMover } from './voice-mover.svelte';
 	import { enter, exit, reorder } from '$lib/motion/transitions';
-	import { CAVE_MARK, CAVE_WORDS } from './cave-sizes';
 
 	let {
 		channel,
@@ -45,7 +44,7 @@
 				class:landed={mover.landed(channel, o)}
 				class:opacity-40={mover.dragging?.rider === o.id}
 				class:opacity-60={mover.inFlight(o.id)}
-				class="text-muted flex items-center gap-1.5 rounded px-2 py-0.5 pl-8 text-xs {CAVE_WORDS} transition-opacity duration-(--dur-quick) motion-reduce:transition-none {grab.draggable
+				class="text-muted flex items-center gap-1.5 rounded px-2 py-0.5 pl-8 text-xs transition-opacity duration-(--dur-quick) motion-reduce:transition-none {grab.draggable
 					? 'cursor-grab active:cursor-grabbing'
 					: ''}"
 			>
@@ -56,20 +55,16 @@
 				<span class="text-muted-dim min-w-0 flex-1 truncate">
 					<StatusMark line={o.statusLine} size={11} text />
 				</span>
-				{#if o.away}<Away
-						size={11}
-						class="shrink-0 {CAVE_MARK}"
-						aria-label="away"
-					/>{/if}
+				{#if o.away}<Away size={11} class="shrink-0" aria-label="away" />{/if}
 				{#if o.riding}<RidingBars size={9} />{/if}
 				{#if o.camera}<Video
 						size={11}
-						class="shrink-0 {CAVE_MARK}"
+						class="shrink-0"
 						aria-label="camera on"
 					/>{/if}
 				{#if o.voice}<Headphones
 						size={11}
-						class="shrink-0 {CAVE_MARK}"
+						class="shrink-0"
 						aria-label="in voice"
 					/>{/if}
 			</li>
@@ -81,17 +76,14 @@
 	     the line's the whole list. Drawn even while empty, so the last name
 	     out can still glide away. -->
 	<p
-		class="text-muted-dim flex items-center gap-1 truncate px-2 pl-8 text-[10px] {CAVE_WORDS} {list.length
+		class="text-muted-dim flex items-center gap-1 truncate px-2 pl-8 text-[10px] {list.length
 			? 'pb-1'
 			: ''}"
 	>
-		{#if inVoice}<Headphones size={9} class="shrink-0 {CAVE_MARK}" />{/if}
+		{#if inVoice}<Headphones size={9} class="shrink-0" />{/if}
 		<!-- On a ride the names wrap, a name a line, rather than each cut to
 		     a few letters of 24 px. -->
-		<span
-			class="cave:flex-wrap flex min-w-0 items-center truncate"
-			title={people.label}
-		>
+		<span class="flex min-w-0 items-center truncate" title={people.label}>
 			{#each list.slice(0, people.shown.length) as o, i (o.id)}
 				<span
 					in:enter={{ axis: 'x' }}
@@ -102,13 +94,15 @@
 					class:opacity-60={mover.inFlight(o.id)}
 					class="flex min-w-0 items-center rounded transition-opacity duration-(--dur-quick) motion-reduce:transition-none"
 				>
-					{#if i > 0}<span class="shrink-0">,&nbsp;</span>{/if}
 					<span
 						{...mover.grab(channel, o)}
 						{@attach contextMenu(() => mover.menu(channel, o))}
 						class="truncate">{o.name}</span
 					>
 					<StatusMark line={o.statusLine} size={9} />
+					<!-- The comma trails its own name, so a wrapped line never opens with one. -->
+					{#if i < people.shown.length - 1}<span class="shrink-0">,&nbsp;</span
+						>{:else if people.more > 0}<span class="shrink-0">,</span>{/if}
 				</span>
 			{/each}
 			{#if people.more > 0}<span class="shrink-0">&nbsp;+{people.more}</span

@@ -10,12 +10,13 @@
 	 *    the interval strip over NEXT and its 3-2-1 chips.
 	 * 3. The trainer chip and, on a road, the road line, once.
 	 *
-	 * RideHeader is the same slot on the flat surface; the words are theirs
-	 * (block.ts), only the arrangement is this band's.
+	 * Both layouts draw this band: over the world and flat (#3670); the words are
+	 * block.ts's.
 	 */
 	import { formatClock } from '$lib/format';
 	import { roadLine } from '$lib/ride/road-readout';
-	import { nextFor, trainerChip, type Block } from '$lib/workout/block';
+	import { nextText, trainerChip, type Block } from '$lib/workout/block';
+	import CountChips from '$lib/session/CountChips.svelte';
 	import type { Snippet } from 'svelte';
 
 	let {
@@ -24,8 +25,10 @@
 		total,
 		title = '',
 		unit = 'block',
+		eyebrow = '',
 		context = '',
 		drives = false,
+		wide = false,
 		controls,
 		status,
 		strip,
@@ -37,10 +40,14 @@
 		/** Shown while there is no block — the workout's own name. */
 		title?: string;
 		unit?: string;
+		/** Overrides "unit n of m" where the screen counts differently: the ramp's warm-up is not step one. */
+		eyebrow?: string;
 		/** Mode · workout or road · riders (`rideContext()`). */
 		context?: string;
-		/** This screen drives the trainer, so the chip may say how (RideHeader). */
+		/** This screen drives the trainer, so the chip may say how (trainerChip). */
 		drives?: boolean;
+		/** Flat: slot 1 spans the page, so the strip fills what the time left leaves and the trainer chip joins NEXT's line (TARGETS ride-workout-flat 2). */
+		wide?: boolean;
 		controls?: Snippet;
 		/** The ride's persistent status, one line with at most one button (G3). */
 		status?: Snippet;
@@ -53,18 +60,40 @@
 	// 24 px words on 24 px lines: three of them stack as tall as the 72 px
 	// time left, so the band ends above the corridor (the box table's 186).
 	const WORDS = 'text-2xl leading-6';
-	const CHIP = `${WORDS} border-neon/40 text-muted rounded border px-2 whitespace-nowrap`;
-	// The last three seconds of a block light their chip (v2-erg's 3-2-1).
-	const counting = $derived(
-		block?.next ? Math.ceil(block.secondsLeft) : Infinity,
-	);
+	const CHIP = `${WORDS} shrink-0 border-neon/40 text-muted rounded border px-2 whitespace-nowrap`;
 </script>
 
+{#snippet trainerChipEl(b: Block)}
+	<span data-testid="trainer-chip" class={CHIP}>{trainerChip(b)}</span>
+{/snippet}
+
+{#snippet nextLine(b: Block)}
+	{#if b.next || (wide && drives && !b.road)}
+		<!-- A name and an absolute target, never a delta (#1531, D16). Flat: its
+		     own line across the header, so the text gets its full width. One
+		     line (TARGETS ride-workout-flat 2): NEXT's text gives way before
+		     a chip wraps, and the trainer chip stays on it when no block is
+		     left. -->
+		<p
+			class="{WORDS} flex items-center gap-x-2 whitespace-nowrap max-sm:flex-wrap"
+		>
+			{#if b.next}
+				<span class="ride-label">Next</span>
+				<span class="min-w-0 truncate">
+					{nextText(b.next)}
+				</span>
+				<CountChips secondsLeft={b.secondsLeft} />
+			{/if}
+			{#if wide && drives && !b.road}{@render trainerChipEl(b)}{/if}
+		</p>
+	{/if}
+{/snippet}
+
 <header data-testid="ride-band" class="flex flex-col gap-2 px-4 py-2">
-	<div class="flex min-h-11 items-center gap-6">
+	<div class="flex min-h-11 items-center gap-x-6 gap-y-2 max-sm:flex-wrap">
 		<!-- The status draws its line only while one holds; the eyebrow steps
 		     aside for it. -->
-		<div class="group/status min-w-0 flex-1">
+		<div class="group/status min-w-0 flex-1 max-sm:min-w-32">
 			{@render status?.()}
 			{#if context}
 				<p
@@ -75,22 +104,30 @@
 				</p>
 			{/if}
 		</div>
-		{#if controls}<div class="shrink-0">{@render controls()}</div>{/if}
+		{#if controls}<div class="shrink-0 max-md:w-full">
+				{@render controls()}
+			</div>{/if}
 	</div>
 	{#if block}
-		<div class="flex items-center gap-6">
+		<div
+			class="flex items-center gap-y-2 max-sm:flex-wrap {wide
+				? 'gap-x-4'
+				: 'gap-x-6'}"
+		>
 			<p
 				data-testid="block-left"
 				aria-label="left in {unit}"
-				class="num min-w-[4.5ch] shrink-0 text-7xl leading-none font-bold"
+				class="num min-w-[4ch] shrink-0 text-7xl leading-none font-bold"
 			>
 				{formatClock(block.secondsLeft)}
 			</p>
 			<div class="{WORDS} shrink-0 whitespace-nowrap">
 				<p>
-					{unit[0].toUpperCase() + unit.slice(1)}
-					<span class="num">{block.index} of {block.count}</span> · {block.label ||
-						title}
+					{#if eyebrow}<span class="first-letter:uppercase">{eyebrow}</span
+						>{:else}{unit[0].toUpperCase() + unit.slice(1)}
+						<span class="num">{block.index} of {block.count}</span
+						>{/if}{#if (block.label || title).toLowerCase() !== eyebrow.toLowerCase()}
+						{' '}· {block.label || title}{/if}
 				</p>
 				{#if block.band}
 					<!-- Prescribed, so neon: watt is only measured live data (#3090). -->
@@ -108,42 +145,29 @@
 			{#if strip || block.next}
 				<!-- As wide as NEXT and its chips, not as wide as the band may grow:
 				     the moment card's top-centre room is what slot 1 leaves (D12). -->
-				<div class="flex w-88 min-w-0 shrink flex-col gap-2">
-					{#if strip}<div class="h-10">{@render strip()}</div>{/if}
-					{#if block.next}
-						<!-- A name and an absolute target, never a delta (#1531, D16). -->
-						<p class="{WORDS} flex items-center gap-2 whitespace-nowrap">
-							<span class="ride-label">Next</span>
-							<span class="min-w-0 truncate">
-								{block.next.label}{#if block.next.watts > 0}
-									· <span class="num text-neon">{block.next.watts} W</span>{/if}
-								· <span class="num">{nextFor(block.next.seconds)}</span>
-							</span>
-							{#each [3, 2, 1] as n (n)}
-								<span
-									data-testid="count-chip"
-									class="num grid size-7 shrink-0 place-items-center rounded border {counting ===
-									n
-										? 'border-neon text-ink'
-										: 'border-neon/40 text-muted'}">{n}</span
-								>
-							{/each}
-						</p>
-					{/if}
+				<div
+					class="flex min-w-0 flex-col gap-2 {wide
+						? 'flex-1 basis-60'
+						: 'w-88 shrink'}"
+				>
+					{#if strip}<div class={wide ? 'h-14' : 'h-10'}>
+							{@render strip()}
+						</div>{/if}
+					{#if !wide}{@render nextLine(block)}{/if}
 				</div>
 			{/if}
 		</div>
+		{#if wide}{@render nextLine(block)}{/if}
 	{:else}
 		<h2 class="font-display truncate text-3xl leading-none font-bold">
 			{title}
 		</h2>
 	{/if}
-	{#if (drives && block) || block?.road || hint}
+	{#if (drives && block && (!wide || block.road)) || block?.road || hint}
 		<div class="flex items-center gap-4">
-			{#if drives && block}
-				<span data-testid="trainer-chip" class={CHIP}>{trainerChip(block)}</span
-				>
-			{/if}
+			{#if drives && block && (!wide || block.road)}{@render trainerChipEl(
+					block,
+				)}{/if}
 			{#if block?.road}
 				<!-- Where on the road, once (TARGETS one home: slot 1's road line). -->
 				<p data-testid="block-road" class="num text-muted {WORDS} truncate">

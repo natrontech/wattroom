@@ -28,6 +28,10 @@
 }
 
 @theme {
+	/* The 3 s power's figure on a desk ride (SPEC "The bike computer"). */
+	--text-watts: 6.5rem;
+	/* A riding surface's label (ride-label). */
+	--text-label: 1.5rem;
 	/* Tailwind's pulse, sampled 44 times in its 2 s instead of on every frame
 	 * (#3199): the same opacity curve, but the window only has to be
 	 * recomposited ~22 times a second rather than at the display's 120 or
@@ -367,6 +371,16 @@
 	--world-flag-3: #88443b;
 	--world-flag-4: #bfa967;
 
+	/* Eight skin swatches: evenly spaced along the path through the ten tones of
+	   the Monk Skin Tone Scale in OKLab (Ellis Monk / Google, skintone.google, CC BY 4.0). */
+	--world-skin-1: #f6ede4;
+	--world-skin-2: #e6d3b2;
+	--world-skin-3: #ccb089;
+	--world-skin-4: #af8f67;
+	--world-skin-5: #926e4d;
+	--world-skin-6: #73503c;
+	--world-skin-7: #4d392f;
+	--world-skin-8: #292420;
 	--world-kit-skin: #858585; /* #3413's neutral tone: none of the eight swatches */
 	--world-kit-shoe: #ece9f2;
 	--world-kit-tyre: #1a1820;
@@ -630,17 +644,43 @@ body {
 @utility eyebrow {
 	@apply text-muted text-[10px] tracking-[0.2em] uppercase;
 }
-/* A riding surface's label (TARGETS G4): SPEC's 24 px words on a desk; the
- * kit's 10 px eyebrow is for desk pages only. */
+/* A riding surface's label (TARGETS G4): SPEC's label row (`--text-label`);
+ * the kit's 10 px eyebrow is for desk pages only. */
 @utility ride-label {
-	@apply text-muted text-2xl leading-7 font-semibold tracking-[0.08em] uppercase;
+	@apply text-muted text-label leading-7 font-semibold tracking-[0.08em] uppercase;
 }
 /* A word on a riding surface that is not a label: a button's, a status
- * line's, a name (TARGETS G4). 24 px from `sm`; a phone has no SPEC size row
- * yet (D1), so there it steps down and may wrap rather than scroll (G5). */
+ * line's, a name (TARGETS G4). text-2xl from `sm`, SPEC's word row under the
+ * ride's scale below; a phone steps down and may wrap rather than scroll (G5). */
 @utility ride-word {
 	@apply text-xl leading-7 sm:text-2xl sm:leading-7;
 }
+/* A worded button on a riding surface (TARGETS G4, #3896): btn-lg's box with
+ * ride-word's word, both on the ride's scale (44 px on a phone). */
+@utility btn-ride {
+	@apply ride-word min-h-11 px-4 py-2 font-semibold;
+}
+/* The ride on a desk takes the mocks' proportions (ADR-0087): the theme's
+ * scale is redefined under the surface, so every text-* and spacing utility in
+ * it follows. On the children: the surface's own margins, inset and gaps place
+ * it in the page at the desk's spacing (G3). The phone's surface, TV mode and
+ * the HUD keep their distance sizes; the chrome around the ride the desk's. */
+:is([data-surface='docked'], [data-surface='flat'], [data-ride-stage]) > * {
+	--spacing: 0.1875rem;
+	/* A unit at half its 24 px number (SPEC). */
+	--text-lg: 0.75rem;
+	--text-xl: 0.75rem;
+	--text-2xl: 0.875rem;
+	--text-3xl: 1.125rem;
+	--text-4xl: 1.5rem;
+	--text-5xl: 2rem;
+	--text-6xl: 2.5rem;
+	--text-7xl: 3.25rem;
+	--text-8xl: 4rem;
+	--text-watts: 4.75rem;
+	--text-label: 0.6875rem;
+}
+
 /* The voice channel's stage while a ride runs (TARGETS G1, #3890): the Lounge
  * marks its root, and the components it shares with desk pages take riding
  * size inside it only, e.g. `ride-stage:ride-word`. */
@@ -783,7 +823,83 @@ body {
 	}
 }
 
+/* The count-in's slots dock in (#3087, ADR-0079): each flies from its edge,
+ * staggered, and lands on --dur-stage. Reduced motion holds the landed stamp. */
+@keyframes dock-in {
+	from {
+		opacity: 0;
+		transform: translate(var(--dock-x, 0), var(--dock-y, 0));
+	}
+}
+.dock-in {
+	animation: dock-in var(--dur-stage) var(--ease-arrive) both;
+	animation-delay: calc(var(--dock-i, 0) * var(--stagger));
+}
+
+/* The climb's moments (#3645, ADR-0079): the CLIMB page slides in from its edge
+ * on --dur-stage, the flamme rouge stamps on --ease-pop, the summit strip rises
+ * and confetti falls over --dur-draw from the strip, staggered. Reduced motion
+ * holds each landed stamp. */
+@keyframes climb-in {
+	from {
+		opacity: 0;
+		transform: translateX(40px);
+	}
+}
+.climb-in {
+	animation: climb-in var(--dur-stage) var(--ease-arrive) both;
+}
+@keyframes flamme-stamp {
+	from {
+		opacity: 0;
+		transform: scale(0.6);
+	}
+}
+.flamme-stamp {
+	animation: flamme-stamp var(--dur-base) var(--ease-pop) both;
+}
+@keyframes summit-rise {
+	from {
+		opacity: 0;
+		transform: translateY(12px);
+	}
+}
+.summit-strip {
+	animation: summit-rise var(--dur-stage) var(--ease-arrive) both;
+}
+@keyframes confetti-fall {
+	from {
+		opacity: 1;
+		transform: translateY(0) rotate(0);
+	}
+	to {
+		opacity: 0;
+		transform: translateY(60px) rotate(240deg);
+	}
+}
+.confetti-piece {
+	position: absolute;
+	top: 0;
+	left: var(--c-x);
+	width: 6px;
+	height: 10px;
+	opacity: 0;
+	animation: confetti-fall var(--dur-draw) var(--ease-leave) both;
+	animation-delay: calc(var(--c-i) * var(--stagger) / 3);
+}
+
 @media (prefers-reduced-motion: reduce) {
+	.dock-in {
+		animation: none;
+	}
+	.climb-in,
+	.flamme-stamp,
+	.summit-strip {
+		animation: none;
+	}
+	.confetti-piece {
+		display: none;
+	}
 	.skeleton::after {
 		animation: none;
 	}

@@ -1,6 +1,5 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { railLabel, railText } from '$lib/channel/rail-size';
 	import Crown from '@lucide/svelte/icons/crown';
 	import Drum from '@lucide/svelte/icons/drum';
 	import Headphones from '@lucide/svelte/icons/headphones';
@@ -11,6 +10,8 @@
 	import CheerDeck from '$lib/channel/CheerDeck.svelte';
 	import { roadsideShown } from '$lib/channel/RoadsideDeck.svelte';
 	import BoardToggle from '$lib/board/BoardToggle.svelte';
+	import { boardPanel } from '$lib/board/panel.svelte';
+	import { nameOf } from '$lib/sound/board.svelte';
 	import EmojiPicker from '$lib/emoji/EmojiPicker.svelte';
 	import { emojiCrew } from '$lib/emoji/crew-emoji.svelte';
 	import { account } from '$lib/account.svelte';
@@ -90,6 +91,8 @@
 		rosterGroups(live, riders, members, elsewhere, account.me?.id),
 	);
 
+	const fired = $derived(boardPanel.sounding(riders));
+
 	// Every other reaction beside the four (#2692): the crew's own emoji most
 	// of all, which were a cheer only if an admin put them in those four.
 	const crew = emojiCrew();
@@ -99,10 +102,9 @@
 {#snippet person(rider: LiveRider)}
 	<!-- 44 px rows: a bike-side target for the row's own link and its menu. -->
 	<li
-		class="flex min-h-11 items-center gap-2 rounded px-2 py-1 {railText(
-			riding,
-			'text-xs',
-		)} {rider.speaking ? 'text-ink' : 'text-ink/70'}"
+		class="flex min-h-11 items-center gap-2 rounded px-2 py-1 text-xs {rider.speaking
+			? 'text-ink'
+			: 'text-ink/70'}"
 		{@attach contextMenu(() =>
 			personMenu(rider.id, goto, {
 				// Your own row has a menu now (#2131): everything on it is
@@ -179,9 +181,7 @@
 							     too, and beside the tile's live watts they read as a second
 							     number disagreeing with the first (#2882 L6-09). -->
 							<span
-								class="shrink-0 tabular-nums {riding
-									? 'font-display text-2xl'
-									: 'text-[10px]'} {now.has && now.inBand
+								class="shrink-0 text-[10px] tabular-nums {now.has && now.inBand
 									? 'text-ok'
 									: 'text-muted'}"
 								title={now.has
@@ -214,10 +214,7 @@
 
 {#snippet absent(member: PanelMember, where?: Elsewhere)}
 	<li
-		class="text-muted-dim flex min-h-11 items-center gap-2 rounded px-2 py-1 {railText(
-			riding,
-			'text-xs',
-		)}"
+		class="text-muted-dim flex min-h-11 items-center gap-2 rounded px-2 py-1 text-xs"
 		{@attach contextMenu(() =>
 			personMenu(member.id, goto, {
 				ban: banOf?.(member.id, member.displayName),
@@ -284,9 +281,7 @@
 					: 'flex-1'}"
 			>
 				{#if here.length > 0}
-					<div
-						class="{railLabel(riding)} flex items-center gap-1.5 px-3 pt-3 pb-1"
-					>
+					<div class="eyebrow flex items-center gap-1.5 px-3 pt-3 pb-1">
 						{#if !live}<Headphones size={10} />{/if}
 						{live
 							? riding
@@ -305,37 +300,37 @@
 					</ul>
 				{/if}
 				{#if away.length > 0}
-					<div class="{railLabel(riding)} px-3 pt-3 pb-1">
+					<div class="eyebrow px-3 pt-3 pb-1">
 						{live
 							? `not pedalling — ${away.length}`
-							: `in the channel — ${away.length}`}
+							: riding
+								? `here — ${away.length}`
+								: `in the channel — ${away.length}`}
 					</div>
 					<ul class="px-1">
 						{#each away as rider (rider.id)}{@render person(rider)}{/each}
 					</ul>
 				{/if}
-				{#if others.length > 0}
-					<!-- Online, just not here (#2536): a crew with two voice
-					     channels puts half its people in the other one. -->
-					<div class="{railLabel(riding)} px-3 pt-3 pb-1">
-						in another channel — {others.length}
-					</div>
-					<ul class="px-1">
-						{#each others as member (member.id)}{@render absent(
-								member,
-								member,
-							)}{/each}
-					</ul>
-				{/if}
-				{#if notHere.length > 0}
-					<!-- Not "offline" (#2849): this channel only knows they are not
-					     in it. A friend's dot says more, from the friends list. -->
-					<div class="{railLabel(riding)} px-3 pt-3 pb-1">
-						not here — {notHere.length}
-					</div>
-					<ul class="px-1 pb-2">
-						{#each notHere as member (member.id)}{@render absent(member)}{/each}
-					</ul>
+				{#if others.length + notHere.length > 0}
+					<!-- Who is not in this channel, folded (#4093): open, a crew with
+					     more absent than present gave them the column's height, and
+					     the sidebar's voice rows already say who is where. Online
+					     elsewhere first, each row naming its channel (#2536); never
+					     "offline" (#2849), this channel only knows they are not in it. -->
+					<details class="pb-2">
+						<summary class="eyebrow cursor-pointer px-3 pt-3 pb-1 select-none"
+							>rest of the crew — {others.length + notHere.length}</summary
+						>
+						<ul class="px-1">
+							{#each others as member (member.id)}{@render absent(
+									member,
+									member,
+								)}{/each}
+							{#each notHere as member (member.id)}{@render absent(
+									member,
+								)}{/each}
+						</ul>
+					</details>
 				{/if}
 			</div>
 		{/if}
@@ -368,7 +363,7 @@
 			     screen, the cheers are its alone (#3941). -->
 			{#if !roadsideShown()}<CheerDeck onCheer={(key) => onCheer?.(key)} />{/if}
 			<div class="flex gap-2">
-				<BoardToggle {riding} />
+				<BoardToggle />
 				<button
 					onclick={(e) => (pickerAt = pickerAt ? null : e.currentTarget)}
 					aria-label="More reactions"
@@ -378,6 +373,16 @@
 					><SmilePlus size={18} /></button
 				>
 			</div>
+			{#if fired}
+				<p class="text-muted flex items-center gap-2 px-1 text-xs">
+					<Drum size={12} class="{BOARD_MARK} shrink-0" />
+					<span class="text-ink/85 truncate">{fired.from}</span>
+					<span class="shrink-0">fired</span>
+					<span class="font-display text-ink/85 min-w-0 flex-1 truncate"
+						>{nameOf(fired.clipId) ?? 'a sound'}</span
+					>
+				</p>
+			{/if}
 			{#if pickerAt}
 				<EmojiPicker
 					anchor={pickerAt}

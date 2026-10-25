@@ -62,7 +62,9 @@ export function recordingUpload(
 			cadence: sample.cadence,
 			hr: sample.heartRate,
 			bias: sample.bias,
-			clock: sample.clock,
+			// A road workout's clock is metres along the road, so a fraction; the
+			// server keys the score on the whole second (rides.sampleJSON.Clock).
+			clock: Math.floor(sample.clock),
 			released: sample.released,
 			...(sample.m !== undefined && { m: sample.m, alt: sample.alt }),
 		})),

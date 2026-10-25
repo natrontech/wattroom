@@ -116,7 +116,7 @@ export const RIVALS: readonly Rival[] = [
 		],
 		pickUs: [
 			'Nobody in your crew has to pay to ride with you.',
-			'The crew is a place that stays: text channels, voice channels, a schedule, a board, between rides as well as during them.',
+			'The crew is a place that stays: chat channels, voice channels, a schedule, a board, between rides as well as during them.',
 			'Game modes, a shared jukebox and a soundboard when a straight workout is not the point.',
 			'It runs in a browser tab on a laptop or an Android phone, and the code is open.',
 		],

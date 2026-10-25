@@ -2,7 +2,7 @@
 	import type { Climb } from '$lib/road/climbs';
 	import { kmTicks, planPoints, walk } from '$lib/road/draw';
 	import { isLoop } from '$lib/road/line';
-	import { gradeStep } from '$lib/road/skyline';
+	import { GRADE_STROKE as STROKE, gradeStep } from '$lib/road/skyline';
 
 	/**
 	 * A route from above, north up, in a fixed-height panel (#3679): the
@@ -28,14 +28,6 @@
 		note?: string;
 	} = $props();
 
-	// The ramp's strokes, spelled out for Tailwind (GRADE_FILL's order).
-	const STROKE = [
-		'stroke-grade-1',
-		'stroke-grade-2',
-		'stroke-grade-3',
-		'stroke-grade-4',
-		'stroke-grade-5',
-	];
 	const PAD = 12;
 
 	let w = $state(0);

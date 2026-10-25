@@ -75,6 +75,14 @@ func (s *Service) upsert(r *http.Request, p provider, ident identity, tok *oauth
 	if err != nil {
 		return db.User{}, false, err
 	}
+	// A dev rider has answered the figure card already (#3342), so the road
+	// rides the e2e and design captures start never meet it. UnaskedDevRider
+	// is the one that has not, for the specs that test the card.
+	if p.id == "dev" && name != UnaskedDevRider {
+		if user, err = q.SetUserFigure(ctx, db.SetUserFigureParams{ID: user.ID}); err != nil {
+			return db.User{}, false, err
+		}
+	}
 	create := db.CreateIdentityParams{
 		Provider: p.id, ProviderUserID: ident.ProviderUserID, UserID: user.ID,
 	}
@@ -83,8 +91,8 @@ func (s *Service) upsert(r *http.Request, p provider, ident identity, tok *oauth
 		if err != nil {
 			return db.User{}, false, err
 		}
-		create.AccessToken, create.RefreshToken, create.RefreshTokenEnc, create.TokenExpiresAt =
-			tp.AccessToken, tp.RefreshToken, tp.RefreshTokenEnc, tp.TokenExpiresAt
+		create.AccessToken, create.RefreshTokenEnc, create.TokenExpiresAt =
+			tp.AccessToken, tp.RefreshTokenEnc, tp.TokenExpiresAt
 	}
 	if err := q.CreateIdentity(ctx, create); err != nil {
 		// Two callbacks for the same identity can race past the earlier lookup
@@ -113,6 +121,9 @@ func (s *Service) upsert(r *http.Request, p provider, ident identity, tok *oauth
 	}
 	return s.pictures.Adopt(ctx, user, ident.AvatarURL), true, nil
 }
+
+// UnaskedDevRider is the dev login's one rider who still meets the figure card.
+const UnaskedDevRider = "Unasked"
 
 // errIdentityTaken: the provider account is already somebody else's way in.
 // Reassigning the row would hand this rider that account, so linking refuses
@@ -178,8 +189,8 @@ func (s *Service) link(r *http.Request, p provider, ident identity, tok *oauth2.
 		if err != nil {
 			return err
 		}
-		create.AccessToken, create.RefreshToken, create.RefreshTokenEnc, create.TokenExpiresAt =
-			tp.AccessToken, tp.RefreshToken, tp.RefreshTokenEnc, tp.TokenExpiresAt
+		create.AccessToken, create.RefreshTokenEnc, create.TokenExpiresAt =
+			tp.AccessToken, tp.RefreshTokenEnc, tp.TokenExpiresAt
 	}
 	if err := q.CreateIdentity(ctx, create); err != nil {
 		// Someone claimed this identity between the lookup and the insert —
@@ -230,13 +241,13 @@ func (s *Service) finishLink(w http.ResponseWriter, r *http.Request, p provider,
 func (s *Service) tokenParams(p provider, ident identity, tok *oauth2.Token) (db.UpdateIdentityTokensParams, error) {
 	expiry := pgtype.Timestamptz{Time: tok.Expiry, Valid: !tok.Expiry.IsZero()}
 	access := tok.AccessToken
-	refresh, sealed, err := s.keys.Columns(tok.RefreshToken)
+	sealed, err := s.keys.SealToken(tok.RefreshToken)
 	if err != nil {
 		return db.UpdateIdentityTokensParams{}, fmt.Errorf("seal refresh token: %w", err)
 	}
 	return db.UpdateIdentityTokensParams{
 		Provider: p.id, ProviderUserID: ident.ProviderUserID,
-		AccessToken: &access, RefreshToken: refresh, RefreshTokenEnc: sealed,
+		AccessToken: &access, RefreshTokenEnc: sealed,
 		TokenExpiresAt: expiry,
 	}, nil
 }

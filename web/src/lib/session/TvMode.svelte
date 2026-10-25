@@ -1,9 +1,7 @@
 <script lang="ts">
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import IntervalStrip from '$lib/session/IntervalStrip.svelte';
-	import Instrument from '$lib/session/Instrument.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
-	import ZoneDot from '$lib/components/ZoneDot.svelte';
 	import { ZONE_BG, fillPct, zoneOf } from '$lib/components/zones';
 	import { formatClock } from '$lib/format';
 	import type { LiveRider } from '$lib/channel/types';
@@ -12,6 +10,8 @@
 	import Skyline from '$lib/ride/Skyline.svelte';
 	import type { SkylineView } from '$lib/road/skyline';
 	import type { ClimbView } from '$lib/ride/climb-view';
+	import type { MapView } from '$lib/ride/map-view';
+	import { TV_LABEL } from '$lib/session/computer-pages';
 
 	let {
 		riders,
@@ -27,6 +27,10 @@
 		stats,
 		skyline = null,
 		climb = null,
+		map = null,
+		exit,
+		status,
+		seated = false,
 	}: {
 		riders: LiveRider[];
 		/** Your instrument has nothing paired to read (#2941). */
@@ -48,11 +52,18 @@
 		skyline?: SkylineView | null;
 		/** The climb card, for the bike computer (#3645). */
 		climb?: ClimbView | null;
+		/** The road from above, for its MAP page (#3645). */
+		map?: MapView | null;
+		/** The way out, in the work panel's top row beside the eyebrow (#3677). */
+		exit?: import('svelte').Snippet;
+		/** Ride-critical status: one persistent row above the panels (G3). */
+		status?: import('svelte').Snippet;
+		/** The jukebox sits in the top-right seat: the top rows end short of it. */
+		seated?: boolean;
 	} = $props();
 
 	const you = $derived(riders.find((r) => r.you) ?? riders[0]);
 	const others = $derived(riders.filter((r) => !r.you));
-	const zone = $derived(zoneOf(you.watts, you.ftp));
 </script>
 
 <!--
@@ -60,8 +71,34 @@
 	chat, nothing you would need to walk over and click. Everything sized in vh so it
 	holds at 3 m on any panel.
 -->
-<div class="bg-surface flex h-full flex-col px-[3vw] py-[3vh]">
+{#snippet head()}
+	<!-- v2-erg's eyebrow, inside the work panel: the place, the workout where
+	     slot 1 does not already name it (D17), and the way out beside them. -->
+	<div class="flex items-center gap-[1.5vw]">
+		<h1 class="{TV_LABEL} truncate">
+			{placeName}{workoutName && workoutName !== block?.label
+				? ` · ${workoutName}`
+				: ''}
+		</h1>
+		{#if !block}
+			<span class="num ml-auto text-[5vh] leading-none font-bold"
+				>{formatClock(elapsed)}</span
+			>
+		{/if}
+		<span class="shrink-0 {block ? 'ml-auto' : ''}">{@render exit?.()}</span>
+	</div>
+{/snippet}
+
+<div class="bg-surface flex h-full flex-col p-[3vh]">
+	{#if status}
+		<div class="shrink-0 pb-[1.5vh] {seated ? 'pr-[27vw]' : ''}">
+			{@render status()}
+		</div>
+	{/if}
 	{#if !live || !you}
+		<div class="flex justify-end {seated ? 'pr-[27vw]' : ''}">
+			{@render exit?.()}
+		</div>
 		<!-- Idle lounge: no HUD of glowing zeros (glow marks LIVE data,
 		     ADR-0005) — the TV shows who is here and how to join. -->
 		<div class="flex flex-1 flex-col items-center justify-center text-center">
@@ -88,97 +125,97 @@
 			</p>
 		</div>
 	{:else}
-		<header class="flex items-baseline gap-[2vw]">
-			<h1 class="font-display text-[3.4vh] leading-none font-bold">
-				{placeName}
-			</h1>
-			<span class="text-muted text-[3vh]">{workoutName}</span>
-			<span
-				class="font-display ml-auto text-[5vh] leading-none font-bold tabular-nums"
-				>{formatClock(elapsed)}</span
+		<!-- The riding surface's panels at three metres (ADR-0046, #3677), one
+		     row as tall as its content: each panel's numbers take the height
+		     first, up to their caps, and the graph's band grows by what they
+		     can't use. A row taller than the screen shrinks the numbers, never
+		     the graph. -->
+		<div
+			class="grid min-h-0 flex-1 grid-rows-[minmax(0,auto)_minmax(12.5vh,1fr)]"
+		>
+			<div
+				class="grid min-h-0 grid-rows-[minmax(0,1fr)] gap-[1.5vh] {block &&
+				others.length
+					? 'grid-cols-[4fr_3fr_3fr]'
+					: block
+						? 'grid-cols-2'
+						: others.length
+							? 'grid-cols-[3fr_2fr]'
+							: 'grid-cols-1'} {seated ? 'pr-[27vw]' : ''}"
 			>
-		</header>
-
-		<div class="mt-[3vh] flex flex-1 gap-[3vw]">
-			<!-- Yours: the same instrument the arm's-length view uses, at 3 m —
-			     the number travels over the tolerance band, so "left or right of
-			     the bright slot" reads from the sofa the way it reads from the
-			     saddle. One design at two distances (ADR-0020). -->
-			<section class="flex min-w-0 flex-1 flex-col justify-center">
-				<Instrument
-					watts={you.watts}
-					target={you.target}
-					ftp={you.ftp}
-					stale={you.stale}
-					{idle}
-					tv
-				/>
-				<div class="mt-[2.5vh]">
+				<!-- Slot 3 at three metres (#3088): the same pages, turned by the
+				     same keys. -->
+				<section
+					class="ride-panel @container flex max-h-full min-h-0 min-w-0 flex-col overflow-hidden"
+				>
+					{#if !block}
+						<div class="px-[1.5vw] pt-[1.5vh]">{@render head()}</div>
+					{/if}
+					<BikeComputer
+						tv
+						docked
+						cadence={you.cadence}
+						hr={you.hr}
+						watts={you.watts}
+						kg={you.kg}
+						ftp={you.ftp}
+						stale={you.stale || idle}
+						target={you.target > 0 ? you.target : undefined}
+						{stats}
+						{climb}
+						{map}
+					/>
+					{#if idle}
+						<p class="text-muted px-[1.5vw] pb-[1.5vh] text-[3vh]">
+							No trainer — pair one to see your watts
+						</p>
+					{/if}
+				</section>
+				{#if block}
 					<IntervalStrip
 						{block}
 						bias={1}
 						cadence={you.cadence}
 						hr={you.hr}
+						{elapsed}
+						{total}
 						big
+						{head}
 					/>
-				</div>
-				<div class="mt-[2vh] flex items-end gap-[2.5vw]">
-					<!-- Slot 3 at three metres (#3088): the same pages, turned by the
-					     same keys, with nothing on it to walk over and tap. The width
-					     of the section, so POWER's eight numbers take two rows. -->
-					<div class="min-w-0 flex-1">
-						<BikeComputer
-							tv
-							cadence={you.cadence}
-							hr={you.hr}
-							watts={you.watts}
-							kg={you.kg}
-							stale={you.stale}
-							target={you.target > 0 ? you.target : undefined}
-							{stats}
-							{climb}
-						/>
-					</div>
-					{#if you.watts > 0}
-						<span
-							class="font-display text-ink flex items-center gap-[0.8vh] text-[6vh] font-bold"
-							><ZoneDot {zone} class="size-[3vh]" />Z{zone}</span
-						>
-					{/if}
-				</div>
-			</section>
+				{/if}
 
-			<!-- Everyone else, one row per rider. No faces: at 3 m you read names and
-			     numbers. Absent riding alone (#1632): the same TV serves a solo
-			     ride, and an empty third of the screen is not a roster. -->
-			{#if others.length > 0}
-				<section class="flex w-[34vw] flex-col justify-center gap-[1.6vh]">
-					{#each others as rider (rider.id)}
-						{@const riderZone = zoneOf(rider.watts, rider.ftp)}
-						<div class="flex items-center gap-[1.2vw]">
-							<span class="w-[7vw] truncate text-[3vh]">{rider.name}</span>
-							<ProgressBar
-								pct={fillPct(rider.watts, rider.ftp)}
-								h="h-[1.6vh]"
-								fill="{ZONE_BG[
-									riderZone
-								]} transition-[width] duration-(--dur-live) ease-live"
-								class="flex-1"
-							/>
-							<span
-								class="font-display w-[7vw] text-right text-[5vh] font-bold tabular-nums"
-								>{rider.watts}</span
-							>
-						</div>
-					{/each}
-				</section>
-			{/if}
-		</div>
+				<!-- Everyone else, one row per rider. No faces: at 3 m you read names and
+				     numbers. Absent riding alone (#1632): the same TV serves a solo
+				     ride, and an empty third of the screen is not a roster. -->
+				{#if others.length > 0}
+					<section
+						class="ride-panel flex max-h-full min-w-0 flex-col gap-[1.6vh] overflow-hidden px-[1.5vw] py-[1.5vh]"
+					>
+						{#each others as rider (rider.id)}
+							{@const riderZone = zoneOf(rider.watts, rider.ftp)}
+							<div class="flex items-center gap-[1.2vw]">
+								<span class="w-[7vw] truncate text-[3vh]">{rider.name}</span>
+								<ProgressBar
+									pct={fillPct(rider.watts, rider.ftp)}
+									h="h-[1.6vh]"
+									fill="{ZONE_BG[
+										riderZone
+									]} transition-[width] duration-(--dur-live) ease-live"
+									class="flex-1"
+								/>
+								<span
+									class="font-display w-[7vw] text-right text-[5vh] font-bold tabular-nums"
+									>{rider.watts}</span
+								>
+							</div>
+						{/each}
+					</section>
+				{/if}
+			</div>
 
-		<div class="flex items-end gap-[2vw]">
-			<div class="min-w-0 flex-1 overflow-hidden rounded-lg">
+			<div class="ride-panel mt-[1.5vh] min-h-0 overflow-hidden">
 				{#if skyline}
-					<div class="h-40"><Skyline tv {...skyline} /></div>
+					<div class="h-full"><Skyline tv {...skyline} /></div>
 				{:else}
 					<IntervalGraph
 						{segments}

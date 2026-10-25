@@ -9,7 +9,7 @@ import { roadPieces, streamGround, type GroundSink } from './ground-stream';
 import { CHUNK_M } from './place/lattice';
 import { placeOf } from './stream.test-helper';
 import { syntheticPoints } from './synthetic';
-import { disc, REACH, type ChunkAt, type Grid } from './terrain-mesh';
+import { disc, REACH, toChunk, type ChunkAt, type Grid } from './terrain-mesh';
 import { ROAD_W, SHOULDER } from './terrain/road-profile';
 import { BUILD_MS, longLoopPoints } from './world.test-helper';
 
@@ -50,6 +50,31 @@ describe('the ground a ride draws around it', () => {
 			});
 			expect(counts[0]).toBe(counts[1]);
 			expect(counts[0]).toBe(disc(0, 0, REACH.far).length);
+		},
+		BUILD_MS,
+	);
+
+	it(
+		'lets a chunk go only 10 % past the reach, so one on the edge never flickers (#3222)',
+		() => {
+			const { stream } = streamOver(syntheticPoints());
+			const drawn = new Map<string, ChunkAt>();
+			let eye = 0;
+			let dropped = 0;
+			stream.attach({
+				add: (id, chunk) => void drawn.set(id, chunk),
+				drop(id) {
+					const chunk = drawn.get(id)!;
+					expect(toChunk(eye, 0, ...chunk)).toBeGreaterThan(REACH.far * 1.1);
+					dropped++;
+				},
+			});
+			for (eye = 0; eye <= 3000; eye += 100) {
+				stream.update(eye, 0);
+				// What the soak holds a ride's ground to (#3851).
+				expect(stream.held().length).toBeLessThanOrEqual(stream.window());
+			}
+			expect(dropped).toBeGreaterThan(0);
 		},
 		BUILD_MS,
 	);

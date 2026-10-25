@@ -197,6 +197,25 @@ describe('SimulatedTrainer', () => {
 		vi.advanceTimersByTime(2000);
 		expect(samples).toHaveLength(2);
 	});
+
+	it('a steady dev rider holds the ERG target to the watt (#4000)', async () => {
+		vi.stubGlobal('localStorage', {
+			getItem: (k: string) => (k === 'wattroom.sim-steady.v1' ? '1' : null),
+		});
+		try {
+			const t = new SimulatedTrainer();
+			const { samples } = collect(t);
+			await t.connect();
+			await t.setTargetPower(250);
+			vi.advanceTimersByTime(30_000);
+			expect(samples.slice(-10).map((s) => s.watts)).toEqual(
+				Array(10).fill(250),
+			);
+			expect(samples.at(-1)?.heartRate).toBe(153);
+		} finally {
+			vi.unstubAllGlobals();
+		}
+	});
 });
 
 function lastSample(t: SimulatedTrainer): TrainerSample {

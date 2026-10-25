@@ -31,7 +31,7 @@ for (const [width, height] of [
 		page.on('console', (m) => said.push(`${m.type()}: ${m.text()}`));
 		page.on('pageerror', (e) => said.push(`pageerror: ${e.message}`));
 		await page.addInitScript(() => {
-			localStorage.setItem('wattroom.world-slot.v1', '1');
+			localStorage.setItem('wattroom.world.mode.v1', 'full');
 			localStorage.setItem(
 				'wattroom.mixer.v1',
 				JSON.stringify({ music: 0, cues: 0, board: 0, share: 0 }),
@@ -147,7 +147,7 @@ test('a window too short for the world rides the flat road and says so @world', 
 }) => {
 	await page.setViewportSize({ width: 1280, height: 720 });
 	await page.addInitScript(() => {
-		localStorage.setItem('wattroom.world-slot.v1', '1');
+		localStorage.setItem('wattroom.world.mode.v1', 'full');
 		localStorage.setItem(
 			'wattroom.mixer.v1',
 			JSON.stringify({ music: 0, cues: 0, board: 0, share: 0 }),
@@ -162,6 +162,31 @@ test('a window too short for the world rides the flat road and says so @world', 
 		page.getByText('Flat road — this window is too short for the world'),
 	).toBeVisible({ timeout: 30_000 });
 	await expect(page.locator('[data-surface=docked]')).toHaveCount(0);
+	// NEXT says its block whole and the trainer chip is not cut (D16, #4052),
+	// and the computer's panel ends under its head: no band (G3,
+	// ride-workout-flat 8).
+	const words = await page.getByTestId('ride-band').evaluate((band) => {
+		const els = [
+			band.querySelector('.ride-label + span')!,
+			band.querySelector('[data-testid=trainer-chip]')!,
+		];
+		return els.map((el) => ({
+			text: el.textContent!.trim(),
+			clipped: el.scrollWidth > el.clientWidth,
+		}));
+	});
+	for (const w of words) expect(w.clipped).toBe(false);
+	expect(words[0].text.length).toBeGreaterThan(3);
+	const band = await page.evaluate(() => {
+		const panel = document
+			.querySelector('[data-dock=numbers]')!
+			.getBoundingClientRect();
+		const head = document
+			.querySelector('[data-testid=computer-head]')!
+			.getBoundingClientRect();
+		return panel.bottom - head.bottom;
+	});
+	expect(band).toBeLessThanOrEqual(24);
 });
 
 /**
@@ -176,7 +201,7 @@ test('RIDE and CLIMB under a scored target fit the shortest world @world', async
 }) => {
 	await page.setViewportSize({ width: 1440, height: 860 });
 	await page.addInitScript(() => {
-		localStorage.setItem('wattroom.world-slot.v1', '1');
+		localStorage.setItem('wattroom.world.mode.v1', 'full');
 		localStorage.setItem(
 			'wattroom.mixer.v1',
 			JSON.stringify({ music: 0, cues: 0, board: 0, share: 0 }),

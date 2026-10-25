@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"maps"
 	"net/http"
@@ -20,6 +21,7 @@ import (
 
 	"github.com/natrontech/wattroom/server/internal/avatars"
 	"github.com/natrontech/wattroom/server/internal/httpx"
+	"github.com/natrontech/wattroom/server/internal/secrets"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/store/storetest"
 	"github.com/natrontech/wattroom/server/internal/testx"
@@ -36,8 +38,8 @@ func testServiceWithPictures(t *testing.T, pictures *providerPicture) *Service {
 	t.Helper()
 	st := storetest.Open(t)
 	log := slog.New(slog.DiscardHandler)
-	// nil cipher: the unencrypted path is what every existing case here
-	// asserts, and the sealed one has its own test (#697).
+	// nil cipher: no case here keeps a provider's tokens, and the sealed path
+	// has its own tests in internal/strava (#697).
 	return New(st, log, "http://localhost:8080", false, nil, avatars.New(st, pictures, log))
 }
 
@@ -465,6 +467,34 @@ func TestProvidersFromEnv(t *testing.T) {
 	}
 	if got["github"].config.RedirectURL != "http://localhost:8080/api/auth/github/callback" {
 		t.Fatalf("wrong callback: %s", got["github"].config.RedirectURL)
+	}
+}
+
+// A kept token is stored sealed or not at all (#1038), so without a key the
+// provider that keeps one is not offered: its button would connect a grant
+// nothing can use.
+func TestStravaNeedsTheTokenKey(t *testing.T) {
+	t.Setenv("WATTROOM_OAUTH_STRAVA_ID", "id")
+	t.Setenv("WATTROOM_OAUTH_STRAVA_SECRET", "secret")
+	t.Setenv("WATTROOM_OAUTH_GITHUB_ID", "id")
+	t.Setenv("WATTROOM_OAUTH_GITHUB_SECRET", "secret")
+	log := slog.New(slog.DiscardHandler)
+	key, err := secrets.FromKey("TEST_KEY", base64.StdEncoding.EncodeToString(make([]byte, 32)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name   string
+		keys   *secrets.Cipher
+		strava bool
+	}{{"no key", nil, false}, {"a key", key, true}} {
+		s := New(nil, log, "http://localhost:8080", false, tc.keys, nil)
+		if _, ok := s.providers["strava"]; ok != tc.strava {
+			t.Errorf("%s: strava offered = %v, want %v", tc.name, ok, tc.strava)
+		}
+		if _, ok := s.providers["github"]; !ok {
+			t.Errorf("%s: github is missing, and it keeps no token", tc.name)
+		}
 	}
 }
 

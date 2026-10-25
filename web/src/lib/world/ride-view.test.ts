@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { rideView, type RideView, type RideViewEnv } from './ride-view';
 
+/** A capable browser whose rider turned 3D on. */
 const able: RideViewEnv = {
-	flat: null,
+	mode: 'full',
 	reducedMotion: false,
 	webgl2: true,
 	multiDraw: true,
@@ -11,18 +12,31 @@ const able: RideViewEnv = {
 
 describe('rideView (#3080)', () => {
 	const cases: [string, Partial<RideViewEnv>, RideView][] = [
-		['a capable browser, nothing chosen', {}, 'world'],
-		['the rider chose Flat road', { flat: true }, { skyline: 'chosen' }],
+		['the rider turned 3D on', {}, 'world'],
+		// 3D is opt-in (#3084, ADR-0066 amended): never chosen is Flat.
+		['nothing chosen rides Flat', { mode: null }, { skyline: 'chosen' }],
+		['the rider chose Flat road', { mode: 'flat' }, { skyline: 'chosen' }],
 		[
-			'reduced motion opens on Flat',
-			{ reducedMotion: true },
+			'reduced motion, nothing chosen, opens on Flat with Steady one tap away',
+			{ mode: null, reducedMotion: true },
 			{ skyline: 'motion' },
 		],
 		[
 			'reduced motion, the rider chose 3D',
-			{ reducedMotion: true, flat: false },
+			{ reducedMotion: true, mode: 'full' },
 			'world',
 		],
+		[
+			'reduced motion, the rider chose Steady',
+			{ reducedMotion: true, mode: 'steady' },
+			'world',
+		],
+		[
+			'reduced motion, the rider chose Flat',
+			{ reducedMotion: true, mode: 'flat' },
+			{ skyline: 'chosen' },
+		],
+		['Light is a world', { mode: 'light' }, 'world'],
 		['no WebGL2', { webgl2: false }, { skyline: 'capability' }],
 		['no WEBGL_multi_draw', { multiDraw: false }, { skyline: 'capability' }],
 		[
@@ -36,10 +50,21 @@ describe('rideView (#3080)', () => {
 			{ skyline: 'build-failed' },
 		],
 		['missed frames', { failure: 'frames' }, { skyline: 'frames' }],
-		// The World control is read first, then the browser, then the ride.
+		// The browser is read first, so a browser that cannot draw the world
+		// never offers it; then the World control; then the ride.
 		[
-			'a choice outranks a missing capability',
-			{ flat: true, webgl2: false },
+			'a missing capability outranks Flat, so no 3D button would fail',
+			{ mode: 'flat', webgl2: false },
+			{ skyline: 'capability' },
+		],
+		[
+			'a missing capability outranks nothing chosen',
+			{ mode: null, multiDraw: false },
+			{ skyline: 'capability' },
+		],
+		[
+			'Flat outranks a failure',
+			{ mode: 'flat', failure: 'frames' },
 			{ skyline: 'chosen' },
 		],
 		[
@@ -49,7 +74,7 @@ describe('rideView (#3080)', () => {
 		],
 		[
 			'the rider chose 3D and the frames failed',
-			{ flat: false, failure: 'frames' },
+			{ mode: 'full', failure: 'frames' },
 			{ skyline: 'frames' },
 		],
 	];

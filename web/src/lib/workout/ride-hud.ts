@@ -25,6 +25,8 @@ export function createRideHud(ride: {
 		const sample = ride.sample();
 		publishHud({
 			watts: sample?.watts ?? 0,
+			cadence: sample?.cadence,
+			heartRate: sample?.heartRate,
 			target: ride.target(),
 			remaining: Math.max(0, ride.remaining()),
 			label: ride.label,

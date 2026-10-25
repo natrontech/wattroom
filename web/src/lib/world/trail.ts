@@ -40,6 +40,9 @@ export function makeTrail(color: string) {
 			transparent: true,
 			blending: THREE.AdditiveBlending,
 			depthWrite: false,
+			// A hair above the asphalt: never fighting it for the same depth.
+			polygonOffset: true,
+			polygonOffsetFactor: -2,
 			side: THREE.DoubleSide,
 			fog: false,
 		}),

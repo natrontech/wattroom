@@ -1,9 +1,12 @@
 <script lang="ts">
 	import Bike from '@lucide/svelte/icons/bike';
+	import ListOrdered from '@lucide/svelte/icons/list-ordered';
+	import Dumbbell from '@lucide/svelte/icons/dumbbell';
 	import type { Component } from 'svelte';
 	import { spectatorRideLine } from '$lib/device.svelte';
 	import { formatKm } from '$lib/format';
 	import { classedOf, type Climb } from '$lib/road/climbs';
+	import RoadsBeta from '$lib/ride/RoadsBeta.svelte';
 
 	/**
 	 * How to ride a route, beside its road (#3680): one row per way to ride,
@@ -34,6 +37,10 @@
 		icon: Component;
 		label: string;
 		line: string;
+		/** The primary's words, when they are not the row's. */
+		primary?: string;
+		/** Whether Which stretch applies: Terrain Match picks its own start. */
+		stretch: boolean;
 		href: (fromM: number) => string;
 	};
 	const WAYS: Way[] = [
@@ -42,8 +49,26 @@
 			icon: Bike,
 			label: 'Ride it',
 			line: 'The road’s own grade, SIM',
+			stretch: true,
 			href: (fromM) =>
 				`/ride?road=${encodeURIComponent(id)}${fromM > 0 ? `&from=${Math.round(fromM)}` : ''}`,
+		},
+		{
+			key: 'legs',
+			icon: ListOrdered,
+			label: 'Ride its workout',
+			line: 'ERG by the road, at your FTP',
+			stretch: false,
+			href: () => `/ride?road=${encodeURIComponent(id)}&leg=1`,
+		},
+		{
+			key: 'workout',
+			icon: Dumbbell,
+			label: 'Workout on it',
+			line: 'Pick a workout; Terrain Match picks the start',
+			primary: 'Pick a workout',
+			stretch: false,
+			href: () => `/workouts?on=${encodeURIComponent(id)}`,
 		},
 	];
 	let way = $state('ride');
@@ -95,61 +120,62 @@
 		</div>
 	</div>
 
-	<div>
-		<p class="eyebrow">Which stretch</p>
-		<div
-			class="mt-2 flex flex-wrap gap-2"
-			role="group"
-			aria-label="which stretch"
-		>
-			<button
-				onclick={() => (stretch = 'whole')}
-				aria-pressed={stretch === 'whole'}
-				class={chip(stretch === 'whole')}>Whole road</button
-			>
-			{#if carry !== null}
-				<button
-					onclick={() => (stretch = 'carry')}
-					aria-pressed={stretch === 'carry'}
-					class={chip(stretch === 'carry')}>From km {formatKm(carry)}</button
-				>
-			{/if}
-			{#if classed.length > 0}
-				<button
-					onclick={() => (stretch = 'climb')}
-					aria-pressed={stretch === 'climb'}
-					class={chip(stretch === 'climb')}>One climb</button
-				>
-			{/if}
-		</div>
-		{#if stretch === 'climb' && classed.length > 1}
+	{#if chosen.stretch}<div>
+			<p class="eyebrow">Which stretch</p>
 			<div
 				class="mt-2 flex flex-wrap gap-2"
 				role="group"
-				aria-label="which climb"
+				aria-label="which stretch"
 			>
-				{#each classed as c, i (c.startM)}
+				<button
+					onclick={() => (stretch = 'whole')}
+					aria-pressed={stretch === 'whole'}
+					class={chip(stretch === 'whole')}>Whole road</button
+				>
+				{#if carry !== null}
 					<button
-						onclick={() => (climbAt = i)}
-						aria-pressed={climb === c}
-						class={chip(climb === c)}>Climb {i + 1} · {c.cls}</button
+						onclick={() => (stretch = 'carry')}
+						aria-pressed={stretch === 'carry'}
+						class={chip(stretch === 'carry')}>From km {formatKm(carry)}</button
 					>
-				{/each}
+				{/if}
+				{#if classed.length > 0}
+					<button
+						onclick={() => (stretch = 'climb')}
+						aria-pressed={stretch === 'climb'}
+						class={chip(stretch === 'climb')}>One climb</button
+					>
+				{/if}
 			</div>
-		{/if}
-		<p class="text-muted mt-2 text-xs">{said}</p>
-	</div>
+			{#if stretch === 'climb' && classed.length > 1}
+				<div
+					class="mt-2 flex flex-wrap gap-2"
+					role="group"
+					aria-label="which climb"
+				>
+					{#each classed as c, i (c.startM)}
+						<button
+							onclick={() => (climbAt = i)}
+							aria-pressed={climb === c}
+							class={chip(climb === c)}>Climb {i + 1} · {c.cls}</button
+						>
+					{/each}
+				</div>
+			{/if}
+			<p class="text-muted mt-2 text-xs">{said}</p>
+		</div>{/if}
 
 	<div class="order-first lg:order-none">
 		{#if spectator}
 			<button type="button" disabled class="btn btn-primary btn-lg w-full"
-				>{chosen.label}</button
+				>{chosen.primary ?? chosen.label}</button
 			>
 			<p class="text-muted mt-2 text-xs">{spectatorRideLine}</p>
 		{:else}
 			<a href={chosen.href(fromM)} class="btn btn-primary btn-lg w-full"
-				>{chosen.label}</a
+				>{chosen.primary ?? chosen.label}</a
 			>
 		{/if}
+		<RoadsBeta class="mt-2" />
 	</div>
 </div>

@@ -107,8 +107,8 @@ type Service struct {
 
 // New reads provider credentials from WATTROOM_OAUTH_{GOOGLE,GITHUB,STRAVA}_{ID,SECRET}.
 // baseURL is the public origin for OAuth callbacks (WATTROOM_BASE_URL).
-// keys seals the refresh tokens this service stores (#697); a nil one stores
-// them in the clear, exactly as every release before it did. pictures copies a
+// keys seals the refresh tokens this service stores (#697); without one, the
+// provider whose tokens are kept (Strava) is not offered (#1038). pictures copies a
 // provider's sign-in picture onto this origin (#2078).
 func New(st *store.Store, log *slog.Logger, baseURL string, secure bool, keys *secrets.Cipher, pictures *avatars.Mirror) *Service {
 	svc := &Service{
@@ -127,6 +127,13 @@ func New(st *store.Store, log *slog.Logger, baseURL string, secure bool, keys *s
 		syntheticBudget: budget.New[string](syntheticPerWindow, loginWindow),
 		recoverDoor:     budget.New[string](recoverAsksPerWindow, loginWindow),
 		recoverMail:     budget.NewKeeping[string](recoverMailsPerWindow, recoverMailWindow),
+	}
+	if !keys.Enabled() {
+		for id, p := range svc.providers {
+			if p.keepTokens {
+				delete(svc.providers, id)
+			}
+		}
 	}
 	if _, ok := svc.providers["dev"]; ok {
 		log.Warn("WATTROOM_DEV_LOGIN is enabled — anyone reaching this server can sign in as Dev Rider")
@@ -180,6 +187,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("PUT /api/me/timezone", s.handleUpdateTimezone)
 	mux.HandleFunc("PUT /api/me/home-crew", s.handleSetHomeCrew)
 	mux.HandleFunc("PUT /api/me/cheers", s.handleSetCheers)
+	mux.HandleFunc("PUT /api/me/figure", s.handleSetFigure)
 	// The way back out of a connection (#783); linking is ?link=1 on start.
 	mux.HandleFunc("DELETE /api/me/identities/{provider}", s.handleDisconnectProvider)
 	s.registerPasskeyRoutes(mux)

@@ -1,0 +1,1 @@
+- A rider whose connection stalls while their voice still comes through stays on the voice channel's roster, marked "voice only", instead of vanishing.

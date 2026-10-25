@@ -37,7 +37,7 @@
 		{
 			n: '1',
 			title: 'Start a crew',
-			body: 'Your crew gets text channels and voice channels, like a Discord server for your pain cave. Send its six-character code and everyone is in.',
+			body: 'Your crew gets chat channels and voice channels, like a Discord server for your pain cave. Send its six-character code and everyone is in.',
 		},
 		{
 			n: '2',
@@ -63,8 +63,8 @@
 			screen: 'crew',
 			eyebrow: 'The crew',
 			title: 'A crew is a place, not an event',
-			body: 'Text channels for the week, voice channels for ride night, a schedule everyone can say yes to, and a board for the things you keep asking about. It is still there tomorrow.',
-			alt: 'A crew in WattRoom: the sidebar with text and voice channels, and a text channel with messages',
+			body: 'Chat channels for the week, voice channels for ride night, a schedule everyone can say yes to, and a board for the things you keep asking about. It is still there tomorrow.',
+			alt: 'A crew in WattRoom: the sidebar with chat and voice channels, and a chat channel with messages',
 		},
 		{
 			screen: 'jukebox',
@@ -150,13 +150,13 @@
 		<a href="/download" class="hover:text-ink underline">desktop app</a>
 	</p>
 	{#if live.online > 0}
-		<!-- The watt glows on the dot; the words are ink (#1965). -->
+		<!-- The dot is watt, flat; the words are ink (#1965). -->
 		<p
 			class="text-ink font-display mt-4 flex items-center gap-2 text-[11px] font-bold tracking-widest uppercase"
 			aria-live="polite"
 		>
 			<span
-				class="bg-watt glow-stroke h-1.5 w-1.5 rounded-full motion-safe:animate-pulse"
+				class="bg-watt h-1.5 w-1.5 rounded-full motion-safe:animate-pulse"
 				aria-hidden="true"
 			></span>
 			{live.online} rider{live.online === 1 ? '' : 's'} online now

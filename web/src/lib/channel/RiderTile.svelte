@@ -277,7 +277,7 @@
 		>
 			<span
 				class="bg-surface/85 text-warn ride-stage:@[18rem]:text-2xl rounded-full px-2 py-0.5 text-[10px] font-medium tracking-wider uppercase"
-				>no signal</span
+				>{rider.linkLost ? 'voice only' : 'no signal'}</span
 			>
 		</div>
 	{/if}

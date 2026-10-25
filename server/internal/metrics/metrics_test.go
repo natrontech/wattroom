@@ -109,7 +109,7 @@ func TestTheHandlerServesTheRegistry(t *testing.T) {
 		t.Fatalf("metrics = %d", rec.Code)
 	}
 	body := rec.Body.String()
-	for _, want := range []string{"wattroom_room_riders", "wattroom_identities_plaintext_refresh_tokens", "wattroom_accounts", "go_build_info", "process_start_time_seconds"} {
+	for _, want := range []string{"wattroom_room_riders", "wattroom_accounts", "go_build_info", "process_start_time_seconds"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the metrics page does not carry %s", want)
 		}

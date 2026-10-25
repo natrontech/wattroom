@@ -6,7 +6,6 @@ import { climbGpx } from './road-gpx';
  * on their own road, ends it, and the closing card plans the same road from
  * where the bunch stopped, a week on — a plan whose road reference carries
  * the route and the owner's metre, which is how the server reads it.
- * Behind the roads dev gate, which a dev server opens.
  */
 const COUNTDOWN_MS = 10_000;
 /** A summary is worth showing once it has a minute of riding (summary.svelte.ts). */

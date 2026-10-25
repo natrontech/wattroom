@@ -155,6 +155,29 @@ func TestCoachGonePassesSession(t *testing.T) {
 	})
 }
 
+// A coach whose socket is gone cannot run the session, however well voice
+// carries them: the pass comes at the grace while they stay on the roster
+// (#4090).
+func TestCoachInVoiceStillPassesSession(t *testing.T) {
+	ana, ben := protocol.Rider{ID: "ana", Name: "Ana"}, protocol.Rider{ID: "ben", Name: "Ben"}
+	now := pat(0)
+	rm, clients := passRoom(t, &now, ana, ben)
+	rm.setVoice(map[string]struct{}{"ana": {}})
+	sampleFrom(rm, clients, "ben")
+	rm.leave(clients["ana"])
+	rm.events.drain()
+
+	now = pat(int(presenceGrace.Seconds()) + 1)
+	sampleFrom(rm, clients, "ben")
+	sweep(rm, now)
+	if coachOf(rm) != "ben" {
+		t.Fatalf("coach is %q, want Ben", coachOf(rm))
+	}
+	if got := verbs(rm); len(got) != 1 || got[0] != "passedOn:Ana" {
+		t.Fatalf("lines: %v, want only the pass", got)
+	}
+}
+
 func TestHandOffSaysSo(t *testing.T) {
 	now := pat(0)
 	ana, ben := protocol.Rider{ID: "ana", Name: "Ana"}, protocol.Rider{ID: "ben", Name: "Ben"}

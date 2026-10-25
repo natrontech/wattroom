@@ -3,6 +3,8 @@
 	import { formatClock, formatKm } from '$lib/format';
 	import { isStale, subscribeHud, type HudSnapshot } from '$lib/hud/feed';
 	import { account } from '$lib/account.svelte';
+	import ZoneDot from '$lib/components/ZoneDot.svelte';
+	import { ZONE_BG, ZONE_NAMES } from '$lib/components/zones';
 	import { GRADE_FILL, gradeStep } from '$lib/road/skyline';
 	import { toleranceBand } from '$lib/workout/guards';
 
@@ -35,6 +37,11 @@
 				: { time: formatClock(snapshot.elapsed), word: 'ridden' },
 	);
 	const road = $derived(snapshot?.road);
+	const zoneWords = $derived(
+		snapshot?.zone
+			? `Zone ${snapshot.zone}, ${ZONE_NAMES[snapshot.zone]}`
+			: 'Coasting',
+	);
 
 	const onTarget = $derived(
 		!!snapshot &&
@@ -48,11 +55,81 @@
 
 <!-- Fills the shell's frameless window; draggable by its whole face, the
      close button excepted, so it can be moved without a title bar. The
-     window is the container: the block inside is the shell's 320×132 at
+     window is the container: the block inside is the shell's 320×152 at
      16 px, and any larger window scales that same block as one centred unit
      (#3678), so a browser tab on a second screen reads from the saddle. -->
 {#snippet clockText()}
-	{#if clock}<span class="num">{clock.time}</span> {clock.word}{/if}
+	{#if clock}<span class="num">{clock.time}</span>
+		<span class="unit">{clock.word}</span>{/if}
+{/snippet}
+<!-- The Apple Watch workout view's structure (#4099): the watts dominate,
+     the other readings stack beside them, each with its unit, and a reading
+     with nothing behind it is not drawn (errors.md). -->
+{#snippet secondary()}
+	{#if snapshot}
+		<div
+			class="secondary ml-auto flex shrink-0 flex-col items-end leading-[1.15]"
+			data-testid="hud-secondary"
+		>
+			{#if snapshot.target > 0}
+				<p
+					class="text-muted tabular-nums {onTarget ? 'text-ink' : ''}"
+					data-testid="hud-target"
+				>
+					<span class="num">{Math.round(snapshot.target)}</span>
+					<span class="unit">target</span>
+				</p>
+			{/if}
+			{#if snapshot.cadence !== undefined}
+				<p class="text-ink" data-testid="hud-cadence">
+					<span class="num">{Math.round(snapshot.cadence)}</span>
+					<span class="unit text-muted">rpm</span>
+				</p>
+			{/if}
+			{#if snapshot.heartRate}
+				<p
+					class="text-ink flex items-center gap-[0.25em]"
+					data-testid="hud-heart"
+				>
+					{#if snapshot.heartZone}<ZoneDot
+							zone={snapshot.heartZone}
+							class="size-[0.4em]"
+						/>{/if}
+					<span class="num">{Math.round(snapshot.heartRate)}</span>
+					<span class="unit text-muted">bpm</span>
+				</p>
+			{/if}
+		</div>
+	{/if}
+{/snippet}
+<!-- Seven segments in the zone ramp, the current one lit, and how long
+     it has been held. The ramp marks; the time is written in ink. A fault
+     takes its row: the watts it would zone are not to be trusted. -->
+{#snippet zones()}
+	{#if snapshot?.zone !== undefined && !snapshot.fault}
+		<div
+			class="mt-[0.375em] flex items-center gap-[0.5em]"
+			data-testid="hud-zones"
+		>
+			<div class="flex flex-1 gap-[0.125em]" role="img" aria-label={zoneWords}>
+				{#each [1, 2, 3, 4, 5, 6, 7] as z (z)}
+					<span
+						class="h-[0.375em] flex-1 rounded-full {ZONE_BG[z]} {z ===
+						snapshot.zone
+							? ''
+							: 'opacity-40'}"
+						data-lit={z === snapshot.zone || undefined}
+					></span>
+				{/each}
+			</div>
+			{#if snapshot.zone > 0}
+				<p class="zone-time text-ink shrink-0" data-testid="hud-zone-time">
+					<span class="unit text-muted">Z{snapshot.zone}</span>
+					<span class="num">{formatClock(snapshot.zoneSeconds ?? 0)}</span>
+				</p>
+			{/if}
+		</div>
+	{/if}
 {/snippet}
 
 <main
@@ -93,31 +170,19 @@
 				>
 					{snapshot.label}
 				</p>
-				{#if road}
-					<!-- Row 3 is the road's on a road; the clock moves up beside the
-					     label so the window keeps its 320×132 (desktop/main.js). -->
-					<p class="clock text-muted" data-testid="hud-remaining">
-						{@render clockText()}
-					</p>
-				{/if}
+				<p class="clock text-muted" data-testid="hud-remaining">
+					{@render clockText()}
+				</p>
 			</div>
-			<div class="mt-[0.25em] flex items-baseline gap-[0.75em]">
-				<span
-					class="font-display text-watt glow-text text-[3em] leading-none font-bold tabular-nums"
-					data-testid="hud-watts">{Math.round(snapshot.watts)}</span
-				>
-				<span class="text-muted text-[0.875em]">w</span>
-				{#if snapshot.target > 0}
+			<div class="mt-[0.25em] flex items-center gap-[0.75em]">
+				<p class="flex items-baseline gap-[0.25em]">
 					<span
-						class="text-muted font-display ml-auto text-[1.5em] leading-none tabular-nums {onTarget
-							? 'text-ink'
-							: ''}"
-						data-testid="hud-target"
-						>{Math.round(snapshot.target)}<span class="text-[0.5em]">
-							target</span
-						></span
+						class="font-display text-watt glow-text text-[3em] leading-none font-bold tabular-nums"
+						data-testid="hud-watts">{Math.round(snapshot.watts)}</span
 					>
-				{/if}
+					<span class="text-muted text-[0.875em]">w</span>
+				</p>
+				{@render secondary()}
 			</div>
 			{#if snapshot.fault}
 				<p
@@ -135,10 +200,11 @@
 				     display face, units at half their size (TARGETS G4). -->
 				<p class="text-ink mt-[0.25em] text-[0.75em]" data-testid="hud-road">
 					<span class="num">{road.grade.toFixed(1)}</span>
-					<span class="unit">%</span>
+					<span class="unit text-muted">%</span>
 					{#if road.toTopM !== undefined}
-						· top <span class="num">{formatKm(road.toTopM)}</span>
-						<span class="unit">km</span>
+						<span class="unit text-muted">· top</span>
+						<span class="num">{formatKm(road.toTopM)}</span>
+						<span class="unit text-muted">km</span>
 					{/if}
 				</p>
 				{#if road.ahead}
@@ -165,24 +231,21 @@
 						{/each}
 					</svg>
 				{/if}
-			{:else}
-				<p class="clock text-muted mt-[0.5em]" data-testid="hud-remaining">
-					{@render clockText()}
-				</p>
 			{/if}
+			{@render zones()}
 		{/if}
 	</div>
 </main>
 
 <style>
-	/* The shell's 320×132 window at 16 px is the design (ADR-0041): every
+	/* The shell's 320×152 window at 16 px is the design (ADR-0041): every
 	   size inside is in em, and the font size is whatever fits that block
 	   into the window, never less than the shell's. */
 	.hud {
-		font-size: max(16px, min(100cqw / 20, 100cqh / 8.25));
+		font-size: max(16px, min(100cqw / 20, 100cqh / 9.5));
 		box-sizing: border-box;
 		width: 20em;
-		height: 8.25em;
+		height: 9.5em;
 		max-width: 100cqw;
 		max-height: 100cqh;
 		padding: 0.75em 1.25em;
@@ -196,7 +259,9 @@
 		letter-spacing: 0.12em;
 		text-transform: uppercase;
 	}
-	.clock {
+	.clock,
+	.secondary,
+	.zone-time {
 		font-size: 0.75em;
 	}
 	.unit {
@@ -239,6 +304,11 @@
 		/* SPEC's time-left floor, kept when the width binds the block. */
 		.clock {
 			font-size: max(0.75em, 9cqh);
+		}
+		/* And its secondary numbers' (SPEC, "The bike computer"). */
+		.secondary,
+		.zone-time {
+			font-size: max(0.75em, 5cqh);
 		}
 	}
 </style>

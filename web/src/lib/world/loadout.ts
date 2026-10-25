@@ -41,7 +41,7 @@ const CLOTH = KIT_COLOURS.filter((id) => {
 	const hex = hexOf.get(id)!;
 	const k = hexToOklch(hex);
 	return (
-		catalogue.skinTones.every((s) => perceptualDistance(hex, s.hex) > 0.08) &&
+		catalogue.skinTones.every((s) => perceptualDistance(hex, s.hex) > 0.07) &&
 		!(k.c < 0.04 && k.l > 0.45 && k.l < 0.8)
 	);
 });

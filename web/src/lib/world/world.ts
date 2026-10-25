@@ -67,6 +67,8 @@ export type World = {
 	tile: (ti: number, tj: number) => Stood;
 	/** Whether a tile is settled already. */
 	settled: (ti: number, tj: number) => boolean;
+	/** Lets go of the tiles and ground kept farther than `r` from (x, z), so a long ride holds only what is around it (#3851). */
+	forget: (x: number, z: number, r: number) => void;
 	/** Every tile whose centre lies within `r` metres of (x, z), nearest first. */
 	tilesWithin: (x: number, z: number, r: number) => [number, number][];
 	/** Every tile within reach of the roads, settled: the whole corridor's things, for the diorama and the tests. Slow on a long route. */
@@ -184,6 +186,10 @@ export function generate(
 		salt,
 		tile: tiles.tile,
 		settled: tiles.has,
+		forget(x, z, r) {
+			tiles.forget(x, z, r);
+			terrain.forget(x, z, r);
+		},
 		tilesWithin: tiles.within,
 		get everything() {
 			return everything();

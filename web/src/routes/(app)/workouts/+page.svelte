@@ -9,13 +9,14 @@
 	import Play from '@lucide/svelte/icons/play';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
+	import { api } from '$lib/api';
 	import { account } from '$lib/account.svelte';
 	import { type MenuEntry } from '$lib/context-menu.svelte';
 	import RideOnRoute from './RideOnRoute.svelte';
 	import RouteShelf from './RouteShelf.svelte';
 	import RouteIcon from '@lucide/svelte/icons/route';
 	import { device, isSpectator } from '$lib/device.svelte';
-	import { roadsEnabled } from '$lib/ride/roads';
 	import WorkoutCard from './WorkoutCard.svelte';
 	import { durationSeconds } from '$lib/workout/engine';
 	import { byFocus, focuses, library, type Focus } from '$lib/workout/library';
@@ -66,17 +67,34 @@
 	}
 
 	// A card's verbs, as a menu (#486) — the same buttons the card carries.
-	const rideItem = (id: string) => ({
+	const rideItem = (id: string, workout: Workout) => ({
 		label: 'Ride',
 		icon: Play,
-		onSelect: () => void goto(`/ride?w=${id}`),
+		onSelect: () =>
+			on ? (routeFor = { id, workout }) : void goto(`/ride?w=${id}`),
 	});
 	// Any workout on one of your roads (#3594) — not from a phone spectator,
-	// who rides nothing, and behind the roads dev gate.
-	const onRoads = $derived(roadsEnabled() && !isSpectator(device));
+	// who rides nothing.
+	const onRoads = $derived(!isSpectator(device));
 	let routeFor = $state<{ id: string; workout: Workout } | null>(null);
+	// Picking a workout for one road, from its route page (#3681): each
+	// card's Ride opens RideOnRoute already on that road.
+	const on = $derived(onRoads ? page.url.searchParams.get('on') : null);
+	let onName = $state<string | null>(null);
+	$effect(() => {
+		onName = null;
+		const id = on;
+		if (!id) return;
+		// ponytail: a name that could not be read leaves "your road"; picking
+		// a workout reads the road again and says why it failed.
+		void api<{ name: string }>(`/api/routes/${encodeURIComponent(id)}`).then(
+			(res) => {
+				if (id === on) onName = res.ok ? res.data.name : null;
+			},
+		);
+	});
 	const routeItems = (id: string, workout: Workout): MenuEntry[] =>
-		onRoads
+		onRoads && !on
 			? [
 					{
 						label: 'Ride it on a route',
@@ -86,7 +104,7 @@
 				]
 			: [];
 	const libraryMenu = (id: string, workout: Workout): MenuEntry[] => [
-		rideItem(id),
+		rideItem(id, workout),
 		...routeItems(id, workout),
 		{
 			label: 'Save a copy',
@@ -95,7 +113,7 @@
 		},
 	];
 	const customMenu = (entry: CustomWorkout): MenuEntry[] => [
-		rideItem(entry.id),
+		rideItem(entry.id, entry.workout),
 		...routeItems(entry.id, entry.workout),
 		{
 			label: 'Edit',
@@ -146,6 +164,23 @@
 			</p>
 		</div>
 	</div>
+
+	{#if on}
+		<div
+			class="border-frame mt-6 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border px-4 py-3 text-sm"
+			role="status"
+		>
+			<p class="min-w-0">
+				Pick a workout for <span class="font-semibold"
+					>{onName ?? 'your road'}</span
+				> · Terrain Match picks the start
+			</p>
+			<a
+				href="/workouts/routes/{encodeURIComponent(on)}"
+				class="btn btn-ghost btn-xs">Cancel</a
+			>
+		</div>
+	{/if}
 
 	<!-- Its own row, above every shelf it filters (#3685). -->
 	<input
@@ -234,18 +269,7 @@
 							<a href="/workouts/edit?w={entry.id}" class="btn btn-ghost btn-xs"
 								>Edit</a
 							>
-							{#if onRoads}
-								<button
-									onclick={() =>
-										(routeFor = { id: entry.id, workout: entry.workout })}
-									class="btn btn-ghost btn-xs ml-auto">On a route</button
-								>
-							{/if}
-							<a
-								href="/ride?w={entry.id}"
-								class="btn btn-primary btn-xs {onRoads ? '' : 'ml-auto'}"
-								>Ride</a
-							>
+							{@render ride(entry.id, entry.workout)}
 							<span
 								role="separator"
 								aria-orientation="vertical"
@@ -341,22 +365,38 @@
 					>
 					<!-- The primary action, visible (#126): the title-only link read
 					     as a label, and the rest of the card was dead surface. -->
-					{#if onRoads}
-						<button
-							onclick={() =>
-								(routeFor = { id: entry.id, workout: entry.workout })}
-							class="btn btn-ghost btn-xs ml-auto">On a route</button
-						>
-					{/if}
-					<a
-						href="/ride?w={entry.id}"
-						class="btn btn-primary btn-xs {onRoads ? '' : 'ml-auto'}">Ride</a
-					>
+					{@render ride(entry.id, entry.workout)}
 				{/snippet}
 			</WorkoutCard>
 		{/each}
 	</ul>
 	{#if routeFor}
-		<RideOnRoute {...routeFor} onclose={() => (routeFor = null)} />
+		<RideOnRoute
+			{...routeFor}
+			road={on ?? undefined}
+			onclose={() => (routeFor = null)}
+		/>
 	{/if}
 </main>
+
+<!-- A card's Ride, and On a route beside it; picking for a road, Ride is
+     that road's (#3681). -->
+{#snippet ride(id: string, workout: Workout)}
+	{#if on}
+		<button
+			onclick={() => (routeFor = { id, workout })}
+			class="btn btn-primary btn-xs ml-auto">Ride</button
+		>
+	{:else}
+		{#if onRoads}
+			<button
+				onclick={() => (routeFor = { id, workout })}
+				class="btn btn-ghost btn-xs ml-auto">On a route</button
+			>
+		{/if}
+		<a
+			href="/ride?w={id}"
+			class="btn btn-primary btn-xs {onRoads ? '' : 'ml-auto'}">Ride</a
+		>
+	{/if}
+{/snippet}

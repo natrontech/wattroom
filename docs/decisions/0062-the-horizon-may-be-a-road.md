@@ -158,3 +158,29 @@ link to an ADR file that does not exist yet.
   a ride's road columns
   ([#3053](https://github.com/natrontech/wattroom/issues/3053)), a leg resumed
   ([#3103](https://github.com/natrontech/wattroom/issues/3103)).
+
+## Amendment, 2026-10-16 (#3352): roads reach riders in beta, before the Kickr sitting
+
+The route ride landed behind the simulated trainer's dev gate (#3027), to lift
+once the Kickr sitting (#3350) had made SPEC's road numbers final (#3351). The
+maintainers lifted it first, on 2026-10-16: every rider rides a road now, on
+the numbers in docs/SPEC.md's "Route rides" section as they stand, proposed
+and unmeasured.
+
+- Every place a rider chooses a road says **Beta**, with one line: a road's
+  feel is still being tuned on real trainers. The Ride card's road, the
+  channel's Ride a road, the route page's Ride and the importer's Ride it now
+  carry it.
+- Everything that rode on the same gate lifts with it: solo `/ride?road=`, a
+  planned session's road ridden first, the Ride card's free ride alone, the
+  road in a voice channel and in the session picker, a road under any workout,
+  the route shelf's and route page's Ride, Resume at km on a recovered ride,
+  the importer's Ride it now and the first-run card's intro road.
+- Gears stay behind their own gate (#3333). A road rides single speed: the
+  felt grade in SIM, as this ADR describes it.
+- The Kickr sitting still tunes the numbers (#3351). When they are final in
+  SPEC, the Beta marker goes, in that change, and no other gate returns.
+
+## Amendment, 2026-10-25 (ADR-0088): the numbers are final from research and simulation
+
+The Kickr sitting will not happen ([ADR-0088](0088-ship-on-research-and-simulation.md)). SPEC's road numbers become final from published sources and the `SimulatedTrainer` instead (#3351), and the Beta marker goes in that change, as above.

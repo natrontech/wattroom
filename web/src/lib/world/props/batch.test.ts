@@ -43,7 +43,7 @@ describe('the dressing as the GPU draws it (#3076, #3699)', () => {
 			eye(),
 		);
 		expect(b.meshes).toHaveLength(3);
-		expect(b.meshes.map((m) => m.instanceCount).sort()).toEqual([2, 2, 4]);
+		expect(b.meshes.map((m) => m.instanceCount).sort()).toEqual([2, 3, 3]);
 		expect(b.meshes.every((m) => m.perObjectFrustumCulled)).toBe(true);
 	});
 

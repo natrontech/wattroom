@@ -2,7 +2,7 @@
 
 The rider is on a bike, sweating, the screen at arm's length or three metres away. Design for that first, the desk second.
 
-Every surface has a target and a must-match list in [docs/design/TARGETS.md](../../docs/design/TARGETS.md). A rider-visible PR is marked ready only after a passing design check ([DESIGN-CHECK.md](../../docs/design/DESIGN-CHECK.md)).
+Every surface has a target and a must-match list in [docs/design/TARGETS.md](../../docs/design/TARGETS.md). A PR whose issue is labelled `design` or names Surfaces is marked ready only after its one-round design check ([DESIGN-CHECK.md](../../docs/design/DESIGN-CHECK.md)).
 
 ## Defaults
 
@@ -19,7 +19,7 @@ If 95 % of riders would pick the same value, it is a default, not a setting; edg
 - Empty states teach: one line on what the thing is, plus the CTA that makes the first one ("Start your crew").
 - Data (watts, graphs) glows; chrome stays quiet. `--color-watt` is live data only.
 - A feature whose precondition is absent (no trainer, LiveKit down, not embeddable) is disabled with a one-line hint or hidden. It never fails on click.
-- Words come from the SPEC glossary: crew, text channel, voice channel, session, coach, sprint moments. Never "room" ([ADR-0058](../../docs/decisions/0058-the-room-dissolves-into-the-crew.md)), and no per-screen synonyms.
+- Words come from the SPEC glossary: crew, chat channel (`text` in code), voice channel, session, coach, sprint moments. Never "room" ([ADR-0058](../../docs/decisions/0058-the-room-dissolves-into-the-crew.md)), and no per-screen synonyms.
 - Copy says what a thing is or does, never what it isn't. No reassurance by negation ("your private space, and no one else's", "nothing leaves this device", "no one sees this but you"). Name what doesn't happen only when the rider needs that fact to decide, and then say it once, in a few words.
 
 ## Phone width: 375 × 812
@@ -30,7 +30,7 @@ Every surface outside a session, including history, settings, workouts and profi
 - Measure the page body, never `documentElement.scrollWidth`.
 - An SVG measured with `bind:clientWidth` gets `width="100%"` and a `viewBox`, never a pixel width; any floor stays below the narrowest real column.
 - Primary work stacks first on a phone, before any sidebar. The workout editor never stacks library-first.
-- Tap targets: 24 px minimum (WCAG 2.5.8), 44 px for controls used while pedalling (2.5.5). `btn-lg` is 44, `btn` 36–38, `btn-xs` 28–30, `btn-link` 16 (inline text, exempt). Use `btn-lg` mid-ride, not everywhere.
+- Tap targets: 24 px minimum (WCAG 2.5.8), 44 px for the ride's own controls on a phone (2.5.5); on a desk the ride takes the mocks' sizes and its controls are 33 px, and the chrome around it keeps its desk sizes ([ADR-0087](../../docs/decisions/0087-a-desk-ride-takes-the-mocks-sizes.md)). `btn-lg` is 44, `btn` 36–38, `btn-xs` 28–30, `btn-link` 16 (inline text, exempt). A worded button on a riding surface is `btn-ride` (44 px on a phone, the ride's scale on a desk); use it mid-ride, not everywhere.
 - The last item clears the browser chrome.
 
 ## Keyboard focus

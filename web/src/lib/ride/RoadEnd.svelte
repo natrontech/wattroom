@@ -22,19 +22,21 @@
 	});
 </script>
 
-<section class="panel panel-lg" aria-label="the end of the road">
+<!-- Unframed: the riding surface's panel is the frame (TARGETS G3, never nested). -->
+<section class="px-4 py-3" aria-label="the end of the road">
 	<h2 class="font-display text-lg font-bold">The end of the road</h2>
 	<p class="text-muted mt-1 text-sm" aria-live="polite">
 		Keep pedalling: you ride back the way you came in {Math.max(left, 0)} s.
 	</p>
 	<div class="mt-3 grid gap-2 sm:grid-cols-3">
-		<button onclick={() => free.turn('back')} class="btn btn-primary btn-lg"
+		<button onclick={() => free.turn('back')} class="btn btn-primary btn-ride"
 			>Ride back the way you came</button
 		>
-		<button onclick={() => free.turn('again')} class="btn btn-secondary btn-lg"
-			>Ride it again</button
+		<button
+			onclick={() => free.turn('again')}
+			class="btn btn-secondary btn-ride">Ride it again</button
 		>
-		<button onclick={onsave} class="btn btn-secondary btn-lg"
+		<button onclick={onsave} class="btn btn-secondary btn-ride"
 			>Save the ride</button
 		>
 	</div>

@@ -54,32 +54,35 @@ export function createRideTarget(
 	 * flips to slope only for a sprint the SERVER armed, and nothing arms
 	 * one from the timeline.
 	 */
-	const block = $derived.by((): { watts: number; sprint: boolean } => {
-		if (!deps.joined())
+	const block = $derived.by(
+		(): { watts: number; sprint: boolean; road?: boolean } => {
+			if (!deps.joined())
+				return {
+					watts: deps.free.armed ? deps.free.targetWatts : 0,
+					sprint: false,
+				};
+			const game = deps.live.tick?.game;
+			const mine = game?.riders?.[deps.myId() ?? ''];
+			if (game?.phase === 'running' && mine && mine.targetPct) {
+				return {
+					watts: Math.round(mine.targetPct * deps.profile.current.ftp),
+					sprint: false,
+				};
+			}
+			const shared = deps.shared();
+			const segments = deps.segments();
+			if (!shared || shared.phase !== 'running' || segments.length === 0)
+				return { watts: 0, sprint: false };
+			const info = targetAt(segments, deps.profile.current.ftp, shared.elapsed);
+			if (!info.done && info.segment?.kind === 'sprint')
+				return { watts: 0, sprint: true };
 			return {
-				watts: deps.free.armed ? deps.free.targetWatts : 0,
+				watts: Math.round((info.targetWatts ?? 0) * effectiveBias),
+				road: !info.done && info.segment?.kind === 'road',
 				sprint: false,
 			};
-		const game = deps.live.tick?.game;
-		const mine = game?.riders?.[deps.myId() ?? ''];
-		if (game?.phase === 'running' && mine && mine.targetPct) {
-			return {
-				watts: Math.round(mine.targetPct * deps.profile.current.ftp),
-				sprint: false,
-			};
-		}
-		const shared = deps.shared();
-		const segments = deps.segments();
-		if (!shared || shared.phase !== 'running' || segments.length === 0)
-			return { watts: 0, sprint: false };
-		const info = targetAt(segments, deps.profile.current.ftp, shared.elapsed);
-		if (!info.done && info.segment?.kind === 'sprint')
-			return { watts: 0, sprint: true };
-		return {
-			watts: Math.round((info.targetWatts ?? 0) * effectiveBias),
-			sprint: false,
-		};
-	});
+		},
+	);
 	const prescribed = $derived(block.watts);
 
 	/**
@@ -104,6 +107,10 @@ export function createRideTarget(
 		},
 		get target() {
 			return target;
+		},
+		/** The running timeline asks for untargeted road riding. */
+		get road() {
+			return block.road ?? false;
 		},
 		/** The block asking is the workout's own sprint (#2014). */
 		get sprint() {

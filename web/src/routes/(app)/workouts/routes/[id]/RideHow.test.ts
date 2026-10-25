@@ -10,6 +10,17 @@ describe('how to ride a route (#3680)', () => {
 		expect(body).toContain('href="/ride?road=r1"');
 	});
 
+	it('rides its own workout from leg 1 (#3601)', () => {
+		const { body } = render(RideHow, { props });
+		expect(body).toContain('Ride its workout');
+	});
+
+	it('offers a workout on it, Terrain Match picking the start (#3681)', () => {
+		const { body } = render(RideHow, { props });
+		expect(body).toContain('Workout on it');
+		expect(body).toContain('Pick a workout; Terrain Match picks the start');
+	});
+
 	it('shows how on a device that cannot, its primary disabled with the reason', () => {
 		const { body } = render(RideHow, { props: { ...props, spectator: true } });
 		expect(body).toContain('Which stretch');

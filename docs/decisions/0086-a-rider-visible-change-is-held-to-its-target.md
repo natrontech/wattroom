@@ -14,6 +14,13 @@
 >
 > Without this, a world-internals PR could pass only after every riding surface it draws on was fixed, and two finished PRs sat in draft for that reason. Jan chose it over keeping the gate strict, and over exempting world internals, which would not have freed either PR. The mechanics are in DESIGN-CHECK §8.
 
+> **Amended 2026-10-16 (#4064).** Development speed comes before the design review.
+> - The check runs only when the PR's issue is labelled `design` or names Surfaces. Any other PR skips it, rider-visible or not.
+> - One round: one capture and one fresh review. The author fixes every blocker the PR caused and shows each fix in a probe or a test, with no second review. Everything else goes in the findings comment.
+> - A finding never keeps a PR in draft. Two canon lines that conflict go to Jan in a comment on the issue, and the PR lands.
+>
+> Measured over the 67 checks before this: 9 passed in round 1, and 15 spent all three rounds and were parked, most of them merged by hand afterwards. A check cost a capture (median 8 min, up to 38) and a review (median 6 min) per round. Chosen by the maintainers on 2026-10-16 over keeping three rounds on every rider-visible PR. The mechanics are in DESIGN-CHECK.
+
 ## Context
 
 Agents build rider-facing screens from an issue's text, and their own tests

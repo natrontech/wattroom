@@ -7,7 +7,7 @@ WattRoom: collaborative indoor cycling. Go server + SvelteKit SPA + Postgres + L
 - [WATTROOM.md](WATTROOM.md): every product and architecture decision, locked. Don't re-decide; a new decision is an ADR in `docs/decisions/`.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): the client owns the trainer, the server owns live state in memory, Postgres owns durable data only.
 - [docs/SPEC.md](docs/SPEC.md): the index of `docs/spec/`, one file per area (glossary, roles, workout JSON, formulas, game parameters…); load only your area. Never invent a product number.
-- [docs/HARDWARE-SESSIONS.md](docs/HARDWARE-SESSIONS.md): read it before asking anyone to plug in hardware.
+- [docs/HARDWARE-SESSIONS.md](docs/HARDWARE-SESSIONS.md): how someone with a trainer reports. No gate waits on it: research, a test and a simulation meet the gate, then it ships ([ADR-0088](docs/decisions/0088-ship-on-research-and-simulation.md)).
 - [docs/design/TARGETS.md](docs/design/TARGETS.md): the target and must-match list for every rider-visible surface. Canon outranks the image; the image outranks today's app ([ADR-0086](docs/decisions/0086-a-rider-visible-change-is-held-to-its-target.md)).
 - `.claude/rules/` is vendor-neutral canon: `git.md` before your first commit, `errors.md` before API or frontend work, `code-quality.md` and `ux.md` before any feature.
 
@@ -39,7 +39,7 @@ Standing down: withdraw your claim and write "proceed, do not stand down on acco
 - Progress, blockers and decisions go in the issue or PR. A decision made in a thread still gets an ADR.
 - An out-of-scope finding is never extra scope. Search first and comment on the open issue that owns it. Only a defect a rider would notice, or one that breaks CI, becomes a new issue, with a milestone and labels, and one rule broken in several places is one issue. A minor goes in a PR comment.
 - A PR that ships part of an issue says `Refs #<n>` and ticks its box in the issue's checklist, and the one that ticks the last box says `Closes #<n>`. An issue main already satisfies is closed, naming the PRs that did it.
-- A PR a rider can see carries a Design check section per [docs/design/DESIGN-CHECK.md](docs/design/DESIGN-CHECK.md); one with a blocker or major left stays draft.
+- A PR whose issue is labelled `design` or names Surfaces carries a Design check section per [docs/design/DESIGN-CHECK.md](docs/design/DESIGN-CHECK.md): one capture, one review, the blockers it caused fixed. Nothing else holds it in draft; other PRs skip the check.
 - A PR body says what changed, why and how you checked it, in at most 600 characters ([template](.github/PULL_REQUEST_TEMPLATE.md)); findings and logs go in comments. CI goes red over 1,200.
 - Done = CI green, diff self-reviewed, PR marked ready.
 
@@ -55,13 +55,13 @@ Standing down: withdraw your claim and write "proceed, do not stand down on acco
 - The databases are created on demand and nothing removes them but `make dev-db-drop`.
 - A whole `go test ./...` run, and the next one, share one test database: a fixture that must be alone needs a run-unique name, and one that must survive a retention sweep is dated inside the retention. `WATTROOM_TEST_DB` overrides the name; a bare `go test` hits the main tree's.
 - Still shared: one Postgres server and one LiveKit. Say so when you verify audio.
-- `make infra` always starts the one compose project `wattroom`, wherever you run it. Never `docker compose up` by hand and never bring a compose project down. `make worktree-gc` names stray postgres containers and prints the `docker rm -f`; it stops nothing itself.
+- `make infra` always starts the one compose project `wattroom`, wherever you run it. Never `docker compose up` by hand and never bring a compose project down. `make worktree-gc` removes finished worktrees (squash-merged, or empty and older than 12 h) with their databases and deletes their branches; it keeps dirty or unpushed ones. Stray postgres containers it only names, printing the `docker rm -f`.
 
 ## Labels
 
 - Area: `ble` `channels` `workouts` `game-modes` `jukebox` `infra` `docs` `design`.
 - Kind: `bug` `enhancement` `security` `feedback` (a rider report, ADR-0006; the `pickup-feedback` skill works it).
-- State: `blocked` (the body names the blocker), `backlog` (parked: ask first), `needs-human-input` (needs taste, money, legal exposure, risk appetite or roadmap priority: don't build what it proposes). If WATTROOM.md, SPEC, an ADR or a rule already answers it, it is a defect: amend the stale doc, drop the label, build it. Two plausible options is not enough for the label. Ask the maintainer while they are there; the issue is the fallback.
+- State: `blocked` (the body names the blocker), `backlog` (parked: ask first), `needs-human-input` (needs taste, money, legal exposure, risk appetite, roadmap priority or the operator's own accounts: don't build what it proposes; never for hardware, a rig, a ride or a listening pass, ADR-0088). If WATTROOM.md, SPEC, an ADR or a rule already answers it, it is a defect: amend the stale doc, drop the label, build it. Two plausible options is not enough for the label. Ask the maintainer while they are there; the issue is the fallback.
 - Process: `no-changelog` (no rider sees it), `good-first-issue`.
 
 ## Releases

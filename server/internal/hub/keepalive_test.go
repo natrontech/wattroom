@@ -113,3 +113,18 @@ func TestASocketThatAnswersPingsIsNotDropped(t *testing.T) {
 		})
 	}
 }
+
+// A live peer on a lossy link (#4090): TCP retransmits one lost segment after
+// 1, 2 and 4 s, so a pong can arrive 7 s late on a socket that is fine, and a
+// window shorter than that drops and redials the rider again and again. The
+// window must still close before the roster's grace is out.
+func TestThePongWindowRidesOutThreeRetransmits(t *testing.T) {
+	const stall = (1 + 2 + 4) * time.Second
+	if socketPingTimeout <= stall {
+		t.Errorf("socketPingTimeout = %v, want more than a %v retransmit stall", socketPingTimeout, stall)
+	}
+	if socketKeepalive+socketPingTimeout > presenceGrace {
+		t.Errorf("a half-open socket is found after %v, past presenceGrace %v",
+			socketKeepalive+socketPingTimeout, presenceGrace)
+	}
+}

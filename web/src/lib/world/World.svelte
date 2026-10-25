@@ -108,7 +108,7 @@
 		const placed = untrack(() =>
 			placeScene(
 				into,
-				`A world generated around ${data.route.name}, with you and three riders on it`,
+				`A world generated around ${data.route.name}, with ${moment ? 'you' : 'you and three riders'} on it`,
 				(canvas) =>
 					mount(canvas, {
 						route: data.route,
@@ -117,7 +117,7 @@
 						camera,
 						watts,
 						ftp: profile.current.ftp,
-						riders: devCrew(watts, profile.current.ftp, moment?.kit),
+						riders: devCrew(watts, profile.current.ftp, moment?.kit, !!moment),
 						speedup,
 						moment: moment?.hold ? { m: moment.m, p: moment.p } : undefined,
 						onTick: (next) => (hud = next),
@@ -130,14 +130,22 @@
 			return;
 		}
 		scene = placed.scene;
-		const probe = () => placed.scene.probe();
-		if (import.meta.env.DEV)
-			(window as { __worldProbe?: typeof probe }).__worldProbe = probe;
+		const hooks = window as {
+			__worldProbe?: () => ReturnType<WorldScene['probe']>;
+			__worldFrames?: WorldScene['frames'];
+		};
+		if (import.meta.env.DEV) {
+			hooks.__worldProbe = () => placed.scene.probe();
+			// What the soak reads each simulated minute (#3851).
+			hooks.__worldFrames = () => placed.scene.frames();
+		}
 		return () => {
 			placed.remove();
 			if (scene === placed.scene) scene = null;
-			if (import.meta.env.DEV)
-				delete (window as { __worldProbe?: typeof probe }).__worldProbe;
+			if (import.meta.env.DEV) {
+				delete hooks.__worldProbe;
+				delete hooks.__worldFrames;
+			}
 		};
 	});
 
@@ -222,8 +230,8 @@
 						<dd class="num m-0 text-lg">{hud.kmh.toFixed(1)}</dd>
 					</div>
 					<div>
-						<dt class="text-muted text-xs">road %</dt>
-						<dd class="num m-0 text-lg">{hud.grade.toFixed(1)}</dd>
+						<dt class="text-muted text-xs">road</dt>
+						<dd class="num m-0 text-lg">{hud.grade.toFixed(1)} %</dd>
 					</div>
 					<div>
 						<dt class="text-muted text-xs">km</dt>

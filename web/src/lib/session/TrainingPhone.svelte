@@ -20,6 +20,7 @@
 	import SprintMoment from '$lib/session/SprintMoment.svelte';
 	import Stage from '$lib/channel/Stage.svelte';
 	import SessionFlag from '$lib/session/SessionFlag.svelte';
+	import RemoteOffer from '$lib/ride/RemoteOffer.svelte';
 	import TrainerOverview from '$lib/session/TrainerOverview.svelte';
 	import HrShare from '$lib/channel/HrShare.svelte';
 	import { device } from '$lib/device.svelte';
@@ -31,13 +32,17 @@
 	import { formatClock } from '$lib/format';
 	import { useChannel } from '$lib/channel/context';
 	import type { ClimbView } from '$lib/ride/climb-view';
+	import type { MapView } from '$lib/ride/map-view';
 	import { endGame } from '$lib/session/end-game';
 	import { account } from '$lib/account.svelte';
 	import { blockBands } from '$lib/workout/block';
 	import { serverNow } from '$lib/server-clock';
 	import { channelConnection } from '$lib/channel/connection.svelte';
 
-	let { climb = null }: { climb?: ClimbView | null } = $props();
+	let {
+		climb = null,
+		map = null,
+	}: { climb?: ClimbView | null; map?: MapView | null } = $props();
 
 	const channel = useChannel();
 	const total = $derived(channel.shared?.totalSeconds ?? 0);
@@ -124,6 +129,7 @@
 		<div class="mt-2 flex flex-wrap items-center gap-2 empty:mt-0">
 			<SessionControls compact />
 			<TrainerOverview compact />
+			<RemoteOffer />
 			<HrShare />
 			<SessionFlag />
 		</div>
@@ -229,6 +235,7 @@
 								? channelConnection.current?.recording.live
 								: undefined}
 							climb={followed.you ? climb : null}
+							map={followed.you ? map : null}
 						/>
 					</div>
 				</section>
