@@ -38,7 +38,9 @@
 	);
 	const road = $derived(snapshot?.road);
 	const zoneWords = $derived(
-		snapshot?.zone ? `Zone ${snapshot.zone}, ${ZONE_NAMES[snapshot.zone]}` : 'Coasting',
+		snapshot?.zone
+			? `Zone ${snapshot.zone}, ${ZONE_NAMES[snapshot.zone]}`
+			: 'Coasting',
 	);
 
 	const onTarget = $derived(
@@ -84,7 +86,10 @@
 				</p>
 			{/if}
 			{#if snapshot.heartRate}
-				<p class="text-ink flex items-center gap-[0.25em]" data-testid="hud-heart">
+				<p
+					class="text-ink flex items-center gap-[0.25em]"
+					data-testid="hud-heart"
+				>
 					{#if snapshot.heartZone}<ZoneDot
 							zone={snapshot.heartZone}
 							class="size-[0.4em]"
@@ -97,9 +102,10 @@
 	{/if}
 {/snippet}
 <!-- Seven segments in the zone ramp, the current one lit, and how long
-     it has been held. The ramp marks; the time is written in ink. -->
+     it has been held. The ramp marks; the time is written in ink. A fault
+     takes its row: the watts it would zone are not to be trusted. -->
 {#snippet zones()}
-	{#if snapshot?.zone !== undefined}
+	{#if snapshot?.zone !== undefined && !snapshot.fault}
 		<div
 			class="mt-[0.375em] flex items-center gap-[0.5em]"
 			data-testid="hud-zones"
@@ -192,11 +198,11 @@
 				     and, on a classed climb, how far to its top. Numbers in the
 				     display face, units at half their size (TARGETS G4). -->
 				<p class="text-ink mt-[0.25em] text-[0.75em]" data-testid="hud-road">
-						<span class="num">{road.grade.toFixed(1)}</span>
-						<span class="unit">%</span>
-						{#if road.toTopM !== undefined}
-							· top <span class="num">{formatKm(road.toTopM)}</span>
-							<span class="unit">km</span>
+					<span class="num">{road.grade.toFixed(1)}</span>
+					<span class="unit">%</span>
+					{#if road.toTopM !== undefined}
+						· top <span class="num">{formatKm(road.toTopM)}</span>
+						<span class="unit">km</span>
 					{/if}
 				</p>
 				{#if road.ahead}

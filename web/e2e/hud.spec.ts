@@ -98,6 +98,25 @@ test('the HUD waits, then shows what the riding screen publishes', async ({
 	await expect(page.getByTestId('hud-quiet')).toBeVisible({ timeout: 8000 });
 });
 
+/** Rows outside the block's padding, or the block outside the window. */
+function clippedRows() {
+	const el = document.querySelector('.hud')!;
+	const hud = el.getBoundingClientRect();
+	const pad = getComputedStyle(el);
+	const top = hud.top + parseFloat(pad.paddingTop);
+	const bottom =
+		Math.min(hud.bottom, innerHeight) - parseFloat(pad.paddingBottom);
+	const right = Math.min(hud.right, innerWidth) - parseFloat(pad.paddingRight);
+	return [...el.querySelectorAll('*')]
+		.map((child) => ({ child, r: child.getBoundingClientRect() }))
+		.filter(
+			({ r }) =>
+				r.width > 0 &&
+				(r.top < top - 0.5 || r.bottom > bottom + 0.5 || r.right > right + 0.5),
+		)
+		.map(({ child }) => child.getAttribute('data-testid') ?? child.tagName);
+}
+
 /**
  * On a road (#3092): the grade under the rider and, on a classed climb, how
  * far to its top, then the next 2 km as 20 bars in the grade ramp, and the
@@ -134,29 +153,41 @@ test('the HUD draws the road a ride is on', async ({ context, page }) => {
 	await expect(page.getByTestId('hud-road')).toHaveText('8.9 % · top 6.0 km');
 	// Heart rate only with a source. Exact text, not a count of nothing: a
 	// count of 0 also passes once the HUD goes quiet.
-	await expect(page.getByTestId('hud-secondary')).toHaveText(/^\s*92\s*rpm\s*$/);
+	await expect(page.getByTestId('hud-secondary')).toHaveText(
+		/^\s*92\s*rpm\s*$/,
+	);
 	await expect(page.getByTestId('hud-remaining')).toHaveText('30:00 ridden');
 	await expect(page.getByTestId('hud-ahead').locator('rect')).toHaveCount(20);
 	await expect(page.getByTestId('hud-zone-time')).toHaveText('Z5 12:34');
 	// Nothing clipped: every row inside the block's padding, which is
 	// inside the window.
-	const clipped = await page.evaluate(() => {
-		const el = document.querySelector('.hud')!;
-		const hud = el.getBoundingClientRect();
-		const pad = getComputedStyle(el);
-		const top = hud.top + parseFloat(pad.paddingTop);
-		const bottom = Math.min(hud.bottom, innerHeight) - parseFloat(pad.paddingBottom);
-		const right = Math.min(hud.right, innerWidth) - parseFloat(pad.paddingRight);
-		return [...el.querySelectorAll('*')]
-			.map((child) => ({ child, r: child.getBoundingClientRect() }))
-			.filter(
-				({ r }) =>
-					r.width > 0 &&
-					(r.top < top - 0.5 || r.bottom > bottom + 0.5 || r.right > right + 0.5),
-			)
-			.map(({ child }) => child.getAttribute('data-testid') ?? child.tagName);
-	});
+	const clipped = await page.evaluate(clippedRows);
 	expect(clipped).toEqual([]);
+
+	// A lost trainer takes the strip's row, and still fits.
+	await rider.evaluate(() => {
+		new BroadcastChannel('wattroom.hud').postMessage({
+			at: Date.now(),
+			watts: 0,
+			target: 0,
+			remaining: 0,
+			elapsed: 1801,
+			label: 'Free ride',
+			cadence: 0,
+			zone: 0,
+			fault: 'trainer',
+			road: {
+				grade: 8.94,
+				km: 12.4,
+				totalKm: 52.9,
+				toTopM: 6000,
+				ahead: Array.from({ length: 20 }, (_, i) => i * 0.7),
+			},
+		});
+	});
+	await expect(page.getByTestId('hud-fault')).toBeVisible();
+	await expect(page.getByTestId('hud-zones')).toHaveCount(0);
+	expect(await page.evaluate(clippedRows)).toEqual([]);
 });
 
 /**

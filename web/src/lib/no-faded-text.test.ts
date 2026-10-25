@@ -44,6 +44,8 @@ const OPACITY: Allowlist = {
 	'lib/components/IntervalGraph.svelte':
 		'SVG blocks and reference lines — no text',
 	'lib/components/FitnessChart.svelte': 'chart strokes and bands — no text',
+	'routes/(app)/hud/+page.svelte':
+		'the zone strip’s unlit segments — bars, no text (#4099)',
 	'lib/components/FtpTrendChart.svelte': 'chart strokes and bands — no text',
 	'lib/components/PowerCurveChart.svelte': 'chart strokes and bands — no text',
 	'lib/ride/SessionSummary.svelte': "the trace's dashed FTP line — no text",
