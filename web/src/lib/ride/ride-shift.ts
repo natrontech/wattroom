@@ -1,3 +1,4 @@
+import { shifterSlot } from '$lib/ble/controller-slot.svelte';
 import { play } from '$lib/sound/cues';
 import type { CueId } from '$lib/sound/cue-catalogue';
 import type { EasierHarder } from '$lib/ride/easier-harder';
@@ -12,12 +13,18 @@ import { createShiftDriver, type ShiftDir } from '$lib/ride/shifter';
  * never on a held repeat (docs/SPEC.md "The shifter"). A press from an
  * input whose switch is off moves nothing (ADR-0084 "Inputs").
  */
+/** A shift heard, and felt on a paired controller that vibrates (ADR-0084 rule 2). */
+function announce(id: CueId) {
+	play(id);
+	shifterSlot.feel(id === 'block' ? 'end' : 'shift');
+}
+
 export function createRideShift(
 	ride: {
 		easierHarder(dir: ShiftDir): EasierHarder;
 		atEnd(dir: ShiftDir): boolean;
 	},
-	cue: (id: CueId) => void = play,
+	cue: (id: CueId) => void = announce,
 	now?: () => number,
 	inputs = GEAR_INPUTS,
 ) {

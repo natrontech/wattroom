@@ -28,6 +28,11 @@ export class FakeCharacteristic extends EventTarget {
 		if (answer === 'ack') this.indicate(frame[0]);
 	}
 
+	/** Write without response (OBC's App Information and haptics): recorded, never answered. */
+	async writeValueWithoutResponse(bytes: Uint8Array): Promise<void> {
+		this.writes.push(Uint8Array.from(bytes));
+	}
+
 	/** The 0x80 response frame: response opcode, request opcode, result. */
 	indicate(op: number, result = 0x01): void {
 		this.notify(Uint8Array.of(0x80, op, result));
@@ -87,6 +92,54 @@ export class FakeDevice extends EventTarget {
 	};
 
 	/** What the browser does when the link goes away. */
+	drop(): void {
+		this.dispatchEvent(new Event('gattserverdisconnected'));
+	}
+}
+
+/**
+ * An OpenBikeControl controller (#3335): its one service, Button State to
+ * notify on, and Haptic and App Information to write to. `haptics: false`
+ * is a controller without a motor, which has no haptic characteristic.
+ */
+export class FakeObcDevice extends EventTarget {
+	name = 'Fake OBC';
+	connects = 0;
+	buttonState = new FakeCharacteristic();
+	haptic = new FakeCharacteristic();
+	appInfo = new FakeCharacteristic();
+
+	constructor(readonly haptics = true) {
+		super();
+	}
+
+	#service = {
+		getCharacteristic: async (uuid: string) => {
+			const found = {
+				'd273f681-d548-419d-b9d1-fa0472345229': this.buttonState,
+				'd273f682-d548-419d-b9d1-fa0472345229': this.haptics
+					? this.haptic
+					: undefined,
+				'd273f683-d548-419d-b9d1-fa0472345229': this.appInfo,
+			}[uuid];
+			if (!found) throw new Error(`no characteristic ${uuid}`);
+			return found;
+		},
+	};
+
+	gatt = {
+		connect: async () => {
+			this.connects++;
+			return { getPrimaryService: async () => this.#service };
+		},
+		disconnect: () => this.drop(),
+	};
+
+	/** Buttons as the controller sends them: one Button State notification. */
+	press(...bytes: number[]): void {
+		this.buttonState.notify(Uint8Array.of(...bytes));
+	}
+
 	drop(): void {
 		this.dispatchEvent(new Event('gattserverdisconnected'));
 	}

@@ -21,6 +21,7 @@
 	import ClimbProfile from '$lib/ride/ClimbProfile.svelte';
 	import { climbStage } from '$lib/ride/climb-cues.svelte';
 	import ComputerMap from '$lib/ride/ComputerMap.svelte';
+	import { shifterSlot } from '$lib/ble/controller-slot.svelte';
 	import {
 		PAGE_NAMES,
 		TV_LABEL,
@@ -150,6 +151,15 @@
 		window.addEventListener(MAP_ASK, ask);
 		return () => window.removeEventListener(MAP_ASK, ask);
 	});
+
+	// A controller's Left and Right turn the pages, as ← and → do (#3335).
+	$effect(() =>
+		shifterSlot.onAction((action, edge) => {
+			if (edge !== 'down') return;
+			if (action === 'page-next') turn(1);
+			else if (action === 'page-prev') turn(-1);
+		}),
+	);
 
 	// A plain field's number dims to 60 % after 20 s unchanged (#3215): ink at
 	// /60 is the ramp's legible floor, so it is the colour, never an opacity

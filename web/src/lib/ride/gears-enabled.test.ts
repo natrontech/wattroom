@@ -18,8 +18,8 @@ describe('gears reach every rider (#3333, ADR-0088)', () => {
 	beforeEach(() => vi.useFakeTimers());
 	afterEach(() => vi.useRealTimers());
 
-	it('has every landed input on in production: the pair, the keys and the phone', () => {
-		expect(INPUTS).toEqual(['screen', 'keys', 'phone']);
+	it('has every landed input on in production: the pair, the keys, the phone and OBC', () => {
+		expect(INPUTS).toEqual(['screen', 'keys', 'phone', 'obc']);
 		for (const input of INPUTS) expect(gearsEnabled(input)).toBe(true);
 		expect(gearsEnabled()).toBe(true);
 	});
@@ -36,6 +36,7 @@ describe('gears reach every rider (#3333, ADR-0088)', () => {
 		expect(inputOf('key:Period')).toBe('keys');
 		expect(inputOf('key:NumpadAdd')).toBe('keys');
 		expect(inputOf('remote')).toBe('phone');
+		expect(inputOf('obc:harder')).toBe('obc');
 		expect(inputOf('controller')).toBeNull();
 		expect(gearsEnabled(inputOf('controller'))).toBe(false);
 	});
@@ -53,7 +54,7 @@ describe('gears reach every rider (#3333, ADR-0088)', () => {
 			() => Date.now(),
 			inputs,
 		);
-		for (const source of ['screen:1', 'key:Equal', 'remote']) {
+		for (const source of ['screen:1', 'key:Equal', 'remote', 'obc:harder']) {
 			shift.press(1, source);
 			shift.release(source);
 			vi.advanceTimersByTime(1_000);
@@ -62,14 +63,14 @@ describe('gears reach every rider (#3333, ADR-0088)', () => {
 		return { gear, cues };
 	}
 
-	it('shifts a production ride from the pair, a key and the phone', () => {
+	it('shifts a production ride from the pair, a key, the phone and a controller', () => {
 		expect(pressEach()).toEqual({
-			gear: 3,
-			cues: ['shift-up', 'shift-up', 'shift-up'],
+			gear: 4,
+			cues: ['shift-up', 'shift-up', 'shift-up', 'shift-up'],
 		});
 	});
 
 	it.each(INPUTS)('drops a press from %s alone once it is off', (off) => {
-		expect(pressEach({ ...GEAR_INPUTS, [off]: false }).gear).toBe(2);
+		expect(pressEach({ ...GEAR_INPUTS, [off]: false }).gear).toBe(3);
 	});
 });
