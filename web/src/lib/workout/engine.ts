@@ -29,6 +29,16 @@ export function flatten(workout: Workout): Segment[] {
 				});
 				t += step.seconds;
 				break;
+			case 'road':
+				segments.push({
+					kind: 'road',
+					startSeconds: t,
+					seconds: step.seconds,
+					fromM: step.fromM,
+					stepPath,
+				});
+				t += step.seconds;
+				break;
 			case 'sprint':
 				segments.push({
 					kind: 'sprint',
@@ -111,7 +121,7 @@ export function targetAt(
 	const into = clamped - seg.startSeconds;
 
 	let targetWatts: number | null = null;
-	if (seg.kind !== 'sprint') {
+	if (seg.kind !== 'sprint' && seg.kind !== 'road') {
 		if (seg.watts !== undefined) {
 			targetWatts = seg.watts;
 		} else {

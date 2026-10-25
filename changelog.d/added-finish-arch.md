@@ -1,1 +1,0 @@
-- A road ridden in the world ends under a FINISH arch at its last metre.

@@ -3,7 +3,7 @@
 	import { account } from '$lib/account.svelte';
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
-	import { roadsEnabled } from '$lib/ride/roads';
+	import RoadsBeta from '$lib/ride/RoadsBeta.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import RoutePreview from '$lib/components/RoutePreview.svelte';
 	import { device, isSpectator } from '$lib/device.svelte';
@@ -169,10 +169,9 @@
 			disabled={saving}
 			class="btn btn-primary btn-lg">Save to my routes</button
 		>
-		{#if roadsEnabled() && !spectator}
-			<!-- Behind the roads dev gate (#3027) until #3352 lifts it; a screen
-			     that may not ride a road is not offered one (ux.md). A crew plans
-			     a road from its session picker, not from here. -->
+		{#if !spectator}
+			<!-- A screen that may not ride a road is not offered one (ux.md). A
+			     crew plans a road from its session picker, not from here. -->
 			<button
 				onclick={() => void rideNow()}
 				disabled={saving}
@@ -187,6 +186,7 @@
 			</span>
 		{/if}
 	</div>
+	{#if !spectator}<RoadsBeta class="mt-2" />{/if}
 	{#if imported.src === 'stravagpx'}
 		<p class="text-muted mt-2 text-xs">
 			Files from Strava ride with you alone, never in a crew's plan.

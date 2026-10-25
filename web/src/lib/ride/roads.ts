@@ -1,18 +1,8 @@
 import { api } from '$lib/api';
-import { canSimulate } from '$lib/ble/can-simulate';
 import type { Road } from '$lib/road/road';
 import { fetchCrewSchedule } from '$lib/crew-schedule';
 import { roadOf, type StoredRoute } from '$lib/road/stored';
 import { roadOf as attachedRoadOf } from '$lib/workout/road-workout';
-
-/**
- * May this screen ride a road (#3027)? The route ride lands behind a dev
- * gate, as gears do: dev builds only, until the Kickr sitting's numbers are
- * final and the roads switch-on (#3352) lifts it.
- */
-export function roadsEnabled(): boolean {
-	return canSimulate();
-}
 
 /** A route with its road, ready to ride. */
 export interface RideableRoute {

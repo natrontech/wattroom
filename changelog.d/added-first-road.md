@@ -1,1 +1,0 @@
-- The first-run card's third step is "Ride your first road": three lines say how to read it, then it opens a short built-in road on the simulated trainer.

@@ -61,14 +61,32 @@
 	// time left, so the band ends above the corridor (the box table's 186).
 	const WORDS = 'text-2xl leading-6';
 	const CHIP = `${WORDS} shrink-0 border-neon/40 text-muted rounded border px-2 whitespace-nowrap`;
-	// On NEXT's line the chip gives way before NEXT's text does.
-	const CHIP_FIT = CHIP.replace('shrink-0', 'min-w-0 truncate');
 </script>
 
-{#snippet trainerChipEl(b: Block, fit = false)}
-	<span data-testid="trainer-chip" class={fit ? CHIP_FIT : CHIP}
-		>{trainerChip(b)}</span
-	>
+{#snippet trainerChipEl(b: Block)}
+	<span data-testid="trainer-chip" class={CHIP}>{trainerChip(b)}</span>
+{/snippet}
+
+{#snippet nextLine(b: Block)}
+	{#if b.next || (wide && drives && !b.road)}
+		<!-- A name and an absolute target, never a delta (#1531, D16). Flat: its
+		     own line across the header, so the text gets its full width. One
+		     line (TARGETS ride-workout-flat 2): NEXT's text gives way before
+		     a chip wraps, and the trainer chip stays on it when no block is
+		     left. -->
+		<p
+			class="{WORDS} flex items-center gap-x-2 whitespace-nowrap max-sm:flex-wrap"
+		>
+			{#if b.next}
+				<span class="ride-label">Next</span>
+				<span class="min-w-0 truncate">
+					{nextText(b.next)}
+				</span>
+				<CountChips secondsLeft={b.secondsLeft} />
+			{/if}
+			{#if wide && drives && !b.road}{@render trainerChipEl(b)}{/if}
+		</p>
+	{/if}
 {/snippet}
 
 <header data-testid="ride-band" class="flex flex-col gap-2 px-4 py-2">
@@ -135,30 +153,11 @@
 					{#if strip}<div class={wide ? 'h-14' : 'h-10'}>
 							{@render strip()}
 						</div>{/if}
-					{#if block.next || (wide && drives && !block.road)}
-						<!-- A name and an absolute target, never a delta (#1531, D16). One
-						     line (TARGETS ride-workout-flat 2): NEXT's text gives way before
-						     a chip wraps, and the trainer chip stays on it when no block is
-						     left. -->
-						<p
-							class="{WORDS} flex items-center gap-x-2 whitespace-nowrap max-sm:flex-wrap"
-						>
-							{#if block.next}
-								<span class="ride-label">Next</span>
-								<span class="shrink-0">
-									{nextText(block.next)}
-								</span>
-								<CountChips secondsLeft={block.secondsLeft} />
-							{/if}
-							{#if wide && drives && !block.road}{@render trainerChipEl(
-									block,
-									true,
-								)}{/if}
-						</p>
-					{/if}
+					{#if !wide}{@render nextLine(block)}{/if}
 				</div>
 			{/if}
 		</div>
+		{#if wide}{@render nextLine(block)}{/if}
 	{:else}
 		<h2 class="font-display truncate text-3xl leading-none font-bold">
 			{title}

@@ -1,1 +1,0 @@
-- W/kg sits beside the watts on the ride screen, and NEXT reads the same on every surface.

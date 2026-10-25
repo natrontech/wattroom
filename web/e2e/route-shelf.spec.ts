@@ -44,8 +44,7 @@ test('a route on the shelf opens, renames, and deletes behind its question', asy
 		await expect(page.getByRole('img', { name: /from above/ })).toBeVisible();
 	else await expect(page.getByText(/heights, not its map/)).toBeVisible();
 	await expect(page.getByRole('table', { name: 'Climbs' })).toContainText('IV');
-	// Route rides landed (#3596): Ride it rides it, where a dev server opens
-	// the roads gate (#3027).
+	// Route rides landed (#3596): Ride it rides it.
 	await expect(page.getByRole('link', { name: 'Ride it' })).toHaveAttribute(
 		'href',
 		`/ride?road=${id}`,

@@ -50,6 +50,7 @@
 	function describe(step: WorkoutStep): string {
 		if (step.type === 'repeat') return `${step.times} ×`;
 		if (step.type === 'sprint') return 'all out';
+		if (step.type === 'road') return 'SIM';
 		if (step.type === 'steady') {
 			return step.watts !== undefined
 				? `${step.watts} W`
@@ -165,7 +166,7 @@
 				<span
 					class="h-8 w-1.5 shrink-0 rounded-full {step.type === 'sprint'
 						? 'bg-z7'
-						: step.type === 'repeat'
+						: step.type === 'repeat' || step.type === 'road'
 							? 'bg-muted/40'
 							: ZONE_BG[zoneOfStep(step, ftp)]}"
 				></span>

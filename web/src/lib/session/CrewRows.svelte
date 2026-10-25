@@ -33,7 +33,7 @@
 	const rows = $derived(pelotonRows(riders, offsets, settled));
 </script>
 
-<ul aria-label="the crew" class="flex w-60 flex-col">
+<ul aria-label="the crew" class="flex w-max max-w-full min-w-60 flex-col">
 	{#each rows as rider (rider.id)}
 		<li
 			{@attach contextMenu(() => crewMenu(channel, rider))}
@@ -47,12 +47,17 @@
 			>
 			{#if !rider.stale && rider.ftp > 0}
 				<!-- The zone as a digit: ink, never colour alone (#3213, WCAG 1.4.1). -->
-				<span data-testid="crew-zone" class="num text-muted shrink-0 text-xl"
+				<span data-testid="crew-zone" class="num text-muted shrink-0 text-2xl"
 					>Z{zoneOf(rider.watts, rider.ftp)}</span
 				>
 			{/if}
-			<span class="num shrink-0 text-4xl leading-none"
-				>{rider.stale ? '—' : wkg(rider.watts, rider.kg)}</span
+			<!-- Your W/kg has one home, beside the 3 s power in the head (D17):
+			     your row keeps the place, unseen, so the zones stay one column. -->
+			<span
+				aria-hidden={rider.you}
+				class="num shrink-0 text-4xl leading-none {rider.you
+					? 'invisible'
+					: ''}">{rider.stale ? '—' : wkg(rider.watts, rider.kg)}</span
 			>
 		</li>
 	{/each}

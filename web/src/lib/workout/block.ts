@@ -1,3 +1,4 @@
+import { feltGrade } from '$lib/ride/ride-grade';
 import { ZONE_NAMES, zoneOf } from '$lib/components/zones';
 import type { RoadReadout } from '$lib/road/readout';
 import type { TracePoint } from '$lib/components/trace';
@@ -107,7 +108,7 @@ function lastBlock(
 	ftp: number,
 	bias: number,
 ): Block['last'] {
-	if (!seg || seg.kind === 'sprint') return null;
+	if (!seg || seg.kind === 'sprint' || seg.kind === 'road') return null;
 	const end = seg.startSeconds + seg.seconds;
 	const points = trace.filter((p) => p.t >= seg.startSeconds && p.t < end);
 	if (points.length === 0) return null;
@@ -137,6 +138,7 @@ export function describeBlock(
 	const label = (seg: Segment | undefined): string => {
 		if (!seg) return '';
 		if (seg.kind === 'sprint') return 'Sprint';
+		if (seg.kind === 'road') return 'Road';
 		const step = workout?.steps[seg.stepPath[0]];
 		if (step?.type === 'warmup') return 'Warm-up';
 		if (step?.type === 'cooldown') return 'Cool-down';
@@ -184,7 +186,14 @@ export function describeBlock(
 				? lastBlock(segments[info.segmentIndex - 1], trace, ftp, info.bias)
 				: null,
 		secondsLeft: Math.round(info.secondsRemainingInSegment),
-		trainer,
+		trainer:
+			info.segment.kind === 'road'
+				? {
+						kind: 'road',
+						grade: road?.grade ?? 0,
+						felt: feltGrade(road?.grade ?? 0),
+					}
+				: trainer,
 		cadenceLow: info.segment.cadenceLow,
 		cadenceHigh: info.segment.cadenceHigh,
 		hrLow: info.segment.hrLow,

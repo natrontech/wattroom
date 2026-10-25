@@ -1,8 +1,7 @@
 <script lang="ts">
 	/**
 	 * Onto one of your own roads, before a free ride starts (#3027): the
-	 * road becomes the free ride's grade, and its metres its record. Behind
-	 * the roads dev gate (roads.ts), like gears. Given `onpick` it only picks:
+	 * road becomes the free ride's grade, and its metres its record. Given `onpick` it only picks:
 	 * /ride's Ride card opens it from “Change” and keeps the road itself
 	 * (#3671), with where to start as its own chips.
 	 */
@@ -15,6 +14,7 @@
 	import type { FreeRide } from '$lib/ride/free-ride.svelte';
 	import { formatKm as km } from '$lib/format';
 	import { carriesOn } from '$lib/ride/road-end';
+	import RoadsBeta from '$lib/ride/RoadsBeta.svelte';
 	import {
 		carryOnFrom,
 		loadRoad,
@@ -109,7 +109,10 @@
 			>
 		</div>
 	{:else if !open}
-		<button onclick={show} class="btn btn-secondary">Ride a road</button>
+		<div class="flex flex-wrap items-center gap-3">
+			<button onclick={show} class="btn btn-secondary">Ride a road</button>
+			<RoadsBeta />
+		</div>
 	{:else if error}
 		<Banner tone="error">
 			{error}

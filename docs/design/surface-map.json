@@ -96,8 +96,7 @@
 			"web/src/lib/board/BoardToggle.svelte",
 			"web/src/lib/channel/Jukebox.svelte",
 			"web/src/lib/channel/JukeboxAdd.svelte",
-			"web/src/lib/channel/JukeboxPlaylists.svelte",
-			"web/src/lib/channel/rail-size.ts"
+			"web/src/lib/channel/JukeboxPlaylists.svelte"
 		],
 		"surfaces": ["ride-session-flat", "ride-channel-free"]
 	},
@@ -262,7 +261,7 @@
 			"web/src/lib/profile/Appearance.svelte",
 			"web/src/routes/(app)/settings/appearance/**"
 		],
-		"surfaces": ["appearance", "appearance-advanced"]
+		"surfaces": ["appearance"]
 	},
 	{
 		"files": [

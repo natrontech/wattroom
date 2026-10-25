@@ -7,7 +7,7 @@ description: Audit a slice of WattRoom against its own intent — docs, ADRs, ru
 
 You are checking a subsystem against **what the project said it would build**, not just against
 itself. WattRoom is unusually well specified — [WATTROOM.md](../../../WATTROOM.md) locks the
-decisions, [docs/SPEC.md](../../../docs/SPEC.md) pins the numbers, `docs/decisions/` holds 26+ ADRs,
+decisions, [docs/SPEC.md](../../../docs/SPEC.md) pins the numbers, `docs/decisions/` holds the ADRs,
 and [`.claude/rules/`](../../rules/) is the vendor-neutral canon. That is the baseline. A finding is
 anything where intent, documentation and implementation disagree — in **either** direction.
 

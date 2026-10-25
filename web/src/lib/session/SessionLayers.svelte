@@ -11,6 +11,7 @@
 	 */
 	export function createSessionLayers() {
 		let tv = $state(false);
+		let pick = $state<string>();
 		const setup = createSessionSetup();
 		return {
 			get tv() {
@@ -21,8 +22,13 @@
 			},
 			/** The picker: open, intent, and the shelf it offers. */
 			setup,
-			openPicker(intent: PickerIntent = 'start') {
+			/** The workout the picker opens on, when one was asked for. */
+			get pick() {
+				return pick;
+			},
+			openPicker(intent: PickerIntent = 'start', id?: string) {
 				setup.intent = intent;
+				pick = id;
 				setup.open = true;
 			},
 		};
@@ -33,7 +39,7 @@
 	import { account } from '$lib/account.svelte';
 	import { useChannel } from '$lib/channel/context';
 	import { goto, replaceState } from '$app/navigation';
-	import { takeGameDoor } from '$lib/session/game-door';
+	import { takeGameDoor, takePickerDoor } from '$lib/session/doors';
 	import { page } from '$app/state';
 	import { sessionPath } from '$lib/channel/address';
 	import { liveSessionId } from '$lib/channel/tick-session';
@@ -209,6 +215,14 @@
 		live.control('game', undefined, door.mode);
 		live.follow();
 	});
+	// The picker door (#4082): the editor, opened from this picker, comes
+	// back with it open on what the rider built.
+	$effect(() => {
+		const door = takePickerDoor(page.url);
+		if (!door) return;
+		replaceState(door.rest, page.state);
+		layers.openPicker(door.intent, door.pick);
+	});
 </script>
 
 {#if layers.tv}
@@ -247,6 +261,7 @@
 {#if layers.setup.open}
 	<SessionPicker
 		shelf={layers.setup.shelf}
+		pick={layers.pick}
 		shelfError={layers.setup.custom.error}
 		onRetryShelf={() => void layers.setup.custom.retry()}
 		intent={layers.setup.intent}

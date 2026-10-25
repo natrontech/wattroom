@@ -52,7 +52,15 @@ export interface SprintStep {
 	seconds: number;
 }
 
-export type WorkoutStep = RampStep | SteadyStep | RepeatStep | SprintStep;
+/** Untargeted road riding in SIM; an absent start carries on from the last step. */
+export interface RoadStep {
+	type: 'road';
+	seconds: number;
+	fromM?: number;
+}
+
+export type WorkoutStep =
+	RampStep | SteadyStep | RepeatStep | SprintStep | RoadStep;
 
 export interface Workout {
 	name: string;
@@ -91,10 +99,12 @@ export interface WorkoutRoad {
 
 /** One entry of the flattened timeline — repeats expanded, absolute offsets. */
 export interface Segment {
-	kind: 'ramp' | 'steady' | 'sprint';
+	kind: 'ramp' | 'steady' | 'sprint' | 'road';
+	/** Optional start on the owner's road, for a road step. */
+	fromM?: number;
 	startSeconds: number;
 	seconds: number;
-	/** fractions of FTP at segment start/end (equal for steady); undefined for sprint */
+	/** fractions of FTP at segment start/end (equal for steady); undefined for sprint and road */
 	fromFraction?: number;
 	toFraction?: number;
 	/** absolute watts override (SteadyStep.watts) */
@@ -117,7 +127,7 @@ export interface Segment {
 }
 
 export interface TargetInfo {
-	/** ERG watts to hold; null during sprint segments (slope mode owns the trainer) */
+	/** ERG watts to hold; null during sprint and road segments (SIM owns the trainer) */
 	targetWatts: number | null;
 	segment: Segment;
 	segmentIndex: number;

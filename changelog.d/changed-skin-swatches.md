@@ -1,1 +1,0 @@
-- The figure's eight skin swatches now span the full Monk Skin Tone Scale, lighter at one end and darker at the other.

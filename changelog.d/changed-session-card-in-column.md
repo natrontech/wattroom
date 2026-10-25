@@ -1,1 +1,0 @@
-- The card that closes a crew session now fills the content column beside the sidebar instead of covering the whole window, and its left column ends where its content does.

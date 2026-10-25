@@ -22,7 +22,6 @@
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
 	import { createGhostSplit } from '$lib/ride/ghost-split.svelte';
 	import RoadPick from '$lib/ride/RoadPick.svelte';
-	import { roadsEnabled } from '$lib/ride/roads';
 	import Radio from '@lucide/svelte/icons/radio';
 
 	const channel = useChannel();
@@ -91,7 +90,7 @@
 
 {#snippet setup()}
 	{#if !channel.trainer || targetsNote}<TrainerOverview compact />{/if}
-	{#if free && roadsEnabled()}
+	{#if free}
 		<RoadPick {free} />
 	{/if}
 	<!-- Armed, not yet ridden: one line on what happens — the setup is not

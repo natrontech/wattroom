@@ -39,6 +39,7 @@
 	import { roadContext } from '$lib/session/computer-pages';
 	import { SKYLINE_PX } from '$lib/session/docks';
 	import RidingSurface from '$lib/session/RidingSurface.svelte';
+	import FlatButton from '$lib/world/FlatButton.svelte';
 	import FlatRoad from '$lib/world/FlatRoad.svelte';
 	import { JUMP_M } from '$lib/world/sim';
 	import { createWorldView } from '$lib/world/world-view.svelte';
@@ -124,6 +125,7 @@
 	const inWatts = $derived(free.mode === 'watts');
 	// The world in slot 2 where this device has it on and the ride has a
 	// road (ADR-0066); a world that cannot draw hands the ride to the Skyline.
+	const ICON = 'btn btn-secondary icon-btn-lg p-0 max-md:w-auto max-md:flex-1';
 	const world = createWorldView();
 	const inWorld = $derived(world.on && !!road);
 	const drawn = $derived((world.on || world.band) && !!road);
@@ -310,12 +312,12 @@
 				<GearShift {shift} {gear} off={shiftOff} {cassette} />
 			{/if}
 			{#if onflag}<FlagButton onflag={flag} sends="after" />{/if}
+			{#if drawn}
+				<FlatButton onflat={world.flatten} class={ICON} />
+			{/if}
 			{#if ontv}
-				<button
-					onclick={ontv}
-					class="btn btn-secondary icon-btn-lg p-0 max-md:w-auto max-md:flex-1"
-					aria-label="TV mode"
-					title="TV mode"><MonitorUp size={20} /></button
+				<button onclick={ontv} class={ICON} aria-label="TV mode" title="TV mode"
+					><MonitorUp size={20} /></button
 				>
 			{/if}
 			{#if onend}
@@ -389,7 +391,6 @@
 <RideNarrator {view} {watts} {ftp} {stale} />
 
 <RidingSurface
-	headerFit
 	own
 	class="flex-1 {inWorld ? worldClass : ''} {extra}"
 	world={drawn ? worldSlot : undefined}

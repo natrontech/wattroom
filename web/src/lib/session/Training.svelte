@@ -15,6 +15,7 @@
 	import ExecutionMeter from '$lib/session/ExecutionMeter.svelte';
 	import GamePanel from '$lib/session/GamePanel.svelte';
 	import RidingSurface from '$lib/session/RidingSurface.svelte';
+	import FlatButton from '$lib/world/FlatButton.svelte';
 	import FlatRoad from '$lib/world/FlatRoad.svelte';
 	import { createWorldView } from '$lib/world/world-view.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
@@ -173,6 +174,7 @@
 		     column's sheet, folded away while the world rides. -->
 		<div class="flex items-center gap-2">
 			<SessionControls compact />
+			{#if inWorld}<FlatButton onflat={world.flatten} class={ICON} />{/if}
 			<button
 				onclick={() => channel.openTv()}
 				class={ICON}
@@ -272,7 +274,7 @@
 		{/await}
 	{/snippet}
 	<RidingSurface
-		class="h-full overflow-hidden"
+		class="h-full overflow-hidden {inWorld ? '' : 'p-4'}"
 		world={inWorld ? road : undefined}
 		stage={inFocus === 'media'}
 		moment={inWorld && inFocus === 'sprint' ? moment : undefined}
@@ -343,7 +345,9 @@
 		{#snippet numbers()}
 			{#if !quiet}
 				<!-- One panel: the computer with its head, the trim, and whether
-				     your heart rate reaches the call (ADR-0008, #2804). -->
+				     your heart rate reaches the call beside it (ADR-0008, #2804): the
+				     button's heart alone, since its words would wrap the trim to a
+				     second row, on a road into slot 1 (#4056). -->
 				<BikeComputer
 					docked
 					{climb}
@@ -371,15 +375,19 @@
 					race={channel.race ?? undefined}
 				/>
 				<div class="flex flex-col gap-2 px-4 pb-3">
-					<BiasTrim
-						ride
-						bias={channel.bias}
-						onBias={channel.trainer && channel.actuating
-							? (step) => channel.nudgeBias(step)
-							: undefined}
-						hint={targetsNote ? `${targetsNote} — trim them there` : undefined}
-					/>
-					<HrShare />
+					<div class="flex items-center gap-2">
+						<BiasTrim
+							ride
+							bias={channel.bias}
+							onBias={channel.trainer && channel.actuating
+								? (step) => channel.nudgeBias(step)
+								: undefined}
+							hint={targetsNote
+								? `${targetsNote} — trim them there`
+								: undefined}
+						/>
+						<HrShare ride icon />
+					</div>
 					{#if riding.length > 1 && inFocus !== 'media' && inFocus !== 'game' && !inWorld}
 						<!-- The live half of the execution score (#543), alone not a
 						     leaderboard (#2635); below xl only, where the people column
