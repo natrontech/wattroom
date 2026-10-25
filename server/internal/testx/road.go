@@ -41,6 +41,17 @@ const (
 	TellingEndTurn  = 99
 )
 
+// PrivateEndM is ADR-0063's private end (#4165), written out rather than
+// read from protocol.RouteHiddenEndM, so lowering the constant fails the
+// tests that pin it.
+const PrivateEndM = 1000
+
+// ReachesAnEnd says whether a crew's stretch, fromM to fromM+lengthM of a
+// road roadM long, holds a point 999 m or less from either of its ends.
+func ReachesAnEnd(fromM, lengthM, roadM float64) bool {
+	return fromM <= PrivateEndM-1 || fromM+lengthM >= roadM-(PrivateEndM-1)
+}
+
 // TellingRoad is a 3 km road, a sample every 20 m, whose first and last
 // protocol.RouteHiddenEndM give themselves away — TellingEndRiseM higher than
 // the rest, turning TellingEndTurn degrees a step — while the stretch

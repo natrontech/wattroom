@@ -217,6 +217,10 @@ func (a *Attacher) SessionRoute(ctx context.Context, coach, routeID string) (pro
 		return protocol.SessionRoute{}, road.Road{}, nil, fmt.Errorf("routes: stored road %s unreadable: %w", routeID, err)
 	}
 	cut, from := ridden.Cut(protocol.RouteHiddenEndM, ridden.LengthM-protocol.RouteHiddenEndM)
+	if len(cut.Heights) < 2 {
+		return protocol.SessionRoute{}, road.Road{}, &protocol.Error{Code: "validation_error",
+			Message: "This route is too short to ride together: its first and last kilometre stay with you."}, nil
+	}
 	return protocol.SessionRoute{ID: routeID, Hash: row.RoadHash, GenName: row.GenName, LengthM: cut.LengthM, CutFromM: from},
 		road.Road{LengthM: cut.LengthM, Heights: cut.Heights}, nil, nil
 }

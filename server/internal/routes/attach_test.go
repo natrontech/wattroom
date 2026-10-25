@@ -53,7 +53,7 @@ func roadIn(t *testing.T, workoutJSON string) (road.Road, attached) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r, err := road.UnpackRoad(raw)
+	r, err := road.UnpackCut(raw)
 	if err != nil {
 		t.Fatalf("attached profile unreadable: %v", err)
 	}
@@ -64,8 +64,8 @@ func roadIn(t *testing.T, workoutJSON string) (road.Road, attached) {
 // holds: no height of a hidden end, no turn of one, no absolute altitude.
 func assertNothingOfTheEnds(t *testing.T, what string, r road.Road, a attached) {
 	t.Helper()
-	if a.OriginM < protocol.RouteHiddenEndM {
-		t.Errorf("%s starts %v m along the road, inside the hidden %d m", what, a.OriginM, protocol.RouteHiddenEndM)
+	if a.OriginM < protocol.RouteHiddenEndM || testx.ReachesAnEnd(a.OriginM, r.LengthM, 3000) {
+		t.Errorf("%s rides %v m from %v m along the road, inside the hidden %d m", what, r.LengthM, a.OriginM, testx.PrivateEndM)
 	}
 	for i, h := range r.Heights {
 		if h != 0 {
@@ -186,7 +186,7 @@ func TestASessionRidesTheCoachsOwnRoadAsTheCrewsCut(t *testing.T) {
 	// stored road rides along, server-only, for a race ride's metres (#3722).
 	cut, from := whole.Cut(protocol.RouteHiddenEndM, whole.LengthM-protocol.RouteHiddenEndM)
 	want := protocol.SessionRoute{ID: mine, Hash: "telling", GenName: "Road · 3.0 km · 50 m", LengthM: whole.LengthM - 2*protocol.RouteHiddenEndM, CutFromM: from}
-	if route != want || from < protocol.RouteHiddenEndM {
+	if route != want || from < protocol.RouteHiddenEndM || testx.ReachesAnEnd(from, route.LengthM, whole.LengthM) {
 		t.Errorf("the session rides %+v, want %+v", route, want)
 	}
 	if profile.LengthM != cut.LengthM || !slices.Equal(profile.Heights, cut.Heights) || profile.Turns != nil {
@@ -246,9 +246,9 @@ func TestAPlansRoadIsCountedOnTheCrewsCut(t *testing.T) {
 		fromM float64
 		none  bool
 	}{
-		{"a kilometre along the owner's road", on(1000), 600, false},
+		{"1.6 km along the owner's road", on(1600), 600, false},
 		{"inside the hidden end the crew never rides", on(100), 0, false},
-		{"past the cut's last sample", on(2900), 2180, false},
+		{"past the cut's last sample", on(2900), 980, false},
 		{"a workout with no road", `{"name":"R","steps":[{"type":"steady","seconds":60,"target":0.5}]}`, 0, true},
 		{"a route that is gone", fmt.Sprintf(`{"name":"R","road":{"routeId":%q,"fromM":0,"toM":3000},"steps":[]}`, uuid.NewString()), 0, true},
 	} {

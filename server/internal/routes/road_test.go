@@ -86,7 +86,7 @@ func servedRoad(t *testing.T, body map[string]any) road.Road {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r, err := road.UnpackRoad(packed)
+	r, err := road.UnpackCut(packed)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,7 +119,8 @@ func TestTheRoadReachesOnlyTheCrewsThatRideIt(t *testing.T) {
 
 	status, body, _ = c.road(t, "bob", c.hash)
 	cut := servedRoad(t, body)
-	if status != http.StatusOK || body["originM"] != float64(protocol.RouteHiddenEndM) || cut.LengthM != 3000-2*protocol.RouteHiddenEndM || cut.Heights[0] != 0 {
+	origin, _ := body["originM"].(float64)
+	if status != http.StatusOK || origin != protocol.RouteHiddenEndM || cut.LengthM != 3000-2*protocol.RouteHiddenEndM || cut.Heights[0] != 0 || testx.ReachesAnEnd(origin, cut.LengthM, 3000) {
 		t.Fatalf("bob's road: %d from %v m, %v m long, starting %v m up — want the crew's cut", status, body["originM"], cut.LengthM, cut.Heights[0])
 	}
 	if !bytes.Equal(secretOf(t, body["secret"]), key.RouteSecret(c.route)) {
@@ -204,7 +205,7 @@ func TestTheCrewsMapIsTheSpanAndAListedCrewIsAskedFirst(t *testing.T) {
 	}
 	for _, end := range []road.LatLon{whole[0], whole[len(whole)-1]} {
 		for _, p := range span {
-			if metresBetween(p, end) < protocol.RouteHiddenEndM-1 {
+			if metresBetween(p, end) <= testx.PrivateEndM-1 {
 				t.Fatalf("bob's map comes within %.0f m of the route's end %v", metresBetween(p, end), end)
 			}
 		}

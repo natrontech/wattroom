@@ -80,7 +80,7 @@ func (h *harness) call(t *testing.T, user, method, path string, body any) (int, 
 
 // A 3 km road climbing 20 m, and the owner's place for it: open ocean.
 var (
-	shape   = testx.Polyline6([][2]float64{{-48.8767, -123.3933}, {-48.8700, -123.3950}, {-48.8650, -123.3970}})
+	shape   = testx.Polyline6([][2]float64{{-48.8767, -123.3933}, {-48.8700, -123.3950}, {-48.8650, -123.3970}, {-48.8580, -123.3990}, {-48.8500, -123.4010}})
 	request = map[string]any{
 		"src": "gpx", "eleSource": "file", "road": testx.FlatRoad(3000, 20), "shape": shape,
 		"climbs": []map[string]any{{"startM": 100, "topM": 900, "gainM": 12, "cls": nil}},

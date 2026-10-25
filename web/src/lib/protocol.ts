@@ -706,9 +706,10 @@ export const MaxRoadGradePct = 20;
  * What a crew is sent of a route that is not theirs (ADR-0063, #3051):
  * the road between its anchors, which until the geo pack draws zones are
  * this far in from each end — a route hides its first and last metres by
- * default — and at most this many bytes of it, packed, on a workout.
+ * default, the 1,000 m of every other private-end rule (#4165) — and at
+ * most this many bytes of it, packed, on a workout.
  */
-export const RouteHiddenEndM = 400;
+export const RouteHiddenEndM = 1000;
 /**
  * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
  * zones derive from (ADR-0014). Both sides read these; neither retypes them.
