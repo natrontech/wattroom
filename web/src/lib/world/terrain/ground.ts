@@ -129,7 +129,7 @@ export function makeGround(given: readonly Line[], opts: GroundOpts) {
 	/** A value on a lattice of `size` metres, cached per point and read bilinearly between them. */
 	function lattice(size: number, at: (x: number, z: number) => number) {
 		// One slot per point, 256 a side: the cache stays its size however far a ride goes (#3851).
-		// ponytail: 10 km of 40 m points, wider than the ground a page asks; a farther point sharing a slot is worked out again. Points wrap at 32,768 a side — 1,300 km, far past any coverage.
+		// ponytail: 10 km of 40 m points, wider than the near ground; a far-ring point sharing a slot is worked out again, slots per side up if that shows in a build. Points wrap at 32,768 a side — 1,300 km, far past any coverage.
 		const keys = new Int32Array(SLOTS * SLOTS).fill(-1);
 		const values = new Float64Array(SLOTS * SLOTS);
 		const point = (a: number, b: number) => {
