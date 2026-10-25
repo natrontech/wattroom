@@ -48,6 +48,7 @@
 	import RidingSurface from '$lib/session/RidingSurface.svelte';
 	import FlatButton from '$lib/world/FlatButton.svelte';
 	import FlatRoad from '$lib/world/FlatRoad.svelte';
+	import type { RoadMate } from '$lib/channel/road-mates';
 	import { JUMP_M } from '$lib/world/sim';
 	import { createWorldView } from '$lib/world/world-view.svelte';
 
@@ -76,6 +77,7 @@
 		setup,
 		foot,
 		worldClass = '',
+		mates,
 		class: extra = '',
 	}: {
 		free: FreeRide;
@@ -114,6 +116,8 @@
 		foot?: Snippet;
 		/** Undoes the page's gutters so the world fills the frame (TARGETS ride-road-world 2). */
 		worldClass?: string;
+		/** A voice channel's mates on this road (#3117): the world draws them at their own metres. */
+		mates?: () => readonly RoadMate[];
 		class?: string;
 	} = $props();
 
@@ -436,6 +440,7 @@
 			<RideWorld
 				road={on.profile}
 				metre={() => ({ m: road?.m ?? on.m, mps: road?.virtualMps ?? 0 })}
+				{mates}
 				{watts}
 				silent={stale}
 				{ftp}
