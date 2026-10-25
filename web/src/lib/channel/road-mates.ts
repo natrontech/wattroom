@@ -1,5 +1,11 @@
-import { MaxRoadSpeedMps, type ServerTick } from '$lib/protocol';
+import {
+	MaxRoadSpeedMps,
+	type FreeRoadPlace,
+	type ServerTick,
+} from '$lib/protocol';
 import type { LiveRider } from '$lib/channel/types';
+import type { FreeRide } from '$lib/ride/free-ride.svelte';
+import { JUMP_M } from '$lib/world/sim';
 
 /** A channel-mate free-riding your road (#3117), as the world draws them. */
 export type RoadMate = {
@@ -9,6 +15,8 @@ export type RoadMate = {
 	m: number;
 	/** Their speed along it, m/s: negative on a lap back down the road. */
 	mps: number;
+	/** On a lap back down the road, as they said it (#3205). */
+	reverse?: boolean;
 	watts: number;
 	ftp: number;
 	speaking: boolean;
@@ -50,6 +58,7 @@ export function createRoadMates() {
 				name: r?.name ?? '',
 				m: p.m,
 				mps,
+				...(p.reverse && { reverse: true }),
 				watts: r?.watts ?? 0,
 				ftp: r?.ftp ?? 0,
 				speaking: !!r?.speaking,
@@ -59,4 +68,29 @@ export function createRoadMates() {
 			if (!out.some((r) => r.id === id)) last.delete(id);
 		return out;
 	};
+}
+
+/** Where mate `id` is on your road, as the tick says; null off it (#3117). */
+export function mateOnRoad(
+	tick: Pick<ServerTick, 'freeRoads'> | null | undefined,
+	you: string,
+	id: string,
+): FreeRoadPlace | null {
+	const mine = tick?.freeRoads?.[you];
+	const theirs = tick?.freeRoads?.[id];
+	return id !== you && mine && theirs?.road === mine.road ? theirs : null;
+}
+
+/**
+ * "Ride with <name>" (#3117): one jump to a mate's metre, their way along
+ * the road, then ride freely. Null while you ride together already: a mate
+ * within JUMP_M, where your figure would ease to them rather than jump.
+ */
+export function rideWith(
+	mate: Pick<FreeRoadPlace, 'm' | 'reverse'>,
+	free: Pick<FreeRide, 'road' | 'rideWith'> | undefined,
+): (() => void) | null {
+	const here = free?.road;
+	if (!free || !here || Math.abs(mate.m - here.m) <= JUMP_M) return null;
+	return () => free.rideWith(mate.m, !!mate.reverse);
 }
