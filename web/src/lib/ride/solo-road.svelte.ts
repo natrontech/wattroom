@@ -51,7 +51,7 @@ export function createSoloRoadRide(deps: {
 	});
 
 	// Riding from the first stroke to End ride, or until the page goes: the
-	// frame caves, the HUD opens and DMs wait, as on a workout ride (#3667).
+	// frame is a ride, the HUD opens and DMs wait, as on a workout ride (#3667).
 	$effect(() => (trainer ? publishRide(() => 'running') : undefined));
 
 	$effect(() => {

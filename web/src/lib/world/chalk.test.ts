@@ -2,15 +2,16 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import type { Chalk } from '$lib/channel/bunch-view';
-import { at, leftOf } from '$lib/road/along';
-import { legsRoad } from '$lib/road/fixtures';
+import { at, curvature, leftOf } from '$lib/road/along';
+import { legsRoad, switchback } from '$lib/road/fixtures';
+import { toRoute } from '$lib/road/route';
 import { LANE } from './bunch';
 import { lanesFor } from './lanes';
 import { BESIDE, makeChalk } from './chalk';
 import { ROAD_LIFT, roadMaterial, yOf } from './geometry';
 import { RIDE } from './look.test-helper';
 import { routeOfRoad } from './road-route';
-import { ROAD_W } from './terrain/road-profile';
+import { across, bankOf, ROAD_W } from './terrain/road-profile';
 
 const route = routeOfRoad(legsRoad([1000, 0], [2000, 6], [1000, 0]));
 const stamps = (layer: ReturnType<typeof makeChalk>) =>
@@ -82,5 +83,21 @@ describe('the roadside’s chalk (#3029)', () => {
 		expect(stamps(layer)[0]).toBe(second);
 		layer.update([]);
 		expect(stamps(layer)).toHaveLength(0);
+	});
+
+	it('banks with the ribbon through a hairpin: on the tilted asphalt at its offset, rolled as it is (#3222)', () => {
+		const bend = toRoute(switchback());
+		const u = 1014; // the 9 m hairpin's apex
+		const bank = bankOf(curvature(bend, Math.round(u / bend.step)));
+		expect(Math.abs(bank)).toBeGreaterThan(0.05);
+		const layer = makeChalk(bend, RIDE);
+		layer.update([{ ...heart, u }]);
+		const [mesh] = stamps(layer);
+		const asphalt =
+			yOf(bend, at(bend, u).ele) + ROAD_LIFT + across(BESIDE, bank);
+		expect(mesh.position.y - asphalt).toBeGreaterThan(0);
+		expect(mesh.position.y - asphalt).toBeLessThan(0.05);
+		const up = new THREE.Vector3(0, 1, 0).applyEuler(mesh.rotation);
+		expect(Math.acos(up.y)).toBeCloseTo(Math.abs(bank), 3);
 	});
 });

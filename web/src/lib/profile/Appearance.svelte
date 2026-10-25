@@ -50,7 +50,8 @@
 		</div>
 	</div>
 	<!-- The scheme toggle lived on the room rail until ADR-0020 retired it
-	     (#326): auto follows the OS, the ride is always dark. -->
+	     (#326): auto follows the OS, a ride included; TV mode and the HUD
+	     stay dark (#4160). -->
 	<div class={ROW}>
 		<span class="eyebrow">scheme</span>
 		<div class="flex flex-wrap items-center gap-2">
@@ -66,7 +67,9 @@
 					{option.label}
 				</button>
 			{/each}
-			<span class={HINT}>auto follows your OS — the ride is always dark</span>
+			<span class={HINT}
+				>auto follows your OS — TV mode and the HUD stay dark</span
+			>
 		</div>
 	</div>
 	<!-- 3D is the rider's to turn on (#3084, ADR-0066 amended): Flat until

@@ -3,6 +3,7 @@ package wardrobe
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -247,5 +248,29 @@ func TestTheOutfitTakesOnlyWhatYouOwn(t *testing.T) {
 	h.grant(t, "alice", "frame.ordonnanz", "bought")
 	if status, body := h.call(t, "alice", http.MethodPut, "/api/me/outfit", `{"frame":"frame.ordonnanz","wheels":"wheels.army"}`); status != http.StatusNoContent {
 		t.Fatalf("wheels that come with an owned frame: %d %v", status, body)
+	}
+}
+
+// Outfits, purchases and undos share one ceiling a minute (#4151): each
+// changed outfit is a look and each purchase two ledger rows, kept for good.
+func TestWardrobeWritesHaveAPerAccountCeiling(t *testing.T) {
+	h := setup(t)
+	for i := range writesPerMinute {
+		outfit := fmt.Sprintf(`{"frame":"frame.race","params":{"tyreMm":%d}}`, 20+i)
+		if status, body := h.call(t, "alice", http.MethodPut, "/api/me/outfit", outfit); status != http.StatusNoContent {
+			t.Fatalf("outfit %d: %d %v", i+1, status, body)
+		}
+	}
+	for _, write := range []struct{ method, path, body string }{
+		{http.MethodPut, "/api/me/outfit", `{"frame":"frame.race"}`},
+		{http.MethodPost, "/api/me/wardrobe/finish.metallic", ""},
+		{http.MethodDelete, "/api/me/wardrobe/finish.metallic", ""},
+	} {
+		if status, body := h.call(t, "alice", write.method, write.path, write.body); status != http.StatusTooManyRequests || body["error"] != "rate_limited" {
+			t.Errorf("%s %s past the ceiling: %d %v, want 429 rate_limited", write.method, write.path, status, body)
+		}
+	}
+	if status, body := h.call(t, "bob", http.MethodPut, "/api/me/outfit", `{"frame":"frame.race"}`); status != http.StatusNoContent {
+		t.Errorf("another rider's outfit: %d %v", status, body)
 	}
 }

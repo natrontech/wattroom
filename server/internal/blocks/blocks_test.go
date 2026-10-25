@@ -235,3 +235,21 @@ func TestAFriendRequestAcrossAHiddenPairStaysPendingAndNeverArrives(t *testing.T
 		t.Fatalf("alice asking someone she hid: %d %s", code, body)
 	}
 }
+
+// Hides and unhides share a ceiling a minute (#4151): each one pings both
+// riders' lobbies, so a loop of them refetched the hidden rider's panels.
+func TestHidingHasAPerAccountCeiling(t *testing.T) {
+	h := setup(t)
+	const togglesPerMinute = 20 // blocks.go
+	for i := range togglesPerMinute / 2 {
+		h.hide(t, "alice", "cara")
+		if code, body := h.call(t, "alice", http.MethodDelete, "/api/blocks/"+h.id("cara"), ""); code != http.StatusOK {
+			t.Fatalf("unhide %d: %d %s", i+1, code, body)
+		}
+	}
+	code, body := h.call(t, "alice", http.MethodPost, "/api/blocks", `{"userId":"`+h.id("cara")+`"}`)
+	if code != http.StatusTooManyRequests || !strings.Contains(body, `"rate_limited"`) {
+		t.Fatalf("a hide past the ceiling: %d %s, want 429 rate_limited", code, body)
+	}
+	h.hide(t, "bob", "cara")
+}

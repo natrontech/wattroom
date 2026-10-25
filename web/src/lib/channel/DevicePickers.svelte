@@ -4,6 +4,7 @@
 	// component, so the two never disagree on what an unnamed device is called.
 	import Select from '$lib/components/Select.svelte';
 	import { deviceOptions } from '$lib/channel/device-options';
+	import { deviceChoices } from '$lib/channel/av-devices.svelte';
 
 	let {
 		devices = { mics: [], cams: [], outs: [] },
@@ -32,6 +33,13 @@
 		 * grants the mic once so the names show. */
 		onName?: () => void;
 	} = $props();
+
+	// The computer's mic, opened in place of the default while Bluetooth
+	// headphones play (#4161). Read off the one device store every caller's
+	// lists come from. The empty option names it even while another mic is
+	// picked, since picking that option is what opens it.
+	const automatic = $derived(deviceChoices().automaticMic);
+	const beside = $derived(micId ? null : automatic);
 </script>
 
 <div class="grid gap-4 {stacked ? '' : 'sm:grid-cols-3'}">
@@ -41,10 +49,19 @@
 			<Select
 				label="Microphone"
 				value={micId}
-				options={deviceOptions(devices.mics, 'Microphone')}
+				options={deviceOptions(
+					devices.mics,
+					'Microphone',
+					automatic ? `Automatic: ${automatic.label}` : undefined,
+				)}
 				onchange={(id) => onDevice?.('mic', id)}
 			/>
 		</div>
+		{#if beside}
+			<p class="text-muted-dim mt-1 text-[11px]">
+				The computer's mic, so your Bluetooth headphones keep music quality.
+			</p>
+		{/if}
 	</label>
 	<label class="block">
 		<span class="eyebrow">camera</span>

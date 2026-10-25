@@ -165,8 +165,8 @@
 			!(dev && page.url.pathname.startsWith('/dev')),
 	);
 
-	// The ride is running, here or on the live place's pages — the cave below
-	// and, in the desktop shell, the floating HUD (ADR-0041): it opens when a
+	// The ride is running, here or on the live place's pages — the frame's
+	// `data-ride` below and, in the desktop shell, the floating HUD (ADR-0041): it opens when a
 	// ride starts and closes when it ends, and the shell shows it only while
 	// WattRoom is not the front window. A free ride is a ride (#2843).
 	const riding = $derived(
@@ -178,7 +178,7 @@
 	// line and leaves it to the unread badge in the sidebar, which was already
 	// carrying it. Registered from here rather than from /ride and /ramp:
 	// `soloRide` is the app-wide answer to "is a ride under way", and this
-	// layout already reads it for the cave and the HUD.
+	// layout already reads it for the ride's frame and the HUD.
 	$effect(() => divertWhileRiding(() => untrack(() => soloRide.active)));
 
 	// The shell's sign-in hand-off (#1941): the token arrives over IPC and the
@@ -404,17 +404,17 @@
 		}}>Skip to the page</a
 	>
 	<!-- Right after the skip link, so Undo is two tabs from the top (#1961).
-	     Outside the frame, so it takes the cave itself while riding (#3788). -->
-	<div class="contents {riding ? 'cave' : ''}">
+	     Outside the frame, so it marks the ride itself (#3788). -->
+	<div class="contents" data-ride={riding ? '' : undefined}>
 		<Toasts />
 	</div>
-	<!-- The RIDE is the cave (#113, refined on rider feedback): the lounge is
-	     a desk surface and follows the theme — the lights go down when the
-	     session starts, and come back up when it ends. A solo ride or ramp
-	     test is a ride too (ADR-0020), so the whole frame goes dark with it —
-	     not a dark instrument beside a daylight sidebar. -->
+	<!-- The whole frame is the ride, sidebar included: a session, a solo ride
+	     or a ramp test (ADR-0020). It keeps the rider's scheme, as a desk
+	     surface does (Jan, 2026-10-25, #4160); `data-ride` is what the
+	     sidebar's `ride:hidden` and a modal opened mid-ride read. -->
 	<div
-		class="flex h-dvh overflow-hidden {riding ? 'cave bg-surface' : ''}"
+		class="flex h-dvh overflow-hidden"
+		data-ride={riding ? '' : undefined}
 		style={titleBar ? `padding-top: ${titleBar}px` : ''}
 	>
 		<!-- The sidebar is the app's whole navigation (ADR-0020): destinations,
@@ -461,7 +461,7 @@
 			class="flex min-w-0 flex-1 flex-col overflow-hidden"
 		>
 			{#if !riding}
-				<!-- The only chrome the drawer needs. It goes with the lights: the
+				<!-- The only chrome the drawer needs. It goes while riding: the
 				     ride owns the whole screen (#113) — below md the button
 				     reappears in the thumb zone instead (see the FAB below), or a
 				     phone would have no navigation at all once a session starts. -->
@@ -586,10 +586,10 @@
 <VerifyEmailGate />
 
 <ImageViewer />
-<!-- These mount outside the frame, so they take the cave themselves while
-     riding: a menu, a rider card or a confirm opened mid-ride is part of the
-     dark frame (TARGETS G1). `contents` leaves their fixed layout alone. -->
-<div class="contents {riding ? 'cave' : ''}">
+<!-- These mount outside the frame, so they mark the ride themselves: a
+     menu, a rider card or a confirm opened mid-ride is part of it (#3788).
+     `contents` leaves their fixed layout alone. -->
+<div class="contents" data-ride={riding ? '' : undefined}>
 	<ContextMenuHost {riding} />
 	<RiderCardHost />
 	<ConfirmHost />

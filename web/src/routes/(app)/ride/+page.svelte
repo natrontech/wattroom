@@ -552,7 +552,7 @@
 	);
 	// This page is the session's only owner: leaving it ends the ride, as the
 	// confirm above promises — or the trainer holds a target with nobody
-	// watching and the frame stays caved.
+	// watching and the frame stays a ride.
 	onDestroy(() => {
 		// What the rider flagged goes with them (#2619).
 		flags.flush();
@@ -583,9 +583,9 @@
 	onpagehide={() => flags.flush(true)}
 />
 
-<!-- Mid-ride the whole frame is the cave, sidebar included (#113 refined,
-     ADR-0020): the layout reads soloRide.active. Setup and the summary are
-     desk surfaces, the effort itself gets the dark. -->
+<!-- Mid-ride the whole frame is the ride, sidebar included (ADR-0020): the
+     layout reads soloRide.active. Setup and the summary are desk surfaces;
+     all three keep the rider's scheme (#4160). -->
 <!-- px-4 on a phone is the kit's gutter (`page`, ux.md's 16 px); the ride
      surface is not a `page` — it fills the window — so it spells the two. -->
 <main

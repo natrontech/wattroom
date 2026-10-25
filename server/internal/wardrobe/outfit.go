@@ -27,7 +27,7 @@ var looks = []string{"body", "colours", "opts", "params", "skin"}
 // with the starter item, so a loadout names only what it changes.
 func (s *Service) handleOutfit(w http.ResponseWriter, r *http.Request) {
 	user, ok := s.users.RequireUser(w, r, "Sign in to dress your rider.")
-	if !ok {
+	if !ok || !s.spend(w, user.ID) {
 		return
 	}
 	var loadout map[string]json.RawMessage

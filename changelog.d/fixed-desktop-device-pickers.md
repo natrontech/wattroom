@@ -1,0 +1,1 @@
+- The desktop app's microphone, camera and speaker pickers list your devices instead of only "System default".

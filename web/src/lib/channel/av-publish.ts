@@ -299,7 +299,9 @@ export function createPublish(host: PublishHost) {
 		// later voice join stays listen-only; there is no capture to change yet.
 		if (!conn.liveKitRoom) return;
 		if (av.away) {
-			conn.micBeforeAway = av.micOn;
+			// A mic still starting counts as open (#4161), and is closed with it.
+			const micOpen = av.micOn || chain.starting;
+			conn.micBeforeAway = micOpen;
 			conn.camBeforeAway = av.camOn;
 			// The screen goes with them (#1128). A rider who stepped out is
 			// not watching what their machine is showing the call, which is the
@@ -318,7 +320,7 @@ export function createPublish(host: PublishHost) {
 			await stopShare();
 			// Stepping away is the rider closing the mic, not losing it.
 			chain.clearFault();
-			if (av.micOn) {
+			if (micOpen) {
 				chain.close();
 				av.micOn = false;
 			}

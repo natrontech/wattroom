@@ -346,7 +346,7 @@
 		},
 	);
 	// This page is the session's only owner: leaving mid-test ends it, or the
-	// trainer holds a step with nobody watching and the frame stays caved.
+	// trainer holds a step with nobody watching and the frame stays a ride.
 	onDestroy(() => {
 		// What the rider flagged goes with them (#2619).
 		flags.flush();

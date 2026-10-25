@@ -72,6 +72,28 @@ describe('device choices', () => {
 		expect(d.outs.map((m) => m.deviceId)).toEqual(['out-a']);
 	});
 
+	// #4161: the computer's mic while Bluetooth headphones play, until the
+	// rider picks one, which always wins.
+	it('names the computer’s mic beside Bluetooth headphones, and steps aside for a pick', async () => {
+		const named = (
+			kind: MediaDeviceKind,
+			deviceId: string,
+			label: string,
+			groupId: string,
+		) => ({ kind, deviceId, label, groupId }) as MediaDeviceInfo;
+		enumerated = [
+			named('audioinput', 'default', 'Default - AirPods (Bluetooth)', 'p'),
+			named('audioinput', 'mac', 'MacBook Pro Microphone (Built-in)', 'm'),
+			named('audiooutput', 'default', 'Default - AirPods (Bluetooth)', 'p'),
+		];
+		const d = createDeviceChoices();
+		await d.refresh();
+		expect(d.besideBluetooth?.deviceId).toBe('mac');
+
+		d.setMic('default');
+		expect(d.besideBluetooth).toBeNull();
+	});
+
 	it('empties the list rather than throwing when enumeration fails', async () => {
 		enumerated = new Error('denied');
 		const d = createDeviceChoices();
