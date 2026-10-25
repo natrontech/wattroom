@@ -77,7 +77,8 @@ export function createMic(host: MicHost) {
 	 */
 	async function tryOpen() {
 		try {
-			await chain.open();
+			// False: a mute, Away or leave closed it while it was starting.
+			if (!(await chain.open())) return;
 			av.micOn = true;
 			// A mic that opens clears the last refusal (#642): the sidebar must
 			// not keep explaining a failure that has since been fixed.
