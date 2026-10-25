@@ -9,7 +9,7 @@
  * riding screen (ADR-0008, #2804).
  */
 export const liveNumbersLine =
-	'While you ride in a voice channel, whoever has it open sees your live watts and cadence, and your heart rate until you stop sharing it. Nobody else does.';
+	'While you ride in a voice channel, whoever has it open sees your live watts and cadence, and your heart rate until you stop sharing it.';
 
 /**
  * What happens to a route a rider imports (ADR-0063, #3057), said once: the
