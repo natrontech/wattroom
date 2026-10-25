@@ -322,8 +322,9 @@ function connect(address: PlaceAddress): Connection {
 
 		// The phone remote's presses, off the tick, through the same inputs as
 		// the keys (#3217). The hub sends them to this tab only while it holds
-		// the trainer. With gears off the phone says Bias, and a tap is the
-		// trim the ride's own − and + move (#4163).
+		// the trainer. With gears off the phone says Bias, and a tap is what
+		// the ride's own − and + move (#4163): a workout's bias, or the free
+		// ride's watts or grade.
 		const remote = createRemoteRunner(
 			{
 				shifts: () => ride.shifting,
@@ -333,6 +334,7 @@ function connect(address: PlaceAddress): Connection {
 					const step = dir * DEFAULTS.biasStep;
 					if (ownRide.riding) ownRide.session?.nudgeBias(step);
 					else if (joined()) ride.nudgeBias(step);
+					else if (freeRide.armed && !freeRide.road) freeRide.nudge(dir);
 				},
 			},
 			createTalkOpener(av),

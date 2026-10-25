@@ -139,8 +139,9 @@ export function createMicChain(host: MicChainHost) {
 		// Your own tile lights on the same measurement as everybody else's
 		// (#987). What the call hears is what the gate lets through, so a level
 		// under your own threshold is not you speaking — and neither is a hot
-		// mic you have switched off.
-		host.heard(host.live() && gate.open ? next : 0);
+		// mic you have switched off. A held Talk or push-to-talk lets it
+		// through whatever the level (#4163).
+		host.heard(host.live() && transmitting ? next : 0);
 	}
 
 	/**

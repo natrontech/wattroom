@@ -206,13 +206,17 @@ describe('what the call hears', () => {
 	});
 
 	it('opens for a held Talk in voice activation, and shuts after it over a quiet room (#4163)', async () => {
-		const chain = createMicChain(host());
+		const deps = host();
+		const chain = createMicChain(deps);
 		await chain.open();
 		meterLevel(0);
 		expect(chain.transmitting).toBe(false);
 
 		chain.setPttHeld(true);
 		expect(chain.transmitting).toBe(true);
+		// Under the threshold, and still you speaking: your own tile lights.
+		meterLevel(0.01);
+		expect(deps.heard).toHaveBeenLastCalledWith(0.01);
 		chain.setPttHeld(false);
 		meterLevel(0);
 		expect(chain.transmitting).toBe(false);
