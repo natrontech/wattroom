@@ -154,7 +154,7 @@
 		</p>
 	{:else if CELLS.some((c) => !RUNS.has(c.action))}
 		<p class="text-ink-muted text-2xl leading-7">
-			Dimmed: not available right now.
+			Dimmed: coming to the remote in a later release.
 		</p>
 	{/if}
 </div>

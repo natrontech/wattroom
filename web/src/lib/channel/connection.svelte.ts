@@ -6,6 +6,8 @@ import { createProfileStore } from '$lib/profile.svelte';
 import { spaceBelongsTo } from '$lib/channel/ptt-keys';
 import { gearsEnabled } from '$lib/ride/gears-enabled';
 import { bindShiftKeys, createRemoteRunner } from '$lib/ride/keys';
+import { createTalkOpener } from '$lib/ride/remote-talk';
+import { DEFAULTS } from '$lib/workout/guards';
 import { createRideShift, type RideShift } from '$lib/ride/ride-shift';
 import { pullProfile } from '$lib/profile-sync.svelte';
 import { createChannelLive } from '$lib/channel/live.svelte';
@@ -320,13 +322,20 @@ function connect(address: PlaceAddress): Connection {
 
 		// The phone remote's presses, off the tick, through the same inputs as
 		// the keys (#3217). The hub sends them to this tab only while it holds
-		// the trainer.
+		// the trainer. With gears off the phone says Bias, and a tap is the
+		// trim the ride's own − and + move (#4163).
 		const remote = createRemoteRunner(
 			{
-				press: (dir, source) => ride.shifting && shift.press(dir, source),
+				shifts: () => ride.shifting,
+				press: (dir, source) => shift.press(dir, source),
 				release: (source) => shift.release(source),
+				trim: (dir) => {
+					const step = dir * DEFAULTS.biasStep;
+					if (ownRide.riding) ownRide.session?.nudgeBias(step);
+					else if (joined()) ride.nudgeBias(step);
+				},
 			},
-			(held) => av.setPtt(held),
+			createTalkOpener(av),
 			{
 				pause: () => ownRide.session?.pause(),
 				resume: () => ownRide.session?.resume(),

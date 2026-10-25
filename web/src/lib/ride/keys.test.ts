@@ -163,8 +163,13 @@ describe('the phone remote (#3217)', () => {
 	beforeEach(() => vi.useFakeTimers());
 	afterEach(() => vi.useRealTimers());
 
-	const rig = () => {
-		const driver = { press: vi.fn(), release: vi.fn() };
+	const rig = (shifts = true) => {
+		const driver = {
+			press: vi.fn(),
+			release: vi.fn(),
+			shifts: () => shifts,
+			trim: vi.fn(),
+		};
 		const talk = vi.fn();
 		const page = vi.fn();
 		return {
@@ -184,6 +189,15 @@ describe('the phone remote (#3217)', () => {
 			[-1, 'remote'],
 		]);
 		expect(driver.release).toHaveBeenCalledTimes(2);
+		expect(driver.trim).not.toHaveBeenCalled();
+	});
+
+	it('trims the bias where the ride does not shift (#4163)', () => {
+		const { driver, run } = rig(false);
+		run({ action: 'harder' });
+		run({ action: 'easier' });
+		expect(driver.trim.mock.calls).toEqual([[1], [-1]]);
+		expect(driver.press).not.toHaveBeenCalled();
 	});
 
 	it('runs the other keymap actions it is given and ignores the rest', () => {

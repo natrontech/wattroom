@@ -211,16 +211,18 @@ export function createMicChain(host: MicChainHost) {
 
 	function runGate() {
 		if (!chain?.ctx || (!host.live() && !testing)) return;
-		if (settings.mode === 'ptt') {
+		// A held Talk on the phone remote is heard in voice activation too
+		// (#4163); only push-to-talk's own key is bound in that mode.
+		if (settings.mode === 'ptt' || settings.pttHeld) {
 			setGate(settings.pttHeld);
 			return;
 		}
 		// The hold no longer chases the timer that fed it (#214's fix): the level
 		// arrives from the audio thread, at the same rate whether this tab is in
-		// front or behind another window.
-		const was = gate.open;
+		// front or behind another window. Against what goes out, not the last
+		// step: a released Talk leaves the gate open over a quiet room.
 		gate = gateStep(gate, level, settings.effective, performance.now());
-		if (gate.open !== was) setGate(gate.open);
+		if (gate.open !== transmitting) setGate(gate.open);
 	}
 
 	/** Opens the mic onto the wire. Throws what the browser refused. */
@@ -369,6 +371,7 @@ export function createMicChain(host: MicChainHost) {
 			// next level to arrive. Shutting only `gate` left a released button
 			// still transmitting until the meter's next post.
 			if (next === 'gate') {
+				settings.setPttHeld(false);
 				gate = GATE_SHUT;
 				setGate(false);
 			}
