@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { climbGpx } from './road-gpx';
 import { importARoute, openAWorkoutOnARoad } from './route';
 import { signInAs } from './signin';
-import { drawing, onTheRoad, worldOn } from './world';
+import { drawing, latestRide, onTheRoad, worldOn } from './world';
 
 /**
  * The 3D ride end to end (#3850), on the software GL the world project draws
@@ -51,21 +51,6 @@ async function rideMyRoad(page: Page, as: string): Promise<string> {
 		.click({ timeout: 15_000 });
 	await page.getByRole('button', { name: 'Start the ride' }).click();
 	return road;
-}
-
-/** The rider's newest ride, as their list has it. */
-async function latestRide(page: Page) {
-	return page.evaluate(async () => {
-		const res = await fetch('/api/rides');
-		const { rides } = (await res.json()) as {
-			rides: {
-				distanceM?: number;
-				climbedM?: number;
-				road?: { routeId: string };
-			}[];
-		};
-		return rides[0];
-	});
 }
 
 /** Where slot 1's road line and the Skyline put the rider, in metres, read in one breath. */

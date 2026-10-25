@@ -1,7 +1,7 @@
 import type { Page, WebSocketRoute } from '@playwright/test';
 import { expect, test, voicePath, type ChannelOwner } from './crew';
 import { climbGpx } from './road-gpx';
-import { drawing, onTheRoad, worldOn } from './world';
+import { drawing, latestRide, onTheRoad, worldOn } from './world';
 
 // The world draws in a window the box table holds (TARGETS ride-road-world):
 // Desktop Chrome's 1280 × 720 is shorter, and rides the flat road (#3668).
@@ -16,6 +16,13 @@ test.use({ viewport: { width: 1440, height: 900 } });
  */
 const COUNTDOWN_MS = 10_000;
 const SETTLE_MS = 30_000;
+/**
+ * The saver keeps a ride from a minute of its rider's own samples (docs/SPEC.md's
+ * minute rule), and the summary shows from one. Two worlds on CI's software GL
+ * stall each page's simulated trainer for seconds at a time (#3877), so a
+ * minute on the session's clock is not yet a minute recorded: ride two.
+ */
+const RIDE_S = 120;
 
 type Drawn = { id: string; d: number; lane: number };
 type Snapshot = { t: number; mps: number; riders: Drawn[] };
@@ -81,7 +88,7 @@ async function rideARoad(coach: Page, guests: Page[], channels: ChannelOwner) {
 			.click({ timeout: COUNTDOWN_MS + SETTLE_MS });
 }
 
-test('two screens draw one bunch: each rider where the other screen has them @world', async ({
+test('two screens draw one bunch, and the session ends with both rides saved on the road @world', async ({
 	riders,
 	channels,
 }, info) => {
@@ -89,7 +96,7 @@ test('two screens draw one bunch: each rider where the other screen has them @wo
 		!!process.env.PLAYWRIGHT_BASE_URL,
 		'the ?as= dev provider only exists on a dev server',
 	);
-	test.setTimeout(240_000);
+	test.setTimeout(360_000);
 	const coach = await riders('Bunch World Coach');
 	const guest = await riders('Bunch World Guest');
 	const said: string[] = [];
@@ -153,6 +160,48 @@ test('two screens draw one bunch: each rider where the other screen has them @wo
 		await expect(
 			coach.locator('[data-surface=docked] [data-testid=climb-chip]'),
 		).toHaveText('climb IV');
+
+		// Two minutes in for both, the coach ends it, and each keeps a ride on
+		// the one road they rode together.
+		for (const page of [coach, guest])
+			await expect
+				.poll(() => clock(page), {
+					message: 'the session never reached two minutes',
+					timeout: 150_000,
+				})
+				.toBeGreaterThanOrEqual(RIDE_S);
+		await coach.getByRole('button', { name: 'end the session' }).click();
+		await coach
+			.getByRole('dialog')
+			.getByRole('button', { name: 'End the session' })
+			.click();
+		const seen = (page: Page) =>
+			page
+				.getByRole('dialog', { name: 'Session summary' })
+				.getByRole('link', { name: 'See your ride' });
+		for (const page of [coach, guest])
+			await expect(seen(page)).toBeVisible({ timeout: 30_000 });
+		// The list names only your own roads (#3874): the guest's ride on the
+		// coach's road shows as the metres it kept along it.
+		for (const [who, page] of [
+			['coach', coach],
+			['guest', guest],
+		] as const) {
+			const ride = await latestRide(page);
+			expect(
+				`/history/${ride?.id}`,
+				`the ${who}'s newest ride is not this session's`,
+			).toBe(await seen(page).getAttribute('href'));
+			if (who === 'coach')
+				expect(ride.road?.routeId, 'the ride saved off the road').toBeTruthy();
+			expect(ride.distanceM, `the ${who}'s ride kept no road`).toBeGreaterThan(
+				0,
+			);
+			expect(
+				ride.climbedM,
+				`the ${who}'s ride kept no climbing`,
+			).toBeGreaterThan(0);
+		}
 	} finally {
 		await info.attach('console', { body: said.join('\n') });
 	}
