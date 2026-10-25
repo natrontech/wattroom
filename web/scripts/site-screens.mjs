@@ -17,10 +17,11 @@ import { toWebp } from './webp.mjs';
 export const SCREENS = {
 	'world-crew': ['ride-session-road'],
 	'world-blocks': ['ride-road-world-gate'],
-	'world-ghost': ['ride-free-road-ghost'],
+	'world-ghost': ['ride-free-road-ghost-ride'],
 	'world-sprint': ['ride-session-sprint-live'],
 	'race-picker': ['picker-race-door'],
-	'phone-remote': ['ride-phone-remote'],
+	// The remote's buttons, without the status line under them.
+	'phone-remote': ['ride-phone-remote', '375x698+0+0'],
 	'workout-flat': ['ride-workout-flat'],
 };
 

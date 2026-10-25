@@ -75,7 +75,7 @@ the shelf, and a [free ramp test](https://wattroom.ch/ftp-test) finds your FTP.
 were last time rides beside you, a see-through figure in your own kit. The
 bike computer says the gap in words.
 
-<img src="web/static/screens/world-ghost.webp" alt="A free ride on a road: the rider's ghost from an earlier ride just ahead in the 3D world" />
+<img src="web/static/screens/world-ghost.webp" alt="A free ride on a road: the rider's ghost from an earlier ride just ahead in the 3D world, the bike computer reading 4 s behind" />
 
 </td>
 <td width="50%" valign="top">
@@ -84,7 +84,7 @@ bike computer says the gap in words.
 from the screen, the `−` and `+` keys or a Zwift Cog. Open WattRoom on your
 phone while the desk rides and the phone becomes your remote.
 
-<p align="center"><img src="web/static/screens/phone-remote.webp" alt="A phone as the rider's remote while the desk rides: big Easier and Harder buttons with the gear under them" width="220" /></p>
+<p align="center"><img src="web/static/screens/phone-remote.webp" alt="A phone as the rider's remote while the desk rides: big Easier and Harder buttons" width="220" /></p>
 
 </td>
 </tr>

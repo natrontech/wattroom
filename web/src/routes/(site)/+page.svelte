@@ -42,7 +42,7 @@
 		{
 			n: '2',
 			title: 'Join voice, pair your trainer',
-			body: 'Chrome or Edge talks to your smart trainer over Bluetooth, or use the desktop app. Voice is one tap and the camera is up to you.',
+			body: 'Chrome or Edge talks to your smart trainer over Bluetooth, or use the desktop app. Voice is one tap, and the crew’s jukebox plays in sync and ducks when someone speaks.',
 		},
 		{
 			n: '3',
@@ -64,15 +64,15 @@
 			screen: 'workout-flat',
 			eyebrow: 'Or on the graph',
 			title: 'Without a road, the workout is the picture',
-			body: 'Every block on the interval graph is labelled, your watts trace across it, and the panel above holds the target. Fill the shelf from the library, the editor, or the .zwo and .erg files you already have.',
-			alt: 'A workout ridden without a road: the interval graph with labelled blocks, the rider’s trace, and the watts and target in the panels above',
+			body: 'Every block on the interval graph is labelled with its watts and length, and the panel above holds your target. Fill the shelf from the library, the editor, or the .zwo and .erg files you already have.',
+			alt: 'A workout ridden without a road: the interval graph with each block labelled with its watts and length, and the watts and target in the panel above',
 		},
 		{
 			screen: 'world-ghost',
 			eyebrow: 'Your ghost',
 			title: 'Ride a road again and race your earlier self',
-			body: 'Start a road of yours from the beginning and the rider you were last time rides beside you, a see-through figure in your own kit. The bike computer says the gap in words: “12 s ahead”.',
-			alt: 'A free ride on a mountain road in the 3D world: the rider’s ghost from an earlier ride up the road ahead, and Easier and Harder for the gears in the panel above',
+			body: 'Start a road of yours from the beginning and the rider you were last time rides beside you, a see-through figure in your own kit. The bike computer says the gap in words: “4 s behind”.',
+			alt: 'A free ride on a mountain road in the 3D world: the rider’s ghost from an earlier ride just ahead, the bike computer reading 4 s behind, and Easier and Harder in the panel above',
 		},
 	];
 
@@ -218,9 +218,9 @@
 	/>
 	<Screen
 		name="phone-remote"
-		alt="A phone as the rider’s remote while the desk rides: big Easier and Harder buttons with the gear under them, and buttons to turn the bike computer’s page, cheer back and talk"
+		alt="A phone as the rider’s remote while the desk rides: big Easier and Harder buttons, and buttons to turn the bike computer’s page, cheer back and talk"
 		width={375}
-		height={812}
+		height={698}
 		narrow
 	/>
 </section>
@@ -231,7 +231,6 @@
 		center
 		eyebrow="Sessions with voice"
 		title="From group chat to group ride in three steps"
-		lede="The crew’s jukebox plays in sync for everyone in the voice channel and ducks when someone speaks."
 	/>
 	<ol class="mt-10 grid gap-4 md:grid-cols-3">
 		{#each steps as step (step.n)}
@@ -255,7 +254,7 @@
 		title="Race your roads, or play on watts alone"
 		lede="Pick a road in the session picker, tap Race it, and choose Race, Last Light or Wheelrace: a race on W/kg, with results by category on the closing card. Or play one of seven games scaled to each rider’s FTP, so the smallest engine in the crew can win Backyard Ramp."
 	/>
-	<div class="mt-10 grid gap-8 lg:grid-cols-2">
+	<div class="mt-10 grid gap-3 lg:grid-cols-2">
 		<Screen
 			name="race-picker"
 			alt="The session picker with a road picked and its races offered: Race, Last Light and Wheelrace"
