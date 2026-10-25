@@ -46,6 +46,9 @@ An Electron shell for what a tab cannot reach ([ADR-0037](decisions/0037-a-deskt
 **M9 — The crew you live in** · 49 closed, 14 open
 The room taken apart ([ADR-0058](decisions/0058-the-room-dissolves-into-the-crew.md)). The crew is the only object with an identity; under it are text channels, voice channels, and sessions that run in a voice channel, one at a time, coached by whoever started them. Roles, the one ban, playlists, the schedule, the streak, medals, recaps and the weekly board belong to the crew, "You" is the first entry of the crew switcher, and live metrics stay inside the session that produced them. Every room became a text channel and a voice channel of its name; old room links redirect, room calendar feeds do not. It shipped as one release, 2026.09.127; the code stopped reading the room tables one release after it (#2558), and the tables themselves went in the release after that (#2433), so each release could still be rolled back to the one before.
 
+**M11 to M21: Ride Worlds**
+Since 2026.10.2 the 3D world is the default ride view, with roads marked beta. #3853 sets the finish line that drops the beta. On 2026-10-25 Jan triaged M13 to M21: 16 ideas stay open as the next work, and 48 are parked with their issues closed. [ideas/ride-worlds.md](ideas/ride-worlds.md) keeps each parked idea, its cost and its issue numbers.
+
 ## The fast-follows, seven years later
 
 WATTROOM.md called seven things "explicitly not MVP". Four shipped in M7: **text chat**, **scheduling + RSVP + iCal**, **in-app invites** (as the crew's invite, [ADR-0038](decisions/0038-the-crew-is-the-layer-above-rooms.md)) and the **opt-in public room directory** ([ADR-0039](decisions/0039-the-public-room-directory.md)). **Custom sound and reaction packs** have their groundwork in the soundboard ([ADR-0033](decisions/0033-a-clip-is-a-file-the-room-fetches.md)) but no per-crew upload.
