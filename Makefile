@@ -6,7 +6,7 @@
 # tree keeps :8080/:5174 and the `wattroom` database; every linked worktree
 # derives its own from its path. `make dev-env` prints what this one takes.
 
-.PHONY: infra dev-env dev-server dev-web dev-db-drop web web-deps changelog protocol migration sqlc seed screenshots design-targets design-shots build test lint dead-code world-mutants world-soak ci release print-golangci-version desktop desktop-smoke desktop-release perf perf-scenes licenses worktree-gc
+.PHONY: infra dev-env dev-server dev-web dev-db-drop web web-deps changelog protocol migration sqlc seed screenshots site-screens design-targets design-shots build test lint dead-code world-mutants world-soak ci release print-golangci-version desktop desktop-smoke desktop-release perf perf-scenes licenses worktree-gc
 
 DEV_ENV := scripts/dev-env.sh
 # "wattroom dev key, never deployed" in base64: 32 bytes, for make dev-server only.
@@ -102,6 +102,12 @@ screenshots: web-deps ## redraw the site's share cards and the site/README scree
 			exit 1; \
 		}; \
 		cd web && node scripts/cards.mjs && node scripts/screenshots.mjs
+
+site-screens: ## redraw the world's screenshots on the landing and in the README from design shots (web/scripts/site-screens.mjs)
+	@out="$$PWD/web/design-shots/site-screens"; \
+		$(MAKE) design-shots SCHEME=dark OUT="$$out" \
+			SURFACES="ride-session-road ride-road-world ride-free-road-ghost picker-race ride-phone-remote ride-workout-flat" && \
+		cd web && node scripts/site-screens.mjs "$$out/dark"
 
 design-shots: web-deps ## screenshot and probe design surfaces from a build of this checkout, on a fresh database: SURFACES="…" SCHEME=dark|light|both OUT=… (docs/design/DESIGN-CHECK.md)
 	@# The e2e harness builds and serves (playwright.config.ts's webServer):

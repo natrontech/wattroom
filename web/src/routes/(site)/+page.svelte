@@ -41,52 +41,46 @@
 		},
 		{
 			n: '2',
-			title: 'Hop into voice, pair your trainer',
-			body: 'Chrome or Edge talks to your smart trainer over Bluetooth. Nothing to install. Camera if you like, voice with one tap.',
+			title: 'Join voice, pair your trainer',
+			body: 'Chrome or Edge talks to your smart trainer over Bluetooth, or use the desktop app. Voice is one tap, and the crew’s jukebox plays in sync and ducks when someone speaks.',
 		},
 		{
 			n: '3',
-			title: 'Ride one workout together',
-			body: 'Anyone in the channel starts a workout. Every trainer holds its own rider’s watts, the timeline runs for everyone at once, and you talk the whole way.',
+			title: 'Start a session',
+			body: 'Anyone in the voice channel starts one: a free ride on a road, a workout, a race or a game. Everyone rides it at once and talks the whole way.',
 		},
 	];
 
+	/** The road, the work and the controls: what a rider does on WattRoom (#4198). */
 	const features = [
 		{
-			screen: 'session',
-			eyebrow: 'The session',
-			title: 'Everyone’s numbers on one screen, everyone’s voice in your ears',
-			body: 'Your watts big enough to read from the saddle, every rider’s watts, w/kg and cadence, how precisely each of you holds the target, the interval chart — and the crew’s jukebox beside it.',
-			alt: 'A live WattRoom session: the rider’s own watts on target, the other riders’ tiles, everyone’s execution, the interval timeline and the jukebox',
+			screen: 'world-blocks',
+			eyebrow: 'Workouts on the road',
+			title: 'The next blocks are painted on the road ahead',
+			body: 'Ride a workout on one of your roads and its next three blocks are painted on the asphalt, each with its name and your target where it starts. A sprint gets a banner across the road from 1 km out.',
+			alt: 'A workout ridden on a mountain road in the 3D world: the next block painted across the road ahead with its target, the workout’s clock and graph above, the bike computer at the left',
 		},
 		{
-			screen: 'crew',
-			eyebrow: 'The crew',
-			title: 'A crew is a place, not an event',
-			body: 'Chat channels for the week, voice channels for ride night, a schedule everyone can say yes to, and a board for the things you keep asking about. It is still there tomorrow.',
-			alt: 'A crew in WattRoom: the sidebar with chat and voice channels, and a chat channel with messages',
+			screen: 'workout-flat',
+			eyebrow: 'Or on the graph',
+			title: 'Without a road, the workout is the picture',
+			body: 'Every block on the interval graph is labelled with its watts and length, and the panel above holds your target. Fill the shelf from the library, the editor, or the .zwo and .erg files you already have.',
+			alt: 'A workout ridden without a road: the interval graph with each block labelled with its watts and length, and the watts and target in the panel above',
 		},
 		{
-			screen: 'jukebox',
+			screen: 'world-ghost',
+			eyebrow: 'Your ghost',
+			title: 'Ride a road again and race your earlier self',
+			body: 'Start a road of yours from the beginning and the rider you were last time rides beside you, a see-through figure in your own kit. The bike computer says the gap in words: “4 s behind”.',
+			alt: 'A free ride on a mountain road in the 3D world: the rider’s ghost from an earlier ride just ahead, the bike computer reading 4 s behind, and Easier and Harder in the panel above',
+		},
+		{
+			screen: 'phone-remote',
 			portrait: true,
-			eyebrow: 'The jukebox',
-			title: 'One soundtrack, in sync, for the whole crew',
-			body: 'Paste a YouTube link or a playlist and it plays for everyone in the voice channel at the same moment. Vote tracks up. Duck it under the voices. Bring your own MP3s.',
-			alt: 'The WattRoom jukebox: the track playing and the queue that plays next',
-		},
-		{
-			screen: 'summary',
-			eyebrow: 'After the ride',
-			title: 'Every ride counts, and it stays yours',
-			body: 'A summary with your power curve and zones, XP and trophies, a .fit file to download and one tap to Strava. Rides are private until you share them.',
-			alt: 'A WattRoom ride summary with power, zones and medals',
-		},
-		{
-			screen: 'workout-editor',
-			eyebrow: 'Workouts',
-			title: 'A library to start from, an editor for the rest',
-			body: 'Pick from the curated library, build your own in the editor, or import the .zwo and .erg files you already have. Every target is a share of FTP, so one workout fits the whole crew.',
-			alt: 'The WattRoom workout editor with an interval chart coloured by power zone',
+			eyebrow: 'Gears and your phone',
+			title: 'Shift from the screen, the keys, a Cog or your phone',
+			body: 'On a road, Easier and Harder shift virtual gears: tap them, press − and +, or ride a Zwift Cog. In an ERG workout the same controls trim your target. Open WattRoom on your phone while the desk rides and the phone becomes your remote, and one tap moves your voice to it.',
+			alt: 'A phone as the rider’s remote while the desk rides: big Easier and Harder buttons, and buttons to turn the bike computer’s page, cheer back and talk',
 		},
 	];
 
@@ -94,6 +88,10 @@
 		{
 			q: 'Do I need a smart trainer?',
 			a: 'To be held on target in ERG mode, yes: any trainer that speaks Bluetooth FTMS, which most current smart trainers do. You can join a crew’s channels and its voice without one, and a power meter or heart-rate strap pairs the same way.',
+		},
+		{
+			q: 'Where do the roads come from?',
+			a: 'From you. Import a GPX, TCX or FIT file of a route you know, and WattRoom reads its climbs and grades. The world is a switch on each device: set it to Full and the road is drawn in 3D, or leave it on Flat and the road rides as its profile.',
 		},
 		{
 			q: 'Which browsers work?',
@@ -134,8 +132,9 @@
 		Train together,<br /><span class="text-neon">not alone.</span>
 	</h1>
 	<p class="text-muted mt-5 max-w-xl text-base text-balance sm:text-lg">
-		Your crew, one structured workout, every trainer on its own rider’s FTP —
-		and voice, so you suffer out loud. Your watts are the game.
+		Ride your own roads in a 3D world with your crew, or one structured workout
+		with every trainer on its own rider’s FTP. Voice is built in, so you talk
+		the whole way.
 	</p>
 	<!-- The promise Home keeps (#2184, ADR-0038 amended): a stranger arrives
 	     with no invite, so the big button says what Home's does. -->
@@ -167,25 +166,39 @@
 	</div>
 </section>
 
-<!-- How it works -->
-<section class="mx-auto mt-28 w-full max-w-6xl px-4 sm:px-6">
-	<SectionHead
-		center
-		eyebrow="How it works"
-		title="From group chat to group ride in three steps"
-	/>
-	<ol class="mt-10 grid gap-4 md:grid-cols-3">
-		{#each steps as step (step.n)}
-			<li class="panel panel-lg">
-				<span
-					class="font-display border-neon/50 text-ink grid h-9 w-9 place-items-center rounded-full border text-sm font-bold"
-					>{step.n}</span
-				>
-				<h3 class="font-display mt-4 text-lg font-bold">{step.title}</h3>
-				<p class="text-muted mt-2 text-sm leading-relaxed">{step.body}</p>
-			</li>
-		{/each}
-	</ol>
+<!-- The world, then what a rider does on it (#4198). -->
+<section
+	id="world"
+	class="mx-auto mt-28 flex w-full max-w-6xl flex-col gap-24 px-4 sm:px-6"
+>
+	<div>
+		<SectionHead
+			center
+			eyebrow="Ride a road together"
+			title="Your roads in 3D, with your crew on them"
+			lede="Import a route and ride it in a 3D world: the climbs, the hairpins and every crewmate where their own watts have taken them. The numbers sit at the edges, so the road stays in view."
+		/>
+		<div class="mt-8">
+			<Screen
+				name="world-crew"
+				alt="Two riders of a crew side by side in a session on a mountain road in the 3D world, the workout’s clock above, the bike computer at the left and the riders’ watts per kilo at the right"
+				width={1440}
+				height={900}
+			/>
+		</div>
+	</div>
+	{#each features as f, i (f.screen)}
+		<div class="grid items-center gap-8 lg:grid-cols-2 lg:gap-14">
+			<div class={i % 2 ? 'lg:order-2' : ''}>
+				<SectionHead eyebrow={f.eyebrow} title={f.title} lede={f.body} />
+			</div>
+			{#if f.portrait}
+				<Screen name={f.screen} alt={f.alt} width={375} height={698} narrow />
+			{:else}
+				<Screen name={f.screen} alt={f.alt} width={1440} height={900} />
+			{/if}
+		</div>
+	{/each}
 </section>
 
 <!-- The core idea, playable. -->
@@ -205,38 +218,57 @@
 	<FtpSlider />
 </section>
 
-<!-- The product, as it looks. -->
-<section
-	class="mx-auto mt-28 flex w-full max-w-6xl flex-col gap-24 px-4 sm:px-6"
->
-	{#each features as f, i (f.screen)}
-		<div class="grid items-center gap-8 lg:grid-cols-2 lg:gap-14">
-			<div class={i % 2 ? 'lg:order-2' : ''}>
-				<SectionHead eyebrow={f.eyebrow} title={f.title} lede={f.body} />
-			</div>
-			{#if f.portrait}
-				<Screen name={f.screen} alt={f.alt} width={399} height={826} narrow />
-			{:else}
-				<Screen name={f.screen} alt={f.alt} />
-			{/if}
-		</div>
-	{/each}
-</section>
-
-<!-- Games -->
+<!-- Sessions with voice. -->
 <section class="mx-auto mt-28 w-full max-w-6xl px-4 sm:px-6">
 	<SectionHead
 		center
-		eyebrow="Seven game modes"
-		title="No drafting. No power-ups. Just watts."
-		lede="Every game is decided by power alone, scaled to each rider’s FTP — so the smallest engine in the crew can win Backyard Ramp."
+		eyebrow="Sessions with voice"
+		title="From group chat to group ride in three steps"
 	/>
-	<div class="mt-10">
+	<ol class="mt-10 grid gap-4 md:grid-cols-3">
+		{#each steps as step (step.n)}
+			<li class="panel panel-lg">
+				<span
+					class="font-display border-neon/50 text-ink grid h-9 w-9 place-items-center rounded-full border text-sm font-bold"
+					>{step.n}</span
+				>
+				<h3 class="font-display mt-4 text-lg font-bold">{step.title}</h3>
+				<p class="text-muted mt-2 text-sm leading-relaxed">{step.body}</p>
+			</li>
+		{/each}
+	</ol>
+</section>
+
+<!-- Races and games -->
+<section class="mx-auto mt-28 w-full max-w-6xl px-4 sm:px-6">
+	<SectionHead
+		center
+		eyebrow="Races and games"
+		title="Race your roads, or play on watts alone"
+		lede="Pick a road in the session picker, tap Race it, and choose Race, Last Light or Wheelrace: a race on W/kg, with results by category on the closing card. Or play one of seven games scaled to each rider’s FTP, so the smallest engine in the crew can win Backyard Ramp."
+	/>
+	<div class="mt-10 grid gap-3 lg:grid-cols-2">
+		<Screen
+			name="race-picker"
+			alt="The session picker with a road picked and its races offered: Race, Last Light and Wheelrace"
+			width={1440}
+			height={900}
+			caption="Race it, from the session picker."
+		/>
+		<Screen
+			name="world-sprint"
+			alt="A sprint’s window open in a session on the road: the moment card over the 3D world, the riders ranked live"
+			width={1440}
+			height={900}
+			caption="A sprint lands mid-session."
+		/>
+	</div>
+	<div class="mt-8">
 		<GameModeCards tryHref="#sprint" />
 	</div>
 	<p class="mt-6 text-center">
 		<a href="/game-modes" class="btn-link text-sm"
-			>All seven, and how they play</a
+			>All seven games, and how they play</a
 		>
 	</p>
 </section>
@@ -261,7 +293,7 @@
 	<SectionHead
 		eyebrow="Compared"
 		title="What WattRoom is, beside what you know"
-		lede="Zwift and MyWhoosh are worlds to ride in; TrainerRoad is a coach. WattRoom is a place for your crew. Pick the right one — sometimes it is not us."
+		lede="Zwift and MyWhoosh are worlds you share with everyone who rides them, and TrainerRoad is a coach. WattRoom is a place for your crew, on the roads you bring. Pick the one that fits: sometimes it is one of them."
 	/>
 	<div class="mt-8">
 		<CompareTable rivals={RIVALS} />
@@ -282,7 +314,8 @@
 		<h3 class="font-display mt-4 text-lg font-bold">Private by default</h3>
 		<p class="text-muted mt-2 text-sm leading-relaxed">
 			Voice and video are never recorded. Live numbers live and die with the
-			session. Your rides are yours until you share one.
+			session. Each ride saves privately, with a .fit file to download and one
+			tap to Strava.
 		</p>
 	</div>
 	<div class="panel panel-xl">
@@ -298,10 +331,12 @@
 	</div>
 	<div class="panel panel-xl">
 		<Headphones size={22} class="text-neon" />
-		<h3 class="font-display mt-4 text-lg font-bold">One tab, not three apps</h3>
+		<h3 class="font-display mt-4 text-lg font-bold">
+			Ride, voice and music in one tab
+		</h3>
 		<p class="text-muted mt-2 text-sm leading-relaxed">
-			No training app plus Discord plus a music player fighting over one
-			headset. Workout, voice and soundtrack share a tab and a mixer.
+			The ride, the call and the crew’s soundtrack share one tab and one mixer,
+			so a single headset hears all three.
 		</p>
 	</div>
 </section>
@@ -316,7 +351,7 @@
 	class="text-muted mx-auto mt-10 flex max-w-md items-center justify-center gap-2 px-4 text-center text-xs"
 >
 	<Link size={14} />
-	Built in the open —
-	<a href={REPO} class="hover:text-ink underline">star it on GitHub</a>
+	Built in the open.
+	<a href={REPO} class="hover:text-ink underline">Star it on GitHub</a>
 	if you want more of it.
 </p>

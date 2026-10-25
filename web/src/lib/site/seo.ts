@@ -34,7 +34,7 @@ export const LANDING: SitePage = {
 	// own positioning: "Zwift alternative", "structured workouts" and "smart
 	// trainer" are what a rider types into a search box (#2139).
 	description:
-		'Discord for indoor cycling — your crew, your voice, your watts. A Zwift alternative for structured workouts and smart-trainer rides with friends.',
+		'Discord for indoor cycling: your crew, your voice, your roads in 3D. A Zwift alternative for structured workouts and smart-trainer rides with friends.',
 };
 
 export const GROUP_WORKOUTS: SitePage = {

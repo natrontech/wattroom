@@ -44,7 +44,7 @@ export const OURS = {
 		'Anyone in the voice channel starts any workout; every trainer holds its own rider’s FTP',
 	voice: 'Voice and camera built in, one tap',
 	world:
-		'Routes you import, with their profile and climbs; on a ride, tiles, numbers and the interval chart',
+		'Routes you import, ridden in 3D with your crew on them, or as their profile; a workout without a road rides on its interval graph',
 	openSource: 'Yes (AGPL), and self-hostable',
 } as const;
 

@@ -30,6 +30,7 @@ import { mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { toWebp } from './webp.mjs';
 
 const PORT = process.env.WATTROOM_DEV_WEB_PORT;
 if (!PORT) {
@@ -590,21 +591,4 @@ async function margin(locator, pad = 16) {
 		width: box.width + 2 * pad,
 		height: box.height + 2 * pad,
 	};
-}
-
-function toWebp(png, webp) {
-	for (const [cmd, args] of [
-		['cwebp', ['-quiet', '-q', '80', '-m', '6', png, '-o', webp]],
-		['magick', [png, '-quality', '80', webp]],
-	]) {
-		try {
-			execFileSync(cmd, args, { stdio: 'inherit' });
-			return;
-		} catch (err) {
-			if (err.code !== 'ENOENT') throw err;
-		}
-	}
-	throw new Error(
-		'Neither cwebp nor ImageMagick is installed — `brew install webp`.',
-	);
 }
