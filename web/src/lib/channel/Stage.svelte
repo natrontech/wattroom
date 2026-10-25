@@ -193,9 +193,15 @@
 		document.addEventListener('fullscreenchange', check);
 		return () => document.removeEventListener('fullscreenchange', check);
 	});
+	// A seated jukebox drops the chrome and flies its player outside the
+	// frame: a share that ends mid full screen would leave a black screen
+	// with no way out, so leave with it.
+	$effect(() => {
+		if (seated && full) void document.exitFullscreen();
+	});
 	function toggleFullscreen() {
 		if (full) void document.exitFullscreen();
-		else void frame?.requestFullscreen?.();
+		else frame?.requestFullscreen?.().catch(() => {});
 	}
 
 	let dragging = $state(false);
