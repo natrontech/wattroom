@@ -20,6 +20,8 @@ type ClientMessage struct {
 	Remote   *RemoteCommand  `json:"remote,omitempty"`
 	Gear     *GearState      `json:"gear,omitempty"`
 	Pause    *PauseState     `json:"pause,omitempty"`
+	Voice    *VoiceClaim     `json:"voice,omitempty"`
+	FreeRoad *FreeRoad       `json:"freeRoad,omitempty"`
 }
 
 // ServerTick is a voice channel's coalesced 1 Hz broadcast: every rider's
@@ -58,6 +60,9 @@ type ServerTick struct {
 	World *World `json:"world,omitempty"`
 	// What the roadside has put on that road (ADR-0064, #3029), beside it.
 	Roadside *RoadsideState `json:"roadside,omitempty"`
+	// Free riders on a road another free rider here rides too (#3117), by
+	// rider id. A road ridden alone is never sent.
+	FreeRoads map[string]FreeRoadPlace `json:"freeRoads,omitempty"`
 	// Live execution per rider (#27) — the SPEC score so far this session.
 	Execution map[string]float64 `json:"execution,omitempty"`
 	// Who the LiveKit webhooks say is in voice (#467), by rider id. A client

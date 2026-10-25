@@ -22,6 +22,7 @@
 		canControl,
 		me,
 		roadside,
+		flat = false,
 	}: {
 		game: GameState;
 		/** Names for ids — the tick's roster, or the channel's riders (#1589). */
@@ -33,6 +34,8 @@
 		/** The deck an eliminated rider is handed (#3022) — the caller knows
 		 *  who they are watching. */
 		roadside?: Snippet;
+		/** Inside a panel already (the ride's focus dock): no card of its own (TARGETS G3). */
+		flat?: boolean;
 	} = $props();
 
 	const profile = createProfileStore();
@@ -81,7 +84,9 @@
 </script>
 
 <div
-	class="border-neon/40 bg-surface-raised rounded-lg border-2 p-5"
+	class={flat
+		? 'py-4'
+		: 'border-neon/40 bg-surface-raised rounded-lg border-2 p-5'}
 	role="status"
 	aria-label="{mode?.label ?? game.mode}, {game.phase === 'done'
 		? 'finished'

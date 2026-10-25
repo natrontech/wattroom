@@ -90,7 +90,10 @@
 	/** The browser muted this tab and the voice channel went silent (#645). */
 	const playbackBlocked = $derived(av?.playbackBlocked ?? false);
 
-	const onJoin = () => void av?.join();
+	// Another of your screens carries your voice (ADR-0089): this one is a
+	// controller, and the way in moves the voice here.
+	const voiceElsewhere = $derived(conn?.live.pairing.elsewhere?.voice ?? '');
+	const onJoin = () => void av?.join(voiceElsewhere ? { take: true } : {});
 	const onMic = () => av?.toggleMic();
 	const onCam = () => av?.toggleCam();
 	const onFlip = () => av?.flipCam();
@@ -234,15 +237,25 @@
 							: undefined}
 						class="btn {riding
 							? 'btn-secondary'
-							: 'btn-primary'} min-h-11 flex-1"
+							: 'btn-primary'} min-h-11 flex-1 {voiceElsewhere
+							? 'basis-full'
+							: ''}"
 						><Headphones size={13} />
-						{voiceStatus === 'failed'
-							? 'Try voice again'
-							: 'Join voice'}</button
+						{voiceElsewhere
+							? 'Use this device for voice'
+							: voiceStatus === 'failed'
+								? 'Try voice again'
+								: 'Join voice'}</button
 					>
 				{/if}
 				<QuickAudio compact />
-				{#if voiceStatus !== 'connecting' && voiceStatus !== 'reconnecting' && (!riding || voiceDown)}
+				{#if voiceElsewhere && voiceStatus !== 'connecting'}
+					<!-- A controller (ADR-0089): where the voice is, so the button
+					     above reads as the move it is. -->
+					<p class="text-muted basis-full px-1 text-[11px]">
+						Your voice is on your {voiceElsewhere}.
+					</p>
+				{:else if voiceStatus !== 'connecting' && voiceStatus !== 'reconnecting' && (!riding || voiceDown)}
 					<!-- The promise at the moment of the decision: AV is transit-only
 					     (WATTROOM.md) and the mic gates on speech (docs/SPEC.md). Said on
 					     the marketing page and in settings, never here — where a rider

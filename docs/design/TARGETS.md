@@ -199,7 +199,7 @@ Capture: world on, `/ride?w=openers`, no road: a negative check. Canon: ADR-0066
 Capture: world off, `/ride?w=openers`, 14 s in; a second frame at four-digit watts (the spec drives the simulated trainer past 1,000 W). Targets: v2-erg (work panel, computer); v2-ride's “Flat road” inset.
 
 1. Every slot a `ride-panel`; nothing floats unframed. [ride-flat]
-2. Slot 1 one full-width panel. Left: time left at SPEC's desk size with block, target, elapsed of total. Right: interval strip with cursor, then NEXT (D16), the 3-2-1 chips and the ERG chip, all on one line. [ride-flat]
+2. Slot 1 one panel. Left: time left at SPEC's desk size with block, target, elapsed of total. Right: NEXT (D16), the 3-2-1 chips and the ERG chip, all on one line. Where the graph (item 7) is drawn it is the workout's one picture: slot 1 has no interval strip and is its content's size (G3). Where the Skyline holds the horizon, slot 1 spans the column with the strip and its cursor over NEXT's line (Jan, 2026-10-25, #4159). [ride-flat]
 3. Controls one row inside slot 1, as ride-road-world item 7, flush with the panel's inner right edge. [ride-flat]
 4. Head as ride-road-world item 9: one watts figure at SPEC's desk size, W/kg beside, zone as digit and name, the track while a target is asked. [ride-flat]
 5. RIDE page fields per the one-home table (workout, no road: Cadence, Heart), in the head's panel, no gap wider than ~48 px; page control (D15) in that panel's header row. [ride-flat]
@@ -209,6 +209,7 @@ Capture: world off, `/ride?w=openers`, 14 s in; a second frame at four-digit wat
 9. At four digits the numeral stays inside its panel, covering no other text. [multi:four-digit] [ride-flat]
 10. Persistent status per G3. [multi:ride-status] [ride-flat]
 11. The frame keeps the capture's scheme (G1).
+12. Each block on the graph says what it is, drawn into it: its target in watts (a ramp's two ends, trimmed by the bias as slot 1's target is) and its length in NEXT's words, inside the block halfway up its lower end, at label size, in neon, never watt (G2); a part that does not fit the block's width drops, the length first; the current block bold and its length only, since slot 1 owns its target (D17; supervisor for Jan, 2026-10-25, #4189). No chip, no legend (Jan, 2026-10-25, #4159). [#4159] [#4189] [test:web/src/lib/workout/block.test.ts]
 
 #### ride-skyline-fallback
 
@@ -228,7 +229,7 @@ Capture: ride-road-world and ride-workout-flat, simulated trainer silenced past 
 
 #### ride-phone-remote
 
-Capture: desk context rides the channel's free ride on a simulated trainer; a second 375 × 812 touch context of the same rider opens the channel's Training place, taps "Use this phone as your remote", and shoots the remote. Target: none drawn, canon is the bar. Canon: ADR-0025 (the claim), ADR-0084 (gears), ux.md (mid-ride, phone width), errors.md.
+Capture: desk context rides the channel's free ride on a simulated trainer, in voice; a second 375 × 812 touch context of the same rider opens the channel's Training place, taps "Use this phone as your remote", and shoots the remote. Target: none drawn, canon is the bar. Canon: ADR-0025 (the claim), ADR-0084 (gears), ADR-0089 (one voice), ux.md (mid-ride, phone width), errors.md.
 
 1. The offer (`ride-phone-remote-offer`) is one full-width `btn-ride` in the Lounge's empty state, only on a phone-width screen that sees the trainer held by another screen. [3217]
 2. The grid fills the screen in two columns, words at 24 px, of buttons at least 64 px high; every button is a tap target of at least 44 px and nothing scrolls sideways. [probe:remoteMinHeight] [probe:remoteScrollWidth] [3217]
@@ -236,6 +237,7 @@ Capture: desk context rides the channel's free ride on a simulated trainer; a se
 4. Chrome stays neon and nothing glows; with gears on, the gear line reads in neon too (ADR-0005). [3217]
 5. Phone width 375 × 812: the page body does not scroll sideways, and Done is reachable without scrolling. [probe:remoteClientWidth] [3217]
 6. On a solo ride only (`ride-phone-remote-paused`), a Pause and Resume pair of `btn-ride` cells, the one that cannot act disabled, and a persistent “Paused” line in neon once paused. A free ride never shows the pair (`ride-phone-remote`'s `remotePair` is false; `ride-phone-remote-solo` shows it live). [probe:pauseResumeHeight] [probe:remotePair] [3217]
+7. While another of the rider's screens carries their voice, the phone is a controller (`ride-phone-remote-offer`): under the offer, one line naming that device and one full-width `btn-ride` “Use this device for voice” with words at 24 px; no microphone or camera control and no call on the phone (ADR-0089). [probe:controllerLine] [probe:moveVoiceTextPx] [probe:moveVoiceHeight] [4164]
 
 #### ride-countin
 
@@ -321,6 +323,7 @@ Capture: as ride-session-road, on a session with no road.
 
 1. ride-workout-flat's items hold in the session's Training place. [ride-flat]
 2. Crew rows G5-sized; no crew number in watt (G2). [ride-flat]
+3. Your numbers and the crew share one row, each panel its content's size, as v2-ride's Flat road inset sets them: the numbers panel ends at its trim, the crew panel at its last tile; a column too narrow for both wraps the crew under the numbers. Holds at 2000 × 1150 as at 1440 × 900 (Jan, 2026-10-25, #4159). [#4159] [probe:flat] [multi:ride-session-flat-wide]
 
 #### ride-race
 
@@ -658,14 +661,17 @@ Capture: `/settings/notifications` whole page body with a stand-in desktop bridg
 4. Icon off on Windows or Linux: the launch-at-login hint says WattRoom opens when you sign in, names no tray. [3843] [multi:linux-off]
 5. Nothing glows; nothing scrolls sideways at 375 px. [3843]
 
-#### sound-dialog
+#### sound-dialog, phone-sound-dialog
 
-Capture: a voice channel at 1440 × 900, the sidebar's Sound button, the dialog open without a call, at the top (`sound-dialog`) and scrolled to its foot (`sound-dialog-bottom`); then `/settings/voice` whole page body; both schemes. Both dialog shots carry `dialogTargets` in their probe JSON: every slider's and Done's height, each select's x and width, the dialog's scrollHeight against clientHeight. Target: none drawn; the bar is ux.md's tap-target rule and the dialog's own line, “the levels you reach for mid-ride”.
+Capture: a flat crew session (as ride-session-flat), Designer having set five riders away from 100 %; the sidebar's Sound button opens the sheet at 1440 × 900 (`sound-dialog`) and again at 2000 × 1150 (`sound-dialog-wide`); a phone's from a voice channel (`phone-sound-dialog`); then `/settings/voice` whole page body; both schemes. Each sheet shot carries `dialogTargets`: the sheet's box against the window, every slider's and Done's height, each select's x and width, its scrollHeight against clientHeight. Target: none drawn; the bar is ADR-0087 (opened from the sidebar, the sheet is chrome: desk sizes, the kit's `eyebrow`, the cave's scheme) and ux.md's tap targets.
 
-1. The five faders, the gate slider and Done have hit boxes ≥ 44 px tall (`btn-lg` for Done); thumb and track keep their drawn size, centred in the box. [3748] [probe:dialogTargets]
-2. Device row: one column of full-width selects; no label wraps, none truncates to a stub; the three selects line up. [3748] [probe:dialogTargets]
-3. `/settings/voice` draws the same faders at the 24 px desk floor, not 44; it does not grow with the dialog. [3748]
-4. Nothing in the dialog glows; at 1440 × 900 it scrolls inside the window rather than clipping Done. [3748] [probe:dialogTargets]
+1. Desk: the sheet rises from the sidebar's foot, where its button is: 12 px from the window's left and bottom edges, the ride beside it undimmed. It is its content's width, at most 1,000 px, and with three riders showing it needs no scroll and its top clears the bike computer's head (the 3 s power, W/kg, zone) at 1440 × 900 and 2000 × 1150. [4170] [probe:dialogTargets]
+2. Desk: three columns, what you send (how you transmit, level & gate), what you hear (the mix) and whom (the riders), over one row of the microphone, camera and speakers selects, each select starting on a column's left edge. The columns' labels sit level and their first rows start level. Phone: one bottom sheet at full width, transmit, devices, mix, riders, scrolling inside the window, nothing sideways. [4170] [multi:phone-sound-dialog]
+3. A fader is one row: its name in a fixed column, the fader, its value right-aligned in `font-display` tabular numerals. The dip row reads “dip under voices” with “−n%” or “off”. [4170]
+4. Riders: one “Reset all”, no Reset per rider; past three, the rest fold behind “n more”. [4170] [test:web/e2e/tap-targets.spec.ts]
+5. Words are labels and numbers, plus one line where a control needs it: the gate's status, a phone's mic note, the empty riders list. Every control's hit box is at least 24 px. [4170] [probe:minTarget]
+6. The faders, the gate slider and Done have hit boxes ≥ 44 px tall (`btn-lg` for Done); thumb and track keep their drawn size, centred in the box. The selects line up, none truncated to a stub, no label wrapped. [3748] [probe:dialogTargets]
+7. `/settings/voice` draws the same rows at the 24 px desk floor, not 44. Nothing in the sheet glows. [3748]
 
 #### landing
 

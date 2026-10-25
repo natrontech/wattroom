@@ -48,8 +48,16 @@ const fakeLive = {
 	control() {},
 	cheer() {},
 	setDrive() {},
+	// The road this tab free-rides, as the hub would be told it (#3117).
+	roads: [] as string[],
+	rideRoad(key: string) {
+		this.roads.push(key);
+	},
 	onRemote: () => () => {},
 	sendPause: () => {},
+	// One rider, one voice (ADR-0089): this screen always carries it here.
+	claimVoice: async () => true,
+	releaseVoice() {},
 };
 vi.mock('$lib/channel/live.svelte', () => ({
 	createChannelLive: () => fakeLive,
@@ -74,6 +82,7 @@ import {
 import { listening } from '$lib/channel/listening.svelte';
 import { account } from '$lib/account.svelte';
 import { toasts } from '$lib/toast.svelte';
+import { roadHash } from '$lib/road/road';
 
 // The channel layouts' load does this before the shell joins (#1514).
 await prepareChannelAv();
@@ -132,6 +141,26 @@ describe('channelConnection', () => {
 			roster: [{ id: 'me', inSession: true }],
 		};
 		expect(connection.riding()).toBe(true);
+	});
+
+	it('tells the hub which road a free ride rides, by its key, and when it leaves it (#3117)', async () => {
+		const connection = channelConnection.join(
+			channelAddress('c', 'lounge', 'Lounge'),
+		);
+		const road = {
+			length: 2000,
+			heights: Array.from({ length: 101 }, (_, i) => 100 + 0.8 * i),
+			turns: Array<number>(100).fill(0),
+		};
+		connection.freeRide.arm();
+		connection.freeRide.ride({ id: 'route-1', name: 'Test climb', road });
+		flushSync();
+		await vi.waitFor(() =>
+			expect(fakeLive.roads.at(-1)).toMatch(/^[0-9a-f]{64}$/),
+		);
+		expect(fakeLive.roads.at(-1)).toBe(await roadHash(road));
+		connection.freeRide.leaveRoad();
+		await vi.waitFor(() => expect(fakeLive.roads.at(-1)).toBe(''));
 	});
 
 	it('keeps one ride and one recording across repeated joins', () => {

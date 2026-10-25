@@ -7,11 +7,11 @@ import (
 	"github.com/natrontech/wattroom/server/internal/protocol"
 )
 
-// tickFrames marshals one tick at most four ways, each once and only when a
+// tickFrames marshals one tick a few ways, each once and only when a
 // socket is owed it. Once for the room, not once per rider (#670): the tick
 // is the same for everyone in it, and marshalling it per client put the same
 // work N times on the critical path between one slow socket and the next.
-// Two things are not for everyone:
+// Three things are not for everyone:
 //
 //   - the workout definition (#1710): the shared payload names it by hash,
 //     and the JSON goes only to a socket that has not heard this hash;
@@ -19,7 +19,8 @@ import (
 //     the riders who rode it, and a member who joins the channel afterwards
 //     must not read everyone's execution off the wire — nor a race's results,
 //     its card or its finish times, which only its riders see (ADR-0067).
-//     The race itself, racers moving on the road, the channel may watch.
+//     The race itself, racers moving on the road, the channel may watch;
+//   - where free riders are on a road (#3117): only to the riders on it.
 type tickFrames struct {
 	tick    *protocol.ServerTick
 	log     *slog.Logger
@@ -27,7 +28,12 @@ type tickFrames struct {
 	built   map[frameKind][]byte
 }
 
-type frameKind struct{ workout, scores, deck bool }
+// road is the shared road the frame's rider free-rides (#3117), 0 for none:
+// riders on it alone are sent where its riders are.
+type frameKind struct {
+	workout, scores, deck bool
+	road                  int
+}
 
 // frame is nil when the tick could not be marshalled, remembered so the
 // failure is logged once per tick and kind.
@@ -35,7 +41,7 @@ func (f *tickFrames) frame(kind frameKind) []byte {
 	if b, done := f.built[kind]; done {
 		return b
 	}
-	b := f.marshal(kind, f.tick.Cheers)
+	b := f.marshal(kind, f.tick.Cheers, f.tick.Roadside)
 	if f.built == nil {
 		f.built = make(map[frameKind][]byte, 8)
 	}
@@ -43,15 +49,12 @@ func (f *tickFrames) frame(kind frameKind) []byte {
 	return b
 }
 
-// withCheers is one socket's own copy of the frame, carrying only the cheers
-// it may hear (#3202). Never cached: it is that socket's alone.
-func (f *tickFrames) withCheers(kind frameKind, cheers []protocol.Cheer) []byte {
-	return f.marshal(kind, cheers)
-}
-
-func (f *tickFrames) marshal(kind frameKind, cheers []protocol.Cheer) []byte {
+// marshal is the tick as one kind of socket is sent it, carrying the cheers
+// and the roadside given: the room's, or one socket's own cut of them.
+func (f *tickFrames) marshal(kind frameKind, cheers []protocol.Cheer, roadside *protocol.RoadsideState) []byte {
 	t := *f.tick
 	t.Cheers = cheers
+	t.Roadside = roadside
 	if !kind.workout {
 		t.State.WorkoutJSON = ""
 	}
@@ -76,6 +79,7 @@ func (f *tickFrames) marshal(kind frameKind, cheers []protocol.Cheer) []byte {
 	if !kind.deck {
 		t.Jukebox = nil
 	}
+	t.FreeRoads = onRoad(t.FreeRoads, kind.road)
 	b, err := json.Marshal(protocol.ServerMessage{Tick: &t})
 	if err != nil {
 		logger(f.log).Error("tick could not be marshalled", "channel", f.channel, "workout", kind.workout, "scores", kind.scores, "deck", kind.deck, "err", err)
@@ -97,11 +101,13 @@ func (rm *channelState) sendTick(log *slog.Logger, out *tickOut) {
 		// (#2838) ride only to a socket that has not heard them; a full
 		// frame that fails to marshal falls back to the light one and
 		// leaves both owed.
-		light := frameKind{scores: scores}
+		road := out.tick.FreeRoads[c.rider.ID].Road
+		light := frameKind{scores: scores, road: road}
 		kind := frameKind{
 			scores:  scores,
 			workout: c.workoutSent != out.tick.State.WorkoutHash,
 			deck:    c.jukeboxSent != out.tick.JukeboxRev,
+			road:    road,
 		}
 		frame := frames.frame(light)
 		if frame != nil && kind != light {
@@ -111,12 +117,14 @@ func (rm *channelState) sendTick(log *slog.Logger, out *tickOut) {
 				kind = light
 			}
 		}
-		// A cheer from someone hidden from this rider, or whom they hid,
-		// is cut from their copy alone (#3202) — a rare second, so the
-		// frame is marshalled for them rather than cached for the room.
+		// A cheer or chalk from someone hidden from this rider, or whom
+		// they hid, is cut from their copy alone (#3202, #4152). Rare, so
+		// the frame is marshalled for them rather than cached for the room.
 		if frame != nil {
-			if own, cut := rm.cheersFor(c.rider.ID, out.tick.Cheers, out.cheerFrom); cut {
-				frame = frames.withCheers(kind, own)
+			cheers, cheersCut := rm.cheersFor(c.rider.ID, out.tick.Cheers, out.cheerFrom)
+			roadside, chalkCut := rm.roadsideFor(c.rider.ID, out.tick.Roadside)
+			if cheersCut || chalkCut {
+				frame = frames.marshal(kind, cheers, roadside)
 			}
 		}
 		// Marked heard only when the frame was actually queued: a dropped

@@ -55,3 +55,20 @@ describe('the eliminated rider (#3022)', () => {
 		expect(body).not.toContain('roadside');
 	});
 });
+
+// #4162: inside the ride's focus dock, itself a ride-panel, the game draws no
+// card of its own (TARGETS G3, panels never nested).
+describe('the game in the ride focus (#4162)', () => {
+	const game = { mode: 'points-race', phase: 'running' } as GameState;
+	const props = { game, roster: [], end: () => {}, canControl: true };
+
+	it('draws its own card where it stands alone', () => {
+		expect(render(GamePanel, { props }).body).toContain('border-2');
+	});
+
+	it('draws no card inside a panel', () => {
+		const body = render(GamePanel, { props: { ...props, flat: true } }).body;
+		expect(body).not.toMatch(/border-2|bg-surface-raised|rounded-lg/);
+		expect(body).toContain('End game');
+	});
+});

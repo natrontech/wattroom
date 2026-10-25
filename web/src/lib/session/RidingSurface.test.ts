@@ -34,3 +34,19 @@ describe('the jukebox seat over the world', () => {
 		expect(surface()).not.toContain('data-seat');
 	});
 });
+
+// #4159: flat, your numbers and the crew share one wrapping row, so neither
+// panel spans a wide window with an empty band in it (TARGETS G3).
+describe('the flat surface', () => {
+	it('sets the numbers and the crew side by side in one row', () => {
+		const html = surface({
+			world: undefined,
+			numbers: snip('<p>129 W</p>'),
+			crew: snip('<p>two tiles</p>'),
+		});
+		const row = html.match(
+			/<div class="flex shrink-0 flex-wrap[^"]*">\s*(?:<!--[^>]*-->\s*)*<div data-dock="numbers"[\s\S]*?<div data-dock="crew"/,
+		);
+		expect(row, 'one row holding both docks').not.toBeNull();
+	});
+});

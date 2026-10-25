@@ -8,6 +8,7 @@
 	import HandheldMicNote from '$lib/channel/HandheldMicNote.svelte';
 	import { device } from '$lib/device.svelte';
 	import MixFaders from '$lib/channel/MixFaders.svelte';
+	import RiderVolumes from '$lib/channel/RiderVolumes.svelte';
 	import DevicePickers from '$lib/channel/DevicePickers.svelte';
 
 	let {
@@ -117,6 +118,9 @@
 	<span class="eyebrow">mixer</span>
 	<div class="mt-2">
 		<span id="mixer"></span>
-		<MixFaders {onRiderGain} {onShareGain} />
+		<MixFaders {onShareGain} />
+	</div>
+	<div class="mt-4">
+		<RiderVolumes {onRiderGain} />
 	</div>
 </div>
