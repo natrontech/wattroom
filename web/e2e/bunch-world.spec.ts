@@ -56,7 +56,9 @@ async function rideARoad(coach: Page, guests: Page[], channels: ChannelOwner) {
 	await coach.locator('input[type=file]').setInputFiles({
 		name: 'climb.gpx',
 		mimeType: 'application/gpx+xml',
-		buffer: Buffer.from(climbGpx()),
+		// 5 km, so the crew's cut between the 1,000 m hidden ends still
+		// scores class IV (#4165).
+		buffer: Buffer.from(climbGpx(5000)),
 	});
 	await coach.getByLabel('your name for it').fill(NAME);
 	await coach.getByRole('button', { name: 'Save to my routes' }).click();
