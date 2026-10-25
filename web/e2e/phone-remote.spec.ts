@@ -97,7 +97,7 @@ test('Bias + on the phone remote trims the desk ride', async ({
 			timeout: 10_000,
 		});
 		await expect(
-			remote.getByText('Dimmed: coming to the remote in a later release.'),
+			remote.getByText('Dimmed: on the riding screen only.'),
 		).toBeVisible();
 	} finally {
 		await phoneContext.close();
