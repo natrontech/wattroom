@@ -354,10 +354,12 @@
 				     control on its own header line, then the head and the fields packed
 				     left and the trim at the right end. The lines of their own are
 				     sized out of the row's width (w-0, the gap given back), so the
-				     panel ends at the trim. -->
+				     panel ends at the trim. The computer is `contents` here, so its
+				     full-panel page button spans this whole dock: the trim and
+				     anything else beside it sit above that button (#4155). -->
 				<div
 					data-dock="numbers"
-					class="ride-panel relative flex max-w-full flex-row flex-wrap items-center gap-x-6 gap-y-1 px-4 py-3 [&_[data-testid=bike-computer]]:contents [&_[data-testid=computer-fields]]:flex [&_[data-testid=computer-fields]]:flex-wrap [&_[data-testid=computer-fields]]:gap-x-8 [&_[data-testid=computer-fields]]:gap-y-3 [&_[data-testid=computer-fields]]:border-t-0 [&_[data-testid=computer-fields]]:pt-0 [&_[data-testid=computer-head]]:w-72 [&_[data-testid=computer-head]]:min-w-max [&_[data-testid=computer-head]>div:first-child]:justify-start [&_[data-testid=computer-head]>div:first-child]:gap-x-8 [&_[data-testid=computer-page-row]]:-mr-6 [&_[data-testid=computer-page-row]]:w-0 [&_[data-testid=computer-page-row]]:min-w-full [&_[data-testid=computer-page-row]]:basis-full [&_[data-testid=zone-strip]]:-mr-6 [&_[data-testid=zone-strip]]:w-0 [&_[data-testid=zone-strip]]:min-w-full [&_[data-testid=zone-strip]]:basis-full [&:not(:has(*))]:hidden [&>div]:ml-auto [&>div]:p-0"
+					class="ride-panel relative flex max-w-full flex-row flex-wrap items-center gap-x-6 gap-y-1 px-4 py-3 [&_[data-testid=bike-computer]]:contents [&_[data-testid=computer-fields]]:flex [&_[data-testid=computer-fields]]:flex-wrap [&_[data-testid=computer-fields]]:gap-x-8 [&_[data-testid=computer-fields]]:gap-y-3 [&_[data-testid=computer-fields]]:border-t-0 [&_[data-testid=computer-fields]]:pt-0 [&_[data-testid=computer-head]]:w-72 [&_[data-testid=computer-head]]:min-w-max [&_[data-testid=computer-head]>div:first-child]:justify-start [&_[data-testid=computer-head]>div:first-child]:gap-x-8 [&_[data-testid=computer-page-row]]:-mr-6 [&_[data-testid=computer-page-row]]:w-0 [&_[data-testid=computer-page-row]]:min-w-full [&_[data-testid=computer-page-row]]:basis-full [&_[data-testid=zone-strip]]:-mr-6 [&_[data-testid=zone-strip]]:w-0 [&_[data-testid=zone-strip]]:min-w-full [&_[data-testid=zone-strip]]:basis-full [&:not(:has(*))]:hidden [&>div]:relative [&>div]:z-10 [&>div]:ml-auto [&>div]:p-0"
 				>
 					{@render numbers()}
 				</div>
