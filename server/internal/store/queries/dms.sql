@@ -127,12 +127,15 @@ where id in (
 -- name: EditDmMessage :one
 -- Only the sender rewrites their own line (#865). No friendship re-check:
 -- unfriending ends the conversation, it does not freeze what you already
--- said — the same reasoning GetDmImage records for delivered pictures.
+-- said — the same reasoning GetDmImage records for delivered pictures. A
+-- hidden pair's thread is closed (#4152): a rewrite would reach the other
+-- rider as new words, so it is refused by the same zero rows.
 update dm_messages
 set text = $4, edited_at = now()
 where id = $1 and sender_id = $2
   and least(sender_id, recipient_id) = least($2::uuid, $3::uuid)
   and greatest(sender_id, recipient_id) = greatest($2::uuid, $3::uuid)
+  and not rider_hidden($2, $3)
 returning edited_at;
 
 -- name: ListDmEdits :many

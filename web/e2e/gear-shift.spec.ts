@@ -3,12 +3,12 @@ import { climbGpx } from './road-gpx';
 import { signInAs } from './signin';
 
 /**
- * Easier and Harder on screen (#3330): a free ride on its grade shifts a
- * virtual gear from the pair and from the keys, each shift is heard once,
- * and the gear field is on the computer. The cues are read from the
- * engine's own log line — the mixer is at zero, so nothing sounds.
+ * Easier and Harder on screen (#3330, #3333): a free ride on its grade
+ * shifts a virtual gear from the pair and from the keys, each shift is
+ * heard once, and the gear field is on the computer. The cues are read from
+ * the engine's own log line — the mixer is at zero, so nothing sounds.
  */
-test('a free ride on a grade shifts from the pair and the keys, one cue a shift', async ({
+test('a free ride on a grade shifts from the pair, - and +, one cue a shift', async ({
 	riders,
 	channels,
 }) => {
@@ -51,6 +51,11 @@ test('a free ride on a grade shifts from the pair and the keys, one cue a shift'
 	await expect
 		.poll(() => cues)
 		.toEqual(['shift-up', 'shift-down', 'shift-down']);
+	await rider.waitForTimeout(200);
+	await rider.keyboard.press('+');
+	await expect
+		.poll(() => cues)
+		.toEqual(['shift-up', 'shift-down', 'shift-down', 'shift-up']);
 
 	// A desk at phone width: the pair and the gear between them fit (ux.md).
 	await rider.setViewportSize({ width: 375, height: 812 });

@@ -8,14 +8,16 @@
 	 * is also how a rider says "no key at all".
 	 */
 	import { bindKey, type Clip } from '$lib/board/clips.svelte';
-	import { gearsEnabled } from '$lib/ride/gears-enabled';
 	import { shiftsGears } from '$lib/ride/keys';
 
 	let { clip }: { clip: Clip } = $props();
 
-	// A ride's shift keys win over a pad's (#3329): say so where it is bound.
-	const shifts = $derived(
-		gearsEnabled() && !!clip.key && shiftsGears(clip.key),
+	// A ride's shift keys win over a pad's (#3329). The server refuses a new
+	// binding to one (#3333); a pad bound before gears keeps it outside a
+	// ride, and says so where it is bound.
+	const shifts = $derived(!!clip.key && shiftsGears(clip.key));
+	const kept = $derived(
+		`${clip.key} fires this pad outside a ride; while you ride it shifts gears.`,
 	);
 
 	let listening = $state(false);
@@ -53,7 +55,7 @@
 	title={listening
 		? 'press a key — Escape to clear it'
 		: clip.key
-			? `fires on ${clip.key.toUpperCase()} — ${shifts ? `${clip.key} shifts gears while you ride; pick another key` : 'click to change'}`
+			? `fires on ${clip.key.toUpperCase()} — ${shifts ? kept : 'click to change'}`
 			: 'no key — click to set one'}
 	class="font-display h-8 w-14 shrink-0 rounded border text-[11px] uppercase {listening
 		? 'border-neon text-ink'
@@ -70,7 +72,5 @@
 {#if refusal}
 	<span class="text-danger basis-full text-[11px]">{refusal}</span>
 {:else if shifts}
-	<span class="text-muted basis-full text-[11px]"
-		>{clip.key} shifts gears while you ride; pick another key</span
-	>
+	<span class="text-muted basis-full text-[11px]">{kept}</span>
 {/if}
