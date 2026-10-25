@@ -33,8 +33,11 @@
 		onclose: () => void;
 		/** Width/extra classes for the dialog box. */
 		class?: string;
-		/** `right`: a full-height sheet from the right edge (#2588). */
-		placement?: 'center' | 'right';
+		/** `right`: a full-height sheet from the right edge (#2588). `corner`: a
+		 * sheet rising from the bottom-left, where the sidebar's you-panel opens
+		 * it, with the ride beside it left undimmed; a bottom sheet on a phone
+		 * (#4170). */
+		placement?: 'center' | 'right' | 'corner';
 		children: Snippet;
 	} = $props();
 
@@ -61,9 +64,11 @@
 		return off;
 	}}
 	{@attach portal}
-	class="bg-paper/50 fixed inset-0 z-40 flex {placement === 'right'
-		? 'justify-end'
-		: 'items-center justify-center p-4'}"
+	class="fixed inset-0 z-40 flex {placement === 'right'
+		? 'bg-paper/50 justify-end'
+		: placement === 'corner'
+			? 'items-end sm:p-3'
+			: 'bg-paper/50 items-center justify-center p-4'}"
 	onclick={(event) => event.target === event.currentTarget && onclose()}
 >
 	<!-- The dialog never grows past the window (#2178): two call sites spelled
@@ -72,8 +77,12 @@
 	<div
 		class={placement === 'right'
 			? `bg-surface border-ink/10 h-dvh w-full overflow-y-auto border-l ${cls}`
-			: `panel panel-lg max-h-[calc(100dvh-2rem)] w-full overflow-y-auto ${cls}`}
-		in:enter={placement === 'right' && { x: 48 }}
+			: placement === 'corner'
+				? `panel panel-lg max-h-[calc(100dvh-1.5rem)] w-full overflow-y-auto max-sm:rounded-b-none ${cls}`
+				: `panel panel-lg max-h-[calc(100dvh-2rem)] w-full overflow-y-auto ${cls}`}
+		in:enter={placement === 'right'
+			? { x: 48 }
+			: placement === 'corner' && { y: 24 }}
 		role="dialog"
 		aria-modal="true"
 		aria-label={label}

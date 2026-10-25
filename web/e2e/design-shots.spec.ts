@@ -1518,51 +1518,6 @@ surface('settings-this-computer', async (s) => {
 	});
 });
 
-surface('sound-dialog', async (s) => {
-	// The in-channel Sound dialog, opened without a call (its button needs the
-	// channel's av store, not LiveKit), and /settings/voice beside it, which
-	// draws the same faders at desk size.
-	const o = await s.open(DESK);
-	const crew = await designCrew(o.page);
-	await o.page.goto(voicePath(crew));
-	await o.page
-		.getByRole('button', { name: /^sound — the mix/ })
-		.first()
-		.click({ timeout: 15_000 });
-	await o.page.getByRole('dialog', { name: /^Sound/ }).waitFor();
-	await o.page.waitForTimeout(500);
-	const dialog = o.page.getByRole('dialog', { name: /^Sound/ });
-	// The dialog's own measurements: the page-wide probe cannot attribute them.
-	const dialogTargets = async () => ({
-		dialogTargets: await dialog.evaluate((el) => {
-			const high = (e: Element) =>
-				Math.round(e.getBoundingClientRect().height * 10) / 10;
-			return {
-				sliders: [...el.querySelectorAll('input[type=range]')].map(high),
-				done: high(
-					[...el.querySelectorAll('button')].find(
-						(b) => b.textContent?.trim() === 'Done',
-					)!,
-				),
-				selects: [...el.querySelectorAll('[role=combobox]')].map((e) => {
-					const r = e.getBoundingClientRect();
-					return { x: Math.round(r.x), width: Math.round(r.width) };
-				}),
-				scrollHeight: el.scrollHeight,
-				clientHeight: el.clientHeight,
-			};
-		}),
-	});
-	await s.shot(o, { name: 'sound-dialog', extra: await dialogTargets() });
-	await dialog.evaluate((el) => el.scrollTo(0, el.scrollHeight));
-	await o.page.waitForTimeout(300);
-	await s.shot(o, {
-		name: 'sound-dialog-bottom',
-		extra: await dialogTargets(),
-	});
-	await page(s, o, '/settings/voice', { name: 'sound-dialog-settings-voice' });
-});
-
 alone(() => {
 	surface('landing', async (s) => {
 		// Signed out, as a stranger meets it: the landing on the desk and a phone,
@@ -1869,13 +1824,18 @@ async function queueDeck(page: Page, tracks: [string, string][]) {
 	return fold;
 }
 
-/** Designer coaching, Design Partner riding along, a session started. */
+/**
+ * Designer coaching, Design Partner riding along, a session started.
+ * `prepare`: the coach's context before its first page of the crew.
+ */
 async function session(
 	s: Shoot,
 	pick: Parameters<typeof startSession>[1],
 	world: boolean,
+	prepare?: (coach: Opened) => Promise<void>,
 ) {
 	const coach = await s.open(DESK, { world });
+	await prepare?.(coach);
 	const crew = await designCrew(coach.page);
 	const rider = await s.open(DESK, { as: 'Design Partner', world });
 	await toTraining(coach.page, crew);
@@ -2024,6 +1984,115 @@ surface(
 		});
 	},
 	{ also: ['ride-watch', 'closing-card-session'] },
+);
+
+/**
+ * Five riders this device has set away from 100 %, on top of the shoot's
+ * muted mix: the Sound sheet lists three and folds two (#4170).
+ */
+const MOVED_RIDERS = () => {
+	const mix = JSON.parse(localStorage.getItem('wattroom.mixer.v1') ?? '{}');
+	localStorage.setItem(
+		'wattroom.mixer.v1',
+		JSON.stringify({
+			...mix,
+			riders: { a: 0.75, b: 0.74, c: 0.69, d: 0.46, e: 1.3 },
+			names: { a: 'Ana', b: 'Ben', c: 'Cleo', d: 'Dino', e: 'Eva' },
+		}),
+	);
+};
+
+/** The Sound sheet's own measurements: the page-wide probe cannot attribute them. */
+async function soundSheet(page: Page) {
+	await page
+		.getByRole('button', { name: /^sound — the mix/ })
+		.first()
+		.click({ timeout: 15_000 });
+	const dialog = page.getByRole('dialog', { name: /^Sound/ });
+	await dialog.waitFor();
+	await page.waitForTimeout(500);
+	return async () => ({
+		dialogTargets: await dialog.evaluate((el) => {
+			const high = (e: Element) =>
+				Math.round(e.getBoundingClientRect().height * 10) / 10;
+			const r = el.getBoundingClientRect();
+			// The bike computer's head on a ride: the sheet's top clears it.
+			const head = document
+				.querySelector('[data-testid=computer-head]')
+				?.getBoundingClientRect();
+			return {
+				box: {
+					left: r.left,
+					top: r.top,
+					bottom: innerHeight - r.bottom,
+					width: r.width,
+					height: r.height,
+				},
+				headBottom: head ? Math.round(head.bottom) : null,
+				sliders: [...el.querySelectorAll('input[type=range]')].map(high),
+				done: high(
+					[...el.querySelectorAll('button')].find(
+						(b) => b.textContent?.trim() === 'Done',
+					)!,
+				),
+				selects: [...el.querySelectorAll('[role=combobox]')].map((e) => {
+					const s = e.getBoundingClientRect();
+					return { x: Math.round(s.x), width: Math.round(s.width) };
+				}),
+				scrollHeight: el.scrollHeight,
+				clientHeight: el.clientHeight,
+			};
+		}),
+	});
+}
+
+surface(
+	'sound-dialog',
+	async (s) => {
+		// The Sound sheet as a rider opens it mid-ride (#4170): over a flat crew
+		// session, at 1440 × 900 and at 2000 × 1150; then a phone's, from a voice
+		// channel; then /settings/voice, which draws the same faders at desk size.
+		const { coach, crew } = await session(
+			s,
+			{ workout: 'Recovery Spin' },
+			false,
+			async (o) => {
+				await o.ctx.addInitScript(MOVED_RIDERS);
+			},
+		);
+		try {
+			await assertRiding(coach.page);
+			const measure = await soundSheet(coach.page);
+			await s.shot(coach, { name: 'sound-dialog', extra: await measure() });
+			await coach.page.setViewportSize({ width: 2000, height: 1150 });
+			await coach.page.waitForTimeout(800);
+			await s.shot(coach, {
+				name: 'sound-dialog-wide',
+				extra: await measure(),
+			});
+			await coach.page.keyboard.press('Escape');
+		} finally {
+			await endSession(coach.page);
+		}
+		for (const [device, name] of variants([
+			[PHONE, 'phone-sound-dialog'],
+		] as const)) {
+			const phone = await s.open(device);
+			await phone.ctx.addInitScript(MOVED_RIDERS);
+			await phone.page.goto(voicePath(crew));
+			await phone.page
+				.getByRole('button', { name: 'open navigation' })
+				.first()
+				.click({ timeout: 15_000 });
+			const measure = await soundSheet(phone.page);
+			await s.shot(phone, { name, extra: await measure() });
+		}
+		const desk = await s.open(DESK);
+		await page(s, desk, '/settings/voice', {
+			name: 'sound-dialog-settings-voice',
+		});
+	},
+	{ also: ['phone-sound-dialog'] },
 );
 
 surface(
