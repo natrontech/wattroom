@@ -218,8 +218,7 @@ delete from looks l
 
 // A look nobody wears, a month after it was last put on (#4151): a changed
 // outfit is a new row, and nothing else ever deleted one, not even the
-// account's deletion, since a look carries no owner. A month leaves every
-// roster that still names it long gone.
+// account's deletion, since a look carries no owner.
 func (q *Queries) PruneUnwornLooks(ctx context.Context) (int64, error) {
 	result, err := q.db.Exec(ctx, pruneUnwornLooks)
 	if err != nil {

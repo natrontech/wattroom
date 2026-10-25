@@ -51,8 +51,7 @@ on conflict (hash) do update set created_at = now();
 -- name: PruneUnwornLooks :execrows
 -- A look nobody wears, a month after it was last put on (#4151): a changed
 -- outfit is a new row, and nothing else ever deleted one, not even the
--- account's deletion, since a look carries no owner. A month leaves every
--- roster that still names it long gone.
+-- account's deletion, since a look carries no owner.
 delete from looks l
  where l.ctid in (select ctid from looks x
                    where x.created_at < now() - interval '30 days'
