@@ -226,3 +226,23 @@ export const nextText = (next: NonNullable<Block['next']>): string =>
 /** How long the next block runs, as NEXT says it (D16): "15 s", "5 min". */
 export const nextFor = (seconds: number): string =>
 	seconds < 60 ? `${seconds} s` : `${Math.round(seconds / 60)} min`;
+
+/**
+ * What a block on the ride's interval graph says it is (#4159): its target,
+ * trimmed by the bias as slot 1's is, and its length in NEXT's words. A ramp
+ * gives both ends; a sprint and a road block have no watts to ask.
+ */
+export function blockWords(
+	seg: Segment,
+	ftp: number,
+	bias = 1,
+): [target: string, length: string] {
+	const length = nextFor(seg.seconds);
+	if (seg.kind === 'sprint') return ['Sprint', length];
+	if (seg.kind === 'road') return ['Road', length];
+	const from = Math.round((seg.watts ?? (seg.fromFraction ?? 0) * ftp) * bias);
+	const to = Math.round(
+		(seg.watts ?? (seg.toFraction ?? seg.fromFraction ?? 0) * ftp) * bias,
+	);
+	return [from === to ? `${from} W` : `${from}–${to} W`, length];
+}
