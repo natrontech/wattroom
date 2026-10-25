@@ -109,7 +109,7 @@
 			<div>
 				{@render aloneDoor(!loungeFirst)}
 				<p class="text-muted mt-1.5 text-xs text-pretty">
-					Nobody sees this ride live.
+					A workout or a free ride, on your screen.
 				</p>
 			</div>
 		{/snippet}
@@ -119,7 +119,7 @@
 					onclick={intoLounge}
 					class="btn {skin(loungeFirst)} btn-lg w-full justify-center"
 					data-testid="ride-in-lounge"
-					><Users size={18} /> Ride in {name}, your crew can drop in</button
+					><Users size={18} /> Ride in {name}</button
 				>
 				<p
 					class="text-muted mt-1.5 text-xs text-pretty"
@@ -129,7 +129,7 @@
 						{others.map((o) => o.name).join(', ')}
 						{others.length === 1 ? 'is' : 'are'} there now.
 					{:else}
-						Nobody is there yet — your crew hears you arrive.
+						Your crew hears you arrive and can drop in.
 					{/if}
 					Your mic starts off.
 				</p>
