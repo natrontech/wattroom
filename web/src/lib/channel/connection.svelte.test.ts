@@ -50,6 +50,9 @@ const fakeLive = {
 	setDrive() {},
 	onRemote: () => () => {},
 	sendPause: () => {},
+	// One rider, one voice (ADR-0089): this screen always carries it here.
+	claimVoice: async () => true,
+	releaseVoice() {},
 };
 vi.mock('$lib/channel/live.svelte', () => ({
 	createChannelLive: () => fakeLive,

@@ -228,7 +228,7 @@ Capture: ride-road-world and ride-workout-flat, simulated trainer silenced past 
 
 #### ride-phone-remote
 
-Capture: desk context rides the channel's free ride on a simulated trainer; a second 375 × 812 touch context of the same rider opens the channel's Training place, taps "Use this phone as your remote", and shoots the remote. Target: none drawn, canon is the bar. Canon: ADR-0025 (the claim), ADR-0084 (gears), ux.md (mid-ride, phone width), errors.md.
+Capture: desk context rides the channel's free ride on a simulated trainer, in voice; a second 375 × 812 touch context of the same rider opens the channel's Training place, taps "Use this phone as your remote", and shoots the remote. Target: none drawn, canon is the bar. Canon: ADR-0025 (the claim), ADR-0084 (gears), ADR-0089 (one voice), ux.md (mid-ride, phone width), errors.md.
 
 1. The offer (`ride-phone-remote-offer`) is one full-width `btn-ride` in the Lounge's empty state, only on a phone-width screen that sees the trainer held by another screen. [3217]
 2. The grid fills the screen in two columns, words at 24 px, of buttons at least 64 px high; every button is a tap target of at least 44 px and nothing scrolls sideways. [probe:remoteMinHeight] [probe:remoteScrollWidth] [3217]
@@ -236,6 +236,7 @@ Capture: desk context rides the channel's free ride on a simulated trainer; a se
 4. Chrome stays neon and nothing glows; with gears on, the gear line reads in neon too (ADR-0005). [3217]
 5. Phone width 375 × 812: the page body does not scroll sideways, and Done is reachable without scrolling. [probe:remoteClientWidth] [3217]
 6. On a solo ride only (`ride-phone-remote-paused`), a Pause and Resume pair of `btn-ride` cells, the one that cannot act disabled, and a persistent “Paused” line in neon once paused. A free ride never shows the pair (`ride-phone-remote`'s `remotePair` is false; `ride-phone-remote-solo` shows it live). [probe:pauseResumeHeight] [probe:remotePair] [3217]
+7. While another of the rider's screens carries their voice, the phone is a controller (`ride-phone-remote-offer`): under the offer, one line naming that device and one full-width `btn-ride` “Use this device for voice” with words at 24 px; no microphone or camera control and no call on the phone (ADR-0089). [probe:controllerLine] [probe:moveVoiceTextPx] [probe:moveVoiceHeight] [4164]
 
 #### ride-countin
 

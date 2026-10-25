@@ -363,13 +363,23 @@ surface(
 		const desk = await s.open(DESK, { world: false });
 		const crew = await designCrew(desk.page);
 		await toTraining(desk.page, crew);
+		// The desk is in voice too, so the phone is a controller (ADR-0089).
+		await desk.page.getByRole('button', { name: 'Join voice' }).click();
+		await desk.page
+			.getByRole('button', { name: 'microphone' })
+			.waitFor({ timeout: 20_000 });
 		const phone = await s.open(PHONE, { world: false });
 		await phone.page.goto(`${voicePath(crew)}/training`);
 		const offer = phone.page.getByRole('button', {
 			name: 'Use this phone as your remote',
 		});
 		await offer.waitFor({ timeout: 20_000 });
+		const moveVoice = phone.page
+			.getByTestId('controller')
+			.getByRole('button', { name: 'Use this device for voice' });
+		await moveVoice.waitFor({ timeout: 20_000 });
 		const box = await offer.boundingBox();
+		const moveBox = await moveVoice.boundingBox();
 		await s.shot(phone, {
 			name: 'ride-phone-remote-offer',
 			extra: {
@@ -379,8 +389,40 @@ surface(
 					parseFloat(getComputedStyle(b).fontSize),
 				),
 				offerViewport: phone.page.viewportSize()?.width ?? 0,
+				moveVoiceHeight: Math.round(moveBox?.height ?? 0),
+				moveVoiceTextPx: await moveVoice.evaluate((b) =>
+					parseFloat(getComputedStyle(b).fontSize),
+				),
+				controllerLine:
+					(await phone.page
+						.getByTestId('controller')
+						.locator('p')
+						.first()
+						.textContent()) ?? null,
+				// No call on a controller (ADR-0089): the mic and camera
+				// controls exist only in voice, drawer or not.
+				controllerCallControls: await phone.page
+					.locator('[aria-label="microphone"], [aria-label="camera"]')
+					.count(),
 			},
 		});
+		// The drawer's voice row says the same (YouPanel).
+		await phone.page.getByRole('button', { name: 'open navigation' }).click();
+		await phone.page
+			.getByRole('navigation', { name: 'crews and channels' })
+			.getByText(/Your voice is on your/)
+			.waitFor({ timeout: 10_000 });
+		// The drawer slides in; shoot it once it has landed.
+		await phone.page.waitForTimeout(1_000);
+		await s.shot(phone, {
+			name: 'ride-phone-remote-drawer',
+			extra: {
+				controllerCallControls: await phone.page
+					.locator('[aria-label="microphone"], [aria-label="camera"]')
+					.count(),
+			},
+		});
+		await phone.page.keyboard.press('Escape');
 		await offer.click();
 		await phone.page.getByTestId('phone-remote').waitFor();
 		// The desk rides SIM with gears on (dev login); one Harder tap makes

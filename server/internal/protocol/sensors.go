@@ -24,6 +24,23 @@ type SensorClaim struct {
 	Device string `json:"device,omitempty"`
 }
 
+// VoiceClaim is one screen asking to carry its rider's voice and camera in
+// this voice channel, or letting go of them (ADR-0089). A rider is one
+// presence: the first screen to claim carries it, and every other screen of
+// theirs is a controller with no call. The answer is the rider's
+// SensorPairing: "voice" in Held on the screen that carries it, and
+// Elsewhere["voice"] on every other.
+type VoiceClaim struct {
+	// This screen is joining the call (true) or has left it (false).
+	On bool `json:"on"`
+	// Move the voice here from another of the rider's screens: the one tap.
+	Take bool `json:"take,omitempty"`
+	// Which tab this is, as in SensorClaim.
+	Tab string `json:"tab,omitempty"`
+	// The coarse device word, as in SensorClaim.
+	Device string `json:"device,omitempty"`
+}
+
 // SensorPairing is the hub's answer to a SensorClaim: what this socket ended
 // up holding, and what one of the rider's other screens is already holding.
 //
