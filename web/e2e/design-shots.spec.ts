@@ -1524,6 +1524,11 @@ surface(
 		// The rolling road read too: flats and a descent between its climbs, so
 		// the line's own neon shows beside the climbs' ramp (#3679).
 		const o = await s.open(DESK);
+		// Every "Import a route" door's header, and a file dragged over the
+		// idle card (#3684).
+		await page(s, o, '/workouts/import?as=route', { name: 'import-as-route' });
+		await o.page.locator('.border-dashed').first().dispatchEvent('dragover');
+		await s.shot(o, { name: 'import-dragging', full: true });
 		await readRoad(o.page, 'rolling');
 		await o.page.waitForTimeout(2500);
 		await s.shot(o, { name: 'import-rolling', full: true });

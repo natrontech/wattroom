@@ -53,7 +53,7 @@ export function shapeLine(shape: string): { x: number[]; z: number[] } {
  * guessed.
  */
 export function statRow(
-	route: StoredRoute,
+	route: Pick<StoredRoute, 'lengthM' | 'gainM' | 'climbs'>,
 	loop: boolean | undefined,
 ): string[] {
 	const classed = route.climbs.filter((c) => c.cls).length;
