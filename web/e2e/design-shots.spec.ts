@@ -2168,6 +2168,18 @@ surface(
 			await coach.page.getByRole('button', { name: 'next page, RIDE' }).click();
 			await coach.page.waitForTimeout(1000);
 			await s.shot(coach, { name: 'ride-race-ride' });
+			// multi:ride-race-map — the race's road from above (#3778): a race has
+			// its road on every screen, so MAP is among its pages.
+			const computer = coach.page.getByTestId('bike-computer');
+			for (let turn = 0; turn < 4; turn++) {
+				if ((await computer.getAttribute('data-page')) === 'map') break;
+				await coach.page.getByRole('button', { name: /^next page, / }).click();
+			}
+			await coach.page
+				.locator('[data-testid="bike-computer"][data-page="map"]')
+				.waitFor({ timeout: 5000 });
+			await coach.page.waitForTimeout(1000);
+			await s.shot(coach, { name: 'ride-race-map' });
 		} finally {
 			await endSession(coach.page);
 		}

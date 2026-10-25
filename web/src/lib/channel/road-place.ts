@@ -19,16 +19,34 @@ export interface RoadPlace {
 /**
  * A rider's place on the session's road (#3663, #3553): what the world draws
  * them at and what their trainer rides. Null off a road: no pick carrying
- * one, or no bunch on the tick.
+ * one, or no bunch on the tick. In a race it is your own racer's (#3778,
+ * ADR-0067): a race rides no bunch, so a rider it did not line up has none.
  */
 export function placeOnRoad(
-	tick: Pick<ServerTick, 'at' | 'state' | 'world'> | null | undefined,
+	tick: Pick<ServerTick, 'at' | 'state' | 'world' | 'game'> | null | undefined,
 	cut: PinnedRoad | null,
 	you: string,
 ): RoadPlace | null {
 	const route = tick?.state?.route;
 	const world = tick?.world;
 	if (!cut || !route || !world) return null;
+	if (world.racers) {
+		const me = world.racers[you];
+		const race = tick.game?.race;
+		if (!me) return null;
+		// The neutral zone holds everyone at their start, and the line stops
+		// them: a Wheelrace's short of the road's end (#3172).
+		const held =
+			tick.at < (race?.klaxonAtMs ?? 0) ||
+			me.m >= (race?.lineM || route.lengthM);
+		return {
+			road: cut.road,
+			m: me.m,
+			mps: held ? 0 : me.v,
+			at: tick.at,
+			loop: false,
+		};
+	}
 	// The bunch's speed, never the trainer's (ADR-0084: that is the drivetrain's alone).
 	const { bunchM, speedMps: bunchMps, offsets } = world;
 	return {
