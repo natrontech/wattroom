@@ -225,10 +225,6 @@ func exportFailure(err error) string {
 	}
 }
 
-// activityDescription is what the Strava activity says about where it was
-// ridden: the crew's name for a crew ride (#2443), and only ever the site's
-// own link. A Strava activity is often public, so no crew link or id goes in
-// (#4139), and other riders never appear here (WATTROOM.md privacy).
 // activityName is the activity's title. A route ride's never carries a
 // place, generated or not (ADR-0063), so its distance stands in for the
 // generated name it was saved under (#4154).
@@ -242,6 +238,10 @@ func activityName(ride db.GetRideForUploadRow) string {
 	return workout.RouteRide(float64(*ride.DistanceM))
 }
 
+// activityDescription is what the Strava activity says about where it was
+// ridden: the crew's name for a crew ride (#2443), and only ever the site's
+// own link. A Strava activity is often public, so no crew link or id goes in
+// (#4139), and other riders never appear here (WATTROOM.md privacy).
 func activityDescription(ride db.GetRideForUploadRow) string {
 	if ride.CrewName == nil {
 		return "Ridden on https://wattroom.ch"
