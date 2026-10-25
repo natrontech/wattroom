@@ -344,3 +344,82 @@ func TestALiveSessionNamesOnlyItsRiders(t *testing.T) {
 		t.Fatalf("the session names %v %v — want Ana and Kim, not the spectator", live.Riders, live.RiderIDs)
 	}
 }
+
+// A rider whose socket stalls while LiveKit still carries their voice is
+// heard by everyone, so they stay on the roster, marked as live data lost,
+// and leave only once voice lets go too (#4090).
+func TestARiderStillInVoiceStaysOnTheRoster(t *testing.T) {
+	now := pat(0)
+	rm := presenceRoom(&now)
+	rm.join(socket("r-ana", "Ana"))
+	kim := socket("r-kim", "Kim")
+	rm.join(kim)
+	rm.setVoice(map[string]struct{}{"r-kim": {}})
+	rm.events.drain()
+
+	roster := func() map[string]protocol.Rider {
+		rm.mu.Lock()
+		defer rm.mu.Unlock()
+		var tick protocol.ServerTick
+		rm.rosterLocked(&tick, rm.now)
+		out := make(map[string]protocol.Rider, len(tick.Roster))
+		for _, r := range tick.Roster {
+			out[r.ID] = r
+		}
+		return out
+	}
+	sayDeparted := func() {
+		rm.mu.Lock()
+		rm.sayDepartedLocked(now)
+		rm.mu.Unlock()
+	}
+
+	rm.leave(kim)
+	now = pat(int(presenceGrace.Seconds()) * 2)
+	sayDeparted()
+	if got := verbs(rm); len(got) != 0 {
+		t.Fatalf("a rider in voice was announced gone: %v", got)
+	}
+	got := roster()
+	if r, ok := got["r-kim"]; !ok || !r.LinkLost || r.Name != "Kim" {
+		t.Fatalf("Kim on the roster: %+v (present %v)", r, ok)
+	}
+	if got["r-ana"].LinkLost {
+		t.Fatal("a rider with a socket marked as link lost")
+	}
+
+	rm.setVoice(map[string]struct{}{})
+	sayDeparted()
+	if got := verbs(rm); len(got) != 1 || got[0] != "left:Kim" {
+		t.Fatalf("leave line once voice let go: %v", got)
+	}
+	if _, ok := roster()["r-kim"]; ok {
+		t.Fatal("Kim still on the roster after leaving voice")
+	}
+}
+
+// The socket redialling inside voice is the same flap as ever: no line, and
+// one roster entry, with live data again (#4090).
+func TestARiderBackFromALostLinkIsOneEntry(t *testing.T) {
+	now := pat(0)
+	rm := presenceRoom(&now)
+	kim := socket("r-kim", "Kim")
+	rm.join(kim)
+	rm.setVoice(map[string]struct{}{"r-kim": {}})
+	rm.events.drain()
+
+	rm.leave(kim)
+	now = pat(int(presenceGrace.Seconds()) * 2)
+	rm.join(socket("r-kim", "Kim"))
+	rm.mu.Lock()
+	rm.sayDepartedLocked(now)
+	var tick protocol.ServerTick
+	rm.rosterLocked(&tick, rm.now)
+	rm.mu.Unlock()
+	if got := verbs(rm); len(got) != 0 {
+		t.Fatalf("a redial printed: %v", got)
+	}
+	if len(tick.Roster) != 1 || tick.Roster[0].LinkLost {
+		t.Fatalf("roster after the redial: %+v", tick.Roster)
+	}
+}

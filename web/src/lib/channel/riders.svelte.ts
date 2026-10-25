@@ -97,7 +97,7 @@ export function createRiders(deps: RiderDeps) {
 			// as no signal.
 			const gap = known ? now - known.at : Infinity;
 			const held = !metrics && gap < 30_000 ? known : undefined;
-			const stale = !!held && gap >= 5_000;
+			const stale = !!rider.linkLost || (!!held && gap >= 5_000);
 			const you = rider.id === deps.myId();
 			const target = you
 				? deps.myTarget()
@@ -144,6 +144,7 @@ export function createRiders(deps: RiderDeps) {
 				cadence: metrics?.cadence ?? held?.cadence ?? 0,
 				hr: metrics?.hr ?? held?.hr ?? 0,
 				stale,
+				linkLost: !!rider.linkLost,
 				target,
 				execution: tick.execution?.[rider.id],
 				trace: you ? deps.recording.trace : [],
