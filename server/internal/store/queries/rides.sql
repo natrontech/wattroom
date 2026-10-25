@@ -433,9 +433,9 @@ delete from users where id = $1;
 
 -- name: GetRideForUpload :one
 -- The uploader's one read: the ride plus the owner's consent flag and the
--- crew for the activity description (null for solo rides, #2443).
+-- crew's name for the activity description (null for solo rides, #2443).
 select r.id, r.user_id, r.workout_name, r.started_at, r.samples, u.strava_upload,
-       r.crew_id, c.name as crew_name
+       c.name as crew_name
 from rides r
 join users u on u.id = r.user_id
 left join crews c on c.id = r.crew_id
