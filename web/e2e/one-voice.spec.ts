@@ -1,5 +1,5 @@
 import { devices } from '@playwright/test';
-import { expect, test, voicePath } from './crew';
+import { expect, test } from './crew';
 import { signInAs } from './signin';
 
 /**

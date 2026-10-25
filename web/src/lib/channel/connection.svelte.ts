@@ -107,8 +107,7 @@ type ChannelAv = ReturnType<
 	typeof import('$lib/channel/av.svelte').createChannelAv
 >;
 let createChannelAv:
-	| typeof import('$lib/channel/av.svelte').createChannelAv
-	| null = null;
+	typeof import('$lib/channel/av.svelte').createChannelAv | null = null;
 export async function prepareChannelAv(): Promise<void> {
 	if (createChannelAv) return;
 	({ createChannelAv } = await import('$lib/channel/av.svelte'));
