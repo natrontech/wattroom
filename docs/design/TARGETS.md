@@ -306,13 +306,14 @@ Capture: two dev riders (Designer and a second, name letters only) in one crew's
 
 #### roadside-chalk
 
-Capture: Design Watcher at the roadside of Designer's session on the hairpin road (world on, Design Partner riding), on the voice channel's page; `roadside-chalk-phone`, the deck on a 375 × 812 phone; then the watcher's socket double-taps, `roadside-chalk-refused`, the second stamp refused inside the hub's quarter second while the climb is still open; then lays a heart 18 m ahead of the bunch: `roadside-chalk-world`, Designer's ride with the heart on the road; `roadside-chalk-spent`, the deck once the road's one climb is chalked. Targets: none drawn; canon is the bar. Canon: ADR-0064; SPEC "The roadside".
+Capture: Design Watcher at the roadside of Designer's session on the hairpin road (world on, Design Partner riding), on the voice channel's page; `roadside-chalk-phone`, the deck on a 375 × 812 phone with a track playing; then the watcher's socket double-taps, `roadside-chalk-refused`, the second stamp refused inside the hub's quarter second while the climb is still open; then lays a heart 18 m ahead of the bunch: `roadside-chalk-world`, Designer's ride with the heart on the road; `roadside-chalk-spent`, the deck once the road's one climb is chalked. Targets: none drawn; canon is the bar. Canon: ADR-0064; SPEC "The roadside".
 
 1. The deck's six chalk stamps (arrow, heart, Allez, Hopp, cowbell, the watched rider's initial) sit in one row under the bottle, each G5-sized, at desk and phone width with no sideways scroll; nothing is typed. [#3029] [probe:minTarget] [multi:roadside-chalk-phone]
 2. With no climb left ahead the stamps are disabled, with one line saying so; a refused stamp says why and when to try again, in the same line (ADR-0064 Bounds). [#3029] [multi:roadside-chalk-spent] [multi:roadside-chalk-refused]
 3. Chalk lies flat on the road ahead of the bunch, beside the riders' line as v2-erg's road paint sits beside the rider, in the road line's token, lit by the sky as the road's paint is (ADR-0072), never glowing, reading up the road. [#3029] [multi:roadside-chalk-world] [test:web/src/lib/world/chalk.test.ts]
 4. Chalk is gone once the bunch rides over it. [#3029] [test:server/internal/hub/roadside_paint_test.go] [test:web/src/lib/world/chalk.test.ts]
 5. ride-session-road's items hold around it. [ride-surface]
+6. On a phone with a track playing, the jukebox's corner player keeps RMF's 200 × 200 with nothing over it, and the page stops above it: no deck control lies under it at any scroll (G3). [#4185] [probe:jukebox] [multi:roadside-chalk-phone] [test:web/e2e/mobile-channel.spec.ts]
 
 #### ride-session-flat
 
