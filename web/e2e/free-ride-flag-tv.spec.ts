@@ -22,6 +22,8 @@ test('a free ride in a voice channel flags and opens TV', async ({
 			JSON.stringify({ music: 0, cues: 0, board: 0, share: 0 }),
 		),
 	);
+	// The design shots' desk, where the ride's row is at its narrowest.
+	await rider.setViewportSize({ width: 1440, height: 900 });
 	await rider.goto(`${voicePath(opened)}/training`);
 	await rider
 		.getByRole('button', { name: 'Ride simulated' })
@@ -29,6 +31,16 @@ test('a free ride in a voice channel flags and opens TV', async ({
 
 	const tvButton = rider.getByRole('button', { name: 'TV mode' });
 	await expect(tvButton).toBeVisible({ timeout: 20_000 });
+	// Warm up and Cool down take their own row (#4100): End ride stays
+	// in the ride's row, beside ⚑ and TV.
+	const end = rider.getByRole('button', { name: 'End ride' });
+	const middle = async (button: typeof end) => {
+		const box = (await button.boundingBox())!;
+		return box.y + box.height / 2;
+	};
+	expect(Math.abs((await middle(end)) - (await middle(tvButton)))).toBeLessThan(
+		4,
+	);
 	await rider.getByRole('button', { name: 'Flag a problem' }).click();
 	await expect(rider.getByText(/^Flagged — after the ride/)).toBeVisible();
 
