@@ -1,1 +1,0 @@
-- A free ride warms up and cools down: Warm up (40 → 70 % FTP) or Cool down (to 35 % FTP) over 5 or 10 minutes at a tap, then carries on where the ramp ended.

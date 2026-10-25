@@ -1,1 +1,0 @@
-- Watching a session keeps your own theme and text size until you join the ride, and a rider's menu mid-ride is solid, so the words behind it stay hidden.
