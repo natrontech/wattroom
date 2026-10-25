@@ -1,0 +1,1 @@
+- On a flat ride the current block on the graph gives only its length: its target is the one in the panel above.

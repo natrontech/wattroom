@@ -418,18 +418,23 @@
 		{#each segments as seg, i (i)}
 			{@const [target, length] = blockWords(seg, ftp, words.bias)}
 			{@const block = blocks[i]}
+			{@const now =
+				elapsed >= seg.startSeconds && elapsed < seg.startSeconds + seg.seconds}
 			<p
 				data-testid="block-words"
-				data-now={elapsed >= seg.startSeconds &&
-					elapsed < seg.startSeconds + seg.seconds}
+				data-now={now}
 				class="num text-label pointer-events-none absolute flex h-[1lh] -translate-y-1/2 flex-wrap justify-center overflow-hidden px-1 leading-tight tracking-wide whitespace-nowrap text-[color-mix(in_oklab,var(--color-neon)_65%,var(--color-ink))] data-[now=false]:font-medium data-[now=false]:opacity-80 data-[now=true]:font-bold"
 				style="left:{(block.x0 / W) * 100}%;width:{((block.x1 - block.x0) / W) *
 					100}%;top:{((Math.max(block.yFrom, block.yTo) + BASE) / 2 / H) *
 					100}%"
 			>
-				<span class="h-full"></span><span class="shrink-0">{target}</span><span
-					class="ml-2 shrink-0">· {length}</span
-				>
+				<!-- The current block gives its length only: slot 1 owns its target
+				     (D17, #4189). -->
+				<span class="h-full"></span>{#if !now}<span class="shrink-0"
+						>{target}</span
+					><span class="ml-2 shrink-0">· {length}</span>{:else}<span
+						class="shrink-0">{length}</span
+					>{/if}
 			</p>
 		{/each}
 		{#if elapsed > 0}

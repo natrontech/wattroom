@@ -51,7 +51,12 @@ test('the numbers panel ends at its trim in a wide window', async ({
 	await expect(
 		page.getByTestId('ride-band').locator('svg[preserveAspectRatio=none]'),
 	).toHaveCount(0);
+	// The current block gives its length only: slot 1 owns its target (D17,
+	// #4189). Every other block says both.
+	const now = page.locator('[data-testid=block-words][data-now=true]');
+	await expect(now).toContainText(/\d+ (min|s)/);
+	await expect(now).not.toContainText(/\d+ W/);
 	await expect(
-		page.locator('[data-testid=block-words][data-now=true]'),
+		page.locator('[data-testid=block-words][data-now=false]').first(),
 	).toContainText(/\d+ W/);
 });
