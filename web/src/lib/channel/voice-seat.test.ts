@@ -1,19 +1,25 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ClientMessage } from '$lib/protocol';
-import { createVoiceSeat, VOICE_ANSWER_MS } from './voice-seat';
+import {
+	createVoiceSeat,
+	VOICE_ANSWER_MS,
+	VOICE_WAIT_MAX_MS,
+} from './voice-seat';
 
 describe('the voice seat (ADR-0089)', () => {
 	beforeEach(() => vi.useFakeTimers());
 	afterEach(() => vi.useRealTimers());
 
-	const rig = () => {
+	const rig = ({ tab = 'tab-1', open = true } = {}) => {
 		const sent: ClientMessage[] = [];
+		const socket = { open };
 		const seat = createVoiceSeat(
 			(m) => sent.push(m),
-			() => 'tab-1',
+			() => tab,
 			() => 'phone',
+			() => socket.open,
 		);
-		return { sent, seat };
+		return { sent, seat, socket };
 	};
 
 	it('stays out of the call when another screen carries the voice', async () => {
@@ -64,5 +70,39 @@ describe('the voice seat (ADR-0089)', () => {
 		seat.release();
 		seat.replay();
 		expect(sent.map((m) => m.voice?.on)).toEqual([true, true, false]);
+	});
+
+	it('claims nothing more once refused, even when its socket reconnects', async () => {
+		const { sent, seat } = rig();
+		const here = seat.claim(false, {});
+		seat.heard({ error: { code: 'voice_conflict', message: '' } });
+		await expect(here).resolves.toBe(false);
+		seat.replay();
+		seat.release();
+		expect(sent).toHaveLength(1);
+	});
+
+	it('waits for a socket that is down rather than joining beside the other screen', async () => {
+		const { seat, socket } = rig({ open: false });
+		let settled: boolean | null = null;
+		void seat.claim(true, {}).then((here) => (settled = here));
+		await vi.advanceTimersByTimeAsync(VOICE_ANSWER_MS * 2);
+		expect(settled).toBeNull();
+		socket.open = true;
+		seat.heard({ pairing: { held: ['voice'] } });
+		await vi.advanceTimersByTimeAsync(0);
+		expect(settled).toBe(true);
+
+		const stuck = rig({ open: false }).seat.claim(false, {});
+		await vi.advanceTimersByTimeAsync(VOICE_WAIT_MAX_MS);
+		await expect(stuck).resolves.toBe(false);
+	});
+
+	it('claims nothing without a tab label, and joins as an older client', async () => {
+		const { sent, seat } = rig({ tab: '' });
+		await expect(seat.claim(false, {})).resolves.toBe(true);
+		seat.replay();
+		seat.release();
+		expect(sent).toEqual([]);
 	});
 });

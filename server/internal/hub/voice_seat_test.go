@@ -74,6 +74,13 @@ func TestOneRiderOneVoice(t *testing.T) {
 
 	// The phone hangs up: the voice is nobody's, and the desk may claim again.
 	send(phone, protocol.VoiceClaim{On: false, Tab: "phone"})
+	// Two sockets, so nothing orders the release before the claim: the desk
+	// claims once it has heard the voice is free.
+	if readUntil(t, desk, 5*time.Second, func(m protocol.ServerMessage) bool {
+		return m.Pairing != nil && m.Pairing.Elsewhere["voice"] == "" && !slices.Contains(m.Pairing.Held, "voice")
+	}) == nil {
+		t.Fatal("the desk never heard the phone let go")
+	}
 	send(desk, protocol.VoiceClaim{On: true, Tab: "desk", Device: "desktop"})
 	if readUntil(t, desk, 5*time.Second, carries) == nil {
 		t.Fatal("after the phone let go, the desk's claim was not granted")

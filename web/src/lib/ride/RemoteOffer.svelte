@@ -43,7 +43,7 @@
 			</p>
 			<button
 				type="button"
-				class="btn btn-secondary btn-ride w-full"
+				class="btn btn-secondary btn-ride w-full text-2xl!"
 				disabled={joining}
 				onclick={() => void conn?.av.join({ take: true })}
 			>

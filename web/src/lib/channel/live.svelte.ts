@@ -131,6 +131,7 @@ export function createChannelLive(address: PlaceAddress) {
 		(message) => send(message),
 		() => (tabId() === 'no-storage' ? '' : tabId()),
 		deviceWord,
+		() => socket?.readyState === WebSocket.OPEN,
 	);
 	// Addressed off the tick like pairing: every update is one new request for
 	// this rider's attention, carrying the authenticated sender and server time.
