@@ -84,7 +84,9 @@
 </script>
 
 <div
-	class={flat ? 'py-4' : 'border-neon/40 bg-surface-raised rounded-lg border-2 p-5'}
+	class={flat
+		? 'py-4'
+		: 'border-neon/40 bg-surface-raised rounded-lg border-2 p-5'}
 	role="status"
 	aria-label="{mode?.label ?? game.mode}, {game.phase === 'done'
 		? 'finished'
