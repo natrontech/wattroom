@@ -175,9 +175,11 @@ port_offset() {
 		admin=$(dirname "$f")
 		path=$toplevel
 		if [ "$(basename "$admin")" != "$mine" ]; then
+			# Relative under worktree.useRelativePaths, then from the admin dir.
 			path=$(dirname "$(cat "$admin/gitdir")")
+			case $path in /*) ;; *) path=$admin/$path ;; esac
 			# A worktree deleted without `git worktree remove` runs no server.
-			[ -d "$path" ] || continue
+			path=$(cd "$path" 2>/dev/null && pwd -P) || continue
 		fi
 		o=$(($(crc "$path") % PORT_SPAN))
 		while [ "${taken#* "$o" }" != "$taken" ]; do
