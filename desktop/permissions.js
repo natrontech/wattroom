@@ -33,7 +33,7 @@ const SOUND_ASK =
 
 /** The permission gate and the screen picker on this window's session. */
 function attach(win) {
-	const { appOrigin: APP_ORIGIN, isOurs } = deps;
+	const { isOurs } = deps;
 	const ses = win.webContents.session;
 
 	// 2. Permissions. Electron's default is to ALLOW — with remote content that
@@ -57,10 +57,16 @@ function attach(win) {
 		callback(isOurs(from) && ALLOWED.has(permission));
 	});
 	// The check half: most web APIs check first and only request if denied, so
-	// a handler on one and not the other is a gate with a hole in it.
+	// a handler on one and not the other is a gate with a hole in it. It is
+	// also what enumerateDevices asks before it names a device, so a refusal
+	// here leaves every picker at "System default".
+	//
+	// Electron hands the origin over as a URL, "https://wattroom.ch/" with its
+	// slash, so it is parsed rather than compared with the app's origin as a
+	// string: the string never matched, and every check was refused.
 	ses.setPermissionCheckHandler(
 		(_contents, permission, origin) =>
-			origin === APP_ORIGIN && ALLOWED.has(permission),
+			isOurs(origin) && ALLOWED.has(permission),
 	);
 
 	// 3. Screen share. Electron does not implement standard getDisplayMedia, so
@@ -112,11 +118,11 @@ function attach(win) {
 }
 
 /**
- * @param deps.appOrigin the one origin that may hold a permission
- * @param deps.isOurs whether a URL is on it
+ * @param deps.isOurs whether a URL is on the one origin that may hold a
+ *   permission
  */
-function install({ appOrigin, isOurs }) {
-	deps = { appOrigin, isOurs };
+function install({ isOurs }) {
+	deps = { isOurs };
 }
 
 module.exports = { install, attach };
