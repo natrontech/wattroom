@@ -4,7 +4,7 @@ import { nextLeg, nextLegAt } from './next-leg';
 import { crewFromM, ownerFromM } from './ride-together';
 import type { Road } from './road';
 
-// A flat 3 km road sampled every 20 m: the crew's cut starts 400 m in.
+// A flat 3 km road sampled every 20 m: the crew's cut starts 1,000 m in.
 const flat: Road = {
 	length: 3000,
 	heights: Array(151).fill(0),
@@ -26,7 +26,7 @@ const ended = (workoutJson: string, crewM: number): LostRoad => ({
 
 describe('ownerFromM', () => {
 	it('puts the crew’s metre back on the owner’s road', () => {
-		expect(ownerFromM(flat, 600)).toBe(1000);
+		expect(ownerFromM(flat, 600)).toBe(1600);
 		expect(crewFromM(flat, ownerFromM(flat, 600))).toBe(600);
 	});
 });
@@ -39,7 +39,7 @@ describe('nextLeg', () => {
 			steps: [{ type: 'steady', seconds: 600, target: 0.7 }],
 		});
 		const leg = nextLeg(ended(rode, 600), route)!;
-		expect(leg.road).toEqual({ routeId: 'r1', fromM: 1000, toM: 3000 });
+		expect(leg.road).toEqual({ routeId: 'r1', fromM: 1600, toM: 3000 });
 		expect(leg.steps).toEqual([{ type: 'steady', seconds: 600, target: 0.7 }]);
 	});
 
@@ -50,7 +50,7 @@ describe('nextLeg', () => {
 			steps: [{ type: 'steady', seconds: 400, target: 0.7 }],
 		});
 		const leg = nextLeg(ended(rode, 600), route)!;
-		expect(leg.road?.fromM).toBe(1000);
+		expect(leg.road?.fromM).toBe(1600);
 		expect(leg.road?.stepEndM?.at(-1)).toBe(3000);
 	});
 

@@ -59,7 +59,7 @@ func TestAPlansRoadReachesTheCrewCut(t *testing.T) {
 		who     string
 		samples int
 		origin  float64
-	}{{"alice", 151, 0}, {"bob", 111, protocol.RouteHiddenEndM}} {
+	}{{"alice", 151, 0}, {"bob", 51, protocol.RouteHiddenEndM}} {
 		entry := h.crewSchedule(t, c.who, crew)[plan]
 		raw, _ := entry["workoutJson"].(string)
 		var w struct {
@@ -75,7 +75,7 @@ func TestAPlansRoadReachesTheCrewCut(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		r, err := road.UnpackRoad(packed)
+		r, err := road.UnpackCut(packed)
 		if err != nil {
 			t.Fatalf("%s's profile: %v", c.who, err)
 		}
@@ -165,12 +165,12 @@ func TestStartingARoadPlanSendsTheCrewCut(t *testing.T) {
 	if err != nil || w.Road.Profile == "" {
 		t.Fatalf("the session's road carries no profile — the bare reference went out: %s", opener.workoutJSON)
 	}
-	r, err := road.UnpackRoad(packed)
+	r, err := road.UnpackCut(packed)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if w.Road.RouteID != route || w.Road.OriginM != protocol.RouteHiddenEndM || len(r.Heights) != 111 {
-		t.Errorf("the session rides %d samples from %v m of %s, want the crew's 111 from %d", len(r.Heights), w.Road.OriginM, w.Road.RouteID, protocol.RouteHiddenEndM)
+	if w.Road.RouteID != route || w.Road.OriginM != protocol.RouteHiddenEndM || len(r.Heights) != 51 || testx.ReachesAnEnd(w.Road.OriginM, r.LengthM, 3000) {
+		t.Errorf("the session rides %d samples from %v m of %s, want the crew's 51 from %d", len(r.Heights), w.Road.OriginM, w.Road.RouteID, testx.PrivateEndM)
 	}
 	for i, turn := range r.Turns {
 		if turn == testx.TellingEndTurn || r.Heights[i] != 0 {
@@ -255,7 +255,7 @@ func TestAPlannedRoadsMailAndCalendarCarryNoPlace(t *testing.T) {
 
 // A started plan rides its road from its first metre (#3103), counted on
 // the crew's cut and looked up as the planner's route whoever starts it:
-// bob starts alice's plan from her kilometre, and the session opens 400 m
+// bob starts alice's plan 1.6 km along, and the session opens 1,000 m
 // shorter, where the crew's road begins.
 func TestAStartedPlanRidesItsRoadFromItsMetre(t *testing.T) {
 	h := setup(t)
@@ -264,7 +264,7 @@ func TestAStartedPlanRidesItsRoadFromItsMetre(t *testing.T) {
 	h.svc.SetPresence(opener)
 	crew, channel := h.crewWithChannel(t)
 	route := h.tellingRoute(t, "alice", "gpx")
-	workout := `{"name":"Next leg","road":{"routeId":"` + route + `","fromM":1000,"toM":3000},"steps":[{"type":"steady","seconds":600,"target":0.7}]}`
+	workout := `{"name":"Next leg","road":{"routeId":"` + route + `","fromM":1600,"toM":3000},"steps":[{"type":"steady","seconds":600,"target":0.7}]}`
 	body := fmt.Sprintf(`{"workoutName":"Next leg","workoutJson":%q,"startsAt":%q,"channelId":""}`, workout, time.Now().Add(10*time.Minute).UTC().Format(time.RFC3339))
 	status, got := h.call(t, "alice", http.MethodPost, schedulePath(crew), body)
 	if status != http.StatusCreated {

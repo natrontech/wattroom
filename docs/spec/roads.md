@@ -53,7 +53,7 @@ Privacy rules, not alpha defaults: loosening any of these takes an ADR.
 | Parameter                     | Value                                                                                           |
 | ----------------------------- | ----------------------------------------------------------------------------------------------- |
 | Privacy zone                  | a circle of **200–1,600 m**, about a fixed random offset from the point it hides                |
-| Default                       | **400 m** hidden at both ends of every route                                                    |
+| Default                       | **1,000 m** hidden at both ends of every route                                                  |
 | km-0 anchor                   | at least **1,000 m** outside every zone                                                         |
 | A crew's corridor             | at most **±1,000 m**, stopping at the anchor; tiles withheld within max(anchor distance, **1,000 m**) of the true ends and of any zone |
 | An effort near a private end  | within **1,000 m** of the ride's ends: marked at save                                           |

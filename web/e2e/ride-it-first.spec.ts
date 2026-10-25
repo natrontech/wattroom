@@ -27,7 +27,9 @@ test('a planned road session’s card rides its road first, for its owner and fo
 	await owner.locator('input[type=file]').setInputFiles({
 		name: 'climb.gpx',
 		mimeType: 'application/gpx+xml',
-		buffer: Buffer.from(climbGpx()),
+		// 5 km, so the crew's cut between the 1,000 m hidden ends still
+		// climbs far enough for the climb card (#4165).
+		buffer: Buffer.from(climbGpx(5000)),
 	});
 	await owner.getByRole('button', { name: 'Save to my routes' }).click();
 	await expect(owner.getByText(/is on your routes/)).toBeVisible();

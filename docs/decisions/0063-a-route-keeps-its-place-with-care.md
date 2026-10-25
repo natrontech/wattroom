@@ -63,7 +63,7 @@ The server cuts a route to its audience before it travels.
 - A **privacy zone** is a circle of 200–1,600 m around the point it hides,
   drawn about a **fixed random offset** from it. The offset is load-bearing and
   is never dropped: without it, the centre of any circle is the home.
-- By default a route hides **400 m at both ends**.
+- By default a route hides **1,000 m at both ends** (amended 2026-10-25, #4165).
 - Once the geo pack exists, each zone gets a fixed public **km-0 anchor** at
   least 1,000 m outside every zone. The hidden part rides as a nameless,
   neutral stretch.
@@ -150,3 +150,15 @@ absolute heights it uses are the ones this ADR already allows once the crew
 holds the span's coordinates (the round-4 line under "Who sees what"), so this
 settles "the coordinates of that span come later". Privacy zones render
 generated for every viewer, the owner included.
+
+## Amendment, 2026-10-25 (#4165): a route hides 1,000 m at both ends
+
+The default hidden end was 400 m, while every other private-end rule here is
+1,000 m: the corridor's withheld tiles, an effort near an end, a segment's
+private distance. A crew's line that reaches 400 m from an end makes the
+tiles' 1,000 m moot, and the first kilometre from home is where a route says
+the most. So a crew's road, a session's road and the crew's map now start
+1,000 m in from each end (`protocol.RouteHiddenEndM`). It only tightens
+privacy. A 2 km route, the shortest a rider can import, leaves no stretch
+between its ends, so a session refuses it and a plan carries no road for the
+crew. Decided by the supervisor of #4126.

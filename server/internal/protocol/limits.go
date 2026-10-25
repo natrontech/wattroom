@@ -169,8 +169,9 @@ const (
 	// What a crew is sent of a route that is not theirs (ADR-0063, #3051):
 	// the road between its anchors, which until the geo pack draws zones are
 	// this far in from each end — a route hides its first and last metres by
-	// default — and at most this many bytes of it, packed, on a workout.
-	RouteHiddenEndM      = 400
+	// default, the 1,000 m of every other private-end rule (#4165) — and at
+	// most this many bytes of it, packed, on a workout.
+	RouteHiddenEndM      = 1000
 	MaxAttachedRoadBytes = 48 << 10
 
 	// A leg (docs/SPEC.md "Route rides"): the stretch of a route ridden in

@@ -36,6 +36,16 @@ const packedVersion = 1
 //	i16  × (samples − 1)  height change, cm
 //	i8   × (samples − 1)  turn, degrees
 func UnpackRoad(b []byte) (Road, error) {
+	r, err := UnpackCut(b)
+	if err == nil && r.LengthM < protocol.MinRouteMeters {
+		return Road{}, fmt.Errorf("road: %.0f m is outside %d–%d m", r.LengthM, protocol.MinRouteMeters, protocol.MaxRouteMeters)
+	}
+	return r, err
+}
+
+// UnpackCut is UnpackRoad for a crew's cut of a road (ADR-0063), which the
+// 2 km floor of a route does not hold: a 3 km route leaves the crew 1 km.
+func UnpackCut(b []byte) (Road, error) {
 	if len(b) < 13 || b[0] != packedVersion {
 		return Road{}, errors.New("road: not a packed road")
 	}
@@ -44,7 +54,7 @@ func UnpackRoad(b []byte) (Road, error) {
 		return Road{}, errors.New("road: sample count does not match the bytes")
 	}
 	lengthM := float64(binary.LittleEndian.Uint32(b[5:9])) / 100
-	if lengthM < protocol.MinRouteMeters || lengthM > protocol.MaxRouteMeters {
+	if lengthM <= 0 || lengthM > protocol.MaxRouteMeters {
 		return Road{}, fmt.Errorf("road: %.0f m is outside %d–%d m", lengthM, protocol.MinRouteMeters, protocol.MaxRouteMeters)
 	}
 	if float64(n-1) > lengthM/10 {
