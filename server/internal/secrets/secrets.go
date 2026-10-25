@@ -31,8 +31,8 @@ import (
 const KeyEnv = "WATTROOM_TOKEN_KEY"
 
 // Cipher seals and opens stored credentials. A nil Cipher is the unconfigured
-// case and stores in the clear, which is what every deployment did before this
-// existed — see FromEnv for why that is a warning rather than a refusal.
+// case: nothing that needs a stored credential is offered (Strava), and see
+// FromEnv for why that is a warning rather than a refusal.
 type Cipher struct {
 	aead cipher.AEAD
 	// version names the key without revealing it (#3024): see Version.
@@ -41,10 +41,10 @@ type Cipher struct {
 
 // FromEnv reads KeyEnv.
 //
-// Absent: no cipher, a warning, and credentials keep being stored in the clear.
-// This has to stay possible or the release that introduces the key cannot be
-// deployed before the key is provisioned, and every dev box would need one to
-// run a feature it does not exercise.
+// Absent: no cipher, a warning, and Strava reports itself unavailable, since
+// there is nowhere left to store its refresh token in the clear (#1038,
+// ADR-0035). The server still boots: a deployment or a dev box that does not
+// use Strava must not need a key.
 //
 // Present but unusable: an error, and the caller should refuse to start. An
 // operator who set the variable believes credentials are encrypted, and a
@@ -55,7 +55,7 @@ type Cipher struct {
 func FromEnv(log *slog.Logger) (*Cipher, error) {
 	raw := os.Getenv(KeyEnv)
 	if raw == "" {
-		log.Warn(KeyEnv + " is unset — stored third-party credentials are in the clear (#697)")
+		log.Warn(KeyEnv + " is unset — Strava is off, since its refresh token can only be stored sealed (ADR-0035)")
 		return nil, nil
 	}
 	return FromKey(KeyEnv, raw)
@@ -131,22 +131,13 @@ func (c *Cipher) Open(sealed []byte) (string, error) {
 	return string(plain), nil
 }
 
-// Columns returns how a refresh token should be written to `identities`:
-// sealed with the plaintext column cleared when a key is configured, and
-// exactly what the code did before when it is not.
-//
-// The pair is here rather than at each call site because "how a stored
-// credential is stored" is this package's question, and three writers were
-// about to answer it three times.
-func (c *Cipher) Columns(token string) (plain *string, sealed []byte, err error) {
-	// Nothing to protect, and the column has always held "" rather than null
-	// for a provider that returned no refresh token.
-	if token == "" || !c.Enabled() {
-		return &token, nil, nil
+// SealToken returns how a refresh token is written to
+// `identities.refresh_token_enc`: sealed, or null when the provider returned
+// none. Without a key it fails, since sealed is the only way one is stored
+// (#1038).
+func (c *Cipher) SealToken(token string) ([]byte, error) {
+	if token == "" {
+		return nil, nil
 	}
-	sealed, err = c.Seal(token)
-	if err != nil {
-		return nil, nil, err
-	}
-	return nil, sealed, nil
+	return c.Seal(token)
 }

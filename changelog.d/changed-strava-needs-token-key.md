@@ -1,0 +1,1 @@
+- Self-hosting: Strava now needs `WATTROOM_TOKEN_KEY`. Without it the server still boots and offers no Strava button. The plaintext-token gauge and its two alerts are gone, so drop `WattroomPlaintextRefreshTokens` and `WattroomTokenSealCountStale` from your rules if you copied them.

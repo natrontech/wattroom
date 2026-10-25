@@ -117,3 +117,22 @@ coordinates with this key, and departs from two of this ADR's rules for them:
   missing credential costs a reconnect; a leaked route costs a home address.
 
 Credentials keep this ADR's rules as written.
+
+## Amendment, 2026-10-25 (#1038): sealed or not at all
+
+The sealing reached every row: the plaintext count read 0 across all of
+2026.09.147 and 2026.10.1 (#3354). The release-1 contract stops naming
+`identities.refresh_token`, and with it the plaintext half of this ADR goes:
+
+- **Absent key: Strava is off.** A credential is stored sealed or not at all,
+  so a server without the key does not offer Strava (its button is hidden, the
+  same as an unconfigured provider), logs why, and still boots. A deployment or
+  a dev box that does not use Strava still needs no key, which was the reason
+  for the absent-key rule.
+- Reads take the sealed column only; a row without one has no token. The
+  boot-time backfill and the plaintext-count gauge with its two alerts are
+  gone, since every one of them named the column.
+- The column itself is dropped one release later (#3355), per ADR-0019's rule
+  that a `select *` counts as a use.
+
+Present-but-unusable keys and rotation keep the rules above.

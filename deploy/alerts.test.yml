@@ -20,8 +20,6 @@ tests:
       # Stopped too, but no rule watches it: the star count is cosmetic.
       - series: 'wattroom_job_last_success_timestamp_seconds{job="wattroom",instance="wattroom:9091",exported_job="github stars poll"}'
         values: '0x90'
-      - series: 'wattroom_job_last_success_timestamp_seconds{job="wattroom",instance="wattroom:9091",exported_job="token seal completeness"}'
-        values: '0x90'
     alert_rule_test:
       # Fifteen minutes without a success, then the rule's five.
       - eval_time: 19m
@@ -36,19 +34,6 @@ tests:
               exported_job: session reminders
             exp_annotations:
               summary: 'Background job session reminders has not succeeded in 15 minutes'
-      # An hour without a recount, then the rule's fifteen.
-      - eval_time: 74m
-        alertname: WattroomTokenSealCountStale
-      - eval_time: 76m
-        alertname: WattroomTokenSealCountStale
-        exp_alerts:
-          - exp_labels:
-              severity: warn
-              job: wattroom
-              instance: wattroom:9091
-              exported_job: token seal completeness
-            exp_annotations:
-              summary: 'wattroom_identities_plaintext_refresh_tokens has not been recounted in an hour — do not read it as an all-clear'
 
   - interval: 1h
     input_series:
