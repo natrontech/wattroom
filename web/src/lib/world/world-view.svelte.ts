@@ -1,12 +1,13 @@
 /**
- * A ride's view on a road, held for the ride (#3080, ADR-0066): both riding
- * surfaces ask rideView() once, and after that only a failure, the rider's
- * Flat road or "Try 3D again" moves it — never reduced motion switched on
- * mid-ride, never a second that drew well again. Loads no three.js.
+ * A ride's view on a road, held for the ride (#3080, ADR-0066): the riding
+ * surfaces ask rideView() once, and after that only a failure or the rider's
+ * own Flat / 3D tap moves it — never reduced motion switched on mid-ride,
+ * never a second that drew well again. Loads no three.js.
  */
 import { prefersReducedMotion } from '$lib/motion';
-import { WORLD_MIN_PX } from '$lib/session/docks';
-import { worldSlotOn } from './flag';
+import { PHONE_MAX_PX } from '$lib/device.svelte';
+import { worldFits } from '$lib/session/docks';
+import { setWorldMode, worldMode, type WorldMode } from './mode';
 import {
 	rideView,
 	type Failure,
@@ -14,35 +15,16 @@ import {
 	type SkylineReason,
 } from './ride-view';
 
-const FLAT_KEY = 'wattroom.flat-road.v1';
-
-// The window's height, kept for every ride on the page by one listener.
+// The window's size, kept for every ride on the page by one listener.
 const viewport = $state({
+	width: typeof window === 'undefined' ? Infinity : window.innerWidth,
 	height: typeof window === 'undefined' ? Infinity : window.innerHeight,
 });
 if (typeof window !== 'undefined')
-	window.addEventListener(
-		'resize',
-		() => (viewport.height = window.innerHeight),
-	);
-
-/** The rider's Flat road choice on this device; null while never made. */
-export function flatRoad(): boolean | null {
-	try {
-		const v = localStorage.getItem(FLAT_KEY);
-		return v === null ? null : v === '1';
-	} catch {
-		return null;
-	}
-}
-
-export function setFlatRoad(flat: boolean): void {
-	try {
-		localStorage.setItem(FLAT_KEY, flat ? '1' : '0');
-	} catch {
-		/* a browser that keeps nothing keeps the default */
-	}
-}
+	window.addEventListener('resize', () => {
+		viewport.width = window.innerWidth;
+		viewport.height = window.innerHeight;
+	});
 
 let caps: { webgl2: boolean; multiDraw: boolean } | null = null;
 
@@ -61,32 +43,35 @@ function capabilities() {
 
 export function createWorldView() {
 	let failure: Failure | null = null;
-	const decide = (): RideView | null =>
-		worldSlotOn()
-			? rideView({
-					flat: flatRoad(),
-					reducedMotion: prefersReducedMotion.current,
-					...capabilities(),
-					failure,
-				})
-			: null;
-	let view = $state<RideView | null>(decide());
+	const decide = (): RideView =>
+		rideView({
+			mode: worldMode(),
+			reducedMotion: prefersReducedMotion.current,
+			...capabilities(),
+			failure,
+		});
+	let view = $state<RideView>(decide());
 	// The window's height is live, unlike a failure: the world comes back
 	// the moment the window holds its panels again.
-	const shown = (): RideView | null =>
-		view === 'world' && viewport.height < WORLD_MIN_PX
+	const shown = (): RideView =>
+		view === 'world' &&
+		!worldFits(viewport.width <= PHONE_MAX_PX, viewport.height)
 			? { skyline: 'short' }
 			: view;
 	const reason = (): SkylineReason | null => {
 		const v = shown();
-		return v === null || v === 'world' ? null : v.skyline;
+		return v === 'world' ? null : v.skyline;
 	};
 	return {
-		/** The world draws in slot 2. */
+		/** The world draws in slot 2, docked around the road: a desk or a TV. */
 		get on() {
-			return shown() === 'world';
+			return shown() === 'world' && viewport.width > PHONE_MAX_PX;
 		},
-		/** Why this ride is on the Skyline; null in the world, or where this device has no world slot. */
+		/** The world draws as a band in a phone's column (#3676); the slots stay flat. */
+		get band() {
+			return shown() === 'world' && viewport.width <= PHONE_MAX_PX;
+		},
+		/** Why this ride is on the Skyline; null in the world. */
 		get reason() {
 			return reason();
 		},
@@ -94,15 +79,36 @@ export function createWorldView() {
 			failure = why;
 			view = decide();
 		},
-		/** The world's context menu: the flat road, from now on, on this device. */
+		/**
+		 * The world's own chunk (three.js), loaded for the ride; a renderer
+		 * that does not load is this ride's failure, and the Skyline's.
+		 */
+		load() {
+			return import('$lib/world/RideWorld.svelte').catch((err: unknown) => {
+				console.error('world: the renderer did not load', err);
+				this.fail('build-failed');
+				throw err;
+			});
+		},
+		/** Full, Steady or Light, as the rider chose; Full while nothing was. */
+		get look(): Exclude<WorldMode, 'flat'> {
+			const m = worldMode();
+			return m === null || m === 'flat' ? 'full' : m;
+		},
+		/** The flat road, from now on, on this device: the world's Flat button and its context menu. */
 		flatten() {
-			setFlatRoad(true);
+			setWorldMode('flat');
 			view = decide();
 		},
-		/** The only way back to the world this ride; a choice it overrides is the rider's new one. */
+		/**
+		 * The only way into the world this ride; a choice it overrides is the
+		 * rider's new one: Full from Flat, Steady under reduced motion
+		 * (ADR-0079), and what they had after a failure.
+		 */
 		retry() {
 			const was = reason();
-			if (was === 'chosen' || was === 'motion') setFlatRoad(false);
+			if (was === 'chosen') setWorldMode('full');
+			if (was === 'motion') setWorldMode('steady');
 			failure = null;
 			view = decide();
 		},

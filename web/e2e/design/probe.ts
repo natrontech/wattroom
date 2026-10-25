@@ -101,13 +101,18 @@ export function probe(corridor: Box) {
 		(cs.boxShadow !== 'none' && !cs.boxShadow.includes('inset'));
 	// An open modal's opaque box hides what lies wholly under it (#3989): the
 	// stage's own tile still glows behind a session's closing card, unseen.
-	const modals = [...document.querySelectorAll('[aria-modal=true]')]
+	const modals = [
+		...document.querySelectorAll(
+			'[aria-modal=true], [data-testid=session-card]',
+		),
+	]
 		.filter(
 			(el) => shown(el) && rgba(getComputedStyle(el).backgroundColor).a > 0.9,
 		)
 		.map((el) => el.getBoundingClientRect());
 	const covered = (el: Element) => {
-		if (el.closest('[aria-modal=true]')) return false;
+		if (el.closest('[aria-modal=true], [data-testid=session-card]'))
+			return false;
 		const r = el.getBoundingClientRect();
 		return modals.some(
 			(m) =>
@@ -117,11 +122,18 @@ export function probe(corridor: Box) {
 				r.bottom <= m.bottom,
 		);
 	};
+	// A closing card is held to its own content: the crew rail beside it keeps
+	// its live watts tile, which G2 lets glow on any page.
+	const rail = document.querySelector(
+		'[data-testid=closing-card], [data-testid=session-card]',
+	)
+		? document.querySelector('aside')
+		: null;
 	const wattFigures: { text: string; glow: boolean }[] = [];
 	const glows: string[] = [];
 	let wattMarks = 0;
 	for (const el of document.body.querySelectorAll('*')) {
-		if (!shown(el) || covered(el)) continue;
+		if (!shown(el) || covered(el) || rail?.contains(el)) continue;
 		const cs = getComputedStyle(el);
 		const own = ownText(el);
 		const svg = el instanceof SVGElement;
@@ -155,6 +167,41 @@ export function probe(corridor: Box) {
 	const surface = document
 		.querySelector('[data-surface=docked]')
 		?.getBoundingClientRect();
+	// The flat layout's panels in px (#3670): the gap between neighbours, and
+	// the slack under each one's last child, which is the empty band G3 caps.
+	const flatEl = document.querySelector<HTMLElement>('[data-surface=flat]');
+	const flatPanels = flatEl
+		? [...flatEl.querySelectorAll<HTMLElement>(':scope > [data-dock]')].filter(
+				shown,
+			)
+		: [];
+	const flat = flatEl
+		? {
+				panels: flatPanels.map((el) => {
+					const r = el.getBoundingClientRect();
+					const last = Math.max(
+						r.top,
+						...[...el.querySelectorAll<HTMLElement>('*')]
+							.filter(shown)
+							.map((c) => c.getBoundingClientRect().bottom),
+					);
+					return {
+						dock: el.dataset.dock,
+						top: round(r.top),
+						height: round(r.height),
+						slack: round(Math.max(0, r.bottom - last)),
+					};
+				}),
+				gaps: flatPanels
+					.slice(1)
+					.map((el, i) =>
+						round(
+							el.getBoundingClientRect().top -
+								flatPanels[i].getBoundingClientRect().bottom,
+						),
+					),
+			}
+		: null;
 	const panels = surface
 		? [...document.querySelectorAll<HTMLElement>('[data-dock]')]
 				.filter(shown)
@@ -196,6 +243,29 @@ export function probe(corridor: Box) {
 		[...(el.parentElement?.childNodes ?? [])].some(
 			(n) => n.nodeType === Node.TEXT_NODE && n.textContent?.trim(),
 		);
+	// A worded control's word (G4): the smallest shown text in it with letters,
+	// where it has any. Its own font size alone misses words set on a span.
+	const wordPx = (el: Element) => {
+		const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+		let min: number | null = null;
+		for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+			const host = n.parentElement;
+			if (!host || !/\p{L}/u.test(n.textContent ?? '')) continue;
+			// An avatar's initial stands in for a picture; its name is read by sr-only text (#4046).
+			if (host.closest('[data-avatar]')) continue;
+			const box = host.getBoundingClientRect();
+			// sr-only text is 1 px and read aloud, not seen.
+			if (!host.checkVisibility() || !shown(host) || box.width <= 1) continue;
+			const px = parseFloat(getComputedStyle(host).fontSize);
+			min = min === null ? px : Math.min(min, px);
+		}
+		// A field's placeholder is a word while it shows (#4046).
+		if (el instanceof HTMLInputElement && el.placeholder && !el.value) {
+			const px = parseFloat(getComputedStyle(el).fontSize);
+			min = min === null ? px : Math.min(min, px);
+		}
+		return min;
+	};
 	const sizes = [
 		...document.querySelectorAll<HTMLElement>(
 			'button, a[href], input:not([type=hidden]), select, textarea, summary, [role=button]',
@@ -220,12 +290,21 @@ export function probe(corridor: Box) {
 			return {
 				px: Math.round(Math.min(r.width, r.height)),
 				label: label.trim().slice(0, 40),
+				// The sidebar, the people column and a menu are app chrome, not a
+				// riding surface (G4, ADR-0087): they keep the desk's words.
+				wordPx: el.closest(
+					'nav[aria-label="crews and channels"], aside, [role=menu]',
+				)
+					? null
+					: wordPx(el),
 			};
 		});
 	const smallest = sizes.reduce<{ px: number; label: string | null }>(
 		(a, b) => (b.px < a.px ? b : a),
 		{ px: Infinity, label: null },
 	);
+
+	const words = sizes.filter((s) => s.wordPx !== null);
 
 	return {
 		cave: { present: !!cave, maxSurfaceL: round(maxL) },
@@ -237,12 +316,77 @@ export function probe(corridor: Box) {
 		wattMarks,
 		glows,
 		panels,
+		flat,
+		// How far the computer's page row runs past its panel's padding (#4042).
+		pageRowOverflow: (() => {
+			const row = document.querySelector('[data-testid=computer-page-row]');
+			const last = row?.lastElementChild;
+			if (!row || !last) return null;
+			const pad = parseFloat(getComputedStyle(row.parentElement!).paddingRight);
+			const panel = row.parentElement!.getBoundingClientRect();
+			return round(
+				Math.max(0, last.getBoundingClientRect().right - (panel.right - pad)),
+			);
+		})(),
 		minTarget: {
 			px: Number.isFinite(smallest.px) ? smallest.px : null,
 			label: smallest.label,
 			under24: sizes.filter((s) => s.px < 24).length,
 			under44: sizes.filter((s) => s.px < 44).length,
 		},
+		// Headings drawn on more than one line (#4046): a label is one line (G4).
+		wrappedLabels: [
+			...document.querySelectorAll<HTMLElement>('.eyebrow, .ride-label'),
+		]
+			.filter((el) => {
+				if (!shown(el)) return false;
+				// Lines drawn: the distinct tops of its text's boxes, not its icons'.
+				const tops = new Set<number>();
+				const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+				for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+					if (!n.textContent?.trim()) continue;
+					const range = document.createRange();
+					range.selectNodeContents(n);
+					for (const r of range.getClientRects())
+						if (r.width > 1 && r.height > 1) tops.add(Math.round(r.top / 4));
+				}
+				return tops.size > 1;
+			})
+			.map((el) => el.innerText.trim().replace(/\s+/g, ' ').slice(0, 40)),
+		// G4's floor for a riding surface's words; a desk page reads it as data.
+		buttonWords: {
+			minPx: words.length ? Math.min(...words.map((w) => w.wordPx!)) : null,
+			under24: words.filter((w) => w.wordPx! < 24).map((w) => w.label),
+		},
+		// A phone's column (#3676): the head's font sizes against SPEC's phone row,
+		// and the room under the last panel for the floating navigation button.
+		phone: document.querySelector('[data-surface=phone]')
+			? (() => {
+					const px = (sel: string) => {
+						const el = document.querySelector(sel);
+						return el ? parseFloat(getComputedStyle(el).fontSize) : null;
+					};
+					const docks = [...document.querySelectorAll('[data-dock]')].filter(
+						(el) => el.getBoundingClientRect().height > 0,
+					);
+					const last = docks[docks.length - 1]?.getBoundingClientRect();
+					const page = body ?? root;
+					return {
+						watts: px('[data-testid=head-power]'),
+						timeLeft: px('[data-testid=block-left]'),
+						wkg: px('[data-field=wkg]'),
+						zone: px('[data-testid=head-zone]'),
+						bottomClear: last
+							? Math.round(
+									page.scrollHeight -
+										(last.bottom +
+											window.scrollY -
+											page.getBoundingClientRect().top),
+								)
+							: null,
+					};
+				})()
+			: null,
 		world: {
 			mounted: !!document.querySelector('canvas'),
 			fallback: document.body.innerText.match(/Flat road —[^\n]*/)?.[0] ?? null,

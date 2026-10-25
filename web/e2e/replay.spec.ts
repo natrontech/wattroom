@@ -16,7 +16,7 @@ test('a captured trace replays through the ride', async ({ page }) => {
 	await page.getByTestId('ride-replay').click();
 
 	// Real captured watts arrive — not the generator's.
-	const watts = page.locator('.text-watt.glow-text-strong').first();
+	const watts = page.getByTestId('head-power').first();
 	await expect(watts).not.toHaveText('0', { timeout: 20_000 });
 
 	// The clock advances on the replayed data.

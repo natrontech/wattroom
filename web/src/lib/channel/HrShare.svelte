@@ -15,7 +15,17 @@
 	import HeartOff from '@lucide/svelte/icons/heart-off';
 	import HeartPulse from '@lucide/svelte/icons/heart-pulse';
 
-	let { class: klass = '' }: { class?: string } = $props();
+	let {
+		class: klass = '',
+		ride = false,
+		icon = false,
+	}: {
+		class?: string;
+		/** A riding surface outside the Lounge's stage: the button alone, its sentence read aloud (ux.md: no sentence but a canon status line). */
+		ride?: boolean;
+		/** The button's heart alone, named by its label and title: beside a session's trim, where the words would wrap it to a second row. */
+		icon?: boolean;
+	} = $props();
 
 	const conn = $derived(channelConnection.current);
 	const view = $derived(
@@ -44,9 +54,9 @@
 		class="flex flex-wrap items-center gap-x-3 gap-y-1 {klass}"
 	>
 		<p
-			class="ride-stage:ride-word flex items-center gap-1.5 text-sm {view.shared
-				? 'text-ink'
-				: 'text-muted'}"
+			class="ride-stage:ride-word flex items-center gap-1.5 {ride
+				? 'sr-only'
+				: 'text-sm'} {view.shared ? 'text-ink' : 'text-muted'}"
 			role="status"
 		>
 			{#if view.shared}
@@ -61,16 +71,30 @@
 		     Named in full: a screen share's button says "Stop sharing" too. -->
 		<button
 			onclick={toggle}
-			class="btn btn-secondary btn-lg ride-stage:ride-word"
+			class="btn btn-secondary btn-lg ride-stage:ride-word inline-flex items-center gap-2 {ride
+				? 'btn-ride'
+				: ''} {icon ? 'w-11 justify-center px-0' : ''}"
 			aria-label="{view.action} heart rate"
 			title={view.shared
 				? 'Nobody in the call sees your bpm while it is off. A session ride saved meanwhile has none either; a free ride keeps it.'
-				: 'Everyone in the call sees your bpm again.'}>{view.action}</button
+				: 'Everyone in the call sees your bpm again.'}
+			>{#if ride}{#if view.shared}<HeartPulse
+						size={20}
+						aria-hidden="true"
+					/>{:else}<HeartOff
+						size={20}
+						aria-hidden="true"
+					/>{/if}{/if}{#if !icon}{view.action}{/if}</button
 		>
 		{#if error}
 			<!-- Where the tap was (errors.md): a storage-blocked browser cannot
 			     keep the choice, and the rider has to know it did not stick. -->
-			<p class="text-danger ride-stage:ride-word text-xs" role="alert">
+			<p
+				class="text-danger ride-stage:ride-word text-xs {ride
+					? 'ride-word'
+					: ''}"
+				role="alert"
+			>
 				{error}
 			</p>
 		{/if}

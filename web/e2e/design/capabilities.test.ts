@@ -48,3 +48,9 @@ for (const [name, has] of [
 interface BluetoothLike {
 	requestDevice(): Promise<unknown>;
 }
+
+it('every desk shot is offered the Linux build, whatever machine takes it', async () => {
+	const { DESK_UA } = await import('./shoot');
+	const { detectOS } = await import('../../src/lib/desktop');
+	expect(detectOS(DESK_UA)).toBe('linux');
+});

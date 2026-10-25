@@ -4,7 +4,6 @@
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import JukeboxPlaylistRow from '$lib/channel/JukeboxPlaylistRow.svelte';
 	import { useChannel } from '$lib/channel/context';
-	import { railButton, railField, railLabel } from '$lib/channel/rail-size';
 	import type { createPlaylistStore } from '$lib/channel/playlists.svelte';
 
 	// The saved playlists above the live queue (#627): crew playlists (any
@@ -16,7 +15,6 @@
 		address,
 		crewStore,
 		mineStore,
-		riding = false,
 	}: {
 		/** Where the panel is open (#2449): a voice channel, whose shelf is
 		 *  its crew's. */
@@ -24,10 +22,7 @@
 		/** Made by the column (#1427), which also saves rows into them. */
 		crewStore: ReturnType<typeof createPlaylistStore>;
 		mineStore: ReturnType<typeof createPlaylistStore>;
-		/** On a riding surface its toggle, tabs and field are 44 px (TARGETS G5). */
-		riding?: boolean;
 	} = $props();
-	const size = $derived(railButton(riding));
 
 	// Rename, delete, set active and remove a track are the coach's and the
 	// owner's (SPEC roles matrix, #771); a member's own personal playlists
@@ -59,23 +54,21 @@
 </script>
 
 <details class="min-w-0">
-	<summary class="{railLabel(riding)} cursor-pointer py-2 select-none"
-		>playlists</summary
-	>
+	<summary class="eyebrow cursor-pointer py-2 select-none">playlists</summary>
 
 	<div class="mt-2 flex gap-1.5" role="tablist">
 		<button
 			role="tab"
 			aria-selected={tab === 'crew'}
 			onclick={() => (tab = 'crew')}
-			class="btn {size} {tab === 'crew' ? 'btn-secondary' : 'text-muted'}"
+			class="btn btn-xs {tab === 'crew' ? 'btn-secondary' : 'text-muted'}"
 			>Crew</button
 		>
 		<button
 			role="tab"
 			aria-selected={tab === 'mine'}
 			onclick={() => (tab = 'mine')}
-			class="btn {size} {tab === 'mine' ? 'btn-secondary' : 'text-muted'}"
+			class="btn btn-xs {tab === 'mine' ? 'btn-secondary' : 'text-muted'}"
 			>Mine</button
 		>
 	</div>
@@ -104,7 +97,6 @@
 						{store}
 						{address}
 						canManage={tab !== 'crew' || canManage}
-						{riding}
 					/>
 				{/each}
 			</ul>
@@ -122,12 +114,12 @@
 				placeholder={tab === 'crew'
 					? 'New crew playlist…'
 					: 'New personal playlist…'}
-				class="input {railField(riding)} min-w-0 flex-1"
+				class="input input-xs min-w-0 flex-1"
 				aria-label="new playlist name"
 			/>
 			<button
 				disabled={!newName.trim() || creating}
-				class="btn btn-secondary {size} shrink-0 disabled:opacity-40"
+				class="btn btn-secondary btn-xs shrink-0 disabled:opacity-40"
 				aria-label="create playlist"><Plus size={14} /></button
 			>
 		</form>

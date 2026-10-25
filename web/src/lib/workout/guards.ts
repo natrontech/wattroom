@@ -103,8 +103,14 @@ export function createPersonalGuards() {
 	let lowCadenceSeconds = 0;
 	let spiralSeconds = 0;
 	let resumeIn = 0;
+	// A rider's own hold (the phone remote's Pause, #3217): the pedals do not
+	// end it, only resume() does.
+	let held = false;
 
 	return {
+		get held() {
+			return held;
+		},
 		get phase() {
 			return phase;
 		},
@@ -149,6 +155,7 @@ export function createPersonalGuards() {
 		 */
 		sample(sample: GuardSample, target: number, seconds = 1): boolean {
 			let actuate = false;
+			if (held) return false;
 			// Auto-pause: their targets stop, the clock does not rewind.
 			if (!riding(sample)) {
 				if (phase === 'running') {
@@ -202,9 +209,33 @@ export function createPersonalGuards() {
 			return false;
 		},
 
+		/**
+		 * The rider paused: targets release at once, whatever the pedals do.
+		 * Says whether the trainer has to be told.
+		 */
+		hold(): boolean {
+			if (held || phase === 'autopaused') {
+				held = true;
+				return false;
+			}
+			held = true;
+			phase = 'autopaused';
+			idleSeconds = lowCadenceSeconds = spiralSeconds = resumeIn = 0;
+			return true;
+		},
+
+		/** The rider resumed: the same 3 s count-back-in an auto-pause gets. */
+		resume(): void {
+			if (!held) return;
+			held = false;
+			phase = 'resuming';
+			resumeIn = DEFAULTS.resumeCountdown;
+		},
+
 		/** Back to a rider who is riding — a fresh session, or a fresh trainer. */
 		reset(): void {
 			phase = 'running';
+			held = false;
 			idleSeconds = lowCadenceSeconds = spiralSeconds = resumeIn = 0;
 		},
 	};

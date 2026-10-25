@@ -42,6 +42,7 @@
 	function describe(step: WorkoutStep): string {
 		if (step.type === 'repeat') return `${step.times} ×`;
 		if (step.type === 'sprint') return 'all out';
+		if (step.type === 'road') return 'SIM';
 		if (step.type === 'steady') {
 			return step.watts !== undefined
 				? `${step.watts} W`
@@ -51,7 +52,12 @@
 	}
 
 	function zoneOfStep(step: WorkoutStep): number {
-		if (step.type === 'repeat' || step.type === 'sprint') return 0;
+		if (
+			step.type === 'repeat' ||
+			step.type === 'sprint' ||
+			step.type === 'road'
+		)
+			return 0;
 		const fraction =
 			step.type === 'steady' ? (step.target ?? 0) : (step.from + step.to) / 2;
 		return zoneOf(fraction * FTP, FTP);
@@ -158,7 +164,7 @@
 							<span
 								class="h-8 w-1.5 shrink-0 rounded-full {step.type === 'sprint'
 									? 'bg-z7'
-									: step.type === 'repeat'
+									: step.type === 'repeat' || step.type === 'road'
 										? 'bg-muted/40'
 										: ZONE_BG[zoneOfStep(step)]}"
 							></span>
@@ -244,6 +250,10 @@
 								</li>
 							{/each}
 						</ul>
+					{:else if current.type === 'road'}
+						<p class="text-muted text-xs">
+							Ride the road in SIM at its felt grade.
+						</p>
 					{:else if current.type !== 'sprint'}
 						<div class="grid grid-cols-2 gap-3">
 							{#each [{ key: 'from', label: 'from' }, { key: 'to', label: 'to' }] as field (field.key)}

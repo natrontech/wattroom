@@ -47,21 +47,22 @@ function classesOf(html: string, marker: RegExp): string {
 describe('the bike computer reads from the saddle', () => {
 	it.each([
 		['on a desk', {}, 'px', { value: 36, word: 24 }],
-		['on the TV', { tv: true }, 'vh', { value: 5, word: 3 }],
+		['on the TV', { tv: true, docked: true }, 'vh', { value: 5, word: 3 }],
 	] as const)('%s', (_, props, unit, floor) => {
+		// Cadence, not power: on the TV the head draws the power (#3677).
 		const html = draw({ stats, ...props });
 		const value = sizeOf(
-			classesOf(html, /<span[^>]*class="num[^"]*"[^>]*>251/),
+			classesOf(html, /<span[^>]*class="num[^"]*"[^>]*>90/),
 			unit,
 		);
 		const unitSize = sizeOf(
-			classesOf(html, /<span[^>]*class="text-muted[^"]*font-normal"[^>]*>W</),
+			classesOf(html, /<span[^>]*class="text-muted[^"]*font-normal"[^>]*>rpm</),
 			unit,
 		);
 		const word = sizeOf(
 			classesOf(
 				html,
-				/<span[^>]*class="[^"]*flex items-center[^"]*"[^>]*>Power/,
+				/<span[^>]*class="[^"]*flex items-center[^"]*"[^>]*>Cadence/,
 			),
 			unit,
 		);
@@ -94,7 +95,26 @@ describe('turning the page', () => {
 		expect(html).not.toMatch(/computer-dot|next page/);
 	});
 
-	it('has nothing to tap on the TV, where the keys turn it', () => {
-		expect(draw({ stats, tv: true })).not.toMatch(/<button/);
+	// TARGETS D15: ← name → with dots on every layout, the TV's included.
+	it('turns by ← and → on the TV, with its dots', () => {
+		const html = draw({ stats, tv: true, docked: true });
+		expect(html).toMatch(/aria-label="previous page, POWER"[^>]*icon-btn-lg/);
+		expect(html).toMatch(/aria-label="next page, POWER"[^>]*icon-btn-lg/);
+		expect(html.match(/data-testid="computer-dot"/g)).toHaveLength(2);
+	});
+
+	it('draws the power once on the TV, in its head (#3677)', () => {
+		const html = draw({ stats, tv: true, docked: true, ftp: 250 });
+		expect(html.match(/data-testid="head-power"/g)).toHaveLength(1);
+		// Sized from its own box, which is capped by the panel's height and
+		// width (ride-tv 9), so it shrinks before any word does.
+		expect(html).toMatch(/data-testid="head-power" class="text-\[117\.6cqh\]/);
+		expect(html).toMatch(
+			/\[container-type:size\] basis-\[calc\(min\(34vh,\d+cqw\)\*0\.85\)\]/,
+		);
+		expect(html).not.toMatch(
+			/data-testid="computer-field" data-field="(power|wkg)"/,
+		);
+		expect(html).toMatch(/data-field="cadence"/);
 	});
 });

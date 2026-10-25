@@ -8,6 +8,7 @@ import {
 	frameFor,
 	pagedFrame,
 	gradeStep,
+	leadM,
 	nodesOf,
 	SKYLINE,
 	stepsPerTick,
@@ -89,6 +90,14 @@ describe('the frame', () => {
 		const frame = frameFor(ramp(0, 6000), 2000, 3000, 1000, 200);
 		expect(frame.fromM).toBe(1500);
 		expect(frame.scale).toBeCloseTo(1000 / 3500, 9);
+	});
+
+	it('never starts before the road: the dot walks its first 0.5 km (#4003)', () => {
+		const frame = frameFor(ramp(0, 6000), 100, 3000, 1000, 200);
+		expect(frame.fromM).toBe(0);
+		expect(frame.scale).toBeCloseTo(1000 / 3500, 9);
+		expect(leadM(100)).toBe(100);
+		expect(leadM(2000)).toBe(SKYLINE.behindM);
 	});
 
 	it('holds a 2 km page still under reduced motion, and turns it at its end (#3080)', () => {

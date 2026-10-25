@@ -31,14 +31,17 @@ import {
 	TV,
 	assertRiding,
 	atReading,
+	atRoundSecond,
 	atSecond,
 	ride,
 	takes,
 	variants,
 	wanted,
+	RELEASE_FEED,
 	type Opened,
 } from './design/shoot';
 import { hudScale } from './design/probe';
+import { holdCountIn } from './hold-count-in';
 
 /**
  * The design shots (#3666, docs/design/DESIGN-CHECK.md): every surface in
@@ -170,6 +173,17 @@ surface(
 		await ride(o.page, `/ride?w=openers&road=${road}&from=2300`);
 		await assertRiding(o.page, true);
 		await s.shot(o, { name: 'world-hairpins' });
+		// multi:ride-keys-sheet and multi:ride-keys-clean — the ? sheet over the
+		// ride, then H's clean view (#3216).
+		await o.page.keyboard.press('?');
+		await o.page.getByTestId('key-sheet').waitFor();
+		await s.shot(o, { name: 'ride-keys-sheet' });
+		await o.page.keyboard.press('Escape');
+		await o.page.keyboard.press('h');
+		await o.page.locator('[data-dock=header]').waitFor({ state: 'detached' });
+		await s.shot(o, { name: 'ride-keys-clean' });
+		await o.page.keyboard.press('h');
+
 		// multi:ride-road-world-climb — item 28: on the climb, turned to CLIMB,
 		// which a workout leaves to the rider (#3645).
 		await o.page.getByTestId('bike-computer').getByTitle('Next page').click();
@@ -177,6 +191,55 @@ surface(
 			.locator('[data-testid=bike-computer][data-page=climb]')
 			.waitFor();
 		await s.shot(o, { name: 'ride-road-world-climb' });
+		// multi:ride-road-world-map — item 30: M turns to MAP, the road from above (#3645).
+		await o.page.keyboard.press('m');
+		await o.page
+			.locator('[data-testid=bike-computer][data-page=map]')
+			.waitFor();
+		await o.page.getByTestId('map-dot').waitFor();
+		await o.page.evaluate(() =>
+			(document.activeElement as HTMLElement)?.blur(),
+		);
+		await s.shot(o, { name: 'ride-road-world-map' });
+		// multi:ride-road-world-map-rolling — item 30's muted road beside the ramp:
+		// the swells' dot inside the last climb, flats and a descent in the same frame (#3645).
+		const rolling = await fixtureRoad(o.page, 'rolling');
+		await ride(o.page, `/ride?w=openers&road=${rolling}&from=5800`);
+		await assertRiding(o.page, true);
+		await o.page.keyboard.press('m');
+		await o.page
+			.locator('[data-testid=bike-computer][data-page=map]')
+			.waitFor();
+		await o.page.getByTestId('map-dot').waitFor();
+		await o.page.evaluate(() =>
+			(document.activeElement as HTMLElement)?.blur(),
+		);
+		await s.shot(o, { name: 'ride-road-world-map-rolling' });
+		// multi:world-hairpins-trench — #3728: the first leg between two retaining walls, from km 1.5.
+		await ride(o.page, `/ride?w=openers&road=${road}&from=1500`);
+		await assertRiding(o.page, true);
+		await s.shot(o, { name: 'world-hairpins-trench' });
+		// multi:ride-road-world-flamme — #3645: the last kilometre to the top, the
+		// flamme rouge flagged on the CLIMB page.
+		await ride(o.page, `/ride?w=openers&road=${road}&from=6200`);
+		await assertRiding(o.page, true);
+		await o.page.getByTestId('bike-computer').getByTitle('Next page').click();
+		await o.page.getByTestId('flamme-rouge').waitFor();
+		await s.shot(o, { name: 'ride-road-world-flamme' });
+		// multi:ride-road-world-summit — #3645: over the top of the rolling road's
+		// first climb (km 3.0, class IV: no confetti, the budget is HC and I), the
+		// strip above the Skyline.
+		const rollingRoad = await fixtureRoad(o.page, 'rolling');
+		await ride(o.page, `/ride?w=openers&road=${rollingRoad}&from=2900`);
+		await assertRiding(o.page, true);
+		await o.page.getByTestId('summit-strip').waitFor({ timeout: 60_000 });
+		// The strip has risen: its `--dur-stage` rise, not a frame in it.
+		await o.page.waitForTimeout(900);
+		await s.shot(o, { name: 'ride-road-world-summit' });
+		// multi:world-finish — item 29: about 150 m from the road’s end, the finish arch ahead (#3623).
+		await ride(o.page, `/ride?w=openers&road=${road}&from=6950`);
+		await assertRiding(o.page, true);
+		await s.shot(o, { name: 'world-finish' });
 	},
 	{ once: true },
 );
@@ -242,6 +305,167 @@ surface(
 			await s.shot(o, { name });
 			await o.ctx.close();
 		}
+		// The free ride's own line atop slot 1 (#3669): the road, trainer silent.
+		const f = await s.open(DESK, { world: true });
+		await f.page.route('**/fixtures/design-silence.json', (route) =>
+			route.fulfill({ json: SILENCE }),
+		);
+		const id = await fixtureRoad(f.page, 'hairpin');
+		await f.page.goto(`/ride?road=${id}&replay=design-silence`);
+		await f.page.getByText(ROADS.hairpin.name).first().waitFor();
+		await f.page.getByTestId('ride-replay').click({ timeout: 15_000 });
+		await f.page.waitForTimeout(30_000);
+		await s.shot(f, { name: 'ride-status-free-road' });
+		await f.ctx.close();
+	},
+	{ once: true },
+);
+
+surface(
+	'ride-phone-remote',
+	async (s) => {
+		// The desk holds the trainer; the same rider's phone sees the claim
+		// (ADR-0025) and offers to be its remote (#3217).
+		const desk = await s.open(DESK, { world: false });
+		const crew = await designCrew(desk.page);
+		await toTraining(desk.page, crew);
+		const phone = await s.open(PHONE, { world: false });
+		await phone.page.goto(`${voicePath(crew)}/training`);
+		const offer = phone.page.getByRole('button', {
+			name: 'Use this phone as your remote',
+		});
+		await offer.waitFor({ timeout: 20_000 });
+		const box = await offer.boundingBox();
+		await s.shot(phone, {
+			name: 'ride-phone-remote-offer',
+			extra: {
+				offerWidth: Math.round(box?.width ?? 0),
+				offerHeight: Math.round(box?.height ?? 0),
+				offerTextPx: await offer.evaluate((b) =>
+					parseFloat(getComputedStyle(b).fontSize),
+				),
+				offerViewport: phone.page.viewportSize()?.width ?? 0,
+			},
+		});
+		await offer.click();
+		await phone.page.getByTestId('phone-remote').waitFor();
+		// The desk rides SIM with gears on (dev login); one Harder tap makes
+		// the holding tab answer with its GearState, so the gear line shows.
+		await phone.page
+			.getByTestId('phone-remote')
+			.getByRole('button', { name: 'Harder' })
+			.click();
+		await phone.page
+			.getByTestId('phone-remote')
+			.locator('p[aria-live=polite]')
+			.waitFor({ timeout: 10_000 });
+		const remote = await phone.page
+			.getByTestId('phone-remote')
+			.evaluate((el) => {
+				const buttons = [...el.querySelectorAll('button')].filter(
+					(b) => b.textContent?.trim() !== 'Done',
+				);
+				const px = (n: number) => Math.round(n * 10) / 10;
+				return {
+					remoteCells: buttons.length,
+					remoteMinHeight: px(
+						Math.min(...buttons.map((b) => b.getBoundingClientRect().height)),
+					),
+					remoteMinWidth: px(
+						Math.min(...buttons.map((b) => b.getBoundingClientRect().width)),
+					),
+					remoteDisabled: buttons.filter((b) => b.disabled).length,
+					remoteTextMinPx: px(
+						Math.min(
+							...[...el.querySelectorAll('h2, p, button')].map((n) =>
+								parseFloat(getComputedStyle(n).fontSize),
+							),
+						),
+					),
+					remoteGearPx: px(
+						parseFloat(
+							getComputedStyle(el.querySelector('p[aria-live=polite]') ?? el)
+								.fontSize,
+						),
+					),
+					remoteGearLine:
+						el.querySelector('p[aria-live=polite]')?.textContent?.trim() ??
+						null,
+					remoteHint:
+						[...el.querySelectorAll('p:not([aria-live])')].map((n) =>
+							n.textContent?.trim(),
+						)[0] ?? null,
+					remoteEnabled: buttons
+						.filter((b) => !b.disabled)
+						.map((b) => b.textContent?.trim()),
+					remotePair: buttons.some((b) => b.textContent?.trim() === 'Pause'),
+					remoteScrollWidth: el.scrollWidth,
+					remoteClientWidth: el.clientWidth,
+				};
+			});
+		await s.shot(phone, { name: 'ride-phone-remote', extra: remote });
+		await desk.page.getByRole('button', { name: 'End ride' }).click();
+		// A solo ride is the one a phone may pause (#3217): the desk rides
+		// Openers beside the channel, the phone pauses it, and both say so.
+		await desk.page
+			.getByRole('button', { name: 'Ride a workout' })
+			.click({ timeout: 15_000 });
+		const ride = desk.page.getByRole('dialog', { name: 'Ride a workout' });
+		await ride.getByRole('textbox', { name: 'find a workout' }).fill('Openers');
+		await ride
+			.getByRole('button', { name: /Openers/ })
+			.first()
+			.click();
+		await ride.getByRole('button', { name: 'Ride Openers' }).click();
+		const pause = phone.page
+			.getByTestId('phone-remote')
+			.getByRole('button', { name: 'Pause' });
+		await pause.waitFor({ timeout: 30_000 });
+		await s.shot(phone, {
+			name: 'ride-phone-remote-solo',
+			extra: {
+				remotePair: true,
+				pauseDisabled: await pause.isDisabled(),
+			},
+		});
+		await s.shot(desk, { name: 'ride-status-solo' });
+		await pause.click();
+		await phone.page
+			.getByTestId('phone-remote')
+			.getByText('Paused', { exact: true })
+			.waitFor({ timeout: 10_000 });
+		const paused = await phone.page
+			.getByTestId('phone-remote')
+			.evaluate((el) => {
+				const b = (name: string) =>
+					[...el.querySelectorAll('button')].find(
+						(x) => x.textContent?.trim() === name,
+					);
+				return {
+					pauseResumeHeight: Math.round(
+						b('Resume')?.getBoundingClientRect().height ?? 0,
+					),
+					pauseDisabled: b('Pause')?.disabled ?? null,
+					resumeDisabled: b('Resume')?.disabled ?? null,
+				};
+			});
+		await s.shot(phone, { name: 'ride-phone-remote-paused', extra: paused });
+		await desk.page.getByText('Paused', { exact: true }).first().waitFor();
+		const line = await desk.page
+			.getByText('Paused', { exact: true })
+			.first()
+			.evaluate((n) => {
+				const row = n.closest('[role=status]') ?? n.parentElement;
+				const resume = row?.querySelector('button');
+				return {
+					pausedLine: n.textContent?.trim(),
+					pausedResumeHeight: Math.round(
+						resume?.getBoundingClientRect().height ?? 0,
+					),
+					pausedResumeText: resume?.textContent?.trim() ?? null,
+				};
+			});
+		await s.shot(desk, { name: 'ride-status-paused', extra: line });
 	},
 	{ once: true },
 );
@@ -251,18 +475,20 @@ surface(
 	async (s) => {
 		// Forced onto the Skyline as the rider sets it on this device, then again
 		// under reduced motion.
+		// Never chosen, reduced motion opens on Flat by itself (ADR-0079).
 		for (const [name, reducedMotion, flat] of [
 			['ride-skyline-fallback', undefined, true],
 			['ride-skyline-fallback-reduced', 'reduce', false],
 		] as const) {
-			const o = await s.open(DESK, { world: true, reducedMotion });
+			const o = await s.open(DESK, { world: false, reducedMotion });
 			if (flat)
 				await o.ctx.addInitScript(() =>
-					localStorage.setItem('wattroom.flat-road.v1', '1'),
+					localStorage.setItem('wattroom.world.mode.v1', 'flat'),
 				);
 			const road = await fixtureRoad(o.page, 'hairpin');
-			await ride(o.page, `/ride?road=${road}`);
+			await ride(o.page, `/ride?w=openers&road=${road}`);
 			await assertRiding(o.page);
+			await o.page.getByTestId('flat-road').waitFor();
 			await s.shot(o, { name });
 		}
 	},
@@ -276,19 +502,32 @@ surface(
 		// scheme: it holds from the count-in's first frame (G1, #3667).
 		const o = await s.open({ ...DESK, colorScheme: 'light' }, { world: true });
 		const road = await fixtureRoad(o.page, 'hairpin');
+		const count = await holdCountIn(o.page);
 		await o.page.goto(`/ride?w=openers&road=${road}`);
 		await o.page
 			.getByRole('button', { name: 'Ride simulated' })
 			.first()
 			.click({ timeout: 15_000 });
+		await count.hold();
 		await o.page
 			.getByRole('button', { name: /^Start (riding|the ride)$/ })
 			.first()
 			.click();
-		// The digit, flat or over the world (#3668).
+		// The digit, flat or over the world (#3668), the ground whole around the eye.
 		await o.page.getByTestId('count-in').waitFor({ timeout: 5000 });
+		await o.page.waitForFunction(
+			() =>
+				(
+					window as unknown as {
+						__worldProbe?: () => { ground?: { pending: number } };
+					}
+				).__worldProbe?.().ground?.pending === 0,
+			null,
+			{ timeout: 120_000 },
+		);
 		await s.shot(o, { name: 'ride-countin-first' });
-		await o.page.waitForTimeout(1000);
+		// One second into the 3 s count-in: the held pose, the arch and the digit.
+		await count.tick();
 		await s.shot(o);
 	},
 	{ once: true },
@@ -318,11 +557,11 @@ surface(
 surface(
 	'ride-free-road-world',
 	async (s) => {
-		// The world on: until #3669 a free ride on a road draws none, and the probe's world.mounted says so.
+		// The world on: a free ride on a road draws it in slot 2 (#3669).
 		const o = await s.open(DESK, { world: true });
 		const road = await fixtureRoad(o.page, 'hairpin');
 		await ride(o.page, `/ride?road=${road}`);
-		await assertRiding(o.page);
+		await assertRiding(o.page, true);
 		await s.shot(o);
 	},
 	{ once: true },
@@ -354,7 +593,7 @@ surface(
 		const o = await s.open(RIDING_PHONE, { world: true });
 		await ride(o.page, '/ride?w=openers');
 		await assertRiding(o.page);
-		await s.shot(o);
+		await s.shot(o, { full: true });
 	},
 	{ once: true },
 );
@@ -370,9 +609,18 @@ surface('phone-ride-road-flat', async (s) => {
 	await s.shot(o, { full: true });
 });
 
-test.fixme('phone-ride-road', () => {
-	// A free ride on a road draws no world yet: #3669 brings it.
-});
+surface(
+	'phone-ride-road',
+	async (s) => {
+		// The world on: a free ride on a road is a band in slot 2's place (#3676).
+		const o = await s.open(RIDING_PHONE, { world: true });
+		const road = await fixtureRoad(o.page, 'hairpin');
+		await ride(o.page, `/ride?road=${road}`);
+		await assertRiding(o.page, true);
+		await s.shot(o, { full: true });
+	},
+	{ once: true },
+);
 
 surface(
 	'hud',
@@ -443,6 +691,59 @@ surface('ride-preride', async (s) => {
 	const fresh = await s.open(DESK, { as: 'Newcomer', world: false });
 	await page(s, fresh, '/ride?alone', { name: 'ride-preride-no-road' });
 });
+
+surface(
+	'ride-figure-card',
+	async (s) => {
+		// A rider who has not answered the card meets it at Start on a road
+		// (#3342); the card measures its own targets for the probe.
+		for (const [device, name] of variants([
+			[DESK, 'ride-figure-card'],
+			[RIDING_PHONE, 'phone-ride-figure-card'],
+		] as const)) {
+			const o = await s.open(device, { as: 'Unasked', world: false });
+			const road = await fixtureRoad(o.page, 'hairpin');
+			await o.page.goto(`/ride?road=${road}`);
+			await o.page
+				.getByRole('button', { name: 'Ride simulated' })
+				.first()
+				.click({ timeout: 15_000 });
+			await o.page.getByRole('button', { name: 'Start the ride' }).click();
+			const card = o.page.getByTestId('figure-card');
+			await card.waitFor();
+			const box = (label: string) =>
+				card.getByRole('button', { name: label, exact: true }).boundingBox();
+			const circle = card.getByTestId('figure-preview').locator('circle');
+			const fill = () => circle.evaluate((c) => getComputedStyle(c).fill);
+			const neutralFill = await fill();
+			const swatch = card.getByRole('button', { name: /^Skin tone 4 of/ });
+			const swatchFill = await swatch.evaluate(
+				(b) => getComputedStyle(b).backgroundColor,
+			);
+			await swatch.click();
+			const tappedFill = await fill();
+			await s.shot(o, {
+				name,
+				full: true,
+				extra: {
+					'figure-card': {
+						neutralFill,
+						swatchFill,
+						tappedFill,
+						skip: await box('Skip'),
+						save: await box('Save'),
+						build: await box('slim'),
+						height: await card.getByRole('slider').boundingBox(),
+						swatch: await card
+							.getByRole('button', { name: /^Skin tone 1 of/ })
+							.boundingBox(),
+					},
+				},
+			});
+		}
+	},
+	{ also: ['phone-ride-figure-card'] },
+);
 
 surface('ride-roadpick', async (s) => {
 	// The road picker, with both roads seeded, opened from /ride's
@@ -741,6 +1042,65 @@ surface(
 		await o.page.waitForURL('**/history/*');
 		await o.page.waitForTimeout(2500);
 		await s.shot(o, { name: 'route-best-opens' });
+		// Ride its workout (#3601): the row picked, leg 1's setup, and its
+		// summary with the offer of leg 2.
+		const haul = await fixtureRoad(o.page, 'longHaul');
+		await o.page.goto(`/workouts/routes/${haul}`);
+		await o.page.getByRole('button', { name: /Ride its workout/ }).click();
+		await o.page.waitForTimeout(500);
+		await s.shot(o, { name: 'route-leg' });
+		await o.page.getByRole('link', { name: 'Ride its workout' }).click();
+		await o.page.waitForURL(/\/ride\?road=.+&leg=1/);
+		await o.page
+			.getByRole('button', { name: 'Ride simulated' })
+			.first()
+			.waitFor({ timeout: 15_000 });
+		await s.shot(o, { name: 'route-leg-setup' });
+		await ride(o.page, `/ride?road=${haul}&leg=1`, { second: 65 });
+		await o.page
+			.getByRole('button', { name: /^(End ride|Save at km)/ })
+			.first()
+			.click();
+		await o.page.getByRole('button', { name: 'End the ride' }).click();
+		const saveLeg = o.page.getByRole('button', { name: 'Save the ride' });
+		if (await saveLeg.count()) await saveLeg.first().click();
+		await o.page
+			.getByRole('link', { name: /^Ride leg 2 of \d+$/ })
+			.waitFor({ timeout: 30_000 });
+		// The save settles into its banner before the shot.
+		await o.page.waitForTimeout(2500);
+		await s.shot(o, { name: 'route-leg-summary', full: true });
+		// The offer rides the next leg: the same page, a new leg in its url.
+		await o.page.getByRole('link', { name: /^Ride leg 2 of \d+$/ }).click();
+		await o.page.waitForURL(/&leg=2/);
+		await o.page
+			.getByText(/leg 2 of \d+/)
+			.first()
+			.waitFor({ timeout: 15_000 });
+		// Workout on it (#3681): the row picked, the shelf picking for this
+		// road, and a card's Ride opening on it; then the shelf on a phone.
+		await o.page.goto(`/workouts/routes/${id}`);
+		await o.page.getByRole('button', { name: /Workout on it/ }).click();
+		await o.page.waitForTimeout(500);
+		await s.shot(o, { name: 'route-workout-on' });
+		await o.page.getByRole('link', { name: 'Pick a workout' }).click();
+		await o.page.waitForURL(/\/workouts\?on=/);
+		await o.page.waitForTimeout(2500);
+		await s.shot(o, { name: 'workouts-on' });
+		await o.page
+			.getByRole('listitem')
+			.filter({
+				has: o.page.getByRole('link', { name: 'Recovery Spin', exact: true }),
+			})
+			.getByRole('button', { name: 'Ride', exact: true })
+			.click();
+		await o.page.getByText(/where to start\?/).waitFor({ timeout: 15_000 });
+		await s.shot(o, { name: 'workouts-on-ride' });
+		// A phone that rides: one that cannot never reaches the pick.
+		const p = await s.open(RIDING_PHONE);
+		await page(s, p, `/workouts?on=${await fixtureRoad(p.page, 'hairpin')}`, {
+			name: 'phone-workouts-on',
+		});
 	},
 	{ also: ['phone-route'] },
 );
@@ -907,8 +1267,6 @@ const WEEK_STATES: [string, () => unknown[], boolean][] = [
 
 const WINDOWS_UA =
 	'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
-const RELEASE_FEED =
-	'https://api.github.com/repos/natrontech/wattroom-releases/**';
 /** A desktop build, as the release feed lists one (desktop.spec.ts's). */
 const DESKTOP_RELEASE = {
 	tag_name: 'desktop-v0.2.0',
@@ -944,32 +1302,21 @@ surface('flow-f1', async (s) => {
 	await s.shot(o, { name: 'flow-f1-2-ride' });
 });
 
-surface(
-	'appearance',
-	async (s) => {
-		for (const [device, suffix] of variants([
-			[DESK, ''],
-			[PHONE, '-phone'],
-		] as const)) {
-			const o = await s.open(device);
-			await page(s, o, '/settings/appearance', {
-				name: `appearance${suffix}`,
-			});
-			// The Advanced expander comes with the World control (#3214).
-			const advanced = o.page.getByText('Advanced', { exact: true });
-			if (await advanced.count()) {
-				await advanced.first().click();
-				await o.page.waitForTimeout(500);
-				await s.shot(o, { name: `appearance-advanced${suffix}`, full: true });
-			}
-		}
-		const reduced = await s.open(DESK, { reducedMotion: 'reduce' });
-		await page(s, reduced, '/settings/appearance', {
-			name: 'appearance-reduced',
+surface('appearance', async (s) => {
+	for (const [device, suffix] of variants([
+		[DESK, ''],
+		[PHONE, '-phone'],
+	] as const)) {
+		const o = await s.open(device);
+		await page(s, o, '/settings/appearance', {
+			name: `appearance${suffix}`,
 		});
-	},
-	{ also: ['appearance-advanced'] },
-);
+	}
+	const reduced = await s.open(DESK, { reducedMotion: 'reduce' });
+	await page(s, reduced, '/settings/appearance', {
+		name: 'appearance-reduced',
+	});
+});
 
 surface('settings-this-computer', async (s) => {
 	// "This computer" draws only inside the desktop shell, so the capture
@@ -1448,8 +1795,54 @@ surface(
 		await coach.page
 			.getByRole('dialog', { name: 'Session summary' })
 			.waitFor({ timeout: 30_000 });
+		// The ride's link lands once the save does: shoot the card with it.
+		await coach.page
+			.getByRole('link', { name: 'See your ride' })
+			.waitFor({ timeout: 30_000 })
+			.catch(() => {});
 		await coach.page.waitForTimeout(1500);
-		await s.shot(coach, { name: 'closing-card-session' });
+		// probe:closing-card — the card's box against the window, and the dead
+		// band at the bottom of the recap-trace panel (G3: none over 24 px).
+		const extra = await coach.page.evaluate(() => {
+			const box = (el: Element | null) => {
+				const r = el?.getBoundingClientRect();
+				return r && { left: r.left, width: r.width, top: r.top };
+			};
+			const panel = document.querySelector('[data-testid=recap-trace]');
+			const last = panel?.lastElementChild?.getBoundingClientRect();
+			const pad = panel ? parseFloat(getComputedStyle(panel).paddingBottom) : 0;
+			return {
+				card: box(document.querySelector('[data-testid=session-card]')),
+				sidebarRight: document.querySelector('aside')?.getBoundingClientRect()
+					.right,
+				deadBand:
+					panel && last
+						? Math.round(
+								panel.getBoundingClientRect().bottom - last.bottom - pad,
+							)
+						: null,
+			};
+		});
+		await s.shot(coach, { name: 'closing-card-session', extra });
+		// ux.md phone width: the same card at 375 × 812.
+		await coach.page.setViewportSize({ width: 375, height: 812 });
+		await coach.page.waitForTimeout(800);
+		// probe:phoneOrder — [multi:reduced-motion] item 13: the card's blocks top to bottom.
+		const phoneOrder = await coach.page.evaluate(() =>
+			[
+				...document.querySelectorAll(
+					'[data-testid=closing-card] h1, [data-testid=closing-card] h2, [data-testid=closing-card] [data-testid=recap-tiles]',
+				),
+			].map((e) => ({
+				block: e.getAttribute('data-testid') ?? e.textContent?.trim(),
+				top: Math.round(e.getBoundingClientRect().top),
+			})),
+		);
+		await s.shot(coach, {
+			name: 'closing-card-session-phone',
+			full: true,
+			extra: { phoneOrder },
+		});
 	},
 	{ also: ['ride-watch', 'closing-card-session'] },
 );
@@ -1705,11 +2098,11 @@ surface(
 	async (s) => {
 		const { coach } = await gameOnRoad(s, 'backyard-ramp');
 		try {
-			await atSecond(coach.page, RIDE_SECOND);
+			await atRoundSecond(coach.page, RIDE_SECOND);
 			await assertRiding(coach.page, true);
 			await s.shot(coach);
 			// The round's last half minute: the next round's arch is near.
-			await atSecond(coach.page, 165);
+			await atRoundSecond(coach.page, 165);
 			await s.shot(coach, { name: 'ride-game-backyard-arch' });
 		} finally {
 			await endSession(coach.page);
@@ -1725,7 +2118,7 @@ surface(
 		const { coach } = await gameOnRoad(s, 'collective-ramp', 3500);
 		try {
 			// Into round 2: the fog has risen once.
-			await atSecond(coach.page, 200);
+			await atRoundSecond(coach.page, 200);
 			await assertRiding(coach.page, true);
 			await s.shot(coach);
 		} finally {

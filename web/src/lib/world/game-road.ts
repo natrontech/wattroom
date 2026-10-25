@@ -22,7 +22,7 @@ import { DUR } from '$lib/motion/tokens';
 import { damp } from '$lib/motion/damp';
 import { disposeTree } from './dispose';
 import { tag } from './family';
-import { arch } from './furniture';
+import { archOnRoad } from './furniture';
 import { yOf } from './geometry';
 import type { Style } from './styles';
 import type { World } from './world';
@@ -117,19 +117,8 @@ export function makeGameRoad(route: Route, world: World, style: Style) {
 			group.remove(held.mesh);
 			disposeTree(held.mesh);
 		}
-		const p = at(route, m);
-		const mesh = arch(
-			route,
-			{
-				x: p.x,
-				y: p.ele,
-				z: p.z,
-				turn: [-Math.cos(p.heading), -Math.sin(p.heading)],
-				// No words: the round has its one home in the game's panel.
-				label: '',
-			},
-			style,
-		);
+		// No words: the round has its one home in the game's panel.
+		const mesh = archOnRoad(route, m, '', style);
 		mesh.userData.round = round;
 		group.add(tag('dressing', mesh, 'arch'));
 		held = { round, m, mesh };

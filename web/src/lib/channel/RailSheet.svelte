@@ -27,13 +27,13 @@
 <details class="min-w-0" bind:open ontoggle={place}>
 	<summary
 		data-testid="rail-sheet"
-		class="flex min-h-11 min-w-0 cursor-pointer list-none items-center gap-2 select-none [&::-webkit-details-marker]:hidden"
+		class="flex min-w-0 cursor-pointer list-none items-center gap-2 select-none [&::-webkit-details-marker]:hidden"
 	>
 		<span class="min-w-0 flex-1">{@render label()}</span>
 		{#if open}<ChevronUp
-				size={20}
+				size={16}
 				class="text-muted shrink-0"
-			/>{:else}<ChevronDown size={20} class="text-muted shrink-0" />{/if}
+			/>{:else}<ChevronDown size={16} class="text-muted shrink-0" />{/if}
 	</summary>
 	{#if open}
 		<div

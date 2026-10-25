@@ -39,6 +39,16 @@ export const wanted = (ids: readonly string[]) =>
 	(ONLY.length === 0 || ids.some((id) => ONLY.includes(id))) &&
 	!ids.some((id) => EXCEPT.includes(id));
 
+/**
+ * The browser every desk shot claims to be (#3884). detectOS reads the user
+ * agent, so a Mac's own Chromium would be offered the dmg and CI's the AppImage.
+ */
+export const DESK_UA =
+	'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
+/** GitHub's feed of the desktop builds: stubbed empty so no shot depends on the live release. */
+export const RELEASE_FEED =
+	'https://api.github.com/repos/natrontech/wattroom-releases/**';
+
 export const DESK: BrowserContextOptions = {
 	viewport: { width: 1440, height: 900 },
 };
@@ -144,6 +154,7 @@ export class Shoot {
 	): Promise<Opened> {
 		const ctx = await this.browser.newContext({
 			...device,
+			userAgent: device.userAgent ?? DESK_UA,
 			baseURL: baseUrl(),
 			// A surface whose recipe fixes the OS scheme keeps it (ride-free-road).
 			colorScheme: device.colorScheme ?? this.scheme,
@@ -152,16 +163,29 @@ export class Shoot {
 		await ctx.addInitScript(
 			([muted, world]) => {
 				localStorage.setItem('wattroom.mixer.v1', muted);
-				// World on is the device's World control at Full: this flag until
-				// #3214 replaces it.
-				if (world === true) localStorage.setItem('wattroom.world-slot.v1', '1');
+				// World on is the device's World control at Full (#3084).
+				if (world === true)
+					localStorage.setItem('wattroom.world.mode.v1', 'full');
 				// Software GL misses every frame; the dev build's frame judge
 				// stands down for the capture (#3823).
 				localStorage.setItem('wattroom.world-software.v1', '1');
-				if (world === false) localStorage.removeItem('wattroom.world-slot.v1');
+				// The simulated rider holds the watts without noise, so BEFORE and
+				// AFTER show the numeral at one place on its glide (#4000).
+				localStorage.setItem('wattroom.sim-steady.v1', '1');
+				// Its strap streams a heart rate (#3669); a rider with a threshold
+				// has the zone that bpm falls in.
+				const profile = JSON.parse(
+					localStorage.getItem('wattroom.profile.v1') ?? '{}',
+				);
+				localStorage.setItem(
+					'wattroom.profile.v1',
+					JSON.stringify({ ...profile, lthr: 165 }),
+				);
+				if (world === false) localStorage.removeItem('wattroom.world.mode.v1');
 			},
 			[MUTED, world ?? null] as const,
 		);
+		await ctx.route(RELEASE_FEED, (route) => route.fulfill({ status: 404 }));
 		await ctx.addInitScript(pinCapabilities, {
 			bluetooth: device !== PHONE,
 		});
@@ -317,21 +341,49 @@ export async function ride(
  * the shot is a little later in the ride, never a failed surface.
  */
 const LATE = 45;
-export async function atSecond(page: Page, second: number): Promise<void> {
-	const mark = `${Math.floor(second / 60)}:${String(second % 60).padStart(2, '0')}`;
-	const reached = (clock: string) => {
-		const [m, s] = clock.split(':').map(Number);
-		const at = m * 60 + s - second;
-		return at >= 0 && at <= LATE;
-	};
-	const deadline = Date.now() + (second + 30 + LATE) * 1000;
+const seconds = (clock: string) => {
+	const [m, s] = clock.split(':').map(Number);
+	return m * 60 + s;
+};
+async function waitClock(
+	page: Page,
+	label: string,
+	reached: (clockSeconds: number) => boolean,
+	deadlineS: number,
+): Promise<void> {
+	const deadline = Date.now() + deadlineS * 1000;
 	for (;;) {
 		const shown = (await clocks(page)).split(' ');
-		if (shown.includes(mark) || shown.some(reached)) return;
+		if (shown.some((c) => c && reached(seconds(c)))) return;
 		if (Date.now() > deadline)
-			throw new Error(`the ride never reached ${mark}: ${shown.join(' ')}`);
+			throw new Error(`the ride never reached ${label}: ${shown.join(' ')}`);
 		await page.waitForTimeout(200);
 	}
+}
+export async function atSecond(page: Page, second: number): Promise<void> {
+	const mark = `${Math.floor(second / 60)}:${String(second % 60).padStart(2, '0')}`;
+	await waitClock(
+		page,
+		mark,
+		(c) => c - second >= 0 && c - second <= LATE,
+		second + 30 + LATE,
+	);
+}
+
+/**
+ * The game card's only clock counts its round down (GamePanel's roundLeft,
+ * ROUND_S long), so `second` into the ride reads ROUND_S × round − second.
+ * A game's ride clock is that countdown, never a count up (#4006).
+ */
+const ROUND_S = 180;
+export async function atRoundSecond(page: Page, second: number): Promise<void> {
+	const left = ROUND_S * (Math.floor(second / ROUND_S) + 1) - second;
+	await waitClock(
+		page,
+		`${second}s into the game (${left}s left in its round)`,
+		(c) => left - c >= 0 && left - c <= LATE,
+		second + 30 + LATE,
+	);
 }
 
 /**

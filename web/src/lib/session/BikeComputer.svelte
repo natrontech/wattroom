@@ -12,17 +12,24 @@
 	import { untrack } from 'svelte';
 	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
+	import { device } from '$lib/device.svelte';
 	import ZoneDot from '$lib/components/ZoneDot.svelte';
 	import ComputerHead from '$lib/session/ComputerHead.svelte';
 	import { ZONE_BG } from '$lib/components/zones';
 	import { pulse } from '$lib/motion/transitions';
+	import { fieldDimmer } from '$lib/session/field-dim';
 	import ClimbProfile from '$lib/ride/ClimbProfile.svelte';
+	import { climbStage } from '$lib/ride/climb-cues.svelte';
+	import ComputerMap from '$lib/ride/ComputerMap.svelte';
 	import {
 		PAGE_NAMES,
+		TV_LABEL,
 		claimPageTurn,
 		climbHeader,
+		MAP_ASK,
 		fieldsFor,
 		pagesFor,
+		type Field,
 		turned,
 		type ComputerContext,
 		type ComputerPage,
@@ -33,6 +40,7 @@
 		phone = false,
 		climbOpens = false,
 		docked = false,
+		wide = false,
 		ftp = 0,
 		...ctx
 	}: ComputerContext & {
@@ -49,10 +57,15 @@
 		 * The dock is the panel, so this draws none of its own.
 		 */
 		docked?: boolean;
+		/** Docked in a flat panel the column wide: the head and the fields side by side. */
+		wide?: boolean;
 		/** For the head's zone and target track; read only when docked. */
 		ftp?: number;
 	} = $props();
 
+	// Docked in a phone's column (#3676): the column wide, the power centred, the
+	// fields two to a row, whatever the caller's `wide` asked of a desk's panel.
+	const narrow = $derived(docked && !tv && device.narrow);
 	let page = $state<ComputerPage>('ride');
 	const pages = $derived(pagesFor(ctx));
 	const shown = $derived(pages.includes(page) ? page : 'ride');
@@ -63,6 +76,26 @@
 		shown === 'climb' && !!ctx.climb && !(docked && ctx.target),
 	);
 	const turns = $derived(pages.length > 1);
+	// Docked on the TV (#3677): the same panel in vh, so it reads at 3 m.
+	const label = $derived(tv ? TV_LABEL : 'ride-label');
+	// On the TV the fields are the panel's last row and take the height the
+	// head leaves (ride-tv 9): up to three to a row, each number sized from
+	// the row's box and its column's width (a figure is about 0.62 em, its
+	// unit half that), between SPEC's 5vh floor and well under the watts.
+	const tvRows = $derived(Math.max(1, Math.ceil(fields.length / 3)));
+	const tvCols = $derived(Math.min(3, Math.max(1, fields.length)));
+	const TV_COLS = ['', 'grid-cols-1', 'grid-cols-2', 'grid-cols-3'];
+	const tvFields = $derived(
+		`calc(2vh + ${tvRows} * (3vh + 0.25rem + 10vh) + ${tvRows - 1} * 1.5vh)`,
+	);
+	function tvValue(field: Field): string {
+		const ems =
+			field.value.length * 0.62 +
+			(field.unit ? field.unit.length * 0.3 + 0.3 : 0);
+		const tall = `calc((100cqh - ${tvRows} * (3vh + 0.25rem) - ${tvRows - 1} * 1.5vh) / ${tvRows})`;
+		const wide = `calc((100cqw - ${tvCols - 1} * 2vw) / ${tvCols} / ${ems.toFixed(2)})`;
+		return `clamp(5vh, min(${tall}, ${wide}), 20vh)`;
+	}
 
 	function turn(dir: 1 | -1) {
 		page = turned(pages, shown, dir);
@@ -70,7 +103,9 @@
 
 	const size = $derived(
 		tv
-			? { value: 'text-[6vh]', unit: 'text-[3vh]', word: 'text-[3vh]' }
+			? fields.length > 2
+				? { value: 'text-[6vh]', unit: 'text-[3vh]', word: 'text-[3vh]' }
+				: { value: 'text-[10vh]', unit: 'text-[5vh]', word: 'text-[3vh]' }
 			: phone
 				? { value: 'text-2xl', unit: 'text-xs', word: 'text-sm' }
 				: { value: 'text-4xl', unit: 'text-lg', word: 'text-2xl' },
@@ -105,6 +140,31 @@
 		if (untrack(() => shown) === 'ride') page = 'climb';
 	});
 
+	// M, the ride key, turns to MAP where this computer has one.
+	$effect(() => {
+		const ask = (event: Event) => {
+			if (!pages.includes('map')) return;
+			page = 'map';
+			event.preventDefault();
+		};
+		window.addEventListener(MAP_ASK, ask);
+		return () => window.removeEventListener(MAP_ASK, ask);
+	});
+
+	// A plain field's number dims to 60 % after 20 s unchanged (#3215): ink at
+	// /60 is the ramp's legible floor, so it is the colour, never an opacity
+	// (no-faded-text). The 3 s power and the neon figures never dim.
+	const dimmer = fieldDimmer();
+	let now = $state(Date.now());
+	$effect(() => {
+		const stamp = Date.now();
+		for (const f of fields)
+			dimmer.see(f.key, `${f.value}${f.unit ?? ''}`, stamp);
+		now = stamp;
+		const tick = setInterval(() => (now = Date.now()), 1000);
+		return () => clearInterval(tick);
+	});
+
 	const zoneStrip = $derived(
 		shown === 'power' && ctx.stats ? ctx.stats.zoneSeconds.slice(1, 8) : null,
 	);
@@ -122,9 +182,13 @@
 	data-testid="bike-computer"
 	data-page={shown}
 	aria-label="bike computer, {PAGE_NAMES[shown]} page"
-	class={docked
-		? 'relative flex w-[21rem] max-w-full flex-col gap-3 px-4 py-3'
-		: 'panel relative'}
+	class="{shown === 'climb' && climbStage.slide ? 'climb-in ' : ''}{docked
+		? tv
+			? 'relative flex min-h-0 flex-1 flex-col gap-[1.5vh] px-[1.5vw] py-[1.5vh]'
+			: wide || narrow
+				? 'relative flex w-full flex-col gap-3 px-4 py-3'
+				: 'relative flex w-[21rem] max-w-full flex-col gap-3 px-4 py-3'
+		: 'panel relative'}"
 >
 	<!-- The page's name and its dots sit in the row of numbers, so a page is
 	     one row tall where it fits and the focus above keeps its height (#3597);
@@ -135,9 +199,17 @@
 		     others it offers it (#3645), and it takes no row of its own. -->
 		{#if ctx.climb}<span
 				data-testid={shown === 'climb' ? 'climb-class' : 'climb-chip'}
-				class="border-neon bg-surface text-ink rounded border px-1 leading-none font-bold tracking-normal"
+				class="border-neon bg-surface text-ink relative rounded border px-1 leading-none font-bold tracking-normal"
 				>{#if shown !== 'climb'}<span class="sr-only">{'climb '}</span>{/if}{ctx
-					.climb.card.cls}</span
+					.climb.card
+					.cls}{#if shown === 'climb' && ctx.climb.card.flammeRouge}<!-- The pennant hangs off the chip's corner, so it takes no width from the page dots. --><span
+						data-testid="flamme-rouge"
+						role="img"
+						aria-label="flamme rouge, the last kilometre"
+						class="bg-danger absolute -top-3 right-3 h-3 w-3 [clip-path:polygon(0_0,100%_50%,0_100%)] {climbStage.flammeStamp
+							? 'flamme-stamp'
+							: ''}"
+					></span>{/if}</span
 			>{/if}
 	{/snippet}
 	{#snippet name()}
@@ -213,18 +285,24 @@
 	{/if}
 	{#if docked}
 		<!-- D15: the current page's name between ← and →, with position dots. -->
-		<div class="relative flex items-center gap-1">
+		<div
+			data-testid="computer-page-row"
+			class="relative flex items-center {narrow ? 'flex-wrap' : ''}"
+		>
 			{#if turns}
 				<button
 					type="button"
 					onclick={() => turn(-1)}
 					aria-label="previous page, {PAGE_NAMES[turned(pages, shown, -1)]}"
 					title="Previous page"
-					class="icon-btn-lg -ml-2"><ChevronLeft size={24} /></button
+					class="icon-btn-lg -ml-2 shrink-0"
+					><ChevronLeft size={24} class={tv ? 'size-[3.4vh]' : ''} /></button
 				>
 			{/if}
-			<p class="ride-label text-ink flex items-center gap-2">
-				{PAGE_NAMES[shown]}{@render badge()}
+			<p class="{label} text-ink flex items-center gap-2 whitespace-nowrap">
+				{shown === 'climb' && ctx.climb
+					? climbHeader(ctx.climb)
+					: PAGE_NAMES[shown]}{@render badge()}
 			</p>
 			{#if turns}
 				<button
@@ -232,13 +310,23 @@
 					onclick={() => turn(1)}
 					aria-label="next page, {PAGE_NAMES[turned(pages, shown, 1)]}"
 					title="Next page"
-					class="icon-btn-lg"><ChevronRight size={24} /></button
+					class="icon-btn-lg shrink-0"
+					><ChevronRight size={24} class={tv ? 'size-[3.4vh]' : ''} /></button
 				>
-				<div class="ml-auto flex gap-2" aria-hidden="true">
+				<!-- In the world's column the dots take the right edge; in a wide
+				     flat panel they stay beside the name (#3669). -->
+				<div
+					class="flex gap-px {narrow
+						? 'basis-full justify-center'
+						: 'ml-auto @2xl:ml-4'}"
+					aria-hidden="true"
+				>
 					{#each pages as p (p)}
 						<span
 							data-testid="computer-dot"
-							class="size-2.5 rounded-full border forced-color-adjust-none {p ===
+							class="{tv
+								? 'size-[2.9vh]'
+								: 'size-2.5'} rounded-full border forced-color-adjust-none {p ===
 							shown
 								? 'bg-neon border-neon forced-colors:bg-[Highlight]'
 								: 'border-muted'}"
@@ -247,61 +335,91 @@
 				</div>
 			{/if}
 		</div>
-		<ComputerHead
-			power={ctx.stats?.seconds ? ctx.stats.power3 : Math.round(ctx.watts)}
-			kg={ctx.kg}
-			{ftp}
-			stale={ctx.stale}
-			target={ctx.target}
-			blockExecution={ctx.stats?.blockExecution ?? null}
-		/>
 	{/if}
 	{#if phone}{@render name()}{/if}
+	<!-- On the TV the fields stand under the head (#3677): its watts take the
+	     width, and the height the panel has after every word (ride-tv 9). -->
 	<div
-		class={docked
-			? 'border-neon/20 grid grid-cols-2 gap-x-6 gap-y-3 border-t pt-3'
-			: layout}
+		class={docked && tv
+			? 'flex min-h-0 flex-1 flex-col gap-[2vh]'
+			: docked && wide && !narrow
+				? 'flex flex-wrap items-end gap-x-8 gap-y-3'
+				: 'contents'}
 	>
-		{#if !phone && !docked}{@render name()}{/if}
-		{#each fields as field (field.key)}
-			<div data-testid="computer-field" data-field={field.key} class="min-w-0">
-				<span
-					class="{docked
-						? 'ride-label'
-						: `${size.word} text-muted`} flex items-center gap-2 leading-none"
-					>{field.label}{#if field.zone}<ZoneDot
-							zone={field.zone}
-							class={tv ? 'size-[1.4vh]' : 'size-2'}
-						/>{/if}</span
+		{#if docked}
+			<div class={tv ? 'flex min-h-0 min-w-0 flex-col' : 'contents'}>
+				<ComputerHead
+					power={ctx.stats?.seconds ? ctx.stats.power3 : Math.round(ctx.watts)}
+					kg={ctx.kg}
+					{ftp}
+					stale={ctx.stale}
+					target={ctx.target}
+					blockExecution={ctx.stats?.blockExecution ?? null}
+					{tv}
+					centred={narrow}
+				/>
+			</div>
+		{/if}
+		<div
+			class={docked
+				? tv
+					? `border-neon/20 [container-type:size] grid min-h-0 shrink grow ${TV_COLS[tvCols]} gap-x-[2vw] gap-y-[1.5vh] border-t pt-[2vh]`
+					: wide && !narrow
+						? 'border-neon/20 grid min-w-0 flex-1 auto-cols-fr grid-flow-col gap-x-8 border-l pl-8'
+						: 'border-neon/20 grid grid-cols-2 gap-x-6 gap-y-3 border-t pt-3'
+				: layout}
+			data-testid={docked ? 'computer-fields' : undefined}
+			style:flex-basis={docked && tv ? tvFields : undefined}
+		>
+			{#if !phone && !docked}{@render name()}{/if}
+			{#each fields as field (field.key)}
+				<div
+					data-testid="computer-field"
+					data-field={field.key}
+					class="min-w-0"
 				>
-				{#if field.key === 'gear'}
 					<span
-						bind:this={gearField}
-						aria-live="polite"
-						class="num text-neon mt-1 block {size.value} leading-none font-bold"
-						>{field.value}</span
+						class="{docked
+							? label
+							: `${size.word} text-muted`} flex items-center gap-2 leading-none"
+						>{field.label}{#if field.zone}<ZoneDot
+								zone={field.zone}
+								class={tv ? 'size-[1.4vh]' : 'size-2'}
+							/>{/if}</span
 					>
-				{:else}
-					<!-- A space, not a margin, between number and unit: "78 rpm"
+					{#if field.key === 'gear'}
+						<span
+							bind:this={gearField}
+							aria-live="polite"
+							class="num text-neon mt-1 block {size.value} leading-none font-bold"
+							style:font-size={docked && tv ? tvValue(field) : undefined}
+							>{field.value}</span
+						>
+					{:else}
+						<!-- A space, not a margin, between number and unit: "78 rpm"
 					     is what a screen reader and a search both read. Neon is a
 					     model's number, flat: only live data glows (ADR-0005). The
 					     unit's own line-height would make a page with units 2 px
 					     taller than one without, so a turn would move the panel. -->
-					<span
-						class="num mt-1 block {size.value} leading-none font-bold {field.glow
-							? 'text-watt glow-text'
-							: field.neon
-								? 'text-neon'
-								: 'text-ink'}"
-						>{field.value}{#if field.unit}{' '}<span
-								class="text-muted {size.unit} leading-none font-normal"
-								>{field.unit}</span
-							>{/if}</span
-					>
-				{/if}
-			</div>
-		{/each}
-		{#if turns && !tv && !phone && !docked && !profile}{@render dots()}{/if}
+						<span
+							class="num mt-1 block {size.value} leading-none font-bold {field.glow
+								? 'text-watt glow-text'
+								: field.neon
+									? 'text-neon'
+									: dimmer.dimmed(field.key, now)
+										? 'text-ink/60'
+										: 'text-ink'}"
+							style:font-size={docked && tv ? tvValue(field) : undefined}
+							>{field.value}{#if field.unit}{' '}<span
+									class="text-muted {size.unit} leading-none font-normal"
+									>{field.unit}</span
+								>{/if}</span
+						>
+					{/if}
+				</div>
+			{/each}
+			{#if turns && !tv && !phone && !docked && !profile}{@render dots()}{/if}
+		</div>
 	</div>
 	{#if zoneStrip}{@render strip(zoneStrip)}{/if}
 	{#if profile && ctx.climb}
@@ -313,5 +431,6 @@
 			{#if turns && !tv && !phone && !docked}{@render dots()}{/if}
 		</div>
 	{/if}
+	{#if shown === 'map' && ctx.map}<ComputerMap view={ctx.map} {tv} />{/if}
 	{#if turns && phone}{@render dots()}{/if}
 </section>

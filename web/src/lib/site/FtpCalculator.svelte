@@ -67,7 +67,7 @@
 
 	<p class="mt-5" aria-live="polite">
 		<span class="eyebrow">Your FTP</span><br />
-		<span class="num text-watt glow-text-strong text-5xl font-bold">{ftp}</span>
+		<span class="num text-watt text-5xl font-bold">{ftp}</span>
 		<span class="text-muted text-xl">W</span>
 		<span class="text-muted ml-2 text-sm">
 			= {Math.round(

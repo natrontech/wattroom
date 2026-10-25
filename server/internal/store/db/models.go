@@ -446,6 +446,10 @@ type User struct {
 	Cheers             string
 	WeightChangedAt    pgtype.Timestamptz
 	WeightConfirmedAt  pgtype.Timestamptz
+	Build              *string
+	HeightCm           *int16
+	Skin               *int16
+	FigureAskedAt      pgtype.Timestamptz
 }
 
 type UserAvatar struct {

@@ -5,8 +5,13 @@
 	import PalettePicker from '$lib/components/PalettePicker.svelte';
 	import { prefersReducedMotion } from '$lib/motion';
 	import { theme, type ThemeChoice } from '$lib/theme.svelte';
-	import { worldSlotOn } from '$lib/world/flag';
-	import { flatRoad, setFlatRoad } from '$lib/world/world-view.svelte';
+	import { STEADY_BUTTON } from '$lib/world/ride-view';
+	import {
+		setWorldMode,
+		WORLD_MODES,
+		worldMode,
+		type WorldMode,
+	} from '$lib/world/mode';
 	import Monitor from '@lucide/svelte/icons/monitor';
 	import Moon from '@lucide/svelte/icons/moon';
 	import Sun from '@lucide/svelte/icons/sun';
@@ -18,13 +23,15 @@
 			{ value: 'light', label: 'Light', icon: Sun },
 		];
 
-	// How a ride on a road is drawn on this device (#3080): the world, or the
-	// Skyline. Never chosen, reduced motion starts on the flat road (ADR-0079).
-	let flat = $state(flatRoad() ?? prefersReducedMotion.current);
-	const ROADS = [
-		{ flat: false, label: '3D world' },
-		{ flat: true, label: 'Flat road' },
-	];
+	// The World control (#3214, ADR-0079): where a rider turns 3D on for this
+	// device, and how much the world moves. Never chosen is Flat (#3084).
+	let mode = $state<WorldMode>(worldMode() ?? 'flat');
+	let chosen = $state(worldMode() !== null);
+	function choose(next: WorldMode) {
+		mode = next;
+		chosen = true;
+		setWorldMode(next);
+	}
 
 	// One label column, so every row's first control starts at the same x; on a
 	// phone the label sits above its row, which a column would wrap. The hint
@@ -62,26 +69,36 @@
 			<span class={HINT}>auto follows your OS — the ride is always dark</span>
 		</div>
 	</div>
-	{#if worldSlotOn()}
-		<div class={ROW}>
-			<span class="eyebrow">road</span>
-			<div class="flex flex-wrap items-center gap-2">
-				{#each ROADS as option (option.label)}
-					<button
-						onclick={() => {
-							flat = option.flat;
-							setFlatRoad(option.flat);
-						}}
-						aria-pressed={flat === option.flat}
-						class="btn btn-xs {flat === option.flat
-							? 'btn-primary'
-							: 'btn-secondary'}"
-					>
-						{option.label}
-					</button>
+	<!-- 3D is the rider's to turn on (#3084, ADR-0066 amended): Flat until
+	     they pick a 3D look, here or with "Ride in 3D" on a road ride. -->
+	<div class={ROW}>
+		<span class="eyebrow">3D world</span>
+		<div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+			{#each WORLD_MODES as option (option.mode)}
+				<button
+					onclick={() => choose(option.mode)}
+					aria-pressed={mode === option.mode}
+					title={option.line}
+					class="btn btn-xs {mode === option.mode
+						? 'btn-primary'
+						: 'btn-secondary'}"
+				>
+					{option.label}
+				</button>
+			{/each}
+			<p class="{HINT} col-span-2 sm:col-span-1">
+				{#each WORLD_MODES as option (option.mode)}
+					{#if option.mode === mode}{option.label} — {option.line}{/if}
 				{/each}
-				<span class={HINT}>how a ride on a road is drawn on this device</span>
-			</div>
+			</p>
 		</div>
-	{/if}
+		{#if !chosen && prefersReducedMotion.current}
+			<button
+				onclick={() => choose('steady')}
+				class="btn btn-secondary btn-lg justify-self-start sm:col-start-2"
+			>
+				{STEADY_BUTTON}
+			</button>
+		{/if}
+	</div>
 </section>

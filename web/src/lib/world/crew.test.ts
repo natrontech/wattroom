@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { toRoute } from '$lib/road/route';
@@ -169,6 +170,30 @@ describe('a silent trainer (#3766)', () => {
 		const { tone, trail } = frame(you());
 		expect(zoneTones).toContain(tone);
 		expect(trail.visible).toBe(true);
+	});
+
+	it('writes the live zone as a digit on the ring, and none while silent (#3213)', () => {
+		const crew = makeCrew(style, new THREE.Color());
+		const rider = you();
+		const digit = () => {
+			let found: THREE.Mesh | undefined;
+			crew.group.traverse((o) => {
+				if (o.userData.kind === 'zone-digit') found = o as THREE.Mesh;
+			});
+			return found!;
+		};
+		const legs: Pedalling = { crank: 0 };
+		const run = () => crew.update(route, [rider], () => legs, 0.1, 0.1, false);
+		rider.watts = 100;
+		run();
+		expect(digit().visible).toBe(true);
+		expect(digit().userData.zone).toBe(1);
+		rider.watts = 300;
+		run();
+		expect(digit().userData.zone).toBe(5);
+		rider.silent = true;
+		run();
+		expect(digit().visible).toBe(false);
 	});
 
 	it('drops the ring to a tone no zone wears and stops the trail, and both come back with the next sample', () => {

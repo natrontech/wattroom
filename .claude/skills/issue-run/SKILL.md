@@ -15,10 +15,14 @@ A run takes one issue, or one batch (§1), to **merged** or **closed with eviden
 
 ## 1. Pick
 
-Not workable: labelled `needs-human-input`, `blocked`, `backlog` or `feedback` (the `pickup-feedback` skill owns that one); assigned; covered by an open PR; or named by a live branch or worktree. A branch whose PR closed standing down is not a claim but kept work.
+Not workable: labelled `needs-human-input`, `blocked`, `backlog` or `feedback` (the `pickup-feedback` skill owns that one); assigned; covered by an open PR; or named by a live branch or worktree. A branch whose PR closed standing down is not a claim but kept work. So is a decided draft (source 0).
 
 If `$AGENT_COUNT` is above 1, prefer issues where `number % AGENT_COUNT == AGENT_INDEX`, so the agents beside you start apart. Take the first source that yields an issue:
 
+0. **Decided drafts.** A draft PR parked by a round-3 design FAIL whose issue has since lost `needs-human-input`, with a maintainer comment after the draft's last push. The comment is the decision. Apply it, then run a fresh design check (one round) against the canon as it stands now, and land it. Nothing else resumes these, because the open draft reads as a claim.
+   ```sh
+   gh pr list --draft --author jlaubot --json number,title,closingIssuesReferences
+   ```
 1. **Kept work.** A PR closed unmerged ("standing down", "paused for budget") whose `Closes` issue is still open. Read why it stopped. Unless the maintainer rejected the approach, resume its branch, or `git fetch origin pull/<pr>/head` if the branch is gone. Don't start over.
    ```sh
    gh pr list --state closed --search "is:unmerged" --limit 30 --json number,headRefName,closingIssuesReferences
@@ -52,13 +56,13 @@ If `$AGENT_COUNT` is above 1, prefer issues where `number % AGENT_COUNT == AGENT
 
 - Reproduce first: a test or a design-shot probe that fails on main. Watch it fail.
 - Make the smallest diff that meets the issue: no refactor, no cleanup next to it.
-- If a rider can see the change, start the design check's capture (`design-check` §2) as soon as the fix builds, not after everything else. Run it in the background with `timeout: 3600000`, because a headless run otherwise stops it at 10 minutes. Seven of the 13 PRs closed unmerged around 2026-10-09 stopped with this step still to run.
+- If the design check applies (DESIGN-CHECK step 1), start its capture (`design-check` §2) as soon as the fix builds, not after everything else. Run it in the background with `timeout: 3600000`, because a headless run otherwise stops it at 10 minutes. Seven of the 13 PRs closed unmerged around 2026-10-09 stopped with this step still to run.
 
 ## 4. Prove
 
 - Run `make test > $S/test.log 2>&1; echo exit=$?` with the Bash timeout at 600000, then the same for `make lint`, as separate commands. `make ci` stops at the first failure and hides the rest. Read failures with `grep -nE 'FAIL|Error|panic' $S/test.log | head -40`, not the whole log.
 - On a fresh worktree, a DB test that fails at about 3 s is the migrate lock: rerun it once. A failure that passes on one rerun is a flake. If an open issue owns it, comment there; otherwise move on.
-- Run the `verify` skill for server or web behaviour, the `go-review` skill for hub, protocol, BLE or stats Go, and the `design-check` skill for anything a rider sees. Its round-3 rule ends the run.
+- Run the `verify` skill for server or web behaviour, the `go-review` skill for hub, protocol, BLE or stats Go, and the `design-check` skill when the PR's issue is labelled `design` or names Surfaces: one round, then land.
 - A logic change (not markup or CSS alone) gets one fresh review before ready: the `code-review` skill, or else a fresh Agent given only the issue and `git diff origin/main...`. Fix what it confirms.
 - Wait for CI in one call: `scripts/wait-checks.sh <pr>` with the Bash timeout at 600000. It waits for every check, e2e included, because auto-merge ignores e2e. Exit 2 means run it again. Exit 1 names the failing job, so read only that: `gh run view <run-id> --log-failed | tail -n 80`.
 
@@ -86,10 +90,12 @@ Run `date` when you start. At two hours without a green PR, or on the third fail
 
 1. Push the branch, then close its PR and keep the branch. An open PR reads as a claim.
 2. Comment on the issue: what works, what doesn't, and the one command or decision that unblocks it.
-3. Unassign yourself, and add `blocked` if something outside the code blocks it. The next run resumes the branch as kept work.
+3. Unassign yourself. If something outside the code blocks it, add `blocked` and mention @janlauber in the comment. A mention is the push that tells him. Otherwise the next run resumes the branch as kept work.
 4. End the run.
 
-If the issue already has two stand-downs, add `needs-human-input` with the blocker instead, so no run takes it up a third time.
+If the issue already has two stand-downs, add `needs-human-input` and mention @janlauber with the blocker instead, so no run takes it up a third time.
+
+A design finding is never a stand-down and never holds a PR in draft: fix the blockers you caused, leave the rest in the findings comment and land (DESIGN-CHECK steps 6 and 7).
 
 Kill only processes you started, by PID.
 

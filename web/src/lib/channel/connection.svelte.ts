@@ -5,7 +5,7 @@ import { account } from '$lib/account.svelte';
 import { createProfileStore } from '$lib/profile.svelte';
 import { spaceBelongsTo } from '$lib/channel/ptt-keys';
 import { gearsEnabled } from '$lib/ride/gears-enabled';
-import { bindShiftKeys } from '$lib/ride/keys';
+import { bindShiftKeys, createRemoteRunner } from '$lib/ride/keys';
 import { createRideShift, type RideShift } from '$lib/ride/ride-shift';
 import { pullProfile } from '$lib/profile-sync.svelte';
 import { createChannelLive } from '$lib/channel/live.svelte';
@@ -70,9 +70,10 @@ type Connection = {
 	/** You are riding the channel's session, not standing beside it. */
 	joined: () => boolean;
 	/**
-	 * A ride is under way on this connection: a session live in the channel,
-	 * or your free ride recording (ADR-0059, #2843). What the frame darkens
-	 * for, the HUD follows and the leave guard protects.
+	 * You are riding on this connection: a live session you joined, your free
+	 * ride recording or your own workout (ADR-0059, #2843). What the frame
+	 * darkens for, the HUD follows and the leave guard protects. A spectator
+	 * stays at the desk.
 	 */
 	riding: () => boolean;
 	/** Easier / Harder acts on a ride here: the soundboard yields its keys (#3329). */
@@ -317,6 +318,54 @@ function connect(address: PlaceAddress): Connection {
 		shift = createRideShift(ride);
 		$effect(() => (ride.shifting ? bindShiftKeys(shift) : undefined));
 
+		// The phone remote's presses, off the tick, through the same inputs as
+		// the keys (#3217). The hub sends them to this tab only while it holds
+		// the trainer.
+		const remote = createRemoteRunner(
+			{
+				press: (dir, source) => ride.shifting && shift.press(dir, source),
+				release: (source) => shift.release(source),
+			},
+			(held) => av.setPtt(held),
+			{
+				pause: () => ownRide.session?.pause(),
+				resume: () => ownRide.session?.resume(),
+			},
+		);
+		// The holder answers with its gear on a change and after each press, so
+		// a phone that joined late still learns where it is (#3217).
+		const sayGear = () => {
+			if (!ride.shifting) return;
+			live.sendGear({
+				label: ride.gear.label,
+				atEnd: ride.atEnd(1) || ride.atEnd(-1),
+			});
+		};
+		$effect(sayGear);
+		// Pause is a solo ride's alone: a session is never paused by one rider
+		// (#3217), so the phone is told there is nothing to pause.
+		const sayPause = () => {
+			const solo = ownRide.session;
+			live.sendPause({
+				pausable: !!solo && solo.state !== 'done' && solo.state !== 'countdown',
+				paused: !!solo?.held,
+			});
+		};
+		$effect(sayPause);
+		$effect(() => {
+			const off = live.onRemote((cmd) => {
+				remote.run(cmd);
+				if (cmd.action !== 'talk-keepalive') {
+					sayGear();
+					sayPause();
+				}
+			});
+			return () => {
+				off();
+				remote.stop();
+			};
+		});
+
 		// LiveKit dropping us while live gets ONE automatic rejoin with a
 		// fresh token — covers token expiry and transient drops (#219). It is
 		// a resume, not a fresh join: the mic comes back the way it was, and
@@ -359,7 +408,7 @@ function connect(address: PlaceAddress): Connection {
 		ownRide,
 		joined,
 		riding: () =>
-			isLivePhase(live.tick?.state.phase) ||
+			(isLivePhase(live.tick?.state.phase) && joined()) ||
 			freeRide.recording ||
 			ownRide.riding,
 		shifting: () => ride.shifting || (gearsEnabled() && ownRide.riding),

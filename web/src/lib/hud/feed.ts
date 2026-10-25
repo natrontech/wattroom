@@ -21,6 +21,10 @@ export interface HudSnapshot {
 	elapsed?: number;
 	/** The workout's name, solo or in a session. */
 	label: string;
+	/** rpm. Absent from a HUD older than it, and drawn only when sent. */
+	cadence?: number;
+	/** bpm, only with a heart-rate source. */
+	heartRate?: number;
 	/**
 	 * What the riding screen would be shouting about (#1665): the trainer's
 	 * signal is gone, or the voice channel's socket is. A HUD that shows a

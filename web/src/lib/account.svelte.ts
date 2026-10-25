@@ -98,6 +98,18 @@ export interface Me {
 	/** Your own reaction set (#2722): icon keys and emoji, the first four the
 	 * mid-ride cheer buttons. The server fills in the base set. */
 	cheers?: string[];
+	/** Your figure (ADR-0073): null is the neutral value. */
+	figure?: FigureChoice;
+	/** A save or a skip has answered the figure card, on any device. */
+	figureAsked?: boolean;
+}
+
+export type FigureBuild = 'slim' | 'athletic' | 'strong';
+export interface FigureChoice {
+	build: FigureBuild | null;
+	heightCm: number | null;
+	/** Index into the 8 skin swatches. */
+	skin: number | null;
 }
 
 function createAccountStore() {
@@ -212,6 +224,11 @@ function createAccountStore() {
 		get cheers(): string[] {
 			return me?.cheers?.length ? me.cheers : STOCK_CHEERS;
 		},
+		/** True while nobody has answered the figure card; false before the
+		 * account has loaded, so the card never flashes at a loading rider. */
+		get figureUnasked(): boolean {
+			return !!me && !me.figureAsked;
+		},
 		load,
 		/** Returns a field-keyed error message, or null on success. */
 		async save(next: {
@@ -255,6 +272,20 @@ function createAccountStore() {
 			const res = await api<Me>('/api/me/cheers', {
 				method: 'PUT',
 				json: { cheers },
+			});
+			if (res.ok) {
+				me = res.data;
+				return null;
+			}
+			return res.error;
+		},
+		/** The figure card's answer; `{}` is a skip. */
+		async setFigure(
+			choice: Partial<FigureChoice>,
+		): Promise<{ message: string } | null> {
+			const res = await api<Me>('/api/me/figure', {
+				method: 'PUT',
+				json: choice,
 			});
 			if (res.ok) {
 				me = res.data;

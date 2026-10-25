@@ -12,6 +12,8 @@ export interface RoadPlace {
 	mps: number;
 	/** The tick's time, server ms: a place that stops changing is a dropped tick. */
 	at: number;
+	/** The bunch laps the road: it has no finish. */
+	loop: boolean;
 }
 
 /**
@@ -35,6 +37,7 @@ export function placeOnRoad(
 		m: bunchM + (offsets?.[you] ?? 0) / 10,
 		mps: bunchMps,
 		at: tick.at,
+		loop: !!route.loop,
 	};
 }
 

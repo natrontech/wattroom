@@ -13,10 +13,45 @@ test('a rider who has never ridden is shown the first step on Home', async ({
 }) => {
 	await signInAs(page, 'First Run Rider', '/home');
 	await expect(page.getByText(/getting set up/)).toBeVisible();
-	const first = page.getByRole('link', { name: /Take your first ride/ });
+	const first = page.getByRole('link', { name: /Ride your first road/ });
 	await expect(first).toBeVisible();
+	await expect(
+		page.getByText('The ring under you is your zone.'),
+	).toBeVisible();
 	await first.click();
-	await expect(page).toHaveURL(/\/settings\/equipment$/);
+	await expect(page).toHaveURL(/\/ride\?road=intro$/);
+});
+
+const MUTE = () =>
+	localStorage.setItem(
+		'wattroom.mixer.v1',
+		JSON.stringify({ music: 0, cues: 0, board: 0, share: 0 }),
+	);
+
+/**
+ * Step 3 (#3218): the card leads onto the built-in intro road, and a fresh
+ * account rides it on the simulated trainer, no route of its own needed.
+ */
+test('the first-run card rides the intro road on the simulated trainer', async ({
+	page,
+}) => {
+	test.skip(
+		!!process.env.PLAYWRIGHT_BASE_URL,
+		'the ?as= dev provider only exists on a dev server',
+	);
+	await page.addInitScript(MUTE);
+	await signInAs(page, 'Intro Road Rider', '/home');
+	await page.getByRole('link', { name: /Ride your first road/ }).click();
+	await page
+		.getByRole('button', { name: 'Ride simulated' })
+		.click({ timeout: 15_000 });
+	await page.getByRole('button', { name: 'Start the ride' }).click();
+	await expect(page.getByTestId('ride-context')).toContainText(
+		'Your first road',
+	);
+	await expect(page.getByTestId('bike-computer')).toBeVisible({
+		timeout: 15_000,
+	});
 });
 
 /**
@@ -44,9 +79,9 @@ test('a new account is asked for its FTP and weight, and answering retires the s
 
 	const ask = page.getByText('Set your FTP and weight');
 	await expect(ask).toBeVisible();
-	// Above "Take your first ride", because it is above it in consequence.
+	// Above "Ride your first road", because it is above it in consequence.
 	const labels = await page
-		.getByText(/Set your FTP and weight|Take your first ride/)
+		.getByText(/Set your FTP and weight|Ride your first road/)
 		.allInnerTexts();
 	expect(labels[0]).toContain('Set your FTP and weight');
 

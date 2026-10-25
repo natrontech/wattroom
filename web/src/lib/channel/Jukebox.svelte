@@ -14,7 +14,6 @@
 	import RailSheet from '$lib/channel/RailSheet.svelte';
 	import { IN_SYNC_SEC, playerInfo } from '$lib/channel/jukebox-player.svelte';
 	import { listening } from '$lib/channel/listening.svelte';
-	import { railLabel, railLink, railText } from '$lib/channel/rail-size';
 	import {
 		createPlaylistStore,
 		type SaveTarget,
@@ -152,7 +151,7 @@
 		/>
 	{:else if riding}
 		<RailSheet>
-			{#snippet label()}<span class="ride-label">jukebox</span>{/snippet}
+			{#snippet label()}<span class="eyebrow">jukebox</span>{/snippet}
 			{@render below()}
 		</RailSheet>
 	{:else}
@@ -168,11 +167,11 @@
 </section>
 
 {#snippet below()}
-	<JukeboxAdd {send} {refusal} {riding} />
+	<JukeboxAdd {send} {refusal} />
 
 	{#if queue.length}
 		<div class="min-w-0">
-			<p class="{railLabel(riding)} flex items-center justify-between">
+			<p class="eyebrow flex items-center justify-between">
 				<span>up next</span>
 				<span class="num">{queue.length}</span>
 			</p>
@@ -180,7 +179,6 @@
 				{#each queue.slice(0, showAllQueue ? queue.length : QUEUE_PEEK) as entry, i (entry.id)}
 					<JukeboxTrack
 						{entry}
-						{riding}
 						position={i + 1}
 						myId={account.me?.id}
 						onVote={() => send({ action: 'vote', entryId: entry.id })}
@@ -194,17 +192,11 @@
 					/>
 				{/each}
 			</ul>
-			<!-- Riding, each link keeps its one line and they stack. -->
-			<div
-				class="mt-1.5 flex flex-wrap items-center gap-x-3 whitespace-nowrap {railText(
-					riding,
-					'text-[11px]',
-				)}"
-			>
+			<div class="mt-1.5 flex items-center gap-3 text-[11px]">
 				{#if queue.length > QUEUE_PEEK}
 					<button
 						onclick={() => (showAllQueue = !showAllQueue)}
-						class="btn-link {railLink(riding)}"
+						class="btn-link"
 						>{showAllQueue
 							? 'fewer'
 							: `+${queue.length - QUEUE_PEEK} more`}</button
@@ -215,7 +207,7 @@
 				<button
 					onclick={() => void saveQueue()}
 					disabled={savingQueue}
-					class="btn-link ml-auto {railLink(riding)}"
+					class="btn-link ml-auto"
 					title="the deck and everything behind it, as a new crew playlist"
 					>Save as a playlist</button
 				>
@@ -230,11 +222,11 @@
 
 	<!-- What is saved comes after what is live (#1423): the queue is what the
 	     channel is about to hear; the playlists are where it can reach next. -->
-	<JukeboxPlaylists {address} {crewStore} {mineStore} {riding} />
+	<JukeboxPlaylists {address} {crewStore} {mineStore} />
 
 	{#if history.length}
 		<details class="min-w-0">
-			<summary class="{railLabel(riding)} cursor-pointer py-2 select-none"
+			<summary class="eyebrow cursor-pointer py-2 select-none"
 				>just played · {history.length}</summary
 			>
 			<ul class="mt-1.5 flex flex-col gap-1.5">
@@ -244,7 +236,6 @@
 					     videoId made the hub read it as a blank YouTube add (#1144). -->
 					<JukeboxTrack
 						{entry}
-						{riding}
 						onRequeue={() =>
 							send({
 								action: 'add',

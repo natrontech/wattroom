@@ -39,7 +39,7 @@ Standing down: withdraw your claim and write "proceed, do not stand down on acco
 - Progress, blockers and decisions go in the issue or PR. A decision made in a thread still gets an ADR.
 - An out-of-scope finding is never extra scope. Search first and comment on the open issue that owns it. Only a defect a rider would notice, or one that breaks CI, becomes a new issue, with a milestone and labels, and one rule broken in several places is one issue. A minor goes in a PR comment.
 - A PR that ships part of an issue says `Refs #<n>` and ticks its box in the issue's checklist, and the one that ticks the last box says `Closes #<n>`. An issue main already satisfies is closed, naming the PRs that did it.
-- A PR a rider can see carries a Design check section per [docs/design/DESIGN-CHECK.md](docs/design/DESIGN-CHECK.md); one with a blocker or major left stays draft.
+- A PR whose issue is labelled `design` or names Surfaces carries a Design check section per [docs/design/DESIGN-CHECK.md](docs/design/DESIGN-CHECK.md): one capture, one review, the blockers it caused fixed. Nothing else holds it in draft; other PRs skip the check.
 - A PR body says what changed, why and how you checked it, in at most 600 characters ([template](.github/PULL_REQUEST_TEMPLATE.md)); findings and logs go in comments. CI goes red over 1,200.
 - Done = CI green, diff self-reviewed, PR marked ready.
 
@@ -55,7 +55,7 @@ Standing down: withdraw your claim and write "proceed, do not stand down on acco
 - The databases are created on demand and nothing removes them but `make dev-db-drop`.
 - A whole `go test ./...` run, and the next one, share one test database: a fixture that must be alone needs a run-unique name, and one that must survive a retention sweep is dated inside the retention. `WATTROOM_TEST_DB` overrides the name; a bare `go test` hits the main tree's.
 - Still shared: one Postgres server and one LiveKit. Say so when you verify audio.
-- `make infra` always starts the one compose project `wattroom`, wherever you run it. Never `docker compose up` by hand and never bring a compose project down. `make worktree-gc` names stray postgres containers and prints the `docker rm -f`; it stops nothing itself.
+- `make infra` always starts the one compose project `wattroom`, wherever you run it. Never `docker compose up` by hand and never bring a compose project down. `make worktree-gc` removes finished worktrees (squash-merged, or empty and older than 12 h) with their databases and deletes their branches; it keeps dirty or unpushed ones. Stray postgres containers it only names, printing the `docker rm -f`.
 
 ## Labels
 

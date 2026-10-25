@@ -9,15 +9,32 @@
 	import { useChannel } from '$lib/channel/context';
 	import type { LiveRider } from '$lib/channel/types';
 	import { contextMenu } from '$lib/context-menu.svelte';
+	import { zoneOf } from '$lib/components/zones';
 	import { wkg } from '$lib/format';
 	import { crewMenu } from '$lib/session/crew-menu';
+	import { offsetWindow, pelotonRows } from '$lib/session/peloton-list';
 
-	let { riders }: { riders: LiveRider[] } = $props();
+	let {
+		riders,
+		offsets = {},
+	}: {
+		riders: LiveRider[];
+		/** Metres from the bunch by rider: the list's distance (#3215). */
+		offsets?: Record<string, number>;
+	} = $props();
 	const channel = useChannel();
+
+	// You and the 3 nearest while the bunch is steady, everyone while it moves.
+	const steady = offsetWindow();
+	let settled = $state(true);
+	$effect(() => {
+		settled = steady.settled(Date.now(), offsets);
+	});
+	const rows = $derived(pelotonRows(riders, offsets, settled));
 </script>
 
-<ul aria-label="the crew" class="flex w-60 flex-col">
-	{#each riders as rider (rider.id)}
+<ul aria-label="the crew" class="flex w-max max-w-full min-w-60 flex-col">
+	{#each rows as rider (rider.id)}
 		<li
 			{@attach contextMenu(() => crewMenu(channel, rider))}
 			data-testid="crew-tile"
@@ -28,8 +45,19 @@
 			<span data-testid="crew-name" class="min-w-0 flex-1 truncate"
 				>{rider.name}</span
 			>
-			<span class="num shrink-0 text-4xl leading-none"
-				>{rider.stale ? '—' : wkg(rider.watts, rider.kg)}</span
+			{#if !rider.stale && rider.ftp > 0}
+				<!-- The zone as a digit: ink, never colour alone (#3213, WCAG 1.4.1). -->
+				<span data-testid="crew-zone" class="num text-muted shrink-0 text-2xl"
+					>Z{zoneOf(rider.watts, rider.ftp)}</span
+				>
+			{/if}
+			<!-- Your W/kg has one home, beside the 3 s power in the head (D17):
+			     your row keeps the place, unseen, so the zones stay one column. -->
+			<span
+				aria-hidden={rider.you}
+				class="num shrink-0 text-4xl leading-none {rider.you
+					? 'invisible'
+					: ''}">{rider.stale ? '—' : wkg(rider.watts, rider.kg)}</span
 			>
 		</li>
 	{/each}

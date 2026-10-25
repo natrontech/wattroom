@@ -39,11 +39,15 @@
 		road,
 		metre,
 		bunch,
+		loop = false,
 		watts,
 		silent = false,
 		ftp,
 		progress = null,
 		paused = false,
+		look = 'full',
+		camera,
+		countIn = null,
 		onfail,
 		onflat,
 	}: {
@@ -53,6 +57,8 @@
 		metre: () => RideMetre;
 		/** Everyone on the road with you, on a session's road. */
 		bunch?: () => BunchView | null;
+		/** The session laps the road: it has no finish. */
+		loop?: boolean;
 		watts: number;
 		/** The trainer is silent past SIGNAL_LOST_MS, the signal the panels read "—" from. */
 		silent?: boolean;
@@ -61,6 +67,12 @@
 		progress?: number | null;
 		/** A shared screen has the focus. */
 		paused?: boolean;
+		/** The World control's choice (#3214): Steady's camera, Light's budget. */
+		look?: 'full' | 'steady' | 'light';
+		/** The rider's camera preset (keys 1-4, #3216); the look's own until they pick one. */
+		camera?: 'chase' | 'heli' | 'side' | 'steady';
+		/** The count-in's seconds left and its length (#3087): the eye flies its reveal to the start arch over it. */
+		countIn?: { left: number; total: number } | null;
 		onfail: (why: Failure) => void;
 		/** The rider asked for the flat road on this device. */
 		onflat: () => void;
@@ -68,6 +80,15 @@
 
 	let canvas = $state<HTMLCanvasElement>();
 	let scene = $state.raw<WorldScene | null>(null);
+	// The frame loop reads the count-in, it is not read by a render.
+	let counting: typeof countIn = null;
+	$effect(() => {
+		counting = countIn;
+	});
+
+	$effect(() => {
+		if (camera) scene?.setCamera(camera);
+	});
 
 	onMount(() => {
 		// Building holds the main thread for a moment: let the surface paint first.
@@ -82,7 +103,11 @@
 					ftp,
 					metre,
 					bunch,
-					steady: () => prefersReducedMotion.current,
+					loop,
+					countIn: () => counting,
+					camera: camera ?? (look === 'steady' ? 'steady' : 'chase'),
+					light: look === 'light',
+					steady: () => prefersReducedMotion.current || look === 'steady',
 					onCue: play,
 					// Your kit is keyed by who you are, solo or in a bunch: the crew sees the one you see.
 					youId: account.me?.id,
@@ -90,6 +115,8 @@
 					neon: getComputedStyle(canvas!).color,
 					// When, at what speed, and where: two screens read a moment apart still compare.
 					onTick: (hud) => {
+						if (hud.shot) canvas!.dataset.shot = hud.shot;
+						else delete canvas!.dataset.shot;
 						canvas!.dataset.riders = JSON.stringify({
 							t: Date.now(),
 							mps: hud.kmh / 3.6,

@@ -8,7 +8,6 @@
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { confirm } from '$lib/confirm.svelte';
 	import type { MenuEntry } from '$lib/context-menu.svelte';
-	import { roadsEnabled } from '$lib/ride/roads';
 	import type { StoredRoute } from '$lib/road/stored';
 	import { toasts } from '$lib/toast.svelte';
 
@@ -43,7 +42,6 @@
 
 	// Every device, as a workout card's Ride: where this one cannot reach a
 	// trainer, /ride says why beside its disabled Start (ux.md).
-	const rides = $derived(roadsEnabled());
 	const rideHref = (r: StoredRoute) =>
 		`/ride?road=${encodeURIComponent(r.id)}${r.carryOnM !== undefined ? `&from=${Math.floor(r.carryOnM)}` : ''}`;
 
@@ -63,9 +61,7 @@
 	}
 
 	const menu = (r: StoredRoute) => (): MenuEntry[] => [
-		...(rides
-			? [{ label: 'Ride it', onSelect: () => void goto(rideHref(r)) }]
-			: []),
+		{ label: 'Ride it', onSelect: () => void goto(rideHref(r)) },
 		{ label: 'Open', onSelect: () => void goto(`/workouts/routes/${r.id}`) },
 		'separator',
 		{ label: 'Delete the route', danger: true, onSelect: () => void remove(r) },
@@ -120,11 +116,9 @@
 				<li class="min-w-0">
 					<RouteRow {route} card menu={menu(route)}>
 						{#snippet action()}
-							{#if rides}
-								<a href={rideHref(route)} class="btn btn-primary btn-xs"
-									>{route.carryOnM !== undefined ? 'Carry on' : 'Ride'}</a
-								>
-							{/if}
+							<a href={rideHref(route)} class="btn btn-primary btn-xs"
+								>{route.carryOnM !== undefined ? 'Carry on' : 'Ride'}</a
+							>
 						{/snippet}
 					</RouteRow>
 				</li>

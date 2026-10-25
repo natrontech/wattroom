@@ -3,8 +3,11 @@ import type {
 	ControlRoute,
 	Moved,
 	Poke,
+	RemoteCommand,
 	RiderMetrics,
 	ChannelEvent,
+	GearState,
+	PauseState,
 	SensorClaim,
 	SensorPairing,
 	ServerMessage,
@@ -101,8 +104,17 @@ export function createChannelLive(address: PlaceAddress) {
 	// A refusal a surface shows beside its own control, by its code's prefix
 	// (errors.md): the jukebox's, the roadside's. Each stays six seconds.
 	const routed = $state<
-		Record<'jukebox' | 'roadside', { message: string; at: number } | null>
-	>({ jukebox: null, roadside: null });
+		Record<
+			'jukebox' | 'roadside' | 'remote',
+			{ message: string; at: number } | null
+		>
+	>({ jukebox: null, roadside: null, remote: null });
+	// Who wants a phone remote's press, off the tick like pairing (#3217).
+	const remoteListeners = new Set<(cmd: RemoteCommand) => void>();
+	// The holding tab's gear, as it last said it to this rider's other screens.
+	let gear = $state<GearState | null>(null);
+	// Whether the holding tab rides solo, and whether it is paused (#3217).
+	let pause = $state<PauseState | null>(null);
 	// What the hub says this tab holds, and where the rider's other screens
 	// hold the rest (#610). Server truth: a tab learns here that its claim
 	// was refused, so nothing renders "paired" off its own click alone.
@@ -387,6 +399,9 @@ export function createChannelLive(address: PlaceAddress) {
 			if (msg.poke?.kind === PokeKindBottle) lastBottle = msg.poke;
 			else if (msg.poke) lastPoke = msg.poke;
 			if (msg.moved) lastMove = msg.moved;
+			if (msg.gear) gear = msg.gear;
+			if (msg.pause) pause = msg.pause;
+			if (msg.remote) for (const hear of remoteListeners) hear(msg.remote);
 			if (msg.pairing) {
 				// Off the tick by design (#610) — it is addressed to this
 				// rider's sockets, not to the channel.
@@ -441,7 +456,7 @@ export function createChannelLive(address: PlaceAddress) {
 			// enough to read (ticks arrive every second; clearing on each one
 			// made refusals subliminal — audit #219).
 			if (msg.error) {
-				const surface = (['jukebox', 'roadside'] as const).find((s) =>
+				const surface = (['jukebox', 'roadside', 'remote'] as const).find((s) =>
 					msg.error!.code.startsWith(`${s}_`),
 				);
 				if (surface)
@@ -455,7 +470,7 @@ export function createChannelLive(address: PlaceAddress) {
 			} else {
 				const now = Date.now();
 				if (refusal && now - refusalAt > 6_000) refusal = null;
-				for (const s of ['jukebox', 'roadside'] as const)
+				for (const s of ['jukebox', 'roadside', 'remote'] as const)
 					if (routed[s] && now - routed[s].at > 6_000) routed[s] = null;
 			}
 		};
@@ -563,6 +578,10 @@ export function createChannelLive(address: PlaceAddress) {
 		get jukeboxRefusal() {
 			return routed.jukebox?.message ?? null;
 		},
+		/** Why the phone remote's last press was refused (#3217). */
+		get remoteRefusal() {
+			return routed.remote?.message ?? null;
+		},
 		get roadsideRefusal() {
 			return routed.roadside?.message ?? null;
 		},
@@ -575,6 +594,30 @@ export function createChannelLive(address: PlaceAddress) {
 		},
 		get lastBottle() {
 			return lastBottle;
+		},
+		/** The gear the holding tab last reported (#3217), or null. */
+		get gear() {
+			return gear;
+		},
+		/** One press on the phone remote, for the tab holding the trainer. */
+		sendRemote(action: string) {
+			send({ remote: { action } });
+		},
+		/** The holding tab's pause state (#3217), or null before it has said. */
+		get pause() {
+			return pause;
+		},
+		sendPause(state: PauseState) {
+			send({ pause: state });
+		},
+		/** The holder's gear, for the rider's other screens. */
+		sendGear(state: GearState) {
+			send({ gear: state });
+		},
+		/** Hear every remote press addressed to this tab; returns the way out. */
+		onRemote(hear: (cmd: RemoteCommand) => void) {
+			remoteListeners.add(hear);
+			return () => void remoteListeners.delete(hear);
 		},
 		get lastMove() {
 			return lastMove;

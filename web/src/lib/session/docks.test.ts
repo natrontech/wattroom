@@ -8,8 +8,10 @@ import {
 	RIDER_BOX,
 	SIDE_MAX,
 	STAGE,
+	WORLD_MIN_PX,
 	meets,
 	momentAt,
+	worldFits,
 } from './docks';
 
 describe('the docks around the world (#3031, ADR-0066, #3668)', () => {
@@ -33,5 +35,13 @@ describe('the docks around the world (#3031, ADR-0066, #3668)', () => {
 		const slotRight = JUKEBOX_SEAT.x0 * 1680 - 2 * GAP_PX - MOMENT_MIN_PX;
 		expect(momentAt(1680, slotRight)).toBe('top');
 		expect(momentAt(1680, slotRight + 1)).toBe('seat');
+	});
+});
+
+describe('which windows draw the world (#3676)', () => {
+	it('keeps a desk under WORLD_MIN_PX flat and lets a phone, which scrolls, draw its band', () => {
+		expect(worldFits(false, WORLD_MIN_PX - 1)).toBe(false);
+		expect(worldFits(false, WORLD_MIN_PX)).toBe(true);
+		expect(worldFits(true, 667)).toBe(true);
 	});
 });

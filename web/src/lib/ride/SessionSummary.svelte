@@ -27,6 +27,7 @@
 	// header and the numbers sit under it, so neither waits below the fold.
 	let {
 		title,
+		titleHref,
 		kind = 'Workout',
 		crew,
 		samples,
@@ -42,6 +43,7 @@
 	}: {
 		/** The ride's name: the workout's, or the road's. */
 		title: string;
+		titleHref?: string;
 		kind?: RideKind;
 		/** The crew a session rode with; absent on a ride alone. */
 		crew?: string;
@@ -136,7 +138,7 @@
 </script>
 
 <article class="w-full" data-testid="closing-card">
-	<RecapHeader {eyebrow} {title} {actions} />
+	<RecapHeader {eyebrow} {title} {titleHref} {actions} />
 
 	{#if status}
 		<div class="has-[*]:mt-3">{@render status()}</div>
@@ -153,7 +155,7 @@
 		</div>
 
 		<section
-			class="panel panel-lg xl:col-start-1 xl:row-span-2 xl:row-start-1 xl:self-stretch"
+			class="panel panel-lg xl:col-start-1 xl:row-span-2 xl:row-start-1 xl:self-start"
 			data-testid="recap-trace"
 		>
 			{#if trace}
@@ -221,10 +223,12 @@
 		<!-- Everything else, two to a row: the road's climbs, the crew's climb
 		     board and the photos land here as more panels (#3141, #3147,
 		     #3230), never as a new column. -->
-		<div class="grid gap-4 sm:grid-cols-2 xl:col-start-2 xl:row-start-2">
+		<div
+			class="grid items-start gap-4 sm:grid-cols-2 xl:col-start-2 xl:row-start-2"
+		>
 			<section class="panel panel-lg">
 				<h2 class="eyebrow">power curve</h2>
-				<div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+				<div class="mt-4 grid grid-cols-2 gap-3 2xl:grid-cols-4">
 					{#each reached as point (point.label)}
 						<div>
 							<div
@@ -232,7 +236,7 @@
 							>
 								{point.watts}
 							</div>
-							<div class="eyebrow mt-1">
+							<div class="eyebrow mt-1 whitespace-nowrap">
 								{point.label}
 							</div>
 						</div>
@@ -287,7 +291,7 @@
 			{#if together.length > 1}
 				<!-- The moment the session ends is when who was there matters
 				     (#1559): the card used to report one person's numbers. -->
-				<section class="panel panel-lg">
+				<section class="panel panel-lg sm:col-span-2">
 					<h2 class="eyebrow">who rode</h2>
 					<ul class="mt-3 grid gap-2">
 						{#each together as rider (rider.id)}

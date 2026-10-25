@@ -11,13 +11,20 @@ once cadence recovered to 82 rpm. No false trips across any prior hardware sessi
 
 **Auto-pause** — the rider stopped, so their targets stop (clock does not rewind):
 
-| Parameter               | Value                                                   |
-| ----------------------- | ------------------------------------------------------- |
-| Stopped = cadence below | 5 rpm                                                   |
-| …AND power below        | 20 W (cadence alone unsafe — some trainers report none) |
-| Pause after             | 3 s stopped                                             |
-| Resume countdown        | 3 s (resuming must not be a jump-scare)                 |
+| Parameter                         | Value                                                                         |
+| --------------------------------- | ----------------------------------------------------------------------------- |
+| Stopped = cadence below           | 5 rpm                                                                         |
+| …AND power below                  | 20 W (cadence alone unsafe — some trainers report none)                       |
+| Pause after                       | 3 s stopped                                                                   |
+| Resume countdown                  | 3 s (resuming must not be a jump-scare)                                       |
 | Stopped this long → the ride ends | 10 min paused (default — tune in alpha), solo ride and ramp test only (#2622) |
+
+**Pause** (#3217): a rider alone can pause from the phone remote. It stops the ride
+clock, the score and the recorder's workout second, and releases the trainer target to
+the flat road above, like an auto-pause that pedalling does not end. Resume counts back
+in for 3 s and continues where the ride stopped. A paused ride ends itself after the same
+10 min. A session is never paused by one rider: the remote shows Pause and Resume on a solo
+ride only.
 
 A solo ride that ends itself this way drops its trailing stopped run before it is saved or
 exported: the rider had gone, and those seconds are not in its duration, normalised power or
@@ -46,14 +53,16 @@ ERG 0 W: nobody is riding the trainer then.
 
 When the ride is in SIM (a road, a race, the free ride's grade, a sprint slope), the rider shifts virtual gears with one pair of controls, **Easier** and **Harder**. A virtual gear multiplies whatever real gear is on the bike.
 
-Every number below is a **default**, to be tuned in alpha and re-measured by the gears hardware session, unless it is marked *physics* (not tunable) or *rule* (a hard constraint from ADR-0084).
+Every number below is a **default**, to be tuned in alpha and re-measured by the gears hardware session, unless it is marked _physics_ (not tunable) or _rule_ (a hard constraint from ADR-0084).
 
 **The gear table**
+
 - **Gears (default).** 24 gears, geometric from ratio **0.72** to **5.30**, one step = (5.30/0.72)^(1/23) ≈ **9.07 %**. The code computes the ratios; the display rounds them to 0.72 0.79 0.86 0.93 1.02 1.11 1.21 1.32 1.44 1.57 1.72 1.87 2.04 2.23 2.43 2.65 2.89 3.15 3.43 3.75 4.09 4.46 4.86 5.30.
 - **Start (default).** Every ride starts at k = **1**, the rider's real gear and today's resistance. A Cog on 34×14 is gear 15.
 - **A shift (default).** It goes to the table neighbour of the gear shown, so from a real ratio between two table gears the first step is between half a step and one and a half (**4.4–13.6 %**). With no real ratio known, k steps by **×1.0907**, bounded to **0.30 … 2.2**, and the gear shows as **±n**.
 
 **Real gears**
+
 - **Real ratio (default).** The median of trainer speed ÷ (cadence × **2.096 m**) over the last **7** samples at **60–110 rpm**.
   - A real shift is when that median sits **≥ 5 %** from the current ratio on **3** consecutive samples. k stays, and the gear shown re-anchors.
   - In the lab: no false re-labels in 10 h at 2 % per-sample noise, and a 42×14 → 42×17 move re-labels after 5 s.
@@ -62,6 +71,7 @@ Every number below is a **default**, to be tuned in alpha and re-measured by the
 - **Who reads the trainer's speed (rule).** Only the drivetrain does. The dot, timing and the bike computer's speed never do.
 
 **What goes to the trainer**
+
 - **The transform (physics).** k = virtual ratio ÷ real ratio.
   - sin θ' = k · (m/m_t) · sin θ_felt
   - Crr' · cos θ' = k · (m/m_t) · Crr · cos θ_felt
@@ -69,6 +79,7 @@ Every number below is a **default**, to be tuned in alpha and re-measured by the
   - wind' = wind ÷ k
 
   The base values are Crr **0.004** and Cw **0.51 kg/m** (what ftms.ts sends today). m/m_t is **1** until its own issue decides otherwise.
+
 - **Input (rule).** A road's grade goes through the route-rides felt rule (#3020). A slope the rider set by hand (the free ride) and a sprint slope are felt as given.
 - **Shelter (rule).** Cw carries (1 − shelter) only while "Feel the draft" is on (ADR-0077). The dot always gets the hub's shelter.
 - **Write range (default + rule).** The grade written stays within **MinTrainerGrade (−10 %, until P11)** … **MaxTrainerGrade (+15 %, #3020)**. Both live in protocol/limits.go and are the same for every trainer. A Cw above **2.55 kg/m** (the UINT8 field) folds into grade at the last flywheel speed.
@@ -85,6 +96,7 @@ Every number below is a **default**, to be tuned in alpha and re-measured by the
   - WattRoom never sends a pulse (ADR-0084 defines one).
 
 **The shifter (default)**
+
 - Debounce: **40 ms** per input source.
 - Rate: at most one shift per **100 ms**. Up to **3** more presses queue, and opposite presses cancel out.
 - Hold: a held control repeats after **400 ms**, then every **200 ms**.
@@ -93,28 +105,33 @@ Every number below is a **default**, to be tuned in alpha and re-measured by the
 - There is no auto-shift, no countdown and no easing between gears (rule).
 
 **Controls and feedback**
+
 - **Easier / Harder (rule: Jan, 2026-09-28).**
   - In SIM: a gear.
   - In an ERG workout: bias **±1 %**, within **0.8–1.2** (#795).
   - In the free ride's watts mode: **±10 W**.
   - Anywhere else: disabled, with a one-line hint.
-- **Grade mode (default; amends ADR-0059).** The grade pair (**0.5 %** steps, as today) sits above. Easier / Harder sit below, full width, with the gear between them. Both are `btn-lg`. On a road the pair is Easier / Harder only.
+- **Grade mode (default; amends ADR-0059).** The grade pair (**0.5 %** steps, as today) and Easier / Harder sit in slot 1's control row, each `btn-lg`; the number the grade pair moves is slot 1's trainer chip, and the gear has one home, the RIDE page (TARGETS D17; #3669 settled the earlier "gear between them"). On a road the pair is Easier / Harder only.
 - **Announce (default).**
   - `shift-up` and `shift-down` cues on the cues bus: two short ticks, rising or falling.
   - The gear field reads "Gear 15", or "+3" when no real ratio is known.
   - It is neon, never the watt accent, and never glows. It pulses once on a change, not at all under `prefers-reduced-motion`, and is aria-live polite.
 - **Keys (default).**
   - Harder: `.` `+` `=` Numpad+. Easier: `,` `-` Numpad−. PgUp / PgDn are Harder / Easier.
+  - Ride keys (#3216): **1-4** camera (Chase, Heli, Side, Steady; in the world only), **H** clean view (3 s power, road line and Skyline; per device; the status stays while the trainer signal is lost), **M** the computer's MAP page (a hint where there is no road) and **O** snap (a hint until it exists), **?** the key sheet. Never Space, arrows or a key a soundboard pad is bound to; not while typing.
   - No modifier key. `event.repeat` is ignored, because the shifter does the repeating. Keydown and keyup are press and release.
+- **The ride narrator (default, #3213; WCAG 4.1.3).** An sr-only `role=status` region says a block change, a climb opening (class, length, average grade), "N km to the top" at each whole kilometre left, and the summit, at most one line per **5 s**; a newer line replaces a waiting one. `role=alert` says the trainer signal lost (back is a polite line) and the **S** key: "km 12.4 of 51.7, 5.8 %, 6.0 km to the top, 258 W, zone 3" (on a road; not while typing, not with a modifier, and not when a soundboard pad is bound to S). Climbs are named by class; a climb's name waits for the privacy rule on place names (ADR-0063).
 - **Phone (default).** Taps only, as a full-width pair. Each tap is answered with the gear, and whether it is at an end.
 - **The trainer grant moves (default).** When another of the rider's screens takes the trainer, k restarts at 1 with a cue and "Gear back to your real gear". A reconnect keeps k.
 
 **What the gear never touches (rule)**
+
 - Reported watts are never multiplied by k.
 - The pace model, timing, XP and the tick take no gear.
 - The gear stays on the rider's device and is not stored with the ride.
 
 **Fallbacks**
+
 - **ERG-by-gear (default; only for a trainer without usable SIM).**
   - Target = (felt road force at speed k·v) × k·v, where v is the trainer's own speed.
   - Floor **50 W**. Never ERG 0 W (#2658).
@@ -126,7 +143,7 @@ Every number below is a **default**, to be tuned in alpha and re-measured by the
 Slot 3's pages, in order: **RIDE** (default, and where every ride starts),
 **CLIMB** (opens by itself from RIDE when a climb begins on a free or route
 ride; a workout or a session keeps RIDE and offers it, [#3645](https://github.com/natrontech/wattroom/issues/3645)), **POWER**, **MAP**
-(on a road only), **RACE** (later). ← / → or a tap on the panel turn them;
+(on a road only: the road from above as its turns draw it, climbs in the grade ramp, your dot; no north, no coordinates and no names, the tier a crew is sent, ADR-0063), **RACE** (later). ← / → or a tap on the panel turn them;
 PgUp / PgDn are Harder / Easier, never a page.
 
 **Legibility**, at the design distance — desk: **0.8 m** from a **14-inch**
@@ -134,10 +151,24 @@ laptop; TV: **3 m** from a **55-inch** set:
 
 | Text                  | At least      | TV       | Desk       | HUD      |
 | --------------------- | ------------- | -------- | ---------- | -------- |
-| Watts                 | **45 arcmin** | **12vh** | **104 px** | **12vh** |
-| Time left             | **45 arcmin** | **9vh**  | **72 px**  | **9vh**  |
-| Secondary numbers     | **22 arcmin** | **5vh**  | **36 px**  | **5vh**  |
-| "Next", labels, words | **16 arcmin** | **3vh**  | **24 px**  | **3vh**  |
+| Watts                 | **45 arcmin** | **12vh** | **76 px**  | **12vh** |
+| Time left             | **45 arcmin** | **9vh**  | **52 px**  | **9vh**  |
+| Secondary numbers     | **22 arcmin** | **5vh**  | **24 px**  | **5vh**  |
+| "Next", words         | **16 arcmin** | **3vh**  | **14 px**  | **3vh**  |
+| Labels                | **16 arcmin** | **3vh**  | **11 px**  | **3vh**  |
+
+The desk column is the v2 mocks' proportions, under the arcmin floors (Jan,
+2026-10-18, [ADR-0087](../decisions/0087-a-desk-ride-takes-the-mocks-sizes.md)): a rider
+who rides from further back uses TV mode.
+
+**A phone** (below **768 px**, [#3676](https://github.com/natrontech/wattroom/issues/3676))
+has its own design distance: **0.45 m**, a phone on the stem or in the hand,
+at **0.156 mm** a CSS pixel and a cap height of **0.72 em**. That puts the
+floors, as font sizes, at **52 px** for watts and time left (45 arcmin), **26 px** for
+secondary numbers (22 arcmin) and **19 px** for words (16 arcmin). The phone
+ships, as font sizes, watts at **104 px**, time left at **72 px**, secondary numbers at
+**36 px** and words at **20 px** or more, since a full-width panel holds them. The watts stay the largest number on the screen and time
+left the second.
 
 Nothing on the TV is smaller than **2.9vh**. **The HUD's design distance**
 is a **second screen 1.3 m away, a 24-inch monitor**, the `/hud` tab of

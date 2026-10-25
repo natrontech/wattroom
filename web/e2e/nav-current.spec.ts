@@ -55,7 +55,9 @@ test('every destination the sidebar parents lights exactly one row', async ({
 		// One, never two: the row for the page before this one has to have
 		// let go of `aria-current`.
 		await expect(current).toHaveCount(1);
-		await expect(current).toHaveText(label);
+		// Rendered text: the heading carries a short form for the cave's
+		// narrow rail, hidden with display:none here.
+		await expect(current).toHaveText(label, { useInnerText: true });
 	}
 });
 

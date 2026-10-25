@@ -108,7 +108,7 @@
 		const placed = untrack(() =>
 			placeScene(
 				into,
-				`A world generated around ${data.route.name}, with you and three riders on it`,
+				`A world generated around ${data.route.name}, with ${moment ? 'you' : 'you and three riders'} on it`,
 				(canvas) =>
 					mount(canvas, {
 						route: data.route,
@@ -117,7 +117,7 @@
 						camera,
 						watts,
 						ftp: profile.current.ftp,
-						riders: devCrew(watts, profile.current.ftp, moment?.kit),
+						riders: devCrew(watts, profile.current.ftp, moment?.kit, !!moment),
 						speedup,
 						moment: moment?.hold ? { m: moment.m, p: moment.p } : undefined,
 						onTick: (next) => (hud = next),
@@ -222,8 +222,8 @@
 						<dd class="num m-0 text-lg">{hud.kmh.toFixed(1)}</dd>
 					</div>
 					<div>
-						<dt class="text-muted text-xs">road %</dt>
-						<dd class="num m-0 text-lg">{hud.grade.toFixed(1)}</dd>
+						<dt class="text-muted text-xs">road</dt>
+						<dd class="num m-0 text-lg">{hud.grade.toFixed(1)} %</dd>
 					</div>
 					<div>
 						<dt class="text-muted text-xs">km</dt>

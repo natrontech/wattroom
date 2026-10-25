@@ -48,11 +48,14 @@ describe('RIDE (ADR-0071)', () => {
 		]);
 	});
 
-	it('leaves the watts to a head that already shows them (D17, #3667)', () => {
-		expect(keys(fieldsFor('ride', ride({ head: true })))).toEqual([
-			'cadence',
-			'wkg',
-		]);
+	it('leaves the watts and W/kg to a head that already shows them (D17, #3667)', () => {
+		expect(keys(fieldsFor('ride', ride({ head: true })))).toEqual(['cadence']);
+	});
+
+	it('moves execution to POWER where a head shows the watts (D17)', () => {
+		const ctx = ride({ head: true, execution: 0.9, stats });
+		expect(keys(fieldsFor('ride', ctx))).not.toContain('execution');
+		expect(keys(fieldsFor('power', ctx))[0]).toBe('execution');
 	});
 
 	it('shows the 3 s average as its power once one exists, and this second before', () => {
@@ -156,7 +159,8 @@ describe("the one-home table, with the computer's own head (#3668)", () => {
 		expect(
 			keys(fieldsFor('ride', headed({ road, grade: 3, roadLine: true }))),
 		).toEqual(['speed', 'cadence', 'hr']);
-		// A free ride on a road: and the gear, and the split against a ghost.
+		// A free ride on a road: and the gear, and the split against a ghost,
+		// in the one-home table's order (Speed, Cadence, Heart, Gear, vs best).
 		expect(
 			keys(
 				fieldsFor(
@@ -170,7 +174,7 @@ describe("the one-home table, with the computer's own head (#3668)", () => {
 					}),
 				),
 			),
-		).toEqual(['speed', 'split', 'cadence', 'hr', 'gear']);
+		).toEqual(['speed', 'cadence', 'hr', 'gear', 'split']);
 	});
 
 	it('moves Execution to POWER and drops the 3 s field the head shows', () => {
@@ -313,6 +317,24 @@ describe('CLIMB (#3645)', () => {
 		]);
 		const near = fieldsFor('climb', ride({ climb: climb({ toTopM: 420 }) }));
 		expect(near[0]).toMatchObject({ value: '400', unit: 'm' });
+	});
+});
+
+describe('MAP (#3645)', () => {
+	const map = {
+		road: { length: 40, heights: [0, 1, 2], turns: [0, 0] },
+		m: 0,
+		climbs: [],
+	};
+
+	it('is a page on a road, after POWER and before RACE', () => {
+		expect(pagesFor({ stats, map })).toEqual(['ride', 'power', 'map']);
+		expect(pagesFor({ stats, map: null })).toEqual(['ride', 'power']);
+		expect(pagesFor({ map, race: undefined })).toEqual(['ride', 'map']);
+	});
+
+	it('shows no fields: its numbers are slot 1 road line', () => {
+		expect(fieldsFor('map', ride({ map }))).toEqual([]);
 	});
 });
 

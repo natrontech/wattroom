@@ -19,8 +19,8 @@ import { generate, type World } from './world';
  * it from the chase camera — frustum culled, instanced and batched meshes
  * counted as the GPU sees them, with WEBGL_multi_draw on and off.
  *
- * Today's world is over two lines, each named with the issue that brings
- * it under; an entry that stops being over fails as stale, so the list can only
+ * A line over the tier is named in OVER with the issue that brings it
+ * under; an entry that stops being over fails as stale, so the list can only
  * shrink. The low tier (30 draws, 150k; dressing 12 and 70k) gets its row
  * when a scene can be built low (#3080). Corridor decode (20 ms) waits for a
  * corridor to decode (#3128).
@@ -37,15 +37,11 @@ const HIGH = {
 };
 type Line = keyof typeof HIGH;
 
-const OVER: Partial<Record<Line, string>> = {
-	'dressing.draws':
-		"#3642 batches the sign boards: every face of a sign's board is its own draw; the props and set pieces are three (#3699)",
-};
+const OVER: Partial<Record<Line, string>> = {};
 
 /** Dressing drawn as plain meshes, and who batches it. */
 const UNBATCHED: Record<string, string> = {
-	sign: '#3642 batches the sign boards',
-	arch: '#3642 batches the arch with the boards',
+	arch: 'the start and finish arches: two three-mesh groups the count-in reveal lands on (#3087)',
 };
 
 type Count = { draws: number; triangles: number };

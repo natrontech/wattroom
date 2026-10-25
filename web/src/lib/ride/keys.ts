@@ -1,6 +1,7 @@
 import { isTyping } from '$lib/keys';
 import { createRideShift } from '$lib/ride/ride-shift';
 import type { ShiftDir, ShiftDriver } from '$lib/ride/shifter';
+import type { RemoteCommand } from '$lib/protocol';
 
 /**
  * Easier / Harder from the keyboard (ADR-0084, #3329), and from anything that
@@ -85,4 +86,118 @@ export function bindRideShift(
 		unbind();
 		driver.stop();
 	};
+}
+
+/** Talk's hold ends this long after the last beat from the phone (#3217). */
+export const TALK_KEEPALIVE_MS = 1000;
+
+/**
+ * What a phone remote's press does here (#3217): the same inputs the keys
+ * reach, so a command and its key are one path. Easier and Harder are taps,
+ * never holds, because a lost release measured up to 5 phantom shifts. Talk
+ * is held and lets go by itself when the phone goes quiet for a second; the
+ * hub sends talk-up at once when the phone's socket drops. Actions with no
+ * handler (the other keymap actions, #3216) do nothing.
+ */
+export function createRemoteRunner(
+	driver: Pick<ShiftDriver, 'press' | 'release'>,
+	talk: (held: boolean) => void,
+	others: Partial<Record<string, () => void>> = {},
+) {
+	let watchdog: ReturnType<typeof setTimeout> | undefined;
+	const stopTalk = () => {
+		clearTimeout(watchdog);
+		watchdog = undefined;
+		talk(false);
+	};
+	const beat = () => {
+		clearTimeout(watchdog);
+		watchdog = setTimeout(stopTalk, TALK_KEEPALIVE_MS);
+	};
+	return {
+		run({ action }: RemoteCommand) {
+			switch (action) {
+				case 'easier':
+				case 'harder': {
+					const dir: ShiftDir = action === 'harder' ? 1 : -1;
+					driver.press(dir, 'remote');
+					driver.release('remote');
+					break;
+				}
+				case 'talk-down':
+					talk(true);
+					beat();
+					break;
+				case 'talk-keepalive':
+					// A beat with no hold running is a stale one: the release
+					// already landed, and it must not reopen the mic.
+					if (watchdog) beat();
+					break;
+				case 'talk-up':
+					stopTalk();
+					break;
+				default:
+					others[action]?.();
+			}
+		},
+		stop: stopTalk,
+	};
+}
+
+/** 1-4, in the order the key sheet lists them (#3216). */
+export const CAMERA_PRESETS = ['chase', 'heli', 'side', 'steady'] as const;
+export type CameraPreset = (typeof CAMERA_PRESETS)[number];
+
+export type RideKey =
+	| { kind: 'camera'; preset: CameraPreset }
+	| { kind: 'clean' | 'map' | 'snap' | 'sheet' };
+
+/**
+ * The ride key a press asks for, by `key` so a layout that types ? with Shift
+ * still gets it. Never with Cmd, Ctrl or Alt. Arrows, Space and the shift keys
+ * are not ride keys: the pane divider, the graph's editKeys, push-to-talk and
+ * the shifter keep them.
+ */
+export function rideKeyOf(
+	event: Pick<
+		KeyboardEvent,
+		'key' | 'metaKey' | 'ctrlKey' | 'altKey' | 'shiftKey'
+	>,
+): RideKey | null {
+	if (event.metaKey || event.ctrlKey || event.altKey) return null;
+	if (event.key === '?') return { kind: 'sheet' };
+	// A Shift+digit is a symbol on most layouts (Swiss-German + is Shift+1).
+	if (event.shiftKey) return null;
+	const n = Number(event.key);
+	if (event.key.length === 1 && n >= 1 && n <= CAMERA_PRESETS.length)
+		return { kind: 'camera', preset: CAMERA_PRESETS[n - 1] };
+	switch (event.key.toLowerCase()) {
+		case 'h':
+			return { kind: 'clean' };
+		case 'm':
+			return { kind: 'map' };
+		case 'o':
+			return { kind: 'snap' };
+	}
+	return null;
+}
+
+/**
+ * The ride keys, while a ride runs. A press skips a typing target and a
+ * `defaultPrevented` event, and yields a key a soundboard pad is bound to
+ * (`padBound`), as the narrator's S does.
+ */
+export function bindRideKeys(
+	act: (key: RideKey) => void,
+	padBound: (key: string) => boolean,
+): () => void {
+	const down = (event: KeyboardEvent) => {
+		if (event.defaultPrevented || event.repeat || isTyping(event)) return;
+		const key = rideKeyOf(event);
+		if (!key || padBound(event.key)) return;
+		event.preventDefault();
+		act(key);
+	};
+	window.addEventListener('keydown', down);
+	return () => window.removeEventListener('keydown', down);
 }

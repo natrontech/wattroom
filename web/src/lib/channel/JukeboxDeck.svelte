@@ -37,7 +37,6 @@
 	import { MUSIC_FADER } from '$lib/sound/fader';
 	import { mixer } from '$lib/sound/mixer.svelte';
 	import { toasts } from '$lib/toast.svelte';
-	import { railIcon, railText } from '$lib/channel/rail-size';
 
 	// What is ON, and everything that moves it (#114, #1423): the picture the
 	// player flies onto, the words, the shared playhead, the transport, and the
@@ -57,8 +56,8 @@
 		/** `jukebox.current`, already narrowed: no deck is drawn without one. */
 		current: JukeboxEntry;
 		send: (command: JukeboxCommand) => void;
-		/** A ride is under way: the transport, seek bar and fader are 44 px
-		 *  (TARGETS G5), the words at G4's floor, and no watt but G2's marks. */
+		/** A ride is under way: the deck is the seat, and no watt but G2's
+		 *  marks. */
 		riding?: boolean;
 		/** How many tracks wait behind this one, for the seat's strip. */
 		next?: number;
@@ -237,10 +236,8 @@
 				class="h-full w-full object-cover opacity-60"
 			/>
 			<span
-				class="bg-paper/70 text-muted absolute inset-x-0 bottom-0 px-2 py-1 {railText(
-					riding,
-					'text-[10px]',
-				)}">The player docks here.</span
+				class="bg-paper/70 text-muted absolute inset-x-0 bottom-0 px-2 py-1 text-[10px]"
+				>The player docks here.</span
 			>
 		</div>
 	{/if}
@@ -250,9 +247,11 @@
 		     crew; its count is whole, the names give way. -->
 		<RailSheet>
 			{#snippet label()}
-				<span class="block min-w-0 text-2xl leading-7" title={MENU_HINT}>
-					<span class="block truncate font-medium">{current.title}</span>
-					<span class="text-muted flex min-w-0 gap-2">
+				<span class="block min-w-0" title={MENU_HINT}>
+					<span class="block truncate text-sm leading-tight font-medium"
+						>{current.title}</span
+					>
+					<span class="text-muted mt-0.5 flex min-w-0 gap-2 text-[11px]">
 						<span class="min-w-0 truncate">by {current.addedBy}</span>
 						{#if next}<span class="num shrink-0">· {next} next</span>{/if}
 					</span>
@@ -296,7 +295,7 @@
 	{#if streaming}
 		<!-- The watt on the dot, the words in ink (#1965): the accent is
 		     a graphic at 3:1, not 10 px text. -->
-		<p class="{railText(riding, 'eyebrow')} flex items-center gap-1.5">
+		<p class="eyebrow flex items-center gap-1.5">
 			<span
 				class="h-1.5 w-1.5 rounded-full {riding
 					? 'bg-neon'
@@ -313,9 +312,7 @@
 					const box = e.currentTarget.getBoundingClientRect();
 					seekTo(((e.clientX - box.left) / box.width) * duration);
 				}}
-				class="w-full cursor-pointer {riding
-					? 'flex min-h-11 items-center'
-					: 'block py-1.5'}"
+				class="block w-full cursor-pointer py-1.5"
 				aria-label="seek the shared playhead"
 			>
 				<span class="bg-muted/20 block h-1.5 w-full rounded-full">
@@ -333,12 +330,7 @@
 					</span>
 				</span>
 			</button>
-			<div
-				class="text-muted num flex justify-between {railText(
-					riding,
-					'text-[10px]',
-				)}"
-			>
+			<div class="text-muted num flex justify-between text-[10px]">
 				<span>{formatClockLong(elapsed)}</span>
 				<span>{duration > 0 ? formatClockLong(duration) : '–:––'}</span>
 			</div>
@@ -348,15 +340,10 @@
 	<!-- Mid-ride transport: big targets, no precision gestures. Play is the
 	     one filled control; the rest are quiet. Every button commands the
 	     ROOM — the deck is shared. -->
-	<!-- Riding, five 44 px buttons fill the sheet's width with no gap. -->
-	<div
-		class="flex min-w-0 flex-wrap items-center justify-center {riding
-			? ''
-			: 'gap-1'}"
-	>
+	<div class="flex min-w-0 flex-wrap items-center justify-center gap-1">
 		<button
 			onclick={() => send({ action: 'back' })}
-			class="text-muted hover:text-ink {railIcon(riding)}"
+			class="text-muted hover:text-ink icon-btn"
 			aria-label={setTracks
 				? 'start this track over, or step back through the playlist'
 				: 'start this track over'}><SkipBack size={17} /></button
@@ -364,7 +351,7 @@
 		{#if !streaming}
 			<button
 				onclick={() => seekTo(elapsed - 30)}
-				class="text-muted hover:text-ink {railIcon(riding)}"
+				class="text-muted hover:text-ink icon-btn"
 				aria-label="back 30 seconds"><Rewind size={17} /></button
 			>
 		{/if}
@@ -382,13 +369,13 @@
 		{#if !streaming}
 			<button
 				onclick={() => seekTo(elapsed + 30)}
-				class="text-muted hover:text-ink {railIcon(riding)}"
+				class="text-muted hover:text-ink icon-btn"
 				aria-label="forward 30 seconds"><FastForward size={17} /></button
 			>
 		{/if}
 		<button
 			onclick={() => send({ action: 'skip' })}
-			class="text-muted hover:text-ink {railIcon(riding)}"
+			class="text-muted hover:text-ink icon-btn"
 			aria-label={setTracks
 				? 'skip to the next track in the playlist'
 				: 'skip to the next track'}><SkipForward size={17} /></button
@@ -399,7 +386,7 @@
 			     when there is a playlist to leave (ux.md). -->
 			<button
 				onclick={skipPlaylist}
-				class="text-muted hover:text-ink {railIcon(riding)}"
+				class="text-muted hover:text-ink icon-btn"
 				aria-label="skip the whole playlist"><ListX size={17} /></button
 			>
 		{/if}
@@ -415,14 +402,13 @@
 			{...MUSIC_FADER}
 			value={mixer.music}
 			oninput={(e) => mixer.setMusic(Number(e.currentTarget.value))}
-			class="min-w-0 flex-1 {riding ? 'min-h-11' : ''}"
+			class="min-w-0 flex-1"
 			aria-label="music volume, yours only — {mixer.music}%"
 			title="music volume — yours only, {mixer.music}%"
 		/>
 		<span
-			class="text-muted font-display shrink-0 text-right tabular-nums {riding
-				? 'w-16'
-				: 'w-8'} {railText(riding, 'text-[10px]')}">{mixer.music}%</span
+			class="text-muted font-display w-8 shrink-0 text-right text-[10px] tabular-nums"
+			>{mixer.music}%</span
 		>
 	</label>
 
@@ -433,12 +419,7 @@
 	     smallest targets in the column, on the one row that is only
 	     ever pressed mid-ride. Both verbs stay visible — the menu is
 	     never the only way (ux.md). -->
-	<div
-		class="flex min-w-0 items-center justify-end gap-1 {railText(
-			riding,
-			'text-[11px]',
-		)}"
-	>
+	<div class="flex min-w-0 items-center justify-end gap-1 text-[11px]">
 		{#if listening.out}
 			<span class="text-muted min-w-0 flex-1 truncate"
 				>{listening.mode === 'skip'
@@ -447,7 +428,7 @@
 			>
 			<button
 				onclick={() => listening.rejoin()}
-				class="text-ink {railIcon(riding)}"
+				class="text-ink icon-btn"
 				aria-label="rejoin the music"
 				title="Rejoin — back in with everyone, from wherever it has got to"
 				><Headphones size={17} /></button
@@ -456,14 +437,14 @@
 			<span class="text-muted-dim min-w-0 flex-1 truncate">yours only</span>
 			<button
 				onclick={() => stepOut('skip')}
-				class="text-muted hover:text-ink {railIcon(riding)}"
+				class="text-muted hover:text-ink icon-btn"
 				aria-label="skip this one for me"
 				title="Skip for me — back automatically on the next track"
 				><Hourglass size={17} /></button
 			>
 			<button
 				onclick={() => stepOut('stop')}
-				class="text-muted hover:text-ink {railIcon(riding)}"
+				class="text-muted hover:text-ink icon-btn"
 				aria-label="stop the music for me"
 				title="Stop for me — it keeps playing for everyone else"
 				><HeadphoneOff size={17} /></button

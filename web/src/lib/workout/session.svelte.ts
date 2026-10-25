@@ -80,6 +80,7 @@ export function createRideSession({
 		sample: () => sample,
 		sprint,
 		ftp,
+		road: dot,
 	});
 	const applyTarget = aim.apply;
 	const guarding = wireSoloGuards(guards, {
@@ -256,6 +257,19 @@ export function createRideSession({
 		},
 		get resumeIn() {
 			return guards.resumeIn;
+		},
+		/** The rider paused the ride (#3217): clock, score and target wait for Resume. */
+		get held() {
+			return guards.held;
+		},
+		/** Stops the clock and releases the target, until resume(). Only while riding. */
+		pause() {
+			if (state !== 'running' && state !== 'autopaused' && state !== 'resuming')
+				return;
+			if (guards.hold()) applyTarget();
+		},
+		resume() {
+			guards.resume();
 		},
 		get spiralActive() {
 			return guards.spiralActive;

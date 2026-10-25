@@ -54,6 +54,23 @@
 {#snippet clockText()}
 	{#if clock}<span class="num">{clock.time}</span> {clock.word}{/if}
 {/snippet}
+<!-- SPEC's secondary numbers (Jan, 2026-10-18): on the clock's line, or the
+     grade's on a road, so the shell's window keeps its rows. -->
+{#snippet secondary()}
+	{#if snapshot && (snapshot.cadence !== undefined || snapshot.heartRate)}
+		<p class="secondary text-ink shrink-0" data-testid="hud-secondary">
+			{#if snapshot.cadence !== undefined}<span class="num"
+					>{Math.round(snapshot.cadence)}</span
+				>
+				<span class="unit text-muted">rpm</span>{/if}
+			{#if snapshot.cadence !== undefined && snapshot.heartRate}·{/if}
+			{#if snapshot.heartRate}<span class="num"
+					>{Math.round(snapshot.heartRate)}</span
+				>
+				<span class="unit text-muted">bpm</span>{/if}
+		</p>
+	{/if}
+{/snippet}
 
 <main
 	class="cave bg-surface text-ink [container-type:size] relative grid h-dvh place-items-center overflow-hidden select-none"
@@ -133,14 +150,19 @@
 				<!-- On a road (#3092, #3060's readout): the grade under the rider
 				     and, on a classed climb, how far to its top. Numbers in the
 				     display face, units at half their size (TARGETS G4). -->
-				<p class="text-ink mt-[0.25em] text-[0.75em]" data-testid="hud-road">
-					<span class="num">{road.grade.toFixed(1)}</span>
-					<span class="unit">%</span>
-					{#if road.toTopM !== undefined}
-						· top <span class="num">{formatKm(road.toTopM)}</span>
-						<span class="unit">km</span>
-					{/if}
-				</p>
+				<div
+					class="mt-[0.25em] flex items-baseline justify-between gap-[0.75em]"
+				>
+					<p class="text-ink text-[0.75em]" data-testid="hud-road">
+						<span class="num">{road.grade.toFixed(1)}</span>
+						<span class="unit">%</span>
+						{#if road.toTopM !== undefined}
+							· top <span class="num">{formatKm(road.toTopM)}</span>
+							<span class="unit">km</span>
+						{/if}
+					</p>
+					{@render secondary()}
+				</div>
 				{#if road.ahead}
 					<!-- The next 2 km in 100 m bars, in the Skyline's grade ramp:
 					     steeper is stronger and taller. -->
@@ -166,9 +188,14 @@
 					</svg>
 				{/if}
 			{:else}
-				<p class="clock text-muted mt-[0.5em]" data-testid="hud-remaining">
-					{@render clockText()}
-				</p>
+				<div
+					class="mt-[0.5em] flex items-baseline justify-between gap-[0.75em]"
+				>
+					<p class="clock text-muted" data-testid="hud-remaining">
+						{@render clockText()}
+					</p>
+					{@render secondary()}
+				</div>
 			{/if}
 		{/if}
 	</div>
@@ -196,7 +223,8 @@
 		letter-spacing: 0.12em;
 		text-transform: uppercase;
 	}
-	.clock {
+	.clock,
+	.secondary {
 		font-size: 0.75em;
 	}
 	.unit {
@@ -239,6 +267,10 @@
 		/* SPEC's time-left floor, kept when the width binds the block. */
 		.clock {
 			font-size: max(0.75em, 9cqh);
+		}
+		/* And its secondary numbers' (SPEC, "The bike computer"). */
+		.secondary {
+			font-size: max(0.75em, 5cqh);
 		}
 	}
 </style>

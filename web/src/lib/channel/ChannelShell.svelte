@@ -173,6 +173,11 @@
 		// session beside it, whose numbers are the ones that count.
 		if (!session && !free.recording) return;
 		const you = roster.you;
+		// The roster says 0 for a heart rate nobody sends.
+		const pulse = {
+			cadence: you.cadence,
+			heartRate: you.hr > 0 ? you.hr : undefined,
+		};
 		const fault =
 			live.status !== 'live'
 				? ('channel' as const)
@@ -182,6 +187,7 @@
 		if (free.recording && !connection.joined()) {
 			publishHud({
 				watts: you.watts,
+				...pulse,
 				target: free.mode === 'watts' ? free.watts : 0,
 				remaining: 0,
 				elapsed: free.seconds,
@@ -193,6 +199,7 @@
 		}
 		publishHud({
 			watts: you.watts,
+			...pulse,
 			target: you.target,
 			remaining: Math.max(
 				0,
@@ -348,23 +355,22 @@
 	}}
 />
 
-<SessionLayers
-	{layers}
-	{connection}
-	{roster}
-	{shared}
-	{segments}
-	{phase}
-	placeName={props.name}
-	crewName={props.crewName}
-	code={props.code}
-	onSchedule={props.onSchedule}
-/>
-
 <!-- The sidebar is the layout's (ADR-0020 — one instance across navigation);
      the voice channel is content | people inside that frame. -->
 <div class="bg-surface text-ink flex h-full overflow-hidden">
 	<main class="relative flex min-w-0 flex-1 flex-col overflow-hidden">
+		<SessionLayers
+			{layers}
+			{connection}
+			{roster}
+			{shared}
+			{segments}
+			{phase}
+			placeName={props.name}
+			crewName={props.crewName}
+			code={props.code}
+			onSchedule={props.onSchedule}
+		/>
 		<CheerLayer cheers={live.tick?.cheers} />
 		<!-- The board floats over the channel and is dragged where the rider
 		     wants it (#877); it plays whether or not it is on screen. -->

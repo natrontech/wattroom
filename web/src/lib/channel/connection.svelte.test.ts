@@ -13,6 +13,12 @@ vi.mock('$lib/sound/cues', async (importOriginal) => ({
 	play: (id: string) => played.push(id),
 }));
 vi.mock('$lib/notify.svelte', () => ({ notify: { push: () => {} } }));
+// A signed-in test fakes `me` without $state, and the profile pull that wakes
+// on it would loop on its own writes.
+vi.mock('$lib/profile-sync.svelte', async (importOriginal) => ({
+	...(await importOriginal<typeof import('$lib/profile-sync.svelte')>()),
+	pullProfile: () => {},
+}));
 // A hand-driven socket: the tick is what the ride and the channel both read,
 // and the test needs to move it. $state, so a derived that fails to track it
 // is caught rather than papered over by lazy first evaluation.
@@ -42,6 +48,8 @@ const fakeLive = {
 	control() {},
 	cheer() {},
 	setDrive() {},
+	onRemote: () => () => {},
+	sendPause: () => {},
 };
 vi.mock('$lib/channel/live.svelte', () => ({
 	createChannelLive: () => fakeLive,
@@ -64,6 +72,7 @@ import {
 	channelConnection,
 } from '$lib/channel/connection.svelte';
 import { listening } from '$lib/channel/listening.svelte';
+import { account } from '$lib/account.svelte';
 import { toasts } from '$lib/toast.svelte';
 
 // The channel layouts' load does this before the shell joins (#1514).
@@ -107,6 +116,22 @@ describe('channelConnection', () => {
 		// The tick is module state: a roster left behind here is the next
 		// test's opening observation.
 		fakeTick = null;
+		vi.restoreAllMocks();
+	});
+
+	it('rides a live session only once you joined it (ADR-0059)', () => {
+		vi.spyOn(account, 'me', 'get').mockReturnValue({ id: 'me' } as never);
+		const connection = channelConnection.join(
+			channelAddress('c', 'lounge', 'Lounge'),
+		);
+		// A spectator stays at the desk: no cave, no riding sizes, no HUD.
+		fakeTick = { state: { phase: 'running' }, roster: [{ id: 'me' }] };
+		expect(connection.riding()).toBe(false);
+		fakeTick = {
+			state: { phase: 'running' },
+			roster: [{ id: 'me', inSession: true }],
+		};
+		expect(connection.riding()).toBe(true);
 	});
 
 	it('keeps one ride and one recording across repeated joins', () => {

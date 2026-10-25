@@ -3,16 +3,16 @@
 	// dynamic import so three.js lands in its own chunk, fetched only here —
 	// never in the eager shell every other page pays for.
 	import { page } from '$app/state';
-	import { setWorldSlot, worldSlotOn } from '$lib/world/flag';
+	import { setWorldMode, worldMode } from '$lib/world/mode';
 	import { momentOf } from './moment';
 	import { STYLES } from './styles';
 
 	// A still moment for a design capture (#3672): ?m=…&p=…&cam=…&look=…&chrome=0.
 	const moment = momentOf(page.url.searchParams);
 
-	// Slot 2 on this device's rides (#3031): the world behind the docked
-	// slots, until #3082 has measured it and the default flips.
-	let slot = $state(worldSlotOn());
+	// Slot 2 on this device's rides: the World control, a rider's in
+	// Settings → Appearance (#3084), offered here as one switch.
+	let slot = $state((worldMode() ?? 'flat') !== 'flat');
 
 	const load = () =>
 		import('$lib/world/World.svelte').catch((err: unknown) => {
@@ -27,7 +27,8 @@
 		<input
 			type="checkbox"
 			checked={slot}
-			onchange={(e) => setWorldSlot((slot = e.currentTarget.checked))}
+			onchange={(e) =>
+				setWorldMode((slot = e.currentTarget.checked) ? 'full' : 'flat')}
 		/>
 		Ride in the world on this device — slot 2 of /ride and a voice channel's Training
 	</label>

@@ -95,3 +95,28 @@ The budgets are in docs/SPEC.md's "The world" section.
 count-in and never stepped up mid-ride. The World control caps it (ADR-0079):
 Full takes the measured rung, Light caps at L1, and Flat skips real ground. The
 fallback to the Skyline and its triggers are unchanged.
+
+## Amendment, 2026-10-16 (#3084): 3D is the rider's to turn on
+
+Decided by the maintainers, 2026-10-16. **3D is an optional setting: a rider's
+default is Flat, and the rider opts into 3D.** This replaces "with a road,
+slot 2 defaults to the world" above and #3084's first scope, "the world
+becomes the default ride view". On a road the ride opens on the Skyline
+until the rider picks a 3D look.
+
+- **One control.** The World control (ADR-0079) is the switch: never chosen
+  is Flat; Full, Steady and Light draw the world on a ride with a road, when
+  the browser can. The per-browser world-slot flag that only /dev/world set
+  is gone; a browser that had it on keeps its world once, as Full.
+- **Where a rider finds it.** Settings → Appearance shows it in the open,
+  not behind Advanced. Mid-ride on a road, the flat road's status line says
+  where 3D is and offers **Ride in 3D**; the world's slot-1 row has a 44 px
+  **Flat road** button. Either tap takes effect at once and is the rider's
+  new World control on this device.
+- **A browser that cannot draw the world is read first**: its flat road
+  says so and offers no 3D button that would fail (errors.md).
+- **Reduced motion** still opens on Flat while nothing is chosen, with the
+  one-tap steady camera (ADR-0079).
+- **Measurement no longer gates the default.** #3082's two-rig GPU budget
+  keeps its value for riders who opt in, but an opt-in world ships without
+  waiting for it. The fallback to the Skyline and its triggers are unchanged.

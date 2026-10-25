@@ -117,7 +117,7 @@ export function chunkVertices(
 			hk,
 			(r - l) / (2 * FINE_M),
 			(dn - u) / (2 * FINE_M),
-			ground.nearest(x, z, 1)?.d ?? Infinity,
+			ground.nearest(x, z, 2)?.d ?? Infinity,
 		);
 		biome[k] = c.biome;
 		forest[k] = c.forest;

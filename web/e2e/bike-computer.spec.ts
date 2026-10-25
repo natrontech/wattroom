@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { openAWorkoutOnARoad } from './route';
 import { signInTo } from './signin';
 
 /**
@@ -27,7 +28,7 @@ test('the bike computer turns its pages and reads from the saddle', async ({
 		timeout: 15_000,
 	});
 
-	// docs/SPEC.md: secondary numbers 36 px, words 24 px, a unit at most half.
+	// docs/SPEC.md's desk row: secondary numbers 24 px, labels 11 px, a unit at most half.
 	// RIDE leaves the watts to the instrument above it (D17); cadence carries a unit.
 	const cadence = computer.locator('[data-field=cadence]');
 	await expect(cadence).toBeVisible();
@@ -36,13 +37,15 @@ test('the bike computer turns its pages and reads from the saddle', async ({
 		const [label, value] = field.children;
 		return { label: px(label), value: px(value), unit: px(value.children[0]) };
 	});
-	expect(sizes.value).toBeGreaterThanOrEqual(36);
-	expect(sizes.label).toBeGreaterThanOrEqual(24);
+	expect(sizes.value).toBeGreaterThanOrEqual(24);
+	expect(sizes.label).toBeGreaterThanOrEqual(11);
 	expect(sizes.unit).toBeLessThanOrEqual(sizes.value / 2);
 
 	await page.keyboard.press('ArrowRight');
 	await expect(computer).toHaveAttribute('data-page', 'power');
-	await expect(computer.locator('[data-field=power3]')).toBeVisible();
+	// The head above shows the 3 s power, so POWER opens on the 10 s (D17).
+	await expect(computer.locator('[data-field=power10]')).toBeVisible();
+	await expect(computer.locator('[data-field=power3]')).toHaveCount(0);
 	await expect(computer.getByTestId('zone-strip')).toBeVisible();
 
 	await page.keyboard.press('PageUp');
@@ -51,6 +54,63 @@ test('the bike computer turns its pages and reads from the saddle', async ({
 	await page.getByRole('button', { name: 'next page, RIDE' }).click();
 	await expect(computer).toHaveAttribute('data-page', 'ride');
 
-	await page.getByRole('button', { name: 'POWER page' }).click();
+	await page.getByRole('button', { name: 'next page, POWER' }).click();
 	await expect(computer).toHaveAttribute('data-page', 'power');
+});
+
+/**
+ * TARGETS ride-road-world 9 (#3898): W/kg sits beside the 3 s power, and goes
+ * under it only where four figures leave no room. At SPEC's desk size
+ * (ADR-0087) a four-digit power still leaves room, so W/kg stays beside and
+ * inside the head. The watts are drawn figure by figure, so the test redraws them.
+ */
+test('W/kg stays beside a four-digit power, inside the head @world', async ({
+	page,
+}) => {
+	test.skip(
+		!!process.env.PLAYWRIGHT_BASE_URL,
+		'the ?as= dev provider only exists on a dev server',
+	);
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await page.addInitScript(() => {
+		localStorage.setItem(
+			'wattroom.mixer.v1',
+			JSON.stringify({ music: 0, cues: 0, board: 0, share: 0 }),
+		);
+		// The docked head lives in the world (design/shoot.ts).
+		localStorage.setItem('wattroom.world.mode.v1', 'full');
+	});
+	await signInTo(page, '/ride');
+	await page.getByRole('button', { name: 'Ride simulated' }).waitFor();
+	await openAWorkoutOnARoad(page);
+	await page.getByRole('button', { name: 'Ride simulated' }).click();
+	await page.getByRole('button', { name: 'Start the ride' }).click();
+	const head = page.getByTestId('computer-head');
+	await expect(head).toBeVisible({ timeout: 15_000 });
+
+	const rows = (digits: string) =>
+		head.evaluate((el, d) => {
+			const power = el.querySelector('[data-testid=head-power]')!;
+			const figures = power.querySelectorAll('[data-figure]');
+			figures.forEach((f, i) => {
+				if (i < d.length) f.setAttribute('data-figure', d[i]);
+			});
+			while (power.querySelectorAll('[data-figure]').length < d.length) {
+				const last = power.querySelectorAll('[data-figure]');
+				last[last.length - 1].after(last[last.length - 1].cloneNode(true));
+			}
+			power
+				.querySelectorAll('[data-figure]')
+				.forEach((f, i) => f.setAttribute('data-figure', d[i]));
+			const wkg = el.querySelector('[data-field=wkg]')!.getBoundingClientRect();
+			const p = power.getBoundingClientRect();
+			const head = el.getBoundingClientRect();
+			return { besideRow: wkg.top < p.bottom, inside: wkg.right <= head.right };
+		}, digits);
+
+	const three = await rows('888');
+	expect(three.besideRow).toBe(true);
+	const four = await rows('1250');
+	expect(four.besideRow).toBe(true);
+	expect(four.inside).toBe(true);
 });

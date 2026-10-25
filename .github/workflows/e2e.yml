@@ -73,7 +73,7 @@ jobs:
           n=3
           plan=""
           for i in $(seq 1 $n); do
-            plan+="{\"shard\":\"$i\",\"args\":\"--shard=$i/$n --grep-invert=@world\"},"
+            plan+="{\"shard\":\"$i\",\"args\":\"--shard=$i/$n --grep-invert=@world|@flash\"},"
           done
           if [ "$world" = true ]; then
             plan+='{"shard":"world","args":"--grep=@world --workers=1"},'
@@ -186,6 +186,67 @@ jobs:
           path: web/test-results/
           retention-days: 7
 
+  # The flash gate (#3223): advisory. Not part of the `e2e` verdict and not a
+  # required check; a red run is a finding about a flash, read it as one.
+  flash:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: wattroom
+          POSTGRES_PASSWORD: wattroom
+          POSTGRES_DB: wattroom
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U wattroom"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The default cache key looks for go.sum at the root and finds nothing.
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+      # Warms the build cache for e2e/server.js's `go run .`.
+      - run: go build -o /dev/null .
+        working-directory: server
+      # Not `pnpm/setup` — see the note in ci.yml's `web` job (#2375).
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          package_json_file: web/package.json
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: web
+      - id: playwright
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+        working-directory: web
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-chromium
+      - run: pnpm exec playwright install chromium
+        working-directory: web
+      - name: Run the flash gate
+        working-directory: web
+        run: pnpm exec playwright test --grep=@flash --workers=1
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: playwright-trace-flash
+          path: web/test-results/
+          retention-days: 7
+
   # The check to read. A skipped job counts as passed on a ruleset, so this
   # one always runs and says why it passed.
   e2e:
@@ -197,7 +258,7 @@ jobs:
       CODE: ${{ needs.changes.outputs.code }}
       SHARDS: ${{ needs.shard.result }}
       MERGE: ${{ needs.shard.result == 'success' || needs.shard.result == 'failure' }}
-      GREP: ${{ needs.changes.outputs.world != 'true' && '--grep-invert=@world' || '' }}
+      GREP: ${{ needs.changes.outputs.world != 'true' && '--grep-invert=@world|@flash' || '--grep-invert=@flash' }}
     steps:
       - if: env.MERGE == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

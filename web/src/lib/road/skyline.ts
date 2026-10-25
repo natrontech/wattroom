@@ -85,6 +85,15 @@ export const GRADE_FILL = [
 	'fill-grade-5',
 ];
 
+/** The same ramp as a stroke: a climb overpainted on the road's shape (#3645, #3679). */
+export const GRADE_STROKE = [
+	'stroke-grade-1',
+	'stroke-grade-2',
+	'stroke-grade-3',
+	'stroke-grade-4',
+	'stroke-grade-5',
+];
+
 /** The same ramp as a background: the climb card's 100 m bars (#3645). */
 export const GRADE_BG = [
 	'bg-grade-1',
@@ -112,6 +121,13 @@ export interface Frame {
 	height: number;
 }
 
+/**
+ * Metres from the window's left edge to the dot: `behindM`, but never more
+ * than the road ridden, so the profile starts at the panel's edge (#4003).
+ */
+export const leadM = (m: number): number =>
+	Math.max(0, Math.min(m, SKYLINE.behindM));
+
 export function frameFor(
 	road: Road,
 	m: number,
@@ -119,7 +135,15 @@ export function frameFor(
 	width: number,
 	height: number,
 ): Frame {
-	return windowFrame(road, m, m - SKYLINE.behindM, m + ahead, width, height);
+	const fromM = m - leadM(m);
+	return windowFrame(
+		road,
+		m,
+		fromM,
+		fromM + SKYLINE.behindM + ahead,
+		width,
+		height,
+	);
 }
 
 /** Under reduced motion (#3080): the page the dot is on, which turns at once when it reaches the end. */

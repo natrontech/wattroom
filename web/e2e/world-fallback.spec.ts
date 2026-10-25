@@ -23,8 +23,7 @@ test.use({ viewport: { width: 1440, height: 900 } });
  */
 async function rideInTheWorld(page: Page, lose = false) {
 	await page.addInitScript(() => {
-		localStorage.setItem('wattroom.world-slot.v1', '1');
-		localStorage.setItem('wattroom.flat-road.v1', '0');
+		localStorage.setItem('wattroom.world.mode.v1', 'full');
 		localStorage.setItem(
 			'wattroom.mixer.v1',
 			JSON.stringify({ music: 0, cues: 0, board: 0, share: 0 }),

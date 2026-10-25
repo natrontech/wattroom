@@ -150,13 +150,13 @@
 		<a href="/download" class="hover:text-ink underline">desktop app</a>
 	</p>
 	{#if live.online > 0}
-		<!-- The watt glows on the dot; the words are ink (#1965). -->
+		<!-- The dot is watt, flat; the words are ink (#1965). -->
 		<p
 			class="text-ink font-display mt-4 flex items-center gap-2 text-[11px] font-bold tracking-widest uppercase"
 			aria-live="polite"
 		>
 			<span
-				class="bg-watt glow-stroke h-1.5 w-1.5 rounded-full motion-safe:animate-pulse"
+				class="bg-watt h-1.5 w-1.5 rounded-full motion-safe:animate-pulse"
 				aria-hidden="true"
 			></span>
 			{live.online} rider{live.online === 1 ? '' : 's'} online now

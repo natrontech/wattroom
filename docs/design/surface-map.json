@@ -8,7 +8,6 @@
 			"web/src/lib/components/TabularFigures.svelte",
 			"web/src/lib/ride/ClimbProfile.svelte",
 			"web/src/lib/session/computer-pages.ts",
-			"web/src/lib/session/RideHeader.svelte",
 			"web/src/lib/components/IntervalGraph.svelte",
 			"web/src/lib/session/Instrument.svelte",
 			"web/src/lib/ride/RidingScreen.svelte"
@@ -39,13 +38,18 @@
 	{
 		"files": [
 			"web/src/lib/ride/RoadRiding.svelte",
-			"web/src/lib/ride/SoloRoadRide.svelte"
+			"web/src/lib/ride/SoloRoadRide.svelte",
+			"web/src/lib/ride/FreeRiding.svelte",
+			"web/src/lib/ride/GearShift.svelte",
+			"web/src/lib/ride/RoadEnd.svelte",
+			"web/src/lib/ride/climbed.ts"
 		],
 		"surfaces": [
 			"ride-free-road",
 			"ride-free-road-world",
 			"ride-free-road-ghost",
 			"ride-road-end",
+			"ride-channel-free",
 			"hud",
 			"hud-shell"
 		]
@@ -94,9 +98,7 @@
 			"web/src/lib/channel/JukeboxAdd.svelte",
 			"web/src/lib/channel/JukeboxPlaylists.svelte",
 			"web/src/lib/channel/JukeboxDeck.svelte",
-			"web/src/lib/channel/JukeboxTrack.svelte",
-			"web/src/lib/channel/JukeboxPlaylistRow.svelte",
-			"web/src/lib/channel/rail-size.ts"
+			"web/src/lib/channel/RailSheet.svelte"
 		],
 		"surfaces": ["ride-session-flat", "ride-channel-free"]
 	},
@@ -163,12 +165,14 @@
 		"surfaces": [
 			"ride-preride",
 			"ride-roadpick",
+			"ride-figure-card",
 			"ride-workout-flat",
 			"ride-road-world",
 			"ride-free-road",
 			"ride-countin",
 			"ride-road-end",
-			"closing-card"
+			"closing-card",
+			"route"
 		]
 	},
 	{
@@ -193,6 +197,13 @@
 			"web/src/lib/ride/RoadPick.svelte"
 		],
 		"surfaces": ["ride-preride", "ride-roadpick"]
+	},
+	{
+		"files": [
+			"web/src/lib/ride/FigureCard.svelte",
+			"web/src/lib/ride/figure-choice.ts"
+		],
+		"surfaces": ["ride-figure-card", "phone-ride-figure-card"]
 	},
 	{
 		"files": [
@@ -252,7 +263,7 @@
 			"web/src/lib/profile/Appearance.svelte",
 			"web/src/routes/(app)/settings/appearance/**"
 		],
-		"surfaces": ["appearance", "appearance-advanced"]
+		"surfaces": ["appearance"]
 	},
 	{
 		"files": [
@@ -314,5 +325,13 @@
 			"home",
 			"appearance"
 		]
+	},
+	{
+		"files": [
+			"web/src/lib/ride/PhoneRemote.svelte",
+			"web/src/lib/ride/RemoteOffer.svelte",
+			"web/src/lib/ride/remote-talk.ts"
+		],
+		"surfaces": ["ride-phone-remote"]
 	}
 ]

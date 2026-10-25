@@ -2,7 +2,8 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { WORLD_SALT } from './place/network.test-helper';
 import { unmatched, type Thing } from './place/shared';
 import { apart, clock, crowded, type Profile } from './placement/stream';
-import { walker } from './props/roads';
+import { pointSegment } from './placement/geom';
+import { roadsNear, walker } from './props/roads';
 import { hashSeed } from './rand';
 import { standNetwork } from './props/stand.test-helper';
 import { origin, routeLines } from './terrain/network.test-helper';
@@ -111,5 +112,40 @@ describe('the same place stands the same set pieces (#3226)', () => {
 				).toBeLessThanOrEqual(MEDIUM_MAX);
 			}
 		});
+	});
+
+	// The mutants of #3222 (scripts/world-mutants.mjs) that the gates above let through.
+	it('says where each piece stands: its metre along the road puts it its offset off the road there', () => {
+		A.lines.forEach((line, k) => {
+			const w = walker(line);
+			for (const p of A.streams[k]) {
+				if (p.kind === 'herd') continue;
+				const c = w.at(p.along);
+				const off = Math.hypot(p.at[0] - c.x, p.at[1] - c.z);
+				expect(off, `${p.id} at ${p.along.toFixed(1)} m`).toBeCloseTo(
+					p.offset,
+					1,
+				);
+			}
+		});
+	});
+
+	it('keeps road furniture off the edge of every road near it, not only its own', () => {
+		const near = roadsNear(A.lines);
+		for (const p of A.pieces) {
+			if (p.kind !== 'delineator' && p.kind !== 'snowpole') continue;
+			for (const r of near(p.x, p.z)) {
+				let gap = Infinity;
+				for (let i = 0; i < r.points.length - 1; i++)
+					gap = Math.min(
+						gap,
+						pointSegment([p.x, p.z], r.points[i], r.points[i + 1]),
+					);
+				expect(
+					gap - r.halfWidth,
+					`${p.kind}@${p.x.toFixed(1)}`,
+				).toBeGreaterThan(0.25);
+			}
+		}
 	});
 });

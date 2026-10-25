@@ -28,7 +28,6 @@
 	import { shareVerb } from '$lib/share';
 	import { quiet } from './crews';
 	import { crewLive, livePulse } from './crew-live.svelte';
-	import { CAVE_MARK, CAVE_ROW, CAVE_WORDS } from './cave-sizes';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import StatusMark from '$lib/status-line/StatusMark.svelte';
 	import { goto } from '$app/navigation';
@@ -156,7 +155,7 @@
 	{#snippet crewRow(c: CrewRef)}
 		<CrewMark name={c.name} icon={c.icon} imageUrl={c.imageUrl} size={24} />
 		<span
-			class="font-display min-w-0 flex-1 truncate text-[15px] leading-5 font-bold {CAVE_WORDS} cave:leading-8"
+			class="font-display min-w-0 flex-1 truncate text-[15px] leading-5 font-bold"
 			>{c.name}</span
 		>
 		{#if c.role === 'owner'}
@@ -170,7 +169,7 @@
 			size={24}
 		/>
 		<span
-			class="font-display flex min-w-0 flex-1 items-center gap-1.5 text-[15px] leading-5 font-bold {CAVE_WORDS} cave:leading-8"
+			class="font-display flex min-w-0 flex-1 items-center gap-1.5 text-[15px] leading-5 font-bold"
 			><span class="truncate">You</span>
 			<StatusMark line={account.me?.statusLine} size={14} /></span
 		>
@@ -180,7 +179,7 @@
 	<button
 		onclick={() => (switching = !switching)}
 		{@attach contextMenu(() => (crew ? crewEntries(crew) : []))}
-		class="hover:bg-ink/5 text-ink flex min-h-11 w-full items-center gap-2 rounded p-2 text-left md:min-h-0 {CAVE_ROW} {switching
+		class="hover:bg-ink/5 text-ink flex min-h-11 w-full items-center gap-2 rounded p-2 text-left md:min-h-0 {switching
 			? 'bg-ink/5'
 			: ''}"
 		title="switch crew"
@@ -209,7 +208,7 @@
 				<CloudOff size={12} aria-label="not updating — retrying" />
 			</span>
 		{/if}
-		<ChevronsUpDown size={14} class="text-muted shrink-0 {CAVE_MARK}" />
+		<ChevronsUpDown size={14} class="text-muted shrink-0" />
 	</button>
 	{#if switching}
 		<!-- A list, not a menu: role="menu" promises arrow-key walking and
@@ -222,7 +221,7 @@
 						onpick('you');
 						switching = false;
 					}}
-					class="flex min-h-11 w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm md:min-h-0 {CAVE_ROW} {crew
+					class="flex min-h-11 w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm md:min-h-0 {crew
 						? 'text-muted hover:bg-ink/5 hover:text-ink'
 						: 'bg-ink/10 text-ink'}"
 					aria-current={crew ? undefined : 'true'}
@@ -240,10 +239,7 @@
 					<span class="text-muted cave:hidden shrink-0 text-[11px]"
 						>your own pages</span
 					>
-					{#if !crew}<Check
-							size={13}
-							class="text-muted shrink-0 {CAVE_MARK}"
-						/>{/if}
+					{#if !crew}<Check size={13} class="text-muted shrink-0" />{/if}
 				</button>
 			</li>
 			{#each crews as c (c.id)}
@@ -255,7 +251,7 @@
 							switching = false;
 						}}
 						{@attach contextMenu(() => crewEntries(c))}
-						class="flex min-h-11 w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm md:min-h-0 {CAVE_ROW} {now
+						class="flex min-h-11 w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm md:min-h-0 {now
 							? 'bg-ink/10 text-ink'
 							: 'text-muted hover:bg-ink/5 hover:text-ink'}"
 						aria-current={now ? 'true' : undefined}
@@ -267,13 +263,8 @@
 							size={20}
 						/>
 						<span class="min-w-0 flex-1 truncate">{c.name}</span>
-						<span class="text-muted shrink-0 text-[11px] {CAVE_WORDS}"
-							>{crewLine(c)}</span
-						>
-						{#if now}<Check
-								size={13}
-								class="text-muted shrink-0 {CAVE_MARK}"
-							/>{/if}
+						<span class="text-muted shrink-0 text-[11px]">{crewLine(c)}</span>
+						{#if now}<Check size={13} class="text-muted shrink-0" />{/if}
 					</button>
 				</li>
 			{/each}
@@ -299,7 +290,7 @@
 				<li>
 					<button
 						onclick={() => onpick(c.id)}
-						class="hover:bg-ink/5 text-muted hover:text-ink flex min-h-8 w-full items-center gap-2 px-4 text-left text-[11px] {CAVE_ROW}"
+						class="hover:bg-ink/5 text-muted hover:text-ink flex min-h-8 w-full items-center gap-2 px-4 text-left text-[11px]"
 						title="switch to {c.name}"
 						aria-label="{c.name} — {pulse.riding} riding, {pulse.voice} in voice, {pulse.unread} new — switch to it"
 					>
@@ -312,7 +303,7 @@
 							{/if}
 							{#if pulse.voice}
 								<span class="flex items-center gap-1"
-									><Headphones size={9} class={CAVE_MARK} />{pulse.voice}</span
+									><Headphones size={9} />{pulse.voice}</span
 								>
 							{/if}
 							{#if pulse.unread}
