@@ -236,7 +236,7 @@
 						<StatusMark line={account.me?.statusLine} size={12} /></span
 					>
 					<!-- What You is, for the desk; the ride keeps the label (G4). -->
-					<span class="text-muted cave:hidden shrink-0 text-[11px]"
+					<span class="text-muted ride:hidden shrink-0 text-[11px]"
 						>your own pages</span
 					>
 					{#if !crew}<Check size={13} class="text-muted shrink-0" />{/if}

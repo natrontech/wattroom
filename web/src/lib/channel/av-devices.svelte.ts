@@ -8,6 +8,9 @@
  * livekit-client anywhere near it.
  */
 
+import { micBesideBluetooth } from '$lib/channel/bluetooth-mic';
+import { device } from '$lib/device.svelte';
+
 const DEVICES_KEY = 'wattroom.devices.v1';
 
 export type DeviceChoices = ReturnType<typeof createDeviceChoices>;
@@ -26,6 +29,11 @@ export function createDeviceChoices() {
 	let camId = $state('');
 	let outId = $state('');
 	let list = $state<MediaDeviceInfo[]>([]);
+	/**
+	 * Mics that sent pure silence when chosen for the rider (#4161): a
+	 * MacBook's with its lid shut. This page only; the lid opens again.
+	 */
+	let silent = $state<string[]>([]);
 
 	try {
 		const saved = JSON.parse(localStorage.getItem(DEVICES_KEY) ?? '{}');
@@ -53,6 +61,13 @@ export function createDeviceChoices() {
 	// connection outlives every page (#173), so it would freeze on the first
 	// navigation away from the voice channel.
 	const mics = () => list.filter((d) => d.kind === 'audioinput');
+	const automaticMic = () =>
+		device.coarse
+			? null
+			: micBesideBluetooth(
+					list.filter((d) => !silent.includes(d.deviceId)),
+					outId,
+				);
 
 	return {
 		get micId() {
@@ -72,6 +87,22 @@ export function createDeviceChoices() {
 		},
 		get outs() {
 			return list.filter((d) => d.kind === 'audiooutput');
+		},
+		/**
+		 * What "no pick" opens while Bluetooth headphones play (#4161): the
+		 * computer's own mic, so the headset keeps music quality. Never on a
+		 * handheld (nothing says a phone keeps music quality on its own mic),
+		 * and never a mic that sent pure silence on this page.
+		 */
+		get automaticMic() {
+			return automaticMic();
+		},
+		/** The same, while the rider has picked no mic: a pick always wins. */
+		get besideBluetooth() {
+			return micId ? null : automaticMic();
+		},
+		heardNothing(id: string) {
+			if (!silent.includes(id)) silent = [...silent, id];
 		},
 		setMic(id: string) {
 			micId = id;

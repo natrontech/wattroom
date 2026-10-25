@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
  * The chain the way `av.svelte.ts` could never be tested: one small mock for
@@ -18,7 +18,11 @@ vi.mock('$lib/channel/mic-level', () => ({
 	),
 }));
 
-import { createMicChain, type MicChainHost } from './mic-chain.svelte';
+import {
+	SILENT_MS,
+	createMicChain,
+	type MicChainHost,
+} from './mic-chain.svelte';
 
 let meterLevel: (n: number) => void = () => {};
 const meterStop = vi.fn();
@@ -88,7 +92,13 @@ function stubAudio() {
 
 function host(over: Partial<MicChainHost> = {}): MicChainHost {
 	return {
-		devices: { micId: '', forgetMicIfUnplugged: vi.fn(), refresh: vi.fn() },
+		devices: {
+			micId: '',
+			besideBluetooth: null,
+			forgetMicIfUnplugged: vi.fn(),
+			heardNothing: vi.fn(),
+			refresh: vi.fn(async () => {}),
+		},
 		publish: vi.fn(async () => {}),
 		unpublish: vi.fn(),
 		live: () => true,
@@ -140,6 +150,43 @@ describe('opening and closing', () => {
 		expect(capture.stop).toHaveBeenCalled();
 		expect(deps.unpublish).toHaveBeenCalled();
 		expect(chain.fault).toBe(false);
+	});
+
+	// #4161: an open takes seconds on a Bluetooth mic, and a mute, Away or
+	// leave can land inside it. The silent one: the open used to finish
+	// anyway, live behind a rider who had just closed it.
+	it('a close while the mic is starting wins, and hands the capture back', async () => {
+		const deps = host();
+		const chain = createMicChain(deps);
+		const opening = chain.open();
+		expect(chain.starting).toBe(true);
+		chain.close();
+		expect(chain.starting).toBe(false);
+		await expect(opening).resolves.toBe(false);
+		expect(capture.stop).toHaveBeenCalled();
+		expect(deps.publish).not.toHaveBeenCalled();
+	});
+
+	it('a second open while the first is starting leaves one capture', async () => {
+		const tracks: ReturnType<typeof fakeTrack>[] = [];
+		vi.mocked(navigator.mediaDevices.getUserMedia).mockImplementation(
+			async () => {
+				const track = fakeTrack();
+				tracks.push(track);
+				return {
+					getAudioTracks: () => [track],
+					getTracks: () => [track],
+				} as unknown as MediaStream;
+			},
+		);
+		const chain = createMicChain(host());
+		const first = chain.open();
+		const second = chain.open();
+		await expect(first).resolves.toBe(false);
+		await expect(second).resolves.toBe(true);
+		expect(tracks).toHaveLength(2);
+		expect(tracks[0].stop).toHaveBeenCalled();
+		expect(tracks[1].stop).not.toHaveBeenCalled();
 	});
 
 	it('reopening over a live chain does not orphan the old stream', async () => {
@@ -254,10 +301,60 @@ describe('the starting gain (#2120)', () => {
 		);
 	});
 
+	// #4161 may open the computer's mic for a rider who picked none: its lift
+	// is that mic's, not the default's.
+	it('remembers the mic it opened, not the one the rider left unpicked', async () => {
+		stored.set('wattroom.voice.settled.v1', JSON.stringify({ mac: 0.3 }));
+		const deps = host();
+		deps.devices = { ...deps.devices, besideBluetooth: { deviceId: 'mac' } };
+		const chain = createMicChain(deps);
+		await chain.open();
+		meterLevel(0.15);
+		expect(gains[0].gain.setTargetAtTime).toHaveBeenLastCalledWith(
+			2,
+			0,
+			expect.any(Number),
+		);
+	});
+
 	it('leaves a device with no settled call alone', async () => {
 		const chain = createMicChain(host());
 		await chain.open();
 		meterLevel(0.15);
 		expect(gains[0].gain.setTargetAtTime).not.toHaveBeenCalled();
+	});
+});
+
+// #4161: a MacBook's mic is cut off in hardware while its lid is shut, and
+// macOS still lists it. Chosen for the rider beside Bluetooth headphones, it
+// would leave them talking to nobody with the mic drawn open.
+describe('a chosen mic that hears nothing', () => {
+	beforeEach(() => vi.useFakeTimers());
+	afterEach(() => vi.useRealTimers());
+
+	function chosen() {
+		const deps = host();
+		deps.devices = { ...deps.devices, besideBluetooth: { deviceId: 'mac' } };
+		return deps;
+	}
+
+	it('goes back to the default after SILENT_MS of pure silence', async () => {
+		const deps = chosen();
+		const chain = createMicChain(deps);
+		await chain.open();
+		meterLevel(0);
+		await vi.advanceTimersByTimeAsync(SILENT_MS);
+		expect(deps.devices.heardNothing).toHaveBeenCalledWith('mac');
+		expect(deps.publish).toHaveBeenCalledTimes(2);
+	});
+
+	it('stays once it has heard the room', async () => {
+		const deps = chosen();
+		const chain = createMicChain(deps);
+		await chain.open();
+		meterLevel(0.0004);
+		await vi.advanceTimersByTimeAsync(SILENT_MS);
+		expect(deps.devices.heardNothing).not.toHaveBeenCalled();
+		expect(deps.publish).toHaveBeenCalledTimes(1);
 	});
 });
