@@ -7,11 +7,13 @@
 #   minutes defaults to 9, under an agent's 10-minute call limit; pass more when
 #   the call runs in the background.
 # exit:  0 every check passed or skipped, 1 one failed or was cancelled (named
-#        with its link), 2 still running at the deadline: run it again.
+#        with its link), 2 still running at the deadline: run it again,
+#        3 gh failed three polls running (its error is printed).
 set -uo pipefail
 
 pr=${1:?usage: scripts/wait-checks.sh <pr> [minutes]}
 deadline=$(($(date +%s) + ${2:-9} * 60))
+gh_failures=0
 
 while :; do
 	# The five required checks (.claude/rules/git.md) must have reported before
@@ -21,7 +23,20 @@ while :; do
 			or any(.[]; .bucket == "pending") then "pending"
 		elif any(.[]; .bucket == "fail" or .bucket == "cancel") then
 			"fail " + ([.[] | select(.bucket == "fail" or .bucket == "cancel") | "\(.name) \(.link)"] | join("\n"))
-		else "pass" end' 2>/dev/null) || true
+		else "pass" end' 2>&1)
+	rc=$?
+	case $rc:$state in
+	0:*) gh_failures=0 ;;
+	*"no checks reported"*) state=pending ;; # a fresh push: CI has not queued yet
+	*)
+		gh_failures=$((gh_failures + 1))
+		if [ "$gh_failures" -ge 3 ]; then
+			echo "gh pr checks failed $gh_failures polls running: $state" >&2
+			exit 3
+		fi
+		state=pending
+		;;
+	esac
 	case $state in
 	pass)
 		echo "all checks passed"

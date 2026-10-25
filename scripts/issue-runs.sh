@@ -35,16 +35,33 @@ export AGENT_INDEX=${AGENT_INDEX:-0} AGENT_COUNT=${AGENT_COUNT:-1}
 # Opus compacts near 967K of its 1M window. A one-issue session peaks at a median
 # 190K and 341K at p90 (#3970), so only a runaway run reaches 400K.
 export CLAUDE_CODE_AUTO_COMPACT_WINDOW=${CLAUDE_CODE_AUTO_COMPACT_WINDOW:-400000}
+# A run that fails inside two minutes did no work (no auth, no quota, a broken
+# flag): wait twice as long after each, and give up after five in a row.
+fast_failures=0
 
 while [ ! -e "$runs/STOP" ]; do
 	# Each run reads AGENTS.md and the skills from this clone: keep it on main's head.
 	git fetch -q origin && [ "$(git branch --show-current)" = main ] && git merge -q --ff-only origin/main ||
 		echo "issue-runs: this clone is not a clean main, so the run reads stale rules" >&2
+	started=$(date +%s)
 	out=$(claude -p "${RUN:-/issue-run}" "$@" 2>&1)
 	status=$?
 	printf '== %s runner %s exit %s\n%s\n' "$(date '+%F %H:%M')" "$AGENT_INDEX" "$status" "$out" >>"$runs/$(date +%F).log"
 	case $out in
 	*"run: queue empty"*) sleep 1800 ;;
-	*) [ "$status" -eq 0 ] || sleep 300 ;;
+	*)
+		if [ "$status" -eq 0 ] || [ $(($(date +%s) - started)) -ge 120 ]; then
+			fast_failures=0
+			[ "$status" -eq 0 ] || sleep 300
+		else
+			fast_failures=$((fast_failures + 1))
+			if [ "$fast_failures" -ge 5 ]; then
+				echo "issue-runs: $fast_failures runs failed within two minutes; stopping. Last output:" >&2
+				printf '%s\n' "$out" | tail -n 5 >&2
+				exit 1
+			fi
+			sleep $((300 * 2 ** (fast_failures - 1)))
+		fi
+		;;
 	esac
 done
