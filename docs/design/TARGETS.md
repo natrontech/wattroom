@@ -153,7 +153,7 @@ Layout:
 World:
 
 16. The world's road is this ride's: ahead, the fixture's approach, a straight at 3 % toward the face of the switchback stack (no flat valley straight, no church village); distance “0.1 of 7.1”, your figure at the approach's start; your figure's km matches the Skyline dot; from km 2.3, on the second leg, what the chase camera holds (item 24): the road bending into the second hairpin ahead, the slope rising beside it [multi:world-hairpins]. [3663-world-is-your-ride] [probe:world]
-17. A solo ride holds one figure, yours, one ring; no bots. [3663-world-is-your-ride]
+17. A solo ride holds one figure, yours, one ring; no bots. Your ghost may ride beside it: a see-through past you is still yours, and racing it is canon (ADR-0068; supervisor for Jan, 2026-10-25, #3245). [3663-world-is-your-ride]
 18. Sky: top third cool blue-lavender, blue the highest channel, darkening upward; a thin peach band on the horizon, OKLCH hue 58–60°, ≥ 40° from every dark identity's watt, no taller than ~a tenth of the visible sky; nothing brown-mauve or pink; no stars at the start; judged on a frame where the sky shows, not where the stack's face fills it. [3085-ride-light]
 19. No warm key light, no cast shadow; shading soft and cool, from the sky. [3085-ride-light]
 20. Distant ridges opaque, paler and bluer with distance; no translucent pink layers, no white stripes. [3085-ride-light]
