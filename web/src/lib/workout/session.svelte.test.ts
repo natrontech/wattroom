@@ -322,6 +322,26 @@ describe('createRideSession', () => {
 		// Zero in ERG is a freewheel (#2658): ten seconds against nothing.
 		expect(slope).toHaveBeenLastCalledWith({ gradePct: 0 });
 		expect(erg).not.toHaveBeenCalledWith(0);
+		pedal(session, 190, 90, DEFAULTS.spiralReleaseSeconds);
+		expect(session.spiralActive).toBe(false);
+		expect(erg).toHaveBeenLastCalledWith(200);
+		session.stop();
+	});
+
+	it('auto-pauses onto a flat road and takes the target back on resume (#2658)', async () => {
+		const trainer = new SimulatedTrainer();
+		const slope = vi.spyOn(trainer, 'setSimulation');
+		const erg = vi.spyOn(trainer, 'setTargetPower');
+		const session = createRideSession({ trainer, workout, ftp: 200 });
+		await startRiding(session);
+		pedal(session, 0, 0, DEFAULTS.pauseAfterSeconds);
+		expect(session.state).toBe('autopaused');
+		expect(slope).toHaveBeenLastCalledWith({ gradePct: 0 });
+		expect(erg).not.toHaveBeenCalledWith(0);
+		erg.mockClear();
+		pedal(session, 200, 90, DEFAULTS.resumeCountdown + 1);
+		expect(session.state).toBe('running');
+		expect(erg).toHaveBeenLastCalledWith(200);
 		session.stop();
 	});
 
