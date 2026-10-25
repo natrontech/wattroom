@@ -1,13 +1,15 @@
 import { expect, test, type Page } from '@playwright/test';
 import { climbGpx } from './road-gpx';
-import { openAWorkoutOnARoad } from './route';
+import { importARoute, openAWorkoutOnARoad } from './route';
 import { signInAs } from './signin';
 import { drawing, onTheRoad, worldOn } from './world';
 
 /**
  * The 3D ride end to end (#3850), on the software GL the world project draws
  * with: a free ride on the rider's own road and a workout on one, each from
- * the first click to the saved ride, and the free ride at TV and phone sizes.
+ * the first click to the saved ride, the free ride at TV and phone sizes, a
+ * hidden tab and a trainer that falls silent. A lost context and missed frames
+ * are world-fallback.spec.ts's.
  * Software GL misses its frames, so the built app's frame judge hands each
  * ride to the Skyline seconds in (#3877): the world is checked while it
  * draws, and the rest of the ride may go on over the Skyline, for that reason
@@ -215,3 +217,91 @@ for (const [width, height] of [
 			.toBe(0);
 		await onTheRoad(page);
 	});
+
+/** The free ride's clock, in seconds. */
+const clock = async (page: Page) => {
+	const [m, s] = (await page.getByTestId('ride-clock').textContent())!
+		.split(' ')[0]
+		.split(':')
+		.map(Number);
+	return m * 60 + s;
+};
+
+/** When the world last drew, by its own stamp, or null once it has handed the ride on. */
+const drewAt = (page: Page) =>
+	page.evaluate(() => {
+		const said = document.querySelector<HTMLCanvasElement>(
+			'canvas[data-riders]',
+		)?.dataset.riders;
+		return said ? (JSON.parse(said) as { t: number }).t : null;
+	});
+
+/** Tells the page its tab is hidden or shown, the way a browser does (loop.ts's hidden gate). */
+const tabHidden = (page: Page, hidden: boolean) =>
+	page.evaluate((hidden) => {
+		Object.defineProperty(document, 'hidden', {
+			configurable: true,
+			get: () => hidden,
+		});
+		Object.defineProperty(document, 'visibilityState', {
+			configurable: true,
+			get: () => (hidden ? 'hidden' : 'visible'),
+		});
+		document.dispatchEvent(new Event('visibilitychange'));
+	}, hidden);
+
+test('a hidden tab stops the world drawing, and the ride keeps its time @world', async ({
+	page,
+}) => {
+	test.setTimeout(180_000);
+	await rideMyRoad(page, 'World Hidden Rider');
+	await drawing(page);
+	// Hidden at once: a hidden second is no evidence for the frame judge, so
+	// software GL cannot hand the ride on while the tab is away.
+	await tabHidden(page, true);
+	const from = await clock(page);
+	await page.waitForTimeout(1_000);
+	const stopped = await drewAt(page);
+	expect(stopped, 'the world was gone before the tab was').not.toBeNull();
+	await page.waitForTimeout(8_000);
+	expect(await drewAt(page), 'the world drew in a hidden tab').toBe(stopped);
+	expect(
+		await clock(page),
+		'the ride lost time while hidden',
+	).toBeGreaterThanOrEqual(from + 8);
+
+	await tabHidden(page, false);
+	await expect
+		.poll(() => drewAt(page), { message: 'the world never woke' })
+		.toBeGreaterThan(stopped!);
+	await onTheRoad(page);
+});
+
+/** Twenty seconds at 200 W, then nothing: the replay trainer falls silent (simulated.ts, #54). */
+const SILENCE = {
+	samples: Array.from({ length: 20 }, () => ({ watts: 200, cadence: 88 })),
+};
+
+test('a trainer that falls silent on your road holds the ride and offers one button @world', async ({
+	page,
+}) => {
+	await worldOn(page);
+	await signInAs(page, 'World Silent Rider', '/ride');
+	await page.route('**/fixtures/world-silence.json', (route) =>
+		route.fulfill({ json: SILENCE }),
+	);
+	const road = await importARoute(page);
+	await page.goto(`/ride?road=${road}&replay=world-silence`);
+	// The replay starts the ride itself.
+	await page.getByTestId('ride-replay').click({ timeout: 15_000 });
+	await drawing(page);
+
+	const status = page
+		.getByRole('alert')
+		.filter({ hasText: 'Trainer sends nothing' });
+	await expect(status).toBeVisible({ timeout: 40_000 });
+	await expect(
+		status.getByRole('button', { name: 'Pair again' }),
+	).toBeVisible();
+	await onTheRoad(page);
+});
