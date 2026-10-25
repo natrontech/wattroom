@@ -570,10 +570,22 @@ surface(
 surface(
 	'ride-free-road-ghost',
 	async (s) => {
-		// Your ghost beside you (#3245): the earlier effort is the designer's
-		// timed ride up the hairpin road's approach (design-seed's timedRide).
+		// Your ghost beside you (#3245). The designer's seeded timed ride up the
+		// hairpin road's approach (design-seed's timedRide) rides behind the
+		// chase camera by the shot, so the earlier effort here is a synthetic
+		// line a little faster than the simulated rider: in frame, just ahead.
 		const o = await s.open(DESK, { world: true });
 		const road = await fixtureRoad(o.page, 'hairpin');
+		await o.page.route('**/api/routes/*/ghost', (r) =>
+			r.fulfill({
+				json: {
+					best: true,
+					startedAt: new Date(Date.now() - 13 * 86_400_000).toISOString(),
+					seconds: 600,
+					metres: Array.from({ length: 601 }, (_, i) => i * 4.2),
+				},
+			}),
+		);
 		await ride(o.page, `/ride?road=${road}`);
 		await assertRiding(o.page, true);
 		await o.page.getByTestId('skyline-ghost').waitFor({ timeout: 15_000 });

@@ -66,10 +66,13 @@ function instanced(figure: Figure): InstancedFigure {
 export function makeGhosts(style: Style, loadout: Loadout, ftp: number) {
 	const outfit = outfitOf(loadout, style.kit, viewerOf(style));
 	const material = figureMaterial(outfit.kit, outfit.decal, outfit.jersey);
-	// Blended, not dithered: a dithered figure is a rider arriving or leaving (#3098).
+	// Blended, not dithered: a dithered figure is a rider arriving or leaving
+	// (#3098). It writes no depth, so every part shows through every other
+	// whatever order the figure was built in, and three in one draw need no sort.
 	material.transparent = true;
 	material.opacity = GHOST_OPACITY;
 	material.alphaToCoverage = false;
+	material.depthWrite = false;
 	const figure = buildFigure(outfit.kit, {
 		palette: outfit.palette,
 		material,

@@ -8,7 +8,13 @@ vi.mock('$lib/api', () => ({ api: (...args: unknown[]) => api(...args) }));
 import type { FreeRide } from './free-ride.svelte';
 import { createGhostSplit } from './ghost-split.svelte';
 
-type Road = { id: string; m: number; lap: number; borrowed: boolean };
+type Road = {
+	id: string;
+	m: number;
+	lap: number;
+	borrowed: boolean;
+	virtualMps?: number;
+};
 
 /** Just the free ride the split reads, reactive as the real one is. */
 function fakeRide() {
@@ -75,9 +81,14 @@ describe('the live split against your ghost (#3615)', () => {
 			borrowed: false,
 		});
 		ride.seconds = 2;
+		ride.road = { ...ride.road!, virtualMps: 5 };
 		await vi.waitFor(() => expect(ghost.rider).not.toBeNull());
 		expect(ghost.rider).toMatchObject({ m: 10, mps: 5 });
 		expect(ghost.rider!.label).toMatch(/^\w+day-you, /);
+		// You rest: the ghost's clock is yours, so it waits where it is.
+		ride.road = { ...ride.road!, virtualMps: 0 };
+		expect(ghost.rider).toMatchObject({ m: 10, mps: 0 });
+		ride.road = { ...ride.road!, virtualMps: 5 };
 		ride.seconds = 4;
 		expect(ghost.rider).toMatchObject({ m: 20, mps: 5 });
 		ride.seconds = 5;

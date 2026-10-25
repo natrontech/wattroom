@@ -47,6 +47,7 @@ describe('your ghosts on the road (#3245, ADR-0068)', () => {
 		// Blended, never dithered like a rider arriving (#3098).
 		expect(m.alphaHash).toBe(false);
 		expect(m.blending).toBe(THREE.NormalBlending);
+		expect(m.depthWrite).toBe(false);
 		expect(m.emissive.getHex()).toBe(0);
 		// Never the watt or the neon token (ADR-0005), and only the default layer: no bloom.
 		const tokens = themeById(DEFAULT_DARK_ID)!.tokens;

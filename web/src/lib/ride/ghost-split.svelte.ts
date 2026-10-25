@@ -87,8 +87,12 @@ export function createGhostSplit(ride: () => FreeRide | null | undefined) {
 			const s = on.free.seconds;
 			const m = ghostMetreAt(metres, s);
 			if (m === null) return null;
+			// Its clock is your pedalled seconds: while you rest, it waits too.
 			const i = Math.max(0, Math.min(Math.floor(s), metres.length - 2));
-			const mps = metres.length > 1 ? metres[i + 1] - metres[i] : 0;
+			const mps =
+				metres.length > 1 && on.road.virtualMps > 0
+					? metres[i + 1] - metres[i]
+					: 0;
 			return { m, mps: Math.max(0, mps), label };
 		},
 	};
