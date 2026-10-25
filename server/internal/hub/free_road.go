@@ -23,6 +23,8 @@ type roadPresence struct {
 	// Metres along it at this socket's last sample, once one has said.
 	m      float64
 	placed bool
+	// This lap runs down the stored road (#3205).
+	reverse bool
 }
 
 // validRoadKey is a SHA-256 in lowercase hex, the only key a client sends.
@@ -38,18 +40,20 @@ func validRoadKey(key string) bool {
 	return true
 }
 
-// setFreeRoad records the road this socket free-rides, or that it left one.
-// Untrusted input bounded at the boundary: a key that is not one is
-// dropped. One field per socket, so unlimited like the drive.
-func (rm *channelState) setFreeRoad(c *client, key string) {
-	if key != "" && !validRoadKey(key) {
+// setFreeRoad records the road this socket free-rides and which way along
+// it, or that it left one. Untrusted input bounded at the boundary: a key
+// that is not one is dropped. One field per socket, so unlimited like the
+// drive. A new way on the same road keeps its place: the lap turned there.
+func (rm *channelState) setFreeRoad(c *client, road protocol.FreeRoad) {
+	if road.Key != "" && !validRoadKey(road.Key) {
 		return
 	}
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
-	if c.road.key != key {
-		c.road = roadPresence{key: key}
+	if c.road.key != road.Key {
+		c.road = roadPresence{key: road.Key}
 	}
+	c.road.reverse = road.Reverse && road.Key != ""
 }
 
 // heardOnRoadLocked places a socket on its road from a live sample. Caller
@@ -94,7 +98,7 @@ func (rm *channelState) freeRoadsLocked() map[string]protocol.FreeRoadPlace {
 	out := make(map[string]protocol.FreeRoadPlace)
 	for id, p := range on {
 		if n := number[p.key]; n > 0 {
-			out[id] = protocol.FreeRoadPlace{Road: n, M: math.Round(p.m*10) / 10}
+			out[id] = protocol.FreeRoadPlace{Road: n, M: math.Round(p.m*10) / 10, Reverse: p.reverse}
 		}
 	}
 	return out

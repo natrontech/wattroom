@@ -43,6 +43,9 @@
 	import { cardView } from '$lib/session/sensor-card';
 	import { sensorReading, sensorState } from '$lib/session/sensor-status';
 	import { sensors } from '$lib/sensors.svelte';
+	import { shifterSlot } from '$lib/ble/controller-slot.svelte';
+	import { gearsEnabled } from '$lib/ride/gears-enabled';
+	import Gamepad2 from '@lucide/svelte/icons/gamepad-2';
 	import Bike from '@lucide/svelte/icons/bike';
 	import HeartPulse from '@lucide/svelte/icons/heart-pulse';
 	import RotateCw from '@lucide/svelte/icons/rotate-cw';
@@ -96,6 +99,20 @@
 		secondary: `btn btn-secondary ${large ? 'btn-lg' : 'btn-xs'}`,
 		forget: `border-muted/25 hover:border-muted/60 rounded border px-3 text-xs ${large ? 'min-h-11' : 'py-1.5'}`,
 	});
+
+	// An OpenBikeControl controller (#3335), behind its own gears switch
+	// (ADR-0084 "Inputs"). The same states a sensor's card shows.
+	const shifterState = $derived<PairState>(
+		shifterSlot.pairing
+			? 'connecting'
+			: shifterSlot.status === 'connected'
+				? 'connected'
+				: shifterSlot.status === 'connecting'
+					? 'reconnecting'
+					: shifterSlot.error
+						? 'failed'
+						: 'idle',
+	);
 
 	const trainerView = $derived(
 		cardView({
@@ -301,6 +318,17 @@
 					onForget: () => void sensors.forget(sensor.kind),
 				})}
 			{/each}
+			{#if gearsEnabled('obc')}
+				{@render card({
+					label: 'Shifter',
+					icon: Gamepad2,
+					required: false,
+					state: shifterState,
+					device: shifterSlot.name,
+					onPair: () => void shifterSlot.pair(),
+					onForget: () => void shifterSlot.forget(),
+				})}
+			{/if}
 		</div>
 		{#if !supported}
 			<!-- Each card already says "needs Chrome or Edge"; this is the part a
@@ -322,6 +350,9 @@
 				</p>
 			{/if}
 		{/each}
+		{#if shifterState === 'failed'}
+			<p class="text-danger mt-2 text-xs">Shifter: {shifterSlot.error}</p>
+		{/if}
 		{#if trainer.onSimulate && !elsewhere.trainer}
 			<!-- Dev-only (#123): simulated watts in a live session would count for
 			     medals, XP and streaks — the fairness layer takes no fakes. Gone

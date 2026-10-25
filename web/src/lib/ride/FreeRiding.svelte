@@ -31,8 +31,10 @@
 	} from '$lib/ride/free-ride-controls';
 	import { freeRideLabel, type FreeRide } from '$lib/ride/free-ride.svelte';
 	import GearShift from '$lib/ride/GearShift.svelte';
+	import { EASIER_HARDER_OFF } from '$lib/ride/easier-harder';
+	import { gearsEnabled } from '$lib/ride/gears-enabled';
+	import { gearsNews } from '$lib/ride/gears-news';
 	import type { GhostSplit } from '$lib/ride/ghost-split.svelte';
-	import { ONE_GEAR_LINE } from '$lib/ride/mode-copy';
 	import type { RideShift } from '$lib/ride/ride-shift';
 	import { roadLine } from '$lib/ride/road-readout';
 	import { roadEndOffered } from '$lib/ride/road-end';
@@ -191,7 +193,8 @@
 			? faultCopy({ kind: 'trainer', state: 'silent' }).line
 			: null,
 	);
-	const hint = $derived(!inWatts && !cassette ? ONE_GEAR_LINE : undefined);
+	// Once per device, to a rider who kept "Don't make me shift" (#3333).
+	const hint = untrack(() => gearsNews(!cassette));
 
 	// The ⚑'s own acknowledgement (#52): consent in plain words, at the
 	// moment of the tap, never blocking.
@@ -342,7 +345,12 @@
 				>
 			{/if}
 			{#if gear && shift && !inWatts}
-				<GearShift {shift} {gear} off={shiftOff} {cassette} />
+				<GearShift
+					{shift}
+					{gear}
+					off={gearsEnabled('screen') ? shiftOff : EASIER_HARDER_OFF.gated}
+					{cassette}
+				/>
 			{/if}
 			{#if onflag}<FlagButton onflag={flag} sends="after" />{/if}
 			{#if drawn}

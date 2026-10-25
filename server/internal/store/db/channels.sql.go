@@ -15,11 +15,12 @@ const cancelPrivateChannelPlans = `-- name: CancelPrivateChannelPlans :many
 delete from scheduled_sessions s
 using channels c
 where c.id = $1 and c.private and s.channel_id = c.id
-returning s.workout_name, s.starts_at, s.started_at
+returning s.workout_name, s.workout_json, s.starts_at, s.started_at
 `
 
 type CancelPrivateChannelPlansRow struct {
 	WorkoutName string
+	WorkoutJson []byte
 	StartsAt    pgtype.Timestamptz
 	StartedAt   pgtype.Timestamptz
 }
@@ -37,7 +38,12 @@ func (q *Queries) CancelPrivateChannelPlans(ctx context.Context, id pgtype.UUID)
 	var items []CancelPrivateChannelPlansRow
 	for rows.Next() {
 		var i CancelPrivateChannelPlansRow
-		if err := rows.Scan(&i.WorkoutName, &i.StartsAt, &i.StartedAt); err != nil {
+		if err := rows.Scan(
+			&i.WorkoutName,
+			&i.WorkoutJson,
+			&i.StartsAt,
+			&i.StartedAt,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

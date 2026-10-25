@@ -66,7 +66,7 @@
 
 <!-- Every word here at the riding floor (TARGETS G4): a rider a game put
      out uses the deck on the bike (#3890). -->
-<div class="grid gap-2">
+<div class="grid gap-2" data-testid="roadside-deck">
 	<CheerDeck onCheer={(key) => live?.cheer(key)} />
 	{#if to && live}
 		<button

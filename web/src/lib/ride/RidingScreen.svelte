@@ -21,8 +21,11 @@
 	import {
 		bindRideKeys,
 		bindRideShift,
+		CAMERA_PRESETS,
 		type CameraPreset,
+		type RideKey,
 	} from '$lib/ride/keys';
+	import { shifterSlot } from '$lib/ble/controller-slot.svelte';
 	import { roadLine } from '$lib/ride/road-readout';
 	import { cleanView } from '$lib/ride/clean-view.svelte';
 	import KeySheet from '$lib/ride/KeySheet.svelte';
@@ -120,23 +123,34 @@
 	// The ride keys (#3216). O is a no-op with a hint until the photo roll lands.
 	let camera = $state<CameraPreset>();
 	let sheet = $state(false);
+	function rideKey(key: RideKey) {
+		if (key.kind === 'sheet') sheet = !sheet;
+		else if (key.kind === 'clean') cleanView.toggle();
+		else if (key.kind === 'camera') {
+			if (inWorld) camera = key.preset;
+			else toasts.push('Cameras need the 3D road.');
+		} else if (key.kind === 'map') {
+			const taken = !window.dispatchEvent(
+				new CustomEvent(MAP_ASK, { cancelable: true }),
+			);
+			if (!taken) toasts.push('The MAP page needs a road.');
+		} else toasts.push('Snap is not here yet.');
+	}
+	$effect(() => bindRideKeys(rideKey, (k) => !!board.onKey(k)));
+	// A controller's view buttons are the same keys (#3335); its camera
+	// button steps through the four.
 	$effect(() =>
-		bindRideKeys(
-			(key) => {
-				if (key.kind === 'sheet') sheet = !sheet;
-				else if (key.kind === 'clean') cleanView.toggle();
-				else if (key.kind === 'camera') {
-					if (inWorld) camera = key.preset;
-					else toasts.push('Cameras need the 3D road.');
-				} else if (key.kind === 'map') {
-					const taken = !window.dispatchEvent(
-						new CustomEvent(MAP_ASK, { cancelable: true }),
-					);
-					if (!taken) toasts.push('The MAP page needs a road.');
-				} else toasts.push('Snap is not here yet.');
-			},
-			(k) => !!board.onKey(k),
-		),
+		shifterSlot.onAction((action, edge) => {
+			if (edge !== 'down') return;
+			if (action === 'camera') {
+				const at = CAMERA_PRESETS.indexOf(camera ?? CAMERA_PRESETS[0]);
+				rideKey({
+					kind: 'camera',
+					preset: CAMERA_PRESETS[(at + 1) % CAMERA_PRESETS.length],
+				});
+			} else if (action === 'clean' || action === 'map' || action === 'snap')
+				rideKey({ kind: action });
+		}),
 	);
 
 	/** A 44 px icon control mid-ride (ux.md), skinned as SessionControls' are. */

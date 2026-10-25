@@ -4,14 +4,15 @@ import { signInAs } from './signin';
 
 /**
  * Jan's ride, 2026-10-25 (#4163): a desk rides a crew session holding the
- * trainer, the same rider's phone opens the remote, and Bias + on the phone
- * moves the desk's bias. Both screens run as wattroom.ch serves them, with
- * no dev door and so no gears: the phone says Bias − and + as Jan's did. The
- * desk takes the dev door only to pair its simulated trainer.
+ * trainer, the same rider's phone opens the remote, and Harder on the phone
+ * moves the desk's bias, since the session rides in ERG (#3333). Both
+ * screens run as wattroom.ch serves them, with no dev door, and gears are
+ * on there too. The desk takes the dev door only to pair its simulated
+ * trainer.
  */
 const RIDER = 'Phone Remote Rider';
 
-/** The providers as production lists them: no dev door, so no gears. */
+/** The providers as production lists them: no dev door. */
 const asProduction = (context: BrowserContext) =>
 	context.route('**/api/auth/providers', async (route) => {
 		const res = await route.fetch();
@@ -20,7 +21,7 @@ const asProduction = (context: BrowserContext) =>
 		await route.fulfill({ response: res, json: body });
 	});
 
-test('Bias + on the phone remote trims the desk ride', async ({
+test('Harder on the phone remote trims the desk ride in ERG', async ({
 	browser,
 	baseURL,
 	riders,
@@ -60,7 +61,7 @@ test('Bias + on the phone remote trims the desk ride', async ({
 
 	// Paired; from here the desk reads the providers as production lists
 	// them. Its shell re-reads them on every mount, so a walk to the lounge
-	// and back, inside the app, keeps the ride and drops the gears.
+	// and back, inside the app, keeps the ride and drops the dev door.
 	await asProduction(desk.context());
 	await desk
 		.locator(`a[href="${voicePath(opened)}"]`)
@@ -91,7 +92,7 @@ test('Bias + on the phone remote trims the desk ride', async ({
 			.getByRole('button', { name: 'Use this phone as your remote' })
 			.click({ timeout: 20_000 });
 		const remote = phone.getByTestId('phone-remote');
-		await remote.getByRole('button', { name: 'Bias +' }).click();
+		await remote.getByRole('button', { name: 'Harder', exact: true }).click();
 
 		await expect(desk.getByText('101%', { exact: true })).toBeVisible({
 			timeout: 10_000,

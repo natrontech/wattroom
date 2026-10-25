@@ -886,7 +886,7 @@ func (q *Queries) GetRideExport(ctx context.Context, arg GetRideExportParams) (G
 
 const getRideForUpload = `-- name: GetRideForUpload :one
 select r.id, r.user_id, r.workout_name, r.started_at, r.samples, u.strava_upload,
-       c.name as crew_name
+       c.name as crew_name, r.route_key, r.distance_m
 from rides r
 join users u on u.id = r.user_id
 left join crews c on c.id = r.crew_id
@@ -901,10 +901,14 @@ type GetRideForUploadRow struct {
 	Samples      []byte
 	StravaUpload bool
 	CrewName     *string
+	RouteKey     *string
+	DistanceM    *int32
 }
 
 // The uploader's one read: the ride plus the owner's consent flag and the
 // crew's name for the activity description (null for solo rides, #2443).
+// A route ride's title is its numbers (#4154): route_key marks one, and
+// outlives the route.
 func (q *Queries) GetRideForUpload(ctx context.Context, id pgtype.UUID) (GetRideForUploadRow, error) {
 	row := q.db.QueryRow(ctx, getRideForUpload, id)
 	var i GetRideForUploadRow
@@ -916,6 +920,8 @@ func (q *Queries) GetRideForUpload(ctx context.Context, id pgtype.UUID) (GetRide
 		&i.Samples,
 		&i.StravaUpload,
 		&i.CrewName,
+		&i.RouteKey,
+		&i.DistanceM,
 	)
 	return i, err
 }

@@ -22,7 +22,7 @@
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
 	import { createGhostSplit } from '$lib/ride/ghost-split.svelte';
 	import RoadPick from '$lib/ride/RoadPick.svelte';
-	import { createRoadMates } from '$lib/channel/road-mates';
+	import { createRoadMates, rideWith } from '$lib/channel/road-mates';
 	import Radio from '@lucide/svelte/icons/radio';
 
 	const channel = useChannel();
@@ -44,8 +44,11 @@
 	// here would set nothing.
 	const riding = $derived(!!session && channel.you.inSession);
 	// Your ghost on your own road, raced alone — never in a session (#3615,
-	// ADR-0068).
-	const ghost = createGhostSplit(() => (riding ? null : free));
+	// ADR-0068), and only from the road's start: never after riding in at a
+	// mate's metre (#3117).
+	const ghost = createGhostSplit(() =>
+		riding || (free?.road?.from ?? 0) > 0 ? null : free,
+	);
 	// Channel-mates free-riding your road (#3117): the hub puts them on it.
 	const roadMates = createRoadMates();
 	const mates = $derived(
@@ -77,6 +80,16 @@
 </script>
 
 {#snippet controls()}
+	<!-- "Ride with <name>" (#3117): one jump to a channel-mate's metre on
+	     your road, their way, then ride freely. -->
+	{#each mates as mate (mate.id)}
+		{@const jump = mate.name ? rideWith(mate, free) : null}
+		{#if jump}
+			<button onclick={jump} class="btn btn-secondary btn-ride"
+				>Ride with {mate.name}</button
+			>
+		{/if}
+	{/each}
 	<SessionControls compact />
 	<!-- Your own workout, beside anything running here (#2329): the same
 	     picker, the ride-alone lifecycle. It needs the trainer to hold

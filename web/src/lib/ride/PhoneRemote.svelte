@@ -31,7 +31,7 @@
 		{ action: 'cheer-back', label: 'Cheer back' },
 		{ action: 'map', label: 'Map' },
 	];
-	const geared = gearsEnabled();
+	const geared = gearsEnabled('phone');
 	const talk = createTalkHold((action) => live.sendRemote(action));
 	onDestroy(talk.up);
 	// A phone that opens late asks the holder where it is: its gear and

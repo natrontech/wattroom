@@ -14,6 +14,7 @@ import (
 
 	"github.com/natrontech/wattroom/server/internal/audio"
 	"github.com/natrontech/wattroom/server/internal/audio/audiotest"
+	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/store/storetest"
@@ -513,6 +514,12 @@ func TestKeyRefusals(t *testing.T) {
 		{"the space bar", "alice", clip.ID, `{"key":" "}`, http.StatusBadRequest},
 		{"nothing at all", "alice", clip.ID, `{"key":""}`, http.StatusBadRequest},
 		{"clearing it", "alice", clip.ID, `{"key":null}`, http.StatusNoContent},
+		{"a symbol no ride shifts on", "alice", clip.ID, `{"key":"/"}`, http.StatusNoContent},
+		{"Harder's .", "alice", clip.ID, `{"key":"."}`, http.StatusBadRequest},
+		{"Easier's ,", "alice", clip.ID, `{"key":","}`, http.StatusBadRequest},
+		{"Harder's +", "alice", clip.ID, `{"key":"+"}`, http.StatusBadRequest},
+		{"Easier's -", "alice", clip.ID, `{"key":"-"}`, http.StatusBadRequest},
+		{"Harder's =", "alice", clip.ID, `{"key":"="}`, http.StatusBadRequest},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -521,6 +528,22 @@ func TestKeyRefusals(t *testing.T) {
 				t.Errorf("status = %d; want %d (%s)", rec.Code, tt.want, rec.Body)
 			}
 		})
+	}
+}
+
+// A ride shifts on . , + - and = (#3333): the refusal names the key and says
+// why, beside the key field.
+func TestAShiftKeyIsRefusedWithWhy(t *testing.T) {
+	mux, _, _ := setup(t)
+	clip := upload(t, mux, "alice", "AIRHORN", tenSeconds())
+	rec := do(t, mux, "alice", "PUT", "/api/board/clips/"+clip.ID+"/key", []byte(`{"key":"+"}`))
+	var got httpx.ErrorResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("decode: %v (%s)", err, rec.Body)
+	}
+	want := httpx.ErrorResponse{Error: "validation_error", Message: "+ shifts gears while you ride. Pick another key.", Field: "key"}
+	if rec.Code != http.StatusBadRequest || got != want {
+		t.Errorf("= %d %+v; want 400 %+v", rec.Code, got, want)
 	}
 }
 

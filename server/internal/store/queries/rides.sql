@@ -434,8 +434,10 @@ delete from users where id = $1;
 -- name: GetRideForUpload :one
 -- The uploader's one read: the ride plus the owner's consent flag and the
 -- crew's name for the activity description (null for solo rides, #2443).
+-- A route ride's title is its numbers (#4154): route_key marks one, and
+-- outlives the route.
 select r.id, r.user_id, r.workout_name, r.started_at, r.samples, u.strava_upload,
-       c.name as crew_name
+       c.name as crew_name, r.route_key, r.distance_m
 from rides r
 join users u on u.id = r.user_id
 left join crews c on c.id = r.crew_id

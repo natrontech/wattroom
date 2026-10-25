@@ -79,7 +79,7 @@ Every number below is a **default**, to be tuned in alpha from riders' reports, 
   - Cw' = k³ · Cw · (1 − shelter)
   - wind' = wind ÷ k
 
-  The base values are the trainer's road from "Route rides": Crr **0.004** and Cw **0.39 kg/m**, ρ·CdA. m/m_t is **1**: FTMS carries no mass, and a Kickr simulates the weight its maker's app gave it, so m_t is no constant WattRoom can know (#3332 owns any change).
+  The base values are the trainer's road from "Route rides": Crr **0.004** and Cw **0.39 kg/m**, ρ·CdA. m/m_t is **1**: FTMS carries no mass, and a Kickr simulates the weight its maker's app gave it, so m_t is no constant WattRoom can know. #3332 closed on that: SIM does not scale by the rider's weight.
 
 - **Input (rule).** A road's grade goes through the route-rides felt rule (#3020). A slope the rider set by hand (the free ride) and a sprint slope are felt as given.
 - **Shelter (rule).** Cw carries (1 − shelter) only while "Feel the draft" is on (ADR-0077). The dot always gets the hub's shelter.
@@ -119,10 +119,12 @@ Every number below is a **default**, to be tuned in alpha from riders' reports, 
   - It is neon, never the watt accent, and never glows. It pulses once on a change, not at all under `prefers-reduced-motion`, and is aria-live polite.
 - **Keys (default).**
   - Harder: `.` `+` `=` Numpad+. Easier: `,` `-` Numpad−. PgUp / PgDn are Harder / Easier.
+  - No soundboard pad takes `.` `,` `+` `-` or `=` (rule, #3333): binding one is refused with "+ shifts gears while you ride. Pick another key." A pad bound to one before gears keeps it and fires on it outside a ride.
   - Ride keys (#3216): **1-4** camera (Chase, Heli, Side, Steady; in the world only), **H** clean view (3 s power, road line and Skyline; per device; the status stays while the trainer signal is lost), **M** the computer's MAP page (a hint where there is no road) and **O** snap (a hint until it exists), **?** the key sheet. Never Space, arrows or a key a soundboard pad is bound to; not while typing.
   - No modifier key. `event.repeat` is ignored, because the shifter does the repeating. Keydown and keyup are press and release.
 - **The ride narrator (default, #3213; WCAG 4.1.3).** An sr-only `role=status` region says a block change, a climb opening (class, length, average grade), "N km to the top" at each whole kilometre left, and the summit, at most one line per **5 s**; a newer line replaces a waiting one. `role=alert` says the trainer signal lost (back is a polite line) and the **S** key: "km 12.4 of 51.7, 5.8 %, 6.0 km to the top, 258 W, zone 3" (on a road; not while typing, not with a modifier, and not when a soundboard pad is bound to S). Climbs are named by class; a climb's name waits for the privacy rule on place names (ADR-0063).
 - **Phone (default).** Taps only, as a full-width pair. Each tap is answered with the gear, and whether it is at an end.
+- **OpenBikeControl (default, #3335).** A "Shifter" card beside the sensors pairs a controller over Web Bluetooth. Shift Up and Increase Difficulty are Harder, Shift Down and Decrease Difficulty are Easier, held like a key (one press when a button sends both). Push to Talk is held; Camera View steps through 1-4; HUD Toggle, Map Toggle and Screenshot are H, M and O; Left and Right turn the computer's pages. WattRoom sends the controller exactly these IDs as App Information, without Gear Set: a gear moves to its table neighbour only. A shift buzzes once, an end twice (the warning pattern). A lost link lets go of every held button.
 - **The trainer grant moves (default).** When another of the rider's screens takes the trainer, k restarts at 1 with a cue and "Gear back to your real gear". A reconnect keeps k.
 
 **What the gear never touches (rule)**
@@ -137,7 +139,7 @@ Every number below is a **default**, to be tuned in alpha from riders' reports, 
   - Target = (felt road force at speed k·v) × k·v, where v is the trainer's own speed.
   - Floor **50 W**. Never ERG 0 W (#2658).
   - Ceiling: the trainer's Supported Power Range (0x2AD8).
-- **Don't make me shift (default).** The singleSpeed setting, renamed. Wherever SIM would put the rider on a slope, ERG-by-road holds FTP × clamp(0.60 + 0.03 × grade %, 0.50, 0.90), ± bias (#3025). Rides on it are stored but untimeable (rule: Jan, 2026-09-28; ADR-0074's who-chose-the-watts rule, since WattRoom chose the watts).
+- **Don't make me shift (default).** The singleSpeed setting, renamed. Wherever SIM would put the rider on a slope, ERG-by-road holds FTP × clamp(0.60 + 0.03 × grade %, 0.50, 0.90), ± bias (#3025). Rides on it are stored but untimeable (rule: Jan, 2026-09-28; ADR-0074's who-chose-the-watts rule, since WattRoom chose the watts). A rider who had it on before gears keeps it, and the free ride says "Virtual gears are here: pick Grade to shift." once per device (#3333).
 
 ## The bike computer (defaults — tune in alpha; [ADR-0071](../decisions/0071-the-bike-computer-pages-slot-3.md))
 
