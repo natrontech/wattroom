@@ -197,7 +197,7 @@ func TestTheTeamCarStaysHomeInAGame(t *testing.T) {
 			return tickFor(rm, now, countdownSeconds)
 		}, true},
 		{"a game on a road does not", func(t *testing.T, rm *channelState, coach protocol.Rider, now time.Time) time.Time {
-			if refusal := rm.startGameOn("points-race", road, 0, coach, now); refusal != "" {
+			if _, refusal := rm.startGameOn("points-race", road, 0, coach, now); refusal != "" {
 				t.Fatal(refusal)
 			}
 			return now
@@ -243,7 +243,7 @@ func TestWattGolfWithholdsTheOffsets(t *testing.T) {
 	rm, clients := inChannel(t, "velvet", coach, ben)
 	now := time.Unix(1_700_000_000, 0)
 	rm.now = func() time.Time { return now }
-	if refusal := rm.startGameOn("watt-golf", rideOn(slope(0, 20_000), 0, false, false), 0, coach, now); refusal != "" {
+	if _, refusal := rm.startGameOn("watt-golf", rideOn(slope(0, 20_000), 0, false, false), 0, coach, now); refusal != "" {
 		t.Fatal(refusal)
 	}
 	if code, message := rm.controlOn(protocol.Control{Action: "join"}, nil, ben, now); code != "" {

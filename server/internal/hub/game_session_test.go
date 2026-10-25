@@ -249,3 +249,41 @@ func TestGameSessionSaysItsEndOnce(t *testing.T) {
 		t.Fatalf("lines at the end: %v, want the game's own one", got)
 	}
 }
+
+// #4153: the socket checks a game's role before reading the database for its
+// road, and a pick or start can land in that gap. The start checks again
+// under the lock, so the game never opens over a pick nor runs inside a
+// session whose coach is someone else.
+func TestAGameStartRechecksTheRoleUnderTheLock(t *testing.T) {
+	pick := protocol.Control{Action: "pick", WorkoutName: "x", WorkoutJSON: `{"steps":[{"type":"steady","seconds":600,"target":0.8}]}`, TotalSeconds: 600}
+	for _, tc := range []struct {
+		name    string
+		between []string
+		route   *routeRide
+	}{
+		{"a pick during the road's read", []string{"pick"}, rideOn(slope(0, 5000), 0, false, false)},
+		{"a start before the game", []string{"pick", "start"}, nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			now := pat(0)
+			ana, ben := protocol.Rider{ID: "ana", Name: "Ana", Role: "member"}, protocol.Rider{ID: "ben", Name: "Ben", Role: "member"}
+			rm, _ := gameChannel(t, &now, ana, ben)
+			if code, msg := rm.refusal("game", ben); code != "" {
+				t.Fatalf("an idle channel refused Ben's game: %s %s", code, msg)
+			}
+			for _, a := range tc.between {
+				c := pick
+				c.Action = a
+				if code, msg := rm.control(c, ana, now); code != "" {
+					t.Fatalf("Ana's %s: %s %s", a, code, msg)
+				}
+			}
+			if code, _ := rm.startGameOn("floor-is-lava", tc.route, 0, ben, now); code != "forbidden" {
+				t.Fatalf("Ben's game after Ana's %v answered %q, want forbidden", tc.between, code)
+			}
+			if rm.session.coach != "ana" || rm.game != nil {
+				t.Fatalf("session coached by %q, game %v; want Ana's, none", rm.session.coach, rm.game)
+			}
+		})
+	}
+}

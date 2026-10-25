@@ -28,7 +28,7 @@ func TestLastLightRunsItsClock(t *testing.T) {
 			r := &raceRoom{rm: rm, clients: clients, now: raceStart}
 			rm.now = func() time.Time { return r.now }
 			// A road nobody can ride to its end inside the clock.
-			if refusal := rm.startGameOn(modeLastLight, rideOn(slope(0, 100_000), 0, false, false), minutes, ana, raceStart); refusal != "" {
+			if _, refusal := rm.startGameOn(modeLastLight, rideOn(slope(0, 100_000), 0, false, false), minutes, ana, raceStart); refusal != "" {
 				t.Fatalf("start: %s", refusal)
 			}
 			joinRide(rm, "ben")
@@ -121,7 +121,7 @@ func lastLight(t *testing.T, lengthM float64, minutes int) *raceRoom {
 	rm, clients := inChannel(t, "last-light", ana, ben)
 	r := &raceRoom{rm: rm, clients: clients, now: raceStart}
 	rm.now = func() time.Time { return r.now }
-	if refusal := rm.startGameOn(modeLastLight, rideOn(slope(0, lengthM), 0, false, false), minutes, ana, raceStart); refusal != "" {
+	if _, refusal := rm.startGameOn(modeLastLight, rideOn(slope(0, lengthM), 0, false, false), minutes, ana, raceStart); refusal != "" {
 		t.Fatalf("start: %s", refusal)
 	}
 	joinRide(rm, "ben")
