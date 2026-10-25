@@ -1,5 +1,5 @@
-import type { Locator } from '@playwright/test';
 import { expect, test, voicePath } from './crew';
+import { inRidersScheme, RIDE_FRAME } from './scheme';
 import { signInTo } from './signin';
 
 /**
@@ -85,13 +85,13 @@ test('a tap on another voice channel mid-ride asks, and Keep riding keeps it', a
 });
 
 /**
- * A free ride is a ride too (ADR-0059, #2843): the lights go down, the
+ * A free ride is a ride too (ADR-0059, #2843): the frame marks it, the
  * desktop HUD hears it, and a tap on another voice channel — which leaves
  * this one, ending the ride and letting the trainer go — asks first.
  */
 const FREE_RIDER = 'Free Guard Rider';
 
-test('a free ride goes dark, feeds the HUD and asks before another channel ends it', async ({
+test('a free ride marks the frame, feeds the HUD and asks before another channel ends it', async ({
 	riders,
 	channels,
 }) => {
@@ -127,8 +127,8 @@ test('a free ride goes dark, feeds the HUD and asks before another channel ends 
 		const riding = page.url();
 
 		await expect(
-			page.locator('.cave:has(#page-body)'),
-			'the lights stayed up',
+			page.locator(RIDE_FRAME),
+			'the ride never marked the frame',
 		).toHaveCount(1);
 		const hud = await page.context().newPage();
 		await hud.goto('/hud');
@@ -141,14 +141,12 @@ test('a free ride goes dark, feeds the HUD and asks before another channel ends 
 		const elsewhere = page.locator(
 			`nav[aria-label="crews and channels"] a[href="/crew/${opened.crew}/v/${other}"]`,
 		);
-		// A menu and a confirm opened mid-ride are the cave too (#3788): their
-		// hosts mount outside the frame, where the rider's scheme reached them.
-		const schemeOf = (el: Locator) =>
-			el.evaluate((node) => getComputedStyle(node).colorScheme);
+		// A menu and a confirm opened mid-ride keep the rider's scheme, as the
+		// frame does (#4160); their hosts mount outside it (#3788).
 		await elsewhere.click({ button: 'right' });
 		const menu = page.getByRole('menu');
 		await expect(menu).toBeVisible();
-		expect(await schemeOf(menu), 'a menu opened mid-ride').toBe('dark');
+		expect(await inRidersScheme(menu), 'a menu opened mid-ride').toBe(true);
 		await page.keyboard.press('Escape');
 		await expect(menu).toBeHidden();
 
@@ -157,7 +155,7 @@ test('a free ride goes dark, feeds the HUD and asks before another channel ends 
 		await expect(
 			ask.getByText(`End your free ride in ${opened.name}?`),
 		).toBeVisible();
-		expect(await schemeOf(ask), 'a confirm opened mid-ride').toBe('dark');
+		expect(await inRidersScheme(ask), 'a confirm opened mid-ride').toBe(true);
 		await ask.getByRole('button', { name: 'Keep riding' }).click();
 		expect(page.url()).toBe(riding);
 		await expect(end).toBeVisible();

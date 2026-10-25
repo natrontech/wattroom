@@ -259,12 +259,12 @@
 							     capturing (`mic-chain.svelte.ts`). So the mic button is the
 							     gate here, and the promise says what actually happens. -->
 							<!-- The promise is desk copy, never on a ride (G4). -->
-							<span class="cave:hidden"
+							<span class="ride:hidden"
 								>Never recorded. Tap the mic to talk — while it is open your
 								phone plays the call through the earpiece.</span
 							>
 						{:else}
-							<span class="cave:hidden"
+							<span class="ride:hidden"
 								>Never recorded. Your mic opens when you speak.</span
 							>
 						{/if}

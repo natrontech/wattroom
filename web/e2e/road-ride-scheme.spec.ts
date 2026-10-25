@@ -1,17 +1,18 @@
 import { expect, test } from './crew';
 import { climbGpx } from './road-gpx';
+import { inRidersScheme, RIDE_FRAME } from './scheme';
 import { signInAs } from './signin';
 
 /**
  * A free ride on a road is a ride (#3667): from the first stroke to End ride
- * the frame is the cave, sidebar included, whatever the OS scheme says; a
- * stray tap on the rail asks before leaving; the card after End ride follows
- * the rider's scheme again. Captured with the OS in light, where the ride
- * used to stay white from end to end.
+ * the frame is the ride, sidebar included, and hides the desk's sentences; a
+ * stray tap on the rail asks before leaving. Every step keeps the rider's
+ * scheme (Jan, 2026-10-25, #4160): captured with the OS in light, where the
+ * cave used to turn the whole app dark at the first stroke.
  */
 test.use({ colorScheme: 'light' });
 
-test('a free ride on a road rides in the cave, and asks before leaving', async ({
+test('a free ride on a road keeps the rider’s scheme, and asks before leaving', async ({
 	page,
 }) => {
 	test.skip(
@@ -41,7 +42,8 @@ test('a free ride on a road rides in the cave, and asks before leaving', async (
 	await page
 		.getByRole('button', { name: 'Ride simulated' })
 		.click({ timeout: 15_000 });
-	await expect(page.locator('.cave'), 'setup is a desk surface').toHaveCount(0);
+	const frame = page.locator(RIDE_FRAME);
+	await expect(frame, 'setup is a desk surface').toHaveCount(0);
 	// The sidebar's teaching sentences are desk copy (G4, #3723): a rider in
 	// no crew, with no conversation, reads them at setup and never mid-ride.
 	const sidebar = page.locator('nav[aria-label="crews and channels"]');
@@ -52,9 +54,11 @@ test('a free ride on a road rides in the cave, and asks before leaving', async (
 	];
 	for (const line of teaching) await expect(line).toBeVisible();
 	await page.getByRole('button', { name: 'Start the ride' }).click();
-	// The frame, page and sidebar; the hosts outside it wear their own (#3788).
-	const cave = page.locator('.cave:has(#page-body)');
-	await expect(cave, 'the lights stayed up').toHaveCount(1);
+	// The frame, page and sidebar; the hosts outside it mark their own (#3788).
+	await expect(frame, 'the ride never marked the frame').toHaveCount(1);
+	expect(await inRidersScheme(frame), 'the ride turned the frame dark').toBe(
+		true,
+	);
 	for (const line of teaching)
 		await expect(line, 'desk copy on a riding surface').toBeHidden();
 	await expect(
@@ -70,21 +74,16 @@ test('a free ride on a road rides in the cave, and asks before leaving', async (
 	const ask = page.getByRole('dialog', { name: 'Leave the ride?' });
 	await expect(ask, 'the rail took the ride without asking').toBeVisible();
 	// The OS is light, and the confirm mounts outside the frame (#3788).
-	expect(
-		await ask.evaluate((el) => getComputedStyle(el).colorScheme),
-		'the confirm drew in daylight over the ride',
-	).toBe('dark');
+	expect(await inRidersScheme(ask), 'the confirm turned dark').toBe(true);
 	await ask.getByRole('button', { name: 'Keep riding' }).click();
 	await expect(page).toHaveURL(/\/ride\?road=/);
-	await expect(cave).toHaveCount(1);
+	await expect(frame).toHaveCount(1);
 
 	// End ride, which reads “Save at km x” partway up your own road (#3205).
 	await page.getByRole('button', { name: /^(End ride|Save at km)/ }).click();
 	await expect(page.getByRole('status')).toContainText(
 		/Under a minute|Saved|Saving/,
 	);
-	await expect(page.locator('.cave'), 'the cave outlived End ride').toHaveCount(
-		0,
-	);
+	await expect(frame, 'the ride outlived End ride').toHaveCount(0);
 	for (const line of teaching) await expect(line).toBeVisible();
 });

@@ -414,9 +414,9 @@ export async function atReading(
 }
 
 /**
- * A running ride: a clock on the page moves. Whether the frame is the cave is
- * G1's question and a probe, never an assertion — a ride that forgot the cave
- * is the defect the shot exists to show. `world`: drawn (true), must not be
+ * A running ride: a clock on the page moves. Whether the frame keeps the
+ * rider's scheme is G1's question and a probe, never an assertion — a ride
+ * that turned dark is the defect the shot exists to show. `world`: drawn (true), must not be
  * (false), either (undefined).
  */
 export async function assertRiding(page: Page, world?: boolean): Promise<void> {

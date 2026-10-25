@@ -1,0 +1,1 @@
+- Starting or joining a session, a solo ride or a ramp test no longer turns the app dark: the ride keeps your light or dark scheme. TV mode and the HUD stay dark.

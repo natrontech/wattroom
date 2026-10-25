@@ -2,7 +2,8 @@ import { expect, test } from './crew';
 
 /**
  * The sidebar's two folds share one x, and a voice channel's people indent
- * under its name (#4058): on the desk and in the cave's larger rows.
+ * under its name (#4058): on the desk and on a ride, where `ride:hidden`
+ * takes the desk's sentences out of the rows.
  */
 test('the chevrons share an x and the people sit under the channel name', async ({
 	riders,
@@ -60,16 +61,16 @@ test('the chevrons share an x and the people sit under the channel name', async 
 			};
 		});
 
-	for (const cave of [false, true]) {
-		if (cave) await a.evaluate(() => document.body.classList.add('cave'));
+	for (const ride of [false, true]) {
+		if (ride) await a.evaluate(() => (document.body.dataset.ride = ''));
 		const m = await measure();
 		expect(
 			Math.abs(m.messagesFold - m.voiceFold),
-			`chevrons ${JSON.stringify(m)} cave=${cave}`,
+			`chevrons ${JSON.stringify(m)} ride=${ride}`,
 		).toBeLessThanOrEqual(1);
 		expect(
 			Math.abs(m.person - m.name),
-			`indent ${JSON.stringify(m)} cave=${cave}`,
+			`indent ${JSON.stringify(m)} ride=${ride}`,
 		).toBeLessThanOrEqual(1);
 	}
 });
