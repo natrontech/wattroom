@@ -1,5 +1,5 @@
 import type { ServerTick } from '$lib/protocol';
-import { turnedRound, type Road } from '$lib/road/road';
+import { roadStep, turnedRound, type Road } from '$lib/road/road';
 import type { PinnedRoad } from '$lib/workout/road-workout';
 
 /** Where a rider is on the session's road. */
@@ -34,13 +34,16 @@ export function placeOnRoad(
 		const me = world.racers[you];
 		const race = tick.game?.race;
 		if (!me) return null;
-		// The neutral zone holds everyone at their start, and the line stops
-		// them: a Wheelrace's short of the road's end (#3172).
+		// The hub steps no one in the neutral zone, through a hold or once it
+		// is over, and the line stops each racer: a Wheelrace's short of the
+		// road's end (#3172).
 		const held =
 			tick.at < (race?.klaxonAtMs ?? 0) ||
+			!!race?.neutralised ||
+			tick.game?.phase === 'done' ||
 			me.m >= (race?.lineM || route.lengthM);
 		return {
-			road: cut.road,
+			road: toLine(cut.road, race?.lineM),
 			m: me.m,
 			mps: held ? 0 : me.v,
 			at: tick.at,
@@ -57,6 +60,27 @@ export function placeOnRoad(
 		at: tick.at,
 		loop: !!route.loop,
 	};
+}
+
+const cutAtLines = new WeakMap<Road, { lineM: number; road: Road }>();
+
+/**
+ * A Wheelrace's road ends at its line (#3172), as the hub cuts it: the
+ * heights up to the step the line sits on. Kept per road, so every tick
+ * hands the world and the map the same one.
+ */
+function toLine(road: Road, lineM: number | undefined): Road {
+	if (!lineM || lineM >= road.length) return road;
+	const kept = cutAtLines.get(road);
+	if (kept?.lineM === lineM) return kept.road;
+	const steps = Math.round(lineM / roadStep(road));
+	const cut = {
+		length: lineM,
+		heights: road.heights.slice(0, steps + 1),
+		turns: road.turns.slice(0, steps),
+	};
+	cutAtLines.set(road, { lineM, road: cut });
+	return cut;
 }
 
 /** docs/SPEC.md "Riding a road together": this long without a tick, and the felt grade relaxes to 0 %. */
