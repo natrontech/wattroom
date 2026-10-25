@@ -120,7 +120,11 @@ const SETTLE_S = 0.3;
 export function followMetre() {
 	let last = NaN;
 	let since = 0;
-	return (r: SimRider, ride: RideMetre, real: number) => {
+	return (
+		r: Pick<SimRider, 'd' | 'at' | 'v'>,
+		ride: RideMetre,
+		real: number,
+	) => {
 		if (ride.m !== last) {
 			last = ride.m;
 			since = 0;

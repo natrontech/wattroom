@@ -27,7 +27,11 @@ describe('the live split against your ghost (#3615)', () => {
 		api.mockReset();
 		api.mockResolvedValue({
 			ok: true,
-			data: { best: true, metres: [0, 5, 10, 15, 20] },
+			data: {
+				best: true,
+				startedAt: '2026-08-11T16:30:00Z',
+				metres: [0, 5, 10, 15, 20],
+			},
 		});
 	});
 	afterEach(() => stop());
@@ -61,6 +65,26 @@ describe('the live split against your ghost (#3615)', () => {
 		expect(ghost.split!.seconds).toBeCloseTo(-0.4, 9);
 		ride.seconds = 4;
 		expect(ghost.split!.seconds).toBeCloseTo(1.6, 9);
+	});
+
+	it('places your ghost where it was at this second, named for its day, and lets it go at its end (#3245)', async () => {
+		const { ride, ghost } = await riding({
+			id: 'r1',
+			m: 0,
+			lap: 0,
+			borrowed: false,
+		});
+		ride.seconds = 2;
+		await vi.waitFor(() => expect(ghost.rider).not.toBeNull());
+		expect(ghost.rider).toMatchObject({ m: 10, mps: 5 });
+		expect(ghost.rider!.label).toMatch(/^\w+day-you, /);
+		ride.seconds = 4;
+		expect(ghost.rider).toMatchObject({ m: 20, mps: 5 });
+		ride.seconds = 5;
+		expect(ghost.rider).toBeNull();
+		ride.seconds = 2;
+		ride.mode = 'watts';
+		expect(ghost.rider).toBeNull();
 	});
 
 	it('races nothing past its end, on a later lap, or in watts', async () => {

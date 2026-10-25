@@ -210,6 +210,7 @@
 		shift={solo.shift}
 		cassette={!profile.current.singleSpeed}
 		split={ghost.split ?? undefined}
+		ghost={ghost.rider}
 		onend={() => void end()}
 		onrepair={(next) => solo.repair(next)}
 		onflag={() => flags.recorder.flag()}

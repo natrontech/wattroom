@@ -9,7 +9,14 @@ import { CHEER_S, cheerLook } from './cheer';
 import { makeChalk, type ChalkLayer } from './chalk';
 import { makeGameRoad, type GameRoad } from './game-road';
 import { roadsideSound } from '$lib/roadside';
-import { makeCrew, RING_BAND_M, type Crew, type Pedalling } from './crew';
+import {
+	loadoutOf,
+	makeCrew,
+	RING_BAND_M,
+	type Crew,
+	type Pedalling,
+} from './crew';
+import { makeGhosts, MOST_GHOSTS, type GhostAt, type Ghosts } from './ghosts';
 import { bunchLooks, type Loadout } from './loadout';
 import { makeTags, type Tags } from './tags';
 import type { BunchView } from '$lib/channel/bunch-view';
@@ -103,6 +110,11 @@ export type MountOptions = {
 	 * arch over it, or stands on the arch under reduced motion (ADR-0079).
 	 */
 	countIn?: () => { left: number; total: number } | null;
+	/**
+	 * Your ghosts on this road, a solo ride's world only (#3245, ADR-0068):
+	 * where each is now. Each rides see-through in your kit, beside you.
+	 */
+	ghosts?: () => RideMetre[];
 };
 
 export type Moment = { m: number; p: number };
@@ -181,6 +193,18 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	let crew: Crew | null = null;
 	let game: GameRoad | null = null;
 	let tags: Tags | null = null;
+	let ghosts: Ghosts | null = null;
+	// Each ghost eases onto its metre as your figure does (#3663).
+	const haunts = Array.from({ length: MOST_GHOSTS }, () => ({
+		at: { d: 0, at: 0, v: 0 },
+		follow: followMetre(),
+	}));
+	function ghostsNow(real: number): GhostAt[] {
+		return (opts.ghosts?.() ?? []).slice(0, MOST_GHOSTS).map((g, i) => {
+			haunts[i].follow(haunts[i].at, g, real);
+			return haunts[i].at;
+		});
+	}
 	let progress: number | null = moment ? moment.p : null;
 	let controls: OrbitControls | null = null;
 
@@ -211,6 +235,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 			game?.group,
 			tags?.group,
 			chalk?.group,
+			ghosts?.group,
 		]) {
 			if (!old) continue;
 			scene.remove(old);
@@ -221,6 +246,10 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		game = makeGameRoad(route, world, style);
 		tags = makeTags(style);
 		scene.add(stage.group, crew.group, game.group, tags.group);
+		if (opts.ghosts) {
+			ghosts = makeGhosts(style, loadoutOf(you), opts.ftp);
+			scene.add(ghosts.group);
+		}
 		if (bunch) {
 			chalk = makeChalk(route, style);
 			scene.add(chalk.group);
@@ -294,6 +323,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		else if (opts.metre) follow(you, opts.metre(), real);
 		const me = crew.update(route, riders, pedal, dt, real, mode === 'orbit');
 		crew.drive(route, car, mode === 'orbit');
+		ghosts?.update(route, ghostsNow(real), dt, mode === 'orbit');
 		if (controls) controls.update();
 		else
 			rig.update(
@@ -520,6 +550,8 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 				clock: t,
 				d: you.d,
 				figure: { bboxH, kitCollisions: crew?.kitCollisions() ?? 0 },
+				/** Ghosts drawn, all in one instanced draw (#3245). */
+				ghosts: ghosts?.shown ?? 0,
 				ring: { bandM: RING_BAND_M },
 			};
 		},

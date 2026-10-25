@@ -48,6 +48,7 @@
 		look = 'full',
 		camera,
 		countIn = null,
+		ghosts,
 		onfail,
 		onflat,
 	}: {
@@ -73,6 +74,8 @@
 		camera?: 'chase' | 'heli' | 'side' | 'steady';
 		/** The count-in's seconds left and its length (#3087): the eye flies its reveal to the start arch over it. */
 		countIn?: { left: number; total: number } | null;
+		/** Your ghosts on a solo ride of your own road, where each is now (#3245); absent, the world has none. */
+		ghosts?: () => RideMetre[];
 		onfail: (why: Failure) => void;
 		/** The rider asked for the flat road on this device. */
 		onflat: () => void;
@@ -105,6 +108,7 @@
 					bunch,
 					loop,
 					countIn: () => counting,
+					ghosts,
 					camera: camera ?? (look === 'steady' ? 'steady' : 'chase'),
 					light: look === 'light',
 					steady: () => prefersReducedMotion.current || look === 'steady',

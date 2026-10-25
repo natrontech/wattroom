@@ -104,7 +104,7 @@ const WHEELS = /* glsl */ `#include <color_fragment>
 			if (sp == 5) wm *= 1.0 - 0.45 * clamp((r - 0.03) / 0.26, 0.0, 1.0);
 			float P = 6.2831853 / k; float w = min(wm / max(r, 0.01), P);
 			float cov = sweepCover(phi, blurWin(uWheelDelta + 2.0 * h, P), h, P, w);
-			diffuseColor.a = cov;
+			diffuseColor.a *= cov;
 			if (cov < 0.004) discard;
 		}
 	}

@@ -44,6 +44,7 @@
 		band = [],
 		strip = false,
 		tv = false,
+		ghost = null,
 	}: {
 		road: Road;
 		/** The dot: metres along the stored road, as of the last second. */
@@ -60,6 +61,8 @@
 		/** Under a shared screen: a 40 px strip, the profile and the dot alone. */
 		strip?: boolean;
 		tv?: boolean;
+		/** Your ghost (#3245): its metre on the stored road, its speed and its name. */
+		ghost?: { m: number; mps: number; label: string } | null;
 	} = $props();
 
 	/** The dot's halo, painted once: the watt colour fading out, no filter. */
@@ -140,6 +143,18 @@
 				}
 			: null,
 	);
+	// Your ghost on the road layer, carried on between seconds as the dot is.
+	const haunt = $derived.by(() => {
+		if (!ghost || !frame || strip) return null;
+		const at = reverse ? stored.length - ghost.m : ghost.m;
+		const here = perTick
+			? at
+			: Math.min(
+					road.length,
+					at + ghost.mps * Math.min(1, (now - secondAt) / 1000),
+				);
+		return { x: here * frame.scale, y: yOf(frame, heightAt(road, here)) };
+	});
 </script>
 
 <div
@@ -218,6 +233,26 @@
 						style:top="{chip.y}px">{chip.cls}</span
 					>
 				{/each}
+				{#if haunt && ghost}
+					<!-- Your ghost, a hollow tick named for its day (#3245, #3615): a
+					     memory, so neither watt nor neon and no glow (ADR-0068). -->
+					<span
+						data-testid="skyline-ghost"
+						class="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 will-change-transform"
+						style:transform="translate({haunt.x}px, {haunt.y}px)"
+					>
+						<span
+							class="border-ink/70 block rounded-full border-2 forced-colors:border-[CanvasText] {tv
+								? 'size-[3vh]'
+								: 'size-4'}"
+						></span>
+						<span
+							class="text-muted absolute bottom-full left-1/2 mb-1 -translate-x-1/2 leading-none whitespace-nowrap forced-colors:text-[CanvasText] {tv
+								? 'text-[3vh]'
+								: 'text-sm'}">{ghost.label}</span
+						>
+					</span>
+				{/if}
 			</div>
 			{#if dot}
 				<!-- The only glow: a halo painted once, never a filter (#2998). -->

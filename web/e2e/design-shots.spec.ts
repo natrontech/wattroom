@@ -567,9 +567,20 @@ surface(
 	{ once: true },
 );
 
-test.fixme('ride-free-road-ghost', () => {
-	// Added by the ghost issue (#3245), with its seeded effort.
-});
+surface(
+	'ride-free-road-ghost',
+	async (s) => {
+		// Your ghost beside you (#3245): the earlier effort is the designer's
+		// timed ride up the hairpin road's approach (design-seed's timedRide).
+		const o = await s.open(DESK, { world: true });
+		const road = await fixtureRoad(o.page, 'hairpin');
+		await ride(o.page, `/ride?road=${road}`);
+		await assertRiding(o.page, true);
+		await o.page.getByTestId('skyline-ghost').waitFor({ timeout: 15_000 });
+		await s.shot(o);
+	},
+	{ once: true },
+);
 
 surface(
 	'ride-tv',
