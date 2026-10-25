@@ -333,7 +333,7 @@ Capture: Designer and Design Partner race the hairpin road from Designer's voice
 5. The shelter bar and the matches gauge join with their issues. [#3265] [#3263]
 6. ride-session-flat's items hold. [ride-flat]
 7. In a race W/kg sits beside the 3 s power in the game's compact head (decided on #3174). [#3668]
-8. A race rides its road on every screen, each racer at their own metre: RIDE holds Speed, MAP is among the pages and CLIMB while a classed climb is near; the world, where it is on, draws the race. [multi:ride-race-map] [#3778]
+8. A race has its road on every screen, read at your own racer's metre: RIDE holds Speed, MAP is among the pages, CLIMB while a classed climb is near. [multi:ride-race-ride] [multi:ride-race-map] [#3778]
 
 #### ride-game-backyard, ride-game-collective
 
