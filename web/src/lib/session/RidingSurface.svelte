@@ -324,7 +324,8 @@
 	<!-- No world: the same slots as flat panels in one column (#3670, TARGETS
 	     ride-workout-flat). Panels touch at one gap, so no band opens between
 	     them: the horizon takes the free height, or the focus does when a
-	     screen has the stage. -->
+	     screen has the stage or the caller draws its own (the free ride pins
+	     its Skyline at the focus's foot, #4088). -->
 	<div class="flex min-h-0 flex-col gap-3 {extra}" data-surface="flat">
 		<div data-dock="header" class="shrink-0 {own ? '' : 'ride-panel'}">
 			{@render header()}
@@ -333,9 +334,11 @@
 			data-dock="focus"
 			class="{own
 				? ''
-				: 'ride-panel'} min-h-0 overflow-y-auto [&:not(:has(*))]:hidden {stage
-				? 'grow'
-				: 'shrink-0'}"
+				: 'ride-panel'} min-h-0 overflow-y-auto [&:not(:has(*))]:hidden {own
+				? 'flex grow flex-col'
+				: stage
+					? 'grow'
+					: 'shrink-0'}"
 		>
 			{@render focus()}
 		</div>
