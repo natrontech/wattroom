@@ -121,6 +121,33 @@ func (s *Service) climbBests(r *http.Request, user db.User, id pgtype.UUID, key 
 	if err := json.Unmarshal(owned.Climbs, &climbs); err != nil {
 		return nil, err
 	}
+	metres, err := s.timedMetres(r, user, key)
+	if err != nil {
+		return nil, err
+	}
+	bests := []climbBestJSON{}
+	for _, c := range climbs {
+		if c.Cls == nil {
+			continue
+		}
+		best := climbBestJSON{StartM: c.StartM, TopM: c.TopM, Cls: *c.Cls}
+		for id, m := range metres {
+			if t, ok := timeUp(m, c.StartM, c.TopM); ok && (best.RideID == "" || t < best.Seconds || t == best.Seconds && id < best.RideID) {
+				best.Seconds, best.RideID = t, id
+			}
+		}
+		if best.RideID != "" {
+			bests = append(bests, best)
+		}
+	}
+	return bests, nil
+}
+
+// timedMetres is each of the rider's latest timeable rides of the road, by
+// id, as a metre for every second.
+// ponytail: the latest 30 (ListTimedRouteSamples); an older ride is never a
+// climb's best or the ghost — page the query if a road gets ridden that often.
+func (s *Service) timedMetres(r *http.Request, user db.User, key string) (map[string][]float64, error) {
 	rides, err := s.store.Queries.ListTimedRouteSamples(r.Context(), db.ListTimedRouteSamplesParams{UserID: user.ID, RouteKey: &key})
 	if err != nil {
 		return nil, err
@@ -134,23 +161,7 @@ func (s *Service) climbBests(r *http.Request, user db.User, id pgtype.UUID, key 
 		}
 		metres[store.UUIDString(ride.ID)] = metresOf(samples)
 	}
-	bests := []climbBestJSON{}
-	for _, c := range climbs {
-		if c.Cls == nil {
-			continue
-		}
-		best := climbBestJSON{StartM: c.StartM, TopM: c.TopM, Cls: *c.Cls}
-		for _, ride := range rides {
-			id := store.UUIDString(ride.ID)
-			if t, ok := timeUp(metres[id], c.StartM, c.TopM); ok && (best.RideID == "" || t < best.Seconds) {
-				best.Seconds, best.RideID = t, id
-			}
-		}
-		if best.RideID != "" {
-			bests = append(bests, best)
-		}
-	}
-	return bests, nil
+	return metres, nil
 }
 
 func (s *Service) handleGhost(w http.ResponseWriter, r *http.Request) {
@@ -163,7 +174,12 @@ func (s *Service) handleGhost(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "list route attempts failed", err, "Your ghost could not be loaded.")
 		return
 	}
-	ghost, best, found := ghostOf(rows, route.RoadHash, float64(route.LengthM), time.Now())
+	timed, err := s.timedMetres(r, user, route.RoadHash)
+	if err != nil {
+		httpx.Fail(w, s.log, "ghost candidates read failed", err, "Your ghost could not be loaded.")
+		return
+	}
+	ghost, best, found := ghostOf(rows, timed, route.RoadHash, float64(route.LengthM), time.Now())
 	if !found {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "You have not ridden this road from its start yet — ride it once and you race yourself next time.")
 		return
@@ -185,15 +201,18 @@ func (s *Service) handleGhost(w http.ResponseWriter, r *http.Request) {
 }
 
 // ghostOf picks the ride you race on this road (#3033, ADR-0068): your
-// fastest timeable ride of the whole road in the last 90 days, else your
-// latest ride of it. Only a ride begun at the road's start, on this very road
-// — or, from an older snapshot, one whose metres agree with the road's length
-// — can be a ghost. The rows are the rider's own, so nobody else's ever is.
-func ghostOf(rows []db.ListRouteAttemptsRow, roadHash string, lengthM float64, now time.Time) (db.ListRouteAttemptsRow, bool, bool) {
+// fastest timeable ride of the whole road in the last 90 days, timed from the
+// road's start to its end over its samples (#4193) — seconds ridden on past
+// the end or laps after it are not its time — else your latest ride of it.
+// Only a ride begun at the road's start, on this very road — or, from an
+// older snapshot, one whose metres agree with the road's length — can be a
+// ghost. The rows are the rider's own, so nobody else's ever is.
+func ghostOf(rows []db.ListRouteAttemptsRow, timed map[string][]float64, roadHash string, lengthM float64, now time.Time) (db.ListRouteAttemptsRow, bool, bool) {
 	complete := func(a db.ListRouteAttemptsRow) bool {
 		return a.DistanceM != nil && math.Abs(float64(*a.DistanceM)-lengthM) <= ghostLengthTolerance*lengthM
 	}
 	var best, last *db.ListRouteAttemptsRow
+	bestS := 0
 	for i := range rows {
 		a := &rows[i]
 		fromStart := a.FromM == nil || *a.FromM == 0
@@ -204,10 +223,12 @@ func ghostOf(rows []db.ListRouteAttemptsRow, roadHash string, lengthM float64, n
 		if last == nil {
 			last = a // newest first
 		}
-		timed := a.Timeable != nil && *a.Timeable
-		if timed && complete(*a) && now.Sub(a.StartedAt.Time) <= ghostWindow &&
-			(best == nil || a.Seconds < best.Seconds) {
-			best = a
+		metres, timeable := timed[store.UUIDString(a.ID)]
+		if !timeable || a.DistanceM == nil || now.Sub(a.StartedAt.Time) > ghostWindow {
+			continue
+		}
+		if s, ok := roadTime(metres, float64(*a.DistanceM), lengthM); ok && (best == nil || s < bestS) {
+			best, bestS = a, s
 		}
 	}
 	switch {
@@ -217,6 +238,33 @@ func ghostOf(rows []db.ListRouteAttemptsRow, roadHash string, lengthM float64, n
 		return *last, false, true
 	}
 	return db.ListRouteAttemptsRow{}, false, false
+}
+
+// roadTime is how long a ride from the road's start took to reach its end
+// (#4193): its first pass, up to where the metres first fall — the next lap
+// turned back or began again (#3205) — timed by timeUp to the furthest metre
+// it reached, when that is the road's end within ghostLengthTolerance. A
+// sample keeps where its second began (ADR-0074), so a ride saved on arrival
+// ends at the replay's distance, one second past its last sample.
+func roadTime(metres []float64, distanceM, lengthM float64) (int, bool) {
+	pass := metres
+	for i := 1; i < len(metres); i++ {
+		if metres[i] < metres[i-1] {
+			pass = metres[:i]
+			break
+		}
+	}
+	if len(pass) == 0 {
+		return 0, false
+	}
+	if len(pass) == len(metres) && distanceM > pass[len(pass)-1] {
+		pass = append(pass[:len(pass):len(pass)], distanceM)
+	}
+	end := pass[len(pass)-1]
+	if math.Abs(end-lengthM) > ghostLengthTolerance*lengthM {
+		return 0, false
+	}
+	return timeUp(pass, 0, end)
 }
 
 // metresOf is each second's place on the road, as the ride's samples carry it.
