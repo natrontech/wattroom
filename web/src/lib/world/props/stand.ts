@@ -19,9 +19,9 @@ const isStanding = (t: Thing): t is Standing => 'piece' in t;
 
 /**
  * A place's tiles as they stand (#3699): each settled once, from its own
- * candidates and its eight neighbours', and kept — so a tile costs what its
- * own ground costs, whatever the route's length, and stands the same things
- * whichever tile was asked first.
+ * candidates and its eight neighbours', and kept until the ride forgets it —
+ * so a tile costs what its own ground costs, whatever the route's length, and
+ * stands the same things whichever tile was asked first, or settled again.
  */
 export function standTiles(
 	props: { tile(ti: number, tj: number): Candidate<Prop>[] },
@@ -67,6 +67,16 @@ export function standTiles(
 		tile,
 		/** Whether tile (ti, tj) is settled already: the stream's cue for what it can draw without waiting. */
 		has: (ti: number, tj: number) => stood.has(tileKey(ti, tj)),
+		/** Lets go of every tile whose centre lies farther than `r` from (x, z) (#3851). */
+		forget(x: number, z: number, r: number) {
+			for (const kept of [stood, candidates])
+				for (const id of kept.keys()) {
+					const [ti, tj] = id.split(':').map(Number);
+					const [cx, cz] = tileCentre(ti, tj, origin);
+					if ((cx - x) * (cx - x) + (cz - z) * (cz - z) > r * r)
+						kept.delete(id);
+				}
+		},
 		/** Every tile whose centre lies within `r` metres of (x, z), nearest first. */
 		within(x: number, z: number, r: number): [number, number][] {
 			const [e0, n0] = origin;

@@ -200,4 +200,19 @@ describe('the props stream with the ground (#3699)', () => {
 		);
 		expect(world.settled(ti, tj)).toBe(false);
 	});
+
+	it('lets go of what a ride has passed, and stands it the same when it comes back (#3851)', () => {
+		const world = generate(route);
+		const [x, z] = [route.x[0], route.z[0]];
+		const tiles = world.tilesWithin(x, z, 900);
+		const first = JSON.stringify(tiles.map(([ti, tj]) => world.tile(ti, tj)));
+		const [ci, cj] = [Math.floor(x / CHUNK_M), Math.floor(z / CHUNK_M)];
+		expect(world.peek(ci, cj)).toBeDefined();
+		world.forget(x + 20_000, z, 1000);
+		expect(tiles.some(([ti, tj]) => world.settled(ti, tj))).toBe(false);
+		expect(world.peek(ci, cj)).toBeUndefined();
+		expect(JSON.stringify(tiles.map(([ti, tj]) => world.tile(ti, tj)))).toBe(
+			first,
+		);
+	});
 });

@@ -35,6 +35,8 @@ import type { World } from './world';
  * tile there to show.
  */
 export const DRESS_M = FAR_M * FETCH_AHEAD + 1.5 * TILE_M;
+/** What a ride keeps of its place round the eye (#3851): the ribbon's reach, and the dressing's with the neighbours a tile settles against, each with its hysteresis. */
+const KEEP_M = Math.max(REACH.near, DRESS_M + 2 * TILE_M) * LEAVE;
 
 /** A set piece as the batch draws it: a flag by its colour's model. */
 const drawn = (p: Piece): Drawn => ({
@@ -269,6 +271,7 @@ export function buildStage(
 				const [cx, cz] = tileCentre(ti, tj);
 				if (Math.hypot(cx - eye.x, cz - eye.z) > DRESS_M * LEAVE) undraw(id);
 			}
+			world.forget(eye.x, eye.z, KEEP_M);
 		}
 		let spent = false;
 		for (const [ti, tj] of wanted) {

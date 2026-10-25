@@ -113,6 +113,8 @@ export function relief(
 }
 export type Relief = ReturnType<typeof relief>;
 
+/** A lattice cache's slots a side. */
+const SLOTS = 256;
 const HILLS = [8 * CHUNK_M, 4 * CHUNK_M, 2 * CHUNK_M];
 const DETAIL = [CHUNK_M, 2 * COARSE_M, COARSE_M];
 const SIDE = [16 * CHUNK_M];
@@ -126,13 +128,18 @@ export function makeGround(given: readonly Line[], opts: GroundOpts) {
 
 	/** A value on a lattice of `size` metres, cached per point and read bilinearly between them. */
 	function lattice(size: number, at: (x: number, z: number) => number) {
-		const cache = new Map<number, number>();
-		// ponytail: points wrap at 32,768 a side — 1,300 km of 40 m points, far past any coverage.
+		// One slot per point, 256 a side: the cache stays its size however far a ride goes (#3851).
+		// ponytail: 10 km of 40 m points, wider than the ground a page asks; a farther point sharing a slot is worked out again. Points wrap at 32,768 a side — 1,300 km, far past any coverage.
+		const keys = new Int32Array(SLOTS * SLOTS).fill(-1);
+		const values = new Float64Array(SLOTS * SLOTS);
 		const point = (a: number, b: number) => {
 			const k = ((a & 0x7fff) << 15) | (b & 0x7fff);
-			let v = cache.get(k);
-			if (v === undefined) cache.set(k, (v = at(a * size, b * size)));
-			return v;
+			const s = (a & (SLOTS - 1)) * SLOTS + (b & (SLOTS - 1));
+			if (keys[s] !== k) {
+				keys[s] = k;
+				values[s] = at(a * size, b * size);
+			}
+			return values[s];
 		};
 		return (x: number, z: number) => {
 			const a = Math.floor(x / size);
