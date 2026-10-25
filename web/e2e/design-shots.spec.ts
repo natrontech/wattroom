@@ -240,18 +240,36 @@ surface(
 		await ride(o.page, `/ride?w=openers&road=${road}&from=6950`);
 		await assertRiding(o.page, true);
 		await s.shot(o, { name: 'world-finish' });
+		// multi:ride-road-world-climb-lands — item 37: a workout 200 m or so
+		// before the rolling road's first climb, turned to CLIMB (#3101).
+		await ride(o.page, `/ride?w=openers&road=${rollingRoad}&from=700`);
+		await assertRiding(o.page, true);
+		await o.page.getByTestId('bike-computer').getByTitle('Next page').click();
+		await o.page
+			.locator('[data-testid=bike-computer][data-page=climb]')
+			.waitFor();
+		await o.page.getByTestId('climb-lands').waitFor();
+		await s.shot(o, { name: 'ride-road-world-climb-lands' });
 		// multi:ride-road-world-gate — item 34: Smoke Test's second block starts
-		// at 30 s, so a few seconds in it is painted on the road ahead (#3101).
-		// Its first block's 0:30 left already reads as a clock past any early
-		// second, so the shot waits out the count-in instead.
+		// at 30 s, painted on the road ahead; shot once it is 30–50 m off, as
+		// the world's probe measures it (#3101). The first block's 0:30 left
+		// reads as a clock past any early second, so no second is waited for.
 		await ride(o.page, `/ride?w=smoke-test&road=${road}&from=0`, {
 			second: 0,
 		});
-		const countIn = o.page.getByTestId('count-in');
-		await countIn.waitFor({ timeout: 15_000 }).catch(() => undefined);
-		await countIn.waitFor({ state: 'detached', timeout: 30_000 });
-		await assertRiding(o.page, true);
-		await o.page.waitForTimeout(2000);
+		await o.page.waitForFunction(
+			() => {
+				const probe = (
+					window as {
+						__worldProbe?: () => { gates?: { aheadM: number }[] };
+					}
+				).__worldProbe?.();
+				const ahead = probe?.gates?.[0]?.aheadM ?? Infinity;
+				return ahead >= 30 && ahead <= 50;
+			},
+			undefined,
+			{ polling: 100, timeout: 90_000 },
+		);
 		await s.shot(o, { name: 'ride-road-world-gate' });
 	},
 	{ once: true },

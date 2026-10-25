@@ -183,7 +183,7 @@ A workout on the road:
 34. The next three blocks are painted on the road where each starts: a bar across the asphalt, the block's words beyond it reading up the road, describeBlock's name and your target in capitals (D16, “TEMPO 195 W”), in the road line's token, flat, lit by the sky as the road's paint is (ADR-0072), never glowing; chevrons in the same paint point up the road over each block's last 100 m. [#3101] [multi:ride-road-world-gate] [probe:gates] [test:web/src/lib/world/gates.test.ts]
 35. A sprint block stands a SPRINT banner across the road where it starts, from 1 km out until it is ridden under: the KOM arch's chrome and banner, never glowing. [#3101] [test:web/src/lib/world/gates.test.ts]
 36. Each gate lands within 1 s of its block starting: alone at your own target and weight, in a session at the reference rider the hub paces the bunch at; a road workout's on its pins. [#3101] [test:web/src/lib/road/gates.test.ts]
-37. Before a classed climb's foot on a workout, CLIMB carries one muted line under its fields at the computer's word size, naming the block that lands on the climb: “Starts in 0:45, during Threshold 2”; gone once on the climb. [#3101] [test:web/src/lib/road/gates.test.ts]
+37. Before a classed climb's foot on a workout, CLIMB carries one muted line under its fields at the computer's word size, naming the block that lands on the climb: “Starts in 0:45, during Threshold 2”; gone once on the climb. [#3101] [multi:ride-road-world-climb-lands] [test:web/src/lib/road/gates.test.ts]
 
 #### ride-workout-world
 

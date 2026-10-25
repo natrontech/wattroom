@@ -63,8 +63,18 @@ describe('the next blocks painted on the road (#3101)', () => {
 			expect(box.max.z).toBeCloseTo(0, 6);
 			expect(box.max.x - box.min.x).toBeLessThanOrEqual(ROAD_W);
 			const up = new THREE.Vector3(0, 0, -1).applyEuler(mesh.rotation);
-			expect(up.x).toBeCloseTo(Math.sin(p.heading), 6);
-			expect(up.z).toBeCloseTo(Math.cos(p.heading), 6);
+			const flat = Math.hypot(up.x, up.z);
+			expect(up.x / flat).toBeCloseTo(Math.sin(p.heading), 6);
+			expect(up.z / flat).toBeCloseTo(Math.cos(p.heading), 6);
+			// Its far end lies on the asphalt too, never under a climb's road.
+			mesh.updateMatrixWorld(true);
+			const far = new THREE.Vector3(0, 0, box.min.z).applyMatrix4(
+				mesh.matrixWorld,
+			);
+			const reach = -box.min.z * flat;
+			const over = far.y - (yOf(route, at(route, g.m + reach).ele) + ROAD_LIFT);
+			expect(over, g.words).toBeGreaterThan(0);
+			expect(over, g.words).toBeLessThan(0.1);
 			// Road paint (ADR-0072), and nothing on it glows (ADR-0005).
 			expect(mesh.material).toBeInstanceOf(roadMaterial(RIDE.road).constructor);
 			expect(mesh.material.emissive.getHex()).toBe(0);
@@ -102,7 +112,17 @@ describe('the next blocks painted on the road (#3101)', () => {
 		expect(kind(layer, 'arch')).toHaveLength(0);
 		layer.update(gates, sprint.m - BANNER_M + 10);
 		const [arch] = kind(layer, 'arch');
+		expect(BANNER_M).toBe(1000);
+		expect(arch.userData.words).toBe('SPRINT');
 		expect(arch.userData.family).toBe('dressing');
+		// The KOM arch's chrome and banner (furniture.arch), and nothing on it glows.
+		arch.traverse((o) => {
+			const mats = [
+				(o as THREE.Mesh).material ?? [],
+			].flat() as THREE.MeshLambertMaterial[];
+			for (const mat of mats) expect(mat.emissive.getHex()).toBe(0);
+		});
+		expect(arch.children).toHaveLength(3);
 		const p = at(route, sprint.m);
 		expect(arch.position.x).toBeCloseTo(p.x, 3);
 		expect(arch.position.z).toBeCloseTo(p.z, 3);

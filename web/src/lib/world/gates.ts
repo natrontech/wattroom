@@ -17,16 +17,18 @@ import { bankOf, ROAD_W } from './terrain/road-profile';
 /** The issue's numbers: chevrons over a block's last 100 m, a sprint's banner from 1 km. */
 export const CHEVRONS_M = 100;
 export const BANNER_M = 1000;
+/** What a sprint's banner says. */
+export const SPRINT = 'SPRINT';
 // ponytail: a look, not a rule. A chevron every 20 m; the words stretched
 // along the road as road paint is, so a rider's low eye reads them whole.
 const CHEVRON_EVERY_M = 20;
 const CHEVRONS = CHEVRONS_M / CHEVRON_EVERY_M;
 const ACROSS = ROAD_W - 0.6;
-const ALONG = 7;
+const ALONG = 10;
 const W = 1024;
 const H = 160;
 /** The bar's share of the paint's length, at its near edge: where the block starts. */
-const BAR = 0.08;
+const BAR = 0.1;
 
 function draw(
 	x: OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D,
@@ -37,20 +39,21 @@ function draw(
 	x.fillRect(0, H * (1 - BAR), W, H * BAR);
 	x.textAlign = 'center';
 	x.textBaseline = 'middle';
-	let size = 104;
+	let size = 120;
 	x.font = `bold ${size}px "Chakra Petch", ${FONT}`;
 	const wide = x.measureText(words).width;
 	if (wide > W * 0.94) {
 		size = Math.floor((size * W * 0.94) / wide);
 		x.font = `bold ${size}px "Chakra Petch", ${FONT}`;
 	}
-	x.fillText(words, W / 2, H * 0.44);
+	x.fillText(words, W / 2, H * 0.42);
 }
 
 /** A chevron flat on the road, its point up the road (+y before it is laid down). */
+const CHEVRON_D = 2.4;
 function chevron(): THREE.BufferGeometry {
 	const w = 1.6;
-	const d = 2.4;
+	const d = CHEVRON_D;
 	const t = 0.55;
 	const s = new THREE.Shape();
 	s.moveTo(-w / 2, 0);
@@ -63,15 +66,20 @@ function chevron(): THREE.BufferGeometry {
 	return new THREE.ShapeGeometry(s).rotateX(-Math.PI / 2);
 }
 
-/** Where paint at metre `m` lies: on the asphalt, banked as the ribbon is, reading up the road. */
-function lay(route: Route, o: THREE.Object3D, m: number) {
+/**
+ * Where paint `long` metres up the road from `m` lies: on the asphalt from
+ * its near edge, pitched up the road's grade so its far end is not buried
+ * under a climb, banked as the ribbon is, and reading up the road.
+ */
+function lay(route: Route, o: THREE.Object3D, m: number, long: number) {
 	const p = at(route, m);
+	const rise = yOf(route, at(route, m + long).ele) - yOf(route, p.ele);
 	const n = route.x.length - 1;
 	const bank = bankOf(
 		curvature(route, Math.min(Math.max(Math.round(m / route.step), 0), n)),
 	);
 	o.position.set(p.x, yOf(route, p.ele) + ROAD_LIFT + 0.03, p.z);
-	o.rotation.set(0, p.heading + Math.PI, bank, 'YXZ');
+	o.rotation.set(Math.atan2(rise, long), p.heading + Math.PI, bank, 'YXZ');
 }
 
 export function makeGates(route: Route, style: Style) {
@@ -130,7 +138,7 @@ export function makeGates(route: Route, style: Style) {
 			const g = gates[i];
 			mesh.visible = !!g;
 			if (!g) return;
-			lay(route, mesh, g.m);
+			lay(route, mesh, g.m, ALONG);
 			mesh.userData.words = g.words;
 			const mat = mesh.material as THREE.MeshLambertMaterial;
 			const tex = texture(g.words);
@@ -139,7 +147,7 @@ export function makeGates(route: Route, style: Style) {
 				mat.needsUpdate = true;
 			}
 			for (let c = 1; c <= CHEVRONS; c++) {
-				lay(route, spot, g.m - c * CHEVRON_EVERY_M);
+				lay(route, spot, g.m - c * CHEVRON_EVERY_M, CHEVRON_D);
 				spot.updateMatrix();
 				chevrons.setMatrixAt(k++, spot.matrix);
 			}
@@ -176,9 +184,10 @@ export function makeGates(route: Route, style: Style) {
 				dropBanner();
 				const mesh = tag(
 					'dressing',
-					archOnRoad(route, sprint.m, 'SPRINT', style),
+					archOnRoad(route, sprint.m, SPRINT, style),
 					'arch',
 				);
+				mesh.userData.words = SPRINT;
 				group.add(mesh);
 				banner = { index: sprint.index, m: sprint.m, mesh };
 			} else if (banner.m !== sprint.m) {
