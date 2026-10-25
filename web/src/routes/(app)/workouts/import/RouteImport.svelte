@@ -192,7 +192,7 @@
 					{/if}
 					{#if imported.src === 'stravagpx'}
 						<p class="text-muted flex items-start gap-1 text-xs">
-							<Lock size={12} class="mt-0.5 shrink-0" />
+							<Lock size={12} class="mt-px shrink-0" />
 							Files from Strava ride with you alone, never in a crew's plan.
 						</p>
 					{/if}
