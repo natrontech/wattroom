@@ -168,8 +168,8 @@ describe('the catalogue', () => {
 	});
 
 	it('gives every identity one theme in each family', () => {
-		// The ride surface is always dark (ADR-0005) — a light theme still
-		// resolves the dark half of the same identity inside .cave.
+		// TV mode and the HUD are always dark (ADR-0005) — a light theme
+		// still resolves the dark half of the same identity inside .cave.
 		for (const t of themesFor('light')) {
 			expect(
 				THEMES.some(
