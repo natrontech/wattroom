@@ -86,14 +86,17 @@ export function toRoute(points: TrackPoint[]): Route {
 	const clean = despike(project(points, frame));
 	const loop = isLoop(clean);
 
-	const fine = resample(clean, Math.max(1, Math.round(lengthOf(clean))));
+	// Before the resample, which allocates a sample a metre: a fix off the
+	// globe made that an allocation failure blamed on us, not the file.
+	const metres = lengthOf(clean);
+	if (metres > protocol.MaxRouteMeters)
+		throw new RouteError(
+			`This track covers ${Math.round(metres / 1000)} km, and a route holds at most ${protocol.MaxRouteMeters / 1000} km. Split it into shorter routes and import each one.`,
+		);
+	const fine = resample(clean, Math.max(1, Math.round(metres)));
 	if (fine.length < protocol.MinRouteMeters)
 		throw new RouteError(
 			`This track covers ${(fine.length / 1000).toFixed(1)} km, and a route needs at least ${protocol.MinRouteMeters / 1000} km. Pick a longer track.`,
-		);
-	if (fine.length > protocol.MaxRouteMeters)
-		throw new RouteError(
-			`This track covers ${Math.round(fine.length / 1000)} km, and a route holds at most ${protocol.MaxRouteMeters / 1000} km. Split it into shorter routes and import each one.`,
 		);
 	const line = resample(
 		{
