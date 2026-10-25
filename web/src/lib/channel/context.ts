@@ -125,7 +125,7 @@ export interface ChannelContext {
 	 */
 	readonly pairing: SensorPairing | undefined;
 
-	control(kind: string, payload?: unknown, id?: string): void;
+	control(kind: string, payload?: unknown): void;
 	/**
 	 * The coach's hand-off to this person, shaped for `personMenu` — or
 	 * undefined where it is not yours to give (#2636). One rule for the tile,
