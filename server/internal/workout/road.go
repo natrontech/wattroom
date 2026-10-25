@@ -65,3 +65,27 @@ func checkRoad(r RoadRef) error {
 	}
 	return nil
 }
+
+// PlainName is a workout's name where no place may travel, generated or not
+// (ADR-0063: email, ICS, the Strava title). A road goes as its length alone:
+// its generated name may one day name places along it (#4154). A road that
+// cannot be read is still a road, and says no more.
+func PlainName(workoutJSON, name string) string {
+	ref, err := RoadOf(workoutJSON)
+	switch {
+	case err != nil:
+		return RouteRide(0)
+	case ref == nil:
+		return name
+	}
+	return RouteRide(ref.ToM - ref.FromM)
+}
+
+// RouteRide is a route ride's name where no place may travel: its length,
+// or no more than what it is when that is not known.
+func RouteRide(lengthM float64) string {
+	if lengthM <= 0 {
+		return "Route ride"
+	}
+	return fmt.Sprintf("Route ride · %.1f km", lengthM/1000)
+}

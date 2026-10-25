@@ -133,7 +133,7 @@ func (s *Service) handleCrewCalendar(w http.ResponseWriter, r *http.Request) {
 		place, path := eventPlace(crew.ID, crew.Name, row.ChannelID, row.ChannelName)
 		events = append(events, icsEvent{
 			id: store.UUIDString(row.ID), stamp: row.CreatedAt.Time, start: row.StartsAt.Time,
-			length: workoutLength(string(row.WorkoutJson)), summary: row.WorkoutName,
+			length: workoutLength(string(row.WorkoutJson)), summary: workout.PlainName(string(row.WorkoutJson), row.WorkoutName),
 			place: place, path: path,
 		})
 	}
@@ -164,7 +164,7 @@ func (s *Service) handleUserCalendar(w http.ResponseWriter, r *http.Request) {
 		place, path := eventPlace(row.CrewID, row.CrewName, row.ChannelID, row.ChannelName)
 		events = append(events, icsEvent{
 			id: store.UUIDString(row.ID), stamp: row.CreatedAt.Time, start: row.StartsAt.Time,
-			length: workoutLength(string(row.WorkoutJson)), summary: row.WorkoutName,
+			length: workoutLength(string(row.WorkoutJson)), summary: workout.PlainName(string(row.WorkoutJson), row.WorkoutName),
 			planner: row.CreatedBy, place: place, path: path,
 		})
 	}

@@ -14,6 +14,22 @@ func withRoad(road string, steps string) string {
 	return `{"name":"On a road","road":` + road + `,"steps":` + steps + `}`
 }
 
+// Where no place may travel (#4154), a road goes as its length, and one that
+// cannot be read still never falls back to the name it was given.
+func TestAPlainNameCarriesARoadsNumbersAlone(t *testing.T) {
+	for _, c := range []struct{ name, json, want string }{
+		{"a road", withRoad(`{"routeId":"`+routeID+`","fromM":1200,"toM":53100}`, ""), "Route ride · 51.9 km"},
+		{"an attached copy", withRoad(`{"routeId":"`+routeID+`","fromM":0,"toM":3000,"profile":"AAAA"}`, ""), "Route ride"},
+		{"no road", `{"name":"Sweet spot","steps":[{"type":"steady","seconds":600,"target":0.9}]}`, "Sweet spot"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			if got := PlainName(c.json, "Sweet spot"); got != c.want {
+				t.Errorf("PlainName = %q, want %q", got, c.want)
+			}
+		})
+	}
+}
+
 // #3051's validation matrix: a workout carries its road as a reference and
 // nothing else, and a road step is a length of time on it.
 func TestAWorkoutsRoadIsAReferenceOnly(t *testing.T) {

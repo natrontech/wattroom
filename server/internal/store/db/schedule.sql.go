@@ -23,7 +23,7 @@ where id in (
     order by starts_at
     limit 100
 )
-returning id, crew_id, channel_id, workout_name, starts_at
+returning id, crew_id, channel_id, workout_name, workout_json, starts_at
 `
 
 type ClaimSessionsToRemindRow struct {
@@ -31,6 +31,7 @@ type ClaimSessionsToRemindRow struct {
 	CrewID      pgtype.UUID
 	ChannelID   pgtype.UUID
 	WorkoutName string
+	WorkoutJson []byte
 	StartsAt    pgtype.Timestamptz
 }
 
@@ -62,6 +63,7 @@ func (q *Queries) ClaimSessionsToRemind(ctx context.Context) ([]ClaimSessionsToR
 			&i.CrewID,
 			&i.ChannelID,
 			&i.WorkoutName,
+			&i.WorkoutJson,
 			&i.StartsAt,
 		); err != nil {
 			return nil, err
