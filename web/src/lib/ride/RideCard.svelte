@@ -16,7 +16,6 @@
 	import { feltGrade } from '$lib/ride/ride-grade';
 	import RoadPick from '$lib/ride/RoadPick.svelte';
 	import { carryOnFrom, loadRoad, type RideableRoute } from '$lib/ride/roads';
-	import RoadsBeta from '$lib/ride/RoadsBeta.svelte';
 	import SoloGames from '$lib/ride/SoloGames.svelte';
 	import { durationSeconds, flatten } from '$lib/workout/engine';
 	import type { Workout } from '$lib/workout/types';
@@ -135,7 +134,6 @@
 				<span class="text-muted">No road</span>
 			{/if}
 		</div>
-		<RoadsBeta class="mt-2" />
 		<div class="mt-3 flex flex-wrap gap-2">
 			<button
 				onclick={() => (picking = !picking)}

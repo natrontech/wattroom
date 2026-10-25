@@ -15,9 +15,10 @@ Part of the product spec. [docs/SPEC.md](../SPEC.md) indexes every section and s
 | Entering a road              | **0 %** for **500 ms** on entering SIM from ERG, then the road |
 | Look-ahead                   | the felt grade is read **1 s** ahead of the rider, at the dot's speed                                                                   |
 | One gear on a road           | ERG-by-road instead of SIM: FTP × clamp(**0.60** + **0.03** × the road's grade %, **0.50**, **0.90**), and **0.50** on descents steeper than **−2 %**; ± bias |
-| Grade written to the trainer | `MinTrainerGrade` **−10 %** (a default until hardware check P11) … `MaxTrainerGrade` **+15 %**, both in `protocol/limits.go`, one range for every trainer |
+| Grade written to the trainer | `MinTrainerGrade` **−10 %** … `MaxTrainerGrade` **+15 %**, both in `protocol/limits.go`, one range for every trainer, inside the −10 … +16 % Wahoo publishes for the Kickr Core 2 (the gen-1 Core's page gives +16 % and no floor). At −10 % a brake-only Core simulating 75 kg or more (the Wahoo app's default rider) has nothing left to brake at the 67 km/h of 53×11 at 110 rpm, the fastest flywheel a real gear turns, so the floor cuts no descent it renders |
 | Reference rider              | **75 kg** rider + **8 kg** bike at **225 W**                                                                                            |
-| Pace model                   | Martin et al. 1998, stepped once a second in **4** substeps (`$lib/road/pace.ts` and its Go twin `internal/road`, held to **0.1 %** by shared golden vectors): Crr **0.004**, ρ **1.225 kg/m³**, drivetrain η **0.97**, CdA **0.32 m²** until the Kickr sessions measure it. The pace model and FTMS share this one CdA; the factor between it and the Cw FTMS is sent (**0.51 kg/m** today, `SIM_DEFAULTS`) is what that session measures, and this row does not assert it |
+| Pace model                   | Martin et al. 1998, stepped once a second in **4** substeps (`$lib/road/pace.ts` and its Go twin `internal/road`, held to **0.1 %** by shared golden vectors): Crr **0.004**, ρ **1.225 kg/m³**, drivetrain η **0.97**, CdA **0.32 m²** |
+| The trainer's road           | FTMS 0x11 carries the pace model's own road (`SIM_DEFAULTS`): Crr **0.004** and Cw = ρ × CdA = **0.39 kg/m**. FTMS's Cw is FE-C's: the trainer's drag is ½ × Cw × (v + wind)², the pace model's own at the same speed. FTMS carries no mass: the trainer simulates the one its maker's app gave it, and WattRoom never writes one. WattRoom never sends 0x12, the wheel circumference: on a Kickr it moves only the speed and distance reported |
 | Riding on a road             | virtual speed above **0.5 m/s** — presence, auto-pause, auto-end and the recording rule read this                                        |
 | Corners                      | a bend of radius r is taken at √(**0.6 g** × r), a 31° lean, and the pace brakes at **4 m/s²** to meet it; there is no brake control     |
 | A sample on a road           | its place runs forward from 0 to the route's length, at most **30 m** a second; its height stays within **−500 … 9,000 m** (the .fit's own floor) |
@@ -28,8 +29,10 @@ At the default difficulty a −6 % descent feels −1.5 %. A route ride is unsco
 distance and descent pay nothing, and a scored workout on a road pays like any
 scored workout (ADR-0062's table).
 
-Riders ride these numbers marked Beta until the Kickr sessions measure them
-(#3351, ADR-0062's 2026-10-16 amendment).
+The trainer's rows come from published sources and the #10 Kickr Core's own
+samples (RESEARCH.md §11, "The road and gears numbers"; #3351, ADR-0088), and
+`simulated-road.test.ts` and `ftms.test.ts` pin them. A rider's report that
+contradicts one amends it here.
 
 **Climbs** (the Garmin Edge 1050 manual's rule, fetched 2026-09-26):
 

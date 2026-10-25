@@ -121,7 +121,7 @@ tests; the 50 % cap is a rule.
 | Groups            | split at a **2 s** gap                                                                                                                                                      |
 | Attack            | at least **+1.0 W/kg** over the group mean, with no shelter, for at least **3 s**                                                                                           |
 | Timing            | an effort above **5 %** mean shelter is untimeable (rule; Road times)                                                                                                       |
-| Trainer           | Cw = **0.51** × (1 − shelter) × k³ (Virtual gears), eased, written on a change of at least **5** points and at least **2 s** apart; a gear shift is exempt from the spacing |
+| Trainer           | Cw = **0.39** × (1 − shelter) × k³ (Virtual gears), eased, written on a change of at least **5** points and at least **2 s** apart; a gear shift is exempt from the spacing |
 | No Cw             | a trainer that ignores Cw gets an equal grade offset                                                                                                                        |
 
 ## Riding a road together (defaults — tune in alpha; [ADR-0065](../decisions/0065-riding-a-road-together.md))
