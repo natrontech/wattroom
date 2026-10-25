@@ -1739,6 +1739,12 @@ export interface Rider {
    * here when it would not be for the ping.
    */
   device?: string;
+  /**
+   * Their socket has gone while LiveKit still carries their voice (#4090):
+   * the channel hears them, so they stay on the roster, with no live data
+   * until the socket redials.
+   */
+  linkLost?: boolean;
 }
 /**
  * A rider's standing in a crew (ADR-0058), as its membership row and a voice

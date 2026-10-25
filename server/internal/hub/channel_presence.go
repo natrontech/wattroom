@@ -25,7 +25,7 @@ func (rm *channelState) join(c *client) {
 	// leave either, so the room hears nothing about the round trip.
 	if _, flapped := rm.departed[c.rider.ID]; flapped {
 		delete(rm.departed, c.rider.ID)
-		delete(rm.departedNames, c.rider.ID)
+		delete(rm.departedRiders, c.rider.ID)
 		return
 	}
 	now := rm.now()
@@ -49,11 +49,19 @@ func (rm *channelState) sayDepartedLocked(now time.Time) {
 		if now.Sub(at) < presenceGrace {
 			continue
 		}
-		delete(rm.departed, riderID)
-		if name := rm.departedNames[riderID]; name != "" {
-			rm.events.add(presenceLine("left", name, now), now)
-			delete(rm.departedNames, riderID)
+		// LiveKit still has them (#4090): the channel hears them, so they
+		// stay on the roster and nobody is told they left until voice lets
+		// go too.
+		if _, inVoice := rm.voiceNow[riderID]; !inVoice {
+			delete(rm.departed, riderID)
+			if rider, ok := rm.departedRiders[riderID]; ok && rider.Name != "" {
+				rm.events.add(presenceLine("left", rider.Name, now), now)
+			}
+			delete(rm.departedRiders, riderID)
 		}
+		// Both idempotent, so a rider voice still holds is settled again on
+		// every tick: a socket that cannot coach or pedal holds neither the
+		// session nor the paceline, whatever voice says (#4090).
 		if riderID == rm.session.coach && rm.session.open() {
 			rm.passSessionLocked(now)
 		}
@@ -101,7 +109,7 @@ func (rm *channelState) leave(c *client) {
 		// Not announced yet — nor out of the game: the tick does both once
 		// the grace window is out (sayDepartedLocked).
 		rm.departed[c.rider.ID] = rm.now()
-		rm.departedNames[c.rider.ID] = c.rider.Name
+		rm.departedRiders[c.rider.ID] = c.rider
 	}
 	metricRiders.Dec()
 }

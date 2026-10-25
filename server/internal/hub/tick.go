@@ -317,6 +317,18 @@ func (rm *channelState) rosterLocked(tick *protocol.ServerTick, now func() time.
 			tick.Roster = append(tick.Roster, rider)
 		}
 	}
+	// A rider whose socket dropped while LiveKit still carries their voice
+	// is still here (#4090): on the roster, marked as live data lost, so
+	// the channel never draws someone it can hear as gone.
+	for id := range rm.departed {
+		if _, inVoice := rm.voiceNow[id]; !inVoice {
+			continue
+		}
+		rider := rm.departedRiders[id]
+		rider.LinkLost = true
+		rider.InSession = rm.session.rides(id)
+		tick.Roster = append(tick.Roster, rider)
+	}
 	for i := range tick.Roster {
 		if on, found := best[tick.Roster[i].ID]; found {
 			// Zero when nothing has been measured yet, which omitempty

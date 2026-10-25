@@ -145,9 +145,9 @@ type channelState struct {
 	// line per flap is a strobe rather than a timeline. Coming back inside the
 	// window says nothing at all — no leave, and no second arrival either.
 	departed map[string]time.Time
-	// What to call them once the window is out: the socket that knew their
-	// name has gone by then.
-	departedNames map[string]string
+	// Who they were once the window is out, and while voice holds them on the
+	// roster (#4090): the socket that knew them has gone by then.
+	departedRiders map[string]protocol.Rider
 	// Who was in the room while the session ran, and when (ADR-0034): one
 	// span per rider, sampled by the tick, reset on start. Bounded by riders
 	// ever present in one session.
@@ -253,24 +253,24 @@ func (rm *channelState) allow(kind, riderID string, now time.Time, min time.Dura
 
 func newChannelState(channel string) *channelState {
 	return &channelState{
-		now:           time.Now,
-		channel:       channel,
-		stop:          make(chan struct{}),
-		clients:       make(map[*client]struct{}),
-		metrics:       make(map[string]protocol.RiderMetrics),
-		session:       newSession(),
-		record:        newAccumulator(),
-		music:         newJukebox(),
-		seen:          make(map[string]protocol.Rider),
-		lastMetric:    make(map[string]time.Time),
-		lastWatts:     make(map[string]time.Time),
-		voiceNow:      make(map[string]struct{}),
-		voiceMs:       make(map[string]int64),
-		present:       make(map[string]*span),
-		sounding:      make(map[string]firing),
-		away:          make(map[string]string),
-		departed:      make(map[string]time.Time),
-		departedNames: make(map[string]string),
+		now:            time.Now,
+		channel:        channel,
+		stop:           make(chan struct{}),
+		clients:        make(map[*client]struct{}),
+		metrics:        make(map[string]protocol.RiderMetrics),
+		session:        newSession(),
+		record:         newAccumulator(),
+		music:          newJukebox(),
+		seen:           make(map[string]protocol.Rider),
+		lastMetric:     make(map[string]time.Time),
+		lastWatts:      make(map[string]time.Time),
+		voiceNow:       make(map[string]struct{}),
+		voiceMs:        make(map[string]int64),
+		present:        make(map[string]*span),
+		sounding:       make(map[string]firing),
+		away:           make(map[string]string),
+		departed:       make(map[string]time.Time),
+		departedRiders: make(map[string]protocol.Rider),
 	}
 }
 

@@ -40,6 +40,9 @@ export interface LiveRider {
 	hr: number;
 	/** their trainer stopped reporting — numbers are last-known, not live */
 	stale: boolean;
+	/** Their socket dropped while voice still carries them (#4090): heard,
+	 * with no live data until it redials. */
+	linkLost?: boolean;
 	target: number;
 	/** The live score; absent until something scorable was ridden (#1454). */
 	execution?: number;
