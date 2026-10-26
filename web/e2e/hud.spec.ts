@@ -212,15 +212,18 @@ test('the HUD tells the block, what comes next and the rep', async ({
 	]);
 	expect(await page.evaluate(clippedRows)).toEqual([]);
 
-	// The last block: no NEXT.
+	// The last block: no NEXT, and its time left is the clock's, drawn once.
 	await send({
+		remaining: 30,
 		block: { secondsLeft: 30, next: null, rep: { index: 3, count: 3 } },
 	});
-	await expect(page.getByTestId('hud-block-left')).toHaveText(
-		'0:30 left in block',
-	);
-	await expect(page.getByTestId('hud-next')).toHaveCount(0);
 	await expect(page.getByTestId('hud-rep')).toHaveText('rep 3/3');
+	await expect(page.getByTestId('hud-remaining')).toHaveText('0:30 left');
+	await expect(page.getByTestId('hud-block-left')).toHaveCount(0);
+	await expect(page.getByTestId('hud-next')).toHaveCount(0);
+	// Without a rep the last block draws no line at all.
+	await send({ remaining: 30, block: { secondsLeft: 30, next: null } });
+	await expect(page.getByTestId('hud-block')).toHaveCount(0);
 
 	// A road workout: the road's rows stay, the block's time left takes the
 	// clock's place, and nothing is clipped.

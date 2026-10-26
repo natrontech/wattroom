@@ -39,10 +39,13 @@
 	);
 	const road = $derived(snapshot?.road);
 	const block = $derived(snapshot?.block);
+	// The last block ends with the ride: its time left is the clock's, and
+	// one live number is drawn once (D17).
+	const last = $derived(!!block && !block.next);
 	// A road's two rows fill the shell's 152 px (#4212): there the block's
 	// time left takes the clock's place, since it outranks the workout's,
 	// and NEXT and the rep give way. A larger window draws them all.
-	const crowded = $derived(!!road && !!block);
+	const crowded = $derived(!!road && !!block && !last);
 	const zoneWords = $derived(
 		snapshot?.zone
 			? `Zone ${snapshot.zone}, ${ZONE_NAMES[snapshot.zone]}`
@@ -77,16 +80,18 @@
      and the rep, in that order of worth. One line: whatever does not fit
      wraps below it, out of sight, so the rep gives way first, then NEXT. -->
 {#snippet blockRow()}
-	{#if block}
+	{#if block && (!last || block.rep)}
 		<div
 			class="block-row text-ink mt-[0.25em] flex flex-wrap items-baseline gap-x-[0.75em] overflow-hidden"
 			data-testid="hud-block"
 			data-one-line
 		>
-			<p class="whitespace-nowrap" data-testid="hud-block-left">
-				<span class="num">{formatClock(block.secondsLeft)}</span>
-				<span class="unit text-muted">left in block</span>
-			</p>
+			{#if !last}
+				<p class="whitespace-nowrap" data-testid="hud-block-left">
+					<span class="num">{formatClock(block.secondsLeft)}</span>
+					<span class="unit text-muted">left in block</span>
+				</p>
+			{/if}
 			{#if block.next}
 				<p class="whitespace-nowrap" data-testid="hud-next">
 					<span class="unit text-muted">Next</span>

@@ -418,7 +418,7 @@ Capture: `/hud` in a second page while a road free ride runs: `hud-shell` at 320
 3. On a road ride the label reads “FREE RIDE · <road>”. [ride-hud]
 4. Only the watts glows. Grade bars use the Skyline's grade ramp; the zone strip, the Coggan ramp, unlit segments faint. [#4099]
 5. The cave's surface fills the window; the waiting and signed-out states scale the same way. [ride-hud]
-6. On a ride of structured blocks, one line under the watts: the block's time left, NEXT in describeBlock's words (D16), and the rep; what does not fit gives way from the end, the rep first, never cut. The last block has no NEXT. On a road workout at 320 × 152 the block's time left takes the clock's place and the line is not drawn; a larger window draws it. A free ride, a one-block ride and a route ride draw no line. [#4212] [test:web/e2e/hud.spec.ts]
+6. On a ride of structured blocks, one line under the watts: the block's time left, NEXT in describeBlock's words (D16), and the rep; what does not fit gives way from the end, the rep first, never cut. The last block has no NEXT and no time left of its own, the clock's being the same number (D17). On a road workout at 320 × 152 the block's time left takes the clock's place and the line is not drawn; a larger window draws it. A free ride, a one-block ride and a route ride draw no line. [#4212] [test:web/e2e/hud.spec.ts] [test:web/src/lib/hud/hud-block.test.ts]
 
 #### ride-preride (a desk surface)
 
