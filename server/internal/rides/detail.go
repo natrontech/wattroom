@@ -126,6 +126,8 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/vnd.ant.fit")
+	// The activity file keeps what was ridden, not the rider's own name for
+	// it (#4209): it is what Strava and the rest read, and they keep theirs.
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", exportFilename(row.StartedAt.Time, row.WorkoutName)))
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Cache-Control", "private, no-store")

@@ -774,6 +774,7 @@ const getRide = `-- name: GetRide :one
 select r.id, r.user_id, r.workout_name, r.started_at, r.seconds, r.avg_watts, r.kj,
        r.execution, r.ftp_watts, r.samples, r.shared_at, r.created_at, r.curve, r.xp,
        r.norm_watts, r.execution_scored, r.ftp_after_watts, r.last20m_hr, r.rpe, r.note, r.title,
+       r.on_road, r.route_key,
        r.crew_id, r.channel_id, r.session_id,
        coalesce(c.name, '')::text as crew_name,
        coalesce(ch.name, '')::text as channel_name,
@@ -814,6 +815,8 @@ type GetRideRow struct {
 	Rpe             *int16
 	Note            *string
 	Title           *string
+	OnRoad          *bool
+	RouteKey        *string
 	CrewID          pgtype.UUID
 	ChannelID       pgtype.UUID
 	SessionID       pgtype.UUID
@@ -854,6 +857,8 @@ func (q *Queries) GetRide(ctx context.Context, arg GetRideParams) (GetRideRow, e
 		&i.Rpe,
 		&i.Note,
 		&i.Title,
+		&i.OnRoad,
+		&i.RouteKey,
 		&i.CrewID,
 		&i.ChannelID,
 		&i.SessionID,
@@ -1677,6 +1682,44 @@ func (q *Queries) OwnRoadsOfRides(ctx context.Context, arg OwnRoadsOfRidesParams
 	return items, nil
 }
 
+const patchRide = `-- name: PatchRide :execrows
+update rides
+set shared_at = case
+        when $1::boolean is null then shared_at
+        when $1::boolean then coalesce(shared_at, now())
+        else null end,
+    title = case when $2::boolean then $3::text else title end
+where id = $4 and user_id = $5
+`
+
+type PatchRideParams struct {
+	Shared   *bool
+	SetTitle bool
+	Title    *string
+	ID       pgtype.UUID
+	UserID   pgtype.UUID
+}
+
+// PATCH /api/rides/{id} in one statement, so a request that sends both
+// fields stores both or neither. A null `shared` leaves sharing as it is
+// (SetRideShared's rule otherwise); `set_title` says whether `title` was
+// sent, and a null title clears it, so the ride reads as its workout's name
+// again (#4209). workout_name never moves: Against your best groups by it.
+// Owner-only by the where clause.
+func (q *Queries) PatchRide(ctx context.Context, arg PatchRideParams) (int64, error) {
+	result, err := q.db.Exec(ctx, patchRide,
+		arg.Shared,
+		arg.SetTitle,
+		arg.Title,
+		arg.ID,
+		arg.UserID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const requeueRideExport = `-- name: RequeueRideExport :execrows
 update ride_exports
 set state = 'pending', attempts = 0, last_error = null, updated_at = now()
@@ -1885,28 +1928,6 @@ type SetRideSharedParams struct {
 // remembers when; unsharing clears it. Owner-only by the where clause.
 func (q *Queries) SetRideShared(ctx context.Context, arg SetRideSharedParams) (int64, error) {
 	result, err := q.db.Exec(ctx, setRideShared, arg.Shared, arg.ID, arg.UserID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
-const setRideTitle = `-- name: SetRideTitle :execrows
-update rides set title = $1::text
-where id = $2 and user_id = $3
-`
-
-type SetRideTitleParams struct {
-	Title  *string
-	ID     pgtype.UUID
-	UserID pgtype.UUID
-}
-
-// The name the rider gives a finished ride (#4209). NULL clears it, and the
-// ride reads as its workout's name again; workout_name itself never moves,
-// since Against your best groups by it. Owner-only by the where clause.
-func (q *Queries) SetRideTitle(ctx context.Context, arg SetRideTitleParams) (int64, error) {
-	result, err := q.db.Exec(ctx, setRideTitle, arg.Title, arg.ID, arg.UserID)
 	if err != nil {
 		return 0, err
 	}

@@ -10,7 +10,9 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
@@ -303,8 +305,9 @@ func (s *Service) handleBest(w http.ResponseWriter, r *http.Request) {
 }
 
 // handlePatch flips one ride's friends-visibility (ADR-0024) and names it
-// (#4209), either or both. Owner-only: each update's where clause carries the
-// user, so someone else's ride reads as absent rather than as forbidden.
+// (#4209), either or both, in one statement. Owner-only: its where clause
+// carries the user, so someone else's ride reads as absent rather than as
+// forbidden.
 func (s *Service) handlePatch(w http.ResponseWriter, r *http.Request) {
 	user, ok := s.users.RequireUser(w, r, "Not signed in.")
 	if !ok {
@@ -320,52 +323,52 @@ func (s *Service) handlePatch(w http.ResponseWriter, r *http.Request) {
 		// The rider's name for the ride; "" gives it its workout's name back.
 		Title *string `json:"title"`
 	}
-	if err := httpx.DecodeStrict(r, &body); err != nil || (body.SharedWithFriends == nil && body.Title == nil) {
+	if err := httpx.DecodeStrict(r, &body); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid_request",
+			"That request could not be read. Send sharedWithFriends as true or false, and title as text.")
+		return
+	}
+	if body.SharedWithFriends == nil && body.Title == nil {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
 			"Send sharedWithFriends as true or false, or title as text.", "sharedWithFriends")
 		return
 	}
 	title := trimWritten(body.Title)
-	if title != nil && utf8.RuneCountInString(*title) > protocol.MaxWorkoutNameChars {
-		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-			fmt.Sprintf("A ride's name is up to %d characters — this one is %d.",
-				protocol.MaxWorkoutNameChars, utf8.RuneCountInString(*title)), "title")
+	if title != nil {
+		// docs/SPEC.md's 1–80 characters of a workout's name, on one line, as
+		// a planned session's name is (crews.hasControl).
+		if n := utf8.RuneCountInString(*title); n > protocol.MaxWorkoutNameChars {
+			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
+				fmt.Sprintf("A ride's name is up to %d characters — this one is %d.",
+					protocol.MaxWorkoutNameChars, n), "title")
+			return
+		}
+		if strings.ContainsFunc(*title, unicode.IsControl) {
+			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
+				"A ride's name is one line of text.", "title")
+			return
+		}
+	}
+	n, err := s.store.Queries.PatchRide(r.Context(), db.PatchRideParams{
+		Shared: body.SharedWithFriends, SetTitle: body.Title != nil, Title: title,
+		ID: id, UserID: user.ID,
+	})
+	if err != nil {
+		httpx.Fail(w, s.log, "ride patch failed", err, "The ride could not be updated.")
+		return
+	}
+	if n == 0 {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "That ride is not one of yours.")
 		return
 	}
 	out := map[string]any{"id": store.UUIDString(id)}
 	if body.SharedWithFriends != nil {
-		n, err := s.store.Queries.SetRideShared(r.Context(), db.SetRideSharedParams{
-			Shared: *body.SharedWithFriends, ID: id, UserID: user.ID,
-		})
-		if !s.updated(w, n, err, "ride share failed") {
-			return
-		}
 		out["sharedWithFriends"] = *body.SharedWithFriends
 	}
 	if body.Title != nil {
-		n, err := s.store.Queries.SetRideTitle(r.Context(), db.SetRideTitleParams{
-			Title: title, ID: id, UserID: user.ID,
-		})
-		if !s.updated(w, n, err, "ride title failed") {
-			return
-		}
 		out["title"] = titleOf(title)
 	}
 	httpx.WriteJSON(w, http.StatusOK, out)
-}
-
-// updated answers an owner-scoped update that failed or touched no row, and
-// reports whether the request may go on.
-func (s *Service) updated(w http.ResponseWriter, n int64, err error, logMsg string) bool {
-	if err != nil {
-		httpx.Fail(w, s.log, logMsg, err, "The ride could not be updated.")
-		return false
-	}
-	if n == 0 {
-		httpx.WriteError(w, http.StatusNotFound, "not_found", "That ride is not one of yours.")
-		return false
-	}
-	return true
 }
 
 // titleOf is the rider's name for a ride, or "" where they gave none.

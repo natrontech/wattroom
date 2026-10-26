@@ -87,9 +87,11 @@ func (s *Service) handleCard(w http.ResponseWriter, r *http.Request) {
 	// that says where the heights came from.
 	// Off a road, the rider's own name for the ride (#4209) titles its card.
 	// On one it does not: free text can name where they live as surely as a
-	// route's rename can, and the card is drawn to be posted.
+	// route's rename can, and the card is drawn to be posted. A road ride can
+	// carry no metres (a session rider the bunch never placed, an unreadable
+	// blob), so the row's own marks count too, as the Strava title's do.
 	name := row.WorkoutName
-	if row.Title != nil && !onRoad {
+	if row.Title != nil && !onRoad && row.RouteKey == nil && (row.OnRoad == nil || !*row.OnRoad) {
 		name = *row.Title
 	}
 	if onRoad {

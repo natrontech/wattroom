@@ -103,6 +103,7 @@ limit 1;
 select r.id, r.user_id, r.workout_name, r.started_at, r.seconds, r.avg_watts, r.kj,
        r.execution, r.ftp_watts, r.samples, r.shared_at, r.created_at, r.curve, r.xp,
        r.norm_watts, r.execution_scored, r.ftp_after_watts, r.last20m_hr, r.rpe, r.note, r.title,
+       r.on_road, r.route_key,
        r.crew_id, r.channel_id, r.session_id,
        coalesce(c.name, '')::text as crew_name,
        coalesce(ch.name, '')::text as channel_name,
@@ -468,11 +469,19 @@ where id = sqlc.arg(id) and user_id = sqlc.arg(user_id);
 update rides set rpe = sqlc.narg(rpe)::smallint, note = sqlc.narg(note)::text
 where id = sqlc.arg(id) and user_id = sqlc.arg(user_id);
 
--- name: SetRideTitle :execrows
--- The name the rider gives a finished ride (#4209). NULL clears it, and the
--- ride reads as its workout's name again; workout_name itself never moves,
--- since Against your best groups by it. Owner-only by the where clause.
-update rides set title = sqlc.narg(title)::text
+-- name: PatchRide :execrows
+-- PATCH /api/rides/{id} in one statement, so a request that sends both
+-- fields stores both or neither. A null `shared` leaves sharing as it is
+-- (SetRideShared's rule otherwise); `set_title` says whether `title` was
+-- sent, and a null title clears it, so the ride reads as its workout's name
+-- again (#4209). workout_name never moves: Against your best groups by it.
+-- Owner-only by the where clause.
+update rides
+set shared_at = case
+        when sqlc.narg(shared)::boolean is null then shared_at
+        when sqlc.narg(shared)::boolean then coalesce(shared_at, now())
+        else null end,
+    title = case when sqlc.arg(set_title)::boolean then sqlc.narg(title)::text else title end
 where id = sqlc.arg(id) and user_id = sqlc.arg(user_id);
 
 -- name: SetRideShared :execrows

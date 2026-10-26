@@ -24,9 +24,12 @@
 	let error = $state<string | null>(null);
 	const ridden = $derived(riddenName(ride));
 	const changed = $derived(name.trim() !== (ride.title ?? ''));
+	// Characters, as the server counts them (#1986) — `maxlength` counts
+	// UTF-16 units and would stop an emoji name at half the bound.
+	const over = $derived([...name.trim()].length - MaxWorkoutNameChars);
 
 	async function rename() {
-		if (!changed) return;
+		if (!changed || over > 0) return;
 		saving = true;
 		error = await renameRide(ride, name);
 		saving = false;
@@ -47,20 +50,23 @@
 		<input
 			id="ride-name"
 			bind:value={name}
-			maxlength={MaxWorkoutNameChars}
 			placeholder={ridden}
-			aria-invalid={!!error}
+			aria-invalid={!!error || over > 0}
 			aria-describedby="ride-name-hint"
 			class="input min-w-0 flex-1"
 			{@attach (input) => input.focus()}
 		/>
-		<button disabled={!changed || saving} class="btn btn-secondary"
+		<button disabled={!changed || over > 0 || saving} class="btn btn-secondary"
 			>{saving ? 'Renaming…' : 'Rename'}</button
 		>
 		<button type="button" onclick={onclose} class="btn btn-ghost">Cancel</button
 		>
 	</div>
-	{#if error}
+	{#if over > 0}
+		<p class="text-danger mt-1 text-xs" role="alert">
+			{over} characters too many — a ride's name is up to {MaxWorkoutNameChars}.
+		</p>
+	{:else if error}
 		<!-- Field-level, under the field (errors.md). -->
 		<p class="text-danger mt-1 text-xs" role="alert">{error}</p>
 	{/if}

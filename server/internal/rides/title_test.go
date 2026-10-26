@@ -74,19 +74,66 @@ func TestRideTitleRefusals(t *testing.T) {
 	if status, body := call(t, h.mux, "alice", http.MethodPatch, path, fmt.Sprintf(`{"title":%q}`, fits)); status != http.StatusOK {
 		t.Fatalf("%d runes refused: %d %v", protocol.MaxWorkoutNameChars, status, body)
 	}
-	for _, tc := range []struct{ name, body, field string }{
-		{"too long", fmt.Sprintf(`{"title":%q}`, fits+"ü"), "title"},
-		{"nothing", `{}`, "sharedWithFriends"},
+	for _, tc := range []struct{ name, body, code, field string }{
+		{"too long", fmt.Sprintf(`{"title":%q}`, fits+"ü"), "validation_error", "title"},
+		// One line, as a planned session's name is: a newline would print on
+		// the card and break the list's row.
+		{"two lines", `{"title":"Hill\nday"}`, "validation_error", "title"},
+		{"a tab", `{"title":"Hill\tday"}`, "validation_error", "title"},
+		{"nothing", `{}`, "validation_error", "sharedWithFriends"},
+		// Unreadable names no field rather than the wrong one.
+		{"not text", `{"title":5}`, "invalid_request", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			status, body := call(t, h.mux, "alice", http.MethodPatch, path, tc.body)
-			if status != http.StatusBadRequest || body["field"] != tc.field {
+			field, _ := body["field"].(string)
+			if status != http.StatusBadRequest || body["error"] != tc.code || field != tc.field {
 				t.Fatalf("refusal: %d %v", status, body)
 			}
 		})
 	}
 	if status, _ := call(t, h.mux, "bob", http.MethodPatch, path, `{"title":"mine now"}`); status != http.StatusNotFound {
 		t.Fatalf("bob named alice's ride: %d", status)
+	}
+	// A refusal stores nothing, sharing included: one statement or none.
+	if status, _ := call(t, h.mux, "alice", http.MethodPatch, path, `{"sharedWithFriends":true,"title":"Hill\nday"}`); status != http.StatusBadRequest {
+		t.Fatalf("a bad title with a share: %d", status)
+	}
+	if _, body := call(t, h.mux, "alice", http.MethodGet, path, ""); body["sharedWithFriends"] != false {
+		t.Fatalf("a refused PATCH shared the ride: %v", body["sharedWithFriends"])
+	}
+}
+
+// The card is drawn to be posted (#3055, #3142): the rider's name for a ride
+// titles it off a road, never on one — a road ride with no metres included,
+// a session rider the bunch never placed, which only its row marks (#4154).
+func TestCardTakesTheTitleOffARoadOnly(t *testing.T) {
+	h := setup(t)
+	filename := func(id string) string {
+		t.Helper()
+		w := cardRequest(t, h, "alice", id)
+		if w.Code != http.StatusOK {
+			t.Fatalf("card: %d %s", w.Code, w.Body.String())
+		}
+		return w.Header().Get("Content-Disposition")
+	}
+	off := h.save(t, "alice", 120, 200)
+	if status, _ := call(t, h.mux, "alice", http.MethodPatch, "/api/rides/"+off, `{"title":"Hill day"}`); status != http.StatusOK {
+		t.Fatalf("patch: %d", status)
+	}
+	if cd := filename(off); !strings.HasSuffix(cd, `-hill-day.png"`) {
+		t.Errorf("an off-road card ignores the title: %q", cd)
+	}
+
+	placed := h.save(t, "alice", 120, 200)
+	if status, _ := call(t, h.mux, "alice", http.MethodPatch, "/api/rides/"+placed, `{"title":"Hill day"}`); status != http.StatusOK {
+		t.Fatalf("patch: %d", status)
+	}
+	if _, err := h.store.Pool.Exec(t.Context(), "update rides set on_road = true where id = $1::uuid", placed); err != nil {
+		t.Fatal(err)
+	}
+	if cd := filename(placed); !strings.HasSuffix(cd, `-openers.png"`) {
+		t.Errorf("a road ride's card carries the title: %q", cd)
 	}
 }
 
