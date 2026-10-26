@@ -69,4 +69,14 @@ describe('rideRowMenu (#2171)', () => {
 		item(rideRowMenu(ride(), gone), 'Delete ride').onSelect();
 		await vi.waitFor(() => expect(gone).toHaveBeenCalledOnce());
 	});
+
+	// Rename only where there is a box to open (#4209): the ride's page.
+	it('offers Rename beside Share when given the box, before Delete', () => {
+		expect(item(rideRowMenu(ride()), 'Rename')).toBeUndefined();
+		const open = vi.fn();
+		const entries = rideRowMenu(ride(), undefined, open);
+		expect(entries.indexOf(item(entries, 'Rename'))).toBe(1);
+		item(entries, 'Rename').onSelect();
+		expect(open).toHaveBeenCalledOnce();
+	});
 });

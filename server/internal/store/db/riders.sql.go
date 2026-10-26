@@ -119,7 +119,7 @@ func (q *Queries) ListCrewsInCommon(ctx context.Context, arg ListCrewsInCommonPa
 }
 
 const listSharedRides = `-- name: ListSharedRides :many
-select r.id, r.workout_name, r.started_at, r.seconds, r.kj, r.execution, r.execution_scored,
+select r.id, r.workout_name, r.title, r.started_at, r.seconds, r.kj, r.execution, r.execution_scored,
        (r.crew_id is not null or r.channel_id is not null)::boolean as with_crew,
        coalesce(case when v.user_id is not null then ch.name end, '')::text as channel_name,
        coalesce((select string_agg(m.kind, ' ' order by m.kind) from medals m where m.ride_id = r.id), '')::text as medal_kinds
@@ -140,6 +140,7 @@ type ListSharedRidesParams struct {
 type ListSharedRidesRow struct {
 	ID              pgtype.UUID
 	WorkoutName     string
+	Title           *string
 	StartedAt       pgtype.Timestamptz
 	Seconds         int32
 	Kj              int32
@@ -167,6 +168,7 @@ func (q *Queries) ListSharedRides(ctx context.Context, arg ListSharedRidesParams
 		if err := rows.Scan(
 			&i.ID,
 			&i.WorkoutName,
+			&i.Title,
 			&i.StartedAt,
 			&i.Seconds,
 			&i.Kj,

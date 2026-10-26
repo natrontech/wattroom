@@ -23,6 +23,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/status"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
+	"github.com/natrontech/wattroom/server/internal/tokens"
 )
 
 // maxSharedRides caps the activity list: a page, not an export.
@@ -135,12 +136,14 @@ type monthJSON struct {
 }
 
 type sharedRideJSON struct {
-	ID          string  `json:"id"`
-	WorkoutName string  `json:"workoutName"`
-	StartedAt   string  `json:"startedAt"`
-	Seconds     int     `json:"seconds"`
-	Kj          int     `json:"kj"`
-	Execution   float64 `json:"execution"`
+	ID          string `json:"id"`
+	WorkoutName string `json:"workoutName"`
+	// The name the rider gave the ride (#4209); absent where they gave none.
+	Title     string  `json:"title,omitempty"`
+	StartedAt string  `json:"startedAt"`
+	Seconds   int     `json:"seconds"`
+	Kj        int     `json:"kj"`
+	Execution float64 `json:"execution"`
 	// False when the workout prescribed nothing (#1143) — "0 % on target"
 	// on a friend's page was a sprint session (audit 2026-09-09).
 	ExecutionScored bool `json:"executionScored"`
@@ -292,14 +295,20 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 		}
 		out.SharedRides = make([]sharedRideJSON, 0, len(shared))
 		for _, row := range shared {
-			out.SharedRides = append(out.SharedRides, sharedRideJSON{
+			ride := sharedRideJSON{
 				ID: store.UUIDString(row.ID), WorkoutName: row.WorkoutName,
 				StartedAt: row.StartedAt.Time.Format(time.RFC3339),
 				Seconds:   int(row.Seconds), Kj: int(row.Kj), Execution: float64(row.Execution),
 				ExecutionScored: row.ExecutionScored,
 				Medals:          strings.Fields(row.MedalKinds),
 				WithCrew:        row.WithCrew, ChannelName: row.ChannelName,
-			})
+			}
+			// The rider's own name for it (#4209), never to a personal
+			// token: free text reaches no AI context (ADR-0017, ADR-0063).
+			if row.Title != nil && !tokens.Bearer(r) {
+				ride.Title = *row.Title
+			}
+			out.SharedRides = append(out.SharedRides, ride)
 		}
 	}
 	httpx.WriteJSON(w, http.StatusOK, out)

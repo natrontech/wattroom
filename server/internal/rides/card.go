@@ -85,7 +85,13 @@ func (s *Service) handleCard(w http.ResponseWriter, r *http.Request) {
 	// heights beside the watts, under the route's generated name — never the
 	// owner's own, which may name where they live (#3055) — and the line
 	// that says where the heights came from.
+	// Off a road, the rider's own name for the ride (#4209) titles its card.
+	// On one it does not: free text can name where they live as surely as a
+	// route's rename can, and the card is drawn to be posted.
 	name := row.WorkoutName
+	if row.Title != nil && !onRoad {
+		name = *row.Title
+	}
 	if onRoad {
 		card.Metres = make([]float64, len(samples))
 		card.Heights = make([]float64, len(samples))

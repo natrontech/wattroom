@@ -23,7 +23,9 @@ func (x *export) rides() category {
 				normWatts = *ride.NormWatts
 			}
 			summaries = append(summaries, map[string]any{
-				"workoutName":     ride.WorkoutName,
+				"workoutName": ride.WorkoutName,
+				// The name the rider gave it (#4209), null where they gave none.
+				"title":           ride.Title,
 				"startedAt":       ride.StartedAt.Time,
 				"seconds":         ride.Seconds,
 				"avgWatts":        ride.AvgWatts,

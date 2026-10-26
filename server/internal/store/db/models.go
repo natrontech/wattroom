@@ -293,6 +293,7 @@ type Ride struct {
 	MeanShelter     *float32
 	GroupSession    *bool
 	OnRoad          *bool
+	Title           *string
 }
 
 type RideExport struct {

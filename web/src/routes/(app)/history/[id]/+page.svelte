@@ -41,7 +41,9 @@
 	import Download from '@lucide/svelte/icons/download';
 	import ImageDown from '@lucide/svelte/icons/image-down';
 	import RideFeel from '$lib/ride/RideFeel.svelte';
+	import RideName from '$lib/ride/RideName.svelte';
 	import ShareToggle from '$lib/ride/ShareToggle.svelte';
+	import Pencil from '@lucide/svelte/icons/pencil';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 
 	const id = $derived(page.params.id ?? '');
@@ -52,6 +54,8 @@
 		rideBackLink(page.url.searchParams.get('back'), ride?.road),
 	);
 	const title = $derived(ride ? rideTitle(ride) : null);
+	// The rename box (#4209), opened from the header or the ride's menu.
+	let renaming = $state(false);
 	let error = $state<string | null>(null);
 	// A ride that is not yours reads as absent, and retrying will not find it —
 	// so it gets the empty state, not the error-with-retry one.
@@ -139,6 +143,7 @@
 		ride = null;
 		error = null;
 		missing = false;
+		renaming = false;
 		downloadError = null;
 		best = null;
 		bestLoaded = false;
@@ -224,7 +229,11 @@
 		<div
 			class="mt-4"
 			{@attach contextMenu(() =>
-				rideRowMenu(shown, () => void goto('/history')),
+				rideRowMenu(
+					shown,
+					() => void goto('/history'),
+					() => (renaming = true),
+				),
 			)}
 		>
 			<RecapHeader
@@ -258,6 +267,13 @@
 					     "Private" was the button you pressed to share (#2167). -->
 					<ShareToggle ride={shown} class="btn btn-secondary" />
 					<button
+						onclick={() => (renaming = true)}
+						aria-expanded={renaming}
+						class="btn btn-secondary"
+					>
+						<Pencil size={14} /> Rename
+					</button>
+					<button
 						onclick={() => void downloadCard()}
 						disabled={carding}
 						class="btn btn-secondary disabled:opacity-50"
@@ -285,6 +301,9 @@
 				{/snippet}
 			</RecapHeader>
 		</div>
+		{#if renaming}
+			<RideName ride={shown} onclose={() => (renaming = false)} />
+		{/if}
 		<div class="mt-4"><RecapTiles {tiles} /></div>
 		{#if downloadError}<div class="mt-3">
 				<Banner tone="error">

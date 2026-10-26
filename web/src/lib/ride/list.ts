@@ -58,11 +58,11 @@ export function namingRoad(ride: {
 }
 
 /**
- * What a ride is called: its road's name when the road names it (a long
- * road's legs keep their "· leg 1 of 2"), else its workout's. One title for
- * the list, Home and the ride page, so a ride never reads as two rides.
+ * What was ridden: its road's name when the road names it (a long road's legs
+ * keep their "· leg 1 of 2"), else its workout's. What Against your best
+ * compares by, whatever the rider has since called the ride.
  */
-export function rideTitle(ride: {
+export function riddenName(ride: {
 	workoutName: string;
 	road?: RideRoad;
 }): string {
@@ -71,6 +71,19 @@ export function rideTitle(ride: {
 	return road.genName && ride.workoutName.startsWith(road.genName)
 		? road.name + ride.workoutName.slice(road.genName.length)
 		: road.name;
+}
+
+/**
+ * What a ride is called: the name the rider gave it (#4209), else what was
+ * ridden. One title for the list, Home and the ride page, so a ride never
+ * reads as two rides.
+ */
+export function rideTitle(ride: {
+	workoutName: string;
+	road?: RideRoad;
+	title?: string;
+}): string {
+	return ride.title || riddenName(ride);
 }
 
 export interface ServerRide extends RideRecord {
@@ -87,6 +100,8 @@ export interface ServerRide extends RideRecord {
 	climbedM?: number;
 	/** The rider's own road it rode (#3874). */
 	road?: RideRoad;
+	/** The name the rider gave the ride (#4209); absent where they gave none. */
+	title?: string;
 }
 
 /** One page of the rides list (#1549). */

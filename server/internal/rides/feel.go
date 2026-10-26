@@ -59,7 +59,7 @@ func (s *Service) handleFeel(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("How hard it felt is %d to %d, or nothing at all.", protocol.MinRPE, protocol.MaxRPE), "rpe")
 		return
 	}
-	note := trimNote(body.Note)
+	note := trimWritten(body.Note)
 	if note != nil && utf8.RuneCountInString(*note) > protocol.MaxRideNoteChars {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
 			fmt.Sprintf("A note is up to %d characters — this one is %d. Shorten it and save again.",
@@ -92,10 +92,11 @@ type feelJSON struct {
 	Note *string `json:"note"`
 }
 
-// trimNote turns what the rider typed into what is stored: an empty note is
-// no note (docs/SPEC.md), so a box cleared to spaces erases the column rather
-// than storing whitespace that reads as a note on every later page.
-func trimNote(raw *string) *string {
+// trimWritten turns what the rider typed into what is stored: an empty note
+// is no note (docs/SPEC.md), and an empty title is the workout's name again
+// (#4209), so a box cleared to spaces erases the column rather than storing
+// whitespace that reads as text on every later page.
+func trimWritten(raw *string) *string {
 	if raw == nil {
 		return nil
 	}

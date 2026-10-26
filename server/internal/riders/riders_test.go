@@ -278,6 +278,11 @@ func TestFriendSeesSharedRidesAndTheMonth(t *testing.T) {
 	h.befriend(t, "alice", "dan")
 	h.ride(t, "dan", lair, 400, true)
 	h.ride(t, "dan", crewFixture{}, 250, false)
+	// The name dan gave his shared ride (#4209) is the one his friends read.
+	if _, err := h.store.Pool.Exec(t.Context(),
+		"update rides set title = 'Hill day' where user_id = $1::uuid and shared_at is not null", h.id("dan")); err != nil {
+		t.Fatal(err)
+	}
 
 	_, body := h.get(t, "alice", "/api/riders/"+h.id("dan"))
 	if body["canAdd"] != false {
@@ -293,7 +298,7 @@ func TestFriendSeesSharedRidesAndTheMonth(t *testing.T) {
 	ride, _ := shared[0].(map[string]any)
 	// The ride was in a channel alice may not enter: with the crew, unnamed,
 	// and only under the names since ADR-0058 (#3362).
-	if ride["kj"] != float64(400) || ride["withCrew"] != true || ride["channelName"] != nil {
+	if ride["kj"] != float64(400) || ride["withCrew"] != true || ride["channelName"] != nil || ride["title"] != "Hill day" {
 		t.Fatalf("shared ride: %v", ride)
 	}
 	if _, old := ride["inRoom"]; old {

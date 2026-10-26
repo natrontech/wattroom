@@ -31,7 +31,7 @@ returning id;
 -- no foreign key, so it outlives a crew whose deletion sets the other two null.
 select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp,
        (rides.crew_id is not null or rides.channel_id is not null or rides.session_id is not null)::boolean as in_session, shared_at,
-       rides.distance_m, rides.climbed_m, rides.on_road,
+       rides.distance_m, rides.climbed_m, rides.on_road, rides.title,
        e.state as export_state,
        rides.crew_id, coalesce(c.name, '')::text as crew_name,
        rides.channel_id, coalesce(ch.name, '')::text as channel_name
@@ -51,7 +51,7 @@ limit $2;
 -- columns as ListUserRides so one JSON mapping serves both.
 select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp,
        (rides.crew_id is not null or rides.channel_id is not null or rides.session_id is not null)::boolean as in_session, shared_at,
-       rides.distance_m, rides.climbed_m, rides.on_road,
+       rides.distance_m, rides.climbed_m, rides.on_road, rides.title,
        e.state as export_state,
        rides.crew_id, coalesce(c.name, '')::text as crew_name,
        rides.channel_id, coalesce(ch.name, '')::text as channel_name
@@ -75,7 +75,7 @@ limit 1;
 -- owns. Same columns as ListUserRides so one JSON mapping serves all three.
 select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp,
        (rides.crew_id is not null or rides.channel_id is not null or rides.session_id is not null)::boolean as in_session, shared_at,
-       rides.distance_m, rides.climbed_m, rides.on_road,
+       rides.distance_m, rides.climbed_m, rides.on_road, rides.title,
        e.state as export_state,
        rides.crew_id, coalesce(c.name, '')::text as crew_name,
        rides.channel_id, coalesce(ch.name, '')::text as channel_name
@@ -102,7 +102,7 @@ limit 1;
 -- only links one they may enter.
 select r.id, r.user_id, r.workout_name, r.started_at, r.seconds, r.avg_watts, r.kj,
        r.execution, r.ftp_watts, r.samples, r.shared_at, r.created_at, r.curve, r.xp,
-       r.norm_watts, r.execution_scored, r.ftp_after_watts, r.last20m_hr, r.rpe, r.note,
+       r.norm_watts, r.execution_scored, r.ftp_after_watts, r.last20m_hr, r.rpe, r.note, r.title,
        r.crew_id, r.channel_id, r.session_id,
        coalesce(c.name, '')::text as crew_name,
        coalesce(ch.name, '')::text as channel_name,
@@ -414,7 +414,7 @@ update rides set norm_watts = $2 where id = $1;
 -- reads, and an id is not where they rode.
 select r.id, r.workout_name, r.started_at, r.seconds, r.avg_watts, r.kj, r.execution,
        r.execution_scored, r.norm_watts, r.ftp_watts, r.ftp_after_watts, r.xp, r.curve,
-       r.shared_at, r.rpe, r.note,
+       r.shared_at, r.rpe, r.note, r.title,
        c.name as crew_name, ch.name as channel_name,
        r.ride_mode, r.timeable, r.from_m, r.distance_m, r.climbed_m, r.weight_kg,
        r.mean_shelter, r.route_key, r.road_h
@@ -466,6 +466,13 @@ where id = sqlc.arg(id) and user_id = sqlc.arg(user_id);
 -- rather than as forbidden — SetRideShared's rule, and here it is also the
 -- only thing standing between a note and a stranger (ADR-0055).
 update rides set rpe = sqlc.narg(rpe)::smallint, note = sqlc.narg(note)::text
+where id = sqlc.arg(id) and user_id = sqlc.arg(user_id);
+
+-- name: SetRideTitle :execrows
+-- The name the rider gives a finished ride (#4209). NULL clears it, and the
+-- ride reads as its workout's name again; workout_name itself never moves,
+-- since Against your best groups by it. Owner-only by the where clause.
+update rides set title = sqlc.narg(title)::text
 where id = sqlc.arg(id) and user_id = sqlc.arg(user_id);
 
 -- name: SetRideShared :execrows

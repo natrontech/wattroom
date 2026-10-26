@@ -7,9 +7,11 @@ package rides
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 
@@ -18,6 +20,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/budget"
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/keyset"
+	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
@@ -84,7 +87,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	// A picture of the ride, for the rider to put wherever pictures go (#2112).
 	mux.HandleFunc("GET /api/rides/{id}/card.png", s.handleCard)
 	mux.HandleFunc("POST /api/rides/{id}/export/retry", s.handleRetryExport)
-	mux.HandleFunc("PATCH /api/rides/{id}", s.handleShare)
+	mux.HandleFunc("PATCH /api/rides/{id}", s.handlePatch)
 	mux.HandleFunc("PUT /api/rides/{id}/ftp-after", s.handleFtpAfter)
 	// What the rider says about the ride, next to what the trainer said (#2328).
 	mux.HandleFunc("PUT /api/rides/{id}/feel", s.handleFeel)
@@ -92,13 +95,17 @@ func (s *Service) Register(mux *http.ServeMux) {
 }
 
 type rideJSON struct {
-	ID          string  `json:"id"`
-	WorkoutName string  `json:"workoutName"`
-	StartedAt   string  `json:"startedAt"`
-	Seconds     int     `json:"seconds"`
-	AvgWatts    int     `json:"avgWatts"`
-	Kj          int     `json:"kj"`
-	Execution   float64 `json:"execution"`
+	ID          string `json:"id"`
+	WorkoutName string `json:"workoutName"`
+	// The rider's own name for the ride (#4209), on their own reads only:
+	// free text can name any place, so a personal token, which is how an AI
+	// reads (ADR-0017, ADR-0063), never carries it.
+	Title     string  `json:"title,omitempty"`
+	StartedAt string  `json:"startedAt"`
+	Seconds   int     `json:"seconds"`
+	AvgWatts  int     `json:"avgWatts"`
+	Kj        int     `json:"kj"`
+	Execution float64 `json:"execution"`
 	// #1143: false when the workout prescribed nothing to score, so a client
 	// shows "not scored" rather than a percentage that means nothing.
 	ExecutionScored bool `json:"executionScored"`
@@ -179,9 +186,13 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 		ids = append(ids, row.ID)
 	}
 	// A personal token is how a coach's AI reads (ADR-0017), and a route's
-	// id and its owner's rename never reach an AI context (ADR-0063).
+	// id and its owner's rename never reach an AI context (ADR-0063) — nor
+	// does the rider's own name for a ride (#4209).
 	if !tokens.Bearer(r) {
 		s.nameOwnRoads(r.Context(), user.ID, ids, out)
+		for i, row := range rows {
+			out[i].Title = titleOf(row.Title)
+		}
 	}
 	body := map[string]any{"rides": out, "more": len(rows) == listPage}
 	// A full page means there may be more, and the cursor comes from the
@@ -284,13 +295,17 @@ func (s *Service) handleBest(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "best ride failed", err, "Your rides could not be loaded.")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"ride": rideJSONOf(row)})
+	best := rideJSONOf(row)
+	if !tokens.Bearer(r) {
+		best.Title = titleOf(row.Title)
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"ride": best})
 }
 
-// handleShare flips one ride's friends-visibility (ADR-0024). Owner-only:
-// the update's where clause carries the user, so someone else's ride reads
-// as absent rather than as forbidden.
-func (s *Service) handleShare(w http.ResponseWriter, r *http.Request) {
+// handlePatch flips one ride's friends-visibility (ADR-0024) and names it
+// (#4209), either or both. Owner-only: each update's where clause carries the
+// user, so someone else's ride reads as absent rather than as forbidden.
+func (s *Service) handlePatch(w http.ResponseWriter, r *http.Request) {
 	user, ok := s.users.RequireUser(w, r, "Not signed in.")
 	if !ok {
 		return
@@ -302,24 +317,61 @@ func (s *Service) handleShare(w http.ResponseWriter, r *http.Request) {
 	}
 	var body struct {
 		SharedWithFriends *bool `json:"sharedWithFriends"`
+		// The rider's name for the ride; "" gives it its workout's name back.
+		Title *string `json:"title"`
 	}
-	if err := httpx.DecodeStrict(r, &body); err != nil || body.SharedWithFriends == nil {
+	if err := httpx.DecodeStrict(r, &body); err != nil || (body.SharedWithFriends == nil && body.Title == nil) {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-			"Send sharedWithFriends as true or false.", "sharedWithFriends")
+			"Send sharedWithFriends as true or false, or title as text.", "sharedWithFriends")
 		return
 	}
-	n, err := s.store.Queries.SetRideShared(r.Context(), db.SetRideSharedParams{
-		Shared: *body.SharedWithFriends, ID: id, UserID: user.ID,
-	})
-	if err != nil {
-		httpx.Fail(w, s.log, "ride share failed", err, "The ride could not be updated.")
+	title := trimWritten(body.Title)
+	if title != nil && utf8.RuneCountInString(*title) > protocol.MaxWorkoutNameChars {
+		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
+			fmt.Sprintf("A ride's name is up to %d characters — this one is %d.",
+				protocol.MaxWorkoutNameChars, utf8.RuneCountInString(*title)), "title")
 		return
+	}
+	out := map[string]any{"id": store.UUIDString(id)}
+	if body.SharedWithFriends != nil {
+		n, err := s.store.Queries.SetRideShared(r.Context(), db.SetRideSharedParams{
+			Shared: *body.SharedWithFriends, ID: id, UserID: user.ID,
+		})
+		if !s.updated(w, n, err, "ride share failed") {
+			return
+		}
+		out["sharedWithFriends"] = *body.SharedWithFriends
+	}
+	if body.Title != nil {
+		n, err := s.store.Queries.SetRideTitle(r.Context(), db.SetRideTitleParams{
+			Title: title, ID: id, UserID: user.ID,
+		})
+		if !s.updated(w, n, err, "ride title failed") {
+			return
+		}
+		out["title"] = titleOf(title)
+	}
+	httpx.WriteJSON(w, http.StatusOK, out)
+}
+
+// updated answers an owner-scoped update that failed or touched no row, and
+// reports whether the request may go on.
+func (s *Service) updated(w http.ResponseWriter, n int64, err error, logMsg string) bool {
+	if err != nil {
+		httpx.Fail(w, s.log, logMsg, err, "The ride could not be updated.")
+		return false
 	}
 	if n == 0 {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "That ride is not one of yours.")
-		return
+		return false
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{
-		"id": store.UUIDString(id), "sharedWithFriends": *body.SharedWithFriends,
-	})
+	return true
+}
+
+// titleOf is the rider's name for a ride, or "" where they gave none.
+func titleOf(title *string) string {
+	if title == nil {
+		return ""
+	}
+	return *title
 }

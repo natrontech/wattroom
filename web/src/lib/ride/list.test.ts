@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ridePlace, rideTitle } from './list';
+import { riddenName, ridePlace, rideTitle } from './list';
 
 describe('ridePlace (#2457)', () => {
 	const crew = { id: 'c', name: 'Thursday Crew' };
@@ -48,5 +48,15 @@ describe('rideTitle (#3874)', () => {
 		expect(
 			rideTitle({ workoutName: 'Free ride', road: { ...road, genName: '' } }),
 		).toBe('Home loop');
+	});
+	// The name the rider gave the ride (#4209) outranks the road's and the
+	// workout's, while what was ridden stays what Against your best says.
+	it('takes the rider’s own name first, and keeps what was ridden apart', () => {
+		const titled = { workoutName: 'Free ride', road, title: 'Hill day' };
+		expect(rideTitle(titled)).toBe('Hill day');
+		expect(riddenName(titled)).toBe('Home loop');
+		expect(rideTitle({ workoutName: 'Sweet Spot 3×15', title: '' })).toBe(
+			'Sweet Spot 3×15',
+		);
 	});
 });

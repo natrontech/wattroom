@@ -136,14 +136,17 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 }
 
 type rideDetailJSON struct {
-	ID          string  `json:"id"`
-	WorkoutName string  `json:"workoutName"`
-	StartedAt   string  `json:"startedAt"`
-	Seconds     int     `json:"seconds"`
-	AvgWatts    int     `json:"avgWatts"`
-	NormWatts   int     `json:"normWatts"`
-	Kj          int     `json:"kj"`
-	Execution   float64 `json:"execution"`
+	ID          string `json:"id"`
+	WorkoutName string `json:"workoutName"`
+	// The rider's own name for the ride (#4209), what the page titles it
+	// with; absent where they gave none.
+	Title     string  `json:"title,omitempty"`
+	StartedAt string  `json:"startedAt"`
+	Seconds   int     `json:"seconds"`
+	AvgWatts  int     `json:"avgWatts"`
+	NormWatts int     `json:"normWatts"`
+	Kj        int     `json:"kj"`
+	Execution float64 `json:"execution"`
 	// #1143: false when the workout prescribed nothing to score, so a client
 	// shows "not scored" rather than a percentage that means nothing.
 	ExecutionScored bool `json:"executionScored"`
@@ -242,7 +245,7 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	out := rideDetailJSON{
-		ID: store.UUIDString(row.ID), WorkoutName: row.WorkoutName,
+		ID: store.UUIDString(row.ID), WorkoutName: row.WorkoutName, Title: titleOf(row.Title),
 		StartedAt: row.StartedAt.Time.Format(time.RFC3339),
 		Seconds:   int(row.Seconds), AvgWatts: int(row.AvgWatts),
 		NormWatts: normWatts(row), Kj: int(row.Kj),
