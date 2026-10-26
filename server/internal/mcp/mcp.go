@@ -285,8 +285,9 @@ func (s *Service) listRides(ctx context.Context, user db.User, args json.RawMess
 		// A road ride is its road's numbers and nothing else here (#3054,
 		// ADR-0063): its workout is named after the route, and a route's name
 		// is a place, which never enters an AI context — nor does its id, its
-		// shape or the ride's own metres (#3053).
-		if row.DistanceM != nil {
+		// shape or the ride's own metres (#3053). One the save never placed
+		// is marked on_road alone (#4154).
+		if row.DistanceM != nil || row.OnRoad != nil && *row.OnRoad {
 			r.Workout = "Route ride"
 			if n, ok := numbers[store.UUIDString(row.ID)]; ok {
 				km := math.Round(float64(n.LengthM)/100) / 10

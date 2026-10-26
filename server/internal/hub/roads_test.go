@@ -140,8 +140,8 @@ func TestAPickedRoadIsRefusedWhenItMayNotRide(t *testing.T) {
 
 // A road workout goes out under its route's generated name (#3055): the
 // coach named the route after where they live, and that name reaches no
-// tick, no presence radar and no live-session card — nor the recap and the
-// saved rides, which read the same state.
+// tick, no presence radar, no live-session card and no recap (#4154) — nor
+// the saved rides, which read the same state.
 func TestAPickedRoadGoesOutUnderItsGeneratedName(t *testing.T) {
 	h, _, url := controlHub(t)
 	h.SetRoads(fakeRoads{})
@@ -155,10 +155,17 @@ func TestAPickedRoadGoesOutUnderItsGeneratedName(t *testing.T) {
 	})
 	const generated = "Road · 3.0 km · 50 m"
 	live, _ := h.LiveSession("velvet")
+	h.mu.Lock()
+	rm := h.states["velvet"]
+	h.mu.Unlock()
+	rm.mu.Lock()
+	recap := rm.recapLocked(rm.session.state(h.now()), h.now())
+	rm.mu.Unlock()
 	for surface, name := range map[string]string{
 		"the tick":         tick.Tick.State.WorkoutName,
 		"the radar":        h.Presence("velvet").WorkoutName,
 		"the live session": live.Workout,
+		"the recap":        recap.Workout,
 	} {
 		if name != generated {
 			t.Errorf("%s names the session %q, want %q", surface, name, generated)

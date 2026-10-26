@@ -9,10 +9,10 @@ insert into rides (
     ftp_watts, samples, curve, xp, norm_watts, last20m_hr,
     crew_id, channel_id, session_id,
     route_id, route_key, road_h, ride_mode, timeable,
-    from_m, distance_m, climbed_m, weight_kg, mean_shelter
+    from_m, distance_m, climbed_m, weight_kg, mean_shelter, on_road
 )
 values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
-        $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
+        $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)
 returning id;
 
 -- name: ListUserRides :many
@@ -31,7 +31,7 @@ returning id;
 -- no foreign key, so it outlives a crew whose deletion sets the other two null.
 select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp,
        (rides.crew_id is not null or rides.channel_id is not null or rides.session_id is not null)::boolean as in_session, shared_at,
-       rides.distance_m, rides.climbed_m,
+       rides.distance_m, rides.climbed_m, rides.on_road,
        e.state as export_state,
        rides.crew_id, coalesce(c.name, '')::text as crew_name,
        rides.channel_id, coalesce(ch.name, '')::text as channel_name
@@ -51,7 +51,7 @@ limit $2;
 -- columns as ListUserRides so one JSON mapping serves both.
 select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp,
        (rides.crew_id is not null or rides.channel_id is not null or rides.session_id is not null)::boolean as in_session, shared_at,
-       rides.distance_m, rides.climbed_m,
+       rides.distance_m, rides.climbed_m, rides.on_road,
        e.state as export_state,
        rides.crew_id, coalesce(c.name, '')::text as crew_name,
        rides.channel_id, coalesce(ch.name, '')::text as channel_name
@@ -75,7 +75,7 @@ limit 1;
 -- owns. Same columns as ListUserRides so one JSON mapping serves all three.
 select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp,
        (rides.crew_id is not null or rides.channel_id is not null or rides.session_id is not null)::boolean as in_session, shared_at,
-       rides.distance_m, rides.climbed_m,
+       rides.distance_m, rides.climbed_m, rides.on_road,
        e.state as export_state,
        rides.crew_id, coalesce(c.name, '')::text as crew_name,
        rides.channel_id, coalesce(ch.name, '')::text as channel_name
@@ -434,10 +434,10 @@ delete from users where id = $1;
 -- name: GetRideForUpload :one
 -- The uploader's one read: the ride plus the owner's consent flag and the
 -- crew's name for the activity description (null for solo rides, #2443).
--- A route ride's title is its numbers (#4154): route_key marks one, and
--- outlives the route.
+-- A route ride's title is its numbers (#4154): route_key marks one the save
+-- placed, and outlives the route; on_road marks every one since.
 select r.id, r.user_id, r.workout_name, r.started_at, r.samples, u.strava_upload,
-       c.name as crew_name, r.route_key, r.distance_m
+       c.name as crew_name, r.route_key, r.distance_m, r.on_road
 from rides r
 join users u on u.id = r.user_id
 left join crews c on c.id = r.crew_id

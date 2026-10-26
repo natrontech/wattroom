@@ -10,7 +10,7 @@ import (
 // A route ride's title carries no place, generated or not (#4154, ADR-0063):
 // saved under a generated name that names one, it goes out as its distance.
 func TestActivityName(t *testing.T) {
-	key, km := "road-hash", int32(52_940)
+	key, km, yes, no := "road-hash", int32(52_940), true, false
 	named := "Road · " + testx.Corridor.Places[0] + " · 52.9 km"
 	for _, c := range []struct {
 		what string
@@ -20,6 +20,8 @@ func TestActivityName(t *testing.T) {
 		{"a workout", db.GetRideForUploadRow{WorkoutName: "Sweet spot"}, "Sweet spot"},
 		{"a route ride", db.GetRideForUploadRow{WorkoutName: named, RouteKey: &key, DistanceM: &km}, "Route ride · 52.9 km"},
 		{"a route ride never replayed", db.GetRideForUploadRow{WorkoutName: named, RouteKey: &key}, "Route ride"},
+		{"a road ride the save never placed", db.GetRideForUploadRow{WorkoutName: named, OnRoad: &yes}, "Route ride"},
+		{"a workout off any road", db.GetRideForUploadRow{WorkoutName: "Sweet spot", OnRoad: &no}, "Sweet spot"},
 	} {
 		got := activityName(c.ride)
 		if leak := testx.Leak(got); got != c.want || leak != "" {

@@ -226,12 +226,14 @@ func accountWeight(ctx context.Context, q *db.Queries, user pgtype.UUID) *int16 
 	return WeightThatDay(u)
 }
 
-// SetHow writes how every ride was ridden onto its row: its mode, whether a
-// time on it is the rider's, and their weight that day. Mean shelter is the
-// row's own — a race's, as the hub computed it (ADR-0077) — and 0 for a ride
-// nobody sheltered.
+// SetHow writes how every ride was ridden onto its row: its mode, whether it
+// rode a road — placed on it or not (#4154) — whether a time on it is the
+// rider's, and their weight that day. Mean shelter is the row's own — a
+// race's, as the hub computed it (ADR-0077) — and 0 for a ride nobody
+// sheltered.
 func SetHow(row *db.CreateRideParams, mode, workoutJSON string, onRoad bool, drive string, weight *int16) {
-	row.RideMode, row.WeightKg = &mode, weight
+	road := onRoad || workout.OnRoad(workoutJSON)
+	row.RideMode, row.OnRoad, row.WeightKg = &mode, &road, weight
 	shelter := 0.0
 	if row.MeanShelter != nil {
 		shelter = float64(*row.MeanShelter)

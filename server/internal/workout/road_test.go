@@ -30,6 +30,25 @@ func TestAPlainNameCarriesARoadsNumbersAlone(t *testing.T) {
 	}
 }
 
+// A workout rides a road whether or not its copy is the strict reference
+// RoadOf takes (#4154): the save is handed the copy with its cut attached.
+func TestOnRoadReadsAnyCopyOfARoad(t *testing.T) {
+	for _, c := range []struct {
+		name, json string
+		want       bool
+	}{
+		{"a reference", withRoad(`{"routeId":"`+routeID+`","fromM":0,"toM":3000}`, ""), true},
+		{"an attached copy", withRoad(`{"routeId":"`+routeID+`","fromM":0,"toM":3000,"profile":"AAAA"}`, ""), true},
+		{"a null road", withRoad(`null`, ""), false},
+		{"no road", `{"name":"Sweet spot","steps":[]}`, false},
+		{"not a workout", `nope`, false},
+	} {
+		if got := OnRoad(c.json); got != c.want {
+			t.Errorf("%s: OnRoad = %v, want %v", c.name, got, c.want)
+		}
+	}
+}
+
 // #3051's validation matrix: a workout carries its road as a reference and
 // nothing else, and a road step is a length of time on it.
 func TestAWorkoutsRoadIsAReferenceOnly(t *testing.T) {

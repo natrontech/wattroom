@@ -348,6 +348,30 @@ func TestListRidesNamesNoPlace(t *testing.T) {
 	}
 }
 
+// A road ride the save never placed — no metres, or its route deleted — has
+// no distance to mark it, and reaches an AI context as a route ride all the
+// same, whatever name it was kept under (#4154).
+func TestListRidesNamesNoPlaceForAnUnplacedRoadRide(t *testing.T) {
+	mux, st, user := setup(t)
+	onRoad := true
+	if _, err := st.Queries.CreateRide(t.Context(), db.CreateRideParams{
+		UserID: user.ID, WorkoutName: testx.Corridor.Route + " via " + testx.Corridor.Climbs[0],
+		StartedAt: pgtype.Timestamptz{Time: time.Now().Add(-time.Hour), Valid: true},
+		Seconds:   3600, AvgWatts: 200, Kj: 720, Execution: 1, ExecutionScored: true,
+		FtpWatts: 250, Samples: []byte(`[]`), Curve: []byte(`{}`), Xp: 10, OnRoad: &onRoad,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	_, body := post(t, mux, `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_rides","arguments":{}}}`)
+	raw, err := json.Marshal(body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if leak := testx.Leak(string(raw)); leak != "" || !strings.Contains(string(raw), `\"workout\":\"Route ride\"`) {
+		t.Errorf("list_rides carries %q, or no route ride: %s", leak, raw)
+	}
+}
+
 // The session flag rides under its standing name (#2959), beside the retired
 // `room` a coach's script still reads until #3461 drops it: both present,
 // both saying the same thing.
