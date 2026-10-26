@@ -513,6 +513,12 @@ export const MaxRPE = 10;
  */
 export const MaxRideNoteChars = 500;
 /**
+ * A workout's name, planned, ridden or saved (docs/SPEC.md "Names"), in
+ * CHARACTERS — MaxMessageChars' rule. A ride the rider retitles (#4209)
+ * is a ridden workout's name, so its title takes the same bound.
+ */
+export const MaxWorkoutNameChars = 80;
+/**
  * A crew's pin board (ADR-0056, docs/SPEC.md "Pins"). Both sides read
  * these: the editor caps its boxes at the first two, the server refuses
  * anything longer, and the count is what the "Pin something" button
