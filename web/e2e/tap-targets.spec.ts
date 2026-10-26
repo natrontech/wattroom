@@ -172,7 +172,7 @@ test('the browse surfaces’ links and folds clear the floor on a phone', async 
  * sat at 28 px beside the coach's controls in a running session — small to
  * hit on purpose and easy to hit by mistake.
  */
-test('Ride in 3D, on a ride on the flat road, is riding size (#3080, #3084) @world', async ({
+test("the view switch's 3D, on a ride on the flat road, is riding size (#3080, #3084, #4217) @world", async ({
 	riders,
 }) => {
 	test.skip(
@@ -188,12 +188,12 @@ test('Ride in 3D, on a ride on the flat road, is riding size (#3080, #3084) @wor
 	await openAWorkoutOnARoad(rider);
 	await rider.getByRole('button', { name: 'Ride simulated' }).click();
 	await rider.getByRole('button', { name: 'Start the ride' }).click();
-	const retry = rider.getByRole('button', { name: 'Ride in 3D' });
+	const retry = rider.getByRole('button', { name: '3D', exact: true });
 	await expect(retry).toBeVisible({ timeout: 30_000 });
 	const retryBox = await box(retry);
 	expect(
 		retryBox.height,
-		`'Ride in 3D' is ${retryBox.height}px tall`,
+		`3D is ${retryBox.height}px tall`,
 	).toBeGreaterThanOrEqual(RIDING);
 });
 

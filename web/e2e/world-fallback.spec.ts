@@ -72,7 +72,8 @@ test('a lost GPU context hands the ride to the flat road, and 3D comes back on a
 	await rideInTheWorld(page, true);
 	await onTheFlatRoad(page, /graphics driver/);
 
-	await page.getByRole('button', { name: 'Try 3D again' }).click();
+	// The view switch's 3D says why, and a tap there tries again (#4217).
+	await page.getByRole('button', { name: /^3D\s*⟳ graphics lost$/ }).click();
 	await expect(page.getByTestId('flat-road')).toHaveCount(0);
 	await expect(page.locator('[data-surface=docked] canvas')).toBeVisible({
 		timeout: 60_000,

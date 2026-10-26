@@ -15,8 +15,7 @@
 	import ExecutionMeter from '$lib/session/ExecutionMeter.svelte';
 	import GamePanel from '$lib/session/GamePanel.svelte';
 	import RidingSurface from '$lib/session/RidingSurface.svelte';
-	import FlatButton from '$lib/world/FlatButton.svelte';
-	import FlatRoad from '$lib/world/FlatRoad.svelte';
+	import ViewSwitch from '$lib/world/ViewSwitch.svelte';
 	import { createWorldView } from '$lib/world/world-view.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import BiasTrim from '$lib/session/BiasTrim.svelte';
@@ -184,7 +183,7 @@
 		     column's sheet, folded away while the world rides. -->
 		<div class="flex items-center gap-2">
 			<SessionControls compact />
-			{#if inWorld}<FlatButton onflat={world.flatten} class={ICON} />{/if}
+			{#if channel.ridden}<ViewSwitch {world} drawn={inWorld} />{/if}
 			<button
 				onclick={() => channel.openTv()}
 				class={ICON}
@@ -214,9 +213,6 @@
 	{#snippet trainerLine()}
 		{#if !channel.trainer || targetsNote}
 			<div data-status-line><TrainerOverview compact /></div>
-		{/if}
-		{#if !inWorld && channel.ridden && world.reason}
-			<FlatRoad reason={world.reason} onretry={world.retry} />
 		{/if}
 	{/snippet}
 	{#snippet strip()}

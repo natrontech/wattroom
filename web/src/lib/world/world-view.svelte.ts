@@ -7,6 +7,7 @@
 import { prefersReducedMotion } from '$lib/motion';
 import { PHONE_MAX_PX } from '$lib/device.svelte';
 import { worldFits } from '$lib/session/docks';
+import { play } from '$lib/sound/cues';
 import { setWorldMode, worldMode, type WorldMode } from './mode';
 import {
 	rideView,
@@ -76,6 +77,10 @@ export function createWorldView() {
 			return reason();
 		},
 		fail(why: Failure) {
+			// A world that goes flat says so (ux.md: a state change announces
+			// itself with a sound and a visual, the visual the view switch's
+			// 3D segment): a rider who looked away missed it (#4217).
+			if (!failure) play('fault');
 			failure = why;
 			view = decide();
 		},

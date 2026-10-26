@@ -48,8 +48,7 @@
 	import { roadContext } from '$lib/session/computer-pages';
 	import { SKYLINE_PX } from '$lib/session/docks';
 	import RidingSurface from '$lib/session/RidingSurface.svelte';
-	import FlatButton from '$lib/world/FlatButton.svelte';
-	import FlatRoad from '$lib/world/FlatRoad.svelte';
+	import ViewSwitch from '$lib/world/ViewSwitch.svelte';
 	import type { RoadMate } from '$lib/channel/road-mates';
 	import { JUMP_M } from '$lib/world/sim';
 	import { createWorldView } from '$lib/world/world-view.svelte';
@@ -301,9 +300,6 @@
 				{:else if hint}
 					<p class="text-muted truncate">{hint}</p>
 				{/if}
-				{#if road && world.reason}
-					<FlatRoad reason={world.reason} onretry={world.retry} />
-				{/if}
 			</div>
 		{/if}
 		<!-- One row of 44 px controls (ux.md, TARGETS ride-free-road 7); it
@@ -353,9 +349,7 @@
 				/>
 			{/if}
 			{#if onflag}<FlagButton onflag={flag} sends="after" />{/if}
-			{#if drawn}
-				<FlatButton onflat={world.flatten} class={ICON} />
-			{/if}
+			{#if road}<ViewSwitch {world} {drawn} />{/if}
 			{#if ontv}
 				<button onclick={ontv} class={ICON} aria-label="TV mode" title="TV mode"
 					><MonitorUp size={20} /></button

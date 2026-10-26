@@ -23,12 +23,13 @@
 	import ComputerMap from '$lib/ride/ComputerMap.svelte';
 	import { gapLine } from '$lib/road/ghost';
 	import { shifterSlot } from '$lib/ble/controller-slot.svelte';
+	import { computerShown } from '$lib/session/computer-shown.svelte';
 	import {
 		PAGE_NAMES,
 		TV_LABEL,
 		claimPageTurn,
 		climbHeader,
-		MAP_ASK,
+		PAGE_ASK,
 		fieldsFor,
 		pagesFor,
 		type Field,
@@ -142,15 +143,28 @@
 		if (untrack(() => shown) === 'ride') page = 'climb';
 	});
 
-	// M, the ride key, turns to MAP where this computer has one.
+	// M, the ride key, and the view switch turn to a page where this computer
+	// has it (#4217).
 	$effect(() => {
 		const ask = (event: Event) => {
-			if (!pages.includes('map')) return;
-			page = 'map';
+			const wanted = (event as CustomEvent<ComputerPage>).detail;
+			if (!pages.includes(wanted)) return;
+			page = wanted;
 			event.preventDefault();
 		};
-		window.addEventListener(MAP_ASK, ask);
-		return () => window.removeEventListener(MAP_ASK, ask);
+		window.addEventListener(PAGE_ASK, ask);
+		return () => window.removeEventListener(PAGE_ASK, ask);
+	});
+	// The view switch reads where the rider is looking: Map is its own
+	// segment. The riding screen's computer says, never the TV's copy.
+	$effect(() => {
+		if (tv) return;
+		computerShown.page = shown;
+		computerShown.maps = pages.includes('map');
+		return () => {
+			computerShown.page = 'ride';
+			computerShown.maps = false;
+		};
 	});
 
 	// A controller's Left and Right turn the pages, as ← and → do (#3335).

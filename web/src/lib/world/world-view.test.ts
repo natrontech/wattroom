@@ -1,6 +1,9 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setWorldMode, worldMode } from './mode';
+
+const cues = vi.hoisted(() => [] as string[]);
+vi.mock('$lib/sound/cues', () => ({ play: (id: string) => cues.push(id) }));
 import { createWorldView } from './world-view.svelte';
 
 /** A browser that draws the world: WebGL2 and WEBGL_multi_draw. */
@@ -21,13 +24,14 @@ const at = (height: number) => {
 
 describe('a ride’s world view (#3080)', () => {
 	beforeEach(() => {
+		cues.length = 0;
 		localStorage.clear();
 		capable();
 		at(900);
 	});
 	afterEach(() => vi.restoreAllMocks());
 
-	it('rides Flat until the rider turns 3D on, and "Ride in 3D" turns it on (#3084)', () => {
+	it('rides Flat until the rider turns 3D on, and 3D turns it on (#3084)', () => {
 		const view = createWorldView();
 		expect(view.on).toBe(false);
 		expect(view.reason).toBe('chosen');
@@ -119,5 +123,16 @@ describe('a ride’s world view (#3080)', () => {
 		const fresh = await import('./world-view.svelte');
 		setWorldMode('full');
 		expect(fresh.createWorldView().reason).toBe('capability');
+	});
+
+	it('sounds a fallback once, and nothing for the rider’s own Flat (#4217)', () => {
+		setWorldMode('full');
+		const view = createWorldView();
+		view.flatten();
+		expect(cues).toEqual([]);
+		view.retry();
+		view.fail('frames');
+		view.fail('context-lost');
+		expect(cues).toEqual(['fault']);
 	});
 });

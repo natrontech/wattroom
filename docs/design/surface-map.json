@@ -28,8 +28,13 @@
 		"surfaces": ["ride-free-road", "ride-skyline-fallback"]
 	},
 	{
-		"files": ["web/src/lib/world/FlatRoad.svelte"],
-		"surfaces": ["ride-skyline-fallback"]
+		"files": ["web/src/lib/world/ViewSwitch.svelte"],
+		"surfaces": [
+			"ride-road-world",
+			"ride-free-road",
+			"ride-session-road",
+			"ride-skyline-fallback"
+		]
 	},
 	{
 		"files": ["web/src/lib/ride/RideStatus.svelte"],

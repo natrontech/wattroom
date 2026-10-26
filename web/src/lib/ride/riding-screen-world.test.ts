@@ -61,8 +61,8 @@ describe('the world on a ride', () => {
 	it('is not mounted on a ride with no road', () => {
 		const html = screen(openers);
 		expect(html).not.toContain('data-surface="docked"');
-		// No world, no Flat / 3D switch (#3084).
-		expect(html).not.toContain('aria-label="Flat road"');
+		// No world, no view switch (#3084, #4217).
+		expect(html).not.toContain('data-testid="view-switch"');
 	});
 
 	it('is mounted on a ride on a road', () => {
@@ -83,17 +83,19 @@ describe('the world on a ride', () => {
 		expect(html).toMatch(
 			/<button[^>]*title="[^"]+"[^>]*aria-label="Flag a problem"/,
 		);
-		for (const name of [
-			'Flat road',
-			'TV mode',
-			'One more minute',
-			'Skip block',
-		])
+		for (const name of ['TV mode', 'One more minute', 'Skip block'])
 			expect(html).toMatch(
 				new RegExp(
 					`<button[^>]*class="[^"]*h-11 w-11[^"]*" aria-label="${name}" title="[^"]+"`,
 				),
 			);
 		expect(html).toMatch(/>End ride<\/button>/);
+		// 3D and Flat are one switch in the same row (#4217, ADR-0091), 3D
+		// pressed while the world draws.
+		expect(html).toMatch(
+			/role="group" aria-label="view" data-testid="view-switch"/,
+		);
+		expect(html).toMatch(/aria-pressed="true"[^>]*>3D/);
+		expect(html).toMatch(/aria-pressed="false"[^>]*>Flat<\/button>/);
 	});
 });

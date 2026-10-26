@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { rideView, type RideView, type RideViewEnv } from './ride-view';
+import {
+	REASONS,
+	rideView,
+	viewSwitch,
+	type RideView,
+	type RideViewEnv,
+} from './ride-view';
 
 /** A capable browser whose rider turned 3D on. */
 const able: RideViewEnv = {
@@ -80,4 +86,66 @@ describe('rideView (#3080)', () => {
 	];
 	for (const [name, env, view] of cases)
 		it(name, () => expect(rideView({ ...able, ...env })).toEqual(view));
+});
+
+/**
+ * The view switch (#4217, ADR-0091): pressed is where the rider looks, and
+ * 3D is offered wherever a tap there can bring the world back. A rider whose
+ * world fell back found no way back from a line at label size.
+ */
+describe('viewSwitch', () => {
+	const cases: [
+		string,
+		Parameters<typeof viewSwitch>[0],
+		ReturnType<typeof viewSwitch>,
+	][] = [
+		[
+			'in the world',
+			{ world: true, reason: null, onMap: false },
+			{ pressed: '3d', worldOffered: true },
+		],
+		[
+			'flat by choice',
+			{ world: false, reason: 'chosen', onMap: false },
+			{ pressed: 'flat', worldOffered: true },
+		],
+		[
+			'flat after dropped frames',
+			{ world: false, reason: 'frames', onMap: false },
+			{ pressed: 'flat', worldOffered: true },
+		],
+		[
+			'flat under reduced motion',
+			{ world: false, reason: 'motion', onMap: false },
+			{ pressed: 'flat', worldOffered: true },
+		],
+		[
+			'flat in a browser with no WebGL',
+			{ world: false, reason: 'capability', onMap: false },
+			{ pressed: 'flat', worldOffered: false },
+		],
+		[
+			'flat in a window too short',
+			{ world: false, reason: 'short', onMap: false },
+			{ pressed: 'flat', worldOffered: false },
+		],
+		[
+			'on MAP over the world',
+			{ world: true, reason: null, onMap: true },
+			{ pressed: 'map', worldOffered: true },
+		],
+		[
+			'on MAP over the flat road',
+			{ world: false, reason: 'chosen', onMap: true },
+			{ pressed: 'map', worldOffered: true },
+		],
+	];
+	for (const [name, state, want] of cases)
+		it(name, () => expect(viewSwitch(state)).toEqual(want));
+
+	it('gives every reason but the rider’s own choice its few words', () => {
+		for (const [reason, { short }] of Object.entries(REASONS))
+			if (reason === 'chosen') expect(short).toBeNull();
+			else expect(short, reason).toBeTruthy();
+	});
 });

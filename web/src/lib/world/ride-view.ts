@@ -42,41 +42,75 @@ export function rideView(env: RideViewEnv): RideView {
 /** Reduced motion's one tap back into the world (ADR-0079): it sets Steady. */
 export const STEADY_BUTTON = 'Show the world (steady camera)';
 
-/** The rider's one tap from the flat road into 3D (#3084): it sets Full. */
-export const RIDE_3D = 'Ride in 3D';
-
-const TRY_AGAIN = 'Try 3D again';
-
 /**
- * The persistent line in slot 1 (errors.md: a ride-critical state is status,
- * never a toast): what happened, and the button that mends it, if one can — a
- * browser that cannot draw the world gets no button that would fail.
+ * Why the ride is on the Skyline, for the view switch (#4217, ADR-0091):
+ * `line` is the whole sentence, the switch's status for a screen reader and
+ * the 3D segment's tooltip (errors.md: a ride-critical state is status,
+ * never a toast); `short` the few words on the 3D segment itself; `retry`
+ * whether a tap on 3D can bring the world back. A browser that cannot draw
+ * it, or a window too short for it, gets a 3D segment that would fail:
+ * disabled, its words the hint.
  */
 export const REASONS: Record<
 	SkylineReason,
-	{ line: string; button: string | null }
+	{ line: string; short: string | null; retry: boolean }
 > = {
 	chosen: {
 		line: 'Flat road — switch to 3D here or in Settings → Appearance',
-		button: RIDE_3D,
+		short: null,
+		retry: true,
 	},
-	motion: { line: 'Flat road — reduced motion is on', button: STEADY_BUTTON },
+	motion: {
+		line: 'Flat road — reduced motion is on',
+		short: 'steady camera',
+		retry: true,
+	},
 	capability: {
 		line: 'Flat road — this browser cannot draw 3D; another browser may',
-		button: null,
+		short: 'not in this browser',
+		retry: false,
 	},
 	'context-lost': {
 		line: 'Flat road — the graphics driver let the world go',
-		button: TRY_AGAIN,
+		short: 'graphics lost',
+		retry: true,
 	},
 	'build-failed': {
 		line: 'Flat road — the world did not build',
-		button: TRY_AGAIN,
+		short: 'did not build',
+		retry: true,
 	},
-	frames: { line: 'Flat road — this screen dropped frames', button: TRY_AGAIN },
+	frames: {
+		line: 'Flat road — this screen dropped frames',
+		short: 'dropped frames',
+		retry: true,
+	},
 	// It comes back by itself when the window grows: nothing to press.
 	short: {
 		line: 'Flat road — this window is too short for the world',
-		button: null,
+		short: 'window too short',
+		retry: false,
 	},
 };
+
+/** The view switch's three segments (#4217): the horizon's two views and the computer's MAP. */
+export type ViewSegment = '3d' | 'flat' | 'map';
+
+/**
+ * What the view switch shows: the pressed segment, which is where the rider
+ * is looking (MAP on the computer outranks the horizon), and whether its 3D
+ * segment can do anything.
+ */
+export function viewSwitch(s: {
+	/** The world draws on this screen. */
+	world: boolean;
+	/** Why it does not; null while it does. */
+	reason: SkylineReason | null;
+	/** The computer shows its MAP page. */
+	onMap: boolean;
+}): { pressed: ViewSegment; worldOffered: boolean } {
+	return {
+		pressed: s.onMap ? 'map' : s.world ? '3d' : 'flat',
+		worldOffered: s.world || (s.reason !== null && REASONS[s.reason].retry),
+	};
+}
