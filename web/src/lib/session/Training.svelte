@@ -23,6 +23,7 @@
 	import BikeComputer from '$lib/session/BikeComputer.svelte';
 	import { climbView, landed } from '$lib/ride/climb-view';
 	import { NO_GATES } from '$lib/road/gates';
+	import { NO_MATES } from '$lib/channel/road-mates';
 	import { mapView } from '$lib/ride/map-view';
 	import RideNarrator from '$lib/ride/RideNarrator.svelte';
 	import { watchClimbCues } from '$lib/ride/climb-cues.svelte';
@@ -263,6 +264,7 @@
 					road={channel.ridden.road}
 					metre={() => channel.ridden ?? { m: 0, mps: 0 }}
 					bunch={() => channel.ridden?.bunch ?? null}
+					mates={() => channel.ridden?.racers ?? NO_MATES}
 					loop={channel.ridden.loop}
 					gates={() => channel.ridden?.gates ?? NO_GATES}
 					watts={channel.you.watts}

@@ -328,7 +328,7 @@ Capture: as ride-session-road, on a session with no road.
 
 #### ride-race
 
-Capture: Designer and Design Partner race the hairpin road from Designer's voice channel, world off, the computer on RACE 20 s past km 0; Designer starts it from the session picker's Race it (#3777). Then `ride-race-ride`, the same race on RIDE, and `ride-race-map` on MAP. Targets: v3-race (the RACE page; the radio line in slot 1). Canon: ADR-0067, ADR-0071; SPEC “Races”.
+Capture: Designer and Design Partner race the hairpin road from Designer's voice channel, world off, the computer on RACE 20 s past km 0; Designer starts it from the session picker's Race it (#3777). Then `ride-race-ride`, the same race on RIDE, `ride-race-map` on MAP, and `ride-race-world`, Design Partner's screen with the world on. Targets: v3-race (the RACE page; the radio line in slot 1). Canon: ADR-0067, ADR-0071; SPEC “Races”.
 
 1. RACE reads the gap to your Category's par (“vs par”, “+0:18” ahead, “−0:18” behind), then your place in your Category (“in C”, “2nd of 2”); no W/kg; as tall as RIDE. [#3174] [multi:ride-race-ride]
 2. Gap and place are the race model's: neon, flat, never watt; the page glows nothing. [#3174] [probe:wattCount]
@@ -338,6 +338,7 @@ Capture: Designer and Design Partner race the hairpin road from Designer's voice
 6. ride-session-flat's items hold. [ride-flat]
 7. In a race W/kg sits beside the 3 s power in the game's compact head (decided on #3174). [#3668]
 8. A race has its road on every screen, read at your own racer's metre: RIDE holds Speed, MAP is among the pages, CLIMB while a classed climb is near. [multi:ride-race-ride] [multi:ride-race-map] [#3778]
+9. In the world, every racer rides the road at their own metre, a lane beside you, never in a bunch; a racer whose screen has gone is drawn in greys with no zone ring (SPEC "World"). [multi:ride-race-world] [test:web/src/lib/world/alongside.test.ts] [#3778]
 
 #### ride-game-backyard, ride-game-collective
 

@@ -34,18 +34,10 @@ export function placeOnRoad(
 		const me = world.racers[you];
 		const race = tick.game?.race;
 		if (!me) return null;
-		// The hub steps no one in the neutral zone, through a hold or once it
-		// is over, and the line stops each racer: a Wheelrace's short of the
-		// road's end (#3172).
-		const held =
-			tick.at < (race?.klaxonAtMs ?? 0) ||
-			!!race?.neutralised ||
-			tick.game?.phase === 'done' ||
-			me.m >= (race?.lineM || route.lengthM);
 		return {
 			road: toLine(cut.road, race?.lineM),
 			m: me.m,
-			mps: held ? 0 : me.v,
+			mps: racerHeld(tick, me.m) ? 0 : me.v,
 			at: tick.at,
 			loop: false,
 		};
@@ -60,6 +52,24 @@ export function placeOnRoad(
 		at: tick.at,
 		loop: !!route.loop,
 	};
+}
+
+/**
+ * A racer at `m` stands still: the hub steps no one in the neutral zone,
+ * through a hold or once it is over, and the line stops each racer, a
+ * Wheelrace's short of the road's end (#3172).
+ */
+export function racerHeld(
+	tick: Pick<ServerTick, 'at' | 'state' | 'game'>,
+	m: number,
+): boolean {
+	const race = tick.game?.race;
+	return (
+		tick.at < (race?.klaxonAtMs ?? 0) ||
+		!!race?.neutralised ||
+		tick.game?.phase === 'done' ||
+		m >= (race?.lineM || tick.state?.route?.lengthM || Infinity)
+	);
 }
 
 const cutAtLines = new WeakMap<Road, { lineM: number; road: Road }>();

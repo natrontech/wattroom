@@ -1,7 +1,14 @@
 import type { Page, WebSocketRoute } from '@playwright/test';
 import { expect, test, voicePath, type ChannelOwner } from './crew';
 import { climbGpx } from './road-gpx';
-import { drawing, latestRide, onTheRoad, worldOn } from './world';
+import {
+	drawing,
+	drawn,
+	latestRide,
+	onTheRoad,
+	worldOn,
+	type Snapshot,
+} from './world';
 
 // The world draws in a window the box table holds (TARGETS ride-road-world):
 // Desktop Chrome's 1280 × 720 is shorter, and rides the flat road (#3668).
@@ -23,27 +30,6 @@ const SETTLE_MS = 30_000;
  * minute on the session's clock is not yet a minute recorded: ride two.
  */
 const RIDE_S = 120;
-
-type Drawn = { id: string; d: number; lane: number };
-type Snapshot = { t: number; mps: number; riders: Drawn[] };
-
-/**
- * Where this screen's world drew everyone, when, and at what speed, as its
- * canvas says (RideWorld); or, once its world has handed the ride to the flat
- * road, the line saying why. A saturated runner's world misses its frames and
- * goes flat, which is the app judging right, not the bunch drawing wrong (#3877).
- */
-const drawn = (page: Page) =>
-	page.evaluate(() => {
-		const said = document.querySelector<HTMLCanvasElement>(
-			'canvas[data-riders]',
-		)?.dataset.riders;
-		if (said) return JSON.parse(said) as Snapshot;
-		return (
-			document.querySelector('[data-testid=flat-road]')?.textContent?.trim() ??
-			null
-		);
-	});
 
 /**
  * The coach saves the invented climb to their routes, opens a voice channel

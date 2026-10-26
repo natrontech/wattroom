@@ -285,9 +285,15 @@ func shelterOf(riding []*racer, i int) float64 {
 func (r *Race) Racers() map[string]protocol.RaceRider {
 	out := make(map[string]protocol.RaceRider, len(r.racers))
 	for id, rc := range r.racers {
+		v := rc.pace.Speed
+		// Out, the race steps them no more: they stand where it left them,
+		// and a screen that rolled them on at their last speed would not (#3778).
+		if rc.out {
+			v = 0
+		}
 		out[id] = protocol.RaceRider{
 			M:        min(rc.pace.Distance, r.profile.LengthM),
-			V:        rc.pace.Speed,
+			V:        v,
 			FinishMs: rc.finishMs,
 			Cat:      rc.Category,
 		}

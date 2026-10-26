@@ -1,6 +1,7 @@
-// Your channel-mates on a free ride's road (#3117, ADR-0059): each at their
-// own metre, moved by their own watts on their own screen, never by this
-// one, and never in a bunch or ranked. It draws nothing: crew.ts does.
+// Your channel-mates on a free ride's road (#3117, ADR-0059), or the other
+// racers on a race's (#3778): each at their own metre, moved by their own
+// watts on their own screen, never by this one, and never in a bunch. It
+// draws nothing: crew.ts does.
 import type { RoadMate } from '$lib/channel/road-mates';
 import { LANE } from './bunch';
 import { KEEP_RIGHT } from './crew';
@@ -50,8 +51,10 @@ export function createAlongside() {
 				watts: p.watts,
 				ftp: p.ftp,
 				speaking: p.speaking,
-				// Their numbers are the channel's on a free ride (ADR-0059).
-				ring: true,
+				faded: !!p.faded,
+				// Their numbers are the channel's on a free ride and in a race
+				// (ADR-0059); a faded racer's are gone with their screen.
+				ring: !p.faded,
 				lane: KEEP_RIGHT + LANE * (1 + (i % 3)),
 			});
 		});
