@@ -8,6 +8,19 @@ import { untrack } from 'svelte';
 
 export const modals = $state({ open: 0 });
 
+/**
+ * The layer of a modal opened over another overlay (#4222): above every one
+ * of them, the session picker's 50, the people sheet's 60 and the picture
+ * viewer's 65, and under the navigation bar's 70. The desktop shell's trainer
+ * chooser sat at a modal's 40, under the session picker that asked for it.
+ * A third modal still wins: each one portals to the end of body.
+ */
+export const STACKED_Z = 66;
+
+/** A modal's z-index at `depth`: its own class's layer alone, the stacked one over another. */
+export const stackedZ = (depth: number): number | undefined =>
+	depth > 1 ? STACKED_Z : undefined;
+
 /** Attach to a modal's root: counts it open for as long as it is mounted. */
 export function countModal(): () => void {
 	// untrack: an attachment re-runs when a dependency changes, and `+= 1`
