@@ -40,12 +40,15 @@
 		if (segment === '3d' && !drawn) world.retry();
 		if (segment === 'flat' && drawn) world.flatten();
 	}
+	// The row's icon buttons' height (h-11: 33 px on a desk, 44 on a phone,
+	// G5) and a tight gutter: three words beside them must not widen slot 1
+	// past its own rows (design check, #4217).
 	const seg = (on: boolean) =>
-		`btn btn-ride whitespace-nowrap ${on ? 'btn-secondary' : 'btn-ghost'}`;
+		`btn ride-word h-11 px-2 py-0 font-semibold whitespace-nowrap ${on ? 'btn-secondary' : 'btn-ghost'}`;
 </script>
 
 <div
-	class="border-muted/20 flex rounded-lg border"
+	class="flex items-center"
 	role="group"
 	aria-label="view"
 	data-testid="view-switch"
@@ -55,8 +58,8 @@
 		aria-pressed={state.pressed === '3d'}
 		disabled={!state.worldOffered}
 		title={why?.line}
-		class="{seg(state.pressed === '3d')} disabled:opacity-60"
-		>3D{#if why?.short}<span class="text-muted ml-1 text-xs font-normal"
+		class={seg(state.pressed === '3d')}
+		>3D{#if why?.short}<span class="text-muted ml-1 font-normal"
 				>{state.worldOffered ? '⟳ ' : ''}{why.short}</span
 			>{/if}</button
 	>
