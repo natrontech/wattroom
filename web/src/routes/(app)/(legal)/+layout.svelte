@@ -40,7 +40,9 @@
 {:else}
 	<!-- Shared shell for the public pages (#232) — legal, privacy, and the
 	     desktop app's download (#296): quiet chrome, no glow. -->
-	<main class="cave bg-surface text-ink relative min-h-dvh overflow-x-hidden">
+	<main
+		class="cave bg-surface text-ink safe-frame relative min-h-dvh overflow-x-hidden"
+	>
 		<div
 			class="bg-gridlines pointer-events-none absolute inset-x-0 top-0 h-[30dvh] opacity-40"
 			aria-hidden="true"

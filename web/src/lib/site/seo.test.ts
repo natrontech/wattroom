@@ -81,7 +81,7 @@ describe('the public pages’ head (ADR-0061)', () => {
 		);
 		for (const tag of [
 			'<link rel="icon" href="/favicon.png" sizes="192x192" type="image/png" />',
-			'<link rel="apple-touch-icon" href="/favicon.png" />',
+			'<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />',
 			'<meta name="theme-color" content="#0a0118" />',
 		])
 			expect(shell).toContain(tag);

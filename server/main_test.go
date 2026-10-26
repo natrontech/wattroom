@@ -152,6 +152,28 @@ func TestSPACachesHashedAssetsOnly(t *testing.T) {
 	}
 }
 
+// The manifest is what makes a home-screen WattRoom an app (ADR-0090). Go's
+// table lacks .webmanifest, so without the registration it went out as
+// sniffed text/plain.
+func TestSPAServesTheManifestAsAManifest(t *testing.T) {
+	dist := fstest.MapFS{
+		"spa.html":             {Data: []byte("<html></html>")},
+		"manifest.webmanifest": {Data: []byte(`{"name":"WattRoom"}`)},
+	}
+	handler := serveSPA(dist, og.New("https://wattroom.test", nil, discardLog()))
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), "GET", "/manifest.webmanifest", nil))
+	if rec.Code != 200 {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if got := rec.Header().Get("Content-Type"); got != "application/manifest+json" {
+		t.Errorf("Content-Type = %q, want application/manifest+json", got)
+	}
+	if got := rec.Header().Get("Cache-Control"); got != "no-cache" {
+		t.Errorf("Cache-Control = %q, want no-cache: the name is stable across builds", got)
+	}
+}
+
 // Every non-hashed file and the shell carry a validator (audit 2026-09-09):
 // "no-cache" with nothing to revalidate against re-downloaded the 114 KB
 // changelog on every visit to /home, and the shell on every cold load.

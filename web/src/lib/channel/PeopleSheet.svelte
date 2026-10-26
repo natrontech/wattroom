@@ -33,7 +33,7 @@
 {#if !folded}
 	<button
 		onclick={() => (open = true)}
-		class="bg-surface-raised border-ink/15 fixed right-4 bottom-4 z-40 grid h-12
+		class="bg-surface-raised border-ink/15 fixed right-[calc(1rem+var(--safe-right))] bottom-[calc(1rem+var(--safe-bottom))] z-40 grid h-12
 	w-12 place-items-center rounded-full border xl:hidden"
 		aria-label="who is here"
 	>
@@ -69,7 +69,7 @@
 		<!-- A dialog in fact as well as in shape (audit 2026-09-09): focus
 		     moves in, Tab stays in, Escape and the close button hand it back. -->
 		<div
-			class="bg-surface border-ink/15 absolute inset-y-0 right-0 border-l"
+			class="bg-surface border-ink/15 absolute inset-y-0 right-0 border-l pt-(--safe-top) pr-(--safe-right) pb-(--safe-bottom)"
 			role="dialog"
 			aria-modal="true"
 			aria-label="who is here"

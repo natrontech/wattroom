@@ -133,7 +133,7 @@
 {/snippet}
 
 <main
-	class="cave bg-surface text-ink [container-type:size] relative grid h-dvh place-items-center overflow-hidden select-none"
+	class="cave bg-surface text-ink safe-frame [container-type:size] relative grid h-dvh place-items-center overflow-hidden select-none"
 	style="-webkit-app-region: drag"
 >
 	{#if shell?.hud}

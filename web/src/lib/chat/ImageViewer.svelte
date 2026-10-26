@@ -31,7 +31,7 @@
 	<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 	<div
 		{@attach countModal}
-		class="cave bg-paper/95 fixed inset-0 z-[65] flex flex-col gap-2 p-3"
+		class="cave bg-paper/95 safe-p-3 fixed inset-0 z-[65] flex flex-col gap-2"
 		onclick={(event) => event.target === event.currentTarget && closeImage()}
 	>
 		<div

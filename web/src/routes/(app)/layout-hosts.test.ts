@@ -68,7 +68,7 @@ describe('the overlay hosts while riding (#3788, #4160)', () => {
 
 	it('marks the frame itself, and darkens nothing for the ride', () => {
 		expect(layout).toMatch(
-			/<div\s+class="flex h-dvh overflow-hidden"\s+data-ride=\{riding \? '' : undefined\}/,
+			/<div\s+class="safe-frame flex h-dvh overflow-hidden"\s+data-ride=\{riding \? '' : undefined\}/,
 		);
 		// No `cave` class, spelled in the attribute or in a class expression.
 		expect(layout).not.toMatch(/class="[^"]*\bcave\b/);

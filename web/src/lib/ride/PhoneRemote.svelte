@@ -43,7 +43,7 @@
 </script>
 
 <div
-	class="bg-surface fixed inset-0 z-50 flex flex-col gap-3 overflow-y-auto p-4"
+	class="bg-surface safe-p-4 fixed inset-0 z-50 flex flex-col gap-3 overflow-y-auto"
 	role="dialog"
 	aria-label="Phone remote"
 	data-testid="phone-remote"
