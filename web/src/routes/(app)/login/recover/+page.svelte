@@ -47,7 +47,7 @@
 <svelte:head><title>Get back in · WattRoom</title></svelte:head>
 
 <main
-	class="cave bg-surface text-ink relative grid min-h-dvh place-items-center px-6"
+	class="cave bg-surface text-ink safe-px-6 relative grid min-h-dvh place-items-center"
 >
 	<div
 		class="bg-gridlines pointer-events-none absolute inset-x-0 top-0 h-[45dvh] opacity-40"

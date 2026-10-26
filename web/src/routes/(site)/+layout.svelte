@@ -68,7 +68,7 @@
 
 <div
 	data-site
-	class="cave bg-surface text-ink relative flex min-h-dvh flex-col"
+	class="cave bg-surface text-ink safe-frame relative flex min-h-dvh flex-col"
 >
 	<div
 		class="bg-gridlines pointer-events-none absolute inset-x-0 top-0 h-[60dvh] opacity-40"

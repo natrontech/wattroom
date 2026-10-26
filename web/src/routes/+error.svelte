@@ -10,7 +10,9 @@
 	<title>{page.status} — WattRoom</title>
 </svelte:head>
 
-<main class="relative grid min-h-dvh place-items-center overflow-hidden px-6">
+<main
+	class="safe-px-6 relative grid min-h-dvh place-items-center overflow-hidden"
+>
 	<div
 		class="bg-gridlines pointer-events-none absolute inset-x-0 top-0 h-[45dvh] opacity-40"
 		aria-hidden="true"

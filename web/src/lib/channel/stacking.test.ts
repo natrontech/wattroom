@@ -39,7 +39,7 @@ describe('channel stacking (#483)', () => {
 	// this test exists to notice.
 	const tvMode = layer(
 		'lib/session/TvOverlay.svelte',
-		/cave bg-surface fixed inset-0 z-(\d+)/,
+		/cave bg-surface safe-frame fixed inset-0 z-(\d+)/,
 	);
 	const chatSheet = layer(
 		'lib/channel/PeopleSheet.svelte',
@@ -63,7 +63,7 @@ describe('channel stacking (#483)', () => {
 		// the one thing the rule forbids (audit 2026-09-09).
 		const cheers = layer(
 			'lib/channel/CheerLayer.svelte',
-			/fixed inset-x-0 bottom-16 z-(\d+)/,
+			/fixed inset-x-0 bottom-\[calc\(4rem\+var\(--safe-bottom\)\)\] z-(\d+)/,
 		);
 		expect(cheers).toBeLessThan(floatingPlayer);
 	});
@@ -80,7 +80,7 @@ describe('channel stacking (#483)', () => {
 		// page frozen behind a backdrop nobody can see to dismiss.
 		const imageViewer = layer(
 			'lib/chat/ImageViewer.svelte',
-			/cave bg-paper\/95 fixed inset-0 z-\[(\d+)\]/,
+			/cave bg-paper\/95 safe-p-3 fixed inset-0 z-\[(\d+)\]/,
 		);
 		expect(imageViewer).toBeGreaterThan(chatSheet);
 		expect(imageViewer).toBeGreaterThan(seatedPlayer);

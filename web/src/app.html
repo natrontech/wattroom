@@ -2,7 +2,13 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<!-- viewport-fit=cover hands the notch and the home indicator to the
+		     page (ADR-0090): installed, the app draws to the screen's edges, and
+		     app.css's --safe-* tokens keep its controls clear of them. -->
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1, viewport-fit=cover"
+		/>
 		<!-- No text-scale meta (#1971): it was not a standard and did nothing. The
 		     scaling story is page zoom, which the viewport above leaves enabled. -->
 		<!-- The PNG is what search can use (#2136): Google reads rel="icon"
@@ -13,7 +19,13 @@
 		     pages carry them too (ADR-0061). -->
 		<link rel="icon" href="/favicon.png" sizes="192x192" type="image/png" />
 		<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-		<link rel="apple-touch-icon" href="/favicon.png" />
+		<!-- Installable (ADR-0090). The manifest's scope is the whole origin:
+		     without one iOS took the scope from the page a rider added, and
+		     showed Safari's back and forward bar on every page outside it. The
+		     home-screen icon is full bleed, since iOS fills transparency black. -->
+		<link rel="manifest" href="/manifest.webmanifest" />
+		<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+		<meta name="apple-mobile-web-app-title" content="WattRoom" />
 		<meta name="theme-color" content="#0a0118" />
 		%sveltekit.head%
 		<script>

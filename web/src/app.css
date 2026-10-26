@@ -313,6 +313,34 @@
 }
 
 /*
+ * The screen's unsafe edges (ADR-0090): the notch, the rounded corners and
+ * the home indicator, which app.html's viewport-fit=cover hands to the page.
+ * Zero on a desk and mostly in a phone's tab; an installed app on a phone
+ * has them. A surface that meets an edge keeps its controls inside by its
+ * token: `safe-frame` pads all four, `safe-p-N` is `p-N` plus each edge,
+ * `safe-px-N` is `px-N` plus each edge.
+ */
+:root {
+	--safe-top: env(safe-area-inset-top, 0px);
+	--safe-right: env(safe-area-inset-right, 0px);
+	--safe-bottom: env(safe-area-inset-bottom, 0px);
+	--safe-left: env(safe-area-inset-left, 0px);
+}
+@utility safe-frame {
+	padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
+}
+@utility safe-p-* {
+	padding: calc(--spacing(--value(integer)) + var(--safe-top))
+		calc(--spacing(--value(integer)) + var(--safe-right))
+		calc(--spacing(--value(integer)) + var(--safe-bottom))
+		calc(--spacing(--value(integer)) + var(--safe-left));
+}
+@utility safe-px-* {
+	padding: var(--safe-top) calc(--spacing(--value(integer)) + var(--safe-right))
+		var(--safe-bottom) calc(--spacing(--value(integer)) + var(--safe-left));
+}
+
+/*
  * The world's own look (ADR-0072, #3085): the ride's Alpine blue hour. Single
  * values, never light-dark pairs and never a theme's: the world looks the
  * same under every theme and scheme, and only its accents — watt, neon, the

@@ -14,6 +14,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"io/fs"
+	"mime"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -35,6 +36,15 @@ const immutablePrefix = "/_app/immutable/"
 // not it: that is the prerendered landing, like every other page under the
 // (site) route group (ADR-0061).
 const fallbackPage = "spa.html"
+
+// The web app manifest's type (ADR-0090). Go's built-in table lacks the
+// extension and the distroless image ships no mime.types, so the file server
+// sniffed it as text/plain — which nosniff then holds it to.
+func init() {
+	if err := mime.AddExtensionType(".webmanifest", "application/manifest+json"); err != nil {
+		panic(err)
+	}
+}
 
 // spaHandler serves the embedded SvelteKit build: a prerendered page for its
 // path, and for every other route the fallback with og meta spliced in at

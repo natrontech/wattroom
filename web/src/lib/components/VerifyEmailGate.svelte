@@ -86,7 +86,7 @@
 
 {#if open}
 	<div
-		class="bg-paper/70 fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur"
+		class="bg-paper/70 safe-p-4 fixed inset-0 z-50 flex items-center justify-center backdrop-blur"
 		role="dialog"
 		aria-modal="true"
 		aria-label="Confirm your email address"

@@ -103,7 +103,7 @@
 <!-- A dialog (audit 2026-09-09): the one surface where the page behind is
      entirely hidden, and Tab still walked it. -->
 <div
-	class="cave bg-surface fixed inset-0 z-50"
+	class="cave bg-surface safe-frame fixed inset-0 z-50"
 	role="dialog"
 	aria-modal="true"
 	aria-label="TV mode"
