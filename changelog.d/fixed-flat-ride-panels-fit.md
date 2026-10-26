@@ -1,1 +1,0 @@
-- On a ride without the world, your numbers and the crew's tiles sit side by side, each panel its own size, instead of stretching across a wide window with empty bands. Each block on the interval graph now shows its target watts and length, and the header no longer repeats the workout in a strip of its own.

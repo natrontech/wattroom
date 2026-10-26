@@ -1,1 +1,0 @@
-- Opening a voice channel or session on a second device while another of yours is in voice no longer joins the call twice: the second device becomes a controller with the remote and no microphone, camera or sound, and "Use this device for voice" moves your voice to it in one tap, from either device.

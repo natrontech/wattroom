@@ -1,1 +1,0 @@
-- On a flat ride at a desk, tapping the bias − or + trims the target again instead of turning the bike computer's page.

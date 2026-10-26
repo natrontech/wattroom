@@ -1,1 +1,0 @@
-- The route importer shows a read file as a solid panel with the route page's stat row and two time tiles, says "What we fixed" only when something was, and after Save offers Open it and Ride it. Every "Import a route" button opens it as "Import a route".

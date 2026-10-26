@@ -1,1 +1,0 @@
-- Your best on a road is the ride that reached its end first: riding on past the end, or turning back for another lap, no longer costs a ride its best.

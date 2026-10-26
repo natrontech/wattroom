@@ -1,1 +1,0 @@
-- The phone remote's Easier and Harder trim an ERG ride on your other screen, and holding Talk lets the crew hear you in either voice mode, opening a muted mic for as long as you hold it.

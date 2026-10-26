@@ -1,1 +1,0 @@
-- A race's game card no longer sits as a panel inside a panel on the flat ride view, and the team-car radio's label matches the ride's other labels.
