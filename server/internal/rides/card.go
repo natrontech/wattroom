@@ -11,6 +11,8 @@ import (
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/og"
+	"github.com/natrontech/wattroom/server/internal/protocol"
+	"github.com/natrontech/wattroom/server/internal/road"
 	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
@@ -100,14 +102,15 @@ func (s *Service) handleCard(w http.ResponseWriter, r *http.Request) {
 		for i, sample := range samples {
 			card.Metres[i], card.Heights[i] = sample.M, sample.Alt
 		}
-		road, err := s.store.Queries.GetRideRoad(r.Context(), db.GetRideRoadParams{ID: id, UserID: user.ID})
+		// Named by what was ridden, in the generated name's own numbers: a
+		// workout over a 38 km road titled its 13 km poster with the road's
+		// 38 (#4229). The drawing below it is the same metres.
+		name = road.NameOf(ridden(samples))
+		stored, err := s.store.Queries.GetRideRoad(r.Context(), db.GetRideRoadParams{ID: id, UserID: user.ID})
 		if err != nil {
 			s.log.Warn("ride card road unreadable", "err", err, "ride", store.UUIDString(row.ID))
 		}
-		if road.GenName != "" {
-			name = road.GenName
-		}
-		card.HeightCredit = heightCredit(road.EleSource)
+		card.HeightCredit = heightCredit(stored.EleSource)
 	}
 	card.WorkoutName = name
 
@@ -133,6 +136,28 @@ func heightCredit(eleSource string) string {
 		return "Heights from the route's own file"
 	}
 	return ""
+}
+
+// ridden is the metres and the climb a ride covered on its road (#4229):
+// from its first placed second to its last, the climb summed over the
+// heights it rode. Seconds before the road (M 0) are not on it.
+func ridden(samples []protocol.RiderMetrics) (lengthM, gainM float64) {
+	first, last := -1, -1
+	for i, sample := range samples {
+		if sample.M > 0 {
+			if first < 0 {
+				first = i
+			}
+			last = i
+		}
+	}
+	if first < 0 {
+		return 0, 0
+	}
+	for i := first + 1; i <= last; i++ {
+		gainM += max(0, samples[i].Alt-samples[i-1].Alt)
+	}
+	return samples[last].M - samples[first].M, gainM
 }
 
 func cardFilename(startedAt time.Time, workout string) string {

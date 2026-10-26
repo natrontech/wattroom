@@ -85,7 +85,14 @@ func (r Road) GainM() float64 {
 // only, `Road · 52.9 km · 1,312 m` — $lib/road's roadName, and read off the
 // stored road so a place can never travel in it.
 func (r Road) Name() string {
-	return fmt.Sprintf("Road · %.1f km · %s m", r.LengthM/1000, thousands(int64(r.GainM()+0.5)))
+	return NameOf(r.LengthM, r.GainM())
+}
+
+// NameOf is that name for any length and climb: a ride's poster takes it
+// for what was ridden, which on a workout over a long road is not the road's
+// own length (#4229).
+func NameOf(lengthM, gainM float64) string {
+	return fmt.Sprintf("Road · %.1f km · %s m", lengthM/1000, thousands(int64(gainM+0.5)))
 }
 
 // thousands writes n with a comma every three digits, as en-US does.

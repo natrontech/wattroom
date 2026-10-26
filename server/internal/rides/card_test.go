@@ -7,6 +7,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/natrontech/wattroom/server/internal/protocol"
 )
 
 func cardRequest(t *testing.T, h *harness, user, id string) *httptest.ResponseRecorder {
@@ -75,10 +77,11 @@ func TestCardAuthorization(t *testing.T) {
 	}
 }
 
-// A road ride's card is its poster, named by the route's generated name
-// (#3142, #3055) — even a ride saved before road rides were kept under it,
-// still carrying the owner's own name for the road.
-func TestARoadRideCardIsNamedByItsGeneratedName(t *testing.T) {
+// A road ride's card is its poster, named in the generated name's numbers
+// (#3142, #3055) for what was ridden (#4229): this ride covers about 950 m of
+// a 5 km road. Never the owner's own name for the road, even on a ride saved
+// before road rides were kept under the generated one.
+func TestARoadRideCardIsNamedByWhatWasRidden(t *testing.T) {
 	h := setup(t)
 	routeID, _ := storeRoute(t, h, "alice")
 	status, got := call(t, h.mux, "alice", http.MethodPost, "/api/rides", freeRideOn(routeID, 8, ""))
@@ -93,8 +96,8 @@ func TestARoadRideCardIsNamedByItsGeneratedName(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d, body = %s", w.Code, w.Body.String())
 	}
-	if cd := w.Header().Get("Content-Disposition"); !strings.Contains(cd, "road-5-0-km-100-m") || strings.Contains(cd, "street") {
-		t.Errorf("the poster is named %q; want the generated name and never the owner's", cd)
+	if cd := w.Header().Get("Content-Disposition"); !strings.Contains(cd, "road-1-0-km-") || strings.Contains(cd, "street") {
+		t.Errorf("the poster is named %q; want the ridden 1.0 km, never the road's 5.0 or the owner's name", cd)
 	}
 	if _, err := png.Decode(bytes.NewReader(w.Body.Bytes())); err != nil {
 		t.Fatalf("decode PNG: %v", err)
@@ -102,5 +105,24 @@ func TestARoadRideCardIsNamedByItsGeneratedName(t *testing.T) {
 	// And the ride's page knows it rode a road, so its button offers the poster.
 	if _, detail := call(t, h.mux, "alice", http.MethodGet, "/api/rides/"+id, ""); detail["distanceM"] == nil {
 		t.Errorf("the ride's page carries no distance: %v", detail)
+	}
+}
+
+func TestRiddenIsWhatThePlacedSecondsCovered(t *testing.T) {
+	at := func(m, alt float64) protocol.RiderMetrics { return protocol.RiderMetrics{M: m, Alt: alt} }
+	for _, tc := range []struct {
+		name          string
+		samples       []protocol.RiderMetrics
+		length, climb float64
+	}{
+		{"none placed", []protocol.RiderMetrics{at(0, 0), at(0, 0)}, 0, 0},
+		{"from where the road began", []protocol.RiderMetrics{at(0, 0), at(1000, 500), at(1500, 520), at(2000, 510)}, 1000, 20},
+		{"a descent climbs nothing", []protocol.RiderMetrics{at(100, 900), at(600, 850)}, 500, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if length, climb := ridden(tc.samples); length != tc.length || climb != tc.climb {
+				t.Errorf("ridden = %v m, %v m up; want %v, %v", length, climb, tc.length, tc.climb)
+			}
+		})
 	}
 }
