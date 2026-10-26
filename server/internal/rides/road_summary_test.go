@@ -170,7 +170,8 @@ func TestARideOnSomeoneElsesRouteIsRefused(t *testing.T) {
 
 // A ride on a road workout is kept under its route's generated name (#3055):
 // friends' shared rides, the ride's card and its Strava title all read the
-// name kept here, so the owner's "Home loop" stays with the owner.
+// name kept here, so the owner's "Home loop" stays with the owner — and a
+// friend reads the generated name (#4154).
 func TestARoadWorkoutRideIsKeptUnderItsGeneratedName(t *testing.T) {
 	h := setup(t)
 	route, _ := storeRoute(t, h, "alice")
@@ -192,6 +193,50 @@ func TestARoadWorkoutRideIsKeptUnderItsGeneratedName(t *testing.T) {
 	const generated = "Road · 5.0 km · 100 m"
 	if kept != generated || got["workoutName"] != generated {
 		t.Errorf("the ride is kept as %q and answered as %v, want %q", kept, got["workoutName"], generated)
+	}
+	id, _ := got["id"].(string)
+	if status, body := call(t, h.mux, "alice", http.MethodPatch, "/api/rides/"+id, `{"sharedWithFriends":true}`); status != http.StatusOK {
+		t.Fatalf("share: %d %v", status, body)
+	}
+	shared, err := h.store.Queries.ListSharedRides(t.Context(), db.ListSharedRidesParams{
+		Rider: h.users.ByToken["alice"].ID, Viewer: h.users.ByToken["bob"].ID, Max: 10,
+	})
+	if err != nil || len(shared) != 1 || shared[0].WorkoutName != generated {
+		t.Errorf("a friend reads the shared ride as %+v (%v), want %q", shared, err, generated)
+	}
+}
+
+// A road ride the save cannot place is still marked as one (#4154), so its
+// Strava title carries no place: one with no metres, and one whose route was
+// deleted, kept under the name the client sent.
+func TestARoadRideTheSaveCannotPlaceIsStillOnARoad(t *testing.T) {
+	h := setup(t)
+	route, _ := storeRoute(t, h, "alice")
+	gone := "00000000-0000-0000-0000-000000000000"
+	samples := make([]string, 120)
+	for i := range samples {
+		samples[i] = `{"watts":250,"cadence":90}`
+	}
+	renamed := "Home loop · " + testx.Corridor.Places[0]
+	for _, c := range []struct{ name, route string }{
+		{"no metres", route},
+		{"a deleted route", gone},
+	} {
+		workout := `{"name":"Home loop","road":{"routeId":"` + c.route + `","fromM":0,"toM":5000},"steps":[{"type":"road","seconds":120}]}`
+		body := fmt.Sprintf(`{"workoutName":%q,"workoutJson":%q,"startedAt":%q,"samples":[%s]}`,
+			renamed, workout, nextStart().Format(time.RFC3339), strings.Join(samples, ","))
+		status, got := call(t, h.mux, "alice", http.MethodPost, "/api/rides", body)
+		if status != http.StatusCreated {
+			t.Fatalf("%s: save %d %v", c.name, status, got)
+		}
+		var onRoad *bool
+		var routeKey *string
+		if err := h.store.Pool.QueryRow(t.Context(), `select on_road, route_key from rides where id = $1`, got["id"]).Scan(&onRoad, &routeKey); err != nil {
+			t.Fatal(err)
+		}
+		if routeKey != nil || onRoad == nil || !*onRoad {
+			t.Errorf("%s: route key %v, on road %s; want unplaced and on a road", c.name, routeKey, deref(onRoad))
+		}
 	}
 }
 

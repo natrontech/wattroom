@@ -28,22 +28,42 @@ type RoadRef struct {
 // a shape — is refused, so no client can plant a copy where the route's
 // erasure would not reach it.
 func RoadOf(workoutJSON string) (*RoadRef, error) {
-	var outer struct {
-		Road json.RawMessage `json:"road"`
-	}
-	if err := json.Unmarshal([]byte(workoutJSON), &outer); err != nil {
+	raw, err := roadJSON(workoutJSON)
+	if err != nil {
 		return nil, refusal("That is not a workout the engine can ride.")
 	}
-	if len(outer.Road) == 0 || bytes.Equal(outer.Road, []byte("null")) {
+	if raw == nil {
 		return nil, nil
 	}
-	dec := json.NewDecoder(bytes.NewReader(outer.Road))
+	dec := json.NewDecoder(bytes.NewReader(raw))
 	dec.DisallowUnknownFields()
 	var ref RoadRef
 	if err := dec.Decode(&ref); err != nil {
 		return nil, refusal("A workout carries its road by reference only — the route and where on it, never the road's heights or its shape.")
 	}
 	return &ref, checkRoad(ref)
+}
+
+// OnRoad says whether a workout rides a road at all. It reads leniently,
+// unlike RoadOf: a client saves the copy it was handed, the cut attached
+// beside the reference, and that is still a road (#4154).
+func OnRoad(workoutJSON string) bool {
+	raw, err := roadJSON(workoutJSON)
+	return err == nil && raw != nil
+}
+
+// roadJSON is a workout's road as it was written, nil when it rides none.
+func roadJSON(workoutJSON string) (json.RawMessage, error) {
+	var outer struct {
+		Road json.RawMessage `json:"road"`
+	}
+	if err := json.Unmarshal([]byte(workoutJSON), &outer); err != nil {
+		return nil, err
+	}
+	if len(outer.Road) == 0 || bytes.Equal(outer.Road, []byte("null")) {
+		return nil, nil
+	}
+	return outer.Road, nil
 }
 
 func checkRoad(r RoadRef) error {

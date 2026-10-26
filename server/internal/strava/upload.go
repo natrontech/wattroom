@@ -227,10 +227,11 @@ func exportFailure(err error) string {
 
 // activityName is the activity's title. A route ride's never carries a
 // place, generated or not (ADR-0063), so its distance stands in for the
-// generated name it was saved under (#4154).
+// generated name it was saved under (#4154). A ride saved before on_road
+// has only route_key to say it rode one.
 func activityName(ride db.GetRideForUploadRow) string {
 	switch {
-	case ride.RouteKey == nil:
+	case ride.RouteKey == nil && (ride.OnRoad == nil || !*ride.OnRoad):
 		return ride.WorkoutName
 	case ride.DistanceM == nil:
 		return workout.RouteRide(0)

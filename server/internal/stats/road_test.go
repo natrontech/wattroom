@@ -232,6 +232,31 @@ func TestTimeable(t *testing.T) {
 	}
 }
 
+// A ride that rode a road says so whether or not the save placed it on one
+// (#4154): its Strava title reads the mark, and a session rider the bunch
+// never placed is still on the road.
+func TestSetHowMarksARoadRidePlacedOrNot(t *testing.T) {
+	const (
+		road = `{"name":"Road","road":{"routeId":"3f0c2a4e-8b1d-4c5e-9f6a-7b8c9d0e1f2a","fromM":0,"toM":5000},"steps":[{"type":"road","seconds":600}]}`
+		free = `{"name":"Free","unscored":true,"steps":[]}`
+	)
+	for _, c := range []struct {
+		name, workout string
+		placed, want  bool
+	}{
+		{"placed on its road", road, true, true},
+		{"a road the save never placed", road, false, true},
+		{"a free ride the bunch carried along one", free, true, true},
+		{"no road at all", free, false, false},
+	} {
+		var row db.CreateRideParams
+		SetHow(&row, "free", c.workout, c.placed, DriveSIM, nil)
+		if row.OnRoad == nil || *row.OnRoad != c.want {
+			t.Errorf("%s: on road %v, want %v", c.name, row.OnRoad != nil && *row.OnRoad, c.want)
+		}
+	}
+}
+
 func TestWeightThatDayIsOnlyASetOne(t *testing.T) {
 	manual, dflt := "manual", "default"
 	if got := WeightThatDay(db.User{WeightKg: 70, WeightSource: &dflt}); got != nil {
