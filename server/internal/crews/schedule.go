@@ -2,6 +2,7 @@ package crews
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
+	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/workout"
@@ -159,9 +161,9 @@ func rsvpAnswer(w http.ResponseWriter, r *http.Request) (going, ok bool) {
 // the name trimmed on the way through, or the field error written and false.
 func checkPlan(w http.ResponseWriter, name, workoutJSON string, startsAt time.Time) (string, bool) {
 	name = strings.TrimSpace(name)
-	if name == "" || utf8.RuneCountInString(name) > 80 || hasControl(name) {
+	if name == "" || utf8.RuneCountInString(name) > protocol.MaxWorkoutNameChars || hasControl(name) {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-			"A workout name has to be 1-80 characters on one line.", "workoutName")
+			fmt.Sprintf("A workout name has to be 1-%d characters on one line.", protocol.MaxWorkoutNameChars), "workoutName")
 		return "", false
 	}
 	segments, err := workout.Parse(workoutJSON)

@@ -16,6 +16,8 @@ export interface CrewRef {
 export interface SharedRide {
 	id: string;
 	workoutName: string;
+	/** The name the rider gave the ride (#4209); absent where they gave none. */
+	title?: string;
 	startedAt: string;
 	seconds: number;
 	kj: number;

@@ -17,6 +17,7 @@ import (
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/keyset"
+	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/routes"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
@@ -75,8 +76,8 @@ func checkDefinition(name string, raw json.RawMessage) (code, message, field str
 	if err != nil || len(segments) == 0 {
 		return "validation_error", "That is not a workout the engine can ride.", "workout"
 	}
-	if name == "" || utf8.RuneCountInString(name) > 80 {
-		return "validation_error", "A workout name has to be 1-80 characters.", "name"
+	if name == "" || utf8.RuneCountInString(name) > protocol.MaxWorkoutNameChars {
+		return "validation_error", fmt.Sprintf("A workout name has to be 1-%d characters.", protocol.MaxWorkoutNameChars), "name"
 	}
 	// Then the editor's own bounds, so the API cannot store what the shelf
 	// will refuse to read. Validate's error is written for the rider.

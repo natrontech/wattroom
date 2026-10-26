@@ -116,7 +116,7 @@ func (q *Queries) BestLast20mHRIn90Days(ctx context.Context, userID pgtype.UUID)
 const bestUserRideOfWorkout = `-- name: BestUserRideOfWorkout :one
 select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp,
        (rides.crew_id is not null or rides.channel_id is not null or rides.session_id is not null)::boolean as in_session, shared_at,
-       rides.distance_m, rides.climbed_m, rides.on_road,
+       rides.distance_m, rides.climbed_m, rides.on_road, rides.title,
        e.state as export_state,
        rides.crew_id, coalesce(c.name, '')::text as crew_name,
        rides.channel_id, coalesce(ch.name, '')::text as channel_name
@@ -153,6 +153,7 @@ type BestUserRideOfWorkoutRow struct {
 	DistanceM       *int32
 	ClimbedM        *int32
 	OnRoad          *bool
+	Title           *string
 	ExportState     *string
 	CrewID          pgtype.UUID
 	CrewName        string
@@ -190,6 +191,7 @@ func (q *Queries) BestUserRideOfWorkout(ctx context.Context, arg BestUserRideOfW
 		&i.DistanceM,
 		&i.ClimbedM,
 		&i.OnRoad,
+		&i.Title,
 		&i.ExportState,
 		&i.CrewID,
 		&i.CrewName,
@@ -202,7 +204,7 @@ func (q *Queries) BestUserRideOfWorkout(ctx context.Context, arg BestUserRideOfW
 const bestUserRideOnRoad = `-- name: BestUserRideOnRoad :one
 select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp,
        (rides.crew_id is not null or rides.channel_id is not null or rides.session_id is not null)::boolean as in_session, shared_at,
-       rides.distance_m, rides.climbed_m, rides.on_road,
+       rides.distance_m, rides.climbed_m, rides.on_road, rides.title,
        e.state as export_state,
        rides.crew_id, coalesce(c.name, '')::text as crew_name,
        rides.channel_id, coalesce(ch.name, '')::text as channel_name
@@ -243,6 +245,7 @@ type BestUserRideOnRoadRow struct {
 	DistanceM       *int32
 	ClimbedM        *int32
 	OnRoad          *bool
+	Title           *string
 	ExportState     *string
 	CrewID          pgtype.UUID
 	CrewName        string
@@ -279,6 +282,7 @@ func (q *Queries) BestUserRideOnRoad(ctx context.Context, arg BestUserRideOnRoad
 		&i.DistanceM,
 		&i.ClimbedM,
 		&i.OnRoad,
+		&i.Title,
 		&i.ExportState,
 		&i.CrewID,
 		&i.CrewName,
@@ -769,7 +773,8 @@ func (q *Queries) ForgetRemoteActivityIds(ctx context.Context, arg ForgetRemoteA
 const getRide = `-- name: GetRide :one
 select r.id, r.user_id, r.workout_name, r.started_at, r.seconds, r.avg_watts, r.kj,
        r.execution, r.ftp_watts, r.samples, r.shared_at, r.created_at, r.curve, r.xp,
-       r.norm_watts, r.execution_scored, r.ftp_after_watts, r.last20m_hr, r.rpe, r.note,
+       r.norm_watts, r.execution_scored, r.ftp_after_watts, r.last20m_hr, r.rpe, r.note, r.title,
+       r.on_road, r.route_key,
        r.crew_id, r.channel_id, r.session_id,
        coalesce(c.name, '')::text as crew_name,
        coalesce(ch.name, '')::text as channel_name,
@@ -809,6 +814,9 @@ type GetRideRow struct {
 	Last20mHr       *int16
 	Rpe             *int16
 	Note            *string
+	Title           *string
+	OnRoad          *bool
+	RouteKey        *string
 	CrewID          pgtype.UUID
 	ChannelID       pgtype.UUID
 	SessionID       pgtype.UUID
@@ -848,6 +856,9 @@ func (q *Queries) GetRide(ctx context.Context, arg GetRideParams) (GetRideRow, e
 		&i.Last20mHr,
 		&i.Rpe,
 		&i.Note,
+		&i.Title,
+		&i.OnRoad,
+		&i.RouteKey,
 		&i.CrewID,
 		&i.ChannelID,
 		&i.SessionID,
@@ -1383,7 +1394,7 @@ func (q *Queries) ListUserRideWeeks(ctx context.Context, arg ListUserRideWeeksPa
 const listUserRides = `-- name: ListUserRides :many
 select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp,
        (rides.crew_id is not null or rides.channel_id is not null or rides.session_id is not null)::boolean as in_session, shared_at,
-       rides.distance_m, rides.climbed_m, rides.on_road,
+       rides.distance_m, rides.climbed_m, rides.on_road, rides.title,
        e.state as export_state,
        rides.crew_id, coalesce(c.name, '')::text as crew_name,
        rides.channel_id, coalesce(ch.name, '')::text as channel_name
@@ -1422,6 +1433,7 @@ type ListUserRidesRow struct {
 	DistanceM       *int32
 	ClimbedM        *int32
 	OnRoad          *bool
+	Title           *string
 	ExportState     *string
 	CrewID          pgtype.UUID
 	CrewName        string
@@ -1473,6 +1485,7 @@ func (q *Queries) ListUserRides(ctx context.Context, arg ListUserRidesParams) ([
 			&i.DistanceM,
 			&i.ClimbedM,
 			&i.OnRoad,
+			&i.Title,
 			&i.ExportState,
 			&i.CrewID,
 			&i.CrewName,
@@ -1492,7 +1505,7 @@ func (q *Queries) ListUserRides(ctx context.Context, arg ListUserRidesParams) ([
 const listUserRidesFull = `-- name: ListUserRidesFull :many
 select r.id, r.workout_name, r.started_at, r.seconds, r.avg_watts, r.kj, r.execution,
        r.execution_scored, r.norm_watts, r.ftp_watts, r.ftp_after_watts, r.xp, r.curve,
-       r.shared_at, r.rpe, r.note,
+       r.shared_at, r.rpe, r.note, r.title,
        c.name as crew_name, ch.name as channel_name,
        r.ride_mode, r.timeable, r.from_m, r.distance_m, r.climbed_m, r.weight_kg,
        r.mean_shelter, r.route_key, r.road_h
@@ -1519,6 +1532,7 @@ type ListUserRidesFullRow struct {
 	SharedAt        pgtype.Timestamptz
 	Rpe             *int16
 	Note            *string
+	Title           *string
 	CrewName        *string
 	ChannelName     *string
 	RideMode        *string
@@ -1574,6 +1588,7 @@ func (q *Queries) ListUserRidesFull(ctx context.Context, userID pgtype.UUID) ([]
 			&i.SharedAt,
 			&i.Rpe,
 			&i.Note,
+			&i.Title,
 			&i.CrewName,
 			&i.ChannelName,
 			&i.RideMode,
@@ -1665,6 +1680,44 @@ func (q *Queries) OwnRoadsOfRides(ctx context.Context, arg OwnRoadsOfRidesParams
 		return nil, err
 	}
 	return items, nil
+}
+
+const patchRide = `-- name: PatchRide :execrows
+update rides
+set shared_at = case
+        when $1::boolean is null then shared_at
+        when $1::boolean then coalesce(shared_at, now())
+        else null end,
+    title = case when $2::boolean then $3::text else title end
+where id = $4 and user_id = $5
+`
+
+type PatchRideParams struct {
+	Shared   *bool
+	SetTitle bool
+	Title    *string
+	ID       pgtype.UUID
+	UserID   pgtype.UUID
+}
+
+// PATCH /api/rides/{id} in one statement, so a request that sends both
+// fields stores both or neither. A null `shared` leaves sharing as it is
+// (SetRideShared's rule otherwise); `set_title` says whether `title` was
+// sent, and a null title clears it, so the ride reads as its workout's name
+// again (#4209). workout_name never moves: Against your best groups by it.
+// Owner-only by the where clause.
+func (q *Queries) PatchRide(ctx context.Context, arg PatchRideParams) (int64, error) {
+	result, err := q.db.Exec(ctx, patchRide,
+		arg.Shared,
+		arg.SetTitle,
+		arg.Title,
+		arg.ID,
+		arg.UserID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const requeueRideExport = `-- name: RequeueRideExport :execrows

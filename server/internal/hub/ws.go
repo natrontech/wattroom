@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -286,7 +287,6 @@ func (h *Hub) writeError(c *client, code, message string) {
 // would accept — the WS path was the one that never asked. The numbers are
 // the API's (customworkouts.checkDefinition).
 const (
-	maxWorkoutNameRunes = 80
 	maxWorkoutJSONBytes = 64 << 10
 	metricsMinGap       = 100 * time.Millisecond
 )
@@ -294,8 +294,8 @@ const (
 // checkPick returns the refusal a coach's pick earns, or "" when it may run.
 func checkPick(c protocol.Control) string {
 	name := strings.TrimSpace(c.WorkoutName)
-	if name == "" || utf8.RuneCountInString(name) > maxWorkoutNameRunes {
-		return "A workout name has to be 1-80 characters."
+	if name == "" || utf8.RuneCountInString(name) > protocol.MaxWorkoutNameChars {
+		return fmt.Sprintf("A workout name has to be 1-%d characters.", protocol.MaxWorkoutNameChars)
 	}
 	if len(c.WorkoutJSON) > maxWorkoutJSONBytes {
 		return "That workout is too large to share with the session."

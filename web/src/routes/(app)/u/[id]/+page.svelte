@@ -433,7 +433,7 @@
 									<li class="panel panel-lg">
 										<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
 											<span class="font-display font-bold"
-												>{ride.workoutName}</span
+												>{ride.title || ride.workoutName}</span
 											>
 											<span class="text-muted text-xs"
 												>{ridePlace(ride)} · {new Date(

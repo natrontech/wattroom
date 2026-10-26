@@ -10,7 +10,7 @@
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import type { RideRecord } from '$lib/history.svelte';
 	import { compareRows, curveSentence } from './compare';
-	import { rideTitle, type RideRoad } from './list';
+	import { riddenName, type RideRoad } from './list';
 
 	let {
 		ride,
@@ -69,7 +69,7 @@
 	{:else if !best}
 		<div class="mt-3">
 			<EmptyState>
-				First time you have ridden {rideTitle(ride)}. Ride it again and this is
+				First time you have ridden {riddenName(ride)}. Ride it again and this is
 				where the two sit side by side.
 			</EmptyState>
 		</div>

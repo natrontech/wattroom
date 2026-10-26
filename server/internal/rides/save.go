@@ -106,9 +106,9 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	req.WorkoutName = strings.TrimSpace(req.WorkoutName)
-	if req.WorkoutName == "" || utf8.RuneCountInString(req.WorkoutName) > 80 {
+	if req.WorkoutName == "" || utf8.RuneCountInString(req.WorkoutName) > protocol.MaxWorkoutNameChars {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-			"A workout name has to be 1-80 characters.", "workoutName")
+			fmt.Sprintf("A workout name has to be 1-%d characters.", protocol.MaxWorkoutNameChars), "workoutName")
 		return
 	}
 	// An empty workout is a free ride's (ADR-0059), and only when it says
