@@ -1,5 +1,5 @@
 import { apiBlob } from '$lib/api';
-import { downloadBlob } from '$lib/download';
+import { shareFile } from '$lib/share';
 
 /**
  * The ride as a picture (#2112). Strava's API uploads the activity and never
@@ -15,7 +15,10 @@ import { downloadBlob } from '$lib/download';
 export async function downloadRideCard(id: string): Promise<string | null> {
 	const res = await apiBlob(`/api/rides/${encodeURIComponent(id)}/card.png`);
 	if (!res.ok) return res.error.message;
-	downloadBlob(res.data.blob, res.data.filename ?? `wattroom-ride-${id}.png`);
+	await shareFile(
+		res.data.blob,
+		res.data.filename ?? `wattroom-ride-${id}.png`,
+	);
 	return null;
 }
 

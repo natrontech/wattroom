@@ -1,5 +1,7 @@
 import { copyText, theLinkItself } from '$lib/copy';
 import { device } from '$lib/device.svelte';
+import { downloadBlob } from '$lib/download';
+import { toasts } from '$lib/toast.svelte';
 
 /**
  * A link handed to another person (#973).
@@ -39,6 +41,38 @@ export async function shareLink(link: string, copied: string): Promise<void> {
 		}
 	}
 	await copyText(link, copied, theLinkItself(link));
+}
+
+/**
+ * A file the rider keeps: the ride's poster or card, its FIT export (#4227).
+ *
+ * On a phone the share sheet, which holds Save Image, Photos, Strava and
+ * Files: iOS answered an `<a download>` with a bare file preview, from which
+ * the picture reached none of them. A desk keeps the download, for the same
+ * reason `shareLink` keeps the clipboard there.
+ *
+ * The file is fetched before this runs, and a slow fetch can outlast the tap
+ * the share sheet needs. Safari then refuses it, so the rider gets one button
+ * that is a fresh tap, rather than the preview this replaces.
+ */
+export async function shareFile(blob: Blob, filename: string): Promise<void> {
+	const file = new File([blob], filename, { type: blob.type });
+	if (!canShare() || !navigator.canShare?.({ files: [file] }))
+		return downloadBlob(blob, filename);
+	const share = () => navigator.share({ files: [file] });
+	try {
+		await share();
+	} catch (err) {
+		if (dismissed(err)) return;
+		if ((err as { name?: unknown } | null)?.name === 'NotAllowedError') {
+			toasts.push(`${filename} is ready.`, {
+				action: { label: 'Share', run: () => void share().catch(() => {}) },
+				seconds: 0,
+			});
+			return;
+		}
+		downloadBlob(blob, filename);
+	}
 }
 
 /**
