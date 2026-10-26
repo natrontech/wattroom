@@ -10,6 +10,7 @@ import { createLiveStats } from '$lib/ride/live-stats.svelte';
 import { createRideClock } from './ride-clock.svelte';
 import { createRideLife } from './ride-life.svelte';
 import { createRoadDot } from './road-dot.svelte';
+import { describeBlock } from './block';
 import { createRideHud } from './ride-hud';
 import { createSoloAim } from './solo-aim.svelte';
 import type { RideOptions, RideState } from './ride-state';
@@ -167,6 +168,7 @@ export function createRideSession({
 		ridingSince: () => life.ridingSince,
 		now,
 		road: () => dot.summary?.readout,
+		block: () => describeBlock(clock.info, clock.segments, workout, ftp),
 	});
 
 	/**

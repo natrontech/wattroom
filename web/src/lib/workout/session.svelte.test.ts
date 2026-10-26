@@ -853,6 +853,22 @@ describe('the HUD feed (#1665)', () => {
 		expect(hud.published.at(-1)).toMatchObject({ watts: 0, fault: 'trainer' });
 		vi.useRealTimers();
 	});
+
+	it("sends slot 1's block, and no NEXT in the last one (#4212)", async () => {
+		const session = ride();
+		await startRiding(session);
+		session.onSample({ watts: 200, cadence: 90, at: 0 });
+		expect(hud.published.at(-1)).toMatchObject({
+			block: { secondsLeft: 60, next: { watts: 100, seconds: 60 } },
+		});
+		for (let s = 1; s <= 70; s++) {
+			session.tick();
+			session.onSample({ watts: 150, cadence: 90, at: s * 1000 });
+		}
+		expect(hud.published.at(-1)).toMatchObject({
+			block: { secondsLeft: 50, next: null },
+		});
+	});
 });
 
 describe('the trace the graph draws (#2017)', () => {

@@ -8,6 +8,10 @@
 import { account } from '$lib/account.svelte';
 import { hrZoneOf, zoneOf } from '$lib/components/zones';
 import type { RoadReadout } from '$lib/road/readout';
+import type { Block } from '$lib/workout/block';
+
+/** The block a structured ride is in (#4212): its time left, NEXT and the rep. */
+export type HudBlock = Pick<Block, 'secondsLeft' | 'next' | 'rep'>;
 
 export interface HudSnapshot {
 	/** Unix millis when published; a HUD that has not heard for a while says so. */
@@ -47,6 +51,12 @@ export interface HudSnapshot {
 	 * say it from. Absent off a road, and ignored by a HUD older than it.
 	 */
 	road?: RoadReadout;
+	/**
+	 * The block, on a ride of structured blocks (#4212). Absent on a free
+	 * ride, a one-block ride and a route ride, and ignored by a HUD older
+	 * than it.
+	 */
+	block?: HudBlock;
 }
 
 const CHANNEL = 'wattroom.hud';

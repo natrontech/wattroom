@@ -98,7 +98,11 @@ test('the HUD waits, then shows what the riding screen publishes', async ({
 	await expect(page.getByTestId('hud-quiet')).toBeVisible({ timeout: 8000 });
 });
 
-/** Rows outside the block's padding, or the block outside the window. */
+/**
+ * Rows outside the block's padding, or the block outside the window. An item
+ * a one-line row wrapped out of its own box is not drawn, so not clipped —
+ * one cut at the row's edge is.
+ */
 function clippedRows() {
 	const el = document.querySelector('.hud')!;
 	const hud = el.getBoundingClientRect();
@@ -107,15 +111,144 @@ function clippedRows() {
 	const bottom =
 		Math.min(hud.bottom, innerHeight) - parseFloat(pad.paddingBottom);
 	const right = Math.min(hud.right, innerWidth) - parseFloat(pad.paddingRight);
+	const wrappedAway = (child: Element, r: DOMRect) => {
+		const row = child.closest('[data-one-line]');
+		return (
+			!!row && row !== child && r.top >= row.getBoundingClientRect().bottom
+		);
+	};
 	return [...el.querySelectorAll('*')]
 		.map((child) => ({ child, r: child.getBoundingClientRect() }))
 		.filter(
-			({ r }) =>
+			({ child, r }) =>
 				r.width > 0 &&
+				!wrappedAway(child, r) &&
 				(r.top < top - 0.5 || r.bottom > bottom + 0.5 || r.right > right + 0.5),
 		)
 		.map(({ child }) => child.getAttribute('data-testid') ?? child.tagName);
 }
+
+/** What a one-line row shows: its items still on its line. */
+function shownInRow(testId: string) {
+	const row = document.querySelector(`[data-testid="${testId}"]`)!;
+	const bottom = row.getBoundingClientRect().bottom;
+	return [...row.children]
+		.filter((c) => c.getBoundingClientRect().top < bottom)
+		.map((c) => c.getAttribute('data-testid'));
+}
+
+/**
+ * Intervals (#4212): the block's time left, NEXT in describeBlock's words
+ * and the rep under the watts, inside the shell's 320×152 with the zone
+ * strip. The rep gives way first, then NEXT; the last block has no NEXT; on
+ * a road workout the block's time left takes the clock's place; and a feed
+ * without the block draws as before.
+ */
+test('the HUD tells the block, what comes next and the rep', async ({
+	context,
+	page,
+}) => {
+	await page.setViewportSize({ width: 320, height: 152 });
+	await signInAs(page, 'HUD Intervals', '/hud');
+	await expect(page.getByTestId('hud-quiet')).toBeVisible();
+
+	const rider = await context.newPage();
+	await rider.goto('/home');
+	const send = (extra: object) =>
+		rider.evaluate(
+			(extra) =>
+				new BroadcastChannel('wattroom.hud').postMessage({
+					at: Date.now(),
+					watts: 262,
+					target: 263,
+					remaining: 1414,
+					label: 'Threes',
+					cadence: 91,
+					heartRate: 152,
+					zone: 5,
+					zoneSeconds: 40,
+					...extra,
+				}),
+			extra,
+		);
+
+	await send({
+		block: {
+			secondsLeft: 140,
+			next: { label: 'Endurance', watts: 150, seconds: 120 },
+			rep: { index: 2, count: 3 },
+		},
+	});
+	await expect(page.getByTestId('hud-block-left')).toHaveText(
+		'2:20 left in block',
+	);
+	await expect(page.getByTestId('hud-next')).toHaveText(
+		'Next Endurance · 150 W · 2 min',
+	);
+	await expect(page.getByTestId('hud-rep')).toHaveText('rep 2/3');
+	// The workout's time left stays beside it: both fit.
+	await expect(page.getByTestId('hud-remaining')).toHaveText('23:34 left');
+	expect(await page.evaluate(shownInRow, 'hud-block')).toEqual([
+		'hud-block-left',
+		'hud-next',
+		'hud-rep',
+	]);
+	expect(await page.evaluate(clippedRows)).toEqual([]);
+
+	// A long NEXT: the rep gives way, NEXT keeps its line whole.
+	await send({
+		block: {
+			secondsLeft: 600,
+			next: { label: 'Sweet spot', watts: 1234, seconds: 1200 },
+			rep: { index: 12, count: 12 },
+		},
+	});
+	await expect(page.getByTestId('hud-block-left')).toHaveText(
+		'10:00 left in block',
+	);
+	expect(await page.evaluate(shownInRow, 'hud-block')).toEqual([
+		'hud-block-left',
+		'hud-next',
+	]);
+	expect(await page.evaluate(clippedRows)).toEqual([]);
+
+	// The last block: no NEXT.
+	await send({
+		block: { secondsLeft: 30, next: null, rep: { index: 3, count: 3 } },
+	});
+	await expect(page.getByTestId('hud-block-left')).toHaveText(
+		'0:30 left in block',
+	);
+	await expect(page.getByTestId('hud-next')).toHaveCount(0);
+	await expect(page.getByTestId('hud-rep')).toHaveText('rep 3/3');
+
+	// A road workout: the road's rows stay, the block's time left takes the
+	// clock's place, and nothing is clipped.
+	await send({
+		block: {
+			secondsLeft: 140,
+			next: { label: 'Endurance', watts: 150, seconds: 120 },
+		},
+		road: {
+			grade: 4.2,
+			km: 3.1,
+			totalKm: 7.1,
+			ahead: Array.from({ length: 20 }, (_, i) => i * 0.4),
+		},
+	});
+	await expect(page.getByTestId('hud-road')).toHaveText('4.2 %');
+	await expect(page.getByTestId('hud-remaining')).toHaveText(
+		'2:20 left in block',
+		{ useInnerText: true },
+	);
+	await expect(page.getByTestId('hud-block')).toBeHidden();
+	expect(await page.evaluate(clippedRows)).toEqual([]);
+
+	// A feed older than the block, or a ride without one: nothing new.
+	await send({});
+	await expect(page.getByTestId('hud-remaining')).toHaveText('23:34 left');
+	await expect(page.getByTestId('hud-block')).toHaveCount(0);
+});
 
 /**
  * On a road (#3092): the grade under the rider and, on a classed climb, how

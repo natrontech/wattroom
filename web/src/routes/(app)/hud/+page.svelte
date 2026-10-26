@@ -6,6 +6,7 @@
 	import ZoneDot from '$lib/components/ZoneDot.svelte';
 	import { ZONE_BG, ZONE_NAMES } from '$lib/components/zones';
 	import { GRADE_FILL, gradeStep } from '$lib/road/skyline';
+	import { nextText } from '$lib/workout/block';
 	import { toleranceBand } from '$lib/workout/guards';
 
 	// The HUD (#296, ADR-0041): the rider's own numbers in a window of their
@@ -37,6 +38,11 @@
 				: { time: formatClock(snapshot.elapsed), word: 'ridden' },
 	);
 	const road = $derived(snapshot?.road);
+	const block = $derived(snapshot?.block);
+	// A road's two rows fill the shell's 152 px (#4212): there the block's
+	// time left takes the clock's place, since it outranks the workout's,
+	// and NEXT and the rep give way. A larger window draws them all.
+	const crowded = $derived(!!road && !!block);
 	const zoneWords = $derived(
 		snapshot?.zone
 			? `Zone ${snapshot.zone}, ${ZONE_NAMES[snapshot.zone]}`
@@ -59,8 +65,42 @@
      16 px, and any larger window scales that same block as one centred unit
      (#3678), so a browser tab on a second screen reads from the saddle. -->
 {#snippet clockText()}
-	{#if clock}<span class="num">{clock.time}</span>
-		<span class="unit">{clock.word}</span>{/if}
+	{#if clock}<span class="ride-clock"
+			><span class="num">{clock.time}</span>
+			<span class="unit">{clock.word}</span></span
+		>{/if}{#if crowded && block}<span class="block-clock"
+			><span class="num">{formatClock(block.secondsLeft)}</span>
+			<span class="unit">left in block</span></span
+		>{/if}
+{/snippet}
+<!-- The block (#4212): its time left, NEXT in describeBlock's words (D16)
+     and the rep, in that order of worth. One line: whatever does not fit
+     wraps below it, out of sight, so the rep gives way first, then NEXT. -->
+{#snippet blockRow()}
+	{#if block}
+		<div
+			class="block-row text-ink mt-[0.25em] flex flex-wrap items-baseline gap-x-[0.75em] overflow-hidden"
+			data-testid="hud-block"
+			data-one-line
+		>
+			<p class="whitespace-nowrap" data-testid="hud-block-left">
+				<span class="num">{formatClock(block.secondsLeft)}</span>
+				<span class="unit text-muted">left in block</span>
+			</p>
+			{#if block.next}
+				<p class="whitespace-nowrap" data-testid="hud-next">
+					<span class="unit text-muted">Next</span>
+					{nextText(block.next)}
+				</p>
+			{/if}
+			{#if block.rep}
+				<p class="whitespace-nowrap" data-testid="hud-rep">
+					<span class="unit text-muted">rep</span>
+					<span class="num">{block.rep.index}/{block.rep.count}</span>
+				</p>
+			{/if}
+		</div>
+	{/if}
 {/snippet}
 <!-- The Apple Watch workout view's structure (#4099): the watts dominate,
      the other readings stack beside them, each with its unit, and a reading
@@ -144,7 +184,10 @@
 			aria-label="Close the HUD"><X size={14} /></button
 		>
 	{/if}
-	<div class="hud flex flex-col justify-center">
+	<div
+		class="hud flex flex-col justify-center"
+		data-crowded={crowded || undefined}
+	>
 		{#if account.loaded && !account.me}
 			<!-- #1667: the layout's gate would open the sign-in page in this
 			     320 px box, and the shell cannot complete one anyway (ADR-0040). -->
@@ -184,6 +227,7 @@
 				</p>
 				{@render secondary()}
 			</div>
+			{@render blockRow()}
 			{#if snapshot.fault}
 				<p
 					class="text-danger mt-[0.25em] text-[0.75em]"
@@ -261,11 +305,25 @@
 	}
 	.clock,
 	.secondary,
+	.block-row,
 	.zone-time {
 		font-size: 0.75em;
 	}
 	.unit {
 		font-size: 0.5em;
+	}
+	/* One line tall: an item that wraps is clipped whole, never cut. */
+	.block-row {
+		line-height: 1.25;
+		height: 1.25em;
+	}
+	.block-clock,
+	.hud[data-crowded] .ride-clock,
+	.hud[data-crowded] .block-row {
+		display: none;
+	}
+	.hud[data-crowded] .block-clock {
+		display: inline;
 	}
 	/* A larger window (#3857) scales the same rows from the window's height:
 	   at 11cqh the watts' numerals stand about a quarter of it tall and every
@@ -307,8 +365,19 @@
 		}
 		/* And its secondary numbers' (SPEC, "The bike computer"). */
 		.secondary,
+		.block-row,
 		.zone-time {
 			font-size: max(0.75em, 5cqh);
+		}
+		/* The height a road's rows take from the shell is here to spare. */
+		.hud[data-crowded] .ride-clock {
+			display: inline;
+		}
+		.hud[data-crowded] .block-row {
+			display: flex;
+		}
+		.hud[data-crowded] .block-clock {
+			display: none;
 		}
 	}
 </style>

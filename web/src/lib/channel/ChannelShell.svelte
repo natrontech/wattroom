@@ -8,6 +8,7 @@
 	import { device } from '$lib/device.svelte';
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { publishHud } from '$lib/hud/feed';
+	import { hudBlock } from '$lib/hud/hud-block';
 	import { freeRideLabel } from '$lib/ride/free-ride.svelte';
 	import { toasts } from '$lib/toast.svelte';
 	import { confirm } from '$lib/confirm.svelte';
@@ -209,6 +210,7 @@
 			fault,
 			// Slot 1's own readout, so the two never part (#3639).
 			road: roster.block?.road,
+			block: hudBlock(roster.block),
 		});
 	});
 
