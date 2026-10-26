@@ -244,6 +244,21 @@ test('the HUD tells the block, what comes next and the rep', async ({
 	await expect(page.getByTestId('hud-block')).toBeHidden();
 	expect(await page.evaluate(clippedRows)).toEqual([]);
 
+	// A second screen has the room: the line comes back, the clock is the
+	// workout's again, and the line never widens the centred block (#3857).
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await expect(page.getByTestId('hud-block-left')).toBeVisible();
+	await expect(page.getByTestId('hud-remaining')).toHaveText('23:34 left', {
+		useInnerText: true,
+	});
+	const { block: box, texts } = await page.evaluate(hudScale);
+	expect(box!.x0).toBeGreaterThan(5);
+	expect(Math.abs(box!.x0 - (100 - box!.x1))).toBeLessThanOrEqual(0.5);
+	expect(box!.y0).toBeGreaterThan(2);
+	expect(Math.min(...texts.map((t) => t.vh))).toBeGreaterThanOrEqual(2.9);
+	expect(await page.evaluate(shownInRow, 'hud-block')).toContain('hud-next');
+	await page.setViewportSize({ width: 320, height: 152 });
+
 	// A feed older than the block, or a ride without one: nothing new.
 	await send({});
 	await expect(page.getByTestId('hud-remaining')).toHaveText('23:34 left');

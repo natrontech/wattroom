@@ -312,10 +312,12 @@
 	.unit {
 		font-size: 0.5em;
 	}
-	/* One line tall: an item that wraps is clipped whole, never cut. */
+	/* One line tall: an item that wraps is clipped whole, never cut. As wide
+	   as the block the numbers set, never wider (contain: inline-size). */
 	.block-row {
 		line-height: 1.25;
 		height: 1.25em;
+		contain: inline-size;
 	}
 	.block-clock,
 	.hud[data-crowded] .ride-clock,
@@ -365,11 +367,21 @@
 		}
 		/* And its secondary numbers' (SPEC, "The bike computer"). */
 		.secondary,
-		.block-row,
 		.zone-time {
 			font-size: max(0.75em, 5cqh);
 		}
-		/* The height a road's rows take from the shell is here to spare. */
+		/* The block's line at the secondary numbers' floor with a margin, its
+		   words (half) above SPEC's 2.9vh: the shell's 0.75em would spend
+		   the block's width on size, and give NEXT away. */
+		.block-row {
+			font-size: 6cqh;
+		}
+		/* The height a road's rows take from the shell is here to spare, at a
+		   step smaller: road, block and strip together would otherwise reach
+		   the window's top and bottom. */
+		.hud[data-crowded] {
+			font-size: min(10cqh, 100cqw / 14);
+		}
 		.hud[data-crowded] .ride-clock {
 			display: inline;
 		}
