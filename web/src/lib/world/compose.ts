@@ -483,6 +483,10 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		advanceBy,
 		/** Brings the level of detail and the dressing to where the camera now stands, after moving it by hand (the scene budget does). */
 		look: () => look(true),
+		/** Your figure, the rider mask the GPU checks measure (#3222). */
+		get you() {
+			return crew?.you ?? null;
+		},
 		setCamera(next: CameraMode) {
 			mode = next;
 			applyMode();
