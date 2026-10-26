@@ -54,6 +54,7 @@
 	} from '$lib/desktop';
 	import { sidebarUnread } from '$lib/nav/sidebar-unread';
 	import { hangUpOnHide } from '$lib/channel/hang-up-on-hide';
+	import { keepAwakeWhile } from '$lib/workout/keep-awake.svelte';
 	import { notify } from '$lib/notify.svelte';
 	import { toasts } from '$lib/toast.svelte';
 
@@ -61,6 +62,9 @@
 
 	// A ride in one voice channel is not ended by a tap on another (#2602).
 	guardTheRide();
+	// …and keeps the screen and the machine awake, on whichever page the
+	// rider reads meanwhile: only a solo ride held the lock (#4219).
+	keepAwakeWhile(() => !!channelConnection.current?.riding());
 
 	// The desktop shell hides the OS title bar and this app draws the strip
 	// (#1188): the window's handle, in the app's own colour. 0 in a browser.

@@ -75,3 +75,14 @@ describe('the overlay hosts while riding (#3788, #4160)', () => {
 		expect(layout).not.toMatch(/'[^'\n]*\bcave\b[^'\n]*'/);
 	});
 });
+
+// A crew session held no wake lock, so the screen and the Mac slept mid-ride
+// (#4219): the layout holds one for any ride on a channel, on every page,
+// not only the ride's own (`riding` above is the frame's, page-bound).
+describe('the wake lock', () => {
+	it('is held for every ride on a channel, wherever the rider reads', () => {
+		expect(layout).toMatch(
+			/keepAwakeWhile\(\(\) => !!channelConnection\.current\?\.riding\(\)\)/,
+		);
+	});
+});

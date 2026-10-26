@@ -55,11 +55,12 @@ describe('acquireWakeLock', () => {
 		// restore it. Without this re-request, the lock only ever survives until
 		// the rider's first tab switch — and then never protects the screen again.
 		const env = stub();
-		acquireWakeLock();
+		const lock = acquireWakeLock();
 		await vi.waitFor(() => expect(env.sentinels).toHaveLength(1));
 
 		env.becomeVisible();
 		await vi.waitFor(() => expect(env.sentinels).toHaveLength(2));
+		lock.release();
 	});
 
 	it('stops listening once released, so an ended ride cannot re-lock', async () => {

@@ -12,6 +12,7 @@
 	import type { createChannelLive } from '$lib/channel/live.svelte';
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
 	import { createTalkHold } from '$lib/ride/remote-talk';
+	import { keepAwakeWhile } from '$lib/workout/keep-awake.svelte';
 
 	let {
 		live,
@@ -37,6 +38,8 @@
 	// A phone that opens late asks the holder where it is: its gear and
 	// whether the ride is a solo one it may pause.
 	onMount(() => live.sendRemote('sync'));
+	// A remote that sleeps mid-ride is a phone to unlock with sweaty hands (#4219).
+	keepAwakeWhile(() => true);
 
 	const cell =
 		'btn btn-accent btn-ride min-h-16 text-2xl! disabled:cursor-not-allowed disabled:opacity-60';

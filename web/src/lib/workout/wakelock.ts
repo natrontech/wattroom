@@ -27,8 +27,17 @@ export interface WakeLock {
 	release(): void;
 }
 
+/**
+ * The locks held now. Several can be: a ride in a channel and the phone
+ * remote beside it (#4219). The shell holds one blocker for all of them, so
+ * the first hold starts it and only the last release stops it.
+ */
+let holders = 0;
+
 /** The desktop shell, when there is one. ADR-0037: absent means a browser. */
 function shellKeepAwake(on: boolean): void {
+	holders += on ? 1 : -1;
+	if (holders !== (on ? 1 : 0)) return;
 	(
 		globalThis as { wattroom?: { keepAwake?: (on: boolean) => void } }
 	).wattroom?.keepAwake?.(on);
@@ -38,6 +47,11 @@ export function acquireWakeLock(): WakeLock {
 	// The shell's blocker is independent of the browser lock below: a build
 	// without navigator.wakeLock should still stop the machine sleeping.
 	shellKeepAwake(true);
+	let held = true;
+	const letGo = () => {
+		if (held) shellKeepAwake(false);
+		held = false;
+	};
 
 	// Unit tests run in node; Web Bluetooth-less browsers may also lack this.
 	if (
@@ -45,11 +59,7 @@ export function acquireWakeLock(): WakeLock {
 		!navigator.wakeLock ||
 		typeof document === 'undefined'
 	) {
-		return {
-			release() {
-				shellKeepAwake(false);
-			},
-		};
+		return { release: letGo };
 	}
 
 	let sentinel: WakeLockSentinel | null = null;
@@ -75,7 +85,7 @@ export function acquireWakeLock(): WakeLock {
 	return {
 		release() {
 			released = true;
-			shellKeepAwake(false);
+			letGo();
 			document.removeEventListener('visibilitychange', onVisible);
 			void sentinel?.release().catch(() => {});
 			sentinel = null;
