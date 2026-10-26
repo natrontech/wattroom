@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { STACKED_Z, stackedZ } from '$lib/modals.svelte';
 
 /**
  * The voice channel's stacking order (#483). The jukebox player is ONE fixed
@@ -96,5 +97,31 @@ describe('channel stacking (#483)', () => {
 		);
 		expect(soundboard).toBeGreaterThan(seatedPlayer);
 		expect(soundboard).toBeLessThan(chatSheet);
+	});
+	it('opens a modal over another overlay above all of them (#4222)', () => {
+		// The desktop shell's trainer chooser is a Modal, and the session
+		// picker that asks for it sat a layer above: the chooser opened under
+		// it, and a session could not be paired.
+		const sessionPicker = layer(
+			'lib/session/SessionPicker.svelte',
+			/border-frame bg-surface fixed [^"]* z-(\d+) /,
+		);
+		const imageViewer = layer(
+			'lib/chat/ImageViewer.svelte',
+			/cave bg-paper\/95 safe-p-3 fixed inset-0 z-\[(\d+)\]/,
+		);
+		const navPending = layer(
+			'routes/(app)/+layout.svelte',
+			/nav-pending bg-neon fixed inset-x-0 z-\[(\d+)\]/,
+		);
+		for (const below of [sessionPicker, chatSheet, imageViewer])
+			expect(STACKED_Z).toBeGreaterThan(below);
+		expect(STACKED_Z).toBeLessThan(navPending);
+		// The first modal keeps its own class's layer; the Modal reads its depth.
+		expect(stackedZ(1)).toBeUndefined();
+		expect(stackedZ(2)).toBe(STACKED_Z);
+		expect(
+			readFileSync(join(SRC, 'lib/components/Modal.svelte'), 'utf8'),
+		).toContain('style:z-index={stackedZ(depth)}');
 	});
 });

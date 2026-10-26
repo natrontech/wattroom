@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import { countModal, modals } from '$lib/modals.svelte';
+	import { countModal, modals, stackedZ } from '$lib/modals.svelte';
 	import { focusTrap } from './focus-trap';
 	import { enter } from '$lib/motion/transitions';
 	import type { Snippet } from 'svelte';
@@ -69,6 +69,7 @@
 		: placement === 'corner'
 			? 'items-end sm:p-3'
 			: 'bg-paper/50 safe-p-4 items-center justify-center'}"
+	style:z-index={stackedZ(depth)}
 	onclick={(event) => event.target === event.currentTarget && onclose()}
 >
 	<!-- The dialog never grows past the window (#2178): two call sites spelled
