@@ -413,7 +413,7 @@
 	     surface does (Jan, 2026-10-25, #4160); `data-ride` is what the
 	     sidebar's `ride:hidden` and a modal opened mid-ride read. -->
 	<div
-		class="flex h-dvh overflow-hidden"
+		class="safe-frame flex h-dvh overflow-hidden"
 		data-ride={riding ? '' : undefined}
 		style={titleBar ? `padding-top: ${titleBar}px` : ''}
 	>
@@ -442,7 +442,7 @@
 		<div
 			bind:this={drawerBox}
 			inert={device.narrow && !navDrawer.open}
-			class="fixed inset-y-0 left-0 z-50 shrink-0 transition-transform duration-(--dur-base) md:static md:z-auto md:translate-x-0 {navDrawer.open
+			class="bg-surface fixed inset-y-0 left-0 z-50 shrink-0 transition-transform duration-(--dur-base) max-md:pt-(--safe-top) max-md:pb-(--safe-bottom) max-md:pl-(--safe-left) md:static md:z-auto md:translate-x-0 {navDrawer.open
 				? 'translate-x-0'
 				: '-translate-x-full'}"
 			style={titleBar ? `top: ${titleBar}px` : ''}
@@ -545,7 +545,7 @@
 			     the sidebar standing there (#412). -->
 			<button
 				onclick={() => (navDrawer.open = true)}
-				class="bg-surface-raised border-ink/15 fixed bottom-4 left-4 z-40 grid h-12
+				class="bg-surface-raised border-ink/15 fixed bottom-[calc(1rem+var(--safe-bottom))] left-[calc(1rem+var(--safe-left))] z-40 grid h-12
 				w-12 place-items-center rounded-full border md:hidden"
 				aria-label="open navigation"
 			>

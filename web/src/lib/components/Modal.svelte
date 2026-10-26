@@ -68,7 +68,7 @@
 		? 'bg-paper/50 justify-end'
 		: placement === 'corner'
 			? 'items-end sm:p-3'
-			: 'bg-paper/50 items-center justify-center p-4'}"
+			: 'bg-paper/50 safe-p-4 items-center justify-center'}"
 	onclick={(event) => event.target === event.currentTarget && onclose()}
 >
 	<!-- The dialog never grows past the window (#2178): two call sites spelled
@@ -76,10 +76,10 @@
 	     phone was clipped at both ends with no way to scroll it. -->
 	<div
 		class={placement === 'right'
-			? `bg-surface border-ink/10 h-dvh w-full overflow-y-auto border-l ${cls}`
+			? `bg-surface border-ink/10 h-dvh w-full overflow-y-auto border-l pt-(--safe-top) pr-(--safe-right) pb-(--safe-bottom) ${cls}`
 			: placement === 'corner'
-				? `panel panel-lg max-h-[calc(100dvh-1.5rem)] w-full overflow-y-auto max-sm:rounded-b-none ${cls}`
-				: `panel panel-lg max-h-[calc(100dvh-2rem)] w-full overflow-y-auto ${cls}`}
+				? `panel panel-lg max-h-[calc(100dvh-1.5rem-var(--safe-top))] w-full overflow-y-auto max-sm:rounded-b-none max-sm:pb-[calc(1.25rem+var(--safe-bottom))] ${cls}`
+				: `panel panel-lg max-h-[calc(100dvh-2rem-var(--safe-top)-var(--safe-bottom))] w-full overflow-y-auto ${cls}`}
 		in:enter={placement === 'right'
 			? { x: 48 }
 			: placement === 'corner' && { y: 24 }}

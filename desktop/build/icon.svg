@@ -18,6 +18,10 @@
     mark rather than web/static/favicon.svg's bare bars, which are drawn for a
     16px tab. 192 is a square multiple of 48, which is what Google asks for:
       rsvg-convert -w 192 -h 192 icon.svg > ../../web/static/favicon.png
+
+    The installed web app's "any" icons are this tile too (ADR-0090); its
+    home-screen and maskable ones are icon-full-bleed.svg's:
+      rsvg-convert -w 512 -h 512 icon.svg > ../../web/static/icons/512.png
   -->
   <defs>
     <linearGradient id="bars" x1="0" y1="0" x2="0" y2="1">

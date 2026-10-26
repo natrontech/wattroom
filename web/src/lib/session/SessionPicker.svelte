@@ -327,8 +327,8 @@
 	aria-label={title}
 	tabindex="-1"
 	use:focusTrap
-	class="border-frame bg-surface fixed inset-x-4 top-[6dvh] z-50 flex flex-col overflow-hidden rounded-xl border md:right-auto md:left-1/2 md:w-[64rem] md:max-w-[calc(100vw-2rem)] md:-translate-x-1/2"
-	style="bottom: 6dvh"
+	class="border-frame bg-surface fixed inset-x-4 top-[max(6dvh,calc(1rem+var(--safe-top)))] z-50 flex flex-col overflow-hidden rounded-xl border md:right-auto md:left-1/2 md:w-[64rem] md:max-w-[calc(100vw-2rem)] md:-translate-x-1/2"
+	style="bottom: max(6dvh, calc(1rem + var(--safe-bottom)))"
 >
 	<header class="border-ink/5 flex items-center gap-4 border-b px-5 py-3.5">
 		<h2 class="font-display text-lg font-bold">{title}</h2>

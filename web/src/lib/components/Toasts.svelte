@@ -32,7 +32,7 @@
 		if (!e.currentTarget.contains(e.relatedTarget as Node | null))
 			toasts.release();
 	}}
-	class="pointer-events-none fixed left-1/2 z-[52] flex w-full max-w-sm -translate-x-1/2 flex-col items-center gap-2 px-4 max-md:top-16 md:bottom-6"
+	class="pointer-events-none fixed left-1/2 z-[52] flex w-full max-w-sm -translate-x-1/2 flex-col items-center gap-2 px-4 max-md:top-[calc(4rem+var(--safe-top))] md:bottom-[calc(1.5rem+var(--safe-bottom))]"
 >
 	{#each toasts.items as toast (toast.id)}
 		<div
