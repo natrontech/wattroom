@@ -8,8 +8,8 @@ test.use({ viewport: { width: 1440, height: 900 } });
 
 /**
  * 3D is the rider's to turn on (#3084, ADR-0066 amended): a road ride opens
- * on the flat road, "Ride in 3D" draws the world at once, the world's Flat
- * road button takes it away again, and each tap is the World control's.
+ * on the flat road, the view switch's 3D draws the world at once, its Flat
+ * takes it away again (#4217, ADR-0091), and each tap is the World control's.
  */
 test('a road ride opens flat, and the rider switches to 3D and back @world', async ({
 	page,
@@ -36,7 +36,7 @@ test('a road ride opens flat, and the rider switches to 3D and back @world', asy
 		page.evaluate(() => localStorage.getItem('wattroom.world.mode.v1'));
 	expect(await stored()).toBeNull();
 
-	await page.getByRole('button', { name: 'Ride in 3D' }).click();
+	await page.getByRole('button', { name: '3D', exact: true }).click();
 	await expect(page.getByTestId('flat-road')).toHaveCount(0);
 	await expect(page.locator('[data-surface=docked] canvas')).toBeVisible({
 		timeout: 60_000,
@@ -53,7 +53,7 @@ test('a road ride opens flat, and the rider switches to 3D and back @world', asy
 		Math.round(body!.x + body!.width),
 	);
 
-	const flat = page.getByRole('button', { name: 'Flat road' });
+	const flat = page.getByRole('button', { name: 'Flat', exact: true });
 	// A ride's control on a desk is 33 px, on the ride's scale (ADR-0087).
 	expect((await flat.boundingBox())?.height).toBeGreaterThanOrEqual(32);
 	await flat.click();

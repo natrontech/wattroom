@@ -15,10 +15,18 @@ import type { LiveStats } from '$lib/ride/live-stats.svelte';
  */
 export const PAGES = ['ride', 'climb', 'power', 'map', 'race'] as const;
 /**
- * The M key (#3216) asks every computer for its MAP page. A computer with one
- * takes the event; with none the key says why (RidingScreen).
+ * Asks every computer on the page for one of its pages: the M key (#3216)
+ * for MAP, the view switch (#4217) for MAP and back to RIDE. A computer with
+ * that page takes the event. Says whether one did, so the M key can say why
+ * not (RidingScreen).
  */
-export const MAP_ASK = 'wattroom:computer-map';
+export const PAGE_ASK = 'wattroom:computer-page';
+
+export function askPage(page: ComputerPage): boolean {
+	return !window.dispatchEvent(
+		new CustomEvent<ComputerPage>(PAGE_ASK, { detail: page, cancelable: true }),
+	);
+}
 
 /** ride-label at three metres: SPEC's 3vh, where ride-label's 24 px is under the TV's 2.9vh floor. */
 export const TV_LABEL =

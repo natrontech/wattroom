@@ -42,14 +42,13 @@
 	import { untrack } from 'svelte';
 	import { BikeKg } from '$lib/protocol';
 	import { mapView } from '$lib/ride/map-view';
-	import { MAP_ASK } from '$lib/session/computer-pages';
+	import { askPage } from '$lib/session/computer-pages';
 	import { watchClimbCues } from '$lib/ride/climb-cues.svelte';
 	import { rideContext } from '$lib/session/ride-context';
 	import RidingSurface from '$lib/session/RidingSurface.svelte';
 	import BiasTrim from '$lib/session/BiasTrim.svelte';
 	import BikeComputer from '$lib/session/BikeComputer.svelte';
-	import FlatButton from '$lib/world/FlatButton.svelte';
-	import FlatRoad from '$lib/world/FlatRoad.svelte';
+	import ViewSwitch from '$lib/world/ViewSwitch.svelte';
 	import { createWorldView } from '$lib/world/world-view.svelte';
 	import MomentCard from '$lib/session/MomentCard.svelte';
 	import CountdownScreen from '$lib/session/CountdownScreen.svelte';
@@ -130,10 +129,7 @@
 			if (inWorld) camera = key.preset;
 			else toasts.push('Cameras need the 3D road.');
 		} else if (key.kind === 'map') {
-			const taken = !window.dispatchEvent(
-				new CustomEvent(MAP_ASK, { cancelable: true }),
-			);
-			if (!taken) toasts.push('The MAP page needs a road.');
+			if (!askPage('map')) toasts.push('The MAP page needs a road.');
 		} else toasts.push('Snap is not here yet.');
 	}
 	$effect(() => bindRideKeys(rideKey, (k) => !!board.onKey(k)));
@@ -229,7 +225,7 @@
 			>
 		{:else}
 			{#if onFlag}<FlagButton onflag={flag} sends="after" />{/if}
-			{#if drawn}<FlatButton onflat={world.flatten} class={ICON} />{/if}
+			{#if session.road}<ViewSwitch {world} {drawn} />{/if}
 			{#if onTv}
 				<button onclick={onTv} class={ICON} aria-label="TV mode" title="TV mode"
 					><MonitorUp size={20} /></button
@@ -272,9 +268,6 @@
 
 {#snippet rideStatus()}
 	<RideStatus {session} {signalLost} {noCrashSafety} line />
-	{#if !inWorld && session.road && world.reason}
-		<FlatRoad reason={world.reason} onretry={world.retry} />
-	{/if}
 {/snippet}
 
 {#snippet strip()}

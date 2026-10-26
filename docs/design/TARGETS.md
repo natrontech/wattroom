@@ -140,7 +140,7 @@ Layout:
 4. Insets 16 px, gaps 12–16 px. Computer, Skyline, and slot 1 when in the left column, share a left edge; seat, crew panel and Skyline share a right edge. [ride-surface]
 5. Panels content-sized: nothing clipped or scrolling, no empty band > 24 px. Cadence, heart and bias trim visible and reachable. [ride-surface] [probe:panels]
 6. Slot 1: one panel top left, outside the corridor, shaped as the box table shows holding SPEC's sizes (a wide band ending above y 22.5 %, or a column ≤ 30 % wide above the computer). It opens with a `ride-label` eyebrow, mode · workout or road · riders; then v2-erg's work panel: time left at SPEC's desk size with “Block n of m · name”, “Target W · range”, “elapsed of total”; interval strip with cursor; NEXT (D16) with the 3-2-1 chips; the trainer chip. On a road, the road line “km x of y · grade % · <next climb> in z km” once, here. [ride-surface]
-7. Controls one row inside slot 1, no separate panel: ⚑, Flat road (#3084), TV, +1 min, Skip block as G5-sized icon buttons with accessible names and tooltips; End ride the one text button; +1 min and Skip block only where the rider owns the clock (D13). [ride-surface] [probe:minTarget] [test:web/src/lib/ride/riding-screen-world.test.ts]
+7. Controls one row inside slot 1, no separate panel: ⚑, TV, +1 min, Skip block as G5-sized icon buttons with accessible names and tooltips; the view switch, 3D | Flat | Map, one segmented control of G5-sized words (ADR-0091); End ride the one text button; +1 min and Skip block only where the rider owns the clock (D13). [ride-surface] [probe:minTarget] [test:web/src/lib/ride/riding-screen-world.test.ts]
 8. Persistent status (G3): one line atop slot 1 with its one recovery button, never covering the corridor. [ride-surface] [multi:ride-status]
 9. Bike computer: one panel bottom left, ≤ 30 % wide, directly above the Skyline. Top down: page control (D15), ← name → with dots, arrows G5-sized; head: 3 s power in watt (at SPEC's desk size), W/kg beside it, and under it only where four figures leave no room beside (#3898; on a desk ride at SPEC's size they fit, ADR-0087), live zone as digit and name under; while a target is asked, target track (low · target · high, a needle) and “Block · n % on target”; the page's fields per the one-home table, a grid under a hairline. [ride-surface]
 10. Only watt marks: G2's three, one power figure, your Skyline dot, your trail. [ride-surface] [probe:wattCount]
@@ -169,7 +169,7 @@ Pages:
 
 28. Turned to CLIMB on the climb: ← CLIMB with the class chip → and dots (D15) over the head; under the hairline To top · Ascent · Avg left in two columns, each label on one line at label size; on the other pages the same chip beside the page's name, taking no row; while a target is asked no profile, as the Skyline below draws the climb and your dot; the panel between slot 1 and the Skyline, whole. [#3645] [multi:ride-road-world-climb]
 29. The road's last metre stands a FINISH arch across it: the KOM arch's chrome and banner, never glowing; none on a road the session laps. [multi:world-finish] [test:web/src/lib/world/ride-scene.test.ts] [#3623]
-30. Turned to MAP with M: ← MAP → and dots (D15) over the head; under the hairline the road from above as its turns draw it, 3 px in the muted line (the ramp is neon at five strengths, so a neon road would hide its climbs), classed climbs overpainted in the grade ramp, your dot in ink; no north, tile, name, coordinate or number (ADR-0063's crew tier; the numbers stay slot 1's road line); the panel is no taller than CLIMB's, whole between slot 1 and the Skyline. [#3645] [multi:ride-road-world-map] [multi:ride-road-world-map-rolling]
+30. Turned to MAP with M or the view switch's Map (ADR-0091): ← MAP → and dots (D15) over the head; under the hairline the road from above as its turns draw it, 3 px in the muted line (the ramp is neon at five strengths, so a neon road would hide its climbs), classed climbs overpainted in the grade ramp, your dot in ink; no north, tile, name, coordinate or number (ADR-0063's crew tier; the numbers stay slot 1's road line); the panel is no taller than CLIMB's, whole between slot 1 and the Skyline. [#3645] [multi:ride-road-world-map] [multi:ride-road-world-map-rolling]
 
 Crew and computer:
 
@@ -216,8 +216,8 @@ Capture: world off, `/ride?w=openers`, 14 s in; a second frame at four-digit wat
 Capture: world on, a road ride forced onto the Skyline; again under `reducedMotion: 'reduce'`. Target: v2-ride's “Flat road” inset.
 
 1. ride-workout-flat's items hold, the Skyline in the horizon panel at full width, the dot inside. [ride-flat]
-2. The Flat-road line is `REASONS`' line for the reason (`lib/world/ride-view.ts`), not new copy: atop slot 1 at `ride-label` size; the button `REASONS` names (“Ride in 3D” on Flat, “Try 3D again” after a failure), G5-sized, and none where the browser cannot draw the world; wording changes go through #3212. [ride-flat]
-3. Reduced motion: `REASONS.motion`'s line, with one “Show the world (steady camera)” button that sets Steady (ADR-0079). [#3214] [multi:reduced-motion]
+2. The view switch's Flat is pressed (ADR-0091). Its 3D segment carries `REASONS`' few words for the reason (`lib/world/ride-view.ts`), not new copy; a tap there brings the world back where `REASONS` says it can, and where it cannot (no WebGL, a window too short) 3D is disabled with the whole line as its hint. The line is the switch's status for a screen reader. A fallback sounds the fault cue once. Wording changes go through #3212. [ride-flat]
+3. Reduced motion: `REASONS.motion`'s line as the switch's status, its 3D segment saying “steady camera”, and a tap there sets Steady (ADR-0079). [#3214] [multi:reduced-motion]
 
 #### ride-status
 
@@ -256,7 +256,7 @@ Capture: world off, `/ride?road=<hairpin>`, 14 s in, OS scheme light. Targets: v
 4. Road name, gear, grade and watts each once (D17). [ride-free-road-surface]
 5. No 0–300 W track, no “no target — spin easy”. [ride-free-road-surface]
 6. RIDE page per the one-home table: Speed, Cadence, Heart, Gear where gears are on, vs best / vs last with a ghost. [ride-free-road-surface]
-7. Road | Watts, Easier and Harder G5-sized, in slot 1's row beside ⚑, Flat road (in the world, #3084), TV and End ride. [ride-free-road-surface]
+7. Road | Watts, Easier and Harder G5-sized, in slot 1's row beside ⚑, the view switch (ADR-0091), TV and End ride. [ride-free-road-surface]
 8. No teaching sentence (G4), no hint naming unbound keys (D14). [ride-free-road-surface]
 9. At 1440 × 900 the Skyline on screen, full width, the dot inside. [ride-free-road-surface]
 10. Carrying on next time is offered on the road-end card, not while riding. [ride-free-road-surface]
