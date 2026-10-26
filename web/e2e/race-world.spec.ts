@@ -24,7 +24,16 @@ test('two screens draw every racer at their own metre @world', async ({
 	test.setTimeout(COUNTDOWN_MS + NEUTRAL_MS + 180_000);
 	const coach = await riders('Race World Coach');
 	const guest = await riders('Race World Guest');
-	for (const page of [coach, guest]) await worldOn(page.context());
+	for (const page of [coach, guest]) {
+		await worldOn(page.context());
+		// Two worlds in software GL miss frames long before km 0, three minutes
+		// in; the frame judge stands down, as on any runner without a GPU.
+		await page
+			.context()
+			.addInitScript(() =>
+				localStorage.setItem('wattroom.world-software.v1', '1'),
+			);
+	}
 	const idOf = (page: Page) =>
 		page.evaluate(
 			async () =>
