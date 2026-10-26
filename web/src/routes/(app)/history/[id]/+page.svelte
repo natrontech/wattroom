@@ -34,7 +34,7 @@
 		type Progression,
 	} from '$lib/progression';
 	import { apiBlob } from '$lib/api';
-	import { downloadBlob } from '$lib/download';
+	import { shareFile } from '$lib/share';
 	import { zoneSeconds } from '$lib/ride/stats';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import Award from '@lucide/svelte/icons/award';
@@ -107,7 +107,7 @@
 		downloadError = null;
 		const res = await apiBlob(`/api/rides/${encodeURIComponent(id)}/export`);
 		if (res.ok) {
-			downloadBlob(res.data.blob, res.data.filename ?? `wattroom-${id}.fit`);
+			await shareFile(res.data.blob, res.data.filename ?? `wattroom-${id}.fit`);
 		} else downloadError = { message: res.error.message, retry: downloadFit };
 		exporting = false;
 	}

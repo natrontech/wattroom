@@ -24,7 +24,7 @@
 	import { sensors } from '$lib/sensors.svelte';
 	import { hwlog } from '$lib/ble/hwlog';
 	import { apiBlob } from '$lib/api';
-	import { downloadBlob } from '$lib/download';
+	import { shareFile } from '$lib/share';
 	import { recordingUpload, uploadRide } from '$lib/ride/save';
 	import { toasts } from '$lib/toast.svelte';
 	import { createHistoryStore, summarise } from '$lib/history.svelte';
@@ -525,7 +525,7 @@
 				},
 			});
 			if (!res.ok) throw new Error(res.error.message);
-			downloadBlob(res.data.blob, res.data.filename ?? 'ride.fit');
+			await shareFile(res.data.blob, res.data.filename ?? 'ride.fit');
 		} catch (cause) {
 			error = cause instanceof Error ? cause.message : String(cause);
 		} finally {
