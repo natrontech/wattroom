@@ -154,6 +154,41 @@
 	sprintStartsAt={channel.sprint?.startsAtMs ?? null}
 />
 
+<!-- The world, on the desk docked behind the slots and on a phone a band
+     in its column (#4218): one RideWorld, whichever layout draws it. -->
+{#snippet road()}
+	{#await world.load() then { default: RideWorld }}
+		{#if channel.ridden}
+			<RideWorld
+				road={channel.ridden.road}
+				metre={() => channel.ridden ?? { m: 0, mps: 0 }}
+				bunch={() => channel.ridden?.bunch ?? null}
+				mates={() => channel.ridden?.racers ?? NO_MATES}
+				loop={channel.ridden.loop}
+				gates={() => channel.ridden?.gates ?? NO_GATES}
+				watts={channel.you.watts}
+				silent={channel.youStale}
+				ftp={channel.you.ftp}
+				progress={total > 0 ? elapsed / total : null}
+				paused={inFocus === 'media'}
+				countIn={countingIn
+					? {
+							left: channel.shared?.countdownRemaining ?? 0,
+							total: SESSION_COUNTDOWN_SECONDS,
+						}
+					: null}
+				look={world.look}
+				onfail={world.fail}
+				onflat={world.flatten}
+			/>
+		{/if}
+	{/await}
+{/snippet}
+
+{#snippet phoneSwitch()}
+	<ViewSwitch {world} drawn={world.band && !!channel.ridden} />
+{/snippet}
+
 {#if channel.phase === 'lounge'}
 	<TrainingLounge {targetsNote} />
 {:else if channel.phase === 'countdown' && !inWorld}
@@ -176,7 +211,12 @@
 	</CountdownScreen>
 {:else if device.narrow}
 	<!-- One column, the followed rider's instrument, the crew strip (#412). -->
-	<TrainingPhone {climb} {map} />
+	<TrainingPhone
+		{climb}
+		{map}
+		band={world.band && channel.ridden ? road : undefined}
+		viewSwitch={channel.ridden ? phoneSwitch : undefined}
+	/>
 {:else}
 	{#snippet worldControls()}
 		<!-- One row in slot 1 (TARGETS ride-road-world 7), and the people
@@ -252,34 +292,6 @@
 			class="font-display text-ink text-[9rem] leading-none font-bold tabular-nums"
 			>{channel.shared?.countdownRemaining}</span
 		>
-	{/snippet}
-	{#snippet road()}
-		{#await world.load() then { default: RideWorld }}
-			{#if channel.ridden}
-				<RideWorld
-					road={channel.ridden.road}
-					metre={() => channel.ridden ?? { m: 0, mps: 0 }}
-					bunch={() => channel.ridden?.bunch ?? null}
-					mates={() => channel.ridden?.racers ?? NO_MATES}
-					loop={channel.ridden.loop}
-					gates={() => channel.ridden?.gates ?? NO_GATES}
-					watts={channel.you.watts}
-					silent={channel.youStale}
-					ftp={channel.you.ftp}
-					progress={total > 0 ? elapsed / total : null}
-					paused={inFocus === 'media'}
-					countIn={countingIn
-						? {
-								left: channel.shared?.countdownRemaining ?? 0,
-								total: SESSION_COUNTDOWN_SECONDS,
-							}
-						: null}
-					look={world.look}
-					onfail={world.fail}
-					onflat={world.flatten}
-				/>
-			{/if}
-		{/await}
 	{/snippet}
 	<RidingSurface
 		class="h-full overflow-hidden {inWorld ? '' : 'p-4'}"
