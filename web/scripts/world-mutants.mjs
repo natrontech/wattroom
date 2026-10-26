@@ -39,6 +39,7 @@ const MUTANTS = [
 	['flagpole-low', 'an 8 m flagpole in the low, unfaded set', 'props/batch.ts', [["\tflag0: 'buildings',", "\tflag0: 'stock',"]]],
 	['unbanked-furniture', 'chalk laid flat across a banked road', 'chalk.ts', [['across(BESIDE, bank)', 'across(BESIDE, 0)'], ["p.heading + Math.PI, bank, 'YXZ'", "p.heading + Math.PI, 0, 'YXZ'"]]],
 	['rigid-fence', 'a rigid 10 m fence measured at its corners only', 'placement/rules.ts', [["['base', samples(p.footprint)],", "['base', p.footprint],"]]],
+	['riding-time-from-start', "each stroke's riding clock run from the end the route enters it", 'terrain/lines.ts', [['if (forward) return l;', 'if (forward || l) return l;']]],
 	['salt-in-bundle', 'a salt compiled into the bundle', 'place/keyed.ts', [['const p = prefix(salt, kind);', 'const p = prefix([0x57a770e0, 0x0de5a1e0, 0x5eed5eed, 0x00c0ffee], kind);']]],
 ];
 
