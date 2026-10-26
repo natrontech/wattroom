@@ -1,1 +1,0 @@
-- A ride posted to Strava links only https://wattroom.ch, no longer the crew's own page, and says "Ridden with <crew> on https://wattroom.ch".

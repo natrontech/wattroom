@@ -1,1 +1,0 @@
-- The mid-ride Sound sheet rises from the sidebar beside the ride instead of dimming it, in two columns that fit a 900 px window: what you send and your devices on the left, the mix and the riders on the right, with one Reset all for the riders.

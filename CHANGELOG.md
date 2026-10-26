@@ -17,6 +17,119 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.10.4] - 2026-10-26
+
+### Added
+
+- A workout ridden on a road paints its next three blocks on the road ahead,
+  each with its name and your target where it starts and chevrons leading to
+  it. A sprint gets a banner across the road from 1 km out, and the CLIMB page
+  names the block that lands on the next climb.
+- Crewmates free-riding the same road in a voice channel now ride beside you
+  in the world, each where their own watts have taken them. Past the end of a
+  road a session laps, the bunch, its chalk and its painted blocks ride on
+  into the next lap instead of piling up at the road's end.
+- WattRoom installs as an app from your phone's browser: add it to the home
+  screen and it opens full screen with its own icon, and Safari's back and
+  forward bar no longer appears inside it. Controls stay clear of the notch
+  and the home indicator.
+- Pair an OpenBikeControl shifter as "Shifter" beside your sensors and shift
+  from the bars: Shift Up and Down (or Increase and Decrease Difficulty) are
+  Harder and Easier, held to repeat, and the controller buzzes on each gear.
+  Its Talk, camera, clean view, map, snap and page buttons work too. Through
+  BikeControl on a phone this brings a Zwift Click, Play or Ride, Di2, AXS or
+  a gamepad.
+- Start a race from the session picker. Pick one of your roads, tap Race it,
+  and choose Race, Last Light (10, 20 or 30 minutes) or Wheelrace (a par of 15
+  to 45 minutes). The Games tab points races to the roads.
+- A race carries its road to every screen. The bike computer shows your speed
+  and how far along the road you are, at your own place in the race, and gains
+  the MAP page and the CLIMB page while a climb is near.
+- In a race with the 3D world on, every racer rides the road at their own place,
+  and a racer whose screen has dropped is shown greyed out.
+- On a free ride, "Ride with <name>" takes you to a crewmate on your road in
+  one jump, their way along it, and you ride on together at your own speed.
+- Shift virtual gears in grade mode and on roads, with a Zwift Cog or on top
+  of your real gears: Easier and Harder on screen or on your phone remote, or
+  − and + on a keyboard. In an ERG workout the same controls trim your target.
+  The setting that kept a Cog rider in watts is now "Don't make me shift", in
+  Settings › Equipment.
+- Racing your ghost on your own road, the climb card reads what you gained or
+  lost since the climb's foot ("Your best · 12 s ahead"), the strip above the
+  Skyline calls the gap at a quarter, halfway, three quarters and 500 m to go,
+  and beating your best ends on "New best on <road>, 14 s faster", spoken
+  for a screen reader too.
+- Ride a road of yours again from its start and your earlier self rides beside
+  you: a see-through figure in your own kit in the world, and a hollow mark on
+  the Skyline named for the day you rode it ("Tuesday-you, 11 Aug"). The RIDE
+  page reads the gap in words: "12 s ahead" or "8 s behind".
+
+### Changed
+
+- Bluetooth headphones keep music quality in voice: WattRoom opens the computer's own mic instead of the headset's when it has one, so the jukebox, YouTube and your crew's voices stay in stereo. A mic you pick yourself always wins, and the mic button says "starting" while the mic opens.
+- On a flat ride the current block on the graph gives only its length: its target is the one in the panel above.
+- The route importer shows a read file as a solid panel with the route page's stat row and two time tiles, says "What we fixed" only when something was, and after Save offers Open it and Ride it. Every "Import a route" button opens it as "Import a route".
+- The landing page and the README show WattRoom as it is now, in fresh
+  screenshots of the app: a crew on a road in the 3D world, the next blocks
+  painted on the road, your ghost, gears and the phone as a remote, and races
+  from the session picker.
+- Opening a voice channel or session on a second device while another of yours is in voice no longer joins the call twice: the second device becomes a controller with the remote and no microphone, camera or sound, and "Use this device for voice" moves your voice to it in one tap, from either device.
+- Roads are out of beta. In SIM, on a road, a race or a free ride's grade,
+  your trainer now resists with the same air your speed on the road is
+  worked out from. Fast riding on the flat gets lighter: about a fifth less
+  resistance at 35 km/h.
+- The mid-ride Sound sheet rises from the sidebar beside the ride instead of dimming it, in two columns that fit a 900 px window: what you send and your devices on the left, the mix and the riders on the right, with one Reset all for the riders.
+- . , + - and = now shift gears during a ride, so a soundboard pad can no
+  longer take them. A pad already on one keeps it and fires on it outside a
+  ride.
+
+### Fixed
+
+- On a flat ride at a desk, tapping the bias − or + trims the target again instead of turning the bike computer's page.
+- The desktop app's microphone, camera and speaker pickers list your devices instead of only "System default".
+- On a ride without the world, your numbers and the crew's tiles sit side by side, each panel its own size, instead of stretching across a wide window with empty bands. Each block on the interval graph now shows its target watts and length, and the header no longer repeats the workout in a strip of its own.
+- On a phone beside a session, the roadside deck stays clear of the jukebox's player: the page stops above it, so every cheer, the bottle and the chalk stamps stay in reach while a track plays.
+- The phone remote's Easier and Harder trim an ERG ride on your other screen, and holding Talk lets the crew hear you in either voice mode, opening a muted mic for as long as you hold it.
+- A race's game card no longer sits as a panel inside a panel on the flat ride view, and the team-car radio's label matches the ride's other labels.
+- A free ride that took "Ride it again" at the end of a road saves again. Its
+  new lap began at the road's far end, and the save refused it.
+- Starting or joining a session, a solo ride or a ramp test no longer turns the app dark: the ride keeps your light or dark scheme. TV mode and the HUD stay dark.
+- Your best on a road is the ride that reached its end first: riding on past the end, or turning back for another lap, no longer costs a ride its best.
+- On a looped road, the roadside chalks this lap or the next. Two spectators
+  could hold all twelve stamps for a whole ride by painting laps ahead.
+- A route file with a position off the globe is refused as too long, saying
+  the file is at fault. The importer used to stall and then say the failure
+  was ours.
+- A ride posted to Strava links only https://wattroom.ch, no longer the crew's own page, and says "Ridden with <crew> on https://wattroom.ch".
+- A quiet mic is heard at its usual level from the first word of a call: voice lifts it to where your last call settled while the browser's gain catches up.
+
+### Security
+
+- A game asked for on a road no longer opens over a workout another rider
+  picked while its road loaded, nor starts inside a session someone else
+  coaches.
+- A rider you hid no longer reaches you through roadside chalk or by
+  rewriting their old direct messages to you.
+- An MP3 whose tag is built to be slow to read can no longer stall the server.
+  The tag is read before the upload takes a database connection, and a tag of
+  more than 256 frames, or with a genre over 256 bytes, leaves the title to the
+  filename.
+- Saving an outfit, buying or giving back an item, hiding a rider and pulling
+  from intervals.icu each have a ceiling per account now, so one account
+  looping them can no longer fill the database or flood another rider's
+  lists. Looks nobody has worn for a month are swept.
+- A route you ride with your crew now keeps its first and last 1,000 m to you
+  (it was 400 m), the same distance as every other private-end rule.
+- Session emails, calendar feeds and Strava titles name a route ride by its
+  length alone ("Route ride · 52.9 km"), so they never carry a place once a
+  route's generated name can name one.
+- A road ride saved without its place on the road (no distance recorded, or
+  its route since deleted) goes to Strava as "Route ride" too, never under
+  the route's name.
+- A personal token, which is how a coach's AI reads your rides, no longer sees
+  which of your routes a ride was on or the name you gave that route. Only your
+  own signed-in list shows them.
+
 ## [2026.10.3] - 2026-10-25
 
 ### Added
@@ -3957,7 +4070,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.10.3...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.10.4...HEAD
+[2026.10.4]: https://github.com/natrontech/wattroom/compare/2026.10.3...2026.10.4
 [2026.10.3]: https://github.com/natrontech/wattroom/compare/2026.10.2...2026.10.3
 [2026.10.2]: https://github.com/natrontech/wattroom/compare/2026.10.1...2026.10.2
 [2026.10.1]: https://github.com/natrontech/wattroom/compare/2026.09.147...2026.10.1

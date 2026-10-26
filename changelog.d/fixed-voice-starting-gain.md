@@ -1,1 +1,0 @@
-- A quiet mic is heard at its usual level from the first word of a call: voice lifts it to where your last call settled while the browser's gain catches up.
