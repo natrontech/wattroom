@@ -62,7 +62,7 @@
 		metre: () => RideMetre;
 		/** Everyone on the road with you, on a session's road. */
 		bunch?: () => BunchView | null;
-		/** Channel-mates free-riding this road with you, each at their own metre (#3117). */
+		/** Channel-mates free-riding this road with you, or the other racers on a race's, each at their own metre (#3117, #3778). */
 		mates?: () => readonly RoadMate[];
 		/** The session laps the road: it has no finish. */
 		loop?: boolean;
@@ -138,6 +138,7 @@
 							riders: hud.riders.map((r) => ({
 								id: r.id,
 								d: Math.round(r.d * 10) / 10,
+								v: Math.round(r.v * 10) / 10,
 								lane: Math.round(r.lane * 100) / 100,
 							})),
 						});

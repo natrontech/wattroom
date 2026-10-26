@@ -1,17 +1,13 @@
-import { expect, test, voicePath } from './crew';
-import { climbGpx } from './road-gpx';
+import { expect, test } from './crew';
+import { COUNTDOWN_MS, NEUTRAL_MS, raceARoad } from './race';
 
 /**
  * The RACE page and the team-car radio (#3174): two riders race the coach's
- * road on simulated trainers, started from the session picker (#3777;
- * ADR-0067: a race opens its own session on a road). Through the neutral
- * zone the page has no par yet and the radio calls it; from km 0 the page
- * reads the gap to par, the rider's place in their Category, and the radio
- * says the race is on.
+ * road on simulated trainers, started from the session picker (#3777).
+ * Through the neutral zone the page has no par yet and the radio calls it;
+ * from km 0 the page reads the gap to par, the rider's place in their
+ * Category, and the radio says the race is on.
  */
-const COUNTDOWN_MS = 10_000;
-const NEUTRAL_MS = 180_000;
-
 test('a race shows its RACE page and calls it on the team-car radio', async ({
 	riders,
 	channels,
@@ -23,60 +19,7 @@ test('a race shows its RACE page and calls it on the team-car radio', async ({
 	test.setTimeout(COUNTDOWN_MS + NEUTRAL_MS + 180_000);
 	const coach = await riders('Race Page Coach');
 	const guest = await riders('Race Page Guest');
-
-	const NAME = `Race road ${Date.now() % 100000}`;
-	await coach.goto('/workouts/import');
-	await coach.locator('input[type=file]').setInputFiles({
-		name: 'climb.gpx',
-		mimeType: 'application/gpx+xml',
-		buffer: Buffer.from(climbGpx()),
-	});
-	await coach.getByLabel('your name for it').fill(NAME);
-	await coach.getByRole('button', { name: 'Save to my routes' }).click();
-	await expect(coach.getByText(`“${NAME}” is on your routes`)).toBeVisible();
-	const routeId = await coach.evaluate(async (name) => {
-		const { routes } = (await (await fetch('/api/routes')).json()) as {
-			routes: { id: string; name: string }[];
-		};
-		return routes.find((r) => r.name === name)?.id ?? '';
-	}, NAME);
-	expect(routeId, 'the imported road is on the coach’s routes').toBeTruthy();
-
-	const opened = await channels.open(coach, `Race ${Date.now() % 100000}`);
-	await channels.enter(guest, opened);
-	for (const page of [coach, guest]) {
-		await page.goto(`${voicePath(opened)}/training`);
-		await page
-			.getByRole('button', { name: 'Ride simulated' })
-			.click({ timeout: 15_000 });
-	}
-	// The coach races the road from the picker (#3777): Roads, the road,
-	// Race it, and the race to the line it opens on.
-	await coach
-		.getByRole('button', { name: 'Start a session' })
-		.click({ timeout: 15_000 });
-	const picker = coach.getByRole('dialog', { name: 'Start a session' });
-	await picker.getByRole('button', { name: 'Roads' }).click();
-	await picker
-		.getByRole('list', { name: 'your routes' })
-		.getByRole('listitem')
-		.filter({ hasText: NAME })
-		.getByRole('button', { name: 'Pick' })
-		.click();
-	await picker.getByRole('button', { name: 'Race it' }).click();
-	await expect(
-		picker
-			.getByRole('group', { name: 'which race' })
-			.getByRole('button', { name: /^Race / }),
-	).toHaveAttribute('aria-pressed', 'true');
-	await picker.getByRole('button', { name: 'Start Race' }).click();
-	await expect(
-		coach.getByRole('button', { name: 'end the session' }),
-	).toBeVisible();
-	// The field freezes at the flag, so the guest lines up in the countdown.
-	await guest
-		.getByRole('link', { name: 'Join the ride' })
-		.click({ timeout: COUNTDOWN_MS });
+	await raceARoad(coach, [guest], channels);
 
 	for (const page of [coach, guest]) {
 		// Under way: the flag has dropped and the radio has made its first call.

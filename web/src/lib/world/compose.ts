@@ -59,7 +59,15 @@ export type Hud = {
 	km: number;
 	ele: number;
 	toTop: number; // km to the summit, negative once past it
-	riders: { id: string; name: string; you: boolean; d: number; lane: number }[];
+	riders: {
+		id: string;
+		name: string;
+		you: boolean;
+		d: number;
+		/** Their speed along the road, m/s: a racer's is their own (#3778). */
+		v: number;
+		lane: number;
+	}[];
 	/** The count-in's shot on this frame (#3087): flying the reveal, or standing on the arch; null off the count-in. */
 	shot: 'flying' | 'still' | null;
 };
@@ -89,8 +97,9 @@ export type MountOptions = {
 	 */
 	bunch?: () => BunchView | null;
 	/**
-	 * Channel-mates free-riding this road (#3117), a free ride's world only:
-	 * each at their own metre, never in a bunch and never ranked.
+	 * Channel-mates free-riding this road (#3117), or the other racers on a
+	 * race's (#3778): each at their own metre, never in a bunch. Drawn only
+	 * while the bunch has no view.
 	 */
 	mates?: () => readonly RoadMate[];
 	/** The session laps the road (#3623): no finish arch on it. */
@@ -170,7 +179,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	const bunch = opts.bunch ? createBunch() : null;
 	// The bunch's riders by id, so a figure keeps its legs from frame to frame.
 	const crewmates = new Map<string, SimRider>();
-	// Channel-mates on a free ride's road, each on their own metre (#3117).
+	// Channel-mates on a free ride's road or racers on a race's, each on their own metre (#3117, #3778).
 	const alongside = opts.mates ? createAlongside() : null;
 	// What each of them wears, spread over the bunch in its join order (#3791); worked out again only when that order changes.
 	let looks = new Map<string, Loadout>();
@@ -307,6 +316,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 				name: r.name,
 				you: r.you,
 				d: lap(r.d),
+				v: r.v,
 				lane: r.lane ?? 0,
 			})),
 		};
@@ -343,8 +353,11 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		for (let k = 0; k < n; k++) advance(route, stepped, dt / n, t);
 		const view = opts.bunch?.();
 		if (bunch && view) ride(view, moment ? 0 : wall);
-		else if (opts.metre) follow(you, opts.metre(), real);
-		if (alongside) riders = alongside.step(you, opts.mates!(), real);
+		else {
+			if (opts.metre) follow(you, opts.metre(), real);
+			// A race's racers (#3778): a session's world has a bunch but none in a race.
+			if (alongside) riders = alongside.step(you, opts.mates!(), real);
+		}
 		gates?.update(opts.gates!(), you.d);
 		const me = crew.update(route, riders, pedal, dt, real, mode === 'orbit');
 		crew.drive(route, car, mode === 'orbit');

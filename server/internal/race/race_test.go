@@ -130,6 +130,10 @@ func TestASilentRiderIsOutAfterTheGrace(t *testing.T) {
 	if !r.racers["gone"].out {
 		t.Fatal("silent past the grace and still racing")
 	}
+	// The hub steps them no more, so the tick has them standing (#3778).
+	if v := r.Racers()["gone"].V; v != 0 {
+		t.Fatalf("out, and still riding at %.1f m/s", v)
+	}
 }
 
 func TestARaceNeedsTwoRiders(t *testing.T) {

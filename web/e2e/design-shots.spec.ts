@@ -2250,7 +2250,8 @@ surface(
 		const coach = await s.open(DESK, { world: false });
 		const crew = await designCrew(coach.page);
 		await fixtureRoad(coach.page, 'hairpin');
-		const rider = await s.open(DESK, { as: 'Design Partner', world: false });
+		// The partner rides in the world: ride-race-world is their screen (#3778).
+		const rider = await s.open(DESK, { as: 'Design Partner', world: true });
 		await toTraining(coach.page, crew);
 		// A run that failed mid-race left it running: end it first.
 		if (
@@ -2303,6 +2304,9 @@ surface(
 				.waitFor({ timeout: 5000 });
 			await coach.page.waitForTimeout(1000);
 			await s.shot(coach, { name: 'ride-race-map' });
+			// multi:ride-race-world — the partner's screen: the race in the
+			// world, each racer at their own metre (#3778).
+			await s.shot(rider, { name: 'ride-race-world' });
 		} finally {
 			await endSession(coach.page);
 		}

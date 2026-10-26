@@ -4,6 +4,7 @@ import type { LiveRider } from '$lib/channel/types';
 import { bunchOf } from '$lib/channel/bunch-view';
 import { raceOf } from '$lib/race/race-view';
 import { placeOnRoad } from '$lib/channel/road-place';
+import { racersOnRoad } from '$lib/channel/road-mates';
 import { blocksAhead, REFERENCE } from '$lib/road/gates';
 import { coachOf } from '$lib/channel/tick-session';
 import { scoredTarget } from '$lib/channel/types';
@@ -209,6 +210,8 @@ export function createRiders(deps: RiderDeps) {
 		return {
 			...place,
 			bunch,
+			// Everyone else in a race, each at their own metre (#3778).
+			racers: racersOnRoad(deps.live.tick, riders, you.id),
 			gates: ahead.gates,
 			lands: (toFootM: number) => ahead.lands(toFootM + offset),
 		};

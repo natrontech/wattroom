@@ -5,9 +5,11 @@ import { at, leftOf } from '$lib/road/along';
 import { legsRoad } from '$lib/road/fixtures';
 import type { Route } from '$lib/road/route';
 import type { RoadMate } from '$lib/channel/road-mates';
+import { createAlongside } from './alongside';
 import { compose, type Hud } from './compose';
 import { RIDE } from './look.test-helper';
 import { routeOfRoad } from './road-route';
+import { simRider } from './sim';
 import { generate, type World } from './world';
 import { BUILD_MS } from './world.test-helper';
 
@@ -78,6 +80,60 @@ describe('channel-mates on a free ride’s road', () => {
 		w.advanceBy(0.3);
 		expect(hud!.riders.map((r) => r.id)).toEqual(['me']);
 		expect(me.lane).toBeDefined();
+		w.dispose();
+	});
+
+	it('draws a racer whose screen has gone in greys, with no zone ring (#3778)', () => {
+		const you = simRider({
+			id: 'me',
+			name: 'Me',
+			mass: 0,
+			ftp: 250,
+			you: true,
+			watts: 0,
+			d: 300,
+		});
+		const ridden = createAlongside().step(
+			you,
+			[kim(400), { ...kim(500), id: 'ana', faded: true }],
+			0,
+		);
+		const of = (id: string) => ridden.find((r) => r.id === id)!;
+		expect([of('kim').faded, of('kim').ring]).toEqual([false, true]);
+		expect([of('ana').faded, of('ana').ring]).toEqual([true, false]);
+	});
+
+	it('leaves a session’s bunch to the bunch: mates draw only where it has no view (#3778)', () => {
+		let hud: Hud | null = null;
+		const w = compose(
+			{
+				route,
+				world,
+				style: RIDE,
+				ftp: 250,
+				youId: 'me',
+				metre: () => ({ m: 300, mps: 8 }),
+				bunch: () => ({
+					m: 300,
+					mps: 8,
+					elapsed: 30,
+					order: ['me', 'tom'],
+					offsets: {},
+					resting: [],
+					present: new Map([
+						['me', { watts: 200, ftp: 250 }],
+						['tom', { watts: 200, ftp: 250 }],
+					]),
+					game: false,
+					cheered: [],
+				}),
+				mates: () => [],
+				onTick: (next) => (hud = next),
+			},
+			null,
+		);
+		for (let k = 0; k < 30; k++) w.advanceBy(1 / 30);
+		expect(hud!.riders.map((r) => r.id).sort()).toEqual(['me', 'tom']);
 		w.dispose();
 	});
 });

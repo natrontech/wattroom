@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 import type { LiveRider } from '$lib/channel/types';
 import type { FreeRoadPlace } from '$lib/protocol';
 import { JUMP_M } from '$lib/world/sim';
-import { createRoadMates, mateOnRoad, rideWith } from './road-mates';
+import {
+	createRoadMates,
+	mateOnRoad,
+	racersOnRoad,
+	rideWith,
+} from './road-mates';
 
 const rider = (id: string, name: string, watts = 0) =>
 	({ id, name, watts, ftp: 250, speaking: id === 'kim' }) as LiveRider;
@@ -66,6 +71,57 @@ describe('your channel-mates on your road (#3117)', () => {
 		expect(at(5000, 108)).toBe(0);
 		// A lap back down the road counts down.
 		expect(at(6000, 102)).toBeCloseTo(-6 / 4);
+	});
+});
+
+describe('the other racers on a race’s road (#3778)', () => {
+	const race = (
+		at: number,
+		racers?: Record<string, { m: number; v: number }>,
+	) =>
+		({
+			at,
+			state: { route: { lengthM: 2000 } },
+			world: { bunchM: 0, speedMps: 0, racers },
+			game: { phase: 'running', race: { klaxonAtMs: 1000 } },
+		}) as never;
+
+	it('is every racer but you, each at their own metre and speed', () => {
+		const field = { me: { m: 640, v: 9 }, kim: { m: 900, v: 11 } };
+		expect(racersOnRoad(race(2000, field), riders, 'me')).toEqual([
+			{
+				id: 'kim',
+				name: 'Kim',
+				m: 900,
+				mps: 11,
+				watts: 210,
+				ftp: 250,
+				speaking: true,
+				faded: false,
+			},
+		]);
+		// The neutral zone holds everyone, and the line holds who reached it.
+		expect(racersOnRoad(race(500, field), riders, 'me')[0].mps).toBe(0);
+		expect(
+			racersOnRoad(race(2000, { kim: { m: 2000, v: 11 } }), riders, 'me')[0]
+				.mps,
+		).toBe(0);
+	});
+
+	it('fades a racer whose screen has gone, off the roster or with their socket lost', () => {
+		const field = { kim: { m: 900, v: 11 }, ana: { m: 700, v: 10 } };
+		const lost = [{ ...riders[1], linkLost: true }, riders[0]];
+		expect(
+			racersOnRoad(race(2000, field), lost, 'me').map((r) => [r.id, r.faded]),
+		).toEqual([
+			['kim', true],
+			['ana', true],
+		]);
+	});
+
+	it('is nobody outside a race', () => {
+		expect(racersOnRoad(race(2000), riders, 'me')).toEqual([]);
+		expect(racersOnRoad(null, riders, 'me')).toEqual([]);
 	});
 });
 

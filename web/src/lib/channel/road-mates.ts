@@ -5,6 +5,7 @@ import {
 } from '$lib/protocol';
 import type { LiveRider } from '$lib/channel/types';
 import type { FreeRide } from '$lib/ride/free-ride.svelte';
+import { racerHeld } from '$lib/channel/road-place';
 import { JUMP_M } from '$lib/world/sim';
 
 /** A channel-mate free-riding your road (#3117), as the world draws them. */
@@ -20,7 +21,12 @@ export type RoadMate = {
 	watts: number;
 	ftp: number;
 	speaking: boolean;
+	/** A racer whose screen has gone (#3778): drawn in greys, no zone ring (docs/spec/world.md). */
+	faded?: boolean;
 };
+
+/** Nobody beside you: one empty list a frame loop can read every frame. */
+export const NO_MATES: readonly RoadMate[] = [];
 
 /** A place that has not moved this long is a rider who stopped. */
 const STILL_MS = 2500;
@@ -68,6 +74,37 @@ export function createRoadMates() {
 			if (!out.some((r) => r.id === id)) last.delete(id);
 		return out;
 	};
+}
+
+/**
+ * The other racers on a race's road (#3778, ADR-0067), each at their own
+ * metre and speed as the hub steps them: a race rides no bunch. A racer
+ * whose screen has gone, off the roster or with their socket lost, stays on
+ * the road where the hub holds them, faded.
+ */
+export function racersOnRoad(
+	tick: Pick<ServerTick, 'at' | 'state' | 'world' | 'game'> | null | undefined,
+	riders: readonly LiveRider[],
+	you: string,
+): RoadMate[] {
+	const racers = tick?.world?.racers;
+	if (!racers) return [];
+	return Object.entries(racers).flatMap(([id, p]) => {
+		if (id === you) return [];
+		const r = riders.find((x) => x.id === id);
+		return [
+			{
+				id,
+				name: r?.name ?? '',
+				m: p.m,
+				mps: racerHeld(tick, p.m) ? 0 : p.v,
+				watts: r?.watts ?? 0,
+				ftp: r?.ftp ?? 0,
+				speaking: !!r?.speaking,
+				faded: !r || !!r.linkLost,
+			},
+		];
+	});
 }
 
 /** Where mate `id` is on your road, as the tick says; null off it (#3117). */

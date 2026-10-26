@@ -49,6 +49,27 @@ export async function onTheRoad(page: Page, stop = 'End ride'): Promise<void> {
 	else await expect(page.locator(WORLD)).toBeVisible();
 }
 
+export type Drawn = { id: string; d: number; v: number; lane: number };
+export type Snapshot = { t: number; mps: number; riders: Drawn[] };
+
+/**
+ * Where this screen's world drew everyone, when, and at what speed, as its
+ * canvas says (RideWorld); or, once its world has handed the ride to the flat
+ * road, the line saying why. A saturated runner's world misses its frames and
+ * goes flat, which is the app judging right, not the riders drawn wrong (#3877).
+ */
+export const drawn = (page: Page) =>
+	page.evaluate(() => {
+		const said = document.querySelector<HTMLCanvasElement>(
+			'canvas[data-riders]',
+		)?.dataset.riders;
+		if (said) return JSON.parse(said) as Snapshot;
+		return (
+			document.querySelector('[data-testid=flat-road]')?.textContent?.trim() ??
+			null
+		);
+	});
+
 /** The rider's newest ride, as their list has it. */
 export async function latestRide(page: Page) {
 	return page.evaluate(async () => {
