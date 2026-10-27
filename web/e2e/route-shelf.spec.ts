@@ -108,9 +108,9 @@ test("a route card's Ride rides the road", async ({ page }) => {
 	).toBeVisible({ timeout: 15_000 });
 });
 
-// A name the card cannot hold truncates, and never widens the phone's page
-// past its screen (#3683).
-test('a long route name truncates on a phone', async ({ page }) => {
+// A name the card cannot hold wraps to two lines and clamps there, and never
+// widens the phone's page past its screen (#3683).
+test('a long route name clamps on a phone', async ({ page }) => {
 	await page.setViewportSize({ width: 375, height: 812 });
 	await signInAs(page, 'Long Name Rider', '/workouts');
 	const id = await importARoute(page);
@@ -120,6 +120,7 @@ test('a long route name truncates on a phone', async ({ page }) => {
 				await fetch(`/api/routes/${id}`, {
 					method: 'PATCH',
 					headers: { 'content-type': 'application/json' },
+					// 80 characters, the longest name a route takes.
 					body: JSON.stringify({ name: 'The long way round, '.repeat(4) }),
 				})
 			).ok,
@@ -133,7 +134,8 @@ test('a long route name truncates on a phone', async ({ page }) => {
 	expect(
 		await body.evaluate((el) => el.scrollWidth - el.clientWidth),
 	).toBeLessThanOrEqual(0);
-	expect(await link.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(
+	expect(await link.evaluate((el) => el.scrollWidth - el.clientWidth)).toBe(0);
+	expect(await link.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(
 		true,
 	);
 });
