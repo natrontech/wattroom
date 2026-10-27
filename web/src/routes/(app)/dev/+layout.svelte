@@ -26,9 +26,12 @@
 		{ href: '/dev/world', label: 'World' },
 		{ href: '/dev/road', label: 'Road' },
 	];
+	// The closing card is a desk surface and keeps the rider's scheme (#4160);
+	// its gallery page is the light capture's only way to a medal.
+	const desk = $derived(page.url.pathname === '/dev/summary');
 </script>
 
-<div class="cave bg-surface text-ink flex h-screen flex-col">
+<div class="{desk ? '' : 'cave '}bg-surface text-ink flex h-screen flex-col">
 	<!-- chrome=0: a design capture's frame, with nothing of the gallery over it (#3672). -->
 	{#if page.url.searchParams.get('chrome') !== '0'}<nav
 			class="border-frame bg-surface/90 z-10 flex shrink-0 flex-wrap items-center gap-1 border-b px-4 py-2 backdrop-blur"
