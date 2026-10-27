@@ -406,8 +406,8 @@ function dangerSign(c: PropColors, picture: THREE.BufferGeometry[]) {
 // Steep climb ahead: the slope as a black ramp.
 export const steepSign = (c: PropColors) =>
 	dangerSign(c, [
-		box(0.5, 0.05, 0.07).rotateZ(0.42).translate(0, 1.85, 0),
-		box(0.46, 0.05, 0.07).translate(0, 1.76, 0),
+		box(0.6, 0.1, 0.07).rotateZ(0.42).translate(0, 1.86, 0),
+		box(0.56, 0.09, 0.07).translate(0, 1.73, 0),
 	]);
 
 // Cattle on the road: the cow, side on.
@@ -420,7 +420,7 @@ export const cattleSign = (c: PropColors) =>
 		),
 	]);
 
-// The convex mirror on a blind hairpin: an orange rim around the sky it shows.
+// The convex mirror on a blind hairpin: an orange rim around bright glass.
 export function mirror(c: PropColors) {
 	const disc = (r: number, depth: number) =>
 		cyl(r, r, depth, 16)
@@ -429,7 +429,7 @@ export function mirror(c: PropColors) {
 	return merge([
 		tint(cyl(0.05, 0.05, 2.4, 6).translate(0, 1.2, 0), c.pole),
 		tint(disc(0.42, 0.05), c.snowpole),
-		tint(disc(0.35, 0.08), c.water),
+		tint(disc(0.35, 0.08), c.reflector),
 	]);
 }
 

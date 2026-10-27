@@ -150,7 +150,7 @@ describe('a 29 km loop, its route-wide work', () => {
 					all.arches,
 					all.placements,
 				]),
-			).toBe('0e76d879');
+			).toBe('4b2be0d7');
 		},
 		BUILD_MS,
 	);

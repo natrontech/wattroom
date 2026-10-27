@@ -204,6 +204,8 @@ export function planStroke(line: Line, k: number, plan: Plan) {
 		slot: number,
 		self: Item | null,
 		extra: Partial<Piece> = {},
+		/** Only the keyed side: a sign for one way's traffic stands on its right, or nowhere. */
+		keyed = false,
 	): number | null {
 		for (const shift of SHIFTS) {
 			const at = s + shift;
@@ -211,7 +213,7 @@ export function planStroke(line: Line, k: number, plan: Plan) {
 			if (self && tooSoon(self, at)) return null;
 			const p = w.at(at);
 			// The keyed side first, then across: on a mountainside one side is often a fill too steep to stand on.
-			for (const hand of [side, -side]) {
+			for (const hand of keyed ? [side] : [side, -side]) {
 				const x = p.x + p.lx * off * hand;
 				const z = p.z + p.lz * off * hand;
 				if (!ground.clearOf(x, z, need) || biomeAt(x, z) === null) continue;
@@ -404,6 +406,7 @@ export function planStroke(line: Line, k: number, plan: Plan) {
 				{
 					turn: turnBy(ahead.along, deg(180)),
 				},
+				true,
 			);
 			// The herd is one thing to O9: every cow carries it, and the streams count it once.
 			const pass: Passing = {
@@ -483,6 +486,7 @@ export function planStroke(line: Line, k: number, plan: Plan) {
 				7e6 + Math.round(before) * 2 + (dir > 0 ? 0 : 1),
 				null,
 				{ turn: dir > 0 ? turnBy(p.along, deg(180)) : p.along },
+				true,
 			);
 		}
 	}
@@ -502,6 +506,7 @@ export function planStroke(line: Line, k: number, plan: Plan) {
 			8e6 + Math.round(d),
 			null,
 			{ turn: turnBy(w.at(d).along, deg(90)) },
+			true,
 		);
 	}
 	for (const dir of [1, -1] as const) {
