@@ -317,6 +317,7 @@
 		centre={countingIn ? digit : undefined}
 		dockIn={countingIn}
 		seat={docked ? nowPlaying : undefined}
+		foot={phone ? phoneControls : undefined}
 		headerFit={graphed}
 	>
 		{#snippet header()}
@@ -332,7 +333,7 @@
 				)}
 				drives={!!channel.trainer && channel.actuating}
 				wide={!inWorld}
-				controls={phone ? phoneControls : worldControls}
+				controls={phone ? undefined : worldControls}
 				status={trainerLine}
 				strip={graphed ? undefined : strip}
 			/>

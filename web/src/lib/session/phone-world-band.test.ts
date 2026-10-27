@@ -33,8 +33,17 @@ describe('a phone in a session (#4218, #4233)', () => {
 		expect(controls).toMatch(
 			/<ViewSwitch\s*\{world\}\s*drawn=\{world\.band && !!channel\.ridden\}/,
 		);
-		expect(training).toMatch(
-			/controls=\{phone \? phoneControls : worldControls\}/,
+	});
+
+	it('ends on its actions, under the Skyline, End last (v2-phone, G8)', () => {
+		expect(training).toMatch(/foot=\{phone \? phoneControls : undefined\}/);
+		expect(training).toMatch(/controls=\{phone \? undefined : worldControls\}/);
+		const phone = surface.slice(0, surface.indexOf('{:else if world}'));
+		expect(phone.indexOf('data-dock="actions"')).toBeGreaterThan(
+			phone.indexOf('data-dock="horizon"'),
+		);
+		expect(controls.indexOf('<SessionControls')).toBeGreaterThan(
+			controls.indexOf('<RemoteOffer'),
 		);
 	});
 });
