@@ -90,7 +90,7 @@ test('Harder on the phone remote trims the desk ride in ERG', async ({
 		const phone = await phoneContext.newPage();
 		await signInAs(phone, RIDER, ride);
 		await phone
-			.getByRole('button', { name: 'Use this phone as your remote' })
+			.getByRole('button', { name: 'Use as your remote' })
 			.click({ timeout: 20_000 });
 		const remote = phone.getByTestId('phone-remote');
 		await remote.getByRole('button', { name: 'Harder', exact: true }).click();

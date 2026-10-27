@@ -229,7 +229,7 @@ Capture: ride-road-world and ride-workout-flat, simulated trainer silenced past 
 
 #### ride-phone-remote
 
-Capture: desk context rides the channel's free ride on a simulated trainer, in voice; a second 375 × 812 touch context of the same rider opens the channel's Training place, taps "Use this phone as your remote", and shoots the remote. Target: none drawn, canon is the bar. Canon: ADR-0025 (the claim), ADR-0084 (gears), ADR-0089 (one voice), ux.md (mid-ride, phone width), errors.md.
+Capture: desk context rides the channel's free ride on a simulated trainer, in voice; a second 375 × 812 touch context of the same rider opens the channel's Training place, taps "Use as your remote", and shoots the remote. Target: none drawn, canon is the bar. Canon: ADR-0025 (the claim), ADR-0084 (gears), ADR-0089 (one voice), ux.md (mid-ride, phone width), errors.md.
 
 1. The offer (`ride-phone-remote-offer`) is one full-width `btn-ride` in the Lounge's empty state, only on a phone-width screen that sees the trainer held by another screen. [3217]
 2. The grid fills the screen in two columns, words at 24 px, of buttons at least 64 px high; every button is a tap target of at least 44 px and nothing scrolls sideways. [probe:remoteMinHeight] [probe:remoteScrollWidth] [3217]
@@ -307,6 +307,7 @@ Capture: two dev riders (Designer and a second, name letters only) in one crew's
 10. A cheer for one rider, sent from their crew tile's menu, draws a thumbs-up over their head (a light disc, a dark thumb, flat, unlit, clear of the chevron); their tail light blinks at 2 Hz for 10 s in amber, neither danger's red nor any watt, steady under reduced motion; nothing about it glows. [multi:ride-session-cheer] [test:web/src/lib/world/ride-scene.test.ts] [#3116]
 11. A crew tile's menu mid-ride keeps the desk's menu (ADR-0087), placed clear of the corridor and of the tile it opened from; in the rider's scheme, either one. [#3943] [multi:ride-session-cheer-menu] [test:web/src/lib/context-menu.test.ts]
 12. A session's workout paints its next blocks on the road as ride-road-world 34–37 say, the bunch paced as the hub paces it and the words in your own target. [#3101] [test:web/src/lib/road/gates.test.ts]
+13. On a phone (`ride-session-road-phone`) the session rides the solo phone layout, phone-ride's and phone-ride-road's items: one column of `ride-panel`s in slot order, the world a band in slot 2's place, the bike computer with its page control, the crew as rows (no watts figure beside the head's), the Skyline full width; its numbers are the followed rider's, named “following <name>” when not yours, and a tap on a crew row follows. [#4233] [multi:ride-session-road-phone]
 
 #### roadside-chalk
 

@@ -89,7 +89,6 @@
 	"lib/session/SessionPicker.svelte": 6,
 	"lib/session/SessionRecapCard.svelte": 2,
 	"lib/session/SprintMoment.svelte": 2,
-	"lib/session/TrainingPhone.svelte": 2,
 	"lib/site/CtaBand.svelte": 3,
 	"lib/site/FtpSlider.svelte": 2,
 	"lib/site/GameModeCards.svelte": 1,

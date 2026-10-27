@@ -255,14 +255,16 @@ test('the header controls a pedalling rider uses are riding size', async ({
 		`Unpair in a running session is ${unpairBox.height}px tall`,
 	).toBeGreaterThanOrEqual(RIDING);
 
-	// The bike computer's page dots (#3088): a page is turned mid-interval.
-	const dots = coach.getByTestId('computer-dot');
-	await expect(dots.first()).toBeVisible({ timeout: 15_000 });
-	for (const dot of await dots.all()) {
-		const dotBox = await box(dot);
+	// The bike computer's page control (#3088): a page is turned mid-interval.
+	// A session on a phone docks the computer as a solo phone ride does
+	// (#4233): ← and → turn it, and its dots only say where you are.
+	const turns = coach.getByRole('button', { name: /^(previous|next) page/ });
+	await expect(turns.first()).toBeVisible({ timeout: 15_000 });
+	for (const turn of await turns.all()) {
+		const turnBox = await box(turn);
 		expect(
-			Math.min(dotBox.width, dotBox.height),
-			`a page dot is ${dotBox.width}×${dotBox.height}px`,
+			Math.min(turnBox.width, turnBox.height),
+			`a page arrow is ${turnBox.width}×${turnBox.height}px`,
 		).toBeGreaterThanOrEqual(RIDING);
 	}
 });

@@ -58,6 +58,7 @@
 		clean = false,
 		onshow,
 		cleanLine,
+		foot,
 		class: extra = '',
 	}: {
 		header: Snippet;
@@ -93,6 +94,12 @@
 		onshow?: () => void;
 		/** Slot 1's road line, which Clean view keeps beside the chip. */
 		cleanLine?: string;
+		/**
+		 * A phone's actions, last in its column under the Skyline, as
+		 * v2-phone's riding screen ends on them (#4233). Desk layouts keep
+		 * theirs in slot 1's row.
+		 */
+		foot?: Snippet;
 		class?: string;
 	} = $props();
 
@@ -139,7 +146,12 @@
 	<!-- Phone: the flat slots in one column the page scrolls, at one gap
 	     (TARGETS phone-ride 1). -->
 	<!-- The last panel clears the floating navigation button (44 px and its inset). -->
-	<div class="flex flex-col gap-3 pb-[4rem] {extra}" data-surface="phone">
+	<!-- Its panels never shrink: a column given a height (a session's, which
+	     scrolls) squashed the Skyline's overflow-hidden panel to nothing. -->
+	<div
+		class="flex flex-col gap-3 pb-[4rem] {extra} [&>*]:shrink-0"
+		data-surface="phone"
+	>
 		<div data-dock="header" class={own ? '' : 'ride-panel'}>
 			{@render header()}
 		</div>
@@ -175,6 +187,11 @@
 				class="ride-panel flex flex-col overflow-hidden [&:not(:has(*))]:hidden"
 			>
 				{@render horizon()}
+			</div>
+		{/if}
+		{#if foot}
+			<div data-dock="actions" class="ride-panel [&:not(:has(*))]:hidden">
+				{@render foot()}
 			</div>
 		{/if}
 	</div>
