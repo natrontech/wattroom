@@ -1,1 +1,0 @@
-- A session on a phone now rides the same layout as a solo phone ride: the riding panels in order, the bike computer with its pages, the world band and the Skyline on a road, the crew as rows you tap to follow, and a sprint as its moment card.
