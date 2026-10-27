@@ -1,19 +1,10 @@
 <script lang="ts">
+	import { KEY_TABLE } from '$lib/ride/keys';
 	import Modal from '$lib/components/Modal.svelte';
 
 	let { onclose }: { onclose: () => void } = $props();
 
-	const KEYS: [string, string][] = [
-		['+  PgUp', 'Harder'],
-		['−  PgDn', 'Easier'],
-		['← →', 'Computer page'],
-		['1 2 3 4', 'Camera'],
-		['H', 'Clean view'],
-		['M', 'Map page'],
-		['O', 'Snapshot'],
-		['S', 'Say the ride'],
-		['?', 'This sheet'],
-	];
+	const KEYS = KEY_TABLE;
 </script>
 
 <Modal label="Ride keys" {onclose} class="w-fit! max-w-full">

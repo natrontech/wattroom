@@ -9,7 +9,7 @@ import { spaceBelongsTo } from '$lib/channel/ptt-keys';
 import { gearsEnabled } from '$lib/ride/gears-enabled';
 import { EASIER_HARDER_OFF } from '$lib/ride/easier-harder';
 import { bindShifters, createRemoteRunner } from '$lib/ride/keys';
-import { askPage } from '$lib/session/computer-pages';
+import { askPage, toggleMap } from '$lib/session/computer-pages';
 import { computerShown } from '$lib/session/computer-shown.svelte';
 import { askViewFlip } from '$lib/world/ride-view';
 import { createTalkOpener } from '$lib/ride/remote-talk';
@@ -404,7 +404,7 @@ function connect(address: PlaceAddress): Connection {
 				resume: () => ownRide.session?.resume(),
 				// The riding screen's own controls, from the phone (#4223).
 				page: () => askPage('next'),
-				map: () => askPage(computerShown.page === 'map' ? 'ride' : 'map'),
+				map: () => toggleMap(),
 				view: () => askViewFlip(),
 			},
 		);

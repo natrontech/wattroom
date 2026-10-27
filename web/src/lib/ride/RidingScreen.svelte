@@ -42,7 +42,8 @@
 	import { untrack } from 'svelte';
 	import { BikeKg } from '$lib/protocol';
 	import { mapView } from '$lib/ride/map-view';
-	import { askPage } from '$lib/session/computer-pages';
+	import { toggleMap } from '$lib/session/computer-pages';
+	import { askViewFlip } from '$lib/world/ride-view';
 	import { watchClimbCues } from '$lib/ride/climb-cues.svelte';
 	import { rideContext } from '$lib/session/ride-context';
 	import RidingSurface from '$lib/session/RidingSurface.svelte';
@@ -129,7 +130,10 @@
 			if (inWorld) camera = key.preset;
 			else toasts.push('Cameras need the 3D road.');
 		} else if (key.kind === 'map') {
-			if (!askPage('map')) toasts.push('The MAP page needs a road.');
+			if (!toggleMap()) toasts.push('The MAP page needs a road.');
+		} else if (key.kind === 'view') {
+			if (!askViewFlip())
+				toasts.push('3D needs a road and this device’s world.');
 		} else toasts.push('Snap is not here yet.');
 	}
 	$effect(() => bindRideKeys(rideKey, (k) => !!board.onKey(k)));

@@ -4,6 +4,8 @@ import { gearsEnabled } from '$lib/ride/gears-enabled';
 import { createRideShift } from '$lib/ride/ride-shift';
 import type { ShiftDir, ShiftDriver } from '$lib/ride/shifter';
 import type { RemoteCommand } from '$lib/protocol';
+import { toggleMap } from '$lib/session/computer-pages';
+import { askViewFlip } from '$lib/world/ride-view';
 
 /**
  * Easier / Harder from the keyboard (ADR-0084, #3329), and from anything that
@@ -195,7 +197,24 @@ export type CameraPreset = (typeof CAMERA_PRESETS)[number];
 
 export type RideKey =
 	| { kind: 'camera'; preset: CameraPreset }
-	| { kind: 'clean' | 'map' | 'snap' | 'sheet' };
+	| { kind: 'clean' | 'map' | 'view' | 'snap' | 'sheet' };
+
+/**
+ * The ride keys in words, one home for the ? sheet and the Controllers page
+ * (#4236): what a key, a clicker or a bridged controller's button runs.
+ */
+export const KEY_TABLE: readonly (readonly [keys: string, does: string])[] = [
+	['+  PgUp', 'Harder'],
+	['−  PgDn', 'Easier'],
+	['← →', 'Computer page'],
+	['1 2 3 4', 'Camera'],
+	['H', 'Clean view'],
+	['M', 'Map page, and back'],
+	['V', '3D or Flat'],
+	['O', 'Snapshot'],
+	['S', 'Say the ride'],
+	['?', 'The keys'],
+];
 
 /**
  * The ride key a press asks for, by `key` so a layout that types ? with Shift
@@ -221,6 +240,8 @@ export function rideKeyOf(
 			return { kind: 'clean' };
 		case 'm':
 			return { kind: 'map' };
+		case 'v':
+			return { kind: 'view' };
 		case 'o':
 			return { kind: 'snap' };
 	}
@@ -242,6 +263,25 @@ export function bindRideKeys(
 		if (!key || padBound(event.key)) return;
 		event.preventDefault();
 		act(key);
+	};
+	window.addEventListener('keydown', down);
+	return () => window.removeEventListener('keydown', down);
+}
+
+/**
+ * M and V on a riding surface with no other ride keys (#4236): a session's
+ * and a free ride's. Only these two are claimed, so H, O and the digits
+ * stay free there, and a soundboard pad bound to either keeps it.
+ */
+export function bindViewKeys(padBound: (key: string) => boolean): () => void {
+	const down = (event: KeyboardEvent) => {
+		if (event.defaultPrevented || event.repeat || isTyping(event)) return;
+		const key = rideKeyOf(event);
+		if (!key || (key.kind !== 'map' && key.kind !== 'view')) return;
+		if (padBound(event.key)) return;
+		event.preventDefault();
+		if (key.kind === 'map') toggleMap();
+		else askViewFlip();
 	};
 	window.addEventListener('keydown', down);
 	return () => window.removeEventListener('keydown', down);

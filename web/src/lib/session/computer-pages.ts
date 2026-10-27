@@ -1,4 +1,5 @@
 import { hrZoneOf } from '$lib/components/zones';
+import { computerShown } from '$lib/session/computer-shown.svelte';
 import { wkg } from '$lib/format';
 import type { ClimbView } from '$lib/ride/climb-view';
 import type { MapView } from '$lib/ride/map-view';
@@ -28,6 +29,14 @@ export function askPage(page: PageAsk): boolean {
 	return !window.dispatchEvent(
 		new CustomEvent<PageAsk>(PAGE_ASK, { detail: page, cancelable: true }),
 	);
+}
+
+/**
+ * MAP, and back to RIDE from it (#4236): the M key and the phone remote's
+ * Map are one press each way. Says whether a computer took it.
+ */
+export function toggleMap(): boolean {
+	return askPage(computerShown.page === 'map' ? 'ride' : 'map');
 }
 
 /** ride-label at three metres: SPEC's 3vh, where ride-label's 24 px is under the TV's 2.9vh floor. */
