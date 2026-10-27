@@ -23,6 +23,19 @@ func cheerRoom(now *time.Time, ids ...string) (*Hub, *channelState, map[string]*
 	return h, rm, socks
 }
 
+// The sender is presence (#4253): an id the client puts on a cheer is
+// replaced by its own, so Cheer back answers the rider who really cheered.
+func TestACheerCarriesItsSendersID(t *testing.T) {
+	now := time.Unix(100, 0)
+	h, rm, socks := cheerRoom(&now, "jan", "sven")
+	h.handleMessage(socks["jan"], rm, "velvet", socks["jan"].rider, protocol.ClientMessage{
+		Cheer: &protocol.Cheer{Emoji: "thumbs-up", From: "sven", FromID: "sven"},
+	})
+	if len(rm.cheers) != 1 || rm.cheers[0].FromID != "jan" || rm.cheers[0].From != "jan" {
+		t.Fatalf("the cheer's sender: %+v", rm.cheers)
+	}
+}
+
 func cheerFrom(h *Hub, rm *channelState, c *client, to string) {
 	h.handleMessage(c, rm, "velvet", c.rider, protocol.ClientMessage{
 		Cheer: &protocol.Cheer{Emoji: "thumbs-up", To: to},
@@ -37,7 +50,7 @@ func TestACheerForOneRiderKeepsTheCheerLimits(t *testing.T) {
 	h, rm, socks := cheerRoom(&now, "jan", "sven")
 
 	cheerFrom(h, rm, socks["jan"], "sven")
-	if len(rm.cheers) != 1 || rm.cheers[0] != (protocol.Cheer{Emoji: "thumbs-up", From: "jan", To: "sven"}) {
+	if len(rm.cheers) != 1 || rm.cheers[0] != (protocol.Cheer{Emoji: "thumbs-up", From: "jan", FromID: "jan", To: "sven"}) {
 		t.Fatalf("the cheer for sven: %+v", rm.cheers)
 	}
 	now = now.Add(400 * time.Millisecond)

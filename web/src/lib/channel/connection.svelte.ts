@@ -11,7 +11,9 @@ import { EASIER_HARDER_OFF } from '$lib/ride/easier-harder';
 import { bindShifters, createRemoteRunner } from '$lib/ride/keys';
 import { askPage, toggleMap } from '$lib/session/computer-pages';
 import { computerShown } from '$lib/session/computer-shown.svelte';
-import { askViewFlip } from '$lib/world/ride-view';
+import { askCamera, askPhoto, askViewFlip } from '$lib/world/ride-view';
+import { worldPicture } from '$lib/world/picture.svelte';
+import { createCheerBack } from '$lib/channel/cheer-back';
 import { createTalkOpener } from '$lib/ride/remote-talk';
 import { shifterSlot } from '$lib/ble/controller-slot.svelte';
 import { DEFAULTS } from '$lib/workout/guards';
@@ -381,6 +383,9 @@ function connect(address: PlaceAddress): Connection {
 		// and + move (#4163): a workout's bias, or the free ride's watts or
 		// grade.
 		const talk = createTalkOpener(av);
+		// Who the phone's Cheer back answers (#4253): the last rider to cheer you.
+		const cheerBack = createCheerBack(() => account.me?.id);
+		$effect(() => cheerBack.heard(live.tick?.cheers, Date.now()));
 		const remote = createRemoteRunner(
 			{
 				shifts: () =>
@@ -406,6 +411,12 @@ function connect(address: PlaceAddress): Connection {
 				page: () => askPage('next'),
 				map: () => toggleMap(),
 				view: () => askViewFlip(),
+				// The world's camera and the ride's picture (#4253): the phone
+				// offers both only while this screen draws 3D.
+				camera: () => askCamera(),
+				photo: () => askPhoto(),
+				'cheer-back': () =>
+					live.cheer(account.cheers[0], cheerBack.to(Date.now()) || undefined),
 			},
 		);
 		// A controller's Talk is held while its button is, and a lost link
@@ -435,12 +446,14 @@ function connect(address: PlaceAddress): Connection {
 			});
 		};
 		$effect(sayPause);
-		// Where this screen looks, so the phone's Page, Map and 3D / Flat
-		// say what they turned (#4223).
+		// Where this screen looks, so the phone's Page, Map, 3D / Flat,
+		// Camera and Photo say what they did (#4223, #4253).
 		const sayView = () =>
 			live.sendView({
 				page: computerShown.page,
 				world: computerShown.world,
+				camera: computerShown.world ? (computerShown.camera ?? '') : '',
+				pictures: worldPicture.taken,
 			});
 		$effect(sayView);
 		$effect(() => {

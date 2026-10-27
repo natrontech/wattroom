@@ -8,17 +8,24 @@ import type { Road } from '$lib/road/road';
  * which to save for Strava, or both. Never uploaded, never stored.
  */
 let current = $state<Blob | null>(null);
+let taken = $state(0);
 
 export const worldPicture = {
 	get current() {
 		return current;
 	},
+	/** Pictures this ride took, so the phone remote's Photo can say it took one (#4253). */
+	get taken() {
+		return taken;
+	},
 	keep(picture: Blob) {
 		current = picture;
+		taken++;
 	},
 	/** A new ride starts without the last one's picture. */
 	clear() {
 		current = null;
+		taken = 0;
 	},
 };
 

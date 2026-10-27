@@ -14,6 +14,7 @@
 	import { createTalkHold } from '$lib/ride/remote-talk';
 	import { keepAwakeWhile } from '$lib/workout/keep-awake.svelte';
 	import { PAGE_NAMES, type ComputerPage } from '$lib/session/computer-pages';
+	import { CAMERA_NAMES, type CameraPreset } from '$lib/world/cameras';
 
 	let {
 		live,
@@ -23,24 +24,44 @@
 		onclose: () => void;
 	} = $props();
 
-	// The actions the holding tab runs today; the others say so, disabled.
-	// Page, Map and 3D / Flat turn the riding screen's own controls (#4223).
-	const RUNS = new Set(['talk', 'easier', 'harder', 'page', 'map', 'view']);
+	// Page, Map and 3D / Flat turn the riding screen's own controls (#4223);
+	// Camera and Photo its world, so they wait for 3D; Cheer answers the
+	// rider who last cheered you, or cheers everyone (#4253).
 	const CELLS = [
 		{ action: 'page', label: 'Page' },
 		{ action: 'map', label: 'Map' },
 		{ action: 'view', label: '3D / Flat' },
-		{ action: 'camera', label: 'Camera' },
-		{ action: 'photo', label: 'Photo' },
-		{ action: 'cheer-back', label: 'Cheer back' },
+		{ action: 'camera', label: 'Camera', world: true },
+		{ action: 'photo', label: 'Photo', world: true },
+		{ action: 'cheer-back', label: 'Cheer' },
 	];
+	const world = $derived(!!live.view?.world);
 	// What the riding screen shows now, as it last said: the answer to Page,
-	// Map and 3D / Flat with no screen to look at.
+	// Map, 3D / Flat and Camera with no screen to look at.
 	const shown = $derived(
 		live.view
-			? `${PAGE_NAMES[live.view.page as ComputerPage] ?? live.view.page.toUpperCase()} · ${live.view.world ? '3D' : 'Flat'}`
+			? [
+					PAGE_NAMES[live.view.page as ComputerPage] ??
+						live.view.page.toUpperCase(),
+					live.view.world ? '3D' : 'Flat',
+					live.view.camera
+						? (CAMERA_NAMES[live.view.camera as CameraPreset] ?? '')
+						: '',
+				]
+					.filter(Boolean)
+					.join(' · ')
 			: null,
 	);
+	// Photo's answer: the riding screen's count of pictures rose past the
+	// one it had when the button was pressed.
+	let photoFrom = $state<number | null>(null);
+	const pictureTaken = $derived(
+		photoFrom !== null && (live.view?.pictures ?? 0) > photoFrom,
+	);
+	function press(action: string) {
+		if (action === 'photo') photoFrom = live.view?.pictures ?? 0;
+		live.sendRemote(action);
+	}
 	const geared = gearsEnabled('phone');
 	const talk = createTalkHold((action) => live.sendRemote(action));
 	onDestroy(talk.up);
@@ -76,15 +97,15 @@
 			<button
 				type="button"
 				class={cell}
-				disabled={!RUNS.has(c.action)}
-				onclick={() => live.sendRemote(c.action)}
+				disabled={c.world && !world}
+				onclick={() => press(c.action)}
 			>
 				{c.label}
 			</button>
 		{/each}
 		<button
 			type="button"
-			class={cell}
+			class="{cell} col-span-2"
 			style="touch-action: none"
 			onpointerdown={talk.down}
 			onpointerup={talk.up}
@@ -118,7 +139,7 @@
 			aria-live="polite"
 			data-testid="remote-view"
 		>
-			{shown}
+			{pictureTaken ? 'Picture taken' : shown}
 		</p>
 	{/if}
 
@@ -178,9 +199,9 @@
 		<p class="text-danger text-2xl leading-7" role="alert">
 			{live.remoteRefusal}
 		</p>
-	{:else if CELLS.some((c) => !RUNS.has(c.action))}
-		<p class="text-ink-muted text-2xl leading-7">
-			Dimmed: on the riding screen only.
+	{:else if !world}
+		<p class="text-ink-muted text-2xl leading-7" data-testid="remote-hint">
+			Camera and Photo need the 3D view.
 		</p>
 	{/if}
 </div>

@@ -21,9 +21,11 @@
 	 * stops, says why through `onfail`, and rideView() takes it from there
 	 * (#3080). A right-click on it offers the flat road.
 	 */
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { contextMenu } from '$lib/context-menu.svelte';
-	import type { Failure } from './ride-view';
+	import { CAMERA_ASK, PHOTO_ASK, type Failure } from './ride-view';
+	import { CAMERA_PRESETS, type CameraPreset } from './cameras';
+	import { computerShown } from '$lib/session/computer-shown.svelte';
 	import type { Road } from '$lib/road/road';
 	import { routeOfRoad } from './road-route';
 	import { mount, type WorldScene } from './scene';
@@ -50,7 +52,6 @@
 		progress = null,
 		paused = false,
 		look = 'full',
-		camera,
 		countIn = null,
 		ghosts,
 		gates,
@@ -77,8 +78,6 @@
 		paused?: boolean;
 		/** The World control's choice (#3214): Steady's camera, Light's budget. */
 		look?: 'full' | 'steady' | 'light';
-		/** The rider's camera preset (keys 1-4, #3216); the look's own until they pick one. */
-		camera?: 'chase' | 'heli' | 'side' | 'steady';
 		/** The count-in's seconds left and its length (#3087): the eye flies its reveal to the start arch over it. */
 		countIn?: { left: number; total: number } | null;
 		/** Your ghosts on a solo ride of your own road, where each is now (#3245); absent, the world has none. */
@@ -98,29 +97,62 @@
 		counting = countIn;
 	});
 
+	// The camera this world shows: the look's own until the rider asks for
+	// one (keys 1-4, #3216) or steps on (a remote's or controller's Camera,
+	// #4253), through CAMERA_ASK.
+	let shown = $state<CameraPreset>(
+		untrack(() => (look === 'steady' ? 'steady' : 'chase')),
+	);
 	$effect(() => {
-		if (camera) scene?.setCamera(camera);
+		scene?.setCamera(shown);
+	});
+	$effect(() => {
+		computerShown.camera = shown;
+		// Said on the canvas, as its shot is: a test reads it there.
+		if (canvas) canvas.dataset.camera = shown;
+		return () => {
+			computerShown.camera = null;
+		};
 	});
 
 	// The ride's picture (#4221): once, by itself, on the first climb or
-	// after a while on a flat road; the last ride's is let go first.
+	// after a while on a flat road, unless the rider took one first (#4253);
+	// the last ride's is let go first.
 	const PICTURE_POLL_S = 2;
+	let taken = false;
+	function takePicture() {
+		taken = true;
+		void scene?.snap().then((shot) => {
+			if (!shot) return;
+			worldPicture.keep(shot);
+			// Said on the canvas, as its shot is: a capture waits for it.
+			if (canvas) canvas.dataset.picture = 'taken';
+		});
+	}
 	onMount(() => {
+		const ask = (event: Event) => {
+			const preset = (event as CustomEvent<CameraPreset | undefined>).detail;
+			shown =
+				preset ??
+				CAMERA_PRESETS[
+					(CAMERA_PRESETS.indexOf(shown) + 1) % CAMERA_PRESETS.length
+				];
+			event.preventDefault();
+		};
+		const photo = (event: Event) => {
+			if (!scene) return;
+			takePicture();
+			event.preventDefault();
+		};
+		window.addEventListener(CAMERA_ASK, ask);
+		window.addEventListener(PHOTO_ASK, photo);
 		worldPicture.clear();
 		let ridden = 0;
-		let taken = false;
 		const picture = setInterval(() => {
 			if (taken || !scene || counting || paused) return;
 			const at = metre();
 			if (at.mps > 0.5) ridden += PICTURE_POLL_S;
-			if (!pictureDue(road, at.m, ridden)) return;
-			taken = true;
-			void scene.snap().then((shot) => {
-				if (!shot) return;
-				worldPicture.keep(shot);
-				// Said on the canvas, as its shot is: a capture waits for it.
-				if (canvas) canvas.dataset.picture = 'taken';
-			});
+			if (pictureDue(road, at.m, ridden)) takePicture();
 		}, PICTURE_POLL_S * 1000);
 		// Building holds the main thread for a moment: let the surface paint first.
 		const t = setTimeout(() => {
@@ -140,7 +172,7 @@
 					countIn: () => counting,
 					ghosts,
 					gates,
-					camera: camera ?? (look === 'steady' ? 'steady' : 'chase'),
+					camera: shown,
 					light: look === 'light',
 					steady: () => prefersReducedMotion.current || look === 'steady',
 					onCue: play,
@@ -179,6 +211,8 @@
 					scene?.probe();
 		}, 40);
 		return () => {
+			window.removeEventListener(CAMERA_ASK, ask);
+			window.removeEventListener(PHOTO_ASK, photo);
 			clearTimeout(t);
 			clearInterval(picture);
 			if (import.meta.env.DEV)
