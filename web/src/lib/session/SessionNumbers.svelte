@@ -43,7 +43,7 @@
 
 {#if !mine}
 	<!-- Whose numbers these are (#1627): the phone follows a rider. -->
-	<p class="ride-label px-4 pt-3">following {rider.name}</p>
+	<p class="ride-label truncate px-4 pt-3">following {rider.name}</p>
 {/if}
 <!-- One panel: the computer with its head, the trim, and whether
      your heart rate reaches the call beside it (ADR-0008, #2804): the

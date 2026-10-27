@@ -2130,6 +2130,16 @@ surface(
 					.waitFor({ timeout: 60_000 });
 				await phone.page.waitForTimeout(1500);
 				await s.shot(phone, { name });
+				// The whole column (#4233): the computer, the crew as rows, the
+				// Skyline, and the actions under it. The session scrolls inside
+				// its own column, so a tall window shows all of it at once.
+				await phone.page.setViewportSize({ width: 375, height: 2000 });
+				await phone.page.waitForTimeout(1500);
+				await s.shot(phone, { name: `${name}-full` });
+				// A crewmate followed: their numbers in the head, named.
+				await phone.page.getByTitle('follow Design Partner').click();
+				await phone.page.waitForTimeout(1500);
+				await s.shot(phone, { name: `${name}-follow` });
 			}
 		} finally {
 			await endSession(coach.page);
