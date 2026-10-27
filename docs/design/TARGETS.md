@@ -466,7 +466,7 @@ Capture: Designer's voice channel, the session picker on Roads with the hairpin 
 5. The footer's one action names the race (“Start Last Light”), beside where it runs and its countdown and neutral zone; where a race cannot start, it is disabled with a one-line why. [#3777] [test:web/src/lib/session/race-it.test.ts]
 6. Games ends on one line naming the three races, with “Race on a road”, which opens Race it. [#3777] [multi:picker-race-games]
 7. No watt, no glow: the picker is chrome. [#3777]
-8. Opened by a start door (`?picker=start&pick=<workout>&road=<id>`), the picker is on Workouts with that workout picked and the Road row on that road; Start names the workout. [#4224] [multi:picker-start-door]
+8. Opened by a start door (`?picker=start&pick=<workout>&road=<id>`), the picker is on Workouts with that workout picked and the Road row on that road; Start names the workout, or reads “Start without a trainer” beside the pairing card while none is paired (#2594). [#4224] [multi:picker-start-door]
 
 ### B. The world's look
 
