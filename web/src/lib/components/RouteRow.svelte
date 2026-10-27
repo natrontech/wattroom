@@ -46,7 +46,7 @@
 
 <article
 	class="relative flex flex-col gap-1 {card
-		? 'panel panel-lg hover:border-neon/40'
+		? 'panel panel-lg hover:border-neon/40 h-full'
 		: 'rounded-lg border px-3 py-2'} {selected
 		? 'border-neon'
 		: card
@@ -80,7 +80,9 @@
 	<p class="text-muted num text-xs">
 		{statLine(route)}{extra ? ` · ${extra}` : ''}
 	</p>
-	<div class="flex min-h-7 flex-wrap items-center gap-2">
+	<!-- Pinned to the card's foot: cards in one row share a height, and a name
+	     on two lines leaves its neighbours' Ride level with its own. -->
+	<div class="mt-auto flex min-h-7 flex-wrap items-center gap-2">
 		<p class="text-muted text-xs">{riddenLine(route)}</p>
 		{#if action}
 			<!-- Above the card's stretched link, so the action is its own. -->
