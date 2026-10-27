@@ -113,6 +113,15 @@ func (h *Hub) pauseState(c *client, rm *channelState, rider protocol.Rider, p pr
 	h.fromHolder(c, rm, rider, "pause", protocol.ServerMessage{Pause: &p})
 }
 
+// viewState forwards the holder's page and view the same way gearState
+// does (#4223), its page bounded as the gear's label is.
+func (h *Hub) viewState(c *client, rm *channelState, rider protocol.Rider, v protocol.ViewState) {
+	if utf8.RuneCountInString(v.Page) > protocol.MaxViewPage {
+		return
+	}
+	h.fromHolder(c, rm, rider, "view", protocol.ServerMessage{View: &v})
+}
+
 // fromHolder sends frame to the rider's screens other than the
 // trainer-holding tab, and only when c is that tab.
 func (h *Hub) fromHolder(c *client, rm *channelState, rider protocol.Rider, kind string, frame protocol.ServerMessage) {

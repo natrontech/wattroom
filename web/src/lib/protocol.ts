@@ -1194,6 +1194,7 @@ export interface ClientMessage {
   remote?: RemoteCommand;
   gear?: GearState;
   pause?: PauseState;
+  view?: ViewState;
   voice?: VoiceClaim;
   freeRoad?: FreeRoad;
 }
@@ -1308,6 +1309,10 @@ export interface ServerMessage {
    * The holding tab's ride pause, to the rider's other screens only (#3217).
    */
   pause?: PauseState;
+  /**
+   * The holding tab's page and view, to the rider's other screens only (#4223).
+   */
+  view?: ViewState;
   /**
    * This socket's own address, sent once on join and to nobody else (#2131).
    */
@@ -1643,6 +1648,9 @@ export const PokeCooldownSeconds = 10;
  * Addressed to that rider's own sockets only and never on the tick, for the
  * reason SensorPairing is: what a rider's second screen does is nobody else's
  * business.
+ * View flips the riding screen between the 3D world and the flat road
+ * (#4223); Page turns the bike computer to its next page, and Map to MAP and
+ * back.
  * Taps never hold: a lost release under Talk's 1 s keepalive measured up to 5
  * phantom shifts, so Easier and Harder are one tap each. Only Talk holds, as
  * talk-down, a talk-keepalive while it lasts, and talk-up. Sync presses
@@ -1679,6 +1687,27 @@ export interface PauseState {
   pausable: boolean;
   paused: boolean;
 }
+/**
+ * ViewState is the holding tab's answer about where its rider looks (#4223):
+ * the bike computer's page and whether the 3D world draws. It travels the way
+ * GearState does, so the phone's Page, Map and 3D / Flat say what the riding
+ * screen shows now.
+ */
+export interface ViewState {
+  /**
+   * The bike computer's page, as its id ("ride", "map" …); empty where
+   * the screen has no computer.
+   */
+  page: string;
+  /**
+   * The 3D world draws; false is the flat road.
+   */
+  world: boolean;
+}
+/**
+ * MaxViewPage bounds Page: it is rendered on another screen.
+ */
+export const MaxViewPage = 8;
 
 //////////
 // source: rider.go
