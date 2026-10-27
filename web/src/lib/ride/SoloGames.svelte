@@ -61,7 +61,7 @@
 		     line that says why — hidden rather than disabled, so the card's
 		     games stay one line (TARGETS ride-preride 9, #3671). -->
 		<span class="text-muted text-sm" data-testid="solo-games-hint">
-			Games run in a crew's voice channel. <a href="/home" class="btn-link"
+			They run in a crew's voice channel. <a href="/home" class="btn-link"
 				>Start a crew</a
 			>.
 		</span>
