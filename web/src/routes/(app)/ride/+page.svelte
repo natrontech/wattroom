@@ -648,7 +648,7 @@
 				summary={legs.length > 0
 					? `ERG by the road, at your FTP: leg ${Math.min(leg, legs.length)} of ${legs.length}.`
 					: ridesRoute && road
-						? `${selected.summary} On ${road.name}, from km ${formatKm(from)}.`
+						? `${selected.summary} On ${road.name}, ${from > 0 ? `from km ${formatKm(from)}` : 'from its start'}.`
 						: selected.summary}
 				{ftp}
 				{solo}

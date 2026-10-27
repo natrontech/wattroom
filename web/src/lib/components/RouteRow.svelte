@@ -58,7 +58,7 @@
 	<div class="flex items-baseline gap-2">
 		<a
 			href={withBack(`/workouts/routes/${route.id}`, back)}
-			class="font-display min-w-0 flex-1 truncate text-base font-bold hover:underline {card
+			class="font-display line-clamp-2 min-w-0 flex-1 text-base font-bold break-words hover:underline {card
 				? 'after:absolute after:inset-0'
 				: ''}">{route.name}</a
 		>

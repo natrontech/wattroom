@@ -142,7 +142,7 @@
 								onclick={() => (skin = i)}
 								style:background={colour}
 								class="border-muted/30 size-11 rounded-full border {skin === i
-									? 'ring-neon ring-2 ring-offset-2'
+									? 'outline-neon outline-2 outline-offset-2'
 									: ''}"
 							></button>
 						{/each}
