@@ -293,6 +293,12 @@ async function growToBody(page: Page): Promise<boolean> {
 		});
 		await page.waitForTimeout(500);
 	}
+	// A whole page shows from its top: a tap before the shot (a swatch low on
+	// a phone) scrolled the body, and a bar under it can keep the body short of
+	// its content, so growing alone left the page's title above the frame.
+	await page.evaluate(() =>
+		document.querySelector('[data-testid=page-body]')?.scrollTo(0, 0),
+	);
 	return true;
 }
 
