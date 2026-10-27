@@ -2068,7 +2068,11 @@ surface(
 surface(
 	'ride-session-road',
 	async (s) => {
-		const { coach } = await session(s, { road: ROADS.hairpin.name }, true);
+		const { coach, crew } = await session(
+			s,
+			{ road: ROADS.hairpin.name },
+			true,
+		);
 		try {
 			await assertRiding(coach.page, true);
 			await s.shot(coach);
@@ -2096,6 +2100,19 @@ surface(
 				.waitFor({ timeout: 30_000 });
 			await coach.page.waitForTimeout(500);
 			await s.shot(coach, { name: 'ride-session-sprint-live' });
+			// The same rider's phone in the session (#4218): the world as the
+			// band at the top of its column, the view switch in its row.
+			for (const [device, name] of variants([
+				[PHONE, 'ride-session-road-phone'],
+			] as const)) {
+				const phone = await s.open(device, { world: true });
+				await phone.page.goto(`${voicePath(crew)}/training`);
+				await phone.page
+					.locator('[data-dock=world] canvas')
+					.waitFor({ timeout: 60_000 });
+				await phone.page.waitForTimeout(1500);
+				await s.shot(phone, { name });
+			}
 		} finally {
 			await endSession(coach.page);
 		}

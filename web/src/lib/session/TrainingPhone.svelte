@@ -38,11 +38,22 @@
 	import { blockBands } from '$lib/workout/block';
 	import { serverNow } from '$lib/server-clock';
 	import { channelConnection } from '$lib/channel/connection.svelte';
+	import { PHONE_WORLD_PX } from '$lib/session/docks';
+	import type { Snippet } from 'svelte';
 
 	let {
 		climb = null,
 		map = null,
-	}: { climb?: ClimbView | null; map?: MapView | null } = $props();
+		band,
+		viewSwitch,
+	}: {
+		climb?: ClimbView | null;
+		map?: MapView | null;
+		/** The world as a band in the column (#3676, #4218), where this device draws it. */
+		band?: Snippet;
+		/** 3D | Flat | Map (ADR-0091), on a session that rides a road. */
+		viewSwitch?: Snippet;
+	} = $props();
 
 	const channel = useChannel();
 	const total = $derived(channel.shared?.totalSeconds ?? 0);
@@ -132,12 +143,26 @@
 			<RemoteOffer />
 			<HrShare />
 			<SessionFlag />
+			{@render viewSwitch?.()}
 		</div>
 	</header>
 
 	<!-- The drawer button and the people button both float in the bottom
 	     corners, so the column ends above them rather than under them. -->
 	<div class="min-h-0 flex-1 overflow-y-auto pb-20">
+		{#if band}
+			<!-- Slot 2's place, as a solo phone ride draws it (#3676): the
+			     session's road under the bunch, from your own place on it. -->
+			<section class="px-4 pb-3">
+				<div
+					data-dock="world"
+					class="relative overflow-hidden rounded-lg"
+					style="height:{PHONE_WORLD_PX}px"
+				>
+					{@render band()}
+				</div>
+			</section>
+		{/if}
 		{#if followed && !followed.you && (focus === 'sprint' || focus === 'game')}
 			<!-- Whose number the biggest number is (#1627): the eyebrow lived in
 			     the rider branch alone, and a sprint glowed someone else's watts
