@@ -434,7 +434,7 @@ surface(
 			.click();
 		await phone.page
 			.getByTestId('phone-remote')
-			.locator('p[aria-live=polite]')
+			.getByTestId('remote-gear')
 			.waitFor({ timeout: 10_000 });
 		const remote = await phone.page
 			.getByTestId('phone-remote')
@@ -461,13 +461,15 @@ surface(
 					),
 					remoteGearPx: px(
 						parseFloat(
-							getComputedStyle(el.querySelector('p[aria-live=polite]') ?? el)
-								.fontSize,
+							getComputedStyle(
+								el.querySelector('[data-testid=remote-gear]') ?? el,
+							).fontSize,
 						),
 					),
 					remoteGearLine:
-						el.querySelector('p[aria-live=polite]')?.textContent?.trim() ??
-						null,
+						el
+							.querySelector('[data-testid=remote-gear]')
+							?.textContent?.trim() ?? null,
 					remoteHint:
 						[...el.querySelectorAll('p:not([aria-live])')].map((n) =>
 							n.textContent?.trim(),

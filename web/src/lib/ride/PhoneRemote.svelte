@@ -140,7 +140,11 @@
 			</button>
 		</div>
 		{#if live.gear}
-			<p class="text-neon text-center text-2xl" aria-live="polite">
+			<p
+				class="text-neon text-center text-2xl"
+				aria-live="polite"
+				data-testid="remote-gear"
+			>
 				{live.gear.label}{live.gear.atEnd ? ' · end' : ''}
 			</p>
 		{/if}
