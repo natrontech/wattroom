@@ -1,3 +1,4 @@
+import { homeRoad, homeRoute } from '$lib/ride/home-roads';
 import { api } from '$lib/api';
 import type { Road } from '$lib/road/road';
 import { fetchCrewSchedule } from '$lib/crew-schedule';
@@ -38,6 +39,8 @@ export async function carryOnFrom(
 	routeId: string,
 	length: number,
 ): Promise<number | null> {
+	// WattRoom's own roads keep no attempts on any account (#4248).
+	if (homeRoad(routeId)) return null;
 	const res = await api<{ attempts: CarryAttempt[] }>(
 		`/api/routes/${encodeURIComponent(routeId)}/attempts`,
 	);
@@ -63,22 +66,6 @@ export function carryOnOf(
 /** /ride?road=intro (#3218): the first-run card's road, built in, on no account. */
 export const INTRO_ROAD_ID = 'intro';
 
-// ponytail: the synthetic pass loop until #3149's library has a gentle
-// public climb; the swap is this one function. Borrowed, so the ride saves
-// as a free ride: there is no route row to save it against.
-async function introRoute(): Promise<RideableRoute> {
-	const [{ toRoute }, { syntheticPoints }] = await Promise.all([
-		import('$lib/road/route'),
-		import('$lib/world/synthetic'),
-	]);
-	return {
-		id: INTRO_ROAD_ID,
-		name: 'Your first road',
-		road: toRoute(syntheticPoints()).road,
-		borrowed: true,
-	};
-}
-
 /**
  * One route and its road. The owner's own read carries the whole road,
  * packed (road.ts); nothing else is needed to ride it.
@@ -86,7 +73,9 @@ async function introRoute(): Promise<RideableRoute> {
 export async function loadRoad(
 	id: string,
 ): Promise<{ ok: true; route: RideableRoute } | { ok: false; error: string }> {
-	if (id === INTRO_ROAD_ID) return { ok: true, route: await introRoute() };
+	// WattRoom's own roads (#4248), built here: the first-run road among them.
+	const home = homeRoad(id);
+	if (home) return { ok: true, route: await homeRoute(home) };
 	const res = await api<StoredRoute>(`/api/routes/${encodeURIComponent(id)}`);
 	if (!res.ok) return { ok: false, error: res.error.message };
 	try {

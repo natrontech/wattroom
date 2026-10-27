@@ -24,6 +24,8 @@
 		action,
 		menu,
 		back,
+		href,
+		note,
 	}: {
 		route: StoredRoute;
 		/** The shelf's card: the whole of it opens the route page. */
@@ -38,6 +40,13 @@
 		menu?: () => MenuEntry[];
 		/** The page the name is opened from, for the route page's back link. */
 		back?: string;
+		/**
+		 * Where the name goes instead of the route page; null for no link: a
+		 * WattRoom road has no route page (#4248).
+		 */
+		href?: string | null;
+		/** A line in the ridden line's place: what is along a WattRoom road. */
+		note?: string;
 	} = $props();
 
 	const chips = $derived(classChips(route.climbs));
@@ -56,12 +65,19 @@
 	{@attach attach}
 >
 	<div class="flex items-baseline gap-2">
-		<a
-			href={withBack(`/workouts/routes/${route.id}`, back)}
-			class="font-display line-clamp-2 min-w-0 flex-1 text-base font-bold break-words hover:underline {card
-				? 'after:absolute after:inset-0'
-				: ''}">{route.name}</a
-		>
+		{#if href === null}
+			<span
+				class="font-display line-clamp-2 min-w-0 flex-1 text-base font-bold break-words"
+				>{route.name}</span
+			>
+		{:else}
+			<a
+				href={href ?? withBack(`/workouts/routes/${route.id}`, back)}
+				class="font-display line-clamp-2 min-w-0 flex-1 text-base font-bold break-words hover:underline {card
+					? 'after:absolute after:inset-0'
+					: ''}">{route.name}</a
+			>
+		{/if}
 		{#if route.ownerOnly}
 			<span
 				class="border-frame text-muted inline-flex shrink-0 items-center gap-1 rounded border px-2 text-xs"
@@ -83,7 +99,7 @@
 	<!-- Pinned to the card's foot: cards in one row share a height, and a name
 	     on two lines leaves its neighbours' Ride level with its own. -->
 	<div class="mt-auto flex min-h-7 flex-wrap items-center gap-2">
-		<p class="text-muted text-xs">{riddenLine(route)}</p>
+		<p class="text-muted text-xs">{note ?? riddenLine(route)}</p>
 		{#if action}
 			<!-- Above the card's stretched link, so the action is its own. -->
 			<div class="relative z-10 ml-auto flex items-center gap-2">

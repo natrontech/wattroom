@@ -221,6 +221,13 @@ surface(
 			picture.click(),
 		]);
 		await saved.saveAs(join(s.out, 'ride-world-picture.jpg'));
+		// multi:world-valley — WattRoom's valley loop (#4248), past its first
+		// ramp: farmland, a farm and its cows beside the road.
+		const valley = await s.open(DESK, { world: true });
+		await ride(valley.page, '/ride?road=valley&from=3200');
+		await assertRiding(valley.page, true);
+		await s.shot(valley, { name: 'world-valley' });
+		await valley.ctx.close();
 		// multi:ride-road-world-map-rolling — item 30's muted road beside the ramp:
 		// the swells' dot inside the last climb, flats and a descent in the same frame (#3645).
 		const rolling = await fixtureRoad(o.page, 'rolling');

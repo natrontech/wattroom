@@ -1,4 +1,6 @@
 <script lang="ts">
+	import WattRoomRoads from '$lib/ride/WattRoomRoads.svelte';
+	import { homeRoadsMatching } from '$lib/ride/home-roads';
 	import RouteIcon from '@lucide/svelte/icons/route';
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
@@ -19,6 +21,8 @@
 	 * them too (#3685).
 	 */
 	let { query = '' }: { query?: string } = $props();
+	// The search keeps WattRoom's roads to what it matches, as every shelf (#4248).
+	const wattroomShown = $derived(homeRoadsMatching(query).length > 0);
 	let routes = $state<StoredRoute[] | null>(null);
 	let error = $state<string | null>(null);
 
@@ -67,6 +71,21 @@
 		{ label: 'Delete the route', danger: true, onSelect: () => void remove(r) },
 	];
 </script>
+
+{#if wattroomShown}
+	<section class="mt-8">
+		<div class="flex min-h-7 items-center">
+			<h2 class="eyebrow">WattRoom roads</h2>
+		</div>
+		<div class="mt-2">
+			<WattRoomRoads card {query} href={(road) => `/ride?road=${road.id}`}>
+				{#snippet ride(road)}
+					<a href="/ride?road={road.id}" class="btn btn-primary btn-xs">Ride</a>
+				{/snippet}
+			</WattRoomRoads>
+		</div>
+	</section>
+{/if}
 
 <section class="mt-8">
 	<div class="flex min-h-7 flex-wrap items-center justify-between gap-3">

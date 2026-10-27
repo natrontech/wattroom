@@ -9,6 +9,7 @@
 	import { page } from '$app/state';
 	import Banner from '$lib/components/Banner.svelte';
 	import RouteRow from '$lib/components/RouteRow.svelte';
+	import WattRoomRoads from '$lib/ride/WattRoomRoads.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import type { StoredRoute } from '$lib/road/stored';
 	import type { FreeRide } from '$lib/ride/free-ride.svelte';
@@ -120,35 +121,49 @@
 		</Banner>
 	{:else if routes === null}
 		<Skeleton class="h-16" rows={2} />
-	{:else if routes.length === 0}
-		<p class="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
-			<span class="text-muted"
-				>Your roads ride here — import a GPX, TCX or FIT.</span
-			>
-			<a
-				href="/workouts/import?as=route"
-				class="btn btn-secondary {onpick ? 'btn-lg' : 'btn-xs'}"
-				>Import a route</a
-			>
-		</p>
 	{:else}
-		<ul class="grid gap-2" aria-label="your routes">
-			{#each routes as route (route.id)}
-				<li class="min-w-0">
-					<RouteRow {route} back={page.url.pathname}>
-						{#snippet action()}
-							<!-- In /ride's card every control is 44 px (TARGETS
+		<p class="eyebrow mb-2">WattRoom roads</p>
+		<WattRoomRoads>
+			{#snippet ride(road)}
+				<button
+					onclick={() => void pick(road.id)}
+					disabled={loading !== null}
+					class="btn btn-secondary {onpick ? 'btn-lg' : 'btn-xs'}"
+					>{loading === road.id ? 'Loading…' : 'Ride it'}</button
+				>
+			{/snippet}
+		</WattRoomRoads>
+		<p class="eyebrow mt-4 mb-2">your roads</p>
+		{#if routes.length === 0}
+			<p class="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
+				<span class="text-muted"
+					>Your roads ride here — import a GPX, TCX or FIT.</span
+				>
+				<a
+					href="/workouts/import?as=route"
+					class="btn btn-secondary {onpick ? 'btn-lg' : 'btn-xs'}"
+					>Import a route</a
+				>
+			</p>
+		{:else}
+			<ul class="grid gap-2" aria-label="your routes">
+				{#each routes as route (route.id)}
+					<li class="min-w-0">
+						<RouteRow {route} back={page.url.pathname}>
+							{#snippet action()}
+								<!-- In /ride's card every control is 44 px (TARGETS
 							     ride-preride 7); beside a running free ride, the row's own. -->
-							<button
-								onclick={() => void pick(route.id)}
-								disabled={loading !== null}
-								class="btn btn-secondary {onpick ? 'btn-lg' : 'btn-xs'}"
-								>{loading === route.id ? 'Loading…' : 'Ride it'}</button
-							>
-						{/snippet}
-					</RouteRow>
-				</li>
-			{/each}
-		</ul>
+								<button
+									onclick={() => void pick(route.id)}
+									disabled={loading !== null}
+									class="btn btn-secondary {onpick ? 'btn-lg' : 'btn-xs'}"
+									>{loading === route.id ? 'Loading…' : 'Ride it'}</button
+								>
+							{/snippet}
+						</RouteRow>
+					</li>
+				{/each}
+			</ul>
+		{/if}
 	{/if}
 {/if}
