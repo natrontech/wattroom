@@ -31,9 +31,10 @@
 		{ action: 'page', label: 'Page' },
 		{ action: 'map', label: 'Map' },
 		{ action: 'view', label: '3D / Flat' },
+		{ action: 'cheer-back', label: 'Cheer' },
+		// One row, so off 3D the pair that waits for it is dimmed together.
 		{ action: 'camera', label: 'Camera', world: true },
 		{ action: 'photo', label: 'Photo', world: true },
-		{ action: 'cheer-back', label: 'Cheer' },
 	];
 	const world = $derived(!!live.view?.world);
 	// What the riding screen shows now, as it last said: the answer to Page,
