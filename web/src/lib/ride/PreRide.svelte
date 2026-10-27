@@ -20,6 +20,7 @@
 	import { device, spectatorRideLine } from '$lib/device.svelte';
 	import RecoveredRides from '$lib/ride/RecoveredRides.svelte';
 	import RideCard, { type RideKind } from '$lib/ride/RideCard.svelte';
+	import SessionDoor from '$lib/ride/SessionDoor.svelte';
 	import type { RideableRoute } from '$lib/ride/roads';
 	import type { createSoloTrainer } from '$lib/ride/solo-trainer.svelte';
 	import SensorOverview from '$lib/session/SensorOverview.svelte';
@@ -46,6 +47,8 @@
 		onFtp,
 		onError,
 		onSaved,
+		pick,
+		pickRoad,
 	}: {
 		/** The Ride card's three answers (#3671), the page's to start. */
 		kind: RideKind;
@@ -70,6 +73,10 @@
 		onError: (message: string | null) => void;
 		/** A recovered ride reached the account (#1544). */
 		onSaved?: (ride: { startedAt: number }) => void;
+		/** The card's workout by its shelf id, and its road: a session in the
+		 *  lounge opens on both (#4224). Absent for a road's own legs. */
+		pick?: string;
+		pickRoad?: string;
 	} = $props();
 
 	// The trainer a voice channel holds counts as paired here too (#2635),
@@ -155,6 +162,9 @@
 						roadless}
 					class="btn btn-primary btn-lg">Start the ride</button
 				>
+				{#if kind === 'workout' && pick}
+					<SessionDoor {pick} road={pickRoad} />
+				{/if}
 				{#if held.fault === 'reconnecting'}
 					<!-- Never a control that will fail (ux.md, #1851): a start on a
 			     trainer mid-reattach opened a second chooser over the ride. -->

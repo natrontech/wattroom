@@ -20,7 +20,7 @@ const entry = (id: string, name: string): ShelfEntry => ({
 	},
 });
 
-const picker = (pick?: string) =>
+const picker = (pick?: string, road?: string) =>
 	render(SessionPicker, {
 		props: {
 			// Your last ride first, as the shelf ranks it: the picker opened
@@ -28,6 +28,7 @@ const picker = (pick?: string) =>
 			shelf: [entry('w1', 'Last Ridden'), entry('w2', 'Just Built')],
 			ftp: 250,
 			pick,
+			road,
 			onStart: () => {},
 			onPlan: () => {},
 			onClose: () => {},
@@ -48,6 +49,12 @@ describe('the picker (#4082)', () => {
 	it('offers to build one, coming back to this channel', () => {
 		expect(picker()).toContain(
 			'href="/workouts/edit?back=%2Fcrew%2Fc1%2Fv%2Fv1%3Fpicker%3Dstart"',
+		);
+	});
+
+	it('keeps the road it opened on through the editor (#4224)', () => {
+		expect(picker(undefined, 'r7')).toContain(
+			'href="/workouts/edit?back=%2Fcrew%2Fc1%2Fv%2Fv1%3Fpicker%3Dstart%26road%3Dr7"',
 		);
 	});
 });

@@ -59,6 +59,7 @@
 	import { legsOf, nextLeg } from '$lib/road/leg';
 	import { formatKm } from '$lib/format';
 	import { doorsFor } from '$lib/crew-lounge';
+	import { ownRoad } from '$lib/ride/free-ride-controls';
 	import { crewLive } from '$lib/nav/crew-live.svelte';
 
 	// The library is the source of workouts now; ?w=<id> selects one, and the default
@@ -652,6 +653,8 @@
 				{solo}
 				{replayName}
 				{error}
+				pick={legs.length > 0 ? undefined : selected.id}
+				pickRoad={ridesRoute ? ownRoad(road) : undefined}
 				onStart={start}
 				onReplay={beginReplay}
 				onSaved={(ride) => history.remove(String(ride.startedAt))}

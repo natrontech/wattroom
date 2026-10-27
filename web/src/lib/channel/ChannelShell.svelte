@@ -7,6 +7,7 @@
 	import { account, voiceUp } from '$lib/account.svelte';
 	import { device } from '$lib/device.svelte';
 	import { channelConnection } from '$lib/channel/connection.svelte';
+	import { ownRoad } from '$lib/ride/free-ride-controls';
 	import { publishHud } from '$lib/hud/feed';
 	import { freeRideLabel } from '$lib/ride/free-ride.svelte';
 	import { toasts } from '$lib/toast.svelte';
@@ -325,7 +326,8 @@
 			focusId: () => focusId,
 			setFocus: (id) => (focusId = id),
 			openTv: () => (layers.tv = true),
-			openPicker: (intent) => layers.openPicker(intent),
+			openPicker: (intent) =>
+				layers.openPicker(intent, undefined, ownRoad(connection.freeRide.road)),
 			banOf,
 			handOffOf,
 		}),
