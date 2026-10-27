@@ -1,7 +1,7 @@
 <script lang="ts">
 	/**
 	 * This phone as the remote for the rider's other screen (#3217, ADR-0025):
-	 * a 2×4 grid of 64 px buttons, thumb-sized for a rider on a bike (ux.md).
+	 * two columns of 64 px buttons, thumb-sized for a rider on a bike (ux.md).
 	 * Every press is a closed-set RemoteCommand the holding tab runs through its
 	 * keymap. Easier and Harder tap and never hold: a lost release measured up
 	 * to 5 phantom shifts. Only Talk holds, with a beat (remote-talk.ts).
@@ -13,8 +13,7 @@
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
 	import { createTalkHold } from '$lib/ride/remote-talk';
 	import { keepAwakeWhile } from '$lib/workout/keep-awake.svelte';
-	import { PAGE_NAMES, type ComputerPage } from '$lib/session/computer-pages';
-	import { CAMERA_NAMES, type CameraPreset } from '$lib/world/cameras';
+	import { remoteLine } from '$lib/ride/remote-line';
 
 	let {
 		live,
@@ -25,40 +24,23 @@
 	} = $props();
 
 	// Page, Map and 3D / Flat turn the riding screen's own controls (#4223);
-	// Camera and Photo its world, so they wait for 3D; Cheer answers the
-	// rider who last cheered you, or cheers everyone (#4253).
+	// Cheer answers the rider who last cheered you, or cheers everyone; Camera
+	// and Photo turn its world, so they wait for 3D, one row under Talk with
+	// the line that says so (#4253).
 	const CELLS = [
 		{ action: 'page', label: 'Page' },
 		{ action: 'map', label: 'Map' },
 		{ action: 'view', label: '3D / Flat' },
 		{ action: 'cheer-back', label: 'Cheer' },
-		// One row, so off 3D the pair that waits for it is dimmed together.
-		{ action: 'camera', label: 'Camera', world: true },
-		{ action: 'photo', label: 'Photo', world: true },
+	];
+	const WORLD_CELLS = [
+		{ action: 'camera', label: 'Camera' },
+		{ action: 'photo', label: 'Photo' },
 	];
 	const world = $derived(!!live.view?.world);
-	// What the riding screen shows now, as it last said: the answer to Page,
-	// Map, 3D / Flat and Camera with no screen to look at.
-	const shown = $derived(
-		live.view
-			? [
-					PAGE_NAMES[live.view.page as ComputerPage] ??
-						live.view.page.toUpperCase(),
-					live.view.world ? '3D' : 'Flat',
-					live.view.camera
-						? (CAMERA_NAMES[live.view.camera as CameraPreset] ?? '')
-						: '',
-				]
-					.filter(Boolean)
-					.join(' · ')
-			: null,
-	);
-	// Photo's answer: the riding screen's count of pictures rose past the
-	// one it had when the button was pressed.
+	// Photo's answer: the count of pictures it had when pressed (remoteLine).
 	let photoFrom = $state<number | null>(null);
-	const pictureTaken = $derived(
-		photoFrom !== null && (live.view?.pictures ?? 0) > photoFrom,
-	);
+	const shown = $derived(remoteLine(live.view, photoFrom));
 	function press(action: string) {
 		if (action === 'photo') photoFrom = live.view?.pictures ?? 0;
 		live.sendRemote(action);
@@ -95,12 +77,7 @@
 
 	<div class="grid flex-1 auto-rows-fr grid-cols-2 gap-3">
 		{#each CELLS as c (c.action)}
-			<button
-				type="button"
-				class={cell}
-				disabled={c.world && !world}
-				onclick={() => press(c.action)}
-			>
+			<button type="button" class={cell} onclick={() => press(c.action)}>
 				{c.label}
 			</button>
 		{/each}
@@ -116,7 +93,25 @@
 		>
 			Talk
 		</button>
-		{#if !geared}
+		{#each WORLD_CELLS as c (c.action)}
+			<button
+				type="button"
+				class={cell}
+				disabled={!world}
+				onclick={() => press(c.action)}
+			>
+				{c.label}
+			</button>
+		{/each}
+	</div>
+	{#if !world}
+		<p class="text-ink-muted text-2xl leading-7" data-testid="remote-hint">
+			Camera and Photo need 3D.
+		</p>
+	{/if}
+
+	{#if !geared}
+		<div class="grid flex-1 auto-rows-fr grid-cols-2 gap-3">
 			<button
 				type="button"
 				class={cell}
@@ -131,8 +126,8 @@
 			>
 				Bias +
 			</button>
-		{/if}
-	</div>
+		</div>
+	{/if}
 
 	{#if shown}
 		<p
@@ -140,7 +135,7 @@
 			aria-live="polite"
 			data-testid="remote-view"
 		>
-			{pictureTaken ? 'Picture taken' : shown}
+			{shown}
 		</p>
 	{/if}
 
@@ -199,10 +194,6 @@
 	{#if live.remoteRefusal}
 		<p class="text-danger text-2xl leading-7" role="alert">
 			{live.remoteRefusal}
-		</p>
-	{:else if !world}
-		<p class="text-ink-muted text-2xl leading-7" data-testid="remote-hint">
-			Camera and Photo need the 3D view.
 		</p>
 	{/if}
 </div>

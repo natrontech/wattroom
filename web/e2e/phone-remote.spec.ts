@@ -101,7 +101,7 @@ test('Harder on the phone remote trims the desk ride in ERG', async ({
 		// The desk rides flat: Camera and Photo wait for its 3D, and say so
 		// (#4253); Cheer runs.
 		await expect(remote.getByTestId('remote-hint')).toHaveText(
-			'Camera and Photo need the 3D view.',
+			'Camera and Photo need 3D.',
 		);
 		await expect(
 			remote.getByRole('button', { name: 'Camera', exact: true }),
