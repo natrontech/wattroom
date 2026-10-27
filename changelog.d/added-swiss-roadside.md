@@ -1,0 +1,1 @@
+- The 3D world's roads look more Swiss: red-bordered danger signs before steep stretches and before farms with cattle, an orange-rimmed mirror on every hairpin, milk-can stands at the farms and a wooden summit cross on the pass.

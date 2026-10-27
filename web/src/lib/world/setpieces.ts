@@ -41,7 +41,12 @@ export type PieceKind =
 	| 'house'
 	| 'barn'
 	| 'hut'
-	| 'cow';
+	| 'cow'
+	| 'steep'
+	| 'cattle'
+	| 'mirror'
+	| 'milkcans'
+	| 'cross';
 // `flag` indexes the style's flag colours: the world says where, the style says what.
 export type Piece = {
 	kind: PieceKind;

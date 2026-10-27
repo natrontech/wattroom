@@ -78,6 +78,7 @@ export function rideLook(
 			reflector: w('prop-reflector'),
 			pole: w('prop-pole'),
 			hiking: w('prop-hiking'),
+			warning: w('prop-warning'),
 			water: w('prop-water'),
 			snowpole: w('prop-snowpole'),
 			flags: [w('flag-1'), w('flag-2'), w('flag-3'), w('flag-4')],

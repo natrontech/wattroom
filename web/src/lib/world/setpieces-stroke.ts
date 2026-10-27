@@ -52,6 +52,11 @@ const SIZE: Partial<Record<PieceKind | 'herd', Size>> = {
 };
 /** Where a piece is tried along the road from where it was planned, nearest first. */
 const SHIFTS = [0, 15, -15, 30, -30, 45, -45, 60, -60];
+/** A stretch this steep over STEEP_M gets the danger sign (#4240): Swiss roads sign steep grades from about 8 %. */
+const STEEP = 0.08;
+const STEEP_M = 200;
+/** Where a danger sign or a mirror stands: just past the edge line, inside furniture's clearance. */
+const SIGN_OFF = 4.6;
 /** Road furniture is planned in stretches this long, each worked out as one. */
 const STRETCH_M = 200;
 
@@ -355,6 +360,8 @@ export function planStroke(line: Line, k: number, plan: Plan) {
 		member('barn', 'building', 22, 44, 16, 1);
 		member('woodpile', 'kit', -8, 23, 12, 2);
 		member('bales', 'kit', -30, 40, 12, 3);
+		// The milk-can stand where the farm's track meets the road (#4240).
+		member('milkcans', 'kit', -16, 10.5, 9.2, 40);
 		item(g, 'herd', s + 30, 60, (self) => {
 			if (home.at === null || home.at === undefined) return null;
 			const at = home.at;
@@ -382,6 +389,22 @@ export function planStroke(line: Line, k: number, plan: Plan) {
 					},
 				);
 			if (g.out.length === from) return null;
+			// Cattle on the road, warned 90 m before the farm for whoever rides up the stroke (#4240).
+			const ahead = w.at(at - 90);
+			put(
+				g,
+				'cattle',
+				'furniture',
+				at - 90,
+				-1,
+				SIGN_OFF,
+				0,
+				sub(slot, 41),
+				null,
+				{
+					turn: turnBy(ahead.along, deg(180)),
+				},
+			);
 			// The herd is one thing to O9: every cow carries it, and the streams count it once.
 			const pass: Passing = {
 				id: `herd@${k}:${slot}`,
@@ -438,6 +461,49 @@ export function planStroke(line: Line, k: number, plan: Plan) {
 	// Climbs, whichever way the stroke climbs: a board at the foot for whoever climbs it, hairpins numbered from the top.
 	const road = strokeRoad(line);
 	const pins = hairpinsOf(road);
+	// Steep road ahead, each way (#4240): the danger sign 40 m before a stretch
+	// that climbs STEEP over STEEP_M, facing its own riders, at most one a kilometre.
+	for (const dir of [1, -1] as const) {
+		let last = -Infinity;
+		for (let s = 0; s + STEEP_M <= r.length; s += 50) {
+			const at = dir > 0 ? s : r.length - s;
+			const rise = w.at(at + STEEP_M * dir).h - w.at(at).h;
+			if (rise < STEEP * STEEP_M || s - last < 1000) continue;
+			last = s;
+			const before = Math.min(Math.max(at - 40 * dir, 0), r.length);
+			const p = w.at(before);
+			put(
+				filed(before),
+				'steep',
+				'furniture',
+				before,
+				-dir,
+				SIGN_OFF,
+				0,
+				7e6 + Math.round(before) * 2 + (dir > 0 ? 0 : 1),
+				null,
+				{ turn: dir > 0 ? turnBy(p.along, deg(180)) : p.along },
+			);
+		}
+	}
+	// A convex mirror on the outside of every hairpin, facing across the bend (#4240).
+	for (const d of pins) {
+		const a = w.at(Math.max(d - 12, 0));
+		const b = w.at(Math.min(d + 12, r.length));
+		const left = (a.lz - b.lz) * a.lx + (b.lx - a.lx) * a.lz > 0;
+		put(
+			filed(d),
+			'mirror',
+			'furniture',
+			d,
+			left ? -1 : 1,
+			SIGN_OFF,
+			0,
+			8e6 + Math.round(d),
+			null,
+			{ turn: turnBy(w.at(d).along, deg(90)) },
+		);
+	}
 	for (const dir of [1, -1] as const) {
 		const climbs = climbsOf(dir > 0 ? road : turnedRound(road));
 		for (const cl of climbs) {
@@ -498,6 +564,7 @@ export function planStroke(line: Line, k: number, plan: Plan) {
 			at('hut', 'building', 18, -1, 22, 15, 3e6);
 			at('bench', 'kit', 6, 1, 10, 9.2, sub(3e6, 1));
 			at('signpost', 'kit', -8, 1, 10.5, 9.2, sub(3e6, 2));
+			at('cross', 'kit', 26, -1, 18, 12, sub(3e6, 9));
 			for (let f = 0; f < FLAGS; f++)
 				at('flag', 'kit', -14 + f * 5, -1, 11, 10, sub(3e6, 3 + f), {
 					flag: f,

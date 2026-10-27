@@ -394,6 +394,8 @@
 	--world-prop-hiking: #b29d5a;
 	--world-prop-water: #5aa0c8;
 	--world-prop-snowpole: #ff7a1a;
+	/* A Swiss danger sign's red, turned toward orange past every watt's band (O13, #4240). */
+	--world-prop-warning: #c05a2c;
 	--world-prop-rock: #4c5060;
 	--world-flag-1: #88443b;
 	--world-flag-2: #d8d3dc;

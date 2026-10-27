@@ -36,6 +36,7 @@ export type PropColors = {
 	hiking: string; // the yellow Swiss hiking sign
 	water: string;
 	snowpole: string;
+	warning: string; // the red border of a Swiss danger sign (#4240), never in a watt's band
 	flags: readonly string[]; // one per summit flagpole
 	rock: string;
 };
