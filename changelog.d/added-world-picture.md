@@ -1,0 +1,1 @@
+- A ride with the 3D world now takes one picture of it by itself, on the first climb, with no names in it. The closing card offers it beside the ride card (now on a session's closing card too), so you can save either or both for Strava. The picture stays in the browser until you save it.

@@ -3,6 +3,7 @@
 	// ride-alone lifecycle on the channel's riding surface — the count-in,
 	// your own clock, the summary — beside anything running here. ADR-0046's
 	// one riding surface: /ride's screens, with the channel around them.
+	import RidePictures from '$lib/ride/RidePictures.svelte';
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { useChannel } from '$lib/channel/context';
 	import { ridePath } from '$lib/channel/address';
@@ -147,6 +148,11 @@
 					{:else if own.saving}
 						<button disabled class="btn btn-secondary">Saving…</button>
 					{/if}
+					<RidePictures
+						rideId={outcome && 'saved' in outcome && outcome.saved
+							? outcome.saved
+							: undefined}
+					/>
 					<!-- Back to the free ride: the channel's own riding (#3340). -->
 					<button
 						onclick={() => own.dismiss()}

@@ -7,6 +7,7 @@
 	 * card, which hands the trainer over (#3855); only a crew's planned road
 	 * pairs here.
 	 */
+	import RidePictures from '$lib/ride/RidePictures.svelte';
 	import { onDestroy, untrack } from 'svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import { canSimulate } from '$lib/ble/can-simulate';
@@ -182,6 +183,9 @@
 					>See your ride</a
 				>
 			{/if}
+			<RidePictures
+				rideId={'saved' in outcome ? outcome.saved.id : undefined}
+			/>
 			<a href="/home" class="btn btn-primary">Done</a>
 		{/snippet}
 		{#snippet status()}

@@ -36,6 +36,7 @@
 	import { play } from '$lib/sound/cues';
 	import { generate } from './world';
 	import { rideLook, worldPaint } from './look';
+	import { pictureDue, worldPicture } from './picture.svelte';
 
 	let {
 		road,
@@ -101,7 +102,26 @@
 		if (camera) scene?.setCamera(camera);
 	});
 
+	// The ride's picture (#4221): once, by itself, on the first climb or
+	// after a while on a flat road; the last ride's is let go first.
+	const PICTURE_POLL_S = 2;
 	onMount(() => {
+		worldPicture.clear();
+		let ridden = 0;
+		let taken = false;
+		const picture = setInterval(() => {
+			if (taken || !scene || counting || paused) return;
+			const at = metre();
+			if (at.mps > 0.5) ridden += PICTURE_POLL_S;
+			if (!pictureDue(road, at.m, ridden)) return;
+			taken = true;
+			void scene.snap().then((shot) => {
+				if (!shot) return;
+				worldPicture.keep(shot);
+				// Said on the canvas, as its shot is: a capture waits for it.
+				if (canvas) canvas.dataset.picture = 'taken';
+			});
+		}, PICTURE_POLL_S * 1000);
 		// Building holds the main thread for a moment: let the surface paint first.
 		const t = setTimeout(() => {
 			try {
@@ -160,6 +180,7 @@
 		}, 40);
 		return () => {
 			clearTimeout(t);
+			clearInterval(picture);
 			if (import.meta.env.DEV)
 				delete (window as { __worldProbe?: unknown }).__worldProbe;
 			scene?.dispose();

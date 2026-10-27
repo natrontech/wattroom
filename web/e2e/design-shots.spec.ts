@@ -205,6 +205,22 @@ surface(
 			(document.activeElement as HTMLElement)?.blur(),
 		);
 		await s.shot(o, { name: 'ride-road-world-map' });
+		// multi:ride-world-picture-card — the ride's picture of the world
+		// (#4221), taken by itself on this climb, offered on the closing card
+		// beside the ride card; ride-world-picture.jpg is the picture saved.
+		await o.page
+			.locator('canvas[data-picture=taken]')
+			.waitFor({ state: 'attached', timeout: 90_000 });
+		await o.page.getByRole('button', { name: 'End ride' }).click();
+		await o.page.getByRole('button', { name: 'End the ride' }).click();
+		const picture = o.page.getByTestId('world-picture');
+		await picture.waitFor({ timeout: 30_000 });
+		await s.shot(o, { name: 'ride-world-picture-card', full: true });
+		const [saved] = await Promise.all([
+			o.page.waitForEvent('download'),
+			picture.click(),
+		]);
+		await saved.saveAs(join(s.out, 'ride-world-picture.jpg'));
 		// multi:ride-road-world-map-rolling — item 30's muted road beside the ramp:
 		// the swells' dot inside the last climb, flats and a descent in the same frame (#3645).
 		const rolling = await fixtureRoad(o.page, 'rolling');
