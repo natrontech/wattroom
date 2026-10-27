@@ -124,7 +124,7 @@
 	{:else}
 		<p class="eyebrow mb-2">WattRoom roads</p>
 		<WattRoomRoads>
-			{#snippet action(road)}
+			{#snippet ride(road)}
 				<button
 					onclick={() => void pick(road.id)}
 					disabled={loading !== null}

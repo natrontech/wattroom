@@ -3,18 +3,19 @@ import { toRoute } from '$lib/road/route';
 import { syntheticPoints } from './synthetic';
 import { generate } from './world';
 import { BUILD_MS } from './world.test-helper';
-import { HOME_ROADS } from '$lib/ride/home-roads';
+import { HOME_ROADS, homeRoadsMatching, homeRow } from '$lib/ride/home-roads';
 import { loadRoad } from '$lib/ride/roads';
 
 describe('WattRoom’s own roads (#4248)', () => {
 	it.each(HOME_ROADS)(
-		'$name is as long and climbs as much as its list says',
+		'$name reads as a route row measured off its own road',
 		async (home) => {
 			const route = toRoute(syntheticPoints(await home.shape()));
-			expect(Math.abs(route.length / 1000 - home.km) / home.km).toBeLessThan(
-				0.1,
-			);
-			expect(Math.abs(route.gain - home.gainM) / home.gainM).toBeLessThan(0.2);
+			const row = await homeRow(home);
+			expect(row.lengthM).toBe(route.road.length);
+			expect(row.gainM).toBeGreaterThan(0);
+			// Each one climbs something worth a class chip on its row.
+			expect(row.climbs.some((c) => c.cls)).toBe(true);
 		},
 	);
 
@@ -38,4 +39,11 @@ describe('WattRoom’s own roads (#4248)', () => {
 		},
 		BUILD_MS,
 	);
+
+	it('keeps to what a search matches, by name or by what is along it', () => {
+		expect(homeRoadsMatching('').length).toBe(HOME_ROADS.length);
+		expect(homeRoadsMatching('valley').map((r) => r.id)).toContain('valley');
+		expect(homeRoadsMatching('cows').map((r) => r.id)).toEqual(['valley']);
+		expect(homeRoadsMatching('swells')).toEqual([]);
+	});
 });

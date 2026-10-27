@@ -1,5 +1,6 @@
 import type { Corner, Shape } from '$lib/world/synthetic';
 import type { RideableRoute } from '$lib/ride/roads';
+import type { StoredRoute } from '$lib/road/stored';
 
 /**
  * WattRoom's own roads (#4248): made-up loops every rider has, crew or none,
@@ -13,9 +14,6 @@ export type HomeRoad = {
 	name: string;
 	/** What is along it, in a line. */
 	story: string;
-	/** About how long and how much it climbs, for the list (home-roads.test.ts holds them to the road). */
-	km: number;
-	gainM: number;
 	shape: () => Promise<Shape>;
 };
 
@@ -44,8 +42,6 @@ export const HOME_ROADS: readonly HomeRoad[] = [
 		name: 'Pass loop',
 		story:
 			'A valley, five hairpins with their mirrors, and a pass with its hut, flags and summit cross.',
-		km: 30,
-		gainM: 600,
 		shape: async () => (await import('$lib/world/synthetic')).PASS_LOOP,
 	},
 	{
@@ -53,13 +49,46 @@ export const HOME_ROADS: readonly HomeRoad[] = [
 		name: 'Valley loop',
 		story:
 			'Rolling farmland and villages, cows by the road, and two short steep ramps.',
-		km: 16,
-		gainM: 130,
 		shape: async () => ({ corners: VALLEY_LOOP, seed: 4248 }),
 	},
 ];
 
 export const homeRoad = (id: string) => HOME_ROADS.find((r) => r.id === id);
+
+/** The roads a search keeps: by name or by what is along it. */
+export function homeRoadsMatching(query: string): readonly HomeRoad[] {
+	const q = query.trim().toLowerCase();
+	if (!q) return HOME_ROADS;
+	return HOME_ROADS.filter(
+		(r) =>
+			r.name.toLowerCase().includes(q) || r.story.toLowerCase().includes(q),
+	);
+}
+
+/**
+ * One of WattRoom's roads as the shared route row reads a route (#4248): its
+ * length, gain and classed climbs measured off the road it builds, never
+ * written by hand.
+ */
+export async function homeRow(home: HomeRoad): Promise<StoredRoute> {
+	const [route, { climbsOf }, { gainOf }] = await Promise.all([
+		homeRoute(home),
+		import('$lib/road/climbs'),
+		import('$lib/road/profile'),
+	]);
+	return {
+		id: home.id,
+		name: home.name,
+		generatedName: home.name,
+		src: 'wattroom',
+		lengthM: route.road.length,
+		gainM: gainOf(route.road.heights),
+		climbs: climbsOf(route.road),
+		hasPlace: false,
+		ownerOnly: false,
+		createdAt: '',
+	};
+}
 
 /** One of WattRoom's roads, built here, ready to ride. */
 export async function homeRoute(road: HomeRoad): Promise<RideableRoute> {
