@@ -85,7 +85,7 @@ it('takes the TV and the phone only for the files that lay them out', () => {
 		...surfacesFor(['web/src/lib/session/TvMode.svelte']).keys(),
 	]).toEqual(['ride-tv']);
 	expect([
-		...surfacesFor(['web/src/lib/session/TrainingPhone.svelte']).keys(),
+		...surfacesFor(['web/src/lib/session/PhoneSessionControls.svelte']).keys(),
 	]).toContain('phone');
 	expect(
 		[...surfacesFor(['web/src/lib/device.svelte.ts']).keys()].every(tvOrPhone),

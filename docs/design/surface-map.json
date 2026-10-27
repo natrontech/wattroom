@@ -123,8 +123,12 @@
 		]
 	},
 	{
-		"files": ["web/src/lib/session/TrainingPhone.svelte"],
-		"surfaces": ["ride-watch", "phone"]
+		"files": [
+			"web/src/lib/session/PhoneSessionControls.svelte",
+			"web/src/lib/session/SessionNumbers.svelte",
+			"web/src/lib/session/CrewRows.svelte"
+		],
+		"surfaces": ["ride-watch", "phone", "ride-session-road"]
 	},
 	{
 		"files": [
