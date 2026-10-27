@@ -816,6 +816,11 @@ surface('ride-preride', async (s) => {
 		hairpin,
 	);
 	await page(s, known, '/ride?alone', { name: 'ride-preride' });
+	// A workout picked on Workouts (#4224): Start the ride, and beside it
+	// the session in the crew's lounge on the same workout and road.
+	await page(s, known, `/ride?w=openers&road=${hairpin}`, {
+		name: 'ride-preride-workout',
+	});
 	const fresh = await s.open(DESK, { as: 'Newcomer', world: false });
 	await page(s, fresh, '/ride?alone', { name: 'ride-preride-no-road' });
 });
@@ -902,7 +907,7 @@ surface('picker-race', async (s) => {
 	// Games tab, which sends a race to the roads.
 	const o = await s.open(DESK, { world: false });
 	const crew = await designCrew(o.page);
-	await fixtureRoad(o.page, 'hairpin');
+	const hairpin = await fixtureRoad(o.page, 'hairpin');
 	await toTraining(o.page, crew);
 	if (await o.page.getByRole('button', { name: 'end the session' }).count()) {
 		await endSession(o.page);
@@ -932,6 +937,19 @@ surface('picker-race', async (s) => {
 	if (await picker.getByRole('button', { name: /^Start / }).count())
 		throw new Error('a par of 50 minutes still offers a Start');
 	await s.shot(o, { name: 'picker-race-par' });
+	// /ride's session door (#4224): the picker opens on its workout and its
+	// road, nothing chosen twice.
+	await o.page.goto(
+		`${voicePath(crew)}/training?picker=start&pick=openers&road=${hairpin}`,
+	);
+	const held = o.page.getByRole('dialog', { name: 'Start a session' });
+	await held.getByRole('combobox').waitFor();
+	await held
+		.getByText('Reading the road…')
+		.waitFor({ state: 'hidden', timeout: 15_000 });
+	if ((await held.getByRole('combobox').inputValue()) !== hairpin)
+		throw new Error('the session door lost its road');
+	await s.shot(o, { name: 'picker-start-door' });
 });
 
 surface(
