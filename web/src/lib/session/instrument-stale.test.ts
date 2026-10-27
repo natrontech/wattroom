@@ -21,18 +21,16 @@ const surfaces = FILES.filter(
 );
 
 describe('the instrument knows when its numbers are not live (#2851)', () => {
-	it('finds the riding surfaces', () => {
-		expect(surfaces).toEqual(
-			// The free ride's head (#3669) and every other riding panel's (#3670)
-			// is the bike computer's, whose `stale` the type checker requires.
-			expect.arrayContaining(['lib/session/TrainingPhone.svelte']),
-		);
-	});
-
-	it.each(surfaces)('%s tells every instrument', (file) => {
-		const tags = read(file).match(/<Instrument\b[\s\S]*?\/>/g) ?? [];
-		expect(tags.length).toBeGreaterThan(0);
-		for (const tag of tags) expect(tag).toMatch(/\bstale\b/);
+	it('finds none: every riding head is the bike computer’s', () => {
+		// The free ride's head (#3669), every other riding panel's (#3670) and
+		// a session on a phone's (#4233) is the bike computer's, whose `stale`
+		// the type checker requires. An instrument back on a riding surface
+		// lands here, and must say whether its numbers are live.
+		for (const file of surfaces) {
+			const tags = read(file).match(/<Instrument\b[\s\S]*?\/>/g) ?? [];
+			for (const tag of tags) expect(tag, file).toMatch(/\bstale\b/);
+		}
+		expect(surfaces).toEqual([]);
 	});
 });
 
@@ -41,8 +39,16 @@ describe('the instrument knows when its numbers are not live (#2851)', () => {
  * and its 0 glowed as though measured (#2941).
  */
 describe('the instrument knows when nothing is paired (#2941)', () => {
-	it.each(surfaces)('%s tells every instrument', (file) => {
-		const tags = read(file).match(/<Instrument\b[\s\S]*?\/>/g) ?? [];
-		for (const tag of tags) expect(tag).toMatch(/\bidle\b/);
+	it('every instrument on a riding surface says so', () => {
+		for (const file of surfaces) {
+			const tags = read(file).match(/<Instrument\b[\s\S]*?\/>/g) ?? [];
+			for (const tag of tags) expect(tag, file).toMatch(/\bidle\b/);
+		}
+	});
+
+	it('a phone’s own unmeasured numbers are not live (#4233)', () => {
+		expect(read('lib/session/SessionNumbers.svelte')).toMatch(
+			/stale=\{mine\s*\?\s*channel\.youStale \|\| \(phone && channel\.youUnmeasured\)/,
+		);
 	});
 });

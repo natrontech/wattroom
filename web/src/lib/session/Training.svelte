@@ -12,14 +12,11 @@
 	import { crewOf } from '$lib/session/follow';
 	import { bottleFor } from '$lib/roadside';
 	import RoadsideDeck from '$lib/channel/RoadsideDeck.svelte';
-	import ExecutionMeter from '$lib/session/ExecutionMeter.svelte';
 	import GamePanel from '$lib/session/GamePanel.svelte';
 	import RidingSurface from '$lib/session/RidingSurface.svelte';
 	import ViewSwitch from '$lib/world/ViewSwitch.svelte';
 	import { createWorldView } from '$lib/world/world-view.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
-	import BiasTrim from '$lib/session/BiasTrim.svelte';
-	import BikeComputer from '$lib/session/BikeComputer.svelte';
 	import { climbView, landed } from '$lib/ride/climb-view';
 	import { NO_GATES } from '$lib/road/gates';
 	import { NO_MATES } from '$lib/channel/road-mates';
@@ -27,7 +24,6 @@
 	import RideNarrator from '$lib/ride/RideNarrator.svelte';
 	import { watchClimbCues } from '$lib/ride/climb-cues.svelte';
 	import RaceRadio from '$lib/race/RaceRadio.svelte';
-	import HrShare from '$lib/channel/HrShare.svelte';
 	import RideBand from '$lib/session/RideBand.svelte';
 	import MomentCard from '$lib/session/MomentCard.svelte';
 	import Skyline from '$lib/ride/Skyline.svelte';
@@ -41,7 +37,9 @@
 	import SessionControls from '$lib/session/SessionControls.svelte';
 	import SprintMoment from '$lib/session/SprintMoment.svelte';
 	import Stage from '$lib/channel/Stage.svelte';
-	import TrainingPhone from '$lib/session/TrainingPhone.svelte';
+	import PhoneSessionControls from '$lib/session/PhoneSessionControls.svelte';
+	import SessionNumbers from '$lib/session/SessionNumbers.svelte';
+	import { followedRider } from '$lib/channel/followed-rider';
 	import TrainingLounge from '$lib/session/TrainingLounge.svelte';
 	import { device, deviceWord } from '$lib/device.svelte';
 	import { trainerTargetsNote } from '$lib/session/sensor-status';
@@ -120,11 +118,26 @@
 	);
 	const map = $derived(mapView(channel.ridden));
 	watchClimbCues(() => climb);
+	// A phone rides the solo phone layout (#4233, TARGETS phone-ride): one
+	// column of panels, the world a band where this device draws it, and the
+	// numbers the FOLLOWED rider's — a phone is a spectator, so whoever was
+	// tapped in the crew, else whoever works hardest (#412).
+	const phone = $derived(device.narrow);
+	const phoneRoad = $derived(phone && !!channel.ridden);
+	const followed = $derived(
+		phone
+			? followedRider(
+					channel.riders.filter((r) => r.inSession || r.you),
+					channel.focusId,
+				)
+			: null,
+	);
+	const rider = $derived(followed ?? channel.you);
 	// The sprint carries its own numbers and Watt Golf hides the meter:
 	// slots 3 to 5 stand empty while either has the focus.
 	// Over the world a sprint is a moment card and your numbers stay (D12).
 	const quiet = $derived(
-		(inFocus === 'sprint' && !inWorld) ||
+		(inFocus === 'sprint' && !inWorld && !phone) ||
 			(inFocus === 'game' && !!channel.game?.meterHidden),
 	);
 	// The world keeps its width: the people column folds while it rides (#3668).
@@ -139,7 +152,11 @@
 	// words, and slot 1 drops its strip (#4159). Where the graph gives way (a
 	// screen, a sprint, the world), the strip is the picture again.
 	const graphed = $derived(
-		!inWorld && !quiet && inFocus !== 'media' && channel.segments.length > 0,
+		!inWorld &&
+			!phoneRoad &&
+			!quiet &&
+			inFocus !== 'media' &&
+			channel.segments.length > 0,
 	);
 	// The count-in over the world: the reveal flies, the digit hangs on the arch's banner (#3087, ADR-0046).
 	const countingIn = $derived(inWorld && channel.phase === 'countdown');
@@ -185,10 +202,6 @@
 	{/await}
 {/snippet}
 
-{#snippet phoneSwitch()}
-	<ViewSwitch {world} drawn={world.band && !!channel.ridden} />
-{/snippet}
-
 {#if channel.phase === 'lounge'}
 	<TrainingLounge {targetsNote} />
 {:else if channel.phase === 'countdown' && !inWorld}
@@ -209,15 +222,10 @@
 			</div>
 		{/snippet}
 	</CountdownScreen>
-{:else if device.narrow}
-	<!-- One column, the followed rider's instrument, the crew strip (#412). -->
-	<TrainingPhone
-		{climb}
-		{map}
-		band={world.band && channel.ridden ? road : undefined}
-		viewSwitch={channel.ridden ? phoneSwitch : undefined}
-	/>
 {:else}
+	{#snippet phoneControls()}
+		<PhoneSessionControls {world} onLeave={leaveRide} />
+	{/snippet}
 	{#snippet worldControls()}
 		<!-- One row in slot 1 (TARGETS ride-road-world 7), and the people
 		     column's sheet, folded away while the world rides. -->
@@ -294,8 +302,16 @@
 		>
 	{/snippet}
 	<RidingSurface
-		class="h-full overflow-hidden {inWorld ? '' : 'p-4'}"
-		world={inWorld ? road : undefined}
+		class={phone
+			? 'h-full overflow-y-auto px-4 pt-4'
+			: `h-full overflow-hidden ${inWorld ? '' : 'p-4'}`}
+		world={phone
+			? world.band && channel.ridden
+				? road
+				: undefined
+			: inWorld
+				? road
+				: undefined}
 		stage={inFocus === 'media'}
 		moment={inWorld && inFocus === 'sprint' ? moment : undefined}
 		centre={countingIn ? digit : undefined}
@@ -316,7 +332,7 @@
 				)}
 				drives={!!channel.trainer && channel.actuating}
 				wide={!inWorld}
-				controls={worldControls}
+				controls={phone ? phoneControls : worldControls}
 				status={trainerLine}
 				strip={graphed ? undefined : strip}
 			/>
@@ -328,7 +344,11 @@
 		{/snippet}
 
 		{#snippet focus()}
-			{#if inFocus === 'sprint' && channel.sprint && !inWorld}
+			{#if phone && inFocus === 'sprint'}
+				<!-- A sprint on a phone is its moment card, the head under it
+				     keeping the one watts figure (D12), as a solo phone ride's. -->
+				<div class="p-4">{@render moment()}</div>
+			{:else if inFocus === 'sprint' && channel.sprint && !inWorld}
 				<section class="min-h-0 px-6">
 					<SprintMoment
 						sprint={channel.sprint}
@@ -361,69 +381,52 @@
 						attach={(node) => channel.attachStage(node, share.key)}
 					/>
 				</section>
+			{:else if phone && !channel.you.inSession}
+				<!-- A phone beside the bike is the roadside (#3022), and says
+				     once why there is nothing to pair (ux.md: teach). -->
+				<section class="p-4">
+					<RoadsideDeck to={watched} />
+					{#if device.spectator}
+						<p class="text-muted mt-3 text-2xl leading-7">
+							Spectating — cheers land in the voice channel. Bring a laptop to
+							ride.
+						</p>
+					{/if}
+				</section>
 			{/if}
 		{/snippet}
 
 		{#snippet numbers()}
 			{#if !quiet}
-				<!-- One panel: the computer with its head, the trim, and whether
-				     your heart rate reaches the call beside it (ADR-0008, #2804): the
-				     button's heart alone, since its words would wrap the trim to a
-				     second row, on a road into slot 1 (#4056). -->
-				<BikeComputer
-					docked
+				<SessionNumbers
+					{rider}
+					{phone}
 					{climb}
 					{map}
-					roadLine={!!channel.block?.road}
-					road={channel.ridden
-						? {
-								speedKph: channel.ridden.mps * 3.6,
-								km: channel.ridden.m / 1000,
-								ofKm: channel.ridden.road.length / 1000,
-							}
-						: undefined}
-					ftp={channel.you.ftp}
-					cadence={channel.you.cadence}
-					stale={channel.youStale}
-					hr={channel.you.hr}
-					watts={channel.you.watts}
-					kg={channel.you.kg}
-					lthr={channelConnection.current?.profile.current.lthr}
-					execution={riding.length <= 1 && channel.you.inSession
-						? channel.you.execution
-						: undefined}
-					target={channel.you.target > 0 ? channel.you.target : undefined}
-					stats={channelConnection.current?.recording.live}
-					race={channel.race ?? undefined}
+					{riding}
+					meter={!phone &&
+						inFocus !== 'media' &&
+						inFocus !== 'game' &&
+						!inWorld}
+					{targetsNote}
 				/>
-				<div class="flex flex-col gap-2 px-4 pb-3">
-					<div class="flex items-center gap-2">
-						<BiasTrim
-							ride
-							bias={channel.bias}
-							onBias={channel.trainer && channel.actuating
-								? (step) => channel.nudgeBias(step)
-								: undefined}
-							hint={targetsNote
-								? `${targetsNote} — trim them there`
-								: undefined}
-						/>
-						<HrShare ride icon />
-					</div>
-					{#if riding.length > 1 && inFocus !== 'media' && inFocus !== 'game' && !inWorld}
-						<!-- The live half of the execution score (#543), alone not a
-						     leaderboard (#2635); below xl only, where the people column
-						     does not carry it (#2882 L6-09). -->
-						<div class="max-h-32 w-64 overflow-y-auto xl:hidden">
-							<ExecutionMeter riders={riding} />
-						</div>
-					{/if}
-				</div>
 			{/if}
 		{/snippet}
 
 		{#snippet crew()}
-			{#if inWorld && inFocus !== 'game'}
+			{#if phone && inFocus !== 'game'}
+				<!-- A phone's crew is the rows (no watts figure beside the head's,
+				     G2/G4), and a tap follows a rider, a second tap lets go (#1627). -->
+				<div class="py-2">
+					<CrewRows
+						riders={inRide}
+						offsets={channel.ridden?.bunch?.offsets}
+						followedId={followed?.id ?? null}
+						onFollow={(id) =>
+							channel.setFocus(id === channel.focusId ? null : id)}
+					/>
+				</div>
+			{:else if inWorld && inFocus !== 'game'}
 				<!-- Beside the road the crew stays under the seat, a sprint's card
 				     included (the box table): rows at the riding floor. -->
 				<div class="py-2">
@@ -452,6 +455,17 @@
 						mps={channel.ridden.mps}
 						strip={inFocus === 'media'}
 					/>
+				</div>
+			{:else if phoneRoad && channel.ridden}
+				<!-- A phone on a road: the Skyline full width (TARGETS phone-ride-road 4). -->
+				<div class="relative min-h-40 flex-1">
+					<div class="absolute inset-0">
+						<Skyline
+							road={channel.ridden.road}
+							m={channel.ridden.m}
+							mps={channel.ridden.mps}
+						/>
+					</div>
 				</div>
 			{:else if graphed}
 				<!-- The horizon: the session is the ground the numbers stand on,

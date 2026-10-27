@@ -30,8 +30,7 @@ describe('where heart rate reaches the call (#2804)', () => {
 	it('finds the riding surfaces', () => {
 		expect(riding).toEqual(
 			expect.arrayContaining([
-				'lib/session/Training.svelte',
-				'lib/session/TrainingPhone.svelte',
+				'lib/session/SessionNumbers.svelte',
 				'lib/ride/FreeRide.svelte',
 			]),
 		);
@@ -58,13 +57,11 @@ describe('where heart rate reaches the call (#2804)', () => {
 	});
 
 	it("a session's button stands beside the trim, its heart alone (#4063)", () => {
-		const training = read('lib/session/Training.svelte');
-		const numbers = training.slice(
-			training.indexOf('{#snippet numbers()}'),
-			training.indexOf('{#snippet crew()}'),
-		);
+		// A session's slot 3 is SessionNumbers, on a desk and a phone (#4233).
+		const numbers = read('lib/session/SessionNumbers.svelte');
 		expect(numbers).toMatch(/<BiasTrim[\s\S]*<HrShare ride icon \/>/);
-		expect(training.match(/<HrShare/g)).toHaveLength(1);
+		expect(numbers.match(/<HrShare/g)).toHaveLength(1);
+		expect(read('lib/session/Training.svelte')).not.toContain('<HrShare');
 		expect(read('lib/channel/HrShare.svelte')).toContain(
 			'{#if !icon}{view.action}{/if}',
 		);
