@@ -449,11 +449,12 @@ export function milkcans(c: PropColors) {
 	]);
 }
 
-// The summit cross: larch on a cairn, where the pass road tops out.
+// The summit cross on a cairn, where the pass road tops out: steel, painted
+// white, so it reads against the hut and the dusk alike.
 export function summitCross(c: PropColors) {
 	return merge([
 		tint(cyl(0.6, 0.85, 0.6, 7).translate(0, 0.3, 0), c.stone),
-		tint(box(0.18, 4.2, 0.18).translate(0, 2.6, 0), c.wood),
-		tint(box(1.5, 0.16, 0.16).translate(0, 3.6, 0), c.wood),
+		tint(box(0.18, 4.2, 0.18).translate(0, 2.6, 0), c.post),
+		tint(box(1.5, 0.16, 0.16).translate(0, 3.6, 0), c.post),
 	]);
 }

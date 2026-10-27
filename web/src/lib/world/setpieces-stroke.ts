@@ -564,7 +564,7 @@ export function planStroke(line: Line, k: number, plan: Plan) {
 			at('hut', 'building', 18, -1, 22, 15, 3e6);
 			at('bench', 'kit', 6, 1, 10, 9.2, sub(3e6, 1));
 			at('signpost', 'kit', -8, 1, 10.5, 9.2, sub(3e6, 2));
-			// Faced down the climb, as a sign is: from the road a cross side on is a post.
+			// Faced down the climb as a sign is: from the road a cross side on is a post.
 			at('cross', 'kit', 26, -1, 18, 12, sub(3e6, 9), {
 				turn: turnBy(w.at(Math.min(s + 26, r.length)).along, deg(180)),
 			});
