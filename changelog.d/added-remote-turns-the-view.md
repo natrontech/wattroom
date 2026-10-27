@@ -1,0 +1,1 @@
+- The phone remote's Page, Map and new 3D / Flat buttons turn the riding screen's bike computer and view, and the phone shows which page and view the screen is on.

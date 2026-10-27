@@ -238,6 +238,7 @@ Capture: desk context rides the channel's free ride on a simulated trainer, in v
 5. Phone width 375 × 812: the page body does not scroll sideways, and Done is reachable without scrolling. [probe:remoteClientWidth] [3217]
 6. On a solo ride only (`ride-phone-remote-paused`), a Pause and Resume pair of `btn-ride` cells, the one that cannot act disabled, and a persistent “Paused” line in neon once paused. A free ride never shows the pair (`ride-phone-remote`'s `remotePair` is false; `ride-phone-remote-solo` shows it live). [probe:pauseResumeHeight] [probe:remotePair] [3217]
 7. While another of the rider's screens carries their voice, the phone is a controller (`ride-phone-remote-offer`): under the offer, one line naming that device and one full-width `btn-ride` “Use this device for voice” with words at 24 px; no microphone or camera control and no call on the phone (ADR-0089). [probe:controllerLine] [probe:moveVoiceTextPx] [probe:moveVoiceHeight] [4164]
+8. Page, Map and “3D / Flat” run on the riding screen: Page turns its bike computer, Map goes to MAP and back, 3D / Flat flips the view; one neon line in words at 24 px names the page and view it shows now (“POWER · Flat”). [#4223] [test:web/e2e/phone-remote.spec.ts] [test:web/src/lib/world/ride-view.test.ts]
 
 #### ride-countin
 

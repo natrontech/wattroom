@@ -20,6 +20,7 @@ type ClientMessage struct {
 	Remote   *RemoteCommand  `json:"remote,omitempty"`
 	Gear     *GearState      `json:"gear,omitempty"`
 	Pause    *PauseState     `json:"pause,omitempty"`
+	View     *ViewState      `json:"view,omitempty"`
 	Voice    *VoiceClaim     `json:"voice,omitempty"`
 	FreeRoad *FreeRoad       `json:"freeRoad,omitempty"`
 }
@@ -100,6 +101,8 @@ type ServerMessage struct {
 	Gear *GearState `json:"gear,omitempty"`
 	// The holding tab's ride pause, to the rider's other screens only (#3217).
 	Pause *PauseState `json:"pause,omitempty"`
+	// The holding tab's page and view, to the rider's other screens only (#4223).
+	View *ViewState `json:"view,omitempty"`
 	// This socket's own address, sent once on join and to nobody else (#2131).
 	Connection *OwnConnection `json:"connection,omitempty"`
 }

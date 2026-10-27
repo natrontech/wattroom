@@ -9,6 +9,9 @@ import { spaceBelongsTo } from '$lib/channel/ptt-keys';
 import { gearsEnabled } from '$lib/ride/gears-enabled';
 import { EASIER_HARDER_OFF } from '$lib/ride/easier-harder';
 import { bindShifters, createRemoteRunner } from '$lib/ride/keys';
+import { askPage } from '$lib/session/computer-pages';
+import { computerShown } from '$lib/session/computer-shown.svelte';
+import { askViewFlip } from '$lib/world/ride-view';
 import { createTalkOpener } from '$lib/ride/remote-talk';
 import { shifterSlot } from '$lib/ble/controller-slot.svelte';
 import { DEFAULTS } from '$lib/workout/guards';
@@ -399,6 +402,10 @@ function connect(address: PlaceAddress): Connection {
 			{
 				pause: () => ownRide.session?.pause(),
 				resume: () => ownRide.session?.resume(),
+				// The riding screen's own controls, from the phone (#4223).
+				page: () => askPage('next'),
+				map: () => askPage(computerShown.page === 'map' ? 'ride' : 'map'),
+				view: () => askViewFlip(),
 			},
 		);
 		// A controller's Talk is held while its button is, and a lost link
@@ -428,6 +435,14 @@ function connect(address: PlaceAddress): Connection {
 			});
 		};
 		$effect(sayPause);
+		// Where this screen looks, so the phone's Page, Map and 3D / Flat
+		// say what they turned (#4223).
+		const sayView = () =>
+			live.sendView({
+				page: computerShown.page,
+				world: computerShown.world,
+			});
+		$effect(sayView);
 		$effect(() => {
 			const off = live.onRemote((cmd) => {
 				remote.run(cmd);
@@ -435,6 +450,10 @@ function connect(address: PlaceAddress): Connection {
 					sayGear();
 					sayPause();
 				}
+				// A page or view press is answered by sayView's effect once the
+				// screen has turned; said now it would be the old page, and
+				// the hub's 100 ms gap would drop the new one.
+				if (cmd.action === 'sync') sayView();
 			});
 			return () => {
 				off();

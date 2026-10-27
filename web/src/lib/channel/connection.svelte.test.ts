@@ -55,6 +55,7 @@ const fakeLive = {
 	},
 	onRemote: () => () => {},
 	sendPause: () => {},
+	sendView: () => {},
 	// One rider, one voice (ADR-0089): this screen always carries it here.
 	claimVoice: async () => true,
 	releaseVoice() {},
