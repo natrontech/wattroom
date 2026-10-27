@@ -6,6 +6,9 @@ type Cheer struct {
 	Emoji string `json:"emoji"`
 	// Sender name, filled by the server: cheering is presence.
 	From string `json:"from,omitempty"`
+	// Sender id, filled by the server as Board's is: the phone remote's
+	// Cheer back answers the rider who cheered (#4253).
+	FromID string `json:"fromId,omitempty"`
 	// The rider it is for (#3116): a thumbs-up over their head in the world
 	// and their tail light flickering, nothing more. Someone else in this
 	// voice channel, or the cheer drops; empty, it is everyone's.

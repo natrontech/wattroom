@@ -177,6 +177,9 @@ func TestViewStateReachesOnlyTheRidersOtherScreens(t *testing.T) {
 	}{
 		{"the holder's view", func(r remoteRig) *client { return r.desktop }, protocol.ViewState{Page: "map", World: true}, true},
 		{"a page too long to render", func(r remoteRig) *client { return r.desktop }, protocol.ViewState{Page: strings.Repeat("x", protocol.MaxViewPage+1)}, false},
+		{"the holder's camera and pictures", func(r remoteRig) *client { return r.desktop }, protocol.ViewState{Page: "ride", World: true, Camera: "heli", Pictures: 2}, true},
+		{"a camera too long to render", func(r remoteRig) *client { return r.desktop }, protocol.ViewState{Page: "ride", Camera: strings.Repeat("x", protocol.MaxViewPage+1)}, false},
+		{"a negative picture count", func(r remoteRig) *client { return r.desktop }, protocol.ViewState{Page: "ride", Pictures: -1}, false},
 		{"a screen that does not hold the trainer", func(r remoteRig) *client { return r.phone }, protocol.ViewState{Page: "ride"}, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

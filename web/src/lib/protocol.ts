@@ -1556,6 +1556,11 @@ export interface Cheer {
    */
   from?: string;
   /**
+   * Sender id, filled by the server as Board's is: the phone remote's
+   * Cheer back answers the rider who cheered (#4253).
+   */
+  fromId?: string;
+  /**
    * The rider it is for (#3116): a thumbs-up over their head in the world
    * and their tail light flickering, nothing more. Someone else in this
    * voice channel, or the cheer drops; empty, it is everyone's.
@@ -1703,9 +1708,18 @@ export interface ViewState {
    * The 3D world draws; false is the flat road.
    */
   world: boolean;
+  /**
+   * The world's camera ("chase", "heli", "side", "steady"); empty while
+   * the road is flat (#4253).
+   */
+  camera?: string;
+  /**
+   * Pictures taken on this ride, so the phone's Photo can say it took one.
+   */
+  pictures?: number /* int */;
 }
 /**
- * MaxViewPage bounds Page: it is rendered on another screen.
+ * MaxViewPage bounds Page and Camera: each is rendered on another screen.
  */
 export const MaxViewPage = 8;
 

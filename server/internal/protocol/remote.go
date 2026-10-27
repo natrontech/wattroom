@@ -74,7 +74,12 @@ type ViewState struct {
 	Page string `json:"page"`
 	// The 3D world draws; false is the flat road.
 	World bool `json:"world"`
+	// The world's camera ("chase", "heli", "side", "steady"); empty while
+	// the road is flat (#4253).
+	Camera string `json:"camera,omitempty"`
+	// Pictures taken on this ride, so the phone's Photo can say it took one.
+	Pictures int `json:"pictures,omitempty"`
 }
 
-// MaxViewPage bounds Page: it is rendered on another screen.
+// MaxViewPage bounds Page and Camera: each is rendered on another screen.
 const MaxViewPage = 8

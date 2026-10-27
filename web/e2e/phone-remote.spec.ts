@@ -98,9 +98,17 @@ test('Harder on the phone remote trims the desk ride in ERG', async ({
 		await expect(desk.getByText('101%', { exact: true })).toBeVisible({
 			timeout: 10_000,
 		});
+		// The desk rides flat: Camera and Photo wait for its 3D, and say so
+		// (#4253); Cheer runs.
+		await expect(remote.getByTestId('remote-hint')).toHaveText(
+			'Camera and Photo need 3D.',
+		);
 		await expect(
-			remote.getByText('Dimmed: on the riding screen only.'),
-		).toBeVisible();
+			remote.getByRole('button', { name: 'Camera', exact: true }),
+		).toBeDisabled();
+		await expect(
+			remote.getByRole('button', { name: 'Cheer', exact: true }),
+		).toBeEnabled();
 
 		// Page turns the desk's bike computer, and the phone hears where it
 		// landed (#4223): a session's workout has RIDE and POWER.

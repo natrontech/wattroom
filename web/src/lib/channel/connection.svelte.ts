@@ -12,6 +12,8 @@ import { bindShifters, createRemoteRunner } from '$lib/ride/keys';
 import { askPage, toggleMap } from '$lib/session/computer-pages';
 import { computerShown } from '$lib/session/computer-shown.svelte';
 import { askViewFlip } from '$lib/world/ride-view';
+import { worldPicture } from '$lib/world/picture.svelte';
+import { createRemoteWorld } from '$lib/channel/remote-world';
 import { createTalkOpener } from '$lib/ride/remote-talk';
 import { shifterSlot } from '$lib/ble/controller-slot.svelte';
 import { DEFAULTS } from '$lib/workout/guards';
@@ -381,6 +383,14 @@ function connect(address: PlaceAddress): Connection {
 		// and + move (#4163): a workout's bias, or the free ride's watts or
 		// grade.
 		const talk = createTalkOpener(av);
+		// The phone's Camera, Photo and Cheer (#4253); Cheer answers the last
+		// rider to cheer you, so every tick's cheers are heard.
+		const remoteWorld = createRemoteWorld({
+			me: () => account.me?.id,
+			cheer: (emoji, to) => live.cheer(emoji, to),
+			deck: () => account.cheers,
+		});
+		$effect(() => remoteWorld.heard(live.tick?.cheers));
 		const remote = createRemoteRunner(
 			{
 				shifts: () =>
@@ -406,6 +416,7 @@ function connect(address: PlaceAddress): Connection {
 				page: () => askPage('next'),
 				map: () => toggleMap(),
 				view: () => askViewFlip(),
+				...remoteWorld.actions,
 			},
 		);
 		// A controller's Talk is held while its button is, and a lost link
@@ -435,12 +446,14 @@ function connect(address: PlaceAddress): Connection {
 			});
 		};
 		$effect(sayPause);
-		// Where this screen looks, so the phone's Page, Map and 3D / Flat
-		// say what they turned (#4223).
+		// Where this screen looks, so the phone's Page, Map, 3D / Flat,
+		// Camera and Photo say what they did (#4223, #4253).
 		const sayView = () =>
 			live.sendView({
 				page: computerShown.page,
 				world: computerShown.world,
+				camera: computerShown.world ? (computerShown.camera ?? '') : '',
+				pictures: worldPicture.taken,
 			});
 		$effect(sayView);
 		$effect(() => {

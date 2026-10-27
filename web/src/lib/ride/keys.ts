@@ -6,6 +6,7 @@ import type { ShiftDir, ShiftDriver } from '$lib/ride/shifter';
 import type { RemoteCommand } from '$lib/protocol';
 import { toggleMap } from '$lib/session/computer-pages';
 import { askViewFlip } from '$lib/world/ride-view';
+import { CAMERA_PRESETS, type CameraPreset } from '$lib/world/cameras';
 
 /**
  * Easier / Harder from the keyboard (ADR-0084, #3329), and from anything that
@@ -190,10 +191,6 @@ export function createRemoteRunner(
 		stop: stopTalk,
 	};
 }
-
-/** 1-4, in the order the key sheet lists them (#3216). */
-export const CAMERA_PRESETS = ['chase', 'heli', 'side', 'steady'] as const;
-export type CameraPreset = (typeof CAMERA_PRESETS)[number];
 
 export type RideKey =
 	| { kind: 'camera'; preset: CameraPreset }

@@ -18,13 +18,7 @@
 	import FlagButton from '$lib/ride/FlagButton.svelte';
 	import RideNarrator from '$lib/ride/RideNarrator.svelte';
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
-	import {
-		bindRideKeys,
-		bindRideShift,
-		CAMERA_PRESETS,
-		type CameraPreset,
-		type RideKey,
-	} from '$lib/ride/keys';
+	import { bindRideKeys, bindRideShift, type RideKey } from '$lib/ride/keys';
 	import { shifterSlot } from '$lib/ble/controller-slot.svelte';
 	import { roadLine } from '$lib/ride/road-readout';
 	import { cleanView } from '$lib/ride/clean-view.svelte';
@@ -43,7 +37,7 @@
 	import { BikeKg } from '$lib/protocol';
 	import { mapView } from '$lib/ride/map-view';
 	import { toggleMap } from '$lib/session/computer-pages';
-	import { askViewFlip } from '$lib/world/ride-view';
+	import { askCamera, askPhoto, askViewFlip } from '$lib/world/ride-view';
 	import { watchClimbCues } from '$lib/ride/climb-cues.svelte';
 	import { rideContext } from '$lib/session/ride-context';
 	import RidingSurface from '$lib/session/RidingSurface.svelte';
@@ -120,34 +114,28 @@
 	// Easier / Harder from the keys and any clicker, while this ride runs (#3329).
 	$effect(() => (gearsEnabled() ? bindRideShift(session) : undefined));
 
-	// The ride keys (#3216). O is a no-op with a hint until the photo roll lands.
-	let camera = $state<CameraPreset>();
+	// The ride keys (#3216). O takes the ride's picture (#4253).
 	let sheet = $state(false);
 	function rideKey(key: RideKey) {
 		if (key.kind === 'sheet') sheet = !sheet;
 		else if (key.kind === 'clean') cleanView.toggle();
 		else if (key.kind === 'camera') {
-			if (inWorld) camera = key.preset;
-			else toasts.push('Cameras need the 3D road.');
+			if (!askCamera(key.preset)) toasts.push('Cameras need the 3D road.');
 		} else if (key.kind === 'map') {
 			if (!toggleMap()) toasts.push('The MAP page needs a road.');
 		} else if (key.kind === 'view') {
 			if (!askViewFlip())
 				toasts.push('3D needs a road and this device’s world.');
-		} else toasts.push('Snap is not here yet.');
+		} else if (!askPhoto()) toasts.push('Pictures need the 3D road.');
 	}
 	$effect(() => bindRideKeys(rideKey, (k) => !!board.onKey(k)));
 	// A controller's view buttons are the same keys (#3335); its camera
-	// button steps through the four.
+	// button steps through the four, as the phone remote's does (#4253).
 	$effect(() =>
 		shifterSlot.onAction((action, edge) => {
 			if (edge !== 'down') return;
 			if (action === 'camera') {
-				const at = CAMERA_PRESETS.indexOf(camera ?? CAMERA_PRESETS[0]);
-				rideKey({
-					kind: 'camera',
-					preset: CAMERA_PRESETS[(at + 1) % CAMERA_PRESETS.length],
-				});
+				if (!askCamera()) toasts.push('Cameras need the 3D road.');
 			} else if (action === 'clean' || action === 'map' || action === 'snap')
 				rideKey({ kind: action });
 		}),
@@ -301,7 +289,6 @@
 				{ftp}
 				progress={session.total > 0 ? session.elapsed / session.total : null}
 				look={world.look}
-				{camera}
 				countIn={countIn
 					? { left: countIn.remaining, total: COUNTDOWN_SECONDS }
 					: null}

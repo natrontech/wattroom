@@ -8,6 +8,7 @@
  * did this ride. Width is no input: a phone with Web Bluetooth rides.
  */
 
+import type { CameraPreset } from './cameras';
 import type { WorldMode } from './mode';
 
 /** Why a world that started stopped: its context lost, its build or shaders failed, its frames missed. */
@@ -124,6 +125,34 @@ export const VIEW_ASK = 'wattroom:view-flip';
 
 export function askViewFlip(): boolean {
 	return !window.dispatchEvent(new Event(VIEW_ASK, { cancelable: true }));
+}
+
+/**
+ * Asks the world on this screen for a camera (keys 1-4, #3216), or with none
+ * named to step to its next, chase → heli → side → steady (#4253): the phone
+ * remote's Camera and a controller's camera button. Says whether a world took
+ * it: none while the road is flat.
+ */
+export const CAMERA_ASK = 'wattroom:camera';
+
+export function askCamera(preset?: CameraPreset): boolean {
+	return !window.dispatchEvent(
+		new CustomEvent<CameraPreset | undefined>(CAMERA_ASK, {
+			detail: preset,
+			cancelable: true,
+		}),
+	);
+}
+
+/**
+ * Asks the world on this screen for the ride's picture now (#4253): the phone
+ * remote's Photo and the O key. The rider's shot is the ride's picture, in
+ * the automatic one's place. Says whether a world took it.
+ */
+export const PHOTO_ASK = 'wattroom:photo';
+
+export function askPhoto(): boolean {
+	return !window.dispatchEvent(new Event(PHOTO_ASK, { cancelable: true }));
 }
 
 /** The segment a flip asks for, or null where 3D cannot be tried. */

@@ -116,7 +116,8 @@ func (h *Hub) pauseState(c *client, rm *channelState, rider protocol.Rider, p pr
 // viewState forwards the holder's page and view the same way gearState
 // does (#4223), its page bounded as the gear's label is.
 func (h *Hub) viewState(c *client, rm *channelState, rider protocol.Rider, v protocol.ViewState) {
-	if utf8.RuneCountInString(v.Page) > protocol.MaxViewPage {
+	if utf8.RuneCountInString(v.Page) > protocol.MaxViewPage ||
+		utf8.RuneCountInString(v.Camera) > protocol.MaxViewPage || v.Pictures < 0 {
 		return
 	}
 	h.fromHolder(c, rm, rider, "view", protocol.ServerMessage{View: &v})

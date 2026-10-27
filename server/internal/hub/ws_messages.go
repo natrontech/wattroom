@@ -81,7 +81,7 @@ func (h *Hub) handleMessage(c *client, rm *channelState, channel string, rider p
 		to := strings.TrimSpace(msg.Cheer.To)
 		aimed := to == "" || (to != rider.ID && rm.hasRider(to))
 		if aimed && protocol.IsReaction(msg.Cheer.Emoji) && rm.allow("cheer", rider.ID, h.now(), time.Second) {
-			rm.cheer(protocol.Cheer{Emoji: msg.Cheer.Emoji, From: rider.Name, To: to}, rider.ID)
+			rm.cheer(protocol.Cheer{Emoji: msg.Cheer.Emoji, From: rider.Name, FromID: rider.ID, To: to}, rider.ID)
 		}
 	}
 	if msg.Jukebox != nil {
