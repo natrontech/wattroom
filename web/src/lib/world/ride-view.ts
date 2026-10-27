@@ -114,3 +114,23 @@ export function viewSwitch(s: {
 		worldOffered: s.world || (s.reason !== null && REASONS[s.reason].retry),
 	};
 }
+
+/**
+ * Asks the riding screen's view switch to flip between 3D and Flat: the
+ * phone remote's 3D / Flat (#4223). From MAP it goes to 3D, as its 3D
+ * segment does. Says whether a switch took it: none where no world can draw.
+ */
+export const VIEW_ASK = 'wattroom:view-flip';
+
+export function askViewFlip(): boolean {
+	return !window.dispatchEvent(new Event(VIEW_ASK, { cancelable: true }));
+}
+
+/** The segment a flip asks for, or null where 3D cannot be tried. */
+export function flipped(s: {
+	pressed: ViewSegment;
+	worldOffered: boolean;
+}): '3d' | 'flat' | null {
+	if (s.pressed === '3d') return 'flat';
+	return s.worldOffered ? '3d' : null;
+}

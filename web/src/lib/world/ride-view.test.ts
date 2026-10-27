@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+	flipped,
 	REASONS,
 	rideView,
 	viewSwitch,
@@ -147,5 +148,18 @@ describe('viewSwitch', () => {
 		for (const [reason, { short }] of Object.entries(REASONS))
 			if (reason === 'chosen') expect(short).toBeNull();
 			else expect(short, reason).toBeTruthy();
+	});
+});
+
+describe('the phone remote’s 3D / Flat (#4223)', () => {
+	it('flips 3D to Flat, and Flat or MAP to 3D where 3D can be tried', () => {
+		expect(flipped({ pressed: '3d', worldOffered: true })).toBe('flat');
+		expect(flipped({ pressed: 'flat', worldOffered: true })).toBe('3d');
+		expect(flipped({ pressed: 'map', worldOffered: true })).toBe('3d');
+	});
+
+	it('asks nothing where no world can draw', () => {
+		expect(flipped({ pressed: 'flat', worldOffered: false })).toBeNull();
+		expect(flipped({ pressed: 'map', worldOffered: false })).toBeNull();
 	});
 });

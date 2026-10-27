@@ -12,7 +12,13 @@
 	 */
 	import { askPage } from '$lib/session/computer-pages';
 	import { computerShown } from '$lib/session/computer-shown.svelte';
-	import { REASONS, viewSwitch, type SkylineReason } from './ride-view';
+	import {
+		flipped,
+		REASONS,
+		VIEW_ASK,
+		viewSwitch,
+		type SkylineReason,
+	} from './ride-view';
 
 	let {
 		world,
@@ -40,6 +46,23 @@
 		if (segment === '3d' && !drawn) world.retry();
 		if (segment === 'flat' && drawn) world.flatten();
 	}
+	// The phone remote's 3D / Flat (#4223), and what it is told back.
+	$effect(() => {
+		const flip = (event: Event) => {
+			const next = flipped(state);
+			if (!next) return;
+			to(next);
+			event.preventDefault();
+		};
+		window.addEventListener(VIEW_ASK, flip);
+		return () => window.removeEventListener(VIEW_ASK, flip);
+	});
+	$effect(() => {
+		computerShown.world = drawn;
+		return () => {
+			computerShown.world = false;
+		};
+	});
 	// The row's icon buttons' height (h-11: 33 px on a desk, 44 on a phone,
 	// G5) and a tight gutter: three words beside them must not widen slot 1
 	// past its own rows (design check, #4217).

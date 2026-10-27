@@ -16,15 +16,17 @@ import type { LiveStats } from '$lib/ride/live-stats.svelte';
 export const PAGES = ['ride', 'climb', 'power', 'map', 'race'] as const;
 /**
  * Asks every computer on the page for one of its pages: the M key (#3216)
- * for MAP, the view switch (#4217) for MAP and back to RIDE. A computer with
- * that page takes the event. Says whether one did, so the M key can say why
- * not (RidingScreen).
+ * for MAP, the view switch (#4217) for MAP and back to RIDE, the phone
+ * remote's Page (#4223) for whichever comes next. A computer with that page
+ * takes the event. Says whether one did, so the M key can say why not
+ * (RidingScreen).
  */
 export const PAGE_ASK = 'wattroom:computer-page';
+export type PageAsk = ComputerPage | 'next';
 
-export function askPage(page: ComputerPage): boolean {
+export function askPage(page: PageAsk): boolean {
 	return !window.dispatchEvent(
-		new CustomEvent<ComputerPage>(PAGE_ASK, { detail: page, cancelable: true }),
+		new CustomEvent<PageAsk>(PAGE_ASK, { detail: page, cancelable: true }),
 	);
 }
 

@@ -5,7 +5,8 @@ import { signInAs } from './signin';
 /**
  * Jan's ride, 2026-10-25 (#4163): a desk rides a crew session holding the
  * trainer, the same rider's phone opens the remote, and Harder on the phone
- * moves the desk's bias, since the session rides in ERG (#3333). Both
+ * moves the desk's bias, since the session rides in ERG (#3333); Page turns
+ * the desk's bike computer and the phone says which page it shows (#4223). Both
  * screens run as wattroom.ch serves them, with no dev door, and gears are
  * on there too. The desk takes the dev door only to pair its simulated
  * trainer.
@@ -100,6 +101,13 @@ test('Harder on the phone remote trims the desk ride in ERG', async ({
 		await expect(
 			remote.getByText('Dimmed: on the riding screen only.'),
 		).toBeVisible();
+
+		// Page turns the desk's bike computer, and the phone hears where it
+		// landed (#4223): a session's workout has RIDE and POWER.
+		await remote.getByRole('button', { name: 'Page', exact: true }).click();
+		await expect(remote.getByTestId('remote-view')).toHaveText('POWER · Flat', {
+			timeout: 10_000,
+		});
 	} finally {
 		await phoneContext.close();
 	}
