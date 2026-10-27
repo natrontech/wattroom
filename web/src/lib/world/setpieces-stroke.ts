@@ -391,23 +391,26 @@ export function planStroke(line: Line, k: number, plan: Plan) {
 					},
 				);
 			if (g.out.length === from) return null;
-			// Cattle on the road, warned 90 m before the farm for whoever rides up the stroke (#4240).
-			const ahead = w.at(at - 90);
-			put(
-				g,
-				'cattle',
-				'furniture',
-				at - 90,
-				-1,
-				SIGN_OFF,
-				0,
-				sub(slot, 41),
-				null,
-				{
-					turn: turnBy(ahead.along, deg(180)),
-				},
-				true,
-			);
+			// Cattle on the road, warned 90 m before the herd for each way's riders,
+			// on their right (#4240).
+			for (const dir of [1, -1] as const) {
+				const before = at + 30 - 120 * dir;
+				if (before < 0 || before > r.length) continue;
+				const p = w.at(before);
+				put(
+					g,
+					'cattle',
+					'furniture',
+					before,
+					-dir,
+					SIGN_OFF,
+					0,
+					sub(slot, dir > 0 ? 41 : 42),
+					null,
+					{ turn: dir > 0 ? turnBy(p.along, deg(180)) : p.along },
+					true,
+				);
+			}
 			// The herd is one thing to O9: every cow carries it, and the streams count it once.
 			const pass: Passing = {
 				id: `herd@${k}:${slot}`,
