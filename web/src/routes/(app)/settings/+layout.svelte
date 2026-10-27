@@ -21,6 +21,7 @@
 	const SECTIONS = [
 		{ href: '/settings/profile', label: 'Profile' },
 		{ href: '/settings/equipment', label: 'Equipment' },
+		{ href: '/settings/controllers', label: 'Controllers' },
 		{ href: '/settings/voice', label: 'Voice & audio' },
 		{ href: '/settings/appearance', label: 'Appearance' },
 		{ href: '/settings/notifications', label: 'Notifications' },

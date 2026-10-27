@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { board } from '$lib/board/clips.svelte';
+	import { bindViewKeys } from '$lib/ride/keys';
 	// The Training place — the 3 m surface (ADR-0020). Was a tab inside
 	// RoomLive, then a URL of the room's own; since #2449 a voice channel's.
 	//
@@ -161,6 +163,8 @@
 	// The count-in over the world: the reveal flies, the digit hangs on the arch's banner (#3087, ADR-0046).
 	const countingIn = $derived(inWorld && channel.phase === 'countdown');
 	const ICON = 'btn btn-secondary h-11 w-11 p-0';
+	// M and V from a key or a bridged controller (#4236).
+	$effect(() => bindViewKeys((k) => !!board.onKey(k)));
 </script>
 
 <RideNarrator

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { board } from '$lib/board/clips.svelte';
+	import { bindViewKeys } from '$lib/ride/keys';
 	/**
 	 * A free ride, riding (ADR-0059, #3669): ADR-0046's riding surface with no
 	 * workout, drawn once for the road ride at /ride?road= and for a voice
@@ -227,6 +229,8 @@
 
 	const WORDS = 'text-2xl leading-6';
 	const CHIP = `${WORDS} border-neon/40 text-muted rounded border px-2 whitespace-nowrap`;
+	// M and V from a key or a bridged controller (#4236).
+	$effect(() => bindViewKeys((k) => !!board.onKey(k)));
 </script>
 
 {#snippet band()}

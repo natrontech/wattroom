@@ -1,0 +1,1 @@
+- Settings has a Controllers page: press any key, clicker or controller button and see what it runs while you ride, plus how to bridge Zwift Click, Play and Ride controllers through BikeControl and a mapping for a two-controller set. New ride keys: V flips 3D and Flat, and M (MAP and back) and V now work in sessions and free rides too.
