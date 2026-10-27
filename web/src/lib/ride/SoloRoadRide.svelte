@@ -15,12 +15,15 @@
 		plan = null,
 		from = 0,
 		trainer,
+		ended = $bindable(false),
 	}: {
 		roadId?: string | null;
 		plan?: { crew: string; id: string } | null;
 		from?: number;
 		/** Paired on /ride's card and handed over: ride at once (#3671). */
 		trainer?: Trainer;
+		/** The road ride ended on its closing card. */
+		ended?: boolean;
 	} = $props();
 
 	let route = $state.raw<RideableRoute | null>(null);
@@ -43,7 +46,7 @@
 </script>
 
 {#if route}
-	<RoadRiding {route} from={start} {trainer} />
+	<RoadRiding {route} from={start} {trainer} bind:ended />
 {:else if error}
 	<div class="m-auto w-full max-w-2xl">
 		<Banner tone="error">

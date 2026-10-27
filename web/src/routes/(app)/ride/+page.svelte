@@ -187,6 +187,8 @@
 	);
 	let downloading = $state(false);
 	let carding = $state(false);
+	// A road ride's closing card wears the page frame as a workout's does (G7, #4235).
+	let roadEnded = $state(false);
 	let error = $state<string | null>(null);
 	// The save's outcome is persistent status (errors.md); an export or a
 	// flag failing must not overwrite it (audit 2026-09-09).
@@ -592,7 +594,8 @@
      surface is not a `page` — it fills the window — so it spells the two. -->
 <main
 	class="bg-surface text-ink flex min-h-screen flex-col {setup ||
-	session?.state === 'done'
+	session?.state === 'done' ||
+	roadEnded
 		? 'page'
 		: 'px-4 py-5 sm:px-6'}"
 >
@@ -609,11 +612,12 @@
 			roadId={freeRide.id}
 			from={freeRide.from}
 			trainer={freeRide.trainer}
+			bind:ended={roadEnded}
 		/>
 	{:else if planRoad && !requested}
 		<!-- A crew's planned road keeps its own setup: the card rides only
 		     your roads, and this one is the crew's cut (#3621). -->
-		<SoloRoadRide plan={planRoad} />
+		<SoloRoadRide plan={planRoad} bind:ended={roadEnded} />
 	{:else if !session || session.state === 'idle'}
 		<!-- Idle with a session in hand is the moment between Start and the
 		     trainer answering it (#1800): still the setup screen, because
@@ -648,7 +652,7 @@
 				summary={legs.length > 0
 					? `ERG by the road, at your FTP: leg ${Math.min(leg, legs.length)} of ${legs.length}.`
 					: ridesRoute && road
-						? `${selected.summary} On ${road.name}, from km ${formatKm(from)}.`
+						? `${selected.summary} On ${road.name}, ${from > 0 ? `from km ${formatKm(from)}` : 'from its start'}.`
 						: selected.summary}
 				{ftp}
 				{solo}
