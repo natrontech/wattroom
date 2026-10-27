@@ -82,7 +82,7 @@ export async function homeRow(home: HomeRoad): Promise<StoredRoute> {
 		generatedName: home.name,
 		src: 'wattroom',
 		lengthM: route.road.length,
-		gainM: gainOf(route.road.heights),
+		gainM: Math.round(gainOf(route.road.heights)),
 		climbs: climbsOf(route.road),
 		hasPlace: false,
 		ownerOnly: false,

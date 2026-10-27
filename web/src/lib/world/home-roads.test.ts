@@ -13,7 +13,8 @@ describe('WattRoom’s own roads (#4248)', () => {
 			const route = toRoute(syntheticPoints(await home.shape()));
 			const row = await homeRow(home);
 			expect(row.lengthM).toBe(route.road.length);
-			expect(row.gainM).toBeGreaterThan(0);
+			// Whole metres, as the server stores a route's gain.
+			expect(Number.isInteger(row.gainM) && row.gainM > 0).toBe(true);
 			// Each one climbs something worth a class chip on its row.
 			expect(row.climbs.some((c) => c.cls)).toBe(true);
 		},
