@@ -345,7 +345,7 @@ func fenced(s string) string {
 // from either is loud rather than silent.
 var (
 	routeSegments = fieldSet(`
-		account appearance board brand c card channel chat components crew crews data dev directory
+		account appearance board brand c card channel chat components controllers crew crews data dev directory
 		dm download edit editor enter equipment friends hardware history home
 		hud import legal licenses login medal members messages modes music
 		notifications pairing panel perf pins privacy profile progression r ramp
