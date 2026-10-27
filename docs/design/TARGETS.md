@@ -229,7 +229,7 @@ Capture: ride-road-world and ride-workout-flat, simulated trainer silenced past 
 
 #### ride-phone-remote
 
-Capture: desk context rides the channel's free ride on a simulated trainer, in voice; a second 375 × 812 touch context of the same rider opens the channel's Training place, taps "Use this phone as your remote", and shoots the remote. Target: none drawn, canon is the bar. Canon: ADR-0025 (the claim), ADR-0084 (gears), ADR-0089 (one voice), ux.md (mid-ride, phone width), errors.md.
+Capture: desk context rides the channel's free ride on a simulated trainer, in voice; a second 375 × 812 touch context of the same rider opens the channel's Training place, taps "Use as your remote", and shoots the remote. Target: none drawn, canon is the bar. Canon: ADR-0025 (the claim), ADR-0084 (gears), ADR-0089 (one voice), ux.md (mid-ride, phone width), errors.md.
 
 1. The offer (`ride-phone-remote-offer`) is one full-width `btn-ride` in the Lounge's empty state, only on a phone-width screen that sees the trainer held by another screen. [3217]
 2. The grid fills the screen in two columns, words at 24 px, of buttons at least 64 px high; every button is a tap target of at least 44 px and nothing scrolls sideways. [probe:remoteMinHeight] [probe:remoteScrollWidth] [3217]

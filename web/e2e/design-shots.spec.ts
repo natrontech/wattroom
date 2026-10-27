@@ -372,7 +372,7 @@ surface(
 		const phone = await s.open(PHONE, { world: false });
 		await phone.page.goto(`${voicePath(crew)}/training`);
 		const offer = phone.page.getByRole('button', {
-			name: 'Use this phone as your remote',
+			name: 'Use as your remote',
 		});
 		await offer.waitFor({ timeout: 20_000 });
 		const moveVoice = phone.page

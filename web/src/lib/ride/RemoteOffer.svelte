@@ -34,7 +34,7 @@
 				class="btn btn-accent btn-ride w-full text-2xl!"
 				onclick={() => (open = true)}
 			>
-				Use this phone as your remote
+				Use as your remote
 			</button>
 		{/if}
 		{#if voiceElsewhere}

@@ -85,7 +85,7 @@ test('a second device is a controller, and one tap moves the voice', async ({
 			controller.getByRole('button', { name: 'Use this device for voice' }),
 		).toHaveCount(0);
 		await expect(
-			controller.getByRole('button', { name: 'Use this phone as your remote' }),
+			controller.getByRole('button', { name: 'Use as your remote' }),
 			'the phone stopped being the remote when it took the voice',
 		).toBeVisible();
 
