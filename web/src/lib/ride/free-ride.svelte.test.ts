@@ -27,7 +27,7 @@ vi.mock('$lib/ride/buffer', () => ({
 import { MaxRoadSpeedMps } from '$lib/protocol';
 import { ergByRoad } from './ride-grade';
 import type { RideableRoute } from './roads';
-import { nudged, openingWatts } from './free-ride-controls';
+import { nudged, openingWatts, ownRoad } from './free-ride-controls';
 import { createFreeRide, FREE_RIDE_JSON } from './free-ride.svelte';
 
 describe('the free ride’s control (docs/SPEC.md)', () => {
@@ -452,5 +452,13 @@ describe('a free ride on a road', () => {
 			'hr',
 			'watts',
 		]);
+	});
+});
+
+describe('the road a free ride hands the session picker (#4224)', () => {
+	it('is your own road, never a borrowed one', () => {
+		expect(ownRoad({ id: 'r1', borrowed: false })).toBe('r1');
+		expect(ownRoad({ id: 'r1', borrowed: true })).toBeUndefined();
+		expect(ownRoad(null)).toBeUndefined();
 	});
 });

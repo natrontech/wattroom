@@ -12,6 +12,7 @@
 	export function createSessionLayers() {
 		let tv = $state(false);
 		let pick = $state<string>();
+		let road = $state<string>();
 		const setup = createSessionSetup();
 		return {
 			get tv() {
@@ -26,9 +27,15 @@
 			get pick() {
 				return pick;
 			},
-			openPicker(intent: PickerIntent = 'start', id?: string) {
+			/** The road it opens on (#4224): the one being ridden, or the one
+			 *  chosen before the editor took the rider away. */
+			get road() {
+				return road;
+			},
+			openPicker(intent: PickerIntent = 'start', id?: string, on?: string) {
 				setup.intent = intent;
 				pick = id;
+				road = on;
 				setup.open = true;
 			},
 		};
@@ -221,7 +228,7 @@
 		const door = takePickerDoor(page.url);
 		if (!door) return;
 		replaceState(door.rest, page.state);
-		layers.openPicker(door.intent, door.pick);
+		layers.openPicker(door.intent, door.pick, door.road);
 	});
 </script>
 
@@ -262,6 +269,7 @@
 	<SessionPicker
 		shelf={layers.setup.shelf}
 		pick={layers.pick}
+		road={layers.road}
 		shelfError={layers.setup.custom.error}
 		onRetryShelf={() => void layers.setup.custom.retry()}
 		intent={layers.setup.intent}

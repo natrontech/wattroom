@@ -53,6 +53,7 @@
 		trainer,
 		channelName = 'this voice channel',
 		pick,
+		road,
 	}: {
 		shelf: ShelfEntry[];
 		/** Why your own workouts are missing from the shelf, when they are. */
@@ -93,6 +94,8 @@
 		channelName?: string;
 		/** The workout it opens on: one just built from here (#4082). */
 		pick?: string;
+		/** The road it opens on (#4224): the one the rider is already on. */
+		road?: string;
 		onClose: () => void;
 	} = $props();
 
@@ -170,7 +173,11 @@
 
 	// A one-off workout, built without finding the channel again (#4082):
 	// the editor comes back here with the picker open on it.
-	const buildHref = $derived(buildFromPicker(page.url, mode));
+	// svelte-ignore state_referenced_locally
+	let roadId = $state(road ?? '');
+	const buildHref = $derived(
+		buildFromPicker(page.url, mode, roadId || undefined),
+	);
 
 	const zones = $derived(zoneChips(segments, ftp));
 	const bands = $derived(bandChips(segments));
@@ -483,7 +490,7 @@
 					     The other intent is a link, not a second section: two equal
 					     panels under the preview is what made this feel weird. -->
 					{#if roadsOn && routes && routes.some((r) => !r.ownerOnly)}
-						<RoadRow {routes} bind:road={workoutRoad} />
+						<RoadRow {routes} bind:chosen={roadId} bind:road={workoutRoad} />
 					{/if}
 					<div class="border-ink/5 mt-auto border-t pt-4">
 						{@render actions(

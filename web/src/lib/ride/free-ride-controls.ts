@@ -55,3 +55,12 @@ export function rampWatts(
 	const into = Math.min(Math.max(t, 0), ramp.seconds) / ramp.seconds;
 	return snappedWatts(ramp.from + (ramp.to - ramp.from) * into);
 }
+
+/**
+ * The road a ride hands the session picker (#4224), so a session started
+ * from it rides on: the rider's own, never a borrowed one, which is a mate's
+ * and cannot go in a session (#3621).
+ */
+export const ownRoad = (
+	road: { id: string; borrowed?: boolean } | null | undefined,
+): string | undefined => (road && !road.borrowed ? road.id : undefined);

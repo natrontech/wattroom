@@ -10,14 +10,16 @@
 	 */
 	let {
 		routes,
+		chosen = $bindable(''),
 		road = $bindable(),
 	}: {
 		routes: StoredRoute[];
+		/** The road's id; '' for none. Given, it opens on that road (#4224). */
+		chosen?: string;
 		/** The chosen road, read; null for none, or while it is being read. */
 		road: { id: string; road: Road } | null;
 	} = $props();
 
-	let chosen = $state('');
 	let error = $state<string | null>(null);
 
 	async function choose(id: string) {
@@ -30,6 +32,11 @@
 		if (res.ok) road = { id, road: res.route.road };
 		else error = res.error;
 	}
+	// svelte-ignore state_referenced_locally
+	if (chosen)
+		void choose(
+			routes.some((r) => r.id === chosen && !r.ownerOnly) ? chosen : '',
+		);
 </script>
 
 <label class="text-muted mt-3 flex flex-wrap items-center gap-2 text-xs">
