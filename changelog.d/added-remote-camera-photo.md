@@ -1,1 +1,0 @@
-- The phone remote's Camera, Photo and Cheer now work. Camera steps the 3D world through its four cameras, Photo takes the ride's picture for the closing card (the O key does too), and Cheer answers whoever last cheered you.

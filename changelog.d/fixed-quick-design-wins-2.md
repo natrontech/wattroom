@@ -1,1 +1,0 @@
-- A long road name wraps to two lines instead of being cut, the Ride card says "from its start" rather than "from km 0.0", and the chosen skin tone is marked with an outline.

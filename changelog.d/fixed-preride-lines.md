@@ -1,1 +1,0 @@
-- On Ride, the solo games and the reason Start is waiting each fit one line again.

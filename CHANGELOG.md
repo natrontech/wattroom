@@ -17,6 +17,49 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.10.5] - 2026-10-27
+
+### Added
+
+- Settings has a Controllers page: press any key, clicker or controller button and see what it runs while you ride, plus how to bridge Zwift Click, Play and Ride controllers through BikeControl and a mapping for a two-controller set. New ride keys: V flips 3D and Flat, and M (MAP and back) and V now work in sessions and free rides too.
+- The phone remote's Camera, Photo and Cheer now work. Camera steps the 3D world through its four cameras, Photo takes the ride's picture for the closing card (the O key does too), and Cheer answers whoever last cheered you.
+- The phone remote's Page, Map and new 3D / Flat buttons turn the riding screen's bike computer and view, and the phone shows which page and view the screen is on.
+- A finished ride can be renamed: Rename on its page gives it a name of your
+  own, which your Rides list, Home, the ride card and friends you share it
+  with read. Against your best still compares it with what you rode, and an
+  activity already on Strava keeps its name.
+- The 3D world's roads look more Swiss: red-bordered danger signs before steep stretches and before farms with cattle, an orange-rimmed mirror on every hairpin, milk-can stands at the farms and a wooden summit cross on the pass.
+- Every rider now has two WattRoom roads to ride, shown above their own routes wherever a road is picked: the Pass loop (hairpins, a pass with its hut and summit cross) and the new Valley loop (rolling farmland, villages, cows and two short steep ramps).
+- A ride with the 3D world now takes one picture of it by itself, on the first climb, with no names in it. The closing card offers it beside the ride card (now on a session's closing card too), so you can save either or both for Strava. The picture stays in the browser until you save it.
+
+### Changed
+
+- On a ride on a road, one switch in the top row moves between 3D, Flat and Map.
+  When the 3D world has to step back (dropped frames, graphics lost), you hear
+  it, the 3D button says why, and tapping it brings the world back.
+
+### Fixed
+
+- Starting a session keeps what you already chose: from a free ride on your road the picker opens on that road, building a workout from the picker comes back with the road still set, and a workout picked on Ride can be started as a session in your crew's lounge on the same road.
+- On a phone, the ride poster, the ride card and the FIT export open the share
+  sheet, so you can save the picture to Photos or send it to Strava. They used
+  to open a bare file preview on iPhone. A desk still downloads.
+- A phone in a session on a road draws the 3D world as a band at the top, as a
+  solo ride on a phone does, and has the 3D | Flat | Map switch. It used to
+  stay flat whatever the 3D setting said.
+- A ride poster is titled with the distance and climb you rode. A workout over
+  part of a long road used to be titled with the whole road's length.
+- On Ride, the solo games and the reason Start is waiting each fit one line again.
+- A long road name wraps to two lines instead of being cut, the Ride card says "from its start" rather than "from km 0.0", and the chosen skin tone is marked with an outline.
+- A road ride's closing card lines up with the rest of the app, a session's End sits last in its toolbar, and the Ride card's games hint reads as one sentence.
+- A session on a phone now rides the same layout as a solo phone ride: the riding panels in order, the bike computer with its pages, the world band and the Skyline on a road, the crew as rows you tap to follow, and a sprint as its moment card.
+- A ride in a crew session, and the phone remote beside it, keep the screen on
+  and, in the desktop app, the computer awake. Until now only a solo ride did,
+  so a phone or a Mac could go to sleep mid-session.
+- In the desktop app, the trainer chooser opens over the Start a session
+  panel. It used to open underneath, so a session could not be paired.
+- A microphone that stops sending mid-ride (a Bluetooth route change muting it or stopping it) now opens again by itself instead of leaving the crew unable to hear you; if it cannot, the mic fault with Reconnect says so. A picked headset mic that drops out for a moment is your pick again when it comes back, so a rejoin no longer falls back to the computer's mic.
+
 ## [2026.10.4] - 2026-10-26
 
 ### Added
@@ -4070,7 +4113,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.10.4...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.10.5...HEAD
+[2026.10.5]: https://github.com/natrontech/wattroom/compare/2026.10.4...2026.10.5
 [2026.10.4]: https://github.com/natrontech/wattroom/compare/2026.10.3...2026.10.4
 [2026.10.3]: https://github.com/natrontech/wattroom/compare/2026.10.2...2026.10.3
 [2026.10.2]: https://github.com/natrontech/wattroom/compare/2026.10.1...2026.10.2

@@ -1,1 +1,0 @@
-- Starting a session keeps what you already chose: from a free ride on your road the picker opens on that road, building a workout from the picker comes back with the road still set, and a workout picked on Ride can be started as a session in your crew's lounge on the same road.
