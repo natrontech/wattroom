@@ -412,8 +412,13 @@ export function probe(corridor: Box) {
 			const row = document.querySelector('[data-testid=computer-page-row]');
 			const last = row?.lastElementChild;
 			if (!row || !last) return null;
-			const pad = parseFloat(getComputedStyle(row.parentElement!).paddingRight);
-			const panel = row.parentElement!.getBoundingClientRect();
+			// A flat panel lays the computer out as `contents`: measure against
+			// the first ancestor that draws a box.
+			let box = row.parentElement!;
+			while (getComputedStyle(box).display === 'contents')
+				box = box.parentElement!;
+			const pad = parseFloat(getComputedStyle(box).paddingRight);
+			const panel = box.getBoundingClientRect();
 			return round(
 				Math.max(0, last.getBoundingClientRect().right - (panel.right - pad)),
 			);
@@ -501,6 +506,9 @@ export function probe(corridor: Box) {
 				const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
 				for (let n = walk.nextNode(); n; n = walk.nextNode()) {
 					if (!n.textContent?.trim()) continue;
+					// sr-only words wrap inside their 1 px box and draw nothing.
+					const holder = n.parentElement!.getBoundingClientRect();
+					if (holder.width <= 1 && holder.height <= 1) continue;
 					const range = document.createRange();
 					range.selectNodeContents(n);
 					for (const r of range.getClientRects())
