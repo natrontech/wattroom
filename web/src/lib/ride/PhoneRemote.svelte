@@ -13,6 +13,7 @@
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
 	import { createTalkHold } from '$lib/ride/remote-talk';
 	import { keepAwakeWhile } from '$lib/workout/keep-awake.svelte';
+	import { PAGE_NAMES, type ComputerPage } from '$lib/session/computer-pages';
 
 	let {
 		live,
@@ -22,16 +23,24 @@
 		onclose: () => void;
 	} = $props();
 
-	// The actions the holding tab runs today. The rest of the keymap (#3216)
-	// joins this list as it lands; until then its buttons say so, disabled.
-	const RUNS = new Set(['talk', 'easier', 'harder']);
+	// The actions the holding tab runs today; the others say so, disabled.
+	// Page, Map and 3D / Flat turn the riding screen's own controls (#4223).
+	const RUNS = new Set(['talk', 'easier', 'harder', 'page', 'map', 'view']);
 	const CELLS = [
 		{ action: 'page', label: 'Page' },
+		{ action: 'map', label: 'Map' },
+		{ action: 'view', label: '3D / Flat' },
 		{ action: 'camera', label: 'Camera' },
 		{ action: 'photo', label: 'Photo' },
 		{ action: 'cheer-back', label: 'Cheer back' },
-		{ action: 'map', label: 'Map' },
 	];
+	// What the riding screen shows now, as it last said: the answer to Page,
+	// Map and 3D / Flat with no screen to look at.
+	const shown = $derived(
+		live.view
+			? `${PAGE_NAMES[live.view.page as ComputerPage] ?? live.view.page.toUpperCase()} · ${live.view.world ? '3D' : 'Flat'}`
+			: null,
+	);
 	const geared = gearsEnabled('phone');
 	const talk = createTalkHold((action) => live.sendRemote(action));
 	onDestroy(talk.up);
@@ -102,6 +111,16 @@
 			</button>
 		{/if}
 	</div>
+
+	{#if shown}
+		<p
+			class="text-neon text-center text-2xl"
+			aria-live="polite"
+			data-testid="remote-view"
+		>
+			{shown}
+		</p>
+	{/if}
 
 	{#if geared}
 		<div class="grid flex-1 auto-rows-fr grid-cols-2 gap-3">

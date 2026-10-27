@@ -9,6 +9,7 @@ import type {
 	FreeRoad,
 	GearState,
 	PauseState,
+	ViewState,
 	SensorClaim,
 	SensorPairing,
 	ServerMessage,
@@ -122,6 +123,8 @@ export function createChannelLive(address: PlaceAddress) {
 	let gear = $state<GearState | null>(null);
 	// Whether the holding tab rides solo, and whether it is paused (#3217).
 	let pause = $state<PauseState | null>(null);
+	// The holding tab's page and view (#4223), as it last said them.
+	let view = $state<ViewState | null>(null);
 	// What the hub says this tab holds, and where the rider's other screens
 	// hold the rest (#610). Server truth: a tab learns here that its claim
 	// was refused, so nothing renders "paired" off its own click alone.
@@ -418,6 +421,7 @@ export function createChannelLive(address: PlaceAddress) {
 			if (msg.moved) lastMove = msg.moved;
 			if (msg.gear) gear = msg.gear;
 			if (msg.pause) pause = msg.pause;
+			if (msg.view) view = msg.view;
 			if (msg.remote) for (const hear of remoteListeners) hear(msg.remote);
 			if (msg.pairing) {
 				// Off the tick by design (#610) — it is addressed to this
@@ -641,6 +645,14 @@ export function createChannelLive(address: PlaceAddress) {
 		/** The holder's gear, for the rider's other screens. */
 		sendGear(state: GearState) {
 			send({ gear: state });
+		},
+		/** The holding tab's page and view (#4223), or null before it has said. */
+		get view() {
+			return view;
+		},
+		/** The holder's page and view, for the rider's other screens. */
+		sendView(state: ViewState) {
+			send({ view: state });
 		},
 		/** Hear every remote press addressed to this tab; returns the way out. */
 		onRemote(hear: (cmd: RemoteCommand) => void) {

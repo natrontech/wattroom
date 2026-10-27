@@ -38,6 +38,9 @@ func (h *Hub) handleMessage(c *client, rm *channelState, channel string, rider p
 	if msg.Pause != nil {
 		h.pauseState(c, rm, rider, *msg.Pause)
 	}
+	if msg.View != nil {
+		h.viewState(c, rm, rider, *msg.View)
+	}
 	if msg.Roadside != nil {
 		h.roadside(c, rm, rider, *msg.Roadside)
 	}

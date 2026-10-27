@@ -8,6 +8,10 @@ package protocol
 // reason SensorPairing is: what a rider's second screen does is nobody else's
 // business.
 //
+// View flips the riding screen between the 3D world and the flat road
+// (#4223); Page turns the bike computer to its next page, and Map to MAP and
+// back.
+//
 // Taps never hold: a lost release under Talk's 1 s keepalive measured up to 5
 // phantom shifts, so Easier and Harder are one tap each. Only Talk holds, as
 // talk-down, a talk-keepalive while it lasts, and talk-up. Sync presses
@@ -25,6 +29,7 @@ var RemoteActions = []string{
 	"page", "camera", "photo", "cheer-back", "map",
 	"talk-down", "talk-keepalive", "talk-up",
 	"easier", "harder", "pause", "resume",
+	"view",
 	"sync",
 }
 
@@ -58,3 +63,18 @@ type PauseState struct {
 	Pausable bool `json:"pausable"`
 	Paused   bool `json:"paused"`
 }
+
+// ViewState is the holding tab's answer about where its rider looks (#4223):
+// the bike computer's page and whether the 3D world draws. It travels the way
+// GearState does, so the phone's Page, Map and 3D / Flat say what the riding
+// screen shows now.
+type ViewState struct {
+	// The bike computer's page, as its id ("ride", "map" …); empty where
+	// the screen has no computer.
+	Page string `json:"page"`
+	// The 3D world draws; false is the flat road.
+	World bool `json:"world"`
+}
+
+// MaxViewPage bounds Page: it is rendered on another screen.
+const MaxViewPage = 8

@@ -168,6 +168,37 @@ func TestGearStateFromANonHolderIsDropped(t *testing.T) {
 	}
 }
 
+func TestViewStateReachesOnlyTheRidersOtherScreens(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		from  func(remoteRig) *client
+		view  protocol.ViewState
+		phone bool
+	}{
+		{"the holder's view", func(r remoteRig) *client { return r.desktop }, protocol.ViewState{Page: "map", World: true}, true},
+		{"a page too long to render", func(r remoteRig) *client { return r.desktop }, protocol.ViewState{Page: strings.Repeat("x", protocol.MaxViewPage+1)}, false},
+		{"a screen that does not hold the trainer", func(r remoteRig) *client { return r.phone }, protocol.ViewState{Page: "ride"}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := newRemoteRig(t)
+			from := tc.from(r)
+			r.h.viewState(from, r.rm, from.rider, tc.view)
+			got := heard(r.phone)
+			if tc.phone && (got == nil || got.View == nil || *got.View != tc.view) {
+				t.Fatalf("the phone heard %+v, want %+v", got, tc.view)
+			}
+			if !tc.phone && got != nil {
+				t.Fatalf("the phone heard %+v, want nothing", got)
+			}
+			for name, c := range map[string]*client{"holder": r.desktop, "other rider": r.you} {
+				if got := heard(c); got != nil {
+					t.Errorf("%s heard %+v, want nothing", name, got)
+				}
+			}
+		})
+	}
+}
+
 func TestALateScreenIsToldWhatTheTrainerHolderHolds(t *testing.T) {
 	r := newRemoteRig(t)
 	late := &client{rider: protocol.Rider{ID: "jan"}, tab: "late", out: make(chan []byte, 8)}
