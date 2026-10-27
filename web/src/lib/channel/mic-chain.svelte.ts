@@ -17,6 +17,7 @@
  * cross-wired bug looked local. The host owns the LiveKit connection and hands
  * this two functions to reach it, so nothing here imports the SDK.
  */
+import { watchMicHealth } from '$lib/channel/mic-health';
 import { glideTo } from '$lib/sound/glide';
 import {
 	GATE_ATTACK_MS,
@@ -70,12 +71,19 @@ interface Chain {
 	track: MediaStreamTrack;
 	/** The capture track being watched for `ended` (#640). */
 	capture: MediaStreamTrack | undefined;
+	/** Stops watching it for a silent death (#4220). */
+	unwatch?: () => void;
 }
 
 export type MicChain = ReturnType<typeof createMicChain>;
 
 /** SPEC (#4161): a chosen mic that sends pure silence this long is cut off. */
 export const SILENT_MS = 3000;
+/**
+ * A mic recovered by itself that dies again inside this is not coming back
+ * by itself (#4220): the rider is told, and Reconnect is theirs.
+ */
+export const RECOVER_MS = 30_000;
 
 export function createMicChain(host: MicChainHost) {
 	const settings = createGateSettings();
@@ -107,9 +115,29 @@ export function createMicChain(host: MicChainHost) {
 	 * ends the same way and leaves the same fault to show.
 	 */
 	function onCaptureEnded() {
+		if (chain && !testing) recover(chain);
+		else lose();
+	}
+
+	/** The mic is gone and stays gone: persistent status (#640). */
+	function lose() {
 		fault = true;
 		close();
 		host.captureLost();
+	}
+
+	/**
+	 * A live mic that died, by `ended` or silently (#4220), opens again on
+	 * whatever the machine has now: the rider pressed nothing and meant to
+	 * be heard. Once per RECOVER_MS; a refusal, or a second death, is a fault.
+	 */
+	let recovered = -Infinity;
+	function recover(dead: Chain) {
+		if (chain !== dead) return;
+		const now = performance.now();
+		if (now - recovered < RECOVER_MS) return lose();
+		recovered = now;
+		void open().catch(() => lose());
 	}
 
 	function watchCapture(raw: MediaStream) {
@@ -245,6 +273,7 @@ export function createMicChain(host: MicChainHost) {
 				return false;
 			}
 			if (!next.ctx) transmitting = true; // a handheld's mic button is its gate
+			next.unwatch = watchMicHealth(next, () => recover(next));
 			// Opening again is the only thing that clears the fault — the rider
 			// pressing Reconnect, tapping the mic, or the next join finding it.
 			fault = false;
@@ -361,6 +390,7 @@ export function createMicChain(host: MicChainHost) {
 	function release(c: Chain) {
 		// Unhook before stopping: a close the rider asked for is not a fault.
 		c.capture?.removeEventListener('ended', onCaptureEnded);
+		c.unwatch?.();
 		c.meter?.stop();
 		c.lift?.model.close();
 		host.unpublish(c.track);

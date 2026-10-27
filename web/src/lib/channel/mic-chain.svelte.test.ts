@@ -29,14 +29,17 @@ const meterStop = vi.fn();
 
 /** A capture track that remembers whether anyone is still listening for `ended`. */
 function fakeTrack() {
-	const listeners = new Set<() => void>();
+	const listeners = new Map<string, Set<() => void>>();
+	const on = (type: string) =>
+		listeners.get(type) ?? listeners.set(type, new Set()).get(type)!;
 	return {
+		muted: false,
 		stop: vi.fn(),
-		addEventListener: (_: string, fn: () => void) => listeners.add(fn),
-		removeEventListener: (_: string, fn: () => void) => listeners.delete(fn),
-		end: () => [...listeners].forEach((fn) => fn()),
+		addEventListener: (type: string, fn: () => void) => on(type).add(fn),
+		removeEventListener: (type: string, fn: () => void) => on(type).delete(fn),
+		end: () => [...on('ended')].forEach((fn) => fn()),
 		get watched() {
-			return listeners.size;
+			return on('ended').size;
 		},
 	};
 }
@@ -82,6 +85,9 @@ function stubAudio() {
 			}),
 			close: ctxClose,
 			destination: {},
+			resume: async () => {},
+			addEventListener: () => {},
+			removeEventListener: () => {},
 		};
 	});
 	vi.stubGlobal('navigator', {
@@ -199,23 +205,56 @@ describe('opening and closing', () => {
 	});
 });
 
-describe('the capture dying under an open mic (#640)', () => {
-	it('raises a fault and tells the host', async () => {
+describe('the capture dying under an open mic (#640, #4220)', () => {
+	it('opens again on what the machine has now, and stays live', async () => {
 		const deps = host();
 		const chain = createMicChain(deps);
 		await chain.open();
 
+		const dying = capture;
+		stubAudio();
+		dying.end();
+		await vi.waitFor(() => expect(deps.publish).toHaveBeenCalledTimes(2));
+		expect(chain.fault).toBe(false);
+		expect(deps.captureLost).not.toHaveBeenCalled();
+	});
+
+	it('raises a fault when the machine refuses the new capture', async () => {
+		const deps = host();
+		const chain = createMicChain(deps);
+		await chain.open();
+
+		vi.mocked(navigator.mediaDevices.getUserMedia).mockRejectedValue(
+			new Error('NotFoundError'),
+		);
 		capture.end();
-		expect(chain.fault).toBe(true);
+		await vi.waitFor(() => expect(chain.fault).toBe(true));
 		expect(deps.captureLost).toHaveBeenCalled();
 		expect(chain.transmitting).toBe(false);
 	});
 
-	it('only reopening clears it', async () => {
-		const chain = createMicChain(host());
+	it('raises a fault when it dies again inside RECOVER_MS', async () => {
+		const deps = host();
+		const chain = createMicChain(deps);
 		await chain.open();
+		const dying = capture;
+		stubAudio();
+		dying.end();
+		await vi.waitFor(() => expect(deps.publish).toHaveBeenCalledTimes(2));
+
 		capture.end();
 		expect(chain.fault).toBe(true);
+		expect(deps.captureLost).toHaveBeenCalled();
+	});
+
+	it('only reopening clears the fault', async () => {
+		const chain = createMicChain(host());
+		await chain.open();
+		vi.mocked(navigator.mediaDevices.getUserMedia).mockRejectedValue(
+			new Error('NotFoundError'),
+		);
+		capture.end();
+		await vi.waitFor(() => expect(chain.fault).toBe(true));
 
 		stubAudio();
 		await chain.open();

@@ -1,0 +1,1 @@
+- A microphone that stops sending mid-ride (a Bluetooth route change muting it or stopping it) now opens again by itself instead of leaving the crew unable to hear you; if it cannot, the mic fault with Reconnect says so. A picked headset mic that drops out for a moment is your pick again when it comes back, so a rejoin no longer falls back to the computer's mic.

@@ -370,8 +370,10 @@ function withOutputGraph<T>(
 	run: (gains: FakeGain[]) => Promise<T>,
 ): Promise<T> {
 	const gains: FakeGain[] = [];
-	class FakeAudioContext {
+	class FakeAudioContext extends EventTarget {
 		currentTime = 0;
+		state = 'running';
+		async resume() {}
 		destination = {};
 		createDynamicsCompressor() {
 			return {
@@ -441,9 +443,12 @@ function withMicHardware<T>(
 	refuse?: Error,
 ): Promise<T> {
 	let graphs = 0;
-	class FakeAudioContext {
+	class FakeAudioContext extends EventTarget {
 		currentTime = 0;
+		state = 'running';
+		async resume() {}
 		constructor() {
+			super();
 			graphs += 1;
 		}
 		createMediaStreamSource() {
@@ -1007,10 +1012,11 @@ describe('createChannelAv', () => {
 	// dies — headset unplugged, Bluetooth to HFP, another app taking the
 	// device — LiveKit sees nothing and the destination goes on emitting
 	// silence. micOn stayed true and the icon stayed green for the rest of
-	// the ride. The capture ending is a fault the rider must be shown, and
-	// one button must bring the mic back.
+	// the ride. Now the mic opens again by itself on whatever the machine
+	// has (#4220); a second death soon after is a fault the rider is shown,
+	// and one button brings the mic back.
 	describe('a microphone that dies mid-ride', () => {
-		it('says so, goes muted, and comes back on Reconnect', async () => {
+		it('opens again by itself, then says so, goes muted, and comes back on Reconnect', async () => {
 			await withMicHardware(async (hw) => {
 				let av!: ReturnType<typeof createChannelAv>;
 				const dispose = $effect.root(() => {
@@ -1020,6 +1026,15 @@ describe('createChannelAv', () => {
 				expect(av.micOn).toBe(true);
 				expect(av.voice.me).toBe('live');
 				expect(av.micFault).toBe(false);
+
+				const opened = hw.asked().length;
+				hw.unplug();
+				await vi.waitFor(() =>
+					expect(hw.asked().length).toBeGreaterThan(opened),
+				);
+				await vi.waitFor(() => expect(hw.running()).toBe(1));
+				expect(av.micFault).toBe(false);
+				expect(av.micOn).toBe(true);
 
 				hw.unplug();
 
