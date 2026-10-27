@@ -1064,7 +1064,7 @@ alone(() => {
 				[7630, 'world-swiss-steep'],
 				[3745, 'world-swiss-farm'],
 				[3825, 'world-swiss-cattle'],
-				[12495, 'world-swiss-cross'],
+				[12440, 'world-swiss-cross'],
 			] as const)
 				await still(s, DESK, 0, { m, name });
 		},
