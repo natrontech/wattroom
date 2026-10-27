@@ -481,6 +481,7 @@ Capture: `/dev/world`, 9 s in, 1440 × 900; superseded by world-start and world-
 4. The dev crew rides as ADR-0073 figures in distinct kits. [world-figure]
 5. Names over the two nearest riders and anyone speaking; rings thin and flat. [test:web/src/lib/world/tags.test.ts] [3086-names-ring]
 6. Every rider wears a wardrobe look: a catalogue jersey pattern in the look's own colours, a helmet of their own, no two riders in one look. [#3156]
+7. Swiss road things in the world's own flat, vertex-coloured kit (#4240), each read from the chase camera: a red-bordered danger triangle, point up, before a steep stretch with a black ramp [multi:world-swiss-steep] and before a farm with cattle with a black cow [multi:world-swiss-cattle], standing just past the edge line and facing its traffic; an orange-rimmed convex mirror on the outside of a hairpin [multi:world-swiss-mirror]; a milk-can stand by a farm's track [multi:world-swiss-farm]; a white summit cross by the pass hut, its arms facing the climb [multi:world-swiss-cross]. No Swiss cross or crest on any of them (O13), and their red clear of every watt band [test:web/src/lib/world/placement/stream.test.ts]. [#4240]
 
 #### world-start, world-end
 
