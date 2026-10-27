@@ -595,4 +595,28 @@ describe('a ride’s world', () => {
 		expect(shotsOf(false)).toEqual(new Set(['flying', 'still', null]));
 		expect(shotsOf(true)).toEqual(new Set(['still', null]));
 	});
+
+	it('leaves everything with words out of the ride’s picture (#4221)', () => {
+		const w = compose(
+			{ route, world, style, ftp: 250, metre: () => ({ m: 1200, mps: 8 }) },
+			null,
+		);
+		w.advanceBy(0.3);
+		const labels = w.labels();
+		// The riders' names and the signs and arches with their places, at least.
+		expect(labels.length).toBeGreaterThanOrEqual(2);
+		const under = (o: THREE.Object3D) => {
+			for (let p: THREE.Object3D | null = o; p; p = p.parent)
+				if (labels.includes(p)) return true;
+			return false;
+		};
+		const worded: THREE.Object3D[] = [];
+		w.scene.traverse((o) => {
+			const d = o.userData;
+			if (d.text || d.words || d.stamp) worded.push(o);
+		});
+		expect(worded.filter((o) => !under(o))).toEqual([]);
+		for (const o of labels) expect(w.scene.getObjectById(o.id)).toBe(o);
+		w.dispose();
+	});
 });

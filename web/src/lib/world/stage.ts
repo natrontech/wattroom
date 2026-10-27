@@ -65,6 +65,8 @@ export type Stage = {
 	setOrbit(on: boolean): void;
 	/** The light at the ride's progress (null: no known end), and the fog colour it leaves. */
 	light(p: number | null): THREE.Color;
+	/** What carries words: the signs and the arches with their names (#4221's picture leaves them out). */
+	labels: THREE.Object3D;
 };
 
 // Room for the ground within reach, and for a hilly road's pieces; either grows by half when it runs out.
@@ -323,6 +325,7 @@ export function buildStage(
 
 	return {
 		group,
+		labels: boards.root,
 		update(eye, whole = false) {
 			// The sky stands round the eye, so its band clears the ridges as this eye sees them.
 			sky.position.copy(eye);

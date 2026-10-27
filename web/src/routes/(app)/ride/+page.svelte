@@ -45,6 +45,7 @@
 	import SessionSummary from '$lib/ride/SessionSummary.svelte';
 	import { downloadRideCard } from '$lib/ride/card';
 	import RideDoors from '$lib/ride/RideDoors.svelte';
+	import WorldPicture from '$lib/ride/WorldPicture.svelte';
 	import FigureCard from '$lib/ride/FigureCard.svelte';
 	import SoloRoadRide from '$lib/ride/SoloRoadRide.svelte';
 	import type { RideableRoute } from '$lib/ride/roads';
@@ -768,6 +769,7 @@
 							>{carding ? 'Drawing…' : 'Ride card'}</button
 						>
 					{/if}
+					<WorldPicture />
 					{#if road && legs.length > 0}
 						{@const next = nextLeg(
 							road.id,

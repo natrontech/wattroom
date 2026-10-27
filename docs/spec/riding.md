@@ -183,6 +183,14 @@ never shrinks below ([#3678](https://github.com/natrontech/wattroom/issues/3678)
 opaque; a unit is at most half its number's size. The big watts figure is a
 **3 s** average; scoring still reads every second.
 
+## The ride's pictures (defaults — tune in alpha; [#4221](https://github.com/natrontech/wattroom/issues/4221))
+
+A closing card offers two pictures for Strava, and the rider saves either or both: the **poster**, drawn by the server from the saved ride, and the **world's**, taken on the ride where the 3D world drew.
+
+- The world takes its one picture by itself: once the ride has moved for **30 s**, on the first stretch that climbs **4 %** or more over **100 m**; with no climb by **5 min** ridden, the road as it is.
+- It is drawn without anything that carries a word: riders' name tags, signs and arches with their places, chalk and gates. Numbers and the world's look only (ADR-0063).
+- A JPEG at quality **0.9**, kept in the tab's memory only: never uploaded, never stored. A new ride lets the last one's go. It saves through the share sheet on a phone and as a download on a desk, as the poster does.
+
 ## Sync tolerances
 
 - Metrics latency budget: pedal → every screen **< 500 ms**.

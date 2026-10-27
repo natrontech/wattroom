@@ -43,9 +43,16 @@ export type WorldScene = {
 	};
 	/** A dev build's frames since the last call: when each began and its JS ms, for the soak (#3851). Always empty in a built app. */
 	frames(): Frame[];
+	/**
+	 * This frame drawn once more with nothing that carries a word, as a JPEG
+	 * (#4221): the ride's picture. Null where the browser gives none.
+	 */
+	snap(): Promise<Blob | null>;
 	dispose(): void;
 };
 
+/** The ride picture's JPEG quality (#4221): a photo, a few hundred kB at a desk window. */
+const PICTURE_QUALITY = 0.9;
 const MAX_DT = 0.1; // the most one frame moves the ride on, after a stall
 /** Frames kept for frames() between two reads: a minute at 30 fps, then the oldest go. */
 const FRAMES_KEPT = 1800;
@@ -170,6 +177,19 @@ export function mount(
 			const out = frames;
 			frames = [];
 			return out;
+		},
+		snap() {
+			// Read in the same task as the render: the drawing buffer is not
+			// kept past it (no preserveDrawingBuffer), and toBlob copies the
+			// bitmap when it is called.
+			const shown = world.labels().filter((o) => o.visible);
+			for (const o of shown) o.visible = false;
+			renderer.render(scene, camera);
+			const shot = new Promise<Blob | null>((done) =>
+				canvas.toBlob(done, 'image/jpeg', PICTURE_QUALITY),
+			);
+			for (const o of shown) o.visible = true;
+			return shot;
 		},
 		dispose() {
 			failed = true; // what follows is ours, not a failure to report

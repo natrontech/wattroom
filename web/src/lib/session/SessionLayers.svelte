@@ -60,6 +60,7 @@
 	import type { SessionState } from '$lib/protocol';
 	import { countModal, modals } from '$lib/modals.svelte';
 	import SessionSummary from '$lib/ride/SessionSummary.svelte';
+	import RidePictures from '$lib/ride/RidePictures.svelte';
 	import ChannelStatus from '$lib/channel/ChannelStatus.svelte';
 	import type { channelConnection } from '$lib/channel/connection.svelte';
 	import type { ChannelShellProps } from '$lib/channel/context-value.svelte';
@@ -395,6 +396,7 @@
 						})} from km {resumeKm(ended)}</button
 					>
 				{/if}
+				<RidePictures rideId={summary.rideId ?? undefined} />
 				<!-- The page is already the channel's under it (#2600): the
 				     session's address lets go when it ends. -->
 				<button onclick={() => summary.dismiss()} class="btn btn-primary"
