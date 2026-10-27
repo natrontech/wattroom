@@ -353,6 +353,16 @@
 		{#if shifterState === 'failed'}
 			<p class="text-danger mt-2 text-xs">Shifter: {shifterSlot.error}</p>
 		{/if}
+		{#if gearsEnabled('obc') && shifterState !== 'connected'}
+			<!-- The chooser lists OpenBikeControl only (#4236): a Zwift
+			     controller never shows there, and this says where it goes. -->
+			<p class="text-muted mt-2 text-xs">
+				A Zwift Click, Play or Ride pairs through BikeControl: <a
+					href="/settings/controllers"
+					class="underline">Controllers</a
+				>.
+			</p>
+		{/if}
 		{#if trainer.onSimulate && !elsewhere.trainer}
 			<!-- Dev-only (#123): simulated watts in a live session would count for
 			     medals, XP and streaks — the fairness layer takes no fakes. Gone

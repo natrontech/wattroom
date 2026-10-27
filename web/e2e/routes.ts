@@ -32,6 +32,7 @@ export const MEASURED: readonly string[] = [
 	'/ramp',
 	'/settings/profile',
 	'/settings/equipment',
+	'/settings/controllers',
 	'/settings/voice',
 	'/settings/appearance',
 	'/settings/notifications',
