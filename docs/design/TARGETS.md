@@ -434,7 +434,7 @@ Capture: world off, `/ride`, with and without a remembered road, both schemes; `
 8. Follows the rider's scheme; in dark, cards surface-raised with a hairline.
 9. Solo games one line in the card. [ride-preride]
 10. `/ride?road=<id>` opens this card on Free ride with that road chosen, its `from` the selected chip, never a setup of its own. [#3855] [multi:ride-free-road-setup]
-11. With Workout chosen and a crew lounge to open: “Start a session in <voice channel>” (`btn-secondary btn-lg`) beside Start the ride, enabled whether or not a trainer is paired; absent with no lounge and on a phone. [#4224] [multi:ride-preride-workout]
+11. With Workout chosen and a crew lounge to open: “Start a session in <voice channel>” (`btn-secondary btn-lg`) beside Start the ride, enabled whether or not a trainer is paired; absent with no lounge and on a phone. [#4224] [multi:ride-preride-workout] [test:web/src/lib/ride/SessionDoor.test.ts]
 
 #### ride-figure-card, phone-ride-figure-card (a desk surface)
 
