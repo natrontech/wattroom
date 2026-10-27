@@ -1055,6 +1055,18 @@ alone(() => {
 			await o.page.goto('/dev/world');
 			await o.page.waitForTimeout(9000);
 			await s.shot(o);
+			// multi:world-swiss-* — the Swiss road things (#4240) on the synthetic
+			// loop, each from the chase camera 25 m short of it: a hairpin's
+			// mirror, the steep-road sign, a farm's milk cans and cattle sign, the
+			// summit cross.
+			for (const [m, name] of [
+				[8020, 'world-swiss-mirror'],
+				[7630, 'world-swiss-steep'],
+				[3745, 'world-swiss-farm'],
+				[3585, 'world-swiss-cattle'],
+				[12440, 'world-swiss-cross'],
+			] as const)
+				await still(s, DESK, 0, { m, name });
 		},
 		{ once: true },
 	);

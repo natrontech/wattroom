@@ -28,6 +28,7 @@ const alpineProps = (p: Partial<PropColors>): PropColors => ({
 	hiking: '#f3c316',
 	water: '#5aa0c8',
 	snowpole: '#ff7a1a',
+	warning: '#d52b1e',
 	flags: ['#d52b1e', '#ffffff', '#d52b1e', '#ffd23f'],
 	rock: '#9a958c',
 	...p,

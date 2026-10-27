@@ -165,10 +165,11 @@ describe('the world', () => {
 			rock: 8,
 		};
 		for (const p of world.props) check(p.kind, p.x, p.z, clear[p.kind]);
-		// Set pieces keep 6 m off the asphalt (edge at 3.2 m); road furniture excepted.
+		// Set pieces keep 6 m off the asphalt (edge at 3.2 m); road furniture
+		// excepted: posts, poles, and the danger signs and mirrors (#4240).
+		const furniture = ['delineator', 'snowpole', 'steep', 'cattle', 'mirror'];
 		for (const p of world.pieces)
-			if (p.kind !== 'delineator' && p.kind !== 'snowpole')
-				check(p.kind, p.x, p.z, 9);
+			if (!furniture.includes(p.kind)) check(p.kind, p.x, p.z, 9);
 		expect(world.props.length).toBeGreaterThan(0);
 		expect(offenders).toEqual([]);
 	});
@@ -183,6 +184,17 @@ describe('the world', () => {
 		expect(
 			world.signs.filter((g) => g.look === 'climb').length,
 		).toBeGreaterThanOrEqual(2);
+	});
+
+	it('dresses the road as a Swiss one (#4240)', () => {
+		const n = (k: string) => world.pieces.filter((p) => p.kind === k).length;
+		// A mirror at every hairpin the loop was drawn with, a cross on its pass.
+		expect(n('mirror')).toBe(5);
+		expect(n('cross')).toBe(1);
+		// Steep stretches warned, farms with their cattle sign and milk cans.
+		expect(n('steep')).toBeGreaterThan(0);
+		expect(n('cattle')).toBeGreaterThan(0);
+		expect(n('milkcans')).toBeGreaterThan(0);
 	});
 
 	it('never lifts the ground through the road', () => {

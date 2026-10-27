@@ -34,6 +34,11 @@ export const PIECE_MODELS = [
 	'chapel',
 	'snowpole',
 	'delineator',
+	'steep',
+	'cattle',
+	'mirror',
+	'milkcans',
+	'cross',
 ] as const;
 export type KitKind = PropKind | (typeof PIECE_MODELS)[number];
 
@@ -68,6 +73,11 @@ const MODELS: Record<KitKind, (c: PropColors) => THREE.BufferGeometry> = {
 	chapel: P.chapel,
 	snowpole: P.snowpole,
 	delineator: P.delineator,
+	steep: P.steepSign,
+	cattle: P.cattleSign,
+	mirror: P.mirror,
+	milkcans: P.milkcans,
+	cross: P.summitCross,
 };
 
 /** Vertices this near the lowest point are where a model meets the ground. */

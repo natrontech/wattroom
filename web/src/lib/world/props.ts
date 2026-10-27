@@ -386,3 +386,75 @@ export function delineator(c: PropColors) {
 		tint(box(0.06, 0.12, 0.05).translate(0, 0.78, -0.07), c.reflector),
 	]);
 }
+
+// --- Swiss road things a rider knows at a glance (#4240) ----------------------
+
+/** A Swiss danger sign: a white triangle in a red border, point up, on a grey post, its picture in black. */
+function dangerSign(c: PropColors, picture: THREE.BufferGeometry[]) {
+	const face = (r: number, depth: number) =>
+		cyl(r, r, depth, 3)
+			.rotateX(-Math.PI / 2)
+			.translate(0, 1.95, 0);
+	return merge([
+		tint(cyl(0.04, 0.04, 1.9, 6).translate(0, 0.95, 0), c.pole),
+		tint(face(0.72, 0.03), c.warning),
+		tint(face(0.54, 0.05), c.post),
+		...picture.map((g) => tint(g, c.band)),
+	]);
+}
+
+// Steep climb ahead: the slope as a black ramp.
+export const steepSign = (c: PropColors) =>
+	dangerSign(c, [
+		box(0.6, 0.1, 0.07).rotateZ(0.42).translate(0, 1.86, 0),
+		box(0.56, 0.09, 0.07).translate(0, 1.73, 0),
+	]);
+
+// Cattle on the road: the cow, side on.
+export const cattleSign = (c: PropColors) =>
+	dangerSign(c, [
+		box(0.34, 0.14, 0.07).translate(0, 1.85, 0),
+		box(0.1, 0.09, 0.07).translate(0.21, 1.9, 0),
+		...[-0.13, -0.05, 0.06, 0.13].map((x) =>
+			box(0.035, 0.13, 0.07).translate(x, 1.72, 0),
+		),
+	]);
+
+// The convex mirror on a blind hairpin: an orange rim around bright glass.
+export function mirror(c: PropColors) {
+	const disc = (r: number, depth: number) =>
+		cyl(r, r, depth, 16)
+			.rotateX(Math.PI / 2)
+			.translate(0, 2.35, 0.05);
+	return merge([
+		tint(cyl(0.05, 0.05, 2.4, 6).translate(0, 1.2, 0), c.pole),
+		tint(disc(0.42, 0.05), c.snowpole),
+		tint(disc(0.35, 0.08), c.reflector),
+	]);
+}
+
+// The milk-can stand at the farm's road end: three cans on a wooden bench.
+export function milkcans(c: PropColors) {
+	const can = (x: number) => [
+		tint(cyl(0.17, 0.19, 0.55, 8).translate(x, 0.82, 0), c.pole),
+		tint(cyl(0.11, 0.11, 0.08, 8).translate(x, 1.13, 0), c.band),
+	];
+	return merge([
+		tint(box(1.4, 0.08, 0.55).translate(0, 0.5, 0), c.wood),
+		tint(box(0.1, 0.5, 0.5).translate(-0.6, 0.25, 0), c.trunk),
+		tint(box(0.1, 0.5, 0.5).translate(0.6, 0.25, 0), c.trunk),
+		...can(-0.42),
+		...can(0),
+		...can(0.42),
+	]);
+}
+
+// The summit cross on a cairn, where the pass road tops out: steel, painted
+// white, so it reads against the hut and the dusk alike.
+export function summitCross(c: PropColors) {
+	return merge([
+		tint(cyl(0.6, 0.85, 0.6, 7).translate(0, 0.3, 0), c.stone),
+		tint(box(0.18, 4.2, 0.18).translate(0, 2.6, 0), c.post),
+		tint(box(1.5, 0.16, 0.16).translate(0, 3.6, 0), c.post),
+	]);
+}
