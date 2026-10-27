@@ -12,10 +12,12 @@ import type { TrackPoint } from '$lib/road/parse';
 
 export const SYNTHETIC_NAME = 'Synthetic pass loop';
 
-type Corner = { x: number; y: number; ele: number; r: number }; // metres; y is north
+export type Corner = { x: number; y: number; ele: number; r: number }; // metres; y is north
+/** A made-up loop: its corners, and the seed of its GPS noise. */
+export type Shape = { corners: Corner[]; seed: number };
 
 const HAIRPIN_R = 14;
-const CORNERS: Corner[] = [
+export const PASS_LOOP_CORNERS: Corner[] = [
 	{ x: 0, y: 0, ele: 600, r: 150 },
 	{ x: 6000, y: 0, ele: 610, r: 200 },
 	{ x: 7500, y: 1500, ele: 690, r: 150 },
@@ -51,11 +53,11 @@ const unit = (a: Pt): Pt => {
 
 // The centreline, every SPACING metres, starting mid-valley, with the
 // distance along it at which each corner's height applies.
-function centreline() {
-	const n = CORNERS.length;
-	const arcs = CORNERS.map((v, i) => {
-		const d1 = unit(sub(v, CORNERS[(i + n - 1) % n]));
-		const d2 = unit(sub(CORNERS[(i + 1) % n], v));
+function centreline(corners: Corner[]) {
+	const n = corners.length;
+	const arcs = corners.map((v, i) => {
+		const d1 = unit(sub(v, corners[(i + n - 1) % n]));
+		const d2 = unit(sub(corners[(i + 1) % n], v));
 		const phi = Math.acos(Math.max(-1, Math.min(1, d1.x * d2.x + d1.y * d2.y)));
 		const t = v.r * Math.tan(phi / 2);
 		const turn = Math.sign(d1.x * d2.y - d1.y * d2.x); // +1 turns left
@@ -69,8 +71,8 @@ function centreline() {
 	let s = 0;
 	let carry = 0; // distance since the last emitted point
 	let last: Pt = {
-		x: (CORNERS[0].x + CORNERS[1].x) / 2,
-		y: (CORNERS[0].y + CORNERS[1].y) / 2,
+		x: (corners[0].x + corners[1].x) / 2,
+		y: (corners[0].y + corners[1].y) / 2,
 	};
 	out.push(last);
 	const walk = (p: Pt) => {
@@ -113,10 +115,10 @@ function centreline() {
 }
 
 // Heights linear in distance between corners, wrapping at the start.
-function heightAlong(knots: number[], length: number) {
-	const order = CORNERS.map((c, i) => ({ s: knots[i], ele: c.ele })).sort(
-		(p, q) => p.s - q.s,
-	);
+function heightAlong(corners: Corner[], knots: number[], length: number) {
+	const order = corners
+		.map((c, i) => ({ s: knots[i], ele: c.ele }))
+		.sort((p, q) => p.s - q.s);
 	const first = order[0];
 	const lastK = order[order.length - 1];
 	const all = [
@@ -132,10 +134,13 @@ function heightAlong(knots: number[], length: number) {
 	};
 }
 
-export function syntheticPoints(): TrackPoint[] {
-	const { points, knots, length } = centreline();
-	const ele = heightAlong(knots, length);
-	const noise = prng(3021);
+/** The pass loop: the first-run road and every world test's. */
+export const PASS_LOOP: Shape = { corners: PASS_LOOP_CORNERS, seed: 3021 };
+
+export function syntheticPoints(shape: Shape = PASS_LOOP): TrackPoint[] {
+	const { points, knots, length } = centreline(shape.corners);
+	const ele = heightAlong(shape.corners, knots, length);
+	const noise = prng(shape.seed);
 	const track: { x: number; y: number; ele: number }[] = [];
 	let s = 0;
 	points.forEach((p, i) => {

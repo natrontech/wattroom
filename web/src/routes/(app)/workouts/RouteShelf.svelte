@@ -1,4 +1,5 @@
 <script lang="ts">
+	import WattRoomRoads from '$lib/ride/WattRoomRoads.svelte';
 	import RouteIcon from '@lucide/svelte/icons/route';
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
@@ -67,6 +68,17 @@
 		{ label: 'Delete the route', danger: true, onSelect: () => void remove(r) },
 	];
 </script>
+
+<section class="mt-8">
+	<h2 class="eyebrow">WattRoom roads</h2>
+	<div class="mt-2">
+		<WattRoomRoads grid>
+			{#snippet action(road)}
+				<a href="/ride?road={road.id}" class="btn btn-primary btn-xs">Ride</a>
+			{/snippet}
+		</WattRoomRoads>
+	</div>
+</section>
 
 <section class="mt-8">
 	<div class="flex min-h-7 flex-wrap items-center justify-between gap-3">

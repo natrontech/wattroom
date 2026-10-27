@@ -1,0 +1,1 @@
+- Every rider now has two WattRoom roads to ride, shown above their own routes wherever a road is picked: the Pass loop (hairpins, a pass with its hut and summit cross) and the new Valley loop (rolling farmland, villages, cows and two short steep ramps).

@@ -1,0 +1,41 @@
+import { describe, expect, it } from 'vitest';
+import { toRoute } from '$lib/road/route';
+import { syntheticPoints } from './synthetic';
+import { generate } from './world';
+import { BUILD_MS } from './world.test-helper';
+import { HOME_ROADS } from '$lib/ride/home-roads';
+import { loadRoad } from '$lib/ride/roads';
+
+describe('WattRoom’s own roads (#4248)', () => {
+	it.each(HOME_ROADS)(
+		'$name is as long and climbs as much as its list says',
+		async (home) => {
+			const route = toRoute(syntheticPoints(await home.shape()));
+			expect(Math.abs(route.length / 1000 - home.km) / home.km).toBeLessThan(
+				0.1,
+			);
+			expect(Math.abs(route.gain - home.gainM) / home.gainM).toBeLessThan(0.2);
+		},
+	);
+
+	it('rides each one by its id, built here, as a borrowed road', async () => {
+		for (const home of HOME_ROADS) {
+			const res = await loadRoad(home.id);
+			expect(res.ok && res.route.borrowed && res.route.name).toBe(home.name);
+		}
+	});
+
+	it(
+		'gives the valley loop its farms, cattle signs, milk cans and steep signs',
+		async () => {
+			const valley = HOME_ROADS.find((r) => r.id === 'valley')!;
+			const world = generate(toRoute(syntheticPoints(await valley.shape())));
+			const n = (k: string) => world.pieces.filter((p) => p.kind === k).length;
+			expect(n('house')).toBeGreaterThan(0);
+			expect(n('cattle')).toBeGreaterThan(0);
+			expect(n('milkcans')).toBeGreaterThan(0);
+			expect(n('steep')).toBeGreaterThan(0);
+		},
+		BUILD_MS,
+	);
+});
