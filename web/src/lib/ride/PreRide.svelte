@@ -177,10 +177,10 @@
 			     disabled button needs its own reason (errors.md). -->
 					<p class="text-muted text-sm">{spectatorRideLine}</p>
 				{:else if !held.paired}
+					<!-- One line, naming its button (TARGETS ride-preride 6): beside the
+					     session door it read as that door's reason too. -->
 					<p class="text-muted text-sm">
-						Pair your trainer above to start — {kind === 'free'
-							? 'the road needs something to set its slope.'
-							: "the workout's targets need something to hold them."}
+						Pair your trainer above to start the ride.
 					</p>
 				{:else if roadless}
 					<p class="text-muted text-sm">

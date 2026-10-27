@@ -36,7 +36,7 @@
 	data-testid="solo-games"
 >
 	<h2 class="text-sm font-semibold">
-		{room ? `A game alone, in ${room.name} with your mic off:` : 'A game:'}
+		{room ? 'A game alone, mic off:' : 'A game:'}
 	</h2>
 	{#if !crewLive.loaded}
 		{#each modes as mode (mode.id)}<Skeleton class="h-11 w-32" />{/each}
