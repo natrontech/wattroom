@@ -456,6 +456,7 @@ Capture: `/ride` with “Change” opened, the hairpin and rolling route seeded.
 
 1. Every road is the shared route row: name, class chips, stat line, story line; the name links to the route page. [route-row]
 2. Empty state one line, “Your roads ride here — import a GPX, TCX or FIT.”, plus an “Import a route” button. [route-row]
+3. WattRoom's own roads head the list under the eyebrow WATTROOM ROADS, for every rider, before YOUR ROADS: each row its name at display size, "<km> km · <m> m up", one line of what is along it, and a Ride it at the list's button size; no road list is ever empty. [#4248] [test:web/src/lib/world/home-roads.test.ts]
 
 #### picker-race (a desk surface)
 
