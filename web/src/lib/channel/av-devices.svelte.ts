@@ -26,6 +26,11 @@ export function deviceChoices(): DeviceChoices {
 
 export function createDeviceChoices() {
 	let micId = $state('');
+	/**
+	 * A picked mic that went missing from the list (#4220): AirPods blink out
+	 * of it during a route change. It is the pick again once it is listed.
+	 */
+	let awayMic = '';
 	let camId = $state('');
 	let outId = $state('');
 	let list = $state<MediaDeviceInfo[]>([]);
@@ -38,6 +43,7 @@ export function createDeviceChoices() {
 	try {
 		const saved = JSON.parse(localStorage.getItem(DEVICES_KEY) ?? '{}');
 		if (typeof saved.mic === 'string') micId = saved.mic;
+		if (typeof saved.away === 'string') awayMic = saved.away;
 		if (typeof saved.cam === 'string') camId = saved.cam;
 		if (typeof saved.out === 'string') outId = saved.out;
 	} catch {
@@ -48,7 +54,7 @@ export function createDeviceChoices() {
 		try {
 			localStorage.setItem(
 				DEVICES_KEY,
-				JSON.stringify({ mic: micId, cam: camId, out: outId }),
+				JSON.stringify({ mic: micId, away: awayMic, cam: camId, out: outId }),
 			);
 		} catch {
 			// per-device convenience only
@@ -106,6 +112,7 @@ export function createDeviceChoices() {
 		},
 		setMic(id: string) {
 			micId = id;
+			awayMic = '';
 			persist();
 		},
 		setCam(id: string) {
@@ -122,6 +129,11 @@ export function createDeviceChoices() {
 			} catch {
 				list = [];
 			}
+			if (awayMic && mics().some((d) => d.deviceId === awayMic)) {
+				micId = awayMic;
+				awayMic = '';
+				persist();
+			}
 		},
 		/**
 		 * A chosen mic that is no longer plugged in stops being chosen (#640),
@@ -135,6 +147,10 @@ export function createDeviceChoices() {
 		 *
 		 * Was written out twice before #892 — once on a failed capture, once on
 		 * devicechange — which is two places for the #824 subtlety to drift.
+		 *
+		 * Set aside, not forgotten (#4220): a headset that drops for a moment
+		 * is the pick again when the list names it, so a rejoin after it
+		 * opens the headset and not the computer's own mic.
 		 */
 		forgetMicIfUnplugged() {
 			const known = mics();
@@ -143,6 +159,7 @@ export function createDeviceChoices() {
 				known.some((d) => d.deviceId) &&
 				!known.some((d) => d.deviceId === micId)
 			) {
+				awayMic = micId;
 				micId = '';
 				persist();
 			}

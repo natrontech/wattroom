@@ -138,6 +138,39 @@ describe('device choices', () => {
 			expect(d.micId).toBe('headset');
 		});
 
+		it('makes the pick again once the headset is back, across a reload (#4220)', async () => {
+			const d = createDeviceChoices();
+			d.setMic('airpods');
+			enumerated = [device('audioinput', 'builtin')];
+			await d.refresh();
+			d.forgetMicIfUnplugged();
+			expect(d.micId).toBe('');
+
+			// A rejoin after the blink: a fresh store, the headset listed again.
+			const back = createDeviceChoices();
+			enumerated = [
+				device('audioinput', 'airpods'),
+				device('audioinput', 'builtin'),
+			];
+			await back.refresh();
+			expect(back.micId).toBe('airpods');
+		});
+
+		it('lets a pick made meanwhile win over the one set aside', async () => {
+			const d = createDeviceChoices();
+			d.setMic('airpods');
+			enumerated = [device('audioinput', 'builtin')];
+			await d.refresh();
+			d.forgetMicIfUnplugged();
+			d.setMic('builtin');
+			enumerated = [
+				device('audioinput', 'airpods'),
+				device('audioinput', 'builtin'),
+			];
+			await d.refresh();
+			expect(d.micId).toBe('builtin');
+		});
+
 		it('does nothing when no mic was ever chosen', async () => {
 			const d = createDeviceChoices();
 			enumerated = [device('audioinput', 'builtin')];
