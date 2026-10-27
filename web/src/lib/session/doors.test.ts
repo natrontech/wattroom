@@ -24,9 +24,13 @@ describe('the game door (#3276)', () => {
 
 describe('the start door (#4224)', () => {
 	it('opens the channel picker on the workout and road picked outside it', () => {
-		const door = takePickerDoor(at(startDoor('/crew/c1/v/v1/training', 'w7', 'r3')))!;
+		const door = takePickerDoor(
+			at(startDoor('/crew/c1/v/v1/training', 'w7', 'r3')),
+		)!;
 		expect(door).toMatchObject({ intent: 'start', pick: 'w7', road: 'r3' });
-		expect(door.rest.pathname + door.rest.search).toBe('/crew/c1/v/v1/training');
+		expect(door.rest.pathname + door.rest.search).toBe(
+			'/crew/c1/v/v1/training',
+		);
 		expect(
 			takePickerDoor(at(startDoor('/crew/c1/v/v1/training', 'w7'))),
 		).toMatchObject({ pick: 'w7', road: undefined });

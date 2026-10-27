@@ -490,11 +490,7 @@
 					     The other intent is a link, not a second section: two equal
 					     panels under the preview is what made this feel weird. -->
 					{#if roadsOn && routes && routes.some((r) => !r.ownerOnly)}
-						<RoadRow
-							{routes}
-							bind:chosen={roadId}
-							bind:road={workoutRoad}
-						/>
+						<RoadRow {routes} bind:chosen={roadId} bind:road={workoutRoad} />
 					{/if}
 					<div class="border-ink/5 mt-auto border-t pt-4">
 						{@render actions(
