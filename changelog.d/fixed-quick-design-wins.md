@@ -1,0 +1,1 @@
+- A road ride's closing card lines up with the rest of the app, a session's End sits last in its toolbar, and the Ride card's games hint reads as one sentence.

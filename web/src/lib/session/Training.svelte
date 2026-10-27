@@ -230,7 +230,6 @@
 		<!-- One row in slot 1 (TARGETS ride-road-world 7), and the people
 		     column's sheet, folded away while the world rides. -->
 		<div class="flex items-center gap-2">
-			<SessionControls compact />
 			{#if channel.ridden}<ViewSwitch {world} drawn={inWorld} />{/if}
 			<button
 				onclick={() => channel.openTv()}
@@ -256,6 +255,9 @@
 					title="Leave the ride">Leave</button
 				>
 			{/if}
+			<!-- The coach's controls last, End last among them in its own box: a
+			     destructive action comes last, after a separator (G8, #4235). -->
+			<SessionControls compact />
 		</div>
 	{/snippet}
 	{#snippet trainerLine()}

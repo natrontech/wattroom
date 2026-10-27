@@ -41,11 +41,14 @@
 		route,
 		from = 0,
 		trainer: handed,
+		ended = $bindable(false),
 	}: {
 		route: RideableRoute;
 		from?: number;
 		/** A trainer /ride's card paired and handed over: ride at once (#3671). */
 		trainer?: Trainer;
+		/** The ride is over and its closing card shows: the page wears its frame (G7). */
+		ended?: boolean;
 	} = $props();
 
 	const profile = createProfileStore();
@@ -69,7 +72,6 @@
 	let tv = $state(false);
 
 	let watts = $state(0);
-	let ended = $state(false);
 	// The instrument says when its numbers are not live (#2851): a trainer
 	// silent past the rides' one number, SIGNAL_LOST_MS.
 	let lastAt = $state(0);
