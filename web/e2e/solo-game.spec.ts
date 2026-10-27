@@ -101,7 +101,7 @@ test('a rider in no crew is told where games run, with no door that fails', asyn
 	await signInAs(page, 'Crewless Soloist', '/ride');
 	const games = page.getByTestId('solo-games');
 	await expect(games.getByTestId('solo-games-hint')).toHaveText(
-		"Games run in a crew's voice channel. Start a crew.",
+		"They run in a crew's voice channel. Start a crew.",
 		{ timeout: 15_000 },
 	);
 	for (const name of ['Watt Golf', 'Floor is Lava', 'Backyard Ramp'])
