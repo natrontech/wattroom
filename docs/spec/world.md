@@ -27,16 +27,16 @@ Part of the product spec. [docs/SPEC.md](../SPEC.md) indexes every section and s
 | Live zone ring        | one flat band **0.08 m** wide (a wheel, as your trail), an ellipse round the wheels **0.84 m** across — inside the **0.9 m** between riders abreast — and **1.98 m** along, in the live zone's colour; under you and every rider whose numbers you may see (ADR-0059); none on a faded rider or under a game that hides the meter                                                                                              |
 | Name tags             | over the **2** riders nearest you and anyone speaking, never over you; a small dark pill holding the name and, where known, the level (`Lv 38`); text at least **16 arcmin** at the design distance (**20 px** in a 900 px frame); tags that would overlap merge                                                                                                                                                               |
 
-## Real ground (defaults — tune in alpha; [ADR-0078](../decisions/0078-real-ground-painted-light.md))
+## Real ground (defaults — tune in alpha; [ADR-0078](../decisions/0078-real-ground-painted-light.md), [ADR-0092](../decisions/0092-the-world-draws-flat.md))
 
-| Parameter         | Value                                                                  |
-| ----------------- | ---------------------------------------------------------------------- |
-| Near heights      | swissALTI3D **2 m**, averaged to **4 m**                               |
-| Far heights       | swissALTIRegio **80 m**, out to **±60 km**, with the earth's curvature |
-| Panorama stations | on a global **2 km** grid                                              |
-| Look pack ceiling | **50 GB** for Switzerland, checked against the one-canton pilot first  |
-| Imagery           | **0.5 m**, or **2 m** if the pilot extrapolates over the ceiling       |
-| Height tiles      | lossless Terrarium WebP (rule)                                         |
+| Parameter         | Value                                                                                                  |
+| ----------------- | ------------------------------------------------------------------------------------------------------ |
+| Near heights      | swissALTI3D **2 m**, averaged to **4 m**                                                               |
+| Far heights       | swissALTIRegio **80 m**, out to **±60 km**, with the earth's curvature                                 |
+| Panorama stations | on a global **2 km** grid                                                                              |
+| Look pack ceiling | **50 GB** for Switzerland, checked against the one-canton pilot first                                  |
+| Imagery           | none: one flat colour per land-cover class, swissTLM3D in Switzerland and WorldCover abroad (ADR-0092) |
+| Height tiles      | lossless Terrarium WebP (rule)                                                                         |
 
 **The ladder** starts from the realism lab's fast-rig numbers (an M2 Pro at
 1280×720, 30 fps); M20's measurements, the slow rig's included, rewrite them:
@@ -48,7 +48,8 @@ Part of the product spec. [docs/SPEC.md](../SPEC.md) indexes every section and s
 | L3   | **4.15 ms**   | **0.92 M** | **170 MB** |
 
 The lab did not report L1's triangles or textures; its first measurement
-fills them in.
+fills them in. The lab's textures were its imagery, which ADR-0092 drops, so
+the first measurement in the flat look rewrites that column.
 
 ## The living world (defaults — tune in alpha; #3178)
 

@@ -100,11 +100,11 @@ Cost: S is one PR, M a few, L a milestone, XL new infrastructure or operations.
 
 **Real Swiss heights under your road** (XL; #3284, #3285, #3286, #3287, #3346). In Switzerland the world stands on swisstopo heights, so valleys, ridges and peaks are where they really are. Two routes over one stretch get the same ground. Local riders would know the valley, but the grade already comes from the GPX, so riding stays the same. Needs: The M14 geo pack and place tiles (#3240), then Jan's slow-rig run, national bake and host disk (#3346).
 
-**The ground painted from aerial photos** (L; #3289, #3290, #3291). The ground shows graded SWISSIMAGE photos, tuned so a summer meadow does not read as snow at blue hour. A new tone curve keeps the rider's own watt colours exact. Photo ground makes the place recognisable at a glance, but it is scenery, not riding. Needs: Real Swiss heights (#3286) and the look pack on the host.
+**The ground painted from aerial photos** (L; #3289, #3290, #3291). The ground shows graded SWISSIMAGE photos, tuned so a summer meadow does not read as snow at blue hour. A new tone curve keeps the rider's own watt colours exact. Photo ground makes the place recognisable at a glance, but it is scenery, not riding. Declined by ADR-0092 (2026-10-28): real ground shows land cover as flat colour instead.
 
 **The real skyline, with peak names** (L; #3288). The horizon shows the real mountain range up to 80 km away, from panoramas on a fixed station grid. Peak names show for 8 s at crests when the peak is in view. Seeing the real range from a summit is the biggest realism win per byte, and riders remember it. Needs: Heights on the host (#3285) and OSM peak names from the M14 corridor (#3128).
 
-**Trees where trees really stand** (L; #3292). Forest roads get real trees from the canopy model, detailed close up and as impostors out to 900 m. In the lab, trees turned a photo blanket into a forest road, but they don't change the ride. Needs: Real heights and the photo ground (#3287, #3289).
+**Trees where trees really stand** (L; #3292). Forest roads get real trees from the canopy model, detailed close up and as impostors out to 900 m. In the lab, trees turned a photo blanket into a forest road, but they don't change the ride. Needs: Real heights (#3287).
 
 **Real ground outside Switzerland** (XL; #3296). Routes abroad get Copernicus heights and WorldCover land classes, coloured through the world palette. Roads through forest stay on the ground, not on the treetops. It matters only for routes abroad, and there the ground is the world palette, not a photo. Needs: Real Swiss heights and the place tiles (#3285).
 
