@@ -249,6 +249,7 @@
 							climbs={route.climbs}
 							length={road?.length}
 							note={shapeNote ?? undefined}
+							mine={!home}
 						/>
 					{:else}
 						<Skeleton class="h-[220px] sm:h-[280px]" />
