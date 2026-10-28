@@ -1,5 +1,6 @@
 import { account } from '$lib/account.svelte';
 import { api } from '$lib/api';
+import { toasts } from '$lib/toast.svelte';
 import { byReference } from '$lib/workout/road-workout';
 import type { Workout } from '$lib/workout/types';
 
@@ -108,6 +109,14 @@ const FINAL = new Set(['validation_error', 'invalid_request', 'conflict']);
 /** What a ride saved without its road says, wherever it lands (#4262). */
 export const ROAD_LEFT_OFF =
 	'Saved without its road, which is not one of your routes.';
+
+/** The toast a ride saved from off its closing card leaves, linking it. */
+export function toastSaved(saved: { id: string; roadLeftOff?: true }): void {
+	toasts.push(
+		saved.roadLeftOff ? ROAD_LEFT_OFF : 'Ride saved to your history.',
+		{ href: saved.id ? `/history/${saved.id}` : undefined },
+	);
+}
 
 const post = (ride: RideUpload) =>
 	api<{ id?: string; xp?: number }>('/api/rides', {

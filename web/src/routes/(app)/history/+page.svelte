@@ -26,7 +26,8 @@
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { api } from '$lib/api';
-	import { createHistoryStore } from '$lib/history.svelte';
+	import { createHistoryStore, type RideRecord } from '$lib/history.svelte';
+	import DeviceRide from '$lib/ride/DeviceRide.svelte';
 	import { toasts } from '$lib/toast.svelte';
 	import RideRow from '$lib/ride/RideRow.svelte';
 	import { untrack } from 'svelte';
@@ -95,9 +96,10 @@
 	}
 	// Device-only leftovers: summaries the server did not take — refused for
 	// being under a minute, saved while it was unreachable, or from before
-	// #110. They have no samples, so they cannot become account rides — they
-	// stay listed here until cleared.
+	// #110. They stay listed here until cleared; one whose seconds the ride
+	// buffer still holds opens to save them (#4262).
 	const device = createHistoryStore(() => account.me?.id);
+	let opened = $state<RideRecord | null>(null);
 
 	async function clearDevice() {
 		const n = device.all.length;
@@ -143,6 +145,14 @@
 	function forget(ride: ServerRide) {
 		rides = rides?.filter((r) => r.id !== ride.id) ?? null;
 		// The charts count this ride — they have to be asked again.
+		void loadProgression();
+	}
+
+	// A ride from this device reached the account: its summary goes, and the
+	// list and the charts are asked again for it.
+	function savedHere(summaryId: string) {
+		device.remove(summaryId);
+		void load();
 		void loadProgression();
 	}
 
@@ -277,10 +287,7 @@
 	{/if}
 	<RecoveredRides
 		onError={(message) => (recoverError = message)}
-		onSaved={(ride) => {
-			device.remove(String(ride.startedAt));
-			void load();
-		}}
+		onSaved={(ride) => savedHere(String(ride.startedAt))}
 	/>
 
 	<!-- The prompts stand on their own (#2626): drawn inside the charts'
@@ -511,15 +518,31 @@
 	{#if device.all.length > 0}
 		<h2 class="eyebrow mt-10">on this device only</h2>
 		<p class="text-muted mt-1 text-xs">
-			Summaries the server did not take. A ride under a minute stays here; one
-			that finished while the server was unreachable is offered above, and
-			saving it moves it to your account.
+			Summaries the server did not take. Open one to save it to your account
+			while this device still has its seconds. A ride under a minute stays here.
 		</p>
 		<ul class="mt-3 grid items-start gap-2 xl:grid-cols-2">
 			{#each device.all as ride (ride.id)}
-				<RideRow {ride} highlighted={highlightId === ride.id} {forget} />
+				<RideRow
+					{ride}
+					highlighted={highlightId === ride.id}
+					{forget}
+					open={() => (opened = ride)}
+				/>
 			{/each}
 		</ul>
+		{#if opened}
+			{@const ride = opened}
+			<DeviceRide
+				{ride}
+				onclose={() => (opened = null)}
+				onSaved={() => {
+					savedHere(ride.id);
+					// A slow save must not close another ride opened meanwhile.
+					if (opened?.id === ride.id) opened = null;
+				}}
+			/>
+		{/if}
 		<!-- The only copy there is: a confirm, as errors.md keeps for the
 		     genuinely destructive (audit 2026-09-09). -->
 		<button onclick={() => void clearDevice()} class="btn btn-danger mt-4"

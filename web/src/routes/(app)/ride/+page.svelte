@@ -25,7 +25,12 @@
 	import { hwlog } from '$lib/ble/hwlog';
 	import { apiBlob } from '$lib/api';
 	import { shareFile } from '$lib/share';
-	import { ROAD_LEFT_OFF, recordingUpload, uploadRide } from '$lib/ride/save';
+	import {
+		ROAD_LEFT_OFF,
+		recordingUpload,
+		toastSaved,
+		uploadRide,
+	} from '$lib/ride/save';
 	import { toasts } from '$lib/toast.svelte';
 	import { createHistoryStore, summarise } from '$lib/history.svelte';
 	import { onDestroy } from 'svelte';
@@ -396,10 +401,7 @@
 					saveStatus = outcome.saved.roadLeftOff ? ROAD_LEFT_OFF : null;
 					savedId = outcome.saved.id || null;
 					savedXp = outcome.saved.xp;
-					if (gone)
-						toasts.push(saveStatus ?? 'Ride saved to your history.', {
-							href: savedId ? `/history/${savedId}` : undefined,
-						});
+					if (gone) toastSaved(outcome.saved);
 					return;
 				}
 				const { failure } = outcome;
