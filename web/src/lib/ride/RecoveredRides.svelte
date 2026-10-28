@@ -18,8 +18,7 @@
 		type RecoveredRide,
 	} from '$lib/ride/recovered';
 	import { recoverableRides } from '$lib/ride/recoverable.svelte';
-	import { ROAD_LEFT_OFF, uploadRide } from '$lib/ride/save';
-	import { toasts } from '$lib/toast.svelte';
+	import { toastSaved, uploadRide } from '$lib/ride/save';
 
 	let {
 		onError,
@@ -81,10 +80,7 @@
 		}
 		await forget(ride.rideId);
 		onSaved?.(ride);
-		toasts.push(
-			outcome.saved.roadLeftOff ? ROAD_LEFT_OFF : 'Ride saved to your history.',
-			{ href: `/history/${outcome.saved.id}` },
-		);
+		toastSaved(outcome.saved);
 	}
 </script>
 

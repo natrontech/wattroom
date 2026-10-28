@@ -252,6 +252,24 @@ export async function unfinishedRides(
 	return out;
 }
 
+/**
+ * One ride's seconds, ended or not, while the prune has not taken them (#4262):
+ * a save the server refused ended its ride, and its summary on Rides is the
+ * way back to them. The rider's own only, as unfinishedRides keeps it.
+ */
+export async function bufferedRide(
+	rideId: string,
+	ownerId: string,
+): Promise<(RideMeta & { samples: BufferedSample[] }) | null> {
+	const db = await open();
+	if (!db) return null;
+	const ride = (await tx(db, 'readonly', (_, rides) => rides.get(rideId))) as
+		RideMeta | null | undefined;
+	if (!ride || (ride.ownerId && ride.ownerId !== ownerId)) return null;
+	const samples = await readSamples(db, rideId);
+	return samples.length >= MinRideSamples ? { ...ride, samples } : null;
+}
+
 function allRides(db: IDBDatabase): Promise<RideMeta[]> {
 	return tx(db, 'readonly', (_, rides) => rides.getAll()).then(
 		(rows) => (rows ?? []) as RideMeta[],
