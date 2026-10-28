@@ -149,3 +149,26 @@ test('any workout rides on your own route by the clock, and saves on it', async 
 	expect(Math.abs(onRoad.execution - offRoad.execution)).toBeLessThanOrEqual(5);
 	await flat.close();
 });
+
+/**
+ * A workout on one of WattRoom's roads saves (#4262): the Pass loop is
+ * borrowed, with no route row, and its id once refused the whole ride.
+ */
+test('a workout on the Pass loop saves to the account', async ({ page }) => {
+	test.skip(
+		!!process.env.PLAYWRIGHT_BASE_URL,
+		'the ?as= dev provider only exists on a dev server',
+	);
+	test.setTimeout(240_000);
+	await page.addInitScript(mute);
+	await signInAs(page, 'Pass Loop Workout Rider', '/workouts');
+	await rideSmoke(page, '&road=intro&from=0');
+	await expect(page.getByTestId('block-road')).toBeVisible({
+		timeout: 15_000,
+	});
+	await expect(page.getByRole('link', { name: 'See your ride' })).toBeVisible({
+		timeout: 150_000,
+	});
+	// Saved as it was ridden, not saved again with its road left off.
+	await expect(page.getByText(/without its road/)).toHaveCount(0);
+});

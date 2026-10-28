@@ -25,7 +25,7 @@
 	import { hwlog } from '$lib/ble/hwlog';
 	import { apiBlob } from '$lib/api';
 	import { shareFile } from '$lib/share';
-	import { recordingUpload, uploadRide } from '$lib/ride/save';
+	import { ROAD_LEFT_OFF, recordingUpload, uploadRide } from '$lib/ride/save';
 	import { toasts } from '$lib/toast.svelte';
 	import { createHistoryStore, summarise } from '$lib/history.svelte';
 	import { onDestroy } from 'svelte';
@@ -120,6 +120,8 @@
 	// Any workout on one of your own roads (#3594), from Terrain Match's
 	// start or km 0. Blocks end by the clock; the dot rides the road.
 	const ridesRoute = $derived(kind === 'workout' && !!road);
+	// One of WattRoom's roads (#4248): ridden, never saved against (#4262).
+	const borrowed = $derived(!!road?.borrowed);
 	const legs = $derived(
 		leg && road ? legsOf(road, ftp, profile.current.kg) : [],
 	);
@@ -262,8 +264,9 @@
 				// Carried so a ride whose save failed can be saved from the
 				// recovery card rather than only exported (#794).
 				workoutJson: JSON.stringify(byReference(workout)),
-				// A road workout's recovered ride saves against its route (#3499).
-				...(workout.road && { routeId: workout.road.routeId }),
+				// A road workout's recovered ride saves against its route (#3499),
+				// never a borrowed one, which has no route row (#3621, #4262).
+				...(workout.road && !borrowed && { routeId: workout.road.routeId }),
 			});
 			noCrashSafety = !buffer.crashSafe;
 			flags.riding(trainer.name, `starting ${workout.name}`);
@@ -376,6 +379,7 @@
 			workout,
 			current.startedAt,
 			current.recording,
+			{ borrowed },
 		);
 		const attempt = () => {
 			saving = true;
@@ -389,11 +393,11 @@
 					ended?.end();
 					// A retry that went through leaves one copy, on the account.
 					history.remove(id);
-					saveStatus = null;
+					saveStatus = outcome.saved.roadLeftOff ? ROAD_LEFT_OFF : null;
 					savedId = outcome.saved.id || null;
 					savedXp = outcome.saved.xp;
 					if (gone)
-						toasts.push('Ride saved to your history.', {
+						toasts.push(saveStatus ?? 'Ride saved to your history.', {
 							href: savedId ? `/history/${savedId}` : undefined,
 						});
 					return;

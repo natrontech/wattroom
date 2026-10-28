@@ -48,10 +48,13 @@ export function recordingUpload(
 		m?: number;
 		alt?: number;
 	}[],
+	/** Ridden on a borrowed road, which has no route row to save against (#3621, #4262). */
+	{ borrowed = false }: { borrowed?: boolean } = {},
 ): RideUpload {
 	// A road workout's ride saves against its route (#3499): the metres it
 	// rode, and ERG by the road, since WattRoom chose the watts (#3516).
-	const onRoad = !!workout.road && recording.some((s) => s.m !== undefined);
+	const onRoad =
+		!!workout.road && !borrowed && recording.some((s) => s.m !== undefined);
 	return {
 		workoutName: workout.name,
 		// By reference: the server refuses a road sent back up (ADR-0063).
@@ -98,20 +101,42 @@ export interface SaveFailure {
 
 const FINAL = new Set(['validation_error', 'invalid_request', 'conflict']);
 
-/** Null on success — or the saved ride, so the summary can link to it (#1331). */
-export async function uploadRide(
-	ride: RideUpload,
-): Promise<{ saved: { id: string; xp?: number } } | { failure: SaveFailure }> {
-	const res = await api<{ id?: string; xp?: number }>('/api/rides', {
+/** What a ride saved without its road says, wherever it lands (#4262). */
+export const ROAD_LEFT_OFF =
+	'Saved without its road, which is not one of your routes.';
+
+const post = (ride: RideUpload) =>
+	api<{ id?: string; xp?: number }>('/api/rides', {
 		method: 'POST',
 		json: ride,
 	});
+
+/** Null on success — or the saved ride, so the summary can link to it (#1331). */
+export async function uploadRide(
+	ride: RideUpload,
+): Promise<
+	| { saved: { id: string; xp?: number; roadLeftOff?: true } }
+	| { failure: SaveFailure }
+> {
+	let res = await post(ride);
+	// Refused over its road alone (#4262): a road the account holds no route
+	// for, a mate's or one buffered before #4262. The seconds still save.
+	const roadLeftOff =
+		!res.ok && res.error.field === 'routeId' && !!ride.routeId;
+	if (roadLeftOff)
+		res = await post({ ...ride, routeId: undefined, drive: undefined });
 	if (res.ok) {
 		// A saved ride can move what the account suggests — an FTP, an LTHR —
 		// and /api/me is where those ride (#2626): re-read it now, so the
 		// prompt follows the ride that earned it rather than the next reload.
 		void account.load();
-		return { saved: { id: String(res.data?.id ?? ''), xp: res.data?.xp } };
+		return {
+			saved: {
+				id: String(res.data?.id ?? ''),
+				xp: res.data?.xp,
+				...(roadLeftOff && { roadLeftOff: true as const }),
+			},
+		};
 	}
 	return {
 		failure: { message: res.error.message, final: FINAL.has(res.error.error) },
