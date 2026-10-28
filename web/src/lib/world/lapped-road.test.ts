@@ -142,6 +142,56 @@ describe('a lapped road past its first lap', () => {
 	);
 });
 
+describe('you alone on a loop, past its end (#4261)', () => {
+	it(
+		'keeps the eye behind you and looking up the road as the next lap starts',
+		() => {
+			const L = route.length;
+			let m = L - 40;
+			const w = compose(
+				{
+					route,
+					world,
+					style: RIDE,
+					ftp: 250,
+					youId: 'a',
+					loop: true,
+					// The ride's own metre is the lap's, as the road dot's laps count it.
+					metre: () => ({ m: m % L, mps: 8 }),
+				},
+				null,
+			);
+			const youAt = () => {
+				let o: THREE.Object3D | undefined;
+				w.scene.traverseVisible((x) => {
+					if (x.userData.rider === 'a') o = x;
+				});
+				return placeOf(o!);
+			};
+			for (let k = 1; k <= 120; k++) {
+				if (k % 10 === 0) m += 8;
+				w.advanceBy(0.1);
+				// The first second eases in from where the camera started.
+				if (k < 10 || k % 3) continue;
+				const you = youAt();
+				expect(off(you, m % L), `you at ${k}`).toBeLessThan(10);
+				expect(w.camera.position.distanceTo(you), `eye at ${k}`).toBeLessThan(
+					20,
+				);
+				const look = w.camera.getWorldDirection(new THREE.Vector3());
+				const h = at(route, m % L).heading;
+				expect(
+					look.x * Math.sin(h) + look.z * Math.cos(h),
+					`gaze at ${k}`,
+				).toBeGreaterThan(0.5);
+			}
+			expect(m % L).toBe(56);
+			w.dispose();
+		},
+		BUILD_MS,
+	);
+});
+
 describe('a lap of a road whose ends lie apart', () => {
 	it('starts where the road began, and ends a hair short of its end', () => {
 		const lapped = { ...route, loop: true };

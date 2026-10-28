@@ -82,3 +82,11 @@ The numbers are in docs/SPEC.md's "The world" section.
 curve, `NeutralToneMapping`. The rider's own dot, the zone ring and every watt
 accent set `toneMapped: false`, so ADR-0005's tokens never drift. The sky's hue
 stays art-directed to this ADR's blue hour. #3291 builds it.
+
+## Amendment, 2026-10-28 (#4256): Amended by ADR-0092, flat-shaded materials
+
+[ADR-0092](0092-the-world-draws-flat.md) makes every world surface low poly and flat shaded, in flat or vertex
+colour from this ADR's token family, with no photo textures. This ADR's light
+stands: blue hour that darkens with the ride, peach alpenglow, light from the
+sky only, and only your own line glows. The sky is the painted gradient on
+every tier.

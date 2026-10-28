@@ -29,6 +29,7 @@ import { ergByRoad } from './ride-grade';
 import type { RideableRoute } from './roads';
 import { nudged, openingWatts, ownRoad } from './free-ride-controls';
 import { createFreeRide, FREE_RIDE_JSON } from './free-ride.svelte';
+import { roadEndOffered } from './road-end';
 
 describe('the free ride’s control (docs/SPEC.md)', () => {
 	it('opens watts at 55 % of FTP on the 10 W grid', () => {
@@ -363,6 +364,40 @@ describe('a free ride on a road', () => {
 		const again = samples.findIndex((s) => s.lap === 1);
 		expect(samples[again].m).toBe(0);
 		heldToTheServersBound(samples);
+	});
+
+	it('rolls on round a loop with no end-of-road card: one ride, two laps (#4261)', async () => {
+		const free = createFreeRide({ ftp: () => 250, kg: () => 75 });
+		free.arm();
+		free.ride({ ...climb, loop: true }, 1900);
+		let t = 1_000_000;
+		while (free.road!.lap === 0 || free.road!.m > 100) {
+			expect(t, 'never lapped').toBeLessThan(1_100_000);
+			ride(free, 400, 1, t);
+			t += 1000;
+			expect(free.road!.atEnd).toBe(false);
+			expect(roadEndOffered(free, false)).toBe(false);
+		}
+		expect(free.road!.virtualMps).toBeGreaterThan(5);
+		ride(free, 250, 61, t);
+		await free.end();
+		const samples = samplesOf(uploads[0]);
+		const next = samples.findIndex((s) => s.lap === 1);
+		expect(samples[next].m).toBe(0);
+		expect(samples[next].reverse).toBeUndefined();
+		heldToTheServersBound(samples);
+	});
+
+	it('numbers a lap that crosses a loop’s line in its first second once (#4261)', async () => {
+		const free = createFreeRide({ ftp: () => 250, kg: () => 75 });
+		free.arm();
+		free.ride({ ...climb, loop: true });
+		ride(free, 300, 120);
+		// A mate a metre or two short of the line: their lap is over at once.
+		free.rideWith(1997, false);
+		ride(free, 300, 30, 1_120_000);
+		await free.end();
+		heldToTheServersBound(samplesOf(uploads[0]));
 	});
 
 	it('rides with a mate before the ride starts: the road starts at their metre, their way (#3117)', async () => {

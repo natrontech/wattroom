@@ -110,7 +110,7 @@ export type MountOptions = {
 	neon?: string;
 	/** Reduced motion, read each frame: a cheer's thumb and light hold still, the fog sea steps (ADR-0079). */
 	steady?: () => boolean;
-	/** The World control's Light (#3214): the world draws at half the pixel budget. */
+	/** The World control's Light (#3214): the world draws at half the pixel budget, above the floor. */
 	light?: boolean;
 	/** A sound the road makes (#3114): the cowbell, as the bunch rides past someone a game put out. */
 	onCue?: (cue: 'cowbell') => void;

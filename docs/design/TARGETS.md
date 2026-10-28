@@ -9,7 +9,7 @@ What every rider-visible change is held to. Per surface: an id (its capture's fi
 - `v2-*.png` “Ride Worlds Play”: ride, erg, routes, summary, garage, collections, phone.
 - `v3-*.png` “Ride Worlds Shared Roads”: roads, events, modes, race, rider, motion, roadside, shop.
 - `shop-*.png` “Velowerkstatt”: catalogue, locker, makers.
-- `world-*.jpg`: `world-realism-tier3` (recommended real-ground look), `world-bluehour-hairpin` (stylised tier), `world-ghost`, `world-kom`.
+- `world-*.jpg`: `world-realism-tier3` (real-ground framing; its photo ground is superseded, D4), `world-bluehour-hairpin` (the generated world), `world-ghost`, `world-kom`.
 
 ## How to read a target
 
@@ -32,7 +32,7 @@ Canon (WATTROOM.md, `docs/decisions`, `docs/SPEC.md`, `.claude/rules`) beats the
 | D1  | Sizes are SPEC's “The bike computer”. Desk: the mocks' proportions (ADR-0087), watts 76 px, time left 52 px, secondary numbers 24 px, words 14 px, labels 11 px. TV: 12 / 9 / 5 / 3 vh, nothing under 2.9vh. Phone: SPEC's phone row (0.45 m, #3676). The HUD's row is SPEC's HUD column (#3678).                                                                                           |
 | D2  | Slot 3's pages are ADR-0071's closed set: RIDE, CLIMB, POWER, MAP (on a road), later RACE. v2-erg's “Workout” tab is not a page; v2-ride's separate climb card is the CLIMB page.                                                                                                                                                                                                           |
 | D3  | A capable phone may draw the world: ADR-0066 keys on capability, never width (supersedes v2-phone's “never renders 3D”).                                                                                                                                                                                                                                                                    |
-| D4  | The world's look is `world-*.jpg`, ADR-0072, ADR-0073, not the v2/v3 prototype clay rider on a near-black road; v2/v3 stay the bar for layout.                                                                                                                                                                                                                                              |
+| D4  | The world's look is ADR-0092's flat low poly in ADR-0072's light, its riders ADR-0073's, not the v2/v3 prototype clay rider on a near-black road. `world-*.jpg` stay the bar for framing, camera, sky and palette, not for surface detail: world-realism-tier3's photo ground and world-bluehour-hairpin's banded shading are not copied. v2/v3 stay the bar for layout.                                                                                                                                                                                                                                              |
 | D5  | No stars at the start (ADR-0072: only as the zenith darkens), despite world-bluehour-hairpin's stars in a peach sky.                                                                                                                                                                                                                                                                        |
 | D6  | The sidebar gains no sub-rows, cards, badges or icon strips (ADR-0020, Jan's recorded taste). v2's Library / Routes and History / Progression / Collections sub-rows become tabs atop the content; Progression is retired. The garage adds exactly one row: Garage. Every such tab strip is one component, `SectionTabs`, extracted from Settings' strip by whichever issue needs it first. |
 | D7  | The primary button is the kit's `btn-primary`, an ink fill, not the mocks' neon fill. Flipping it changes the one utility, not a call site.                                                                                                                                                                                                                                                 |
@@ -184,6 +184,7 @@ A workout on the road:
 35. A sprint block stands a SPRINT banner across the road where it starts, from 1 km out until it is ridden under: the KOM arch's chrome and banner, never glowing. [#3101] [test:web/src/lib/world/gates.test.ts]
 36. Each gate lands within 1 s of its block starting: alone at your own target and weight, in a session at the reference rider the hub paces the bunch at; a road workout's on its pins. [#3101] [test:web/src/lib/road/gates.test.ts]
 37. Before a classed climb's foot on a workout, CLIMB carries one muted line under its fields at the computer's word size, naming the block that lands on the climb: “Starts in 0:45, during Threshold 2”; gone once on the climb. [#3101] [multi:ride-road-world-climb-lands] [test:web/src/lib/road/gates.test.ts]
+38. At 1440 × 900 and 1920 × 1080, the world draws at least one pixel per CSS pixel, so its edges are never a stretched frame: the probe's `renderer.pixelRatio` is 1 or more, or the device's own where that is lower. [#4256] [probe:renderer.pixelRatio]
 
 #### ride-workout-world
 
@@ -496,6 +497,7 @@ Capture: `/dev/world?m=<metre>&p=0|1&cam=chase&look=bluehour&chrome=0`, 1440 × 
 4. The dressing streams with the ground; a held moment draws all of it within the far ring from its first frame (trees, buildings, roadside pieces a ride would meet there), no gap where a tile is still to come. [#3699] [multi:world-start-twice]
 5. Your jersey's pattern lies on the cloth, round the torso and down the sleeves, clean edges that do not crawl; Gipfelpunkte never puts its dots on a white ground. [#3156] [multi:world-figure-side] [multi:world-figure-dots] [multi:world-figure-motion] [multi:world-figure-dots-motion]
 6. No kit colour reads as live data to the viewer: the probe counts none within the viewer's watt band or near a zone. [#3156] [probe:figure.kitCollisions]
+7. At every size, the world draws at least one pixel per CSS pixel, so its edges are never a stretched frame: the probe's `renderer.pixelRatio` is 1 or more, or the device's own where that is lower. [#4256] [probe:renderer.pixelRatio]
 
 ### C. Roads library (desk)
 

@@ -445,6 +445,7 @@
 			{@const on = road}
 			<RideWorld
 				road={on.profile}
+				loop={on.loop}
 				metre={() => ({ m: road?.m ?? on.m, mps: road?.virtualMps ?? 0 })}
 				{mates}
 				{watts}
