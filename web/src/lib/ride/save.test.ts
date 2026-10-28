@@ -110,3 +110,82 @@ describe('recordingUpload', () => {
 		expect(up.samples[0].clock).toBe(0);
 	});
 });
+
+// Jan's 65 minutes on the Pass loop (#4262): a WattRoom road is borrowed and
+// has no route row, so a workout on it saves as one on no stored road.
+describe('a workout on a WattRoom road', () => {
+	it('saves without the loop’s id', async () => {
+		const { homeRoad, homeRoute } = await import('$lib/ride/home-roads');
+		const { onRoute } = await import('$lib/road/compile');
+		const { byId } = await import('$lib/workout/library');
+		const pass = await homeRoute(homeRoad('intro')!);
+		const workout = onRoute(byId('sweet-spot-2x20')!.workout, pass, 0);
+		const second = {
+			watts: 200,
+			cadence: 90,
+			heartRate: 0,
+			bias: 1,
+			clock: 0,
+			released: false,
+			m: 5,
+			alt: 900,
+		};
+		const up = recordingUpload(workout, new Date(0), [second], {
+			borrowed: pass.borrowed,
+		});
+		expect(up.routeId).toBeUndefined();
+		expect(up.drive).toBeUndefined();
+		// The metres still go: the server takes them on no route.
+		expect(up.samples[0]).toMatchObject({ m: 5, alt: 900 });
+	});
+});
+
+describe('a save refused over its road', () => {
+	const onRoad = { ...ride, routeId: 'intro', drive: 'ergByRoad' as const };
+
+	it('saves again without the road, and says it was left off', async () => {
+		api.mockClear();
+		api
+			.mockResolvedValueOnce({
+				ok: false,
+				error: {
+					error: 'validation_error',
+					message: 'That is not a route id.',
+					field: 'routeId',
+				},
+			})
+			.mockResolvedValueOnce({ ok: true, data: { id: 'r-3' } });
+		expect(await uploadRide(onRoad)).toEqual({
+			saved: { id: 'r-3', roadLeftOff: true },
+		});
+		expect(api).toHaveBeenLastCalledWith('/api/rides', {
+			method: 'POST',
+			json: { ...ride, routeId: undefined, drive: undefined },
+		});
+	});
+
+	it('hands back the second refusal when the ride is refused without it too', async () => {
+		api
+			.mockResolvedValueOnce({
+				ok: false,
+				error: {
+					error: 'not_found',
+					message: 'That route is not one of yours.',
+					field: 'routeId',
+				},
+			})
+			.mockResolvedValueOnce({
+				ok: false,
+				error: {
+					error: 'conflict',
+					message: 'You already have a ride saved at this time.',
+				},
+			});
+		expect(await uploadRide(onRoad)).toEqual({
+			failure: {
+				message: 'You already have a ride saved at this time.',
+				final: true,
+			},
+		});
+	});
+});
