@@ -106,3 +106,12 @@ The numbers are in docs/SPEC.md's "Real ground" section.
   the generated world, so all of M20 can merge before anyone commits disk.
   Switching it on — the slow-rig run, the national bake, the host's disk and
   the yearly rebake — is [#3346](https://github.com/natrontech/wattroom/issues/3346).
+
+## Amendment, 2026-10-28 (#4256): Amended by ADR-0092, heights and land cover
+
+[ADR-0092](0092-the-world-draws-flat.md) replaces "Stylised real". Real ground keeps its heights and its trees
+from the canopy model, drawn low poly, and shows land cover as one flat colour
+per class: swissTLM3D's in Switzerland, WorldCover abroad. SWISSIMAGE leaves
+the look pack, with the imagery layer and its 2 m fallback, and the
+single-scattering sky is dropped. The ladder stays; a step down gives up
+geometry before resolution.

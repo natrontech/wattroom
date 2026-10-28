@@ -120,3 +120,10 @@ until the rider picks a 3D look.
 - **Measurement no longer gates the default.** #3082's two-rig GPU budget
   keeps its value for riders who opt in, but an opt-in world ships without
   waiting for it. The fallback to the Skyline and its triggers are unchanged.
+
+## Amendment, 2026-10-28 (#4256): Amended by ADR-0092, pixels before polygons
+
+[ADR-0092](0092-the-world-draws-flat.md) puts a floor of one pixel per CSS pixel under SPEC's 1.0 MP budget, so
+a desk window bigger than the budget draws more. When a rig cannot afford a
+frame, the quality ladder gives up geometry first and resolution never goes
+under the floor. The fallback to the Skyline and its triggers are unchanged.
