@@ -2,6 +2,7 @@ import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { IDBFactory } from 'fake-indexeddb';
 import {
+	bufferedRide,
 	discardRide,
 	discardRidesOf,
 	openRideBuffer,
@@ -296,5 +297,27 @@ describe('a browser two riders share', () => {
 		await fill('4', 90, { owner: null });
 		await discardRidesOf(ANA);
 		expect(await stored()).toEqual(['3', '4']);
+	});
+});
+
+// A refused save ends its ride, and the summary it leaves on Rides opens it
+// (#4262): the seconds are there until the prune takes them.
+describe('a ride whose save was refused', () => {
+	it('keeps its seconds for its summary, ended as it is', async () => {
+		await fill('100', 90, { saveable: true, end: true });
+		const ride = await bufferedRide('100', ANA);
+		expect(ride?.samples).toHaveLength(90);
+		expect(ride?.workoutJson).toBeDefined();
+	});
+
+	it("is never another rider's", async () => {
+		await fill('100', 90, { saveable: true, end: true });
+		expect(await bufferedRide('100', BEN)).toBeNull();
+	});
+
+	it('is nothing once the prune took it, or under a minute', async () => {
+		expect(await bufferedRide('100', ANA)).toBeNull();
+		await fill('200', 30, { end: true });
+		expect(await bufferedRide('200', ANA)).toBeNull();
 	});
 });

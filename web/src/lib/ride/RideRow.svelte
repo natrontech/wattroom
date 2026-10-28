@@ -17,6 +17,7 @@
 		server,
 		highlighted,
 		forget,
+		open,
 	}: {
 		ride: RideRecord;
 		/** The server's copy; absent for a ride only this device holds. */
@@ -24,12 +25,17 @@
 		/** Ringed: the ride a link or the calendar pointed at. */
 		highlighted: boolean;
 		forget: (ride: ServerRide) => void;
+		/** What the row opens when only this device holds the ride (#4262). */
+		open?: () => void;
 	} = $props();
 	const title = $derived(rideTitle(server ?? ride));
+	// The whole row is the tap target, its link or its button alike.
+	const overlay =
+		'focus-visible:ring-neon/60 absolute inset-0 rounded-lg focus-visible:ring-2 focus-visible:outline-none';
 </script>
 
-<!-- A device-only ride has no server to flip or delete, so its row offers
-     nothing and keeps the browser's own menu. -->
+<!-- A device-only ride has no server to flip or delete, so its row keeps
+     the browser's own menu and opens what this device holds of it. -->
 <li
 	id="ride-{ride.id}"
 	title={server ? MENU_HINT : undefined}
@@ -42,12 +48,13 @@
 		<!-- The whole row opens the ride (#503): a tap target the size of the
 		     row, which is what a rider off the bike reaches for. Overlaid
 		     rather than wrapping, so the share button stays its own control. -->
-		<a
-			href="/history/{ride.id}"
-			class="focus-visible:ring-neon/60 absolute inset-0 rounded-lg focus-visible:ring-2 focus-visible:outline-none"
-		>
+		<a href="/history/{ride.id}" class={overlay}>
 			<span class="sr-only">Open {title}</span>
 		</a>
+	{:else if open}
+		<button onclick={open} class={overlay}>
+			<span class="sr-only">Open {title}</span>
+		</button>
 	{/if}
 	<!-- One structure on every card (#3818): the name and what the ride came
 	     to, then where it sits and the share toggle. The name is one line,
