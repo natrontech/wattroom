@@ -207,8 +207,9 @@ func TestARoadWorkoutRideIsKeptUnderItsGeneratedName(t *testing.T) {
 }
 
 // A road ride the save cannot place is still marked as one (#4154), so its
-// Strava title carries no place: one with no metres, and one whose route was
-// deleted, kept under the name the client sent.
+// Strava title carries no place: one with no metres, one whose route was
+// deleted, and one on a WattRoom road, which has no route row (#4262), kept
+// under the name the client sent.
 func TestARoadRideTheSaveCannotPlaceIsStillOnARoad(t *testing.T) {
 	h := setup(t)
 	route, _ := storeRoute(t, h, "alice")
@@ -221,6 +222,7 @@ func TestARoadRideTheSaveCannotPlaceIsStillOnARoad(t *testing.T) {
 	for _, c := range []struct{ name, route string }{
 		{"no metres", route},
 		{"a deleted route", gone},
+		{"a WattRoom road", "intro"},
 	} {
 		workout := `{"name":"Home loop","road":{"routeId":"` + c.route + `","fromM":0,"toM":5000},"steps":[{"type":"road","seconds":120}]}`
 		body := fmt.Sprintf(`{"workoutName":%q,"workoutJson":%q,"startedAt":%q,"samples":[%s]}`,
