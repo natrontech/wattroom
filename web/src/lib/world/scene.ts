@@ -13,6 +13,8 @@ import { LIGHT_PIXEL_BUDGET, pixelRatio } from './budget';
 import { compose, type CameraMode, type MountOptions } from './compose';
 import { createLoop, type LoopStats, missWatch, watchPage } from './loop';
 import { softwareDrawing } from './software-drawing';
+import { pictureStill, wordless } from './picture-still';
+import { PICTURE, type PictureMoment } from './picture.svelte';
 import type { Failure } from './ride-view';
 import type { Style } from './styles';
 
@@ -46,15 +48,17 @@ export type WorldScene = {
 	/** A dev build's frames since the last call: when each began and its JS ms, for the soak (#3851). Always empty in a built app. */
 	frames(): Frame[];
 	/**
-	 * This frame drawn once more with nothing that carries a word, as a JPEG
-	 * (#4221): the ride's picture. Null where the browser gives none.
+	 * The ride's picture (#4221, #4263), the world's last frame: the loop
+	 * stops, and the road at `at` is drawn again off-screen at the picture's
+	 * own size, from its own camera, with nothing that carries a word, as a
+	 * JPEG. Null where the browser gives none. Dispose after it.
 	 */
-	snap(): Promise<Blob | null>;
+	picture(at: PictureMoment): Promise<Blob | null>;
 	dispose(): void;
 };
 
-/** The ride picture's JPEG quality (#4221): a photo, a few hundred kB at a desk window. */
-const PICTURE_QUALITY = 0.9;
+/** The most a picture waits for its ground to stream in, in frames: about 10 s at 60 Hz. */
+const PICTURE_WAIT_FRAMES = 600;
 const MAX_DT = 0.1; // the most one frame moves the ride on, after a stall
 /** Frames kept for frames() between two reads: a minute at 30 fps, then the oldest go. */
 const FRAMES_KEPT = 1800;
@@ -85,8 +89,10 @@ export function mount(
 	const { scene, camera } = world;
 	// Behind the sky, the fog's colour: what the horizon is at this light.
 	const clear = () => scene.fog && renderer.setClearColor(scene.fog.color);
-	const dress = (style: Style) => {
-		world.dress(style);
+	let style = opts.style;
+	const dress = (next: Style) => {
+		style = next;
+		world.dress(next);
 		clear();
 	};
 	clear();
@@ -131,7 +137,11 @@ export function mount(
 	const judge = softwareDrawing()
 		? undefined
 		: setInterval(() => watch(loop.stats()) && fail('frames'), 1000);
-	const lost = () => fail('context-lost');
+	let gone = false;
+	const lost = () => {
+		gone = true;
+		fail('context-lost');
+	};
 	function release() {
 		world.dispose();
 		renderer.dispose();
@@ -181,18 +191,35 @@ export function mount(
 			frames = [];
 			return out;
 		},
-		snap() {
-			// Read in the same task as the render: the drawing buffer is not
-			// kept past it (no preserveDrawingBuffer), and toBlob copies the
-			// bitmap when it is called.
-			const shown = world.labels().filter((o) => o.visible);
-			for (const o of shown) o.visible = false;
-			renderer.render(scene, camera);
-			const shot = new Promise<Blob | null>((done) =>
-				canvas.toBlob(done, 'image/jpeg', PICTURE_QUALITY),
-			);
-			for (const o of shown) o.visible = true;
-			return shot;
+		async picture(at) {
+			failed = true; // the world's last frame was drawn: what follows is not a failure to report
+			loop.stop();
+			clearInterval(judge);
+			if (gone) return null;
+			const still = pictureStill({ ...opts, style }, at);
+			try {
+				// The ground round the lens streams in like the ride's; the picture waits for it, whole.
+				for (
+					let k = 0;
+					k < PICTURE_WAIT_FRAMES && still.probe().ground.pending > 0;
+					k++
+				)
+					await new Promise((done) => requestAnimationFrame(done));
+				if (gone) return null;
+				wordless(still.scene);
+				renderer.setPixelRatio(1);
+				renderer.setSize(PICTURE.width, PICTURE.height, false);
+				if (still.scene.fog) renderer.setClearColor(still.scene.fog.color);
+				renderer.render(still.scene, still.camera);
+				// Read in the same task as the render: the drawing buffer is not
+				// kept past it (no preserveDrawingBuffer), and toBlob copies the
+				// bitmap when it is called.
+				return await new Promise<Blob | null>((done) =>
+					canvas.toBlob(done, 'image/jpeg', PICTURE.quality),
+				);
+			} finally {
+				still.dispose();
+			}
 		},
 		dispose() {
 			failed = true; // what follows is ours, not a failure to report

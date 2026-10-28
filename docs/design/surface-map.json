@@ -189,6 +189,15 @@
 		"surfaces": ["world-start", "world-end", "ride-road-world"]
 	},
 	{
+		"files": [
+			"web/src/lib/world/picture*",
+			"web/src/lib/world/RideWorld.svelte",
+			"web/src/lib/ride/WorldPicture.svelte",
+			"web/src/lib/ride/RidePictures.svelte"
+		],
+		"surfaces": ["ride-world-picture"]
+	},
+	{
 		"files": ["web/src/routes/(app)/dev/world/**"],
 		"surfaces": ["dev-world", "world-start", "world-end"]
 	},

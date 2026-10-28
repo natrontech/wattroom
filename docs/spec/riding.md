@@ -183,13 +183,15 @@ never shrinks below ([#3678](https://github.com/natrontech/wattroom/issues/3678)
 opaque; a unit is at most half its number's size. The big watts figure is a
 **3 s** average; scoring still reads every second.
 
-## The ride's pictures (defaults — tune in alpha; [#4221](https://github.com/natrontech/wattroom/issues/4221))
+## The ride's pictures (defaults — tune in alpha; [#4221](https://github.com/natrontech/wattroom/issues/4221), [#4263](https://github.com/natrontech/wattroom/issues/4263))
 
-A closing card offers two pictures for Strava, and the rider saves either or both: the **poster**, drawn by the server from the saved ride, and the **world's**, taken on the ride where the 3D world drew.
+A closing card offers two pictures for Strava, and the rider saves either or both: the **poster**, drawn by the server from the saved ride, and the **world's**, drawn where the 3D world drew.
 
-- The world takes its one picture by itself: once the ride has moved for **30 s**, on the first stretch that climbs **4 %** or more over **100 m**; with no climb by **5 min** ridden, the road as it is.
-- The rider takes it when they choose, with the phone remote's **Photo**, the **O** key or a controller's snap button ([#4253](https://github.com/natrontech/wattroom/issues/4253)). The latest is the ride's picture, and the automatic one is not taken after it.
-- It is drawn without anything that carries a word: riders' name tags, signs and arches with their places, chalk and gates. Numbers and the world's look only (ADR-0063).
+- The world draws its one picture as it closes, at the ride's best moment once it has moved for **30 s**: the highest summit crossed, **20 m** below its top; else the highest hairpin ridden through; else the steepest **100 m** ridden. The world is keyed by place (ADR-0081), so that metre is drawn again, in the light it was ridden in, with you alone on the road. While it draws, the closing card holds the button's place with “Drawing…”.
+- The rider takes it when they choose, with the phone remote's **Photo**, the **O** key or a controller's snap button ([#4253](https://github.com/natrontech/wattroom/issues/4253)). The latest moment they took is the one drawn, in place of the best one.
+- It is drawn off-screen at **1080 × 1350**, Strava's portrait, at one pixel per pixel; the live canvas is untouched.
+- It has its own camera: **0.9 m** over the road, **5.6 m** up it and **4.2 m** across from your line (a front three-quarter about 7 m off), a **42°** field of view. You stand on the third that leaves room ahead of you, your middle **62 %** down the frame, about two fifths of its height. The lens stands on the carriageway or its shoulder, where no dressing grows, so nothing stands between it and you.
+- Nothing painted is drawn in it: riders' name tags, signs and arches with their places, chalk, gates and the zone digit. No rider, crew or place name; the world's look only (ADR-0063).
 - A JPEG at quality **0.9**, kept in the tab's memory only: never uploaded, never stored. A new ride lets the last one's go. It saves through the share sheet on a phone and as a download on a desk, as the poster does.
 
 ## Sync tolerances

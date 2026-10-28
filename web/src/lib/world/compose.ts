@@ -137,7 +137,8 @@ export type MountOptions = {
 	gates?: () => readonly PaintedGate[];
 };
 
-export type Moment = { m: number; p: number };
+/** `p` null: a ride with no known end, as the light has it (ADR-0072). */
+export type Moment = { m: number; p: number | null };
 
 /** Metres a crank turn carries a rider: a moment's pedals are placed by it. */
 const CRANK_M = 7;
@@ -494,15 +495,6 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		camera,
 		dress,
 		advanceBy,
-		/**
-		 * Everything that draws words (#4221): riders' names, the signs and
-		 * arches with their places, chalk and gates. The ride's picture is
-		 * drawn without them, so it carries no name.
-		 */
-		labels: (): THREE.Object3D[] =>
-			[tags?.group, stage?.labels, chalk?.group, gates?.group].filter(
-				(o): o is THREE.Object3D => !!o,
-			),
 		/** Brings the level of detail and the dressing to where the camera now stands, after moving it by hand (the scene budget does). */
 		look: () => look(true),
 		/** Your figure, the rider mask the GPU checks measure (#3222). */

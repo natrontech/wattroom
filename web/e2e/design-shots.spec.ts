@@ -1,5 +1,5 @@
 import { test, type Page, type WebSocketRoute } from '@playwright/test';
-import { writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
 	ROADS,
@@ -205,22 +205,6 @@ surface(
 			(document.activeElement as HTMLElement)?.blur(),
 		);
 		await s.shot(o, { name: 'ride-road-world-map' });
-		// multi:ride-world-picture-card — the ride's picture of the world
-		// (#4221), taken by itself on this climb, offered on the closing card
-		// beside the ride card; ride-world-picture.jpg is the picture saved.
-		await o.page
-			.locator('canvas[data-picture=taken]')
-			.waitFor({ state: 'attached', timeout: 90_000 });
-		await o.page.getByRole('button', { name: 'End ride' }).click();
-		await o.page.getByRole('button', { name: 'End the ride' }).click();
-		const picture = o.page.getByTestId('world-picture');
-		await picture.waitFor({ timeout: 30_000 });
-		await s.shot(o, { name: 'ride-world-picture-card', full: true });
-		const [saved] = await Promise.all([
-			o.page.waitForEvent('download'),
-			picture.click(),
-		]);
-		await saved.saveAs(join(s.out, 'ride-world-picture.jpg'));
 		// multi:world-valley — WattRoom's valley loop (#4248), past its first
 		// ramp: farmland, a farm and its cows beside the road.
 		const valley = await s.open(DESK, { world: true });
@@ -1353,6 +1337,59 @@ test.fixme('routes', () => {
 });
 
 // ─── D. After the ride: what the seed saved ──────────────────────────────
+
+/** A JPEG's width and height, read off its first frame header. */
+function jpegSize(jpeg: Buffer): { width: number; height: number } | null {
+	for (let i = 2; i + 9 < jpeg.length;) {
+		if (jpeg[i] !== 0xff) return null;
+		const marker = jpeg[i + 1];
+		// SOF0 to SOF15, less DHT, JPG and DAC: the frame header with its size.
+		if (
+			marker >= 0xc0 &&
+			marker <= 0xcf &&
+			![0xc4, 0xc8, 0xcc].includes(marker)
+		)
+			return {
+				height: jpeg.readUInt16BE(i + 5),
+				width: jpeg.readUInt16BE(i + 7),
+			};
+		i += 2 + jpeg.readUInt16BE(i + 2);
+	}
+	return null;
+}
+
+surface(
+	'ride-world-picture',
+	async (s) => {
+		// The ride's picture of the world (#4221, #4263): drawn as the world
+		// closes, at the best moment of a ride up the hairpins, offered on the
+		// closing card beside the ride card (ride-world-picture-card);
+		// ride-world-picture.jpg is the picture saved, its size in its .json.
+		const o = await s.open(DESK, { world: true });
+		const road = await fixtureRoad(o.page, 'hairpin');
+		await ride(o.page, `/ride?w=openers&road=${road}&from=2300`);
+		await assertRiding(o.page, true);
+		await o.page
+			.locator('canvas[data-picture]')
+			.waitFor({ state: 'attached', timeout: 90_000 });
+		await o.page.getByRole('button', { name: 'End ride' }).click();
+		await o.page.getByRole('button', { name: 'End the ride' }).click();
+		const picture = o.page.getByTestId('world-picture');
+		await picture.waitFor({ timeout: 60_000 });
+		await s.shot(o, { name: 'ride-world-picture-card', full: true });
+		const [saved] = await Promise.all([
+			o.page.waitForEvent('download'),
+			picture.click(),
+		]);
+		const file = join(s.out, 'ride-world-picture.jpg');
+		await saved.saveAs(file);
+		await writeFile(
+			join(s.out, 'ride-world-picture.json'),
+			JSON.stringify(jpegSize(await readFile(file)), null, 2) + '\n',
+		);
+	},
+	{ once: true },
+);
 
 surface(
 	'poster',
