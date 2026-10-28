@@ -95,8 +95,8 @@ Reduced motion: the slots stand in place from the first frame.
 **Steady** (default; `world/rig.ts`): heli camera **260 m** back and **190 m**
 up, fixed FOV **45°**, cuts instead of moves, no particles or confetti, lean
 ×**0.5**, vegetation sway ×**0.3**. Crank and wheels keep turning, because they
-are data. **Light** draws at **0.5 MP** (Full: 1.0 MP) until the quality ladder
-has a lower tier.
+are data. **Light** draws at **0.5 MP** (Full: 1.0 MP), never under 1 pixel per CSS
+pixel, until the quality ladder has a lower tier.
 
 **Flashes**: WCAG 2.3.1; at most one luminance flash per **10 s** over **25 %**
 of a **10°** field.
