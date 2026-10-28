@@ -184,6 +184,7 @@ A workout on the road:
 35. A sprint block stands a SPRINT banner across the road where it starts, from 1 km out until it is ridden under: the KOM arch's chrome and banner, never glowing. [#3101] [test:web/src/lib/world/gates.test.ts]
 36. Each gate lands within 1 s of its block starting: alone at your own target and weight, in a session at the reference rider the hub paces the bunch at; a road workout's on its pins. [#3101] [test:web/src/lib/road/gates.test.ts]
 37. Before a classed climb's foot on a workout, CLIMB carries one muted line under its fields at the computer's word size, naming the block that lands on the climb: “Starts in 0:45, during Threshold 2”; gone once on the climb. [#3101] [multi:ride-road-world-climb-lands] [test:web/src/lib/road/gates.test.ts]
+38. At 1440 × 900 and 1920 × 1080, the world draws at least one pixel per CSS pixel, so its edges are never a stretched frame: the probe's `renderer.pixelRatio` is 1 or more, or the device's own where that is lower. [#4256] [probe:renderer.pixelRatio]
 
 #### ride-workout-world
 
@@ -496,6 +497,7 @@ Capture: `/dev/world?m=<metre>&p=0|1&cam=chase&look=bluehour&chrome=0`, 1440 × 
 4. The dressing streams with the ground; a held moment draws all of it within the far ring from its first frame (trees, buildings, roadside pieces a ride would meet there), no gap where a tile is still to come. [#3699] [multi:world-start-twice]
 5. Your jersey's pattern lies on the cloth, round the torso and down the sleeves, clean edges that do not crawl; Gipfelpunkte never puts its dots on a white ground. [#3156] [multi:world-figure-side] [multi:world-figure-dots] [multi:world-figure-motion] [multi:world-figure-dots-motion]
 6. No kit colour reads as live data to the viewer: the probe counts none within the viewer's watt band or near a zone. [#3156] [probe:figure.kitCollisions]
+7. At every size, the world draws at least one pixel per CSS pixel, so its edges are never a stretched frame: the probe's `renderer.pixelRatio` is 1 or more, or the device's own where that is lower. [#4256] [probe:renderer.pixelRatio]
 
 ### C. Roads library (desk)
 
