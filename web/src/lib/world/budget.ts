@@ -12,8 +12,9 @@ export const PIXEL_BUDGET = 1e6;
 /**
  * The renderer's pixel ratio for a canvas of w × h CSS pixels: the device's
  * own, unless that would draw more than the budget. Never under one pixel
- * per CSS pixel: a big desk window draws more than the budget rather than
- * a frame the browser scales up, which blurs every edge.
+ * per CSS pixel, or the device's own ratio where that is lower: a big desk
+ * window draws more than the budget rather than a frame the browser scales
+ * up, which blurs every edge.
  */
 export function pixelRatio(
 	w: number,
