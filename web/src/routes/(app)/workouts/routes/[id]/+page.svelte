@@ -15,10 +15,17 @@
 	import { confirm } from '$lib/confirm.svelte';
 	import { device, isSpectator } from '$lib/device.svelte';
 	import { routeNameLine, routePrivacyLine } from '$lib/privacy-copy';
+	import {
+		homeRoad,
+		homeRoute,
+		homeRow,
+		homeShape,
+	} from '$lib/ride/home-roads';
 	import { carryOnOf } from '$lib/ride/roads';
 	import type { Attempt, ClimbBest } from '$lib/road/attempts';
 	import { classedOf } from '$lib/road/climbs';
 	import { isLoop } from '$lib/road/line';
+	import type { Road } from '$lib/road/road';
 	import {
 		roadOf,
 		shapeLine,
@@ -36,10 +43,14 @@
 	 * road (ux.md: a control it cannot use is not drawn).
 	 */
 	const id = $derived(page.params.id ?? '');
+	// One of WattRoom's roads (#4257): built here, the same How, and nothing
+	// of an owner's — no rides of it kept, no rename, no delete.
+	const home = $derived(homeRoad(id));
 	// Back where the rider came from: a picker's row carries its page (#3683).
 	const back = $derived(routeBackLink(page.url.searchParams.get('back')));
 
 	let route = $state<StoredRoute | null>(null);
+	let road = $state.raw<Road | null>(null);
 	let error = $state<string | null>(null);
 	// Gone or someone else's: an empty state that says so, not an error.
 	let missing = $state(false);
@@ -56,6 +67,19 @@
 
 	async function load(which: string) {
 		error = null;
+		const built = homeRoad(which);
+		if (built) {
+			const [row, ridden, line] = await Promise.all([
+				homeRow(built),
+				homeRoute(built),
+				homeShape(built),
+			]);
+			if (which !== id) return;
+			route = { ...row, loop: ridden.loop };
+			road = ridden.road;
+			shape = line;
+			return;
+		}
 		const res = await api<StoredRoute>(`/api/routes/${which}`);
 		if (!res.ok) {
 			missing = res.error.error === 'not_found';
@@ -63,6 +87,7 @@
 			return;
 		}
 		route = res.data;
+		road = roadOf(res.data);
 		name = res.data.name;
 		if (!res.data.hasPlace) {
 			shapeNote = res.data.hint ?? 'This route kept its heights, not its map.';
@@ -75,6 +100,7 @@
 
 	// Read once: Your rides, the climbs' bests and where to carry on all use it.
 	async function loadAttempts(which: string) {
+		if (homeRoad(which)) return;
 		attemptsError = null;
 		const res = await api<Attempts>(`/api/routes/${which}/attempts`);
 		if (res.ok) attempts = res.data;
@@ -84,6 +110,7 @@
 	$effect(() => {
 		const which = id;
 		route = null;
+		road = null;
 		error = null;
 		missing = false;
 		shape = null;
@@ -92,7 +119,6 @@
 		if (which) void load(which).then(() => loadAttempts(which));
 	});
 
-	const road = $derived(route ? roadOf(route) : null);
 	const loop = $derived(
 		route?.loop ?? (shape ? isLoop({ ...shape, e: [] }) : undefined),
 	);
@@ -193,6 +219,7 @@
 			{/if}
 		</div>
 		<RouteStatRow parts={statRow(route, loop)} />
+		{#if home}<p class="text-muted mt-1 text-sm">{home.story}</p>{/if}
 
 		<!-- On a phone How comes first, its primary at the top; then the
 		     profile, the shape, the climbs and the rides (TARGETS route 14). -->
@@ -236,54 +263,58 @@
 					<div class="panel order-3">
 						<ClimbTable
 							climbs={route.climbs}
-							bests={attempts?.climbBests ?? (attemptsError ? [] : null)}
+							bests={home
+								? undefined
+								: (attempts?.climbBests ?? (attemptsError ? [] : null))}
 						/>
 					</div>
 				{/if}
-				<div class="panel order-4">
-					<RouteAttempts
-						data={attempts}
-						error={attemptsError}
-						onretry={() => void loadAttempts(route?.id ?? id)}
-					/>
-				</div>
+				{#if !home}
+					<div class="panel order-4">
+						<RouteAttempts
+							data={attempts}
+							error={attemptsError}
+							onretry={() => void loadAttempts(route?.id ?? id)}
+						/>
+					</div>
+				{/if}
 			</div>
 		</div>
 
-		<div class="border-frame mt-8 grid gap-6 border-t pt-6">
-			<form
-				class="max-w-[30rem]"
-				onsubmit={(event) => {
-					event.preventDefault();
-					void rename();
-				}}
-			>
-				<label for="route-name" class="eyebrow">your name for it</label>
-				<div class="mt-1 flex flex-wrap gap-2">
-					<input
-						id="route-name"
-						bind:value={name}
-						maxlength="80"
-						class="input min-w-0 flex-1"
-					/>
-					<button disabled={!renamed || renaming} class="btn btn-secondary"
-						>Rename</button
+		{#if !home}<div class="border-frame mt-8 grid gap-6 border-t pt-6">
+				<form
+					class="max-w-[30rem]"
+					onsubmit={(event) => {
+						event.preventDefault();
+						void rename();
+					}}
+				>
+					<label for="route-name" class="eyebrow">your name for it</label>
+					<div class="mt-1 flex flex-wrap gap-2">
+						<input
+							id="route-name"
+							bind:value={name}
+							maxlength="80"
+							class="input min-w-0 flex-1"
+						/>
+						<button disabled={!renamed || renaming} class="btn btn-secondary"
+							>Rename</button
+						>
+					</div>
+					{#if renameError}
+						<!-- Field-level, under the field (errors.md). -->
+						<p class="text-danger mt-1 text-xs" role="alert">{renameError}</p>
+					{/if}
+					<p class="text-muted mt-1 text-xs">
+						{routeNameLine(route.generatedName)}
+					</p>
+				</form>
+				<p class="text-muted max-w-prose text-xs">{routePrivacyLine}</p>
+				<div>
+					<button onclick={() => void remove()} class="btn btn-danger"
+						>Delete the route</button
 					>
 				</div>
-				{#if renameError}
-					<!-- Field-level, under the field (errors.md). -->
-					<p class="text-danger mt-1 text-xs" role="alert">{renameError}</p>
-				{/if}
-				<p class="text-muted mt-1 text-xs">
-					{routeNameLine(route.generatedName)}
-				</p>
-			</form>
-			<p class="text-muted max-w-prose text-xs">{routePrivacyLine}</p>
-			<div>
-				<button onclick={() => void remove()} class="btn btn-danger"
-					>Delete the route</button
-				>
-			</div>
-		</div>
+			</div>{/if}
 	{/if}
 </main>

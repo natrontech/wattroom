@@ -1,3 +1,4 @@
+import type { Route } from '$lib/road/route';
 import type { Corner, Shape } from '$lib/world/synthetic';
 import type { RideableRoute } from '$lib/ride/roads';
 import type { StoredRoute } from '$lib/road/stored';
@@ -90,14 +91,26 @@ export async function homeRow(home: HomeRoad): Promise<StoredRoute> {
 	};
 }
 
+// Built once: the shelf, the road’s page and its ride all read this one.
+const built = new Map<string, Promise<Route>>();
+function build(road: HomeRoad): Promise<Route> {
+	let route = built.get(road.id);
+	if (!route) {
+		route = Promise.all([
+			import('$lib/road/route'),
+			import('$lib/world/synthetic'),
+			road.shape(),
+		]).then(([{ toRoute }, { syntheticPoints }, shape]) =>
+			toRoute(syntheticPoints(shape)),
+		);
+		built.set(road.id, route);
+	}
+	return route;
+}
+
 /** One of WattRoom's roads, built here, ready to ride. */
 export async function homeRoute(road: HomeRoad): Promise<RideableRoute> {
-	const [{ toRoute }, { syntheticPoints }, shape] = await Promise.all([
-		import('$lib/road/route'),
-		import('$lib/world/synthetic'),
-		road.shape(),
-	]);
-	const route = toRoute(syntheticPoints(shape));
+	const route = await build(road);
 	return {
 		id: road.id,
 		name: road.name,
@@ -105,4 +118,12 @@ export async function homeRoute(road: HomeRoad): Promise<RideableRoute> {
 		loop: route.loop,
 		borrowed: true,
 	};
+}
+
+/** Its map, for the road's own page (#4257): invented, so anyone may see it. */
+export async function homeShape(
+	road: HomeRoad,
+): Promise<{ x: number[]; z: number[] }> {
+	const { x, z } = await build(road);
+	return { x: Array.from(x), z: Array.from(z) };
 }
