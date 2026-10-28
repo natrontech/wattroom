@@ -223,7 +223,7 @@
 {#snippet worldControls()}
 	<!-- Over the world, one row in slot 1 (TARGETS ride-road-world 7): ⚑,
 	     TV, +1 min and Skip block as 44 px icons, named and with tooltips;
-	     End ride the one word. A road workout's blocks end at their metres
+	     Change workout (#4257) and End ride in words. A road workout's blocks end at their metres
 	     (#3499), so it shows neither +1 min nor Skip (D13). -->
 	{@const last = session.info.segmentIndex + 1 >= session.segments.length}
 	<div class="flex items-center gap-2 max-md:flex-wrap">
@@ -240,12 +240,6 @@
 					><MonitorUp size={20} /></button
 				>
 			{/if}
-			{#if shelf && onChangeWorkout}
-				<button
-					onclick={() => (changing = true)}
-					class="btn btn-secondary btn-ride">Change workout</button
-				>
-			{/if}
 			{#if !session.road?.pinned && !open}
 				<button
 					onclick={() => session.extend(60)}
@@ -260,6 +254,13 @@
 					aria-label="Skip block"
 					title={last ? 'Last block — End ride instead' : 'Skip block'}
 					><SkipForward size={20} /></button
+				>
+			{/if}
+			{#if shelf && onChangeWorkout}
+				<button
+					onclick={() => (changing = true)}
+					class="btn btn-secondary btn-ride max-md:flex-1"
+					>Change workout</button
 				>
 			{/if}
 			<button
