@@ -1,0 +1,1 @@
+- In 3D the trees, houses and cows stay drawn all the way round a road. They used to vanish all at once a few kilometres from where the ride began, and came back only near the start line.
