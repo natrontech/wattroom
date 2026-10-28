@@ -120,7 +120,15 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "This ride has no samples to export.")
 		return
 	}
-	data, err := fitexport.Encode(fitexport.FromMetrics(row.StartedAt.Time, metrics))
+	// The replay's distance is the record (ADR-0074), and the file ends on
+	// it (#4269). Unread, the file keeps the metres the samples rode.
+	var replayed *int32
+	if road, err := s.store.Queries.GetRideRoad(r.Context(), db.GetRideRoadParams{ID: row.ID, UserID: user.ID}); err != nil {
+		s.log.Warn("ride export road unreadable", "err", err, "ride", store.UUIDString(row.ID))
+	} else {
+		replayed = road.DistanceM
+	}
+	data, err := fitexport.Encode(fitexport.FromMetrics(row.StartedAt.Time, metrics, replayed))
 	if err != nil {
 		httpx.Fail(w, s.log, "ride export encode failed", err, "That ride could not be exported.")
 		return

@@ -2,6 +2,7 @@ package fitexport
 
 import (
 	"bytes"
+	"math"
 	"os"
 	"path/filepath"
 	"testing"
@@ -10,6 +11,8 @@ import (
 	"github.com/muktihari/fit/decoder"
 	"github.com/muktihari/fit/profile/filedef"
 	"github.com/muktihari/fit/profile/typedef"
+
+	"github.com/natrontech/wattroom/server/internal/protocol"
 )
 
 var update = os.Getenv("UPDATE_GOLDEN") == "1"
@@ -372,5 +375,66 @@ func TestAContinuousRideHasOneDuration(t *testing.T) {
 	}
 	if got, want := session.TotalTimerTime, uint32(120_000); got != want {
 		t.Errorf("timer = %d ms, want %d", got, want)
+	}
+}
+
+// A road ride with laps (#4269). The samples keep the metres along the road
+// and no lap, so a lap ridden back counts them down and a loop starts them
+// again at its line. The file's distance grows through both, at the pace
+// ridden, and ends on the replay's when the ride has one (ADR-0074). The
+// metres are invented: no road reaches the test (ADR-0063).
+func TestALappedRoadRideKeepsItsDistance(t *testing.T) {
+	outAndBack := make([]protocol.RiderMetrics, 120)
+	loop := make([]protocol.RiderMetrics, 120)
+	for i := range 120 {
+		outAndBack[i] = protocol.RiderMetrics{Watts: 250, M: 1000 + 8*float64(i)}
+		if i >= 60 {
+			outAndBack[i].M = 1480 - 8*float64(i-60)
+		}
+		// Two laps of a 600 m loop, over its line at 8 m/s.
+		loop[i] = protocol.RiderMetrics{Watts: 250, M: math.Mod(100+8*float64(i), 600)}
+	}
+	replayed := func(m int32) *int32 { return &m }
+	for name, c := range map[string]struct {
+		metrics  []protocol.RiderMetrics
+		replayed *int32
+		// 119 seconds at one pace, the turn or the line among them.
+		wantM float64
+	}{
+		"an out-and-back, the metres it rode": {outAndBack, nil, 952},
+		"an out-and-back, the replay's":       {outAndBack, replayed(940), 940},
+		"two laps of a loop, the replay's":    {loop, replayed(960), 960},
+	} {
+		t.Run(name, func(t *testing.T) {
+			data, err := Encode(FromMetrics(time.Date(2026, 10, 28, 18, 0, 0, 0, time.UTC), c.metrics, c.replayed))
+			if err != nil {
+				t.Fatalf("Encode: %v", err)
+			}
+			fit, err := decoder.New(bytes.NewReader(data)).Decode()
+			if err != nil {
+				t.Fatalf("Decode: %v", err)
+			}
+			activity := filedef.NewActivity(fit.Messages...)
+			records := activity.Records
+			mps := c.wantM / 119
+			for i := 1; i < len(records); i++ {
+				if records[i].Distance < records[i-1].Distance {
+					t.Fatalf("record %d at %d cm, behind the %d cm before it", i, records[i].Distance, records[i-1].Distance)
+				}
+				if got := float64(records[i].EnhancedSpeed) / 1000; math.Abs(got-mps) > 0.01 {
+					t.Errorf("record %d at %.3f m/s, want %.3f", i, got, mps)
+				}
+			}
+			want := uint32(math.Round(c.wantM * 100))
+			if last := records[len(records)-1].Distance; last != want {
+				t.Errorf("last record at %d cm, want %d", last, want)
+			}
+			if got := activity.Sessions[0].TotalDistance; got != want {
+				t.Errorf("session distance %d cm, want %d", got, want)
+			}
+			if got := activity.Laps[0].TotalDistance; got != want {
+				t.Errorf("lap distance %d cm, want %d", got, want)
+			}
+		})
 	}
 }
