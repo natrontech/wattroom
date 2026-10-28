@@ -7,16 +7,17 @@ import { signInAs } from './signin';
  * who rides sessions or does not scroll never found it. Seeded straight into
  * the crash-safety buffer, as a tab that died mid-ride leaves it: the
  * signed-in rider's own, unless `unstamped` makes it a ride buffered before
- * rides named their rider (#2805).
+ * rides named their rider (#2805). `meta` adds to what the ride says of itself.
  */
 async function crash(
 	page: Page,
 	workoutName: string,
 	minutesAgo = 30,
 	unstamped = false,
+	meta: Record<string, unknown> = {},
 ): Promise<string> {
 	return page.evaluate(
-		async ([workoutName, minutesAgo, unstamped]) => {
+		async ([workoutName, minutesAgo, unstamped, meta]) => {
 			const me = await fetch('/api/me').then((res) => res.json());
 			const db = await new Promise<IDBDatabase>((resolve, reject) => {
 				const request = indexedDB.open('wattroom-rides', 1);
@@ -41,6 +42,7 @@ async function crash(
 					name: workoutName,
 					steps: [{ type: 'steady', seconds: 600, target: 0.6 }],
 				}),
+				...meta,
 			});
 			for (let seq = 0; seq < 120; seq++)
 				t.objectStore('samples').put({
@@ -58,7 +60,7 @@ async function crash(
 			db.close();
 			return rideId;
 		},
-		[workoutName, minutesAgo, unstamped] as const,
+		[workoutName, minutesAgo, unstamped, meta] as const,
 	);
 }
 
@@ -224,4 +226,60 @@ test("a crashed ride on a shared browser is its rider's alone", async ({
 	await expect(
 		page.getByRole('button', { name: 'Save to your account' }),
 	).toHaveCount(1);
+});
+
+/**
+ * A save the server refused ends the buffer's ride, and its summary lands on
+ * Rides (#4262): Jan's 65 minutes on the Pass loop, refused over the loop's
+ * id. The summary's row opens it, and its seconds save without the road.
+ */
+test('a refused ride on this device saves from its row on Rides', async ({
+	page,
+}) => {
+	await signInAs(page, 'Refused Ride Rider', '/home');
+	const name = `Refused Spin ${Date.now() % 100000}`;
+	const rideId = await crash(page, name, 50, false, {
+		routeId: 'intro',
+		endedAt: Date.now() - 40 * 60_000,
+	});
+	await page.evaluate(
+		async ([rideId, name]) => {
+			const me = await fetch('/api/me').then((res) => res.json());
+			localStorage.setItem(
+				'wattroom.history.v1',
+				JSON.stringify([
+					{
+						id: rideId,
+						ownerId: me.id,
+						workoutName: name,
+						startedAt: new Date(Number(rideId)).toISOString(),
+						seconds: 120,
+						kj: 22,
+						avgWatts: 180,
+						execution: 0.9,
+						executionScored: true,
+						ftp: 250,
+					},
+				]),
+			);
+		},
+		[rideId, name] as const,
+	);
+
+	await page.goto('/history');
+	// Ended, so the crash card does not offer it: the row is the way back.
+	await expect(
+		page.getByText(`Recovered an unfinished ride — ${name}`),
+	).toHaveCount(0);
+	await page.getByRole('button', { name: `Open ${name}` }).click();
+	const dialog = page.getByRole('dialog', { name });
+	await dialog.getByRole('button', { name: 'Save to your account' }).click();
+	await expect(
+		page.getByText('Saved without its road, which is not one of your routes.'),
+	).toBeVisible({ timeout: 15_000 });
+	await expect(dialog).toHaveCount(0);
+	await expect(page.getByText('on this device only')).toHaveCount(0);
+	await expect(page.getByRole('link', { name: `Open ${name}` })).toBeVisible({
+		timeout: 15_000,
+	});
 });
