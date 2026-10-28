@@ -33,6 +33,7 @@
 		status,
 		strip,
 		hint,
+		open = false,
 	}: {
 		block: Block | null;
 		elapsed: number;
@@ -59,6 +60,8 @@
 		strip?: Snippet;
 		/** Why a control is hidden, in one line (D13: the road decides where a block ends). */
 		hint?: string;
+		/** No workout, the road on (#4257): the big number counts what is ridden. */
+		open?: boolean;
 	} = $props();
 
 	// 24 px words on 24 px lines: three of them stack as tall as the 72 px
@@ -120,10 +123,10 @@
 		>
 			<p
 				data-testid="block-left"
-				aria-label="left in {unit}"
+				aria-label={open ? 'ridden' : `left in ${unit}`}
 				class="num min-w-[4ch] shrink-0 text-7xl leading-none font-bold"
 			>
-				{formatClock(block.secondsLeft)}
+				{formatClock(open ? elapsed : block.secondsLeft)}
 			</p>
 			<div class="{WORDS} shrink-0 whitespace-nowrap">
 				<p>
@@ -140,11 +143,11 @@
 						· <span class="num">{block.band.low}–{block.band.high}</span>
 					</p>
 				{/if}
-				<p data-testid="ride-clock" class="num text-muted">
-					{formatClock(
-						elapsed,
-					)}{#if total > 0}{` of ${formatClock(total)}`}{/if}
-				</p>
+				{#if !open}<p data-testid="ride-clock" class="num text-muted">
+						{formatClock(
+							elapsed,
+						)}{#if total > 0}{` of ${formatClock(total)}`}{/if}
+					</p>{/if}
 			</div>
 			{#if strip || block.next || wide}
 				<!-- As wide as NEXT and its chips, not as wide as the band may grow:

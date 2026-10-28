@@ -12,7 +12,9 @@ import { createRideLife } from './ride-life.svelte';
 import { createRoadDot } from './road-dot.svelte';
 import { createRideHud } from './ride-hud';
 import { createSoloAim } from './solo-aim.svelte';
+import { riddenWorkout, type RiddenPart } from './ridden';
 import type { RideOptions, RideState } from './ride-state';
+import type { Workout } from './types';
 
 /**
  * Owns one ride: advances the workout clock, holds the trainer on target, and
@@ -21,7 +23,7 @@ import type { RideOptions, RideState } from './ride-state';
  */
 export function createRideSession({
 	trainer,
-	workout,
+	workout: first,
 	ftp,
 	now = Date.now,
 	startedAt: startedAtMs,
@@ -61,14 +63,31 @@ export function createRideSession({
 		life.life === 'riding' ? guards.phase : life.life,
 	);
 
+	// The workout under way; a change mid-ride (#4257) swaps it, its clock
+	// from its first block, and keeps the ride, its record and the road.
+	let workout = $state.raw(first);
+	/** The workouts ridden before this one, each with how far it got. */
+	let ridden = $state.raw<RiddenPart[]>([]);
+	/** The end of the furthest second recorded on this workout: where it is cut. */
+	let reached = 0;
+	/** Blocks of the workouts before this one, so a block's numbers start over. */
+	let blocksBefore = 0;
+	// Whole seconds: a road's clock is fractional, and a step is not.
+	const part = (): RiddenPart => ({
+		workout,
+		reached: Math.min(clock.total, Math.ceil(Math.max(reached, clock.seconds))),
+	});
+
 	// A road workout's blocks end at their metres (#3499): the dot's
 	// position is the clock.
-	const dot = createRoadDot(workout, kg);
-	const clock = createRideClock(workout, ftp, {
-		bias: () => aim.bias,
-		over: () => state === 'done',
-		road: dot.position,
-	});
+	const dot = createRoadDot(first, kg);
+	const clockOf = (w: Workout) =>
+		createRideClock(w, ftp, {
+			bias: () => aim.bias,
+			over: () => state === 'done',
+			road: dot.position,
+		});
+	let clock = $state.raw(clockOf(first));
 
 	const actuator = createActuator(() => life.trainer);
 	const aim = createSoloAim({
@@ -133,6 +152,7 @@ export function createRideSession({
 		);
 		if (!admit) return;
 		const road = dot.second(next.watts, raw.at);
+		reached = Math.max(reached, clock.seconds + 1);
 		const recorded = record.add(
 			raw.at,
 			clock.seconds,
@@ -150,14 +170,16 @@ export function createRideSession({
 		});
 		live.push({
 			watts: next.watts,
-			block: clock.info.segmentIndex,
+			block: blocksBefore + clock.info.segmentIndex,
 			target: scored ? target : undefined,
 		});
 		if (scored) record.score(next.watts, target, aim.bias);
 	}
 
 	const publish = createRideHud({
-		label: workout.name,
+		get label() {
+			return workout.name;
+		},
 		state: () => state,
 		sample: () => sample,
 		target: () => aim.target,
@@ -209,8 +231,38 @@ export function createRideSession({
 	}
 
 	return {
-		segments: clock.segments,
-		total: clock.total,
+		get segments() {
+			return clock.segments;
+		},
+		get total() {
+			return clock.total;
+		},
+		/** The workout under way (#4257): the one the ride started with until changed. */
+		get workout() {
+			return workout;
+		},
+		/** Every workout this ride rode, as it saves: one, until a change. */
+		get ridden() {
+			return riddenWorkout([...ridden, part()]);
+		},
+		/**
+		 * Ride `next` from its first block, here (#4257): the ride, its record,
+		 * its score so far and its place on the road carry on. Only while it
+		 * rides; the page puts `next` on the road where the dot is.
+		 */
+		changeWorkout(next: Workout) {
+			if (state === 'idle' || state === 'countdown' || state === 'done') return;
+			ridden = [...ridden, part()];
+			blocksBefore += clock.segments.length;
+			record.changeWorkout(ridden.reduce((t, p) => t + p.reached, 0));
+			reached = 0;
+			dot.follow(next);
+			workout = next;
+			clock = clockOf(next);
+			applyTarget();
+			clock.sync();
+			publish();
+		},
 		get elapsed() {
 			return clock.seconds;
 		},

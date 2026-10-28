@@ -28,6 +28,9 @@
 	import { confirm } from '$lib/confirm.svelte';
 	import { FLAG_NOTICE_MS, FLAG_SAID } from '$lib/ride/flag';
 	import RideStatus from '$lib/ride/RideStatus.svelte';
+	import ChangeWorkout from '$lib/ride/ChangeWorkout.svelte';
+	import { isOpenRoad } from '$lib/workout/ridden';
+	import type { ShelfEntry } from '$lib/workout/shelf';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import Skyline from '$lib/ride/Skyline.svelte';
 	import { skylineOf } from '$lib/workout/road-workout';
@@ -70,6 +73,8 @@
 		onFlag,
 		onTv,
 		countIn,
+		shelf,
+		onChangeWorkout,
 	}: {
 		session: ReturnType<typeof createRideSession>;
 		/** Where you are in the work, from the page — the TV draws the same one. */
@@ -94,7 +99,17 @@
 		 * digit is the only thing in the corridor (TARGETS ride-countin).
 		 */
 		countIn?: { remaining: number; cancel: () => void };
+		/**
+		 * Change workout (#4257): the shelf to pick from, and the page's
+		 * change — `null` rides the road on with none. Absent, no control.
+		 */
+		shelf?: ShelfEntry[];
+		onChangeWorkout?: (next: Workout | null) => void;
 	} = $props();
+
+	let changing = $state(false);
+	// No workout, the road on: nothing to skip or stretch, no time left (#4257).
+	const open = $derived(isOpenRoad(workout));
 
 	// The ⚑'s own acknowledgement (#52), and nothing outside this screen ever
 	// asks about it.
@@ -225,7 +240,13 @@
 					><MonitorUp size={20} /></button
 				>
 			{/if}
-			{#if !session.road?.pinned}
+			{#if shelf && onChangeWorkout}
+				<button
+					onclick={() => (changing = true)}
+					class="btn btn-secondary btn-ride">Change workout</button
+				>
+			{/if}
+			{#if !session.road?.pinned && !open}
 				<button
 					onclick={() => session.extend(60)}
 					class={ICON}
@@ -350,7 +371,8 @@
 					: undefined}
 				controls={worldControls}
 				status={rideStatus}
-				strip={skyline ? strip : undefined}
+				strip={skyline && !open ? strip : undefined}
+				{open}
 			/>
 		{/snippet}
 
@@ -433,6 +455,18 @@
 {/if}
 
 {#if sheet}<KeySheet onclose={() => (sheet = false)} />{/if}
+{#if changing && shelf && onChangeWorkout}
+	<ChangeWorkout
+		{shelf}
+		current={workout.name}
+		onRoad={!!session.road}
+		onpick={(next) => {
+			changing = false;
+			onChangeWorkout(next);
+		}}
+		onclose={() => (changing = false)}
+	/>
+{/if}
 
 {#snippet moment()}
 	{#if session.sprint}<MomentCard sprint={session.sprint} />{/if}
