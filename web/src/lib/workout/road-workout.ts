@@ -22,6 +22,8 @@ export interface PinnedRoad {
 	toM: number;
 	/** Where each block ends; absent on any workout on a route (#3100). */
 	stepEndM?: number[];
+	/** It ends where it began: a ride on it rolls into the next lap (#4261). */
+	loop: boolean;
 }
 
 /**
@@ -42,6 +44,7 @@ export function roadOf(workout: Workout): PinnedRoad | null {
 			fromM: ref.fromM,
 			toM: ref.toM,
 			...(ref.stepEndM?.length && { stepEndM: ref.stepEndM }),
+			loop: !!ref.loop,
 		};
 	} catch {
 		return null;
@@ -53,14 +56,18 @@ export function roadOf(workout: Workout): PinnedRoad | null {
  * back from the shelf (#3594): the road attached as the server attaches it
  * for its owner — the whole road, from its first metre.
  */
-export function withProfile(workout: Workout, road: Road): Workout {
+export function withProfile(
+	workout: Workout,
+	route: { road: Road; loop?: boolean },
+): Workout {
 	if (!workout.road) return workout;
 	return {
 		...workout,
 		road: {
 			...workout.road,
-			profile: base64Of(packRoad(road)),
+			profile: base64Of(packRoad(route.road)),
 			originM: 0,
+			...(route.loop && { loop: true }),
 		},
 	};
 }
@@ -131,6 +138,7 @@ export function skylineOf(
 		road: Road;
 		along: number;
 		mps: number;
+		reverse?: boolean;
 		startM: number;
 		blockEndsM?: number[];
 	} | null,
@@ -142,6 +150,7 @@ export function skylineOf(
 				road: road.road,
 				m: road.along,
 				mps: road.mps,
+				reverse: road.reverse,
 				band: bandOf(segments, road.startM, road.blockEndsM, ftp),
 			}
 		: null;

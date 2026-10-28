@@ -165,7 +165,8 @@
 	// own target on your own weight, as the dot moves; a road workout's at its pins.
 	const ahead = $derived.by(() => {
 		const on = session.road;
-		if (!on) return null;
+		// Ridden ahead up the road only: riding back (#4261) paints none.
+		if (!on || on.reverse) return null;
 		return blocksAhead(
 			{
 				segments: session.segments,
@@ -176,6 +177,7 @@
 				m: on.along,
 				mps: on.mps,
 				road: on.road,
+				loop: on.loop,
 				pacer: { ftp, bias: session.bias, kg: kg + BikeKg },
 				...(on.blockEndsM && {
 					pins: { fromM: on.startM, stepEndM: on.blockEndsM },
@@ -280,6 +282,7 @@
 			{@const on = session.road}
 			<RideWorld
 				road={on.road}
+				loop={on.loop}
 				metre={() => ({
 					m: session.road?.along ?? on.along,
 					mps: session.road?.mps ?? 0,

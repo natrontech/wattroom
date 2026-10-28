@@ -97,10 +97,12 @@ export async function homeRoute(road: HomeRoad): Promise<RideableRoute> {
 		import('$lib/world/synthetic'),
 		road.shape(),
 	]);
+	const route = toRoute(syntheticPoints(shape));
 	return {
 		id: road.id,
 		name: road.name,
-		road: toRoute(syntheticPoints(shape)).road,
+		road: route.road,
+		loop: route.loop,
 		borrowed: true,
 	};
 }

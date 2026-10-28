@@ -66,7 +66,7 @@
 		bunch?: () => BunchView | null;
 		/** Channel-mates free-riding this road with you, or the other racers on a race's, each at their own metre (#3117, #3778). */
 		mates?: () => readonly RoadMate[];
-		/** The session laps the road: it has no finish. */
+		/** The ride laps the road, a session's or a loop's (#4261): it has no finish. */
 		loop?: boolean;
 		watts: number;
 		/** The trainer is silent past SIGNAL_LOST_MS, the signal the panels read "—" from. */

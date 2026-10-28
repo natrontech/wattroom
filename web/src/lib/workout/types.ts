@@ -95,6 +95,8 @@ export interface WorkoutRoad {
 	 */
 	profile?: string;
 	originM?: number;
+	/** Attached with the profile, never sent back: the whole road, ending where it began (#4261). */
+	loop?: boolean;
 }
 
 /** One entry of the flattened timeline — repeats expanded, absolute offsets. */
