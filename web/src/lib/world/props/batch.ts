@@ -143,6 +143,8 @@ export function batchProps(
 			0,
 		);
 		const mesh = new THREE.BatchedMesh(ROOM, vertices, 0, materials[family]);
+		// Its instances are culled one by one: three measures a batch's own bounds once, on its first frame, and its tiles move on (#4260).
+		mesh.frustumCulled = false;
 		mesh.perObjectFrustumCulled = true;
 		mesh.sortObjects = false;
 		mine.forEach((k, i) => {
