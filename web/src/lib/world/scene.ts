@@ -39,6 +39,8 @@ export type WorldScene = {
 			geometries: number;
 			textures: number;
 			programs: number;
+			/** Pixels drawn per CSS pixel (#4256): never under 1 where the device has them. */
+			pixelRatio: number;
 		};
 	};
 	/** A dev build's frames since the last call: when each began and its JS ms, for the soak (#3851). Always empty in a built app. */
@@ -171,6 +173,7 @@ export function mount(
 				geometries: renderer.info.memory.geometries,
 				textures: renderer.info.memory.textures,
 				programs: renderer.info.programs?.length ?? 0,
+				pixelRatio: renderer.getPixelRatio(),
 			},
 		}),
 		frames() {
