@@ -126,6 +126,23 @@ describe('the end of the road, and laps (#3205)', () => {
 		expect(again.m).toBeGreaterThan(1900);
 	});
 
+	it('rolls a loop into its next lap at the line, at the speed it crossed it (#4261)', () => {
+		const laps = createRoadLaps(upThenDown, { kg, loop: true });
+		let here = laps.second(400, 0);
+		let s = 1;
+		for (; laps.lap === 0; s++) {
+			expect(s, 'never lapped').toBeLessThan(3600);
+			expect(here.atEnd).toBe(false);
+			laps.fields(here);
+			here = laps.second(400, s * 1000);
+		}
+		// The lap's first sample stands on the line, rolling, the same way on.
+		expect(here).toMatchObject({ m: 0, atEnd: false });
+		expect(here.virtualMps).toBeGreaterThan(5);
+		expect(laps.fields(here)).toEqual({ m: 0, alt: 100, lap: 1 });
+		expect(laps.second(400, s * 1000).m).toBeGreaterThan(5);
+	});
+
 	it('rides it again from the start, up the road', () => {
 		const laps = createRoadLaps(upThenDown, { kg });
 		laps.fields(laps.second(400, 0));

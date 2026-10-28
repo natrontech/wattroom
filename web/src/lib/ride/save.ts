@@ -47,6 +47,8 @@ export function recordingUpload(
 		released: boolean;
 		m?: number;
 		alt?: number;
+		lap?: number;
+		reverse?: boolean;
 	}[],
 ): RideUpload {
 	// A road workout's ride saves against its route (#3499): the metres it
@@ -67,6 +69,8 @@ export function recordingUpload(
 			clock: Math.floor(sample.clock),
 			released: sample.released,
 			...(sample.m !== undefined && { m: sample.m, alt: sample.alt }),
+			...(sample.lap && { lap: sample.lap }),
+			...(sample.reverse && { reverse: true }),
 		})),
 		...(onRoad && {
 			routeId: workout.road!.routeId,

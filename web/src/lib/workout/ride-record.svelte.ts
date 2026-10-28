@@ -56,6 +56,9 @@ export interface RecordedSecond {
 	/** On a road (#3499), metres along it and the height there, as uploaded. */
 	m?: number;
 	alt?: number;
+	/** Its lap, and on a lap's first sample which way it runs (#3598). */
+	lap?: number;
+	reverse?: boolean;
 	/**
 	 * The guard had the trainer off the target this second (#1796):
 	 * paused, counting back in, or released. The live score skips it;
@@ -131,6 +134,8 @@ export function createRideRecord(ftp: number) {
 				virtualMps?: number;
 				m?: number;
 				alt?: number;
+				lap?: number;
+				reverse?: boolean;
 			},
 			bias: number,
 			released: boolean,
@@ -149,6 +154,8 @@ export function createRideRecord(ftp: number) {
 					virtualMps: sample.virtualMps,
 				}),
 				...(sample.m !== undefined && { m: sample.m, alt: sample.alt }),
+				...(sample.lap && { lap: sample.lap }),
+				...(sample.reverse && { reverse: true }),
 			};
 			recording.push(recorded);
 			// Uncapped, for the reason session/recording.svelte.ts gives: the graph

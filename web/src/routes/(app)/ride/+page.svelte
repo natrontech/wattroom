@@ -127,7 +127,7 @@
 		legs.length > 0
 			? legs[Math.min(leg, legs.length) - 1]
 			: ridesRoute && road
-				? withProfile(onRoute(selected.workout, road, from), road.road)
+				? withProfile(onRoute(selected.workout, road, from), road)
 				: selected.workout,
 	);
 	// A free ride on a road, started from the card with the paired trainer.
