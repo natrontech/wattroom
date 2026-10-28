@@ -148,6 +148,14 @@
 		void loadProgression();
 	}
 
+	// A ride from this device reached the account: its summary goes, and the
+	// list and the charts are asked again for it.
+	function savedHere(summaryId: string) {
+		device.remove(summaryId);
+		void load();
+		void loadProgression();
+	}
+
 	// A chart's drilldown (the rides chart above, once /progression's) lands here with ?ride=<id> — ring it.
 	let highlightId = $state<string | null>(null);
 
@@ -279,10 +287,7 @@
 	{/if}
 	<RecoveredRides
 		onError={(message) => (recoverError = message)}
-		onSaved={(ride) => {
-			device.remove(String(ride.startedAt));
-			void load();
-		}}
+		onSaved={(ride) => savedHere(String(ride.startedAt))}
 	/>
 
 	<!-- The prompts stand on their own (#2626): drawn inside the charts'
@@ -532,9 +537,9 @@
 				{ride}
 				onclose={() => (opened = null)}
 				onSaved={() => {
-					device.remove(ride.id);
-					opened = null;
-					void load();
+					savedHere(ride.id);
+					// A slow save must not close another ride opened meanwhile.
+					if (opened?.id === ride.id) opened = null;
 				}}
 			/>
 		{/if}

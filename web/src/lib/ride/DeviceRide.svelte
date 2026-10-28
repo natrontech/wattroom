@@ -39,7 +39,8 @@
 			current = false;
 		};
 	});
-	const payload = $derived(seconds ? uploadPayload(seconds) : null);
+	// Only an ended ride: one never ended is the crash card's to save, above.
+	const payload = $derived(seconds?.endedAt ? uploadPayload(seconds) : null);
 	let saving = $state(false);
 	let error = $state<string | null>(null);
 
@@ -85,6 +86,9 @@
 				>
 				<button onclick={onclose} class="btn btn-secondary">Close</button>
 			</div>
+		{:else if seconds && !seconds.endedAt}
+			<p class="text-sm">The recovered ride above saves it to your account.</p>
+			<button onclick={onclose} class="btn btn-secondary mt-3">Close</button>
 		{:else}
 			<p class="text-muted text-sm">Only its summary is kept on this device.</p>
 			<button onclick={onclose} class="btn btn-secondary mt-3">Close</button>
