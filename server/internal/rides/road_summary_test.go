@@ -95,7 +95,7 @@ func TestARoadRideKeepsItsSummaryAndTheReplayIsTheRecord(t *testing.T) {
 	for i := range samples {
 		samples[i] = protocol.RiderMetrics{Watts: 250, M: 1000 + 20*float64(i)}
 	}
-	want := stats.ReplayRoad(ridden, samples, nil, 70+protocol.BikeKg)
+	want := stats.ReplayRoad(ridden, samples, nil, 70+protocol.BikeKg, false)
 
 	if s.routeID == nil || *s.routeID != routeID || s.routeKey == nil || *s.routeKey != hash || s.roadH == nil || *s.roadH != hash {
 		t.Errorf("route %v, key %v, road %v; want %s and %s twice", s.routeID, s.routeKey, s.roadH, routeID, hash)
@@ -330,7 +330,7 @@ func TestARoadRideSavesWithLaps(t *testing.T) {
 			samples[i].M = 1480 - 8*float64(i-60)
 		}
 	}
-	want := stats.ReplayRoad(ridden, samples, []stats.Lap{{Start: 0}, {Start: 60, Reverse: true}}, 70+protocol.BikeKg)
+	want := stats.ReplayRoad(ridden, samples, []stats.Lap{{Start: 0}, {Start: 60, Reverse: true}}, 70+protocol.BikeKg, false)
 	if s.fromM == nil || *s.fromM != 1000 || s.distanceM == nil || int(*s.distanceM) != int(want.DistanceM+0.5) ||
 		s.climbedM == nil || int(*s.climbedM) != int(want.ClimbedM+0.5) {
 		t.Errorf("from %v, %v m ridden, %v m climbed; want 1000, the laps' %.0f m and %.0f m", s.fromM, s.distanceM, s.climbedM, want.DistanceM, want.ClimbedM)
@@ -378,7 +378,7 @@ func TestARideWithAMateSavesTheJumpAsALap(t *testing.T) {
 			samples[i].M = 3200 + 8*float64(i-60)
 		}
 	}
-	want := stats.ReplayRoad(ridden, samples, []stats.Lap{{Start: 0}, {Start: 60}}, 70+protocol.BikeKg)
+	want := stats.ReplayRoad(ridden, samples, []stats.Lap{{Start: 0}, {Start: 60}}, 70+protocol.BikeKg, false)
 	if s.fromM == nil || *s.fromM != 1000 || s.distanceM == nil || int(*s.distanceM) != int(want.DistanceM+0.5) ||
 		s.climbedM == nil || int(*s.climbedM) != int(want.ClimbedM+0.5) {
 		t.Errorf("from %v, %v m ridden, %v m climbed; want 1000, the laps' %.0f m and %.0f m", s.fromM, s.distanceM, s.climbedM, want.DistanceM, want.ClimbedM)

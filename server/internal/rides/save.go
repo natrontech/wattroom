@@ -202,7 +202,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	stats.SetHow(&row, stats.RideMode(req.WorkoutJSON, false), req.WorkoutJSON, route != nil, req.Drive, stats.WeightThatDay(user))
 	if route != nil {
-		ride := stats.ReplayRoad(ridden, samples, laps, float64(user.WeightKg)+protocol.BikeKg)
+		ride := stats.ReplayRoad(ridden, samples, laps, float64(user.WeightKg)+protocol.BikeKg, route.Loop != nil && *route.Loop)
 		stats.SetRoad(&row, *route, ride)
 		// The replay is the record (ADR-0074); a client whose own metres
 		// part from it by more than this is worth knowing about.
