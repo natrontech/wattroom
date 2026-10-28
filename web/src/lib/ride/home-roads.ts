@@ -103,6 +103,8 @@ function build(road: HomeRoad): Promise<Route> {
 		]).then(([{ toRoute }, { syntheticPoints }, shape]) =>
 			toRoute(syntheticPoints(shape)),
 		);
+		// A chunk that failed to load is asked for again next time.
+		route.catch(() => built.delete(road.id));
 		built.set(road.id, route);
 	}
 	return route;

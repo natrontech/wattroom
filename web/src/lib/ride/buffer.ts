@@ -143,6 +143,8 @@ export interface RideBuffer {
 	release(): void;
 	/** Samples since (exclusive) a seq, for reconnect replay. */
 	since(seq: number): Promise<BufferedSample[]>;
+	/** The workout changed mid-ride (#4257): a recovered ride saves as this. */
+	retitle(workout: Pick<RideMeta, 'workoutName' | 'workoutJson'>): void;
 }
 
 /** The Web Lock a tab holds on a ride while it records it (#2617). */
@@ -188,6 +190,7 @@ export async function openRideBuffer(
 		await prune(db);
 	}
 	const release = db ? hold(RECORDING + meta.rideId) : () => {};
+	let kept = meta;
 	return {
 		crashSafe: db !== null,
 		append(sample) {
@@ -201,10 +204,14 @@ export async function openRideBuffer(
 			// Let go once the mark is written, or another tab could find the
 			// ride neither held nor ended in between and offer it back.
 			void tx(db, 'readwrite', (_, rides) =>
-				rides.put({ ...meta, endedAt: Date.now() }),
+				rides.put({ ...kept, endedAt: Date.now() }),
 			).then(release);
 		},
 		release,
+		retitle(workout) {
+			kept = { ...kept, ...workout };
+			if (db) void tx(db, 'readwrite', (_, rides) => rides.put(kept));
+		},
 		async since(seq) {
 			if (!db) return [];
 			// The rows past `seq` and no others (#2839): reading the whole

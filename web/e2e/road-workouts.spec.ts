@@ -84,6 +84,17 @@ test('a workout on the Pass loop, changed at km 2 and ended at km 4, saves one r
 		}).then((res) => res.status),
 	);
 	expect(patched).toBe(200);
+	// The ride reads the profile this browser pulled: wait for the new FTP.
+	await page.reload();
+	await expect
+		.poll(() =>
+			page.evaluate(
+				() =>
+					JSON.parse(localStorage.getItem('wattroom.profile.v1') ?? '{}')
+						.ftp as number | undefined,
+			),
+		)
+		.toBe(400);
 
 	await page.goto('/ride?w=sweet-spot-2x20&road=intro&from=1900');
 	await page

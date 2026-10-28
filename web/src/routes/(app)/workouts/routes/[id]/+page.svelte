@@ -69,12 +69,17 @@
 		error = null;
 		const built = homeRoad(which);
 		if (built) {
-			const [row, ridden, line] = await Promise.all([
+			const read = await Promise.all([
 				homeRow(built),
 				homeRoute(built),
 				homeShape(built),
-			]);
+			]).catch(() => null);
 			if (which !== id) return;
+			if (!read) {
+				error = 'That road could not be built here. Try again.';
+				return;
+			}
+			const [row, ridden, line] = read;
 			route = { ...row, loop: ridden.loop };
 			road = ridden.road;
 			shape = line;

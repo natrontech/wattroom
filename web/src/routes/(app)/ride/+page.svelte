@@ -205,6 +205,11 @@
 			road ? (next ? { ...next, road } : openRoad(road)) : next!,
 		);
 		flags.recorder.event('ride', `changed to ${session.workout.name}`);
+		const planned = session.planned;
+		buffer?.retitle({
+			workoutName: planned.name,
+			workoutJson: JSON.stringify(byReference(planned)),
+		});
 	}
 	// The setup is a desk page and wears the page frame (G7); the ride and
 	// its summary keep the riding surface's own gutters.
@@ -606,7 +611,7 @@
 
 <svelte:head
 	><title
-		>{shelfPending || shelfMissing ? 'Ride' : workout.name} · Ride · WattRoom</title
+		>{shelfPending || shelfMissing ? 'Ride' : riding.name} · Ride · WattRoom</title
 	></svelte:head
 >
 

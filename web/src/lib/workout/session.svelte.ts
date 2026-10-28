@@ -152,7 +152,8 @@ export function createRideSession({
 		);
 		if (!admit) return;
 		const road = dot.second(next.watts, raw.at);
-		reached = Math.max(reached, clock.seconds + 1);
+		// The upload keeps the whole second (save.ts): this one ends a second on.
+		reached = Math.max(reached, Math.floor(clock.seconds) + 1);
 		const recorded = record.add(
 			raw.at,
 			clock.seconds,
@@ -244,6 +245,10 @@ export function createRideSession({
 		/** Every workout this ride rode, as it saves: one, until a change. */
 		get ridden() {
 			return riddenWorkout([...ridden, part()]);
+		},
+		/** The same with this workout whole: what a ride recovered after a crash saves as. */
+		get planned() {
+			return riddenWorkout([...ridden, { workout, reached: clock.total }]);
 		},
 		/**
 		 * Ride `next` from its first block, here (#4257): the ride, its record,
