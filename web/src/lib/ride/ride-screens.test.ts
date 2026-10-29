@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dockShows, drawsTheRide } from './ride-screens';
+import { dockScreen, dockShows, drawsTheRide } from './ride-screens';
 
 describe('drawsTheRide', () => {
 	it.each([
@@ -29,5 +29,19 @@ describe('dockShows', () => {
 		[true, '/crew/c1/v/v1/training', false],
 	])('a ride live %s, on %s → %s', (live, path, shows) => {
 		expect(dockShows(live, path)).toBe(shows);
+	});
+});
+
+describe('dockScreen', () => {
+	const training = '/crew/c1/v/v1/training';
+	it.each([
+		['/ride', undefined, '/ride'],
+		['/ride', training, '/ride'],
+		[training, training, training],
+		// Left the call, or joined another: opening it would hang that one up.
+		[training, undefined, '/ride'],
+		[training, '/crew/c1/v/v2/training', '/ride'],
+	])('last %s, in the call of %s → %s', (last, call, screen) => {
+		expect(dockScreen(last, call)).toBe(screen);
 	});
 });

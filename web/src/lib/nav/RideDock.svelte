@@ -32,7 +32,7 @@
 			profile.current.ftp,
 		);
 		const target = Math.round(session.target);
-		return target > 0 ? `${label} · ${target} W` : label;
+		return [label, target > 0 && `${target} W`].filter(Boolean).join(' · ');
 	});
 	const status = $derived(rideDock.status);
 	const pair = createPairAgain((next) => rideDock.repair(next));
@@ -102,7 +102,10 @@
 						? 'bg-danger'
 						: 'bg-z5'}"
 				></span>
-				<p class="min-w-0 text-xs">{pair.error ?? status.text}</p>
+				<!-- A failed pairing speaks for the trainer's line alone. -->
+				<p class="min-w-0 text-xs">
+					{(status.action && pair.error) || status.text}
+				</p>
 			</div>
 			{#if status.action}
 				<button

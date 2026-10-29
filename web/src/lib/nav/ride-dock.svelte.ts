@@ -1,7 +1,9 @@
 import { goto } from '$app/navigation';
+import { page } from '$app/state';
 import type { Trainer } from '$lib/ble/trainer';
+import { channelConnection } from '$lib/channel/connection.svelte';
 import { askToEndWorkout } from '$lib/ride/end-ride';
-import { drawsTheRide } from '$lib/ride/ride-screens';
+import { dockScreen, drawsTheRide } from '$lib/ride/ride-screens';
 import { statusLine, trainerLine } from '$lib/ride/status-lines';
 import { theRide } from '$lib/ride/the-ride.svelte';
 
@@ -16,7 +18,7 @@ let screen = $state('/ride');
  */
 export const rideDock = {
 	get screen() {
-		return screen;
+		return dockScreen(screen, channelConnection.current?.address.training);
 	},
 	/** A page the rider opened: a riding screen drawing the live ride is the one to go back to. */
 	saw(pathname: string) {
@@ -76,8 +78,10 @@ export const rideDock = {
 		if (!road && !(await askToEndWorkout())) return;
 		// The screen first: a save that answers with no page drawing the ride
 		// lands as a toast instead of on its card (#1544).
-		await goto(screen);
-		if (!theRide.live) return;
+		await goto(rideDock.screen);
+		// A leave guard (an editor's unsaved changes) can keep the rider where
+		// they were: the ride then rides on.
+		if (!theRide.live || !drawsTheRide(page.url.pathname)) return;
 		if (road) await road.end();
 		else session?.stop();
 	},
