@@ -6,7 +6,7 @@
 	 * channel's Training page while it runs. The ride is `theRide`'s;
 	 * this view only reads it.
 	 */
-	import { onDestroy, type Snippet } from 'svelte';
+	import { onDestroy } from 'svelte';
 	import { apiBlob } from '$lib/api';
 	import Banner from '$lib/components/Banner.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
@@ -30,11 +30,8 @@
 	import { buildShelf } from '$lib/workout/shelf';
 
 	let {
-		next,
 		doneHref = '/home',
 	}: {
-		/** The summary's way on that only its page knows, such as a road's next leg. */
-		next?: Snippet;
 		/** Where Done goes. */
 		doneHref?: string;
 	} = $props();
@@ -267,7 +264,13 @@
 					>
 				{/if}
 				<WorldPicture />
-				{@render next?.()}
+				{#if theRide.next}
+					<a
+						href={theRide.next.href}
+						data-sveltekit-reload
+						class="btn btn-secondary">{theRide.next.label}</a
+					>
+				{/if}
 				<a href="/workouts" class="btn btn-secondary">Pick another workout</a>
 				<a href={doneHref} class="btn btn-primary">Done</a>
 			{/snippet}

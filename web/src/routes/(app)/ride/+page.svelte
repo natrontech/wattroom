@@ -193,7 +193,15 @@
 		rememberWorkout(selected.id);
 		if (workout.road && road && !road.borrowed) rememberRoad(road.id);
 		try {
-			await theRide.begin(trainer, workout, { borrowed });
+			await theRide.begin(trainer, workout, {
+				borrowed,
+				// The leg's way on goes with the ride: the setup is gone on a
+				// return to this page (#3601).
+				next:
+					road && legs.length > 0
+						? nextLeg(road.id, Math.min(leg, legs.length), legs.length)
+						: null,
+			});
 		} catch (cause) {
 			error = cause instanceof Error ? cause.message : String(cause);
 		}
@@ -222,22 +230,7 @@
 	<!-- A ride already under way is the screen, whatever the address asks
 	     for: the device has one ride (ADR-0093). -->
 	{#if theRide.road || (session && session.state !== 'idle')}
-		<TheRide>
-			{#snippet next()}
-				{#if road && legs.length > 0}
-					{@const next = nextLeg(
-						road.id,
-						Math.min(leg, legs.length),
-						legs.length,
-					)}
-					{#if next}<a
-							href={next.href}
-							data-sveltekit-reload
-							class="btn btn-secondary">{next.label}</a
-						>{/if}
-				{/if}
-			{/snippet}
-		</TheRide>
+		<TheRide />
 	{:else if askFigure}
 		<FigureCard
 			onDone={() => {
