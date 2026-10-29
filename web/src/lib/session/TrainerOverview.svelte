@@ -16,6 +16,7 @@
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { theRide } from '$lib/ride/the-ride.svelte';
+	import TrainerOnRide from '$lib/ride/TrainerOnRide.svelte';
 	import { useChannel } from '$lib/channel/context';
 	import SensorOverview from '$lib/session/SensorOverview.svelte';
 	import { deviceWord } from '$lib/device.svelte';
@@ -52,13 +53,8 @@
 	}
 </script>
 
-<!-- One ride per device (ADR-0093): while your ride alone runs, the trainer
-     is its, and pairing it here again would give the hardware two masters. -->
 {#if theRide.live}
-	<p class="text-muted text-xs">
-		Your trainer is on your ride. End it to ride here.
-		<a href="/ride" class="btn-link">Open your ride</a>
-	</p>
+	<TrainerOnRide then="ride here" />
 {:else}
 	<SensorOverview
 		{compact}
