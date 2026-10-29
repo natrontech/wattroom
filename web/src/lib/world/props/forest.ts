@@ -31,6 +31,8 @@ const PAIR_M = 120;
 /** Past this the forest is out of the chase camera's sight: whole stands where the noise is above this (about 30 %), clearings between. */
 const DEEP_M = 250;
 const DEEP_CUT = 0.3;
+/** Above this the forest is the high forest's, its spruces slender (docs/SPEC.md "The living world": pasture above it). */
+const HIGH_M = 1300;
 
 const smooth = (a: number, b: number, t: number) => {
 	const k = Math.min(1, Math.max(0, (t - a) / (b - a)));
@@ -82,6 +84,18 @@ export function forest(seed: number) {
 					? 1
 					: 0,
 	};
+}
+
+/**
+ * Which of its kind's forms a tree takes (batch.ts), from a keyed unit `u`
+ * and where it grows (#4256): a conifer most often the slender spruce in the
+ * high forest, the spruce or the broad fir below it; a broadleaf its own
+ * three lumps, one round crown or a poplar's oval.
+ */
+export function formOf(conifer: boolean, height: number, u: number): number {
+	if (!conifer) return u < 0.35 ? 0 : u < 0.75 ? 1 : 2;
+	if (height >= HIGH_M) return u < 0.55 ? 1 : u < 0.9 ? 0 : 2;
+	return u < 0.45 ? 0 : u < 0.75 ? 2 : 1;
 }
 
 /**

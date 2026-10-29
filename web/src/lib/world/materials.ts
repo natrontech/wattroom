@@ -1,9 +1,9 @@
-// Materials: cel shading in three bands (the indie look without a post pass),
-// a little wind in the trees, and a dithered fade for anything that gets
+// Materials: the dressing flat shaded, one normal per face (ADR-0092), a
+// little wind in the trees, and a dithered fade for anything that gets
 // between the camera and you — nothing generated ever blocks the view.
 import * as THREE from 'three';
 
-// A greyscale ramp for MeshToonMaterial: nearest-filtered, so the bands are hard.
+// A greyscale ramp for the figures' MeshToonMaterial: nearest-filtered, so the bands are hard.
 export function ramp(steps: readonly number[]): THREE.DataTexture {
 	const data = new Uint8Array(steps.length * 4);
 	steps.forEach((s, i) => data.set([s * 255, s * 255, s * 255, 255], i * 4));
@@ -12,7 +12,6 @@ export function ramp(steps: readonly number[]): THREE.DataTexture {
 	t.needsUpdate = true;
 	return t;
 }
-export const PROP_RAMP = [0.55, 0.8, 1] as const;
 
 // Per-frame uniforms every faded or swaying material shares: where the
 // camera is, where you are, the time.
@@ -48,12 +47,19 @@ const FADE = /* glsl */ `
 	float bayer[16] = float[16](0.,8.,2.,10.,12.,4.,14.,6.,3.,11.,1.,9.,15.,7.,13.,5.);
 	if (keep < (bayer[by * 4 + bx] + 0.5) / 16.0) discard;`;
 
-export function toon(
-	gradientMap: THREE.Texture,
+/**
+ * The dressing's material (ADR-0092): its models' colours, flat per face,
+ * lit by the sky with one normal per face, so a change of shade falls on a
+ * triangle's edge, where the renderer's antialiasing reaches.
+ */
+export function flat(
 	sight: Sight,
 	opts: { wind?: boolean; fade?: boolean } = {},
-): THREE.MeshToonMaterial {
-	const m = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap });
+): THREE.MeshLambertMaterial {
+	const m = new THREE.MeshLambertMaterial({
+		vertexColors: true,
+		flatShading: true,
+	});
 	if (!opts.wind && !opts.fade) return m;
 	m.onBeforeCompile = (s) => {
 		Object.assign(s.uniforms, sight);
@@ -90,6 +96,6 @@ export function toon(
 				);
 	};
 	m.customProgramCacheKey = () =>
-		`toon-${opts.wind ? 'w' : ''}${opts.fade ? 'f' : ''}`;
+		`flat-${opts.wind ? 'w' : ''}${opts.fade ? 'f' : ''}`;
 	return m;
 }

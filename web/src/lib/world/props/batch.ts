@@ -54,45 +54,64 @@ export const FAMILY: Record<DrawKind, Family> = {
 };
 
 type Models = (c: PropColors) => THREE.BufferGeometry;
+type Form = [near: Models, far: Models];
 const flag =
 	(i: number): Models =>
 	(c) =>
 		P.flagpole(c, c.flags[i]);
-// A kit with no stand-in is its own: at a few dozen triangles it is the far model too.
-const MODELS: Record<DrawKind, [near: Models, far: Models]> = {
-	spruce: [P.spruce, P.spruceFar],
-	broadleaf: [P.broadleaf, P.broadleafFar],
-	linden: [P.linden, P.linden],
-	house: [P.house, P.houseFar],
-	church: [P.church, P.churchFar],
-	barn: [P.barn, P.barnFar],
-	hut: [P.hut, P.hutFar],
-	chapel: [P.chapel, P.chapel],
-	cow: [P.cow, P.cowFar],
-	rock: [P.rock, P.rock],
-	bench: [P.bench, P.bench],
-	woodpile: [P.woodpile, P.woodpile],
-	bales: [P.bales, P.bales],
-	wayside: [P.wayside, P.wayside],
-	signpost: [P.signpost, P.signpost],
-	fountain: [P.fountain, P.fountain],
-	fence: [P.fence, P.fence],
-	snowpole: [P.snowpole, P.snowpole],
-	delineator: [P.delineator, P.delineator],
-	steep: [P.steepSign, P.steepSign],
-	cattle: [P.cattleSign, P.cattleSign],
-	mirror: [P.mirror, P.mirror],
-	milkcans: [P.milkcans, P.milkcans],
-	cross: [P.summitCross, P.summitCross],
-	flag0: [flag(0), flag(0)],
-	flag1: [flag(1), flag(1)],
-	flag2: [flag(2), flag(2)],
-	flag3: [flag(3), flag(3)],
+/**
+ * Each kind's forms, near and far. A tree is drawn in the form its place
+ * chose (forest.ts `formOf`), so a stand is never a row of one cone (#4256);
+ * its first form is the kind's own, the one kit.ts reads its footprint off.
+ * A kit with no stand-in is its own: at a few dozen triangles it is the far
+ * model too.
+ */
+const MODELS: Record<DrawKind, Form[]> = {
+	spruce: [
+		[P.spruce, P.spruceFar],
+		[P.spruceSlender, P.spruceSlenderFar],
+		[P.fir, P.firFar],
+	],
+	broadleaf: [
+		[P.broadleaf, P.broadleafFar],
+		[P.broadleafRound, P.broadleafRoundFar],
+		[P.broadleafTall, P.broadleafTallFar],
+	],
+	linden: [[P.linden, P.linden]],
+	house: [[P.house, P.houseFar]],
+	church: [[P.church, P.churchFar]],
+	barn: [[P.barn, P.barnFar]],
+	hut: [[P.hut, P.hutFar]],
+	chapel: [[P.chapel, P.chapel]],
+	cow: [[P.cow, P.cowFar]],
+	rock: [[P.rock, P.rock]],
+	bench: [[P.bench, P.bench]],
+	woodpile: [[P.woodpile, P.woodpile]],
+	bales: [[P.bales, P.bales]],
+	wayside: [[P.wayside, P.wayside]],
+	signpost: [[P.signpost, P.signpost]],
+	fountain: [[P.fountain, P.fountain]],
+	fence: [[P.fence, P.fence]],
+	snowpole: [[P.snowpole, P.snowpole]],
+	delineator: [[P.delineator, P.delineator]],
+	steep: [[P.steepSign, P.steepSign]],
+	cattle: [[P.cattleSign, P.cattleSign]],
+	mirror: [[P.mirror, P.mirror]],
+	milkcans: [[P.milkcans, P.milkcans]],
+	cross: [[P.summitCross, P.summitCross]],
+	flag0: [[flag(0), flag(0)]],
+	flag1: [[flag(1), flag(1)]],
+	flag2: [[flag(2), flag(2)]],
+	flag3: [[flag(3), flag(3)]],
 };
 
 /** One thing to draw: its model, where it stands, how it is turned and sized. */
 export type Drawn = {
 	kind: DrawKind;
+	/** Which of its kind's forms it is drawn in; the kind's own when absent. */
+	form?: number;
+	/** A tree's shade, a keyed unit: TONE darker at 0, lighter at 1, its colours' own when absent. */
+	tone?: number;
 	x: number;
 	z: number;
 	base: number;
@@ -110,6 +129,8 @@ export const NEAR_M = 600;
 export const FAR_M = 2500;
 /** Tiles are settled out to this many far rings, so a tile is standing before the eye is within its fade (#3220 O8). */
 export const FETCH_AHEAD = 1.2;
+/** How far a tree's shade strays from its colours' either way (#4256): no two neighbours one green. */
+export const TONE = 0.45;
 /** Instances a family's batch makes room for at first; it grows by half when it runs out. */
 const ROOM = 4096;
 
@@ -129,16 +150,18 @@ export function batchProps(
 	materials: Record<Family, THREE.Material>,
 ) {
 	const meshes = new Map<Family, THREE.BatchedMesh>();
-	const geometry = new Map<DrawKind, [number, number]>();
+	/** Each kind's forms, each as its near and far geometry's id in its family's batch. */
+	const geometry = new Map<DrawKind, [number, number][]>();
 	const kinds = Object.keys(FAMILY) as DrawKind[];
 	for (const family of ['trees', 'buildings', 'stock'] as const) {
 		const mine = kinds.filter((k) => FAMILY[k] === family);
-		const models = mine.map((k) => {
-			const [toNear, toFar] = MODELS[k];
-			const near = flat(toNear(colors));
-			return [near, toFar === toNear ? near : flat(toFar(colors))] as const;
-		});
-		const vertices = [...new Set(models.flat())].reduce(
+		const models = mine.map((k) =>
+			MODELS[k].map(([toNear, toFar]) => {
+				const near = flat(toNear(colors));
+				return [near, toFar === toNear ? near : flat(toFar(colors))] as const;
+			}),
+		);
+		const vertices = [...new Set(models.flat(2))].reduce(
 			(n, g) => n + g.attributes.position.count,
 			0,
 		);
@@ -147,21 +170,34 @@ export function batchProps(
 		mesh.frustumCulled = false;
 		mesh.perObjectFrustumCulled = true;
 		mesh.sortObjects = false;
-		mine.forEach((k, i) => {
-			const [near, far] = models[i];
-			const id = mesh.addGeometry(near);
-			geometry.set(k, [id, far === near ? id : mesh.addGeometry(far)]);
-			near.dispose();
-			if (far !== near) far.dispose();
-		});
+		mine.forEach((k, i) =>
+			geometry.set(
+				k,
+				models[i].map(([near, far]) => {
+					const id = mesh.addGeometry(near);
+					const ids: [number, number] = [
+						id,
+						far === near ? id : mesh.addGeometry(far),
+					];
+					near.dispose();
+					if (far !== near) far.dispose();
+					return ids;
+				}),
+			),
+		);
 		meshes.set(family, mesh);
 	}
+	/** The geometry a thing is drawn with at `ring`: its form's, or its kind's own where it has no such form. */
+	const idOf = (kind: DrawKind, form: number, ring: 0 | 1) => {
+		const forms = geometry.get(kind)!;
+		return (forms[form] ?? forms[0])[ring];
+	};
 
 	type Tile = {
 		cx: number;
 		cz: number;
 		ring: Ring;
-		members: [THREE.BatchedMesh, number, DrawKind][];
+		members: [THREE.BatchedMesh, number, DrawKind, number][];
 	};
 	const tiles = new Map<string, Tile>();
 	const m = new THREE.Matrix4();
@@ -169,13 +205,14 @@ export function batchProps(
 	const up = new THREE.Vector3(0, 1, 0);
 	const at = new THREE.Vector3();
 	const size = new THREE.Vector3();
+	const shade = new THREE.Color();
 
 	/** A tile drawn at `ring`: near models, far ones, or none. */
 	function show(tile: Tile, ring: Ring) {
 		tile.ring = ring;
-		for (const [mesh, id, kind] of tile.members) {
+		for (const [mesh, id, kind, form] of tile.members) {
 			mesh.setVisibleAt(id, ring < 2);
-			if (ring !== 2) mesh.setGeometryIdAt(id, geometry.get(kind)![ring]);
+			if (ring !== 2) mesh.setGeometryIdAt(id, idOf(kind, form, ring));
 		}
 	}
 	const ringOf = (tile: Tile, eye: THREE.Vector3, was: Ring): Ring => {
@@ -201,7 +238,8 @@ export function batchProps(
 				const mesh = meshes.get(FAMILY[p.kind])!;
 				if (mesh.instanceCount >= mesh.maxInstanceCount)
 					mesh.setInstanceCount(Math.ceil(mesh.maxInstanceCount * 1.5));
-				const n = mesh.addInstance(geometry.get(p.kind)![0]);
+				const form = p.form ?? 0;
+				const n = mesh.addInstance(idOf(p.kind, form, 0));
 				q.setFromAxisAngle(up, Math.atan2(p.turn[1], p.turn[0]));
 				mesh.setMatrixAt(
 					n,
@@ -211,7 +249,13 @@ export function batchProps(
 						size.setScalar(p.scale),
 					),
 				);
-				tile.members.push([mesh, n, p.kind]);
+				// Every tree sets its shade: an instance's room is reused, its last shade with it.
+				if (FAMILY[p.kind] === 'trees')
+					mesh.setColorAt(
+						n,
+						shade.setScalar(1 + TONE * (2 * (p.tone ?? 0.5) - 1)),
+					);
+				tile.members.push([mesh, n, p.kind, form]);
 			}
 			// A tile comes in as though it had been near, as every tile once did: held out to its rings' far edges.
 			show(tile, ringOf(tile, eye, 0));

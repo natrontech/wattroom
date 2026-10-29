@@ -90,6 +90,27 @@ describe('the dressing as the GPU draws it (#3076, #3699)', () => {
 		expect(seen(TILE_M / 2 + NEAR_M * 0.98)).toBe('near');
 	});
 
+	it('draws a tree in its own form, near and far, and its own shade (#4256)', () => {
+		const b = batchProps(route, colors, materials);
+		const tree = (form: number, tone: number): Drawn => ({
+			...at('spruce'),
+			form,
+			tone,
+		});
+		b.add('a', centre, [tree(0, 0), tree(1, 1), tree(2, 0.5)], eye());
+		const [mesh] = b.meshes;
+		const ids = () => [0, 1, 2].map((i) => mesh.getGeometryIdAt(i));
+		const near = ids();
+		expect(new Set(near).size).toBe(3);
+		b.update(eye(TILE_M / 2 + NEAR_M * 1.5));
+		const far = ids();
+		expect(new Set(far).size).toBe(3);
+		expect(far.some((id) => near.includes(id))).toBe(false);
+		const shade = (i: number) => mesh.getColorAt(i, new THREE.Color()).r;
+		expect(shade(0)).toBeLessThan(shade(2));
+		expect(shade(2)).toBeLessThan(shade(1));
+	});
+
 	it('draws a tile added far away at its far ring at once, a fraction of the near', () => {
 		const b = batchProps(route, colors, materials);
 		b.add('a', centre, [at('spruce')], eye(TILE_M / 2 + NEAR_M * 1.5));

@@ -12,10 +12,11 @@ describe('the ground material keys rock to slope (#3728)', () => {
 		);
 	});
 
-	it('mixes rock in past the earthworks’ 45° face, textured along the face', () => {
+	it('mixes rock in past the earthworks’ 45° face, one colour per face (ADR-0092)', () => {
 		const f = m.fragmentShader;
-		expect(f).toContain('smoothstep(0.86, 0.66, n.y');
-		expect(f).toContain('mix(base, stone, steep)');
-		expect(f).toContain('vPos.y');
+		expect(f).toContain('smoothstep(0.86, 0.66, n.y)');
+		expect(f).toContain('mix(uRock, vColor, 0.18), steep)');
+		// No detail painted inside a face: no noise, no masonry.
+		expect(f).not.toMatch(/noise|hash|fract\(sin/);
 	});
 });

@@ -4,7 +4,7 @@ import { toRoute, type Route } from '$lib/road/route';
 import { syntheticPoints } from '../synthetic';
 import { generate, type World } from '../world';
 import { FAMILY } from './batch';
-import { ringAt } from './forest';
+import { formOf, ringAt } from './forest';
 
 let route: Route;
 let world: World;
@@ -50,6 +50,46 @@ describe('the forest frames the road (#3675)', () => {
 		expect(paired.length / near.length).toBeGreaterThan(0.2);
 		const heights = near.map((p) => p.scale);
 		expect(Math.max(...heights) - Math.min(...heights)).toBeGreaterThan(0.6);
+	});
+
+	it('stands a group near the road in more than one form, each tree its own shade (#4256)', () => {
+		const near = world.props.filter(
+			(p) => FAMILY[p.kind] === 'trees' && nearest(p.x, p.z).d < 120,
+		);
+		// Every form of each kind stands, none of them most of its kind.
+		for (const kind of ['spruce', 'broadleaf'] as const) {
+			const mine = near.filter((p) => p.kind === kind);
+			const share = [0, 1, 2].map(
+				(f) => mine.filter((p) => p.form === f).length / mine.length,
+			);
+			expect(Math.min(...share), `${kind}'s rarest form`).toBeGreaterThan(0.1);
+			expect(Math.max(...share), `${kind}'s commonest form`).toBeLessThan(0.6);
+		}
+		// A tree beside another is rarely its twin: the same form and shade.
+		const twins = near.filter((p) =>
+			near.some(
+				(q) =>
+					q !== p &&
+					Math.hypot(q.x - p.x, q.z - p.z) < 7 &&
+					q.form === p.form &&
+					Math.abs((q.tone ?? 0) - (p.tone ?? 0)) < 0.1,
+			),
+		);
+		expect(twins.length / near.length).toBeLessThan(0.1);
+	});
+
+	it('grows the high forest slender: its spruces mostly the slender form (#4256)', () => {
+		const at = (height: number) =>
+			[0, 1, 2].map(
+				(f) =>
+					Array.from({ length: 100 }, (_, i) =>
+						formOf(true, height, i / 100),
+					).filter((x) => x === f).length,
+			);
+		const [, slenderHigh] = at(1500);
+		const [, slenderLow] = at(600);
+		expect(slenderHigh).toBeGreaterThan(50);
+		expect(slenderLow).toBeLessThan(slenderHigh / 2);
 	});
 
 	it('stands buildings in clusters, villages and farms alike, almost never a lone box', () => {
