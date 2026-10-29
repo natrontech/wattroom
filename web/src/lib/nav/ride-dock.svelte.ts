@@ -11,10 +11,15 @@ import { theRide } from '$lib/ride/the-ride.svelte';
 // and End ride go. /ride until a ride has been seen on another.
 let screen = $state('/ride');
 
+/** The voice channel's ride while it is the device's ride (#4259). */
+const inChannel = () =>
+	theRide.alone ? null : theRide.channel?.riding ? theRide.channel : null;
+
 /**
- * The ride dock's reading of the ride alone (ADR-0093 point 5): a workout's
- * session or a free ride on a road, whichever `theRide` holds. The dock in
- * the sidebar and its short form in a phone's top bar both read it.
+ * The ride dock's reading of the device's ride (ADR-0093 point 5): a
+ * workout's session or a free ride on a road, whichever `theRide` holds, or
+ * the voice channel's. The dock in the sidebar and its short form in a
+ * phone's top bar both read it.
  */
 export const rideDock = {
 	get screen() {
@@ -26,15 +31,21 @@ export const rideDock = {
 	},
 	/** Time ridden: a workout's clock, or the free ride's. */
 	get seconds(): number {
+		const channel = inChannel();
+		if (channel) return channel.seconds;
 		return theRide.road?.free.seconds ?? theRide.session?.elapsed ?? 0;
 	},
 	get watts(): number {
+		const channel = inChannel();
+		if (channel) return channel.watts;
 		return theRide.road
 			? theRide.road.watts
 			: (theRide.session?.sample?.watts ?? 0);
 	},
 	/** The trainer went quiet: the watts are not live. */
 	get stale(): boolean {
+		const channel = inChannel();
+		if (channel) return channel.stale;
 		return theRide.road ? theRide.road.stale : theRide.signalLost;
 	},
 	/**
@@ -48,6 +59,8 @@ export const rideDock = {
 		name?: string;
 	} | null {
 		const session = theRide.session;
+		// The frame's ChannelStatus says a channel ride's, once (#2885).
+		if (inChannel()) return null;
 		if (rideDock.stale)
 			return {
 				...trainerLine(
@@ -72,6 +85,8 @@ export const rideDock = {
 	 * has nothing ridden yet, so it only cancels, as its screen's Cancel does.
 	 */
 	async end() {
+		const channel = inChannel();
+		if (channel) return endInChannel(channel);
 		const session = theRide.session;
 		const road = theRide.road;
 		const ramp = theRide.ramp;
@@ -89,3 +104,14 @@ export const rideDock = {
 		else session?.stop();
 	},
 };
+
+/** The channel's End ride, from the dock: its free ride, or your own workout. */
+async function endInChannel(channel: NonNullable<typeof theRide.channel>) {
+	const own = channel.ownRide;
+	if (own.session?.state === 'countdown') return own.cancel();
+	if (own.riding && !(await askToEndWorkout())) return;
+	await goto(rideDock.screen);
+	if (!theRide.live || !drawsTheRide(page.url.pathname)) return;
+	if (own.riding) own.session?.stop();
+	else await channel.freeRide.end();
+}

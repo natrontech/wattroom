@@ -44,13 +44,8 @@ const CHANNEL_TO_SESSION: Record<string, { modules: string[]; why: string }> = {
 		why: 'the context says whether anything you paired measures power (#2941), by the rule Start already asks before a session (#2594)',
 	},
 	'lib/channel/connection.svelte.ts': {
-		modules: [
-			'ride.svelte',
-			'recording.svelte',
-			'computer-pages',
-			'computer-shown.svelte',
-		],
-		why: "the trainer and what it recorded belong to the connection, not a page (#521); the phone remote it holds turns the riding screen's computer and hears its page (#4223)",
+		modules: ['recording.svelte', 'computer-pages', 'computer-shown.svelte'],
+		why: "what the session recorded belongs to the connection, not a page (#521), and the trainer is `theRide`'s (ADR-0093); the phone remote it holds turns the riding screen's computer and hears its page (#4223)",
 	},
 	'lib/channel/riders.svelte.ts': {
 		modules: ['recording.svelte'],

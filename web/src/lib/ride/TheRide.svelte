@@ -4,10 +4,13 @@
 	 * TV and its summary, the ramp test, or a free ride on a road, wherever
 	 * the rider opens it. /ride and /ramp draw it, and so does a voice
 	 * channel's Training page while it runs. The ride is `theRide`'s;
-	 * this view only reads it.
+	 * this view only reads it. A voice channel's ride is drawn by its
+	 * Training page (`channel`); anywhere else this sends the rider there.
 	 */
-	import { onDestroy } from 'svelte';
+	import { onDestroy, type Snippet } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { apiBlob } from '$lib/api';
+	import { channelConnection } from '$lib/channel/connection.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { downloadRideCard } from '$lib/ride/card';
@@ -31,9 +34,12 @@
 
 	let {
 		doneHref = '/home',
+		channel,
 	}: {
 		/** Where Done goes. */
 		doneHref?: string;
+		/** The voice channel's own ride, drawn inside its shell (#4259). */
+		channel?: Snippet;
 	} = $props();
 
 	const profile = createProfileStore();
@@ -51,7 +57,14 @@
 	let error = $state<string | null>(null);
 
 	// A save that answers with no page drawing the ride lands as a toast (#1544).
-	$effect(() => theRide.showing());
+	$effect(() => (theRide.held ? theRide.showing() : undefined));
+	// The device has one ride (ADR-0093): the channel's is drawn on its
+	// Training page, so /ride and /ramp open that rather than a second Start.
+	$effect(() => {
+		const training = channelConnection.current?.address.training;
+		if (!channel && !theRide.held && theRide.channel?.riding && training)
+			void goto(training, { replaceState: true });
+	});
 	// Leaving the riding screen never ends the ride (ADR-0093). A summary the
 	// rider walked away from is done with, so the next one opens on the setup.
 	onDestroy(() => theRide.dismiss());
@@ -294,4 +307,6 @@
 			{/snippet}
 		</SessionSummary>
 	</div>
+{:else if channel}
+	{@render channel()}
 {/if}
