@@ -1,7 +1,7 @@
 <script lang="ts">
 	/**
-	 * The app's ride alone, drawn (ADR-0093): the riding screen, its TV and
-	 * its summary, wherever the rider opens it. /ride draws it, and so does a
+	 * The app's ride alone, drawn (ADR-0093): a workout's riding screen, its
+	 * TV and its summary, or a free ride on a road, wherever the rider opens it. /ride draws it, and so does a
 	 * voice channel's Training page while it runs. The ride is `theRide`'s;
 	 * this view only reads it.
 	 */
@@ -15,6 +15,7 @@
 	import RideFlags from '$lib/ride/RideFlags.svelte';
 	import RideStatus from '$lib/ride/RideStatus.svelte';
 	import RidingScreen from '$lib/ride/RidingScreen.svelte';
+	import RoadRiding from '$lib/ride/RoadRiding.svelte';
 	import SessionSummary from '$lib/ride/SessionSummary.svelte';
 	import { theRide } from '$lib/ride/the-ride.svelte';
 	import WorldPicture from '$lib/ride/WorldPicture.svelte';
@@ -158,7 +159,9 @@
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && (tv = false)} />
 
-{#if session && session.state !== 'done'}
+{#if theRide.road}
+	<RoadRiding route={theRide.road.route} {doneHref} />
+{:else if session && session.state !== 'done'}
 	<!-- The count-in is the ride's own screen (ADR-0046, #1800): flat, the
 	     one digit; over the world, the slots already in place (#3668). -->
 	<!-- Under the TV the riding screen keeps running, unseen and unread: the

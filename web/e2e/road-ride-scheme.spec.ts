@@ -1,18 +1,20 @@
 import { expect, test } from './crew';
+import { follow } from './follow';
 import { climbGpx } from './road-gpx';
 import { inRidersScheme, RIDE_FRAME } from './scheme';
 import { signInAs } from './signin';
 
 /**
  * A free ride on a road is a ride (#3667): from the first stroke to End ride
- * the frame is the ride, sidebar included, and hides the desk's sentences; a
- * stray tap on the rail asks before leaving. Every step keeps the rider's
- * scheme (Jan, 2026-10-25, #4160): captured with the OS in light, where the
- * cave used to turn the whole app dark at the first stroke.
+ * the frame is the ride, sidebar included, and hides the desk's sentences.
+ * It is the rider's (ADR-0093, #4259): the rail opens another page without
+ * asking, the ride runs on there, and /ride draws it again. Every step keeps
+ * the rider's scheme (Jan, 2026-10-25, #4160): captured with the OS in light,
+ * where the cave used to turn the whole app dark at the first stroke.
  */
 test.use({ colorScheme: 'light' });
 
-test('a free ride on a road keeps the rider’s scheme, and asks before leaving', async ({
+test('a free ride on a road keeps the rider’s scheme, and runs on off its page', async ({
 	page,
 }) => {
 	test.skip(
@@ -71,13 +73,16 @@ test('a free ride on a road keeps the rider’s scheme, and asks before leaving'
 		.getByRole('link', { name: 'Home', exact: true })
 		.first()
 		.click();
-	const ask = page.getByRole('dialog', { name: 'Leave the ride?' });
-	await expect(ask, 'the rail took the ride without asking').toBeVisible();
-	// The OS is light, and the confirm mounts outside the frame (#3788).
-	expect(await inRidersScheme(ask), 'the confirm turned dark').toBe(true);
-	await ask.getByRole('button', { name: 'Keep riding' }).click();
-	await expect(page).toHaveURL(/\/ride\?road=/);
-	await expect(frame).toHaveCount(1);
+	await page.waitForURL((url) => url.pathname === '/home', {
+		timeout: 15_000,
+	});
+	await expect(page.getByRole('dialog'), 'the rail asked mid-ride').toHaveCount(
+		0,
+	);
+	// Off its screens the ride runs on unseen, and the frame is a desk frame.
+	await expect(frame, 'Home wore the ride’s frame').toHaveCount(0);
+	await follow(page, '/ride');
+	await expect(frame, 'the ride ended when its page closed').toHaveCount(1);
 
 	// End ride, which reads “Save at km x” partway up your own road (#3205).
 	await page.getByRole('button', { name: /^(End ride|Save at km)/ }).click();
