@@ -23,6 +23,8 @@
 	import { themeFor } from '$lib/themes';
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { soloRide } from '$lib/workout/ride-life.svelte';
+	import { theRide } from '$lib/ride/the-ride.svelte';
+	import { drawsTheRide } from '$lib/ride/ride-screens';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { pullProfile } from '$lib/profile-sync.svelte';
 	import { dmHeads } from '$lib/dm/heads.svelte';
@@ -173,17 +175,22 @@
 	// `data-ride` below and, in the desktop shell, the floating HUD (ADR-0041): it opens when a
 	// ride starts and closes when it ends, and the shell shows it only while
 	// WattRoom is not the front window. A free ride is a ride (#2843).
+	// The ride alone outlives its screens (ADR-0093): the frame is the ride
+	// only while one of them draws it, and a desk frame everywhere else.
+	const alone = $derived(
+		theRide.live ? drawsTheRide(page.url.pathname) : soloRide.active,
+	);
 	const riding = $derived(
 		(channelConnection.onPlacePath(page.url.pathname) &&
 			!!channelConnection.current?.riding()) ||
-			soloRide.active,
+			alone,
 	);
 	// A solo ride has no timeline to write a DM into (#1743), so it takes the
 	// line and leaves it to the unread badge in the sidebar, which was already
 	// carrying it. Registered from here rather than from /ride and /ramp:
 	// `soloRide` is the app-wide answer to "is a ride under way", and this
 	// layout already reads it for the ride's frame and the HUD.
-	$effect(() => divertWhileRiding(() => untrack(() => soloRide.active)));
+	$effect(() => divertWhileRiding(() => untrack(() => alone)));
 
 	// The shell's sign-in hand-off (#1941): the token arrives over IPC and the
 	// app decides — /login redeems it; a signed-in shell says so and stays put.
@@ -206,7 +213,7 @@
 			globalThis as {
 				wattroom?: { hud?: (on: boolean, background: string) => void };
 			}
-		).wattroom?.hud?.(riding, cave);
+		).wattroom?.hud?.(riding || theRide.live, cave);
 	});
 
 	// The shell's tray (#1313): the place it can take the rider back to, and
