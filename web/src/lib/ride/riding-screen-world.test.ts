@@ -68,7 +68,7 @@ describe('the world on a ride', () => {
 	it('is mounted on a ride on a road', () => {
 		const onRoad = withProfile(
 			{ ...openers, road: { routeId: 'r1', fromM: 0, toM: 2000 } },
-			legsRoad([1000, 0], [1000, 5]),
+			{ road: legsRoad([1000, 0], [1000, 5]) },
 		);
 		expect(screen(onRoad)).toContain('data-surface="docked"');
 	});
@@ -76,7 +76,7 @@ describe('the world on a ride', () => {
 	it('gives slot 1 its controls as named 44 px icons with tooltips, End ride the one word (TARGETS ride-road-world 7)', () => {
 		const onRoad = withProfile(
 			{ ...openers, road: { routeId: 'r1', fromM: 0, toM: 2000 } },
-			legsRoad([1000, 0], [1000, 5]),
+			{ road: legsRoad([1000, 0], [1000, 5]) },
 		);
 		const html = screen(onRoad, { onTv: () => {}, onFlag: () => {} });
 		// ⚑ keeps its own kit (FlagButton): a name and the tooltip that asks.

@@ -12,6 +12,8 @@ export interface RideableRoute {
 	/** The generated name legs go out under, never the owner's rename (#3055). */
 	generatedName?: string;
 	road: Road;
+	/** It ends where it began (#3680): a ride on it rolls into the next lap (#4261). */
+	loop?: boolean;
 	/**
 	 * Someone else's road, the crew's cut of it (#3621): ridden, never saved
 	 * against — the server keeps a ride only on the rider's own route.
@@ -88,6 +90,7 @@ export async function loadRoad(
 				name: res.data.name,
 				generatedName: res.data.generatedName,
 				road,
+				loop: !!res.data.loop,
 			},
 		};
 	} catch {

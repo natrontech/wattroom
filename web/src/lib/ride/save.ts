@@ -48,6 +48,8 @@ export function recordingUpload(
 		released: boolean;
 		m?: number;
 		alt?: number;
+		lap?: number;
+		reverse?: boolean;
 	}[],
 	/** Ridden on a borrowed road, which has no route row to save against (#3621, #4262). */
 	{ borrowed = false }: { borrowed?: boolean } = {},
@@ -71,6 +73,8 @@ export function recordingUpload(
 			clock: Math.floor(sample.clock),
 			released: sample.released,
 			...(sample.m !== undefined && { m: sample.m, alt: sample.alt }),
+			...(sample.lap && { lap: sample.lap }),
+			...(sample.reverse && { reverse: true }),
 		})),
 		...(onRoad && {
 			routeId: workout.road!.routeId,

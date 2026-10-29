@@ -74,6 +74,10 @@ export function createRoadRide(
 	return {
 		road,
 		from: start,
+		/** The pace's speed, m/s, which `atEnd` reads as 0: what crossed the line. */
+		get mps() {
+			return pace.speed;
+		},
 		/** Where it stands before its first second: where the lap starts. */
 		start: (): RoadSecond => place(1),
 		/**
@@ -118,31 +122,40 @@ export interface RoadSampleFields {
  * the way they came or rides it again, and it stays one ride. Every sample
  * says its lap and a lap's first says which way it runs — what the server's
  * replay rides it by (#3598). A lap may start anywhere on the road: "Ride
- * with <name>" starts one at a channel-mate's metre (#3117).
+ * with <name>" starts one at a channel-mate's metre (#3117). A loop has no
+ * end (#4261): at the line the next lap starts by itself, at speed.
  */
 export function createRoadLaps(
 	road: Road,
-	opts: { kg: () => number; from?: number; reverse?: boolean },
+	opts: { kg: () => number; from?: number; reverse?: boolean; loop?: boolean },
 ) {
-	let lap = 0;
 	let reverse = !!opts.reverse;
-	let opening = reverse;
+	// A lap is numbered when its first sample is recorded, so a lap nothing
+	// was recorded on is never numbered past: the server takes laps one after
+	// another (#3598). Each second keeps the lap it was ridden in, since a
+	// free ride records where its second began, which a loop's line may since
+	// have put a lap behind (#4261).
+	let riding = 0;
+	/** The lap a sample was last recorded in, and its number; -1 before the first. */
+	let kept = -1;
+	let numbered = 0;
+	const ridden = new WeakMap<RoadSecond, { lap: number; reverse: boolean }>();
+	const tag = (here: RoadSecond) => {
+		ridden.set(here, { lap: riding, reverse });
+		return here;
+	};
 	const grade = createRideGrade();
 	let ride = createRoadRide(road, { ...opts, grade });
 	let last: RoadSecond | null = null;
-	let recorded = false;
 	/** The next lap from `from` on the stored road, `way` along it. */
-	function next(from: number, way: boolean) {
+	function next(from: number, way: boolean, carried?: number) {
 		reverse = way;
-		// A lap nothing was recorded on is replaced, never numbered past: the
-		// server takes laps one after another (#3598).
-		if (recorded) lap += 1;
-		recorded = false;
-		opening = true;
+		riding += 1;
 		// From the start of its way a lap rides off from standstill; from
-		// anywhere else it keeps this one's speed, as the replay does (#3117).
-		const atStart = way ? from >= road.length : from <= 0;
-		const mps = atStart ? 0 : (last?.virtualMps ?? 0);
+		// anywhere else, and anywhere on a loop, it keeps this one's speed, as
+		// the replay does (#3117, #4261).
+		const atStart = !opts.loop && (way ? from >= road.length : from <= 0);
+		const mps = atStart ? 0 : (carried ?? last?.virtualMps ?? 0);
 		ride = createRoadRide(road, { kg: opts.kg, from, reverse, mps, grade });
 	}
 	return {
@@ -150,17 +163,25 @@ export function createRoadLaps(
 		get from() {
 			return ride.from;
 		},
+		/** The number this lap's samples go up with. */
 		get lap() {
-			return lap;
+			return kept < 0 || kept === riding ? numbered : numbered + 1;
 		},
 		/** This lap runs back down the road, from its far end (#3205). */
 		get reverse() {
 			return reverse;
 		},
-		second: (watts: number, at: number): RoadSecond =>
-			(last = ride.second(watts, at)),
+		second(watts: number, at: number): RoadSecond {
+			last = tag(ride.second(watts, at));
+			if (opts.loop && last.atEnd) {
+				next(reverse ? road.length : 0, reverse, ride.mps);
+				// The lap's first sample stands on the line (#3117).
+				last = tag(ride.start());
+			}
+			return last;
+		},
 		/** Where this lap starts, before its first second. */
-		start: (): RoadSecond => ride.start(),
+		start: (): RoadSecond => tag(ride.start()),
 		/** The next lap, from the end this one reached (#3205). */
 		turn(way: 'back' | 'again') {
 			const back = way === 'back' ? !reverse : reverse;
@@ -172,11 +193,13 @@ export function createRoadLaps(
 		},
 		/** The recorded fields of a sample at `here`, once per recorded second. */
 		fields(here: RoadSecond): RoadSampleFields {
+			const of = ridden.get(here) ?? { lap: riding, reverse };
+			const opens = of.lap !== kept;
+			if (opens && kept >= 0) numbered += 1;
+			kept = of.lap;
 			const out: RoadSampleFields = { m: here.m, alt: here.alt };
-			if (lap > 0) out.lap = lap;
-			if (opening && reverse) out.reverse = true;
-			opening = false;
-			recorded = true;
+			if (numbered > 0) out.lap = numbered;
+			if (opens && of.reverse) out.reverse = true;
 			return out;
 		},
 	};

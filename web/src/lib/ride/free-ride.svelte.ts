@@ -127,6 +127,8 @@ export function createFreeRide(deps: {
 					length: onRoad.route.road.length,
 					lap: onRoad.laps.lap,
 					borrowed: !!onRoad.route.borrowed,
+					/** It has no end: each lap rolls into the next (#4261). */
+					loop: !!onRoad.route.loop,
 					/** The road's own heights, for the Skyline (#3059). */
 					profile: onRoad.route.road,
 					/** This lap rides it back from the far end: `m` counts down. */
@@ -218,6 +220,7 @@ export function createFreeRide(deps: {
 			const laps = createRoadLaps(route.road, {
 				kg: () => deps.kg?.() ?? 0,
 				from,
+				loop: route.loop,
 			});
 			ramp = null;
 			onRoad = { route, laps };
@@ -254,6 +257,7 @@ export function createFreeRide(deps: {
 						kg: () => deps.kg?.() ?? 0,
 						from: m,
 						reverse,
+						loop: onRoad.route.loop,
 					}),
 				};
 			else onRoad.laps.jump(m, reverse);

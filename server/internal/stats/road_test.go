@@ -33,7 +33,7 @@ func rodeAt(seconds, watts int, from, clientMps float64) []protocol.RiderMetrics
 func TestReplayRoadIsThePaceAlongTheRoad(t *testing.T) {
 	r := storedRoad(t, 20_000, 0)
 	mass := float64(protocol.ReferenceRiderKg + protocol.BikeKg)
-	got := ReplayRoad(r, rodeAt(600, 225, 3000, 9), nil, mass)
+	got := ReplayRoad(r, rodeAt(600, 225, 3000, 9), nil, mass, false)
 
 	p := road.Pace{}
 	for range 600 {
@@ -46,7 +46,7 @@ func TestReplayRoadIsThePaceAlongTheRoad(t *testing.T) {
 
 func TestReplayRoadStopsAtTheRoadsEnd(t *testing.T) {
 	r := storedRoad(t, 2000, 40)
-	got := ReplayRoad(r, rodeAt(3600, 300, 500, 9), nil, 83)
+	got := ReplayRoad(r, rodeAt(3600, 300, 500, 9), nil, 83, false)
 	if math.Abs(got.DistanceM-(2000-509)) > 1e-9 {
 		t.Fatalf("distance %.2f m, want the 1491 m left of the road", got.DistanceM)
 	}
@@ -60,12 +60,12 @@ func TestReplayRoadStopsAtTheRoadsEnd(t *testing.T) {
 func TestReplayRoadMeasuresTheClientsGap(t *testing.T) {
 	r := storedRoad(t, 20_000, 0)
 	mass := 83.0
-	honest := ReplayRoad(r, rodeAt(600, 225, 0, 0), nil, mass)
+	honest := ReplayRoad(r, rodeAt(600, 225, 0, 0), nil, mass, false)
 	perSecond := honest.DistanceM / 600
-	if got := ReplayRoad(r, rodeAt(600, 225, 0, perSecond), nil, mass).Gap; got > 0.002 {
+	if got := ReplayRoad(r, rodeAt(600, 225, 0, perSecond), nil, mass, false).Gap; got > 0.002 {
 		t.Errorf("a client that rode the replay's pace parts by %.4f", got)
 	}
-	if got := ReplayRoad(r, rodeAt(600, 225, 0, perSecond*1.05), nil, mass).Gap; got < ReplayGapLogged {
+	if got := ReplayRoad(r, rodeAt(600, 225, 0, perSecond*1.05), nil, mass, false).Gap; got < ReplayGapLogged {
 		t.Errorf("a client 5 %% ahead parts by only %.4f", got)
 	}
 }
@@ -110,7 +110,7 @@ func TestARoadRideWithLapsRidesEachLapItsWay(t *testing.T) {
 			9, 2 * 1991, 2 * 40 * 1991 / 2000.0,
 		},
 	} {
-		got := ReplayRoad(c.road, c.samples, c.laps, 83)
+		got := ReplayRoad(c.road, c.samples, c.laps, 83, false)
 		if got.FromM != c.from || math.Abs(got.DistanceM-c.dist) > 1e-6 || math.Abs(got.ClimbedM-c.climb) > 0.01 {
 			t.Errorf("%s: from %v m, %.2f m, climbing %.2f m; want from %v, %.2f m, climbing %.2f m",
 				c.name, got.FromM, got.DistanceM, got.ClimbedM, c.from, c.dist, c.climb)
@@ -153,10 +153,36 @@ func TestALapFromAMetreKeepsTheSpeedOfTheLapBefore(t *testing.T) {
 			1907, 93 + paced(30),
 		},
 	} {
-		got := ReplayRoad(up, c.samples, []Lap{{Start: 0}, {Start: 60}}, mass)
+		got := ReplayRoad(up, c.samples, []Lap{{Start: 0}, {Start: 60}}, mass, false)
 		if got.FromM != c.from || math.Abs(got.DistanceM-c.dist) > 1e-6 {
 			t.Errorf("%s: from %v m, %.3f m; want from %v, %.3f m", c.name, got.FromM, got.DistanceM, c.from, c.dist)
 		}
+	}
+}
+
+// On a loop the line is no stop (#4261): a lap rolls over it into the next
+// at the speed it crossed it, as the client's dot does, where an open road's
+// next lap rides off from standstill.
+func TestALoopsNextLapRollsOverTheLineAtSpeed(t *testing.T) {
+	up := storedRoad(t, 2000, 40)
+	const mass = 83.0
+	samples := append(rodeAt(60, 300, 1900, 7), rodeAt(30, 300, -7, 7)...)
+	laps := []Lap{{Start: 0}, {Start: 60}}
+	// The first lap to the line from 1,907 m, then thirty seconds on from it.
+	to := road.Pace{}
+	for to.Distance < 93 {
+		to.Step(300, up.GradeAt(1907+to.Distance), mass, protocol.PaceDefaultCdA, 0)
+	}
+	on := road.Pace{Speed: to.Speed}
+	for range 30 {
+		on.Step(300, up.GradeAt(on.Distance), mass, protocol.PaceDefaultCdA, 0)
+	}
+	got := ReplayRoad(up, samples, laps, mass, true)
+	if want := 93 + on.Distance; math.Abs(got.DistanceM-want) > 1e-6 {
+		t.Errorf("a loop rode %.3f m; want %.3f m", got.DistanceM, want)
+	}
+	if open := ReplayRoad(up, samples, laps, mass, false); open.DistanceM >= got.DistanceM {
+		t.Errorf("an open road's standing start rode %.3f m, no less than the loop's %.3f m", open.DistanceM, got.DistanceM)
 	}
 }
 

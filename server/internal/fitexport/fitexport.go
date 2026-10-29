@@ -74,8 +74,9 @@ type Sample struct {
 	Watts     uint16
 	Cadence   uint8
 	HeartRate uint8
-	// Metres along the road and the height there — read only on a Ride with
-	// Road set, where 0 is a real place rather than "not measured".
+	// Metres ridden, counted from the first sample's, and the height there —
+	// read only on a Ride with Road set, where 0 is a real place rather than
+	// "not measured". A road ridden one way can give its metres along it.
 	Distance float64
 	Altitude float64
 }
@@ -97,16 +98,45 @@ type Ride struct {
 
 // FromMetrics is a stored ride as the encoder takes it: one record a second,
 // numbered from the start, and on a road when any sample moved along one.
-func FromMetrics(startedAt time.Time, metrics []protocol.RiderMetrics) Ride {
+// replayedM is the ride's distance_m, the server's replay, nil when it has
+// none.
+func FromMetrics(startedAt time.Time, metrics []protocol.RiderMetrics, replayedM *int32) Ride {
 	ride := Ride{StartedAt: startedAt, Samples: make([]Sample, len(metrics))}
+	distance := ridden(metrics, replayedM)
 	for i, m := range metrics {
 		ride.Samples[i] = Sample{
 			Second: i, Watts: clampU16(m.Watts), Cadence: clampU8(m.Cadence), HeartRate: clampU8(m.HR),
-			Distance: m.M, Altitude: m.Alt,
+			Distance: distance[i], Altitude: m.Alt,
 		}
 		ride.Road = ride.Road || m.M > 0
 	}
 	return ride
+}
+
+// ridden is how far a stored ride had gone at each sample (#4269). Its
+// samples keep the metres along the road and no lap (#3598): a lap ridden
+// back counts them down, and a loop's line or a jump to a channel-mate's
+// metre starts them again anywhere. Within a lap they move at most
+// MaxRoadSpeedMps a second, either way, so a longer step is a new lap
+// starting under the rider, ridden at the second before's pace (#4261). The
+// replay's distance is the record (ADR-0074): the metres end on it.
+func ridden(metrics []protocol.RiderMetrics, replayedM *int32) []float64 {
+	out := make([]float64, len(metrics))
+	step := 0.0
+	for i := 1; i < len(metrics); i++ {
+		if d := math.Abs(metrics[i].M - metrics[i-1].M); d <= protocol.MaxRoadSpeedMps {
+			step = d
+		}
+		out[i] = out[i-1] + step
+	}
+	if len(out) == 0 || replayedM == nil || *replayedM <= 0 || out[len(out)-1] == 0 {
+		return out
+	}
+	scale := float64(*replayedM) / out[len(out)-1]
+	for i := range out {
+		out[i] *= scale
+	}
+	return out
 }
 
 // Encode writes ride as a .fit Activity file.

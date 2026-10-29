@@ -76,7 +76,7 @@ func (s *Service) encode(ride db.GetRideForUploadRow) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return fitexport.Encode(fitexport.FromMetrics(ride.StartedAt.Time, metrics))
+	return fitexport.Encode(fitexport.FromMetrics(ride.StartedAt.Time, metrics, ride.DistanceM))
 }
 
 // post sends the multipart upload; external_id is the ride's UUID so a

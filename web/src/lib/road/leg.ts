@@ -24,7 +24,7 @@ export function legsOf(
 		},
 		ftp,
 		riderKg + BikeKg,
-	).map((leg) => withProfile(leg, route.road));
+	).map((leg) => withProfile(leg, route));
 }
 
 /** The offer at leg k's summary (1-based), or null when the route ends with it. */

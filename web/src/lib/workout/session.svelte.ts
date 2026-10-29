@@ -136,9 +136,7 @@ export function createRideSession({
 		const recorded = record.add(
 			raw.at,
 			clock.seconds,
-			road
-				? { ...next, virtualMps: road.virtualMps, m: dot.m, alt: road.alt }
-				: next,
+			road ? { ...next, virtualMps: road.virtualMps, ...dot.fields() } : next,
 			aim.bias,
 			!guards.scoring,
 		);
