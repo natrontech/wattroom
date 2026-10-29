@@ -446,7 +446,11 @@
 			<RideWorld
 				road={on.profile}
 				loop={on.loop}
-				metre={() => ({ m: road?.m ?? on.m, mps: road?.virtualMps ?? 0 })}
+				metre={() => ({
+					m: road?.m ?? on.m,
+					mps: road?.virtualMps ?? 0,
+					reverse: road?.reverse ?? on.reverse,
+				})}
 				{mates}
 				{watts}
 				silent={stale}

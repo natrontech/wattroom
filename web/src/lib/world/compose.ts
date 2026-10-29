@@ -168,7 +168,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	const you = riders.find((r) => r.you) ?? riders[0];
 	// On a ride your figure is the ride's; only the gallery's crew is stepped here.
 	const stepped = opts.metre ? riders.filter((r) => r !== you) : riders;
-	const follow = followMetre();
+	const follow = followMetre(route);
 	// What each rider's legs are doing, kept across style changes.
 	const legs = new WeakMap<SimRider, Pedalling>();
 	const pedal = (r: SimRider): Pedalling => {
@@ -180,7 +180,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	// The bunch's riders by id, so a figure keeps its legs from frame to frame.
 	const crewmates = new Map<string, SimRider>();
 	// Channel-mates on a free ride's road or racers on a race's, each on their own metre (#3117, #3778).
-	const alongside = opts.mates ? createAlongside() : null;
+	const alongside = opts.mates ? createAlongside(route) : null;
 	// What each of them wears, spread over the bunch in its join order (#3791); worked out again only when that order changes.
 	let looks = new Map<string, Loadout>();
 	let lookedAt = '';

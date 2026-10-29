@@ -103,6 +103,36 @@ describe('channel-mates on a free ride’s road', () => {
 		expect([of('ana').faded, of('ana').ring]).toEqual([true, false]);
 	});
 
+	it('keeps mates riding the other way in their own half of the road (#4261)', () => {
+		const you = simRider({
+			id: 'me',
+			name: 'Me',
+			mass: 0,
+			ftp: 250,
+			you: true,
+			watts: 0,
+			d: 300,
+		});
+		const back = (id: string, m: number): RoadMate => ({
+			...kim(m, -8),
+			id,
+			reverse: true,
+		});
+		const ridden = createAlongside().step(
+			you,
+			[back('ana', 500), kim(400), back('bo', 600), back('cy', 700)],
+			0,
+		);
+		const of = (id: string) => ridden.find((r) => r.id === id)!;
+		// Lanes are metres left of the middle as each rider faces.
+		for (const id of ['ana', 'bo', 'cy']) {
+			expect(of(id).reverse, id).toBe(true);
+			expect(of(id).lane!, id).toBeLessThan(0);
+		}
+		expect(of('kim').reverse).toBe(false);
+		expect(of('kim').lane).not.toBeCloseTo(you.lane!, 1);
+	});
+
 	it('leaves a session’s bunch to the bunch: mates draw only where it has no view (#3778)', () => {
 		let hud: Hud | null = null;
 		const w = compose(

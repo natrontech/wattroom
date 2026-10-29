@@ -5,7 +5,14 @@ import * as THREE from 'three';
 import { ROAD_LIFT, yOf } from './geometry';
 import { across, bankOf } from './terrain/road-profile';
 import { type Route } from '$lib/road/route';
-import { at, closes, curvature, leftOf, sampleAt } from '$lib/road/along';
+import {
+	at,
+	closes,
+	curvature,
+	lapEnd,
+	leftOf,
+	sampleAt,
+} from '$lib/road/along';
 
 /**
  * The trail lies on this much road behind you and fades out along it
@@ -50,21 +57,27 @@ export function makeTrail(color: string) {
 	mesh.frustumCulled = false;
 	return {
 		mesh,
-		/** Lays the line on the road behind `d`, in the lane you ride. */
-		follow(route: Route, d: number, lane: number) {
+		/** Lays the line on the road behind `d`, in the lane you ride, the way you ride (#4261). */
+		follow(route: Route, d: number, lane: number, reverse = false) {
 			// Off a road's start, or a lap's on a road whose ends lie apart, it starts afresh.
 			const round = closes(route);
 			const from = route.loop ? Math.floor(d / route.length) * route.length : 0;
+			const way = reverse ? -1 : 1;
+			// The lane as the road's middle has it: back down the road, your left is its right.
+			const side = lane * way;
 			for (let i = 0; i < rows; i++) {
-				const back = d - (i / TRAIL_N) * TRAIL_M;
-				const p = at(route, round ? back : Math.max(from, back));
+				const back = d - way * (i / TRAIL_N) * TRAIL_M;
+				const held = reverse
+					? Math.min(lapEnd(route, d), back)
+					: Math.max(from, back);
+				const p = at(route, round ? back : held);
 				const { lx, lz } = leftOf(p.heading);
-				const x = p.x + lx * lane;
-				const z = p.z + lz * lane;
+				const x = p.x + lx * side;
+				const z = p.z + lz * side;
 				// On the ribbon where your lane crosses it, banked as the ribbon is, a hair above it.
 				const k = curvature(route, sampleAt(route, back));
 				const y =
-					yOf(route, p.ele) + ROAD_LIFT + across(lane, bankOf(k)) + 0.03;
+					yOf(route, p.ele) + ROAD_LIFT + across(side, bankOf(k)) + 0.03;
 				const w = TRAIL_W / 2;
 				attr.setXYZ(i * 2, x + lx * w, y, z + lz * w);
 				attr.setXYZ(i * 2 + 1, x - lx * w, y, z - lz * w);

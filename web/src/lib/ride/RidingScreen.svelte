@@ -308,6 +308,7 @@
 				metre={() => ({
 					m: session.road?.along ?? on.along,
 					mps: session.road?.mps ?? 0,
+					reverse: session.road?.reverse ?? on.reverse,
 				})}
 				{watts}
 				silent={signalLost}
