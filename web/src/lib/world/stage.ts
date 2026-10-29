@@ -17,7 +17,7 @@ import { batchBoards } from './boards';
 import { archOnRoad } from './furniture';
 import type { Piece } from './setpieces';
 import { plinth, road, roadMaterial, ROAD_W, terrain, yOf } from './geometry';
-import { PROP_RAMP, ramp, toon, type Sight } from './materials';
+import { flat, type Sight } from './materials';
 import { piecePool } from './piece-pool';
 import { CHUNK_M } from './place/lattice';
 import { prng } from './rand';
@@ -131,7 +131,6 @@ export function buildStage(
 	finish = true,
 ): Stage {
 	const group = new THREE.Group();
-	const gradient = ramp(PROP_RAMP);
 
 	const skyMat = skyMaterial(style);
 	const sky = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 16), skyMat);
@@ -220,9 +219,9 @@ export function buildStage(
 	group.add(tag('road', overview));
 
 	const c = style.props;
-	const treeMat = toon(gradient, sight, { wind: true, fade: true });
-	const houseMat = toon(gradient, sight, { fade: true });
-	const plain = toon(gradient, sight);
+	const treeMat = flat(sight, { wind: true, fade: true });
+	const houseMat = flat(sight, { fade: true });
+	const plain = flat(sight);
 	const props = batchProps(route, c, {
 		trees: treeMat,
 		buildings: houseMat,

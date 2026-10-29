@@ -1,117 +1,12 @@
-// Low-poly prop models built in code: each is one merged geometry with vertex
-// colours, so a whole forest is one instanced draw call. Proportions are
-// chunky on purpose — they read at 30 m from a chase camera.
+// Low-poly prop models built in code (ADR-0092): each is one merged geometry
+// with its colours flat per face or per part, so a whole village is one
+// batched draw. Proportions are chunky on purpose: a prop is a handful of
+// faces that reads at 30 m from a chase camera. The trees are trees.ts's.
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { box, cyl, facets, merge, tint } from './model';
 import type { PropColors } from './styles';
 
-// Vertex colours from `color` at the bottom to `top` at the top.
-function tint(
-	g: THREE.BufferGeometry,
-	color: string,
-	top?: string,
-): THREE.BufferGeometry {
-	const geo = g.index ? g.toNonIndexed() : g;
-	const a = new THREE.Color(color);
-	const b = new THREE.Color(top ?? color);
-	const pos = geo.attributes.position;
-	let minY = Infinity;
-	let maxY = -Infinity;
-	for (let i = 0; i < pos.count; i++) {
-		minY = Math.min(minY, pos.getY(i));
-		maxY = Math.max(maxY, pos.getY(i));
-	}
-	const c = new Float32Array(pos.count * 3);
-	const t = new THREE.Color();
-	for (let i = 0; i < pos.count; i++) {
-		t.copy(a).lerp(b, (pos.getY(i) - minY) / (maxY - minY || 1));
-		c.set([t.r, t.g, t.b], i * 3);
-	}
-	geo.setAttribute('color', new THREE.BufferAttribute(c, 3));
-	geo.deleteAttribute('uv');
-	return geo;
-}
-
-function merge(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
-	const g = mergeGeometries(parts.map((p) => (p.index ? p.toNonIndexed() : p)));
-	if (!g) throw new Error('props: parts do not share attributes');
-	parts.forEach((p) => p.dispose());
-	g.computeVertexNormals();
-	return g;
-}
-
-const box = (w: number, h: number, d: number) => new THREE.BoxGeometry(w, h, d);
-const cyl = (top: number, bottom: number, h: number, seg: number) =>
-	new THREE.CylinderGeometry(top, bottom, h, seg);
-
-// A tree's trunk runs this far on below the ground, as a building's foundation
-// does: its plinth, so a tree on a hillside stands on its uphill side and its
-// root fills the downhill one (#3076). It covers the steepest forest land.ts
-// grows (0.85) under the widest trunk (1 m at the largest scale, 1.45).
-export const ROOT_M = 1.2;
-
-// A spruce: three stacked cones, slightly offset so it never looks stamped.
-export function spruce(c: PropColors) {
-	return merge([
-		tint(
-			cyl(0.35, 0.5, 3 + ROOT_M, 5).translate(0, (3 - ROOT_M) / 2, 0),
-			c.trunk,
-		),
-		tint(
-			new THREE.ConeGeometry(4.2, 7, 7).translate(0, 5.5, 0),
-			c.spruce,
-			c.spruceTip,
-		),
-		tint(
-			new THREE.ConeGeometry(3.3, 6, 7).rotateY(0.4).translate(0.1, 9, 0),
-			c.spruce,
-			c.spruceTip,
-		),
-		tint(
-			new THREE.ConeGeometry(2.2, 5, 7)
-				.rotateY(0.9)
-				.translate(-0.1, 12.4, 0.05),
-			c.spruce,
-			c.spruceTip,
-		),
-	]);
-}
-
-function leafBlob(
-	c: PropColors,
-	detail: number,
-	r: number,
-	x: number,
-	y: number,
-	z: number,
-) {
-	const g = new THREE.IcosahedronGeometry(r, detail);
-	g.scale(1, 0.85, 1);
-	return tint(g.translate(x, y, z), c.leaf, c.leafLight);
-}
-
-// A broadleaf: a trunk and two lumpy blobs.
-export function broadleaf(c: PropColors) {
-	return merge([
-		tint(
-			cyl(0.3, 0.45, 4.5 + ROOT_M, 5).translate(0, (4.5 - ROOT_M) / 2, 0),
-			c.trunk,
-		),
-		leafBlob(c, 0, 3.6, 0, 6.6, 0),
-		leafBlob(c, 0, 2.6, 1.6, 8.2, -0.8),
-		leafBlob(c, 0, 2.2, -1.5, 7.8, 1),
-	]);
-}
-
-// A tall broadleaf to stand beside a chapel — the landmark that reads against the sky.
-export function linden(c: PropColors) {
-	return merge([
-		tint(cyl(0.5, 0.8, 7, 7).translate(0, 3.5, 0), c.trunk),
-		leafBlob(c, 1, 5.5, 0, 11, 0),
-		leafBlob(c, 1, 4, 3, 13, -1.5),
-		leafBlob(c, 1, 3.6, -2.6, 12.5, 1.8),
-	]);
-}
+export * from './trees';
 
 // A gabled roof as an extruded triangle.
 function roof(w: number, d: number, h: number, overhang: number) {
@@ -210,39 +105,12 @@ export function cow(c: PropColors) {
 export function rock(c: PropColors) {
 	const g = new THREE.DodecahedronGeometry(1.4, 0);
 	g.scale(1.3, 0.7, 1);
-	return merge([tint(g.translate(0, 0.35, 0), c.rock)]);
+	return merge([facets(g.translate(0, 0.35, 0), c.rock, c.rock, 0, 1)]);
 }
 
 // --- far models: each prop's outer-ring stand-in (#3076) ----------------------
 // The same silhouette and colours in a fraction of the triangles, standing on
-// the same ground: a building keeps its foundation's depth, a tree its root.
-
-export function spruceFar(c: PropColors) {
-	return merge([
-		tint(
-			cyl(0.35, 0.5, 1.5 + ROOT_M, 3).translate(0, (1.5 - ROOT_M) / 2, 0),
-			c.trunk,
-		),
-		tint(
-			new THREE.ConeGeometry(4.2, 13.4, 5).translate(0, 8.2, 0),
-			c.spruce,
-			c.spruceTip,
-		),
-	]);
-}
-
-export function broadleafFar(c: PropColors) {
-	const crown = new THREE.IcosahedronGeometry(4, 0)
-		.scale(1, 0.85, 1)
-		.translate(0, 7.2, 0);
-	return merge([
-		tint(
-			cyl(0.3, 0.45, 4.5 + ROOT_M, 3).translate(0, (4.5 - ROOT_M) / 2, 0),
-			c.trunk,
-		),
-		tint(crown, c.leaf, c.leafLight),
-	]);
-}
+// the same ground: a building keeps its foundation's depth.
 
 // A building far off: its foundation, walls and roof as one block and one prism.
 function blockFar(
@@ -306,20 +174,48 @@ export function woodpile(c: PropColors) {
 					k % 2 ? c.wood : c.trunk,
 				),
 			);
-	logs.push(tint(box(2.3, 0.08, 1.4).translate(0, 1.4, 0), c.roof));
+	// Its cover lies on the top row, never floating over it.
+	logs.push(tint(box(2.3, 0.08, 1.4).translate(0, 1.23, 0), c.roof));
 	return merge(logs);
 }
 
+// Three round bales, each an eight-sided drum on one of its faces: the
+// wrapped side in the bale's colour, the rolled ends lighter.
+const BALE_R = 0.75;
+const BALE_SIDES = 8;
 export function bales(c: PropColors) {
-	const b = (x: number, z: number) =>
-		tint(
-			cyl(0.75, 0.75, 1.2, 12)
-				.rotateZ(Math.PI / 2)
-				.translate(x, 0.75, z),
+	const rest = BALE_R * Math.cos(Math.PI / BALE_SIDES);
+	const put = (g: THREE.BufferGeometry, x: number, z: number) =>
+		g
+			.rotateY(Math.PI / BALE_SIDES)
+			.rotateZ(Math.PI / 2)
+			.translate(x, rest, z);
+	const bale = (x: number, z: number) => [
+		facets(
+			put(
+				new THREE.CylinderGeometry(BALE_R, BALE_R, 1.2, BALE_SIDES, 1, true),
+				x,
+				z,
+			),
 			c.bale,
-			c.baleLight,
-		);
-	return merge([b(0, 0), b(1.5, 0.6), b(0.6, 1.9)]);
+			c.bale,
+			0,
+			1,
+		),
+		...[-1, 1].map((end) =>
+			tint(
+				put(
+					new THREE.CircleGeometry(BALE_R, BALE_SIDES)
+						.rotateX((-end * Math.PI) / 2)
+						.translate(0, end * 0.6, 0),
+					x,
+					z,
+				),
+				c.baleLight,
+			),
+		),
+	];
+	return merge([...bale(0, 0), ...bale(1.5, 0.6), ...bale(0.6, 1.9)]);
 }
 
 export function wayside(c: PropColors) {

@@ -1,9 +1,9 @@
-// Materials: cel shading in three bands (the indie look without a post pass),
-// a little wind in the trees, and a dithered fade for anything that gets
+// Materials: the dressing flat shaded, one normal per face (ADR-0092), a
+// little wind in the trees, and a dithered fade for anything that gets
 // between the camera and you — nothing generated ever blocks the view.
 import * as THREE from 'three';
 
-// A greyscale ramp for MeshToonMaterial: nearest-filtered, so the bands are hard.
+// A greyscale ramp for the figures' MeshToonMaterial: nearest-filtered, so the bands are hard.
 export function ramp(steps: readonly number[]): THREE.DataTexture {
 	const data = new Uint8Array(steps.length * 4);
 	steps.forEach((s, i) => data.set([s * 255, s * 255, s * 255, 255], i * 4));
@@ -12,7 +12,6 @@ export function ramp(steps: readonly number[]): THREE.DataTexture {
 	t.needsUpdate = true;
 	return t;
 }
-export const PROP_RAMP = [0.55, 0.8, 1] as const;
 
 // Per-frame uniforms every faded or swaying material shares: where the
 // camera is, where you are, the time.
@@ -48,14 +47,36 @@ const FADE = /* glsl */ `
 	float bayer[16] = float[16](0.,8.,2.,10.,12.,4.,14.,6.,3.,11.,1.,9.,15.,7.,13.,5.);
 	if (keep < (bayer[by * 4 + bx] + 0.5) / 16.0) discard;`;
 
-export function toon(
-	gradientMap: THREE.Texture,
+// A face turned to the ground is lit as one turned out (#4256): the
+// hemisphere's ground colour alone takes a tier's or an eave's underside to
+// black, and the world's shadow is a tint, never black (ADR-0072).
+const UNDERSIDE = /* glsl */ `
+	vec3 upView = normalize( ( viewMatrix * vec4( 0.0, 1.0, 0.0, 0.0 ) ).xyz );
+	float toSky = dot( normal, upView );
+	if ( toSky < 0.0 ) {
+		vec3 level = normal - toSky * upView;
+		normal = length( level ) > 1e-3 ? normalize( level ) : normalize( cross( upView, vec3( 0.0, 0.0, 1.0 ) ) );
+	}`;
+
+/**
+ * The dressing's material (ADR-0092): its models' colours, flat per face,
+ * lit by the sky with one normal per face, so a change of shade falls on a
+ * triangle's edge, where the renderer's antialiasing reaches.
+ */
+export function flat(
 	sight: Sight,
 	opts: { wind?: boolean; fade?: boolean } = {},
-): THREE.MeshToonMaterial {
-	const m = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap });
-	if (!opts.wind && !opts.fade) return m;
+): THREE.MeshLambertMaterial {
+	const m = new THREE.MeshLambertMaterial({
+		vertexColors: true,
+		flatShading: true,
+	});
 	m.onBeforeCompile = (s) => {
+		s.fragmentShader = s.fragmentShader.replace(
+			'#include <normal_fragment_begin>',
+			`#include <normal_fragment_begin>\n${UNDERSIDE}`,
+		);
+		if (!opts.wind && !opts.fade) return;
 		Object.assign(s.uniforms, sight);
 		s.vertexShader = s.vertexShader
 			.replace(
@@ -90,6 +111,6 @@ export function toon(
 				);
 	};
 	m.customProgramCacheKey = () =>
-		`toon-${opts.wind ? 'w' : ''}${opts.fade ? 'f' : ''}`;
+		`flat-${opts.wind ? 'w' : ''}${opts.fade ? 'f' : ''}`;
 	return m;
 }

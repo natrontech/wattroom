@@ -1,8 +1,9 @@
 // `make perf-scenes` (#3039): what the real app costs on the screens a rider
 // sits in front of — a crew's voice channel with people in it, their
 // statuses, someone riding, someone talking, a screen share on the stage,
-// and finally the rider's own ride. Where `make perf` isolates one element,
-// this measures the sum, so the two together say what a fix is worth.
+// then the rider's own ride, and that ride on a road in the world at each
+// World control that draws it (#4256). Where `make perf` isolates one
+// element, this measures the sum, so the two together say what a fix is worth.
 //
 // The measured viewer is this process's one visible window. The crew around
 // it lives in crowd.js, a second Electron process with offscreen windows, so
@@ -185,6 +186,8 @@ perf.start('perf-scenes', async () => {
 		webPreferences: { backgroundThrottling: false },
 	});
 	win.setAlwaysOnTop(true, 'floating');
+	// A ride guards its page against a closed tab; the runner leaves it for the next scene regardless.
+	win.webContents.on('will-prevent-unload', (e) => e.preventDefault());
 
 	const baseline = async () => {
 		await perf.load(win, `${perf.BASE}/dev/perf?case=none`);
@@ -229,6 +232,16 @@ perf.start('perf-scenes', async () => {
 	await win.webContents.executeJavaScript(VOICE);
 	await press(win, 'Join voice');
 
+	/** Your ride on the Pass loop, the World control at `mode`. */
+	const roadRide = async (mode) => {
+		await win.webContents.executeJavaScript(
+			`localStorage.setItem('wattroom.world.mode.v1', ${JSON.stringify(mode)})`,
+		);
+		await perf.load(win, `${perf.BASE}/ride?road=intro`);
+		await press(win, 'Ride simulated', 30_000);
+		await press(win, 'Start the ride');
+	};
+
 	const scenes = [
 		['lounge, 4 in voice', async () => {}],
 		[
@@ -251,6 +264,11 @@ perf.start('perf-scenes', async () => {
 				await press(win, 'Ride simulated', 30_000);
 			},
 		],
+		// A fresh profile rides Flat and a free ride has no road, so only these
+		// draw the world: WattRoom's own Pass loop at each World control that
+		// draws it, the ride's page on its own, out of the voice channel.
+		['you ride a road in the world (Full)', () => roadRide('full')],
+		['you ride a road in the world (Light)', () => roadRide('light')],
 	];
 	for (const [i, [label, apply]] of scenes.entries()) {
 		console.log(label);

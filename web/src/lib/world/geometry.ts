@@ -179,15 +179,20 @@ function strip(pos: number[], uv: number[], cols: number) {
 	return g;
 }
 
-// Road surface with markings drawn in the fragment shader: edge lines, a
-// 3-on-9-off centre dash, verge beyond the edge — box-filtered with fwidth,
-// so they stay crisp at 2 m and never shimmer at 2 km.
+/** The road's paint, metres: each line's half width, the centre dash and its period. */
+const EDGE_HALF = 0.06;
+const CENTRE_HALF = 0.055;
+const DASH_M = 3;
+const DASH_EVERY_M = 12;
+
 /**
- * The road as paint on the ribbon (#3674): asphalt with a fine grain, flat
+ * The road as paint on the ribbon (#3674, ADR-0092): flat asphalt, flat
  * off-white lines, a gravel shoulder outside each edge line, then the verge.
- * Lit by the sky like everything else, never glowing (ADR-0072). The grain
- * lives in the road's own metres, so it holds still under a moving camera,
- * and fades to grey once a grain cell is smaller than a pixel.
+ * Lit by the sky like everything else, never glowing (ADR-0072). Every edge
+ * is box-filtered over one pixel with fwidth. A line never draws narrower
+ * than a pixel: where it would, it draws a pixel wide at the share of the
+ * pixel it covers, so it fades with distance instead of shimmering, and the
+ * centre's dashes fade into their average once they are too short to draw.
  */
 export function roadMaterial(c: Style['road']): THREE.MeshLambertMaterial {
 	const m = new THREE.MeshLambertMaterial();
@@ -208,27 +213,24 @@ export function roadMaterial(c: Style['road']): THREE.MeshLambertMaterial {
 				`#include <common>
 				varying vec2 vRoad;
 				uniform vec3 uAsphalt; uniform vec3 uLine; uniform vec3 uVerge; uniform vec3 uShoulder;
-				float grainAt(vec2 p) {
-					vec2 i = floor(p), f = fract(p);
-					f = f * f * (3.0 - 2.0 * f);
-					float a = fract(sin(dot(i, vec2(12.9898, 78.233))) * 43758.5453);
-					float b = fract(sin(dot(i + vec2(1.0, 0.0), vec2(12.9898, 78.233))) * 43758.5453);
-					float c = fract(sin(dot(i + vec2(0.0, 1.0), vec2(12.9898, 78.233))) * 43758.5453);
-					float d = fract(sin(dot(i + vec2(1.0, 1.0), vec2(12.9898, 78.233))) * 43758.5453);
-					return mix(mix(a, b, f.x), mix(c, d, f.x), f.y) - 0.5;
+				// A stripe of half width h at distance d, one pixel fw wide at least, at the share of it the stripe covers.
+				float paint(float d, float h, float fw) {
+					float w = max(h, 0.5 * fw);
+					return (1.0 - smoothstep(w - 0.5 * fw, w + 0.5 * fw, d)) * h / w;
 				}`,
 			)
 			.replace(
 				'vec4 diffuseColor = vec4( diffuse, opacity );',
 				`float u = vRoad.x, s = vRoad.y;
 				float fw = max(fwidth(u), 1e-4);
-				float edge = 1.0 - smoothstep(0.06 - fw, 0.06 + fw, abs(abs(u) - ${(ROAD_W / 2 - 0.25).toFixed(2)}));
-				float centre = (1.0 - smoothstep(0.055 - fw, 0.055 + fw, abs(u))) * step(fract(s / 12.0), 0.25);
-				float shoulder = smoothstep(${(ROAD_W / 2).toFixed(2)} - fw, ${(ROAD_W / 2).toFixed(2)} + fw, abs(u));
-				float verge = smoothstep(${(ROAD_W / 2 + 0.9).toFixed(2)} - fw, ${(ROAD_W / 2 + 0.9).toFixed(2)} + fw, abs(u));
-				// A grain cell is 12 cm of road; past about a pixel a cell it melts into the road's own grey.
-				float grain = grainAt(vRoad * 8.0) * (1.0 - smoothstep(0.08, 0.2, fw)) * (0.45 + 0.1 * shoulder);
-				vec3 col = mix(uAsphalt, uShoulder, shoulder) * (1.0 + grain);
+				float fs = max(fwidth(s), 1e-4);
+				float edge = paint(abs(abs(u) - ${(ROAD_W / 2 - 0.25).toFixed(2)}), ${EDGE_HALF.toFixed(3)}, fw);
+				float along = abs(mod(s - ${(DASH_M / 2).toFixed(1)} + ${(DASH_EVERY_M / 2).toFixed(1)}, ${DASH_EVERY_M.toFixed(1)}) - ${(DASH_EVERY_M / 2).toFixed(1)});
+				float dash = mix(paint(along, ${(DASH_M / 2).toFixed(1)}, fs), ${(DASH_M / DASH_EVERY_M).toFixed(2)}, smoothstep(0.15, 0.5, fs / ${DASH_EVERY_M.toFixed(1)}));
+				float centre = paint(abs(u), ${CENTRE_HALF.toFixed(3)}, fw) * dash;
+				float shoulder = smoothstep(${(ROAD_W / 2).toFixed(2)} - 0.5 * fw, ${(ROAD_W / 2).toFixed(2)} + 0.5 * fw, abs(u));
+				float verge = smoothstep(${(ROAD_W / 2 + 0.9).toFixed(2)} - 0.5 * fw, ${(ROAD_W / 2 + 0.9).toFixed(2)} + 0.5 * fw, abs(u));
+				vec3 col = mix(uAsphalt, uShoulder, shoulder);
 				col = mix(col, uLine, max(edge, centre) * (1.0 - shoulder));
 				col = mix(col, uVerge, verge);
 				vec4 diffuseColor = vec4(col, opacity);`,

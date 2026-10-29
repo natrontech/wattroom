@@ -3,7 +3,7 @@ import { VILLAGES } from '../names';
 import { keyer, unit, type Salt } from '../place/keyed';
 import type { Class } from '../placement/types';
 import type { Ground, Origin } from '../terrain/ground';
-import { forest, FRAME_NEAR, ringAt } from './forest';
+import { forest, formOf, FRAME_NEAR, ringAt } from './forest';
 import type { PropKind } from './kit';
 import type { Placer } from './placer';
 import { deg, hashOf, turnBy, walker, type Turn } from './roads';
@@ -24,6 +24,9 @@ export type { Turn } from './roads';
 
 export type Prop = {
 	kind: PropKind;
+	/** A tree's form (forest.ts `formOf`) and its shade, a keyed unit (batch.ts); none for anything else. */
+	form?: number;
+	tone?: number;
 	x: number;
 	z: number;
 	base: number;
@@ -162,9 +165,16 @@ export function scatter(place: Place, placer: Placer, villages: Village[]) {
 		turn: Turn,
 		scale: number,
 		rank: number,
+		look?: { form: number; tone: number },
 	): Candidate<Prop> | null {
 		const p = placer.candidate(kind, cls, x, z, turn, scale);
-		return p && { p, rank, is: { kind, x, z, base: p.base, turn, scale } };
+		return (
+			p && {
+				p,
+				rank,
+				is: { kind, ...look, x, z, base: p.base, turn, scale },
+			}
+		);
 	}
 
 	/** A spot jittered within cell (i, j), as local x and z. */
@@ -412,14 +422,17 @@ export function scatter(place: Place, placer: Placer, villages: Village[]) {
 			const frame = woods.frames(b, far) && !inFields(x, z);
 			if (u(tree(i, j, 0)) >= woods.chance(b, far, frame, g)) return;
 			if (far < 140 && !ground.clearOf(x, z, 11)) return;
-			const conifer =
-				frame || heightAt(x, z) >= 900 || u(tree(i, j, 4)) >= 0.55;
-			// Heights vary by the stand, taller in its heart, and by the tree.
+			const h = heightAt(x, z);
+			const conifer = frame || h >= 900 || u(tree(i, j, 4)) >= 0.55;
+			// Heights vary by the stand, taller in its heart, and by the tree; forms by the tree and its height above the sea.
 			const tall = 0.6 + u(tree(i, j, 3)) * 0.6 + 0.35 * Math.max(0, g);
 			const kind = conifer ? 'spruce' : 'broadleaf';
 			const turn = deg(Math.floor(u(tree(i, j, 5)) * 360));
 			keep(
-				candidate(kind, 'kit', x, z, turn, tall, RANK.tree + u(tree(i, j, 6))),
+				candidate(kind, 'kit', x, z, turn, tall, RANK.tree + u(tree(i, j, 6)), {
+					form: formOf(conifer, h, u(tree(i, j, 8))),
+					tone: u(tree(i, j, 9)),
+				}),
 			);
 			const more = woods.neighbours(b, far, frame, g, u(tree(i, j, 7)));
 			for (let k = 0; k < more; k++) {
@@ -441,6 +454,10 @@ export function scatter(place: Place, placer: Placer, villages: Village[]) {
 							deg(Math.floor(r(2) * 360)),
 							tall * (0.75 + r(3) * 0.3),
 							RANK.tree + r(4),
+							{
+								form: formOf(conifer, h, u(tree(i, j, 40 + k))),
+								tone: u(tree(i, j, 43 + k)),
+							},
 						),
 					);
 			}
