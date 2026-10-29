@@ -4,10 +4,12 @@
 	 * road ride's, a voice channel's, and a ride whose workout was taken off
 	 * on its road (#4283). The callers own what rides; this draws the rows.
 	 *
-	 * Four rows, so the road's name is never cut for the controls: the label
-	 * with the caller's own controls, the road line, the chip row, then the
-	 * ride's controls, 176 px at SPEC's sizes, above the corridor (the box
-	 * table's 200). `more` is a fifth.
+	 * Three rows: the label with the controls, as the box table's “eyebrow
+	 * or status line 24 with the controls 44” and v2-ride's top right; the
+	 * road line; the chip row. `more` is a fourth. The road's name truncates
+	 * at its end beside the controls, never under them: a row too narrow for
+	 * both wraps the controls among themselves, and a phone gives them a line
+	 * of their own under the label.
 	 */
 	import type { Snippet } from 'svelte';
 	import { formatClock } from '$lib/format';
@@ -39,13 +41,13 @@
 		 * a ride-critical one, an alert, takes the chip row's too.
 		 */
 		status?: Snippet;
-		/** The caller's own controls, on the label's row. */
+		/** The caller's own controls, before the ride's on the label's row. */
 		controls?: Snippet;
 		/** The rest of the chip row: a ramp, the ⚑'s notice. */
 		notes?: Snippet;
 		/** The ride's controls. */
 		actions: Snippet;
-		/** A row under the controls. */
+		/** A row under the chip row. */
 		more?: Snippet;
 	} = $props();
 
@@ -57,10 +59,12 @@
 	data-testid="ride-band"
 	class="group/band flex flex-col gap-2 px-4 py-2"
 >
-	<div class="flex min-w-0 flex-wrap items-center gap-x-6 gap-y-2">
+	<!-- One line on a desk: the band's own width is the label's and the
+	     controls' side by side, where a wrapping row takes its widest item's. -->
+	<div class="flex min-w-0 items-center gap-x-6 gap-y-2 max-sm:flex-wrap">
 		<!-- The status draws its line only while one holds; the label steps
 		     aside for it. -->
-		<div class="group/status min-w-0 flex-1">
+		<div class="group/status min-w-48 flex-1">
 			{@render status?.()}
 			<p
 				data-testid="ride-context"
@@ -69,11 +73,13 @@
 				{label}
 			</p>
 		</div>
-		{#if controls}
-			<div class="flex flex-wrap items-center gap-2">
-				{@render controls()}
-			</div>
-		{/if}
+		<!-- The caller's controls, then the ride's: 44 px (ux.md, TARGETS
+		     ride-free-road 7), wrapping among themselves rather than clipping,
+		     as every control row does (#1634). -->
+		<div class="flex min-w-0 flex-wrap items-center gap-2 max-md:w-full">
+			{@render controls?.()}
+			{@render actions()}
+		</div>
 	</div>
 	{#if roadLine}
 		<!-- Where on the road, once (TARGETS one home: slot 1's road line). -->
@@ -94,11 +100,6 @@
 			)}{#if climbed !== undefined}{` · ${Math.round(climbed)} m climbed`}{/if}
 		</p>
 		{@render notes?.()}
-	</div>
-	<!-- One row of 44 px controls (ux.md, TARGETS ride-free-road 7); it
-	     wraps rather than clipping, as every control row does (#1634). -->
-	<div class="flex min-w-0 flex-wrap items-center gap-2">
-		{@render actions()}
 	</div>
 	{@render more?.()}
 </header>
