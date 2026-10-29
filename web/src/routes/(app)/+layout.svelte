@@ -32,6 +32,7 @@
 	import { friends } from '$lib/friends/friends.svelte';
 	import Logo from '$lib/brand/Logo.svelte';
 	import Sidebar from '$lib/nav/Sidebar.svelte';
+	import RideDock from '$lib/nav/RideDock.svelte';
 	import Menu from '@lucide/svelte/icons/menu';
 	import Toasts from '$lib/components/Toasts.svelte';
 	import NewAccountNotice from '$lib/components/NewAccountNotice.svelte';
@@ -494,11 +495,14 @@
 					<!-- Where you are, on the voice channel's own pages: its heading is
 					     for screen readers there, and the brand word said nothing
 					     about which channel this is (#2882 L6-16). -->
-					<span class="font-display truncate text-sm font-bold"
+					<span class="font-display min-w-0 truncate text-sm font-bold"
 						>{(channelConnection.onPlacePath(page.url.pathname) &&
 							channelConnection.current?.address.name) ||
 							'WattRoom'}</span
 					>
+					<!-- The ride dock's short form (ADR-0093 point 5): the drawer
+					     holds the dock, this one tap opens the ride. -->
+					<RideDock pathname={page.url.pathname} short />
 				</div>
 			{/if}
 			<!-- Persistent, above whatever page you are on and outside its

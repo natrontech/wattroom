@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	buildingLine,
 	statusLine,
+	trainerLine,
 	type StatusState,
 } from '$lib/ride/status-lines';
 
@@ -26,6 +27,7 @@ describe('slot 1 status lines (#3212)', () => {
 			'The server restarted, your ride came back from this browser.',
 			undefined,
 		],
+		['no-crash-copy', 'Not keeping its own copy of this ride', undefined],
 	];
 
 	it.each(table)(
@@ -41,6 +43,21 @@ describe('slot 1 status lines (#3212)', () => {
 		const alerts = table.filter(([s]) => statusLine(s).alert).map(([s]) => s);
 		expect(alerts).toEqual(['trainer-quiet']);
 	});
+
+	it.each([
+		['silent', 'Trainer sends nothing', 'Pair again', 'Pair the trainer again'],
+		[
+			'reconnecting',
+			'Your trainer went quiet.',
+			'Reconnect trainer',
+			'Reconnect trainer',
+		],
+	] as const)(
+		'a %s trainer says %s, its button %s',
+		(state, text, action, name) => {
+			expect(trainerLine(state)).toEqual({ text, action, name });
+		},
+	);
 
 	it.each([
 		[60, 'Building the road... 60 %'],

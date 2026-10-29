@@ -1,3 +1,4 @@
+import { faultCopy } from '$lib/channel/fault-copy';
 import { DEFAULTS } from '$lib/workout/guards';
 
 /**
@@ -21,7 +22,8 @@ export type StatusState =
 	| 'voice-down'
 	| 'road-removed'
 	| 'map-not-yours'
-	| 'server-restarted';
+	| 'server-restarted'
+	| 'no-crash-copy';
 
 const LINES: Record<StatusState, StatusLine> = {
 	'trainer-quiet': {
@@ -43,10 +45,29 @@ const LINES: Record<StatusState, StatusLine> = {
 	'server-restarted': {
 		text: 'The server restarted, your ride came back from this browser.',
 	},
+	// The ride buffer would not open (#1466 finding 4): nothing to press.
+	'no-crash-copy': { text: 'Not keeping its own copy of this ride' },
 };
 
 export function statusLine(state: StatusState): StatusLine {
 	return LINES[state];
+}
+
+/**
+ * A trainer gone quiet as one line (#3212): fault-copy's words where it has a
+ * line for the state, else the quiet line's, each with its one button and
+ * that button's full name.
+ */
+export function trainerLine(state: 'silent' | 'reconnecting'): {
+	text: string;
+	action: string;
+	name: string;
+} {
+	const fault = faultCopy({ kind: 'trainer', state });
+	const quiet = LINES['trainer-quiet'];
+	return fault.line && fault.lineAction && fault.action
+		? { text: fault.line, action: fault.lineAction, name: fault.action }
+		: { text: quiet.text, action: quiet.action!, name: quiet.action! };
 }
 
 /** Build slow: the Skyline shows at once, with how far the road is. */

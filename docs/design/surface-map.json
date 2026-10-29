@@ -367,6 +367,14 @@
 	},
 	{
 		"files": [
+			"web/src/lib/nav/RideDock.svelte",
+			"web/src/lib/nav/ride-dock.svelte.ts",
+			"web/src/lib/ride/ride-screens.ts"
+		],
+		"surfaces": ["ride-dock", "phone-ride-dock"]
+	},
+	{
+		"files": [
 			"web/src/app.css",
 			"web/src/lib/themes.ts",
 			"web/src/routes/(app)/+layout.svelte"
