@@ -15,6 +15,7 @@
 	import { trainerForChannel } from '$lib/ride/solo-trainer.svelte';
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import { channelConnection } from '$lib/channel/connection.svelte';
+	import { theRide } from '$lib/ride/the-ride.svelte';
 	import { useChannel } from '$lib/channel/context';
 	import SensorOverview from '$lib/session/SensorOverview.svelte';
 	import { deviceWord } from '$lib/device.svelte';
@@ -51,23 +52,32 @@
 	}
 </script>
 
-<SensorOverview
-	{compact}
-	{elsewhere}
-	{targetsNote}
-	trainer={{
-		state: trainerState({
-			trainer: ride?.trainer ?? null,
-			fault: ride?.fault ?? null,
-			error: ride?.error ?? null,
-			pairing: ride?.pairing ?? false,
-		}),
-		device: ride?.trainer?.name,
-		reading: `${channel.you.watts} W · ${channel.you.cadence} rpm`,
-		hint: trainerHint(ride?.fault),
-		error: ride?.error,
-		onPair: () => void ride?.ride(trainerForChannel()),
-		onForget: () => ride?.unpair(),
-		onSimulate: canSimulate() ? () => void pairSimulatedTrainer() : undefined,
-	}}
-/>
+<!-- One ride per device (ADR-0093): while your ride alone runs, the trainer
+     is its, and pairing it here again would give the hardware two masters. -->
+{#if theRide.live}
+	<p class="text-muted text-xs">
+		Your trainer is on your ride. End it to ride here.
+		<a href="/ride" class="btn-link">Open your ride</a>
+	</p>
+{:else}
+	<SensorOverview
+		{compact}
+		{elsewhere}
+		{targetsNote}
+		trainer={{
+			state: trainerState({
+				trainer: ride?.trainer ?? null,
+				fault: ride?.fault ?? null,
+				error: ride?.error ?? null,
+				pairing: ride?.pairing ?? false,
+			}),
+			device: ride?.trainer?.name,
+			reading: `${channel.you.watts} W · ${channel.you.cadence} rpm`,
+			hint: trainerHint(ride?.fault),
+			error: ride?.error,
+			onPair: () => void ride?.ride(trainerForChannel()),
+			onForget: () => ride?.unpair(),
+			onSimulate: canSimulate() ? () => void pairSimulatedTrainer() : undefined,
+		}}
+	/>
+{/if}

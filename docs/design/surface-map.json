@@ -185,6 +185,18 @@
 		]
 	},
 	{
+		"files": [
+			"web/src/lib/ride/TheRide.svelte",
+			"web/src/lib/ride/the-ride.svelte.ts"
+		],
+		"surfaces": [
+			"ride-workout-flat",
+			"ride-road-world",
+			"ride-countin",
+			"closing-card"
+		]
+	},
+	{
 		"files": ["web/src/lib/world/**"],
 		"surfaces": ["world-start", "world-end", "ride-road-world"]
 	},

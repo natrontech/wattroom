@@ -18,6 +18,7 @@
 	import TvOverlay from '$lib/session/TvOverlay.svelte';
 	import { onDestroy } from 'svelte';
 	import { guardLeaving } from '$lib/ride/leave-guard.svelte';
+	import { theRide } from '$lib/ride/the-ride.svelte';
 	import { confirm } from '$lib/confirm.svelte';
 	import {
 		createRideSounds,
@@ -495,11 +496,17 @@
 					const trainer = solo.handOff();
 					if (trainer) void begin(trainer);
 				}}
-				disabled={!held.paired || held.fault === 'reconnecting'}
+				disabled={!held.paired || held.fault === 'reconnecting' || theRide.live}
 				class="btn btn-primary btn-lg">Start ramp test</button
 			>
 		</div>
-		{#if held.fault === 'reconnecting'}
+		{#if theRide.live}
+			<!-- One ride per device (ADR-0093): the trainer is the ride's. -->
+			<p class="text-muted mt-3 text-xs">
+				Your ride is still running. End it to start the ramp test.
+				<a href="/ride" class="btn-link">Open your ride</a>
+			</p>
+		{:else if held.fault === 'reconnecting'}
 			<p class="text-muted mt-3 text-xs">
 				Waiting for the trainer to come back.
 			</p>
