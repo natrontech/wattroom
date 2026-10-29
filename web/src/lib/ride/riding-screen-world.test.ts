@@ -2,6 +2,7 @@ import { render } from 'svelte/server';
 import { describe, expect, it, vi } from 'vitest';
 import { SimulatedTrainer } from '$lib/ble/simulated';
 import { legsRoad } from '$lib/road/fixtures';
+import { describeBlock } from '$lib/workout/block';
 import { createRideSession } from '$lib/workout/session.svelte';
 import { openRoad } from '$lib/workout/ridden';
 import { withProfile } from '$lib/workout/road-workout';
@@ -37,11 +38,16 @@ const openers: Workout = {
 /** The ride screen's markup for `workout`. */
 function screen(
 	workout: Workout,
-	extra: {
+	{
+		block: withBlock,
+		...extra
+	}: {
 		onTv?: () => void;
 		onFlag?: () => void;
 		shelf?: ShelfEntry[];
 		onChangeWorkout?: (next: Workout | null) => void;
+		/** The block the page derives, on the road as it does. */
+		block?: boolean;
 	} = {},
 ): string {
 	const session = createRideSession({
@@ -49,10 +55,21 @@ function screen(
 		workout,
 		ftp: 250,
 	});
+	const block = withBlock
+		? describeBlock(
+				session.info,
+				session.segments,
+				workout,
+				250,
+				[],
+				{ kind: 'scenery' },
+				session.road?.readout,
+			)
+		: null;
 	return render(RidingScreen, {
 		props: {
 			session,
-			block: null,
+			block,
 			workout,
 			ftp: 250,
 			kg: 75,
@@ -128,5 +145,40 @@ describe('the world on a ride', () => {
 		// Nor a target to trim.
 		expect(html).not.toContain('raise the target by one percent');
 		expect(screen(onRoad, change)).toContain('raise the target by one percent');
+	});
+
+	// #4283: no workout drew a workout's header, its eyebrow and "Free ride"
+	// twice, the road line at label size and an empty column beside it.
+	it('gives a ride with no workout the free ride’s slot 1 (TARGETS ride-free-road 3, 7)', () => {
+		const none = withProfile(openRoad({ routeId: 'r1', fromM: 0, toM: 2000 }), {
+			name: 'Test loop',
+			road: legsRoad([1000, 0], [1000, 5]),
+		});
+		const html = screen(none, {
+			onTv: () => {},
+			onFlag: () => {},
+			shelf: [],
+			onChangeWorkout: () => {},
+			block: true,
+		});
+		const band = html
+			.slice(html.indexOf('data-testid="ride-band"'), html.indexOf('</header>'))
+			.replace(/<!--[^>]*-->/g, '');
+		// The road named once, in the label.
+		expect(band).toMatch(
+			/data-testid="ride-context"[^>]*>\s*Free ride · Test loop\s*</,
+		);
+		expect(band.match(/Free ride/g)).toHaveLength(1);
+		// The road line at display size, then the chip and the time with m climbed.
+		expect(band).toMatch(/data-testid="block-road" class="[^"]*text-4xl/);
+		expect(band).toMatch(/data-testid="trainer-chip"[^>]*>SIM · you feel/);
+		expect(band).toMatch(/data-testid="ride-clock"[^>]*>0:00 · 0 m climbed</);
+		// Easier and Harder in the controls' row, before ⚑ and Change workout.
+		expect(band).toMatch(
+			/>Easier<\/button>[\s\S]*>Harder<\/button>[\s\S]*aria-label="Flag a problem"[\s\S]*>Change workout<\/button>/,
+		);
+		// No workout's header: no ridden clock, no column for a strip or NEXT.
+		expect(band).not.toContain('aria-label="ridden"');
+		expect(band).not.toContain('w-88');
 	});
 });

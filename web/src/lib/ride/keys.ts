@@ -1,7 +1,6 @@
 import { shifterSlot } from '$lib/ble/controller-slot.svelte';
 import { isTyping } from '$lib/keys';
 import { gearsEnabled } from '$lib/ride/gears-enabled';
-import { createRideShift } from '$lib/ride/ride-shift';
 import type { ShiftDir, ShiftDriver } from '$lib/ride/shifter';
 import type { RemoteCommand } from '$lib/protocol';
 import { toggleMap } from '$lib/session/computer-pages';
@@ -109,18 +108,6 @@ export function bindShifters(
 ): () => void {
 	const offs = [bindShiftKeys(driver), bindShiftController(driver)];
 	return () => offs.forEach((off) => off());
-}
-
-/** The keys and a controller shifting one ride, each move one Easier / Harder press (#3328). */
-export function bindRideShift(
-	ride: Parameters<typeof createRideShift>[0],
-): () => void {
-	const driver = createRideShift(ride);
-	const unbind = bindShifters(driver);
-	return () => {
-		unbind();
-		driver.stop();
-	};
 }
 
 /** Talk's hold ends this long after the last beat from the phone (#3217). */

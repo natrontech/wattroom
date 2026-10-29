@@ -29,6 +29,7 @@ const pinned: Workout = {
 		stepEndM: [800, 2000],
 		profile,
 		originM: 0,
+		name: 'Test road',
 	},
 };
 
@@ -48,6 +49,8 @@ describe('a road workout (#3499)', () => {
 
 	it('rides a road that came back with its profile, pinned or not (#3594)', () => {
 		expect(roadOf(pinned)?.stepEndM).toEqual([800, 2000]);
+		// Its name rides with it, for a free ride's slot 1 (#4283).
+		expect(roadOf(pinned)?.name).toBe('Test road');
 		const { profile: _, ...bare } = pinned.road!;
 		expect(roadOf({ ...pinned, road: bare })).toBeNull();
 		// Any workout on a route (#3100): ridden, with no pins to end its blocks.

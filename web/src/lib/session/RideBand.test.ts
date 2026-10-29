@@ -99,30 +99,3 @@ describe('flat slot 1 without a strip', () => {
 		expect(after.indexOf('</div>')).toBeLessThan(after.indexOf('</header>'));
 	});
 });
-
-// No workout, the road on (#4257, TARGETS ride-road-world 39): no block to
-// count down or number, so the band says Free ride and the ride's own time.
-describe('the band with no workout', () => {
-	it('reads Free ride and the time ridden, with no block line or total', () => {
-		const html = render(RideBand, {
-			props: {
-				block: {
-					...block({ kind: 'road', grade: 2, felt: 1 }),
-					index: 1,
-					count: 1,
-					label: 'Road',
-					secondsLeft: 21_000,
-				},
-				elapsed: 754,
-				total: 21_600,
-				title: 'Free ride',
-				open: true,
-			},
-		}).body;
-		expect(html).toMatch(/aria-label="ridden"[^>]*>\s*12:34\s*</);
-		expect(html).toContain('Free ride');
-		expect(html).not.toContain('1 of 1');
-		expect(html).not.toContain('· Road');
-		expect(html).not.toContain('data-testid="ride-clock"');
-	});
-});

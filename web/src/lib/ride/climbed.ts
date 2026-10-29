@@ -1,5 +1,6 @@
 import { heightAt } from '$lib/road/at-metre';
 import { roadStep, type Road } from '$lib/road/road';
+import { JUMP_M } from '$lib/world/sim';
 
 /**
  * Metres climbed between two metres of a road (#3669): the rises along it
@@ -25,3 +26,10 @@ export function climbedM(road: Road, fromM: number, toM: number): number {
 	rise(heightAt(road, b));
 	return up;
 }
+
+/**
+ * One ride second's climb (TARGETS ride-free-road 3): none across a jump,
+ * which is a lap turned, not a climb.
+ */
+export const climbedStep = (road: Road, fromM: number, toM: number): number =>
+	Math.abs(toM - fromM) > JUMP_M ? 0 : climbedM(road, fromM, toM);
