@@ -24,7 +24,7 @@ async function metre(page: Page): Promise<number> {
  * Slot 1's controls sit on its label row (TARGETS ride-road-world's box
  * table, v2-ride, #4283), and the road line starts under them. A name too
  * long for the row gives way at its own end, never under a control. A phone
- * puts the controls on a line of their own under the label.
+ * keeps the road line under the label and the controls after it (v2-phone).
  */
 async function controlsOnTheLabelRow(page: Page, onRow = true) {
 	for (const long of [false, true]) {
@@ -44,7 +44,7 @@ async function controlsOnTheLabelRow(page: Page, onRow = true) {
 				.getBoundingClientRect();
 			const seen = {
 				endOnRow: end.top < box.bottom && end.bottom > box.top,
-				roadUnder: road.top >= end.bottom,
+				roadUnderEnd: road.top >= end.bottom,
 				overlap: buttons.some(
 					({ r }) =>
 						r.left < box.right &&
@@ -59,7 +59,7 @@ async function controlsOnTheLabelRow(page: Page, onRow = true) {
 		}, long);
 		expect(at, long ? 'a long name' : 'the road name').toEqual({
 			endOnRow: onRow,
-			roadUnder: true,
+			roadUnderEnd: onRow,
 			overlap: false,
 			cut: long,
 		});

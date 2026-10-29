@@ -4,12 +4,14 @@
 	 * road ride's, a voice channel's, and a ride whose workout was taken off
 	 * on its road (#4283). The callers own what rides; this draws the rows.
 	 *
-	 * Three rows: the label with the controls, as the box table's “eyebrow
-	 * or status line 24 with the controls 44” and v2-ride's top right; the
-	 * road line; the chip row. `more` is a fourth. The road's name truncates
-	 * at its end beside the controls, never under them: a row too narrow for
-	 * both wraps the controls among themselves, and a phone gives them a line
-	 * of their own under the label.
+	 * Three rows on a desk: the label with the ride's controls, as the box
+	 * table's “eyebrow or status line 24 with the controls 44” and v2-ride's
+	 * top right; the road line; the chip row. The road's name truncates at
+	 * its end beside the controls, never under them. A caller with controls
+	 * of its own (a voice channel's) keeps those beside the label and the
+	 * ride's after the chip row: ten do not fit beside a name. A phone keeps
+	 * the road line under the label and the ride's controls after the chip
+	 * row (v2-phone). `more` comes last.
 	 */
 	import type { Snippet } from 'svelte';
 	import { formatClock } from '$lib/format';
@@ -41,7 +43,7 @@
 		 * a ride-critical one, an alert, takes the chip row's too.
 		 */
 		status?: Snippet;
-		/** The caller's own controls, before the ride's on the label's row. */
+		/** The caller's own controls, on the label's row. */
 		controls?: Snippet;
 		/** The rest of the chip row: a ramp, the ⚑'s notice. */
 		notes?: Snippet;
@@ -55,13 +57,22 @@
 	const CHIP = `${WORDS} border-neon/40 text-muted rounded border px-2 whitespace-nowrap`;
 </script>
 
+{#snippet rideControls()}
+	<!-- 44 px controls (ux.md, TARGETS ride-free-road 7); they wrap rather
+	     than clipping, as every control row does (#1634). -->
+	<div class="flex min-w-0 flex-wrap items-center gap-2 max-md:order-last">
+		{@render actions()}
+	</div>
+{/snippet}
+
 <header
 	data-testid="ride-band"
 	class="group/band flex flex-col gap-2 px-4 py-2"
 >
-	<!-- One line on a desk: the band's own width is the label's and the
-	     controls' side by side, where a wrapping row takes its widest item's. -->
-	<div class="flex min-w-0 items-center gap-x-6 gap-y-2 max-sm:flex-wrap">
+	<!-- One line on a desk: the band's own width is then the label's and the
+	     controls' side by side, where a wrapping row takes its widest item's.
+	     On a phone its parts join the column. -->
+	<div class="flex min-w-0 items-center gap-x-6 max-md:contents">
 		<!-- The status draws its line only while one holds; the label steps
 		     aside for it. -->
 		<div class="group/status min-w-48 flex-1">
@@ -73,13 +84,13 @@
 				{label}
 			</p>
 		</div>
-		<!-- The caller's controls, then the ride's: 44 px (ux.md, TARGETS
-		     ride-free-road 7), wrapping among themselves rather than clipping,
-		     as every control row does (#1634). -->
-		<div class="flex min-w-0 flex-wrap items-center gap-2 max-md:w-full">
-			{@render controls?.()}
-			{@render actions()}
-		</div>
+		{#if controls}
+			<div class="flex flex-wrap items-center gap-2">
+				{@render controls()}
+			</div>
+		{:else}
+			{@render rideControls()}
+		{/if}
 	</div>
 	{#if roadLine}
 		<!-- Where on the road, once (TARGETS one home: slot 1's road line). -->
@@ -101,5 +112,10 @@
 		</p>
 		{@render notes?.()}
 	</div>
-	{@render more?.()}
+	{#if controls}{@render rideControls()}{/if}
+	{#if more}
+		<div class="max-md:order-last [&:not(:has(*))]:hidden">
+			{@render more()}
+		</div>
+	{/if}
 </header>
