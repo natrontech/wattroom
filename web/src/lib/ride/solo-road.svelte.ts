@@ -6,7 +6,6 @@ import { createActuator } from '$lib/ride/actuation.svelte';
 import { freeRideLabel, type FreeRide } from '$lib/ride/free-ride.svelte';
 import { createRideShift } from '$lib/ride/ride-shift';
 import type { RideableRoute } from '$lib/ride/roads';
-import { publishRide } from '$lib/workout/ride-life.svelte';
 import { acquireWakeLock, type WakeLock } from '$lib/workout/wakelock';
 import { createRiderGuards } from '$lib/workout/rider-guards.svelte';
 
@@ -18,7 +17,7 @@ import { createRiderGuards } from '$lib/workout/rider-guards.svelte';
  * felt grade, or by ERG by the road behind the rider's guards in watts mode.
  * No count-in: a free ride has none (docs/SPEC.md).
  *
- * Called during component init, like createRide: the $effect needs it.
+ * Called in an effect root, as `holdRoadAlone` makes one: the $effect needs it.
  */
 export function createSoloRoadRide(deps: {
 	free: FreeRide;
@@ -49,10 +48,6 @@ export function createSoloRoadRide(deps: {
 		if (deps.free.mode === 'grade' && road) actuator.road(road.felt);
 		else actuator.hold(target);
 	});
-
-	// Riding from the first stroke to End ride, or until the page goes: the
-	// frame is a ride, the HUD opens and DMs wait, as on a workout ride (#3667).
-	$effect(() => (trainer ? publishRide(() => 'running') : undefined));
 
 	$effect(() => {
 		if (!trainer) return;
