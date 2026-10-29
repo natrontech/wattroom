@@ -258,13 +258,16 @@ function skylineOf(
 				if (Math.abs(Math.atan2(Math.sin(off), Math.cos(off))) > view.half)
 					continue;
 				const { dx, dz } = toward(i);
+				let top = -1;
 				// The land ends before the far ranges, whatever `land` says.
 				for (let t = LAND_FROM_M; t < rings[0].R; t += LAND_STEP_M) {
 					const y = land(eye.x + t * dx, eye.z + t * dz);
 					if (y === null) break;
 					const up = y - eye.y;
-					raw[i] = Math.max(raw[i], up / Math.hypot(t, up));
+					top = Math.max(top, up / Math.hypot(t, up));
 				}
+				// Land the band cannot clear hides it where it stands, and lifts it nowhere.
+				if (top < 1 / SKY_SCALE) raw[i] = Math.max(raw[i], top);
 			}
 			draw();
 		},

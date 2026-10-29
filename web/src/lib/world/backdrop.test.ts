@@ -134,14 +134,15 @@ describe('the skyline the peach band lies on (#3085)', () => {
 		const off = (x: number, z: number) =>
 			Math.hypot(x - eye.x, z - eye.z) > 3000;
 		// A ridge from 1 km east of the eye on, 200 m over it: about 11° at its
-		// foot, over any far range; and out of the frame, a peak to +z.
+		// foot, over any far range; and out of the frame, a lower peak to +z,
+		// about 9.4°, which a band read the wrong way would stand at.
 		const ridge = (x: number, z: number) =>
 			off(x, z)
 				? null
 				: x >= eye.x + 1000
 					? eye.y + 200
 					: z >= eye.z + 2000
-						? eye.y + 400
+						? eye.y + 330
 						: eye.y - 100;
 		skyline.over(eye, ridge, east);
 		expect(top(Math.PI / 2)).toBeGreaterThanOrEqual(
@@ -158,6 +159,13 @@ describe('the skyline the peach band lies on (#3085)', () => {
 					: Math.hypot(x - eye.x, z - eye.z) < 150
 						? eye.y + 100
 						: eye.y - 100,
+			east,
+		);
+		expect(top(Math.PI / 2)).toBeLessThan(low);
+		// Nor a wall the band cannot clear: 300 m over the eye from 300 m on, 45°.
+		skyline.over(
+			eye,
+			(x, z) => (off(x, z) ? null : x >= eye.x + 300 ? eye.y + 300 : eye.y),
 			east,
 		);
 		expect(top(Math.PI / 2)).toBeLessThan(low);
