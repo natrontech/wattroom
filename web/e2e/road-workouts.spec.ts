@@ -40,6 +40,16 @@ test('the Pass loop card opens how to ride it, and picks a workout for it', asyn
 		'href',
 		'/ride?road=intro',
 	);
+	// The page body scrolls down, never sideways, at 375 px (ux.md).
+	await page.setViewportSize({ width: 375, height: 812 });
+	await expect
+		.poll(() =>
+			page
+				.getByTestId('page-body')
+				.evaluate((el) => el.scrollWidth - el.clientWidth),
+		)
+		.toBe(0);
+	await page.setViewportSize({ width: 1440, height: 900 });
 	await how.getByRole('button', { name: /Workout on it/ }).click();
 	await how.getByRole('link', { name: 'Pick a workout' }).click();
 

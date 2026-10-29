@@ -125,5 +125,8 @@ describe('the world on a ride', () => {
 		expect(html).toContain('Change workout');
 		expect(html).not.toContain('aria-label="Skip block"');
 		expect(html).not.toContain('aria-label="One more minute"');
+		// Nor a target to trim.
+		expect(html).not.toContain('raise the target by one percent');
+		expect(screen(onRoad, change)).toContain('raise the target by one percent');
 	});
 });

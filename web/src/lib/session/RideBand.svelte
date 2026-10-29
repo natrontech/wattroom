@@ -60,7 +60,7 @@
 		strip?: Snippet;
 		/** Why a control is hidden, in one line (D13: the road decides where a block ends). */
 		hint?: string;
-		/** No workout, the road on (#4257): the big number counts what is ridden. */
+		/** No workout, the road on (#4257): `title` alone, and the big number is `elapsed`, the ride's time. */
 		open?: boolean;
 	} = $props();
 
@@ -130,10 +130,11 @@
 			</p>
 			<div class="{WORDS} shrink-0 whitespace-nowrap">
 				<p>
-					{#if eyebrow}<span class="first-letter:uppercase">{eyebrow}</span
+					{#if open}{title}{:else if eyebrow}<span
+							class="first-letter:uppercase">{eyebrow}</span
 						>{:else}{unit[0].toUpperCase() + unit.slice(1)}
 						<span class="num">{block.index} of {block.count}</span
-						>{/if}{#if (block.label || title).toLowerCase() !== eyebrow.toLowerCase()}
+						>{/if}{#if !open && (block.label || title).toLowerCase() !== eyebrow.toLowerCase()}
 						{' '}· {block.label || title}{/if}
 				</p>
 				{#if block.band}

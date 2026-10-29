@@ -361,7 +361,7 @@
 			     the workout's one picture, its blocks in words (#4159). -->
 			<RideBand
 				{block}
-				elapsed={session.elapsed}
+				elapsed={open ? session.live.seconds : session.elapsed}
 				total={session.total}
 				title={workout.name}
 				context={rideContext('Solo', workout.name)}
@@ -411,13 +411,14 @@
 				{climb}
 				{map}
 			/>
-			<div class="px-4 pb-3">
-				<BiasTrim
-					ride
-					bias={session.bias}
-					onBias={(step) => session.nudgeBias(step)}
-				/>
-			</div>
+			<!-- No workout, no target to trim (#4257). -->
+			{#if !open}<div class="px-4 pb-3">
+					<BiasTrim
+						ride
+						bias={session.bias}
+						onBias={(step) => session.nudgeBias(step)}
+					/>
+				</div>{/if}
 			{#if flagNotice}
 				<!-- Consent in plain words, at the moment of the tap, never blocking. -->
 				<p class="text-muted px-4 pb-3 text-xs">{FLAG_SAID.after}</p>
