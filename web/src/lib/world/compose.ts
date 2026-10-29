@@ -497,6 +497,15 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		advanceBy,
 		/** Brings the level of detail and the dressing to where the camera now stands, after moving it by hand (the scene budget does). */
 		look: () => look(true),
+		/** The sky's band drawn over the land the camera sees as well as the far ranges: the ride's picture's (#4278). */
+		bandOverLand() {
+			const ahead = camera.getWorldDirection(new THREE.Vector3());
+			const tan = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+			stage?.bandOverLand(camera.position, {
+				bearing: Math.atan2(ahead.x, ahead.z),
+				half: Math.atan(tan * camera.aspect),
+			});
+		},
 		/** Your figure, the rider mask the GPU checks measure (#3222). */
 		get you() {
 			return crew?.you ?? null;
