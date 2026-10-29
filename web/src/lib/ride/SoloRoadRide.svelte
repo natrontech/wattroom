@@ -10,7 +10,9 @@
 	import RoadRiding from '$lib/ride/RoadRiding.svelte';
 	import type { Trainer } from '$lib/ble/trainer';
 	import { loadPlanRoad, loadRoad, type RideableRoute } from '$lib/ride/roads';
+	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
 	import { theRide } from '$lib/ride/the-ride.svelte';
+	import { onDestroy } from 'svelte';
 
 	let {
 		roadId = null,
@@ -28,17 +30,19 @@
 	let route = $state.raw<RideableRoute | null>(null);
 	let start = $state(0);
 	let error = $state<string | null>(null);
+	// The rider left before the road came in: no ride starts unseen, and the
+	// handed trainer goes back to the slot it came from (#2615).
+	let gone = false;
+	onDestroy(() => (gone = true));
 
 	async function load() {
 		error = null;
 		const result = plan
 			? await loadPlanRoad(plan.crew, plan.id)
 			: await loadRoad(roadId ?? '').then((r) => (r.ok ? { ...r, from } : r));
-		if (!result.ok) {
-			error = result.error;
-			return;
-		}
-		if (trainer) theRide.beginRoad(trainer, result.route, result.from);
+		if (gone) soloTrainer().adopt(trainer);
+		else if (!result.ok) error = result.error;
+		else if (trainer) theRide.beginRoad(trainer, result.route, result.from);
 		else {
 			route = result.route;
 			start = result.from;

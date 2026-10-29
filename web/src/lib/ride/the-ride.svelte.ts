@@ -235,6 +235,8 @@ export const theRide = {
 		workout: Workout,
 		options: { borrowed: boolean },
 	): Promise<void> {
+		// One ride per device (ADR-0093): no Start is drawn while one runs.
+		if (theRide.live) return;
 		const { flags } = ensureRoot();
 		take(trainer);
 		profile = createProfileStore();

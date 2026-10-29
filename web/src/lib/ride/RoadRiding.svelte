@@ -242,6 +242,7 @@
 			<p class="text-muted text-sm" role="status">
 				Under a minute — nothing to save.
 			</p>
+			<a href={doneHref} class="btn btn-primary self-start">Done</a>
 		{/if}
 		{#if ride?.ended}
 			<!-- The flags the ride raised, sent with their notes (#52). -->
