@@ -229,7 +229,7 @@
 >
 	<!-- A ride already under way is the screen, whatever the address asks
 	     for: the device has one ride (ADR-0093). -->
-	{#if theRide.road || (session && session.state !== 'idle')}
+	{#if theRide.road || (session && session.state !== 'idle') || theRide.channel?.riding}
 		<TheRide />
 	{:else if askFigure}
 		<FigureCard

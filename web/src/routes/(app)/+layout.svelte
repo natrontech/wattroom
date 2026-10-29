@@ -179,7 +179,7 @@
 	// The ride alone outlives its screens (ADR-0093): the frame is the ride
 	// only while one of them draws it, and a desk frame everywhere else.
 	const alone = $derived(
-		theRide.live ? drawsTheRide(page.url.pathname) : soloRide.active,
+		theRide.alone ? drawsTheRide(page.url.pathname) : soloRide.active,
 	);
 	const riding = $derived(
 		(channelConnection.onPlacePath(page.url.pathname) &&

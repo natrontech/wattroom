@@ -22,7 +22,13 @@
 
 	const profile = createProfileStore();
 	const shows = $derived(dockShows(theRide.live, pathname));
-	const session = $derived(theRide.session);
+	// Your own workout in a voice channel drives a block too (#4259).
+	const session = $derived(
+		theRide.session ??
+			(theRide.channel?.ownRide.riding
+				? theRide.channel.ownRide.session
+				: null),
+	);
 	// While a workout drives: a free ride, or a road with no workout on it
 	// (#4277), has no block.
 	const block = $derived.by(() => {
