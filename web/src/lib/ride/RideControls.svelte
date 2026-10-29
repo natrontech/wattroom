@@ -17,6 +17,7 @@
 	import FlagButton from '$lib/ride/FlagButton.svelte';
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
 	import GearShift from '$lib/ride/GearShift.svelte';
+	import ModeSwitch from '$lib/ride/ModeSwitch.svelte';
 	import type { RideShift } from '$lib/ride/ride-shift';
 	import ViewSwitch from '$lib/world/ViewSwitch.svelte';
 	import type { createWorldView } from '$lib/world/world-view.svelte';
@@ -70,7 +71,11 @@
 			>Cancel</button
 		>
 	{:else}
-		{#if open && gearsEnabled()}
+		{#if open}
+			<!-- The free ride's switch (#4283): Road by its grade, or Watts by it. -->
+			<ModeSwitch mode={session.drive} road onmode={session.setDrive} />
+		{/if}
+		{#if open && gearsEnabled() && session.drive !== 'watts'}
 			<GearShift
 				{shift}
 				gear={session.gear}
