@@ -15,6 +15,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/muktihari/fit/decoder"
+	"github.com/muktihari/fit/profile/filedef"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/secrets"
@@ -590,5 +592,39 @@ func TestAnOutagePastTheCeilingIsRecoverable(t *testing.T) {
 		RideID: rideID, Destination: Destination,
 	}); n != 0 {
 		t.Errorf("a pending delivery was requeued again (%d rows)", n)
+	}
+}
+
+// A lapped road ride reaches Strava at its own distance (#4269): out up an
+// invented road and back down it, the upload ends on the ride's distance_m,
+// never on a turn's metres counted down.
+func TestALappedRoadRideUploadsAtItsDistance(t *testing.T) {
+	samples := make([]protocol.RiderMetrics, 120)
+	for i := range samples {
+		samples[i] = protocol.RiderMetrics{Watts: 250, M: 1000 + 8*float64(i)}
+		if i >= 60 {
+			samples[i].M = 1480 - 8*float64(i-60)
+		}
+	}
+	var blob bytes.Buffer
+	zw := gzip.NewWriter(&blob)
+	if err := json.NewEncoder(zw).Encode(samples); err != nil {
+		t.Fatal(err)
+	}
+	_ = zw.Close()
+	distance := int32(1000)
+	data, err := (&Service{}).encode(db.GetRideForUploadRow{
+		StartedAt: pgtype.Timestamptz{Time: time.Date(2026, 10, 28, 18, 0, 0, 0, time.UTC), Valid: true},
+		Samples:   blob.Bytes(), DistanceM: &distance,
+	})
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	fit, err := decoder.New(bytes.NewReader(data)).Decode()
+	if err != nil {
+		t.Fatalf("decode FIT: %v", err)
+	}
+	if got := filedef.NewActivity(fit.Messages...).Sessions[0].TotalDistance; got != 100_000 {
+		t.Errorf("uploaded at %d cm, want the ride's 100000", got)
 	}
 }

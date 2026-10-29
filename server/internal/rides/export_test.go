@@ -109,3 +109,40 @@ func TestExportEmptyAndCorruptSamples(t *testing.T) {
 		})
 	}
 }
+
+// A lapped road ride's own .fit (#4269): out up the road and back down it,
+// its distance grows through the turn and ends on the ride's distance_m, the
+// replay's, rather than on the metres the client sent.
+func TestExportOfALappedRoadRideEndsOnItsDistance(t *testing.T) {
+	h := setup(t)
+	routeID, _ := storeRoute(t, h, "alice")
+	status, got := call(t, h.mux, "alice", http.MethodPost, "/api/rides", lappedRide(routeID,
+		lapJSON{lap: 0, seconds: 60, from: 1000, mps: 8},
+		lapJSON{lap: 1, reverse: true, seconds: 60, from: 1480, mps: -8}))
+	if status != http.StatusCreated {
+		t.Fatalf("an out-and-back: %d %v", status, got)
+	}
+	id, _ := got["id"].(string)
+	s := readSummary(t, h, id)
+	if s.distanceM == nil {
+		t.Fatal("the ride kept no distance")
+	}
+	w := exportRequest(t, h, "alice", id)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", w.Code, w.Body.String())
+	}
+	fit, err := decoder.New(w.Body).Decode()
+	if err != nil {
+		t.Fatalf("decode FIT: %v", err)
+	}
+	activity := filedef.NewActivity(fit.Messages...)
+	records := activity.Records
+	for i := 1; i < len(records); i++ {
+		if records[i].Distance < records[i-1].Distance {
+			t.Fatalf("record %d at %d cm, behind the %d cm before it", i, records[i].Distance, records[i-1].Distance)
+		}
+	}
+	if got, want := int64(activity.Sessions[0].TotalDistance), int64(*s.distanceM)*100; got != want {
+		t.Errorf("session distance %d cm, want the ride's %d", got, want)
+	}
+}
