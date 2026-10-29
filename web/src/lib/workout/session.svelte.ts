@@ -12,7 +12,7 @@ import { createRideLife } from './ride-life.svelte';
 import { createRoadDot } from './road-dot.svelte';
 import { createRideHud } from './ride-hud';
 import { createSoloAim } from './solo-aim.svelte';
-import { riddenWorkout, type RiddenPart } from './ridden';
+import { isOpenRoad, riddenWorkout, type RiddenPart } from './ridden';
 import type { RideOptions, RideState } from './ride-state';
 import type { Workout } from './types';
 
@@ -88,6 +88,9 @@ export function createRideSession({
 			road: dot.position,
 		});
 	let clock = $state.raw(clockOf(first));
+	// No workout, the road on (#4277): the ride reads as a free ride on that
+	// road does, its own time and no end, not the six hours it may last.
+	const open = $derived(isOpenRoad(workout));
 
 	const actuator = createActuator(() => life.trainer);
 	const aim = createSoloAim({
@@ -184,7 +187,8 @@ export function createRideSession({
 		state: () => state,
 		sample: () => sample,
 		target: () => aim.target,
-		remaining: () => clock.total - clock.seconds,
+		remaining: () => (open ? 0 : clock.total - clock.seconds),
+		elapsed: () => (open ? live.current.seconds : undefined),
 		ridingSince: () => life.ridingSince,
 		now,
 		road: () => dot.summary?.readout,
@@ -235,8 +239,9 @@ export function createRideSession({
 		get segments() {
 			return clock.segments;
 		},
+		/** The workout's length; 0 with no workout, which has no end (#4277). */
 		get total() {
-			return clock.total;
+			return open ? 0 : clock.total;
 		},
 		/** The workout under way (#4257): the one the ride started with until changed. */
 		get workout() {
@@ -268,8 +273,9 @@ export function createRideSession({
 			clock.sync();
 			publish();
 		},
+		/** The workout's clock; with no workout, the whole ride's (#4277). */
 		get elapsed() {
-			return clock.seconds;
+			return open ? live.current.seconds : clock.seconds;
 		},
 		get state() {
 			return state;

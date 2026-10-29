@@ -23,6 +23,7 @@
 	import { describeBlock } from '$lib/workout/block';
 	import { customWorkouts } from '$lib/workout/custom.svelte';
 	import { skylineOf } from '$lib/workout/road-workout';
+	import { isOpenRoad } from '$lib/workout/ridden';
 	import { buildShelf } from '$lib/workout/shelf';
 
 	let {
@@ -79,6 +80,10 @@
 					session.road?.readout,
 				)
 			: null,
+	);
+	// No workout, the road on: the TV draws a free ride's, no block (#4277).
+	const tvBlock = $derived(
+		session && isOpenRoad(session.workout) ? null : block,
 	);
 
 	/**
@@ -198,9 +203,9 @@
 			segments={session.segments}
 			total={session.total}
 			elapsed={session.elapsed}
-			{block}
+			block={tvBlock}
 			placeName={session.workout.name}
-			workoutName={block?.label ?? ''}
+			workoutName={tvBlock?.label ?? ''}
 			sprint={session.sprint}
 			live
 			onExit={() => (tv = false)}

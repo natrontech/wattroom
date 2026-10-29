@@ -362,7 +362,7 @@
 			     the workout's one picture, its blocks in words (#4159). -->
 			<RideBand
 				{block}
-				elapsed={open ? session.live.seconds : session.elapsed}
+				elapsed={session.elapsed}
 				total={session.total}
 				title={workout.name}
 				context={rideContext('Solo', workout.name)}

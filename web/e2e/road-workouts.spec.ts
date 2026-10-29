@@ -157,3 +157,42 @@ test('a workout on the Pass loop, changed at km 2 and ended at km 4, saves one r
 	for (let i = 1; i < metres.length; i++)
 		expect(metres[i]).toBeGreaterThanOrEqual(metres[i - 1]);
 });
+
+// #4277: with No workout the HUD and the TV still counted the time left
+// against the six hours the open road may last.
+test('with No workout on the Pass loop, the HUD and the TV read a free ride', async ({
+	context,
+	page,
+}) => {
+	test.skip(
+		!!process.env.PLAYWRIGHT_BASE_URL,
+		'the ?as= dev provider only exists on a dev server',
+	);
+	await signInAs(page, 'Road Free Rider', '/ride?w=recovery-spin&road=intro');
+	await page
+		.getByRole('button', { name: 'Ride simulated' })
+		.click({ timeout: 15_000 });
+	await page.getByRole('button', { name: 'Start the ride' }).click();
+	await expect(page.getByTestId('block-road')).toContainText('of 28.8', {
+		timeout: 15_000,
+	});
+	const hud = await context.newPage();
+	await hud.goto('/hud');
+	await expect(hud.getByTestId('hud-remaining')).toHaveText(/ left$/);
+
+	await page.getByRole('button', { name: 'Change workout' }).click();
+	await page
+		.getByRole('dialog', { name: 'Change workout' })
+		.getByRole('button', { name: /^No workout/ })
+		.click();
+	await expect(page.getByTestId('ride-context')).toContainText('Free ride');
+	// The ride's own minutes, never the 359 left of six hours.
+	await page.getByRole('button', { name: 'TV mode' }).click();
+	const tv = page.getByRole('dialog', { name: 'TV mode' });
+	// A free ride's TV: no block, so the eyebrow names no Road block either.
+	await expect(tv.getByRole('heading', { level: 1 })).toHaveText('Free ride');
+	await expect(tv).not.toContainText(/\d{3}:\d\d/);
+	await expect(hud.getByTestId('hud-remaining')).toHaveText(
+		/^\d{1,2}:\d\d ridden$/,
+	);
+});
