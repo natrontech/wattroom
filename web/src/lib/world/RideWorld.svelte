@@ -27,6 +27,7 @@
 	import { CAMERA_PRESETS, type CameraPreset } from './cameras';
 	import { computerShown } from '$lib/session/computer-shown.svelte';
 	import type { Road } from '$lib/road/road';
+	import type { Route } from '$lib/road/route';
 	import { routeOfRoad } from './road-route';
 	import { mount, type WorldScene } from './scene';
 	import type { RideMetre } from './sim';
@@ -38,7 +39,12 @@
 	import { play } from '$lib/sound/cues';
 	import { generate } from './world';
 	import { rideLook, worldPaint } from './look';
-	import { pictureDue, worldPicture } from './picture.svelte';
+	import {
+		momentToDraw,
+		PICTURE,
+		worldPicture,
+		type PictureMoment,
+	} from './picture.svelte';
 
 	let {
 		road,
@@ -115,20 +121,15 @@
 		};
 	});
 
-	// The ride's picture (#4221): once, by itself, on the first climb or
-	// after a while on a flat road, unless the rider took one first (#4253);
-	// the last ride's is let go first.
+	// The ride's picture (#4221, #4263): drawn as this world closes, at the
+	// ride's best moment once it settled, or at the moment the rider took it
+	// (#4253); the last ride's is let go first. Where it stands is said on
+	// the canvas, as its shot is: a capture waits for it.
 	const PICTURE_POLL_S = 2;
-	let taken = false;
-	function takePicture() {
-		taken = true;
-		void scene?.snap().then((shot) => {
-			if (!shot) return;
-			worldPicture.keep(shot);
-			// Said on the canvas, as its shot is: a capture waits for it.
-			if (canvas) canvas.dataset.picture = 'taken';
-		});
-	}
+	const ridden: PictureMoment[] = [];
+	let chosen: PictureMoment | null = null;
+	let route: Route | null = null;
+	const now = (): PictureMoment => ({ m: metre().m, p: progress, watts });
 	onMount(() => {
 		const ask = (event: Event) => {
 			const preset = (event as CustomEvent<CameraPreset | undefined>).detail;
@@ -141,23 +142,26 @@
 		};
 		const photo = (event: Event) => {
 			if (!scene) return;
-			takePicture();
+			chosen = now();
+			worldPicture.took();
+			if (canvas) canvas.dataset.picture = 'taken';
 			event.preventDefault();
 		};
 		window.addEventListener(CAMERA_ASK, ask);
 		window.addEventListener(PHOTO_ASK, photo);
 		worldPicture.clear();
-		let ridden = 0;
+		let moving = 0;
 		const picture = setInterval(() => {
-			if (taken || !scene || counting || paused) return;
-			const at = metre();
-			if (at.mps > 0.5) ridden += PICTURE_POLL_S;
-			if (pictureDue(road, at.m, ridden)) takePicture();
+			if (!scene || counting || paused || metre().mps <= 0.5) return;
+			moving += PICTURE_POLL_S;
+			if (moving <= PICTURE.settleS) return;
+			ridden.push(now());
+			if (canvas && !canvas.dataset.picture) canvas.dataset.picture = 'due';
 		}, PICTURE_POLL_S * 1000);
 		// Building holds the main thread for a moment: let the surface paint first.
 		const t = setTimeout(() => {
 			try {
-				const route = routeOfRoad(road);
+				route = routeOfRoad(road);
 				const paint = worldPaint(canvas!.parentElement ?? document.body);
 				scene = mount(canvas!, {
 					route,
@@ -217,8 +221,18 @@
 			clearInterval(picture);
 			if (import.meta.env.DEV)
 				delete (window as { __worldProbe?: unknown }).__worldProbe;
-			scene?.dispose();
+			const closing = scene;
 			scene = null;
+			const at = momentToDraw(
+				chosen,
+				route && (loop ? { ...route, loop } : route),
+				ridden,
+			);
+			if (closing && at)
+				void worldPicture.draw(
+					closing.picture(at).finally(() => closing.dispose()),
+				);
+			else closing?.dispose();
 			if (import.meta.env.DEV)
 				delete (window as { __worldProbe?: () => unknown }).__worldProbe;
 		};

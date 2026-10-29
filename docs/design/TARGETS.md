@@ -618,6 +618,18 @@ Capture: `/api/rides/<id>/card.png` for a road ride, 1080 × 1080. Target: v2-su
 4. No effort marked at save or hidden near a zone is labelled; no place name its audience may not see (G10). [poster-climbs] [test:internal/og]
 5. Its own dark picture in both schemes; nothing on it glows.
 
+#### ride-world-picture
+
+Capture: `<hairpin>` ridden from km 2.3 past its first 30 s, then End ride: the closing card (ride-world-picture-card) and the picture its World picture saves (`ride-world-picture.jpg`, its size in `ride-world-picture.json`). Target: none drawn, canon is the bar (SPEC “The ride's pictures”); world-bluehour-hairpin for the world's framing, sky and palette (D4). Checked again once #4256's look lands.
+
+1. A portrait 1080 × 1350, one pixel per pixel. [#4263] [probe:width] [probe:height]
+2. Its own camera: low, a front three-quarter, you large (about two fifths of the frame's height) on a third, with room ahead of you to ride into; past you the sky, not the slope, wherever a stand on the road can see it. [#4263] [test:web/src/lib/world/picture-still.test.ts]
+3. Nothing of the dressing between the lens and you. [#4263] [test:web/src/lib/world/picture-still.test.ts]
+4. The ride's best moment: a summit crossed, else a hairpin, else the steepest stretch; the rider's own Photo in its place. [#4263] [test:web/src/lib/world/picture.test.ts]
+5. You alone on the road, and no word in the frame: no rider name, crew or place (G10). [#4221] [test:web/src/lib/world/ride-scene.test.ts] [test:web/src/lib/world/picture-still.test.ts]
+6. The world's blue hour in its own look (ADR-0072, ADR-0092). [#4263]
+7. On the closing card, World picture sits beside Ride card; while the world draws, “Drawing…” holds its place. [#4263] [multi:ride-world-picture-card] [test:web/src/lib/ride/WorldPicture.test.ts]
+
 #### history, history-rides
 
 Capture: `/history` with no ride and with one seeded ride; whole page body, desk and phone. Target: v2-collections (the header; tabs per D6).
