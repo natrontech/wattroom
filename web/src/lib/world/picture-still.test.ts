@@ -9,7 +9,7 @@ import type { Composed } from './compose';
 import type { Family } from './family';
 import { yOf } from './geometry';
 import { RIDE } from './look.test-helper';
-import { figureBox, LENS } from './picture-camera';
+import { figureBox, HELMET_M, LENS, TYRE_M } from './picture-camera';
 import { pictureStill } from './picture-still';
 import { syntheticPoints } from './synthetic';
 import { generate, type World } from './world';
@@ -34,14 +34,11 @@ function familyOf(o: THREE.Object3D): Family | null {
 	return null;
 }
 
-/** A wheel's radius, and the helmet's top over the head's bone. */
-const TYRE_M = 0.34;
-const HELMET_M = 0.25;
-
 /**
- * Your figure on the frame, as shares of it from the top left: its middle,
- * and its height from the tyres' contact to the helmet's top, as a reader
- * of the picture would measure it.
+ * Your figure on the frame, as shares of it from the top left: how far
+ * across its box's middle stands, and from the tyres' contact to the
+ * helmet's top, how high it is and where its middle falls, as a reader of
+ * the picture would measure them.
  */
 function onFrame(still: Composed) {
 	const box = figureBox(still.you!);
@@ -61,7 +58,7 @@ function onFrame(still: Composed) {
 		y1 = Math.max(y1, (1 - v.y) / 2);
 	});
 	box.getCenter(v).project(still.camera);
-	return { box, x: (v.x + 1) / 2, y: (1 - v.y) / 2, h: y1 - y0 };
+	return { box, x: (v.x + 1) / 2, y: (y0 + y1) / 2, h: y1 - y0 };
 }
 
 /** The ground or dressing the frame's top edge meets within `m` metres: none, where it shows the sky past you. */
@@ -141,7 +138,8 @@ describe('the ride’s picture of the world (#4263)', () => {
 				// On a third across, a little under the middle.
 				const third = Math.min(Math.abs(x - 1 / 3), Math.abs(x - 2 / 3));
 				expect(third, what).toBeLessThan(0.03);
-				expect(Math.abs(y - LENS.down), what).toBeLessThan(0.03);
+				// Your middle from the tyres to the helmet, as SPEC has it: 0.01 is 13 px of 1,350 (#4278).
+				expect(Math.abs(y - LENS.down), what).toBeLessThan(0.01);
 				// Low: knee height over the road, under the chase camera's 2.4 m.
 				const { x: cx, z: cz } = still.camera.position;
 				const under = world.roadSurfaceAt(cx, cz) ?? world.heightAt(cx, cz);
