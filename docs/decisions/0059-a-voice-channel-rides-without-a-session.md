@@ -136,3 +136,7 @@ session, never inside it.**
 
 Riding an open ride from a voice channel is a **free ride** there. The open
 ride's position frame is a **second audience**, and it carries **no numbers**.
+
+## Amendment, 2026-10-29 (#4259): the audience follows the rider ([ADR-0093](0093-a-ride-is-the-riders.md))
+
+A free ride, your own workout and a ride started alone are one ride, owned by the app shell. Its live numbers reach the voice channel the rider is in, to this ADR's audience, and move with the rider to the next voice channel they open. Leaving the call keeps the ride, private. Heart rate still follows ADR-0008's control. A session drives only the riders who joined it, as above; leaving it hands the ride back to its own player, still running.
