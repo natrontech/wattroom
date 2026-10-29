@@ -27,6 +27,12 @@ test('the pre-ride rides the trainer the voice channel holds', async ({
 	await expect(page.getByText(/^\d+ rpm/).first()).toBeVisible({
 		timeout: 15_000,
 	});
+	// Pedalling there is the channel's free ride, the device's one ride
+	// (ADR-0093): Ride offers no second Start until it ends. Ended, the
+	// channel keeps the trainer.
+	await page
+		.getByRole('button', { name: 'End ride' })
+		.click({ timeout: 15_000 });
 
 	// In-app, so the channel's connection — and the trainer it holds — stays.
 	await page.evaluate(() => {
