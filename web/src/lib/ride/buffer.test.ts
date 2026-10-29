@@ -83,6 +83,18 @@ describe('ride buffer', () => {
 		expect(rides[0].samples[0].watts).toBe(201);
 	});
 
+	it('offers a ride whose workout changed back under every workout it rode (#4257)', async () => {
+		const buffer = await fill('100', 90, { saveable: true, recording: true });
+		buffer.retitle({
+			workoutName: 'Openers + Free ride',
+			workoutJson: '{"name":"Openers + Free ride","steps":[]}',
+		});
+		buffer.release();
+		const [ride] = await offered();
+		expect(ride.workoutName).toBe('Openers + Free ride');
+		expect(ride.workoutJson).toContain('Openers + Free ride');
+	});
+
 	it('does not offer back a ride that finished properly', async () => {
 		await fill('100', 90, { end: true });
 		expect(await offered()).toHaveLength(0);

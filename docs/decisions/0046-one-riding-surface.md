@@ -178,3 +178,7 @@ numbers, turn between fixed pages — RIDE, CLIMB, POWER, MAP on a road, RACE
 later — with ← and → or a tap. No other slot pages, the slots never move, and
 the page resets to RIDE on every ride. The parity rule is unchanged: every
 riding surface has the same pages.
+
+## Amendment, 2026-10-29 (#4259): the surface is a place the rider opens
+
+[ADR-0093](0093-a-ride-is-the-riders.md) gives the ride to the app shell. `/ride`, `/ramp` and a voice channel's Training page draw the one ride the device has, and the rider leaves and reopens the surface without ending it. Navigation never ends a ride, so the leave guard's confirm goes and only the browser's unload guard stays. The five slots, their order and the parity rule are unchanged.

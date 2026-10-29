@@ -83,6 +83,9 @@ export function createRideRecord(ftp: number) {
 	 */
 	const recording: RecordedSecond[] = [];
 	let recordedSeconds = 0;
+	// Where this workout's clock starts in the ride's (#4257): a workout
+	// changed mid-ride records on after the ones before it, as it saves.
+	let offset = 0;
 	// The wall-clock second the record last admitted a sample for: a trainer
 	// notifies more than once a second and everything downstream — kJ,
 	// duration, the power curve, the XP the server pays — reads this record
@@ -143,7 +146,7 @@ export function createRideRecord(ftp: number) {
 			lastRecordedSecond = Math.floor(at / 1000);
 			const recorded = {
 				second: recordedSeconds++,
-				clock,
+				clock: offset + clock,
 				watts: Math.max(0, Math.round(sample.watts)),
 				cadence: Math.max(0, Math.round(sample.cadence)),
 				// Reaches the .fit export now that a strap can be paired (#11, #44).
@@ -163,6 +166,14 @@ export function createRideRecord(ftp: number) {
 			// erased the start of the line rather than scrolling it (#2017).
 			trace = [...trace, { t: clock, w: sample.watts }];
 			return recorded;
+		},
+		/**
+		 * A workout changed mid-ride (#4257): its graph starts empty, and its
+		 * seconds record after the `at` workout seconds already ridden.
+		 */
+		changeWorkout(at: number) {
+			offset = at;
+			trace = [];
 		},
 		/**
 		 * One scored second. The band is the rider's own biased target; the

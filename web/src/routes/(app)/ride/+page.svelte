@@ -18,6 +18,9 @@
 		soloRideSounds,
 	} from '$lib/ride/ride-sounds.svelte';
 	import { byId } from '$lib/workout/library';
+	import { openRoad } from '$lib/workout/ridden';
+	import { buildShelf } from '$lib/workout/shelf';
+	import type { Workout } from '$lib/workout/types';
 	import { customWorkouts } from '$lib/workout/custom.svelte';
 	import { pushProfile } from '$lib/profile-sync.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
@@ -185,6 +188,29 @@
 	let gone = false;
 	let saving = $state(false);
 	let session = $state<ReturnType<typeof createRideSession> | null>(null);
+	// What is ridden now: the setup's workout, until Change workout (#4257).
+	const riding = $derived(session?.workout ?? workout);
+	const shelf = $derived(buildShelf(custom.all));
+
+	/**
+	 * Change workout (#4257): the pick from its first block, on the road where
+	 * the dot is — or, with none, the road on at its own grade. The ride,
+	 * its recording and its place carry on in the session.
+	 */
+	function changeWorkout(next: Workout | null) {
+		const on = session?.road;
+		if (!session || (!next && !on)) return;
+		const road = on && { routeId: on.routeId, fromM: on.m, toM: on.toM };
+		session.changeWorkout(
+			road ? (next ? { ...next, road } : openRoad(road)) : next!,
+		);
+		flags.recorder.event('ride', `changed to ${session.workout.name}`);
+		const planned = session.planned;
+		buffer?.retitle({
+			workoutName: planned.name,
+			workoutJson: JSON.stringify(byReference(planned)),
+		});
+	}
 	// The setup is a desk page and wears the page frame (G7); the ride and
 	// its summary keep the riding surface's own gutters.
 	const setup = $derived(
@@ -380,8 +406,10 @@
 		}
 		const ended = buffer;
 		const id = `${current.startedAt.getTime()}`;
+		// Every workout it rode, under all their names (#4257).
+		const ridden = current.ridden;
 		const upload = recordingUpload(
-			workout,
+			ridden,
 			current.startedAt,
 			current.recording,
 			{ borrowed },
@@ -418,7 +446,7 @@
 				history.remove(id);
 				const localFailure = history.add({
 					id,
-					workoutName: workout.name,
+					workoutName: ridden.name,
 					startedAt: current.startedAt.toISOString(),
 					execution: current.execution,
 					executionScored: current.scored,
@@ -454,7 +482,7 @@
 			? describeBlock(
 					session.info,
 					session.segments,
-					workout,
+					riding,
 					ftp,
 					session.trace,
 					// On a route whose blocks run by the clock the road is only
@@ -583,7 +611,7 @@
 
 <svelte:head
 	><title
-		>{shelfPending || shelfMissing ? 'Ride' : workout.name} · Ride · WattRoom</title
+		>{shelfPending || shelfMissing ? 'Ride' : riding.name} · Ride · WattRoom</title
 	></svelte:head
 >
 
@@ -691,7 +719,7 @@
 					: undefined}
 				{session}
 				{block}
-				{workout}
+				workout={riding}
 				{ftp}
 				kg={profile.current.kg}
 				lthr={profile.current.lthr}
@@ -701,6 +729,8 @@
 				{noCrashSafety}
 				onFlag={() => flags.recorder.flag()}
 				onTv={() => (tv = true)}
+				{shelf}
+				onChangeWorkout={changeWorkout}
 			/>
 		</div>
 	{/if}
@@ -721,7 +751,7 @@
 			total={session.total}
 			elapsed={session.elapsed}
 			{block}
-			placeName={workout.name}
+			placeName={riding.name}
 			workoutName={block?.label ?? ''}
 			sprint={session.sprint}
 			live
@@ -744,7 +774,7 @@
 		     zeros behind it (#126). -->
 		<div>
 			<SessionSummary
-				title={workout.name}
+				title={session.ridden.name}
 				unsaved={saveStatus !== null && !savedId}
 				{savedXp}
 				samples={session.recording}

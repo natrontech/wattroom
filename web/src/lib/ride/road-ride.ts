@@ -130,6 +130,7 @@ export function createRoadLaps(
 	opts: { kg: () => number; from?: number; reverse?: boolean; loop?: boolean },
 ) {
 	let reverse = !!opts.reverse;
+	let loop = !!opts.loop;
 	// A lap is numbered when its first sample is recorded, so a lap nothing
 	// was recorded on is never numbered past: the server takes laps one after
 	// another (#3598). Each second keeps the lap it was ridden in, since a
@@ -154,7 +155,7 @@ export function createRoadLaps(
 		// From the start of its way a lap rides off from standstill; from
 		// anywhere else, and anywhere on a loop, it keeps this one's speed, as
 		// the replay does (#3117, #4261).
-		const atStart = !opts.loop && (way ? from >= road.length : from <= 0);
+		const atStart = !loop && (way ? from >= road.length : from <= 0);
 		const mps = atStart ? 0 : (carried ?? last?.virtualMps ?? 0);
 		ride = createRoadRide(road, { kg: opts.kg, from, reverse, mps, grade });
 	}
@@ -171,9 +172,13 @@ export function createRoadLaps(
 		get reverse() {
 			return reverse;
 		},
+		/** A workout changed mid-ride rides on by the clock, lapping a loop (#4257). */
+		set loop(on: boolean) {
+			loop = on;
+		},
 		second(watts: number, at: number): RoadSecond {
 			last = tag(ride.second(watts, at));
-			if (opts.loop && last.atEnd) {
+			if (loop && last.atEnd) {
 				next(reverse ? road.length : 0, reverse, ride.mps);
 				// The lap's first sample stands on the line (#3117).
 				last = tag(ride.start());

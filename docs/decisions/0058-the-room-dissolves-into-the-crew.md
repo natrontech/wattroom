@@ -461,3 +461,7 @@ their voice and camera in the call; their other screens in the same voice
 channel or its session are controllers, with no call of their own. The hub
 holds which screen that is, as it holds the trainer
 ([0025](0025-one-sensor-one-screen.md)).
+
+## Amendment, 2026-10-29 (#4259): a voice channel holds no ride ([ADR-0093](0093-a-ride-is-the-riders.md))
+
+A voice channel's connection keeps the call, the socket and the session's shared state, and no longer owns the rider's ride or trainer. Opening another voice channel still leaves this one, and the ride carries on into the next one's audience. Opening a voice channel never asks to end a ride.

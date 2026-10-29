@@ -140,7 +140,7 @@ Layout:
 4. Insets 16 px, gaps 12–16 px. Computer, Skyline, and slot 1 when in the left column, share a left edge; seat, crew panel and Skyline share a right edge. [ride-surface]
 5. Panels content-sized: nothing clipped or scrolling, no empty band > 24 px. Cadence, heart and bias trim visible and reachable. [ride-surface] [probe:panels]
 6. Slot 1: one panel top left, outside the corridor, shaped as the box table shows holding SPEC's sizes (a wide band ending above y 22.5 %, or a column ≤ 30 % wide above the computer). It opens with a `ride-label` eyebrow, mode · workout or road · riders; then v2-erg's work panel: time left at SPEC's desk size with “Block n of m · name”, “Target W · range”, “elapsed of total”; interval strip with cursor; NEXT (D16) with the 3-2-1 chips; the trainer chip. On a road, the road line “km x of y · grade % · <next climb> in z km” once, here. [ride-surface]
-7. Controls one row inside slot 1, no separate panel: ⚑, TV, +1 min, Skip block as G5-sized icon buttons with accessible names and tooltips; the view switch, 3D | Flat | Map, one segmented control of G5-sized words (ADR-0091); End ride the one text button; +1 min and Skip block only where the rider owns the clock (D13). [ride-surface] [probe:minTarget] [test:web/src/lib/ride/riding-screen-world.test.ts]
+7. Controls one row inside slot 1, no separate panel: ⚑, TV, +1 min, Skip block as G5-sized icon buttons with accessible names and tooltips; the view switch, 3D | Flat | Map, one segmented control of G5-sized words (ADR-0091); Change workout and End ride the two text buttons, last, in that order (#4257); +1 min and Skip block only where the rider owns the clock (D13) and a workout rides. [ride-surface] [probe:minTarget] [test:web/src/lib/ride/riding-screen-world.test.ts]
 8. Persistent status (G3): one line atop slot 1 with its one recovery button, never covering the corridor. [ride-surface] [multi:ride-status]
 9. Bike computer: one panel bottom left, ≤ 30 % wide, directly above the Skyline. Top down: page control (D15), ← name → with dots, arrows G5-sized; head: 3 s power in watt (at SPEC's desk size), W/kg beside it, and under it only where four figures leave no room beside (#3898; on a desk ride at SPEC's size they fit, ADR-0087), live zone as digit and name under; while a target is asked, target track (low · target · high, a needle) and “Block · n % on target”; the page's fields per the one-home table, a grid under a hairline. [ride-surface]
 10. Only watt marks: G2's three, one power figure, your Skyline dot, your trail. [ride-surface] [probe:wattCount]
@@ -185,7 +185,8 @@ A workout on the road:
 36. Each gate lands within 1 s of its block starting: alone at your own target and weight, in a session at the reference rider the hub paces the bunch at; a road workout's on its pins. [#3101] [test:web/src/lib/road/gates.test.ts]
 37. Before a classed climb's foot on a workout, CLIMB carries one muted line under its fields at the computer's word size, naming the block that lands on the climb: “Starts in 0:45, during Threshold 2”; gone once on the climb. [#3101] [multi:ride-road-world-climb-lands] [test:web/src/lib/road/gates.test.ts]
 38. At 1440 × 900 and 1920 × 1080, the world draws at least one pixel per CSS pixel, so its edges are never a stretched frame: the probe's `renderer.pixelRatio` is 1 or more, or the device's own where that is lower. [#4256] [probe:renderer.pixelRatio]
-39. The dressing and the ground are ADR-0092's flat low poly: trees, bales, buildings and rocks a handful of faces each, every face one colour, flat shaded; the ground one colour per face or vertex, no noise or masonry inside a face. A stand mixes the forms and shades of its trees, never a row of one cone. [#4256] [test:web/src/lib/world/flat-look.test.ts] [test:web/src/lib/world/props/forest.test.ts]
+39. Change workout opens one dialog over the ride: “Change workout” and one line, then a list of G5-sized rows, each a workout's name and length, the one riding marked “Riding now” and disabled; on a road “No workout” heads it. The ride, its place on the road and its record carry on; the pick starts at its first block. With no workout, slot 1 reads “Free ride” with no block line, the time left becomes the ride's whole time ridden, and the strip, +1 min, Skip block and the bias trim are gone. [#4257] [multi:ride-road-world-change] [multi:ride-road-world-none] [test:web/src/lib/workout/change-workout.svelte.test.ts]
+40. The dressing and the ground are ADR-0092's flat low poly: trees, bales, buildings and rocks a handful of faces each, every face one colour, flat shaded; the ground one colour per face or vertex, no noise or masonry inside a face. A stand mixes the forms and shades of its trees, never a row of one cone. [#4256] [test:web/src/lib/world/flat-look.test.ts] [test:web/src/lib/world/props/forest.test.ts]
 
 #### ride-workout-world
 
@@ -459,7 +460,7 @@ Capture: `/ride` with “Change” opened, the hairpin and rolling route seeded.
 
 1. Every road is the shared route row: name, class chips, stat line, story line; the name links to the route page. [route-row]
 2. Empty state one line, “Your roads ride here — import a GPX, TCX or FIT.”, plus an “Import a route” button. [route-row]
-3. WattRoom's own roads head the list under the eyebrow WATTROOM ROADS, for every rider, before YOUR ROADS: each the shared route row (item 1), measured off its own road, with what is along it in the ridden line's place and its name plain, as a WattRoom road has no route page; no road list is ever empty. [#4248] [test:web/src/lib/world/home-roads.test.ts]
+3. WattRoom's own roads head the list under the eyebrow WATTROOM ROADS, for every rider, before YOUR ROADS: each the shared route row (item 1), measured off its own road, with what is along it in the ridden line's place and its name plain, where the row picks the road rather than opening it (the Workouts shelf's card opens its page, route item 19); no road list is ever empty. [#4248] [test:web/src/lib/world/home-roads.test.ts]
 
 #### picker-race (a desk surface)
 
@@ -499,7 +500,7 @@ Capture: `/dev/world?m=<metre>&p=0|1&cam=chase&look=bluehour&chrome=0`, 1440 × 
 5. Your jersey's pattern lies on the cloth, round the torso and down the sleeves, clean edges that do not crawl; Gipfelpunkte never puts its dots on a white ground. [#3156] [multi:world-figure-side] [multi:world-figure-dots] [multi:world-figure-motion] [multi:world-figure-dots-motion]
 6. No kit colour reads as live data to the viewer: the probe counts none within the viewer's watt band or near a zone. [#3156] [probe:figure.kitCollisions]
 7. At every size, the world draws at least one pixel per CSS pixel, so its edges are never a stretched frame: the probe's `renderer.pixelRatio` is 1 or more, or the device's own where that is lower. [#4256] [probe:renderer.pixelRatio]
-8. The world's look is ride-road-world items 21 and 39: flat low poly, no grain, noise or masonry inside a face, no line thinner than a pixel, a stand of mixed forms and shades. [#4256]
+8. The world's look is ride-road-world items 21 and 40: flat low poly, no grain, noise or masonry inside a face, no line thinner than a pixel, a stand of mixed forms and shades. [#4256]
 
 ### C. Roads library (desk)
 
@@ -552,6 +553,7 @@ Capture: `/workouts/routes/<id>` for the hairpin and the rolling route (≥ 2 cl
 16. With “Workout on it” selected (`route-workout-on`): its line reads “Pick a workout; Terrain Match picks the start”, the primary reads “Pick a workout” and opens `/workouts?on=<id>`, and Which stretch is absent, since Terrain Match picks the start. [route-workout-on]
 17. With “Ride its workout” selected (`route-leg`): the primary reads “Ride its workout” and opens `/ride?road=<id>&leg=1`; Which stretch is absent, since the legs cover the road. The leg's setup at that url is a desk surface on the leg's workout, not the free-ride card. [route-leg]
 18. A leg's summary (`route-leg-summary`) offers “Ride leg k+1 of n” as a `btn-secondary` beside Pick another workout and Done, only while the road runs on past leg k; the last leg has no such button. [route-leg] [test:web/src/lib/road/leg.test.ts]
+19. A WattRoom road's own page (`route-wattroom`, `/workouts/routes/intro`), opened from its card on Workouts: the route page's header, stat row and How, with the road's line under the stat row; its map with no “Only you see this map”, since the road is invented; no Your rides, no Best in the climbs table (WattRoom's roads keep no rides on any account), no rename, privacy line or Delete. [#4257] [multi:route-wattroom] [multi:phone-route-wattroom]
 
 #### import-idle, import, import-saved
 

@@ -17,6 +17,7 @@
 		climbs = [],
 		length,
 		note,
+		mine = true,
 	}: {
 		x?: ArrayLike<number>;
 		z?: ArrayLike<number>;
@@ -26,6 +27,8 @@
 		length?: number;
 		/** Why there is no shape (a route that kept only its heights), said in the panel. */
 		note?: string;
+		/** The rider's own map; WattRoom's roads are invented, anyone's to see (#4257). */
+		mine?: boolean;
 	} = $props();
 
 	const PAD = 12;
@@ -134,9 +137,9 @@
 				</svg>
 			{/if}
 		</div>
-		<figcaption class="text-muted absolute bottom-3 left-4 text-xs">
-			Only you see this map
-		</figcaption>
+		{#if mine}<figcaption class="text-muted absolute bottom-3 left-4 text-xs">
+				Only you see this map
+			</figcaption>{/if}
 	{:else}
 		<figcaption
 			class="text-muted grid h-full place-items-center px-6 text-center text-sm"

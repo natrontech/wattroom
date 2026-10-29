@@ -78,7 +78,12 @@
 			<h2 class="eyebrow">WattRoom roads</h2>
 		</div>
 		<div class="mt-2">
-			<WattRoomRoads card {query} href={(road) => `/ride?road=${road.id}`}>
+			<!-- The card opens the road's page and its How (#4257), as a route's does. -->
+			<WattRoomRoads
+				card
+				{query}
+				href={(road) => `/workouts/routes/${road.id}`}
+			>
 				{#snippet ride(road)}
 					<a href="/ride?road={road.id}" class="btn btn-primary btn-xs">Ride</a>
 				{/snippet}

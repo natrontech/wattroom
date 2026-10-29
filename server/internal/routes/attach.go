@@ -45,7 +45,10 @@ type attached struct {
 	workout.RoadRef
 	Profile string  `json:"profile,omitempty"`
 	OriginM float64 `json:"originM"`
-	Deleted bool    `json:"deleted,omitempty"`
+	// The owner's whole road ends where it began (#4257): a workout on it
+	// laps, as $lib/workout/road-workout reads it. A cut never does.
+	Loop    bool `json:"loop,omitempty"`
+	Deleted bool `json:"deleted,omitempty"`
 }
 
 // CheckShared is the write rule for a workout others will read — a plan, a
@@ -167,6 +170,8 @@ func (a *Attacher) Attach(ctx context.Context, workoutJSON string, viewer pgtype
 		}
 		if row.OwnerID != viewer {
 			ridden, out.OriginM = ridden.Cut(protocol.RouteHiddenEndM, ridden.LengthM-protocol.RouteHiddenEndM)
+		} else {
+			out.Loop = row.Loop != nil && *row.Loop
 		}
 		if len(ridden.Heights) > 1 {
 			packed := ridden.Pack()
