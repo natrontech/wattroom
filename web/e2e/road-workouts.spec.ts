@@ -186,6 +186,10 @@ test('with No workout on the Pass loop, the HUD and the TV read a free ride', as
 		.getByRole('button', { name: /^No workout/ })
 		.click();
 	await expect(page.getByTestId('ride-context')).toContainText('Free ride');
+	// Slot 1 is the free ride's (#4283): the road named, m climbed, Easier and Harder.
+	await expect(page.getByTestId('ride-context')).toContainText('Free ride · ');
+	await expect(page.getByTestId('ride-clock')).toContainText('m climbed');
+	await expect(page.getByRole('button', { name: 'Harder' })).toBeVisible();
 	// The ride's own minutes, never the 359 left of six hours.
 	await page.getByRole('button', { name: 'TV mode' }).click();
 	const tv = page.getByRole('dialog', { name: 'TV mode' });

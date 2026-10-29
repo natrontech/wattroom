@@ -362,6 +362,10 @@ export function createRideSession({
 		nudgeBias: aim.nudgeBias,
 		atEnd: actuator.atEnd,
 		easierHarder: aim.easierHarder,
+		/** The virtual gear Easier and Harder move (ADR-0084), for slot 1 and RIDE. */
+		get gear() {
+			return actuator.gear;
+		},
 		/** Jump to the start of the next block. */
 		skip() {
 			if (!clock.skip()) return;

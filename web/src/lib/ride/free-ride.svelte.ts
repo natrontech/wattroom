@@ -23,8 +23,8 @@ import { play } from '$lib/sound/cues';
 /** The empty, unscored workout a free ride saves as — a game's shape. */
 export const FREE_RIDE_NAME = 'Free ride';
 /** What the HUD calls a free ride: “Free ride · <road>” on one (#3678). */
-export const freeRideLabel = (road?: { name: string } | null): string =>
-	road ? `${FREE_RIDE_NAME} · ${road.name}` : FREE_RIDE_NAME;
+export const freeRideLabel = (road?: { name?: string } | null): string =>
+	road?.name ? `${FREE_RIDE_NAME} · ${road.name}` : FREE_RIDE_NAME;
 export const FREE_RIDE_JSON = JSON.stringify({
 	name: FREE_RIDE_NAME,
 	unscored: true,
