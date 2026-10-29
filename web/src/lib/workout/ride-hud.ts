@@ -14,6 +14,8 @@ export function createRideHud(ride: {
 	sample: () => TrainerSample | null;
 	target: () => number;
 	remaining: () => number;
+	/** Seconds ridden, for a ride with no end to count down to (#4277). */
+	elapsed?: () => number | undefined;
 	ridingSince: () => number | undefined;
 	now: () => number;
 	/** Where on its road, for a ride on one (#3639). */
@@ -29,6 +31,7 @@ export function createRideHud(ride: {
 			heartRate: sample?.heartRate,
 			target: ride.target(),
 			remaining: Math.max(0, ride.remaining()),
+			elapsed: ride.elapsed?.(),
 			label: ride.label,
 			road: ride.road?.(),
 			// The rule both riding pages draw their banner from (#2158) — the

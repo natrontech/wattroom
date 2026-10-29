@@ -18,7 +18,7 @@
 		soloRideSounds,
 	} from '$lib/ride/ride-sounds.svelte';
 	import { byId } from '$lib/workout/library';
-	import { openRoad } from '$lib/workout/ridden';
+	import { isOpenRoad, openRoad } from '$lib/workout/ridden';
 	import { buildShelf } from '$lib/workout/shelf';
 	import type { Workout } from '$lib/workout/types';
 	import { customWorkouts } from '$lib/workout/custom.svelte';
@@ -495,6 +495,8 @@
 				)
 			: null,
 	);
+	// No workout, the road on: the TV draws a free ride's, no block (#4277).
+	const tvBlock = $derived(isOpenRoad(riding) ? null : block);
 
 	/**
 	 * You, in the shape the TV renders (#1632). A session's TV takes a roster
@@ -750,9 +752,9 @@
 			segments={session.segments}
 			total={session.total}
 			elapsed={session.elapsed}
-			{block}
+			block={tvBlock}
 			placeName={riding.name}
-			workoutName={block?.label ?? ''}
+			workoutName={tvBlock?.label ?? ''}
 			sprint={session.sprint}
 			live
 			onExit={() => (tv = false)}

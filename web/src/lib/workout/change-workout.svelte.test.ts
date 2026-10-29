@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('$lib/hud/feed', () => ({ publishHud: () => {} }));
+const hud = vi.hoisted(() => ({ publishHud: vi.fn() }));
+vi.mock('$lib/hud/feed', () => hud);
 
 import { SimulatedTrainer } from '$lib/ble/simulated';
 import { onRoute } from '$lib/road/compile';
@@ -109,6 +110,32 @@ describe('a workout changed mid-ride', () => {
 		// The free stretch saves as the seconds it lasted, not six hours.
 		const free = flatten(session.ridden).find((x) => x.kind === 'road')!;
 		expect(free.seconds).toBeLessThan(600);
+	});
+
+	// #4277: with none, the HUD, the TV and the world's light still counted
+	// the time left against the six hours the open road may last.
+	it('with none reads as a free ride on that road: the ride’s time and no end', async () => {
+		const { session, rideTo, change } = await onThePassLoop();
+		rideTo(500);
+		expect(session.total).toBeGreaterThan(0);
+		expect(hud.publishHud.mock.lastCall![0].elapsed).toBeUndefined();
+		change(null);
+		rideTo(800);
+		const ridden = session.live.seconds;
+		expect(ridden).toBeGreaterThan(60);
+		// The TV's total and the world's progress (`total > 0`): no end to count to.
+		expect(session.total).toBe(0);
+		// The TV's clock and slot 1's big number: the ride's whole time.
+		expect(session.elapsed).toBe(ridden);
+		// The HUD: the time ridden in place of the time left.
+		expect(hud.publishHud.mock.lastCall![0]).toMatchObject({
+			remaining: 0,
+			elapsed: ridden,
+		});
+		// A workout again counts down again.
+		change(recovery);
+		expect(session.total).toBe(durationSeconds(recovery));
+		expect(hud.publishHud.mock.lastCall![0].elapsed).toBeUndefined();
 	});
 
 	it('saves a ride on one workout as that workout', async () => {
