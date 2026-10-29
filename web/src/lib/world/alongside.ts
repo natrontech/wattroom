@@ -3,6 +3,7 @@
 // watts on their own screen, never by this one, and never in a bunch. It
 // draws nothing: crew.ts does.
 import type { RoadMate } from '$lib/channel/road-mates';
+import type { Route } from '$lib/road/route';
 import { LANE } from './bunch';
 import { KEEP_RIGHT } from './crew';
 import { MOST_ABREAST } from './lanes';
@@ -13,9 +14,10 @@ import { followMetre, simRider, type SimRider } from './sim';
  * Carries the mates between ticks, one frame at a time: each rolls on at
  * their own speed and eases onto each new metre, as your figure does on the
  * ride's. You keep the right of the road; they ride beside you, a lane each
- * in the order the tick lists them, so they hold their lanes.
+ * in the order the tick lists them, so they hold their lanes. One riding the
+ * other way keeps the right of theirs.
  */
-export function createAlongside() {
+export function createAlongside(route?: Route) {
 	const mates = new Map<
 		string,
 		{ r: SimRider; follow: ReturnType<typeof followMetre> }
@@ -43,9 +45,14 @@ export function createAlongside() {
 					watts: p.watts,
 					d: p.m,
 				});
-				mates.set(p.id, (mate = { r, follow: followMetre() }));
+				mates.set(p.id, (mate = { r, follow: followMetre(route) }));
 			}
-			mate.follow(mate.r, { m: p.m, mps: p.mps }, real);
+			// Their way is what they said; the speed read off their metres is signed.
+			mate.follow(
+				mate.r,
+				{ m: p.m, mps: Math.abs(p.mps), reverse: !!p.reverse },
+				real,
+			);
 			Object.assign(mate.r, {
 				name: p.name,
 				watts: p.watts,
@@ -55,7 +62,12 @@ export function createAlongside() {
 				// Their numbers are the channel's on a free ride and in a race
 				// (ADR-0059); a faded racer's are gone with their screen.
 				ring: !p.faded,
-				lane: KEEP_RIGHT + LANE * (1 + (i % 3)),
+				// Beside you the way you ride; the other way, in their own half of
+				// the road, where two lanes fit right of its middle (#4261).
+				lane:
+					!!p.reverse === !!you.reverse
+						? KEEP_RIGHT + LANE * (1 + (i % 3))
+						: KEEP_RIGHT + LANE * (i % 2),
 			});
 		});
 		for (const id of mates.keys()) if (!here.has(id)) mates.delete(id);
