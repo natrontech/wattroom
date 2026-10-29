@@ -9,6 +9,10 @@ import type { PictureMoment } from './picture.svelte';
 
 /** The ride's world at `at`, framed for the picture: what the ride's own feeds put on the road is left off. */
 export function pictureStill(opts: MountOptions, at: PictureMoment): Composed {
+	// A session that laps the road counts its metres on (#3623): the picture stands in the lap.
+	const { length } = opts.route;
+	const m =
+		opts.loop || opts.route.loop ? ((at.m % length) + length) % length : at.m;
 	const still = compose(
 		{
 			route: opts.route,
@@ -20,12 +24,12 @@ export function pictureStill(opts: MountOptions, at: PictureMoment): Composed {
 			loop: opts.loop,
 			grids: opts.grids,
 			watts: at.watts,
-			moment: { m: at.m, p: at.p },
+			moment: { m, p: at.p },
 		},
 		null,
 	);
 	if (still.you)
-		framePicture(still.camera, opts.route, opts.world, still.you, at.m);
+		framePicture(still.camera, opts.route, opts.world, still.you, m);
 	// The ground, the road and all the dressing within reach, brought to the lens.
 	still.look();
 	return still;

@@ -34,21 +34,58 @@ function familyOf(o: THREE.Object3D): Family | null {
 	return null;
 }
 
-/** Your figure's box on the frame, as shares of it from the top left. */
+/** A wheel's radius, and the helmet's top over the head's bone. */
+const TYRE_M = 0.34;
+const HELMET_M = 0.25;
+
+/**
+ * Your figure on the frame, as shares of it from the top left: its middle,
+ * and its height from the tyres' contact to the helmet's top, as a reader
+ * of the picture would measure it.
+ */
 function onFrame(still: Composed) {
 	const box = figureBox(still.you!);
 	const v = new THREE.Vector3();
-	let [x0, x1, y0, y1] = [Infinity, -Infinity, Infinity, -Infinity];
-	for (const x of [box.min.x, box.max.x])
-		for (const y of [box.min.y, box.max.y])
-			for (const z of [box.min.z, box.max.z]) {
-				v.set(x, y, z).project(still.camera);
-				x0 = Math.min(x0, (v.x + 1) / 2);
-				x1 = Math.max(x1, (v.x + 1) / 2);
-				y0 = Math.min(y0, (1 - v.y) / 2);
-				y1 = Math.max(y1, (1 - v.y) / 2);
-			}
-	return { box, x: (x0 + x1) / 2, y: (y0 + y1) / 2, h: y1 - y0 };
+	let [y0, y1] = [Infinity, -Infinity];
+	still.you!.traverse((o) => {
+		if (!(o as THREE.Bone).isBone) return;
+		const lift = o.name.endsWith('Wheel')
+			? -TYRE_M
+			: o.name === 'head'
+				? HELMET_M
+				: 0;
+		o.getWorldPosition(v)
+			.setY(v.y + lift)
+			.project(still.camera);
+		y0 = Math.min(y0, (1 - v.y) / 2);
+		y1 = Math.max(y1, (1 - v.y) / 2);
+	});
+	box.getCenter(v).project(still.camera);
+	return { box, x: (v.x + 1) / 2, y: (1 - v.y) / 2, h: y1 - y0 };
+}
+
+/** The ground or dressing the frame's top edge meets within `m` metres: none, where it shows the sky past you. */
+function topEdge(still: Composed, m: number) {
+	const solid: THREE.Object3D[] = [];
+	still.scene.traverseVisible((o) => {
+		const family = familyOf(o);
+		if (
+			(family === 'terrain' || family === 'dressing') &&
+			(o as THREE.Mesh).isMesh
+		)
+			solid.push(o);
+	});
+	const ray = new THREE.Raycaster();
+	ray.far = m;
+	const hits: string[] = [];
+	for (const x of [-0.6, 0, 0.6]) {
+		ray.setFromCamera(new THREE.Vector2(x, 0.95), still.camera);
+		for (const hit of ray.intersectObjects(solid, false))
+			hits.push(
+				`${familyOf(hit.object)} at ${hit.distance.toFixed(0)} m, x ${x}`,
+			);
+	}
+	return hits;
 }
 
 /** The dressing a ray from the lens meets before it reaches each corner and the middle of your figure. */
@@ -99,15 +136,20 @@ describe('the ride’s picture of the world (#4263)', () => {
 				);
 				const { box, x, y, h } = onFrame(still);
 				// Large: about two fifths of the frame's height, never a figure in the distance.
-				expect(h, what).toBeGreaterThan(0.33);
-				expect(h, what).toBeLessThan(0.55);
+				expect(h, what).toBeGreaterThan(0.36);
+				expect(h, what).toBeLessThan(0.46);
 				// On a third across, a little under the middle.
 				const third = Math.min(Math.abs(x - 1 / 3), Math.abs(x - 2 / 3));
 				expect(third, what).toBeLessThan(0.03);
 				expect(Math.abs(y - LENS.down), what).toBeLessThan(0.03);
 				// Low: knee height over the road, under the chase camera's 2.4 m.
-				const road = yOf(route, at(route, m + LENS.ahead).ele);
-				expect(still.camera.position.y - road, what).toBeLessThan(1.4);
+				const { x: cx, z: cz } = still.camera.position;
+				const under = world.roadSurfaceAt(cx, cz) ?? world.heightAt(cx, cz);
+				expect(still.camera.position.y - yOf(route, under), what).toBeLessThan(
+					1.4,
+				);
+				// Past you the picture opens onto the sky: no slope or tree across the frame's top.
+				expect(topEdge(still, 300), what).toEqual([]);
 				// You alone on the road: one figure, whoever rode beside you.
 				let figures = 0;
 				still.scene.traverse((o) => {

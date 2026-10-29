@@ -152,13 +152,13 @@ PgUp / PgDn are Harder / Easier, never a page.
 **Legibility**, at the design distance — desk: **0.8 m** from a **14-inch**
 laptop; TV: **3 m** from a **55-inch** set:
 
-| Text                  | At least      | TV       | Desk       | HUD      |
-| --------------------- | ------------- | -------- | ---------- | -------- |
-| Watts                 | **45 arcmin** | **12vh** | **76 px**  | **12vh** |
-| Time left             | **45 arcmin** | **9vh**  | **52 px**  | **9vh**  |
-| Secondary numbers     | **22 arcmin** | **5vh**  | **24 px**  | **5vh**  |
-| "Next", words         | **16 arcmin** | **3vh**  | **14 px**  | **3vh**  |
-| Labels                | **16 arcmin** | **3vh**  | **11 px**  | **3vh**  |
+| Text              | At least      | TV       | Desk      | HUD      |
+| ----------------- | ------------- | -------- | --------- | -------- |
+| Watts             | **45 arcmin** | **12vh** | **76 px** | **12vh** |
+| Time left         | **45 arcmin** | **9vh**  | **52 px** | **9vh**  |
+| Secondary numbers | **22 arcmin** | **5vh**  | **24 px** | **5vh**  |
+| "Next", words     | **16 arcmin** | **3vh**  | **14 px** | **3vh**  |
+| Labels            | **16 arcmin** | **3vh**  | **11 px** | **3vh**  |
 
 The desk column is the v2 mocks' proportions, under the arcmin floors (Jan,
 2026-10-18, [ADR-0087](../decisions/0087-a-desk-ride-takes-the-mocks-sizes.md)): a rider
@@ -190,7 +190,7 @@ A closing card offers two pictures for Strava, and the rider saves either or bot
 - The world draws its one picture as it closes, at the ride's best moment once it has moved for **30 s**: the highest summit crossed, **20 m** below its top; else the highest hairpin ridden through; else the steepest **100 m** ridden. The world is keyed by place (ADR-0081), so that metre is drawn again, in the light it was ridden in, with you alone on the road. While it draws, the closing card holds the button's place with “Drawing…”.
 - The rider takes it when they choose, with the phone remote's **Photo**, the **O** key or a controller's snap button ([#4253](https://github.com/natrontech/wattroom/issues/4253)). The latest moment they took is the one drawn, in place of the best one.
 - It is drawn off-screen at **1080 × 1350**, Strava's portrait, at one pixel per pixel; the live canvas is untouched.
-- It has its own camera: **0.9 m** over the road, **5.6 m** up it and **4.2 m** across from your line (a front three-quarter about 7 m off), a **42°** field of view. You stand on the third that leaves room ahead of you, your middle **62 %** down the frame, about two fifths of its height. The lens stands on the carriageway or its shoulder, where no dressing grows, so nothing stands between it and you.
+- It has its own camera: **0.9 m** over the road, **5.8 m** from you up the road at a front three-quarter (**35°** or **60°** off your heading, on either side), a **40°** field of view. Of those four stands, uphill side first, it keeps the one whose frame's top sees the most sky past you rather than the slope. You stand on the third that leaves room ahead of you, your middle **62 %** down the frame, about two fifths of its height from the tyres to the helmet. The lens stands on the carriageway or its shoulder, where no dressing grows, so nothing stands between it and you.
 - Nothing painted is drawn in it: riders' name tags, signs and arches with their places, chalk, gates and the zone digit. No rider, crew or place name; the world's look only (ADR-0063).
 - A JPEG at quality **0.9**, kept in the tab's memory only: never uploaded, never stored. A new ride lets the last one's go. It saves through the share sheet on a phone and as a download on a desk, as the poster does.
 

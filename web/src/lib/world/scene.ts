@@ -57,8 +57,9 @@ export type WorldScene = {
 	dispose(): void;
 };
 
-/** The most a picture waits for its ground to stream in, in frames: about 10 s at 60 Hz. */
-const PICTURE_WAIT_FRAMES = 600;
+/** The most a picture waits for its ground to stream in, and how often it looks: a hidden tab runs no frames, so it waits on the clock. */
+const PICTURE_WAIT_MS = 10_000;
+const PICTURE_LOOK_MS = 50;
 const MAX_DT = 0.1; // the most one frame moves the ride on, after a stall
 /** Frames kept for frames() between two reads: a minute at 30 fps, then the oldest go. */
 const FRAMES_KEPT = 1800;
@@ -129,6 +130,7 @@ export function mount(
 	function fail(why: Failure) {
 		if (failed) return;
 		failed = true;
+		broke = true;
 		loop.stop();
 		clearInterval(judge);
 		opts.onFail?.(why);
@@ -137,11 +139,9 @@ export function mount(
 	const judge = softwareDrawing()
 		? undefined
 		: setInterval(() => watch(loop.stats()) && fail('frames'), 1000);
-	let gone = false;
-	const lost = () => {
-		gone = true;
-		fail('context-lost');
-	};
+	// A world that stopped (its context lost, or too slow to keep up) draws no picture either.
+	let broke = false;
+	const lost = () => fail('context-lost');
 	function release() {
 		world.dispose();
 		renderer.dispose();
@@ -195,17 +195,14 @@ export function mount(
 			failed = true; // the world's last frame was drawn: what follows is not a failure to report
 			loop.stop();
 			clearInterval(judge);
-			if (gone) return null;
+			if (broke) return null;
 			const still = pictureStill({ ...opts, style }, at);
 			try {
 				// The ground round the lens streams in like the ride's; the picture waits for it, whole.
-				for (
-					let k = 0;
-					k < PICTURE_WAIT_FRAMES && still.probe().ground.pending > 0;
-					k++
-				)
-					await new Promise((done) => requestAnimationFrame(done));
-				if (gone) return null;
+				const until = performance.now() + PICTURE_WAIT_MS;
+				while (still.probe().ground.pending > 0 && performance.now() < until)
+					await new Promise((done) => setTimeout(done, PICTURE_LOOK_MS));
+				if (broke) return null;
 				wordless(still.scene);
 				renderer.setPixelRatio(1);
 				renderer.setSize(PICTURE.width, PICTURE.height, false);

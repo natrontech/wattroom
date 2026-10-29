@@ -66,6 +66,15 @@ const AROUND_M = 50;
 /** A moment of the ride the picture can be drawn at: where, the light then, and your watts. */
 export type PictureMoment = { m: number; p: number | null; watts: number };
 
+/** The moment the picture is drawn at: the one the rider took, else the ride's best. */
+export function momentToDraw(
+	took: PictureMoment | null,
+	route: Route | null,
+	ridden: readonly PictureMoment[],
+): PictureMoment | null {
+	return took ?? (route && bestMoment(route, ridden));
+}
+
 /**
  * The ride's best moment, chosen when it ends from `ridden`, the moments
  * logged in order once it settled: the highest summit you crossed, else
@@ -84,7 +93,9 @@ export function bestMoment(
 		for (let k = 1; k < ridden.length; k++) {
 			const a = lap(ridden[k - 1].m);
 			const b = lap(ridden[k].m);
-			if (a < d && d <= b) return { ...ridden[k - 1], m: d };
+			// Across a lap's seam the pair spans the end and the start.
+			const over = route.loop && b < a ? d > a || d <= b : a < d && d <= b;
+			if (over) return { ...ridden[k - 1], m: d };
 		}
 		return null;
 	};

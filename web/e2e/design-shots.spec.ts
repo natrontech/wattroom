@@ -1372,6 +1372,9 @@ surface(
 		await o.page
 			.locator('canvas[data-picture]')
 			.waitFor({ state: 'attached', timeout: 90_000 });
+		// On past a minute and the next hairpin: the ride is saved, so its card
+		// offers the Ride card beside the World picture.
+		await o.page.waitForTimeout(40_000);
 		await o.page.getByRole('button', { name: 'End ride' }).click();
 		await o.page.getByRole('button', { name: 'End the ride' }).click();
 		const picture = o.page.getByTestId('world-picture');

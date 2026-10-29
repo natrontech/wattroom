@@ -40,7 +40,7 @@
 	import { generate } from './world';
 	import { rideLook, worldPaint } from './look';
 	import {
-		bestMoment,
+		momentToDraw,
 		PICTURE,
 		worldPicture,
 		type PictureMoment,
@@ -154,7 +154,7 @@
 		const picture = setInterval(() => {
 			if (!scene || counting || paused || metre().mps <= 0.5) return;
 			moving += PICTURE_POLL_S;
-			if (moving < PICTURE.settleS) return;
+			if (moving <= PICTURE.settleS) return;
 			ridden.push(now());
 			if (canvas && !canvas.dataset.picture) canvas.dataset.picture = 'due';
 		}, PICTURE_POLL_S * 1000);
@@ -223,9 +223,11 @@
 				delete (window as { __worldProbe?: unknown }).__worldProbe;
 			const closing = scene;
 			scene = null;
-			const at =
-				chosen ??
-				(route && bestMoment(loop ? { ...route, loop } : route, ridden));
+			const at = momentToDraw(
+				chosen,
+				route && (loop ? { ...route, loop } : route),
+				ridden,
+			);
 			if (closing && at)
 				void worldPicture.draw(
 					closing.picture(at).finally(() => closing.dispose()),

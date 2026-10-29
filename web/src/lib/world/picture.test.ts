@@ -3,7 +3,13 @@ import { hairpinsOf } from '$lib/road/climbs';
 import { legsRoad } from '$lib/road/fixtures';
 import type { Road } from '$lib/road/road';
 import { routeOfRoad } from './road-route';
-import { bestMoment, PICTURE, type PictureMoment } from './picture.svelte';
+import {
+	bestMoment,
+	momentToDraw,
+	PICTURE,
+	type PictureMoment,
+	worldPicture,
+} from './picture.svelte';
 
 /** Ridden past each metre in turn, the light and watts rising as it went. */
 const ride = (...ms: number[]): PictureMoment[] =>
@@ -36,6 +42,15 @@ describe('the ride’s best moment for its picture (#4263)', () => {
 		expect(moment?.m).toBe(hairpin);
 	});
 
+	it('finds the hairpin a lap’s seam lies across, on a road the session laps', () => {
+		const road = withHairpin(legsRoad([3000, 0]), 0);
+		const [hairpin] = hairpinsOf(road);
+		const route = { ...routeOfRoad(road), loop: true };
+		// Metres count on past the lap: the last pair spans its end and the next one's start.
+		const moment = bestMoment(route, ride(2700, 2950, 3000 + hairpin + 20));
+		expect(moment?.m).toBe(hairpin);
+	});
+
 	it('is the steepest stretch you rode on a road with neither', () => {
 		const route = routeOfRoad(legsRoad([1000, 2], [500, 9], [1000, 3]));
 		const moment = bestMoment(route, ride(500, 900, 1200, 1400, 1800));
@@ -48,7 +63,35 @@ describe('the ride’s best moment for its picture (#4263)', () => {
 		expect(moment?.m).toBe(1500);
 	});
 
+	it('is the moment the rider took, over the best one (#4253)', () => {
+		const route = routeOfRoad(legsRoad([1000, 0], [1000, 7], [1000, -5]));
+		const took = { m: 600, p: 0.2, watts: 180 };
+		const ridden = ride(300, 900, 1500, 1990, 2010, 2400);
+		expect(momentToDraw(took, route, ridden)).toEqual(took);
+		expect(momentToDraw(null, route, ridden)?.m).toBe(
+			route.climbs.at(-1)!.topM - PICTURE.belowTopM,
+		);
+	});
+
 	it('draws nothing of a ride that never settled', () => {
 		expect(bestMoment(routeOfRoad(legsRoad([1000, 4])), [])).toBeNull();
+	});
+});
+
+describe('the picture as the world draws it (#4263)', () => {
+	it('keeps what it drew, and lets a late one go once a new ride starts', async () => {
+		worldPicture.clear();
+		const late = Promise.withResolvers<Blob | null>();
+		const drawing = worldPicture.draw(late.promise);
+		expect(worldPicture.drawing).toBe(true);
+		worldPicture.clear();
+		late.resolve(new Blob(['old']));
+		await drawing;
+		expect(worldPicture.current).toBeNull();
+		const shot = new Blob(['new']);
+		await worldPicture.draw(Promise.resolve(shot));
+		expect(worldPicture.drawing).toBe(false);
+		expect(worldPicture.current).toBe(shot);
+		worldPicture.clear();
 	});
 });
