@@ -81,6 +81,7 @@
 		worldClass = '',
 		mates,
 		climbed,
+		ride,
 		class: extra = '',
 	}: {
 		free: FreeRide;
@@ -121,6 +122,8 @@
 		mates?: () => readonly RoadMate[];
 		/** Metres climbed, from a ride that outlives this screen (ADR-0093); absent, it counts its own. */
 		climbed?: number;
+		/** That ride, so its world reopened mid-ride keeps the picture's moments; absent, each world is its own. */
+		ride?: object;
 		class?: string;
 	} = $props();
 
@@ -431,7 +434,7 @@
 				ghosts={() => (ghost?.rider ? [ghost.rider] : [])}
 				onfail={world.fail}
 				onflat={world.flatten}
-				ride={free}
+				{ride}
 			/>
 		{/if}
 	{/await}
