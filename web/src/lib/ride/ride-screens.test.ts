@@ -9,7 +9,7 @@ describe('drawsTheRide', () => {
 		['/crew/c1/c/t1', false],
 		['/crew/c1/s/s1', false],
 		['/crew/c1', false],
-		['/ramp', false],
+		['/ramp', true],
 		['/ride/x', false],
 		['/home', false],
 	])('%s → %s', (path, draws) => {

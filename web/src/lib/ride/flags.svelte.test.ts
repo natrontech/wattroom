@@ -64,6 +64,21 @@ describe('createRideFlags', () => {
 		});
 	});
 
+	// The device's one ride keeps one ⚑ (ADR-0093): a ramp names /ramp, and
+	// the ride after it names its own page again.
+	it('sends each ride under the page it rides on', () => {
+		fake.flags.length = 0;
+		fake.submitted.length = 0;
+		const flags = createRideFlags('/ride');
+		flags.riding('Kickr Core', 'starting the ramp test', '/ramp');
+		flags.recorder.flag();
+		flags.flush();
+		flags.riding('Kickr Core', 'starting Openers');
+		flags.recorder.flag();
+		flags.flush();
+		expect(fake.submitted.map((s) => s.route)).toEqual(['/ramp', '/ride']);
+	});
+
 	// The tap was the consent and the copy says "after the ride it sends"
 	// (#2619): a rider who leaves the summary without pressing Send, or who
 	// left mid-ride, must not find the flag was never sent.
