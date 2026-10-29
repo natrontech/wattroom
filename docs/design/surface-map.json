@@ -10,9 +10,19 @@
 			"web/src/lib/session/computer-pages.ts",
 			"web/src/lib/components/IntervalGraph.svelte",
 			"web/src/lib/session/Instrument.svelte",
-			"web/src/lib/ride/RidingScreen.svelte"
+			"web/src/lib/ride/RidingScreen.svelte",
+			"web/src/lib/ride/RideControls.svelte"
 		],
 		"surfaces": ["ride-road-world", "ride-workout-flat", "ride-free-road"]
+	},
+	{
+		"files": ["web/src/lib/ride/FreeRideBand.svelte"],
+		"surfaces": [
+			"ride-road-world",
+			"ride-free-road",
+			"ride-free-road-world",
+			"ride-channel-free"
+		]
 	},
 	{
 		"files": ["web/src/lib/world/ride-view.ts"],
