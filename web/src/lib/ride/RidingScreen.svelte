@@ -22,7 +22,6 @@
 	import RideControls from '$lib/ride/RideControls.svelte';
 	import FreeRideBand from '$lib/ride/FreeRideBand.svelte';
 	import { freeRideLabel } from '$lib/ride/free-ride.svelte';
-	import { createClimbCount } from '$lib/ride/climb-count.svelte';
 	import { trainerChip } from '$lib/workout/block';
 	import { shifterSlot } from '$lib/ble/controller-slot.svelte';
 	import { roadLine } from '$lib/ride/road-readout';
@@ -123,15 +122,6 @@
 			driver.stop();
 		};
 	});
-	// The ride's metres climbed on its road, which slot 1 says once the
-	// workout is taken off (TARGETS ride-free-road 3).
-	const climbed = createClimbCount(
-		() =>
-			session.road
-				? { profile: session.road.road, m: session.road.along }
-				: null,
-		() => session.state !== 'idle' && session.state !== 'countdown',
-	);
 
 	// The ride keys (#3216). O takes the ride's picture (#4253).
 	let sheet = $state(false);
@@ -332,7 +322,7 @@
 					roadLine={roadLine(session.road.readout)}
 					chip={block ? trainerChip(block) : undefined}
 					seconds={session.elapsed}
-					climbed={climbed.m}
+					climbed={session.road.climbed}
 					status={rideStatus}
 					actions={worldControls}
 				/>

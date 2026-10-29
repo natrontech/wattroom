@@ -1,3 +1,4 @@
+import { climbedStep } from '$lib/ride/climbed';
 import { createRoadReadout } from '$lib/ride/road-readout';
 import {
 	createRoadLaps,
@@ -35,6 +36,8 @@ export function createRoadDot(workout: Workout, kg: () => number) {
 	let entered: Segment | undefined;
 	let here = $state.raw<RoadSecond | null>(null);
 	let reverse = $state(false);
+	// The ride's, kept with the dot so a riding screen opened again says it whole.
+	let climbed = $state(0);
 	/** Metres along the owner's road, where the pins are. */
 	const m = $derived(pinned ? (here ? pinned.originM + here.m : start) : 0);
 	// One readout a second, for slot 1 and the HUD alike (#3639).
@@ -86,6 +89,8 @@ export function createRoadDot(workout: Workout, kg: () => number) {
 						loop: pinned.loop,
 						/** Its name, for a free ride's slot 1 (#4283); absent where none came. */
 						name: pinned.name,
+						/** Metres climbed this ride (TARGETS ride-free-road 3). */
+						climbed,
 						/** The dot on it: metres from its first, and its speed. */
 						along: m - pinned.originM,
 						mps: here?.virtualMps ?? 0,
@@ -128,8 +133,10 @@ export function createRoadDot(workout: Workout, kg: () => number) {
 		},
 		/** One ride second at these watts; null off a road. */
 		second(watts: number, at: number): RoadSecond | null {
-			if (!ride) return null;
+			if (!ride || !pinned) return null;
+			const was = here?.m;
 			here = ride.second(watts, at);
+			if (was !== undefined) climbed += climbedStep(pinned.road, was, here.m);
 			if (here.atEnd && !pins) {
 				ride.turn('back');
 				// The lap's first sample stands where it starts (#3117).

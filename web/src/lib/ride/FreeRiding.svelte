@@ -20,7 +20,7 @@
 	import { pairError } from '$lib/ble/pair-error';
 	import type { Trainer } from '$lib/ble/trainer';
 	import { formatClock } from '$lib/format';
-	import { createClimbCount } from '$lib/ride/climb-count.svelte';
+	import { climbedStep } from '$lib/ride/climbed';
 	import type { Clamp } from '$lib/ride/drivetrain';
 	import { FLAG_NOTICE_MS, FLAG_SAID } from '$lib/ride/flag';
 	import FlagButton from '$lib/ride/FlagButton.svelte';
@@ -206,10 +206,24 @@
 		setTimeout(() => (flagNotice = false), FLAG_NOTICE_MS);
 	}
 
-	const climbed = createClimbCount(
-		() => (road ? { profile: road.profile, m: road.m } : null),
-		() => free.recording,
-	);
+	// Metres climbed this ride (TARGETS ride-free-road 3): the rises between
+	// one second's metre and the next. Off a road nothing climbs, so nothing
+	// says so (ux.md: a cue exists only where its model exists).
+	let climbed = $state(0);
+	let lastM: number | null = null;
+	$effect(() => {
+		const at = road ? { profile: road.profile, m: road.m } : null;
+		const recording = free.recording;
+		untrack(() => {
+			if (!recording || !at) {
+				climbed = 0;
+				lastM = null;
+				return;
+			}
+			if (lastM !== null) climbed += climbedStep(at.profile, lastM, at.m);
+			lastM = at.m;
+		});
+	});
 
 	const WORDS = 'text-2xl leading-6';
 	// M and V from a key or a bridged controller (#4236).
@@ -360,7 +374,7 @@
 		roadLine={road ? roadLine(road.readout) : undefined}
 		{chip}
 		seconds={free.seconds}
-		climbed={road ? climbed.m : undefined}
+		climbed={road ? climbed : undefined}
 		status={faultLine}
 		{controls}
 		{notes}
