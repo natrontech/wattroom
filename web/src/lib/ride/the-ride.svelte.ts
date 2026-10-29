@@ -2,20 +2,13 @@ import type { Trainer } from '$lib/ble/trainer';
 import { hwlog } from '$lib/ble/hwlog';
 import { account } from '$lib/account.svelte';
 import { channelConnection } from '$lib/channel/connection.svelte';
-import { createHistoryStore, summarise } from '$lib/history.svelte';
 import { createProfileStore } from '$lib/profile.svelte';
 import { createRideFlags } from '$lib/ride/flags.svelte';
 import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
+import { saveRideAlone } from '$lib/ride/ride-alone-save';
 import { createRideSounds, soloRideSounds } from '$lib/ride/ride-sounds.svelte';
-import {
-	ROAD_LEFT_OFF,
-	recordingUpload,
-	toastSaved,
-	uploadRide,
-} from '$lib/ride/save';
 import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
 import { sensors } from '$lib/sensors.svelte';
-import { toasts } from '$lib/toast.svelte';
 import { openRoad } from '$lib/workout/ridden';
 import { byReference } from '$lib/workout/road-workout';
 import { createRideSession } from '$lib/workout/session.svelte';
@@ -144,84 +137,27 @@ function ensureRoot(): Root {
 function save(current: Session) {
 	if (recorded || !root) return;
 	recorded = true;
-	// Read now, not at the first ride: Rides may have cleared or saved what
-	// this device kept since (#4259 review).
-	const history = createHistoryStore(() => account.me?.id);
 	const mine = ride;
-	const summary = summarise(current.recording);
-	if (summary.seconds === 0) {
-		buffer?.end();
-		// Not a summary of zeros with an export that 400s (#1544).
-		saveStatus = 'Nothing was recorded — no watts reached the app.';
-		return;
-	}
-	const ended = buffer;
-	const id = `${current.startedAt.getTime()}`;
-	const ftp = profile.current.ftp;
-	// Every workout it rode, under all their names (#4257).
-	const ridden = current.ridden;
-	const upload = recordingUpload(ridden, current.startedAt, current.recording, {
-		borrowed,
-	});
-	const attempt = () => {
-		if (mine === ride) {
-			saving = true;
-			retrySave = null;
-		}
-		void uploadRide(upload).then((outcome) => {
-			// Another ride has the summary now: this answer is a toast.
-			const seen = mine === ride && shown > 0;
-			if (mine === ride) saving = false;
-			if ('saved' in outcome) {
-				// The ride is on the account: NOW it stops being a ride to
-				// recover. Ending the buffer before the server answered is what
-				// used to make a failed save vanish (#794).
-				ended?.end();
-				// A retry that went through leaves one copy, on the account.
-				history.remove(id);
-				if (mine === ride) {
-					saveStatus = outcome.saved.roadLeftOff ? ROAD_LEFT_OFF : null;
-					savedId = outcome.saved.id || null;
-					savedXp = outcome.saved.xp;
-				}
-				if (!seen) toastSaved(outcome.saved);
-				return;
-			}
-			const { failure } = outcome;
-			// A refusal the server will repeat (under a minute) is not a ride to
-			// recover either: offering it back would refuse it again on every
-			// reload. Its summary still lands on the device below.
-			if (failure.final) ended?.end();
-			// Not saved and no longer recorded: a ride to offer back (#2617).
-			else ended?.release();
-			// Otherwise the buffer keeps every sample and stays unfinished, so the
-			// ride is offered back on Rides with a Save that retries this POST.
-			// The local summary is the second copy, not the only one: one of it,
-			// however many tries failed.
-			history.remove(id);
-			const localFailure = history.add({
-				id,
-				workoutName: ridden.name,
-				startedAt: current.startedAt.toISOString(),
-				execution: current.execution,
-				executionScored: current.scored,
-				ftp,
-				...summary,
-			});
-			const status =
-				localFailure ??
-				(failure.final
-					? `${failure.message} Its summary stays on this device.`
-					: `${failure.message} The ride is kept on this device meanwhile, and Rides offers it back if you leave.`);
-			if (mine === ride) {
-				saveStatus = status;
-				if (!failure.final) retrySave = attempt;
-			}
-			// No page shows the summary: the one surface left is a toast (errors.md).
-			if (!seen) toasts.push(status, { tone: 'error' });
-		});
-	};
-	attempt();
+	saveRideAlone(
+		current,
+		{ buffer, borrowed, ftp: profile.current.ftp },
+		{
+			current: () => mine === ride,
+			seen: () => shown > 0,
+			saving: (on) => {
+				saving = on;
+				if (on) retrySave = null;
+			},
+			status: (text, retry) => {
+				saveStatus = text;
+				retrySave = retry;
+			},
+			saved: (id, xp) => {
+				savedId = id;
+				savedXp = xp;
+			},
+		},
+	);
 }
 
 export const theRide = {
