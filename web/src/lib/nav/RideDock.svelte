@@ -47,24 +47,27 @@
 </script>
 
 <!-- Under the open drawer the dock is the one watts figure (D17). -->
-{#if shows && short && !navDrawer.open}
-	<a
-		href={rideDock.screen}
-		data-testid="ride-dock-short"
-		aria-label="Open your ride"
-		title={status?.text}
-		class="hover:bg-ink/5 -my-1 ml-auto flex h-11 shrink-0 items-center gap-2 rounded px-2"
-	>
-		{#if status?.alert}
-			<span class="bg-danger size-2 shrink-0 rounded-full"></span>
-		{/if}
-		<span class="num text-muted text-sm">{formatClock(rideDock.seconds)}</span>
-		<!-- The unit beside the numeral, never inside its glow (G2). -->
-		<span class="flex items-baseline gap-1">
-			<span class="num font-bold {watts}">{rideDock.watts}</span>
-			<span class="text-muted text-xs">W</span>
-		</span>
-	</a>
+{#if short}
+	{#if shows && !navDrawer.open}
+		<a
+			href={rideDock.screen}
+			data-testid="ride-dock-short"
+			aria-label="Open your ride"
+			title={status?.text}
+			class="hover:bg-ink/5 -my-1 ml-auto flex h-11 shrink-0 items-center gap-2 rounded px-2"
+		>
+			{#if status?.alert}
+				<span class="bg-danger size-2 shrink-0 rounded-full"></span>
+			{/if}
+			<span class="num text-muted text-sm">{formatClock(rideDock.seconds)}</span
+			>
+			<!-- The unit beside the numeral, never inside its glow (G2). -->
+			<span class="flex items-baseline gap-1">
+				<span class="num font-bold {watts}">{rideDock.watts}</span>
+				<span class="text-muted text-xs">W</span>
+			</span>
+		</a>
+	{/if}
 {:else if shows}
 	<section
 		aria-label="Your ride"

@@ -54,6 +54,7 @@ test('the sidebar docks a ride running off its screen, and only then', async ({
 	expect(sideways, 'the page body scrolls sideways').toBeLessThanOrEqual(0);
 	await page.getByRole('button', { name: 'open navigation' }).click();
 	await expect(dock, 'the drawer lost the dock').toBeVisible();
+	await expect(short, 'a second watts figure under the drawer').toHaveCount(0);
 	await page.keyboard.press('Escape');
 	await short.click();
 	await expect(page).toHaveURL(/\/ride$/);
