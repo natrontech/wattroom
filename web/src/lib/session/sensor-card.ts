@@ -30,6 +30,8 @@ export function cardView(args: {
 	supported: boolean;
 	/** The phrase for another of the rider's screens holding it (#610). */
 	elsewhere?: string;
+	/** Trainer only: the device's ride alone holds it (ADR-0093). */
+	onRide?: boolean;
 	/** Set while the trainer is paired but not reporting (#520). */
 	hint?: string;
 	/**
@@ -40,6 +42,16 @@ export function cardView(args: {
 	 */
 	targetsNote?: string;
 }): CardView {
+	// One ride per device (ADR-0093): while the ride alone runs, the trainer
+	// is its, and pairing one beside it would give the hardware two masters.
+	if (args.onRide)
+		return {
+			shape: 'note',
+			note: 'On your ride',
+			tone: 'muted',
+			instead: 'End it to pair another',
+		};
+
 	// Live beats held: a card showing watts is this screen's, whatever another
 	// screen also claims.
 	//

@@ -24,6 +24,8 @@
 		onForget: () => void;
 		/** A simulated trainer, when the caller is allowed to offer one (#123). */
 		onSimulate?: () => void;
+		/** The device's ride alone holds the trainer (ADR-0093): nothing to pair. */
+		onRide?: boolean;
 	}
 </script>
 
@@ -119,6 +121,7 @@
 			state: trainer.state,
 			supported,
 			elsewhere: elsewhere.trainer,
+			onRide: trainer.onRide,
 			hint: trainer.hint,
 			targetsNote,
 		}),
@@ -137,6 +140,8 @@
 	elsewhere?: string;
 	/** Trainer only: the line naming where its targets come from (#2075). */
 	targetsNote?: string;
+	/** Trainer only: the ride alone holds it (ADR-0093). */
+	onRide?: boolean;
 	onPair: () => void;
 	onForget: () => void;
 })}
@@ -144,6 +149,7 @@
 		state: args.state,
 		supported,
 		elsewhere: args.elsewhere,
+		onRide: args.onRide,
 		hint: args.hint,
 		targetsNote: args.targetsNote,
 	})}
@@ -272,7 +278,7 @@
 						: ''}
 				</p>
 			{/if}
-			{#if trainer.onSimulate && trainerView.shape !== 'live' && !elsewhere.trainer}
+			{#if trainer.onSimulate && trainerView.shape !== 'live' && !elsewhere.trainer && !trainer.onRide}
 				<!-- Outside the pair button's branch, as the full grid has it: a
 				     browser with no Web Bluetooth still simulates (#2594). -->
 				<button
@@ -301,6 +307,7 @@
 				hint: trainer.hint,
 				elsewhere: elsewhere.trainer,
 				targetsNote,
+				onRide: trainer.onRide,
 				onPair: trainer.onPair,
 				onForget: trainer.onForget,
 			})}
@@ -363,7 +370,7 @@
 				>.
 			</p>
 		{/if}
-		{#if trainer.onSimulate && !elsewhere.trainer}
+		{#if trainer.onSimulate && !elsewhere.trainer && !trainer.onRide}
 			<!-- Dev-only (#123): simulated watts in a live session would count for
 			     medals, XP and streaks — the fairness layer takes no fakes. Gone
 			     while another screen holds the trainer: the hub would take no

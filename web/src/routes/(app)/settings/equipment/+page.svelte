@@ -13,7 +13,6 @@
 	import { createProfileStore, PROFILE_LIMITS } from '$lib/profile.svelte';
 	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
 	import { theRide } from '$lib/ride/the-ride.svelte';
-	import TrainerOnRide from '$lib/ride/TrainerOnRide.svelte';
 	import { DONT_SHIFT_SETTING } from '$lib/ride/mode-copy';
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import SensorOverview from '$lib/session/SensorOverview.svelte';
@@ -83,25 +82,24 @@
 	</p>
 
 	<div class="mt-8">
-		{#if theRide.live}
-			<TrainerOnRide then="pair a trainer here" />
-		{:else}
-			<SensorOverview
-				{elsewhere}
-				trainer={{
-					state: held.state,
-					device: held.device,
-					// Live-ness is the honest confirmation: paired but silent is not
-					// working (#520), and this is the screen a rider checks it on.
-					reading: held.reading,
-					hint: held.hint,
-					error: held.error,
-					onPair: () => void pairTrainer(),
-					onForget: held.forget,
-					onSimulate: canSimulate() ? () => void pairSimulated() : undefined,
-				}}
-			/>
-		{/if}
+		<SensorOverview
+			{elsewhere}
+			trainer={{
+				state: held.state,
+				device: held.device,
+				// Live-ness is the honest confirmation: paired but silent is not
+				// working (#520), and this is the screen a rider checks it on.
+				reading: held.reading,
+				hint: held.hint,
+				error: held.error,
+				onPair: () => void pairTrainer(),
+				onForget: held.forget,
+				onSimulate: canSimulate() ? () => void pairSimulated() : undefined,
+				// The ride alone's trainer is its own (ADR-0093); the other
+				// sensors still pair here mid-ride.
+				onRide: theRide.live,
+			}}
+		/>
 	</div>
 
 	<!-- What each optional sensor actually buys the rider — capability gating

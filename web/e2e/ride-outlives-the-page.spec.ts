@@ -55,7 +55,7 @@ test('a ride alone runs on through a text channel, a voice channel and another c
 	await follow(page, voicePath(elsewhere));
 	// The trainer is the ride's: Equipment holds it rather than pair another.
 	await follow(page, '/settings/equipment');
-	await expect(page.getByText('Your trainer is on your ride')).toBeVisible();
+	await expect(page.getByText('On your ride', { exact: true })).toBeVisible();
 	await expect(
 		page.getByRole('button', { name: 'Ride simulated' }),
 		'Equipment offered a second trainer mid-ride',
