@@ -32,6 +32,8 @@ export function pictureStill(opts: MountOptions, at: PictureMoment): Composed {
 		framePicture(still.camera, opts.route, opts.world, still.you, m);
 	// The ground, the road and all the dressing within reach, brought to the lens.
 	still.look();
+	// The alpenglow clears the land past you, which at a summit or a hairpin often stands over the far ranges (#4278).
+	still.bandOverLand();
 	return still;
 }
 

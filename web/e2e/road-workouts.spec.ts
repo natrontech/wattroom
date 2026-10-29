@@ -20,7 +20,85 @@ async function metre(page: Page): Promise<number> {
 	return Number(line?.match(/km ([\d.]+) of/)?.[1] ?? 0) * 1000;
 }
 
+/**
+ * Slot 1's controls sit on its label row (TARGETS ride-road-world's box
+ * table, v2-ride, #4283), and the road line starts under them. A name too
+ * long for the row gives way at its own end, never under a control. A phone
+ * keeps the road line under the label and the controls after it (v2-phone).
+ */
+async function controlsOnTheLabelRow(page: Page, onRow = true) {
+	for (const long of [false, true]) {
+		const at = await page.getByTestId('ride-band').evaluate((band, long) => {
+			const label = band.querySelector('[data-testid=ride-context]')!;
+			const name = label.textContent;
+			if (long)
+				label.textContent = `Free ride · ${'A road with a very long name '.repeat(6)}`;
+			const box = label.getBoundingClientRect();
+			const buttons = [...band.querySelectorAll('button')].map((b) => ({
+				word: b.textContent?.trim(),
+				r: b.getBoundingClientRect(),
+			}));
+			const end = buttons.find((b) => b.word === 'End ride')!.r;
+			const road = band
+				.querySelector('[data-testid=block-road]')!
+				.getBoundingClientRect();
+			const seen = {
+				endOnRow: end.top < box.bottom && end.bottom > box.top,
+				roadUnderEnd: road.top >= end.bottom,
+				overlap: buttons.some(
+					({ r }) =>
+						r.left < box.right &&
+						r.right > box.left &&
+						r.top < box.bottom &&
+						r.bottom > box.top,
+				),
+				cut: label.scrollWidth > label.clientWidth,
+			};
+			label.textContent = name;
+			return seen;
+		}, long);
+		expect(at, long ? 'a long name' : 'the road name').toEqual({
+			endOnRow: onRow,
+			roadUnderEnd: onRow,
+			overlap: false,
+			cut: long,
+		});
+	}
+}
+
 test.beforeEach(({ page }) => page.addInitScript(mute));
+
+test("a free ride on the Pass loop draws its controls on slot 1's label row @world", async ({
+	page,
+}) => {
+	test.skip(
+		!!process.env.PLAYWRIGHT_BASE_URL,
+		'the ?as= dev provider only exists on a dev server',
+	);
+	await page.addInitScript(() =>
+		localStorage.setItem('wattroom.world.mode.v1', 'full'),
+	);
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await signInAs(page, 'Road Label Rider', '/ride?road=intro');
+	await page
+		.getByRole('button', { name: 'Ride simulated' })
+		.click({ timeout: 15_000 });
+	await page.getByRole('button', { name: 'Start the ride' }).click();
+	await expect(page.getByTestId('block-road')).toContainText('of 28.8', {
+		timeout: 15_000,
+	});
+	// Over the world slot 1 is as wide as its rows: a row that wraps there
+	// put the controls under a short name.
+	await expect(page.locator('[data-surface=docked]')).toBeVisible();
+	await controlsOnTheLabelRow(page);
+	// Too short for the world, so flat; then a phone.
+	await page.setViewportSize({ width: 1280, height: 800 });
+	await expect(page.locator('[data-surface=flat]')).toBeVisible();
+	await controlsOnTheLabelRow(page);
+	await page.setViewportSize({ width: 375, height: 812 });
+	await expect(page.locator('[data-surface=phone]')).toBeVisible();
+	await controlsOnTheLabelRow(page, false);
+});
 
 test('the Pass loop card opens how to ride it, and picks a workout for it', async ({
 	page,
@@ -190,6 +268,7 @@ test('with No workout on the Pass loop, the HUD and the TV read a free ride', as
 	await expect(page.getByTestId('ride-context')).toContainText('Free ride · ');
 	await expect(page.getByTestId('ride-clock')).toContainText('m climbed');
 	await expect(page.getByRole('button', { name: 'Harder' })).toBeVisible();
+	await controlsOnTheLabelRow(page);
 	// The ride's own minutes, never the 359 left of six hours.
 	await page.getByRole('button', { name: 'TV mode' }).click();
 	const tv = page.getByRole('dialog', { name: 'TV mode' });
