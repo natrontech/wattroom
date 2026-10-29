@@ -142,7 +142,8 @@ test('a workout on the Pass loop, changed at km 2 and ended at km 4, saves one r
 	// One ride whose distance runs on through the change, never back to 0.
 	const metres = ride.samples.map((s) => s.m ?? 0);
 	expect(metres[0]).toBeLessThan(2000);
-	expect(metres.at(-1)!).toBeGreaterThanOrEqual(4000);
+	// Slot 1 reads km 4.0 from 3,950 m on.
+	expect(metres.at(-1)!).toBeGreaterThanOrEqual(3950);
 	for (let i = 1; i < metres.length; i++)
 		expect(metres[i]).toBeGreaterThanOrEqual(metres[i - 1]);
 });
