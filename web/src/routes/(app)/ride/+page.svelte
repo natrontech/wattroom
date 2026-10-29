@@ -1,59 +1,22 @@
 <script lang="ts">
 	import { canSimulate } from '$lib/ble/can-simulate';
-	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import type { Trainer } from '$lib/ble/trainer';
-	import { createRideSession } from '$lib/workout/session.svelte';
-	import {
-		byReference,
-		skylineOf,
-		withProfile,
-	} from '$lib/workout/road-workout';
-	import { climbView } from '$lib/ride/climb-view';
-	import { mapView } from '$lib/ride/map-view';
-	import { createSignalWatch } from '$lib/workout/signal-watch.svelte';
-	import {
-		createRideSounds,
-		soloRideSounds,
-	} from '$lib/ride/ride-sounds.svelte';
 	import { byId } from '$lib/workout/library';
-	import { openRoad } from '$lib/workout/ridden';
-	import { buildShelf } from '$lib/workout/shelf';
-	import type { Workout } from '$lib/workout/types';
 	import { customWorkouts } from '$lib/workout/custom.svelte';
 	import { pushProfile } from '$lib/profile-sync.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
-	import { sensors } from '$lib/sensors.svelte';
-	import { hwlog } from '$lib/ble/hwlog';
-	import { apiBlob } from '$lib/api';
-	import { shareFile } from '$lib/share';
-	import {
-		ROAD_LEFT_OFF,
-		recordingUpload,
-		toastSaved,
-		uploadRide,
-	} from '$lib/ride/save';
-	import { toasts } from '$lib/toast.svelte';
-	import { createHistoryStore, summarise } from '$lib/history.svelte';
-	import { onDestroy } from 'svelte';
-	import { guardLeaving } from '$lib/ride/leave-guard.svelte';
+	import { createHistoryStore } from '$lib/history.svelte';
 	import { page } from '$app/state';
 	import Banner from '$lib/components/Banner.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
-	import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
 	import { account } from '$lib/account.svelte';
-	import { createRideFlags } from '$lib/ride/flags.svelte';
-	import RideFlags from '$lib/ride/RideFlags.svelte';
+	import { theRide } from '$lib/ride/the-ride.svelte';
+	import TheRide from '$lib/ride/TheRide.svelte';
+	import { withProfile } from '$lib/workout/road-workout';
 	import PreRide from '$lib/ride/PreRide.svelte';
-	import TvOverlay from '$lib/session/TvOverlay.svelte';
-	import RidingScreen from '$lib/ride/RidingScreen.svelte';
-	import RideStatus from '$lib/ride/RideStatus.svelte';
-	import { describeBlock } from '$lib/workout/block';
-	import SessionSummary from '$lib/ride/SessionSummary.svelte';
-	import { downloadRideCard } from '$lib/ride/card';
 	import RideDoors from '$lib/ride/RideDoors.svelte';
-	import WorldPicture from '$lib/ride/WorldPicture.svelte';
 	import FigureCard from '$lib/ride/FigureCard.svelte';
 	import SoloRoadRide from '$lib/ride/SoloRoadRide.svelte';
 	import type { RideableRoute } from '$lib/ride/roads';
@@ -182,35 +145,10 @@
 	const history = createHistoryStore(() => account.me?.id);
 	// The profile is FTP's only home — the field below writes through to it, so a
 	// rider who corrects the number here does not find the old one on /settings/profile.
-	let recorded = false;
-	// Set once the page is gone: a save that answers after that has no
-	// summary to land on, so its outcome becomes a toast (#1544).
-	let gone = false;
-	let saving = $state(false);
-	let session = $state<ReturnType<typeof createRideSession> | null>(null);
+	// The ride is the app's (ADR-0093): this page draws it and never owns it.
+	const session = $derived(theRide.session);
 	// What is ridden now: the setup's workout, until Change workout (#4257).
 	const riding = $derived(session?.workout ?? workout);
-	const shelf = $derived(buildShelf(custom.all));
-
-	/**
-	 * Change workout (#4257): the pick from its first block, on the road where
-	 * the dot is — or, with none, the road on at its own grade. The ride,
-	 * its recording and its place carry on in the session.
-	 */
-	function changeWorkout(next: Workout | null) {
-		const on = session?.road;
-		if (!session || (!next && !on)) return;
-		const road = on && { routeId: on.routeId, fromM: on.m, toM: on.toM };
-		session.changeWorkout(
-			road ? (next ? { ...next, road } : openRoad(road)) : next!,
-		);
-		flags.recorder.event('ride', `changed to ${session.workout.name}`);
-		const planned = session.planned;
-		buffer?.retitle({
-			workoutName: planned.name,
-			workoutJson: JSON.stringify(byReference(planned)),
-		});
-	}
 	// The setup is a desk page and wears the page frame (G7); the ride and
 	// its summary keep the riding surface's own gutters.
 	const setup = $derived(
@@ -218,20 +156,9 @@
 			!(planRoad && !requested) &&
 			(!session || session.state === 'idle'),
 	);
-	let downloading = $state(false);
-	let carding = $state(false);
 	// A road ride's closing card wears the page frame as a workout's does (G7, #4235).
 	let roadEnded = $state(false);
 	let error = $state<string | null>(null);
-	// The save's outcome is persistent status (errors.md); an export or a
-	// flag failing must not overwrite it (audit 2026-09-09).
-	let saveStatus = $state<string | null>(null);
-	// The same upload again, while a save failed and could still go through
-	// (#2618): the endpoint is idempotent, and the payload is still here.
-	let retrySave = $state<(() => void) | null>(null);
-	// The ride on the account, once it is: the summary's way forward (#1331).
-	let savedId = $state<string | null>(null);
-	let savedXp = $state<number | undefined>(undefined);
 
 	// ?replay=<fixture> rides a committed capture instead of the generator
 	// (#54): deterministic reproduction, the agent's screenshot instead of the
@@ -258,15 +185,6 @@
 		}
 	}
 
-	let buffer: RideBuffer | undefined;
-	// Nothing is writing this ride down (#1466 finding 4): the buffer's open
-	// failed, so a browser crash leaves no .fit to recover. Persistent status
-	// on the riding screen, not a swallowed no-op (ADR-0052 rule 3).
-	let noCrashSafety = $state(false);
-	// The ⚑ and what it sends afterwards (#52), shared with /ramp.
-	const flags = createRideFlags('/ride');
-	let tv = $state(false);
-
 	// Paired before the ride, not by starting it (#611): the paired-devices
 	// grid below owns the trainer until Start hands it to the session.
 	const solo = soloTrainer();
@@ -275,338 +193,12 @@
 		error = null;
 		rememberWorkout(selected.id);
 		if (workout.road && road && !road.borrowed) rememberRoad(road.id);
-		// One trainer, one rider (#521): a voice channel now holds the
-		// trainer's BLE connection for as long as you stand in it, so a solo
-		// ride has to take it back
-		// rather than open a second control channel to the same hardware. A
-		// trainer paired in the grid and then left for a simulated ride is the
-		// same conflict on this page.
-		channelConnection.current?.ride.unpair();
-		if (solo.trainer && solo.trainer !== trainer) solo.forget();
 		try {
-			// Crash safety (#19): every recorded sample also lands in IndexedDB,
-			// so a browser crash at minute 55 still has a ride to export.
-			const startedAt = Date.now();
-			buffer = await openRideBuffer({
-				rideId: String(startedAt),
-				ownerId: account.me?.id,
-				startedAt,
-				workoutName: workout.name,
-				// Carried so a ride whose save failed can be saved from the
-				// recovery card rather than only exported (#794).
-				workoutJson: JSON.stringify(byReference(workout)),
-				// A road workout's recovered ride saves against its route (#3499),
-				// never a borrowed one, which has no route row (#3621, #4262).
-				...(workout.road && !borrowed && { routeId: workout.road.routeId }),
-			});
-			noCrashSafety = !buffer.crashSafe;
-			flags.riding(trainer.name, `starting ${workout.name}`);
-			const next = createRideSession({
-				trainer,
-				workout,
-				ftp,
-				kg: () => profile.current.kg,
-				startedAt,
-				readings: () => sensors.readings,
-				// The rider's own sprint setup (#1529): a sprint block releases
-				// the trainer to this slope, the way an armed sprint does in a
-				// session. Read per sprint, so /settings lands mid-ride.
-				sprint: () => ({
-					grade: profile.current.sprintGrade,
-					singleSpeed: profile.current.singleSpeed,
-				}),
-				onRecord: (sample) => {
-					buffer?.append({ ...sample, seq: sample.second + 1, at: Date.now() });
-					flags.recorder.tick({
-						watts: sample.watts,
-						cadence: sample.cadence,
-						target: session?.target ?? 0,
-						state: session?.state ?? '',
-					});
-				},
-			});
-			// On screen before the clock (#1800): start() counts in for three
-			// seconds, and the page has to draw those seconds — which also
-			// takes PreRide's Start button away, so there is no second tap to
-			// build a second ride with.
-			session = next;
-			await next.start();
-		} catch (cause) {
-			session = null;
-			buffer?.end();
-			buffer = undefined;
-			error = cause instanceof Error ? cause.message : String(cause);
-		}
-	}
-
-	/**
-	 * Changed their mind during the count-in (#1800). Nothing was ridden, so
-	 * this is not an End: the page goes back to PreRide with the trainer still
-	 * paired — handed back to the slot Start took it from (#2615) — and no
-	 * zero-sample ride is filed.
-	 */
-	function cancelCountdown() {
-		solo.adopt(session?.abort());
-		session = null;
-		buffer?.end();
-		buffer = undefined;
-	}
-
-	// What the ride says out loud (#1792): the cues a session plays for its
-	// riders, from the session's own state — the same wiring as /ramp's (#3359).
-	createRideSounds(
-		soloRideSounds(
-			() => session,
-			() => signalLost,
-		),
-	);
-
-	// Guard telemetry for #46: the hardware session has to produce evidence, not
-	// an anecdote. Dev-only via hwlog; plain lets, same reasoning as heardBlock.
-	let sawSpiral = false;
-	let sawState: string | null = null;
-	$effect(() => {
-		const current = session;
-		if (!current) return;
-		if (current.spiralActive !== sawSpiral) {
-			sawSpiral = current.spiralActive;
-			hwlog('spiral-guard', {
-				active: sawSpiral,
-				watts: current.sample?.watts,
-				cadence: current.sample?.cadence,
-				target: current.target,
-				elapsed: current.elapsed,
-			});
-		}
-		if (current.state !== sawState) {
-			sawState = current.state;
-			hwlog('ride-state', { state: sawState, elapsed: current.elapsed });
-		}
-	});
-
-	// A finished ride is worth keeping even if the rider never exports it —
-	// on the account (#110, one history feeding streaks and XP), with the
-	// device store as the fallback when the server is unreachable.
-	$effect(() => {
-		if (session?.state === 'done') save(session);
-	});
-	// Called from the effect above and from onDestroy: the effect dies with
-	// the component, and a ride ended by leaving the page used to reach the
-	// account only if the rider later noticed the recovery card (audit
-	// 2026-09-09).
-	function save(current: ReturnType<typeof createRideSession>) {
-		if (recorded) return;
-		recorded = true;
-		const summary = summarise(current.recording);
-		if (summary.seconds === 0) {
-			buffer?.end();
-			// Not a summary of zeros with an export that 400s (#1544).
-			saveStatus = 'Nothing was recorded — no watts reached the app.';
-			return;
-		}
-		const ended = buffer;
-		const id = `${current.startedAt.getTime()}`;
-		// Every workout it rode, under all their names (#4257).
-		const ridden = current.ridden;
-		const upload = recordingUpload(
-			ridden,
-			current.startedAt,
-			current.recording,
-			{ borrowed },
-		);
-		const attempt = () => {
-			saving = true;
-			retrySave = null;
-			void uploadRide(upload).then((outcome) => {
-				saving = false;
-				if ('saved' in outcome) {
-					// The ride is on the account: NOW it stops being a ride to
-					// recover. Ending the buffer before the server answered is
-					// what used to make a failed save vanish (#794).
-					ended?.end();
-					// A retry that went through leaves one copy, on the account.
-					history.remove(id);
-					saveStatus = outcome.saved.roadLeftOff ? ROAD_LEFT_OFF : null;
-					savedId = outcome.saved.id || null;
-					savedXp = outcome.saved.xp;
-					if (gone) toastSaved(outcome.saved);
-					return;
-				}
-				const { failure } = outcome;
-				// A refusal the server will repeat — under a minute — is not a
-				// ride to recover either: offering it back would refuse it again
-				// on every reload. Its summary still lands on the device below.
-				if (failure.final) ended?.end();
-				// Not saved and no longer recorded: a ride to offer back (#2617).
-				else ended?.release();
-				// Otherwise the buffer keeps every sample and stays unfinished, so
-				// the ride is offered back on Rides with a Save that retries this
-				// POST. The local summary is the second copy, not the only one —
-				// one of it, however many tries failed.
-				history.remove(id);
-				const localFailure = history.add({
-					id,
-					workoutName: ridden.name,
-					startedAt: current.startedAt.toISOString(),
-					execution: current.execution,
-					executionScored: current.scored,
-					ftp,
-					...summary,
-				});
-				saveStatus =
-					localFailure ??
-					(failure.final
-						? `${failure.message} Its summary stays on this device.`
-						: `${failure.message} The ride is kept on this device meanwhile, and Rides offers it back if you leave.`);
-				if (!failure.final) retrySave = attempt;
-				// The page that would have shown this is gone (a ride ended by
-				// leaving): the one surface left is a toast (errors.md).
-				if (gone) toasts.push(saveStatus, { tone: 'error' });
-			});
-		};
-		attempt();
-	}
-
-	const signal = createSignalWatch(() => session);
-	const signalLost = $derived(signal.lost);
-
-	// The block, derived once for both screens that draw it — the riding
-	// surface and the TV (ADR-0046).
-	// The road for the TV's horizon and its bike computer's CLIMB (#3641, #3645).
-	const tvSkyline = $derived(
-		session ? skylineOf(session.road, session.segments, ftp) : null,
-	);
-
-	const block = $derived(
-		session && session.segments.length > 0
-			? describeBlock(
-					session.info,
-					session.segments,
-					riding,
-					ftp,
-					session.trace,
-					// On a route whose blocks run by the clock the road is only
-					// shown (ADR-0062's scenery); a road that pins them is ridden
-					// in ERG to its metres, the chip as ever (#3485).
-					session.road && !session.road.pinned
-						? { kind: 'scenery' }
-						: { kind: 'erg' },
-					session.road?.readout,
-				)
-			: null,
-	);
-
-	/**
-	 * You, in the shape the TV renders (#1632). A session's TV takes a roster
-	 * and a solo ride is a roster of one — which is the whole convergence: one TV
-	 * screen, the tiles simply absent when nobody else is riding.
-	 */
-	const tvRider = $derived({
-		id: 'you',
-		name: 'You',
-		ftp,
-		kg: profile.current.kg,
-		you: true,
-		coach: false,
-		cameraOn: false,
-		muted: false,
-		speaking: false,
-		hue: 0,
-		watts: session?.sample?.watts ?? 0,
-		cadence: session?.sample?.cadence ?? 0,
-		hr: session?.sample?.heartRate ?? 0,
-		// The tile greys out when the trainer goes quiet, the way a session's
-		// does (#2156): a hard-coded false left the TV drawing a confident 0 W
-		// through a dropout.
-		stale: signalLost,
-		target: session?.target ?? 0,
-		trace: session?.trace ?? [],
-	});
-
-	const watts = $derived(session?.sample?.watts ?? 0);
-	const target = $derived(session?.target ?? 0);
-
-	/** The server owns .fit encoding (muktihari/fit is Go); the client owns the ride. */
-	// The picture of the ride that just ended (#2112), offered where the rider
-	// is actually standing — Strava's API takes the activity and never a photo
-	// for it, so this is the half they add by hand. Needs the saved ride: the
-	// server draws it from the row.
-	async function downloadCard() {
-		if (!savedId) return;
-		carding = true;
-		error = null;
-		error = await downloadRideCard(savedId);
-		carding = false;
-	}
-
-	async function downloadFit() {
-		if (!session) return;
-		downloading = true;
-		error = null;
-		try {
-			const res = await apiBlob('/api/rides/export', {
-				method: 'POST',
-				json: {
-					startedAt: session.startedAt.toISOString(),
-					// The four fields a .fit row is made of, named rather than the
-					// whole recording: the encoder's decoder disallows unknown
-					// fields, so anything else the recording grows — the bias
-					// added for #1530 was the first — refuses the export outright.
-					// `recovered.ts` has always mapped it this way; this was the
-					// path passing the raw object.
-					samples: session.recording.map((sample) => ({
-						second: sample.second,
-						watts: sample.watts,
-						cadence: sample.cadence,
-						heartRate: sample.heartRate,
-					})),
-				},
-			});
-			if (!res.ok) throw new Error(res.error.message);
-			await shareFile(res.data.blob, res.data.filename ?? 'ride.fit');
+			await theRide.begin(trainer, workout, { borrowed });
 		} catch (cause) {
 			error = cause instanceof Error ? cause.message : String(cause);
-		} finally {
-			downloading = false;
 		}
 	}
-	// A stray tap on the rail mid-ride must not eat the ride (#126): one
-	// confirm, only while the session is actually alive, and the browser's
-	// unload guard for tab closes — shared with /ramp.
-	guardLeaving(
-		() =>
-			!!session &&
-			session.state !== 'done' &&
-			session.state !== 'idle' &&
-			// Nothing has been ridden yet during the count-in (#1800), so there
-			// is nothing to confirm losing — onDestroy aborts it instead.
-			session.state !== 'countdown',
-		{
-			title: 'End the ride and leave?',
-			body: 'The ride so far is saved to your account if it is a minute or longer.',
-			action: 'End the ride',
-			cancel: 'Keep riding',
-		},
-	);
-	// This page is the session's only owner: leaving it ends the ride, as the
-	// confirm above promises — or the trainer holds a target with nobody
-	// watching and the frame stays a ride.
-	onDestroy(() => {
-		// What the rider flagged goes with them (#2619).
-		flags.flush();
-		gone = true;
-		if (!session) return;
-		// Left during the count-in (#1800): there is no ride to end or save, and
-		// a zero-sample save would file "Nothing was recorded" against a ride
-		// that never started.
-		if (session.state === 'countdown') {
-			solo.adopt(session.abort());
-			buffer?.end();
-			return;
-		}
-		session.stop();
-		save(session);
-	});
 </script>
 
 <svelte:head
@@ -614,12 +206,6 @@
 		>{shelfPending || shelfMissing ? 'Ride' : riding.name} · Ride · WattRoom</title
 	></svelte:head
 >
-
-<!-- A closed tab runs no onDestroy: the flags go on its way out (#2619). -->
-<svelte:window
-	onkeydown={(e) => e.key === 'Escape' && (tv = false)}
-	onpagehide={() => flags.flush(true)}
-/>
 
 <!-- Mid-ride the whole frame is the ride, sidebar included (ADR-0020): the
      layout reads soloRide.active. Setup and the summary are desk surfaces;
@@ -633,7 +219,26 @@
 		? 'page'
 		: 'px-4 py-5 sm:px-6'}"
 >
-	{#if askFigure}
+	<!-- A ride already under way is the screen, whatever the address asks
+	     for: the device has one ride (ADR-0093). -->
+	{#if session && session.state !== 'idle'}
+		<TheRide>
+			{#snippet next()}
+				{#if road && legs.length > 0}
+					{@const next = nextLeg(
+						road.id,
+						Math.min(leg, legs.length),
+						legs.length,
+					)}
+					{#if next}<a
+							href={next.href}
+							data-sveltekit-reload
+							class="btn btn-secondary">{next.label}</a
+						>{/if}
+				{/if}
+			{/snippet}
+		</TheRide>
+	{:else if askFigure}
 		<FigureCard
 			onDone={() => {
 				const trainer = askFigure;
@@ -652,7 +257,7 @@
 		<!-- A crew's planned road keeps its own setup: the card rides only
 		     your roads, and this one is the crew's cut (#3621). -->
 		<SoloRoadRide plan={planRoad} bind:ended={roadEnded} />
-	{:else if !session || session.state === 'idle'}
+	{:else}
 		<!-- Idle with a session in hand is the moment between Start and the
 		     trainer answering it (#1800): still the setup screen, because
 		     nothing is counting in yet. -->
@@ -707,143 +312,5 @@
 				onError={(message) => (error = message)}
 			/>
 		{/if}
-	{:else if session.state !== 'done'}
-		<!-- The count-in is the ride's own screen (ADR-0046, #1800): flat, the
-		     one digit; over the world, the slots already in place (#3668). -->
-		<!-- Under the TV the riding screen keeps running, unseen and unread:
-		     the TV is then the one home of every number (D17, #3677). -->
-		<div class="contents {tv ? 'invisible' : ''}" inert={tv}>
-			<RidingScreen
-				countIn={session.state === 'countdown'
-					? { remaining: session.countdownRemaining, cancel: cancelCountdown }
-					: undefined}
-				{session}
-				{block}
-				workout={riding}
-				{ftp}
-				kg={profile.current.kg}
-				lthr={profile.current.lthr}
-				{watts}
-				{target}
-				{signalLost}
-				{noCrashSafety}
-				onFlag={() => flags.recorder.flag()}
-				onTv={() => (tv = true)}
-				{shelf}
-				onChangeWorkout={changeWorkout}
-			/>
-		</div>
-	{/if}
-
-	{#if session && session.state !== 'done' && tv}
-		<!-- A session's TV, riding alone (#1632, ADR-0046): the same screen at
-		     3 m, with the roster column absent because there is nobody in it. -->
-		<!-- A snippet is a function, so the `session &&` above does not narrow
-		     inside it (#2156). -->
-		{@const ride = session}
-		<TvOverlay
-			stats={session.live}
-			skyline={tvSkyline}
-			climb={climbView(tvSkyline)}
-			map={mapView(tvSkyline)}
-			riders={[tvRider]}
-			segments={session.segments}
-			total={session.total}
-			elapsed={session.elapsed}
-			{block}
-			placeName={riding.name}
-			workoutName={block?.label ?? ''}
-			sprint={session.sprint}
-			live
-			onExit={() => (tv = false)}
-		>
-			<!-- Ride-critical status on the TV, the way a session's TV has had
-			     it since #1665 (errors.md: persistent status, never a toast).
-			     Without it a trainer drop, auto-pause, the resume count, the
-			     spiral release and the no-crash-safety warning were all
-			     invisible here — and the one big "Pair the trainer again"
-			     button was unreachable without leaving TV mode (#2156). -->
-			{#snippet status()}
-				<RideStatus session={ride} {signalLost} {noCrashSafety} />
-			{/snippet}
-		</TvOverlay>
-	{/if}
-
-	{#if session && session.state === 'done'}
-		<!-- The ride is over: the summary IS the screen — no dead HUD glowing
-		     zeros behind it (#126). -->
-		<div>
-			<SessionSummary
-				title={session.ridden.name}
-				unsaved={saveStatus !== null && !savedId}
-				{savedXp}
-				samples={session.recording}
-				ftp={profile.current.ftp}
-				execution={session.scored ? session.execution : undefined}
-			>
-				{#snippet actions()}
-					<!-- The end links forward (#1331): the ride's own page first,
-					     the export and the next workout after it, Done last. -->
-					{#if savedId}
-						<a href="/history/{savedId}" class="btn btn-secondary"
-							>See your ride</a
-						>
-					{:else if saving}
-						<!-- The row keeps its shape while the save is in flight:
-						     the button under the thumb never changes role (#1544). -->
-						<button disabled class="btn btn-secondary">Saving…</button>
-					{/if}
-					<button
-						onclick={downloadFit}
-						disabled={downloading || !session?.recording.length}
-						data-testid="download-fit"
-						class="btn btn-secondary"
-						>{downloading ? 'Preparing…' : 'Export .fit'}</button
-					>
-					{#if savedId}
-						<button
-							onclick={downloadCard}
-							disabled={carding}
-							data-testid="download-card"
-							class="btn btn-secondary"
-							>{carding ? 'Drawing…' : 'Ride card'}</button
-						>
-					{/if}
-					<WorldPicture />
-					{#if road && legs.length > 0}
-						{@const next = nextLeg(
-							road.id,
-							Math.min(leg, legs.length),
-							legs.length,
-						)}
-						{#if next}<a
-								href={next.href}
-								data-sveltekit-reload
-								class="btn btn-secondary">{next.label}</a
-							>{/if}
-					{/if}
-					<a href="/workouts" class="btn btn-secondary">Pick another workout</a>
-					<a href="/home" class="btn btn-primary">Done</a>
-				{/snippet}
-				{#snippet status()}
-					{#if saveStatus}
-						<Banner tone="warn">
-							{saveStatus}
-							{#snippet action()}
-								{#if retrySave}
-									<button onclick={retrySave} class="btn btn-secondary"
-										>Try again</button
-									>
-								{/if}
-							{/snippet}
-						</Banner>
-					{/if}
-					{#if error}
-						<div class="mt-2"><Banner tone="error">{error}</Banner></div>
-					{/if}
-					<RideFlags {flags} />
-				{/snippet}
-			</SessionSummary>
-		</div>
 	{/if}
 </main>
