@@ -269,6 +269,13 @@ test('with No workout on the Pass loop, the HUD and the TV read a free ride', as
 	await expect(page.getByTestId('ride-clock')).toContainText('m climbed');
 	await expect(page.getByRole('button', { name: 'Harder' })).toBeVisible();
 	await controlsOnTheLabelRow(page);
+	// The free ride's switch (#4283): Watts holds ERG by the road, Road its grade.
+	const road = page.getByRole('button', { name: 'Road', exact: true });
+	await expect(road).toHaveAttribute('aria-pressed', 'true');
+	await page.getByRole('button', { name: 'Watts', exact: true }).click();
+	await expect(page.getByTestId('trainer-chip')).toHaveText(/^Watts · \d+ W$/);
+	await road.click();
+	await expect(page.getByTestId('trainer-chip')).toContainText('SIM');
 	// The ride's own minutes, never the 359 left of six hours.
 	await page.getByRole('button', { name: 'TV mode' }).click();
 	const tv = page.getByRole('dialog', { name: 'TV mode' });
