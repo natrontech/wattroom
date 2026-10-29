@@ -9,6 +9,8 @@ import { VERGE_LANE } from './bunch';
 import { RIDE } from './look.test-helper';
 import { LANE } from './bunch';
 import { compose } from './compose';
+import { painted, wordless } from './picture-still';
+import { simRider } from './sim';
 import { routeOfRoad } from './road-route';
 import type { Hud } from './compose';
 import type { RideMetre } from './sim';
@@ -596,27 +598,39 @@ describe('a ride’s world', () => {
 		expect(shotsOf(true)).toEqual(new Set(['still', null]));
 	});
 
-	it('leaves everything with words out of the ride’s picture (#4221)', () => {
+	it('leaves every word out of the ride’s picture: names, places, chalk and gates (#4221, #4263)', () => {
+		const rider = (id: string, name: string, you: boolean, d: number) =>
+			simRider({ id, name, mass: 75, ftp: 250, you, watts: 200, d });
 		const w = compose(
-			{ route, world, style, ftp: 250, metre: () => ({ m: 1200, mps: 8 }) },
+			{
+				route,
+				world,
+				style,
+				ftp: 250,
+				riders: [
+					rider('you', 'You', true, 1200),
+					rider('mia', 'Mia', false, 1206),
+				],
+				metre: () => ({ m: 1200, mps: 8 }),
+			},
 			null,
 		);
 		w.advanceBy(0.3);
-		const labels = w.labels();
-		// The riders' names and the signs and arches with their places, at least.
-		expect(labels.length).toBeGreaterThanOrEqual(2);
-		const under = (o: THREE.Object3D) => {
-			for (let p: THREE.Object3D | null = o; p; p = p.parent)
-				if (labels.includes(p)) return true;
-			return false;
+		// What a frame of this scene would draw that carries a word or a name.
+		const worded = () => {
+			const out: THREE.Object3D[] = [];
+			w.scene.traverseVisible((o) => {
+				const d = o.userData;
+				if (d.text || d.words || d.stamp || painted(o)) out.push(o);
+			});
+			return out;
 		};
-		const worded: THREE.Object3D[] = [];
-		w.scene.traverse((o) => {
-			const d = o.userData;
-			if (d.text || d.words || d.stamp) worded.push(o);
-		});
-		expect(worded.filter((o) => !under(o))).toEqual([]);
-		for (const o of labels) expect(w.scene.getObjectById(o.id)).toBe(o);
+		// Mia's name over her, at least.
+		expect(worded().length).toBeGreaterThan(0);
+		const back = wordless(w.scene);
+		expect(worded()).toEqual([]);
+		back();
+		expect(worded().length).toBeGreaterThan(0);
 		w.dispose();
 	});
 });
