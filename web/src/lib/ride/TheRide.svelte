@@ -1,8 +1,9 @@
 <script lang="ts">
 	/**
 	 * The app's ride alone, drawn (ADR-0093): a workout's riding screen, its
-	 * TV and its summary, or a free ride on a road, wherever the rider opens it. /ride draws it, and so does a
-	 * voice channel's Training page while it runs. The ride is `theRide`'s;
+	 * TV and its summary, the ramp test, or a free ride on a road, wherever
+	 * the rider opens it. /ride and /ramp draw it, and so does a voice
+	 * channel's Training page while it runs. The ride is `theRide`'s;
 	 * this view only reads it.
 	 */
 	import { onDestroy, type Snippet } from 'svelte';
@@ -12,6 +13,7 @@
 	import { downloadRideCard } from '$lib/ride/card';
 	import { climbView } from '$lib/ride/climb-view';
 	import { mapView } from '$lib/ride/map-view';
+	import RampRiding from '$lib/ride/RampRiding.svelte';
 	import RideFlags from '$lib/ride/RideFlags.svelte';
 	import RideStatus from '$lib/ride/RideStatus.svelte';
 	import RidingScreen from '$lib/ride/RidingScreen.svelte';
@@ -161,6 +163,9 @@
 
 {#if theRide.road}
 	<RoadRiding route={theRide.road.route} {doneHref} />
+{:else if theRide.ramp}
+	<!-- The ramp test draws its own steps and its own result (#1799). -->
+	<RampRiding />
 {:else if session && session.state !== 'done'}
 	<!-- The count-in is the ride's own screen (ADR-0046, #1800): flat, the
 	     one digit; over the world, the slots already in place (#3668). -->

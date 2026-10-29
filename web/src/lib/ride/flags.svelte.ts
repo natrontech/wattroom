@@ -9,9 +9,11 @@ import { createFlightRecorder } from '$lib/ride/flightrecorder.svelte';
  * pairing on (#2657).
  */
 export function createRideFlags(
-	route: string,
+	home: string,
 	recorder = createFlightRecorder(),
 ) {
+	// The page the ride rides on: the flags' own, unless the ride says (ADR-0093).
+	let route = home;
 	// A handed-in recorder outlives this page: what it holds is already sent.
 	let sent = $state(recorder.flags.length);
 	let sending = $state(false);
@@ -32,9 +34,10 @@ export function createRideFlags(
 		get error() {
 			return error;
 		},
-		/** The ride is starting on this trainer: the recorder's first event. */
-		riding(trainerName: string, what: string) {
+		/** The ride is starting on this trainer, on page `at`: the recorder's first event. */
+		riding(trainerName: string, what: string, at = home) {
 			trainer = trainerName;
+			route = at;
 			recorder.event('ride', what);
 		},
 		/** Send what is unsent, in order, stopping at the first refusal. */

@@ -2,6 +2,7 @@ import type { Trainer } from '$lib/ble/trainer';
 import { channelConnection } from '$lib/channel/connection.svelte';
 import { createProfileStore } from '$lib/profile.svelte';
 import type { RideBuffer } from '$lib/ride/buffer';
+import { holdRampAlone, type RampAlone } from '$lib/ride/ramp-alone.svelte';
 import { holdRoadAlone, type RoadAlone } from '$lib/ride/road-alone.svelte';
 import type { RideableRoute } from '$lib/ride/roads';
 import { holdRideAloneEffects } from '$lib/ride/ride-alone-effects.svelte';
@@ -10,7 +11,9 @@ import {
 	createWorkoutAlone,
 	openWorkoutBuffer,
 } from '$lib/ride/ride-alone-session';
+import { createSaveOutcome } from '$lib/ride/save-outcome.svelte';
 import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
+import { buildRampTest } from '$lib/workout/ramp';
 import { openRoad } from '$lib/workout/ridden';
 import { byReference } from '$lib/workout/road-workout';
 import type { createRideSession } from '$lib/workout/session.svelte';
@@ -22,22 +25,15 @@ type Session = ReturnType<typeof createRideSession>;
  * The device's one ride alone (ADR-0093, #4259): owned here, above the
  * router, the way `channelConnection` holds the call, so the page that draws
  * it is a view of it and never its owner. A workout is a session, with its
- * crash buffer, the ⚑, the cues and the save; a free ride on a road is
- * `road`. /ride and a voice channel's Training page draw it.
+ * crash buffer, the ⚑, the cues and the save; the ramp test is a workout
+ * that is also `ramp`; a free ride on a road is `road`. /ride, /ramp and a
+ * voice channel's Training page draw it.
  */
 let session = $state<Session | null>(null);
+let ramp = $state.raw<RampAlone | null>(null);
 let road = $state.raw<RoadAlone | null>(null);
 let noCrashSafety = $state(false);
-let saving = $state(false);
-// The save's outcome is persistent status (errors.md); an export or a flag
-// failing must not overwrite it (audit 2026-09-09).
-let saveStatus = $state<string | null>(null);
-// The same upload again, while a save failed and could still go through
-// (#2618): the endpoint is idempotent, and the payload is still here.
-let retrySave = $state<(() => void) | null>(null);
-// The ride on the account, once it is: the summary's way forward (#1331).
-let savedId = $state<string | null>(null);
-let savedXp = $state<number | undefined>(undefined);
+const outcome = createSaveOutcome();
 // How many pages draw the ride now: a save that answers with none of them
 // open has no summary to land on, so its outcome becomes a toast (#1544).
 // Not $state: nothing renders it, and the effect that counts a page must not
@@ -82,6 +78,13 @@ function take(trainer: Trainer) {
 	if (solo.trainer && solo.trainer !== trainer) solo.forget();
 	road?.dispose();
 	road = null;
+	drop();
+}
+
+/** The workout let go, the ramp's hold with it. */
+function drop() {
+	ramp?.dispose();
+	ramp = null;
 	session = null;
 }
 
@@ -92,28 +95,65 @@ function save(current: Session) {
 	saveRideAlone(
 		current,
 		{ buffer, borrowed, ftp: profile.current.ftp },
-		{
-			current: () => mine === ride,
-			seen: () => shown > 0,
-			saving: (on) => {
-				saving = on;
-				if (on) retrySave = null;
-			},
-			status: (text, retry) => {
-				saveStatus = text;
-				retrySave = retry;
-			},
-			saved: (id, xp) => {
-				savedId = id;
-				savedXp = xp;
-			},
-		},
+		outcome.answers(
+			() => mine === ride,
+			() => shown > 0,
+		),
 	);
+}
+
+async function startWorkout(
+	trainer: Trainer,
+	workout: Workout,
+	options: { borrowed: boolean; ramp?: boolean },
+): Promise<void> {
+	// One ride per device (ADR-0093): no Start is drawn while one runs.
+	if (theRide.live) return;
+	const { flags } = ensureRoot();
+	take(trainer);
+	profile = createProfileStore();
+	outcome.reset();
+	recorded = false;
+	borrowed = options.borrowed;
+	try {
+		const startedAt = Date.now();
+		buffer = await openWorkoutBuffer(workout, { borrowed, startedAt });
+		noCrashSafety = !buffer.crashSafe;
+		if (options.ramp)
+			flags.riding(trainer.name, 'starting the ramp test', '/ramp');
+		else flags.riding(trainer.name, `starting ${workout.name}`);
+		const next = createWorkoutAlone({
+			trainer,
+			workout,
+			profile,
+			startedAt,
+			buffer: () => buffer,
+			flags,
+			session: () => session,
+		});
+		// On screen before the clock (#1800): start() counts in for three
+		// seconds, and the page has to draw those seconds, which also takes
+		// PreRide's Start button away, so there is no second tap to build a
+		// second ride with.
+		session = next;
+		if (options.ramp)
+			ramp = holdRampAlone({ session: next, savedId: () => outcome.id });
+		await next.start();
+	} catch (cause) {
+		drop();
+		buffer?.end();
+		buffer = undefined;
+		throw cause;
+	}
 }
 
 export const theRide = {
 	get session() {
 		return session;
+	},
+	/** The ramp test's own half, while the workout is one. */
+	get ramp() {
+		return ramp;
 	},
 	/** A free ride on a road, riding or on its closing card. */
 	get road() {
@@ -137,19 +177,19 @@ export const theRide = {
 		return noCrashSafety;
 	},
 	get saving() {
-		return saving;
+		return outcome.saving;
 	},
 	get saveStatus() {
-		return saveStatus;
+		return outcome.status;
 	},
 	get retrySave() {
-		return retrySave;
+		return outcome.retry;
 	},
 	get savedId() {
-		return savedId;
+		return outcome.id;
 	},
 	get savedXp() {
-		return savedXp;
+		return outcome.xp;
 	},
 	get flags() {
 		return ensureRoot().flags;
@@ -159,49 +199,16 @@ export const theRide = {
 	 * Start a workout on `trainer`. Throws what stopped it; the ride is then
 	 * gone and the trainer is the solo slot's again.
 	 */
-	async begin(
-		trainer: Trainer,
-		workout: Workout,
-		options: { borrowed: boolean },
-	): Promise<void> {
-		// One ride per device (ADR-0093): no Start is drawn while one runs.
-		if (theRide.live) return;
-		const { flags } = ensureRoot();
-		take(trainer);
-		profile = createProfileStore();
-		saving = false;
-		saveStatus = null;
-		retrySave = null;
-		savedId = null;
-		savedXp = undefined;
-		recorded = false;
-		borrowed = options.borrowed;
-		try {
-			const startedAt = Date.now();
-			buffer = await openWorkoutBuffer(workout, { borrowed, startedAt });
-			noCrashSafety = !buffer.crashSafe;
-			flags.riding(trainer.name, `starting ${workout.name}`);
-			const next = createWorkoutAlone({
-				trainer,
-				workout,
-				profile,
-				startedAt,
-				buffer: () => buffer,
-				flags,
-				session: () => session,
-			});
-			// On screen before the clock (#1800): start() counts in for three
-			// seconds, and the page has to draw those seconds, which also takes
-			// PreRide's Start button away, so there is no second tap to build a
-			// second ride with.
-			session = next;
-			await next.start();
-		} catch (cause) {
-			session = null;
-			buffer?.end();
-			buffer = undefined;
-			throw cause;
-		}
+	begin(trainer: Trainer, workout: Workout, options: { borrowed: boolean }) {
+		return startWorkout(trainer, workout, options);
+	},
+
+	/** The ramp test (#14), a workout that ends itself and measures FTP. */
+	beginRamp(trainer: Trainer) {
+		return startWorkout(trainer, buildRampTest(), {
+			borrowed: false,
+			ramp: true,
+		});
 	},
 
 	/**
@@ -223,7 +230,7 @@ export const theRide = {
 	 */
 	cancelCountdown() {
 		soloTrainer().adopt(session?.abort());
-		session = null;
+		drop();
 		buffer?.end();
 		buffer = undefined;
 	},
@@ -261,7 +268,7 @@ export const theRide = {
 		}
 		if (session?.state !== 'done') return;
 		root?.flags.flush();
-		session = null;
+		drop();
 	},
 
 	/** A page that draws the ride mounted; the function it returns unmounts it. */

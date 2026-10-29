@@ -25,12 +25,12 @@
 		stepsDone: number;
 		onRestart: () => void;
 		/**
-		 * The number the rider just accepted (#1572). The page owns the ride
+		 * The number the rider just accepted (#1572). `theRide` owns the ride
 		 * this test became, and stamps it with what the test produced — the
 		 * ride was saved before this button existed, carrying the old FTP.
 		 */
 		onFtpSaved?: (ftp: number) => void;
-		/** The ride's own line and the flags, from the page. */
+		/** The ride's own line and the flags, from the ramp's screen. */
 		children: Snippet;
 	} = $props();
 

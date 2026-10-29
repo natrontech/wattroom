@@ -37,8 +37,10 @@ const ALLOWLIST: Allowlist = {
 		'the gallery mock of /u/[id], drawn at that page’s sizes',
 	'routes/(app)/ramp/+page.svelte':
 		'the ramp test is read from the saddle at arm’s length (ux.md), so its instruction cards keep p-8; the one with a control at the bottom also clears the phone’s browser chrome',
-	'routes/(app)/ramp/RampResult.svelte':
+	'lib/ride/RampResult.svelte':
 		'the ramp result, read from the saddle — p-8 for the same reason',
+	'lib/ride/RampRiding.svelte':
+		'the ramp’s “not enough to measure”, read from the saddle — p-8 for the same reason',
 	'routes/(app)/c/[code]/+page.svelte':
 		'the invite door: a single centred card on an otherwise empty page, where py-10 is what keeps it from reading as a dropped fragment',
 };
