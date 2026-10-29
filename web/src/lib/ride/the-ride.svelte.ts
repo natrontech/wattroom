@@ -44,7 +44,16 @@ let savedId = $state<string | null>(null);
 let savedXp = $state<number | undefined>(undefined);
 // How many pages draw the ride now: a save that answers with none of them
 // open has no summary to land on, so its outcome becomes a toast (#1544).
-let shown = $state(0);
+// Not $state: nothing renders it, and the effect that counts a page must not
+// read what it writes.
+let shown = 0;
+// Which ride the summary is: a save that answers after the next ride began
+// keeps its answer to a toast and leaves that ride's summary alone.
+let ride = 0;
+// The rider's FTP, weight and sprint setup, read when the ride starts, as the
+// page that owned it read them when it opened (ADR-0009: the account is the
+// truth, and the root layout pulls it into this store's storage).
+let profile = createProfileStore();
 
 let buffer: RideBuffer | undefined;
 let recorded = false;
@@ -52,8 +61,6 @@ let recorded = false;
 let borrowed = false;
 
 type Root = {
-	profile: ReturnType<typeof createProfileStore>;
-	history: ReturnType<typeof createHistoryStore>;
 	flags: ReturnType<typeof createRideFlags>;
 	signal: ReturnType<typeof createSignalWatch>;
 };
@@ -63,12 +70,10 @@ let root: Root | null = null;
 function ensureRoot(): Root {
 	if (root) return root;
 	$effect.root(() => {
-		const profile = createProfileStore();
-		const history = createHistoryStore(() => account.me?.id);
 		// The ⚑ and what it sends afterwards (#52), shared with /ramp.
 		const flags = createRideFlags('/ride');
 		const signal = createSignalWatch(() => session);
-		root = { profile, history, flags, signal };
+		root = { flags, signal };
 
 		// What the ride says out loud (#1792): the cues a session plays for its
 		// riders, from the session's own state, the same wiring as /ramp's (#3359).
@@ -139,7 +144,10 @@ function ensureRoot(): Root {
 function save(current: Session) {
 	if (recorded || !root) return;
 	recorded = true;
-	const { history, profile } = root;
+	// Read now, not at the first ride: Rides may have cleared or saved what
+	// this device kept since (#4259 review).
+	const history = createHistoryStore(() => account.me?.id);
+	const mine = ride;
 	const summary = summarise(current.recording);
 	if (summary.seconds === 0) {
 		buffer?.end();
@@ -156,10 +164,14 @@ function save(current: Session) {
 		borrowed,
 	});
 	const attempt = () => {
-		saving = true;
-		retrySave = null;
+		if (mine === ride) {
+			saving = true;
+			retrySave = null;
+		}
 		void uploadRide(upload).then((outcome) => {
-			saving = false;
+			// Another ride has the summary now: this answer is a toast.
+			const seen = mine === ride && shown > 0;
+			if (mine === ride) saving = false;
 			if ('saved' in outcome) {
 				// The ride is on the account: NOW it stops being a ride to
 				// recover. Ending the buffer before the server answered is what
@@ -167,10 +179,12 @@ function save(current: Session) {
 				ended?.end();
 				// A retry that went through leaves one copy, on the account.
 				history.remove(id);
-				saveStatus = outcome.saved.roadLeftOff ? ROAD_LEFT_OFF : null;
-				savedId = outcome.saved.id || null;
-				savedXp = outcome.saved.xp;
-				if (shown === 0) toastSaved(outcome.saved);
+				if (mine === ride) {
+					saveStatus = outcome.saved.roadLeftOff ? ROAD_LEFT_OFF : null;
+					savedId = outcome.saved.id || null;
+					savedXp = outcome.saved.xp;
+				}
+				if (!seen) toastSaved(outcome.saved);
 				return;
 			}
 			const { failure } = outcome;
@@ -194,14 +208,17 @@ function save(current: Session) {
 				ftp,
 				...summary,
 			});
-			saveStatus =
+			const status =
 				localFailure ??
 				(failure.final
 					? `${failure.message} Its summary stays on this device.`
 					: `${failure.message} The ride is kept on this device meanwhile, and Rides offers it back if you leave.`);
-			if (!failure.final) retrySave = attempt;
+			if (mine === ride) {
+				saveStatus = status;
+				if (!failure.final) retrySave = attempt;
+			}
 			// No page shows the summary: the one surface left is a toast (errors.md).
-			if (shown === 0) toasts.push(saveStatus, { tone: 'error' });
+			if (!seen) toasts.push(status, { tone: 'error' });
 		});
 	};
 	attempt();
@@ -249,7 +266,9 @@ export const theRide = {
 		workout: Workout,
 		options: { borrowed: boolean },
 	): Promise<void> {
-		const { profile, flags } = ensureRoot();
+		const { flags } = ensureRoot();
+		ride++;
+		profile = createProfileStore();
 		// One trainer, one ride (#521): a voice channel holds the trainer's
 		// BLE connection while you stand in it, so this ride takes it back
 		// rather than open a second control channel to the same hardware. A
@@ -259,6 +278,7 @@ export const theRide = {
 		const solo = soloTrainer();
 		if (solo.trainer && solo.trainer !== trainer) solo.forget();
 		session = null;
+		saving = false;
 		saveStatus = null;
 		retrySave = null;
 		savedId = null;

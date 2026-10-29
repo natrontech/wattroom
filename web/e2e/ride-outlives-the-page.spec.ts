@@ -48,6 +48,12 @@ test('a ride alone runs on through a text channel, a voice channel and another c
 		`Roams Away ${Date.now() % 100000}`,
 	);
 	const page = await riders(RIDER);
+	// A view of the ride must never loop on what it counts (#4259 review).
+	const loops: string[] = [];
+	page.on('pageerror', (error) => {
+		if (error.message.includes('effect_update_depth_exceeded'))
+			loops.push(error.message);
+	});
 	const home = await channels.open(page, `Roams Home ${Date.now() % 100000}`);
 	await channels.enter(page, elsewhere);
 
@@ -88,4 +94,5 @@ test('a ride alone runs on through a text channel, a voice channel and another c
 		return rides.filter((r) => Date.parse(r.startedAt) >= since).length;
 	}, since);
 	expect(saved, 'the ride saved as more than one').toBe(1);
+	expect(loops, 'a ride screen looped on its own effect').toEqual([]);
 });
