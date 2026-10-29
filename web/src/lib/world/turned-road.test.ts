@@ -1,11 +1,12 @@
 // @vitest-environment happy-dom
 import * as THREE from 'three';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { at, leftOf } from '$lib/road/along';
+import { at, lastMetre, leftOf } from '$lib/road/along';
 import { legsRoad } from '$lib/road/fixtures';
 import type { Route } from '$lib/road/route';
 import type { RoadMate } from '$lib/channel/road-mates';
 import { compose } from './compose';
+import { KEEP_RIGHT } from './crew';
 import { RIDE } from './look.test-helper';
 import { routeOfRoad } from './road-route';
 import type { RideMetre } from './sim';
@@ -36,10 +37,13 @@ const travel = (r: Route, d: number, way: number) => {
 	return new THREE.Vector3(Math.sin(h) * way, 0, Math.cos(h) * way);
 };
 
-/** Where `o` stands against `r` at `d`, riding `way`: metres ahead along it, and metres to its left. */
-function against(o: THREE.Object3D, r: Route, d: number, way: number) {
-	const v = o.getWorldPosition(new THREE.Vector3());
-	const p = at(r, d);
+/**
+ * Where `v` stands against `r` at `d`, riding `way`: metres ahead along it,
+ * and metres to its left. A lap back starts at the road's end, so on a
+ * lapped road its first metre is that end, never the next lap's start.
+ */
+function against(v: THREE.Vector3, r: Route, d: number, way: number) {
+	const p = at(r, way < 0 && r.loop ? Math.min(d, lastMetre(r)) : d);
 	const { lx, lz } = leftOf(p.heading);
 	const dx = v.x - p.x;
 	const dz = v.z - p.z;
@@ -76,7 +80,7 @@ function riding(
 	way: number,
 	at: string,
 ) {
-	const placed = against(o, r, d, way);
+	const placed = against(o.getWorldPosition(new THREE.Vector3()), r, d, way);
 	expect(placed.ahead, `along the road at ${at}`).toBeLessThan(1);
 	expect(placed.ahead, `along the road at ${at}`).toBeGreaterThan(-5);
 	expect(placed.left, `lane at ${at}`).toBeLessThan(-0.5);
@@ -98,12 +102,15 @@ function chased(w: World3, r: Route, d: number, way: number, at: string) {
 	const you = riders.get('me')!;
 	const { go } = riding(you, r, d, way, at);
 	const here = you.getWorldPosition(new THREE.Vector3());
+	const ahead = against(here, r, d, way).ahead;
+	// The trail behind your wheel, never ahead of it, in your lane.
 	const line = trail.geometry.getAttribute('position');
-	for (let i = 0; i < line.count; i++)
-		expect(
-			(line.getX(i) - here.x) * go.x + (line.getZ(i) - here.z) * go.z,
-			`trail at ${at}`,
-		).toBeLessThan(0.3);
+	const v = new THREE.Vector3();
+	for (let i = 0; i < line.count; i++) {
+		const on = against(v.fromBufferAttribute(line, i), r, d, way);
+		expect(on.ahead - ahead, `trail at ${at}`).toBeLessThan(0.3);
+		expect(on.left, `trail's lane at ${at}`).toBeLessThan(-0.5);
+	}
 	const eye = w.camera.position.clone().sub(here);
 	expect(eye.length(), `eye near you at ${at}`).toBeLessThan(20);
 	expect(eye.x * go.x + eye.z * go.z, `eye behind at ${at}`).toBeLessThan(-4);
@@ -237,7 +244,17 @@ describe('a ride back down its road (#4261)', () => {
 					if (s === 0) continue;
 					const at = `${s}s +${f}`;
 					const { riders } = drawn(w.scene);
-					riding(riders.get('kim')!, route, kim.m - (8 * f) / FPS, -1, at);
+					const them = riders.get('kim')!;
+					const d = kim.m - (8 * f) / FPS;
+					riding(them, route, d, -1, at);
+					// Not beside you: in the lane you keep, on their own side.
+					const lane = against(
+						them.getWorldPosition(new THREE.Vector3()),
+						route,
+						d,
+						-1,
+					).left;
+					expect(lane, `Kim's lane at ${at}`).toBeCloseTo(KEEP_RIGHT, 0);
 					// You, up the road in yours.
 					chased(w, route, me.m + (8 * f) / FPS, 1, at);
 				}

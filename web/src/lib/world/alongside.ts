@@ -3,6 +3,7 @@
 // watts on their own screen, never by this one, and never in a bunch. It
 // draws nothing: crew.ts does.
 import type { RoadMate } from '$lib/channel/road-mates';
+import type { Route } from '$lib/road/route';
 import { LANE } from './bunch';
 import { KEEP_RIGHT } from './crew';
 import { MOST_ABREAST } from './lanes';
@@ -16,7 +17,7 @@ import { followMetre, simRider, type SimRider } from './sim';
  * in the order the tick lists them, so they hold their lanes. One riding the
  * other way keeps the right of theirs.
  */
-export function createAlongside() {
+export function createAlongside(route?: Route) {
 	const mates = new Map<
 		string,
 		{ r: SimRider; follow: ReturnType<typeof followMetre> }
@@ -44,7 +45,7 @@ export function createAlongside() {
 					watts: p.watts,
 					d: p.m,
 				});
-				mates.set(p.id, (mate = { r, follow: followMetre() }));
+				mates.set(p.id, (mate = { r, follow: followMetre(route) }));
 			}
 			// Their way is what they said; the speed read off their metres is signed.
 			mate.follow(
@@ -61,10 +62,12 @@ export function createAlongside() {
 				// Their numbers are the channel's on a free ride and in a race
 				// (ADR-0059); a faded racer's are gone with their screen.
 				ring: !p.faded,
-				// Beside you the way you ride; the other way, in their own right lane (#4261).
+				// Beside you the way you ride; the other way, in their own half of
+				// the road, where two lanes fit right of its middle (#4261).
 				lane:
-					KEEP_RIGHT +
-					LANE * ((!!p.reverse === !!you.reverse ? 1 : 0) + (i % 3)),
+					!!p.reverse === !!you.reverse
+						? KEEP_RIGHT + LANE * (1 + (i % 3))
+						: KEEP_RIGHT + LANE * (i % 2),
 			});
 		});
 		for (const id of mates.keys()) if (!here.has(id)) mates.delete(id);

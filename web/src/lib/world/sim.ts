@@ -4,7 +4,7 @@
 import { PaceDefaultCdA } from '$lib/protocol';
 import { createPace, type Pace } from '$lib/road/pace';
 import { type Route } from '$lib/road/route';
-import { at } from '$lib/road/along';
+import { at, lastMetre } from '$lib/road/along';
 import { damp } from '$lib/motion/damp';
 import type { CheerLook } from './cheer';
 import type { Loadout } from './loadout';
@@ -121,9 +121,11 @@ const SETTLE_S = 0.3;
  * once a second; between its seconds the figure rolls on at the ride's
  * speed and eases onto each new metre as it lands, so it stands where the
  * Skyline's dot does and never jumps. It reads the ride and writes nothing
- * back — rendering never drives the trainer.
+ * back — rendering never drives the trainer. On a lapped `route` a lap back
+ * starts at the road's end, its metre the road's length: that end, never
+ * the next lap's start (#4261).
  */
-export function followMetre() {
+export function followMetre(route?: Route) {
 	let last = NaN;
 	let since = 0;
 	return (
@@ -141,6 +143,7 @@ export function followMetre() {
 			Math.abs(target - r.d) > JUMP_M
 				? target
 				: r.d + (target - r.d) * damp(SETTLE_S, real);
+		if (ride.reverse && route?.loop) r.d = Math.min(r.d, lastMetre(route));
 		r.at = r.d;
 		r.v = ride.mps;
 		r.reverse = ride.reverse;
