@@ -27,7 +27,9 @@
 	// owns it, so leaving mid-test leaves it running.
 	const session = $derived(theRide.session);
 	const riding = $derived(
-		!!theRide.road || (!!session && session.state !== 'idle'),
+		!!theRide.road ||
+			(!!session && session.state !== 'idle') ||
+			!!theRide.channel?.riding,
 	);
 
 	async function begin(trainer: Trainer) {
