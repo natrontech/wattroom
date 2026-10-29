@@ -2,7 +2,7 @@
 // props, furniture and the horizon. Rebuilt whole on a style change — the
 // world data under it is not, and neither is the streamed ground it draws.
 import * as THREE from 'three';
-import { backdrop } from './backdrop';
+import { backdrop, type View } from './backdrop';
 import { tag } from './family';
 import { chunkId, LEAVE, roadPieces, type GroundStream } from './ground-stream';
 import {
@@ -57,6 +57,8 @@ export type Stage = {
 	 * one a call, nearest first (#3699).
 	 */
 	update(eye: THREE.Vector3, whole?: boolean): void;
+	/** The sky's band drawn from `eye` over the land in `view` as well as the far ranges: the ride's picture's (#4278). */
+	bandOverLand(eye: THREE.Vector3, view: View): void;
 	/**
 	 * The orbit view: the whole model on its plinth and a fat road, no
 	 * horizon — built the first time it is asked, the desk's diorama — or the
@@ -335,6 +337,16 @@ export function buildStage(
 				dress(eye, whole);
 				roads(eye);
 			}
+		},
+		bandOverLand(eye, view) {
+			ridges.skyline.over(
+				eye,
+				(x, z) =>
+					x < minX || x > maxX || z < minZ || z > maxZ
+						? null
+						: yOf(route, world.heightAt(x, z)),
+				view,
+			);
 		},
 		setOrbit(on) {
 			orbit = on;

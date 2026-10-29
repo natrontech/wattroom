@@ -6,7 +6,9 @@ import { confirm, type ConfirmRequest } from '$lib/confirm.svelte';
  * confirm, only while `live()` says the session is alive, plus the browser's
  * own unload guard for a closed tab. Lifted out of /ride because /ramp had
  * none — a back gesture at minute 14 of a maximal test lost the number
- * (audit 2026-09-09). Call during component init, like beforeNavigate.
+ * (audit 2026-09-09). No ride uses it now: a ride outlives its page
+ * (ADR-0093), and the workout editor keeps it for unsaved edits. Call during
+ * component init, like beforeNavigate.
  */
 export function guardLeaving(live: () => boolean, ask: ConfirmRequest): void {
 	// The guard must cancel synchronously and the dialog answers later, so a

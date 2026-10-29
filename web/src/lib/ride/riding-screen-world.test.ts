@@ -177,6 +177,11 @@ describe('the world on a ride', () => {
 		expect(band).toMatch(
 			/>Easier<\/button>[\s\S]*>Harder<\/button>[\s\S]*aria-label="Flag a problem"[\s\S]*>Change workout<\/button>/,
 		);
+		// The controls on the label's row, above the road line (the box
+		// table's "eyebrow or status line 24 with the controls 44", v2-ride).
+		expect(band).toMatch(
+			/data-testid="ride-context"[\s\S]*>End ride<\/button>[\s\S]*data-testid="block-road"/,
+		);
 		// No workout's header: no ridden clock, no column for a strip or NEXT.
 		expect(band).not.toContain('aria-label="ridden"');
 		expect(band).not.toContain('w-88');

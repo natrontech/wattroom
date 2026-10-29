@@ -64,7 +64,7 @@
 	const ICON = 'btn btn-secondary h-11 w-11 p-0 max-md:w-auto max-md:flex-1';
 </script>
 
-<div class="flex items-center gap-2 max-md:flex-wrap">
+<div class="flex flex-wrap items-center gap-2">
 	{#if countIn}
 		<button onclick={countIn.cancel} class="btn btn-secondary btn-ride"
 			>Cancel</button

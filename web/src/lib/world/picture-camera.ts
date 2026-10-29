@@ -37,13 +37,16 @@ const up = new THREE.Vector3();
 const gaze = new THREE.Vector3();
 const box = new THREE.Box3();
 
-/** A wheel's radius, and what the head stands over its bone: the figure's skin reaches this far past its bones. */
-const SKIN_M = 0.35;
+/** A wheel's radius: the tyres meet the road this far under their hubs, and reach this far past them. */
+export const TYRE_M = 0.34;
+/** The helmet's top over the head's bone. */
+export const HELMET_M = 0.25;
 
 /**
  * Your figure's box as it stands now, from its bones: the skinned mesh's own
  * box mixes the skeleton's space with the figure's (#3211), and the bones
- * are where the figure is.
+ * are where the figure is. It stands from the tyres' contact to the
+ * helmet's top, as a reader of the picture measures you (#4278).
  */
 export function figureBox(
 	figure: THREE.Object3D,
@@ -53,9 +56,17 @@ export function figureBox(
 	out.makeEmpty();
 	const p = new THREE.Vector3();
 	figure.traverse((o) => {
-		if ((o as THREE.Bone).isBone) out.expandByPoint(o.getWorldPosition(p));
+		if (!(o as THREE.Bone).isBone) return;
+		out.expandByPoint(o.getWorldPosition(p));
+		if (o.name.endsWith('Wheel')) out.expandByPoint(p.setY(p.y - TYRE_M));
+		if (o.name === 'head') out.expandByPoint(p.setY(p.y + HELMET_M));
 	});
-	return out.expandByScalar(SKIN_M);
+	// Along the road and across it, the tyres reach a wheel's radius past their hubs.
+	out.min.x -= TYRE_M;
+	out.min.z -= TYRE_M;
+	out.max.x += TYRE_M;
+	out.max.z += TYRE_M;
+	return out;
 }
 
 /** The frame's top edge, where the sky should be: three points across it, in normalised device coordinates. */

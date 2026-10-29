@@ -17,6 +17,61 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.10.6] - 2026-10-29
+
+### Added
+
+- A WattRoom road's card opens its own page with how to ride it: a free ride,
+  its own workout, or any workout on it. Mid-ride, Change workout swaps to
+  another workout from its first block, or to none, and the ride, its place on
+  the road and its recording carry on into one saved ride named after each
+  workout it rode. A shelf workout on your own loop now laps it.
+
+### Changed
+
+- A workout you ride alone keeps running while you open a text channel, a
+  voice channel, another crew or any other page: nothing asks "End the ride?"
+  any more. Ride and a voice channel's Training page both show it, and End
+  ride is the one way to end it.
+- A free ride on a road keeps running while you open any other page, as a
+  workout ridden alone already did: nothing asks "Leave the ride?" any more.
+  Ride and a voice channel's Training page both show it.
+- The world draws flat: trees, hay bales, the ground and the road are low poly in flat colour, with no grain or noise to shimmer, road lines that fade instead of flickering in the distance, and forests that mix spruces, firs and broadleaves of their own shade instead of rows of one cone.
+- The World picture on the closing card is composed: a 1080 × 1350 portrait
+  drawn at the best moment of your ride (a summit, a hairpin or the steepest
+  stretch, or the moment you took it), from a low camera with you large on a
+  third, and still with no name in it.
+
+### Fixed
+
+- A ride under "On this device only" on Rides opens when you tap it. While the
+  device still has its seconds, it offers "Save to your account", so a ride
+  whose save was refused can still reach your history.
+- In 3D the trees, houses and cows stay drawn all the way round a road. They used to vanish all at once a few kilometres from where the ride began, and came back only near the start line.
+- A road ride with laps keeps its whole distance in its .fit download and on
+  Strava. A loop's next lap, or a lap ridden back, no longer drops the
+  distance, and the file ends on the distance the ride's page shows.
+- A workout on a loop rides on into its next lap instead of stopping dead at
+  the end of the first, and a free ride on a loop rolls on with no end-of-road
+  card. A workout that outlasts an open road turns at its end and keeps going.
+- A ride changed to No workout reads as a free ride on that road: the HUD shows
+  the time ridden, the TV shows the ride's time with no block, and the world's
+  light no longer counts against six hours.
+- A ride changed to No workout on a road shows a free ride's slot 1: the road's
+  name, where you are on it at full size, metres climbed, and Easier and Harder.
+- Riding a road back the way you came, after a turn at its end or on a lap of a
+  loop, the world shows you facing the way you ride, on your own side of the
+  road, with the camera behind you. A channel-mate riding the other way is drawn
+  the same way.
+- A workout on the Pass loop or the Valley loop saves to your account again.
+  It was refused over the loop's id. A ride refused over its road now saves
+  without the road, and its card says so.
+- The World picture's sky shows the peach alpenglow over the hillside past
+  you, and you stand where the picture means you to, 62 % down the frame.
+- The 3D world draws sharp in a big desk window. It drew under one pixel per
+  screen point and the browser scaled it up, so trees, bales and road lines
+  looked blurred; it now draws at least one pixel per point.
+
 ## [2026.10.5] - 2026-10-27
 
 ### Added
@@ -4113,7 +4168,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.10.5...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.10.6...HEAD
+[2026.10.6]: https://github.com/natrontech/wattroom/compare/2026.10.5...2026.10.6
 [2026.10.5]: https://github.com/natrontech/wattroom/compare/2026.10.4...2026.10.5
 [2026.10.4]: https://github.com/natrontech/wattroom/compare/2026.10.3...2026.10.4
 [2026.10.3]: https://github.com/natrontech/wattroom/compare/2026.10.2...2026.10.3

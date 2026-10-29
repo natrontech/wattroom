@@ -1,1 +1,0 @@
-- The world draws flat: trees, hay bales, the ground and the road are low poly in flat colour, with no grain or noise to shimmer, road lines that fade instead of flickering in the distance, and forests that mix spruces, firs and broadleaves of their own shade instead of rows of one cone.
