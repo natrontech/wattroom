@@ -308,7 +308,7 @@ func (q *Queries) GetRoutePlace(ctx context.Context, id pgtype.UUID) (GetRoutePl
 }
 
 const getRouteRoad = `-- name: GetRouteRoad :one
-select owner_id, src, road, road_sealed, key_version, road_hash, length_m from routes where id = $1
+select owner_id, src, road, road_sealed, key_version, road_hash, length_m, loop from routes where id = $1
 `
 
 type GetRouteRoadRow struct {
@@ -319,6 +319,7 @@ type GetRouteRoadRow struct {
 	KeyVersion *int32
 	RoadHash   string
 	LengthM    int32
+	Loop       *bool
 }
 
 // A route's road, its source and whose it is (#3051): what a workout read
@@ -335,6 +336,7 @@ func (q *Queries) GetRouteRoad(ctx context.Context, id pgtype.UUID) (GetRouteRoa
 		&i.KeyVersion,
 		&i.RoadHash,
 		&i.LengthM,
+		&i.Loop,
 	)
 	return i, err
 }

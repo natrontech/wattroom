@@ -116,6 +116,45 @@ func TestARoadIsCutToWhoeverReadsIt(t *testing.T) {
 	assertNothingOfTheEnds(t, "a pick, on every socket", cut, meta)
 }
 
+// A loop comes back a loop to its owner (#4257): a workout read off the
+// shelf onto its own whole road laps it, as one picked on the Ride card does.
+// The crew's cut has its ends hidden, so it ends; nobody else reads a loop.
+func TestTheOwnersWholeLoopComesBackALoop(t *testing.T) {
+	h := setup(t, nil)
+	alice, bob := h.users.ByToken["alice"].ID, h.users.ByToken["bob"].ID
+	loop := true
+	row, err := h.store.Queries.CreateRoute(t.Context(), db.CreateRouteParams{
+		OwnerID: alice, Src: "gpx", Name: "Home loop", GenName: "Road · 3.0 km · 50 m",
+		Road: testx.TellingRoad(), RoadHash: "telling-loop", LengthM: 3000, GainM: 50,
+		Climbs: []byte("[]"), EleSource: "file", Loop: &loop,
+	})
+	if err != nil {
+		t.Fatalf("create route: %v", err)
+	}
+	route := store.UUIDString(row.ID)
+	a := NewAttacher(h.store.Queries, h.keys)
+	for _, c := range []struct {
+		who    string
+		viewer pgtype.UUID
+		want   bool
+	}{{"the owner", alice, true}, {"a crew member", bob, false}} {
+		got, err := a.Attach(t.Context(), workoutOn(route), c.viewer)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, meta := roadIn(t, got); meta.Loop != c.want {
+			t.Errorf("%s read loop = %v, want %v", c.who, meta.Loop, c.want)
+		}
+	}
+	got, err := a.Attach(t.Context(), workoutOn(storeTellingRoute(t, h, alice, "gpx")), alice)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, meta := roadIn(t, got); meta.Loop {
+		t.Error("a route never told it is a loop came back a loop")
+	}
+}
+
 // Only a route's owner puts it where others read it, and a route from Strava
 // never goes there at all; the owner's own shelf takes either.
 func TestOnlyTheOwnerSharesARoadAndNeverStravas(t *testing.T) {

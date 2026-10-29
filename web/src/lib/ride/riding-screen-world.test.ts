@@ -3,7 +3,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { SimulatedTrainer } from '$lib/ble/simulated';
 import { legsRoad } from '$lib/road/fixtures';
 import { createRideSession } from '$lib/workout/session.svelte';
+import { openRoad } from '$lib/workout/ridden';
 import { withProfile } from '$lib/workout/road-workout';
+import type { ShelfEntry } from '$lib/workout/shelf';
 import type { Workout } from '$lib/workout/types';
 import RidingScreen from './RidingScreen.svelte';
 
@@ -35,7 +37,12 @@ const openers: Workout = {
 /** The ride screen's markup for `workout`. */
 function screen(
 	workout: Workout,
-	extra: { onTv?: () => void; onFlag?: () => void } = {},
+	extra: {
+		onTv?: () => void;
+		onFlag?: () => void;
+		shelf?: ShelfEntry[];
+		onChangeWorkout?: (next: Workout | null) => void;
+	} = {},
 ): string {
 	const session = createRideSession({
 		trainer: new SimulatedTrainer(),
@@ -97,5 +104,29 @@ describe('the world on a ride', () => {
 		);
 		expect(html).toMatch(/aria-pressed="true"[^>]*>3D/);
 		expect(html).toMatch(/aria-pressed="false"[^>]*>Flat<\/button>/);
+	});
+
+	it('gives slot 1 Change workout in words before End ride (#4257)', () => {
+		const onRoad = withProfile(
+			{ ...openers, road: { routeId: 'r1', fromM: 0, toM: 2000 } },
+			{ road: legsRoad([1000, 0], [1000, 5]) },
+		);
+		const change = { shelf: [], onChangeWorkout: () => {} };
+		expect(screen(onRoad, change)).toMatch(
+			/>Change workout<\/button>(\s|<!--[^>]*-->)*<button[^>]*>End ride<\/button>/,
+		);
+		// Only where the page can change it: a voice channel's own ride has none.
+		expect(screen(onRoad)).not.toContain('Change workout');
+		// With no workout, nothing to stretch or skip.
+		const none = withProfile(openRoad({ routeId: 'r1', fromM: 0, toM: 2000 }), {
+			road: legsRoad([1000, 0], [1000, 5]),
+		});
+		const html = screen(none, change);
+		expect(html).toContain('Change workout');
+		expect(html).not.toContain('aria-label="Skip block"');
+		expect(html).not.toContain('aria-label="One more minute"');
+		// Nor a target to trim.
+		expect(html).not.toContain('raise the target by one percent');
+		expect(screen(onRoad, change)).toContain('raise the target by one percent');
 	});
 });

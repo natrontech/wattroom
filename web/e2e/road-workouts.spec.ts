@@ -1,0 +1,159 @@
+import type { Page } from '@playwright/test';
+import { expect, test } from './crew';
+import { signInAs } from './signin';
+
+/**
+ * A WattRoom road rides any workout, and the workout changes mid-ride
+ * (#4257): the road's card opens its How, as a route's does; on the ride,
+ * Change workout starts another from its first block, and the ride, its
+ * recording and the place on the loop carry on into one saved ride.
+ */
+const mute = () =>
+	localStorage.setItem(
+		'wattroom.mixer.v1',
+		JSON.stringify({ music: 0, cues: 0, board: 0, share: 0 }),
+	);
+
+/** Slot 1's road line, "km 2.0 of 28.8 · 1.2 %", as metres along the road. */
+async function metre(page: Page): Promise<number> {
+	const line = await page.getByTestId('block-road').textContent();
+	return Number(line?.match(/km ([\d.]+) of/)?.[1] ?? 0) * 1000;
+}
+
+test.beforeEach(({ page }) => page.addInitScript(mute));
+
+test('the Pass loop card opens how to ride it, and picks a workout for it', async ({
+	page,
+}) => {
+	test.skip(
+		!!process.env.PLAYWRIGHT_BASE_URL,
+		'the ?as= dev provider only exists on a dev server',
+	);
+	await signInAs(page, 'Road How Rider', '/workouts');
+	await page
+		.getByRole('list', { name: 'WattRoom roads' })
+		.getByRole('link', { name: 'Pass loop' })
+		.click();
+	await expect(page).toHaveURL('/workouts/routes/intro');
+	const how = page.getByRole('complementary', { name: 'how to ride it' });
+	await expect(how.getByRole('link', { name: 'Ride it' })).toHaveAttribute(
+		'href',
+		'/ride?road=intro',
+	);
+	// The page body scrolls down, never sideways, at 375 px (ux.md).
+	await page.setViewportSize({ width: 375, height: 812 });
+	await expect
+		.poll(() =>
+			page
+				.getByTestId('page-body')
+				.evaluate((el) => el.scrollWidth - el.clientWidth),
+		)
+		.toBe(0);
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await how.getByRole('button', { name: /Workout on it/ }).click();
+	await how.getByRole('link', { name: 'Pick a workout' }).click();
+
+	await expect(page).toHaveURL('/workouts?on=intro');
+	await expect(
+		page.getByRole('status').filter({ hasText: 'Pick a workout' }),
+	).toContainText('Pick a workout for Pass loop');
+	await page
+		.getByRole('listitem')
+		.filter({
+			has: page.getByRole('link', { name: 'Recovery Spin', exact: true }),
+		})
+		.getByRole('button', { name: 'Ride', exact: true })
+		.click();
+	const picker = page.getByRole('dialog', { name: 'Ride it on a route' });
+	await expect(picker).toContainText('Pass loop — where to start?');
+	await expect(picker.getByRole('link', { name: 'From km 0' })).toHaveAttribute(
+		'href',
+		'/ride?w=recovery-spin&road=intro&from=0',
+	);
+});
+
+test('a workout on the Pass loop, changed at km 2 and ended at km 4, saves one ride', async ({
+	page,
+}) => {
+	test.skip(
+		!!process.env.PLAYWRIGHT_BASE_URL,
+		'the ?as= dev provider only exists on a dev server',
+	);
+	test.setTimeout(600_000);
+	await signInAs(page, 'Road Change Rider', '/workouts');
+	// A strong, light rider: ERG's watts carry the dot the 2 km in minutes.
+	const patched = await page.evaluate(() =>
+		fetch('/api/me', {
+			method: 'PATCH',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				displayName: 'Road Change Rider',
+				ftpWatts: 400,
+				weightKg: 60,
+			}),
+		}).then((res) => res.status),
+	);
+	expect(patched).toBe(200);
+	// The ride reads the profile this browser pulled: wait for the new FTP.
+	await page.reload();
+	await expect
+		.poll(() =>
+			page.evaluate(
+				() =>
+					JSON.parse(localStorage.getItem('wattroom.profile.v1') ?? '{}')
+						.ftp as number | undefined,
+			),
+		)
+		.toBe(400);
+
+	await page.goto('/ride?w=sweet-spot-2x20&road=intro&from=1900');
+	await page
+		.getByRole('button', { name: 'Ride simulated' })
+		.click({ timeout: 15_000 });
+	await page.getByRole('button', { name: 'Start the ride' }).click();
+	await expect(page.getByTestId('block-road')).toContainText('of 28.8', {
+		timeout: 15_000,
+	});
+	await expect
+		.poll(() => metre(page), { timeout: 120_000, intervals: [1000] })
+		.toBeGreaterThanOrEqual(2000);
+
+	await page.getByRole('button', { name: 'Change workout' }).click();
+	await page
+		.getByRole('dialog', { name: 'Change workout' })
+		.getByRole('button', { name: /^Tempo 45/ })
+		.click();
+	await expect(page.getByTestId('ride-context')).toContainText('Tempo 45');
+	// From its first block, where the dot was.
+	await expect(page.getByTestId('ride-clock')).toHaveText(/^0:[0-2]\d of /);
+	expect(await metre(page)).toBeGreaterThanOrEqual(2000);
+
+	await expect
+		.poll(() => metre(page), { timeout: 420_000, intervals: [2000] })
+		.toBeGreaterThanOrEqual(4000);
+	await page.getByRole('button', { name: 'End ride' }).click();
+	await page
+		.getByRole('dialog')
+		.getByRole('button', { name: 'End the ride' })
+		.click();
+	const see = page.getByRole('link', { name: 'See your ride' });
+	await expect(see).toBeVisible({ timeout: 30_000 });
+	await expect(page.getByText(/without its road/)).toHaveCount(0);
+
+	const id = (await see.getAttribute('href'))!.split('/').at(-1);
+	const ride = await page.evaluate(async (rideId) => {
+		const res = await fetch(`/api/rides/${rideId}`);
+		return (await res.json()) as {
+			workoutName: string;
+			samples: { m?: number }[];
+		};
+	}, id);
+	expect(ride.workoutName).toBe('Sweet Spot 2×20 + Tempo 45');
+	// One ride whose distance runs on through the change, never back to 0.
+	const metres = ride.samples.map((s) => s.m ?? 0);
+	expect(metres[0]).toBeLessThan(2000);
+	// Slot 1 reads km 4.0 from 3,950 m on.
+	expect(metres.at(-1)!).toBeGreaterThanOrEqual(3950);
+	for (let i = 1; i < metres.length; i++)
+		expect(metres[i]).toBeGreaterThanOrEqual(metres[i - 1]);
+});

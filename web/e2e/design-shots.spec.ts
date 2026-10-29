@@ -282,6 +282,21 @@ surface(
 			{ polling: 100, timeout: 90_000 },
 		);
 		await s.shot(o, { name: 'ride-road-world-gate' });
+		// multi:ride-road-world-change and multi:ride-road-world-none — item 39
+		// (#4257): Change workout over the ride, then the road on with none.
+		await ride(o.page, `/ride?w=openers&road=${road}&from=0`);
+		await assertRiding(o.page, true);
+		await o.page.getByRole('button', { name: 'Change workout' }).click();
+		const change = o.page.getByRole('dialog', { name: 'Change workout' });
+		await change.waitFor();
+		await s.shot(o, { name: 'ride-road-world-change' });
+		await change.getByRole('button', { name: /^No workout/ }).click();
+		await o.page
+			.getByTestId('ride-context')
+			.filter({ hasText: 'Free ride' })
+			.waitFor();
+		await o.page.waitForTimeout(2500);
+		await s.shot(o, { name: 'ride-road-world-none' });
 	},
 	{ once: true },
 );
@@ -1230,6 +1245,14 @@ surface(
 					name: road === 'hairpin' ? prefix : `${prefix}-${road}`,
 				});
 			}
+		// multi:route-wattroom — item 19 (#4257): a WattRoom road's own page.
+		for (const [device, name] of variants([
+			[DESK, 'route-wattroom'],
+			[PHONE, 'phone-route-wattroom'],
+		] as const)) {
+			const o = await s.open(device);
+			await page(s, o, '/workouts/routes/intro', { name });
+		}
 		// Where the route page's links lead (#3680): the primary, from where the
 		// last ride stopped, and the best ride (the seed's timed one).
 		const o = await s.open(DESK);

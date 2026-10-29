@@ -11,6 +11,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { api } from '$lib/api';
+	import { homeRoad } from '$lib/ride/home-roads';
 	import { account } from '$lib/account.svelte';
 	import { type MenuEntry } from '$lib/context-menu.svelte';
 	import RideOnRoute from './RideOnRoute.svelte';
@@ -85,6 +86,12 @@
 		onName = null;
 		const id = on;
 		if (!id) return;
+		// One of WattRoom's roads has no route row to read (#4257).
+		const home = homeRoad(id);
+		if (home) {
+			onName = home.name;
+			return;
+		}
 		// ponytail: a name that could not be read leaves "your road"; picking
 		// a workout reads the road again and says why it failed.
 		void api<{ name: string }>(`/api/routes/${encodeURIComponent(id)}`).then(

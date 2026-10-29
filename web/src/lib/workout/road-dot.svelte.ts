@@ -18,17 +18,20 @@ import type { Segment, Workout } from './types';
  * its last pin, so its dot never laps.
  */
 export function createRoadDot(workout: Workout, kg: () => number) {
-	const pinned = roadOf(workout);
+	// A workout changed mid-ride rides the same road on (#4257): its own
+	// start and end, and its blocks by the clock.
+	const first = roadOf(workout);
+	let pinned = $state.raw(first);
 	// Blocks end at the dot's metres only on a road that pins them (#3499).
-	const pins = pinned?.stepEndM;
-	const ride = pinned
-		? createRoadLaps(pinned.road, {
+	const pins = $derived(pinned?.stepEndM);
+	const ride = first
+		? createRoadLaps(first.road, {
 				kg,
-				from: pinned.fromM - pinned.originM,
-				loop: pinned.loop && !pins,
+				from: first.fromM - first.originM,
+				loop: first.loop && !first.stepEndM,
 			})
 		: null;
-	let start = $state(pinned?.fromM ?? 0);
+	let start = $state(first?.fromM ?? 0);
 	let entered: Segment | undefined;
 	let here = $state.raw<RoadSecond | null>(null);
 	let reverse = $state(false);
@@ -40,7 +43,9 @@ export function createRoadDot(workout: Workout, kg: () => number) {
 		pinned ? readoutAt(pinned.road, m - pinned.originM, reverse) : null,
 	);
 	return {
-		pinned,
+		get pinned() {
+			return pinned;
+		},
 		/** Enter a new block once, including each expanded repeat. */
 		enter(segment: Segment) {
 			if (entered === segment) return;
@@ -66,6 +71,7 @@ export function createRoadDot(workout: Workout, kg: () => number) {
 		},
 		/** Where the dot is and where the ride ends, on the owner's road. */
 		get summary() {
+			const originM = pinned?.originM ?? 0;
 			return pinned
 				? {
 						m,
@@ -85,18 +91,39 @@ export function createRoadDot(workout: Workout, kg: () => number) {
 						reverse,
 						/** Where the ride starts and each block ends, on it. */
 						startM: pinned.fromM - pinned.originM,
-						blockEndsM: pins?.map((end) => end - pinned.originM),
+						blockEndsM: pins?.map((end) => end - originM),
 						/** Where it is, as slot 1 and the HUD say it (#3639). */
 						readout: readout!,
 					}
 				: null;
 		},
 		/** The workout second the dot puts the rider at; for the ride clock. */
-		position:
-			pinned && pins
+		get position() {
+			const on = pinned;
+			const ends = pins;
+			return on && ends
 				? (segments: readonly Segment[]) =>
-						roadSecond(segments, { fromM: pinned.fromM, stepEndM: pins }, m)
-				: undefined,
+						roadSecond(segments, { fromM: on.fromM, stepEndM: ends }, m)
+				: undefined;
+		},
+		/**
+		 * Ride `next` on from here (#4257): the same road and laps, from the
+		 * metre the dot stands on, its blocks by the clock — so on a loop it
+		 * laps. A workout off this road leaves the dot as it was.
+		 */
+		follow(next: Workout) {
+			const ref = next.road;
+			if (!pinned || !ride || ref?.routeId !== pinned.routeId) return;
+			pinned = {
+				...pinned,
+				fromM: ref.fromM,
+				toM: ref.toM,
+				stepEndM: undefined,
+			};
+			ride.loop = pinned.loop;
+			start = ref.fromM;
+			entered = undefined;
+		},
 		/** One ride second at these watts; null off a road. */
 		second(watts: number, at: number): RoadSecond | null {
 			if (!ride) return null;

@@ -28,6 +28,9 @@
 	import { confirm } from '$lib/confirm.svelte';
 	import { FLAG_NOTICE_MS, FLAG_SAID } from '$lib/ride/flag';
 	import RideStatus from '$lib/ride/RideStatus.svelte';
+	import ChangeWorkout from '$lib/ride/ChangeWorkout.svelte';
+	import { isOpenRoad } from '$lib/workout/ridden';
+	import type { ShelfEntry } from '$lib/workout/shelf';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import Skyline from '$lib/ride/Skyline.svelte';
 	import { skylineOf } from '$lib/workout/road-workout';
@@ -70,6 +73,8 @@
 		onFlag,
 		onTv,
 		countIn,
+		shelf,
+		onChangeWorkout,
 	}: {
 		session: ReturnType<typeof createRideSession>;
 		/** Where you are in the work, from the page — the TV draws the same one. */
@@ -94,7 +99,17 @@
 		 * digit is the only thing in the corridor (TARGETS ride-countin).
 		 */
 		countIn?: { remaining: number; cancel: () => void };
+		/**
+		 * Change workout (#4257): the shelf to pick from, and the page's
+		 * change — `null` rides the road on with none. Absent, no control.
+		 */
+		shelf?: ShelfEntry[];
+		onChangeWorkout?: (next: Workout | null) => void;
 	} = $props();
+
+	let changing = $state(false);
+	// No workout, the road on: nothing to skip or stretch, no time left (#4257).
+	const open = $derived(isOpenRoad(workout));
 
 	// The ⚑'s own acknowledgement (#52), and nothing outside this screen ever
 	// asks about it.
@@ -208,7 +223,7 @@
 {#snippet worldControls()}
 	<!-- Over the world, one row in slot 1 (TARGETS ride-road-world 7): ⚑,
 	     TV, +1 min and Skip block as 44 px icons, named and with tooltips;
-	     End ride the one word. A road workout's blocks end at their metres
+	     Change workout (#4257) and End ride in words. A road workout's blocks end at their metres
 	     (#3499), so it shows neither +1 min nor Skip (D13). -->
 	{@const last = session.info.segmentIndex + 1 >= session.segments.length}
 	<div class="flex items-center gap-2 max-md:flex-wrap">
@@ -225,7 +240,7 @@
 					><MonitorUp size={20} /></button
 				>
 			{/if}
-			{#if !session.road?.pinned}
+			{#if !session.road?.pinned && !open}
 				<button
 					onclick={() => session.extend(60)}
 					class={ICON}
@@ -239,6 +254,13 @@
 					aria-label="Skip block"
 					title={last ? 'Last block — End ride instead' : 'Skip block'}
 					><SkipForward size={20} /></button
+				>
+			{/if}
+			{#if shelf && onChangeWorkout}
+				<button
+					onclick={() => (changing = true)}
+					class="btn btn-secondary btn-ride max-md:flex-1"
+					>Change workout</button
 				>
 			{/if}
 			<button
@@ -340,7 +362,7 @@
 			     the workout's one picture, its blocks in words (#4159). -->
 			<RideBand
 				{block}
-				elapsed={session.elapsed}
+				elapsed={open ? session.live.seconds : session.elapsed}
 				total={session.total}
 				title={workout.name}
 				context={rideContext('Solo', workout.name)}
@@ -351,7 +373,8 @@
 					: undefined}
 				controls={worldControls}
 				status={rideStatus}
-				strip={skyline ? strip : undefined}
+				strip={skyline && !open ? strip : undefined}
+				{open}
 			/>
 		{/snippet}
 
@@ -389,13 +412,14 @@
 				{climb}
 				{map}
 			/>
-			<div class="px-4 pb-3">
-				<BiasTrim
-					ride
-					bias={session.bias}
-					onBias={(step) => session.nudgeBias(step)}
-				/>
-			</div>
+			<!-- No workout, no target to trim (#4257). -->
+			{#if !open}<div class="px-4 pb-3">
+					<BiasTrim
+						ride
+						bias={session.bias}
+						onBias={(step) => session.nudgeBias(step)}
+					/>
+				</div>{/if}
 			{#if flagNotice}
 				<!-- Consent in plain words, at the moment of the tap, never blocking. -->
 				<p class="text-muted px-4 pb-3 text-xs">{FLAG_SAID.after}</p>
@@ -434,6 +458,18 @@
 {/if}
 
 {#if sheet}<KeySheet onclose={() => (sheet = false)} />{/if}
+{#if changing && shelf && onChangeWorkout}
+	<ChangeWorkout
+		{shelf}
+		current={workout.name}
+		onRoad={!!session.road}
+		onpick={(next) => {
+			changing = false;
+			onChangeWorkout(next);
+		}}
+		onclose={() => (changing = false)}
+	/>
+{/if}
 
 {#snippet moment()}
 	{#if session.sprint}<MomentCard sprint={session.sprint} />{/if}

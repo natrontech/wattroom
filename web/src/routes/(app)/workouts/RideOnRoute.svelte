@@ -2,15 +2,17 @@
 	/**
 	 * Any workout, ridden on one of your own roads (#3594): pick the road,
 	 * then where on it to start — Terrain Match's proposal (#3099) or km 0,
-	 * one tap apart. Blocks still end by the clock; the road is scenery the
-	 * dot rides at your own watts. Opened from a route page (#3681), `road`
-	 * is already picked: it opens on where to start.
+	 * one tap apart; WattRoom's roads head the list (#4257). Blocks still end
+	 * by the clock; the road is scenery the dot rides at your own watts.
+	 * Opened from a route page (#3681), `road` is already picked: it opens on
+	 * where to start.
 	 */
 	import Banner from '$lib/components/Banner.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { formatKm as km } from '$lib/format';
 	import RouteRow from '$lib/components/RouteRow.svelte';
+	import WattRoomRoads from '$lib/ride/WattRoomRoads.svelte';
 	import { loadRoad, myRoutes } from '$lib/ride/roads';
 	import type { StoredRoute } from '$lib/road/stored';
 	import { matchTerrain } from '$lib/road/match';
@@ -111,30 +113,47 @@
 			</div>
 		{:else if routes === null || (road && loading === road)}
 			<Skeleton class="h-16" rows={2} />
-		{:else if routes.length === 0}
-			<p class="text-muted flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
-				Your roads ride here — import a GPX, TCX or FIT.
-				<a href="/workouts/import?as=route" class="btn btn-secondary btn-xs"
-					>Import a route</a
-				>
-			</p>
 		{:else}
-			<ul class="grid gap-2" aria-label="your routes">
-				{#each routes as route (route.id)}
-					<li class="min-w-0">
-						<RouteRow {route}>
-							{#snippet action()}
-								<button
-									onclick={() => void pick(route.id)}
-									disabled={loading !== null}
-									class="btn btn-secondary btn-xs"
-									>{loading === route.id ? 'Loading…' : 'Pick'}</button
-								>
-							{/snippet}
-						</RouteRow>
-					</li>
-				{/each}
-			</ul>
+			<!-- WattRoom's roads first, as every road list has them (#4248, #4257). -->
+			<p class="eyebrow mb-2">WattRoom roads</p>
+			<WattRoomRoads>
+				{#snippet ride(home)}
+					<button
+						onclick={() => void pick(home.id)}
+						disabled={loading !== null}
+						class="btn btn-secondary btn-xs"
+						>{loading === home.id ? 'Loading…' : 'Pick'}</button
+					>
+				{/snippet}
+			</WattRoomRoads>
+			<p class="eyebrow mt-4 mb-2">your roads</p>
+			{#if routes.length === 0}
+				<p
+					class="text-muted flex flex-wrap items-center gap-x-3 gap-y-2 text-sm"
+				>
+					Your roads ride here — import a GPX, TCX or FIT.
+					<a href="/workouts/import?as=route" class="btn btn-secondary btn-xs"
+						>Import a route</a
+					>
+				</p>
+			{:else}
+				<ul class="grid gap-2" aria-label="your routes">
+					{#each routes as route (route.id)}
+						<li class="min-w-0">
+							<RouteRow {route}>
+								{#snippet action()}
+									<button
+										onclick={() => void pick(route.id)}
+										disabled={loading !== null}
+										class="btn btn-secondary btn-xs"
+										>{loading === route.id ? 'Loading…' : 'Pick'}</button
+									>
+								{/snippet}
+							</RouteRow>
+						</li>
+					{/each}
+				</ul>
+			{/if}
 		{/if}
 	</div>
 </Modal>
