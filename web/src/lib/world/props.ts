@@ -174,7 +174,8 @@ export function woodpile(c: PropColors) {
 					k % 2 ? c.wood : c.trunk,
 				),
 			);
-	logs.push(tint(box(2.3, 0.08, 1.4).translate(0, 1.4, 0), c.roof));
+	// Its cover lies on the top row, never floating over it.
+	logs.push(tint(box(2.3, 0.08, 1.4).translate(0, 1.23, 0), c.roof));
 	return merge(logs);
 }
 

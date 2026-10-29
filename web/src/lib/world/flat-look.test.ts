@@ -72,6 +72,15 @@ describe('the dressing’s models (ADR-0092)', () => {
 		}
 	});
 
+	it('lays the woodpile’s cover on its logs, never floating over them', () => {
+		const pos = P.woodpile(c).attributes.position;
+		const heights = [
+			...new Set(Array.from({ length: pos.count }, (_, i) => pos.getY(i))),
+		].sort((a, b) => a - b);
+		const gap = Math.max(...heights.slice(1).map((y, i) => y - heights[i]));
+		expect(gap).toBeLessThan(0.1);
+	});
+
 	it('paints its bales one colour per face, their rolled ends lighter', () => {
 		const g = P.bales(c);
 		expect(blended(g)).toBe(0);
