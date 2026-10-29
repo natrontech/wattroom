@@ -9,6 +9,7 @@
 	 */
 	import { createPairAgain } from '$lib/ble/pair-again.svelte';
 	import { formatClock } from '$lib/format';
+	import { navDrawer } from '$lib/nav/drawer.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { dockShows } from '$lib/ride/ride-screens';
 	import { theRide } from '$lib/ride/the-ride.svelte';
@@ -45,7 +46,8 @@
 	});
 </script>
 
-{#if shows && short}
+<!-- Under the open drawer the dock is the one watts figure (D17). -->
+{#if shows && short && !navDrawer.open}
 	<a
 		href={rideDock.screen}
 		data-testid="ride-dock-short"
@@ -57,21 +59,21 @@
 			<span class="bg-danger size-2 shrink-0 rounded-full"></span>
 		{/if}
 		<span class="num text-muted text-sm">{formatClock(rideDock.seconds)}</span>
-		<span class="num font-bold {watts}"
-			>{rideDock.watts}<span class="text-muted ml-0.5 text-xs font-normal"
-				>W</span
-			></span
-		>
+		<!-- The unit beside the numeral, never inside its glow (G2). -->
+		<span class="flex items-baseline gap-1">
+			<span class="num font-bold {watts}">{rideDock.watts}</span>
+			<span class="text-muted text-xs">W</span>
+		</span>
 	</a>
 {:else if shows}
 	<section
 		aria-label="Your ride"
 		data-testid="ride-dock"
-		class="border-ink/5 border-t px-3 pt-2.5 pb-2"
+		class="border-ink/5 border-t px-3 pt-2 pb-3"
 	>
 		<!-- Where the ride shows: today a ride alone is private (ADR-0093
 		     point 6); the voice channel it shows in names itself here. -->
-		<div class="flex min-w-0 items-center gap-1.5">
+		<div class="flex min-w-0 items-center gap-2">
 			<span class="eyebrow min-w-0 truncate">Riding alone</span>
 			<span
 				data-testid="ride-dock-time"

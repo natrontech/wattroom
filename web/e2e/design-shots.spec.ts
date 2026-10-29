@@ -1904,6 +1904,17 @@ const rideDockProbe = () => {
 		wattsColor: watts ? getComputedStyle(watts).color : null,
 		wattsGlow: watts ? getComputedStyle(watts).textShadow : null,
 		sidebarGlowing: glowing.map((el) => el.textContent?.trim()),
+		status:
+			dock?.querySelector('[role=alert], [role=status]')?.textContent?.trim() ??
+			null,
+		statusDot: (() => {
+			const dot = dock?.querySelector('[role=alert] span, [role=status] span');
+			return dot ? getComputedStyle(dot).backgroundColor : null;
+		})(),
+		wattsMuted: watts
+			? getComputedStyle(watts).color ===
+				getComputedStyle(dock!.querySelector('.text-muted')!).color
+			: null,
 		short: box(short),
 		shortText: short?.textContent?.replace(/\s+/g, ' ').trim() ?? null,
 		overflowX: body ? body.scrollWidth - body.clientWidth : null,
@@ -1937,6 +1948,37 @@ surface(
 				extra: { rideDock: await o.page.evaluate(rideDockProbe) },
 			});
 		}
+		// multi:ride-dock-lost — the trainer silent past SIGNAL_LOST_MS (the
+		// ride-status replay): the dock's one line and its one button.
+		const lost = await s.open(DESK, { world: false });
+		await lost.page.route('**/fixtures/design-silence.json', (route) =>
+			route.fulfill({ json: SILENCE }),
+		);
+		await lost.page.goto('/ride?w=openers&replay=design-silence');
+		await lost.page.getByTestId('ride-replay').click({ timeout: 15_000 });
+		await lost.page.getByRole('button', { name: 'End ride' }).waitFor();
+		await follow(lost.page, '/home');
+		await lost.page.getByTestId('ride-dock').getByRole('alert').waitFor({
+			timeout: 60_000,
+		});
+		await lost.page.waitForTimeout(1500);
+		await s.shot(lost, {
+			name: 'ride-dock-lost',
+			extra: { rideDock: await lost.page.evaluate(rideDockProbe) },
+		});
+		// multi:ride-dock-no-copy — no storage to keep the crash copy in.
+		const bare = await s.open(DESK, { world: false });
+		await bare.ctx.addInitScript(() =>
+			Object.defineProperty(window, 'indexedDB', { value: undefined }),
+		);
+		await ride(bare.page, '/ride?w=smoke-test');
+		await follow(bare.page, '/home');
+		await bare.page.getByTestId('ride-dock').getByRole('status').waitFor();
+		await bare.page.waitForTimeout(1500);
+		await s.shot(bare, {
+			name: 'ride-dock-no-copy',
+			extra: { rideDock: await bare.page.evaluate(rideDockProbe) },
+		});
 	},
 	{ also: ['phone-ride-dock'] },
 );
