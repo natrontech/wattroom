@@ -162,6 +162,8 @@
 		shift={solo.shift}
 		cassette={!profile.current.singleSpeed}
 		ghost={ride.ghost}
+		climbed={ride.climbed}
+		{ride}
 		onend={end}
 		onrepair={(next) => solo.repair(next)}
 		onflag={() => flags.recorder.flag()}

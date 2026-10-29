@@ -15,11 +15,13 @@ import { createSaveOutcome } from '$lib/ride/save-outcome.svelte';
 import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
 import { buildRampTest } from '$lib/workout/ramp';
 import { openRoad } from '$lib/workout/ridden';
+import { worldPicture } from '$lib/world/picture.svelte';
 import { byReference } from '$lib/workout/road-workout';
 import type { createRideSession } from '$lib/workout/session.svelte';
 import type { Workout } from '$lib/workout/types';
 
 type Session = ReturnType<typeof createRideSession>;
+type NextRide = { label: string; href: string };
 
 /**
  * The device's one ride alone (ADR-0093, #4259): owned here, above the
@@ -32,6 +34,8 @@ type Session = ReturnType<typeof createRideSession>;
 let session = $state<Session | null>(null);
 let ramp = $state.raw<RampAlone | null>(null);
 let road = $state.raw<RoadAlone | null>(null);
+// The summary's way on that the ride's setup chose: a road's next leg (#3601).
+let next = $state.raw<NextRide | null>(null);
 let noCrashSafety = $state(false);
 const outcome = createSaveOutcome();
 // How many pages draw the ride now: a save that answers with none of them
@@ -79,6 +83,9 @@ function take(trainer: Trainer) {
 	road?.dispose();
 	road = null;
 	drop();
+	next = null;
+	// The ride's start, not the world's mount, lets the last picture go (ADR-0093).
+	worldPicture.clear();
 }
 
 /** The workout let go, the ramp's hold with it. */
@@ -105,7 +112,7 @@ function save(current: Session) {
 async function startWorkout(
 	trainer: Trainer,
 	workout: Workout,
-	options: { borrowed: boolean; ramp?: boolean },
+	options: { borrowed: boolean; ramp?: boolean; next?: NextRide | null },
 ): Promise<void> {
 	// One ride per device (ADR-0093): no Start is drawn while one runs.
 	if (theRide.live) return;
@@ -115,6 +122,7 @@ async function startWorkout(
 	outcome.reset();
 	recorded = false;
 	borrowed = options.borrowed;
+	next = options.next ?? null;
 	try {
 		const startedAt = Date.now();
 		buffer = await openWorkoutBuffer(workout, { borrowed, startedAt });
@@ -159,6 +167,10 @@ export const theRide = {
 	get road() {
 		return road;
 	},
+	/** The summary's way on, such as a road's next leg, whatever page draws it. */
+	get next() {
+		return next;
+	},
 	/** Live: counting in or riding, not yet summarised. */
 	get live() {
 		return (
@@ -199,7 +211,11 @@ export const theRide = {
 	 * Start a workout on `trainer`. Throws what stopped it; the ride is then
 	 * gone and the trainer is the solo slot's again.
 	 */
-	begin(trainer: Trainer, workout: Workout, options: { borrowed: boolean }) {
+	begin(
+		trainer: Trainer,
+		workout: Workout,
+		options: { borrowed: boolean; next?: NextRide | null },
+	) {
 		return startWorkout(trainer, workout, options);
 	},
 

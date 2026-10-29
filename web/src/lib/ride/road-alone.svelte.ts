@@ -1,4 +1,5 @@
 import type { Trainer } from '$lib/ble/trainer';
+import { countClimbed } from '$lib/ride/climbed-count.svelte';
 import { createProfileStore } from '$lib/profile.svelte';
 import type { createRideFlags } from '$lib/ride/flags.svelte';
 import { createFreeRide, freeRideLabel } from '$lib/ride/free-ride.svelte';
@@ -26,6 +27,7 @@ export function holdRoadAlone(deps: {
 	let free!: ReturnType<typeof createFreeRide>;
 	let solo!: ReturnType<typeof createSoloRoadRide>;
 	let ghost!: ReturnType<typeof createGhostSplit>;
+	let climbed!: ReturnType<typeof countClimbed>;
 	let watts = $state(0);
 	// The instrument says when its numbers are not live (#2851): a trainer
 	// silent past the rides' one number, SIGNAL_LOST_MS.
@@ -46,6 +48,8 @@ export function holdRoadAlone(deps: {
 			readings: () => sensors.readings,
 		});
 		ghost = createGhostSplit(() => free);
+		// Counted here, not on the screen, so a screen opened again carries on.
+		climbed = countClimbed(free);
 		$effect(() => {
 			const trainer = solo.trainer;
 			if (!trainer) return;
@@ -80,6 +84,10 @@ export function holdRoadAlone(deps: {
 		ghost,
 		get watts() {
 			return watts;
+		},
+		/** Metres climbed this ride (TARGETS ride-free-road 3). */
+		get climbed() {
+			return climbed.m;
 		},
 		get stale() {
 			return !!solo.trainer && now - lastAt > SIGNAL_LOST_MS;

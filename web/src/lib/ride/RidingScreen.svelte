@@ -277,6 +277,7 @@
 				gates={() => ahead?.gates ?? NO_GATES}
 				onfail={world.fail}
 				onflat={world.flatten}
+				ride={session}
 			/>
 		{/if}
 	{/await}

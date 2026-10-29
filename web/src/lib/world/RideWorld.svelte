@@ -45,6 +45,7 @@
 		worldPicture,
 		type PictureMoment,
 	} from './picture.svelte';
+	import { momentsFor } from './ride-moments';
 
 	let {
 		road,
@@ -63,6 +64,7 @@
 		gates,
 		onfail,
 		onflat,
+		ride,
 	}: {
 		/** The road this ride rides, the way it rides it. */
 		road: Road;
@@ -93,6 +95,12 @@
 		onfail: (why: Failure) => void;
 		/** The rider asked for the flat road on this device. */
 		onflat: () => void;
+		/**
+		 * The ride this world draws, when it outlives the world (ADR-0093):
+		 * reopened mid-ride, the world keeps its picture's moments. Absent,
+		 * each world is a ride of its own.
+		 */
+		ride?: object;
 	} = $props();
 
 	let canvas = $state<HTMLCanvasElement>();
@@ -123,14 +131,14 @@
 
 	// The ride's picture (#4221, #4263): drawn as this world closes, at the
 	// ride's best moment once it settled, or at the moment the rider took it
-	// (#4253); the last ride's is let go first. Where it stands is said on
-	// the canvas, as its shot is: a capture waits for it.
+	// (#4253); the last ride's is let go when the next ride's world opens.
+	// Where it stands is said on the canvas, as its shot is: a capture waits
+	// for it.
 	const PICTURE_POLL_S = 2;
-	const ridden: PictureMoment[] = [];
-	let chosen: PictureMoment | null = null;
 	let route: Route | null = null;
 	const now = (): PictureMoment => ({ m: metre().m, p: progress, watts });
 	onMount(() => {
+		const moments = momentsFor(ride);
 		const ask = (event: Event) => {
 			const preset = (event as CustomEvent<CameraPreset | undefined>).detail;
 			shown =
@@ -142,20 +150,20 @@
 		};
 		const photo = (event: Event) => {
 			if (!scene) return;
-			chosen = now();
+			moments.chosen = now();
 			worldPicture.took();
 			if (canvas) canvas.dataset.picture = 'taken';
 			event.preventDefault();
 		};
 		window.addEventListener(CAMERA_ASK, ask);
 		window.addEventListener(PHOTO_ASK, photo);
-		worldPicture.clear();
-		let moving = 0;
+		// A ride whose moments are logged has settled already.
+		let moving = moments.ridden.length > 0 ? PICTURE.settleS : 0;
 		const picture = setInterval(() => {
 			if (!scene || counting || paused || metre().mps <= 0.5) return;
 			moving += PICTURE_POLL_S;
 			if (moving <= PICTURE.settleS) return;
-			ridden.push(now());
+			moments.ridden.push(now());
 			if (canvas && !canvas.dataset.picture) canvas.dataset.picture = 'due';
 		}, PICTURE_POLL_S * 1000);
 		// Building holds the main thread for a moment: let the surface paint first.
@@ -224,9 +232,9 @@
 			const closing = scene;
 			scene = null;
 			const at = momentToDraw(
-				chosen,
+				moments.chosen,
 				route && (loop ? { ...route, loop } : route),
-				ridden,
+				moments.ridden,
 			);
 			if (closing && at)
 				void worldPicture.draw(

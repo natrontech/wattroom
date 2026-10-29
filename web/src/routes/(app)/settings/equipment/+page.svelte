@@ -12,6 +12,7 @@
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import { createProfileStore, PROFILE_LIMITS } from '$lib/profile.svelte';
 	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
+	import { theRide } from '$lib/ride/the-ride.svelte';
 	import { DONT_SHIFT_SETTING } from '$lib/ride/mode-copy';
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import SensorOverview from '$lib/session/SensorOverview.svelte';
@@ -94,6 +95,9 @@
 				onPair: () => void pairTrainer(),
 				onForget: held.forget,
 				onSimulate: canSimulate() ? () => void pairSimulated() : undefined,
+				// The ride alone's trainer is its own (ADR-0093); the other
+				// sensors still pair here mid-ride.
+				onRide: theRide.live,
 			}}
 		/>
 	</div>

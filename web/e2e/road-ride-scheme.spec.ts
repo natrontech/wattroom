@@ -67,6 +67,18 @@ test('a free ride on a road keeps the rider’s scheme, and runs on off its page
 		sidebar.getByRole('link', { name: 'Home', exact: true }),
 		'the rows went with the sentences',
 	).toBeVisible();
+	// The climb is the ride's, not the screen's: it carries on past a return.
+	const climbed = async () =>
+		Number(
+			/(\d+) m climbed/.exec(
+				(await page
+					.getByText(/\d+ m climbed/)
+					.first()
+					.textContent()) ?? '',
+			)?.[1],
+		);
+	await expect.poll(climbed, { timeout: 60_000 }).toBeGreaterThanOrEqual(2);
+	const before = await climbed();
 
 	await page
 		.locator('nav')
@@ -83,6 +95,9 @@ test('a free ride on a road keeps the rider’s scheme, and runs on off its page
 	await expect(frame, 'Home wore the ride’s frame').toHaveCount(0);
 	await follow(page, '/ride');
 	await expect(frame, 'the ride ended when its page closed').toHaveCount(1);
+	expect(await climbed(), 'the climb began again at 0').toBeGreaterThanOrEqual(
+		before,
+	);
 
 	// End ride, which reads “Save at km x” partway up your own road (#3205).
 	await page.getByRole('button', { name: /^(End ride|Save at km)/ }).click();

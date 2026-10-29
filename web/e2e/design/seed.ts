@@ -312,10 +312,10 @@ export async function newestRide(page: Page, after: number): Promise<string> {
  */
 export async function bigWatts(page: Page): Promise<string> {
 	const name = 'Design four digits';
-	type Shelf = { workouts: { id: string; name: string }[] };
+	type Shelf = { workouts: { id: string; workout: { name: string } }[] };
 	const found = (
 		await call<Shelf>(page, 'GET', '/api/workouts')
-	).body.workouts.find((w) => w.name === name);
+	).body.workouts.find((w) => w.workout.name === name);
 	if (found) return found.id;
 	const made = await call<{ id: string }>(page, 'POST', '/api/workouts', {
 		workout: { name, steps: [{ type: 'steady', seconds: 600, watts: 1100 }] },

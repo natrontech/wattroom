@@ -68,6 +68,16 @@ describe('cardView', () => {
 		expect(view.note).toBe('no watts yet — turn the cranks');
 	});
 
+	it('holds a trainer the ride alone rides, with no button to pair a second (ADR-0093)', () => {
+		const view = cardView({ state: 'idle', supported: true, onRide: true });
+		expect(view).toMatchObject({
+			shape: 'note',
+			note: 'On your ride',
+			instead: 'End it to pair another',
+		});
+		expect(view.button).toBeUndefined();
+	});
+
 	it('names the screen holding it instead of a button (#610)', () => {
 		const view = cardView({
 			state: 'idle',

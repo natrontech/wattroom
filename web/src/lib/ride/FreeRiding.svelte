@@ -20,7 +20,7 @@
 	import { pairError } from '$lib/ble/pair-error';
 	import type { Trainer } from '$lib/ble/trainer';
 	import { formatClock } from '$lib/format';
-	import { climbedStep } from '$lib/ride/climbed';
+	import { countClimbed } from '$lib/ride/climbed-count.svelte';
 	import type { Clamp } from '$lib/ride/drivetrain';
 	import { FLAG_NOTICE_MS, FLAG_SAID } from '$lib/ride/flag';
 	import FlagButton from '$lib/ride/FlagButton.svelte';
@@ -80,6 +80,8 @@
 		foot,
 		worldClass = '',
 		mates,
+		climbed,
+		ride,
 		class: extra = '',
 	}: {
 		free: FreeRide;
@@ -118,6 +120,10 @@
 		worldClass?: string;
 		/** A voice channel's mates on this road (#3117): the world draws them at their own metres. */
 		mates?: () => readonly RoadMate[];
+		/** Metres climbed, from a ride that outlives this screen (ADR-0093); absent, it counts its own. */
+		climbed?: number;
+		/** That ride, so its world reopened mid-ride keeps the picture's moments; absent, each world is its own. */
+		ride?: object;
 		class?: string;
 	} = $props();
 
@@ -206,23 +212,14 @@
 		setTimeout(() => (flagNotice = false), FLAG_NOTICE_MS);
 	}
 
-	// Metres climbed this ride (TARGETS ride-free-road 3): the rises between
-	// one second's metre and the next. Off a road nothing climbs, so nothing
-	// says so (ux.md: a cue exists only where its model exists).
-	let climbed = $state(0);
-	let lastM: number | null = null;
-	$effect(() => {
-		const at = road ? { profile: road.profile, m: road.m } : null;
-		const recording = free.recording;
-		untrack(() => {
-			if (!recording || !at) {
-				climbed = 0;
-				lastM = null;
-				return;
-			}
-			if (lastM !== null) climbed += climbedStep(at.profile, lastM, at.m);
-			lastM = at.m;
-		});
+	// Metres climbed this ride (TARGETS ride-free-road 3).
+	const ownClimb = countClimbed({
+		get recording() {
+			return free.recording;
+		},
+		get road() {
+			return free.road;
+		},
 	});
 
 	const WORDS = 'text-2xl leading-6';
@@ -374,7 +371,7 @@
 		roadLine={road ? roadLine(road.readout) : undefined}
 		{chip}
 		seconds={free.seconds}
-		climbed={road ? climbed : undefined}
+		climbed={road ? (climbed ?? ownClimb.m) : undefined}
 		status={faultLine}
 		{controls}
 		{notes}
@@ -437,6 +434,7 @@
 				ghosts={() => (ghost?.rider ? [ghost.rider] : [])}
 				onfail={world.fail}
 				onflat={world.flatten}
+				{ride}
 			/>
 		{/if}
 	{/await}
