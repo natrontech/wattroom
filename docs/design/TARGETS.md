@@ -629,7 +629,7 @@ Capture: `<hairpin>` ridden from km 2.3 past its first 30 s, then End ride: the 
 3. Nothing of the dressing between the lens and you. [#4263] [test:web/src/lib/world/picture-still.test.ts]
 4. The ride's best moment: a summit crossed, else a hairpin, else the steepest stretch; the rider's own Photo in its place. [#4263] [test:web/src/lib/world/picture.test.ts]
 5. You alone on the road, and no word in the frame: no rider name, crew or place (G10). [#4221] [test:web/src/lib/world/ride-scene.test.ts] [test:web/src/lib/world/picture-still.test.ts]
-6. The world's blue hour in its own look (ADR-0072, ADR-0092). [#4263]
+6. The world's blue hour in its own look (ADR-0072, ADR-0092), its peach band showing over the land past you. [#4263] [#4278] [test:web/src/lib/world/picture-still.test.ts]
 7. On the closing card, World picture sits beside Ride card; while the world draws, “Drawing…” holds its place. [#4263] [multi:ride-world-picture-card] [test:web/src/lib/ride/WorldPicture.test.ts]
 
 #### history, history-rides

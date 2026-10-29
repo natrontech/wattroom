@@ -64,6 +64,8 @@ const SKY_MOVE = 25; // metres the eye moves before it is drawn again
 const SKY_WIDE = 24; // bearings each way (34°) a crest holds the band up: level across a view, never round each peak
 const SKY_EASE = 12; // bearings each way that is then eased over
 const SKY_SCALE = 4; // a byte's 0–1 is a sine of 0–0.25, about 14.5°: far over any range
+const LAND_FROM_M = 200; // nearer land is the slope beside the eye: it hides the band where it stands, and holds it up nowhere
+const LAND_STEP_M = 20; // how finely the land past it is read
 
 /**
  * How high the far ranges stand from an eye, by bearing from +z clockwise:
@@ -74,7 +76,22 @@ export type Skyline = {
 	texture: THREE.DataTexture;
 	/** Draws it from where the eye now is, once it has moved far enough to matter. */
 	from(eye: THREE.Vector3): void;
+	/**
+	 * Draws it from `eye` at once, over the land in `view` as well as the far
+	 * ranges: `land` is the drawn height at a point, null off the world. The
+	 * ride's picture's (#4278): the land past you there often stands over the
+	 * far ranges, and the band clears it as it clears them, level across the
+	 * frame. Land out of the frame holds nothing up.
+	 */
+	over(
+		eye: THREE.Vector3,
+		land: (x: number, z: number) => number | null,
+		view: View,
+	): void;
 };
+
+/** The bearings a frame sees: its middle, radians from +z clockwise, and half its width. */
+export type View = { bearing: number; half: number };
 
 export function backdrop(
 	route: Route,
@@ -184,43 +201,72 @@ function skylineOf(
 	texture.wrapS = THREE.RepeatWrapping;
 	texture.magFilter = texture.minFilter = THREE.LinearFilter;
 	const at = (i: number) => (i + SKY_N) % SKY_N;
+	const toward = (i: number) => {
+		const a = (i / SKY_N) * Math.PI * 2;
+		return { dx: Math.sin(a), dz: Math.cos(a) };
+	};
 	let atX = Infinity;
 	let atZ = Infinity;
+	/** The sine of the highest far crest from `eye` at each bearing, into raw. */
+	function ranges(eye: THREE.Vector3) {
+		const ee = eye.x * eye.x + eye.z * eye.z;
+		for (let i = 0; i < SKY_N; i++) {
+			const { dx, dz } = toward(i);
+			const ed = eye.x * dx + eye.z * dz;
+			raw[i] = 0;
+			for (const { R, tops } of rings) {
+				// Where this bearing meets the ring, and how high the ridge stands there.
+				const t = -ed + Math.sqrt(Math.max(0, ed * ed - ee + R * R));
+				const u = Math.atan2(eye.x + t * dx, eye.z + t * dz) / (Math.PI * 2);
+				const f = (u - Math.floor(u)) * SEG;
+				const s = Math.min(SEG - 1, Math.floor(f));
+				const up = base + tops[s] + (tops[s + 1] - tops[s]) * (f - s) - eye.y;
+				raw[i] = Math.max(raw[i], up / Math.hypot(t, up));
+			}
+		}
+	}
+	/** Raw's crests held level across SKY_WIDE, eased, into the texture. */
+	function draw() {
+		for (let i = 0; i < SKY_N; i++) {
+			wide[i] = 0;
+			for (let j = -SKY_WIDE; j <= SKY_WIDE; j++)
+				wide[i] = Math.max(wide[i], raw[at(i + j)]);
+		}
+		for (let i = 0; i < SKY_N; i++) {
+			let sum = 0;
+			for (let j = -SKY_EASE; j <= SKY_EASE; j++) sum += wide[at(i + j)];
+			const top = sum / (2 * SKY_EASE + 1);
+			data[i] = Math.round(Math.min(1, Math.max(0, top * SKY_SCALE)) * 255);
+		}
+		texture.needsUpdate = true;
+	}
 	return {
 		texture,
 		from(eye) {
 			if (Math.hypot(eye.x - atX, eye.z - atZ) < SKY_MOVE) return;
 			atX = eye.x;
 			atZ = eye.z;
-			const ee = eye.x * eye.x + eye.z * eye.z;
+			ranges(eye);
+			draw();
+		},
+		over(eye, land, view) {
+			// The next eye draws the far ranges alone again.
+			atX = atZ = Infinity;
+			ranges(eye);
 			for (let i = 0; i < SKY_N; i++) {
-				const a = (i / SKY_N) * Math.PI * 2;
-				const dx = Math.sin(a);
-				const dz = Math.cos(a);
-				const ed = eye.x * dx + eye.z * dz;
-				raw[i] = 0;
-				for (const { R, tops } of rings) {
-					// Where this bearing meets the ring, and how high the ridge stands there.
-					const t = -ed + Math.sqrt(Math.max(0, ed * ed - ee + R * R));
-					const u = Math.atan2(eye.x + t * dx, eye.z + t * dz) / (Math.PI * 2);
-					const f = (u - Math.floor(u)) * SEG;
-					const s = Math.min(SEG - 1, Math.floor(f));
-					const up = base + tops[s] + (tops[s + 1] - tops[s]) * (f - s) - eye.y;
+				const off = (i / SKY_N) * Math.PI * 2 - view.bearing;
+				if (Math.abs(Math.atan2(Math.sin(off), Math.cos(off))) > view.half)
+					continue;
+				const { dx, dz } = toward(i);
+				// The land ends before the far ranges, whatever `land` says.
+				for (let t = LAND_FROM_M; t < rings[0].R; t += LAND_STEP_M) {
+					const y = land(eye.x + t * dx, eye.z + t * dz);
+					if (y === null) break;
+					const up = y - eye.y;
 					raw[i] = Math.max(raw[i], up / Math.hypot(t, up));
 				}
 			}
-			for (let i = 0; i < SKY_N; i++) {
-				wide[i] = 0;
-				for (let j = -SKY_WIDE; j <= SKY_WIDE; j++)
-					wide[i] = Math.max(wide[i], raw[at(i + j)]);
-			}
-			for (let i = 0; i < SKY_N; i++) {
-				let sum = 0;
-				for (let j = -SKY_EASE; j <= SKY_EASE; j++) sum += wide[at(i + j)];
-				const top = sum / (2 * SKY_EASE + 1);
-				data[i] = Math.round(Math.min(1, Math.max(0, top * SKY_SCALE)) * 255);
-			}
-			texture.needsUpdate = true;
+			draw();
 		},
 	};
 }

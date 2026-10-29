@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { at } from '$lib/road/along';
 import { hairpinsOf } from '$lib/road/climbs';
+import { hairpinClimb } from '$lib/road/fixtures';
 import { toRoute, type Route } from '$lib/road/route';
 import { pageGrids } from './chunks/grids';
 import type { Composed } from './compose';
@@ -112,6 +113,59 @@ function inTheWay(still: Composed, box: THREE.Box3) {
 	return { hits, dressing: dressing.length };
 }
 
+/**
+ * The sky's peach band on the frame, over 36 columns across it: how many
+ * show it, where the band's top, as the sky's shader reads it at that
+ * column's bearing, stands inside the frame with nothing solid before it;
+ * and the most of the frame's height it shows in any, from that top down
+ * to the first thing solid under it.
+ */
+function bandOnFrame(still: Composed) {
+	const camera = still.camera;
+	camera.updateMatrixWorld();
+	const skies: THREE.ShaderMaterial[] = [];
+	const solid: THREE.Object3D[] = [];
+	still.scene.traverseVisible((o) => {
+		const mesh = o as THREE.Mesh;
+		if (!mesh.isMesh || (o as THREE.SkinnedMesh).isSkinnedMesh) return;
+		const material = mesh.material as THREE.ShaderMaterial;
+		if (material.uniforms?.uSkyline) skies.push(material);
+		else solid.push(o);
+	});
+	const [sky] = skies;
+	expect(sky.uniforms.uPeach.value).toBeGreaterThan(0.9);
+	const crests = (sky.uniforms.uSkyline.value as THREE.DataTexture).image
+		.data as Uint8Array;
+	const n = crests.length;
+	const ray = new THREE.Raycaster();
+	const dir = new THREE.Vector3();
+	let columns = 0;
+	let tallest = 0;
+	for (let c = 0; c < 36; c++) {
+		const x = (c + 0.5) / 18 - 1;
+		ray.setFromCamera(new THREE.Vector2(x, 0), camera);
+		const a = Math.atan2(ray.ray.direction.x, ray.ray.direction.z);
+		const i = Math.floor(((((a / (Math.PI * 2)) % 1) + 1) % 1) * n) % n;
+		// A byte's 0–1 is a sine of 0–0.25; just under the top, the band is whole.
+		const top = (crests[i] / 255) * 0.25 - 0.002;
+		const flat = Math.sqrt(1 - top * top);
+		dir.set(Math.sin(a) * flat, top, Math.cos(a) * flat);
+		const from = camera.position.clone().add(dir).project(camera).y;
+		if (Math.abs(from) > 1) continue;
+		ray.set(camera.position, dir);
+		if (ray.intersectObjects(solid, false).length > 0) continue;
+		columns++;
+		// Down the column from the band's top, a 270th of the frame a step, to what stands under it.
+		let y = from;
+		for (; y > -1; y -= 2 / 270) {
+			ray.setFromCamera(new THREE.Vector2(x, y), camera);
+			if (ray.intersectObjects(solid, false).length > 0) break;
+		}
+		tallest = Math.max(tallest, (from - y) / 2);
+	}
+	return { columns, tallest };
+}
+
 describe('the ride’s picture of the world (#4263)', () => {
 	const moments = () => {
 		const top = route.climbs.reduce((a, b) =>
@@ -160,6 +214,33 @@ describe('the ride’s picture of the world (#4263)', () => {
 				expect(seen.hits, what).toEqual([]);
 				still.dispose();
 			}
+		},
+		2 * BUILD_MS,
+	);
+
+	it(
+		'shows the peach band past you where the slope you climb stands over the far ranges (#4278)',
+		() => {
+			const climb = toRoute(hairpinClimb());
+			const land = generate(climb);
+			const pins = hairpinsOf(climb.road);
+			// Low on the climb, the hillside past you stands over the far ranges.
+			const still = pictureStill(
+				{
+					route: climb,
+					world: land,
+					style: RIDE,
+					ftp: 250,
+					grids: pageGrids(land),
+				},
+				{ m: pins[3], p: 0, watts: 200 },
+			);
+			const band = bandOnFrame(still);
+			// Across most of the frame, the alpenglow clears the land past you…
+			expect(band.columns).toBeGreaterThanOrEqual(24);
+			// …and stays a band over it, never a wall of peach: 8 % is 108 px of 1,350.
+			expect(band.tallest).toBeLessThan(0.08);
+			still.dispose();
 		},
 		2 * BUILD_MS,
 	);

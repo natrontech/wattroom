@@ -126,4 +126,43 @@ describe('the skyline the peach band lies on (#3085)', () => {
 		for (let i = 0; i < n; i++)
 			expect(data[i] / 255 / 4).toBeLessThan(Math.sin((9 * Math.PI) / 180));
 	});
+
+	it('stands over the land a picture sees too, and over the ranges alone again after (#4278)', () => {
+		// A portrait frame looking east, 16° each way.
+		const east = { bearing: Math.PI / 2, half: 0.28 };
+		const low = Math.sin((9 * Math.PI) / 180);
+		const off = (x: number, z: number) =>
+			Math.hypot(x - eye.x, z - eye.z) > 3000;
+		// A ridge from 1 km east of the eye on, 200 m over it: about 11° at its
+		// foot, over any far range; and out of the frame, a peak to +z.
+		const ridge = (x: number, z: number) =>
+			off(x, z)
+				? null
+				: x >= eye.x + 1000
+					? eye.y + 200
+					: z >= eye.z + 2000
+						? eye.y + 400
+						: eye.y - 100;
+		skyline.over(eye, ridge, east);
+		expect(top(Math.PI / 2)).toBeGreaterThanOrEqual(
+			200 / Math.hypot(1000, 200) - 0.002,
+		);
+		// The land out of the frame holds nothing up.
+		expect(top(0)).toBeLessThan(low);
+		// Nor does the road's own cut: 100 m over the eye, within 150 m of it.
+		skyline.over(
+			eye,
+			(x, z) =>
+				off(x, z)
+					? null
+					: Math.hypot(x - eye.x, z - eye.z) < 150
+						? eye.y + 100
+						: eye.y - 100,
+			east,
+		);
+		expect(top(Math.PI / 2)).toBeLessThan(low);
+		skyline.over(eye, ridge, east);
+		skyline.from(eye);
+		expect(top(Math.PI / 2)).toBeLessThan(low);
+	});
 });
