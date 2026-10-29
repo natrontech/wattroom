@@ -5,6 +5,8 @@ import { channelConnection } from '$lib/channel/connection.svelte';
 import { createProfileStore } from '$lib/profile.svelte';
 import { createRideFlags } from '$lib/ride/flags.svelte';
 import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
+import { holdRoadAlone, type RoadAlone } from '$lib/ride/road-alone.svelte';
+import type { RideableRoute } from '$lib/ride/roads';
 import { saveRideAlone } from '$lib/ride/ride-alone-save';
 import { createRideSounds, soloRideSounds } from '$lib/ride/ride-sounds.svelte';
 import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
@@ -18,12 +20,14 @@ import type { Workout } from '$lib/workout/types';
 type Session = ReturnType<typeof createRideSession>;
 
 /**
- * The device's one workout ride alone (ADR-0093, #4259): owned here, above the
+ * The device's one ride alone (ADR-0093, #4259): owned here, above the
  * router, the way `channelConnection` holds the call, so the page that draws
- * it is a view of it and never its owner. It holds the session, its crash
- * buffer, the ⚑, the cues and the save; /ride draws it.
+ * it is a view of it and never its owner. A workout is a session, with its
+ * crash buffer, the ⚑, the cues and the save; a free ride on a road is
+ * `road`. /ride and a voice channel's Training page draw it.
  */
 let session = $state<Session | null>(null);
+let road = $state.raw<RoadAlone | null>(null);
 let noCrashSafety = $state(false);
 let saving = $state(false);
 // The save's outcome is persistent status (errors.md); an export or a flag
@@ -108,10 +112,11 @@ function ensureRoot(): Root {
 			const unload = (event: BeforeUnloadEvent) => {
 				const state = session?.state;
 				if (
-					state &&
-					state !== 'idle' &&
-					state !== 'countdown' &&
-					state !== 'done'
+					(state &&
+						state !== 'idle' &&
+						state !== 'countdown' &&
+						state !== 'done') ||
+					road?.solo.trainer
 				)
 					event.preventDefault();
 			};
@@ -132,6 +137,23 @@ function ensureRoot(): Root {
 		});
 	});
 	return root!;
+}
+
+/**
+ * One trainer, one ride (#521): a voice channel holds the trainer's BLE
+ * connection while you stand in it, so the ride takes it back rather than
+ * open a second control channel to the same hardware. A trainer paired in
+ * the solo slot and then left for another is the same conflict. The last
+ * ride's summary goes with it.
+ */
+function take(trainer: Trainer) {
+	ride++;
+	channelConnection.current?.ride.unpair();
+	const solo = soloTrainer();
+	if (solo.trainer && solo.trainer !== trainer) solo.forget();
+	road?.dispose();
+	road = null;
+	session = null;
 }
 
 function save(current: Session) {
@@ -164,9 +186,20 @@ export const theRide = {
 	get session() {
 		return session;
 	},
+	/** A free ride on a road, riding or on its closing card. */
+	get road() {
+		return road;
+	},
 	/** Live: counting in or riding, not yet summarised. */
 	get live() {
-		return !!session && session.state !== 'idle' && session.state !== 'done';
+		return (
+			(!!session && session.state !== 'idle' && session.state !== 'done') ||
+			!!road?.solo.trainer
+		);
+	},
+	/** A ride to draw: under way, or its summary. */
+	get held() {
+		return !!session || !!road;
 	},
 	get signalLost() {
 		return root?.signal.lost ?? false;
@@ -203,17 +236,8 @@ export const theRide = {
 		options: { borrowed: boolean },
 	): Promise<void> {
 		const { flags } = ensureRoot();
-		ride++;
+		take(trainer);
 		profile = createProfileStore();
-		// One trainer, one ride (#521): a voice channel holds the trainer's
-		// BLE connection while you stand in it, so this ride takes it back
-		// rather than open a second control channel to the same hardware. A
-		// trainer paired in the solo slot and then left for another is the
-		// same conflict.
-		channelConnection.current?.ride.unpair();
-		const solo = soloTrainer();
-		if (solo.trainer && solo.trainer !== trainer) solo.forget();
-		session = null;
 		saving = false;
 		saveStatus = null;
 		retrySave = null;
@@ -278,6 +302,17 @@ export const theRide = {
 	},
 
 	/**
+	 * A free ride on `route` alone (#3027), from `from` metres, recording from
+	 * the first stroke: a free ride has no count-in (docs/SPEC.md).
+	 */
+	beginRoad(trainer: Trainer, route: RideableRoute, from: number) {
+		if (theRide.live) return;
+		const { flags } = ensureRoot();
+		take(trainer);
+		road = holdRoadAlone({ route, from, trainer, flags });
+	},
+
+	/**
 	 * Changed their mind during the count-in (#1800). Nothing was ridden, so
 	 * this is not an End: back to the setup with the trainer still paired,
 	 * handed back to the slot Start took it from (#2615), and no zero-sample
@@ -316,6 +351,11 @@ export const theRide = {
 	 * running is not touched: only End ride ends it.
 	 */
 	dismiss() {
+		if (road?.ended) {
+			root?.flags.flush();
+			road.dispose();
+			road = null;
+		}
 		if (session?.state !== 'done') return;
 		root?.flags.flush();
 		session = null;

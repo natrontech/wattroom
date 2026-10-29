@@ -5,10 +5,10 @@
 	 * ride saves against the route. No count-in, no workout: the road sets the
 	 * grade, or the watts in watts mode. Your own road is set up on /ride's
 	 * card, which hands the trainer over (#3855); only a crew's planned road
-	 * pairs here.
+	 * pairs here. The ride is `theRide`'s (ADR-0093): leaving this screen
+	 * never ends it, and this view only reads it.
 	 */
 	import RidePictures from '$lib/ride/RidePictures.svelte';
-	import { onDestroy, untrack } from 'svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import { canSimulate } from '$lib/ble/can-simulate';
 	import { FtmsTrainer } from '$lib/ble/ftms';
@@ -16,120 +16,56 @@
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { formatClock, formatKm } from '$lib/format';
 	import { createProfileStore } from '$lib/profile.svelte';
-	import { createRideFlags } from '$lib/ride/flags.svelte';
-	import { createFreeRide, freeRideLabel } from '$lib/ride/free-ride.svelte';
+	import { freeRideLabel } from '$lib/ride/free-ride.svelte';
 	import FreeRiding from '$lib/ride/FreeRiding.svelte';
 	import FreeRideTv from '$lib/ride/FreeRideTv.svelte';
-	import { guardLeaving } from '$lib/ride/leave-guard.svelte';
-	import { createGhostSplit } from '$lib/ride/ghost-split.svelte';
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
 	import { bindShifters } from '$lib/ride/keys';
 	import { carriesOn } from '$lib/ride/road-end';
 	import SessionSummary from '$lib/ride/SessionSummary.svelte';
 	import RideFlags from '$lib/ride/RideFlags.svelte';
 	import type { RideableRoute } from '$lib/ride/roads';
-	import { rememberRoad } from '$lib/ride/last-ride';
-	import type { Trainer } from '$lib/ble/trainer';
-	import { createSoloRoadRide } from '$lib/ride/solo-road.svelte';
 	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
+	import { theRide } from '$lib/ride/the-ride.svelte';
 	import SensorOverview from '$lib/session/SensorOverview.svelte';
 	import { heldTrainer } from '$lib/session/sensor-status';
-	import { sensors } from '$lib/sensors.svelte';
-	import { SIGNAL_LOST_MS } from '$lib/workout/ride-state';
 
 	let {
 		route,
 		from = 0,
-		trainer: handed,
-		ended = $bindable(false),
+		doneHref = '/home',
 	}: {
+		/** The road this ride rides, or, before Start, the one it will. */
 		route: RideableRoute;
 		from?: number;
-		/** A trainer /ride's card paired and handed over: ride at once (#3671). */
-		trainer?: Trainer;
-		/** The ride is over and its closing card shows: the page wears its frame (G7). */
-		ended?: boolean;
+		/** Where Done goes. */
+		doneHref?: string;
 	} = $props();
 
 	const profile = createProfileStore();
-	const free = createFreeRide({
-		ftp: () => profile.current.ftp,
-		singleSpeed: () => profile.current.singleSpeed,
-		kg: () => profile.current.kg,
-	});
-	// One ride rides one road: the one this page opened on.
-	const solo = createSoloRoadRide({
-		free,
-		route: untrack(() => route),
-		from: untrack(() => from),
-		readings: () => sensors.readings,
-	});
-	const ghost = createGhostSplit(() => free);
+	// The ride, once Start made it: its road, recording, ghost and trainer.
+	const ride = $derived(theRide.road);
 	const trainers = soloTrainer();
 	const held = $derived(heldTrainer(trainers, channelConnection.current?.ride));
-	// The ⚑ and what it sends afterwards (#52), as a workout ride has them.
-	const flags = createRideFlags('/ride');
+	const flags = theRide.flags;
 	let tv = $state(false);
 
-	let watts = $state(0);
-	// The instrument says when its numbers are not live (#2851): a trainer
-	// silent past the rides' one number, SIGNAL_LOST_MS.
-	let lastAt = $state(0);
-	let now = $state(Date.now());
-	$effect(() => {
-		const trainer = solo.trainer;
-		if (!trainer) return;
-		lastAt = Date.now();
-		const tick = setInterval(() => (now = Date.now()), 1000);
-		const off = trainer.onSample((s) => {
-			watts = s.watts;
-			lastAt = Date.now();
-			flags.recorder.tick({
-				watts: s.watts,
-				cadence: s.cadence,
-				target: free.targetWatts,
-				state: free.recording ? 'riding' : 'armed',
-			});
-		});
-		return () => {
-			clearInterval(tick);
-			off();
-		};
-	});
-	const stale = $derived(!!solo.trainer && now - lastAt > SIGNAL_LOST_MS);
 	// Easier / Harder from the keys and any clicker, wherever the pair and its
 	// hint are drawn (#3329, #3661).
 	$effect(() =>
-		free.mode === 'grade' && gearsEnabled()
-			? bindShifters(solo.shift)
+		ride && ride.free.mode === 'grade' && gearsEnabled()
+			? bindShifters(ride.solo.shift)
 			: undefined,
 	);
 
-	function start(at?: number, trainer = trainers.handOff()) {
-		if (!trainer) return;
-		solo.start(trainer, at);
-		flags.riding(trainer.name, freeRideLabel(route));
-		// The card's “your last road” (#3671); a crew's road is not yours.
-		if (!route.borrowed) rememberRoad(route.id);
+	function start() {
+		const trainer = trainers.handOff();
+		if (trainer) theRide.beginRoad(trainer, route, from);
 	}
-	untrack(() => handed && start(from, handed));
-	async function end() {
-		ended = true;
+	function end() {
 		tv = false;
-		await solo.end();
+		void ride?.end();
 	}
-	// Leaving the page is not End ride: the trainer is let go, and the crash
-	// buffer offers the ride back. A stray tap on the rail asks first, as a
-	// workout ride does (#3667).
-	guardLeaving(() => !!solo.trainer, {
-		title: 'Leave the ride?',
-		body: 'It stops here, unsaved on your account. Ride offers it back to save, or to carry on from where you left the road.',
-		action: 'Leave the ride',
-		cancel: 'Keep riding',
-	});
-	onDestroy(() => {
-		if (solo.trainer) void solo.trainer.disconnect();
-	});
 
 	// You, in the shape the TV renders (#1632): a roster of one.
 	const tvRider = $derived({
@@ -143,22 +79,21 @@
 		muted: false,
 		speaking: false,
 		hue: 0,
-		watts,
-		cadence: solo.metrics?.cadence ?? 0,
-		hr: solo.metrics?.heartRate ?? 0,
-		stale,
-		target: free.targetWatts,
+		watts: ride?.watts ?? 0,
+		cadence: ride?.solo.metrics?.cadence ?? 0,
+		hr: ride?.solo.metrics?.heartRate ?? 0,
+		stale: ride?.stale ?? false,
+		target: ride?.free.targetWatts ?? 0,
 		trace: [],
 	});
 </script>
 
-<svelte:window
-	onkeydown={(e) => e.key === 'Escape' && (tv = false)}
-	onpagehide={() => flags.flush(true)}
-/>
+<svelte:window onkeydown={(e) => e.key === 'Escape' && (tv = false)} />
 
-{#if ended && free.outcome && !('short' in free.outcome)}
-	{@const outcome = free.outcome}
+{#if ride?.ended && ride.free.outcome && !('short' in ride.free.outcome)}
+	{@const outcome = ride.free.outcome}
+	{@const free = ride.free}
+	{@const ghost = ride.ghost}
 	<!-- The road ends on the closing card (#3686, #3839): the frame every ride
 	     closes on. The road's own section is #3141's. -->
 	<SessionSummary
@@ -188,7 +123,7 @@
 			<RidePictures
 				rideId={'saved' in outcome ? outcome.saved.id : undefined}
 			/>
-			<a href="/home" class="btn btn-primary">Done</a>
+			<a href={doneHref} class="btn btn-primary">Done</a>
 		{/snippet}
 		{#snippet status()}
 			{#if ghost.newBest}
@@ -208,24 +143,26 @@
 			{/if}
 		{/snippet}
 	</SessionSummary>
-{:else if solo.trainer}
+{:else if ride?.solo.trainer}
+	{@const free = ride.free}
+	{@const solo = ride.solo}
 	<!-- The riding surface (ADR-0046, #3669): the road free ride rides what a
 	     workout on a road rides, world and all. The page's gutters are undone
 	     where the world fills the frame, as RidingScreen does. -->
 	<FreeRiding
 		{free}
-		{watts}
+		watts={ride.watts}
 		cadence={solo.metrics?.cadence ?? 0}
 		hr={solo.metrics?.heartRate ?? 0}
 		kg={profile.current.kg}
 		lthr={profile.current.lthr}
 		ftp={profile.current.ftp}
-		{stale}
+		stale={ride.stale}
 		gear={gearsEnabled() ? solo.gear : undefined}
 		shift={solo.shift}
 		cassette={!profile.current.singleSpeed}
-		{ghost}
-		onend={() => void end()}
+		ghost={ride.ghost}
+		onend={end}
 		onrepair={(next) => solo.repair(next)}
 		onflag={() => flags.recorder.flag()}
 		ontv={() => (tv = true)}
@@ -246,7 +183,7 @@
 			<p class="eyebrow">free ride</p>
 			<h1 class="page-title-sm min-w-0 truncate">
 				<!-- Ridden, the road opens its page (F1); a crew's road has none of yours. -->
-				{#if ended && !route.borrowed}
+				{#if ride?.ended && !route.borrowed}
 					<a
 						href="/workouts/routes/{route.id}"
 						class="underline decoration-1 underline-offset-4">{route.name}</a
@@ -256,11 +193,11 @@
 				{/if}
 			</h1>
 			<span class="font-display ml-auto text-2xl font-bold tabular-nums"
-				>{formatClock(free.seconds)}</span
+				>{formatClock(ride?.free.seconds ?? 0)}</span
 			>
 		</header>
 
-		{#if !ended}
+		{#if !ride?.ended}
 			<SensorOverview
 				trainer={{
 					state: held.state,
@@ -281,7 +218,7 @@
 				}}
 			/>
 			<button
-				onclick={() => start()}
+				onclick={start}
 				disabled={!held.paired || held.fault === 'reconnecting'}
 				class="btn btn-primary btn-lg">Start riding</button
 			>
@@ -299,14 +236,14 @@
 					ride.
 				</p>
 			{/if}
-		{:else if free.saving}
+		{:else if ride?.free.saving}
 			<p class="text-muted text-sm" role="status">Saving your ride…</p>
 		{:else}
 			<p class="text-muted text-sm" role="status">
 				Under a minute — nothing to save.
 			</p>
 		{/if}
-		{#if ended}
+		{#if ride?.ended}
 			<!-- The flags the ride raised, sent with their notes (#52). -->
 			<RideFlags {flags} />
 		{/if}

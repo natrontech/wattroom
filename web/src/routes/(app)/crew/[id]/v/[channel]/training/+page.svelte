@@ -18,7 +18,7 @@
      ride, and this is one of the screens that draws it, never a second Start.
      Your own workout, once picked, takes the place of the free ride until you
      are back from its summary (#2329). -->
-{#if theRide.session}
+{#if theRide.held}
 	<div class="flex min-h-full flex-col px-4 py-5 sm:px-6">
 		<TheRide doneHref="/crew/{page.params.id}/v/{page.params.channel}" />
 	</div>

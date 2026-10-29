@@ -2,28 +2,27 @@
 	/**
 	 * /ride?road=<id> (#3027): one of your own roads, loaded, then ridden
 	 * alone — or /ride?crew=&plan= (#3621), a planned session's road as the
-	 * crew will receive it.
+	 * crew will receive it. A handed trainer starts the ride once the road is
+	 * in; the ride is then `theRide`'s, and /ride draws it.
 	 */
 	import Banner from '$lib/components/Banner.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import RoadRiding from '$lib/ride/RoadRiding.svelte';
 	import type { Trainer } from '$lib/ble/trainer';
 	import { loadPlanRoad, loadRoad, type RideableRoute } from '$lib/ride/roads';
+	import { theRide } from '$lib/ride/the-ride.svelte';
 
 	let {
 		roadId = null,
 		plan = null,
 		from = 0,
 		trainer,
-		ended = $bindable(false),
 	}: {
 		roadId?: string | null;
 		plan?: { crew: string; id: string } | null;
 		from?: number;
 		/** Paired on /ride's card and handed over: ride at once (#3671). */
 		trainer?: Trainer;
-		/** The road ride ended on its closing card. */
-		ended?: boolean;
 	} = $props();
 
 	let route = $state.raw<RideableRoute | null>(null);
@@ -39,14 +38,17 @@
 			error = result.error;
 			return;
 		}
-		route = result.route;
-		start = result.from;
+		if (trainer) theRide.beginRoad(trainer, result.route, result.from);
+		else {
+			route = result.route;
+			start = result.from;
+		}
 	}
 	$effect(() => void load());
 </script>
 
 {#if route}
-	<RoadRiding {route} from={start} {trainer} bind:ended />
+	<RoadRiding {route} from={start} />
 {:else if error}
 	<div class="m-auto w-full max-w-2xl">
 		<Banner tone="error">

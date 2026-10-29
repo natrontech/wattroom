@@ -152,12 +152,11 @@
 	// The setup is a desk page and wears the page frame (G7); the ride and
 	// its summary keep the riding surface's own gutters.
 	const setup = $derived(
-		!freeRide &&
+		!theRide.road &&
+			!freeRide &&
 			!(planRoad && !requested) &&
 			(!session || session.state === 'idle'),
 	);
-	// A road ride's closing card wears the page frame as a workout's does (G7, #4235).
-	let roadEnded = $state(false);
 	let error = $state<string | null>(null);
 
 	// ?replay=<fixture> rides a committed capture instead of the generator
@@ -208,20 +207,21 @@
 >
 
 <!-- Mid-ride the whole frame is the ride, sidebar included (ADR-0020): the
-     layout reads soloRide.active. Setup and the summary are desk surfaces;
-     all three keep the rider's scheme (#4160). -->
+     layout reads theRide.live. Setup and the summary are desk surfaces;
+     all three keep the rider's scheme (#4160). A road ride's closing card
+     wears the page frame as a workout's does (G7, #4235). -->
 <!-- px-4 on a phone is the kit's gutter (`page`, ux.md's 16 px); the ride
      surface is not a `page` — it fills the window — so it spells the two. -->
 <main
 	class="bg-surface text-ink flex min-h-screen flex-col {setup ||
 	session?.state === 'done' ||
-	roadEnded
+	theRide.road?.ended
 		? 'page'
 		: 'px-4 py-5 sm:px-6'}"
 >
 	<!-- A ride already under way is the screen, whatever the address asks
 	     for: the device has one ride (ADR-0093). -->
-	{#if session && session.state !== 'idle'}
+	{#if theRide.road || (session && session.state !== 'idle')}
 		<TheRide>
 			{#snippet next()}
 				{#if road && legs.length > 0}
@@ -251,12 +251,11 @@
 			roadId={freeRide.id}
 			from={freeRide.from}
 			trainer={freeRide.trainer}
-			bind:ended={roadEnded}
 		/>
 	{:else if planRoad && !requested}
 		<!-- A crew's planned road keeps its own setup: the card rides only
 		     your roads, and this one is the crew's cut (#3621). -->
-		<SoloRoadRide plan={planRoad} bind:ended={roadEnded} />
+		<SoloRoadRide plan={planRoad} />
 	{:else}
 		<!-- Idle with a session in hand is the moment between Start and the
 		     trainer answering it (#1800): still the setup screen, because
