@@ -13,14 +13,14 @@ export const ROOT_M = 1.2;
 
 // Every form of a kind stands on the same trunk, so the kind's footprint
 // (kit.ts) is each form's: a form changes the crown, never where a tree may stand.
-const spruceTrunk = (c: PropColors, seg = 5) =>
+const spruceTrunk = (c: PropColors) =>
 	tint(
-		cyl(0.35, 0.5, 3 + ROOT_M, seg).translate(0, (3 - ROOT_M) / 2, 0),
+		cyl(0.35, 0.5, 3 + ROOT_M, 5).translate(0, (3 - ROOT_M) / 2, 0),
 		c.trunk,
 	);
-const leafTrunk = (c: PropColors, seg = 5) =>
+const leafTrunk = (c: PropColors) =>
 	tint(
-		cyl(0.3, 0.45, 4.5 + ROOT_M, seg).translate(0, (4.5 - ROOT_M) / 2, 0),
+		cyl(0.3, 0.45, 4.5 + ROOT_M, 5).translate(0, (4.5 - ROOT_M) / 2, 0),
 		c.trunk,
 	);
 
@@ -58,6 +58,9 @@ export const spruce = (c: PropColors) =>
 		),
 	]);
 
+// Every conifer's lowest tier starts 2 m up, as the spruce's does, so on the
+// steepest forest it still clears the ground uphill of its trunk.
+
 // A slender spruce: four narrow tiers, 17 m — the high forest's.
 export const spruceSlender = (c: PropColors) =>
 	merge([
@@ -65,24 +68,24 @@ export const spruceSlender = (c: PropColors) =>
 		...conifer(
 			c,
 			[
-				[3, 6, 4.6],
-				[2.5, 5.5, 7.8],
-				[1.9, 5, 10.8],
-				[1.2, 5, 14.5],
+				[3, 6, 5],
+				[2.5, 5.5, 8.2],
+				[1.9, 5, 11.2],
+				[1.2, 5, 14.9],
 			],
 			6,
 		),
 	]);
 
-// A fir: two broad tiers, 12.5 m — the valley's.
+// A fir: two broad tiers, 13 m — the valley's.
 export const fir = (c: PropColors) =>
 	merge([
 		spruceTrunk(c),
 		...conifer(
 			c,
 			[
-				[4.8, 7.5, 5],
-				[3.4, 6, 9.5],
+				[4.6, 7.5, 5.75],
+				[3.3, 6, 10.25],
 			],
 			7,
 		),
@@ -136,14 +139,20 @@ export const linden = (c: PropColors) =>
 		]),
 	]);
 
-// --- far trees: each form's outer-ring stand-in (#3076), standing on its root ---
+// --- far trees: each form's outer-ring stand-in (#3076) ------------------------
+// Its crown runs down into its root, with no trunk: past the near ring a
+// trunk is thinner than a pixel (ADR-0092), and a crown covers the ground a
+// trunk's root would on a slope.
 
-// A conifer far off: its trunk and one cone over the crown's height.
+// A conifer far off: one cone, as wide at `from` as the near crown's foot, down to the root.
 const coniferFar = (c: PropColors, r: number, from: number, to: number) =>
 	merge([
-		spruceTrunk(c, 3),
 		facets(
-			new THREE.ConeGeometry(r, to - from, 5).translate(0, (from + to) / 2, 0),
+			new THREE.ConeGeometry(
+				(r * (to + ROOT_M)) / (to - from),
+				to + ROOT_M,
+				5,
+			).translate(0, (to - ROOT_M) / 2, 0),
 			c.spruce,
 			c.spruceTip,
 			from,
@@ -151,14 +160,13 @@ const coniferFar = (c: PropColors, r: number, from: number, to: number) =>
 		),
 	]);
 export const spruceFar = (c: PropColors) => coniferFar(c, 4.2, 2, 14.9);
-export const spruceSlenderFar = (c: PropColors) => coniferFar(c, 3, 1.6, 17);
-export const firFar = (c: PropColors) => coniferFar(c, 4.8, 1.25, 12.5);
+export const spruceSlenderFar = (c: PropColors) => coniferFar(c, 3, 2, 17.4);
+export const firFar = (c: PropColors) => coniferFar(c, 4.6, 2, 13.25);
 
-// A broadleaf far off: its trunk and one lump.
-const broadleafFarOf = (c: PropColors, r: number, y: number, k: number) =>
-	merge([leafTrunk(c, 3), ...crown(c, [[r, 0, y, 0, k]])]);
-export const broadleafFar = (c: PropColors) => broadleafFarOf(c, 4, 7.2, 0.85);
+// A broadleaf far off: one lump from its root to the near crown's top.
+const broadleafFarOf = (c: PropColors, r: number, top: number) =>
+	merge(crown(c, [[r, 0, (top - ROOT_M) / 2, 0, (top + ROOT_M) / (2 * r)]]));
+export const broadleafFar = (c: PropColors) => broadleafFarOf(c, 4, 10.6);
 export const broadleafRoundFar = (c: PropColors) =>
-	broadleafFarOf(c, 4.3, 7.4, 0.85);
-export const broadleafTallFar = (c: PropColors) =>
-	broadleafFarOf(c, 2.6, 8.3, 1.8);
+	broadleafFarOf(c, 4.3, 11.1);
+export const broadleafTallFar = (c: PropColors) => broadleafFarOf(c, 2.6, 13);

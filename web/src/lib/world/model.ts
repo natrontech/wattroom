@@ -36,8 +36,10 @@ const FACET_STEP = 0.2;
 /**
  * One colour per face (ADR-0092): from `from` at `lo` to `to` at `hi` by the
  * height of the face's middle, each face a fixed step lighter or darker by
- * its index. A crown's tiers step from dark to light, and its faces read as
- * facets with no light from the side.
+ * the way it faces. A crown's tiers step from dark to light, and its faces
+ * read as facets with no light from the side. The step is keyed on the
+ * face's normal, so the triangles of one flat face (a drum's side, a
+ * pentagon) share it.
  */
 export function facets(
 	g: THREE.BufferGeometry,
@@ -52,10 +54,17 @@ export function facets(
 	const pos = geo.attributes.position;
 	const c = new Float32Array(pos.count * 3);
 	const t = new THREE.Color();
+	const face = new THREE.Triangle();
+	const n = new THREE.Vector3();
 	for (let v = 0; v < pos.count; v += 3) {
 		const y = (pos.getY(v) + pos.getY(v + 1) + pos.getY(v + 2)) / 3;
 		const k = Math.min(1, Math.max(0, (y - lo) / (hi - lo)));
-		const step = (Math.imul(v / 3 + 1, 2654435761) >>> 0) / 2 ** 32;
+		face.setFromAttributeAndIndices(pos, v, v + 1, v + 2).getNormal(n);
+		const key =
+			Math.round(n.x * 64) * 7919 +
+			Math.round(n.y * 64) * 104729 +
+			Math.round(n.z * 64) * 1299709;
+		const step = (Math.imul(key + 1, 2654435761) >>> 0) / 2 ** 32;
 		t.copy(a)
 			.lerp(b, k)
 			.multiplyScalar(1 + FACET_STEP * (2 * step - 1));

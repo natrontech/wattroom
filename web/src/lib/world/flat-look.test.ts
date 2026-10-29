@@ -52,6 +52,26 @@ describe('the dressing’s models (ADR-0092)', () => {
 		},
 	);
 
+	it('gives the triangles of one flat face one shade: a bale’s side, a rock’s pentagon', () => {
+		for (const g of [P.bales(c), P.rock(c)]) {
+			const pos = g.attributes.position;
+			const col = g.attributes.color;
+			const shade = new Map<string, number>();
+			const face = new THREE.Triangle();
+			const n = new THREE.Vector3();
+			const p = new THREE.Vector3();
+			let split = 0;
+			for (let v = 0; v < pos.count; v += 3) {
+				face.setFromAttributeAndIndices(pos, v, v + 1, v + 2).getNormal(n);
+				const plane = `${n.toArray().map((x) => x.toFixed(3))}|${p.fromBufferAttribute(pos, v).dot(n).toFixed(2)}`;
+				const was = shade.get(plane);
+				if (was !== undefined && was !== col.getX(v)) split++;
+				shade.set(plane, col.getX(v));
+			}
+			expect(split).toBe(0);
+		}
+	});
+
 	it('paints its bales one colour per face, their rolled ends lighter', () => {
 		const g = P.bales(c);
 		expect(blended(g)).toBe(0);
