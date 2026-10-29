@@ -1,7 +1,9 @@
 // The camera rides the road: its eye is a point on the route behind you, its
 // gaze a point ahead, each on an exponential follow with its own half-life.
-// It never looks along a single segment's heading, so bends sweep instead
-// of snapping, and it never goes below the ground.
+// Behind and ahead are the way you ride, so a turn at a road's end is a cut
+// to behind you again (#4261). It never looks along a single segment's
+// heading, so bends sweep instead of snapping, and it never goes below the
+// ground.
 import * as THREE from 'three';
 import { damp } from '$lib/motion/damp';
 import { yOf } from './geometry';
@@ -51,6 +53,7 @@ export function makeRig(route: Route, world: World) {
 	const want = new THREE.Vector3();
 	const look = new THREE.Vector3();
 	let started = false;
+	let turned = false;
 	const ground = (x: number, z: number) => yOf(route, world.heightAt(x, z));
 	const climb = world.markers.find(
 		(m) => m.kind === 'summit' && m.d > 0 && m.d <= REVEAL.reach,
@@ -74,6 +77,12 @@ export function makeRig(route: Route, world: World) {
 			real: number,
 			countIn: RevealView | null = null,
 		) {
+			// A turn is a shot change: a cut, never a swing through you (ADR-0079).
+			if (!!rider.reverse !== turned) {
+				turned = !!rider.reverse;
+				started = false;
+			}
+			const way = turned ? -1 : 1;
 			// Where the rider's lap began, on a lapped road (#3623).
 			const lap = route.loop
 				? Math.floor(rider.d / route.length) * route.length
@@ -93,11 +102,12 @@ export function makeRig(route: Route, world: World) {
 			}
 			if (mode === 'side') {
 				const p = along(route, rider.d, lap);
-				const { lx, lz } = leftOf(p.heading);
+				const h = turned ? p.heading + Math.PI : p.heading;
+				const { lx, lz } = leftOf(h);
 				camera.position.set(
-					you.x - lx * SIDE.out + Math.sin(p.heading) * SIDE.ahead,
+					you.x - lx * SIDE.out + Math.sin(h) * SIDE.ahead,
 					you.y + SIDE.up,
-					you.z - lz * SIDE.out + Math.cos(p.heading) * SIDE.ahead,
+					you.z - lz * SIDE.out + Math.cos(h) * SIDE.ahead,
 				);
 				camera.lookAt(you);
 				camera.fov = SIDE.fov;
@@ -116,14 +126,14 @@ export function makeRig(route: Route, world: World) {
 			const c = along(route, rider.d, lap);
 			const sx = you.x - c.x;
 			const sz = you.z - c.z;
-			const b = along(route, rider.d - back, lap);
+			const b = along(route, rider.d - way * back, lap);
 			want.set(
 				b.x + sx,
 				yOf(route, b.ele) + (steady ? STEADY.up : chase ? 2.4 : 42),
 				b.z + sz,
 			);
 			want.y = Math.max(want.y, ground(want.x, want.z) + GOAL_FLOOR);
-			const a = along(route, rider.d + (chase ? 18 : 10), lap);
+			const a = along(route, rider.d + way * (chase ? 18 : 10), lap);
 			look
 				.set(a.x + sx, yOf(route, a.ele) + 1.0, a.z + sz)
 				.lerp(you, chase ? 0.45 : 0.8);

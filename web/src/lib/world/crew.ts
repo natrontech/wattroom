@@ -143,25 +143,31 @@ export function viewerOf(style: Style): Viewer {
 	};
 }
 
-/** What the animator reads from a rider on the road. */
+/** What the animator reads from a rider on the road: back down it, a climb is a descent. */
 const inputOf = (r: SimRider, route: Route): RideInput => ({
 	power: r.stopped ? 0 : r.watts,
 	ftp: r.ftp,
 	speed: r.stopped ? 0 : r.v,
-	grade: at(route, r.d).grade,
+	grade: at(route, r.d).grade * (r.reverse ? -1 : 1),
 });
 
-/** On the road `d` metres along it and `lane` metres left of its middle, leaning with the grade. */
+/**
+ * On the road `d` metres along it, facing the way it rides and `lane`
+ * metres left of its middle as it faces, leaning with the grade.
+ */
 export function placeOn(
 	o: THREE.Object3D,
 	route: Route,
 	d: number,
 	lane: number,
+	reverse = false,
 ) {
 	const p = at(route, d);
-	const { lx, lz } = leftOf(p.heading);
+	const heading = reverse ? p.heading + Math.PI : p.heading;
+	const grade = reverse ? -p.grade : p.grade;
+	const { lx, lz } = leftOf(heading);
 	o.position.set(p.x + lx * lane, yOf(route, p.ele) + 0.12, p.z + lz * lane);
-	o.rotation.set(-Math.atan(p.grade / 100) * 0.6, p.heading, 0, 'YXZ');
+	o.rotation.set(-Math.atan(grade / 100) * 0.6, heading, 0, 'YXZ');
 }
 
 /**
@@ -407,7 +413,7 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 			redress(r);
 			const v = viewOf(r, route, pedal(r).crank, lod);
 			if (v.lod !== lod) relod(v, lod);
-			placeOn(v.group, route, r.d, lane);
+			placeOn(v.group, route, r.d, lane, r.reverse);
 			const alpha = r.alpha ?? 1;
 			v.group.visible = alpha > 0;
 			// Dithered while arriving or leaving, never blended (#3098); settled, the spokes keep their coverage.
@@ -455,7 +461,7 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 				);
 				// No figure, no trail: a coach in the team car leaves none (#3771).
 				if (trail) trail.mesh.visible = alpha > 0 && !r.silent;
-				trail?.follow(route, r.d, lane);
+				trail?.follow(route, r.d, lane, r.reverse);
 			}
 		});
 		return you;

@@ -34,8 +34,10 @@ export type SimRider = {
 	into: number;
 	/** How a stand-in rides: its watts on this grade at this time. Only the dev gallery has them. */
 	ride?: (r: SimRider, grade: number, t: number) => number;
-	/** Metres left of the road's middle, from the bunch's formation (#3098); absent, crew.ts spreads riders abreast. */
+	/** Metres left of the road's middle as the rider faces, from the bunch's formation (#3098); absent, crew.ts spreads riders abreast. */
 	lane?: number;
+	/** Riding the road back from its far end (#3205): `d` counts down, and the figure, its lane and the eye turn round (#4261). */
+	reverse?: boolean;
 	/** 0–1: below 1 the figure is dithered, arriving, leaving or landing somewhere new. */
 	alpha?: number;
 	/** Joined, but their screen has gone: drawn in greys. */
@@ -102,8 +104,12 @@ export function simRider(o: {
 	return { ...o, v: 8, lap: 0, pace: createPace(8), at: o.d, into: 0 };
 }
 
-/** Where a ride has you on its road: metres from the road's first sample, and metres a second. */
-export type RideMetre = { m: number; mps: number };
+/**
+ * Where a ride has you on its road: metres from the road's first sample,
+ * and metres a second. On a lap back down the road (#3205) `m` counts down
+ * and `mps` is still a speed.
+ */
+export type RideMetre = { m: number; mps: number; reverse?: boolean };
 
 /** A metre further off than this is a start or a seek: the figure goes there at once. */
 export const JUMP_M = 50;
@@ -121,7 +127,7 @@ export function followMetre() {
 	let last = NaN;
 	let since = 0;
 	return (
-		r: Pick<SimRider, 'd' | 'at' | 'v'>,
+		r: Pick<SimRider, 'd' | 'at' | 'v' | 'reverse'>,
 		ride: RideMetre,
 		real: number,
 	) => {
@@ -129,12 +135,14 @@ export function followMetre() {
 			last = ride.m;
 			since = 0;
 		} else since += real;
-		const target = ride.m + ride.mps * Math.min(since, 1);
+		const way = ride.reverse ? -1 : 1;
+		const target = ride.m + way * ride.mps * Math.min(since, 1);
 		r.d =
 			Math.abs(target - r.d) > JUMP_M
 				? target
 				: r.d + (target - r.d) * damp(SETTLE_S, real);
 		r.at = r.d;
 		r.v = ride.mps;
+		r.reverse = ride.reverse;
 	};
 }

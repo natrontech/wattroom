@@ -13,7 +13,8 @@ import { followMetre, simRider, type SimRider } from './sim';
  * Carries the mates between ticks, one frame at a time: each rolls on at
  * their own speed and eases onto each new metre, as your figure does on the
  * ride's. You keep the right of the road; they ride beside you, a lane each
- * in the order the tick lists them, so they hold their lanes.
+ * in the order the tick lists them, so they hold their lanes. One riding the
+ * other way keeps the right of theirs.
  */
 export function createAlongside() {
 	const mates = new Map<
@@ -45,7 +46,12 @@ export function createAlongside() {
 				});
 				mates.set(p.id, (mate = { r, follow: followMetre() }));
 			}
-			mate.follow(mate.r, { m: p.m, mps: p.mps }, real);
+			// Their way is what they said; the speed read off their metres is signed.
+			mate.follow(
+				mate.r,
+				{ m: p.m, mps: Math.abs(p.mps), reverse: !!p.reverse },
+				real,
+			);
 			Object.assign(mate.r, {
 				name: p.name,
 				watts: p.watts,
@@ -55,7 +61,10 @@ export function createAlongside() {
 				// Their numbers are the channel's on a free ride and in a race
 				// (ADR-0059); a faded racer's are gone with their screen.
 				ring: !p.faded,
-				lane: KEEP_RIGHT + LANE * (1 + (i % 3)),
+				// Beside you the way you ride; the other way, in their own right lane (#4261).
+				lane:
+					KEEP_RIGHT +
+					LANE * ((!!p.reverse === !!you.reverse ? 1 : 0) + (i % 3)),
 			});
 		});
 		for (const id of mates.keys()) if (!here.has(id)) mates.delete(id);
