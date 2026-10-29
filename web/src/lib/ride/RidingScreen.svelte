@@ -15,17 +15,21 @@
 	 * it comes from the components a session draws, because a rider alone
 	 * deserves the screen a rider in a session gets.
 	 */
-	import FlagButton from '$lib/ride/FlagButton.svelte';
 	import RideNarrator from '$lib/ride/RideNarrator.svelte';
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
-	import { bindRideKeys, bindRideShift, type RideKey } from '$lib/ride/keys';
+	import { bindRideKeys, bindShifters, type RideKey } from '$lib/ride/keys';
+	import { createRideShift } from '$lib/ride/ride-shift';
+	import RideControls from '$lib/ride/RideControls.svelte';
+	import FreeRideBand from '$lib/ride/FreeRideBand.svelte';
+	import { freeRideLabel } from '$lib/ride/free-ride.svelte';
+	import { createClimbCount } from '$lib/ride/climb-count.svelte';
+	import { trainerChip } from '$lib/workout/block';
 	import { shifterSlot } from '$lib/ble/controller-slot.svelte';
 	import { roadLine } from '$lib/ride/road-readout';
 	import { cleanView } from '$lib/ride/clean-view.svelte';
 	import KeySheet from '$lib/ride/KeySheet.svelte';
 	import { board } from '$lib/board/clips.svelte';
 	import { toasts } from '$lib/toast.svelte';
-	import { confirm } from '$lib/confirm.svelte';
 	import { FLAG_NOTICE_MS, FLAG_SAID } from '$lib/ride/flag';
 	import RideStatus from '$lib/ride/RideStatus.svelte';
 	import ChangeWorkout from '$lib/ride/ChangeWorkout.svelte';
@@ -46,14 +50,10 @@
 	import RidingSurface from '$lib/session/RidingSurface.svelte';
 	import BiasTrim from '$lib/session/BiasTrim.svelte';
 	import BikeComputer from '$lib/session/BikeComputer.svelte';
-	import ViewSwitch from '$lib/world/ViewSwitch.svelte';
 	import { createWorldView } from '$lib/world/world-view.svelte';
 	import MomentCard from '$lib/session/MomentCard.svelte';
 	import CountdownScreen from '$lib/session/CountdownScreen.svelte';
 	import RideBand from '$lib/session/RideBand.svelte';
-	import MonitorUp from '@lucide/svelte/icons/monitor-up';
-	import AlarmClockPlus from '@lucide/svelte/icons/alarm-clock-plus';
-	import SkipForward from '@lucide/svelte/icons/skip-forward';
 	import { COUNTDOWN_SECONDS } from '$lib/workout/ride-state';
 	import type { Block } from '$lib/workout/block';
 	import type { createRideSession } from '$lib/workout/session.svelte';
@@ -111,23 +111,27 @@
 	// No workout, the road on: nothing to skip or stretch, no time left (#4257).
 	const open = $derived(isOpenRoad(workout));
 
-	// The ⚑'s own acknowledgement (#52), and nothing outside this screen ever
-	// asks about it.
-	// End sits in the cluster with TV and Skip block, 44 px each, and a ride
-	// it ends cannot be resumed — one stray thumb filed a truncated ride
-	// (#2623). It asks, the way a session's End always has (errors.md).
-	async function endRide() {
-		const ok = await confirm({
-			title: 'End the ride?',
-			body: 'The rest of the workout cannot be resumed. What you have ridden is saved if it is a minute or longer.',
-			action: 'End the ride',
-			cancel: 'Keep riding',
-		});
-		if (ok) session.stop();
-	}
-
-	// Easier / Harder from the keys and any clicker, while this ride runs (#3329).
-	$effect(() => (gearsEnabled() ? bindRideShift(session) : undefined));
+	// Easier / Harder from the keys and any clicker, while this ride runs
+	// (#3329); with no workout, from the pair in slot 1 too (#4283). One
+	// shifter for every input (ride-shift.ts).
+	const shift = $derived(createRideShift(session));
+	$effect(() => {
+		const driver = shift;
+		const unbind = gearsEnabled() ? bindShifters(driver) : undefined;
+		return () => {
+			unbind?.();
+			driver.stop();
+		};
+	});
+	// The ride's metres climbed on its road, which slot 1 says once the
+	// workout is taken off (TARGETS ride-free-road 3).
+	const climbed = createClimbCount(
+		() =>
+			session.road
+				? { profile: session.road.road, m: session.road.along }
+				: null,
+		() => session.state !== 'idle' && session.state !== 'countdown',
+	);
 
 	// The ride keys (#3216). O takes the ride's picture (#4253).
 	let sheet = $state(false);
@@ -156,9 +160,8 @@
 		}),
 	);
 
-	/** A 44 px icon control mid-ride (ux.md), skinned as SessionControls' are. */
-	const ICON = 'btn btn-secondary h-11 w-11 p-0 max-md:w-auto max-md:flex-1';
-
+	// The ⚑'s own acknowledgement (#52), and nothing outside this screen ever
+	// asks about it.
 	let flagNotice = $state(false);
 	function flag() {
 		onFlag?.();
@@ -221,54 +224,17 @@
 />
 
 {#snippet worldControls()}
-	<!-- Over the world, one row in slot 1 (TARGETS ride-road-world 7): ⚑,
-	     TV, +1 min and Skip block as 44 px icons, named and with tooltips;
-	     Change workout (#4257) and End ride in words. A road workout's blocks end at their metres
-	     (#3499), so it shows neither +1 min nor Skip (D13). -->
-	{@const last = session.info.segmentIndex + 1 >= session.segments.length}
-	<div class="flex items-center gap-2 max-md:flex-wrap">
-		{#if countIn}
-			<!-- Nothing runs yet: the one way out. -->
-			<button onclick={countIn.cancel} class="btn btn-secondary btn-ride"
-				>Cancel</button
-			>
-		{:else}
-			{#if onFlag}<FlagButton onflag={flag} sends="after" />{/if}
-			{#if session.road}<ViewSwitch {world} {drawn} />{/if}
-			{#if onTv}
-				<button onclick={onTv} class={ICON} aria-label="TV mode" title="TV mode"
-					><MonitorUp size={20} /></button
-				>
-			{/if}
-			{#if !session.road?.pinned && !open}
-				<button
-					onclick={() => session.extend(60)}
-					class={ICON}
-					aria-label="One more minute"
-					title="+1 min"><AlarmClockPlus size={20} /></button
-				>
-				<button
-					onclick={() => session.skip()}
-					disabled={last}
-					class={ICON}
-					aria-label="Skip block"
-					title={last ? 'Last block — End ride instead' : 'Skip block'}
-					><SkipForward size={20} /></button
-				>
-			{/if}
-			{#if shelf && onChangeWorkout}
-				<button
-					onclick={() => (changing = true)}
-					class="btn btn-secondary btn-ride max-md:flex-1"
-					>Change workout</button
-				>
-			{/if}
-			<button
-				onclick={endRide}
-				class="btn btn-secondary btn-ride max-md:basis-full">End ride</button
-			>
-		{/if}
-	</div>
+	<RideControls
+		{session}
+		{open}
+		{shift}
+		{world}
+		{drawn}
+		{countIn}
+		onflag={onFlag ? flag : undefined}
+		ontv={onTv}
+		onchange={shelf && onChangeWorkout ? () => (changing = true) : undefined}
+	/>
 {/snippet}
 
 {#snippet digit()}
@@ -358,24 +324,37 @@
 		headerFit={!skyline}
 	>
 		{#snippet header()}
-			<!-- The strip only beside a Skyline: without a road the graph below is
-			     the workout's one picture, its blocks in words (#4159). -->
-			<RideBand
-				{block}
-				elapsed={session.elapsed}
-				total={session.total}
-				title={workout.name}
-				context={rideContext('Solo', workout.name)}
-				drives
-				wide={!inWorld}
-				hint={session.road?.pinned
-					? 'The road decides where a block ends.'
-					: undefined}
-				controls={worldControls}
-				status={rideStatus}
-				strip={skyline && !open ? strip : undefined}
-				{open}
-			/>
+			{#if open && session.road}
+				<!-- No workout, the road on: the free ride's own slot 1 on that
+				     road (TARGETS ride-free-road 3 and 7, #4283). -->
+				<FreeRideBand
+					label={freeRideLabel(session.road)}
+					roadLine={roadLine(session.road.readout)}
+					chip={block ? trainerChip(block) : undefined}
+					seconds={session.elapsed}
+					climbed={climbed.m}
+					status={rideStatus}
+					actions={worldControls}
+				/>
+			{:else}
+				<!-- The strip only beside a Skyline: without a road the graph below is
+				     the workout's one picture, its blocks in words (#4159). -->
+				<RideBand
+					{block}
+					elapsed={session.elapsed}
+					total={session.total}
+					title={workout.name}
+					context={rideContext('Solo', workout.name)}
+					drives
+					wide={!inWorld}
+					hint={session.road?.pinned
+						? 'The road decides where a block ends.'
+						: undefined}
+					controls={worldControls}
+					status={rideStatus}
+					strip={skyline ? strip : undefined}
+				/>
+			{/if}
 		{/snippet}
 
 		{#snippet focus()}
@@ -411,6 +390,7 @@
 				stats={session.live}
 				{climb}
 				{map}
+				gear={open && gearsEnabled() ? session.gear.label : undefined}
 			/>
 			<!-- No workout, no target to trim (#4257). -->
 			{#if !open}<div class="px-4 pb-3">

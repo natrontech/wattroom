@@ -84,6 +84,8 @@ export function createRoadDot(workout: Workout, kg: () => number) {
 						road: pinned.road,
 						/** The road has no end: the world laps it (#4261). */
 						loop: pinned.loop,
+						/** Its name, for a free ride's slot 1 (#4283); absent where none came. */
+						name: pinned.name,
 						/** The dot on it: metres from its first, and its speed. */
 						along: m - pinned.originM,
 						mps: here?.virtualMps ?? 0,
