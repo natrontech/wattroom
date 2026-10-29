@@ -1,5 +1,5 @@
-import type { Page } from '@playwright/test';
 import { expect, test, textPath, voicePath } from './crew';
+import { follow } from './follow';
 
 /**
  * A ride is the rider's (ADR-0093, #4259): riding alone, the rider reads
@@ -11,26 +11,6 @@ const RIDER = 'Ride Roams Rider';
 const OTHER = 'Ride Roams Host';
 // The smoke workout is just over a minute, the least the server keeps.
 const ITS_END_MS = 120_000;
-
-/**
- * An in-app navigation, as a link in the sidebar makes one: the router's
- * own, so a guard would see it and the ride in memory survives it. A
- * page.goto would reload the app and rightly lose the ride.
- */
-async function follow(page: Page, path: string): Promise<void> {
-	await page.evaluate((href) => {
-		const link = document.createElement('a');
-		link.href = href;
-		document.body.append(link);
-		link.click();
-		link.remove();
-	}, path);
-	await page.waitForURL((url) => url.pathname === path, { timeout: 15_000 });
-	await expect(
-		page.getByRole('dialog'),
-		`opening ${path} asked something mid-ride`,
-	).toHaveCount(0);
-}
 
 test('a ride alone runs on through a text channel, a voice channel and another crew, and saves once', async ({
 	riders,
