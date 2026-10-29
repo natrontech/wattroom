@@ -12,20 +12,29 @@
 	import TheRide from '$lib/ride/TheRide.svelte';
 	import { theRide } from '$lib/ride/the-ride.svelte';
 	import Training from '$lib/session/Training.svelte';
+
+	const doneHref = $derived(`/crew/${page.params.id}/v/${page.params.channel}`);
 </script>
 
 <!-- The ride you started alone runs on here (ADR-0093): the device has one
      ride, and this is one of the screens that draws it, never a second Start.
-     Your own workout, once picked, takes the place of the free ride until you
-     are back from its summary (#2329). -->
+     The channel's own ride is the device's too (#4259), drawn through the
+     same view: your own workout, once picked, takes the place of the free
+     ride until you are back from its summary (#2329). -->
 {#if theRide.held}
 	<div class="flex min-h-full flex-col px-4 py-5 sm:px-6">
-		<TheRide doneHref="/crew/{page.params.id}/v/{page.params.channel}" />
+		<TheRide {doneHref} />
 	</div>
 {:else if device.spectator}
 	<Training />
-{:else if channelConnection.current?.ownRide.session}
-	<OwnRide />
 {:else}
-	<FreeRide />
+	<TheRide {doneHref}>
+		{#snippet channel()}
+			{#if channelConnection.current?.ownRide.session}
+				<OwnRide />
+			{:else}
+				<FreeRide />
+			{/if}
+		{/snippet}
+	</TheRide>
 {/if}

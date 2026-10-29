@@ -2,6 +2,7 @@ import type { Trainer } from '$lib/ble/trainer';
 import { channelConnection } from '$lib/channel/connection.svelte';
 import { createProfileStore } from '$lib/profile.svelte';
 import type { RideBuffer } from '$lib/ride/buffer';
+import { channelRide } from '$lib/ride/channel-ride.svelte';
 import { holdRampAlone, type RampAlone } from '$lib/ride/ramp-alone.svelte';
 import { holdRoadAlone, type RoadAlone } from '$lib/ride/road-alone.svelte';
 import type { RideableRoute } from '$lib/ride/roads';
@@ -171,14 +172,22 @@ export const theRide = {
 	get next() {
 		return next;
 	},
-	/** Live: counting in or riding, not yet summarised. */
+	/** The voice channel's ride: its trainer, free ride and your own workout. */
+	get channel() {
+		return channelRide.current;
+	},
+	/** Live: counting in or riding, not yet summarised, alone or in a channel. */
 	get live() {
+		return theRide.alone || !!channelRide.current?.riding;
+	},
+	/** Live, and alone: the trainer is off the channel's grid. */
+	get alone() {
 		return (
 			(!!session && session.state !== 'idle' && session.state !== 'done') ||
 			!!road?.solo.trainer
 		);
 	},
-	/** A ride to draw: under way, or its summary. */
+	/** A ride alone to draw: under way, or its summary. */
 	get held() {
 		return !!session || !!road;
 	},
