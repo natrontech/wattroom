@@ -21,10 +21,10 @@ export function dockShows(live: boolean, pathname: string): boolean {
 
 /**
  * Where the dock's Open and End ride go: the riding screen the rider last
- * had open, a voice channel's Training page only while they are still in its
- * call (`training`, the call's own). Opening it joins that channel, which
- * would hang up the one they are in now.
+ * had open, /ride or /ramp, and a voice channel's Training page only while
+ * they are still in its call (`training`, the call's own). Opening it joins
+ * that channel, which would hang up the one they are in now.
  */
 export function dockScreen(last: string, training: string | undefined): string {
-	return last === training ? last : '/ride';
+	return last === '/ramp' || last === training ? last : '/ride';
 }

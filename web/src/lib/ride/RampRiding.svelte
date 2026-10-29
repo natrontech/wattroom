@@ -8,9 +8,9 @@
 	import { goto } from '$app/navigation';
 	import Banner from '$lib/components/Banner.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
-	import { confirm } from '$lib/confirm.svelte';
 	import { formatClock } from '$lib/format';
 	import { createProfileStore } from '$lib/profile.svelte';
+	import { askToStopRamp } from '$lib/ride/end-ride';
 	import FlagButton from '$lib/ride/FlagButton.svelte';
 	import { FLAG_NOTICE_MS, FLAG_SAID } from '$lib/ride/flag';
 	import RampResult from '$lib/ride/RampResult.svelte';
@@ -92,13 +92,7 @@
 	// FTP behind a big Save (#2623). The ramp ends itself when the rider
 	// blows, so the button is for stopping early — and that asks first.
 	async function stopTest() {
-		const ok = await confirm({
-			title: 'Stop the ramp test here?',
-			body: 'The test cannot be resumed. Your result is worked out from what you have ridden so far.',
-			action: 'Stop the test',
-			cancel: 'Keep going',
-		});
-		if (ok) theRide.ramp?.stop();
+		if (await askToStopRamp()) theRide.ramp?.stop();
 	}
 </script>
 

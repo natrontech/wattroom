@@ -26,6 +26,7 @@ describe('dockShows', () => {
 		[true, '/crew/c1/c/t1', true],
 		[true, '/crew/c1/v/v1', true],
 		[true, '/ride', false],
+		[true, '/ramp', false],
 		[true, '/crew/c1/v/v1/training', false],
 	])('a ride live %s, on %s → %s', (live, path, shows) => {
 		expect(dockShows(live, path)).toBe(shows);
@@ -37,6 +38,8 @@ describe('dockScreen', () => {
 	it.each([
 		['/ride', undefined, '/ride'],
 		['/ride', training, '/ride'],
+		['/ramp', undefined, '/ramp'],
+		['/ramp', training, '/ramp'],
 		[training, training, training],
 		// Left the call, or joined another: opening it would hang that one up.
 		[training, undefined, '/ride'],

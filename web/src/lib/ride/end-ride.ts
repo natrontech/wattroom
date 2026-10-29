@@ -13,3 +13,16 @@ export function askToEndWorkout(): Promise<boolean> {
 		cancel: 'Keep riding',
 	});
 }
+
+/**
+ * The ramp test ends itself when the rider blows, so stopping it early asks
+ * (#2623): its screen's button and the ride dock's.
+ */
+export function askToStopRamp(): Promise<boolean> {
+	return confirm({
+		title: 'Stop the ramp test here?',
+		body: 'The test cannot be resumed. Your result is worked out from what you have ridden so far.',
+		action: 'Stop the test',
+		cancel: 'Keep going',
+	});
+}

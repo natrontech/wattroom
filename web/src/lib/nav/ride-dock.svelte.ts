@@ -2,7 +2,7 @@ import { goto } from '$app/navigation';
 import { page } from '$app/state';
 import type { Trainer } from '$lib/ble/trainer';
 import { channelConnection } from '$lib/channel/connection.svelte';
-import { askToEndWorkout } from '$lib/ride/end-ride';
+import { askToEndWorkout, askToStopRamp } from '$lib/ride/end-ride';
 import { dockScreen, drawsTheRide } from '$lib/ride/ride-screens';
 import { statusLine, trainerLine } from '$lib/ride/status-lines';
 import { theRide } from '$lib/ride/the-ride.svelte';
@@ -74,8 +74,10 @@ export const rideDock = {
 	async end() {
 		const session = theRide.session;
 		const road = theRide.road;
+		const ramp = theRide.ramp;
 		if (session?.state === 'countdown') return theRide.cancelCountdown();
-		if (!road && !(await askToEndWorkout())) return;
+		const ask = road ? null : ramp ? askToStopRamp : askToEndWorkout;
+		if (ask && !(await ask())) return;
 		// The screen first: a save that answers with no page drawing the ride
 		// lands as a toast instead of on its card (#1544).
 		await goto(rideDock.screen);
@@ -83,6 +85,7 @@ export const rideDock = {
 		// they were: the ride then rides on.
 		if (!theRide.live || !drawsTheRide(page.url.pathname)) return;
 		if (road) await road.end();
+		else if (ramp) ramp.stop();
 		else session?.stop();
 	},
 };
