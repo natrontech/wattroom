@@ -20,10 +20,11 @@
 	import { pairError } from '$lib/ble/pair-error';
 	import type { Trainer } from '$lib/ble/trainer';
 	import { formatClock } from '$lib/format';
-	import { climbedM } from '$lib/ride/climbed';
+	import { climbedStep } from '$lib/ride/climbed';
 	import type { Clamp } from '$lib/ride/drivetrain';
 	import { FLAG_NOTICE_MS, FLAG_SAID } from '$lib/ride/flag';
 	import FlagButton from '$lib/ride/FlagButton.svelte';
+	import FreeRideBand from '$lib/ride/FreeRideBand.svelte';
 	import {
 		GRADE,
 		RAMP,
@@ -52,7 +53,6 @@
 	import RidingSurface from '$lib/session/RidingSurface.svelte';
 	import ViewSwitch from '$lib/world/ViewSwitch.svelte';
 	import type { RoadMate } from '$lib/channel/road-mates';
-	import { JUMP_M } from '$lib/world/sim';
 	import { createWorldView } from '$lib/world/world-view.svelte';
 
 	let {
@@ -207,9 +207,8 @@
 	}
 
 	// Metres climbed this ride (TARGETS ride-free-road 3): the rises between
-	// one second's metre and the next; a jump is a lap turned, not a climb.
-	// Off a road nothing climbs, so nothing says so (ux.md: a cue exists only
-	// where its model exists).
+	// one second's metre and the next. Off a road nothing climbs, so nothing
+	// says so (ux.md: a cue exists only where its model exists).
 	let climbed = $state(0);
 	let lastM: number | null = null;
 	$effect(() => {
@@ -221,188 +220,167 @@
 				lastM = null;
 				return;
 			}
-			if (lastM !== null && Math.abs(at.m - lastM) <= JUMP_M)
-				climbed += climbedM(at.profile, lastM, at.m);
+			if (lastM !== null) climbed += climbedStep(at.profile, lastM, at.m);
 			lastM = at.m;
 		});
 	});
 
 	const WORDS = 'text-2xl leading-6';
-	const CHIP = `${WORDS} border-neon/40 text-muted rounded border px-2 whitespace-nowrap`;
 	// M and V from a key or a bridged controller (#4236).
 	$effect(() => bindViewKeys((k) => !!board.onKey(k)));
 </script>
 
-{#snippet band()}
-	<!-- Four rows, so the road's name is never cut for the controls: the
-	     label with the caller's own controls, the road line, the chip row,
-	     then the ride's controls — 176 px at SPEC's sizes, above the corridor
-	     (the box table's 200). Off a road, where nothing draws a world or a
-	     corridor, a fifth holds Warm up and Cool down. -->
-	<header data-testid="ride-band" class="flex flex-col gap-2 px-4 py-2">
-		<div class="flex min-w-0 flex-wrap items-center gap-x-6 gap-y-2">
-			{#if fault}
-				<!-- Ride-critical status is slot 1's first line (G3), never a toast. -->
-				<div
-					data-status-line
-					role="alert"
-					class="flex min-w-0 flex-1 items-center gap-4"
+{#snippet faultLine()}
+	{#if fault}
+		<!-- Ride-critical status is slot 1's first line (G3), never a toast. -->
+		<div
+			data-status-line
+			role="alert"
+			class="flex min-w-0 flex-1 items-center gap-4"
+		>
+			<span class="bg-danger size-2.5 shrink-0 rounded-full"></span>
+			<p class="min-w-0 truncate {WORDS}">{repairError ?? fault}</p>
+			{#if onrepair}
+				<button
+					onclick={() => void repair()}
+					disabled={repairing}
+					class="btn btn-primary btn-ride shrink-0"
+					>{repairing ? 'Pairing…' : 'Pair again'}</button
 				>
-					<span class="bg-danger size-2.5 shrink-0 rounded-full"></span>
-					<p class="min-w-0 truncate {WORDS}">{repairError ?? fault}</p>
-					{#if onrepair}
-						<button
-							onclick={() => void repair()}
-							disabled={repairing}
-							class="btn btn-primary btn-ride shrink-0"
-							>{repairing ? 'Pairing…' : 'Pair again'}</button
-						>
-					{/if}
-				</div>
-			{:else}
-				<p
-					data-testid="ride-context"
-					class="ride-label min-w-0 flex-1 truncate"
-				>
-					{freeRideLabel(road)}
-				</p>
-			{/if}
-			{#if controls}
-				<div class="flex flex-wrap items-center gap-2">
-					{@render controls()}
-				</div>
 			{/if}
 		</div>
-		{#if road}
-			<!-- Where on the road, once (TARGETS one home: slot 1's road line). -->
-			<p
-				data-testid="block-road"
-				class="num text-4xl leading-none font-bold max-md:text-2xl"
+	{/if}
+{/snippet}
+
+{#snippet notes()}
+	{#if free.ramp}
+		<p data-testid="ramp-line" class="num truncate" aria-live="polite">
+			{rampLabel} · {formatClock(free.ramp.left)} left
+		</p>
+	{:else if free.rampDone}
+		<p data-testid="ramp-line" class="truncate" aria-live="polite">
+			{rampLabel} done
+		</p>
+	{/if}
+	{#if flagNotice}
+		<p class="text-muted truncate">{FLAG_SAID.after}</p>
+	{:else if hint}
+		<p class="text-muted truncate">{hint}</p>
+	{/if}
+{/snippet}
+
+{#snippet actions()}
+	<!-- One segmented control: a frame round both halves, the pressed
+	     half filled. No padding inside it — that was 10 px the band
+	     cannot spend above the corridor. -->
+	<div
+		class="border-muted/20 flex rounded-lg border max-md:basis-full"
+		role="group"
+		aria-label="what you set"
+	>
+		{#each modes as mode (mode.id)}
+			<button
+				onclick={() => free.setMode(mode.id)}
+				aria-pressed={free.mode === mode.id}
+				class="btn btn-ride max-md:flex-1 {free.mode === mode.id
+					? 'btn-secondary'
+					: 'btn-ghost'}">{mode.label}</button
 			>
-				{roadLine(road.readout)}
-			</p>
-		{/if}
-		{#if !fault}
-			<div class="flex flex-wrap items-center gap-x-4 gap-y-1 {WORDS}">
-				<span data-testid="trainer-chip" class={CHIP}>{chip}</span>
-				<p data-testid="ride-clock" class="num text-muted">
-					{formatClock(
-						free.seconds,
-					)}{#if road}{` · ${Math.round(climbed)} m climbed`}{/if}
-				</p>
-				{#if free.ramp}
-					<p data-testid="ramp-line" class="num truncate" aria-live="polite">
-						{rampLabel} · {formatClock(free.ramp.left)} left
-					</p>
-				{:else if free.rampDone}
-					<p data-testid="ramp-line" class="truncate" aria-live="polite">
-						{rampLabel} done
-					</p>
-				{/if}
-				{#if flagNotice}
-					<p class="text-muted truncate">{FLAG_SAID.after}</p>
-				{:else if hint}
-					<p class="text-muted truncate">{hint}</p>
-				{/if}
-			</div>
-		{/if}
-		<!-- One row of 44 px controls (ux.md, TARGETS ride-free-road 7); it
-		     wraps rather than clipping, as every control row does (#1634). -->
+		{/each}
+	</div>
+	{#if !road}
+		<!-- The number they move is the chip's (SPEC "Grade mode"). -->
+		<button
+			onclick={() => free.nudge(-1)}
+			disabled={atMin}
+			class="btn btn-secondary btn-ride"
+			aria-label={inWatts ? 'fewer watts' : 'lower grade'}
+			><Minus size={18} /></button
+		>
+		<button
+			onclick={() => free.nudge(1)}
+			disabled={atMax}
+			class="btn btn-secondary btn-ride"
+			aria-label={inWatts ? 'more watts' : 'steeper grade'}
+			><Plus size={18} /></button
+		>
+	{/if}
+	{#if gear && shift && !inWatts}
+		<GearShift
+			{shift}
+			{gear}
+			off={gearsEnabled('screen') ? shiftOff : EASIER_HARDER_OFF.gated}
+			{cassette}
+		/>
+	{/if}
+	{#if onflag}<FlagButton onflag={flag} sends="after" />{/if}
+	{#if road}<ViewSwitch {world} {drawn} />{/if}
+	{#if ontv}
+		<button onclick={ontv} class={ICON} aria-label="TV mode" title="TV mode"
+			><MonitorUp size={20} /></button
+		>
+	{/if}
+	{#if onend}
+		<!-- End ride saves where you are; carrying on is the road-end
+		     card's offer, not this button's (TARGETS ride-free-road 10). -->
+		<button
+			onclick={onend}
+			disabled={ending}
+			class="btn btn-secondary btn-ride max-md:basis-full">End ride</button
+		>
+	{/if}
+{/snippet}
+
+{#snippet ramps()}
+	{#if !road}
+		<!-- Warm up and Cool down (#4100) in a row of their own, so the
+		     ride's controls keep End ride beside ⚑ and TV. Off a road, where
+		     nothing draws a world or a corridor. -->
 		<div class="flex min-w-0 flex-wrap items-center gap-2">
-			<!-- One segmented control: a frame round both halves, the pressed
-			     half filled. No padding inside it — that was 10 px the band
-			     cannot spend above the corridor. -->
-			<div
-				class="border-muted/20 flex rounded-lg border max-md:basis-full"
-				role="group"
-				aria-label="what you set"
-			>
-				{#each modes as mode (mode.id)}
-					<button
-						onclick={() => free.setMode(mode.id)}
-						aria-pressed={free.mode === mode.id}
-						class="btn btn-ride max-md:flex-1 {free.mode === mode.id
-							? 'btn-secondary'
-							: 'btn-ghost'}">{mode.label}</button
-					>
-				{/each}
-			</div>
-			{#if !road}
-				<!-- The number they move is the chip's (SPEC "Grade mode"). -->
-				<button
-					onclick={() => free.nudge(-1)}
-					disabled={atMin}
-					class="btn btn-secondary btn-ride"
-					aria-label={inWatts ? 'fewer watts' : 'lower grade'}
-					><Minus size={18} /></button
+			{#if free.ramp}
+				<button onclick={free.stopRamp} class="btn btn-secondary btn-ride"
+					>Stop {rampLabel?.toLowerCase()}</button
 				>
-				<button
-					onclick={() => free.nudge(1)}
-					disabled={atMax}
-					class="btn btn-secondary btn-ride"
-					aria-label={inWatts ? 'more watts' : 'steeper grade'}
-					><Plus size={18} /></button
+			{:else}
+				<div
+					class="border-muted/20 flex rounded-lg border"
+					role="group"
+					aria-label="ramp length"
 				>
-			{/if}
-			{#if gear && shift && !inWatts}
-				<GearShift
-					{shift}
-					{gear}
-					off={gearsEnabled('screen') ? shiftOff : EASIER_HARDER_OFF.gated}
-					{cassette}
-				/>
-			{/if}
-			{#if onflag}<FlagButton onflag={flag} sends="after" />{/if}
-			{#if road}<ViewSwitch {world} {drawn} />{/if}
-			{#if ontv}
-				<button onclick={ontv} class={ICON} aria-label="TV mode" title="TV mode"
-					><MonitorUp size={20} /></button
-				>
-			{/if}
-			{#if onend}
-				<!-- End ride saves where you are; carrying on is the road-end
-				     card's offer, not this button's (TARGETS ride-free-road 10). -->
-				<button
-					onclick={onend}
-					disabled={ending}
-					class="btn btn-secondary btn-ride max-md:basis-full">End ride</button
-				>
-			{/if}
-		</div>
-		{#if !road}
-			<!-- Warm up and Cool down (#4100) in a row of their own, so the
-			     ride's controls keep End ride beside ⚑ and TV. -->
-			<div class="flex min-w-0 flex-wrap items-center gap-2">
-				{#if free.ramp}
-					<button onclick={free.stopRamp} class="btn btn-secondary btn-ride"
-						>Stop {rampLabel?.toLowerCase()}</button
-					>
-				{:else}
-					<div
-						class="border-muted/20 flex rounded-lg border"
-						role="group"
-						aria-label="ramp length"
-					>
-						{#each RAMP.minutes as minutes (minutes)}
-							<button
-								onclick={() => (rampMinutes = minutes)}
-								aria-pressed={rampMinutes === minutes}
-								class="btn btn-ride {rampMinutes === minutes
-									? 'btn-secondary'
-									: 'btn-ghost'}">{minutes} min</button
-							>
-						{/each}
-					</div>
-					{#each RAMPS as r (r.kind)}
+					{#each RAMP.minutes as minutes (minutes)}
 						<button
-							onclick={() => free.startRamp(r.kind, rampMinutes)}
-							class="btn btn-secondary btn-ride">{r.label}</button
+							onclick={() => (rampMinutes = minutes)}
+							aria-pressed={rampMinutes === minutes}
+							class="btn btn-ride {rampMinutes === minutes
+								? 'btn-secondary'
+								: 'btn-ghost'}">{minutes} min</button
 						>
 					{/each}
-				{/if}
-			</div>
-		{/if}
-	</header>
+				</div>
+				{#each RAMPS as r (r.kind)}
+					<button
+						onclick={() => free.startRamp(r.kind, rampMinutes)}
+						class="btn btn-secondary btn-ride">{r.label}</button
+					>
+				{/each}
+			{/if}
+		</div>
+	{/if}
+{/snippet}
+
+{#snippet band()}
+	<FreeRideBand
+		label={freeRideLabel(road)}
+		roadLine={road ? roadLine(road.readout) : undefined}
+		{chip}
+		seconds={free.seconds}
+		climbed={road ? climbed : undefined}
+		status={faultLine}
+		{controls}
+		{notes}
+		{actions}
+		more={ramps}
+	/>
 {/snippet}
 
 {#snippet computer()}

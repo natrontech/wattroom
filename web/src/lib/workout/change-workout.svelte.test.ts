@@ -5,6 +5,7 @@ vi.mock('$lib/hud/feed', () => hud);
 
 import { SimulatedTrainer } from '$lib/ble/simulated';
 import { onRoute } from '$lib/road/compile';
+import { climbedM } from '$lib/ride/climbed';
 import { homeRoad, homeRoute } from '$lib/ride/home-roads';
 import { recordingUpload } from '$lib/ride/save';
 import { durationSeconds, flatten } from './engine';
@@ -136,6 +137,23 @@ describe('a workout changed mid-ride', () => {
 		change(recovery);
 		expect(session.total).toBe(durationSeconds(recovery));
 		expect(hud.publishHud.mock.lastCall![0].elapsed).toBeUndefined();
+	});
+
+	// #4283: with none, slot 1 is the free ride's, which names the road and
+	// the ride's metres climbed, whichever screen draws it.
+	it('keeps the road’s name and the ride’s metres climbed through a change to none', async () => {
+		const { route, session, rideTo, change } = await onThePassLoop();
+		expect(session.road!.name).toBe(route.name);
+		rideTo(1000);
+		const climbed = session.road!.climbed;
+		const from = session.road!.along;
+		change(null);
+		expect(session.road!.name).toBe(route.name);
+		expect(session.road!.climbed).toBe(climbed);
+		rideTo(3000);
+		const rose = climbedM(route.road, from, session.road!.along);
+		expect(rose).toBeGreaterThan(0);
+		expect(session.road!.climbed - climbed).toBeCloseTo(rose, 6);
 	});
 
 	it('saves a ride on one workout as that workout', async () => {

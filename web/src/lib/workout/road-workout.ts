@@ -24,6 +24,8 @@ export interface PinnedRoad {
 	stepEndM?: number[];
 	/** It ends where it began: a ride on it rolls into the next lap (#4261). */
 	loop: boolean;
+	/** Its name, where the page attached it (#4283). */
+	name?: string;
 }
 
 /**
@@ -45,6 +47,7 @@ export function roadOf(workout: Workout): PinnedRoad | null {
 			toM: ref.toM,
 			...(ref.stepEndM?.length && { stepEndM: ref.stepEndM }),
 			loop: !!ref.loop,
+			...(ref.name && { name: ref.name }),
 		};
 	} catch {
 		return null;
@@ -58,7 +61,7 @@ export function roadOf(workout: Workout): PinnedRoad | null {
  */
 export function withProfile(
 	workout: Workout,
-	route: { road: Road; loop?: boolean },
+	route: { road: Road; loop?: boolean; name?: string },
 ): Workout {
 	if (!workout.road) return workout;
 	return {
@@ -68,6 +71,7 @@ export function withProfile(
 			profile: base64Of(packRoad(route.road)),
 			originM: 0,
 			...(route.loop && { loop: true }),
+			...(route.name && { name: route.name }),
 		},
 	};
 }
