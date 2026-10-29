@@ -10,10 +10,8 @@
 	 */
 	import Banner from '$lib/components/Banner.svelte';
 	import FaultBanner from '$lib/channel/FaultBanner.svelte';
-	import { faultCopy } from '$lib/channel/fault-copy';
-	import { FtmsTrainer } from '$lib/ble/ftms';
-	import { statusLine } from '$lib/ride/status-lines';
-	import { pairError } from '$lib/ble/pair-error';
+	import { createPairAgain } from '$lib/ble/pair-again.svelte';
+	import { statusLine, trainerLine } from '$lib/ride/status-lines';
 	import type { createRideSession } from '$lib/workout/session.svelte';
 
 	let {
@@ -43,28 +41,22 @@
 		line?: boolean;
 	} = $props();
 
-	let repairing = $state(false);
-	let repairError = $state<string | null>(null);
-	const fault = $derived(
+	const pair = createPairAgain((next) => session.repair(next));
+	const trainer = $derived(
 		signalLost
-			? faultCopy({
-					kind: 'trainer',
-					state:
-						session.trainerStatus === 'connected' ? 'silent' : 'reconnecting',
-				})
+			? trainerLine(
+					session.trainerStatus === 'connected' ? 'silent' : 'reconnecting',
+				)
 			: null,
 	);
 	// Ride-critical first (errors.md), then the guard, then the missing copy.
-	// A trainer that is not connected has no line of its own in fault-copy:
-	// the one copy module says it and names the one button (#3212).
-	const quiet = statusLine('trainer-quiet');
 	const held = $derived(
-		fault
+		trainer
 			? {
-					text: repairError ?? fault.line ?? quiet.text,
+					text: pair.error ?? trainer.text,
 					alert: true,
-					recover: fault.line ? fault.lineAction : quiet.action,
-					recoverName: fault.line ? fault.action : quiet.action,
+					recover: trainer.action,
+					recoverName: trainer.name,
 				}
 			: session.held
 				? { text: 'Paused', resume: true }
@@ -77,23 +69,9 @@
 							: session.spiralActive
 								? { text: statusLine('guard-released').text }
 								: noCrashSafety
-									? { text: 'Not keeping its own copy of this ride' }
+									? { text: statusLine('no-crash-copy').text }
 									: null,
 	);
-
-	async function repair() {
-		repairing = true;
-		repairError = null;
-		const next = new FtmsTrainer();
-		try {
-			await next.connect();
-			session.repair(next);
-		} catch (cause) {
-			repairError = pairError(cause);
-		} finally {
-			repairing = false;
-		}
-	}
 </script>
 
 {#if line}
@@ -117,12 +95,12 @@
 			{/if}
 			{#if 'recover' in held}
 				<button
-					onclick={() => void repair()}
-					disabled={repairing}
+					onclick={() => void pair.run()}
+					disabled={pair.busy}
 					aria-label={held.recoverName}
 					title={held.recoverName}
 					class="btn btn-primary btn-ride shrink-0"
-					>{repairing ? 'Pairing…' : (held.recover ?? 'Reconnect')}</button
+					>{pair.busy ? 'Pairing…' : held.recover}</button
 				>
 			{/if}
 		</div>
@@ -187,12 +165,12 @@
 					state:
 						session.trainerStatus === 'connected' ? 'silent' : 'reconnecting',
 				}}
-				onRecover={() => void repair()}
-				busy={repairing}
+				onRecover={() => void pair.run()}
+				busy={pair.busy}
 				note={[session.trainerName, note].filter(Boolean).join(' — ')}
 			/>
-			{#if repairError}
-				<p class="text-danger mt-2 text-xs">{repairError}</p>
+			{#if pair.error}
+				<p class="text-danger mt-2 text-xs">{pair.error}</p>
 			{/if}
 		</div>
 	{/if}

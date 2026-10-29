@@ -45,6 +45,7 @@ import {
 } from './design/shoot';
 import { hudScale } from './design/probe';
 import { holdCountIn } from './hold-count-in';
+import { follow } from './follow';
 
 /**
  * The design shots (#3666, docs/design/DESIGN-CHECK.md): every surface in
@@ -1863,6 +1864,82 @@ surface('closing-card', async (s) => {
 	// roster (/dev/summary renders SessionSummary with them).
 	await page(s, o, '/dev/summary', { name: 'closing-card-medal' });
 });
+
+/** probe:rideDock — the dock against the sidebar's foot, its buttons and its watts. */
+const rideDockProbe = () => {
+	const box = (el: Element | null | undefined) => {
+		if (!el) return null;
+		const r = el.getBoundingClientRect();
+		return {
+			x: Math.round(r.x),
+			y: Math.round(r.y),
+			width: Math.round(r.width),
+			height: Math.round(r.height),
+		};
+	};
+	const nav = document.querySelector('nav[aria-label="crews and channels"]');
+	const dock = document.querySelector('[data-testid=ride-dock]');
+	const watts = dock?.querySelector('[data-testid=ride-dock-watts]');
+	const short = document.querySelector('[data-testid=ride-dock-short]');
+	const body = document.querySelector('[data-testid=page-body]');
+	const you = nav?.lastElementChild;
+	const glowing = [...(nav?.querySelectorAll('*') ?? [])].filter(
+		(el) => getComputedStyle(el).textShadow !== 'none',
+	);
+	return {
+		nav: box(nav),
+		dock: box(dock),
+		dockTextX: box(dock?.querySelector('.eyebrow'))?.x ?? null,
+		youTextX: box(you?.querySelector('span'))?.x ?? null,
+		dockBottomToYouTop:
+			dock && you
+				? Math.round(
+						you.getBoundingClientRect().y - dock.getBoundingClientRect().bottom,
+					)
+				: null,
+		controls: [...(dock?.querySelectorAll('a, button') ?? [])].map((el) => ({
+			text: el.textContent?.trim(),
+			...box(el),
+		})),
+		wattsColor: watts ? getComputedStyle(watts).color : null,
+		wattsGlow: watts ? getComputedStyle(watts).textShadow : null,
+		sidebarGlowing: glowing.map((el) => el.textContent?.trim()),
+		short: box(short),
+		shortText: short?.textContent?.replace(/\s+/g, ' ').trim() ?? null,
+		overflowX: body ? body.scrollWidth - body.clientWidth : null,
+	};
+};
+
+surface(
+	'ride-dock',
+	async (s) => {
+		// A ride alone running off its screen (ADR-0093 point 5): the smoke
+		// workout started on /ride, then Home opened as a sidebar link does.
+		for (const [device, name] of variants([
+			[DESK, 'ride-dock'],
+			[RIDING_PHONE, 'phone-ride-dock'],
+		] as const)) {
+			const o = await s.open(device, { world: false });
+			await ride(o.page, '/ride?w=smoke-test');
+			await follow(o.page, '/home');
+			await o.page.getByTestId('ride-dock').waitFor({ state: 'attached' });
+			await o.page.waitForTimeout(1500);
+			await s.shot(o, {
+				name,
+				extra: { rideDock: await o.page.evaluate(rideDockProbe) },
+			});
+			if (device === DESK) continue;
+			// The drawer holds the same dock.
+			await o.page.getByRole('button', { name: 'open navigation' }).click();
+			await o.page.waitForTimeout(800);
+			await s.shot(o, {
+				name: 'phone-ride-dock-drawer',
+				extra: { rideDock: await o.page.evaluate(rideDockProbe) },
+			});
+		}
+	},
+	{ also: ['phone-ride-dock'] },
+);
 
 /**
  * Queues YouTube tracks on a riding page's deck through the jukebox's sheet

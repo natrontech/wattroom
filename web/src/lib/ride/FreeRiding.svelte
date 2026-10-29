@@ -15,9 +15,7 @@
 	import Minus from '@lucide/svelte/icons/minus';
 	import MonitorUp from '@lucide/svelte/icons/monitor-up';
 	import Plus from '@lucide/svelte/icons/plus';
-	import { faultCopy } from '$lib/channel/fault-copy';
-	import { FtmsTrainer } from '$lib/ble/ftms';
-	import { pairError } from '$lib/ble/pair-error';
+	import { createPairAgain } from '$lib/ble/pair-again.svelte';
 	import type { Trainer } from '$lib/ble/trainer';
 	import { formatClock } from '$lib/format';
 	import { climbedStep } from '$lib/ride/climbed';
@@ -41,6 +39,7 @@
 	import type { RideShift } from '$lib/ride/ride-shift';
 	import { roadLine } from '$lib/ride/road-readout';
 	import { roadEndOffered } from '$lib/ride/road-end';
+	import { trainerLine } from '$lib/ride/status-lines';
 	import RoadEnd from '$lib/ride/RoadEnd.svelte';
 	import RideNarrator from '$lib/ride/RideNarrator.svelte';
 	import Skyline from '$lib/ride/Skyline.svelte';
@@ -174,26 +173,8 @@
 	const rampLabel = $derived(
 		RAMPS.find((r) => r.kind === (free.ramp?.kind ?? free.rampDone))?.label,
 	);
-	let repairing = $state(false);
-	let repairError = $state<string | null>(null);
-	async function repair() {
-		repairing = true;
-		repairError = null;
-		const next = new FtmsTrainer();
-		try {
-			await next.connect();
-			onrepair?.(next);
-		} catch (cause) {
-			repairError = pairError(cause);
-		} finally {
-			repairing = false;
-		}
-	}
-	const fault = $derived(
-		stale && !idle
-			? faultCopy({ kind: 'trainer', state: 'silent' }).line
-			: null,
-	);
+	const pair = createPairAgain((next) => onrepair?.(next));
+	const fault = $derived(stale && !idle ? trainerLine('silent') : null);
 	// Once per device, to a rider who kept "Don't make me shift" (#3333).
 	const hint = untrack(() => gearsNews(!cassette));
 
@@ -239,13 +220,13 @@
 			class="flex min-w-0 flex-1 items-center gap-4"
 		>
 			<span class="bg-danger size-2.5 shrink-0 rounded-full"></span>
-			<p class="min-w-0 truncate {WORDS}">{repairError ?? fault}</p>
+			<p class="min-w-0 truncate {WORDS}">{pair.error ?? fault.text}</p>
 			{#if onrepair}
 				<button
-					onclick={() => void repair()}
-					disabled={repairing}
+					onclick={() => void pair.run()}
+					disabled={pair.busy}
 					class="btn btn-primary btn-ride shrink-0"
-					>{repairing ? 'Pairing…' : 'Pair again'}</button
+					>{pair.busy ? 'Pairing…' : fault.action}</button
 				>
 			{/if}
 		</div>

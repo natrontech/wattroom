@@ -11,9 +11,9 @@
 	import AlarmClockPlus from '@lucide/svelte/icons/alarm-clock-plus';
 	import MonitorUp from '@lucide/svelte/icons/monitor-up';
 	import SkipForward from '@lucide/svelte/icons/skip-forward';
-	import { confirm } from '$lib/confirm.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { EASIER_HARDER_OFF } from '$lib/ride/easier-harder';
+	import { askToEndWorkout } from '$lib/ride/end-ride';
 	import FlagButton from '$lib/ride/FlagButton.svelte';
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
 	import GearShift from '$lib/ride/GearShift.svelte';
@@ -57,13 +57,7 @@
 	// it ends cannot be resumed — one stray thumb filed a truncated ride
 	// (#2623). It asks, the way a session's End always has (errors.md).
 	async function endRide() {
-		const ok = await confirm({
-			title: 'End the ride?',
-			body: 'The rest of the workout cannot be resumed. What you have ridden is saved if it is a minute or longer.',
-			action: 'End the ride',
-			cancel: 'Keep riding',
-		});
-		if (ok) session.stop();
+		if (await askToEndWorkout()) session.stop();
 	}
 
 	/** A 44 px icon control mid-ride (ux.md), skinned as SessionControls' are. */

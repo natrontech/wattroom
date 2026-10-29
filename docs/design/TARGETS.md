@@ -668,6 +668,18 @@ Capture: `/home` for Designer, in one crew with two sessions planned this week; 
 8. Nothing this week: the next planned session under NEXT. Nothing at all: one teaching line and a link to a crew's Schedule. [home-week]
 9. Phone: tiles 2 × 2, columns stacked; action buttons ≥ 44 px; nothing scrolls sideways. [home]
 
+#### ride-dock, phone-ride-dock
+
+Capture: Designer rides the smoke workout alone on `/ride` (simulated trainer), then opens Home as a sidebar link does, the ride running; desk 1440 × 900 in both schemes (`ride-dock`), and a riding phone at 375 × 812 with touch, its top bar (`phone-ride-dock`) and its drawer opened (`phone-ride-dock-drawer`). Target: none drawn, canon is the bar. Canon: ADR-0093 point 5, ADR-0020 (one sidebar), ADR-0005 (watt), errors.md, ux.md, D6.
+
+1. Shown only while a ride runs and no riding screen draws it: none with no ride, none on `/ride` or a voice channel's Training page while it draws the ride. [4259] [test:web/e2e/ride-dock.spec.ts] [test:web/src/lib/ride/ride-screens.test.ts]
+2. At the sidebar's foot: below the call when one is up, above the update row and the You footer. Full column width under one hairline like its neighbours', its text on their 12 px left edge; no card, fill or box (D6). [4259] [probe:rideDock]
+3. Three rows: an eyebrow naming where the ride shows (“Riding alone” while it is private, ADR-0093 point 6) with the time ridden at its right; the live watts in the display face with a muted W on its baseline, and while a workout drives its block and target (“Sweet spot · 250 W”) muted at the right; then Open and End ride, two equal secondary buttons across the width. [4259]
+4. The watts is the sidebar's only watt and only glow (G2); the target is chrome. A quiet trainer turns the watts muted and unlit. [4259] [probe:rideDock]
+5. Critical status, persistent and never a toast (errors.md): a lost trainer is one line with a danger dot and its one full-width recovery button (“Pair again”); no crash safety is one line with no button. [4259]
+6. Open goes to the riding screen the rider last had open. End ride is that screen's: a workout asks “End the ride?” first, and the ride ends on its closing card there. [4259] [test:web/e2e/ride-dock.spec.ts]
+7. Phone: the top bar carries the short form at its right, time and watts in one link at least 44 px tall that opens the ride; the drawer holds the same dock, Open and End ride at least 44 px; the page body never scrolls sideways (G5). [4259] [probe:rideDock] [test:web/e2e/ride-dock.spec.ts]
+
 #### appearance
 
 Capture: `/settings/appearance` whole page body; again under reduced motion; desk and phone, both schemes. Target: none drawn; the bar is ADR-0079's table and the Settings kit.

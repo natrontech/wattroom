@@ -8,3 +8,11 @@ export function drawsTheRide(pathname: string): boolean {
 		pathname === '/ride' || /^\/crew\/[^/]+\/v\/[^/]+\/training$/.test(pathname)
 	);
 }
+
+/**
+ * The ride dock shows (ADR-0093 point 5): a ride runs and no riding screen
+ * draws it. With no ride, or on its screen, the sidebar has none.
+ */
+export function dockShows(live: boolean, pathname: string): boolean {
+	return live && !drawsTheRide(pathname);
+}

@@ -13,6 +13,7 @@
 	import Logo from '$lib/brand/Logo.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import VoiceStrip from './VoiceStrip.svelte';
+	import RideDock from './RideDock.svelte';
 	import CrewSwitcher from './CrewSwitcher.svelte';
 	import CrewColumn from './CrewColumn.svelte';
 	import { crewLive } from './crew-live.svelte';
@@ -343,6 +344,10 @@
 	{#if channelConnection.current}
 		<VoiceStrip {pathname} />
 	{/if}
+
+	<!-- The ride alone while no riding screen draws it (ADR-0093 point 5):
+	     below the call, above you. It draws nothing otherwise. -->
+	<RideDock {pathname} />
 
 	<!-- Updates and what's new, one row above you (#2588) — at the foot, so
 	     coming and going moves nothing above it. It takes the desktop link's
