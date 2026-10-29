@@ -18,9 +18,9 @@ const spruceTrunk = (c: PropColors) =>
 		cyl(0.35, 0.5, 3 + ROOT_M, 5).translate(0, (3 - ROOT_M) / 2, 0),
 		c.trunk,
 	);
-const leafTrunk = (c: PropColors) =>
+const leafTrunk = (c: PropColors, seg = 5) =>
 	tint(
-		cyl(0.3, 0.45, 4.5 + ROOT_M, 5).translate(0, (4.5 - ROOT_M) / 2, 0),
+		cyl(0.3, 0.45, 4.5 + ROOT_M, seg).translate(0, (4.5 - ROOT_M) / 2, 0),
 		c.trunk,
 	);
 
@@ -140,9 +140,9 @@ export const linden = (c: PropColors) =>
 	]);
 
 // --- far trees: each form's outer-ring stand-in (#3076) ------------------------
-// Its crown runs down into its root, with no trunk: past the near ring a
-// trunk is thinner than a pixel (ADR-0092), and a crown covers the ground a
-// trunk's root would on a slope.
+// A conifer's crown runs down into its root, with no trunk: past the near
+// ring a trunk is thinner than a pixel (ADR-0092). A broadleaf keeps its
+// trunk, as a lump stretched to the ground reads as a boulder.
 
 // A conifer far off: one cone, as wide at `from` as the near crown's foot, down to the root.
 const coniferFar = (c: PropColors, r: number, from: number, to: number) =>
@@ -163,10 +163,11 @@ export const spruceFar = (c: PropColors) => coniferFar(c, 4.2, 2, 14.9);
 export const spruceSlenderFar = (c: PropColors) => coniferFar(c, 3, 2, 17.4);
 export const firFar = (c: PropColors) => coniferFar(c, 4.6, 2, 13.25);
 
-// A broadleaf far off: one lump from its root to the near crown's top.
-const broadleafFarOf = (c: PropColors, r: number, top: number) =>
-	merge(crown(c, [[r, 0, (top - ROOT_M) / 2, 0, (top + ROOT_M) / (2 * r)]]));
-export const broadleafFar = (c: PropColors) => broadleafFarOf(c, 4, 10.6);
+// A broadleaf far off: its trunk and one lump, the near crown's.
+const broadleafFarOf = (c: PropColors, r: number, y: number, k: number) =>
+	merge([leafTrunk(c, 3), ...crown(c, [[r, 0, y, 0, k]])]);
+export const broadleafFar = (c: PropColors) => broadleafFarOf(c, 4, 7.2, 0.85);
 export const broadleafRoundFar = (c: PropColors) =>
-	broadleafFarOf(c, 4.3, 11.1);
-export const broadleafTallFar = (c: PropColors) => broadleafFarOf(c, 2.6, 13);
+	broadleafFarOf(c, 4.3, 7.4, 0.85);
+export const broadleafTallFar = (c: PropColors) =>
+	broadleafFarOf(c, 2.6, 8.3, 1.8);

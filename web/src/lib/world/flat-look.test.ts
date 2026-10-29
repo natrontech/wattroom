@@ -91,6 +91,25 @@ describe('the dressing’s models (ADR-0092)', () => {
 		expect(triangles(g)).toBeLessThanOrEqual(3 * 32);
 	});
 
+	it('lights a face turned to the ground as one turned out, so no underside goes black', () => {
+		const sight = makeSight();
+		for (const m of [flat(sight, { wind: true, fade: true }), flat(sight)]) {
+			const s = {
+				uniforms: {},
+				vertexShader: THREE.ShaderLib.lambert.vertexShader,
+				fragmentShader: THREE.ShaderLib.lambert.fragmentShader,
+			} as unknown as THREE.WebGLProgramParametersWithUniforms;
+			m.onBeforeCompile(s, {} as THREE.WebGLRenderer);
+			const f = s.fragmentShader;
+			const at = f.indexOf('#include <normal_fragment_begin>');
+			expect(at).toBeGreaterThan(-1);
+			expect(f.indexOf('if ( toSky < 0.0 )')).toBeGreaterThan(at);
+			expect(f.indexOf('#include <lights_fragment_begin>')).toBeGreaterThan(
+				f.indexOf('if ( toSky < 0.0 )'),
+			);
+		}
+	});
+
 	it('shades every face flat: one normal per face', () => {
 		const sight = makeSight();
 		for (const m of [flat(sight, { wind: true, fade: true }), flat(sight)]) {

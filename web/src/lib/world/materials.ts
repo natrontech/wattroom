@@ -47,6 +47,17 @@ const FADE = /* glsl */ `
 	float bayer[16] = float[16](0.,8.,2.,10.,12.,4.,14.,6.,3.,11.,1.,9.,15.,7.,13.,5.);
 	if (keep < (bayer[by * 4 + bx] + 0.5) / 16.0) discard;`;
 
+// A face turned to the ground is lit as one turned out (#4256): the
+// hemisphere's ground colour alone takes a tier's or an eave's underside to
+// black, and the world's shadow is a tint, never black (ADR-0072).
+const UNDERSIDE = /* glsl */ `
+	vec3 upView = normalize( ( viewMatrix * vec4( 0.0, 1.0, 0.0, 0.0 ) ).xyz );
+	float toSky = dot( normal, upView );
+	if ( toSky < 0.0 ) {
+		vec3 level = normal - toSky * upView;
+		normal = length( level ) > 1e-3 ? normalize( level ) : normalize( cross( upView, vec3( 0.0, 0.0, 1.0 ) ) );
+	}`;
+
 /**
  * The dressing's material (ADR-0092): its models' colours, flat per face,
  * lit by the sky with one normal per face, so a change of shade falls on a
@@ -60,8 +71,12 @@ export function flat(
 		vertexColors: true,
 		flatShading: true,
 	});
-	if (!opts.wind && !opts.fade) return m;
 	m.onBeforeCompile = (s) => {
+		s.fragmentShader = s.fragmentShader.replace(
+			'#include <normal_fragment_begin>',
+			`#include <normal_fragment_begin>\n${UNDERSIDE}`,
+		);
+		if (!opts.wind && !opts.fade) return;
 		Object.assign(s.uniforms, sight);
 		s.vertexShader = s.vertexShader
 			.replace(
