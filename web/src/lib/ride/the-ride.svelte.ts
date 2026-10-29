@@ -1,20 +1,19 @@
 import type { Trainer } from '$lib/ble/trainer';
-import { hwlog } from '$lib/ble/hwlog';
-import { account } from '$lib/account.svelte';
 import { channelConnection } from '$lib/channel/connection.svelte';
 import { createProfileStore } from '$lib/profile.svelte';
-import { createRideFlags } from '$lib/ride/flags.svelte';
-import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
+import type { RideBuffer } from '$lib/ride/buffer';
 import { holdRoadAlone, type RoadAlone } from '$lib/ride/road-alone.svelte';
 import type { RideableRoute } from '$lib/ride/roads';
+import { holdRideAloneEffects } from '$lib/ride/ride-alone-effects.svelte';
 import { saveRideAlone } from '$lib/ride/ride-alone-save';
-import { createRideSounds, soloRideSounds } from '$lib/ride/ride-sounds.svelte';
+import {
+	createWorkoutAlone,
+	openWorkoutBuffer,
+} from '$lib/ride/ride-alone-session';
 import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
-import { sensors } from '$lib/sensors.svelte';
 import { openRoad } from '$lib/workout/ridden';
 import { byReference } from '$lib/workout/road-workout';
-import { createRideSession } from '$lib/workout/session.svelte';
-import { createSignalWatch } from '$lib/workout/signal-watch.svelte';
+import type { createRideSession } from '$lib/workout/session.svelte';
 import type { Workout } from '$lib/workout/types';
 
 type Session = ReturnType<typeof createRideSession>;
@@ -57,86 +56,16 @@ let recorded = false;
 // One of WattRoom's roads (#4248): ridden, never saved against (#4262).
 let borrowed = false;
 
-type Root = {
-	flags: ReturnType<typeof createRideFlags>;
-	signal: ReturnType<typeof createSignalWatch>;
-};
-let root: Root | null = null;
+let root: ReturnType<typeof holdRideAloneEffects> | null = null;
 
 /** The ride's own effects, made once, on the first ride: nothing runs before. */
-function ensureRoot(): Root {
-	if (root) return root;
-	$effect.root(() => {
-		// The ⚑ and what it sends afterwards (#52), shared with /ramp.
-		const flags = createRideFlags('/ride');
-		const signal = createSignalWatch(() => session);
-		root = { flags, signal };
-
-		// What the ride says out loud (#1792): the cues a session plays for its
-		// riders, from the session's own state, the same wiring as /ramp's (#3359).
-		createRideSounds(
-			soloRideSounds(
-				() => session,
-				() => signal.lost,
-			),
-		);
-
-		// Guard telemetry for #46: the hardware session has to produce evidence,
-		// not an anecdote. Dev-only via hwlog.
-		let sawSpiral = false;
-		let sawState: string | null = null;
-		$effect(() => {
-			const current = session;
-			if (!current) return;
-			if (current.spiralActive !== sawSpiral) {
-				sawSpiral = current.spiralActive;
-				hwlog('spiral-guard', {
-					active: sawSpiral,
-					watts: current.sample?.watts,
-					cadence: current.sample?.cadence,
-					target: current.target,
-					elapsed: current.elapsed,
-				});
-			}
-			if (current.state !== sawState) {
-				sawState = current.state;
-				hwlog('ride-state', { state: sawState, elapsed: current.elapsed });
-			}
-		});
-
-		// Navigation never ends the ride (ADR-0093), but a closed tab does: the
-		// browser asks first while there is a ride to lose (#126). The count-in
-		// has nothing ridden yet (#1800). A closed tab sends the flags on its
-		// way out (#2619).
-		$effect(() => {
-			const unload = (event: BeforeUnloadEvent) => {
-				const state = session?.state;
-				if (
-					(state &&
-						state !== 'idle' &&
-						state !== 'countdown' &&
-						state !== 'done') ||
-					road?.solo.trainer
-				)
-					event.preventDefault();
-			};
-			const hide = () => flags.flush(true);
-			window.addEventListener('beforeunload', unload);
-			window.addEventListener('pagehide', hide);
-			return () => {
-				window.removeEventListener('beforeunload', unload);
-				window.removeEventListener('pagehide', hide);
-			};
-		});
-
-		// A finished ride is worth keeping even if the rider never exports it:
-		// on the account (#110, one history feeding streaks and XP), with the
-		// device store as the fallback when the server is unreachable.
-		$effect(() => {
-			if (session?.state === 'done') save(session);
-		});
+function ensureRoot() {
+	root ??= holdRideAloneEffects({
+		session: () => session,
+		road: () => road,
+		save,
 	});
-	return root!;
+	return root;
 }
 
 /**
@@ -248,46 +177,18 @@ export const theRide = {
 		recorded = false;
 		borrowed = options.borrowed;
 		try {
-			// Crash safety (#19): every recorded sample also lands in IndexedDB,
-			// so a browser crash at minute 55 still has a ride to export.
 			const startedAt = Date.now();
-			buffer = await openRideBuffer({
-				rideId: String(startedAt),
-				ownerId: account.me?.id,
-				startedAt,
-				workoutName: workout.name,
-				// Carried so a ride whose save failed can be saved from the
-				// recovery card rather than only exported (#794).
-				workoutJson: JSON.stringify(byReference(workout)),
-				// A road workout's recovered ride saves against its route (#3499),
-				// never a borrowed one, which has no route row (#3621, #4262).
-				...(workout.road && !borrowed && { routeId: workout.road.routeId }),
-			});
+			buffer = await openWorkoutBuffer(workout, { borrowed, startedAt });
 			noCrashSafety = !buffer.crashSafe;
 			flags.riding(trainer.name, `starting ${workout.name}`);
-			const next = createRideSession({
+			const next = createWorkoutAlone({
 				trainer,
 				workout,
-				ftp: profile.current.ftp,
-				kg: () => profile.current.kg,
+				profile,
 				startedAt,
-				readings: () => sensors.readings,
-				// The rider's own sprint setup (#1529): a sprint block releases
-				// the trainer to this slope, the way an armed sprint does in a
-				// session. Read per sprint, so /settings lands mid-ride.
-				sprint: () => ({
-					grade: profile.current.sprintGrade,
-					singleSpeed: profile.current.singleSpeed,
-				}),
-				onRecord: (sample) => {
-					buffer?.append({ ...sample, seq: sample.second + 1, at: Date.now() });
-					flags.recorder.tick({
-						watts: sample.watts,
-						cadence: sample.cadence,
-						target: session?.target ?? 0,
-						state: session?.state ?? '',
-					});
-				},
+				buffer: () => buffer,
+				flags,
+				session: () => session,
 			});
 			// On screen before the clock (#1800): start() counts in for three
 			// seconds, and the page has to draw those seconds, which also takes
