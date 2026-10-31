@@ -156,27 +156,26 @@ claimed=$(
 				-e "s/^export WATTROOM_DEV_DESIGN_DB_NAME='\(.*\)'$/\1/p"
 	done < <(git worktree list --porcelain | awk '/^worktree /{print $2}')
 )
-# `docker ps | head -1` picked a leftover container from a removed worktree and
-# reported one stranded database out of eleven. dev-env.sh owns this answer.
+# dev-env.sh owns which server to ask: `docker ps | head -1` once picked a
+# leftover container and reported one stranded database out of eleven.
 # An empty claimed set with worktrees present means the lookup broke, not that
-# everything is litter — and this report prints a `dropdb --force` beside
+# everything is litter — and this report prints a forced drop beside
 # whatever it names. Say nothing rather than hand over a destructive command
 # built on a failed detection (#2115).
 if [ -z "$claimed" ]; then
 	echo
 	echo "Could not work out which databases are in use — skipping the stranded report."
 	echo "    (scripts/dev-env.sh print returned no database names)"
-elif container=$(./scripts/dev-env.sh pg-container 2>/dev/null); then
+elif all_dbs=$(./scripts/dev-env.sh list-dbs 2>/dev/null); then
 	stranded=$(
-		docker exec "$container" psql -U wattroom -lqt 2>/dev/null |
-			awk -F'|' '{gsub(/ /,"",$1); if ($1 ~ /^wattroom_(test_|design_)?wt_/) print $1}' |
+		grep -E '^wattroom_(test_|design_)?wt_' <<<"$all_dbs" |
 			grep -vxF "$claimed" || true
 	)
 	if [ -n "$stranded" ]; then
 		echo
 		echo "Databases no worktree here claims — check no other checkout is using them:"
 		sed 's/^/    /' <<<"$stranded"
-		echo "    docker exec $container dropdb -U wattroom --if-exists --force <name>"
+		echo "    (cd server && go run ./cmd/devdb drop <name>)"
 	fi
 fi
 

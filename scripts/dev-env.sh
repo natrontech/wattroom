@@ -32,7 +32,7 @@
 #   dev-env.sh ensure-test-db  same for its test database (`make test`)
 #   dev-env.sh fresh-design-db  drop and recreate the design shots' database
 #   dev-env.sh drop-db     drop all three (never the main tree's `wattroom`)
-#   dev-env.sh pg-container  the container id both of those act in
+#   dev-env.sh list-dbs    every database on the server (worktree-gc's report)
 #   dev-env.sh pg-strays   report postgres containers outside the shared project
 set -eu
 
@@ -62,7 +62,6 @@ E2E_WEB_PORT_BASE=4400
 METRICS_PORT_BASE=9300
 PORT_SPAN=200
 
-PG_USER=${WATTROOM_PG_USER:-wattroom}
 PG_DSN_PREFIX=${WATTROOM_PG_DSN_PREFIX:-postgres://wattroom:wattroom@localhost:5432}
 
 # Who owns the Postgres server: nobody's checkout. One fixed compose project,
@@ -71,7 +70,7 @@ PG_DSN_PREFIX=${WATTROOM_PG_DSN_PREFIX:-postgres://wattroom:wattroom@localhost:5
 # Plain `docker compose up -d` names the project after the directory it runs
 # in, which made the server's lifetime one worktree's. Both halves of that hurt:
 # removing the worktree left its container running, and two running postgres
-# containers made pg_container below refuse for *every* checkout on the machine
+# containers made dev-env.sh refuse to pick one for *every* checkout on the machine
 # (#2107) — while bringing the project down with its worktree was worse still,
 # because the project that happened to be serving everybody took all of their
 # databases with it, `wattroom_test` included (#2105).
@@ -86,37 +85,6 @@ PG_PROJECT=${WATTROOM_COMPOSE_PROJECT:-wattroom}
 crc() { printf '%s' "$1" | cksum | awk '{print $1}'; }
 
 toplevel=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
-
-# Which Postgres to talk to. The shared project answers by label, which is an
-# answer and not a guess — the guess is what went wrong in #814, when a
-# checkout assumed `wattroom-postgres-1` while a worktree's own project was
-# serving, and created its database nowhere. Pinning the project is what makes
-# the name knowable again.
-#
-# The two fallbacks are for a server that came up before the project was
-# pinned: this checkout's own compose project, then a lone postgres container
-# by service label. Several of those is still ambiguous and still asks, but it
-# is no longer the ordinary case, because nothing starts a project per checkout
-# any more.
-pg_container() {
-	if [ -n "${WATTROOM_PG_CONTAINER:-}" ]; then
-		echo "$WATTROOM_PG_CONTAINER"
-		return 0
-	fi
-	cid=$(docker ps -q --filter "label=com.docker.compose.project=$PG_PROJECT" --filter label=com.docker.compose.service=postgres 2>/dev/null) || cid=''
-	if [ "$(printf '%s' "$cid" | grep -c .)" = 1 ]; then
-		echo "$cid"
-		return 0
-	fi
-	cid=$(docker compose --project-directory "$toplevel" ps -q postgres 2>/dev/null) || cid=''
-	if [ -n "$cid" ]; then
-		echo "$cid"
-		return 0
-	fi
-	cid=$(docker ps -q --filter label=com.docker.compose.service=postgres 2>/dev/null) || cid=''
-	[ "$(printf '%s' "$cid" | grep -c .)" = 1 ] || return 1
-	echo "$cid"
-}
 
 # Running postgres containers that are not the shared project's: a compose
 # project started before it was pinned, one a `git worktree remove` left behind
@@ -141,13 +109,6 @@ report_foreign_pg() {
 	echo "    two postgres containers made every checkout refuse before the"
 	echo "    project was pinned (#2107). Nothing in this clone needs them — if"
 	echo "    no other clone on this machine does either: docker rm -f <name>"
-}
-
-# no_postgres explains the one failure both database subcommands share.
-no_postgres() {
-	echo "dev-env.sh: no single postgres container to use — run \`make infra\` (in any checkout: it starts the shared '$PG_PROJECT' project), or set WATTROOM_PG_CONTAINER when several are running" >&2
-	report_foreign_pg >&2
-	exit 1
 }
 
 # A linked worktree's own git dir sits under the main tree's; in the main tree
@@ -262,18 +223,13 @@ for port in "$server_port" "$web_port" "$verify_port" "$e2e_web_port" "$e2e_api_
 	fi
 done
 
-# create_db is idempotent: the caller may run on every `make dev-server`.
-# Failures are loud — a database that silently did not appear surfaces later as
-# a boot error that reads like the wrong thing entirely (#814).
-create_db() {
-	if docker exec "$1" psql -U "$PG_USER" -tc "select 1 from pg_database where datname='$2'" 2>/dev/null | grep -q 1; then
-		return 0
-	fi
-	if ! docker exec "$1" createdb -U "$PG_USER" "$2"; then
-		echo "dev-env.sh: could not create database $2 in container $1" >&2
-		exit 1
-	fi
-	echo "created database $2"
+# devdb talks to Postgres over its port (server/cmd/devdb): an agent's sandbox
+# reaches localhost:5432 but not the Docker socket, and the host has no psql.
+# Creating is idempotent, since the caller may run on every `make dev-server`,
+# and failures are loud — a database that silently did not appear surfaces
+# later as a boot error that reads like the wrong thing entirely (#814).
+devdb() {
+	(cd "$toplevel/server" && WATTROOM_PG_DSN_PREFIX=$PG_DSN_PREFIX go run ./cmd/devdb "$@")
 }
 
 case ${1:-print} in
@@ -321,8 +277,7 @@ ensure-db)
 	if [ "$is_main_tree" = 1 ]; then
 		exit 0
 	fi
-	container=$(pg_container) || no_postgres
-	create_db "$container" "$db_name"
+	devdb ensure "$db_name"
 	;;
 ensure-test-db)
 	# The suite deletes users, so its database must never be a dev one — hence
@@ -333,20 +288,17 @@ ensure-test-db)
 	if [ -n "${WATTROOM_TEST_DB:-}" ]; then
 		exit 0
 	fi
-	container=$(pg_container) || no_postgres
-	create_db "$container" "$test_db_name"
+	devdb ensure "$test_db_name"
 	;;
 fresh-design-db)
 	# Nothing in it outlives a run: the seed makes what the shots need, and a
 	# database that remembers the last run's rides shows them in this one's.
-	container=$(pg_container) || no_postgres
-	docker exec "$container" dropdb -U "$PG_USER" --if-exists --force "$design_db_name" >/dev/null
-	create_db "$container" "$design_db_name" >&2
+	devdb drop "$design_db_name" >/dev/null
+	devdb ensure "$design_db_name" >&2
 	;;
-pg-container)
-	# The gc needs the same answer for its stranded-database report, and this
-	# is the only place that knows how to find it.
-	pg_container || no_postgres
+list-dbs)
+	# The gc's stranded-database report reads the same server through here.
+	devdb list
 	;;
 drop-db)
 	# Every database of this checkout: `git worktree remove` runs no hook, so
@@ -355,14 +307,10 @@ drop-db)
 		echo "refusing to drop the main tree's databases ($db_name, $test_db_name, $design_db_name)" >&2
 		exit 1
 	fi
-	container=$(pg_container) || no_postgres
-	for victim in "$db_name" "$test_db_name" "$design_db_name"; do
-		docker exec "$container" dropdb -U "$PG_USER" --if-exists --force "$victim" >/dev/null
-		echo "dropped database $victim"
-	done
+	devdb drop "$db_name" "$test_db_name" "$design_db_name"
 	;;
 *)
-	echo "usage: dev-env.sh [print|banner <server|web|verify|test|e2e>|infra|ensure-db|ensure-test-db|fresh-design-db|drop-db|pg-container|pg-strays]" >&2
+	echo "usage: dev-env.sh [print|banner <server|web|verify|test|e2e>|infra|ensure-db|ensure-test-db|fresh-design-db|drop-db|list-dbs|pg-strays]" >&2
 	exit 2
 	;;
 esac
