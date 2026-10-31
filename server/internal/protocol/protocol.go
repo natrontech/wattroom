@@ -23,6 +23,7 @@ type ClientMessage struct {
 	View     *ViewState      `json:"view,omitempty"`
 	Voice    *VoiceClaim     `json:"voice,omitempty"`
 	FreeRoad *FreeRoad       `json:"freeRoad,omitempty"`
+	Lounge   *LoungeState    `json:"lounge,omitempty"`
 }
 
 // ServerTick is a voice channel's coalesced 1 Hz broadcast: every rider's
@@ -66,6 +67,9 @@ type ServerTick struct {
 	FreeRoads map[string]FreeRoadPlace `json:"freeRoads,omitempty"`
 	// Live execution per rider (#27) — the SPEC score so far this session.
 	Execution map[string]float64 `json:"execution,omitempty"`
+	// The lounge's lamp and weather (ADR-0094), once someone has changed
+	// them; absent is the scene as it opens.
+	Lounge *LoungeState `json:"lounge,omitempty"`
 	// Who the LiveKit webhooks say is in voice (#467), by rider id. A client
 	// learns this from LiveKit only once it has joined itself, so without the
 	// server's answer an empty voice roster is indistinguishable from a full

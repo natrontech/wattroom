@@ -8,6 +8,7 @@ import type {
 	ChannelEvent,
 	FreeRoad,
 	GearState,
+	LoungeState,
 	PauseState,
 	ViewState,
 	SensorClaim,
@@ -765,6 +766,13 @@ export function createChannelLive(address: PlaceAddress) {
 		setAway(next: boolean, reason = '') {
 			away = next;
 			send({ away: { away: next, reason: next ? reason : '' } });
+		},
+		/**
+		 * The lounge's lamp and weather for everyone here (ADR-0094). The
+		 * whole state, like away.
+		 */
+		setLounge(next: LoungeState) {
+			send({ lounge: next });
 		},
 		/**
 		 * Whether WattRoom holds the watts on a road for this rider — "Don't
