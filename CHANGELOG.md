@@ -17,6 +17,36 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.10.7] - 2026-10-31
+
+### Added
+
+- A ride alone docks in the sidebar while you read the crew: its time, your
+  live watts, the block and its target, Open to go back and End ride. A lost
+  trainer shows there with Pair again. On a phone the top bar carries the time
+  and watts, one tap back to the ride.
+- A voice channel with no session shows the lounge: a pixel room with
+  everyone in the call on the sofa and whoever rides on the bike, their watts
+  above them. The lamp and the window's weather are shared. Queue house radio
+  on the jukebox like a track: lofi generated for your crew, the same bar on
+  every screen, under your music fader. Each rider can mute it on their own
+  device under the picture.
+
+### Changed
+
+- On a desk, a free ride's controls, and a ride's with No workout, sit beside
+  the road's name at the top of the ride's first panel, one row shorter.
+- A ramp test keeps running while you open another page: nothing asks to
+  stop it on the way out, and Ramp test, Ride or a voice channel's Training
+  page shows it again, still under way.
+
+### Fixed
+
+- Leaving the riding screen and coming back keeps a road ride's metres
+  climbed, a road leg's button to the next leg and the world's picture of
+  the ride. While you ride, Settings › Equipment holds your trainer instead of
+  pairing a second one.
+
 ## [2026.10.6] - 2026-10-29
 
 ### Added
@@ -4168,7 +4198,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.10.6...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.10.7...HEAD
+[2026.10.7]: https://github.com/natrontech/wattroom/compare/2026.10.6...2026.10.7
 [2026.10.6]: https://github.com/natrontech/wattroom/compare/2026.10.5...2026.10.6
 [2026.10.5]: https://github.com/natrontech/wattroom/compare/2026.10.4...2026.10.5
 [2026.10.4]: https://github.com/natrontech/wattroom/compare/2026.10.3...2026.10.4
