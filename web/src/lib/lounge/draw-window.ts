@@ -3,7 +3,7 @@
  * weather over it, and the cat asleep on the sill. Everything that moves here
  * is a function of the clock, so the scene keeps no particles of its own.
  */
-import { LOUNGE as C, SKIES, SUNS } from '$lib/lounge/palette';
+import { LOUNGE as C, SKIES, SUNS, type Sky } from '$lib/lounge/palette';
 import { dot, line, rect, sprite, type Ctx } from '$lib/lounge/pixel';
 import type { SceneInput } from '$lib/lounge/scene';
 import { hash3 } from '$lib/lounge/hash';
@@ -21,8 +21,9 @@ export function drawWindow(g: Ctx, s: SceneInput) {
 	g.beginPath();
 	g.rect(X, Y, W, H);
 	g.clip();
-	sky(g, s);
-	skyline(g, s);
+	g.drawImage(backdrop(s.sky), X, Y, W, H, X, Y, W, H);
+	stars(g, s);
+	buildings(g, s);
 	ground(g, s);
 	weather(g, s);
 	g.restore();
@@ -34,8 +35,27 @@ export function drawWindow(g: Ctx, s: SceneInput) {
 	cat(g, s);
 }
 
-function sky(g: Ctx, s: SceneInput) {
-	const bands = SKIES[s.sky];
+/**
+ * The sky, its sun and the mountains change only with the sky itself, and
+ * drawn pixel by pixel they were most of a frame: each sky is drawn once.
+ */
+const backdrops = new Map<Sky, HTMLCanvasElement>();
+
+function backdrop(kind: Sky): HTMLCanvasElement {
+	let made = backdrops.get(kind);
+	if (made) return made;
+	made = document.createElement('canvas');
+	made.width = X + W;
+	made.height = Y + H;
+	const g = made.getContext('2d')!;
+	sky(g, kind);
+	mountains(g);
+	backdrops.set(kind, made);
+	return made;
+}
+
+function sky(g: Ctx, kind: Sky) {
+	const bands = SKIES[kind];
 	const rows = HORIZON - Y;
 	for (let y = 0; y < rows; y++) {
 		const f = (y / rows) * bands.length;
@@ -46,18 +66,7 @@ function sky(g: Ctx, s: SceneInput) {
 				dot(g, X + x, Y + y, (x + y) & 1 ? bands[b + 1] : bands[b]);
 		else rect(g, X, Y + y, W, 1, bands[b]);
 	}
-	if (s.weather === 'clear' && s.sky === 'night')
-		for (let i = 0; i < 26; i++) {
-			const twinkle = s.still ? 1 : Math.sin(s.t * 1.3 + i * 4);
-			if (twinkle > -0.6)
-				dot(
-					g,
-					X + Math.floor(hash3(i, 1, 9) * W),
-					Y + 1 + Math.floor(hash3(i, 2, 9) * 32),
-					twinkle > 0.7 ? C.star : C.lilac,
-				);
-		}
-	const [top, bottom] = SUNS[s.sky];
+	const [top, bottom] = SUNS[kind];
 	const r = 17;
 	for (let dy = 1; dy <= r; dy++) {
 		if (dy <= 9 && dy % 3 === 0) continue;
@@ -66,13 +75,31 @@ function sky(g: Ctx, s: SceneInput) {
 	}
 }
 
-function skyline(g: Ctx, s: SceneInput) {
+function mountains(g: Ctx) {
 	for (let x = 0; x < W; x++) {
 		const h = Math.round(
 			7 + 4 * Math.sin(x * 0.09) + 3 * Math.sin(x * 0.23 + 1),
 		);
 		rect(g, X + x, HORIZON - h, 1, h, C.mountain);
 	}
+}
+
+/** Above the sun's top and the mountains, so drawing them after hides nothing. */
+function stars(g: Ctx, s: SceneInput) {
+	if (s.weather !== 'clear' || s.sky !== 'night') return;
+	for (let i = 0; i < 26; i++) {
+		const twinkle = s.still ? 1 : Math.sin(s.t * 1.3 + i * 4);
+		if (twinkle > -0.6)
+			dot(
+				g,
+				X + Math.floor(hash3(i, 1, 9) * W),
+				Y + 1 + Math.floor(hash3(i, 2, 9) * 32),
+				twinkle > 0.7 ? C.star : C.lilac,
+			);
+	}
+}
+
+function buildings(g: Ctx, s: SceneInput) {
 	// Buildings are seeded; a lit window changes every few seconds.
 	for (let x = 0, i = 0; x < W; i++) {
 		const w = 4 + Math.floor(hash3(i, 7, 1) * 6);

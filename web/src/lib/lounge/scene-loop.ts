@@ -14,15 +14,24 @@ export function sceneLoop(
 ): () => void {
 	const g = canvas.getContext('2d');
 	if (!g) return () => {};
+	const every = still ? HELD_MS : FRAME_MS;
+	// A timer between frames: an animation frame alone would wake the page at
+	// the display's 120 or 165 Hz only to skip most of them.
 	let raf = 0;
+	let timer = 0;
 	let last = performance.now();
 	const tick = (now: number) => {
-		raf = requestAnimationFrame(tick);
-		if (now - last < (still ? HELD_MS : FRAME_MS)) return;
 		draw(g, (now - last) / 1000);
 		last = now;
+		timer = window.setTimeout(
+			() => (raf = requestAnimationFrame(tick)),
+			Math.max(0, every - (performance.now() - now)),
+		);
 	};
 	draw(g, 0);
-	raf = requestAnimationFrame(tick);
-	return () => cancelAnimationFrame(raf);
+	timer = window.setTimeout(() => (raf = requestAnimationFrame(tick)), every);
+	return () => {
+		clearTimeout(timer);
+		cancelAnimationFrame(raf);
+	};
 }
