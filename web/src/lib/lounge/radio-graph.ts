@@ -64,7 +64,7 @@ export function build(ctx: AudioContext): Graph {
 	comp.knee.value = 12;
 	comp.ratio.value = 2;
 	comp.connect(level);
-	const master = gain(0.35, comp);
+	const master = gain(0.45, comp);
 	const tuneGain = gain(1, master);
 	const toneFilter = filter('lowpass', OPEN_HZ, tuneGain);
 	const wow = ctx.createDelay(0.05);

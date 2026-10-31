@@ -21,13 +21,12 @@ import {
 	snare,
 } from '$lib/lounge/radio-voices';
 import { OPEN_HZ, build, type Graph } from '$lib/lounge/radio-graph';
-import { hash3 } from '$lib/world/rand';
+import { hash3 } from '$lib/lounge/hash';
 
 /** How far ahead the scheduler lays notes down, in seconds. */
 const AHEAD_SEC = 0.15;
 /** The tone control's breakdown setting; open is the graph's. */
 const SHUT_HZ = 1500;
-
 
 /** Section changes the sound follows: fades between tunes, the breakdown's low-pass. */
 function automate(g: Graph, tune: Tune, bar: number, t: number) {
