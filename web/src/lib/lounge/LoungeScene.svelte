@@ -183,7 +183,10 @@
 	></canvas>
 	{#if deckIdle}
 		<div class="text-muted mt-2 flex flex-wrap items-center gap-2 text-xs">
-			<button type="button" onclick={queueRadio} class="btn btn-ghost btn-xs"
+			<button
+				type="button"
+				onclick={queueRadio}
+				class="btn btn-ghost btn-xs px-0"
 				><Radio size={13} /> Queue house radio</button
 			>
 			<span>Lofi made for your crew, the same bar on every screen.</span>
@@ -194,7 +197,7 @@
 				type="button"
 				onclick={() => radioHeard.set(!radioHeard.current)}
 				aria-pressed={radioHeard.current}
-				class="btn btn-ghost btn-xs {radioHeard.current ? 'text-ink' : ''}"
+				class="btn btn-ghost btn-xs px-0 {radioHeard.current ? 'text-ink' : ''}"
 				><Radio size={13} />
 				{radioHeard.current
 					? 'Hearing house radio'
