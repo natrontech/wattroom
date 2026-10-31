@@ -20,6 +20,7 @@
 	import PlanCard from '$lib/session/PlanCard.svelte';
 	import HrShare from '$lib/channel/HrShare.svelte';
 	import EventLine from '$lib/channel/EventLine.svelte';
+	import LoungeScene from '$lib/lounge/LoungeScene.svelte';
 	import { eventText } from '$lib/channel/events';
 
 	import SprintMoment from '$lib/session/SprintMoment.svelte';
@@ -350,6 +351,13 @@
 		>
 	</div>
 
+	{#if channel.phase === 'lounge' && channel.address.channel && !onStage && !riding}
+		<!-- The lounge (ADR-0094): an idle voice channel's picture, and house
+		     radio while its deck is empty. A shared picture takes its place, a
+		     YouTube entry among them, so nothing is ever drawn over the
+		     player (RMF). -->
+		<LoungeScene />
+	{/if}
 	<div class={wrap}>
 		{#if onStage}
 			<!-- The stage (#280): many people may share at once, so the picker

@@ -6,6 +6,7 @@ import {
 	bigWatts,
 	designCrew,
 	fixtureRoad,
+	joinCrew,
 	newestRide,
 	readRoad,
 	savedRide,
@@ -2367,6 +2368,56 @@ surface(
 	// Both schemes: the ride keeps the rider's, on the session where the
 	// cave used to darken the whole app (G1, #4160).
 );
+
+/** The lounge's size on the page: a whole multiple of its 320 × 180, and no sideways scroll. */
+async function loungeProbe(page: Page) {
+	return page.evaluate(() => {
+		const scene = document.querySelector<HTMLCanvasElement>(
+			'canvas[aria-label^="The lounge"]',
+		);
+		const body = document.querySelector<HTMLElement>('[data-testid=page-body]');
+		const box = scene?.getBoundingClientRect();
+		return {
+			lounge: {
+				width: box?.width ?? 0,
+				height: box?.height ?? 0,
+				wholeScale: !!box && box.width % 320 === 0 && box.height % 180 === 0,
+				sideways: body ? body.scrollWidth > body.clientWidth : false,
+			},
+		};
+	});
+}
+
+surface('voice-channel-lounge', async (s) => {
+	// The lounge (ADR-0094) in a crew of its own: another surface's video on
+	// a shared deck would take the stage, and the scene with it.
+	const host = await s.open(DESK, { as: 'Design Lounger' });
+	const crew = await designCrew(host.page);
+	const mate = await s.open(DESK, { as: 'Design Partner' });
+	await joinCrew(mate.page, crew.code);
+	await mate.page.goto(voicePath(crew));
+	const shoot = async (o: Awaited<ReturnType<typeof s.open>>, name: string) => {
+		await o.page.goto(voicePath(crew));
+		await o.page
+			.locator('canvas[aria-label^="The lounge"]')
+			.waitFor({ timeout: 20_000 });
+		// Both on the sofa: the second rider rides the next tick.
+		await o.page.waitForTimeout(2500);
+		await s.shot(o, { name, extra: await loungeProbe(o.page) });
+	};
+	for (const [device, suffix] of variants([
+		[DESK, ''],
+		[PHONE, '-phone'],
+	] as const))
+		await shoot(
+			suffix ? await s.open(device, { as: 'Design Lounger' }) : host,
+			`voice-channel-lounge${suffix}`,
+		);
+	await shoot(
+		await s.open(DESK, { as: 'Design Lounger', reducedMotion: 'reduce' }),
+		'voice-channel-lounge-reduced',
+	);
+});
 
 /** Three of the seat's 100 ms measures: the player has caught up with a scroll. */
 const SEAT_MS = 300;

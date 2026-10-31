@@ -770,3 +770,17 @@ Target: v3-events, with D10. Canon: ADR-0076; SPEC “Open rides”.
 4. Right pane: eyebrow “OPEN RIDE · HOSTED BY <crew> · <DAY TIME>”; title at 22 px; countdown ~44 px, in ink, not watt. [3307-open-rides]
 5. Readiness chips; the pinned disclosure directly above the actions; “Enter the pen” as `btn-primary btn-lg`. [3307-open-rides]
 6. Only the rider's own people named; strangers are counts. Phone: the list first; a ride opens as its own page. [3307-open-rides]
+
+### H. Voice channel (desk)
+
+#### voice-channel-lounge
+
+Capture: Design Lounger founds a crew of its own and opens its voice channel with Design Partner in it, no session and nothing on the deck; desk 1440 × 900 in both schemes (`voice-channel-lounge`), a 375 × 812 phone (`voice-channel-lounge-phone`) and the desk under reduced motion (`voice-channel-lounge-reduced`). The mixer is muted, so house radio stays silent. Target: none drawn, canon is the bar. Canon: ADR-0094, ADR-0005, ADR-0079, ADR-0092, ux.md, WATTROOM.md Jukebox (RMF).
+
+1. With no session in the channel, nothing on the stage and this device not riding, the lounge sits above the tiles at the column's left edge, under the announcement when there is one. A session, a shared screen or a YouTube entry on the stage removes it. [4296]
+2. Drawn at a whole multiple of 320 × 180, nearest-neighbour, at most 3× and no taller than half the window. [4296] [probe:lounge]
+3. Everyone in the call sits on the sofa, five seats and a “+n” past them. A rider who is away leaves an object on the seat. The rider on the bike is the one who pedals: you first, else the first in the channel. [4296]
+4. The watts above the rider on the bike are the picture's only watt, and its only glow. The sign and the speaker are a third hue, never watt; the window frame takes neon and never glows (ADR-0005). [4296]
+5. Under the picture while the deck is empty: one “House radio” toggle (`btn-xs`, pressed while on) and, while it plays, the tune's name, key and BPM in one muted line; with the mix's music at 0, one muted line saying so instead. Nothing else is written on the picture but the watts and “+n”. [4296]
+6. Reduced motion: one held frame, still drawn each second from the channel (who sits where, the lamp, the weather); nothing scrolls or falls. [4296] [multi:reduced]
+7. Phone: the picture at 1× fits the column, and the page body never scrolls sideways (G5). [4296] [probe:lounge] [multi:phone]

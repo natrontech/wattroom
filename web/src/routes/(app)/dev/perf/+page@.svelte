@@ -8,6 +8,8 @@
 	import { iceGathered } from '$lib/perf/ice-gathered';
 	import Skyline from '$lib/ride/Skyline.svelte';
 	import type { Road } from '$lib/road/road';
+	import { sceneLoop } from '$lib/lounge/scene-loop';
+	import { SCENE_H, SCENE_W, drawScene, type Figure } from '$lib/lounge/scene';
 
 	/**
 	 * One element at a time, for `make perf` (#3039): the harness in
@@ -36,6 +38,7 @@
 		'camera',
 		'youtube',
 		'skyline',
+		'lounge',
 	];
 
 	/** An invented road for the Skyline (#3059): 40 km of rolling hills, a
@@ -75,6 +78,48 @@
 				frames: v.getVideoPlaybackQuality().totalVideoFrames,
 			})),
 	});
+
+	/** The lounge at twice its size (ADR-0094): four on the sofa, one riding,
+	 *  rain, and a beat at 80 BPM — everything that moves in it at once. */
+	const SITTER: Figure = {
+		id: 'a',
+		name: 'A',
+		skin: '#e0ac85',
+		hair: '#2a1a12',
+		shirt: '#3de0d0',
+		speaking: false,
+	};
+	function lounge(node: HTMLCanvasElement) {
+		let t = 0;
+		return sceneLoop(
+			node,
+			(g, dt) => {
+				t += dt;
+				drawScene(g, {
+					t,
+					still: false,
+					sky: 'night',
+					weather: 'rain',
+					lampOn: true,
+					seated: [0, 1, 2, 3].map((i) => ({
+						...SITTER,
+						id: String(i),
+						speaking: i === 1,
+					})),
+					rider: { ...SITTER, id: 'r', watts: 210, crank: t * 9 },
+					playing: true,
+					beat: (t * 80) / 60,
+					pulsing: true,
+					catAwakeUntil: 0,
+					hearts: [],
+					watt: '#ff3d8b',
+					hours: 21,
+					minutes: 30,
+				});
+			},
+			false,
+		);
+	}
 
 	function play(node: HTMLVideoElement, stream: MediaStream) {
 		node.srcObject = stream;
@@ -170,6 +215,16 @@
 			<div class="h-40 w-full">
 				<Skyline road={HILLS} m={metre} {mps} />
 			</div>
+		{:else if kase === 'lounge'}
+			<!-- LoungeScene.svelte's canvas at the scale a desk draws it -->
+			<canvas
+				width={SCENE_W}
+				height={SCENE_H}
+				class="[image-rendering:pixelated]"
+				style:width="{SCENE_W * 2}px"
+				style:height="{SCENE_H * 2}px"
+				{@attach lounge}
+			></canvas>
 		{:else if kase === 'youtube'}
 			<!-- The jukebox player's shape; muted, and the harness mutes the process too -->
 			<iframe

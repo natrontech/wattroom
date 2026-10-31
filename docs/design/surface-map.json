@@ -91,7 +91,7 @@
 			"web/src/lib/channel/LoungeSession.svelte",
 			"web/src/lib/channel/RiderTile.svelte"
 		],
-		"surfaces": ["roadside-chalk", "ride-watch"]
+		"surfaces": ["roadside-chalk", "ride-watch", "voice-channel-lounge"]
 	},
 	{
 		"files": [
@@ -394,5 +394,18 @@
 			"web/src/lib/ride/remote-talk.ts"
 		],
 		"surfaces": ["ride-phone-remote"]
+	},
+	{
+		"files": [
+			"web/src/lib/lounge/LoungeScene.svelte",
+			"web/src/lib/lounge/scene.ts",
+			"web/src/lib/lounge/draw-room.ts",
+			"web/src/lib/lounge/draw-window.ts",
+			"web/src/lib/lounge/draw-people.ts",
+			"web/src/lib/lounge/palette.ts",
+			"web/src/lib/lounge/pixel.ts",
+			"web/src/lib/lounge/figures.ts"
+		],
+		"surfaces": ["voice-channel-lounge"]
 	}
 ]
