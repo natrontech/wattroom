@@ -1995,9 +1995,16 @@ async function queueDeck(page: Page, tracks: [string, string][]) {
 		name: 'add music: search your library, or paste a YouTube link',
 	});
 	const fold = page.getByTestId('rail-sheet').filter({ visible: true });
+	// The sheet places itself on its toggle, a frame after it opens: until
+	// then the field has no width, and a second click would shut it again.
+	const open = async () => {
+		if (await add.isVisible()) return;
+		await fold.click();
+		await add.waitFor();
+	};
 	// Queued already when the queue's peek shows the second title: another
 	// shot on the same channel may have put the first one on the deck.
-	if (!(await add.isVisible())) await fold.click();
+	await open();
 	const queued = await page
 		.getByText((tracks[1] ?? tracks[0])[1])
 		.filter({ visible: true })
@@ -2011,7 +2018,7 @@ async function queueDeck(page: Page, tracks: [string, string][]) {
 			.filter({ visible: true })
 			.first();
 		for (let tries = 3; ; tries--) {
-			if (!(await add.isVisible())) await fold.click();
+			await open();
 			await add.fill(`https://www.youtube.com/watch?v=${id}`);
 			await add.press('Enter');
 			// Past the queue's peek of three, a title shows once it is opened.
