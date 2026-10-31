@@ -28,7 +28,7 @@ export function drawRoom(g: Ctx, s: SceneInput) {
 }
 
 function sign(g: Ctx, s: SceneInput) {
-	rect(g, 20, 24, 74, 36, '#12042c');
+	rect(g, 20, 24, 74, 36, C.poster);
 	rect(g, 20, 24, 74, 1, C.trim);
 	rect(g, 20, 59, 74, 1, C.trim);
 	SIGN_BARS.forEach((tall, i) => {
@@ -65,10 +65,10 @@ function clock(g: Ctx, s: SceneInput) {
 /** A climb with a flag on it: the wall's one picture until medals hang there. */
 function poster(g: Ctx) {
 	rect(g, 272, 36, 30, 34, C.trim);
-	rect(g, 274, 38, 26, 30, '#24095a');
+	rect(g, 274, 38, 26, 30, C.shelf);
 	for (let x = 0; x < 26; x++) {
 		const h = Math.round(Math.max(0, 16 - Math.abs(x - 14) * 1.3));
-		rect(g, 274 + x, 64 - h, 1, h + 4, '#43127a');
+		rect(g, 274 + x, 64 - h, 1, h + 4, C.book);
 	}
 	rect(g, 287, 46, 1, 6, C.lilac);
 	rect(g, 288, 46, 4, 3, C.amber);
@@ -114,7 +114,7 @@ function desk(g: Ctx, s: SceneInput) {
 		const hue = [C.violet, C.teal, C.lilac][Math.floor(hash3(n, 5, 6) * 3)];
 		rect(g, 43 + indent, 101 + i * 2, Math.min(length, 24 - indent), 1, hue);
 	}
-	rect(g, 38, 116, 34, 2, '#3a2a5c');
+	rect(g, 38, 116, 34, 2, C.rug);
 	// The mug, and its steam.
 	rect(g, 82, 111, 6, 7, C.lilac);
 	rect(g, 88, 113, 2, 1, C.lilac);
@@ -159,14 +159,14 @@ function deck(g: Ctx, s: SceneInput) {
 			g,
 			282 + Math.round(Math.cos(a) * 7),
 			107 + Math.round(Math.sin(a)),
-			'#6a5a96',
+			C.cable,
 		);
 	}
 	rect(g, 298, 103, 1, 6, C.lilac);
 	rect(g, 292, 103, 6, 1, C.lilac);
 	dot(g, 302, 113, s.playing ? C.teal : C.wood);
 	// The speaker's cone moves on the kick.
-	rect(g, 290, 134, 20, 26, '#1f0b40');
+	rect(g, 290, 134, 20, 26, C.door);
 	rect(g, 290, 134, 20, 1, C.trim);
 	const pump =
 		s.playing && s.pulsing && !s.still ? Math.round(pulseOf(s) * 1.4) : 0;

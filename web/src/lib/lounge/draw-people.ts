@@ -130,11 +130,11 @@ function onTheBike(g: Ctx, r: Rider, p1: number[], p2: number[], watt: string) {
 		line(g, hip[0] + 1, hip[1], knee[0] + 1, knee[1], colour);
 		line(g, knee[0], knee[1], pedal[0], pedal[1], colour);
 	};
-	leg(p2, '#2b1f4a');
+	leg(p2, C.legFar);
 	for (let o = -1; o <= 1; o++)
 		line(g, hip[0], hip[1] + o, shoulder[0], shoulder[1] + o, r.shirt);
 	line(g, shoulder[0], shoulder[1], 204, 129, r.skin);
-	leg(p1, '#3a2a5c');
+	leg(p1, C.legNear);
 	rect(g, 195, 110, 5, 5, r.skin);
 	rect(g, 195, 109, 5, 2, r.hair);
 	if (r.speaking) sprite(g, NOTE, 201, 106, C.lilac);

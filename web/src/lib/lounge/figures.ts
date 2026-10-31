@@ -4,7 +4,7 @@
  * wears the same colour on the sofa as on the road.
  */
 import type { LiveRider } from '$lib/channel/types';
-import { HAIRS, SKINS } from '$lib/lounge/palette';
+import { HAIRS, LOUNGE, SKINS } from '$lib/lounge/palette';
 import type { Figure, Rider } from '$lib/lounge/scene';
 import { fnv, hexOf, seededLoadout } from '$lib/world/loadout';
 
@@ -18,7 +18,7 @@ function dress(r: LiveRider): Figure {
 		name: r.name,
 		skin: SKINS[seed % SKINS.length],
 		hair: HAIRS[(seed >>> 8) % HAIRS.length],
-		shirt: hexOf.get(String(look.colours?.jerseyA)) ?? '#8b6cff',
+		shirt: hexOf.get(String(look.colours?.jerseyA)) ?? LOUNGE.shirt,
 		speaking: r.speaking,
 		away: r.away ? (r.awayReason ?? '') : undefined,
 	};

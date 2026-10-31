@@ -54,7 +54,7 @@ function sky(g: Ctx, s: SceneInput) {
 					g,
 					X + Math.floor(hash3(i, 1, 9) * W),
 					Y + 1 + Math.floor(hash3(i, 2, 9) * 32),
-					twinkle > 0.7 ? '#ffffff' : C.lilac,
+					twinkle > 0.7 ? C.star : C.lilac,
 				);
 		}
 	const [top, bottom] = SUNS[s.sky];

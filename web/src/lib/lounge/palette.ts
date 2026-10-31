@@ -36,6 +36,18 @@ export const LOUNGE = {
 	towel: '#3de0d0',
 	paper: '#f0ecff',
 	shade: '#05000d',
+	legFar: '#2b1f4a',
+	legNear: '#3a2a5c',
+	poster: '#12042c',
+	shelf: '#24095a',
+	book: '#43127a',
+	rug: '#3a2a5c',
+	cable: '#6a5a96',
+	door: '#1f0b40',
+	star: '#ffffff',
+	shirt: '#8b6cff',
+	/** Until the theme's --color-watt has been read off the canvas. */
+	watt: '#ff3d8b',
 } as const;
 
 /** Five bands from the top of the sky to the horizon. */

@@ -9,16 +9,16 @@ import { hashSeed, prng } from '$lib/world/rand';
 export const SLOT_SEC = 150;
 export const KEY_NAMES = [
 	'C',
-	'D♭',
+	'Db',
 	'D',
-	'E♭',
+	'Eb',
 	'E',
 	'F',
-	'G♭',
+	'Gb',
 	'G',
-	'A♭',
+	'Ab',
 	'A',
-	'B♭',
+	'Bb',
 	'B',
 ];
 /** Chord colours above the root, which the bass plays. */
