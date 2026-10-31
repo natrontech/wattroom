@@ -306,6 +306,12 @@ export interface JukeboxCommand {
    * display, because the deck carries no metadata of its own.
    */
   trackId?: string;
+  /**
+   * House radio (ADR-0094): the crew's generated station queued as one
+   * entry, with no video and no track. Each client plays it from the
+   * crew and the server clock.
+   */
+  radio?: boolean;
   artist?: string;
   /**
    * The track's tempo, when its tags say (#1431): read off the library
@@ -402,6 +408,11 @@ export interface JukeboxEntry {
    * which is the whole reason a pool track may be audio-only.
    */
   trackId?: string;
+  /**
+   * House radio (ADR-0094): no video, no track, no end. It holds the
+   * deck until someone skips it, and never reaches the play log.
+   */
+  radio?: boolean;
   /**
    * Display only, resolved by whoever queued it: the server holds no
    * track metadata on the deck, the same way it holds no YouTube titles.
@@ -967,6 +978,32 @@ export const ReferenceRiderWatts = 225;
 export const MaxBackfillBatch = 60 * 60;
 
 //////////
+// source: lounge.go
+
+/**
+ * LoungeState is the shared half of a voice channel's lounge (ADR-0094): what
+ * any rider in the channel may flip for everyone in it. Ephemeral, like a
+ * channel event: the hub holds it while the channel is up and nothing keeps
+ * it. The zero value is the scene as it opens, so a channel nobody has touched
+ * sends nothing.
+ */
+export interface LoungeState {
+  /**
+   * The desk lamp, which the scene opens with on.
+   */
+  lampOff?: boolean;
+  /**
+   * From LoungeWeathers. "" is rain, the scene's default.
+   */
+  weather?: string;
+}
+/**
+ * HouseRadioTitle is house radio's line on the deck and in the channel's
+ * events: the station is generated, so it has no title of its own.
+ */
+export const HouseRadioTitle = "House radio";
+
+//////////
 // source: metrics.go
 
 /**
@@ -1197,6 +1234,7 @@ export interface ClientMessage {
   view?: ViewState;
   voice?: VoiceClaim;
   freeRoad?: FreeRoad;
+  lounge?: LoungeState;
 }
 /**
  * ServerTick is a voice channel's coalesced 1 Hz broadcast: every rider's
@@ -1262,6 +1300,11 @@ export interface ServerTick {
    * Live execution per rider (#27) — the SPEC score so far this session.
    */
   execution?: { [key: string]: number /* float64 */};
+  /**
+   * The lounge's lamp and weather (ADR-0094), once someone has changed
+   * them; absent is the scene as it opens.
+   */
+  lounge?: LoungeState;
   /**
    * Who the LiveKit webhooks say is in voice (#467), by rider id. A client
    * learns this from LiveKit only once it has joined itself, so without the

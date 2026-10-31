@@ -49,6 +49,17 @@ When the deck is empty, the lounge plays **house radio**: lofi generated in the 
 
 The scene moves on the beat of whatever plays: house radio's own clock, or a library track's BPM tag and peaks on the shared playhead. A YouTube entry gives it no beat. The scene then idles beside the tile and never covers it.
 
+## Amended 2026-10-31 (#4296)
+
+Decided by Dave while the first version was built: house radio is **queued like a track**, and each rider can opt out.
+
+- It is a jukebox entry (`radio` on the entry and the add command), queued from the jukebox's add row or from the lounge, and it holds the deck until someone skips it or queues something behind it and skips. It still never reaches `track_plays` or the just-played list.
+- Each rider mutes it for their own device under the lounge picture; it stays on the deck for everyone else. A device that opted out builds no audio for it.
+- It plays on every page of the voice channel, as a library track does, and the YouTube player ignores it.
+- The record player's click queues house radio on an empty deck, in place of opening the jukebox.
+
+"When the deck is empty, the lounge plays house radio", "stops when anything is queued" and "It is not a queue entry" above are superseded.
+
 ## Consequences
 
 - An idle voice channel gets music and something to look at without a new service, new storage or a new sound license. The only protocol change is the shared lamp and weather.

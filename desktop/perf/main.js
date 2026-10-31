@@ -31,6 +31,8 @@ const DEFAULT_CASES = [
 	'camera&n=1',
 	// The Skyline (#3059): the road stepped at 10 Hz under a moving dot.
 	'skyline',
+	// The lounge (ADR-0094): its pixel room at 15 fps, everything moving.
+	'lounge',
 ];
 const CASES =
 	process.env.PERF_CASES?.split(/\s+/).filter(Boolean) ?? DEFAULT_CASES;

@@ -27,6 +27,8 @@ const ALLOWLIST: Allowlist = {
 		"the landing's clay cyclist: jersey, helmet and skin are the drawing's own colours, derived from its hue, and the spokes a white glint",
 	'lib/channel/RiderTile.svelte':
 		"a rider's hue is who they are on every palette (#181): the camera stand-in is drawn from it, the camera-off wash mixes it into the surface token",
+	'lib/lounge/palette.ts':
+		"the lounge picture's own pixel palette (ADR-0094); its one live number takes --color-watt from the theme",
 	'lib/components/MedalCard.svelte':
 		"the sun's slice mask: in an SVG mask white shows and black cuts — luminance, never paint",
 };

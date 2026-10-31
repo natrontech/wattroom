@@ -2,6 +2,7 @@
 	import ListPlus from '@lucide/svelte/icons/list-plus';
 	import Music from '@lucide/svelte/icons/music';
 	import Plus from '@lucide/svelte/icons/plus';
+	import Disc3 from '@lucide/svelte/icons/disc-3';
 	import { listTracks, trackClock, type Track } from '$lib/music/pool';
 	import type { JukeboxCommand } from '$lib/protocol';
 	import {
@@ -203,6 +204,19 @@
 		aria-label="add to the queue"><Plus size={14} /></button
 	>
 </form>
+
+{#if verb === 'Queued'}
+	<!-- House radio (ADR-0094): the crew's generated station, queued like a
+	     track, on its own row so the field keeps its width. Not for a saved
+	     playlist: it has nothing to keep. -->
+	<button
+		type="button"
+		onclick={() => send({ action: 'add', radio: true })}
+		class="btn-link link-standalone gap-1 self-start text-xs"
+		title="Lofi made for your crew, the same bar on every screen"
+		><Disc3 size={13} /> Queue house radio</button
+	>
+{/if}
 
 {#if hits.length}
 	<!-- Inline, under the field: a tap per hit, the way the Music page's own

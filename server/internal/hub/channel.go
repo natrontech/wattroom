@@ -140,6 +140,8 @@ type channelState struct {
 	// The value is the reason from protocol.AwayReasons, "" for plain away;
 	// presence in the map is the away-ness, as it always was.
 	away map[string]string
+	// The lounge's lamp and weather (ADR-0094), flipped by anyone here.
+	lounge protocol.LoungeState
 	// Riders whose last socket has gone, and when. The room is not told until
 	// the grace window is out (#984): a phone in a garage flaps, and a leave
 	// line per flap is a strobe rather than a timeline. Coming back inside the

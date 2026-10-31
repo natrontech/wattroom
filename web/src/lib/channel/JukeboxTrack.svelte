@@ -2,6 +2,7 @@
 	import { contextMenu, type MenuEntry } from '$lib/context-menu.svelte';
 	import ArrowDown from '@lucide/svelte/icons/arrow-down';
 	import Music from '@lucide/svelte/icons/music';
+	import Disc3 from '@lucide/svelte/icons/disc-3';
 	import ArrowUp from '@lucide/svelte/icons/arrow-up';
 	import ThumbsUp from '@lucide/svelte/icons/thumbs-up';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
@@ -125,6 +126,12 @@
 					class="bg-surface text-muted grid h-9 w-16 place-items-center rounded"
 				>
 					<Music size={14} />
+				</div>
+			{:else if entry.radio}
+				<div
+					class="bg-surface text-muted grid h-9 w-16 place-items-center rounded"
+				>
+					<Disc3 size={14} />
 				</div>
 			{:else}
 				<img

@@ -144,6 +144,16 @@ func (j *jukebox) newEntry(cmd protocol.JukeboxCommand, addedBy string) (protoco
 		return entry, true, ""
 	}
 
+	// House radio (ADR-0094): nothing to validate but the queue's room, and
+	// one entry like any track.
+	if cmd.Radio {
+		if j.queuedTracks() >= maxQueuedTracks {
+			return protocol.JukeboxEntry{}, false, refusalTrackCap
+		}
+		entry.Radio, entry.Title = true, protocol.HouseRadioTitle
+		return entry, true, ""
+	}
+
 	// A track from the pool (#267, ADR-0015). Checked before the video
 	// branch because such an entry carries no VideoID at all, and the
 	// server still knows nothing about the audio — it holds an id the

@@ -214,6 +214,7 @@ func (rm *channelState) tickLocked(now func() time.Time, dt time.Duration, savin
 			return out
 		}(),
 		Voice:     rm.voiceIDsLocked(),
+		Lounge:    rm.loungeLocked(),
 		World:     rm.worldLocked(),
 		Roadside:  rm.roadsideLocked(),
 		FreeRoads: rm.freeRoadsLocked(),

@@ -155,7 +155,19 @@ describe('the jukebox chase (#286)', () => {
 		const chase = chaseOn();
 		chase.tick();
 		calls = [];
-		host.deckNow = deck({ current: track({ trackId: 'trk1' }) });
+		host.deckNow = deck({ current: track({ videoId: '', trackId: 'trk1' }) });
+		chase.tick();
+		expect(calls).toEqual(['stop']);
+		expect(chase.playing).toBeNull();
+	});
+
+	it('leaves house radio to its own deck, so no player skips it (ADR-0094)', () => {
+		const chase = chaseOn();
+		chase.tick();
+		calls = [];
+		host.deckNow = deck({
+			current: track({ videoId: '', title: 'House radio', radio: true }),
+		});
 		chase.tick();
 		expect(calls).toEqual(['stop']);
 		expect(chase.playing).toBeNull();
