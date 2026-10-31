@@ -1,6 +1,6 @@
 <script lang="ts">
 	import FastForward from '@lucide/svelte/icons/fast-forward';
-	import Radio from '@lucide/svelte/icons/radio';
+	import Disc3 from '@lucide/svelte/icons/disc-3';
 	import ListX from '@lucide/svelte/icons/list-x';
 	import Pause from '@lucide/svelte/icons/pause';
 	import Play from '@lucide/svelte/icons/play';
@@ -210,7 +210,7 @@
 			class="bg-surface text-muted grid w-full place-items-center rounded-lg"
 			style="height: {riding ? '200px' : 'clamp(200px, 24vh, 240px)'}"
 		>
-			<Radio size={28} />
+			<Disc3 size={28} />
 		</div>
 	{:else}
 		<!-- The seat: the dock flies onto this hole (#445). ≥200 px tall so

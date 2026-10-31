@@ -3,7 +3,7 @@
 	// decides when it shows; this draws it and keeps its clock. House radio is
 	// queued on the deck like a track and HouseRadioDeck plays it.
 	import { untrack } from 'svelte';
-	import Radio from '@lucide/svelte/icons/radio';
+	import Disc3 from '@lucide/svelte/icons/disc-3';
 	import { useChannel } from '$lib/channel/context';
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { playheadAt } from '$lib/channel/playhead';
@@ -187,7 +187,7 @@
 				type="button"
 				onclick={queueRadio}
 				class="btn btn-ghost btn-xs px-0"
-				><Radio size={13} /> Queue house radio</button
+				><Disc3 size={13} /> Queue house radio</button
 			>
 			<span>Lofi made for your crew, the same bar on every screen.</span>
 		</div>
@@ -198,7 +198,7 @@
 				onclick={() => radioHeard.set(!radioHeard.current)}
 				aria-pressed={radioHeard.current}
 				class="btn btn-ghost btn-xs px-0 {radioHeard.current ? 'text-ink' : ''}"
-				><Radio size={13} />
+				><Disc3 size={13} />
 				{radioHeard.current
 					? 'Hearing house radio'
 					: 'House radio muted here'}</button

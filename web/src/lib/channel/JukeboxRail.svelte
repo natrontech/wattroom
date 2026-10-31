@@ -1,7 +1,7 @@
 <script lang="ts">
 	import FastForward from '@lucide/svelte/icons/fast-forward';
 	import Pause from '@lucide/svelte/icons/pause';
-	import Radio from '@lucide/svelte/icons/radio';
+	import Disc3 from '@lucide/svelte/icons/disc-3';
 	import Play from '@lucide/svelte/icons/play';
 	import Rewind from '@lucide/svelte/icons/rewind';
 	import HeadphoneOff from '@lucide/svelte/icons/headphone-off';
@@ -123,7 +123,7 @@
 				</div>
 			{:else if current.radio}
 				<div class="text-muted grid h-full w-full place-items-center">
-					<Radio size={28} />
+					<Disc3 size={28} />
 				</div>
 			{:else}
 				<img
