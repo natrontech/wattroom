@@ -12,9 +12,11 @@ Welcome — this project is built to be contributed to. Read this once and you s
 ## Dev setup
 
 Requirements: Go 1.26+, Node 22+, pnpm, Docker. The pnpm version is pinned
-in `web/package.json` and `desktop/package.json` (`packageManager`); pnpm 10
-and newer, and corepack, install that version for you, so there is nothing to
-match by hand.
+in `web/package.json` and `desktop/package.json` (`packageManager`); a
+global pnpm 12, or corepack, installs that version for you. A global pnpm 10
+fails: its switch to 12 skips the install script that links pnpm 12's native
+binary, then fails with `ENOEXEC` on the placeholder it left. Upgrade it
+first with `npm install -g pnpm@12`.
 
 ```sh
 git clone https://github.com/natrontech/wattroom && cd wattroom

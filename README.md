@@ -174,7 +174,8 @@ is in [deploy/README.md](deploy/README.md).
 ## Develop
 
 Requirements: Go 1.26+, Node 22+, pnpm, Docker. The pnpm version is pinned in
-`web/package.json` (`packageManager`), and pnpm 10+ or corepack installs it for you.
+`web/package.json` (`packageManager`), and a global pnpm 12 or corepack installs it
+for you (pnpm 10 fails the switch with `ENOEXEC`: CONTRIBUTING.md).
 
 ```sh
 make infra        # Postgres + LiveKit (dev mode) in containers
