@@ -15,3 +15,7 @@ type LoungeState struct {
 // LoungeWeathers is the closed set behind the lounge's window. The client keeps
 // its own copy in web/src/lib/lounge/state.ts, read side by side in a test.
 var LoungeWeathers = []string{"rain", "clear", "snow"}
+
+// HouseRadioTitle is house radio's line on the deck and in the channel's
+// events: the station is generated, so it has no title of its own.
+const HouseRadioTitle = "House radio"

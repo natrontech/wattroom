@@ -202,9 +202,12 @@ func (j *jukebox) onSkip(cmd protocol.JukeboxCommand, riderID, addedBy string, n
 	skipped := *j.state.Current
 	// What left the deck, for the play log (#269, #1432): a library track by
 	// id, a video by id and title — a set's current track, never the set.
-	j.event = &trackEvent{
-		trackID: skipped.TrackID, videoID: skipped.VideoID, title: skipped.Title,
-		queuedBy: j.owners[skipped.ID], skipped: true,
+	// House radio plays nothing the log could name (ADR-0094).
+	if !skipped.Radio {
+		j.event = &trackEvent{
+			trackID: skipped.TrackID, videoID: skipped.VideoID, title: skipped.Title,
+			queuedBy: j.owners[skipped.ID], skipped: true,
+		}
 	}
 	// Skipping a track INSIDE a playlist leaves the entry on the deck,
 	// so its owner outlives the track — dropping the credit here cost

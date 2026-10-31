@@ -1,6 +1,5 @@
 /**
- * The lounge's shared lamp and weather as the client reads them (ADR-0094),
- * and the one thing about it this device keeps: whether house radio plays.
+ * The lounge's shared lamp and weather as the client reads them (ADR-0094).
  */
 import type { LoungeState } from '$lib/protocol';
 
@@ -16,24 +15,4 @@ export function weatherOf(state: LoungeState | undefined): Weather {
 
 export function nextWeather(now: Weather): Weather {
 	return WEATHERS[(WEATHERS.indexOf(now) + 1) % WEATHERS.length];
-}
-
-const RADIO_KEY = 'wattroom.lounge.radio.v1';
-
-/** House radio is on unless this device turned it off. */
-export function radioWanted(): boolean {
-	try {
-		return localStorage.getItem(RADIO_KEY) !== 'off';
-	} catch {
-		return true;
-	}
-}
-
-export function setRadioWanted(on: boolean) {
-	try {
-		if (on) localStorage.removeItem(RADIO_KEY);
-		else localStorage.setItem(RADIO_KEY, 'off');
-	} catch {
-		// Kept for this visit only.
-	}
 }

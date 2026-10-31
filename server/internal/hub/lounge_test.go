@@ -75,3 +75,32 @@ func TestSetLounge(t *testing.T) {
 		})
 	}
 }
+
+// House radio queues like a track: it plays an empty deck at once, holds it
+// until a skip, and leaves no line in the play log or the just-played list.
+func TestHouseRadioQueuesLikeATrack(t *testing.T) {
+	j := newJukebox()
+	if !accepted(j, protocol.JukeboxCommand{Action: "add", Radio: true, Title: "anything"}, "r-jan", "jan", jat(0)) {
+		t.Fatal("house radio refused")
+	}
+	s := j.snapshot()
+	if s.Current == nil || !s.Current.Radio || s.Current.Title != protocol.HouseRadioTitle || !s.Playing {
+		t.Fatalf("house radio did not take the empty deck: %+v", s.Current)
+	}
+	add(j, "dQw4w9WgXcQ", jat(1))
+	if !accepted(j, protocol.JukeboxCommand{Action: "skip"}, "r-jan", "jan", jat(2)) {
+		t.Fatal("skip refused")
+	}
+	s = j.snapshot()
+	if s.Current == nil || s.Current.VideoID != "dQw4w9WgXcQ" {
+		t.Fatalf("skip did not move past house radio: %+v", s.Current)
+	}
+	if j.event != nil {
+		t.Errorf("house radio reached the play log: %+v", j.event)
+	}
+	for _, played := range s.History {
+		if played.Radio {
+			t.Errorf("house radio in just played: %+v", played)
+		}
+	}
+}

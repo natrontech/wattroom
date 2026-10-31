@@ -1,6 +1,7 @@
 <script lang="ts">
 	import FastForward from '@lucide/svelte/icons/fast-forward';
 	import Pause from '@lucide/svelte/icons/pause';
+	import Radio from '@lucide/svelte/icons/radio';
 	import Play from '@lucide/svelte/icons/play';
 	import Rewind from '@lucide/svelte/icons/rewind';
 	import HeadphoneOff from '@lucide/svelte/icons/headphone-off';
@@ -119,6 +120,10 @@
 				     waveform (#1425), the played part lit. -->
 				<div class="h-full w-full px-2 py-6">
 					<TrackWave trackId={current.trackId} {progress} />
+				</div>
+			{:else if current.radio}
+				<div class="text-muted grid h-full w-full place-items-center">
+					<Radio size={28} />
 				</div>
 			{:else}
 				<img

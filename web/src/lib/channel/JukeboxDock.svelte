@@ -162,9 +162,7 @@
 	// effect's cleanup takes the player down with it.
 	const wantsYouTube = $derived(
 		!!jukebox &&
-			[jukebox.current, ...jukebox.queue].some(
-				(entry) => entry && !entry.trackId,
-			),
+			[jukebox.current, ...jukebox.queue].some((entry) => !!entry?.videoId),
 	);
 
 	$effect(() => {
@@ -327,9 +325,7 @@
 	// plays, so RMF's "visible while media plays" is not engaged either.
 	// A pool track has no picture and no player to show (#267) — the dock
 	// stays out of the way rather than framing an empty iframe.
-	const showPlayer = $derived(
-		!!jukebox?.current && !jukebox.current.trackId && !mixer.muted,
-	);
+	const showPlayer = $derived(!!jukebox?.current?.videoId && !mixer.muted);
 </script>
 
 {#if conn}

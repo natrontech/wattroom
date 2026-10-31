@@ -306,6 +306,12 @@ export interface JukeboxCommand {
    * display, because the deck carries no metadata of its own.
    */
   trackId?: string;
+  /**
+   * House radio (ADR-0094): the crew's generated station queued as one
+   * entry, with no video and no track. Each client plays it from the
+   * crew and the server clock.
+   */
+  radio?: boolean;
   artist?: string;
   /**
    * The track's tempo, when its tags say (#1431): read off the library
@@ -402,6 +408,11 @@ export interface JukeboxEntry {
    * which is the whole reason a pool track may be audio-only.
    */
   trackId?: string;
+  /**
+   * House radio (ADR-0094): no video, no track, no end. It holds the
+   * deck until someone skips it, and never reaches the play log.
+   */
+  radio?: boolean;
   /**
    * Display only, resolved by whoever queued it: the server holds no
    * track metadata on the deck, the same way it holds no YouTube titles.
@@ -986,6 +997,11 @@ export interface LoungeState {
    */
   weather?: string;
 }
+/**
+ * HouseRadioTitle is house radio's line on the deck and in the channel's
+ * events: the station is generated, so it has no title of its own.
+ */
+export const HouseRadioTitle = "House radio";
 
 //////////
 // source: metrics.go

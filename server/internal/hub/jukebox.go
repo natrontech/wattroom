@@ -281,7 +281,8 @@ func (j *jukebox) play(entry protocol.JukeboxEntry, now time.Time) {
 // on again, and a playlist's name was never a song.
 func (j *jukebox) remember() {
 	cur := j.state.Current
-	if cur == nil {
+	// House radio is not a song to put on again (ADR-0094).
+	if cur == nil || cur.Radio {
 		return
 	}
 	played := *cur

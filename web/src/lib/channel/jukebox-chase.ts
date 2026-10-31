@@ -156,11 +156,12 @@ export function createJukeboxChase(host: ChaseHost): JukeboxChase {
 			return;
 		}
 
-		// A pool track belongs to AudioDeck (#267): it carries no video id, and
+		// A pool track belongs to AudioDeck (#267), house radio to
+		// HouseRadioDeck (ADR-0094): neither carries a video id, and
 		// loading "" makes the iframe raise an unplayable-video error, which
 		// the dock then answers by SKIPPING the entry. Everyone's track would
 		// be skipped by the one player that cannot play it.
-		if (!deck.current || deck.current.trackId) {
+		if (!deck.current?.videoId) {
 			if (loadedVideo) unload(player);
 			return;
 		}

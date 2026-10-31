@@ -585,6 +585,10 @@
 			{#await import('$lib/channel/AudioDeck.svelte') then { default: AudioDeck }}
 				<AudioDeck />
 			{/await}
+			<!-- And house radio, a third source on the same deck (ADR-0094). -->
+			{#await import('$lib/lounge/HouseRadioDeck.svelte') then { default: HouseRadioDeck }}
+				<HouseRadioDeck />
+			{/await}
 		{/if}
 	</div>
 {:else}

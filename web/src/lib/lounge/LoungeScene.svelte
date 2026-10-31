@@ -1,28 +1,21 @@
 <script lang="ts">
-	// The lounge (ADR-0094): the picture an idle voice channel shows, and
-	// house radio while its deck is empty. The page decides when it shows;
-	// this draws it, keeps its clock, and plays the station.
+	// The lounge (ADR-0094): the picture an idle voice channel shows. The page
+	// decides when it shows; this draws it and keeps its clock. House radio is
+	// queued on the deck like a track and HouseRadioDeck plays it.
 	import { untrack } from 'svelte';
 	import Radio from '@lucide/svelte/icons/radio';
 	import { useChannel } from '$lib/channel/context';
 	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { listening } from '$lib/channel/listening.svelte';
 	import { playheadAt } from '$lib/channel/playhead';
 	import { serverNow } from '$lib/server-clock';
 	import { mixer } from '$lib/sound/mixer.svelte';
-	import { onDuck } from '$lib/sound/duck';
 	import { prefersReducedMotion } from '$lib/motion';
-	import { createHouseRadio, type HouseRadio } from '$lib/lounge/house-radio';
+	import { radioHeard } from '$lib/lounge/radio-heard.svelte';
 	import { sceneLoop } from '$lib/lounge/scene-loop';
 	import { KEY_NAMES, drumsIn, positionAt } from '$lib/lounge/station';
-	import {
-		nextWeather,
-		radioWanted,
-		setRadioWanted,
-		weatherOf,
-	} from '$lib/lounge/state';
+	import { nextWeather, weatherOf } from '$lib/lounge/state';
 	import { riderOf, seatedOf } from '$lib/lounge/figures';
-	import { skyAt } from '$lib/lounge/palette';
+	import { LOUNGE, skyAt } from '$lib/lounge/palette';
 	import {
 		SCENE_H,
 		SCENE_W,
@@ -42,18 +35,8 @@
 	const lounge = $derived(live?.tick?.lounge);
 	const station = $derived(channel.address.crew);
 
-	let wanted = $state(radioWanted());
 	const deckIdle = $derived(!deck?.current);
-	const radioOn = $derived(
-		wanted && deckIdle && !listening.out && !mixer.muted && mixer.music > 0,
-	);
-	// One station per crew: a new crew is a new context, closed with the old.
-	let radio = $state.raw<HouseRadio | null>(null);
-	$effect(() => {
-		const made = createHouseRadio(station, serverNow);
-		radio = made;
-		return () => made.close();
-	});
+	const onAir = $derived(!!deck?.current?.radio);
 
 	let width = $state(0);
 	const scale = $derived(
@@ -78,10 +61,18 @@
 	let crank = 0.9;
 	let nowPlaying = $state('');
 	/** The theme's live-data hue, read once the canvas is in the page. */
-	let watt = '#ff3d8b';
+	let watt: string = LOUNGE.watt;
 
 	function music(): Pick<SceneInput, 'playing' | 'beat' | 'pulsing'> {
 		const current = deck?.current;
+		if (current?.radio) {
+			const p = positionAt(station, serverNow() / 1000);
+			return {
+				playing: deck!.playing,
+				beat: p.beat,
+				pulsing: deck!.playing && drumsIn(p.section),
+			};
+		}
 		if (current) {
 			const bpm = current.bpm ?? 0;
 			const at = playheadAt(deck!, serverNow());
@@ -91,8 +82,7 @@
 				pulsing: deck!.playing && bpm > 0,
 			};
 		}
-		const p = positionAt(station, serverNow() / 1000);
-		return { playing: radioOn, beat: p.beat, pulsing: drumsIn(p.section) };
+		return { playing: false, beat: 0, pulsing: false };
 	}
 
 	function frame(g: CanvasRenderingContext2D, dt: number, still: boolean) {
@@ -134,19 +124,7 @@
 	});
 
 	$effect(() => {
-		if (radioOn) radio?.start();
-		else radio?.stop();
-	});
-	$effect(() => {
-		const ceiling = radioOn ? mixer.music / 100 : 0;
-		const depth = mixer.duck;
-		return onDuck(({ down, ms }) =>
-			radio?.setLevel(down ? ceiling * depth : ceiling, ms),
-		);
-	});
-	$effect(() => radio?.setRain(weatherOf(lounge) === 'rain'));
-	$effect(() => {
-		if (!radioOn) {
+		if (!onAir) {
 			nowPlaying = '';
 			return;
 		}
@@ -158,16 +136,9 @@
 		const every = setInterval(say, 1000);
 		return () => clearInterval(every);
 	});
-	// A context made before any click starts suspended; the first one wakes it.
-	$effect(() => {
-		const wake = () => radio?.resume();
-		window.addEventListener('pointerdown', wake, { once: true });
-		return () => window.removeEventListener('pointerdown', wake);
-	});
 
-	function toggleRadio() {
-		wanted = !wanted;
-		setRadioWanted(wanted);
+	function queueRadio() {
+		live?.jukebox({ action: 'add', radio: true });
 	}
 
 	function at(e: MouseEvent) {
@@ -184,7 +155,7 @@
 		else if (spot === 'window')
 			live?.setLounge({ ...state, weather: nextWeather(state.weather) });
 		else if (spot === 'cat') catAwakeUntil = clock + 4;
-		else if (spot === 'deck' && deckIdle) toggleRadio();
+		else if (spot === 'deck' && deckIdle) queueRadio();
 		else if (spot === 'sofa') {
 			const riders = channel.riders;
 			const seat = seatAt(x, seatedOf(riders, riderOf(riders, 0)?.id).length);
@@ -212,15 +183,26 @@
 	></canvas>
 	{#if deckIdle}
 		<div class="text-muted mt-2 flex flex-wrap items-center gap-2 text-xs">
+			<button type="button" onclick={queueRadio} class="btn btn-ghost btn-xs"
+				><Radio size={13} /> Queue house radio</button
+			>
+			<span>Lofi made for your crew, the same bar on every screen.</span>
+		</div>
+	{:else if onAir}
+		<div class="text-muted mt-2 flex flex-wrap items-center gap-2 text-xs">
 			<button
 				type="button"
-				onclick={toggleRadio}
-				aria-pressed={wanted}
-				class="btn btn-ghost btn-xs {wanted ? 'text-ink' : ''}"
-				><Radio size={13} /> House radio</button
+				onclick={() => radioHeard.set(!radioHeard.current)}
+				aria-pressed={radioHeard.current}
+				class="btn btn-ghost btn-xs {radioHeard.current ? 'text-ink' : ''}"
+				><Radio size={13} />
+				{radioHeard.current
+					? 'Hearing house radio'
+					: 'House radio muted here'}</button
 			>
 			{#if nowPlaying}<span class="tabular-nums">{nowPlaying}</span>{/if}
-			{#if wanted && mixer.music === 0}<span>Music is at 0 in your mix.</span
+			{#if radioHeard.current && mixer.music === 0}<span
+					>Music is at 0 in your mix.</span
 				>{/if}
 		</div>
 	{/if}

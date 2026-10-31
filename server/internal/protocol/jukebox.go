@@ -18,7 +18,11 @@ type JukeboxCommand struct {
 	// Mutually exclusive with VideoID; Title and Artist ride along for
 	// display, because the deck carries no metadata of its own.
 	TrackID string `json:"trackId,omitempty"`
-	Artist  string `json:"artist,omitempty"`
+	// House radio (ADR-0094): the crew's generated station queued as one
+	// entry, with no video and no track. Each client plays it from the
+	// crew and the server clock.
+	Radio  bool   `json:"radio,omitempty"`
+	Artist string `json:"artist,omitempty"`
 	// The track's tempo, when its tags say (#1431): read off the library
 	// row by whoever adds it, shown on the queue row, and matched against
 	// the block's cadence while a session runs. 0 = untagged.
@@ -91,6 +95,9 @@ type JukeboxEntry struct {
 	// RMF's tile rules bind only while a YouTube entry plays (WATTROOM.md),
 	// which is the whole reason a pool track may be audio-only.
 	TrackID string `json:"trackId,omitempty"`
+	// House radio (ADR-0094): no video, no track, no end. It holds the
+	// deck until someone skips it, and never reaches the play log.
+	Radio bool `json:"radio,omitempty"`
 	// Display only, resolved by whoever queued it: the server holds no
 	// track metadata on the deck, the same way it holds no YouTube titles.
 	Artist string `json:"artist,omitempty"`
