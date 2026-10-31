@@ -28,7 +28,7 @@ WattRoom: collaborative indoor cycling. Go server + SvelteKit SPA + Postgres + L
 Every change has a GitHub issue on a milestone. All of this happens before the first edit, not the first commit:
 
 1. **Check it is free**: `gh issue view <n> --comments`, `gh pr list`, `git worktree list`. It is taken if it is assigned, claimed in a comment, covered by an open PR (a draft is a claim even on a silent issue), or named by someone's worktree branch (a branch with no commits is an agent that just started). A branch whose PR closed standing down is kept work, not a claim: resume it. Taken: coordinate in the thread.
-2. **Cut the worktree**: `git worktree add ../wattroom-worktrees/<slug> -b feat/<slug> origin/main` (or `fix/`, `docs/`, `chore/`), and work only there. A session that starts in a linked worktree (Happier's `.dev/worktree/<name>`) renames its branch instead (`git branch -m feat/<slug>`) and opens no second one.
+2. **Cut the worktree**: `git fetch origin`, then `git worktree add ../wattroom-worktrees/<slug> -b feat/<slug> origin/main` (or `fix/`, `docs/`, `chore/`), and work only there. A session that starts in a linked worktree (Happier's `.dev/worktree/<name>`) renames its branch instead (`git branch -m feat/<slug>`) and opens no second one.
 3. **Claim**: `gh issue edit <n> --add-assignee @me` and a one-line approach comment.
 4. **Open a draft PR** with `Closes #<n>` and a conventional-commit title. Re-run step 1 after reading the code; the earliest claim wins.
 
@@ -46,13 +46,17 @@ Standing down: withdraw your claim and write "proceed, do not stand down on acco
 ## Merging and cleaning up
 
 - **Merge your own PR** once the five required checks pass (wait with `scripts/wait-checks.sh <n>`, one call, never a sleep loop), no advisory check is red and no reviewer point is open: `gh pr merge <n> --squash --subject '<type>(<scope>): <description> (#<n>)'`. A PR that edits WATTROOM.md is marked ready and left for a human.
-- **Then finish**: `make dev-db-drop`, delete the branch locally and on the remote, `git worktree remove`, and leave the canonical clone on `main`, pulled.
+- **Then finish**: `make dev-db-drop`, delete the branch locally and on the remote, `git worktree remove`. The canonical clone stays on `main`, and only the maintainer updates it (`git pull --ff-only`).
 - Never stash, discard or revert files you did not write. Report the blocker and the one command that clears it.
+
+## The main clone
+
+Agents never pull, reset or check out in the main clone: they `git fetch` and cut worktrees from `origin/main`. The maintainer fast-forwards it with `git pull --ff-only`. An agent's sandbox may not write some of its paths (`.claude/skills`) or read others (`.env.example`), so a pull from an agent stops half-way and leaves the clone dirty.
 
 ## What worktrees share
 
 - `scripts/dev-env.sh` derives each worktree's ports and databases from its path: server 8100+, Vite 5500+, verify 8500+, e2e 4400+ and 8700+, databases `wattroom_wt_<name>_<crc>`, `wattroom_test_wt_<name>_<crc>` and `wattroom_design_wt_<name>_<crc>` (the design shots', made fresh each run). The main tree keeps :8080, :5174, :8082, :4173/:8081 and `wattroom` / `wattroom_test` / `wattroom_design`. `make dev-env` prints them.
-- The databases are created on demand and nothing removes them but `make dev-db-drop`.
+- The databases are created on demand, over the Postgres port (`server/cmd/devdb`), and nothing removes them but `make dev-db-drop`. Docker is needed only for `make infra`, which the maintainer runs.
 - A whole `go test ./...` run, and the next one, share one test database: a fixture that must be alone needs a run-unique name, and one that must survive a retention sweep is dated inside the retention. `WATTROOM_TEST_DB` overrides the name; a bare `go test` hits the main tree's.
 - Still shared: one Postgres server and one LiveKit. Say so when you verify audio.
 - `make infra` always starts the one compose project `wattroom`, wherever you run it. Never `docker compose up` by hand and never bring a compose project down. `make worktree-gc` removes finished worktrees (squash-merged, or empty and older than 12 h) with their databases and deletes their branches; it keeps dirty or unpushed ones. Stray postgres containers it only names, printing the `docker rm -f`.
