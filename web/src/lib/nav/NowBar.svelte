@@ -14,6 +14,7 @@
 	import { navDrawer } from '$lib/nav/drawer.svelte';
 	import { device } from '$lib/device.svelte';
 	import { AWAY_CHOICES, AWAY_STATES, awayState } from '$lib/away';
+	import Bike from '@lucide/svelte/icons/bike';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import Headphones from '@lucide/svelte/icons/headphones';
 	import LogOut from '@lucide/svelte/icons/log-out';
@@ -283,6 +284,15 @@
 			{/if}
 
 			<div class="ml-auto flex items-center gap-1">
+				{#if !riding && pathname !== conn.address.training}
+					<!-- The channel is decided, so Ride is its free ride. -->
+					<a
+						href={conn.address.training}
+						class="btn btn-secondary min-h-11"
+						title="Ride in {conn.address.name}"
+						><Bike size={14} /> <span class="max-md:sr-only">Ride</span></a
+					>
+				{/if}
 				{#if track}
 					<button
 						onclick={openSheet}
