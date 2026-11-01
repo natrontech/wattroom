@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MaxHeldGap } from '$lib/protocol';
+import { MaxBridgedGap } from '$lib/protocol';
 import { createRecording } from './recording.svelte';
 
 // The record is read as one entry per second downstream (#1411): a trainer
@@ -18,18 +18,20 @@ describe('createRecording', () => {
 		expect(recording.samples.length).toBe(1);
 	});
 
-	// A trainer sample that lands a second late must not shorten the ride
-	// (#4316): a short silence holds the last reading, a long one stays a gap.
-	it('holds the last reading across a short silence', () => {
+	// A trainer reading that lands a second late must not shorten the ride
+	// (#4316): a short silence is a line between its two readings, a long one
+	// stays a gap.
+	it('draws a short silence between its two readings', () => {
 		const recording = createRecording({ ftp: () => 200 });
 		recording.record(0, 150);
 		recording.record(2, 200);
 		expect(recording.samples).toEqual([
 			{ watts: 150 },
-			{ watts: 150 },
+			{ watts: 175 },
 			{ watts: 200 },
 		]);
-		recording.record(3 + MaxHeldGap + 1, 220);
+		expect(recording.trace.map((point) => point.t)).toEqual([0, 1, 2]);
+		recording.record(2 + MaxBridgedGap + 2, 220);
 		expect(recording.samples.length).toBe(4);
 	});
 

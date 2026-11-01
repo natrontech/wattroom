@@ -1,4 +1,4 @@
-import { MaxHeldGap } from '$lib/protocol';
+import { MaxBridgedGap } from '$lib/protocol';
 import { isLivePhase } from '$lib/channel/tick-session';
 import { createLiveStats, type LiveSecond } from '$lib/ride/live-stats.svelte';
 
@@ -30,7 +30,7 @@ export function createRecording(deps: { ftp: () => number }) {
 	// minute — and a trainer notifying at 2 Hz used to double both. The
 	// server's record admits the same way (#791).
 	let lastSecond = -1;
-	let held = 0;
+	let lastWatts = 0;
 	// The recording belongs to ONE session (#1535): it clears on the edge into
 	// one, on every client. The edge is remembered here, beside what it clears
 	// and for exactly as long — a summary that remounted with every page
@@ -57,18 +57,22 @@ export function createRecording(deps: { ftp: () => number }) {
 		record(elapsed: number, watts: number, at: Omit<LiveSecond, 'watts'> = {}) {
 			const second = Math.floor(elapsed);
 			if (second <= lastSecond) return;
-			// A trainer sample that lands a second late leaves the one before
-			// it empty (#4316); hold the last reading across a short silence,
-			// as the server's record does, so the ride keeps its length.
-			if (lastSecond >= 0 && second - lastSecond - 1 <= MaxHeldGap) {
-				for (let s = lastSecond + 1; s < second; s++) {
-					trace = [...trace, { t: s, w: held }];
-					samples = [...samples, { watts: Math.max(0, Math.round(held)) }];
-					stats.push({ watts: held });
+			// A trainer reading that lands a second late leaves the one before
+			// it empty (#4316). A short silence is drawn as a line between the
+			// two readings, as the server's record does, so the ride keeps its
+			// length and invents nothing outside them. A longer one stays a gap.
+			const silent = second - lastSecond - 1;
+			if (lastSecond >= 0 && silent > 0 && silent <= MaxBridgedGap) {
+				for (let step = 1; step <= silent; step++) {
+					const between =
+						lastWatts + ((watts - lastWatts) * step) / (silent + 1);
+					trace = [...trace, { t: lastSecond + step, w: between }];
+					samples = [...samples, { watts: Math.max(0, Math.round(between)) }];
+					stats.push({ watts: between });
 				}
 			}
 			lastSecond = second;
-			held = watts;
+			lastWatts = watts;
 			trace = [...trace, { t: elapsed, w: watts }];
 			samples = [...samples, { watts: Math.max(0, Math.round(watts)) }];
 			stats.push({ ...at, watts });

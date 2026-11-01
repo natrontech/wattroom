@@ -977,14 +977,14 @@ export const ReferenceRiderWatts = 225;
  */
 export const MaxBackfillBatch = 60 * 60;
 /**
- * The longest silence, in timeline seconds, a ride record bridges by
- * holding the last reading (#4316). A trainer notifies near 1 Hz with
- * jitter, so a sample can land a second late and leave the one before it
- * empty; the record reads one entry as one second, so each such miss
- * shortened the saved ride. A longer silence is a dropout and stays a gap.
- * Not a SPEC number, but the hub and the client's recording agree on it.
+ * The longest silence, in timeline seconds, between two readings that a
+ * ride record bridges with a line drawn between them (#4316). A trainer
+ * notifies near 1 Hz with jitter, so a reading can land a second late and
+ * leave the one before it empty; a longer silence is a dropout and stays
+ * a gap. Not a SPEC number, but the hub's record and the client's
+ * recording have to agree on it.
  */
-export const MaxHeldGap = 3;
+export const MaxBridgedGap = 3;
 
 //////////
 // source: lounge.go
@@ -1054,7 +1054,8 @@ export interface RiderMetrics {
    * live meter on the client never scores such a second; the saved ride
    * and the session's live score used to, against the full target — a
    * spiral trip was ten pedalling seconds against no resistance, out of
-   * band by construction. Absent means scored.
+   * band by construction. Also a second the hub bridged between two
+   * readings (#4316), which nobody measured. Absent means scored.
    */
   released?: boolean;
   /**

@@ -34,7 +34,8 @@ type RiderMetrics struct {
 	// live meter on the client never scores such a second; the saved ride
 	// and the session's live score used to, against the full target — a
 	// spiral trip was ten pedalling seconds against no resistance, out of
-	// band by construction. Absent means scored.
+	// band by construction. Also a second the hub bridged between two
+	// readings (#4316), which nobody measured. Absent means scored.
 	Released bool `json:"released,omitempty"`
 	// On a road (ADR-0062, #3052): metres along it from the route's start,
 	// and the height there. A rider who is not the route's owner was sent its

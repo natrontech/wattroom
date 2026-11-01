@@ -1,5 +1,5 @@
 import { account } from '$lib/account.svelte';
-import { MinRideSamples } from '$lib/protocol';
+import { MaxBridgedGap, MinRideSamples } from '$lib/protocol';
 import {
 	openingWatts,
 	nudged,
@@ -80,6 +80,13 @@ export function createFreeRide(deps: {
 	/** The ramp that just ran its length, said for RAMP.doneSeconds. */
 	let done = $state<{ kind: RampKind; left: number } | null>(null);
 	let lastWatts = 0;
+	/**
+	 * The wall second of the last reading heard, and of the last one ridden
+	 * (#4316): a silence is bridged only after a ridden second. A zero reading
+	 * is heard, not ridden, and what follows it is a stop, never a gap.
+	 */
+	let heardAt = -1;
+	let riddenAt = -1;
 	const rampTarget = $derived(ramp && rampWatts(ramp, ramp.t));
 	/**
 	 * Ends a ramp at its current target. Run to its length it hands back to
@@ -309,6 +316,10 @@ export function createFreeRide(deps: {
 			// The sample keeps where the second began, as the server's replay
 			// steps it (ADR-0074): a ride from km 0 keeps from_m 0 (#3615).
 			const began = here;
+			const wallSecond = Math.floor((sample.at ?? Date.now()) / 1000);
+			const silent =
+				riddenAt >= 0 && heardAt === riddenAt ? wallSecond - riddenAt - 1 : 0;
+			heardAt = wallSecond;
 			if (armed && onRoad)
 				here = onRoad.laps.second(sample.watts, sample.at ?? Date.now());
 			const virtualMps = here?.virtualMps ?? sample.virtualMps ?? 0;
@@ -322,6 +333,7 @@ export function createFreeRide(deps: {
 				startedAt = Date.now();
 				outcome = null;
 				samples = [];
+				riddenAt = -1;
 				live.reset();
 				rideId = crypto.randomUUID();
 				buffer = null;
@@ -340,6 +352,38 @@ export function createFreeRide(deps: {
 			}
 			// The upload's own fields: its decoder refuses anything else.
 			const place = began && onRoad?.laps.fields(began);
+			// A reading that landed a second late leaves the one before it empty,
+			// and the ride is its count of seconds. A short silence is drawn as a
+			// line between the two readings; a road's dot has its own place for
+			// every second, so a road ride keeps its gap. A longer silence is a gap.
+			const before = samples.at(-1);
+			if (before && !onRoad && silent > 0 && silent <= MaxBridgedGap) {
+				const line = (from: number, to: number, step: number) =>
+					Math.round(from + ((to - from) * step) / (silent + 1));
+				for (let step = 1; step <= silent; step++) {
+					const bridged = {
+						watts: line(before.watts, sample.watts, step),
+						cadence:
+							before.cadence > 0 && sample.cadence > 0
+								? line(before.cadence, sample.cadence, step)
+								: 0,
+						hr:
+							before.hr > 0 && sample.hr > 0
+								? line(before.hr, sample.hr, step)
+								: 0,
+					};
+					samples.push(bridged);
+					live.push({ watts: bridged.watts });
+					buffer?.append({
+						seq: samples.length,
+						watts: bridged.watts,
+						cadence: bridged.cadence,
+						heartRate: bridged.hr,
+						at: Date.now(),
+					});
+				}
+			}
+			riddenAt = wallSecond;
 			samples.push({
 				watts: sample.watts,
 				cadence: sample.cadence,

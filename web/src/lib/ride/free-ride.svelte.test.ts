@@ -94,6 +94,38 @@ describe('recording a free ride', () => {
 		expect(free.seconds).toBe(2);
 	});
 
+	// #4316: a reading that lands a second late leaves the one before it empty;
+	// a short silence is drawn between its two readings, a stop or a long one is not.
+	it('keeps its length when one reading lands a second late', async () => {
+		const free = createFreeRide({ ftp: () => 200 });
+		free.arm();
+		const at = (second: number) => second * 1000;
+		free.second({ watts: 100, cadence: 80, hr: 120, at: at(1000) });
+		free.second({ watts: 200, cadence: 90, hr: 0, at: at(1002) });
+		expect(free.seconds).toBe(3);
+		for (let second = 1003; second < 1062; second++)
+			free.second({ watts: 200, cadence: 90, hr: 0, at: at(second) });
+		expect(await free.end()).toEqual({ saved: { id: 'r1' } });
+		const samples = (
+			uploads[0] as {
+				samples: { watts: number; cadence: number; hr: number }[];
+			}
+		).samples;
+		expect(samples.length).toBe(62);
+		expect(samples[1]).toEqual({ watts: 150, cadence: 85, hr: 0 });
+	});
+
+	it('bridges neither a stop nor a long silence', () => {
+		const free = createFreeRide({ ftp: () => 200 });
+		free.arm();
+		free.second({ ...pedal, at: 1_000_000 });
+		free.second({ watts: 0, cadence: 0, hr: 110, at: 1_001_000 });
+		free.second({ ...pedal, at: 1_003_000 });
+		expect(free.seconds).toBe(2);
+		free.second({ ...pedal, at: 1_008_000 });
+		expect(free.seconds).toBe(3);
+	});
+
 	// #3056: on a road, a descent coasted at 0 W is ridden, and counts.
 	it('counts a coasted second on a road, and uploads none of its speed', async () => {
 		const free = createFreeRide({ ftp: () => 200 });

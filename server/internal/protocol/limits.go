@@ -287,13 +287,13 @@ const (
 	// one both sides have to agree on.
 	MaxBackfillBatch = 60 * 60
 
-	// The longest silence, in timeline seconds, a ride record bridges by
-	// holding the last reading (#4316). A trainer notifies near 1 Hz with
-	// jitter, so a sample can land a second late and leave the one before it
-	// empty; the record reads one entry as one second, so each such miss
-	// shortened the saved ride. A longer silence is a dropout and stays a gap.
-	// Not a SPEC number, but the hub and the client's recording agree on it.
-	MaxHeldGap = 3
+	// The longest silence, in timeline seconds, between two readings that a
+	// ride record bridges with a line drawn between them (#4316). A trainer
+	// notifies near 1 Hz with jitter, so a reading can land a second late and
+	// leave the one before it empty; a longer silence is a dropout and stays
+	// a gap. Not a SPEC number, but the hub's record and the client's
+	// recording have to agree on it.
+	MaxBridgedGap = 3
 )
 
 // TargetBand is docs/SPEC.md's band around a target, in watts.

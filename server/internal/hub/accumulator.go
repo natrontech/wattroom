@@ -62,8 +62,6 @@ type riderRecord struct {
 	// used to be sixty seconds of riding.
 	lastSecond int
 	secondSet  bool
-	// The last live reading, held across a short silence (#4316).
-	held protocol.RiderMetrics
 	// Live execution (#27): the SPEC score accumulated as samples arrive, so
 	// the tick can carry every rider's compliance without rescoring history.
 	weight float64
@@ -104,34 +102,67 @@ func (r *riderRecord) keep(m protocol.RiderMetrics) bool {
 	return true
 }
 
-// holdThrough fills the seconds a live sample skipped (#4316) with the last
-// reading, when the silence is no longer than protocol.MaxHeldGap. Trainer
-// notifications drift against the room's clock, and the record counts one
-// entry as one second, so an unfilled miss shortens the saved ride. The
-// filled seconds are not scored live: they are not measured.
-func (r *riderRecord) holdThrough(second int) {
-	if !r.secondSet || second-r.lastSecond-1 > protocol.MaxHeldGap {
-		return
-	}
-	for s := r.lastSecond + 1; s < second; s++ {
-		if _, held := r.clocks[s]; held || len(r.samples) >= maxAccumulated {
-			continue
-		}
-		filled := r.held
-		filled.Clock = s
-		r.clocks[s] = struct{}{}
-		r.samples = append(r.samples, filled)
-	}
-}
-
 // inOrder is the record as the saver reads it (#2814): by timeline second,
-// in a copy. Samples arrive in the order the socket delivered them, and a
-// reconnect's replay lands after the live samples that resumed before it —
-// the power trace, the curve and NormPower all read the slice in order.
+// in a copy, with a short silence between two readings bridged (#4316).
+// Samples arrive in the order the socket delivered them, and a reconnect's
+// replay lands after the live samples that resumed before it — the power
+// trace, the curve and NormPower all read the slice in order.
 func (r *riderRecord) inOrder() []protocol.RiderMetrics {
 	samples := slices.Clone(r.samples)
 	slices.SortStableFunc(samples, func(a, b protocol.RiderMetrics) int { return cmp.Compare(a.Clock, b.Clock) })
-	return samples
+	return bridgeSilences(samples)
+}
+
+// bridgeSilences fills a silence of up to protocol.MaxBridgedGap timeline
+// seconds between two readings with a line drawn between them (#4316). A
+// trainer notifies near 1 Hz with jitter and drift against the room's clock,
+// so a reading lands a second late and the second before it stays empty, and
+// the saved ride counts one entry as one second: every miss shortened it.
+//
+// Done when the record is read, never when it is written: a reconnect's replay
+// of the real reading still lands in the record, and the amendment re-reads it.
+// Nothing is made up beyond the two readings that frame it — a filled second
+// never exceeds the louder of them, a heart rate or cadence is drawn only
+// between two that exist, and a road position only between two that follow
+// each other. A filled second is Released, so it is not scored: the live score
+// never saw it either. A longer silence is a dropout and stays a gap, which
+// the length then shows. Caller passes samples in Clock order.
+func bridgeSilences(samples []protocol.RiderMetrics) []protocol.RiderMetrics {
+	out := make([]protocol.RiderMetrics, 0, len(samples))
+	for i, next := range samples {
+		if i > 0 {
+			prev := samples[i-1]
+			if silent := next.Clock - prev.Clock - 1; silent > 0 && silent <= protocol.MaxBridgedGap {
+				for step := 1; step <= silent; step++ {
+					out = append(out, between(prev, next, step, silent+1))
+				}
+			}
+		}
+		out = append(out, next)
+	}
+	return out
+}
+
+// between is the reading `step` of `steps` of the way from prev to next.
+func between(prev, next protocol.RiderMetrics, step, steps int) protocol.RiderMetrics {
+	line := func(from, to float64) float64 { return from + (to-from)*float64(step)/float64(steps) }
+	lineInt := func(from, to int) int { return int(math.Round(line(float64(from), float64(to)))) }
+	filled := protocol.RiderMetrics{
+		Watts:    lineInt(prev.Watts, next.Watts),
+		Bias:     prev.Bias,
+		Clock:    prev.Clock + step,
+		Released: true,
+	}
+	if prev.HR > 0 && next.HR > 0 {
+		filled.HR = lineInt(prev.HR, next.HR)
+	}
+	if prev.Cadence > 0 && next.Cadence > 0 {
+		filled.Cadence = lineInt(prev.Cadence, next.Cadence)
+	}
+	if prev.M > 0 && next.M >= prev.M {
+		filled.M, filled.Alt = line(prev.M, next.M), line(prev.Alt, next.Alt)
+	}
+	return filled
 }
 
 // riderStart is when this rider's ride began (#2814): the timeline's start
@@ -164,11 +195,9 @@ func (a *accumulator) add(riderID string, m protocol.RiderMetrics, segments []wo
 	if record.secondSet && second <= record.lastSecond {
 		return
 	}
-	record.holdThrough(second)
 	record.lastSecond, record.secondSet = second, true
 	// The hub's clock is the timeline's (#2814), whatever the client sent.
 	m.Clock = second
-	record.held = m
 	if !record.keep(m) {
 		return
 	}
