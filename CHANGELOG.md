@@ -17,6 +17,12 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.11.1] - 2026-11-01
+
+### Changed
+
+- The lounge is now the voice channel's room: it fills the page, shows more of itself on a bigger screen at a finer pixel, follows your theme (light mode too), and house radio changes its instruments, drums, mood and tempo from tune to tune.
+
 ## [2026.10.7] - 2026-10-31
 
 ### Added
@@ -4198,7 +4204,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.10.7...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.1...HEAD
+[2026.11.1]: https://github.com/natrontech/wattroom/compare/2026.10.7...2026.11.1
 [2026.10.7]: https://github.com/natrontech/wattroom/compare/2026.10.6...2026.10.7
 [2026.10.6]: https://github.com/natrontech/wattroom/compare/2026.10.5...2026.10.6
 [2026.10.5]: https://github.com/natrontech/wattroom/compare/2026.10.4...2026.10.5
