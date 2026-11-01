@@ -129,9 +129,9 @@ func (r *riderRecord) inOrder() []protocol.RiderMetrics {
 // the length then shows. Caller passes samples in Clock order.
 func bridgeSilences(samples []protocol.RiderMetrics) []protocol.RiderMetrics {
 	out := make([]protocol.RiderMetrics, 0, len(samples))
+	var prev protocol.RiderMetrics
 	for i, next := range samples {
 		if i > 0 {
-			prev := samples[i-1]
 			if silent := next.Clock - prev.Clock - 1; silent > 0 && silent <= protocol.MaxBridgedGap {
 				for step := 1; step <= silent; step++ {
 					out = append(out, between(prev, next, step, silent+1))
@@ -139,6 +139,7 @@ func bridgeSilences(samples []protocol.RiderMetrics) []protocol.RiderMetrics {
 			}
 		}
 		out = append(out, next)
+		prev = next
 	}
 	return out
 }

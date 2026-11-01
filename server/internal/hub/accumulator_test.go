@@ -90,7 +90,7 @@ func TestReplayStillLandsWhereASecondWasBridged(t *testing.T) {
 // notification arriving a random delay late, binned by the room's clock as
 // setMetrics does. It returns the true length and the record's.
 func trainerRide(period time.Duration, jitter time.Duration, stalls bool, seconds int, seed uint64) (truth, raw, bridged int, out []protocol.RiderMetrics) {
-	rng := rand.New(rand.NewPCG(seed, seed))
+	rng := rand.New(rand.NewPCG(seed, seed)) //nolint:gosec // a seeded simulation of trainer timing, nothing secret
 	a := newAccumulator()
 	var at time.Duration
 	var seq int
