@@ -42,7 +42,7 @@
 	"packageManager": "pnpm@12.5.1",
 	"dependencies": {
 		"@lucide/svelte": "^1.48.0",
-		"emojibase-data": "17.0.0",
+		"emojibase-data": "18.0.0",
 		"livekit-client": "^2.22.3",
 		"suncalc": "1.9.0",
 		"three": "0.186.1"
