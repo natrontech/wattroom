@@ -1,5 +1,4 @@
 <script lang="ts">
-	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 	import Plus from '@lucide/svelte/icons/plus';
 	import Radio from '@lucide/svelte/icons/radio';
 	import User from '@lucide/svelte/icons/user';
@@ -21,7 +20,6 @@
 	import { leadsWithJoining } from '$lib/nav/crews';
 	import { levelFromXp, levelProgress, xpForLevel } from '$lib/level';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
-	import MarkIcon from '$lib/components/MarkIcon.svelte';
 	import { fetchProgression, type LoadSummary } from '$lib/progression';
 	import Banner from '$lib/components/Banner.svelte';
 	import DesktopNotice from '$lib/components/DesktopNotice.svelte';
@@ -265,32 +263,6 @@
 				>
 			{/if}
 			<div class="flex flex-wrap items-center gap-2">
-				{#if plannable.length > 1}
-					<!-- More than one crew to plan in: ask, never guess (#435). -->
-					<details class="relative">
-						<summary
-							class="btn btn-secondary w-full cursor-pointer list-none [&::-webkit-details-marker]:hidden"
-							><CalendarClock size={15} /> Plan a session</summary
-						>
-						<ul class="panel absolute top-full left-0 z-20 mt-1 min-w-56 py-1">
-							{#each plannable as crew (crew.id)}
-								<li>
-									<a
-										href="/crew/{crew.id}/schedule?plan"
-										class="hover:bg-surface flex items-center gap-2 px-3 py-2 text-sm"
-									>
-										<MarkIcon icon={crew.icon} size={14} />
-										<span class="truncate">{crew.name}</span>
-									</a>
-								</li>
-							{/each}
-						</ul>
-					</details>
-				{:else if firstCrew}
-					<a href="/crew/{firstCrew.id}/schedule?plan" class="btn btn-secondary"
-						><CalendarClock size={15} /> Plan a session</a
-					>
-				{/if}
 				{#if ready}
 					<!-- Carrying an invite, the crew button is joining the crew that
 			     sent it (#2144, #2184); everyone else is offered the crew the

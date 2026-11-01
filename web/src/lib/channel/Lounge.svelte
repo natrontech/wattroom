@@ -30,7 +30,6 @@
 	import { device } from '$lib/device.svelte';
 	import { account } from '$lib/account.svelte';
 	import Bike from '@lucide/svelte/icons/bike';
-	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { type MenuEntry } from '$lib/context-menu.svelte';
 	import { mateOnRoad, rideWith } from '$lib/channel/road-mates';
@@ -512,19 +511,12 @@
 	{/if}
 	{#if channel.phase === 'lounge'}
 		<PlanCard />
-		<!-- Between sessions, the channel's two actions (#2571, #2572): start
-		     one here, or plan one for later in this channel. The crew's totals,
-		     board and invite are its Home's — a voice channel shows the call.
-		     Planning is not a coach's control, and a phone plans too (#1767),
-		     so it sits outside SessionControls' gate. -->
+		<!-- Between sessions, the channel's two ways to ride: a session for
+		     everyone here, or a free ride of your own. Planning lives on the
+		     crew's Schedule. -->
 		<div class="mt-6 flex flex-wrap items-center gap-2">
 			<SessionControls />
 			{@render freeRide()}
-			<button
-				onclick={() => channel.openPicker('plan')}
-				class="btn btn-secondary btn-lg ride-stage:ride-word ride-stage:py-2"
-				><CalendarClock size={15} /> Plan for later</button
-			>
 		</div>
 	{/if}
 </div>
