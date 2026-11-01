@@ -29,7 +29,7 @@ describe('createRecording', () => {
 			{ watts: 150 },
 			{ watts: 200 },
 		]);
-		recording.record(3 + MaxHeldGap, 220);
+		recording.record(3 + MaxHeldGap + 1, 220);
 		expect(recording.samples.length).toBe(4);
 	});
 
