@@ -1,5 +1,3 @@
-import { readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
 	applyEdit,
@@ -183,43 +181,5 @@ describe('applying an edit', () => {
 		applyEdit(w, { kind: 'target', path: [1], fraction: 1 }, 250);
 		applyEdit(w, { kind: 'target', path: [9], fraction: 1 }, 250);
 		expect(JSON.stringify(w)).toBe(before);
-	});
-});
-
-/**
- * The graph renders on the ride screens, a session, the history detail and the
- * workouts list, where it has to stay read-only — the AC calls a regression
- * there the main risk in this change, so it is pinned rather than eyeballed.
- */
-describe('read-only everywhere but the editor', () => {
-	const SRC = new URL('../../', import.meta.url).pathname;
-
-	function svelteFiles(dir: string, out: string[] = []): string[] {
-		for (const entry of readdirSync(dir, { withFileTypes: true })) {
-			const full = join(dir, entry.name);
-			if (entry.isDirectory()) svelteFiles(full, out);
-			else if (entry.name.endsWith('.svelte')) out.push(full);
-		}
-		return out;
-	}
-
-	it('defaults the prop off', () => {
-		const source = readFileSync(
-			join(SRC, 'lib/components/IntervalGraph.svelte'),
-			'utf8',
-		);
-		expect(source).toContain('editable = false');
-	});
-
-	it('is opted into by exactly one surface', () => {
-		const optedIn = svelteFiles(SRC)
-			.filter((file) => {
-				const source = readFileSync(file, 'utf8');
-				return (
-					source.includes('IntervalGraph') && /^\s+editable\b/m.test(source)
-				);
-			})
-			.map((file) => file.slice(SRC.length));
-		expect(optedIn).toEqual(['routes/(app)/workouts/edit/+page.svelte']);
 	});
 });

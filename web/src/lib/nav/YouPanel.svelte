@@ -108,7 +108,7 @@
 	// The arrow's menu: the named states, never plain Away — that one is the
 	// face, and putting it in the menu too would offer the same thing twice.
 	// Same list on right-click, because a control with more than one action
-	// gets a context menu (.claude/rules/ux.md) and this one now has four.
+	// gets a context menu (AGENTS.md) and this one now has four.
 	const awayItems = (): MenuEntry[] =>
 		AWAY_CHOICES.map((key) => ({
 			label: AWAY_STATES[key].label,

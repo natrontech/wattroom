@@ -462,7 +462,7 @@ func TestPasskeyRegistrationNeedsTheRequiredAddress(t *testing.T) {
 				return
 			}
 			// The rider hears the machine code, why it is refused, and the one
-			// thing that clears it (.claude/rules/errors.md).
+			// thing that clears it (AGENTS.md).
 			if body := w.Body.String(); !strings.Contains(body, `"forbidden"`) ||
 				!strings.Contains(body, "Confirm your email address") {
 				t.Fatalf("the refusal does not say what to do: %s", body)
@@ -480,7 +480,7 @@ func TestPasskeyRegistrationNeedsTheRequiredAddress(t *testing.T) {
 // mounted, and used to say nothing about it (#2256). The client then gated on
 // the browser's own passkeys.supported() and offered the primary door
 // ADR-0029 chose, which answered with the API's 404 on click: exactly what
-// .claude/rules/ux.md's capability gating and errors.md both rule out.
+// AGENTS.md's capability gating and errors.md both rule out.
 func TestProvidersSayWhetherPasskeysWorkHere(t *testing.T) {
 	available := func(t *testing.T, s *Service) bool {
 		t.Helper()

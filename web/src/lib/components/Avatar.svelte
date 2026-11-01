@@ -44,7 +44,7 @@
 	const away = $derived(awayState(awayReason));
 
 	// A picture that will not load falls back to the initial rather than to an
-	// empty disc (.claude/rules/errors.md: a defined fallback, never a broken
+	// empty disc (AGENTS.md: a defined fallback, never a broken
 	// <img>). Held as the URL that failed, not as a boolean, so a new address
 	// — a fresh upload, or the copy #2078 makes of a provider's picture —
 	// gets its own try without an effect to reset anything.

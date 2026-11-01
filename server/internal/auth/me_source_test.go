@@ -153,7 +153,7 @@ func TestProfileSourcesThroughTheAPI(t *testing.T) {
 }
 
 // Nothing talks its way back into "nobody chose this", and a refusal names
-// the field so the form can show it inline (.claude/rules/errors.md).
+// the field so the form can show it inline (AGENTS.md).
 func TestProfileSourceClaimsAreBounded(t *testing.T) {
 	s := testService(t)
 	user := testUser(t, s)

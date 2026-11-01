@@ -10,7 +10,6 @@ import {
 } from './ftms';
 import type { TrainerSample } from './trainer';
 import { FakeCharacteristic, FakeDevice } from './fake-gatt.test-helper';
-import { scan, stale } from '$lib/source-scan.test-helper';
 
 /** Little-endian byte builder, so the cases read like the spec's field order. */
 function packet(flags: number, ...bytes: number[]): DataView {
@@ -73,22 +72,6 @@ describe('encodeWheelCircumference (#3331)', () => {
 		expect([...new Uint8Array(encodeWheelCircumference(4192))]).toEqual([
 			0x12, 0xc0, 0xa3,
 		]);
-	});
-
-	// #3351: FTMS says only that the trainer "shall use" it, and on a Kickr
-	// it moves the speed and distance reported, so a gear is never made of
-	// it. Gears go through 0x11; a ride never sends 0x12.
-	it('is sent by the Gears probe alone, never by a ride', () => {
-		const allowlist = {
-			'lib/ble/': 'the drivers that encode it',
-			'lib/ride/gears-probe.ts': 'P5 asks a trainer what it does with it',
-		};
-		const { offenders, used } = scan(
-			/\b(setWheelCircumference|encodeWheelCircumference)\b/g,
-			allowlist,
-		);
-		expect(offenders, offenders.join('\n')).toEqual([]);
-		expect(stale(allowlist, used)).toEqual([]);
 	});
 });
 

@@ -1,5 +1,5 @@
 /**
- * The one fetch wrapper (.claude/rules/code-quality.md: one shared client, no
+ * The one fetch wrapper (AGENTS.md: one shared client, no
  * scattered boilerplate). Returns data or the errors.md shape — never throws
  * on HTTP status, so callers handle failure as a value.
  */

@@ -10,4 +10,3 @@ Rules an agent would otherwise get wrong; cross-cutting rules live in the root A
 - DB: sqlc + pgx only — no ORM, no string-built SQL. Migrations via goose in `internal/store/migrations/`, added only with `make migration`.
 - Tests: table tests, `-race` always; timer-driven logic uses `testing/synctest`, never `time.Sleep`.
 - Errors: wrap with `%w`; handle or return, never both.
-- Run the review checklist in `.claude/skills/go-review/SKILL.md` (plain markdown — applies to any agent) on non-trivial hub/protocol changes.

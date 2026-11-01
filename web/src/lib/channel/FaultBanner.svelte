@@ -33,7 +33,7 @@
 </script>
 
 <!--
-	.claude/rules/errors.md: ride-critical failures are persistent dashboard status,
+	AGENTS.md: ride-critical failures are persistent dashboard status,
 	never a transient toast. Recovery is automatic where it can be; the manual path
 	is one big button, because the rider is sweating three metres away.
 -->

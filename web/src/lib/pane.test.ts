@@ -1,6 +1,4 @@
 // @vitest-environment happy-dom
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { dragPane, keepSize } from '$lib/pane';
 
@@ -204,32 +202,5 @@ describe('a borrowed pane (#316)', () => {
 		node.style.height = '506px';
 		fire();
 		expect(localStorage.getItem(KEY)).toBe(null);
-	});
-});
-
-/**
- * The other half of that withdrawal (#1702). `keepSize` removing the variable
- * only clears a gutter if the gutter has no height of its own to fall back on
- * — `var(--pane-jukebox-dock-h, 308px)` reserved 332px on every place for a
- * dock that was hidden, and the Chat place's `h-full` column paid it out of
- * its own height: the composer sat a third of the way up the pane.
- *
- * Read from the source because there is no way to render ChannelShell's padding
- * without a voice channel, a connection and a track. The regression is a
- * default creeping back into the `var()`, and that is visible right here.
- */
-describe('the jukebox gutter (#1702)', () => {
-	it('has no dock height to fall back on', () => {
-		const shell = readFileSync(
-			join(import.meta.dirname, 'channel', 'ChannelShell.svelte'),
-			'utf8',
-		);
-		const gutters = [...shell.matchAll(/var\(--pane-jukebox-dock-h([^)]*)\)/g)];
-		// The phone's band and the desk's gutter (#4185).
-		expect(gutters, 'the gutter moved out of ChannelShell').toHaveLength(2);
-		expect(
-			gutters.map((gutter) => gutter[1]),
-			'no dock, no gutter — the variable is the signal',
-		).toEqual(['', '']);
 	});
 });

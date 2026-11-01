@@ -6,7 +6,7 @@ package auth
 //
 // Nobody is asked for this. `Intl.DateTimeFormat().resolvedOptions().timeZone`
 // already knows, so the client reports it and it corrects itself when a rider
-// moves; a timezone picker would fail the 95% rule in .claude/rules/ux.md. It
+// moves; a timezone picker would fail the 95% rule in AGENTS.md. It
 // gets its own route rather than a field on PATCH /api/me, which validates a
 // whole profile form on every call — a background write of one value should
 // not have to resend a display name, and should not race a profile edit in

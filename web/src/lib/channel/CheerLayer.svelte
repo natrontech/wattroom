@@ -5,7 +5,7 @@
 	import CheerIcon from '$lib/components/CheerIcon.svelte';
 
 	// The reaction layer (#74): cheers arrive on the tick, float up, announce
-	// with sound — riders don't watch the screen (.claude/rules/ux.md).
+	// with sound — riders don't watch the screen (AGENTS.md).
 	let { cheers }: { cheers: Cheer[] | undefined } = $props();
 
 	interface Floating extends Cheer {

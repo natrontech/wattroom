@@ -64,7 +64,7 @@ func (s *Service) User(r *http.Request) (db.User, bool) {
 
 // RequireUser is the mandatory-auth User: it resolves the session or writes
 // the refusal — 401 with signInMessage when there is no valid session, 500
-// when the lookup itself failed (.claude/rules/errors.md, #236). It is also
+// when the lookup itself failed (AGENTS.md, #236). It is also
 // the CSRF boundary: every package's mutating handlers reach the session
 // through this one method (directly, or via a wrapper like rooms.RequireMember),
 // so refusing a mismatched Origin here covers all of them without a check at
@@ -93,7 +93,7 @@ func (s *Service) RequireUser(w http.ResponseWriter, r *http.Request, signInMess
 // rider may go on; writes the refusal when they may not.
 //
 // 403, not 401: the session is good and the rider is who they say they are —
-// what is missing is a precondition on their own account (.claude/rules/errors.md).
+// what is missing is a precondition on their own account (AGENTS.md).
 //
 // Two conditions narrow it, and both are the difference between a gate and a
 // lockout. They are the same two the client applies in shouldPromptEmail

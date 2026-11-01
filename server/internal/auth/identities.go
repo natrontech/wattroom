@@ -216,7 +216,7 @@ func (s *Service) link(r *http.Request, p provider, ident identity, tok *oauth2.
 // finishLink runs the link and sends the rider back to the profile, which
 // reads ?link= and says what happened. The callback is a top-level browser
 // navigation, so a JSON error body would land as raw text in the address bar —
-// the banner is the error surface here (.claude/rules/errors.md).
+// the banner is the error surface here (AGENTS.md).
 func (s *Service) finishLink(w http.ResponseWriter, r *http.Request, p provider, ident identity, tok *oauth2.Token, to db.User) {
 	outcome := "connected"
 	switch err := s.link(r, p, ident, tok, to.ID); {

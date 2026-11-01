@@ -294,7 +294,7 @@ func migrationVersions(t *testing.T) []int64 {
 		version, _, _ := strings.Cut(name, "_")
 		n, err := strconv.ParseInt(version, 10, 64)
 		if err != nil {
-			t.Fatalf("%s: %v — TestMigrationVersionsAreUnique has the naming rule", name, err)
+			t.Fatalf("%s: goose wants a numeric version before the first underscore: %v", name, err)
 		}
 		versions = append(versions, n)
 	}

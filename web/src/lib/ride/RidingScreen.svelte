@@ -286,7 +286,7 @@
 <!-- Over the world it fills the page edge to edge (TARGETS ride-road-world
      2): the page's own padding is undone here, where the world is known. -->
 {#if countIn && !inWorld}
-	<!-- Sound AND visual (.claude/rules/ux.md): the cue alone reaches a
+	<!-- Sound AND visual (AGENTS.md): the cue alone reaches a
 	     rider who is climbing back onto the bike, not the one still walking
 	     to it. A session's own count-in screen (ADR-0046). -->
 	<CountdownScreen

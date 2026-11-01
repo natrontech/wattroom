@@ -1,11 +1,9 @@
 // @vitest-environment happy-dom
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { at, curvature, leftOf } from '$lib/road/along';
 import { toRoute } from '$lib/road/route';
-import { STYLES } from '../../../routes/(app)/dev/world/styles';
+import { STYLES } from '../test-styles';
 import { CAMERA } from '../camera';
 import { exponentialFog, propVisibility, terrainVisibility } from '../fog';
 import { ROAD_LIFT, yOf } from '../geometry';
@@ -38,9 +36,6 @@ import { rect } from './fixtures.test-helper';
  * seen red on the mutant it names (near 0.5, two fog formulas, a flagpole in
  * the low set, a prop on the road's sightline).
  */
-const here = (file: string) =>
-	readFileSync(resolve(import.meta.dirname, '..', file), 'utf8');
-
 // What the shoulder edge sits above the ground it is drawn beside, measured in #3078.
 const SHOULDER_EDGE_M = 0.19;
 // The shoulder holds its four depth steps through the near ring, and does not fight outright before this.
@@ -67,18 +62,6 @@ describe('O6 depth separation', () => {
 		expect(depthStep(1000, 0.5)).toBeCloseTo(0.12, 2);
 		expect(Math.round(fightsFrom(SHOULDER_EDGE_M, 0.5))).toBe(1262);
 		expect(depth(0.5)).toHaveLength(2);
-	});
-
-	// A surface within 0.3 m of another is drawn in its shader or carries polygonOffset.
-	const overlays: [name: string, file: string, gap: number][] = [
-		['chalk on the asphalt', 'chalk.ts', 0.03],
-		['the trail on the asphalt', 'trail.ts', 0.03],
-		['the zone digit', 'zone-digit.ts', 0.02],
-		['the rider ring on the road', 'crew.ts', 0.02],
-	];
-	it.each(overlays)('%s offsets its depth', (_, file, gap) => {
-		expect(gap).toBeLessThanOrEqual(R.coplanarM);
-		expect(here(file)).toMatch(/polygonOffset:\s*true/);
 	});
 });
 

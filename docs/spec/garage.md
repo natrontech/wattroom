@@ -2,7 +2,7 @@
 
 Part of the product spec. [docs/SPEC.md](../SPEC.md) indexes every section and says which values change without an ADR.
 
-## The figure ([ADR-0073](../decisions/0073-the-rider-is-dressed-never-measured.md) — defaults, tune in alpha)
+## The figure (ADR-0073 — defaults, tune in alpha)
 
 - **Proportions**: stylised athletic, about **7 heads** tall, head scale **1.08**. No face.
 - **Build**: slim, athletic or strong — the rider's choice, never derived from weight.
@@ -12,7 +12,7 @@ Part of the product spec. [docs/SPEC.md](../SPEC.md) indexes every section and s
 - **Neutral figure** (until the rider chooses): athletic build, a middle height, the neutral tone.
 - **The live zone** is a flat ground ring under the bike, never the jersey.
 
-## Wardrobe (defaults — tune in alpha; [ADR-0069](../decisions/0069-cosmetics-are-earned-never-bought.md))
+## Wardrobe (defaults — tune in alpha; ADR-0069)
 
 **Earning Batzen** (one Batzen is a minute ridden at your own FTP):
 

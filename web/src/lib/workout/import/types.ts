@@ -8,7 +8,7 @@ import type { Workout } from '../types';
  * so an import is a conversion and a conversion loses things — a free-ride
  * block, a mid-ride text prompt, a single cadence where we model a band.
  * "Imported" over a file that quietly lost half its blocks is the same bug as
- * "Something went wrong" (.claude/rules/errors.md), so the surface shows these
+ * "Something went wrong" (AGENTS.md), so the surface shows these
  * before the rider saves.
  */
 export interface Imported {

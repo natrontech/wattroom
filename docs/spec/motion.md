@@ -35,7 +35,7 @@ lean **0.3 s**, steer **0.15 s**.
 - **Sway**: **0.6° × r** seated, **4° × r** climbing, **9° × r ÷ 1.6** sprinting.
 - **Lean** = atan(v²κ ÷ g), clamped to **16–22°** while pedalling and **32°** coasting.
 
-## Motion (defaults — tune in alpha; [ADR-0079](../decisions/0079-motion-announces-the-camera-stays-still.md))
+## Motion (defaults — tune in alpha; ADR-0079)
 
 **Durations and timings** (`app.css` `@theme`, mirrored in `$lib/motion`):
 

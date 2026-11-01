@@ -94,7 +94,7 @@ curl -s https://wattroom.ch/api/auth/providers
   (the ramp test works day one).
 - The jukebox needs no YouTube API key: links and playlists resolve
   client-side via the IFrame player and keyless oEmbed
-  ([ADR-0026](decisions/0026-a-playlist-is-one-queue-entry.md)). Nothing in
+  (ADR-0026). Nothing in
   `.env` is jukebox-related.
 - Afterwards: the flag button + `/api` feedback loop is live — reports
   become issues automatically (ADR-0006).
@@ -140,7 +140,7 @@ The site is ready to be read: prerendered pages, a sitemap, share cards and stru
 ## Rollback
 
 Rollback is an image tag, never the database
-([ADR-0019](decisions/0019-tagged-releases-and-a-self-converging-vm.md)).
+(ADR-0019).
 Only tagged releases deploy — `:main` builds on every merge and is never
 pinned. For wattroom.ch the operator's homelab timer owns the whole loop: it
 rolls out the newest release, refuses to interrupt a ride, dumps first, and

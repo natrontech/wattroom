@@ -34,7 +34,7 @@
 	}
 
 	// Capability gating: only providers this server actually has credentials
-	// for, so we never offer a button that 500s (.claude/rules/ux.md).
+	// for, so we never offer a button that 500s (AGENTS.md).
 	const linked = $derived(new Set(account.me?.providers ?? []));
 	const connectable = $derived(
 		account.providers.filter((id) => !linked.has(id)),
@@ -73,7 +73,7 @@
 	// The server refuses the last way in; the button says so first (#2879).
 	const lastWayIn = $derived(isLastWayIn(account.me));
 
-	// A confirm rather than an undo toast (.claude/rules/errors.md): undoing
+	// A confirm rather than an undo toast (AGENTS.md): undoing
 	// means a whole OAuth round trip, and for Strava the grant is handed back
 	// upstream, which no toast can put right.
 	async function disconnect(id: string) {

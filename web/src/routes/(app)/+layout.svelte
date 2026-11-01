@@ -536,7 +536,7 @@
 				{/if}
 			{/if}
 			<!-- The page body. It scrolls down, never sideways: wide content
-			     wraps itself in its own overflow-x container (.claude/rules/ux.md).
+			     wraps itself in its own overflow-x container (AGENTS.md).
 			     Named so the phone-width spec can assert exactly that — the
 			     document cannot, because this element absorbs the overflow and
 			     leaves documentElement.scrollWidth equal to its clientWidth (#1008). -->

@@ -209,7 +209,7 @@ export function createChannelLive(address: PlaceAddress) {
 	// restarted leaves an idle channel, because session.go only ever exits a
 	// riding phase through done. Persistent status, not a toast: the ride is
 	// the rider's to rescue and they are three metres from the screen
-	// (.claude/rules/errors.md).
+	// (AGENTS.md).
 	let lostSession = $state<{ workoutName: string; minutes: number } | null>(
 		null,
 	);
@@ -334,7 +334,7 @@ export function createChannelLive(address: PlaceAddress) {
 		replayFrom = null;
 		replayRun++;
 		// Ride-critical errors are persistent status, never toasts
-		// (.claude/rules/errors.md) — and recovery is automatic. Offline says
+		// (AGENTS.md) — and recovery is automatic. Offline says
 		// whose problem it is (#2121), but the backoff runs on either way:
 		// navigator.onLine can call a working network offline, and a client
 		// that believed it would never come back.

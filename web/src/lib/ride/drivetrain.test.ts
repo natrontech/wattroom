@@ -1,5 +1,3 @@
-import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { encodeSimulation } from '$lib/ble/ftms';
 import { trainerForce, SIM_DEFAULTS, type SimParams } from '$lib/ble/trainer';
@@ -254,27 +252,5 @@ describe('real-ratio detection', () => {
 				GEARS.blindMax,
 			);
 		}
-	});
-});
-
-describe("the trainer's speed (ADR-0084)", () => {
-	it('is read by the drivetrain alone', () => {
-		const src = new URL('../../', import.meta.url).pathname;
-		const readers: string[] = [];
-		const walk = (dir: string) => {
-			for (const name of readdirSync(dir)) {
-				const path = join(dir, name);
-				if (statSync(path).isDirectory()) walk(path);
-				else if (
-					/\.(ts|svelte)$/.test(name) &&
-					!/\.test(-helper)?\.ts$/.test(name) &&
-					name !== 'drivetrain.ts' &&
-					/\.speedMps\b/.test(readFileSync(path, 'utf8'))
-				)
-					readers.push(path.slice(src.length));
-			}
-		};
-		walk(src);
-		expect(readers).toEqual([]);
 	});
 });

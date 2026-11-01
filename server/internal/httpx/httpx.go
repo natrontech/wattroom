@@ -1,5 +1,5 @@
 // Package httpx is the one home of the API error shape from
-// .claude/rules/errors.md. Extracted when auth became its second consumer.
+// AGENTS.md. Extracted when auth became its second consumer.
 package httpx
 
 import (

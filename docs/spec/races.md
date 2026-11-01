@@ -2,7 +2,7 @@
 
 Part of the product spec. [docs/SPEC.md](../SPEC.md) indexes every section and says which values change without an ADR.
 
-## Open rides (defaults — tune in alpha; [ADR-0076](../decisions/0076-shared-roads-not-an-open-world.md))
+## Open rides (defaults — tune in alpha; ADR-0076)
 
 | Parameter             | Value                                                                                                                                                  |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -17,13 +17,13 @@ Part of the product spec. [docs/SPEC.md](../SPEC.md) indexes every section and s
 | Name audience         | refreshed every **60 s**                                                                                                                               |
 | Leader calls          | **6** codes — welcome; climb ahead; stay together over the top; last 5 km; sprint at the sign; thanks for riding — at most **1** per **20 s** per ride |
 
-## The roadside ([ADR-0064](../decisions/0064-the-roadside.md) — defaults, tune in alpha)
+## The roadside (ADR-0064 — defaults, tune in alpha)
 
 The **roadside** is everyone in a voice channel who is not riding a given
 rider's session: a phone propped beside the bike, a desk in the lounge, a rider
 a game has put out. It paints, sounds and informs; it never changes a rider's
 resistance, nothing it does reaches a trainer, and it picks **when, never who**
-([ADR-0064](../decisions/0064-the-roadside.md)).
+(ADR-0064).
 
 - **Marks**: at most **24** per ride.
 - **Sounds**: at most **12** roadside sounds a minute reach any one rider.
@@ -78,7 +78,7 @@ What v0 ships (#3022):
   running, held by someone not riding it. Unlabelled, beside
   `wattroom_room_riding` — WATTROOM.md rules out product analytics.
 
-## Races ([ADR-0067](../decisions/0067-racing-on-a-road.md) — defaults, tune in alpha)
+## Races (ADR-0067 — defaults, tune in alpha)
 
 - **Physics**: a rider's speed is the reference rider's (Route rides) at their **W/kg × 75 kg**, plus an **8 kg** bike, on the grade.
 - **Race FTP**: the profile FTP, or the FTP suggestion (Stats formulas) when it is higher, frozen at the flag.
@@ -89,7 +89,7 @@ What v0 ships (#3022):
 - **Riders**: a race starts with at least **2**; points need at least **3**. Disconnect grace **30 s**.
 - **Tick**: **4 Hz** once the leader's ETA to the finish is **30 s** or less.
 - **Category par** (W/kg): **D 2.2**, **C 2.85**, **B 3.6**, **A 4.3**. The pacer rides the same par (ADR-0068).
-- **Shelter**: the open field of [ADR-0077](../decisions/0077-the-wind-is-shared.md); results stay per Category.
+- **Shelter**: the open field of ADR-0077; results stay per Category.
 - **Critical power**: its lines are #3262's.
 - **Team-car radio**: closed phrases only — neutral zone, km 0, race held, race back on, **10**, **5**, **2** and **1 km** and **500 m** to the line, over the line — at most one every **20 s**, the most pressing first. It never says a number the RACE page shows.
 
@@ -104,7 +104,7 @@ What v0 ships (#3022):
 **0.6/m** on class I and HC climbs and **0.25/m** on III–IV; at most **400**
 figures in the crowd (**120** on the low tier).
 
-## Drafting (defaults — tune in alpha; [ADR-0077](../decisions/0077-the-wind-is-shared.md))
+## Drafting (defaults — tune in alpha; ADR-0077)
 
 Only in races and in free rides on a road, and always computed by the hub. The
 numbers follow Blocken (2018, 2025), Spoelstra (2021) and Zwift's PD4.1.1
@@ -124,7 +124,7 @@ tests; the 50 % cap is a rule.
 | Trainer           | Cw = **0.39** × (1 − shelter) × k³ (Virtual gears), eased, written on a change of at least **5** points and at least **2 s** apart; a gear shift is exempt from the spacing |
 | No Cw             | a trainer that ignores Cw gets an equal grade offset                                                                                                                        |
 
-## Riding a road together (defaults — tune in alpha; [ADR-0065](../decisions/0065-riding-a-road-together.md))
+## Riding a road together (defaults — tune in alpha; ADR-0065)
 
 The bunch's one position advances once per whole second, never on a sprint
 window's 4 Hz ticks. Its pace:
@@ -154,7 +154,7 @@ A rider's bias never moves the bunch.
 | Terrain Match     | **250 m** step; penalty weight **0.3**; suggestion floor **0.2**                                                                                                                                                                                                         |
 | Next blocks       | the next **3** blocks painted where each starts, ridden ahead a second at a time at the pace that moves the rider (a bunch: the reference rider; alone: your own target and weight); chevrons over a block's last **100 m**; a sprint's banner from **1 km** out (#3101) |
 
-## Crew Tour (defaults — tune in alpha; [ADR-0080](../decisions/0080-a-crews-season-is-a-tour.md))
+## Crew Tour (defaults — tune in alpha; ADR-0080)
 
 - **Tour metres**: the reference rider's distance (Route rides) at the ride's %FTP profile, on the flat; zero-watt seconds pay nothing.
 - **Per ride**: at most **60 km** of tour metres.

@@ -7,7 +7,7 @@ without reading the rest of the docs first.
 Every session produces the same artefact: a JSONL file plus a comment on the issue.
 Nothing here needs the person running it to write code.
 
-A session is a report, never a gate ([ADR-0088](decisions/0088-ship-on-research-and-simulation.md)).
+A session is a report, never a gate (ADR-0088).
 Research, a test and the `SimulatedTrainer` meet every gate first, and the change ships.
 A session that contradicts a number amends docs/SPEC.md.
 

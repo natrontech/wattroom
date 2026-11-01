@@ -743,7 +743,7 @@ body {
 	@apply w-full px-4 py-6 sm:px-8 sm:py-8;
 }
 
-/* Placeholder for content that is on its way. Pairs with .claude/rules/errors.md's
+/* Placeholder for content that is on its way. Pairs with AGENTS.md's
    loading / error / empty / content contract. */
 /* The shimmer is a strip of the same gradient, tiled every two widths,
  * gliding two tiles to the right: what animating background-position drew,

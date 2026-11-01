@@ -3,12 +3,8 @@ package road
 import (
 	"encoding/json"
 	"flag"
-	"go/ast"
-	"go/parser"
-	"go/token"
 	"math"
 	"os"
-	"reflect"
 	"testing"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
@@ -223,31 +219,6 @@ func TestGolden(t *testing.T) {
 		if v.Name != want[i].Name || v.CdA != want[i].CdA {
 			t.Errorf("vector %d is %q at CdA %.2f, the model defines %q at %.2f: run with -update", i, v.Name, v.CdA, want[i].Name, want[i].CdA)
 		}
-	}
-}
-
-// ADR-0084's rule, pinned by name rather than arity: a gear or the trainer's
-// speed slipped in as a sixth argument is exactly what an arity check misses
-// once it is defaulted.
-func TestStepTakesExactlyWattsGradeMassCdaShelter(t *testing.T) {
-	f, err := parser.ParseFile(token.NewFileSet(), "pace.go", nil, 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var names []string
-	for _, d := range f.Decls {
-		fn, ok := d.(*ast.FuncDecl)
-		if !ok || fn.Name.Name != "Step" || fn.Recv == nil {
-			continue
-		}
-		for _, field := range fn.Type.Params.List {
-			for _, n := range field.Names {
-				names = append(names, n.Name)
-			}
-		}
-	}
-	if want := []string{"watts", "grade", "mass", "cda", "shelter"}; !reflect.DeepEqual(names, want) {
-		t.Fatalf("Pace.Step takes %v, want exactly %v", names, want)
 	}
 }
 

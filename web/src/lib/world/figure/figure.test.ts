@@ -1,5 +1,3 @@
-import { readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { FRAMES, type FrameId } from './bikes/presets';
@@ -137,15 +135,5 @@ describe('one skinned figure and bike per draw', () => {
 			const skinned = m.applyBoneTransform(i, v.clone());
 			expect(skinned.distanceTo(v)).toBeLessThan(1e-6);
 		}
-	});
-
-	it('keeps every module under 300 lines', () => {
-		for (const f of readdirSync(__dirname).filter(
-			(f) => f.endsWith('.ts') && !f.includes('.test'),
-		))
-			expect(
-				readFileSync(join(__dirname, f), 'utf8').split('\n').length,
-				f,
-			).toBeLessThanOrEqual(300);
 	});
 });

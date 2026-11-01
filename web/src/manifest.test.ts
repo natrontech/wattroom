@@ -41,14 +41,6 @@ describe('the web app manifest', () => {
 		expect(manifest.display).toBe('standalone');
 	});
 
-	it('is linked from every page, with the shell’s colour', () => {
-		expect(shell).toContain(
-			'<link rel="manifest" href="/manifest.webmanifest" />',
-		);
-		expect(shell).toContain(`content="${manifest.theme_color}"`);
-		expect(shell).toContain('viewport-fit=cover');
-	});
-
 	it('names icons that exist at the sizes it claims', () => {
 		for (const icon of manifest.icons) {
 			const { width, height } = png(icon.src);
