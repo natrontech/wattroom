@@ -62,6 +62,8 @@ type riderRecord struct {
 	// used to be sixty seconds of riding.
 	lastSecond int
 	secondSet  bool
+	// The last live reading, held across a short silence (#4316).
+	held protocol.RiderMetrics
 	// Live execution (#27): the SPEC score accumulated as samples arrive, so
 	// the tick can carry every rider's compliance without rescoring history.
 	weight float64
@@ -100,6 +102,26 @@ func (r *riderRecord) keep(m protocol.RiderMetrics) bool {
 	r.clocks[m.Clock] = struct{}{}
 	r.samples = append(r.samples, m)
 	return true
+}
+
+// holdThrough fills the seconds a live sample skipped (#4316) with the last
+// reading, when the silence is no longer than protocol.MaxHeldGap. Trainer
+// notifications drift against the room's clock, and the record counts one
+// entry as one second, so an unfilled miss shortens the saved ride. The
+// filled seconds are not scored live: they are not measured.
+func (r *riderRecord) holdThrough(second int) {
+	if !r.secondSet || second-r.lastSecond-1 > protocol.MaxHeldGap {
+		return
+	}
+	for s := r.lastSecond + 1; s < second; s++ {
+		if _, held := r.clocks[s]; held || len(r.samples) >= maxAccumulated {
+			continue
+		}
+		filled := r.held
+		filled.Clock = s
+		r.clocks[s] = struct{}{}
+		r.samples = append(r.samples, filled)
+	}
 }
 
 // inOrder is the record as the saver reads it (#2814): by timeline second,
@@ -142,9 +164,11 @@ func (a *accumulator) add(riderID string, m protocol.RiderMetrics, segments []wo
 	if record.secondSet && second <= record.lastSecond {
 		return
 	}
+	record.holdThrough(second)
 	record.lastSecond, record.secondSet = second, true
 	// The hub's clock is the timeline's (#2814), whatever the client sent.
 	m.Clock = second
+	record.held = m
 	if !record.keep(m) {
 		return
 	}

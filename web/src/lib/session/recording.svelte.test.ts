@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { MaxHeldGap } from '$lib/protocol';
 import { createRecording } from './recording.svelte';
 
 // The record is read as one entry per second downstream (#1411): a trainer
@@ -15,6 +16,21 @@ describe('createRecording', () => {
 		recording.follow('running');
 		recording.record(0, 100);
 		expect(recording.samples.length).toBe(1);
+	});
+
+	// A trainer sample that lands a second late must not shorten the ride
+	// (#4316): a short silence holds the last reading, a long one stays a gap.
+	it('holds the last reading across a short silence', () => {
+		const recording = createRecording({ ftp: () => 200 });
+		recording.record(0, 150);
+		recording.record(2, 200);
+		expect(recording.samples).toEqual([
+			{ watts: 150 },
+			{ watts: 150 },
+			{ watts: 200 },
+		]);
+		recording.record(3 + MaxHeldGap, 220);
+		expect(recording.samples.length).toBe(4);
 	});
 
 	// The HUD reads the live numbers off the same admitted seconds the summary
