@@ -101,6 +101,72 @@ describe('a session on a road says where the bunch is, in slot 1 (#3639)', () =>
 	});
 });
 
+// A race or a game on a road has no segments, so there is no block — but the
+// session still rides a road, and slot 1 reads the road line at your metre.
+function blockless(world: object, game?: object) {
+	const live = $state<{ tick: ServerTick | null }>({ tick: null });
+	let roster!: ReturnType<typeof createRiders>;
+	const stop = $effect.root(() => {
+		roster = createRiders({
+			live,
+			av: { videoOf: {}, voice: {}, speaking: {}, stageSources: [] },
+			recording: { trace: [] } as never,
+			myId: () => 'me',
+			myName: () => 'Me',
+			myTarget: () => 0,
+			fallback: () => ({ ftp: 250, kg: 75, coach: false }),
+			running: () => true,
+			shared: () => ({ elapsed: 60 }),
+			bias: () => 1,
+			segments: () => [],
+			workout: () => workout,
+		});
+	});
+	live.tick = {
+		at: 1,
+		roster: [{ id: 'me', name: 'Me' }],
+		state: {
+			route: {
+				id: 'r1',
+				hash: 'h',
+				genName: 'Road · 3.0 km',
+				fromM: 400,
+				lengthM: 3000,
+			},
+		},
+		world,
+		...(game && { game }),
+	} as unknown as ServerTick;
+	flushSync();
+	return { roster, stop };
+}
+
+describe('a block-less road session — a race or a game on a road (#4192)', () => {
+	it('reads the road line at your metre, with no block to carry it', () => {
+		const { roster, stop } = blockless({
+			bunchM: 1500,
+			speedMps: 8,
+			offsets: { me: -50 },
+		});
+		expect(roster.block).toBeNull();
+		expect(roster.roadReadout!.km).toBeCloseTo(1.495, 5);
+		expect(roster.roadReadout!.totalKm).toBeCloseTo(3, 5);
+		expect(roster.roadReadout!.grade).toBeCloseTo(5, 5);
+		stop();
+	});
+
+	it('reads your racer’s metre in a race, on the road cut at its line', () => {
+		const { roster, stop } = blockless(
+			{ bunchM: 0, speedMps: 0, racers: { me: { m: 900, v: 9 } } },
+			{ phase: 'running', race: { klaxonAtMs: 1000, lineM: 2000 } },
+		);
+		expect(roster.block).toBeNull();
+		expect(roster.roadReadout!.km).toBeCloseTo(0.9, 5);
+		expect(roster.roadReadout!.totalKm).toBeCloseTo(2, 5);
+		stop();
+	});
+});
+
 describe('a rider whose socket dropped while voice holds them (#4090)', () => {
 	it('stays on the roster, read as voice only with no live numbers', () => {
 		const live = $state<{ tick: ServerTick | null }>({ tick: null });

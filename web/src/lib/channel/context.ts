@@ -9,6 +9,7 @@ import type { StageSource } from '$lib/channel/stage';
 import type { CrewPlan } from '$lib/crew-schedule';
 import type { FlightRecorder } from '$lib/ride/flightrecorder.svelte';
 import type { Road } from '$lib/road/road';
+import type { RoadReadout } from '$lib/road/readout';
 import type { PaintedGate } from '$lib/road/gates';
 import type { BunchView } from '$lib/channel/bunch-view';
 import type { RoadMate } from '$lib/channel/road-mates';
@@ -66,6 +67,12 @@ export interface ChannelContext {
 		/** The climb card's line: the block that lands on a climb that far ahead. */
 		lands: (toFootM: number) => string | null;
 	} | null;
+	/**
+	 * Where you are on the session's road, as slot 1 reads it (#4192): the
+	 * readout at your metre, even on a block-less road session (a race or a
+	 * game on a road), where `block` is null. Null off one.
+	 */
+	readonly roadReadout: RoadReadout | null;
 	/** Your race, while you race one (#3174); null otherwise. */
 	readonly race: RaceReadout | null;
 	readonly segments: Segment[];

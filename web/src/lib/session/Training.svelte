@@ -160,6 +160,17 @@
 			inFocus !== 'media' &&
 			channel.segments.length > 0,
 	);
+	// A road with no graph to draw (#4192): a race or a game on a road has no
+	// segments, so the Skyline stands in the horizon where the workout's graph
+	// would, and slot 1 carries the road line instead of a block.
+	const roadHorizon = $derived(
+		!inWorld &&
+			!phoneRoad &&
+			!quiet &&
+			inFocus !== 'media' &&
+			channel.segments.length === 0 &&
+			!!channel.ridden,
+	);
 	// The count-in over the world: the reveal flies, the digit hangs on the arch's banner (#3087, ADR-0046).
 	const countingIn = $derived(inWorld && channel.phase === 'countdown');
 	const ICON = 'btn btn-secondary h-11 w-11 p-0';
@@ -329,6 +340,7 @@
 		{#snippet header()}
 			<RideBand
 				block={channel.block}
+				road={channel.roadReadout ?? undefined}
 				{elapsed}
 				{total}
 				title={channel.shared?.workoutName ?? ''}
@@ -490,6 +502,19 @@
 							{elapsed}
 							ftp={channel.you.ftp}
 							trace={channel.you.trace}
+						/>
+					</div>
+				</div>
+			{:else if roadHorizon && channel.ridden}
+				<!-- A block-less road session — a race or a game on a road — has
+				     no graph to draw, so the Skyline is the horizon of every ride
+				     on a road (#4192). -->
+				<div class="relative min-h-40 flex-1">
+					<div class="absolute inset-0">
+						<Skyline
+							road={channel.ridden.road}
+							m={channel.ridden.m}
+							mps={channel.ridden.mps}
 						/>
 					</div>
 				</div>

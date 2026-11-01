@@ -54,7 +54,7 @@
 	docked
 	climb={mine ? climb : null}
 	map={mine ? map : null}
-	roadLine={!!channel.block?.road}
+	roadLine={!!(channel.block?.road || channel.roadReadout)}
 	road={mine && channel.ridden
 		? {
 				speedKph: channel.ridden.mps * 3.6,
