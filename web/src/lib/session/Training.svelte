@@ -29,8 +29,6 @@
 	import RideBand from '$lib/session/RideBand.svelte';
 	import MomentCard from '$lib/session/MomentCard.svelte';
 	import Skyline from '$lib/ride/Skyline.svelte';
-	import Users from '@lucide/svelte/icons/users';
-	import { peopleFold } from '$lib/channel/people-fold.svelte';
 	import { rideContext } from './ride-context';
 	import MonitorUp from '@lucide/svelte/icons/monitor-up';
 	import { goto } from '$app/navigation';
@@ -142,14 +140,11 @@
 		(inFocus === 'sprint' && !inWorld && !phone) ||
 			(inFocus === 'game' && !!channel.game?.meterHidden),
 	);
-	// The world keeps its width: the people column folds while it rides (#3668).
+	// On a desk the world rides behind the slots, and the jukebox takes a seat
+	// in them (#3668).
 	const docked = $derived(
 		inWorld && !device.narrow && channel.phase === 'live',
 	);
-	$effect(() => {
-		peopleFold.folded = docked;
-		return () => (peopleFold.folded = false);
-	});
 	// Flat, the horizon's graph is the workout's one picture, its blocks in
 	// words, and slot 1 drops its strip (#4159). Where the graph gives way (a
 	// screen, a sprint, the world), the strip is the picture again.
@@ -231,8 +226,7 @@
 		<PhoneSessionControls {world} onLeave={leaveRide} />
 	{/snippet}
 	{#snippet worldControls()}
-		<!-- One row in slot 1 (TARGETS ride-road-world 7), and the people
-		     column's sheet, folded away while the world rides. -->
+		<!-- One row in slot 1. -->
 		<div class="flex items-center gap-2">
 			{#if channel.ridden}<ViewSwitch {world} drawn={inWorld} />{/if}
 			<button
@@ -241,14 +235,6 @@
 				aria-label="TV mode"
 				title="TV mode"><MonitorUp size={20} /></button
 			>
-			{#if inWorld}
-				<button
-					onclick={() => (peopleFold.open = true)}
-					class={ICON}
-					aria-label="who is here"
-					title="Who is here"><Users size={20} /></button
-				>
-			{/if}
 			<SessionFlag />
 			{#if channel.you.inSession}
 				<!-- One short word, so the eyebrow keeps the row (slot 1's 860 px). -->

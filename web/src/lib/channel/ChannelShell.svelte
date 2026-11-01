@@ -357,8 +357,8 @@
 	}}
 />
 
-<!-- The sidebar is the layout's (ADR-0020 — one instance across navigation);
-     the voice channel is content | people inside that frame. -->
+<!-- The sidebar is the layout's (one instance across navigation). The people,
+     the jukebox and the cheers open as a sheet from the now bar. -->
 <div class="bg-surface text-ink flex h-full overflow-hidden">
 	<main class="relative flex min-w-0 flex-1 flex-col overflow-hidden">
 		<SessionLayers
@@ -417,15 +417,9 @@
 			{@render props.children()}
 		</div>
 	</main>
-
-	{#if !peopleFold.folded}
-		<div class="hidden shrink-0 xl:block">
-			{@render panel()}
-		</div>
-	{/if}
 </div>
 
-<PeopleSheet bind:open={peopleFold.open} folded={peopleFold.folded} {panel} />
+<PeopleSheet bind:open={peopleFold.open} {panel} />
 
 {#snippet panel()}
 	<SidePanel
