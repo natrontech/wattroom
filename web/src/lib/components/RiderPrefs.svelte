@@ -93,7 +93,7 @@
 			<span class="block text-sm font-medium">Notify me about this crew</span>
 			<span class="text-muted block text-xs">
 				Planned sessions here reach you by email. Turning off all of it at once
-				is on <a href="/settings/notifications" class="btn-link"
+				is on <a href="/settings/data" class="btn-link"
 					>Notifications</a
 				>.
 			</span>
