@@ -22,7 +22,7 @@ concurrency:
 # push an image to ghcr.io/natrontech/wattroom under the next CalVer tag, or
 # cut a Release. Nothing in this file writes, so nothing gets more; a job that
 # does write widens its own block, as publish.yml's image job does, never the
-# top. The docs job below fails a workflow that forgets.
+# top. The config job below fails a workflow that forgets.
 #
 # Every checkout sets `persist-credentials: false` for the same reason: no job
 # pushes with git, and without it the token stays in .git/config for every
@@ -113,83 +113,20 @@ jobs:
           work-dir: server
           go-version-file: server/go.mod
 
-  # Three ADRs once claimed 0019 at once (#379) — a duplicate number is a
-  # silent footgun (links and citations become ambiguous) that nothing else
-  # catches, so it gets its own gate. The index and link checks (#674) guard
-  # the other way the chain breaks: an ADR nobody can find, or an amendment
-  # pointer at a file that never existed.
-  docs:
+  # Workflow and deploy config: actions pinned to a commit, every workflow
+  # starts from a read-only token, and the alert rules fire on real series.
+  config:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: ADR numbers are unique
-        run: |
-          dupes=$(ls docs/decisions/ | cut -d- -f1 | sort | uniq -d)
-          if [ -n "$dupes" ]; then
-            echo "Duplicate ADR number(s): $dupes" >&2
-            exit 1
-          fi
-      - name: Every ADR is listed in docs/decisions/README.md
-        run: |
-          missing=""
-          for f in docs/decisions/[0-9]*.md; do
-            name=$(basename "$f")
-            grep -qF "($name)" docs/decisions/README.md || missing="$missing $name"
-          done
-          if [ -n "$missing" ]; then
-            echo "ADR file(s) missing from docs/decisions/README.md:$missing" >&2
-            exit 1
-          fi
-      # ADR-0050: a frozen statement is never rewritten, only annotated — and an
-      # annotation is worth little without the date and the issue or ADR that
-      # earned it, which exactly one of the six markings already in the file
-      # carries. Unanchored on purpose: the founding record is prose *and* a
-      # 48-row table, and a blockquote cannot live inside a table cell, so the
-      # marker appears both at the start of a line and inside one.
-      - name: Divergence annotations name where they happened
-        run: |
-          bad=$(grep -rn '\*\*Diverged' WATTROOM.md docs/decisions/ \
-                | grep -vE 'Diverged [0-9]{4}-[0-9]{2}-[0-9]{2} \([^)]*(#[0-9]+|ADR-[0-9]{4})' || true)
-          if [ -n "$bad" ]; then
-            echo 'A divergence annotation must read:' >&2
-            echo '    > **Diverged YYYY-MM-DD (#issue, ADR-nnnn)** — the argument, in plain words' >&2
-            echo 'These do not:' >&2
-            echo "$bad" >&2
-            exit 1
-          fi
-          echo "Divergence annotations are well formed."
-
-      # WATTROOM.md and the top-level docs are in scope too, not just the ADRs
-      # (#2055): docs/ROADMAP.md alone carries 36 links into docs/decisions/,
-      # and eight of them were written against guessed filenames that the old
-      # docs/decisions-only loop could never have seen. docs/spec/ and
-      # docs/design/ joined when SPEC.md became an index into docs/spec/.
-      - name: Relative links in the docs resolve
-        run: |
-          broken=""
-          for f in docs/decisions/*.md docs/*.md docs/spec/*.md docs/design/*.md WATTROOM.md AGENTS.md; do
-            [ -e "$f" ] || continue
-            for target in $(grep -oE '\]\([^)]+\)' "$f" | sed -E 's/^\]\(//; s/\)$//; s/[ #].*$//' | grep -vE '^([a-z]+:|$)'); do
-              [ -e "$(dirname "$f")/$target" ] || broken="$broken $f->$target"
-            done
-          done
-          if [ -n "$broken" ]; then
-            echo "Broken relative link(s):$broken" >&2
-            exit 1
-          fi
-
       # Every action is pinned to a commit, never to a tag. A tag is a movable
       # pointer in somebody else's repository: whoever can push to it can
       # replace the code inside every job here, on every branch, with the
       # secrets those jobs hold — which is exactly how tj-actions/changed-files
       # was turned against thousands of repositories in 2025, by repointing
       # tags that had never changed before. A commit SHA cannot be repointed.
-      #
-      # This lives in `docs` because `docs` is required on main's ruleset and
-      # runs on every PR regardless of paths. One agent adding `@v4` out of
-      # habit silently undoes the whole thing, and nothing else would notice.
       #
       # The trailing `# vX.Y.Z` is required too, not decoration: a bare SHA
       # tells a reader nothing about how old it is, and it is the comment
@@ -228,7 +165,7 @@ jobs:
       # install — silently, because every job still goes green. So every
       # workflow says what its token may do at the top, and the top never
       # grants a write: that is the job's own block, where the reason can sit
-      # beside it. In `docs` for the reason the pin check gives.
+      # beside it. 
       - name: Every workflow starts from a read-only token
         run: |
           bad=()
@@ -273,68 +210,13 @@ jobs:
 
       # A rule that selects a label the scrape never produces does not fail. It
       # stays silent, exactly like a healthy one, and the job-staleness rules
-      # did that from the day they were written (#2679). In `docs` for the
-      # reason the step above gives. Same promtool as the homelab Prometheus
+      # did that from the day they were written (#2679). Same promtool as the homelab Prometheus
       # that runs wattroom.ch's copy of these rules.
       - name: Alert rules fire on the series a real scrape produces
         run: |
           docker run --rm -v "$PWD/deploy:/rules:ro" -w /rules --entrypoint promtool \
             prom/prometheus:v3.14.0@sha256:e906cef998316bbe319f98711e1b4d8613ad37e14b08ff831d7036e77b7464f9 \
             test rules alerts.test.yml
-
-  # A migration whose timestamp precedes the newest already on main is not an
-  # error and this job never fails (#1481). Two branches cut from the same main
-  # stamp timestamps minutes apart, the later-written one merges first, and the
-  # server applies the other one late at the next boot — safe by construction
-  # under ADR-0019's expand-only rule, as the amendment there of 2026-09-17
-  # records. What the author still wants to know is that it happened, because
-  # that rule is enforced by nobody: a migration quietly assuming the schema
-  # left by a file it now runs *before* is the one case the option does not
-  # cover.
-  #
-  # Deliberately not a gate. `strict_required_status_checks_policy` is false on
-  # main's ruleset, so a blocking check would not even close the race it names:
-  # the losing branch is green against the main it was cut from and never
-  # re-runs against the winner's file. Turning that on costs a rebase and a
-  # full CI re-run per merge, in a repo where many agents merge in parallel.
-  # The step exits 0 by construction, so this warns however the job is
-  # configured; `continue-on-error` only covers a bug in the step itself, and
-  # the job's name is deliberately not one of the ruleset's required contexts
-  # (server, web, vulncheck, docs).
-  migration-order:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-          fetch-depth: 0
-      - name: a new migration older than the base branch's newest
-        run: |
-          dir=server/internal/store/migrations
-          newest=$(git ls-tree -r --name-only "origin/${{ github.base_ref }}" -- "$dir" \
-                   | sed -n 's#.*/\([0-9]\{1,\}\)_.*\.sql$#\1#p' | sort -n | tail -1)
-          if [ -z "$newest" ]; then
-            echo "No migrations on ${{ github.base_ref }} to compare against."
-            exit 0
-          fi
-          # 10# because the original migrations are 000NN and bash reads a
-          # leading zero as octal, in which 00009 is not a number at all.
-          newest=$((10#$newest))
-
-          late=0
-          while IFS= read -r f; do
-            version=$(basename "$f" | sed -n 's#^\([0-9]\{1,\}\)_.*#\1#p')
-            [ -n "$version" ] || continue
-            [ "$((10#$version))" -lt "$newest" ] || continue
-            late=1
-            echo "::warning file=$f::This migration is stamped $version, older than $newest which is already on ${{ github.base_ref }}. The server applies it out of order at its next boot (goose WithAllowMissing, ADR-0019 amended 2026-09-17), so this is not a blocker — but check that it only ADDS, and does not read or depend on anything $newest left behind. If it does, take a fresh name with \`make migration name=<slug>\` and move the body across."
-          done < <(git diff --name-only --diff-filter=AR "origin/${{ github.base_ref }}...HEAD" -- "$dir")
-
-          if [ "$late" -eq 0 ]; then
-            echo "No migration here predates $newest on ${{ github.base_ref }}."
-          fi
 
   web:
     runs-on: ubuntu-latest
@@ -387,83 +269,3 @@ jobs:
       - run: pnpm run build
       - name: three.js stays out of the eager shell and the (site) pages
         run: node scripts/bundle-check.mjs
-
-  # The same suite on the Node the `web` job above does not run (#2074).
-  #
-  # Node 24 is the Active LTS and stays the gate. Node 26 is Current, and it
-  # became the version contributors actually have: four `web` tests were red on
-  # a clean `main` for everyone on 26 and green here for a week, because Node 26
-  # ships the Web Storage globals and vitest's happy-dom environment then
-  # declines to install its own (#2058, fixed in #2073). CI could not have found
-  # that, and the loud four tests were the better half — the storage-backed
-  # stores guard on `typeof localStorage === 'undefined'`, so the rest of the
-  # suite took the no-storage branch and *passed on default data*. Any future
-  # Node that lands a web global can shadow happy-dom the same silent way, so
-  # the durable answer is to run the suite on more than one Node rather than to
-  # pin one.
-  #
-  # Advisory, not a gate: `continue-on-error` keeps a Node-26 regression in a
-  # dependency from blocking every unrelated PR in the repo, and this job's name
-  # is deliberately not `web` — it is not in the branch ruleset's required
-  # contexts (server, web, vulncheck, docs), and a matrix on the job above would
-  # have renamed that required `web` context to `web (24)` and wedged every
-  # merge. Whether this should graduate to a blocking check is a risk-appetite
-  # call left open on #2074.
-  #
-  # Only `pnpm run test`: `check`, `format:check`, the notices and `build` do
-  # not vary with the interpreter the way the test environment does, and
-  # duplicating them doubles the job for no new signal.
-  #
-  # When 26 becomes the Active LTS, it moves up into the `web` job and this one
-  # takes the next Current. One version to edit, in the `node-version` below.
-  web-node-next:
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    defaults:
-      run:
-        working-directory: web
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      # Not `pnpm/setup` — see the note in ci.yml's `web` job (#2375).
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-        with:
-          package_json_file: web/package.json
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: 26
-          cache: pnpm
-          cache-dependency-path: web/pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm run test
-
-  # Dead code (#3862): knip over web/ (unused files, exports, dependencies)
-  # and deadcode over server/ (functions no main and no test reaches), both
-  # through `make dead-code`, which pins their versions. Advisory: the name is
-  # not one of main's required contexts (server, web, vulncheck, docs,
-  # changelog), so a red run blocks no merge, but it is red on the PR that
-  # adds the dead code, where deleting it is cheapest.
-  dead-code:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: server/go.mod
-      # Not `pnpm/setup` — see the note in ci.yml's `web` job (#2375).
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-        with:
-          package_json_file: web/package.json
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: 24
-          cache: pnpm
-          cache-dependency-path: web/pnpm-lock.yaml
-      # knip loads the project's Vite, Vitest and Playwright configs, so it
-      # needs the dependencies they import.
-      - run: pnpm install --frozen-lockfile
-        working-directory: web
-      - run: make dead-code

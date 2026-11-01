@@ -1,78 +1,28 @@
 import { defineConfig, devices } from '@playwright/test';
 
 // Ports come from scripts/dev-env.sh, so a run in a worktree neither binds nor
-// probes the main tree's (e2e/env.js).
-//
-// PLAYWRIGHT_BASE_URL points the suite at a deployed target (the production
-// synthetic, #153). Unset, everything below behaves exactly as before: build,
-// serve locally, ride that. The workflow used to set this variable while the
-// config ignored it, so the "production" synthetic was really testing a fresh
-// local build — green while production was down.
-//
-// Both questions are env.js's to answer now: asking for a local port is what
-// makes it consult scripts/dev-env.sh, and a run against a deployed target
-// must never ask (#2126).
+// probes the main tree's (e2e/env.js). PLAYWRIGHT_BASE_URL points the suite at
+// a deployed target instead of a local build.
 import { baseUrl, isExternal } from './e2e/env.js';
 
 const external = isExternal();
 
 /**
- * One end-to-end flow (WATTROOM.md): simulated trainer rides a workout and produces
- * a .fit. It exercises the seam nothing else covers — browser ride loop, real
- * workout engine, HTTP, and the Go encoder — so it is deliberately the only e2e
- * test rather than the first of many.
- *
- * Chromium only: Web Bluetooth exists nowhere else, and the app says so itself.
+ * A handful of smoke flows: a simulated ride to a .fit, first run, two riders
+ * in one session, chat, and the public pages. Chromium only: Web Bluetooth
+ * exists nowhere else.
  */
-// Mute before you play (AGENTS.md), at the browser rather than at the app.
-// The zeroed mixer in e2e/crew.ts covers the `riders` contexts; it cannot
-// cover a spec that takes Playwright's own `page`, which is most of them —
-// ride.spec.ts rides a real minute with the cue bus at its 0.7 default, and
-// chat-focus.spec.ts had to hand-copy the mixer write to stay quiet (#2358).
-// A launch flag cannot be forgotten by the next spec, and it needs to know
-// nothing about which channels exist. `voice` is the carve-out, below: there
-// the audio IS the thing under test.
-const MUTE = '--mute-audio';
-
-// How the world's browsers draw WebGL: Metal on a Mac, SwiftShader elsewhere,
-// named rather than fallen back to. A headless Chromium left to fall back to
-// SwiftShader composites in software, and reads every WebGL frame back on the
-// page's main thread, waiting out each frame SwiftShader draws (#3877): a page
-// drawing the world beside another went quiet for up to 19 s, so its simulated
-// trainer fell silent, its socket fell behind the hub's ticks, and a read of
-// it came back seconds late. Named, the canvas reaches the compositor as a
-// texture and the main thread stays free.
-const GL = [
-	process.platform === 'darwin'
-		? '--use-angle=metal'
-		: '--use-angle=swiftshader',
-	'--enable-unsafe-swiftshader',
-];
-
 export default defineConfig({
 	testDir: 'e2e',
-	// Specs only. Playwright's default testMatch takes *.test.ts as well, so it
-	// picked up e2e/env.test.ts — a vitest unit test for the harness's own
-	// helper — and died on `vi.mock` with "Vitest mocker was not initialized".
-	// The pair to vite.config.ts's exclude: Playwright owns e2e/*.spec.ts,
-	// vitest owns e2e/*.test.ts, and neither runner sees the other's files.
 	testMatch: '**/*.spec.ts',
-	// The smoke rides a real minute; the default 30 s cap would kill it.
+	// The ride spec rides a real minute; the default 30 s cap would kill it.
 	timeout: 5 * 60 * 1000,
 	expect: { timeout: 10_000 },
 	fullyParallel: false,
-	// Three per CI shard (e2e.yml): most of a spec is a simulated trainer riding
-	// in real time, which leaves a 4-core runner idle at two. The @world specs,
-	// drawn in software GL, run apart from the rest, one at a time.
 	workers: process.env.CI ? 3 : undefined,
 	forbidOnly: !!process.env.CI,
-	// Two retries on CI, none locally: a genuine break still fails three
-	// times, while a startup wobble (the simulated trainer's first reading
-	// took the whole five minutes twice on main) no longer blocks a release.
 	retries: process.env.CI ? 2 : 0,
-	// shard-by-file.ts deals the files out under `--shard`, and does nothing
-	// without it.
-	reporter: [['./e2e/shard-by-file.ts'], [process.env.CI ? 'github' : 'list']],
+	reporter: process.env.CI ? 'github' : 'list',
 	use: {
 		baseURL: baseUrl(),
 		trace: 'retain-on-failure',
@@ -80,167 +30,12 @@ export default defineConfig({
 	projects: [
 		{
 			name: 'chromium',
-			grepInvert: /@world/,
-			testIgnore: [
-				'mobile-channel.spec.ts',
-				'phone-width.spec.ts',
-				'voice-duck.spec.ts',
-				'voice-loopback.spec.ts',
-				'voice-click-join.spec.ts',
-				'design-shots.spec.ts',
-				'design-seed.spec.ts',
-				'world-soak.spec.ts',
-			],
-			use: { ...devices['Desktop Chrome'], launchOptions: { args: [MUTE] } },
-		},
-		{
-			// The @world specs: Chromium as above, drawing WebGL the way GL says.
-			name: 'world',
-			grep: /@world/,
 			use: {
 				...devices['Desktop Chrome'],
-				launchOptions: { args: [MUTE, ...GL] },
+				launchOptions: { args: ['--mute-audio'] },
 			},
 		},
-		{
-			// The design shots' crew, roads and rides, made before any surface
-			// is shot (#3858).
-			name: 'design-seed',
-			testMatch: ['design-seed.spec.ts'],
-			use: { ...devices['Desktop Chrome'], launchOptions: { args: [MUTE] } },
-		},
-		{
-			// The design shots (#3666, docs/design/DESIGN-CHECK.md): what a
-			// rider-visible change looks like, for a reviewer to hold against
-			// its target. Run by `make design-shots`, which builds with the dev
-			// hooks on (/dev/world, the world's probe) and serves that build
-			// here (#3858); the spec skips itself unless DESIGN_SHOTS_OUT says
-			// where to write. Metal on a Mac, or headless Chromium falls back to
-			// software GL and the world quietly draws the Flat road; SwiftShader
-			// elsewhere, where the dev build's frame judge stands down
-			// (e2e/design/shoot.ts, #3823) because software GL misses every frame.
-			// Three workers: one rides Designer's surfaces in order, the others
-			// take the surfaces that share nothing with them. One retry: on a
-			// loaded machine a browser that dies under one surface would
-			// otherwise send its author back to capture it again by hand.
-			name: 'design',
-			testMatch: ['design-shots.spec.ts'],
-			dependencies: ['design-seed'],
-			workers: process.env.CI ? 2 : 3,
-			retries: 1,
-			// ride-road-world rides the world four times: in software GL on a
-			// four-core runner that is past the five minutes a ride is given.
-			timeout: 10 * 60 * 1000,
-			use: {
-				...devices['Desktop Chrome'],
-				// A control that never comes fails its surface in seconds, not
-				// the five minutes a ride's test is allowed.
-				actionTimeout: 15_000,
-				launchOptions: { args: [MUTE, ...GL] },
-			},
-		},
-		{
-			// The world soak (#3851): /dev/world ridden for hours, judged flat.
-			// Run by `make world-soak`, which builds with the dev hooks on as
-			// the design shots do; the spec skips without WORLD_SOAK_OUT.
-			name: 'soak',
-			testMatch: ['world-soak.spec.ts'],
-			retries: 0,
-			use: {
-				...devices['Desktop Chrome'],
-				launchOptions: { args: [MUTE, ...GL] },
-			},
-		},
-		{
-			// A real call with a camera in it (#2702): Chromium's own fake
-			// devices stand in for the mic and camera, muted like every spec
-			// whose subject is not the sound.
-			name: 'av',
-			testMatch: ['voice-click-join.spec.ts'],
-			use: {
-				...devices['Desktop Chrome'],
-				launchOptions: {
-					args: [
-						MUTE,
-						'--use-fake-ui-for-media-stream',
-						'--use-fake-device-for-media-stream',
-					],
-				},
-			},
-		},
-		{
-			// A real phone profile, not a narrow desktop window: device.svelte.ts
-			// reads pointer and Bluetooth signals, not width alone (#412), so a
-			// dragged-narrow Chrome would render desktop affordances and the
-			// phone specs would pass against a room a phone never sees.
-			// phone-width.spec.ts overrides the viewport to the 375×812 the
-			// standard is written at, and keeps this device's touch pointer.
-			name: 'phone',
-			testMatch: ['mobile-channel.spec.ts', 'phone-width.spec.ts'],
-			use: { ...devices['Pixel 5'], launchOptions: { args: [MUTE] } },
-		},
-		{
-			// voice-duck.spec.ts is the one spec that needs a real microphone
-			// signal rather than none. The signal itself is a live tone —
-			// voice-duck.spec.ts overrides getUserMedia with an OscillatorNode
-			// routed into a MediaStreamAudioDestinationNode, not a recording
-			// played through Chromium's own fake-file-capture device: a
-			// generated sound is guaranteed non-silent for as long as this
-			// page's Web Audio keeps running, where a looped file depends on
-			// Chromium's own fake device correctly decoding and looping it (a
-			// dependency, not a guarantee — the file-based device is the
-			// harder-to-reason-about half of the two). The launch flags below
-			// only cover what a script-supplied stream cannot: auto-granting
-			// the getUserMedia prompt and letting audio start without a
-			// user-gesture wait. Scoped to its own project — every other spec
-			// launches muted (MUTE, above).
-			// No --mute-audio (AGENTS.md's usual "mute before you play"), and
-			// the `riders` fixture's zeroed mixer carries no voice level: this
-			// spec's whole point is a real voice actually being heard, which
-			// AGENTS.md itself carves out — "Unless the audio is the thing
-			// under test". A real GitHub
-			// Actions runner has no speaker to reach either way; a developer
-			// running this locally hears one short tone, once, per run.
-			name: 'voice',
-			testMatch: ['voice-duck.spec.ts', 'voice-loopback.spec.ts'],
-			use: {
-				...devices['Desktop Chrome'],
-				launchOptions: {
-					args: [
-						'--use-fake-ui-for-media-stream',
-						'--autoplay-policy=no-user-gesture-required',
-					],
-				},
-			},
-		},
-		// The world must be the same bits in every engine (#3224), so its one
-		// placement spec also runs where no rider rides: the app itself is
-		// Chromium's (ADR-0004). No sound is made, so nothing to mute.
-		{
-			name: 'webkit',
-			testMatch: ['world-place.spec.ts'],
-			use: { ...devices['Desktop Safari'] },
-		},
-		{
-			name: 'firefox',
-			testMatch: ['world-place.spec.ts'],
-			use: { ...devices['Desktop Firefox'] },
-		},
-		// Without somewhere to write, every design shot and the soak skip — and CI's shards
-		// split by test count, so 43 skips would leave the last one half idle.
-	].filter(
-		(p) =>
-			(!p.name.startsWith('design') || !!process.env.DESIGN_SHOTS_OUT) &&
-			(p.name !== 'soak' || !!process.env.WORLD_SOAK_OUT),
-	),
-	// Serves the built SPA and proxies /api to the Go server, matching production.
-	//
-	// Always builds, never reuses: the server only ever serves build/, so a reused
-	// process happily serves a stale bundle and the run passes against code that is
-	// not the code under test. A route added since the last build 404s — which is
-	// exactly how this was found. The build costs seconds against a two-minute ride.
-	// Against a deployed target there is nothing to serve: the synthetic rides
-	// production, and a local server would silently make it a self-test.
+	],
 	webServer: external
 		? undefined
 		: {

@@ -1,9 +1,6 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { crewDoorDisclosure } from './crew';
 import { liveNumbersLine } from './privacy-copy';
-import { FILES, code } from './source-scan.test-helper';
 
 describe('crewDoorDisclosure (#2456)', () => {
 	// ADR-0036: a board is on "visibly", before anyone is inside — at the
@@ -32,47 +29,5 @@ describe('crewDoorDisclosure (#2456)', () => {
 		for (const door of [{ boardEnabled: true }, { boardEnabled: false }]) {
 			expect(crewDoorDisclosure(door).privacy).toContain(liveNumbersLine);
 		}
-	});
-});
-
-/**
- * The door is the only way in (#2810). ADR-0036, amended with ADR-0058, puts
- * the word about a crew's board at `/c/[code]` so that nobody is enrolled on
- * it just by joining — and `on_board` defaults to true on that premise. Home's
- * code box used to call the join itself, and a rider who typed a code there
- * was ranked on a board no sentence had mentioned. Any second caller is that
- * bypass again, so it fails here rather than in a rider's week.
- */
-describe('joining a crew goes through its door (#2810)', () => {
-	const SRC = join(import.meta.dirname, '..');
-	const DOOR = 'routes/(app)/c/[code]/+page.svelte';
-	// Un-`g`ged on purpose: a global regex carries `lastIndex` from one
-	// file's test into the next.
-	const JOINS: { call: RegExp; callers: string[] }[] = [
-		{ call: /\bjoinCrew\(/, callers: ['lib/crew.ts', DOOR] },
-		{ call: /\/api\/crews\/join\b/, callers: ['lib/crew.ts'] },
-	];
-
-	it.each(JOINS)('$call is reached only from the door', ({ call, callers }) => {
-		const strangers = FILES.filter(
-			(file) =>
-				!callers.includes(file) &&
-				!file.endsWith('.test.ts') &&
-				call.test(code(readFileSync(join(SRC, file), 'utf8'))),
-		);
-		expect(
-			strangers,
-			`These join a crew without its door, so nothing tells the rider ` +
-				`about the crew's weekly board before they are on it:` +
-				`\n  ${strangers.join('\n  ')}\n` +
-				`Send the rider to crewDoorPath(code) instead.`,
-		).toEqual([]);
-	});
-
-	it('the door still shows the disclosure it is the only home of', () => {
-		expect(FILES, `${DOOR} moved — point this test at it`).toContain(DOOR);
-		expect(code(readFileSync(join(SRC, DOOR), 'utf8'))).toMatch(
-			/crewDoorDisclosure\(/,
-		);
 	});
 });

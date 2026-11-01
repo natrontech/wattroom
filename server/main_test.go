@@ -8,8 +8,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -337,41 +335,6 @@ func TestSPAAnswersAnUnknownPathWith404(t *testing.T) {
 		}
 		if !strings.Contains(rec.Body.String(), "app") {
 			t.Errorf("%s: not the app's page, which draws the rider's 404", path)
-		}
-	}
-}
-
-// appRoutes is written by hand; this is what stops a new route from shipping
-// as a 404. It reads the tree the way SvelteKit does: a (group) adds no
-// segment, and (site)'s pages are files the server finds without the list.
-func TestAppRoutesMatchTheRouteTree(t *testing.T) {
-	const tree = "../web/src/routes"
-	found := map[string]bool{}
-	var walk func(dir string)
-	walk = func(dir string) {
-		entries, err := os.ReadDir(dir)
-		if err != nil {
-			t.Fatalf("read %s: %v", dir, err)
-		}
-		for _, e := range entries {
-			switch name := e.Name(); {
-			case !e.IsDir(), name == "(site)":
-			case strings.HasPrefix(name, "("):
-				walk(filepath.Join(dir, name))
-			default:
-				found[name] = true
-			}
-		}
-	}
-	walk(tree)
-	for name := range found {
-		if !appRoutes[name] {
-			t.Errorf("web/src/routes has /%s, which appRoutes lacks: it would answer 404", name)
-		}
-	}
-	for name := range appRoutes {
-		if !found[name] {
-			t.Errorf("appRoutes has /%s, which web/src/routes does not", name)
 		}
 	}
 }

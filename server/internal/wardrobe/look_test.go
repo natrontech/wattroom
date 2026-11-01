@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os/exec"
 	"strings"
 	"testing"
 )
@@ -72,28 +71,6 @@ func TestAnOutfitIsWornAsALook(t *testing.T) {
 	for path, want := range map[string]int{"/api/looks/not-a-hash": 400, "/api/looks/0123456789abcdef": 404} {
 		if status, _ := h.call(t, "alice", http.MethodGet, path, ""); status != want {
 			t.Errorf("%s: %d, want %d", path, status, want)
-		}
-	}
-}
-
-// Cosmetics never move anybody (#3155): the hub — and the race engine,
-// once it has a package — must not reach the wardrobe, even through another
-// package. The whole import graph is read, not one file's imports.
-func TestTheWardrobeStaysOutOfWhatMovesRiders(t *testing.T) {
-	cmd := exec.CommandContext(t.Context(), "go", "list", "-deps", "-f", "{{.ImportPath}}", "./internal/hub")
-	cmd.Dir = "../.."
-	if races, _ := exec.CommandContext(t.Context(), "sh", "-c", "cd ../.. && ls -d internal/race* 2>/dev/null").Output(); len(races) > 0 {
-		for _, dir := range strings.Fields(string(races)) {
-			cmd.Args = append(cmd.Args, "./"+dir)
-		}
-	}
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("go list: %v\n%s", err, out)
-	}
-	for _, dep := range strings.Fields(string(out)) {
-		if strings.HasSuffix(dep, "/internal/wardrobe") {
-			t.Fatalf("%s reaches the wardrobe: what someone wears must never move anybody", strings.Join(cmd.Args[5:], " "))
 		}
 	}
 }

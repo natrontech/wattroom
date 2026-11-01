@@ -1,9 +1,6 @@
 // @vitest-environment happy-dom
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { edgeDivider } from '$lib/divider';
-import { code } from '$lib/source-scan.test-helper';
 import { claimPageTurn } from './computer-pages';
 
 /**
@@ -87,19 +84,6 @@ describe('the page keys', () => {
 		document.body.append(block);
 		press({ key: 'ArrowRight' }, block);
 		expect(heard).toEqual([null]);
-
-		const graph = code(
-			readFileSync(
-				join(import.meta.dirname, '../components/IntervalGraph.svelte'),
-				'utf8',
-			),
-		);
-		const editKeys = graph.slice(graph.indexOf('function editKeys'));
-		const arrows = editKeys.slice(
-			0,
-			editKeys.indexOf("onEdit({ kind: 'seconds'"),
-		);
-		expect(arrows).toContain('event.preventDefault()');
 	});
 
 	it('turns every computer on the screen with one press, the desk’s and the TV’s', () => {

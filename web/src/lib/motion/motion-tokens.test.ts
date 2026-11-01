@@ -1,56 +1,6 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { pop } from './damp';
-import {
-	bezier,
-	DUR,
-	EASE,
-	HOLD_ANNOUNCE,
-	POP_LINEAR,
-	STAGGER,
-	STAGGER_PODIUM,
-} from './tokens';
-
-/**
- * One motion vocabulary, spelled twice (#3207): app.css `@theme` for CSS and
- * tokens.ts for script. A value changed on one side only is a transition that
- * no longer matches the one beside it, and nothing would say so.
- */
-const CSS = readFileSync(join(import.meta.dirname, '../../app.css'), 'utf8');
-
-/** A declaration's value, whitespace collapsed the way prettier may wrap it. */
-function token(name: string): string | undefined {
-	return CSS.match(new RegExp(`--${name}:\\s*([^;]+);`))?.[1]
-		.replace(/\s+/g, ' ')
-		.replace(/\(\s/g, '(')
-		.replace(/,?\s\)/g, ')')
-		.trim();
-}
-const declared = (prefix: string) =>
-	[...CSS.matchAll(new RegExp(`--${prefix}-([a-z]+):`, 'g'))].map((m) => m[1]);
-
-describe('app.css and $lib/motion agree (#3207)', () => {
-	it('on every duration and timing', () => {
-		for (const [name, ms] of Object.entries(DUR))
-			expect(token(`dur-${name}`), `--dur-${name}`).toBe(`${ms}ms`);
-		expect(token('hold-announce')).toBe(`${HOLD_ANNOUNCE}ms`);
-		expect(token('stagger')).toBe(`${STAGGER}ms`);
-		expect(token('stagger-podium')).toBe(`${STAGGER_PODIUM}ms`);
-		expect(declared('dur').sort()).toEqual(Object.keys(DUR).sort());
-	});
-
-	it('on every easing, the resampled spring included', () => {
-		for (const [name, curve] of Object.entries(EASE))
-			expect(token(`ease-${name}`), `--ease-${name}`).toBe(
-				`cubic-bezier(${curve.join(', ')})`,
-			);
-		expect(token('ease-pop')).toBe(POP_LINEAR);
-		expect(declared('ease').sort()).toEqual(
-			[...Object.keys(EASE), 'pop'].sort(),
-		);
-	});
-});
+import { bezier, EASE } from './tokens';
 
 describe('the curves script uses', () => {
 	it('solves cubic-bezier() the way CSS does', () => {

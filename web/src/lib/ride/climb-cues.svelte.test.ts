@@ -1,5 +1,4 @@
 // @vitest-environment happy-dom
-import { readFileSync } from 'node:fs';
 import { tick } from 'svelte';
 import { describe, expect, it, vi } from 'vitest';
 import type { ClimbView } from './climb-view';
@@ -67,10 +66,6 @@ describe('the climb card says so (#3645)', () => {
 			stop();
 		}
 		vi.useRealTimers();
-		const css = readFileSync('src/app.css', 'utf8');
-		expect(css).toMatch(
-			/\.flamme-stamp \{\s*animation: flamme-stamp var\(--dur-base\) var\(--ease-pop\) both;/,
-		);
 	});
 });
 

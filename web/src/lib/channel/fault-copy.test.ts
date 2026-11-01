@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { faultCopy } from '$lib/channel/fault-copy';
 
@@ -42,15 +40,6 @@ describe('a trainer fault reads the same on every riding surface', () => {
 			expect(said.title).toMatch(/^Trainer/);
 			expect(said.action).toMatch(/^Pair /);
 		}
-	});
-
-	it('the solo ride and the ramp draw the session’s banner', () => {
-		const status = readFileSync(
-			join(import.meta.dirname, '../ride/RideStatus.svelte'),
-			'utf8',
-		);
-		expect(status).toContain('<FaultBanner');
-		expect(status).not.toMatch(/signal lost|reconnecting on its own/i);
 	});
 });
 

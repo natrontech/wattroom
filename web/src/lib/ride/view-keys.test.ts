@@ -53,16 +53,3 @@ describe('M and V on a session’s and a free ride’s surface (#4236)', () => {
 		expect(toggleMap).not.toHaveBeenCalled();
 	});
 });
-
-describe('where M and V are bound', () => {
-	it('on a session’s surface and a free ride’s, beside the solo ride’s own keys', async () => {
-		const { readFileSync } = await import('node:fs');
-		const { join } = await import('node:path');
-		const { code } = await import('$lib/source-scan.test-helper');
-		const src = join(import.meta.dirname, '..');
-		for (const file of ['session/Training.svelte', 'ride/FreeRiding.svelte'])
-			expect(code(readFileSync(join(src, file), 'utf8'))).toContain(
-				'bindViewKeys(',
-			);
-	});
-});

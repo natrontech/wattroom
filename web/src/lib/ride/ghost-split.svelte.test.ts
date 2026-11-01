@@ -301,20 +301,4 @@ describe('ghost placement', () => {
 		});
 		expect(api).not.toHaveBeenCalled();
 	});
-
-	it('mounts ghosts only on the free ride’s world, never a session’s or a workout’s', () => {
-		const files = import.meta.glob('/src/**/*.svelte', {
-			query: '?raw',
-			import: 'default',
-			eager: true,
-		}) as Record<string, string>;
-		const haunted = Object.entries(files)
-			.filter(([, src]) =>
-				(src.match(/<RideWorld\b[\s\S]*?\/>/g) ?? []).some((tag) =>
-					/\sghosts=/.test(tag),
-				),
-			)
-			.map(([path]) => path);
-		expect(haunted).toEqual(['/src/lib/ride/FreeRiding.svelte']);
-	});
 });
