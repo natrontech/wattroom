@@ -17,6 +17,12 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.11.2] - 2026-11-01
+
+### Changed
+
+- The jukebox has a Cozy room switch: it puts house radio on the deck and turns the voice channel into the lounge's room, and turns both off again. The rider tiles under the room no longer overlap their names.
+
 ## [2026.11.1] - 2026-11-01
 
 ### Changed
@@ -4204,7 +4210,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.1...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.2...HEAD
+[2026.11.2]: https://github.com/natrontech/wattroom/compare/2026.11.1...2026.11.2
 [2026.11.1]: https://github.com/natrontech/wattroom/compare/2026.10.7...2026.11.1
 [2026.10.7]: https://github.com/natrontech/wattroom/compare/2026.10.6...2026.10.7
 [2026.10.6]: https://github.com/natrontech/wattroom/compare/2026.10.5...2026.10.6
