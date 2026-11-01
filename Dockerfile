@@ -9,7 +9,7 @@
 # repository changing. Dependabot moves the digests monthly. A new node or
 # golang tag stays a human's edit — the Node major tracks ci.yml's `web` job
 # and the Go version tracks go.mod.
-FROM --platform=$BUILDPLATFORM node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS web
+FROM --platform=$BUILDPLATFORM node:24-alpine@sha256:8a32c8cf649a49915a66e81e7a609223c708d0adabf288ee3f4077d765542f85 AS web
 RUN corepack enable
 WORKDIR /src/web
 # pnpm-workspace.yaml is part of the install's input, not a convenience:
@@ -25,7 +25,7 @@ COPY web/ ./
 COPY CHANGELOG.md ./static/changelog.md
 RUN pnpm build
 
-FROM --platform=$BUILDPLATFORM golang:1.26-alpine@sha256:8ac98ca534ac3f51e1f420a1dd2c15e74c75cfa0f23f3ad27eb5d7236c349a0c AS server
+FROM --platform=$BUILDPLATFORM golang:1.26-alpine@sha256:a2012b4a1d1f9f7e9f44e0d39b805a901e856b1dd80b4e6ee4338db547050308 AS server
 WORKDIR /src/server
 COPY server/go.mod server/go.sum ./
 RUN go mod download
