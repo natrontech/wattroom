@@ -21,18 +21,10 @@ import { createRideShift, type RideShift } from '$lib/ride/ride-shift';
 import { pullProfile } from '$lib/profile-sync.svelte';
 import { createChannelLive } from '$lib/channel/live.svelte';
 import { createRecording } from '$lib/session/recording.svelte';
-import { createRide } from '$lib/session/ride.svelte';
-import {
-	createFreeRide,
-	type FreeRide,
-	type FreeRideOutcome,
-} from '$lib/ride/free-ride.svelte';
+import { channelRide, type ChannelRide } from '$lib/ride/channel-ride.svelte';
+import type { FreeRide } from '$lib/ride/free-ride.svelte';
 import { sensorClaim } from '$lib/channel/sensor-claim';
-import {
-	createOwnRide,
-	type OwnRide,
-	type OwnRideOutcome,
-} from '$lib/ride/own-ride.svelte';
+import type { OwnRide } from '$lib/ride/own-ride.svelte';
 import { parseSharedWorkout } from '$lib/workout/shared';
 import { play } from '$lib/sound/cues';
 import { applyAway, noEcho, pressed } from '$lib/channel/away-echo';
@@ -72,8 +64,8 @@ type Connection = {
 	profile: ReturnType<typeof createProfileStore>;
 	/** What you rode this session — the ride writes it, the summary reads it. */
 	recording: ReturnType<typeof createRecording>;
-	/** The trainer, and the targets it holds. Lives here, not on a page (#521). */
-	ride: ReturnType<typeof createRide>;
+	/** The trainer, and the targets it holds: `theRide`'s, never a page's (#521, ADR-0093). */
+	ride: ChannelRide['ride'];
 	/** Riding the channel with no session (ADR-0059) — beside the trainer. */
 	freeRide: FreeRide;
 	/** Your own workout, ridden beside the session (#2329). */
@@ -136,7 +128,7 @@ function connect(address: PlaceAddress): Connection {
 	// Assigned inside the root below, which runs synchronously.
 	let profile!: ReturnType<typeof createProfileStore>;
 	let recording!: ReturnType<typeof createRecording>;
-	let ride!: ReturnType<typeof createRide>;
+	let ride!: ChannelRide['ride'];
 	let shift!: RideShift;
 	let freeRide!: FreeRide;
 	let ownRide!: OwnRide;
@@ -193,33 +185,22 @@ function connect(address: PlaceAddress): Connection {
 		// know WattRoom, not the rider, holds the watts.
 		$effect(() => live.setDrive(profile.current.singleSpeed));
 
-		freeRide = createFreeRide({
-			ftp: () => profile.current.ftp,
-			singleSpeed: () => profile.current.singleSpeed,
-			kg: () => profile.current.kg,
-		});
 		// The session's road under you, for the trainer (#3553): the cut
 		// decoded once a pick, your place on it with every tick.
 		const cut = $derived(parsed.workout ? roadOf(parsed.workout) : null);
 		const place = $derived(placeOnRoad(live.tick, cut, account.me?.id ?? ''));
-		ride = createRide({
+		// The trainer, the free ride and your own workout are the device's one
+		// ride (ADR-0093): `theRide.channel` holds them, so a page that draws them is
+		// a view and never their owner.
+		({ ride, freeRide, ownRide } = channelRide.hold({
 			live,
 			profile,
 			recording,
-			myId: () => account.me?.id,
 			shared: () => shared,
 			segments: () => parsed.segments,
 			road: () => place,
 			joined,
-			free: freeRide,
-		});
-		ownRide = createOwnRide({
-			ride,
-			live,
-			profile,
-			joined,
-			endFreeRide: () => freeRide.end().then(sayFreeRide),
-		});
+		}));
 		// The lounge is where you last rode (#3274): noted on this device when
 		// the roster first says you are riding here — a free ride or a session.
 		let notedRiding = false;
@@ -229,17 +210,6 @@ function connect(address: PlaceAddress): Connection {
 			);
 			if (riding && !notedRiding) rememberRodeIn(address.crew, address.channel);
 			notedRiding = riding;
-		});
-		// Joining a session saves the free ride first (docs/SPEC.md): the
-		// session's trainer and record take over from here. On the step in,
-		// not on being in: the roster says "in" for a tick after Leave the
-		// ride, and a Free ride opened in that tick would be ended at once.
-		let wasJoined = false;
-		$effect(() => {
-			const now = joined();
-			if (now && !wasJoined && freeRide.armed)
-				void freeRide.end().then(sayFreeRide);
-			wasJoined = now;
 		});
 		// A free ride on a road says which road (#3117): channel-mates on the
 		// same one draw each other. The key is read off the road once a road;
@@ -528,39 +498,6 @@ function connect(address: PlaceAddress): Connection {
 	};
 }
 
-/**
- * A free ride saved off-screen — on joining a session, or on leaving the
- * channel — says so, since no Free ride page is there to (errors.md: a
- * background action's result is a toast). A failure stays in the crash
- * buffer, which the solo ride's setup offers back.
- */
-function sayFreeRide(outcome: FreeRideOutcome | null) {
-	if (!outcome || 'short' in outcome) return;
-	if ('saved' in outcome)
-		toasts.push('Your free ride is saved.', {
-			href: `/history/${outcome.saved.id}`,
-		});
-	else
-		toasts.push(
-			`Your free ride did not save — ${outcome.failure.message} It is kept on this device, and Ride offers it again.`,
-			{ tone: 'error', href: '/ride', seconds: 0 },
-		);
-}
-
-/** Your own workout, saved on the way out of the channel — sayFreeRide's rule. */
-function sayOwnRide(outcome: OwnRideOutcome | null) {
-	if (!outcome || 'nothing' in outcome) return;
-	if ('saved' in outcome)
-		toasts.push('Your ride is saved.', {
-			href: outcome.saved ? `/history/${outcome.saved}` : undefined,
-		});
-	else
-		toasts.push(
-			`Your ride did not save — ${outcome.failure.message} It is kept on this device, and Ride offers it again.`,
-			{ tone: 'error', href: '/ride', seconds: 0 },
-		);
-}
-
 export const channelConnection = {
 	get current() {
 		return current;
@@ -619,11 +556,9 @@ export const channelConnection = {
 		const name = address.name;
 		// A free ride nobody ended is saved on the way out — the rider left
 		// the channel, not the ride. Its answer arrives after the page has gone.
-		void current.freeRide.end().then(sayFreeRide);
-		void current.ownRide.leave().then(sayOwnRide);
-		// Before dispose: stop() closes the ride buffer and releases the
-		// trainer, and both need the reactive scope the root is about to end.
-		current.ride.stop();
+		// Until the audience follows the rider (ADR-0093 point 6), the call
+		// is the channel ride's: leaving it ends that ride.
+		channelRide.leave();
 		current.dispose();
 		current.live.close();
 		current.av.leave();
