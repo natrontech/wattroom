@@ -103,11 +103,12 @@ export function createRideSession({
 		sprint,
 		ftp,
 		road: dot,
+		open: () => open,
 	});
 	const applyTarget = aim.apply;
 	const guarding = wireSoloGuards(guards, {
 		state: () => state,
-		prescribed: () => clock.info.targetWatts ?? 0,
+		prescribed: () => aim.prescribed,
 		actuate: applyTarget,
 		record,
 		end: finish,
@@ -373,6 +374,15 @@ export function createRideSession({
 		abort: life.abort,
 		stop: finish,
 		nudgeBias: aim.nudgeBias,
+		/** Road or Watts with no workout on the road (#4283). */
+		get drive() {
+			return aim.drive;
+		},
+		/** The watts ERG by the road asks in Watts, before the guards; null in Road. */
+		get roadWatts() {
+			return aim.roadWatts;
+		},
+		setDrive: aim.setDrive,
 		atEnd: actuator.atEnd,
 		easierHarder: aim.easierHarder,
 		/** The virtual gear Easier and Harder move (ADR-0084), for slot 1 and RIDE. */
