@@ -112,7 +112,7 @@
 			/>
 		</div>
 	{:else}
-		<!-- Empty states teach, never apologise (.claude/rules/ux.md). -->
+		<!-- Empty states teach, never apologise (AGENTS.md). -->
 		<div
 			class="flex flex-1 flex-col items-center justify-center px-8 text-center"
 		>

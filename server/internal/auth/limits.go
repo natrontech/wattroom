@@ -33,7 +33,7 @@ const (
 // The message is the caller's, because "this address" means the network on
 // the sign-in doors and would mean the rider's email on the recovery one
 // (#1822) — a refusal aimed at the wrong input is a refusal a rider acts on
-// wrongly (.claude/rules/errors.md).
+// wrongly (AGENTS.md).
 func (s *Service) throttle(w http.ResponseWriter, r *http.Request, b *budget.Budget[string], message string) bool {
 	if b == nil || b.Spend(httpx.ClientIP(r)) {
 		return false

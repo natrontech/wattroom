@@ -48,7 +48,7 @@ export interface SprintResult {
 }
 
 /**
- * Ride-critical faults. .claude/rules/errors.md: these are persistent dashboard
+ * Ride-critical faults. AGENTS.md: these are persistent dashboard
  * status, never a toast — the rider is on a bike three metres from the screen.
  */
 export type { Fault } from '$lib/channel/types';

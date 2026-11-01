@@ -8,10 +8,9 @@
 # continuously to one VM, and "which month is this from" is the question a
 # version can actually answer here. What changed is the changelog's job.
 #
-# Entries live one-per-file in changelog.d/ so parallel PRs never touch the
-# same path; this collates them. The changelog is promoted *before* the tag so the tag points at a tree whose
-# CHANGELOG.md already describes that release — publish.yml then reads the
-# section back out for the GitHub Release body, and the two cannot disagree.
+# The notes come from the feat/fix/perf commit subjects since the last tag.
+# The changelog is promoted before the tag, and publish.yml reads that section
+# back out for the GitHub Release body.
 #
 # The promotion goes through a pull request because main's ruleset rejects
 # direct pushes (GH013). It needs no approvals, so this merges it and then tags
@@ -33,85 +32,30 @@ fi
 	echo "working tree is dirty — commit or stash first" >&2
 	exit 1
 }
-# No fragments means nobody wrote down what changed, which is the whole thing
-# this is meant to prevent. Better to stop than to ship a blank release.
-shopt -s nullglob
-# Built by appending rather than by expanding a possibly-empty array: `set -u`
-# treats "${empty[@]}" as unbound on older bash, and the no-entries path is
-# exactly when that bites.
-fragments=()
-for f in changelog.d/*.md; do
-	[ "$(basename "$f")" = README.md ] || fragments+=("$f")
-done
-if [ ${#fragments[@]} -eq 0 ]; then
-	echo "no entries in changelog.d/ — nothing to release" >&2
-	echo "every rider-visible PR leaves one there; see changelog.d/README.md" >&2
-	exit 1
-fi
+# Server tags only: the desktop shell's desktop-v* tags live in the same repo
+# (ADR-0037), and an unfiltered describe took one as the previous release.
+prev=$(git describe --tags --abbrev=0 --match '2[0-9][0-9][0-9].*' 2>/dev/null || true)
 
-# A hand-written entry under ## [Unreleased] is no longer read by anything, so
-# it would sit there looking published and never reach a release. Catch it
-# rather than silently ignore it — silent loss is what changelog.d/ exists to
-# prevent, and it would be absurd to reintroduce it here.
-if awk '/^## \[Unreleased\]/{f=1;next} /^## \[/ || /^\[[^]]+\]:/{f=0} f && NF' CHANGELOG.md | grep -q .; then
-	echo "CHANGELOG.md has hand-written entries under ## [Unreleased]:" >&2
-	awk '/^## \[Unreleased\]/{f=1;next} /^## \[/ || /^\[[^]]+\]:/{f=0} f && NF' CHANGELOG.md | sed 's/^/  /' >&2
-	echo "" >&2
-	echo "Nothing reads them any more. Move each into changelog.d/<category>-<slug>.md" >&2
-	echo "and remove them from CHANGELOG.md, then run this again." >&2
-	exit 1
-fi
-
-# A fragment is a list item, whatever its author typed. Four entries in
-# 2026.09.15 were written without their leading "- ", so Markdown folded each
-# into the bullet above it and hid whole fixes inside other fixes (#546).
-# Normalising here fixes the notes no matter how the file was written: the
-# first line becomes a bullet, later lines are indented under it, and trailing
-# blank lines never reach the release notes.
-normalize_fragment() {
-	awk '
-		NF { last = NR }
-		{ lines[NR] = $0 }
-		END {
-			for (i = 1; i <= last; i++) {
-				line = lines[i]
-				if (line ~ /^- /) { bulleted = 1; print line }
-				else if (line == "") print line
-				else if (!bulleted) { bulleted = 1; print "- " line }
-				else if (line ~ /^[ \t]/) print line
-				else print "  " line
-			}
-		}
-	' "$1"
-}
-
-# Collate: Keep a Changelog order, not filesystem order.
+# The notes are the feat/fix/perf subjects since the previous release, in Keep
+# a Changelog order. Squash merges make each subject one PR.
 notes=$(mktemp)
-for cat in added changed deprecated removed fixed security; do
-	files=(changelog.d/"$cat"-*.md)
-	[ ${#files[@]} -gt 0 ] || continue
-	heading="$(tr '[:lower:]' '[:upper:]' <<<"${cat:0:1}")${cat:1}"
+for pair in Added:feat Changed:perf Fixed:fix; do
+	heading=${pair%%:*}
+	type=${pair#*:}
+	lines=$(git log --format=%s ${prev:+"$prev"..}HEAD | sed -nE "s/^$type(\([a-z-]+\))?!?: //p")
+	[ -n "$lines" ] || continue
 	printf '### %s\n\n' "$heading" >>"$notes"
-	for f in "${files[@]}"; do
-		normalize_fragment "$f" >>"$notes"
-	done
+	while IFS= read -r l; do
+		printf -- '- %s%s\n' "$(tr '[:lower:]' '[:upper:]' <<<"${l:0:1}")" "${l:1}"
+	done <<<"$lines" >>"$notes"
 	printf '\n' >>"$notes"
 done
-
-# One trailing blank line, not two: each category appends one and the file the
-# section is spliced into already starts the next block with one.
 trimmed=$(mktemp)
 awk 'NF {last = NR} {lines[NR] = $0} END {for (i = 1; i <= last; i++) print lines[i]}' "$notes" >"$trimmed"
 mv "$trimmed" "$notes"
-
-# A fragment whose name does not start with a category is silently dropped by
-# the loop above, which would lose somebody's entry. Catch it here instead.
-counted=$(grep -c '^- ' "$notes" || true)
-written=$(for f in "${fragments[@]}"; do normalize_fragment "$f"; done | grep -c '^- ' || true)
-if [ "$counted" != "$written" ]; then
+if [ ! -s "$notes" ]; then
 	rm -f "$notes"
-	echo "some entries in changelog.d/ were not collated — check every filename starts with" >&2
-	echo "added-/changed-/deprecated-/removed-/fixed-/security- (see changelog.d/README.md)" >&2
+	echo "no feat, fix or perf commits since ${prev:-the first commit}: nothing to release" >&2
 	exit 1
 fi
 
@@ -130,10 +74,6 @@ if grep -qF "## [$version]" CHANGELOG.md; then
 	exit 1
 fi
 
-# Server tags only: the desktop shell's desktop-v* tags live in the same repo
-# (ADR-0037), and an unfiltered describe took one as the previous release —
-# 2026.09.47's compare link ran from desktop-v2026.09.2.
-prev=$(git describe --tags --abbrev=0 --match '2[0-9][0-9][0-9].*' 2>/dev/null || true)
 today=$(date +%F)
 
 if git rev-parse -q --verify "refs/tags/$version" >/dev/null; then
@@ -185,7 +125,6 @@ rm -f "$notes"
 
 git checkout -q -b "$branch"
 git add CHANGELOG.md
-git rm -q "${fragments[@]}"
 git commit -qm "docs: release $version"
 git push -q -u origin "$branch"
 

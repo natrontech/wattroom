@@ -5,7 +5,7 @@
 	//
 	// Rename and remove sit on the row as buttons rather than behind a context
 	// menu: this is a settings surface, not something reached mid-ride, and
-	// .claude/rules/ux.md asks that nothing live only in a menu.
+	// AGENTS.md asks that nothing live only in a menu.
 	import Banner from './Banner.svelte';
 	import Skeleton from './Skeleton.svelte';
 	import { account } from '$lib/account.svelte';

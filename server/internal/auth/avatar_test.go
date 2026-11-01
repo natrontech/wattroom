@@ -158,7 +158,7 @@ func TestASignInPictureIsCopiedOntoThisOrigin(t *testing.T) {
 // What happens when the provider's host is down, slow, or hands over
 // something that is not a picture: the rider gets the initial the app already
 // draws for a rider with no picture, and no address anybody could fetch is
-// left behind (.claude/rules/errors.md — a defined fallback, not a broken
+// left behind (AGENTS.md — a defined fallback, not a broken
 // <img>).
 func TestASignInPictureThatCannotBeFetchedLeavesNoAddress(t *testing.T) {
 	pictures := &providerPicture{err: errors.New("host is not answering")}

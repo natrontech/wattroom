@@ -466,7 +466,7 @@ func TestRecoveryAnswersBusyWhenTheMailTableIsFull(t *testing.T) {
 }
 
 // No mailer, no recovery — and it says so rather than promising a link
-// nothing can send (capability gating, .claude/rules/ux.md).
+// nothing can send (capability gating, AGENTS.md).
 func TestRecoveryWithoutAMailerSaysSo(t *testing.T) {
 	s := testService(t)
 	w := ask(t, s, `{"email":"rider@example.test"}`)

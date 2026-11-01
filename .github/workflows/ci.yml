@@ -102,13 +102,6 @@ jobs:
           python3 ../scripts/licenses-go.py
           git diff --exit-code ../web/static/legal/go.json
 
-  # Six of the seven changes in 2026.09.2 shipped with no changelog line, so
-  # the release notes described one of them. A rule nobody checks is not a
-  # rule — agents merge in parallel and none of them will notice.
-  #
-  # The entry is a file per PR (changelog.d/) rather than a shared section:
-  # eight agents editing the same lines conflicted constantly, and a conflict
-  # resolved carelessly during a rebase drops somebody's entry silently.
   vulncheck:
     runs-on: ubuntu-latest
     steps:

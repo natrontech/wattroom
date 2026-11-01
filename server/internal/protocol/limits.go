@@ -2,7 +2,7 @@
 Bounds docs/SPEC.md sets, declared once here and generated into
 web/src/lib/protocol.ts with the message types (#2122).
 
-`.claude/rules/errors.md` says "Bounds from docs/SPEC.md, never invented", and
+AGENTS.md says "Bounds from docs/SPEC.md, never invented", and
 both sides obeyed it by typing the numbers out separately — so they drifted,
 twice, and a rider found it both times: #1393's workout JSON and #1986's name
 limits. A number the two sides have to agree on gets one declaration for the

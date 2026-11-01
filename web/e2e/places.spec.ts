@@ -117,7 +117,7 @@ test('a lobby ping during a click does not keep the rider where they were', asyn
 
 /**
  * A face in the voice channel's people column opens that rider (#702). Opening a rider
- * there was right-click only, which `.claude/rules/ux.md` forbids — the
+ * there was right-click only, which AGENTS.md forbids — the
  * primary action stays on click, and nothing lives ONLY in a menu. One rider
  * is enough: the column always lists you, so your own face is the target.
  */

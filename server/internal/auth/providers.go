@@ -39,7 +39,7 @@ type provider struct {
 
 // providersFromEnv wires every provider whose credentials are configured, and
 // silently skips the rest — the web hides sign-in buttons for absent providers
-// rather than rendering one that 500s (capability gating, .claude/rules/ux.md).
+// rather than rendering one that 500s (capability gating, AGENTS.md).
 func providersFromEnv(baseURL string) map[string]provider {
 	out := map[string]provider{}
 	add := func(id string, endpoint oauth2.Endpoint, scopes []string,

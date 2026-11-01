@@ -41,7 +41,7 @@ const emailResendAfter = 2 * time.Minute
 // Mailer is all auth wants from notify: put one link in front of a rider.
 // notify owns the transport and the copy. A nil mailer means the whole flow is
 // absent rather than broken — the profile hides the section and the handler
-// refuses the field (capability gating, .claude/rules/ux.md).
+// refuses the field (capability gating, AGENTS.md).
 type Mailer interface {
 	SendEmailVerification(ctx context.Context, to, link string) error
 	// SendAccountRecovery is the way back in (#1822); recover.go is the only

@@ -123,7 +123,7 @@
 			{#if confirmDelete}
 				<!--
 					Confirmation dialogs are for the genuinely destructive only
-					(.claude/rules/errors.md) — everything else gets undo. This qualifies.
+					(AGENTS.md) — everything else gets undo. This qualifies.
 				-->
 				<div class="border-danger/50 bg-danger/10 mt-4 rounded-lg border p-5">
 					<p class="text-sm font-medium">

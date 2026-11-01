@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
  *
  * The lists below used to be one array typed by hand into the spec and checked
  * against `web/src/routes/` by eye. Nothing failed when a route was added, so a
- * new surface was simply never measured at 375×812 — while `.claude/rules/ux.md`
+ * new surface was simply never measured at 375×812 — while AGENTS.md
  * cites that spec as what enforces the phone-width standard "for every route".
  *
  * They are still written by hand, because which routes are worth measuring and

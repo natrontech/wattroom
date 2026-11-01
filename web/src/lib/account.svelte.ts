@@ -184,7 +184,7 @@ function createAccountStore() {
 	 * they recognise instead of the one on the server's clock (#858).
 	 *
 	 * Reported, never asked: the browser already knows, and a timezone picker
-	 * would fail the 95% rule in .claude/rules/ux.md. Reporting on every load
+	 * would fail the 95% rule in AGENTS.md. Reporting on every load
 	 * is also what makes it right after a rider moves. Fire-and-forget — a
 	 * failed write costs a slightly wrong time in an email, not this page.
 	 */

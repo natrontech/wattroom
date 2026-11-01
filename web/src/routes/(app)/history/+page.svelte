@@ -456,7 +456,7 @@
 			{/each}
 		</div>
 	{:else if rides.length === 0}
-		<!-- Empty states teach (.claude/rules/ux.md), and this one is about
+		<!-- Empty states teach (AGENTS.md), and this one is about
 		     the ACCOUNT's rides: gated on the device list too, a rider with
 		     one device-only summary and no account ride got an empty <ul>
 		     under no heading instead (#2181). The device section below says

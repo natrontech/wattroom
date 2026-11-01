@@ -3,7 +3,7 @@
 	// (#1057, split out of the ride screen). Self-contained: it reads its own
 	// rides out of the buffer and hands failures up, because a ride-critical
 	// error is the page's persistent status and never this card's own toast
-	// (.claude/rules/errors.md — the rider is on a bike).
+	// (AGENTS.md — the rider is on a bike).
 	import { apiBlob } from '$lib/api';
 	import { downloadBlob } from '$lib/download';
 	import { discardRide } from '$lib/ride/buffer';
