@@ -2411,6 +2411,12 @@ surface('voice-channel-lounge', async (s) => {
 	const mate = await s.open(DESK, { as: 'Design Partner' });
 	await joinCrew(mate.page, crew.code);
 	await mate.page.goto(voicePath(crew));
+	// The room shows while the cozy room is on (#4305): the jukebox's switch
+	// puts house radio on the deck. The mixer is muted, so it stays silent.
+	await host.page.goto(voicePath(crew));
+	await host.page
+		.getByRole('button', { name: 'Cozy room', exact: true })
+		.click();
 	const shoot = async (o: Awaited<ReturnType<typeof s.open>>, name: string) => {
 		await o.page.goto(voicePath(crew));
 		await o.page

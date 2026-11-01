@@ -1,6 +1,6 @@
 <script lang="ts">
-	// The lounge (ADR-0094): the room an idle voice channel is. The page
-	// decides when it shows and gives it the space left over (#4302); this
+	// The lounge (ADR-0094): the room a voice channel is while the cozy room
+	// is on (#4305). The page decides when it shows (#4302); this
 	// draws as much room as fits, at the finest pixel the size allows, in the
 	// rider's theme. House radio is queued on the deck like a track and
 	// HouseRadioDeck plays it.
@@ -49,7 +49,6 @@
 	const lounge = $derived(live?.tick?.lounge);
 	const station = $derived(channel.address.crew);
 
-	const deckIdle = $derived(!deck?.current);
 	const onAir = $derived(!!deck?.current?.radio);
 
 	let boxW = $state(0);
@@ -161,10 +160,6 @@
 		return () => clearInterval(every);
 	});
 
-	function queueRadio() {
-		live?.jukebox({ action: 'add', radio: true });
-	}
-
 	/** A pointer in the middle's coordinates, and what it is over. */
 	function at(e: MouseEvent) {
 		const box = canvas!.getBoundingClientRect();
@@ -181,7 +176,6 @@
 		else if (spot === 'window')
 			live?.setLounge({ ...state, weather: nextWeather(state.weather) });
 		else if (spot === 'cat') catAwakeUntil = clock + 4;
-		else if (spot === 'deck' && deckIdle) queueRadio();
 		else if (spot === 'sofa') {
 			const riders = channel.riders;
 			const seat = seatAt(x, seatedOf(riders, riderOf(riders, 0)?.id).length);
@@ -219,17 +213,7 @@
 			aria-label="The lounge: who is in the call, on the sofa or on the bike. Click the lamp, the window or the cat."
 		></canvas>
 	</div>
-	{#if deckIdle}
-		<div class="text-muted mt-2 flex flex-wrap items-center gap-2 text-xs">
-			<button
-				type="button"
-				onclick={queueRadio}
-				class="btn btn-ghost btn-xs px-0"
-				><Disc3 size={13} /> Queue house radio</button
-			>
-			<span>Lofi made for your crew, the same bar on every screen.</span>
-		</div>
-	{:else if onAir}
+	{#if onAir}
 		<div class="text-muted mt-2 flex flex-wrap items-center gap-2 text-xs">
 			<button
 				type="button"

@@ -71,6 +71,10 @@ Decided by Dave after riding the first version: the lounge is the room, not a pi
 
 "A pixel-art room of 320 × 180 pixels", "at most 3×" in the first version's sizing and the 72–88 BPM range above are superseded.
 
+## Amended 2026-11-01 (#4305)
+
+Decided by Dave: the room is a mode, switched in the jukebox. One “Cozy room” switch there queues house radio as a song would be queued, and takes it off again; the voice channel is the lounge's room only while house radio is on the deck. The links that queued it from the add row and under the picture are gone.
+
 ## Consequences
 
 - An idle voice channel gets music and something to look at without a new service, new storage or a new sound license. The only protocol change is the shared lamp and weather.
