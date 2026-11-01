@@ -1,0 +1,1 @@
+- The jukebox has a Cozy room switch: it puts house radio on the deck and turns the voice channel into the lounge's room, and turns both off again. The rider tiles under the room no longer overlap their names.

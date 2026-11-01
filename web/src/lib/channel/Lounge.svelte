@@ -181,10 +181,11 @@
 			: channel.stageSources,
 	);
 	const onStage = $derived(pickStage(sources, av?.stagePick ?? null));
-	/** The lounge's room (ADR-0094, #4302): an idle voice channel with nothing shared and nobody riding here. */
+	/** The lounge's room (ADR-0094, #4302): the cozy room is on — house radio on the deck — in an idle voice channel with nothing shared and nobody riding here (#4305). */
 	const inRoom = $derived(
 		channel.phase === 'lounge' &&
 			!!channel.address.channel &&
+			!!channelConnection.current?.live.tick?.jukebox?.current?.radio &&
 			!onStage &&
 			!riding,
 	);
@@ -435,10 +436,12 @@
 				</div>
 			{:else}
 				<!-- In the room everyone already sits on the sofa, so the tiles
-				     are a small strip under it: names, cameras and numbers. -->
+				     are a strip under it: names, cameras and numbers. Never so
+				     many across that a tile drops under its avatar's 12rem
+				     (#4305); a phone's two-up seats the avatar bottom-left. -->
 				<div
 					class="grid shrink-0 {inRoom
-						? 'grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6 2xl:grid-cols-8'
+						? 'grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'
 						: (onStage && !stacked) || pictureless
 							? 'grid-cols-2 gap-3 2xl:grid-cols-3'
 							: 'gap-3 sm:grid-cols-2 2xl:grid-cols-3'}"

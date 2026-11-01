@@ -8,6 +8,7 @@
 	} from '$lib/protocol';
 	import { toasts } from '$lib/toast.svelte';
 	import JukeboxAdd from '$lib/channel/JukeboxAdd.svelte';
+	import Sofa from '@lucide/svelte/icons/sofa';
 	import JukeboxDeck from '$lib/channel/JukeboxDeck.svelte';
 	import JukeboxPlaylists from '$lib/channel/JukeboxPlaylists.svelte';
 	import JukeboxTrack from '$lib/channel/JukeboxTrack.svelte';
@@ -52,6 +53,21 @@
 	const queue = $derived(jukebox?.queue ?? []);
 	const history = $derived(jukebox?.history ?? []);
 	const inSync = $derived(Math.abs(playerInfo.drift) <= IN_SYNC_SEC);
+
+	// The cozy room (ADR-0094, #4305): house radio on the deck, and the
+	// voice channel becomes the lounge's room while it plays. One switch
+	// queues it, as a song would be, and takes every copy off again.
+	const cozyOn = $derived(!!current?.radio);
+	const cozy = $derived(cozyOn || queue.some((e) => e.radio));
+	function toggleCozy() {
+		if (!cozy) {
+			send({ action: 'add', radio: true });
+			return;
+		}
+		for (const entry of queue)
+			if (entry.radio) send({ action: 'remove', entryId: entry.id });
+		if (current?.radio) send({ action: 'skip' });
+	}
 
 	function move(entryId: string, from: number, by: number) {
 		send({ action: 'move', entryId, index: from + by });
@@ -138,6 +154,23 @@
 				</span>
 			{/if}
 		</div>
+		<!-- Above the deck, so it is in reach while house radio plays and the
+		     deck below it fills the panel (#4305). -->
+		{#if address.channel}
+			<button
+				type="button"
+				onclick={toggleCozy}
+				aria-pressed={cozy}
+				class="btn {cozy
+					? 'btn-primary'
+					: 'btn-secondary'} w-full justify-start gap-2"
+				title={cozy
+					? 'Take house radio off the deck, and the room with it'
+					: 'Lofi made for your crew, and the voice channel becomes a room'}
+				><Sofa size={15} />
+				{cozyOn ? 'Cozy room is on' : cozy ? 'Cozy room is next' : 'Cozy room'}
+			</button>
+		{/if}
 	{/if}
 
 	{#if jukebox && current}
