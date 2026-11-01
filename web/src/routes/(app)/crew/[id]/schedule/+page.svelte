@@ -344,6 +344,9 @@
 	{:else}
 		<div class="mb-1 flex flex-wrap items-center gap-3">
 			<h1 class="page-title">Schedule</h1>
+			<a href="/crew/{crew.id}/workouts" class="btn-link text-xs"
+				>Ridden together</a
+			>
 			{#if plans.length > 0}
 				<span class="ml-auto">{@render planButton('Plan a session')}</span>
 			{/if}

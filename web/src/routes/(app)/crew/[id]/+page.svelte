@@ -10,6 +10,7 @@
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import RecoveredNotice from '$lib/ride/RecoveredNotice.svelte';
 	import CrewNow from './CrewNow.svelte';
+	import CrewBoard from './CrewBoard.svelte';
 	import YourWeek from './YourWeek.svelte';
 	import { fetchCrew, learnCrewFaces, type Crew } from '$lib/crew';
 	import {
@@ -23,7 +24,6 @@
 	import { shareVerb } from '$lib/share';
 	import Copy from '@lucide/svelte/icons/copy';
 	import Settings from '@lucide/svelte/icons/settings';
-	import Users from '@lucide/svelte/icons/users';
 	import Star from '@lucide/svelte/icons/star';
 	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
@@ -220,11 +220,7 @@
 		<RecoveredNotice />
 		<YourWeek />
 		<CrewNow {crew} />
-		<!-- The people, their roles, the board and the crew's sessions have one
-		     home since #2453: the Members page. -->
-		<a href="/crew/{crew.id}/members" class="btn btn-secondary mt-8"
-			><Users size={14} /> Members{#if crew.members}&nbsp;· {crew.members}{/if}</a
-		>
+		<CrewBoard {crew} />
 
 		<!-- The way out (#1228): the one thing a member can do to the crew. It
 		     says exactly what it does, and the danger token sits last (ux.md).
