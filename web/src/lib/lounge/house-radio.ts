@@ -10,16 +10,13 @@ import {
 	melodyNote,
 	sectionOf,
 	tuneOf,
+	type Chord,
+	type Section,
 	type Tune,
 } from '$lib/lounge/station';
-import {
-	bass,
-	hat,
-	kick,
-	melody,
-	piano,
-	snare,
-} from '$lib/lounge/radio-voices';
+import { bass, lead } from '$lib/lounge/radio-voices';
+import { organ, pad, piano, pluck } from '$lib/lounge/radio-keys';
+import { brush, hat, kick, rim, snare } from '$lib/lounge/radio-drums';
 import { OPEN_HZ, build, type Graph } from '$lib/lounge/radio-graph';
 import { hash3 } from '$lib/lounge/hash';
 
@@ -37,9 +34,10 @@ function automate(g: Graph, tune: Tune, bar: number, t: number) {
 		tg.setValueAtTime(0.0001, t);
 		tg.exponentialRampToValueAtTime(1, t + tune.barSec);
 		g.echo.delayTime.setValueAtTime((0.75 * 60) / tune.bpm, t);
+		g.crackle.gain.setTargetAtTime(tune.crackle, t, 0.5);
 		lp.cancelScheduledValues(t);
 		lp.setValueAtTime(900, t);
-		lp.exponentialRampToValueAtTime(OPEN_HZ, t + tune.barSec * 4);
+		lp.exponentialRampToValueAtTime(tune.open, t + tune.barSec * 4);
 	}
 	if (bar === tune.bars - 2) {
 		tg.setValueAtTime(1, t);
@@ -48,12 +46,12 @@ function automate(g: Graph, tune: Tune, bar: number, t: number) {
 	const now = sectionOf(tune, bar);
 	const before = sectionOf(tune, bar - 1);
 	if (now === 'breakdown' && before !== 'breakdown') {
-		lp.setValueAtTime(OPEN_HZ, t);
+		lp.setValueAtTime(tune.open, t);
 		lp.exponentialRampToValueAtTime(SHUT_HZ, t + tune.barSec);
 	}
 	if (now !== 'breakdown' && before === 'breakdown') {
 		lp.setValueAtTime(SHUT_HZ, t);
-		lp.exponentialRampToValueAtTime(OPEN_HZ, t + tune.barSec / 2);
+		lp.exponentialRampToValueAtTime(tune.open, t + tune.barSec / 2);
 	}
 }
 
@@ -71,43 +69,120 @@ function playStep(g: Graph, tune: Tune, bar: number, s: number, at: number) {
 				: 0;
 	const t = at + lean + (h(1) - 0.5) * 0.012;
 	if (t < g.ctx.currentTime) return;
-	const chord = tune.chords[bar % 4];
-	const next = tune.chords[(bar + 1) % 4];
+	const chord = tune.chords[bar % tune.chords.length];
+	const next = tune.chords[(bar + 1) % tune.chords.length];
 	const drums = drumsIn(section);
-	if (s % 2 === 0 && tune.comp.includes(s / 2)) {
-		const first = s === 0;
-		chord.notes.forEach((n, i) =>
-			piano(
-				g,
-				n,
-				t + i * (first ? 0.016 : 0.008),
-				first ? 0.9 : 0.55 + h(2) * 0.15,
-				first ? tune.barSec * 0.9 : beat * 1.2,
-			),
-		);
-	}
-	if (section !== 'intro') {
-		if (s === 0) bass(g, chord.bass, t, beat * 1.7, 1);
-		if (s === 8)
-			bass(g, h(3) < 0.5 ? chord.bass + 7 : chord.bass, t, beat * 1.2, 0.8);
-		if (s === 14 && h(4) < 0.4)
-			bass(g, next.bass + (h(5) < 0.5 ? -1 : 2), t, beat * 0.4, 0.6);
-	}
+	keys(g, tune, chord, section, bar, s, t, h);
+	if (section !== 'intro') bassStep(g, tune, chord, next, s, t, h);
 	if (drums || (section === 'outro' && bar < tune.bars - 2)) {
 		if (tune.kicks.includes(s) || (bar % 2 === 1 && s === 13 && h(6) < 0.3))
-			kick(g, t);
+			kick(g, t, tune.kit === 'brush' ? 0.7 : 1);
 	}
 	if (drums) {
-		if (s === 4 || s === 12) snare(g, t, 0.9);
-		else if ((bar - 4) % 8 === 7 && s >= 13) snare(g, t, 0.35 + (s - 13) * 0.2);
-		else if (s === 15 && h(7) < 0.25) snare(g, t, 0.22);
+		const back = tune.halfTime ? s === 8 : s === 4 || s === 12;
+		const hit = (vel: number) =>
+			tune.kit === 'brush'
+				? brush(g, t, vel)
+				: tune.kit === 'rim'
+					? rim(g, t, vel)
+					: snare(g, t, vel);
+		if (back) hit(0.9);
+		else if ((bar - 4) % 8 === 7 && s >= 13) hit(0.35 + (s - 13) * 0.2);
+		else if (s === 15 && h(7) < 0.25) hit(0.22);
 	}
-	if ((drums || section === 'breakdown') && s % 2 === 0)
-		hat(g, t, s % 4 === 0 ? 0.9 : 0.55 + h(8) * 0.3, s === 14 && h(9) < 0.3);
+	if ((drums || section === 'breakdown') && (tune.hats16 || s % 2 === 0))
+		hat(
+			g,
+			t,
+			s % 4 === 0 ? 0.9 : s % 2 ? 0.35 + h(8) * 0.2 : 0.55 + h(8) * 0.3,
+			s === 14 && h(9) < 0.3,
+		);
 	if (section === 'melody' && tune.melody && s % 2 === 0) {
 		const note = melodyNote(tune, bar, s / 2, h(10) < 0.3);
-		if (note !== null) melody(g, note, t, beat * 0.9);
+		if (note !== null) lead(g, tune.lead, note, t, beat * 0.9);
 	}
+}
+
+/** The chords in the tune's keys: struck, held, or broken into eighths. */
+function keys(
+	g: Graph,
+	tune: Tune,
+	chord: Chord,
+	section: Section,
+	bar: number,
+	s: number,
+	t: number,
+	h: (k: number) => number,
+) {
+	const beat = 60 / tune.bpm;
+	if (tune.keys === 'pad' || tune.keys === 'organ') {
+		// Held instruments sound once a bar; the organ also on beat three.
+		const strike = s === 0 || (tune.keys === 'organ' && s === 8 && bar % 2);
+		if (!strike) return;
+		const dur = tune.keys === 'pad' ? tune.barSec : tune.barSec / 2;
+		for (const n of chord.notes)
+			tune.keys === 'pad' ? pad(g, n, t, dur) : organ(g, n, t, dur * 0.9);
+		return;
+	}
+	const strike = (n: number, at: number, vel: number, dur: number) =>
+		tune.keys === 'pluck' ? pluck(g, n, at, vel) : piano(g, n, at, vel, dur);
+	if (s % 2) return;
+	if (tune.arp && (section === 'groove' || section === 'melody')) {
+		const tone = tune.arp[s / 2];
+		if (tone !== null)
+			strike(
+				chord.notes[tone % chord.notes.length],
+				t,
+				0.6 + h(2) * 0.2,
+				beat * 0.9,
+			);
+		return;
+	}
+	if (!tune.comp.includes(s / 2)) return;
+	const first = s === 0;
+	chord.notes.forEach((n, i) =>
+		strike(
+			n,
+			t + i * (first ? 0.016 : 0.008),
+			first ? 0.9 : 0.55 + h(2) * 0.15,
+			first ? tune.barSec * 0.9 : beat * 1.2,
+		),
+	);
+}
+
+/** The bass line in the tune's shape. */
+function bassStep(
+	g: Graph,
+	tune: Tune,
+	chord: Chord,
+	next: Chord,
+	s: number,
+	t: number,
+	h: (k: number) => number,
+) {
+	const beat = 60 / tune.bpm;
+	const play = (note: number, dur: number, vel: number) =>
+		bass(g, tune.bass, note, t, dur, vel);
+	if (tune.bassLine === 'sparse') {
+		if (s === 0) play(chord.bass, tune.barSec * 0.9, 1);
+		return;
+	}
+	if (tune.bassLine === 'walk') {
+		if (s % 4) return;
+		const third = chord.notes.length ? chord.notes[0] % 12 : 0;
+		const steps = [
+			chord.bass,
+			chord.bass + ((third - (chord.bass % 12) + 12) % 12),
+			chord.bass + 7,
+			next.bass + (h(5) < 0.5 ? -1 : 1),
+		];
+		play(steps[s / 4], beat * 0.9, s === 0 ? 1 : 0.75);
+		return;
+	}
+	if (s === 0) play(chord.bass, beat * 1.7, 1);
+	if (s === 8) play(h(3) < 0.5 ? chord.bass + 7 : chord.bass, beat * 1.2, 0.8);
+	if (s === 14 && h(4) < 0.4)
+		play(next.bass + (h(5) < 0.5 ? -1 : 2), beat * 0.4, 0.6);
 }
 
 /**

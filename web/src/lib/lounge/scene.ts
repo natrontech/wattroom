@@ -5,10 +5,12 @@
 import type { Ctx } from '$lib/lounge/pixel';
 import type { Weather } from '$lib/lounge/state';
 import type { Sky } from '$lib/lounge/palette';
-import { drawRoom, drawShade } from '$lib/lounge/draw-room';
+import { drawRoom, drawShade, drawWalls } from '$lib/lounge/draw-room';
 import { drawWindow } from '$lib/lounge/draw-window';
 import { drawPeople } from '$lib/lounge/draw-people';
+import { drawSides } from '$lib/lounge/draw-sides';
 
+/** The room's middle, where everything you can click sits; the rest grows with the page. */
 export const SCENE_W = 320;
 export const SCENE_H = 180;
 /** The sofa's seats; anyone past them is counted on its arm. */
@@ -39,6 +41,9 @@ export interface Heart {
 }
 
 export interface SceneInput {
+	/** The whole room in scene pixels, never smaller than the middle. */
+	w: number;
+	h: number;
 	/** Seconds on the scene's own clock; held still under reduced motion. */
 	t: number;
 	still: boolean;
@@ -54,8 +59,6 @@ export interface SceneInput {
 	pulsing: boolean;
 	catAwakeUntil: number;
 	hearts: Heart[];
-	/** The watt hue, read from the theme. */
-	watt: string;
 	/** The viewer's own time, for the wall clock. */
 	hours: number;
 	minutes: number;
@@ -69,11 +72,22 @@ export function pulseOf(input: SceneInput): number {
 	return Math.exp(-f * 5);
 }
 
+/** Where the middle sits in a room of w × h: centred, on the floor. */
+export function middleOf(w: number, h: number) {
+	return { ox: Math.floor((w - SCENE_W) / 2), oy: h - SCENE_H };
+}
+
 export function drawScene(g: Ctx, input: SceneInput) {
+	const { ox, oy } = middleOf(input.w, input.h);
+	drawWalls(g, input, oy);
+	drawSides(g, input, ox, oy);
+	g.save();
+	g.translate(ox, oy);
 	drawRoom(g, input);
 	drawWindow(g, input);
 	drawPeople(g, input);
-	drawShade(g, input);
+	g.restore();
+	drawShade(g, input, ox, oy);
 }
 
 export type Spot = 'cat' | 'lamp' | 'deck' | 'window' | 'bike' | 'sofa';
@@ -88,7 +102,7 @@ const SPOTS: { spot: Spot; x: number; y: number; w: number; h: number }[] = [
 	{ spot: 'window', x: 122, y: 22, w: 136, h: 86 },
 ];
 
-/** What a click at scene coordinates lands on, first match wins. */
+/** What a click at the middle's coordinates lands on, first match wins. */
 export function spotAt(x: number, y: number): Spot | undefined {
 	return SPOTS.find(
 		(s) => x >= s.x && x < s.x + s.w && y >= s.y && y < s.y + s.h,

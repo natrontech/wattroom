@@ -11,14 +11,58 @@ import { hash3 } from '$lib/lounge/hash';
 /** The sign's five bars trace the equalizer W (ADR-0005). */
 const SIGN_BARS = [26, 12, 20, 12, 26];
 
+/**
+ * Wall, wainscot and floor across the whole room. They change only with its
+ * size and the theme, and the wallpaper alone is a thousand pixels, so they
+ * are drawn once onto a canvas of their own.
+ */
+let walls: { key: string; canvas: HTMLCanvasElement } | undefined;
+
+export function forgetWalls() {
+	walls = undefined;
+}
+
+export function drawWalls(g: Ctx, s: SceneInput, oy: number) {
+	const key = `${s.w}x${s.h}`;
+	if (walls?.key !== key) {
+		const canvas = document.createElement('canvas');
+		canvas.width = s.w;
+		canvas.height = s.h;
+		paintWalls(canvas.getContext('2d')!, s.w, s.h, oy);
+		walls = { key, canvas };
+	}
+	g.drawImage(walls.canvas, 0, 0);
+}
+
+function paintWalls(g: Ctx, w: number, h: number, oy: number) {
+	const floor = oy + 160;
+	rect(g, 0, 0, w, floor, C.wall);
+	// Wallpaper: a small diamond on a staggered grid, one step off the wall.
+	for (let y = 6, row = 0; y < floor - 36; y += 10, row++)
+		for (let x = (row % 2) * 8 + 4; x < w; x += 16) {
+			dot(g, x, y - 1, C.wainscot);
+			rect(g, x - 1, y, 3, 1, C.wainscot);
+			dot(g, x, y + 1, C.wainscot);
+		}
+	rect(g, 0, floor - 32, w, 32, C.wainscot);
+	rect(g, 0, floor - 33, w, 1, C.trim);
+	rect(g, 0, floor - 30, w, 1, C.sillTop);
+	for (let x = 12; x < w; x += 40) {
+		rect(g, x, floor - 26, 28, 1, C.trim);
+		rect(g, x, floor - 26, 1, 22, C.trim);
+	}
+	rect(g, 0, floor - 2, w, 2, C.trim);
+	rect(g, 0, floor, w, h - floor, C.floor);
+	for (let y = floor + 3; y < h; y += 5) rect(g, 0, y, w, 1, C.plank);
+	for (let y = floor, k = 0; y < h; y += 5, k++)
+		for (let x = (k % 2) * 20; x < w; x += 40) {
+			rect(g, x, y, 1, 5, C.plank);
+			// Grain: one darker run in some boards.
+			if (hash3(x, y, 3) > 0.6) rect(g, x + 6, y + 2, 9, 1, C.plank);
+		}
+}
+
 export function drawRoom(g: Ctx, s: SceneInput) {
-	rect(g, 0, 0, 320, 160, C.wall);
-	rect(g, 0, 128, 320, 32, C.wainscot);
-	rect(g, 0, 127, 320, 1, C.trim);
-	rect(g, 0, 160, 320, 20, C.floor);
-	for (let y = 163; y < 180; y += 5) rect(g, 0, y, 320, 1, C.plank);
-	for (let y = 160, k = 0; y < 180; y += 5, k++)
-		for (let x = (k % 2) * 20; x < 320; x += 40) rect(g, x, y, 1, 5, C.plank);
 	sign(g, s);
 	clock(g, s);
 	poster(g);
@@ -176,7 +220,7 @@ function deck(g: Ctx, s: SceneInput) {
 }
 
 /** With the lamp off, the room darkens and the window stays as bright. */
-export function drawShade(g: Ctx, s: SceneInput) {
+export function drawShade(g: Ctx, s: SceneInput, ox: number, oy: number) {
 	const dim = s.lampOn
 		? s.sky === 'night'
 			? 0.12
@@ -190,8 +234,8 @@ export function drawShade(g: Ctx, s: SceneInput) {
 	g.globalAlpha = dim;
 	g.fillStyle = C.shade;
 	g.beginPath();
-	g.rect(0, 0, 320, 180);
-	g.rect(122, 22, 136, 86);
+	g.rect(0, 0, s.w, s.h);
+	g.rect(ox + 122, oy + 22, 136, 86);
 	g.fill('evenodd');
 	g.globalAlpha = 1;
 }

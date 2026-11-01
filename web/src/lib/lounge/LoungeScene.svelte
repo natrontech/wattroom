@@ -1,7 +1,9 @@
 <script lang="ts">
-	// The lounge (ADR-0094): the picture an idle voice channel shows. The page
-	// decides when it shows; this draws it and keeps its clock. House radio is
-	// queued on the deck like a track and HouseRadioDeck plays it.
+	// The lounge (ADR-0094): the room an idle voice channel is. The page
+	// decides when it shows and gives it the space left over (#4302); this
+	// draws as much room as fits, at the finest pixel the size allows, in the
+	// rider's theme. House radio is queued on the deck like a track and
+	// HouseRadioDeck plays it.
 	import { untrack } from 'svelte';
 	import Disc3 from '@lucide/svelte/icons/disc-3';
 	import { useChannel } from '$lib/channel/context';
@@ -15,19 +17,31 @@
 	import { KEY_NAMES, drumsIn, positionAt } from '$lib/lounge/station';
 	import { nextWeather, weatherOf } from '$lib/lounge/state';
 	import { riderOf, seatedOf } from '$lib/lounge/figures';
-	import { LOUNGE, skyAt } from '$lib/lounge/palette';
+	import { palette } from '$lib/palette.svelte';
+	import { applyLoungeTheme, skyAt } from '$lib/lounge/palette';
+	import { forgetWalls } from '$lib/lounge/draw-room';
+	import { forgetBackdrops } from '$lib/lounge/draw-window';
 	import {
 		SCENE_H,
 		SCENE_W,
 		drawScene,
+		middleOf,
 		seatAt,
 		spotAt,
 		type Heart,
 		type SceneInput,
 	} from '$lib/lounge/scene';
 
-	/** At most three times the scene's own pixels, and never more than half the window's height. */
-	const MAX_SCALE = 3;
+	/**
+	 * CSS pixels per scene pixel: one on a phone, two on a desk, three only on
+	 * a very wide one. A wider page shows more room rather than bigger pixels.
+	 */
+	function scaleFor(boxW: number): number {
+		const wanted = boxW < 720 ? 1 : boxW < 1700 ? 2 : 3;
+		return Math.max(1, Math.min(wanted, Math.floor(boxW / SCENE_W)));
+	}
+	/** Past this the room is only more wallpaper above the furniture. */
+	const MAX_ROWS = 260;
 
 	const channel = useChannel();
 	const live = $derived(channelConnection.current?.live);
@@ -38,21 +52,27 @@
 	const deckIdle = $derived(!deck?.current);
 	const onAir = $derived(!!deck?.current?.radio);
 
-	let width = $state(0);
-	const scale = $derived(
+	let boxW = $state(0);
+	let viewH = $state(900);
+	const scale = $derived(scaleFor(boxW));
+	const roomW = $derived(Math.max(SCENE_W, Math.floor(boxW / scale)));
+	// Half as tall as it is wide, and never so tall the tiles and the
+	// session's buttons leave the screen.
+	const roomH = $derived(
 		Math.max(
-			1,
+			SCENE_H,
 			Math.min(
-				MAX_SCALE,
-				Math.floor(width / SCENE_W),
-				Math.floor(
-					(typeof window === 'undefined' ? 720 : window.innerHeight) /
-						2 /
-						SCENE_H,
-				),
+				MAX_ROWS,
+				Math.floor(roomW / 2),
+				Math.floor((viewH * 0.6) / scale),
 			),
 		),
 	);
+	// Read by the frame on every tick, outside the effect that starts the loop.
+	let size = { w: SCENE_W, h: SCENE_H };
+	$effect(() => {
+		size = { w: roomW, h: roomH };
+	});
 
 	let canvas = $state<HTMLCanvasElement | null>(null);
 	let hearts = $state<Heart[]>([]);
@@ -60,8 +80,14 @@
 	let clock = 0;
 	let crank = 0.9;
 	let nowPlaying = $state('');
-	/** The theme's live-data hue, read once the canvas is in the page. */
-	let watt: string = LOUNGE.watt;
+
+	// Before the loop's effect, so the first frame is already in the theme.
+	$effect(() => {
+		if (applyLoungeTheme(palette.active)) {
+			forgetWalls();
+			forgetBackdrops();
+		}
+	});
 
 	function music(): Pick<SceneInput, 'playing' | 'beat' | 'pulsing'> {
 		const current = deck?.current;
@@ -94,6 +120,7 @@
 		const rider = riderOf(riders, crank);
 		const now = new Date();
 		drawScene(g, {
+			...size,
 			t: clock,
 			still,
 			sky: skyAt(now.getHours()),
@@ -104,7 +131,6 @@
 			...music(),
 			catAwakeUntil,
 			hearts,
-			watt,
 			hours: now.getHours(),
 			minutes: now.getMinutes(),
 		});
@@ -116,8 +142,6 @@
 		if (!canvas) return;
 		const target = canvas;
 		const still = prefersReducedMotion.current;
-		watt =
-			getComputedStyle(target).getPropertyValue('--color-watt').trim() || watt;
 		return untrack(() =>
 			sceneLoop(target, (g, dt) => frame(g, dt, still), still),
 		);
@@ -141,10 +165,12 @@
 		live?.jukebox({ action: 'add', radio: true });
 	}
 
+	/** A pointer in the middle's coordinates, and what it is over. */
 	function at(e: MouseEvent) {
 		const box = canvas!.getBoundingClientRect();
-		const x = ((e.clientX - box.left) / box.width) * SCENE_W;
-		const y = ((e.clientY - box.top) / box.height) * SCENE_H;
+		const { ox, oy } = middleOf(roomW, roomH);
+		const x = ((e.clientX - box.left) / box.width) * roomW - ox;
+		const y = ((e.clientY - box.top) / box.height) * roomH - oy;
 		return { x, spot: spotAt(x, y) };
 	}
 
@@ -168,19 +194,31 @@
 	}
 </script>
 
-<section class="mb-4" aria-label="the lounge" bind:clientWidth={width}>
-	<canvas
-		bind:this={canvas}
-		width={SCENE_W}
-		height={SCENE_H}
-		onclick={click}
-		onmousemove={(e) =>
-			(canvas!.style.cursor = at(e).spot ? 'pointer' : 'default')}
-		class="border-neon/40 block border [image-rendering:pixelated]"
-		style:width="{SCENE_W * scale}px"
-		style:height="{SCENE_H * scale}px"
-		aria-label="The lounge: who is in the call, on the sofa or on the bike. Click the lamp, the window or the cat."
-	></canvas>
+<svelte:window bind:innerHeight={viewH} />
+
+<!-- The room bleeds to the content column's edges: it is the page here,
+     not a picture on it. The canvas sits in it at a whole-pixel scale, so the
+     box's last pixel or two of width shows the page behind it. -->
+<section class="mb-4" aria-label="the lounge">
+	<div
+		class="relative -mx-4 overflow-hidden sm:-mx-8"
+		bind:clientWidth={boxW}
+		style:height="{roomH * scale}px"
+	>
+		<canvas
+			bind:this={canvas}
+			width={roomW}
+			height={roomH}
+			onclick={click}
+			onmousemove={(e) =>
+				(canvas!.style.cursor = at(e).spot ? 'pointer' : 'default')}
+			class="absolute bottom-0 block [image-rendering:pixelated]"
+			style:left="{Math.floor((boxW - roomW * scale) / 2)}px"
+			style:width="{roomW * scale}px"
+			style:height="{roomH * scale}px"
+			aria-label="The lounge: who is in the call, on the sofa or on the bike. Click the lamp, the window or the cat."
+		></canvas>
+	</div>
 	{#if deckIdle}
 		<div class="text-muted mt-2 flex flex-wrap items-center gap-2 text-xs">
 			<button

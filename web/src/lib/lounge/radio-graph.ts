@@ -4,7 +4,7 @@
  */
 import type { Buses } from '$lib/lounge/radio-voices';
 
-/** The tone control wide open; house-radio.ts closes it for a breakdown. */
+/** The tone control before a tune sets its own; house-radio.ts closes it for a breakdown. */
 export const OPEN_HZ = 3200;
 
 export interface Graph extends Buses {
@@ -14,6 +14,8 @@ export interface Graph extends Buses {
 	toneFilter: BiquadFilterNode;
 	echo: DelayNode;
 	rain: GainNode;
+	/** The vinyl's level; each tune sets its own. */
+	crackle: GainNode;
 }
 
 export function build(ctx: AudioContext): Graph {
@@ -95,6 +97,7 @@ export function build(ctx: AudioContext): Graph {
 	echoTone.connect(gain(0.3, echo));
 	echoTone.connect(gain(0.3, pre));
 
+	const crackle = gain(0.35, master);
 	loop(
 		buffer(
 			3,
@@ -102,7 +105,7 @@ export function build(ctx: AudioContext): Graph {
 				(Math.random() * 2 - 1) * 0.002 +
 				(Math.random() < 0.0003 ? (Math.random() - 0.5) * 0.25 : 0),
 		),
-		gain(0.35, master),
+		crackle,
 	);
 	let brown = 0;
 	const rain = gain(0, master);
@@ -127,5 +130,6 @@ export function build(ctx: AudioContext): Graph {
 		toneFilter,
 		echo,
 		rain,
+		crackle,
 	};
 }
