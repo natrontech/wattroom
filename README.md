@@ -130,7 +130,7 @@ Races on a road start from the session picker: Race, Last Light (10, 20 or
 You can [try a sprint on the website](https://wattroom.ch/game-modes).
 
 > [!NOTE]
-> **Hardware and browsers.** WattRoom needs a smart trainer that speaks **Bluetooth FTMS**, which most current trainers do. Pre-FTMS Wahoo units are [not supported yet](https://github.com/natrontech/wattroom/issues/4). It also needs **Chrome or Edge** on Windows, macOS or Android, or the [desktop app](https://wattroom.ch/download). On Linux, Chrome keeps Web Bluetooth behind a flag. Safari and Firefox cannot reach a trainer, so iPhone and iPad riders can join the crew and the call but not ride. That is a [researched decision](docs/decisions/0004-chrome-first-with-native-escape-hatch.md), not an oversight.
+> **Hardware and browsers.** WattRoom needs a smart trainer that speaks **Bluetooth FTMS**, which most current trainers do. Pre-FTMS Wahoo units are [not supported yet](https://github.com/natrontech/wattroom/issues/4). It also needs **Chrome or Edge** on Windows, macOS or Android, or the [desktop app](https://wattroom.ch/download). On Linux, Chrome keeps Web Bluetooth behind a flag. Safari and Firefox cannot reach a trainer, so iPhone and iPad riders can join the crew and the call but not ride. That is a researched decision, not an oversight.
 
 ## How it compares
 
@@ -165,7 +165,7 @@ docker compose -f docker-compose.prod.yml up -d
 
 Releases are CalVer tags (`ghcr.io/natrontech/wattroom:2026.09.1`). An update
 is a tag bump, and a rollback is the previous tag: migrations only ever add
-([ADR-0019](docs/decisions/0019-tagged-releases-and-a-self-converging-vm.md)).
+(ADR-0019).
 The full guide, including how LiveKit reaches the server and what to back up,
 is in [deploy/README.md](deploy/README.md).
 
@@ -182,13 +182,10 @@ make dev-server   # terminal 1: Go server with hot reload on :8080
 make dev-web      # terminal 2: Vite dev server on :5174 (proxies /api + /ws)
 ```
 
-No smart trainer needed: the simulated trainer covers development, and
-`/dev/channel` is a full mock voice channel. `make site-screens` redraws the
-screenshots in this README and on the landing from the design shots, and
-`make screenshots` redraws the share cards and the other pages' screenshots
-from the running dev pair. Start with
-[CONTRIBUTING.md](CONTRIBUTING.md); every product and architecture decision is
-in [WATTROOM.md](WATTROOM.md) and [docs/decisions/](docs/decisions/).
+No smart trainer needed: the simulated trainer covers development.
+`make screenshots` redraws the share cards and screenshots from the running dev
+pair. Start with [CONTRIBUTING.md](CONTRIBUTING.md); the decisions that hold
+are in [WATTROOM.md](WATTROOM.md).
 
 ```mermaid
 flowchart LR

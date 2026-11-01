@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { BunchView, GamePlay } from '$lib/channel/bunch-view';
 import { at } from '$lib/road/along';
 import { legsRoad } from '$lib/road/fixtures';
-import { STYLES } from '../../routes/(app)/dev/world/styles';
+import { STYLES } from './test-styles';
 import { fogEle, makeGameRoad, nextStand, rideAhead } from './game-road';
 import { yOf } from './geometry';
 import { routeOfRoad } from './road-route';

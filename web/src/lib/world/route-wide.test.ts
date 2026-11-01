@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { referenceSpeed } from '$lib/road/pace';
 import { toRoute, type Route } from '$lib/road/route';
-import { STYLES } from '../../routes/(app)/dev/world/styles';
+import { STYLES } from './test-styles';
 import { backdrop, bearings } from './backdrop';
 import { CHUNK_M } from './place/lattice';
 import { rhythmOf } from './props/rhythm';

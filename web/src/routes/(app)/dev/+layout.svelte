@@ -1,55 +1,9 @@
 <script lang="ts">
-	import { page } from '$app/state';
-
+	// Dev-only tools: /dev/card (share cards, make screenshots) and /dev/perf (make perf).
 	let { children } = $props();
-
-	const screens = [
-		{ href: '/dev/brand', label: 'Brand' },
-		{ href: '/dev/styleguide', label: 'Styleguide' },
-		{ href: '/dev/themes', label: 'Themes' },
-		{ href: '/dev/theme-editor', label: 'Theme Editor' },
-		{ href: '/dev/components', label: 'Components' },
-		{ href: '/dev/account', label: 'Account' },
-		{ href: '/dev/settings', label: 'Settings' },
-		{ href: '/dev/pairing', label: 'Pairing' },
-		{ href: '/dev/hardware', label: 'Hardware' },
-		{ href: '/dev/editor', label: 'Editor' },
-		{ href: '/dev/ramp', label: 'Ramp' },
-		{ href: '/dev/modes', label: 'Modes' },
-		{ href: '/dev/sound', label: 'Sound' },
-		{ href: '/dev/channel', label: 'Channel' },
-		{ href: '/dev/panel', label: 'Panel' },
-		{ href: '/dev/spectator', label: 'Spectator' },
-		{ href: '/dev/summary', label: 'Summary' },
-		{ href: '/dev/medal', label: 'Medals' },
-		{ href: '/dev/board', label: 'Board' },
-		{ href: '/dev/world', label: 'World' },
-		{ href: '/dev/road', label: 'Road' },
-	];
-	// The closing card is a desk surface and keeps the rider's scheme (#4160);
-	// its gallery page is the light capture's only way to a medal.
-	const desk = $derived(page.url.pathname === '/dev/summary');
 </script>
 
-<div class="{desk ? '' : 'cave '}bg-surface text-ink flex h-screen flex-col">
-	<!-- chrome=0: a design capture's frame, with nothing of the gallery over it (#3672). -->
-	{#if page.url.searchParams.get('chrome') !== '0'}<nav
-			class="border-frame bg-surface/90 z-10 flex shrink-0 flex-wrap items-center gap-1 border-b px-4 py-2 backdrop-blur"
-		>
-			<a
-				href="/dev"
-				class="text-muted hover:text-ink mr-3 inline-flex min-h-6 items-center text-xs tracking-[0.2em] uppercase"
-				>dev</a
-			>
-			{#each screens as screen (screen.href)}
-				<a
-					href={screen.href}
-					class="rounded px-3 py-1.5 text-sm {page.url.pathname === screen.href
-						? 'bg-surface-raised text-ink'
-						: 'text-muted hover:text-ink'}">{screen.label}</a
-				>
-			{/each}
-		</nav>{/if}
+<div class="cave bg-surface text-ink flex h-screen flex-col">
 	<div class="min-h-0 flex-1 overflow-y-auto">
 		{@render children()}
 	</div>

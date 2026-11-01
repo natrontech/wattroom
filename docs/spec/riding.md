@@ -49,7 +49,7 @@ ERG 0 W — zero in ERG is a freewheel, and a
 rider pedalling through a release felt nothing under their legs. Stop and leaving still write
 ERG 0 W: nobody is riding the trainer then.
 
-## Virtual gears (defaults — tune in alpha; [ADR-0084](../decisions/0084-wattroom-shifts.md))
+## Virtual gears (defaults — tune in alpha; ADR-0084)
 
 When the ride is in SIM (a road, a race, the free ride's grade, a sprint slope), the rider shifts virtual gears with one pair of controls, **Easier** and **Harder**. A virtual gear multiplies whatever real gear is on the bike.
 
@@ -141,7 +141,7 @@ Every number below is a **default**, to be tuned in alpha from riders' reports, 
   - Ceiling: the trainer's Supported Power Range (0x2AD8).
 - **Don't make me shift (default).** The singleSpeed setting, renamed. Wherever SIM would put the rider on a slope, ERG-by-road holds FTP × clamp(0.60 + 0.03 × grade %, 0.50, 0.90), ± bias (#3025). Rides on it are stored but untimeable (rule: Jan, 2026-09-28; ADR-0074's who-chose-the-watts rule, since WattRoom chose the watts). A rider who had it on before gears keeps it, and the free ride says "Virtual gears are here: pick Grade to shift." once per device (#3333).
 
-## The bike computer (defaults — tune in alpha; [ADR-0071](../decisions/0071-the-bike-computer-pages-slot-3.md))
+## The bike computer (defaults — tune in alpha; ADR-0071)
 
 Slot 3's pages, in order: **RIDE** (default, and where every ride starts),
 **CLIMB** (opens by itself from RIDE when a climb begins on a free or route
@@ -161,7 +161,7 @@ laptop; TV: **3 m** from a **55-inch** set:
 | Labels            | **16 arcmin** | **3vh**  | **11 px** | **3vh**  |
 
 The desk column is the v2 mocks' proportions, under the arcmin floors (Jan,
-2026-10-18, [ADR-0087](../decisions/0087-a-desk-ride-takes-the-mocks-sizes.md)): a rider
+2026-10-18, ADR-0087): a rider
 who rides from further back uses TV mode.
 
 **A phone** (below **768 px**, [#3676](https://github.com/natrontech/wattroom/issues/3676))
@@ -175,7 +175,7 @@ left the second.
 
 Nothing on the TV is smaller than **2.9vh**. **The HUD's design distance**
 is a **second screen 1.3 m away, a 24-inch monitor**, the `/hud` tab of
-[ADR-0041](../decisions/0041-the-hud-mirrors-the-riding-screen.md). A screen
+ADR-0041. A screen
 height subtends the same angle there as a 55-inch TV does at 3 m, so a vh
 reads the same, and the HUD takes the TV's column. It holds that in any
 landscape window. The shell's own **320 × 152** window is the floor the block

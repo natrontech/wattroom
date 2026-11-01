@@ -124,7 +124,7 @@ session bonus is 5, and achievements pay once.
 | **Lounge presence**     | **1 XP per 5 full minutes in voice** — in any voice channel's call — capped at **24 XP per rider per UTC day**. Leaving resets the five-minute count. Presence is what LiveKit's join/leave webhooks say — the server cannot hear who talks (mute state is client-reported), so "talking" is measured as being on the call, and every surface says "in voice", never "talking". Blocks past the cap are recorded at 0 XP so lounge hours keep counting toward Lounge Lizard. |
 | **Session voice bonus** | **5 XP per group session** the rider was in voice for **at least half of** the running timeline (pauses excluded). A group session has **≥ 2 saved rides** and **≥ 10 min** of timeline. Riders and listeners alike — a coach without a trainer on the call earns it.                                                                                                                                                                         |
 | **Achievements**        | One-time **100 (easy) / 250 (medium) / 500 (hard)** XP, paid the day the shelf gets the trophy.                                                                                                                                                                                                                                                                                                                                               |
-| **Deleted rides**       | An offsetting row when a rider deletes a ride: **amount = that ride's XP**, `ref` = the ride's id. The delete is hard, so the ride leaves `sum(rides.xp)` and this puts the same number back — `user_total_xp` does not move. Never new XP and never a measure a badge is judged from: deleting a ride is privacy, not work ([ADR-0047](../decisions/0047-deleting-a-ride-keeps-its-xp.md)).                                                     |
+| **Deleted rides**       | An offsetting row when a rider deletes a ride: **amount = that ride's XP**, `ref` = the ride's id. The delete is hard, so the ride leaves `sum(rides.xp)` and this puts the same number back — `user_total_xp` does not move. Never new XP and never a measure a badge is judged from: deleting a ride is privacy, not work (ADR-0047).                                                     |
 
 ### Achievements
 
@@ -227,10 +227,10 @@ no-typing rule does not apply, because the rider is off the bike.
   Nothing in the app is gated on them, no streak counts them, and a ride without
   them is not incomplete.
 - **Neither feeds the load model.** Load is computed from power
-  ([ADR-0016](../decisions/0016-training-load-model.md)) and RPE does not move it.
+  (ADR-0016) and RPE does not move it.
   Letting it would be its own decision, with its own ADR.
 - **Where they travel: nowhere the rider did not put them**
-  ([ADR-0055](../decisions/0055-a-shared-ride-carries-numbers-not-words.md)).
+  (ADR-0055).
   Sharing a ride with friends shares the numbers the trainer recorded; the note
   and the RPE stay on the rider's own account. They are in the account export,
   because they are the rider's own words about their own ride.

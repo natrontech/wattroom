@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { catalogue } from '$lib/wardrobe/catalogue';
 import { DEFAULT_DARK_ID, themeById } from '$lib/themes';
-import { STYLES } from '../../routes/(app)/dev/world/styles';
+import { STYLES } from './test-styles';
 import { PATTERNS, patternIndex } from './figure/jersey';
 import { resolveKit, WHEELS } from './figure/kit';
 import { seededLoadout, type Loadout } from './loadout';

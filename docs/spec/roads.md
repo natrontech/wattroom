@@ -2,7 +2,7 @@
 
 Part of the product spec. [docs/SPEC.md](../SPEC.md) indexes every section and says which values change without an ADR.
 
-## Route rides (defaults — tune in alpha; [ADR-0062](../decisions/0062-the-horizon-may-be-a-road.md))
+## Route rides (defaults — tune in alpha; ADR-0062)
 
 | Parameter                    | Value                                                                                                                                   |
 | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
@@ -46,7 +46,7 @@ contradicts one amends it here.
 - the climb card opens by itself for class **IV** and harder, on a free or
   route ride; on a workout or a session its chip offers it instead ([#3645](https://github.com/natrontech/wattroom/issues/3645)).
 
-## A route's place ([ADR-0063](../decisions/0063-a-route-keeps-its-place-with-care.md))
+## A route's place (ADR-0063)
 
 Privacy rules, not alpha defaults: loosening any of these takes an ADR.
 
@@ -61,7 +61,7 @@ Privacy rules, not alpha defaults: loosening any of these takes an ADR.
 | A crew member's cached copy   | IndexedDB, expires after **7 days**, capped at **50 MB**                                        |
 | Generated name                | `Road · 52.9 km · 1,312 m` — distance and climbing — until the geo pack can name places outside every zone |
 
-## Road segments and ghosts (defaults — tune in alpha; [ADR-0082](../decisions/0082-a-climb-belongs-to-the-map.md))
+## Road segments and ghosts (defaults — tune in alpha; ADR-0082)
 
 | Parameter         | Value                                                                                                                            |
 | ----------------- | -------------------------------------------------------------------------------------------------------------------------------- |
@@ -73,12 +73,12 @@ Privacy rules, not alpha defaults: loosening any of these takes an ADR.
 | Ghosts            | at most **3** at once                                                                                                            |
 | Split calls       | the gap to your ghost at **25 %**, **50 %** and **75 %** of the road and **500 m** from its end; the last dropped under **2 km** (#3246) |
 | Visible to others | only efforts that pass `board_ok` (Road times)                                                                                   |
-| A board           | only on climbs of at least **5 %** and **3 min** ([ADR-0083](../decisions/0083-the-road-board.md))                                  |
-| Board entries     | the top **10** per Category and stretch, over a rolling **90 days**, each rider's best only; opt-in, unnamed ([ADR-0083](../decisions/0083-the-road-board.md)) |
+| A board           | only on climbs of at least **5 %** and **3 min** (ADR-0083)                                  |
+| Board entries     | the top **10** per Category and stretch, over a rolling **90 days**, each rider's best only; opt-in, unnamed (ADR-0083) |
 | Board privacy     | no effort whose segment lies within **1,000 m** of its rider's zones or ends, checked when read                                 |
 | Board token       | valid **7 days**: an HMAC of the effort id and the ISO week                                                                      |
 
-## Road times ([ADR-0074](../decisions/0074-a-time-is-yours-when-your-watts-moved-your-dot.md) — defaults, tune in alpha)
+## Road times (ADR-0074 — defaults, tune in alpha)
 
 A road time is the server's replay of the rider's watts on the map's profile,
 never the metres a client sent, and an imported file never sets one.

@@ -1,1 +1,0 @@
-- Status: reserved for [#3194](https://github.com/natrontech/wattroom/issues/3194)

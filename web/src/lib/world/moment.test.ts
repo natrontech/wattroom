@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { toRoute, type Route } from '$lib/road/route';
-import { devCrew } from '../../routes/(app)/dev/world/crew';
+import { devCrew } from './test-crew';
 import { RIDE } from './look.test-helper';
 import { compose, type Composed } from './compose';
 import { syntheticPoints } from './synthetic';

@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { CORRIDOR } from '$lib/session/docks';
-import { STYLES } from '../../routes/(app)/dev/world/styles';
+import { STYLES } from './test-styles';
 import type { SimRider } from './sim';
 import { CHEVRON_Y, THUMB_Y } from './crew';
 import { carriers, lay, makeTags, PILL_H, TEXT_H, textOf } from './tags';

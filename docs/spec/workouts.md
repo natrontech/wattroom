@@ -50,7 +50,7 @@ the protocol do not change.
   step, and says why in one line.
 - **Easier / Harder** move the bias by ±1 % during a hold, as in any ERG
   workout; the start point and the window move with the biased target
-  ([ADR-0084](../decisions/0084-wattroom-shifts.md), #3328).
+  (ADR-0084, #3328).
 
 ```jsonc
 { "type": "steady", "seconds": 3600, "target": 0.65, "hrHigh": 145, "hrHold": true }, // a MAF-style cap: never above 145 bpm, never above 65 % FTP
@@ -93,7 +93,7 @@ is refused at validation — a workout must not fight a safety feature.
 }
 ```
 
-Targets are fractions of FTP; absolute watts allowed via `"watts": 250` instead of `target`. A `road` step rides a stretch of road in SIM at its felt grade ([ADR-0062](../decisions/0062-the-horizon-may-be-a-road.md)); it is what a `freeride` step type was once promised as, and there is no `freeride` type. A `ramp` step (`from`/`to`, the editor's) is a mid-workout ramp between two fractions — the same shape as `warmup`/`cooldown`, interpolated per second and unscored like them (#1709). All three interpolate the same way: the block's first second is `from` and its last is one step short of `to`, because `to` is where the next block starts — a ramp is still ramping on its final second (#1394).
+Targets are fractions of FTP; absolute watts allowed via `"watts": 250` instead of `target`. A `road` step rides a stretch of road in SIM at its felt grade (ADR-0062); it is what a `freeride` step type was once promised as, and there is no `freeride` type. A `ramp` step (`from`/`to`, the editor's) is a mid-workout ramp between two fractions — the same shape as `warmup`/`cooldown`, interpolated per second and unscored like them (#1709). All three interpolate the same way: the block's first second is `from` and its last is one step short of `to`, because `to` is where the next block starts — a ramp is still ramping on its final second (#1394).
 
 `repeat` steps nest: a set of sets expresses over-unders without writing every rep out. The engine has always flattened recursively; the type used to forbid it (#12).
 
