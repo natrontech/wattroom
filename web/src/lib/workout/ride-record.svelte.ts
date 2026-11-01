@@ -1,3 +1,4 @@
+import { MaxBridgedGap } from '$lib/protocol';
 import type { GuardSample } from './guards';
 import { toleranceBand } from './guards';
 import type { RideState } from './ride-state';
@@ -125,6 +126,64 @@ export function createRideRecord(ftp: number) {
 		/** Whether a sample at `at` opens a new wall-clock second. */
 		admits(at: number): boolean {
 			return Math.floor(at / 1000) > lastRecordedSecond;
+		},
+		/**
+		 * The seconds a trainer left unheard before the sample at `at` (#4316),
+		 * drawn as a line between the last kept sample and this one, and kept.
+		 * The ride is its count of seconds, and a trainer notifying a little off
+		 * 1 Hz skips one now and then: left alone, a 70-minute ride saved minutes
+		 * short while its workout ran to the end.
+		 *
+		 * Only a short silence between two ridden seconds, with the workout clock
+		 * having moved a second for each, give or take the one the ticker's phase
+		 * against the wall second can add or take: a pause or a skip in the
+		 * silence is a stop, not a gap. A bridged second never exceeds its
+		 * neighbours, is unscored (`released`), and a heart rate or cadence is
+		 * drawn only between two that exist. A road has a place for every second
+		 * of its own, so the caller does not bridge one.
+		 */
+		bridge(
+			at: number,
+			clock: number,
+			sample: { watts: number; cadence: number; heartRate?: number },
+			released: boolean,
+		): RecordedSecond[] {
+			const before = recording.at(-1);
+			const silent = Math.floor(at / 1000) - lastRecordedSecond - 1;
+			if (
+				!before ||
+				released ||
+				before.released ||
+				silent < 1 ||
+				silent > MaxBridgedGap ||
+				Math.abs(offset + clock - before.clock - (silent + 1)) > 1
+			)
+				return [];
+			const line = (from: number, to: number, step: number) =>
+				Math.round(from + ((to - from) * step) / (silent + 1));
+			const bridged: RecordedSecond[] = [];
+			for (let step = 1; step <= silent; step++) {
+				const heartRate = sample.heartRate ?? 0;
+				const kept: RecordedSecond = {
+					second: recordedSeconds++,
+					clock: Math.min(before.clock + step, offset + clock),
+					watts: line(before.watts, Math.max(0, sample.watts), step),
+					cadence:
+						before.cadence > 0 && sample.cadence > 0
+							? line(before.cadence, sample.cadence, step)
+							: 0,
+					heartRate:
+						before.heartRate > 0 && heartRate > 0
+							? line(before.heartRate, heartRate, step)
+							: 0,
+					bias: before.bias,
+					released: true,
+				};
+				recording.push(kept);
+				trace = [...trace, { t: kept.clock - offset, w: kept.watts }];
+				bridged.push(kept);
+			}
+			return bridged;
 		},
 		/** The second a sample at `at` opens, kept; what was kept is returned. */
 		add(
