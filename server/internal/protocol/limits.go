@@ -286,6 +286,14 @@ const (
 	// in frames of this size, a second apart (#2839). Not a SPEC number, but
 	// one both sides have to agree on.
 	MaxBackfillBatch = 60 * 60
+
+	// The longest silence, in timeline seconds, between two readings that a
+	// ride record bridges with a line drawn between them (#4316). A trainer
+	// notifies near 1 Hz with jitter, so a reading can land a second late and
+	// leave the one before it empty; a longer silence is a dropout and stays
+	// a gap. Not a SPEC number, but the hub's record and the client's
+	// recording have to agree on it.
+	MaxBridgedGap = 3
 )
 
 // TargetBand is docs/SPEC.md's band around a target, in watts.

@@ -1,0 +1,1 @@
+- A ride no longer saves a few minutes short when your trainer's readings arrive a second late.

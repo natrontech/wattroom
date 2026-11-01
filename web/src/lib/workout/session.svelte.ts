@@ -155,6 +155,19 @@ export function createRideSession({
 		);
 		if (!admit) return;
 		const road = dot.second(next.watts, raw.at);
+		if (!road)
+			for (const bridged of record.bridge(
+				raw.at,
+				clock.seconds,
+				next,
+				!guards.scoring,
+			)) {
+				onRecord?.(bridged);
+				live.push({
+					watts: bridged.watts,
+					block: blocksBefore + clock.info.segmentIndex,
+				});
+			}
 		// The upload keeps the whole second (save.ts): this one ends a second on.
 		reached = Math.max(reached, Math.floor(clock.seconds) + 1);
 		const recorded = record.add(

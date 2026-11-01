@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { MaxBridgedGap } from '$lib/protocol';
 import { createRecording } from './recording.svelte';
 
 // The record is read as one entry per second downstream (#1411): a trainer
@@ -15,6 +16,23 @@ describe('createRecording', () => {
 		recording.follow('running');
 		recording.record(0, 100);
 		expect(recording.samples.length).toBe(1);
+	});
+
+	// A trainer reading that lands a second late must not shorten the ride
+	// (#4316): a short silence is a line between its two readings, a long one
+	// stays a gap.
+	it('draws a short silence between its two readings', () => {
+		const recording = createRecording({ ftp: () => 200 });
+		recording.record(0, 150);
+		recording.record(2, 200);
+		expect(recording.samples).toEqual([
+			{ watts: 150 },
+			{ watts: 175 },
+			{ watts: 200 },
+		]);
+		expect(recording.trace.map((point) => point.t)).toEqual([0, 1, 2]);
+		recording.record(2 + MaxBridgedGap + 2, 220);
+		expect(recording.samples.length).toBe(4);
 	});
 
 	// The HUD reads the live numbers off the same admitted seconds the summary
