@@ -9,6 +9,7 @@ import { blocksAhead, REFERENCE } from '$lib/road/gates';
 import { coachOf } from '$lib/channel/tick-session';
 import { scoredTarget } from '$lib/channel/types';
 import { createRoadReadout } from '$lib/ride/road-readout';
+import type { RoadReadout } from '$lib/road/readout';
 import { targetAt } from '$lib/workout/engine';
 import { roadOf } from '$lib/workout/road-workout';
 import type { Segment, Workout } from '$lib/workout/types';
@@ -227,6 +228,19 @@ export function createRiders(deps: RiderDeps) {
 		const m = route.reverse ? cut.road.length - bunchM : bunchM;
 		return readoutAt(cut.road, m, route.reverse);
 	});
+	// Slot 1's road line on a block-less road session (#4192): the readout at
+	// your metre, not the bunch's. A race or a game on a road has no segments,
+	// so `block` is null and `block.road` never carries the line, and a race
+	// has no bunch metre at all. `ridden` is the road as ridden and your metre
+	// on it — the same place the world draws — so this reads that, cut to a
+	// race's line rather than the full road. Its own memo, so it never thrashes
+	// the bunch's readout above.
+	const myReadoutAt = createRoadReadout();
+	const roadReadout = $derived.by(() => {
+		const place = ridden;
+		if (!place) return null;
+		return myReadoutAt(place.road, place.m);
+	});
 	const block = $derived(
 		deps.running() && deps.segments().length > 0
 			? describeBlock(
@@ -256,6 +270,10 @@ export function createRiders(deps: RiderDeps) {
 		/** The session's road the way the bunch rides it, and where the bunch is; null off one. */
 		get ridden() {
 			return ridden;
+		},
+		/** Where you are on the session's road, as slot 1 reads it (#4192); null off one. */
+		get roadReadout(): RoadReadout | null {
+			return roadReadout;
 		},
 		get race() {
 			return race;

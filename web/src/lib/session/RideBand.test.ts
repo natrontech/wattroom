@@ -99,3 +99,27 @@ describe('flat slot 1 without a strip', () => {
 		expect(after.indexOf('</div>')).toBeLessThan(after.indexOf('</header>'));
 	});
 });
+
+// #4192: a race or a game on a road has no block, so the road line comes from
+// the `road` prop, not `block.road`.
+describe('the road line on a block-less road session', () => {
+	it('reads the road prop when there is no block', () => {
+		const html = render(RideBand, {
+			props: {
+				block: null,
+				elapsed: 60,
+				total: 0,
+				road: { grade: 5, km: 1.5, totalKm: 3 },
+			},
+		}).body;
+		expect(html).toContain('data-testid="block-road"');
+		expect(html).toContain('km 1.5 of 3.0');
+	});
+
+	it('draws nothing with no block and no road', () => {
+		const html = render(RideBand, {
+			props: { block: null, elapsed: 60, total: 0 },
+		}).body;
+		expect(html).not.toContain('block-road');
+	});
+});

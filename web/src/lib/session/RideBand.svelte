@@ -15,6 +15,7 @@
 	 */
 	import { formatClock } from '$lib/format';
 	import { roadLine } from '$lib/ride/road-readout';
+	import type { RoadReadout } from '$lib/road/readout';
 	import { nextText, trainerChip, type Block } from '$lib/workout/block';
 	import CountChips from '$lib/session/CountChips.svelte';
 	import type { Snippet } from 'svelte';
@@ -33,6 +34,7 @@
 		status,
 		strip,
 		hint,
+		road,
 	}: {
 		block: Block | null;
 		elapsed: number;
@@ -59,12 +61,20 @@
 		strip?: Snippet;
 		/** Why a control is hidden, in one line (D13: the road decides where a block ends). */
 		hint?: string;
+		/**
+		 * Where on the road this is, when there is no block to carry it: a
+		 * race or a game on a road (#4192). `block.road` wins while one rides.
+		 */
+		road?: RoadReadout;
 	} = $props();
 
 	// 24 px words on 24 px lines: three of them stack as tall as the 72 px
 	// time left, so the band ends above the corridor (the box table's 186).
 	const WORDS = 'text-2xl leading-6';
 	const CHIP = `${WORDS} shrink-0 border-neon/40 text-muted rounded border px-2 whitespace-nowrap`;
+	// The road line's readout: the block's while one rides, else the block-less
+	// session's own (#4192) — a race or a game on a road has no block.
+	const roadHere = $derived(block?.road ?? road);
 </script>
 
 {#snippet trainerChipEl(b: Block)}
@@ -169,15 +179,15 @@
 			{title}
 		</h2>
 	{/if}
-	{#if (drives && block && (!wide || block.road)) || block?.road || hint}
+	{#if (drives && block && (!wide || block.road)) || roadHere || hint}
 		<div class="flex items-center gap-4">
 			{#if drives && block && (!wide || block.road)}{@render trainerChipEl(
 					block,
 				)}{/if}
-			{#if block?.road}
+			{#if roadHere}
 				<!-- Where on the road, once (TARGETS one home: slot 1's road line). -->
 				<p data-testid="block-road" class="num text-muted {WORDS} truncate">
-					{roadLine(block.road)}
+					{roadLine(roadHere)}
 				</p>
 			{/if}
 			{#if hint}<p class="text-muted {WORDS} truncate">{hint}</p>{/if}
