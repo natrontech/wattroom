@@ -25,12 +25,13 @@ import {
 const NOTE = ['011', '010', '110'];
 const HEART = ['01010', '11111', '01110', '00100'];
 /** What an away seat holds, by $lib/away's reasons; '' is plain away, a mug. */
-const LEFT_BEHIND: Record<string, { rows: string[]; colour: string }> = {
-	'': { rows: ['1111', '1111', '1111', '0110'], colour: C.lilac },
-	food: { rows: ['111111', '011110'], colour: C.amber },
-	nature: { rows: ['111', '111', '111', '111'], colour: C.paper },
-	shower: { rows: ['11111', '11111', '01010'], colour: C.towel },
-};
+const LEFT_BEHIND: Record<string, { rows: string[]; colour: keyof typeof C }> =
+	{
+		'': { rows: ['1111', '1111', '1111', '0110'], colour: 'lilac' },
+		food: { rows: ['111111', '011110'], colour: 'amber' },
+		nature: { rows: ['111', '111', '111', '111'], colour: 'paper' },
+		shower: { rows: ['11111', '11111', '01010'], colour: 'towel' },
+	};
 
 export function drawPeople(g: Ctx, s: SceneInput) {
 	sofa(g, s);
@@ -67,7 +68,7 @@ function sofa(g: Ctx, s: SceneInput) {
 			return;
 		}
 		const thing = LEFT_BEHIND[f.away] ?? LEFT_BEHIND[''];
-		sprite(g, thing.rows, x + 3, 148 - thing.rows.length, thing.colour);
+		sprite(g, thing.rows, x + 3, 148 - thing.rows.length, C[thing.colour]);
 	});
 	const more = s.seated.length - SEATS;
 	if (more > 0) text(g, `+${more}`, 140 - textWidth(`+${more}`), 133, C.lilac);
@@ -105,11 +106,11 @@ function bike(g: Ctx, s: SceneInput) {
 		rect(g, 201, 131, 4, 7, C.towel);
 		return;
 	}
-	onTheBike(g, s.rider, p1, p2, s.watt);
+	onTheBike(g, s.rider, p1, p2);
 }
 
 /** Two-bone legs from the hip to each pedal, the knee always forward. */
-function onTheBike(g: Ctx, r: Rider, p1: number[], p2: number[], watt: string) {
+function onTheBike(g: Ctx, r: Rider, p1: number[], p2: number[]) {
 	const hip = [181, 128];
 	const shoulder = [193, 117];
 	const leg = (pedal: number[], colour: string) => {
@@ -148,9 +149,9 @@ function onTheBike(g: Ctx, r: Rider, p1: number[], p2: number[], watt: string) {
 		[0, -1],
 		[0, 1],
 	])
-		text(g, label, x + ox, 99 + oy, watt);
+		text(g, label, x + ox, 99 + oy, C.watt);
 	g.globalAlpha = 1;
-	text(g, label, x, 99, watt);
+	text(g, label, x, 99, C.watt);
 }
 
 function hearts(g: Ctx, s: SceneInput) {

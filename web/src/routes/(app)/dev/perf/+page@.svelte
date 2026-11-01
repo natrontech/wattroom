@@ -9,7 +9,7 @@
 	import Skyline from '$lib/ride/Skyline.svelte';
 	import type { Road } from '$lib/road/road';
 	import { sceneLoop } from '$lib/lounge/scene-loop';
-	import { SCENE_H, SCENE_W, drawScene, type Figure } from '$lib/lounge/scene';
+	import { drawScene, type Figure } from '$lib/lounge/scene';
 
 	/**
 	 * One element at a time, for `make perf` (#3039): the harness in
@@ -79,8 +79,11 @@
 			})),
 	});
 
-	/** The lounge at twice its size (ADR-0094): four on the sofa, one riding,
-	 *  rain, and a beat at 80 BPM — everything that moves in it at once. */
+	/** The lounge as a desk's voice channel draws it (ADR-0094, #4302): a
+	 *  640 × 260 room at twice its size, four on the sofa, one riding, rain,
+	 *  and a beat at 80 BPM — everything that moves in it at once. */
+	const ROOM_W = 640;
+	const ROOM_H = 260;
 	const SITTER: Figure = {
 		id: 'a',
 		name: 'A',
@@ -96,6 +99,8 @@
 			(g, dt) => {
 				t += dt;
 				drawScene(g, {
+					w: ROOM_W,
+					h: ROOM_H,
 					t,
 					still: false,
 					sky: 'night',
@@ -112,7 +117,6 @@
 					pulsing: true,
 					catAwakeUntil: 0,
 					hearts: [],
-					watt: '#ff3d8b',
 					hours: 21,
 					minutes: 30,
 				});
@@ -218,11 +222,11 @@
 		{:else if kase === 'lounge'}
 			<!-- LoungeScene.svelte's canvas at the scale a desk draws it -->
 			<canvas
-				width={SCENE_W}
-				height={SCENE_H}
+				width={ROOM_W}
+				height={ROOM_H}
 				class="[image-rendering:pixelated]"
-				style:width="{SCENE_W * 2}px"
-				style:height="{SCENE_H * 2}px"
+				style:width="{ROOM_W * 2}px"
+				style:height="{ROOM_H * 2}px"
 				{@attach lounge}
 			></canvas>
 		{:else if kase === 'youtube'}

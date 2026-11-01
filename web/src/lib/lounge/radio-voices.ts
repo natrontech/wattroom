@@ -1,7 +1,9 @@
 /**
  * House radio's instruments: each one a few oscillators or a burst of noise
  * that builds itself, plays once and stops. Levels sit well under 1 on
- * purpose: chords stack five notes and the kick lands on them.
+ * purpose: chords stack five notes and the kick lands on them. This file
+ * holds the bass, the leads and the parts every voice is built from; the
+ * keys and the drums have files of their own.
  */
 
 /** Where the voices play into, built once by house-radio.ts. */
@@ -16,9 +18,9 @@ export interface Buses {
 	duck: GainNode;
 }
 
-const hz = (midi: number) => 440 * Math.pow(2, (midi - 69) / 12);
+export const hz = (midi: number) => 440 * Math.pow(2, (midi - 69) / 12);
 
-function envelope(
+export function envelope(
 	b: Buses,
 	t: number,
 	peak: number,
@@ -34,7 +36,7 @@ function envelope(
 	return v;
 }
 
-function tone(
+export function tone(
 	b: Buses,
 	type: OscillatorType,
 	freq: number,
@@ -51,39 +53,79 @@ function tone(
 	return o;
 }
 
-/** Electric piano: one FM pair whose bell of an attack settles to a round tone. */
-export function piano(
+/** A note that swells in over `attack` and holds until it fades over `release`. */
+export function swell(
 	b: Buses,
-	note: number,
 	t: number,
-	vel: number,
-	dur: number,
-) {
-	const f = hz(note);
-	const end = t + dur + 0.1;
-	const carrier = tone(
-		b,
-		'sine',
-		f,
-		t,
-		end,
-		envelope(b, t, 0.035 * vel, 0.008, dur, b.keys),
-	);
-	const index = b.ctx.createGain();
-	index.gain.setValueAtTime(f * 1.4 * vel, t);
-	index.gain.exponentialRampToValueAtTime(f * 0.15, t + 0.45);
-	index.connect(carrier.frequency);
-	tone(b, 'sine', f, t, end, index);
+	peak: number,
+	attack: number,
+	hold: number,
+	release: number,
+	to: AudioNode,
+): GainNode {
+	const v = b.ctx.createGain();
+	v.gain.setValueAtTime(0.0001, t);
+	v.gain.linearRampToValueAtTime(peak, t + attack);
+	v.gain.setValueAtTime(peak, t + attack + hold);
+	v.gain.linearRampToValueAtTime(0.0001, t + attack + hold + release);
+	v.connect(to);
+	return v;
+}
+
+export function lowpass(
+	b: Buses,
+	freq: number,
+	to: AudioNode,
+): BiquadFilterNode {
+	const f = b.ctx.createBiquadFilter();
+	f.type = 'lowpass';
+	f.frequency.value = freq;
+	f.Q.value = 0.3;
+	f.connect(to);
+	return f;
 }
 
 export function bass(
 	b: Buses,
+	voice: 'round' | 'sub' | 'upright',
 	note: number,
 	t: number,
 	dur: number,
 	vel: number,
 ) {
 	const end = t + dur + 0.1;
+	if (voice === 'sub') {
+		tone(
+			b,
+			'sine',
+			hz(note),
+			t,
+			end,
+			envelope(b, t, 0.26 * vel, 0.02, dur, b.bass),
+		);
+		return;
+	}
+	if (voice === 'upright') {
+		// A thumb on a string: quick bloom, short ring.
+		const ring = Math.min(dur, 0.45);
+		tone(
+			b,
+			'triangle',
+			hz(note),
+			t,
+			end,
+			envelope(b, t, 0.16 * vel, 0.006, ring, b.bass),
+		);
+		tone(
+			b,
+			'sine',
+			hz(note),
+			t,
+			end,
+			envelope(b, t, 0.14 * vel, 0.006, ring * 1.4, b.bass),
+		);
+		return;
+	}
 	tone(
 		b,
 		'sine',
@@ -102,61 +144,77 @@ export function bass(
 	);
 }
 
-function hiss(
+/** The tune's lead in its voice: flute, bell, soft square or whistle. */
+export function lead(
 	b: Buses,
+	voice: 'flute' | 'bell' | 'square' | 'whistle',
+	note: number,
 	t: number,
-	type: BiquadFilterType,
-	freq: number,
-	peak: number,
-	decay: number,
+	dur: number,
 ) {
-	const s = b.ctx.createBufferSource();
-	s.buffer = b.noise;
-	const filter = b.ctx.createBiquadFilter();
-	filter.type = type;
-	filter.frequency.value = freq;
-	filter.Q.value = 0.7;
-	s.connect(filter);
-	filter.connect(envelope(b, t, peak, 0.002, decay, b.drums));
-	s.start(t, (t * 7.3) % 0.5);
-	s.stop(t + decay + 0.05);
+	const f = hz(note);
+	const end = t + dur + 1.2;
+	if (voice === 'bell') {
+		const carrier = tone(
+			b,
+			'sine',
+			f,
+			t,
+			end,
+			envelope(b, t, 0.03, 0.004, 1.1, b.melody),
+		);
+		const index = b.ctx.createGain();
+		index.gain.setValueAtTime(f * 2, t);
+		index.gain.exponentialRampToValueAtTime(f * 0.05, t + 0.6);
+		index.connect(carrier.frequency);
+		tone(b, 'sine', f * 3.5, t, end, index);
+		return;
+	}
+	if (voice === 'square') {
+		tone(
+			b,
+			'square',
+			f,
+			t,
+			t + dur + 0.1,
+			lowpass(b, 1300, envelope(b, t, 0.022, 0.02, dur, b.melody)),
+		);
+		return;
+	}
+	if (voice === 'whistle') {
+		const o = tone(
+			b,
+			'sine',
+			f * 2,
+			t,
+			t + dur + 0.1,
+			envelope(b, t, 0.028, 0.05, dur, b.melody),
+		);
+		vibrato(b, o, t, dur, t + dur + 0.1);
+		return;
+	}
+	melody(b, note, t, dur);
 }
 
-export function kick(b: Buses, t: number) {
-	const o = tone(
-		b,
-		'sine',
-		110,
-		t,
-		t + 0.4,
-		envelope(b, t, 0.5, 0.004, 0.32, b.drums),
-	);
-	o.frequency.exponentialRampToValueAtTime(44, t + 0.13);
-	hiss(b, t, 'highpass', 3000, 0.03, 0.006);
-	const g = b.duck.gain;
-	g.cancelScheduledValues(t);
-	g.setValueAtTime(1, t);
-	g.linearRampToValueAtTime(0.8, t + 0.015);
-	g.linearRampToValueAtTime(1, t + 0.25);
+function vibrato(
+	b: Buses,
+	o: OscillatorNode,
+	t: number,
+	dur: number,
+	end: number,
+) {
+	const lfo = b.ctx.createOscillator();
+	const depth = b.ctx.createGain();
+	lfo.frequency.value = 5;
+	depth.gain.setValueAtTime(0, t);
+	depth.gain.linearRampToValueAtTime(6, t + dur * 0.6);
+	lfo.connect(depth);
+	depth.connect(o.detune);
+	lfo.start(t);
+	lfo.stop(end);
 }
 
-export function snare(b: Buses, t: number, vel: number) {
-	hiss(b, t, 'bandpass', 1800, 0.15 * vel, 0.16);
-	tone(
-		b,
-		'triangle',
-		185,
-		t,
-		t + 0.12,
-		envelope(b, t, 0.05 * vel, 0.002, 0.07, b.drums),
-	);
-}
-
-export function hat(b: Buses, t: number, vel: number, open: boolean) {
-	hiss(b, t, 'highpass', 7500, 0.028 * vel, open ? 0.22 : 0.032);
-}
-
-export function melody(b: Buses, note: number, t: number, dur: number) {
+function melody(b: Buses, note: number, t: number, dur: number) {
 	const end = t + dur + 0.1;
 	const o = tone(
 		b,
@@ -174,13 +232,5 @@ export function melody(b: Buses, note: number, t: number, dur: number) {
 		end,
 		envelope(b, t, 0.008, 0.03, dur * 0.6, b.melody),
 	);
-	const vibrato = b.ctx.createOscillator();
-	const depth = b.ctx.createGain();
-	vibrato.frequency.value = 5;
-	depth.gain.setValueAtTime(0, t);
-	depth.gain.linearRampToValueAtTime(6, t + dur * 0.6);
-	vibrato.connect(depth);
-	depth.connect(o.detune);
-	vibrato.start(t);
-	vibrato.stop(end);
+	vibrato(b, o, t, dur, end);
 }

@@ -2376,7 +2376,7 @@ surface(
 	// cave used to darken the whole app (G1, #4160).
 );
 
-/** The lounge's size on the page: a whole multiple of its 320 × 180, and no sideways scroll. */
+/** The lounge's size on the page: its own pixels at a whole scale, at least 320 × 180 of them, and no sideways scroll. */
 async function loungeProbe(page: Page) {
 	return page.evaluate(() => {
 		const scene = document.querySelector<HTMLCanvasElement>(
@@ -2388,7 +2388,15 @@ async function loungeProbe(page: Page) {
 			lounge: {
 				width: box?.width ?? 0,
 				height: box?.height ?? 0,
-				wholeScale: !!box && box.width % 320 === 0 && box.height % 180 === 0,
+				pixels: scene ? `${scene.width}x${scene.height}` : '',
+				scale: scene && box ? box.width / scene.width : 0,
+				wholeScale:
+					!!scene &&
+					!!box &&
+					scene.width >= 320 &&
+					scene.height >= 180 &&
+					Number.isInteger(box.width / scene.width) &&
+					box.width / scene.width === box.height / scene.height,
 				sideways: body ? body.scrollWidth > body.clientWidth : false,
 			},
 		};

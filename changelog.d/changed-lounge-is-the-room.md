@@ -1,0 +1,1 @@
+- The lounge is now the voice channel's room: it fills the page, shows more of itself on a bigger screen at a finer pixel, follows your theme (light mode too), and house radio changes its instruments, drums, mood and tempo from tune to tune.

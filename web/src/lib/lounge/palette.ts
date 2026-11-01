@@ -1,9 +1,13 @@
 /**
- * The lounge's colours (ADR-0094): a picture's token family beside the
- * world's, which may hold hues past the app's two accents. The one live
- * number on it takes the watt hue from the theme, never from here.
+ * The lounge's colours (ADR-0094, amended by #4302): two hand-set rooms, one
+ * per scheme, turned to the rider's theme. The room's hues follow the theme's
+ * neon; the light outside the window, skin, leaves and the lamp's amber stay
+ * what they are. The one live number takes the theme's watt.
  */
-export const LOUNGE = {
+import { hexToOklch, normalizeHue, oklchToHex } from '$lib/color';
+import type { Theme } from '$lib/palette';
+
+const DARK = {
 	wall: '#170838',
 	wainscot: '#1a0940',
 	trim: '#2b0f55',
@@ -41,22 +45,88 @@ export const LOUNGE = {
 	poster: '#12042c',
 	shelf: '#24095a',
 	book: '#43127a',
+	bookB: '#2a6a8a',
+	bookC: '#7a2a5a',
 	rug: '#3a2a5c',
 	cable: '#6a5a96',
 	door: '#1f0b40',
 	star: '#ffffff',
 	shirt: '#8b6cff',
-	/** Until the theme's --color-watt has been read off the canvas. */
+	beam: '#120630',
+	bulb: '#ffe2a8',
 	watt: '#ff3d8b',
-} as const;
+};
+
+export type LoungeColours = typeof DARK;
+type Name = keyof LoungeColours;
+
+/** Daylight in the same room: pale walls, mid-tone wood, dark only where things are ink. */
+const LIGHT: LoungeColours = {
+	...DARK,
+	wall: '#ece3f8',
+	wainscot: '#ddd0f0',
+	trim: '#b7a2db',
+	floor: '#c8b4e2',
+	plank: '#b39cd6',
+	frame: '#6f1ad1',
+	sillTop: '#f8f3ff',
+	wood: '#8e6cbc',
+	woodLight: '#a88ad2',
+	cushion: '#8462c0',
+	ink: '#24123f',
+	screen: '#24123f',
+	laptop: '#57408a',
+	teal: '#11a596',
+	tealLight: '#6fded2',
+	amber: '#f2ab33',
+	lilac: '#8a72d6',
+	violet: '#6a4be0',
+	cat: '#57516e',
+	catLight: '#7c769c',
+	leaf: '#2f9a74',
+	leafLight: '#4bc490',
+	paper: '#ffffff',
+	shade: '#1a0b33',
+	legFar: '#4f3f7a',
+	legNear: '#655495',
+	poster: '#f8f4ff',
+	shelf: '#d3c2ee',
+	book: '#9a7bd0',
+	bookB: '#4a9ab8',
+	bookC: '#c0609a',
+	rug: '#b29ad8',
+	cable: '#7a68a8',
+	door: '#cdbbe9',
+	shirt: '#6a4be0',
+	beam: '#d4c4ec',
+	bulb: '#ffd27a',
+	watt: '#e6247d',
+};
+
+/** What keeps its hue whatever the theme: skin, leaves, lamp light, the sign and the odd book. */
+const FIXED: readonly Name[] = [
+	'teal',
+	'tealLight',
+	'amber',
+	'leaf',
+	'leafLight',
+	'heart',
+	'towel',
+	'paper',
+	'star',
+	'bulb',
+	'bookB',
+	'bookC',
+	'watt',
+];
 
 /** Five bands from the top of the sky to the horizon. */
-export const SKIES = {
+const BASE_SKIES = {
 	night: ['#0b0220', '#1a0646', '#2e0b66', '#4a1380', '#6b1f8f'],
 	dusk: ['#24095a', '#43127a', '#6a1f86', '#9a3a7e', '#d0705e'],
 	day: ['#3a3fb0', '#4f5cc4', '#7076d2', '#9a8fd8', '#cfa2d0'],
 } as const;
-export type Sky = keyof typeof SKIES;
+export type Sky = keyof typeof BASE_SKIES;
 
 /** The sun's upper and lower halves under each sky. */
 export const SUNS: Record<Sky, readonly [string, string]> = {
@@ -64,6 +134,39 @@ export const SUNS: Record<Sky, readonly [string, string]> = {
 	dusk: ['#ffb347', '#ff7a59'],
 	day: ['#ffe08a', '#ffb347'],
 };
+
+/** The colours the scene draws with right now; applyLoungeTheme repaints them. */
+export const LOUNGE: LoungeColours = { ...DARK };
+export const SKIES: Record<Sky, string[]> = {
+	night: [...BASE_SKIES.night],
+	dusk: [...BASE_SKIES.dusk],
+	day: [...BASE_SKIES.day],
+};
+let applied = '';
+
+function turned(hex: string, by: number): string {
+	if (!by) return hex;
+	const c = hexToOklch(hex);
+	return oklchToHex({ ...c, h: normalizeHue(c.h + by) });
+}
+
+/**
+ * Repaint the room for a theme. Returns whether anything changed, so the
+ * caller can drop what it cached under the old colours.
+ */
+export function applyLoungeTheme(theme: Theme): boolean {
+	if (theme.id === applied) return false;
+	applied = theme.id;
+	const base = theme.family === 'light' ? LIGHT : DARK;
+	const by = hexToOklch(theme.tokens.neon).h - hexToOklch(base.frame).h;
+	for (const name of Object.keys(base) as Name[])
+		LOUNGE[name] = FIXED.includes(name) ? base[name] : turned(base[name], by);
+	LOUNGE.frame = theme.tokens.neon;
+	LOUNGE.watt = theme.tokens.watt;
+	for (const kind of Object.keys(BASE_SKIES) as Sky[])
+		SKIES[kind] = BASE_SKIES[kind].map((c) => turned(c, by));
+	return true;
+}
 
 /** The viewer's hour, as the window sees it. */
 export function skyAt(hour: number): Sky {

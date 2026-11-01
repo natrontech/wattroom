@@ -41,6 +41,11 @@ export function drawWindow(g: Ctx, s: SceneInput) {
  */
 const backdrops = new Map<Sky, HTMLCanvasElement>();
 
+/** The theme changed: every sky is drawn again in its colours. */
+export function forgetBackdrops() {
+	backdrops.clear();
+}
+
 function backdrop(kind: Sky): HTMLCanvasElement {
 	let made = backdrops.get(kind);
 	if (made) return made;

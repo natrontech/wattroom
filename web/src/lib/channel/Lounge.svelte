@@ -181,6 +181,13 @@
 			: channel.stageSources,
 	);
 	const onStage = $derived(pickStage(sources, av?.stagePick ?? null));
+	/** The lounge's room (ADR-0094, #4302): an idle voice channel with nothing shared and nobody riding here. */
+	const inRoom = $derived(
+		channel.phase === 'lounge' &&
+			!!channel.address.channel &&
+			!onStage &&
+			!riding,
+	);
 	/** Stage above, riders below — the shape both Stage and Sidebar draw. */
 	const stacked = $derived(layout !== 'split');
 	const wrap = $derived(
@@ -351,11 +358,11 @@
 		>
 	</div>
 
-	{#if channel.phase === 'lounge' && channel.address.channel && !onStage && !riding}
-		<!-- The lounge (ADR-0094): an idle voice channel's picture, and house
-		     radio while its deck is empty. A shared picture takes its place, a
-		     YouTube entry among them, so nothing is ever drawn over the
-		     player (RMF). -->
+	{#if inRoom}
+		<!-- The lounge (ADR-0094): an idle voice channel is its room, which
+		     takes the page's spare height (#4302). A shared picture takes its
+		     place, a YouTube entry among them, so nothing is ever drawn over
+		     the player (RMF). -->
 		<LoungeScene />
 	{/if}
 	<div class={wrap}>
@@ -427,10 +434,14 @@
 					</div>
 				</div>
 			{:else}
+				<!-- In the room everyone already sits on the sofa, so the tiles
+				     are a small strip under it: names, cameras and numbers. -->
 				<div
-					class="grid shrink-0 gap-3 {(onStage && !stacked) || pictureless
-						? 'grid-cols-2 2xl:grid-cols-3'
-						: 'sm:grid-cols-2 2xl:grid-cols-3'}"
+					class="grid shrink-0 {inRoom
+						? 'grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6 2xl:grid-cols-8'
+						: (onStage && !stacked) || pictureless
+							? 'grid-cols-2 gap-3 2xl:grid-cols-3'
+							: 'gap-3 sm:grid-cols-2 2xl:grid-cols-3'}"
 				>
 					{#each tiles as rider (rider.id)}
 						{#if focusable}

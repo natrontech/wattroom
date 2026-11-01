@@ -60,6 +60,17 @@ Decided by Dave while the first version was built: house radio is **queued like 
 
 "When the deck is empty, the lounge plays house radio", "stops when anything is queued" and "It is not a queue entry" above are superseded.
 
+## Amended 2026-11-01 (#4302)
+
+Decided by Dave after riding the first version: the lounge is the room, not a picture in it.
+
+- **It takes the voice channel's page.** It spans the content column edge to edge, and the rider tiles below it become a small strip, since everyone already sits on the sofa.
+- **A bigger page shows more room.** The 320 × 180 composition stays the room's middle, where everything clickable sits; a wider column adds shelves, lamps, plants, pictures and lights around it. The scale is still a whole number, chosen from the width: 1× on a phone, 2× on a desk, 3× past 1700 px. The room is about half as tall as it is wide, between 180 and 260 rows.
+- **It follows the rider's theme.** There is a hand-set room for each scheme, light included, and its hues turn to the theme's neon. Skin, leaves, lamp light and the sun keep theirs. The watts take the theme's watt. This replaces "its own palette" above; the scene is still a picture, so it may hold hues beyond the two accents.
+- **House radio varies per tune**, still from the crew and slot alone: major or minor, four or eight bar progressions, one of four keys sounds (electric piano, pad, organ, pluck), four leads, three basses and bass lines, three kits with half-time and sixteenth hats, broken chords, its own form, tone and crackle, at 64–92 BPM.
+
+"A pixel-art room of 320 × 180 pixels", "at most 3×" in the first version's sizing and the 72–88 BPM range above are superseded.
+
 ## Consequences
 
 - An idle voice channel gets music and something to look at without a new service, new storage or a new sound license. The only protocol change is the shared lamp and weather.
