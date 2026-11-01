@@ -33,6 +33,7 @@
 	import Logo from '$lib/brand/Logo.svelte';
 	import Sidebar from '$lib/nav/Sidebar.svelte';
 	import RideDock from '$lib/nav/RideDock.svelte';
+	import NowBar from '$lib/nav/NowBar.svelte';
 	import Menu from '@lucide/svelte/icons/menu';
 	import Toasts from '$lib/components/Toasts.svelte';
 	import NewAccountNotice from '$lib/components/NewAccountNotice.svelte';
@@ -442,7 +443,7 @@
 		{#if navDrawer.open}
 			<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 			<div
-				class="bg-paper/60 fixed inset-0 z-40 md:hidden"
+				class="bg-paper/60 fixed inset-0 z-40 {riding ? '' : 'md:hidden'}"
 				onclick={() => (navDrawer.open = false)}
 			></div>
 		{/if}
@@ -453,8 +454,10 @@
 		     until it is open. -->
 		<div
 			bind:this={drawerBox}
-			inert={device.narrow && !navDrawer.open}
-			class="bg-surface fixed inset-y-0 left-0 z-50 shrink-0 transition-transform duration-(--dur-base) max-md:pt-(--safe-top) max-md:pb-(--safe-bottom) max-md:pl-(--safe-left) md:static md:z-auto md:translate-x-0 {navDrawer.open
+			inert={(device.narrow || riding) && !navDrawer.open}
+			class="bg-surface fixed inset-y-0 left-0 z-50 shrink-0 transition-transform duration-(--dur-base) max-md:pt-(--safe-top) max-md:pb-(--safe-bottom) max-md:pl-(--safe-left) {riding
+				? ''
+				: 'md:static md:z-auto md:translate-x-0'} {navDrawer.open
 				? 'translate-x-0'
 				: '-translate-x-full'}"
 			style={titleBar ? `top: ${titleBar}px` : ''}
@@ -469,7 +472,7 @@
 		<!-- inert while the drawer is open (#1969): Tab past its last row used
 		     to walk under the backdrop. -->
 		<div
-			inert={device.narrow && navDrawer.open}
+			inert={(device.narrow || riding) && navDrawer.open}
 			class="flex min-w-0 flex-1 flex-col overflow-hidden"
 		>
 			{#if !riding}
@@ -552,16 +555,15 @@
 				<NewAccountNotice />
 				{@render children()}
 			</div>
+			<NowBar pathname={page.url.pathname} {riding} />
 		</div>
-		{#if riding}
-			<!-- The ride took the top bar, so the way back to the drawer is where
-			     a thumb already is: bottom left, mirroring the voice channel's people
-			     button bottom right. Below md only — every wider window still has
-			     the sidebar standing there (#412). -->
+		{#if riding && !channelConnection.current}
+			<!-- A ride hides the sidebar at every width. In a voice channel the
+			     now bar opens it; a solo ride has no now bar, so this does. -->
 			<button
 				onclick={() => (navDrawer.open = true)}
 				class="bg-surface-raised border-ink/15 fixed bottom-[calc(1rem+var(--safe-bottom))] left-[calc(1rem+var(--safe-left))] z-40 grid h-12
-				w-12 place-items-center rounded-full border md:hidden"
+				w-12 place-items-center rounded-full border"
 				aria-label="open navigation"
 			>
 				<Menu size={20} />

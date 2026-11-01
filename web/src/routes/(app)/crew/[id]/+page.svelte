@@ -1,7 +1,6 @@
 <script lang="ts">
-	// The crew's Home (ADR-0038, ADR-0058; #1150, #1151, #2451): its name,
-	// then what is live, what is next and who is around (CrewNow), then the
-	// invite and the way out. The live half
+	// The crew's Home: its name and invite, then what is live, what is next
+	// and who is around (CrewNow), and the way out at the foot. The live half
 	// is read from the crew's voice channels; the crew itself holds nothing
 	// live.
 	import { page } from '$app/state';
@@ -11,6 +10,7 @@
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import RecoveredNotice from '$lib/ride/RecoveredNotice.svelte';
 	import CrewNow from './CrewNow.svelte';
+	import CrewBoard from './CrewBoard.svelte';
 	import YourWeek from './YourWeek.svelte';
 	import { fetchCrew, learnCrewFaces, type Crew } from '$lib/crew';
 	import {
@@ -24,7 +24,6 @@
 	import { shareVerb } from '$lib/share';
 	import Copy from '@lucide/svelte/icons/copy';
 	import Settings from '@lucide/svelte/icons/settings';
-	import Users from '@lucide/svelte/icons/users';
 	import Star from '@lucide/svelte/icons/star';
 	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
@@ -161,7 +160,7 @@
 					{/if}
 				</p>
 			</div>
-			{#if presence.crews.length > 1 || administers}
+			{#if presence.crews.length > 1 || administers || crew.code}
 				<!-- A row of their own below sm (#2175). Wrapping the header is not
 				     enough on its own: a flex item shrinks before it wraps, so the
 				     title kept giving width back to these two until it was an
@@ -183,6 +182,14 @@
 								><Star size={13} /> {MAIN_CREW_LABEL}</button
 							>
 						{/if}
+					{/if}
+					{#if crew.code}
+						<button
+							onclick={() => crew?.code && shareInviteLink(crew.code)}
+							class="btn btn-secondary btn-xs shrink-0"
+							title="Crew code {crew.code}: anyone with it joins {crew.name}"
+							><Copy size={13} /> {shareVerb()} invite link</button
+						>
 					{/if}
 					{#if administers}
 						<!-- Name, picture, icon, channels and reactions live on
@@ -213,44 +220,15 @@
 		<RecoveredNotice />
 		<YourWeek />
 		<CrewNow {crew} />
-		<!-- The people, their roles, the board and the crew's sessions have one
-		     home since #2453: the Members page. -->
-		<a href="/crew/{crew.id}/members" class="btn btn-secondary mt-8"
-			><Users size={14} /> Members{#if crew.members}&nbsp;· {crew.members}{/if}</a
-		>
-
-		<!-- After the people (#1931): a newcomer used to read a code before the
-		     place they came for. Still the invite's one home. -->
-		{#if crew.code}
-			<h2 class="eyebrow mt-8">invite</h2>
-			<!-- Stacked on a phone: the sentence between the code and the
-			     button squeezed into a six-line column at 375px. -->
-			<div
-				class="panel mt-2 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center"
-			>
-				<span class="min-w-0">
-					<span class="eyebrow">crew code</span>
-					<span class="font-display block text-lg font-bold tracking-widest"
-						>{crew.code}</span
-					>
-				</span>
-				<span class="text-muted min-w-0 flex-1 text-xs">
-					Anyone with it joins {crew.name} and walks into its open channels.
-				</span>
-				<button
-					onclick={() => crew?.code && shareInviteLink(crew.code)}
-					class="btn btn-secondary btn-xs shrink-0 self-start sm:self-auto"
-					><Copy size={13} /> {shareVerb()} invite link</button
-				>
-			</div>
-		{/if}
+		<CrewBoard {crew} />
 
 		<!-- The way out (#1228): the one thing a member can do to the crew. It
 		     says exactly what it does, and the danger token sits last (ux.md).
 		     The owner sees it disabled with the route out (docs/SPEC.md's
 		     matrix: hand the crew on first) rather than nothing at all. -->
-		<h2 class="eyebrow mt-8">leave</h2>
-		<div class="panel mt-2 flex flex-wrap items-center gap-3">
+		<div
+			class="border-ink/5 mt-12 flex flex-wrap items-center gap-3 border-t pt-4"
+		>
 			<p class="text-muted min-w-0 flex-1 text-xs">
 				{#if owner && crew.members === 1}
 					<!-- Nobody to hand it to (#2837): a crew with nothing left in it
@@ -272,7 +250,8 @@
 			<button
 				onclick={leaveCrew}
 				disabled={busy || owner}
-				class="btn btn-danger btn-xs shrink-0">Leave the crew</button
+				class="btn-link text-danger shrink-0 text-xs disabled:opacity-50"
+				>Leave the crew</button
 			>
 		</div>
 	{/if}

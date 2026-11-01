@@ -4,7 +4,7 @@
 	// never fights these faders.
 	//
 	// Rendered by both homes of the mix (#477): the Sound panel and
-	// /settings/voice. One set of faders, two surfaces. The riders' volumes
+	// /settings/equipment. One set of faders, two surfaces. The riders' volumes
 	// beside them are `RiderVolumes`, so the Sound panel can give them their
 	// own column (#4170).
 	import FaderRow from '$lib/channel/FaderRow.svelte';

@@ -21,6 +21,8 @@
 	import { sensors } from '$lib/sensors.svelte';
 	import Gauge from '@lucide/svelte/icons/gauge';
 	import { RAMP_TAKES } from '$lib/workout/ramp';
+	import VoiceAudio from '$lib/profile/VoiceAudio.svelte';
+	import Controllers from './Controllers.svelte';
 
 	// A voice channel holds the trainer's BLE connection for as long as you
 	// stand in it (#521), and this page could not see it (#565) — so when
@@ -213,3 +215,12 @@
 		</a>
 	</section>
 </div>
+
+<section id="controllers" class="mt-10">
+	<h2 class="font-display mb-4 font-bold">Controllers</h2>
+	<Controllers />
+</section>
+
+<section id="voice" class="mt-10">
+	<VoiceAudio />
+</section>

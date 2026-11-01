@@ -6,7 +6,7 @@
 	// cog is a navigation out of the voice channel onto a page that also
 	// holds FTP.
 	//
-	// A shortcut, never the only way (ux.md): /settings/voice keeps the full page,
+	// A shortcut, never the only way (ux.md): /settings/equipment keeps the full page,
 	// with push-to-talk's explanation and the rest. A modal
 	// rather than a popover because the targets have to survive being tapped
 	// from a bike, and `Modal` already keeps the jukebox dock clear of it.
@@ -65,7 +65,7 @@
 		<div class="flex items-center gap-4">
 			<h2 class="font-display font-bold">Sound</h2>
 			<a
-				href="/settings/voice#gate"
+				href="/settings/equipment#gate"
 				onclick={close}
 				class="btn btn-ghost btn-xs ml-auto">Voice &amp; audio</a
 			>
@@ -129,7 +129,7 @@
 			<!-- The camera sits here too (#945): the you-panel puts its button
 			     next to the mic's, so the device it opens belongs next to the
 			     mic's device, not one page away. The same pickers as
-			     /settings/voice (#1883). On a desk they are one row under the
+			     /settings/equipment (#1883). On a desk they are one row under the
 			     three columns, on the columns' gap so each select starts on a
 			     column's edge; the unnamed-device hint stays on the settings page,
 			     where a rider names them (G4: no teaching sentence mid-ride). -->

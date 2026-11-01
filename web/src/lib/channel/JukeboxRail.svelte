@@ -8,7 +8,6 @@
 	import Headphones from '@lucide/svelte/icons/headphones';
 	import SkipForward from '@lucide/svelte/icons/skip-forward';
 	import Volume2 from '@lucide/svelte/icons/volume-2';
-	import { page } from '$app/state';
 	import { thumbnailFor } from '$lib/channel/jukebox-add';
 	import TrackWave from '$lib/channel/TrackWave.svelte';
 	import { MUSIC_FADER } from '$lib/sound/fader';
@@ -53,12 +52,6 @@
 			? playheadAt(jukebox, nowMs, duration) / duration
 			: 0,
 	);
-	// The live place's own pages carry the people column at xl, and that
-	// column outranks this seat — so the rail steps aside there rather than
-	// holding a second 200 px hole the player will never fly into.
-	const onPlacePage = $derived(
-		channelConnection.onPlacePath(page.url.pathname),
-	);
 
 	// Every button commands the ROOM — the deck is shared.
 	function transport(action: string) {
@@ -89,11 +82,7 @@
 </script>
 
 {#if current}
-	<div
-		class="border-ink/5 border-t px-3 pt-2.5 pb-1.5 {onPlacePage
-			? 'xl:hidden'
-			: ''}"
-	>
+	<div class="border-ink/5 border-t px-3 pt-2.5 pb-1.5">
 		<div class="eyebrow flex min-w-0 items-center gap-1.5 pb-1.5">
 			{#if jukebox?.playing && !playerInfo.live && !listening.out}
 				<span

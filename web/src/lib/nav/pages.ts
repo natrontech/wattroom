@@ -3,7 +3,6 @@ import ChartColumn from '@lucide/svelte/icons/chart-column';
 import History from '@lucide/svelte/icons/history';
 import House from '@lucide/svelte/icons/house';
 import Music from '@lucide/svelte/icons/music';
-import Pin from '@lucide/svelte/icons/pin';
 import Settings from '@lucide/svelte/icons/settings';
 import Users from '@lucide/svelte/icons/users';
 import type { Icon } from '$lib/icons';
@@ -80,8 +79,6 @@ export function crewPlaces(
 	return [
 		{ href: base, label: 'Home', icon: House, exact: true },
 		{ href: `${base}/schedule`, label: 'Schedule', icon: CalendarClock },
-		{ href: `${base}/workouts`, label: 'Workouts', icon: ChartColumn },
-		{ href: `${base}/board`, label: 'Board', icon: Pin },
 		{ href: `${base}/members`, label: 'Members', icon: Users },
 		...(admin && !narrow
 			? [{ href: `${base}/settings`, label: 'Settings', icon: Settings }]

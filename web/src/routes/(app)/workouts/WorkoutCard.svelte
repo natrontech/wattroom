@@ -3,9 +3,11 @@
 	import WorkoutPreview from '$lib/components/WorkoutPreview.svelte';
 	import {
 		contextMenu,
+		openMenu,
 		MENU_HINT,
 		type MenuEntry,
 	} from '$lib/context-menu.svelte';
+	import Ellipsis from '@lucide/svelte/icons/ellipsis';
 	import { formatClock } from '$lib/format';
 	import { durationSeconds, flatten } from '$lib/workout/engine';
 	import type { Workout } from '$lib/workout/types';
@@ -64,6 +66,17 @@
 		class="mt-auto flex flex-wrap items-center gap-x-3 gap-y-2 px-5 pt-3 [&>.btn-ghost:first-child]:-ml-3 [&>.btn-ghost:last-child]:-mr-3"
 	>
 		{@render actions()}
+		<!-- One Ride on the card; everything else is this menu, the same one a
+		     right-click opens. -->
+		<button
+			onclick={(event) => {
+				const box = event.currentTarget.getBoundingClientRect();
+				openMenu(menu(), box.right, box.bottom, event.currentTarget);
+			}}
+			class="icon-btn text-muted hover:text-ink -mr-2"
+			aria-label="More for {workout.name}"
+			aria-haspopup="menu"><Ellipsis size={16} /></button
+		>
 	</div>
 	<WorkoutPreview
 		segments={flatten(workout)}

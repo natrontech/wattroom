@@ -5,7 +5,7 @@
 	// dead mic.
 	//
 	// Rendered by both homes of the gate (#477): the Sound panel and
-	// /settings/voice.
+	// /settings/equipment.
 	import GateMeter from '$lib/channel/GateMeter.svelte';
 
 	let {
