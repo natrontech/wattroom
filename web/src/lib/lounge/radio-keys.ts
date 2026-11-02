@@ -34,12 +34,12 @@ export function piano(
 }
 
 /** Warm pad: two detuned saws behind a low-pass that opens across the bar. */
-export function pad(b: Buses, note: number, t: number, dur: number) {
+export function pad(b: Buses, note: number, t: number, dur: number, vel = 1) {
 	const end = t + dur + 0.8;
 	const filter = lowpass(
 		b,
 		380,
-		swell(b, t, 0.011, 0.4, Math.max(0, dur - 0.4), 0.7, b.keys),
+		swell(b, t, 0.011 * vel, 0.4, Math.max(0, dur - 0.4), 0.7, b.keys),
 	);
 	filter.frequency.setValueAtTime(380, t);
 	filter.frequency.linearRampToValueAtTime(1300, t + dur * 0.6);

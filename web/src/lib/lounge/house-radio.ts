@@ -2,23 +2,28 @@
  * House radio's sound (ADR-0094): the station's score, played on this
  * machine's AudioContext at server time. Mixed quiet and clean — the first
  * cut was too hot and the drum bus saturated (Dave, 2026-10-31) — and lofi
- * only through a low-pass, a slow tape wobble and a soft crackle.
+ * only through a low-pass, a tape wobble and a soft crackle.
  */
 import {
 	SLOT_SEC,
-	drumsIn,
-	melodyNote,
+	barNotes,
 	sectionOf,
 	tuneOf,
-	type Chord,
-	type Section,
+	type Note,
 	type Tune,
 } from '$lib/lounge/station';
 import { bass, lead } from '$lib/lounge/radio-voices';
 import { organ, pad, piano, pluck } from '$lib/lounge/radio-keys';
 import { brush, hat, kick, rim, snare } from '$lib/lounge/radio-drums';
+import {
+	chipBass,
+	chipHat,
+	chipKick,
+	chipLead,
+	chipSnare,
+	pulse,
+} from '$lib/lounge/radio-chip';
 import { OPEN_HZ, build, type Graph } from '$lib/lounge/radio-graph';
-import { hash3 } from '$lib/lounge/hash';
 
 /** How far ahead the scheduler lays notes down, in seconds. */
 const AHEAD_SEC = 0.15;
@@ -35,6 +40,7 @@ function automate(g: Graph, tune: Tune, bar: number, t: number) {
 		tg.exponentialRampToValueAtTime(1, t + tune.barSec);
 		g.echo.delayTime.setValueAtTime((0.75 * 60) / tune.bpm, t);
 		g.crackle.gain.setTargetAtTime(tune.crackle, t, 0.5);
+		g.space.gain.setTargetAtTime(tune.space, t, 0.5);
 		lp.cancelScheduledValues(t);
 		lp.setValueAtTime(900, t);
 		lp.exponentialRampToValueAtTime(tune.open, t + tune.barSec * 4);
@@ -55,134 +61,65 @@ function automate(g: Graph, tune: Tune, bar: number, t: number) {
 	}
 }
 
-/** One sixteenth of one bar: everything that sounds on it. */
-function playStep(g: Graph, tune: Tune, bar: number, s: number, at: number) {
-	const section = sectionOf(tune, bar);
-	const beat = 60 / tune.bpm;
-	const h = (k: number) => hash3(tune.slot * 131 + bar, s, k);
+/** One note of the score in the tune's instruments. */
+function sound(g: Graph, tune: Tune, n: Note, t: number, dur: number) {
+	const { midi, vel } = n;
+	switch (n.part) {
+		case 'keys':
+			// Ambient's pads never rest, so they sit lower to meet the other styles.
+			if (tune.keys === 'pad')
+				return pad(g, midi, t, dur, tune.style === 'ambient' ? 0.55 : 1);
+			if (tune.keys === 'organ') return organ(g, midi, t, dur * 0.9);
+			if (tune.keys === 'pluck') return pluck(g, midi, t, vel);
+			if (tune.keys === 'pulse')
+				return void pulse(g, midi, t, dur * 0.7, 0.02 * vel, 0.25, g.keys);
+			return piano(g, midi, t, vel, dur);
+		case 'bass':
+			if (tune.bass === 'tri') return chipBass(g, midi, t, dur, vel);
+			return bass(g, tune.bass, midi, t, dur, vel);
+		case 'lead':
+			if (tune.lead === 'pulse') return chipLead(g, midi, t, dur * 0.9, vel);
+			return lead(g, tune.lead, midi, t, dur * 0.9, vel);
+		case 'chime':
+			return lead(g, 'bell', midi, t, dur, vel * 0.8);
+		case 'kick':
+			if (tune.kit === 'chip') return chipKick(g, t, vel);
+			return kick(g, t, tune.kit === 'brush' ? vel * 0.7 : vel);
+		case 'snare':
+			if (tune.kit === 'chip') return chipSnare(g, t, vel);
+			if (tune.kit === 'brush') return brush(g, t, vel);
+			if (tune.kit === 'rim') return rim(g, t, vel);
+			return snare(g, t, vel);
+		case 'hat':
+		case 'open':
+			if (tune.kit === 'chip') return chipHat(g, t, vel, n.part === 'open');
+			return hat(g, t, vel, n.part === 'open');
+	}
+}
+
+/** One sixteenth of one bar: the score's notes on it, swung. */
+export function playStep(
+	g: Graph,
+	tune: Tune,
+	bar: number,
+	s: number,
+	at: number,
+	notes: Note[],
+) {
 	if (s === 0 && at >= g.ctx.currentTime) automate(g, tune, bar, at);
+	const beat = 60 / tune.bpm;
 	const lean =
 		s % 4 === 2
 			? (tune.swing - 0.5) * beat
 			: s % 2
 				? (tune.swing - 0.5) * beat * 0.5
 				: 0;
-	const t = at + lean + (h(1) - 0.5) * 0.012;
-	if (t < g.ctx.currentTime) return;
-	const chord = tune.chords[bar % tune.chords.length];
-	const next = tune.chords[(bar + 1) % tune.chords.length];
-	const drums = drumsIn(section);
-	keys(g, tune, chord, section, bar, s, t, h);
-	if (section !== 'intro') bassStep(g, tune, chord, next, s, t, h);
-	if (drums || (section === 'outro' && bar < tune.bars - 2)) {
-		if (tune.kicks.includes(s) || (bar % 2 === 1 && s === 13 && h(6) < 0.3))
-			kick(g, t, tune.kit === 'brush' ? 0.7 : 1);
+	const sixteenth = tune.barSec / 16;
+	for (const n of notes) {
+		const t = at + lean + n.nudge;
+		if (n.s === s && t >= g.ctx.currentTime)
+			sound(g, tune, n, t, n.len * sixteenth);
 	}
-	if (drums) {
-		const back = tune.halfTime ? s === 8 : s === 4 || s === 12;
-		const hit = (vel: number) =>
-			tune.kit === 'brush'
-				? brush(g, t, vel)
-				: tune.kit === 'rim'
-					? rim(g, t, vel)
-					: snare(g, t, vel);
-		if (back) hit(0.9);
-		else if ((bar - 4) % 8 === 7 && s >= 13) hit(0.35 + (s - 13) * 0.2);
-		else if (s === 15 && h(7) < 0.25) hit(0.22);
-	}
-	if ((drums || section === 'breakdown') && (tune.hats16 || s % 2 === 0))
-		hat(
-			g,
-			t,
-			s % 4 === 0 ? 0.9 : s % 2 ? 0.35 + h(8) * 0.2 : 0.55 + h(8) * 0.3,
-			s === 14 && h(9) < 0.3,
-		);
-	if (section === 'melody' && tune.melody && s % 2 === 0) {
-		const note = melodyNote(tune, bar, s / 2, h(10) < 0.3);
-		if (note !== null) lead(g, tune.lead, note, t, beat * 0.9);
-	}
-}
-
-/** The chords in the tune's keys: struck, held, or broken into eighths. */
-function keys(
-	g: Graph,
-	tune: Tune,
-	chord: Chord,
-	section: Section,
-	bar: number,
-	s: number,
-	t: number,
-	h: (k: number) => number,
-) {
-	const beat = 60 / tune.bpm;
-	if (tune.keys === 'pad' || tune.keys === 'organ') {
-		// Held instruments sound once a bar; the organ also on beat three.
-		const strike = s === 0 || (tune.keys === 'organ' && s === 8 && bar % 2);
-		if (!strike) return;
-		const dur = tune.keys === 'pad' ? tune.barSec : tune.barSec / 2;
-		for (const n of chord.notes)
-			tune.keys === 'pad' ? pad(g, n, t, dur) : organ(g, n, t, dur * 0.9);
-		return;
-	}
-	const strike = (n: number, at: number, vel: number, dur: number) =>
-		tune.keys === 'pluck' ? pluck(g, n, at, vel) : piano(g, n, at, vel, dur);
-	if (s % 2) return;
-	if (tune.arp && (section === 'groove' || section === 'melody')) {
-		const tone = tune.arp[s / 2];
-		if (tone !== null)
-			strike(
-				chord.notes[tone % chord.notes.length],
-				t,
-				0.6 + h(2) * 0.2,
-				beat * 0.9,
-			);
-		return;
-	}
-	if (!tune.comp.includes(s / 2)) return;
-	const first = s === 0;
-	chord.notes.forEach((n, i) =>
-		strike(
-			n,
-			t + i * (first ? 0.016 : 0.008),
-			first ? 0.9 : 0.55 + h(2) * 0.15,
-			first ? tune.barSec * 0.9 : beat * 1.2,
-		),
-	);
-}
-
-/** The bass line in the tune's shape. */
-function bassStep(
-	g: Graph,
-	tune: Tune,
-	chord: Chord,
-	next: Chord,
-	s: number,
-	t: number,
-	h: (k: number) => number,
-) {
-	const beat = 60 / tune.bpm;
-	const play = (note: number, dur: number, vel: number) =>
-		bass(g, tune.bass, note, t, dur, vel);
-	if (tune.bassLine === 'sparse') {
-		if (s === 0) play(chord.bass, tune.barSec * 0.9, 1);
-		return;
-	}
-	if (tune.bassLine === 'walk') {
-		if (s % 4) return;
-		const third = chord.notes.length ? chord.notes[0] % 12 : 0;
-		const steps = [
-			chord.bass,
-			chord.bass + ((third - (chord.bass % 12) + 12) % 12),
-			chord.bass + 7,
-			next.bass + (h(5) < 0.5 ? -1 : 1),
-		];
-		play(steps[s / 4], beat * 0.9, s === 0 ? 1 : 0.75);
-		return;
-	}
-	if (s === 0) play(chord.bass, beat * 1.7, 1);
-	if (s === 8) play(h(3) < 0.5 ? chord.bass + 7 : chord.bass, beat * 1.2, 0.8);
-	if (s === 14 && h(4) < 0.4)
-		play(next.bass + (h(5) < 0.5 ? -1 : 2), beat * 0.4, 0.6);
 }
 
 /**
@@ -195,6 +132,7 @@ export function createHouseRadio(station: string, serverNowMs: () => number) {
 	/** Server seconds minus the audio clock. */
 	let offset = 0;
 	let cursor = { slot: 0, bar: 0, s: 0 };
+	let written = { slot: -1, bar: -1, notes: [] as Note[] };
 
 	function seat() {
 		if (!g) return;
@@ -224,7 +162,9 @@ export function createHouseRadio(station: string, serverNowMs: () => number) {
 				cursor.bar * tune.barSec +
 				(cursor.s * tune.barSec) / 16;
 			if (at > horizon) break;
-			playStep(g, tune, cursor.bar, cursor.s, at - offset);
+			if (written.slot !== cursor.slot || written.bar !== cursor.bar)
+				written = { ...cursor, notes: barNotes(tune, cursor.bar) };
+			playStep(g, tune, cursor.bar, cursor.s, at - offset, written.notes);
 			if (++cursor.s === 16) {
 				cursor.s = 0;
 				if (++cursor.bar >= tune.bars)

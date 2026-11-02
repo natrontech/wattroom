@@ -14,7 +14,12 @@
 	import { prefersReducedMotion } from '$lib/motion';
 	import { radioHeard } from '$lib/lounge/radio-heard.svelte';
 	import { sceneLoop } from '$lib/lounge/scene-loop';
-	import { KEY_NAMES, drumsIn, positionAt } from '$lib/lounge/station';
+	import {
+		KEY_NAMES,
+		STYLE_NAMES,
+		drumsIn,
+		positionAt,
+	} from '$lib/lounge/station';
 	import { nextWeather, weatherOf } from '$lib/lounge/state';
 	import { riderOf, seatedOf } from '$lib/lounge/figures';
 	import { palette } from '$lib/palette.svelte';
@@ -95,7 +100,7 @@
 			return {
 				playing: deck!.playing,
 				beat: p.beat,
-				pulsing: deck!.playing && drumsIn(p.section),
+				pulsing: deck!.playing && drumsIn(p.tune, p.section),
 			};
 		}
 		if (current) {
@@ -153,7 +158,7 @@
 		}
 		const say = () => {
 			const p = positionAt(station, serverNow() / 1000);
-			nowPlaying = `“${p.tune.name}” · ${KEY_NAMES[p.tune.key]} · ${p.tune.bpm} BPM`;
+			nowPlaying = `“${p.tune.name}” · ${STYLE_NAMES[p.tune.style]} · ${KEY_NAMES[p.tune.key]} · ${p.tune.bpm} BPM`;
 		};
 		say();
 		const every = setInterval(say, 1000);

@@ -13,6 +13,8 @@ export interface Graph extends Buses {
 	tuneGain: GainNode;
 	toneFilter: BiquadFilterNode;
 	echo: DelayNode;
+	/** The reverb's return; each tune sets its own. */
+	space: GainNode;
 	rain: GainNode;
 	/** The vinyl's level; each tune sets its own. */
 	crackle: GainNode;
@@ -72,7 +74,9 @@ export function build(ctx: AudioContext): Graph {
 	const wow = ctx.createDelay(0.05);
 	wow.delayTime.value = 0.006;
 	wow.connect(toneFilter);
-	lfo(0.33, 0.001, wow.delayTime);
+	// Wow and flutter: about eight cents of slow drift and a faint fast shiver.
+	lfo(0.45, 0.0018, wow.delayTime);
+	lfo(5.7, 0.00007, wow.delayTime);
 	const pre = gain(1, wow);
 
 	const verb = ctx.createConvolver();
@@ -80,7 +84,8 @@ export function build(ctx: AudioContext): Graph {
 		2.6,
 		(i, n) => (Math.random() * 2 - 1) * Math.pow(1 - i / n, 3),
 	);
-	verb.connect(gain(0.22, pre));
+	const space = gain(0.22, pre);
+	verb.connect(space);
 	const drums = gain(0.6, pre);
 	const duck = gain(1, pre);
 	const trem = gain(0.88, duck);
@@ -97,16 +102,22 @@ export function build(ctx: AudioContext): Graph {
 	echoTone.connect(gain(0.3, echo));
 	echoTone.connect(gain(0.3, pre));
 
+	// Vinyl: surface hiss and pops that die in a few samples, kept out of the
+	// highs and lows. Two loops of odd lengths, so the pattern never lines up
+	// with a bar or comes round in under a minute.
 	const crackle = gain(0.35, master);
-	loop(
-		buffer(
-			3,
-			() =>
-				(Math.random() * 2 - 1) * 0.002 +
-				(Math.random() < 0.0003 ? (Math.random() - 0.5) * 0.25 : 0),
-		),
-		crackle,
-	);
+	const surface = filter('highpass', 700, filter('lowpass', 5000, crackle));
+	for (const sec of [5.3, 8.9]) {
+		let pop = 0;
+		loop(
+			buffer(sec, () => {
+				pop *= 0.8;
+				if (Math.random() < 0.00008) pop = (Math.random() - 0.5) * 0.6;
+				return pop + (Math.random() * 2 - 1) * 0.0025;
+			}),
+			surface,
+		);
+	}
 	let brown = 0;
 	const rain = gain(0, master);
 	loop(
@@ -129,6 +140,7 @@ export function build(ctx: AudioContext): Graph {
 		tuneGain,
 		toneFilter,
 		echo,
+		space,
 		rain,
 		crackle,
 	};
