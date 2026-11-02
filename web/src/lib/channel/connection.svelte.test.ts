@@ -34,8 +34,6 @@ const fakeLive = {
 	finish() {},
 	close() {},
 	status: 'live',
-	channelEvents: [],
-	pushEvent() {},
 	refusal: null,
 	// The connection claims this tab's sensors whenever the set changes
 	// (#610); recorded so a test can assert what the hub would be told.

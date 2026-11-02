@@ -5,7 +5,6 @@ import type {
 	Poke,
 	RemoteCommand,
 	RiderMetrics,
-	ChannelEvent,
 	FreeRoad,
 	GearState,
 	LoungeState,
@@ -89,21 +88,6 @@ export function createChannelLive(address: PlaceAddress) {
 	// The last deck heard, by revision (#2838): the same pattern for the
 	// jukebox, which only a command changes.
 	let deckHeard: DeckHeard | null = null;
-	// What happened in the channel (#321), for the Lounge's event lines.
-	// Ephemeral by design (ADR-0022): nothing seeds these on join, and a
-	// reload forgets them — "now playing" is worthless tomorrow.
-	let channelEvents = $state<ChannelEvent[]>([]);
-	function mergeEvents(incoming: ChannelEvent[]) {
-		const next = [...channelEvents];
-		for (const event of incoming) {
-			// A growing burst re-sends its own id ("queued 3 tracks"):
-			// replace the line in place, never stack a second one.
-			const at = next.findIndex((have) => have.id === event.id);
-			if (at >= 0) next[at] = event;
-			else next.push(event);
-		}
-		channelEvents = next.slice(-100);
-	}
 	let refusal = $state<string | null>(null);
 	let refusalAt = 0;
 	// The pick this tab means to start once the tick shows it landed, and
@@ -477,7 +461,6 @@ export function createChannelLive(address: PlaceAddress) {
 					startAfterPick = null;
 					send({ control: { action: 'start' } });
 				}
-				if (msg.tick.events?.length) mergeEvents(msg.tick.events);
 			}
 			// A refused command is feedback, not a fault — it stays up long
 			// enough to read (ticks arrive every second; clearing on each one
@@ -816,16 +799,6 @@ export function createChannelLive(address: PlaceAddress) {
 				return;
 			freeRoad = road;
 			send({ freeRoad });
-		},
-		get channelEvents() {
-			return channelEvents;
-		},
-		/**
-		 * A line this client made itself (#664: a screen share only LiveKit
-		 * saw). Same list, same cap, never sent — the hub knows nothing of it.
-		 */
-		pushEvent(event: ChannelEvent) {
-			mergeEvents([event]);
 		},
 		/** One jukebox command. The wire shape IS the argument (#286) — six
 		 * positional optionals were a bug waiting to be passed in the wrong

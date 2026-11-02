@@ -30,7 +30,6 @@ const live = {
 	get lastPoke() {
 		return fakePoke;
 	},
-	pushEvent() {},
 };
 // Voice never joined: no call, no screens, nobody speaking.
 const av = {

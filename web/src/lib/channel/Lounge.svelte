@@ -18,9 +18,7 @@
 	import CountdownScreen from '$lib/session/CountdownScreen.svelte';
 	import PlanCard from '$lib/session/PlanCard.svelte';
 	import HrShare from '$lib/channel/HrShare.svelte';
-	import EventLine from '$lib/channel/EventLine.svelte';
 	import LoungeScene from '$lib/lounge/LoungeScene.svelte';
-	import { eventText } from '$lib/channel/events';
 
 	import SprintMoment from '$lib/session/SprintMoment.svelte';
 	import GamePanel from '$lib/session/GamePanel.svelte';
@@ -43,21 +41,10 @@
 	import ScreenShare from '@lucide/svelte/icons/screen-share';
 
 	const channel = useChannel();
-	const EVENTS_SHOWN = 8;
 	// While a ride runs the frame is the ride and this stage a riding surface
 	// (TARGETS G1): a rider a game put out uses it on the bike, so its words
 	// take riding size through the `ride-stage:` variant (#3890, #3882).
 	const riding = $derived(!!channelConnection.current?.riding());
-	// The newest few, and only those this client can put into words. Not on
-	// a ride: a riding surface says nothing but labels, numbers and canon's
-	// status lines (TARGETS G4), and the stage must fit the deck in view.
-	const events = $derived(
-		riding
-			? []
-			: (channelConnection.current?.live.channelEvents ?? [])
-					.filter((event) => eventText(event))
-					.slice(-EVENTS_SHOWN),
-	);
 	const av = $derived(channelConnection.current?.av);
 	const isOwner = $derived(channel.myRole === 'owner');
 
@@ -497,16 +484,6 @@
 	{/if}
 	{#if channel.phase !== 'lounge'}
 		<LoungeSession {freeRide} />
-	{/if}
-	{#if channel.address.channel && events.length}
-		<!-- A voice channel's events (ADR-0022 as amended by ADR-0058): it has
-		     no chat to draw them between, so they sit here, beside the deck
-		     they are about — the last few, newest last, never persisted. -->
-		<section class="mt-4" aria-label="what happened here">
-			{#each events as event (`${event.at}-${event.verb}-${event.actor ?? ''}`)}
-				<EventLine {event} />
-			{/each}
-		</section>
 	{/if}
 	{#if channel.phase === 'lounge'}
 		<!-- Between sessions the stage is the call: Ride and Start a session
