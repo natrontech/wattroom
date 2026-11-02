@@ -2,6 +2,7 @@ import type { AvConn, AvState } from '$lib/channel/av-state.svelte';
 import type { DeviceChoices } from '$lib/channel/av-devices.svelte';
 import type { MicChain } from '$lib/channel/mic-chain.svelte';
 import type { RiderOutput } from '$lib/channel/av-output';
+import { GESTURES } from '$lib/sound/cues';
 
 /**
  * The machine's own events, not LiveKit's (#1698) — the three ways a browser
@@ -49,8 +50,7 @@ export function createListeners(host: ListenerHost) {
 	 * resuming the context does not play an element the browser refused.
 	 */
 	async function startPlayback() {
-		chain.resume();
-		output.resume();
+		const running = chain.resume() && output.resume();
 		try {
 			await conn.liveKitRoom?.startAudio();
 		} catch {
@@ -59,16 +59,25 @@ export function createListeners(host: ListenerHost) {
 		}
 		if (conn.liveKitRoom)
 			av.playbackBlocked = !conn.liveKitRoom.canPlaybackAudio;
+		return running && !av.playbackBlocked;
 	}
 
 	/**
-	 * Any click, anywhere, is a gesture the browser will accept — so most
-	 * riders never see the strip at all. `once` because the graph only needs
-	 * unblocking once, and a listener on every pointerdown for the life of a
-	 * call is not worth the one it catches.
+	 * Any click or key, anywhere, is a gesture the browser will accept, so
+	 * most riders never see the strip at all. The cue bus's list (cues.ts): a
+	 * touch counts when it lifts, and a rider who only ever presses Space to
+	 * talk pressed a key, not a pointer. Kept until a gesture finds both
+	 * graphs running: `once` on pointerdown lost the call's sound to a refused
+	 * first ask, and a phone's first tap is one.
 	 */
-	function onFirstGesture() {
-		void startPlayback();
+	function onGesture() {
+		void startPlayback().then((done) => {
+			if (done) unlistenGestures();
+		});
+	}
+	function unlistenGestures() {
+		for (const gesture of GESTURES)
+			document.removeEventListener(gesture, onGesture);
 	}
 
 	/**
@@ -84,7 +93,8 @@ export function createListeners(host: ListenerHost) {
 	function listen() {
 		if (typeof document === 'undefined') return;
 		document.addEventListener('visibilitychange', onVisible);
-		document.addEventListener('pointerdown', onFirstGesture, { once: true });
+		for (const gesture of GESTURES)
+			document.addEventListener(gesture, onGesture);
 		navigator.mediaDevices?.addEventListener('devicechange', onDeviceChange);
 	}
 	listen();
@@ -102,7 +112,7 @@ export function createListeners(host: ListenerHost) {
 		unlisten() {
 			if (typeof document === 'undefined') return;
 			document.removeEventListener('visibilitychange', onVisible);
-			document.removeEventListener('pointerdown', onFirstGesture);
+			unlistenGestures();
 			navigator.mediaDevices?.removeEventListener(
 				'devicechange',
 				onDeviceChange,

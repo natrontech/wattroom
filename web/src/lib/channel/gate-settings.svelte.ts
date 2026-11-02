@@ -19,6 +19,10 @@ export function createGateSettings() {
 	let mode = $state<GateMode>('gate');
 	let threshold = $state(GATE_DEFAULT);
 	let pttHeld = $state(false);
+	/** The gate sets its own mark from the room's noise floor (SPEC). */
+	let auto = $state(true);
+	/** Light noise suppression: off until the rider asks for it (SPEC). */
+	let ns = $state(false);
 	/** Reactive: the rail draws the EFFECTIVE threshold, and music moves it. */
 	let deckPlaying = $state(false);
 
@@ -27,13 +31,20 @@ export function createGateSettings() {
 		if (saved.mode === 'ptt') mode = 'ptt';
 		if (typeof saved.threshold === 'number' && saved.threshold > 0)
 			threshold = clampThreshold(saved.threshold);
+		// A threshold stored before the automatic gate is not a choice of
+		// manual: only an explicit false is.
+		if (saved.auto === false) auto = false;
+		if (saved.ns === true) ns = true;
 	} catch {
 		// storage blocked: SPEC defaults stand
 	}
 
 	function persist() {
 		try {
-			localStorage.setItem(VOICE_KEY, JSON.stringify({ mode, threshold }));
+			localStorage.setItem(
+				VOICE_KEY,
+				JSON.stringify({ mode, threshold, auto, ns }),
+			);
 		} catch {
 			// per-device convenience only
 		}
@@ -48,6 +59,12 @@ export function createGateSettings() {
 		},
 		get pttHeld() {
 			return pttHeld;
+		},
+		get auto() {
+			return auto;
+		},
+		get ns() {
+			return ns;
 		},
 		/**
 		 * SPEC: while the jukebox plays the threshold doubles. The gate reads
@@ -71,8 +88,18 @@ export function createGateSettings() {
 			mode = next;
 			persist();
 		},
+		/** Dragging the mark is setting it by hand. */
 		setThreshold(next: number) {
 			threshold = clampThreshold(next);
+			auto = false;
+			persist();
+		},
+		setAuto(on: boolean) {
+			auto = on;
+			persist();
+		},
+		setNs(on: boolean) {
+			ns = on;
 			persist();
 		},
 		setPttHeld(held: boolean) {

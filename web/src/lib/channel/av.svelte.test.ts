@@ -305,6 +305,7 @@ interface FakeLiveKitRoom {
 // with a worker behind it, so it is the one piece that has to be faked.
 vi.mock('$lib/channel/mic-level', () => ({
 	createMicMeter: vi.fn(async () => ({ out: { connect() {} }, stop() {} })),
+	createVoiceGate: vi.fn(async () => null),
 }));
 
 const { createChannelAv, JOIN_TIMEOUT_MS } = await import('./av.svelte');

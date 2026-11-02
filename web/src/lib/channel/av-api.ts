@@ -124,8 +124,17 @@ export function channelAvApi(parts: AvParts) {
 		get pttHeld() {
 			return chain.pttHeld;
 		},
+		/** The gate follows the room's noise floor (SPEC); the mark is not the rider's. */
+		get gateAuto() {
+			return chain.auto;
+		},
+		get noiseSuppression() {
+			return chain.noiseSuppression;
+		},
 		setMode: mic.setMode,
 		setGateThreshold: mic.setThreshold,
+		setGateAuto: mic.setAuto,
+		setNoiseSuppression: mic.setNoiseSuppression,
 		get micTesting() {
 			return chain.testing;
 		},

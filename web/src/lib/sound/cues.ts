@@ -57,7 +57,12 @@ function settle(ms: number): void {
  * listened for a KEY either, which is the board's whole pitch: hitting a pad
  * without looking.
  */
-const GESTURES = ['pointerdown', 'pointerup', 'touchend', 'keydown'] as const;
+export const GESTURES = [
+	'pointerdown',
+	'pointerup',
+	'touchend',
+	'keydown',
+] as const;
 
 /**
  * Resume a context the browser started suspended. Registered on the first

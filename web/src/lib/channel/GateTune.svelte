@@ -17,6 +17,10 @@
 		effectiveThreshold = 0,
 		onGateThreshold,
 		micTesting = false,
+		gateAuto = true,
+		onGateAuto,
+		noiseSuppression = false,
+		onNoiseSuppression,
 	}: {
 		micOn?: boolean;
 		micLevel?: number;
@@ -26,6 +30,11 @@
 		effectiveThreshold?: number;
 		onGateThreshold?: (threshold: number) => void;
 		micTesting?: boolean;
+		/** The gate sets its own mark from the room (SPEC); dragging it sets it by hand. */
+		gateAuto?: boolean;
+		onGateAuto?: (on: boolean) => void;
+		noiseSuppression?: boolean;
+		onNoiseSuppression?: (on: boolean) => void;
 	} = $props();
 
 	const gateNow = $derived(effectiveThreshold || gateThreshold);
@@ -36,7 +45,7 @@
 <GateMeter
 	level={micLevel}
 	effective={gateNow}
-	setting={gateThreshold}
+	setting={gateAuto ? gateNow : gateThreshold}
 	{transmitting}
 	onThreshold={voiceMode === 'gate' ? onGateThreshold : undefined}
 	class="mt-1.5"
@@ -51,10 +60,48 @@
 	{:else}
 		{#if transmitting}<span class="text-ok">gate open</span>{:else}gate closed{/if}
 		·
-		{gateNow !== gateThreshold
-			? 'held higher under music'
-			: transmitting
+		{gateAuto
+			? transmitting
 				? 'the call hears you'
-				: 'speak up or drag the mark left'}
+				: 'set by your room'
+			: gateNow !== gateThreshold
+				? 'held higher under music'
+				: transmitting
+					? 'the call hears you'
+					: 'speak up or drag the mark left'}
 	{/if}
 </p>
+{#if onNoiseSuppression}
+	<!-- The defaults are right for nearly every rider; these stay folded. -->
+	<details class="mt-2 text-xs">
+		<summary class="text-muted cursor-pointer">Advanced</summary>
+		{#if voiceMode === 'gate' && onGateAuto}
+			<label class="mt-2 flex items-start gap-2">
+				<input
+					type="checkbox"
+					checked={gateAuto}
+					onchange={(e) => onGateAuto(e.currentTarget.checked)}
+				/>
+				<span
+					>Automatic gate
+					<span class="text-muted block"
+						>follows the noise in your room; dragging the mark sets it by hand</span
+					></span
+				>
+			</label>
+		{/if}
+		<label class="mt-2 flex items-start gap-2">
+			<input
+				type="checkbox"
+				checked={noiseSuppression}
+				onchange={(e) => onNoiseSuppression(e.currentTarget.checked)}
+			/>
+			<span
+				>Light noise suppression
+				<span class="text-muted block"
+					>takes up to 10 dB of fan and hum from under your voice</span
+				></span
+			>
+		</label>
+	</details>
+{/if}

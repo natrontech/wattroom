@@ -28,7 +28,13 @@ import {
 } from '$lib/channel/gate';
 import { type MicDevices, captureMic } from '$lib/channel/capture';
 import { createGateSettings } from '$lib/channel/gate-settings.svelte';
-import { type MicMeter, createMicMeter } from '$lib/channel/mic-level';
+import {
+	type MicMeter,
+	type VoiceGate,
+	type VoiceState,
+	createMicMeter,
+	createVoiceGate,
+} from '$lib/channel/mic-level';
 import {
 	STARTING_GAIN_GLIDE_MS,
 	type StartingGain,
@@ -68,6 +74,8 @@ interface Chain {
 	/** The starting gain's node and its model; null on a handheld. */
 	lift: { node: GainNode; model: StartingGain; aimed: number } | null;
 	meter: MicMeter | null;
+	/** The audio-thread gate; null on a handheld and where no worklet runs. */
+	voice: VoiceGate | null;
 	track: MediaStreamTrack;
 	/** The capture track being watched for `ended` (#640). */
 	capture: MediaStreamTrack | undefined;
@@ -107,6 +115,10 @@ export function createMicChain(host: MicChainHost) {
 	 * why the call stopped hearing them.
 	 */
 	let fault = $state(false);
+	/** The mark the audio-thread gate last reported: the room's, when automatic. */
+	let marked = $state(0);
+	/** What the audio-thread gate was last told, so a level post sends nothing new. */
+	let sent = '';
 
 	/**
 	 * The capture ended without us asking (#640). `stop()` never fires this and
@@ -148,6 +160,17 @@ export function createMicChain(host: MicChainHost) {
 
 	const capture = () => captureMic(host.devices);
 
+	/** The audio thread gated this post itself; the rest is the same as a level. */
+	function onVoice(state: VoiceState) {
+		if (!chain?.voice) return;
+		marked = state.threshold;
+		transmitting = state.open;
+		onLevel(state.level);
+	}
+
+	/** The mark the gate holds the rider to right now. */
+	const gateAt = () => (chain?.voice && marked ? marked : settings.effective);
+
 	/** Every level the audio thread reports: the meter's number and the gate's. */
 	function onLevel(next: number) {
 		level = next;
@@ -170,12 +193,7 @@ export function createMicChain(host: MicChainHost) {
 		const lift = chain?.lift;
 		if (!lift || !chain?.ctx) return;
 		const now = performance.now();
-		const next = lift.model.step(
-			level,
-			lift.node.gain.value,
-			settings.effective,
-			now,
-		);
+		const next = lift.model.step(level, lift.node.gain.value, gateAt(), now);
 		if (Math.abs(next - lift.aimed) < 0.02) return;
 		lift.aimed = next;
 		glideTo(
@@ -207,15 +225,26 @@ export function createMicChain(host: MicChainHost) {
 		};
 		source.connect(lift.node);
 		const gain = ctx.createGain();
+		gate = GATE_SHUT;
+		sent = '';
+		marked = 0;
+		const voice = await createVoiceGate(ctx, lift.node, onVoice);
+		if (voice) {
+			// The worklet gates on the audio thread; this gain stays at unity.
+			voice.out.connect(gain);
+			return { ctx, raw, mic, gain, lift, meter: voice, voice };
+		}
+		// ponytail: no worklet (a CSP that blocks blob:) gates from the main
+		// thread on the rider's own mark, with no lookahead, automatic mark or
+		// noise suppression. Ship the DSP as a module file if that ever matters.
 		gain.gain.value = 0; // closed until the gate opens
 		const meter = await createMicMeter(ctx, lift.node, onLevel);
 		meter.out.connect(gain);
-		gate = GATE_SHUT;
-		return { ctx, raw, mic, gain, lift, meter };
+		return { ctx, raw, mic, gain, lift, meter, voice: null };
 	}
 
 	function setGate(openNow: boolean) {
-		if (!chain?.gain || !chain.ctx) return;
+		if (!chain?.gain || !chain.ctx || chain.voice) return;
 		transmitting = openNow;
 		// Up in 5 ms, down over 150 ms (SPEC): opening fast is what keeps the
 		// first syllable, and a close that fades is one the call forgives — it
@@ -229,7 +258,31 @@ export function createMicChain(host: MicChainHost) {
 		);
 	}
 
+	/** Tells the audio-thread gate what the main thread knows: the rider's choices and the call. */
+	function syncGate(voice: VoiceGate) {
+		const held = settings.mode === 'ptt' || settings.pttHeld;
+		const force =
+			!host.live() && !testing
+				? 'shut'
+				: held
+					? settings.pttHeld
+						? 'open'
+						: 'shut'
+					: null;
+		const next = {
+			threshold: settings.effective,
+			auto: settings.auto,
+			ns: settings.ns,
+			force,
+		} as const;
+		const key = JSON.stringify(next);
+		if (key === sent) return;
+		sent = key;
+		voice.set(next);
+	}
+
 	function runGate() {
+		if (chain?.voice) return syncGate(chain.voice);
 		if (!chain?.ctx || (!host.live() && !testing)) return;
 		// A held Talk on the phone remote is heard in voice activation too
 		// (#4163); only push-to-talk's own key is bound in that mode.
@@ -267,6 +320,7 @@ export function createMicChain(host: MicChainHost) {
 				return false;
 			}
 			chain = next;
+			runGate(); // shut until the call is live
 			await host.publish(next.track);
 			if (mine !== epoch) {
 				host.unpublish(next.track); // closed mid-publish: take it back off
@@ -334,11 +388,12 @@ export function createMicChain(host: MicChainHost) {
 				gain: null,
 				lift: null,
 				meter: null,
+				voice: null,
 				track: raw.getAudioTracks()[0],
 				capture: watchCapture(raw),
 			};
 		}
-		const { ctx, raw, mic, gain, lift, meter } = await build();
+		const { ctx, raw, mic, gain, lift, meter, voice } = await build();
 		const dest = ctx.createMediaStreamDestination();
 		gain.connect(dest);
 		return {
@@ -349,6 +404,7 @@ export function createMicChain(host: MicChainHost) {
 			gain,
 			lift,
 			meter,
+			voice,
 			track: dest.stream.getAudioTracks()[0],
 			capture: watchCapture(raw),
 		};
@@ -362,7 +418,7 @@ export function createMicChain(host: MicChainHost) {
 	 */
 	async function startTest() {
 		if (chain || testing) return;
-		const { ctx, raw, mic, gain, lift, meter } = await build();
+		const { ctx, raw, mic, gain, lift, meter, voice } = await build();
 		void host.devices.refresh(); // the grant just made the labels readable (#658)
 		gain.connect(ctx.destination); // your own ears, not the call
 		const dest = ctx.createMediaStreamDestination();
@@ -374,10 +430,12 @@ export function createMicChain(host: MicChainHost) {
 			gain,
 			lift,
 			meter,
+			voice,
 			track: dest.stream.getAudioTracks()[0],
 			capture: watchCapture(raw),
 		};
 		testing = true;
+		runGate();
 	}
 
 	function stopTest() {
@@ -429,6 +487,7 @@ export function createMicChain(host: MicChainHost) {
 		/** Suspended contexts do not run their audio thread — no level, no gate. */
 		resume() {
 			if (chain?.ctx?.state === 'suspended') void chain.ctx.resume();
+			return !chain?.ctx || chain.ctx.state === 'running';
 		},
 		/** Stepping away, or handing the mic to another tab, is not a fault. */
 		clearFault() {
@@ -447,7 +506,21 @@ export function createMicChain(host: MicChainHost) {
 			return settings.threshold;
 		},
 		get effectiveThreshold() {
-			return settings.effective;
+			return gateAt();
+		},
+		get auto() {
+			return settings.auto;
+		},
+		get noiseSuppression() {
+			return settings.ns;
+		},
+		setAuto(on: boolean) {
+			settings.setAuto(on);
+			runGate();
+		},
+		setNoiseSuppression(on: boolean) {
+			settings.setNs(on);
+			runGate();
 		},
 		get pttHeld() {
 			return settings.pttHeld;
