@@ -8,8 +8,9 @@ import { baseUrl, isExternal } from './e2e/env.js';
 const external = isExternal();
 
 /**
- * A handful of smoke flows: a simulated ride to a .fit, first run, two riders
- * in one session, chat, and the public pages. Chromium only: Web Bluetooth
+ * A handful of smoke flows: a simulated ride to a .fit, a captured trace replayed
+ * (the production synthetic), first run, two riders in one session, chat, and
+ * the public pages. Chromium only: Web Bluetooth
  * exists nowhere else.
  */
 export default defineConfig({
