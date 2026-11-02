@@ -66,6 +66,9 @@ func TestSetLounge(t *testing.T) {
 		{"a pet counts one", protocol.LoungeState{Pets: 4}, protocol.LoungeState{Pets: 5}, &protocol.LoungeState{Pets: 5}},
 		{"a wound-on count still counts one", protocol.LoungeState{Pets: 4}, protocol.LoungeState{Pets: 900}, &protocol.LoungeState{Pets: 5}},
 		{"a lamp flip with an old count keeps the pets", protocol.LoungeState{Pets: 4}, protocol.LoungeState{LampOff: true}, &protocol.LoungeState{LampOff: true, Pets: 4}},
+		{"a known style", protocol.LoungeState{}, protocol.LoungeState{RadioStyle: "chip"}, &protocol.LoungeState{RadioStyle: "chip"}},
+		{"an unknown style keeps the radio", protocol.LoungeState{RadioStyle: "ambient"}, protocol.LoungeState{RadioStyle: "polka"}, &protocol.LoungeState{RadioStyle: "ambient"}},
+		{"back to the mix sends nothing", protocol.LoungeState{RadioStyle: "lofi"}, protocol.LoungeState{}, nil},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

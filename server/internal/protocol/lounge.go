@@ -13,11 +13,18 @@ type LoungeState struct {
 	// How often the cat has been petted since the channel came up. Every
 	// screen wakes its cat when this goes up, so a pet is seen by everyone.
 	Pets int `json:"pets,omitempty"`
+	// From LoungeRadioStyles: house radio plays that style for everyone in the
+	// channel. "" is the mix, the rotation of all three.
+	RadioStyle string `json:"radioStyle,omitempty"`
 }
 
 // LoungeWeathers is the closed set behind the lounge's window. The client keeps
 // its own copy in web/src/lib/lounge/state.ts, read side by side in a test.
 var LoungeWeathers = []string{"rain", "clear", "snow"}
+
+// LoungeRadioStyles is the closed set of house radio styles a channel may
+// pick. The client keeps its own copy in web/src/lib/lounge/state.ts.
+var LoungeRadioStyles = []string{"lofi", "chip", "ambient"}
 
 // HouseRadioTitle is house radio's line on the deck and in the channel's
 // events: the station is generated, so it has no title of its own.

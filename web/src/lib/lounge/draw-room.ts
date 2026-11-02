@@ -265,7 +265,9 @@ function deck(g: Ctx, s: SceneInput) {
 	rect(g, 276, 106, 12, 1, C.ink);
 	rect(g, 273, 107, 18, 2, C.ink);
 	rect(g, 276, 109, 12, 1, C.ink);
-	rect(g, 282, 107, 2, 1, C.amber);
+	// The record's label: amber for the mix, else the picked style's own.
+	const label = { '': C.amber, lofi: C.heart, chip: C.teal, ambient: C.lilac };
+	rect(g, 280, 107, 4, 1, label[s.radio]);
 	if (s.playing && !s.still) {
 		// A scratch runs the platter back, fast.
 		const a = s.scratch ? -s.t * 14 : s.t * 3.5;

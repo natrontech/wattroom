@@ -138,6 +138,7 @@
 					scratch: false,
 					season: '',
 					waveAt: -Infinity,
+					radio: '',
 				});
 			},
 			false,

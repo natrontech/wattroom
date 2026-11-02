@@ -12,8 +12,8 @@ import (
 // drops in silence.
 const loungeMinGap = 250 * time.Millisecond
 
-// lounge takes a rider's flip of the lamp or the weather, or a pet of the cat
-// (ADR-0094). Anyone in
+// lounge takes a rider's flip of the lamp or the weather, a pet of the cat or
+// a pick of house radio's style (ADR-0094). Anyone in
 // the channel may: like the roadside, it paints and never reaches a ride.
 func (h *Hub) lounge(rm *channelState, rider protocol.Rider, want protocol.LoungeState) {
 	if rm.allow("lounge", rider.ID, h.now(), loungeMinGap) {
@@ -22,7 +22,8 @@ func (h *Hub) lounge(rm *channelState, rider protocol.Rider, want protocol.Loung
 }
 
 // setLounge stores what the scene should show. Rain is the default and so the
-// zero value; a weather outside the closed set leaves the window as it was.
+// zero value; a weather outside the closed set leaves the window as it was,
+// and a style outside its set leaves the radio as it was.
 func (rm *channelState) setLounge(want protocol.LoungeState) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
@@ -31,6 +32,9 @@ func (rm *channelState) setLounge(want protocol.LoungeState) {
 	}
 	if want.Weather == "rain" {
 		want.Weather = ""
+	}
+	if want.RadioStyle != "" && !slices.Contains(protocol.LoungeRadioStyles, want.RadioStyle) {
+		want.RadioStyle = rm.lounge.RadioStyle
 	}
 	// A pet is one more than the last, whatever the client counted: a lamp
 	// flip carrying an old count cannot take it back, nor one message add ten.

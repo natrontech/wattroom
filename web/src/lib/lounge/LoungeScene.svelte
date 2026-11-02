@@ -36,7 +36,12 @@
 		drumsIn,
 		positionAt,
 	} from '$lib/lounge/station';
-	import { nextWeather, weatherOf } from '$lib/lounge/state';
+	import {
+		nextRadioPick,
+		nextWeather,
+		radioPickOf,
+		weatherOf,
+	} from '$lib/lounge/state';
 	import { crewOf, riderOf } from '$lib/lounge/figures';
 	import {
 		catAt,
@@ -91,6 +96,8 @@
 	const seed = $derived(fnv(station));
 
 	const onAir = $derived(!!deck?.current?.radio);
+	/** House radio's style, picked at the record player for everyone; '' is the mix. */
+	const pick = $derived(radioPickOf(lounge));
 
 	let boxW = $state(0);
 	let boxH = $state(0);
@@ -128,6 +135,7 @@
 	let crank = 0.9;
 	let shade = -1;
 	let nowPlaying = $state('');
+	let styleNow = $state<keyof typeof STYLE_NAMES>('lofi');
 
 	// Before the loop's effect, so the first frame is already in the theme.
 	$effect(() => {
@@ -148,7 +156,7 @@
 	function music(): Pick<SceneInput, 'playing' | 'beat' | 'pulsing' | 'disco'> {
 		const current = deck?.current;
 		if (current?.radio) {
-			const p = positionAt(station, serverNow() / 1000);
+			const p = positionAt(station, serverNow() / 1000, pick);
 			return {
 				playing: deck!.playing,
 				beat: p.beat,
@@ -209,6 +217,7 @@
 			scratch: clock < scratchUntil,
 			season: seasonOf(now),
 			waveAt,
+			radio: pick,
 		});
 	}
 
@@ -229,8 +238,9 @@
 			return;
 		}
 		const say = () => {
-			const p = positionAt(station, serverNow() / 1000);
-			nowPlaying = `“${p.tune.name}” · ${STYLE_NAMES[p.tune.style]} · ${KEY_NAMES[p.tune.key]} · ${p.tune.bpm} BPM`;
+			const p = positionAt(station, serverNow() / 1000, pick);
+			nowPlaying = `“${p.tune.name}” · ${KEY_NAMES[p.tune.key]} · ${p.tune.bpm} BPM`;
+			styleNow = p.tune.style;
 		};
 		say();
 		const every = setInterval(say, 1000);
@@ -302,8 +312,28 @@
 		else if (spot === 'window')
 			live?.setLounge({ ...state, weather: nextWeather(state.weather) });
 		else if (spot === 'clock') cuckooUntil = clock + 3;
-		else if (spot === 'deck') scratchUntil = clock + 0.8;
+		else if (spot === 'deck') pickStyle();
 	}
+
+	/** The record player changes the record: the next style, for everyone. */
+	function pickStyle() {
+		live?.setLounge({
+			...lounge,
+			weather: weatherOf(lounge),
+			radioStyle: nextRadioPick(pick),
+		});
+	}
+
+	// Every screen scratches the record as the style changes, the picker's too.
+	let pickSeen: string | undefined;
+	$effect(() => {
+		const now = pick;
+		untrack(() => {
+			if (pickSeen !== undefined && now !== pickSeen)
+				scratchUntil = clock + 0.8;
+			pickSeen = now;
+		});
+	});
 
 	let typed = 0;
 	function key(e: KeyboardEvent) {
@@ -366,7 +396,7 @@
 				class="absolute bottom-0 left-0 block [image-rendering:pixelated]"
 				style:width="{roomW * scale}px"
 				style:height="{roomH * scale}px"
-				aria-label="The lounge: who is in the call, on the sofa, the cushions or the bike. Click someone to send a heart, or the cat, the lamp, the window, the clock or the record player."
+				aria-label="The lounge: who is in the call, on the sofa, the cushions or the bike. Click someone to send a heart, or the cat, the lamp, the window or the clock. The record player changes house radio's style for everyone."
 			></canvas>
 			<div role="group" aria-label="in the call">
 				{#each tags as tag (tag.id)}
@@ -431,6 +461,13 @@
 				{radioHeard.current
 					? 'Hearing house radio'
 					: 'House radio muted here'}</button
+			>
+			<button
+				type="button"
+				onclick={pickStyle}
+				title="Change house radio's style for everyone"
+				class="btn btn-ghost btn-xs text-ink px-0"
+				>{pick ? STYLE_NAMES[pick] : `Mix · ${STYLE_NAMES[styleNow]}`}</button
 			>
 			{#if nowPlaying}<span class="tabular-nums max-sm:hidden"
 					>{nowPlaying}</span

@@ -123,17 +123,33 @@ export interface Tune {
 
 const cache = new Map<string, Tune>();
 
-/** A set's style: mostly lofi, with 8-bit and ambient sets between. */
-export function styleOf(station: string, slot: number): Style {
+/**
+ * A set's style: the one the channel picked, else the mix, mostly lofi with
+ * 8-bit and ambient sets between.
+ */
+export function styleOf(
+	station: string,
+	slot: number,
+	pick: Style | '' = '',
+): Style {
+	if (pick) return pick;
 	const set = Math.floor(slot / SET_SLOTS);
 	const x = prng(hashSeed(`${station}:set:${set}`))();
 	return x < 0.55 ? 'lofi' : x < 0.8 ? 'chip' : 'ambient';
 }
 
-/** The tune a crew's station plays in one slot. */
-export function tuneOf(station: string, slot: number): Tune {
+/**
+ * The tune a crew's station plays in one slot, in the style the channel
+ * picked or the mix's. A pick changes the style and what follows from it; the
+ * slot's own draws stay the same.
+ */
+export function tuneOf(
+	station: string,
+	slot: number,
+	picked: Style | '' = '',
+): Tune {
 	const id = `${station}:${slot}`;
-	const known = cache.get(id);
+	const known = cache.get(`${id}:${picked}`);
 	if (known) return known;
 	if (cache.size > 8) cache.clear();
 	const seed = hashSeed(id);
@@ -141,7 +157,7 @@ export function tuneOf(station: string, slot: number): Tune {
 	const pick = <T>(xs: readonly T[]): T => xs[Math.floor(r() * xs.length)];
 	const other = (n: number, len: number) =>
 		(n + 1 + Math.floor(r() * (len - 1))) % len;
-	const style = styleOf(station, slot);
+	const style = styleOf(station, slot, picked);
 	const chip = style === 'chip';
 	const calm = style === 'ambient';
 	const key = Math.floor(r() * 12);
@@ -211,7 +227,7 @@ export function tuneOf(station: string, slot: number): Tune {
 		turn: Math.floor(r() * 72),
 		name: `${pick(FIRST)} ${pick(SECOND)}`,
 	};
-	cache.set(id, tune);
+	cache.set(`${id}:${picked}`, tune);
 	return tune;
 }
 
@@ -448,10 +464,14 @@ export interface StationPosition {
 	left: number;
 }
 
-/** Where a station is at server time `sec`. */
-export function positionAt(station: string, sec: number): StationPosition {
+/** Where a station is at server time `sec`, playing the channel's pick. */
+export function positionAt(
+	station: string,
+	sec: number,
+	pick: Style | '' = '',
+): StationPosition {
 	const slot = Math.floor(sec / SLOT_SEC);
-	const tune = tuneOf(station, slot);
+	const tune = tuneOf(station, slot, pick);
 	const into = sec - slot * SLOT_SEC;
 	const bar = Math.min(tune.bars, Math.floor(into / tune.barSec));
 	return {

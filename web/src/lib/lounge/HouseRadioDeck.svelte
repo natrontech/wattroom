@@ -11,7 +11,7 @@
 	import { onDuck } from '$lib/sound/duck';
 	import { createHouseRadio, type HouseRadio } from '$lib/lounge/house-radio';
 	import { radioHeard } from '$lib/lounge/radio-heard.svelte';
-	import { weatherOf } from '$lib/lounge/state';
+	import { radioPickOf, weatherOf } from '$lib/lounge/state';
 
 	const conn = $derived(channelConnection.current);
 	const deck = $derived(conn?.live.tick?.jukebox);
@@ -46,6 +46,8 @@
 		);
 	});
 	$effect(() => radio?.setRain(weatherOf(conn?.live.tick?.lounge) === 'rain'));
+	// The style anyone in the channel picked at the record player.
+	$effect(() => radio?.setStyle(radioPickOf(conn?.live.tick?.lounge)));
 	// A context made before any click starts suspended; the first one wakes it.
 	$effect(() => {
 		const wake = () => radio?.resume();

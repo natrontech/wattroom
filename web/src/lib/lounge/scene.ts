@@ -3,7 +3,7 @@
  * its clickable things sit, and the order it is painted in.
  */
 import type { Ctx } from '$lib/lounge/pixel';
-import type { Weather } from '$lib/lounge/state';
+import type { RadioPick, Weather } from '$lib/lounge/state';
 import type { Sky } from '$lib/lounge/palette';
 import { drawRoom, drawShade, drawWalls } from '$lib/lounge/draw-room';
 import { drawWindow } from '$lib/lounge/draw-window';
@@ -100,6 +100,8 @@ export interface SceneInput {
 	season: Season;
 	/** When the crew last did the wave, on the scene's clock. */
 	waveAt: number;
+	/** House radio's picked style, '' for the mix: the record's label shows it. */
+	radio: RadioPick;
 }
 
 /** How hard things move on this beat: a kick's fall-off, or a slow idle. */
