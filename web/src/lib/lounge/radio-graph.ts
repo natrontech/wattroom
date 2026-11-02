@@ -102,19 +102,14 @@ export function build(ctx: AudioContext): Graph {
 	echoTone.connect(gain(0.3, echo));
 	echoTone.connect(gain(0.3, pre));
 
-	// Vinyl: surface hiss and pops that die in a few samples, kept out of the
-	// highs and lows. Two loops of odd lengths, so the pattern never lines up
-	// with a bar or comes round in under a minute.
+	// Vinyl: a faint surface hiss, kept out of the highs and lows. No pops:
+	// riders heard them as crackle over the music (Jan, 2026-11-03). Two loops
+	// of odd lengths, so the hiss never lines up with a bar.
 	const crackle = gain(0.35, master);
 	const surface = filter('highpass', 700, filter('lowpass', 5000, crackle));
 	for (const sec of [5.3, 8.9]) {
-		let pop = 0;
 		loop(
-			buffer(sec, () => {
-				pop *= 0.8;
-				if (Math.random() < 0.00008) pop = (Math.random() - 0.5) * 0.6;
-				return pop + (Math.random() * 2 - 1) * 0.0025;
-			}),
+			buffer(sec, () => (Math.random() * 2 - 1) * 0.0025),
 			surface,
 		);
 	}
