@@ -45,6 +45,7 @@ not a second copy of `git log`.
 - A race keeps its crew beside your numbers, and RACE stands as tall as RIDE (#4332)
 - /ride offers a road's climb as a start, as its route page does (#4331)
 - Your road leaves a crew's plans when you leave the crew (#4330)
+- A crew anyone can join asks you before your route reaches it (#4335)
 
 ## [2026.11.6] - 2026-11-02
 
