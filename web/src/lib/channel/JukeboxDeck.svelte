@@ -34,6 +34,7 @@
 		stageSlot,
 	} from '$lib/channel/stage-slot.svelte';
 	import RailSheet from '$lib/channel/RailSheet.svelte';
+	import { roadsideShown } from '$lib/channel/RoadsideDeck.svelte';
 	import TrackWave from '$lib/channel/TrackWave.svelte';
 	import { MUSIC_FADER } from '$lib/sound/fader';
 	import { mixer } from '$lib/sound/mixer.svelte';
@@ -97,6 +98,9 @@
 	const duration = $derived(deckDuration(current));
 	/** A livestream has no timeline to scrub — the deck rides the edge. */
 	const streaming = $derived(playerInfo.live);
+	// Beside a roadside deck the rider is on the bike too (#4197): no watt,
+	// riding-size targets. The layout stays the desk's.
+	const onBike = $derived(riding || roadsideShown());
 	const elapsed = $derived(playheadAt(jukebox, nowMs, duration));
 	const progress = $derived(
 		duration > 0 ? Math.min(100, (elapsed / duration) * 100) : 0,
@@ -319,7 +323,7 @@
 		     a graphic at 3:1, not 10 px text. -->
 		<p class="eyebrow flex items-center gap-1.5">
 			<span
-				class="h-1.5 w-1.5 rounded-full {riding
+				class="h-1.5 w-1.5 rounded-full {onBike
 					? 'bg-neon'
 					: 'bg-watt glow-stroke'}"
 				aria-hidden="true"
@@ -334,18 +338,18 @@
 					const box = e.currentTarget.getBoundingClientRect();
 					seekTo(((e.clientX - box.left) / box.width) * duration);
 				}}
-				class="block w-full cursor-pointer py-1.5"
+				class="block w-full cursor-pointer {onBike ? 'py-2.5' : 'py-1.5'}"
 				aria-label="seek the shared playhead"
 			>
 				<span class="bg-muted/20 block h-1.5 w-full rounded-full">
 					<span
-						class="relative block h-full rounded-full transition-[width] duration-(--dur-base) {riding
+						class="relative block h-full rounded-full transition-[width] duration-(--dur-base) {onBike
 							? 'bg-neon'
 							: 'bg-watt'}"
 						style="width: {progress}%"
 					>
 						<span
-							class="absolute top-1/2 -right-1.5 h-3 w-3 -translate-y-1/2 rounded-full opacity-0 transition-opacity group-hover:opacity-100 {riding
+							class="absolute top-1/2 -right-1.5 h-3 w-3 -translate-y-1/2 rounded-full opacity-0 transition-opacity group-hover:opacity-100 {onBike
 								? 'bg-neon'
 								: 'bg-watt glow-stroke'}"
 						></span>
