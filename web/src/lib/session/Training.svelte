@@ -37,7 +37,7 @@
 	import SessionControls from '$lib/session/SessionControls.svelte';
 	import SprintMoment from '$lib/session/SprintMoment.svelte';
 	import Stage from '$lib/channel/Stage.svelte';
-	import PhoneSessionControls from '$lib/session/PhoneSessionControls.svelte';
+	import RemoteOffer from '$lib/ride/RemoteOffer.svelte';
 	import SessionNumbers from '$lib/session/SessionNumbers.svelte';
 	import { followedRider } from '$lib/channel/followed-rider';
 	import TrainingLounge from '$lib/session/TrainingLounge.svelte';
@@ -237,12 +237,9 @@
 		{/snippet}
 	</CountdownScreen>
 {:else}
-	{#snippet phoneControls()}
-		<PhoneSessionControls {world} onLeave={leaveRide} />
-	{/snippet}
 	{#snippet worldControls()}
-		<!-- One row in slot 1. -->
-		<div class="flex items-center gap-2">
+		<!-- One row in the now bar. -->
+		<div class="contents">
 			{#if channel.ridden}<ViewSwitch {world} drawn={inWorld} />{/if}
 			<button
 				onclick={() => channel.openTv()}
@@ -323,23 +320,14 @@
 		>
 	{/snippet}
 	<RidingSurface
-		class={phone
-			? 'h-full overflow-y-auto px-4 pt-4'
-			: `h-full overflow-hidden ${inWorld ? '' : 'p-4'}`}
-		world={phone
-			? world.band && channel.ridden
-				? road
-				: undefined
-			: inWorld
-				? road
-				: undefined}
+		class="h-full"
+		world={inWorld ? road : undefined}
 		stage={inFocus === 'media'}
 		moment={inWorld && inFocus === 'sprint' ? moment : undefined}
 		centre={countingIn ? digit : undefined}
 		dockIn={countingIn}
 		seat={docked ? nowPlaying : undefined}
-		foot={phone ? phoneControls : undefined}
-		headerFit={graphed}
+		bar={worldControls}
 	>
 		{#snippet header()}
 			<RideBand
@@ -354,8 +342,6 @@
 					inRide.length,
 				)}
 				drives={!!channel.trainer && channel.actuating}
-				wide={!inWorld}
-				controls={phone ? undefined : worldControls}
 				status={trainerLine}
 				strip={graphed ? undefined : strip}
 			/>
@@ -443,6 +429,7 @@
 						onFollow={(id) =>
 							channel.setFocus(id === channel.focusId ? null : id)}
 					/>
+					<RemoteOffer class="mt-2" />
 				</div>
 			{:else if inWorld && crewShown}
 				<!-- Beside the road the crew stays under the seat, a sprint's card

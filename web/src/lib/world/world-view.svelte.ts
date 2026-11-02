@@ -64,13 +64,9 @@ export function createWorldView() {
 		return v === 'world' ? null : v.skyline;
 	};
 	return {
-		/** The world draws in slot 2, docked around the road: a desk or a TV. */
+		/** The world draws behind the docks, edge to edge, at every width. */
 		get on() {
-			return shown() === 'world' && viewport.width > PHONE_MAX_PX;
-		},
-		/** The world draws as a band in a phone's column (#3676); the slots stay flat. */
-		get band() {
-			return shown() === 'world' && viewport.width <= PHONE_MAX_PX;
+			return shown() === 'world';
 		},
 		/** Why this ride is on the Skyline; null in the world. */
 		get reason() {

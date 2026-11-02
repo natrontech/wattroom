@@ -52,6 +52,7 @@
      read your own ride, so a crewmate followed keeps to RIDE. -->
 <BikeComputer
 	docked
+	wide
 	climb={mine ? climb : null}
 	map={mine ? map : null}
 	roadLine={!!(channel.block?.road || channel.roadReadout)}

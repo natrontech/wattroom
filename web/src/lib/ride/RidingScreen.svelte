@@ -159,15 +159,14 @@
 		setTimeout(() => (flagNotice = false), FLAG_NOTICE_MS);
 	}
 
-	// The world in slot 2, where this device has it on (#3031) and the ride
-	// carries a road (ADR-0066: a ride with no road keeps its surface, #3663):
-	// three.js comes in its own chunk, and a world that cannot draw, or stops,
-	// hands the ride to the Skyline in slot 5 until the rider asks for 3D
+	// The world under the docks, where this device has it on (#3031) and the
+	// ride carries a road (ADR-0066: a ride with no road keeps its surface,
+	// #3663): three.js comes in its own chunk, and a world that cannot draw,
+	// or stops, hands the ride to the Skyline until the rider asks for 3D
 	// again (#3080).
 	const world = createWorldView();
 	const inWorld = $derived(world.on && !!session.road);
-	// A phone's band is slot 2's place in its own column, not a dock (#3676).
-	const drawn = $derived((world.on || world.band) && !!session.road);
+	const drawn = $derived(inWorld);
 	const skyline = $derived(skylineOf(session.road, session.segments, ftp));
 	// The next blocks on the road (#3101): ridden ahead from the dot at your
 	// own target on your own weight, as the dot moves; a road workout's at its pins.
@@ -307,12 +306,12 @@
 		clean={inWorld && cleanView.on && !signalLost && !noCrashSafety}
 		onshow={cleanView.toggle}
 		cleanLine={block?.road ? roadLine(block.road) : undefined}
-		class="flex-1 {inWorld ? '-mx-4 -my-5 sm:-mx-6' : 'pb-16 sm:pb-0'}"
+		class="-mx-4 -my-5 flex-1 sm:-mx-6"
 		world={drawn ? road : undefined}
+		bar={worldControls}
 		moment={inWorld && session.sprint ? moment : undefined}
 		centre={countIn ? digit : undefined}
 		dockIn={!!countIn}
-		headerFit={!skyline}
 	>
 		{#snippet header()}
 			{#if open && session.road}
@@ -325,7 +324,6 @@
 					seconds={session.elapsed}
 					climbed={session.road.climbed}
 					status={rideStatus}
-					actions={worldControls}
 				/>
 			{:else}
 				<!-- The strip only beside a Skyline: without a road the graph below is
@@ -341,7 +339,6 @@
 					hint={session.road?.pinned
 						? 'The road decides where a block ends.'
 						: undefined}
-					controls={worldControls}
 					status={rideStatus}
 					strip={skyline ? strip : undefined}
 				/>
@@ -361,6 +358,7 @@
 			     The dot's speed is RIDE's (one home); km and grade are slot 1's. -->
 			<BikeComputer
 				docked
+				wide
 				roadLine
 				road={session.road
 					? {

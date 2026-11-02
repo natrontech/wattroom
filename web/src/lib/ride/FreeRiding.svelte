@@ -5,11 +5,11 @@
 	 * A free ride, riding (ADR-0059, #3669): ADR-0046's riding surface with no
 	 * workout, drawn once for the road ride at /ride?road= and for a voice
 	 * channel's free ride. Slot 1 is the road line, the trainer chip and the
-	 * clock, with the rider's own controls in its row where a workout's
-	 * transport sits; your numbers are the bike computer with its head, the
-	 * one watts figure (TARGETS D17); the world is slot 2 where this device
-	 * draws it (ADR-0066), the Skyline slot 5. What rides — the trainer, the
-	 * gear, the samples — is the caller's; this owns no ride state.
+	 * clock; your numbers are the bike computer with its head, the one watts
+	 * figure (TARGETS D17); the world is the ground where this device draws
+	 * it (ADR-0066), else the Skyline. The rider's controls ride in the now
+	 * bar. What rides — the trainer, the gear, the samples — is the caller's;
+	 * this owns no ride state.
 	 */
 	import { untrack, type Snippet } from 'svelte';
 	import Minus from '@lucide/svelte/icons/minus';
@@ -50,7 +50,6 @@
 	import { watchClimbCues } from '$lib/ride/climb-cues.svelte';
 	import BikeComputer from '$lib/session/BikeComputer.svelte';
 	import { roadContext } from '$lib/session/computer-pages';
-	import { SKYLINE_PX } from '$lib/session/docks';
 	import RidingSurface from '$lib/session/RidingSurface.svelte';
 	import ViewSwitch from '$lib/world/ViewSwitch.svelte';
 	import type { RoadMate } from '$lib/channel/road-mates';
@@ -111,13 +110,13 @@
 		/** The ⚑ and TV (#52, #1632, #3894), the road ride's and a voice channel's alike. */
 		onflag?: () => void;
 		ontv?: () => void;
-		/** The caller's own controls, on the label's row. */
+		/** The caller's own controls, after the ride's in the now bar. */
 		controls?: Snippet;
-		/** What the flat surface shows above the numbers before the first stroke. */
+		/** What has the focus before the first stroke. */
 		setup?: Snippet;
-		/** Under the numbers on the flat surface — the channel's consent line. */
+		/** Under the numbers — the channel's consent line. */
 		foot?: Snippet;
-		/** Undoes the page's gutters so the world fills the frame (TARGETS ride-road-world 2). */
+		/** Undoes the page's gutters so the ride fills the frame (TARGETS ride-road-world 2). */
 		worldClass?: string;
 		/** A voice channel's mates on this road (#3117): the world draws them at their own metres. */
 		mates?: () => readonly RoadMate[];
@@ -147,12 +146,11 @@
 		() => ghost?.call,
 	);
 	const inWatts = $derived(free.mode === 'watts');
-	// The world in slot 2 where this device has it on and the ride has a
-	// road (ADR-0066); a world that cannot draw hands the ride to the Skyline.
-	const ICON = 'btn btn-secondary icon-btn-lg p-0 max-md:w-auto max-md:flex-1';
+	// The world under the docks where this device has it on and the ride has
+	// a road (ADR-0066); a world that cannot draw hands the ride to the Skyline.
+	const ICON = 'btn btn-secondary icon-btn-lg p-0';
 	const world = createWorldView();
 	const inWorld = $derived(world.on && !!road);
-	const drawn = $derived((world.on || world.band) && !!road);
 
 	const modes: { id: FreeMode; label: string }[] = $derived([
 		{ id: 'grade', label: road ? 'Road' : 'Grade' },
@@ -261,7 +259,7 @@
 	     half filled. No padding inside it — that was 10 px the band
 	     cannot spend above the corridor. -->
 	<div
-		class="border-muted/20 flex rounded-lg border max-md:basis-full"
+		class="border-muted/20 flex shrink-0 rounded-lg border"
 		role="group"
 		aria-label="what you set"
 	>
@@ -269,7 +267,7 @@
 			<button
 				onclick={() => free.setMode(mode.id)}
 				aria-pressed={free.mode === mode.id}
-				class="btn btn-ride max-md:flex-1 {free.mode === mode.id
+				class="btn btn-ride {free.mode === mode.id
 					? 'btn-secondary'
 					: 'btn-ghost'}">{mode.label}</button
 			>
@@ -302,7 +300,7 @@
 		/>
 	{/if}
 	{#if onflag}<FlagButton onflag={flag} sends="after" />{/if}
-	{#if road}<ViewSwitch {world} {drawn} />{/if}
+	{#if road}<ViewSwitch {world} drawn={inWorld} />{/if}
 	{#if ontv}
 		<button onclick={ontv} class={ICON} aria-label="TV mode" title="TV mode"
 			><MonitorUp size={20} /></button
@@ -314,7 +312,7 @@
 		<button
 			onclick={onend}
 			disabled={ending}
-			class="btn btn-secondary btn-ride max-md:basis-full">End ride</button
+			class="btn btn-secondary btn-ride whitespace-nowrap">End ride</button
 		>
 	{/if}
 {/snippet}
@@ -322,7 +320,7 @@
 {#snippet ramps()}
 	{#if !road}
 		<!-- Warm up and Cool down (#4100), one button off a road. -->
-		<div class="flex min-w-0 flex-wrap items-center gap-2">
+		<div class="contents">
 			{#if free.ramp}
 				<button onclick={free.stopRamp} class="btn btn-secondary btn-ride"
 					>Stop {rampLabel?.toLowerCase()}</button
@@ -331,10 +329,10 @@
 				<button
 					onclick={(event) => {
 						const box = event.currentTarget.getBoundingClientRect();
-						openMenu(rampItems(), box.left, box.bottom, event.currentTarget);
+						openMenu(rampItems(), box.left, box.top, event.currentTarget);
 					}}
 					aria-haspopup="menu"
-					class="btn btn-secondary btn-ride"
+					class="btn btn-secondary btn-ride whitespace-nowrap"
 					>Warm up or cool down <ChevronDown size={16} /></button
 				>
 			{/if}
@@ -350,18 +348,21 @@
 		seconds={free.seconds}
 		climbed={road ? (climbed ?? ownClimb.m) : undefined}
 		status={faultLine}
-		{controls}
 		{notes}
-		{actions}
-		more={ramps}
 	/>
+{/snippet}
+
+{#snippet bar()}
+	{@render actions()}
+	{@render ramps()}
+	{@render controls?.()}
 {/snippet}
 
 {#snippet computer()}
 	<!-- The dot's speed is RIDE's (one home); km and grade are slot 1's. -->
 	<BikeComputer
 		docked
-		wide={!inWorld}
+		wide
 		roadLine
 		{ftp}
 		{watts}
@@ -424,54 +425,30 @@
 <RideNarrator {view} {watts} {ftp} {stale} />
 
 <RidingSurface
-	own
-	class="flex-1 {inWorld ? worldClass : ''} {extra}"
-	world={drawn ? worldSlot : undefined}
-	moment={inWorld && roadEndOffered(free, false) ? roadEnd : undefined}
+	class="flex-1 {worldClass} {extra}"
+	world={inWorld ? worldSlot : undefined}
+	moment={roadEndOffered(free, false) ? roadEnd : undefined}
+	{bar}
 >
 	{#snippet header()}
-		{#if inWorld}
-			{@render band()}
-		{:else}
-			<div class="ride-panel">{@render band()}</div>
-		{/if}
+		{@render band()}
 	{/snippet}
 
 	{#snippet focus()}
-		{#if !inWorld}
-			<!-- Flat, in slot order: the Skyline a strip along the bottom as
-			     over the world, on screen with the dot inside (ride-free-road 9). -->
-			<div class="flex grow flex-col gap-3">
-				{#if setup && !free.recording}{@render setup()}{/if}
-				{#if roadEndOffered(free, false)}
-					<div class="ride-panel">{@render roadEnd()}</div>
-				{/if}
-				<!-- The container the computer's wide layout answers to (its @2xl
-				     variants): here, never on the computer itself, whose own inline
-				     size would then collapse inside the world's w-fit dock. -->
-				<div class="ride-panel shrink-0">
-					{@render computer()}
-					{@render foot?.()}
-				</div>
-				{#if road}
-					<div
-						class="ride-panel mt-auto shrink-0 overflow-hidden"
-						style:height="{SKYLINE_PX}px"
-					>
-						{@render skyline(road)}
-					</div>
-				{/if}
-			</div>
-		{/if}
+		{#if setup && !free.recording}{@render setup()}{/if}
 	{/snippet}
 
 	{#snippet numbers()}
-		{#if inWorld}{@render computer()}{/if}
+		{@render computer()}
+		{@render foot?.()}
 	{/snippet}
 
 	{#snippet horizon()}
-		{#if inWorld && road}
-			<div class="h-full">{@render skyline(road)}</div>
+		{#if road}
+			<!-- Over the world a strip along the bottom; flat, the ground. -->
+			<div class="relative h-full flex-1">
+				<div class="absolute inset-0">{@render skyline(road)}</div>
+			</div>
 		{/if}
 	{/snippet}
 </RidingSurface>
