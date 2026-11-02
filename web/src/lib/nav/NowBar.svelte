@@ -16,6 +16,7 @@
 	import { device } from '$lib/device.svelte';
 	import { AWAY_CHOICES, AWAY_STATES, awayState } from '$lib/away';
 	import Bike from '@lucide/svelte/icons/bike';
+	import Radio from '@lucide/svelte/icons/radio';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import Headphones from '@lucide/svelte/icons/headphones';
 	import LogOut from '@lucide/svelte/icons/log-out';
@@ -78,6 +79,23 @@
 			icon: AWAY_STATES[key].icon,
 			onSelect: () => setAway(true, key),
 		}));
+
+	// Ride is the channel's free ride; its arrow starts a session for everyone
+	// here, between sessions. A phone has no trainer, so neither (#412).
+	const phase = $derived(conn?.live.tick?.state.phase);
+	const canStart = $derived(
+		phase !== 'countdown' && phase !== 'running' && phase !== 'paused',
+	);
+	const rideItems = () => [
+		{
+			label: 'Start a session for everyone',
+			icon: Radio,
+			onSelect: () => {
+				nowPanel.ask = 'session';
+				if (!onPlace && conn) void goto(conn.address.home);
+			},
+		},
+	];
 
 	// One panel open at a time, drawn by the channel's shell. Off the channel,
 	// the music button goes to it and opens there.
@@ -299,14 +317,35 @@
 			{/if}
 
 			<div class="ml-auto flex items-center gap-1">
-				{#if !riding && pathname !== conn.address.training}
-					<!-- The channel is decided, so Ride is its free ride. -->
-					<a
-						href={conn.address.training}
-						class="btn btn-secondary min-h-11"
-						title="Ride in {conn.address.name}"
-						><Bike size={14} /> <span class="max-md:sr-only">Ride</span></a
-					>
+				{#if !riding && !device.spectator && pathname !== conn.address.training}
+					<div class="flex">
+						<a
+							href={conn.address.training}
+							{@attach contextMenu(() => (canStart ? rideItems() : []))}
+							class="btn btn-secondary min-h-11 {canStart
+								? 'rounded-r-none'
+								: ''}"
+							title="A free ride in {conn.address.name}"
+							><Bike size={14} /> <span class="max-md:sr-only">Ride</span></a
+						>
+						{#if canStart}
+							<button
+								onclick={(event) => {
+									const box = event.currentTarget.getBoundingClientRect();
+									openMenu(
+										rideItems(),
+										box.right,
+										box.top,
+										event.currentTarget,
+									);
+								}}
+								aria-label="More ways to ride"
+								aria-haspopup="menu"
+								class="btn btn-secondary min-h-11 rounded-l-none px-2"
+								><ChevronDown size={14} /></button
+							>
+						{/if}
+					</div>
 				{/if}
 				<button
 					bind:this={nowPanel.music}

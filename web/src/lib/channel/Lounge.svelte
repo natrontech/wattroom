@@ -14,7 +14,6 @@
 	import { endGame } from '$lib/session/end-game';
 	import AnnouncementStrip from '$lib/announce/AnnouncementStrip.svelte';
 	import MarkedIn from '$lib/announce/MarkedIn.svelte';
-	import SessionControls from '$lib/session/SessionControls.svelte';
 	import LoungeSession from '$lib/channel/LoungeSession.svelte';
 	import CountdownScreen from '$lib/session/CountdownScreen.svelte';
 	import PlanCard from '$lib/session/PlanCard.svelte';
@@ -510,13 +509,8 @@
 		</section>
 	{/if}
 	{#if channel.phase === 'lounge'}
+		<!-- Between sessions the stage is the call: Ride and Start a session
+		     are the now bar's. -->
 		<PlanCard />
-		<!-- Between sessions, the channel's two ways to ride: a session for
-		     everyone here, or a free ride of your own. Planning lives on the
-		     crew's Schedule. -->
-		<div class="mt-6 flex flex-wrap items-center gap-2">
-			<SessionControls />
-			{@render freeRide()}
-		</div>
 	{/if}
 </div>
