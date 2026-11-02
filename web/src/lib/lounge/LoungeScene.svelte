@@ -1,17 +1,33 @@
 <script lang="ts">
 	// The lounge (ADR-0094): the room a voice channel is while the cozy room
-	// is on (#4305). The page decides when it shows (#4302); this
-	// draws as much room as fits, at the finest pixel the size allows, in the
-	// rider's theme. House radio is queued on the deck like a track and
+	// is on (#4305). The page decides when it shows (#4302); this draws it to
+	// fill the page, at the biggest whole pixel the height allows, in the
+	// rider's theme. Everyone in the call is in it, with their name and marks
+	// hung under them here in the page. A screen too narrow for the room pans
+	// across it. House radio is queued on the deck like a track and
 	// HouseRadioDeck plays it.
-	import { untrack } from 'svelte';
+	import { tick, untrack } from 'svelte';
 	import Disc3 from '@lucide/svelte/icons/disc-3';
+	import Bike from '@lucide/svelte/icons/bike';
+	import Drum from '@lucide/svelte/icons/drum';
+	import MicOff from '@lucide/svelte/icons/mic-off';
+	import ScreenShare from '@lucide/svelte/icons/screen-share';
+	import Video from '@lucide/svelte/icons/video';
+	import WifiOff from '@lucide/svelte/icons/wifi-off';
 	import { useChannel } from '$lib/channel/context';
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { playheadAt } from '$lib/channel/playhead';
+	import { tileFrame } from '$lib/channel/presence-marks';
+	import { awayState } from '$lib/away';
+	import {
+		MENU_HINT,
+		contextMenu,
+		type MenuEntry,
+	} from '$lib/context-menu.svelte';
 	import { serverNow } from '$lib/server-clock';
 	import { mixer } from '$lib/sound/mixer.svelte';
 	import { prefersReducedMotion } from '$lib/motion';
+	import { fnv } from '$lib/world/loadout';
 	import { radioHeard } from '$lib/lounge/radio-heard.svelte';
 	import { sceneLoop } from '$lib/lounge/scene-loop';
 	import {
@@ -21,68 +37,96 @@
 		positionAt,
 	} from '$lib/lounge/station';
 	import { nextWeather, weatherOf } from '$lib/lounge/state';
-	import { riderOf, seatedOf } from '$lib/lounge/figures';
+	import { crewOf, riderOf } from '$lib/lounge/figures';
+	import {
+		catAt,
+		cuckooing,
+		discoOn,
+		flybyAt,
+		seasonOf,
+	} from '$lib/lounge/moments';
 	import { palette } from '$lib/palette.svelte';
-	import { applyLoungeTheme, skyAt } from '$lib/lounge/palette';
-	import { forgetWalls } from '$lib/lounge/draw-room';
+	import { LOUNGE, applyLoungeTheme, skyAt } from '$lib/lounge/palette';
+	import { forgetWalls, shadeFor } from '$lib/lounge/draw-room';
 	import { forgetBackdrops } from '$lib/lounge/draw-window';
 	import {
 		SCENE_H,
 		SCENE_W,
 		drawScene,
 		middleOf,
-		seatAt,
 		spotAt,
+		tagsOf,
 		type Heart,
 		type SceneInput,
 	} from '$lib/lounge/scene';
 
+	let { menuOf }: { menuOf: (id: string) => MenuEntry[] } = $props();
+
 	/**
-	 * CSS pixels per scene pixel: one on a phone, two on a desk, three only on
-	 * a very wide one. A wider page shows more room rather than bigger pixels.
+	 * The fewest rows a room at scale s draws: the middle, the cushions in
+	 * front of it, and under them their names and the radio's line, which are
+	 * page pixels and so take fewer rows the bigger the scale.
 	 */
-	function scaleFor(boxW: number): number {
-		const wanted = boxW < 720 ? 1 : boxW < 1700 ? 2 : 3;
-		return Math.max(1, Math.min(wanted, Math.floor(boxW / SCENE_W)));
-	}
-	/** Past this the room is only more wallpaper above the furniture. */
-	const MAX_ROWS = 260;
+	const rowsAt = (s: number) => SCENE_H + 23 + Math.ceil(48 / s);
+	/** How fast the room may darken or brighten, per second: a lamp flipped on and off quickly fades instead of flashing (WCAG 2.3.1). */
+	const SHADE_RATE = 0.3;
+	const KONAMI = [
+		'ArrowUp',
+		'ArrowUp',
+		'ArrowDown',
+		'ArrowDown',
+		'ArrowLeft',
+		'ArrowRight',
+		'ArrowLeft',
+		'ArrowRight',
+		'b',
+		'a',
+	];
 
 	const channel = useChannel();
 	const live = $derived(channelConnection.current?.live);
 	const deck = $derived(live?.tick?.jukebox);
 	const lounge = $derived(live?.tick?.lounge);
 	const station = $derived(channel.address.crew);
+	const seed = $derived(fnv(station));
 
 	const onAir = $derived(!!deck?.current?.radio);
 
 	let boxW = $state(0);
-	let viewH = $state(900);
-	const scale = $derived(scaleFor(boxW));
+	let boxH = $state(0);
+	// The biggest whole pixel the height takes, and never so big that a phone
+	// sees less than half the middle; it pans the rest.
+	const scale = $derived.by(() => {
+		let s = Math.max(1, Math.min(5, Math.floor(boxW / (SCENE_W / 2))));
+		while (s > 1 && boxH / s < rowsAt(s)) s--;
+		return s;
+	});
 	const roomW = $derived(Math.max(SCENE_W, Math.floor(boxW / scale)));
-	// Half as tall as it is wide, and never so tall the tiles and the
-	// session's buttons leave the screen.
-	const roomH = $derived(
-		Math.max(
-			SCENE_H,
-			Math.min(
-				MAX_ROWS,
-				Math.floor(roomW / 2),
-				Math.floor((viewH * 0.6) / scale),
-			),
-		),
-	);
+	const roomH = $derived(Math.max(rowsAt(scale), Math.floor(boxH / scale)));
 	// Read by the frame on every tick, outside the effect that starts the loop.
-	let size = { w: SCENE_W, h: SCENE_H };
+	let size = { w: SCENE_W, h: rowsAt(1) };
 	$effect(() => {
 		size = { w: roomW, h: roomH };
 	});
 
+	const crew = $derived(crewOf(channel.riders, 0, roomW));
+	const tags = $derived(tagsOf(crew, roomW, roomH));
+	const byId = $derived(new Map(channel.riders.map((r) => [r.id, r])));
+	/** Where the canvas's top sits in the box: above it when the box is too short. */
+	const top = $derived(boxH - roomH * scale);
+
 	let canvas = $state<HTMLCanvasElement | null>(null);
-	let hearts = $state<Heart[]>([]);
-	let catAwakeUntil = $state(0);
+	let pan = $state<HTMLElement | null>(null);
+	let wall = $state('');
+	let hearts: Heart[] = [];
+	let catAwakeUntil = 0;
+	let cuckooUntil = 0;
+	let mugUntil = 0;
+	let scratchUntil = 0;
+	let waveAt = -Infinity;
 	let clock = 0;
 	let crank = 0.9;
+	let shade = -1;
 	let nowPlaying = $state('');
 
 	// Before the loop's effect, so the first frame is already in the theme.
@@ -91,9 +135,17 @@
 			forgetWalls();
 			forgetBackdrops();
 		}
+		wall = LOUNGE.wall;
 	});
 
-	function music(): Pick<SceneInput, 'playing' | 'beat' | 'pulsing'> {
+	// A room wider than the screen opens on its middle, the sofa and the bike.
+	$effect(() => {
+		const over = roomW * scale - boxW;
+		const el = pan;
+		if (el && over > 0) void tick().then(() => (el.scrollLeft = over / 2));
+	});
+
+	function music(): Pick<SceneInput, 'playing' | 'beat' | 'pulsing' | 'disco'> {
 		const current = deck?.current;
 		if (current?.radio) {
 			const p = positionAt(station, serverNow() / 1000);
@@ -101,6 +153,7 @@
 				playing: deck!.playing,
 				beat: p.beat,
 				pulsing: deck!.playing && drumsIn(p.tune, p.section),
+				disco: deck!.playing && discoOn(p.section, p.tune.slot),
 			};
 		}
 		if (current) {
@@ -110,33 +163,52 @@
 				playing: deck!.playing,
 				beat: (at * bpm) / 60,
 				pulsing: deck!.playing && bpm > 0,
+				disco: false,
 			};
 		}
-		return { playing: false, beat: 0, pulsing: false };
+		return { playing: false, beat: 0, pulsing: false, disco: false };
 	}
 
 	function frame(g: CanvasRenderingContext2D, dt: number, still: boolean) {
-		if (!still) clock += dt;
+		// The clock runs either way: reduced motion holds the picture, not time,
+		// so a heart or an awake cat still passes.
+		clock += dt;
 		const riders = channel.riders;
 		const onBike = riders.find((r) => r.id === riderOf(riders, 0)?.id);
 		if (onBike && !still)
 			crank += ((onBike.cadence || 80) / 60) * Math.PI * 2 * dt;
-		const rider = riderOf(riders, crank);
 		const now = new Date();
+		const sec = serverNow() / 1000;
+		const sky = skyAt(now.getHours());
+		const lampOn = !lounge?.lampOff;
+		const dark = shadeFor(lampOn, sky);
+		shade =
+			still || shade < 0
+				? dark
+				: shade +
+					Math.max(-SHADE_RATE * dt, Math.min(SHADE_RATE * dt, dark - shade));
 		drawScene(g, {
 			...size,
 			t: clock,
 			still,
-			sky: skyAt(now.getHours()),
+			sky,
 			weather: weatherOf(lounge),
-			lampOn: !lounge?.lampOff,
-			seated: seatedOf(riders, rider?.id),
-			rider,
+			lampOn,
+			crew: crewOf(riders, crank, size.w),
 			...music(),
-			catAwakeUntil,
+			cat: catAt(seed, sec),
+			catAwake: clock < catAwakeUntil,
 			hearts,
 			hours: now.getHours(),
 			minutes: now.getMinutes(),
+			cuckoo:
+				cuckooing(now.getMinutes(), now.getSeconds()) || clock < cuckooUntil,
+			shade,
+			flyby: flybyAt(seed, sec),
+			mugDown: clock < mugUntil,
+			scratch: clock < scratchUntil,
+			season: seasonOf(now),
+			waveAt,
 		});
 	}
 
@@ -165,61 +237,191 @@
 		return () => clearInterval(every);
 	});
 
-	/** A pointer in the middle's coordinates, and what it is over. */
+	function heart(x: number, y: number) {
+		hearts = [
+			...hearts.filter((h) => clock - h.born < 2),
+			{ x, y, born: clock },
+		];
+	}
+
+	/** Wake the cat here, with a heart over it. */
+	function wake() {
+		const cat = catAt(seed, serverNow() / 1000);
+		const { ox, oy } = middleOf(roomW, roomH);
+		catAwakeUntil = clock + 4;
+		heart(ox + cat.x - 2, oy + cat.y - 24);
+	}
+
+	// A pet is the channel's (LoungeState.pets): every screen wakes its cat
+	// when the count goes up, and every fifth pet the cat knocks the mug off
+	// the desk. Your own pets woke it already, on the click.
+	let petsSeen: number | undefined;
+	let ownPets = 0;
+	$effect(() => {
+		const pets = lounge?.pets ?? 0;
+		untrack(() => {
+			const was = petsSeen;
+			petsSeen = pets;
+			if (was === undefined || pets <= was) return;
+			const fresh = pets - was;
+			if (fresh > ownPets) wake();
+			ownPets = Math.max(0, ownPets - fresh);
+			if (Math.floor(pets / 5) > Math.floor(was / 5)) mugUntil = clock + 30;
+		});
+	});
+
+	/** A pointer in room pixels and in the middle's, and who or what it is over. */
 	function at(e: MouseEvent) {
 		const box = canvas!.getBoundingClientRect();
+		const x = ((e.clientX - box.left) / box.width) * roomW;
+		const y = ((e.clientY - box.top) / box.height) * roomH;
 		const { ox, oy } = middleOf(roomW, roomH);
-		const x = ((e.clientX - box.left) / box.width) * roomW - ox;
-		const y = ((e.clientY - box.top) / box.height) * roomH - oy;
-		return { x, spot: spotAt(x, y) };
+		const cat = catAt(seed, serverNow() / 1000);
+		return {
+			who: tags.find(
+				(t) => Math.abs(x - t.x) <= 6 && y >= t.head - 2 && y <= t.head + 22,
+			),
+			cat:
+				Math.abs(x - ox - cat.x) <= 11 &&
+				y - oy <= cat.y + 1 &&
+				y - oy >= cat.y - 20,
+			spot: spotAt(x - ox, y - oy),
+		};
 	}
 
 	function click(e: MouseEvent) {
-		const { x, spot } = at(e);
-		const state = { lampOff: !!lounge?.lampOff, weather: weatherOf(lounge) };
-		if (spot === 'lamp') live?.setLounge({ ...state, lampOff: !state.lampOff });
+		const { who, cat, spot } = at(e);
+		const state = { ...lounge, weather: weatherOf(lounge) };
+		if (who) heart(who.x - 2, who.head - 7);
+		else if (cat) {
+			ownPets++;
+			wake();
+			live?.setLounge({ ...state, pets: (lounge?.pets ?? 0) + 1 });
+		} else if (spot === 'lamp')
+			live?.setLounge({ ...state, lampOff: !state.lampOff });
 		else if (spot === 'window')
 			live?.setLounge({ ...state, weather: nextWeather(state.weather) });
-		else if (spot === 'cat') catAwakeUntil = clock + 4;
-		else if (spot === 'sofa') {
-			const riders = channel.riders;
-			const seat = seatAt(x, seatedOf(riders, riderOf(riders, 0)?.id).length);
-			if (seat >= 0)
-				hearts = [
-					...hearts.filter((h) => clock - h.born < 2),
-					{ seat, born: clock },
-				];
-		}
+		else if (spot === 'clock') cuckooUntil = clock + 3;
+		else if (spot === 'deck') scratchUntil = clock + 0.8;
+	}
+
+	let typed = 0;
+	function key(e: KeyboardEvent) {
+		if (
+			(e.target as HTMLElement | null)?.closest?.(
+				'input, textarea, [contenteditable]',
+			)
+		)
+			return;
+		typed = e.key === KONAMI[typed] ? typed + 1 : e.key === KONAMI[0] ? 1 : 0;
+		if (typed < KONAMI.length) return;
+		typed = 0;
+		waveAt = clock;
+	}
+
+	/** What a tag says for a screen reader: the name, then what the marks show. */
+	function described(id: string): string {
+		const r = byId.get(id);
+		if (!r) return '';
+		const marks = [
+			r.away && awayState(r.awayReason).label.toLowerCase(),
+			r.speaking && 'talking',
+			r.muted && 'muted',
+			r.riding && 'riding',
+			r.cameraOn && 'camera on',
+			r.sharing && 'sharing a screen',
+			r.sounding && 'playing a sound',
+			r.linkLost && 'connection lost',
+		].filter(Boolean);
+		return [r.you ? `${r.name} (you)` : r.name, ...marks].join(', ');
 	}
 </script>
 
-<svelte:window bind:innerHeight={viewH} />
+<svelte:window onkeydown={key} />
 
-<!-- The room bleeds to the content column's edges: it is the page here,
-     not a picture on it. The canvas sits in it at a whole-pixel scale, so the
-     box's last pixel or two of width shows the page behind it. -->
-<section class="mb-4" aria-label="the lounge">
+<!-- The room is the page here: it fills the place to its edges, and the
+     page's own buttons float over its wall. -->
+<section
+	class="relative min-h-0 flex-1 overflow-hidden"
+	aria-label="the lounge"
+	style:background={wall}
+	bind:clientWidth={boxW}
+	bind:clientHeight={boxH}
+>
 	<div
-		class="relative -mx-4 overflow-hidden sm:-mx-8"
-		bind:clientWidth={boxW}
-		style:height="{roomH * scale}px"
+		bind:this={pan}
+		class="absolute inset-0 [scrollbar-width:none] overflow-x-auto overflow-y-hidden"
 	>
-		<canvas
-			bind:this={canvas}
-			width={roomW}
-			height={roomH}
-			onclick={click}
-			onmousemove={(e) =>
-				(canvas!.style.cursor = at(e).spot ? 'pointer' : 'default')}
-			class="absolute bottom-0 block [image-rendering:pixelated]"
-			style:left="{Math.floor((boxW - roomW * scale) / 2)}px"
-			style:width="{roomW * scale}px"
-			style:height="{roomH * scale}px"
-			aria-label="The lounge: who is in the call, on the sofa or on the bike. Click the lamp, the window or the cat."
-		></canvas>
+		<div class="relative mx-auto h-full" style:width="{roomW * scale}px">
+			<canvas
+				bind:this={canvas}
+				width={roomW}
+				height={roomH}
+				onclick={click}
+				onmousemove={(e) => {
+					const over = at(e);
+					canvas!.style.cursor =
+						over.who || over.cat || over.spot ? 'pointer' : 'default';
+				}}
+				class="absolute bottom-0 left-0 block [image-rendering:pixelated]"
+				style:width="{roomW * scale}px"
+				style:height="{roomH * scale}px"
+				aria-label="The lounge: who is in the call, on the sofa, the cushions or the bike. Click someone to send a heart, or the cat, the lamp, the window, the clock or the record player."
+			></canvas>
+			<div role="group" aria-label="in the call">
+				{#each tags as tag (tag.id)}
+					{@const r = byId.get(tag.id)}
+					{#if r}
+						{@const Away = awayState(r.awayReason).icon}
+						<button
+							type="button"
+							{@attach contextMenu(() => menuOf(tag.id))}
+							onclick={() => heart(tag.x - 2, tag.head - 7)}
+							title={MENU_HINT}
+							aria-label={described(tag.id)}
+							class="bg-surface/85 text-ink absolute flex -translate-x-1/2 items-center gap-1 rounded-full px-1.5 py-0.5 leading-none font-medium whitespace-nowrap {scale >=
+							3
+								? 'text-xs'
+								: 'text-[10px]'} {tileFrame(r.speaking, r.away)} {r.away
+								? 'opacity-70'
+								: ''} {r.you ? 'border-neon/60 border' : ''}"
+							style:left="{tag.x * scale}px"
+							style:top="{top + tag.y * scale}px"
+							style:max-width="{Math.max(56, tag.span * scale)}px"
+						>
+							{#if r.away}<Away size={12} class="text-muted shrink-0" />{/if}
+							<span class="min-w-0 truncate">{r.name}</span>
+							{#if r.muted}<MicOff size={12} class="text-muted shrink-0" />{/if}
+							{#if r.riding && tag.id !== crew.rider?.id}<Bike
+									size={12}
+									class="text-muted shrink-0"
+								/>{/if}
+							{#if r.cameraOn}<Video
+									size={12}
+									class="text-muted shrink-0"
+								/>{/if}
+							{#if r.sharing}<ScreenShare
+									size={12}
+									class="text-muted shrink-0"
+								/>{/if}
+							{#if r.sounding}<Drum
+									size={12}
+									class="text-muted shrink-0"
+								/>{/if}
+							{#if r.linkLost}<WifiOff
+									size={12}
+									class="text-muted shrink-0"
+								/>{/if}
+						</button>
+					{/if}
+				{/each}
+			</div>
+		</div>
 	</div>
 	{#if onAir}
-		<div class="text-muted mt-2 flex flex-wrap items-center gap-2 text-xs">
+		<div
+			class="bg-surface/85 text-muted absolute bottom-2 left-2 flex max-w-[calc(100%-1rem)] flex-wrap items-center gap-x-2 rounded px-2 py-1 text-xs"
+		>
 			<button
 				type="button"
 				onclick={() => radioHeard.set(!radioHeard.current)}
@@ -230,7 +432,9 @@
 					? 'Hearing house radio'
 					: 'House radio muted here'}</button
 			>
-			{#if nowPlaying}<span class="tabular-nums">{nowPlaying}</span>{/if}
+			{#if nowPlaying}<span class="tabular-nums max-sm:hidden"
+					>{nowPlaying}</span
+				>{/if}
 			{#if radioHeard.current && mixer.music === 0}<span
 					>Music is at 0 in your mix.</span
 				>{/if}

@@ -80,7 +80,8 @@
 	});
 
 	/** The lounge as a desk's voice channel draws it (ADR-0094, #4302): a
-	 *  640 × 260 room at twice its size, four on the sofa, one riding, rain,
+	 *  640 × 260 room at twice its size, four on the sofa and three on
+	 *  cushions, one riding, rain, a plane past the window, the disco ball
 	 *  and a beat at 80 BPM — everything that moves in it at once. */
 	const ROOM_W = 640;
 	const ROOM_H = 260;
@@ -91,6 +92,8 @@
 		hair: '#2a1a12',
 		shirt: '#3de0d0',
 		speaking: false,
+		sounding: false,
+		faded: false,
 	};
 	function lounge(node: HTMLCanvasElement) {
 		let t = 0;
@@ -106,19 +109,35 @@
 					sky: 'night',
 					weather: 'rain',
 					lampOn: true,
-					seated: [0, 1, 2, 3].map((i) => ({
-						...SITTER,
-						id: String(i),
-						speaking: i === 1,
-					})),
-					rider: { ...SITTER, id: 'r', watts: 210, crank: t * 9 },
+					crew: {
+						seated: [0, 1, 2, 3].map((i) => ({
+							...SITTER,
+							id: String(i),
+							speaking: i === 1,
+						})),
+						floor: [300, 324, 348].map((x, i) => ({
+							f: { ...SITTER, id: `f${i}`, speaking: i === 0 },
+							x,
+						})),
+						more: 0,
+						rider: { ...SITTER, id: 'r', watts: 210, crank: t * 9 },
+					},
 					playing: true,
 					beat: (t * 80) / 60,
 					pulsing: true,
-					catAwakeUntil: 0,
+					disco: true,
+					cat: { x: 236, y: 108, pose: 'sleep', facing: 1 },
+					catAwake: false,
 					hearts: [],
 					hours: 21,
 					minutes: 30,
+					cuckoo: false,
+					shade: 0.12,
+					flyby: { kind: 'plane', f: (t / 14) % 1, dir: 1 },
+					mugDown: false,
+					scratch: false,
+					season: '',
+					waveAt: -Infinity,
 				});
 			},
 			false,

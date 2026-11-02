@@ -1,11 +1,13 @@
 /**
  * The window: a synthwave horizon under the viewer's own sky, the crew's
- * weather over it, and the cat asleep on the sill. Everything that moves here
- * is a function of the clock, so the scene keeps no particles of its own.
+ * weather over it, and whatever the clock flies past it (moments.ts).
+ * Everything that moves here is a function of the clock, so the scene keeps
+ * no particles of its own.
  */
 import { LOUNGE as C, SKIES, SUNS, type Sky } from '$lib/lounge/palette';
-import { dot, line, rect, sprite, type Ctx } from '$lib/lounge/pixel';
+import { disc, dot, line, rect, type Ctx } from '$lib/lounge/pixel';
 import type { SceneInput } from '$lib/lounge/scene';
+import type { Flyby } from '$lib/lounge/moments';
 import { hash3 } from '$lib/lounge/hash';
 
 const X = 122;
@@ -14,7 +16,6 @@ const W = 136;
 const H = 86;
 const HORIZON = 88;
 const SUN_X = 190;
-const Z = ['111', '010', '111'];
 
 export function drawWindow(g: Ctx, s: SceneInput) {
 	g.save();
@@ -25,6 +26,7 @@ export function drawWindow(g: Ctx, s: SceneInput) {
 	stars(g, s);
 	buildings(g, s);
 	ground(g, s);
+	if (s.flyby) flyby(g, s, s.flyby);
 	weather(g, s);
 	g.restore();
 	rect(g, X - 2, Y - 2, W + 4, 2, C.frame);
@@ -32,7 +34,72 @@ export function drawWindow(g: Ctx, s: SceneInput) {
 	rect(g, X + W, Y, 2, H, C.frame);
 	rect(g, X - 6, Y + H, W + 12, 4, C.trim);
 	rect(g, X - 6, Y + H, W + 12, 1, C.sillTop);
-	cat(g, s);
+	if (s.season === 'halloween') pumpkin(g, s);
+}
+
+/** Across the window at the moment the slot gives, the same on every screen. */
+function flyby(g: Ctx, s: SceneInput, { kind, f, dir }: Flyby) {
+	const along = dir > 0 ? f : 1 - f;
+	const x = Math.round(X - 12 + along * (W + 24));
+	const blink = s.still || Math.floor(s.t * 2) % 2 === 0;
+	if (kind === 'plane') {
+		rect(g, x - 4, Y + 12, 9, 1, C.lilac);
+		rect(g, x - dir * 3, Y + 10, 1, 2, C.lilac);
+		if (blink) dot(g, x + dir * 4, Y + 12, C.heart);
+	} else if (kind === 'birds')
+		for (let i = 0; i < 4; i++) {
+			const bx = x - dir * i * 6;
+			const by = Y + 18 + (i % 2) * 3;
+			const up = !s.still && Math.floor(s.t * 6 + i) % 2 === 0;
+			dot(g, bx - 1, by - (up ? 1 : 0), C.ink);
+			dot(g, bx, by, C.ink);
+			dot(g, bx + 1, by - (up ? 1 : 0), C.ink);
+		}
+	else if (kind === 'balloon') {
+		const y = Y + 26 + Math.round(Math.sin(f * 6) * 2);
+		disc(g, x, y, 5, C.bookC);
+		rect(g, x - 1, y - 5, 2, 11, C.amber);
+		line(g, x - 3, y + 4, x - 1, y + 8, C.ink);
+		line(g, x + 3, y + 4, x + 1, y + 8, C.ink);
+		rect(g, x - 1, y + 8, 3, 2, C.wood);
+	} else if (kind === 'peloton')
+		// A bunch on the road at the horizon: the world's riders, very far off.
+		for (let i = 0; i < 5; i++) {
+			const rx = x - dir * i * 4;
+			const bob = !s.still && Math.floor(s.t * 6 + i) % 2 === 0 ? 1 : 0;
+			rect(g, rx, HORIZON + 3 - bob, 1, 2, [C.teal, C.amber, C.heart][i % 3]);
+			dot(g, rx - 1, HORIZON + 5, C.lilac);
+			dot(g, rx + 1, HORIZON + 5, C.lilac);
+		}
+	else {
+		const y = Y + 14 + Math.round(Math.sin(f * 9) * 4);
+		rect(g, x - 4, y, 9, 2, C.lilac);
+		rect(g, x - 2, y - 2, 5, 2, C.tealLight);
+		if (blink) {
+			g.globalAlpha = 0.4;
+			g.fillStyle = C.tealLight;
+			g.beginPath();
+			g.moveTo(x - 2, y + 2);
+			g.lineTo(x + 2, y + 2);
+			g.lineTo(x + 6, HORIZON);
+			g.lineTo(x - 6, HORIZON);
+			g.closePath();
+			g.fill();
+			g.globalAlpha = 1;
+		}
+	}
+}
+
+/** Halloween week: a lit pumpkin at the sill's left end. */
+function pumpkin(g: Ctx, s: SceneInput) {
+	const y = Y + H;
+	disc(g, 131, y - 4, 4, C.amber);
+	rect(g, 131, y - 10, 1, 2, C.leaf);
+	const lit = s.still || Math.sin(s.t * 3) > -0.7;
+	const eye = lit ? C.bulb : C.ink;
+	dot(g, 129, y - 5, eye);
+	dot(g, 133, y - 5, eye);
+	rect(g, 130, y - 3, 3, 1, eye);
 }
 
 /**
@@ -141,36 +208,7 @@ function weather(g: Ctx, s: SceneInput) {
 	if (s.weather === 'snow')
 		for (let i = 0; i < 50; i++) {
 			const fall = (hash3(i, 4, 1) * H + (s.still ? 0 : s.t * 9)) % H;
-			const x = X + hash3(i, 4, 2) * W + Math.sin(s.t + i) * 2;
+			const x = X + hash3(i, 4, 2) * W + (s.still ? 0 : Math.sin(s.t + i) * 2);
 			dot(g, x, Y + fall, C.snow);
 		}
-}
-
-/** Asleep unless someone woke it; it falls back asleep on its own. */
-function cat(g: Ctx, s: SceneInput) {
-	const y = Y + H;
-	if (s.catAwakeUntil > s.t) {
-		const flick = s.still ? 0 : Math.round(Math.sin(s.t * 6) * 1.5);
-		rect(g, 232, y - 12, 9, 12, C.cat);
-		rect(g, 233, y - 18, 8, 6, C.cat);
-		dot(g, 233, y - 19, C.cat);
-		dot(g, 240, y - 19, C.cat);
-		dot(g, 235, y - 16, C.amber);
-		dot(g, 238, y - 16, C.amber);
-		rect(g, 241, y - 3, 5, 2, C.catLight);
-		rect(g, 245, y - 7 + flick, 2, 5, C.catLight);
-		return;
-	}
-	rect(g, 230, y - 5, 14, 5, C.cat);
-	rect(g, 231, y - 6, 12, 1, C.cat);
-	rect(g, 240, y - 8, 6, 5, C.cat);
-	dot(g, 240, y - 9, C.cat);
-	dot(g, 245, y - 9, C.cat);
-	rect(g, 242, y - 6, 2, 1, C.ink);
-	rect(g, 226, y - 2, 5, 2, C.catLight);
-	if (s.still) return;
-	for (const offset of [0, 1.2]) {
-		const a = (s.t + offset) % 2.4;
-		sprite(g, Z, Math.round(246 + a * 2), Math.round(y - 11 - a * 4), C.lilac);
-	}
 }

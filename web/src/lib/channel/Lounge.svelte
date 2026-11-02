@@ -54,15 +54,24 @@
 	// three screens away in Settings (#666).
 	function tileEntries(
 		rider: () => (typeof channel.riders)[number],
+		focus = true,
 	): MenuEntry[] {
 		return [
-			{
-				label:
-					rider().id === channel.focusId ? 'Unfocus' : `Focus ${rider().name}`,
-				icon: Focus,
-				onSelect: () =>
-					channel.setFocus(rider().id === channel.focusId ? null : rider().id),
-			},
+			...(focus
+				? [
+						{
+							label:
+								rider().id === channel.focusId
+									? 'Unfocus'
+									: `Focus ${rider().name}`,
+							icon: Focus,
+							onSelect: () =>
+								channel.setFocus(
+									rider().id === channel.focusId ? null : rider().id,
+								),
+						},
+					]
+				: []),
 			// The glyph on the tile says they are sharing; this is the shortcut
 			// to the stage pick the chip under the stage already offers (#664).
 			...channel.stageSources
@@ -248,6 +257,14 @@
 	// The tick's roster carries no face, so the tile's avatar comes from the
 	// member list — the same lookup the people column does (SidePanel).
 	const faceOf = $derived(new Map(channel.members.map((m) => [m.id, m])));
+	// In the room everyone is a figure; a camera still needs a picture, so
+	// the room gives up a strip along its bottom to whoever has one on.
+	const cams = $derived(tiles.filter((r) => channel.videoOf(r.id)));
+	/** A figure's menu: the tile's, less focus, which the room has no tile for. */
+	function figureMenu(id: string): MenuEntry[] {
+		const rider = channel.riders.find((r) => r.id === id);
+		return rider ? tileEntries(() => rider, false) : [];
+	}
 </script>
 
 {#snippet freeRide()}
@@ -263,27 +280,7 @@
 	{/if}
 {/snippet}
 
-{#snippet tile(rider: (typeof channel.riders)[number])}
-	<RiderTile
-		{rider}
-		phase={channel.phase}
-		face={faceOf.get(rider.id)}
-		menu={() => tileEntries(() => rider)}
-		videoKey={channel.videoOf(rider.id) ?? 0}
-		videoAttach={channel.videoOf(rider.id)
-			? (node) => channel.attachVideo(rider.id, node)
-			: undefined}
-	/>
-{/snippet}
-
-<!-- `page`, like every other place (#1623): px-8 left 311 px for a stage
-     floored at 320, and the Lounge scrolled sideways on a
-     phone the moment anything was on stage. The bottom clears the drawer
-     and people buttons floating in the corners (#1627). -->
-<div
-	class="page flex h-full flex-col pb-20 xl:pb-8"
-	data-ride-stage={riding || undefined}
->
+{#snippet notices()}
 	<!-- The crew's announcement, above everything (#2408), and only while
 	     no session runs: mid-session the Lounge is tiles, the sprint and the
 	     stage, and a notice about next Thursday pushing them down is the
@@ -303,191 +300,242 @@
 			/>
 		{/if}
 	{/if}
-	<!-- No page header: the sidebar says which channel this is and the people
-	     column says who is in it. What is left is what the lounge can DO. -->
-	<div class="mb-4 flex flex-wrap items-center gap-2">
-		<!-- Away moved to the you-panel (#807): it is a statement about you,
-		     like the mic and the camera, and those are pinned bottom-left in
-		     every place rather than only in the Lounge's header. -->
-		<!-- Your tile shows the call your bpm whenever the trainer is paired
-		     (ADR-0008, #2804). -->
-		<HrShare />
-		{#if channel.stageSources.length > 0}
+{/snippet}
+
+{#snippet controls()}
+	<!-- Away moved to the you-panel (#807): it is a statement about you,
+	     like the mic and the camera, and those are pinned bottom-left in
+	     every place rather than only in the Lounge's header. -->
+	<!-- Your tile shows the call your bpm whenever the trainer is paired
+	     (ADR-0008, #2804). -->
+	<HrShare />
+	{#if channel.stageSources.length > 0}
+		<div
+			class="border-muted/20 ml-auto flex gap-0.5 rounded border p-0.5"
+			role="group"
+			aria-label="layout"
+		>
+			<!-- 28 px, the kit's (#2179): p-1 around a 13 px icon was 21,
+			     the same shape the jukebox rail's transport had before
+			     #1899, and these are pressed mid-ride. -->
+			{#each options as option (option.id)}
+				<button
+					onclick={() => setLayout(option.id)}
+					aria-pressed={layout === option.id}
+					title="{option.label} — {option.hint}"
+					aria-label="{option.label} layout"
+					class="icon-btn icon-btn-sm ride-stage:icon-btn-lg {layout ===
+					option.id
+						? 'bg-surface-raised text-ink'
+						: 'text-muted hover:text-ink'}"><option.icon size={13} /></button
+				>
+			{/each}
+		</div>
+	{/if}
+	<button
+		onclick={() => channel.openTv()}
+		class="btn btn-ghost btn-xs ride-stage:min-h-11 ride-stage:ride-word {channel
+			.stageSources.length
+			? ''
+			: 'ml-auto'}"><MonitorUp size={13} /> TV</button
+	>
+{/snippet}
+
+{#snippet tile(rider: (typeof channel.riders)[number])}
+	<RiderTile
+		{rider}
+		phase={channel.phase}
+		face={faceOf.get(rider.id)}
+		menu={() => tileEntries(() => rider)}
+		videoKey={channel.videoOf(rider.id) ?? 0}
+		videoAttach={channel.videoOf(rider.id)
+			? (node) => channel.attachVideo(rider.id, node)
+			: undefined}
+	/>
+{/snippet}
+
+{#if inRoom}
+	<!-- The lounge (ADR-0094): an idle voice channel is its room, and the room
+	     is the whole place, with everyone in the call in it as a figure. The
+	     page's notices and buttons float over its wall. A shared picture
+	     takes the room's place, a YouTube entry among them, so nothing is
+	     ever drawn over the player (RMF). -->
+	<div class="relative flex h-full flex-col">
+		<LoungeScene menuOf={figureMenu} />
+		<div
+			class="pointer-events-none absolute inset-x-0 top-0 flex items-start gap-2 p-3 sm:px-4"
+		>
 			<div
-				class="border-muted/20 ml-auto flex gap-0.5 rounded border p-0.5"
-				role="group"
-				aria-label="layout"
+				class="pointer-events-auto flex max-w-md min-w-0 flex-1 flex-col [&>*]:mb-2 [&>*]:shadow-lg"
 			>
-				<!-- 28 px, the kit's (#2179): p-1 around a 13 px icon was 21,
-				     the same shape the jukebox rail's transport had before
-				     #1899, and these are pressed mid-ride. -->
-				{#each options as option (option.id)}
-					<button
-						onclick={() => setLayout(option.id)}
-						aria-pressed={layout === option.id}
-						title="{option.label} — {option.hint}"
-						aria-label="{option.label} layout"
-						class="icon-btn icon-btn-sm ride-stage:icon-btn-lg {layout ===
-						option.id
-							? 'bg-surface-raised text-ink'
-							: 'text-muted hover:text-ink'}"><option.icon size={13} /></button
-					>
+				{@render notices()}
+				<PlanCard />
+			</div>
+			<div
+				class="bg-surface/85 pointer-events-auto ml-auto flex shrink-0 flex-wrap items-center gap-2 rounded px-1 py-0.5"
+			>
+				{@render controls()}
+			</div>
+		</div>
+		{#if cams.length}
+			<div
+				class="bg-surface flex shrink-0 gap-2 overflow-x-auto p-2"
+				aria-label="cameras"
+			>
+				{#each cams as rider (rider.id)}
+					<div class="w-40 shrink-0 sm:w-56">{@render tile(rider)}</div>
 				{/each}
 			</div>
 		{/if}
-		<button
-			onclick={() => channel.openTv()}
-			class="btn btn-ghost btn-xs ride-stage:min-h-11 ride-stage:ride-word {channel
-				.stageSources.length
-				? ''
-				: 'ml-auto'}"><MonitorUp size={13} /> TV</button
-		>
 	</div>
+{:else}
+	<!-- `page`, like every other place (#1623): px-8 left 311 px for a stage
+     floored at 320, and the Lounge scrolled sideways on a
+     phone the moment anything was on stage. The bottom clears the drawer
+     and people buttons floating in the corners (#1627). -->
+	<div
+		class="page flex h-full flex-col pb-20 xl:pb-8"
+		data-ride-stage={riding || undefined}
+	>
+		{@render notices()}
+		<!-- No page header: the sidebar says which channel this is and the people
+	     column says who is in it. What is left is what the lounge can DO. -->
+		<div class="mb-4 flex flex-wrap items-center gap-2">
+			{@render controls()}
+		</div>
 
-	{#if inRoom}
-		<!-- The lounge (ADR-0094): an idle voice channel is its room, which
-		     takes the page's spare height (#4302). A shared picture takes its
-		     place, a YouTube entry among them, so nothing is ever drawn over
-		     the player (RMF). -->
-		<LoungeScene />
-	{/if}
-	<div class={wrap}>
-		{#if onStage}
-			<!-- The stage (#280): many people may share at once, so the picker
+		<div class={wrap}>
+			{#if onStage}
+				<!-- The stage (#280): many people may share at once, so the picker
 			     chooses; the frame zooms and pans. Stacked it takes the height
 			     the divider below sets and centres itself at the picture's own
 			     shape; side by side it simply fills its column (#427). -->
-			<div class="min-w-0 shrink-0">
-				<Stage
-					{sources}
-					activeKey={onStage.key}
-					trackKey={pictureKey(onStage)}
-					height={stacked
-						? clampSize(stageH, STAGE_H_MIN, tallest())
-						: undefined}
-					onFit={(max) => (stageFit = max)}
-					onPick={(key) => channel.pickStage(key)}
-					attach={(node) => channel.attachStage(node, onStage!.key)}
-				/>
-			</div>
-			{#if stacked}
-				<!-- The one way the picture is resized (#427): the seam between it
+				<div class="min-w-0 shrink-0">
+					<Stage
+						{sources}
+						activeKey={onStage.key}
+						trackKey={pictureKey(onStage)}
+						height={stacked
+							? clampSize(stageH, STAGE_H_MIN, tallest())
+							: undefined}
+						onFit={(max) => (stageFit = max)}
+						onPick={(key) => channel.pickStage(key)}
+						attach={(node) => channel.attachStage(node, onStage!.key)}
+					/>
+				</div>
+				{#if stacked}
+					<!-- The one way the picture is resized (#427): the seam between it
 				     and the crew, dragged. There is no grip on the frame itself —
 				     a corner of diagonal lines nobody could find, and one that
 				     RMF would not let us draw over the player anyway. -->
-				<div
-					{@attach stageDivider}
-					class="group mb-3 flex h-4 w-full cursor-row-resize touch-none items-center justify-center"
-					role="separator"
-					aria-orientation="horizontal"
-					aria-label="resize the stage"
-					title="drag to resize the picture"
-				>
-					<!-- The strip is the target; the pill is what says so. Chrome, so
+					<div
+						{@attach stageDivider}
+						class="group mb-3 flex h-4 w-full cursor-row-resize touch-none items-center justify-center"
+						role="separator"
+						aria-orientation="horizontal"
+						aria-label="resize the stage"
+						title="drag to resize the picture"
+					>
+						<!-- The strip is the target; the pill is what says so. Chrome, so
 					     it takes the structural accent and never glows (ADR-0005). -->
-					<span
-						class="bg-muted/30 group-hover:bg-neon group-active:bg-neon h-1 w-16 rounded-full transition-colors"
-					></span>
-				</div>
+						<span
+							class="bg-muted/30 group-hover:bg-neon group-active:bg-neon h-1 w-16 rounded-full transition-colors"
+						></span>
+					</div>
+				{/if}
 			{/if}
-		{/if}
-		<div class="min-w-0">
-			{#if focused}
-				<!-- Focus narrows what you are looking at; it does not empty the
+			<div class="min-w-0">
+				{#if focused}
+					<!-- Focus narrows what you are looking at; it does not empty the
 				     grid, so everyone else stays beside them. -->
-				<div
-					class="grid min-h-0 shrink-0 gap-3 lg:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]"
-				>
-					<div>
-						<button
-							onclick={() => channel.setFocus(null)}
-							class="block w-full text-left"
-							title="tap to unfocus">{@render tile(focused)}</button
-						>
-						<p class="text-muted ride-stage:ride-word mt-2 text-xs">
-							<span class="text-ink font-medium">{focused.name}</span> is focused
-							— tap again to let go.
-						</p>
-					</div>
-					<div class="grid grid-cols-3 gap-2 lg:grid-cols-1">
-						{#each others as rider (rider.id)}
+					<div
+						class="grid min-h-0 shrink-0 gap-3 lg:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]"
+					>
+						<div>
 							<button
-								onclick={() => channel.setFocus(rider.id)}
-								class="block text-left"
-								title="focus {rider.name}">{@render tile(rider)}</button
+								onclick={() => channel.setFocus(null)}
+								class="block w-full text-left"
+								title="tap to unfocus">{@render tile(focused)}</button
 							>
-						{/each}
+							<p class="text-muted ride-stage:ride-word mt-2 text-xs">
+								<span class="text-ink font-medium">{focused.name}</span> is focused
+								— tap again to let go.
+							</p>
+						</div>
+						<div class="grid grid-cols-3 gap-2 lg:grid-cols-1">
+							{#each others as rider (rider.id)}
+								<button
+									onclick={() => channel.setFocus(rider.id)}
+									class="block text-left"
+									title="focus {rider.name}">{@render tile(rider)}</button
+								>
+							{/each}
+						</div>
 					</div>
-				</div>
-			{:else}
-				<!-- In the room everyone already sits on the sofa, so the tiles
-				     are a strip under it: names, cameras and numbers. Never so
-				     many across that a tile drops under its avatar's 12rem
-				     (#4305); a phone's two-up seats the avatar bottom-left. -->
-				<div
-					class="grid shrink-0 {inRoom
-						? 'grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'
-						: (onStage && !stacked) || pictureless
+				{:else}
+					<div
+						class="grid shrink-0 {(onStage && !stacked) || pictureless
 							? 'grid-cols-2 gap-3 2xl:grid-cols-3'
 							: 'gap-3 sm:grid-cols-2 2xl:grid-cols-3'}"
-				>
-					{#each tiles as rider (rider.id)}
-						{#if focusable}
-							<button
-								onclick={() => channel.setFocus(rider.id)}
-								class="block text-left"
-								title="focus {rider.name}">{@render tile(rider)}</button
-							>
-						{:else}
-							<div>{@render tile(rider)}</div>
-						{/if}
-					{/each}
-				</div>
-			{/if}
+					>
+						{#each tiles as rider (rider.id)}
+							{#if focusable}
+								<button
+									onclick={() => channel.setFocus(rider.id)}
+									class="block text-left"
+									title="focus {rider.name}">{@render tile(rider)}</button
+								>
+							{:else}
+								<div>{@render tile(rider)}</div>
+							{/if}
+						{/each}
+					</div>
+				{/if}
+			</div>
 		</div>
-	</div>
 
-	{#if channel.sprint}
-		<!-- The sprint's visual half on the Lounge (#1589): the cues reach
+		{#if channel.sprint}
+			<!-- The sprint's visual half on the Lounge (#1589): the cues reach
 		     every place from the shell, so a rider here heard a klaxon and a
 		     fanfare with nothing to look at. Compact — the Training place
 		     draws the roster. -->
-		<div class="mt-4">
-			<SprintMoment sprint={channel.sprint} myWatts={channel.you.watts} />
-		</div>
-	{/if}
-	{#if channel.game}
-		<div class="mt-4">
-			<GamePanel
-				game={channel.game}
-				roster={channelConnection.current?.live.tick?.roster ?? []}
-				canControl={channel.canDrive}
-				end={() => void endGame(channel)}
-				me={account.me?.id}
-			>
-				{#snippet roadside()}<RoadsideDeck
-						to={bottleFor(channel.riders, channel.focusId)}
-					/>{/snippet}
-			</GamePanel>
-		</div>
-	{/if}
-	{#if channel.phase === 'countdown'}
-		<!-- The count-in for whoever stayed here (#2599): the cues play on
+			<div class="mt-4">
+				<SprintMoment sprint={channel.sprint} myWatts={channel.you.watts} />
+			</div>
+		{/if}
+		{#if channel.game}
+			<div class="mt-4">
+				<GamePanel
+					game={channel.game}
+					roster={channelConnection.current?.live.tick?.roster ?? []}
+					canControl={channel.canDrive}
+					end={() => void endGame(channel)}
+					me={account.me?.id}
+				>
+					{#snippet roadside()}<RoadsideDeck
+							to={bottleFor(channel.riders, channel.focusId)}
+						/>{/snippet}
+				</GamePanel>
+			</div>
+		{/if}
+		{#if channel.phase === 'countdown'}
+			<!-- The count-in for whoever stayed here (#2599): the cues play on
 		     every page, and the digit they count belongs beside them. -->
-		<div class="mt-4">
-			<CountdownScreen
-				compact
-				remaining={channel.shared?.countdownRemaining ?? 0}
-				title={channel.shared?.workoutName ?? ''}
-			/>
-		</div>
-	{/if}
-	{#if channel.phase !== 'lounge'}
-		<LoungeSession {freeRide} />
-	{/if}
-	{#if channel.phase === 'lounge'}
-		<!-- Between sessions the stage is the call: Ride and Start a session
+			<div class="mt-4">
+				<CountdownScreen
+					compact
+					remaining={channel.shared?.countdownRemaining ?? 0}
+					title={channel.shared?.workoutName ?? ''}
+				/>
+			</div>
+		{/if}
+		{#if channel.phase !== 'lounge'}
+			<LoungeSession {freeRide} />
+		{/if}
+		{#if channel.phase === 'lounge'}
+			<!-- Between sessions the stage is the call: Ride and Start a session
 		     are the now bar's. -->
-		<PlanCard />
-	{/if}
-</div>
+			<PlanCard />
+		{/if}
+	</div>
+{/if}

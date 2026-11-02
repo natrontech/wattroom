@@ -1005,6 +1005,11 @@ export interface LoungeState {
    * From LoungeWeathers. "" is rain, the scene's default.
    */
   weather?: string;
+  /**
+   * How often the cat has been petted since the channel came up. Every
+   * screen wakes its cat when this goes up, so a pet is seen by everyone.
+   */
+  pets?: number /* int */;
 }
 /**
  * HouseRadioTitle is house radio's line on the deck and in the channel's

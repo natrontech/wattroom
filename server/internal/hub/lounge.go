@@ -12,7 +12,8 @@ import (
 // drops in silence.
 const loungeMinGap = 250 * time.Millisecond
 
-// lounge takes a rider's flip of the lamp or the weather (ADR-0094). Anyone in
+// lounge takes a rider's flip of the lamp or the weather, or a pet of the cat
+// (ADR-0094). Anyone in
 // the channel may: like the roadside, it paints and never reaches a ride.
 func (h *Hub) lounge(rm *channelState, rider protocol.Rider, want protocol.LoungeState) {
 	if rm.allow("lounge", rider.ID, h.now(), loungeMinGap) {
@@ -31,6 +32,13 @@ func (rm *channelState) setLounge(want protocol.LoungeState) {
 	if want.Weather == "rain" {
 		want.Weather = ""
 	}
+	// A pet is one more than the last, whatever the client counted: a lamp
+	// flip carrying an old count cannot take it back, nor one message add ten.
+	pets := rm.lounge.Pets
+	if want.Pets > pets {
+		pets++
+	}
+	want.Pets = pets
 	rm.lounge = want
 }
 

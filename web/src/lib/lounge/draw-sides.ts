@@ -178,7 +178,11 @@ function lights(g: Ctx, s: SceneInput) {
 	for (let x = 6, k = 0; x < s.w; x += 12, k++) {
 		const y = yAt(x) + 1;
 		rect(g, x, y, 2, 2, C.bulb);
-		const hue = [C.bulb, C.tealLight, C.heart][k % 3];
+		const hue = (
+			s.season === 'winter'
+				? [C.heart, C.leafLight, C.bulb]
+				: [C.bulb, C.tealLight, C.heart]
+		)[k % 3];
 		g.globalAlpha = s.lampOn ? 0.18 + 0.12 * glow : 0.35;
 		disc(g, x, y + 1, 2, hue);
 		g.globalAlpha = 1;

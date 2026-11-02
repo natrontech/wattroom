@@ -10,6 +10,9 @@ type LoungeState struct {
 	LampOff bool `json:"lampOff,omitempty"`
 	// From LoungeWeathers. "" is rain, the scene's default.
 	Weather string `json:"weather,omitempty"`
+	// How often the cat has been petted since the channel came up. Every
+	// screen wakes its cat when this goes up, so a pet is seen by everyone.
+	Pets int `json:"pets,omitempty"`
 }
 
 // LoungeWeathers is the closed set behind the lounge's window. The client keeps

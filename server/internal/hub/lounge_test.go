@@ -63,6 +63,9 @@ func TestSetLounge(t *testing.T) {
 		{"an unknown weather keeps the window", protocol.LoungeState{Weather: "snow"}, protocol.LoungeState{LampOff: true, Weather: "hail"}, &protocol.LoungeState{LampOff: true, Weather: "snow"}},
 		{"rain is the default and sends nothing", protocol.LoungeState{Weather: "snow"}, protocol.LoungeState{Weather: "rain"}, nil},
 		{"the lamp back on in rain sends nothing", protocol.LoungeState{LampOff: true}, protocol.LoungeState{}, nil},
+		{"a pet counts one", protocol.LoungeState{Pets: 4}, protocol.LoungeState{Pets: 5}, &protocol.LoungeState{Pets: 5}},
+		{"a wound-on count still counts one", protocol.LoungeState{Pets: 4}, protocol.LoungeState{Pets: 900}, &protocol.LoungeState{Pets: 5}},
+		{"a lamp flip with an old count keeps the pets", protocol.LoungeState{Pets: 4}, protocol.LoungeState{LampOff: true}, &protocol.LoungeState{LampOff: true, Pets: 4}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
