@@ -17,6 +17,12 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.11.9] - 2026-11-02
+
+### Fixed
+
+- Words keep their first sound, and voices stay full when several play at once (#4339)
+
 ## [2026.11.8] - 2026-11-02
 
 ### Added
@@ -4256,7 +4262,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.8...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.9...HEAD
+[2026.11.9]: https://github.com/natrontech/wattroom/compare/2026.11.8...2026.11.9
 [2026.11.8]: https://github.com/natrontech/wattroom/compare/2026.11.7...2026.11.8
 [2026.11.7]: https://github.com/natrontech/wattroom/compare/2026.11.6...2026.11.7
 [2026.11.6]: https://github.com/natrontech/wattroom/compare/2026.11.5...2026.11.6
