@@ -917,6 +917,30 @@ describe('createChannelAv', () => {
 		});
 	});
 
+	// #4345: a hub that never answers the seat claim left the rider with the
+	// banner gone and no word why. A refusal still stays quiet.
+	it.each([
+		{ what: 'says so when the hub never answers', timedOut: true },
+		{
+			what: 'stays out quietly when another screen has the voice',
+			timedOut: false,
+		},
+	])('$what', async ({ timedOut }) => {
+		let av!: ReturnType<typeof createChannelAv>;
+		const dispose = $effect.root(() => {
+			av = createChannelAv(channelAddress('c', 'mfw', 'MFW'), {
+				claim: async () => false,
+				timedOut: () => timedOut,
+				release: () => {},
+			});
+		});
+		await av.join();
+		expect(av.status).toBe(timedOut ? 'failed' : 'off');
+		if (timedOut) expect(av.error?.message).toMatch(/Reconnect/);
+		else expect(av.error).toBeNull();
+		dispose();
+	});
+
 	// #1203: a join that neither connects nor fails left "joining voice…" up
 	// for the rest of the ride — no timeout, no error, no button. The attempt
 	// is bounded now; the rider gets the failed state and its retry.

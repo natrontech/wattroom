@@ -46,6 +46,7 @@ import type { Segment, Workout } from '$lib/workout/types';
 import { listening } from '$lib/channel/listening.svelte';
 import { onPlacePath, type PlaceAddress } from '$lib/channel/address';
 import { isLivePhase } from '$lib/channel/tick-session';
+import { createVoiceRecovery } from '$lib/channel/voice-recover';
 
 /**
  * The voice channel you are IN (#173, ADR-0010's logical end): joining is a
@@ -131,6 +132,7 @@ function connect(address: PlaceAddress): Connection {
 	// One rider, one voice (ADR-0089): the hub says which screen carries it.
 	const av = createChannelAv(address, {
 		claim: (take) => live.claimVoice(take),
+		timedOut: () => live.voiceClaimTimedOut(),
 		release: () => live.releaseVoice(),
 	});
 	// Assigned inside the root below, which runs synchronously.
@@ -474,20 +476,40 @@ function connect(address: PlaceAddress): Connection {
 			};
 		});
 
-		// LiveKit dropping us while live gets ONE automatic rejoin with a
-		// fresh token — covers token expiry and transient drops (#219). It is
-		// a resume, not a fresh join: the mic comes back the way it was, and
-		// a rider who muted for a phone call stays muted (#641).
+		// LiveKit dropping us while live rejoins with a fresh token — covers
+		// token expiry and transient drops (#219) — and keeps trying through
+		// an outage, at once when the network returns (#4343). It is a resume,
+		// not a fresh join: the mic comes back the way it was, and a rider who
+		// muted for a phone call stays muted (#641).
+		const recovery = createVoiceRecovery({
+			join: () => av.join({ mic: av.micBeforeDrop }),
+			status: () => av.status,
+			signedOut: () => av.error?.signIn === true,
+			stillHere: () => channelConnection.current?.address.key === address.key,
+		});
+		const onOnline = () => recovery.online();
 		let seenDrops = 0;
+		let seenLeaves = 0;
 		$effect(() => {
 			const drops = av.dropped;
 			if (drops > seenDrops) {
 				seenDrops = drops;
-				setTimeout(() => {
-					if (channelConnection.current?.address.key === address.key)
-						void av.join({ mic: av.micBeforeDrop });
-				}, 2_000);
+				recovery.dropped();
 			}
+		});
+		$effect(() => {
+			const leaves = av.left;
+			if (leaves > seenLeaves) {
+				seenLeaves = leaves;
+				recovery.left();
+			}
+		});
+		$effect(() => {
+			window.addEventListener('online', onOnline);
+			return () => {
+				recovery.stop();
+				window.removeEventListener('online', onOnline);
+			};
 		});
 	});
 	return {
