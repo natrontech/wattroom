@@ -194,6 +194,15 @@
 		return () => clearInterval(tick);
 	});
 
+	// RACE stands as tall as RIDE (#4210): its two fields are one row where
+	// RIDE's are two, and a docked panel grows up from the Skyline, so a turn
+	// would move its top. Flat, the dock's row is the panel, and this reads 0.
+	let height = $state(0);
+	let rideHeight = $state(0);
+	$effect(() => {
+		if (shown === 'ride' && !tv) rideHeight = height;
+	});
+
 	const zoneStrip = $derived(
 		shown === 'power' && ctx.stats ? ctx.stats.zoneSeconds.slice(1, 8) : null,
 	);
@@ -218,6 +227,10 @@
 				? 'relative flex w-full flex-col gap-3 px-4 py-3'
 				: 'relative flex w-[21rem] max-w-full flex-col gap-3 px-4 py-3'
 		: 'panel relative'}"
+	bind:offsetHeight={height}
+	style:min-height={shown === 'race' && rideHeight
+		? `${rideHeight}px`
+		: undefined}
 >
 	<!-- The page's name and its dots sit in the row of numbers, so a page is
 	     one row tall where it fits and the focus above keeps its height (#3597);

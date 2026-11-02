@@ -97,6 +97,10 @@
 	const inFocus = $derived(
 		sprintFocus ? 'sprint' : channel.game ? 'game' : share ? 'media' : 'you',
 	);
+	// A race's panel names it and holds the coach's End game, and lists nobody
+	// until its podium: the crew stays, the race heading its panel (#4210).
+	const racing = $derived(!!channel.game?.race);
+	const crewShown = $derived(inFocus !== 'game' || racing);
 	// Only people actually turning the pedals are ranked. The server scores
 	// nothing for a rider with no samples and returns 1 for them, which is
 	// right for "before the first hard block" and absurd on a leaderboard:
@@ -286,6 +290,20 @@
 			</p>
 		{/if}
 	{/snippet}
+	{#snippet gamePanel()}
+		{#if channel.game}
+			<GamePanel
+				flat
+				game={channel.game}
+				roster={channelConnection.current?.live.tick?.roster ?? []}
+				canControl={channel.canControl}
+				end={() => void endGame(channel)}
+				me={account.me?.id}
+			>
+				{#snippet roadside()}<RoadsideDeck to={watched} />{/snippet}
+			</GamePanel>
+		{/if}
+	{/snippet}
 	{#snippet moment()}
 		{#if channel.sprint}<MomentCard
 				sprint={channel.sprint}
@@ -361,20 +379,11 @@
 						roster={inRide}
 					/>
 				</section>
-			{:else if inFocus === 'game' && channel.game}
+			{:else if inFocus === 'game' && !racing}
 				<section
 					class="min-h-0 overflow-y-auto {inWorld ? 'px-4 py-3' : 'px-4'}"
 				>
-					<GamePanel
-						flat
-						game={channel.game}
-						roster={channelConnection.current?.live.tick?.roster ?? []}
-						canControl={channel.canControl}
-						end={() => void endGame(channel)}
-						me={account.me?.id}
-					>
-						{#snippet roadside()}<RoadsideDeck to={watched} />{/snippet}
-					</GamePanel>
+					{@render gamePanel()}
 				</section>
 			{:else if inFocus === 'media' && share}
 				<section class="grid min-h-0 place-items-center px-6">
@@ -419,7 +428,11 @@
 		{/snippet}
 
 		{#snippet crew()}
-			{#if phone && inFocus !== 'game'}
+			{#if racing}
+				<!-- The race heads its crew's panel, as v3-race's groups (#4210). -->
+				<div class="px-4">{@render gamePanel()}</div>
+			{/if}
+			{#if phone && crewShown}
 				<!-- A phone's crew is the rows (no watts figure beside the head's,
 				     G2/G4), and a tap follows a rider, a second tap lets go (#1627). -->
 				<div class="py-2">
@@ -431,13 +444,13 @@
 							channel.setFocus(id === channel.focusId ? null : id)}
 					/>
 				</div>
-			{:else if inWorld && inFocus !== 'game'}
+			{:else if inWorld && crewShown}
 				<!-- Beside the road the crew stays under the seat, a sprint's card
 				     included (the box table): rows at the riding floor. -->
 				<div class="py-2">
 					<CrewRows riders={inRide} offsets={channel.ridden?.bunch?.offsets} />
 				</div>
-			{:else if !quiet && inFocus !== 'game'}
+			{:else if !quiet && crewShown}
 				<!-- The crew. A group-training surface that shows only your own
 			     numbers is a solo app with a chat window attached. A game's panel
 			     already lists everyone; a second list of the same people is what
