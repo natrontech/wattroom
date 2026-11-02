@@ -173,6 +173,49 @@ func TestASessionOpensTheRoadToItsChannel(t *testing.T) {
 	}
 }
 
+// A plan opens the road only as the crew's calendar shows it (#4150): not
+// once it is 30 minutes past its start, not to a member its private channel
+// does not admit, and not once its planner is out of the crew.
+func TestAPlanOpensTheRoadOnlyWhileTheCrewCanOpenIt(t *testing.T) {
+	c := roadSetup(t)
+	alice, bob := c.h.users.ByToken["alice"].ID, c.h.users.ByToken["bob"].ID
+	route, _ := store.ParseUUID(c.route)
+	private, _ := store.ParseUUID(testx.Voice(t, c.h.store, c.crew, "Private", true))
+	theirs := testx.Crew(t, c.h.store, "Bob's crew", bob, alice)
+	for _, p := range []struct {
+		name    string
+		crew    pgtype.UUID
+		channel pgtype.UUID
+		ago     time.Duration
+		leave   bool
+	}{
+		{"a plan past its time", c.crew, pgtype.UUID{}, 31 * time.Minute, false},
+		{"a plan in a channel bob may not enter", c.crew, private, -time.Hour, false},
+		{"a plan whose planner left", theirs, pgtype.UUID{}, -time.Hour, true},
+	} {
+		if _, err := c.h.store.Pool.Exec(t.Context(), "delete from scheduled_sessions where route_id = $1", route); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := c.h.store.Queries.CreateCrewPlan(t.Context(), db.CreateCrewPlanParams{
+			CrewID: p.crew, ChannelID: p.channel, WorkoutName: "Road", WorkoutJson: []byte(`{"name":"Road","steps":[]}`),
+			StartsAt: pgtype.Timestamptz{Time: time.Now().Add(-p.ago), Valid: true}, CreatedBy: alice, RouteID: route,
+		}); err != nil {
+			t.Fatal(err)
+		}
+		if p.leave {
+			if status, _, _ := c.road(t, "bob", c.hash); status != http.StatusOK {
+				t.Fatalf("%s, before she left: %d, want 200", p.name, status)
+			}
+			if _, err := c.h.store.Pool.Exec(t.Context(), "delete from crew_roles where crew_id = $1 and user_id = $2", p.crew, alice); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if status, _, _ := c.road(t, "bob", c.hash); status != http.StatusForbidden {
+			t.Errorf("%s: bob reads the road: %d, want 403", p.name, status)
+		}
+	}
+}
+
 // The crew's map is the span between the anchors: none of the owner's ends.
 // A crew anyone can join sees it only once the owner has said yes for that
 // crew, and not after they say no.

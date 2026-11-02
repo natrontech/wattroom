@@ -218,6 +218,12 @@ func (s *Service) handleLeaveCrew(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		err = q.LeaveCrewRole(r.Context(), db.LeaveCrewRoleParams{CrewID: crew.ID, UserID: user.ID})
 	}
+	// Their roads leave with them (#4150): no plan of theirs they can no
+	// longer cancel keeps one open to the crew.
+	var plans []db.CancelPlannerRoadPlansRow
+	if err == nil {
+		plans, err = q.CancelPlannerRoadPlans(r.Context(), db.CancelPlannerRoadPlansParams{CrewID: crew.ID, Planner: user.ID})
+	}
 	var swept int64
 	if err == nil {
 		swept, err = q.DeleteCrewIfEmpty(r.Context(), crew.ID)
@@ -234,6 +240,9 @@ func (s *Service) handleLeaveCrew(w http.ResponseWriter, r *http.Request) {
 	// — a rollback cannot reopen one.
 	for _, id := range voice {
 		s.evict(store.UUIDString(id), store.UUIDString(user.ID))
+	}
+	if swept == 0 {
+		s.roadPlansCancelled(r.Context(), crew.ID, plans, user)
 	}
 	s.log.Info("crew left", "crew", store.UUIDString(crew.ID), "rider", store.UUIDString(user.ID), "crewDeleted", swept > 0)
 	s.changed(r.Context(), crew.ID, user.ID)

@@ -195,6 +195,12 @@ func (s *Service) handleSetCrewRole(w http.ResponseWriter, r *http.Request) {
 		if err := s.store.Queries.LeaveCrewChannels(r.Context(), db.LeaveCrewChannelsParams{CrewID: crew.ID, UserID: target}); err != nil {
 			s.log.Error("crew ban channel sweep failed", "err", err, "crew", store.UUIDString(crew.ID))
 		}
+		// Leaving's rule (#4150): the banned rider's roads leave the crew's plans.
+		plans, err := s.store.Queries.CancelPlannerRoadPlans(r.Context(), db.CancelPlannerRoadPlansParams{CrewID: crew.ID, Planner: target})
+		if err != nil {
+			s.log.Error("crew ban road plan sweep failed", "err", err, "crew", store.UUIDString(crew.ID))
+		}
+		s.roadPlansCancelled(r.Context(), crew.ID, plans, actor)
 		voice, err := s.store.Queries.ListChannelIDsOfKind(r.Context(), db.ListChannelIDsOfKindParams{CrewID: crew.ID, Kind: "voice"})
 		if err != nil {
 			s.log.Error("crew voice channels lookup failed", "err", err, "crew", store.UUIDString(crew.ID))

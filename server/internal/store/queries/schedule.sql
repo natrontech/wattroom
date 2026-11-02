@@ -112,6 +112,15 @@ returning id, workout_name, workout_json, starts_at, created_by, created_at, rem
 delete from scheduled_sessions where id = sqlc.arg(id) and crew_id = sqlc.arg(crew_id)
 returning workout_name, starts_at, channel_id;
 
+-- name: CancelPlannerRoadPlans :many
+-- A rider out of a crew, by leaving or a ban, takes their roads out of its
+-- plans (#4150, ADR-0063): the crew could read a road through a plan its
+-- owner could no longer cancel.
+delete from scheduled_sessions
+where crew_id = sqlc.arg(crew_id) and created_by = sqlc.arg(planner)
+  and route_id is not null and started_at is null
+returning workout_name, workout_json, starts_at, channel_id;
+
 -- name: StartCrewPlan :execrows
 -- Once (#1905), and the channel it ran in is kept on a plan that named none.
 update scheduled_sessions

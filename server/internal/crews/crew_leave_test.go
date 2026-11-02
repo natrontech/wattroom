@@ -4,9 +4,11 @@ import (
 	"errors"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/natrontech/wattroom/server/internal/routes"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -157,5 +159,42 @@ func TestTheCrewListSaysWhenTheCrewGoesWithTheNextStep(t *testing.T) {
 	}
 	if _, l := flags("alice"); l {
 		t.Error("the owner cannot leave, so lastOut is never hers")
+	}
+}
+
+// A rider out of the crew takes their roads out of its plans (#4150): bob
+// leaving and carol banned each cancel the plan on their own road, and the
+// crew is mailed as for any cancel. A plan without a road stays on the
+// calendar.
+func TestARiderOutOfTheCrewTakesTheirRoadsOutOfItsPlans(t *testing.T) {
+	h := setup(t)
+	h.svc.SetRoads(routes.NewAttacher(h.store.Queries, nil))
+	notifier := &fakeNotifier{}
+	h.svc.SetNotifier(notifier)
+	crew := h.newCrew(t, "alice", "Planners")
+	h.join(t, "bob", crew)
+	h.join(t, "carol", crew)
+	at := time.Now().Add(24 * time.Hour)
+	plan := func(who string) {
+		t.Helper()
+		if status, body := h.call(t, who, http.MethodPost, schedulePath(crew), roadPlanBody(h.tellingRoute(t, who, "gpx"), at)); status != http.StatusCreated {
+			t.Fatalf("%s plans their road: %d %v", who, status, body)
+		}
+	}
+	plan("bob")
+	plan("carol")
+	plain := h.planSession(t, "bob", crew, "Openers", at, "")
+
+	if status, body := h.call(t, "bob", http.MethodPost, crewPath(crew, "/leave"), ""); status != http.StatusNoContent {
+		t.Fatalf("bob leaves: %d %v", status, body)
+	}
+	h.banFromCrew(t, crew, "carol")
+
+	left := h.crewSchedule(t, "alice", crew)
+	if _, ok := left[plain]; len(left) != 1 || !ok {
+		t.Errorf("the calendar holds %d plans, want only bob's plan without a road", len(left))
+	}
+	if got := notifier.sent(t); len(got) != 2 {
+		t.Errorf("cancellations = %v, want one for each road plan", got)
 	}
 }
