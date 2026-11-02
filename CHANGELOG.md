@@ -17,6 +17,12 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.11.4] - 2026-11-02
+
+### Added
+
+- The jukebox and cheers open from the now bar (#4323)
+
 ## [2026.11.3] - 2026-11-02
 
 ### Added
@@ -4221,7 +4227,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.3...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.4...HEAD
+[2026.11.4]: https://github.com/natrontech/wattroom/compare/2026.11.3...2026.11.4
 [2026.11.3]: https://github.com/natrontech/wattroom/compare/2026.11.2...2026.11.3
 [2026.11.2]: https://github.com/natrontech/wattroom/compare/2026.11.1...2026.11.2
 [2026.11.1]: https://github.com/natrontech/wattroom/compare/2026.10.7...2026.11.1
