@@ -7,4 +7,6 @@ export const nowPanel = $state<{
 	open: 'music' | 'react' | null;
 	music: HTMLElement | null;
 	react: HTMLElement | null;
-}>({ open: null, music: null, react: null });
+	/** Asked from the bar, answered by the shell: open the session picker. */
+	ask: 'session' | null;
+}>({ open: null, music: null, react: null, ask: null });

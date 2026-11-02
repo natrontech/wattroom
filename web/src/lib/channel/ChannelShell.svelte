@@ -337,6 +337,12 @@
 
 	// The now bar's panels close with the channel's page.
 	$effect(() => () => (nowPanel.open = null));
+	// The bar's "Start a session for everyone", answered where the picker is.
+	$effect(() => {
+		if (nowPanel.ask !== 'session') return;
+		nowPanel.ask = null;
+		layers.openPicker(undefined, undefined, ownRoad(connection.freeRide.road));
+	});
 	let pickerAt = $state<HTMLElement | null>(null);
 </script>
 
