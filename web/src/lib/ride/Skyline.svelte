@@ -14,6 +14,7 @@
 	 * halo painted once.
 	 */
 	import { untrack } from 'svelte';
+	import { innerHeight } from 'svelte/reactivity/window';
 	import { ZONE_BG } from '$lib/components/zones';
 	import { prefersReducedMotion } from '$lib/motion';
 	import { heightAt } from '$lib/road/at-metre';
@@ -22,6 +23,7 @@
 	import {
 		aheadFor,
 		bandIn,
+		chipShift,
 		chipsIn,
 		createAheadEase,
 		frameFor,
@@ -79,6 +81,8 @@
 	const uid = $props.id();
 	let width = $state(0);
 	let height = $state(0);
+	// At least half the widest class chip, "III" (3vh on a TV), so it sits flush.
+	const chipEdge = $derived(tv ? 0.05 * (innerHeight.current ?? 1080) : 24);
 	const climbs = $derived(climbsOf(road));
 	const paged = $derived(prefersReducedMotion.current);
 	const perTick = $derived(stepsPerTick(mps, paged));
@@ -232,10 +236,12 @@
 				{/each}
 				{#each chips as chip, i (i)}
 					<span
-						class="border-neon bg-surface text-ink absolute -mt-1 -translate-x-1/2 -translate-y-full rounded border px-1 leading-none font-bold {tv
+						class="border-neon bg-surface text-ink absolute -mt-1 rounded border px-1 leading-none font-bold {tv
 							? 'text-[3vh]'
 							: 'text-sm'}"
 						style:left="{chip.x}px"
+						style:transform="translate({-100 *
+							chipShift(chip.x - shift, width, chipEdge)}%, -100%)"
 						style:top="{chip.y}px">{chip.cls}</span
 					>
 				{/each}

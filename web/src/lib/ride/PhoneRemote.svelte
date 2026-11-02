@@ -162,7 +162,10 @@
 				aria-live="polite"
 				data-testid="remote-gear"
 			>
-				{live.gear.label}{live.gear.atEnd ? ' · end' : ''}
+				<!-- Named, as the computer's field is: blind gears read a bare "0". -->
+				Gear {live.gear.label.replace(/^Gear /, '')}{live.gear.atEnd
+					? ' · end'
+					: ''}
 			</p>
 		{/if}
 	{/if}

@@ -281,6 +281,17 @@ export function chipsIn(
 		}));
 }
 
+/**
+ * How far left of a climb's top its class chip sits, as a share of the chip's
+ * own width (#4235): centred over the top, eased to flush with the panel's
+ * edge within `edge` px of it, so a chip entering or leaving is never cut.
+ * `x` is the top in panel px; flush holds for any chip up to 2 × `edge` wide.
+ */
+export function chipShift(x: number, width: number, edge: number): number {
+	const near = (d: number) => Math.min(1, Math.max(0, d / edge));
+	return 0.5 + 0.5 * near(x - (width - edge)) - 0.5 * near(edge - x);
+}
+
 /** A block of a road workout: metres along the road, and its zone. */
 export interface BandBlock {
 	fromM: number;
