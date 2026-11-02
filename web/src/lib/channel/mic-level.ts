@@ -1,4 +1,10 @@
-import { ENV_ATTACK_MS, ENV_RELEASE_MS, envelope } from '$lib/channel/gate';
+import {
+	ENV_ATTACK_MS,
+	ENV_RELEASE_MS,
+	envelope,
+	voiceDspOptions,
+} from '$lib/channel/gate';
+import { type VoiceDspParams, createVoiceDsp } from '$lib/channel/voice-dsp';
 
 /**
  * The mic's level, measured continuously (#514).
@@ -30,6 +36,7 @@ export interface MicMeter {
 }
 
 const PROCESSOR = 'mic-level';
+const VOICE = 'voice-gate';
 /** ~21 ms between posts: fast enough that the gate opens on the first syllable. */
 const POST_MS = 20;
 
@@ -68,6 +75,30 @@ class MicLevel extends AudioWorkletProcessor {
 	}
 }
 registerProcessor('${PROCESSOR}', MicLevel);
+
+const createVoiceDsp = ${createVoiceDsp.toString()};
+class VoiceGate extends AudioWorkletProcessor {
+	constructor(options) {
+		super();
+		this.dsp = createVoiceDsp(options.processorOptions);
+		this.since = 0;
+		this.port.onmessage = (event) => this.dsp.set(event.data);
+	}
+	process(inputs, outputs) {
+		const channel = inputs[0] && inputs[0][0];
+		const output = outputs[0];
+		if (!channel || !output || !output[0]) return true;
+		this.dsp.process(channel, output[0]);
+		this.since += (channel.length / sampleRate) * 1000;
+		if (this.since >= ${POST_MS}) {
+			this.since = 0;
+			const { level, open, threshold } = this.dsp;
+			this.port.postMessage({ level, open, threshold });
+		}
+		return true;
+	}
+}
+registerProcessor('${VOICE}', VoiceGate);
 `;
 
 /** Modules are added per context; adding the same one twice throws. */
@@ -131,6 +162,47 @@ export async function createMicMeter(
 		stop() {
 			clearInterval(timer);
 			analyser.disconnect();
+		},
+	};
+}
+
+/** What the transmit gate reports from the audio thread, every POST_MS. */
+export interface VoiceState {
+	level: number;
+	open: boolean;
+	/** The mark gating the rider: theirs, or the room's when automatic. */
+	threshold: number;
+}
+
+export interface VoiceGate extends MicMeter {
+	set(params: Partial<VoiceDspParams>): void;
+}
+
+/**
+ * The transmit path's meter, gate and noise suppression in one worklet
+ * (`voice-dsp.ts`): the gain moves on the audio thread, so a busy main thread
+ * no longer clips the start of a word. Null where there is no worklet, and the
+ * chain falls back to gating from the main thread.
+ */
+export async function createVoiceGate(
+	ctx: AudioContext,
+	source: AudioNode,
+	onState: (state: VoiceState) => void,
+): Promise<VoiceGate | null> {
+	if (!(await addModule(ctx))) return null;
+	const node = new AudioWorkletNode(ctx, VOICE, {
+		outputChannelCount: [1],
+		processorOptions: voiceDspOptions(ctx.sampleRate),
+	});
+	node.port.onmessage = (event) => onState(event.data as VoiceState);
+	source.connect(node);
+	return {
+		kind: 'worklet',
+		out: node,
+		set: (params) => node.port.postMessage(params),
+		stop() {
+			node.port.onmessage = null;
+			node.disconnect();
 		},
 	};
 }

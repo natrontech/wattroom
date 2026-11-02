@@ -1,25 +1,23 @@
 import type { NoiseVoice, Voice } from './cue-catalogue';
 
 /**
- * The nodes a cue and a master are made of (#152, #3353). Both functions
- * are self-contained — no imports, no module state — because
- * e2e/mix.spec.ts loads these very functions into a page by their source and
- * renders them offline: what it measures is what plays.
+ * The nodes a cue and a master are made of (#152, #3353). No imports and no
+ * module state, so a page can load them by their source and render them
+ * offline: what it measures is what plays.
  */
 
 /**
- * The limiter a master ends in, wired into `destination`; returns its input.
- * Cues pile up — a klaxon, a cheer burst and a block change can land in the
- * same second — and a summed peak past 1.0 hard-clips, which is harsh on
- * laptop speakers and headphones alike. The cue and board bus ends in one
- * (cues.ts), and so does the voice bus (av-output.ts), where faders reach ×2.
+ * The limiter the cue and board bus ends in (cues.ts), wired into
+ * `destination`; returns its input. Cues pile up — a klaxon, a cheer burst and
+ * a block change can land in the same second — and a summed peak past 1.0
+ * hard-clips, which is harsh on laptop speakers and headphones alike.
  *
- * Two stages. The compressor squashes the pileup. Its 3 ms attack lets an
- * onset through, though: every cue at once with the loudest board clip
- * peaked at +0.84 dBFS (#3353). The brickwall after it holds the ceiling —
- * ratio 20 from −1 dBFS, no knee, no attack — and a trim takes back the
- * makeup gain Web Audio gives every compressor, (1 ÷ its gain at 0 dBFS)^0.6,
- * so nothing under the ceiling changes at all.
+ * Two stages. The compressor squashes the pileup, from -6 dBFS at 12:1, and
+ * Web Audio gives it a makeup gain of its own ((1 ÷ its gain at 0 dBFS)^0.6,
+ * +2.6 dB measured in Chrome) that the cue loudness was measured with. Its
+ * 3 ms attack lets an onset through, though: every cue at once with the
+ * loudest board clip peaked at +0.84 dBFS (#3353). `makeCeiling` after it
+ * holds the line.
  */
 export function makeLimiter(
 	context: BaseAudioContext,
@@ -31,7 +29,21 @@ export function makeLimiter(
 	squash.ratio.value = 12;
 	squash.attack.value = 0.003;
 	squash.release.value = 0.25;
+	squash.connect(makeCeiling(context, destination));
+	return squash;
+}
 
+/**
+ * A brickwall at -1 dBFS, wired into `destination`; returns its input. Ratio
+ * 20, no knee, no attack, and a trim that takes back the makeup gain Web Audio
+ * gives it, so nothing under the ceiling changes at all. The voice bus ends in
+ * this alone (av-output.ts): voices must never ride a compressor, because one
+ * shared compressor turns every loud voice into a dip in all the others.
+ */
+export function makeCeiling(
+	context: BaseAudioContext,
+	destination: AudioNode,
+): AudioNode {
 	const ceiling = -1;
 	const ratio = 20;
 	const brick = context.createDynamicsCompressor();
@@ -42,11 +54,9 @@ export function makeLimiter(
 	brick.release.value = 0.05;
 	const trim = context.createGain();
 	trim.gain.value = 10 ** ((0.6 * ceiling * (1 - 1 / ratio)) / 20);
-
-	squash.connect(brick);
 	brick.connect(trim);
 	trim.connect(destination);
-	return squash;
+	return brick;
 }
 
 /** A second of white noise: a shutter's click has no pitch. Its caller keeps it. */

@@ -67,6 +67,10 @@
 				effectiveThreshold={av.effectiveGateThreshold}
 				onVoiceMode={(m) => av.setMode(m)}
 				onGateThreshold={(t) => av.setGateThreshold(t)}
+				gateAuto={av.gateAuto}
+				onGateAuto={(on) => av.setGateAuto(on)}
+				noiseSuppression={av.noiseSuppression}
+				onNoiseSuppression={(on) => av.setNoiseSuppression(on)}
 				micTesting={av.micTesting}
 				onMicTest={() => void av.toggleMicTest()}
 				onRiderGain={(id, gain) => av.setRiderGain(id, gain)}

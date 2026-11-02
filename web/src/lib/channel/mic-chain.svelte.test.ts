@@ -16,8 +16,12 @@ vi.mock('$lib/channel/mic-level', () => ({
 			};
 		},
 	),
+	// No worklet by default: these tests drive the main-thread gate, and the
+	// audio-thread one has its own (`voice-dsp.test.ts`, and below).
+	createVoiceGate: vi.fn(async () => null),
 }));
 
+import { createVoiceGate } from '$lib/channel/mic-level';
 import {
 	SILENT_MS,
 	createMicChain,
@@ -289,6 +293,53 @@ describe('what the call hears', () => {
 		expect(chain.transmitting).toBe(true);
 		chain.setPttHeld(false);
 		expect(chain.transmitting).toBe(false);
+	});
+
+	it('tells the audio-thread gate who decides: the call, push-to-talk, or the level', async () => {
+		const set = vi.fn();
+		let post: (s: {
+			level: number;
+			open: boolean;
+			threshold: number;
+		}) => void = () => {};
+		vi.mocked(createVoiceGate).mockImplementationOnce(
+			async (_c, _s, onState) => {
+				post = onState;
+				return {
+					kind: 'worklet',
+					out: { connect: () => {} } as unknown as AudioNode,
+					set,
+					stop: () => {},
+				};
+			},
+		);
+		let live = false;
+		const deps = host({ live: () => live });
+		const chain = createMicChain(deps);
+		await chain.open();
+		expect(set).toHaveBeenLastCalledWith(
+			expect.objectContaining({ force: 'shut', auto: true }),
+		);
+		live = true;
+		post({ level: 0.1, open: true, threshold: 0.012 });
+		expect(set).toHaveBeenLastCalledWith(
+			expect.objectContaining({ force: null }),
+		);
+		expect(chain.transmitting).toBe(true);
+		expect(chain.effectiveThreshold).toBe(0.012);
+		chain.setMode('ptt');
+		expect(set).toHaveBeenLastCalledWith(
+			expect.objectContaining({ force: 'shut' }),
+		);
+		chain.setPttHeld(true);
+		expect(set).toHaveBeenLastCalledWith(
+			expect.objectContaining({ force: 'open' }),
+		);
+		chain.setNoiseSuppression(true);
+		expect(set).toHaveBeenLastCalledWith(expect.objectContaining({ ns: true }));
+		const calls = set.mock.calls.length;
+		post({ level: 0.1, open: true, threshold: 0.012 });
+		expect(set.mock.calls.length).toBe(calls); // nothing new, nothing sent
 	});
 
 	it('opens for a held Talk in voice activation, and shuts after it over a quiet room (#4163)', async () => {

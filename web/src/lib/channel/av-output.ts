@@ -1,16 +1,22 @@
 import { createMicMeter, type MicMeter } from '$lib/channel/mic-level';
 import { mixer } from '$lib/sound/mixer.svelte';
 import { riderOf } from '$lib/channel/tabs';
-import { makeLimiter } from '$lib/sound/cue-graph';
+import { makeCeiling } from '$lib/sound/cue-graph';
 import { onDuck } from '$lib/sound/duck';
 
 /**
  * Everyone else's voice, on its way to your speakers (#152, #179).
  *
- * media-stream → per-rider gain → one limiter → destination. The gain is
+ * media-stream → per-rider gain → one ceiling → destination. The gain is
  * what lets a quiet teammate go ABOVE unity, which `element.volume` cannot —
- * it caps at 1. The limiter exists because of that: faders reach ×2, and two
+ * it caps at 1. The ceiling exists because of that: faders reach ×2, and two
  * boosted voices summing past 1.0 would hard-clip at the DAC.
+ *
+ * A ceiling, never the cue bus's compressor. That one sat here until the
+ * voice-quality reports of 2026-11: it lifted every voice 2.6 dB, squeezed
+ * them from -8 dBFS, and pulled each voice down under any other loud one, by
+ * 2.7 dB under a voice at -6 dBFS RMS, over a 250 ms release (measured in
+ * Chrome). Talking at once, or over a share, every voice sank.
  *
  * The graph taps `el.srcObject` with `createMediaStreamSource`, not the
  * element itself with `createMediaElementSource` (#1160, a rider report: the
@@ -138,7 +144,7 @@ export function createRiderOutput(
 					applySink();
 				}
 				if (!bus) {
-					bus = makeLimiter(ctx, ctx.destination);
+					bus = makeCeiling(ctx, ctx.destination);
 				}
 				// A key routed twice is a voice heard twice (#1339): the first
 				// graph would stay wired to the bus with nothing left holding
@@ -212,8 +218,10 @@ export function createRiderOutput(
 		 * Browsers may suspend audio graphs in long-hidden tabs; coming back
 		 * must not need a rejoin (#214).
 		 */
+		/** Returns whether the graph is running now (or there is none yet). */
 		resume() {
 			if (ctx?.state === 'suspended') void ctx.resume();
+			return !ctx || ctx.state === 'running';
 		},
 		close() {
 			stopDucking();

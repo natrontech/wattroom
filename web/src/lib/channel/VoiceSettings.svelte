@@ -20,6 +20,10 @@
 		effectiveThreshold = 0,
 		onVoiceMode,
 		onGateThreshold,
+		gateAuto = true,
+		onGateAuto,
+		noiseSuppression = false,
+		onNoiseSuppression,
 		micTesting = false,
 		onMicTest,
 		onRiderGain,
@@ -39,6 +43,10 @@
 		effectiveThreshold?: number;
 		onVoiceMode?: (mode: 'gate' | 'ptt') => void;
 		onGateThreshold?: (threshold: number) => void;
+		gateAuto?: boolean;
+		onGateAuto?: (on: boolean) => void;
+		noiseSuppression?: boolean;
+		onNoiseSuppression?: (on: boolean) => void;
 		micTesting?: boolean;
 		onMicTest?: () => void;
 		/** Resets go through av, so a rider still in voice hears the change. */
@@ -108,6 +116,10 @@
 				{gateThreshold}
 				{effectiveThreshold}
 				{onGateThreshold}
+				{gateAuto}
+				{onGateAuto}
+				{noiseSuppression}
+				{onNoiseSuppression}
 				{micTesting}
 			/>
 		</div>

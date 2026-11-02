@@ -111,6 +111,10 @@
 							effectiveThreshold={voice.effectiveGateThreshold}
 							onGateThreshold={(t) => voice.setGateThreshold(t)}
 							micTesting={voice.micTesting}
+							gateAuto={voice.gateAuto}
+							onGateAuto={(on) => voice.setGateAuto(on)}
+							noiseSuppression={voice.noiseSuppression}
+							onNoiseSuppression={(on) => voice.setNoiseSuppression(on)}
 						/>
 					</div>
 					{#if !voice.micOn}

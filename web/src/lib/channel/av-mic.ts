@@ -128,6 +128,12 @@ export function createMic(host: MicHost) {
 			// Tuning mid-sentence must land on this breath, not the next tick.
 			chain.setThreshold(next);
 		},
+		setAuto(on: boolean) {
+			chain.setAuto(on);
+		},
+		setNoiseSuppression(on: boolean) {
+			chain.setNoiseSuppression(on);
+		},
 		setPtt(held: boolean) {
 			chain.setPttHeld(held);
 		},
