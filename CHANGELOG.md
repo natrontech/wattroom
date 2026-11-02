@@ -17,6 +17,16 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.11.11] - 2026-11-02
+
+### Added
+
+- House radio stops looping, and plays lofi, 8-bit and ambient sets (#4348)
+
+### Fixed
+
+- Your imported roads are Your routes on every picker (#4346)
+
 ## [2026.11.10] - 2026-11-02
 
 ### Added
@@ -4269,7 +4279,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.10...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.11...HEAD
+[2026.11.11]: https://github.com/natrontech/wattroom/compare/2026.11.10...2026.11.11
 [2026.11.10]: https://github.com/natrontech/wattroom/compare/2026.11.9...2026.11.10
 [2026.11.9]: https://github.com/natrontech/wattroom/compare/2026.11.8...2026.11.9
 [2026.11.8]: https://github.com/natrontech/wattroom/compare/2026.11.7...2026.11.8
