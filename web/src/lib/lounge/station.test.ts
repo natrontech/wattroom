@@ -5,6 +5,7 @@ import {
 	barNotes,
 	positionAt,
 	sectionOf,
+	styleOf,
 	tuneOf,
 } from '$lib/lounge/station';
 
@@ -130,5 +131,20 @@ describe('house radio station', () => {
 					expect(n.midi).toBeLessThanOrEqual(81);
 				}
 		}
+	});
+
+	it('plays the style the channel picked instead of the mix, alike on every screen', () => {
+		for (let slot = 0; slot < 40; slot++) {
+			expect(styleOf('crew-a', slot, 'chip')).toBe('chip');
+			expect(tuneOf('crew-a', slot, 'ambient').style).toBe('ambient');
+			expect(tuneOf('crew-a', slot, 'lofi')).toEqual(
+				tuneOf('crew-a', slot, 'lofi'),
+			);
+		}
+		const mix = Array.from({ length: 40 }, (_, slot) =>
+			styleOf('crew-a', slot),
+		);
+		expect(new Set(mix).size).toBeGreaterThan(1);
+		expect(tuneOf('crew-a', 3, '')).toEqual(tuneOf('crew-a', 3));
 	});
 });

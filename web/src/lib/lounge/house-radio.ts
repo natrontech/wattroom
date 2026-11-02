@@ -10,6 +10,7 @@ import {
 	sectionOf,
 	tuneOf,
 	type Note,
+	type Style,
 	type Tune,
 } from '$lib/lounge/station';
 import { bass, lead } from '$lib/lounge/radio-voices';
@@ -133,13 +134,15 @@ export function createHouseRadio(station: string, serverNowMs: () => number) {
 	let offset = 0;
 	let cursor = { slot: 0, bar: 0, s: 0 };
 	let written = { slot: -1, bar: -1, notes: [] as Note[] };
+	/** The style the channel picked, '' for the mix. */
+	let pick: Style | '' = '';
 
 	function seat() {
 		if (!g) return;
 		offset = serverNowMs() / 1000 - g.ctx.currentTime;
 		const at = g.ctx.currentTime + offset + 0.05;
 		let slot = Math.floor(at / SLOT_SEC);
-		const tune = tuneOf(station, slot);
+		const tune = tuneOf(station, slot, pick);
 		const into = at - slot * SLOT_SEC;
 		let bar = Math.floor(into / tune.barSec);
 		let s = Math.ceil((into - bar * tune.barSec) / (tune.barSec / 16));
@@ -156,7 +159,7 @@ export function createHouseRadio(station: string, serverNowMs: () => number) {
 			seat();
 		const horizon = g.ctx.currentTime + offset + AHEAD_SEC;
 		for (;;) {
-			const tune = tuneOf(station, cursor.slot);
+			const tune = tuneOf(station, cursor.slot, pick);
 			const at =
 				cursor.slot * SLOT_SEC +
 				cursor.bar * tune.barSec +
@@ -198,6 +201,13 @@ export function createHouseRadio(station: string, serverNowMs: () => number) {
 			const now = g.ctx.currentTime;
 			g.level.gain.cancelScheduledValues(now);
 			g.level.gain.setTargetAtTime(value, now, Math.max(0.01, ms / 3000));
+		},
+		/** The channel picked a style: the next sixteenth plays it, on every screen alike. */
+		setStyle(next: Style | '') {
+			if (next === pick) return;
+			pick = next;
+			written = { slot: -1, bar: -1, notes: [] };
+			seat();
 		},
 		setRain(on: boolean) {
 			g?.rain.gain.setTargetAtTime(on ? 0.05 : 0, g.ctx.currentTime, 0.6);
