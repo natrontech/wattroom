@@ -204,7 +204,9 @@
 	}
 </script>
 
-<div class="border-ink/5 @container relative shrink-0 border-t px-5 py-3">
+<div
+	class="border-ink/10 @container relative min-h-16 shrink-0 border-t px-5 py-2.5"
+>
 	{#if gifOpen}
 		<GifPicker
 			onPick={(gif) => void sendGif(gif)}

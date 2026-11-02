@@ -292,7 +292,8 @@
 			><Plus size={18} /></button
 		>
 	{/if}
-	{#if gear && shift && !inWatts}
+	<!-- The gears arrive with a trainer: nothing to shift before one pairs. -->
+	{#if gear && shift && !inWatts && !idle}
 		<GearShift
 			{shift}
 			{gear}

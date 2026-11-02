@@ -94,17 +94,12 @@
 	<!-- Your own workout, beside anything running here (#2329): the same
 	     picker, the ride-alone lifecycle. It needs the trainer to hold
 	     its targets, so without one it says so rather than failing. -->
-	{#if !riding}
-		{#if !channel.trainer}<span
-				id="free-ride-workout-hint"
-				class="text-muted text-xs">Pair your trainer first</span
-			>{/if}
+	{#if !riding && channel.trainer}
+		<!-- Appears with the trainer, which holds its targets; until then the
+		     setup below is the one thing to do. -->
 		<button
 			onclick={() => channel.openPicker('ride')}
-			disabled={!channel.trainer}
-			aria-describedby={channel.trainer ? undefined : 'free-ride-workout-hint'}
-			class="btn btn-secondary btn-ride disabled:opacity-40"
-			>Ride a workout</button
+			class="btn btn-secondary btn-ride">Ride a workout</button
 		>
 	{/if}
 {/snippet}
@@ -230,7 +225,7 @@
 		{:else if free.outcome && 'failure' in free.outcome}
 			<p class="text-danger text-sm" role="alert">
 				It did not save — {free.outcome.failure.message} It is kept on this device,
-				and <a href="/ride" class="underline">Ride</a> offers it again.
+				and <a href="/home" class="underline">Home</a> offers it again.
 			</p>
 		{:else if free.outcome && 'short' in free.outcome}
 			<p class="text-muted text-sm" role="status">

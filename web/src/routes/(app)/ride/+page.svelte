@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { canSimulate } from '$lib/ble/can-simulate';
 	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
 	import { SimulatedTrainer } from '$lib/ble/simulated';
@@ -140,6 +141,12 @@
 		page.url.searchParams.has('alone') || !!requested || !!roadId,
 	);
 	const doors = $derived(!alone && doorsFor(crewLive));
+	// Nothing picked and nothing riding: Home is where you choose where to
+	// ride, so /ride does not draw that choice a second time.
+	$effect(() => {
+		if (doors && setup && !shelfPending && !shelfMissing && !askFigure)
+			void goto('/home', { replaceState: true });
+	});
 
 	// FTP comes from the profile, set by hand or measured by a ramp test (#14).
 	const history = createHistoryStore(() => account.me?.id);
