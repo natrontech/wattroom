@@ -46,7 +46,8 @@ func TestAPickOnARoadRidesTheTick(t *testing.T) {
 
 // A road the session may not ride answers the coach in errors.md's codes and
 // picks nothing: a malformed ask is validation, someone else's route reads as
-// absent, and Strava's rides with its owner alone (ADR-0063).
+// absent, Strava's rides with its owner alone, and a crew listed in the
+// directory is asked first (ADR-0063).
 func TestAPickOnARoadIsRefused(t *testing.T) {
 	for _, c := range []struct {
 		name    string
@@ -62,6 +63,7 @@ func TestAPickOnARoadIsRefused(t *testing.T) {
 		{"a workout built on another road", fakeRoads{}, protocol.ControlRoute{ID: otherRoad}, roadWorkout, "validation_error", "another road"},
 		{"not the coach's", fakeRoads{refused: &protocol.Error{Code: "not_found", Message: "That route is not one of yours."}}, protocol.ControlRoute{ID: homeLoop}, "", "not_found", "not one of yours"},
 		{"from Strava", fakeRoads{refused: &protocol.Error{Code: "forbidden", Message: "Routes from Strava ride with you alone, never in a session."}}, protocol.ControlRoute{ID: homeLoop}, "", "forbidden", "Strava"},
+		{"a listed crew never asked", fakeRoads{listed: "velvet"}, protocol.ControlRoute{ID: homeLoop}, "", "consent_forbidden", "Anyone who joins"},
 		{"unreadable", fakeRoads{err: errors.New("connection refused")}, protocol.ControlRoute{ID: homeLoop}, "", "internal_error", "could not be read"},
 		{"no roads on this server", nil, protocol.ControlRoute{ID: homeLoop}, "", "forbidden", "does not ride roads"},
 	} {

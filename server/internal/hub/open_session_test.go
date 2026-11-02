@@ -102,13 +102,14 @@ func TestOpenSessionStartsThePlan(t *testing.T) {
 }
 
 // A plan on a road opens its session on that road (#3103), from the metre
-// the plan names on the crew's cut, and the bunch starts there; a route the
-// planner does not own is refused, and nothing is picked.
+// the plan names on the crew's cut, and the bunch starts there, with no crew
+// asked again — the plan was (ADR-0063); a route the planner does not own is
+// refused, and nothing is picked.
 func TestOpenSessionRidesThePlansRoad(t *testing.T) {
 	const plan = `{"name":"Next leg","steps":[{"type":"steady","seconds":600,"target":0.75}]}`
 	alice := protocol.Rider{ID: "alice", Name: "Alice", Role: "member"}
 	h := New(slog.New(slog.DiscardHandler), nil, nil)
-	h.SetRoads(fakeRoads{heights: slope(0, 20_000).Heights})
+	h.SetRoads(fakeRoads{heights: slope(0, 20_000).Heights, listed: "track"})
 	route := &protocol.ControlRoute{ID: homeLoop, FromM: 5000}
 	if _, code, msg := h.OpenSession("track", alice, "Next leg", plan, route, "bob"); code != "" {
 		t.Fatalf("open: %s %s", code, msg)

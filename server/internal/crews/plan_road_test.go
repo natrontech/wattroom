@@ -116,6 +116,31 @@ func TestOnlyTheOwnerPlansTheirRoad(t *testing.T) {
 	}
 }
 
+// A crew listed in the directory asks first (#4149, ADR-0063): alice's plan
+// on her road is refused on "consent", in the words she is asked, until she
+// has said yes for that crew.
+func TestAListedCrewIsAskedBeforeAPlanCarriesARoad(t *testing.T) {
+	h := setup(t)
+	h.svc.SetRoads(routes.NewAttacher(h.store.Queries, nil))
+	crew, _ := h.crewWithChannel(t)
+	route := h.tellingRoute(t, "alice", "gpx")
+	if _, err := h.store.Pool.Exec(t.Context(), "update crews set listed = true where id = $1", crew.ID); err != nil {
+		t.Fatal(err)
+	}
+	at := time.Now().Add(24 * time.Hour)
+	status, body := h.call(t, "alice", http.MethodPost, schedulePath(crew), roadPlanBody(route, at))
+	if msg, _ := body["message"].(string); status != http.StatusForbidden || body["field"] != "consent" || !strings.HasPrefix(msg, "Anyone who joins ") {
+		t.Fatalf("alice plans her road into a listed crew: %d %v, want 403 on consent", status, body)
+	}
+	routeID, _ := store.ParseUUID(route)
+	if err := h.store.Queries.SetRouteCrewConsent(t.Context(), db.SetRouteCrewConsentParams{RouteID: routeID, CrewID: crew.ID, Shared: true}); err != nil {
+		t.Fatal(err)
+	}
+	if status, body := h.call(t, "alice", http.MethodPost, schedulePath(crew), roadPlanBody(route, at)); status != http.StatusCreated {
+		t.Fatalf("alice plans it once she said yes: %d %v", status, body)
+	}
+}
+
 // workoutOpener is the hub as a plan's start reaches it, keeping the workout
 // every socket in the channel would be sent.
 type workoutOpener struct {

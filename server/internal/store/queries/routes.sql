@@ -146,6 +146,15 @@ insert into route_crew_consents (route_id, crew_id, shared)
 values ($1, $2, $3)
 on conflict (route_id, crew_id) do update set shared = excluded.shared, decided_at = now();
 
+-- name: CrewRouteAsk :one
+-- What a pick or a plan into a crew needs from a route's owner (#4149,
+-- ADR-0063 "A listed crew asks first"): the crew's name, whether it is listed
+-- in the directory, and whether the owner has said yes for this route.
+select c.name, c.listed, coalesce(a.shared, false)::boolean as shared
+from crews c
+left join route_crew_consents a on a.route_id = sqlc.arg(route_id) and a.crew_id = c.id
+where c.id = sqlc.arg(crew_id);
+
 -- name: GetRoutePlace :one
 -- A route's sealed place and length by id alone (#3096): for the crew tier of
 -- /shape, which cuts it to the span between the anchors. Not owner-scoped —

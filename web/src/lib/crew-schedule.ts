@@ -4,6 +4,7 @@ import { voiceChannelPath } from '$lib/channels';
 import { serverNow } from '$lib/server-clock';
 import type { CrewRole } from '$lib/crew';
 import type { PlanAnswers, RsvpAnswer } from '$lib/session/rsvp';
+import { askToShareRoute } from '$lib/road/share';
 
 /**
  * The crew's schedule (#2440, #2452): one calendar for the crew, a plan naming
@@ -37,7 +38,12 @@ export function fetchCrewSchedule(
 	return loadApi(fetcher, `/api/crews/${crewId}/schedule`);
 }
 
-export function planCrewSession(
+/**
+ * Plan a session. A road into a crew listed in the directory is refused on
+ * `consent` until its owner says yes for that crew (#4149, ADR-0063): the
+ * planner is asked here, and a yes plans it again.
+ */
+export async function planCrewSession(
 	crewId: string,
 	plan: {
 		workoutName: string;
@@ -46,7 +52,24 @@ export function planCrewSession(
 		channelId?: string;
 	},
 ): Promise<ApiResult<CrewPlan>> {
-	return api(`/api/crews/${crewId}/schedule`, { method: 'POST', json: plan });
+	const post = () =>
+		api<CrewPlan>(`/api/crews/${crewId}/schedule`, {
+			method: 'POST',
+			json: plan,
+		});
+	const res = await post();
+	if (res.ok || res.error.field !== 'consent') return res;
+	const routeId: string = JSON.parse(plan.workoutJson).road.routeId;
+	const shared = await askToShareRoute(routeId, crewId, res.error.message);
+	if (!shared)
+		return {
+			ok: false,
+			error: {
+				error: 'forbidden',
+				message: 'The route stays with you, so nothing was planned.',
+			},
+		};
+	return shared.ok ? post() : shared;
 }
 
 export function moveCrewPlan(

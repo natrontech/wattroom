@@ -43,6 +43,7 @@ import {
 } from '$lib/channel/replay';
 import { isLivePhase } from '$lib/channel/tick-session';
 import { roadOf, type LostRoad } from '$lib/channel/lost-road';
+import { askToShareRoute } from '$lib/road/share';
 
 /**
  * The live side of one voice channel (#18): a WebSocket to the hub, the
@@ -110,6 +111,9 @@ export function createChannelLive(address: PlaceAddress) {
 	// (#2599); a refusal lets go of both.
 	let startAfterPick: string | null = null;
 	let following = $state(false);
+	// The last pick or game on a road, sent again once its owner shares the
+	// route with a crew listed in the directory (#4149, ADR-0063).
+	let roadAsk: ClientMessage | null = null;
 	// A refusal a surface shows beside its own control, by its code's prefix
 	// (errors.md): the jukebox's, the roadside's. Each stays six seconds.
 	const routed = $state<
@@ -478,7 +482,12 @@ export function createChannelLive(address: PlaceAddress) {
 			// A refused command is feedback, not a fault — it stays up long
 			// enough to read (ticks arrive every second; clearing on each one
 			// made refusals subliminal — audit #219).
-			if (msg.error) {
+			if (msg.error?.code === 'consent_forbidden' && roadAsk) {
+				// A crew listed in the directory asks first (#4149, ADR-0063).
+				startAfterPick = null;
+				following = false;
+				void shareThenSend(msg.error.message, roadAsk);
+			} else if (msg.error) {
 				const surface = (
 					['jukebox', 'roadside', 'remote', 'voice'] as const
 				).find((s) => msg.error!.code.startsWith(`${s}_`));
@@ -555,7 +564,22 @@ export function createChannelLive(address: PlaceAddress) {
 		following = true;
 	}
 
+	async function shareThenSend(ask: string, again: ClientMessage) {
+		const control = again.control!;
+		const shared = await askToShareRoute(control.route!.id, address.crew, ask);
+		if (!shared) return;
+		if (!shared.ok) {
+			refusal = shared.error.message;
+			refusalAt = Date.now();
+			return;
+		}
+		send(again);
+		if (control.action === 'pick') startAfterPick = control.workoutName ?? null;
+		following = true;
+	}
+
 	function send(message: ClientMessage) {
+		if (message.control?.route) roadAsk = message;
 		if (socket?.readyState === WebSocket.OPEN) {
 			socket.send(JSON.stringify(message));
 			return;

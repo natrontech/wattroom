@@ -22,9 +22,17 @@ type fakeRoads struct {
 	err     error
 	// The cut's heights every 20 m; nil is a flat 2.2 km.
 	heights []float64
+	// A channel whose crew is listed and was never asked (ADR-0063).
+	listed string
 }
 
-func (f fakeRoads) SessionRoute(_ context.Context, _, routeID string) (protocol.SessionRoute, road.Road, *protocol.Error, error) {
+// unasked is routes.Attacher's refusal for a listed crew nobody asked.
+var unasked = &protocol.Error{Code: "consent_forbidden", Message: "Anyone who joins Velvet will see this route."}
+
+func (f fakeRoads) SessionRoute(_ context.Context, _, routeID, channel string) (protocol.SessionRoute, road.Road, *protocol.Error, error) {
+	if f.listed != "" && channel == f.listed {
+		return protocol.SessionRoute{}, road.Road{}, unasked, nil
+	}
 	if f.err != nil || f.refused != nil {
 		return protocol.SessionRoute{}, road.Road{}, f.refused, f.err
 	}
@@ -36,7 +44,10 @@ func (f fakeRoads) SessionRoute(_ context.Context, _, routeID string) (protocol.
 	return protocol.SessionRoute{ID: routeID, Hash: "h-home", GenName: "Road · 3.0 km · 50 m", LengthM: profile.LengthM}, profile, nil, nil
 }
 
-func (f fakeRoads) ForSession(_ context.Context, coach, workoutJSON string) (string, string, error) {
+func (f fakeRoads) ForSession(_ context.Context, coach, channel, workoutJSON string) (string, string, error) {
+	if f.listed != "" && channel == f.listed {
+		return "", unasked.Message, nil
+	}
 	if f.refusal != "" {
 		return "", f.refusal, nil
 	}

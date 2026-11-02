@@ -18,13 +18,16 @@ import (
 // is sent the crew's cut of it, never the owner's. Defined here, where it is
 // consumed; routes.Attacher implements it.
 type Roads interface {
-	// ForSession answers the workout with the crew's cut attached, or the
-	// refusal the coach is told, or the error that kept it from being read.
-	ForSession(ctx context.Context, coach, workoutJSON string) (attached, refusal string, err error)
+	// ForSession answers the workout with the crew's cut attached for the
+	// crew channel belongs to, or the refusal the coach is told, or the error that kept it from being read.
+	ForSession(ctx context.Context, coach, channel, workoutJSON string) (attached, refusal string, err error)
 	// SessionRoute describes the road a session rides (#3095) as the crew
 	// rides it, and that cut's heights for the bunch (#3028) — or the
 	// refusal the coach is told, or the error that kept it from being read.
-	SessionRoute(ctx context.Context, coach, routeID string) (protocol.SessionRoute, road.Road, *protocol.Error, error)
+	// A crew listed in the directory the coach has not shared the route
+	// with is refused until they say yes (ADR-0063); channel "" asks no
+	// crew, for a plan asked when it was planned.
+	SessionRoute(ctx context.Context, coach, routeID, channel string) (protocol.SessionRoute, road.Road, *protocol.Error, error)
 	// SharedName is the name a picked workout goes out under (#3055): on a
 	// road, the route's generated name, never the owner's rename.
 	SharedName(ctx context.Context, workoutJSON, name string) (string, error)
@@ -44,7 +47,7 @@ const roadReadTimeout = 5 * time.Second
 // cut attached and the route's generated name (#3055) — the name reaches the
 // tick, the presence radar, the recap and the saved rides from here. A
 // refusal is for the coach.
-func (h *Hub) sessionRoad(workoutJSON, name, coach string) (attached, shared, refusal string) {
+func (h *Hub) sessionRoad(workoutJSON, name, coach, channel string) (attached, shared, refusal string) {
 	if ref, _ := workout.RoadOf(workoutJSON); ref == nil {
 		return workoutJSON, name, ""
 	}
@@ -53,7 +56,7 @@ func (h *Hub) sessionRoad(workoutJSON, name, coach string) (attached, shared, re
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), roadReadTimeout)
 	defer cancel()
-	attached, refusal, err := h.roads.ForSession(ctx, coach, workoutJSON)
+	attached, refusal, err := h.roads.ForSession(ctx, coach, channel, workoutJSON)
 	if err == nil && refusal == "" {
 		shared, err = h.roads.SharedName(ctx, workoutJSON, name)
 	}
@@ -68,7 +71,7 @@ func (h *Hub) sessionRoad(workoutJSON, name, coach string) (attached, shared, re
 // whole crew's cut from where the game starts, attached as a pick's is, so
 // every screen in the channel draws the road the bunch rides. A race keeps
 // its own road (ADR-0067).
-func (h *Hub) gameRoad(route routeRide, coach string) (json.RawMessage, string) {
+func (h *Hub) gameRoad(route routeRide, coach, channel string) (json.RawMessage, string) {
 	ref, _ := json.Marshal(struct {
 		Road  workout.RoadRef `json:"road"`
 		Steps []any           `json:"steps"`
@@ -77,7 +80,7 @@ func (h *Hub) gameRoad(route routeRide, coach string) (json.RawMessage, string) 
 		FromM:   route.CutFromM + route.FromM,
 		ToM:     route.CutFromM + route.LengthM,
 	}, []any{}})
-	attached, _, refusal := h.sessionRoad(string(ref), "", coach)
+	attached, _, refusal := h.sessionRoad(string(ref), "", coach, channel)
 	if refusal != "" {
 		return nil, refusal
 	}
@@ -92,9 +95,9 @@ func (h *Hub) gameRoad(route routeRide, coach string) (json.RawMessage, string) 
 
 // sessionRoute resolves the road a pick or a game asks to ride (#3095),
 // before the room's lock: the coach's own route, never Strava's, with the
-// start inside the crew's cut. A refusal is for the coach, in errors.md's
-// codes.
-func (h *Hub) sessionRoute(ask protocol.ControlRoute, workoutJSON, coach string) (routeRide, *protocol.Error) {
+// start inside the crew's cut, and shared with channel's crew if it is
+// listed. A refusal is for the coach, in errors.md's codes.
+func (h *Hub) sessionRoute(ask protocol.ControlRoute, workoutJSON, coach, channel string) (routeRide, *protocol.Error) {
 	refuse := func(code, message string) (routeRide, *protocol.Error) {
 		return routeRide{}, &protocol.Error{Code: code, Message: message}
 	}
@@ -116,7 +119,7 @@ func (h *Hub) sessionRoute(ask protocol.ControlRoute, workoutJSON, coach string)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), roadReadTimeout)
 	defer cancel()
-	route, profile, refusal, err := h.roads.SessionRoute(ctx, coach, id.String())
+	route, profile, refusal, err := h.roads.SessionRoute(ctx, coach, id.String(), channel)
 	if err != nil {
 		h.log.Warn("session route unreadable", "err", err, "coach", coach, "route", id)
 		return refuse("internal_error", "The road could not be read just now. Pick it again in a moment.")

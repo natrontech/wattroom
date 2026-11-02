@@ -33,6 +33,13 @@ func storeTellingRoute(t *testing.T, h *harness, owner pgtype.UUID, src string) 
 	return store.UUIDString(row.ID)
 }
 
+// crewOfTwo is an unlisted crew of alice and bob, and its voice channel.
+func (h *harness) crewOfTwo(t *testing.T) (pgtype.UUID, string) {
+	t.Helper()
+	crew := testx.Crew(t, h.store, "Road crew", h.users.ByToken["alice"].ID, h.users.ByToken["bob"].ID)
+	return crew, testx.Voice(t, h.store, crew, "Road", false)
+}
+
 func workoutOn(routeID string) string {
 	return `{"name":"Home loop","road":{"routeId":"` + routeID + `","fromM":0,"toM":3000},"steps":[{"type":"road","seconds":600}]}`
 }
@@ -91,6 +98,7 @@ func TestARoadIsCutToWhoeverReadsIt(t *testing.T) {
 	alice, bob := h.users.ByToken["alice"].ID, h.users.ByToken["bob"].ID
 	route := storeTellingRoute(t, h, alice, "gpx")
 	a := NewAttacher(h.store.Queries, h.keys)
+	_, channel := h.crewOfTwo(t)
 
 	own, err := a.Attach(t.Context(), workoutOn(route), alice)
 	if err != nil {
@@ -108,7 +116,7 @@ func TestARoadIsCutToWhoeverReadsIt(t *testing.T) {
 	cut, meta := roadIn(t, crews)
 	assertNothingOfTheEnds(t, "a crew member's read", cut, meta)
 
-	picked, refusal, err := a.ForSession(t.Context(), store.UUIDString(alice), workoutOn(route))
+	picked, refusal, err := a.ForSession(t.Context(), store.UUIDString(alice), channel, workoutOn(route))
 	if err != nil || refusal != "" {
 		t.Fatalf("the owner's pick: %q %v", refusal, err)
 	}
@@ -163,15 +171,16 @@ func TestOnlyTheOwnerSharesARoadAndNeverStravas(t *testing.T) {
 	mine := storeTellingRoute(t, h, alice, "gpx")
 	strava := storeTellingRoute(t, h, alice, "stravagpx")
 	a := NewAttacher(h.store.Queries, h.keys)
+	crew, channel := h.crewOfTwo(t)
 	var refused Refused
 
-	if _, err := a.CheckShared(t.Context(), workoutOn(mine), bob); !errors.As(err, &refused) {
+	if _, err := a.CheckShared(t.Context(), workoutOn(mine), bob, crew); !errors.As(err, &refused) {
 		t.Errorf("bob sharing alice's route: %v, want refused", err)
 	}
-	if _, err := a.CheckShared(t.Context(), workoutOn(strava), alice); !errors.As(err, &refused) {
+	if _, err := a.CheckShared(t.Context(), workoutOn(strava), alice, crew); !errors.As(err, &refused) {
 		t.Errorf("alice sharing a Strava route: %v, want refused", err)
 	}
-	if id, err := a.CheckShared(t.Context(), workoutOn(mine), alice); err != nil || store.UUIDString(id) != mine {
+	if id, err := a.CheckShared(t.Context(), workoutOn(mine), alice, crew); err != nil || store.UUIDString(id) != mine {
 		t.Errorf("alice sharing her own route: %v %v", id, err)
 	}
 	if err := a.CheckOwn(t.Context(), workoutOn(strava), alice); err != nil {
@@ -180,9 +189,59 @@ func TestOnlyTheOwnerSharesARoadAndNeverStravas(t *testing.T) {
 	if err := a.CheckOwn(t.Context(), workoutOn(mine), bob); !errors.As(err, &refused) {
 		t.Errorf("bob's shelf took alice's route: %v", err)
 	}
-	if _, refusal, err := a.ForSession(t.Context(), store.UUIDString(bob), workoutOn(mine)); err != nil || refusal == "" {
+	if _, refusal, err := a.ForSession(t.Context(), store.UUIDString(bob), channel, workoutOn(mine)); err != nil || refusal == "" {
 		t.Errorf("bob picking alice's route: %q %v, want a refusal", refusal, err)
 	}
+}
+
+// A crew listed in the directory asks first (#4149, ADR-0063): no plan, pick
+// or session road reaches it until the owner says yes for that crew, a no
+// keeps it out, and a plan's start, asked when it was planned, is not asked
+// again. An unlisted crew is never asked.
+func TestAListedCrewIsAskedFirst(t *testing.T) {
+	h := setup(t, nil)
+	alice := h.users.ByToken["alice"].ID
+	route := storeTellingRoute(t, h, alice, "gpx")
+	routeID, _ := store.ParseUUID(route)
+	a := NewAttacher(h.store.Queries, h.keys)
+	crew, channel := h.crewOfTwo(t)
+	coach := store.UUIDString(alice)
+
+	reaches := func(when string, want bool) {
+		t.Helper()
+		var unasked Unasked
+		_, err := a.CheckShared(t.Context(), workoutOn(route), alice, crew)
+		if got := err == nil; got != want || !want && !errors.As(err, &unasked) {
+			t.Errorf("%s, the plan: %v, want reaching the crew %v", when, err, want)
+		}
+		_, refusal, err := a.ForSession(t.Context(), coach, channel, workoutOn(route))
+		if err != nil || (refusal == "") != want {
+			t.Errorf("%s, the pick: %q %v, want reaching the crew %v", when, refusal, err, want)
+		}
+		_, _, refused, err := a.SessionRoute(t.Context(), coach, route, channel)
+		if err != nil || (refused == nil) != want || !want && (refused.Code != ConsentCode || refused.Message != "Anyone who joins Road crew will see this route.") {
+			t.Errorf("%s, the session's road: %+v %v, want reaching the crew %v", when, refused, err, want)
+		}
+		if _, _, refused, err := a.SessionRoute(t.Context(), coach, route, ""); err != nil || refused != nil {
+			t.Errorf("%s, a plan's start: %+v %v, want it to ride", when, refused, err)
+		}
+	}
+	answer := func(shared bool) {
+		t.Helper()
+		if err := h.store.Queries.SetRouteCrewConsent(t.Context(), db.SetRouteCrewConsentParams{RouteID: routeID, CrewID: crew, Shared: shared}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	reaches("unlisted", true)
+	if _, err := h.store.Pool.Exec(t.Context(), "update crews set listed = true where id = $1", crew); err != nil {
+		t.Fatal(err)
+	}
+	reaches("listed, never asked", false)
+	answer(false)
+	reaches("listed, the owner said no", false)
+	answer(true)
+	reaches("listed, the owner said yes", true)
 }
 
 // A deleted route leaves its reference, which reads "the route was deleted".
@@ -216,7 +275,8 @@ func TestASessionRidesTheCoachsOwnRoadAsTheCrewsCut(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	route, profile, refused, err := a.SessionRoute(t.Context(), store.UUIDString(alice), mine)
+	_, channel := h.crewOfTwo(t)
+	route, profile, refused, err := a.SessionRoute(t.Context(), store.UUIDString(alice), mine, channel)
 	if err != nil || refused != nil {
 		t.Fatalf("alice's own route: %+v %v", refused, err)
 	}
@@ -243,7 +303,7 @@ func TestASessionRidesTheCoachsOwnRoadAsTheCrewsCut(t *testing.T) {
 		{"gone", alice, uuid.NewString(), "not_found"},
 		{"from Strava", alice, strava, "forbidden"},
 	} {
-		if _, _, refused, err := a.SessionRoute(t.Context(), store.UUIDString(c.coach), c.route); err != nil || refused == nil || refused.Code != c.code {
+		if _, _, refused, err := a.SessionRoute(t.Context(), store.UUIDString(c.coach), c.route, channel); err != nil || refused == nil || refused.Code != c.code {
 			t.Errorf("%s: %+v %v, want %s", c.name, refused, err, c.code)
 		}
 	}
