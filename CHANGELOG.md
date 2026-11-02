@@ -269,7 +269,7 @@ not a second copy of `git log`.
 - A route file with a position off the globe is refused as too long, saying
   the file is at fault. The importer used to stall and then say the failure
   was ours.
-- A ride posted to Strava links only https://wattroom.ch, no longer the crew's own page, and says "Ridden with <crew> on https://wattroom.ch".
+- A ride posted to Strava links only to wattroom.ch, no longer to the crew's own page, and says "Ridden with <crew> on wattroom.ch".
 - A quiet mic is heard at its usual level from the first word of a call: voice lifts it to where your last call settled while the browser's gain catches up.
 
 ### Security
