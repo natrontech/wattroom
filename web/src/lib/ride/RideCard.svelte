@@ -13,6 +13,7 @@
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { formatClock, formatKm } from '$lib/format';
 	import { gradeAt } from '$lib/road/at-metre';
+	import { classedOf, climbsOf } from '$lib/road/climbs';
 	import { feltGrade } from '$lib/ride/ride-grade';
 	import RoadPick from '$lib/ride/RoadPick.svelte';
 	import { carryOnFrom, loadRoad, type RideableRoute } from '$lib/ride/roads';
@@ -78,11 +79,25 @@
 			});
 	}
 
-	// The ways to start it that exist (ADR-0062): the whole road, and where
-	// your last ride of it stopped short (#3205) or a link said to start.
-	const starts = $derived([
-		...new Set([0, carry, from].filter((m) => m !== null)),
-	] as number[]);
+	// The ways to start it that exist (ADR-0062): the whole road, where your
+	// last ride of it stopped short (#3205) or a link said to start, and the
+	// foot of a classed climb, as the route page offers (#4235).
+	const classed = $derived(road ? classedOf(climbsOf(road.road)) : []);
+	const starts = $derived.by(() => {
+		const out = new Map<number, string>();
+		for (const m of [0, carry, from])
+			if (m !== null && !out.has(m))
+				out.set(m, m === 0 ? 'Whole road' : `From km ${formatKm(m)}`);
+		// Whole metres, as the route page's link carries them.
+		classed.forEach((c, i) => {
+			if (Math.round(c.startM) > 0)
+				out.set(
+					Math.round(c.startM),
+					classed.length === 1 ? 'One climb' : `Climb ${i + 1} · ${c.cls}`,
+				);
+		});
+		return [...out].sort(([a], [b]) => a - b);
+	});
 	const felt = $derived.by(() => {
 		if (!road) return null;
 		const pct = gradeAt(road.road, from);
@@ -164,14 +179,13 @@
 					role="group"
 					aria-label="where to start"
 				>
-					{#each starts as m (m)}
+					{#each starts as [m, name] (m)}
 						<button
 							onclick={() => (from = m)}
 							aria-pressed={from === m}
 							class="btn btn-lg rounded-full border {from === m
 								? 'border-neon text-ink'
-								: 'border-muted/30 hover:border-muted/60'}"
-							>{m === 0 ? 'Whole road' : `From km ${formatKm(m)}`}</button
+								: 'border-muted/30 hover:border-muted/60'}">{name}</button
 						>
 					{/each}
 				</div>

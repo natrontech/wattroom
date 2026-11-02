@@ -138,7 +138,8 @@
 						class={chip(stretch === 'carry')}>From km {formatKm(carry)}</button
 					>
 				{/if}
-				{#if classed.length > 0}
+				<!-- A climb from km 0 is the whole road, as /ride says (#4235). -->
+				{#if classed.some((c) => c.startM > 0)}
 					<button
 						onclick={() => (stretch = 'climb')}
 						aria-pressed={stretch === 'climb'}
