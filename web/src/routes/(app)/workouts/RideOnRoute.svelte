@@ -126,7 +126,7 @@
 					>
 				{/snippet}
 			</WattRoomRoads>
-			<p class="eyebrow mt-4 mb-2">your roads</p>
+			<p class="eyebrow mt-4 mb-2">your routes</p>
 			{#if routes.length === 0}
 				<p
 					class="text-muted flex flex-wrap items-center gap-x-3 gap-y-2 text-sm"

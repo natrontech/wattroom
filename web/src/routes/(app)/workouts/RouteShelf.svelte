@@ -121,7 +121,7 @@
 		<div class="mt-2">
 			<EmptyState>
 				{#snippet icon()}<RouteIcon size={20} class="text-muted" />{/snippet}
-				Your roads ride here — import a GPX, TCX or FIT.
+				Your routes ride here — import a GPX, TCX or FIT.
 				{#snippet cta()}
 					<a href="/workouts/import?as=route" class="btn btn-primary btn-xs"
 						>Import a route</a
