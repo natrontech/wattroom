@@ -13,6 +13,7 @@
 	import JukeboxPlaylists from '$lib/channel/JukeboxPlaylists.svelte';
 	import JukeboxTrack from '$lib/channel/JukeboxTrack.svelte';
 	import RailSheet from '$lib/channel/RailSheet.svelte';
+	import { roadsideShown } from '$lib/channel/RoadsideDeck.svelte';
 	import { IN_SYNC_SEC, playerInfo } from '$lib/channel/jukebox-player.svelte';
 	import { listening } from '$lib/channel/listening.svelte';
 	import {
@@ -136,7 +137,8 @@
 	{#if !riding}
 		<div class="flex min-w-0 items-center justify-between gap-2">
 			<span class="eyebrow">jukebox</span>
-			{#if current && jukebox?.playing && !playerInfo.live && !listening.out}
+			<!-- Beside a roadside deck the rider is on the bike: no watt (#4197). -->
+			{#if current && jukebox?.playing && !playerInfo.live && !listening.out && !roadsideShown()}
 				<!-- Proof everyone is together, in the one place riders look for it.
 				     A rider who has stepped out is not with it and must not be told
 				     they are: the badge goes, and comes back when they rejoin. -->
