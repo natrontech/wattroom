@@ -38,7 +38,7 @@ func TestFoundingACrewOpensItWithAChannelOfEachKind(t *testing.T) {
 	for _, c := range rows {
 		got = append(got, c.Kind+":"+c.Name)
 	}
-	if want := "text:Lounge voice:Lounge"; strings.Join(got, " ") != want {
+	if want := "text:General voice:Lounge"; strings.Join(got, " ") != want {
 		t.Fatalf("channels %v, want %s", got, want)
 	}
 }

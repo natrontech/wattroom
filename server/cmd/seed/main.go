@@ -68,9 +68,9 @@ func run(ctx context.Context, dsn string) error {
 	if err != nil {
 		return fmt.Errorf("crew: %w", err)
 	}
-	for _, kind := range []string{"text", "voice"} {
+	for kind, name := range map[string]string{"text": "General", "voice": "Lounge"} {
 		if _, err := st.Queries.CreateChannel(ctx, db.CreateChannelParams{
-			CrewID: crew.ID, Kind: kind, Name: "Lounge", MaxChannels: protocol.MaxCrewTextChannels,
+			CrewID: crew.ID, Kind: kind, Name: name, MaxChannels: protocol.MaxCrewTextChannels,
 		}); err != nil {
 			return fmt.Errorf("%s channel: %w", kind, err)
 		}

@@ -15,6 +15,8 @@
 	import Minus from '@lucide/svelte/icons/minus';
 	import MonitorUp from '@lucide/svelte/icons/monitor-up';
 	import Plus from '@lucide/svelte/icons/plus';
+	import ChevronDown from '@lucide/svelte/icons/chevron-down';
+	import { openMenu } from '$lib/context-menu.svelte';
 	import { createPairAgain } from '$lib/ble/pair-again.svelte';
 	import type { Trainer } from '$lib/ble/trainer';
 	import { formatClock } from '$lib/format';
@@ -175,7 +177,14 @@
 		{ kind: 'warmup', label: 'Warm up' },
 		{ kind: 'cooldown', label: 'Cool down' },
 	];
-	let rampMinutes = $state<number>(RAMP.minutes[0]);
+	// One button, one menu: each ramp at each length.
+	const rampItems = () =>
+		RAMPS.flatMap((r) =>
+			RAMP.minutes.map((minutes) => ({
+				label: `${r.label} · ${minutes} min`,
+				onSelect: () => free.startRamp(r.kind, minutes),
+			})),
+		);
 	const rampLabel = $derived(
 		RAMPS.find((r) => r.kind === (free.ramp?.kind ?? free.rampDone))?.label,
 	);
@@ -311,36 +320,22 @@
 
 {#snippet ramps()}
 	{#if !road}
-		<!-- Warm up and Cool down (#4100) in a row of their own, so the
-		     ride's controls keep End ride beside ⚑ and TV. Off a road, where
-		     nothing draws a world or a corridor. -->
+		<!-- Warm up and Cool down (#4100), one button off a road. -->
 		<div class="flex min-w-0 flex-wrap items-center gap-2">
 			{#if free.ramp}
 				<button onclick={free.stopRamp} class="btn btn-secondary btn-ride"
 					>Stop {rampLabel?.toLowerCase()}</button
 				>
 			{:else}
-				<div
-					class="border-muted/20 flex rounded-lg border"
-					role="group"
-					aria-label="ramp length"
+				<button
+					onclick={(event) => {
+						const box = event.currentTarget.getBoundingClientRect();
+						openMenu(rampItems(), box.left, box.bottom, event.currentTarget);
+					}}
+					aria-haspopup="menu"
+					class="btn btn-secondary btn-ride"
+					>Warm up or cool down <ChevronDown size={16} /></button
 				>
-					{#each RAMP.minutes as minutes (minutes)}
-						<button
-							onclick={() => (rampMinutes = minutes)}
-							aria-pressed={rampMinutes === minutes}
-							class="btn btn-ride {rampMinutes === minutes
-								? 'btn-secondary'
-								: 'btn-ghost'}">{minutes} min</button
-						>
-					{/each}
-				</div>
-				{#each RAMPS as r (r.kind)}
-					<button
-						onclick={() => free.startRamp(r.kind, rampMinutes)}
-						class="btn btn-secondary btn-ride">{r.label}</button
-					>
-				{/each}
 			{/if}
 		</div>
 	{/if}

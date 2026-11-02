@@ -31,8 +31,7 @@ test('a text channel scrolls back to its oldest line', async ({
 	page,
 	channels,
 }) => {
-	// A desk-sized window: the log is the content column at any width, but the
-	// people column beside it only exists from `xl`.
+	// A desk-sized window.
 	await page.setViewportSize({ width: 1440, height: 700 });
 	await signInAs(page, 'Chat Scrollback', '/home');
 

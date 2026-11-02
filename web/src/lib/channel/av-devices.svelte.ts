@@ -16,7 +16,7 @@ const DEVICES_KEY = 'wattroom.devices.v1';
 export type DeviceChoices = ReturnType<typeof createDeviceChoices>;
 
 // One store above the router (#1858), the way `soloTrainer` is for pairing:
-// a mic picked on /settings/voice with no call open is the mic the next
+// a mic picked on /settings/equipment with no call open is the mic the next
 // join captures, and the call's mic chain and the settings page read the
 // same pick. `createDeviceChoices` stays exported for the tests.
 let shared: DeviceChoices | undefined;

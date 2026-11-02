@@ -1,5 +1,4 @@
 <script lang="ts">
-	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 	import Plus from '@lucide/svelte/icons/plus';
 	import Radio from '@lucide/svelte/icons/radio';
 	import User from '@lucide/svelte/icons/user';
@@ -21,7 +20,6 @@
 	import { leadsWithJoining } from '$lib/nav/crews';
 	import { levelFromXp, levelProgress, xpForLevel } from '$lib/level';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
-	import MarkIcon from '$lib/components/MarkIcon.svelte';
 	import { fetchProgression, type LoadSummary } from '$lib/progression';
 	import Banner from '$lib/components/Banner.svelte';
 	import DesktopNotice from '$lib/components/DesktopNotice.svelte';
@@ -241,18 +239,11 @@
 	{#if headline}
 		<p class="text-muted mt-1 text-sm">{headline.text}</p>
 	{/if}
-	<!-- One action row (#3688): ride, plan, a crew, in that order on every
-	     visit, each 44 px (a phone on the bars), one of them filled. The
-	     filled one takes a clear border so it stands as tall as the rest.
-	     The row is shared out, never left ragged: each door wide enough for
-	     its label on one line, the rest alike. Where the column is too narrow
-	     for that (a container query: the sidebar takes its share), two to a
-	     row, the doors a row of their own. -->
-	<div class="@container mt-4">
-		<div
-			class="grid grid-cols-2 items-start gap-3 @5xl:flex @5xl:gap-x-6 [&_.btn-primary]:border [&_.btn-primary]:border-transparent [&>*]:@5xl:flex-[3_1_0%]"
-			data-testid="home-actions"
-		>
+	<!-- The ride leads (Shell Rethink): the ride that is on, or the doors.
+	     Planning and a crew sit on a quieter row beneath, except before the
+	     first crew, when the crew is the one thing to do (ADR-0010). -->
+	<div class="mt-4">
+		<div class="flex flex-col gap-3" data-testid="home-actions">
 			{#if headline}
 				<a href={headline.href} class="btn btn-primary btn-lg col-span-2"
 					><Radio size={15} /> {headline.cta}</a
@@ -262,7 +253,7 @@
 				<RideDoors
 					onAlone={() => void goto('/ride?alone')}
 					lead={filled === 'door'}
-					class="col-span-2 min-w-0 @5xl:!flex-[11_1_0%]"
+					class="min-w-0"
 				/>
 			{:else}
 				<!-- The alone door, by the doors' own name, where there is no
@@ -271,52 +262,26 @@
 					><User size={15} /> Ride alone</a
 				>
 			{/if}
-			{#if plannable.length > 1}
-				<!-- More than one crew to plan in: ask, never guess (#435). -->
-				<details class="relative">
-					<summary
-						class="btn btn-secondary btn-lg w-full cursor-pointer list-none [&::-webkit-details-marker]:hidden"
-						><CalendarClock size={15} /> Plan a session</summary
-					>
-					<ul class="panel absolute top-full left-0 z-20 mt-1 min-w-56 py-1">
-						{#each plannable as crew (crew.id)}
-							<li>
-								<a
-									href="/crew/{crew.id}/schedule?plan"
-									class="hover:bg-surface flex items-center gap-2 px-3 py-2 text-sm"
-								>
-									<MarkIcon icon={crew.icon} size={14} />
-									<span class="truncate">{crew.name}</span>
-								</a>
-							</li>
-						{/each}
-					</ul>
-				</details>
-			{:else if firstCrew}
-				<a
-					href="/crew/{firstCrew.id}/schedule?plan"
-					class="btn btn-secondary btn-lg"
-					><CalendarClock size={15} /> Plan a session</a
-				>
-			{/if}
-			{#if ready}
-				<!-- Carrying an invite, the crew button is joining the crew that
+			<div class="flex flex-wrap items-center gap-2">
+				{#if ready}
+					<!-- Carrying an invite, the crew button is joining the crew that
 			     sent it (#2144, #2184); everyone else is offered the crew the
 			     signed-out landing promised, and joining is one step down the
 			     same sheet. Filled before the first crew (ADR-0010). -->
-				<button
-					onclick={() => (opening = true)}
-					class="btn btn-lg {skin('crew')}"
-					><Plus size={15} />
-					{joinFirst ? 'Join a crew' : 'Start a crew'}</button
-				>
-			{:else if !presence.error}
-				<!-- Not "start your first" before the list has said there is none
+					<button
+						onclick={() => (opening = true)}
+						class="btn {crewless ? 'btn-lg' : ''} {skin('crew')}"
+						><Plus size={15} />
+						{joinFirst ? 'Join a crew' : 'Start a crew'}</button
+					>
+				{:else if !presence.error}
+					<!-- Not "start your first" before the list has said there is none
 			     (#2848): a rider with crews was one tap from founding a
 			     duplicate while it loaded, and after it failed — when the banner
 			     below says why. -->
-				<Skeleton class="h-11" />
-			{/if}
+					<Skeleton class="h-9 w-32" />
+				{/if}
+			</div>
 		</div>
 	</div>
 
@@ -339,12 +304,52 @@
 
 	<RecoveredNotice />
 
+	{#if !ready}
+		<div class="mt-6 grid gap-8 xl:grid-cols-2">
+			{#each { length: 2 } as _, i (i)}
+				<div class="border-frame rounded-lg border px-5 py-4">
+					<Skeleton class="h-4 w-48" />
+					<Skeleton class="mt-2 h-3 w-28" />
+				</div>
+			{/each}
+		</div>
+	{:else}
+		<!-- Two equal columns on a wide screen (#417, #3688): what is planned
+		     on the left; who is around, then what you rode, on the right. One
+		     column below xl, in that order. -->
+		<div class="mt-6 grid gap-8 xl:grid-cols-2">
+			<!-- This week: every planned session, across every crew you are
+			     in, under its day (ADR-0020 — /sessions retired into this;
+			     #3689). Planning and saying you are in both happen on the
+			     Schedule of the crew whose session it is. -->
+			<div class="min-w-0">
+				<ThisWeek planCrew={firstCrew?.id} />
+			</div>
+			<div class="min-w-0 space-y-8">
+				<!-- Around right now: the reason to open the app — people. -->
+				<section>
+					<h2 class="eyebrow">Around right now</h2>
+					<AroundNow />
+					{#if friendsOnline.length > 0}
+						<div class="mt-3"><FriendsAround list={friendsOnline} /></div>
+					{/if}
+				</section>
+				<!-- The last few rides: what you did, one line each, the log a click away. -->
+				<RecentRides
+					rides={recent}
+					ondelete={(ride) =>
+						(rides = rides?.filter((r) => r.id !== ride.id) ?? null)}
+				/>
+			</div>
+		</div>
+	{/if}
+
 	<!-- You, in numbers — the band the mock's "your week" grew into: FTP,
 	     level, w/kg and the week, one glance. Four equal tiles (v2-summary):
 	     an eyebrow, a value in the display face, a muted unit on its
 	     baseline at half its size (TARGETS G4). Nothing here needs a click. -->
 	<section
-		class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4"
+		class="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4"
 		data-testid="home-tiles"
 	>
 		<div class="panel">
@@ -411,46 +416,6 @@
 			{/if}
 		</div>
 	</section>
-
-	{#if !ready}
-		<div class="mt-6 grid gap-8 xl:grid-cols-2">
-			{#each { length: 2 } as _, i (i)}
-				<div class="border-frame rounded-lg border px-5 py-4">
-					<Skeleton class="h-4 w-48" />
-					<Skeleton class="mt-2 h-3 w-28" />
-				</div>
-			{/each}
-		</div>
-	{:else}
-		<!-- Two equal columns on a wide screen (#417, #3688): what is planned
-		     on the left; who is around, then what you rode, on the right. One
-		     column below xl, in that order. -->
-		<div class="mt-6 grid gap-8 xl:grid-cols-2">
-			<!-- This week: every planned session, across every crew you are
-			     in, under its day (ADR-0020 — /sessions retired into this;
-			     #3689). Planning and saying you are in both happen on the
-			     Schedule of the crew whose session it is. -->
-			<div class="min-w-0">
-				<ThisWeek planCrew={firstCrew?.id} />
-			</div>
-			<div class="min-w-0 space-y-8">
-				<!-- Around right now: the reason to open the app — people. -->
-				<section>
-					<h2 class="eyebrow">Around right now</h2>
-					<AroundNow />
-					{#if friendsOnline.length > 0}
-						<div class="mt-3"><FriendsAround list={friendsOnline} /></div>
-					{/if}
-				</section>
-				<!-- The last few rides: what you did, one line each, the log a click away. -->
-				<RecentRides
-					rides={recent}
-					ondelete={(ride) =>
-						(rides = rides?.filter((r) => r.id !== ride.id) ?? null)}
-				/>
-			</div>
-		</div>
-	{/if}
 
 	<!-- The desktop app's offer, for a rider in a browser on a desk: last,
 	     under the rider's own numbers and week (#3688). What's new and every

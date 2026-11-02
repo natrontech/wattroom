@@ -52,7 +52,7 @@ describe('device choices', () => {
 	});
 
 	it('is one store above the router, so a pick made with no call is the pick a join applies', () => {
-		// #1858: /settings/voice writes it, the call's mic chain reads it.
+		// #1858: /settings/equipment writes it, the call's mic chain reads it.
 		deviceChoices().setMic('usb');
 		expect(deviceChoices().micId).toBe('usb');
 		expect(deviceChoices()).toBe(deviceChoices());

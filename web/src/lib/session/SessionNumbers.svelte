@@ -95,9 +95,8 @@
 		</div>
 		{#if meter && riding.length > 1}
 			<!-- The live half of the execution score (#543), alone not a
-			     leaderboard (#2635); below xl only, where the people column
-			     does not carry it (#2882 L6-09). -->
-			<div class="max-h-32 w-64 overflow-y-auto xl:hidden">
+			     leaderboard (#2635). -->
+			<div class="max-h-32 w-64 overflow-y-auto">
 				<ExecutionMeter riders={riding} />
 			</div>
 		{/if}

@@ -134,8 +134,6 @@ test('two riders share a session: crew strip, execution bars, sprint scoreboard'
 	// --- both roster rows carry an execution bar ----------------------------
 	// The meter only draws with more than one rider pedalling, which is the
 	// point: it is a leaderboard, and it had never been seen with a field.
-	// Below xl, where the people column is a sheet: from xl the column carries
-	// the contest and the card is not drawn a second time (#2882 L6-09).
 	await a.setViewportSize({ width: 1200, height: 800 });
 	await expect(
 		a.getByTestId('execution-row'),
@@ -168,15 +166,6 @@ test('two riders share a session: crew strip, execution bars, sprint scoreboard'
 				.sort((x, y) => x.localeCompare(y))
 				.map((name) => ({ name, width: expect.stringMatching(/^[\d.]+%$/) })),
 		);
-
-	await a.setViewportSize({ width: 1280, height: 720 });
-	await expect(
-		a.getByTestId('execution-row').first(),
-		'from xl the Training card drew the contest a second time beside the people column',
-	).toBeHidden();
-	await expect(
-		a.locator('aside').getByText(B, { exact: true }).first(),
-	).toBeVisible();
 
 	// --- A arms a sprint, and the scoreboard ranks both on w/kg -------------
 	await a.getByRole('button', { name: 'arm a sprint' }).click();

@@ -13,7 +13,6 @@
 	import { crewLive } from '$lib/nav/crew-live.svelte';
 	import NotifyOffer from '$lib/components/NotifyOffer.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
-	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 	import { byDay, weekList, type Planned, type WeekDay } from './week-list';
 
 	let {
@@ -174,23 +173,5 @@
 				and in everyone's calendar.
 			{/if}
 		</p>
-	{/if}
-
-	<!-- The feed is offered under the list it mirrors (ADR-0021 amended, #1374)
-	     — once there is a crew to plan in; a subscription to nothing is noise on
-	     the screen meant to teach. The link itself lives with the account's
-	     other bearer secrets now (#1860), so this is the way to it rather than a
-	     second copy of it. -->
-	{#if planCrew}
-		<a
-			href="/settings/data"
-			class="panel hover:bg-surface mt-3 flex flex-wrap items-center gap-3 transition-colors"
-		>
-			<CalendarClock size={15} class="text-muted shrink-0" />
-			<span class="text-muted min-w-0 flex-1 text-xs">
-				One subscription puts every crew's sessions in your calendar app.
-			</span>
-			<span class="btn-link shrink-0 text-xs">Get your calendar link</span>
-		</a>
 	{/if}
 </section>

@@ -5,6 +5,9 @@
 	// bearer secret on the account and used to be the only one filed elsewhere
 	// (#1860). The purge stays last: the destructive action sits apart (#126).
 	import CalendarFeed from '$lib/profile/CalendarFeed.svelte';
+	import HiddenRiders from '$lib/profile/HiddenRiders.svelte';
+	import Notifications from '$lib/profile/Notifications.svelte';
+	import ThisComputer from '$lib/profile/ThisComputer.svelte';
 	import CoachAccess from '$lib/profile/CoachAccess.svelte';
 	import YourData from '$lib/profile/YourData.svelte';
 	import type { PageData } from './$types';
@@ -12,6 +15,9 @@
 	let { data }: { data: PageData } = $props();
 </script>
 
+<Notifications />
+<HiddenRiders />
+<ThisComputer />
 <CoachAccess initial={data.tokens} initialError={data.tokensError} />
 <CalendarFeed />
 <YourData />

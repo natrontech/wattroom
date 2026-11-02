@@ -365,7 +365,7 @@
 			     controller never shows there, and this says where it goes. -->
 			<p class="text-muted mt-2 text-xs">
 				A Zwift Click, Play or Ride pairs through BikeControl: <a
-					href="/settings/controllers"
+					href="/settings/equipment"
 					class="underline">Controllers</a
 				>.
 			</p>

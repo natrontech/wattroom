@@ -270,7 +270,7 @@
 				{/snippet}
 			</Banner>
 		{:else if doors}
-			<RideDoors onAlone={() => (alone = true)} />
+			<RideDoors onAlone={() => (alone = true)} lead />
 		{:else}
 			<PreRide
 				bind:kind

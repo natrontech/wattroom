@@ -22,7 +22,6 @@
 	import { createProfileStore, PROFILE_LIMITS } from '$lib/profile.svelte';
 	import { ownCachedLthr } from '$lib/profile-sync.svelte';
 	import FtpTrendChart from '$lib/components/FtpTrendChart.svelte';
-	import Reactions from './Reactions.svelte';
 	import SignOutElsewhere from './SignOutElsewhere.svelte';
 	import type { PageData } from './$types';
 	import { untrack } from 'svelte';
@@ -438,7 +437,7 @@
 						     the other notifications (#1828), not in the profile form. -->
 						<span class="text-muted mt-1 block text-[11px]"
 							>Whether a planned session mails you is on <a
-								href="/settings/notifications"
+								href="/settings/data"
 								class="btn-link">Notifications</a
 							>.</span
 						>
@@ -488,7 +487,5 @@
 				/>
 			</div>
 		{/if}
-
-		<Reactions />
 	{/if}
 </div>

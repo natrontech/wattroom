@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { modals } from '$lib/modals.svelte';
-	import { page } from '$app/state';
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { playheadAt } from '$lib/channel/playhead';
 	import { playerInfo } from '$lib/channel/jukebox-player.svelte';
@@ -329,10 +328,8 @@
 </script>
 
 {#if conn}
-	<!-- With no seat on offer the dock sits in the corner, above the chat
-	     button below xl (#219). On a phone it is the phone's width less the
-	     people button beside it, and the drawer button too while riding:
-	     the voice channel's page stops above it (#4185). Stacking (#483):
+	<!-- With no seat on offer the dock sits in the corner above the now bar.
+	     Stacking (#483):
 	     floating, it sits BELOW dialogs, drawers and toasts (z-40/z-50) — RMF
 	     forbids OUR chrome over the player, not a dialog the rider opened
 	     over it. Seated, it has to clear the surface it sits in — a popped-out
@@ -349,9 +346,7 @@
 			? ''
 			: 'ring-ink/15 ring-1'} {showPlayer
 			? ''
-			: 'hidden'} max-w-[96vw] {channelConnection.onPlacePath(page.url.pathname)
-			? `right-4 bottom-20 max-md:right-[4.5rem] max-md:bottom-4 xl:right-[calc(var(--pane-side-panel-w,272px)+1.25rem)] xl:bottom-4 ${seat ? '' : 'max-md:ride:max-w-[calc(100vw-9rem)] max-md:max-w-[calc(100vw-5.5rem)]'}`
-			: 'right-4 bottom-4'}"
+			: 'hidden'} right-4 bottom-[calc(var(--now-bar-h,0px)+1rem)] max-w-[calc(100vw-2rem)]"
 		style="width: {CORNER.w}px; height: {CORNER.h}px; max-height: 90vh"
 	>
 		<div class="flex min-h-0 flex-1 bg-black {listening.out ? 'hidden' : ''}">

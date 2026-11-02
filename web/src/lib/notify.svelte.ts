@@ -230,7 +230,7 @@ export const notify = {
 			'WattRoom',
 			'Notifications work. A message, an arrival, a session starting or a poke reaches you like this while the app is behind another window.',
 			'test',
-			{ href: '/settings/notifications' },
+			{ href: '/settings/data' },
 		);
 	},
 	/**

@@ -367,11 +367,6 @@
 					{/if}
 				{/snippet}
 				{#snippet actions()}
-					<a href="/workouts/edit?from={entry.id}" class="btn btn-ghost btn-xs"
-						>Save a copy</a
-					>
-					<!-- The primary action, visible (#126): the title-only link read
-					     as a label, and the rest of the card was dead surface. -->
 					{@render ride(entry.id, entry.workout)}
 				{/snippet}
 			</WorkoutCard>
@@ -386,8 +381,8 @@
 	{/if}
 </main>
 
-<!-- A card's Ride, and On a route beside it; picking for a road, Ride is
-     that road's (#3681). -->
+<!-- A card's one visible action. Picking for a road, Ride is that road's
+     (#3681); On a route and Save a copy are in the card's menu. -->
 {#snippet ride(id: string, workout: Workout)}
 	{#if on}
 		<button
@@ -395,15 +390,6 @@
 			class="btn btn-primary btn-xs ml-auto">Ride</button
 		>
 	{:else}
-		{#if onRoads}
-			<button
-				onclick={() => (routeFor = { id, workout })}
-				class="btn btn-ghost btn-xs ml-auto">On a route</button
-			>
-		{/if}
-		<a
-			href="/ride?w={id}"
-			class="btn btn-primary btn-xs {onRoads ? '' : 'ml-auto'}">Ride</a
-		>
+		<a href="/ride?w={id}" class="btn btn-primary btn-xs ml-auto">Ride</a>
 	{/if}
 {/snippet}

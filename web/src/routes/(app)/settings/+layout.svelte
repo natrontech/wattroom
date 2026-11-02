@@ -19,13 +19,10 @@
 	});
 
 	const SECTIONS = [
-		{ href: '/settings/profile', label: 'Profile' },
-		{ href: '/settings/equipment', label: 'Equipment' },
-		{ href: '/settings/controllers', label: 'Controllers' },
-		{ href: '/settings/voice', label: 'Voice & audio' },
-		{ href: '/settings/appearance', label: 'Appearance' },
-		{ href: '/settings/notifications', label: 'Notifications' },
-		{ href: '/settings/data', label: 'Your data' },
+		{ href: '/settings/profile', label: 'You' },
+		{ href: '/settings/equipment', label: 'Devices' },
+		{ href: '/settings/appearance', label: 'Look' },
+		{ href: '/settings/data', label: 'Data' },
 	];
 	const current = $derived(
 		SECTIONS.find((s) => page.url.pathname.startsWith(s.href)),

@@ -1,6 +1,6 @@
 <script lang="ts">
 	// The full Voice & audio page: devices, how you transmit, the gate and the
-	// mixer. /settings/voice keeps all of it — the Sound panel (`QuickAudio`)
+	// mixer. /settings/equipment keeps all of it — the Sound panel (`QuickAudio`)
 	// is the shortcut to the parts you reach for while riding (ADR-0020's
 	// amendment, #477), never the only way to them, and it renders the same
 	// `GateTune` and `MixFaders` this page does.

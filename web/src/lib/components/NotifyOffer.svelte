@@ -31,16 +31,16 @@
 		if (verdict === 'granted' || verdict === 'shell')
 			toasts.push(
 				'Notifications on. A session starting, a message or someone walking in reaches you while WattRoom is behind another window.',
-				{ href: '/settings/notifications' },
+				{ href: '/settings/data' },
 			);
 		else if (verdict === 'denied')
 			toasts.push(
 				"This browser blocked notifications and will not ask again. Allow them for this site in the browser's site settings, then turn them on in Settings.",
-				{ tone: 'error', href: '/settings/notifications', seconds: 10 },
+				{ tone: 'error', href: '/settings/data', seconds: 10 },
 			);
 		else
 			toasts.push('No answer given — you can turn them on in Settings.', {
-				href: '/settings/notifications',
+				href: '/settings/data',
 			});
 	}
 	const no = () => notify.waveOffer();
