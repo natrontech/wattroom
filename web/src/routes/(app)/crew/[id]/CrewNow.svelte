@@ -8,10 +8,9 @@
 	import Banner from '$lib/components/Banner.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import NotifyOffer from '$lib/components/NotifyOffer.svelte';
-	import TogetherTiles from '$lib/components/TogetherTiles.svelte';
 	import { voiceChannelPath } from '$lib/channels';
 	import { sessionPath } from '$lib/channel/address';
-	import { fetchCrewMembers, fetchCrewRecaps, type Crew } from '$lib/crew';
+	import { fetchCrewRecaps, type Crew } from '$lib/crew';
 	import {
 		answerCrewPlan,
 		fetchCrewSchedule,
@@ -29,7 +28,6 @@
 		whoIsInOf,
 		type RsvpAnswer,
 	} from '$lib/session/rsvp';
-	import type { Together } from '$lib/crew-types';
 	import { toasts } from '$lib/toast.svelte';
 	import { untrack } from 'svelte';
 	import { friends, friendsAround } from '$lib/friends/friends.svelte';
@@ -41,19 +39,16 @@
 	let voice = $state<LiveChannel[] | null>(null);
 	let next = $state<CrewPlan | null>(null);
 	let latest = $state<SessionRecap | null>(null);
-	let together = $state<Together | null>(null);
-	let streakWeeks = $state(0);
 	let error = $state<string | null>(null);
 	// The failure is a not_found — no crew of yours any more — so no Retry.
 	let gone = $state(false);
 	let answering = $state(false);
 
 	async function load(id: string) {
-		const [live, schedule, recaps, members] = await Promise.all([
+		const [live, schedule, recaps] = await Promise.all([
 			fetchCrewsLive(),
 			fetchCrewSchedule(id),
 			fetchCrewRecaps(id),
-			fetchCrewMembers(id),
 		]);
 		if (id !== crew.id) return;
 		if (live.ok)
@@ -64,11 +59,8 @@
 		if (schedule.ok) next = schedule.data.sessions[0] ?? null;
 		// Oldest first from the server, as the Members page reads them.
 		if (recaps.ok) latest = recaps.data.recaps.at(-1) ?? null;
-		if (members.ok) {
-			together = members.data.together ?? null;
-			streakWeeks = members.data.streakWeeks;
-		}
-		const failed = [live, schedule, recaps, members].find((res) => !res.ok);
+		// The crew's totals are the Members page's.
+		const failed = [live, schedule, recaps].find((res) => !res.ok);
 		error = failed && !failed.ok ? failed.error.message : null;
 		gone = !!failed && !failed.ok && failed.error.error === 'not_found';
 	}
@@ -266,10 +258,4 @@
 {#if latest}
 	<h2 class="eyebrow mt-8">latest session</h2>
 	<div class="mt-2"><SessionRecapCard recap={latest} /></div>
-{/if}
-
-{#if together || streakWeeks > 0}
-	<div class="mt-8">
-		<TogetherTiles {together} {streakWeeks} streakLabel="this crew's streak" />
-	</div>
 {/if}

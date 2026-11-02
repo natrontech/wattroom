@@ -210,7 +210,8 @@
 
 <svelte:head
 	><title
-		>{shelfPending || shelfMissing ? 'Ride' : riding.name} · Ride · WattRoom</title
+		>{shelfPending || shelfMissing || doors ? 'Ride' : `${riding.name} · Ride`} ·
+		WattRoom</title
 	></svelte:head
 >
 
