@@ -18,7 +18,6 @@
 	import CrewColumn from './CrewColumn.svelte';
 	import { crewLive } from './crew-live.svelte';
 	import { chosenCrew } from './chosen-crew.svelte';
-	import JukeboxRail from '$lib/channel/JukeboxRail.svelte';
 	import { keepSize } from '$lib/pane';
 	import { edgeDivider } from '$lib/divider';
 	import { friends } from '$lib/friends/friends.svelte';
@@ -331,12 +330,6 @@
 			</ul>
 		{/if}
 	</div>
-
-	<!-- The video, wherever the people column is not (#427): below xl a voice
-	     channel has no column, and off its pages there is none at all. -->
-	{#if channelConnection.current}
-		<JukeboxRail />
-	{/if}
 
 	<!-- Who is in the voice channel with you, while you are looking elsewhere
 	     (#446). Above you, like Discord's voice panel; off the Lounge, which
