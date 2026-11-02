@@ -43,8 +43,11 @@ function attach(win) {
 	// 'notifications' too (#296): the app's own switch (lib/notify) asks for
 	// it, and a shell that answered no left every room event silent — the one
 	// thing a desktop app is expected to do better than a tab.
+	// 'display-capture': since Electron 45 a screen share asks for this, not
+	// 'media', and the picker below never runs without it (#280).
 	const ALLOWED = new Set([
 		'media',
+		'display-capture',
 		'clipboard-sanitized-write',
 		'fullscreen',
 		'notifications',

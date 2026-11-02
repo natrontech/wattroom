@@ -55,7 +55,10 @@ test('a request is decided on the frame that asks', () => {
 		);
 	return Promise.all([
 		expect(ask(`${APP_ORIGIN}/c/mfw`)).resolves.toBe(true),
+		// Electron 45 asks a screen share as its own permission.
+		expect(ask(`${APP_ORIGIN}/c/mfw`, 'display-capture')).resolves.toBe(true),
 		expect(ask('https://www.youtube-nocookie.com/embed/x')).resolves.toBe(false),
+		expect(ask('https://www.youtube-nocookie.com/embed/x', 'display-capture')).resolves.toBe(false),
 		expect(ask(`${APP_ORIGIN}/c/mfw`, 'geolocation')).resolves.toBe(false),
 	]);
 });
