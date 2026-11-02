@@ -3,6 +3,7 @@ import type { Road } from './road';
 import {
 	aheadFor,
 	bandIn,
+	chipShift,
 	chipsIn,
 	createAheadEase,
 	frameFor,
@@ -175,5 +176,21 @@ describe('the chips and the band', () => {
 		expect(blocks.map((b) => b.zone)).toEqual([2, 4]);
 		expect(blocks[0].x).toBeCloseTo(1500 * frame.scale, 6);
 		expect(blocks[0].width).toBeCloseTo(100 * frame.scale, 6);
+	});
+});
+
+describe('a class chip at the panel edge (#4235)', () => {
+	it('sits centred over its top mid-panel', () => {
+		expect(chipShift(300, 600, 24)).toBe(0.5);
+	});
+
+	it('never hangs out of either edge, up to twice the edge wide', () => {
+		// A chip w px wide spans [x - s·w, x + (1 - s)·w].
+		const w = 48;
+		for (let x = 0; x <= 600; x += 3) {
+			const s = chipShift(x, 600, 24);
+			expect(x - s * w).toBeGreaterThanOrEqual(-1e-9);
+			expect(x + (1 - s) * w).toBeLessThanOrEqual(600 + 1e-9);
+		}
 	});
 });

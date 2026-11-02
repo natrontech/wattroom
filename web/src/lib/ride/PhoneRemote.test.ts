@@ -3,12 +3,15 @@ import { render } from 'svelte/server';
 import type { ViewState } from '$lib/protocol';
 import PhoneRemote from './PhoneRemote.svelte';
 
-const remote = (view: ViewState | null) =>
+const remote = (
+	view: ViewState | null,
+	gear: { label: string; atEnd: boolean } | null = null,
+) =>
 	render(PhoneRemote, {
 		props: {
 			live: {
 				view,
-				gear: null,
+				gear,
 				pause: null,
 				remoteRefusal: null,
 				sendRemote: () => {},
@@ -48,5 +51,17 @@ describe('the phone remote (#4253)', () => {
 		expect(disabled(html, 'Photo')).toBe(false);
 		expect(html).not.toContain('need 3D');
 		expect(html).toContain('RIDE · 3D · Overhead');
+	});
+
+	it('names the gear under the shifter, a blind one too (#4235)', () => {
+		const line = (label: string, atEnd = false) =>
+			/data-testid="remote-gear"[^>]*>([^<]*(?:<!---->[^<]*)*)</
+				.exec(remote(null, { label, atEnd }))?.[1]
+				.replaceAll('<!---->', '')
+				.replace(/\s+/g, ' ')
+				.trim();
+		expect(line('0')).toBe('Gear 0');
+		expect(line('+2')).toBe('Gear +2');
+		expect(line('Gear 15', true)).toBe('Gear 15 · end');
 	});
 });
