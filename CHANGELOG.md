@@ -17,6 +17,12 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.11.8] - 2026-11-02
+
+### Added
+
+- Riding fills the screen; its controls move to the now bar (#4337)
+
 ## [2026.11.7] - 2026-11-02
 
 ### Fixed
@@ -4250,7 +4256,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.7...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.8...HEAD
+[2026.11.8]: https://github.com/natrontech/wattroom/compare/2026.11.7...2026.11.8
 [2026.11.7]: https://github.com/natrontech/wattroom/compare/2026.11.6...2026.11.7
 [2026.11.6]: https://github.com/natrontech/wattroom/compare/2026.11.5...2026.11.6
 [2026.11.5]: https://github.com/natrontech/wattroom/compare/2026.11.4...2026.11.5
