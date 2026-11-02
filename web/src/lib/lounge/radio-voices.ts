@@ -151,6 +151,7 @@ export function lead(
 	note: number,
 	t: number,
 	dur: number,
+	vel = 1,
 ) {
 	const f = hz(note);
 	const end = t + dur + 1.2;
@@ -161,7 +162,7 @@ export function lead(
 			f,
 			t,
 			end,
-			envelope(b, t, 0.03, 0.004, 1.1, b.melody),
+			envelope(b, t, 0.03 * vel, 0.004, 1.1, b.melody),
 		);
 		const index = b.ctx.createGain();
 		index.gain.setValueAtTime(f * 2, t);
@@ -177,7 +178,7 @@ export function lead(
 			f,
 			t,
 			t + dur + 0.1,
-			lowpass(b, 1300, envelope(b, t, 0.022, 0.02, dur, b.melody)),
+			lowpass(b, 1300, envelope(b, t, 0.022 * vel, 0.02, dur, b.melody)),
 		);
 		return;
 	}
@@ -185,18 +186,18 @@ export function lead(
 		const o = tone(
 			b,
 			'sine',
-			f * 2,
+			f,
 			t,
 			t + dur + 0.1,
-			envelope(b, t, 0.028, 0.05, dur, b.melody),
+			envelope(b, t, 0.03 * vel, 0.05, dur, b.melody),
 		);
 		vibrato(b, o, t, dur, t + dur + 0.1);
 		return;
 	}
-	melody(b, note, t, dur);
+	melody(b, note, t, dur, vel);
 }
 
-function vibrato(
+export function vibrato(
 	b: Buses,
 	o: OscillatorNode,
 	t: number,
@@ -214,7 +215,7 @@ function vibrato(
 	lfo.stop(end);
 }
 
-function melody(b: Buses, note: number, t: number, dur: number) {
+function melody(b: Buses, note: number, t: number, dur: number, vel: number) {
 	const end = t + dur + 0.1;
 	const o = tone(
 		b,
@@ -222,7 +223,7 @@ function melody(b: Buses, note: number, t: number, dur: number) {
 		hz(note),
 		t,
 		end,
-		envelope(b, t, 0.035, 0.03, dur, b.melody),
+		envelope(b, t, 0.035 * vel, 0.03, dur, b.melody),
 	);
 	tone(
 		b,
@@ -230,7 +231,7 @@ function melody(b: Buses, note: number, t: number, dur: number) {
 		hz(note) * 2,
 		t,
 		end,
-		envelope(b, t, 0.008, 0.03, dur * 0.6, b.melody),
+		envelope(b, t, 0.008 * vel, 0.03, dur * 0.6, b.melody),
 	);
 	vibrato(b, o, t, dur, end);
 }

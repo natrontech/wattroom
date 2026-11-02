@@ -853,6 +853,54 @@ that. The lab run that planned ADR-0076 quoted 0.5–12 %, about 49 % and about
 500–2,000 with assumptions it did not record. The table above is the same
 model with the assumptions written down.
 
+## 21. A licensed lofi radio for the lounge (research for house radio; run of 2026-11-02)
+
+**Question.** Jan, 2026-11-02: the generated house radio is too repetitive.
+Could the lounge play real lofi instead, free to use inside a hosted app and
+in sync for everyone in the voice channel? Each licence below was read on its
+own terms page. No audio was downloaded. This is a reading of the terms, not
+legal advice.
+
+**Fits.**
+
+| Source | Licence | Credit | Self-host | Catalogue |
+|---|---|---|---|---|
+| [HoliznaCC0](https://holiznacc0.bandcamp.com/) on [FMA](https://freemusicarchive.org/music/holiznacc0/) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | none | yes | 692 tracks; 1 h 28 min of lofi and chiptune albums counted by hand |
+| [Free Music Archive](https://freemusicarchive.org/License_Guide), per track | CC0 or CC BY (skip NC and ND) | CC BY: title, artist, FMA, licence, with links ([FAQ](https://freemusicarchive.org/FAQ_For_Videos/)) | yes; FMA's [terms](https://freemusicarchive.org/Terms_of_Use) forbid deep-linking its audio | the [Lo-fi Hip-Hop genre](https://freemusicarchive.org/genre/Lo-fi-Hip-Hop/) lists 24,251 tracks, no licence filter |
+| [Kevin MacLeod](https://incompetech.com/music/royalty-free/faq.html) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | "Title Kevin MacLeod (incompetech.com) Licensed under Creative Commons: By Attribution 4.0" plus the licence link, on a credits screen | yes, by CC BY 4.0 | little lofi; filler only |
+
+FMA album pages tell the listener to check each track's own licence, so a
+track's licence field is checked one by one before it ships, even inside a
+CC0 album.
+
+**Does not fit.**
+
+- [Pixabay](https://pixabay.com/service/license-summary/): no credit needed, but the [terms](https://pixabay.com/service/terms/) forbid distributing content "standalone". A radio plays tracks unchanged, which reads as standalone. Fits only if Pixabay confirms in writing.
+- [Chillhop](https://chillhop.com/about/terms-of-service/): no use in apps or games without a paid licence; the [creator terms](https://chillhop.com/about/creator-terms-of-service/) cover YouTube and Twitch.
+- [Lofi Girl](https://lofigirl.com/terms): free sharing on YouTube, TikTok, Twitch and Instagram only.
+- [StreamBeats](https://streambeats.com/licensing): a sync licence for streams and videos; bans standalone redistribution and music-only radio.
+- [SomaFM](https://somafm.com/contact/tos.html): no third-party clients, no embedding in an app.
+- [Jamendo](https://devportal.jamendo.com/api_terms_of_use): API free for non-commercial use, no caching or offline copies, so no self-hosting; [commercial radio](https://developer.jamendo.com/v3.0/radios) is a paid licence.
+
+**Not verified.** [ccMixter](https://ccmixter.org/terms) (licence per track,
+no filter found), OpenGameArt (pages returned 403; Holizna's collections there
+are said to be CC0), Internet Archive (uploader-asserted licences, one
+"public domain" hit was a Nujabes track) and itch.io packs (claims seen only
+in search snippets).
+
+**How it would play: self-hosted files, not a stream URL.** Every stream
+checked forbids app use, so only CC0 or CC BY files on our own server are
+open to us. Files also keep the lounge's sync: a fixed playlist whose track
+and offset follow from the server clock plays the same second on every screen,
+the way house radio and the jukebox's anchor already do. An Icecast-style
+stream buffers per listener and cannot seek, so riders would drift apart.
+
+The jukebox already plays uploaded MP3s, but its pool is each rider's own
+uploads. A radio shelf would be new: tracks the operator places once (CC0
+first, CC BY with a credits line in the deck), shared by every crew, picked
+by crew id and clock. Do that only after counting the hours: about 1.5 h is
+verified CC0 today, and a 3-hour evening would come round twice.
+
 ## Ranked risks to the plan
 
 1. ~~Kickr v2 lacks FTMS~~ **Resolved → planned work** — confirmed the v2 is WCPS-only; full protocol mapped (§9) and the WcpsTrainer driver is now M1 scope. Residual risk (low): protocol facts come from reverse-engineered implementations, not Wahoo docs — verify against the real v2 early in M1.

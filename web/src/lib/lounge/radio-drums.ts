@@ -1,7 +1,7 @@
 /** House radio's drums: three kits from one kick, filtered noise and a click. */
 import { envelope, tone, type Buses } from '$lib/lounge/radio-voices';
 
-function hiss(
+export function hiss(
 	b: Buses,
 	t: number,
 	type: BiquadFilterType,
@@ -32,11 +32,16 @@ export function kick(b: Buses, t: number, vel = 1) {
 	);
 	o.frequency.exponentialRampToValueAtTime(44, t + 0.13);
 	hiss(b, t, 'highpass', 3000, 0.03, 0.006);
+	pump(b, t);
+}
+
+/** The sidechain: the keys and bass dip under the kick and swell back. */
+export function pump(b: Buses, t: number) {
 	const g = b.duck.gain;
 	g.cancelScheduledValues(t);
 	g.setValueAtTime(1, t);
-	g.linearRampToValueAtTime(0.8, t + 0.015);
-	g.linearRampToValueAtTime(1, t + 0.25);
+	g.linearRampToValueAtTime(0.72, t + 0.02);
+	g.linearRampToValueAtTime(1, t + 0.3);
 }
 
 export function snare(b: Buses, t: number, vel: number) {
