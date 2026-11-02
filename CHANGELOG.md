@@ -17,6 +17,12 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.11.12] - 2026-11-03
+
+### Fixed
+
+- House radio drops the vinyl crackle (#4351)
+
 ## [2026.11.11] - 2026-11-02
 
 ### Added
@@ -4279,7 +4285,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.11...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.12...HEAD
+[2026.11.12]: https://github.com/natrontech/wattroom/compare/2026.11.11...2026.11.12
 [2026.11.11]: https://github.com/natrontech/wattroom/compare/2026.11.10...2026.11.11
 [2026.11.10]: https://github.com/natrontech/wattroom/compare/2026.11.9...2026.11.10
 [2026.11.9]: https://github.com/natrontech/wattroom/compare/2026.11.8...2026.11.9
