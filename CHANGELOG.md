@@ -17,6 +17,17 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.11.3] - 2026-11-02
+
+### Added
+
+- A now bar, one Ride, and fewer buttons everywhere (#4320)
+
+### Fixed
+
+- A race or a game on a road draws its road line and Skyline (#4319)
+- A ride keeps its length when a trainer reads a second late (#4317)
+
 ## [2026.11.2] - 2026-11-01
 
 ### Changed
@@ -4210,7 +4221,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.2...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.3...HEAD
+[2026.11.3]: https://github.com/natrontech/wattroom/compare/2026.11.2...2026.11.3
 [2026.11.2]: https://github.com/natrontech/wattroom/compare/2026.11.1...2026.11.2
 [2026.11.1]: https://github.com/natrontech/wattroom/compare/2026.10.7...2026.11.1
 [2026.10.7]: https://github.com/natrontech/wattroom/compare/2026.10.6...2026.10.7
