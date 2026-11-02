@@ -176,7 +176,7 @@
 			     95% rule): folded, the way the calendar link's reset is. -->
 			<details class="mt-3">
 				<summary class="text-muted hover:text-ink cursor-pointer text-[11px]"
-					>Advanced</summary
+					>Sprint grade</summary
 				>
 				<label class="mt-2 block max-w-40">
 					<span class="eyebrow">sprint grade (%)</span>

@@ -17,7 +17,7 @@ export const WORLD_MODES: { mode: WorldMode; label: string; line: string }[] = [
 		label: 'Steady',
 		line: 'the heli camera only, a fixed FOV, cuts, no particles',
 	},
-	{ mode: 'light', label: 'Light', line: 'the lowest 3D tier' },
+	{ mode: 'light', label: 'Low', line: 'the lowest 3D tier' },
 ];
 
 const KEY = 'wattroom.world.mode.v1';
