@@ -17,6 +17,17 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.11.7] - 2026-11-02
+
+### Fixed
+
+- A free ride shows Ride a workout and the gears once a trainer pairs (#4329)
+- A climb's class chip stays whole at the Skyline's edge; the remote names its gear (#4334)
+- Beside the roadside, the jukebox drops its magenta and grows its seek bar (#4333)
+- A race keeps its crew beside your numbers, and RACE stands as tall as RIDE (#4332)
+- /ride offers a road's climb as a start, as its route page does (#4331)
+- Your road leaves a crew's plans when you leave the crew (#4330)
+
 ## [2026.11.6] - 2026-11-02
 
 ### Fixed
@@ -4239,7 +4250,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.6...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.7...HEAD
+[2026.11.7]: https://github.com/natrontech/wattroom/compare/2026.11.6...2026.11.7
 [2026.11.6]: https://github.com/natrontech/wattroom/compare/2026.11.5...2026.11.6
 [2026.11.5]: https://github.com/natrontech/wattroom/compare/2026.11.4...2026.11.5
 [2026.11.4]: https://github.com/natrontech/wattroom/compare/2026.11.3...2026.11.4
