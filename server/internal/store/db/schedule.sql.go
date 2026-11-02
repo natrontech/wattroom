@@ -11,6 +11,53 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const cancelPlannerRoadPlans = `-- name: CancelPlannerRoadPlans :many
+delete from scheduled_sessions
+where crew_id = $1 and created_by = $2
+  and route_id is not null and started_at is null
+returning workout_name, workout_json, starts_at, channel_id
+`
+
+type CancelPlannerRoadPlansParams struct {
+	CrewID  pgtype.UUID
+	Planner pgtype.UUID
+}
+
+type CancelPlannerRoadPlansRow struct {
+	WorkoutName string
+	WorkoutJson []byte
+	StartsAt    pgtype.Timestamptz
+	ChannelID   pgtype.UUID
+}
+
+// A rider out of a crew, by leaving or a ban, takes their roads out of its
+// plans (#4150, ADR-0063): the crew could read a road through a plan its
+// owner could no longer cancel.
+func (q *Queries) CancelPlannerRoadPlans(ctx context.Context, arg CancelPlannerRoadPlansParams) ([]CancelPlannerRoadPlansRow, error) {
+	rows, err := q.db.Query(ctx, cancelPlannerRoadPlans, arg.CrewID, arg.Planner)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CancelPlannerRoadPlansRow
+	for rows.Next() {
+		var i CancelPlannerRoadPlansRow
+		if err := rows.Scan(
+			&i.WorkoutName,
+			&i.WorkoutJson,
+			&i.StartsAt,
+			&i.ChannelID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const claimSessionsToRemind = `-- name: ClaimSessionsToRemind :many
 update scheduled_sessions
 set reminded_at = now()

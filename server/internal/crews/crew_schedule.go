@@ -343,6 +343,17 @@ func (s *Service) handleCrewCancel(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// roadPlansCancelled tells the crew of the plans a rider's leaving or ban
+// took with it (#4150), as handleCrewCancel tells it of one.
+func (s *Service) roadPlansCancelled(ctx context.Context, crew pgtype.UUID, plans []db.CancelPlannerRoadPlansRow, actor db.User) {
+	for _, plan := range plans {
+		if s.notifier != nil && plan.StartsAt.Time.After(time.Now()) {
+			s.notifier.SessionCancelled(crew, plan.ChannelID, workout.PlainName(string(plan.WorkoutJson), plan.WorkoutName), plan.StartsAt.Time, actor.ID)
+		}
+		s.announceIn(ctx, crew, plan.ChannelID, "cancelled", actor.DisplayName, plan.WorkoutName, time.Time{})
+	}
+}
+
 // handleCrewRsvp is handleRsvp for the crew's plans: PUT writes the answer —
 // `{"going": false}` to decline, no body for "in" — and DELETE takes it back.
 func (s *Service) handleCrewRsvp(w http.ResponseWriter, r *http.Request) {

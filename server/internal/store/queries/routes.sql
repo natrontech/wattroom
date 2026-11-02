@@ -116,12 +116,21 @@ where id = sqlc.arg(id) and road_sealed is null
 -- one of their crews whose unstarted plan carries it, or one whose channel —
 -- one they may enter — is riding it right now (the hub names those). Each with
 -- whether it is listed in the directory and what the owner answered for it.
+-- A plan opens it only as the calendar shows it (ListCrewUpcoming): until 30
+-- minutes past its start, in a channel the viewer may enter, and while its
+-- planner is still in the crew (#4150).
 select c.id, c.listed, a.shared as consent
 from crews c
 left join route_crew_consents a on a.route_id = sqlc.arg(route_id) and a.crew_id = c.id
 where (
     exists (select 1 from scheduled_sessions s
-            where s.crew_id = c.id and s.route_id = sqlc.arg(route_id) and s.started_at is null)
+            where s.crew_id = c.id and s.route_id = sqlc.arg(route_id) and s.started_at is null
+              and s.starts_at > now() - interval '30 minutes'
+              and (s.channel_id is null
+                   or exists (select 1 from visible_channels v where v.channel_id = s.channel_id and v.user_id = sqlc.arg(viewer)))
+              and (s.created_by = c.owner_id
+                   or exists (select 1 from crew_roles pr
+                              where pr.crew_id = c.id and pr.user_id = s.created_by and pr.role in ('member', 'admin'))))
     and (c.owner_id = sqlc.arg(viewer)
          or exists (select 1 from crew_roles cr
                     where cr.crew_id = c.id and cr.user_id = sqlc.arg(viewer) and cr.role in ('member', 'admin')))
