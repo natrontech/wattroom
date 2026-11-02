@@ -627,6 +627,7 @@ export function createChannelLive(address: PlaceAddress) {
 		 * (ADR-0089); `take` moves it from another of their screens.
 		 */
 		claimVoice: (take: boolean) => voiceSeat.claim(take, pairing),
+		voiceClaimTimedOut: () => voiceSeat.timedOut(),
 		/** This screen left the call. */
 		releaseVoice: () => voiceSeat.release(),
 		get lastPoke() {

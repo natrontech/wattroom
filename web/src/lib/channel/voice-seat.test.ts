@@ -32,6 +32,7 @@ describe('the voice seat (ADR-0089)', () => {
 			},
 		});
 		await expect(here).resolves.toBe(false);
+		expect(seat.timedOut()).toBe(false);
 		expect(sent).toEqual([
 			{ voice: { on: true, take: false, tab: 'tab-1', device: 'phone' } },
 		]);
@@ -93,9 +94,12 @@ describe('the voice seat (ADR-0089)', () => {
 		await vi.advanceTimersByTimeAsync(0);
 		expect(settled).toBe(true);
 
-		const stuck = rig({ open: false }).seat.claim(false, {});
+		const quiet = rig({ open: false });
+		const stuck = quiet.seat.claim(false, {});
 		await vi.advanceTimersByTimeAsync(VOICE_WAIT_MAX_MS);
 		await expect(stuck).resolves.toBe(false);
+		// A hub that never answered is told apart from a refusal (#4345).
+		expect(quiet.seat.timedOut()).toBe(true);
 	});
 
 	it('claims nothing without a tab label, and joins as an older client', async () => {

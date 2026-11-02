@@ -46,6 +46,7 @@ export function createVoiceSeat(
 	// A take is never refused: a pairing still naming the other screen was
 	// on its way before the hub moved the voice.
 	let taking = false;
+	let timedOut = false;
 	const claimOf = (on: boolean, take = false) => ({
 		voice: { on, take, tab: tab(), device: device() },
 	});
@@ -58,6 +59,7 @@ export function createVoiceSeat(
 		claim(take: boolean, pairing: SensorPairing): Promise<boolean> {
 			if (!tab()) return Promise.resolve(true);
 			wanted = true;
+			timedOut = false;
 			answer?.(false);
 			taking = take;
 			send(claimOf(true, take));
@@ -75,13 +77,18 @@ export function createVoiceSeat(
 				};
 				const wait = () => {
 					if (connected()) return settle(true);
-					if (Date.now() - started >= VOICE_WAIT_MAX_MS) return settle(false);
+					if (Date.now() - started >= VOICE_WAIT_MAX_MS) {
+						timedOut = true;
+						return settle(false);
+					}
 					timer = setTimeout(wait, VOICE_ANSWER_MS);
 				};
 				timer = setTimeout(wait, VOICE_ANSWER_MS);
 				answer = settle;
 			});
 		},
+		/** The last claim gave up waiting for the hub rather than being refused. */
+		timedOut: () => timedOut,
 		/** This screen left the call: the voice is nobody's until claimed. */
 		release() {
 			const had = wanted;

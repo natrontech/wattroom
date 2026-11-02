@@ -45,6 +45,8 @@ const VOICE_UNREACHABLE =
  * gets a button back.
  */
 export const JOIN_TIMEOUT_MS = 20_000;
+const VOICE_NO_HUB =
+	'Could not reach WattRoom to start the call. Check your connection, then press Reconnect.';
 const VOICE_STUCK =
 	'Voice did not connect in time — try again, and tap or click anywhere first if the browser is waiting for you.';
 
@@ -79,6 +81,8 @@ export interface SessionHost {
 export interface VoiceSeatHost {
 	/** Whether this screen may join; `take` moves the voice here. */
 	claim(take: boolean): Promise<boolean>;
+	/** The last claim got no answer in time, as against being refused. */
+	timedOut?(): boolean;
 	release(): void;
 }
 
@@ -137,7 +141,13 @@ export function createSession(host: SessionHost) {
 		av.status = 'connecting';
 		av.error = null;
 		if (seat && !(await seat.claim(take))) {
-			if (av.status === 'connecting') av.status = 'off';
+			if (av.status !== 'connecting') return;
+			// No answer from the hub is a failure the rider can mend; a
+			// refusal means their voice is on another screen.
+			if (seat.timedOut?.()) {
+				av.status = 'failed';
+				av.error = { message: VOICE_NO_HUB, signIn: false };
+			} else av.status = 'off';
 			return;
 		}
 		// A leave while the hub answered.
@@ -263,6 +273,7 @@ export function createSession(host: SessionHost) {
 		seat?.release();
 		note.stop();
 		note.clear();
+		av.left += 1;
 		// Same for leaving: every local capture goes back to the machine.
 		if (conn.liveKitRoom && conn.liveKit) {
 			const local = conn.liveKitRoom.localParticipant;

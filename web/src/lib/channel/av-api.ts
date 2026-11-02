@@ -60,6 +60,9 @@ export function channelAvApi(parts: AvParts) {
 		get dropped() {
 			return av.dropped;
 		},
+		get left() {
+			return av.left;
+		},
 		/** What the drop-rejoin should do with the mic: what the rider had. */
 		get micBeforeDrop() {
 			return conn.micBeforeDrop;

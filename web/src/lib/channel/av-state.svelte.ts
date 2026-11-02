@@ -59,10 +59,13 @@ export interface AvState {
 	/** Who is talking, measured rather than remembered (#987). */
 	speaking: Record<string, boolean>;
 	/**
-	 * Bumped when LiveKit drops us while live — the connection auto-rejoins
-	 * once with a fresh token (#219: token expiry, transient drops).
+	 * Bumped when LiveKit drops us while live — the connection rejoins with a
+	 * fresh token (#219: token expiry, transient drops) and keeps trying
+	 * until it is back (voice-recover.ts).
 	 */
 	dropped: number;
+	/** Bumped when the rider hangs up, so a rejoin under way stands down. */
+	left: number;
 	/**
 	 * Who is in voice and whether their mic is open (#151): absent = not in
 	 * voice at all — three states a tile can tell apart at a glance.
@@ -131,6 +134,7 @@ export function createAvState(): AvState {
 		error: null,
 		speaking: {},
 		dropped: 0,
+		left: 0,
 		voice: {},
 		quality: {},
 		handedOff: false,
