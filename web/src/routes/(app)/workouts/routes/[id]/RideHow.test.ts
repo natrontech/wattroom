@@ -29,3 +29,26 @@ describe('how to ride a route (#3680)', () => {
 		expect(body).toContain("This device can't reach a trainer");
 	});
 });
+
+describe('which stretch: one climb (#4235)', () => {
+	const climb = (startM: number) => ({
+		startM,
+		topM: startM + 2000,
+		gainM: 120,
+		cls: 'IV' as const,
+	});
+
+	it('offers a classed climb that starts down the road', () => {
+		const { body } = render(RideHow, {
+			props: { ...props, climbs: [climb(3000)] },
+		});
+		expect(body).toContain('One climb');
+	});
+
+	it('offers no climb from km 0, which is the whole road', () => {
+		const { body } = render(RideHow, {
+			props: { ...props, climbs: [climb(0)] },
+		});
+		expect(body).not.toContain('One climb');
+	});
+});
