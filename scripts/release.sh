@@ -36,13 +36,33 @@ fi
 # (ADR-0037), and an unfiltered describe took one as the previous release.
 prev=$(git describe --tags --abbrev=0 --match '2[0-9][0-9][0-9].*' 2>/dev/null || true)
 
-# The notes are the feat/fix/perf subjects since the previous release, in Keep
-# a Changelog order. Squash merges make each subject one PR.
+# The notes are the feat/fix/perf commits since the previous release, in Keep
+# a Changelog order; squash merges make each one PR. A commit's own
+# `Changelog:` line is its entry ("-" leaves it out), else its subject is.
+# Scopes no rider sees never appear. scripts/release-notes-check.sh tests it.
+entries() {
+	local type=$1 sha subject scope text line pr
+	local re="^${type}(\\(([a-z-]+)\\))?!?: (.*)$"
+	for sha in $(git log --format=%H ${prev:+"$prev"..}HEAD); do
+		subject=$(git log -1 --format=%s "$sha")
+		[[ $subject =~ $re ]] || continue
+		scope=${BASH_REMATCH[2]}
+		text=${BASH_REMATCH[3]}
+		case "$scope" in ci | deps | docs | e2e | test) continue ;; esac
+		line=$(git log -1 --format=%B "$sha" | sed -n 's/^[[:space:]]*Changelog:[[:space:]]*//p' | tail -1)
+		[ "$line" = "-" ] && continue
+		if [ -n "$line" ]; then
+			pr=$(grep -oE '\(#[0-9]+\)$' <<<"$text" || true)
+			text="$line${pr:+ $pr}"
+		fi
+		printf '%s\n' "$text"
+	done
+}
 notes=$(mktemp)
 for pair in Added:feat Changed:perf Fixed:fix; do
 	heading=${pair%%:*}
 	type=${pair#*:}
-	lines=$(git log --format=%s ${prev:+"$prev"..}HEAD | sed -nE "s/^$type(\([a-z-]+\))?!?: //p")
+	lines=$(entries "$type")
 	[ -n "$lines" ] || continue
 	printf '### %s\n\n' "$heading" >>"$notes"
 	while IFS= read -r l; do

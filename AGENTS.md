@@ -16,7 +16,7 @@ WattRoom: collaborative indoor cycling. Go server + SvelteKit SPA + Postgres + L
 ## Working
 
 - Branch from `origin/main`, open a PR, squash-merge when `server` and `web` are green. `main` rejects direct pushes.
-- Subject: `<type>(<scope>): <description>`. `feat`, `fix` and `perf` subjects become the release notes, so write them for a rider.
+- Subject: `<type>(<scope>): <description>`. `feat`, `fix` and `perf` commits become the release notes, so write them for a rider. When one line cannot say what a rider will notice, add `Changelog: <a sentence or two for someone deciding to upgrade>` to the commit message; `Changelog: -` keeps a change out. `ci`, `deps`, `docs`, `e2e` and `test` scopes never appear.
 - Stage explicit paths. Never stash, discard or revert files you didn't write.
 - Test logic that can break silently: hub, protocol, ride math, parsers, API handlers. No tests that read source files or pin markup.
 - Check a UI change in the running app before you call it done.
@@ -43,4 +43,4 @@ WattRoom: collaborative indoor cycling. Go server + SvelteKit SPA + Postgres + L
 
 ## Releases
 
-`make release` tags `YYYY.0M.MICRO` with notes from the `feat`/`fix`/`perf` subjects since the last tag. Deploying belongs to the operator's homelab repo, which rolls out each new tag.
+`make release` tags `YYYY.0M.MICRO` with notes from the `feat`/`fix`/`perf` commits since the last tag: each commit's `Changelog:` line, or else its subject. Deploying belongs to the operator's homelab repo, which rolls out each new tag.
