@@ -46,6 +46,7 @@ It is not a training plan generator, not an open world, and not a content treadm
 ## Riding
 
 - One riding surface: the crew ride, the solo ride and the ramp test are the same screen.
+- Riding is the whole screen: the world, or flat the workout's graph or the Skyline, fills the content edge to edge with the numbers over it, watts top left. The ride's controls live in the now bar, never on the ride.
 - A ride belongs to the rider: one per device, owned by the app shell, ended only by End ride. Navigation never ends it.
 - One rider, one voice: the first screen to join voice carries voice and camera, every other screen is a controller.
 - One sensor, one screen: the hub arbitrates which screen holds a trainer.

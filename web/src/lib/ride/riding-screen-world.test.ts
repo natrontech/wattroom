@@ -8,6 +8,10 @@ import { openRoad } from '$lib/workout/ridden';
 import { withProfile } from '$lib/workout/road-workout';
 import type { ShelfEntry } from '$lib/workout/shelf';
 import type { Workout } from '$lib/workout/types';
+import { createWorldView } from '$lib/world/world-view.svelte';
+import { createRideShift } from '$lib/ride/ride-shift';
+import { isOpenRoad } from '$lib/workout/ridden';
+import RideControls from './RideControls.svelte';
 import RidingScreen from './RidingScreen.svelte';
 
 vi.mock('$lib/hud/feed', () => ({ publishHud: () => {} }));
@@ -81,6 +85,28 @@ function screen(
 	}).body;
 }
 
+/** The ride's controls, which the now bar draws while the screen is up. */
+function controls(
+	workout: Workout,
+	extra: { ontv?: () => void; onflag?: () => void; onchange?: () => void } = {},
+): string {
+	const session = createRideSession({
+		trainer: new SimulatedTrainer(),
+		workout,
+		ftp: 250,
+	});
+	return render(RideControls, {
+		props: {
+			session,
+			open: isOpenRoad(workout),
+			shift: createRideShift(session),
+			world: createWorldView(),
+			drawn: true,
+			...extra,
+		},
+	}).body;
+}
+
 describe('the world on a ride', () => {
 	it('is not mounted on a ride with no road', () => {
 		const html = screen(openers);
@@ -97,12 +123,12 @@ describe('the world on a ride', () => {
 		expect(screen(onRoad)).toContain('data-surface="docked"');
 	});
 
-	it('gives slot 1 its controls as named 44 px icons with tooltips, End ride the one word (TARGETS ride-road-world 7)', () => {
+	it('gives the now bar its controls as named 44 px icons with tooltips, End ride the one word (TARGETS ride-road-world 7)', () => {
 		const onRoad = withProfile(
 			{ ...openers, road: { routeId: 'r1', fromM: 0, toM: 2000 } },
 			{ road: legsRoad([1000, 0], [1000, 5]) },
 		);
-		const html = screen(onRoad, { onTv: () => {}, onFlag: () => {} });
+		const html = controls(onRoad, { ontv: () => {}, onflag: () => {} });
 		// ⚑ keeps its own kit (FlagButton): a name and the tooltip that asks.
 		expect(html).toMatch(
 			/<button[^>]*title="[^"]+"[^>]*aria-label="Flag a problem"/,
@@ -123,25 +149,30 @@ describe('the world on a ride', () => {
 		expect(html).toMatch(/aria-pressed="false"[^>]*>Flat<\/button>/);
 	});
 
-	it('gives slot 1 Change workout in words before End ride (#4257)', () => {
+	it('gives the now bar Change workout in words before End ride (#4257)', () => {
 		const onRoad = withProfile(
 			{ ...openers, road: { routeId: 'r1', fromM: 0, toM: 2000 } },
 			{ road: legsRoad([1000, 0], [1000, 5]) },
 		);
 		const change = { shelf: [], onChangeWorkout: () => {} };
-		expect(screen(onRoad, change)).toMatch(
+		expect(controls(onRoad, { onchange: () => {} })).toMatch(
 			/>Change workout<\/button>(\s|<!--[^>]*-->)*<button[^>]*>End ride<\/button>/,
 		);
 		// Only where the page can change it: a voice channel's own ride has none.
-		expect(screen(onRoad)).not.toContain('Change workout');
+		expect(controls(onRoad)).not.toContain('Change workout');
 		// With no workout, nothing to stretch or skip.
 		const none = withProfile(openRoad({ routeId: 'r1', fromM: 0, toM: 2000 }), {
 			road: legsRoad([1000, 0], [1000, 5]),
 		});
+		const bar = controls(none, { onchange: () => {} });
+		expect(bar).toContain('Change workout');
+		expect(bar).not.toContain('aria-label="Skip block"');
+		expect(bar).not.toContain('aria-label="One more minute"');
+		// Easier and Harder lead, before ⚑ and Change workout.
+		expect(controls(none, { onflag: () => {}, onchange: () => {} })).toMatch(
+			/>Easier<\/button>[\s\S]*>Harder<\/button>[\s\S]*aria-label="Flag a problem"[\s\S]*>Change workout<\/button>/,
+		);
 		const html = screen(none, change);
-		expect(html).toContain('Change workout');
-		expect(html).not.toContain('aria-label="Skip block"');
-		expect(html).not.toContain('aria-label="One more minute"');
 		// Nor a target to trim.
 		expect(html).not.toContain('raise the target by one percent');
 		expect(screen(onRoad, change)).toContain('raise the target by one percent');
@@ -173,15 +204,8 @@ describe('the world on a ride', () => {
 		expect(band).toMatch(/data-testid="block-road" class="[^"]*text-4xl/);
 		expect(band).toMatch(/data-testid="trainer-chip"[^>]*>SIM · you feel/);
 		expect(band).toMatch(/data-testid="ride-clock"[^>]*>0:00 · 0 m climbed</);
-		// Easier and Harder in the controls' row, before ⚑ and Change workout.
-		expect(band).toMatch(
-			/>Easier<\/button>[\s\S]*>Harder<\/button>[\s\S]*aria-label="Flag a problem"[\s\S]*>Change workout<\/button>/,
-		);
-		// The controls on the label's row, above the road line (the box
-		// table's "eyebrow or status line 24 with the controls 44", v2-ride).
-		expect(band).toMatch(
-			/data-testid="ride-context"[\s\S]*>End ride<\/button>[\s\S]*data-testid="block-road"/,
-		);
+		// The controls are the now bar's, not slot 1's.
+		expect(band).not.toContain('>End ride</button>');
 		// No workout's header: no ridden clock, no column for a strip or NEXT.
 		expect(band).not.toContain('aria-label="ridden"');
 		expect(band).not.toContain('w-88');

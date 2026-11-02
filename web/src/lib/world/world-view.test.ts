@@ -84,7 +84,7 @@ describe('a ride’s world view (#3080)', () => {
 		setWorldMode('full');
 		const view = createWorldView();
 		try {
-			at(720);
+			at(560);
 			expect(view.on).toBe(false);
 			expect(view.reason).toBe('short');
 			at(900);

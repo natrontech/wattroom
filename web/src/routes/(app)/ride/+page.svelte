@@ -227,13 +227,14 @@
      all three keep the rider's scheme (#4160). A road ride's closing card
      wears the page frame as a workout's does (G7, #4235). -->
 <!-- px-4 on a phone is the kit's gutter (`page`, ux.md's 16 px); the ride
-     surface is not a `page` — it fills the window — so it spells the two. -->
+     surface is not a `page` — it fills the page body, its own margins
+     undoing these — so it spells the two. -->
 <main
-	class="bg-surface text-ink flex min-h-screen flex-col {setup ||
+	class="bg-surface text-ink flex flex-col {setup ||
 	session?.state === 'done' ||
 	theRide.road?.ended
-		? 'page'
-		: 'px-4 py-5 sm:px-6'}"
+		? 'page min-h-full'
+		: 'h-full px-4 py-5 sm:px-6'}"
 >
 	<!-- A ride already under way is the screen, whatever the address asks
 	     for: the device has one ride (ADR-0093). -->

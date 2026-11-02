@@ -1,12 +1,14 @@
 <script lang="ts">
 	// The now bar: the voice channel you are connected to, along the bottom of
 	// the content on every page. Voice, Ride, the music, reactions, Away and
-	// Leave. It replaced the sidebar foot's voice rows and the channel's right
+	// Leave. While you ride, the ride's own controls join it (rideBar), on a
+	// solo ride with no channel too. It replaced the sidebar foot's voice rows and the channel's right
 	// column (Shell Rethink): who is here is the stage's tiles and the
 	// sidebar's voice rows, the jukebox and the cheers open above this bar.
 	import { goto } from '$app/navigation';
 	import { leaveChannel } from '$lib/channel/leave';
 	import { nowPanel } from '$lib/nav/now-panel.svelte';
+	import { rideBar } from '$lib/nav/ride-bar.svelte';
 	import QuickAudio from '$lib/channel/QuickAudio.svelte';
 	import { account, voiceUp } from '$lib/account.svelte';
 	import { contextMenu, openMenu, MENU_HINT } from '$lib/context-menu.svelte';
@@ -121,7 +123,7 @@
 		'grid h-11 w-11 shrink-0 place-items-center rounded hover:bg-ink/5';
 </script>
 
-{#if conn}
+{#if conn || rideBar.on}
 	<div {@attach publishHeight} data-testid="now-bar" class="relative shrink-0">
 		{#if notice}
 			<!-- Above the bar, so the bar keeps the sidebar foot's height. -->
@@ -182,39 +184,45 @@
 				>
 			{/if}
 
-			<!-- Where you are connected, and the way back to it from any page. -->
-			<a
-				href={conn.address.home}
-				class="hover:bg-ink/5 flex min-w-0 shrink items-center gap-2 rounded px-2 py-1"
-				title="Back to {conn.address.name}"
-			>
-				<Volume2
-					size={16}
-					class="shrink-0 {inVoice ? 'text-ok' : 'text-muted'}"
-				/>
-				<span class="min-w-0">
-					<span class="block truncate text-sm font-medium"
-						>{conn.address.name}</span
-					>
-					<span class="text-muted block truncate text-[11px] max-sm:hidden">
-						{#if voiceStatus === 'live'}
-							<span class="text-ok">in voice</span>{camOn ? ' · camera on' : ''}
-						{:else if voiceStatus === 'connecting'}
-							joining voice…
-						{:else if voiceStatus === 'reconnecting'}
-							<span class="text-warn">voice reconnecting…</span>
-						{:else if voiceStatus === 'failed'}
-							<span class="text-danger">voice failed</span>
-						{:else if voiceElsewhere}
-							your voice is on your {voiceElsewhere}
-						{:else if voiceDown}
-							voice is down on this server
-						{:else}
-							connected, not in voice
-						{/if}
+			<!-- Where you are connected, and the way back to it from any page.
+			     A phone riding gives its room to the ride's controls; the
+			     drawer still leads back. -->
+			{#if conn}<a
+					href={conn.address.home}
+					class="hover:bg-ink/5 flex min-w-0 shrink-[8] items-center gap-2 rounded px-2 py-1 {rideBar.on
+						? 'max-sm:hidden'
+						: ''}"
+					title="Back to {conn.address.name}"
+				>
+					<Volume2
+						size={16}
+						class="shrink-0 {inVoice ? 'text-ok' : 'text-muted'}"
+					/>
+					<span class="min-w-0">
+						<span class="block truncate text-sm font-medium"
+							>{conn.address.name}</span
+						>
+						<span class="text-muted block truncate text-[11px] max-sm:hidden">
+							{#if voiceStatus === 'live'}
+								<span class="text-ok">in voice</span>{camOn
+									? ' · camera on'
+									: ''}
+							{:else if voiceStatus === 'connecting'}
+								joining voice…
+							{:else if voiceStatus === 'reconnecting'}
+								<span class="text-warn">voice reconnecting…</span>
+							{:else if voiceStatus === 'failed'}
+								<span class="text-danger">voice failed</span>
+							{:else if voiceElsewhere}
+								your voice is on your {voiceElsewhere}
+							{:else if voiceDown}
+								voice is down on this server
+							{:else}
+								connected, not in voice
+							{/if}
+						</span>
 					</span>
-				</span>
-			</a>
+				</a>{/if}
 
 			{#if showAv}
 				<div class="flex items-center">
@@ -233,7 +241,7 @@
 									? 'btn-secondary'
 									: 'btn-primary'} min-h-11 whitespace-nowrap"
 								><Headphones size={14} />
-								<span class="max-sm:sr-only"
+								<span class={rideBar.on ? 'sr-only' : 'max-sm:sr-only'}
 									>{voiceElsewhere
 										? 'Use this device for voice'
 										: voiceStatus === 'failed'
@@ -316,101 +324,124 @@
 				</div>
 			{/if}
 
-			<div class="ml-auto flex items-center gap-1">
-				{#if !riding && !device.spectator && pathname !== conn.address.training}
-					<div class="flex">
-						<a
-							href={conn.address.training}
-							{@attach contextMenu(() => (canStart ? rideItems() : []))}
-							class="btn btn-secondary min-h-11 {canStart
-								? 'rounded-r-none'
-								: ''}"
-							title="A free ride in {conn.address.name}"
-							><Bike size={14} /> <span class="max-md:sr-only">Ride</span></a
+			{#if rideBar.on}
+				<!-- One row of 44 px controls, the riding surface's (rideBar); a
+				     phone scrolls it sideways. -->
+				<div
+					bind:this={rideBar.target}
+					data-testid="ride-controls"
+					style="scrollbar-width:none"
+					class="flex min-w-0 flex-auto items-center gap-1.5 overflow-x-auto [&_.btn]:px-2.5 [&_.btn]:text-base [&_button]:shrink-0"
+				></div>
+			{/if}
+
+			{#if conn}<div class="ml-auto flex shrink-0 items-center gap-1">
+					{#if !riding && !device.spectator && pathname !== conn.address.training}
+						<div class="flex">
+							<a
+								href={conn.address.training}
+								{@attach contextMenu(() => (canStart ? rideItems() : []))}
+								class="btn btn-secondary min-h-11 {canStart
+									? 'rounded-r-none'
+									: ''}"
+								title="A free ride in {conn.address.name}"
+								><Bike size={14} /> <span class="max-md:sr-only">Ride</span></a
+							>
+							{#if canStart}
+								<button
+									onclick={(event) => {
+										const box = event.currentTarget.getBoundingClientRect();
+										openMenu(
+											rideItems(),
+											box.right,
+											box.top,
+											event.currentTarget,
+										);
+									}}
+									aria-label="More ways to ride"
+									aria-haspopup="menu"
+									class="btn btn-secondary min-h-11 rounded-l-none px-2"
+									><ChevronDown size={14} /></button
+								>
+							{/if}
+						</div>
+					{/if}
+					<button
+						bind:this={nowPanel.music}
+						onclick={() => toggle('music')}
+						aria-expanded={nowPanel.open === 'music'}
+						aria-haspopup="dialog"
+						class="hover:bg-ink/5 flex h-11 max-w-56 min-w-0 shrink items-center gap-2 rounded px-2 text-sm {rideBar.on
+							? 'max-sm:hidden'
+							: ''} {nowPanel.open === 'music'
+							? 'text-ink bg-ink/5'
+							: 'text-muted'}"
+						title={track ? `Playing: ${track}` : 'The jukebox'}
+						><Music size={18} class="shrink-0" /><span
+							class="truncate {rideBar.on ? 'sr-only' : 'max-lg:sr-only'}"
+							>{track || 'Music'}</span
+						></button
+					>
+					{#if onPlace}
+						<button
+							bind:this={nowPanel.react}
+							onclick={() => toggle('react')}
+							aria-expanded={nowPanel.open === 'react'}
+							aria-haspopup="dialog"
+							class="{ICON} {rideBar.on
+								? 'max-sm:hidden'
+								: ''} {nowPanel.open === 'react'
+								? 'text-ink bg-ink/5'
+								: 'text-muted hover:text-ink'}"
+							title="Cheers and the soundboard"
+							aria-label="cheers and the soundboard"
+							><SmilePlus size={18} /></button
 						>
-						{#if canStart}
+					{/if}
+					<!-- A split button (#706): the face is always Away, the arrow the
+				     named states. -->
+					<div class="flex">
+						<button
+							onclick={() => setAway(!away, '')}
+							aria-pressed={away}
+							{@attach contextMenu(awayItems)}
+							class="btn min-h-11 {away ? 'btn-primary' : 'btn-secondary'} {away
+								? ''
+								: 'rounded-r-none'}"
+							><awayFace.icon size={14} />
+							<span class={rideBar.on ? 'sr-only' : 'max-md:sr-only'}
+								>{away ? "I'm back" : 'Away'}</span
+							></button
+						>
+						{#if !away}
 							<button
 								onclick={(event) => {
 									const box = event.currentTarget.getBoundingClientRect();
 									openMenu(
-										rideItems(),
+										awayItems(),
 										box.right,
 										box.top,
 										event.currentTarget,
 									);
 								}}
-								aria-label="More ways to ride"
+								aria-label="Choose a state"
 								aria-haspopup="menu"
-								class="btn btn-secondary min-h-11 rounded-l-none px-2"
-								><ChevronDown size={14} /></button
+								class="btn btn-secondary min-h-11 rounded-l-none px-2 {rideBar.on
+									? 'max-sm:hidden'
+									: ''}"><ChevronDown size={14} /></button
 							>
 						{/if}
 					</div>
-				{/if}
-				<button
-					bind:this={nowPanel.music}
-					onclick={() => toggle('music')}
-					aria-expanded={nowPanel.open === 'music'}
-					aria-haspopup="dialog"
-					class="hover:bg-ink/5 flex h-11 max-w-56 min-w-0 shrink items-center gap-2 rounded px-2 text-sm {nowPanel.open ===
-					'music'
-						? 'text-ink bg-ink/5'
-						: 'text-muted'}"
-					title={track ? `Playing: ${track}` : 'The jukebox'}
-					><Music size={18} class="shrink-0" /><span
-						class="truncate max-lg:sr-only">{track || 'Music'}</span
-					></button
-				>
-				{#if onPlace}
+					<!-- The way out of the channel (#2447). Quiet: leaving is re-doable. -->
 					<button
-						bind:this={nowPanel.react}
-						onclick={() => toggle('react')}
-						aria-expanded={nowPanel.open === 'react'}
-						aria-haspopup="dialog"
-						class="{ICON} {nowPanel.open === 'react'
-							? 'text-ink bg-ink/5'
-							: 'text-muted hover:text-ink'}"
-						title="Cheers and the soundboard"
-						aria-label="cheers and the soundboard"
-						><SmilePlus size={18} /></button
-					>
-				{/if}
-				<!-- A split button (#706): the face is always Away, the arrow the
-				     named states. -->
-				<div class="flex">
-					<button
-						onclick={() => setAway(!away, '')}
-						aria-pressed={away}
-						{@attach contextMenu(awayItems)}
-						class="btn min-h-11 {away ? 'btn-primary' : 'btn-secondary'} {away
-							? ''
-							: 'rounded-r-none'}"
-						><awayFace.icon size={14} />
-						<span class="max-md:sr-only">{away ? "I'm back" : 'Away'}</span
+						onclick={leaveChannel}
+						class="btn btn-secondary min-h-11 px-2"
+						title="leave {conn.address.name}"
+						><LogOut size={14} />
+						<span class={rideBar.on ? 'sr-only' : 'max-md:sr-only'}>Leave</span
 						></button
 					>
-					{#if !away}
-						<button
-							onclick={(event) => {
-								const box = event.currentTarget.getBoundingClientRect();
-								openMenu(awayItems(), box.right, box.top, event.currentTarget);
-							}}
-							aria-label="Choose a state"
-							aria-haspopup="menu"
-							class="btn btn-secondary min-h-11 rounded-l-none px-2"
-							><ChevronDown size={14} /></button
-						>
-					{/if}
-				</div>
-				<!-- The way out of the channel (#2447). Quiet: leaving is re-doable. -->
-				<button
-					onclick={leaveChannel}
-					class="btn btn-secondary min-h-11 px-2"
-					title="leave {conn.address.name}"
-					><LogOut size={14} />
-					<span class="max-md:sr-only">Leave</span></button
-				>
-			</div>
+				</div>{/if}
 		</div>
 	</div>
 {/if}

@@ -128,7 +128,7 @@
 	onpagehide={() => flags.flush(true)}
 />
 
-<div class="page flex h-full min-h-0 flex-col gap-6 overflow-y-auto pb-20">
+<div class="page flex h-full min-h-0 flex-col gap-6 overflow-y-auto">
 	{#if conn?.ownRide.error}
 		<Banner tone="error">{conn.ownRide.error}</Banner>
 	{/if}

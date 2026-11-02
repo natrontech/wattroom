@@ -34,6 +34,7 @@
 	import Sidebar from '$lib/nav/Sidebar.svelte';
 	import RideDock from '$lib/nav/RideDock.svelte';
 	import NowBar from '$lib/nav/NowBar.svelte';
+	import { rideBar } from '$lib/nav/ride-bar.svelte';
 	import Menu from '@lucide/svelte/icons/menu';
 	import Toasts from '$lib/components/Toasts.svelte';
 	import NewAccountNotice from '$lib/components/NewAccountNotice.svelte';
@@ -557,9 +558,9 @@
 			</div>
 			<NowBar pathname={page.url.pathname} {riding} />
 		</div>
-		{#if riding && !channelConnection.current}
-			<!-- A ride hides the sidebar at every width. In a voice channel the
-			     now bar opens it; a solo ride has no now bar, so this does. -->
+		{#if riding && !channelConnection.current && !rideBar.on}
+			<!-- A ride hides the sidebar at every width. The now bar opens it
+			     while it shows; a solo ride's count-in has none, so this does. -->
 			<button
 				onclick={() => (navDrawer.open = true)}
 				class="bg-surface-raised border-ink/15 fixed bottom-[calc(1rem+var(--safe-bottom))] left-[calc(1rem+var(--safe-left))] z-40 grid h-12

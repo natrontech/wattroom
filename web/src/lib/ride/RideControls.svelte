@@ -61,10 +61,10 @@
 	}
 
 	/** A 44 px icon control mid-ride (ux.md), skinned as SessionControls' are. */
-	const ICON = 'btn btn-secondary h-11 w-11 p-0 max-md:w-auto max-md:flex-1';
+	const ICON = 'btn btn-secondary h-11 w-11 shrink-0 p-0';
 </script>
 
-<div class="flex flex-wrap items-center gap-2">
+<div class="contents">
 	{#if countIn}
 		<button onclick={countIn.cancel} class="btn btn-secondary btn-ride"
 			>Cancel</button
@@ -104,12 +104,13 @@
 		{#if onchange}
 			<button
 				onclick={onchange}
-				class="btn btn-secondary btn-ride max-md:flex-1">Change workout</button
+				class="btn btn-secondary btn-ride whitespace-nowrap"
+				>Change workout</button
 			>
 		{/if}
 		<button
 			onclick={endRide}
-			class="btn btn-secondary btn-ride max-md:basis-full">End ride</button
+			class="btn btn-secondary btn-ride whitespace-nowrap">End ride</button
 		>
 	{/if}
 </div>
