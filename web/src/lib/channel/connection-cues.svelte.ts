@@ -2,12 +2,8 @@ import { account } from '$lib/account.svelte';
 import { ridePath, type PlaceAddress } from '$lib/channel/address';
 import type { createChannelAv } from '$lib/channel/av.svelte';
 import { comingsAndGoings } from '$lib/channel/comings-and-goings';
-import { dmArrivalEvent } from '$lib/channel/dm-line';
 import type { createChannelLive } from '$lib/channel/live.svelte';
-import {
-	screenShareChanges,
-	screenShareEvent,
-} from '$lib/channel/screen-shares';
+import { screenShareChanges } from '$lib/channel/screen-shares';
 import { announce, divertWhileRiding } from '$lib/messages/announce';
 import { pokeArrival, pokeFriend } from '$lib/poke';
 import { toasts } from '$lib/toast.svelte';
@@ -153,23 +149,12 @@ export function connectionCues({
 		const changes = screenShareChanges(knownScreens, now, account.me?.id);
 		knownScreens = now;
 		if (changes.length === 0) return;
-		// Untracked: the roster is a new object every tick, and this must
-		// run when the shares change, not once a second.
-		const tick = untrack(() => live.tick);
-		for (const change of changes) {
-			const name = tick?.roster.find(
-				(rider) => rider.id === change.rider,
-			)?.name;
-			live.pushEvent(screenShareEvent(change, name, tick?.at ?? Date.now()));
-			if (change.live) play('join');
-		}
+		if (changes.some((change) => change.live)) play('join');
 	});
 
-	// A DM arriving while this rider is mid-ride (#1743). The toast it
-	// replaces was the only thing on the Training screen that moved and
-	// was not data; the line lands in the channel's timeline instead, where
-	// "what did I miss" is already answered — local-only and never sent
-	// (ADR-0022), so a private message reaches nobody else in the channel.
+	// A DM, a poke or a bottle arriving mid-ride (#1743) does not toast:
+	// a toast was the one thing on the ride that moved and was not data. The
+	// sidebar's unread carries it until the ride ends.
 	//
 	// Running or paused, not merely countdown: the count-in is a rider
 	// still walking back to the bike, and auto-pause is a rider reaching
@@ -180,22 +165,7 @@ export function connectionCues({
 			// new object every second, and this must not become a dependency
 			// of whatever effect happened to be running when a DM landed.
 			const phase = untrack(() => live.tick?.state.phase);
-			if (phase !== 'running' && phase !== 'paused') return false;
-			// A text channel's line waits in the sidebar's unread (#2531); only
-			// a DM, a poke or a bottle, which have no row on this screen, is
-			// written into the timeline — a poke by who sent it, the whole
-			// point of one.
-			if (arrival.kind === 'dm')
-				live.pushEvent(dmArrivalEvent(arrival.title, arrival.at));
-			if (arrival.kind === 'poke' || arrival.kind === 'bottle')
-				live.pushEvent(
-					dmArrivalEvent(
-						arrival.from ?? arrival.title,
-						arrival.at,
-						arrival.kind === 'poke' ? 'poked' : 'bottled',
-					),
-				);
-			return true;
+			return phase === 'running' || phase === 'paused';
 		}),
 	);
 
