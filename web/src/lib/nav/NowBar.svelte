@@ -1,16 +1,17 @@
 <script lang="ts">
 	// The now bar: the voice channel you are connected to, along the bottom of
-	// the content on every page. Voice, Away and Leave, the track playing, and
-	// the people sheet. It replaced the sidebar foot's voice rows and the
-	// channel's right column (Shell Rethink, direction A).
+	// the content on every page. Voice, Ride, the music, reactions, Away and
+	// Leave. It replaced the sidebar foot's voice rows and the channel's right
+	// column (Shell Rethink): who is here is the stage's tiles and the
+	// sidebar's voice rows, the jukebox and the cheers open above this bar.
 	import { goto } from '$app/navigation';
 	import { leaveChannel } from '$lib/channel/leave';
+	import { nowPanel } from '$lib/nav/now-panel.svelte';
 	import QuickAudio from '$lib/channel/QuickAudio.svelte';
 	import { account, voiceUp } from '$lib/account.svelte';
 	import { contextMenu, openMenu, MENU_HINT } from '$lib/context-menu.svelte';
 	import { micMenu } from '$lib/channel/mic-menu';
 	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { peopleFold } from '$lib/channel/people-fold.svelte';
 	import { navDrawer } from '$lib/nav/drawer.svelte';
 	import { device } from '$lib/device.svelte';
 	import { AWAY_CHOICES, AWAY_STATES, awayState } from '$lib/away';
@@ -26,7 +27,7 @@
 	import ScreenShare from '@lucide/svelte/icons/screen-share';
 	import ScreenShareOff from '@lucide/svelte/icons/screen-share-off';
 	import SwitchCamera from '@lucide/svelte/icons/switch-camera';
-	import Users from '@lucide/svelte/icons/users';
+	import SmilePlus from '@lucide/svelte/icons/smile-plus';
 	import Video from '@lucide/svelte/icons/video';
 	import VideoOff from '@lucide/svelte/icons/video-off';
 	import Volume2 from '@lucide/svelte/icons/volume-2';
@@ -62,8 +63,12 @@
 	// Another of your screens carries your voice (ADR-0089): this one moves it.
 	const voiceElsewhere = $derived(conn?.live.pairing.elsewhere?.voice ?? '');
 
-	const people = $derived(conn?.live.tick?.roster.length ?? 0);
 	const track = $derived(conn?.live.tick?.jukebox?.current?.title ?? '');
+	const notice = $derived(
+		showAv &&
+			((voiceStatus !== 'off' && (playbackBlocked || handedOff)) ||
+				(!!voiceError && !(voiceStatus === 'failed' && onPlace))),
+	);
 
 	// The connection's setAway: it mutes this device and tells the channel.
 	const setAway = (next: boolean, reason = '') => conn?.setAway(next, reason);
@@ -74,11 +79,11 @@
 			onSelect: () => setAway(true, key),
 		}));
 
-	// The sheet lives in the channel's shell, so off the channel the way to it
-	// is the channel itself.
-	function openSheet() {
-		if (onPlace) peopleFold.open = true;
-		else if (conn) void goto(conn.address.home);
+	// One panel open at a time, drawn by the channel's shell. Off the channel,
+	// the music button goes to it and opens there.
+	function toggle(which: 'music' | 'react') {
+		nowPanel.open = nowPanel.open === which ? null : which;
+		if (!onPlace && conn && nowPanel.open) void goto(conn.address.home);
 	}
 
 	// Floating chrome (the jukebox dock) keeps clear of the bar.
@@ -99,45 +104,55 @@
 </script>
 
 {#if conn}
-	<div
-		{@attach publishHeight}
-		data-testid="now-bar"
-		class="border-ink/10 bg-surface shrink-0 border-t px-2 pt-1.5 pb-[calc(0.375rem+var(--safe-bottom))] md:px-3"
-	>
-		{#if showAv && voiceStatus !== 'off' && playbackBlocked}
-			<!-- The browser refused to start audio with no gesture behind it
+	<div {@attach publishHeight} data-testid="now-bar" class="relative shrink-0">
+		{#if notice}
+			<!-- Above the bar, so the bar keeps the sidebar foot's height. -->
+			<div
+				class="bg-surface border-ink/10 absolute inset-x-0 bottom-full flex flex-col gap-1 border-t px-3 py-1.5"
+			>
+				{#if showAv && voiceStatus !== 'off' && playbackBlocked}
+					<!-- The browser refused to start audio with no gesture behind it
 			     (#645). Persistent: read a minute later from three metres. -->
-			<div class="text-muted flex items-center gap-2 px-1 pb-1.5 text-xs">
-				<VolumeX size={14} class="shrink-0" />
-				<span class="min-w-0 flex-1">You cannot hear the call.</span>
-				<button
-					onclick={() => void av?.startPlayback()}
-					class="btn btn-secondary btn-xs shrink-0">Let me hear</button
-				>
-			</div>
-		{/if}
-		{#if showAv && voiceError && !(voiceStatus === 'failed' && onPlace)}
-			<!-- What the browser refused and where to allow it (#642). -->
-			<div class="flex items-center gap-2 px-1 pb-1.5 text-xs">
-				<span class="text-danger min-w-0 flex-1">{voiceError.message}</span>
-				{#if voiceError.signIn}
-					<a href="/login" class="btn btn-secondary btn-xs shrink-0">Sign in</a>
+					<div class="text-muted flex items-center gap-2 text-xs">
+						<VolumeX size={14} class="shrink-0" />
+						<span class="min-w-0 flex-1">You cannot hear the call.</span>
+						<button
+							onclick={() => void av?.startPlayback()}
+							class="btn btn-secondary btn-xs shrink-0">Let me hear</button
+						>
+					</div>
+				{/if}
+				{#if showAv && voiceError && !(voiceStatus === 'failed' && onPlace)}
+					<!-- What the browser refused and where to allow it (#642). -->
+					<div class="flex items-center gap-2 text-xs">
+						<span class="text-danger min-w-0 flex-1">{voiceError.message}</span>
+						{#if voiceError.signIn}
+							<a href="/login" class="btn btn-secondary btn-xs shrink-0"
+								>Sign in</a
+							>
+						{/if}
+					</div>
+				{/if}
+				{#if showAv && voiceStatus !== 'off' && handedOff}
+					<div class="text-muted flex items-center gap-2 text-xs">
+						<span class="min-w-0 flex-1"
+							>Your mic and camera moved to the voice channel open in another
+							tab.</span
+						>
+						<button
+							onclick={() => av?.takeOver()}
+							class="btn btn-secondary btn-xs shrink-0"
+							>Use this tab instead</button
+						>
+					</div>
 				{/if}
 			</div>
 		{/if}
-		{#if showAv && voiceStatus !== 'off' && handedOff}
-			<div class="text-muted flex items-center gap-2 px-1 pb-1.5 text-xs">
-				<span class="min-w-0 flex-1"
-					>Your mic and camera moved to the voice channel open in another tab.</span
-				>
-				<button
-					onclick={() => av?.takeOver()}
-					class="btn btn-secondary btn-xs shrink-0">Use this tab instead</button
-				>
-			</div>
-		{/if}
 
-		<div class="flex items-center gap-1 md:gap-2">
+		<!-- 4rem, the sidebar foot's height, so the two top borders meet. -->
+		<div
+			class="border-ink/10 bg-surface flex h-[calc(4rem+var(--safe-bottom))] items-center gap-1 border-t px-2 pb-(--safe-bottom) md:gap-2 md:px-3"
+		>
 			{#if riding}
 				<!-- The ride hides the sidebar at every width; this is the way back
 				     to it. -->
@@ -293,24 +308,34 @@
 						><Bike size={14} /> <span class="max-md:sr-only">Ride</span></a
 					>
 				{/if}
-				{#if track}
-					<button
-						onclick={openSheet}
-						class="hover:bg-ink/5 text-muted flex h-11 max-w-56 min-w-0 items-center gap-2 rounded px-2 text-sm max-lg:hidden"
-						title="The jukebox"
-						><Music size={16} class="shrink-0" /><span class="truncate"
-							>{track}</span
-						></button
-					>
-				{/if}
 				<button
-					onclick={openSheet}
-					class="text-muted hover:text-ink hover:bg-ink/5 flex h-11 shrink-0 items-center gap-1 rounded px-2"
-					title="Who is here, the jukebox and cheers"
-					aria-label="who is here"
-					><Users size={18} /><span class="text-xs tabular-nums">{people}</span
+					bind:this={nowPanel.music}
+					onclick={() => toggle('music')}
+					aria-expanded={nowPanel.open === 'music'}
+					aria-haspopup="dialog"
+					class="hover:bg-ink/5 flex h-11 max-w-56 min-w-0 shrink items-center gap-2 rounded px-2 text-sm {nowPanel.open ===
+					'music'
+						? 'text-ink bg-ink/5'
+						: 'text-muted'}"
+					title={track ? `Playing: ${track}` : 'The jukebox'}
+					><Music size={18} class="shrink-0" /><span
+						class="truncate max-lg:sr-only">{track || 'Music'}</span
 					></button
 				>
+				{#if onPlace}
+					<button
+						bind:this={nowPanel.react}
+						onclick={() => toggle('react')}
+						aria-expanded={nowPanel.open === 'react'}
+						aria-haspopup="dialog"
+						class="{ICON} {nowPanel.open === 'react'
+							? 'text-ink bg-ink/5'
+							: 'text-muted hover:text-ink'}"
+						title="Cheers and the soundboard"
+						aria-label="cheers and the soundboard"
+						><SmilePlus size={18} /></button
+					>
+				{/if}
 				<!-- A split button (#706): the face is always Away, the arrow the
 				     named states. -->
 				<div class="flex">

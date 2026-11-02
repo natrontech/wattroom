@@ -1,7 +1,5 @@
 <script lang="ts">
 	import { navDrawer } from '$lib/nav/drawer.svelte';
-	import { crewLive } from '$lib/nav/crew-live.svelte';
-	import { elsewhereIn } from '$lib/channel/roster';
 	import { page } from '$app/state';
 	import { setMuted } from '$lib/sound/cues';
 	import { account, voiceUp } from '$lib/account.svelte';
@@ -18,11 +16,16 @@
 	import { coachOf } from '$lib/channel/tick-session';
 	import { createSessionSounds } from '$lib/session/session-sounds.svelte';
 	import CheerLayer from '$lib/channel/CheerLayer.svelte';
+	import CheerDeck from '$lib/channel/CheerDeck.svelte';
+	import Jukebox from '$lib/channel/Jukebox.svelte';
+	import { roadsideShown } from '$lib/channel/RoadsideDeck.svelte';
+	import BoardToggle from '$lib/board/BoardToggle.svelte';
+	import EmojiPicker from '$lib/emoji/EmojiPicker.svelte';
+	import NowBarPopover from '$lib/nav/NowBarPopover.svelte';
+	import { nowPanel } from '$lib/nav/now-panel.svelte';
+	import SmilePlus from '@lucide/svelte/icons/smile-plus';
 	import Soundboard from '$lib/board/Soundboard.svelte';
 	import ChannelStatus from '$lib/channel/ChannelStatus.svelte';
-	import Jukebox from '$lib/channel/Jukebox.svelte';
-	import PeopleSheet from '$lib/channel/PeopleSheet.svelte';
-	import SidePanel from '$lib/channel/SidePanel.svelte';
 	import SessionLayers, {
 		createSessionLayers,
 	} from '$lib/session/SessionLayers.svelte';
@@ -35,7 +38,6 @@
 	import { takeVoice, type VoiceIntent } from '$lib/channel/voice-intent';
 	import { stageSlot } from '$lib/channel/stage-slot.svelte';
 	import { modals } from '$lib/modals.svelte';
-	import { peopleFold } from '$lib/channel/people-fold.svelte';
 
 	let props: ChannelShellProps = $props();
 
@@ -333,7 +335,9 @@
 		}),
 	);
 
-	// ── Connection fault + jukebox helpers ────────────────────────────────────
+	// The now bar's panels close with the channel's page.
+	$effect(() => () => (nowPanel.open = null));
+	let pickerAt = $state<HTMLElement | null>(null);
 </script>
 
 <svelte:window
@@ -343,16 +347,14 @@
 		// TV mode, the picker, the sheet and the tile focus all at once — and
 		// the layout's drawer on top of them (#1625).
 		// …and a Modal of its own (the summary, #1969) answers first.
-		// The picker and the people sheet count themselves modal for the
-		// jukebox dock's sake — they are this shell's own layers, so only a
-		// count ABOVE them means something is stacked on top (#1974). The
-		// picker also answers Escape itself (#2513); whichever runs first
-		// closes it and the other finds nothing left to do.
-		const mine = (layers.setup.open ? 1 : 0) + (peopleFold.open ? 1 : 0);
+		// The picker counts itself modal for the jukebox dock's sake — it is
+		// this shell's own layer, so only a count ABOVE it means something is
+		// stacked on top (#1974). It also answers Escape itself (#2513);
+		// whichever runs first closes it and the other finds nothing to do.
+		const mine = layers.setup.open ? 1 : 0;
 		if (navDrawer.open || modals.open > mine) return;
 		if (layers.tv) layers.tv = false;
 		else if (layers.setup.open) layers.setup.open = false;
-		else if (peopleFold.open) peopleFold.open = false;
 		else focusId = null;
 	}}
 />
@@ -419,23 +421,13 @@
 	</main>
 </div>
 
-<PeopleSheet bind:open={peopleFold.open} {panel} />
-
-{#snippet panel()}
-	<SidePanel
-		live={phase === 'live'}
-		riding={!!connection.riding()}
-		{riders}
-		members={props.members}
-		onCheer={(emoji) => live.cheer(emoji)}
-		{banOf}
-		{handOffOf}
-		elsewhere={elsewhereIn(
-			crewLive.crew(props.address.crew),
-			props.address.channel,
-		)}
+{#if nowPanel.open === 'music'}
+	<NowBarPopover
+		label="The jukebox"
+		anchor={nowPanel.music}
+		onclose={() => (nowPanel.open = null)}
 	>
-		{#snippet player()}
+		<div class="p-3">
 			<Jukebox
 				jukebox={live.tick?.jukebox}
 				send={live.jukebox}
@@ -444,6 +436,43 @@
 				targetRpm={live.tick?.state?.targetRpm ?? 0}
 				riding={connection.riding()}
 			/>
-		{/snippet}
-	</SidePanel>
-{/snippet}
+		</div>
+	</NowBarPopover>
+{:else if nowPanel.open === 'react'}
+	<NowBarPopover
+		label="Cheers and the soundboard"
+		anchor={nowPanel.react}
+		onclose={() => (nowPanel.open = null)}
+	>
+		<!-- What you throw into the channel (#2722): never typing. While a
+		     roadside deck is on screen, the cheers are its alone (#3941). -->
+		<div class="flex flex-col gap-2 p-3">
+			{#if !roadsideShown()}<CheerDeck
+					onCheer={(key) => live.cheer(key)}
+				/>{/if}
+			<div class="flex gap-2">
+				<BoardToggle />
+				<button
+					onclick={(e) => (pickerAt = pickerAt ? null : e.currentTarget)}
+					aria-label="More reactions"
+					aria-expanded={!!pickerAt}
+					title="More reactions"
+					class="border-muted/20 hover:border-muted/50 text-muted hover:text-ink flex min-h-11 w-11 shrink-0 items-center justify-center rounded border"
+					><SmilePlus size={18} /></button
+				>
+			</div>
+		</div>
+	</NowBarPopover>
+{/if}
+{#if pickerAt}
+	<EmojiPicker
+		anchor={pickerAt}
+		quick={account.cheers}
+		crewId={props.address.crew}
+		onPick={(key) => {
+			live.cheer(key);
+			pickerAt = null;
+		}}
+		onClose={() => (pickerAt = null)}
+	/>
+{/if}

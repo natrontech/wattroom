@@ -48,17 +48,6 @@ export const boardPanel = {
 	forgetFire() {
 		lastFire = undefined;
 	},
-	/**
-	 * The newest fire while its rider still sounds. `sounding` is this
-	 * machine's audio, so the line goes when the sound does; one rider is one
-	 * voice, so their sound is this fire until a newer one replaces it.
-	 */
-	sounding(riders: { id: string; sounding?: boolean }[]) {
-		const last = lastFire;
-		return last && riders.some((r) => r.id === last.fromId && r.sounding)
-			? last
-			: undefined;
-	},
 	show() {
 		open = true;
 	},

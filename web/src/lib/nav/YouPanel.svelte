@@ -41,11 +41,12 @@
 </script>
 
 <!-- The same shape whatever the connection state: the nav above never jumps. -->
+<!-- 4rem, the now bar's height, so the two top borders meet. -->
 <div
-	class="border-ink/5 border-t px-3 py-2.5"
+	class="border-ink/10 flex h-16 shrink-0 items-center border-t px-3"
 	{@attach contextMenu(() => youMenu(goto))}
 >
-	<div class="flex items-center gap-2" title={MENU_HINT}>
+	<div class="flex w-full items-center gap-2" title={MENU_HINT}>
 		<!-- You, one click from any crew (#2581): the switcher's You, without
 		     opening the switcher — the YOU section that tried to be this
 		     listed Workouts twice. Your rider page is Home's level tile and
