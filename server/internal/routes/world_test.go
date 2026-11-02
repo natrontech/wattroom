@@ -152,16 +152,17 @@ func TestNoCrewPayloadCarriesARegionSecret(t *testing.T) {
 	route := h.keep(t, "alice")
 	alice, bob := h.users.ByToken["alice"].ID, h.users.ByToken["bob"].ID
 	a := NewAttacher(h.store.Queries, h.keys)
+	_, channel := h.crewOfTwo(t)
 
 	cut, err := a.Attach(t.Context(), workoutOn(route), bob)
 	if err != nil {
 		t.Fatal(err)
 	}
-	picked, refusal, err := a.ForSession(t.Context(), store.UUIDString(alice), workoutOn(route))
+	picked, refusal, err := a.ForSession(t.Context(), store.UUIDString(alice), channel, workoutOn(route))
 	if err != nil || refusal != "" {
 		t.Fatalf("the owner's pick: %q %v", refusal, err)
 	}
-	rode, profile, refused, err := a.SessionRoute(t.Context(), store.UUIDString(alice), route)
+	rode, profile, refused, err := a.SessionRoute(t.Context(), store.UUIDString(alice), route, channel)
 	if err != nil || refused != nil {
 		t.Fatalf("the session's road: %+v %v", refused, err)
 	}

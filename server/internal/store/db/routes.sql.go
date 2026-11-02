@@ -77,6 +77,34 @@ func (q *Queries) CreateRoute(ctx context.Context, arg CreateRouteParams) (Creat
 	return i, err
 }
 
+const crewRouteAsk = `-- name: CrewRouteAsk :one
+select c.name, c.listed, coalesce(a.shared, false)::boolean as shared
+from crews c
+left join route_crew_consents a on a.route_id = $1 and a.crew_id = c.id
+where c.id = $2
+`
+
+type CrewRouteAskParams struct {
+	RouteID pgtype.UUID
+	CrewID  pgtype.UUID
+}
+
+type CrewRouteAskRow struct {
+	Name   string
+	Listed bool
+	Shared bool
+}
+
+// What a pick or a plan into a crew needs from a route's owner (#4149,
+// ADR-0063 "A listed crew asks first"): the crew's name, whether it is listed
+// in the directory, and whether the owner has said yes for this route.
+func (q *Queries) CrewRouteAsk(ctx context.Context, arg CrewRouteAskParams) (CrewRouteAskRow, error) {
+	row := q.db.QueryRow(ctx, crewRouteAsk, arg.RouteID, arg.CrewID)
+	var i CrewRouteAskRow
+	err := row.Scan(&i.Name, &i.Listed, &i.Shared)
+	return i, err
+}
+
 const deleteRoute = `-- name: DeleteRoute :execrows
 delete from routes where id = $1 and owner_id = $2
 `

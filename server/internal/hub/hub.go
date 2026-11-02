@@ -290,7 +290,8 @@ func (h *Hub) OpenSession(channel string, rider protocol.Rider, workoutName, wor
 	}
 	var ride *routeRide
 	if route != nil {
-		resolved, refused := h.sessionRoute(*route, workoutJSON, routeOwner)
+		// No crew to ask: the plan was asked when it was planned (ADR-0063).
+		resolved, refused := h.sessionRoute(*route, workoutJSON, routeOwner, "")
 		if refused != nil {
 			return "", refused.Code, refused.Message
 		}

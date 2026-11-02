@@ -18,13 +18,13 @@ import (
 // SetRoads wires the routes in; without them a plan may name no road.
 func (s *Service) SetRoads(a *routes.Attacher) { s.roads = a }
 
-// planRoad checks a plan's road — the planner's own route, and never one
-// from Strava, since the crew reads it — and answers the route for the
-// plan's row, null when the workout rides none, and the name the plan is
-// kept under: on a road, the route's generated name (#3055), which is all the
-// calendar feed and the crew's emails ever see. False when it wrote the
-// refusal.
-func (s *Service) planRoad(w http.ResponseWriter, r *http.Request, workoutJSON, name string, planner pgtype.UUID) (pgtype.UUID, string, bool) {
+// planRoad checks a plan's road into crew — the planner's own route, never
+// one from Strava, and one shared with crew if it is listed, since the crew
+// reads it — and answers the route for the plan's row, null when the workout
+// rides none, and the name the plan is kept under: on a road, the route's
+// generated name (#3055), which is all the calendar feed and the crew's
+// emails ever see. False when it wrote the refusal.
+func (s *Service) planRoad(w http.ResponseWriter, r *http.Request, workoutJSON, name string, planner, crew pgtype.UUID) (pgtype.UUID, string, bool) {
 	if s.roads == nil {
 		if ref, _ := workout.RoadOf(workoutJSON); ref != nil {
 			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
@@ -33,8 +33,14 @@ func (s *Service) planRoad(w http.ResponseWriter, r *http.Request, workoutJSON, 
 		}
 		return pgtype.UUID{}, name, true
 	}
-	id, err := s.roads.CheckShared(r.Context(), workoutJSON, planner)
+	id, err := s.roads.CheckShared(r.Context(), workoutJSON, planner, crew)
 	var refused routes.Refused
+	var unasked routes.Unasked
+	if errors.As(err, &unasked) {
+		// The client asks the planner, records the answer and plans again.
+		httpx.WriteFieldError(w, http.StatusForbidden, "forbidden", string(unasked), "consent")
+		return pgtype.UUID{}, "", false
+	}
 	if errors.As(err, &refused) {
 		httpx.WriteFieldError(w, http.StatusForbidden, "forbidden", string(refused), "workoutJson")
 		return pgtype.UUID{}, "", false

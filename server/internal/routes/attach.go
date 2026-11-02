@@ -37,6 +37,45 @@ type Refused string
 
 func (r Refused) Error() string { return string(r) }
 
+// Unasked is a route its owner has not said yes to sharing with a crew
+// listed in the directory (#4149, ADR-0063 "A listed crew asks first"), in
+// the words the owner is asked. A client asks, PUTs the answer to
+// /api/routes/{id}/crews/{crew}, and tries again: a session's pick reads
+// ConsentCode, a plan's refusal the field "consent".
+type Unasked string
+
+func (u Unasked) Error() string { return string(u) }
+
+// ConsentCode is a session's refusal of an Unasked route.
+const ConsentCode = "consent_forbidden"
+
+// asked holds a route back from a crew listed in the directory until its
+// owner has said yes for that crew: anyone can walk into such a crew, and
+// the road it rides redraws the route.
+func (a *Attacher) asked(ctx context.Context, route, crew pgtype.UUID) error {
+	row, err := a.q.CrewRouteAsk(ctx, db.CrewRouteAskParams{RouteID: route, CrewID: crew})
+	if err != nil {
+		return fmt.Errorf("routes: read crew %s's answer: %w", store.UUIDString(crew), err)
+	}
+	if row.Listed && !row.Shared {
+		return Unasked("Anyone who joins " + row.Name + " will see this route.")
+	}
+	return nil
+}
+
+// crewOf is the crew a session's channel belongs to.
+func (a *Attacher) crewOf(ctx context.Context, channel string) (pgtype.UUID, error) {
+	id, err := store.ParseUUID(channel)
+	if err != nil {
+		return pgtype.UUID{}, fmt.Errorf("routes: channel %q is not an id: %w", channel, err)
+	}
+	ch, err := a.q.GetChannel(ctx, id)
+	if err != nil {
+		return pgtype.UUID{}, fmt.Errorf("routes: read channel %s: %w", channel, err)
+	}
+	return ch.CrewID, nil
+}
+
 // attached is the road a reader gets: the reference, and the profile cut
 // for them — packed as $lib/road's packRoad writes it, base64 on the wire —
 // starting originM metres along the owner's road. Deleted says the route is
@@ -52,10 +91,11 @@ type attached struct {
 }
 
 // CheckShared is the write rule for a workout others will read — a plan, a
-// session's pick (#3051): its road must be the actor's own route, and not
-// one from Strava, which rides owner-only (ADR-0063). It answers the route
-// the workout names, invalid when it names none.
-func (a *Attacher) CheckShared(ctx context.Context, workoutJSON string, actor pgtype.UUID) (pgtype.UUID, error) {
+// session's pick (#3051): its road must be the actor's own route, not one
+// from Strava, which rides owner-only, and, if crew is listed in the
+// directory, one its owner said yes to sharing with crew (ADR-0063). It
+// answers the route the workout names, invalid when it names none.
+func (a *Attacher) CheckShared(ctx context.Context, workoutJSON string, actor, crew pgtype.UUID) (pgtype.UUID, error) {
 	ref, err := workout.RoadOf(workoutJSON)
 	if err != nil || ref == nil {
 		return pgtype.UUID{}, err
@@ -73,6 +113,9 @@ func (a *Attacher) CheckShared(ctx context.Context, workoutJSON string, actor pg
 	}
 	if row.Src == stravaSrc {
 		return pgtype.UUID{}, Refused("Routes from Strava ride with you alone, never in a plan or a session.")
+	}
+	if err := a.asked(ctx, id, crew); err != nil {
+		return pgtype.UUID{}, err
 	}
 	return id, nil
 }
@@ -198,8 +241,10 @@ func (a *Attacher) Attach(ctx context.Context, workoutJSON string, viewer pgtype
 // never one from Strava, described as everyone in the channel rides it — the
 // crew's cut between the anchors, under its generated name — with that cut's
 // heights for the hub's bunch (#3028), and never its turns. A route that is
-// not the coach's reads as absent, as it does everywhere else.
-func (a *Attacher) SessionRoute(ctx context.Context, coach, routeID string) (protocol.SessionRoute, road.Road, *protocol.Error, error) {
+// not the coach's reads as absent, as it does everywhere else. One the coach
+// has not shared with channel's crew, if it is listed, is refused with
+// ConsentCode; channel "" is a plan's start, asked when it was planned.
+func (a *Attacher) SessionRoute(ctx context.Context, coach, routeID, channel string) (protocol.SessionRoute, road.Road, *protocol.Error, error) {
 	owner, err := store.ParseUUID(coach)
 	if err != nil {
 		return protocol.SessionRoute{}, road.Road{}, nil, fmt.Errorf("routes: coach %q is not an id: %w", coach, err)
@@ -216,6 +261,19 @@ func (a *Attacher) SessionRoute(ctx context.Context, coach, routeID string) (pro
 		return protocol.SessionRoute{}, road.Road{}, nil, fmt.Errorf("routes: read route %s: %w", routeID, err)
 	case row.Src == stravaSrc:
 		return protocol.SessionRoute{}, road.Road{}, &protocol.Error{Code: "forbidden", Message: "Routes from Strava ride with you alone, never in a session."}, nil
+	}
+	if channel != "" {
+		crew, err := a.crewOf(ctx, channel)
+		if err == nil {
+			err = a.asked(ctx, id, crew)
+		}
+		var unasked Unasked
+		if errors.As(err, &unasked) {
+			return protocol.SessionRoute{}, road.Road{}, &protocol.Error{Code: ConsentCode, Message: string(unasked)}, nil
+		}
+		if err != nil {
+			return protocol.SessionRoute{}, road.Road{}, nil, err
+		}
 	}
 	ridden, err := road.UnpackRoad(row.Road)
 	if err != nil {
@@ -262,18 +320,27 @@ func (a *Attacher) CrewRoute(ctx context.Context, workoutJSON string) (*protocol
 	return &protocol.ControlRoute{ID: ref.RouteID, FromM: min(max(ref.FromM-origin, 0), cut.LengthM-cut.Step())}, nil
 }
 
-// ForSession is a session's pick (#3051): the coach's own route, never one
-// from Strava, attached as the crew's cut for every socket in the channel —
-// the coach's included, since one workout rides the tick to all of them.
-func (a *Attacher) ForSession(ctx context.Context, coach, workoutJSON string) (string, string, error) {
+// ForSession is a session's pick in channel (#3051): the coach's own route,
+// never one from Strava, and one shared with the channel's crew if it is
+// listed, attached as the crew's cut for every socket in the channel — the
+// coach's included, since one workout rides the tick to all of them.
+func (a *Attacher) ForSession(ctx context.Context, coach, channel, workoutJSON string) (string, string, error) {
 	id, err := store.ParseUUID(coach)
 	if err != nil {
 		return "", "", fmt.Errorf("routes: coach %q is not an id: %w", coach, err)
 	}
-	if _, err := a.CheckShared(ctx, workoutJSON, id); err != nil {
+	crew, err := a.crewOf(ctx, channel)
+	if err != nil {
+		return "", "", err
+	}
+	if _, err := a.CheckShared(ctx, workoutJSON, id, crew); err != nil {
 		var refused Refused
+		var unasked Unasked
 		if errors.As(err, &refused) {
 			return "", string(refused), nil
+		}
+		if errors.As(err, &unasked) {
+			return "", string(unasked), nil
 		}
 		return "", "", err
 	}

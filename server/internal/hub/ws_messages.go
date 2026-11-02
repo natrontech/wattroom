@@ -188,7 +188,7 @@ func (h *Hub) control(c *client, rm *channelState, rider protocol.Rider, cmd pro
 		return
 	}
 	if cmd.Action == "game" {
-		route, refused := h.askedRoute(cmd, rider.ID)
+		route, refused := h.askedRoute(cmd, rider.ID, rm.channel)
 		if refused != nil {
 			h.writeError(c, refused.Code, refused.Message)
 			return
@@ -208,7 +208,7 @@ func (h *Hub) control(c *client, rm *channelState, rider protocol.Rider, cmd pro
 			route.FromM, route.Reverse, route.Loop = 0, false, false
 		}
 		if route != nil {
-			road, refusal := h.gameRoad(*route, rider.ID)
+			road, refusal := h.gameRoad(*route, rider.ID, rm.channel)
 			if refusal != "" {
 				h.writeError(c, "forbidden", refusal)
 				return
@@ -243,11 +243,11 @@ func (h *Hub) control(c *client, rm *channelState, rider protocol.Rider, cmd pro
 		// Before the cut is attached: the road is checked against the
 		// workout's own reference, which reads nothing else.
 		var refused *protocol.Error
-		if route, refused = h.askedRoute(cmd, rider.ID); refused != nil {
+		if route, refused = h.askedRoute(cmd, rider.ID, rm.channel); refused != nil {
 			h.writeError(c, refused.Code, refused.Message)
 			return
 		}
-		attached, name, refusal := h.sessionRoad(cmd.WorkoutJSON, cmd.WorkoutName, rider.ID)
+		attached, name, refusal := h.sessionRoad(cmd.WorkoutJSON, cmd.WorkoutName, rider.ID, rm.channel)
 		if refusal != "" {
 			h.writeError(c, "forbidden", refusal)
 			return
@@ -261,11 +261,11 @@ func (h *Hub) control(c *client, rm *channelState, rider protocol.Rider, cmd pro
 
 // askedRoute is the road a pick or a game asked for, resolved; nil when it
 // asked for none.
-func (h *Hub) askedRoute(cmd protocol.Control, coach string) (*routeRide, *protocol.Error) {
+func (h *Hub) askedRoute(cmd protocol.Control, coach, channel string) (*routeRide, *protocol.Error) {
 	if cmd.Route == nil || cmd.Action != "pick" && cmd.Action != "game" {
 		return nil, nil
 	}
-	route, refused := h.sessionRoute(*cmd.Route, cmd.WorkoutJSON, coach)
+	route, refused := h.sessionRoute(*cmd.Route, cmd.WorkoutJSON, coach, channel)
 	if refused != nil {
 		return nil, refused
 	}
