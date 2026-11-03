@@ -1311,16 +1311,19 @@ test('a shift from a network OpenBikeControl controller reaches the page, or on 
 	const gone = 'That shifter is gone from the network. Open BikeControl, then try again.';
 	const connectUnknown = () => win.evaluate(() => window.wattroom.obc.connect('evil._openbikecontrol._tcp.local'));
 
-	// Why this branches: macOS 15 asks before an app talks to the local
-	// network, and nobody on a CI runner can answer, so the unsigned shell is
-	// refused there (#4359: the query fails with EHOSTUNREACH and the
-	// responder hears nothing). On macOS this proves the refusal path the
-	// rider meets, where the card says to allow Local Network: the shell
-	// reports `denied`, logs it, and connects to nothing. Linux proves the
-	// whole path below, discovery to shift. On a Mac where the permission was
-	// granted this branch fails, by design: it is the runner's state it pins.
-	if (process.platform === 'darwin') {
-		await expect.poll(async () => (await found())?.denied, { timeout: 20_000 }).toBe(true).catch(diagnose);
+	// Why this branches on what the shell reports: macOS 15 asks before an
+	// app talks to the local network, and nobody on a CI runner can answer,
+	// so the unsigned shell is refused there (#4359: the query fails with
+	// EHOSTUNREACH and the responder hears nothing). A refused shell proves
+	// the refusal path the rider meets, where the card says to allow Local
+	// Network: it reports `denied`, logs it, and connects to nothing. Any
+	// other shell, Linux or a Mac with the permission granted, proves the
+	// whole path below, discovery to shift. Only macOS refuses, so a Linux
+	// job can never pass through the refusal branch.
+	const settled = async () => (await found())?.denied === true || !!(await smoke());
+	await expect.poll(settled, { timeout: 20_000 }).toBe(true).catch(diagnose);
+	if ((await found()).denied) {
+		expect(process.platform, 'only macOS refuses Local Network').toBe('darwin');
 		await expect.poll(obcLog).toContainEqual(expect.stringContaining('obc: Local Network refused'));
 		expect(await connectUnknown()).toEqual({ error: gone });
 		await app.close();
@@ -1329,7 +1332,6 @@ test('a shift from a network OpenBikeControl controller reaches the page, or on 
 		return;
 	}
 
-	await expect.poll(smoke, { timeout: 20_000 }).toBeTruthy().catch(diagnose);
 	const { id } = await smoke();
 	expect((await found()).denied).toBe(false);
 
