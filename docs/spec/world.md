@@ -13,7 +13,7 @@ Part of the product spec. [docs/SPEC.md](../SPEC.md) indexes every section and s
 | … figures             | at most **110k** triangles: **3** at LOD0 (**14k** each) and **9** at LOD1 (**7k** each)                                                                                                                                                                                                                                                                                                                                       |
 | … far figures         | every figure past those 12 — strangers (Open rides) and the crowd on a climb (Races) — at a far LOD, instanced, inside the tier's totals; its triangles per figure are set by the first `make perf-scenes` measurement, as the GPU gate is                                                                                                                                                                                     |
 | … dressing            | at most **24** draws and **180k** triangles                                                                                                                                                                                                                                                                                                                                                                                    |
-| Low tier              | at most **30** draws and **150k** triangles; dressing **12** draws and **70k**                                                                                                                                                                                                                                                                                                                                                 |
+| Low tier              | at most **30** draws and **150k** triangles; dressing **12** draws and **70k**. **Open, Jan's call:** the slow rig (below) does not hold **30 fps** even inside these ceilings, so they stay until a number is chosen                                                                                                                                                                                                             |
 | Fallback              | to the Skyline when more than **20 %** of vsync-divisor intervals are missed over **10 s**; one-way for the ride                                                                                                                                                                                                                                                                                                               |
 | Soak                  | two simulated hours at **16×** (`make world-soak`, [#3851](https://github.com/natrontech/wattroom/issues/3851)): no metric's last-**30**-minute mean more than **10 %** over its first-**30**-minute mean (a count may also move by one); textures and geometries never past the first window's ceiling by more than that; the ground never holds more chunks than its streamer's window. Frame times are judged on a GPU only |
 | Keep-clear corridor   | the middle **40 %** of the width and **55 %** of the height                                                                                                                                                                                                                                                                                                                                                                    |
@@ -27,6 +27,29 @@ Part of the product spec. [docs/SPEC.md](../SPEC.md) indexes every section and s
 | Flashes               | WCAG 2.3.1, and at most one dim flash per **10 s** over **25 %** of a 10° field; none under reduced motion                                                                                                                                                                                                                                                                                                                     |
 | Live zone ring        | one flat band **0.08 m** wide (a wheel, as your trail), an ellipse round the wheels **0.84 m** across — inside the **0.9 m** between riders abreast — and **1.98 m** along, in the live zone's colour; under you and every rider whose numbers you may see (ADR-0059); none on a faded rider or under a game that hides the meter                                                                                              |
 | Name tags             | over the **2** riders nearest you and anyone speaking, never over you; a small dark pill holding the name and, where known, the level (`Lv 38`); text at least **16 arcmin** at the design distance (**20 px** in a 900 px frame); tags that would overlap merge                                                                                                                                                               |
+
+**The slow rig** stands for the low tier: headless Chromium on SwiftShader with
+the page's CPU throttled **4×** (`make world-bench`, [#3082](https://github.com/natrontech/wattroom/issues/3082)).
+It draws /dev/perf's world case, the synthetic pass loop with four riders, for
+60 s after a 15 s warm-up. These are software-rig numbers, not a real device's.
+Measured on the dev VM (16 cores, shared), 2026-11-03:
+
+| Frame       | Frame interval p50 / p95 | Render JS p50 / p95 | Intervals missed | Draws p50 / max | Triangles p50 / max |
+| ----------- | ------------------------ | ------------------- | ---------------- | --------------- | ------------------- |
+| 0.92 MP     | **99.6 / 203 ms**        | **15.6 / 26.1 ms**  | **66 %**         | **24 / 25**     | **145k / 148k**     |
+| 0.52 MP     | **84.7 / 169 ms**        | **13.5 / 22.1 ms**  | **62 %**         | **24 / 25**     | **145k / 148k**     |
+| unthrottled | 93.4 / 185 ms            | 3.3 / 6.7 ms        | 65 %             | 24 / 25         | 145k / 148k         |
+
+The unthrottled row is at 0.92 MP. On this rig the scene's counts already fit
+the low tier, yet every run is past the Fallback. 0.52 MP instead of 0.92 saves about
+**15 ms**, and the throttle adds about **12 ms** of the page's own work. The
+rest is SwiftShader drawing the scene in the GPU process, which no throttle
+slows. The low tier's ceilings are open until Jan chooses one of these:
+
+- set them to what holds 30 fps on this rig, well under today's, which would
+  also cut what a real low-tier GPU draws;
+- keep them, and let a GPU-less machine take the Skyline, as the Fallback
+  already does.
 
 ## Real ground (defaults — tune in alpha; ADR-0078, ADR-0092)
 
