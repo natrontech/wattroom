@@ -135,7 +135,9 @@ func wire(ctx context.Context, st *store.Store, mux *http.ServeMux, baseURL stri
 		// its durable record rather than lost with the goroutine (#799).
 		uploader.Sweep(ctx)
 	}
-	crewsService := crews.New(st, authService, log)
+	// The crews and the shelf also sign in the rider a planning token acts
+	// for when MCP calls their handlers in-process (#4207).
+	crewsService := crews.New(st, tokens.ActingSource(authService), log)
 	// A workout names its road by reference and each reader is handed their
 	// cut of it (#3051): the one attacher every workout read goes through.
 	roads := routes.NewAttacher(st.Queries, keys)
@@ -163,18 +165,20 @@ func wire(ctx context.Context, st *store.Store, mux *http.ServeMux, baseURL stri
 		// (#1643): it needs the store, not the key.
 		notify.Bare(st, log, baseURL).RegisterUnsubscribe(mux)
 	}
-	shelf := customworkouts.New(st, authService, log)
+	shelf := customworkouts.New(st, tokens.ActingSource(authService), log)
 	shelf.SetRoads(roads)
 	shelf.Register(mux)
 	// A rider's planned week from intervals.icu, pulled into the importer
 	// (#2327); hidden unless the operator registered a client.
 	intervals.New(authService, log, baseURL).Register(mux)
 	// Personal read tokens (ADR-0017): bearer auth for GETs of own data
-	// and the MCP coach endpoint. Cookie auth stays the write path.
+	// and the MCP coach endpoint. Cookie auth stays the HTTP write path; a
+	// token marked for planning writes through MCP alone, which runs the
+	// shelf's and the schedule's own handlers on this mux (#4207).
 	tokenService := tokens.New(st, authService, authService, log)
 	tokenService.Register(mux)
 	readAuth := tokenService.ReadSource(authService)
-	mcp.New(st, tokenService, log).Register(mux)
+	mcp.New(st, tokenService, mux, log).Register(mux)
 	progression.New(st, readAuth, log).Register(mux)
 	// The accounts that signed in before #2078: their avatar_url still
 	// names a provider's host, which the enforced img-src refuses to load,

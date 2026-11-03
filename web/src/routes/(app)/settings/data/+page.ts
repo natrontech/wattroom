@@ -6,6 +6,8 @@ export interface ApiToken {
 	name: string;
 	createdAt: string;
 	lastUsedAt?: string;
+	// Marked for planning (#4207): its MCP coach also writes.
+	write?: boolean;
 }
 
 export const load: PageLoad = async ({ fetch }) => {

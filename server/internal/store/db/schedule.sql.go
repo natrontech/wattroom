@@ -905,6 +905,43 @@ func (q *Queries) RotateCrewIcsToken(ctx context.Context, id pgtype.UUID) (strin
 	return ics_token, err
 }
 
+const routeNumbersOfPlans = `-- name: RouteNumbersOfPlans :many
+select s.id, r.length_m, r.gain_m
+from scheduled_sessions s
+join routes r on r.id = s.route_id
+where s.id = any($1::uuid[])
+`
+
+type RouteNumbersOfPlansRow struct {
+	ID      pgtype.UUID
+	LengthM int32
+	GainM   int32
+}
+
+// MCP's get_schedule (#4207), as RouteNumbersOfRides is its list_rides: a
+// plan on a road reaches an AI as its route's length and gain, never the
+// route's name, id or shape (ADR-0063). A plan whose route was deleted has
+// none.
+func (q *Queries) RouteNumbersOfPlans(ctx context.Context, ids []pgtype.UUID) ([]RouteNumbersOfPlansRow, error) {
+	rows, err := q.db.Query(ctx, routeNumbersOfPlans, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RouteNumbersOfPlansRow
+	for rows.Next() {
+		var i RouteNumbersOfPlansRow
+		if err := rows.Scan(&i.ID, &i.LengthM, &i.GainM); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const setRsvp = `-- name: SetRsvp :exec
 insert into session_rsvps (session_id, user_id, going) values ($1, $2, $3)
 on conflict (session_id, user_id) do update

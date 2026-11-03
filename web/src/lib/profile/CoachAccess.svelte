@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { copyText } from '$lib/copy';
-	// Read-only API tokens for a rider's own tools (ADR-0017).
+	// API tokens for a rider's own tools (ADR-0017): read-only, unless the
+	// rider ticks planning, which lets its MCP coach save workouts and plan
+	// sessions in their crews (#4207).
 	//
 	// Its own file because it is its own thing: four pieces of state and three
 	// requests that nothing else on the profile page touches, and the secret
@@ -23,6 +25,7 @@
 	// is what `untrack` says out loud (the page used the same idiom).
 	let tokens = $state<ApiToken[]>(untrack(() => initial));
 	let name = $state('');
+	let write = $state(false);
 	let fresh = $state<string | null>(null);
 	let error = $state<string | null>(null);
 	// The list failed to load (#1330's audit): said above the form, with the
@@ -40,7 +43,7 @@
 	async function create() {
 		const res = await api<ApiToken & { token: string }>('/api/tokens', {
 			method: 'POST',
-			json: { name: name.trim() },
+			json: { name: name.trim(), write },
 		});
 		if (!res.ok) {
 			error = res.error.message;
@@ -48,6 +51,7 @@
 		}
 		error = null;
 		name = '';
+		write = false;
 		fresh = res.data.token;
 		await load();
 	}
@@ -71,9 +75,9 @@
 <section class="panel panel-xl mt-8">
 	<h2 class="font-display font-bold">Coach access</h2>
 	<p class="text-muted mt-1 text-xs">
-		Read-only tokens for your own tools — a personal coach AI can read your
-		progression and rides over the API or MCP (<code
-			class="font-mono text-[11px]">{location.origin}/mcp</code
+		Tokens for your own tools — a personal coach AI can read your progression
+		and rides over the API or MCP (<code class="font-mono text-[11px]"
+			>{location.origin}/mcp</code
 		>). A token reads your own rides and no other rider's. Whatever you connect
 		it to receives them under that provider's terms, not ours.
 	</p>
@@ -138,6 +142,17 @@
 			aria-label="token name"
 			class="input w-64"
 		/>
+		<label class="basis-full">
+			<span class="flex items-center gap-2 text-sm">
+				<input type="checkbox" bind:checked={write} />
+				Let it plan workouts
+			</span>
+			<span class="text-muted mt-1 block text-[11px]">
+				Over MCP it can also save workouts to your shelf and plan sessions in
+				your crews, in your name — your crew gets the usual mail. It sees your
+				crews' schedules too.
+			</span>
+		</label>
 		<button class="btn btn-secondary" disabled={!name.trim()}
 			>Create token</button
 		>

@@ -1,9 +1,12 @@
 // Package tokens is ADR-0017's personal read tokens: created and revoked on
 // the profile, stored as SHA-256 only, accepted as bearer auth solely for
-// reads of the owner's own data.
+// reads of the owner's own data. A token the rider marked for planning
+// (#4207) also lets MCP save workouts and plan sessions as them; the HTTP
+// bearer path stays GET-only for every token.
 package tokens
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -76,6 +79,49 @@ func (s *Service) FromRequest(r *http.Request) (db.User, bool) {
 	return user, true
 }
 
+// CanWrite says whether the request's bearer is a token the rider marked for
+// planning (#4207). Any failure reads as no: a write is never granted by an
+// error.
+func (s *Service) CanWrite(r *http.Request) bool {
+	raw, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
+	if !ok || !strings.HasPrefix(raw, "wrt_") {
+		return false
+	}
+	hash := sha256.Sum256([]byte(raw))
+	writes, err := s.store.Queries.TokenCanWrite(r.Context(), hash[:])
+	return err == nil && writes
+}
+
+type actingKey struct{}
+
+// Acting puts the owner of a planning token on a request MCP builds and
+// serves in-process (#4207), so a write tool runs the very handler a rider's
+// click does. Nothing outside the process can set a context value.
+func Acting(ctx context.Context, user db.User) context.Context {
+	return context.WithValue(ctx, actingKey{}, user)
+}
+
+// ActingSource wraps the cookie source of a service whose handlers MCP calls
+// in-process: the rider Acting named is signed in, anything else goes to the
+// cookie source and its CSRF boundary as before.
+func ActingSource(cookie UserSource) UserSource { return actingSource{cookie} }
+
+type actingSource struct{ cookie UserSource }
+
+func (a actingSource) User(r *http.Request) (db.User, bool) {
+	if user, ok := r.Context().Value(actingKey{}).(db.User); ok {
+		return user, true
+	}
+	return a.cookie.User(r)
+}
+
+func (a actingSource) RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool) {
+	if user, ok := r.Context().Value(actingKey{}).(db.User); ok {
+		return user, true
+	}
+	return a.cookie.RequireUser(w, r, signInMessage)
+}
+
 // ReadUserSource is what ReadSource hands back: optional auth (User) plus
 // mandatory auth (RequireUser) so it can stand in for the cookie service.
 type ReadUserSource interface {
@@ -125,7 +171,10 @@ type tokenJSON struct {
 	Name       string `json:"name"`
 	CreatedAt  string `json:"createdAt"`
 	LastUsedAt string `json:"lastUsedAt,omitempty"`
-	Token      string `json:"token,omitempty"` // only ever set at creation
+	// Marked for planning (#4207): its MCP coach may save workouts and plan
+	// sessions. Absent is read-only.
+	Write bool   `json:"write,omitempty"`
+	Token string `json:"token,omitempty"` // only ever set at creation
 }
 
 func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
@@ -134,7 +183,8 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		Name string `json:"name"`
+		Name  string `json:"name"`
+		Write bool   `json:"write"`
 	}
 	if err := httpx.DecodeStrict(r, &req); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That request could not be read.")
@@ -157,6 +207,12 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	// Listing then inserting is two statements: ten concurrent creates each
 	// read nine and each landed, which is the shape #824 closed on the
 	// removal side and left open on this one.
+	// Null, not false, for a read token: one meaning for every row minted
+	// before #4207 and every one after.
+	var canWrite *bool
+	if req.Write {
+		canWrite = &req.Write
+	}
 	var row db.CreateTokenRow
 	err := s.store.WithUserLocked(r.Context(), user.ID, func(q *db.Queries) error {
 		n, err := q.CountUserTokens(r.Context(), user.ID)
@@ -167,7 +223,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 			return errTokenCap
 		}
 		row, err = q.CreateToken(r.Context(), db.CreateTokenParams{
-			UserID: user.ID, Name: req.Name, TokenHash: hash[:],
+			UserID: user.ID, Name: req.Name, TokenHash: hash[:], CanWrite: canWrite,
 		})
 		return err
 	})
@@ -184,8 +240,8 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	s.alarm.TokenMinted(user)
 	httpx.WriteJSON(w, http.StatusCreated, tokenJSON{
 		ID: store.UUIDString(row.ID), Name: req.Name,
-		CreatedAt: row.CreatedAt.Time.Format(time.RFC3339),
-		Token:     raw, // the one and only time it leaves the server
+		CreatedAt: row.CreatedAt.Time.Format(time.RFC3339), Write: req.Write,
+		Token: raw, // the one and only time it leaves the server
 	})
 }
 
@@ -203,7 +259,7 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 	for _, row := range rows {
 		entry := tokenJSON{
 			ID: store.UUIDString(row.ID), Name: row.Name,
-			CreatedAt: row.CreatedAt.Time.Format(time.RFC3339),
+			CreatedAt: row.CreatedAt.Time.Format(time.RFC3339), Write: row.CanWrite,
 		}
 		if row.LastUsedAt.Valid {
 			entry.LastUsedAt = row.LastUsedAt.Time.Format(time.RFC3339)

@@ -21,6 +21,7 @@ type ApiToken struct {
 	TokenHash  []byte
 	CreatedAt  pgtype.Timestamptz
 	LastUsedAt pgtype.Timestamptz
+	CanWrite   *bool
 }
 
 type BoardClip struct {

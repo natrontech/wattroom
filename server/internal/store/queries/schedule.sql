@@ -308,3 +308,13 @@ delete from session_rsvps where session_id = $1 and user_id = $2;
 -- never turned down. Run on the same condition as the reminder's re-arm in
 -- RescheduleSession: only when the time really changed.
 delete from session_rsvps where session_id = $1 and not going;
+
+-- name: RouteNumbersOfPlans :many
+-- MCP's get_schedule (#4207), as RouteNumbersOfRides is its list_rides: a
+-- plan on a road reaches an AI as its route's length and gain, never the
+-- route's name, id or shape (ADR-0063). A plan whose route was deleted has
+-- none.
+select s.id, r.length_m, r.gain_m
+from scheduled_sessions s
+join routes r on r.id = s.route_id
+where s.id = any(sqlc.arg(ids)::uuid[]);

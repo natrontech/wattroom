@@ -94,7 +94,7 @@ It is not a training plan generator, not an open world, and not a content treadm
 - Nobody loses a ride: samples stream to the server and buffer in IndexedDB, and a ride the server loses comes back from the browser as a file.
 - Rides export as .fit, upload to Strava, and reach Garmin by manual FIT import. Strava data never enters an LLM context.
 - A rider's own uploads travel with their export. The calendar feed is addressed to the rider.
-- Coaches read through personal tokens and a hand-rolled MCP endpoint.
+- Coaches read through personal tokens and a hand-rolled MCP endpoint. A token the rider marks for planning also saves workouts to their shelf and plans sessions in their crews, through MCP only and the app's own handlers; the HTTP bearer path stays read-only.
 - Stored credentials are sealed with a key from the environment.
 - Competition is crew-scoped. Ranks use W/kg power PRs, execution score, consistency and climb times per Category, never raw watts.
 - Level is XP from work done and climbs forever. Category is a fitness tier from the W/kg curve and moves both ways.

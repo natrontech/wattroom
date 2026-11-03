@@ -14,19 +14,28 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/natrontech/wattroom/server/internal/crews"
+	"github.com/natrontech/wattroom/server/internal/customworkouts"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/store/storetest"
 	"github.com/natrontech/wattroom/server/internal/testx"
+	"github.com/natrontech/wattroom/server/internal/tokens"
 )
 
+// fakeTokens knows two tokens: wrt_ok reads, wrt_plan was marked for
+// planning (#4207).
 type fakeTokens struct{ user *db.User }
 
 func (f *fakeTokens) FromRequest(r *http.Request) (db.User, bool) {
-	if f.user == nil || r.Header.Get("Authorization") != "Bearer wrt_ok" {
+	if f.user == nil || r.Header.Get("Authorization") != "Bearer wrt_ok" && !f.CanWrite(r) {
 		return db.User{}, false
 	}
 	return *f.user, true
+}
+
+func (f *fakeTokens) CanWrite(r *http.Request) bool {
+	return r.Header.Get("Authorization") == "Bearer wrt_plan"
 }
 
 // setup returns the mux, and the store and rider behind it — a paging test
@@ -43,8 +52,15 @@ func setup(t *testing.T) (*http.ServeMux, *store.Store, db.User) {
 	t.Cleanup(func() {
 		_, _ = st.Pool.Exec(context.Background(), "delete from users where id = $1", u.ID)
 	})
+	// The shelf and the schedule, signed in the way wire.go signs them in, so
+	// the planning tools run the real handlers. No cookie rider: only the
+	// rider a planning token acts for gets past them.
+	log := slog.New(slog.DiscardHandler)
 	mux := http.NewServeMux()
-	New(st, &fakeTokens{user: &u}, slog.New(slog.DiscardHandler)).Register(mux)
+	nobody := tokens.ActingSource(&testx.Users{})
+	customworkouts.New(st, nobody, log).Register(mux)
+	crews.New(st, nobody, log).Register(mux)
+	New(st, &fakeTokens{user: &u}, mux, log).Register(mux)
 	return mux, st, u
 }
 
@@ -447,4 +463,173 @@ func walkNumbers(v any) []float64 {
 		return out
 	}
 	return nil
+}
+
+// planCall is one tools/call with a token, answering the tool's payload or
+// the JSON-RPC error.
+func planCall(t *testing.T, mux *http.ServeMux, token, tool, args string) (map[string]any, map[string]any) {
+	t.Helper()
+	_, body := rpc(t, mux, "Bearer "+token, `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"`+tool+`","arguments":`+args+`}}`)
+	if e, ok := body["error"].(map[string]any); ok {
+		return nil, e
+	}
+	content, _ := body["result"].(map[string]any)["content"].([]any)
+	if len(content) != 1 {
+		t.Fatalf("%s: %v", tool, body)
+	}
+	var payload map[string]any
+	text, _ := content[0].(map[string]any)["text"].(string)
+	if err := json.Unmarshal([]byte(text), &payload); err != nil {
+		t.Fatalf("%s payload: %v", tool, err)
+	}
+	return payload, nil
+}
+
+const sweetSpot = `{"name":"2x20 Sweet Spot","steps":[{"type":"warmup","seconds":600,"from":0.4,"to":0.7},` +
+	`{"type":"repeat","times":2,"steps":[{"type":"steady","seconds":1200,"target":0.9},{"type":"steady","seconds":300,"target":0.5}]}]}`
+
+// A token minted before #4207, or without the tick, reads and nothing more:
+// the planning tools are neither listed nor callable, and nothing is saved.
+func TestAReadTokenCannotPlan(t *testing.T) {
+	mux, st, user := setup(t)
+	_, body := rpc(t, mux, "Bearer wrt_ok", `{"jsonrpc":"2.0","id":1,"method":"tools/list"}`)
+	if tools, _ := body["result"].(map[string]any)["tools"].([]any); len(tools) != 2 {
+		t.Fatalf("a read token lists %d tools, want the 2 reads: %v", len(tools), body)
+	}
+	crew := testx.Crew(t, st, "Tuesday crew", user.ID)
+	for tool, args := range map[string]string{
+		"create_workout":   `{"workout":` + sweetSpot + `}`,
+		"schedule_workout": `{"crewId":"` + store.UUIDString(crew) + `","workout":` + sweetSpot + `,"startsAt":"` + time.Now().Add(24*time.Hour).Format(time.RFC3339) + `"}`,
+		"get_schedule":     `{}`,
+	} {
+		if _, e := planCall(t, mux, "wrt_ok", tool, args); e == nil || !strings.Contains(fmt.Sprint(e["message"]), "only reads") {
+			t.Errorf("%s with a read token: %v, want a refusal saying it only reads", tool, e)
+		}
+	}
+	if n, err := st.Queries.CountUserWorkouts(t.Context(), user.ID); err != nil || n != 0 {
+		t.Errorf("a read token saved %d workouts (%v)", n, err)
+	}
+	if n, err := st.Queries.CountCrewUpcoming(t.Context(), crew); err != nil || n != 0 {
+		t.Errorf("a read token planned %d sessions (%v)", n, err)
+	}
+}
+
+// A planning token saves a workout to the rider's shelf and plans it in
+// their crew through the app's own handlers (#4207), and reads it back.
+func TestAPlanningTokenCreatesSchedulesAndReadsBack(t *testing.T) {
+	mux, st, user := setup(t)
+	_, body := rpc(t, mux, "Bearer wrt_plan", `{"jsonrpc":"2.0","id":1,"method":"tools/list"}`)
+	if tools, _ := body["result"].(map[string]any)["tools"].([]any); len(tools) != 5 {
+		t.Fatalf("a planning token lists %d tools, want 5: %v", len(tools), body)
+	}
+
+	saved, e := planCall(t, mux, "wrt_plan", "create_workout", `{"workout":`+sweetSpot+`}`)
+	if e != nil || saved["name"] != "2x20 Sweet Spot" || saved["id"] == "" {
+		t.Fatalf("create_workout: %v %v", saved, e)
+	}
+	shelf, err := st.Queries.ListUserWorkouts(t.Context(), db.ListUserWorkoutsParams{OwnerID: user.ID, Limit: 10})
+	if err != nil || len(shelf) != 1 || store.UUIDString(shelf[0].ID) != saved["id"] || shelf[0].Author != "alice" {
+		t.Fatalf("the shelf holds %v (%v), want the one workout, authored by its rider", shelf, err)
+	}
+
+	crew := testx.Crew(t, st, "Tuesday crew", user.ID)
+	at := time.Now().Add(48 * time.Hour).Truncate(time.Second)
+	plan, e := planCall(t, mux, "wrt_plan", "schedule_workout",
+		`{"crewId":"`+store.UUIDString(crew)+`","workout":`+sweetSpot+`,"startsAt":"`+at.Format(time.RFC3339)+`"}`)
+	if e != nil || plan["id"] == "" || plan["workout"] != "2x20 Sweet Spot" {
+		t.Fatalf("schedule_workout: %v %v", plan, e)
+	}
+
+	got, e := planCall(t, mux, "wrt_plan", "get_schedule", `{}`)
+	if e != nil {
+		t.Fatalf("get_schedule: %v", e)
+	}
+	crewsOut, _ := got["crews"].([]any)
+	sessions, _ := got["sessions"].([]any)
+	if len(crewsOut) != 1 || !strings.Contains(fmt.Sprint(crewsOut[0]), store.UUIDString(crew)) {
+		t.Errorf("get_schedule crews: %v", crewsOut)
+	}
+	if len(sessions) != 1 {
+		t.Fatalf("get_schedule sessions: %v", sessions)
+	}
+	first, _ := sessions[0].(map[string]any)
+	startsAt, _ := time.Parse(time.RFC3339, fmt.Sprint(first["startsAt"]))
+	if first["id"] != plan["id"] || first["workout"] != "2x20 Sweet Spot" || !startsAt.Equal(at) {
+		t.Errorf("get_schedule session: %v, want plan %v at %s", first, plan["id"], at.Format(time.RFC3339))
+	}
+}
+
+// Every refusal is the app's own, said to the model: the handlers' checks
+// run, and a crew the rider is not in is no crew at all.
+func TestPlanningRefusals(t *testing.T) {
+	mux, st, user := setup(t)
+	stranger, err := st.Queries.CreateUser(t.Context(), db.CreateUserParams{DisplayName: "bob", FtpWatts: 200, WeightKg: 70})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = st.Pool.Exec(context.Background(), "delete from users where id = $1", stranger.ID) })
+	theirs := store.UUIDString(testx.Crew(t, st, "Not hers", stranger.ID))
+	mine := store.UUIDString(testx.Crew(t, st, "Hers", user.ID))
+	tomorrow := time.Now().Add(24 * time.Hour).Format(time.RFC3339)
+	road := `{"name":"Home loop","road":{"routeId":"` + store.UUIDString(user.ID) + `","fromM":0,"toM":3000},"steps":[{"type":"road","seconds":600}]}`
+
+	for _, tc := range []struct{ name, tool, args, want string }{
+		{"not a workout", "create_workout", `{"workout":{"name":"x","steps":[]}}`, "engine can ride"},
+		{"no name", "create_workout", `{"workout":{"steps":[{"type":"steady","seconds":60,"target":0.5}]}}`, "name"},
+		{"a road", "create_workout", `{"workout":` + road + `}`, "no road"},
+		{"no workout", "create_workout", `{}`, "workout is required"},
+		{"an unknown argument", "create_workout", `{"workout":` + sweetSpot + `,"author":"x"}`, "arguments must be"},
+		{"someone else's crew", "schedule_workout", `{"crewId":"` + theirs + `","workout":` + sweetSpot + `,"startsAt":"` + tomorrow + `"}`, "No crew"},
+		{"a path for a crew", "schedule_workout", `{"crewId":"../../workouts","workout":` + sweetSpot + `,"startsAt":"` + tomorrow + `"}`, "crewId"},
+		{"a time with no offset", "schedule_workout", `{"crewId":"` + mine + `","workout":` + sweetSpot + `,"startsAt":"2026-12-01 18:00"}`, "RFC 3339"},
+		{"a year out", "schedule_workout", `{"crewId":"` + mine + `","workout":` + sweetSpot + `,"startsAt":"` + time.Now().AddDate(1, 0, 0).Format(time.RFC3339) + `"}`, "three months"},
+		{"a road plan", "schedule_workout", `{"crewId":"` + mine + `","workout":` + road + `,"startsAt":"` + tomorrow + `"}`, "no road"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, e := planCall(t, mux, "wrt_plan", tc.tool, tc.args)
+			if e == nil || e["code"] != float64(-32602) || !strings.Contains(fmt.Sprint(e["message"]), tc.want) {
+				t.Errorf("%s: %v, want -32602 saying %q", tc.name, e, tc.want)
+			}
+		})
+	}
+	if n, err := st.Queries.CountUserWorkouts(t.Context(), user.ID); err != nil || n != 0 {
+		t.Errorf("a refused create saved %d workouts (%v)", n, err)
+	}
+}
+
+// A crewmate's plan on a road reaches the AI as `Route ride` with the
+// route's km and gain (ADR-0063): never its name, its id or its shape.
+func TestGetScheduleNamesNoPlace(t *testing.T) {
+	mux, st, user := setup(t)
+	route, err := st.Queries.CreateRoute(t.Context(), db.CreateRouteParams{
+		OwnerID: user.ID, Src: "gpx", Name: testx.Corridor.Route, GenName: "Road · 52.9 km · 1,312 m",
+		Road: []byte("x"), RoadHash: "a-road-hash", LengthM: 52_940, GainM: 1312, Climbs: []byte(`[]`), EleSource: "file",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	crew := testx.Crew(t, st, "Tuesday crew", user.ID)
+	def := `{"name":"` + testx.Corridor.Route + `","road":{"routeId":"` + store.UUIDString(route.ID) + `","fromM":0,"toM":3000},"steps":[{"type":"road","seconds":600}]}`
+	if _, err := st.Queries.CreateCrewPlan(t.Context(), db.CreateCrewPlanParams{
+		CrewID: crew, WorkoutName: testx.Corridor.Route + " via " + testx.Corridor.Climbs[0], WorkoutJson: []byte(def),
+		StartsAt: pgtype.Timestamptz{Time: time.Now().Add(24 * time.Hour), Valid: true}, CreatedBy: user.ID, RouteID: route.ID,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	got, e := planCall(t, mux, "wrt_plan", "get_schedule", `{}`)
+	if e != nil {
+		t.Fatalf("get_schedule: %v", e)
+	}
+	raw, _ := json.Marshal(got)
+	if leak := testx.Leak(string(raw)); leak != "" {
+		t.Errorf("get_schedule carries %q: %s", leak, raw)
+	}
+	if strings.Contains(string(raw), store.UUIDString(route.ID)) {
+		t.Errorf("get_schedule carries the route's id: %s", raw)
+	}
+	for _, want := range []string{`"workout":"Route ride"`, `"km":52.9`, `"gainM":1312`} {
+		if !strings.Contains(string(raw), want) {
+			t.Errorf("get_schedule lacks %s: %s", want, raw)
+		}
+	}
 }

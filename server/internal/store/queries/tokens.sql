@@ -1,6 +1,6 @@
 -- name: CreateToken :one
-insert into api_tokens (user_id, name, token_hash)
-values ($1, $2, $3)
+insert into api_tokens (user_id, name, token_hash, can_write)
+values ($1, $2, $3, $4)
 returning id, created_at;
 
 -- name: CountUserTokens :one
@@ -9,7 +9,7 @@ returning id, created_at;
 select count(*) from api_tokens where user_id = $1;
 
 -- name: ListUserTokens :many
-select id, name, created_at, last_used_at
+select id, name, created_at, last_used_at, coalesce(can_write, false)::boolean as can_write
 from api_tokens where user_id = $1
 order by created_at desc;
 
@@ -21,6 +21,11 @@ delete from api_tokens where id = $1 and user_id = $2;
 select u.* from users u
 join api_tokens t on t.user_id = u.id
 where t.token_hash = $1;
+
+-- name: TokenCanWrite :one
+-- Whether the rider marked this token for planning (#4207); null, every
+-- token minted before that, is read-only.
+select coalesce(can_write, false)::boolean from api_tokens where token_hash = $1;
 
 -- name: TouchToken :exec
 update api_tokens set last_used_at = now() where token_hash = $1;
