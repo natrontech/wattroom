@@ -381,6 +381,26 @@ describe('RACE (#3174)', () => {
 		expect(fields.some((f) => f.glow)).toBe(false);
 	});
 
+	it('counts your matches last, in neon, and leaves them out with no model (#3263)', () => {
+		const fields = fieldsFor(
+			'race',
+			ride({ race: race(), matches: { left: 3, line: null } }),
+		);
+		expect(keys(fields)).toEqual(['par', 'place', 'matches']);
+		expect(field(fields, 'matches')).toMatchObject({
+			label: 'Matches',
+			value: '3',
+			unit: 'of 4',
+			neon: true,
+		});
+		expect(field(fields, 'matches').glow).toBeFalsy();
+		const none = fieldsFor(
+			'race',
+			ride({ race: race(), matches: { left: null, line: 'hint' } }),
+		);
+		expect(keys(none)).toEqual(['par', 'place']);
+	});
+
 	it('reads behind as −, and has nothing to say before km 0', () => {
 		const behind = fieldsFor('race', ride({ race: race({ par: -7 }) }));
 		expect(field(behind, 'par').value).toBe('−0:07');

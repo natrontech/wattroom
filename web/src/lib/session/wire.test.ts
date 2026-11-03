@@ -41,3 +41,15 @@ describe('the trim that rides with every sample (#795)', () => {
 		expect(wireMetrics(metrics, false).bias).toBe(1);
 	});
 });
+
+describe('what never leaves the screen', () => {
+	it('sends the sensors and the trim, never a model of the rider: no W′, no matches (#3263)', () => {
+		expect(Object.keys(wireMetrics(metrics, true)).sort()).toEqual([
+			'bias',
+			'cadence',
+			'hr',
+			'released',
+			'watts',
+		]);
+	});
+});

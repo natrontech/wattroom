@@ -14,6 +14,15 @@
 	import BiasTrim from '$lib/session/BiasTrim.svelte';
 	import BikeComputer from '$lib/session/BikeComputer.svelte';
 	import ExecutionMeter from '$lib/session/ExecutionMeter.svelte';
+	import { fetchProgression } from '$lib/progression';
+	import { fitCPW, type CPW } from '$lib/road/cpw';
+	import {
+		createMatchGauge,
+		matchesLine,
+		type MatchesReadout,
+	} from '$lib/race/matches';
+	import { changes } from '$lib/sound/changes';
+	import { play } from '$lib/sound/cues';
 
 	let {
 		rider,
@@ -39,6 +48,37 @@
 
 	const channel = useChannel();
 	const mine = $derived(rider.you);
+
+	// The matches gauge (#3263): your W′ from your 90-day bests, stepped by
+	// the seconds this screen's trainer recorded. Only a screen with your
+	// trainer has them, and nothing of it goes on the wire.
+	const racing = $derived(mine && !!channel.race && !!channel.trainer);
+	let model = $state<CPW | null>();
+	$effect(() => {
+		if (!racing || model !== undefined) return;
+		// Unknown is not "no curve": a failed read leaves the gauge away
+		// rather than hint wrongly.
+		void fetchProgression().then((r) => {
+			if (r.ok) model = fitCPW(r.data.curve.d90);
+		});
+	});
+	const gauge = $derived(model ? createMatchGauge(model) : null);
+	const recording = $derived(channelConnection.current?.recording);
+	const matches = $derived<MatchesReadout | undefined>(
+		racing && model !== undefined
+			? {
+					left: gauge && recording ? gauge.feed(recording.samples) : null,
+					line: matchesLine(model),
+				}
+			: undefined,
+	);
+	// A match burning is the moment; one coming back is the gauge refilling.
+	const heardBurn = changes<number>((left, was) => {
+		if (left < was) play('match');
+	});
+	$effect(() => {
+		if (matches?.left != null) heardBurn(matches.left);
+	});
 </script>
 
 {#if !mine}
@@ -78,6 +118,7 @@
 	target={rider.target > 0 ? rider.target : undefined}
 	stats={mine ? channelConnection.current?.recording.live : undefined}
 	race={mine ? (channel.race ?? undefined) : undefined}
+	{matches}
 />
 <!-- No trim on a phone without a trainer: a dead control with a
      tooltip is still a control (#565, ux.md). -->

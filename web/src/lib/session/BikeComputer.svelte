@@ -476,6 +476,13 @@
 			{gapLine(ctx.climb.ghost.seconds, ctx.climb.ghost.best)}
 		</p>
 	{/if}
+	{#if shown === 'race' && ctx.matches?.line}
+		<!-- The matches gauge's one line (#3263): an estimate says so, and
+		     with no curve the hint stands where the gauge would. -->
+		<p data-testid="matches-line" class="{size.word} text-muted leading-none">
+			{ctx.matches.line}
+		</p>
+	{/if}
 	{#if profile && ctx.climb}
 		<!-- Flat, the dots ride beside the profile, so CLIMB is no taller than
 		     RIDE and the Skyline under it keeps its place; a narrow panel wraps
