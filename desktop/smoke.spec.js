@@ -332,6 +332,7 @@ test('the window opens and the bridge carries what the app looks for', async () 
 		'keepAwake',
 		'launchAtLogin',
 		'notify',
+		'obc',
 		'onBleScan',
 		'onHandoff',
 		'onNavigate',
@@ -1243,4 +1244,97 @@ test('closing a fullscreen window leaves fullscreen, then hides', async () => {
 		)
 		.toEqual({ fullScreen: false, visible: false });
 	await app.close();
+});
+
+/**
+ * OpenBikeControl over the network (#3336): a mock controller written from
+ * MDNS.md announces `_openbikecontrol._tcp` on this machine and serves the
+ * TCP socket, as BikeControl does. The shell finds it, the page connects by
+ * the name it was told, a shift reaches the page as the bytes the controller
+ * sent (the web app's obc.ts decodes them, its own tests cover that), and
+ * only an app's two messages go back down the socket.
+ */
+test('a shift from a network OpenBikeControl controller reaches the page', async () => {
+	const net = require('node:net');
+	const makeMdns = require('multicast-dns');
+	const { SERVICE } = require('./obc-net');
+
+	const heard = [];
+	let peer;
+	const server = net.createServer((socket) => {
+		peer = socket;
+		socket.on('data', (chunk) => heard.push(...chunk));
+		// Device Status first, as the spec's mock device does.
+		socket.write(Uint8Array.of(0x02, 0x55, 0x01));
+	});
+	await new Promise((r) => server.listen(0, '127.0.0.1', r));
+	const { port } = server.address();
+
+	const instance = `Smoke OBC ${process.pid}.${SERVICE}`;
+	const host = `wattroom-smoke-${process.pid}.local`;
+	const responder = makeMdns();
+	responder.on('query', (q) => {
+		if (!q.questions.some((x) => x.name === SERVICE && x.type === 'PTR')) return;
+		responder.respond({
+			answers: [{ name: SERVICE, type: 'PTR', ttl: 120, data: instance }],
+			additionals: [
+				{ name: instance, type: 'SRV', ttl: 120, data: { port, target: host } },
+				{ name: instance, type: 'TXT', ttl: 120, data: ['version=1', 'name=Smoke shifter'] },
+				{ name: host, type: 'A', ttl: 120, data: '127.0.0.1' },
+			],
+		});
+	});
+
+	const app = await launch(DEAD_URL);
+	const win = await app.firstWindow();
+	await expect(win.locator('#retry')).toBeVisible();
+	await win.evaluate(() => {
+		window.__obc = { found: null, data: [], closed: 0 };
+		const { obc } = window.wattroom;
+		obc.onData((bytes) => window.__obc.data.push([...bytes]));
+		obc.onClosed(() => window.__obc.closed++);
+		obc.browse((found) => (window.__obc.found = found));
+	});
+
+	const found = () => win.evaluate(() => window.__obc.found);
+	await expect
+		.poll(async () => (await found())?.devices.find((d) => d.name === 'Smoke shifter'), {
+			timeout: 20_000,
+		})
+		.toBeTruthy();
+	const { id } = (await found()).devices.find((d) => d.name === 'Smoke shifter');
+	expect((await found()).denied).toBe(false);
+
+	// A name the shell never heard opens nothing.
+	expect(await win.evaluate(() => window.wattroom.obc.connect('evil._openbikecontrol._tcp.local'))).toEqual({
+		error: 'That shifter is gone from the network. Open BikeControl, then try again.',
+	});
+	expect(await win.evaluate((i) => window.wattroom.obc.connect(i), id)).toEqual({
+		name: 'Smoke shifter',
+	});
+
+	// App Information as the page sends it, then a message no app sends.
+	await win.evaluate(() => {
+		const { obc } = window.wattroom;
+		obc.write(Uint8Array.of(0x04, 0x01, 0x08, ...new TextEncoder().encode('wattroom'), 0x00, 0x01, 0x01));
+		obc.write(Uint8Array.of(0x01, 0x01, 0x01));
+		obc.write(Uint8Array.of(0x03, 0x01, 0x00, 0x00));
+	});
+	await expect.poll(() => heard.length).toBe(18);
+	expect(heard).toEqual([0x04, 0x01, 0x08, ...Buffer.from('wattroom'), 0x00, 0x01, 0x01, 0x03, 0x01, 0x00, 0x00]);
+
+	// Shift Up, pressed and released.
+	peer.write(Uint8Array.of(0x01, 0x01, 0x01));
+	await expect.poll(() => win.evaluate(() => window.__obc.data)).toContainEqual([0x01, 0x01, 0x01]);
+	peer.write(Uint8Array.of(0x01, 0x01, 0x00));
+	await expect.poll(() => win.evaluate(() => window.__obc.data)).toContainEqual([0x01, 0x01, 0x00]);
+	expect((await win.evaluate(() => window.__obc.data))[0]).toEqual([0x02, 0x55, 0x01]);
+
+	// The controller goes away: the page hears it and retries on its own.
+	peer.destroy();
+	await expect.poll(() => win.evaluate(() => window.__obc.closed)).toBe(1);
+
+	await app.close();
+	responder.destroy();
+	server.close();
 });

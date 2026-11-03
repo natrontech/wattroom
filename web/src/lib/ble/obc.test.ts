@@ -4,6 +4,7 @@ import {
 	WATTROOM_APP_INFO,
 	createObcButtons,
 	decodeObc,
+	decodeObcStream,
 	encodeAppInfo,
 	encodeHaptic,
 	type ObcAction,
@@ -160,5 +161,57 @@ describe('OBC buttons into action edges', () => {
 			['harder', 'drop'],
 			['talk', 'drop'],
 		]);
+	});
+});
+
+describe('OBC over TCP: messages back to back in one read (#3336)', () => {
+	const stream = (...bytes: number[]) =>
+		decodeObcStream(Uint8Array.of(...bytes));
+	const press = (id: number, state: number) => ({
+		type: 'buttons',
+		buttons: [{ id, state }],
+	});
+	const status = { type: 'status', battery: 85, connected: true };
+
+	it('reads one message as decodeObc does, MDNS.md examples included', () => {
+		expect(stream(0x01, 0x01, 0x01)).toEqual([press(0x01, 0x01)]);
+		expect(stream(0x01, 0x01, 0x01, 0x02, 0x00)).toEqual([
+			{
+				type: 'buttons',
+				buttons: [
+					{ id: 0x01, state: 0x01 },
+					{ id: 0x02, state: 0x00 },
+				],
+			},
+		]);
+		expect(stream(0x02, 0x55, 0x01)).toEqual([status]);
+	});
+
+	it('cuts a release glued to device status, so the shift lets go', () => {
+		expect(stream(0x01, 0x01, 0x00, 0x02, 0x55, 0x01)).toEqual([
+			press(0x01, 0x00),
+			status,
+		]);
+		expect(stream(0x02, 0x55, 0x01, 0x01, 0x01, 0x00)).toEqual([
+			status,
+			press(0x01, 0x00),
+		]);
+	});
+
+	it('cuts a press and its release into two messages', () => {
+		expect(stream(0x01, 0x01, 0x01, 0x01, 0x01, 0x00)).toEqual([
+			press(0x01, 0x01),
+			press(0x01, 0x00),
+		]);
+		expect(
+			stream(0x01, 0x01, 0x01, 0x01, 0x01, 0x00, 0x01, 0x02, 0x01),
+		).toEqual([press(0x01, 0x01), press(0x01, 0x00), press(0x02, 0x01)]);
+	});
+
+	it('drops a read that cuts no whole way, an empty one, and a flood', () => {
+		expect(stream(0x01, 0x01)).toEqual([]);
+		expect(stream(0x03, 0x01, 0x00, 0x00)).toEqual([]);
+		expect(stream()).toEqual([]);
+		expect(decodeObcStream(new Uint8Array(4097).fill(0x01))).toEqual([]);
 	});
 });

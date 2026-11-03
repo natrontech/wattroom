@@ -86,7 +86,8 @@ export function bindShiftKeys(
 }
 
 /**
- * A paired OpenBikeControl shifter on a shifter (#3335): its Harder and
+ * A paired OpenBikeControl shifter on a shifter (#3335), over Web Bluetooth
+ * or the shell's network socket (#3336), each its own gears input: its Harder and
  * Easier are press and release, as a key's are, and a lost link lets go of
  * whatever it held.
  */
@@ -95,7 +96,7 @@ export function bindShiftController(
 ): () => void {
 	return shifterSlot.onAction((action, edge) => {
 		if (action !== 'harder' && action !== 'easier') return;
-		const source = `obc:${action}`;
+		const source = `${shifterSlot.input}:${action}`;
 		if (edge === 'down') driver.press(action === 'harder' ? 1 : -1, source);
 		else if (edge === 'up') driver.release(source);
 		else driver.drop(source);

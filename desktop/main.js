@@ -4,8 +4,8 @@
 // It holds no product code: it loads the deployed web app, so the UI ships on
 // every server deploy and a desktop release only happens when the shell
 // changes. What would crowd this file lives beside it: the window's state,
-// notifications, the HUD, deep links, the updater, the Bluetooth chooser and
-// the permission handlers each have a module.
+// notifications, the HUD, deep links, the updater, the Bluetooth chooser,
+// the network shifter and the permission handlers each have a module.
 //
 // Everything interesting is in the four handlers (RESEARCH.md §15.1):
 // Bluetooth (bluetooth.js), permissions and screen share (permissions.js),
@@ -30,6 +30,7 @@ const hud = require('./hud');
 const log = require('./log');
 const loginItem = require('./login-item');
 const notifications = require('./notifications');
+const obcNet = require('./obc-net');
 const permissions = require('./permissions');
 const tray = require('./tray');
 const updater = require('./updater');
@@ -350,6 +351,7 @@ hud.install({
 	guardNavigation,
 });
 notifications.install({ ipc, focus: focusWindow });
+obcNet.install({ ipc });
 const { clip, ownPath } = notifications;
 
 // The tray's "Open <room>" (#1313). The app says which room it is connected

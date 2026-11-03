@@ -40,6 +40,7 @@
       "deep-link.js",
       "updater.js",
       "bluetooth.js",
+      "obc-net.js",
       "permissions.js",
       "chooser.js",
       "offline.html",
@@ -69,7 +70,11 @@
         "NSBluetoothAlwaysUsageDescription": "WattRoom connects to your trainer and heart-rate strap over Bluetooth.",
         "NSMicrophoneUsageDescription": "WattRoom uses your microphone for your crew's voice channels.",
         "NSCameraUsageDescription": "WattRoom uses your camera so your crew can see you ride.",
-        "NSAudioCaptureUsageDescription": "WattRoom can share your computer's audio with the call."
+        "NSAudioCaptureUsageDescription": "WattRoom can share your computer's audio with the call.",
+        "NSLocalNetworkUsageDescription": "WattRoom finds BikeControl and other OpenBikeControl shifters on your network.",
+        "NSBonjourServices": [
+          "_openbikecontrol._tcp"
+        ]
       },
       "notarize": true
     },
@@ -112,6 +117,7 @@
   },
   "repository": "https://github.com/natrontech/wattroom",
   "dependencies": {
-    "electron-updater": "6.8.11"
+    "electron-updater": "6.8.11",
+    "multicast-dns": "7.2.5"
   }
 }
