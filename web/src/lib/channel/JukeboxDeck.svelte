@@ -11,7 +11,6 @@
 	import Headphones from '@lucide/svelte/icons/headphones';
 	import Hourglass from '@lucide/svelte/icons/hourglass';
 	import Volume2 from '@lucide/svelte/icons/volume-2';
-	import type { Snippet } from 'svelte';
 	import {
 		contextMenu,
 		MENU_HINT,
@@ -33,7 +32,6 @@
 		offerSeat,
 		stageSlot,
 	} from '$lib/channel/stage-slot.svelte';
-	import RailSheet from '$lib/channel/RailSheet.svelte';
 	import { roadsideShown } from '$lib/channel/RoadsideDeck.svelte';
 	import TrackWave from '$lib/channel/TrackWave.svelte';
 	import { MUSIC_FADER } from '$lib/sound/fader';
@@ -51,25 +49,14 @@
 		current,
 		send,
 		riding = false,
-		next = 0,
-		behind,
-		sheet = $bindable(false),
 	}: {
 		jukebox: JukeboxState;
 		/** `jukebox.current`, already narrowed: no deck is drawn without one. */
 		current: JukeboxEntry;
 		send: (command: JukeboxCommand) => void;
-		/** A ride is under way: the deck is the seat, and no watt but G2's
-		 *  marks. */
+		/** A ride is under way: no watt but G2's marks, and riding-size
+		 *  targets. The layout stays the desk's (#4347). */
 		riding?: boolean;
-		/** How many tracks wait behind this one, for the seat's strip. */
-		next?: number;
-		/** Riding, what folds behind the seat with the transport (#3983):
-		 *  the add box, the queue and the playlists. */
-		behind?: Snippet;
-		/** The riding sheet is open, held by the jukebox so the first add,
-		 *  which swaps its empty sheet for this one, keeps it open. */
-		sheet?: boolean;
 	} = $props();
 
 	// A stable attachment: a fresh arrow every render would tear the offer
@@ -203,7 +190,7 @@
 		     between sources. -->
 		<div
 			class="bg-surface w-full overflow-hidden rounded-lg px-2 py-6"
-			style="height: {riding ? '200px' : 'clamp(200px, 24vh, 240px)'}"
+			style="height: clamp(200px, 24vh, 240px)"
 		>
 			<TrackWave trackId={current.trackId} progress={progress / 100} />
 		</div>
@@ -212,7 +199,7 @@
 		     no file, so its mark holds the seat at the same height. -->
 		<div
 			class="bg-surface text-muted grid w-full place-items-center rounded-lg"
-			style="height: {riding ? '200px' : 'clamp(200px, 24vh, 240px)'}"
+			style="height: clamp(200px, 24vh, 240px)"
 		>
 			<Disc3 size={28} />
 		</div>
@@ -243,7 +230,7 @@
 			class="bg-surface relative w-full overflow-hidden rounded-lg {elsewhere
 				? 'hidden'
 				: ''}"
-			style="height: {riding ? '200px' : 'clamp(200px, 24vh, 240px)'}"
+			style="height: clamp(200px, 24vh, 240px)"
 			{@attach seat}
 		>
 			<img
@@ -259,63 +246,34 @@
 			>
 		</div>
 	{/if}
-	{#if !riding}
-		<!-- The hint sits on the words, never over the player (RMF). -->
-		<div class="min-w-0" title={MENU_HINT}>
-			{#if setTracks}
-				<!-- Where the deck is inside the set, before the track's own
-				     name: the playlist is the thing that is on. -->
-				<div class="mb-1 min-w-0">
-					<p class="text-muted flex items-baseline gap-1.5 text-[11px]">
-						<span class="truncate">{current.playlistTitle}</span>
-						<span class="num shrink-0">{setPosition}/{setTracks}</span>
-					</p>
-					<span class="bg-muted/20 mt-1 block h-0.5 rounded-full">
-						<span
-							class="bg-neon block h-full rounded-full"
-							style="width: {(setPosition / setTracks) * 100}%"
-						></span>
-					</span>
-				</div>
-			{/if}
-			<p class="truncate text-sm leading-tight font-medium">
-				{current.title}
-			</p>
-			<p class="text-muted mt-0.5 truncate text-[11px]">
-				{setTracks ? 'playlist queued by' : 'queued by'}
-				{current.addedBy}
-			</p>
-		</div>
-		{@render controls()}
-	{/if}
-</div>
-
-<!-- Riding, the sheet sits outside the deck's menu: a right-click or a
-     long-press in its add box or playlists is theirs, not the transport's. -->
-{#if riding}
-	<!-- v2-ride's seat (#3983): the tile and one strip, the crew straight
-	     under it. The strip opens the transport and the queue over the
-	     crew; its count is whole, the names give way. -->
-	<RailSheet bind:open={sheet}>
-		{#snippet label()}
-			<span
-				class="block min-w-0"
-				title={MENU_HINT}
-				{@attach contextMenu(deckMenu)}
-			>
-				<span class="block truncate text-sm leading-tight font-medium"
-					>{current.title}</span
-				>
-				<span class="text-muted flex min-w-0 gap-1 text-[11px]">
-					<span class="min-w-0 truncate">by {current.addedBy}</span>
-					{#if next}<span class="num shrink-0">· {next} next</span>{/if}
+	<!-- The hint sits on the words, never over the player (RMF). -->
+	<div class="min-w-0" title={MENU_HINT}>
+		{#if setTracks}
+			<!-- Where the deck is inside the set, before the track's own
+			     name: the playlist is the thing that is on. -->
+			<div class="mb-1 min-w-0">
+				<p class="text-muted flex items-baseline gap-1.5 text-[11px]">
+					<span class="truncate">{current.playlistTitle}</span>
+					<span class="num shrink-0">{setPosition}/{setTracks}</span>
+				</p>
+				<span class="bg-muted/20 mt-1 block h-0.5 rounded-full">
+					<span
+						class="bg-neon block h-full rounded-full"
+						style="width: {(setPosition / setTracks) * 100}%"
+					></span>
 				</span>
-			</span>
-		{/snippet}
-		{@render controls()}
-		{@render behind?.()}
-	</RailSheet>
-{/if}
+			</div>
+		{/if}
+		<p class="truncate text-sm leading-tight font-medium">
+			{current.title}
+		</p>
+		<p class="text-muted mt-0.5 truncate text-[11px]">
+			{setTracks ? 'playlist queued by' : 'queued by'}
+			{current.addedBy}
+		</p>
+	</div>
+	{@render controls()}
+</div>
 
 {#snippet controls()}
 	{#if streaming}
