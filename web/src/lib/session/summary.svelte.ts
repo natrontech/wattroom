@@ -2,7 +2,7 @@ import { account } from '$lib/account.svelte';
 import { api } from '$lib/api';
 import type { Medal } from '$lib/components/MedalCard.svelte';
 import { MEDAL_META } from '$lib/medals';
-import { MinRideSamples } from '$lib/protocol';
+import { MinRideSamples, type RaceBracket } from '$lib/protocol';
 import type { LiveRider } from '$lib/channel/types';
 import type { RideKind } from '$lib/ride/recap-frame';
 import type { createRecording } from '$lib/session/recording.svelte';
@@ -24,6 +24,9 @@ export interface SummaryCard {
 	riders: LiveRider[];
 	ftp: number;
 	execution: number | undefined;
+	/** A race's results per Category (#3779): only on the tick, and only
+	 *  for the game's linger, so the card keeps them. */
+	race?: RaceBracket[];
 }
 
 /**
@@ -64,6 +67,8 @@ export function createSummary(deps: {
 	kind: () => RideKind;
 	riders: () => LiveRider[];
 	ftp: () => number;
+	/** A race's results on the tick, where a race can run. */
+	race?: () => RaceBracket[] | undefined;
 }) {
 	let dismissed = $state(false);
 	let card = $state<SummaryCard | null>(null);
@@ -185,6 +190,11 @@ export function createSummary(deps: {
 				ftp: deps.ftp(),
 				execution: deps.myExecution(),
 			}));
+		// The race's card may ride a tick after the close.
+		if (!card.race) {
+			const race = deps.race?.();
+			if (race) card.race = race;
+		}
 		if (fetched) return;
 		fetched = true;
 		// Server truth over the local clock at the close: the saver dates the
