@@ -20,6 +20,7 @@
 	import { bindRideKeys, bindShifters, type RideKey } from '$lib/ride/keys';
 	import { createRideShift } from '$lib/ride/ride-shift';
 	import RideControls from '$lib/ride/RideControls.svelte';
+	import { freeRideLabel } from '$lib/ride/free-ride.svelte';
 	import { shifterSlot } from '$lib/ble/controller-slot.svelte';
 	import { roadLine } from '$lib/ride/road-readout';
 	import { cleanView } from '$lib/ride/clean-view.svelte';
@@ -323,6 +324,9 @@
 				cadence={session.sample?.cadence ?? 0}
 				hr={session.sample?.heartRate ?? 0}
 				elapsed={session.elapsed}
+				title={open && session.road
+					? freeRideLabel(session.road)
+					: workout.name}
 				gear={open && gearsEnabled() ? session.gear.label : undefined}
 				status={rideStatus}
 				strip={skyline && !open ? strip : undefined}

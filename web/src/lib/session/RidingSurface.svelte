@@ -206,12 +206,21 @@
 	</div>
 	{#if rail && world}
 		<!-- The rail stands on the world under a fade, edge to edge: no panel,
-		     at the panels' 85 % where its words are (SPEC). -->
+		     at the panels' 85 % where its words are (SPEC). The crew stands
+		     under a fade from its own edge: the right, a phone's foot. -->
 		<div
 			aria-hidden="true"
 			class="from-surface/90 via-surface/85 pointer-events-none absolute inset-x-0 top-0 bg-linear-to-b to-transparent"
 			style="height:{INSET_PX + railH + 48}px"
 		></div>
+		{#if crew && !clean}
+			<div
+				aria-hidden="true"
+				class="from-surface/90 via-surface/70 pointer-events-none absolute to-transparent {phone
+					? 'inset-x-0 bottom-0 h-[40%] bg-linear-to-t'
+					: 'inset-y-0 right-0 w-[34%] bg-linear-to-l'}"
+			></div>
+		{/if}
 	{/if}
 	{#if centre}
 		<!-- In the corridor's upper half, above where the chase camera
@@ -333,7 +342,7 @@
 			{#if crew}
 				<div
 					data-dock="crew"
-					class="{panel} {dockClass}"
+					class="{rail ? '[&:not(:has(*))]:hidden' : panel} {dockClass}"
 					style={dock(3, '40px', '0')}
 				>
 					{@render crew()}

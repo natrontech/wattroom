@@ -11,8 +11,6 @@
 	import type { Segment } from '$lib/workout/types';
 	import type { LiveStats } from '$lib/ride/live-stats.svelte';
 	import type { SkylineView } from '$lib/road/skyline';
-	import type { ClimbView } from '$lib/ride/climb-view';
-	import type { MapView } from '$lib/ride/map-view';
 	import type { Snippet } from 'svelte';
 
 	// TV mode's frame (#460, #686): the fullscreen surface, the way out of it,
@@ -44,8 +42,6 @@
 		onExit,
 		stats,
 		skyline = null,
-		climb = null,
-		map = null,
 	}: {
 		riders: LiveRider[];
 		/** Your instrument has nothing paired to read (#2941). */
@@ -82,10 +78,6 @@
 		stats?: LiveStats;
 		/** A ride on a road: its horizon is the Skyline (#3641). */
 		skyline?: SkylineView | null;
-		/** The climb card, for the TV's bike computer (#3645). */
-		climb?: ClimbView | null;
-		/** The road from above, for its MAP page (#3645). */
-		map?: MapView | null;
 	} = $props();
 
 	const you = $derived(riders.find((r) => r.you));
@@ -180,8 +172,6 @@
 			{workoutName}
 			{stats}
 			{skyline}
-			{climb}
-			{map}
 			{exit}
 			{status}
 			seated={playing}

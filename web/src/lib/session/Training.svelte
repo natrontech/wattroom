@@ -28,6 +28,8 @@
 	import RaceRadio from '$lib/race/RaceRadio.svelte';
 	import RideBand from '$lib/session/RideBand.svelte';
 	import RideRail from '$lib/session/RideRail.svelte';
+	import HrShare from '$lib/channel/HrShare.svelte';
+	import ExecutionMeter from '$lib/session/ExecutionMeter.svelte';
 	import BiasTrim from '$lib/session/BiasTrim.svelte';
 	import MomentCard from '$lib/session/MomentCard.svelte';
 	import Skyline from '$lib/ride/Skyline.svelte';
@@ -296,7 +298,7 @@
 		{@const current = channelConnection.current?.live.tick?.jukebox?.current}
 		{#if current}
 			<!-- Directly under the player, at its width (TARGETS ride-session-road 3). -->
-			<p class="ride-panel truncate px-3 py-2 text-2xl leading-7">
+			<p class="truncate py-1 text-2xl leading-7">
 				{current.title} · <span class="text-muted">{current.addedBy}</span>
 			</p>
 		{/if}
@@ -313,6 +315,16 @@
 			>
 				{#snippet roadside()}<RoadsideDeck to={watched} />{/snippet}
 			</GamePanel>
+		{/if}
+	{/snippet}
+	{#snippet sessionMore()}
+		<HrShare ride icon />
+		{#if riding.length > 1}
+			<!-- The live half of the execution score (#543), alone not a
+			     leaderboard (#2635). -->
+			<div class="max-h-32 w-64 overflow-y-auto">
+				<ExecutionMeter riders={riding} />
+			</div>
 		{/if}
 	{/snippet}
 	{#snippet glance()}
@@ -337,6 +349,8 @@
 			cadence={rider.cadence}
 			hr={rider.hr}
 			{elapsed}
+			title={channel.shared?.workoutName ?? ''}
+			more={rider.you && channel.you.inSession ? sessionMore : undefined}
 			status={trainerLine}
 			strip={graphed ? undefined : strip}
 			>{#if !rider.you}<span class="text-muted">following {rider.name}</span

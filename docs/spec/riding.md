@@ -194,7 +194,9 @@ Riding shows one row of numbers across the top, on the world under a fade, with 
 
 It is sized in the TV column above, in vh, at least the desk floors: watts **12vh**, the one number **9vh**, the rest **5vh**, labels **1.7vh** (at least 11 px). A phone keeps the watts and the one number in a row and the rest three to a row, never wider than the screen.
 
-A tap on the rail adds a second row in the same type: W/kg, zone, 10 s, 30 s, NormPower, Intensity, Work. MAP opens the bike computer beside it while it is asked for. Over the world there is no Skyline strip; flat, the graph or the Skyline is the ground under the rail. Easier and Harder are in the now bar.
+A tap on the rail adds a second row in the same type: W/kg, zone, 10 s, 30 s, NormPower, Intensity, Work. MAP opens the bike computer beside it while it is asked for. Over the world there is no Skyline strip; flat, the graph or the Skyline is the ground under the rail. Easier and Harder are in the now bar. The second row starts with the ride's name, and in a session it holds the HR share and the execution meter.
+
+TV mode draws the same rail, with the place, the workout and the way out above it, the graph or the Skyline as the ground and the crew beside it. In a session the crew and now playing stand under a fade from the right (a phone: from the foot), no panel; the rider whose numbers the rail shows is marked with a neon edge.
 
 ## The ride's pictures (defaults — tune in alpha; [#4221](https://github.com/natrontech/wattroom/issues/4221), [#4263](https://github.com/natrontech/wattroom/issues/4263))
 

@@ -32,7 +32,7 @@
 		WATTS,
 		type RampKind,
 	} from '$lib/ride/free-ride-controls';
-	import type { FreeRide } from '$lib/ride/free-ride.svelte';
+	import { freeRideLabel, type FreeRide } from '$lib/ride/free-ride.svelte';
 	import GearShift from '$lib/ride/GearShift.svelte';
 	import { EASIER_HARDER_OFF } from '$lib/ride/easier-harder';
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
@@ -385,6 +385,7 @@
 		{cadence}
 		{hr}
 		elapsed={free.seconds}
+		title={freeRideLabel(road)}
 		gear={gear && !inWatts ? gear.label : undefined}
 		status={faultLine}>{@render notes()}</RideRail
 	>

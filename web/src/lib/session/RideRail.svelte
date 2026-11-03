@@ -39,6 +39,8 @@
 		gear,
 		status,
 		strip,
+		title = '',
+		more,
 		children,
 	}: {
 		/** The 3 s power. */
@@ -69,6 +71,10 @@
 		status?: Snippet;
 		/** The workout's strip over the world. */
 		strip?: Snippet;
+		/** The ride's name, the details row's first word: the road or the workout. */
+		title?: string;
+		/** The details row's controls: a session's HR share and execution meter. */
+		more?: Snippet;
 		/** A line under the numbers that stays in view: a race's radio, a ride's notes. */
 		children?: Snippet;
 	} = $props();
@@ -117,6 +123,9 @@
 	// The rest, one grid on a phone, one row on a desk.
 	const ROW =
 		'grid grid-cols-3 items-end gap-x-4 gap-y-[1.5vh] md:flex md:flex-wrap md:gap-x-[max(1.5rem,2.6vw)]';
+	// The first row's rest never wraps cell by cell: short of room, it moves
+	// under the pair whole.
+	const REST = ROW.replace('md:flex-wrap', 'md:flex-nowrap');
 </script>
 
 {#snippet cell(label: string, value: string, unit = '', testid?: string)}
@@ -143,7 +152,7 @@
 		<div class="relative z-10 [&:not(:has(*))]:hidden">{@render status()}</div>
 	{/if}
 	<div
-		class="flex flex-col gap-[1.6vh] md:flex-row md:items-end md:gap-x-[max(1.5rem,2.6vw)]"
+		class="flex flex-col gap-[1.6vh] md:flex-row md:flex-wrap md:items-end md:gap-x-[max(1.5rem,2.6vw)]"
 	>
 		<!-- The pair: the watts and the one number a rider reads beside them. -->
 		<div class="flex items-end justify-between gap-x-[max(1.5rem,2.6vw)]">
@@ -186,7 +195,7 @@
 				{@render gradeCell(TWO)}
 			{/if}
 		</div>
-		<div class={ROW}>
+		<div class={REST}>
 			{#if block?.next}
 				<div class="{CELL} col-span-3 md:max-w-[24ch]" data-cell="Next">
 					<span class={LABEL}>Next</span>
@@ -228,6 +237,12 @@
 	{#if details}
 		<!-- The second row, a tap away: the same cells, the power's details. -->
 		<div data-testid="rail-details" class={ROW}>
+			{#if title}
+				<div class="{CELL} col-span-3 md:max-w-[24ch]" data-cell="Ride">
+					<span class={LABEL}>Ride</span>
+					<span class="{WORDS} text-ink font-semibold">{title}</span>
+				</div>
+			{/if}
 			{#if kg > 0}{@render cell('W/kg', dash(wkg(watts, kg)))}{/if}
 			{#if ftp > 0}{@render cell('Zone', dash(`Z${zoneOf(watts, ftp)}`))}{/if}
 			{#if stats?.seconds}
@@ -236,6 +251,12 @@
 				{@render cell('NormPower', `${stats.normPower}`, 'W')}
 				{@render cell('Intensity', stats.intensity.toFixed(2))}
 				{@render cell('Work', `${stats.kj}`, 'kJ')}
+			{/if}
+			{#if more}
+				<!-- Above the tap's button: these are controls. -->
+				<div class="relative z-10 col-span-3 flex items-end gap-4">
+					{@render more()}
+				</div>
 			{/if}
 		</div>
 	{/if}
