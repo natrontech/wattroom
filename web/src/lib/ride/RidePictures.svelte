@@ -5,28 +5,26 @@
 	 * rider saves either or both; Strava's API takes the activity and never a
 	 * photo, so these are what a rider adds by hand.
 	 */
-	import { downloadRideCard } from '$lib/ride/card';
-	import { toasts } from '$lib/toast.svelte';
+	import RideCardChooser from '$lib/ride/RideCardChooser.svelte';
 	import WorldPicture from '$lib/ride/WorldPicture.svelte';
 
 	let { rideId }: { rideId?: string } = $props();
 
-	let drawing = $state(false);
-	async function poster(id: string) {
-		drawing = true;
-		const message = await downloadRideCard(id);
-		drawing = false;
-		if (message) toasts.push(message, { tone: 'error' });
-	}
+	let choosing = $state(false);
 </script>
 
 {#if rideId}
-	{@const id = rideId}
 	<button
-		onclick={() => void poster(id)}
-		disabled={drawing}
+		onclick={() => (choosing = true)}
 		data-testid="download-card"
-		class="btn btn-secondary">{drawing ? 'Drawing…' : 'Ride card'}</button
+		class="btn btn-secondary">Ride card</button
 	>
+	{#if choosing}
+		<RideCardChooser
+			{rideId}
+			label="Download the ride card"
+			onclose={() => (choosing = false)}
+		/>
+	{/if}
 {/if}
 <WorldPicture />

@@ -6,7 +6,7 @@
 # tree keeps :8080/:5174 and the `wattroom` database; every linked worktree
 # derives its own from its path. `make dev-env` prints what this one takes.
 
-.PHONY: infra dev-env dev-server dev-web dev-db-drop web web-deps changelog protocol migration sqlc seed screenshots build test lint ci release print-golangci-version desktop desktop-smoke desktop-release perf perf-scenes world-bench licenses
+.PHONY: infra dev-env dev-server dev-web dev-db-drop web web-deps changelog protocol themes migration sqlc seed screenshots build test lint ci release print-golangci-version desktop desktop-smoke desktop-release perf perf-scenes world-bench licenses
 
 DEV_ENV := scripts/dev-env.sh
 # "wattroom dev key, never deployed" in base64: 32 bytes, for make dev-server only.
@@ -76,6 +76,9 @@ web: changelog ## build frontend and embed it into the server
 
 protocol: ## regenerate web/src/lib/protocol.ts from Go structs
 	cd server && go tool tygo generate
+
+themes: web-deps ## regenerate server/internal/og/themes.json from web/src/lib/themes.ts
+	cd web && node scripts/themes-json.mjs
 
 migration: ## new migration named for the moment it was written: make migration name=<slug>
 	@scripts/new-migration.sh "$(name)"

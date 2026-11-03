@@ -43,6 +43,12 @@ func (s *Service) handleCard(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That is not a ride id.")
 		return
 	}
+	theme, field := cardTheme(r, user)
+	if field != "" {
+		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
+			"That is not one of the app's themes. Pick one of the swatches.", field)
+		return
+	}
 	row, err := s.store.Queries.GetRide(r.Context(), db.GetRideParams{ID: id, UserID: user.ID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "That ride is not one of yours.")
@@ -60,6 +66,7 @@ func (s *Service) handleCard(w http.ResponseWriter, r *http.Request) {
 		Seconds:   int(row.Seconds), AvgWatts: int(row.AvgWatts), NormWatts: normWatts(row),
 		Kj: int(row.Kj), Ftp: int(row.FtpWatts), Xp: int(row.Xp),
 		Execution: float64(row.Execution), ExecutionScored: row.ExecutionScored,
+		Theme: theme,
 	}
 	// Where it was ridden, for the card's "in …": the voice channel, else
 	// the crew (#2558) — never a room.
@@ -126,6 +133,46 @@ func (s *Service) handleCard(w http.ResponseWriter, r *http.Request) {
 	if _, err := w.Write(png); err != nil {
 		s.log.Warn("ride card write failed", "err", err, "ride", store.UUIDString(row.ID))
 	}
+}
+
+// cardTheme is the appearance a card is drawn in (#4098): `identity` and
+// `family` from the query where the download picked them, else the account's
+// own (#326). The account's scheme may be "" (auto), which only a browser can
+// resolve, so it draws dark; a stored identity the catalogue lacks draws
+// Outrun. A query naming a theme the catalogue lacks is refused, and field
+// says which half was wrong.
+func cardTheme(r *http.Request, user db.User) (theme og.Palette, field string) {
+	var stored struct {
+		Identity string `json:"identity"`
+	}
+	if user.AccentPalette != nil {
+		_ = json.Unmarshal([]byte(*user.AccentPalette), &stored) // "" or unreadable: the default
+	}
+	identity, family := stored.Identity, "dark"
+	if identity == "" {
+		identity = "outrun"
+	}
+	if user.ColorScheme != nil && *user.ColorScheme == "light" {
+		family = "light"
+	}
+	q := r.URL.Query()
+	if q.Has("identity") {
+		identity = q.Get("identity")
+	}
+	if q.Has("family") {
+		family = q.Get("family")
+		if family != "dark" && family != "light" {
+			return og.Palette{}, "family"
+		}
+	}
+	if theme, ok := og.ThemeFor(identity, family); ok {
+		return theme, ""
+	}
+	if q.Has("identity") {
+		return og.Palette{}, "identity"
+	}
+	theme, _ = og.ThemeFor("outrun", family) // a stored choice the catalogue no longer has
+	return theme, ""
 }
 
 // heightCredit is where a road's heights came from, for the foot of its

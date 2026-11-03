@@ -48,19 +48,6 @@ var zoneInk = [8]color.NRGBA{
 	{0xff, 0x2e, 0x88, 0xff},
 }
 
-var (
-	surfaceRaised = color.NRGBA{0x1a, 0x07, 0x36, 0xff}
-	// app.css's second step of the text ramp: the quietest a theme may draw.
-	mutedDim = color.NRGBA{0x85, 0x76, 0xab, 0xff}
-	// `neon` lifted towards ink: a 2-unit stroke at 30 px is a tenth of the
-	// paint a text glyph is, and the structural hue alone disappeared into the
-	// tile it sits on. Still chrome, still glow-free (ADR-0005).
-	iconInk = lerp(neon, ink, 0.34)
-	// The top of the card's ground. Not a token: it is `surface` lifted
-	// towards `surface-raised`, so the page has a sky rather than a flat wall.
-	skyTop = color.NRGBA{0x14, 0x05, 0x2c, 0xff}
-)
-
 // RideCard is one finished ride, as the card draws it. Every number is
 // computed where it belongs and handed over — this file draws, it does not
 // score.
@@ -90,6 +77,8 @@ type RideCard struct {
 	// Where the road's heights came from, printed small at the foot of a
 	// poster: data that is someone else's is credited where it shows (#3133).
 	HeightCredit string
+	// The rider's appearance (#4098); the zero value draws Outrun's dark half.
+	Theme Palette
 }
 
 // embeddedFace parses the build-time asset once. A card is drawn per request
@@ -113,16 +102,16 @@ func RenderRide(c RideCard) ([]byte, error) {
 	}
 	// face and fit are the Service's, and a card wants the face and the
 	// fitting without the room lookup or the preview cache.
-	s := &Service{fnt: fnt}
+	s := &Service{fnt: fnt, pal: c.Theme.orDefault()}
 	img := image.NewNRGBA(image.Rect(0, 0, cardSize, cardSize))
-	skyFill(img)
+	skyFill(img, s.pal)
 
-	drawLogo(img, cardMargin, 48, 52)
+	drawLogo(img, cardMargin, 48, 52, s.pal)
 	wordFace, err := s.face(32)
 	if err != nil {
 		return nil, err
 	}
-	drawText(img, wordFace, cardMargin+68, 90, ink, siteName)
+	drawText(img, wordFace, cardMargin+68, 90, s.pal.ink, siteName)
 	if err := s.datePill(img, c.StartedAt.Format("2 Jan 2006 · 15:04")); err != nil {
 		return nil, err
 	}
@@ -131,10 +120,10 @@ func RenderRide(c RideCard) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	drawText(img, titleFace, cardMargin, 190, ink, title)
+	drawText(img, titleFace, cardMargin, 190, s.pal.ink, title)
 	// The logo's own watt→neon gradient, as the card's one rule: data hue into
 	// chrome hue, the way the bars above it climb (ADR-0005).
-	gradientBar(img, image.Rect(cardMargin, 206, cardMargin+160, 212))
+	gradientBar(img, image.Rect(cardMargin, 206, cardMargin+160, 212), s.pal)
 
 	where := "Solo ride"
 	if c.Place != "" {
@@ -144,9 +133,9 @@ func RenderRide(c RideCard) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	drawText(img, subFace, cardMargin, 258, muted, sub)
+	drawText(img, subFace, cardMargin, 258, s.pal.muted, sub)
 
-	fillRound(img, image.Rect(cardMargin, 286, cardRight, 660), 28, surfaceRaised)
+	fillRound(img, image.Rect(cardMargin, 286, cardRight, 660), 28, s.pal.raised)
 	if err := s.drawSilhouette(img, traceBox, c); err != nil {
 		return nil, err
 	}
@@ -183,7 +172,7 @@ func RenderRide(c RideCard) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		drawText(img, creditFace, cardMargin, 1052, mutedDim, c.HeightCredit)
+		drawText(img, creditFace, cardMargin, 1052, s.pal.mutedDim, c.HeightCredit)
 	}
 
 	var buf bytes.Buffer
@@ -195,16 +184,16 @@ func RenderRide(c RideCard) ([]byte, error) {
 
 // skyFill is the card's ground: the surface, lifted a little at the top so
 // the title has something behind it and the numbers sink into the dark.
-func skyFill(dst *image.NRGBA) {
+func skyFill(dst *image.NRGBA, p Palette) {
 	for y := 0; y < cardSize; y++ {
-		fill(dst, image.Rect(0, y, cardSize, y+1), lerp(skyTop, surface, float64(y)/cardSize))
+		fill(dst, image.Rect(0, y, cardSize, y+1), lerp(p.skyTop(), p.surface, float64(y)/cardSize))
 	}
 }
 
-func gradientBar(dst *image.NRGBA, box image.Rectangle) {
+func gradientBar(dst *image.NRGBA, box image.Rectangle, p Palette) {
 	for x := box.Min.X; x < box.Max.X; x++ {
 		at := float64(x-box.Min.X) / float64(box.Dx())
-		fill(dst, image.Rect(x, box.Min.Y, x+1, box.Max.Y), lerp(watt, neon, at))
+		fill(dst, image.Rect(x, box.Min.Y, x+1, box.Max.Y), lerp(p.watt, p.neon, at))
 	}
 }
 
@@ -216,8 +205,8 @@ func (s *Service) datePill(dst *image.NRGBA, when string) error {
 	}
 	width := font.MeasureString(face, when).Ceil()
 	box := image.Rect(cardRight-width-36, 52, cardRight, 96)
-	fillRound(dst, box, 22, surfaceRaised)
-	drawText(dst, face, box.Min.X+18, 82, muted, when)
+	fillRound(dst, box, 22, s.pal.raised)
+	drawText(dst, face, box.Min.X+18, 82, s.pal.muted, when)
 	return nil
 }
 
@@ -239,14 +228,14 @@ func (s *Service) drawTiles(dst *image.NRGBA, top int, tiles [3]tile) error {
 	step := cardWidth / len(tiles)
 	for i, t := range tiles {
 		box := image.Rect(cardMargin+i*step, top, cardMargin+i*step+step-16, top+128)
-		fillRound(dst, box, 20, surfaceRaised)
-		t.mark.draw(dst, float64(box.Min.X+24), float64(top+18), 34, iconInk)
+		fillRound(dst, box, 20, s.pal.raised)
+		t.mark.draw(dst, float64(box.Min.X+24), float64(top+18), 34, s.pal.iconInk())
 		valueFace, value, err := s.fit(t.value, box.Dx()-48, 46, 21)
 		if err != nil {
 			return err
 		}
-		drawText(dst, valueFace, box.Min.X+24, top+96, ink, value)
-		drawText(dst, labelFace, box.Min.X+24, top+120, muted, t.label)
+		drawText(dst, valueFace, box.Min.X+24, top+96, s.pal.ink, value)
+		drawText(dst, labelFace, box.Min.X+24, top+120, s.pal.muted, t.label)
 	}
 	return nil
 }
@@ -279,12 +268,12 @@ func (s *Service) drawCurve(dst *image.NRGBA, baseline int, curve stats.Curve) e
 	}
 	x := cardMargin + (cardWidth-width)/2
 	for i, part := range parts {
-		drawText(dst, labelFace, x, baseline, mutedDim, part[0]+" ")
+		drawText(dst, labelFace, x, baseline, s.pal.mutedDim, part[0]+" ")
 		x += font.MeasureString(labelFace, part[0]+" ").Ceil()
-		drawText(dst, valueFace, x, baseline, ink, part[1])
+		drawText(dst, valueFace, x, baseline, s.pal.ink, part[1])
 		x += font.MeasureString(valueFace, part[1]).Ceil()
 		if i < len(parts)-1 {
-			drawText(dst, labelFace, x, baseline, mutedDim, "   ·   ")
+			drawText(dst, labelFace, x, baseline, s.pal.mutedDim, "   ·   ")
 			x += font.MeasureString(labelFace, "   ·   ").Ceil()
 		}
 	}
@@ -325,7 +314,7 @@ func (s *Service) drawZoneBar(dst *image.NRGBA, box image.Rectangle, c RideCard)
 		}
 		fill(bands, image.Rect(x-box.Min.X, 0, end-box.Min.X, box.Dy()), zoneInk[zone])
 		if end-x >= 110 {
-			drawCenter(dst, face, (x+end)/2, box.Max.Y+32, muted,
+			drawCenter(dst, face, (x+end)/2, box.Max.Y+32, s.pal.muted,
 				"Z"+strconv.Itoa(zone)+" "+clock(seconds[zone]))
 		}
 		x = end

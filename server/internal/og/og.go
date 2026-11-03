@@ -58,16 +58,6 @@ const (
 	metaDesc = siteDesc + " A Zwift alternative for structured workouts and smart-trainer rides with friends."
 )
 
-// Dark side of the web/src/app.css @theme light-dark() pairs — cards are
-// always dark, matching the app's synthwave identity (ADR-0005).
-var (
-	surface = color.NRGBA{0x0a, 0x01, 0x18, 0xff}
-	ink     = color.NRGBA{0xff, 0xff, 0xff, 0xff}
-	muted   = color.NRGBA{0x91, 0x82, 0xb8, 0xff}
-	watt    = color.NRGBA{0xff, 0x3d, 0x8b, 0xff}
-	neon    = color.NRGBA{0x8b, 0x2b, 0xff, 0xff}
-)
-
 // LookupCrew resolves an invite code to what the crew's door tells anyone
 // holding it — its name and picture (#2445). Nil when the DB is absent.
 type LookupCrew func(ctx context.Context, code string) (name string, image []byte, ok bool)
@@ -92,6 +82,9 @@ type Service struct {
 	renders atomic.Int32
 	fnt     *sfnt.Font
 	log     *slog.Logger
+	// pal is what Render paints in: Outrun's dark half for a link preview,
+	// the rider's appearance for a ride card (RenderRide).
+	pal Palette
 }
 
 func New(baseURL string, lookup LookupCrew, log *slog.Logger) *Service {
@@ -99,7 +92,7 @@ func New(baseURL string, lookup LookupCrew, log *slog.Logger) *Service {
 	if err != nil {
 		panic("og: embedded font: " + err.Error()) // build-time asset, not user input
 	}
-	return &Service{baseURL: strings.TrimSuffix(baseURL, "/"), lookup: lookup, fnt: fnt, log: log,
+	return &Service{baseURL: strings.TrimSuffix(baseURL, "/"), lookup: lookup, fnt: fnt, log: log, pal: defaultPalette,
 		doors: budget.New[string](cardsPerWindow, cardWindow), cards: map[string][]byte{}}
 }
 
@@ -223,7 +216,7 @@ const picSize = 240
 // A picture that does not decode is left out rather than failing the card.
 func (s *Service) Render(title, sub string, pic []byte) ([]byte, error) {
 	img := image.NewNRGBA(image.Rect(0, 0, imgW, imgH))
-	draw.Draw(img, img.Bounds(), image.NewUniform(surface), image.Point{}, draw.Src)
+	draw.Draw(img, img.Bounds(), image.NewUniform(s.pal.surface), image.Point{}, draw.Src)
 	if src, ok := decodePicture(pic); ok {
 		box := image.Rect(imgW-margin-picSize, 72, imgW-margin, 72+picSize)
 		square := image.NewNRGBA(image.Rect(0, 0, picSize, picSize))
@@ -236,27 +229,27 @@ func (s *Service) Render(title, sub string, pic []byte) ([]byte, error) {
 		draw.DrawMask(img, box, square, image.Point{}, roundMask(box, 28), image.Point{}, draw.Over)
 	}
 
-	drawLogo(img, margin, 72, 72)
+	drawLogo(img, margin, 72, 72, s.pal)
 	wordFace, err := s.face(45)
 	if err != nil {
 		return nil, err
 	}
-	drawText(img, wordFace, margin+94, 123, ink, siteName)
+	drawText(img, wordFace, margin+94, 123, s.pal.ink, siteName)
 
 	titleFace, fitted, err := s.fit(title, imgW-2*margin, 88, 58)
 	if err != nil {
 		return nil, err
 	}
-	drawText(img, titleFace, margin, 420, ink, fitted)
+	drawText(img, titleFace, margin, 420, s.pal.ink, fitted)
 
 	// Structural accent stays neon and glow-free (ADR-0005) — the title is the data.
-	draw.Draw(img, image.Rect(margin, 454, margin+120, 462), image.NewUniform(neon), image.Point{}, draw.Src)
+	draw.Draw(img, image.Rect(margin, 454, margin+120, 462), image.NewUniform(s.pal.neon), image.Point{}, draw.Src)
 
 	subFace, sub, err := s.fit(sub, imgW-2*margin, 34, 24)
 	if err != nil {
 		return nil, err
 	}
-	drawText(img, subFace, margin, 528, muted, sub)
+	drawText(img, subFace, margin, 528, s.pal.muted, sub)
 
 	var buf bytes.Buffer
 	if err := png.Encode(&buf, img); err != nil {
@@ -332,7 +325,7 @@ func drawText(dst *image.NRGBA, f font.Face, x, y int, c color.NRGBA, text strin
 // drawLogo rasterizes the equalizer-W (web/src/lib/brand/Logo.svelte: five
 // capsule bars, per-bar watt→neon vertical gradient) at 4× and downscales for
 // smooth ends.
-func drawLogo(dst *image.NRGBA, ox, oy, size int) {
+func drawLogo(dst *image.NRGBA, ox, oy, size int, p Palette) {
 	const ss = 4
 	sc := float64(size*ss) / 64
 	tmp := image.NewNRGBA(image.Rect(0, 0, size*ss, size*ss))
@@ -348,7 +341,7 @@ func drawLogo(dst *image.NRGBA, ox, oy, size int) {
 			} else if fy > bh-r {
 				e = math.Sqrt(math.Max(0, r*r-(fy-(bh-r))*(fy-(bh-r))))
 			}
-			c := lerp(watt, neon, fy/bh)
+			c := lerp(p.watt, p.neon, fy/bh)
 			for px := int(bx + r - e); px < int(bx+r+e); px++ {
 				tmp.SetNRGBA(px, int(by)+py, c)
 			}

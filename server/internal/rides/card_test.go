@@ -2,6 +2,7 @@ package rides
 
 import (
 	"bytes"
+	"encoding/json"
 	"image/png"
 	"net/http"
 	"net/http/httptest"
@@ -122,6 +123,75 @@ func TestRiddenIsWhatThePlacedSecondsCovered(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			if length, climb := ridden(tc.samples); length != tc.length || climb != tc.climb {
 				t.Errorf("ridden = %v m, %v m up; want %v, %v", length, climb, tc.length, tc.climb)
+			}
+		})
+	}
+}
+
+// The card wears the rider's appearance (#4098): the account's own by
+// default, or the one the download picked, and never a theme the app lacks.
+func TestCardTheme(t *testing.T) {
+	h := setup(t)
+	id := h.save(t, "alice", 600, 240)
+	card := func(query string) *httptest.ResponseRecorder {
+		t.Helper()
+		r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/rides/"+id+"/card.png"+query, nil)
+		r.Header.Set("X-Test-User", "alice")
+		w := httptest.NewRecorder()
+		h.mux.ServeHTTP(w, r)
+		return w
+	}
+	ok := func(query string) []byte {
+		t.Helper()
+		w := card(query)
+		if w.Code != http.StatusOK {
+			t.Fatalf("%q: status = %d, body = %s", query, w.Code, w.Body.String())
+		}
+		return w.Body.Bytes()
+	}
+
+	// No choice on the account: Outrun, dark — and auto can't be resolved
+	// here, so an auto scheme draws dark too.
+	outrun := ok("")
+	if !bytes.Equal(ok("?identity=outrun&family=dark"), outrun) {
+		t.Error("an account that never chose a theme does not get Outrun's dark card")
+	}
+	tronDay := ok("?identity=tron&family=light")
+	if bytes.Equal(tronDay, outrun) {
+		t.Error("picking Tron Day drew the same card as Outrun")
+	}
+
+	// The account's own appearance is the default, and the query wins over it.
+	alice := h.users.ByToken["alice"]
+	palette, scheme := `{"kind":"preset","identity":"tron"}`, "light"
+	alice.AccentPalette, alice.ColorScheme = &palette, &scheme
+	h.users.ByToken["alice"] = alice
+	if !bytes.Equal(ok(""), tronDay) {
+		t.Error("the card ignored the account's stored appearance")
+	}
+	if !bytes.Equal(ok("?identity=outrun&family=dark"), outrun) {
+		t.Error("the download's pick did not win over the account's appearance")
+	}
+	auto := ""
+	alice.ColorScheme = &auto
+	h.users.ByToken["alice"] = alice
+	if !bytes.Equal(ok(""), ok("?identity=tron&family=dark")) {
+		t.Error("an auto scheme did not draw the identity's dark half")
+	}
+
+	for _, tc := range []struct{ query, field string }{
+		{"?identity=vaporwave", "identity"},
+		{"?identity=tron&family=auto", "family"},
+		{"?family=", "family"},
+	} {
+		t.Run(tc.query, func(t *testing.T) {
+			w := card(tc.query)
+			var body struct{ Error, Message, Field string }
+			if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+				t.Fatalf("status %d, body not JSON: %s", w.Code, w.Body.String())
+			}
+			if w.Code != http.StatusBadRequest || body.Error != "validation_error" || body.Field != tc.field || body.Message == "" {
+				t.Errorf("status %d, body %+v; want 400 validation_error on %s", w.Code, body, tc.field)
 			}
 		})
 	}

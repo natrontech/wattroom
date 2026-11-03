@@ -68,7 +68,7 @@ func TestRender(t *testing.T) {
 				t.Fatalf("got %dx%d, want 1200x630", b.Dx(), b.Dy())
 			}
 			r, g, bb, _ := img.At(1199, 0).RGBA()
-			wr, wg, wb, _ := surface.RGBA()
+			wr, wg, wb, _ := defaultPalette.surface.RGBA()
 			if r != wr || g != wg || bb != wb {
 				t.Fatalf("corner not surface color: got %v", img.At(1199, 0))
 			}
@@ -102,7 +102,7 @@ func TestRender(t *testing.T) {
 // that does not decode costs the card nothing (#2445).
 func TestRenderCrewPicture(t *testing.T) {
 	s := testService()
-	buf, err := s.Render("Tuesday Crew", crewSub, solidPNG(t, watt))
+	buf, err := s.Render("Tuesday Crew", crewSub, solidPNG(t, defaultPalette.watt))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,11 +111,11 @@ func TestRenderCrewPicture(t *testing.T) {
 		t.Fatal(err)
 	}
 	mid := image.Pt(imgW-margin-picSize/2, 72+picSize/2)
-	if r, g, b, _ := img.At(mid.X, mid.Y).RGBA(); r>>8 != uint32(watt.R) || g>>8 != uint32(watt.G) || b>>8 != uint32(watt.B) {
+	if r, g, b, _ := img.At(mid.X, mid.Y).RGBA(); r>>8 != uint32(defaultPalette.watt.R) || g>>8 != uint32(defaultPalette.watt.G) || b>>8 != uint32(defaultPalette.watt.B) {
 		t.Fatalf("picture centre = %v, want the picture's colour", img.At(mid.X, mid.Y))
 	}
 	// The corner is rounded away, so the surface shows through.
-	wr, wg, wb, _ := surface.RGBA()
+	wr, wg, wb, _ := defaultPalette.surface.RGBA()
 	if r, g, b, _ := img.At(imgW-margin-picSize+1, 73).RGBA(); r != wr || g != wg || b != wb {
 		t.Errorf("picture corner = %v, want it rounded off", img.At(imgW-margin-picSize+1, 73))
 	}
@@ -134,7 +134,7 @@ func TestDecodePictureRefusesAHugeCanvas(t *testing.T) {
 	if _, ok := decodePicture(buf.Bytes()); ok {
 		t.Fatalf("a %d-byte picture declaring 5000×5000 was decoded", buf.Len())
 	}
-	if _, ok := decodePicture(solidPNG(t, watt)); !ok {
+	if _, ok := decodePicture(solidPNG(t, defaultPalette.watt)); !ok {
 		t.Fatal("an ordinary picture was refused")
 	}
 }

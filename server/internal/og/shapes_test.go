@@ -11,10 +11,10 @@ import (
 // still draws, and the corners are chewed — so it needs a test.
 func TestStrokeJointsAddRatherThanCancel(t *testing.T) {
 	dst := image.NewNRGBA(image.Rect(0, 0, 60, 60))
-	fill(dst, dst.Bounds(), surface)
+	fill(dst, dst.Bounds(), defaultPalette.surface)
 	// An L in the 24-grid: the elbow is a node, and its disc lands on top of
 	// both segments.
-	pen{dst: dst, x: 0, y: 0, size: 48, width: 4, ink: ink}.
+	pen{dst: dst, x: 0, y: 0, size: 48, width: 4, ink: defaultPalette.ink}.
 		stroke(point{6, 6}, point{6, 18}, point{18, 18})
 
 	elbow := dst.NRGBAAt(12, 36) // the (6,18) node, scaled by 48/24
@@ -25,14 +25,14 @@ func TestStrokeJointsAddRatherThanCancel(t *testing.T) {
 
 func TestRoundRectLosesItsCorners(t *testing.T) {
 	dst := image.NewNRGBA(image.Rect(0, 0, 100, 100))
-	fill(dst, dst.Bounds(), surface)
-	fillRound(dst, image.Rect(10, 10, 90, 90), 24, ink)
+	fill(dst, dst.Bounds(), defaultPalette.surface)
+	fillRound(dst, image.Rect(10, 10, 90, 90), 24, defaultPalette.ink)
 
-	if got := dst.NRGBAAt(50, 50); got != ink {
-		t.Errorf("middle of a rounded rect is %v, want %v", got, ink)
+	if got := dst.NRGBAAt(50, 50); got != defaultPalette.ink {
+		t.Errorf("middle of a rounded rect is %v, want %v", got, defaultPalette.ink)
 	}
-	if got := dst.NRGBAAt(12, 12); got != surface {
-		t.Errorf("corner of a rounded rect is %v, want the background %v", got, surface)
+	if got := dst.NRGBAAt(12, 12); got != defaultPalette.surface {
+		t.Errorf("corner of a rounded rect is %v, want the background %v", got, defaultPalette.surface)
 	}
 }
 

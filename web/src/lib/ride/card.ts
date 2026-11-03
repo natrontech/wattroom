@@ -1,5 +1,5 @@
 import { apiBlob } from '$lib/api';
-import { shareFile } from '$lib/share';
+import type { ThemeFamily } from '$lib/palette';
 
 /**
  * The ride as a picture (#2112). Strava's API uploads the activity and never
@@ -8,18 +8,16 @@ import { shareFile } from '$lib/share';
  *
  * Drawn by the server (internal/og), so the two surfaces that offer it — the
  * ride's page and the screen a rider is standing at when they want it — ask
- * for a URL rather than each growing a renderer.
- *
- * Returns the server's own sentence on failure, null when the file is away.
+ * for a URL rather than each growing a renderer. Drawn in the theme asked
+ * for (#4098): the family always resolved here, since the account's `auto`
+ * means nothing to a server.
  */
-export async function downloadRideCard(id: string): Promise<string | null> {
-	const res = await apiBlob(`/api/rides/${encodeURIComponent(id)}/card.png`);
-	if (!res.ok) return res.error.message;
-	await shareFile(
-		res.data.blob,
-		res.data.filename ?? `wattroom-ride-${id}.png`,
-	);
-	return null;
+export function fetchRideCard(
+	id: string,
+	theme: { identity: string; family: ThemeFamily },
+) {
+	const query = new URLSearchParams(theme);
+	return apiBlob(`/api/rides/${encodeURIComponent(id)}/card.png?${query}`);
 }
 
 /**

@@ -11,7 +11,7 @@ WattRoom: collaborative indoor cycling. Go server + SvelteKit SPA + Postgres + L
 ## Commands
 
 - `make infra` once, then `make dev-server` and `make dev-web`. `make dev-env` prints this checkout's ports; sign in with `?as=<name>`.
-- `make test`, `make lint`: must pass. `make protocol` after editing `server/internal/protocol/`. `make migration name=<slug>` for a migration.
+- `make test`, `make lint`: must pass. `make protocol` after editing `server/internal/protocol/`. `make themes` after editing `web/src/lib/themes.ts` or `palette.ts`. `make migration name=<slug>` for a migration.
 
 ## Working
 
