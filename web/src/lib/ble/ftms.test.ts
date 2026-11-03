@@ -57,6 +57,30 @@ describe('parseIndoorBikeData', () => {
 		expect(data.watts).toBe(300);
 	});
 
+	it('reads a spec-derived Kickr Core frame (not captured): every field its features allow (#3567)', () => {
+		// Spec-derived, not captured: no Kickr has sent raw Indoor Bike Data
+		// back (#3350 replaced by ADR-0088). The #43 dump's Fitness Machine
+		// Features 0x00004003 allow average speed, cadence and power, so
+		// flags 0x00ce add each average beside its instantaneous field.
+		// Values are the #10 reading (15.03 km/h, 40 rpm, 78 W); the averages
+		// differ, so a misplaced offset reads one of them instead.
+		const data = parseIndoorBikeData(
+			packet(
+				0x00ce,
+				...[0xdf, 0x05], // speed 1503 × 0.01 km/h
+				...[0x8c, 0x05], // average speed 1420
+				...[0x50, 0x00], // cadence 80 half-rpm
+				...[0x4c, 0x00], // average cadence 76
+				...[0x4e, 0x00], // power 78 W
+				...[0x47, 0x00], // average power 71 W
+			),
+		);
+		expect(data.speedKph).toBeCloseTo(15.03, 6);
+		expect(data.cadence).toBe(40);
+		expect(data.watts).toBe(78);
+		expect(data.heartRate).toBeUndefined();
+	});
+
 	it('reads negative power without wrapping', () => {
 		// SINT16: coasting on some units reports slightly negative rather than zero.
 		expect(parseIndoorBikeData(packet(0x0041, 0xf6, 0xff)).watts).toBe(-10);
