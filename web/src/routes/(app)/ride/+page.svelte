@@ -160,6 +160,7 @@
 	// its summary keep the riding surface's own gutters.
 	const setup = $derived(
 		!theRide.road &&
+			!theRide.channel?.riding &&
 			!freeRide &&
 			!(planRoad && !requested) &&
 			(!session || session.state === 'idle'),
