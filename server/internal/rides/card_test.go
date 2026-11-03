@@ -79,8 +79,8 @@ func TestCardAuthorization(t *testing.T) {
 }
 
 // A road ride's card is its poster, named in the generated name's numbers
-// (#3142, #3055) for what was ridden (#4229): this ride covers about 950 m of
-// a 5 km road. Never the owner's own name for the road, even on a ride saved
+// (#3142, #3055) for what was ridden (#4229): the replay of this ride's two
+// minutes at 250 W covers about 890 m of a 5 km road (#3149). Never the owner's own name for the road, even on a ride saved
 // before road rides were kept under the generated one.
 func TestARoadRideCardIsNamedByWhatWasRidden(t *testing.T) {
 	h := setup(t)
@@ -97,8 +97,8 @@ func TestARoadRideCardIsNamedByWhatWasRidden(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d, body = %s", w.Code, w.Body.String())
 	}
-	if cd := w.Header().Get("Content-Disposition"); !strings.Contains(cd, "road-1-0-km-") || strings.Contains(cd, "street") {
-		t.Errorf("the poster is named %q; want the ridden 1.0 km, never the road's 5.0 or the owner's name", cd)
+	if cd := w.Header().Get("Content-Disposition"); !strings.Contains(cd, "road-0-9-km-") || strings.Contains(cd, "street") {
+		t.Errorf("the poster is named %q; want the ridden 0.9 km, never the road's 5.0 or the owner's name", cd)
 	}
 	if _, err := png.Decode(bytes.NewReader(w.Body.Bytes())); err != nil {
 		t.Fatalf("decode PNG: %v", err)

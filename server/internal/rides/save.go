@@ -193,6 +193,21 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req.WorkoutName = name
+	var ride stats.RoadRide
+	if route != nil {
+		ride = stats.ReplayRoad(ridden, samples, laps, float64(user.WeightKg)+protocol.BikeKg, route.Loop != nil && *route.Loop)
+		// The replay is the record (ADR-0074); a client whose own metres
+		// part from it by more than this is worth knowing about.
+		if ride.Gap > stats.ReplayGapLogged {
+			s.log.Warn("road ride replay parts from the client", "route", req.RouteID,
+				"replayed_m", ride.DistanceM, "gap", ride.Gap)
+		}
+		// The samples keep the replay's metres, never the client's: climb
+		// bests and ghosts are timed from them (#3149).
+		for i := range samples {
+			samples[i].M = ride.Metres[i]
+		}
+	}
 	row, err := stats.BuildRideRow(user.ID, req.WorkoutName,
 		req.WorkoutJSON, req.StartedAt, int(user.FtpWatts), samples)
 	if err != nil {
@@ -202,14 +217,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	stats.SetHow(&row, stats.RideMode(req.WorkoutJSON, false), req.WorkoutJSON, route != nil, req.Drive, stats.WeightThatDay(user))
 	if route != nil {
-		ride := stats.ReplayRoad(ridden, samples, laps, float64(user.WeightKg)+protocol.BikeKg, route.Loop != nil && *route.Loop)
 		stats.SetRoad(&row, *route, ride)
-		// The replay is the record (ADR-0074); a client whose own metres
-		// part from it by more than this is worth knowing about.
-		if ride.Gap > stats.ReplayGapLogged {
-			s.log.Warn("road ride replay parts from the client", "route", req.RouteID,
-				"replayed_m", ride.DistanceM, "gap", ride.Gap)
-		}
 	}
 	row.Xp += stats.StreakXP(r.Context(), s.store.Queries, user.ID, req.StartedAt)
 	// Under the rider's row lock, and only if it is not there yet (audit
