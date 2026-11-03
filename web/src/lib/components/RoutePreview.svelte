@@ -72,71 +72,73 @@
 	]);
 </script>
 
-<div>
-	<h2 class="page-title-sm min-w-0 truncate">{route.name}</h2>
-	<RouteStatRow
-		parts={statRow(
-			{
-				lengthM: route.length,
-				gainM: Math.round(route.gain),
-				climbs: route.climbs,
-			},
-			route.loop,
-		)}
-	/>
+<!-- The route page's split: the drawings on the left; the name, its stat
+     row, the tiles and the actions in a 300 px column on the right, so Save
+     stays above the fold on a desk. A phone reads the name first. -->
+<div
+	class="grid gap-x-6 gap-y-4 lg:grid-cols-[minmax(0,1fr)_300px] lg:grid-rows-[auto_1fr] lg:items-start"
+>
+	<div class="min-w-0 lg:col-start-2 lg:row-start-1">
+		<h2 class="page-title-sm break-words">{route.name}</h2>
+		<RouteStatRow
+			parts={statRow(
+				{
+					lengthM: route.length,
+					gainM: Math.round(route.gain),
+					climbs: route.climbs,
+				},
+				route.loop,
+			)}
+		/>
+	</div>
 
-	<!-- The route page's split: the drawings on the left, the tiles, the name
-	     and the actions in a 300 px column on the right, so Save stays above
-	     the fold on a desk. -->
 	<div
-		class="mt-3 grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start"
+		class="flex min-w-0 flex-col gap-4 lg:col-start-1 lg:row-span-2 lg:row-start-1"
 	>
-		<div class="flex min-w-0 flex-col gap-4">
-			<RouteShape
-				x={route.x}
-				z={route.z}
-				climbs={route.climbs}
-				length={route.road.length}
-			/>
-			<RouteProfile road={route.road} climbs={route.climbs} />
-			{#if imported.fixes.length > 0}
-				<div>
-					<h3 class="eyebrow">what we fixed</h3>
-					<ul class="mt-2 space-y-1.5">
-						{#each imported.fixes as fix (fix)}
-							<li class="text-muted flex gap-2 text-xs">
-								<Info size={14} class="mt-px shrink-0" />
-								<span>{fix}</span>
-							</li>
-						{/each}
-					</ul>
-				</div>
+		<RouteShape
+			x={route.x}
+			z={route.z}
+			climbs={route.climbs}
+			length={route.road.length}
+		/>
+		<RouteProfile road={route.road} climbs={route.climbs} />
+		{#if imported.fixes.length > 0}
+			<div>
+				<h3 class="eyebrow">what we fixed</h3>
+				<ul class="mt-2 space-y-1.5">
+					{#each imported.fixes as fix (fix)}
+						<li class="text-muted flex gap-2 text-xs">
+							<Info size={14} class="mt-px shrink-0" />
+							<span>{fix}</span>
+						</li>
+					{/each}
+				</ul>
+			</div>
+		{/if}
+	</div>
+
+	<div class="flex min-w-0 flex-col gap-4 lg:col-start-2 lg:row-start-2">
+		<div>
+			<RecapTiles {tiles} label="the road in time" />
+			{#if imported.legs > 1}
+				<p class="mt-2 text-xs">
+					Longer than {MaxLegSeconds / 3600} h at the reference pace, so it rides
+					in {imported.legs} legs — each one starts where the last one stopped.
+				</p>
 			{/if}
 		</div>
-
-		<div class="flex min-w-0 flex-col gap-4">
-			<div>
-				<RecapTiles {tiles} label="the road in time" />
-				{#if imported.legs > 1}
-					<p class="mt-2 text-xs">
-						Longer than {MaxLegSeconds / 3600} h at the reference pace, so it rides
-						in {imported.legs} legs — each one starts where the last one stopped.
-					</p>
-				{/if}
-			</div>
-			<div>
-				<label for="route-rename" class="eyebrow">your name for it</label>
-				<input
-					id="route-rename"
-					bind:value={rename}
-					maxlength="80"
-					placeholder={route.name}
-					class="input mt-1 w-full"
-				/>
-				<p class="text-muted mt-1 text-xs">{routeNameLine(route.name)}</p>
-			</div>
-			{@render actions?.()}
-			<p class="text-muted text-xs">{routePrivacyLine}</p>
+		<div>
+			<label for="route-rename" class="eyebrow">your name for it</label>
+			<input
+				id="route-rename"
+				bind:value={rename}
+				maxlength="80"
+				placeholder={route.name}
+				class="input mt-1 w-full"
+			/>
+			<p class="text-muted mt-1 text-xs">{routeNameLine(route.name)}</p>
 		</div>
+		{@render actions?.()}
+		<p class="text-muted text-xs">{routePrivacyLine}</p>
 	</div>
 </div>
