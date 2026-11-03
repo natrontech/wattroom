@@ -641,7 +641,11 @@ export const channelConnection = {
 	 */
 	leaveSession() {
 		if (!session) return;
-		if (channelRide.current?.live === session.live) channelRide.leave();
+		// The trainer goes back to the call's ride, still connected.
+		const held = channelRide.current?.live === session.live;
+		const trainer =
+			held && current ? channelRide.current!.ride.handOff() : null;
+		if (held) channelRide.leave();
 		session.dispose();
 		session.live.close();
 		session.av.leave();
@@ -650,6 +654,7 @@ export const channelConnection = {
 			const { address, live, av } = current;
 			current.dispose();
 			current = connect(address, { live, av });
+			if (trainer) void current.ride.ride(trainer);
 		}
 	},
 	/**

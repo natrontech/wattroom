@@ -196,20 +196,26 @@ describe('channelConnection', () => {
 		const call = channelConnection.join(
 			channelAddress('c', 'lounge', 'Lounge'),
 		);
+		const trainer = new FakeTrainer();
+		await call.ride.ride(trainer);
 		const session = channelConnection.join(
 			crewSessionAddress('c', 's1', 'Tempo'),
 		);
+		// The session takes the call's trainer, still connected.
+		await vi.waitFor(() => expect(session.ride.trainer).toBe(trainer));
+		expect(trainer.connects).toBe(1);
 		// The call stays; the session is where the ride is, and holds it.
 		expect(channelConnection.call).toBe(call);
 		expect(channelConnection.current).toBe(session);
 		expect(channelRide.current?.live).toBe(session.live);
-		const trainer = new FakeTrainer();
-		await session.ride.ride(trainer);
 
 		channelConnection.leave();
 		// Leaving the session ends its ride and keeps the call, which holds
-		// a ride of its own again.
-		expect(trainer.disconnected).toBe(true);
+		// a ride of its own again, on the same trainer, never paired again.
+		expect(trainer.disconnected).toBe(false);
+		await vi.waitFor(() =>
+			expect(channelConnection.call?.ride.trainer).toBe(trainer),
+		);
 		expect(channelConnection.session).toBeNull();
 		expect(channelConnection.call?.address.key).toBe(call.address.key);
 		expect(channelConnection.call?.live).toBe(call.live);
