@@ -12,6 +12,7 @@ import {
 import { ergByRoad } from '$lib/ride/ride-grade';
 import { gearsEnabled } from '$lib/ride/gears-enabled';
 import { createRoadReadout } from '$lib/ride/road-readout';
+import { wayUp } from '$lib/ride/climb-repeats';
 import { createRoadLaps, type RoadSecond } from '$lib/ride/road-ride';
 import type { RideableRoute } from '$lib/ride/roads';
 import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
@@ -121,6 +122,21 @@ export function createFreeRide(deps: {
 		laps: ReturnType<typeof createRoadLaps>;
 	} | null>(null);
 	let here = $state.raw<RoadSecond | null>(null);
+	/**
+	 * Climb repeats (#3193): up the road and down it at 0 % felt, over and
+	 * over, in SIM only — Hells500's virtual rules ban ERG. A way into the
+	 * free ride, not a mode: it saves as a free ride with its laps.
+	 */
+	let repeating = $state(false);
+	const up = $derived(
+		onRoad ? wayUp(onRoad.route.road, !!onRoad.route.loop) : null,
+	);
+	function repeat(on: boolean) {
+		if (!onRoad || on === repeating || (on && up === null)) return;
+		repeating = on;
+		onRoad.laps.repeats = on ? up : null;
+		play('block', on ? {} : { semitones: -5 });
+	}
 	// The route a ride on it saves against: never a borrowed one (#3621).
 	const saveOn = $derived(
 		onRoad && !onRoad.route.borrowed ? onRoad.route : null,
@@ -142,6 +158,8 @@ export function createFreeRide(deps: {
 					reverse: onRoad.laps.reverse,
 					/** Where this lap began: past 0 a resumed ride's or a mate's metre. */
 					from: onRoad.laps.from,
+					/** The tops climb repeats turned at (#3193). */
+					ascents: onRoad.laps.ascents,
 					/** Where it is, as the HUD says it (#3639). */
 					readout: readoutAt(onRoad.route.road, here.m, onRoad.laps.reverse),
 					...here,
@@ -171,6 +189,19 @@ export function createFreeRide(deps: {
 		/** The ramp that just ran its length; null a few seconds on. */
 		get rampDone() {
 			return done?.kind ?? null;
+		},
+		/** Climb repeats are on (#3193). */
+		get repeats() {
+			return repeating;
+		},
+		/** Climb repeats could start: a road with a way up, ridden in SIM. */
+		get repeatable() {
+			return up !== null && mode === 'grade';
+		},
+		/** Climb repeats on or off (#3193); never in watts, which is ERG. */
+		setRepeats(on: boolean) {
+			if (on && mode !== 'grade') return;
+			repeat(on);
 		},
 		/** The road under the ride, and where on it; null off a road. */
 		get road() {
@@ -215,6 +246,8 @@ export function createFreeRide(deps: {
 		},
 		setMode(next: FreeMode) {
 			endRamp(true);
+			// SIM only (#3193): Watts is ERG, so it ends climb repeats.
+			if (next === 'watts') repeat(false);
 			if (next === 'watts' && watts === null) watts = openingWatts(deps.ftp());
 			picked = next;
 		},
@@ -230,12 +263,14 @@ export function createFreeRide(deps: {
 				loop: route.loop,
 			});
 			ramp = null;
+			repeating = false;
 			onRoad = { route, laps };
 			here = laps.second(0, Date.now());
 		},
 		/** Off the road again, before the ride starts. */
 		leaveRoad() {
 			if (startedAt !== null) return;
+			repeating = false;
 			onRoad = null;
 			here = null;
 		},
@@ -257,7 +292,7 @@ export function createFreeRide(deps: {
 		 */
 		rideWith(m: number, reverse: boolean) {
 			if (!onRoad) return;
-			if (startedAt === null)
+			if (startedAt === null) {
 				onRoad = {
 					route: onRoad.route,
 					laps: createRoadLaps(onRoad.route.road, {
@@ -267,7 +302,8 @@ export function createFreeRide(deps: {
 						loop: onRoad.route.loop,
 					}),
 				};
-			else onRoad.laps.jump(m, reverse);
+				if (repeating) onRoad.laps.repeats = up;
+			} else onRoad.laps.jump(m, reverse);
 			here = onRoad.laps.start();
 		},
 		/**
@@ -320,8 +356,12 @@ export function createFreeRide(deps: {
 			const silent =
 				riddenAt >= 0 && heardAt === riddenAt ? wallSecond - riddenAt - 1 : 0;
 			heardAt = wallSecond;
-			if (armed && onRoad)
+			if (armed && onRoad) {
+				const way = onRoad.laps.reverse;
 				here = onRoad.laps.second(sample.watts, sample.at ?? Date.now());
+				// A repeat's turn at either end announces itself (ux.md).
+				if (repeating && onRoad.laps.reverse !== way) play('block');
+			}
 			const virtualMps = here?.virtualMps ?? sample.virtualMps ?? 0;
 			const rolling = virtualMps > DEFAULTS.ridingMps;
 			if (!armed || (sample.watts <= 0 && sample.cadence <= 0 && !rolling))

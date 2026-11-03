@@ -9,6 +9,7 @@
 	 */
 	import type { Snippet } from 'svelte';
 	import { formatClock } from '$lib/format';
+	import { repeatsLine } from '$lib/ride/climb-repeats';
 
 	let {
 		label,
@@ -16,6 +17,7 @@
 		chip,
 		seconds,
 		climbed,
+		ascents,
 		status,
 		notes,
 	}: {
@@ -29,6 +31,8 @@
 		seconds: number;
 		/** Metres climbed this ride, on a road. */
 		climbed?: number;
+		/** On climb repeats (#3193), the tops reached: the metres read against Everest. */
+		ascents?: number;
 		/**
 		 * The ride's status line, in the label's place while one holds (G3);
 		 * a ride-critical one, an alert, takes the chip row's too.
@@ -73,7 +77,7 @@
 		<p data-testid="ride-clock" class="num text-muted">
 			{formatClock(
 				seconds,
-			)}{#if climbed !== undefined}{` · ${Math.round(climbed)} m climbed`}{/if}
+			)}{#if climbed !== undefined}{` · ${ascents === undefined ? `${Math.round(climbed)} m climbed` : repeatsLine(climbed, ascents)}`}{/if}
 		</p>
 		{@render notes?.()}
 	</div>

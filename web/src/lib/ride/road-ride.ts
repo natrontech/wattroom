@@ -45,6 +45,8 @@ export function createRoadRide(
 		mps?: number;
 		/** The felt grade's slew, kept from the lap before (#3025). */
 		grade?: ReturnType<typeof createRideGrade>;
+		/** Felt at 0 % while true, through the slew: a climb repeat's descent (#3193). */
+		flat?: () => boolean;
 	},
 ) {
 	const ridden = opts.reverse ? turnedRound(road) : road;
@@ -67,7 +69,9 @@ export function createRoadRide(
 			alt: heightAt(road, m),
 			virtualMps: moving,
 			roadPct: gradeAt(ridden, along),
-			felt: grade.road(ridden, along, moving, Math.max(1, seconds)),
+			felt: opts.flat?.()
+				? grade.relax(Math.max(1, seconds))
+				: grade.road(ridden, along, moving, Math.max(1, seconds)),
 			atEnd,
 		};
 	}
@@ -124,6 +128,9 @@ export interface RoadSampleFields {
  * replay rides it by (#3598). A lap may start anywhere on the road: "Ride
  * with <name>" starts one at a channel-mate's metre (#3117). A loop has no
  * end (#4261): at the line the next lap starts by itself, at speed.
+ *
+ * Climb repeats (#3193): at either end the next lap turns back by itself,
+ * and every lap down — against `repeats`, the way up — is felt at 0 %.
  */
 export function createRoadLaps(
 	road: Road,
@@ -131,6 +138,10 @@ export function createRoadLaps(
 ) {
 	let reverse = !!opts.reverse;
 	let loop = !!opts.loop;
+	/** The way up while climb repeats are on (`reverse` of a lap up); null off. */
+	let repeats: boolean | null = null;
+	let ascents = 0;
+	const flat = () => repeats !== null && reverse !== repeats;
 	// A lap is numbered when its first sample is recorded, so a lap nothing
 	// was recorded on is never numbered past: the server takes laps one after
 	// another (#3598). Each second keeps the lap it was ridden in, since a
@@ -146,7 +157,7 @@ export function createRoadLaps(
 		return here;
 	};
 	const grade = createRideGrade();
-	let ride = createRoadRide(road, { ...opts, grade });
+	let ride = createRoadRide(road, { ...opts, grade, flat });
 	let last: RoadSecond | null = null;
 	/** The next lap from `from` on the stored road, `way` along it. */
 	function next(from: number, way: boolean, carried?: number) {
@@ -157,7 +168,19 @@ export function createRoadLaps(
 		// the replay does (#3117, #4261).
 		const atStart = !loop && (way ? from >= road.length : from <= 0);
 		const mps = atStart ? 0 : (carried ?? last?.virtualMps ?? 0);
-		ride = createRoadRide(road, { kg: opts.kg, from, reverse, mps, grade });
+		ride = createRoadRide(road, {
+			kg: opts.kg,
+			from,
+			reverse,
+			mps,
+			grade,
+			flat,
+		});
+	}
+	/** The next lap, from the end this one reached (#3205). */
+	function turn(way: 'back' | 'again') {
+		const back = way === 'back' ? !reverse : reverse;
+		next(back ? road.length : 0, back);
 	}
 	return {
 		road,
@@ -176,22 +199,33 @@ export function createRoadLaps(
 		set loop(on: boolean) {
 			loop = on;
 		},
+		/** Climb repeats' way up (#3193), or null when off. */
+		get repeats() {
+			return repeats;
+		},
+		set repeats(up: boolean | null) {
+			repeats = loop ? null : up;
+		},
+		/** The tops a climb repeat turned at (#3193). */
+		get ascents() {
+			return ascents;
+		},
 		second(watts: number, at: number): RoadSecond {
 			last = tag(ride.second(watts, at));
 			if (loop && last.atEnd) {
 				next(reverse ? road.length : 0, reverse, ride.mps);
 				// The lap's first sample stands on the line (#3117).
 				last = tag(ride.start());
+			} else if (repeats !== null && last.atEnd) {
+				if (reverse === repeats) ascents += 1;
+				turn('back');
+				last = tag(ride.start());
 			}
 			return last;
 		},
 		/** Where this lap starts, before its first second. */
 		start: (): RoadSecond => tag(ride.start()),
-		/** The next lap, from the end this one reached (#3205). */
-		turn(way: 'back' | 'again') {
-			const back = way === 'back' ? !reverse : reverse;
-			next(back ? road.length : 0, back);
-		},
+		turn,
 		/** The next lap from metre `m`, `way` down the stored road or up it (#3117). */
 		jump(m: number, way: boolean) {
 			next(m, way);

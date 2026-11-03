@@ -46,6 +46,19 @@ contradicts one amends it here.
 - the climb card opens by itself for class **IV** and harder, on a free or
   route ride; on a workout or a session its chip offers it instead ([#3645](https://github.com/natrontech/wattroom/issues/3645)).
 
+**Climb repeats** (#3193, decided 2026-09-28) — a way into the free ride on a
+road, not a mode:
+
+- up the road the way it climbs more, then back down it, turning at each end
+  by itself; never offered on a loop;
+- SIM only, since Hells500's virtual rules ban ERG: Watts ends them; any
+  difficulty counts;
+- the descent is ridden on the same road at **0 %** felt, reached through the
+  felt grade's slew;
+- the metres climbed read against Everest (Road stats, below), and the ride
+  saves as `free` with its laps;
+- never named after the registered mark "Everesting".
+
 ## The Routes view (defaults — tune in alpha; #3692)
 
 Filter chips under Workouts · Routes, each an "at most"; a group with none lit

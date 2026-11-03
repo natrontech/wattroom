@@ -48,6 +48,8 @@
 	import RideNarrator from '$lib/ride/RideNarrator.svelte';
 	import Skyline from '$lib/ride/Skyline.svelte';
 	import { climbView, raced } from '$lib/ride/climb-view';
+	import { EVEREST_M } from '$lib/ride/climb-repeats';
+	import { play } from '$lib/sound/cues';
 	import { mapView } from '$lib/ride/map-view';
 	import { watchClimbCues } from '$lib/ride/climb-cues.svelte';
 	import BikeComputer from '$lib/session/BikeComputer.svelte';
@@ -229,6 +231,16 @@
 		},
 	});
 
+	// Climb repeats past Everest (#3193): a fanfare and a line, once a ride.
+	// A screen opened again past it says so without the fanfare.
+	const metres = $derived(road ? (climbed ?? ownClimb.m) : 0);
+	const summited = $derived(free.repeats && metres >= EVEREST_M);
+	let wasSummited = untrack(() => summited);
+	$effect(() => {
+		if (summited && !wasSummited) play('fanfare');
+		wasSummited = summited;
+	});
+
 	const WORDS = 'text-2xl leading-6';
 	// M and V from a key or a bridged controller (#4236).
 	$effect(() => bindViewKeys((k) => !!board.onKey(k)));
@@ -264,6 +276,11 @@
 	{:else if free.rampDone}
 		<p data-testid="ramp-line" class="truncate" aria-live="polite">
 			{rampLabel} done
+		</p>
+	{/if}
+	{#if summited}
+		<p data-testid="everest-line" class="text-neon truncate font-bold">
+			The height of Everest, climbed
 		</p>
 	{/if}
 	{#if flagNotice}
@@ -332,6 +349,14 @@
 			<ChevronDown size={16} /></button
 		>
 	{/if}
+	{#if road && !inWatts && (free.repeatable || free.repeats)}
+		<!-- Climb repeats (#3193): SIM only, so not offered in Watts. -->
+		<button
+			onclick={() => free.setRepeats(!free.repeats)}
+			class="btn btn-secondary btn-ride whitespace-nowrap"
+			>{free.repeats ? 'Stop repeats' : 'Climb repeats'}</button
+		>
+	{/if}
 	{#if onflag}<FlagButton onflag={flag} sends="after" />{/if}
 	{#if road}<ViewSwitch {world} drawn={inWorld} />{/if}
 	{#if ontv}
@@ -379,7 +404,8 @@
 		roadLine={road ? roadLine(road.readout) : undefined}
 		{chip}
 		seconds={free.seconds}
-		climbed={road ? (climbed ?? ownClimb.m) : undefined}
+		climbed={road ? metres : undefined}
+		ascents={road && free.repeats ? road.ascents : undefined}
 		status={faultLine}
 		{notes}
 	/>
