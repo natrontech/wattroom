@@ -10,12 +10,11 @@ import type { SceneInput } from '$lib/lounge/scene';
 import type { Flyby } from '$lib/lounge/moments';
 import { hash3 } from '$lib/lounge/hash';
 
-const X = 122;
-const Y = 22;
-const W = 136;
-const H = 86;
-const HORIZON = 88;
-const SUN_X = 190;
+/** The glass, in the stage's coordinates; its frame and sill are drawn with the room. */
+export const WINDOW = { X: 118, Y: 10, W: 84, H: 44 } as const;
+const { X, Y, W, H } = WINDOW;
+const HORIZON = Y + 30;
+const SUN_X = 160;
 
 export function drawWindow(g: Ctx, s: SceneInput) {
 	g.save();
@@ -29,11 +28,6 @@ export function drawWindow(g: Ctx, s: SceneInput) {
 	if (s.flyby) flyby(g, s, s.flyby);
 	weather(g, s);
 	g.restore();
-	rect(g, X - 2, Y - 2, W + 4, 2, C.frame);
-	rect(g, X - 2, Y, 2, H, C.frame);
-	rect(g, X + W, Y, 2, H, C.frame);
-	rect(g, X - 6, Y + H, W + 12, 4, C.trim);
-	rect(g, X - 6, Y + H, W + 12, 1, C.sillTop);
 	if (s.season === 'halloween') pumpkin(g, s);
 }
 
@@ -43,20 +37,20 @@ function flyby(g: Ctx, s: SceneInput, { kind, f, dir }: Flyby) {
 	const x = Math.round(X - 12 + along * (W + 24));
 	const blink = s.still || Math.floor(s.t * 2) % 2 === 0;
 	if (kind === 'plane') {
-		rect(g, x - 4, Y + 12, 9, 1, C.lilac);
-		rect(g, x - dir * 3, Y + 10, 1, 2, C.lilac);
-		if (blink) dot(g, x + dir * 4, Y + 12, C.heart);
+		rect(g, x - 4, Y + 8, 9, 1, C.lilac);
+		rect(g, x - dir * 3, Y + 6, 1, 2, C.lilac);
+		if (blink) dot(g, x + dir * 4, Y + 8, C.heart);
 	} else if (kind === 'birds')
 		for (let i = 0; i < 4; i++) {
 			const bx = x - dir * i * 6;
-			const by = Y + 18 + (i % 2) * 3;
+			const by = Y + 12 + (i % 2) * 3;
 			const up = !s.still && Math.floor(s.t * 6 + i) % 2 === 0;
 			dot(g, bx - 1, by - (up ? 1 : 0), C.ink);
 			dot(g, bx, by, C.ink);
 			dot(g, bx + 1, by - (up ? 1 : 0), C.ink);
 		}
 	else if (kind === 'balloon') {
-		const y = Y + 26 + Math.round(Math.sin(f * 6) * 2);
+		const y = Y + 16 + Math.round(Math.sin(f * 6) * 2);
 		disc(g, x, y, 5, C.bookC);
 		rect(g, x - 1, y - 5, 2, 11, C.amber);
 		line(g, x - 3, y + 4, x - 1, y + 8, C.ink);
@@ -72,7 +66,7 @@ function flyby(g: Ctx, s: SceneInput, { kind, f, dir }: Flyby) {
 			dot(g, rx + 1, HORIZON + 5, C.lilac);
 		}
 	else {
-		const y = Y + 14 + Math.round(Math.sin(f * 9) * 4);
+		const y = Y + 9 + Math.round(Math.sin(f * 9) * 3);
 		rect(g, x - 4, y, 9, 2, C.lilac);
 		rect(g, x - 2, y - 2, 5, 2, C.tealLight);
 		if (blink) {
@@ -92,9 +86,10 @@ function flyby(g: Ctx, s: SceneInput, { kind, f, dir }: Flyby) {
 
 /** Halloween week: a lit pumpkin at the sill's left end. */
 function pumpkin(g: Ctx, s: SceneInput) {
-	const y = Y + H;
-	disc(g, 131, y - 4, 4, C.amber);
-	rect(g, 131, y - 10, 1, 2, C.leaf);
+	const y = Y + H + 2;
+	disc(g, 131, y - 4, 4, C.ink);
+	disc(g, 131, y - 4, 3, C.amber);
+	rect(g, 131, y - 9, 1, 2, C.leaf);
 	const lit = s.still || Math.sin(s.t * 3) > -0.7;
 	const eye = lit ? C.bulb : C.ink;
 	dot(g, 129, y - 5, eye);
@@ -139,9 +134,9 @@ function sky(g: Ctx, kind: Sky) {
 		else rect(g, X, Y + y, W, 1, bands[b]);
 	}
 	const [top, bottom] = SUNS[kind];
-	const r = 17;
+	const r = 13;
 	for (let dy = 1; dy <= r; dy++) {
-		if (dy <= 9 && dy % 3 === 0) continue;
+		if (dy <= 7 && dy % 3 === 0) continue;
 		const w = Math.floor(Math.sqrt(r * r - dy * dy));
 		rect(g, SUN_X - w, HORIZON - dy, w * 2 + 1, 1, dy > r / 2 ? top : bottom);
 	}
@@ -150,7 +145,7 @@ function sky(g: Ctx, kind: Sky) {
 function mountains(g: Ctx) {
 	for (let x = 0; x < W; x++) {
 		const h = Math.round(
-			7 + 4 * Math.sin(x * 0.09) + 3 * Math.sin(x * 0.23 + 1),
+			5 + 3 * Math.sin(x * 0.11) + 2 * Math.sin(x * 0.27 + 1),
 		);
 		rect(g, X + x, HORIZON - h, 1, h, C.mountain);
 	}
@@ -165,7 +160,7 @@ function stars(g: Ctx, s: SceneInput) {
 			dot(
 				g,
 				X + Math.floor(hash3(i, 1, 9) * W),
-				Y + 1 + Math.floor(hash3(i, 2, 9) * 32),
+				Y + 1 + Math.floor(hash3(i, 2, 9) * 18),
 				twinkle > 0.7 ? C.star : C.lilac,
 			);
 	}
@@ -174,8 +169,8 @@ function stars(g: Ctx, s: SceneInput) {
 function buildings(g: Ctx, s: SceneInput) {
 	// Buildings are seeded; a lit window changes every few seconds.
 	for (let x = 0, i = 0; x < W; i++) {
-		const w = 4 + Math.floor(hash3(i, 7, 1) * 6);
-		const h = 5 + Math.floor(hash3(i, 7, 2) * 15);
+		const w = 3 + Math.floor(hash3(i, 7, 1) * 5);
+		const h = 4 + Math.floor(hash3(i, 7, 2) * 11);
 		rect(g, X + x, HORIZON - h, w, h, C.city);
 		const era = s.still ? 0 : Math.floor(s.t / 5 + i * 0.37);
 		for (let wy = HORIZON - h + 2; wy < HORIZON - 1; wy += 3)
@@ -188,12 +183,13 @@ function buildings(g: Ctx, s: SceneInput) {
 function ground(g: Ctx, s: SceneInput) {
 	rect(g, X, HORIZON, W, Y + H - HORIZON, C.ground);
 	const scroll = s.still ? 0 : (s.t * 0.35) % 1;
-	for (let n = 0; n < 7; n++) {
-		const p = (n + scroll) / 7;
-		rect(g, X, HORIZON + 1 + Math.floor(19 * p * p), W, 1, C.grid);
+	const deep = Y + H - HORIZON - 1;
+	for (let n = 0; n < 5; n++) {
+		const p = (n + scroll) / 5;
+		rect(g, X, HORIZON + 1 + Math.floor(deep * p * p), W, 1, C.grid);
 	}
-	for (let k = -9; k <= 9; k++)
-		line(g, SUN_X, HORIZON, SUN_X + k * 18, Y + H, C.grid);
+	for (let k = -7; k <= 7; k++)
+		line(g, SUN_X, HORIZON, SUN_X + k * 14, Y + H, C.grid);
 }
 
 function weather(g: Ctx, s: SceneInput) {

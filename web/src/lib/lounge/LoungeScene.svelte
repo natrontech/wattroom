@@ -17,7 +17,6 @@
 	import { useChannel } from '$lib/channel/context';
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { playheadAt } from '$lib/channel/playhead';
-	import { tileFrame } from '$lib/channel/presence-marks';
 	import { awayState } from '$lib/away';
 	import {
 		MENU_HINT,
@@ -42,12 +41,14 @@
 		radioPickOf,
 		weatherOf,
 	} from '$lib/lounge/state';
-	import { crewOf, riderOf } from '$lib/lounge/figures';
+	import { crewOf } from '$lib/lounge/figures';
 	import {
 		catAt,
 		cuckooing,
 		discoOn,
 		flybyAt,
+		owlHours,
+		pizzaNight,
 		seasonOf,
 	} from '$lib/lounge/moments';
 	import { palette } from '$lib/palette.svelte';
@@ -55,9 +56,11 @@
 	import { forgetWalls, shadeFor } from '$lib/lounge/draw-room';
 	import { forgetBackdrops } from '$lib/lounge/draw-window';
 	import {
+		SAFE_W,
 		SCENE_H,
 		SCENE_W,
 		drawScene,
+		hasFront,
 		middleOf,
 		spotAt,
 		tagsOf,
@@ -67,12 +70,8 @@
 
 	let { menuOf }: { menuOf: (id: string) => MenuEntry[] } = $props();
 
-	/**
-	 * The fewest rows a room at scale s draws: the middle, the cushions in
-	 * front of it, and under them their names and the radio's line, which are
-	 * page pixels and so take fewer rows the bigger the scale.
-	 */
-	const rowsAt = (s: number) => SCENE_H + 23 + Math.ceil(48 / s);
+	/** The fewest rows a room at scale s draws: the stage, and under it the radio's line in page pixels. */
+	const rowsAt = (s: number) => SCENE_H + Math.ceil(28 / s);
 	/** How fast the room may darken or brighten, per second: a lamp flipped on and off quickly fades instead of flashing (WCAG 2.3.1). */
 	const SHADE_RATE = 0.3;
 	const KONAMI = [
@@ -101,12 +100,13 @@
 
 	let boxW = $state(0);
 	let boxH = $state(0);
-	// The biggest whole pixel the height takes, and never so big that a phone
-	// sees less than half the middle; it pans the rest.
+	// The biggest whole pixel at which all that matters on the stage fits (a
+	// 1200 px box takes 4). A phone is never under 2: it sees the middle of
+	// the stage and pans the rest.
 	const scale = $derived.by(() => {
-		let s = Math.max(1, Math.min(5, Math.floor(boxW / (SCENE_W / 2))));
+		let s = Math.max(1, Math.min(6, Math.floor(boxW / SAFE_W)));
 		while (s > 1 && boxH / s < rowsAt(s)) s--;
-		return s;
+		return s >= 2 || boxH / 2 < rowsAt(2) ? s : 2;
 	});
 	const roomW = $derived(Math.max(SCENE_W, Math.floor(boxW / scale)));
 	const roomH = $derived(Math.max(rowsAt(scale), Math.floor(boxH / scale)));
@@ -116,7 +116,7 @@
 		size = { w: roomW, h: roomH };
 	});
 
-	const crew = $derived(crewOf(channel.riders, 0, roomW));
+	const crew = $derived(crewOf(channel.riders, 0, roomW, roomH));
 	const tags = $derived(tagsOf(crew, roomW, roomH));
 	const byId = $derived(new Map(channel.riders.map((r) => [r.id, r])));
 	/** Where the canvas's top sits in the box: above it when the box is too short. */
@@ -130,9 +130,11 @@
 	let cuckooUntil = 0;
 	let mugUntil = 0;
 	let scratchUntil = 0;
+	let fishUntil = 0;
+	let bloomUntil = 0;
+	let arcadeUntil = 0;
 	let waveAt = -Infinity;
 	let clock = 0;
-	let crank = 0.9;
 	let shade = -1;
 	let nowPlaying = $state('');
 	let styleNow = $state<keyof typeof STYLE_NAMES>('lofi');
@@ -182,9 +184,6 @@
 		// so a heart or an awake cat still passes.
 		clock += dt;
 		const riders = channel.riders;
-		const onBike = riders.find((r) => r.id === riderOf(riders, 0)?.id);
-		if (onBike && !still)
-			crank += ((onBike.cadence || 80) / 60) * Math.PI * 2 * dt;
 		const now = new Date();
 		const sec = serverNow() / 1000;
 		const sky = skyAt(now.getHours());
@@ -202,7 +201,7 @@
 			sky,
 			weather: weatherOf(lounge),
 			lampOn,
-			crew: crewOf(riders, crank, size.w),
+			crew: crewOf(riders, still ? 0 : clock, size.w, size.h),
 			...music(),
 			cat: catAt(seed, sec),
 			catAwake: clock < catAwakeUntil,
@@ -218,6 +217,11 @@
 			season: seasonOf(now),
 			waveAt,
 			radio: pick,
+			fishJump: clock < fishUntil,
+			bloom: clock < bloomUntil,
+			arcade: clock < arcadeUntil,
+			pizza: pizzaNight(now),
+			owl: owlHours(now.getHours()),
 		});
 	}
 
@@ -289,20 +293,20 @@
 		const cat = catAt(seed, serverNow() / 1000);
 		return {
 			who: tags.find(
-				(t) => Math.abs(x - t.x) <= 6 && y >= t.head - 2 && y <= t.head + 22,
+				(t) => Math.abs(x - t.x) <= 7 && y >= t.head - 2 && y <= t.y,
 			),
 			cat:
 				Math.abs(x - ox - cat.x) <= 11 &&
 				y - oy <= cat.y + 1 &&
 				y - oy >= cat.y - 20,
-			spot: spotAt(x - ox, y - oy),
+			spot: spotAt(x - ox, y - oy, hasFront(roomW, roomH)),
 		};
 	}
 
 	function click(e: MouseEvent) {
 		const { who, cat, spot } = at(e);
 		const state = { ...lounge, weather: weatherOf(lounge) };
-		if (who) heart(who.x - 2, who.head - 7);
+		if (who) heart(who.x - 2, who.head - 8);
 		else if (cat) {
 			ownPets++;
 			wake();
@@ -313,6 +317,9 @@
 			live?.setLounge({ ...state, weather: nextWeather(state.weather) });
 		else if (spot === 'clock') cuckooUntil = clock + 3;
 		else if (spot === 'deck') pickStyle();
+		else if (spot === 'fish') fishUntil = clock + 1.2;
+		else if (spot === 'plant') bloomUntil = clock + 30;
+		else if (spot === 'arcade') arcadeUntil = clock + 8;
 	}
 
 	/** The record player changes the record: the next style, for everyone. */
@@ -396,7 +403,7 @@
 				class="absolute bottom-0 left-0 block [image-rendering:pixelated]"
 				style:width="{roomW * scale}px"
 				style:height="{roomH * scale}px"
-				aria-label="The lounge: who is in the call, on the sofa, the cushions or the bike. Click someone to send a heart, or the cat, the lamp, the window or the clock. The record player changes house radio's style for everyone."
+				aria-label="The lounge: who is in the call, on the sofa, the cushions or a trainer. Click someone to send a heart, or the cat, the lamp, the window, the clock, the goldfish or the plant. The record player changes house radio's style for everyone."
 			></canvas>
 			<div role="group" aria-label="in the call">
 				{#each tags as tag (tag.id)}
@@ -406,15 +413,17 @@
 						<button
 							type="button"
 							{@attach contextMenu(() => menuOf(tag.id))}
-							onclick={() => heart(tag.x - 2, tag.head - 7)}
+							onclick={() => heart(tag.x - 2, tag.head - 8)}
 							title={MENU_HINT}
 							aria-label={described(tag.id)}
-							class="bg-surface/85 text-ink absolute flex -translate-x-1/2 items-center gap-1 rounded-full px-1.5 py-0.5 leading-none font-medium whitespace-nowrap {scale >=
-							3
-								? 'text-xs'
-								: 'text-[10px]'} {tileFrame(r.speaking, r.away)} {r.away
-								? 'opacity-70'
-								: ''} {r.you ? 'border-neon/60 border' : ''}"
+							class="font-display pixel-words absolute flex -translate-x-1/2 items-center gap-1 leading-none font-semibold whitespace-nowrap {scale >=
+							4
+								? 'text-sm'
+								: scale === 3
+									? 'text-xs'
+									: 'text-[11px]'} {r.away ? 'text-muted' : 'text-ink'} {r.you
+								? 'decoration-neon underline decoration-2 underline-offset-2'
+								: ''}"
 							style:left="{tag.x * scale}px"
 							style:top="{top + tag.y * scale}px"
 							style:max-width="{Math.max(56, tag.span * scale)}px"
@@ -422,7 +431,7 @@
 							{#if r.away}<Away size={12} class="text-muted shrink-0" />{/if}
 							<span class="min-w-0 truncate">{r.name}</span>
 							{#if r.muted}<MicOff size={12} class="text-muted shrink-0" />{/if}
-							{#if r.riding && tag.id !== crew.rider?.id}<Bike
+							{#if r.riding && !crew.bikes.some((b) => b.rider?.id === tag.id)}<Bike
 									size={12}
 									class="text-muted shrink-0"
 								/>{/if}
@@ -450,7 +459,7 @@
 	</div>
 	{#if onAir}
 		<div
-			class="bg-surface/85 text-muted absolute bottom-2 left-2 flex max-w-[calc(100%-1rem)] flex-wrap items-center gap-x-2 rounded px-2 py-1 text-xs"
+			class="font-display pixel-words text-muted absolute bottom-0 left-0 flex max-w-full flex-wrap items-center gap-x-3 p-2 text-xs"
 		>
 			<button
 				type="button"

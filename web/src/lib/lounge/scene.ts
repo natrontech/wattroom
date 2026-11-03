@@ -1,59 +1,101 @@
 /**
- * The lounge as one frame (ADR-0094): what the picture needs to know, where
- * its clickable things sit, and the order it is painted in.
+ * The lounge as one frame (ADR-0094), seen from above at an angle: the back
+ * wall with the window, the sofa under it, the crew around one rug and
+ * table, a trainer for everyone who rides. What the picture needs to know,
+ * where its clickable things sit, and the order it is painted in.
  */
 import type { Ctx } from '$lib/lounge/pixel';
 import type { RadioPick, Weather } from '$lib/lounge/state';
 import type { Sky } from '$lib/lounge/palette';
-import { drawRoom, drawShade, drawWalls } from '$lib/lounge/draw-room';
+import { drawBack, drawLive, drawShade } from '$lib/lounge/draw-room';
 import { drawWindow } from '$lib/lounge/draw-window';
-import { drawFloor, drawHearts, drawPeople } from '$lib/lounge/draw-people';
+import {
+	drawFloorCrew,
+	drawHearts,
+	drawSofaCrew,
+} from '$lib/lounge/draw-people';
 import { drawCat } from '$lib/lounge/draw-cat';
 import { drawDisco } from '$lib/lounge/draw-disco';
+import { drawLights } from '$lib/lounge/draw-sides';
 import type { Cat, Flyby, Season } from '$lib/lounge/moments';
-import { drawSides } from '$lib/lounge/draw-sides';
 
-/** The room's middle, where everything you can click sits; the rest grows with the page. */
+/**
+ * The stage: the room's middle, where everything you can click sits, at
+ * 16:9 so whole multiples of it are the screen sizes (640 × 360 … 1920 ×
+ * 1080). A bigger page shows more room around it.
+ */
 export const SCENE_W = 320;
 export const SCENE_H = 180;
-/** Floor in front of the middle, for the cushions, before the wall above it grows. */
-const FRONT_MIN = 52;
-/** Past this much wall above the middle the room grows forward instead. */
-const WALL_MAX = 72;
-/** The row a cushion sits on, in the middle's coordinates. */
-export const FLOOR_BASE = 198;
-export const CUSHION_STEP = 24;
-/** The sofa's seats; anyone past them is counted on its arm. */
-export const SEATS = 5;
+/** What of the stage must show: everything clickable and everyone on the sofa is inside it. */
+export const SAFE_W = 296;
+/** The first row of floor; the back wall stands above it. */
+export const FLOOR_Y = 80;
+/** The sofa's seats: their centres, and the row a sitter's seat is on. */
+export const SEAT_XS = [125, 148, 171, 194];
+export const SEAT_BASE = 75;
+export const SEATS = SEAT_XS.length;
+/** A floor spot's grid: rows this far apart, so a name fits under each figure. */
+export const SPOT_DX = 26;
+export const SPOT_DY = 26;
+/** The trainers' columns either side of the rug, and the rows they stand on. */
+export const BIKE_XS = [236, 84] as const;
+export const BIKE_GROUND = 135;
+export const BIKE_DY = 58;
+/** The two trainers that stand in the room whether or not anyone rides. */
+export const BIKES_ALWAYS = 2;
+/** The row the front of a tall room's things stand on: a beanbag, a plant, the arcade. */
+export const FRONT_Y = 248;
 
 /** Someone in the voice channel, as the scene dresses them. */
 export interface Figure {
 	id: string;
 	name: string;
 	skin: string;
+	skinShade: string;
 	hair: string;
+	/** HAIR_STYLES: 0 short, 1 long, 2 a bun, 3 a beanie. */
+	hairStyle: number;
 	shirt: string;
+	shirtShade: string;
+	/** The cushion they sit on when the sofa is full. */
+	cushion: string;
 	speaking: boolean;
+	/** Headphones on: in the call with their mic off. */
+	muted: boolean;
 	/** Their away reason ('' for plain away), or undefined while here. */
 	away?: string;
 	/** A soundboard clip of theirs is playing here. */
 	sounding: boolean;
-	/** Heard, with no live link: drawn see-through until it redials. */
+	/** Heard, with no live link: drawn in one lilac until it redials. */
 	faded: boolean;
 }
 
 export interface Rider extends Figure {
 	watts: number;
-	/** Where the cranks are, in radians: the component turns them at the rider's cadence. */
+	/** Where the cranks are, in radians, turned at the rider's cadence. */
 	crank: number;
 }
 
-/** Everyone in the call, placed (figures.ts). Floor x is in room pixels. */
-export interface Crew {
+/** A place on the floor, in the stage's coordinates: a figure's centre and the row it sits on. */
+export interface Spot {
+	x: number;
+	y: number;
+}
+
+/** A trainer: where it stands, which way it faces, and who rides it. */
+export interface Bike extends Spot {
+	/** 1 faces right, -1 left: always toward the rug. */
+	face: 1 | -1;
 	rider?: Rider;
+}
+
+/** Everyone in the call, placed (figures.ts). */
+export interface Crew {
+	/** Every trainer drawn: the two that always stand there, and one more for each rider past them. */
+	bikes: Bike[];
 	seated: Figure[];
-	floor: { f: Figure; x: number }[];
-	/** In the call with no cushion left: counted at the end of the row. */
+	floor: ({ f: Figure } & Spot)[];
+	/** In the call with no spot left: counted beside the last one. */
 	more: number;
 }
 
@@ -65,7 +107,7 @@ export interface Heart {
 }
 
 export interface SceneInput {
-	/** The whole room in scene pixels, never smaller than the middle and its front. */
+	/** The whole room in scene pixels, never smaller than the stage. */
 	w: number;
 	h: number;
 	/** Seconds on the scene's own clock; motion holds still under reduced motion. */
@@ -102,6 +144,16 @@ export interface SceneInput {
 	waveAt: number;
 	/** House radio's picked style, '' for the mix: the record's label shows it. */
 	radio: RadioPick;
+	/** The goldfish was tapped and is jumping. */
+	fishJump: boolean;
+	/** The plant was touched and is in flower. */
+	bloom: boolean;
+	/** The arcade cabinet was tapped and is playing its race. */
+	arcade: boolean;
+	/** Friday from five: a pizza on the table (moments.ts). */
+	pizza: boolean;
+	/** Past midnight: an owl on the sill. */
+	owl: boolean;
 }
 
 /** How hard things move on this beat: a kick's fall-off, or a slow idle. */
@@ -112,35 +164,45 @@ export function pulseOf(input: SceneInput): number {
 	return Math.exp(-f * 5);
 }
 
-/** Where the middle sits in a room of w × h: centred, with the front's floor below it. */
+/**
+ * Where the stage sits in a room of w × h: centred across, and in a tall
+ * room (a phone) lowered a little, so the wall grows above it as well as
+ * the floor below.
+ */
 export function middleOf(w: number, h: number) {
 	return {
 		ox: Math.floor((w - SCENE_W) / 2),
-		oy: Math.max(0, Math.min(WALL_MAX, h - SCENE_H - FRONT_MIN)),
+		oy: Math.max(0, Math.min(48, Math.floor((h - 210) / 3))),
 	};
+}
+
+/** Whether a room is tall enough for its front row: the beanbag, the plant and the arcade. */
+export function hasFront(w: number, h: number): boolean {
+	return h - middleOf(w, h).oy >= FRONT_Y + 14;
 }
 
 export function drawScene(g: Ctx, input: SceneInput) {
 	const { ox, oy } = middleOf(input.w, input.h);
-	drawWalls(g, input, oy);
-	drawSides(g, input, ox, oy);
+	drawBack(g, input, ox, oy);
 	g.save();
 	g.translate(ox, oy);
-	drawRoom(g, input);
 	drawWindow(g, input);
-	drawPeople(g, input);
+	drawLive(g, input);
+	drawSofaCrew(g, input);
+	drawFloorCrew(g, input);
 	drawCat(g, input);
 	g.restore();
-	drawFloor(g, input, oy);
+	drawLights(g, input);
 	drawHearts(g, input);
 	drawShade(g, input, ox, oy);
-	drawDisco(g, input, oy);
+	drawDisco(g, input);
 }
 
 /** Where a name hangs under someone, and where their head is, in room pixels. */
 export interface Tag {
 	id: string;
 	x: number;
+	/** The name's top row. */
 	y: number;
 	head: number;
 	/** How wide their name may be. */
@@ -149,49 +211,60 @@ export interface Tag {
 
 export function tagsOf(crew: Crew, w: number, h: number): Tag[] {
 	const { ox, oy } = middleOf(w, h);
-	// Every other name a row lower, so neighbours on the sofa get twice the width.
+	// Every other name on the sofa a row lower, so neighbours get twice the width.
 	const tags: Tag[] = crew.seated.map((f, i) => ({
 		id: f.id,
-		x: ox + SEAT_X0 + i * SEAT_STEP + 5,
-		y: oy + 158 + (i % 2) * 9,
-		head: oy + 129,
-		span: SEAT_STEP * 2,
+		x: ox + SEAT_XS[i],
+		y: oy + 89 + (i % 2) * 7,
+		head: oy + SEAT_BASE - 19,
+		span: (SEAT_XS[1] - SEAT_XS[0]) * 2,
 	}));
-	if (crew.rider)
-		tags.push({
-			id: crew.rider.id,
-			x: ox + 190,
-			y: oy + 167,
-			head: oy + 109,
-			span: 48,
-		});
-	for (const { f, x } of crew.floor)
+	for (const { rider, x, y } of crew.bikes)
+		if (rider)
+			tags.push({
+				id: rider.id,
+				x: ox + x,
+				y: oy + y + 4,
+				head: oy + y - 38,
+				span: 40,
+			});
+	for (const { f, x, y } of crew.floor)
 		tags.push({
 			id: f.id,
-			x,
-			y: oy + FLOOR_BASE + 5,
-			head: oy + FLOOR_BASE - 19,
-			span: CUSHION_STEP,
+			x: ox + x,
+			y: oy + y + 4,
+			head: oy + y - 19,
+			span: SPOT_DX,
 		});
 	return tags;
 }
 
-export type Spot = 'lamp' | 'deck' | 'window' | 'clock';
+export type Hotspot =
+	'lamp' | 'deck' | 'window' | 'clock' | 'fish' | 'plant' | 'arcade';
 
-const SPOTS: { spot: Spot; x: number; y: number; w: number; h: number }[] = [
-	{ spot: 'clock', x: 97, y: 24, w: 18, h: 25 },
-	{ spot: 'lamp', x: 96, y: 92, w: 20, h: 28 },
-	{ spot: 'deck', x: 262, y: 100, w: 50, h: 22 },
-	{ spot: 'deck', x: 288, y: 132, w: 24, h: 30 },
-	{ spot: 'window', x: 122, y: 22, w: 136, h: 86 },
+const SPOTS: { spot: Hotspot; x: number; y: number; w: number; h: number }[] = [
+	{ spot: 'clock', x: 216, y: 10, w: 22, h: 38 },
+	{ spot: 'lamp', x: 80, y: 34, w: 18, h: 28 },
+	{ spot: 'fish', x: 268, y: 46, w: 15, h: 15 },
+	{ spot: 'deck', x: 236, y: 38, w: 70, h: 46 },
+	{ spot: 'window', x: 116, y: 8, w: 88, h: 48 },
+	{ spot: 'plant', x: 6, y: 36, w: 24, h: 48 },
 ];
+const ARCADE = {
+	spot: 'arcade' as const,
+	x: 222,
+	y: FRONT_Y - 40,
+	w: 22,
+	h: 40,
+};
 
-/** What a click at the middle's coordinates lands on, first match wins. */
-export function spotAt(x: number, y: number): Spot | undefined {
-	return SPOTS.find(
+/** What a click at the stage's coordinates lands on, first match wins. */
+export function spotAt(
+	x: number,
+	y: number,
+	front = false,
+): Hotspot | undefined {
+	return [...SPOTS, ...(front ? [ARCADE] : [])].find(
 		(s) => x >= s.x && x < s.x + s.w && y >= s.y && y < s.y + s.h,
 	)?.spot;
 }
-
-export const SEAT_X0 = 42;
-export const SEAT_STEP = 18;

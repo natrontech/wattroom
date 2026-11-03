@@ -1,17 +1,35 @@
 /**
- * Who the lounge seats and who it puts on the bike, from the channel's riders:
- * one on the bike, five on the sofa, the rest on cushions along the front.
- * Shirts are the jersey the world would seed for the rider, so a crewmate
- * wears the same colour on the sofa as on the road.
+ * Who the lounge seats and who it puts on a trainer, from the channel's
+ * riders: everyone riding on a trainer, four on the sofa, the rest on
+ * cushions around the rug, nearest the table first. Shirts are the jersey the world would seed for
+ * the rider, so a crewmate wears the same colour on the sofa as on the road.
  */
 import type { LiveRider } from '$lib/channel/types';
-import { HAIRS, LOUNGE, SKINS } from '$lib/lounge/palette';
 import {
-	CUSHION_STEP,
+	CUSHIONS,
+	HAIRS,
+	HAIR_STYLES,
+	LOUNGE,
+	SKINS,
+	shadeOf,
+} from '$lib/lounge/palette';
+import {
+	BIKES_ALWAYS,
+	BIKE_DY,
+	BIKE_GROUND,
+	BIKE_XS,
+	FRONT_Y,
+	SCENE_W,
 	SEATS,
+	hasFront,
+	SPOT_DX,
+	SPOT_DY,
+	middleOf,
+	type Bike,
 	type Crew,
 	type Figure,
 	type Rider,
+	type Spot,
 } from '$lib/lounge/scene';
 import { fnv, hexOf, seededLoadout } from '$lib/world/loadout';
 
@@ -20,13 +38,20 @@ import { fnv, hexOf, seededLoadout } from '$lib/world/loadout';
 function dress(r: LiveRider): Figure {
 	const seed = fnv(r.id);
 	const look = seededLoadout(r.id);
+	const skin = SKINS[seed % SKINS.length];
+	const shirt = hexOf.get(String(look.colours?.jerseyA)) ?? LOUNGE.shirt;
 	return {
 		id: r.id,
 		name: r.name,
-		skin: SKINS[seed % SKINS.length],
+		skin,
+		skinShade: shadeOf(skin),
 		hair: HAIRS[(seed >>> 8) % HAIRS.length],
-		shirt: hexOf.get(String(look.colours?.jerseyA)) ?? LOUNGE.shirt,
+		hairStyle: (seed >>> 12) % HAIR_STYLES,
+		shirt,
+		shirtShade: shadeOf(shirt),
+		cushion: LOUNGE[CUSHIONS[(seed >>> 16) % CUSHIONS.length]],
 		speaking: r.speaking,
+		muted: !!r.muted,
 		away: r.away ? (r.awayReason ?? '') : undefined,
 		sounding: !!r.sounding,
 		faded: !!r.linkLost,
@@ -37,43 +62,103 @@ function dress(r: LiveRider): Figure {
 const present = (riders: LiveRider[]) =>
 	riders.some((r) => r.inVoice) ? riders.filter((r) => r.inVoice) : riders;
 
-/** The one on the bike: you when you ride, else the first rider who pedals. */
-export function riderOf(riders: LiveRider[], crank: number): Rider | undefined {
-	const on =
-		riders.find((r) => r.riding && r.you && !r.away) ??
-		riders.find((r) => r.riding && !r.away);
-	return on && { ...dress(on), watts: on.stale ? 0 : on.watts, crank };
+/** Everyone riding, you first: each gets a trainer. */
+export function ridersOf(riders: LiveRider[], t: number): Rider[] {
+	return present(riders)
+		.filter((r) => r.riding && !r.away)
+		.sort((a, b) => Number(!!b.you) - Number(!!a.you))
+		.map((r) => ({
+			...dress(r),
+			watts: r.stale ? 0 : r.watts,
+			crank: ((t * (r.cadence || 80)) / 60) * Math.PI * 2,
+		}));
 }
 
-/** Everyone else in the call, on the sofa in the channel's order. */
-export function seatedOf(riders: LiveRider[], onBike?: string): Figure[] {
+/** Everyone else in the call, in the channel's order. */
+export function seatedOf(riders: LiveRider[], onBikes: Set<string>): Figure[] {
 	return present(riders)
-		.filter((r) => r.id !== onBike)
+		.filter((r) => !onBikes.has(r.id))
 		.map(dress);
 }
 
-/** Cushion centres along the front of a room w wide, the middle's first and outward. */
-export function cushionXs(w: number): number[] {
-	const mid = Math.floor(w / 2);
-	const xs: number[] = [];
-	for (let k = 0; ; k++) {
-		const off = Math.ceil(k / 2) * CUSHION_STEP * (k % 2 ? 1 : -1);
-		if (Math.abs(off) > mid - 12) return xs;
-		xs.push(mid + off);
-	}
+/** Where the trainers stand in a room w × h: both sides of the rug, row under row. */
+export function bikeSlots(w: number, h: number): Bike[] {
+	const { oy } = middleOf(w, h);
+	const slots: Bike[] = [];
+	for (let y = BIKE_GROUND; y + oy + 8 <= h; y += BIKE_DY)
+		for (const x of BIKE_XS) slots.push({ x, y, face: x > 160 ? -1 : 1 });
+	return slots;
 }
 
-/** Everyone in the call, placed: anyone past the last cushion is counted, not drawn. */
-export function crewOf(riders: LiveRider[], crank: number, w: number): Crew {
-	const rider = riderOf(riders, crank);
-	const rest = seatedOf(riders, rider?.id);
-	const xs = cushionXs(w);
+/** Where nobody may sit: in front of the sofa, at the table, on the bike. */
+function blocked({ x, y }: Spot, front: boolean): boolean {
+	if (y < 112 && x > 98 && x < 222) return true;
+	if (y < 142 && Math.abs(x - 160) < 36) return true;
+	if (BIKE_XS.some((b) => Math.abs(x - b) < 20)) return true;
+	return front && y > FRONT_Y - 30 && y < FRONT_Y + 14;
+}
+
+/** How far a spot is from the table, wider than deep, as the rug is. */
+const fromTable = ({ x, y }: Spot) => ((x - 160) / 1.6) ** 2 + (y - 128) ** 2;
+
+let cached: { key: string; spots: Spot[] } | undefined;
+
+/**
+ * Every place on the floor of a room w × h, in the stage's coordinates,
+ * nearest the table first: a staggered grid a name's height apart, inside
+ * the room and clear of the furniture.
+ */
+export function floorSpots(w: number, h: number): Spot[] {
+	const key = `${w}x${h}`;
+	if (cached?.key === key) return cached.spots;
+	const { ox, oy } = middleOf(w, h);
+	const spots: Spot[] = [];
+	for (let row = 0; 104 + row * SPOT_DY + oy <= h - 10; row++) {
+		const y = 104 + row * SPOT_DY;
+		for (
+			let x = 160 + (row % 2) * (SPOT_DX / 2);
+			x + ox <= w - 12;
+			x += SPOT_DX
+		)
+			spots.push({ x, y });
+		for (
+			let x = 160 + (row % 2) * (SPOT_DX / 2) - SPOT_DX;
+			x + ox >= 12;
+			x -= SPOT_DX
+		)
+			spots.push({ x, y });
+	}
+	const front = hasFront(w, h);
+	const open = spots
+		.filter((p) => !blocked(p, front))
+		.sort((a, b) => fromTable(a) - fromTable(b));
+	cached = { key, spots: open };
+	return open;
+}
+
+/**
+ * Everyone in the call, placed: each rider on a trainer, four on the sofa,
+ * the rest round the rug. Anyone past the last spot is counted, not drawn.
+ */
+export function crewOf(
+	riders: LiveRider[],
+	t: number,
+	w: number,
+	h: number,
+): Crew {
+	const slots = bikeSlots(Math.max(SCENE_W, w), h);
+	const onBikes = ridersOf(riders, t).slice(0, slots.length);
+	const bikes = slots
+		.slice(0, Math.max(BIKES_ALWAYS, onBikes.length))
+		.map((slot, i) => ({ ...slot, rider: onBikes[i] }));
+	const rest = seatedOf(riders, new Set(onBikes.map((r) => r.id)));
+	const spots = floorSpots(Math.max(SCENE_W, w), h);
 	return {
-		rider,
+		bikes,
 		seated: rest.slice(0, SEATS),
 		floor: rest
-			.slice(SEATS, SEATS + xs.length)
-			.map((f, i) => ({ f, x: xs[i] })),
-		more: Math.max(0, rest.length - SEATS - xs.length),
+			.slice(SEATS, SEATS + spots.length)
+			.map((f, i) => ({ f, ...spots[i] })),
+		more: Math.max(0, rest.length - SEATS - spots.length),
 	};
 }

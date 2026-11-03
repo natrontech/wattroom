@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
 	CAT_SLOT_SEC,
 	CAT_SPOTS,
+	owlHours,
+	pizzaNight,
 	FLYBY_SLOT_SEC,
 	catAt,
 	cuckooing,
@@ -68,5 +70,13 @@ describe('the lounge moments every screen shares', () => {
 		expect(seasonOf(new Date(2026, 10, 2))).toBe('');
 		expect(seasonOf(new Date(2026, 11, 24))).toBe('winter');
 		expect(seasonOf(new Date(2026, 11, 27))).toBe('');
+	});
+
+	it('serves pizza on Friday evenings and keeps the owl to the small hours', () => {
+		expect(pizzaNight(new Date(2026, 10, 6, 18))).toBe(true);
+		expect(pizzaNight(new Date(2026, 10, 6, 12))).toBe(false);
+		expect(pizzaNight(new Date(2026, 10, 5, 18))).toBe(false);
+		expect(owlHours(2)).toBe(true);
+		expect(owlHours(22)).toBe(false);
 	});
 });

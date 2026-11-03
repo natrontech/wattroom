@@ -485,6 +485,20 @@
 	);
 }
 
+/*
+ * Words over a pixel surface (the lounge): ink with a hard one-pixel paper
+ * edge on all four sides, so a name reads on any part of the picture with no
+ * plate behind it. No blur, so it never glows. Icons inside take the edge
+ * too, which a text-shadow would not give them. Static elements only: a
+ * filter on an ancestor of something that moves redraws it every frame.
+ */
+@utility pixel-words {
+	filter: drop-shadow(1px 0 0 var(--color-paper))
+		drop-shadow(-1px 0 0 var(--color-paper))
+		drop-shadow(0 1px 0 var(--color-paper))
+		drop-shadow(0 -1px 0 var(--color-paper));
+}
+
 /* Perspective-free horizon grid, faded out at the top. Backdrop only — never behind text. */
 @utility bg-gridlines {
 	background-image:

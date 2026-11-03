@@ -10,10 +10,11 @@ import { hash3 } from '$lib/lounge/hash';
 
 const SPOTS = 18;
 
-export function drawDisco(g: Ctx, s: SceneInput, oy: number) {
+export function drawDisco(g: Ctx, s: SceneInput) {
 	if (!s.disco) return;
 	const cx = Math.floor(s.w / 2);
 	rect(g, cx, 0, 1, 12, C.cable);
+	disc(g, cx, 16, 5, C.ink);
 	disc(g, cx, 16, 4, C.lilac);
 	// Facets catch the light in turn.
 	const turn = s.still ? 0 : Math.floor(s.t * 3);
@@ -22,15 +23,12 @@ export function drawDisco(g: Ctx, s: SceneInput, oy: number) {
 			if (fx * fx + fy * fy <= 13 && (fx + fy + turn) % 4 === 0)
 				dot(g, cx + fx, 16 + fy, C.paper);
 	const hues = [C.tealLight, C.heart, C.bulb, C.paper];
-	const tall = oy + 150;
-	g.globalAlpha = 0.7;
 	for (let i = 0; i < SPOTS; i++) {
 		const drift = s.still
 			? 0
 			: s.t * (4 + hash3(i, 3, 5) * 5) * (i % 2 ? 1 : -1);
 		const x = (((hash3(i, 1, 5) * s.w + drift) % s.w) + s.w) % s.w;
-		const y = 24 + hash3(i, 2, 5) * (tall - 24);
+		const y = 24 + hash3(i, 2, 5) * (s.h - 32);
 		rect(g, x, y, 2, 2, hues[i % hues.length]);
 	}
-	g.globalAlpha = 1;
 }
