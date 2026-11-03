@@ -49,7 +49,7 @@ async function load() {
 	loaded = true;
 	const arrivals = crewArrivals(crews, seen, {
 		here: location.pathname,
-		connected: channelConnection.current?.address.channel || undefined,
+		connected: channelConnection.call?.address.channel || undefined,
 		me: account.me?.id,
 		looking: !away(),
 	});

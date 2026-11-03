@@ -20,6 +20,9 @@ const connection = vi.hoisted(() => ({
 			cheer?: (emoji: string, to?: string) => void;
 		};
 	},
+	get call() {
+		return this.current;
+	},
 }));
 vi.mock('$lib/channel/connection.svelte', () => ({
 	channelConnection: connection,

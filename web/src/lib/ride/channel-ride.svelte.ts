@@ -75,6 +75,8 @@ export function holdChannelRide(deps: {
 	});
 
 	return {
+		/** The socket the ride rides on: the connection that holds it. */
+		live,
 		ride,
 		freeRide: free,
 		ownRide: own,
@@ -115,8 +117,12 @@ export const channelRide = {
 		return current;
 	},
 	hold(deps: Parameters<typeof holdChannelRide>[0]): ChannelRide {
+		// A crew session taking the ride from the call takes its trainer too,
+		// still connected (docs/SESSIONS.md): the rider never pairs again.
+		const trainer = current?.ride.handOff() ?? null;
 		current?.end();
 		current = holdChannelRide(deps);
+		if (trainer) void current.ride.ride(trainer);
 		return current;
 	},
 	/** Leaving the call ends its ride, saved, until the audience follows the rider. */

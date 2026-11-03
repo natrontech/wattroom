@@ -31,7 +31,7 @@
 
 	let { pathname }: { pathname: string } = $props();
 
-	const conn = $derived(channelConnection.current);
+	const conn = $derived(channelConnection.call);
 	const onPlace = $derived(channelConnection.onPlacePath(pathname));
 	// The heading names the place it means (#1017). "with you" alone was the
 	// clearest job in the sidebar with the weakest label: three sections list

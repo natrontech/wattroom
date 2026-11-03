@@ -63,7 +63,7 @@ function riderVolume(id: string, name: string): MenuSlider {
 		format: (percent) => `${percent}%`,
 		onInput: (percent) => {
 			const gain = percent / 100;
-			const av = channelConnection.current?.av;
+			const av = channelConnection.call?.av;
 			if (av) av.setRiderGain(id, gain, name);
 			else mixer.setRiderGain(id, gain, name);
 		},

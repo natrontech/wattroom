@@ -1,4 +1,4 @@
-import { channelAddress } from '$lib/channel/address';
+import { channelAddress, crewSessionAddress } from '$lib/channel/address';
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { flushSync, tick } from 'svelte';
@@ -59,7 +59,9 @@ const fakeLive = {
 	releaseVoice() {},
 };
 vi.mock('$lib/channel/live.svelte', () => ({
-	createChannelLive: () => fakeLive,
+	// One socket per place, sharing the fake's tick and its records: the
+	// device's ride is told apart by its socket (docs/SESSIONS.md).
+	createChannelLive: () => Object.create(fakeLive),
 }));
 vi.mock('livekit-client', () => ({
 	Room: class {
@@ -82,6 +84,7 @@ import { listening } from '$lib/channel/listening.svelte';
 import { account } from '$lib/account.svelte';
 import { toasts } from '$lib/toast.svelte';
 import { roadHash } from '$lib/road/road';
+import { channelRide } from '$lib/ride/channel-ride.svelte';
 
 // The channel layouts' load does this before the shell joins (#1514).
 await prepareChannelAv();
@@ -187,6 +190,36 @@ describe('channelConnection', () => {
 		expect(listening.out).toBe(true);
 		channelConnection.leave();
 		expect(listening.out).toBe(false);
+	});
+
+	it('rides a crew session beside the call, and hands the ride back (docs/SESSIONS.md)', async () => {
+		const call = channelConnection.join(
+			channelAddress('c', 'lounge', 'Lounge'),
+		);
+		const trainer = new FakeTrainer();
+		await call.ride.ride(trainer);
+		const session = channelConnection.join(
+			crewSessionAddress('c', 's1', 'Tempo'),
+		);
+		// The session takes the call's trainer, still connected.
+		await vi.waitFor(() => expect(session.ride.trainer).toBe(trainer));
+		expect(trainer.connects).toBe(1);
+		// The call stays; the session is where the ride is, and holds it.
+		expect(channelConnection.call).toBe(call);
+		expect(channelConnection.current).toBe(session);
+		expect(channelRide.current?.live).toBe(session.live);
+
+		channelConnection.leave();
+		// Leaving the session ends its ride and keeps the call, which holds
+		// a ride of its own again, on the same trainer, never paired again.
+		expect(trainer.disconnected).toBe(false);
+		await vi.waitFor(() =>
+			expect(channelConnection.call?.ride.trainer).toBe(trainer),
+		);
+		expect(channelConnection.session).toBeNull();
+		expect(channelConnection.call?.address.key).toBe(call.address.key);
+		expect(channelConnection.call?.live).toBe(call.live);
+		expect(channelRide.current?.live).toBe(call.live);
 	});
 
 	it('releases the trainer when you leave, not when a page unmounts', async () => {

@@ -28,6 +28,9 @@ vi.mock('$lib/channel/connection.svelte', () => ({
 		get current() {
 			return connected ? { address: { channel: connected } } : null;
 		},
+		get call() {
+			return this.current;
+		},
 	},
 }));
 // The REAL announce runs here, dedup and all — only its three exits are

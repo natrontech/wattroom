@@ -167,7 +167,7 @@
 	// navigation (#173), so browsing the shelf does not leave it. Queuing
 	// anywhere else would need a channel picker, and a rider in one voice
 	// channel wants that one.
-	const connection = $derived(channelConnection.current);
+	const connection = $derived(channelConnection.call);
 	const channelName = $derived(connection?.address.name ?? '');
 
 	// Save to a playlist (#1427): the rider's own lists always, the crew's

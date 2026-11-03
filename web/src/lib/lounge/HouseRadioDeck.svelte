@@ -13,7 +13,7 @@
 	import { radioHeard } from '$lib/lounge/radio-heard.svelte';
 	import { radioPickOf, weatherOf } from '$lib/lounge/state';
 
-	const conn = $derived(channelConnection.current);
+	const conn = $derived(channelConnection.call);
 	const deck = $derived(conn?.live.tick?.jukebox);
 	const station = $derived(conn?.address.crew ?? '');
 	const on = $derived(

@@ -91,7 +91,12 @@ type Connection = {
 	dispose: () => void;
 };
 
-let current = $state<Connection | null>(null);
+// The call you are in, and the crew session you ride (docs/SESSIONS.md):
+// either can be held without the other.
+// Raw: a connection is replaced whole, never written through, and the ride
+// is told apart by the identity of its socket.
+let current = $state.raw<Connection | null>(null);
+let session = $state.raw<Connection | null>(null);
 // How many ChannelStatus a page has mounted for the live place (#2986): the
 // shell's and a session's layers each register theirs. The frame draws one
 // exactly when a held ride has none — which a path cannot say, because a
@@ -114,19 +119,32 @@ export async function prepareChannelAv(): Promise<void> {
 	({ createChannelAv } = await import('$lib/channel/av.svelte'));
 }
 
-function connect(address: PlaceAddress): Connection {
+/**
+ * `reuse` keeps a call's socket and voice while its ride is built again: a
+ * crew session that held the device's ride hands it back (docs/SESSIONS.md).
+ */
+function connect(
+	address: PlaceAddress,
+	reuse?: Pick<Connection, 'live' | 'av'>,
+): Connection {
 	if (!createChannelAv) {
 		throw new Error(
 			'the channel AV is not loaded — the channel layout prepares it before the shell joins',
 		);
 	}
-	const live = createChannelLive(address);
+	const live = reuse?.live ?? createChannelLive(address);
 	// One rider, one voice (ADR-0089): the hub says which screen carries it.
-	const av = createChannelAv(address, {
-		claim: (take) => live.claimVoice(take),
-		timedOut: () => live.voiceClaimTimedOut(),
-		release: () => live.releaseVoice(),
-	});
+	const av =
+		reuse?.av ??
+		createChannelAv(address, {
+			claim: (take) => live.claimVoice(take),
+			timedOut: () => live.voiceClaimTimedOut(),
+			release: () => live.releaseVoice(),
+		});
+	// The device's one ride is held by one connection (ADR-0093): a crew
+	// session's while you ride one, else the call's. The other reads it and
+	// leaves the trainer, its claim and its keys alone.
+	const holds = () => channelRide.current?.live === live;
 	// Assigned inside the root below, which runs synchronously.
 	let profile!: ReturnType<typeof createProfileStore>;
 	let recording!: ReturnType<typeof createRecording>;
@@ -194,15 +212,20 @@ function connect(address: PlaceAddress): Connection {
 		// The trainer, the free ride and your own workout are the device's one
 		// ride (ADR-0093): `theRide.channel` holds them, so a page that draws them is
 		// a view and never their owner.
-		({ ride, freeRide, ownRide } = channelRide.hold({
-			live,
-			profile,
-			recording,
-			shared: () => shared,
-			segments: () => parsed.segments,
-			road: () => place,
-			joined,
-		}));
+		// A crew session always takes the ride; a call takes it only when no
+		// session holds one.
+		({ ride, freeRide, ownRide } =
+			address.avToken && channelRide.current
+				? channelRide.current
+				: channelRide.hold({
+						live,
+						profile,
+						recording,
+						shared: () => shared,
+						segments: () => parsed.segments,
+						road: () => place,
+						joined,
+					}));
 		// The lounge is where you last rode (#3274): noted on this device when
 		// the roster first says you are riding here — a free ride or a session.
 		let notedRiding = false;
@@ -210,7 +233,8 @@ function connect(address: PlaceAddress): Connection {
 			const riding = !!live.tick?.roster.find(
 				(r) => r.id === account.me?.id && r.riding,
 			);
-			if (riding && !notedRiding) rememberRodeIn(address.crew, address.channel);
+			if (riding && !notedRiding && address.channel)
+				rememberRodeIn(address.crew, address.channel);
 			notedRiding = riding;
 		});
 		// A free ride on a road says which road (#3117): channel-mates on the
@@ -240,7 +264,9 @@ function connect(address: PlaceAddress): Connection {
 		// would hand the rider's own trainer back to their phone.
 		$effect(() => {
 			// Your own workout borrows the trainer and keeps the claim (#2329).
-			live.claimSensors(sensorClaim(ride.trainer !== null || ownRide.riding));
+			live.claimSensors(
+				sensorClaim(holds() && (ride.trainer !== null || ownRide.riding)),
+			);
 		});
 
 		// Away is per rider in the hub (#706), so every one of that rider's
@@ -335,7 +361,7 @@ function connect(address: PlaceAddress): Connection {
 		// Easier / Harder from the keys and any clicker, on every page while
 		// this channel's ride shifts (#3329) — a clicker cannot see the page.
 		shift = createRideShift(ride);
-		$effect(() => (ride.shifting ? bindShifters(shift) : undefined));
+		$effect(() => (ride.shifting && holds() ? bindShifters(shift) : undefined));
 
 		// Your own workout shifts on its riding screen's shifter, which this
 		// connection cannot reach; the phone's taps get one of their own (#3333).
@@ -475,7 +501,7 @@ function connect(address: PlaceAddress): Connection {
 			join: () => av.join({ mic: av.micBeforeDrop }),
 			status: () => av.status,
 			signedOut: () => av.error?.signIn === true,
-			stillHere: () => channelConnection.current?.address.key === address.key,
+			stillHere: () => channelConnection.call?.address.key === address.key,
 		});
 		const onOnline = () => recovery.online();
 		let seenDrops = 0;
@@ -541,17 +567,25 @@ function connect(address: PlaceAddress): Connection {
 }
 
 export const channelConnection = {
+	/** The place the ride is: the crew session you ride, else your call. */
 	get current() {
+		return session ?? current;
+	},
+	/** The voice channel you are in: the call, the deck and away. */
+	get call() {
 		return current;
+	},
+	/** The crew session you ride, beside the call or without one. */
+	get session() {
+		return session;
 	},
 	/**
 	 * Whether `pathname` is one of the live place's own pages — its Lounge,
 	 * its Training, the session running in it (`onPlacePath`, #2460).
 	 */
 	onPlacePath(pathname: string): boolean {
-		return (
-			!!current &&
-			onPlacePath(pathname, current.address, current.live.tick?.state.id)
+		return [session, current].some(
+			(c) => !!c && onPlacePath(pathname, c.address, c.live.tick?.state.id),
 		);
 	},
 	/**
@@ -561,11 +595,10 @@ export const channelConnection = {
 	 * ride-critical error is persistent status wherever the rider is.
 	 */
 	rideStatusUnshown(): boolean {
+		const place = session ?? current;
 		return (
-			!!current &&
-			(current.freeRide.recording ||
-				current.ownRide.riding ||
-				current.joined()) &&
+			!!place &&
+			(place.freeRide.recording || place.ownRide.riding || place.joined()) &&
 			statusShown === 0
 		);
 	},
@@ -578,10 +611,51 @@ export const channelConnection = {
 	},
 	/** Idempotent per place; switching places leaves the old one first. */
 	join(address: PlaceAddress) {
+		// A crew session has no call: it takes the session's slot and leaves
+		// the call where it is (docs/SESSIONS.md).
+		if (!address.avToken) {
+			if (session?.address.key === address.key) return session;
+			this.leaveSession();
+			session = connect(address);
+			return session;
+		}
 		if (current?.address.key === address.key) return current;
-		this.leave();
+		this.leaveCall();
 		current = connect(address);
 		return current;
+	},
+	/**
+	 * The now bar's Leave: the crew session first, with the call kept; the
+	 * call when there is no session. Signed out leaves both.
+	 */
+	leave(reason: 'rider' | 'signedOut' = 'rider') {
+		if (session) {
+			this.leaveSession();
+			if (reason === 'rider') return;
+		}
+		this.leaveCall(reason);
+	},
+	/**
+	 * Leaving a crew session ends its ride, saved, and hands the device's ride
+	 * back to the call, whose ride is built again on its own socket.
+	 */
+	leaveSession() {
+		if (!session) return;
+		// The trainer goes back to the call's ride, still connected.
+		const held = channelRide.current?.live === session.live;
+		const trainer =
+			held && current ? channelRide.current!.ride.handOff() : null;
+		if (held) channelRide.leave();
+		session.dispose();
+		session.live.close();
+		session.av.leave();
+		session = null;
+		if (current && !channelRide.current) {
+			const { address, live, av } = current;
+			current.dispose();
+			current = connect(address, { live, av });
+			if (trainer) void current.ride.ride(trainer);
+		}
 	},
 	/**
 	 * Ends the ride, closes the socket, hangs up voice. `'rider'` is the
@@ -592,15 +666,16 @@ export const channelConnection = {
 	 * nobody noticing. There is no dashboard left to hold a persistent
 	 * status, so the toast carries the way back in.
 	 */
-	leave(reason: 'rider' | 'signedOut' = 'rider') {
+	leaveCall(reason: 'rider' | 'signedOut' = 'rider') {
 		if (!current) return;
 		const { address } = current;
 		const name = address.name;
 		// A free ride nobody ended is saved on the way out — the rider left
 		// the channel, not the ride. Its answer arrives after the page has gone.
 		// Until the audience follows the rider (ADR-0093 point 6), the call
-		// is the channel ride's: leaving it ends that ride.
-		channelRide.leave();
+		// is the channel ride's: leaving it ends that ride. A crew session's
+		// ride is not the call's to end.
+		if (channelRide.current?.live === current.live) channelRide.leave();
 		current.dispose();
 		current.live.close();
 		current.av.leave();

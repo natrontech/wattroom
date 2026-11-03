@@ -513,13 +513,15 @@
 			     scroll: your screen being live is ride-critical status, and the
 			     one AV state that can leak a private tab (#563, errors.md). -->
 			{#if channelConnection.current}
-				{@const av = channelConnection.current.av}
+				<!-- The call's: a crew session has none to share (docs/SESSIONS.md). -->
+				{@const share = channelConnection.call ?? channelConnection.current}
+				{@const av = share.av}
 				<!-- Loaded once a voice channel is joined (#1514), like the two docks
 				     below: it draws nothing before one, and its chunk has no
 				     business in the closure every route pays for. -->
 				{#await import('$lib/channel/ScreenShareNotice.svelte') then { default: ScreenShareNotice }}
 					<ScreenShareNotice
-						place={channelConnection.current.address}
+						place={share.address}
 						inside={channelConnection.onPlacePath(page.url.pathname)}
 						sharing={av.sharing}
 						sharingAudio={av.sharingAudio}

@@ -7,7 +7,8 @@
 	import { onDestroy, onMount, untrack } from 'svelte';
 	import { useChannel } from '$lib/channel/context';
 	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { ridePath } from '$lib/channel/address';
+	import { ridePath, sessionPath } from '$lib/channel/address';
+	import { crewLive } from '$lib/nav/crew-live.svelte';
 	import { liveSessionId } from '$lib/channel/tick-session';
 	import Banner from '$lib/components/Banner.svelte';
 	import HrShare from '$lib/channel/HrShare.svelte';
@@ -39,6 +40,14 @@
 		channel.phase !== 'lounge'
 			? liveSessionId(conn?.live.tick?.state)
 			: undefined,
+	);
+	// The crew's own session (docs/SESSIONS.md), when none runs here: the
+	// way in from the call, which joining keeps.
+	const crewSession = $derived(
+		session
+			? undefined
+			: crewLive.crews.find((c) => c.id === channel.address.crew)
+					?.sessions?.[0],
 	);
 	// Riding the session instead: the trainer follows it, so the controls
 	// here would set nothing.
@@ -163,6 +172,21 @@
 			</p>
 			<a
 				href={ridePath(channel.address, session)}
+				class="btn btn-accent btn-ride ml-auto"
+				><Radio size={15} /> Join the ride</a
+			>
+		</div>
+	{:else if crewSession}
+		<div
+			class="border-muted/20 flex flex-wrap items-center gap-3 rounded-lg border p-3"
+		>
+			<p class="text-sm">
+				{crewSession.coachName || 'Someone'} is running
+				<strong>{crewSession.workout}</strong> for the crew. Joining keeps your call
+				and your trainer, and saves this ride first.
+			</p>
+			<a
+				href={sessionPath(channel.address.crew, crewSession.id)}
 				class="btn btn-accent btn-ride ml-auto"
 				><Radio size={15} /> Join the ride</a
 			>

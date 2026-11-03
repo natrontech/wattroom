@@ -96,7 +96,9 @@ test('two riders share a session: crew strip, execution bars, sprint scoreboard'
 	await a.getByRole('button', { name: 'Start Recovery Spin' }).click();
 
 	// A session leaves everyone else's trainer alone until they join
-	// (ADR-0059): B, free-riding on the Training place, takes the way in.
+	// (ADR-0059). It is the crew's, not the voice channel's
+	// (docs/SESSIONS.md): B, free-riding in the call, takes the way in its
+	// Training place offers, and the trainer comes along still connected.
 	await b
 		.getByRole('link', { name: 'Join the ride' })
 		.click({ timeout: COUNTDOWN_MS + SETTLE_MS });

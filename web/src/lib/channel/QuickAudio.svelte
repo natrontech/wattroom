@@ -33,7 +33,7 @@
 	// the mic and the camera it belongs with.
 	let { compact = false }: { compact?: boolean } = $props();
 
-	const av = $derived(channelConnection.current?.av);
+	const av = $derived(channelConnection.call?.av);
 	// The mic's menu opens this too (#914), so the flag lives outside.
 	const open = $derived(soundPanel.open);
 	const close = () => (soundPanel.open = false);

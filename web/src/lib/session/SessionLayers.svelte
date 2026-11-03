@@ -49,6 +49,7 @@
 	import { takeGameDoor, takePickerDoor } from '$lib/session/doors';
 	import { page } from '$app/state';
 	import { sessionPath } from '$lib/channel/address';
+	import { startCrewSession } from '$lib/session/crew-session';
 	import { liveSessionId } from '$lib/channel/tick-session';
 	import { planDue, startCrewPlan, startedPath } from '$lib/crew-schedule';
 	import { device } from '$lib/device.svelte';
@@ -183,6 +184,16 @@
 			});
 			return;
 		}
+		// A session is the crew's, never the call's (docs/SESSIONS.md): it
+		// opens on its own, and this tab goes to it. The call stays.
+		if (channel.address.channel) {
+			layers.setup.open = false;
+			void startCrewSession(channel.address.crew, picked, route).then((res) => {
+				if (!res.ok) toasts.push(res.error.message, { tone: 'error' });
+				else void goto(sessionPath(channel.address.crew, res.data.id), GO);
+			});
+			return;
+		}
 		const flat = flatten(picked);
 		const total = flat.reduce(
 			(t, s) => Math.max(t, s.startSeconds + s.seconds),
@@ -277,7 +288,7 @@
 		shelfError={layers.setup.custom.error}
 		onRetryShelf={() => void layers.setup.custom.retry()}
 		intent={layers.setup.intent}
-		channelName={placeName}
+		channelName={crewName ?? placeName}
 		ftp={connection.profile.current.ftp}
 		gameRunning={!!live.tick?.game}
 		sessionOpen={phase !== 'lounge'}

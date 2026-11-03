@@ -8,6 +8,6 @@ import { channelConnection } from './connection.svelte';
  * socket stays, so the HUD and the ride carry on as they do behind another app.
  */
 export function hangUpOnHide(visible: boolean): void {
-	const av = channelConnection.current?.av;
+	const av = channelConnection.call?.av;
 	if (!visible && av && av.status !== 'off') av.leave();
 }

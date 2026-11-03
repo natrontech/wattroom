@@ -296,7 +296,7 @@
 		/>
 	{/snippet}
 	{#snippet nowPlaying()}
-		{@const current = channelConnection.current?.live.tick?.jukebox?.current}
+		{@const current = channelConnection.call?.live.tick?.jukebox?.current}
 		{#if current}
 			<!-- Directly under the player, at its width (TARGETS ride-session-road 3). -->
 			<p class="truncate py-1 text-2xl leading-7">

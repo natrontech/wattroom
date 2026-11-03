@@ -16,5 +16,5 @@ export const soundPanel = $state({ open: false });
  */
 export function openSoundPanel(): void {
 	soundPanel.open = true;
-	void channelConnection.current?.av.refreshDevices();
+	void channelConnection.call?.av.refreshDevices();
 }

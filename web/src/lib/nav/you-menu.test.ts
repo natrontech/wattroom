@@ -7,7 +7,12 @@ import { statusEditor } from '$lib/status-line/editor.svelte';
 
 // The voice channel decides whether a voice can dip anything (#904), and
 // whether this browser can move the voice to another output (#920).
-const connection = vi.hoisted(() => ({ current: null as unknown }));
+const connection = vi.hoisted(() => ({
+	current: null as unknown,
+	get call() {
+		return this.current;
+	},
+}));
 vi.mock('$lib/channel/connection.svelte', () => ({
 	channelConnection: connection,
 }));
