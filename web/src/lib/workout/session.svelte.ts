@@ -379,6 +379,9 @@ export function createRideSession({
 		get gear() {
 			return actuator.gear;
 		},
+		get sim() {
+			return actuator.sim;
+		},
 		/** Jump to the start of the next block. */
 		skip() {
 			if (!clock.skip()) return;

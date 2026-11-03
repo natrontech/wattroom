@@ -101,7 +101,16 @@ func tabOf(c *client) string {
 // gearState forwards the trainer-holding tab's gear to the rider's other
 // screens (#3217). Only the holder may speak it, so a phone cannot put a gear
 // on the desktop's remote. Quiet when refused: the holder sends it on its own.
+//
+// A holder with no ride running says Idle after a shift tap (#3334), and the
+// phone hears why in the hub's words, never the holder's.
 func (h *Hub) gearState(c *client, rm *channelState, rider protocol.Rider, g protocol.GearState) {
+	if g.Idle {
+		h.fromHolder(c, rm, rider, "gear", protocol.ServerMessage{
+			Error: &protocol.Error{Code: "remote_conflict", Message: "Start riding to shift from here."},
+		})
+		return
+	}
 	if g.Label == "" || utf8.RuneCountInString(g.Label) > protocol.MaxGearLabel {
 		return
 	}

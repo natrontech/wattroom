@@ -435,6 +435,9 @@ export function createRide(deps: RideDeps) {
 		get gear() {
 			return actuator.gear;
 		},
+		get sim() {
+			return actuator.sim;
+		},
 		get gearResetAt() {
 			return gearResetAt;
 		},

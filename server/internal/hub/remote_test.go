@@ -138,6 +138,21 @@ func TestGearStateReachesOnlyTheRidersOtherScreens(t *testing.T) {
 	}
 }
 
+func TestIdleHolderAnswersThePhoneWithAConflict(t *testing.T) {
+	r := newRemoteRig(t)
+	r.h.gearState(r.desktop, r.rm, r.desktop.rider, protocol.GearState{Idle: true})
+	got := heard(r.phone)
+	if got == nil || got.Error == nil || got.Error.Code != "remote_conflict" ||
+		got.Error.Message != "Start riding to shift from here." || got.Gear != nil {
+		t.Fatalf("the phone heard %+v, want remote_conflict saying to start riding", got)
+	}
+	for name, c := range map[string]*client{"holder": r.desktop, "other rider": r.you} {
+		if got := heard(c); got != nil {
+			t.Errorf("%s heard %+v, want nothing", name, got)
+		}
+	}
+}
+
 func TestPauseStateReachesOnlyTheRidersOtherScreens(t *testing.T) {
 	r := newRemoteRig(t)
 	p := protocol.PauseState{Pausable: true, Paused: true}

@@ -13,7 +13,7 @@
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
 	import { createTalkHold } from '$lib/ride/remote-talk';
 	import { keepAwakeWhile } from '$lib/workout/keep-awake.svelte';
-	import { remoteLine } from '$lib/ride/remote-line';
+	import { answerLine, remoteLine } from '$lib/ride/remote-line';
 
 	let {
 		live,
@@ -46,6 +46,17 @@
 		live.sendRemote(action);
 	}
 	const geared = gearsEnabled('phone');
+	// The button the last shift tap was on carries the answer (#3334); before
+	// any tap the gear the phone opened to sits on Harder.
+	const SHIFTS = [
+		['easier', 'Easier'],
+		['harder', 'Harder'],
+	] as const;
+	let tapped = $state<'easier' | 'harder'>('harder');
+	function shiftTap(action: 'easier' | 'harder') {
+		tapped = action;
+		live.sendRemote(action);
+	}
 	const talk = createTalkHold((action) => live.sendRemote(action));
 	onDestroy(talk.up);
 	// A phone that opens late asks the holder where it is: its gear and
@@ -139,37 +150,6 @@
 		</p>
 	{/if}
 
-	{#if geared}
-		<div class="grid flex-1 auto-rows-fr grid-cols-2 gap-3">
-			<button
-				type="button"
-				class={cell}
-				onclick={() => live.sendRemote('easier')}
-			>
-				Easier
-			</button>
-			<button
-				type="button"
-				class={cell}
-				onclick={() => live.sendRemote('harder')}
-			>
-				Harder
-			</button>
-		</div>
-		{#if live.gear}
-			<p
-				class="text-neon text-center text-2xl"
-				aria-live="polite"
-				data-testid="remote-gear"
-			>
-				<!-- Named, as the computer's field is: blind gears read a bare "0". -->
-				Gear {live.gear.label.replace(/^Gear /, '')}{live.gear.atEnd
-					? ' · end'
-					: ''}
-			</p>
-		{/if}
-	{/if}
-
 	{#if live.pause?.pausable}
 		<div class="grid grid-cols-2 gap-3">
 			<button
@@ -192,6 +172,28 @@
 		{#if live.pause.paused}
 			<p class="text-neon text-center text-2xl" aria-live="polite">Paused</p>
 		{/if}
+	{/if}
+
+	<!-- The most-used pair, last: under the thumb, the full width (#3334). -->
+	{#if geared}
+		<div class="grid flex-1 auto-rows-fr grid-cols-2 gap-3">
+			{#each SHIFTS as [action, word] (action)}
+				<button
+					type="button"
+					class="{cell} flex-col gap-1"
+					onclick={() => shiftTap(action)}
+				>
+					{word}
+					{#if live.gear && tapped === action}
+						<span
+							class="text-neon font-display text-2xl"
+							aria-live="polite"
+							data-testid="remote-gear">{answerLine(live.gear)}</span
+						>
+					{/if}
+				</button>
+			{/each}
+		</div>
 	{/if}
 
 	{#if live.remoteRefusal}

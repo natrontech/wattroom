@@ -1,4 +1,4 @@
-import type { ViewState } from '$lib/protocol';
+import type { GearState, ViewState } from '$lib/protocol';
 import { PAGE_NAMES, type ComputerPage } from '$lib/session/computer-pages';
 import { CAMERA_NAMES, type CameraPreset } from '$lib/world/cameras';
 
@@ -23,4 +23,15 @@ export function remoteLine(
 	]
 		.filter(Boolean)
 		.join(' · ');
+}
+
+/**
+ * The holder's answer to Easier / Harder in words (#4235, #3334): a gear is
+ * named, as the computer's field is, since a blind gear reads a bare "0";
+ * the bias or the watts already say what they are. "· end" when the next tap
+ * would move nothing.
+ */
+export function answerLine({ label, atEnd }: GearState): string {
+	const words = /^[+−]?\d+$/.test(label) ? `Gear ${label}` : label;
+	return atEnd ? `${words} · end` : words;
 }
