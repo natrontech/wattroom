@@ -162,6 +162,7 @@
 		shift={solo.shift}
 		cassette={!profile.current.singleSpeed}
 		ghost={ride.ghost}
+		pacer={ride.pacer}
 		climbed={ride.climbed}
 		{ride}
 		onend={end}

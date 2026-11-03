@@ -4,6 +4,7 @@ import { createProfileStore } from '$lib/profile.svelte';
 import type { createRideFlags } from '$lib/ride/flags.svelte';
 import { createFreeRide, freeRideLabel } from '$lib/ride/free-ride.svelte';
 import { createGhostSplit } from '$lib/ride/ghost-split.svelte';
+import { createPacer } from '$lib/ride/pacer.svelte';
 import { rememberRoad } from '$lib/ride/last-ride';
 import type { RideableRoute } from '$lib/ride/roads';
 import { createSoloRoadRide } from '$lib/ride/solo-road.svelte';
@@ -27,6 +28,7 @@ export function holdRoadAlone(deps: {
 	let free!: ReturnType<typeof createFreeRide>;
 	let solo!: ReturnType<typeof createSoloRoadRide>;
 	let ghost!: ReturnType<typeof createGhostSplit>;
+	let pacer!: ReturnType<typeof createPacer>;
 	let climbed!: ReturnType<typeof countClimbed>;
 	let watts = $state(0);
 	// The instrument says when its numbers are not live (#2851): a trainer
@@ -48,6 +50,8 @@ export function holdRoadAlone(deps: {
 			readings: () => sensors.readings,
 		});
 		ghost = createGhostSplit(() => free);
+		// The pacer rides a solo route ride only (#3281), never a channel's free ride.
+		pacer = createPacer(() => free);
 		// Counted here, not on the screen, so a screen opened again carries on.
 		climbed = countClimbed(free);
 		$effect(() => {
@@ -82,6 +86,7 @@ export function holdRoadAlone(deps: {
 		free,
 		solo,
 		ghost,
+		pacer,
 		get watts() {
 			return watts;
 		},

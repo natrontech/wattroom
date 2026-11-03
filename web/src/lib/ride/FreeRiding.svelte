@@ -38,6 +38,8 @@
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
 	import { gearsNews } from '$lib/ride/gears-news';
 	import type { GhostSplit } from '$lib/ride/ghost-split.svelte';
+	import type { Pacer } from '$lib/ride/pacer.svelte';
+	import { PACER_CATEGORIES, PACER_PAR } from '$lib/road/pacer';
 	import type { RideShift } from '$lib/ride/ride-shift';
 	import { roadLine } from '$lib/ride/road-readout';
 	import { roadEndOffered } from '$lib/ride/road-end';
@@ -70,6 +72,7 @@
 		shiftOff = null,
 		cassette = true,
 		ghost,
+		pacer,
 		onend,
 		onrepair,
 		ending = false,
@@ -102,6 +105,8 @@
 		cassette?: boolean;
 		/** Your ghost (ADR-0068): its split, where it rides (#3245) and its calls (#3246). */
 		ghost?: GhostSplit;
+		/** The pacer, on a solo route ride only (#3281): its pick in the now bar, and where it rides. */
+		pacer?: Pacer;
 		/** End ride; absent while there is nothing to end. */
 		onend?: () => void;
 		ending?: boolean;
@@ -186,6 +191,20 @@
 	const rampLabel = $derived(
 		RAMPS.find((r) => r.kind === (free.ramp?.kind ?? free.rampDone))?.label,
 	);
+	// Your ghost and the pacer, where each rides now (#3245, #3281).
+	const haunts = $derived(
+		[ghost?.rider, pacer?.rider].filter((g) => g != null),
+	);
+	// The pacer at each Category's par, one menu (#3281).
+	const pacerItems = () => [
+		...PACER_CATEGORIES.map((category) => ({
+			label: `Pacer ${category} · ${PACER_PAR[category]} W/kg`,
+			onSelect: () => pacer?.pick(category),
+		})),
+		...(pacer?.category
+			? [{ label: 'No pacer', onSelect: () => pacer?.pick(null) }]
+			: []),
+	];
 	const pair = createPairAgain((next) => onrepair?.(next));
 	const fault = $derived(stale && !idle ? trainerLine('silent') : null);
 	// Once per device, to a rider who kept "Don't make me shift" (#3333).
@@ -299,6 +318,20 @@
 			{cassette}
 		/>
 	{/if}
+	{#if pacer && road && !inWatts}
+		<!-- The pacer rides where your own watts move your dot (#3281): in
+		     Watts the trainer moves it, so the pick is not offered there. -->
+		<button
+			onclick={(event) => {
+				const box = event.currentTarget.getBoundingClientRect();
+				openMenu(pacerItems(), box.left, box.top, event.currentTarget);
+			}}
+			aria-haspopup="menu"
+			class="btn btn-secondary btn-ride whitespace-nowrap"
+			>{pacer.category ? `Pacer ${pacer.category}` : 'Ride with a pacer'}
+			<ChevronDown size={16} /></button
+		>
+	{/if}
 	{#if onflag}<FlagButton onflag={flag} sends="after" />{/if}
 	{#if road}<ViewSwitch {world} drawn={inWorld} />{/if}
 	{#if ontv}
@@ -374,6 +407,7 @@
 		stats={free.live}
 		{...road && roadContext(road)}
 		split={ghost?.split ?? undefined}
+		pacer={pacer?.gap}
 		{climb}
 		{map}
 		climbOpens
@@ -388,7 +422,7 @@
 		m={on.m}
 		mps={on.virtualMps}
 		reverse={on.reverse}
-		ghost={ghost?.rider}
+		ghosts={haunts}
 	/>
 {/snippet}
 
@@ -409,7 +443,7 @@
 				silent={stale}
 				{ftp}
 				progress={null}
-				ghosts={() => (ghost?.rider ? [ghost.rider] : [])}
+				ghosts={() => haunts}
 				onfail={world.fail}
 				onflat={world.flatten}
 				{ride}

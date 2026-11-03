@@ -150,6 +150,30 @@ describe('RIDE against your ghost (#3615, #3246)', () => {
 	});
 });
 
+describe('RIDE beside the pacer (#3281)', () => {
+	it('shows the gap in metres from your side, neon, never watt', () => {
+		const behind = fieldsFor(
+			'ride',
+			ride({ pacer: { metres: 12.4, category: 'C' } }),
+		);
+		expect(field(behind, 'pacer')).toEqual({
+			key: 'pacer',
+			label: 'Pacer C',
+			value: '12',
+			unit: 'm behind',
+			neon: true,
+		});
+		const ahead = fieldsFor(
+			'ride',
+			ride({ pacer: { metres: -8, category: 'A' } }),
+		);
+		expect(field(ahead, 'pacer').unit).toBe('m ahead');
+		expect(keys(fieldsFor('ride', ride({ pacer: null })))).not.toContain(
+			'pacer',
+		);
+	});
+});
+
 describe("the one-home table, with the computer's own head (#3668)", () => {
 	const road = { speedKph: 30.2, km: 1.2, ofKm: 7.1 };
 	const headed = (over: Partial<ComputerContext> = {}) =>
