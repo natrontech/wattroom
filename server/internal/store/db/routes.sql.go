@@ -547,6 +547,57 @@ func (q *Queries) ListRoutesSealedUnder(ctx context.Context, arg ListRoutesSeale
 	return items, nil
 }
 
+const listRoutesToStraighten = `-- name: ListRoutesToStraighten :many
+select id, geom_sealed, road_sealed from routes
+where key_version = $1
+  and geom_sealed is not null and road_sealed is not null
+  and (turns_v is null or turns_v < $2::smallint)
+  and id > $3::uuid
+order by id
+limit $4
+`
+
+type ListRoutesToStraightenParams struct {
+	KeyVersion *int32
+	TurnsV     int16
+	After      pgtype.UUID
+	Lim        int32
+}
+
+type ListRoutesToStraightenRow struct {
+	ID         pgtype.UUID
+	GeomSealed []byte
+	RoadSealed []byte
+}
+
+// The boot's rebuild of a route's turns from its own line (#4383), a page at
+// a time by id: every row under this server's key whose turns predate rule
+// turns_v.
+func (q *Queries) ListRoutesToStraighten(ctx context.Context, arg ListRoutesToStraightenParams) ([]ListRoutesToStraightenRow, error) {
+	rows, err := q.db.Query(ctx, listRoutesToStraighten,
+		arg.KeyVersion,
+		arg.TurnsV,
+		arg.After,
+		arg.Lim,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRoutesToStraightenRow
+	for rows.Next() {
+		var i ListRoutesToStraightenRow
+		if err := rows.Scan(&i.ID, &i.GeomSealed, &i.RoadSealed); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRoutesWithRoadInTheClear = `-- name: ListRoutesWithRoadInTheClear :many
 select id, road, key_version from routes
 where road_sealed is null and id > $1::uuid
@@ -798,4 +849,32 @@ type SetRouteCrewConsentParams struct {
 func (q *Queries) SetRouteCrewConsent(ctx context.Context, arg SetRouteCrewConsentParams) error {
 	_, err := q.db.Exec(ctx, setRouteCrewConsent, arg.RouteID, arg.CrewID, arg.Shared)
 	return err
+}
+
+const straightenRoute = `-- name: StraightenRoute :execrows
+update routes set road_sealed = $1, turns_v = $2::smallint
+where id = $3 and key_version = $4
+`
+
+type StraightenRouteParams struct {
+	RoadSealed []byte
+	TurnsV     int16
+	ID         pgtype.UUID
+	KeyVersion *int32
+}
+
+// One row's whole road with its turns rebuilt, only while it is still sealed
+// under the key it was read under. road keeps no turns, and road_hash, the
+// identity ghosts and times match on, stays: the heights are the same.
+func (q *Queries) StraightenRoute(ctx context.Context, arg StraightenRouteParams) (int64, error) {
+	result, err := q.db.Exec(ctx, straightenRoute,
+		arg.RoadSealed,
+		arg.TurnsV,
+		arg.ID,
+		arg.KeyVersion,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
