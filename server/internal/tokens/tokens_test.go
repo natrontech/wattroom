@@ -150,3 +150,52 @@ func TestMintingATokenRaisesTheAlarm(t *testing.T) {
 		t.Fatalf("minting did not alarm the owner once: %v", rang.minted)
 	}
 }
+
+// A token writes only when the rider ticked it at minting (#4207): absent is
+// read-only, the list says which is which, and a bearer — any bearer — is
+// still refused on the HTTP write path.
+func TestOnlyATokenMarkedForPlanningWrites(t *testing.T) {
+	mux, svc := setup(t)
+	minted := map[bool]string{}
+	for _, write := range []bool{false, true} {
+		body := `{"name":"coach"}`
+		if write {
+			body = `{"name":"planner","write":true}`
+		}
+		code, out := call(t, mux, "alice", http.MethodPost, "/api/tokens", body)
+		if code != http.StatusCreated || (out["write"] == true) != write {
+			t.Fatalf("create write=%v: %d %v", write, code, out)
+		}
+		minted[write], _ = out["token"].(string)
+	}
+	bearer := func(method, token string) *http.Request {
+		req := httptest.NewRequestWithContext(t.Context(), method, "/api/rides/1", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		return req
+	}
+	if svc.CanWrite(bearer(http.MethodPost, minted[false])) {
+		t.Error("a token minted without the tick writes")
+	}
+	if !svc.CanWrite(bearer(http.MethodPost, minted[true])) {
+		t.Error("a token minted for planning does not write")
+	}
+	if svc.CanWrite(bearer(http.MethodPost, "wrt_"+strings.Repeat("0", 64))) {
+		t.Error("an unknown token writes")
+	}
+	_, list := call(t, mux, "alice", http.MethodGet, "/api/tokens", "")
+	entries, _ := list["tokens"].([]any)
+	if len(entries) != 2 {
+		t.Fatalf("listed %v", list)
+	}
+	for _, entry := range entries {
+		e, _ := entry.(map[string]any)
+		if (e["write"] == true) != (e["name"] == "planner") {
+			t.Errorf("listed %v", e)
+		}
+	}
+	// The HTTP bearer path stays GET-only, planning token or not.
+	read := svc.ReadSource(&testx.Users{})
+	if _, ok := read.RequireUser(httptest.NewRecorder(), bearer(http.MethodDelete, minted[true]), "Sign in."); ok {
+		t.Error("a planning token deleted over HTTP")
+	}
+}

@@ -42,6 +42,7 @@
 		{#each tokens as entry (entry.id)}
 			<li class="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs">
 				<span class="text-ink font-semibold">{entry.name}</span>
+				{#if entry.write}<span class="text-ink">· plans workouts</span>{/if}
 				<span class="text-muted">
 					created {new Date(entry.createdAt).toLocaleDateString()}
 					{entry.lastUsedAt

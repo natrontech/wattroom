@@ -25,8 +25,8 @@ func (q *Queries) CountUserTokens(ctx context.Context, userID pgtype.UUID) (int6
 }
 
 const createToken = `-- name: CreateToken :one
-insert into api_tokens (user_id, name, token_hash)
-values ($1, $2, $3)
+insert into api_tokens (user_id, name, token_hash, can_write)
+values ($1, $2, $3, $4)
 returning id, created_at
 `
 
@@ -34,6 +34,7 @@ type CreateTokenParams struct {
 	UserID    pgtype.UUID
 	Name      string
 	TokenHash []byte
+	CanWrite  *bool
 }
 
 type CreateTokenRow struct {
@@ -42,7 +43,12 @@ type CreateTokenRow struct {
 }
 
 func (q *Queries) CreateToken(ctx context.Context, arg CreateTokenParams) (CreateTokenRow, error) {
-	row := q.db.QueryRow(ctx, createToken, arg.UserID, arg.Name, arg.TokenHash)
+	row := q.db.QueryRow(ctx, createToken,
+		arg.UserID,
+		arg.Name,
+		arg.TokenHash,
+		arg.CanWrite,
+	)
 	var i CreateTokenRow
 	err := row.Scan(&i.ID, &i.CreatedAt)
 	return i, err
@@ -133,7 +139,7 @@ func (q *Queries) GetUserByTokenHash(ctx context.Context, tokenHash []byte) (Use
 }
 
 const listUserTokens = `-- name: ListUserTokens :many
-select id, name, created_at, last_used_at
+select id, name, created_at, last_used_at, coalesce(can_write, false)::boolean as can_write
 from api_tokens where user_id = $1
 order by created_at desc
 `
@@ -143,6 +149,7 @@ type ListUserTokensRow struct {
 	Name       string
 	CreatedAt  pgtype.Timestamptz
 	LastUsedAt pgtype.Timestamptz
+	CanWrite   bool
 }
 
 func (q *Queries) ListUserTokens(ctx context.Context, userID pgtype.UUID) ([]ListUserTokensRow, error) {
@@ -159,6 +166,7 @@ func (q *Queries) ListUserTokens(ctx context.Context, userID pgtype.UUID) ([]Lis
 			&i.Name,
 			&i.CreatedAt,
 			&i.LastUsedAt,
+			&i.CanWrite,
 		); err != nil {
 			return nil, err
 		}
@@ -168,6 +176,19 @@ func (q *Queries) ListUserTokens(ctx context.Context, userID pgtype.UUID) ([]Lis
 		return nil, err
 	}
 	return items, nil
+}
+
+const tokenCanWrite = `-- name: TokenCanWrite :one
+select coalesce(can_write, false)::boolean from api_tokens where token_hash = $1
+`
+
+// Whether the rider marked this token for planning (#4207); null, every
+// token minted before that, is read-only.
+func (q *Queries) TokenCanWrite(ctx context.Context, tokenHash []byte) (bool, error) {
+	row := q.db.QueryRow(ctx, tokenCanWrite, tokenHash)
+	var column_1 bool
+	err := row.Scan(&column_1)
+	return column_1, err
 }
 
 const touchToken = `-- name: TouchToken :exec

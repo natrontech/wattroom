@@ -1,6 +1,7 @@
 package crews
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -106,15 +107,7 @@ func (s *Service) handleMySchedule(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	rows, err := s.store.Queries.ListUserCrewPlans(r.Context(), db.ListUserCrewPlansParams{
-		// The same 30-minute grace the crew's own list keeps: a session stays
-		// startable a little past its time. The far edge and the row bound are
-		// the feeds' (#1414) — Home builds the same list in memory, and
-		// planning stops three months out, so neither can hide a plan.
-		UserID:      user.ID,
-		StartsFrom:  pgTime(time.Now().Add(-30 * time.Minute)),
-		StartsUntil: calendarUntil(), RowLimit: maxCalendarEvents,
-	})
+	rows, err := Upcoming(r.Context(), s.store.Queries, user.ID)
 	if err != nil {
 		httpx.Fail(w, s.log, "schedule list failed", err, "Your planned sessions could not be loaded. Try again.", "user", store.UUIDString(user.ID))
 		return
@@ -136,6 +129,20 @@ func (s *Service) handleMySchedule(w http.ResponseWriter, r *http.Request) {
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{
 		"sessions": sessions, "icsToken": user.IcsToken,
+	})
+}
+
+// Upcoming is every plan the rider may see across their crews, Home's This
+// week and MCP's get_schedule alike (#4207).
+func Upcoming(ctx context.Context, q *db.Queries, user pgtype.UUID) ([]db.ListUserCrewPlansRow, error) {
+	return q.ListUserCrewPlans(ctx, db.ListUserCrewPlansParams{
+		// The same 30-minute grace the crew's own list keeps: a session stays
+		// startable a little past its time. The far edge and the row bound are
+		// the feeds' (#1414) — Home builds the same list in memory, and
+		// planning stops three months out, so neither can hide a plan.
+		UserID:      user,
+		StartsFrom:  pgTime(time.Now().Add(-30 * time.Minute)),
+		StartsUntil: calendarUntil(), RowLimit: maxCalendarEvents,
 	})
 }
 
