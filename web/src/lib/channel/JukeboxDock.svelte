@@ -18,6 +18,7 @@
 	import { toasts } from '$lib/toast.svelte';
 	import { mixer } from '$lib/sound/mixer.svelte';
 	import { onDuck } from '$lib/sound/duck';
+	import { setMusic as setAmbienceMusic } from '$lib/sound/ambience';
 	import { formatClockLong } from '$lib/format';
 	import { keepSize } from '$lib/pane';
 	import { onSeat, stageSlot } from '$lib/channel/stage-slot.svelte';
@@ -269,6 +270,18 @@
 		return onDuck(({ down, ms }) =>
 			ramp.to(Math.round(down ? ceiling * depth : ceiling), ms),
 		);
+	});
+
+	// The ride's ambience sits 12 dB under music that reaches this rider (#3186).
+	$effect(() => {
+		setAmbienceMusic(
+			!!jukebox?.playing &&
+				!!jukebox.current &&
+				!listening.out &&
+				!mixer.muted &&
+				mixer.music > 0,
+		);
+		return () => setAmbienceMusic(false);
 	});
 
 	// The ramp itself is this component's, so it stops when the component
