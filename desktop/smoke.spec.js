@@ -1254,7 +1254,7 @@ test('closing a fullscreen window leaves fullscreen, then hides', async () => {
  * sent (the web app's obc.ts decodes them, its own tests cover that), and
  * only an app's two messages go back down the socket.
  */
-test('a shift from a network OpenBikeControl controller reaches the page', async () => {
+test('a shift from a network OpenBikeControl controller reaches the page, or on macOS the refusal does', async () => {
 	const net = require('node:net');
 	const makeMdns = require('multicast-dns');
 	const { SERVICE } = require('./obc-net');
@@ -1300,22 +1300,41 @@ test('a shift from a network OpenBikeControl controller reaches the page', async
 
 	const found = () => win.evaluate(() => window.__obc.found);
 	const smoke = async () => (await found())?.devices.find((d) => d.name === 'Smoke shifter');
-	await expect
-		.poll(smoke, { timeout: 20_000 })
-		.toBeTruthy()
-		.catch(async (cause) => {
-			// What the shell saw, said in the failure: a runner's mDNS is not ours to watch.
-			const dir = await app.evaluate(({ app: a }) => a.getPath('logs'));
-			const log = fs.readFileSync(path.join(dir, 'main.log'), 'utf8').split('\n').filter((l) => l.includes('obc'));
-			throw new Error(`${cause.message}\nshell found ${JSON.stringify(await found())}, responder heard ${asked} queries\n${log.join('\n')}`);
-		});
-	const { id } = (await found()).devices.find((d) => d.name === 'Smoke shifter');
+	const obcLog = async () => {
+		const dir = await app.evaluate(({ app: a }) => a.getPath('logs'));
+		return fs.readFileSync(path.join(dir, 'main.log'), 'utf8').split('\n').filter((l) => l.includes('obc'));
+	};
+	// What the shell saw, said in the failure: a runner's mDNS is not ours to watch.
+	const diagnose = async (cause) => {
+		throw new Error(`${cause.message}\nshell found ${JSON.stringify(await found())}, responder heard ${asked} queries\n${(await obcLog()).join('\n')}`);
+	};
+	const gone = 'That shifter is gone from the network. Open BikeControl, then try again.';
+	const connectUnknown = () => win.evaluate(() => window.wattroom.obc.connect('evil._openbikecontrol._tcp.local'));
+
+	// Why this branches: macOS 15 asks before an app talks to the local
+	// network, and nobody on a CI runner can answer, so the unsigned shell is
+	// refused there (#4359: the query fails with EHOSTUNREACH and the
+	// responder hears nothing). On macOS this proves the refusal path the
+	// rider meets, where the card says to allow Local Network: the shell
+	// reports `denied`, logs it, and connects to nothing. Linux proves the
+	// whole path below, discovery to shift. On a Mac where the permission was
+	// granted this branch fails, by design: it is the runner's state it pins.
+	if (process.platform === 'darwin') {
+		await expect.poll(async () => (await found())?.denied, { timeout: 20_000 }).toBe(true).catch(diagnose);
+		await expect.poll(obcLog).toContainEqual(expect.stringContaining('obc: Local Network refused'));
+		expect(await connectUnknown()).toEqual({ error: gone });
+		await app.close();
+		responder.destroy();
+		server.close();
+		return;
+	}
+
+	await expect.poll(smoke, { timeout: 20_000 }).toBeTruthy().catch(diagnose);
+	const { id } = await smoke();
 	expect((await found()).denied).toBe(false);
 
 	// A name the shell never heard opens nothing.
-	expect(await win.evaluate(() => window.wattroom.obc.connect('evil._openbikecontrol._tcp.local'))).toEqual({
-		error: 'That shifter is gone from the network. Open BikeControl, then try again.',
-	});
+	expect(await connectUnknown()).toEqual({ error: gone });
 	expect(await win.evaluate((i) => window.wattroom.obc.connect(i), id)).toEqual({
 		name: 'Smoke shifter',
 	});
