@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 import type { ServerTick } from '$lib/protocol';
 import { referenceOnly, resumeKm, roadOf } from '$lib/channel/lost-road';
 
-const tick = (coach: string, bunchM: number, loop = false): ServerTick =>
+const tick = (
+	coach: string,
+	bunchM: number,
+	loop = false,
+	lap = 0,
+): ServerTick =>
 	({
 		at: 0,
 		state: {
@@ -21,7 +26,7 @@ const tick = (coach: string, bunchM: number, loop = false): ServerTick =>
 				reverse: true,
 			},
 		},
-		world: { bunchM, speedMps: 8 },
+		world: { bunchM, speedMps: 8, lap },
 	}) as unknown as ServerTick;
 
 describe('roadOf', () => {
@@ -45,6 +50,8 @@ describe('roadOf', () => {
 			),
 		).toBeNull();
 		expect(roadOf(tick('me', 20_000), 'me')).toBeNull();
+		// Ridden past its end, the bunch rides it again: nothing left to resume.
+		expect(roadOf(tick('me', 1_200, false, 1), 'me')).toBeNull();
 		// A loop goes round again: its end is somewhere to resume.
 		expect(roadOf(tick('me', 19_999.5, true), 'me')?.route.fromM).toBe(19_999);
 	});

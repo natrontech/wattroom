@@ -208,12 +208,10 @@ func (b *bunch) step(watts float64) {
 
 // place is where u metres ridden from the road's start, laps unrolled, falls
 // on the road in the direction ridden, and the laps behind it. A road that
-// does not loop holds at its end.
+// does not loop is ridden again from its start: a workout that outlasts it
+// never leaves the crew standing at its end.
 func (b *bunch) place(u float64) (float64, int) {
 	length := b.road.LengthM
-	if !b.loop {
-		return min(u, length), 0
-	}
 	lap := math.Floor(u / length)
 	return u - lap*length, int(lap)
 }
@@ -227,13 +225,9 @@ func (b *bunch) heightAt(m float64) float64 {
 }
 
 // gradeAt is the grade the bunch rides at u: the stored road's, already
-// smoothed over 200 m (docs/SPEC.md "Route rides"), and 0 % once a road that
-// does not loop has ended.
+// smoothed over 200 m (docs/SPEC.md "Route rides").
 func (b *bunch) gradeAt(u float64) float64 {
 	m, _ := b.place(u)
-	if !b.loop && m >= b.road.LengthM {
-		return 0
-	}
 	if b.reverse {
 		return -b.road.GradeAt(b.road.LengthM - m)
 	}
@@ -241,14 +235,11 @@ func (b *bunch) gradeAt(u float64) float64 {
 }
 
 // rise is the metres climbed from u0 to u1, lap by lap so the step from a
-// loop's end back to its start is never counted as a climb.
+// road's end back to its start is never counted as a climb.
 // ponytail: one rise per second; a dip inside one second's metres is lost,
 // under a sample's 20 m of road.
 func (b *bunch) rise(u0, u1 float64) float64 {
 	length := b.road.LengthM
-	if !b.loop {
-		u0, u1 = min(u0, length), min(u1, length)
-	}
 	up := 0.0
 	for u0 < u1 {
 		lapStart := math.Floor(u0/length) * length
@@ -259,14 +250,8 @@ func (b *bunch) rise(u0, u1 float64) float64 {
 	return up
 }
 
-// distance is the road the bunch covered: the metres held at a road's end
-// pay nothing.
-func (b *bunch) distance() float64 {
-	if b.loop {
-		return b.pace.Distance
-	}
-	return min(b.pace.Distance, b.road.LengthM-b.fromM)
-}
+// distance is the road the bunch covered, every lap of it.
+func (b *bunch) distance() float64 { return b.pace.Distance }
 
 // rolling is whether a rider carried by the bunch is riding on its road.
 func (b *bunch) rolling() bool { return b.pace.Speed > roadRidingMps }

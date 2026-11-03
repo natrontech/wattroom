@@ -2080,7 +2080,7 @@ export interface Roadside {
   kind: RoadsideKind;
   /**
    * Where on the road, in metres along the crew's cut in the direction
-   * ridden, as World.BunchM reads it; Lap counts a looped road's laps.
+   * ridden, as World.BunchM reads it; Lap counts the road's laps.
    */
   atM: number /* float64 */;
   lap?: number /* int */;
@@ -2524,7 +2524,8 @@ export interface World {
   bunchM: number /* float64 */;
   speedMps: number /* float64 */;
   /**
-   * Laps completed on a looped road.
+   * Laps completed: a road that does not loop is ridden again from its
+   * start, so a workout that outlasts it never holds the bunch at its end.
    */
   lap?: number /* int */;
   /**

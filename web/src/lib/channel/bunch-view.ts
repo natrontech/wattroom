@@ -78,7 +78,9 @@ export function bunchOf(
 ): BunchView | null {
 	const world = tick?.world;
 	if (!tick || !world || world.racers) return null;
-	const length = tick.state.route?.lengthM ?? 0;
+	// A loop's laps unroll; a road that ends is ridden again from its start,
+	// so the world, which has no lap past its end, draws each lap from 0.
+	const length = tick.state.route?.loop ? tick.state.route.lengthM : 0;
 	// The bunch's speed, never the trainer's (ADR-0084: that is the drivetrain's alone).
 	const { speedMps: bunchMps } = world;
 	return {

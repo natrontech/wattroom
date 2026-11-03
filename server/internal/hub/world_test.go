@@ -165,20 +165,27 @@ func ride(s *session, from time.Time, seconds int) time.Time {
 	return from
 }
 
-// A road that ends holds the bunch at its end, on 0 %: it still rides — the
-// plan has not ended — but no metre past the road counts.
-func TestTheBunchHoldsAtTheEndOfTheRoad(t *testing.T) {
+// A road that does not loop is ridden again from its start once the bunch
+// reaches its end: the plan has not ended, and a crew held at the end of the
+// road stood there for the rest of its workout. Every lap counts, and the
+// drop back to the start's height is never a climb.
+func TestTheBunchRidesARoadAgainFromItsStart(t *testing.T) {
 	start := time.Unix(1_700_000_000, 0)
 	s := startedOn(t, rideOn(slope(3, 2200), 2100, false, false), ergHalfHour, start)
 	ride(s, start.Add(countdownSeconds*time.Second), 120)
-	if w := s.world(false); w.BunchM != 2200 || w.Lap != 0 || !s.bunch.rolling() {
-		t.Fatalf("at the end the bunch reads %+v, rolling %v; want held at 2200 m, still riding", w, s.bunch.rolling())
+	u := 2100 + s.bunch.pace.Distance
+	w := s.world(false)
+	if u < 2300 || w.Lap != 1 || math.Abs(w.BunchM-(u-2200)) > 0.01 || !s.bunch.rolling() {
+		t.Fatalf("%.0f m on from 2100 m the bunch reads %+v, rolling %v; want lap 1 at %.2f m, riding", s.bunch.pace.Distance, w, s.bunch.rolling(), u-2200)
 	}
-	if s.bunch.distance() != 100 {
-		t.Fatalf("the bunch covered %v m, want the 100 m of road left", s.bunch.distance())
+	if s.bunch.distance() != s.bunch.pace.Distance {
+		t.Fatalf("the bunch covered %v m, want all %v m it rode", s.bunch.distance(), s.bunch.pace.Distance)
 	}
-	if climbed := s.bunch.climbed; math.Abs(climbed-3) > 1e-6 {
-		t.Fatalf("the bunch climbed %v m, want the last 100 m's 3 m", climbed)
+	if want := 3 + 0.03*(u-2200); math.Abs(s.bunch.climbed-want) > 1e-6 {
+		t.Fatalf("the bunch climbed %v m, want the last 100 m's 3 m and %.2f m of the next lap", s.bunch.climbed, want-3)
+	}
+	if s.bunch.finished() != true {
+		t.Fatal("a game on the road still finishes where the bunch first reached its end")
 	}
 }
 

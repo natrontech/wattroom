@@ -4,7 +4,7 @@ import { bunchOf } from './bunch-view';
 import { levelFromXp } from '$lib/level';
 import type { LiveRider } from './types';
 
-const tick = (world: ServerTick['world'], game = false) =>
+const tick = (world: ServerTick['world'], game = false, loop = true) =>
 	({
 		at: 0,
 		state: {
@@ -12,7 +12,7 @@ const tick = (world: ServerTick['world'], game = false) =>
 			id: 's',
 			coach: 'a',
 			elapsed: 130,
-			route: { lengthM: 5000 },
+			route: { lengthM: 5000, loop },
 		},
 		world,
 		roster: [{ id: 'a' }],
@@ -37,6 +37,14 @@ describe('the bunch as the world reads it (#3098)', () => {
 		expect(view.order).toEqual(['a', 'b']);
 		expect(view.coach).toBe('a');
 		expect(view.elapsed).toBe(130);
+	});
+
+	it('draws each lap of a road that ends from its start: the world has no metre past it', () => {
+		const view = bunchOf(
+			tick({ bunchM: 120, speedMps: 8, lap: 2 }, false, false),
+			[],
+		)!;
+		expect(view.m).toBe(120);
 	});
 
 	it('rides no shared bunch in a race, nor off a road', () => {

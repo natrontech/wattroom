@@ -18,7 +18,7 @@ export interface LostRoad {
 /**
  * The road a live tick shows this rider coaching, or null: someone else's
  * session, no road, or a road that does not loop with the bunch already at
- * its end, where there is nothing left to resume.
+ * or past its end, where there is nothing left to resume.
  */
 export function roadOf(t: ServerTick, me: string | undefined): LostRoad | null {
 	const s = t.state;
@@ -32,7 +32,9 @@ export function roadOf(t: ServerTick, me: string | undefined): LostRoad | null {
 		bunchM === undefined
 	)
 		return null;
-	if (!route.loop && bunchM >= route.lengthM - 1) return null;
+	// Past its end once, the bunch rides it again from its start: ridden through.
+	if (!route.loop && (bunchM >= route.lengthM - 1 || (t.world?.lap ?? 0) > 0))
+		return null;
 	return {
 		workoutName: s.workoutName,
 		workoutJson: referenceOnly(s.workoutJson ?? ''),

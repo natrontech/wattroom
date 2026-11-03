@@ -47,7 +47,8 @@ func komOpenings(profile road.Road, reverse bool) []float64 {
 }
 
 // komAt is the first KOM opening at or past u metres ridden, laps unrolled
-// (after it, when past is set); false when the road has none left.
+// (after it, when past is set), on the next lap once this one has none
+// left; false on a road with none.
 func (b *bunch) komAt(u float64, past bool) (float64, bool) {
 	if len(b.koms) == 0 {
 		return 0, false
@@ -57,9 +58,6 @@ func (b *bunch) komAt(u float64, past bool) (float64, bool) {
 		if k > m || k == m && !past {
 			return u + k - m, true
 		}
-	}
-	if !b.loop {
-		return 0, false
 	}
 	return u + b.road.LengthM - m + b.koms[0], true
 }
