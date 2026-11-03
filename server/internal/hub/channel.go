@@ -171,6 +171,10 @@ type channelState struct {
 	// The one session a crew session's room opens (docs/SESSIONS.md), its id
 	// minted before the room; empty in a voice channel, which mints one per pick.
 	sessionID string
+	// Who rides which crew session (session_riders.go): a crew session's
+	// room says its riders each tick, a voice channel reads its own. Nil in
+	// a room built without a hub.
+	onSession *sessionRiders
 	xp        XpKeeper
 	recaps    RecapKeeper
 	hider     Hider
@@ -216,6 +220,16 @@ func (rm *channelState) ridingLocked(now time.Time) (names, ids []string) {
 		for id, at := range rm.lastMetric {
 			if now.Sub(at) <= ridingWindow && rm.session.rides(id) {
 				riding[id] = struct{}{}
+			}
+		}
+	}
+	// Someone here who pedals on a crew session rides all the same
+	// (docs/SESSIONS.md): the channel shows the mark, the session has the
+	// numbers.
+	if rm.sessionID == "" {
+		for c := range rm.clients {
+			if ride, on := rm.onSession.of(c.rider.ID, now); on && ride.pedalling {
+				riding[c.rider.ID] = struct{}{}
 			}
 		}
 	}

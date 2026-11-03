@@ -117,8 +117,10 @@ type Hub struct {
 	access Access
 	// The crew's door for crew sessions (crew_session.go); nil keeps them shut.
 	crewAccess CrewAccess
-	saver      SessionSaver
-	now        func() time.Time
+	// Who rides which crew session, for the voice channels to show.
+	onSession *sessionRiders
+	saver     SessionSaver
+	now       func() time.Time
 	// What every socket's writer pings on (keepalive.go). A field, like now,
 	// so a test can shorten it for one hub.
 	keepalive keepalive
@@ -178,7 +180,7 @@ func New(log *slog.Logger, access Access, saver SessionSaver) *Hub {
 		states:    make(map[string]*channelState), voice: make(map[string]map[string]voiceEntry),
 		openRides: make(map[string]*openRide), rideIDs: newOpenRideIDs(),
 		lobby: make(map[*lobbyClient]string), sockets: make(map[string]int),
-		holds:     make(map[string]int),
+		holds: make(map[string]int), onSession: newSessionRiders(),
 		autoplays: make(chan autoplayJob, 64)}
 	// Supervised (#651): a poison job costs one log line and is skipped, not
 	// the rest of the process's autoplay.
@@ -353,6 +355,7 @@ func (h *Hub) stateOf(channel string) *channelState {
 		rm.xp = h.xp
 		rm.hider = h.hider
 		rm.recaps = h.recaps
+		rm.onSession = h.onSession
 		// Voice can be live before the first socket opens the room — seed
 		// it, unlocked: nobody else can hold this room yet.
 		rm.voiceNow = h.voiceRidersLocked(channel)

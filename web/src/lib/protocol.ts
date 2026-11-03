@@ -1882,6 +1882,12 @@ export interface Rider {
    */
   inSession?: boolean;
   /**
+   * The crew session this rider rides (docs/SESSIONS.md), on a voice
+   * channel's roster: its id, for the badge and its Join. Never a number
+   * of theirs; the session keeps those.
+   */
+  onSession?: string;
+  /**
    * What this rider's soundboard has playing right now, and how far into it
    * the channel already is (#1681). A fire is one tick and gone
    * (ADR-0022/0033), so a rider who walked in halfway through a clip heard

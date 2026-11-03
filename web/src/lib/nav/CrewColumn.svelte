@@ -36,6 +36,7 @@
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import ArrowRight from '@lucide/svelte/icons/arrow-right';
 	import { crewLive, sessionLine, type LiveChannel } from './crew-live.svelte';
+	import Radio from '@lucide/svelte/icons/radio';
 	import NewChannel from './NewChannel.svelte';
 	import { crewPlaces } from './pages';
 	import { people as faces } from '$lib/people.svelte';
@@ -220,6 +221,37 @@
 		</p>
 	{/if}
 {:else}
+	{#if live.sessions?.length}
+		<!-- The crew's live sessions, above its channels (docs/SESSIONS.md):
+		     nothing while none runs. A neon edge marks the one you ride. -->
+		<div class="eyebrow px-2 pt-4 pb-1">sessions</div>
+		<ul class="space-y-0.5">
+			{#each live.sessions as session (session.id)}
+				{@const href = sessionPath(crew.id, session.id)}
+				{@const on = lit(href)}
+				{@const mine =
+					channelConnection.session?.address.key === `s:${session.id}`}
+				<li>
+					<a
+						{href}
+						aria-current={on ? 'page' : undefined}
+						title={sessionLine(session)}
+						class="flex min-h-11 min-w-0 items-center gap-2 rounded border-l-2 px-2 py-1.5 text-sm md:min-h-0 {mine
+							? 'border-neon'
+							: 'border-transparent'} {on
+							? 'bg-ink/10 text-ink'
+							: 'text-muted hover:bg-ink/5 hover:text-ink'}"
+					>
+						<Radio size={15} class="shrink-0" />
+						<span class="min-w-0 flex-1 truncate">{session.workout}</span>
+						<span class="text-muted-dim shrink-0 text-xs"
+							>{session.coachName} · {session.riders.length}</span
+						>
+					</a>
+				</li>
+			{/each}
+		</ul>
+	{/if}
 	{@render section('chat channels', 'text')}
 	<ul class="space-y-0.5">
 		{#each texts as c (c.id)}

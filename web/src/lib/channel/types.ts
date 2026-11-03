@@ -33,6 +33,8 @@ export interface LiveRider {
 	/** On the running session's timeline (ADR-0059); everyone else in the
 	 * channel spectates it and is left out of its lists. */
 	inSession?: boolean;
+	/** The crew session they ride (docs/SESSIONS.md), on a call's roster; never their numbers. */
+	onSession?: string;
 	/** camera-off fallback hue, so the grid isn't uniformly dark */
 	hue: number;
 	watts: number;

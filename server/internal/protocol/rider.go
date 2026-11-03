@@ -70,6 +70,10 @@ type Rider struct {
 	// On the running session's timeline (ADR-0059). Everyone else in the
 	// channel spectates it: not driven, not counted, and drawn apart.
 	InSession bool `json:"inSession,omitempty"`
+	// The crew session this rider rides (docs/SESSIONS.md), on a voice
+	// channel's roster: its id, for the badge and its Join. Never a number
+	// of theirs; the session keeps those.
+	OnSession string `json:"onSession,omitempty"`
 	// What this rider's soundboard has playing right now, and how far into it
 	// the channel already is (#1681). A fire is one tick and gone
 	// (ADR-0022/0033), so a rider who walked in halfway through a clip heard
