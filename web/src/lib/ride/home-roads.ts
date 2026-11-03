@@ -12,6 +12,12 @@ import type { StoredRoute } from '$lib/road/stored';
  */
 export type HomeRoad = {
 	id: string;
+	/**
+	 * The id a session rides it under: the server holds a frozen copy of the
+	 * road this builds (server/internal/routes/library), so a crew can ride
+	 * it together. Never changes.
+	 */
+	routeId: string;
 	name: string;
 	/** What is along it, in a line. */
 	story: string;
@@ -40,6 +46,7 @@ const VALLEY_LOOP: Corner[] = [
 export const HOME_ROADS: readonly HomeRoad[] = [
 	{
 		id: 'intro',
+		routeId: '7a77b0ad-0001-4000-8000-000000004248',
 		name: 'Pass loop',
 		story:
 			'A valley, five hairpins with their mirrors, and a pass with its hut, flags and summit cross.',
@@ -47,6 +54,7 @@ export const HOME_ROADS: readonly HomeRoad[] = [
 	},
 	{
 		id: 'valley',
+		routeId: '7a77b0ad-0002-4000-8000-000000004248',
 		name: 'Valley loop',
 		story:
 			'Rolling farmland and villages, cows by the road, and two short steep ramps.',
@@ -54,7 +62,9 @@ export const HOME_ROADS: readonly HomeRoad[] = [
 	},
 ];
 
-export const homeRoad = (id: string) => HOME_ROADS.find((r) => r.id === id);
+/** One of WattRoom's roads, by its own id or the id a session rides it under. */
+export const homeRoad = (id: string) =>
+	HOME_ROADS.find((r) => r.id === id || r.routeId === id);
 
 /** The roads a search keeps: by name or by what is along it. */
 export function homeRoadsMatching(query: string): readonly HomeRoad[] {
@@ -128,4 +138,13 @@ export async function homeShape(
 ): Promise<{ x: number[]; z: number[] }> {
 	const { x, z } = await build(road);
 	return { x: Array.from(x), z: Array.from(z) };
+}
+
+/**
+ * WattRoom's roads as a session's pickers list them (#4258): their rows,
+ * under the ids the server rides them by, ahead of the rider's own.
+ */
+export async function wattroomRoads(): Promise<StoredRoute[]> {
+	const rows = await Promise.all(HOME_ROADS.map(homeRow));
+	return rows.map((row, i) => ({ ...row, id: HOME_ROADS[i].routeId }));
 }

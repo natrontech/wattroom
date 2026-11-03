@@ -1,4 +1,6 @@
 import { api } from '$lib/api';
+import { RouteHiddenEndM } from '$lib/protocol';
+import { homeRoad, homeRoute, homeRow } from '$lib/ride/home-roads';
 import type { LostRoad } from '$lib/channel/lost-road';
 import type { Workout } from '$lib/workout/types';
 import { onRoute } from './compile';
@@ -16,9 +18,19 @@ import { roadOf, type StoredRoute } from './stored';
  */
 export function nextLeg(
 	ended: LostRoad,
-	route: { id: string; genName: string; road: Road; climbs: Climb[] },
+	route: {
+		id: string;
+		genName: string;
+		road: Road;
+		climbs: Climb[];
+		whole?: boolean;
+	},
 ): Workout | null {
-	const fromM = ownerFromM(route.road, ended.route.fromM ?? 0);
+	const fromM = ownerFromM(
+		route.road,
+		ended.route.fromM ?? 0,
+		route.whole ? 0 : RouteHiddenEndM,
+	);
 	if (fromM >= route.road.length - roadStep(route.road)) return null;
 	const rode = JSON.parse(ended.workoutJson) as Workout;
 	if (rode.road?.stepEndM?.length)
@@ -34,6 +46,24 @@ export function nextLeg(
 export async function loadNextLeg(
 	ended: LostRoad,
 ): Promise<{ ok: true; workout: Workout } | { ok: false; error: string }> {
+	// WattRoom's own roads are built here, whole, and ride under their session id (#4258).
+	const home = homeRoad(ended.route.id);
+	if (home) {
+		const [row, { road }] = await Promise.all([homeRow(home), homeRoute(home)]);
+		const workout = nextLeg(ended, {
+			id: home.routeId,
+			genName: row.generatedName,
+			road,
+			climbs: row.climbs,
+			whole: true,
+		});
+		return workout
+			? { ok: true, workout }
+			: {
+					ok: false,
+					error: 'The bunch rode this road to its end. There is no next leg.',
+				};
+	}
 	const res = await api<StoredRoute>(
 		`/api/routes/${encodeURIComponent(ended.route.id)}`,
 	);
