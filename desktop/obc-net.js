@@ -126,7 +126,10 @@ function query(questions) {
 		// macOS answers a refused Local Network with "no route to host".
 		denied = process.platform === 'darwin' && err?.code === 'EHOSTUNREACH';
 		if (err && !denied) console.warn('obc: mdns query:', err.code ?? err.message);
-		if (denied !== was) tell();
+		if (denied !== was) {
+			if (denied) console.warn('obc: Local Network refused');
+			tell();
+		}
 	});
 }
 
@@ -145,7 +148,14 @@ function browse(contents) {
 		mdns = makeMdns();
 		mdns.on('response', take);
 		mdns.on('error', (err) => console.warn('obc: mdns:', err.code ?? err.message));
-		mdns.on('warning', () => {});
+		// A membership that fails on one interface is retried every 5 s: say each once.
+		const said = new Set();
+		mdns.on('warning', (err) => {
+			const text = `${err.code ?? ''} ${err.message}`;
+			if (said.has(text)) return;
+			said.add(text);
+			console.warn('obc: mdns:', text);
+		});
 		ask();
 		setInterval(ask, QUERY_MS).unref();
 	}

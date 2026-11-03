@@ -1273,8 +1273,10 @@ test('a shift from a network OpenBikeControl controller reaches the page', async
 	const instance = `Smoke OBC ${process.pid}.${SERVICE}`;
 	const host = `wattroom-smoke-${process.pid}.local`;
 	const responder = makeMdns();
+	let asked = 0;
 	responder.on('query', (q) => {
 		if (!q.questions.some((x) => x.name === SERVICE && x.type === 'PTR')) return;
+		asked++;
 		responder.respond({
 			answers: [{ name: SERVICE, type: 'PTR', ttl: 120, data: instance }],
 			additionals: [
@@ -1297,11 +1299,16 @@ test('a shift from a network OpenBikeControl controller reaches the page', async
 	});
 
 	const found = () => win.evaluate(() => window.__obc.found);
+	const smoke = async () => (await found())?.devices.find((d) => d.name === 'Smoke shifter');
 	await expect
-		.poll(async () => (await found())?.devices.find((d) => d.name === 'Smoke shifter'), {
-			timeout: 20_000,
-		})
-		.toBeTruthy();
+		.poll(smoke, { timeout: 20_000 })
+		.toBeTruthy()
+		.catch(async (cause) => {
+			// What the shell saw, said in the failure: a runner's mDNS is not ours to watch.
+			const dir = await app.evaluate(({ app: a }) => a.getPath('logs'));
+			const log = fs.readFileSync(path.join(dir, 'main.log'), 'utf8').split('\n').filter((l) => l.includes('obc'));
+			throw new Error(`${cause.message}\nshell found ${JSON.stringify(await found())}, responder heard ${asked} queries\n${log.join('\n')}`);
+		});
 	const { id } = (await found()).devices.find((d) => d.name === 'Smoke shifter');
 	expect((await found()).denied).toBe(false);
 
