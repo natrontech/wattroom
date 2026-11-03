@@ -18,6 +18,8 @@
 	import SummitStrip from '$lib/ride/SummitStrip.svelte';
 	import { prefersReducedMotion } from '$lib/motion';
 	import { COLUMN_SEAT, offerSeat } from '$lib/channel/stage-slot.svelte';
+	import { askPage } from '$lib/session/computer-pages';
+	import { computerShown } from '$lib/session/computer-shown.svelte';
 	import {
 		CORRIDOR,
 		GAP_PX,
@@ -34,6 +36,8 @@
 
 	let {
 		header,
+		rail,
+		roadMap,
 		focus,
 		numbers,
 		crew,
@@ -50,7 +54,18 @@
 		bar,
 		class: extra = '',
 	}: {
-		header: Snippet;
+		header?: Snippet;
+		/**
+		 * The ride's glance across the top (the ride HUD, 2026-11): with it,
+		 * `numbers` shows only for MAP, `header` not at all, and over the
+		 * world there is no Skyline strip.
+		 */
+		rail?: Snippet;
+		/**
+		 * The road from above, the view switch's Map (M): under the rail it
+		 * takes the ground between the rail and the Skyline, no panel.
+		 */
+		roadMap?: Snippet;
 		focus: Snippet;
 		numbers?: Snippet;
 		crew?: Snippet;
@@ -120,20 +135,52 @@
 	const panel = 'ride-panel [&:not(:has(*))]:hidden';
 	// A column of docks: it lets the world through, its panels do not.
 	const column =
-		'pointer-events-none absolute flex flex-col gap-3 overflow-y-auto [&>*]:pointer-events-auto [&>*]:max-w-full [&>*]:shrink-0';
+		'pointer-events-none absolute flex flex-col gap-3 [&>*]:pointer-events-auto [&>*]:max-w-full [&>*]:shrink-0';
 	const phone = $derived(device.narrow);
 	// Over the world the Skyline is a strip along the bottom; flat, the
 	// horizon is the ground itself.
+	// Over the world the Skyline runs along the bottom: a panel, or under the
+	// rail edge to edge on a fade, tall enough to read the slope and your
+	// watts along it (the ride HUD, 2026-11).
+	// MAP, asked for by M or the view switch, is a view of the ground.
+	const mapShown = $derived(!clean && computerShown.page === 'map');
+	// Flat, the horizon is the ground; under Map it is the band again, so the
+	// slope and your watts stay in view.
+	const skyline = $derived(!!horizon && (!!world || (!!rail && mapShown)));
+	let bandH = $state(0);
 	const floor = $derived(
 		INSET_PX +
-			(world && horizon ? (stage ? STRIP_PX : SKYLINE_PX) + GAP_PX : 0),
+			(!skyline ? 0 : rail ? bandH : (stage ? STRIP_PX : SKYLINE_PX) + GAP_PX),
 	);
 	// A phone has no room for the stage: a shared screen joins its column.
 	const onStage = $derived(stage && !phone);
+	// The rail runs the width, up to the seat when the player has one.
+	const railRight = $derived(
+		seat && !clean ? `calc(100% - ${seatLeft} + ${GAP_PX}px)` : `${INSET_PX}px`,
+	);
 	const left = $derived(
 		phone
 			? `left:${INSET_PX}px;right:${INSET_PX}px;top:${INSET_PX}px;max-height:62%`
-			: `left:${INSET_PX}px;top:${INSET_PX}px;bottom:${floor}px;max-width:min(${BAND_MAX_PX}px, calc(${seatLeft} - ${INSET_PX + GAP_PX}px))`,
+			: rail
+				? `left:${INSET_PX}px;top:${INSET_PX}px;bottom:${floor}px;right:${railRight}`
+				: `left:${INSET_PX}px;top:${INSET_PX}px;bottom:${floor}px;max-width:min(${BAND_MAX_PX}px, calc(${seatLeft} - ${INSET_PX + GAP_PX}px))`,
+	);
+	// The rail's details: a tap on it opens its second row. The computer
+	// stays mounted behind it for MAP, which shows while it is asked for (M,
+	// the view switch).
+	const details = $derived(!clean && computerShown.details);
+	function toggleDetails() {
+		if (mapShown) askPage('ride');
+		computerShown.details = !details;
+	}
+	$effect(() => {
+		if (!rail) return;
+		return () => (computerShown.details = false);
+	});
+	// Flat, the ground starts under the rail, so it hides none of the graph.
+	let railH = $state(0);
+	const groundTop = $derived(
+		rail && !world && railH ? `top:${INSET_PX + railH + GAP_PX}px` : '',
 	);
 	const right = $derived(
 		phone
@@ -165,10 +212,40 @@
 		class="absolute inset-0 flex flex-col {world
 			? 'bg-(--world-sky-zenith)'
 			: ''}"
+		style={groundTop}
 		data-dock={world ? 'world' : 'horizon'}
 	>
 		{#if world}{@render world()}{:else if horizon}{@render horizon()}{/if}
 	</div>
+	{#if rail && world}
+		<!-- The rail stands on the world under a fade, edge to edge: no panel,
+		     at the panels' 85 % where its words are (SPEC). The crew stands
+		     under a fade from its own edge: the right, a phone's foot. -->
+		<div
+			aria-hidden="true"
+			class="from-surface/90 via-surface/85 pointer-events-none absolute inset-x-0 top-0 bg-linear-to-b to-transparent"
+			style="height:{INSET_PX + railH + 48}px"
+		></div>
+		{#if crew && !clean}
+			<div
+				aria-hidden="true"
+				class="from-surface/90 via-surface/70 pointer-events-none absolute to-transparent {phone
+					? 'inset-x-0 bottom-0 h-[40%] bg-linear-to-t'
+					: 'inset-y-0 right-0 w-[34%] bg-linear-to-l'}"
+			></div>
+		{/if}
+	{/if}
+	{#if rail && mapShown && roadMap}
+		<!-- Map is a view: the road from above over the ground, between the
+		     rail and the Skyline (the ride HUD, 2026-11). -->
+		<div
+			data-dock="map"
+			class="bg-surface absolute inset-0 px-[6%]"
+			style="padding-top:{INSET_PX + railH}px;padding-bottom:{floor}px"
+		>
+			{@render roadMap()}
+		</div>
+	{/if}
 	{#if centre}
 		<!-- In the corridor's upper half, above where the chase camera
 		     draws you (RIDER_BOX), as v3-motion's GO stands. -->
@@ -181,14 +258,37 @@
 	{/if}
 	<!-- Top left: your numbers, the watts first, then slot 1. -->
 	<div
-		class="{column} {phone ? 'items-stretch' : 'items-start'}"
+		class="{column} {phone ? 'items-stretch' : 'items-start'} {rail
+			? ''
+			: 'overflow-y-auto'}"
 		style={left}
 		bind:offsetWidth={slotWidth}
 	>
+		{#if rail}
+			<!-- One button the rail's size behind its numbers: a tap anywhere
+			     on them opens its second row. -->
+			<div
+				data-dock="rail"
+				class="relative w-full {dockClass}"
+				style={dock(0, '0', '-40px')}
+				bind:offsetHeight={railH}
+			>
+				<button
+					type="button"
+					data-testid="rail-toggle"
+					onclick={toggleDetails}
+					aria-expanded={details}
+					aria-label={details ? 'Hide ride details' : 'Show ride details'}
+					title={details ? 'Hide ride details' : 'Show ride details'}
+					class="focus-visible:outline-neon absolute inset-0 rounded-[inherit] focus-visible:outline-2"
+				></button>
+				{@render rail()}
+			</div>
+		{/if}
 		{#if numbers}
 			<div
 				data-dock="numbers"
-				class="{panel} {dockClass}"
+				class="{panel} {dockClass} {rail ? '!hidden' : ''}"
 				style={dock(0, '-40px', '0')}
 			>
 				{@render numbers()}
@@ -203,10 +303,10 @@
 				>
 				{#if cleanLine}<span class="num text-muted">{cleanLine}</span>{/if}
 			</div>
-		{:else}
+		{:else if header}
 			<div
 				data-dock="header"
-				class="{panel} {dockClass}"
+				class="{panel} {dockClass} {rail ? '!hidden' : ''}"
 				style={dock(1, '0', '-40px')}
 			>
 				{@render header()}
@@ -246,7 +346,10 @@
 		<!-- The crew's side, under the seat (a phone: along the bottom): the
 		     moment card when it does not fit top-centre, what has the focus,
 		     then the crew. -->
-		<div class="{column} {phone ? '' : 'items-end'}" style={right}>
+		<div
+			class="{column} overflow-y-auto {phone ? '' : 'items-end'}"
+			style={right}
+		>
 			{#if moment && momentPlace === 'seat'}
 				<!-- Never wider than the column, so never into the corridor (G3). -->
 				<div data-dock="moment" class="ride-panel">{@render moment()}</div>
@@ -263,7 +366,7 @@
 			{#if crew}
 				<div
 					data-dock="crew"
-					class="{panel} {dockClass}"
+					class="{rail ? '[&:not(:has(*))]:hidden' : panel} {dockClass}"
 					style={dock(3, '40px', '0')}
 				>
 					{@render crew()}
@@ -282,7 +385,23 @@
 	>
 		<SummitStrip />
 	</div>
-	{#if world && horizon}
+	{#if skyline && horizon && rail}
+		<div
+			aria-hidden="true"
+			class="from-surface/90 via-surface/60 pointer-events-none absolute inset-x-0 bottom-0 bg-linear-to-t to-transparent"
+			style="height:{bandH + 48}px"
+		></div>
+		<div
+			data-dock="horizon"
+			class="absolute inset-x-0 bottom-0 overflow-hidden {dockClass}"
+			style="{dock(4, '0', '40px')}height:{stage
+				? `${STRIP_PX}px`
+				: 'max(120px, 18vh)'}"
+			bind:offsetHeight={bandH}
+		>
+			{@render horizon()}
+		</div>
+	{:else if skyline && horizon}
 		<div
 			data-dock="horizon"
 			class="{panel} {dockClass} absolute overflow-hidden"

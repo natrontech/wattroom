@@ -65,18 +65,15 @@
 
 <ul aria-label="the crew" class="flex w-max max-w-full min-w-60 flex-col">
 	{#each rows as rider (rider.id)}
-		{@const followed = rider.id === followedId}
 		<li
 			{@attach contextMenu(() => crewMenu(channel, rider))}
 			data-testid="crew-tile"
-			class="rounded {rider.you ? 'bg-neon/16' : ''} {followed
-				? 'outline-neon outline-1'
-				: ''}"
+			class="border-l-2 {inHead(rider) ? 'border-neon' : 'border-transparent'}"
 		>
 			{#if onFollow}
 				<button
 					onclick={() => onFollow(rider.id)}
-					aria-pressed={followed}
+					aria-pressed={rider.id === followedId}
 					title="follow {rider.name}"
 					class="{ROW} w-full text-left">{@render row(rider)}</button
 				>

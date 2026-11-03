@@ -170,7 +170,7 @@ describe('the world on a ride', () => {
 		expect(bar).not.toContain('aria-label="One more minute"');
 		// Easier and Harder lead, before ⚑ and Change workout.
 		expect(controls(none, { onflag: () => {}, onchange: () => {} })).toMatch(
-			/>Easier<\/button>[\s\S]*>Harder<\/button>[\s\S]*aria-label="Flag a problem"[\s\S]*>Change workout<\/button>/,
+			/aria-label="Easier"[\s\S]*aria-label="Harder"[\s\S]*aria-label="Flag a problem"[\s\S]*>Change workout<\/button>/,
 		);
 		const html = screen(none, change);
 		// Nor a target to trim.
@@ -180,7 +180,7 @@ describe('the world on a ride', () => {
 
 	// #4283: no workout drew a workout's header, its eyebrow and "Free ride"
 	// twice, the road line at label size and an empty column beside it.
-	it('gives a ride with no workout the free ride’s slot 1 (TARGETS ride-free-road 3, 7)', () => {
+	it('gives a ride with no workout the road’s rail, no workout clock', () => {
 		const none = withProfile(openRoad({ routeId: 'r1', fromM: 0, toM: 2000 }), {
 			name: 'Test loop',
 			road: legsRoad([1000, 0], [1000, 5]),
@@ -192,22 +192,15 @@ describe('the world on a ride', () => {
 			onChangeWorkout: () => {},
 			block: true,
 		});
-		const band = html
-			.slice(html.indexOf('data-testid="ride-band"'), html.indexOf('</header>'))
+		const rail = html
+			.slice(html.indexOf('data-testid="ride-rail"'))
 			.replace(/<!--[^>]*-->/g, '');
-		// The road named once, in the label.
-		expect(band).toMatch(
-			/data-testid="ride-context"[^>]*>\s*Free ride · Test loop\s*</,
-		);
-		expect(band.match(/Free ride/g)).toHaveLength(1);
-		// The road line at display size, then the chip and the time with m climbed.
-		expect(band).toMatch(/data-testid="block-road" class="[^"]*text-4xl/);
-		expect(band).toMatch(/data-testid="trainer-chip"[^>]*>SIM · you feel/);
-		expect(band).toMatch(/data-testid="ride-clock"[^>]*>0:00 · 0 m climbed</);
-		// The controls are the now bar's, not slot 1's.
-		expect(band).not.toContain('>End ride</button>');
-		// No workout's header: no ridden clock, no column for a strip or NEXT.
-		expect(band).not.toContain('aria-label="ridden"');
-		expect(band).not.toContain('w-88');
+		// No workout: the road's grade, speed and distance, no block clock or NEXT.
+		expect(rail).toContain('data-testid="rail-grade"');
+		expect(rail).toContain('data-cell="Speed"');
+		expect(rail).not.toContain('data-testid="rail-left"');
+		expect(rail).not.toContain('data-testid="rail-next"');
+		// The controls are the now bar's, not the rail's.
+		expect(rail).not.toContain('>End ride</button>');
 	});
 });

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import RoadMap from '$lib/ride/RoadMap.svelte';
 	import { board } from '$lib/board/clips.svelte';
 	import { bindViewKeys } from '$lib/ride/keys';
 	/**
@@ -24,7 +25,7 @@
 	import type { Clamp } from '$lib/ride/drivetrain';
 	import { FLAG_NOTICE_MS, FLAG_SAID } from '$lib/ride/flag';
 	import FlagButton from '$lib/ride/FlagButton.svelte';
-	import FreeRideBand from '$lib/ride/FreeRideBand.svelte';
+	import RideRail from '$lib/session/RideRail.svelte';
 	import ModeSwitch from '$lib/ride/ModeSwitch.svelte';
 	import {
 		GRADE,
@@ -41,7 +42,6 @@
 	import type { Pacer } from '$lib/ride/pacer.svelte';
 	import { PACER_CATEGORIES, PACER_PAR } from '$lib/road/pacer';
 	import type { RideShift } from '$lib/ride/ride-shift';
-	import { roadLine } from '$lib/ride/road-readout';
 	import { roadEndOffered } from '$lib/ride/road-end';
 	import { trainerLine } from '$lib/ride/status-lines';
 	import RoadEnd from '$lib/ride/RoadEnd.svelte';
@@ -164,14 +164,6 @@
 	);
 	const atMax = $derived(
 		inWatts ? free.watts === WATTS.max : free.grade === GRADE.max,
-	);
-	// How the trainer rides it, once (TARGETS one home): the slope the rider
-	// set, or the road's felt one (#3025); the watts held, the rider's or the
-	// road's (#3027). Off a road the − and + move this number.
-	const chip = $derived(
-		inWatts
-			? `Watts · ${free.targetWatts} W`
-			: `SIM · you feel ${(road ? road.felt : free.grade).toFixed(1)} %`,
 	);
 	// Warm up and Cool down (#4100): off a road, a length picked once.
 	const RAMPS: { kind: RampKind; label: string }[] = [
@@ -323,7 +315,7 @@
 				openMenu(pacerItems(), box.left, box.top, event.currentTarget);
 			}}
 			aria-haspopup="menu"
-			class="btn btn-secondary btn-ride whitespace-nowrap"
+			class="btn btn-secondary btn-ride whitespace-nowrap max-md:hidden"
 			>{pacer.category ? `Pacer ${pacer.category}` : 'Ride with a pacer'}
 			<ChevronDown size={16} /></button
 		>
@@ -332,15 +324,23 @@
 		<!-- Climb repeats (#3193): SIM only, so not offered in Watts. -->
 		<button
 			onclick={() => free.setRepeats(!free.repeats)}
-			class="btn btn-secondary btn-ride whitespace-nowrap"
+			class="btn btn-secondary btn-ride whitespace-nowrap max-md:hidden"
 			>{free.repeats ? 'Stop repeats' : 'Climb repeats'}</button
 		>
 	{/if}
-	{#if onflag}<FlagButton onflag={flag} sends="after" />{/if}
-	{#if road}<ViewSwitch {world} drawn={inWorld} />{/if}
+	<!-- A phone's bar keeps the mode, the shifter and End in view. -->
+	{#if onflag}<span class="contents max-md:hidden"
+			><FlagButton onflag={flag} sends="after" /></span
+		>{/if}
+	{#if road}<span class="contents max-md:hidden"
+			><ViewSwitch {world} drawn={inWorld} /></span
+		>{/if}
 	{#if ontv}
-		<button onclick={ontv} class={ICON} aria-label="TV mode" title="TV mode"
-			><MonitorUp size={20} /></button
+		<button
+			onclick={ontv}
+			class="{ICON} max-md:hidden"
+			aria-label="TV mode"
+			title="TV mode"><MonitorUp size={20} /></button
 		>
 	{/if}
 	{#if onend}
@@ -369,7 +369,7 @@
 						openMenu(rampItems(), box.left, box.top, event.currentTarget);
 					}}
 					aria-haspopup="menu"
-					class="btn btn-secondary btn-ride whitespace-nowrap"
+					class="btn btn-secondary btn-ride whitespace-nowrap max-md:hidden"
 					>Warm up or cool down <ChevronDown size={16} /></button
 				>
 			{/if}
@@ -377,17 +377,24 @@
 	{/if}
 {/snippet}
 
-{#snippet band()}
-	<FreeRideBand
-		label={freeRideLabel(road)}
-		roadLine={road ? roadLine(road.readout) : undefined}
-		{chip}
-		seconds={free.seconds}
-		climbed={road ? metres : undefined}
-		ascents={road && free.repeats ? road.ascents : undefined}
-		status={faultLine}
-		{notes}
-	/>
+{#snippet glance()}
+	<RideRail
+		watts={free.live?.seconds ? free.live.power3 : watts}
+		stale={stale || idle}
+		target={inWatts ? free.targetWatts : 0}
+		{ftp}
+		{kg}
+		stats={free.live}
+		road={road?.readout}
+		grade={road || inWatts ? undefined : free.grade}
+		speedKph={road ? road.virtualMps * 3.6 : undefined}
+		{cadence}
+		{hr}
+		elapsed={free.seconds}
+		title={freeRideLabel(road)}
+		gear={gear && !inWatts ? gear.label : undefined}
+		status={faultLine}>{@render notes()}</RideRail
+	>
 {/snippet}
 
 {#snippet bar()}
@@ -428,6 +435,8 @@
 		mps={on.virtualMps}
 		reverse={on.reverse}
 		ghosts={haunts}
+		{watts}
+		{ftp}
 	/>
 {/snippet}
 
@@ -463,16 +472,15 @@
 
 <RideNarrator {view} {watts} {ftp} {stale} />
 
+{#snippet roadMapView()}{#if map}<RoadMap view={map} />{/if}{/snippet}
 <RidingSurface
+	roadMap={map ? roadMapView : undefined}
 	class="flex-1 {worldClass} {extra}"
 	world={inWorld ? worldSlot : undefined}
 	moment={roadEndOffered(free, false) ? roadEnd : undefined}
 	{bar}
+	rail={glance}
 >
-	{#snippet header()}
-		{@render band()}
-	{/snippet}
-
 	{#snippet focus()}
 		{#if setup && !free.recording}{@render setup()}{/if}
 	{/snippet}

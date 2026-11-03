@@ -184,6 +184,20 @@ never shrinks below ([#3678](https://github.com/natrontech/wattroom/issues/3678)
 opaque; a unit is at most half its number's size. The big watts figure is a
 **3 s** average; scoring still reads every second.
 
+## The ride rail (the ride HUD, 2026-11)
+
+Riding shows one row of numbers across the top, on the world under a fade, with no panel. It reads left to right in the same order on every ride:
+
+- **Watts**, the 3 s power, with the target's track under it while a block asks one.
+- **Then one number**: a workout's **time left**, or off a workout the **grade**.
+- **Then the rest**, all one size: NEXT (a workout) or the grade **ahead** (a road: the first 100 m bar in the next km that is **2 %** off the grade now), speed and **to top** or **to go** (a road), cadence, heart, the ride's time, the gear.
+
+It is sized in the TV column above, in vh, at least the desk floors: watts **12vh**, the one number **9vh**, the rest **5vh**, labels **1.7vh** (at least 11 px). A phone keeps the watts and the one number in a row and the rest three to a row, never wider than the screen.
+
+A tap on the rail adds a second row in the same type: W/kg, zone, 10 s, 30 s, NormPower, Intensity, Work. Map (M, the view switch) is a view of its own: the road from above over the whole ground under the rail, no panel. The road ahead takes the Skyline's grade ramp and is wider the steeper it is (**6 px** flat to **18 px** over 12 %). The road ridden is a thin muted line, you are an ink ring, and each classed climb names its class at its top. Over the world the Skyline runs along the bottom edge to edge on a fade, no panel, **18vh** tall (at least **120 px**). It reaches **1 km** behind you instead of 500 m, and draws your watts as a line along the road ridden, one sample a second at its metre, scaled to the trail's peak (never under **300 W**), each stretch in its power zone's colour. Under the watts, without a target, the seven zones stand in a row with yours lit, and the label names it ("Watts · Z3 Tempo"). Flat, the graph or the Skyline is the ground under the rail, with the same watts line on a road. Easier and Harder are in the now bar. The second row starts with the ride's name, and in a session it holds the HR share and the execution meter.
+
+TV mode draws the same rail, with the place, the workout and the way out above it, the graph or the Skyline as the ground and the crew beside it. In a session the crew and now playing stand under a fade from the right (a phone: from the foot), no panel; the rider whose numbers the rail shows is marked with a neon edge.
+
 ## The ride's pictures (defaults — tune in alpha; [#4221](https://github.com/natrontech/wattroom/issues/4221), [#4263](https://github.com/natrontech/wattroom/issues/4263))
 
 A closing card offers two pictures for Strava, and the rider saves either or both: the **poster**, drawn by the server from the saved ride, and the **world's**, drawn where the 3D world drew.

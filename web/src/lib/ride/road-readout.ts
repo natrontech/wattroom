@@ -39,3 +39,18 @@ export function roadLine(r: RoadReadout): string {
 	if (r.next) parts.push(`${r.next.cls} in ${formatKm(r.next.inM)} km`);
 	return parts.join(' · ');
 }
+
+/**
+ * The rail's grade ahead (the ride HUD, 2026-11): the first 100 m bar in the
+ * next kilometre whose grade is 2 % off the grade under you, as "8 % in 300 m".
+ * Nothing while the road holds its grade, so the rail says only a change.
+ */
+export function aheadLine(
+	r: Pick<RoadReadout, 'grade' | 'ahead'>,
+): string | null {
+	const bars = r.ahead ?? [];
+	for (let i = 1; i < Math.min(bars.length, 10); i++)
+		if (Math.abs(bars[i] - r.grade) >= 2)
+			return `${Math.round(bars[i]) || 0} % in ${i * 100} m`;
+	return null;
+}

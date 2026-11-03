@@ -42,7 +42,7 @@ test('a simulated ride produces a .fit file', async ({ page }) => {
 	// The ride is live once power is arriving.
 	// The flat surface draws power once, in the watt colour: the computer's
 	// head (TARGETS ride-workout-flat 4). A second numeral is a duplicate (#3670).
-	const watts = page.locator('.text-watt');
+	const watts = page.locator('.text-watt:visible');
 	await expect(watts).toHaveCount(1);
 	await expect(watts).not.toHaveText('0', { timeout: 15_000 });
 

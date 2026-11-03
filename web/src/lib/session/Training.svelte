@@ -1,4 +1,5 @@
 <script lang="ts">
+	import RoadMap from '$lib/ride/RoadMap.svelte';
 	import { board } from '$lib/board/clips.svelte';
 	import { bindViewKeys } from '$lib/ride/keys';
 	// The Training place — the 3 m surface (ADR-0020). Was a tab inside
@@ -27,6 +28,10 @@
 	import { watchClimbCues } from '$lib/ride/climb-cues.svelte';
 	import RaceRadio from '$lib/race/RaceRadio.svelte';
 	import RideBand from '$lib/session/RideBand.svelte';
+	import RideRail from '$lib/session/RideRail.svelte';
+	import HrShare from '$lib/channel/HrShare.svelte';
+	import ExecutionMeter from '$lib/session/ExecutionMeter.svelte';
+	import BiasTrim from '$lib/session/BiasTrim.svelte';
 	import MomentCard from '$lib/session/MomentCard.svelte';
 	import Skyline from '$lib/ride/Skyline.svelte';
 	import { rideContext } from './ride-context';
@@ -137,6 +142,7 @@
 			: null,
 	);
 	const rider = $derived(followed ?? channel.you);
+	const stats = $derived(channelConnection.current?.recording.live);
 	// The sprint carries its own numbers and Watt Golf hides the meter:
 	// slots 3 to 5 stand empty while either has the focus.
 	// Over the world a sprint is a moment card and your numbers stay (D12).
@@ -240,14 +246,25 @@
 	{#snippet worldControls()}
 		<!-- One row in the now bar. -->
 		<div class="contents">
+			{#if channel.you.inSession && channel.trainer}
+				<!-- Easier and Harder, in the bar since the rail holds only numbers. -->
+				<BiasTrim
+					bias={channel.bias}
+					onBias={channel.actuating
+						? (step) => channel.nudgeBias(step)
+						: undefined}
+					hint={targetsNote ? `${targetsNote} — trim them there` : undefined}
+				/>
+			{/if}
 			{#if channel.ridden}<ViewSwitch {world} drawn={inWorld} />{/if}
+			<!-- A phone's bar keeps Leave and the coach's controls in view. -->
 			<button
 				onclick={() => channel.openTv()}
-				class={ICON}
+				class="{ICON} max-md:hidden"
 				aria-label="TV mode"
 				title="TV mode"><MonitorUp size={20} /></button
 			>
-			<SessionFlag />
+			<span class="contents max-md:hidden"><SessionFlag /></span>
 			{#if channel.you.inSession}
 				<!-- One short word, so the eyebrow keeps the row (slot 1's 860 px). -->
 				<button
@@ -282,7 +299,7 @@
 		{@const current = channelConnection.current?.live.tick?.jukebox?.current}
 		{#if current}
 			<!-- Directly under the player, at its width (TARGETS ride-session-road 3). -->
-			<p class="ride-panel truncate px-3 py-2 text-2xl leading-7">
+			<p class="truncate py-1 text-2xl leading-7">
 				{current.title} · <span class="text-muted">{current.addedBy}</span>
 			</p>
 		{/if}
@@ -300,6 +317,46 @@
 				{#snippet roadside()}<RoadsideDeck to={watched} />{/snippet}
 			</GamePanel>
 		{/if}
+	{/snippet}
+	{#snippet sessionMore()}
+		<HrShare ride icon />
+		{#if riding.length > 1}
+			<!-- The live half of the execution score (#543), alone not a
+			     leaderboard (#2635). -->
+			<div class="max-h-32 w-64 overflow-y-auto">
+				<ExecutionMeter riders={riding} />
+			</div>
+		{/if}
+	{/snippet}
+	{#snippet glance()}
+		<RideRail
+			watts={rider.you && stats?.seconds
+				? stats.power3
+				: Math.round(rider.watts)}
+			stale={rider.you
+				? channel.youStale || (phone && channel.youUnmeasured)
+				: rider.stale}
+			target={rider.target}
+			ftp={rider.ftp}
+			kg={rider.kg}
+			stats={rider.you ? stats : undefined}
+			block={channel.block}
+			road={rider.you
+				? (channel.block?.road ?? channel.roadReadout ?? undefined)
+				: undefined}
+			speedKph={rider.you && channel.ridden
+				? channel.ridden.mps * 3.6
+				: undefined}
+			cadence={rider.cadence}
+			hr={rider.hr}
+			{elapsed}
+			title={channel.shared?.workoutName ?? ''}
+			more={rider.you && channel.you.inSession ? sessionMore : undefined}
+			status={trainerLine}
+			strip={graphed ? undefined : strip}
+			>{#if !rider.you}<span class="text-muted">following {rider.name}</span
+				>{/if}{#if channel.race}<RaceRadio race={channel.race} />{/if}</RideRail
+		>
 	{/snippet}
 	{#snippet moment()}
 		{#if channel.sprint}<MomentCard
@@ -319,7 +376,9 @@
 			>{channel.shared?.countdownRemaining}</span
 		>
 	{/snippet}
+	{#snippet roadMapView()}{#if map}<RoadMap view={map} />{/if}{/snippet}
 	<RidingSurface
+		roadMap={map ? roadMapView : undefined}
 		class="h-full"
 		world={inWorld ? road : undefined}
 		stage={inFocus === 'media'}
@@ -328,27 +387,31 @@
 		dockIn={countingIn}
 		seat={docked ? nowPlaying : undefined}
 		bar={worldControls}
+		rail={quiet ? undefined : glance}
 	>
 		{#snippet header()}
-			<RideBand
-				block={channel.block}
-				road={channel.roadReadout ?? undefined}
-				{elapsed}
-				{total}
-				title={channel.shared?.workoutName ?? ''}
-				context={rideContext(
-					'Session',
-					channel.shared?.workoutName ?? '',
-					inRide.length,
-				)}
-				drives={!!channel.trainer && channel.actuating}
-				status={trainerLine}
-				strip={graphed ? undefined : strip}
-			/>
-			{#if channel.race}
-				<div class="px-4 pb-3">
-					<RaceRadio race={channel.race} />
-				</div>
+			<!-- A game that hides the meter keeps the band, without the rail. -->
+			{#if quiet}
+				<RideBand
+					block={channel.block}
+					road={channel.roadReadout ?? undefined}
+					{elapsed}
+					{total}
+					title={channel.shared?.workoutName ?? ''}
+					context={rideContext(
+						'Session',
+						channel.shared?.workoutName ?? '',
+						inRide.length,
+					)}
+					drives={!!channel.trainer && channel.actuating}
+					status={trainerLine}
+					strip={graphed ? undefined : strip}
+				/>
+				{#if channel.race}
+					<div class="px-4 pb-3">
+						<RaceRadio race={channel.race} />
+					</div>
+				{/if}
 			{/if}
 		{/snippet}
 
@@ -456,6 +519,8 @@
 				<div class="h-full">
 					<Skyline
 						road={channel.ridden.road}
+						watts={channel.you.watts}
+						ftp={channel.you.ftp}
 						m={channel.ridden.m}
 						mps={channel.ridden.mps}
 						strip={inFocus === 'media'}
@@ -467,6 +532,8 @@
 					<div class="absolute inset-0">
 						<Skyline
 							road={channel.ridden.road}
+							watts={channel.you.watts}
+							ftp={channel.you.ftp}
 							m={channel.ridden.m}
 							mps={channel.ridden.mps}
 						/>
@@ -499,6 +566,8 @@
 					<div class="absolute inset-0">
 						<Skyline
 							road={channel.ridden.road}
+							watts={channel.you.watts}
+							ftp={channel.you.ftp}
 							m={channel.ridden.m}
 							mps={channel.ridden.mps}
 						/>

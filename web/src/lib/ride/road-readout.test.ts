@@ -3,7 +3,7 @@ import { climbsOf } from '$lib/road/climbs';
 import { legsRoad } from '$lib/road/fixtures';
 import { roadReadout } from '$lib/road/readout';
 import { turnedRound } from '$lib/road/road';
-import { createRoadReadout, roadLine } from './road-readout';
+import { aheadLine, createRoadReadout, roadLine } from './road-readout';
 
 // A synthetic ride (#3060's): a kilometre flat, two at 5 %, a flat
 // kilometre, three at 6 %, a flat finish.
@@ -37,6 +37,23 @@ describe('a ride’s road readout (#3639)', () => {
 		).toBe('km 12.4 of 52.9 · 7.6 %');
 		expect(roadLine({ grade: 0, km: 0.4, totalKm: 8 })).toBe(
 			'km 0.4 of 8.0 · 0.0 %',
+		);
+	});
+
+	it('says the grade ahead only where it changes, the first change first', () => {
+		const flat = Array(20).fill(1);
+		expect(aheadLine({ grade: 1, ahead: flat })).toBeNull();
+		expect(aheadLine({ grade: 1, ahead: undefined })).toBeNull();
+		// The bar under you never counts: it is the grade now.
+		expect(aheadLine({ grade: 1, ahead: [9, 1, 1, 7.6, 9, ...flat] })).toBe(
+			'8 % in 300 m',
+		);
+		// Past a kilometre is not ahead yet.
+		expect(
+			aheadLine({ grade: 1, ahead: [...flat.slice(0, 10), 9] }),
+		).toBeNull();
+		expect(aheadLine({ grade: 6, ahead: [6, 6, -4.4, 6] })).toBe(
+			'-4 % in 200 m',
 		);
 	});
 });

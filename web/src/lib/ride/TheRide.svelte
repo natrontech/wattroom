@@ -14,8 +14,6 @@
 	import Banner from '$lib/components/Banner.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import RideCardChooser from '$lib/ride/RideCardChooser.svelte';
-	import { climbView } from '$lib/ride/climb-view';
-	import { mapView } from '$lib/ride/map-view';
 	import RampRiding from '$lib/ride/RampRiding.svelte';
 	import RideFlags from '$lib/ride/RideFlags.svelte';
 	import RideStatus from '$lib/ride/RideStatus.svelte';
@@ -203,8 +201,6 @@
 		<TvOverlay
 			stats={session.live}
 			skyline={tvSkyline}
-			climb={climbView(tvSkyline)}
-			map={mapView(tvSkyline)}
 			riders={[tvRider]}
 			segments={session.segments}
 			total={session.total}
