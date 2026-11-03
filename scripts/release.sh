@@ -37,11 +37,12 @@ fi
 prev=$(git describe --tags --abbrev=0 --match '2[0-9][0-9][0-9].*' 2>/dev/null || true)
 
 # The notes are the feat/fix/perf commits since the previous release, in Keep
-# a Changelog order; squash merges make each one PR. A commit's own
-# `Changelog:` line is its entry ("-" leaves it out), else its subject is.
+# a Changelog order; squash merges make each one PR. A commit's first real
+# `Changelog:` line is its entry, else its subject is. A squash body holds
+# every commit's message, so "-" leaves it out only when no line says more.
 # Scopes no rider sees never appear. scripts/release-notes-check.sh tests it.
 entries() {
-	local type=$1 sha subject scope text line pr
+	local type=$1 sha subject scope text said line pr
 	local re="^${type}(\\(([a-z-]+)\\))?!?: (.*)$"
 	for sha in $(git log --format=%H ${prev:+"$prev"..}HEAD); do
 		subject=$(git log -1 --format=%s "$sha")
@@ -49,8 +50,9 @@ entries() {
 		scope=${BASH_REMATCH[2]}
 		text=${BASH_REMATCH[3]}
 		case "$scope" in ci | deps | docs | e2e | test) continue ;; esac
-		line=$(git log -1 --format=%B "$sha" | sed -n 's/^[[:space:]]*Changelog:[[:space:]]*//p' | tail -1)
-		[ "$line" = "-" ] && continue
+		said=$(git log -1 --format=%B "$sha" | sed -n 's/^[[:space:]]*Changelog:[[:space:]]*//p')
+		line=$(grep -v -x -- '-' <<<"$said" | head -1 || true)
+		[ -z "$line" ] && grep -q -x -- '-' <<<"$said" && continue
 		if [ -n "$line" ]; then
 			pr=$(grep -oE '\(#[0-9]+\)$' <<<"$text" || true)
 			text="$line${pr:+ $pr}"
