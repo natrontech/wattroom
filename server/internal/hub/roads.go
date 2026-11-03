@@ -130,6 +130,7 @@ func (h *Hub) sessionRoute(ask protocol.ControlRoute, workoutJSON, coach, channe
 	if ask.FromM >= route.LengthM {
 		return refuse("validation_error", fmt.Sprintf("A session starts within its road — before %.1f km.", route.LengthM/1000))
 	}
-	route.FromM, route.Reverse, route.Loop = ask.FromM, ask.Reverse, ask.Loop
+	// A road that is a loop as stored (WattRoom's own) laps whatever was asked.
+	route.FromM, route.Reverse, route.Loop = ask.FromM, ask.Reverse, route.Loop || ask.Loop
 	return routeRide{SessionRoute: route, profile: profile}, nil
 }

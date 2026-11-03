@@ -18,7 +18,14 @@ import { roadStep, type Road } from './road';
  * clock and the bunch agree. A road longer than a sitting rides its first leg.
  */
 export function rideTogether(
-	route: { id: string; genName: string; road: Road; climbs: Climb[] },
+	route: {
+		id: string;
+		genName: string;
+		road: Road;
+		climbs: Climb[];
+		/** WattRoom's own road: no hidden ends, so the crew rides it whole (#4258). */
+		whole?: boolean;
+	},
 	ridden: Stretch,
 ): { workout: Workout; route: ControlRoute; legs: number } {
 	const legs = compileRoad(
@@ -30,7 +37,14 @@ export function rideTogether(
 	return {
 		workout: legs[0],
 		legs: legs.length,
-		route: { id: route.id, fromM: crewFromM(route.road, ridden.fromM) },
+		route: {
+			id: route.id,
+			fromM: crewFromM(
+				route.road,
+				ridden.fromM,
+				route.whole ? 0 : RouteHiddenEndM,
+			),
+		},
 	};
 }
 
@@ -40,11 +54,15 @@ export function rideTogether(
  * end, exactly as the server's Cut takes it — so a start inside a hidden end
  * starts where the crew's road does.
  */
-export function crewFromM(road: Road, fromM: number): number {
+export function crewFromM(
+	road: Road,
+	fromM: number,
+	hidden: number = RouteHiddenEndM,
+): number {
 	const step = roadStep(road);
-	const first = Math.ceil(RouteHiddenEndM / step);
+	const first = Math.ceil(hidden / step);
 	const last = Math.min(
-		Math.floor((road.length - RouteHiddenEndM) / step),
+		Math.floor((road.length - hidden) / step),
 		road.heights.length - 1,
 	);
 	return Math.min(Math.max(fromM - first * step, 0), (last - first - 1) * step);
@@ -55,12 +73,13 @@ export function crewFromM(road: Road, fromM: number): number {
  * way (#3103): what the tick says of a session, as a workout's road reference
  * counts it.
  */
-export function ownerFromM(road: Road, crewM: number): number {
+export function ownerFromM(
+	road: Road,
+	crewM: number,
+	hidden: number = RouteHiddenEndM,
+): number {
 	const step = roadStep(road);
-	return Math.min(
-		crewM + Math.ceil(RouteHiddenEndM / step) * step,
-		road.length - step,
-	);
+	return Math.min(crewM + Math.ceil(hidden / step) * step, road.length - step);
 }
 
 /**

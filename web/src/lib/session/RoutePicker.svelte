@@ -141,6 +141,7 @@
 				genName: picked.generatedName,
 				road,
 				climbs: picked.climbs,
+				whole: picked.src === 'wattroom',
 			},
 			ridden,
 		);

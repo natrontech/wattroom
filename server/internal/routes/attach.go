@@ -100,6 +100,10 @@ func (a *Attacher) CheckShared(ctx context.Context, workoutJSON string, actor, c
 	if err != nil || ref == nil {
 		return pgtype.UUID{}, err
 	}
+	// WattRoom's own roads ride with anyone, and no route row backs them.
+	if _, ok := fromLibrary(ref.RouteID); ok {
+		return pgtype.UUID{}, nil
+	}
 	id, err := store.ParseUUID(ref.RouteID)
 	if err != nil {
 		return pgtype.UUID{}, Refused("A workout's road names no route.")
@@ -145,6 +149,9 @@ func SharedName(ctx context.Context, q *db.Queries, workoutJSON, name string) (s
 	if json.Unmarshal([]byte(workoutJSON), &w) != nil || w.Road == nil {
 		return name, nil
 	}
+	if lib, ok := fromLibrary(w.Road.RouteID); ok {
+		return lib.name, nil
+	}
 	id, err := store.ParseUUID(w.Road.RouteID)
 	if err != nil {
 		return name, nil
@@ -165,6 +172,9 @@ func (a *Attacher) CheckOwn(ctx context.Context, workoutJSON string, owner pgtyp
 	ref, err := workout.RoadOf(workoutJSON)
 	if err != nil || ref == nil {
 		return err
+	}
+	if _, ok := fromLibrary(ref.RouteID); ok {
+		return nil
 	}
 	id, err := store.ParseUUID(ref.RouteID)
 	if err != nil {
@@ -189,12 +199,20 @@ func (a *Attacher) Attach(ctx context.Context, workoutJSON string, viewer pgtype
 		return workoutJSON, err
 	}
 	out := attached{RoadRef: *ref}
-	id, err := store.ParseUUID(ref.RouteID)
-	if err != nil {
-		return workoutJSON, err
+	lib, inLibrary := fromLibrary(ref.RouteID)
+	var row db.GetRouteRoadRow
+	if !inLibrary {
+		id, perr := store.ParseUUID(ref.RouteID)
+		if perr != nil {
+			return workoutJSON, perr
+		}
+		row, err = a.q.GetRouteRoad(ctx, id)
 	}
-	row, err := a.q.GetRouteRoad(ctx, id)
 	switch {
+	case inLibrary:
+		// Invented, so whole for everyone, and a loop as it was made.
+		out.Loop = true
+		out.Profile = base64.StdEncoding.EncodeToString(lib.road.Pack())
 	case errors.Is(err, pgx.ErrNoRows):
 		out.Deleted = true
 	case err != nil:
@@ -249,6 +267,10 @@ func (a *Attacher) SessionRoute(ctx context.Context, coach, routeID, channel str
 	if err != nil {
 		return protocol.SessionRoute{}, road.Road{}, nil, fmt.Errorf("routes: coach %q is not an id: %w", coach, err)
 	}
+	if lib, ok := fromLibrary(routeID); ok {
+		return protocol.SessionRoute{ID: routeID, Hash: lib.hash, GenName: lib.name, LengthM: lib.road.LengthM, Loop: true},
+			road.Road{LengthM: lib.road.LengthM, Heights: lib.road.Heights}, nil, nil
+	}
 	id, err := store.ParseUUID(routeID)
 	if err != nil {
 		return protocol.SessionRoute{}, road.Road{}, nil, fmt.Errorf("routes: route %q is not an id: %w", routeID, err)
@@ -298,6 +320,10 @@ func (a *Attacher) CrewRoute(ctx context.Context, workoutJSON string) (*protocol
 	if err != nil || ref == nil {
 		return nil, err
 	}
+	// No hidden ends on WattRoom's own roads: the crew's metres are the road's.
+	if lib, ok := fromLibrary(ref.RouteID); ok {
+		return &protocol.ControlRoute{ID: ref.RouteID, FromM: min(max(ref.FromM, 0), lib.road.LengthM-lib.road.Step()), Loop: true}, nil
+	}
 	id, err := store.ParseUUID(ref.RouteID)
 	if err != nil {
 		return nil, fmt.Errorf("routes: route %q is not an id: %w", ref.RouteID, err)
@@ -328,6 +354,12 @@ func (a *Attacher) ForSession(ctx context.Context, coach, channel, workoutJSON s
 	id, err := store.ParseUUID(coach)
 	if err != nil {
 		return "", "", fmt.Errorf("routes: coach %q is not an id: %w", coach, err)
+	}
+	if ref, _ := workout.RoadOf(workoutJSON); ref != nil {
+		if _, ok := fromLibrary(ref.RouteID); ok {
+			attached, err := a.Attach(ctx, workoutJSON, pgtype.UUID{})
+			return attached, "", err
+		}
 	}
 	crew, err := a.crewOf(ctx, channel)
 	if err != nil {

@@ -28,6 +28,7 @@
 	import { onRoute } from '$lib/road/compile';
 	import type { Road } from '$lib/road/road';
 	import type { StoredRoute } from '$lib/road/stored';
+	import { wattroomRoads } from '$lib/ride/home-roads';
 	import GameList from './GameList.svelte';
 	import PairFirst from './PairFirst.svelte';
 	import RaceStart from './RaceStart.svelte';
@@ -197,8 +198,11 @@
 	let routesError = $state<string | null>(null);
 	async function loadRoutes() {
 		routesError = null;
-		const res = await api<{ routes: StoredRoute[] }>('/api/routes');
-		if (res.ok) routes = res.data.routes;
+		const [res, home] = await Promise.all([
+			api<{ routes: StoredRoute[] }>('/api/routes'),
+			wattroomRoads(),
+		]);
+		if (res.ok) routes = [...home, ...res.data.routes];
 		else routesError = res.error.message;
 	}
 	void loadRoutes();

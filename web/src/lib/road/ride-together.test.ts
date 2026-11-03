@@ -67,6 +67,14 @@ describe('rideTogether (#3105)', () => {
 		expect(crewFromM(r, 6990)).toBeLessThan(7000 - 2 * RouteHiddenEndM);
 	});
 
+	it('rides one of WattRoom’s roads whole: it has no hidden ends (#4258)', () => {
+		const { route: picked } = rideTogether(
+			{ ...route, whole: true },
+			{ fromM: 2000, toM: 7000 },
+		);
+		expect(picked.fromM).toBe(2000);
+	});
+
 	// The list, its time filter and the pick read one clock: the crew's pace.
 	it('times the whole road at the pace the crew rides it', () => {
 		const { workout } = rideTogether(route, { fromM: 0, toM: 7000 });
