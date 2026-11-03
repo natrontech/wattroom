@@ -505,13 +505,28 @@
 			</div>
 		</div>
 	{:else if onStartGame}
+		<!-- A game opens its session on the road the row shows (#3794): never
+		     a Strava route, which rides with its owner alone, and none inside
+		     a running session, whose road the hub already holds. -->
 		<GameList
 			running={gameRunning}
+			route={!sessionOpen &&
+			routes?.some((r) => r.id === roadId && !r.ownerOnly)
+				? { id: roadId }
+				: undefined}
 			onStart={onStartGame}
 			onRace={() => {
 				tab = 'roads';
 				roadHow = 'race';
 			}}
-		/>
+		>
+			{#if sessionOpen}
+				<p class="text-muted text-xs">
+					A game started now plays inside the session running here.
+				</p>
+			{:else if routes && routes.some((r) => !r.ownerOnly)}
+				<RoadRow {routes} bind:chosen={roadId} bind:road={workoutRoad} />
+			{/if}
+		</GameList>
 	{/if}
 </div>
