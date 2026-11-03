@@ -338,6 +338,7 @@ type Route struct {
 	CreatedAt  pgtype.Timestamptz
 	RoadSealed []byte
 	Loop       *bool
+	TurnsV     *int16
 }
 
 type RouteCrewConsent struct {

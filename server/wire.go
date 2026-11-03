@@ -202,8 +202,12 @@ func wire(ctx context.Context, st *store.Store, mux *http.ServeMux, baseURL stri
 	safego.Go(log, "wallet opening grants", func() { wallet.Open(ctx, st, log) })
 	// A route's road stored before #3511 held its turns and altitude in the
 	// clear: sealed with the shape under the key, and stripped to bare
-	// heights; a no-op once every road is.
-	safego.Go(log, "route roads sealed", func() { routes.SealRoads(ctx, st.Queries, keys, log) })
+	// heights; then the turns of every road imported before #4383 are
+	// rebuilt from its own line. Each a no-op once every road is.
+	safego.Go(log, "route roads sealed", func() {
+		routes.SealRoads(ctx, st.Queries, keys, log)
+		routes.StraightenRoads(ctx, st.Queries, keys, log)
+	})
 	// Always private: the session source, never a personal token.
 	wallet.New(st, authService, log).Register(mux)
 	// Buying, undoing and dressing (#3154): the session source too.
