@@ -115,30 +115,27 @@ export function gradeOf(ele: Float64Array, step: number): Float64Array {
 	return out;
 }
 
-/** The heading is smoothed over this before its change is taken. */
-export const TURN_M = 100;
 /** A turn is stored as an int8, in whole degrees. */
 const INT8 = 127;
 
 /**
  * The road's turns, one per `every` samples: how far its heading swings from
  * one stored sample to the next, in whole degrees, positive to the right (a
- * compass bearing growing). The heading is smoothed over TURN_M first, so a
- * 9 m hairpin's 180° spreads over about 100 m and fits an int8 per 20 m step,
- * and the sum of any run of turns is how far the road turned along it, to
- * within a degree — which
- * is what finds a hairpin, and what draws a plausible road for a rider who is
- * sent only heights and turns (ADR-0063).
+ * compass bearing growing). The heading is the line's own, which the import
+ * already smoothed (σ 6 m): smoothed again, every hairpin was drawn wider
+ * than it is, and a climb of 21 stacked its legs hundreds of metres up the
+ * hill. A turn past an int8 carries into the next, so the sum of any run of
+ * turns is how far the road turned along it, to within a degree — which is
+ * what finds a hairpin, and what draws the road for a rider who is sent only
+ * heights and turns (ADR-0063).
  */
 export function turnsOf(
 	x: Float64Array,
 	z: Float64Array,
-	step: number,
 	every: number,
 ): number[] {
 	const n = x.length;
-	// Bearing of each segment, unwrapped so a smoothing window never averages
-	// across the ±180° seam.
+	// Bearing of each segment, unwrapped so no turn jumps the ±180° seam.
 	const bearing = new Float64Array(n - 1);
 	for (let i = 0; i < n - 1; i++) {
 		const b = Math.atan2(x[i + 1] - x[i], z[i] - z[i + 1]);
@@ -148,10 +145,6 @@ export function turnsOf(
 			bearing[i] = b - 2 * Math.PI * Math.round(d / (2 * Math.PI));
 		}
 	}
-	const smooth = movingAverage(
-		bearing,
-		Math.max(1, Math.round(TURN_M / step / 2)),
-	);
 	const turns: number[] = [];
 	// What rounding and the int8 clamp left out, carried into the next turn:
 	// rounded one by one, a long road's heading drifts by degrees and its
@@ -160,7 +153,7 @@ export function turnsOf(
 	for (let i = 0; i + every < n; i += every) {
 		// Segment i leaves sample i; the last sample has no segment of its own.
 		const to = Math.min(i + every, n - 2);
-		const deg = ((smooth[to] - smooth[i]) * 180) / Math.PI + carry;
+		const deg = ((bearing[to] - bearing[i]) * 180) / Math.PI + carry;
 		const turn = Math.max(-INT8, Math.min(INT8, Math.round(deg)));
 		carry = deg - turn;
 		turns.push(turn);
