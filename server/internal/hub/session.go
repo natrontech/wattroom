@@ -55,6 +55,14 @@ type session struct {
 	route *routeRide
 	// The bunch on that road (#3028): built at each start, nil without one.
 	bunch *bunch
+	// The start line's (#3228): the road's first metre with the joined
+	// riders standing on it, from the pick on a road until the start, when
+	// the bunch takes over. Its own, so a pick never touches the bunch the
+	// last run's late replays are still stamped against.
+	line *bunch
+	// Who said they are in on the plan that opened it (#3228), for the
+	// start line to list until they arrive. Nil off a plan.
+	awaited []protocol.RsvpRider
 	// Who joined it (ADR-0059): only they are driven and counted. The one
 	// who opened it is in from the start; everyone else in the channel
 	// spectates until they join. Bounded by riders who entered the channel.
@@ -76,6 +84,20 @@ func (s *session) open() bool { return s.id != "" && s.phase != "done" }
 func (s *session) begin(id, coach, coachName string) {
 	*s = session{id: id, coach: coach, coachName: coachName, phase: "idle", run: s.run,
 		joined: map[string]struct{}{coach: {}}}
+}
+
+// startLine reports whether the session stands on its start line (#3228):
+// picked on a road and not yet started. The countdown is ADR-0046's, after it.
+func (s *session) startLine() bool {
+	return s.open() && s.phase == "idle" && s.route != nil
+}
+
+// ride sets the road a pick rides (#3095), and its start line with it.
+func (s *session) ride(route *routeRide, now time.Time) {
+	s.route, s.line, s.awaited = route, nil, nil
+	if route != nil {
+		s.line = newBunch(route, now)
+	}
 }
 
 // rides reports whether a rider is on this session's timeline (ADR-0059):
@@ -169,6 +191,7 @@ func (s *session) start(now time.Time) bool {
 	s.segments, _ = workout.Parse(s.workoutJSON)
 	s.run++
 	s.startBunch(now)
+	s.line, s.awaited = nil, nil
 	return true
 }
 

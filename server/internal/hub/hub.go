@@ -274,8 +274,10 @@ func (h *Hub) SessionAnnounce(channel, verb, actor, workout string, startsAt tim
 //
 // A plan on a road rides it (#3103): route is where on the crew's cut the
 // bunch starts, looked up as routeOwner's — the planner, whose route it is
-// (ADR-0063), whoever starts it.
-func (h *Hub) OpenSession(channel string, rider protocol.Rider, workoutName, workoutJSON string, route *protocol.ControlRoute, routeOwner string) (id, code, message string) {
+// (ADR-0063), whoever starts it. It opens on its start line (#3228), not the
+// countdown: the coach starts the ride from there, and the riders who said
+// they are in (awaited) are listed on it until they arrive.
+func (h *Hub) OpenSession(channel string, rider protocol.Rider, workoutName, workoutJSON string, route *protocol.ControlRoute, routeOwner string, awaited []protocol.RsvpRider) (id, code, message string) {
 	rm := h.stateOf(channel)
 	rm.mu.Lock()
 	s := rm.session
@@ -300,11 +302,16 @@ func (h *Hub) OpenSession(channel string, rider protocol.Rider, workoutName, wor
 	if code, message := rm.controlOn(protocol.Control{Action: "pick", WorkoutName: workoutName, WorkoutJSON: workoutJSON}, ride, rider, h.now()); code != "" {
 		return "", code, message
 	}
-	if code, message := rm.control(protocol.Control{Action: "start"}, rider, h.now()); code != "" {
-		return "", code, message
+	if ride == nil {
+		if code, message := rm.control(protocol.Control{Action: "start"}, rider, h.now()); code != "" {
+			return "", code, message
+		}
 	}
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
+	if ride != nil {
+		rm.session.awaited = awaited
+	}
 	return rm.session.id, "", ""
 }
 

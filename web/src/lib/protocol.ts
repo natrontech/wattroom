@@ -1304,9 +1304,14 @@ export interface ServerTick {
    */
   game?: GameState;
   /**
-   * The bunch on the session's road (ADR-0065), while it rides one.
+   * The bunch on the session's road (ADR-0065), while it rides one — and
+   * standing still at its first metre on the start line (#3228).
    */
   world?: World;
+  /**
+   * The session's start line (#3228), while it sits picked on a road.
+   */
+  startLine?: StartLine;
   /**
    * What the roadside has put on that road (ADR-0064, #3029), beside it.
    */
@@ -2402,6 +2407,42 @@ export interface LiveSession {
    */
   riders: string[];
   riderIds: string[];
+}
+/**
+ * StartLine is a session on a road before its count-in (#3228): who stands on
+ * the line, what each has ready, and who said they would come and is not
+ * here yet. It rides the tick, so it reaches the voice channel's audience and
+ * nobody else, and only while the session sits picked on its road.
+ */
+export interface StartLine {
+  /**
+   * Each rider on the line — joined and in the channel — by rider id. FTP
+   * is not here: the roster already carries it and where it came from
+   * (ADR-0048), so "their own, or a guess" is read there.
+   */
+  ready: { [key: string]: Readiness};
+  /**
+   * Riders who said they are in on the plan that opened the session and are
+   * not in the voice channel, in the order they said so. A crew-mate's name
+   * and id, which the crew's schedule already shows every member.
+   */
+  awaited?: RsvpRider[];
+}
+/**
+ * Readiness is what one rider on the start line has paired (#3228): the
+ * sensor claims the hub already arbitrates (#610), said to the channel as two
+ * yes-or-noes and never as which device holds them.
+ */
+export interface Readiness {
+  trainer?: boolean;
+  heartRate?: boolean;
+}
+/**
+ * RsvpRider is someone who said they are in on a plan.
+ */
+export interface RsvpRider {
+  id: string;
+  name: string;
 }
 
 //////////

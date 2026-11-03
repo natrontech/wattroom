@@ -148,10 +148,11 @@ type workoutOpener struct {
 	workoutJSON string
 	route       *protocol.ControlRoute
 	routeOwner  string
+	awaited     []protocol.RsvpRider
 }
 
-func (o *workoutOpener) OpenSession(channel string, _ protocol.Rider, _, workoutJSON string, route *protocol.ControlRoute, routeOwner string) (string, string, string) {
-	o.workoutJSON, o.route, o.routeOwner = workoutJSON, route, routeOwner
+func (o *workoutOpener) OpenSession(channel string, _ protocol.Rider, _, workoutJSON string, route *protocol.ControlRoute, routeOwner string, awaited []protocol.RsvpRider) (string, string, string) {
+	o.workoutJSON, o.route, o.routeOwner, o.awaited = workoutJSON, route, routeOwner, awaited
 	return "session-in-" + channel, "", ""
 }
 
@@ -171,10 +172,24 @@ func TestStartingARoadPlanSendsTheCrewCut(t *testing.T) {
 		t.Fatalf("alice plans her road: %d %v", status, body)
 	}
 	plan, _ := body["id"].(string)
+	// Alice says she is in, bob says he is out: the start line awaits
+	// alice alone (#3228).
+	if status, _ := h.call(t, "alice", http.MethodPut, schedulePath(crew, "/", plan, "/rsvp"), ""); status != http.StatusNoContent {
+		t.Fatalf("alice answers: %d", status)
+	}
+	if status, _ := h.call(t, "bob", http.MethodPut, schedulePath(crew, "/", plan, "/rsvp"), `{"going":false}`); status != http.StatusNoContent {
+		t.Fatalf("bob answers: %d", status)
+	}
 	status, body = h.call(t, "bob", http.MethodPost, schedulePath(crew, "/", plan, "/started"),
 		fmt.Sprintf(`{"channelId":%q}`, store.UUIDString(channel)))
 	if status != http.StatusOK {
 		t.Fatalf("bob starts it: %d %v", status, body)
+	}
+	if len(opener.awaited) != 1 || opener.awaited[0].Name != "alice" || opener.awaited[0].ID == "" {
+		t.Errorf("the start line awaits %+v, want alice alone", opener.awaited)
+	}
+	if body["sessionId"] != "" {
+		t.Errorf("bob is sent to the ride %v; its start line is in the channel", body["sessionId"])
 	}
 	var w struct {
 		Road struct {

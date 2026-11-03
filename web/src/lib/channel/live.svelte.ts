@@ -94,6 +94,9 @@ export function createChannelLive(address: PlaceAddress) {
 	// whether this tab follows the session it starts to its own address
 	// (#2599); a refusal lets go of both.
 	let startAfterPick: string | null = null;
+	// Whether the last pick starts once it lands, or waits on its start line
+	// (#3228): what a pick asked again after a share goes on to do.
+	let pickStarts = true;
 	let following = $state(false);
 	// The last pick or game on a road, sent again once its owner shares the
 	// route with a crew listed in the directory (#4149, ADR-0063).
@@ -530,11 +533,14 @@ export function createChannelLive(address: PlaceAddress) {
 	/**
 	 * Pick a workout — on a road, from where the route says — and start it
 	 * once the tick shows the pick landed; this tab then follows the session
-	 * to its address.
+	 * to its address. `toLine` stops on the start line instead (#3228): a new
+	 * ride on a road, which the coach starts from there once the riders are
+	 * ready. A bunch resumed after a restart starts at once.
 	 */
 	function pickAndStart(
 		workout: { name: string; json: string; totalSeconds: number },
 		route?: ControlRoute,
+		toLine = false,
 	) {
 		send({
 			control: {
@@ -545,7 +551,8 @@ export function createChannelLive(address: PlaceAddress) {
 				route,
 			},
 		});
-		startAfterPick = workout.name;
+		startAfterPick = toLine ? null : workout.name;
+		pickStarts = !toLine;
 		following = true;
 	}
 
@@ -559,7 +566,8 @@ export function createChannelLive(address: PlaceAddress) {
 			return;
 		}
 		send(again);
-		if (control.action === 'pick') startAfterPick = control.workoutName ?? null;
+		if (control.action === 'pick' && pickStarts)
+			startAfterPick = control.workoutName ?? null;
 		following = true;
 	}
 

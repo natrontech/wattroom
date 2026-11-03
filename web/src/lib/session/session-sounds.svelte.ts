@@ -1,5 +1,6 @@
-import type { GameState } from '$lib/protocol';
+import type { GameState, StartLine } from '$lib/protocol';
 import { gameCues, golfMoment } from '$lib/session/game-cues';
+import { lineCue } from '$lib/session/start-line';
 import { serverNow } from '$lib/server-clock';
 import { changes } from '$lib/sound/changes';
 import { PAN_LIMIT, play, playCountdownTick } from '$lib/sound/cues';
@@ -36,6 +37,8 @@ export interface SoundDeps extends RideSoundDeps {
 	coach: () => string | undefined;
 	/** Your race, while you race one (#3174), its wheel heard (#3265). */
 	race: () => RaceReadout | null;
+	/** The session's start line (#3228), from the tick; absent off it. */
+	startLine: () => StartLine | null | undefined;
 }
 
 export function createSessionSounds(deps: SoundDeps) {
@@ -81,6 +84,19 @@ export function createSessionSounds(deps: SoundDeps) {
 				: deps.phase() === 'running'
 					? 0
 					: undefined,
+	});
+
+	// The start line's (#3228): it opening, a rider stepping on or off, a
+	// trainer on it coming ready. Silent on the first look — a rider walking
+	// into a channel whose line is already open has not just seen it open.
+	let seenLine: StartLine | null | undefined;
+	$effect(() => {
+		const line = deps.startLine() ?? null;
+		const before = seenLine;
+		seenLine = line;
+		if (before === undefined) return;
+		const cue = lineCue(before, line);
+		if (cue) play(cue.id, { semitones: cue.shift });
 	});
 
 	// A game's cues from here, like the sprint's (#1412 for sprints, audit

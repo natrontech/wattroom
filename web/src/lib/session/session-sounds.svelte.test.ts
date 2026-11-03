@@ -17,7 +17,7 @@ const clock = vi.hoisted(() => ({ now: 0 }));
 vi.mock('$lib/server-clock', () => ({ serverNow: () => clock.now }));
 
 import { createSessionSounds, type SoundDeps } from './session-sounds.svelte';
-import type { GameState } from '$lib/protocol';
+import type { GameState, StartLine } from '$lib/protocol';
 import type { RaceReadout } from '$lib/race/race-view';
 
 /** A quiet session; a test overrides the one thing it listens for. */
@@ -34,6 +34,7 @@ function quiet(over: Partial<SoundDeps> = {}): SoundDeps {
 		me: () => 'u1',
 		coach: () => undefined,
 		race: () => null,
+		startLine: () => undefined,
 		...over,
 	};
 }
@@ -111,6 +112,26 @@ describe('createSessionSounds', () => {
 		await tick();
 		expect(heard.cues).toEqual(['klaxon', 'go', 'fanfare']);
 		vi.useRealTimers();
+		stop();
+	});
+
+	// The start line (#3228): what was already there when the rider looked
+	// is not news; the line opening and a rider stepping on it are.
+	it('says the start line changing, never the line it walked in on', async () => {
+		heard.cues.length = 0;
+		let line = $state<StartLine | null>({ ready: { jan: {} } });
+		const stop = $effect.root(() => {
+			createSessionSounds(quiet({ startLine: () => line }));
+		});
+		await tick();
+		expect(heard.cues).toEqual([]);
+		line = { ready: { jan: {}, kim: {} } };
+		await tick();
+		line = null;
+		await tick();
+		line = { ready: { jan: {} } };
+		await tick();
+		expect(heard.cues).toEqual(['join', 'block']);
 		stop();
 	});
 

@@ -301,6 +301,12 @@ func (b *bunch) world(hideOffsets bool) *protocol.World {
 // rideBunch advances the session's bunch to now (#3028). The caller has
 // already called state(now), so a countdown that ran out is running.
 func (s *session) rideBunch(now time.Time) {
+	// The start line stands still (#3228): its riders take their places at
+	// the road's first metre and nobody moves until the start.
+	if s.startLine() && s.line != nil {
+		s.line.at = now
+		s.line.seat(s.joined)
+	}
 	if s.bunch == nil {
 		return
 	}
@@ -323,8 +329,12 @@ func (s *session) onRoad() bool {
 	return s.bunch != nil && s.phase != "idle" && s.phase != "done"
 }
 
-// world is the bunch on the tick while the session rides it; nil otherwise.
+// world is the bunch on the tick while the session rides it, or its start
+// line standing at the road's first metre; nil otherwise.
 func (s *session) world(hideOffsets bool) *protocol.World {
+	if s.startLine() && s.line != nil {
+		return s.line.world(hideOffsets)
+	}
 	if !s.onRoad() {
 		return nil
 	}

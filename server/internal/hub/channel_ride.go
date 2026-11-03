@@ -309,7 +309,7 @@ func (rm *channelState) controlOn(c protocol.Control, route *routeRide, rider pr
 		return "invalid_request", "That does not work right now — the session is in another phase."
 	}
 	if c.Action == "pick" {
-		rm.session.route = route
+		rm.session.ride(route, now)
 	}
 	if stopping {
 		rm.events.add(sessionLine("stopped", "", stopped, time.Time{}, now), now)

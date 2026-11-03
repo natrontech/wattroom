@@ -434,8 +434,23 @@ func (s *Service) handleCrewStarted(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
+		// Who said they are in, for its start line (#3228): only a plan on
+		// a road stands on one.
+		var awaited []protocol.RsvpRider
+		if route != nil {
+			answers, err := s.store.Queries.ListCrewRsvps(r.Context(), crew.ID)
+			if err != nil {
+				httpx.Fail(w, s.log, "plan rsvps read failed", err, "The plan could not be read just now. Start the session again in a moment.", "crew", store.UUIDString(crew.ID))
+				return
+			}
+			for _, a := range answers {
+				if a.SessionID == plan.ID && a.Going {
+					awaited = append(awaited, protocol.RsvpRider{ID: store.UUIDString(a.UserID), Name: a.DisplayName})
+				}
+			}
+		}
 		rider := protocol.Rider{ID: store.UUIDString(user.ID), Name: user.DisplayName, Role: role}
-		id, code, message := s.presence.OpenSession(store.UUIDString(channel), rider, plan.WorkoutName, workoutJSON, route, store.UUIDString(plan.CreatedBy))
+		id, code, message := s.presence.OpenSession(store.UUIDString(channel), rider, plan.WorkoutName, workoutJSON, route, store.UUIDString(plan.CreatedBy), awaited)
 		if code != "" {
 			status := http.StatusBadRequest
 			if code == "conflict" {
@@ -444,7 +459,11 @@ func (s *Service) handleCrewStarted(w http.ResponseWriter, r *http.Request) {
 			httpx.WriteError(w, status, code, message)
 			return
 		}
-		sessionID = id
+		// A plan on a road opens on its start line (#3228), in the channel:
+		// the starter stays there, so no ride's address to go to yet.
+		if route == nil {
+			sessionID = id
+		}
 	}
 	n, err := s.store.Queries.StartCrewPlan(r.Context(), db.StartCrewPlanParams{ID: plan.ID, CrewID: crew.ID, ChannelID: channel})
 	if err != nil {

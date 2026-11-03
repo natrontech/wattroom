@@ -188,9 +188,11 @@
 			(t, s) => Math.max(t, s.startSeconds + s.seconds),
 			0,
 		);
+		// On a road the pick waits on its start line (#3228).
 		live.pickAndStart(
 			{ name: picked.name, json: JSON.stringify(picked), totalSeconds: total },
 			route,
+			!!route,
 		);
 		layers.setup.open = false;
 	}

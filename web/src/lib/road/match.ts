@@ -151,3 +151,17 @@ export function matchTerrain(
 		}
 	return { best, fromZero, suggestRoad: best.score < FLOOR };
 }
+
+/**
+ * How far the reference rider rides this workout from `startM` (#3228): the
+ * distance the bunch covers at the prescribed pace, which is how far a
+ * session on a route goes. Past a point-to-point road's end it rides flat.
+ */
+export const crewDistanceM = (
+	road: Road,
+	workout: Workout,
+	startM: number,
+	reverse = false,
+	loop = false,
+): number =>
+	ride(road, fractionsOf(workout), startM, reverse, loop, true)!.distanceM;
