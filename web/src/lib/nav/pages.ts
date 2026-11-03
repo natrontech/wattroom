@@ -66,6 +66,15 @@ export const pages: {
 ];
 
 /**
+ * Workouts' two sections (#3692), as tabs atop the content: the sidebar's
+ * Workouts row stays the one row, lit under both.
+ */
+export const workoutSections = [
+	{ href: '/workouts', label: 'Workouts' },
+	{ href: '/workouts/routes', label: 'Routes' },
+];
+
+/**
  * A crew's own pages (ADR-0058, #2447, #2569): what the sidebar lists under a
  * chosen crew, above its channels, in the ADR's order. Settings is the
  * admins', and not a phone's (the 95% rule, as a room's was).

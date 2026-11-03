@@ -34,7 +34,9 @@
 	}
 	void load();
 
-	const shown = $derived.by(() => {
+	// Four on the shelf; the rest are a tab away, under Routes (#3692).
+	const SHELF = 4;
+	const matching = $derived.by(() => {
 		const q = query.trim().toLowerCase();
 		return (routes ?? []).filter(
 			(r) =>
@@ -43,6 +45,7 @@
 				r.generatedName.toLowerCase().includes(q),
 		);
 	});
+	const shown = $derived(matching.slice(0, SHELF));
 
 	// Every device, as a workout card's Ride: where this one cannot reach a
 	// trainer, /ride says why beside its disabled Start (ux.md).
@@ -96,9 +99,12 @@
 	<div class="flex min-h-7 flex-wrap items-center justify-between gap-3">
 		<h2 class="eyebrow">your routes</h2>
 		{#if routes && routes.length > 0}
-			<a href="/workouts/import?as=route" class="btn btn-ghost btn-xs -mr-3"
-				>Import a route</a
-			>
+			<span class="-mr-3 flex flex-wrap gap-1">
+				<a href="/workouts/import?as=route" class="btn btn-ghost btn-xs"
+					>Import a route</a
+				>
+				<a href="/workouts/routes" class="btn btn-ghost btn-xs">All routes →</a>
+			</span>
 		{/if}
 	</div>
 	{#if error}

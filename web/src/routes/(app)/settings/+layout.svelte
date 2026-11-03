@@ -7,6 +7,7 @@
 	import { page } from '$app/state';
 	import { api } from '$lib/api';
 	import { buildLine } from '$lib/build-line';
+	import SectionTabs from '$lib/components/SectionTabs.svelte';
 
 	let { children }: { children: import('svelte').Snippet } = $props();
 
@@ -36,19 +37,13 @@
 
 <main class="page">
 	<h1 class="page-title">Settings</h1>
-	<!-- The sections, as a row of links: one address each, the current one
-	     lit. Wraps on a phone; never scrolls sideways (ux.md). -->
-	<nav class="mt-4 flex flex-wrap gap-1" aria-label="settings sections">
-		{#each SECTIONS as s (s.href)}
-			<a
-				href={s.href}
-				aria-current={current?.href === s.href ? 'page' : undefined}
-				class="rounded px-3 py-1.5 text-sm {current?.href === s.href
-					? 'bg-ink/10 text-ink font-medium'
-					: 'text-muted hover:bg-ink/5 hover:text-ink'}">{s.label}</a
-			>
-		{/each}
-	</nav>
+	<div class="mt-4">
+		<SectionTabs
+			tabs={SECTIONS}
+			current={current?.href}
+			label="settings sections"
+		/>
+	</div>
 
 	{@render children()}
 

@@ -166,7 +166,7 @@
 			return;
 		}
 		toasts.push(`Deleted “${gone.name}”.`);
-		await goto('/workouts');
+		await goto('/workouts/routes');
 	}
 </script>
 
@@ -186,10 +186,10 @@
 				<p class="text-ink text-sm">This route isn't here.</p>
 				<p class="mx-auto mt-2 max-w-sm text-xs leading-relaxed">
 					It was deleted, or it is not one of yours. Your own routes are all
-					under Workouts.
+					under Routes.
 				</p>
 				{#snippet cta()}
-					<a href="/workouts" class="btn btn-secondary">Open Workouts</a>
+					<a href="/workouts/routes" class="btn btn-secondary">Open Routes</a>
 				{/snippet}
 			</EmptyState>
 		</div>

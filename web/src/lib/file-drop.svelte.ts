@@ -50,3 +50,15 @@ export function fileDrop(onFiles: (files: FileList) => void) {
 		},
 	};
 }
+
+// A file dropped on one page and read on another (#3692): the Routes rail's
+// drop card hands it to the importer, which takes it once.
+let handed: FileList | null = null;
+export const handFiles = (files: FileList) => {
+	handed = files;
+};
+export function takeHandedFiles(): FileList | null {
+	const files = handed;
+	handed = null;
+	return files;
+}
