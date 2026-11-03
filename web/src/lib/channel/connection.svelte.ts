@@ -7,7 +7,7 @@ import { account } from '$lib/account.svelte';
 import { createProfileStore } from '$lib/profile.svelte';
 import { spaceBelongsTo } from '$lib/channel/ptt-keys';
 import { gearsEnabled } from '$lib/ride/gears-enabled';
-import { EASIER_HARDER_OFF } from '$lib/ride/easier-harder';
+import { EASIER_HARDER_OFF, shiftAnswer } from '$lib/ride/easier-harder';
 import { bindShifters, createRemoteRunner } from '$lib/ride/keys';
 import { askPage, toggleMap } from '$lib/session/computer-pages';
 import { computerShown } from '$lib/session/computer-shown.svelte';
@@ -429,15 +429,35 @@ function connect(address: PlaceAddress): Connection {
 			}),
 		);
 		// The holder answers with its gear on a change and after each press, so
-		// a phone that joined late still learns where it is (#3217).
-		const sayGear = () => {
-			if (!ride.shifting) return;
-			live.sendGear({
-				label: ride.gear.label,
-				atEnd: ride.atEnd(1) || ride.atEnd(-1),
-			});
+		// a phone that joined late still learns where it is (#3217). In ERG
+		// the answer is the bias or the watts a tap moved, for your own
+		// workout too; a shift tap with no ride running is answered idle,
+		// which the hub says as remote_conflict (#3334).
+		const tapAnswer = () => {
+			if (ride.shifting)
+				return shiftAnswer(
+					ride,
+					joined()
+						? { bias: ride.bias }
+						: freeRide.mode === 'watts' && !freeRide.road
+							? { watts: freeRide.watts }
+							: null,
+				);
+			const solo = ownRide.riding ? ownRide.session : null;
+			return solo ? shiftAnswer(solo, { bias: solo.bias }) : null;
 		};
-		$effect(sayGear);
+		const sayGear = (tapped = false) => {
+			const answer = tapAnswer();
+			if (answer) live.sendGear(answer);
+			else if (
+				tapped &&
+				gearsEnabled('phone') &&
+				!ride.shifting &&
+				!ownRide.riding
+			)
+				live.sendGear({ label: '', atEnd: false, idle: true });
+		};
+		$effect(() => sayGear());
 		// Pause is a solo ride's alone: a session is never paused by one rider
 		// (#3217), so the phone is told there is nothing to pause.
 		const sayPause = () => {
@@ -462,7 +482,7 @@ function connect(address: PlaceAddress): Connection {
 			const off = live.onRemote((cmd) => {
 				remote.run(cmd);
 				if (cmd.action !== 'talk-keepalive') {
-					sayGear();
+					sayGear(cmd.action === 'easier' || cmd.action === 'harder');
 					sayPause();
 				}
 				// A page or view press is answered by sayView's effect once the

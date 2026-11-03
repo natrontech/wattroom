@@ -474,6 +474,8 @@ export function createChannelLive(address: PlaceAddress) {
 				const surface = (
 					['jukebox', 'roadside', 'remote', 'voice'] as const
 				).find((s) => msg.error!.code.startsWith(`${s}_`));
+				// No ride runs on the holder: the last gear it said is gone (#3334).
+				if (msg.error.code === 'remote_conflict') gear = null;
 				if (surface)
 					routed[surface] = { message: msg.error.message, at: Date.now() };
 				else {

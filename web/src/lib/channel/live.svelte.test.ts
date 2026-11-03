@@ -172,6 +172,25 @@ describe('channel live send while reconnecting', () => {
 		live.jukebox({ action: 'add', videoId: 'dQw4w9WgXcQ' });
 		expect(live.jukeboxRefusal).toBeNull();
 	});
+
+	it('forgets the holder’s gear when it says no ride runs there (#3334)', () => {
+		const live = createChannelLive(channelAddress('c', 'remote', 'remote'));
+		const socket = FakeSocket.last!;
+		socket.open();
+		const hear = (msg: object) =>
+			socket.onmessage?.({ data: JSON.stringify(msg) });
+		hear({ gear: { label: 'Gear 15', atEnd: false } });
+		expect(live.gear?.label).toBe('Gear 15');
+		hear({
+			error: {
+				code: 'remote_conflict',
+				message: 'Start riding to shift from here.',
+			},
+		});
+		expect(live.gear).toBeNull();
+		expect(live.remoteRefusal).toBe('Start riding to shift from here.');
+		expect(live.refusal).toBeNull();
+	});
 });
 
 describe('channel live ride buffer', () => {

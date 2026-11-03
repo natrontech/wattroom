@@ -287,5 +287,9 @@ export function createActuator(
 		get gear() {
 			return { k, label: gearSpace(realRatio, k).label, clamp };
 		},
+		/** The trainer is on a road (SIM): Easier / Harder moves the gear, not a target. */
+		get sim() {
+			return !!intent && 'felt' in intent;
+		},
 	};
 }

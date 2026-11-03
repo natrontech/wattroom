@@ -1742,10 +1742,14 @@ export interface RemoteCommand {
  * is in and whether the next press would hit an end. It travels the way
  * RemoteCommand does, to the same rider's other screens only, so the phone's
  * Easier and Harder can say where they are without a screen to look at.
+ * In ERG the label is what a tap moved instead, the bias or the watts
+ * (#3334). Idle says no ride runs there to shift: the hub answers the phone
+ * with remote_conflict in its own words, and the label is empty.
  */
 export interface GearState {
   label: string;
   atEnd: boolean;
+  idle?: boolean;
 }
 /**
  * MaxGearLabel bounds Label: it is rendered on another screen.
