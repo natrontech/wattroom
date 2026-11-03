@@ -7,12 +7,27 @@
 // world that stops later — its context lost, its shaders refused — says so
 // through onFail, once, and draws nothing more (ADR-0066: the fallback is
 // one-way) — so does one that misses more than a fifth of its frames for ten
-// seconds (docs/SPEC.md "The world", #3080).
+// seconds (docs/SPEC.md "The world", #3080). Short of that, a ride's world
+// climbs down the quality ladder (quality.ts, #3295).
 import * as THREE from 'three';
-import { LIGHT_PIXEL_BUDGET, pixelRatio } from './budget';
+import { pixelRatio } from './budget';
 import { compose, type CameraMode, type MountOptions } from './compose';
 import { createLoop, type LoopStats, missWatch, watchPage } from './loop';
 import { softwareDrawing } from './software-drawing';
+import { gpuTimer } from './gpu-timer';
+import {
+	deviceKey,
+	type Ladder,
+	type Measured,
+	rememberedRung,
+	rememberRung,
+	type Rung,
+	RUNGS,
+	startRung,
+	stepped,
+	TOP_RUNG,
+	windows,
+} from './quality';
 import { pictureStill, wordless } from './picture-still';
 import { PICTURE, type PictureMoment } from './picture.svelte';
 import type { Failure } from './ride-view';
@@ -66,6 +81,14 @@ const FRAMES_KEPT = 1800;
 
 type Frame = { at: number; ms: number };
 
+/** What the ladder remembers a device by: its GPU as the browser names it. */
+function rendererName(gl: WebGL2RenderingContext): string {
+	const info = gl.getExtension('WEBGL_debug_renderer_info');
+	return String(
+		gl.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : gl.RENDERER),
+	);
+}
+
 export function mount(
 	canvas: HTMLCanvasElement,
 	opts: MountOptions,
@@ -79,6 +102,16 @@ export function mount(
 	});
 	renderer.toneMapping = THREE.NoToneMapping;
 	renderer.shadowMap.enabled = false;
+	const gl = renderer.getContext() as WebGL2RenderingContext;
+	// The quality ladder (#3295): a ride's world starts where this device was
+	// left, Light at L1 and never higher, any other world at the top.
+	const climbs = !!opts.onRung && !opts.light;
+	const device = climbs
+		? deviceKey(rendererName(gl), canvas.clientWidth, canvas.clientHeight)
+		: '';
+	let rung: Rung = opts.light
+		? 1
+		: (climbs && rememberedRung(device)) || TOP_RUNG;
 	let world: ReturnType<typeof compose>;
 	try {
 		world = compose(opts, canvas);
@@ -88,6 +121,7 @@ export function mount(
 		throw err;
 	}
 	const { scene, camera } = world;
+	world.setFar(RUNGS[rung].far);
 	// Behind the sky, the fog's colour: what the horizon is at this light.
 	const clear = () => scene.fog && renderer.setClearColor(scene.fog.color);
 	let style = opts.style;
@@ -103,12 +137,7 @@ export function mount(
 		const h = canvas.clientHeight;
 		if (!w || !h) return;
 		renderer.setPixelRatio(
-			pixelRatio(
-				w,
-				h,
-				window.devicePixelRatio,
-				opts.light ? LIGHT_PIXEL_BUDGET : undefined,
-			),
+			pixelRatio(w, h, window.devicePixelRatio, RUNGS[rung].pixels),
 		);
 		renderer.setSize(w, h, false);
 		camera.aspect = w / h;
@@ -120,7 +149,10 @@ export function mount(
 		const at = performance.now();
 		// The bunch keeps the wall's time: where the hub has everyone does not wait for a slow frame.
 		world.advanceBy(Math.min(seconds, MAX_DT), seconds);
+		timer?.begin();
 		renderer.render(scene, camera);
+		timer?.end();
+		if (climbs) measure();
 		if (import.meta.env.DEV) {
 			frames.push({ at, ms: performance.now() - at });
 			if (frames.length > FRAMES_KEPT) frames.shift();
@@ -135,10 +167,59 @@ export function mount(
 		clearInterval(judge);
 		opts.onFail?.(why);
 	}
-	const watch = missWatch();
-	const judge = softwareDrawing()
-		? undefined
-		: setInterval(() => watch(loop.stats()) && fail('frames'), 1000);
+
+	// The ladder: the count-in's frames are the probe, and the ride's start
+	// rung is decided as it ends; after that, every ten seconds of drawing is
+	// a window that may step it down, never up.
+	const timer = climbs ? gpuTimer(gl) : null;
+	let probe: { from: LoopStats; gpuMs: number[] } | null = null;
+	let probed = false;
+	let gpuMs: number[] = [];
+	let ladder: Ladder = { rung, strikes: 0 };
+	let windowOf = windows();
+	function climb(next: Rung, why: 'probe' | 'slow') {
+		ladder = { rung: next, strikes: 0 };
+		rememberRung(device, next);
+		if (next !== rung) {
+			rung = next;
+			// Resizes the frame and shows or hides the far ring; nothing is rebuilt.
+			fit();
+			world.setFar(RUNGS[rung].far);
+		}
+		opts.onRung?.(next, why);
+	}
+	/** After each frame: its GPU time, and the count-in's probe while it lasts. */
+	function measure() {
+		const times = timer?.read() ?? [];
+		if (!probed && (opts.countIn?.()?.left ?? 0) > 0) {
+			probe ??= { from: loop.stats(), gpuMs: [] };
+			probe.gpuMs.push(...times);
+			return;
+		}
+		gpuMs.push(...times);
+		if (!probe || probed) return;
+		probed = true;
+		const now = loop.stats();
+		const measured: Measured = {
+			rendered: now.rendered - probe.from.rendered,
+			missed: now.missed - probe.from.missed,
+			gpuMs: probe.gpuMs,
+		};
+		windowOf = windows();
+		gpuMs = [];
+		climb(startRung(measured, rung), 'probe');
+	}
+	// A dev build drawing in software keeps its world (software-drawing.ts); the ladder still climbs down.
+	const watch = softwareDrawing() ? null : missWatch();
+	const judge = setInterval(() => {
+		const stats = loop.stats();
+		if (watch?.(stats)) return fail('frames');
+		if (!climbs || (probe && !probed)) return;
+		const w = windowOf(stats, gpuMs.splice(0));
+		if (!w) return;
+		ladder = stepped(ladder, w);
+		if (ladder.rung !== rung) climb(ladder.rung, 'slow');
+	}, 1000);
 	// A world that stopped (its context lost, or too slow to keep up) draws no picture either.
 	let broke = false;
 	const lost = () => fail('context-lost');

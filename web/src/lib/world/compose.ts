@@ -49,6 +49,7 @@ import { streamGround, type GotGrid, type Grids } from './ground-stream';
 import type { Style } from './styles';
 import type { Failure } from './ride-view';
 import type { World } from './world';
+import type { Rung } from './quality';
 
 export type CameraMode = Follow | 'orbit';
 
@@ -110,8 +111,15 @@ export type MountOptions = {
 	neon?: string;
 	/** Reduced motion, read each frame: a cheer's thumb and light hold still, the fog sea steps (ADR-0079). */
 	steady?: () => boolean;
-	/** The World control's Light (#3214): the world draws at half the pixel budget, above the floor. */
+	/** The World control's Light (#3214): the world draws at the quality ladder's L1 and never climbs (#3295). */
 	light?: boolean;
+	/**
+	 * A ride's world (#3295): the quality ladder probes this device at the
+	 * count-in, steps down after a slow stretch, and remembers where it was
+	 * left; it calls this with each rung it moves to, `why` the probe or a
+	 * slow stretch. Absent, the world draws at the top rung (Light's L1).
+	 */
+	onRung?: (rung: Rung, why: 'probe' | 'slow') => void;
 	/** A sound the road makes (#3114): the cowbell, as the bunch rides past someone a game put out. */
 	onCue?: (cue: 'cowbell') => void;
 	/** Where the streamed ground's chunks come from: the page's copy, then the build worker (#3606). */
@@ -217,6 +225,8 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		world.level,
 	);
 	let stage: Stage | null = null;
+	// The dressing's far ring, the quality ladder's (#3295): kept across a style's new stage.
+	let far = true;
 	let crew: Crew | null = null;
 	let game: GameRoad | null = null;
 	let tags: Tags | null = null;
@@ -271,6 +281,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		}
 		// The road itself is drawn as it is, its ends where they lie.
 		stage = buildStage(opts.route, world, style, sight, stream, !opts.loop);
+		stage.setFar(far);
 		crew = makeCrew(style, neon);
 		game = makeGameRoad(route, world, style);
 		tags = makeTags(style);
@@ -522,6 +533,11 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		},
 		setSpeedup(factor: number) {
 			speedup = factor;
+		},
+		/** The dressing's far ring shown or hidden, the quality ladder's (#3295): nothing is rebuilt. */
+		setFar(on: boolean) {
+			far = on;
+			stage?.setFar(on);
 		},
 		/** The ride's progress, 0–1, for the light; null when it has no known end (ADR-0072). */
 		setProgress(p: number | null) {

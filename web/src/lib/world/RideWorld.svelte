@@ -86,7 +86,7 @@
 		progress?: number | null;
 		/** A shared screen has the focus. */
 		paused?: boolean;
-		/** The World control's choice (#3214): Steady's camera, Light's budget. */
+		/** The World control's choice (#3214): Steady's camera, Light's L1 on the quality ladder (#3295). */
 		look?: 'full' | 'steady' | 'light';
 		/** The count-in's seconds left and its length (#3087): the eye flies its reveal to the start arch over it. */
 		countIn?: { left: number; total: number } | null;
@@ -233,6 +233,11 @@
 						});
 					},
 					onFail: onfail,
+					// The quality ladder's rung (#3295), said on the canvas as its shot is: a test reads it there.
+					onRung: (rung, why) => {
+						canvas!.dataset.rung = `L${rung}`;
+						canvas!.dataset.rungWhy = why;
+					},
 				});
 			} catch (err) {
 				console.error('world: slot 2 did not start', err);
