@@ -3,6 +3,7 @@ import { describeBlock, type Block } from '$lib/workout/block';
 import type { LiveRider } from '$lib/channel/types';
 import { bunchOf } from '$lib/channel/bunch-view';
 import { raceOf } from '$lib/race/race-view';
+import { createWheel } from '$lib/race/wheel';
 import { placeOnRoad } from '$lib/channel/road-place';
 import { racersOnRoad } from '$lib/channel/road-mates';
 import { blocksAhead, REFERENCE } from '$lib/road/gates';
@@ -217,8 +218,20 @@ export function createRiders(deps: RiderDeps) {
 			lands: (toFootM: number) => ahead.lands(toFootM + offset),
 		};
 	});
-	// Your race, while you race one (#3174): the RACE page's and the radio's.
-	const race = $derived(raceOf(deps.live.tick, you.id));
+	// Your race, while you race one (#3174): the RACE page's and the radio's,
+	// with the shelter's word held through the wheel's hysteresis (#3265).
+	const wheel = createWheel();
+	const race = $derived.by(() => {
+		const readout = raceOf(deps.live.tick, you.id);
+		if (!readout) {
+			wheel.reset();
+			return null;
+		}
+		return {
+			...readout,
+			inWheel: wheel.hear(readout.shelter, readout.at / 1000),
+		};
+	});
 	const readoutAt = createRoadReadout();
 	const road = $derived.by(() => {
 		const tick = deps.live.tick;

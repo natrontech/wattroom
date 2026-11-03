@@ -373,3 +373,38 @@ func TestEachRacerIsTimedAgainstTheirCategorysPar(t *testing.T) {
 		t.Fatalf("a head start at par is %+.1f s on its own par", p)
 	}
 }
+
+// The tick carries the shelter each racer rode the second in (#3265): the
+// hub's own number, within the cap, none for a rider dropped, and the same
+// shelter the race keeps for timing (ADR-0074).
+func TestTheTickCarriesTheShelterRidden(t *testing.T) {
+	entrants := []Entrant{{ID: "a", WeightKg: 75, Category: "C"}, {ID: "b", WeightKg: 75, Category: "C"}, {ID: "idle", WeightKg: 75, Category: "C"}}
+	r, err := New(flat(20_000), entrants, flag)
+	if err != nil {
+		t.Fatal(err)
+	}
+	klaxon := flag.Add(protocol.RaceNeutralSeconds * time.Second)
+	sums := map[string]float64{}
+	const seconds = 120
+	for s := 1; s <= seconds; s++ {
+		r.Step(klaxon.Add(time.Duration(s)*time.Second), map[string]int{"a": 250, "b": 250, "idle": 0})
+		for id, rr := range r.Racers() {
+			if rr.Sh < 0 || rr.Sh > protocol.ShelterMax {
+				t.Fatalf("second %d: %s rode %.2f shelter, outside 0–%.2f", s, id, rr.Sh, protocol.ShelterMax)
+			}
+			sums[id] += rr.Sh
+		}
+	}
+	if sums["a"]+sums["b"] == 0 {
+		t.Fatal("two riders together and the tick never said either was sheltered")
+	}
+	if sh := r.Racers()["idle"].Sh; sh != 0 {
+		t.Errorf("a rider dropped far behind is still sheltered %.2f on the tick", sh)
+	}
+	for _, id := range []string{"a", "b"} {
+		_, mean, _ := r.Place(id)
+		if got := sums[id] / seconds; math.Abs(got-mean) > 0.005 {
+			t.Errorf("%s: the tick's shelter averages %.3f, the race timed %.3f", id, got, mean)
+		}
+	}
+}

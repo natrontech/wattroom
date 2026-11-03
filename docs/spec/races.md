@@ -123,6 +123,9 @@ tests; the 50 % cap is a rule.
 | Groups            | split at a **2 s** gap                                                                                                                                                      |
 | Attack            | at least **+1.0 W/kg** over the group mean, with no shelter, for at least **3 s**                                                                                           |
 | Timing            | an effort above **5 %** mean shelter is untimeable (rule; Road times)                                                                                                       |
+| RACE page         | the hub's shelter of the second just ridden (#3265): **in the wheel** at ≥ **15 %** held **1 s**, **in the wind** below **10 %** held **1.5 s**, a soft cue on each         |
+| Going by          | a rider whose gap to you changes sign and ends within **6 m** whooshes on their side: passing you on the left, passed on your right                                         |
+| Wind bed          | at ≥ **20 %** shelter the wind bed drops **4 dB**, its bandpass × **0.8** — with the bed itself (#3186)                                                                     |
 | Trainer           | Cw = **0.39** × (1 − shelter) × k³ (Virtual gears), eased, written on a change of at least **5** points and at least **2 s** apart; a gear shift is exempt from the spacing |
 | No Cw             | a trainer that ignores Cw gets an equal grade offset                                                                                                                        |
 

@@ -7,7 +7,9 @@ import { describe, expect, it, vi } from 'vitest';
 // file do not share a scheduler.
 const heard = vi.hoisted(() => ({ cues: [] as string[] }));
 vi.mock('$lib/sound/cues', () => ({
-	play: (id: string) => void heard.cues.push(id),
+	PAN_LIMIT: 0.8,
+	play: (id: string, at?: { pan?: number }) =>
+		void heard.cues.push(at?.pan ? `${id}@${at.pan}` : id),
 	playCountdownTick: (n: number) => void heard.cues.push(`tick:${n}`),
 }));
 // The server's clock, held by the test.
@@ -16,6 +18,7 @@ vi.mock('$lib/server-clock', () => ({ serverNow: () => clock.now }));
 
 import { createSessionSounds, type SoundDeps } from './session-sounds.svelte';
 import type { GameState } from '$lib/protocol';
+import type { RaceReadout } from '$lib/race/race-view';
 
 /** A quiet session; a test overrides the one thing it listens for. */
 function quiet(over: Partial<SoundDeps> = {}): SoundDeps {
@@ -30,6 +33,7 @@ function quiet(over: Partial<SoundDeps> = {}): SoundDeps {
 		game: () => null,
 		me: () => 'u1',
 		coach: () => undefined,
+		race: () => null,
 		...over,
 	};
 }
@@ -37,6 +41,53 @@ function quiet(over: Partial<SoundDeps> = {}): SoundDeps {
 // The sprint and the rider's own guard announce themselves from the shell
 // (#1412), so a rider on any place hears them.
 describe('createSessionSounds', () => {
+	// The wheel (#3265): in and out of shelter, and a rider going by close,
+	// on the side they went by. Over the line the wheel lets go silently.
+	it('says the wheel and who goes by', async () => {
+		heard.cues.length = 0;
+		const at = (t: number, over: Partial<RaceReadout> = {}): RaceReadout => ({
+			at: t * 1000,
+			phase: 'racing',
+			par: 0,
+			category: 'C',
+			place: 1,
+			of: 2,
+			toLine: 1000,
+			shelter: 0,
+			gaps: { b: 3 },
+			inWheel: false,
+			...over,
+		});
+		let race = $state<RaceReadout | null>(at(0));
+		const stop = $effect.root(() => {
+			createSessionSounds(quiet({ race: () => race }));
+		});
+		await tick();
+		race = at(1, { inWheel: true });
+		await tick();
+		expect(heard.cues).toEqual(['wheel-in']);
+		// You passed b within a wheel's reach: heard on your right.
+		race = at(2, { inWheel: true, gaps: { b: -2 } });
+		await tick();
+		expect(heard.cues).toEqual(['wheel-in', 'whoosh@0.8']);
+		race = at(3, { inWheel: false, gaps: { b: -2 } });
+		await tick();
+		expect(heard.cues).toEqual(['wheel-in', 'whoosh@0.8', 'wheel-out']);
+		race = at(4, { inWheel: true, gaps: { b: -2 } });
+		await tick();
+		race = at(5, { inWheel: false, phase: 'finished', gaps: { b: 1 } });
+		await tick();
+		expect(heard.cues).toEqual([
+			'wheel-in',
+			'whoosh@0.8',
+			'wheel-out',
+			'wheel-in',
+			// b came by you within reach: on your left.
+			'whoosh@-0.8',
+		]);
+		stop();
+	});
+
 	it('plays the klaxon, the gun and the fanfare for a sprint on any place', async () => {
 		heard.cues.length = 0;
 		clock.now = 10_000;

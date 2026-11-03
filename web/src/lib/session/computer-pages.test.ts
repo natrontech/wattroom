@@ -374,6 +374,8 @@ describe('RACE (#3174)', () => {
 		place: 2,
 		of: 4,
 		toLine: 3000,
+		shelter: 0,
+		gaps: {},
 		...over,
 	});
 
@@ -389,7 +391,7 @@ describe('RACE (#3174)', () => {
 
 	it('is the gap to par, then your place in your Category, and W/kg stays in its one home', () => {
 		const fields = fieldsFor('race', ride({ race: race() }));
-		expect(keys(fields)).toEqual(['par', 'place']);
+		expect(keys(fields)).toEqual(['par', 'place', 'shelter']);
 		expect(field(fields, 'par')).toMatchObject({ value: '+0:18', neon: true });
 		expect(field(fields, 'place')).toMatchObject({
 			label: 'in C',
@@ -410,7 +412,7 @@ describe('RACE (#3174)', () => {
 			'race',
 			ride({ race: race(), matches: { left: 3, line: null } }),
 		);
-		expect(keys(fields)).toEqual(['par', 'place', 'matches']);
+		expect(keys(fields)).toEqual(['par', 'place', 'shelter', 'matches']);
 		expect(field(fields, 'matches')).toMatchObject({
 			label: 'Matches',
 			value: '3',
@@ -422,7 +424,29 @@ describe('RACE (#3174)', () => {
 			'race',
 			ride({ race: race(), matches: { left: null, line: 'hint' } }),
 		);
-		expect(keys(none)).toEqual(['par', 'place']);
+		expect(keys(none)).toEqual(['par', 'place', 'shelter']);
+	});
+
+	it('says the shelter in a word and the drag it takes, in neon and never watt (#3265)', () => {
+		const wheel = field(
+			fieldsFor('race', ride({ race: race({ shelter: 0.34, inWheel: true }) })),
+			'shelter',
+		);
+		expect(wheel).toMatchObject({
+			label: 'In the wheel',
+			value: '−34',
+			unit: '%',
+			neon: true,
+		});
+		expect(wheel.glow).toBeFalsy();
+		// The word holds while the number already moved (the hysteresis).
+		const easing = field(
+			fieldsFor('race', ride({ race: race({ shelter: 0.12, inWheel: true }) })),
+			'shelter',
+		);
+		expect(easing).toMatchObject({ label: 'In the wheel', value: '−12' });
+		const wind = field(fieldsFor('race', ride({ race: race() })), 'shelter');
+		expect(wind).toMatchObject({ label: 'In the wind', value: '0' });
 	});
 
 	it('reads behind as −, and has nothing to say before km 0', () => {
