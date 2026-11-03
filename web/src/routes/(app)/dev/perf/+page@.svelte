@@ -82,7 +82,7 @@
 
 	/** The lounge as a desk's voice channel draws it (ADR-0094, #4302): a
 	 *  640 × 260 room at twice its size, four on the sofa and three on
-	 *  cushions, one riding, rain, a plane past the window, the disco ball
+	 *  cushions around the rug, one riding, rain, a plane past the window, the disco ball
 	 *  and a beat at 80 BPM — everything that moves in it at once. */
 	const ROOM_W = 640;
 	const ROOM_H = 260;
@@ -90,9 +90,14 @@
 		id: 'a',
 		name: 'A',
 		skin: '#e0ac85',
+		skinShade: '#c68a62',
 		hair: '#2a1a12',
+		hairStyle: 0,
 		shirt: '#3de0d0',
+		shirtShade: '#2a9a90',
+		cushion: '#8a3a6a',
 		speaking: false,
+		muted: false,
 		sounding: false,
 		faded: false,
 	};
@@ -116,18 +121,31 @@
 							id: String(i),
 							speaking: i === 1,
 						})),
-						floor: [300, 324, 348].map((x, i) => ({
+						floor: [
+							[121, 130],
+							[199, 130],
+							[160, 156],
+						].map(([x, y], i) => ({
 							f: { ...SITTER, id: `f${i}`, speaking: i === 0 },
 							x,
+							y,
 						})),
 						more: 0,
-						rider: { ...SITTER, id: 'r', watts: 210, crank: t * 9 },
+						bikes: [
+							{
+								x: 236,
+								y: 135,
+								face: -1,
+								rider: { ...SITTER, id: 'r', watts: 210, crank: t * 9 },
+							},
+							{ x: 84, y: 135, face: 1 },
+						],
 					},
 					playing: true,
 					beat: (t * 80) / 60,
 					pulsing: true,
 					disco: true,
-					cat: { x: 236, y: 108, pose: 'sleep', facing: 1 },
+					cat: { x: 293, y: 40, pose: 'sleep', facing: 1 },
 					catAwake: false,
 					hearts: [],
 					hours: 21,
@@ -140,6 +158,11 @@
 					season: '',
 					waveAt: -Infinity,
 					radio: '',
+					fishJump: false,
+					bloom: false,
+					arcade: false,
+					pizza: false,
+					owl: false,
 				});
 			},
 			false,

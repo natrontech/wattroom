@@ -113,14 +113,17 @@ export function build(ctx: AudioContext): Graph {
 			surface,
 		);
 	}
+	// Rain against the window: brown noise, far back and dark. Jan found it
+	// too loud and too present at 1.6 kHz over a 4 s loop (2026-11-03): an
+	// 11.3 s loop never lines up with a bar, and 700 Hz keeps it a hush.
 	let brown = 0;
 	const rain = gain(0, master);
 	loop(
-		buffer(4, () => {
+		buffer(11.3, () => {
 			brown = (brown + 0.02 * (Math.random() * 2 - 1)) / 1.02;
 			return brown * 3.5;
 		}),
-		filter('lowpass', 1600, rain),
+		filter('lowpass', 700, rain),
 	);
 	return {
 		ctx,

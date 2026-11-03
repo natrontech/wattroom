@@ -1,7 +1,9 @@
 /**
- * Drawing on the lounge's 320 × 180 canvas, one whole pixel at a time. Every
+ * Drawing on the lounge's canvas, one whole pixel at a time. Every
  * coordinate is rounded, so nothing lands between pixels and the picture
- * scales up sharp (ADR-0092's rule against detail finer than a pixel).
+ * scales up sharp (ADR-0092's rule against detail finer than a pixel). Light
+ * is an ordered dither of solid pixels, never a blend, and things are
+ * outlined in ink.
  */
 
 export type Ctx = CanvasRenderingContext2D;
@@ -20,6 +22,15 @@ export function rect(
 
 export function dot(g: Ctx, x: number, y: number, c: string) {
 	rect(g, x, y, 1, 1, c);
+}
+
+/** One piece of a figure or prop: x, y, width, height, colour. */
+export type Part = readonly [number, number, number, number, string];
+
+/** Pieces drawn over a one-pixel ink outline around all of them. */
+export function outlined(g: Ctx, parts: readonly Part[], ink: string) {
+	for (const [x, y, w, h] of parts) rect(g, x - 1, y - 1, w + 2, h + 2, ink);
+	for (const [x, y, w, h, c] of parts) rect(g, x, y, w, h, c);
 }
 
 /** Bresenham: a one-pixel line with no antialiasing. */
@@ -52,6 +63,33 @@ export function line(
 			e += dx;
 			y0 += sy;
 		}
+	}
+}
+
+/**
+ * A limb or a tube from a to b, w pixels thick, with an ink edge: squares
+ * stamped along the line, ink first and a pixel wider all round.
+ */
+export function limb(
+	g: Ctx,
+	a: readonly number[],
+	b: readonly number[],
+	w: number,
+	c: string,
+	ink: string,
+) {
+	const steps = Math.max(1, Math.round(Math.hypot(b[0] - a[0], b[1] - a[1])));
+	const at = (i: number) => [
+		Math.round(a[0] + ((b[0] - a[0]) * i) / steps - (w - 1) / 2),
+		Math.round(a[1] + ((b[1] - a[1]) * i) / steps - (w - 1) / 2),
+	];
+	for (let i = 0; i <= steps; i++) {
+		const [x, y] = at(i);
+		rect(g, x - 1, y - 1, w + 2, w + 2, ink);
+	}
+	for (let i = 0; i <= steps; i++) {
+		const [x, y] = at(i);
+		rect(g, x, y, w, w, c);
 	}
 }
 
@@ -88,6 +126,50 @@ export function disc(g: Ctx, cx: number, cy: number, r: number, c: string) {
 	}
 }
 
+/** A filled ellipse, row by row: the 3/4 view's circles (rugs, cushions, shadows). */
+export function ellipse(
+	g: Ctx,
+	cx: number,
+	cy: number,
+	rx: number,
+	ry: number,
+	c: string,
+) {
+	for (let y = -ry; y <= ry; y++) {
+		const w = Math.round(
+			rx * Math.sqrt(Math.max(0, 1 - (y * y) / (ry * ry || 1))),
+		);
+		rect(g, cx - w, cy + y, w * 2 + 1, 1, c);
+	}
+}
+
+/** The 4 × 4 Bayer matrix: the order an ordered dither fills its pixels in. */
+const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+
+/**
+ * Light falling on a surface: an ordered dither of `c`, densest at the
+ * centre and gone at the rim. `strength` 1 fills the centre solid.
+ */
+export function pool(
+	g: Ctx,
+	cx: number,
+	cy: number,
+	rx: number,
+	ry: number,
+	c: string,
+	strength = 1,
+) {
+	for (let y = -ry; y <= ry; y++)
+		for (let x = -rx; x <= rx; x++) {
+			const d = (x * x) / (rx * rx) + (y * y) / (ry * ry);
+			if (d >= 1) continue;
+			const px = Math.round(cx + x);
+			const py = Math.round(cy + y);
+			if (BAYER[(py & 3) * 4 + (px & 3)] / 16 < (1 - d) * strength)
+				dot(g, px, py, c);
+		}
+}
+
 /** A bitmap drawn from rows of '1' and '0'. */
 export function sprite(
 	g: Ctx,
@@ -100,6 +182,25 @@ export function sprite(
 		for (let i = 0; i < row.length; i++)
 			if (row[i] === '1') dot(g, x + i, y + j, c);
 	});
+}
+
+/** A bitmap with an ink edge: drawn at its four neighbours in ink, then itself. */
+export function inkedSprite(
+	g: Ctx,
+	rows: readonly string[],
+	x: number,
+	y: number,
+	c: string,
+	ink: string,
+) {
+	for (const [dx, dy] of [
+		[-1, 0],
+		[1, 0],
+		[0, -1],
+		[0, 1],
+	])
+		sprite(g, rows, x + dx, y + dy, ink);
+	sprite(g, rows, x, y, c);
 }
 
 /** Digits, W and a plus, three or five pixels wide and five tall. */

@@ -210,7 +210,7 @@ export function createHouseRadio(station: string, serverNowMs: () => number) {
 			seat();
 		},
 		setRain(on: boolean) {
-			g?.rain.gain.setTargetAtTime(on ? 0.05 : 0, g.ctx.currentTime, 0.6);
+			g?.rain.gain.setTargetAtTime(on ? 0.012 : 0, g.ctx.currentTime, 0.6);
 		},
 		/** Resume after the browser held the context back for want of a gesture. */
 		resume() {

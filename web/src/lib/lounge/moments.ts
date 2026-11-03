@@ -8,11 +8,12 @@ import { hash3 } from '$lib/lounge/hash';
 
 /** Where the cat may be, in the middle's coordinates: its centre and the row it rests on. */
 export const CAT_SPOTS = [
-	{ x: 236, y: 108 }, // the windowsill
-	{ x: 300, y: 134 }, // on the speaker
-	{ x: 30, y: 140 }, // the sofa's arm
-	{ x: 76, y: 118 }, // the desk, beside the mug
-	{ x: 246, y: 170 }, // the floor by the deck
+	{ x: 293, y: 40 }, // on the speaker
+	{ x: 110, y: 64 }, // the sofa's arm
+	{ x: 34, y: 60 }, // the desk, beside the laptop
+	{ x: 160, y: 106 }, // the rug, behind the table
+	{ x: 22, y: 100 }, // the floor by the plant
+	{ x: 298, y: 98 }, // the floor by the cabinet
 ] as const;
 /** The cat stays this long in one place, and takes this long to get to the next. */
 export const CAT_SLOT_SEC = 150;
@@ -108,4 +109,14 @@ export function seasonOf(date: Date): Season {
 	if (month === 9 && day >= 25) return 'halloween';
 	if (month === 11 && day <= 26) return 'winter';
 	return '';
+}
+
+/** Friday from five in the evening: a pizza on the table. */
+export function pizzaNight(date: Date): boolean {
+	return date.getDay() === 5 && date.getHours() >= 17;
+}
+
+/** From midnight to four an owl keeps the sill. */
+export function owlHours(hours: number): boolean {
+	return hours < 4;
 }

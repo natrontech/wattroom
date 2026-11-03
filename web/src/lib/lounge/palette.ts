@@ -1,29 +1,47 @@
 /**
  * The lounge's colours (ADR-0094, amended by #4302): two hand-set rooms, one
- * per scheme, turned to the rider's theme. The room's hues follow the theme's
- * neon; the light outside the window, skin, leaves and the lamp's amber stay
- * what they are. The one live number takes the theme's watt.
+ * per scheme, turned to the rider's theme. Every material is a ramp from its
+ * shadow to its light (`woodDark`, `wood`, `woodLight`, `woodTop`), lit from
+ * the top left, and outlined in `ink`. The room's hues follow the theme's
+ * neon; the light outside the window, skin, leaves, cushions and the lamp's
+ * amber stay what they are. The one live number takes the theme's watt.
  */
 import { hexToOklch, normalizeHue, oklchToHex } from '$lib/color';
 import type { Theme } from '$lib/palette';
 
 const DARK = {
-	wall: '#170838',
-	wainscot: '#1a0940',
-	trim: '#2b0f55',
-	floor: '#0f0526',
-	plank: '#1a0a3a',
-	frame: '#8b2bff',
-	sillTop: '#3d1872',
-	wood: '#3a1d5c',
-	woodLight: '#4a2a70',
-	cushion: '#5a3a84',
 	ink: '#08010f',
+	wallDark: '#100428',
+	wall: '#170838',
+	wallLight: '#21104a',
+	trim: '#2e1460',
+	floorDark: '#0a0320',
+	floor: '#120630',
+	floorLight: '#1c0c42',
+	woodDark: '#25103e',
+	wood: '#3a1d5c',
+	woodLight: '#53307a',
+	woodTop: '#6c4494',
+	sofaDark: '#171c52',
+	sofa: '#252d78',
+	sofaLight: '#34409a',
+	sofaTop: '#4a58b8',
+	rugDark: '#2a0e3c',
+	rug: '#3a1650',
+	rugLine: '#6a2a84',
+	curtainDark: '#28104a',
+	curtain: '#3a1a66',
+	frame: '#8b2bff',
 	screen: '#0b0620',
 	laptop: '#26114a',
+	laptopLight: '#3a1d6a',
+	pantsDark: '#1b1638',
+	pants: '#2b2350',
 	teal: '#3de0d0',
 	tealLight: '#9ff5ec',
+	amberDark: '#c27a2c',
 	amber: '#ffd27a',
+	bulb: '#ffe2a8',
 	lilac: '#c9b8ff',
 	violet: '#8b6cff',
 	cat: '#3b3552',
@@ -34,26 +52,30 @@ const DARK = {
 	city: '#12032e',
 	rain: '#7a66e0',
 	snow: '#e8e0ff',
+	leafDark: '#1b5e4a',
 	leaf: '#2a8a6a',
 	leafLight: '#3fbf8a',
 	heart: '#ffb3a0',
 	towel: '#3de0d0',
 	paper: '#f0ecff',
 	shade: '#05000d',
-	legFar: '#2b1f4a',
-	legNear: '#3a2a5c',
 	poster: '#12042c',
 	shelf: '#24095a',
 	book: '#43127a',
 	bookB: '#2a6a8a',
 	bookC: '#7a2a5a',
-	rug: '#3a2a5c',
 	cable: '#6a5a96',
-	door: '#1f0b40',
+	speaker: '#1f0b40',
 	star: '#ffffff',
 	shirt: '#8b6cff',
-	beam: '#120630',
-	bulb: '#ffe2a8',
+	cushionA: '#8a3a6a',
+	cushionB: '#2a6a7a',
+	cushionC: '#8a6a2a',
+	cushionD: '#5a3a84',
+	/** Where the lamp falls: the surface below it, a third of the way to amber. */
+	litWall: '#3a2048',
+	litWood: '#6a4060',
+	litFloor: '#2c1638',
 	watt: '#ff3d8b',
 };
 
@@ -63,60 +85,87 @@ type Name = keyof LoungeColours;
 /** Daylight in the same room: pale walls, mid-tone wood, dark only where things are ink. */
 const LIGHT: LoungeColours = {
 	...DARK,
+	ink: '#24123f',
+	wallDark: '#ddd0f0',
 	wall: '#ece3f8',
-	wainscot: '#ddd0f0',
+	wallLight: '#f6f1fd',
 	trim: '#b7a2db',
-	floor: '#c8b4e2',
-	plank: '#b39cd6',
-	frame: '#6f1ad1',
-	sillTop: '#f8f3ff',
+	floorDark: '#b39cd6',
+	floor: '#cdb9e6',
+	floorLight: '#dccdf0',
+	woodDark: '#6e4f9a',
 	wood: '#8e6cbc',
 	woodLight: '#a88ad2',
-	cushion: '#8462c0',
-	ink: '#24123f',
+	woodTop: '#c4aae6',
+	sofaDark: '#4554a8',
+	sofa: '#5f6fc8',
+	sofaLight: '#7a8ad8',
+	sofaTop: '#9eacea',
+	rugDark: '#9a80c8',
+	rug: '#b29ad8',
+	rugLine: '#7a58b8',
+	curtainDark: '#8a6cc4',
+	curtain: '#a58ad6',
+	frame: '#6f1ad1',
 	screen: '#24123f',
 	laptop: '#57408a',
+	laptopLight: '#6e58a2',
+	pantsDark: '#3a2d60',
+	pants: '#4f3f7a',
 	teal: '#11a596',
 	tealLight: '#6fded2',
+	amberDark: '#c27a14',
 	amber: '#f2ab33',
+	bulb: '#ffd27a',
 	lilac: '#8a72d6',
 	violet: '#6a4be0',
 	cat: '#57516e',
 	catLight: '#7c769c',
+	leafDark: '#23765a',
 	leaf: '#2f9a74',
 	leafLight: '#4bc490',
 	paper: '#ffffff',
 	shade: '#1a0b33',
-	legFar: '#4f3f7a',
-	legNear: '#655495',
 	poster: '#f8f4ff',
 	shelf: '#d3c2ee',
 	book: '#9a7bd0',
 	bookB: '#4a9ab8',
 	bookC: '#c0609a',
-	rug: '#b29ad8',
 	cable: '#7a68a8',
-	door: '#cdbbe9',
+	speaker: '#cdbbe9',
 	shirt: '#6a4be0',
-	beam: '#d4c4ec',
-	bulb: '#ffd27a',
+	cushionA: '#c0608e',
+	cushionB: '#3f97a6',
+	cushionC: '#d0a040',
+	cushionD: '#8a68c8',
+	litWall: '#f4dcc8',
+	litWood: '#c9a0a8',
+	litFloor: '#dcc0c8',
 	watt: '#e6247d',
 };
 
-/** What keeps its hue whatever the theme: skin, leaves, lamp light, the sign and the odd book. */
+/** What keeps its hue whatever the theme: skin, leaves, lamp light, cushions and the odd book. */
 const FIXED: readonly Name[] = [
 	'teal',
 	'tealLight',
+	'amberDark',
 	'amber',
+	'bulb',
+	'leafDark',
 	'leaf',
 	'leafLight',
 	'heart',
 	'towel',
 	'paper',
 	'star',
-	'bulb',
 	'bookB',
 	'bookC',
+	'cushionA',
+	'cushionB',
+	'cushionC',
+	'litWall',
+	'litWood',
+	'litFloor',
 	'watt',
 ];
 
@@ -175,6 +224,19 @@ export function skyAt(hour: number): Sky {
 	return 'night';
 }
 
+const shades = new Map<string, string>();
+
+/** A colour's shadow step: darker, a touch more saturated, as the ramps are. */
+export function shadeOf(hex: string): string {
+	let made = shades.get(hex);
+	if (!made) {
+		const c = hexToOklch(hex);
+		made = oklchToHex({ ...c, l: Math.max(0, c.l - 0.09), c: c.c * 1.08 });
+		shades.set(hex, made);
+	}
+	return made;
+}
+
 /** Skin for a figure: a fixed set, picked by the rider's id. */
 export const SKINS = [
 	'#f1c7a5',
@@ -192,3 +254,11 @@ export const HAIRS = [
 	'#6b4a2e',
 	'#c9c2d6',
 ];
+/** Short, long, a bun, a beanie. */
+export const HAIR_STYLES = 4;
+export const CUSHIONS = [
+	'cushionA',
+	'cushionB',
+	'cushionC',
+	'cushionD',
+] as const;
