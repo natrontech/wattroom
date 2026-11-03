@@ -16,7 +16,7 @@ import { createLoop, type LoopStats, missWatch, watchPage } from './loop';
 import { softwareDrawing } from './software-drawing';
 import { gpuTimer } from './gpu-timer';
 import { worldPixels } from './mode';
-import { pixelPass, WORDS } from './pixel';
+import { pixelPass, rampAll, WORDS } from './pixel';
 import {
 	deviceKey,
 	type Ladder,
@@ -257,6 +257,7 @@ export function mount(
 	// The shaders compile off the main thread where the driver allows, and
 	// the first frame waits for them rather than stalling on them.
 	// Into the target where Pixel 3D draws: a program built for the screen's sRGB would build again on the first frame.
+	if (pass) rampAll(scene);
 	if (pass)
 		renderer.setRenderTarget(
 			pass.sized(canvas.clientWidth, canvas.clientHeight),

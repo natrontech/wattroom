@@ -21,6 +21,82 @@ export function pixelScale(w: number, h: number): number {
 	return Math.max(1, Math.round(Math.max(w, h) / ACROSS));
 }
 
+/**
+ * On while a Pixel 3D pass draws: every material that steps its light and
+ * its fog reads this one uniform, so a material built for one look draws
+ * the other when the rider switches.
+ */
+export const PIXEL = { value: 0 };
+
+/** The lounge's ordered dither (lounge/pixel.ts): a 4 × 4 Bayer threshold, 0–1, per pixel. */
+export const BAYER = /* glsl */ `
+	float pixelBayer2(vec2 a) { a = floor(a); return fract(dot(a, vec2(0.5, a.y * 0.75))); }
+	float pixelBayer(vec2 a) { return pixelBayer2(0.5 * a) * 0.25 + pixelBayer2(a); }`;
+
+/**
+ * The prototype's ramp: a half-Lambert light, 0–1, as one of four steps
+ * (shadow, base, light, lit top), the edges between them dithered.
+ */
+export const STEPS = /* glsl */ `
+	float pixelStep(float l) {
+		l += (pixelBayer(gl_FragCoord.xy) - 0.5) * 0.14;
+		return l < 0.38 ? 0.0 : l < 0.62 ? 1.0 / 3.0 : l < 0.84 ? 2.0 / 3.0 : 1.0;
+	}
+	float pixelFog(float f) { return floor(f * 3.0 + 0.5 + (pixelBayer(gl_FragCoord.xy) - 0.5) * 0.3) / 3.0; }`;
+
+const DIRECT =
+	'float dotNL = saturate( dot( geometryNormal, directLight.direction ) );';
+const FOG = 'gl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor, fogFactor );';
+const LAMBERT = THREE.ShaderChunk.lights_lambert_pars_fragment.replace(
+	DIRECT,
+	`${DIRECT}
+	if ( uPixel > 0.5 ) dotNL = pixelStep( dot( geometryNormal, directLight.direction ) * 0.5 + 0.5 );`,
+);
+const FOGGED = THREE.ShaderChunk.fog_fragment.replace(
+	FOG,
+	`if ( uPixel > 0.5 ) fogFactor = pixelFog( fogFactor );
+	${FOG}`,
+);
+const patched = new WeakSet<THREE.Material>();
+
+/**
+ * Gives a Lambert material the ramp: its sun in four dithered steps, its fog
+ * in three bands. Once per material; the steps show while PIXEL is on.
+ */
+function ramp(m: THREE.Material) {
+	if (patched.has(m) || !(m instanceof THREE.MeshLambertMaterial)) return;
+	patched.add(m);
+	const original = m.onBeforeCompile;
+	// Three keys a program by onBeforeCompile's source: keep the original's, or every ramped material would share one.
+	const own =
+		m.customProgramCacheKey === THREE.Material.prototype.customProgramCacheKey
+			? () => original.toString()
+			: m.customProgramCacheKey.bind(m);
+	m.onBeforeCompile = (shader, renderer) => {
+		original.call(m, shader, renderer);
+		shader.uniforms.uPixel = PIXEL;
+		shader.fragmentShader = shader.fragmentShader
+			.replace(
+				'#include <common>',
+				`#include <common>\nuniform float uPixel;\n${BAYER}\n${STEPS}`,
+			)
+			.replace('#include <lights_lambert_pars_fragment>', LAMBERT)
+			.replace('#include <fog_fragment>', FOGGED);
+	};
+	m.customProgramCacheKey = () => `pixel|${own()}`;
+	m.needsUpdate = true;
+}
+
+/** Ramps every Lambert material under `root` not ramped yet: what streams in is caught on its first frame. */
+export function rampAll(root: THREE.Object3D) {
+	root.traverse((o) => {
+		const m = (o as THREE.Mesh).material;
+		if (!m) return;
+		if (Array.isArray(m)) m.forEach(ramp);
+		else ramp(m);
+	});
+}
+
 /** How much farther than the face's own plane a neighbour must be to ink the face's edge: the prototype's 6 %. */
 const STEP = 0.94;
 
@@ -42,6 +118,8 @@ const FRAGMENT = /* glsl */ `
 	uniform vec3 ink;
 	uniform float density;
 	varying vec2 vUv;
+	${BAYER}
+	${STEPS}
 	float iz(vec2 uv) { return (far - texture2D(tDepth, uv).r * (far - near)) / (near * far); }
 	bool past(float n, float c, float o) { return n < (2.0 * c - o) * ${STEP} && c - n > 2.0 * (o - c); }
 	void main() {
@@ -51,7 +129,7 @@ const FRAGMENT = /* glsl */ `
 		float c = iz(uv), l = iz(uv - dx), r = iz(uv + dx), b = iz(uv - dy), t = iz(uv + dy);
 		bool edge = past(l, c, r) || past(r, c, l) || past(b, c, t) || past(t, c, b);
 		vec4 face = texture2D(tColor, uv);
-		float fog = 1.0 - exp(-pow(density / c, 2.0));
+		float fog = pixelFog(1.0 - exp(-pow(density / c, 2.0)));
 		gl_FragColor = edge ? vec4(mix(ink, face.rgb, fog), 1.0) : face;
 		#include <colorspace_fragment>
 	}`;
@@ -84,6 +162,7 @@ export function pixelPass(renderer: THREE.WebGLRenderer) {
 	const flat = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 	// Three passes a frame: the renderer counts them all, and probe() reads the sum.
 	renderer.info.autoReset = false;
+	PIXEL.value = 1;
 
 	/** The target for a canvas of w × h CSS pixels, sized to it. */
 	function sized(w: number, h: number) {
@@ -107,6 +186,7 @@ export function pixelPass(renderer: THREE.WebGLRenderer) {
 			h: number,
 		) {
 			renderer.info.reset();
+			rampAll(scene); // ponytail: a walk of the scene a frame; the world is a few dozen meshes (probe())
 			// ponytail: the lounge's ink as the lounge last turned it (the dark room's until a lounge drew);
 			// applying the theme here would hide a change from the lounge's own caches.
 			post.uniforms.ink.value.set(LOUNGE.ink);
@@ -128,6 +208,7 @@ export function pixelPass(renderer: THREE.WebGLRenderer) {
 			camera.layers.mask = layers;
 		},
 		dispose() {
+			PIXEL.value = 0;
 			target.depthTexture?.dispose();
 			target.dispose();
 			post.dispose();

@@ -1,5 +1,6 @@
+import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { pixelScale } from './pixel';
+import { PIXEL, pixelScale, rampAll } from './pixel';
 
 describe('pixelScale', () => {
 	it('keeps a phone, a laptop and a TV at about 400 whole pixels along the longer side', () => {
@@ -24,5 +25,28 @@ describe('pixelScale', () => {
 	it('never goes under one CSS pixel', () => {
 		expect(pixelScale(300, 200)).toBe(1);
 		expect(pixelScale(0, 0)).toBe(1);
+	});
+});
+
+describe('rampAll', () => {
+	it("steps a Lambert material's sun and fog, and keys its program apart", () => {
+		const m = new THREE.MeshLambertMaterial();
+		const before = m.customProgramCacheKey();
+		rampAll(new THREE.Mesh(new THREE.BoxGeometry(), m));
+		const shader = {
+			uniforms: {},
+			vertexShader: THREE.ShaderLib.lambert.vertexShader,
+			fragmentShader: THREE.ShaderLib.lambert.fragmentShader,
+		} as unknown as THREE.WebGLProgramParametersWithUniforms;
+		m.onBeforeCompile(shader, {} as THREE.WebGLRenderer);
+		// A three.js upgrade that rewords either chunk would leave these out without a sound.
+		expect(shader.fragmentShader).toContain(
+			'dotNL = pixelStep( dot( geometryNormal',
+		);
+		expect(shader.fragmentShader).toContain(
+			'fogFactor = pixelFog( fogFactor )',
+		);
+		expect(shader.uniforms).toHaveProperty('uPixel', PIXEL);
+		expect(m.customProgramCacheKey()).toBe(`pixel|${before}`);
 	});
 });
