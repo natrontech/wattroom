@@ -95,3 +95,21 @@ What dresses the road beside the budgets of "The world" above.
 | Crowds     | solo: **0–1** locals per km; a session: about **20** at the summit                                                                                                                                                                                                          |
 | Postbus    | at most once per **20 min**                                                                                                                                                                                                                                                 |
 | Weather    | lookups cached **1 h** per **0.1°** cell                                                                                                                                                                                                                                    |
+
+**Ambience** (#3186; defaults — tune in alpha) plays on the cues bus: under
+the cue fader, ducking under a voice with the cues, and no mixer channel of
+its own. It starts once the ride has started (the count-in over and the rider
+moving, past **0.5 m/s**) and stops with the world.
+
+- **Voices** are the beds sounding and every voice of a one-shot still
+  ringing; a one-shot past the **6** or the **8** a minute stays silent.
+- **Under music**: everything the ambience plays sits **12 dB** lower while
+  the jukebox plays to this rider.
+- **The beds** reach at most **−24 dB** under the cue fader and glide over
+  **2 s**. The land **25 m** either side of the road makes half a bed each:
+  forest, meadow, stream (water), alpine (alpine, rock, snow). The wind is
+  silent standing and rises with the square of speed to full at **50 km/h**.
+- **One-shots**: cowbells every **10–30 s** on pasture (meadow above
+  **1,300 m**, or alpine); church bells once as you pass a village, within
+  **150 m** of it; a freewheel's tick when your power falls to 0 W while you
+  are moving.

@@ -121,6 +121,16 @@ export function bus(): { ctx: AudioContext; input: AudioNode } | null {
 	return { ctx: audio.ctx, input: limiter };
 }
 
+/**
+ * The cue master itself (#3186): what plays into it sits under the cue fader
+ * and ducks under a voice with the cues — the ride's ambience, which is why
+ * it needs no mixer channel of its own.
+ */
+export function cueInput(): { ctx: AudioContext; input: AudioNode } | null {
+	const audio = ensure();
+	return audio && { ctx: audio.ctx, input: audio.master };
+}
+
 export function setVolume(next: number): void {
 	volume = Math.min(1, Math.max(0, next));
 	settle(0);

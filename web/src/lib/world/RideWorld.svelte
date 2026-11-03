@@ -37,7 +37,9 @@
 	import { account } from '$lib/account.svelte';
 	import { prefersReducedMotion } from '$lib/motion';
 	import { play } from '$lib/sound/cues';
-	import { generate } from './world';
+	import { AMBIENCE, ambience } from '$lib/sound/ambience';
+	import { at, leftOf } from '$lib/road/along';
+	import { generate, type World } from './world';
 	import { rideLook, worldPaint } from './look';
 	import {
 		momentToDraw,
@@ -137,6 +139,27 @@
 	const PICTURE_POLL_S = 2;
 	let route: Route | null = null;
 	const now = (): PictureMoment => ({ m: metre().m, p: progress, watts });
+
+	/** What the ride hears where you are (#3186): the land either side of the road, and a village you are passing. */
+	function hear(world: World, road: Route, km: number, ele: number) {
+		const d = km * 1000;
+		// Lapped the way the world laps it (compose.ts).
+		const lap =
+			loop || road.loop ? ((d % road.length) + road.length) % road.length : d;
+		const p = at(road, lap);
+		const { lx, lz } = leftOf(p.heading);
+		const s = AMBIENCE.besideM;
+		ambience.hear({
+			counting: !!counting,
+			mps: metre().mps,
+			beside: [-s, s].map((o) => world.biomeAt(p.x + lx * o, p.z + lz * o)),
+			ele,
+			watts: silent ? null : watts,
+			village:
+				world.villageNames.find((v) => Math.abs(v.d - lap) <= AMBIENCE.villageM)
+					?.d ?? null,
+		});
+	}
 	onMount(() => {
 		const moments = momentsFor(ride);
 		const ask = (event: Event) => {
@@ -169,11 +192,12 @@
 		// Building holds the main thread for a moment: let the surface paint first.
 		const t = setTimeout(() => {
 			try {
-				route = routeOfRoad(road);
+				const ridden = (route = routeOfRoad(road));
+				const world = generate(ridden);
 				const paint = worldPaint(canvas!.parentElement ?? document.body);
 				scene = mount(canvas!, {
 					route,
-					world: generate(route),
+					world,
 					style: rideLook(paint),
 					watts,
 					ftp,
@@ -194,6 +218,7 @@
 					neon: paint('color-neon'),
 					// When, at what speed, and where: two screens read a moment apart still compare.
 					onTick: (hud) => {
+						hear(world, ridden, hud.km, hud.ele);
 						if (hud.shot) canvas!.dataset.shot = hud.shot;
 						else delete canvas!.dataset.shot;
 						canvas!.dataset.riders = JSON.stringify({
@@ -219,6 +244,7 @@
 			window.removeEventListener(PHOTO_ASK, photo);
 			clearTimeout(t);
 			clearInterval(picture);
+			ambience.stop();
 			const closing = scene;
 			scene = null;
 			const at = momentToDraw(

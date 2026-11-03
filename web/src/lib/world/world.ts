@@ -8,6 +8,7 @@
 // (#3699), so a ride pays for the ground around it and never for the whole
 // route. Nothing about the world is ever sent over the wire — only the route
 // and each rider's distance along it.
+import type { Biome } from './biome';
 import { roadIndex } from './field';
 import { landUse } from './land';
 import { markersFor, type Marker } from './markers';
@@ -58,6 +59,8 @@ export type World = {
 	roads: Line[];
 	salt: Salt;
 	heightAt: (x: number, z: number) => number; // the drawn surface, for anything that stands on it
+	/** What grows at (x, z); null where no ground is drawn. What the ride hears beside the road (#3186). */
+	biomeAt: (x: number, z: number) => Biome | null;
 	roadSurfaceAt: (x: number, z: number) => number | null;
 	/**
 	 * What one 250 m tile stands, settled the first time it is asked (#3699):
@@ -213,6 +216,7 @@ export function generate(
 			return everything().props;
 		},
 		heightAt,
+		biomeAt,
 		roadSurfaceAt,
 		villageNames,
 		markers,
