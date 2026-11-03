@@ -99,3 +99,32 @@ type LiveSession struct {
 	Riders   []string `json:"riders"`
 	RiderIDs []string `json:"riderIds"`
 }
+
+// StartLine is a session on a road before its count-in (#3228): who stands on
+// the line, what each has ready, and who said they would come and is not
+// here yet. It rides the tick, so it reaches the voice channel's audience and
+// nobody else, and only while the session sits picked on its road.
+type StartLine struct {
+	// Each rider on the line — joined and in the channel — by rider id. FTP
+	// is not here: the roster already carries it and where it came from
+	// (ADR-0048), so "their own, or a guess" is read there.
+	Ready map[string]Readiness `json:"ready"`
+	// Riders who said they are in on the plan that opened the session and are
+	// not in the voice channel, in the order they said so. A crew-mate's name
+	// and id, which the crew's schedule already shows every member.
+	Awaited []RsvpRider `json:"awaited,omitempty"`
+}
+
+// Readiness is what one rider on the start line has paired (#3228): the
+// sensor claims the hub already arbitrates (#610), said to the channel as two
+// yes-or-noes and never as which device holds them.
+type Readiness struct {
+	Trainer   bool `json:"trainer,omitempty"`
+	HeartRate bool `json:"heartRate,omitempty"`
+}
+
+// RsvpRider is someone who said they are in on a plan.
+type RsvpRider struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}

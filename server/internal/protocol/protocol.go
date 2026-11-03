@@ -58,8 +58,11 @@ type ServerTick struct {
 	Sprint *SprintState `json:"sprint,omitempty"`
 	// Running game mode (#31/#32), replacing the workout timeline while on.
 	Game *GameState `json:"game,omitempty"`
-	// The bunch on the session's road (ADR-0065), while it rides one.
+	// The bunch on the session's road (ADR-0065), while it rides one — and
+	// standing still at its first metre on the start line (#3228).
 	World *World `json:"world,omitempty"`
+	// The session's start line (#3228), while it sits picked on a road.
+	StartLine *StartLine `json:"startLine,omitempty"`
 	// What the roadside has put on that road (ADR-0064, #3029), beside it.
 	Roadside *RoadsideState `json:"roadside,omitempty"`
 	// Free riders on a road another free rider here rides too (#3117), by

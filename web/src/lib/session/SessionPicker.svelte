@@ -262,7 +262,9 @@
 					It runs in {channelName}: anyone there can join it and ride with you.
 				</p>
 				<p class="text-muted mt-0.5 text-xs">
-					A 10 s countdown, then the shared timeline starts.
+					{route
+						? 'It opens on the start line: Start the ride once a trainer there is ready.'
+						: 'A 10 s countdown, then the shared timeline starts.'}
 				</p>
 			</div>
 			<!-- Still offered unpaired: a coach may lead without

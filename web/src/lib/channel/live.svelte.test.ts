@@ -785,6 +785,33 @@ describe('channel live resumes the bunch after a restart', () => {
 		expect(live.lostRoad).toBeNull();
 	});
 
+	// A new ride on a road waits on its start line (#3228): the pick lands
+	// and nothing starts it but the coach's Start the ride.
+	it('leaves a new pick on a road on its start line', () => {
+		const live = createChannelLive(channelAddress('c', 'line', 'line'));
+		const socket = FakeSocket.last!;
+		socket.open();
+		live.pickAndStart(
+			{
+				name: 'Openers',
+				json: '{"name":"Openers","steps":[]}',
+				totalSeconds: 600,
+			},
+			{ id: 'r1', fromM: 0 },
+			true,
+		);
+		socket.onmessage?.({
+			data: JSON.stringify({
+				tick: {
+					at: Date.now(),
+					state: { phase: 'idle', elapsed: 0, workoutName: 'Openers', route },
+				},
+			}),
+		});
+		expect(sent(socket).map((m) => m.control.action)).toEqual(['pick']);
+		expect(live.following).toBe(true);
+	});
+
 	it('keeps the road a session closed on, for its next leg, until the next goes live', () => {
 		const live = createChannelLive(channelAddress('c', 'road4', 'road4'));
 		const socket = FakeSocket.last!;

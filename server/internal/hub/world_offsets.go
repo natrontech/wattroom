@@ -104,22 +104,7 @@ func surplus(s sample, p planned, livePct, meanWkg float64) float64 {
 // rider who left the session leaves the bunch with it. Under noTow a rider
 // back from a rest returns on that alone, and a tow under way ends.
 func (b *bunch) settle(joined map[string]struct{}, p planned, livePct float64) {
-	for id := range b.places {
-		if _, in := joined[id]; !in {
-			delete(b.places, id)
-		}
-	}
-	var arrived []string
-	for id := range joined {
-		if b.places[id] == nil {
-			arrived = append(arrived, id)
-		}
-	}
-	slices.Sort(arrived)
-	for _, id := range arrived {
-		b.places[id] = &place{heardAt: b.at, seq: b.joins}
-		b.joins++
-	}
+	b.seat(joined)
 	decay := math.Exp(-1 / offsetTauSeconds)
 	meanWkg := b.meanWkg()
 	for id := range joined {
@@ -159,4 +144,25 @@ func (b *bunch) meanWkg() float64 {
 		return 0
 	}
 	return sum / float64(n)
+}
+
+// seat gives each newly joined rider a place at the bunch, at its back in the
+// order they joined (#3098), and takes the places of riders who left.
+func (b *bunch) seat(joined map[string]struct{}) {
+	for id := range b.places {
+		if _, in := joined[id]; !in {
+			delete(b.places, id)
+		}
+	}
+	var arrived []string
+	for id := range joined {
+		if b.places[id] == nil {
+			arrived = append(arrived, id)
+		}
+	}
+	slices.Sort(arrived)
+	for _, id := range arrived {
+		b.places[id] = &place{heardAt: b.at, seq: b.joins}
+		b.joins++
+	}
 }

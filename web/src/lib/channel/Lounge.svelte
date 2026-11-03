@@ -17,6 +17,7 @@
 	import LoungeSession from '$lib/channel/LoungeSession.svelte';
 	import CountdownScreen from '$lib/session/CountdownScreen.svelte';
 	import PlanCard from '$lib/session/PlanCard.svelte';
+	import StartLine from '$lib/session/StartLine.svelte';
 	import HrShare from '$lib/channel/HrShare.svelte';
 	import LoungeScene from '$lib/lounge/LoungeScene.svelte';
 
@@ -369,6 +370,7 @@
 				class="pointer-events-auto flex max-w-md min-w-0 flex-1 flex-col [&>*]:mb-2 [&>*]:shadow-lg"
 			>
 				{@render notices()}
+				<StartLine />
 				<PlanCard />
 			</div>
 			<div
@@ -534,7 +536,9 @@
 		{/if}
 		{#if channel.phase === 'lounge'}
 			<!-- Between sessions the stage is the call: Ride and Start a session
-		     are the now bar's. -->
+		     are the now bar's. A session picked on a road waits on its start
+		     line (#3228). -->
+			<StartLine />
 			<PlanCard />
 		{/if}
 	</div>
