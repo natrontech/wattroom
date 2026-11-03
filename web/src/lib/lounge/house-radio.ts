@@ -2,7 +2,7 @@
  * House radio's sound (ADR-0094): the station's score, played on this
  * machine's AudioContext at server time. Mixed quiet and clean — the first
  * cut was too hot and the drum bus saturated (Dave, 2026-10-31) — and lofi
- * only through a low-pass, a tape wobble and a soft crackle.
+ * only through a low-pass and a tape wobble.
  */
 import {
 	SLOT_SEC,
@@ -40,7 +40,6 @@ function automate(g: Graph, tune: Tune, bar: number, t: number) {
 		tg.setValueAtTime(0.0001, t);
 		tg.exponentialRampToValueAtTime(1, t + tune.barSec);
 		g.echo.delayTime.setValueAtTime((0.75 * 60) / tune.bpm, t);
-		g.crackle.gain.setTargetAtTime(tune.crackle, t, 0.5);
 		g.space.gain.setTargetAtTime(tune.space, t, 0.5);
 		lp.cancelScheduledValues(t);
 		lp.setValueAtTime(900, t);

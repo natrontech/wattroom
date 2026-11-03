@@ -591,7 +591,13 @@ function mug(g: Ctx, s: SceneInput) {
 
 /** The record player is the deck: it turns while something plays, its label the style. */
 function deck(g: Ctx, s: SceneInput) {
-	const label = { '': C.amber, lofi: C.heart, chip: C.teal, ambient: C.lilac };
+	const label = {
+		'': C.amber,
+		mix: C.amber,
+		lofi: C.heart,
+		chip: C.teal,
+		ambient: C.lilac,
+	};
 	rect(g, 251, 56, 3, 1, label[s.radio]);
 	if (s.playing && !s.still) {
 		// A scratch runs the platter back, fast.

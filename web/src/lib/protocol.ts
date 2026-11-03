@@ -1012,7 +1012,8 @@ export interface LoungeState {
   pets?: number /* int */;
   /**
    * From LoungeRadioStyles: house radio plays that style for everyone in the
-   * channel. "" is the mix, the rotation of all three.
+   * channel. "" is records, real CC0 lofi tracks; "mix" rotates the three
+   * generated styles.
    */
   radioStyle?: string;
 }

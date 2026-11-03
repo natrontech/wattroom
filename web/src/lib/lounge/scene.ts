@@ -142,7 +142,7 @@ export interface SceneInput {
 	season: Season;
 	/** When the crew last did the wave, on the scene's clock. */
 	waveAt: number;
-	/** House radio's picked style, '' for the mix: the record's label shows it. */
+	/** House radio's picked style, '' for records: the record's label shows it. */
 	radio: RadioPick;
 	/** The goldfish was tapped and is jumping. */
 	fishJump: boolean;

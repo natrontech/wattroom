@@ -20,3 +20,6 @@ server/feedback/
 
 # Per-session worktrees Happier creates inside the clone (#3718).
 .dev/
+server/radio/
+server/radio-src/
+house-radio.tar

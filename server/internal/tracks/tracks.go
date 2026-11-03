@@ -71,6 +71,8 @@ type Service struct {
 	auth  Auth
 	log   *slog.Logger
 	dir   string
+	// House radio's records (radio.go), read-only.
+	radioDir string
 	// One upload per rider in flight (#2862).
 	uploading inflight.Set
 }
@@ -91,7 +93,11 @@ func New(st *store.Store, a Auth, log *slog.Logger) *Service {
 	if dir == "" {
 		dir = "tracks"
 	}
-	return &Service{store: st, auth: a, log: log, dir: dir}
+	radio := os.Getenv("WATTROOM_RADIO_DIR")
+	if radio == "" {
+		radio = "radio"
+	}
+	return &Service{store: st, auth: a, log: log, dir: dir, radioDir: radio}
 }
 
 func (s *Service) Register(mux *http.ServeMux) {
@@ -100,6 +106,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/tracks/{id}/audio", s.handleAudio)
 	mux.HandleFunc("PATCH /api/tracks/{id}", s.handleUpdate)
 	mux.HandleFunc("DELETE /api/tracks/{id}", s.handleDelete)
+	mux.HandleFunc("GET /api/radio/{file}", s.handleRadio)
 }
 
 func (s *Service) me(w http.ResponseWriter, r *http.Request) (db.User, bool) {

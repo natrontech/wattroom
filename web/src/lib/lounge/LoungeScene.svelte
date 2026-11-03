@@ -39,8 +39,10 @@
 		nextRadioPick,
 		nextWeather,
 		radioPickOf,
+		stationPick,
 		weatherOf,
 	} from '$lib/lounge/state';
+	import { recordAt } from '$lib/lounge/records';
 	import { crewOf } from '$lib/lounge/figures';
 	import {
 		catAt,
@@ -95,7 +97,7 @@
 	const seed = $derived(fnv(station));
 
 	const onAir = $derived(!!deck?.current?.radio);
-	/** House radio's style, picked at the record player for everyone; '' is the mix. */
+	/** House radio's style, picked at the record player for everyone; '' is records. */
 	const pick = $derived(radioPickOf(lounge));
 
 	let boxW = $state(0);
@@ -157,8 +159,11 @@
 
 	function music(): Pick<SceneInput, 'playing' | 'beat' | 'pulsing' | 'disco'> {
 		const current = deck?.current;
+		// Records carry no tempo to dance to.
+		if (current?.radio && !pick)
+			return { playing: deck!.playing, beat: 0, pulsing: false, disco: false };
 		if (current?.radio) {
-			const p = positionAt(station, serverNow() / 1000, pick);
+			const p = positionAt(station, serverNow() / 1000, stationPick(pick));
 			return {
 				playing: deck!.playing,
 				beat: p.beat,
@@ -242,7 +247,12 @@
 			return;
 		}
 		const say = () => {
-			const p = positionAt(station, serverNow() / 1000, pick);
+			if (!pick) {
+				const { record } = recordAt(station, serverNow() / 1000);
+				nowPlaying = `“${record.title}” · ${record.artist}`;
+				return;
+			}
+			const p = positionAt(station, serverNow() / 1000, stationPick(pick));
 			nowPlaying = `“${p.tune.name}” · ${KEY_NAMES[p.tune.key]} · ${p.tune.bpm} BPM`;
 			styleNow = p.tune.style;
 		};
@@ -476,7 +486,11 @@
 				onclick={pickStyle}
 				title="Change house radio's style for everyone"
 				class="btn btn-ghost btn-xs text-ink px-0"
-				>{pick ? STYLE_NAMES[pick] : `Mix · ${STYLE_NAMES[styleNow]}`}</button
+				>{pick === ''
+					? 'Records'
+					: pick === 'mix'
+						? `Mix · ${STYLE_NAMES[styleNow]}`
+						: STYLE_NAMES[pick]}</button
 			>
 			{#if nowPlaying}<span class="tabular-nums max-sm:hidden"
 					>{nowPlaying}</span

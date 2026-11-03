@@ -901,6 +901,13 @@ first, CC BY with a credits line in the deck), shared by every crew, picked
 by crew id and clock. Do that only after counting the hours: about 1.5 h is
 verified CC0 today, and a 3-hour evening would come round twice.
 
+**Shipped (2026-11-04).** Records, house radio's default style, plays 44
+HoliznaCC0 lofi hip hop tracks (1 h 59 min), each CC0 by its own FMA licence
+field. `scripts/house-radio.py` checks the licence, evens loudness to −16 LUFS
+and re-encodes to 96 kbps (86 MB); the tarball is the `house-radio-1` release
+asset, which the Dockerfile copies into the image by checksum. The credits
+list is `web/src/lib/lounge/records.json`.
+
 ## Ranked risks to the plan
 
 1. ~~Kickr v2 lacks FTMS~~ **Resolved → planned work** — confirmed the v2 is WCPS-only; full protocol mapped (§9) and the WcpsTrainer driver is now M1 scope. Residual risk (low): protocol facts come from reverse-engineered implementations, not Wahoo docs — verify against the real v2 early in M1.
