@@ -16,6 +16,8 @@ export function createCheerBack(me: () => string | undefined) {
 				const mine = me();
 				if (!c.fromId || c.fromId === mine) continue;
 				if (c.to && c.to !== mine) continue;
+				// From another voice channel (#3275): a cheer back here could not reach them.
+				if (c.afar) continue;
 				last = { from: c.fromId, at: now };
 			}
 		},

@@ -13,6 +13,10 @@ type Cheer struct {
 	// and their tail light flickering, nothing more. Someone else in this
 	// voice channel, or the cheer drops; empty, it is everyone's.
 	To string `json:"to,omitempty"`
+	// From a crewmate outside this voice channel (#3275), who saw To on
+	// Home's around-now: filled by the server, and only ever on To's own
+	// copy of the tick. It pops on To's screen like a cheer for everyone.
+	Afar bool `json:"afar,omitempty"`
 }
 
 // Board is one rider firing a pad on their soundboard (#877, ADR-0033). The

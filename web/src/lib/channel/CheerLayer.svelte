@@ -21,8 +21,9 @@
 		if (!ticked || ticked.length === 0 || ticked === seenTick) return;
 		seenTick = ticked;
 		// A cheer for one rider is the world's, over their head (#3116); what
-		// its rider hears of it is theirs to get (#3231).
-		const batch = ticked.filter((c) => !c.to);
+		// its rider hears of it is theirs to get (#3231). One from afar
+		// (#3275) is this rider's alone and pops like a cheer for everyone.
+		const batch = ticked.filter((c) => !c.to || c.afar);
 		if (batch.length === 0) return;
 		// The bell rings the cowbell; the rest blip, higher for a crowd.
 		// The cowbell is the roadside's sound, so it answers to its ceiling.

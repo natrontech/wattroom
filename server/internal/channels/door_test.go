@@ -81,6 +81,8 @@ type fakeLive struct {
 	// Who stands in each channel, socket or call, and every re-role asked.
 	occupants map[string][]string
 	roles     []string
+	// Every cheer from afar the hub was handed, as channel/to/from/emoji.
+	cheered []string
 }
 
 func (f *fakeLive) Occupants(channel string) []string {
@@ -131,6 +133,17 @@ func (f *fakeLive) CloseChannel(channel string) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.closed = append(f.closed, channel)
+}
+
+// CheerAfar lands when `present` has the rider in the channel, as the hub's does.
+func (f *fakeLive) CheerAfar(channel string, cheer protocol.Cheer) bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if !slices.Contains(f.present[channel].RiderIDs, cheer.To) {
+		return false
+	}
+	f.cheered = append(f.cheered, channel+"/"+cheer.To+"/"+cheer.FromID+"/"+cheer.Emoji)
+	return true
 }
 
 // Taken out of a private voice channel is taken out of its call — unless the

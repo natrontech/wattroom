@@ -135,10 +135,15 @@ func (rm *channelState) sendTick(log *slog.Logger, out *tickOut) {
 		// A cheer or chalk from someone hidden from this rider, or whom
 		// they hid, is cut from their copy alone (#3202, #4152). Rare, so
 		// the frame is marshalled for them rather than cached for the room.
+		// So is a cheer from afar (#3275), which is this rider's alone.
 		if frame != nil {
 			cheers, cheersCut := rm.cheersFor(c.rider.ID, out.tick.Cheers, out.cheerFrom)
 			roadside, chalkCut := rm.roadsideFor(c.rider.ID, out.tick.Roadside)
-			if cheersCut || chalkCut {
+			afar := out.afar[c]
+			if len(afar) > 0 {
+				cheers = append(slices.Clip(cheers), afar...)
+			}
+			if cheersCut || chalkCut || len(afar) > 0 {
 				frame = frames.marshal(kind, cheers, roadside)
 			}
 		}

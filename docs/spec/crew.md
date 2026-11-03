@@ -34,6 +34,12 @@ Part of the product spec. [docs/SPEC.md](../SPEC.md) indexes every section and s
 - Readable by the crew's **current members who may enter the channel it ran in** only — a session in a private channel leaves a recap only that channel's people read, because presence is never a way into a private channel (ADR-0058). Leaving the crew ends access. Deleting the crew takes its recaps with it, and deleting an account removes that rider's interval from every recap that names them.
 - A session that never started leaves nothing. Sitting in a voice channel with no session leaves nothing.
 
+## Cheer from afar (#3275 — default, tune in alpha)
+
+- Home's _Around right now_ gives every rider it shows a **Cheer** button: one tap sends your first cheer to them in their voice channel. Only riders that list already shows you, so it discloses nothing; a hidden pair (#3202) never hears it, and the sender is not told.
+- **One per sender and rider every 10 s** — the poke's cooldown (`PokeCooldownSeconds`), on a key of its own, so it never spends the poke. The button rests for that long whatever the server answered; a refusal is never a toast.
+- It lands on that rider's screen alone, popping like a cheer for everyone, and on the world as a cheer for them. No XP, no wallet row.
+
 ## Notifications (ADR-0042)
 
 - What reaches a rider who is **not looking** — the tab hidden, or the window not the front one: a chat message, a rider arriving, a **session** starting, a poke. A focused, visible page speaks for itself and gets a toast instead.

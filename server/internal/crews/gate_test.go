@@ -42,6 +42,8 @@ func (*liveRecorder) Move(string, string, protocol.Moved) error { return nil }
 
 func (*liveRecorder) CloseChannel(string) {}
 
+func (*liveRecorder) CheerAfar(string, protocol.Cheer) bool { return false }
+
 // gate puts the real channels' gate in front of a recording hub, so what a
 // crew handler asks is answered by mayEnter over the rows it just wrote.
 func (h *harness) gate() *liveRecorder {

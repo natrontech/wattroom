@@ -17,6 +17,12 @@ describe('createCheerBack', () => {
 			1000,
 			'',
 		],
+		[
+			'a cheer from another voice channel',
+			[{ emoji: 'flame', fromId: 'mia', to: 'jan', afar: true }],
+			1000,
+			'',
+		],
 		['your own cheer', [{ emoji: 'flame', fromId: 'jan' }], 1000, ''],
 		['a cheer with no sender', [{ emoji: 'flame' }], 1000, ''],
 		[
