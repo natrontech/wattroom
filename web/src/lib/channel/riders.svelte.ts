@@ -143,6 +143,7 @@ export function createRiders(deps: RiderDeps) {
 				awayReason: rider.awayReason ?? '',
 				riding: !!rider.riding,
 				inSession: !!rider.inSession,
+				onSession: rider.onSession,
 				hue: hueOf(rider.id),
 				watts: metrics?.watts ?? held?.watts ?? 0,
 				cadence: metrics?.cadence ?? held?.cadence ?? 0,

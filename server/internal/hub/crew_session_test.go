@@ -162,3 +162,44 @@ func TestCrewSessionRoomHoldsOneSession(t *testing.T) {
 		t.Fatalf("a second pick answered %q, want conflict", code)
 	}
 }
+
+// A voice channel shows who in it rides a crew session, and which one, from
+// the session's own tick: the riding mark and the session's id, never a
+// number of theirs (docs/SESSIONS.md).
+func TestVoiceChannelShowsItsSessionRiders(t *testing.T) {
+	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
+	h.SetCrewAccess(fakeAccess{})
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	mux.HandleFunc("GET /ws/crews/{crew}/sessions/{id}", h.HandleCrewSessionWS)
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	ws := "ws" + strings.TrimPrefix(srv.URL, "http")
+
+	alice := protocol.Rider{ID: "alice", Name: "alice", Role: "member", FtpWatts: 250}
+	id, code, msg := h.OpenCrewSession("crew1", alice, protocol.Control{WorkoutName: "Tempo", WorkoutJSON: crewWorkout})
+	if code != "" {
+		t.Fatalf("open: %s %s", code, msg)
+	}
+	call := dial(t, ws+"/ws/channels/lounge", "alice:member")
+	ride := dial(t, ws+"/ws/crews/crew1/sessions/"+id, "alice:member")
+	for seq := 1; seq <= 3; seq++ {
+		if err := wsjson.Write(t.Context(), ride, protocol.ClientMessage{
+			Metrics: &protocol.RiderMetrics{Watts: 200, Cadence: 90, Seq: seq},
+		}); err != nil {
+			t.Fatalf("metrics: %v", err)
+		}
+	}
+	for range 10 {
+		tick := readTick(t, call)
+		for _, r := range tick.Roster {
+			if r.ID == "alice" && r.OnSession == id && r.Riding {
+				if _, numbers := tick.Riders["alice"]; numbers {
+					t.Fatal("the call carries the session rider's numbers")
+				}
+				return
+			}
+		}
+	}
+	t.Fatal("the call never showed alice riding her session")
+}

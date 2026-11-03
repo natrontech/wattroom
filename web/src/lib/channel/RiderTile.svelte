@@ -14,6 +14,10 @@
 	import MicOff from '@lucide/svelte/icons/mic-off';
 	import ScreenShare from '@lucide/svelte/icons/screen-share';
 	import Drum from '@lucide/svelte/icons/drum';
+	import Bike from '@lucide/svelte/icons/bike';
+	import { sessionPath } from '$lib/channel/address';
+	import { channelConnection } from '$lib/channel/connection.svelte';
+	import { crewLive } from '$lib/nav/crew-live.svelte';
 	import {
 		AWAY_MARK,
 		BOARD_MARK,
@@ -98,6 +102,14 @@
 							},
 			)
 			.filter((extra) => extra.value > 0),
+	);
+	// The session a rider here rides, by name from the crew's live list.
+	const crew = $derived(channelConnection.call?.address.crew);
+	const sessionName = $derived(
+		crewLive.crews
+			.find((c) => c.id === crew)
+			?.sessions?.find((one) => one.id === rider.onSession)?.workout ??
+			'the session',
 	);
 </script>
 
@@ -264,6 +276,15 @@
 		{/if}
 		{#if rider.away}
 			<span class="{AWAY_MARK} ride-stage:@[18rem]:text-2xl">away</span>
+		{/if}
+		{#if rider.onSession && crew}
+			<!-- The crew session they ride (docs/SESSIONS.md): its name and the
+			     way in, never their numbers. -->
+			<a
+				href={sessionPath(crew, rider.onSession)}
+				class="btn btn-secondary btn-xs pointer-events-auto"
+				title="Join {sessionName}"><Bike size={12} /> {sessionName}</a
+			>
 		{/if}
 	</div>
 

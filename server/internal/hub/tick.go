@@ -263,6 +263,7 @@ func (rm *channelState) tickLocked(now func() time.Time, dt time.Duration, savin
 	tick.Recap = rm.recap
 	rm.recap = nil
 	clients, ridingKey, ridingIDs := rm.rosterLocked(&tick, now)
+	rm.publishRidersLocked(ridingIDs, now())
 	// Claim answers ride out with this tick but not IN it (#610): a
 	// rider's device inventory is theirs, and the tick goes to the room.
 	pairing := rm.drainPairingLocked()
@@ -316,6 +317,11 @@ func (rm *channelState) rosterLocked(tick *protocol.ServerTick, now func() time.
 			rider.AwayReason, rider.Away = rm.away[c.rider.ID]
 			_, rider.Riding = pedalling[c.rider.ID]
 			rider.InSession = rm.session.rides(c.rider.ID)
+			// The crew session they ride, named in the call they stand in
+			// (docs/SESSIONS.md); a session's own room names none.
+			if ride, on := rm.onSession.of(c.rider.ID, now()); on && rm.sessionID == "" {
+				rider.OnSession = ride.id
+			}
 			// And what their board still has going, so a rider who joined
 			// mid-clip catches up (#1681). Read here rather than drained:
 			// a fire is one tick, the sound it started is not.
@@ -407,4 +413,25 @@ func (rm *channelState) tickIntervalLocked(now time.Time) time.Duration {
 		}
 	}
 	return tickInterval
+}
+
+// publishRidersLocked says who rides this crew session, for the voice
+// channels they stand in (docs/SESSIONS.md): its joined riders here, each
+// with whether they pedal. A voice channel publishes nothing. Caller holds
+// rm.mu.
+func (rm *channelState) publishRidersLocked(pedallingIDs []string, now time.Time) {
+	if rm.sessionID == "" || !rm.session.open() {
+		return
+	}
+	pedalling := make(map[string]struct{}, len(pedallingIDs))
+	for _, id := range pedallingIDs {
+		pedalling[id] = struct{}{}
+	}
+	riders := map[string]bool{}
+	for c := range rm.clients {
+		if rm.session.rides(c.rider.ID) {
+			_, riders[c.rider.ID] = pedalling[c.rider.ID]
+		}
+	}
+	rm.onSession.publish(rm.sessionID, riders, now)
 }

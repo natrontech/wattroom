@@ -20,6 +20,7 @@
 	import StartLine from '$lib/session/StartLine.svelte';
 	import HrShare from '$lib/channel/HrShare.svelte';
 	import LoungeScene from '$lib/lounge/LoungeScene.svelte';
+	import SessionCallout from '$lib/channel/SessionCallout.svelte';
 
 	import SprintMoment from '$lib/session/SprintMoment.svelte';
 	import GamePanel from '$lib/session/GamePanel.svelte';
@@ -282,6 +283,8 @@
 {/snippet}
 
 {#snippet notices()}
+	<!-- A session someone here just started, with its Join (docs/SESSIONS.md). -->
+	<SessionCallout />
 	<!-- The crew's announcement, above everything (#2408), and only while
 	     no session runs: mid-session the Lounge is tiles, the sprint and the
 	     stage, and a notice about next Thursday pushing them down is the
