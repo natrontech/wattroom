@@ -1,19 +1,28 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
+	import type { ControlRoute } from '$lib/protocol';
 	import { GAME_MODES, RACES, type GameStart } from './modes';
 
 	/**
 	 * The session picker's Games tab: the seven %FTP games, each started off
-	 * a road, and the way to the races, which ride one (#3777, ADR-0067).
+	 * a road or on one of yours (#3794), and the way to the races, which ride
+	 * one (#3777, ADR-0067).
 	 */
 	let {
 		running,
+		route,
 		onStart,
 		onRace,
+		children,
 	}: {
 		running: boolean;
+		/** The road a game started here opens its session on; none is off a road. */
+		route?: ControlRoute;
 		onStart: (game: GameStart) => void;
 		/** Opens the Roads tab on Race it. */
 		onRace: () => void;
+		/** Which road, above the games. */
+		children?: Snippet;
 	} = $props();
 </script>
 
@@ -23,7 +32,8 @@
 			A game is already running — end it before starting another.
 		</p>
 	{/if}
-	<div class="grid gap-2 sm:grid-cols-2">
+	{@render children?.()}
+	<div class="mt-3 grid gap-2 sm:grid-cols-2">
 		{#each GAME_MODES as game (game.id)}
 			<div class="border-frame flex flex-col rounded-lg border px-4 py-3">
 				<p class="font-display flex items-center gap-2 text-sm font-bold">
@@ -34,7 +44,7 @@
 					{game.blurb}
 				</p>
 				<button
-					onclick={() => onStart({ gameMode: game.id })}
+					onclick={() => onStart({ gameMode: game.id, route })}
 					disabled={running}
 					class="btn btn-secondary btn-lg mt-3 self-start disabled:opacity-40"
 					>Start game</button
