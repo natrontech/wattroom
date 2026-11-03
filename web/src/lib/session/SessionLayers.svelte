@@ -157,6 +157,7 @@
 		// holds phones and people who were only in the call.
 		riders: () => riders.filter((r) => r.inSession),
 		ftp: () => you.ftp,
+		race: () => live.tick?.game?.race?.results,
 	});
 	// The close is read on the summary (#2601): TV mode drew over it, and its
 	// "Exit TV mode (esc)" dismissed a summary nobody had seen. TV steps aside
@@ -362,6 +363,8 @@
 			savedXp={summary.rideXp}
 			{placeName}
 			riders={card.riders}
+			race={card.race}
+			you={account.me?.id}
 		>
 			{#snippet actions()}
 				<!-- The end links forward (#1331): the ride the session saved for

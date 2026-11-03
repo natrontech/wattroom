@@ -3,6 +3,7 @@ package hub
 import (
 	"encoding/json"
 	"log/slog"
+	"slices"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
 )
@@ -20,7 +21,8 @@ import (
 //     must not read everyone's execution off the wire — nor a race's results,
 //     its card or its finish times, which only its riders see (ADR-0067).
 //     The race itself, racers moving on the road, the channel may watch;
-//   - where free riders are on a road (#3117): only to the riders on it.
+//   - where free riders are on a road (#3117): only to the riders on it;
+//   - why a racer rode unranked (#3779): only to that racer, never the field.
 type tickFrames struct {
 	tick    *protocol.ServerTick
 	log     *slog.Logger
@@ -29,10 +31,12 @@ type tickFrames struct {
 }
 
 // road is the shared road the frame's rider free-rides (#3117), 0 for none:
-// riders on it alone are sent where its riders are.
+// riders on it alone are sent where its riders are. own is the racer whose
+// unranked why the card keeps, set only while the card tells anyone why.
 type frameKind struct {
 	workout, scores, deck bool
 	road                  int
+	own                   string
 }
 
 // frame is nil when the tick could not be marshalled, remembered so the
@@ -75,6 +79,11 @@ func (f *tickFrames) marshal(kind frameKind, cheers []protocol.Cheer, roadside *
 			}
 			t.World = &world
 		}
+	} else if t.Game != nil && t.Game.Race != nil && unrankedWhy(t.Game.Race.Results) {
+		game, card := *t.Game, *t.Game.Race
+		card.Results = ownWhy(card.Results, kind.own)
+		game.Race = &card
+		t.Game = &game
 	}
 	if !kind.deck {
 		t.Jukebox = nil
@@ -93,21 +102,27 @@ func (f *tickFrames) marshal(kind frameKind, cheers []protocol.Cheer, roadside *
 func (rm *channelState) sendTick(log *slog.Logger, out *tickOut) {
 	metricTicks.Inc()
 	frames := tickFrames{tick: &out.tick, log: log, channel: rm.channel}
+	whys := out.tick.Game != nil && out.tick.Game.Race != nil && unrankedWhy(out.tick.Game.Race.Results)
 	for _, c := range out.clients {
 		_, scores := out.rode[c.rider.ID]
 		scores = scores || out.rode == nil
+		own := ""
+		if scores && whys {
+			own = c.rider.ID
+		}
 		// Half a tick is worse than none: a frame that did not marshal
 		// is skipped, and said so. The workout (#1710) and the deck
 		// (#2838) ride only to a socket that has not heard them; a full
 		// frame that fails to marshal falls back to the light one and
 		// leaves both owed.
 		road := out.tick.FreeRoads[c.rider.ID].Road
-		light := frameKind{scores: scores, road: road}
+		light := frameKind{scores: scores, road: road, own: own}
 		kind := frameKind{
 			scores:  scores,
 			workout: c.workoutSent != out.tick.State.WorkoutHash,
 			deck:    c.jukeboxSent != out.tick.JukeboxRev,
 			road:    road,
+			own:     own,
 		}
 		frame := frames.frame(light)
 		if frame != nil && kind != light {
@@ -148,4 +163,32 @@ func (rm *channelState) sendTick(log *slog.Logger, out *tickOut) {
 			c.sendJSON(log, protocol.ServerMessage{Poke: &poke})
 		}
 	}
+}
+
+// unrankedWhy reports whether the card tells any racer why they rode unranked.
+func unrankedWhy(results []protocol.RaceBracket) bool {
+	for _, b := range results {
+		for _, f := range b.Unranked {
+			if f.Why != "" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// ownWhy is the card as rider sees it (ADR-0067): every finisher, and only
+// their own why. The tick's brackets are shared, so it copies what it cuts.
+func ownWhy(results []protocol.RaceBracket, rider string) []protocol.RaceBracket {
+	out := make([]protocol.RaceBracket, len(results))
+	for i, b := range results {
+		b.Unranked = slices.Clone(b.Unranked)
+		for j := range b.Unranked {
+			if b.Unranked[j].RiderID != rider {
+				b.Unranked[j].Why = ""
+			}
+		}
+		out[i] = b
+	}
+	return out
 }

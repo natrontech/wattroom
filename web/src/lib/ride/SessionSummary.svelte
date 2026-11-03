@@ -6,6 +6,8 @@
 	import { ZONE_VAR, zoneOf } from '$lib/components/zones';
 	import RecapHeader from '$lib/ride/RecapHeader.svelte';
 	import RecapTiles from '$lib/ride/RecapTiles.svelte';
+	import RaceResults from '$lib/race/RaceResults.svelte';
+	import type { RaceBracket } from '$lib/protocol';
 	import {
 		recapEyebrow,
 		recapTiles,
@@ -36,6 +38,8 @@
 		medal,
 		placeName = 'WattRoom',
 		riders,
+		race,
+		you = '',
 		actions,
 		status,
 		unsaved = false,
@@ -59,6 +63,9 @@
 		 * and session are one card (#1531).
 		 */
 		riders?: { id: string; name: string; execution?: number; you?: boolean }[];
+		/** A race's results per Category (#3779), and who "You" is on them. */
+		race?: RaceBracket[];
+		you?: string;
 		/** Secondary actions first, Done last (RecapHeader). */
 		actions?: Snippet;
 		/** What the save or the export said, under the header (errors.md). */
@@ -226,6 +233,9 @@
 		<div
 			class="grid items-start gap-4 sm:grid-cols-2 xl:col-start-2 xl:row-start-2"
 		>
+			{#if race?.length}
+				<RaceResults results={race} {you} />
+			{/if}
 			<section class="panel panel-lg">
 				<h2 class="eyebrow">power curve</h2>
 				<div class="mt-4 grid grid-cols-2 gap-3 2xl:grid-cols-4">

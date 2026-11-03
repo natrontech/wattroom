@@ -318,6 +318,51 @@ func TestOnlyTheRidersSeeTheClosingCard(t *testing.T) {
 	}
 }
 
+// Why a rider rode unranked is theirs (ADR-0067, #3779): the card names every
+// finisher to every racer, but tells only the unranked rider why — never
+// which rivals rode a default FTP or a weight changed last week.
+func TestOnlyTheUnrankedRiderIsToldWhy(t *testing.T) {
+	ben, cara := racer("ben", 70), racer("cara", 70)
+	ben.FtpSource = protocol.SourceDefault
+	cara.WeightChangedAt = raceStart.Add(-24 * time.Hour).UnixMilli()
+	r := raceOn(t, 600, racer("ana", 70), ben, cara)
+	r.ride(10+protocol.RaceNeutralSeconds+120, watts(map[string]int{"ana": 250, "ben": 250, "cara": 250}))
+	if r.cardOut == nil {
+		t.Fatal("the race never drew its card")
+	}
+	told := func(c *client) map[string]string {
+		t.Helper()
+		for len(c.out) > 0 {
+			<-c.out
+		}
+		r.rm.sendTick(slog.New(slog.DiscardHandler), r.cardOut)
+		var msg protocol.ServerMessage
+		if err := json.Unmarshal(<-c.out, &msg); err != nil {
+			t.Fatal(err)
+		}
+		why := map[string]string{}
+		for _, b := range msg.Tick.Game.Race.Results {
+			for _, f := range append(b.Placed, b.Unranked...) {
+				why[f.RiderID] = f.Why
+			}
+		}
+		return why
+	}
+	want := map[string]map[string]string{
+		"ana":  {"ana": "", "ben": "", "cara": ""},
+		"ben":  {"ana": "", "ben": protocol.UnrankedDefaultFtp, "cara": ""},
+		"cara": {"ana": "", "ben": "", "cara": protocol.UnrankedFreshWeight},
+	}
+	for id, w := range want {
+		got := told(r.clients[id])
+		for rider, why := range w {
+			if g, on := got[rider]; !on || g != why {
+				t.Errorf("%s's card says %s: %q (on the card: %v), want %q", id, rider, g, on, why)
+			}
+		}
+	}
+}
+
 // The coach's End on a race under way still draws its card (#3658): the
 // riders over the line keep their places, the rest are out of it, and a
 // second End clears it.
