@@ -292,7 +292,7 @@
 
 	<!-- The prompts stand on their own (#2626): drawn inside the charts'
 	     branch, a failed progression read hid them as well. -->
-	{#if (lthrSuggestion && account.me?.lthr) || (suggestion && account.me)}
+	{#if (lthrSuggestion && account.me?.lthr) || ((suggestion || account.me?.weightConfirmDue) && account.me)}
 		<div class="mt-6 grid gap-3">
 			{#if lthrSuggestion && account.me?.lthr}
 				<LthrPrompt
@@ -305,13 +305,15 @@
 					}}
 				/>
 			{/if}
-			{#if suggestion && account.me}
+			{#if (suggestion || account.me?.weightConfirmDue) && account.me}
 				<FtpPrompt
 					current={account.me.ftpWatts}
 					suggested={suggestion}
 					best20={account.me.best20m ?? 0}
-					onApply={() => void applySuggestion(suggestion)}
+					weightKg={account.me.weightConfirmDue ? account.me.weightKg : null}
+					onApply={() => suggestion && void applySuggestion(suggestion)}
 					onKeep={() => {
+						if (!suggestion) return;
 						declineSuggestion('ftp', suggestion);
 						declined = suggestion;
 					}}

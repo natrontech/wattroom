@@ -295,6 +295,11 @@ group by user_id;
 select coalesce(max((curve->>'best20m')::int), 0)::int from rides
 where user_id = $1 and started_at >= now() - interval '90 days';
 
+-- name: HasRaced :one
+-- A rider who races (ADR-0067's opt-in): one race saved is the choice. Only
+-- they are asked to confirm their weight (#3629).
+select exists(select 1 from rides where user_id = $1 and ride_mode = 'race');
+
 -- name: BestLast20mHRIn90Days :one
 -- The LTHR-from-a-ride input (docs/SPEC.md, #1620): the largest last-20-minute
 -- average heart rate among the rider's qualifying rides in the rolling 90 days.

@@ -53,10 +53,17 @@ func Unranked(r Rider, flag time.Time) string {
 		return UnrankedDefaultWeight
 	case r.WeightChangedAt != 0 && within(r.WeightChangedAt, RaceWeightFreezeDays):
 		return UnrankedFreshWeight
-	case r.WeightConfirmedAt == 0 || !within(r.WeightConfirmedAt, RaceWeightConfirmDays):
+	case WeightUnconfirmed(r.WeightConfirmedAt, flag):
 		return UnrankedUnconfirmedWeight
 	}
 	return ""
+}
+
+// WeightUnconfirmed: no confirmation of the weight (ms, 0 for never) within
+// RaceWeightConfirmDays before at. A race reads it at the flag, the FTP
+// prompt's commissaire's tap (#3629) at the moment it is drawn.
+func WeightUnconfirmed(confirmedAt int64, at time.Time) bool {
+	return confirmedAt == 0 || at.Sub(time.UnixMilli(confirmedAt)) >= RaceWeightConfirmDays*24*time.Hour
 }
 
 // RaceFtp is the FTP a race freezes at its flag (ADR-0067): the profile's, or

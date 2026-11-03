@@ -57,6 +57,9 @@ export interface Me {
 	// Absent until the rider has an LTHR to outgrow.
 	suggestedLthr?: number;
 	best20m?: number;
+	/** The commissaire's tap (ADR-0067, #3629): you race, and your weight
+	 * has gone 90 days unconfirmed. The FTP prompt asks; never a gate. */
+	weightConfirmDue?: boolean;
 	providers?: string[];
 	/** Providers plus passkeys — the ways into this account (#2879). */
 	credentials?: number;

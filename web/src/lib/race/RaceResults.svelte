@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { RaceBracket } from '$lib/protocol';
 	import { account } from '$lib/account.svelte';
-	import { pushProfile } from '$lib/profile-sync.svelte';
+	import { confirmWeight as sendConfirm } from '$lib/profile-sync.svelte';
 	import { finishMark, unrankedWhy, yoursFirst } from './closing-card';
 
 	// The race's section of the closing card (#3779, ADR-0067): per Category,
@@ -12,13 +12,10 @@
 	let confirm = $state<'idle' | 'busy' | 'done'>('idle');
 	let error = $state<string | null>(null);
 
-	// The commissaire's tap (#3629): the same number, claimed again, so only
-	// the confirmation date moves.
+	// The commissaire's tap (#3629).
 	async function confirmWeight() {
 		confirm = 'busy';
-		error = await pushProfile({
-			weightSource: account.me?.weightSource === 'ramp' ? 'ramp' : 'manual',
-		});
+		error = await sendConfirm();
 		confirm = error ? 'idle' : 'done';
 	}
 </script>

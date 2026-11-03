@@ -53,6 +53,10 @@ type meResponse struct {
 	// by more than 2 %. Absent until the rider HAS an LTHR — there is nothing
 	// for an average to exceed — and, like the FTP one, never applied here.
 	SuggestedLthr int `json:"suggestedLthr,omitempty"`
+	// The commissaire's tap (ADR-0067, #3629): a rider who races, whose
+	// answered weight has gone RaceWeightConfirmDays unconfirmed, is asked in
+	// the FTP prompt to confirm it. Never a gate: unanswered, they race unranked.
+	WeightConfirmDue bool `json:"weightConfirmDue,omitempty"`
 	// Whether LiveKit is configured — the client hides voice/cam controls
 	// instead of serving 404s on click (#219, capability gating).
 	AvEnabled bool `json:"avEnabled"`
@@ -387,6 +391,16 @@ func (s *Service) fullMe(ctx context.Context, user db.User) meResponse {
 			s.log.Warn("me: last-20 HR unavailable", "err", err, "user", store.UUIDString(user.ID))
 		} else if suggested, ok := stats.SuggestLTHR(int(best), int(*user.Lthr)); ok {
 			response.SuggestedLthr = suggested
+		}
+	}
+	// A default weight has nothing to confirm: the closing card sends that
+	// rider to set it. The race query only runs once the date is due.
+	if protocol.SourceOf(user.WeightSource) != sourceDefault &&
+		protocol.WeightUnconfirmed(store.Millis(user.WeightConfirmedAt), time.Now()) {
+		if raced, err := s.store.Queries.HasRaced(ctx, user.ID); err != nil {
+			s.log.Warn("me: race history unavailable", "err", err, "user", store.UUIDString(user.ID))
+		} else {
+			response.WeightConfirmDue = raced
 		}
 	}
 	if providers, err := s.store.Queries.ListUserProviders(ctx, user.ID); err != nil {
