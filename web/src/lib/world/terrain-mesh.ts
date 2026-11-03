@@ -231,9 +231,14 @@ export function meshOf(
 		forest.set(b.forest, v);
 		for (let j = 0; j < row - 1; j++)
 			for (let i = 0; i < row - 1; i++) {
+				// Written in place: an array a quad was garbage on every chunk streamed in.
 				const a = v + j * row + i;
-				index.set([a, a + row, a + 1, a + 1, a + row, a + row + 1], t);
-				t += 6;
+				index[t++] = a;
+				index[t++] = a + row;
+				index[t++] = a + 1;
+				index[t++] = a + 1;
+				index[t++] = a + row;
+				index[t++] = a + row + 1;
 			}
 		v += row * row;
 	}
