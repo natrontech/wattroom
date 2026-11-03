@@ -117,6 +117,7 @@ type tickOut struct {
 	ridingIDs    []string
 	pairing      map[*client]protocol.SensorPairing
 	pokes        map[*client][]protocol.Poke
+	afar         map[*client][]protocol.Cheer
 	gameWinner   string
 	sprintWinner string
 }
@@ -265,9 +266,11 @@ func (rm *channelState) tickLocked(now func() time.Time, dt time.Duration, savin
 	// rider's device inventory is theirs, and the tick goes to the room.
 	pairing := rm.drainPairingLocked()
 	pokes := rm.drainPokesLocked()
+	afar := rm.pendingAfar
+	rm.pendingAfar = nil
 	return tickOut{
 		tick: tick, cheerFrom: cheerFrom, rode: rode, ended: ended, clients: clients,
-		ridingKey: ridingKey, ridingIDs: ridingIDs, pairing: pairing, pokes: pokes,
+		ridingKey: ridingKey, ridingIDs: ridingIDs, pairing: pairing, pokes: pokes, afar: afar,
 		gameWinner: gameWinner, sprintWinner: sprintWinner,
 	}
 }

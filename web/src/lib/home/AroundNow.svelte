@@ -6,12 +6,18 @@
 	// read the sidebar keeps fresh on every lobby ping (#2444), so it costs no
 	// fetch of its own and never disagrees with the column beside it.
 	import ArrowRight from '@lucide/svelte/icons/arrow-right';
+	import Check from '@lucide/svelte/icons/check';
+	import { SvelteSet } from 'svelte/reactivity';
+	import CheerIcon from '$lib/components/CheerIcon.svelte';
 	import RidingBars from '$lib/components/RidingBars.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { account } from '$lib/account.svelte';
+	import { api } from '$lib/api';
 	import { voiceChannelPath } from '$lib/channels';
 	import { crewLive } from '$lib/nav/crew-live.svelte';
 	import { presence } from '$lib/presence.svelte';
+	import { PokeCooldownSeconds } from '$lib/protocol';
+	import { play, unlockCues } from '$lib/sound/cues';
 	import { aroundNow } from './around-now';
 
 	const around = $derived(aroundNow(crewLive.crews, account.me?.id ?? ''));
@@ -28,6 +34,20 @@
 		}
 		return null;
 	});
+	// Cheer from afar (#3275): one tap sends your first cheer to a crewmate
+	// in another voice channel. Fire-and-forget — the button rests for the
+	// server's cooldown whatever the answer, and a refusal is never a toast.
+	const cheered = new SvelteSet<string>();
+	function cheer(channelId: string, to: string) {
+		unlockCues();
+		play('cheer');
+		cheered.add(to);
+		setTimeout(() => cheered.delete(to), PokeCooldownSeconds * 1000);
+		void api(`/api/channels/${channelId}/cheer`, {
+			method: 'POST',
+			json: { to, emoji: account.cheers[0] },
+		});
+	}
 	// A crew with no voice channel yet, that the rider may make one in.
 	const admined = $derived(
 		presence.crews.find((c) => c.role === 'owner' || c.role === 'admin'),
@@ -52,37 +72,57 @@
 {:else if around.length > 0}
 	<div class="mt-3 grid gap-3">
 		{#each around as { crew, channel, others } (channel.id)}
-			<a
-				href={voiceChannelPath(crew.id, channel.id)}
-				class="panel panel-lg hover:border-muted/40 flex items-center gap-4 transition-colors"
-			>
-				<!-- The bars are the one mark that says a session is running
+			<div class="panel panel-lg hover:border-muted/40 transition-colors">
+				<a
+					href={voiceChannelPath(crew.id, channel.id)}
+					class="flex items-center gap-4"
+				>
+					<!-- The bars are the one mark that says a session is running
 				     (ADR-0020); standing in a channel is a plain dot, because
 				     presence never implies watts (ADR-0012). -->
-				{#if channel.session}
-					<RidingBars size={12} />
-				{:else}
-					<span class="bg-z4 h-2.5 w-2.5 shrink-0 rounded-full"></span>
-				{/if}
-				<div class="min-w-0">
-					<!-- Crew first: every crew opens with a Lounge ($lib/whereabouts). -->
-					<p class="font-display truncate font-bold">
-						{crew.name} · {channel.name}
-					</p>
-					<!-- Who is in there now, each with their status (ADR-0060). -->
-					<p class="text-muted mt-0.5 text-xs">
-						{#each others as o, i (o.id)}{i > 0 ? ', ' : ''}{o.name}<StatusMark
-								line={o.statusLine}
-								size={11}
-							/>{/each}
-						{#if channel.session}· riding now{/if}
-					</p>
+					{#if channel.session}
+						<RidingBars size={12} />
+					{:else}
+						<span class="bg-z4 h-2.5 w-2.5 shrink-0 rounded-full"></span>
+					{/if}
+					<div class="min-w-0">
+						<!-- Crew first: every crew opens with a Lounge ($lib/whereabouts). -->
+						<p class="font-display truncate font-bold">
+							{crew.name} · {channel.name}
+						</p>
+						<!-- Who is in there now, each with their status (ADR-0060). -->
+						<p class="text-muted mt-0.5 text-xs">
+							{#each others as o, i (o.id)}{i > 0
+									? ', '
+									: ''}{o.name}<StatusMark
+									line={o.statusLine}
+									size={11}
+								/>{/each}
+							{#if channel.session}· riding now{/if}
+						</p>
+					</div>
+					<span
+						class="bg-ink text-paper ml-auto inline-flex shrink-0 items-center gap-1.5 rounded px-3 py-1.5 text-xs font-semibold"
+						>Walk in <ArrowRight size={13} /></span
+					>
+				</a>
+				<div class="mt-3 flex flex-wrap gap-2">
+					{#each others as o (o.id)}
+						{@const sent = cheered.has(o.id)}
+						<button
+							onclick={() => cheer(channel.id, o.id)}
+							disabled={sent}
+							class="btn btn-secondary min-h-11"
+						>
+							{#if sent}<Check size={18} />{:else}<CheerIcon
+									cheer={account.cheers[0]}
+									size={18}
+								/>{/if}
+							{sent ? `Cheered ${o.name}` : `Cheer ${o.name}`}
+						</button>
+					{/each}
 				</div>
-				<span
-					class="bg-ink text-paper ml-auto inline-flex shrink-0 items-center gap-1.5 rounded px-3 py-1.5 text-xs font-semibold"
-					>Walk in <ArrowRight size={13} /></span
-				>
-			</a>
+			</div>
 		{/each}
 	</div>
 {:else if door}

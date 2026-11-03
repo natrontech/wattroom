@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/audience"
+	"github.com/natrontech/wattroom/server/internal/budget"
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
@@ -51,6 +52,9 @@ type Live interface {
 	Move(channel, userID string, to protocol.Moved) error
 	// A deleted voice channel's live state dies with it (#618).
 	CloseChannel(channel string)
+	// A cheer from afar (#3275) for one rider in a voice channel; false
+	// when they are not in it.
+	CheerAfar(channel string, cheer protocol.Cheer) bool
 }
 
 // VoiceEjector is LiveKit's half of a kick — satisfied by *av.Service, and
@@ -71,10 +75,16 @@ type Service struct {
 	live     Live
 	voice    VoiceEjector
 	notifier Canceller
+	// One cheer from afar per sender and rider per poke cooldown (#3275),
+	// on a key of its own as a bottle's is, so it never spends the poke.
+	cheers *budget.Budget[[2]string]
 }
 
 func New(st *store.Store, users UserSource, log *slog.Logger) *Service {
-	return &Service{store: st, users: users, log: log}
+	return &Service{
+		store: st, users: users, log: log,
+		cheers: budget.New[[2]string](1, protocol.PokeCooldownSeconds*time.Second),
+	}
 }
 
 // SetLive wires the hub in after construction — the hub needs this service
@@ -119,6 +129,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("PUT /api/channels/{id}/members/{userID}", s.handleNameMember)
 	mux.HandleFunc("DELETE /api/channels/{id}/members/{userID}", s.handleUnnameMember)
 	mux.HandleFunc("POST /api/channels/{id}/move", s.handleMove)
+	mux.HandleFunc("POST /api/channels/{id}/cheer", s.handleCheer)
 }
 
 type memberJSON struct {
