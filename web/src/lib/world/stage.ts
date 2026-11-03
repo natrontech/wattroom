@@ -262,6 +262,8 @@ export function buildStage(
 	}
 	let near: string | null = null;
 	let wanted: [number, number][] = [];
+	// Every wanted tile drawn: nothing to walk until the eye changes tile.
+	let dressed = false;
 	// The first look draws everything in reach: a ride mounts with its far ring whole, never filling in.
 	let first = true;
 	function dress(eye: THREE.Vector3, asked: boolean) {
@@ -277,8 +279,11 @@ export function buildStage(
 				if (Math.hypot(cx - eye.x, cz - eye.z) > DRESS_M * LEAVE) undraw(id);
 			}
 			world.forget(eye.x, eye.z, KEEP_M);
+			dressed = false;
 		}
+		if (dressed) return props.update(eye);
 		let spent = false;
+		let left = false;
 		for (const [ti, tj] of wanted) {
 			if (props.has(tileKey(ti, tj))) continue;
 			const [cx, cz] = tileCentre(ti, tj);
@@ -288,11 +293,15 @@ export function buildStage(
 				Math.hypot(cx - eye.x, cz - eye.z) >= NEAR_M &&
 				!world.settled(ti, tj)
 			) {
-				if (spent) continue;
+				if (spent) {
+					left = true;
+					continue;
+				}
 				spent = true;
 			}
 			draw(ti, tj, eye);
 		}
+		dressed = !left;
 		props.update(eye);
 	}
 

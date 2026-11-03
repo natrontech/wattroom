@@ -147,11 +147,18 @@ export function mount(
 	let frames: Frame[] = [];
 	const loop = createLoop((seconds) => {
 		const at = performance.now();
-		// The bunch keeps the wall's time: where the hub has everyone does not wait for a slow frame.
-		world.advanceBy(Math.min(seconds, MAX_DT), seconds);
-		timer?.begin();
-		renderer.render(scene, camera);
-		timer?.end();
+		try {
+			// The bunch keeps the wall's time: where the hub has everyone does not wait for a slow frame.
+			world.advanceBy(Math.min(seconds, MAX_DT), seconds);
+			timer?.begin();
+			renderer.render(scene, camera);
+			timer?.end();
+		} catch (err) {
+			// A frame that throws throws every frame after it: a frozen world
+			// the miss watch never sees, since each one counts as drawn.
+			console.error('world: a frame failed', err);
+			return fail('build-failed');
+		}
 		if (climbs) measure();
 		if (import.meta.env.DEV) {
 			frames.push({ at, ms: performance.now() - at });
