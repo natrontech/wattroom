@@ -20,6 +20,25 @@ function tick(
 }
 
 describe('your race on the RACE page (#3174)', () => {
+	it('carries your shelter from the hub and everyone still riding as a gap to you (#3265)', () => {
+		const race = raceOf(
+			tick(KLAXON + 60_000, {
+				you: { m: 2000, v: 9, cat: 'C', sh: 0.34 },
+				ahead: { m: 2001.5, v: 9, cat: 'C' },
+				behind: { m: 1990, v: 9, cat: 'A' },
+				done: { m: 6000, v: 0, cat: 'C', finishMs: 150_000 },
+			}),
+			'you',
+		)!;
+		expect(race.shelter).toBe(0.34);
+		expect(race.gaps).toEqual({ ahead: 1.5, behind: -10 });
+		const alone = raceOf(
+			tick(KLAXON + 60_000, { you: { m: 2000, v: 9, cat: 'C' } }),
+			'you',
+		)!;
+		expect(alone.shelter).toBe(0);
+	});
+
 	it('places you among your own Category only, the line first', () => {
 		const race = raceOf(
 			tick(KLAXON + 60_000, {

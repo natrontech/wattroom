@@ -42,6 +42,8 @@ type racer struct {
 	// time mostly sheltered is not the rider's alone (ADR-0074).
 	sheltered float64
 	ridden    int
+	// The shelter it rode its last second in, for the tick (#3265).
+	shelter float64
 }
 
 // Race is one race: its road, the klaxon every racer leaves km 0 at, and its
@@ -106,6 +108,7 @@ func (r *Race) Step(at time.Time, watts map[string]int) {
 			continue
 		}
 		mass := float64(protocol.ReferenceRiderKg + protocol.BikeKg)
+		rc.shelter = 0
 		if neutral {
 			rc.pace.Step(AsReference(w, rc.WeightKg), 0, mass, protocol.PaceDefaultCdA, 0)
 			rc.pace.Distance = rc.StartM
@@ -114,6 +117,7 @@ func (r *Race) Step(at time.Time, watts map[string]int) {
 		from := rc.pace.Distance
 		rc.pace.Step(AsReference(w, rc.WeightKg), r.profile.GradeAt(from), mass, protocol.PaceDefaultCdA, shelters[i])
 		rc.sheltered += shelters[i]
+		rc.shelter = shelters[i]
 		rc.ridden++
 		if length := r.profile.LengthM; from < length && rc.pace.Distance >= length {
 			// The photo finish: the crossing, placed inside this second.
@@ -288,14 +292,20 @@ func (r *Race) Racers() map[string]protocol.RaceRider {
 		v := rc.pace.Speed
 		// Out, the race steps them no more: they stand where it left them,
 		// and a screen that rolled them on at their last speed would not (#3778).
+		shelter := math.Round(rc.shelter*100) / 100
 		if rc.out {
 			v = 0
+		}
+		// Over the line or out, nobody is in anyone's wheel any more.
+		if rc.out || rc.finishMs != 0 {
+			shelter = 0
 		}
 		out[id] = protocol.RaceRider{
 			M:        min(rc.pace.Distance, r.profile.LengthM),
 			V:        v,
 			FinishMs: rc.finishMs,
 			Cat:      rc.Category,
+			Sh:       shelter,
 		}
 		if par, ok := r.parAt(rc.Category, rc.StartM, out[id].M); ok && rc.ridden > 0 {
 			p := out[id]

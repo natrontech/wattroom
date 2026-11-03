@@ -10,6 +10,8 @@ const race = (over: Partial<RaceReadout> = {}): RaceReadout => ({
 	place: 2,
 	of: 4,
 	toLine: 6000,
+	shelter: 0,
+	gaps: {},
 	...over,
 });
 

@@ -300,6 +300,7 @@
 		game: () => live.tick?.game ?? null,
 		me: () => account.me?.id,
 		coach: () => coach,
+		race: () => roster.race,
 	});
 
 	// TV mode and the picker are the session's layers (SessionLayers.svelte):

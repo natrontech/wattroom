@@ -2520,4 +2520,10 @@ export interface RaceRider {
    * Absent until they have raced a second.
    */
   par?: number /* float64 */;
+  /**
+   * The share of the air the wheels ahead took from them in the second
+   * just ridden, 0–ShelterMax to the hundredth (ADR-0077, #3265): the
+   * hub's, so the RACE page says what the race rode on. Absent is none.
+   */
+  sh?: number /* float64 */;
 }

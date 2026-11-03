@@ -70,7 +70,10 @@ export type CueId =
 	| 'summit'
 	| 'split'
 	| 'match'
-	| 'horn';
+	| 'horn'
+	| 'wheel-in'
+	| 'wheel-out'
+	| 'whoosh';
 
 /** A minor triad reads as tension, a major one as reward — the whole emotional vocabulary. */
 const A4 = 440;
@@ -643,6 +646,53 @@ export const CUES: Record<CueId, Cue> = {
 				gain: 0.16,
 				detune: -6,
 				filter: { from: 1800 },
+			},
+		],
+	},
+
+	// The wheel (#3265): the air you hear, soft, since a race enters and
+	// leaves wheels all the time. Into one the wind closes, its noise falling
+	// away; out of one it opens again. A rider going by is a sweep of air,
+	// panned to the side they passed on.
+	'wheel-in': {
+		id: 'wheel-in',
+		label: 'Into a wheel',
+		hint: 'You are in a rider’s wheel and out of the wind. A breath of air, falling away.',
+		voices: [
+			{
+				type: 'noise',
+				at: 0,
+				dur: 0.4,
+				gain: 0.12,
+				filter: { from: 1800, to: 500 },
+			},
+		],
+	},
+	'wheel-out': {
+		id: 'wheel-out',
+		label: 'Into the wind',
+		hint: 'Out of the wheel and into the wind. A breath of air, opening up.',
+		voices: [
+			{
+				type: 'noise',
+				at: 0,
+				dur: 0.4,
+				gain: 0.12,
+				filter: { from: 500, to: 1800 },
+			},
+		],
+	},
+	whoosh: {
+		id: 'whoosh',
+		label: 'Rider going by',
+		hint: 'A rider passed you, or you passed one: a sweep of air on that side.',
+		voices: [
+			{
+				type: 'noise',
+				at: 0,
+				dur: 0.45,
+				gain: 0.18,
+				filter: { from: 400, to: 2400, q: 1.5, type: 'bandpass' },
 			},
 		],
 	},

@@ -356,7 +356,8 @@ function executionField(ctx: ComputerContext): Field | null {
 
 /**
  * RACE (#3174): the gap to your Category's par, then your place in your
- * Category, then your matches left (#3263) — models' outputs, so neon and
+ * Category, then your shelter (#3265), then your matches left (#3263) —
+ * models' outputs, so neon and
  * never watt; only your live power is. The gap leads at the computer's number size, and W/kg stays in its one
  * home beside the 3 s power: the 3 s power is the largest number on the
  * surface, and no number shows twice (docs/design/TARGETS.md "One home per
@@ -379,6 +380,16 @@ function raceFields(ctx: ComputerContext): Field[] {
 			value: `${ordinal(race.place)} of ${race.of}`,
 			neon: true,
 		},
+		// The hub's shelter (#3265): the drag the wheels ahead take, a model's
+		// output like the rest of the page. The word holds through the wheel's
+		// hysteresis; the number is this second's.
+		{
+			key: 'shelter',
+			label: race.inWheel ? 'In the wheel' : 'In the wind',
+			value: shelterValue(race.shelter),
+			unit: '%',
+			neon: true,
+		},
 		// A model's output about you (#3263): neon like the rest of the page.
 		...(ctx.matches?.left != null
 			? [
@@ -392,6 +403,12 @@ function raceFields(ctx: ComputerContext): Field[] {
 				]
 			: []),
 	];
+}
+
+/** "−34": the share of your drag the wheels ahead take, whole percent. */
+function shelterValue(shelter: number): string {
+	const pct = Math.round(shelter * 100);
+	return pct === 0 ? '0' : `−${pct}`;
 }
 
 // Events a computer has already turned a page with: one key press turns

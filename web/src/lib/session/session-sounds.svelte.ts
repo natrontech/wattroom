@@ -2,7 +2,9 @@ import type { GameState } from '$lib/protocol';
 import { gameCues, golfMoment } from '$lib/session/game-cues';
 import { serverNow } from '$lib/server-clock';
 import { changes } from '$lib/sound/changes';
-import { play, playCountdownTick } from '$lib/sound/cues';
+import { PAN_LIMIT, play, playCountdownTick } from '$lib/sound/cues';
+import type { RaceReadout } from '$lib/race/race-view';
+import { passes } from '$lib/race/wheel';
 import { toasts } from '$lib/toast.svelte';
 import {
 	createRideSounds,
@@ -32,6 +34,8 @@ export interface SoundDeps extends RideSoundDeps {
 	me: () => string | undefined;
 	/** The open session's coach (`coachOf`), undefined while none is. */
 	coach: () => string | undefined;
+	/** Your race, while you race one (#3174), its wheel heard (#3265). */
+	race: () => RaceReadout | null;
 }
 
 export function createSessionSounds(deps: SoundDeps) {
@@ -92,6 +96,26 @@ export function createSessionSounds(deps: SoundDeps) {
 		for (const cue of gameCues(before, game, deps.me()))
 			play(cue.id, { semitones: cue.shift });
 	});
+	// The wheel (#3265): in and out of shelter is a state change the legs
+	// feel before the eyes find the RACE page, and a rider going by close
+	// is heard on the side they went by — passed on the left, as on a road.
+	const heardWheel = changes<boolean>((inWheel) => {
+		// Over the line the wheel lets go by itself: the finish says enough.
+		if (seenRace?.phase !== 'finished')
+			play(inWheel ? 'wheel-in' : 'wheel-out');
+	});
+	let seenRace: RaceReadout | null = null;
+	$effect(() => {
+		const race = deps.race();
+		const before = seenRace;
+		seenRace = race;
+		if (!race) return;
+		heardWheel(!!race.inWheel);
+		if (before && before.at !== race.at)
+			for (const side of passes(before, race))
+				play('whoosh', { pan: side * PAN_LIMIT });
+	});
+
 	// Watt Golf's run-in is a clock, not a state change: which second was
 	// last spoken is all that is kept, so a re-render stays quiet.
 	// Server time (#1588): Watt Golf's hole is a server timestamp, and the

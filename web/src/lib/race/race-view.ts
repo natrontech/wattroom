@@ -19,6 +19,15 @@ export interface RaceReadout {
 	of: number;
 	/** Metres to the line; 0 once over it. */
 	toLine: number;
+	/** The share of the air the wheels ahead took from you last second, 0–ShelterMax (#3265). */
+	shelter: number;
+	/**
+	 * Every other racer still on the road, metres ahead of you (+) or behind
+	 * (−): who just went by is a sign that changed (#3265).
+	 */
+	gaps: Record<string, number>;
+	/** The shelter as a word that holds still ($lib/race/wheel), once the rider model has heard it. */
+	inWheel?: boolean;
 }
 
 /** The race this tick runs, as you ride it; null when you are not racing. */
@@ -54,6 +63,12 @@ export function raceOf(
 		place: 1 + field.filter((r) => r !== me && ahead(r, me)).length,
 		of: field.length,
 		toLine: me.finishMs ? 0 : Math.max(0, line - me.m),
+		shelter: me.sh ?? 0,
+		gaps: Object.fromEntries(
+			Object.entries(racers)
+				.filter(([id, r]) => id !== you && !r.finishMs && !me.finishMs)
+				.map(([id, r]) => [id, r.m - me.m]),
+		),
 	};
 }
 
