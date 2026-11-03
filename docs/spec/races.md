@@ -89,6 +89,7 @@ What v0 ships (#3022):
 - **Riders**: a race starts with at least **2**; points need at least **3**. Disconnect grace **30 s**.
 - **Tick**: **4 Hz** once the leader's ETA to the finish is **30 s** or less.
 - **Category par** (W/kg): **D 2.2**, **C 2.85**, **B 3.6**, **A 4.3**. The pacer rides the same par (ADR-0068).
+- **The pacer** (#3281): on a solo route ride only, picked at a Category's par. Its CP is that par × **75 kg** and its W′ **20 kJ**; on grades of **4 %** or more it surges to **110 %** of par until its W′ balance falls to **25 %**, then holds par. Within **50 m** of it the bike computer shows the gap, and it sounds its horn at hairpins. Never in a session, bunch, race or game; it shelters nobody and pays nothing.
 - **Shelter**: the open field of ADR-0077; results stay per Category.
 - **Critical power**: its lines are #3262's.
 - **Matches** (#3263): the RACE page counts your W′ balance as **4** matches, one burnt per **25 %** of W′ spent. Computed on your own screen from your own seconds, never on the tick; fitted from the 5- and 20-min bests it says it is an estimate, and with no curve it is hidden with a hint.

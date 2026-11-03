@@ -69,7 +69,8 @@ export type CueId =
 	| 'climb'
 	| 'summit'
 	| 'split'
-	| 'match';
+	| 'match'
+	| 'horn';
 
 /** A minor triad reads as tension, a major one as reward — the whole emotional vocabulary. */
 const A4 = 440;
@@ -613,6 +614,35 @@ export const CUES: Record<CueId, Cue> = {
 				dur: 0.3,
 				gain: 0.16,
 				filter: { from: 600, to: 1600 },
+			},
+		],
+	},
+
+	// The pacer's horn (#3281): its own two-tone call, high then a fourth
+	// down, square and detuned — a coach horn, never PostAuto's three-tone
+	// triad. It sounds when you pick a pacer, and at hairpins within 50 m.
+	horn: {
+		id: 'horn',
+		label: 'Pacer horn',
+		hint: 'The pacer you picked, and the pacer near you at a hairpin. Two tones, high then low.',
+		voices: [
+			{
+				type: 'square',
+				freq: note(7),
+				at: 0,
+				dur: 0.22,
+				gain: 0.16,
+				detune: 6,
+				filter: { from: 1800 },
+			},
+			{
+				type: 'square',
+				freq: note(2),
+				at: 0.24,
+				dur: 0.32,
+				gain: 0.16,
+				detune: -6,
+				filter: { from: 1800 },
 			},
 		],
 	},

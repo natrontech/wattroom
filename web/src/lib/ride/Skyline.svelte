@@ -46,7 +46,7 @@
 		band = [],
 		strip = false,
 		tv = false,
-		ghost = null,
+		ghosts = [],
 	}: {
 		road: Road;
 		/** The dot: metres along the stored road, as of the last second. */
@@ -63,8 +63,8 @@
 		/** Under a shared screen: a 40 px strip, the profile and the dot alone. */
 		strip?: boolean;
 		tv?: boolean;
-		/** Your ghost (#3245): its metre on the stored road, its speed and its name. */
-		ghost?: { m: number; mps: number; label: string } | null;
+		/** Your ghost (#3245) and the pacer (#3281): each one's metre on the stored road, its speed and its name. */
+		ghosts?: { m: number; mps: number; label: string }[];
 	} = $props();
 
 	/** The dot's halo, painted once: the watt colour fading out, no filter. */
@@ -147,9 +147,16 @@
 				}
 			: null,
 	);
-	// Your ghost on the road layer, carried on between seconds as the dot is.
-	const haunt = $derived.by(() => {
-		if (!ghost || !frame || strip) return null;
+	// Your ghosts on the road layer, carried on between seconds as the dot is.
+	const haunts = $derived.by(() => {
+		if (!frame || strip) return [];
+		const on = frame;
+		return ghosts.map((ghost) => placed(on, ghost));
+	});
+	function placed(
+		on: NonNullable<typeof frame>,
+		ghost: { m: number; mps: number; label: string },
+	) {
 		const at = reverse ? stored.length - ghost.m : ghost.m;
 		const here = perTick
 			? at
@@ -157,14 +164,15 @@
 					road.length,
 					at + ghost.mps * Math.min(1, (now - secondAt) / 1000),
 				);
-		const x = here * frame.scale;
+		const x = here * on.scale;
 		// Its name runs toward the strip's middle, so it never leaves the panel.
 		return {
 			x,
-			y: yOf(frame, heightAt(road, here)),
+			y: yOf(on, heightAt(road, here)),
 			early: x - shift < width / 2,
+			label: ghost.label,
 		};
-	});
+	}
 </script>
 
 <div
@@ -245,9 +253,10 @@
 						style:top="{chip.y}px">{chip.cls}</span
 					>
 				{/each}
-				{#if haunt && ghost}
-					<!-- Your ghost, a hollow tick named for its day (#3245, #3615): a
-					     memory, so neither watt nor neon and no glow (ADR-0068). -->
+				{#each haunts as haunt, i (i)}
+					<!-- Your ghost, a hollow tick named for its day (#3245, #3615), and
+					     the pacer named for its Category (#3281): neither is live, so
+					     neither watt nor neon and no glow (ADR-0068). -->
 					<span
 						data-testid="skyline-ghost"
 						class="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 will-change-transform"
@@ -263,10 +272,10 @@
 							class="text-muted absolute bottom-full mb-1 leading-none whitespace-nowrap forced-colors:text-[CanvasText] {haunt.early
 								? 'left-1/2'
 								: 'right-1/2'} {tv ? 'text-[3vh]' : 'text-sm'}"
-							>{ghost.label}</span
+							>{haunt.label}</span
 						>
 					</span>
-				{/if}
+				{/each}
 			</div>
 			{#if dot}
 				<!-- The only glow: a halo painted once, never a filter (#2998). -->

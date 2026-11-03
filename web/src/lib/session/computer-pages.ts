@@ -8,6 +8,7 @@ import { ordinal, type RaceReadout } from '$lib/race/race-view';
 import { MATCHES, type MatchesReadout } from '$lib/race/matches';
 import { isTyping } from '$lib/keys';
 import type { LiveStats } from '$lib/ride/live-stats.svelte';
+import type { PacerGap } from '$lib/ride/pacer.svelte';
 
 /**
  * The bike computer's page table (ADR-0071, docs/SPEC.md "The bike
@@ -74,6 +75,8 @@ export interface ComputerContext {
 	road?: { speedKph: number; km: number; ofKm: number };
 	/** Behind (+) or ahead (−) of your ghost, seconds (#3615, ADR-0068). */
 	split?: { seconds: number; best: boolean };
+	/** The pacer within 50 m, metres ahead (+) or behind (−) of you (#3281). */
+	pacer?: PacerGap | null;
 	/** The block's target watts, while one is asked. */
 	target?: number;
 	/** This rider's live numbers (#3068); absent where this screen has none. */
@@ -318,7 +321,25 @@ export function fieldsFor(page: ComputerPage, ctx: ComputerContext): Field[] {
 			...gapWords(ctx.split.seconds),
 			neon: true,
 		});
+	if (ctx.pacer)
+		// A model's output, neon like the split: the pacer is nobody live.
+		fields.push({
+			key: 'pacer',
+			label: `Pacer ${ctx.pacer.category}`,
+			...pacerWords(ctx.pacer.metres),
+			neon: true,
+		});
 	return fields;
+}
+
+/**
+ * The pacer `metres` ahead (+) of you in your words, as your ghost's split
+ * reads: "12 m behind" while it leads, "8 m ahead" once you lead, "level".
+ */
+export function pacerWords(metres: number): { value: string; unit: string } {
+	const m = Math.round(Math.abs(metres));
+	if (m === 0) return { value: 'level', unit: '' };
+	return { value: `${m}`, unit: `m ${metres > 0 ? 'behind' : 'ahead'}` };
 }
 
 /** Your live score, where nothing else on the surface ranks it (ADR-0046). */
