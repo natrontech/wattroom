@@ -3,7 +3,7 @@
 // would draw under one pixel per CSS pixel (#4256). The frame rate is
 // loop.ts's.
 
-/** Light draws half of it (#3214) above the floor; there is no lower tier yet. */
+/** The low tier's 0.5 MP: the quality ladder's L1 (#3295), where Light (#3214) draws. */
 export const LIGHT_PIXEL_BUDGET = 5e5;
 
 /** About 1.0 MP a frame (docs/SPEC.md, "The world"). */

@@ -215,12 +215,15 @@ export function batchProps(
 			if (ring !== 2) mesh.setGeometryIdAt(id, idOf(kind, form, ring));
 		}
 	}
+	// The quality ladder's lower rungs draw the near ring only (#3295): the far one's tiles stay, hidden.
+	let far = true;
 	const ringOf = (tile: Tile, eye: THREE.Vector3, was: Ring): Ring => {
 		const d = Math.hypot(tile.cx - eye.x, tile.cz - eye.z);
 		// A tile crosses an edge inward at the edge, outward only 10 % past it.
 		const inside = (r: number, held: boolean) =>
 			held ? d <= r * LEAVE : d < r;
-		return inside(NEAR_M, was === 0) ? 0 : inside(FAR_M, was <= 1) ? 1 : 2;
+		if (inside(NEAR_M, was === 0)) return 0;
+		return far && inside(FAR_M, was <= 1) ? 1 : 2;
 	};
 
 	return {
@@ -274,6 +277,10 @@ export function batchProps(
 				const ring = ringOf(tile, eye, tile.ring);
 				if (ring !== tile.ring) show(tile, ring);
 			}
+		},
+		/** Shows or hides the far ring from the next update(): nothing is built or let go. */
+		setFar(on: boolean) {
+			far = on;
 		},
 		/** The tiles drawn now, by id: what the stage lets go. */
 		ids: () => [...tiles.keys()],

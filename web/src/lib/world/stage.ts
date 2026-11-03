@@ -69,6 +69,8 @@ export type Stage = {
 	light(p: number | null): THREE.Color;
 	/** What carries words: the signs and the arches with their names (#4221's picture leaves them out). */
 	labels: THREE.Object3D;
+	/** The dressing's far ring shown or hidden, the quality ladder's (#3295). */
+	setFar(on: boolean): void;
 };
 
 // Room for the ground within reach, and for a hilly road's pieces; either grows by half when it runs out.
@@ -327,6 +329,7 @@ export function buildStage(
 	return {
 		group,
 		labels: boards.root,
+		setFar: props.setFar,
 		update(eye, whole = false) {
 			// The sky stands round the eye, so its band clears the ridges as this eye sees them.
 			sky.position.copy(eye);
