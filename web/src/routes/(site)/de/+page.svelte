@@ -22,8 +22,8 @@
 			text: 'Chrome oder Edge verbindet sich per Bluetooth mit deinem Smart Trainer. Nichts installieren. Kamera nach Lust, Mikrofon mit einem Tipp.',
 		},
 		{
-			titel: 'Gemeinsam ein Workout fahren',
-			text: 'Wer im Kanal ist, startet ein Workout. Jede Rolle hält die Watt ihres Fahrers, die Zeitleiste läuft für alle gleichzeitig — und ihr redet die ganze Zeit.',
+			titel: 'Session starten',
+			text: 'Wer im Sprachkanal ist, startet eine Session: eine freie Fahrt auf einer Strecke, ein Workout, ein Rennen oder ein Spiel. Alle fahren gleichzeitig — und ihr redet die ganze Zeit.',
 		},
 	];
 
@@ -45,6 +45,14 @@
 			a: 'Genau dafür ist WattRoom da. Jede Vorgabe ist ein Prozentsatz der eigenen FTP: Wer 180 W und wer 320 W FTP hat, fährt dasselbe Workout nebeneinander, und es tut beiden gleich weh.',
 		},
 		{
+			q: 'Woher kommen die Strecken?',
+			a: 'Von dir. Importiere eine GPX-, TCX- oder FIT-Datei einer Strecke, die du kennst, und WattRoom liest daraus die Steigungen und Anstiege. Auf jedem Gerät wählst du: die Strecke in 3D oder flach als Höhenprofil.',
+		},
+		{
+			q: 'Gibt es Rennen?',
+			a: 'Ja, innerhalb deiner Crew. Strecke wählen, «Race it» tippen und Race, Last Light oder Wheelrace fahren. Das Tempo kommt aus deinen W/kg, am Hinterrad fährst du im Windschatten wie in einem echten Feld, und die Rangliste gibt es pro Kategorie, D bis A. Einen öffentlichen Rennkalender gibt es nicht.',
+		},
+		{
 			q: 'Kann ich meine Zwift-Workouts mitnehmen?',
 			a: 'Ja: .zwo- und .erg-Dateien lassen sich im Workout-Editor importieren.',
 		},
@@ -61,7 +69,7 @@
 	<PageHero
 		eyebrow="Die kostenlose Zwift-Alternative"
 		title="Rollentraining mit Freunden statt allein"
-		lede="Eine Crew, ein strukturiertes Workout, jede Rolle auf die FTP ihres Fahrers — und ein Sprachkanal, damit ihr gemeinsam leiden könnt. Ohne Abo, ohne Installation, direkt im Browser. Deine Watt sind das Spiel."
+		lede="Fahrt eure eigenen Strecken in einer 3D-Welt, mit der ganzen Crew darauf, oder ein strukturiertes Workout, jede Rolle auf die FTP ihres Fahrers. Der Sprachkanal ist eingebaut, damit ihr gemeinsam leiden könnt. Ohne Abo, direkt im Browser."
 	>
 		<a href="/login" class="btn btn-primary btn-lg">Crew gründen</a>
 		<a href="/" class="btn btn-secondary btn-lg" hreflang="en">English</a>
@@ -69,10 +77,12 @@
 
 	<section class="mx-auto w-full max-w-5xl px-4 sm:px-6">
 		<Screen
-			name="session"
+			name="world-crew"
 			eager
-			alt="Eine laufende WattRoom-Session: Watt, W/kg und Trittfrequenz jedes Fahrers neben der gemeinsamen Intervall-Zeitleiste"
-			caption="Eine Zeitleiste, die Zahlen aller Fahrer, und der Sprachkanal, in dem ihr fahrt. (Die App ist auf Englisch.)"
+			alt="Zwei Fahrer einer Crew nebeneinander in einer Session auf einer Bergstrasse in der 3D-Welt, die Uhr des Workouts oben, der Velocomputer links und die Watt pro Kilo der Fahrer rechts"
+			width={1440}
+			height={900}
+			caption="Eure Strecke in 3D, die Zahlen aller Fahrer, und der Sprachkanal, in dem ihr fahrt. (Die App ist auf Englisch.)"
 		/>
 	</section>
 
@@ -109,6 +119,10 @@
 					zuerst einrichten muss.
 				</li>
 				<li>
+					Eigene Strecken in 3D: GPX, TCX oder FIT importieren und mit der Crew
+					darauf fahren.
+				</li>
+				<li>
 					Ein gemeinsames Workout im ERG-Modus, jede Vorgabe auf deine eigene
 					FTP skaliert.
 				</li>
@@ -117,8 +131,8 @@
 					synchron.
 				</li>
 				<li>
-					Sieben Spielmodi, die nur über Watt entschieden werden — kein
-					Windschatten, keine Power-ups.
+					Keine Power-ups. Spiele: nur Watt. Rennen: ein echtes Feld, mit
+					Windschatten.
 				</li>
 				<li>Jede Fahrt zählt: .fit-Export und Upload zu Strava.</li>
 				<li>Open Source, kostenlos, gebaut in der Schweiz.</li>
@@ -133,11 +147,20 @@
 	<section class="mx-auto mt-24 w-full max-w-6xl px-4 sm:px-6">
 		<SectionHead
 			center
-			eyebrow="Sieben Spielmodi"
-			title="Kein Windschatten. Nur Watt."
-			lede="Jedes Spiel misst an der eigenen FTP — so kann auch der schwächste Motor der Crew gewinnen. (Die Namen der Modi sind englisch, wie die App.)"
+			eyebrow="Rennen und Spiele"
+			title="Fahrt Rennen auf euren Strecken, oder spielt nur mit Watt"
+			lede="Strecke in der Session-Auswahl wählen, «Race it» tippen und Race, Last Light oder Wheelrace wählen: ein Rennen nach W/kg, mit Rangliste pro Kategorie am Schluss. Oder eines von sieben Spielen, die an der eigenen FTP messen — so kann auch der schwächste Motor der Crew gewinnen. (Die Namen sind englisch, wie die App.)"
 		/>
-		<div class="mt-10" lang="en">
+		<div class="mt-10">
+			<Screen
+				name="race-picker"
+				alt="Die Session-Auswahl mit einer gewählten Strecke und ihren Rennen: Race, Last Light und Wheelrace"
+				width={1440}
+				height={900}
+				caption="«Race it», direkt in der Session-Auswahl."
+			/>
+		</div>
+		<div class="mt-8" lang="en">
 			<GameModeCards />
 		</div>
 	</section>

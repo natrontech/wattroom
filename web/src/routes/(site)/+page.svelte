@@ -268,7 +268,7 @@
 	</div>
 	<p class="mt-6 text-center">
 		<a href="/game-modes" class="btn-link text-sm"
-			>All seven games, and how they play</a
+			>All seven games and three races, and how they play</a
 		>
 	</p>
 </section>

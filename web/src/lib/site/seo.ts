@@ -48,14 +48,14 @@ export const ZWIFT_ALTERNATIVE: SitePage = {
 	path: '/zwift-alternative',
 	title: 'A free Zwift alternative for riding with friends — WattRoom',
 	description:
-		'No subscription, no install: a crew space with voice, synced ERG workouts on everyone’s own FTP, and games decided by watts. Open source.',
+		'No subscription, no install: a crew space with voice, your own roads in 3D, ERG workouts on everyone’s own FTP, races on W/kg and games. Open source.',
 };
 
 export const GAME_MODES: SitePage = {
 	path: '/game-modes',
-	title: 'Seven indoor cycling games decided by watts — WattRoom',
+	title: 'Seven indoor cycling games and three races — WattRoom',
 	description:
-		'Sprint Roulette, Watt Golf, Backyard Ramp, Floor is Lava and more: group games for smart trainers where your power is the whole game. No drafting, no power-ups.',
+		'Sprint Roulette, Watt Golf, Backyard Ramp and more, decided by watts alone, and races on your own roads on W/kg in a real bunch. No power-ups.',
 };
 
 export const FTP_TEST: SitePage = {
@@ -83,7 +83,7 @@ export const GERMAN: SitePage = {
 	path: '/de',
 	title: 'WattRoom — Rollentraining mit Freunden, kostenlos im Browser',
 	description:
-		'Die kostenlose Zwift-Alternative ohne Abo: ein Workout für die ganze Crew, jede Vorgabe auf deine FTP, mit Sprachkanal. Direkt im Browser, Open Source.',
+		'Die kostenlose Zwift-Alternative ohne Abo: eigene Strecken in 3D, Workouts auf deine FTP, Rennen nach W/kg, mit Sprachkanal. Im Browser, Open Source.',
 	lang: 'de',
 };
 
@@ -168,7 +168,9 @@ export function webApplication(): object {
 		featureList: [
 			'Crews with text and voice channels',
 			'Structured ERG workouts ridden together, each target on the rider’s own FTP',
-			'Seven game modes decided by power',
+			'Your own routes ridden in a 3D world',
+			'Races on your own routes, on W/kg, with results per Category',
+			'Seven games decided by power',
 			'A shared jukebox per voice channel',
 			'Ramp FTP test',
 			'.fit export and Strava upload',

@@ -1,7 +1,7 @@
 /**
- * The seven game modes as the public pages tell them. Every number is
+ * The seven games as the public pages tell them. Every number is
  * docs/SPEC.md's "Game mode parameters" — tune there, then here, never
- * only here.
+ * only here. The races are game modes too, listed below them.
  */
 export type GameMode = {
 	slug: string;
@@ -70,5 +70,33 @@ export const GAME_MODE_LIST: readonly GameMode[] = [
 		rules:
 			'One rider holds 110 % of FTP on the front while the others spin at 55 %, rotating every 60–90 seconds or on the call. The crew’s distance is everyone’s front work added up.',
 		best: 'Crews who ride outside together and miss the paceline.',
+	},
+];
+
+/**
+ * The three races (#3177): game modes on a road, on W/kg, placed per
+ * Category. Every number is docs/spec/races.md's — tune there, then here.
+ */
+export const RACE_LIST: readonly Omit<GameMode, 'best'>[] = [
+	{
+		slug: 'race',
+		name: 'Race',
+		line: 'First over the line wins.',
+		rules:
+			'The whole road, from km 0 to the line. Sit on a wheel to save your legs, attack on the climb, and the first over the line in your Category takes it.',
+	},
+	{
+		slug: 'last-light',
+		name: 'Last Light',
+		line: 'Farthest when the clock runs out.',
+		rules:
+			'A clock of 10, 20 or 30 minutes. Whoever has ridden farthest when it runs out wins, and over the final minute the fog closes in from 3 km to 150 m.',
+	},
+	{
+		slug: 'wheelrace',
+		name: 'Wheelrace',
+		line: 'Head starts, so the whole field meets at the line.',
+		rules:
+			'A handicap race with a par of 15 to 45 minutes. The lower your race FTP, the bigger your head start, so ridden at par, the whole field arrives together. The line closes at par plus 15 %.',
 	},
 ];
