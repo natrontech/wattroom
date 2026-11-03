@@ -96,7 +96,7 @@ func (s *Service) drawTrace(dst *image.NRGBA, box image.Rectangle, c RideCard) e
 		if err != nil {
 			return err
 		}
-		drawCenter(dst, face, box.Min.X+box.Dx()/2, box.Min.Y+box.Dy()/2, muted,
+		drawCenter(dst, face, box.Min.X+box.Dx()/2, box.Min.Y+box.Dy()/2, s.pal.muted,
 			"No second-by-second record for this ride")
 		return nil
 	}
@@ -163,7 +163,7 @@ func (s *Service) drawTrace(dst *image.NRGBA, box image.Rectangle, c RideCard) e
 	// nothing about it is live data (ADR-0005).
 	y := box.Max.Y - int(float64(c.Ftp)/top*float64(box.Dy()))
 	for x := box.Min.X; x < box.Max.X; x += 22 {
-		fill(dst, image.Rect(x, y, min(x+12, box.Max.X), y+2), neon)
+		fill(dst, image.Rect(x, y, min(x+12, box.Max.X), y+2), s.pal.neon)
 	}
 	face, err := s.face(22)
 	if err != nil {
@@ -173,7 +173,7 @@ func (s *Service) drawTrace(dst *image.NRGBA, box image.Rectangle, c RideCard) e
 	// which is regularly on top of the trace.
 	label := "FTP " + watts(c.Ftp)
 	width := font.MeasureString(face, label).Ceil()
-	fill(dst, image.Rect(box.Max.X-width-12, y-34, box.Max.X, y-4), surfaceRaised)
-	drawRight(dst, face, box.Max.X, y-12, muted, label)
+	fill(dst, image.Rect(box.Max.X-width-12, y-34, box.Max.X, y-4), s.pal.raised)
+	drawRight(dst, face, box.Max.X, y-12, s.pal.muted, label)
 	return nil
 }

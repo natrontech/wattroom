@@ -10,7 +10,7 @@
 	import { apiBlob } from '$lib/api';
 	import Banner from '$lib/components/Banner.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
-	import { downloadRideCard } from '$lib/ride/card';
+	import RideCardChooser from '$lib/ride/RideCardChooser.svelte';
 	import { climbView } from '$lib/ride/climb-view';
 	import { mapView } from '$lib/ride/map-view';
 	import RampRiding from '$lib/ride/RampRiding.svelte';
@@ -47,7 +47,7 @@
 	const noCrashSafety = $derived(theRide.noCrashSafety);
 	let tv = $state(false);
 	let downloading = $state(false);
-	let carding = $state(false);
+	let choosingCard = $state(false);
 	let error = $state<string | null>(null);
 
 	// A save that answers with no page drawing the ride lands as a toast (#1544).
@@ -111,18 +111,6 @@
 		target: session?.target ?? 0,
 		trace: session?.trace ?? [],
 	});
-
-	// The picture of the ride that just ended (#2112), offered where the rider
-	// is standing: Strava's API takes the activity and never a photo for it.
-	// Needs the saved ride, since the server draws it from the row.
-	async function downloadCard() {
-		const id = theRide.savedId;
-		if (!id) return;
-		carding = true;
-		error = null;
-		error = await downloadRideCard(id);
-		carding = false;
-	}
 
 	/** The server owns .fit encoding (muktihari/fit is Go); the client owns the ride. */
 	async function downloadFit() {
@@ -254,14 +242,23 @@
 					class="btn btn-secondary"
 					>{downloading ? 'Preparing…' : 'Export .fit'}</button
 				>
+				<!-- The picture of the ride that just ended (#2112), offered where
+				     the rider is standing: Strava's API takes the activity and never
+				     a photo for it. Needs the saved ride, since the server draws it
+				     from the row. -->
 				{#if theRide.savedId}
 					<button
-						onclick={downloadCard}
-						disabled={carding}
+						onclick={() => (choosingCard = true)}
 						data-testid="download-card"
-						class="btn btn-secondary"
-						>{carding ? 'Drawing…' : 'Ride card'}</button
+						class="btn btn-secondary">Ride card</button
 					>
+					{#if choosingCard}
+						<RideCardChooser
+							rideId={theRide.savedId}
+							label="Download the ride card"
+							onclose={() => (choosingCard = false)}
+						/>
+					{/if}
 				{/if}
 				<WorldPicture />
 				{#if theRide.next}

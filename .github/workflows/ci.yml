@@ -265,6 +265,12 @@ jobs:
         run: |
           node ../scripts/licenses-web.mjs
           git diff --exit-code static/legal/web.json
+      # The ride card's colours (#4098): the og package draws from the web's
+      # theme catalogue, generated and committed like protocol.ts.
+      - name: the server's themes are the web's
+        run: |
+          node scripts/themes-json.mjs
+          git diff --exit-code ../server/internal/og/themes.json
       - run: pnpm run test
       - run: pnpm run build
       - name: three.js stays out of the eager shell and the (site) pages

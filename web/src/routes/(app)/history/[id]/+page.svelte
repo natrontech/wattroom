@@ -11,7 +11,8 @@
 	import ZoneBar from '$lib/components/ZoneBar.svelte';
 	import { formatDuration } from '$lib/format';
 	import { MEDAL_META, medalName } from '$lib/medals';
-	import { cardLabel, downloadRideCard } from '$lib/ride/card';
+	import { cardLabel } from '$lib/ride/card';
+	import RideCardChooser from '$lib/ride/RideCardChooser.svelte';
 	import { deleteRideAfterConfirm } from '$lib/ride/delete-ride';
 	import { fetchRide, type RideDetail } from '$lib/ride/detail';
 	import FitImportHelp from '$lib/ride/FitImportHelp.svelte';
@@ -64,7 +65,6 @@
 		if (ride && (await deleteRideAfterConfirm(ride))) void goto('/history');
 	}
 	let exporting = $state(false);
-	let carding = $state(false);
 	// One banner for both downloads, carrying the retry that belongs to
 	// whichever one failed — two near-identical banners is the duplication
 	// the second download would have added.
@@ -115,13 +115,7 @@
 	// The picture of this ride (#2112) — the one a rider adds to the Strava
 	// activity by hand, because Strava's API takes the ride and not a photo
 	// of it. Drawn from the numbers on this page, so it needs no samples.
-	async function downloadCard() {
-		carding = true;
-		downloadError = null;
-		const message = await downloadRideCard(id);
-		if (message) downloadError = { message, retry: downloadCard };
-		carding = false;
-	}
+	let choosingCard = $state(false);
 
 	async function load(which: string) {
 		const res = await fetchRide(which);
@@ -274,13 +268,19 @@
 						<Pencil size={14} /> Rename
 					</button>
 					<button
-						onclick={() => void downloadCard()}
-						disabled={carding}
-						class="btn btn-secondary disabled:opacity-50"
+						onclick={() => (choosingCard = true)}
+						class="btn btn-secondary"
 					>
 						<ImageDown size={14} />
-						{carding ? 'Drawing…' : cardLabel(shown)}
+						{cardLabel(shown)}
 					</button>
+					{#if choosingCard}
+						<RideCardChooser
+							rideId={id}
+							label={cardLabel(shown)}
+							onclose={() => (choosingCard = false)}
+						/>
+					{/if}
 					<button
 						onclick={() => void downloadFit()}
 						disabled={exporting || shown.samples.length === 0}
