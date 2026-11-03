@@ -21,8 +21,9 @@ const recovery = byId('recovery-spin')!.workout;
 
 async function onThePassLoop() {
 	const route = await homeRoute(homeRoad('intro')!);
+	const trainer = new SimulatedTrainer();
 	const session = createRideSession({
-		trainer: new SimulatedTrainer(),
+		trainer,
 		workout: withProfile(onRoute(sweetSpot, route), route),
 		ftp: 250,
 		kg: () => 75,
@@ -42,7 +43,7 @@ async function onThePassLoop() {
 		const road = { routeId: on.routeId, fromM: on.m, toM: on.toM };
 		session.changeWorkout(next ? { ...next, road } : openRoad(road));
 	};
-	return { route, session, rideTo, change };
+	return { route, trainer, session, rideTo, change };
 }
 
 // #4257: Jan, mid-ride on a WattRoom loop, could swap workouts only by
@@ -111,6 +112,44 @@ describe('a workout changed mid-ride', () => {
 		// The free stretch saves as the seconds it lasted, not six hours.
 		const free = flatten(session.ridden).find((x) => x.kind === 'road')!;
 		expect(free.seconds).toBeLessThan(600);
+	});
+
+	// #4283: with none, the free ride's switch rides the road: Road by its
+	// grade in SIM, or Watts, ERG holding the road's watts, in one recording.
+	it('rides the road in Watts with none, ERG by the road, and back to Road', async () => {
+		const { trainer, session, rideTo, change } = await onThePassLoop();
+		rideTo(500);
+		change(null);
+		expect(session.drive).toBe('grade');
+		rideTo(700);
+		expect(trainer.mode).toBe('sim');
+		const before = session.recording.length;
+
+		session.setDrive('watts');
+		rideTo(1200);
+		expect(trainer.mode, 'Watts left the trainer in SIM').toBe('erg');
+		expect(session.target).toBeGreaterThan(0);
+		const erg = trainer.writes.filter((w) => w.op === 'erg').at(-1);
+		expect(erg).toMatchObject({ watts: session.target });
+		expect(session.roadWatts).toBe(session.target);
+		// The guards hold the rider to the road's watts, as a free ride's do:
+		// a grind under the cadence floor is released.
+		for (let i = 0; i < 20 && !session.spiralActive; i++) {
+			session.onSample({ watts: 120, cadence: 30, at: 4e6 + i * 1000 });
+			session.tick();
+		}
+		expect(session.spiralActive, 'Watts never released a grind').toBe(true);
+		expect(trainer.mode, 'the release still held ERG').toBe('sim');
+		rideTo(session.road!.m + 400);
+
+		session.setDrive('grade');
+		rideTo(1400);
+		expect(trainer.mode).toBe('sim');
+		expect(session.target).toBe(0);
+		// One ride throughout: the record runs on, saved as the one free stretch.
+		expect(session.recording.length).toBeGreaterThan(before);
+		session.stop();
+		expect(session.ridden.name).toBe(`${sweetSpot.name} + Free ride`);
 	});
 
 	// #4277: with none, the HUD, the TV and the world's light still counted

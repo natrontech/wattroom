@@ -320,7 +320,11 @@
 				<FreeRideBand
 					label={freeRideLabel(session.road)}
 					roadLine={roadLine(session.road.readout)}
-					chip={block ? trainerChip(block) : undefined}
+					chip={session.roadWatts !== null
+						? `Watts · ${session.roadWatts} W`
+						: block
+							? trainerChip(block)
+							: undefined}
 					seconds={session.elapsed}
 					climbed={session.road.climbed}
 					status={rideStatus}
@@ -379,7 +383,9 @@
 				stats={session.live}
 				{climb}
 				{map}
-				gear={open && gearsEnabled() ? session.gear.label : undefined}
+				gear={open && gearsEnabled() && session.drive !== 'watts'
+					? session.gear.label
+					: undefined}
 			/>
 			<!-- No workout, no target to trim (#4257). -->
 			{#if !open}<div class="px-4 pb-3">
