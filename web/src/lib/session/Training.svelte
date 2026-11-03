@@ -254,13 +254,14 @@
 				/>
 			{/if}
 			{#if channel.ridden}<ViewSwitch {world} drawn={inWorld} />{/if}
+			<!-- A phone's bar keeps Leave and the coach's controls in view. -->
 			<button
 				onclick={() => channel.openTv()}
-				class={ICON}
+				class="{ICON} max-md:hidden"
 				aria-label="TV mode"
 				title="TV mode"><MonitorUp size={20} /></button
 			>
-			<SessionFlag />
+			<span class="contents max-md:hidden"><SessionFlag /></span>
 			{#if channel.you.inSession}
 				<!-- One short word, so the eyebrow keeps the row (slot 1's 860 px). -->
 				<button

@@ -129,7 +129,7 @@
 	const panel = 'ride-panel [&:not(:has(*))]:hidden';
 	// A column of docks: it lets the world through, its panels do not.
 	const column =
-		'pointer-events-none absolute flex flex-col gap-3 overflow-y-auto [&>*]:pointer-events-auto [&>*]:max-w-full [&>*]:shrink-0';
+		'pointer-events-none absolute flex flex-col gap-3 [&>*]:pointer-events-auto [&>*]:max-w-full [&>*]:shrink-0';
 	const phone = $derived(device.narrow);
 	// Over the world the Skyline is a strip along the bottom; flat, the
 	// horizon is the ground itself.
@@ -225,7 +225,9 @@
 	{/if}
 	<!-- Top left: your numbers, the watts first, then slot 1. -->
 	<div
-		class="{column} {phone ? 'items-stretch' : 'items-start'}"
+		class="{column} {phone ? 'items-stretch' : 'items-start'} {rail
+			? ''
+			: 'overflow-y-auto'}"
 		style={left}
 		bind:offsetWidth={slotWidth}
 	>
@@ -311,7 +313,10 @@
 		<!-- The crew's side, under the seat (a phone: along the bottom): the
 		     moment card when it does not fit top-centre, what has the focus,
 		     then the crew. -->
-		<div class="{column} {phone ? '' : 'items-end'}" style={right}>
+		<div
+			class="{column} overflow-y-auto {phone ? '' : 'items-end'}"
+			style={right}
+		>
 			{#if moment && momentPlace === 'seat'}
 				<!-- Never wider than the column, so never into the corridor (G3). -->
 				<div data-dock="moment" class="ride-panel">{@render moment()}</div>

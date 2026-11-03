@@ -137,10 +137,7 @@
 	</div>
 {/snippet}
 
-<div
-	data-testid="ride-rail"
-	class="flex flex-col gap-[1.6vh] py-1 [text-shadow:0_2px_14px_rgb(0_0_0/0.6)]"
->
+<div data-testid="ride-rail" class="flex flex-col gap-[1.6vh] py-1">
 	{#if status}
 		<!-- Above the tap's button: a status line may hold one of its own. -->
 		<div class="relative z-10 [&:not(:has(*))]:hidden">{@render status()}</div>
@@ -159,8 +156,7 @@
 					data-testid="rail-watts"
 					class="{NUM} {HERO} min-w-[2.6ch] {stale
 						? 'text-muted'
-						: 'text-watt glow-text-strong'}"
-					>{dash(`${Math.round(watts)}`)}</span
+						: 'text-watt glow-text'}">{dash(`${Math.round(watts)}`)}</span
 				>
 				{#if target > 0}
 					<PowerTrack
@@ -192,7 +188,7 @@
 		</div>
 		<div class={ROW}>
 			{#if block?.next}
-				<div class="{CELL} col-span-3 md:max-w-[15ch]" data-cell="Next">
+				<div class="{CELL} col-span-3 md:max-w-[24ch]" data-cell="Next">
 					<span class={LABEL}>Next</span>
 					<span data-testid="rail-next" class="{WORDS} text-ink font-semibold"
 						>{nextText(block.next)}</span
