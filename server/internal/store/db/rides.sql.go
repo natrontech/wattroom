@@ -1011,6 +1011,19 @@ func (q *Queries) GetRideSamples(ctx context.Context, arg GetRideSamplesParams) 
 	return samples, err
 }
 
+const hasRaced = `-- name: HasRaced :one
+select exists(select 1 from rides where user_id = $1 and ride_mode = 'race')
+`
+
+// A rider who races (ADR-0067's opt-in): one race saved is the choice. Only
+// they are asked to confirm their weight (#3629).
+func (q *Queries) HasRaced(ctx context.Context, userID pgtype.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, hasRaced, userID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const listCrewRideWeeks = `-- name: ListCrewRideWeeks :many
 select distinct date_trunc('week', started_at at time zone 'UTC')::date as week
 from rides where crew_id = $1

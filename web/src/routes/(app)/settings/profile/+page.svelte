@@ -469,12 +469,13 @@
 			</div>
 		{/if}
 
-		{#if account.me?.suggestedFtp && !suggestionDismissed}
+		{#if account.me && ((account.me.suggestedFtp && !suggestionDismissed) || account.me.weightConfirmDue)}
 			<div class="mt-3">
 				<FtpPrompt
 					current={account.me.ftpWatts}
-					suggested={account.me.suggestedFtp}
+					suggested={suggestionDismissed ? null : account.me.suggestedFtp}
 					best20={account.me.best20m ?? 0}
+					weightKg={account.me.weightConfirmDue ? account.me.weightKg : null}
 					onApply={() => {
 						void save(account.me?.suggestedFtp ?? ftp);
 						applied = true;

@@ -198,3 +198,73 @@ func TestProfileSourceClaimsAreBounded(t *testing.T) {
 		t.Fatalf("a refused claim changed the row: %+v", stored)
 	}
 }
+
+// The commissaire's tap (ADR-0067, #3629): /api/me asks a rider who races to
+// confirm a weight they answered once it has gone 90 days unconfirmed, and
+// the tap — the same numbers, claimed — clears the ask without moving them.
+func TestWeightConfirmDueAsksOnlyARiderWhoRaces(t *testing.T) {
+	s := testService(t)
+	user := testUser(t, s)
+	rec := httptest.NewRecorder()
+	if err := s.startSession(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil), user.ID); err != nil {
+		t.Fatalf("start session: %v", err)
+	}
+	cookie := rec.Result().Cookies()[0]
+	call := func(t *testing.T, method, body string) meResponse {
+		t.Helper()
+		req := httptest.NewRequestWithContext(t.Context(), method, "/api/me", strings.NewReader(body))
+		req.AddCookie(cookie)
+		w := httptest.NewRecorder()
+		if method == http.MethodGet {
+			s.handleMe(w, req)
+		} else {
+			s.handleUpdateMe(w, req)
+		}
+		var got meResponse
+		if w.Code != http.StatusOK {
+			t.Fatalf("%s /api/me = %d %s", method, w.Code, w.Body)
+		}
+		if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+			t.Fatalf("decode response: %v", err)
+		}
+		return got
+	}
+	exec := func(t *testing.T, sql string) {
+		t.Helper()
+		if _, err := s.store.Pool.Exec(t.Context(), sql, user.ID); err != nil {
+			t.Fatalf("%s: %v", sql, err)
+		}
+	}
+	const stale = `update users set weight_confirmed_at = now() - interval '90 days' where id = $1`
+
+	// Never raced: a weight nobody confirmed asks nothing (the opt-in).
+	if call(t, http.MethodGet, "").WeightConfirmDue {
+		t.Fatal("a rider who never raced was asked")
+	}
+	exec(t, `insert into rides (user_id, workout_name, started_at, seconds, avg_watts, kj, execution, ftp_watts, samples, ride_mode)
+		values ($1, 'Race', now() - interval '100 days', 600, 200, 120, 1, 200, '\x00'::bytea, 'race')`)
+	// Raced, on the default weight: nothing to confirm, Settings sets it.
+	if call(t, http.MethodGet, "").WeightConfirmDue {
+		t.Fatal("the default weight was offered for confirmation")
+	}
+	// Answered just now: confirmed, not due.
+	if call(t, http.MethodPatch, `{"displayName":"auth-test","ftpWatts":200,"weightKg":75,"weightSource":"manual"}`).WeightConfirmDue {
+		t.Fatal("a weight confirmed today was due")
+	}
+	exec(t, stale)
+	if !call(t, http.MethodGet, "").WeightConfirmDue {
+		t.Fatal("a racer's weight 90 days unconfirmed was not due")
+	}
+	// The tap: the same numbers, claimed. Due no more, and the weight did
+	// not change — so it never rides as a fresh weight.
+	if call(t, http.MethodPatch, `{"displayName":"auth-test","ftpWatts":200,"weightKg":75,"weightSource":"manual"}`).WeightConfirmDue {
+		t.Fatal("the tap left the weight due")
+	}
+	row, err := s.store.Queries.GetUser(t.Context(), user.ID)
+	if err != nil {
+		t.Fatalf("re-read user: %v", err)
+	}
+	if row.WeightKg != 75 || row.WeightChangedAt.Valid {
+		t.Fatalf("the tap moved the weight: %d kg, changed %v", row.WeightKg, row.WeightChangedAt)
+	}
+}

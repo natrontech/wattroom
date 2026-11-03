@@ -82,3 +82,14 @@ export async function pushProfile(next: {
 	});
 	return err ? err.message : null;
 }
+
+/**
+ * The commissaire's tap (ADR-0067, #3629): the same weight, claimed again,
+ * so only its confirmation date moves. The race's closing card and the FTP
+ * prompt both send it.
+ */
+export function confirmWeight(): Promise<string | null> {
+	return pushProfile({
+		weightSource: account.me?.weightSource === 'ramp' ? 'ramp' : 'manual',
+	});
+}
