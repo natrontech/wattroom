@@ -17,6 +17,25 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.11.15] - 2026-11-03
+
+### Added
+
+- Starting or joining a session keeps you in your voice call, and the Ride menu lists the sessions your crew is riding. (#4389)
+- The lounge is redrawn as a cozy hangout seen from above: the crew sits round a rug and table, and everyone riding gets their own trainer with their watts above it. Muted riders wear headphones, a phone fills its tall screen with more lounge, and a goldfish, an arcade cabinet and a few late-night surprises are hidden in it. The rain on the window is a hush now. (#4390)
+- Start a session from your crew's page and ride it together without anyone being in a voice channel. Several can run at once, and every member sees the recap. (#4388)
+- Riding is cleaner. One row of big numbers runs across the top of the world: watts with your power zone, then time left or the grade, then the rest. The panels are gone, in TV mode too. Along the bottom, the road's slope runs edge to edge with your power drawn over the road you just rode, coloured by zone. Map is a view of its own, with the climbs drawn bolder. Tap the numbers for W/kg and your power averages. (#4386)
+- No workout on a road takes the free ride's Road | Watts (#4295)
+- The Pass loop and the Valley loop are in every crew session's road picker: ride them together as the road's own workout, or under any workout. (#4382)
+
+### Fixed
+
+- Routes you imported before this release are redrawn in the 3D world without the drift and the wide hairpins. No re-import needed, and your times and ghosts on them stay. (#4385)
+- Hairpins and switchbacks in the 3D world are as tight as the real road's. Applies to routes imported from now on and to WattRoom's own loops. (#4383)
+- In a crew session, a workout that lasts longer than its road no longer leaves everyone standing at the end: the bunch rides the road again from the start until the workout is done. (#4381)
+- When the 3D world hits an error mid-ride, it now switches to the flat road with a retry instead of freezing on one picture. (#4380)
+- The 3D world no longer lays one stretch of a long route over another: roads you import from now on keep their shape all the way round, and WattRoom's own loops close where they start. Re-import a route to straighten one you imported before. (#4379)
+
 ## [2026.11.14] - 2026-11-03
 
 ### Added
@@ -4314,7 +4333,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.14...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.15...HEAD
+[2026.11.15]: https://github.com/natrontech/wattroom/compare/2026.11.14...2026.11.15
 [2026.11.14]: https://github.com/natrontech/wattroom/compare/2026.11.13...2026.11.14
 [2026.11.13]: https://github.com/natrontech/wattroom/compare/2026.11.12...2026.11.13
 [2026.11.12]: https://github.com/natrontech/wattroom/compare/2026.11.11...2026.11.12
