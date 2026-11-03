@@ -12,7 +12,6 @@
 	import JukeboxDeck from '$lib/channel/JukeboxDeck.svelte';
 	import JukeboxPlaylists from '$lib/channel/JukeboxPlaylists.svelte';
 	import JukeboxTrack from '$lib/channel/JukeboxTrack.svelte';
-	import RailSheet from '$lib/channel/RailSheet.svelte';
 	import { roadsideShown } from '$lib/channel/RoadsideDeck.svelte';
 	import { IN_SYNC_SEC, playerInfo } from '$lib/channel/jukebox-player.svelte';
 	import { listening } from '$lib/channel/listening.svelte';
@@ -46,7 +45,8 @@
 		refusal?: string | null;
 		/** The running block's cadence, from the tick (#1431). */
 		targetRpm?: number;
-		/** A ride is under way: the controls here are 44 px (TARGETS G5). */
+		/** A ride is under way: no watt, riding-size targets. The layout
+		 *  stays the desk's (#4347). */
 		riding?: boolean;
 	} = $props();
 
@@ -127,71 +127,52 @@
 	// column is shared with the chat, and the chat loses every time.
 	const QUEUE_PEEK = 3;
 	let showAllQueue = $state(false);
-	// Riding, whether the sheet is open outlives the deck coming and going.
-	let sheetOpen = $state(false);
 </script>
 
 <section class="flex min-w-0 flex-col gap-3">
-	<!-- Riding, the seat is the tile and its strip (#3983): the heading is
-	     the sheet's, and whether the deck is in sync is desk detail. -->
-	{#if !riding}
-		<div class="flex min-w-0 items-center justify-between gap-2">
-			<span class="eyebrow">jukebox</span>
-			<!-- Beside a roadside deck the rider is on the bike: no watt (#4197). -->
-			{#if current && jukebox?.playing && !playerInfo.live && !listening.out && !roadsideShown()}
-				<!-- Proof everyone is together, in the one place riders look for it.
-				     A rider who has stepped out is not with it and must not be told
-				     they are: the badge goes, and comes back when they rejoin. -->
+	<!-- One layout riding or not (#4347): it opens in the now bar's popover,
+	     where the riding seat's sheet opened off the bottom of the window. -->
+	<div class="flex min-w-0 items-center justify-between gap-2">
+		<span class="eyebrow">jukebox</span>
+		<!-- On the bike, riding or beside a roadside deck: no watt (#4197). -->
+		{#if current && jukebox?.playing && !playerInfo.live && !listening.out && !riding && !roadsideShown()}
+			<!-- Proof everyone is together, in the one place riders look for it.
+			     A rider who has stepped out is not with it and must not be told
+			     they are: the badge goes, and comes back when they rejoin. -->
+			<span
+				class="flex shrink-0 items-center gap-1.5 font-mono text-[10px] {inSync
+					? 'text-watt'
+					: 'text-muted'}"
+			>
 				<span
-					class="flex shrink-0 items-center gap-1.5 font-mono text-[10px] {inSync
-						? 'text-watt'
-						: 'text-muted'}"
-				>
-					<span
-						class="h-1.5 w-1.5 rounded-full {inSync
-							? 'bg-watt glow-stroke'
-							: 'bg-muted motion-safe:animate-pulse'}"
-					></span>
-					{inSync ? 'in sync' : 'catching up'}
-				</span>
-			{/if}
-		</div>
-		<!-- Above the deck, so it is in reach while house radio plays and the
-		     deck below it fills the panel (#4305). -->
-		{#if address.channel}
-			<button
-				type="button"
-				onclick={toggleCozy}
-				aria-pressed={cozy}
-				class="btn {cozy
-					? 'btn-primary'
-					: 'btn-secondary'} w-full justify-start gap-2"
-				title={cozy
-					? 'Take house radio off the deck, and the room with it'
-					: 'Lofi made for your crew, and the voice channel becomes a room'}
-				><Sofa size={15} />
-				{cozyOn ? 'Cozy room is on' : cozy ? 'Cozy room is next' : 'Cozy room'}
-			</button>
+					class="h-1.5 w-1.5 rounded-full {inSync
+						? 'bg-watt glow-stroke'
+						: 'bg-muted motion-safe:animate-pulse'}"
+				></span>
+				{inSync ? 'in sync' : 'catching up'}
+			</span>
 		{/if}
+	</div>
+	<!-- Above the deck, so it is in reach while house radio plays and the
+	     deck below it fills the panel (#4305). -->
+	{#if address.channel}
+		<button
+			type="button"
+			onclick={toggleCozy}
+			aria-pressed={cozy}
+			class="btn {cozy
+				? 'btn-primary'
+				: 'btn-secondary'} w-full justify-start gap-2"
+			title={cozy
+				? 'Take house radio off the deck, and the room with it'
+				: 'Lofi made for your crew, and the voice channel becomes a room'}
+			><Sofa size={15} />
+			{cozyOn ? 'Cozy room is on' : cozy ? 'Cozy room is next' : 'Cozy room'}
+		</button>
 	{/if}
 
 	{#if jukebox && current}
-		<!-- Riding, the deck is v2-ride's seat and everything below opens
-		     over the crew from it, so the crew sits under the music (#3983). -->
-		<JukeboxDeck
-			{jukebox}
-			{current}
-			{send}
-			{riding}
-			next={queue.length}
-			behind={riding ? below : undefined}
-			bind:sheet={sheetOpen}
-		/>
-	{:else if riding}
-		<RailSheet bind:open={sheetOpen}>
-			{#snippet label()}<span class="eyebrow">jukebox</span>{/snippet}
-			{@render below()}
-		</RailSheet>
+		<JukeboxDeck {jukebox} {current} {send} {riding} />
 	{:else}
 		<p class="text-muted text-xs leading-relaxed">
 			Nothing is playing. Search your library or paste a YouTube link, and
@@ -199,9 +180,7 @@
 		</p>
 	{/if}
 
-	{#if !riding}
-		{@render below()}
-	{/if}
+	{@render below()}
 </section>
 
 {#snippet below()}
