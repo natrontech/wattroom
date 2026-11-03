@@ -59,7 +59,14 @@ func (s *Service) SaveRecap(channel, session string, rec protocol.SessionRecap) 
 		s.log.Error("recap riders encode", "err", err, "channel", channel)
 		return
 	}
-	channelID, err := store.ParseUUID(channel)
+	// A crew session's recap names its crew and no channel (docs/SESSIONS.md).
+	crew, crewWide := protocol.CrewOfPlace(channel)
+	var channelID, crewID pgtype.UUID
+	if crewWide {
+		crewID, err = store.ParseUUID(crew)
+	} else {
+		channelID, err = store.ParseUUID(channel)
+	}
 	if err != nil {
 		s.log.Error("recap channel id", "err", err, "channel", channel)
 		return
@@ -78,6 +85,18 @@ func (s *Service) SaveRecap(channel, session string, rec protocol.SessionRecap) 
 	defer cancel()
 	var row db.SaveSessionRecapRow
 	err = retry.Do(ctx, s.log, "session recap "+channel, 5, time.Second, 5*time.Second, func(ctx context.Context) error {
+		if crewWide {
+			saved, err := s.store.Queries.SaveCrewSessionRecap(ctx, db.SaveCrewSessionRecapParams{
+				CrewID:    crewID,
+				SessionID: sessionID,
+				Workout:   rec.Workout,
+				StartedAt: stamp(rec.StartedAt),
+				EndedAt:   stamp(rec.EndedAt),
+				Riders:    riders,
+			})
+			row = db.SaveSessionRecapRow(saved)
+			return err
+		}
 		saved, err := s.store.Queries.SaveSessionRecap(ctx, db.SaveSessionRecapParams{
 			ChannelID: channelID,
 			SessionID: sessionID,

@@ -379,6 +379,7 @@ type SessionRecap struct {
 	CrewID    pgtype.UUID
 	ChannelID pgtype.UUID
 	SessionID pgtype.UUID
+	CrewWide  *bool
 }
 
 type SessionRsvp struct {

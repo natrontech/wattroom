@@ -214,6 +214,12 @@ type place struct{ crew, channel, session pgtype.UUID }
 // ride is the rider's, and nobody ever loses one (WATTROOM.md).
 func (s *Saver) placeOf(ctx context.Context, channel, session string) (place, error) {
 	var at place
+	// A crew session's ride names its crew and no channel (docs/SESSIONS.md).
+	if crew, ok := protocol.CrewOfPlace(channel); ok {
+		at.crew, _ = store.ParseUUID(crew)
+		at.session, _ = store.ParseUUID(session)
+		return at, nil
+	}
 	id, err := store.ParseUUID(channel)
 	if err != nil {
 		return at, nil

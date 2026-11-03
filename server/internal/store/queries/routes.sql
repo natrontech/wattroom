@@ -138,6 +138,12 @@ where (
     select 1 from channels ch
     join visible_channels v on v.channel_id = ch.id and v.user_id = sqlc.arg(viewer)
     where ch.crew_id = c.id and ch.id = any(sqlc.arg(riding)::uuid[])
+) or (
+    -- A crew session riding it (docs/SESSIONS.md), to the crew's members.
+    c.id = any(sqlc.arg(riding_crews)::uuid[])
+    and (c.owner_id = sqlc.arg(viewer)
+         or exists (select 1 from crew_roles cr
+                    where cr.crew_id = c.id and cr.user_id = sqlc.arg(viewer) and cr.role in ('member', 'admin')))
 );
 
 -- name: SetRouteCrewConsent :exec

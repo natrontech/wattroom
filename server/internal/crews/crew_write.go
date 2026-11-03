@@ -208,6 +208,7 @@ func (s *Service) handleSetCrewRole(w http.ResponseWriter, r *http.Request) {
 		for _, id := range voice {
 			s.evict(store.UUIDString(id), store.UUIDString(target))
 		}
+		s.evictSessions(crew.ID, store.UUIDString(target))
 		s.log.Info("crew ban", "crew", store.UUIDString(crew.ID), "rider", store.UUIDString(target), "channels", len(voice))
 	} else {
 		// The door read the crew role once, at connect (#2436). A promotion

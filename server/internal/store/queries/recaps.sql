@@ -26,6 +26,22 @@ on conflict (session_id) where session_id is not null do update
     set workout = excluded.workout, ended_at = excluded.ended_at, riders = excluded.riders
 returning id, created_at, riders;
 
+-- name: SaveCrewSessionRecap :one
+-- A crew session's recap (docs/SESSIONS.md): SaveSessionRecap for a session
+-- that ran in no voice channel, every member's to read.
+insert into session_recaps (crew_id, session_id, workout, started_at, ended_at, riders, crew_wide)
+select cw.id, sqlc.arg(session_id)::uuid,
+       sqlc.arg(workout), sqlc.arg(started_at), sqlc.arg(ended_at),
+       (select coalesce(jsonb_agg(r.e order by r.n), '[]'::jsonb)
+          from jsonb_array_elements(sqlc.arg(riders)::jsonb) with ordinality as r(e, n)
+         where exists (select 1 from users u where u.id = (r.e ->> 'id')::uuid)),
+       true
+from crews cw
+where cw.id = sqlc.arg(crew_id)
+on conflict (session_id) where session_id is not null do update
+    set workout = excluded.workout, ended_at = excluded.ended_at, riders = excluded.riders
+returning id, created_at, riders;
+
 -- name: ListCrewRecaps :many
 -- The crew's recaps (#2442), oldest first, and only those
 -- of sessions in a channel the caller may enter (docs/SPEC.md, Session recap
@@ -53,6 +69,7 @@ from (
     where s.crew_id = sqlc.arg(crew_id)
       and s.ended_at >= now() - make_interval(days => sqlc.arg(days)::int)
       and (sqlc.arg(admin)::boolean
+           or s.crew_wide
            or (ch.id is not null and not ch.private)
            or exists (select 1 from channel_members cm
                       where cm.channel_id = s.channel_id and cm.user_id = sqlc.arg(viewer)))

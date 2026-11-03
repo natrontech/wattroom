@@ -57,6 +57,33 @@ export function channelAddress(
 	};
 }
 
+/**
+ * A crew's own session (docs/SESSIONS.md): a place with no call. Its page is
+ * its home and its ride; it has no voice token and no deck, so the shell and
+ * the now bar leave both out.
+ */
+export function crewSessionAddress(
+	crew: string,
+	session: string,
+	name: string,
+): PlaceAddress {
+	const home = sessionPath(crew, session);
+	return {
+		key: `s:${session}`,
+		channel: '',
+		crew,
+		name,
+		ws: `/ws/crews/${crew}/sessions/${session}`,
+		avToken: '',
+		home,
+		training: home,
+		playlists: `/api/crews/${crew}/playlists`,
+		queuePlaylist: () => '',
+		queueTracks: '',
+		members: `/crew/${crew}/members`,
+	};
+}
+
 /** A running session's own page (#2450), in the crew it runs in. */
 export const sessionPath = (crew: string, sessionId: string) =>
 	`/crew/${crew}/s/${sessionId}`;

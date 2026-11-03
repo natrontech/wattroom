@@ -8,6 +8,7 @@ import (
 	"maps"
 	"slices"
 	"sort"
+	"time"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
 )
@@ -121,10 +122,17 @@ func (h *Hub) LiveSession(channel string) (protocol.LiveSession, bool) {
 	if !ok {
 		return protocol.LiveSession{}, false
 	}
+	return rm.liveSession(h.now(), false)
+}
+
+// liveSession is the room's session as the crew's live list reads it; idle
+// too when idle is set, which a crew session's start line is. Takes rm.mu.
+func (rm *channelState) liveSession(now time.Time, idle bool) (protocol.LiveSession, bool) {
+	channel := rm.channel
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
-	state := rm.session.state(h.now())
-	if !rm.session.open() || state.Phase == "idle" {
+	state := rm.session.state(now)
+	if !rm.session.open() || state.Phase == "idle" && !idle {
 		return protocol.LiveSession{}, false
 	}
 	live := protocol.LiveSession{

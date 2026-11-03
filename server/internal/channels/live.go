@@ -61,5 +61,8 @@ func (s *Service) handleLive(w http.ResponseWriter, r *http.Request) {
 			out = append(out, live)
 		}
 	}
+	if s.crewSessions != nil {
+		out = append(out, s.crewSessions.CrewSessions(store.UUIDString(crewID))...)
+	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"sessions": out})
 }

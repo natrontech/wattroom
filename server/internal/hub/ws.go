@@ -143,7 +143,13 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not one of the people this voice channel admits", http.StatusForbidden)
 		return
 	}
+	h.serveRoom(w, r, rider, channel)
+}
 
+// serveRoom upgrades an admitted rider's socket into the room at channel —
+// a voice channel's id or a crew session's place — and pumps it until the
+// client leaves.
+func (h *Hub) serveRoom(w http.ResponseWriter, r *http.Request, rider protocol.Rider, channel string) {
 	if !h.admitSocket(rider.ID) {
 		// Before the upgrade, like the 403: a shared resource is full.
 		http.Error(w, "too many open connections for this rider", http.StatusServiceUnavailable)
@@ -181,8 +187,10 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 	h.log.Info("rider joined", "channel", channel, "rider", rider.ID)
 	// Autoplay (#627): a rider joining an idle deck may be the room coming
 	// back to life. The check is async — never block this rider's upgrade on
-	// a database read.
-	h.triggerAutoplay(rm, channel)
+	// a database read. A crew session plays no deck: the music is the call's.
+	if _, session := protocol.CrewOfPlace(channel); !session {
+		h.triggerAutoplay(rm, channel)
+	}
 	// Why the socket ended (#4090): a close code is the browser hanging up;
 	// -1 is anything else (an unanswered ping, a failed write, a bad frame).
 	var readErr error

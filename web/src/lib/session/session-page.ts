@@ -43,9 +43,12 @@ export async function loadSessionPage(
 			: undefined;
 		return { session: null, voice: null, error: null, endedIn };
 	}
+	// A crew's own session (docs/SESSIONS.md) runs in no voice channel.
 	return {
 		session,
-		voice: await loadVoiceChannel(crewId, session.channel, fetcher),
+		voice: session.channel
+			? await loadVoiceChannel(crewId, session.channel, fetcher)
+			: null,
 		error: null,
 	};
 }

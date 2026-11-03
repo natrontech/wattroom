@@ -7,8 +7,6 @@ import (
 	"maps"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/natrontech/wattroom/server/internal/protocol"
 )
 
@@ -66,7 +64,7 @@ func (rm *channelState) startGameOn(mode string, route *routeRide, minutes int, 
 	}
 	rm.gameHost = rm.session.id
 	if opens {
-		rm.session.begin(uuid.NewString(), rider.ID, rider.Name)
+		rm.session.begin(rm.newSessionIDLocked(), rider.ID, rider.Name)
 		rm.session.route = route
 		rm.session.runGame(mode, gameModeNames[mode], now)
 		rm.resetRunLocked(rider.ID)

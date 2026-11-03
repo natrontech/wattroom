@@ -42,7 +42,10 @@
 	const av = $derived(conn?.av);
 	// The server has to offer voice at all (#219), and the call server has to
 	// be up (#2850): down, Join voice is drawn disabled with the reason.
-	const showAv = $derived(!!account.me?.avEnabled && !!conn);
+	// A crew session's place has no call (docs/SESSIONS.md): no voice, no
+	// deck, no away, and no second session to start from inside it.
+	const call = $derived(!!conn?.address.avToken);
+	const showAv = $derived(!!account.me?.avEnabled && call);
 	const voiceDown = $derived(!voiceUp(account.me));
 	const onPlace = $derived(channelConnection.onPlacePath(pathname));
 
@@ -336,7 +339,7 @@
 			{/if}
 
 			{#if conn}<div class="ml-auto flex shrink-0 items-center gap-1">
-					{#if !riding && !device.spectator && pathname !== conn.address.training}
+					{#if call && !riding && !device.spectator && pathname !== conn.address.training}
 						<div class="flex">
 							<a
 								href={conn.address.training}
@@ -366,22 +369,22 @@
 							{/if}
 						</div>
 					{/if}
-					<button
-						bind:this={nowPanel.music}
-						onclick={() => toggle('music')}
-						aria-expanded={nowPanel.open === 'music'}
-						aria-haspopup="dialog"
-						class="hover:bg-ink/5 flex h-11 max-w-56 min-w-0 shrink items-center gap-2 rounded px-2 text-sm {rideBar.on
-							? 'max-sm:hidden'
-							: ''} {nowPanel.open === 'music'
-							? 'text-ink bg-ink/5'
-							: 'text-muted'}"
-						title={track ? `Playing: ${track}` : 'The jukebox'}
-						><Music size={18} class="shrink-0" /><span
-							class="truncate {rideBar.on ? 'sr-only' : 'max-lg:sr-only'}"
-							>{track || 'Music'}</span
-						></button
-					>
+					{#if call}<button
+							bind:this={nowPanel.music}
+							onclick={() => toggle('music')}
+							aria-expanded={nowPanel.open === 'music'}
+							aria-haspopup="dialog"
+							class="hover:bg-ink/5 flex h-11 max-w-56 min-w-0 shrink items-center gap-2 rounded px-2 text-sm {rideBar.on
+								? 'max-sm:hidden'
+								: ''} {nowPanel.open === 'music'
+								? 'text-ink bg-ink/5'
+								: 'text-muted'}"
+							title={track ? `Playing: ${track}` : 'The jukebox'}
+							><Music size={18} class="shrink-0" /><span
+								class="truncate {rideBar.on ? 'sr-only' : 'max-lg:sr-only'}"
+								>{track || 'Music'}</span
+							></button
+						>{/if}
 					{#if onPlace}
 						<button
 							bind:this={nowPanel.react}
@@ -400,38 +403,38 @@
 					{/if}
 					<!-- A split button (#706): the face is always Away, the arrow the
 				     named states. -->
-					<div class="flex">
-						<button
-							onclick={() => setAway(!away, '')}
-							aria-pressed={away}
-							{@attach contextMenu(awayItems)}
-							class="btn min-h-11 {away ? 'btn-primary' : 'btn-secondary'} {away
-								? ''
-								: 'rounded-r-none'}"
-							><awayFace.icon size={14} />
-							<span class={rideBar.on ? 'sr-only' : 'max-md:sr-only'}
-								>{away ? "I'm back" : 'Away'}</span
-							></button
-						>
-						{#if !away}
+					{#if call}<div class="flex">
 							<button
-								onclick={(event) => {
-									const box = event.currentTarget.getBoundingClientRect();
-									openMenu(
-										awayItems(),
-										box.right,
-										box.top,
-										event.currentTarget,
-									);
-								}}
-								aria-label="Choose a state"
-								aria-haspopup="menu"
-								class="btn btn-secondary min-h-11 rounded-l-none px-2 {rideBar.on
-									? 'max-sm:hidden'
-									: ''}"><ChevronDown size={14} /></button
+								onclick={() => setAway(!away, '')}
+								aria-pressed={away}
+								{@attach contextMenu(awayItems)}
+								class="btn min-h-11 {away
+									? 'btn-primary'
+									: 'btn-secondary'} {away ? '' : 'rounded-r-none'}"
+								><awayFace.icon size={14} />
+								<span class={rideBar.on ? 'sr-only' : 'max-md:sr-only'}
+									>{away ? "I'm back" : 'Away'}</span
+								></button
 							>
-						{/if}
-					</div>
+							{#if !away}
+								<button
+									onclick={(event) => {
+										const box = event.currentTarget.getBoundingClientRect();
+										openMenu(
+											awayItems(),
+											box.right,
+											box.top,
+											event.currentTarget,
+										);
+									}}
+									aria-label="Choose a state"
+									aria-haspopup="menu"
+									class="btn btn-secondary min-h-11 rounded-l-none px-2 {rideBar.on
+										? 'max-sm:hidden'
+										: ''}"><ChevronDown size={14} /></button
+								>
+							{/if}
+						</div>{/if}
 					<!-- The way out of the channel (#2447). Quiet: leaving is re-doable. -->
 					<button
 						onclick={leaveChannel}

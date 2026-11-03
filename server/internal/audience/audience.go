@@ -21,6 +21,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -117,6 +118,14 @@ func ids(users []pgtype.UUID) []string {
 type Hub struct{ Q *db.Queries }
 
 func (h Hub) Channel(ctx context.Context, channel string, riders []string) ([]string, error) {
+	// A crew session is the whole crew's (docs/SESSIONS.md).
+	if crew, ok := protocol.CrewOfPlace(channel); ok {
+		id, err := store.ParseUUID(crew)
+		if err != nil {
+			return nil, err
+		}
+		return Crew(ctx, h.Q, id, parse(riders)...)
+	}
 	id, err := store.ParseUUID(channel)
 	if err != nil {
 		return nil, err

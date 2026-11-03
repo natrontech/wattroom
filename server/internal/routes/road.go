@@ -38,15 +38,20 @@ const roadCache = "private, max-age=604800, immutable"
 
 // audience is the crews through which viewer may read someone else's route.
 func (s *Service) audience(ctx context.Context, route, viewer pgtype.UUID) ([]db.RouteAudienceCrewsRow, error) {
-	riding := []pgtype.UUID{}
+	riding, crews := []pgtype.UUID{}, []pgtype.UUID{}
 	if s.riding != nil {
 		for _, ch := range s.riding.ChannelsRiding(store.UUIDString(route)) {
-			if id, err := store.ParseUUID(ch); err == nil {
+			// A crew session's place names its crew (docs/SESSIONS.md).
+			if crew, ok := protocol.CrewOfPlace(ch); ok {
+				if id, err := store.ParseUUID(crew); err == nil {
+					crews = append(crews, id)
+				}
+			} else if id, err := store.ParseUUID(ch); err == nil {
 				riding = append(riding, id)
 			}
 		}
 	}
-	return s.store.Queries.RouteAudienceCrews(ctx, db.RouteAudienceCrewsParams{RouteID: route, Viewer: viewer, Riding: riding})
+	return s.store.Queries.RouteAudienceCrews(ctx, db.RouteAudienceCrewsParams{RouteID: route, Viewer: viewer, Riding: riding, RidingCrews: crews})
 }
 
 // mapShared says whether any of those crews may see the route's map: an

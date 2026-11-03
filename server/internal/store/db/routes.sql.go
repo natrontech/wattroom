@@ -749,13 +749,20 @@ where (
     select 1 from channels ch
     join visible_channels v on v.channel_id = ch.id and v.user_id = $2
     where ch.crew_id = c.id and ch.id = any($3::uuid[])
+) or (
+    -- A crew session riding it (docs/SESSIONS.md), to the crew's members.
+    c.id = any($4::uuid[])
+    and (c.owner_id = $2
+         or exists (select 1 from crew_roles cr
+                    where cr.crew_id = c.id and cr.user_id = $2 and cr.role in ('member', 'admin')))
 )
 `
 
 type RouteAudienceCrewsParams struct {
-	RouteID pgtype.UUID
-	Viewer  pgtype.UUID
-	Riding  []pgtype.UUID
+	RouteID     pgtype.UUID
+	Viewer      pgtype.UUID
+	Riding      []pgtype.UUID
+	RidingCrews []pgtype.UUID
 }
 
 type RouteAudienceCrewsRow struct {
@@ -772,7 +779,12 @@ type RouteAudienceCrewsRow struct {
 // minutes past its start, in a channel the viewer may enter, and while its
 // planner is still in the crew (#4150).
 func (q *Queries) RouteAudienceCrews(ctx context.Context, arg RouteAudienceCrewsParams) ([]RouteAudienceCrewsRow, error) {
-	rows, err := q.db.Query(ctx, routeAudienceCrews, arg.RouteID, arg.Viewer, arg.Riding)
+	rows, err := q.db.Query(ctx, routeAudienceCrews,
+		arg.RouteID,
+		arg.Viewer,
+		arg.Riding,
+		arg.RidingCrews,
+	)
 	if err != nil {
 		return nil, err
 	}

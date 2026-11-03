@@ -115,8 +115,10 @@ type Access interface {
 type Hub struct {
 	log    *slog.Logger
 	access Access
-	saver  SessionSaver
-	now    func() time.Time
+	// The crew's door for crew sessions (crew_session.go); nil keeps them shut.
+	crewAccess CrewAccess
+	saver      SessionSaver
+	now        func() time.Time
 	// What every socket's writer pings on (keepalive.go). A field, like now,
 	// so a test can shorten it for one hub.
 	keepalive keepalive
@@ -359,7 +361,7 @@ func (h *Hub) stateOf(channel string) *channelState {
 		// Its "just played" from the log (#1432), on the worker: a DB read
 		// never happens under a lock, and a full queue simply leaves the
 		// history empty until the room plays something.
-		if h.history != nil {
+		if _, session := protocol.CrewOfPlace(channel); h.history != nil && !session {
 			select {
 			case h.autoplays <- autoplayJob{rm: rm, channel: channel, seed: true}:
 			default:

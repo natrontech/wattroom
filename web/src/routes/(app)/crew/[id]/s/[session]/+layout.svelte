@@ -7,6 +7,7 @@
 	import { page } from '$app/state';
 	import Banner from '$lib/components/Banner.svelte';
 	import VoiceChannelShell from '$lib/channel/VoiceChannelShell.svelte';
+	import CrewSessionShell from '$lib/channel/CrewSessionShell.svelte';
 	import type { SessionPageData } from '$lib/session/session-page';
 
 	let { children } = $props();
@@ -23,6 +24,10 @@
 	>
 		{@render children()}
 	</VoiceChannelShell>
+{:else if data.session && !data.session.channel}
+	<CrewSessionShell {crewId} session={data.session}>
+		{@render children()}
+	</CrewSessionShell>
 {:else}
 	<main class="page">
 		{#if data.error}

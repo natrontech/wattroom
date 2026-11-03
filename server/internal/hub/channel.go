@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/natrontech/wattroom/server/internal/protocol"
 )
 
@@ -166,9 +168,20 @@ type channelState struct {
 	recap *protocol.SessionRecap
 	// Who pressed start — the coach of record for Crew Chief.
 	startedBy string
+	// The one session a crew session's room opens (docs/SESSIONS.md), its id
+	// minted before the room; empty in a voice channel, which mints one per pick.
+	sessionID string
 	xp        XpKeeper
 	recaps    RecapKeeper
 	hider     Hider
+}
+
+// newSessionIDLocked is the id the next opened session takes. Caller holds rm.mu.
+func (rm *channelState) newSessionIDLocked() string {
+	if rm.sessionID != "" {
+		return rm.sessionID
+	}
+	return uuid.NewString()
 }
 
 // ridingWindow is how recent a sample must be to count as "riding now".
