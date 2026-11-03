@@ -125,7 +125,8 @@ const INT8 = 127;
  * one stored sample to the next, in whole degrees, positive to the right (a
  * compass bearing growing). The heading is smoothed over TURN_M first, so a
  * 9 m hairpin's 180° spreads over about 100 m and fits an int8 per 20 m step,
- * and the sum of any run of turns is how far the road turned along it — which
+ * and the sum of any run of turns is how far the road turned along it, to
+ * within a degree — which
  * is what finds a hairpin, and what draws a plausible road for a rider who is
  * sent only heights and turns (ADR-0063).
  */
@@ -152,11 +153,17 @@ export function turnsOf(
 		Math.max(1, Math.round(TURN_M / step / 2)),
 	);
 	const turns: number[] = [];
+	// What rounding and the int8 clamp left out, carried into the next turn:
+	// rounded one by one, a long road's heading drifts by degrees and its
+	// walked line lays one stretch over another.
+	let carry = 0;
 	for (let i = 0; i + every < n; i += every) {
 		// Segment i leaves sample i; the last sample has no segment of its own.
 		const to = Math.min(i + every, n - 2);
-		const deg = ((smooth[to] - smooth[i]) * 180) / Math.PI;
-		turns.push(Math.max(-INT8, Math.min(INT8, Math.round(deg))));
+		const deg = ((smooth[to] - smooth[i]) * 180) / Math.PI + carry;
+		const turn = Math.max(-INT8, Math.min(INT8, Math.round(deg)));
+		carry = deg - turn;
+		turns.push(turn);
 	}
 	return turns;
 }

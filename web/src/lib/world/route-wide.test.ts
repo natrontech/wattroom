@@ -17,7 +17,8 @@ import { BUILD_MS, longLoopPoints } from './world.test-helper';
  * dressed around the villages, so a last bit that moved moves a bench. They
  * were retaken for #3832: a road's ends keep their grade now, so the
  * riding clock and what hangs on it moved; and for #3675, whose forest
- * frames the road.
+ * frames the road; and when a hairpin came to stand at the middle of its turn
+ * rather than at its first sharpest step, which moves what is kept clear of it.
  *
  * The two horizon digests are the exception: they were re-taken when a
  * westward heading stopped counting toward bins up to 80° away (#3829),
@@ -126,7 +127,7 @@ describe('a 29 km loop, its route-wide work', () => {
 	});
 
 	it('names the same villages at the same metres', () => {
-		expect(digestOf([world.villageNames, world.markers])).toBe('25faa618');
+		expect(digestOf([world.villageNames, world.markers])).toBe('2bb167b6');
 	});
 
 	it('keeps the same riding clock', () => {
@@ -150,7 +151,7 @@ describe('a 29 km loop, its route-wide work', () => {
 					all.arches,
 					all.placements,
 				]),
-			).toBe('ba027fb4');
+			).toBe('380d0088');
 		},
 		BUILD_MS,
 	);
