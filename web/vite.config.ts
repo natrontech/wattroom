@@ -102,6 +102,9 @@ export default defineConfig({
 			// The app is a SPA: the Go server serves spa.html for every route it
 			// has no file for. index.html is the prerendered landing (ADR-0061).
 			adapter: adapter({ fallback: 'spa.html' }),
+
+			// shortcut: Kit 3 dropped the built-in $lib for #lib; this keeps ~3900 imports working, move to #lib in its own PR.
+			alias: { $lib: 'src/lib' },
 		}),
 	],
 	environments: {

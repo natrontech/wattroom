@@ -201,7 +201,7 @@
 	// start: a refusal lets go, and nobody else's start moves anyone.
 	// Whether it follows is the live connection's (#3103): a resume from
 	// the status banner starts a session the same way.
-	const GO = { keepFocus: true, noScroll: true };
+	const GO = { reset: false };
 	$effect(() => {
 		const id = liveSessionId(live.tick?.state);
 		if (!live.following || !id) return;

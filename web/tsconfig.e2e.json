@@ -1,6 +1,6 @@
 {
-	// web/e2e/ was type-checked by nothing: the generated .svelte-kit/tsconfig.json
-	// includes src, test and tests, never e2e, so a spec could stop compiling with
+	// web/e2e/ was type-checked by nothing: the include list in tsconfig.json
+	// names src and test, never e2e, so a spec could stop compiling with
 	// every required context green (#2359).
 	//
 	// The harness's .js files are in too. env.js was already being checked as an

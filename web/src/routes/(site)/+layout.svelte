@@ -3,7 +3,7 @@
 	import Logo from '$lib/brand/Logo.svelte';
 	import { GITHUB_MARK } from '$lib/brand/icons';
 	import { account } from '$lib/account.svelte';
-	import { browser } from '$app/environment';
+	import { browser } from '$app/env';
 	import { live, watchLive } from '$lib/site/live.svelte';
 	import { REPO } from '$lib/site/seo';
 	import { RIVALS } from '$lib/site/rivals';

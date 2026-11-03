@@ -42,7 +42,7 @@
 		const to = live
 			? sessionPath(channel.address.crew, live)
 			: channel.address.home;
-		void goto(to, { replaceState: true, keepFocus: true, noScroll: true });
+		void goto(to, { replaceState: true, reset: false });
 	});
 </script>
 

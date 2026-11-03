@@ -7,4 +7,4 @@ onlyBuiltDependencies:
 # an override left there is dropped silently, with a green build (#2394).
 overrides:
   postcss: '>=8.5.23'
-  cookie: ^0.7.2
+  cookie: '>=0.7.2'

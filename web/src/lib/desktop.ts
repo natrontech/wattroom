@@ -377,7 +377,9 @@ export function startBrowserSignIn(): string {
 }
 
 /** The nonce from a `?desktop=` query, only if it looks like one we made. */
-export function desktopNonce(search: URLSearchParams): string | null {
+export function desktopNonce(
+	search: Pick<URLSearchParams, 'get'>,
+): string | null {
 	const n = search.get('desktop');
 	return n && NONCE_SHAPE.test(n) ? n : null;
 }

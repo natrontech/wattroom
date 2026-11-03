@@ -59,8 +59,7 @@
 		}
 		// To the ride, where the count-in is (#2599).
 		void goto(startedPath(channel.address.crew, res.data), {
-			keepFocus: true,
-			noScroll: true,
+			reset: false,
 		});
 	}
 	async function choose(word: RsvpAnswer) {

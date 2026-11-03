@@ -149,10 +149,10 @@
 	// `?poke` so the menu can link straight to it.
 	const poking = $derived(page.url.searchParams.has('poke'));
 	function setPoking(on: boolean) {
-		const url = new URL(page.url);
+		const url = new URL(page.url.href);
 		if (on) url.searchParams.set('poke', '');
 		else url.searchParams.delete('poke');
-		void goto(url, { replaceState: true, keepFocus: true, noScroll: true });
+		void goto(url, { replaceState: true, reset: false });
 	}
 	async function poke() {
 		const refusal = await thread?.poke();

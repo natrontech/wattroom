@@ -2,7 +2,7 @@
 	import { navDrawer } from '$lib/nav/drawer.svelte';
 	import { modals } from '$lib/modals.svelte';
 	import { untrack } from 'svelte';
-	import { dev } from '$app/environment';
+	import { dev } from '$app/env';
 	import { goto } from '$app/navigation';
 	import { navigating, page } from '$app/state';
 	import { device } from '$lib/device.svelte';
