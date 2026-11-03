@@ -38,9 +38,10 @@ func TestARoadRidesPageCarriesItsMetresAndHeights(t *testing.T) {
 	if len(read) != 120 {
 		t.Fatalf("samples = %d, want 120", len(read))
 	}
+	// The metre is the server's replay of the watts (#3149), never the client's.
 	last, _ := read[119].(map[string]any)
-	if last["m"] != float64(1000+8*119) || last["alt"] != float64(100+119) {
-		t.Errorf("the last second reads m=%v alt=%v, want %d and %d", last["m"], last["alt"], 1000+8*119, 100+119)
+	if want := replayOnStoredRoute(t, 250, 1000).Metres[119]; last["m"] != want || last["alt"] != float64(100+119) {
+		t.Errorf("the last second reads m=%v alt=%v, want %v and %d", last["m"], last["alt"], want, 100+119)
 	}
 
 	status, got = call(t, h.mux, "alice", http.MethodPost, "/api/rides", rideBody(120, 200))

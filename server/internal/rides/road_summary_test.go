@@ -48,6 +48,21 @@ func freeRideOn(routeID string, clientMps float64, drive string) string {
 		nextStart().Format(time.RFC3339), strings.Join(samples, ","), routeID, driven)
 }
 
+// replayOnStoredRoute is the server's replay of two minutes at `watts` from
+// `fromM` along storeRoute's road, for a rider at the default weight.
+func replayOnStoredRoute(t *testing.T, watts int, fromM float64) stats.RoadRide {
+	t.Helper()
+	ridden, err := road.UnpackRoad(testx.FlatRoad(5000, 100))
+	if err != nil {
+		t.Fatal(err)
+	}
+	samples := make([]protocol.RiderMetrics, 120)
+	for i := range samples {
+		samples[i] = protocol.RiderMetrics{Watts: watts, M: fromM}
+	}
+	return stats.ReplayRoad(ridden, samples, nil, 70+protocol.BikeKg, false)
+}
+
 type summary struct {
 	routeID, routeKey, roadH, mode *string
 	timeable                       *bool
@@ -87,15 +102,7 @@ func TestARoadRideKeepsItsSummaryAndTheReplayIsTheRecord(t *testing.T) {
 	}
 	s := readSummary(t, h, id)
 
-	ridden, err := road.UnpackRoad(testx.FlatRoad(5000, 100))
-	if err != nil {
-		t.Fatal(err)
-	}
-	samples := make([]protocol.RiderMetrics, 120)
-	for i := range samples {
-		samples[i] = protocol.RiderMetrics{Watts: 250, M: 1000 + 20*float64(i)}
-	}
-	want := stats.ReplayRoad(ridden, samples, nil, 70+protocol.BikeKg, false)
+	want := replayOnStoredRoute(t, 250, 1000)
 
 	if s.routeID == nil || *s.routeID != routeID || s.routeKey == nil || *s.routeKey != hash || s.roadH == nil || *s.roadH != hash {
 		t.Errorf("route %v, key %v, road %v; want %s and %s twice", s.routeID, s.routeKey, s.roadH, routeID, hash)
@@ -111,6 +118,25 @@ func TestARoadRideKeepsItsSummaryAndTheReplayIsTheRecord(t *testing.T) {
 	}
 	if s.weightKg != nil {
 		t.Errorf("a default weight was kept: %d", *s.weightKg)
+	}
+	// The samples keep the replay's metres too (#3149): a client claiming
+	// 20 m/s would otherwise flatter every climb's best and its ghost.
+	rideID, err := store.ParseUUID(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	blob, err := h.store.Queries.GetOwnRideSamples(t.Context(), db.GetOwnRideSamplesParams{ID: rideID, UserID: h.users.ByToken["alice"].ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	kept, err := stats.DecodeSamples(blob)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, sample := range kept {
+		if sample.M != want.Metres[i] {
+			t.Fatalf("sample %d keeps %.2f m, want the replay's %.2f m", i, sample.M, want.Metres[i])
+		}
 	}
 	if !strings.Contains(logged.String(), "road ride replay parts from the client") {
 		t.Errorf("a client 60 %% off the replay went unlogged:\n%s", logged.String())

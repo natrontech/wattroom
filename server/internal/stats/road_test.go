@@ -55,6 +55,34 @@ func TestReplayRoadStopsAtTheRoadsEnd(t *testing.T) {
 	}
 }
 
+// The replay stands each sample on the road (#3149): where that second
+// began, from the lap's first metre, at the road's end once it gets there,
+// and counted down the stored road on a lap ridden back the way it came.
+func TestReplayRoadStandsEachSampleOnTheRoad(t *testing.T) {
+	up := storedRoad(t, 2000, 40)
+	const lap = 3600
+	samples := append(rodeAt(lap, 300, 0, 9), rodeAt(lap, 300, 2000, -9)...)
+	got := ReplayRoad(up, samples, []Lap{{Start: 0}, {Start: lap, Reverse: true}}, 83, false)
+	if len(got.Metres) != len(samples) {
+		t.Fatalf("%d metres for %d samples", len(got.Metres), len(samples))
+	}
+	p := road.Pace{}
+	p.Step(300, up.GradeAt(9), 83, protocol.PaceDefaultCdA, 0)
+	for _, c := range []struct {
+		i    int
+		want float64
+	}{{0, 9}, {1, 9 + p.Distance}, {lap - 1, 2000}, {lap, 2000 - 9}, {2*lap - 1, 0}} {
+		if math.Abs(got.Metres[c.i]-c.want) > 1e-9 {
+			t.Errorf("sample %d stands at %.3f m, want %.3f m", c.i, got.Metres[c.i], c.want)
+		}
+	}
+	for i := 1; i < lap; i++ {
+		if got.Metres[i] < got.Metres[i-1] || got.Metres[lap+i] > got.Metres[lap+i-1] {
+			t.Fatalf("sample %d steps the wrong way", i)
+		}
+	}
+}
+
 // The client's own metres are compared, never kept: the gap is how far they
 // part from the replay, and the save logs one past ReplayGapLogged.
 func TestReplayRoadMeasuresTheClientsGap(t *testing.T) {
