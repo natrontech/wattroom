@@ -142,7 +142,11 @@
 	// Over the world the Skyline runs along the bottom: a panel, or under the
 	// rail edge to edge on a fade, tall enough to read the slope and your
 	// watts along it (the ride HUD, 2026-11).
-	const skyline = $derived(!!world && !!horizon);
+	// MAP, asked for by M or the view switch, is a view of the ground.
+	const mapShown = $derived(!clean && computerShown.page === 'map');
+	// Flat, the horizon is the ground; under Map it is the band again, so the
+	// slope and your watts stay in view.
+	const skyline = $derived(!!horizon && (!!world || (!!rail && mapShown)));
 	let bandH = $state(0);
 	const floor = $derived(
 		INSET_PX +
@@ -165,7 +169,6 @@
 	// stays mounted behind it for MAP, which shows while it is asked for (M,
 	// the view switch).
 	const details = $derived(!clean && computerShown.details);
-	const mapShown = $derived(!clean && computerShown.page === 'map');
 	function toggleDetails() {
 		if (mapShown) askPage('ride');
 		computerShown.details = !details;
