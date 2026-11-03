@@ -3,6 +3,7 @@ import { at } from '$lib/road/along';
 import { heightAt } from '$lib/road/at-metre';
 import { legsRoad } from '$lib/road/fixtures';
 import type { Road } from '$lib/road/road';
+import { HOME_ROADS, homeRoute } from '$lib/ride/home-roads';
 import { routeOfRoad } from './road-route';
 
 /** A road's heights and turns become the route its world is built on (#3663). */
@@ -26,4 +27,24 @@ describe('the route of a road', () => {
 		// Straight before the turn.
 		expect(heading(300)).toBeCloseTo(heading(100), 3);
 	});
+});
+
+/**
+ * A walked road closes where its route does: whole-degree turns rounded one
+ * by one used to drift a long road by degrees, laying one stretch of it over
+ * another (the Pass loop ended 976 m from its start, the Valley loop 271 m).
+ */
+describe('a walked loop', () => {
+	it.each(HOME_ROADS.map((r) => [r.name, r] as const))(
+		'%s ends within 1 % of its length of its start',
+		async (_, home) => {
+			const { road, loop } = await homeRoute(home);
+			expect(loop).toBe(true);
+			const { x, z } = routeOfRoad(road);
+			const n = x.length - 1;
+			expect(Math.hypot(x[n] - x[0], z[n] - z[0])).toBeLessThan(
+				road.length / 100,
+			);
+		},
+	);
 });

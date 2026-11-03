@@ -117,7 +117,7 @@ const HAIRPIN_M = 240;
 const HAIRPIN_APART_M = 300;
 
 /**
- * Where the road's hairpins are, in metres: each at its sharpest turn. A turn
+ * Where the road's hairpins are, in metres: each at the middle of its turn. A turn
  * sits between two samples, so it is placed half a step past the first.
  */
 export function hairpinsOf(road: Road): number[] {
@@ -128,12 +128,12 @@ export function hairpinsOf(road: Road): number[] {
 	let last = -Infinity;
 	for (let i = 0; i + w <= t.length; i++) {
 		let sum = 0;
-		let apex = i;
-		for (let k = i; k < i + w; k++) {
-			sum += t[k];
-			if (Math.abs(t[k]) > Math.abs(t[apex])) apex = k;
-		}
+		for (let k = i; k < i + w; k++) sum += t[k];
 		if (Math.abs((sum * Math.PI) / 180) <= HAIRPIN_RAD) continue;
+		// The middle of the turn, not its first sharpest step: a hairpin's
+		// steps tie within a degree, and a tie moved it a step off its own.
+		let apex = i;
+		for (let c = t[i]; Math.abs(c) < Math.abs(sum) / 2; c += t[apex]) apex++;
 		const at = (apex + 0.5) * step;
 		if (at - last < HAIRPIN_APART_M) continue;
 		out.push(cm(at));
