@@ -8,6 +8,7 @@ import { CORRIDOR } from '$lib/session/docks';
 import { tag } from './family';
 import { CHEVRON_Y, THUMB_Y } from './crew';
 import { FONT, paintedTexture } from './furniture';
+import { WORDS } from './pixel';
 import type { SimRider } from './sim';
 import type { Style } from './styles';
 
@@ -188,6 +189,7 @@ export function makeTags(style: Style) {
 					);
 					s.scale.set((tall * PILL_H * p.w) / p.h, tall * PILL_H, 1);
 					s.renderOrder = 10;
+					s.layers.set(WORDS); // drawn over Pixel 3D's pixels, at the canvas's own resolution
 					s.userData.text = t.text;
 					s.userData.speaking = t.speaking;
 					group.add(tag('marks', s, 'name-tag'));

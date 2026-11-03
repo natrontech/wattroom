@@ -8,8 +8,10 @@
 	import { STEADY_BUTTON } from '$lib/world/ride-view';
 	import {
 		setWorldMode,
+		setWorldPixels,
 		WORLD_MODES,
 		worldMode,
+		worldPixels,
 		type WorldMode,
 	} from '$lib/world/mode';
 	import Monitor from '@lucide/svelte/icons/monitor';
@@ -32,6 +34,17 @@
 		chosen = true;
 		setWorldMode(next);
 	}
+
+	// Pixel 3D (pixel.ts): the 3D world in whole pixels, on until turned off.
+	let pixels = $state(worldPixels());
+	function look(on: boolean) {
+		pixels = on;
+		setWorldPixels(on);
+	}
+	const LOOKS = [
+		{ on: true, label: 'Pixel' },
+		{ on: false, label: 'Smooth' },
+	];
 
 	// One label column, so every row's first control starts at the same x; on a
 	// phone the label sits above its row, which a column would wrap. The hint
@@ -104,4 +117,28 @@
 			</button>
 		{/if}
 	</div>
+	<!-- Only where 3D draws: Flat has no pixels to choose. -->
+	{#if mode !== 'flat'}
+		<div class={ROW}>
+			<span class="eyebrow">3D look</span>
+			<div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+				{#each LOOKS as option (option.label)}
+					<button
+						onclick={() => look(option.on)}
+						aria-pressed={pixels === option.on}
+						class="btn btn-xs {pixels === option.on
+							? 'btn-primary'
+							: 'btn-secondary'}"
+					>
+						{option.label}
+					</button>
+				{/each}
+				<span class="{HINT} col-span-2 sm:col-span-1"
+					>{pixels
+						? 'drawn in whole pixels, like the lounge'
+						: 'smooth edges, the look before Pixel'} — from the next ride</span
+				>
+			</div>
+		</div>
+	{/if}
 </section>
