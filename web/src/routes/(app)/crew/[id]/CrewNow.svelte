@@ -36,12 +36,11 @@
 	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 	import Radio from '@lucide/svelte/icons/radio';
 	import { goto } from '$app/navigation';
-	import { api } from '$lib/api';
 	import { account } from '$lib/account.svelte';
 	import { device } from '$lib/device.svelte';
 	import type { ControlRoute, LiveSession } from '$lib/protocol';
 	import SessionPicker from '$lib/session/SessionPicker.svelte';
-	import { flatten } from '$lib/workout/engine';
+	import { startCrewSession } from '$lib/session/crew-session';
 	import { customWorkouts } from '$lib/workout/custom.svelte';
 	import { buildShelf } from '$lib/workout/shelf';
 	import type { Workout } from '$lib/workout/types';
@@ -125,19 +124,7 @@
 	const shelf = $derived(buildShelf(custom.all));
 	async function startSession(picked: Workout, route?: ControlRoute) {
 		starting = true;
-		const flat = flatten(picked);
-		const res = await api<{ id: string }>(`/api/crews/${crew.id}/sessions`, {
-			method: 'POST',
-			json: {
-				workoutName: picked.name,
-				workoutJson: JSON.stringify(picked),
-				totalSeconds: flat.reduce(
-					(t, s) => Math.max(t, s.startSeconds + s.seconds),
-					0,
-				),
-				route,
-			},
-		});
+		const res = await startCrewSession(crew.id, picked, route);
 		starting = false;
 		if (!res.ok) {
 			toasts.push(res.error.message, { tone: 'error' });

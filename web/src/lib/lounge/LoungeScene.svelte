@@ -89,7 +89,7 @@
 	];
 
 	const channel = useChannel();
-	const live = $derived(channelConnection.current?.live);
+	const live = $derived(channelConnection.call?.live);
 	const deck = $derived(live?.tick?.jukebox);
 	const lounge = $derived(live?.tick?.lounge);
 	const station = $derived(channel.address.crew);

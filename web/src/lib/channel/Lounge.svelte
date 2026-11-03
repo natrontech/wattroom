@@ -46,7 +46,7 @@
 	// (TARGETS G1): a rider a game put out uses it on the bike, so its words
 	// take riding size through the `ride-stage:` variant (#3890, #3882).
 	const riding = $derived(!!channelConnection.current?.riding());
-	const av = $derived(channelConnection.current?.av);
+	const av = $derived(channelConnection.call?.av);
 	const isOwner = $derived(channel.myRole === 'owner');
 
 	// The tile's right-click (#465): focus is the click, the rest is what
@@ -102,7 +102,7 @@
 	function rideWithEntries(
 		rider: (typeof channel.riders)[number],
 	): MenuEntry[] {
-		const conn = channelConnection.current;
+		const conn = channelConnection.call;
 		const place = mateOnRoad(conn?.live.tick, channel.you.id, rider.id);
 		const jump = place && rideWith(place, conn?.freeRide);
 		return jump
@@ -180,7 +180,7 @@
 	const inRoom = $derived(
 		channel.phase === 'lounge' &&
 			!!channel.address.channel &&
-			!!channelConnection.current?.live.tick?.jukebox?.current?.radio &&
+			!!channelConnection.call?.live.tick?.jukebox?.current?.radio &&
 			!onStage &&
 			!riding,
 	);
@@ -509,7 +509,7 @@
 			<div class="mt-4">
 				<GamePanel
 					game={channel.game}
-					roster={channelConnection.current?.live.tick?.roster ?? []}
+					roster={channelConnection.call?.live.tick?.roster ?? []}
 					canControl={channel.canDrive}
 					end={() => void endGame(channel)}
 					me={account.me?.id}

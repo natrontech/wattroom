@@ -18,7 +18,7 @@
 	// do not (#1858): they are the one store the next join applies, so a rider
 	// with a USB mic beside the built-in one chooses before going live on the
 	// wrong one. The gate meter stays behind a live connection.
-	const av = $derived(channelConnection.current?.av);
+	const av = $derived(channelConnection.call?.av);
 	const choices = deviceChoices();
 	// The store only re-reads devices after a connect or a hot-plug; a rider
 	// choosing a mic here has usually done neither yet (#658).

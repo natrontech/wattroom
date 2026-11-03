@@ -70,7 +70,7 @@ function duckFader(): MenuSlider | undefined {
  * an iframe and takes the system's output whatever this says.
  */
 function speakers(): MenuEntry[] {
-	const av = channelConnection.current?.av;
+	const av = channelConnection.call?.av;
 	if (!av?.canPickOutput) return [];
 	const options = deviceOptions(av.outs, 'Speakers');
 	// One entry is the system default alone: nothing to choose between.

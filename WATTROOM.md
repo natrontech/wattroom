@@ -31,7 +31,7 @@ It is not a training plan generator, not an open world, and not a content treadm
 
 - The crew is what persists: members, roles (owner, admin, member), one ban, the schedule, the streak, medals and history. Its invite is a link and a 6-character code.
 - A voice channel rides without a session (a free ride). A session drives only the riders who joined it.
-- A session can be the crew's own: any member starts one from the crew page, several can run at once, and joining one needs no voice channel. Its recap is every member's. Sessions leave voice channels entirely in the steps of docs/SESSIONS.md.
+- A session is the crew's own: any member starts one from the crew page or the now bar, several can run at once, and joining one needs no voice channel. A call and a session run side by side: joining one never touches the other. Its recap is every member's. Sessions leave voice channels entirely in the steps of docs/SESSIONS.md.
 - Everything is behind sign-in except the public pages, which are prerendered.
 - One account holds a set of credentials: Google, GitHub, Strava and passkeys. No passwords. A verified email is for recovery, and a mailed link is the way back in.
 - Friends are mutual. Presence is a friend's to see.

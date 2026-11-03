@@ -20,7 +20,7 @@
 
 	const channel = useChannel();
 	const sessionId = $derived(
-		liveSessionId(channelConnection.current?.live.tick?.state),
+		liveSessionId(channelConnection.call?.live.tick?.state),
 	);
 </script>
 

@@ -15,6 +15,8 @@
 	import { micMenu } from '$lib/channel/mic-menu';
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { navDrawer } from '$lib/nav/drawer.svelte';
+	import { crewLive } from '$lib/nav/crew-live.svelte';
+	import { sessionPath } from '$lib/channel/address';
 	import { device } from '$lib/device.svelte';
 	import { AWAY_CHOICES, AWAY_STATES, awayState } from '$lib/away';
 	import Bike from '@lucide/svelte/icons/bike';
@@ -38,14 +40,15 @@
 
 	let { pathname, riding }: { pathname: string; riding: boolean } = $props();
 
-	const conn = $derived(channelConnection.current);
+	// The call you are in, and the place your ride is: the crew session you
+	// ride, else the call (docs/SESSIONS.md). Voice, the deck and away are the
+	// call's; the name, React and Leave are the place's.
+	const conn = $derived(channelConnection.call);
+	const place = $derived(channelConnection.current);
 	const av = $derived(conn?.av);
 	// The server has to offer voice at all (#219), and the call server has to
 	// be up (#2850): down, Join voice is drawn disabled with the reason.
-	// A crew session's place has no call (docs/SESSIONS.md): no voice, no
-	// deck, no away, and no second session to start from inside it.
-	const call = $derived(!!conn?.address.avToken);
-	const showAv = $derived(!!account.me?.avEnabled && call);
+	const showAv = $derived(!!account.me?.avEnabled && !!conn);
 	const voiceDown = $derived(!voiceUp(account.me));
 	const onPlace = $derived(channelConnection.onPlacePath(pathname));
 
@@ -85,21 +88,30 @@
 			onSelect: () => setAway(true, key),
 		}));
 
-	// Ride is the channel's free ride; its arrow starts a session for everyone
-	// here, between sessions. A phone has no trainer, so neither (#412).
-	const phase = $derived(conn?.live.tick?.state.phase);
-	const canStart = $derived(
-		phase !== 'countdown' && phase !== 'running' && phase !== 'paused',
+	// Ride is the device's free ride; its arrow starts a session of the
+	// crew's own, or joins one that runs (docs/SESSIONS.md). Starting asks the
+	// picker on the call's page; the session is the crew's, never the call's.
+	// A phone has no trainer, so neither (#412). Off a session only: one ride.
+	const canStart = $derived(!channelConnection.session);
+	const running = $derived(
+		crewLive.crews.find((c) => c.id === conn?.address.crew)?.sessions ?? [],
 	);
 	const rideItems = () => [
 		{
-			label: 'Start a session for everyone',
+			label: 'Start a session',
 			icon: Radio,
 			onSelect: () => {
 				nowPanel.ask = 'session';
 				if (!onPlace && conn) void goto(conn.address.home);
 			},
 		},
+		...running.map((session) => ({
+			label: `Join ${session.workout} · ${session.riders.length} riding`,
+			icon: Bike,
+			onSelect: () => {
+				if (conn) void goto(sessionPath(conn.address.crew, session.id));
+			},
+		})),
 	];
 
 	// One panel open at a time, drawn by the channel's shell. Off the channel,
@@ -126,7 +138,7 @@
 		'grid h-11 w-11 shrink-0 place-items-center rounded hover:bg-ink/5';
 </script>
 
-{#if conn || rideBar.on}
+{#if place || rideBar.on}
 	<div {@attach publishHeight} data-testid="now-bar" class="relative shrink-0">
 		{#if notice}
 			<!-- Above the bar, so the bar keeps the sidebar foot's height. -->
@@ -190,12 +202,12 @@
 			<!-- Where you are connected, and the way back to it from any page.
 			     A phone riding gives its room to the ride's controls; the
 			     drawer still leads back. -->
-			{#if conn}<a
-					href={conn.address.home}
+			{#if place}<a
+					href={place.address.home}
 					class="hover:bg-ink/5 flex min-w-0 shrink-[8] items-center gap-2 rounded px-2 py-1 {rideBar.on
 						? 'max-sm:hidden'
 						: ''}"
-					title="Back to {conn.address.name}"
+					title="Back to {place.address.name}"
 				>
 					<Volume2
 						size={16}
@@ -203,7 +215,7 @@
 					/>
 					<span class="min-w-0">
 						<span class="block truncate text-sm font-medium"
-							>{conn.address.name}</span
+							>{place.address.name}</span
 						>
 						<span class="text-muted block truncate text-[11px] max-sm:hidden">
 							{#if voiceStatus === 'live'}
@@ -338,8 +350,8 @@
 				></div>
 			{/if}
 
-			{#if conn}<div class="ml-auto flex shrink-0 items-center gap-1">
-					{#if call && !riding && !device.spectator && pathname !== conn.address.training}
+			{#if place}<div class="ml-auto flex shrink-0 items-center gap-1">
+					{#if conn && !riding && !device.spectator && pathname !== conn.address.training}
 						<div class="flex">
 							<a
 								href={conn.address.training}
@@ -369,7 +381,7 @@
 							{/if}
 						</div>
 					{/if}
-					{#if call}<button
+					{#if conn}<button
 							bind:this={nowPanel.music}
 							onclick={() => toggle('music')}
 							aria-expanded={nowPanel.open === 'music'}
@@ -403,7 +415,7 @@
 					{/if}
 					<!-- A split button (#706): the face is always Away, the arrow the
 				     named states. -->
-					{#if call}<div class="flex">
+					{#if conn}<div class="flex">
 							<button
 								onclick={() => setAway(!away, '')}
 								aria-pressed={away}
@@ -439,7 +451,7 @@
 					<button
 						onclick={leaveChannel}
 						class="btn btn-secondary min-h-11 px-2"
-						title="leave {conn.address.name}"
+						title="leave {place.address.name}"
 						><LogOut size={14} />
 						<span class={rideBar.on ? 'sr-only' : 'max-md:sr-only'}>Leave</span
 						></button

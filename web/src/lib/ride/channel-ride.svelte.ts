@@ -75,6 +75,8 @@ export function holdChannelRide(deps: {
 	});
 
 	return {
+		/** The socket the ride rides on: the connection that holds it. */
+		live,
 		ride,
 		freeRide: free,
 		ownRide: own,
