@@ -27,6 +27,8 @@
 	import { watchClimbCues } from '$lib/ride/climb-cues.svelte';
 	import RaceRadio from '$lib/race/RaceRadio.svelte';
 	import RideBand from '$lib/session/RideBand.svelte';
+	import RideRail from '$lib/session/RideRail.svelte';
+	import BiasTrim from '$lib/session/BiasTrim.svelte';
 	import MomentCard from '$lib/session/MomentCard.svelte';
 	import Skyline from '$lib/ride/Skyline.svelte';
 	import { rideContext } from './ride-context';
@@ -137,6 +139,7 @@
 			: null,
 	);
 	const rider = $derived(followed ?? channel.you);
+	const stats = $derived(channelConnection.current?.recording.live);
 	// The sprint carries its own numbers and Watt Golf hides the meter:
 	// slots 3 to 5 stand empty while either has the focus.
 	// Over the world a sprint is a moment card and your numbers stay (D12).
@@ -240,6 +243,16 @@
 	{#snippet worldControls()}
 		<!-- One row in the now bar. -->
 		<div class="contents">
+			{#if channel.you.inSession && channel.trainer}
+				<!-- Easier and Harder, in the bar since the rail holds only numbers. -->
+				<BiasTrim
+					bias={channel.bias}
+					onBias={channel.actuating
+						? (step) => channel.nudgeBias(step)
+						: undefined}
+					hint={targetsNote ? `${targetsNote} — trim them there` : undefined}
+				/>
+			{/if}
 			{#if channel.ridden}<ViewSwitch {world} drawn={inWorld} />{/if}
 			<button
 				onclick={() => channel.openTv()}
@@ -301,6 +314,34 @@
 			</GamePanel>
 		{/if}
 	{/snippet}
+	{#snippet glance()}
+		<RideRail
+			watts={rider.you && stats?.seconds
+				? stats.power3
+				: Math.round(rider.watts)}
+			stale={rider.you
+				? channel.youStale || (phone && channel.youUnmeasured)
+				: rider.stale}
+			target={rider.target}
+			ftp={rider.ftp}
+			kg={rider.kg}
+			stats={rider.you ? stats : undefined}
+			block={channel.block}
+			road={rider.you
+				? (channel.block?.road ?? channel.roadReadout ?? undefined)
+				: undefined}
+			speedKph={rider.you && channel.ridden
+				? channel.ridden.mps * 3.6
+				: undefined}
+			cadence={rider.cadence}
+			hr={rider.hr}
+			{elapsed}
+			status={trainerLine}
+			strip={graphed ? undefined : strip}
+			>{#if !rider.you}<span class="text-muted">following {rider.name}</span
+				>{/if}{#if channel.race}<RaceRadio race={channel.race} />{/if}</RideRail
+		>
+	{/snippet}
 	{#snippet moment()}
 		{#if channel.sprint}<MomentCard
 				sprint={channel.sprint}
@@ -328,27 +369,31 @@
 		dockIn={countingIn}
 		seat={docked ? nowPlaying : undefined}
 		bar={worldControls}
+		rail={quiet ? undefined : glance}
 	>
 		{#snippet header()}
-			<RideBand
-				block={channel.block}
-				road={channel.roadReadout ?? undefined}
-				{elapsed}
-				{total}
-				title={channel.shared?.workoutName ?? ''}
-				context={rideContext(
-					'Session',
-					channel.shared?.workoutName ?? '',
-					inRide.length,
-				)}
-				drives={!!channel.trainer && channel.actuating}
-				status={trainerLine}
-				strip={graphed ? undefined : strip}
-			/>
-			{#if channel.race}
-				<div class="px-4 pb-3">
-					<RaceRadio race={channel.race} />
-				</div>
+			<!-- A game that hides the meter keeps the band, without the rail. -->
+			{#if quiet}
+				<RideBand
+					block={channel.block}
+					road={channel.roadReadout ?? undefined}
+					{elapsed}
+					{total}
+					title={channel.shared?.workoutName ?? ''}
+					context={rideContext(
+						'Session',
+						channel.shared?.workoutName ?? '',
+						inRide.length,
+					)}
+					drives={!!channel.trainer && channel.actuating}
+					status={trainerLine}
+					strip={graphed ? undefined : strip}
+				/>
+				{#if channel.race}
+					<div class="px-4 pb-3">
+						<RaceRadio race={channel.race} />
+					</div>
+				{/if}
 			{/if}
 		{/snippet}
 

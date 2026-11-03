@@ -184,6 +184,18 @@ never shrinks below ([#3678](https://github.com/natrontech/wattroom/issues/3678)
 opaque; a unit is at most half its number's size. The big watts figure is a
 **3 s** average; scoring still reads every second.
 
+## The ride rail (the ride HUD, 2026-11)
+
+Riding shows one row of numbers across the top, on the world under a fade, with no panel. It reads left to right in the same order on every ride:
+
+- **Watts**, the 3 s power, with the target's track under it while a block asks one.
+- **Then one number**: a workout's **time left**, or off a workout the **grade**.
+- **Then the rest**, all one size: NEXT (a workout) or the grade **ahead** (a road: the first 100 m bar in the next km that is **2 %** off the grade now), speed and **to top** or **to go** (a road), cadence, heart, the ride's time, the gear.
+
+It is sized in the TV column above, in vh, at least the desk floors: watts **12vh**, the one number **9vh**, the rest **5vh**, labels **1.7vh** (at least 11 px). A phone keeps the watts and the one number in a row and the rest three to a row, never wider than the screen.
+
+A tap on the rail adds a second row in the same type: W/kg, zone, 10 s, 30 s, NormPower, Intensity, Work. MAP opens the bike computer beside it while it is asked for. Over the world there is no Skyline strip; flat, the graph or the Skyline is the ground under the rail. Easier and Harder are in the now bar.
+
 ## The ride's pictures (defaults — tune in alpha; [#4221](https://github.com/natrontech/wattroom/issues/4221), [#4263](https://github.com/natrontech/wattroom/issues/4263))
 
 A closing card offers two pictures for Strava, and the rider saves either or both: the **poster**, drawn by the server from the saved ride, and the **world's**, drawn where the 3D world drew.

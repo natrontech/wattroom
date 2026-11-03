@@ -18,6 +18,8 @@
 	import SummitStrip from '$lib/ride/SummitStrip.svelte';
 	import { prefersReducedMotion } from '$lib/motion';
 	import { COLUMN_SEAT, offerSeat } from '$lib/channel/stage-slot.svelte';
+	import { askPage } from '$lib/session/computer-pages';
+	import { computerShown } from '$lib/session/computer-shown.svelte';
 	import {
 		CORRIDOR,
 		GAP_PX,
@@ -34,6 +36,7 @@
 
 	let {
 		header,
+		rail,
 		focus,
 		numbers,
 		crew,
@@ -50,7 +53,13 @@
 		bar,
 		class: extra = '',
 	}: {
-		header: Snippet;
+		header?: Snippet;
+		/**
+		 * The ride's glance across the top (the ride HUD, 2026-11): with it,
+		 * `numbers` shows only for MAP, `header` not at all, and over the
+		 * world there is no Skyline strip.
+		 */
+		rail?: Snippet;
 		focus: Snippet;
 		numbers?: Snippet;
 		crew?: Snippet;
@@ -124,16 +133,41 @@
 	const phone = $derived(device.narrow);
 	// Over the world the Skyline is a strip along the bottom; flat, the
 	// horizon is the ground itself.
+	// With the rail the world has no strip: the rail says the grade ahead.
+	const skyline = $derived(!!world && !!horizon && !rail);
 	const floor = $derived(
-		INSET_PX +
-			(world && horizon ? (stage ? STRIP_PX : SKYLINE_PX) + GAP_PX : 0),
+		INSET_PX + (skyline ? (stage ? STRIP_PX : SKYLINE_PX) + GAP_PX : 0),
 	);
 	// A phone has no room for the stage: a shared screen joins its column.
 	const onStage = $derived(stage && !phone);
+	// The rail runs the width, up to the seat when the player has one.
+	const railRight = $derived(
+		seat && !clean ? `calc(100% - ${seatLeft} + ${GAP_PX}px)` : `${INSET_PX}px`,
+	);
 	const left = $derived(
 		phone
 			? `left:${INSET_PX}px;right:${INSET_PX}px;top:${INSET_PX}px;max-height:62%`
-			: `left:${INSET_PX}px;top:${INSET_PX}px;bottom:${floor}px;max-width:min(${BAND_MAX_PX}px, calc(${seatLeft} - ${INSET_PX + GAP_PX}px))`,
+			: rail
+				? `left:${INSET_PX}px;top:${INSET_PX}px;bottom:${floor}px;right:${railRight}`
+				: `left:${INSET_PX}px;top:${INSET_PX}px;bottom:${floor}px;max-width:min(${BAND_MAX_PX}px, calc(${seatLeft} - ${INSET_PX + GAP_PX}px))`,
+	);
+	// The rail's details: a tap on it opens its second row. The computer
+	// stays mounted behind it for MAP, which shows while it is asked for (M,
+	// the view switch).
+	const details = $derived(!clean && computerShown.details);
+	const mapShown = $derived(!clean && computerShown.page === 'map');
+	function toggleDetails() {
+		if (mapShown) askPage('ride');
+		computerShown.details = !details;
+	}
+	$effect(() => {
+		if (!rail) return;
+		return () => (computerShown.details = false);
+	});
+	// Flat, the ground starts under the rail, so it hides none of the graph.
+	let railH = $state(0);
+	const groundTop = $derived(
+		rail && !world && railH ? `top:${INSET_PX + railH + GAP_PX}px` : '',
 	);
 	const right = $derived(
 		phone
@@ -165,10 +199,20 @@
 		class="absolute inset-0 flex flex-col {world
 			? 'bg-(--world-sky-zenith)'
 			: ''}"
+		style={groundTop}
 		data-dock={world ? 'world' : 'horizon'}
 	>
 		{#if world}{@render world()}{:else if horizon}{@render horizon()}{/if}
 	</div>
+	{#if rail && world}
+		<!-- The rail stands on the world under a fade, edge to edge: no panel,
+		     at the panels' 85 % where its words are (SPEC). -->
+		<div
+			aria-hidden="true"
+			class="from-surface/90 via-surface/85 pointer-events-none absolute inset-x-0 top-0 bg-linear-to-b to-transparent"
+			style="height:{INSET_PX + railH + 48}px"
+		></div>
+	{/if}
 	{#if centre}
 		<!-- In the corridor's upper half, above where the chase camera
 		     draws you (RIDER_BOX), as v3-motion's GO stands. -->
@@ -185,10 +229,31 @@
 		style={left}
 		bind:offsetWidth={slotWidth}
 	>
+		{#if rail}
+			<!-- One button the rail's size behind its numbers: a tap anywhere
+			     on them opens its second row. -->
+			<div
+				data-dock="rail"
+				class="relative w-full {dockClass}"
+				style={dock(0, '0', '-40px')}
+				bind:offsetHeight={railH}
+			>
+				<button
+					type="button"
+					data-testid="rail-toggle"
+					onclick={toggleDetails}
+					aria-expanded={details}
+					aria-label={details ? 'Hide ride details' : 'Show ride details'}
+					title={details ? 'Hide ride details' : 'Show ride details'}
+					class="focus-visible:outline-neon absolute inset-0 rounded-[inherit] focus-visible:outline-2"
+				></button>
+				{@render rail()}
+			</div>
+		{/if}
 		{#if numbers}
 			<div
 				data-dock="numbers"
-				class="{panel} {dockClass}"
+				class="{panel} {dockClass} {rail && !mapShown ? '!hidden' : ''}"
 				style={dock(0, '-40px', '0')}
 			>
 				{@render numbers()}
@@ -203,10 +268,10 @@
 				>
 				{#if cleanLine}<span class="num text-muted">{cleanLine}</span>{/if}
 			</div>
-		{:else}
+		{:else if header}
 			<div
 				data-dock="header"
-				class="{panel} {dockClass}"
+				class="{panel} {dockClass} {rail ? '!hidden' : ''}"
 				style={dock(1, '0', '-40px')}
 			>
 				{@render header()}
@@ -282,7 +347,7 @@
 	>
 		<SummitStrip />
 	</div>
-	{#if world && horizon}
+	{#if skyline && horizon}
 		<div
 			data-dock="horizon"
 			class="{panel} {dockClass} absolute overflow-hidden"

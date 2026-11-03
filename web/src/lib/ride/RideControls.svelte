@@ -15,6 +15,7 @@
 	import { EASIER_HARDER_OFF } from '$lib/ride/easier-harder';
 	import { askToEndWorkout } from '$lib/ride/end-ride';
 	import FlagButton from '$lib/ride/FlagButton.svelte';
+	import BiasTrim from '$lib/session/BiasTrim.svelte';
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
 	import GearShift from '$lib/ride/GearShift.svelte';
 	import type { RideShift } from '$lib/ride/ride-shift';
@@ -78,17 +79,31 @@
 				cassette={!profile.current.singleSpeed}
 			/>
 		{/if}
-		{#if onflag}<FlagButton {onflag} sends="after" />{/if}
+		{#if !open}
+			<!-- Easier and Harder, in the bar since the rail holds only numbers. -->
+			<BiasTrim
+				bias={session.bias}
+				onBias={(step) => session.nudgeBias(step)}
+			/>
+		{/if}
+		<!-- A phone's bar keeps the trim, Skip and End in view. -->
+		{#if onflag}<span class="contents max-md:hidden"
+				><FlagButton {onflag} sends="after" /></span
+			>{/if}
 		{#if session.road}<ViewSwitch {world} {drawn} />{/if}
 		{#if ontv}
-			<button onclick={ontv} class={ICON} aria-label="TV mode" title="TV mode"
-				><MonitorUp size={20} /></button
+			<!-- A phone has no TV to send to, and its bar keeps End in view. -->
+			<button
+				onclick={ontv}
+				class="{ICON} max-md:hidden"
+				aria-label="TV mode"
+				title="TV mode"><MonitorUp size={20} /></button
 			>
 		{/if}
 		{#if !session.road?.pinned && !open}
 			<button
 				onclick={() => session.extend(60)}
-				class={ICON}
+				class="{ICON} max-md:hidden"
 				aria-label="One more minute"
 				title="+1 min"><AlarmClockPlus size={20} /></button
 			>
@@ -104,7 +119,7 @@
 		{#if onchange}
 			<button
 				onclick={onchange}
-				class="btn btn-secondary btn-ride whitespace-nowrap"
+				class="btn btn-secondary btn-ride whitespace-nowrap max-md:hidden"
 				>Change workout</button
 			>
 		{/if}

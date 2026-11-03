@@ -20,9 +20,6 @@
 	import { bindRideKeys, bindShifters, type RideKey } from '$lib/ride/keys';
 	import { createRideShift } from '$lib/ride/ride-shift';
 	import RideControls from '$lib/ride/RideControls.svelte';
-	import FreeRideBand from '$lib/ride/FreeRideBand.svelte';
-	import { freeRideLabel } from '$lib/ride/free-ride.svelte';
-	import { trainerChip } from '$lib/workout/block';
 	import { shifterSlot } from '$lib/ble/controller-slot.svelte';
 	import { roadLine } from '$lib/ride/road-readout';
 	import { cleanView } from '$lib/ride/clean-view.svelte';
@@ -45,14 +42,13 @@
 	import { toggleMap } from '$lib/session/computer-pages';
 	import { askCamera, askPhoto, askViewFlip } from '$lib/world/ride-view';
 	import { watchClimbCues } from '$lib/ride/climb-cues.svelte';
-	import { rideContext } from '$lib/session/ride-context';
 	import RidingSurface from '$lib/session/RidingSurface.svelte';
 	import BiasTrim from '$lib/session/BiasTrim.svelte';
 	import BikeComputer from '$lib/session/BikeComputer.svelte';
 	import { createWorldView } from '$lib/world/world-view.svelte';
 	import MomentCard from '$lib/session/MomentCard.svelte';
 	import CountdownScreen from '$lib/session/CountdownScreen.svelte';
-	import RideBand from '$lib/session/RideBand.svelte';
+	import RideRail from '$lib/session/RideRail.svelte';
 	import { COUNTDOWN_SECONDS } from '$lib/workout/ride-state';
 	import type { Block } from '$lib/workout/block';
 	import type { createRideSession } from '$lib/workout/session.svelte';
@@ -313,36 +309,24 @@
 		centre={countIn ? digit : undefined}
 		dockIn={!!countIn}
 	>
-		{#snippet header()}
-			{#if open && session.road}
-				<!-- No workout, the road on: the free ride's own slot 1 on that
-				     road (TARGETS ride-free-road 3 and 7, #4283). -->
-				<FreeRideBand
-					label={freeRideLabel(session.road)}
-					roadLine={roadLine(session.road.readout)}
-					chip={block ? trainerChip(block) : undefined}
-					seconds={session.elapsed}
-					climbed={session.road.climbed}
-					status={rideStatus}
-				/>
-			{:else}
-				<!-- The strip only beside a Skyline: without a road the graph below is
-				     the workout's one picture, its blocks in words (#4159). -->
-				<RideBand
-					{block}
-					elapsed={session.elapsed}
-					total={session.total}
-					title={workout.name}
-					context={rideContext('Solo', workout.name)}
-					drives
-					wide={!inWorld}
-					hint={session.road?.pinned
-						? 'The road decides where a block ends.'
-						: undefined}
-					status={rideStatus}
-					strip={skyline ? strip : undefined}
-				/>
-			{/if}
+		{#snippet rail()}
+			<RideRail
+				watts={session.live?.seconds ? session.live.power3 : watts}
+				stale={signalLost}
+				{target}
+				{ftp}
+				{kg}
+				stats={session.live}
+				block={open ? null : block}
+				road={session.road?.readout}
+				speedKph={session.road ? session.road.mps * 3.6 : undefined}
+				cadence={session.sample?.cadence ?? 0}
+				hr={session.sample?.heartRate ?? 0}
+				elapsed={session.elapsed}
+				gear={open && gearsEnabled() ? session.gear.label : undefined}
+				status={rideStatus}
+				strip={skyline && !open ? strip : undefined}
+			/>
 		{/snippet}
 
 		{#snippet focus()}
