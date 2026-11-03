@@ -17,6 +17,29 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.11.14] - 2026-11-03
+
+### Added
+
+- A ride on a road now opens on a start line: join it, see who has their trainer and heart rate ready and who is still on the way, and the coach starts the count-in once a trainer is ready. (#4370)
+- On a free ride on a road, press Climb repeats to ride the road up and down, again and again. The descent rides flat on your trainer, and the ride counts your metres climbed towards the height of Everest (8,849 m). (#4373)
+- On a slower computer the 3D world now draws less (fewer far trees and houses, then fewer pixels) after it drops frames for a while, instead of stuttering, and starts your next ride where it settled. (#4377)
+- The 3D world now has sound: the wind rises with your speed, the land beside the road hums (forest, meadow, stream, alpine air), cowbells ring on high pasture, a church bell tolls as you pass a village, and your freewheel ticks when you stop pedalling. It plays under the cues fader, ducks under voices and sits 12 dB under the jukebox. (#4375)
+- While you race, the RACE page shows your shelter as the race rides it: "In the wheel −34 %", or "In the wind". A soft breath of air sounds as you enter or leave a wheel, and a rider passing close by whooshes on the side they pass on. (#4368)
+- Workouts has a Routes tab: filter your roads by distance, climbing and time at your pace, see the one you pick beside the list, and ride it from there. (#4366)
+- Your AI coach can now build workouts onto your shelf and put them on your crew's calendar. Create a new coach token with "Let it plan workouts" ticked; existing tokens keep reading only. (#4363)
+- On a solo ride on one of your roads, "Ride with a pacer" in the now bar sets off a pacer at D, C, B or A par beside you. It holds par, surges on climbs of 4 % or more until its W′ runs low, shows on the Skyline, and within 50 m the bike computer says how far ahead or behind you are; it sounds its own horn at hairpins. It rides only while your own watts move you, never in a session, and earns or costs nothing. (#4369)
+- While you race, the bike computer's RACE page shows how many of your four matches are left: your own W′ balance from your 90-day bests, one match burnt per quarter spent, with a strike sound as one goes. It stays on your screen; fitted from only 5- and 20-min bests it says it is an estimate, and with no bests it tells you what it needs. (#4367)
+- Every game in the session picker can now run on one of your imported routes: pick it in the Road row above the games, and the crew plays it riding that road. (#4365)
+- If you race and haven't confirmed your weight in 90 days, the FTP prompt on Rides and in your profile asks "Still 72 kg? That's right". One tap keeps you ranked in your next race; nothing else changes. (#4360)
+- A race now ends on its results per Category, yours first. If the race could not place you, the card says why and how to be placed next time, and only you are told. (#4358)
+
+### Fixed
+
+- Climb bests and your ghost on your own roads are now timed from the server's replay of your watts, the same figure as the ride's distance. Rides saved before this keep their old times. (#4374)
+- An imported route's name sits beside its map, over Save (#4357)
+- The jukebox opened mid-ride keeps its controls inside the window (#4356)
+
 ## [2026.11.13] - 2026-11-03
 
 ### Added
@@ -4291,7 +4314,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.13...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.14...HEAD
+[2026.11.14]: https://github.com/natrontech/wattroom/compare/2026.11.13...2026.11.14
 [2026.11.13]: https://github.com/natrontech/wattroom/compare/2026.11.12...2026.11.13
 [2026.11.12]: https://github.com/natrontech/wattroom/compare/2026.11.11...2026.11.12
 [2026.11.11]: https://github.com/natrontech/wattroom/compare/2026.11.10...2026.11.11
