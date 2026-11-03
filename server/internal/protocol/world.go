@@ -41,7 +41,8 @@ type SessionRoute struct {
 type World struct {
 	BunchM   float64 `json:"bunchM"`
 	SpeedMps float64 `json:"speedMps"`
-	// Laps completed on a looped road.
+	// Laps completed: a road that does not loop is ridden again from its
+	// start, so a workout that outlasts it never holds the bunch at its end.
 	Lap int `json:"lap,omitempty"`
 	// Each joined rider's place from the bunch in decimetres, by rider id.
 	Offsets map[string]int16 `json:"offsets,omitempty"`

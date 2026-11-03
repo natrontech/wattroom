@@ -7,7 +7,7 @@ package protocol
 type Roadside struct {
 	Kind RoadsideKind `json:"kind"`
 	// Where on the road, in metres along the crew's cut in the direction
-	// ridden, as World.BunchM reads it; Lap counts a looped road's laps.
+	// ridden, as World.BunchM reads it; Lap counts the road's laps.
 	AtM float64 `json:"atM"`
 	Lap int     `json:"lap,omitempty"`
 	// What a paint verb chalks; empty for a stand.

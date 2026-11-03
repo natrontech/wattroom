@@ -72,9 +72,14 @@ func TestTheRoadsideTakesAStandWithinItsBounds(t *testing.T) {
 		{"too far", "ben", func(b float64) protocol.Roadside { return stand(b + 5001) }, "validation_error", "300 m – 5 km ahead"},
 		{"behind the bunch", "ben", func(b float64) protocol.Roadside { return stand(b - 100) }, "validation_error", "ahead of the bunch"},
 		{"off the road's end", "ben", func(float64) protocol.Roadside { return stand(20_001) }, "validation_error", "not a place on this road"},
-		{"a lap on a road that does not loop", "ben", func(b float64) protocol.Roadside {
+		// The bunch rides a road that does not loop again from its start:
+		// its next lap is a place on it, a lap behind its start is not.
+		{"the next lap, past the reach", "ben", func(b float64) protocol.Roadside {
 			return protocol.Roadside{Kind: protocol.RoadsideKindStand, AtM: b + 1000, Lap: 1}
-		}, "validation_error", "not a place on this road"},
+		}, "validation_error", "300 m – 5 km ahead"},
+		{"a lap before the first", "ben", func(b float64) protocol.Roadside {
+			return protocol.Roadside{Kind: protocol.RoadsideKindStand, AtM: b + 1000, Lap: -1}
+		}, "validation_error", "not a place on the road"},
 		{"not a place at all", "ben", func(float64) protocol.Roadside { return stand(math.NaN()) }, "validation_error", "not a place"},
 		{"a verb the roadside has not got", "ben", func(b float64) protocol.Roadside {
 			return protocol.Roadside{Kind: "confetti", AtM: b + 1000}

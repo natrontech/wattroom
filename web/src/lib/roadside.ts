@@ -232,8 +232,10 @@ export function nextChalkSpot(
 	bunchU: number,
 	mine: readonly Pick<RoadsidePaint, 'atM' | 'lap'>[],
 ): { atM: number; lap: number } | null {
-	const lap0 = loop ? Math.floor(bunchU / length) : 0;
-	for (const lap of loop ? [lap0, lap0 + 1] : [0])
+	// A road that ends is ridden again from its start (the hub's bunch): its
+	// laps count too, but its next is never sure to come.
+	const lap0 = Math.floor(bunchU / length);
+	for (const lap of loop ? [lap0, lap0 + 1] : [lap0])
 		for (const c of climbs) {
 			const from = Math.max(c.startM + lap * length, bunchU);
 			const top = c.topM + lap * length;

@@ -214,7 +214,7 @@ func (rs *roadsideStands) snapshot(place func(u float64) (float64, int)) *protoc
 // along is where a verb asks to be on the bunch's road, laps unrolled;
 // false off it.
 func (b *bunch) along(verb protocol.Roadside) (float64, bool) {
-	if verb.AtM < 0 || verb.AtM > b.road.LengthM || verb.Lap > 0 && !b.loop {
+	if verb.AtM < 0 || verb.AtM > b.road.LengthM {
 		return 0, false
 	}
 	return float64(verb.Lap)*b.road.LengthM + verb.AtM, true
@@ -237,9 +237,9 @@ func (b *bunch) paintAt(riderID string, verb protocol.Roadside) (code, message s
 		return "validation_error", "That is not a place on this road."
 	}
 	front := b.fromM + b.pace.Distance
-	// A loop unrolls without end, and chalk goes only once ridden over: laps
-	// ahead, a stamp would hold one of the road's live slots all ride.
-	if b.loop && verb.Lap > int(front/b.road.LengthM)+1 {
+	// A road's laps unroll without end, and chalk goes only once ridden over:
+	// laps ahead, a stamp would hold one of the road's live slots all ride.
+	if verb.Lap > int(front/b.road.LengthM)+1 {
 		return "validation_error", "Chalk goes on this lap or the next."
 	}
 	climb := climbStart(climbsRidden(b.road, b.reverse), verb.AtM, float64(verb.Lap)*b.road.LengthM)

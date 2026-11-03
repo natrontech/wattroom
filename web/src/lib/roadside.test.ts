@@ -298,4 +298,11 @@ describe('where the next stamp goes (#3029)', () => {
 			nextChalkSpot(climbs, 10_000, true, 10_400, [{ atM: 2000 }]),
 		).toEqual({ atM: 2000, lap: 1 });
 	});
+
+	it('chalks the lap the bunch is on, on a road that ends and is ridden again', () => {
+		expect(nextChalkSpot(climbs, 10_000, false, 10_400, [])).toEqual({
+			atM: 2000,
+			lap: 1,
+		});
+	});
 });
