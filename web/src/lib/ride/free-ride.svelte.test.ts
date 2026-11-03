@@ -504,6 +504,49 @@ describe('a free ride on a road', () => {
 		expect(free.road?.id).toBe('route-1');
 	});
 
+	it('climb repeats turn at both ends by themselves, and save as a free ride with laps (#3193)', async () => {
+		const free = createFreeRide({ ftp: () => 250, kg: () => 75 });
+		free.arm();
+		free.ride(climb, 1900);
+		expect(free.repeatable).toBe(true);
+		free.setRepeats(true);
+		let t = 1_000_000;
+		while ((free.road!.ascents ?? 0) < 2) {
+			expect(t, 'never reached the top twice').toBeLessThan(3_000_000);
+			ride(free, 300, 1, t);
+			t += 1000;
+			expect(roadEndOffered(free, false)).toBe(false);
+		}
+		ride(free, 300, 5, t);
+		// Up, down, up, and down again from the second top.
+		expect(free.road!.reverse).toBe(true);
+		expect(free.road!.lap).toBe(3);
+		await free.end();
+		expect(uploads[0]).toMatchObject({
+			workoutJson: FREE_RIDE_JSON,
+			routeId: 'route-1',
+			drive: 'gears',
+		});
+		const samples = samplesOf(uploads[0]);
+		expect(samples.filter((s) => s.reverse).map((s) => s.lap)).toEqual([1, 3]);
+		heldToTheServersBound(samples);
+	});
+
+	it('climb repeats ride SIM only: Watts ends them, and a loop has none (#3193)', () => {
+		const free = createFreeRide({ ftp: () => 250, kg: () => 75 });
+		free.arm();
+		free.ride(climb);
+		free.setRepeats(true);
+		free.setMode('watts');
+		expect(free.repeats).toBe(false);
+		expect(free.repeatable).toBe(false);
+		free.setRepeats(true);
+		expect(free.repeats).toBe(false);
+		free.setMode('grade');
+		free.ride({ ...climb, loop: true });
+		expect(free.repeatable).toBe(false);
+	});
+
 	it('uploads no road at all off one', async () => {
 		const free = createFreeRide({ ftp: () => 250, kg: () => 75 });
 		free.arm();
