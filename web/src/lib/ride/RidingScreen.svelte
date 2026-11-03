@@ -15,6 +15,7 @@
 	 * it comes from the components a session draws, because a rider alone
 	 * deserves the screen a rider in a session gets.
 	 */
+	import RoadMap from '$lib/ride/RoadMap.svelte';
 	import RideNarrator from '$lib/ride/RideNarrator.svelte';
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
 	import { bindRideKeys, bindShifters, type RideKey } from '$lib/ride/keys';
@@ -299,7 +300,9 @@
 		{/snippet}
 	</CountdownScreen>
 {:else}
+	{#snippet roadMapView()}{#if map}<RoadMap view={map} />{/if}{/snippet}
 	<RidingSurface
+		roadMap={map ? roadMapView : undefined}
 		clean={inWorld && cleanView.on && !signalLost && !noCrashSafety}
 		onshow={cleanView.toggle}
 		cleanLine={block?.road ? roadLine(block.road) : undefined}

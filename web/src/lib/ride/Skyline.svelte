@@ -183,8 +183,10 @@
 		if (!frame || trail.length < 2) return [];
 		const on = frame;
 		const top = Math.max(300, ...trail.map((p) => p.w)) * 1.15;
+		// A lane along the bottom, so a tall flat ground keeps the line low.
+		const lane = Math.min(on.height, Math.max(160, on.height * 0.35));
 		const xy = (p: { m: number; w: number }) =>
-			`${(p.m * on.scale).toFixed(1)},${(on.height * (1 - p.w / top)).toFixed(1)}`;
+			`${(p.m * on.scale).toFixed(1)},${(on.height - (p.w / top) * lane).toFixed(1)}`;
 		const runs: { zone: number; points: string[] }[] = [];
 		for (const p of trail) {
 			const zone = ftp > 0 ? zoneOf(p.w, ftp) : 0;

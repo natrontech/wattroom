@@ -1,4 +1,5 @@
 <script lang="ts">
+	import RoadMap from '$lib/ride/RoadMap.svelte';
 	import { board } from '$lib/board/clips.svelte';
 	import { bindViewKeys } from '$lib/ride/keys';
 	/**
@@ -471,7 +472,9 @@
 
 <RideNarrator {view} {watts} {ftp} {stale} />
 
+{#snippet roadMapView()}{#if map}<RoadMap view={map} />{/if}{/snippet}
 <RidingSurface
+	roadMap={map ? roadMapView : undefined}
 	class="flex-1 {worldClass} {extra}"
 	world={inWorld ? worldSlot : undefined}
 	moment={roadEndOffered(free, false) ? roadEnd : undefined}

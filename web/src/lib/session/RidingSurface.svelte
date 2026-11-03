@@ -37,6 +37,7 @@
 	let {
 		header,
 		rail,
+		roadMap,
 		focus,
 		numbers,
 		crew,
@@ -60,6 +61,11 @@
 		 * world there is no Skyline strip.
 		 */
 		rail?: Snippet;
+		/**
+		 * The road from above, the view switch's Map (M): under the rail it
+		 * takes the ground between the rail and the Skyline, no panel.
+		 */
+		roadMap?: Snippet;
 		focus: Snippet;
 		numbers?: Snippet;
 		crew?: Snippet;
@@ -226,6 +232,17 @@
 			></div>
 		{/if}
 	{/if}
+	{#if rail && mapShown && roadMap}
+		<!-- Map is a view: the road from above over the ground, between the
+		     rail and the Skyline (the ride HUD, 2026-11). -->
+		<div
+			data-dock="map"
+			class="bg-surface absolute inset-0 px-[6%]"
+			style="padding-top:{INSET_PX + railH}px;padding-bottom:{floor}px"
+		>
+			{@render roadMap()}
+		</div>
+	{/if}
 	{#if centre}
 		<!-- In the corridor's upper half, above where the chase camera
 		     draws you (RIDER_BOX), as v3-motion's GO stands. -->
@@ -268,7 +285,7 @@
 		{#if numbers}
 			<div
 				data-dock="numbers"
-				class="{panel} {dockClass} {rail && !mapShown ? '!hidden' : ''}"
+				class="{panel} {dockClass} {rail ? '!hidden' : ''}"
 				style={dock(0, '-40px', '0')}
 			>
 				{@render numbers()}

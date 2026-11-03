@@ -1,4 +1,5 @@
 <script lang="ts">
+	import RoadMap from '$lib/ride/RoadMap.svelte';
 	import { board } from '$lib/board/clips.svelte';
 	import { bindViewKeys } from '$lib/ride/keys';
 	// The Training place — the 3 m surface (ADR-0020). Was a tab inside
@@ -375,7 +376,9 @@
 			>{channel.shared?.countdownRemaining}</span
 		>
 	{/snippet}
+	{#snippet roadMapView()}{#if map}<RoadMap view={map} />{/if}{/snippet}
 	<RidingSurface
+		roadMap={map ? roadMapView : undefined}
 		class="h-full"
 		world={inWorld ? road : undefined}
 		stage={inFocus === 'media'}
