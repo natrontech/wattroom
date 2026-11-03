@@ -20,9 +20,10 @@ c 'feat(web): hidden one (#4)' 'Changelog: -'
 c 'perf(web): faster world (#5)'
 c 'fix(deps): bump (#6)'
 c 'fix(web): squashed (#7)' $'* fix(web): first\n\n  Changelog: Indented in a squash body.'
+c 'feat(web): two commits (#8)' $'* feat(web): the change\n\nChangelog: The real line.\n\n* fix(web): a follow-up\n\nChangelog: -'
 prev=2026.11.1
 eval "$(sed -n '/^entries() {/,/^}/p' "$script")"
 out=$(for t in feat perf fix; do echo "[$t]"; entries "$t"; done)
 echo "$out"
-want=$'[feat]\na plain feature (#1)\n[perf]\nfaster world (#5)\n[fix]\nIndented in a squash body. (#7)\nA ride keeps its length when the trainer drops a reading. (#3)'
+want=$'[feat]\nThe real line. (#8)\na plain feature (#1)\n[perf]\nfaster world (#5)\n[fix]\nIndented in a squash body. (#7)\nA ride keeps its length when the trainer drops a reading. (#3)'
 [ "$out" = "$want" ] && echo PASS || { echo FAIL; exit 1; }
