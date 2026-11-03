@@ -39,6 +39,7 @@
 		'youtube',
 		'skyline',
 		'lounge',
+		'world',
 	];
 
 	/** An invented road for the Skyline (#3059): 40 km of rolling hills, a
@@ -143,6 +144,53 @@
 			},
 			false,
 		);
+	}
+
+	/** The ride's world, full screen as a ride draws it, for `make world-bench`
+	 *  (#3082): the synthetic pass loop, you and three riders at 200 W, the
+	 *  ride's own look; `light=1` is the World control's Light. The real
+	 *  scene, imported here so no other case loads three.js. */
+	function world(node: HTMLCanvasElement) {
+		let scene: { dispose(): void } | undefined;
+		let gone = false;
+		void Promise.all([
+			import('$lib/world/scene'),
+			import('$lib/world/world'),
+			import('$lib/world/look'),
+			import('$lib/world/synthetic'),
+			import('$lib/world/test-crew'),
+			import('$lib/road/route'),
+		]).then(
+			([
+				{ mount },
+				{ generate },
+				{ rideLook, worldPaint },
+				{ syntheticPoints },
+				{ devCrew },
+				{ toRoute },
+			]) => {
+				if (gone) return;
+				const route = toRoute(syntheticPoints());
+				const s = mount(node, {
+					route,
+					world: generate(route),
+					style: rideLook(worldPaint(node.parentElement ?? document.body)),
+					ftp: 250,
+					watts: 200,
+					riders: devCrew(200, 250),
+					light: params.get('light') === '1',
+					onFail: (why) => console.error('world: stopped', why),
+				});
+				scene = s;
+				Object.assign(window, {
+					perfWorld: { probe: s.probe, frames: s.frames, stats: s.stats },
+				});
+			},
+		);
+		return () => {
+			gone = true;
+			scene?.dispose();
+		};
 	}
 
 	function play(node: HTMLVideoElement, stream: MediaStream) {
@@ -262,4 +310,9 @@
 			></iframe>
 		{/if}
 	</main>
+
+	{#if kase === 'world'}
+		<!-- RideWorld.svelte: riding is the whole screen -->
+		<canvas class="absolute inset-0 h-full w-full" {@attach world}></canvas>
+	{/if}
 </div>

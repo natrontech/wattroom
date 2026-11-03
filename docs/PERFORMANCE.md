@@ -114,6 +114,14 @@ Measured on an M2 Max in September 2026 (#2998):
 - **After, it follows the ground around the eye:** the ride lets go of tiles and chunks past the reach it draws, and the ground's height caches are a fixed 256 × 256 slots each.
 - Geometries (20–21), programs, listeners (50), intervals (1) and the ground held (under its ~15.1k window) stayed flat in both. Frame times on SwiftShader are reported, never judged.
 
+## The world on the slow rig
+
+`make world-bench` (needs `make dev-web`) is the low tier's rig without the hardware (#3082). It opens `/dev/perf?case=world` in headless Chromium on SwiftShader twice: once as it is, once with the page's CPU throttled 4× through DevTools. Each run warms up for 15 s and measures for 60 s. It prints the frame interval and the render's JS time (p50 and p95), the frames a second, the share of vsync-divisor intervals missed, and the draws and triangles, set against docs/spec/world.md's tiers and Fallback. The dev build's frame judge stands down for it, so the world keeps drawing past the Fallback and every miss is counted.
+
+Knobs: `BENCH_VIEW` (default `1280x720`, the realism lab's; `960x540` is about the low tier's 0.5 MP), `BENCH_SECONDS` (60), `BENCH_WARMUP` (15).
+
+The throttle slows only the page's own thread. SwiftShader draws in the GPU process, at the speed of the machine's CPU, so its frame times are a software rig's and say nothing about a GPU. The results are in docs/spec/world.md, "The slow rig".
+
 ## Adding a case
 
 Add its name to `KNOWN` in `+page@.svelte` and render the real component under it. Put it in `DEFAULT_CASES` in `desktop/perf/main.js` only if it earns the time: something that animates without end, or a media path people use while riding.

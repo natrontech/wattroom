@@ -4,8 +4,8 @@ import { simRider, type SimRider } from '$lib/world/sim';
 
 /**
  * The dev gallery's crew (#3663): you on your own FTP and three stand-ins a
- * few wheels apart, so the camera sees riders around you. Only /dev/world
- * rides with them — a ride's world holds the riders who are there.
+ * few wheels apart, so the camera sees riders around you. Only /dev/perf's
+ * world case rides with them — a ride's world holds the riders who are there.
  */
 
 // A stand-in rides like a person: harder on climbs, soft on descents, a little noise.
