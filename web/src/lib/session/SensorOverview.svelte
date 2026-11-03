@@ -45,9 +45,14 @@
 	import { cardView } from '$lib/session/sensor-card';
 	import { sensorReading, sensorState } from '$lib/session/sensor-status';
 	import { sensors } from '$lib/sensors.svelte';
-	import { shifterSlot } from '$lib/ble/controller-slot.svelte';
+	import {
+		shifterSlot,
+		type ShifterInput,
+	} from '$lib/ble/controller-slot.svelte';
+	import { createObcNetController, obcNet } from '$lib/ble/obc-net.svelte';
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
 	import Gamepad2 from '@lucide/svelte/icons/gamepad-2';
+	import Wifi from '@lucide/svelte/icons/wifi';
 	import Bike from '@lucide/svelte/icons/bike';
 	import HeartPulse from '@lucide/svelte/icons/heart-pulse';
 	import RotateCw from '@lucide/svelte/icons/rotate-cw';
@@ -115,6 +120,16 @@
 						? 'failed'
 						: 'idle',
 	);
+	/** One slot, two cards: the card of the input it holds shows its state. */
+	const shifterOn = (via: ShifterInput): PairState =>
+		shifterSlot.input === via ? shifterState : 'idle';
+
+	// The desktop shell's network shifter (#3336), behind its own switch: the
+	// shell browses for BikeControl while a page shows this grid.
+	const netShifter = $derived(gearsEnabled('obc-net') && obcNet.available);
+	$effect(() => {
+		if (netShifter) obcNet.start();
+	});
 
 	const trainerView = $derived(
 		cardView({
@@ -142,12 +157,17 @@
 	targetsNote?: string;
 	/** Trainer only: the ride alone holds it (ADR-0093). */
 	onRide?: boolean;
+	/** Not over Web Bluetooth: the network shifter (#3336). */
+	supported?: boolean;
+	/** Why it cannot pair here, said instead of a button. */
+	unavailable?: string;
 	onPair: () => void;
 	onForget: () => void;
 })}
 	{@const view = cardView({
 		state: args.state,
-		supported,
+		supported: args.supported ?? supported,
+		unavailable: args.unavailable,
 		elsewhere: args.elsewhere,
 		onRide: args.onRide,
 		hint: args.hint,
@@ -330,9 +350,35 @@
 					label: 'Shifter',
 					icon: Gamepad2,
 					required: false,
-					state: shifterState,
+					state: shifterOn('obc'),
 					device: shifterSlot.name,
 					onPair: () => void shifterSlot.pair(),
+					onForget: () => void shifterSlot.forget(),
+				})}
+			{/if}
+			{#if netShifter}
+				<!-- shortcut: pairs the first controller found; a picker when a
+				     rider reports two on one network. -->
+				{@render card({
+					label: 'Network shifter',
+					icon: Wifi,
+					required: false,
+					state: shifterOn('obc-net'),
+					device: shifterSlot.name,
+					supported: true,
+					unavailable: obcNet.denied
+						? 'Allow Local Network for WattRoom in System Settings'
+						: obcNet.found.length
+							? undefined
+							: 'Open BikeControl on this computer or network',
+					onPair: () => {
+						const [found] = obcNet.found;
+						if (found)
+							void shifterSlot.pair(
+								() => createObcNetController(found),
+								'obc-net',
+							);
+					},
 					onForget: () => void shifterSlot.forget(),
 				})}
 			{/if}
@@ -358,7 +404,9 @@
 			{/if}
 		{/each}
 		{#if shifterState === 'failed'}
-			<p class="text-danger mt-2 text-xs">Shifter: {shifterSlot.error}</p>
+			<p class="text-danger mt-2 text-xs">
+				{shifterSlot.input === 'obc-net' ? 'Network shifter' : 'Shifter'}: {shifterSlot.error}
+			</p>
 		{/if}
 		{#if gearsEnabled('obc') && shifterState !== 'connected'}
 			<!-- The chooser lists OpenBikeControl only (#4236): a Zwift

@@ -95,6 +95,18 @@ describe('cardView', () => {
 		expect(view.instead).toBe('Needs Chrome or Edge');
 	});
 
+	it('says why a network shifter cannot pair yet, and keeps a live one live (#3336)', () => {
+		const why = 'Open BikeControl on this computer';
+		for (const state of ['idle', 'failed'] as const) {
+			const view = cardView({ state, supported: true, unavailable: why });
+			expect(view.button).toBeUndefined();
+			expect(view.instead).toBe(why);
+		}
+		expect(
+			cardView({ state: 'connected', supported: true, unavailable: why }),
+		).toMatchObject({ shape: 'live', button: { label: 'Forget' } });
+	});
+
 	it('says where the targets come from without leaving the live shape (#2075)', () => {
 		// ADR-0025, amended: a screen without the grant keeps the link, the
 		// samples and Forget. What it must not keep is the silence — the

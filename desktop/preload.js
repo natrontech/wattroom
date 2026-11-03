@@ -89,4 +89,19 @@ contextBridge.exposeInMainWorld('wattroom', {
 	// leave voice on a hide, and to pause what nobody can see.
 	onVisibility: (cb) =>
 		ipcRenderer.on('wattroom:visibility', (_event, visible) => cb(visible)),
+	// OpenBikeControl over the network (#3336, obc-net.js): the shell browses
+	// for `_openbikecontrol._tcp` and holds one socket; the app decodes the
+	// bytes. `browse`'s `cb` hears `{ devices, denied }` now and on a change.
+	obc: {
+		browse: (cb) => {
+			ipcRenderer.on('wattroom:obc-found', (_event, found) => cb(found));
+			ipcRenderer.send('wattroom:obc-browse');
+		},
+		connect: (id) => ipcRenderer.invoke('wattroom:obc-connect', id),
+		onData: (cb) =>
+			ipcRenderer.on('wattroom:obc-data', (_event, bytes) => cb(bytes)),
+		onClosed: (cb) => ipcRenderer.on('wattroom:obc-closed', () => cb()),
+		write: (bytes) => ipcRenderer.send('wattroom:obc-write', bytes),
+		close: () => ipcRenderer.send('wattroom:obc-close'),
+	},
 });

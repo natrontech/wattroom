@@ -81,6 +81,44 @@ export function decodeObc(bytes: Uint8Array): ObcMessage | null {
 	return null;
 }
 
+/**
+ * One TCP read from a controller on the network (MDNS.md, #3336): messages
+ * back to back, and Button State carries no length. So a read is cut where
+ * every piece is a whole message (Device Status is 3 bytes, Button State an
+ * odd number), taking the shortest first piece: a release that arrives
+ * glued to the next message still lets go, rather than holding a shift.
+ * A read that cuts no such way is dropped.
+ *
+ * shortcut: a message split across two reads is dropped; a 3 to 5 byte
+ * write arrives whole in practice. Buffer across reads if a report shows one.
+ */
+export function decodeObcStream(bytes: Uint8Array): ObcMessage[] {
+	const n = bytes.length;
+	// A real read is a few bytes; the search below is quadratic.
+	if (n > 1024) return [];
+	// end[i]: where the first message from i ends with the rest cut whole, or -1.
+	const end = new Int32Array(n + 1).fill(-1);
+	end[n] = n;
+	for (let i = n - 1; i >= 0; i--) {
+		if (bytes[i] === 0x02) {
+			if (i + 3 <= n && end[i + 3] >= 0) end[i] = i + 3;
+		} else if (bytes[i] === 0x01) {
+			for (let j = i + 3; j <= n; j += 2)
+				if (end[j] >= 0) {
+					end[i] = j;
+					break;
+				}
+		}
+	}
+	if (n === 0 || end[0] < 0) return [];
+	const messages: ObcMessage[] = [];
+	for (let i = 0; i < n; i = end[i]) {
+		const message = decodeObc(bytes.subarray(i, end[i]));
+		if (message) messages.push(message);
+	}
+	return messages;
+}
+
 const utf8 = (text: string) => new TextEncoder().encode(text).slice(0, 32);
 
 /** App Information (0x04, format 1): who WattRoom is and which buttons it answers. */

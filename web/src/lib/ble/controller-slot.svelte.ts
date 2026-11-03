@@ -2,6 +2,10 @@ import { createObcController, type Controller } from './controller';
 import type { ObcAction, ObcEdge, ObcFeel } from './obc';
 import { pairError } from './pair-error';
 import type { SensorStatus } from './sensor';
+import type { GearInput } from '$lib/ride/gears-enabled';
+
+/** How the paired shifter reached WattRoom: Web Bluetooth, or the shell's network socket (#3336). */
+export type ShifterInput = Extract<GearInput, 'obc' | 'obc-net'>;
 
 /**
  * The paired shifter, shared across the app like the sensors (#3335): a
@@ -13,6 +17,7 @@ let status = $state<SensorStatus>('disconnected');
 let name = $state<string>();
 let error = $state<string>();
 let pairing = $state(false);
+let input = $state<ShifterInput>('obc');
 let held: { controller: Controller; release: () => void } | undefined;
 const actionCbs = new Set<(action: ObcAction, edge: ObcEdge) => void>();
 
@@ -38,10 +43,18 @@ export const shifterSlot = {
 	get pairing() {
 		return pairing;
 	},
+	/** Which input the shifter is, for its gears switch; kept until the next pair, so a drop goes out under it. */
+	get input() {
+		return input;
+	},
 
-	async pair(make: () => Controller = createObcController): Promise<void> {
+	async pair(
+		make: () => Controller = createObcController,
+		via: ShifterInput = 'obc',
+	): Promise<void> {
 		if (pairing) return;
 		await release();
+		input = via;
 		error = undefined;
 		name = undefined;
 		pairing = true;

@@ -41,6 +41,11 @@ export function cardView(args: {
 	 * a claim on one of those means something else entirely.
 	 */
 	targetsNote?: string;
+	/**
+	 * Why this one cannot pair here, when it is not the browser: a network
+	 * shifter the shell has not found, or macOS's refused Local Network (#3336).
+	 */
+	unavailable?: string;
 }): CardView {
 	// One ride per device (ADR-0093): while the ride alone runs, the trainer
 	// is its, and pairing one beside it would give the hardware two masters.
@@ -94,12 +99,12 @@ export function cardView(args: {
 			instead: 'Forget it there to move it',
 		};
 
-	if (!args.supported)
+	if (!args.supported || args.unavailable)
 		return {
 			shape: 'note',
 			note: 'Not connected',
 			tone: 'muted',
-			instead: 'Needs Chrome or Edge',
+			instead: args.unavailable ?? 'Needs Chrome or Edge',
 		};
 
 	if (args.state === 'connecting')
