@@ -2,7 +2,9 @@
 	import Copy from '@lucide/svelte/icons/copy';
 	import Banner from '$lib/components/Banner.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
+	import SectionTabs from '$lib/components/SectionTabs.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
+	import { workoutSections } from '$lib/nav/pages';
 	import ListPlus from '@lucide/svelte/icons/list-plus';
 	import Gauge from '@lucide/svelte/icons/gauge';
 	import Pencil from '@lucide/svelte/icons/pencil';
@@ -163,7 +165,12 @@
 <svelte:head><title>Workouts · WattRoom</title></svelte:head>
 
 <main class="page">
-	<div class="flex items-center gap-3">
+	<SectionTabs
+		tabs={workoutSections}
+		current="/workouts"
+		label="workouts sections"
+	/>
+	<div class="mt-4 flex items-center gap-3">
 		<div>
 			<h1 class="page-title">Workouts</h1>
 			<p class="text-muted text-xs">

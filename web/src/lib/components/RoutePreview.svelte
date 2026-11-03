@@ -5,14 +5,12 @@
 	import RecapTiles from '$lib/ride/RecapTiles.svelte';
 	import { routeNameLine, routePrivacyLine } from '$lib/privacy-copy';
 	import {
-		BikeKg,
 		MaxLegSeconds,
 		ReferenceRiderKg,
 		ReferenceRiderWatts,
 	} from '$lib/protocol';
-	import { compileRoad } from '$lib/road/compile';
+	import { secondsAtPace } from '$lib/road/route-filter';
 	import { statRow } from '$lib/road/stored';
-	import { durationSeconds } from '$lib/workout/engine';
 	import RouteProfile from './RouteProfile.svelte';
 	import RouteShape from './RouteShape.svelte';
 	import RouteStatRow from './RouteStatRow.svelte';
@@ -47,7 +45,7 @@
 	// rider's own FTP and weight, which is what "Ride it now" will ride.
 	const yours = $derived(
 		ftp && riderKg
-			? compileRoad(
+			? secondsAtPace(
 					{
 						id: '',
 						genName: route.name,
@@ -55,8 +53,8 @@
 						climbs: route.climbs,
 					},
 					ftp,
-					riderKg + BikeKg,
-				).reduce((total, leg) => total + durationSeconds(leg), 0)
+					riderKg,
+				)
 			: null,
 	);
 

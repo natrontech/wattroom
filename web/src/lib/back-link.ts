@@ -21,10 +21,12 @@ export function localPath(back: string | null): string | null {
 export const withBack = (path: string, back?: string | null): string =>
 	back ? `${path}?back=${encodeURIComponent(back)}` : path;
 
-/** The route page's: the picker a row's name was opened from, else Workouts. */
+/** The route page's: the picker a row's name was opened from, else Routes. */
 export function routeBackLink(back: string | null): BackLink {
 	const href = localPath(back);
-	if (!href) return { href: '/workouts', label: 'Workouts' };
+	if (!href) return { href: '/workouts/routes', label: 'Routes' };
+	if (href.split('?')[0] === '/workouts/routes')
+		return { href, label: 'Routes' };
 	return { href, label: href === '/ride' ? 'Ride' : 'Back' };
 }
 

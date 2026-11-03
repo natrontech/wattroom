@@ -8,7 +8,7 @@
 	import Banner from '$lib/components/Banner.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import WorkoutPreview from '$lib/components/WorkoutPreview.svelte';
-	import { fileDrop } from '$lib/file-drop.svelte';
+	import { fileDrop, takeHandedFiles } from '$lib/file-drop.svelte';
 	import { formatClock } from '$lib/format';
 	import { toasts } from '$lib/toast.svelte';
 	import { customWorkouts } from '$lib/workout/custom.svelte';
@@ -99,6 +99,9 @@
 
 	onMount(() => {
 		void intervalsAvailable().then((yes) => (offerPull = yes));
+		// A route dropped on the Routes rail's card (#3692).
+		const handed = takeHandedFiles();
+		if (handed) void take(handed);
 		const landing = page.url.searchParams.get('intervals');
 		if (!landing) return;
 		// A reload must not ask again for a pull that is already spent.

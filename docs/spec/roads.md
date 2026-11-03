@@ -46,6 +46,17 @@ contradicts one amends it here.
 - the climb card opens by itself for class **IV** and harder, on a free or
   route ride; on a workout or a session its chip offers it instead ([#3645](https://github.com/natrontech/wattroom/issues/3645)).
 
+## The Routes view (defaults — tune in alpha; #3692)
+
+Filter chips under Workouts · Routes, each an "at most"; a group with none lit
+is no bound. `$lib/road/route-filter.ts` holds them.
+
+| Chip group   | Values                                                                                                                  |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| Distance     | up to **20**, **50**, **100 km**                                                                                        |
+| Climbing     | up to **250**, **500**, **1,000 m**                                                                                     |
+| At your pace | up to **1**, **2**, **3 h**: the road ridden as its road workout at the rider's FTP and weight; shown only with both set |
+
 ## A route's place (ADR-0063)
 
 Privacy rules, not alpha defaults: loosening any of these takes an ADR.

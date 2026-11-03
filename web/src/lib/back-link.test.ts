@@ -19,8 +19,15 @@ describe("the route page's back link (Flows rule 4)", () => {
 		});
 	});
 
-	it('falls back to Workouts, and never leaves the site', () => {
-		const home = { href: '/workouts', label: 'Workouts' };
+	it('returns to the Routes view with the road it had picked (#3692)', () => {
+		expect(routeBackLink('/workouts/routes?r=r1')).toEqual({
+			href: '/workouts/routes?r=r1',
+			label: 'Routes',
+		});
+	});
+
+	it('falls back to Routes, and never leaves the site', () => {
+		const home = { href: '/workouts/routes', label: 'Routes' };
 		for (const back of offSite)
 			expect(routeBackLink(back), String(back)).toEqual(home);
 	});
