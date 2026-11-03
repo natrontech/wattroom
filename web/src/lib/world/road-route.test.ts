@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { at } from '$lib/road/along';
 import { heightAt } from '$lib/road/at-metre';
-import { legsRoad } from '$lib/road/fixtures';
+import { HAIRPINS, hairpinClimb, legsRoad } from '$lib/road/fixtures';
+import { toRoute, type Route } from '$lib/road/route';
 import type { Road } from '$lib/road/road';
 import { HOME_ROADS, homeRoute } from '$lib/ride/home-roads';
 import { routeOfRoad } from './road-route';
@@ -47,4 +48,29 @@ describe('a walked loop', () => {
 			);
 		},
 	);
+});
+
+/**
+ * A hairpin is drawn as tight as it is (#4258): smoothing the heading again
+ * after the import drew each wider, and 21 of them stacked their legs
+ * hundreds of metres up the hill — legs 20 m apart stood 60 m apart.
+ */
+describe('a walked hairpin climb', () => {
+	it('stands each leg as far from the next as the climb does', () => {
+		const real = toRoute(hairpinClimb());
+		const walked = routeOfRoad(real.road);
+		// About each leg's middle: 300 m legs, each hairpin half a 10 m-radius circle.
+		const middle = (k: number) => 150 + k * (300 + Math.PI * 10);
+		const apart = (r: Route, k: number) => {
+			const p = at(r, middle(k));
+			const q = at(r, middle(k + 1));
+			return Math.hypot(p.x - q.x, p.z - q.z);
+		};
+		// Within 15 m at every leg; smoothed again, they stood about 54 m wider.
+		for (let k = 0; k < HAIRPINS; k++)
+			expect(
+				Math.abs(apart(walked, k) - apart(real, k)),
+				`legs ${k} and ${k + 1}`,
+			).toBeLessThan(15);
+	});
 });

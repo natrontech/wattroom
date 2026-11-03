@@ -9,7 +9,7 @@
  * 4. resample every 10 m;
  * 5. heights: a 200 m median, then a 120 m average (profile.ts);
  * 6. hold the grade to −15 … +20 %;
- * 7. turns: the heading's change over 100 m, as int8 degrees;
+ * 7. turns: the heading's change every stored step, as int8 degrees;
  * 8. the road every 20 m, packed and hashed (road.ts), and the owner's shape;
  * 9. its climbs, read off that road (climbs.ts).
  *
@@ -125,7 +125,7 @@ export function toRoute(points: TrackPoint[]): Route {
 	const road: Road = {
 		length: cm(length),
 		heights,
-		turns: turnsOf(x, z, step, STORE_EVERY),
+		turns: turnsOf(x, z, STORE_EVERY),
 	};
 
 	const gain = gainOf(ele);
