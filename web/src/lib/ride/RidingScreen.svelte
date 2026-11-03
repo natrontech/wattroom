@@ -390,10 +390,12 @@
 				<!-- On a road the horizon is the road ahead (ADR-0046 as amended,
 			     #3641): the Skyline, with the blocks along it. -->
 				{#if inWorld}
-					<div class="h-full"><Skyline {...skyline} /></div>
+					<div class="h-full"><Skyline {...skyline} {watts} {ftp} /></div>
 				{:else}
 					<div class="relative min-h-40 flex-1">
-						<div class="absolute inset-0"><Skyline {...skyline} /></div>
+						<div class="absolute inset-0">
+							<Skyline {...skyline} {watts} {ftp} />
+						</div>
 					</div>
 				{/if}
 			{:else}

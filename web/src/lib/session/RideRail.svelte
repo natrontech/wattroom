@@ -12,7 +12,7 @@
 	 * metres on any window (docs/spec/riding.md).
 	 */
 	import { untrack, type Snippet } from 'svelte';
-	import { zoneOf } from '$lib/components/zones';
+	import { ZONE_BG, ZONE_NAMES, zoneOf } from '$lib/components/zones';
 	import { formatClock, wkg } from '$lib/format';
 	import { pulse } from '$lib/motion/transitions';
 	import type { LiveStats } from '$lib/ride/live-stats.svelte';
@@ -98,6 +98,10 @@
 			? { value: `${Math.round(m / 100) * 100}`, unit: 'm' }
 			: { value: (m / 1000).toFixed(1), unit: 'km' };
 	const details = $derived(computerShown.details);
+	// The zone you ride in now: none while nothing is measured or at 0 W.
+	const zone = $derived(
+		stale || watts <= 0 || ftp <= 0 ? 0 : zoneOf(watts, ftp),
+	);
 
 	// The gear pulses once when it changes (ADR-0084), never on arrival.
 	let gearNode = $state<HTMLElement>();
@@ -159,7 +163,8 @@
 			<div class={CELL} data-cell="Watts">
 				<span class={LABEL}
 					>Watts{#if target > 0}
-						· <span class="text-neon">{target}</span>{/if}</span
+						· <span class="text-neon">{target}</span>{:else if zone}
+						· Z{zone} {ZONE_NAMES[zone]}{/if}</span
 				>
 				<span
 					data-testid="rail-watts"
@@ -177,6 +182,22 @@
 						needle={!stale}
 						class="h-[max(6px,0.9vh)]"
 					/>
+				{:else if ftp > 0}
+					<!-- The seven zones in a row, yours lit (Zwift's power bar). -->
+					<div
+						data-testid="rail-zones"
+						role="img"
+						aria-label={zone ? `zone ${zone}, ${ZONE_NAMES[zone]}` : 'no zone'}
+						class="flex h-[max(6px,0.9vh)] gap-[3px]"
+					>
+						{#each [1, 2, 3, 4, 5, 6, 7] as z (z)}
+							<span
+								class="{ZONE_BG[z]} flex-1 rounded-sm {z === zone
+									? ''
+									: 'opacity-25'}"
+							></span>
+						{/each}
+					</div>
 				{/if}
 			</div>
 			{#if block}

@@ -327,8 +327,13 @@
 			>{free.repeats ? 'Stop repeats' : 'Climb repeats'}</button
 		>
 	{/if}
-	{#if onflag}<FlagButton onflag={flag} sends="after" />{/if}
-	{#if road}<ViewSwitch {world} drawn={inWorld} />{/if}
+	<!-- A phone's bar keeps the mode, the shifter and End in view. -->
+	{#if onflag}<span class="contents max-md:hidden"
+			><FlagButton onflag={flag} sends="after" /></span
+		>{/if}
+	{#if road}<span class="contents max-md:hidden"
+			><ViewSwitch {world} drawn={inWorld} /></span
+		>{/if}
 	{#if ontv}
 		<button
 			onclick={ontv}
@@ -429,6 +434,8 @@
 		mps={on.virtualMps}
 		reverse={on.reverse}
 		ghosts={haunts}
+		{watts}
+		{ftp}
 	/>
 {/snippet}
 

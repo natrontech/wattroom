@@ -133,10 +133,14 @@
 	const phone = $derived(device.narrow);
 	// Over the world the Skyline is a strip along the bottom; flat, the
 	// horizon is the ground itself.
-	// With the rail the world has no strip: the rail says the grade ahead.
-	const skyline = $derived(!!world && !!horizon && !rail);
+	// Over the world the Skyline runs along the bottom: a panel, or under the
+	// rail edge to edge on a fade, tall enough to read the slope and your
+	// watts along it (the ride HUD, 2026-11).
+	const skyline = $derived(!!world && !!horizon);
+	let bandH = $state(0);
 	const floor = $derived(
-		INSET_PX + (skyline ? (stage ? STRIP_PX : SKYLINE_PX) + GAP_PX : 0),
+		INSET_PX +
+			(!skyline ? 0 : rail ? bandH : (stage ? STRIP_PX : SKYLINE_PX) + GAP_PX),
 	);
 	// A phone has no room for the stage: a shared screen joins its column.
 	const onStage = $derived(stage && !phone);
@@ -361,7 +365,23 @@
 	>
 		<SummitStrip />
 	</div>
-	{#if skyline && horizon}
+	{#if skyline && horizon && rail}
+		<div
+			aria-hidden="true"
+			class="from-surface/90 via-surface/60 pointer-events-none absolute inset-x-0 bottom-0 bg-linear-to-t to-transparent"
+			style="height:{bandH + 48}px"
+		></div>
+		<div
+			data-dock="horizon"
+			class="absolute inset-x-0 bottom-0 overflow-hidden {dockClass}"
+			style="{dock(4, '0', '40px')}height:{stage
+				? `${STRIP_PX}px`
+				: 'max(120px, 18vh)'}"
+			bind:offsetHeight={bandH}
+		>
+			{@render horizon()}
+		</div>
+	{:else if skyline && horizon}
 		<div
 			data-dock="horizon"
 			class="{panel} {dockClass} absolute overflow-hidden"

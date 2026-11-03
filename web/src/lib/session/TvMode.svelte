@@ -132,7 +132,7 @@
 			<div class="relative min-h-0 min-w-0 flex-1">
 				<div class="absolute inset-0">
 					{#if skyline}
-						<Skyline tv {...skyline} />
+						<Skyline tv {...skyline} watts={you.watts} ftp={you.ftp} />
 					{:else}
 						<IntervalGraph
 							{segments}

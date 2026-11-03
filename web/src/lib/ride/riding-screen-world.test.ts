@@ -170,7 +170,7 @@ describe('the world on a ride', () => {
 		expect(bar).not.toContain('aria-label="One more minute"');
 		// Easier and Harder lead, before ⚑ and Change workout.
 		expect(controls(none, { onflag: () => {}, onchange: () => {} })).toMatch(
-			/>Easier<\/button>[\s\S]*>Harder<\/button>[\s\S]*aria-label="Flag a problem"[\s\S]*>Change workout<\/button>/,
+			/aria-label="Easier"[\s\S]*aria-label="Harder"[\s\S]*aria-label="Flag a problem"[\s\S]*>Change workout<\/button>/,
 		);
 		const html = screen(none, change);
 		// Nor a target to trim.

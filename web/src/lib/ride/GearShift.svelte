@@ -7,6 +7,8 @@
 	 * tooltip. The cues are the shifter's (ride-shift.ts), so a key and a tap
 	 * here sound the same.
 	 */
+	import Minus from '@lucide/svelte/icons/minus';
+	import Plus from '@lucide/svelte/icons/plus';
 	import type { Clamp } from '$lib/ride/drivetrain';
 	import { createLimitWatch, limitLine } from '$lib/ride/limit-line';
 	import type { RideShift } from '$lib/ride/ride-shift';
@@ -67,13 +69,17 @@
 	{...control(-1)}
 	disabled={!!off}
 	{title}
-	class="btn btn-secondary btn-ride touch-manipulation select-none disabled:opacity-40"
-	>Easier</button
+	aria-label="Easier"
+	class="btn btn-secondary btn-ride touch-manipulation select-none disabled:opacity-40 max-md:px-3"
+	><Minus size={20} class="md:hidden" /><span class="max-md:hidden">Easier</span
+	></button
 >
 <button
 	{...control(1)}
 	disabled={!!off}
 	{title}
-	class="btn btn-secondary btn-ride touch-manipulation select-none disabled:opacity-40"
-	>Harder</button
+	aria-label="Harder"
+	class="btn btn-secondary btn-ride touch-manipulation select-none disabled:opacity-40 max-md:px-3"
+	><Plus size={20} class="md:hidden" /><span class="max-md:hidden">Harder</span
+	></button
 >

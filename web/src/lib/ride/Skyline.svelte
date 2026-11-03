@@ -1,3 +1,9 @@
+<script module lang="ts">
+	// ponytail: one trail of your watts per road for the page's life, so a
+	// remount (3D and flat, a resize) keeps it; a new ride's road starts a new one.
+	const trails = new WeakMap<object, { m: number; w: number }[]>();
+</script>
+
 <script lang="ts">
 	/**
 	 * The Skyline (#3059, ADR-0066): the road ahead in slot 5 — the profile
@@ -15,7 +21,7 @@
 	 */
 	import { untrack } from 'svelte';
 	import { innerHeight } from 'svelte/reactivity/window';
-	import { ZONE_BG } from '$lib/components/zones';
+	import { ZONE_BG, ZONE_VAR, zoneOf } from '$lib/components/zones';
 	import { prefersReducedMotion } from '$lib/motion';
 	import { heightAt } from '$lib/road/at-metre';
 	import { climbsOf } from '$lib/road/climbs';
@@ -47,6 +53,8 @@
 		strip = false,
 		tv = false,
 		ghosts = [],
+		watts,
+		ftp = 0,
 	}: {
 		road: Road;
 		/** The dot: metres along the stored road, as of the last second. */
@@ -65,6 +73,14 @@
 		tv?: boolean;
 		/** Your ghost (#3245) and the pacer (#3281): each one's metre on the stored road, its speed and its name. */
 		ghosts?: { m: number; mps: number; label: string }[];
+		/**
+		 * Your watts (the ride HUD, 2026-11): drawn as a line along the road
+		 * ridden, a sample a second at its metre, and the window reaches
+		 * `trailM` behind the dot for it.
+		 */
+		watts?: number;
+		/** For the watts' zones: each stretch of the line takes its zone's colour. */
+		ftp?: number;
 	} = $props();
 
 	/** The dot's halo, painted once: the watt colour fading out, no filter. */
@@ -84,6 +100,26 @@
 	// At least half the widest class chip, "III" (3vh on a TV), so it sits flush.
 	const chipEdge = $derived(tv ? 0.05 * (innerHeight.current ?? 1080) : 24);
 	const climbs = $derived(climbsOf(road));
+	const behind = $derived(
+		watts === undefined ? SKYLINE.behindM : SKYLINE.trailM,
+	);
+	// Your watts along the road ridden: one sample per new second, at its metre.
+	let trail = $state(untrack(() => trails.get(stored) ?? []));
+	$effect(() => {
+		const here = m;
+		const w = untrack(() => watts);
+		if (w === undefined) return;
+		const reach = untrack(() => behind);
+		const next = [
+			...untrack(() => trail).filter((p) => p.m <= here && here - p.m <= reach),
+			{ m: here, w },
+		];
+		trail = next;
+		trails.set(
+			untrack(() => stored),
+			next,
+		);
+	});
 	const paged = $derived(prefersReducedMotion.current);
 	const perTick = $derived(stepsPerTick(mps, paged));
 
@@ -118,7 +154,7 @@
 			? null
 			: paged
 				? pagedFrame(road, m, width, height)
-				: frameFor(road, m, ahead, width, height),
+				: frameFor(road, m, ahead, width, height, behind),
 	);
 	const tiles = $derived(
 		frame
@@ -137,7 +173,34 @@
 	);
 	// Scrolling, the road moves under a dot that stays, once it is 0.5 km in;
 	// paged, and before that, the dot walks.
-	const lead = $derived(paged ? shown - (frame?.fromM ?? 0) : leadM(shown));
+	const lead = $derived(
+		paged ? shown - (frame?.fromM ?? 0) : leadM(shown, behind),
+	);
+	// The watts' own scale: the trail's peak with room over it, never under
+	// 300 W. Cut into runs by zone, as Zwift colours its power: each run starts
+	// on the last point of the one before, so the line has no gaps.
+	const trailRuns = $derived.by(() => {
+		if (!frame || trail.length < 2) return [];
+		const on = frame;
+		const top = Math.max(300, ...trail.map((p) => p.w)) * 1.15;
+		const xy = (p: { m: number; w: number }) =>
+			`${(p.m * on.scale).toFixed(1)},${(on.height * (1 - p.w / top)).toFixed(1)}`;
+		const runs: { zone: number; points: string[] }[] = [];
+		for (const p of trail) {
+			const zone = ftp > 0 ? zoneOf(p.w, ftp) : 0;
+			const last = runs.at(-1);
+			if (last?.zone === zone) last.points.push(xy(p));
+			else
+				runs.push({
+					zone,
+					points: last ? [last.points.at(-1)!, xy(p)] : [xy(p)],
+				});
+		}
+		return runs.map((r) => ({
+			stroke: ZONE_VAR[r.zone] || 'var(--color-watt)',
+			points: r.points.join(' '),
+		}));
+	});
 	const shift = $derived(!frame ? 0 : (shown - lead) * frame.scale);
 	const dot = $derived(
 		frame
@@ -235,6 +298,26 @@
 						/>
 					</svg>
 				{/each}
+				{#if trailRuns.length}
+					<!-- Your watts over the road ridden, each stretch in its zone's
+					     colour (the watt colour without an FTP), no glow: the 3 s
+					     power is the one that glows. -->
+					<svg
+						data-testid="skyline-watts"
+						width="1"
+						{height}
+						class="pointer-events-none absolute top-0 left-0 overflow-visible"
+						aria-hidden="true"
+						>{#each trailRuns as run, i (i)}<polyline
+								points={run.points}
+								fill="none"
+								stroke={run.stroke}
+								stroke-width={tv ? 5 : 4}
+								stroke-linejoin="round"
+								stroke-linecap="round"
+							/>{/each}</svg
+					>
+				{/if}
 				{#each blocks as block, i (i)}
 					<span
 						class="{ZONE_BG[block.zone]} absolute bottom-0 h-1.5"

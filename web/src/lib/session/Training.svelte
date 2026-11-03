@@ -516,6 +516,8 @@
 				<div class="h-full">
 					<Skyline
 						road={channel.ridden.road}
+						watts={channel.you.watts}
+						ftp={channel.you.ftp}
 						m={channel.ridden.m}
 						mps={channel.ridden.mps}
 						strip={inFocus === 'media'}
@@ -527,6 +529,8 @@
 					<div class="absolute inset-0">
 						<Skyline
 							road={channel.ridden.road}
+							watts={channel.you.watts}
+							ftp={channel.you.ftp}
 							m={channel.ridden.m}
 							mps={channel.ridden.mps}
 						/>
@@ -559,6 +563,8 @@
 					<div class="absolute inset-0">
 						<Skyline
 							road={channel.ridden.road}
+							watts={channel.you.watts}
+							ftp={channel.you.ftp}
 							m={channel.ridden.m}
 							mps={channel.ridden.mps}
 						/>

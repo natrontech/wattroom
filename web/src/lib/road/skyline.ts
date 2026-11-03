@@ -10,6 +10,8 @@ import { roadStep, type Road } from './road';
 export const SKYLINE = {
 	/** The window: this far behind the dot… */
 	behindM: 500,
+	/** …or under the ride rail, where your watts draw along it, this far (the ride HUD). */
+	trailM: 1000,
 	/** …and this far ahead of it, between 15 and 40 km/h. */
 	aheadM: 3000,
 	slowKph: 15,
@@ -125,8 +127,8 @@ export interface Frame {
  * Metres from the window's left edge to the dot: `behindM`, but never more
  * than the road ridden, so the profile starts at the panel's edge (#4003).
  */
-export const leadM = (m: number): number =>
-	Math.max(0, Math.min(m, SKYLINE.behindM));
+export const leadM = (m: number, behind: number = SKYLINE.behindM): number =>
+	Math.max(0, Math.min(m, behind));
 
 export function frameFor(
 	road: Road,
@@ -134,16 +136,10 @@ export function frameFor(
 	ahead: number,
 	width: number,
 	height: number,
+	behind: number = SKYLINE.behindM,
 ): Frame {
-	const fromM = m - leadM(m);
-	return windowFrame(
-		road,
-		m,
-		fromM,
-		fromM + SKYLINE.behindM + ahead,
-		width,
-		height,
-	);
+	const fromM = m - leadM(m, behind);
+	return windowFrame(road, m, fromM, fromM + behind + ahead, width, height);
 }
 
 /** Under reduced motion (#3080): the page the dot is on, which turns at once when it reaches the end. */
