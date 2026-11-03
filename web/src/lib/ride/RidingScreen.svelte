@@ -313,7 +313,7 @@
 			<RideRail
 				watts={session.live?.seconds ? session.live.power3 : watts}
 				stale={signalLost}
-				{target}
+				target={session.roadWatts ?? target}
 				{ftp}
 				{kg}
 				stats={session.live}
@@ -363,7 +363,9 @@
 				stats={session.live}
 				{climb}
 				{map}
-				gear={open && gearsEnabled() ? session.gear.label : undefined}
+				gear={open && gearsEnabled() && session.drive !== 'watts'
+					? session.gear.label
+					: undefined}
 			/>
 			<!-- No workout, no target to trim (#4257). -->
 			{#if !open}<div class="px-4 pb-3">

@@ -1,6 +1,8 @@
 import type { TrainerSample } from '$lib/ble/trainer';
 import type { createActuator, SprintSetup } from '$lib/ride/actuation.svelte';
 import { biasPress } from '$lib/ride/easier-harder';
+import type { FreeMode } from '$lib/ride/free-ride-controls';
+import { ergByRoad } from '$lib/ride/ride-grade';
 import { nudgedBias, toleranceBand } from './guards';
 import type { createHrHold } from './hr-hold.svelte';
 import type { createRideClock } from './ride-clock.svelte';
@@ -23,8 +25,23 @@ export function createSoloAim(deps: {
 	sprint: () => SprintSetup;
 	ftp: number;
 	road: ReturnType<typeof createRoadDot>;
+	/** No workout, the road on (#4257): the free ride's switch rides it. */
+	open: () => boolean;
 }) {
 	let bias = $state(1);
+	// Road or Watts with no workout on the road (#4283), as a free ride
+	// opens: Road, but Watts on one gear, where a slope has no range (#3203).
+	let drive = $state<FreeMode>(deps.sprint().singleSpeed ? 'watts' : 'grade');
+	/**
+	 * ERG by the road (docs/SPEC.md): the watts the road asks, before the
+	 * guards, as the free ride's watts mode on a road holds them, with no
+	 * trim. Null in Road, or with a workout on.
+	 */
+	const roadWatts = $derived(
+		deps.open() && drive === 'watts'
+			? ergByRoad(deps.ftp, deps.road.here?.roadPct ?? 0)
+			: null,
+	);
 
 	/**
 	 * Released during spiral guard and while auto-paused — both mean "no
@@ -38,7 +55,7 @@ export function createSoloAim(deps: {
 			state === 'countdown' ||
 			deps.guards.spiralActive
 			? 0
-			: deps.hrHold.watts(info.segment, info.targetWatts ?? 0);
+			: (roadWatts ?? deps.hrHold.watts(info.segment, info.targetWatts ?? 0));
 	});
 
 	const inBand = $derived.by(() => {
@@ -65,7 +82,8 @@ export function createSoloAim(deps: {
 		else if (
 			deps.state() === 'running' &&
 			!deps.guards.released &&
-			segment?.kind === 'road'
+			segment?.kind === 'road' &&
+			roadWatts === null
 		)
 			deps.actuator.road(deps.road.here?.felt ?? 0);
 		else deps.actuator.hold(target);
@@ -83,16 +101,32 @@ export function createSoloAim(deps: {
 		get target() {
 			return target;
 		},
+		/** Road or Watts, while no workout is on the road. */
+		get drive() {
+			return drive;
+		},
+		/** What the guards hold the rider to: the block's watts, or the road's. */
+		get prescribed() {
+			return roadWatts ?? deps.clock().info.targetWatts ?? 0;
+		},
+		get roadWatts() {
+			return roadWatts;
+		},
+		setDrive(next: FreeMode) {
+			drive = next;
+			apply();
+		},
 		get inBand() {
 			return inBand;
 		},
 		apply,
 		nudgeBias,
 		/** Easier / Harder (#3328): a gear in SIM, the bias in ERG. */
+		// In Watts the road sets the watts, as on a free ride's road: nothing to move.
 		easierHarder: (dir: 1 | -1) =>
 			deps.actuator.easierHarder(
 				dir,
-				biasPress(() => bias, nudgeBias),
+				roadWatts === null ? biasPress(() => bias, nudgeBias) : undefined,
 			),
 	};
 }

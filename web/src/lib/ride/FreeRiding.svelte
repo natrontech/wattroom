@@ -25,11 +25,11 @@
 	import { FLAG_NOTICE_MS, FLAG_SAID } from '$lib/ride/flag';
 	import FlagButton from '$lib/ride/FlagButton.svelte';
 	import RideRail from '$lib/session/RideRail.svelte';
+	import ModeSwitch from '$lib/ride/ModeSwitch.svelte';
 	import {
 		GRADE,
 		RAMP,
 		WATTS,
-		type FreeMode,
 		type RampKind,
 	} from '$lib/ride/free-ride-controls';
 	import type { FreeRide } from '$lib/ride/free-ride.svelte';
@@ -158,10 +158,6 @@
 	const world = createWorldView();
 	const inWorld = $derived(world.on && !!road);
 
-	const modes: { id: FreeMode; label: string }[] = $derived([
-		{ id: 'grade', label: road ? 'Road' : 'Grade' },
-		{ id: 'watts', label: 'Watts' },
-	]);
 	const atMin = $derived(
 		inWatts ? free.watts === WATTS.min : free.grade === GRADE.min,
 	);
@@ -282,24 +278,7 @@
 {/snippet}
 
 {#snippet actions()}
-	<!-- One segmented control: a frame round both halves, the pressed
-	     half filled. No padding inside it — that was 10 px the band
-	     cannot spend above the corridor. -->
-	<div
-		class="border-muted/20 flex shrink-0 rounded-lg border"
-		role="group"
-		aria-label="what you set"
-	>
-		{#each modes as mode (mode.id)}
-			<button
-				onclick={() => free.setMode(mode.id)}
-				aria-pressed={free.mode === mode.id}
-				class="btn btn-ride {free.mode === mode.id
-					? 'btn-secondary'
-					: 'btn-ghost'}">{mode.label}</button
-			>
-		{/each}
-	</div>
+	<ModeSwitch mode={free.mode} road={!!road} onmode={free.setMode} />
 	{#if !road}
 		<!-- The number they move is the chip's (SPEC "Grade mode"). -->
 		<button
