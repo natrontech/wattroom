@@ -68,7 +68,8 @@ export type CueId =
 	| 'shift-down'
 	| 'climb'
 	| 'summit'
-	| 'split';
+	| 'split'
+	| 'match';
 
 /** A minor triad reads as tension, a major one as reward — the whole emotional vocabulary. */
 const A4 = 440;
@@ -588,6 +589,31 @@ export const CUES: Record<CueId, Cue> = {
 		voices: [
 			{ type: 'sine', freq: note(12), at: 0, dur: 0.08, gain: 0.22 },
 			{ type: 'sine', freq: note(12), at: 0.14, dur: 0.1, gain: 0.22 },
+		],
+	},
+
+	// A match burns (#3263): a quarter of your W′ is spent. A strike of
+	// noise rising through a bandpass, then the flare under it — a scrape
+	// and a breath, never a note, so it reads as effort and not as a reward.
+	match: {
+		id: 'match',
+		label: 'Match burnt',
+		hint: 'A quarter of your W′ is spent: one of the RACE page’s four matches burns. A short strike, then a flare.',
+		voices: [
+			{
+				type: 'noise',
+				at: 0,
+				dur: 0.06,
+				gain: 0.22,
+				filter: { from: 2400, to: 5200, q: 2, type: 'bandpass' },
+			},
+			{
+				type: 'noise',
+				at: 0.05,
+				dur: 0.3,
+				gain: 0.16,
+				filter: { from: 600, to: 1600 },
+			},
 		],
 	},
 };

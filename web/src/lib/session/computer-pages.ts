@@ -5,6 +5,7 @@ import type { ClimbView } from '$lib/ride/climb-view';
 import type { MapView } from '$lib/ride/map-view';
 import { formatSplit, gapWords } from '$lib/road/ghost';
 import { ordinal, type RaceReadout } from '$lib/race/race-view';
+import { MATCHES, type MatchesReadout } from '$lib/race/matches';
 import { isTyping } from '$lib/keys';
 import type { LiveStats } from '$lib/ride/live-stats.svelte';
 
@@ -83,6 +84,8 @@ export interface ComputerContext {
 	map?: MapView | null;
 	/** Your race, while you race one (#3174). */
 	race?: RaceReadout;
+	/** Your own W′ as matches (#3263): this screen's alone, never another rider's. */
+	matches?: MatchesReadout;
 	/**
 	 * The surface draws the 3 s power above the computer already, so RIDE
 	 * leaves it out: one number, one home (TARGETS D17, #3667).
@@ -332,8 +335,8 @@ function executionField(ctx: ComputerContext): Field | null {
 
 /**
  * RACE (#3174): the gap to your Category's par, then your place in your
- * Category — the race model's, so neon and never watt; only your live power
- * is. The gap leads at the computer's number size, and W/kg stays in its one
+ * Category, then your matches left (#3263) — models' outputs, so neon and
+ * never watt; only your live power is. The gap leads at the computer's number size, and W/kg stays in its one
  * home beside the 3 s power: the 3 s power is the largest number on the
  * surface, and no number shows twice (docs/design/TARGETS.md "One home per
  * number").
@@ -355,6 +358,18 @@ function raceFields(ctx: ComputerContext): Field[] {
 			value: `${ordinal(race.place)} of ${race.of}`,
 			neon: true,
 		},
+		// A model's output about you (#3263): neon like the rest of the page.
+		...(ctx.matches?.left != null
+			? [
+					{
+						key: 'matches',
+						label: 'Matches',
+						value: `${ctx.matches.left}`,
+						unit: `of ${MATCHES}`,
+						neon: true,
+					},
+				]
+			: []),
 	];
 }
 

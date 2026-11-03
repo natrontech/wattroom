@@ -13,6 +13,12 @@ export interface Curve {
 	best20m: number;
 }
 
+/** The two-point pair CP and W′ are fitted from (#3261, $lib/road/cpw). */
+export interface CPPair {
+	best3m: number;
+	best12m: number;
+}
+
 /**
  * The curve windows a rider is shown, in order: docs/SPEC.md's four, and the
  * only ones any surface may draw as a best. The server also keeps 3 and 12
@@ -69,7 +75,8 @@ export interface LoadSummary {
 }
 
 export interface Progression {
-	curve: { d30: Curve; d90: Curve; all: Curve };
+	/** d90 also carries the critical-power model's pair (#3261), never shown. */
+	curve: { d30: Curve; d90: Curve & CPPair; all: Curve };
 	rides: TrendRide[];
 	category: string;
 	wkg: number;
