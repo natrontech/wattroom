@@ -63,6 +63,9 @@ type session struct {
 	// Who said they are in on the plan that opened it (#3228), for the
 	// start line to list until they arrive. Nil off a plan.
 	awaited []protocol.RsvpRider
+	// Riding together (docs/SESSIONS.md): no workout and no clock to end
+	// it. Every rider rides their own free ride and the coach ends it.
+	together bool
 	// Who joined it (ADR-0059): only they are driven and counted. The one
 	// who opened it is in from the start; everyone else in the channel
 	// spectates until they join. Bounded by riders who entered the channel.
@@ -119,6 +122,19 @@ func (s *session) join(riderID string, in bool) bool {
 		delete(s.joined, riderID)
 	}
 	return true
+}
+
+// runTogether starts a session with no workout (docs/SESSIONS.md): it runs
+// at once, with no length, and closes when the coach ends it. The workout is
+// an unscored, empty one the saver and the recap can read.
+func (s *session) runTogether(now time.Time) {
+	s.together = true
+	s.workoutName = "Ride together"
+	s.workoutJSON = gameWorkoutJSON("", s.workoutName, nil)
+	s.workoutHash = workoutHash(s.workoutJSON)
+	s.totalSeconds, s.segments = 0, nil
+	s.phase, s.startedAt, s.banked = "running", now, 0
+	s.run++
 }
 
 // runGame starts the session a game opened (#2597): no countdown — the mode
@@ -249,7 +265,7 @@ func (s *session) state(now time.Time) protocol.SessionState {
 			return protocol.SessionState{
 				Phase: "countdown", CountdownRemaining: remaining,
 				ID: s.id, Coach: s.coach, CoachName: s.coachName,
-				WorkoutName: s.workoutName, WorkoutJSON: s.workoutJSON, WorkoutHash: s.workoutHash, TotalSeconds: s.totalSeconds,
+				WorkoutName: s.workoutName, WorkoutJSON: s.workoutJSON, WorkoutHash: s.workoutHash, TotalSeconds: s.totalSeconds, Together: s.together,
 				Route: s.route.ref(),
 			}
 		}
@@ -280,7 +296,7 @@ func (s *session) state(now time.Time) protocol.SessionState {
 	return protocol.SessionState{
 		Phase: s.phase, Elapsed: elapsed,
 		ID: s.id, Coach: s.coach, CoachName: s.coachName,
-		WorkoutName: s.workoutName, WorkoutJSON: s.workoutJSON, WorkoutHash: s.workoutHash, TotalSeconds: s.totalSeconds,
+		WorkoutName: s.workoutName, WorkoutJSON: s.workoutJSON, WorkoutHash: s.workoutHash, TotalSeconds: s.totalSeconds, Together: s.together,
 		Route: s.route.ref(),
 	}
 }

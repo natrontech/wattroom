@@ -40,7 +40,10 @@
 	import { device } from '$lib/device.svelte';
 	import type { ControlRoute, LiveSession } from '$lib/protocol';
 	import SessionPicker from '$lib/session/SessionPicker.svelte';
-	import { startCrewSession } from '$lib/session/crew-session';
+	import {
+		startCrewSession,
+		startRideTogether,
+	} from '$lib/session/crew-session';
 	import { customWorkouts } from '$lib/workout/custom.svelte';
 	import { buildShelf } from '$lib/workout/shelf';
 	import type { Workout } from '$lib/workout/types';
@@ -134,6 +137,12 @@
 		void goto(sessionPath(crew.id, res.data.id));
 	}
 
+	async function rideTogether() {
+		const res = await startRideTogether(crew.id);
+		if (!res.ok) toasts.push(res.error.message, { tone: 'error' });
+		else void goto(sessionPath(crew.id, res.data.id));
+	}
+
 	const ANSWERS: [RsvpAnswer, string][] = [
 		['in', "I'm in"],
 		['out', "I'm out"],
@@ -180,6 +189,9 @@
 			onclick={() => (picking = true)}
 			class="btn btn-secondary btn-xs ml-auto"
 			><Radio size={13} /> Start a session</button
+		>
+		<button onclick={() => void rideTogether()} class="btn btn-secondary btn-xs"
+			><Radio size={13} /> Ride together</button
 		>
 	{/if}
 </div>

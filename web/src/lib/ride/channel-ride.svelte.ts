@@ -31,7 +31,12 @@ export function holdChannelRide(deps: {
 	road: () => RoadPlace | null;
 	joined: () => boolean;
 }) {
-	const { live, profile, joined } = deps;
+	const { live, profile } = deps;
+	// Riding together (docs/SESSIONS.md) the rider is in the session and the
+	// free ride still drives the trainer: no workout gives targets. Only a
+	// session with one takes the trainer over.
+	const together = () => !!deps.shared()?.together;
+	const joined = () => deps.joined() && !together();
 	let free!: ReturnType<typeof createFreeRide>;
 	let ride!: ReturnType<typeof createRide>;
 	let own!: ReturnType<typeof createOwnRide>;
@@ -71,6 +76,10 @@ export function holdChannelRide(deps: {
 			const now = joined();
 			if (now && !wasJoined && free.armed) void free.end().then(sayFreeRide);
 			wasJoined = now;
+		});
+		// In a session with no workout, the free ride is the ride.
+		$effect(() => {
+			if (deps.joined() && together() && !free.armed) free.arm();
 		});
 	});
 

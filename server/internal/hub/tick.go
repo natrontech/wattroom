@@ -120,6 +120,10 @@ type tickOut struct {
 	afar         map[*client][]protocol.Cheer
 	gameWinner   string
 	sprintWinner string
+	// Riders here with numbers who ride no session of this room's: a free
+	// ride's numbers are the rider's own (docs/SESSIONS.md), so each is
+	// sent back to its own sockets and to nobody else's.
+	free map[string]struct{}
 }
 
 // tickEmptyLocked is a tick with nobody in the channel: the clock still
@@ -273,7 +277,7 @@ func (rm *channelState) tickLocked(now func() time.Time, dt time.Duration, savin
 	return tickOut{
 		tick: tick, cheerFrom: cheerFrom, rode: rode, ended: ended, clients: clients,
 		ridingKey: ridingKey, ridingIDs: ridingIDs, pairing: pairing, pokes: pokes, afar: afar,
-		gameWinner: gameWinner, sprintWinner: sprintWinner,
+		gameWinner: gameWinner, sprintWinner: sprintWinner, free: rm.freeRidersLocked(tick.Riders),
 	}
 }
 
@@ -435,4 +439,23 @@ func (rm *channelState) publishRidersLocked(pedallingIDs []string, now time.Time
 		}
 	}
 	rm.onSession.publish(rm.sessionID, riders, now)
+}
+
+// freeRidersLocked is who in riders rides no session of this voice
+// channel's: their numbers stay on their own screens (docs/SESSIONS.md). A
+// crew session's room has no free riders. Caller holds rm.mu.
+func (rm *channelState) freeRidersLocked(riders map[string]protocol.RiderMetrics) map[string]struct{} {
+	if rm.sessionID != "" {
+		return nil
+	}
+	var free map[string]struct{}
+	for id := range riders {
+		if !rm.session.rides(id) {
+			if free == nil {
+				free = make(map[string]struct{})
+			}
+			free[id] = struct{}{}
+		}
+	}
+	return free
 }

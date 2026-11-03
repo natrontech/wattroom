@@ -20,6 +20,7 @@
 	import { navDrawer } from '$lib/nav/drawer.svelte';
 	import { crewLive } from '$lib/nav/crew-live.svelte';
 	import { sessionPath } from '$lib/channel/address';
+	import { startRideTogether } from '$lib/session/crew-session';
 	import { device } from '$lib/device.svelte';
 	import Bike from '@lucide/svelte/icons/bike';
 	import Radio from '@lucide/svelte/icons/radio';
@@ -77,6 +78,17 @@
 			onSelect: () => {
 				nowPanel.ask = 'session';
 				if (!onPlace && conn) void goto(conn.address.home);
+			},
+		},
+		{
+			label: 'Ride together',
+			icon: Bike,
+			onSelect: () => {
+				if (!conn) return;
+				const crew = conn.address.crew;
+				void startRideTogether(crew).then((res) => {
+					if (res.ok) void goto(sessionPath(crew, res.data.id));
+				});
 			},
 		},
 		...running.map((session) => ({

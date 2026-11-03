@@ -64,6 +64,22 @@ func (h *Hub) OpenCrewSession(crew string, rider protocol.Rider, pick protocol.C
 	return id, "", ""
 }
 
+// OpenRideTogether opens a session of crew's with no workout
+// (docs/SESSIONS.md): it runs at once with rider coaching, everyone on it
+// rides their own free ride, and the coach ends it.
+func (h *Hub) OpenRideTogether(crew string, rider protocol.Rider) string {
+	id := uuid.NewString()
+	rm := h.stateOf(protocol.CrewSessionPlace(crew, id))
+	rm.mu.Lock()
+	rm.sessionID = id
+	rm.session.begin(id, rider.ID, rider.Name)
+	rm.session.runTogether(h.now())
+	rm.resetRunLocked(rider.ID)
+	rm.mu.Unlock()
+	h.tellChannel(rm.channel, rider.ID)
+	return id
+}
+
 // CrewSessions is every crew session of crew's that is open, its start line
 // included, as the crew's live list reads it. One room's lock at a time.
 func (h *Hub) CrewSessions(crew string) []protocol.LiveSession {

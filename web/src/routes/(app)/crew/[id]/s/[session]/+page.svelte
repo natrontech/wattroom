@@ -9,6 +9,9 @@
 	import { useChannel } from '$lib/channel/context';
 	import { liveSessionId } from '$lib/channel/tick-session';
 	import Training from '$lib/session/Training.svelte';
+	import CrewStrip from '$lib/session/CrewStrip.svelte';
+	import SessionControls from '$lib/session/SessionControls.svelte';
+	import FreeRide from '$lib/ride/FreeRide.svelte';
 	import { device } from '$lib/device.svelte';
 
 	const channel = useChannel();
@@ -50,4 +53,17 @@
 	});
 </script>
 
-<Training />
+{#if channelConnection.current?.live.tick?.state.together}
+	<!-- Riding together (docs/SESSIONS.md): the crew's numbers on top, the
+	     coach's End, and your own free ride underneath driving your trainer. -->
+	<div class="flex min-h-full flex-col gap-4 px-4 py-5 sm:px-6">
+		<CrewStrip
+			riders={channel.riders.filter((r) => r.inSession && !r.you)}
+			pad=""
+		/>
+		<div class="flex flex-wrap items-center gap-2"><SessionControls /></div>
+		<FreeRide />
+	</div>
+{:else}
+	<Training />
+{/if}

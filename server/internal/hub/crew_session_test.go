@@ -203,3 +203,37 @@ func TestVoiceChannelShowsItsSessionRiders(t *testing.T) {
 	}
 	t.Fatal("the call never showed alice riding her session")
 }
+
+// Riding together (docs/SESSIONS.md) runs at once with no workout and no
+// clock to end it, and saves no ride of its own: each rider's free ride is
+// theirs. The coach ends it.
+func TestRideTogether(t *testing.T) {
+	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
+	var clock atomic.Int64
+	clock.Store(time.Unix(1_800_000_000, 0).UnixNano())
+	h.now = func() time.Time { return time.Unix(0, clock.Load()) }
+	alice := protocol.Rider{ID: "alice", Name: "Alice", Role: "member"}
+	id := h.OpenRideTogether("crew1", alice)
+
+	live := h.CrewSessions("crew1")
+	if len(live) != 1 || live[0].ID != id || live[0].Phase != "running" || live[0].Workout != "Ride together" {
+		t.Fatalf("live = %+v, want Ride together running", live)
+	}
+	rm := h.stateOf(protocol.CrewSessionPlace("crew1", id))
+	clock.Add(int64(3 * time.Hour))
+	rm.mu.Lock()
+	state := rm.session.state(h.now())
+	rm.mu.Unlock()
+	if state.Phase != "running" || !state.Together {
+		t.Fatalf("three hours in: %+v, want still running, together", state)
+	}
+	// Ended and closed under one hold of the lock, so the room's own tick
+	// cannot close it first.
+	rm.mu.Lock()
+	rm.session.end(h.now())
+	end := rm.closeLocked(rm.session.state(h.now()), h.now(), true)
+	rm.mu.Unlock()
+	if end == nil || len(end.records) != 0 {
+		t.Fatalf("close = %+v, want a close with no rides of its own", end)
+	}
+}
