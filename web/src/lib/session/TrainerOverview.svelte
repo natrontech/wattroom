@@ -54,7 +54,7 @@
 
 <!-- One ride per device (ADR-0093): while your ride alone runs, the trainer
      is its, and pairing it here again would give the hardware two masters. -->
-{#if theRide.live}
+{#if theRide.alone}
 	<p class="text-muted text-xs">
 		Your trainer is on your ride. End it to ride here.
 		<a href="/ride" class="btn-link">Open your ride</a>

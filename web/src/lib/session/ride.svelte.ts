@@ -359,6 +359,10 @@ export function createRide(deps: RideDeps) {
 		get fault() {
 			return fault;
 		},
+		/** The latest arbitrated watts, for the ride dock (ADR-0093 point 5). */
+		get watts(): number {
+			return Math.round(latest?.watts ?? 0);
+		},
 		/** "210 W · 88 rpm" while the trainer reports; Settings › Equipment's proof it works. */
 		get reading(): string | undefined {
 			if (!latest || fault === 'silent') return undefined;
