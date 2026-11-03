@@ -197,3 +197,22 @@ select samples from rides where id = $1 and user_id = $2;
 -- its owner may have deleted it between the ride and its save, and a ride
 -- naming a gone route would fail the whole session's save on its key.
 select exists(select 1 from routes where id = $1);
+
+-- name: ListRoutesToStraighten :many
+-- The boot's rebuild of a route's turns from its own line (#4383), a page at
+-- a time by id: every row under this server's key whose turns predate rule
+-- turns_v.
+select id, geom_sealed, road_sealed from routes
+where key_version = sqlc.arg(key_version)
+  and geom_sealed is not null and road_sealed is not null
+  and (turns_v is null or turns_v < sqlc.arg(turns_v)::smallint)
+  and id > sqlc.arg(after)::uuid
+order by id
+limit sqlc.arg(lim);
+
+-- name: StraightenRoute :execrows
+-- One row's whole road with its turns rebuilt, only while it is still sealed
+-- under the key it was read under. road keeps no turns, and road_hash, the
+-- identity ghosts and times match on, stays: the heights are the same.
+update routes set road_sealed = sqlc.arg(road_sealed), turns_v = sqlc.arg(turns_v)::smallint
+where id = sqlc.arg(id) and key_version = sqlc.arg(key_version);
