@@ -14,6 +14,7 @@
 	import { confirm } from '$lib/confirm.svelte';
 	import { device } from '$lib/device.svelte';
 	import { useChannel } from '$lib/channel/context';
+	import { leaveChannel } from '$lib/channel/leave';
 	import { controlsFor } from '$lib/session/controls';
 	import { endGame } from '$lib/session/end-game';
 	import Modal from '$lib/components/Modal.svelte';
@@ -113,7 +114,13 @@
 			><Gamepad2 size={compact ? 18 : 15} />{#if !compact}End game{/if}</button
 		>
 	{/if}
-	{#if idle}
+	{#if idle && !channel.address.channel}
+		<!-- A crew's own session holds one session (docs/SESSIONS.md): the
+		     next one starts from the crew page, which leaving lands on. -->
+		<button onclick={leaveChannel} class="btn btn-secondary btn-lg"
+			>Back to the crew</button
+		>
+	{:else if idle}
 		<!-- Riding size in the compact header too (#2886): a free rider turns
 		     the ride into a session from here while pedalling. -->
 		<button

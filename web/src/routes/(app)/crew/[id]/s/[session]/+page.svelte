@@ -39,6 +39,10 @@
 		if (!state || !here) return;
 		const live = liveSessionId(state);
 		if (live === here) return;
+		// A crew's own session has no channel to fall back to
+		// (docs/SESSIONS.md): its page stays, closing card and all, until
+		// the rider leaves it from the now bar.
+		if (!channel.address.channel) return;
 		const to = live
 			? sessionPath(channel.address.crew, live)
 			: channel.address.home;

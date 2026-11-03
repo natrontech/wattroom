@@ -53,6 +53,8 @@ export interface LiveCrew {
 	icon?: string;
 	role: CrewRole;
 	channels: LiveChannel[];
+	/** The crew's own sessions (docs/SESSIONS.md), in no voice channel. */
+	sessions?: LiveSession[];
 }
 
 export function fetchCrewsLive(

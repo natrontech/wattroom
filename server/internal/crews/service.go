@@ -149,6 +149,15 @@ func (s *Service) evict(channel, userID string) {
 	}
 }
 
+// evictSessions severs someone from every crew session of the crew
+// (docs/SESSIONS.md), beside its voice channels. A hub without crew sessions
+// has none to sever.
+func (s *Service) evictSessions(crew pgtype.UUID, userID string) {
+	if k, ok := s.presence.(interface{ KickCrew(crew, userID string) }); ok {
+		k.KickCrew(store.UUIDString(crew), userID)
+	}
+}
+
 // reauthorize asks the gate again about riders whose crew role has just
 // changed, in every voice channel of the crew. Only after the commit: it
 // closes live sockets, which no rollback can reopen.

@@ -30,6 +30,8 @@ type liveCrewJSON struct {
 	// The caller's own role: owner | admin | member.
 	Role     string            `json:"role"`
 	Channels []liveChannelJSON `json:"channels"`
+	// The crew's own sessions (docs/SESSIONS.md), in no voice channel.
+	Sessions []protocol.LiveSession `json:"sessions,omitempty"`
 }
 
 type liveChannelJSON struct {
@@ -103,6 +105,9 @@ func (s *Service) handleCrewsLive(w http.ResponseWriter, r *http.Request) {
 // liveCrew is one crew as the rider may see it right now.
 func (s *Service) liveCrew(ctx context.Context, crewID, userID pgtype.UUID, role string) (liveCrewJSON, error) {
 	out := liveCrewJSON{ID: store.UUIDString(crewID), Role: role, Channels: []liveChannelJSON{}}
+	if s.crewSessions != nil {
+		out.Sessions = s.crewSessions.CrewSessions(store.UUIDString(crewID))
+	}
 	channels, err := s.enterable(ctx, crewID, userID, role)
 	if err != nil {
 		return out, err

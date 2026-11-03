@@ -333,6 +333,11 @@ func wire(ctx context.Context, st *store.Store, mux *http.ServeMux, baseURL stri
 	// outbound fetch goes through the package's own SSRF guard.
 	unfurl.New(authService, log).Register(mux)
 	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	// A crew's own session (docs/SESSIONS.md): its socket, behind the crew's
+	// door, and the crew's live list and its Start through channels.
+	h.SetCrewAccess(channelsService)
+	channelsService.SetCrewSessions(h)
+	mux.HandleFunc("GET /ws/crews/{crew}/sessions/{id}", h.HandleCrewSessionWS)
 	// The lobby socket (#251): held by every signed-in client — online for
 	// friends, and the push channel that keeps the rail live.
 	h.SetLobbyAuth(func(r *http.Request) (string, bool) {

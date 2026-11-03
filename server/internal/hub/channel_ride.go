@@ -8,8 +8,6 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/natrontech/wattroom/server/internal/protocol"
 )
 
@@ -295,7 +293,7 @@ func (rm *channelState) controlOn(c protocol.Control, route *routeRide, rider pr
 		return rm.neutraliseLocked(c.Action == "pause", now)
 	}
 	if c.Action == "pick" && !rm.session.open() {
-		rm.session.begin(uuid.NewString(), rider.ID, rider.Name)
+		rm.session.begin(rm.newSessionIDLocked(), rider.ID, rider.Name)
 	}
 	// A countdown stopped before it started (#2605) says so on the timeline,
 	// named while the session still carries its workout: its "starting" line
@@ -333,6 +331,11 @@ func (rm *channelState) refusalLocked(action string, rider protocol.Rider) (code
 	coaching := s.coachName
 	if coaching == "" {
 		coaching = "Someone"
+	}
+	// A crew session's room holds its one session (docs/SESSIONS.md): once
+	// that has closed, another is another room.
+	if rm.sessionID != "" && s.id == rm.sessionID && !s.open() && (action == "pick" || action == "game") {
+		return "conflict", "This session has ended. Start a new one from the crew page."
 	}
 	switch action {
 	case "pick", "start":

@@ -69,12 +69,14 @@ type Canceller interface {
 }
 
 type Service struct {
-	store    *store.Store
-	users    UserSource
-	log      *slog.Logger
-	live     Live
-	voice    VoiceEjector
-	notifier Canceller
+	store *store.Store
+	users UserSource
+	log   *slog.Logger
+	live  Live
+	// The crew's own sessions (crew_session.go); nil leaves them off.
+	crewSessions CrewSessions
+	voice        VoiceEjector
+	notifier     Canceller
 	// One cheer from afar per sender and rider per poke cooldown (#3275),
 	// on a key of its own as a bottle's is, so it never spends the poke.
 	cheers *budget.Budget[[2]string]
@@ -123,6 +125,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/crews/live", s.handleCrewsLive)
 	mux.HandleFunc("GET /api/crews/{id}/channels", s.handleList)
 	mux.HandleFunc("GET /api/crews/{id}/live", s.handleLive)
+	mux.HandleFunc("POST /api/crews/{id}/sessions", s.handleOpenCrewSession)
 	mux.HandleFunc("POST /api/crews/{id}/channels", s.handleCreate)
 	mux.HandleFunc("PATCH /api/channels/{id}", s.handleUpdate)
 	mux.HandleFunc("DELETE /api/channels/{id}", s.handleDelete)

@@ -13,6 +13,7 @@
 	import { fetchCrewRecaps, type Crew } from '$lib/crew';
 	import {
 		answerCrewPlan,
+		planCrewSession,
 		fetchCrewSchedule,
 		type CrewPlan,
 		planPath,
@@ -33,10 +34,23 @@
 	import { friends, friendsAround } from '$lib/friends/friends.svelte';
 	import FriendsAround from '$lib/friends/FriendsAround.svelte';
 	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
+	import Radio from '@lucide/svelte/icons/radio';
+	import { goto } from '$app/navigation';
+	import { api } from '$lib/api';
+	import { account } from '$lib/account.svelte';
+	import { device } from '$lib/device.svelte';
+	import type { ControlRoute, LiveSession } from '$lib/protocol';
+	import SessionPicker from '$lib/session/SessionPicker.svelte';
+	import { flatten } from '$lib/workout/engine';
+	import { customWorkouts } from '$lib/workout/custom.svelte';
+	import { buildShelf } from '$lib/workout/shelf';
+	import type { Workout } from '$lib/workout/types';
 
 	let { crew }: { crew: Crew } = $props();
 
 	let voice = $state<LiveChannel[] | null>(null);
+	// The crew's own sessions (docs/SESSIONS.md), in no voice channel.
+	let sessions = $state<LiveSession[]>([]);
 	let next = $state<CrewPlan | null>(null);
 	let latest = $state<SessionRecap | null>(null);
 	let error = $state<string | null>(null);
@@ -51,11 +65,11 @@
 			fetchCrewRecaps(id),
 		]);
 		if (id !== crew.id) return;
-		if (live.ok)
-			voice =
-				live.data.crews
-					.find((c) => c.id === id)
-					?.channels.filter((c) => c.kind === 'voice') ?? [];
+		if (live.ok) {
+			const mine = live.data.crews.find((c) => c.id === id);
+			voice = mine?.channels.filter((c) => c.kind === 'voice') ?? [];
+			sessions = mine?.sessions ?? [];
+		}
 		if (schedule.ok) next = schedule.data.sessions[0] ?? null;
 		// Oldest first from the server, as the Members page reads them.
 		if (recaps.ok) latest = recaps.data.recaps.at(-1) ?? null;
@@ -84,6 +98,7 @@
 	const quiet = $derived(
 		voice !== null &&
 			live.length === 0 &&
+			sessions.length === 0 &&
 			around.length === 0 &&
 			!next &&
 			!latest,
@@ -100,6 +115,36 @@
 		answering = false;
 		if (!res.ok) toasts.push(res.error.message, { tone: 'error' });
 		await load(crew.id);
+	}
+
+	// Start a session of the crew's own (docs/SESSIONS.md): the picker's
+	// workout, opened on the server, then its page. A phone plans, never starts.
+	let picking = $state(false);
+	let starting = $state(false);
+	const custom = customWorkouts();
+	const shelf = $derived(buildShelf(custom.all));
+	async function startSession(picked: Workout, route?: ControlRoute) {
+		starting = true;
+		const flat = flatten(picked);
+		const res = await api<{ id: string }>(`/api/crews/${crew.id}/sessions`, {
+			method: 'POST',
+			json: {
+				workoutName: picked.name,
+				workoutJson: JSON.stringify(picked),
+				totalSeconds: flat.reduce(
+					(t, s) => Math.max(t, s.startSeconds + s.seconds),
+					0,
+				),
+				route,
+			},
+		});
+		starting = false;
+		if (!res.ok) {
+			toasts.push(res.error.message, { tone: 'error' });
+			return;
+		}
+		picking = false;
+		void goto(sessionPath(crew.id, res.data.id));
 	}
 
 	const ANSWERS: [RsvpAnswer, string][] = [
@@ -139,6 +184,60 @@
 			{/snippet}
 		</EmptyState>
 	</div>
+{/if}
+
+<div class="mt-8 flex items-center gap-3">
+	<h2 class="eyebrow">sessions</h2>
+	{#if !device.spectator}
+		<button
+			onclick={() => (picking = true)}
+			class="btn btn-secondary btn-xs ml-auto"
+			><Radio size={13} /> Start a session</button
+		>
+	{/if}
+</div>
+{#if sessions.length > 0}
+	<ul class="mt-2 grid gap-2">
+		{#each sessions as session (session.id)}
+			<li class="panel flex flex-wrap items-center gap-3">
+				<div class="min-w-0 flex-1">
+					<p class="truncate text-sm font-medium">{session.workout}</p>
+					<p class="text-muted text-xs">
+						{session.coachName} coaching · {session.riders.length} riding · {formatClock(
+							session.elapsed,
+						)}
+					</p>
+				</div>
+				<a href={sessionPath(crew.id, session.id)} class="btn btn-accent btn-lg"
+					>Join the ride</a
+				>
+			</li>
+		{/each}
+	</ul>
+{/if}
+
+{#if picking}
+	<SessionPicker
+		{shelf}
+		shelfError={custom.error}
+		onRetryShelf={() => void custom.retry()}
+		intent="start"
+		ftp={account.me?.ftpWatts ?? 200}
+		busy={starting}
+		channelName={crew.name}
+		onStart={(workout, route) => void startSession(workout, route)}
+		onPlan={async (workoutName, workoutJson, startsAt) => {
+			const res = await planCrewSession(crew.id, {
+				workoutName,
+				workoutJson,
+				startsAt,
+			});
+			if (!res.ok) return res.error.message;
+			picking = false;
+			await load(crew.id);
+		}}
+		onClose={() => (picking = false)}
+	/>
 {/if}
 
 {#if live.length > 0}

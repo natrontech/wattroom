@@ -241,6 +241,7 @@ func (s *Service) handleLeaveCrew(w http.ResponseWriter, r *http.Request) {
 	for _, id := range voice {
 		s.evict(store.UUIDString(id), store.UUIDString(user.ID))
 	}
+	s.evictSessions(crew.ID, store.UUIDString(user.ID))
 	if swept == 0 {
 		s.roadPlansCancelled(r.Context(), crew.ID, plans, user)
 	}

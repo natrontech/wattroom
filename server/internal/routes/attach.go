@@ -65,6 +65,10 @@ func (a *Attacher) asked(ctx context.Context, route, crew pgtype.UUID) error {
 
 // crewOf is the crew a session's channel belongs to.
 func (a *Attacher) crewOf(ctx context.Context, channel string) (pgtype.UUID, error) {
+	// A crew session names its crew (docs/SESSIONS.md).
+	if crew, ok := protocol.CrewOfPlace(channel); ok {
+		return store.ParseUUID(crew)
+	}
 	id, err := store.ParseUUID(channel)
 	if err != nil {
 		return pgtype.UUID{}, fmt.Errorf("routes: channel %q is not an id: %w", channel, err)

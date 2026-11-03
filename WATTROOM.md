@@ -9,7 +9,7 @@ This file holds the decisions that hold today. Change one by editing it in the s
 Indoor training is boring alone. Zwift answers with a game world; WattRoom answers with presence. Your crew rides in its voice channel, everyone sees everyone's live watts and heart rate, you talk, you see each other, and the music plays in sync. On ride night WattRoom replaces both the trainer app and the voice app.
 
 - A structured workout player with precise trainer control (ERG and SIM).
-- Crews with chat channels, voice channels, and sessions that run in a voice channel.
+- Crews with chat channels, voice channels, and sessions: in a voice channel, or the crew's own with no channel.
 - Roads: a rider's own route or a library climb, ridden in a 3D world in any mode.
 - A hosted service at **wattroom.ch**, open source under **AGPL-3.0**, funded by donations only.
 
@@ -18,7 +18,7 @@ It is not a training plan generator, not an open world, and not a content treadm
 ## Stack and operations
 
 - Go server (API, WebSocket, embedded SPA) + SvelteKit SPA + PostgreSQL + LiveKit, self-hosted.
-- One Go instance. Live state lives in memory, one goroutine per voice channel, one coalesced message per channel per second. Postgres holds durable data only. Redis or NATS only when one instance measurably can't cope.
+- One Go instance. Live state lives in memory, one goroutine per voice channel and one per crew session, one coalesced message each per second. Postgres holds durable data only. Redis or NATS only when one instance measurably can't cope.
 - Go: stdlib `net/http`, sqlc + pgx, goose migrations, coder/websocket, `log/slog`. No framework, no ORM.
 - The WS protocol is JSON; Go structs are the source of truth and tygo generates the TypeScript.
 - One VM with docker compose (app, Postgres, LiveKit, Caddy). Releases are CalVer tags; the VM converges on the newest tag and rolls back by image tag, never by restoring a dump.
@@ -31,6 +31,7 @@ It is not a training plan generator, not an open world, and not a content treadm
 
 - The crew is what persists: members, roles (owner, admin, member), one ban, the schedule, the streak, medals and history. Its invite is a link and a 6-character code.
 - A voice channel rides without a session (a free ride). A session drives only the riders who joined it.
+- A session can be the crew's own: any member starts one from the crew page, several can run at once, and joining one needs no voice channel. Its recap is every member's. Sessions leave voice channels entirely in the steps of docs/SESSIONS.md.
 - Everything is behind sign-in except the public pages, which are prerendered.
 - One account holds a set of credentials: Google, GitHub, Strava and passkeys. No passwords. A verified email is for recovery, and a mailed link is the way back in.
 - Friends are mutual. Presence is a friend's to see.

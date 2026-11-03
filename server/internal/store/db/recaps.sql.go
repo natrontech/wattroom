@@ -88,6 +88,7 @@ from (
     where s.crew_id = $2
       and s.ended_at >= now() - make_interval(days => $3::int)
       and ($4::boolean
+           or s.crew_wide
            or (ch.id is not null and not ch.private)
            or exists (select 1 from channel_members cm
                       where cm.channel_id = s.channel_id and cm.user_id = $1))
@@ -188,6 +189,52 @@ func (q *Queries) PruneSessionRecaps(ctx context.Context, dollar_1 int32) (int64
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const saveCrewSessionRecap = `-- name: SaveCrewSessionRecap :one
+insert into session_recaps (crew_id, session_id, workout, started_at, ended_at, riders, crew_wide)
+select cw.id, $1::uuid,
+       $2, $3, $4,
+       (select coalesce(jsonb_agg(r.e order by r.n), '[]'::jsonb)
+          from jsonb_array_elements($5::jsonb) with ordinality as r(e, n)
+         where exists (select 1 from users u where u.id = (r.e ->> 'id')::uuid)),
+       true
+from crews cw
+where cw.id = $6
+on conflict (session_id) where session_id is not null do update
+    set workout = excluded.workout, ended_at = excluded.ended_at, riders = excluded.riders
+returning id, created_at, riders
+`
+
+type SaveCrewSessionRecapParams struct {
+	SessionID pgtype.UUID
+	Workout   string
+	StartedAt pgtype.Timestamptz
+	EndedAt   pgtype.Timestamptz
+	Riders    []byte
+	CrewID    pgtype.UUID
+}
+
+type SaveCrewSessionRecapRow struct {
+	ID        pgtype.UUID
+	CreatedAt pgtype.Timestamptz
+	Riders    []byte
+}
+
+// A crew session's recap (docs/SESSIONS.md): SaveSessionRecap for a session
+// that ran in no voice channel, every member's to read.
+func (q *Queries) SaveCrewSessionRecap(ctx context.Context, arg SaveCrewSessionRecapParams) (SaveCrewSessionRecapRow, error) {
+	row := q.db.QueryRow(ctx, saveCrewSessionRecap,
+		arg.SessionID,
+		arg.Workout,
+		arg.StartedAt,
+		arg.EndedAt,
+		arg.Riders,
+		arg.CrewID,
+	)
+	var i SaveCrewSessionRecapRow
+	err := row.Scan(&i.ID, &i.CreatedAt, &i.Riders)
+	return i, err
 }
 
 const saveSessionRecap = `-- name: SaveSessionRecap :one

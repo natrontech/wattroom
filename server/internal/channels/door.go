@@ -1,6 +1,7 @@
 package channels
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/av"
 	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
+	"github.com/natrontech/wattroom/server/internal/store/db"
 )
 
 // Authorize is the live door into a voice channel (#2436) — the hub's socket
@@ -47,26 +49,32 @@ func (s *Service) Authorize(r *http.Request, id string) (protocol.Rider, string,
 	if !admitted {
 		return protocol.Rider{}, "", av.ErrNotMember
 	}
+	return s.riderOf(r.Context(), user, role, "channel", id), store.UUIDString(ch.ID), nil
+}
+
+// riderOf is the rider a door admits: the account as a room carries it, with
+// the crew role, the level, the look and what a race's flag reads.
+func (s *Service) riderOf(ctx context.Context, user db.User, role, where, id string) protocol.Rider {
 	// The level rides with the rest of the channel-visible identity (#690);
 	// unreadable XP joins at zero rather than not at all.
-	xp, err := s.store.Queries.UserTotalXp(r.Context(), user.ID)
+	xp, err := s.store.Queries.UserTotalXp(ctx, user.ID)
 	if err != nil {
-		s.log.Warn("total xp unavailable for roster", "err", err, "channel", id)
+		s.log.Warn("total xp unavailable for roster", "err", err, where, id)
 		xp = 0
 	}
 	// The look rides with the identity too (#3155), read from the store and
 	// never through the wardrobe: cosmetics stay out of what moves anyone.
 	// None read joins in the starter kit.
-	look, err := s.store.Queries.UserLookHash(r.Context(), user.ID)
+	look, err := s.store.Queries.UserLookHash(ctx, user.ID)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		s.log.Warn("look unavailable for roster", "err", err, "channel", id)
+		s.log.Warn("look unavailable for roster", "err", err, where, id)
 	}
 	// What a race's flag reads for the race FTP and the Category (#3658),
 	// held by the hub and never sent. Unreadable, the race falls back to the
 	// profile FTP — a bracket read low, never a rider refused a room.
-	best20m, err := s.store.Queries.Best20mIn90Days(r.Context(), user.ID)
+	best20m, err := s.store.Queries.Best20mIn90Days(ctx, user.ID)
 	if err != nil {
-		s.log.Warn("best 20 min unavailable for roster", "err", err, "channel", id)
+		s.log.Warn("best 20 min unavailable for roster", "err", err, where, id)
 		best20m = 0
 	}
 	rider := store.RiderOf(user)
@@ -74,7 +82,7 @@ func (s *Service) Authorize(r *http.Request, id string) (protocol.Rider, string,
 	if look != nil {
 		rider.Look = *look
 	}
-	return rider, store.UUIDString(ch.ID), nil
+	return rider
 }
 
 // liveRole is the crew role as a voice channel carries it: the door's answer,
