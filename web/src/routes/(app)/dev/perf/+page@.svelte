@@ -214,7 +214,12 @@
 				});
 				scene = s;
 				Object.assign(window, {
-					perfWorld: { probe: s.probe, frames: s.frames, stats: s.stats },
+					perfWorld: {
+						probe: s.probe,
+						frames: s.frames,
+						stats: s.stats,
+						setProgress: s.setProgress, // the light at a share of the ride, for a capture of the sky
+					},
 				});
 			},
 		);
