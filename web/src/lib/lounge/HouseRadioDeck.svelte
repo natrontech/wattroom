@@ -22,7 +22,11 @@
 	const conn = $derived(channelConnection.call);
 	const deck = $derived(conn?.live.tick?.jukebox);
 	const station = $derived(conn?.address.crew ?? '');
-	const pick = $derived(radioPickOf(conn?.live.tick?.lounge));
+	const lounge = $derived(conn?.live.tick?.lounge);
+	const pick = $derived(radioPickOf(lounge));
+	/** The channel's skips (Next track), and the stove's slower tunes. */
+	const shift = $derived(lounge?.radioShiftMs ?? 0);
+	const slow = $derived(!!lounge?.fire);
 	const on = $derived(
 		!!deck?.current?.radio &&
 			deck.playing &&
@@ -59,9 +63,9 @@
 			radio?.setLevel(down ? ceiling * depth : ceiling, ms),
 		);
 	});
-	$effect(() => radio?.setRain(weatherOf(conn?.live.tick?.lounge) === 'rain'));
-	// The style anyone in the channel picked at the record player.
-	$effect(() => radio?.setStyle(stationPick(pick)));
+	$effect(() => radio?.setRain(weatherOf(lounge) === 'rain'));
+	// The style anyone in the channel picked, their skips and the stove.
+	$effect(() => radio?.tune(stationPick(pick), shift, slow));
 	// A context made before any click or key starts suspended; the first one
 	// wakes it.
 	$effect(() => {
@@ -83,9 +87,11 @@
 			now = null;
 			return;
 		}
-		// Writes `now` and never reads it back, so the effect does not wake itself.
+		// Writes `now` and never reads it back, so the effect does not wake
+		// itself. A skip changes `shift` and steps at once.
+		const ahead = shift;
 		const step = () => {
-			const pos = recordAt(station, serverNow() / 1000);
+			const pos = recordAt(station, (serverNow() + ahead) / 1000);
 			now = pos;
 			const el = audio;
 			if (!el || !el.src.endsWith(radioSrc(pos.record.file))) return;

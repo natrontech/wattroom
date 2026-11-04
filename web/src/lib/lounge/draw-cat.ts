@@ -1,6 +1,6 @@
 /**
- * The cat, wherever the clock has it (moments.ts): asleep, sitting up, or
- * hopping to its next place. A pet anyone in the channel gives wakes it on
+ * The cat, wherever the clock has it (moments.ts): asleep, sitting up,
+ * walking to its next place or jumping on and off the furniture. A pet anyone in the channel gives wakes it on
  * every screen. Drawn as it sat on the sill, moved to where it is.
  */
 import { LOUNGE as C } from '$lib/lounge/palette';
@@ -18,7 +18,8 @@ export function drawCat(g: Ctx, s: SceneInput) {
 	g.translate(Math.round(x), Math.round(y - Y));
 	if (facing < 0) g.scale(-1, 1);
 	g.translate(-AT_X, 0);
-	if (pose === 'walk') walking(g, s);
+	if (pose === 'walk') walking(g, s, s.cat.stride);
+	else if (pose === 'leap') leaping(g);
 	else if (pose === 'sit' || s.catAwake) sitting(g, s);
 	else asleep(g, s);
 	g.restore();
@@ -63,20 +64,47 @@ function asleep(g: Ctx, s: SceneInput) {
 	}
 }
 
-function walking(g: Ctx, s: SceneInput) {
-	const step = s.still ? 0 : Math.floor(s.t * 8) % 2;
+/**
+ * Two frames, legs apart and legs together, one for every three pixels
+ * walked: the body rides a pixel higher over gathered legs.
+ */
+function walking(g: Ctx, s: SceneInput, stride: number) {
+	const together = !s.still && Math.floor(stride / 3) % 2 === 1;
+	const up = together ? 1 : 0;
+	const legs = together ? [231, 233, 238, 240] : [230, 234, 237, 241];
 	outlined(
 		g,
 		[
-			[229, Y - 9, 13, 5, C.cat],
-			[240, Y - 13, 6, 5, C.cat],
-			[240, Y - 14, 1, 1, C.cat],
-			[245, Y - 14, 1, 1, C.cat],
-			...[230, 239].map((leg) => [leg + step * 2, Y - 4, 1, 4, C.cat] as const),
-			[226, Y - 12, 1, 4, C.catLight],
-			[227, Y - 9, 2, 1, C.catLight],
+			[229, Y - 9 - up, 13, 5, C.cat],
+			[240, Y - 13 - up, 6, 5, C.cat],
+			[240, Y - 14 - up, 1, 1, C.cat],
+			[245, Y - 14 - up, 1, 1, C.cat],
+			...legs.map((x) => [x, Y - 4 - up, 1, 4 + up, C.cat] as const),
+			[226, Y - 13 - up, 1, 4, C.catLight],
+			[227, Y - 10 - up, 2, 1, C.catLight],
 		],
 		C.ink,
 	);
-	dot(g, 244, Y - 11, C.amber);
+	dot(g, 244, Y - 11 - up, C.amber);
+}
+
+/** Mid-jump: stretched out, forelegs reaching down ahead, hind legs pushing off behind. */
+function leaping(g: Ctx) {
+	outlined(
+		g,
+		[
+			[229, Y - 11, 12, 4, C.cat],
+			[240, Y - 14, 6, 5, C.cat],
+			[240, Y - 15, 1, 1, C.cat],
+			[245, Y - 15, 1, 1, C.cat],
+			[242, Y - 7, 1, 2, C.cat],
+			[243, Y - 5, 1, 2, C.cat],
+			[228, Y - 8, 1, 2, C.cat],
+			[227, Y - 6, 1, 2, C.cat],
+			[224, Y - 11, 5, 1, C.catLight],
+			[223, Y - 13, 1, 2, C.catLight],
+		],
+		C.ink,
+	);
+	dot(g, 244, Y - 12, C.amber);
 }

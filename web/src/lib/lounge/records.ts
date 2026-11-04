@@ -55,3 +55,13 @@ export function recordAt(
 	}
 	return { record: order[order.length - 1], at };
 }
+
+/** The server second the record after the one playing at `sec` starts. */
+export function nextRecordAt(
+	station: string,
+	sec: number,
+	shelf: readonly Record[] = RECORDS,
+): number {
+	const { record, at } = recordAt(station, sec, shelf);
+	return sec - at + record.ms / 1000 + GAP_SEC;
+}

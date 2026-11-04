@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+	CAT_PACE,
 	CAT_SLOT_SEC,
 	CAT_SPOTS,
 	owlHours,
@@ -30,6 +31,24 @@ describe('the lounge moments every screen shares', () => {
 		for (let slot = 0; slot < DAY / CAT_SLOT_SEC; slot++)
 			places.add(catAt(7, slot * CAT_SLOT_SEC + 60).x);
 		expect(places.size).toBe(CAT_SPOTS.length);
+	});
+
+	it("walks the cat from place to place at a cat's pace, never in a blink", () => {
+		const dt = 0.05;
+		let was = catAt(7, 0);
+		let walked = 0;
+		for (let sec = dt; sec < DAY / 8; sec += dt) {
+			const now = catAt(7, sec);
+			const moved = Math.hypot(now.x - was.x, now.y - was.y);
+			// A jump off the speaker drops some 55 px in half a second.
+			expect(moved).toBeLessThan(9);
+			if (now.pose === 'walk' && was.pose === 'walk') {
+				expect(moved).toBeLessThanOrEqual(CAT_PACE * dt + 1e-6);
+				walked++;
+			}
+			was = now;
+		}
+		expect(walked).toBeGreaterThan(0);
 	});
 
 	it('flies something past the window in some slots, and the same thing everywhere', () => {

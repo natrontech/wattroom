@@ -2,7 +2,7 @@
  * The room itself, seen from above at an angle: the back wall with its
  * curtains, sign, clock and poster, the desk and lamp, the cabinet the
  * record player and speaker stand on, the sofa under the window, the rug and
- * the table. All of it but what moves is drawn once onto a canvas of its own
+ * the table, the stove between the sofa and the cabinet. All of it but what moves is drawn once onto a canvas of its own
  * (drawBack); drawLive adds what moves over it, and drawShade the dark that
  * falls when the lamp is off.
  */
@@ -66,6 +66,7 @@ export function drawBack(g: Ctx, s: SceneInput, ox: number, oy: number) {
 		if (s.season === 'winter') tree(b);
 		else plant(b);
 		sofa(b);
+		stove(b);
 		rug(b);
 		table(b);
 		if (hasFront(s.w, s.h)) front(b);
@@ -330,6 +331,34 @@ function sofa(g: Ctx) {
 	}
 }
 
+/**
+ * A small cast-iron stove in the corner between the sofa and the cabinet,
+ * its pipe into the wall under the clock. Its fire is drawLive's.
+ */
+function stove(g: Ctx) {
+	rect(g, 217, 86, 17, 1, C.floorDark);
+	outlined(
+		g,
+		[
+			[224, 52, 3, 11, C.laptop],
+			[222, 50, 7, 2, C.laptopLight],
+			[219, 66, 13, 18, C.laptop],
+			[218, 63, 15, 3, C.laptopLight],
+		],
+		C.ink,
+	);
+	rect(g, 224, 52, 1, 11, C.laptopLight);
+	rect(g, 218, 63, 15, 1, C.cable);
+	rect(g, 219, 66, 1, 18, C.laptopLight);
+	// The door: a frame round its glass, the ash drawer under it, two feet.
+	rect(g, 220, 68, 11, 10, C.laptopLight);
+	rect(g, 221, 69, 9, 8, C.ink);
+	rect(g, 221, 80, 9, 2, C.laptopLight);
+	dot(g, 225, 81, C.cable);
+	rect(g, 219, 84, 2, 2, C.ink);
+	rect(g, 230, 84, 2, 2, C.ink);
+}
+
 /** The round rug the crew sits around. */
 function rug(g: Ctx) {
 	ellipse(g, 160, 123, 67, 23, C.ink);
@@ -427,6 +456,7 @@ export function drawLive(g: Ctx, s: SceneInput) {
 	mug(g, s);
 	deck(g, s);
 	fishBowl(g, s);
+	fire(g, s);
 	if (s.season === 'winter') treeLights(g, s);
 	if (s.bloom) bloom(g);
 	if (s.pizza) pizza(g);
@@ -448,6 +478,39 @@ function fishBowl(g: Ctx, s: SceneInput) {
 	rect(g, left ? 277 + swim : 273 + swim, 56 + hop, 1, 2, C.amberDark);
 	if (!s.still && Math.floor(s.t * 2) % 3 === 0)
 		rect(g, 276 + swim, 52, 1, 1, C.paper);
+}
+
+/** How tall the flames stand in each of the glass's nine columns: highest in the middle. */
+const FLAME = [1, 3, 4, 5, 6, 5, 4, 3, 1];
+
+/**
+ * The stove's glass: cold, a glint; lit, flames over two logs, white-hot
+ * at the root and red at the tips, every column its own height on every
+ * sixth of a second, and their light on the floor.
+ */
+function fire(g: Ctx, s: SceneInput) {
+	if (!s.fire) {
+		dot(g, 222, 70, C.cable);
+		return;
+	}
+	const k = s.still ? 0 : Math.floor(s.t * 6);
+	pool(g, 226, 91, 24, 5, C.litFloor, 0.7);
+	FLAME.forEach((tall, c) => {
+		const h = Math.max(
+			1,
+			Math.min(7, tall + Math.floor(hash3(k, c, 31) * 3) - 1),
+		);
+		for (let r = 0; r < h; r++)
+			dot(
+				g,
+				221 + c,
+				75 - r,
+				r < h * 0.4 ? C.bulb : r < h * 0.75 ? C.amber : C.amberDark,
+			);
+	});
+	rect(g, 221, 76, 4, 1, C.woodLight);
+	rect(g, 226, 76, 4, 1, C.woodLight);
+	dot(g, 225, 76, C.amberDark);
 }
 
 /** Touched, the plant flowers for a while. */
@@ -627,22 +690,39 @@ function treeLights(g: Ctx, s: SceneInput) {
 	}
 }
 
-/** How dark the room is with the lamp on or off under a sky. */
-export function shadeFor(lampOn: boolean, sky: Sky): number {
-	if (lampOn) return sky === 'night' ? 0.12 : 0;
-	return sky === 'night' ? 0.42 : sky === 'dusk' ? 0.25 : 0.1;
+/** How dark the room is with the lamp on or off under a sky; a lit stove lifts a third of it. */
+export function shadeFor(lampOn: boolean, sky: Sky, fireLit = false): number {
+	const dark = lampOn
+		? sky === 'night'
+			? 0.12
+			: 0
+		: sky === 'night'
+			? 0.42
+			: sky === 'dusk'
+				? 0.25
+				: 0.1;
+	return fireLit ? dark * 0.65 : dark;
 }
 
-/** With the lamp off, the room darkens and the window stays as bright. */
+/**
+ * With the lamp off, the room darkens and the window stays as bright. A lit
+ * stove washes the room warm: an amber a few percent strong that breathes
+ * by one percent, far under anything that could flash (WCAG 2.3.1).
+ */
 export function drawShade(g: Ctx, s: SceneInput, ox: number, oy: number) {
-	const dim = s.shade;
-	if (dim < 0.005) return;
 	const { X, Y, W, H } = WINDOW;
-	g.globalAlpha = dim;
-	g.fillStyle = C.shade;
-	g.beginPath();
-	g.rect(0, 0, s.w, s.h);
-	g.rect(ox + X, oy + Y, W, H);
-	g.fill('evenodd');
-	g.globalAlpha = 1;
+	const veil = (colour: string, alpha: number) => {
+		g.globalAlpha = alpha;
+		g.fillStyle = colour;
+		g.beginPath();
+		g.rect(0, 0, s.w, s.h);
+		g.rect(ox + X, oy + Y, W, H);
+		g.fill('evenodd');
+		g.globalAlpha = 1;
+	};
+	if (s.shade >= 0.005) veil(C.shade, s.shade);
+	if (s.fire) {
+		const breath = s.still ? 0.5 : hash3(Math.floor(s.t * 5), 1, 9);
+		veil(C.amberDark, 0.06 + breath * 0.01);
+	}
 }

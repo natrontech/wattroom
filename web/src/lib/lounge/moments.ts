@@ -15,41 +15,78 @@ export const CAT_SPOTS = [
 	{ x: 22, y: 100 }, // the floor by the plant
 	{ x: 298, y: 98 }, // the floor by the cabinet
 ] as const;
-/** The cat stays this long in one place, and takes this long to get to the next. */
+/** The cat stays this long in one place; getting to the next is the start of it. */
 export const CAT_SLOT_SEC = 150;
-const CAT_WALK_SEC = 3;
+/** The floor in front of the furniture, where the cat walks from one place to the next. */
+const CAT_LANE = 94;
+/** A cat's amble in stage pixels a second: across the whole room in about fourteen. */
+export const CAT_PACE = 20;
+/** One jump, up onto the furniture or down from it. */
+const CAT_JUMP_SEC = 0.5;
 
-export type CatPose = 'sleep' | 'sit' | 'walk';
+export type CatPose = 'sleep' | 'sit' | 'walk' | 'leap';
 export interface Cat {
 	x: number;
 	y: number;
 	pose: CatPose;
 	/** -1 walking left, 1 right. */
 	facing: number;
+	/** Pixels walked on this way, so its legs step with the floor and never skate. */
+	stride: number;
 }
+
+type Point = { x: number; y: number };
 
 const catSpot = (seed: number, slot: number) =>
 	CAT_SPOTS[Math.floor(hash3(seed, slot, 11) * CAT_SPOTS.length)];
 
+const onFurniture = (p: Point) => p.y < CAT_LANE - 4;
+
+/**
+ * The way between two places: down off the furniture beside it, along the
+ * floor, and up beside the next. Off the furniture or onto it is a jump.
+ */
+function catWay(from: Point, to: Point) {
+	const dir = Math.sign(to.x - from.x) || 1;
+	const floor = (p: Point, side: number) =>
+		onFurniture(p) ? { x: p.x + side * 8, y: CAT_LANE } : p;
+	const points = [from, floor(from, dir), floor(to, -dir), to];
+	return points.slice(1).map((b, i) => {
+		const a = points[i];
+		const leap = onFurniture(a) || onFurniture(b);
+		const far = Math.hypot(b.x - a.x, b.y - a.y);
+		return { a, b, leap, sec: leap ? CAT_JUMP_SEC : far / CAT_PACE, far };
+	});
+}
+
 export function catAt(seed: number, sec: number): Cat {
 	const slot = Math.floor(sec / CAT_SLOT_SEC);
-	const into = sec - slot * CAT_SLOT_SEC;
+	let into = sec - slot * CAT_SLOT_SEC;
 	const to = catSpot(seed, slot);
 	const from = catSpot(seed, slot - 1);
-	if (into < CAT_WALK_SEC && from !== to) {
-		const f = into / CAT_WALK_SEC;
-		// A hop: up and over whatever is between the two places.
-		return {
-			x: from.x + (to.x - from.x) * f,
-			y: from.y + (to.y - from.y) * f - Math.sin(f * Math.PI) * 14,
-			pose: 'walk',
-			facing: to.x < from.x ? -1 : 1,
-		};
-	}
+	let stride = 0;
+	if (from !== to)
+		for (const { a, b, leap, sec: takes, far } of catWay(from, to)) {
+			if (into >= takes) {
+				into -= takes;
+				if (!leap) stride += far;
+				continue;
+			}
+			const f = into / takes;
+			return {
+				x: a.x + (b.x - a.x) * f,
+				// A jump arcs; a walk keeps to the floor.
+				y: a.y + (b.y - a.y) * f - (leap ? Math.sin(f * Math.PI) * 8 : 0),
+				pose: leap ? 'leap' : 'walk',
+				facing: Math.sign(b.x - a.x) || Math.sign(to.x - from.x) || 1,
+				stride: stride + (leap ? 0 : far * f),
+			};
+		}
 	return {
 		...to,
 		pose: hash3(seed, slot, 12) < 0.65 ? 'sleep' : 'sit',
 		facing: 1,
+		stride: 0,
 	};
 }
 

@@ -139,15 +139,17 @@ export function styleOf(
 /**
  * The tune a crew's station plays in one slot, in the style the channel
  * picked or the mix's. A pick changes the style and what follows from it; the
- * slot's own draws stay the same.
+ * slot's own draws stay the same. `slow`, while the stove burns, keeps to the
+ * style's slower half of tempos.
  */
 export function tuneOf(
 	station: string,
 	slot: number,
 	picked: Style | '' = '',
+	slow = false,
 ): Tune {
 	const id = `${station}:${slot}`;
-	const known = cache.get(`${id}:${picked}`);
+	const known = cache.get(`${id}:${picked}:${slow}`);
 	if (known) return known;
 	if (cache.size > 8) cache.clear();
 	const seed = hashSeed(id);
@@ -160,7 +162,10 @@ export function tuneOf(
 	const calm = style === 'ambient';
 	const key = Math.floor(r() * 12);
 	const mode = r() < 0.5 ? 'minor' : 'major';
-	const bpm = pick(TEMPOS[style]);
+	const tempos = TEMPOS[style];
+	const bpm = pick(
+		slow ? tempos.slice(0, Math.ceil(tempos.length / 2)) : tempos,
+	);
 	const book = mode === 'minor' ? MINOR : MAJOR;
 	const first = Math.floor(r() * book.length);
 	const steps = r() < 0.4 ? [...book[first], ...pick(book)] : book[first];
@@ -224,7 +229,7 @@ export function tuneOf(
 		turn: Math.floor(r() * 72),
 		name: `${pick(FIRST)} ${pick(SECOND)}`,
 	};
-	cache.set(`${id}:${picked}`, tune);
+	cache.set(`${id}:${picked}:${slow}`, tune);
 	return tune;
 }
 
@@ -466,9 +471,10 @@ export function positionAt(
 	station: string,
 	sec: number,
 	pick: Style | '' = '',
+	slow = false,
 ): StationPosition {
 	const slot = Math.floor(sec / SLOT_SEC);
-	const tune = tuneOf(station, slot, pick);
+	const tune = tuneOf(station, slot, pick, slow);
 	const into = sec - slot * SLOT_SEC;
 	const bar = Math.min(tune.bars, Math.floor(into / tune.barSec));
 	return {

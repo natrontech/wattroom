@@ -8,6 +8,8 @@
 	// HouseRadioDeck plays it.
 	import { tick, untrack } from 'svelte';
 	import Disc3 from '@lucide/svelte/icons/disc-3';
+	import SkipForward from '@lucide/svelte/icons/skip-forward';
+	import Sparkles from '@lucide/svelte/icons/sparkles';
 	import Bike from '@lucide/svelte/icons/bike';
 	import Drum from '@lucide/svelte/icons/drum';
 	import MicOff from '@lucide/svelte/icons/mic-off';
@@ -21,9 +23,11 @@
 	import {
 		MENU_HINT,
 		contextMenu,
+		openMenu,
 		type MenuEntry,
 	} from '$lib/context-menu.svelte';
 	import { serverNow } from '$lib/server-clock';
+	import type { LoungeState } from '$lib/protocol';
 	import { mixer } from '$lib/sound/mixer.svelte';
 	import { prefersReducedMotion } from '$lib/motion';
 	import { fnv } from '$lib/world/loadout';
@@ -36,11 +40,16 @@
 		positionAt,
 	} from '$lib/lounge/station';
 	import {
-		nextRadioPick,
+		MOODS,
+		RADIO_PICKS,
+		moodOf,
 		nextWeather,
 		radioPickOf,
+		skipShift,
 		stationPick,
 		weatherOf,
+		type Mood,
+		type RadioPick,
 	} from '$lib/lounge/state';
 	import { recordAt } from '$lib/lounge/records';
 	import { crewOf } from '$lib/lounge/figures';
@@ -97,8 +106,12 @@
 	const seed = $derived(fnv(station));
 
 	const onAir = $derived(!!deck?.current?.radio);
-	/** House radio's style, picked at the record player for everyone; '' is records. */
+	/** House radio's style, picked in its crate for everyone; '' is records. */
 	const pick = $derived(radioPickOf(lounge));
+	/** How far the channel skipped house radio ahead, and the stove's slower tunes. */
+	const shift = $derived(lounge?.radioShiftMs ?? 0);
+	const fire = $derived(!!lounge?.fire);
+	const mood = $derived(moodOf(lounge));
 
 	let boxW = $state(0);
 	let boxH = $state(0);
@@ -163,7 +176,12 @@
 		if (current?.radio && !pick)
 			return { playing: deck!.playing, beat: 0, pulsing: false, disco: false };
 		if (current?.radio) {
-			const p = positionAt(station, serverNow() / 1000, stationPick(pick));
+			const p = positionAt(
+				station,
+				(serverNow() + shift) / 1000,
+				stationPick(pick),
+				fire,
+			);
 			return {
 				playing: deck!.playing,
 				beat: p.beat,
@@ -191,9 +209,10 @@
 		const riders = channel.riders;
 		const now = new Date();
 		const sec = serverNow() / 1000;
-		const sky = skyAt(now.getHours());
+		// A mood brings its own sky; otherwise the window keeps the viewer's hour.
+		const sky = mood ? MOODS[mood].sky : skyAt(now.getHours());
 		const lampOn = !lounge?.lampOff;
-		const dark = shadeFor(lampOn, sky);
+		const dark = shadeFor(lampOn, sky, fire);
 		shade =
 			still || shade < 0
 				? dark
@@ -208,6 +227,8 @@
 			lampOn,
 			crew: crewOf(riders, still ? 0 : clock, size.w, size.h),
 			...music(),
+			...(mood === 'arcade' && { disco: true }),
+			fire,
 			cat: catAt(seed, sec),
 			catAwake: clock < catAwakeUntil,
 			hearts,
@@ -224,7 +245,7 @@
 			radio: pick,
 			fishJump: clock < fishUntil,
 			bloom: clock < bloomUntil,
-			arcade: clock < arcadeUntil,
+			arcade: clock < arcadeUntil || mood === 'arcade',
 			pizza: pizzaNight(now),
 			owl: owlHours(now.getHours()),
 		});
@@ -247,12 +268,13 @@
 			return;
 		}
 		const say = () => {
+			const at = (serverNow() + shift) / 1000;
 			if (!pick) {
-				const { record } = recordAt(station, serverNow() / 1000);
+				const { record } = recordAt(station, at);
 				nowPlaying = `“${record.title}” · ${record.artist}`;
 				return;
 			}
-			const p = positionAt(station, serverNow() / 1000, stationPick(pick));
+			const p = positionAt(station, at, stationPick(pick), fire);
 			nowPlaying = `“${p.tune.name}” · ${KEY_NAMES[p.tune.key]} · ${p.tune.bpm} BPM`;
 			styleNow = p.tune.style;
 		};
@@ -315,40 +337,105 @@
 
 	function click(e: MouseEvent) {
 		const { who, cat, spot } = at(e);
-		const state = { ...lounge, weather: weatherOf(lounge) };
+		// A flip by hand leaves the mood: the room is no longer its preset.
+		const state = { ...lounge, weather: weatherOf(lounge), mood: '' };
 		if (who) heart(who.x - 2, who.head - 8);
 		else if (cat) {
 			ownPets++;
 			wake();
-			live?.setLounge({ ...state, pets: (lounge?.pets ?? 0) + 1 });
+			live?.setLounge({
+				...lounge,
+				weather: weatherOf(lounge),
+				pets: (lounge?.pets ?? 0) + 1,
+			});
 		} else if (spot === 'lamp')
 			live?.setLounge({ ...state, lampOff: !state.lampOff });
 		else if (spot === 'window')
 			live?.setLounge({ ...state, weather: nextWeather(state.weather) });
 		else if (spot === 'clock') cuckooUntil = clock + 3;
-		else if (spot === 'deck') pickStyle();
-		else if (spot === 'fish') fishUntil = clock + 1.2;
+		else if (spot === 'deck') next();
+		// Lit, the generated styles start one of their slower tunes; records play on.
+		else if (spot === 'stove') {
+			if (pick === '') live?.setLounge({ ...state, fire: !fire });
+			else retune({ fire: !fire });
+		} else if (spot === 'fish') fishUntil = clock + 1.2;
 		else if (spot === 'plant') bloomUntil = clock + 30;
 		else if (spot === 'arcade') arcadeUntil = clock + 8;
 	}
 
-	/** The record player changes the record: the next style, for everyone. */
-	function pickStyle() {
+	/**
+	 * Anything that changes what house radio plays starts it from the top of
+	 * a record or tune, on every screen at once: the skip goes with it.
+	 */
+	function retune(change: LoungeState & { radioStyle?: RadioPick }) {
+		const style = change.radioStyle ?? pick;
 		live?.setLounge({
 			...lounge,
 			weather: weatherOf(lounge),
-			radioStyle: nextRadioPick(pick),
+			mood: '',
+			...change,
+			radioStyle: style,
+			radioShiftMs: skipShift(station, style, shift, serverNow()),
 		});
 	}
 
-	// Every screen scratches the record as the style changes, the picker's too.
-	let pickSeen: string | undefined;
+	/** Next track, for everyone: the record player's click and the bar's button. */
+	const next = () => retune({});
+
+	const PICK_NAMES: Record<RadioPick, string> = {
+		'': 'Records',
+		mix: 'Mix',
+		...STYLE_NAMES,
+	};
+
+	/** The crate of styles, under the style's name in the bar. */
+	function crate(e: MouseEvent & { currentTarget: HTMLElement }) {
+		const box = e.currentTarget.getBoundingClientRect();
+		openMenu(
+			RADIO_PICKS.map((p) => ({
+				label: PICK_NAMES[p],
+				icon: Disc3,
+				hint: p === pick ? 'on' : undefined,
+				onSelect: () => p !== pick && retune({ radioStyle: p }),
+			})),
+			box.left,
+			box.top,
+			e.currentTarget,
+		);
+	}
+
+	/** One tap sets the window, lamp, stove and radio for everyone. */
+	function moods(e: MouseEvent & { currentTarget: HTMLElement }) {
+		const box = e.currentTarget.getBoundingClientRect();
+		openMenu(
+			(Object.keys(MOODS) as Mood[]).map((m) => ({
+				label: MOODS[m].name,
+				icon: Sparkles,
+				hint: m === mood ? 'on' : undefined,
+				onSelect: () => {
+					const { weather, lampOff, fire, radio } = MOODS[m];
+					if (m === mood) return;
+					// Records keep playing through a mood that keeps records.
+					if (radio === '' && pick === '')
+						live?.setLounge({ ...lounge, weather, lampOff, fire, mood: m });
+					else retune({ radioStyle: radio, weather, lampOff, fire, mood: m });
+				},
+			})),
+			box.left,
+			box.top,
+			e.currentTarget,
+		);
+	}
+
+	// Every screen scratches the record as the style changes or the channel
+	// skips, the picker's too.
+	let tuneSeen: string | undefined;
 	$effect(() => {
-		const now = pick;
+		const now = `${pick}:${shift}`;
 		untrack(() => {
-			if (pickSeen !== undefined && now !== pickSeen)
+			if (tuneSeen !== undefined && now !== tuneSeen)
 				scratchUntil = clock + 0.8;
-			pickSeen = now;
+			tuneSeen = now;
 		});
 	});
 
@@ -413,7 +500,7 @@
 				class="absolute bottom-0 left-0 block [image-rendering:pixelated]"
 				style:width="{roomW * scale}px"
 				style:height="{roomH * scale}px"
-				aria-label="The lounge: who is in the call, on the sofa, the cushions or a trainer. Click someone to send a heart, or the cat, the lamp, the window, the clock, the goldfish or the plant. The record player changes house radio's style for everyone."
+				aria-label="The lounge: who is in the call, on the sofa, the cushions or a trainer. Click someone to send a heart, or the cat, the lamp, the window, the stove, the clock, the goldfish or the plant. The record player plays the next track for everyone."
 			></canvas>
 			<div role="group" aria-label="in the call">
 				{#each tags as tag (tag.id)}
@@ -483,14 +570,29 @@
 			>
 			<button
 				type="button"
-				onclick={pickStyle}
-				title="Change house radio's style for everyone"
+				onclick={crate}
+				title="Pick house radio's style for everyone"
+				aria-haspopup="menu"
 				class="btn btn-ghost btn-xs text-ink px-0"
-				>{pick === ''
-					? 'Records'
-					: pick === 'mix'
-						? `Mix · ${STYLE_NAMES[styleNow]}`
-						: STYLE_NAMES[pick]}</button
+				>{pick === 'mix'
+					? `Mix · ${STYLE_NAMES[styleNow]}`
+					: PICK_NAMES[pick]}</button
+			>
+			<button
+				type="button"
+				onclick={next}
+				title="Next track, for everyone"
+				class="btn btn-ghost btn-xs text-ink px-0"
+				><SkipForward size={13} /> Next</button
+			>
+			<button
+				type="button"
+				onclick={moods}
+				title="Set the room's mood for everyone"
+				aria-haspopup="menu"
+				class="btn btn-ghost btn-xs text-ink px-0"
+				><Sparkles size={13} />
+				{mood ? MOODS[mood].name : 'Mood'}</button
 			>
 			{#if nowPlaying}<span class="tabular-nums max-sm:hidden"
 					>{nowPlaying}</span
