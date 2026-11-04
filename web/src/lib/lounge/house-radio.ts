@@ -133,6 +133,8 @@ export function createHouseRadio(station: string, serverNowMs: () => number) {
 	let offset = 0;
 	let cursor = { slot: 0, bar: 0, s: 0 };
 	let written = { slot: -1, bar: -1, notes: [] as Note[] };
+	/** The audio time of the last step laid down. */
+	let laid = -Infinity;
 	/** The style the channel picked, '' for the mix. */
 	let pick: Style | '' = '';
 
@@ -152,6 +154,13 @@ export function createHouseRadio(station: string, serverNowMs: () => number) {
 
 	function schedule() {
 		if (!g) return;
+		// The audio clock stands still while the context waits for a first
+		// click, or while headphones change hands, and the server's runs on.
+		// Every step laid then landed on the same instant: eight seconds of
+		// music fired in 0.14 s when the clock moved again, loud enough to
+		// throw headphones off (Jan, 2026-11-04). Lay nothing while it waits,
+		// and never two steps on one instant.
+		if (g.ctx.state !== 'running') return;
 		// The server-clock estimate settles over the first ticks; follow it
 		// when it moves by more than a nudge rather than drift from it.
 		if (Math.abs(serverNowMs() / 1000 - g.ctx.currentTime - offset) > 0.05)
@@ -166,7 +175,10 @@ export function createHouseRadio(station: string, serverNowMs: () => number) {
 			if (at > horizon) break;
 			if (written.slot !== cursor.slot || written.bar !== cursor.bar)
 				written = { ...cursor, notes: barNotes(tune, cursor.bar) };
-			playStep(g, tune, cursor.bar, cursor.s, at - offset, written.notes);
+			if (at - offset > laid) {
+				playStep(g, tune, cursor.bar, cursor.s, at - offset, written.notes);
+				laid = at - offset;
+			}
 			if (++cursor.s === 16) {
 				cursor.s = 0;
 				if (++cursor.bar >= tune.bars)
