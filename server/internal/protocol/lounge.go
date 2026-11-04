@@ -17,6 +17,18 @@ type LoungeState struct {
 	// channel. "" is records, real CC0 lofi tracks; "mix" rotates the three
 	// generated styles.
 	RadioStyle string `json:"radioStyle,omitempty"`
+	// How far house radio runs ahead of the server clock, in ms. Next track
+	// moves it on to the next record or tune's start, so every screen skips
+	// together; it only ever grows, so a flip carrying an old value cannot
+	// play a skipped track again.
+	RadioShiftMs int64 `json:"radioShiftMs,omitempty"`
+	// The stove is lit: the room glows warm and the generated styles keep to
+	// their slowest tunes.
+	Fire bool `json:"fire,omitempty"`
+	// From LoungeMoods: the preset that set the window, lamp, fire and radio
+	// together, and the sky it shows. "" is none, the window at the viewer's
+	// own hour.
+	Mood string `json:"mood,omitempty"`
 }
 
 // LoungeWeathers is the closed set behind the lounge's window. The client keeps
@@ -26,6 +38,10 @@ var LoungeWeathers = []string{"rain", "clear", "snow"}
 // LoungeRadioStyles is the closed set of house radio styles a channel may
 // pick. The client keeps its own copy in web/src/lib/lounge/state.ts.
 var LoungeRadioStyles = []string{"mix", "lofi", "chip", "ambient"}
+
+// LoungeMoods is the closed set of moods a channel may pick. The client keeps
+// its own copy, with what each sets, in web/src/lib/lounge/state.ts.
+var LoungeMoods = []string{"rainy", "snow", "sunny", "arcade"}
 
 // HouseRadioTitle is house radio's line on the deck and in the channel's
 // events: the station is generated, so it has no title of its own.

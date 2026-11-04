@@ -1016,6 +1016,24 @@ export interface LoungeState {
    * generated styles.
    */
   radioStyle?: string;
+  /**
+   * How far house radio runs ahead of the server clock, in ms. Next track
+   * moves it on to the next record or tune's start, so every screen skips
+   * together; it only ever grows, so a flip carrying an old value cannot
+   * play a skipped track again.
+   */
+  radioShiftMs?: number /* int64 */;
+  /**
+   * The stove is lit: the room glows warm and the generated styles keep to
+   * their slowest tunes.
+   */
+  fire?: boolean;
+  /**
+   * From LoungeMoods: the preset that set the window, lamp, fire and radio
+   * together, and the sky it shows. "" is none, the window at the viewer's
+   * own hour.
+   */
+  mood?: string;
 }
 /**
  * HouseRadioTitle is house radio's line on the deck and in the channel's

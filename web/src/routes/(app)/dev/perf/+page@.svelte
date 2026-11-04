@@ -145,7 +145,7 @@
 					beat: (t * 80) / 60,
 					pulsing: true,
 					disco: true,
-					cat: { x: 293, y: 40, pose: 'sleep', facing: 1 },
+					cat: { x: 293, y: 40, pose: 'sleep', facing: 1, stride: 0 },
 					catAwake: false,
 					hearts: [],
 					hours: 21,
@@ -161,6 +161,7 @@
 					fishJump: false,
 					bloom: false,
 					arcade: false,
+					fire: true,
 					pizza: false,
 					owl: false,
 				});

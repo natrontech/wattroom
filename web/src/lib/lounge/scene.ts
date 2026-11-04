@@ -150,6 +150,8 @@ export interface SceneInput {
 	bloom: boolean;
 	/** The arcade cabinet was tapped and is playing its race. */
 	arcade: boolean;
+	/** The stove is lit: flames in its window, a warm glow over the room. */
+	fire: boolean;
 	/** Friday from five: a pizza on the table (moments.ts). */
 	pizza: boolean;
 	/** Past midnight: an owl on the sill. */
@@ -189,8 +191,10 @@ export function drawScene(g: Ctx, input: SceneInput) {
 	drawWindow(g, input);
 	drawLive(g, input);
 	drawSofaCrew(g, input);
-	drawFloorCrew(g, input);
+	// Behind everyone on the floor: its lane and spots are all further back
+	// than the first row, so a rider sits in front of it, never under it.
 	drawCat(g, input);
+	drawFloorCrew(g, input);
 	g.restore();
 	drawLights(g, input);
 	drawHearts(g, input);
@@ -240,10 +244,11 @@ export function tagsOf(crew: Crew, w: number, h: number): Tag[] {
 }
 
 export type Hotspot =
-	'lamp' | 'deck' | 'window' | 'clock' | 'fish' | 'plant' | 'arcade';
+	'lamp' | 'deck' | 'window' | 'clock' | 'stove' | 'fish' | 'plant' | 'arcade';
 
 const SPOTS: { spot: Hotspot; x: number; y: number; w: number; h: number }[] = [
 	{ spot: 'clock', x: 216, y: 10, w: 22, h: 38 },
+	{ spot: 'stove', x: 216, y: 48, w: 20, h: 38 },
 	{ spot: 'lamp', x: 80, y: 34, w: 18, h: 28 },
 	{ spot: 'fish', x: 268, y: 46, w: 15, h: 15 },
 	{ spot: 'deck', x: 236, y: 38, w: 70, h: 46 },

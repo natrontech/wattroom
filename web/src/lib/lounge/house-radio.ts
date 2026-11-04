@@ -127,6 +127,11 @@ export function playStep(
  * bar it plays is the bar every other screen plays.
  */
 export function createHouseRadio(station: string, serverNowMs: () => number) {
+	/** The channel's skips, in ms ahead of the server clock (LoungeState.radioShiftMs). */
+	let shift = 0;
+	/** The stove is lit: the slower tunes. */
+	let slow = false;
+	const now = () => serverNowMs() + shift;
 	let g: Graph | null = null;
 	let timer: ReturnType<typeof setInterval> | undefined;
 	/** Server seconds minus the audio clock. */
@@ -140,10 +145,10 @@ export function createHouseRadio(station: string, serverNowMs: () => number) {
 
 	function seat() {
 		if (!g) return;
-		offset = serverNowMs() / 1000 - g.ctx.currentTime;
+		offset = now() / 1000 - g.ctx.currentTime;
 		const at = g.ctx.currentTime + offset + 0.05;
 		let slot = Math.floor(at / SLOT_SEC);
-		const tune = tuneOf(station, slot, pick);
+		const tune = tuneOf(station, slot, pick, slow);
 		const into = at - slot * SLOT_SEC;
 		let bar = Math.floor(into / tune.barSec);
 		let s = Math.ceil((into - bar * tune.barSec) / (tune.barSec / 16));
@@ -163,11 +168,10 @@ export function createHouseRadio(station: string, serverNowMs: () => number) {
 		if (g.ctx.state !== 'running') return;
 		// The server-clock estimate settles over the first ticks; follow it
 		// when it moves by more than a nudge rather than drift from it.
-		if (Math.abs(serverNowMs() / 1000 - g.ctx.currentTime - offset) > 0.05)
-			seat();
+		if (Math.abs(now() / 1000 - g.ctx.currentTime - offset) > 0.05) seat();
 		const horizon = g.ctx.currentTime + offset + AHEAD_SEC;
 		for (;;) {
-			const tune = tuneOf(station, cursor.slot, pick);
+			const tune = tuneOf(station, cursor.slot, pick, slow);
 			const at =
 				cursor.slot * SLOT_SEC +
 				cursor.bar * tune.barSec +
@@ -213,12 +217,27 @@ export function createHouseRadio(station: string, serverNowMs: () => number) {
 			g.level.gain.cancelScheduledValues(now);
 			g.level.gain.setTargetAtTime(value, now, Math.max(0.01, ms / 3000));
 		},
-		/** The channel picked a style: the next sixteenth plays it, on every screen alike. */
-		setStyle(next: Style | '') {
-			if (next === pick) return;
-			pick = next;
+		/**
+		 * What the channel set: the style, how far it skipped, the stove. A
+		 * skip fades this tune out, and the next one's first bar fades in; on
+		 * a screen the skip reached late, the tune it lands in fades straight
+		 * back. Anything else plays from the next sixteenth.
+		 */
+		tune(next: Style | '', shiftMs: number, calm: boolean) {
+			if (next === pick && shiftMs === shift && calm === slow) return;
+			const skipped = shiftMs !== shift;
+			[pick, shift, slow] = [next, shiftMs, calm];
 			written = { slot: -1, bar: -1, notes: [] };
+			if (!g || !timer) return;
 			seat();
+			if (!skipped) return;
+			laid = -Infinity;
+			const t = g.ctx.currentTime;
+			const tg = g.tuneGain.gain;
+			tg.cancelScheduledValues(t);
+			tg.setTargetAtTime(0.0001, t, 0.04);
+			if (cursor.bar !== 0 || cursor.s !== 0)
+				tg.setTargetAtTime(1, t + 0.3, 0.15);
 		},
 		setRain(on: boolean) {
 			g?.rain.gain.setTargetAtTime(on ? 0.012 : 0, g.ctx.currentTime, 0.6);

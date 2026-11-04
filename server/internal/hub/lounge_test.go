@@ -70,6 +70,12 @@ func TestSetLounge(t *testing.T) {
 		{"an unknown style keeps the radio", protocol.LoungeState{RadioStyle: "ambient"}, protocol.LoungeState{RadioStyle: "polka"}, &protocol.LoungeState{RadioStyle: "ambient"}},
 		{"the mix is a style", protocol.LoungeState{}, protocol.LoungeState{RadioStyle: "mix"}, &protocol.LoungeState{RadioStyle: "mix"}},
 		{"back to records sends nothing", protocol.LoungeState{RadioStyle: "lofi"}, protocol.LoungeState{}, nil},
+		{"a skip moves the radio on", protocol.LoungeState{RadioShiftMs: 4000}, protocol.LoungeState{RadioShiftMs: 90000}, &protocol.LoungeState{RadioShiftMs: 90000}},
+		{"a flip with an old shift keeps the skip", protocol.LoungeState{RadioShiftMs: 90000}, protocol.LoungeState{LampOff: true, RadioShiftMs: 4000}, &protocol.LoungeState{LampOff: true, RadioShiftMs: 90000}},
+		{"the stove lit", protocol.LoungeState{}, protocol.LoungeState{Fire: true}, &protocol.LoungeState{Fire: true}},
+		{"a known mood", protocol.LoungeState{}, protocol.LoungeState{Mood: "snow", Weather: "snow", Fire: true}, &protocol.LoungeState{Mood: "snow", Weather: "snow", Fire: true}},
+		{"an unknown mood keeps the mood", protocol.LoungeState{Mood: "sunny"}, protocol.LoungeState{Mood: "disco"}, &protocol.LoungeState{Mood: "sunny"}},
+		{"a manual flip clears the mood", protocol.LoungeState{Mood: "sunny", LampOff: true}, protocol.LoungeState{}, nil},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
