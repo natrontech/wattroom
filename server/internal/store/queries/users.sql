@@ -75,6 +75,9 @@ update users set build = $2, height_cm = $3, skin = $4,
     figure_asked_at = coalesce(figure_asked_at, now())
 where id = $1 returning *;
 
+-- name: SetUserLoungeLook :one
+update users set lounge_look = $2 where id = $1 returning *;
+
 -- name: StartEmailVerification :one
 -- Writes the pending address and the token, never `email` — the address only
 -- moves across in VerifyEmail. Replaces any verification already in flight.

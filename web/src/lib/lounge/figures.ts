@@ -5,14 +5,8 @@
  * the rider, so a crewmate wears the same colour on the sofa as on the road.
  */
 import type { LiveRider } from '$lib/channel/types';
-import {
-	CUSHIONS,
-	HAIRS,
-	HAIR_STYLES,
-	LOUNGE,
-	SKINS,
-	shadeOf,
-} from '$lib/lounge/palette';
+import { CUSHIONS, HAIRS, LOUNGE, SKINS, shadeOf } from '$lib/lounge/palette';
+import { dyed, lookOf } from '$lib/lounge/look';
 import {
 	BIKES_ALWAYS,
 	BIKE_DY,
@@ -33,24 +27,41 @@ import {
 } from '$lib/lounge/scene';
 import { fnv, hexOf, seededLoadout } from '$lib/world/loadout';
 
-// ponytail: the seeded look only. A rider's chosen Look (ADR-0073) needs the
-// outfit fetched by its hash; dress the lounge from it when the sofa shows outfits.
-function dress(r: LiveRider): Figure {
+/**
+ * A rider as the lounge draws them: the look they put together (look.ts), or
+ * the one seeded from their id. A top left at its default is the jersey the
+ * road would seed them.
+ */
+// ponytail: the road's seeded jersey only, not the outfit a Look hash fetches.
+export function dress(
+	r: Pick<LiveRider, 'id' | 'name' | 'loungeLook'> & Partial<LiveRider>,
+): Figure {
 	const seed = fnv(r.id);
-	const look = seededLoadout(r.id);
-	const skin = SKINS[seed % SKINS.length];
-	const shirt = hexOf.get(String(look.colours?.jerseyA)) ?? LOUNGE.shirt;
+	const look = lookOf(r.id, r.loungeLook);
+	const skin = SKINS[look.skin];
+	const jersey =
+		hexOf.get(String(seededLoadout(r.id).colours?.jerseyA)) ?? LOUNGE.shirt;
+	const shirt = dyed(look.topColour, jersey);
+	const pants = dyed(look.trousers, LOUNGE.pants);
 	return {
 		id: r.id,
 		name: r.name,
 		skin,
 		skinShade: shadeOf(skin),
-		hair: HAIRS[(seed >>> 8) % HAIRS.length],
-		hairStyle: (seed >>> 12) % HAIR_STYLES,
+		hair: HAIRS[look.hairColour],
+		hairStyle: look.hair,
 		shirt,
 		shirtShade: shadeOf(shirt),
+		top: look.top,
+		stripes: look.stripes > 0,
+		pants,
+		pantsShade: look.trousers ? shadeOf(pants) : LOUNGE.pantsDark,
+		shoes: dyed(look.shoes, LOUNGE.ink),
+		glasses: look.glasses,
+		cap: look.cap ? dyed(look.cap, '') : undefined,
+		scarf: look.scarf ? dyed(look.scarf, '') : undefined,
 		cushion: LOUNGE[CUSHIONS[(seed >>> 16) % CUSHIONS.length]],
-		speaking: r.speaking,
+		speaking: !!r.speaking,
 		muted: !!r.muted,
 		away: r.away ? (r.awayReason ?? '') : undefined,
 		sounding: !!r.sounding,

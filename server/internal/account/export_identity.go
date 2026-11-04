@@ -76,6 +76,8 @@ func (x *export) profile() (map[string]any, error) {
 		// The figure they chose (#3342): null is the neutral value.
 		"figure":        auth.FigureOf(user),
 		"figureAskedAt": timeOrNil(user.FigureAskedAt),
+		// What they wear in the cozy room, as the row holds it: null is seeded.
+		"loungeLook": user.LoungeLook,
 		// The last of the row (#2863): the crew the sidebar opens in, the
 		// invite they were sent and have not taken up (Home offers it back),
 		// and whether the account had to confirm an address before it rode.

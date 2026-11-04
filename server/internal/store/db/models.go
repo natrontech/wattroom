@@ -454,6 +454,7 @@ type User struct {
 	HeightCm           *int16
 	Skin               *int16
 	FigureAskedAt      pgtype.Timestamptz
+	LoungeLook         *string
 }
 
 type UserAvatar struct {

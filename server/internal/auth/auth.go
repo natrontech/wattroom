@@ -188,6 +188,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("PUT /api/me/home-crew", s.handleSetHomeCrew)
 	mux.HandleFunc("PUT /api/me/cheers", s.handleSetCheers)
 	mux.HandleFunc("PUT /api/me/figure", s.handleSetFigure)
+	mux.HandleFunc("PUT /api/me/lounge-look", s.handleSetLoungeLook)
 	// The way back out of a connection (#783); linking is ?link=1 on start.
 	mux.HandleFunc("DELETE /api/me/identities/{provider}", s.handleDisconnectProvider)
 	s.registerPasskeyRoutes(mux)

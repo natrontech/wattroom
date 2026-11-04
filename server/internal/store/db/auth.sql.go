@@ -142,7 +142,7 @@ func (q *Queries) GetIdentity(ctx context.Context, arg GetIdentityParams) (Ident
 }
 
 const getSessionUser = `-- name: GetSessionUser :one
-select u.id, u.display_name, u.avatar_url, u.ftp_watts, u.weight_kg, u.created_at, u.strava_upload, u.email, u.notify_planned, u.unsub_token, u.friend_code, u.ics_token, u.accent_palette, u.color_scheme, u.email_verified_at, u.email_pending, u.email_verify_hash, u.email_verify_expires, u.email_required, u.timezone, u.lthr, u.ftp_source, u.weight_source, u.recover_hash, u.recover_expires, u.pending_crew_code, u.home_crew_id, u.status_emoji, u.status_emoji_id, u.status_text, u.status_expires_at, u.cheers, u.weight_changed_at, u.weight_confirmed_at, u.build, u.height_cm, u.skin, u.figure_asked_at
+select u.id, u.display_name, u.avatar_url, u.ftp_watts, u.weight_kg, u.created_at, u.strava_upload, u.email, u.notify_planned, u.unsub_token, u.friend_code, u.ics_token, u.accent_palette, u.color_scheme, u.email_verified_at, u.email_pending, u.email_verify_hash, u.email_verify_expires, u.email_required, u.timezone, u.lthr, u.ftp_source, u.weight_source, u.recover_hash, u.recover_expires, u.pending_crew_code, u.home_crew_id, u.status_emoji, u.status_emoji_id, u.status_text, u.status_expires_at, u.cheers, u.weight_changed_at, u.weight_confirmed_at, u.build, u.height_cm, u.skin, u.figure_asked_at, u.lounge_look
 from sessions s
 join users u on u.id = s.user_id
 where s.token_hash = $1 and s.expires_at > now()
@@ -190,6 +190,7 @@ func (q *Queries) GetSessionUser(ctx context.Context, tokenHash []byte) (User, e
 		&i.HeightCm,
 		&i.Skin,
 		&i.FigureAskedAt,
+		&i.LoungeLook,
 	)
 	return i, err
 }

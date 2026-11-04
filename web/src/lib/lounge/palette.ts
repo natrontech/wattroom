@@ -237,7 +237,10 @@ export function shadeOf(hex: string): string {
 	return made;
 }
 
-/** Skin for a figure: a fixed set, picked by the rider's id. */
+/**
+ * Skin for a figure, lightest to darkest (look.ts). A rider who picked none
+ * is seeded from the first six by their id, as before the last two came.
+ */
 export const SKINS = [
 	'#f1c7a5',
 	'#e0ac85',
@@ -245,7 +248,10 @@ export const SKINS = [
 	'#a8714a',
 	'#8d5a3c',
 	'#5e3a26',
+	'#4a2e22',
+	'#2e1d17',
 ];
+/** Hair colours; a seeded look takes one of the first six. */
 export const HAIRS = [
 	'#2a1a12',
 	'#0f0a0a',
@@ -253,9 +259,14 @@ export const HAIRS = [
 	'#a8442a',
 	'#6b4a2e',
 	'#c9c2d6',
+	'#f0ece8',
+	'#e86aa8',
+	'#8b6cff',
+	'#5aa0e8',
+	'#3fbf8a',
 ];
-/** Short, long, a bun, a beanie. */
-export const HAIR_STYLES = 4;
+/** Short, long, a bun, a beanie, then the editor's: a mohawk, curls, a ponytail, bald. */
+export const HAIR_STYLES = 8;
 export const CUSHIONS = [
 	'cushionA',
 	'cushionB',

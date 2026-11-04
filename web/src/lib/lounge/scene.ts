@@ -53,10 +53,21 @@ export interface Figure {
 	skin: string;
 	skinShade: string;
 	hair: string;
-	/** HAIR_STYLES: 0 short, 1 long, 2 a bun, 3 a beanie. */
+	/** look.ts's HAIR_NAMES: short, long, a bun, a beanie, a mohawk, curls, a ponytail, bald. */
 	hairStyle: number;
 	shirt: string;
 	shirtShade: string;
+	/** look.ts's TOPS: a tee, a hoodie, a jersey, a sweater; and whether it is striped. */
+	top: number;
+	stripes: boolean;
+	pants: string;
+	pantsShade: string;
+	shoes: string;
+	/** look.ts's GLASSES: none, round, shades. */
+	glasses: number;
+	/** The cap's and the scarf's colours, when they wear one. */
+	cap?: string;
+	scarf?: string;
 	/** The cushion they sit on when the sofa is full. */
 	cushion: string;
 	speaking: boolean;

@@ -46,3 +46,21 @@ func TestAProfileSaveReachesTheScore(t *testing.T) {
 		}
 	}
 }
+
+// A look saved in the lounge's editor is on the next tick's roster: the room
+// redresses the rider without anyone reconnecting.
+func TestALoungeLookReachesTheRoster(t *testing.T) {
+	rm := newChannelState("test")
+	jan := &client{rider: protocol.Rider{ID: "jan", Name: "Jan", FtpWatts: 200}}
+	kim := &client{rider: protocol.Rider{ID: "kim", Name: "Kim", LoungeLook: "11111111111"}}
+	rm.clients[jan], rm.clients[kim] = struct{}{}, struct{}{}
+
+	rm.setProfile(protocol.Rider{ID: "jan", Name: "Jan", FtpWatts: 200, LoungeLook: "3a21070325"})
+
+	if jan.rider.LoungeLook != "3a21070325" {
+		t.Fatalf("jan's socket kept the old look: %q", jan.rider.LoungeLook)
+	}
+	if kim.rider.LoungeLook != "11111111111" {
+		t.Fatalf("kim was redressed by jan's save: %q", kim.rider.LoungeLook)
+	}
+}

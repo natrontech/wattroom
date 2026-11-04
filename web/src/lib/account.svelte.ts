@@ -105,6 +105,8 @@ export interface Me {
 	figure?: FigureChoice;
 	/** A save or a skip has answered the figure card, on any device. */
 	figureAsked?: boolean;
+	/** What you wear in the cozy room (lounge/look.ts); absent is seeded from your id. */
+	loungeLook?: string;
 }
 
 export type FigureBuild = 'slim' | 'athletic' | 'strong';
@@ -289,6 +291,18 @@ function createAccountStore() {
 			const res = await api<Me>('/api/me/figure', {
 				method: 'PUT',
 				json: choice,
+			});
+			if (res.ok) {
+				me = res.data;
+				return null;
+			}
+			return res.error;
+		},
+		/** What you wear in the cozy room; '' goes back to the seeded look. */
+		async setLoungeLook(look: string): Promise<{ message: string } | null> {
+			const res = await api<Me>('/api/me/lounge-look', {
+				method: 'PUT',
+				json: { look },
 			});
 			if (res.ok) {
 				me = res.data;

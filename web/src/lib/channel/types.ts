@@ -35,6 +35,8 @@ export interface LiveRider {
 	inSession?: boolean;
 	/** The crew session they ride (docs/SESSIONS.md), on a call's roster; never their numbers. */
 	onSession?: string;
+	/** What they wear in the cozy room (lounge/look.ts); absent is seeded from the id. */
+	loungeLook?: string;
 	/** camera-off fallback hue, so the grid isn't uniformly dark */
 	hue: number;
 	watts: number;

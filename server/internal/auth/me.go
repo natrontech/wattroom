@@ -126,6 +126,8 @@ type meResponse struct {
 	// the card, on any device.
 	Figure      FigureChoice `json:"figure"`
 	FigureAsked bool         `json:"figureAsked"`
+	// What they wear in the cozy room (handleSetLoungeLook); empty is seeded.
+	LoungeLook *string `json:"loungeLook,omitempty"`
 }
 
 func (s *Service) handleMe(w http.ResponseWriter, r *http.Request) {
@@ -453,6 +455,7 @@ func (s *Service) toMe(u db.User) meResponse {
 		Cheers:        CheerSet(u.Cheers),
 		Figure:        FigureOf(u),
 		FigureAsked:   u.FigureAskedAt.Valid,
+		LoungeLook:    u.LoungeLook,
 	}
 }
 

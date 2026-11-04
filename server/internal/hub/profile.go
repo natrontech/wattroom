@@ -30,12 +30,13 @@ func (rm *channelState) setProfile(p protocol.Rider) {
 	}
 }
 
-// withProfile is r with what a profile save moves: the name, and the two
-// numbers with where they came from and when the weight last moved — a
-// weight changed mid-session must not reach a race's flag dated as settled
-// (#3169).
+// withProfile is r with what a profile save moves: the name, the lounge look,
+// and the two numbers with where they came from and when the weight last
+// moved — a weight changed mid-session must not reach a race's flag dated as
+// settled (#3169).
 func withProfile(r, p protocol.Rider) protocol.Rider {
 	r.Name, r.FtpWatts, r.WeightKg = p.Name, p.FtpWatts, p.WeightKg
+	r.LoungeLook = p.LoungeLook
 	r.FtpSource, r.WeightSource = p.FtpSource, p.WeightSource
 	r.WeightChangedAt, r.WeightConfirmedAt = p.WeightChangedAt, p.WeightConfirmedAt
 	return r
