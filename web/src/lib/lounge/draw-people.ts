@@ -103,10 +103,31 @@ function blinking(s: SceneInput, n: number): boolean {
 	return !s.still && (s.t + n * 1.7) % 4.3 < 0.15;
 }
 
-/** Hair by style, over a head whose left edge is hx and top row ht. */
+/**
+ * Hair by style, over a head whose left edge is hx and top row ht, and the
+ * cap over it. Under a cap a bun or a mohawk is cut to short hair.
+ */
 function hair(f: Figure, hx: number, ht: number): Part[] {
 	const h = f.hair;
-	switch (f.hairStyle) {
+	const style =
+		f.cap && (f.hairStyle === 2 || f.hairStyle === 4) ? 0 : f.hairStyle;
+	const cap: Part[] = f.cap
+		? [
+				[hx - 1, ht - 1, 12, 3, f.cap],
+				[hx - 1, ht + 2, 12, 1, shadeOf(f.cap)],
+			]
+		: [];
+	return [...locks(f, h, style, hx, ht), ...cap];
+}
+
+function locks(
+	f: Figure,
+	h: string,
+	style: number,
+	hx: number,
+	ht: number,
+): Part[] {
+	switch (style) {
 		case 1:
 			return [
 				[hx - 1, ht, 12, 3, h],
@@ -126,6 +147,23 @@ function hair(f: Figure, hx: number, ht: number): Part[] {
 				[hx, ht + 3, 1, 2, h],
 				[hx + 9, ht + 3, 1, 2, h],
 			];
+		case 4:
+			return [[hx + 4, ht - 4, 2, 6, h]];
+		case 5:
+			return [
+				[hx - 2, ht - 2, 14, 5, h],
+				[hx - 2, ht + 3, 2, 5, h],
+				[hx + 10, ht + 3, 2, 5, h],
+			];
+		case 6:
+			return [
+				[hx, ht, 10, 3, h],
+				[hx, ht + 3, 1, 2, h],
+				[hx + 10, ht + 1, 2, 3, h],
+				[hx + 11, ht + 4, 2, 5, h],
+			];
+		case 7:
+			return [];
 		default:
 			return [
 				[hx, ht, 10, 3, h],
@@ -153,15 +191,19 @@ function sitter(
 		const ht = base - 19;
 		const wave = waving(s, n);
 		const parts: Part[] = [
+			// A hood lies on the shoulders, behind the head.
+			...(f.top === 1
+				? ([[x - 6, base - 12, 12, 3, f.shirtShade]] as Part[])
+				: []),
 			[hx, ht, 10, 9, f.skin],
 			[x - 6, base - 10, 12, 7, f.shirt],
 			...(pose === 'sofa'
 				? ([
-						[x - 5, base - 4, 10, 4, C.pants],
-						[x - 4, base, 3, 6, C.pantsDark],
-						[x + 1, base, 3, 6, C.pantsDark],
+						[x - 5, base - 4, 10, 4, f.pants],
+						[x - 4, base, 3, 6, f.pantsShade],
+						[x + 1, base, 3, 6, f.pantsShade],
 					] as Part[])
-				: ([[x - 6, base - 4, 12, 4, C.pants]] as Part[])),
+				: ([[x - 6, base - 4, 12, 4, f.pants]] as Part[])),
 			...(wave
 				? ([
 						[x - 8, base - 18, 2, 9, f.shirt],
@@ -176,13 +218,32 @@ function sitter(
 				[hx + 10, ht + 3, 2, 4, C.lilac],
 			);
 		outlined(g, parts, C.ink);
-		// Shade on the right and under the chin; the arms and hands.
+		// Shade on the right and under the chin; the top's own marks; the arms and hands.
 		rect(g, hx + 9, ht + 3, 1, 6, f.skinShade);
 		rect(g, hx + 1, ht + 8, 8, 1, f.skinShade);
+		if (f.stripes)
+			for (const y of [base - 8, base - 6])
+				rect(g, x - 6, y, 12, 1, stripeOn(f.shirt));
+		topMarks(g, f, x, base);
 		rect(g, x + 4, base - 10, 2, 7, f.shirtShade);
+		// The scarf over all of the top, its end hanging down the front.
+		if (f.scarf)
+			outlined(
+				g,
+				[
+					[x - 5, base - 11, 10, 2, f.scarf],
+					[x + 1, base - 9, 2, 4, f.scarf],
+				],
+				C.ink,
+			);
 		if (!wave) {
 			rect(g, x - 4, base - 9, 1, 5, f.shirtShade);
 			rect(g, x + 3, base - 9, 1, 5, f.shirtShade);
+			// A tee's sleeves end at the elbow.
+			if (f.top === 0) {
+				rect(g, x - 4, base - 6, 1, 2, f.skin);
+				rect(g, x + 3, base - 6, 1, 2, f.skin);
+			}
 			rect(g, x - 5, base - 4, 2, 1, f.skin);
 			rect(g, x + 3, base - 4, 2, 1, f.skin);
 		} else {
@@ -190,11 +251,13 @@ function sitter(
 			rect(g, x + 6, base - 19, 2, 2, f.skin);
 		}
 		if (pose === 'sofa') {
-			rect(g, x - 4, base + 5, 3, 1, C.ink);
-			rect(g, x + 1, base + 5, 3, 1, C.ink);
+			rect(g, x - 4, base + 5, 3, 1, f.shoes);
+			rect(g, x + 1, base + 5, 3, 1, f.shoes);
 		} else {
-			rect(g, x - 1, base - 4, 2, 1, C.pantsDark);
-			rect(g, x - 6, base - 1, 12, 1, C.pantsDark);
+			rect(g, x - 1, base - 4, 2, 1, f.pantsShade);
+			rect(g, x - 6, base - 1, 12, 1, f.pantsShade);
+			rect(g, x - 6, base - 2, 2, 1, f.shoes);
+			rect(g, x + 4, base - 2, 2, 1, f.shoes);
 		}
 		// Eyes, a blink now and then, and a mouth that moves while they talk.
 		const ey = ht + 5;
@@ -203,6 +266,7 @@ function sitter(
 		rect(g, hx + 7, shut ? ey + 1 : ey, 1, shut ? 1 : 2, C.ink);
 		const open = f.speaking && !s.still && Math.floor(s.t * 6 + n) % 2 === 0;
 		rect(g, hx + 4, ht + 7, 2, open ? 2 : 1, open ? C.ink : f.skinShade);
+		specs(g, f, hx, ey);
 		if (f.muted) {
 			rect(g, hx - 1, ht - 2, 12, 1, C.cable);
 			rect(g, hx - 2, ht - 1, 1, 4, C.cable);
@@ -214,6 +278,58 @@ function sitter(
 	if (f.speaking) bubble(g, x + 4, base - 29, s);
 	if (f.sounding)
 		sprite(g, NOTE, f.speaking ? x - 8 : x + 6, base - 27, C.lilac);
+}
+
+/** Stripes that read on the top: dark on a light one, light on a dark one. */
+function stripeOn(shirt: string): string {
+	const n = parseInt(shirt.slice(1), 16);
+	const light = 0.3 * (n >> 16) + 0.59 * ((n >> 8) & 255) + 0.11 * (n & 255);
+	return light > 150 ? C.ink : C.paper;
+}
+
+/** What tells the tops apart: a hoodie's strings and pocket, a jersey's zip, a sweater's neck and hem. */
+function topMarks(g: Ctx, f: Figure, x: number, base: number) {
+	if (f.top === 1) {
+		rect(g, x - 2, base - 10, 1, 2, C.paper);
+		rect(g, x + 1, base - 10, 1, 2, C.paper);
+		rect(g, x - 3, base - 6, 6, 1, f.shirtShade);
+	} else if (f.top === 2) {
+		rect(g, x - 2, base - 10, 4, 1, f.shirtShade);
+		rect(g, x, base - 9, 1, 5, f.shirtShade);
+	} else if (f.top === 3) {
+		rect(g, x - 2, base - 10, 4, 1, f.shirtShade);
+		for (let i = -6; i < 6; i += 2)
+			rect(g, x + i, base - 5, 1, 1, f.shirtShade);
+	}
+}
+
+/** Round frames over the eyes, or dark lenses on them, eye row ey. */
+function specs(g: Ctx, f: Figure, hx: number, ey: number) {
+	if (f.glasses === 1) {
+		for (const lx of [hx + 1, hx + 6]) {
+			rect(g, lx, ey - 1, 3, 1, C.ink);
+			rect(g, lx, ey + 2, 3, 1, C.ink);
+			rect(g, lx, ey, 1, 1, C.paper);
+		}
+		rect(g, hx + 4, ey - 1, 2, 1, C.ink);
+	} else if (f.glasses === 2) {
+		rect(g, hx + 1, ey, 3, 2, C.ink);
+		rect(g, hx + 6, ey, 3, 2, C.ink);
+		rect(g, hx + 4, ey, 2, 1, C.ink);
+	}
+}
+
+/** One figure on its own, sitting with its seat at row base: the look editor's preview. */
+export function drawFigure(g: Ctx, f: Figure, x: number, base: number) {
+	sitter(
+		g,
+		{ t: 0, still: true, waveAt: -Infinity } as SceneInput,
+		f,
+		x,
+		base,
+		0,
+		'sofa',
+	);
 }
 
 /** A bubble with three dots that fill in turn, ink-edged so it reads on any wall. */
@@ -397,7 +513,7 @@ function onTheBike(
 		limb(g, knee, pedal, 2, colour, C.ink);
 		limb(g, BB, pedal, 1, C.lilac, C.ink);
 	};
-	leg(p2, C.pantsDark);
+	leg(p2, r.pantsShade);
 	// Body, leaning to the bars, and the arm reaching them.
 	const hx = 255;
 	const ht = 97;
@@ -406,6 +522,7 @@ function onTheBike(
 		[hx, ht, 10, 9, r.skin],
 		[252, 110, 7, 2, r.shirt],
 		...hair(r, hx, ht),
+		...(r.scarf ? ([[258, 105, 8, 2, r.scarf]] as Part[]) : []),
 	];
 	if (r.muted)
 		parts.push(
@@ -421,12 +538,13 @@ function onTheBike(
 	rect(g, hx + 7, ht + 5, 1, 2, C.ink);
 	const open = r.speaking && !s.still && Math.floor(s.t * 6) % 2 === 0;
 	rect(g, hx + 4, ht + 7, 2, open ? 2 : 1, open ? C.ink : r.skinShade);
+	specs(g, r, hx, ht + 5);
 	if (r.muted) {
 		rect(g, hx - 1, ht - 2, 12, 1, C.cable);
 		rect(g, hx - 2, ht - 1, 1, 4, C.cable);
 		rect(g, hx + 11, ht - 1, 1, 4, C.cable);
 	}
-	leg(p1, C.pants);
+	leg(p1, r.pants);
 }
 
 export function drawHearts(g: Ctx, s: SceneInput) {

@@ -1863,6 +1863,12 @@ export interface Rider {
    */
   look?: string;
   /**
+   * What the rider wears in the cozy room: one base-36 character per part,
+   * as web/src/lib/lounge/look.ts reads it. Empty is the look seeded from
+   * the id. Small enough to ride the roster itself.
+   */
+  loungeLook?: string;
+  /**
    * Where the two numbers came from (ADR-0048) — SourceDefault, "manual" or
    * "ramp" — and when the weight last changed and when the rider last
    * answered for it, in server millis, zero when never recorded (#3169). The

@@ -23,6 +23,7 @@
 	import { ownCachedLthr } from '$lib/profile-sync.svelte';
 	import FtpTrendChart from '$lib/components/FtpTrendChart.svelte';
 	import SignOutElsewhere from './SignOutElsewhere.svelte';
+	import LookEditor from '$lib/lounge/LookEditor.svelte';
 	import type { PageData } from './$types';
 	import { untrack } from 'svelte';
 
@@ -175,6 +176,8 @@
 		pictureError = err ? err.message : null;
 		status = err ? null : 'Picture saved.';
 	}
+	/** The lounge look's editor is open. */
+	let dressing = $state(false);
 </script>
 
 <!-- The Profile section of Settings (#1330): who you are and the numbers
@@ -244,7 +247,22 @@
 						<span class="text-danger mt-2 block text-xs">{pictureError}</span>
 					{/if}
 				</div>
+				<div class="border-ink/5 mt-5 border-t pt-4">
+					<span class="eyebrow">lounge look</span>
+					<div class="mt-2.5 flex flex-wrap items-center gap-3">
+						<button
+							type="button"
+							onclick={() => (dressing = true)}
+							class="btn btn-secondary btn-xs">Change your look</button
+						>
+						<span class="text-muted text-[11px]"
+							>Hair, clothes and extras for you in the cozy room. Click yourself
+							there to change it too.</span
+						>
+					</div>
+				</div>
 			</section>
+			{#if dressing}<LookEditor onclose={() => (dressing = false)} />{/if}
 		{/if}
 
 		{#if saveError}

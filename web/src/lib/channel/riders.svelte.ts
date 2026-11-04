@@ -144,6 +144,7 @@ export function createRiders(deps: RiderDeps) {
 				riding: !!rider.riding,
 				inSession: !!rider.inSession,
 				onSession: rider.onSession,
+				loungeLook: rider.loungeLook,
 				hue: hueOf(rider.id),
 				watts: metrics?.watts ?? held?.watts ?? 0,
 				cadence: metrics?.cadence ?? held?.cadence ?? 0,

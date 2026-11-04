@@ -32,6 +32,7 @@
 	import { prefersReducedMotion } from '$lib/motion';
 	import { fnv } from '$lib/world/loadout';
 	import { radioHeard } from '$lib/lounge/radio-heard.svelte';
+	import LookEditor from '$lib/lounge/LookEditor.svelte';
 	import { sceneLoop } from '$lib/lounge/scene-loop';
 	import {
 		KEY_NAMES,
@@ -152,6 +153,8 @@
 	let clock = 0;
 	let shade = -1;
 	let nowPlaying = $state('');
+	/** Your look's editor is open: you clicked yourself. */
+	let dressing = $state(false);
 	let styleNow = $state<keyof typeof STYLE_NAMES>('lofi');
 
 	// Before the loop's effect, so the first frame is already in the theme.
@@ -283,6 +286,12 @@
 		return () => clearInterval(every);
 	});
 
+	/** Someone clicked: a heart for them, or for yourself your look's editor. */
+	function touch(tag: { id: string; x: number; head: number }) {
+		if (byId.get(tag.id)?.you) dressing = true;
+		else heart(tag.x - 2, tag.head - 8);
+	}
+
 	function heart(x: number, y: number) {
 		hearts = [
 			...hearts.filter((h) => clock - h.born < 2),
@@ -339,7 +348,7 @@
 		const { who, cat, spot } = at(e);
 		// A flip by hand leaves the mood: the room is no longer its preset.
 		const state = { ...lounge, weather: weatherOf(lounge), mood: '' };
-		if (who) heart(who.x - 2, who.head - 8);
+		if (who) touch(who);
 		else if (cat) {
 			ownPets++;
 			wake();
@@ -500,7 +509,7 @@
 				class="absolute bottom-0 left-0 block [image-rendering:pixelated]"
 				style:width="{roomW * scale}px"
 				style:height="{roomH * scale}px"
-				aria-label="The lounge: who is in the call, on the sofa, the cushions or a trainer. Click someone to send a heart, or the cat, the lamp, the window, the stove, the clock, the goldfish or the plant. The record player plays the next track for everyone."
+				aria-label="The lounge: who is in the call, on the sofa, the cushions or a trainer. Click someone to send a heart, yourself to change your look, or the cat, the lamp, the window, the stove, the clock, the goldfish or the plant. The record player plays the next track for everyone."
 			></canvas>
 			<div role="group" aria-label="in the call">
 				{#each tags as tag (tag.id)}
@@ -510,8 +519,8 @@
 						<button
 							type="button"
 							{@attach contextMenu(() => menuOf(tag.id))}
-							onclick={() => heart(tag.x - 2, tag.head - 8)}
-							title={MENU_HINT}
+							onclick={() => touch(tag)}
+							title={r.you ? 'Change your look' : MENU_HINT}
 							aria-label={described(tag.id)}
 							class="font-display pixel-words absolute flex -translate-x-1/2 items-center gap-1 leading-none font-semibold whitespace-nowrap {scale >=
 							4
@@ -602,4 +611,5 @@
 				>{/if}
 		</div>
 	{/if}
+	{#if dressing}<LookEditor onclose={() => (dressing = false)} />{/if}
 </section>
