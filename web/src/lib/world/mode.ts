@@ -46,3 +46,22 @@ export function setWorldMode(mode: WorldMode): void {
 		/* a browser that keeps nothing keeps the default */
 	}
 }
+
+const PIXELS_KEY = 'wattroom.world.pixels.v1';
+
+/** Pixel 3D (pixel.ts) on this device: on until the rider turns it off. */
+export function worldPixels(): boolean {
+	try {
+		return localStorage.getItem(PIXELS_KEY) !== '0';
+	} catch {
+		return true;
+	}
+}
+
+export function setWorldPixels(on: boolean): void {
+	try {
+		localStorage.setItem(PIXELS_KEY, on ? '1' : '0');
+	} catch {
+		/* a browser that keeps nothing keeps the default */
+	}
+}

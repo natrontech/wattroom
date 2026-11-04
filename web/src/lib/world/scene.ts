@@ -15,6 +15,8 @@ import { compose, type CameraMode, type MountOptions } from './compose';
 import { createLoop, type LoopStats, missWatch, watchPage } from './loop';
 import { softwareDrawing } from './software-drawing';
 import { gpuTimer } from './gpu-timer';
+import { worldPixels } from './mode';
+import { pixelPass, WORDS } from './pixel';
 import {
 	deviceKey,
 	type Ladder,
@@ -93,9 +95,11 @@ export function mount(
 	canvas: HTMLCanvasElement,
 	opts: MountOptions,
 ): WorldScene {
+	// Pixel 3D draws its own edges, one pixel wide: no multisampling to pay for.
+	const pixels = worldPixels();
 	const renderer = new THREE.WebGLRenderer({
 		canvas,
-		antialias: true,
+		antialias: !pixels,
 		alpha: false,
 		stencil: false,
 		powerPreference: 'default', // never force a dual-GPU Mac onto its discrete GPU
@@ -121,6 +125,14 @@ export function mount(
 		throw err;
 	}
 	const { scene, camera } = world;
+	camera.layers.enable(WORDS);
+	const pass = pixels ? pixelPass(renderer) : null;
+	const draw = (
+		s: THREE.Object3D,
+		c: THREE.PerspectiveCamera,
+		w: number,
+		h: number,
+	) => (pass ? pass.render(s, c, w, h) : renderer.render(s, c));
 	world.setFar(RUNGS[rung].far);
 	// Behind the sky, the fog's colour: what the horizon is at this light.
 	const clear = () => scene.fog && renderer.setClearColor(scene.fog.color);
@@ -151,7 +163,7 @@ export function mount(
 			// The bunch keeps the wall's time: where the hub has everyone does not wait for a slow frame.
 			world.advanceBy(Math.min(seconds, MAX_DT), seconds);
 			timer?.begin();
-			renderer.render(scene, camera);
+			draw(scene, camera, canvas.clientWidth, canvas.clientHeight);
 			timer?.end();
 		} catch (err) {
 			// A frame that throws throws every frame after it: a frozen world
@@ -232,6 +244,7 @@ export function mount(
 	const lost = () => fail('context-lost');
 	function release() {
 		world.dispose();
+		pass?.dispose();
 		renderer.dispose();
 		renderer.forceContextLoss(); // stay clear of the browser's cap on live contexts
 	}
@@ -243,7 +256,14 @@ export function mount(
 	const unwatch = watchPage(canvas, loop.gate);
 	// The shaders compile off the main thread where the driver allows, and
 	// the first frame waits for them rather than stalling on them.
-	renderer.compileAsync(scene, camera).then(
+	// Into the target where Pixel 3D draws: a program built for the screen's sRGB would build again on the first frame.
+	if (pass)
+		renderer.setRenderTarget(
+			pass.sized(canvas.clientWidth, canvas.clientHeight),
+		);
+	const compiled = renderer.compileAsync(scene, camera);
+	renderer.setRenderTarget(null);
+	compiled.then(
 		() => failed || loop.start(),
 		(err: unknown) => {
 			console.error('world: the shaders did not compile', err);
@@ -295,7 +315,7 @@ export function mount(
 				renderer.setPixelRatio(1);
 				renderer.setSize(PICTURE.width, PICTURE.height, false);
 				if (still.scene.fog) renderer.setClearColor(still.scene.fog.color);
-				renderer.render(still.scene, still.camera);
+				draw(still.scene, still.camera, PICTURE.width, PICTURE.height);
 				// Read in the same task as the render: the drawing buffer is not
 				// kept past it (no preserveDrawingBuffer), and toBlob copies the
 				// bitmap when it is called.
