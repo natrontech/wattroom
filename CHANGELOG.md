@@ -17,6 +17,13 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.11.18] - 2026-11-04
+
+### Added
+
+- The 3D world now draws in chunky pixels with a dark outline, the way the lounge looks. Names over riders stay sharp. Prefer the old look? Pick Smooth under Settings → Look → 3D look. (#4393)
+- Click yourself in the cozy room to put together your own pixel look: skin, hairstyle and colour, a tee, hoodie, jersey or sweater, trousers, shoes, glasses, a cap and a scarf. Everyone in your voice channels sees it at once. (#4406)
+
 ## [2026.11.17] - 2026-11-04
 
 ### Added
@@ -4350,7 +4357,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.17...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.18...HEAD
+[2026.11.18]: https://github.com/natrontech/wattroom/compare/2026.11.17...2026.11.18
 [2026.11.17]: https://github.com/natrontech/wattroom/compare/2026.11.16...2026.11.17
 [2026.11.16]: https://github.com/natrontech/wattroom/compare/2026.11.15...2026.11.16
 [2026.11.15]: https://github.com/natrontech/wattroom/compare/2026.11.14...2026.11.15
