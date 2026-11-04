@@ -28,17 +28,23 @@ describe('pixelScale', () => {
 	});
 });
 
+/** The shader `m` compiles from three's `lib` once ramped. */
+function ramped(m: THREE.Material, lib: 'lambert' | 'toon') {
+	rampAll(new THREE.Mesh(new THREE.BoxGeometry(), m));
+	const shader = {
+		uniforms: {},
+		vertexShader: THREE.ShaderLib[lib].vertexShader,
+		fragmentShader: THREE.ShaderLib[lib].fragmentShader,
+	} as unknown as THREE.WebGLProgramParametersWithUniforms;
+	m.onBeforeCompile(shader, {} as THREE.WebGLRenderer);
+	return shader;
+}
+
 describe('rampAll', () => {
 	it("steps a Lambert material's sun and fog, and keys its program apart", () => {
 		const m = new THREE.MeshLambertMaterial();
 		const before = m.customProgramCacheKey();
-		rampAll(new THREE.Mesh(new THREE.BoxGeometry(), m));
-		const shader = {
-			uniforms: {},
-			vertexShader: THREE.ShaderLib.lambert.vertexShader,
-			fragmentShader: THREE.ShaderLib.lambert.fragmentShader,
-		} as unknown as THREE.WebGLProgramParametersWithUniforms;
-		m.onBeforeCompile(shader, {} as THREE.WebGLRenderer);
+		const shader = ramped(m, 'lambert');
 		// A three.js upgrade that rewords either chunk would leave these out without a sound.
 		expect(shader.fragmentShader).toContain(
 			'dotNL = pixelStep( dot( geometryNormal',
@@ -48,5 +54,16 @@ describe('rampAll', () => {
 		);
 		expect(shader.uniforms).toHaveProperty('uPixel', PIXEL);
 		expect(m.customProgramCacheKey()).toBe(`pixel|${before}`);
+	});
+	it("steps a rider's toon light, and lets the figure's own chunks step too", () => {
+		const shader = ramped(new THREE.MeshToonMaterial(), 'toon');
+		expect(shader.fragmentShader).toContain(
+			'return vec3( pixelStep( dotNL * 0.5 + 0.5 ) )',
+		);
+		expect(shader.fragmentShader).toContain('#define PIXEL_RAMP');
+		expect(shader.fragmentShader).toContain('hemiDiffuseWeight = floor(');
+		expect(shader.fragmentShader).toContain(
+			'fogFactor = pixelFog( fogFactor )',
+		);
 	});
 });

@@ -28,6 +28,7 @@ import { chevronGeometry, makeCar } from './team-car';
 import { thumbGeometry } from './cheer';
 import { makeTrail } from './trail';
 import { ramp } from './materials';
+import { PIXEL } from './pixel';
 import { LANE, type Car } from './bunch';
 import { type Route } from '$lib/road/route';
 import { at, leftOf } from '$lib/road/along';
@@ -82,6 +83,19 @@ function zoneRing(across: number, along: number): THREE.BufferGeometry {
 		),
 	);
 	return new THREE.ShapeGeometry(shape, 48).rotateX(-Math.PI / 2);
+}
+/**
+ * The band's middle as a line: in Pixel 3D a band seen end-on is under a
+ * world pixel and breaks into dashes; a line is one pixel and never does.
+ */
+function zoneLine(across: number, along: number): THREE.BufferGeometry {
+	const n = 64;
+	return new THREE.BufferGeometry().setFromPoints(
+		Array.from({ length: n }, (_, i) => {
+			const t = (i / n) * Math.PI * 2;
+			return new THREE.Vector3(across * Math.cos(t), 0, along * Math.sin(t));
+		}),
+	);
 }
 /** Seconds a new figure rides before it is first drawn, so it arrives in its riding posture. */
 const SETTLE_S = 2;
@@ -186,6 +200,7 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 		.rotateX(-Math.PI / 2)
 		.scale(0.9, 1, 2.1);
 	const ringGeo = zoneRing(RING_ACROSS, RING_ALONG);
+	const lineGeo = zoneLine(RING_ACROSS, RING_ALONG);
 	const digits = makeZoneDigits(style.tag);
 	const beadGeo = new THREE.SphereGeometry(1, 16, 12);
 	const chevronGeo = chevronGeometry();
@@ -260,6 +275,7 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 			}),
 		);
 		ring.position.y = 0.16; // above a banked road, never half-buried
+		ring.add(new THREE.LineLoop(lineGeo, ring.material));
 		// Ahead of the front wheel at the ring's far end, where neither figure nor trail covers it (forward is +Z).
 		const digit = digits.mesh();
 		digit.position.set(0, 0.17, RING_ALONG - 0.2);
@@ -423,7 +439,9 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 			}
 			v.material.opacity = alpha;
 			v.shadow.material.opacity = 0.28 * alpha;
-			v.ring.material.opacity = 0.85 * alpha;
+			// Whole pixels are never see-through, so the line over the band is the band's own colour.
+			v.ring.material.opacity = (PIXEL.value ? 1 : 0.85) * alpha;
+			v.ring.children[0].visible = PIXEL.value > 0;
 			if (v.faded !== !!r.faded) {
 				v.faded = !!r.faded;
 				fade(v);
