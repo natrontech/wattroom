@@ -17,6 +17,12 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.11.17] - 2026-11-04
+
+### Added
+
+- In the cozy room, Next skips house radio for everyone, its style label opens a crate of styles, and Mood sets window, lamp, stove and radio in one tap. A stove by the sofa warms the room and slows the generated tunes, and the cat now walks and jumps instead of gliding. (#4404)
+
 ## [2026.11.16] - 2026-11-04
 
 ### Added
@@ -4344,7 +4350,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.16...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.17...HEAD
+[2026.11.17]: https://github.com/natrontech/wattroom/compare/2026.11.16...2026.11.17
 [2026.11.16]: https://github.com/natrontech/wattroom/compare/2026.11.15...2026.11.16
 [2026.11.15]: https://github.com/natrontech/wattroom/compare/2026.11.14...2026.11.15
 [2026.11.14]: https://github.com/natrontech/wattroom/compare/2026.11.13...2026.11.14
