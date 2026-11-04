@@ -32,6 +32,14 @@ describe('the ride light (ADR-0072)', () => {
 		expect(end.peach).toBeLessThan(start.peach);
 	});
 
+	it('lights the villages a quarter into a ride, at once with no known end, never under a sun that is up', () => {
+		expect(lightAt(RIDE, 0.2).lamps).toBe(false);
+		expect(lightAt(RIDE, 0.25).lamps).toBe(true);
+		expect(lightAt(RIDE, null).lamps).toBe(true);
+		const desk = { ...RIDE, sun: { ...RIDE.sun, elevation: 9 } };
+		expect(lightAt(desk, 1).lamps).toBe(false);
+	});
+
 	it('leaves a look whose sun is up its own sun and key', () => {
 		const desk = { ...RIDE, sun: { ...RIDE.sun, elevation: 9 } };
 		const l = lightAt(desk, 1);

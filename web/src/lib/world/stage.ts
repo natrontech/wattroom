@@ -17,7 +17,9 @@ import { batchBoards } from './boards';
 import { archOnRoad } from './furniture';
 import type { Piece } from './setpieces';
 import { plinth, road, roadMaterial, ROAD_W, terrain, yOf } from './geometry';
+import { lightsMaterial, lightsUniforms, OFF } from './lights';
 import { flat, type Sight } from './materials';
+import { LAMP_ARM } from './props';
 import { piecePool } from './piece-pool';
 import { CHUNK_M } from './place/lattice';
 import { prng } from './rand';
@@ -135,6 +137,7 @@ export function buildStage(
 	finish = true,
 ): Stage {
 	const group = new THREE.Group();
+	const lights = lightsUniforms(sight.uTime);
 
 	const skyMat = skyMaterial(style);
 	const sky = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 16), skyMat);
@@ -180,7 +183,7 @@ export function buildStage(
 	group.add(tag('sky', horizon));
 
 	// The ride's ground, chunk by chunk as the stream holds it, and its road, piece by piece within the near reach.
-	const groundMat = terrainMaterial(style);
+	const groundMat = terrainMaterial(style, lights);
 	const ground = piecePool(groundMat, GROUND_ROOM);
 	group.add(tag('terrain', ground.mesh));
 	stream.attach({
@@ -188,7 +191,7 @@ export function buildStage(
 			ground.add(id, terrain(route, meshOf([{ ci, cj, grid }]), style.palette)),
 		drop: (id) => ground.drop(id),
 	});
-	const ribbon = piecePool(roadMaterial(style.road), ROAD_ROOM);
+	const ribbon = piecePool(roadMaterial(style.road, lights), ROAD_ROOM);
 	group.add(tag('road', ribbon.mesh));
 	const pieces = roadPieces(route);
 	let here: string | null = null;
@@ -230,6 +233,7 @@ export function buildStage(
 		trees: treeMat,
 		buildings: houseMat,
 		stock: plain,
+		lights: lightsMaterial(sight, lights),
 	});
 	for (const mesh of props.meshes) group.add(tag('dressing', mesh));
 	const starField = style.stars ? stars(style.stars) : null;
@@ -245,9 +249,39 @@ export function buildStage(
 		group.add(
 			tag('dressing', archOnRoad(route, route.length, 'FINISH', style), 'arch'),
 		);
+	// Each tile's lamps: where its pool falls under the head (xy) and where the lamp stands (zw).
+	const pools = new Map<string, THREE.Vector4[]>();
+	const poolsOf = (pieces: readonly Piece[]) =>
+		pieces
+			.filter((p) => p.kind === 'lamp')
+			.map((p) => {
+				const a = Math.atan2(p.turn[1], p.turn[0]); // as the batch turns it
+				return new THREE.Vector4(
+					p.x + LAMP_ARM * Math.sin(a),
+					p.z + LAMP_ARM * Math.cos(a),
+					p.x,
+					p.z,
+				);
+			});
+	/** The ground draws the pools nearest the eye (lights.ts POOLS). */
+	function pool(eye: THREE.Vector3) {
+		const near = [...pools.values()]
+			.flat()
+			.sort(
+				(a, b) =>
+					Math.hypot(a.x - eye.x, a.y - eye.z) -
+					Math.hypot(b.x - eye.x, b.y - eye.z),
+			);
+		lights.uLamps.value.forEach((v, i) =>
+			near[i] ? v.copy(near[i]) : v.setScalar(OFF),
+		);
+	}
+	let lit = false;
+
 	function draw(ti: number, tj: number, eye: THREE.Vector3) {
 		const id = tileKey(ti, tj);
 		const t = world.tile(ti, tj);
+		pools.set(id, poolsOf(t.pieces));
 		props.add(
 			id,
 			tileCentre(ti, tj),
@@ -257,6 +291,7 @@ export function buildStage(
 		boards.add(id, t.signs, t.arches);
 	}
 	function undraw(id: string) {
+		pools.delete(id);
 		props.drop(id);
 		boards.drop(id);
 	}
@@ -349,6 +384,7 @@ export function buildStage(
 				dress(eye, whole);
 				roads(eye);
 			}
+			pool(eye);
 		},
 		bandOverLand(eye, view) {
 			ridges.skyline.over(
@@ -371,6 +407,11 @@ export function buildStage(
 		},
 		light(p) {
 			const l = lightAt(style, p);
+			// Lit at mount, the lights are on; lit later, they ease on from now (lights.ts).
+			if (!l.lamps) lights.uLitAt.value = OFF;
+			else if (lights.uLitAt.value === OFF)
+				lights.uLitAt.value = lit ? sight.uTime.value : -OFF;
+			lit = true;
 			setLight(skyMat, l);
 			setLight(groundMat, l);
 			hemi.intensity = (l.keyed ? HEMI_KEYED : HEMI_SKY) * l.dusk;

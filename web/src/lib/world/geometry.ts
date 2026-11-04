@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { Biome } from './biome';
 import { type Route } from '$lib/road/route';
+import { lightsUniforms, POOL, type Lights } from './lights';
 import type { Palette, Style } from './styles';
 import type { TerrainMesh } from './terrain-mesh';
 import type { World } from './world';
@@ -194,24 +195,39 @@ const DASH_EVERY_M = 12;
  * pixel it covers, so it fades with distance instead of shimmering, and the
  * centre's dashes fade into their average once they are too short to draw.
  */
-export function roadMaterial(c: Style['road']): THREE.MeshLambertMaterial {
+export function roadMaterial(
+	c: Style['road'],
+	lights: Lights = lightsUniforms(),
+): THREE.MeshLambertMaterial {
 	const m = new THREE.MeshLambertMaterial();
 	m.onBeforeCompile = (s) => {
+		Object.assign(s.uniforms, lights);
 		s.uniforms.uAsphalt = { value: new THREE.Color(c.asphalt) };
 		s.uniforms.uLine = { value: new THREE.Color(c.line) };
 		s.uniforms.uVerge = { value: new THREE.Color(c.verge) };
 		s.uniforms.uShoulder = { value: new THREE.Color(c.shoulder ?? c.verge) };
 		s.vertexShader = s.vertexShader
-			.replace('#include <common>', '#include <common>\nvarying vec2 vRoad;')
+			.replace(
+				'#include <common>',
+				'#include <common>\nvarying vec2 vRoad;\nvarying vec3 vLampAt;',
+			)
 			.replace(
 				'#include <begin_vertex>',
-				'#include <begin_vertex>\nvRoad = uv;',
+				`#include <begin_vertex>
+				vRoad = uv;
+				vec4 lampAt = vec4(transformed, 1.0);
+				#ifdef USE_BATCHING
+					lampAt = batchingMatrix * lampAt;
+				#endif
+				vLampAt = (modelMatrix * lampAt).xyz;`,
 			);
 		s.fragmentShader = s.fragmentShader
 			.replace(
 				'#include <common>',
 				`#include <common>
 				varying vec2 vRoad;
+				varying vec3 vLampAt;
+				${POOL}
 				uniform vec3 uAsphalt; uniform vec3 uLine; uniform vec3 uVerge; uniform vec3 uShoulder;
 				// A stripe of half width h at distance d, one pixel fw wide at least, at the share of it the stripe covers.
 				float paint(float d, float h, float fw) {
@@ -234,6 +250,15 @@ export function roadMaterial(c: Style['road']): THREE.MeshLambertMaterial {
 				col = mix(col, uLine, max(edge, centre) * (1.0 - shoulder));
 				col = mix(col, uVerge, verge);
 				vec4 diffuseColor = vec4(col, opacity);`,
+			)
+			.replace(
+				'#include <opaque_fragment>',
+				`float pool = lampPool(vLampAt); // a third of the way to amber, the lounge's pool
+				#ifdef PIXEL_RAMP
+					if (uPixel > 0.5) pool = pool > pixelBayer(gl_FragCoord.xy) ? 1.0 : 0.0;
+				#endif
+				outgoingLight = mix(outgoingLight, uAmber, pool / 3.0);
+				#include <opaque_fragment>`,
 			);
 	};
 	m.customProgramCacheKey = () =>

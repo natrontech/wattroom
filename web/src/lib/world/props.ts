@@ -153,6 +153,19 @@ export const cowFar = (c: PropColors) =>
 
 // --- set-piece kits: small things that make a road a place -------------------
 
+/** How far a street lamp's arm reaches out over the road from its post. */
+export const LAMP_ARM = 1.6;
+
+// A street lamp through a village: a grey post, an arm out over the road, a
+// cap; the head under it is lampLit's.
+export function lamp(c: PropColors) {
+	return merge([
+		tint(cyl(0.06, 0.08, 5, 6).translate(0, 2.5, 0), c.pole),
+		tint(box(0.08, 0.08, LAMP_ARM).translate(0, 4.96, LAMP_ARM / 2), c.pole),
+		tint(box(0.56, 0.12, 0.56).translate(0, 5, LAMP_ARM), c.pole),
+	]);
+}
+
 export function bench(c: PropColors) {
 	return merge([
 		tint(box(1.8, 0.08, 0.45).translate(0, 0.45, 0), c.wood),
@@ -354,3 +367,40 @@ export function summitCross(c: PropColors) {
 		tint(box(1.5, 0.16, 0.16).translate(0, 3.6, 0), c.post),
 	]);
 }
+
+// --- what lights after dusk (lights.ts): each model's lit parts, in their pane's colour ---
+
+/** Windows a few cm proud of their walls: [w, h, x, y, z, turned to face +z by]. */
+function windows(
+	c: PropColors,
+	list: [number, number, number, number, number, number][],
+) {
+	return merge(
+		list.map(([w, h, x, y, z, a]) =>
+			tint(new THREE.PlaneGeometry(w, h).rotateY(a).translate(x, y, z), c.band),
+		),
+	);
+}
+const EAST = Math.PI / 2;
+const WEST = -Math.PI / 2;
+
+/** A house's lit windows: two downstairs on one side, one up on the other, two in the gable over one below. */
+export const houseLit = (c: PropColors) =>
+	windows(c, [
+		[1, 1.1, 4.53, 1.7, -2.5, EAST],
+		[1, 1.1, 4.53, 1.7, 2.5, EAST],
+		[1, 1, -4.63, 4.5, 0, WEST],
+		[0.9, 1, -2, 4.5, 5.63, 0],
+		[0.9, 1, 2, 4.5, 5.63, 0],
+		[1, 1.1, 0, 1.7, 5.53, 0],
+	]);
+
+/** A hut's: one in its side, one in its gable. */
+export const hutLit = (c: PropColors) =>
+	windows(c, [
+		[0.8, 0.8, 3.33, 2.9, 1.2, EAST],
+		[0.8, 0.8, 0, 2.9, 3.83, 0],
+	]);
+
+export const lampLit = (c: PropColors) =>
+	merge([tint(box(0.44, 0.22, 0.44).translate(0, 4.83, LAMP_ARM), c.band)]);
