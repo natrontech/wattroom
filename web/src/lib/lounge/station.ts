@@ -113,8 +113,6 @@ export interface Tune {
 	melodyBase: number;
 	/** The tone control wide open, in Hz: darker or brighter tape. */
 	open: number;
-	/** How loud the vinyl crackles, 0–1. */
-	crackle: number;
 	/** How much of the room comes back, 0–1. */
 	space: number;
 	/** Where the blocks start in FILLS and PLANS, so no two blocks of a tune match. */
@@ -222,7 +220,6 @@ export function tuneOf(
 		motifs: [ask, answer],
 		melodyBase: key > 6 ? 48 + key : 60 + key,
 		open: calm ? 1800 + Math.floor(r() * 800) : 2200 + Math.floor(r() * 2000),
-		crackle: calm ? 0.04 : 0.05 + r() * 0.1,
 		space: calm ? 0.5 : chip ? 0.12 : 0.22,
 		turn: Math.floor(r() * 72),
 		name: `${pick(FIRST)} ${pick(SECOND)}`,

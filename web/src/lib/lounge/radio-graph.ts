@@ -16,8 +16,6 @@ export interface Graph extends Buses {
 	/** The reverb's return; each tune sets its own. */
 	space: GainNode;
 	rain: GainNode;
-	/** The vinyl's level; each tune sets its own. */
-	crackle: GainNode;
 }
 
 export function build(ctx: AudioContext): Graph {
@@ -102,29 +100,25 @@ export function build(ctx: AudioContext): Graph {
 	echoTone.connect(gain(0.3, echo));
 	echoTone.connect(gain(0.3, pre));
 
-	// Vinyl: a faint surface hiss, kept out of the highs and lows. No pops:
-	// riders heard them as crackle over the music (Jan, 2026-11-03). Two loops
-	// of odd lengths, so the hiss never lines up with a bar.
-	const crackle = gain(0.35, master);
-	const surface = filter('highpass', 700, filter('lowpass', 5000, crackle));
-	for (const sec of [5.3, 8.9]) {
-		loop(
-			buffer(sec, () => (Math.random() * 2 - 1) * 0.0025),
-			surface,
-		);
-	}
-	// Rain against the window: brown noise, far back and dark. Jan found it
-	// too loud and too present at 1.6 kHz over a 4 s loop (2026-11-03): an
-	// 11.3 s loop never lines up with a bar, and 700 Hz keeps it a hush.
-	let brown = 0;
-	const rain = gain(0, master);
-	loop(
-		buffer(11.3, () => {
+	// No vinyl at all: riders heard its pops, then its hiss, as crackle over
+	// the music (Jan, 2026-11-03).
+	// Rain against the window: brown noise, far back and dark, on an 11.3 s
+	// loop that never lines up with a bar. The loop used to jump at its seam,
+	// a click every 4 s that read as crackle too; each channel now ends where
+	// it starts.
+	const rainLoop = buffer(11.3, () => 0);
+	for (let ch = 0; ch < 2; ch++) {
+		const d = rainLoop.getChannelData(ch);
+		let brown = 0;
+		for (let i = 0; i < d.length; i++) {
 			brown = (brown + 0.02 * (Math.random() * 2 - 1)) / 1.02;
-			return brown * 3.5;
-		}),
-		filter('lowpass', 700, rain),
-	);
+			d[i] = brown * 3.5;
+		}
+		const tilt = (d[d.length - 1] - d[0]) / (d.length - 1);
+		for (let i = 0; i < d.length; i++) d[i] -= tilt * i;
+	}
+	const rain = gain(0, master);
+	loop(rainLoop, filter('lowpass', 700, rain));
 	return {
 		ctx,
 		noise: buffer(1, () => Math.random() * 2 - 1),
@@ -140,6 +134,5 @@ export function build(ctx: AudioContext): Graph {
 		echo,
 		space,
 		rain,
-		crackle,
 	};
 }

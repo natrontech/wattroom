@@ -42,8 +42,17 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 # that tried them. Made here because the final stage has no shell to mkdir with.
 RUN mkdir -p /mountpoints/data/tracks /mountpoints/data/feedback
 
+# House radio's records (scripts/house-radio.py): 86 MB of CC0 tracks kept
+# out of git as a release asset, pinned by checksum like every base image. A
+# stage of its own, so the layer stays cached until the records change.
+FROM --platform=$BUILDPLATFORM golang:1.26-alpine@sha256:a2012b4a1d1f9f7e9f44e0d39b805a901e856b1dd80b4e6ee4338db547050308 AS radio
+ADD --checksum=sha256:9130e7bebecf9d6b788b0b6d490056d43641da98f97e950fe85326fdda9e1dfe \
+    https://github.com/natrontech/wattroom/releases/download/house-radio-1/house-radio.tar /radio.tar
+RUN mkdir /radio && tar -xf /radio.tar -C /radio
+
 FROM gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
 COPY --from=server /wattroom /wattroom
+COPY --from=radio /radio /radio
 # 65532 is distroless's `nonroot`, the uid this image runs as.
 COPY --from=server --chown=65532:65532 /mountpoints/data /data
 # ARG lives here so a new SHA only rebuilds this free stage, not the Go compile.
@@ -52,5 +61,6 @@ ARG BUILD_VERSION=dev
 ENV WATTROOM_BUILD_SHA=$BUILD_SHA
 ENV WATTROOM_VERSION=$BUILD_VERSION
 ENV WATTROOM_ADDR=:8080
+ENV WATTROOM_RADIO_DIR=/radio
 EXPOSE 8080
 ENTRYPOINT ["/wattroom"]
