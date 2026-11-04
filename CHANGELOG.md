@@ -17,6 +17,17 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.11.16] - 2026-11-04
+
+### Added
+
+- House radio now opens on Records, real lofi hip hop that everyone in the voice channel hears at the same second, and the vinyl crackle is gone. The record player still turns to the generated Mix, Lofi, 8-bit and Ambient. (#4395)
+- Your voice channel shows who is riding which session, with a Join on their tile, and announces a session someone in the call just started. Live sessions sit at the top of the crew's sidebar. (#4394)
+
+### Fixed
+
+- The house radio no longer blasts a burst of noise when sound starts after your first click, or when your headphones reconnect. (#4400)
+
 ## [2026.11.15] - 2026-11-03
 
 ### Added
@@ -4333,7 +4344,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.15...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.16...HEAD
+[2026.11.16]: https://github.com/natrontech/wattroom/compare/2026.11.15...2026.11.16
 [2026.11.15]: https://github.com/natrontech/wattroom/compare/2026.11.14...2026.11.15
 [2026.11.14]: https://github.com/natrontech/wattroom/compare/2026.11.13...2026.11.14
 [2026.11.13]: https://github.com/natrontech/wattroom/compare/2026.11.12...2026.11.13
