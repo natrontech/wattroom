@@ -232,10 +232,11 @@ perf.start('perf-scenes', async () => {
 	await win.webContents.executeJavaScript(VOICE);
 	await press(win, 'Join voice');
 
-	/** Your ride on the Pass loop, the World control at `mode`. */
-	const roadRide = async (mode) => {
+	/** Your ride on the Pass loop, the World control at `mode`, in Pixel 3D or Smooth (Settings → Look). */
+	const roadRide = async (mode, pixels = false) => {
 		await win.webContents.executeJavaScript(
-			`localStorage.setItem('wattroom.world.mode.v1', ${JSON.stringify(mode)})`,
+			`localStorage.setItem('wattroom.world.mode.v1', ${JSON.stringify(mode)});
+			localStorage.setItem('wattroom.world.pixels.v1', '${pixels ? 1 : 0}')`,
 		);
 		await perf.load(win, `${perf.BASE}/ride?road=intro`);
 		await press(win, 'Ride simulated', 30_000);
@@ -268,6 +269,10 @@ perf.start('perf-scenes', async () => {
 		// draw the world: WattRoom's own Pass loop at each World control that
 		// draws it, the ride's page on its own, out of the voice channel.
 		['you ride a road in the world (Full)', () => roadRide('full')],
+		[
+			'you ride a road in the world (Full, Pixel)',
+			() => roadRide('full', true),
+		],
 		['you ride a road in the world (Light)', () => roadRide('light')],
 	];
 	for (const [i, [label, apply]] of scenes.entries()) {

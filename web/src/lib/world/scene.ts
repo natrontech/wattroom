@@ -127,12 +127,10 @@ export function mount(
 	const { scene, camera } = world;
 	camera.layers.enable(WORDS);
 	const pass = pixels ? pixelPass(renderer) : null;
-	const draw = (
-		s: THREE.Object3D,
-		c: THREE.PerspectiveCamera,
-		w: number,
-		h: number,
-	) => (pass ? pass.render(s, c, w, h) : renderer.render(s, c));
+	const draw = (s: THREE.Object3D, c: THREE.PerspectiveCamera) =>
+		pass ? pass.render(s, c) : renderer.render(s, c);
+	// A canvas the browser scales blurs every world pixel: Pixel 3D's is drawn at the device's own, and never smoothed.
+	if (pass) canvas.style.imageRendering = 'pixelated';
 	world.setFar(RUNGS[rung].far);
 	// Behind the sky, the fog's colour: what the horizon is at this light.
 	const clear = () => scene.fog && renderer.setClearColor(scene.fog.color);
@@ -148,8 +146,11 @@ export function mount(
 		const w = canvas.clientWidth;
 		const h = canvas.clientHeight;
 		if (!w || !h) return;
+		// Pixel 3D's scene is about 400 columns whatever the canvas: only its pass and its words draw at the device's pixels.
 		renderer.setPixelRatio(
-			pixelRatio(w, h, window.devicePixelRatio, RUNGS[rung].pixels),
+			pass
+				? window.devicePixelRatio
+				: pixelRatio(w, h, window.devicePixelRatio, RUNGS[rung].pixels),
 		);
 		renderer.setSize(w, h, false);
 		camera.aspect = w / h;
@@ -163,7 +164,7 @@ export function mount(
 			// The bunch keeps the wall's time: where the hub has everyone does not wait for a slow frame.
 			world.advanceBy(Math.min(seconds, MAX_DT), seconds);
 			timer?.begin();
-			draw(scene, camera, canvas.clientWidth, canvas.clientHeight);
+			draw(scene, camera);
 			timer?.end();
 		} catch (err) {
 			// A frame that throws throws every frame after it: a frozen world
@@ -243,6 +244,7 @@ export function mount(
 	let broke = false;
 	const lost = () => fail('context-lost');
 	function release() {
+		canvas.style.imageRendering = '';
 		world.dispose();
 		pass?.dispose();
 		renderer.dispose();
@@ -258,10 +260,7 @@ export function mount(
 	// the first frame waits for them rather than stalling on them.
 	// Into the target where Pixel 3D draws: a program built for the screen's sRGB would build again on the first frame.
 	if (pass) rampAll(scene);
-	if (pass)
-		renderer.setRenderTarget(
-			pass.sized(canvas.clientWidth, canvas.clientHeight),
-		);
+	if (pass) renderer.setRenderTarget(pass.sized());
 	const compiled = renderer.compileAsync(scene, camera);
 	renderer.setRenderTarget(null);
 	compiled.then(
@@ -316,7 +315,7 @@ export function mount(
 				renderer.setPixelRatio(1);
 				renderer.setSize(PICTURE.width, PICTURE.height, false);
 				if (still.scene.fog) renderer.setClearColor(still.scene.fog.color);
-				draw(still.scene, still.camera, PICTURE.width, PICTURE.height);
+				draw(still.scene, still.camera);
 				// Read in the same task as the render: the drawing buffer is not
 				// kept past it (no preserveDrawingBuffer), and toBlob copies the
 				// bitmap when it is called.

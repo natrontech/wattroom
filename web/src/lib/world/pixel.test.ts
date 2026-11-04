@@ -19,10 +19,11 @@ describe('pixelScale', () => {
 			expect(Math.max(w, h) / s).toBeLessThanOrEqual(480);
 		}
 	});
-	it('draws a phone held upright at 2, as the lounge does', () => {
+	it('draws a phone held upright at 2 CSS pixels, as the lounge does, in whole pixels of its own', () => {
 		expect(pixelScale(375, 812)).toBe(2);
+		expect(pixelScale(1125, 2436)).toBe(6); // the same phone at 3×
 	});
-	it('never goes under one CSS pixel', () => {
+	it('never goes under one pixel', () => {
 		expect(pixelScale(300, 200)).toBe(1);
 		expect(pixelScale(0, 0)).toBe(1);
 	});
