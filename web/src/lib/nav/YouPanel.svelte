@@ -1,6 +1,7 @@
 <script lang="ts">
 	// You, pinned at the sidebar's foot: your name, your status and Settings.
-	// The voice controls moved to the now bar along the bottom of the content.
+	// Connected on a desk, your voice, Away and Leave sit under them. Riding or
+	// on a phone the sidebar is out of reach, so the now bar carries those.
 	import { goto } from '$app/navigation';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import StatusMark from '$lib/status-line/StatusMark.svelte';
@@ -9,16 +10,21 @@
 	import { activeHref } from '$lib/nav/pages';
 	import { chosenCrew } from '$lib/nav/chosen-crew.svelte';
 	import { friends } from '$lib/friends/friends.svelte';
+	import AwayLeave from '$lib/nav/AwayLeave.svelte';
+	import VoiceControls from '$lib/nav/VoiceControls.svelte';
 	import { UNREAD_DOT } from '$lib/messages/unread-marks';
 	import { youMenu } from '$lib/nav/you-menu';
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { statusOfRider } from '$lib/status';
+	import { device } from '$lib/device.svelte';
 	import Settings from '@lucide/svelte/icons/settings';
 
 	// The route is the one thing the store cannot answer.
-	let { pathname }: { pathname: string } = $props();
+	let { pathname, riding }: { pathname: string; riding: boolean } = $props();
 
 	const conn = $derived(channelConnection.current);
+	const docked = $derived(!!conn && !riding && !device.narrow);
+	const showAv = $derived(!!account.me?.avEnabled && !!channelConnection.call);
 	const destination = $derived(activeHref(pathname));
 	// Your Home has news (#2586): a friend waiting on your answer.
 	const news = $derived(
@@ -40,10 +46,12 @@
 	);
 </script>
 
-<!-- The same shape whatever the connection state: the nav above never jumps. -->
-<!-- 4rem, the now bar's height, so the two top borders meet. -->
+<!-- 4rem, the now bar's height, so the two top borders meet: this row alone,
+     or Away and Leave under your voice. -->
 <div
-	class="border-ink/10 flex h-16 shrink-0 items-center border-t px-3"
+	class="border-ink/10 flex shrink-0 items-center border-t px-3 {docked
+		? 'h-12'
+		: 'h-16'}"
 	{@attach contextMenu(() => youMenu(goto))}
 >
 	<div class="flex w-full items-center gap-2" title={MENU_HINT}>
@@ -94,3 +102,13 @@
 		>
 	</div>
 </div>
+{#if docked}
+	{#if showAv}
+		<div class="shrink-0 px-3 pb-1"><VoiceControls docked /></div>
+	{/if}
+	<div
+		class="border-ink/10 flex h-16 shrink-0 items-center gap-1 border-t px-3"
+	>
+		<AwayLeave docked />
+	</div>
+{/if}

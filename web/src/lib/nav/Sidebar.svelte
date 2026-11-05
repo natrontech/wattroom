@@ -56,9 +56,11 @@
 	let {
 		pathname,
 		live = false,
+		riding = false,
 	}: {
 		pathname: string;
 		live?: boolean;
+		riding?: boolean;
 	} = $props();
 
 	// Your own badge, on the same rule as everyone else's (#824): the people
@@ -369,7 +371,7 @@
 		</a>
 	{/if}
 
-	<YouPanel {pathname} />
+	<YouPanel {pathname} {riding} />
 </nav>
 
 {#if updates.sheetOpen}
