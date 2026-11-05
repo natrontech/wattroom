@@ -71,7 +71,7 @@ Navigation never ends a session or a call. Opening another voice channel moves t
 ## The now bar and the ride's controls
 
 - The bar shows when there is a call, a session or a ride.
-- Voice controls are the call's, unchanged.
+- Voice, Away and Leave are the call's. On a desk they sit under your name in the sidebar's foot. Riding or on a phone the sidebar is out of reach, so they sit in the bar.
 - **Ride** opens the device's free ride. Its arrow lists, for the crew you are looking at: **Start a session**, **Ride together**, then one row per live session ("Join Tempo · 3 riding").
 - On a session: the ride's controls from the ride HUD (#4386), plus **Leave session**. The coach also gets Pause and End.
 - Off any crew page, Start a session uses the crew of your call, else the last crew you opened.

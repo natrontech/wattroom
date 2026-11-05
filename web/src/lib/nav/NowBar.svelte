@@ -1,40 +1,30 @@
 <script lang="ts">
 	// The now bar: the voice channel you are connected to, along the bottom of
-	// the content on every page. Voice, Ride, the music, reactions, Away and
-	// Leave. While you ride, the ride's own controls join it (rideBar), on a
-	// solo ride with no channel too. It replaced the sidebar foot's voice rows and the channel's right
-	// column (Shell Rethink): who is here is the stage's tiles and the
-	// sidebar's voice rows, the jukebox and the cheers open above this bar.
+	// the content on every page. Ride, the music and reactions. Voice, Away and
+	// Leave sit under your name in the sidebar's foot on a desk, and here while
+	// you ride or on a phone, where the sidebar is out of reach. While you ride,
+	// the ride's own controls join it (rideBar), on a solo ride with no channel
+	// too. It replaced the channel's right column (Shell Rethink): who is here
+	// is the stage's tiles and the sidebar's voice rows, the jukebox and the
+	// cheers open above this bar.
 	import { goto } from '$app/navigation';
-	import { leaveChannel } from '$lib/channel/leave';
 	import { nowPanel } from '$lib/nav/now-panel.svelte';
 	import { rideBar } from '$lib/nav/ride-bar.svelte';
-	import QuickAudio from '$lib/channel/QuickAudio.svelte';
+	import AwayLeave from '$lib/nav/AwayLeave.svelte';
+	import VoiceControls from '$lib/nav/VoiceControls.svelte';
 	import { account, voiceUp } from '$lib/account.svelte';
-	import { contextMenu, openMenu, MENU_HINT } from '$lib/context-menu.svelte';
-	import { micMenu } from '$lib/channel/mic-menu';
+	import { contextMenu, openMenu } from '$lib/context-menu.svelte';
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { navDrawer } from '$lib/nav/drawer.svelte';
 	import { crewLive } from '$lib/nav/crew-live.svelte';
 	import { sessionPath } from '$lib/channel/address';
 	import { device } from '$lib/device.svelte';
-	import { AWAY_CHOICES, AWAY_STATES, awayState } from '$lib/away';
 	import Bike from '@lucide/svelte/icons/bike';
 	import Radio from '@lucide/svelte/icons/radio';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
-	import Headphones from '@lucide/svelte/icons/headphones';
-	import LogOut from '@lucide/svelte/icons/log-out';
 	import Menu from '@lucide/svelte/icons/menu';
-	import Mic from '@lucide/svelte/icons/mic';
-	import MicOff from '@lucide/svelte/icons/mic-off';
 	import Music from '@lucide/svelte/icons/music';
-	import PhoneOff from '@lucide/svelte/icons/phone-off';
-	import ScreenShare from '@lucide/svelte/icons/screen-share';
-	import ScreenShareOff from '@lucide/svelte/icons/screen-share-off';
-	import SwitchCamera from '@lucide/svelte/icons/switch-camera';
 	import SmilePlus from '@lucide/svelte/icons/smile-plus';
-	import Video from '@lucide/svelte/icons/video';
-	import VideoOff from '@lucide/svelte/icons/video-off';
 	import Volume2 from '@lucide/svelte/icons/volume-2';
 	import VolumeX from '@lucide/svelte/icons/volume-x';
 
@@ -51,24 +41,15 @@
 	const showAv = $derived(!!account.me?.avEnabled && !!conn);
 	const voiceDown = $derived(!voiceUp(account.me));
 	const onPlace = $derived(channelConnection.onPlacePath(pathname));
+	// On a desk the sidebar's foot carries voice, Away and Leave (YouPanel).
+	const docked = $derived(!riding && !device.narrow);
 
 	const voiceStatus = $derived(av?.status ?? 'off');
 	const inVoice = $derived(voiceStatus === 'live');
-	const micOn = $derived(av?.micOn ?? false);
-	// A muted mic holds no capture (#4161), so unmuting opens the device again.
-	const micStarting = $derived(av?.micStarting ?? false);
 	const camOn = $derived(av?.camOn ?? false);
-	const sharing = $derived(av?.sharing ?? false);
 	const handedOff = $derived(av?.handedOff ?? false);
 	const voiceError = $derived(av?.error ?? null);
 	const playbackBlocked = $derived(av?.playbackBlocked ?? false);
-	const away = $derived(av?.away ?? false);
-	// The button wears the state's glyph only once it says "I'm back".
-	const myAwayReason = $derived(
-		conn?.live.tick?.roster.find((rider) => rider.id === account.me?.id)
-			?.awayReason ?? '',
-	);
-	const awayFace = $derived(awayState(away ? myAwayReason : ''));
 	// Another of your screens carries your voice (ADR-0089): this one moves it.
 	const voiceElsewhere = $derived(conn?.live.pairing.elsewhere?.voice ?? '');
 
@@ -78,15 +59,6 @@
 			((voiceStatus !== 'off' && (playbackBlocked || handedOff)) ||
 				(!!voiceError && !(voiceStatus === 'failed' && onPlace))),
 	);
-
-	// The connection's setAway: it mutes this device and tells the channel.
-	const setAway = (next: boolean, reason = '') => conn?.setAway(next, reason);
-	const awayItems = () =>
-		AWAY_CHOICES.map((key) => ({
-			label: AWAY_STATES[key].label,
-			icon: AWAY_STATES[key].icon,
-			onSelect: () => setAway(true, key),
-		}));
 
 	// Ride is the device's free ride; its arrow starts a session of the
 	// crew's own, or joins one that runs (docs/SESSIONS.md). Starting asks the
@@ -239,104 +211,8 @@
 					</span>
 				</a>{/if}
 
-			{#if showAv}
-				<div class="flex items-center">
-					{#if !inVoice}
-						{#if voiceStatus !== 'connecting' && voiceStatus !== 'reconnecting'}
-							<button
-								onclick={() =>
-									void av?.join(voiceElsewhere ? { take: true } : {})}
-								disabled={voiceDown}
-								title={voiceDown
-									? 'Voice is down on this server right now. It comes back on its own.'
-									: device.coarse
-										? 'Never recorded. Tap the mic to talk.'
-										: 'Never recorded. Your mic opens when you speak.'}
-								class="btn {riding
-									? 'btn-secondary'
-									: 'btn-primary'} min-h-11 whitespace-nowrap"
-								><Headphones size={14} />
-								<span class={rideBar.on ? 'sr-only' : 'max-sm:sr-only'}
-									>{voiceElsewhere
-										? 'Use this device for voice'
-										: voiceStatus === 'failed'
-											? 'Try voice again'
-											: 'Join voice'}</span
-								></button
-							>
-						{/if}
-						<QuickAudio compact />
-					{:else}
-						<button
-							onclick={() => av?.toggleMic()}
-							class="{ICON} {micStarting
-								? 'text-muted'
-								: micOn
-									? 'text-ok'
-									: 'text-danger'}"
-							title="{micStarting
-								? 'mic starting'
-								: micOn
-									? 'mute'
-									: 'unmute'} · {MENU_HINT}"
-							aria-label="microphone"
-							aria-pressed={micOn}
-							aria-busy={micStarting}
-							{@attach contextMenu(() => {
-								const voice = channelConnection.current?.av;
-								return voice ? micMenu(voice, () => voice.toggleMic()) : [];
-							})}
-						>
-							{#if micStarting}<span class="text-[10px] leading-none"
-									>starting</span
-								>{:else if micOn}<Mic size={18} />{:else}<MicOff
-									size={18}
-								/>{/if}
-						</button>
-						<button
-							onclick={() => av?.toggleCam()}
-							class="{ICON} {camOn
-								? 'text-ok'
-								: 'text-muted-dim hover:text-muted'}"
-							title={camOn ? 'turn camera off' : 'turn camera on'}
-							aria-label="camera"
-							aria-pressed={camOn}
-						>
-							{#if camOn}<Video size={18} />{:else}<VideoOff size={18} />{/if}
-						</button>
-						{#if camOn && device.coarse}
-							<button
-								onclick={() => av?.flipCam()}
-								class="{ICON} text-muted-dim hover:text-muted"
-								title="front or back camera"
-								aria-label="flip camera"><SwitchCamera size={18} /></button
-							>
-						{/if}
-						<!-- The danger token while sharing (#563): the state that can
-						     put a private tab on the stage. -->
-						<button
-							onclick={() => void av?.toggleShare()}
-							class="{ICON} max-sm:hidden {sharing
-								? 'bg-danger/15 text-danger'
-								: 'text-muted-dim hover:text-muted'}"
-							title={sharing ? 'stop sharing your screen' : 'share your screen'}
-							aria-label="share screen"
-							aria-pressed={sharing}
-						>
-							{#if sharing}<ScreenShareOff size={18} />{:else}<ScreenShare
-									size={18}
-								/>{/if}
-						</button>
-						<QuickAudio compact />
-						<!-- A hang-up: you stay in the channel, and riding (#2560). -->
-						<button
-							onclick={() => av?.leave()}
-							class="{ICON} text-muted-dim hover:text-danger"
-							title="leave voice — stay in the channel"
-							aria-label="leave voice"><PhoneOff size={18} /></button
-						>
-					{/if}
-				</div>
+			{#if showAv && !docked}
+				<VoiceControls {riding} />
 			{/if}
 
 			{#if rideBar.on}
@@ -413,49 +289,7 @@
 							><SmilePlus size={18} /></button
 						>
 					{/if}
-					<!-- A split button (#706): the face is always Away, the arrow the
-				     named states. -->
-					{#if conn}<div class="flex">
-							<button
-								onclick={() => setAway(!away, '')}
-								aria-pressed={away}
-								{@attach contextMenu(awayItems)}
-								class="btn min-h-11 {away
-									? 'btn-primary'
-									: 'btn-secondary'} {away ? '' : 'rounded-r-none'}"
-								><awayFace.icon size={14} />
-								<span class={rideBar.on ? 'sr-only' : 'max-md:sr-only'}
-									>{away ? "I'm back" : 'Away'}</span
-								></button
-							>
-							{#if !away}
-								<button
-									onclick={(event) => {
-										const box = event.currentTarget.getBoundingClientRect();
-										openMenu(
-											awayItems(),
-											box.right,
-											box.top,
-											event.currentTarget,
-										);
-									}}
-									aria-label="Choose a state"
-									aria-haspopup="menu"
-									class="btn btn-secondary min-h-11 rounded-l-none px-2 {rideBar.on
-										? 'max-sm:hidden'
-										: ''}"><ChevronDown size={14} /></button
-								>
-							{/if}
-						</div>{/if}
-					<!-- The way out of the channel (#2447). Quiet: leaving is re-doable. -->
-					<button
-						onclick={leaveChannel}
-						class="btn btn-secondary min-h-11 px-2"
-						title="leave {place.address.name}"
-						><LogOut size={14} />
-						<span class={rideBar.on ? 'sr-only' : 'max-md:sr-only'}>Leave</span
-						></button
-					>
+					{#if !docked}<AwayLeave />{/if}
 				</div>{/if}
 		</div>
 	</div>
