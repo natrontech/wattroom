@@ -35,15 +35,15 @@
 		setWorldMode(next);
 	}
 
-	// Pixel 3D (pixel.ts): the 3D world in whole pixels, on until turned off.
+	// Pixel 3D (pixel.ts): the 3D world in whole pixels, off until turned on.
 	let pixels = $state(worldPixels());
 	function look(on: boolean) {
 		pixels = on;
 		setWorldPixels(on);
 	}
 	const LOOKS = [
-		{ on: true, label: 'Pixel' },
 		{ on: false, label: 'Smooth' },
+		{ on: true, label: 'Pixel' },
 	];
 
 	// One label column, so every row's first control starts at the same x; on a
@@ -134,9 +134,8 @@
 					</button>
 				{/each}
 				<span class="{HINT} col-span-2 sm:col-span-1"
-					>{pixels
-						? 'drawn in whole pixels, like the lounge'
-						: 'smooth edges, the look before Pixel'} — from the next ride</span
+					>{pixels ? 'drawn in whole pixels, like the lounge' : 'smooth edges'} —
+					from the next ride</span
 				>
 			</div>
 		</div>
