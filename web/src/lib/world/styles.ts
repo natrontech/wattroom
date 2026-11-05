@@ -10,6 +10,7 @@
 import * as THREE from 'three';
 import { Biome } from './biome';
 import { sunDir, type Light } from './light';
+import { BAYER, PIXEL, STEPS } from './pixel';
 import type { SignLook } from './setpieces';
 
 export type Palette = Record<Biome, string>;
@@ -162,6 +163,7 @@ export function terrainMaterial(style: Style): THREE.ShaderMaterial {
 			uValley: { value: col(style.imhof?.valley) },
 			uPeak: { value: col(style.imhof?.peak) },
 			uRock: { value: col(style.palette[Biome.Rock]) },
+			uPixel: PIXEL, // Pixel 3D: the light in four dithered steps, the fog in three bands (pixel.ts)
 		},
 		vertexColors: true,
 		vertexShader: /* glsl */ `
@@ -175,8 +177,10 @@ export function terrainMaterial(style: Style): THREE.ShaderMaterial {
 			}`,
 		fragmentShader: /* glsl */ `
 			uniform vec3 uSun, uFrom, uKey, uShade, uSkyTop, uHorizon, uSunward, uGridColor, uContour, uIndex, uValley, uPeak, uRock;
-			uniform float uFogK, uBands, uSkyFill, uGridSize, uGridAlpha, uContourStep, uImhof, uDusk;
+			uniform float uFogK, uBands, uSkyFill, uGridSize, uGridAlpha, uContourStep, uImhof, uDusk, uPixel;
 			varying vec3 vColor; varying vec3 vPos; varying float vAo;
+			${BAYER}
+			${STEPS}
 			void main() {
 				vec3 n = normalize(cross(dFdx(vPos), dFdy(vPos)));
 				float dist = length(vPos - cameraPosition);
@@ -190,7 +194,8 @@ export function terrainMaterial(style: Style): THREE.ShaderMaterial {
 					col = mix(uValley, uPeak, hs) * (base / max(max(base.r, base.g), max(base.b, 0.001)) * 0.12 + 0.88);
 				} else {
 					float lam = dot(n, uFrom) * 0.5 + 0.5; // half-Lambert, from the sun or, once it has set, the zenith
-					if (uBands > 1.5) {
+					if (uPixel > 0.5) lam = pixelStep(lam);
+					else if (uBands > 1.5) {
 						float fw = fwidth(lam) * (1.0 + dist / 800.0); // soft band edges, blurred with distance so far facets never crawl
 						float q = lam * uBands;
 						lam = (floor(q) + smoothstep(0.5 - fw * uBands, 0.5 + fw * uBands, fract(q))) / uBands;
@@ -218,6 +223,7 @@ export function terrainMaterial(style: Style): THREE.ShaderMaterial {
 				vec3 view = normalize(vPos - cameraPosition);
 				vec3 fogCol = mix(uHorizon, uSunward, pow(max(dot(view, uSun), 0.0), 8.0));
 				vec3 ext = exp(-dist * uFogK * vec3(1.3, 1.0, 0.75)); // red fades first: aerial perspective
+				if (uPixel > 0.5) ext = 1.0 - (1.0 - ext) * pixelFog(1.0 - ext.g) / max(1.0 - ext.g, 1e-4); // one band a pixel, red still first
 				gl_FragColor = vec4(mix(fogCol, col, ext) * uDusk, 1.0);
 				#include <colorspace_fragment>
 			}`,
