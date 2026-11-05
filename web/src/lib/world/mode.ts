@@ -49,12 +49,12 @@ export function setWorldMode(mode: WorldMode): void {
 
 const PIXELS_KEY = 'wattroom.world.pixels.v1';
 
-/** Pixel 3D (pixel.ts) on this device: on until the rider turns it off. */
+/** Pixel 3D (pixel.ts) on this device: off until the rider turns it on. */
 export function worldPixels(): boolean {
 	try {
-		return localStorage.getItem(PIXELS_KEY) !== '0';
+		return localStorage.getItem(PIXELS_KEY) === '1';
 	} catch {
-		return true;
+		return false;
 	}
 }
 
