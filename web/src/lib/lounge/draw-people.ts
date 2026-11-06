@@ -115,14 +115,16 @@ function blinking(s: SceneInput, n: number): boolean {
 	return !s.still && (s.t + n * 1.7) % 4.3 < 0.15;
 }
 
+const UNDER_A_CAP = [2, 4, 8, 11];
+
 /**
  * Hair by style, over a head whose left edge is hx and top row ht, and the
  * cap over it. Under a cap a bun or a mohawk is cut to short hair.
  */
 function hair(f: Figure, hx: number, ht: number): Part[] {
+	// A bun, a mohawk, an afro and a top knot go under a cap cut short.
 	const h = f.hair;
-	const style =
-		f.cap && (f.hairStyle === 2 || f.hairStyle === 4) ? 0 : f.hairStyle;
+	const style = f.cap && UNDER_A_CAP.includes(f.hairStyle) ? 0 : f.hairStyle;
 	const cap: Part[] = f.cap
 		? [
 				[hx - 1, ht - 1, 12, 3, f.cap],
@@ -176,6 +178,33 @@ function locks(
 			];
 		case 7:
 			return [];
+		case 8:
+			return [
+				[hx - 3, ht - 4, 16, 7, h],
+				[hx - 3, ht + 3, 3, 4, h],
+				[hx + 10, ht + 3, 3, 4, h],
+			];
+		case 9:
+			return [
+				[hx, ht, 10, 3, h],
+				[hx - 1, ht + 3, 2, 10, h],
+				[hx + 9, ht + 3, 2, 10, h],
+			];
+		case 10:
+			return [
+				[hx, ht, 10, 2, h],
+				[hx + 3, ht + 2, 7, 1, h],
+				[hx, ht + 2, 1, 3, h],
+				[hx + 9, ht + 3, 1, 2, h],
+			];
+		case 11:
+			return [
+				[hx + 3, ht - 4, 4, 2, h],
+				[hx + 4, ht - 2, 2, 2, h],
+				[hx, ht, 10, 2, h],
+				[hx, ht + 2, 1, 3, h],
+				[hx + 9, ht + 2, 1, 3, h],
+			];
 		default:
 			return [
 				[hx, ht, 10, 3, h],
@@ -267,10 +296,14 @@ function sitter(
 		if (!wave) {
 			rect(g, x - 4, base - 9, 1, 5, f.shirtShade);
 			rect(g, x + 3, base - 9, 1, 5, f.shirtShade);
-			// A tee's sleeves end at the elbow.
-			if (f.top === 0) {
+			// A tee's sleeves end at the elbow, and a vest has none.
+			if (f.top === 0 || f.top === 4) {
 				rect(g, x - 4, base - 6, 1, 2, f.skin);
 				rect(g, x + 3, base - 6, 1, 2, f.skin);
+			}
+			if (f.top === 4) {
+				rect(g, x - 4, base - 9, 1, 3, f.skin);
+				rect(g, x + 3, base - 9, 1, 3, f.skin);
 			}
 			rect(g, x - 5, base - 4, 2, 1, f.skin);
 			rect(g, x + 3, base - 4, 2, 1, f.skin);
@@ -279,6 +312,10 @@ function sitter(
 			rect(g, x + 6, base - 19, 2, 2, f.skin);
 		}
 		if (pose === 'sofa') {
+			if (f.socks) {
+				rect(g, x - 4, base + 3, 3, 2, f.socks);
+				rect(g, x + 1, base + 3, 3, 2, f.socks);
+			}
 			rect(g, x - 4, base + 5, 3, 1, f.shoes);
 			rect(g, x + 1, base + 5, 3, 1, f.shoes);
 		} else {
@@ -294,7 +331,9 @@ function sitter(
 		rect(g, hx + 7, shut ? ey + 1 : ey, 1, shut ? 1 : 2, C.ink);
 		const open = f.speaking && !s.still && Math.floor(s.t * 6 + n) % 2 === 0;
 		rect(g, hx + 4, ht + 7, 2, open ? 2 : 1, open ? C.ink : f.skinShade);
+		beard(g, f, hx, ht, open);
 		specs(g, f, hx, ey);
+		badge(g, f, x, base);
 		if (f.muted) {
 			rect(g, hx - 1, ht - 2, 12, 1, C.cable);
 			rect(g, hx - 2, ht - 1, 1, 4, C.cable);
@@ -310,6 +349,7 @@ function sitter(
 	if (f.faded) faded(g, x, base, draw);
 	else draw(g, x + dx, base - dy);
 	drawDoing(g, s, f, x + dx, base - dy, n);
+	drawPet(g, s, f, x + dx, base - dy, pose, n);
 	if (f.cooling) {
 		// A bottle held at the hip, and a drop that runs now and then.
 		outlined(g, [[x + 7, base - 9, 3, 6, C.teal]], C.ink);
@@ -323,6 +363,81 @@ function sitter(
 }
 
 /** Stripes that read on the top: dark on a light one, light on a dark one. */
+/** Stubble, a moustache or a beard, with the mouth left to move through it. */
+function beard(g: Ctx, f: Figure, hx: number, ht: number, open: boolean) {
+	if (f.beard === 1)
+		for (let i = 1; i < 9; i += 2) rect(g, hx + i, ht + 8, 1, 1, f.skinShade);
+	else if (f.beard === 2) rect(g, hx + 3, ht + 6, 4, 1, f.hair);
+	else if (f.beard === 3) {
+		rect(g, hx + 1, ht + 6, 8, 3, f.hair);
+		rect(g, hx + 3, ht + 7, 4, open ? 2 : 1, open ? C.ink : f.skinShade);
+	}
+}
+
+/** A small badge on the chest: a star, a heart or a bolt. */
+function badge(g: Ctx, f: Figure, x: number, base: number) {
+	const bx = x - 5;
+	const by = base - 9;
+	if (f.badge === 1) {
+		rect(g, bx + 1, by, 1, 3, C.amber);
+		rect(g, bx, by + 1, 3, 1, C.amber);
+	} else if (f.badge === 2) {
+		rect(g, bx, by, 1, 1, C.heart);
+		rect(g, bx + 2, by, 1, 1, C.heart);
+		rect(g, bx, by + 1, 3, 1, C.heart);
+		rect(g, bx + 1, by + 2, 1, 1, C.heart);
+	} else if (f.badge === 3) {
+		rect(g, bx + 1, by, 2, 1, C.amber);
+		rect(g, bx, by + 1, 3, 1, C.amber);
+		rect(g, bx, by + 2, 2, 1, C.amber);
+	}
+}
+
+/** Pets as rows of letters: b its body, k its eye and nose, t and r a parrot's. */
+const PET_ROWS: Record<number, readonly string[]> = {
+	1: ['.b..b....', '.bbbb...b', 'bkbkbbbbb', '.bbbbbbb.', '.b.b.b.b.'],
+	2: ['.tt.', 'tkt.', 'ttr.', '.tt.', '.t..'],
+	3: ['b..b', 'bbbb', 'kbkb', 'bbbb'],
+};
+
+/**
+ * Their pet: a dog at their feet, a parrot on their shoulder, a hamster on
+ * their head. The dog wags and the parrot shifts now and then.
+ */
+function drawPet(
+	g: Ctx,
+	s: SceneInput,
+	f: Figure,
+	x: number,
+	base: number,
+	pose: Pose,
+	n: number,
+) {
+	if (!f.pet) return;
+	const rows = PET_ROWS[f.pet];
+	const body = f.pet === 3 ? C.amber : C.woodLight;
+	const colour: Record<string, string> = {
+		b: body,
+		k: C.ink,
+		t: C.teal,
+		r: C.redLight,
+	};
+	const tick = s.still ? 0 : Math.floor(s.t * 3 + n) % 8;
+	const px =
+		f.pet === 1 ? x + 7 : f.pet === 2 ? x + 6 + (tick === 0 ? 1 : 0) : x - 2;
+	const py =
+		f.pet === 1
+			? base + (pose === 'sofa' ? 12 : 2)
+			: f.pet === 2
+				? base - 15
+				: base - 24;
+	rows.forEach((row, j) => {
+		for (let i = 0; i < row.length; i++)
+			if (row[i] !== '.') rect(g, px + i, py + j, 1, 1, colour[row[i]]);
+	});
+	if (f.pet === 1 && !s.still && tick < 2) rect(g, px + 8, py, 1, 1, body);
+}
+
 /** What their hands are up to, over the figure. */
 function drawDoing(
 	g: Ctx,
@@ -405,6 +520,13 @@ function topMarks(g: Ctx, f: Figure, x: number, base: number) {
 		rect(g, x - 2, base - 10, 4, 1, f.shirtShade);
 		for (let i = -6; i < 6; i += 2)
 			rect(g, x + i, base - 5, 1, 1, f.shirtShade);
+	} else if (f.top === 4) {
+		rect(g, x - 2, base - 10, 4, 2, f.skin);
+		rect(g, x - 1, base - 9, 2, 2, f.skin);
+	} else if (f.top === 5) {
+		rect(g, x, base - 10, 1, 7, f.shirtShade);
+		rect(g, x - 6, base - 6, 12, 1, C.paper);
+		rect(g, x - 3, base - 11, 6, 1, f.shirtShade);
 	}
 }
 

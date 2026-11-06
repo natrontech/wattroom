@@ -11,9 +11,12 @@
 	import { toasts } from '$lib/toast.svelte';
 	import { HAIRS, LOUNGE, SKINS, applyLoungeTheme } from '$lib/lounge/palette';
 	import {
+		BADGES,
+		BEARDS,
 		CLOTHES,
 		GLASSES,
 		HAIR_NAMES,
+		PETS,
 		TOPS,
 		encodeLook,
 		lookOf,
@@ -136,7 +139,9 @@
 		Everyone in your voice channels sees it in the cozy room.
 	</p>
 	<div class="mt-4 flex flex-col gap-6 sm:flex-row">
-		<div class="flex shrink-0 flex-col items-center gap-3">
+		<div
+			class="flex shrink-0 flex-col items-center gap-3 sm:sticky sm:top-0 sm:self-start"
+		>
 			<canvas
 				{@attach preview}
 				width={W}
@@ -157,6 +162,20 @@
 					onclick={() => (look = seededLook(id))}
 					class="btn btn-ghost btn-xs"
 					><RotateCcw size={14} /> Start over</button
+				>
+			</div>
+			{#if error}
+				<div class="w-full max-w-56"><Banner tone="error">{error}</Banner></div>
+			{/if}
+			<div class="flex gap-2">
+				<button type="button" onclick={onclose} class="btn btn-ghost"
+					>Cancel</button
+				>
+				<button
+					type="button"
+					onclick={() => void save()}
+					disabled={saving || !id}
+					class="btn btn-primary">{saving ? 'Saving…' : 'Save'}</button
 				>
 			</div>
 		</div>
@@ -206,8 +225,24 @@
 				{@render swatches('shoes', CLOTHES, 'Dark')}
 			</section>
 			<section>
+				<h3 class="eyebrow mb-1.5">Socks</h3>
+				{@render swatches('socks', CLOTHES, 'None')}
+			</section>
+			<section>
 				<h3 class="eyebrow mb-1.5">Glasses</h3>
 				{@render choices('glasses', GLASSES)}
+			</section>
+			<section>
+				<h3 class="eyebrow mb-1.5">Beard</h3>
+				{@render choices('beard', BEARDS)}
+			</section>
+			<section>
+				<h3 class="eyebrow mb-1.5">Badge</h3>
+				{@render choices('badge', BADGES)}
+			</section>
+			<section>
+				<h3 class="eyebrow mb-1.5">Pet</h3>
+				{@render choices('pet', PETS)}
 			</section>
 			<section>
 				<h3 class="eyebrow mb-1.5">Cap</h3>
@@ -218,18 +253,5 @@
 				{@render swatches('scarf', CLOTHES, 'None')}
 			</section>
 		</div>
-	</div>
-	{#if error}
-		<div class="mt-4"><Banner tone="error">{error}</Banner></div>
-	{/if}
-	<div class="mt-5 flex justify-end gap-2">
-		<button type="button" onclick={onclose} class="btn btn-ghost">Cancel</button
-		>
-		<button
-			type="button"
-			onclick={() => void save()}
-			disabled={saving || !id}
-			class="btn btn-primary">{saving ? 'Saving…' : 'Save'}</button
-		>
 	</div>
 </Modal>

@@ -289,8 +289,8 @@ export const HAIRS = [
 	'#5aa0e8',
 	'#3fbf8a',
 ];
-/** Short, long, a bun, a beanie, then the editor's: a mohawk, curls, a ponytail, bald. */
-export const HAIR_STYLES = 8;
+/** Short, long, a bun, a beanie, then the editor's: a mohawk, curls, a ponytail, bald, an afro, braids, a side part, a top knot. */
+export const HAIR_STYLES = 12;
 export const CUSHIONS = [
 	'cushionA',
 	'cushionB',
