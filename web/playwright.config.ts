@@ -27,6 +27,16 @@ export default defineConfig({
 	use: {
 		baseURL: baseUrl(),
 		trace: 'retain-on-failure',
+		// These flows test the ride, not the world, on a CI runner with no GPU.
+		storageState: {
+			cookies: [],
+			origins: [
+				{
+					origin: baseUrl(),
+					localStorage: [{ name: 'wattroom.world.mode.v1', value: 'flat' }],
+				},
+			],
+		},
 	},
 	projects: [
 		{

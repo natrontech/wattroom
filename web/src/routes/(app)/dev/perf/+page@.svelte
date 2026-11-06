@@ -276,6 +276,7 @@
 						frames: s.frames,
 						stats: s.stats,
 						setProgress: s.setProgress, // the light at a share of the ride, for a capture of the sky
+						setCamera: s.setCamera, // heli, side, for a capture of the riders from every side
 					},
 				});
 			},

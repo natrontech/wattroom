@@ -29,6 +29,8 @@ import { thumbGeometry } from './cheer';
 import { makeTrail } from './trail';
 import { ramp } from './materials';
 import { PIXEL } from './pixel';
+import { makeAvatar, sheetOf, type Avatar } from './avatar';
+import { dress } from '$lib/lounge/figures';
 import { LANE, type Car } from './bunch';
 import { type Route } from '$lib/road/route';
 import { at, leftOf } from '$lib/road/along';
@@ -131,6 +133,8 @@ type View = {
 	chevron: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
 	thumb: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
 	light: THREE.Mesh;
+	/** Pixel 3D's rider: their cozy room self, in place of the figure. */
+	avatar: Avatar | null;
 };
 
 /** A joined rider whose screen has gone (#3098): their kit in greys, never a ghost's see-through. */
@@ -190,7 +194,12 @@ export function placeOn(
  * Every kit colour is guarded for whoever looks, whose live data is the
  * look's trail and zones: the theme's, on a ride.
  */
-export function makeCrew(style: Style, neon: THREE.Color) {
+export function makeCrew(
+	style: Style,
+	neon: THREE.Color,
+	/** Pixel 3D: what a rider wears in the cozy room, by id. Absent, the 3D figures ride. */
+	loungeLook?: (id: string) => string | undefined,
+) {
 	const viewer = viewerOf(style);
 	const group = new THREE.Group();
 	const gradient = ramp(TOON_BANDS.map((b) => b / 255));
@@ -319,7 +328,8 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 		light.visible = false;
 		figure.add(tag('marks', light, 'tail-light'));
 		const g = new THREE.Group();
-		shadow.visible = shadowed;
+		// The sprite draws its own shadow on its own pixels.
+		shadow.visible = shadowed && !loungeLook;
 		g.userData.rider = r.id;
 		g.add(
 			tag('figures', figure),
@@ -330,6 +340,14 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 			tag('marks', chevron, 'chevron'),
 			tag('marks', thumb, 'cheer'),
 		);
+		const avatar = loungeLook
+			? makeAvatar(
+					sheetOf(
+						dress({ id: r.id, name: r.name, loungeLook: loungeLook(r.id) }),
+					),
+				)
+			: null;
+		if (avatar) g.add(tag('figures', avatar.mesh, 'avatar'));
 		group.add(g);
 		const view: View = {
 			group: g,
@@ -348,6 +366,7 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 			chevron,
 			thumb,
 			light,
+			avatar,
 		};
 		views.set(r, view);
 		return view;
@@ -362,6 +381,10 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 		v.bead.material.dispose();
 		v.chevron.material.dispose();
 		v.thumb.material.dispose();
+		if (v.avatar) {
+			v.avatar.dispose();
+			(v.avatar.mesh.material.uniforms.uMap.value as THREE.Texture).dispose();
+		}
 		views.delete(r);
 	}
 
@@ -447,7 +470,8 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 				fade(v);
 			}
 			// On the model view a rider is a bead, not a giant figurine.
-			v.figure.visible = !overview;
+			v.figure.visible = !overview && !v.avatar;
+			if (v.avatar) v.avatar.mesh.visible = !overview;
 			v.ring.visible = !overview && r.ring !== false;
 			v.chevron.visible = !overview && !!r.coach;
 			v.chevron.material.opacity = alpha;
@@ -470,7 +494,8 @@ export function makeCrew(style: Style, neon: THREE.Color) {
 			// The animator turns the legs at the rider's cadence, sits or stands them by SPEC's thresholds.
 			const state = v.anim.update(dt, inputOf(r, route));
 			pedal(r).crank = state.crank;
-			pose(v.figure, state);
+			if (v.avatar) v.avatar.set(state.crank, alpha, !!r.faded);
+			else pose(v.figure, state);
 			if (r.you) {
 				you.set(
 					v.group.position.x,

@@ -31,10 +31,12 @@ describe('a ride’s world view (#3080)', () => {
 	});
 	afterEach(() => vi.restoreAllMocks());
 
-	it('rides Flat until the rider turns 3D on, and 3D turns it on (#3084)', () => {
+	it('rides the world until the rider picks Flat, and 3D brings it back', () => {
 		const view = createWorldView();
-		expect(view.on).toBe(false);
+		expect(view.on).toBe(true);
+		view.flatten();
 		expect(view.reason).toBe('chosen');
+		expect(createWorldView().on).toBe(false);
 		view.retry();
 		expect(view.on).toBe(true);
 		expect(worldMode()).toBe('full');

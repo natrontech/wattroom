@@ -102,12 +102,14 @@ export const test = base.extend<{
 			// ALL FOUR channels, because what is stored REPLACES what was
 			// there: a channel left out comes back at its default, and
 			// `share` — a shared screen's own sound — defaults to 1 (#990).
-			await context.addInitScript(() =>
+			await context.addInitScript(() => {
 				localStorage.setItem(
 					'wattroom.mixer.v1',
 					JSON.stringify({ music: 0, cues: 0, board: 0, share: 0 }),
-				),
-			);
+				);
+				// These flows test the ride, not the world, on a runner with no GPU.
+				localStorage.setItem('wattroom.world.mode.v1', 'flat');
+			});
 			const page = await context.newPage();
 			// Every rider is named, and no name may be "Dev Rider" (auth.go):
 			// the one shared identity is exactly what used to make a spec depend

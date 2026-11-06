@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { PIXEL, pixelScale, rampAll } from './pixel';
 
 describe('pixelScale', () => {
-	it('keeps a phone, a laptop and a TV at about 400 whole pixels along the longer side', () => {
+	it('keeps a phone, a laptop and a TV at about 380 whole pixels along the longer side', () => {
 		for (const [w, h] of [
 			[375, 812],
 			[812, 375],

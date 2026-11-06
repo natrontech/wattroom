@@ -90,7 +90,8 @@ export function ridersOf(riders: LiveRider[], t: number): Rider[] {
 		.map((r) => ({
 			...dress(r),
 			watts: r.stale ? 0 : r.watts,
-			crank: ((t * (r.cadence || 80)) / 60) * Math.PI * 2,
+			// In eighths of a turn, as sprites step: smooth legs on a pixel bike shimmer.
+			crank: (Math.floor(((t * (r.cadence || 80)) / 60) * 8) / 8) * Math.PI * 2,
 		}));
 }
 

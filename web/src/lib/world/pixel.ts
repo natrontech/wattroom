@@ -10,8 +10,8 @@ import { LOUNGE } from '$lib/lounge/palette';
 /** The layer words draw on: over the pixels, never pixelated. */
 export const WORDS = 1;
 
-/** World pixels along the canvas's longer side: the lounge's 320 to 480 (docs/spec/world.md, "Pixels"). */
-const ACROSS = 400;
+/** World pixels along the canvas's longer side: what lands on the room's own pixel at a desk's sizes (docs/spec/world.md, "Pixels"). */
+const ACROSS = 380;
 
 /**
  * The whole pixels one world pixel takes on a drawing buffer w × h: the
@@ -28,6 +28,9 @@ export function pixelScale(w: number, h: number): number {
  * the other when the rider switches.
  */
 export const PIXEL = { value: 0 };
+
+/** The Pixel 3D target's size in world pixels: what a sprite stands on (avatar.ts). */
+export const TARGET = { value: new THREE.Vector2(1, 1) };
 
 /** The lounge's ordered dither (lounge/pixel.ts): a 4 × 4 Bayer threshold, 0–1, per pixel. */
 export const BAYER = /* glsl */ `
@@ -200,6 +203,7 @@ export function pixelPass(renderer: THREE.WebGLRenderer) {
 			post.uniforms.texel.value.set(1 / cols, 1 / rows);
 		}
 		post.uniforms.scale.value = s;
+		TARGET.value.set(cols, rows);
 		return target;
 	}
 

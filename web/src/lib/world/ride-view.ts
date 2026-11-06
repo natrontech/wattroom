@@ -3,9 +3,9 @@
  * Skyline and why. Pure; the caller holds the answer until the world
  * returns by itself (world-view's RETURN_S, #4423) or the rider taps 3D.
  * What the browser can do is read first, so a browser that cannot draw
- * the world never offers it; then the World control, which opens on Flat
- * until the rider turns 3D on (#3084, ADR-0066 amended); then what the world
- * did this ride. Width is no input: a phone with Web Bluetooth rides.
+ * the world never offers it; then the World control, which opens on the
+ * world until the rider picks Flat; then what the world did this ride.
+ * Width is no input: a phone with Web Bluetooth rides.
  */
 
 import type { CameraPreset } from './cameras';
@@ -15,7 +15,7 @@ import type { WorldMode } from './mode';
 export type Failure = 'context-lost' | 'build-failed' | 'frames';
 
 /** `short`: the window is too short for the panels around the road (Jan, 2026-10-07, #3668). */
-/** `chosen`: the World control is on Flat, or was never set, which is Flat. */
+/** `chosen`: the World control is on Flat. */
 export type SkylineReason =
 	'chosen' | 'motion' | 'capability' | 'short' | Failure;
 
@@ -35,7 +35,7 @@ export type RideView = 'world' | { skyline: SkylineReason };
 export function rideView(env: RideViewEnv): RideView {
 	if (!env.webgl2 || !env.multiDraw) return { skyline: 'capability' };
 	if (env.mode === null && env.reducedMotion) return { skyline: 'motion' };
-	if (env.mode === null || env.mode === 'flat') return { skyline: 'chosen' };
+	if (env.mode === 'flat') return { skyline: 'chosen' };
 	if (env.failure) return { skyline: env.failure };
 	return 'world';
 }

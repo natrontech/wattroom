@@ -19,7 +19,14 @@ import {
 	type Crew,
 	type Pedalling,
 } from './crew';
-import { makeGhosts, MOST_GHOSTS, type GhostAt, type Ghosts } from './ghosts';
+import {
+	makeGhosts,
+	makeSpriteGhosts,
+	MOST_GHOSTS,
+	type GhostAt,
+	type Ghosts,
+} from './ghosts';
+import { dress as figureOf } from '$lib/lounge/figures';
 import { bunchLooks, type Loadout } from './loadout';
 import { makeTags, type Tags } from './tags';
 import type { BunchView } from '$lib/channel/bunch-view';
@@ -107,6 +114,8 @@ export type MountOptions = {
 	loop?: boolean;
 	/** Your rider id: which of the bunch is you. */
 	youId?: string;
+	/** Pixel 3D: what a rider wears in the cozy room, by id. Absent, the 3D figures ride. */
+	loungeLook?: (id: string) => string | undefined;
 	/** The theme's structural accent, for the coach's chevron; Outrun's absent. */
 	neon?: string;
 	/** Reduced motion, read each frame: a cheer's thumb and light hold still, the fog sea steps (ADR-0079). */
@@ -282,12 +291,20 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		// The road itself is drawn as it is, its ends where they lie.
 		stage = buildStage(opts.route, world, style, sight, stream, !opts.loop);
 		stage.setFar(far);
-		crew = makeCrew(style, neon);
+		crew = makeCrew(style, neon, opts.loungeLook);
 		game = makeGameRoad(route, world, style);
 		tags = makeTags(style);
 		scene.add(stage.group, crew.group, game.group, tags.group);
 		if (opts.ghosts) {
-			ghosts = makeGhosts(style, loadoutOf(you), opts.ftp);
+			ghosts = opts.loungeLook
+				? makeSpriteGhosts(
+						figureOf({
+							id: you.id,
+							name: you.name,
+							loungeLook: opts.loungeLook(you.id),
+						}),
+					)
+				: makeGhosts(style, loadoutOf(you), opts.ftp);
 			scene.add(ghosts.group);
 		}
 		if (bunch) {

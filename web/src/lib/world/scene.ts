@@ -119,7 +119,13 @@ export function mount(
 		: (climbs && rememberedRung(device)) || TOP_RUNG;
 	let world: ReturnType<typeof compose>;
 	try {
-		world = compose(opts, canvas);
+		world = compose(
+			{
+				...opts,
+				loungeLook: pixels ? (opts.loungeLook ?? (() => undefined)) : undefined,
+			},
+			canvas,
+		);
 	} catch (err) {
 		renderer.dispose();
 		renderer.forceContextLoss(); // a scene that did not start holds no context either

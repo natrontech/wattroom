@@ -32,6 +32,7 @@
 	import { mount, type WorldScene } from './scene';
 	import type { RideMetre } from './sim';
 	import type { BunchView } from '$lib/channel/bunch-view';
+	import { channelConnection } from '$lib/channel/connection.svelte';
 	import type { RoadMate } from '$lib/channel/road-mates';
 	import type { PaintedGate } from '$lib/road/gates';
 	import { account } from '$lib/account.svelte';
@@ -214,6 +215,13 @@
 					onCue: play,
 					// Your kit is keyed by who you are, solo or in a bunch: the crew sees the one you see.
 					youId: account.me?.id,
+					// In Pixel 3D everyone rides as they sit in the cozy room.
+					loungeLook: (id) =>
+						id === account.me?.id
+							? account.me?.loungeLook
+							: channelConnection.current?.live.tick?.roster.find(
+									(r) => r.id === id,
+								)?.loungeLook,
 					// The theme's neon as the world resolves it, for the coach's chevron.
 					neon: paint('color-neon'),
 					// When, at what speed, and where: two screens read a moment apart still compare.
