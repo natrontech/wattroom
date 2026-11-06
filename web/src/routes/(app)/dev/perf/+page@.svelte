@@ -9,7 +9,7 @@
 	import Skyline from '$lib/ride/Skyline.svelte';
 	import type { Road } from '$lib/road/road';
 	import { sceneLoop } from '$lib/lounge/scene-loop';
-	import { drawScene, type Figure } from '$lib/lounge/scene';
+	import { PLACES, drawScene, type Figure } from '$lib/lounge/scene';
 	import { shadeFor } from '$lib/lounge/draw-room';
 	import type { Moment, Visitor } from '$lib/lounge/moments';
 	import { applyLoungeTheme, type Sky } from '$lib/lounge/palette';
@@ -137,6 +137,8 @@
 							...SITTER,
 							id: String(i),
 							speaking: i === 1,
+							doing: (['read', 'sip', 'phone', 'nap'] as const)[i],
+							emote: i === 0 ? (params.get('emote') ?? undefined) : undefined,
 						})),
 						floor: [
 							[121, 130],
@@ -146,6 +148,11 @@
 							f: { ...SITTER, id: `f${i}`, speaking: i === 0 },
 							x,
 							y,
+						})),
+						placed: PLACES.filter((p) => params.get('placed')).map((p) => ({
+							f: { ...SITTER, id: `p${p.seat}`, doing: p.doing },
+							x: p.x,
+							y: p.y,
 						})),
 						more: 0,
 						bikes: [

@@ -37,6 +37,57 @@ func (h *Hub) lounge(rm *channelState, rider protocol.Rider, want protocol.Loung
 	}
 }
 
+// room takes a rider's move in the cozy room: a seat, or an emote.
+func (h *Hub) room(rm *channelState, rider protocol.Rider, act protocol.RoomAct) {
+	if rm.allow("room", rider.ID, h.now(), loungeMinGap) {
+		rm.setRoom(rider.ID, act, h.now())
+	}
+}
+
+// emoteHolds is how long an emote shows. Long enough to be seen on a 1 Hz tick.
+const emoteHolds = 6 * time.Second
+
+// roomEmote is what a rider is doing for a moment.
+type roomEmote struct {
+	kind, to string
+	seq      int
+	until    time.Time
+}
+
+// setRoom records the move. A seat out of range lets the room seat them, and
+// an emote outside the closed set is dropped: both are paint from a client
+// this server may be older than.
+func (rm *channelState) setRoom(rider string, act protocol.RoomAct, now time.Time) {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+	if act.Seat != nil {
+		if *act.Seat > 0 && *act.Seat <= protocol.MaxRoomSeat {
+			rm.seats[rider] = *act.Seat
+		} else {
+			delete(rm.seats, rider)
+		}
+	}
+	if slices.Contains(protocol.LoungeEmotes, act.Emote) {
+		rm.emoteSeq++
+		rm.emotes[rider] = roomEmote{kind: act.Emote, to: act.To, seq: rm.emoteSeq, until: now.Add(emoteHolds)}
+	}
+}
+
+// roomStateOf is the tick's part of a rider: their seat and any emote still
+// showing. The caller holds rm.mu.
+func (rm *channelState) roomStateOf(rider *protocol.Rider, now time.Time) {
+	rider.Seat = rm.seats[rider.ID]
+	emote, ok := rm.emotes[rider.ID]
+	if !ok {
+		return
+	}
+	if !now.Before(emote.until) {
+		delete(rm.emotes, rider.ID)
+		return
+	}
+	rider.Emote, rider.EmoteTo, rider.EmoteSeq = emote.kind, emote.to, emote.seq
+}
+
 // restoreLounge puts back the room as it was left, unless a rider got there
 // first: their flip is newer than anything stored.
 func (rm *channelState) restoreLounge(state protocol.LoungeState) {

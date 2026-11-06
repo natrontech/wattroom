@@ -102,6 +102,8 @@ func (rm *channelState) leave(c *client) {
 		// Away is presence, and the rider is no longer present (#706).
 		// Left behind, it would greet them as away on the next join.
 		delete(rm.away, c.rider.ID)
+		delete(rm.seats, c.rider.ID)
+		delete(rm.emotes, c.rider.ID)
 		// Their clip left with them: every listener stops it on the leave,
 		// so a stale entry would only tell the next joiner to start a sound
 		// nobody else can hear.

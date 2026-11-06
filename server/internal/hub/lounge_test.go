@@ -171,3 +171,34 @@ func TestLoungeFlipReachesTheKeeper(t *testing.T) {
 		t.Fatalf("the keeper holds %+v", keeper.saved)
 	}
 }
+
+func TestSetRoom(t *testing.T) {
+	rm := newChannelState("c")
+	now := time.Unix(1000, 0)
+	seat := func(n int) *int { return &n }
+	rm.setRoom("kim", protocol.RoomAct{Seat: seat(7)}, now)
+	if rm.seats["kim"] != 7 {
+		t.Fatalf("seat %d, want 7", rm.seats["kim"])
+	}
+	rm.setRoom("kim", protocol.RoomAct{Seat: seat(protocol.MaxRoomSeat + 1)}, now)
+	if _, seated := rm.seats["kim"]; seated {
+		t.Fatal("a seat past the last kept its rider there")
+	}
+	rm.setRoom("kim", protocol.RoomAct{Seat: seat(2)}, now)
+	rm.setRoom("kim", protocol.RoomAct{Emote: "juggle"}, now)
+	if len(rm.emotes) != 0 {
+		t.Fatalf("an unknown emote stayed: %+v", rm.emotes)
+	}
+	rm.setRoom("kim", protocol.RoomAct{Emote: "heart", To: "ana"}, now)
+
+	r := protocol.Rider{ID: "kim"}
+	rm.roomStateOf(&r, now.Add(time.Second))
+	if r.Seat != 2 || r.Emote != "heart" || r.EmoteTo != "ana" || r.EmoteSeq != 1 {
+		t.Fatalf("roster shows %+v", r)
+	}
+	r = protocol.Rider{ID: "kim"}
+	rm.roomStateOf(&r, now.Add(emoteHolds))
+	if r.Emote != "" || r.Seat != 2 {
+		t.Fatalf("an emote outlived its hold: %+v", r)
+	}
+}

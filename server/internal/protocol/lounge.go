@@ -43,6 +43,26 @@ var LoungeRadioStyles = []string{"mix", "lofi", "chip", "ambient"}
 // its own copy, with what each sets, in web/src/lib/lounge/state.ts.
 var LoungeMoods = []string{"rainy", "snow", "sunny", "arcade"}
 
+// MaxRoomSeat is how many places the cozy room has: the sofa's four, then the
+// room's others. The client keeps their positions, in web/src/lib/lounge/scene.ts.
+const MaxRoomSeat = 12
+
+// LoungeEmotes is the closed set of what a rider can do for a moment in the
+// cozy room. A heart goes to someone; the rest are their own.
+var LoungeEmotes = []string{"wave", "dance", "cheers", "stretch", "heart"}
+
+// RoomAct is a rider's move in the cozy room. Paint, like the lounge itself:
+// it never reaches a ride.
+type RoomAct struct {
+	// The place they took, from 1 to MaxRoomSeat; 0 lets the room seat them.
+	// Absent leaves them where they are.
+	Seat *int `json:"seat,omitempty"`
+	// From LoungeEmotes.
+	Emote string `json:"emote,omitempty"`
+	// Whose heart it is: a rider's id.
+	To string `json:"to,omitempty"`
+}
+
 // LoungeVisitors is the closed set of the album's rare visitors. The client
 // keeps its own copy, VISITORS in web/src/lib/lounge/moments.ts.
 var LoungeVisitors = []string{

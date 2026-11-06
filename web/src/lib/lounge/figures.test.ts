@@ -1,7 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import type { LiveRider } from '$lib/channel/types';
-import { COOLING_SEC, cooled, crewOf, floorSpots } from '$lib/lounge/figures';
-import { SCENE_H, SCENE_W, SPOT_DX, middleOf, tagsOf } from '$lib/lounge/scene';
+import {
+	COOLING_SEC,
+	cooled,
+	crewOf,
+	floorSpots,
+	idleOf,
+} from '$lib/lounge/figures';
+import {
+	PLACES,
+	SCENE_H,
+	SCENE_W,
+	SPOT_DX,
+	middleOf,
+	placeAt,
+	tagsOf,
+} from '$lib/lounge/scene';
 
 const rider = (name: string, extra: Partial<LiveRider> = {}) =>
 	({
@@ -20,7 +34,7 @@ describe('who sits where in the lounge', () => {
 		);
 		const crew = crewOf(riders, 0, SCENE_W, SCENE_H);
 		expect(crew.bikes.map((b) => b.rider?.id)).toEqual(['c', undefined]);
-		expect(crew.seated.map((f) => f.id)).toEqual(['a', 'b', 'd', 'e']);
+		expect(crew.seated.map((f) => f?.id)).toEqual(['a', 'b', 'd', 'e']);
 		expect(crew.floor.map((c) => c.f.id)).toEqual(['f', 'g', 'h']);
 		expect(crew.more).toBe(0);
 	});
@@ -85,7 +99,7 @@ describe('who sits where in the lounge', () => {
 		);
 		const crew = crewOf(riders, 0, 320, 260);
 		expect(crew.bikes.map((b) => b.rider?.id)).toEqual(['d', 'b', 'c']);
-		expect(crew.seated.map((f) => f.id)).toEqual(['a']);
+		expect(crew.seated.map((f) => f?.id)).toEqual(['a']);
 		expect(crewOf([rider('a')], 0, 320, 260).bikes).toHaveLength(2);
 		// Each faces the rug.
 		for (const b of crew.bikes) expect(Math.sign(160 - b.x)).toBe(b.face);
@@ -93,7 +107,7 @@ describe('who sits where in the lounge', () => {
 
 	it('wears headphones while the mic is off', () => {
 		const crew = crewOf([rider('a', { muted: true })], 0, SCENE_W, SCENE_H);
-		expect(crew.seated[0].muted).toBe(true);
+		expect(crew.seated[0]!.muted).toBe(true);
 	});
 
 	it('hands a towel to whoever just stopped riding, and takes it back', () => {
@@ -108,5 +122,63 @@ describe('who sits where in the lounge', () => {
 		expect(back.until.has('a')).toBe(false);
 		const later = cooled(off, new Set(), ended.until, 10 + COOLING_SEC + 1);
 		expect(later.until.size).toBe(0);
+	});
+
+	it('keeps a seat for whoever took it, and fills in round them', () => {
+		const crew = crewOf(
+			[rider('a'), rider('b', { seat: 3 }), rider('c')],
+			0,
+			SCENE_W,
+			SCENE_H,
+		);
+		expect(crew.seated.map((f) => f?.id)).toEqual(['a', 'c', 'b']);
+		const gap = crewOf([rider('a', { seat: 4 })], 0, SCENE_W, SCENE_H);
+		expect(gap.seated.map((f) => f?.id)).toEqual([
+			undefined,
+			undefined,
+			undefined,
+			'a',
+		]);
+		expect(tagsOf(gap, SCENE_W, SCENE_H)).toHaveLength(1);
+	});
+
+	it('gives a place to the first who took it, and what it is for', () => {
+		const crew = crewOf(
+			[rider('a', { seat: 6 }), rider('b', { seat: 6 })],
+			0,
+			SCENE_W,
+			SCENE_H,
+		);
+		expect(crew.placed.map(({ f }) => [f.id, f.doing])).toEqual([
+			['a', 'warm'],
+		]);
+		expect(crew.seated.map((f) => f?.id)).toEqual(['b']);
+	});
+
+	it('leaves a tall room’s places to a tall room', () => {
+		const seat = PLACES.find((p) => p.front)!.seat;
+		const low = crewOf([rider('a', { seat })], 0, SCENE_W, SCENE_H);
+		expect(low.placed).toEqual([]);
+		expect(low.seated.map((f) => f?.id)).toEqual(['a']);
+		const tall = crewOf([rider('a', { seat })], 0, 370, 316);
+		expect(tall.placed).toHaveLength(1);
+	});
+
+	it('takes a seat from a click', () => {
+		expect(placeAt(148, 70)).toBe(2);
+		expect(placeAt(203, 100)).toBe(6);
+		const { hit, seat } = PLACES.find((p) => p.front)!;
+		expect(placeAt(hit[0] + 2, hit[1] + 2)).toBe(0);
+		expect(placeAt(hit[0] + 2, hit[1] + 2, true)).toBe(seat);
+	});
+
+	it('has everyone do the same thing on every screen', () => {
+		const kinds = new Set<string>();
+		for (let sec = 0; sec < 20_000; sec += 50) {
+			expect(idleOf('kim', sec, true)).toBe(idleOf('kim', sec, true));
+			kinds.add(idleOf('kim', sec, true));
+		}
+		expect(kinds.size).toBeGreaterThan(4);
+		expect(kinds.has('nod')).toBe(true);
 	});
 });

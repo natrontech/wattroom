@@ -67,6 +67,9 @@ func (h *Hub) handleMessage(c *client, rm *channelState, channel string, rider p
 	if msg.Lounge != nil {
 		h.lounge(rm, rider, *msg.Lounge)
 	}
+	if msg.Room != nil {
+		h.room(rm, rider, *msg.Room)
+	}
 	if msg.Metrics != nil {
 		// Rate-shaped like every other channel (audit 2026-09-09): a trainer
 		// notifies at 4 Hz at most, so 10/s is headroom, and the record
