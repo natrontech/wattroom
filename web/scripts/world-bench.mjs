@@ -27,6 +27,12 @@ const [width, height] = (process.env.BENCH_VIEW ?? '1280x720')
 	.split('x')
 	.map(Number);
 const VIEW = { width, height };
+/** The 3D look (Settings → Look): `smooth`, the default, or `pixel`. */
+const LOOK = process.env.BENCH_LOOK ?? 'smooth';
+if (LOOK !== 'pixel' && LOOK !== 'smooth') {
+	console.error(`BENCH_LOOK is pixel or smooth, not ${LOOK}.`);
+	process.exit(1);
+}
 const RIGS = [
 	{ name: 'software', rate: 1 },
 	{ name: 'software, CPU 4× slower', rate: 4 },
@@ -48,16 +54,20 @@ async function bench(browser, rig) {
 		viewport: VIEW,
 		deviceScaleFactor: 1,
 	});
-	await context.addInitScript(() => {
-		// AGENTS.md: mute before anything plays.
-		localStorage.setItem(
-			'wattroom.mixer.v1',
-			JSON.stringify({ music: 0, cues: 0, board: 0, share: 0 }),
-		);
-		// Software GL misses frames by design: the dev build's frame judge
-		// stands down, so the world keeps drawing and its misses are counted here.
-		localStorage.setItem('wattroom.world-software.v1', '1');
-	});
+	await context.addInitScript(
+		(pixels) => {
+			// AGENTS.md: mute before anything plays.
+			localStorage.setItem(
+				'wattroom.mixer.v1',
+				JSON.stringify({ music: 0, cues: 0, board: 0, share: 0 }),
+			);
+			// Software GL misses frames by design: the dev build's frame judge
+			// stands down, so the world keeps drawing and its misses are counted here.
+			localStorage.setItem('wattroom.world-software.v1', '1');
+			localStorage.setItem('wattroom.world.pixels.v1', pixels);
+		},
+		LOOK === 'pixel' ? '1' : '0',
+	);
 	const page = await context.newPage();
 	const errors = [];
 	page.on('pageerror', (e) => errors.push(e.message));
@@ -172,7 +182,7 @@ try {
 
 const r0 = results[0];
 console.log(
-	`/dev/perf?case=world at ${VIEW.width}×${VIEW.height} (${(r0.pixels / 1e6).toFixed(2)} MP), ` +
+	`/dev/perf?case=world in ${LOOK === 'pixel' ? 'Pixel 3D' : 'Smooth'} at ${VIEW.width}×${VIEW.height} (${(r0.pixels / 1e6).toFixed(2)} MP), ` +
 		`${r0.hz.toFixed(0)} Hz, ${SECONDS} s after ${WARMUP} s; renderer: ${r0.renderer}\n`,
 );
 console.log(

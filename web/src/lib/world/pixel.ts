@@ -1,8 +1,9 @@
 // Pixel 3D: the world drawn in whole pixels, the way the lounge is. The scene
-// renders into a target at the canvas ÷ S, S the lounge's whole scale; one
-// pass brings it to the canvas nearest-neighbour and draws a one-pixel ink
-// edge where the ground falls away behind a thing. Words (name tags) draw
-// after, at the canvas's own resolution, so a name stays readable.
+// renders into a target at the canvas ÷ S, S a whole number of the device's
+// own pixels; one pass brings it to the canvas nearest-neighbour, each world
+// pixel exactly S × S of the screen's, and draws a one-pixel ink edge where
+// the ground falls away behind a thing. Words (name tags) draw after, at the
+// canvas's own resolution, so a name stays readable.
 import * as THREE from 'three';
 import { LOUNGE } from '$lib/lounge/palette';
 
@@ -13,9 +14,9 @@ export const WORDS = 1;
 const ACROSS = 400;
 
 /**
- * The whole CSS pixels one world pixel takes on a canvas w × h CSS pixels:
- * the longer side decides, so a phone held upright draws as chunky as a
- * laptop (the lounge's 2 on a phone). Never under 1.
+ * The whole pixels one world pixel takes on a drawing buffer w × h: the
+ * longer side decides, so a phone held upright draws as chunky as a laptop
+ * (the lounge's 2 CSS pixels on a phone, 6 of a 3× phone's own). Never under 1.
  */
 export function pixelScale(w: number, h: number): number {
 	return Math.max(1, Math.round(Math.max(w, h) / ACROSS));
@@ -124,8 +125,7 @@ export function rampAll(root: THREE.Object3D) {
 const STEP = 0.94;
 
 const VERTEX = /* glsl */ `
-	varying vec2 vUv;
-	void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`;
+	void main() { gl_Position = vec4(position.xy, 0.0, 1.0); }`;
 
 // 1/z is linear across the screen on any plane, so a neighbour is past an
 // edge when it sits behind the plane through this pixel and the one opposite,
@@ -136,17 +136,17 @@ const FRAGMENT = /* glsl */ `
 	uniform sampler2D tColor;
 	uniform sampler2D tDepth;
 	uniform vec2 texel;
+	uniform float scale;
 	uniform float near;
 	uniform float far;
 	uniform vec3 ink;
 	uniform float density;
-	varying vec2 vUv;
 	${BAYER}
 	${STEPS}
 	float iz(vec2 uv) { return (far - texture2D(tDepth, uv).r * (far - near)) / (near * far); }
 	bool past(float n, float c, float o) { return n < (2.0 * c - o) * ${STEP} && c - n > 2.0 * (o - c); }
 	void main() {
-		vec2 uv = (floor(vUv / texel) + 0.5) * texel;
+		vec2 uv = (floor(gl_FragCoord.xy / scale) + 0.5) * texel; // S × S of the screen's pixels a world pixel
 		vec2 dx = vec2(texel.x, 0.0);
 		vec2 dy = vec2(0.0, texel.y);
 		float c = iz(uv), l = iz(uv - dx), r = iz(uv + dx), b = iz(uv - dy), t = iz(uv + dy);
@@ -170,6 +170,7 @@ export function pixelPass(renderer: THREE.WebGLRenderer) {
 			tColor: { value: target.texture },
 			tDepth: { value: target.depthTexture },
 			texel: { value: new THREE.Vector2(1, 1) },
+			scale: { value: 1 },
 			near: { value: 1 },
 			far: { value: 2 },
 			ink: { value: new THREE.Color() },
@@ -187,27 +188,25 @@ export function pixelPass(renderer: THREE.WebGLRenderer) {
 	renderer.info.autoReset = false;
 	PIXEL.value = 1;
 
-	/** The target for a canvas of w × h CSS pixels, sized to it. */
-	function sized(w: number, h: number) {
-		const s = pixelScale(w, h);
-		const cols = Math.max(1, Math.ceil(w / s));
-		const rows = Math.max(1, Math.ceil(h / s));
+	const buffer = new THREE.Vector2();
+	/** The target for the canvas's drawing buffer as it is now, in whole cells of S of its pixels. */
+	function sized() {
+		renderer.getDrawingBufferSize(buffer);
+		const s = pixelScale(buffer.x, buffer.y);
+		const cols = Math.max(1, Math.ceil(buffer.x / s));
+		const rows = Math.max(1, Math.ceil(buffer.y / s));
 		if (target.width !== cols || target.height !== rows) {
 			target.setSize(cols, rows);
 			post.uniforms.texel.value.set(1 / cols, 1 / rows);
 		}
+		post.uniforms.scale.value = s;
 		return target;
 	}
 
 	return {
 		sized,
-		/** Draws `scene` from `camera` onto the canvas, `w` × `h` CSS pixels, in whole pixels. */
-		render(
-			scene: THREE.Object3D,
-			camera: THREE.PerspectiveCamera,
-			w: number,
-			h: number,
-		) {
+		/** Draws `scene` from `camera` onto the canvas in whole pixels. */
+		render(scene: THREE.Object3D, camera: THREE.PerspectiveCamera) {
 			renderer.info.reset();
 			rampAll(scene); // ponytail: a walk of the scene a frame; the world is a few dozen meshes (probe())
 			// ponytail: the lounge's ink as the lounge last turned it (the dark room's until a lounge drew);
@@ -220,9 +219,21 @@ export function pixelPass(renderer: THREE.WebGLRenderer) {
 				fog instanceof THREE.FogExp2 ? fog.density : 0;
 			const layers = camera.layers.mask;
 			camera.layers.set(0);
-			renderer.setRenderTarget(sized(w, h));
+			const t = sized();
+			const s = post.uniforms.scale.value;
+			// Whole cells reach a little past the canvas's top and right: the target sees that far, so each lands where it shows.
+			camera.setViewOffset(
+				buffer.x,
+				buffer.y,
+				0,
+				buffer.y - t.height * s,
+				t.width * s,
+				t.height * s,
+			);
+			renderer.setRenderTarget(t);
 			renderer.render(scene, camera);
 			renderer.setRenderTarget(null);
+			camera.clearViewOffset();
 			renderer.render(quad, flat);
 			camera.layers.set(WORDS);
 			renderer.autoClear = false;

@@ -246,8 +246,17 @@ export function roadMaterial(
 				float centre = paint(abs(u), ${CENTRE_HALF.toFixed(3)}, fw) * dash;
 				float shoulder = smoothstep(${(ROAD_W / 2).toFixed(2)} - 0.5 * fw, ${(ROAD_W / 2).toFixed(2)} + 0.5 * fw, abs(u));
 				float verge = smoothstep(${(ROAD_W / 2 + 0.9).toFixed(2)} - 0.5 * fw, ${(ROAD_W / 2 + 0.9).toFixed(2)} + 0.5 * fw, abs(u));
+				float line = max(edge, centre);
+				#ifdef PIXEL_RAMP
+					// In whole pixels paint is there or not: a line at the share it covers, in Bayer order.
+					if (uPixel > 0.5) {
+						line = line > pixelBayer(gl_FragCoord.xy) ? 1.0 : 0.0;
+						shoulder = step(0.5, shoulder);
+						verge = step(0.5, verge);
+					}
+				#endif
 				vec3 col = mix(uAsphalt, uShoulder, shoulder);
-				col = mix(col, uLine, max(edge, centre) * (1.0 - shoulder));
+				col = mix(col, uLine, line * (1.0 - shoulder));
 				col = mix(col, uVerge, verge);
 				vec4 diffuseColor = vec4(col, opacity);`,
 			)
