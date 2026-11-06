@@ -52,6 +52,6 @@
 		{/if}
 	</div>
 	{#if open}
-		<PhoneRemote {live} onclose={() => (open = false)} />
+		<PhoneRemote link={live} onclose={() => (open = false)} />
 	{/if}
 {/if}

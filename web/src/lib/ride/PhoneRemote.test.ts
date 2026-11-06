@@ -9,7 +9,7 @@ const remote = (
 ) =>
 	render(PhoneRemote, {
 		props: {
-			live: {
+			link: {
 				view,
 				gear,
 				pause: null,
