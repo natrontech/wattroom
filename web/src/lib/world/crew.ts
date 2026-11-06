@@ -99,6 +99,8 @@ function zoneLine(across: number, along: number): THREE.BufferGeometry {
 		}),
 	);
 }
+/** How far a sprite's ring shrinks from the 3D figure's: about the sprite's own wheelbase. */
+const HUG = 0.7;
 /** Seconds a new figure rides before it is first drawn, so it arrives in its riding posture. */
 const SETTLE_S = 2;
 const SETTLE_DT = 1 / 30;
@@ -473,6 +475,12 @@ export function makeCrew(
 			v.figure.visible = !overview && !v.avatar;
 			if (v.avatar) v.avatar.mesh.visible = !overview;
 			v.ring.visible = !overview && r.ring !== false;
+			// Under a sprite the ring hugs the wheels, as a sprite's mark on the
+			// ground does: at full size it read as a hoop round the rider.
+			const hug = v.avatar ? HUG : 1;
+			v.ring.scale.set(hug, 1, hug * 0.75);
+			v.digit.scale.setScalar(hug);
+			v.digit.position.z = (RING_ALONG - 0.2) * hug * 0.75;
 			v.chevron.visible = !overview && !!r.coach;
 			v.chevron.material.opacity = alpha;
 			// A cheer for them (#3116): the thumb, then the light.
