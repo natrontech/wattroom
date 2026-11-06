@@ -48,6 +48,11 @@
 	import RidingSurface from '$lib/session/RidingSurface.svelte';
 	import BiasTrim from '$lib/session/BiasTrim.svelte';
 	import BikeComputer from '$lib/session/BikeComputer.svelte';
+	import { channelConnection } from '$lib/channel/connection.svelte';
+	import NowPlaying from '$lib/channel/NowPlaying.svelte';
+	import { device } from '$lib/device.svelte';
+	import { rideRoom } from '$lib/channel/ride-room.svelte';
+	import RideRoom from '$lib/ride/RideRoom.svelte';
 	import { createWorldView } from '$lib/world/world-view.svelte';
 	import MomentCard from '$lib/session/MomentCard.svelte';
 	import CountdownScreen from '$lib/session/CountdownScreen.svelte';
@@ -168,6 +173,13 @@
 	$effect(() => () => world.dispose());
 	const inWorld = $derived(world.on && !!session.road);
 	const drawn = $derived(inWorld);
+	const inRoom = $derived(rideRoom.on && rideRoom.offered);
+	// A video on the deck takes a seat in the docks; the room has its wall.
+	const playerSeat = $derived(
+		!inRoom &&
+			!device.narrow &&
+			!!channelConnection.call?.live.tick?.jukebox?.current?.videoId,
+	);
 	const skyline = $derived(skylineOf(session.road, session.segments, ftp));
 	// The next blocks on the road (#3101): ridden ahead from the dot at your
 	// own target on your own weight, as the dot moves; a road workout's at its pins.
@@ -216,6 +228,9 @@
 	{block}
 	sprintStartsAt={session.sprint?.startsAtMs ?? null}
 />
+
+{#snippet roomSlot()}<RideRoom />{/snippet}
+{#snippet nowPlaying()}<NowPlaying />{/snippet}
 
 {#snippet worldControls()}
 	<RideControls
@@ -318,7 +333,9 @@
 		onshow={cleanView.toggle}
 		cleanLine={block?.road && roadRidden ? roadLine(block.road) : undefined}
 		class="-mx-4 -my-5 flex-1 sm:-mx-6"
-		world={drawn ? road : undefined}
+		world={drawn && !inRoom ? road : undefined}
+		room={inRoom ? roomSlot : undefined}
+		seat={playerSeat ? nowPlaying : undefined}
 		bar={worldControls}
 		moment={inWorld && session.sprint ? moment : undefined}
 		centre={countIn ? digit : undefined}

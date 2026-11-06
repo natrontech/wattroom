@@ -108,7 +108,11 @@
 		     setup below is the one thing to do. -->
 		<button
 			onclick={() => channel.openPicker('ride')}
-			class="btn btn-secondary btn-ride">Ride a workout</button
+			aria-label="Ride a workout"
+			class="btn btn-secondary btn-ride"
+			><span class="2xl:hidden">Workout</span><span class="max-2xl:hidden"
+				>Ride a workout</span
+			></button
 		>
 	{/if}
 {/snippet}

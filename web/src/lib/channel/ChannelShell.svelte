@@ -247,6 +247,20 @@
 	// the cam grid. A rider who wants a share instead picks it.
 	// A pool track is heard, not seen (#267): no picture, so no seat — offering
 	// one drew a black tile the dock never flew into (#1141).
+	// The player in its corner needs the place to stop short of it. A seat
+	// changing hands is a frame without one: acting on that frame shrank the
+	// room, which moved the picture, which freed the seat again.
+	const noSeat = $derived(!!live.tick?.jukebox?.current && !stageSlot.seated);
+	let cornered = $state(false);
+	$effect(() => {
+		if (!noSeat) {
+			cornered = false;
+			return;
+		}
+		const settled = setTimeout(() => (cornered = true), 400);
+		return () => clearTimeout(settled);
+	});
+
 	const stageSources = $derived([
 		...(live.tick?.jukebox?.current?.videoId
 			? [
@@ -419,8 +433,7 @@
 		     page-body — the root layout's wraps this whole shell. -->
 		<div
 			data-testid="place-body"
-			class="min-h-0 flex-1 overflow-y-auto {live.tick?.jukebox?.current &&
-			!stageSlot.seated
+			class="min-h-0 flex-1 overflow-y-auto {cornered
 				? 'max-md:mb-[calc(var(--pane-jukebox-dock-h)+2rem)] md:pb-[calc(var(--pane-jukebox-dock-h)+1.5rem)]'
 				: ''}"
 		>

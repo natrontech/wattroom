@@ -94,8 +94,8 @@ export const REASONS: Record<
 	},
 };
 
-/** The view switch's three segments (#4217): the horizon's two views and the computer's MAP. */
-export type ViewSegment = '3d' | 'flat' | 'map';
+/** The view switch's segments (#4217): the horizon's two views, the computer's MAP and the cozy room. */
+export type ViewSegment = '3d' | 'flat' | 'map' | 'room';
 
 /**
  * What the view switch shows: the pressed segment, which is where the rider
@@ -109,9 +109,11 @@ export function viewSwitch(s: {
 	reason: SkylineReason | null;
 	/** The computer shows its MAP page. */
 	onMap: boolean;
+	/** The ride is looking at the cozy room. */
+	inRoom?: boolean;
 }): { pressed: ViewSegment; worldOffered: boolean } {
 	return {
-		pressed: s.onMap ? 'map' : s.world ? '3d' : 'flat',
+		pressed: s.inRoom ? 'room' : s.onMap ? 'map' : s.world ? '3d' : 'flat',
 		worldOffered: s.world || (s.reason !== null && REASONS[s.reason].retry),
 	};
 }

@@ -57,6 +57,11 @@
 	import RidingSurface from '$lib/session/RidingSurface.svelte';
 	import ViewSwitch from '$lib/world/ViewSwitch.svelte';
 	import type { RoadMate } from '$lib/channel/road-mates';
+	import { channelConnection } from '$lib/channel/connection.svelte';
+	import NowPlaying from '$lib/channel/NowPlaying.svelte';
+	import { rideRoom } from '$lib/channel/ride-room.svelte';
+	import { device } from '$lib/device.svelte';
+	import RideRoom from '$lib/ride/RideRoom.svelte';
 	import { createWorldView } from '$lib/world/world-view.svelte';
 	import { tooltip } from '$lib/tooltip.svelte';
 
@@ -161,6 +166,13 @@
 	// Its return to 3D (#4423) ends with the ride.
 	$effect(() => () => world.dispose());
 	const inWorld = $derived(world.on && !!road);
+	const inRoom = $derived(rideRoom.on && rideRoom.offered);
+	// A video on the deck takes a seat in the docks; the room has its wall.
+	const playerSeat = $derived(
+		!inRoom &&
+			!device.narrow &&
+			!!channelConnection.call?.live.tick?.jukebox?.current?.videoId,
+	);
 
 	const atMin = $derived(
 		inWatts ? free.watts === WATTS.min : free.grade === GRADE.min,
@@ -337,9 +349,9 @@
 	{#if onflag}<span class="contents max-md:hidden"
 			><FlagButton onflag={flag} sends="after" /></span
 		>{/if}
-	{#if road}<span class="contents max-md:hidden"
-			><ViewSwitch {world} drawn={inWorld} /></span
-		>{/if}
+	<span class="contents max-md:hidden"
+		><ViewSwitch {world} drawn={inWorld} road={!!road} /></span
+	>
 	{#if ontv}
 		<button
 			onclick={ontv}
@@ -471,6 +483,9 @@
 	{/await}
 {/snippet}
 
+{#snippet roomSlot()}<RideRoom />{/snippet}
+{#snippet nowPlaying()}<NowPlaying />{/snippet}
+
 {#snippet roadEnd()}
 	<RoadEnd {free} onsave={() => onend?.()} />
 {/snippet}
@@ -481,7 +496,9 @@
 <RidingSurface
 	roadMap={map ? roadMapView : undefined}
 	class="flex-1 {worldClass} {extra}"
-	world={inWorld ? worldSlot : undefined}
+	world={inWorld && !inRoom ? worldSlot : undefined}
+	room={inRoom ? roomSlot : undefined}
+	seat={playerSeat ? nowPlaying : undefined}
 	moment={roadEndOffered(free, false) ? roadEnd : undefined}
 	{bar}
 	rail={glance}

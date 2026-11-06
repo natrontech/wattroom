@@ -10,6 +10,9 @@
 	 * Chrome, so neon and flat (ADR-0005), in the ride's one segmented
 	 * control's shape (FreeRiding's "what you set").
 	 */
+	import { channelConnection } from '$lib/channel/connection.svelte';
+	import { hasChannel } from '$lib/channel/context';
+	import { rideRoom } from '$lib/channel/ride-room.svelte';
 	import { askPage } from '$lib/session/computer-pages';
 	import { tooltip } from '$lib/tooltip.svelte';
 	import { computerShown } from '$lib/session/computer-shown.svelte';
@@ -24,6 +27,7 @@
 	let {
 		world,
 		drawn,
+		road = true,
 	}: {
 		world: {
 			readonly reason: SkylineReason | null;
@@ -32,17 +36,38 @@
 		};
 		/** The world draws on this screen now. */
 		drawn: boolean;
+		/** The ride has a road: off one there is no 3D to look at. */
+		road?: boolean;
 	} = $props();
+
+	// The cozy room needs a call to be in; a solo ride has neither (ux.md).
+	const inChannel = hasChannel();
+	const roomy = $derived(
+		inChannel && !!channelConnection.call?.address.channel,
+	);
+	$effect(() => {
+		rideRoom.offered = roomy;
+		return () => {
+			rideRoom.offered = false;
+			rideRoom.on = false;
+		};
+	});
 
 	const onMap = $derived(computerShown.page === 'map');
 	const state = $derived(
-		viewSwitch({ world: drawn, reason: world.reason, onMap }),
+		viewSwitch({
+			world: drawn,
+			reason: world.reason,
+			onMap,
+			inRoom: rideRoom.on && roomy,
+		}),
 	);
 	const why = $derived(world.reason ? REASONS[world.reason] : null);
 
 	// 3D and Flat are the horizon's, and a rider on MAP who picks one is
 	// leaving the map for it: the computer goes back to RIDE.
 	function to(segment: '3d' | 'flat') {
+		rideRoom.on = false;
 		if (onMap) askPage('ride');
 		if (segment === '3d' && !drawn) world.retry();
 		if (segment === 'flat' && drawn) world.flatten();
@@ -71,37 +96,51 @@
 		`btn ride-word h-11 px-2 py-0 font-semibold whitespace-nowrap ${on ? 'btn-secondary' : 'btn-ghost'}`;
 </script>
 
-<div
-	class="flex items-center"
-	role="group"
-	aria-label="view"
-	data-testid="view-switch"
->
-	<button
-		onclick={() => to('3d')}
-		aria-pressed={state.pressed === '3d'}
-		disabled={!state.worldOffered}
-		{@attach tooltip(why?.line)}
-		class={seg(state.pressed === '3d')}
-		>3D{#if why?.short}<span class="text-muted ml-1 font-normal"
-				>{state.worldOffered ? '⟳ ' : ''}{why.short}</span
-			>{/if}</button
+{#if road || roomy}
+	<div
+		class="flex items-center"
+		role="group"
+		aria-label="view"
+		data-testid="view-switch"
 	>
-	<button
-		onclick={() => to('flat')}
-		aria-pressed={state.pressed === 'flat'}
-		class={seg(state.pressed === 'flat')}>Flat</button
-	>
-	{#if computerShown.maps}
+		{#if road}
+			<button
+				onclick={() => to('3d')}
+				aria-pressed={state.pressed === '3d'}
+				disabled={!state.worldOffered}
+				{@attach tooltip(why?.line)}
+				class={seg(state.pressed === '3d')}
+				>3D{#if why?.short}<span class="text-muted ml-1 font-normal"
+						>{state.worldOffered ? '⟳ ' : ''}{why.short}</span
+					>{/if}</button
+			>
+		{/if}
 		<button
-			onclick={() => askPage('map')}
-			aria-pressed={state.pressed === 'map'}
-			class={seg(state.pressed === 'map')}>Map</button
+			onclick={() => to('flat')}
+			aria-pressed={state.pressed === 'flat'}
+			class={seg(state.pressed === 'flat')}>Flat</button
 		>
-	{/if}
-	<!-- The whole sentence for a screen reader, and for the e2e specs that
+		{#if computerShown.maps}
+			<button
+				onclick={() => {
+					rideRoom.on = false;
+					askPage('map');
+				}}
+				aria-pressed={state.pressed === 'map'}
+				class={seg(state.pressed === 'map')}>Map</button
+			>
+		{/if}
+		{#if roomy}
+			<button
+				onclick={() => (rideRoom.on = true)}
+				aria-pressed={state.pressed === 'room'}
+				class={seg(state.pressed === 'room')}>Room</button
+			>
+		{/if}
+		<!-- The whole sentence for a screen reader, and for the e2e specs that
 	     read why a world went flat (`world.ts`): present only while it is. -->
-	{#if why}
-		<p role="status" class="sr-only" data-testid="flat-road">{why.line}</p>
-	{/if}
-</div>
+		{#if why}
+			<p role="status" class="sr-only" data-testid="flat-road">{why.line}</p>
+		{/if}
+	</div>
+{/if}

@@ -95,6 +95,13 @@ describe('rideView (#3080)', () => {
  * world fell back found no way back from a line at label size.
  */
 describe('viewSwitch', () => {
+	it('presses Room over every other view while the ride looks at the room', () => {
+		expect(
+			viewSwitch({ world: true, reason: null, onMap: true, inRoom: true })
+				.pressed,
+		).toBe('room');
+	});
+
 	const cases: [
 		string,
 		Parameters<typeof viewSwitch>[0],

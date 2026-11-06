@@ -209,6 +209,9 @@ export function setChannelContext(ctx: ChannelContext): void {
 	setContext(KEY, ctx);
 }
 
+/** Whether this tree stands in a voice channel or session: a solo ride does not. */
+export const hasChannel = () => !!getContext<ChannelContext>(KEY);
+
 export function useChannel(): ChannelContext {
 	const ctx = getContext<ChannelContext | undefined>(KEY);
 	if (!ctx)

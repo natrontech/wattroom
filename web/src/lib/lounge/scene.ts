@@ -7,7 +7,12 @@
 import type { Ctx } from '$lib/lounge/pixel';
 import type { RadioPick, Weather } from '$lib/lounge/state';
 import type { Sky } from '$lib/lounge/palette';
-import { drawBack, drawLive, drawShade } from '$lib/lounge/draw-room';
+import {
+	drawBack,
+	drawLive,
+	drawScreen,
+	drawShade,
+} from '$lib/lounge/draw-room';
 import { drawWindow } from '$lib/lounge/draw-window';
 import {
 	drawFloorCrew,
@@ -275,6 +280,8 @@ export interface SceneInput {
 	/** The whole room in scene pixels, never smaller than the stage. */
 	w: number;
 	h: number;
+	/** A picture is on the wall: the wall takes every spare row (wallScreen). */
+	cinema?: boolean;
 	/** Seconds on the scene's own clock; motion holds still under reduced motion. */
 	t: number;
 	still: boolean;
@@ -344,25 +351,52 @@ export function pulseOf(input: SceneInput): number {
  * room (a phone) lowered a little, so the wall grows above it as well as
  * the floor below.
  */
-export function middleOf(w: number, h: number) {
+export function middleOf(w: number, h: number, cinema = false) {
 	return {
 		ox: Math.floor((w - SCENE_W) / 2),
-		oy: Math.max(0, Math.min(48, Math.floor((h - 210) / 3))),
+		oy: cinema
+			? Math.max(0, h - SCENE_H)
+			: Math.max(0, Math.min(48, Math.floor((h - 210) / 3))),
 	};
 }
 
 /** Whether a room is tall enough for its front row: the beanbag, the plant and the arcade. */
-export function hasFront(w: number, h: number): boolean {
-	return h - middleOf(w, h).oy >= FRONT_Y + 14;
+export function hasFront(w: number, h: number, cinema = false): boolean {
+	return !cinema && h - middleOf(w, h).oy >= FRONT_Y + 14;
+}
+
+/** The first row a sitter's head can reach: a screen on the wall stops above it. */
+const SCREEN_FOOT = 52;
+/** How far the screen hangs under the ceiling, clear of the bulbs. */
+const SCREEN_TOP = 10;
+
+/**
+ * The projector screen, in room pixels: 16:9, in the middle, from under the
+ * bulbs to just above the sofa. A picture on the wall gives the room this:
+ * the floor stays, the wall grows up to the ceiling, and the window goes
+ * behind the screen.
+ */
+export function wallScreen(w: number, h: number) {
+	const { oy } = middleOf(w, h, true);
+	const foot = oy + SCREEN_FOOT;
+	const cols = Math.min(w - 24, Math.round(((foot - SCREEN_TOP) * 16) / 9));
+	const rows = Math.round((cols * 9) / 16);
+	return { x: Math.floor((w - cols) / 2), y: foot - rows, w: cols, h: rows };
 }
 
 export function drawScene(g: Ctx, input: SceneInput) {
-	const { ox, oy } = middleOf(input.w, input.h);
+	const { ox, oy } = middleOf(input.w, input.h, input.cinema);
 	drawBack(g, input, ox, oy);
 	g.save();
 	g.translate(ox, oy);
 	drawWindow(g, input);
 	drawLive(g, input);
+	if (input.cinema) {
+		g.save();
+		g.translate(-ox, -oy);
+		drawScreen(g, wallScreen(input.w, input.h));
+		g.restore();
+	}
 	drawSofaCrew(g, input);
 	// Behind everyone on the floor: its lane and spots are all further back
 	// than the first row, so a rider sits in front of it, never under it.
@@ -388,8 +422,13 @@ export interface Tag {
 	span: number;
 }
 
-export function tagsOf(crew: Crew, w: number, h: number): Tag[] {
-	const { ox, oy } = middleOf(w, h);
+export function tagsOf(
+	crew: Crew,
+	w: number,
+	h: number,
+	cinema = false,
+): Tag[] {
+	const { ox, oy } = middleOf(w, h, cinema);
 	// Every other name on the sofa a row lower, so neighbours get twice the width.
 	const tags: Tag[] = crew.seated.flatMap((f, i) =>
 		f

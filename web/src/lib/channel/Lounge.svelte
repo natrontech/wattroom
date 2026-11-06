@@ -19,7 +19,7 @@
 	import PlanCard from '$lib/session/PlanCard.svelte';
 	import StartLine from '$lib/session/StartLine.svelte';
 	import HrShare from '$lib/channel/HrShare.svelte';
-	import LoungeScene from '$lib/lounge/LoungeScene.svelte';
+	import RoomView from '$lib/channel/RoomView.svelte';
 	import SessionCallout from '$lib/channel/SessionCallout.svelte';
 
 	import SprintMoment from '$lib/session/SprintMoment.svelte';
@@ -35,7 +35,9 @@
 	import { personMenu } from '$lib/person-menu';
 	import { clampSize, dividerDrag } from '$lib/divider';
 	import { goto } from '$app/navigation';
+	import Armchair from '@lucide/svelte/icons/armchair';
 	import Focus from '@lucide/svelte/icons/focus';
+	import LayoutGrid from '@lucide/svelte/icons/layout-grid';
 	import Columns2 from '@lucide/svelte/icons/columns-2';
 	import MonitorPlay from '@lucide/svelte/icons/monitor-play';
 	import MonitorUp from '@lucide/svelte/icons/monitor-up';
@@ -178,24 +180,31 @@
 	);
 	const onStage = $derived(pickStage(sources, av?.stagePick ?? null));
 	const tick = $derived(channelConnection.call?.live.tick);
-	/** Someone's camera is on: a face beats the room, which has no place for it. */
-	const cameras = $derived(
-		!!av?.camOn || Object.keys(av?.videoOf ?? {}).length > 0,
-	);
 	/**
-	 * The lounge's room (ADR-0094, #4302): an idle voice channel with nothing
-	 * on the deck but house radio, nothing shared, no camera on and nobody
-	 * riding here (#4305).
+	 * The lounge's room (ADR-0094): a voice channel between sessions. It stays
+	 * through a video, a shared screen, a camera and your own ride; only you
+	 * leave it, for the tiles, and this device remembers (Jan, 2026-11-06).
 	 */
-	const inRoom = $derived(
-		channel.phase === 'lounge' &&
-			!!channel.address.channel &&
-			!!tick &&
-			(!tick.jukebox?.current || !!tick.jukebox.current.radio) &&
-			!onStage &&
-			!riding &&
-			!cameras,
+	const VIEW_KEY = 'wattroom.lounge.view.v1';
+	let tilesPicked = $state(false);
+	try {
+		tilesPicked = localStorage.getItem(VIEW_KEY) === 'tiles';
+	} catch {
+		/* desk preference; the default is fine */
+	}
+	function pickView(tiles: boolean) {
+		tilesPicked = tiles;
+		try {
+			if (tiles) localStorage.setItem(VIEW_KEY, 'tiles');
+			else localStorage.removeItem(VIEW_KEY);
+		} catch {
+			/* fine — the choice just won't survive a reload */
+		}
+	}
+	const roomOffered = $derived(
+		channel.phase === 'lounge' && !!channel.address.channel && !!tick,
 	);
+	const inRoom = $derived(roomOffered && !tilesPicked);
 	/** Stage above, riders below — the shape both Stage and Sidebar draw. */
 	const stacked = $derived(layout !== 'split');
 	const wrap = $derived(
@@ -324,9 +333,30 @@
 	<!-- Your tile shows the call your bpm whenever the trainer is paired
 	     (ADR-0008, #2804). -->
 	<HrShare />
-	{#if channel.stageSources.length > 0}
+	{#if roomOffered}
 		<div
 			class="border-muted/20 ml-auto flex gap-0.5 rounded border p-0.5"
+			role="group"
+			aria-label="view"
+		>
+			{#each [{ tiles: false, label: 'Room', icon: Armchair }, { tiles: true, label: 'Tiles', icon: LayoutGrid }] as option (option.label)}
+				<button
+					onclick={() => pickView(option.tiles)}
+					aria-pressed={tilesPicked === option.tiles}
+					class="btn btn-ghost btn-xs ride-stage:min-h-11 ride-stage:ride-word {tilesPicked ===
+					option.tiles
+						? 'bg-surface-raised text-ink'
+						: 'text-muted hover:text-ink'}"
+					><option.icon size={13} /> {option.label}</button
+				>
+			{/each}
+		</div>
+	{/if}
+	{#if channel.stageSources.length > 0 && !inRoom}
+		<div
+			class="border-muted/20 {roomOffered
+				? ''
+				: 'ml-auto'} flex gap-0.5 rounded border p-0.5"
 			role="group"
 			aria-label="layout"
 		>
@@ -349,8 +379,8 @@
 	{/if}
 	<button
 		onclick={() => channel.openTv()}
-		class="btn btn-ghost btn-xs ride-stage:min-h-11 ride-stage:ride-word {channel
-			.stageSources.length
+		class="btn btn-ghost btn-xs ride-stage:min-h-11 ride-stage:ride-word {roomOffered ||
+		channel.stageSources.length
 			? ''
 			: 'ml-auto'}"><MonitorUp size={13} /> TV</button
 	>
@@ -370,15 +400,16 @@
 {/snippet}
 
 {#if inRoom}
-	<!-- The lounge (ADR-0094): an idle voice channel is its room, and the room
-	     is the whole place, with everyone in the call in it as a figure. The
-	     page's notices and buttons float over its wall. A shared picture
-	     takes the room's place, a YouTube entry among them, so nothing is
-	     ever drawn over the player (RMF). -->
+	<!-- The lounge (ADR-0094): a voice channel is its room, and the room is the
+	     whole place, with everyone in the call in it as a figure. The page's
+	     notices and buttons float over its wall; with a picture on that wall
+	     they stand above the room, so nothing is ever drawn over the player
+	     (RMF). -->
 	<div class="relative flex h-full flex-col">
-		<LoungeScene menuOf={figureMenu} />
 		<div
-			class="pointer-events-none absolute inset-x-0 top-0 flex items-start gap-2 p-3 sm:px-4"
+			class="pointer-events-none {onStage
+				? 'bg-surface order-first'
+				: 'absolute inset-x-0 top-0 z-10'} flex items-start gap-2 p-3 sm:px-4"
 		>
 			<div
 				class="pointer-events-auto flex max-w-md min-w-0 flex-1 flex-col [&>*]:mb-2 [&>*]:shadow-lg"
@@ -393,6 +424,7 @@
 				{@render controls()}
 			</div>
 		</div>
+		<RoomView menuOf={figureMenu} />
 		{#if cams.length}
 			<div
 				class="bg-surface flex shrink-0 gap-2 overflow-x-auto p-2"
