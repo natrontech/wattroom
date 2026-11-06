@@ -52,6 +52,18 @@ const LAMBERT = THREE.ShaderChunk.lights_lambert_pars_fragment.replace(
 	`${DIRECT}
 	if ( uPixel > 0.5 ) dotNL = pixelStep( dot( geometryNormal, directLight.direction ) * 0.5 + 0.5 );`,
 );
+// The sky's light in quarters of the way from the ground's: a vertical face keeps its half, a rounded back steps.
+const HEMI = THREE.ShaderChunk.lights_pars_begin.replace(
+	'float hemiDiffuseWeight = 0.5 * dotNL + 0.5;',
+	`float hemiDiffuseWeight = 0.5 * dotNL + 0.5;
+		if ( uPixel > 0.5 ) hemiDiffuseWeight = floor( hemiDiffuseWeight * 4.0 + 0.5 + ( pixelBayer( gl_FragCoord.xy ) - 0.5 ) * 0.3 ) / 4.0;`,
+);
+// A toon material (the riders, the team car) takes the same four steps in place of its gradient map.
+const TOON = THREE.ShaderChunk.gradientmap_pars_fragment.replace(
+	'float dotNL = dot( normal, lightDirection );',
+	`float dotNL = dot( normal, lightDirection );
+	if ( uPixel > 0.5 ) return vec3( pixelStep( dotNL * 0.5 + 0.5 ) );`,
+);
 const FOGGED = THREE.ShaderChunk.fog_fragment.replace(
 	FOG,
 	`if ( uPixel > 0.5 ) fogFactor = pixelFog( fogFactor );
@@ -60,11 +72,20 @@ const FOGGED = THREE.ShaderChunk.fog_fragment.replace(
 const patched = new WeakSet<THREE.Material>();
 
 /**
- * Gives a Lambert material the ramp: its sun in four dithered steps, its fog
- * in three bands. Once per material; the steps show while PIXEL is on.
+ * Gives a Lambert or toon material the ramp: its sun in four dithered steps,
+ * its fog in three bands. Once per material; the steps show while PIXEL is
+ * on. A ramped program defines PIXEL_RAMP, so a material's own chunks can
+ * step too (figure/material.ts).
  */
 function ramp(m: THREE.Material) {
-	if (patched.has(m) || !(m instanceof THREE.MeshLambertMaterial)) return;
+	if (
+		patched.has(m) ||
+		!(
+			m instanceof THREE.MeshLambertMaterial ||
+			m instanceof THREE.MeshToonMaterial
+		)
+	)
+		return;
 	patched.add(m);
 	const original = m.onBeforeCompile;
 	// Three keys a program by onBeforeCompile's source: keep the original's, or every ramped material would share one.
@@ -78,16 +99,18 @@ function ramp(m: THREE.Material) {
 		shader.fragmentShader = shader.fragmentShader
 			.replace(
 				'#include <common>',
-				`#include <common>\nuniform float uPixel;\n${BAYER}\n${STEPS}`,
+				`#include <common>\n#define PIXEL_RAMP\nuniform float uPixel;\n${BAYER}\n${STEPS}`,
 			)
+			.replace('#include <lights_pars_begin>', HEMI)
 			.replace('#include <lights_lambert_pars_fragment>', LAMBERT)
+			.replace('#include <gradientmap_pars_fragment>', TOON)
 			.replace('#include <fog_fragment>', FOGGED);
 	};
 	m.customProgramCacheKey = () => `pixel|${own()}`;
 	m.needsUpdate = true;
 }
 
-/** Ramps every Lambert material under `root` not ramped yet: what streams in is caught on its first frame. */
+/** Ramps every Lambert and toon material under `root` not ramped yet: what streams in is caught on its first frame. */
 export function rampAll(root: THREE.Object3D) {
 	root.traverse((o) => {
 		const m = (o as THREE.Mesh).material;
