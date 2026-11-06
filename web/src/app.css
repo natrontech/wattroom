@@ -382,6 +382,8 @@
 	--world-prop-wood: #5a3a26;
 	--world-prop-roof: #2e2530;
 	--world-prop-stone: #4c4a52;
+	--world-prop-shutter: #2f5a4a;
+	--world-prop-flower: #f4ecdc;
 	--world-prop-cow: #c9c2b8;
 	--world-prop-cow-patch: #4a2e22;
 	--world-prop-bell: #caa27a;
@@ -412,6 +414,41 @@
 	--world-skin-6: #73503c;
 	--world-skin-7: #4d392f;
 	--world-skin-8: #292420;
+	/*
+	 * Pixel 3D's dusk: the same world in the room's window colours, dark enough
+	 * for the watts and never in their band. Read through look.ts's pixelPaint;
+	 * a token with no twin here is the same in both looks.
+	 */
+	--world-px-sky-zenith: #221c66;
+	--world-px-sky-haze: #8a78c4;
+	--world-px-sky-peach: #f3b083;
+	--world-px-sky-light: #e6e0ff;
+	--world-px-sky-shade: #4a3f8a;
+	--world-px-biome-water: #2c6fb4;
+	--world-px-biome-meadow: #3fa06a;
+	--world-px-biome-forest: #1f7258;
+	--world-px-biome-alpine: #7f9a62;
+	--world-px-biome-rock: #76709e;
+	--world-px-biome-snow: #f2eeff;
+	--world-px-biome-verge: #4f9a62;
+	--world-px-ridge: #3f3a84;
+	--world-px-ridge-rock: #5c5598;
+	--world-px-road-asphalt: #4b4970;
+	--world-px-road-line: #f2ecf8;
+	--world-px-road-shoulder: #8a80a0;
+	--world-px-road-verge: #4f9a62;
+	--world-px-prop-spruce: #135c4c;
+	--world-px-prop-spruce-tip: #33a67a;
+	--world-px-prop-leaf: #2a8050;
+	--world-px-prop-leaf-light: #6ec060;
+	--world-px-prop-trunk: #6a4632;
+	--world-px-prop-wall: #f0e2c6;
+	--world-px-prop-wood: #9a5c36;
+	--world-px-prop-roof: #7a4258;
+	--world-px-prop-stone: #8a84a4;
+	--world-px-prop-shutter: #2f9a7a;
+	--world-px-prop-rock: #76709e;
+
 	--world-kit-skin: #858585; /* #3413's neutral tone: none of the eight swatches */
 	--world-kit-shoe: #ece9f2;
 	--world-kit-tyre: #1a1820;

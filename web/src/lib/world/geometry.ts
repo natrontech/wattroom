@@ -252,10 +252,24 @@ export function roadMaterial(
 					if (uPixel > 0.5) {
 						line = line > pixelBayer(gl_FragCoord.xy) ? 1.0 : 0.0;
 						shoulder = step(0.5, shoulder);
-						verge = step(0.5, verge);
+						// Grass grows in over the gravel's edge, unevenly.
+						float jag = fract(sin(floor(s * 7.0) * 91.7) * 43758.5453) * 0.24;
+						verge = step(${(ROAD_W / 2 + 0.9).toFixed(2)} - jag, abs(u));
 					}
 				#endif
 				vec3 col = mix(uAsphalt, uShoulder, shoulder);
+				#ifdef PIXEL_RAMP
+					// A road that has been ridden: patched tar, worn wheel tracks, loose gravel.
+					if (uPixel > 0.5) {
+						float k = fract(sin(dot(floor(vec2(u * 1.3, s * 0.3)), vec2(127.1, 311.7))) * 43758.5453);
+						float tracks = abs(abs(u) - 1.45);
+						if (shoulder < 0.5) col *= k > 0.8 ? 0.88 : tracks < 0.45 ? 1.08 : 1.0;
+						else {
+							float g = fract(sin(dot(floor(vec2(u, s) * 3.0), vec2(269.5, 183.3))) * 43758.5453);
+							col *= g > 0.8 ? 1.16 : g < 0.2 ? 0.84 : 1.0;
+						}
+					}
+				#endif
 				col = mix(col, uLine, line * (1.0 - shoulder));
 				col = mix(col, uVerge, verge);
 				vec4 diffuseColor = vec4(col, opacity);`,
@@ -268,6 +282,13 @@ export function roadMaterial(
 				#endif
 				outgoingLight = mix(outgoingLight, uAmber, pool / 3.0);
 				#include <opaque_fragment>`,
+			)
+			.replace(
+				'#include <dithering_fragment>',
+				`#include <dithering_fragment>
+				#ifdef PIXEL_RAMP
+					if (uPixel > 0.5) gl_FragColor.a = 0.5; // the land, for the ink pass (pixel.ts)
+				#endif`,
 			);
 	};
 	m.customProgramCacheKey = () =>

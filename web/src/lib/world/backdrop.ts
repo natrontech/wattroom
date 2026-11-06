@@ -97,7 +97,13 @@ export function backdrop(
 	route: Route,
 	seed: number,
 	radius: number,
-	colors: { ridge: string; rock: string; snow: string; fog: string },
+	colors: {
+		ridge: string;
+		rock: string;
+		snow: string;
+		fog: string;
+		tall?: number;
+	},
 	snow: boolean,
 ): { geometry: THREE.BufferGeometry; skyline: Skyline } {
 	const peaks = bearings(route);
@@ -126,12 +132,21 @@ export function backdrop(
 			const ridgeNoise =
 				n(Math.cos(a) * 3 + phase + k * 17, Math.sin(a) * 3) * 0.6 +
 				n(Math.cos(a) * 9 + k, Math.sin(a) * 9 + phase) * 0.25;
+			const tall = colors.tall ?? 1;
+			// A taller range is a jagged one: peaks, never a long swell.
+			const jag =
+				tall > 1
+					? Math.abs(n(Math.cos(a) * 21 + k * 5, Math.sin(a) * 21)) *
+						ring.amp *
+						1.5
+					: 0;
 			const t =
 				ring.lift +
 				ring.amp * (0.45 + ridgeNoise) +
+				jag +
 				(k === 0 ? 0.015 : 0.02) * ring.hero * near(a, peaks.hero, 0.07) +
 				0.02 * (k === 1 ? 1 : 0.4) * near(a, peaks.second, 0.12);
-			tops.push(mid + Math.max(0.004, t) * R);
+			tops.push(mid + Math.max(0.004, t * tall) * R);
 		}
 		rings.push({ R, tops });
 		const p = (a: number, y: number) => [

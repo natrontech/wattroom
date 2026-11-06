@@ -10,6 +10,58 @@ import type { Style } from './styles';
 /** A token's colour by its custom property's name, without the dashes: `world-sky-zenith`, `color-watt`. */
 export type Paint = (token: string) => string;
 
+/** The tokens Pixel 3D paints in its own dusk: app.css's --world-px-*. */
+const PIXEL_TOKENS = new Set(
+	[
+		'sky-zenith',
+		'sky-haze',
+		'sky-peach',
+		'sky-light',
+		'sky-shade',
+		'biome-water',
+		'biome-meadow',
+		'biome-forest',
+		'biome-alpine',
+		'biome-rock',
+		'biome-snow',
+		'biome-verge',
+		'ridge',
+		'ridge-rock',
+		'road-asphalt',
+		'road-line',
+		'road-shoulder',
+		'road-verge',
+		'prop-spruce',
+		'prop-spruce-tip',
+		'prop-leaf',
+		'prop-leaf-light',
+		'prop-trunk',
+		'prop-wall',
+		'prop-wood',
+		'prop-roof',
+		'prop-stone',
+		'prop-shutter',
+		'prop-rock',
+	].map((t) => `world-${t}`),
+);
+
+/** `paint`, in Pixel 3D's colours. */
+export const pixelPaint =
+	(paint: Paint): Paint =>
+	(token) =>
+		paint(
+			PIXEL_TOKENS.has(token) ? token.replace('world-', 'world-px-') : token,
+		);
+
+/** The ride's look in Pixel 3D: its own dusk, under real snow-capped ranges. */
+export function pixelLook(paint: Paint): Style {
+	const look = rideLook(pixelPaint(paint));
+	return {
+		...look,
+		backdrop: { ...look.backdrop, snowCaps: true, tall: 1.9 },
+	};
+}
+
 /** The ride's look, its colours from `paint`; the sun's bearing is the real one at `place`, when there is one. */
 export function rideLook(
 	paint: Paint,
@@ -68,6 +120,8 @@ export function rideLook(
 			wood: w('prop-wood'),
 			roof: w('prop-roof'),
 			stone: w('prop-stone'),
+			shutter: w('prop-shutter'),
+			flower: w('prop-flower'),
 			cow: w('prop-cow'),
 			cowPatch: w('prop-cow-patch'),
 			bell: w('prop-bell'),

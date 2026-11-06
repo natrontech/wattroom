@@ -240,11 +240,11 @@
 			([
 				{ mount },
 				{ generate },
-				{ rideLook, worldPaint },
+				{ pixelLook, rideLook, worldPaint },
 				{ syntheticPoints },
 				{ devCrew },
 				{ toRoute },
-				{ setWorldPixels },
+				{ setWorldPixels, worldPixels },
 			]) => {
 				if (gone) return;
 				const look = params.get('pixels');
@@ -258,7 +258,9 @@
 				const s = mount(node, {
 					route,
 					world,
-					style: rideLook(worldPaint(node.parentElement ?? document.body)),
+					style: (worldPixels() ? pixelLook : rideLook)(
+						worldPaint(node.parentElement ?? document.body),
+					),
 					ftp: 250,
 					watts: 200,
 					riders: devCrew(200, 250).map((r) => ({
