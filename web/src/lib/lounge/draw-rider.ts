@@ -64,6 +64,8 @@ const STANDING = new Map<P, P>([
 	[NECK, [12, 41.5, 0]],
 	[HEAD, [15, 45, 0]],
 ]);
+/** The bike and the body against the head: smaller, so the rider reads as a chibi. */
+const SMALL = 0.8;
 /** Looked at from this far above the road, in degrees. */
 const ABOVE = (14 * Math.PI) / 180;
 
@@ -87,8 +89,7 @@ class Picture {
 			if (!p.tone) continue;
 			for (const d of [1, -1, 1024, -1024]) {
 				const n = this.pixels.get(k + d);
-				if (!n || (n.order < p.order && n.tone !== p.tone))
-					edges.set(k + d, C.ink);
+				if (!n) edges.set(k + d, C.ink);
 			}
 		}
 		const out: [number, number, string][] = [];
@@ -300,7 +301,8 @@ function head(
 		outlined(
 			g,
 			[
-				[hx, ht, 10, 9, f.skin],
+				[hx + 1, ht, 8, 9, f.skin],
+				[hx, ht + 1, 10, 7, f.skin],
 				[hx - 1, ht + 5, 1, 2, f.skin],
 				...profileHair(f, hx, ht),
 			],
@@ -330,7 +332,13 @@ function head(
 			f.hairStyle === 6 ? [[hx + 4, ht + 6, 2, 8, f.hair]] : [];
 		outlined(
 			g,
-			[[hx, ht, 10, 9, f.skin], ...fill, ...tail, ...hair(f, hx, ht)],
+			[
+				[hx + 1, ht, 8, 9, f.skin],
+				[hx, ht + 1, 10, 7, f.skin],
+				...fill,
+				...tail,
+				...hair(f, hx, ht),
+			],
 			C.ink,
 		);
 		// The cheek and an ear: the side of the head that turns to the camera.
@@ -338,7 +346,15 @@ function head(
 			rect(g, hx, ht + 4, 3, 4, f.skin);
 		return;
 	}
-	outlined(g, [[hx, ht, 10, 9, f.skin], ...hair(f, hx, ht)], C.ink);
+	outlined(
+		g,
+		[
+			[hx + 1, ht, 8, 9, f.skin],
+			[hx, ht + 1, 10, 7, f.skin],
+			...hair(f, hx, ht),
+		],
+		C.ink,
+	);
 	rect(g, hx + 1, ht + 8, 8, 1, f.skinShade);
 	const eyes = view === 'nose' ? [1, 5] : [2, 7];
 	for (const e of eyes) rect(g, hx + e, ht + 5, 1, 2, C.ink);
@@ -407,7 +423,8 @@ export function drawCyclist(
 	};
 	/** On the page, and how far from the camera: the last number. */
 	const at = (raw: P): number[] => {
-		const p = stood(raw);
+		const full = stood(raw);
+		const p = [full[0] * SMALL, full[1] * SMALL, full[2] * SMALL];
 		const depth = p[0] * cos + p[2] * sin;
 		return [
 			ox - p[0] * sin + p[2] * cos,
@@ -428,29 +445,17 @@ export function drawCyclist(
 			]);
 			pic.put(Math.floor(x), Math.floor(y), c, null);
 		};
-		const spin = -angle * 2;
-		for (let s = 0; s < 4; s++)
-			for (let r = 2; r < WHEEL - 1; r += 0.5) {
-				const t = spin + (s * Math.PI) / 2;
-				const [x, y] = at([
-					hub[0] + Math.cos(t) * r,
-					hub[1] + Math.sin(t) * r,
-					0,
-				]);
-				pic.put(Math.floor(x), Math.floor(y), C.cable, null);
-			}
 		for (let i = 0; i < 90; i++) sample(WHEEL - 1.6, 0, C.lilac, i, 90);
-		const n = 120;
-		for (let i = 0; i < n; i++) {
-			const tread =
-				Math.floor((i / n) * 12 + (stroke / PEDAL_FRAMES) * 6) % 2 === 0;
-			for (const z of [-1, 1]) {
-				sample(WHEEL, z, C.ink, i, n);
-				sample(WHEEL - 0.6, z, C.ink, i, n);
-			}
-			sample(WHEEL - 0.6, 0, C.ink, i, n);
-			sample(WHEEL, 0, tread ? C.ink : C.lilac, i, n);
-		}
+		for (let i = 0; i < 120; i++)
+			for (const z of [-1, 0, 1]) sample(WHEEL - 0.3, z, C.ink, i, 120);
+		// One bright spot on the rim says the wheel turns.
+		sample(
+			WHEEL - 1.6,
+			0,
+			C.paper,
+			(Math.round(-angle * 2 * (90 / (Math.PI * 2))) % 90) + 90,
+			90,
+		);
 		const [hx, hy] = at(hub);
 		for (const [x, y] of [
 			[0, 0],
@@ -461,7 +466,7 @@ export function drawCyclist(
 			pic.put(Math.floor(hx) + x - 1, Math.floor(hy) + y - 1, C.lilac, null);
 	};
 	const bikeTube = (a: P, b: P, w = 2) =>
-		tube(pic, at(a), at(b), w, w, flat(C.violet), 'bike');
+		tube(pic, at(a), at(b), w * 0.75, w * 0.75, flat(C.violet), 'bike');
 	const stays = () => {
 		bikeTube(REAR, BB);
 		bikeTube(REAR, SEAT);
@@ -516,12 +521,12 @@ export function drawCyclist(
 		const ankle = [foot[0] - 1, foot[1] + 2, foot[2]];
 		const pants = near ? legible(rider.pants) : rider.pantsShade;
 		const shade = near ? shadeOf(pants) : rider.pantsShade;
-		tube(pic, at(hip), at(knee), 4.5, 3.5, flat(pants, shade), 'pants');
+		tube(pic, at(hip), at(knee), 3.6, 3, flat(pants, shade), 'pants');
 		tube(
 			pic,
 			at(knee),
 			at(ankle),
-			3,
+			2.6,
 			2,
 			rider.socks
 				? (t, s) => (t > 0.55 ? rider.socks! : s ? shade : pants)
