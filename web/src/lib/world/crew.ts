@@ -88,19 +88,9 @@ function zoneRing(across: number, along: number): THREE.BufferGeometry {
 	);
 	return new THREE.ShapeGeometry(shape, 48).rotateX(-Math.PI / 2);
 }
-/**
- * The band's middle as a line: in Pixel 3D a band seen end-on is under a
- * world pixel and breaks into dashes; a line is one pixel and never does.
- */
-function zoneLine(across: number, along: number): THREE.BufferGeometry {
-	const n = 64;
-	return new THREE.BufferGeometry().setFromPoints(
-		Array.from({ length: n }, (_, i) => {
-			const t = (i / n) * Math.PI * 2;
-			return new THREE.Vector3(across * Math.cos(t), 0, along * Math.sin(t));
-		}),
-	);
-}
+/** In Pixel 3D the zone is a solid pad under the bike: half widths, metres. */
+const PAD_ACROSS = 0.13;
+const PAD_ALONG = 0.92;
 /**
  * A rider in their cozy room look on the 3D figure (Jan, 2026-11-06): the
  * room's colours on its slots, a cap for a helmet where they wear one, the
@@ -256,7 +246,9 @@ export function makeCrew(
 		.rotateX(-Math.PI / 2)
 		.scale(0.9, 1, 2.1);
 	const ringGeo = zoneRing(RING_ACROSS, RING_ALONG);
-	const lineGeo = zoneLine(RING_ACROSS, RING_ALONG);
+	const padGeo = new THREE.CircleGeometry(1, 24)
+		.rotateX(-Math.PI / 2)
+		.scale(PAD_ACROSS, 1, PAD_ALONG);
 	const digits = makeZoneDigits(style.tag);
 	const beadGeo = new THREE.SphereGeometry(1, 16, 12);
 	const chevronGeo = chevronGeometry();
@@ -340,7 +332,6 @@ export function makeCrew(
 			}),
 		);
 		ring.position.y = 0.16; // above a banked road, never half-buried
-		ring.add(new THREE.LineLoop(lineGeo, ring.material));
 		// Ahead of the front wheel at the ring's far end, where neither figure nor trail covers it (forward is +Z).
 		const digit = digits.mesh();
 		digit.position.set(0, 0.17, RING_ALONG - 0.2);
@@ -484,6 +475,7 @@ export function makeCrew(
 		dt: number,
 		real: number,
 		overview: boolean,
+		grazing = false,
 	): THREE.Vector3 {
 		for (const [r, v] of views) if (!riders.includes(r)) drop(r, v);
 		sinceRank += real;
@@ -510,9 +502,11 @@ export function makeCrew(
 			}
 			v.material.opacity = alpha;
 			v.shadow.material.opacity = 0.28 * alpha;
-			// Whole pixels are never see-through, so the line over the band is the band's own colour.
-			v.ring.material.opacity = (PIXEL.value ? 1 : 0.85) * alpha;
-			v.ring.children[0].visible = PIXEL.value > 0;
+			// Whole pixels are never see-through. The pad lies on the road, too narrow for a bank to bury it.
+			const pad = PIXEL.value > 0;
+			v.ring.material.opacity = (pad ? 1 : 0.85) * alpha;
+			v.ring.geometry = pad ? padGeo : ringGeo;
+			v.ring.position.y = pad ? 0.04 : 0.16;
 			if (v.faded !== !!r.faded) {
 				v.faded = !!r.faded;
 				fade(v);
@@ -524,7 +518,7 @@ export function makeCrew(
 			// Under a sprite the ring hugs the wheels, as a sprite's mark on the
 			// ground does: at full size it read as a hoop round the rider.
 			const hug = v.avatar ? HUG : 1;
-			v.ring.scale.set(hug, 1, hug * 0.75);
+			v.ring.scale.set(hug, 1, pad ? 1 : hug * 0.75);
 			v.digit.scale.setScalar(hug);
 			v.digit.position.z = (RING_ALONG - 0.2) * hug * 0.75;
 			v.chevron.visible = !overview && !!r.coach;
@@ -543,7 +537,8 @@ export function makeCrew(
 			const zone = zoneOf(r.watts, r.ftp);
 			v.ring.material.color.copy(r.silent ? neutral : zones[zone - 1]);
 			digits.set(v.digit, r.silent ? undefined : zone);
-			v.digit.visible &&= v.ring.visible;
+			// Lying on the road a digit seen along it is a squiggle, not a number.
+			v.digit.visible &&= v.ring.visible && !grazing;
 			v.digit.material.opacity = alpha;
 			// The animator turns the legs at the rider's cadence, sits or stands them by SPEC's thresholds.
 			const state = v.anim.update(dt, inputOf(r, route));
@@ -561,7 +556,7 @@ export function makeCrew(
 					v.group.position.z,
 				);
 				// No figure, no trail: a coach in the team car leaves none (#3771).
-				if (trail) trail.mesh.visible = alpha > 0 && !r.silent;
+				if (trail) trail.mesh.visible = alpha > 0 && !r.silent && !pad;
 				trail?.follow(route, r.d, lane, r.reverse);
 			}
 		});

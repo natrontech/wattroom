@@ -419,25 +419,25 @@
 	 * for the watts and never in their band. Read through look.ts's pixelPaint;
 	 * a token with no twin here is the same in both looks.
 	 */
-	--world-px-sky-zenith: #221c66;
+	--world-px-sky-zenith: #2c2580;
 	--world-px-sky-haze: #8a78c4;
 	--world-px-sky-peach: #f3b083;
 	--world-px-sky-light: #e6e0ff;
 	--world-px-sky-shade: #4a3f8a;
 	--world-px-biome-water: #2c6fb4;
-	--world-px-biome-meadow: #3fa06a;
-	--world-px-biome-forest: #1f7258;
+	--world-px-biome-meadow: #4fb377;
+	--world-px-biome-forest: #2a8568;
 	--world-px-biome-alpine: #7f9a62;
 	--world-px-biome-rock: #76709e;
 	--world-px-biome-snow: #f2eeff;
-	--world-px-biome-verge: #4f9a62;
-	--world-px-ridge: #3f3a84;
+	--world-px-biome-verge: #5bad6e;
+	--world-px-ridge: #4a4596;
 	--world-px-ridge-rock: #5c5598;
-	--world-px-road-asphalt: #4b4970;
+	--world-px-road-asphalt: #5c5a86;
 	--world-px-road-line: #f2ecf8;
-	--world-px-road-shoulder: #8a80a0;
-	--world-px-road-verge: #4f9a62;
-	--world-px-prop-spruce: #135c4c;
+	--world-px-road-shoulder: #9c93b2;
+	--world-px-road-verge: #5bad6e;
+	--world-px-prop-spruce: #1a6f5a;
 	--world-px-prop-spruce-tip: #33a67a;
 	--world-px-prop-leaf: #2a8050;
 	--world-px-prop-leaf-light: #6ec060;

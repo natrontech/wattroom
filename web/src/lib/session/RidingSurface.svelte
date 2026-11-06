@@ -391,7 +391,7 @@
 	{#if skyline && horizon && rail}
 		<div
 			aria-hidden="true"
-			class="from-surface/90 via-surface/60 pointer-events-none absolute inset-x-0 bottom-0 bg-linear-to-t to-transparent"
+			class="from-surface/80 via-surface/35 pointer-events-none absolute inset-x-0 bottom-0 bg-linear-to-t to-transparent"
 			style="height:{bandH + 48}px"
 		></div>
 		<div

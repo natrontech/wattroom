@@ -380,7 +380,15 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 			if (alongside) riders = alongside.step(you, opts.mates!(), real);
 		}
 		gates?.update(opts.gates!(), you.d);
-		const me = crew.update(route, riders, pedal, dt, real, mode === 'orbit');
+		const me = crew.update(
+			route,
+			riders,
+			pedal,
+			dt,
+			real,
+			mode === 'orbit',
+			mode === 'side',
+		);
 		// The wind at the frame's edges (pixel.ts): none under reduced motion, the steady camera or the model view.
 		MOTION.speed.value =
 			mode === 'chase' && !(opts.steady?.() ?? false) ? you.v : 0;

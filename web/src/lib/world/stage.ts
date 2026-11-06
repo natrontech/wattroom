@@ -25,7 +25,7 @@ import { CHUNK_M } from './place/lattice';
 import { prng } from './rand';
 import type { Route } from '$lib/road/route';
 import { lightAt, sunDir } from './light';
-import { BAYER, PIXEL } from './pixel';
+import { PIXEL } from './pixel';
 import { setLight, skyMaterial, terrainMaterial, type Style } from './styles';
 import { meshOf, REACH } from './terrain-mesh';
 import { SHOULDER } from './terrain/road-profile';
@@ -171,20 +171,17 @@ export function buildStage(
 		fog: false,
 		side: THREE.DoubleSide,
 	});
-	// In Pixel 3D the ranges step in dithered flats, never an airbrushed fade.
+	// In Pixel 3D the ranges step in flats, never an airbrushed fade.
 	horizonMat.onBeforeCompile = (shader) => {
 		shader.uniforms.uPixel = PIXEL;
 		shader.fragmentShader = shader.fragmentShader
-			.replace(
-				'#include <common>',
-				`#include <common>\nuniform float uPixel;\n${BAYER}`,
-			)
+			.replace('#include <common>', `#include <common>\nuniform float uPixel;`)
 			.replace(
 				'#include <opaque_fragment>',
 				`if (uPixel > 0.5) {
 					// Brightness alone, so a range keeps its hue in every step.
 					float l = max(dot(outgoingLight, vec3(0.2126, 0.7152, 0.0722)), 1e-4);
-					outgoingLight *= (max(floor(l * 9.0 + 0.3 + pixelBayer(gl_FragCoord.xy) * 0.4), 1.0) / 9.0) / l;
+					outgoingLight *= (max(floor(l * 9.0 + 0.5), 1.0) / 9.0) / l;
 				}
 				#include <opaque_fragment>`,
 			);

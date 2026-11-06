@@ -12,7 +12,7 @@ import { Biome } from './biome';
 import { sunDir, type Light } from './light';
 import { LOUNGE } from '$lib/lounge/palette';
 import { lightsUniforms, POOL, type Lights } from './lights';
-import { BAYER, PIXEL, STEPS } from './pixel';
+import { PIXEL, STEPS } from './pixel';
 import type { SignLook } from './setpieces';
 
 export type Palette = Record<Biome, string>;
@@ -142,7 +142,7 @@ const OKLAB = /* glsl */ `
 
 /**
  * The land up close in Pixel 3D, so no floor is ever empty: fields on a turned
- * grid, each its own green, mottled in dithered patches, with flowers near the
+ * grid, each its own green, mottled in flat patches, with flowers near the
  * road. Painted on the ground by where it is, so it stays put as you ride.
  */
 export const PIXEL_LAND = /* glsl */ `
@@ -155,7 +155,6 @@ export const PIXEL_LAND = /* glsl */ `
 	}
 	vec3 pixelLand(vec3 base, vec3 pos, float dist, float up) {
 		if (base.g < base.r * 1.05 || base.g < base.b * 1.02 || up < 0.8) return base;
-		float bayer = pixelBayer(gl_FragCoord.xy);
 		vec2 turned = mat2(0.8, -0.6, 0.6, 0.8) * pos.xz;
 		float field = landHash(floor(turned / vec2(58.0, 90.0)));
 		vec3 c = base * (0.86 + field * 0.3);
@@ -165,31 +164,34 @@ export const PIXEL_LAND = /* glsl */ `
 		// A mown field runs in stripes along its length, every third one of them.
 		if (mod(floor(field * 97.0), 3.0) < 1.0 && dist < 900.0)
 			c *= mod(floor(turned.x / 5.0), 2.0) < 1.0 ? 1.0 : 1.07;
-		float patchy = landNoise(pos.xz / 11.0) * 0.7 + landNoise(pos.xz / 3.6) * 0.3;
-		if (patchy + (bayer - 0.5) * 0.22 > 0.6) c = c * 1.14 + vec3(0.012, 0.022, 0.0);
-		else if (patchy + (bayer - 0.5) * 0.22 < 0.36) c *= 0.86;
+		// Fine patches up close, broad ones further off, none past where a pixel is wider than a patch: noise, there.
+		float patchy = mix(landNoise(pos.xz / 11.0) * 0.7 + (dist < 70.0 ? landNoise(pos.xz / 3.6) * 0.3 : 0.15), 0.48, smoothstep(250.0, 400.0, dist));
+		if (patchy > 0.6) c = c * 1.14 + vec3(0.012, 0.022, 0.0);
+		else if (patchy < 0.36) c *= 0.86;
 		// Flowers and tufts of grass near you, rooted on the ground and drawn on the
-		// screen: (a, b) is this pixel's way from the root, in world pixels, b up,
-		// so each stands the same few pixels tall however near it is, and far off
-		// a head stays one clean dot.
-		if (dist < 60.0) {
-			vec2 q = pos.xz / 1.4;
+		// screen: (a, b) is this pixel's way from the root, in world pixels, b up.
+		// Up close a flower is a few pixels on a stem; it shrinks to a pixel at 25 m,
+		// and past that the meadow is its greens.
+		if (dist < 25.0) {
+			vec2 q = pos.xz / 1.8;
 			float k = landHash(floor(q));
 			vec2 ex = dFdx(pos.xz), ey = dFdy(pos.xz);
 			float det = ex.x * ey.y - ex.y * ey.x;
 			if (abs(det) > 1e-7) {
-				vec2 off = (fract(q) - 0.5) * 1.4;
+				vec2 off = (fract(q) - 0.5) * 1.8;
 				float a = (off.x * ey.y - off.y * ey.x) / det;
 				float b = (off.y * ex.x - off.x * ex.y) / det;
 				float which = fract(k * 91.0);
-				if (k > 0.66 && landNoise(pos.xz / 9.0) > 0.46) {
+				float near = 1.0 - smoothstep(8.0, 25.0, dist);
+				if (k > 0.6 && landNoise(floor(q) / 5.0) > 0.44) {
 					vec3 petal = which < 0.5 ? vec3(0.97, 0.93, 0.86) : which < 0.8 ? vec3(0.98, 0.76, 0.28) : vec3(0.74, 0.52, 0.96);
 					float head = abs(a) + abs(b);
-					if (head < 1.7) c = head < 0.7 ? vec3(0.98, 0.8, 0.3) : petal;
-					else if (abs(a) < 0.6 && b < -1.0 && b > -4.5) c *= 0.74;
-				} else if (k < 0.4) {
+					float r = 1.0 + near * 2.0;
+					if (head < r) c = near > 0.3 && head < r * 0.4 ? vec3(0.98, 0.8, 0.3) : petal;
+					else if (near > 0.2 && abs(a) < 0.6 && b < -r * 0.6 && b > -1.0 - near * 4.5) c *= 0.74;
+				} else if (k < 0.4 && near > 0.2) {
 					// A tuft: three blades, the middle one longest.
-					float reach = abs(a) < 0.6 ? 5.5 : abs(abs(a) - 2.0) < 0.6 ? 3.5 : 0.0;
+					float reach = (abs(a) < 0.6 ? 5.5 : abs(abs(a) - 2.0) < 0.6 ? 3.5 : 0.0) * near;
 					if (b > -0.5 && b < reach) c *= which < 0.5 ? 0.76 : 1.22;
 				}
 			}
@@ -235,7 +237,7 @@ export function terrainMaterial(
 			uValley: { value: col(style.imhof?.valley) },
 			uPeak: { value: col(style.imhof?.peak) },
 			uRock: { value: col(style.palette[Biome.Rock]) },
-			uPixel: PIXEL, // Pixel 3D: the light in four dithered steps, the fog in three bands (pixel.ts)
+			uPixel: PIXEL, // Pixel 3D: the light in four steps, the fog in flat bands (pixel.ts)
 		},
 		vertexColors: true,
 		vertexShader: /* glsl */ `
@@ -251,7 +253,6 @@ export function terrainMaterial(
 			uniform vec3 uSun, uFrom, uKey, uShade, uSkyTop, uHorizon, uSunward, uGridColor, uContour, uIndex, uValley, uPeak, uRock;
 			uniform float uFogK, uBands, uSkyFill, uGridSize, uGridAlpha, uContourStep, uImhof, uDusk, uPixel;
 			varying vec3 vColor; varying vec3 vPos; varying float vAo;
-			${BAYER}
 			${STEPS}
 			${POOL}
 			${PIXEL_LAND}
@@ -301,7 +302,7 @@ export function terrainMaterial(
 				if (uPixel > 0.5) ext = 1.0 - (1.0 - ext) * pixelFog(1.0 - ext.g) / max(1.0 - ext.g, 1e-4); // one band a pixel, red still first
 				gl_FragColor = vec4(mix(fogCol, col, ext) * uDusk, 1.0);
 				float pool = lampPool(vPos); // a third of the way to amber, the lounge's pool
-				if (uPixel > 0.5) pool = pool > pixelBayer(gl_FragCoord.xy) ? 1.0 : 0.0;
+				if (uPixel > 0.5) pool = step(0.5, pool);
 				gl_FragColor.rgb = mix(gl_FragColor.rgb, uAmber, pool / 3.0);
 				if (uPixel > 0.5) gl_FragColor.a = 0.5; // the land, for the ink pass (pixel.ts)
 				#include <colorspace_fragment>
@@ -342,29 +343,24 @@ export function skyMaterial(style: Style): THREE.ShaderMaterial {
 		vertexShader: /* glsl */ `varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
 		fragmentShader: /* glsl */ `uniform vec3 uTop, uHorizon, uSunward, uBand, uSun, uSunCol, uSunLow; uniform float uDisc, uPeach, uDusk, uPixel; uniform vec3 uStar, uLilac; uniform sampler2D uSkyline; varying vec3 vDir;
 			${OKLAB}
-			${BAYER}
 			void main(){
 				float h = max(vDir.y, 0.0);
 				float s = max(dot(vDir, uSun), 0.0);
 				vec3 hor = mix(uHorizon, uSunward, pow(s, 8.0));
 				vec3 c = mix(hor, uTop, pow(h, 0.45));
-				float dither = (pixelBayer(gl_FragCoord.xy) - 0.5) * 0.3;
 				if (uPixel > 0.5) {
-					// The lounge's window: five flat bands from the fog's horizon up, a checker row where two meet.
-					hor = mix(uHorizon, uSunward, floor(pow(s, 8.0) * 3.0 + 0.5 + dither) / 3.0);
-					float f = pow(h, 0.45) * 5.0;
-					float b = min(floor(f), 4.0);
-					if (fract(f) > 0.78 && mod(gl_FragCoord.x + gl_FragCoord.y, 2.0) >= 1.0) b = min(b + 1.0, 4.0);
-					c = mix(hor, uTop, b / 4.0);
+					// The lounge's window: five flat bands from the fog's horizon up.
+					hor = mix(uHorizon, uSunward, floor(pow(s, 8.0) * 3.0 + 0.5) / 3.0);
+					c = mix(hor, uTop, min(floor(pow(h, 0.45) * 5.0), 4.0) / 4.0);
 				}
 				if (uPeach > 0.0) { // level over the ranges in view, fading out half a degree over the highest
 					float top = texture2D(uSkyline, vec2(atan(vDir.x, vDir.z) / 6.2831853, 0.5)).r * 0.25;
 					float clear = 0.009 * (1.0 + 0.5 * pow(s, 4.0));
 					float w = uPeach * smoothstep(-0.01, 0.0, vDir.y) * (1.0 - smoothstep(top - 0.003, top + clear, vDir.y));
-					// A band in one flat colour, thinning upward in a dither: pixels, never a blend.
+					// One flat colour, then a paler flat of it above: pixels, never a blend.
 					if (uPixel > 0.5) {
 						float rise = vDir.y / max(top + clear, 0.01);
-						w = step(0.5, w) * step(pixelBayer(gl_FragCoord.xy), 1.0 - smoothstep(0.72, 1.12, rise));
+						w = step(0.5, w) * (rise < 0.8 ? 1.0 : rise < 1.0 ? 0.55 : 0.0);
 					}
 					// The sky's chroma gives way to the peach's at the band's faint edge, so no pixel takes a hue between them, the pinks.
 					vec3 sky = toLab(c);
@@ -379,7 +375,7 @@ export function skyMaterial(style: Style): THREE.ShaderMaterial {
 						float row = floor(vDir.y * 90.0);
 						float cloud = sin(az * 1.7 + row * 0.9 + sin(row * 0.31) * 3.0) * 0.5 + 0.5;
 						cloud *= sin(az * 0.53 - row * 0.21) * 0.5 + 0.5;
-						if (cloud + dither * 0.5 > 0.62 - vDir.y * 0.8) {
+						if (cloud > 0.62 - vDir.y * 0.8) {
 							vec3 lit = mix(uBand, uTop, 0.25 + vDir.y * 2.4);
 							c = mix(c, lit, 0.75);
 						}

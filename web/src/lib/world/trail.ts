@@ -3,7 +3,6 @@
 // along its length.
 import * as THREE from 'three';
 import { ROAD_LIFT, yOf } from './geometry';
-import { BAYER, PIXEL } from './pixel';
 import { across, bankOf } from './terrain/road-profile';
 import { type Route } from '$lib/road/route';
 import {
@@ -55,24 +54,6 @@ export function makeTrail(color: string) {
 			fog: false,
 		}),
 	);
-	// In whole pixels the fade is an ordered dither, as the lounge fades: never a see-through smear.
-	mesh.material.onBeforeCompile = (s) => {
-		s.uniforms.uPixel = PIXEL;
-		s.fragmentShader = s.fragmentShader
-			.replace(
-				'#include <common>',
-				`#include <common>\nuniform float uPixel;\n${BAYER}`,
-			)
-			.replace(
-				'#include <color_fragment>',
-				`#include <color_fragment>
-				if (uPixel > 0.5) {
-					if (diffuseColor.a < pixelBayer(gl_FragCoord.xy) * 0.85) discard;
-					diffuseColor.a = 0.85;
-				}`,
-			);
-	};
-	mesh.material.customProgramCacheKey = () => 'trail';
 	mesh.frustumCulled = false;
 	return {
 		mesh,

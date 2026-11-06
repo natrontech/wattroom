@@ -286,7 +286,7 @@ export function roadMaterial(
 				'#include <opaque_fragment>',
 				`float pool = lampPool(vLampAt); // a third of the way to amber, the lounge's pool
 				#ifdef PIXEL_RAMP
-					if (uPixel > 0.5) pool = pool > pixelBayer(gl_FragCoord.xy) ? 1.0 : 0.0;
+					if (uPixel > 0.5) pool = step(0.5, pool);
 				#endif
 				outgoingLight = mix(outgoingLight, uAmber, pool / 3.0);
 				#include <opaque_fragment>`,
