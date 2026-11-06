@@ -84,7 +84,7 @@ It is not a training plan generator, not an open world, and not a content treadm
 - A YouTube playlist is one queue entry. A saved playlist is a saved queue. Uploaded MP3s join the crew's pool.
 - Spotify is a link out, never an API integration.
 - A soundboard clip is a file the channel fetches, not audio down the voice track.
-- An idle voice channel is the lounge: a pixel room of who is in the call, playing house radio.
+- An idle voice channel is the lounge: a pixel room of who is in the call. A camera, a shared screen, a ride or a video on the deck takes its place. House radio is one tap away on its record player.
 - The server unfurls pasted links through a pinned-address fetch. The GIF picker (GIPHY) is proxied and posts a plain chat message.
 
 ## Data, privacy and competition

@@ -177,13 +177,24 @@
 			: channel.stageSources,
 	);
 	const onStage = $derived(pickStage(sources, av?.stagePick ?? null));
-	/** The lounge's room (ADR-0094, #4302): the cozy room is on — house radio on the deck — in an idle voice channel with nothing shared and nobody riding here (#4305). */
+	const tick = $derived(channelConnection.call?.live.tick);
+	/** Someone's camera is on: a face beats the room, which has no place for it. */
+	const cameras = $derived(
+		!!av?.camOn || Object.keys(av?.videoOf ?? {}).length > 0,
+	);
+	/**
+	 * The lounge's room (ADR-0094, #4302): an idle voice channel with nothing
+	 * on the deck but house radio, nothing shared, no camera on and nobody
+	 * riding here (#4305).
+	 */
 	const inRoom = $derived(
 		channel.phase === 'lounge' &&
 			!!channel.address.channel &&
-			!!channelConnection.call?.live.tick?.jukebox?.current?.radio &&
+			!!tick &&
+			(!tick.jukebox?.current || !!tick.jukebox.current.radio) &&
 			!onStage &&
-			!riding,
+			!riding &&
+			!cameras,
 	);
 	/** Stage above, riders below — the shape both Stage and Sidebar draw. */
 	const stacked = $derived(layout !== 'split');
