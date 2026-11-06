@@ -29,6 +29,9 @@ export function pixelScale(w: number, h: number): number {
  */
 export const PIXEL = { value: 0 };
 
+/** How fast you ride (m/s) and the clock, for the wind at the frame's edges; speed 0 draws none. */
+export const MOTION = { speed: { value: 0 }, time: { value: 0 } };
+
 /** The Pixel 3D target's size in world pixels: what a sprite stands on (avatar.ts). */
 export const TARGET = { value: new THREE.Vector2(1, 1) };
 
@@ -144,6 +147,8 @@ const FRAGMENT = /* glsl */ `
 	uniform float far;
 	uniform vec3 ink;
 	uniform float density;
+	uniform float uSpeed;
+	uniform float uTime;
 	${BAYER}
 	${STEPS}
 	float iz(vec2 uv) { return (far - texture2D(tDepth, uv).r * (far - near)) / (near * far); }
@@ -165,7 +170,21 @@ const FRAGMENT = /* glsl */ `
 		float fog = pixelFog(1.0 - exp(-pow(density / c, 2.0)));
 		// Far off an outline would be all a small thing is: it goes to the thing's own shade.
 		vec3 line = mix(ink, face.rgb * 0.62, smoothstep(45.0, 170.0, 1.0 / c));
-		gl_FragColor = vec4(edge ? mix(line, face.rgb, fog) : face.rgb, 1.0);
+		vec3 rgb = edge ? mix(line, face.rgb, fog) : face.rgb;
+		// Wind past you at the frame's edges, faster and thicker the faster you ride: whole pixels, a lighter streak, never a blur.
+		float kmh = uSpeed * 3.6;
+		if (kmh > 20.0) {
+			vec2 q = uv - 0.5;
+			float r = length(q * vec2(1.0, 0.75));
+			if (r > 0.34) {
+				float lane = floor(atan(q.y, q.x) * 70.0);
+				float h = fract(sin(lane * 12.9898) * 43758.5453);
+				float many = clamp((kmh - 20.0) / 30.0, 0.0, 1.0) * 0.22;
+				float along = fract(r * 4.0 - uTime * (0.6 + kmh / 40.0) + h * 7.0);
+				if (h > 1.0 - many && along < 0.12) rgb = mix(rgb, vec3(1.0), 0.28);
+			}
+		}
+		gl_FragColor = vec4(rgb, 1.0);
 		#include <colorspace_fragment>
 	}`;
 
@@ -187,6 +206,8 @@ export function pixelPass(renderer: THREE.WebGLRenderer) {
 			far: { value: 2 },
 			ink: { value: new THREE.Color() },
 			density: { value: 0 },
+			uSpeed: MOTION.speed,
+			uTime: MOTION.time,
 		},
 		vertexShader: VERTEX,
 		fragmentShader: FRAGMENT,
