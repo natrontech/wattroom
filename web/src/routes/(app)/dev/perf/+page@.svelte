@@ -10,6 +10,9 @@
 	import type { Road } from '$lib/road/road';
 	import { sceneLoop } from '$lib/lounge/scene-loop';
 	import { drawScene, type Figure } from '$lib/lounge/scene';
+	import { shadeFor } from '$lib/lounge/draw-room';
+	import { applyLoungeTheme, type Sky } from '$lib/lounge/palette';
+	import { themeFor } from '$lib/themes';
 
 	/**
 	 * One element at a time, for `make perf` (#3039): the harness in
@@ -84,8 +87,11 @@
 	 *  640 × 260 room at twice its size, four on the sofa and three on
 	 *  cushions around the rug, one riding, rain, a plane past the window, the disco ball
 	 *  and a beat at 80 BPM — everything that moves in it at once. */
-	const ROOM_W = 640;
-	const ROOM_H = 260;
+	const ROOM_W = Number(params.get('rw') ?? 640);
+	const ROOM_H = Number(params.get('rh') ?? 260);
+	const ROOM_SKY = (params.get('sky') ?? 'night') as Sky;
+	const ROOM_LAMP = params.get('lamp') !== '0';
+	const ROOM_FIRE = params.get('fire') !== '0';
 	const SITTER: Figure = {
 		id: 'a',
 		name: 'A',
@@ -109,6 +115,8 @@
 		faded: false,
 	};
 	function lounge(node: HTMLCanvasElement) {
+		if (params.get('scheme') === 'light')
+			applyLoungeTheme(themeFor('outrun', 'light'));
 		let t = 0;
 		return sceneLoop(
 			node,
@@ -119,9 +127,9 @@
 					h: ROOM_H,
 					t,
 					still: false,
-					sky: 'night',
+					sky: ROOM_SKY,
 					weather: 'rain',
-					lampOn: true,
+					lampOn: ROOM_LAMP,
 					crew: {
 						seated: [0, 1, 2, 3].map((i) => ({
 							...SITTER,
@@ -151,14 +159,14 @@
 					playing: true,
 					beat: (t * 80) / 60,
 					pulsing: true,
-					disco: true,
+					disco: params.get('disco') !== '0',
 					cat: { x: 293, y: 40, pose: 'sleep', facing: 1, stride: 0 },
 					catAwake: false,
 					hearts: [],
 					hours: 21,
 					minutes: 30,
 					cuckoo: false,
-					shade: 0.12,
+					shade: shadeFor(ROOM_LAMP, ROOM_SKY, ROOM_FIRE),
 					flyby: { kind: 'plane', f: (t / 14) % 1, dir: 1 },
 					mugDown: false,
 					scratch: false,
@@ -168,7 +176,7 @@
 					fishJump: false,
 					bloom: false,
 					arcade: false,
-					fire: true,
+					fire: ROOM_FIRE,
 					pizza: false,
 					owl: false,
 				});
