@@ -250,7 +250,8 @@ export function roadMaterial(
 				#ifdef PIXEL_RAMP
 					// In whole pixels paint is there or not: a line at the share it covers, in Bayer order.
 					if (uPixel > 0.5) {
-						line = line > pixelBayer(gl_FragCoord.xy) ? 1.0 : 0.0;
+						// A line is there, sharp, or not at all: never a dithered fade into dots.
+						line = step(0.3, line);
 						shoulder = step(0.5, shoulder);
 						// Grass grows in over the gravel's edge, unevenly.
 						float jag = fract(sin(floor(s * 7.0) * 91.7) * 43758.5453) * 0.24;
@@ -265,8 +266,9 @@ export function roadMaterial(
 						float tracks = abs(abs(u) - 1.45);
 						if (shoulder < 0.5) col *= k > 0.8 ? 0.88 : tracks < 0.45 ? 1.08 : 1.0;
 						else {
+							// Gravel only up close, where a stone is a few pixels: further off it was noise.
 							float g = fract(sin(dot(floor(vec2(u, s) * 3.0), vec2(269.5, 183.3))) * 43758.5453);
-							col *= g > 0.8 ? 1.16 : g < 0.2 ? 0.84 : 1.0;
+							if (fs < 0.06) col *= g > 0.8 ? 1.16 : g < 0.2 ? 0.84 : 1.0;
 						}
 					}
 				#endif
