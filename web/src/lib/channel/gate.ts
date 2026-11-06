@@ -78,17 +78,17 @@ export function gateStep(
 
 /**
  * The automatic gate (SPEC): open 12 dB over the room's noise floor, the
- * quietest envelope of the last 5 s, and never under -40 dBFS or over
- * -26 dBFS. The floor bounds it: a quiet room opens on a soft "h", a fan or a
- * speaker's bleed lifts it. The ceiling stays well under a talking voice
+ * quietest envelope of the last 5 s, and never under -50 dBFS or over
+ * -26 dBFS. It reads what noise cancellation leaves, so the floor is where it
+ * sits, and that floor is what opens on a soft "h": at -40 dBFS the first
+ * sound of a word arrived up to 40 ms late. Without noise cancellation a fan
+ * or a speaker's bleed lifts it. The ceiling stays well under a talking voice
  * (#2120 measured 0.17 to 0.29), so a loud room never shuts a rider out.
  */
 export const AUTO_MARGIN_DB = 12;
-export const AUTO_MIN = 0.01;
+export const AUTO_MIN = 0.003;
 export const AUTO_MAX = 0.05;
 export const FLOOR_WINDOW_MS = 5000;
-/** Light noise suppression takes at most 10 dB off any frequency (SPEC). */
-export const NS_FLOOR_DB = -10;
 
 export function voiceDspOptions(sampleRate: number): VoiceDspOptions {
 	return {
@@ -103,6 +103,5 @@ export function voiceDspOptions(sampleRate: number): VoiceDspOptions {
 		autoMin: AUTO_MIN,
 		autoMax: AUTO_MAX,
 		floorWindowMs: FLOOR_WINDOW_MS,
-		nsFloorDb: NS_FLOOR_DB,
 	};
 }

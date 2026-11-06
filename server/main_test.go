@@ -493,7 +493,7 @@ func TestEnforcedCSPNamesEveryOriginTheAppLoads(t *testing.T) {
 		// so only trying it in a browser could establish that.
 		// No 'unsafe-inline' (#2965): the build's inline scripts are allowed by
 		// hash, and a build with none (this test's) allows none.
-		{"the YouTube IFrame API script and the mic worklet", "script-src", "'self' blob: https://www.youtube.com"},
+		{"the YouTube IFrame API script and the mic worklet", "script-src", "'self' 'wasm-unsafe-eval' blob: https://www.youtube.com"},
 		// The theme block at app.html:8 injects a <style>, and Svelte renders
 		// `style=` attributes, which fall back to here from style-src-attr.
 		{"the theme block's stylesheet and every style= attribute", "style-src", "'self' 'unsafe-inline'"},

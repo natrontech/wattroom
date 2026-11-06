@@ -21,8 +21,12 @@ vi.mock('$lib/channel/mic-level', () => ({
 	createVoiceGate: vi.fn(async () => null),
 }));
 
+vi.mock('$lib/channel/denoiser', () => ({ createDenoiser: vi.fn() }));
+
+import { createDenoiser } from '$lib/channel/denoiser';
 import { createVoiceGate } from '$lib/channel/mic-level';
 import {
+	DENOISE_WAIT_MS,
 	SILENT_MS,
 	createMicChain,
 	type MicChainHost,
@@ -51,6 +55,8 @@ function fakeTrack() {
 let capture: ReturnType<typeof fakeTrack>;
 type FakeGain = {
 	gain: { value: number; setTargetAtTime: ReturnType<typeof vi.fn> };
+	connect: ReturnType<typeof vi.fn>;
+	disconnect: ReturnType<typeof vi.fn>;
 };
 /** Every gain node built, in order: the starting gain, then the gate's. */
 let gains: FakeGain[];
@@ -80,6 +86,7 @@ function stubAudio() {
 				const node = {
 					gain: { value: 1, setTargetAtTime: vi.fn() },
 					connect: vi.fn(),
+					disconnect: vi.fn(),
 				};
 				gains.push(node);
 				return node;
@@ -335,11 +342,123 @@ describe('what the call hears', () => {
 		expect(set).toHaveBeenLastCalledWith(
 			expect.objectContaining({ force: 'open' }),
 		);
-		chain.setNoiseSuppression(true);
-		expect(set).toHaveBeenLastCalledWith(expect.objectContaining({ ns: true }));
 		const calls = set.mock.calls.length;
 		post({ level: 0.1, open: true, threshold: 0.012 });
 		expect(set.mock.calls.length).toBe(calls); // nothing new, nothing sent
+	});
+
+	describe('noise cancellation', () => {
+		const gate = { connect: vi.fn() } as unknown as AudioNode;
+		const withGate = () =>
+			vi.mocked(createVoiceGate).mockImplementationOnce(async () => ({
+				kind: 'worklet',
+				out: gate,
+				set: () => {},
+				stop: () => {},
+			}));
+		const denoiser = () => ({
+			node: { connect: vi.fn() } as unknown as AudioNode,
+			dispose: vi.fn(),
+		});
+		const settle = () => new Promise((resolve) => setTimeout(resolve));
+
+		it('goes in front of the gate once it has loaded, and the mic never waits for it', async () => {
+			withGate();
+			const made = denoiser();
+			let loaded = (_: typeof made) => {};
+			vi.mocked(createDenoiser).mockImplementationOnce(
+				() => new Promise((resolve) => (loaded = resolve)),
+			);
+			const chain = createMicChain(host());
+			vi.useFakeTimers();
+			const opening = chain.open();
+			await vi.advanceTimersByTimeAsync(DENOISE_WAIT_MS);
+			vi.useRealTimers();
+			expect(await opening).toBe(true);
+			const [lift] = gains;
+			expect(lift.connect).not.toHaveBeenCalledWith(made.node);
+
+			loaded(made);
+			await settle();
+			expect(lift.disconnect).toHaveBeenCalledWith(gate);
+			expect(lift.connect).toHaveBeenCalledWith(made.node);
+			expect(made.node.connect).toHaveBeenCalledWith(gate);
+			expect(chain.noiseFault).toBe(false);
+		});
+
+		it('goes in before the track does when it is already here', async () => {
+			withGate();
+			const made = denoiser();
+			vi.mocked(createDenoiser).mockResolvedValueOnce(made);
+			const publish = vi.fn(async () => {
+				expect(gains[0].connect).toHaveBeenCalledWith(made.node);
+			});
+			await createMicChain(host({ publish })).open();
+			expect(publish).toHaveBeenCalled();
+		});
+
+		it('leaves a machine that cannot keep up on the gate alone, and says so', async () => {
+			withGate();
+			const made = denoiser();
+			let overloaded = () => {};
+			vi.mocked(createDenoiser).mockImplementationOnce(async (_, tooHeavy) => {
+				overloaded = tooHeavy;
+				return made;
+			});
+			const chain = createMicChain(host());
+			await chain.open();
+			await settle();
+			const [lift] = gains;
+			lift.connect.mockClear();
+
+			overloaded();
+			expect(made.dispose).toHaveBeenCalled();
+			expect(lift.connect).toHaveBeenCalledWith(gate);
+			expect(chain.noiseFault).toBe(true);
+		});
+
+		it('keeps the mic when it cannot load, and says so', async () => {
+			withGate();
+			vi.mocked(createDenoiser).mockRejectedValueOnce(new Error('no wasm'));
+			const chain = createMicChain(host());
+			expect(await chain.open()).toBe(true);
+			await settle();
+			expect(chain.noiseFault).toBe(true);
+			expect(gains[0].disconnect).not.toHaveBeenCalled();
+		});
+
+		it('hands back one that loads after the mic closed', async () => {
+			withGate();
+			const made = denoiser();
+			let loaded = (_: typeof made) => {};
+			vi.mocked(createDenoiser).mockImplementationOnce(
+				() => new Promise((resolve) => (loaded = resolve)),
+			);
+			const deps = host();
+			const chain = createMicChain(deps);
+			const opening = chain.open();
+			await settle();
+			chain.close();
+			loaded(made);
+			expect(await opening).toBe(false);
+			await settle();
+			expect(deps.publish).not.toHaveBeenCalled();
+			expect(made.dispose).toHaveBeenCalled();
+			expect(chain.noiseFault).toBe(false);
+		});
+
+		it('comes out when the rider turns it off, and that is no fault', async () => {
+			withGate();
+			const made = denoiser();
+			vi.mocked(createDenoiser).mockResolvedValueOnce(made);
+			const chain = createMicChain(host());
+			await chain.open();
+			await settle();
+			chain.setNoiseSuppression(false);
+			expect(made.dispose).toHaveBeenCalled();
+			expect(gains[0].connect).toHaveBeenLastCalledWith(gate);
+			expect(chain.noiseFault).toBe(false);
+		});
 	});
 
 	it('opens for a held Talk in voice activation, and shuts after it over a quiet room (#4163)', async () => {

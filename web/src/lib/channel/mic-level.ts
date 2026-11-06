@@ -179,9 +179,9 @@ export interface VoiceGate extends MicMeter {
 }
 
 /**
- * The transmit path's meter, gate and noise suppression in one worklet
- * (`voice-dsp.ts`): the gain moves on the audio thread, so a busy main thread
- * no longer clips the start of a word. Null where there is no worklet, and the
+ * The transmit path's meter and gate in one worklet (`voice-dsp.ts`): the
+ * gain moves on the audio thread, so a busy main thread no longer clips the
+ * start of a word. Null where there is no worklet, and the
  * chain falls back to gating from the main thread.
  */
 export async function createVoiceGate(

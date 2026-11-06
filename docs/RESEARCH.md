@@ -908,6 +908,81 @@ and re-encodes to 96 kbps (86 MB); the tarball is the `house-radio-1` release
 asset, which the Dockerfile copies into the image by checksum. The credits
 list is `web/src/lib/lounge/records.json`.
 
+## 22. Why a call sounded bad, and what cleans it (research for the voice-quality reports; run of 2026-11-06)
+
+**Question.** Jan, 2026-11-06: voices sound bad, the gate is bugged, noise is not cancelled at all, and it should sound like a good TeamSpeak. Everything below was measured on an Apple M2 Pro in Chromium 156 or Chrome 157, or read where a link says so. Scripts: `web/e2e/voice-measure.spec.ts`, `scripts/voice-mixes.py`, `scripts/voice-measure.py`. Tier: **measured** on synthetic speech (macOS `say`, which stops at 11 kHz) over synthetic fan, drivetrain and breath noise. No real voice, and no real mic: the listening is Jan's.
+
+### 22.1 What each stage does to a voice
+
+A WAV goes in as Chromium's fake mic, through the real chain and a local LiveKit, and is tapped after the capture, after the chain and at the listener. In a quiet room (noise −62 dBFS), against the clean speech:
+
+| Stage | Speech | Peak | PESQ-WB |
+| --- | --- | --- | --- |
+| The mix going in | −26.0 dBFS | −12.1 | 3.22 |
+| After Chrome's capture (AEC, AGC) | −22.4 | −8.8 | 3.26 |
+| After our chain, as sent | −22.4 | −8.8 | 3.20 |
+| At the listener | −22.3 | −8.9 | 3.19 |
+
+So the chain was never what hurt a voice in a quiet room. Opus at 96 kbps, RED, the jitter buffer (30 to 60 ms) and the receive graph together cost 0.01 PESQ between sent and heard, nothing clips, and under 0.7 % of samples are concealed on a loopback. RED doubles the wire to about 192 kbit/s while the gate is open. Opus is negotiated with `stereo=1`, because livekit-client writes it into every offer (`PCTransport.ts`), so the rider's one channel goes out twice. Forcing it to one channel was not tried: that whole path costs 0.01, so there is nothing there to win.
+
+TeamSpeak's channel codecs top out lower than this: Opus Voice at 7.71 KiB/s (about 62 kbit/s) and Opus Music at 11.87 KiB/s (about 95 kbit/s), by a [TeamSpeak community thread](https://community.teamspeak.com/t/what-is-the-highest-possible-quality-bandwith-ts5-can-push/5015). No official table exists. A good TeamSpeak setup sounds clean for its noise removal and its mic, not its bitrate.
+
+### 22.2 The causes, biggest first
+
+1. **Nothing took noise out from under a voice.** The browser's suppressor was off (ADR-0043), the light one was opt-in and capped at 10 dB, and the gate only chooses between the room and silence. At the listener, PESQ fell from 3.18 in a quiet room to 1.31 with a fan and 1.15 on the bike mix.
+2. **A level gate cannot find a voice in that noise.** It reproduced as Jan said. The automatic mark sits 12 dB over the quietest moment and stops at −26 dBFS. Breathing and the pedal stroke rise over it, so on the bike mix (speech 9 dB over the noise) it stayed open through 67 % of the pauses. At 4 dB it opened once and never closed in 86 s, because the room sat above the close mark. Keeping the close mark over the room (tried) moved that from 100 % to 99 %: the input is the fault, not the rule.
+3. **The first sound of a word still arrived late.** With the mark at −40 dBFS and worse over a fan, a soft "s" or "h" stayed under it. The gate opened up to 150 ms into a sentence, past the 10.7 ms lookahead, and the first 80 ms arrived 4.9 dB down.
+
+Two things look like causes and are not ours to fix:
+
+- **Chrome's audio processing band-limits the capture.** Any of AEC, AGC or noise suppression on stops the signal at 16 kHz on this Mac: broadband noise fell 16 dB at 14 to 16 kHz and 55 dB above that, which looks like a 32 kHz internal rate. Off, it runs to 22 kHz. Above 16 kHz a voice has little left, and AEC is the only thing between a rider on speakers and the call, so it stays.
+- **A Bluetooth headset's mic is 16 kHz.** The default input here was a WH-1000XM5 at 16 kHz, and Chrome's default capture then stopped at 8 kHz: a phone call, in the mic, before any of our code. Measuring on Chromium's "default" fake device inherits that rate, which is why the rig pins Fake Input 1. The rider's own pick of a headset mic always wins (#4161), so a rider who picked one sounds like this.
+
+### 22.3 The options for noise
+
+The same mixes, offline, the same Wasm a browser runs, no gate. Noise in pauses and PESQ against the clean speech:
+
+| Suppressor | Fan (15 dB) | Bike (9 dB) | Loud (4 dB) | Size | Cost per 10 ms |
+| --- | --- | --- | --- | --- | --- |
+| None | −41 dBFS, 1.23 | −35, 1.12 | −30, 1.07 | | |
+| Our spectral one, 10 dB, with the gate | −51, 1.74 | −45, 1.31 | not run | in the bundle | |
+| Chrome's `noiseSuppression`, in the capture | −54, 2.16 | −37, 1.38 | not run | in the browser | |
+| RNNoise | −111, 2.97 | −92, 2.47 | −88, 1.86 | 157 KB | 1 to 2 ms, plain build |
+| DeepFilterNet3, 100 dB limit | −72, 3.33 | −71, 2.90 | −66, 2.43 | 23 MB, 12 MB gzipped | 0.5 ms |
+| DeepFilterNet3, 25 dB limit | −64, 2.93 | −59, 2.27 | −54, 1.75 | same | same |
+
+- **RNNoise** (BSD): small and instant, 0.4 to 0.6 PESQ under DeepFilterNet3, and 0.5 dB down at 8 to 11 kHz on the fan mix where DeepFilterNet3 stays within 0.1 dB.
+- **DeepFilterNet3** ([paper](https://arxiv.org/pdf/2305.08227), MIT/Apache): full band at 48 kHz, real-time factor 0.19 natively on an i5-8250U. In Wasm on Apple silicon, others report 0.3 to 0.9 ms a frame ([friendspeak](https://github.com/nickolaiposs/friendspeak/pull/77), [gwar](https://github.com/MaciejWlodarski/gwar/pull/121)). It adds 41 ms: 30 ms model, 10.7 ms to reframe 128-sample quanta into 480. Jan chose it for quality, 2026-11-06.
+- **GTCRN and DTLN** run at 16 kHz and send nothing above 8 kHz, the fault this work is removing.
+- **Krisp** needs LiveKit Cloud and a proprietary licence, §12. **Chrome's `noiseSuppression`** is what ADR-0043 turned off, and the numbers agree with it: it leaves the bike mix's noise where it was, and takes 1.7 dB (fan) to 3.7 dB (bike) off the voice at 8 to 11 kHz. `voiceIsolation` reports `[false]` on macOS Chrome 157.
+- **The desktop shell** gains nothing here: Electron is the same Chromium with the same Wasm, and the app's own suppressor needs no switch.
+
+The package is [`@workadventure/noise-suppression`](https://github.com/workadventure/noise-suppression) (MIT), which wraps libDF in an AudioWorklet and watches its load. It needs `'wasm-unsafe-eval'` in `script-src`, checked against the real server's CSP: compile 198 ms, model ready 248 ms later, no violation. The model load holds that context's audio thread for about 240 ms, once per open mic (the worst gap between gate posts). Behind a live track, every listener concealed 17,000 samples and held a jitter target of 55 to 60 ms against 25 to 38 ms without the model, in three pairs of runs. So an open waits up to 1 s for it before it publishes. Five calls after that concealed 0.01 to 0.1 % of samples, and one bike run 1.1 %, with every packet sent and this machine at a load average of 23. Without the model the same rig showed 0 to 0.7 %. A compiled module reaches a worklet only through `processorOptions`; SharedArrayBuffer would need COOP and COEP, which break the YouTube player, and nothing here needs it.
+
+The attenuation limit is a listening call. 100 dB scores best, and the package's listening tests found it gates the room to silence between words and leaves a metallic edge. 40 dB scored PESQ 3.01 on a fan against 3.13 and 2.81 at 25 dB. The call hears a noise floor 40 dB down, which is under −80 dBFS on a fan and is shipped.
+
+### 22.4 What the call hears now
+
+Real call, real chain, last whole loop, at the listener:
+
+| Scene (speech over noise) | PESQ-WB | Noise in pauses | Gate, opens and closes | Latest word start |
+| --- | --- | --- | --- | --- |
+| Quiet (36 dB) | 3.19 → 4.04 | −61 → −89 dBFS | 13, 12 → 13, 12 | 59 → 43 ms |
+| Fan (15 dB) | 1.31 → 3.19 | −45 → −83 | 12, 12 → 14, 13 | 153 → 40 ms |
+| Bike: fan, drivetrain, breath (9 dB) | 1.14 → 2.72 | −38 → −78 | 12, 12, open 71 % → 14, 13, open 63 % | 157 → 49 ms |
+| Loud (4 dB) | 1.07 → 2.29 | −30 → −72 | 1, 0, open 100 % → 14, 13, open 63 % | never shut → 80 ms |
+
+The speech level stays at −26.5 dBFS with peaks at −13 and nothing clipped, and the 8 to 11 kHz band stays within 0.3 dB of the clean speech. Fourteen opens is one per sentence over the two loops, so the gate no longer reads the room at all.
+
+The gate reads what the model leaves, so its mark sits at the new −50 dBFS floor in every scene and it opens and closes once per sentence. That floor is what brings word starts forward: the first 80 ms of a word arrive within 1 dB of the clean speech, where a fan cost up to 4.9 dB.
+
+### 22.5 Not measured
+
+- A real mic, a real fan, a real voice: synthetic speech stops at 11 kHz, and a neural model may treat a real rider's breathing differently.
+- Chrome's AEC under double-talk on speakers (a rider talking over the crew) needs a real speaker in the loop. It is the suspected cause of voices cutting out on speakers (#4339's note).
+- Chrome's input volume control moving a real mic's gain: the fake device has none.
+- A slower machine than an M2 Pro. The overload check falls back to the gate at 70 % of real time for 4 s.
+
 ## Ranked risks to the plan
 
 1. ~~Kickr v2 lacks FTMS~~ **Resolved → planned work** — confirmed the v2 is WCPS-only; full protocol mapped (§9) and the WcpsTrainer driver is now M1 scope. Residual risk (low): protocol facts come from reverse-engineered implementations, not Wahoo docs — verify against the real v2 early in M1.

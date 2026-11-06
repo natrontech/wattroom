@@ -134,6 +134,9 @@ export function channelAvApi(parts: AvParts) {
 		get noiseSuppression() {
 			return chain.noiseSuppression;
 		},
+		get noiseFault() {
+			return chain.noiseFault;
+		},
 		setMode: mic.setMode,
 		setGateThreshold: mic.setThreshold,
 		setGateAuto: mic.setAuto,

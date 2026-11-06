@@ -79,7 +79,7 @@ It is not a training plan generator, not an open world, and not a content treadm
 
 ## Music, voice and media
 
-- Voice goes out full-band Opus through a gate that sets itself from the room. Noise suppression is light and opt-in, never the browser's. Voice is processed, music never is.
+- Voice goes out full-band Opus. DeepFilterNet3 on the rider's machine takes the noise out, then a gate that sets itself from the room shuts the pauses. The browser's own noise suppression stays off. Voice is processed, music never is.
 - The jukebox is a synced YouTube queue. YouTube's terms bind the player: a tile of at least 200×200 px, always visible while it plays, nothing overlaid, no audio-only mode, no auto-advance while it is off screen.
 - A YouTube playlist is one queue entry. A saved playlist is a saved queue. Uploaded MP3s join the crew's pool.
 - Spotify is a link out, never an API integration.

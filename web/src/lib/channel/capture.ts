@@ -20,8 +20,7 @@
  * `noiseSuppression` is OFF (ADR-0043, #1340). Chrome's suppressor is a
  * spectral gate tuned for a call centre: it takes the fan and the voice's
  * air with it, and riders heard the result as "noise reduction and stuff".
- * The gate (`gate.ts`) is what keeps the fan out of the call between
- * sentences; while a rider talks, the call hears the rider, fan and all.
+ * Noise cancellation (`denoiser.ts`) does that job on the full band.
  *
  * `echoCancellation` stays on: it is the only thing between a rider on
  * speakers and the call hearing itself back.

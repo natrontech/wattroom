@@ -43,9 +43,13 @@ import (
 //     the fallback and in every prerendered page, whose content changes with
 //     every build — are allowed by hash, read off the embedded build at boot
 //     (inlineScriptHashes), so an injected inline script runs nowhere. No
-//     'unsafe-eval' and no
-//     'wasm-unsafe-eval': the production bundle carries no eval, no
-//     `new Function` and no WebAssembly, livekit-client included.
+//     'unsafe-eval': the production bundle carries no eval and no
+//     `new Function`, livekit-client included. 'wasm-unsafe-eval' is for the
+//     noise cancellation, DeepFilterNet3 in WebAssembly on the mic's AudioWorklet
+//     (web/src/lib/channel/denoiser.ts), and there is no narrower source for it:
+//     CSP has no way to name a module. It lets a script that already runs
+//     compile WebAssembly, and allows no JavaScript eval; which scripts run is
+//     still only what this directive lists.
 //   - style-src — the bundle's stylesheet, plus 'unsafe-inline' for the
 //     <style> the theme block injects, app.html's own for the frame it holds
 //     while the app loads (#2845), and every `style=` attribute Svelte
@@ -80,7 +84,7 @@ import (
 // script host unavoidable, so script-src trusts whatever www.youtube.com serves.
 func enforcedCSP(scriptHashes []string) string {
 	sources := append([]string{"'self'"}, scriptHashes...)
-	sources = append(sources, "blob:", "https://www.youtube.com")
+	sources = append(sources, "'wasm-unsafe-eval'", "blob:", "https://www.youtube.com")
 	return "default-src 'self'; script-src " + strings.Join(sources, " ") + "; " + cspAfterScripts
 }
 
