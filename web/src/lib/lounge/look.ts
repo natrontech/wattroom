@@ -34,14 +34,29 @@ export const HAIR_NAMES = [
 	'Curls',
 	'Ponytail',
 	'Bald',
+	'Afro',
+	'Braids',
+	'Side part',
+	'Top knot',
 ] as const;
-export const TOPS = ['Tee', 'Hoodie', 'Jersey', 'Sweater'] as const;
+export const TOPS = [
+	'Tee',
+	'Hoodie',
+	'Jersey',
+	'Sweater',
+	'Vest',
+	'Rain jacket',
+] as const;
 export const GLASSES = ['None', 'Round', 'Shades'] as const;
+export const BEARDS = ['None', 'Stubble', 'Moustache', 'Beard'] as const;
+export const BADGES = ['None', 'Star', 'Heart', 'Bolt'] as const;
+export const PETS = ['None', 'Dog', 'Parrot', 'Hamster'] as const;
 
 /**
  * Every part, in the order the string keeps them, and how many choices it
  * has. A dyed part's 0 is its default (the road jersey's colour, the room's
- * trousers, dark shoes, no cap, no scarf), then CLOTHES in order.
+ * trousers, dark shoes, no cap, no scarf, no socks), then CLOTHES in order.
+ * New parts go at the end: a string written before them still reads.
  */
 export const PARTS = {
 	skin: SKINS.length,
@@ -55,6 +70,10 @@ export const PARTS = {
 	glasses: GLASSES.length,
 	cap: CLOTHES.length + 1,
 	scarf: CLOTHES.length + 1,
+	beard: BEARDS.length,
+	badge: BADGES.length,
+	pet: PETS.length,
+	socks: CLOTHES.length + 1,
 } as const;
 export type Part = keyof typeof PARTS;
 export type Look = Record<Part, number>;
@@ -78,6 +97,10 @@ export function seededLook(id: string): Look {
 		glasses: 0,
 		cap: 0,
 		scarf: 0,
+		beard: 0,
+		badge: 0,
+		pet: 0,
+		socks: 0,
 	};
 }
 

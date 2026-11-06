@@ -55,11 +55,11 @@ export interface Figure {
 	skin: string;
 	skinShade: string;
 	hair: string;
-	/** look.ts's HAIR_NAMES: short, long, a bun, a beanie, a mohawk, curls, a ponytail, bald. */
+	/** look.ts's HAIR_NAMES: short, long, a bun, a beanie, a mohawk, curls, a ponytail, bald and on. */
 	hairStyle: number;
 	shirt: string;
 	shirtShade: string;
-	/** look.ts's TOPS: a tee, a hoodie, a jersey, a sweater; and whether it is striped. */
+	/** look.ts's TOPS: a tee, a hoodie, a jersey, a sweater, a vest, a rain jacket; and whether it is striped. */
 	top: number;
 	stripes: boolean;
 	pants: string;
@@ -67,9 +67,14 @@ export interface Figure {
 	shoes: string;
 	/** look.ts's GLASSES: none, round, shades. */
 	glasses: number;
-	/** The cap's and the scarf's colours, when they wear one. */
+	/** The cap's, the scarf's and the socks' colours, when they wear them. */
 	cap?: string;
 	scarf?: string;
+	socks?: string;
+	/** look.ts's BEARDS, BADGES and PETS: 0 is none. */
+	beard?: number;
+	badge?: number;
+	pet?: number;
 	/** The cushion they sit on when the sofa is full. */
 	cushion: string;
 	speaking: boolean;
