@@ -11,7 +11,7 @@ export const CAT_SPOTS = [
 	{ x: 293, y: 40 }, // on the speaker
 	{ x: 110, y: 64 }, // the sofa's arm
 	{ x: 34, y: 60 }, // the desk, beside the laptop
-	{ x: 160, y: 106 }, // the rug, behind the table
+	{ x: 160, y: 136 }, // the rug, in front of the table
 	{ x: 22, y: 100 }, // the floor by the plant
 	{ x: 298, y: 98 }, // the floor by the cabinet
 ] as const;
