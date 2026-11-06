@@ -33,6 +33,7 @@
 	import { device } from '$lib/device.svelte';
 	import { crewLive } from '$lib/nav/crew-live.svelte';
 	import { fetchPins } from '$lib/pins/pins';
+	import { NO_MEMORY, fetchRoomMemory } from '$lib/lounge/memory';
 	import { mixer } from '$lib/sound/mixer.svelte';
 	import { prefersReducedMotion } from '$lib/motion';
 	import { fnv } from '$lib/world/loadout';
@@ -241,6 +242,15 @@
 		});
 	});
 
+	/** What the room remembers of the crew (memory.ts). */
+	let memory = $state(NO_MEMORY);
+	$effect(() => {
+		const crew = station;
+		void fetchRoomMemory(crew).then((seen) => {
+			if (crew === station) memory = seen;
+		});
+	});
+
 	/** Who rode a frame ago, and who keeps a towel on until when (figures.ts). */
 	let ridingSeen: Set<string> = new Set();
 	let coolingUntil: Map<string, number> = new Map();
@@ -301,7 +311,12 @@
 			pizza: pizzaNight(now),
 			fondue: fondueNight(now),
 			moment: momentOf(now),
-			club: { plan: chalked, pins, live: running?.riders.length ?? 0 },
+			club: {
+				plan: chalked,
+				pins,
+				live: running?.riders.length ?? 0,
+				...memory,
+			},
 			owl: owlHours(now.getHours()),
 		});
 	}

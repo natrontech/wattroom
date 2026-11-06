@@ -32,6 +32,7 @@ import { hash3 } from '$lib/lounge/hash';
 import { paintSides } from '$lib/lounge/draw-sides';
 import { WINDOW } from '$lib/lounge/draw-window';
 import { bakeLight, type Light } from '$lib/lounge/light';
+import { plantStage } from '$lib/lounge/memory';
 import { drawFondue, momentDressing } from '$lib/lounge/draw-moments';
 import {
 	FRONT_LAMPS,
@@ -55,7 +56,7 @@ export function forgetWalls() {
  * lamp or the season changes, so a frame is one image and what moves.
  */
 export function drawBack(g: Ctx, s: SceneInput, ox: number, oy: number) {
-	const key = `${s.w}x${s.h}:${s.lampOn}:${s.season}:${s.sky}:${s.fire}:${s.moment}`;
+	const key = `${s.w}x${s.h}:${s.lampOn}:${s.season}:${s.sky}:${s.fire}:${s.moment}:${plantStage(s.club.sessions)}`;
 	if (back?.key !== key) {
 		const canvas = document.createElement('canvas');
 		canvas.width = s.w;
@@ -74,7 +75,7 @@ export function drawBack(g: Ctx, s: SceneInput, ox: number, oy: number) {
 		desk(b, s.lampOn);
 		cabinet(b);
 		if (s.season === 'winter') tree(b);
-		else plant(b);
+		else plant(b, plantStage(s.club.sessions));
 		sofa(b);
 		stove(b);
 		mats(b);
@@ -340,7 +341,8 @@ function cabinet(g: Ctx) {
 	rect(g, 284, 40, 19, 1, C.trim);
 }
 
-function plant(g: Ctx) {
+/** The plant by the desk, a size bigger for each stage of the crew's sessions together. */
+function plant(g: Ctx, stage: number) {
 	rect(g, 11, 84, 14, 1, C.floorDark);
 	const leaves: [number, number][] = [
 		[-0.5, 26],
@@ -349,10 +351,13 @@ function plant(g: Ctx) {
 		[0.5, 34],
 		[0.9, 28],
 		[1.3, 24],
+		...(stage >= 2 ? ([[-0.85, 24]] as [number, number][]) : []),
+		...(stage >= 3 ? ([[1.6, 26]] as [number, number][]) : []),
 	];
 	leaves.forEach(([angle, length], i) => {
-		const tx = 18 + Math.sin(angle - 0.4) * length * 0.6;
-		const ty = 72 - Math.cos(angle - 0.4) * length;
+		const long = length - 8 + stage * 4;
+		const tx = 18 + Math.sin(angle - 0.4) * long * 0.6;
+		const ty = 72 - Math.cos(angle - 0.4) * long;
 		line(g, 18, 72, tx, ty, i % 2 ? C.leaf : C.leafLight);
 		line(g, 19, 72, tx + 1, ty, C.leafDark);
 		ellipse(
@@ -363,6 +368,11 @@ function plant(g: Ctx) {
 			1,
 			i % 2 ? C.leaf : C.leafLight,
 		);
+		if (stage === 4 && i % 3 === 0) {
+			rect(g, Math.round(tx) - 1, Math.round(ty) - 2, 3, 1, C.heart);
+			rect(g, Math.round(tx), Math.round(ty) - 3, 1, 3, C.heart);
+			dot(g, Math.round(tx), Math.round(ty) - 2, C.amber);
+		}
 	});
 	outlined(g, [[12, 72, 12, 12, C.woodLight]], C.ink);
 	rect(g, 11, 72, 14, 2, C.wood);
@@ -488,6 +498,7 @@ export function drawLive(g: Ctx, s: SceneInput) {
 	signBars(g, s);
 	chalk(g, s);
 	notes(g, s);
+	medals(g, s);
 	clock(g, s);
 	laptop(g, s);
 	mug(g, s);
@@ -650,11 +661,32 @@ function notes(g: Ctx, s: SceneInput) {
 		rect(g, x + 1, y + 2, 3, 1, C.cable);
 		dot(g, x + 2, y, C.red);
 	}
-	if (s.moment === 'tour') {
-		// July: the leader's jersey, pinned below the notes.
-		rect(g, 250, 29, 12, 3, C.amber);
-		rect(g, 253, 32, 6, 4, C.amber);
-		dot(g, 256, 29, C.red);
+	const tour = s.moment === 'tour';
+	// A polaroid of each of the last sessions: a dot for each who rode it.
+	s.club.polaroids.slice(0, tour ? 1 : 3).forEach((riders, i) => {
+		const x = 246 + i * 8;
+		rect(g, x, 28, 7, 8, C.paper);
+		rect(g, x + 1, 29, 5, 4, C.slate);
+		for (let n = 0; n < Math.min(5, riders); n++)
+			dot(g, x + 1 + n, 32, C.amber);
+		dot(g, x + 3, 28, C.red);
+	});
+	if (tour) {
+		// July: the leader's jersey, pinned beside the last polaroid.
+		rect(g, 254, 29, 12, 3, C.amber);
+		rect(g, 257, 32, 6, 4, C.amber);
+		dot(g, 260, 29, C.red);
+	}
+}
+
+/** The crew's medals, down the wall between the clock and the corkboard. */
+function medals(g: Ctx, s: SceneInput) {
+	for (let i = 0; i < Math.min(5, s.club.medals); i++) {
+		const x = 237 + (i % 2) * 3;
+		const y = 12 + i * 6;
+		rect(g, x + 1, y, 1, 2, C.redLight);
+		rect(g, x, y + 2, 3, 3, C.ink);
+		dot(g, x + 1, y + 3, C.amber);
 	}
 }
 

@@ -188,6 +188,11 @@
 							: undefined,
 						pins: Number(params.get('pins') ?? 0),
 						live: Number(params.get('live') ?? 0),
+						sessions: Number(params.get('sessions') ?? 0),
+						medals: Number(params.get('medals') ?? 0),
+						polaroids: [...Array(Number(params.get('polaroids') ?? 0))].map(
+							(_, i) => i + 2,
+						),
 					},
 					owl: false,
 				});

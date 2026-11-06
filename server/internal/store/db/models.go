@@ -53,6 +53,7 @@ type Channel struct {
 	AutoplayEnabled    bool
 	AutoplayOrder      string
 	AutoplayPlaylistID pgtype.UUID
+	Lounge             []byte
 }
 
 type ChannelMember struct {
