@@ -63,6 +63,29 @@ type RoomAct struct {
 	To string `json:"to,omitempty"`
 }
 
+// RoomItem is something a crew can put in its cozy room, in Batzen.
+type RoomItem struct {
+	Slot  string `json:"slot"`
+	Price int32  `json:"price"`
+}
+
+// RoomItems is the closed set of what a crew can furnish with, by id. The
+// client keeps how each looks, in web/src/lib/lounge/furnish.ts.
+var RoomItems = map[string]RoomItem{
+	"rug.forest":   {"rug", 60},
+	"rug.navy":     {"rug", 60},
+	"rug.sand":     {"rug", 60},
+	"sofa.mustard": {"sofa", 120},
+	"sofa.forest":  {"sofa", 120},
+	"sofa.rose":    {"sofa", 120},
+	"wall.stripes": {"wall", 80},
+	"wall.plain":   {"wall", 80},
+	"sign.initial": {"sign", 100},
+}
+
+// MaxArcadeScore is more than a perfect run of the arcade's game can reach.
+const MaxArcadeScore = 9999
+
 // LoungeVisitors is the closed set of the album's rare visitors. The client
 // keeps its own copy, VISITORS in web/src/lib/lounge/moments.ts.
 var LoungeVisitors = []string{

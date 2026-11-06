@@ -94,6 +94,47 @@ func (q *Queries) ExportUserApiTokens(ctx context.Context, arg ExportUserApiToke
 	return items, nil
 }
 
+const exportUserArcadeScores = `-- name: ExportUserArcadeScores :many
+select c.name as crew_name, a.score, a.set_at
+from crew_arcade a
+join crews c on c.id = a.crew_id
+where a.user_id = $1
+order by a.set_at
+limit $2
+`
+
+type ExportUserArcadeScoresParams struct {
+	UserID pgtype.UUID
+	Lim    int32
+}
+
+type ExportUserArcadeScoresRow struct {
+	CrewName string
+	Score    int32
+	SetAt    pgtype.Timestamptz
+}
+
+// The rider's best at each crew's arcade.
+func (q *Queries) ExportUserArcadeScores(ctx context.Context, arg ExportUserArcadeScoresParams) ([]ExportUserArcadeScoresRow, error) {
+	rows, err := q.db.Query(ctx, exportUserArcadeScores, arg.UserID, arg.Lim)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ExportUserArcadeScoresRow
+	for rows.Next() {
+		var i ExportUserArcadeScoresRow
+		if err := rows.Scan(&i.CrewName, &i.Score, &i.SetAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const exportUserBoardClips = `-- name: ExportUserBoardClips :many
 select id, name, pad, key, duration_ms, octet_length(bytes)::int as size_bytes,
        start_ms, end_ms, gain_db, fade_in_ms, fade_out_ms, created_at
@@ -1067,6 +1108,49 @@ func (q *Queries) ExportUserRideDeliveries(ctx context.Context, arg ExportUserRi
 			&i.RideStartedAt,
 			&i.WorkoutName,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const exportUserRoomItems = `-- name: ExportUserRoomItems :many
+select c.name as crew_name, i.item, i.bought_at
+from crew_room_items i
+join crews c on c.id = i.crew_id
+where i.bought_by = $1
+order by i.bought_at
+limit $2
+`
+
+type ExportUserRoomItemsParams struct {
+	UserID pgtype.UUID
+	Lim    int32
+}
+
+type ExportUserRoomItemsRow struct {
+	CrewName string
+	Item     string
+	BoughtAt pgtype.Timestamptz
+}
+
+// What the rider paid for in a crew's cozy room. The room is the crew's; who
+// bought the rug is the rider's own record, and the wallet's ledger shows the
+// spend under the same ref.
+func (q *Queries) ExportUserRoomItems(ctx context.Context, arg ExportUserRoomItemsParams) ([]ExportUserRoomItemsRow, error) {
+	rows, err := q.db.Query(ctx, exportUserRoomItems, arg.UserID, arg.Lim)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ExportUserRoomItemsRow
+	for rows.Next() {
+		var i ExportUserRoomItemsRow
+		if err := rows.Scan(&i.CrewName, &i.Item, &i.BoughtAt); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

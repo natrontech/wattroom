@@ -261,3 +261,19 @@ export function text(g: Ctx, s: string, x: number, y: number, c: string) {
 		x += glyph[0].length + 1;
 	}
 }
+
+/** One glyph at a whole multiple of its size: the neon sign's letter. */
+export function bigGlyph(
+	g: Ctx,
+	ch: string,
+	x: number,
+	y: number,
+	size: number,
+	c: string,
+) {
+	const glyph = GLYPHS[ch] ?? GLYPHS.W;
+	glyph.forEach((row, j) => {
+		for (let i = 0; i < row.length; i++)
+			if (row[i] === '1') rect(g, x + i * size, y + j * size, size, size, c);
+	});
+}

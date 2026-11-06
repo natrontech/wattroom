@@ -11,6 +11,21 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const addCrewRoomItem = `-- name: AddCrewRoomItem :exec
+insert into crew_room_items (crew_id, item, bought_by) values ($1, $2, $3)
+`
+
+type AddCrewRoomItemParams struct {
+	CrewID   pgtype.UUID
+	Item     string
+	BoughtBy pgtype.UUID
+}
+
+func (q *Queries) AddCrewRoomItem(ctx context.Context, arg AddCrewRoomItemParams) error {
+	_, err := q.db.Exec(ctx, addCrewRoomItem, arg.CrewID, arg.Item, arg.BoughtBy)
+	return err
+}
+
 const addCrewSighting = `-- name: AddCrewSighting :execrows
 insert into crew_sightings (crew_id, kind) values ($1, $2)
 on conflict do nothing
@@ -114,6 +129,57 @@ func (q *Queries) CreateCrew(ctx context.Context, arg CreateCrewParams) (Crew, e
 	return i, err
 }
 
+const crewArcadeTop = `-- name: CrewArcadeTop :many
+select u.display_name, a.score
+from crew_arcade a
+join users u on u.id = a.user_id
+where a.crew_id = $1
+order by a.score desc, a.set_at
+limit 5
+`
+
+type CrewArcadeTopRow struct {
+	DisplayName string
+	Score       int32
+}
+
+// The crew's five best, a rider once each, by the name the crew knows them by.
+func (q *Queries) CrewArcadeTop(ctx context.Context, crewID pgtype.UUID) ([]CrewArcadeTopRow, error) {
+	rows, err := q.db.Query(ctx, crewArcadeTop, crewID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CrewArcadeTopRow
+	for rows.Next() {
+		var i CrewArcadeTopRow
+		if err := rows.Scan(&i.DisplayName, &i.Score); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const crewOwnsRoomItem = `-- name: CrewOwnsRoomItem :one
+select exists (select 1 from crew_room_items where crew_id = $1 and item = $2)
+`
+
+type CrewOwnsRoomItemParams struct {
+	CrewID pgtype.UUID
+	Item   string
+}
+
+func (q *Queries) CrewOwnsRoomItem(ctx context.Context, arg CrewOwnsRoomItemParams) (bool, error) {
+	row := q.db.QueryRow(ctx, crewOwnsRoomItem, arg.CrewID, arg.Item)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const crewRoleOf = `-- name: CrewRoleOf :one
 select case
     when c.owner_id = $1 then 'owner'
@@ -160,6 +226,17 @@ func (q *Queries) CrewRoomMemory(ctx context.Context, id pgtype.UUID) (CrewRoomM
 	var i CrewRoomMemoryRow
 	err := row.Scan(&i.Sessions, &i.Medals)
 	return i, err
+}
+
+const crewRoomPicks = `-- name: CrewRoomPicks :one
+select picks from crew_rooms where crew_id = $1
+`
+
+func (q *Queries) CrewRoomPicks(ctx context.Context, crewID pgtype.UUID) ([]byte, error) {
+	row := q.db.QueryRow(ctx, crewRoomPicks, crewID)
+	var picks []byte
+	err := row.Scan(&picks)
+	return picks, err
 }
 
 const deleteCrew = `-- name: DeleteCrew :exec
@@ -587,6 +664,30 @@ func (q *Queries) ListCrewRoles(ctx context.Context, crewID pgtype.UUID) ([]Crew
 	return items, nil
 }
 
+const listCrewRoomItems = `-- name: ListCrewRoomItems :many
+select item from crew_room_items where crew_id = $1 order by bought_at
+`
+
+func (q *Queries) ListCrewRoomItems(ctx context.Context, crewID pgtype.UUID) ([]string, error) {
+	rows, err := q.db.Query(ctx, listCrewRoomItems, crewID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var item string
+		if err := rows.Scan(&item); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listCrewSightings = `-- name: ListCrewSightings :many
 select kind, seen_at from crew_sightings where crew_id = $1 order by seen_at
 `
@@ -826,6 +927,25 @@ func (q *Queries) PickCrewSuccessor(ctx context.Context, arg PickCrewSuccessorPa
 	return user_id, err
 }
 
+const saveCrewArcadeScore = `-- name: SaveCrewArcadeScore :exec
+insert into crew_arcade (crew_id, user_id, score) values ($1, $2, $3)
+on conflict (crew_id, user_id) do update
+    set score = excluded.score, set_at = now()
+    where excluded.score > crew_arcade.score
+`
+
+type SaveCrewArcadeScoreParams struct {
+	CrewID pgtype.UUID
+	UserID pgtype.UUID
+	Score  int32
+}
+
+// Only a better score moves the row.
+func (q *Queries) SaveCrewArcadeScore(ctx context.Context, arg SaveCrewArcadeScoreParams) error {
+	_, err := q.db.Exec(ctx, saveCrewArcadeScore, arg.CrewID, arg.UserID, arg.Score)
+	return err
+}
+
 const setCrewBoard = `-- name: SetCrewBoard :exec
 update crews set board_enabled = $2 where id = $1
 `
@@ -941,6 +1061,21 @@ type SetCrewRoleParams struct {
 // owner who never set a switch — so it starts off the board (#2820).
 func (q *Queries) SetCrewRole(ctx context.Context, arg SetCrewRoleParams) error {
 	_, err := q.db.Exec(ctx, setCrewRole, arg.CrewID, arg.UserID, arg.Role)
+	return err
+}
+
+const setCrewRoomPicks = `-- name: SetCrewRoomPicks :exec
+insert into crew_rooms (crew_id, picks) values ($1, $2)
+on conflict (crew_id) do update set picks = excluded.picks
+`
+
+type SetCrewRoomPicksParams struct {
+	CrewID pgtype.UUID
+	Picks  []byte
+}
+
+func (q *Queries) SetCrewRoomPicks(ctx context.Context, arg SetCrewRoomPicksParams) error {
+	_, err := q.db.Exec(ctx, setCrewRoomPicks, arg.CrewID, arg.Picks)
 	return err
 }
 

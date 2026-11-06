@@ -112,6 +112,13 @@ type Crew struct {
 	IcsToken     string
 }
 
+type CrewArcade struct {
+	CrewID pgtype.UUID
+	UserID pgtype.UUID
+	Score  int32
+	SetAt  pgtype.Timestamptz
+}
+
 type CrewEmoji struct {
 	ID        pgtype.UUID
 	CrewID    pgtype.UUID
@@ -140,6 +147,18 @@ type CrewRole struct {
 	JoinedAt pgtype.Timestamptz
 	Notify   bool
 	OnBoard  bool
+}
+
+type CrewRoom struct {
+	CrewID pgtype.UUID
+	Picks  []byte
+}
+
+type CrewRoomItem struct {
+	CrewID   pgtype.UUID
+	Item     string
+	BoughtBy pgtype.UUID
+	BoughtAt pgtype.Timestamptz
 }
 
 type CrewSighting struct {

@@ -1,6 +1,7 @@
 package crews
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -229,12 +230,20 @@ func TestCrewRoomCountsAndKeepsItsDoorShut(t *testing.T) {
 	if member.Code != http.StatusOK {
 		t.Fatalf("alice reading the room: %d %s", member.Code, member.Body.String())
 	}
-	var room map[string]int64
-	if err := json.NewDecoder(member.Body).Decode(&room); err != nil {
+	var room struct {
+		Sessions, Medals int64
+		Owned            []string
+		Shop             map[string]any
+	}
+	raw := member.Body.Bytes()
+	if !bytes.Contains(raw, []byte(`"owned":[]`)) {
+		t.Fatalf("a crew with nothing must say so with an empty list: %s", raw)
+	}
+	if err := json.Unmarshal(raw, &room); err != nil {
 		t.Fatalf("decoding the room: %v", err)
 	}
-	if room["sessions"] != 0 || room["medals"] != 0 {
-		t.Fatalf("a new crew remembers %+v", room)
+	if room.Sessions != 0 || room.Medals != 0 || len(room.Shop) == 0 {
+		t.Fatalf("a new crew's room: %+v", room)
 	}
 	if got := get("carol").Code; got != http.StatusNotFound {
 		t.Fatalf("carol reading the room: %d, want 404", got)
@@ -273,5 +282,72 @@ func TestCrewAlbum(t *testing.T) {
 	}
 	if len(album.Sightings) != 1 || album.Sightings[0].Kind != "fox" {
 		t.Fatalf("the album holds %+v", album.Sightings)
+	}
+}
+
+func TestCrewRoomFurnishing(t *testing.T) {
+	h := setup(t)
+	crew := crewWith(t, h)
+	do := func(who, method, path, body string) *httptest.ResponseRecorder {
+		req := httptest.NewRequestWithContext(t.Context(), method, "/api/crews/"+crew+path, strings.NewReader(body))
+		req.Header.Set("X-Test-User", who)
+		w := httptest.NewRecorder()
+		h.mux.ServeHTTP(w, req)
+		return w
+	}
+	if got := do("alice", http.MethodPost, "/room/items/rug.dragon", "").Code; got != http.StatusNotFound {
+		t.Fatalf("an item not in the shop: %d", got)
+	}
+	// Nobody starts with enough for this: the welcome is smaller than the bill.
+	if got := do("carol", http.MethodPost, "/room/items/rug.forest", "").Code; got != http.StatusNotFound {
+		t.Fatalf("an outsider buying: %d, want 404", got)
+	}
+	if got := do("alice", http.MethodPut, "/room/picks", `{"slot":"rug","item":"rug.forest"}`).Code; got != http.StatusConflict {
+		t.Fatalf("picking what the crew does not own: %d, want 409", got)
+	}
+	if got := do("alice", http.MethodPut, "/room/picks", `{"slot":"sofa","item":"rug.forest"}`).Code; got != http.StatusBadRequest {
+		t.Fatalf("a rug on the sofa: %d, want 400", got)
+	}
+	if got := do("alice", http.MethodPut, "/room/picks", `{"slot":"rug","item":""}`).Code; got != http.StatusNoContent {
+		t.Fatalf("back to the room as it came: %d", got)
+	}
+	bought := do("alice", http.MethodPost, "/room/items/rug.forest", "")
+	if bought.Code != http.StatusCreated && bought.Code != http.StatusConflict {
+		t.Fatalf("buying: %d %s", bought.Code, bought.Body.String())
+	}
+}
+
+func TestCrewArcadeKeepsYourBest(t *testing.T) {
+	h := setup(t)
+	crew := crewWith(t, h)
+	post := func(score string) int {
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/crews/"+crew+"/arcade", strings.NewReader(`{"score":`+score+`}`))
+		req.Header.Set("X-Test-User", "alice")
+		w := httptest.NewRecorder()
+		h.mux.ServeHTTP(w, req)
+		return w.Code
+	}
+	for _, score := range []string{"300", "120"} {
+		if got := post(score); got != http.StatusNoContent {
+			t.Fatalf("score %s: %d", score, got)
+		}
+	}
+	if got := post("99999"); got != http.StatusBadRequest {
+		t.Fatalf("a score off the machine: %d", got)
+	}
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/crews/"+crew+"/arcade", nil)
+	req.Header.Set("X-Test-User", "alice")
+	w := httptest.NewRecorder()
+	h.mux.ServeHTTP(w, req)
+	var out struct {
+		Top []struct {
+			Score int `json:"score"`
+		} `json:"top"`
+	}
+	if err := json.NewDecoder(w.Body).Decode(&out); err != nil {
+		t.Fatalf("decoding the scores: %v", err)
+	}
+	if len(out.Top) != 1 || out.Top[0].Score != 300 {
+		t.Fatalf("the table holds %+v", out.Top)
 	}
 }

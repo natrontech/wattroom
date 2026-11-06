@@ -141,6 +141,9 @@ export interface Place {
 	hit: readonly [number, number, number, number];
 }
 
+/** The place at the arcade cabinet: where you stand while you play. */
+export const ARCADE_SEAT = 11;
+
 export const PLACES: readonly Place[] = [
 	{ seat: 5, x: 58, y: 96, doing: 'type', hit: [44, 86, 28, 16] },
 	{ seat: 6, x: 203, y: 104, doing: 'warm', hit: [190, 92, 26, 18] },
@@ -260,6 +263,12 @@ export interface Club {
 	medals: number;
 	/** How many rode each of the last sessions: a polaroid each. */
 	polaroids: number[];
+	/** What is up in each slot (furnish.ts); absent is the room as it came. */
+	picks: Record<string, string>;
+	/** The crew's name's first letter, for the neon sign. */
+	initial: string;
+	/** The arcade's best score, on its cabinet. */
+	hiscore: number;
 }
 
 export interface SceneInput {
@@ -438,7 +447,7 @@ export const SPOT_HINTS: Record<Hotspot, string> = {
 	stove: 'Light the stove, for everyone',
 	fish: 'The goldfish',
 	plant: 'The plant grows with every session you ride together',
-	arcade: 'The arcade',
+	arcade: 'Bergpreis: thirty seconds up the hill',
 	board: 'The next ride: open the Schedule',
 	cork: 'Your crew’s pins and last sessions',
 	laptop: 'A running session: go and join it',

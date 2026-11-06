@@ -8,6 +8,7 @@
  */
 import { LOUNGE as C } from '$lib/lounge/palette';
 import {
+	bigGlyph,
 	disc,
 	dot,
 	ellipse,
@@ -33,6 +34,7 @@ import { paintSides } from '$lib/lounge/draw-sides';
 import { WINDOW } from '$lib/lounge/draw-window';
 import { bakeLight, type Light } from '$lib/lounge/light';
 import { plantStage } from '$lib/lounge/memory';
+import { RUGS, SOFAS } from '$lib/lounge/furnish';
 import { drawFondue, momentDressing } from '$lib/lounge/draw-moments';
 import {
 	FRONT_LAMPS,
@@ -56,13 +58,13 @@ export function forgetWalls() {
  * lamp or the season changes, so a frame is one image and what moves.
  */
 export function drawBack(g: Ctx, s: SceneInput, ox: number, oy: number) {
-	const key = `${s.w}x${s.h}:${s.lampOn}:${s.season}:${s.sky}:${s.fire}:${s.moment}:${plantStage(s.club.sessions)}`;
+	const key = `${s.w}x${s.h}:${s.lampOn}:${s.season}:${s.sky}:${s.fire}:${s.moment}:${plantStage(s.club.sessions)}:${JSON.stringify(s.club.picks)}`;
 	if (back?.key !== key) {
 		const canvas = document.createElement('canvas');
 		canvas.width = s.w;
 		canvas.height = s.h;
 		const b = canvas.getContext('2d')!;
-		walls(b, s.w, s.h, oy);
+		walls(b, s.w, s.h, oy, s.club.picks.wall);
 		if (oy >= 24) upperWall(b, s.w, ox, oy, s.moment === 'tour');
 		const lamps = paintSides(b, s, ox, oy);
 		b.translate(ox, oy);
@@ -76,10 +78,10 @@ export function drawBack(g: Ctx, s: SceneInput, ox: number, oy: number) {
 		cabinet(b);
 		if (s.season === 'winter') tree(b);
 		else plant(b, plantStage(s.club.sessions));
-		sofa(b);
+		sofa(b, s.club.picks.sofa);
 		stove(b);
 		mats(b);
-		rug(b);
+		rug(b, s.club.picks.rug);
 		table(b);
 		if (hasFront(s.w, s.h)) frontRow(b);
 		momentDressing(b, s.moment);
@@ -140,17 +142,20 @@ function lightsOf(s: SceneInput, ox: number, oy: number, lamps: number[]) {
 	return lights;
 }
 
-function walls(g: Ctx, w: number, h: number, oy: number) {
+function walls(g: Ctx, w: number, h: number, oy: number, paper?: string) {
 	const floor = oy + FLOOR_Y;
 	rect(g, 0, 0, w, floor, C.wall);
 	rect(g, 0, 0, w, 2, C.wallDark);
+	if (paper === 'wall.stripes')
+		for (let x = 0; x < w; x += 12) rect(g, x, 2, 6, floor - 22, C.wallLight);
 	// Wallpaper: a small diamond on a staggered grid, one step off the wall.
-	for (let y = 12, row = 0; y < floor - 22; y += 12, row++)
-		for (let x = (row % 2) * 8 + 4; x < w; x += 16) {
-			dot(g, x, y - 1, C.wallLight);
-			rect(g, x - 1, y, 3, 1, C.wallLight);
-			dot(g, x, y + 1, C.wallLight);
-		}
+	else if (paper !== 'wall.plain')
+		for (let y = 12, row = 0; y < floor - 22; y += 12, row++)
+			for (let x = (row % 2) * 8 + 4; x < w; x += 16) {
+				dot(g, x, y - 1, C.wallLight);
+				rect(g, x - 1, y, 3, 1, C.wallLight);
+				dot(g, x, y + 1, C.wallLight);
+			}
 	// The rail, the wainscot's panels and the skirting board.
 	rect(g, 0, floor - 18, w, 1, C.trim);
 	rect(g, 0, floor - 17, w, 14, C.wallDark);
@@ -391,28 +396,34 @@ function tree(g: Ctx) {
 }
 
 /** The sofa under the window, facing the room: back, arms, four seats. */
-function sofa(g: Ctx) {
+function sofa(g: Ctx, pick?: string) {
+	const [dark, main, light, top] = (pick && SOFAS[pick]) || [
+		C.sofaDark,
+		C.sofa,
+		C.sofaLight,
+		C.sofaTop,
+	];
 	ellipse(g, 160, 88, 56, 2, C.floorDark);
 	outlined(
 		g,
 		[
-			[112, 60, 97, 12, C.sofa],
-			[114, 72, 93, 12, C.sofa],
-			[106, 64, 8, 22, C.sofa],
-			[207, 64, 8, 22, C.sofa],
+			[112, 60, 97, 12, main],
+			[114, 72, 93, 12, main],
+			[106, 64, 8, 22, main],
+			[207, 64, 8, 22, main],
 		],
 		C.ink,
 	);
 	// Light on its top edges, shadow under the seat.
-	rect(g, 112, 60, 97, 2, C.sofaLight);
-	for (let x = 120; x < 206; x += 11) dot(g, x, 66, C.sofaDark);
-	rect(g, 114, 72, 93, 1, C.sofaTop);
-	rect(g, 114, 73, 93, 3, C.sofaLight);
-	for (const x of [136, 159, 182]) rect(g, x, 72, 1, 12, C.sofaDark);
-	rect(g, 114, 82, 93, 2, C.sofaDark);
+	rect(g, 112, 60, 97, 2, light);
+	for (let x = 120; x < 206; x += 11) dot(g, x, 66, dark);
+	rect(g, 114, 72, 93, 1, top);
+	rect(g, 114, 73, 93, 3, light);
+	for (const x of [136, 159, 182]) rect(g, x, 72, 1, 12, dark);
+	rect(g, 114, 82, 93, 2, dark);
 	for (const x of [106, 207]) {
-		rect(g, x, 64, 8, 2, C.sofaTop);
-		rect(g, x, 84, 8, 2, C.sofaDark);
+		rect(g, x, 64, 8, 2, top);
+		rect(g, x, 84, 8, 2, dark);
 		rect(g, x + 1, 86, 2, 2, C.ink);
 	}
 }
@@ -446,18 +457,23 @@ function stove(g: Ctx) {
 }
 
 /** The round rug the crew sits around. */
-function rug(g: Ctx) {
+function rug(g: Ctx, pick?: string) {
+	const [dark, main, trim] = (pick && RUGS[pick]) || [
+		C.rugDark,
+		C.rug,
+		C.rugLine,
+	];
 	ellipse(g, 160, 123, 67, 23, C.ink);
-	ellipse(g, 160, 122, 66, 22, C.rugDark);
-	ellipse(g, 160, 122, 63, 20, C.rug);
-	ellipse(g, 160, 122, 55, 16, C.rugLine);
-	ellipse(g, 160, 122, 54, 15, C.rug);
+	ellipse(g, 160, 122, 66, 22, dark);
+	ellipse(g, 160, 122, 63, 20, main);
+	ellipse(g, 160, 122, 55, 16, trim);
+	ellipse(g, 160, 122, 54, 15, main);
 	for (let k = -4; k <= 4; k++) {
 		const x = 160 + k * 12;
 		const y = 122 + (k % 2 ? 9 : -9);
-		dot(g, x, y - 1, C.rugLine);
-		rect(g, x - 1, y, 3, 1, C.rugLine);
-		dot(g, x, y + 1, C.rugLine);
+		dot(g, x, y - 1, trim);
+		rect(g, x - 1, y, 3, 1, trim);
+		dot(g, x, y + 1, trim);
 	}
 }
 
@@ -625,9 +641,17 @@ function arcade(g: Ctx, s: SceneInput) {
 	rect(g, rx, y0 + 5, 2, 2, C.teal);
 	rect(g, rx, y0 + 3, 2, 2, C.heart);
 	if (s.arcade) text(g, '1', x0 + 1, y0 + 1, C.amber);
+	else if (s.club.hiscore)
+		text(g, String(s.club.hiscore).slice(0, 4), x0, y0, C.amber);
 }
 
 function signBars(g: Ctx, s: SceneInput) {
+	if (s.club.picks.sign === 'sign.initial') {
+		// The crew's letter in neon, a shade dimmer between the beats.
+		const lit = pulseOf(s) > 0.5 ? C.tealLight : C.teal;
+		bigGlyph(g, s.club.initial, 32, 18, 4, lit);
+		return;
+	}
 	SIGN_BARS.forEach((tall, i) => {
 		const level = pulseOf({ ...s, beat: s.beat + i * 0.13, t: s.t + i });
 		const h = Math.max(3, Math.round(tall * (0.55 + 0.45 * level)));

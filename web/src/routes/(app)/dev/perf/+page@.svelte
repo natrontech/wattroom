@@ -199,6 +199,14 @@
 						pins: Number(params.get('pins') ?? 0),
 						live: Number(params.get('live') ?? 0),
 						sessions: Number(params.get('sessions') ?? 0),
+						picks: Object.fromEntries(
+							(params.get('picks') ?? '')
+								.split(',')
+								.filter(Boolean)
+								.map((id) => [id.split('.')[0], id]),
+						),
+						initial: 'M',
+						hiscore: Number(params.get('hiscore') ?? 0),
 						medals: Number(params.get('medals') ?? 0),
 						polaroids: [...Array(Number(params.get('polaroids') ?? 0))].map(
 							(_, i) => i + 2,

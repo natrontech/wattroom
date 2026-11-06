@@ -6,6 +6,7 @@
  */
 import { api } from '$lib/api';
 import type { SessionRecap } from '$lib/protocol';
+import type { ShopItem } from '$lib/lounge/furnish';
 
 export interface RoomMemory {
 	/** Sessions the crew has ridden together. */
@@ -13,9 +14,23 @@ export interface RoomMemory {
 	medals: number;
 	/** How many rode each of the last sessions, newest first. */
 	polaroids: number[];
+	/** What the crew has furnished with, what is up, and the price list. */
+	owned: string[];
+	picks: Record<string, string>;
+	shop: Record<string, ShopItem>;
+	/** The arcade's best score. */
+	hiscore: number;
 }
 
-export const NO_MEMORY: RoomMemory = { sessions: 0, medals: 0, polaroids: [] };
+export const NO_MEMORY: RoomMemory = {
+	sessions: 0,
+	medals: 0,
+	polaroids: [],
+	owned: [],
+	picks: {},
+	shop: {},
+	hiscore: 0,
+};
 
 /** A room forgets nothing it was told, but draws only this many polaroids. */
 const POLAROIDS = 3;
@@ -28,13 +43,15 @@ export const plantStage = (sessions: number): number =>
 	PLANT_SIZES.filter((at) => sessions >= at).length;
 
 export async function fetchRoomMemory(crew: string): Promise<RoomMemory> {
-	const [room, past] = await Promise.all([
-		api<{ sessions: number; medals: number }>(`/api/crews/${crew}/room`),
+	const [room, past, arcade] = await Promise.all([
+		api<Omit<RoomMemory, 'polaroids' | 'hiscore'>>(`/api/crews/${crew}/room`),
 		api<{ recaps: SessionRecap[] }>(`/api/crews/${crew}/recaps`),
+		api<{ top: { score: number }[] }>(`/api/crews/${crew}/arcade`),
 	]);
 	if (!room.ok) return NO_MEMORY;
 	return {
 		...room.data,
+		hiscore: arcade.ok ? (arcade.data.top[0]?.score ?? 0) : 0,
 		polaroids: past.ok
 			? past.data.recaps
 					.slice(-POLAROIDS)
