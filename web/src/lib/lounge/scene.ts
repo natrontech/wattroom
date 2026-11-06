@@ -298,6 +298,22 @@ export type Hotspot =
 	| 'laptop'
 	| 'bike';
 
+/** What each clickable thing does, for the pointer that finds it. */
+export const SPOT_HINTS: Record<Hotspot, string> = {
+	lamp: 'Turn the lamp on or off, for everyone',
+	deck: 'The record player: play or skip, for everyone',
+	window: 'Change the weather, for everyone',
+	clock: 'The cuckoo clock',
+	stove: 'Light the stove, for everyone',
+	fish: 'The goldfish',
+	plant: 'The plant grows with every session you ride together',
+	arcade: 'The arcade',
+	board: 'The next ride: open the Schedule',
+	cork: 'Your crew’s pins and last sessions',
+	laptop: 'A running session: go and join it',
+	bike: 'Start riding',
+};
+
 const SPOTS: { spot: Hotspot; x: number; y: number; w: number; h: number }[] = [
 	{ spot: 'clock', x: 216, y: 10, w: 22, h: 38 },
 	{ spot: 'stove', x: 216, y: 48, w: 20, h: 38 },
