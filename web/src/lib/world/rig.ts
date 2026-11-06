@@ -22,8 +22,11 @@ const SIDE = { out: 3.2, ahead: 1.6, up: 0.3, fov: 40 };
 /** Steady (ADR-0079, docs/spec/motion.md): the heli's view from far and high, one FOV, no easing. */
 const STEADY = { back: 260, up: 190, fov: 45 };
 
+/** Overhead: close enough that you are a rider, not a dot, and a road line is a pixel wide. */
+export const HELI = { back: 22, up: 13, fov: 45 };
+
 const EYE_FLOOR = 1.5; // metres the eye keeps above the drawn ground
-/** Past the heli's 70 m and 42 m, the widest a camera change moves the goal. */
+/** Past the heli's distances, the widest a camera change moves the goal. */
 const CUT_M = 500;
 const GOAL_FLOOR = 1.8;
 
@@ -121,7 +124,7 @@ export function makeRig(route: Route, world: World) {
 				? STEADY.back
 				: chase
 					? 5.6 + Math.min(2.6, rider.v * 0.13)
-					: 70;
+					: HELI.back;
 			// The eye rides your lane, not the centre line, so your lane leaves you in RIDER_BOX.
 			const c = along(route, rider.d, lap);
 			const sx = you.x - c.x;
@@ -129,7 +132,7 @@ export function makeRig(route: Route, world: World) {
 			const b = along(route, rider.d - way * back, lap);
 			want.set(
 				b.x + sx,
-				yOf(route, b.ele) + (steady ? STEADY.up : chase ? 2.05 : 42),
+				yOf(route, b.ele) + (steady ? STEADY.up : chase ? 2.05 : HELI.up),
 				b.z + sz,
 			);
 			want.y = Math.max(want.y, ground(want.x, want.z) + GOAL_FLOOR);
@@ -142,7 +145,7 @@ export function makeRig(route: Route, world: World) {
 				? STEADY.fov
 				: chase
 					? 50 + Math.min(4, Math.max(0, kmh - 25) * 0.2)
-					: 45;
+					: HELI.fov;
 			// A goal this far off is a cut — a lap starting where the road began — never a swoop over the map.
 			if (!started || eye.distanceTo(want) > CUT_M) {
 				eye.copy(want);

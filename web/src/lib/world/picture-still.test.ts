@@ -13,6 +13,7 @@ import { RIDE } from './look.test-helper';
 import { figureBox, HELMET_M, LENS, TYRE_M } from './picture-camera';
 import { fromAbove, pictureStill } from './picture-still';
 import { PICTURE } from './picture.svelte';
+import { HELI } from './rig';
 import { FORMATION } from './terrain/road-profile';
 import { syntheticPoints } from './synthetic';
 import { generate, type World } from './world';
@@ -232,20 +233,20 @@ describe('the ride’s picture of the world (#4263)', () => {
 				fromAbove(still);
 				const camera = still.camera;
 				const you = figureBox(still.you!).getCenter(new THREE.Vector3());
-				// The heli's place: 70 m back along the road you rode, 42 m over it.
-				const back = at(route, m - 70);
+				// The heli's place: back along the road you rode, and over it.
+				const back = at(route, m - HELI.back);
 				expect(
 					camera.position.y - yOf(route, back.ele),
 					what,
-				).toBeGreaterThanOrEqual(41.9);
+				).toBeGreaterThanOrEqual(HELI.up - 0.1);
 				const across = Math.hypot(
 					camera.position.x - back.x,
 					camera.position.z - back.z,
 				);
 				expect(across, what).toBeLessThan(FORMATION);
-				expect(camera.position.distanceTo(lens), what).toBeGreaterThan(40);
+				expect(camera.position.distanceTo(lens), what).toBeGreaterThan(HELI.up);
 				// Its field on the landscape frame, and you in it, below the middle as the ride saw you.
-				expect(camera.fov, what).toBe(45);
+				expect(camera.fov, what).toBe(HELI.fov);
 				expect(camera.aspect, what).toBeCloseTo(
 					PICTURE.above.width / PICTURE.above.height,
 				);
