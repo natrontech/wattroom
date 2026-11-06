@@ -301,3 +301,14 @@ limit sqlc.arg(lim) offset sqlc.arg(off);
 -- What a shared /c/{code} link unfurls to (#2445): the door's own answer —
 -- name and picture — for whoever holds the code, crawler included.
 select name, image from crews where code = $1;
+
+-- name: CrewRoomMemory :one
+-- What the crew's room remembers: how many sessions it has ridden together and
+-- how many medals it has won. Counts only: no rider, ride or number reaches
+-- this. A session is counted from its rides, because recaps are pruned at 90
+-- days and a room remembers longer.
+select (select count(distinct r.session_id) from rides r
+         where r.crew_id = c.id and r.session_id is not null)::bigint as sessions,
+       (select count(*) from medals m where m.crew_id = c.id)::bigint as medals
+from crews c
+where c.id = $1;

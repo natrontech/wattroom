@@ -122,3 +122,10 @@ from moved_rooms m
 left join visible_channels t on t.channel_id = m.text_channel_id and t.user_id = sqlc.arg(viewer)
 left join visible_channels v on v.channel_id = m.voice_channel_id and v.user_id = sqlc.arg(viewer)
 where m.slug = sqlc.arg(slug);
+
+-- name: ChannelLounge :one
+-- What the channel's room looked like when it was last touched.
+select lounge from channels where id = $1;
+
+-- name: SaveChannelLounge :exec
+update channels set lounge = $2 where id = $1;

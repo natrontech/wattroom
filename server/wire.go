@@ -272,6 +272,7 @@ func wire(ctx context.Context, st *store.Store, mux *http.ServeMux, baseURL stri
 	// card survives the reload every other timeline entry does not.
 	recapService := recap.New(st, log)
 	h.SetRecapKeeper(recapService)
+	h.SetLoungeKeeper(channels.NewLoungeKeeper(ctx, st, log))
 	recapService.SetLive(h)
 	playlistsService := playlists.New(st, authService, channelsService, log)
 	playlistsService.Register(mux)

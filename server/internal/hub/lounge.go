@@ -7,6 +7,18 @@ import (
 	"github.com/natrontech/wattroom/server/internal/protocol"
 )
 
+// LoungeKeeper keeps a voice channel's room between calls. Defined here, where
+// it is consumed; channels.LoungeKeeper implements it. Load may wait on the
+// database, so it runs off the hub's locks; Save returns at once. Nil means no
+// database, and a room lasts as long as the channel is up.
+type LoungeKeeper interface {
+	Load(channel string) (protocol.LoungeState, bool)
+	Save(channel string, state protocol.LoungeState)
+}
+
+// SetLoungeKeeper wires the store that keeps the rooms.
+func (h *Hub) SetLoungeKeeper(k LoungeKeeper) { h.loungeKeep = k }
+
 // loungeMinGap bounds how often one rider may flip the lounge. It is a tap
 // with nothing to answer (errors.md, fire-and-forget), so one over the limit
 // drops in silence.
@@ -16,9 +28,34 @@ const loungeMinGap = 250 * time.Millisecond
 // the cat, a mood, or a pick or skip of house radio (ADR-0094). Anyone in
 // the channel may: like the roadside, it paints and never reaches a ride.
 func (h *Hub) lounge(rm *channelState, rider protocol.Rider, want protocol.LoungeState) {
-	if rm.allow("lounge", rider.ID, h.now(), loungeMinGap) {
-		rm.setLounge(want)
+	if !rm.allow("lounge", rider.ID, h.now(), loungeMinGap) {
+		return
 	}
+	rm.setLounge(want)
+	if h.loungeKeep != nil {
+		h.loungeKeep.Save(rm.channel, rm.keptLounge())
+	}
+}
+
+// restoreLounge puts back the room as it was left, unless a rider got there
+// first: their flip is newer than anything stored.
+func (rm *channelState) restoreLounge(state protocol.LoungeState) {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+	if rm.lounge == (protocol.LoungeState{}) {
+		rm.lounge = state
+	}
+}
+
+// keptLounge is the room as it should outlive the channel. The radio's shift
+// stays out: it is measured against this channel's clock and means nothing to
+// the next one.
+func (rm *channelState) keptLounge() protocol.LoungeState {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+	kept := rm.lounge
+	kept.RadioShiftMs = 0
+	return kept
 }
 
 // setLounge stores what the scene should show. Rain is the default and so the

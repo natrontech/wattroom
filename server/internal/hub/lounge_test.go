@@ -2,6 +2,7 @@ package hub
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -115,5 +116,58 @@ func TestHouseRadioQueuesLikeATrack(t *testing.T) {
 		if played.Radio {
 			t.Errorf("house radio in just played: %+v", played)
 		}
+	}
+}
+
+// fakeLoungeKeeper is the channel row the keeper would hold.
+type fakeLoungeKeeper struct {
+	mu    sync.Mutex
+	saved *protocol.LoungeState
+	load  protocol.LoungeState
+}
+
+func (k *fakeLoungeKeeper) Load(string) (protocol.LoungeState, bool) { return k.load, true }
+
+func (k *fakeLoungeKeeper) Save(_ string, state protocol.LoungeState) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	k.saved = &state
+}
+
+func TestLoungeLeavesItsRadioShiftBehind(t *testing.T) {
+	rm := newChannelState("c")
+	rm.setLounge(protocol.LoungeState{LampOff: true, RadioShiftMs: 9000})
+	kept := rm.keptLounge()
+	if !kept.LampOff || kept.RadioShiftMs != 0 {
+		t.Fatalf("kept %+v, want the lamp off and no shift", kept)
+	}
+}
+
+func TestLoungeRestoresOnlyAnUntouchedRoom(t *testing.T) {
+	rm := newChannelState("c")
+	rm.restoreLounge(protocol.LoungeState{Weather: "snow", Fire: true})
+	if rm.lounge.Weather != "snow" || !rm.lounge.Fire {
+		t.Fatalf("restored %+v", rm.lounge)
+	}
+	flipped := newChannelState("c")
+	flipped.setLounge(protocol.LoungeState{LampOff: true})
+	flipped.restoreLounge(protocol.LoungeState{Weather: "snow"})
+	if flipped.lounge.Weather == "snow" {
+		t.Fatalf("a stored room overwrote a rider's flip: %+v", flipped.lounge)
+	}
+}
+
+// A flip goes to the keeper, so the room is there on the next call.
+func TestLoungeFlipReachesTheKeeper(t *testing.T) {
+	h, url := awayServer(t)
+	keeper := &fakeLoungeKeeper{}
+	h.SetLoungeKeeper(keeper)
+	flipping := dial(t, url, "kim:member")
+	sendLounge(t, flipping, protocol.LoungeState{LampOff: true})
+	awaitLounge(t, flipping, "the lamp off", func(l *protocol.LoungeState) bool { return l != nil && l.LampOff })
+	keeper.mu.Lock()
+	defer keeper.mu.Unlock()
+	if keeper.saved == nil || !keeper.saved.LampOff {
+		t.Fatalf("the keeper holds %+v", keeper.saved)
 	}
 }

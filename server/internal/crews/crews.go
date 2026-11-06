@@ -87,6 +87,7 @@ func (s *Service) registerCrews(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/crews/{id}/members", s.handleCrewMembers)
 	mux.HandleFunc("PATCH /api/crews/{id}/me", s.handleSetCrewPrefs)
 	mux.HandleFunc("GET /api/crews/{id}/recaps", s.handleCrewRecaps)
+	mux.HandleFunc("GET /api/crews/{id}/room", s.handleCrewRoom)
 	s.registerCrewSchedule(mux)
 }
 

@@ -128,6 +128,12 @@ export interface Club {
 	pins: number;
 	/** Riders on the crew's running session; the laptop shows it live. */
 	live: number;
+	/** Sessions ridden together: the plant grows with them. */
+	sessions: number;
+	/** Medals on the wall. */
+	medals: number;
+	/** How many rode each of the last sessions: a polaroid each. */
+	polaroids: number[];
 }
 
 export interface SceneInput {
