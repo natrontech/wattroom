@@ -65,7 +65,7 @@ function samichlaus(g: Ctx) {
 	rect(g, 94, 81, 4, 2, C.amberDark);
 }
 
-/** The first of August: paper lanterns on the curtain rod, a flag on the wall. */
+/** The first of August: paper lanterns on the curtain rod, a flag on the table. */
 function august(g: Ctx) {
 	for (const [x, hue] of [
 		[108, C.red],
@@ -76,9 +76,11 @@ function august(g: Ctx) {
 		outlined(g, [[x - 2, 9, 5, 5, hue]], C.ink);
 		rect(g, x - 2, 11, 5, 1, C.amber);
 	}
-	outlined(g, [[82, 16, 13, 13, C.red]], C.ink);
-	rect(g, 87, 18, 3, 9, C.paper);
-	rect(g, 84, 21, 9, 3, C.paper);
+	line(g, 150, 110, 150, 96, C.woodLight);
+	outlined(g, [[151, 96, 9, 7, C.red]], C.ink);
+	rect(g, 154, 97, 3, 5, C.paper);
+	rect(g, 152, 98, 7, 1, C.paper);
+	rect(g, 152, 99, 7, 1, C.paper);
 }
 
 export function momentDressing(g: Ctx, moment: Moment) {

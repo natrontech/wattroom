@@ -17,6 +17,7 @@ import {
 	rect,
 	ring,
 	text,
+	textWidth,
 	type Ctx,
 } from '$lib/lounge/pixel';
 import type { Sky } from '$lib/lounge/palette';
@@ -67,8 +68,8 @@ export function drawBack(g: Ctx, s: SceneInput, ox: number, oy: number) {
 		curtains(b);
 		windowFrame(b);
 		signFrame(b);
-		if (s.moment === 'tour') yellowJersey(b);
-		else poster(b);
+		chalkboard(b);
+		corkboard(b);
 		wallShelf(b);
 		desk(b, s.lampOn);
 		cabinet(b);
@@ -240,34 +241,33 @@ function windowFrame(g: Ctx) {
 }
 
 function signFrame(g: Ctx) {
-	outlined(g, [[22, 14, 54, 30, C.poster]], C.ink);
-	rect(g, 22, 14, 54, 1, C.frame);
-	rect(g, 22, 43, 54, 1, C.frame);
+	outlined(g, [[22, 14, 38, 30, C.poster]], C.ink);
+	rect(g, 22, 14, 38, 1, C.frame);
+	rect(g, 22, 43, 38, 1, C.frame);
 	rect(g, 22, 14, 1, 30, C.frame);
-	rect(g, 75, 14, 1, 30, C.frame);
+	rect(g, 59, 14, 1, 30, C.frame);
 }
 
-/** A climb with a flag on it: the wall's one picture until medals hang there. */
-function poster(g: Ctx) {
-	outlined(g, [[244, 12, 26, 28, C.trim]], C.ink);
-	rect(g, 246, 14, 22, 24, C.shelf);
-	for (let x = 0; x < 22; x++) {
-		const h = Math.round(Math.max(0, 14 - Math.abs(x - 12) * 1.3));
-		rect(g, 246 + x, 34 - h, 1, h + 4, C.book);
-	}
-	rect(g, 258, 20, 1, 6, C.lilac);
-	rect(g, 259, 20, 4, 3, C.amber);
+/** The crew's next ride, in chalk (drawLive writes it). */
+function chalkboard(g: Ctx) {
+	outlined(g, [[64, 12, 38, 22, C.wood]], C.ink);
+	rect(g, 64, 12, 38, 1, C.woodTop);
+	rect(g, 66, 14, 34, 17, C.slate);
+	rect(g, 66, 31, 34, 1, C.woodDark);
+	rect(g, 92, 32, 5, 1, C.paper);
 }
 
-/** July: the leader's jersey takes the picture's place. */
-function yellowJersey(g: Ctx) {
-	outlined(g, [[244, 12, 26, 28, C.trim]], C.ink);
-	rect(g, 246, 14, 22, 24, C.shelf);
-	rect(g, 249, 18, 16, 5, C.amber);
-	rect(g, 252, 23, 10, 12, C.amber);
-	rect(g, 255, 18, 4, 2, C.shelf);
-	rect(g, 252, 29, 10, 1, C.bulb);
-	rect(g, 262, 23, 1, 12, C.amberDark);
+/** The crew's pins as notes (drawLive), and room below them for what comes. */
+function corkboard(g: Ctx) {
+	outlined(g, [[244, 12, 26, 26, C.woodDark]], C.ink);
+	rect(g, 245, 13, 24, 24, C.cork);
+	for (let i = 0; i < 16; i++)
+		dot(
+			g,
+			245 + Math.floor(hash3(i, 2, 7) * 24),
+			13 + Math.floor(hash3(i, 3, 7) * 24),
+			C.corkDark,
+		);
 }
 
 /** A shelf over the speaker: records, a book and a small plant. */
@@ -486,6 +486,8 @@ function table(g: Ctx) {
 /** What moves on the wall and the furniture, over drawBack's picture. */
 export function drawLive(g: Ctx, s: SceneInput) {
 	signBars(g, s);
+	chalk(g, s);
+	notes(g, s);
 	clock(g, s);
 	laptop(g, s);
 	mug(g, s);
@@ -618,9 +620,42 @@ function signBars(g: Ctx, s: SceneInput) {
 	SIGN_BARS.forEach((tall, i) => {
 		const level = pulseOf({ ...s, beat: s.beat + i * 0.13, t: s.t + i });
 		const h = Math.max(3, Math.round(tall * (0.55 + 0.45 * level)));
-		rect(g, 26 + i * 10, 40 - h, 6, h, C.teal);
-		rect(g, 26 + i * 10, 40 - h, 6, 1, C.tealLight);
+		rect(g, 25 + i * 7, 40 - h, 4, h, C.teal);
+		rect(g, 25 + i * 7, 40 - h, 4, 1, C.tealLight);
 	});
+}
+
+/** The next ride in chalk, or the board asking for one. */
+function chalk(g: Ctx, s: SceneInput) {
+	const { plan } = s.club;
+	const lines = plan ? [plan.day, plan.time] : ['NEXT', 'RIDE?'];
+	lines.forEach((line, i) =>
+		text(
+			g,
+			line,
+			83 - Math.floor(textWidth(line) / 2),
+			16 + i * 7,
+			i ? C.paper : C.amber,
+		),
+	);
+}
+
+/** One note a pin, up to six: a colour each and a pin through it. */
+function notes(g: Ctx, s: SceneInput) {
+	const hues = [C.paper, C.amber, C.tealLight, C.heart, C.bulb, C.lilac];
+	for (let i = 0; i < Math.min(6, s.club.pins); i++) {
+		const x = 247 + (i % 3) * 7 + Math.floor(hash3(i, 1, 3) * 2);
+		const y = 15 + Math.floor(i / 3) * 7 + Math.floor(hash3(i, 2, 3) * 2);
+		rect(g, x, y, 5, 5, hues[i]);
+		rect(g, x + 1, y + 2, 3, 1, C.cable);
+		dot(g, x + 2, y, C.red);
+	}
+	if (s.moment === 'tour') {
+		// July: the leader's jersey, pinned below the notes.
+		rect(g, 250, 29, 12, 3, C.amber);
+		rect(g, 253, 32, 6, 4, C.amber);
+		dot(g, 256, 29, C.red);
+	}
 }
 
 /** A cuckoo clock: on the hour, or when clicked, the bird comes out. */
@@ -659,8 +694,18 @@ function clock(g: Ctx, s: SceneInput) {
 	rect(g, 225 + swing, 45, 3, 2, C.amber);
 }
 
-/** The laptop's code scrolls a line every half second. */
+/**
+ * The laptop's code scrolls a line every half second. While the crew has a
+ * session running it shows that instead: LIVE, and a bar for each rider.
+ */
 function laptop(g: Ctx, s: SceneInput) {
+	if (s.club.live > 0) {
+		if (s.still || Math.floor(s.t * 2) % 2 === 0)
+			text(g, 'LIVE', 50, 48, C.redLight);
+		for (let i = 0; i < Math.min(5, s.club.live); i++)
+			rect(g, 50 + i * 3, 54, 2, 1, C.teal);
+		return;
+	}
 	const scroll = s.still ? 0 : Math.floor(s.t * 2);
 	for (let i = 0; i < 4; i++) {
 		const n = i + scroll;

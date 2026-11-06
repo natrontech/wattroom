@@ -73,6 +73,10 @@ const DARK = {
 	cushionB: '#2a6a7a',
 	cushionC: '#8a6a2a',
 	cushionD: '#5a3a84',
+	/** The chalkboard's slate and the corkboard. */
+	slate: '#1f3a33',
+	cork: '#a8763f',
+	corkDark: '#7f5429',
 	/** A workshop's red: the tool chest, the machine's gauge. */
 	red: '#b83a32',
 	redLight: '#dc6a4e',
@@ -178,6 +182,9 @@ const FIXED: readonly Name[] = [
 	'cushionA',
 	'cushionB',
 	'cushionC',
+	'slate',
+	'cork',
+	'corkDark',
 	'red',
 	'redLight',
 	'litFloor',
