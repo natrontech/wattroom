@@ -991,8 +991,41 @@ A fan drops 12 dB and the bike mix barely moves, so a phone in a loud room stays
 
 These numbers are Chrome's suppressor on this Mac. A phone may run its platform's own processing instead, so they say which way the change goes and not what a phone sounds like. The constraint is a bare value, which the spec treats as `ideal`, so a browser that cannot honour it still opens the mic.
 
-### 22.6 Not measured
+### 22.6 Music in the echo canceller
 
+Report after noise cancellation shipped: voices sound over-cancelled while music, the radio or a video plays. Noise cancellation is not the cause. The echo canceller is.
+
+Chrome's default `echoCancellation: true` is Chrome-wide echo cancellation ([`kChromeWideEchoCancellation`](https://source.chromium.org/chromium/chromium/src/+/main:media/base/media_switches.cc), enabled by default): its reference is the output device, so it holds everything the browser plays. With `--mute-audio`, `true` cancelled nothing here, so the rig cannot run this path without sound leaving the Mac. To reproduce it, music played through a remote track into an element under `remote-only`, which puts it in the same canceller's reference silently. Raw capture through the real model and gate, offline, speech at −26 dBFS:
+
+| Case | PESQ-WB | STOI | First 80 ms of a word |
+| --- | --- | --- | --- |
+| No music | 4.40 | 0.999 | −0.3 dB |
+| Headphones: music in the reference, none in the mic | 1.58 | 0.815 | −7.2 |
+| Same, music 12 dB quieter | 3.02 | 0.944 | −4.4 |
+| Speakers: music in the reference and at −30 dBFS in the mic | 1.24 | 0.516 | −14.4 |
+| Speakers: a song, same level | 1.37 | 0.702 | −47.7 |
+| Speakers: music at −30 dBFS, not in the reference | 3.06 | 0.973 | 0.1 |
+| Speakers: a song at −30 dBFS, not in the reference | 1.38 | 0.852 | 3.8 |
+
+The canceller suppresses wherever it expects echo, so it takes the voice under the music, on headphones too. It had not stopped after 80 s. The damage follows the music's level. Instrumental music in the mic is noise to the model. A singer is speech to it, so a song leaks at −31 dBFS into the pauses and lifts the automatic mark to its ceiling. That leak is what a rider on speakers now pays, and it costs less than the words: STOI 0.85 against 0.70.
+
+`remote-only` keeps music out of the reference. It only counts audio an element plays, and a remote track played through WebAudio is not in it, so voices would come back. `createMediaElementSource` does not help: `WebMediaPlayerMS` has no audio provider, so the element goes on playing and reads silence. The element itself has to play. Echo of a voice at −30 dBFS, by element volume:
+
+| Element volume | Echo left in the mic |
+| --- | --- |
+| 1 | −81 to −95 dBFS |
+| 0.2 | −75 to −90 |
+| 0.1 | −33, none cancelled |
+| 0.03 | −33, none cancelled |
+
+The reference has to sit over a level the canceller reacts to, somewhere between −46 and −40 dBFS for this voice. So each voice's element plays at 0.2 beside the graph, and a share stays out because it is music. In a real call through LiveKit, a second rider's mic carrying the first rider's voice at −26 dBFS sent it back at −24 dBFS without that copy. With it the echo reached −56 dBFS within 10 s and sat between −56 and −81 after that.
+
+A mic test keeps `true`: it plays the rider back through WebAudio, and on speakers nothing else stops that howling. A handheld keeps `true` too, because its voices never reach an element at any volume.
+
+### 22.7 Not measured
+
+- The copy's sound. It plays 14 dB under the voice at a delay nobody measured, which ripples the level by about 2 dB at most. Nobody has listened to that.
+- `true` with music in its reference on real speakers. The table reproduces it with the same canceller by another route.
 - A real phone, with its own mic and its own processing.
 - A real mic, a real fan, a real voice: synthetic speech stops at 11 kHz, and a neural model may treat a real rider's breathing differently.
 - Chrome's AEC under double-talk on speakers (a rider talking over the crew) needs a real speaker in the loop. It is the suspected cause of voices cutting out on speakers (#4339's note).

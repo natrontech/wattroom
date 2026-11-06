@@ -14,6 +14,11 @@ import { expect, test, voicePath } from './crew';
  * VOICE_DENOISE=0 turns noise cancellation off. VOICE_PHONE=1 sends from a
  * rider with a finger for a pointer; VOICE_PHONE_NS=0 takes Chrome's suppressor
  * off that phone again, for the before.
+ *
+ * VOICE_ECHO=1 asks whether a rider on speakers sends the crew back: B's mic
+ * plays what A says, late, and B's capture comes out as `-echo.wav`. Both read
+ * one file, so the lateness is how long after A B opens its mic.
+ * VOICE_ECHO_COPY=0 silences B's elements, for the control.
  */
 const dir = process.env.VOICE_DIR ?? '';
 const scene = process.env.VOICE_SCENE ?? '';
@@ -21,6 +26,8 @@ const label = process.env.VOICE_LABEL ?? 'run';
 const LISTEN_MS = Number(process.env.VOICE_LISTEN_MS ?? 45_000);
 const PHONE = process.env.VOICE_PHONE === '1';
 const PHONE_NS = process.env.VOICE_PHONE_NS !== '0';
+const ECHO = process.env.VOICE_ECHO === '1';
+const ECHO_LATE_MS = 650;
 
 declare global {
 	interface Window {
@@ -204,6 +211,19 @@ test(`what the call hears: ${scene}`, async ({ riders, channels }) => {
 			window.matchMedia = (q) =>
 				media(q === '(pointer: coarse)' ? '(min-width: 0px)' : q);
 		});
+	if (process.env.VOICE_ECHO_COPY === '0')
+		await b.context().addInitScript(() => {
+			const volume = Object.getOwnPropertyDescriptor(
+				HTMLMediaElement.prototype,
+				'volume',
+			)!;
+			Object.defineProperty(HTMLMediaElement.prototype, 'volume', {
+				...volume,
+				set() {
+					volume.set!.call(this, 0);
+				},
+			});
+		});
 	const opened = await channels.open(a, `Measure ${Date.now() % 100000}`);
 	await channels.enter(b, opened);
 	const voice = voicePath(opened);
@@ -223,6 +243,23 @@ test(`what the call hears: ${scene}`, async ({ riders, channels }) => {
 	).toBeVisible({ timeout: 20_000 });
 	// A's own mic reopening rebuilds nothing here, but a reconnect closes B's
 	// graph, so only a running one counts.
+	if (ECHO) {
+		await a
+			.getByRole('button', { name: 'microphone', pressed: true })
+			.first()
+			.click();
+		const mic = (rider: typeof a) =>
+			rider.getByRole('button', { name: 'microphone', pressed: false }).first();
+		await expect(mic(a)).toBeVisible();
+		await expect(mic(b)).toBeVisible();
+		await Promise.all([
+			mic(a).click(),
+			b.waitForTimeout(ECHO_LATE_MS).then(() => mic(b).click()),
+		]);
+		await expect(
+			b.getByRole('button', { name: 'microphone', pressed: true }),
+		).toBeVisible({ timeout: 20_000 });
+	}
 	await expect
 		.poll(
 			() =>
@@ -249,6 +286,11 @@ test(`what the call hears: ${scene}`, async ({ riders, channels }) => {
 		const h = t.heard.filter((x) => x.ctx.state === 'running').at(-1)!;
 		await t.startOn('heard', h.ctx, h.node);
 	});
+	if (ECHO)
+		await b.evaluate(async () => {
+			const t = window.__tap;
+			await t.start('echo', t.raw.at(-1)!);
+		});
 	await a.waitForTimeout(LISTEN_MS);
 
 	const stats = (rider: typeof a) =>
@@ -289,5 +331,10 @@ test(`what the call hears: ${scene}`, async ({ riders, channels }) => {
 		`${pre}-heard.wav`,
 		wavFile(await b.evaluate(() => window.__tap.wav('heard')), rates.heard),
 	);
+	if (ECHO)
+		writeFileSync(
+			`${pre}-echo.wav`,
+			wavFile(await b.evaluate(() => window.__tap.wav('echo'))),
+		);
 	writeFileSync(`${pre}.json`, JSON.stringify({ send, receive, gate, rates }));
 });

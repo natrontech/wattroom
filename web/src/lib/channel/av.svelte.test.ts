@@ -2,6 +2,7 @@ import { channelAddress } from '$lib/channel/address';
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GATE_CEIL, GATE_FLOOR } from './gate-scale';
+import { ECHO_REFERENCE } from '$lib/channel/av-output';
 import { mixer } from '$lib/sound/mixer.svelte';
 import { pickStage } from '$lib/channel/stage';
 import { observeServerTime, resetServerClock } from '$lib/server-clock';
@@ -1466,7 +1467,7 @@ describe('a remote voice is heard once (#1339)', () => {
 	// fake does exactly that), and the app calls it on the first click after
 	// a join: from then on every voice sounded twice, a few milliseconds
 	// apart, which is the phaser riders reported.
-	it("stays silent on its element through the browser's start-audio", async () => {
+	it("keeps its element to the echo copy through the browser's start-audio", async () => {
 		await withOutputGraph(async () => {
 			let av!: ReturnType<typeof createChannelAv>;
 			const dispose = $effect.root(() => {
@@ -1474,10 +1475,28 @@ describe('a remote voice is heard once (#1339)', () => {
 			});
 			await av.join();
 			const { el } = remoteVoice('jan');
-			expect(el.volume).toBe(0);
+			expect(el.volume).toBe(ECHO_REFERENCE);
 			await av.startPlayback();
 			expect(el.muted).toBe(false); // the SDK did what it does —
-			expect(el.volume).toBe(0); // and the element still makes no sound
+			expect(el.volume).toBe(ECHO_REFERENCE); // and the element stayed down
+			av.leave();
+			dispose();
+		});
+	});
+
+	// Away plays nothing to an empty chair, and that takes the copy too.
+	it('silences the echo copy while you are away', async () => {
+		await withOutputGraph(async () => {
+			let av!: ReturnType<typeof createChannelAv>;
+			const dispose = $effect.root(() => {
+				av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
+			});
+			await av.join();
+			const { el } = remoteVoice('jan');
+			await av.setAway(true);
+			expect(el.volume).toBe(0);
+			await av.setAway(false);
+			expect(el.volume).toBe(ECHO_REFERENCE);
 			av.leave();
 			dispose();
 		});
