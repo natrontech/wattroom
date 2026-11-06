@@ -21,6 +21,7 @@ import {
 } from './crew';
 import { makeGhosts, MOST_GHOSTS, type GhostAt, type Ghosts } from './ghosts';
 import { makeWatchers } from './watchers';
+import { MOTION } from './pixel';
 import { bunchLooks, type Loadout } from './loadout';
 import { makeTags, type Tags } from './tags';
 import type { BunchView } from '$lib/channel/bunch-view';
@@ -380,6 +381,10 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		}
 		gates?.update(opts.gates!(), you.d);
 		const me = crew.update(route, riders, pedal, dt, real, mode === 'orbit');
+		// The wind at the frame's edges (pixel.ts): none under reduced motion, the steady camera or the model view.
+		MOTION.speed.value =
+			mode === 'chase' && !(opts.steady?.() ?? false) ? you.v : 0;
+		MOTION.time.value = performance.now() / 1000;
 		crew.drive(route, car, mode === 'orbit');
 		ghosts?.update(route, ghostsNow(real), dt, mode === 'orbit');
 		watchers?.update(
