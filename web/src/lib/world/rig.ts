@@ -120,7 +120,7 @@ export function makeRig(route: Route, world: World) {
 			const back = steady
 				? STEADY.back
 				: chase
-					? 7.2 + Math.min(3, rider.v * 0.15)
+					? 5.6 + Math.min(2.6, rider.v * 0.13)
 					: 70;
 			// The eye rides your lane, not the centre line, so your lane leaves you in RIDER_BOX.
 			const c = along(route, rider.d, lap);
@@ -129,7 +129,7 @@ export function makeRig(route: Route, world: World) {
 			const b = along(route, rider.d - way * back, lap);
 			want.set(
 				b.x + sx,
-				yOf(route, b.ele) + (steady ? STEADY.up : chase ? 2.4 : 42),
+				yOf(route, b.ele) + (steady ? STEADY.up : chase ? 2.05 : 42),
 				b.z + sz,
 			);
 			want.y = Math.max(want.y, ground(want.x, want.z) + GOAL_FLOOR);

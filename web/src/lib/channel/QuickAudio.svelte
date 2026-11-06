@@ -46,7 +46,7 @@
 		onclick={openSoundPanel}
 		aria-expanded={open}
 		class={compact
-			? 'text-muted-dim hover:text-muted flex flex-1 items-center justify-center rounded py-1.5'
+			? 'text-muted-dim hover:text-muted flex min-h-11 flex-1 items-center justify-center rounded'
 			: 'btn btn-secondary btn-xs'}
 		title="the mix, the gate and your devices"
 		aria-label="sound — the mix, the gate and your devices"
