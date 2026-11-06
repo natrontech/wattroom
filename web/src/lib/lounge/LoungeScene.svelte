@@ -28,6 +28,11 @@
 	} from '$lib/context-menu.svelte';
 	import { serverNow } from '$lib/server-clock';
 	import type { LoungeState } from '$lib/protocol';
+	import { goto } from '$app/navigation';
+	import { sessionPath } from '$lib/channel/address';
+	import { device } from '$lib/device.svelte';
+	import { crewLive } from '$lib/nav/crew-live.svelte';
+	import { fetchPins } from '$lib/pins/pins';
 	import { mixer } from '$lib/sound/mixer.svelte';
 	import { prefersReducedMotion } from '$lib/motion';
 	import { fnv } from '$lib/world/loadout';
@@ -207,6 +212,35 @@
 		return { playing: false, beat: 0, pulsing: false, disco: false };
 	}
 
+	/** The chalkboard's two lines: when the crew's next plan starts. */
+	const chalked = $derived.by(() => {
+		const at = channel.plan?.startsAt;
+		if (!at) return undefined;
+		const when = new Date(at);
+		const today = when.toDateString() === new Date().toDateString();
+		return {
+			day: today
+				? 'TODAY'
+				: when.toLocaleDateString('en', { weekday: 'short' }).toUpperCase(),
+			time: when.toLocaleTimeString('en-GB', {
+				hour: '2-digit',
+				minute: '2-digit',
+			}),
+		};
+	});
+	/** The crew's session running now, if any: the laptop shows it. */
+	const running = $derived(
+		crewLive.crews.find((c) => c.id === station)?.sessions?.[0],
+	);
+	/** How many notes the corkboard holds: the crew's pins. */
+	let pins = $state(0);
+	$effect(() => {
+		const crew = station;
+		void fetchPins(crew).then((res) => {
+			if (res.ok && crew === station) pins = res.data.length;
+		});
+	});
+
 	/** Who rode a frame ago, and who keeps a towel on until when (figures.ts). */
 	let ridingSeen: Set<string> = new Set();
 	let coolingUntil: Map<string, number> = new Map();
@@ -267,6 +301,7 @@
 			pizza: pizzaNight(now),
 			fondue: fondueNight(now),
 			moment: momentOf(now),
+			club: { plan: chalked, pins, live: running?.riders.length ?? 0 },
 			owl: owlHours(now.getHours()),
 		});
 	}
@@ -387,6 +422,12 @@
 		} else if (spot === 'fish') fishUntil = clock + 1.2;
 		else if (spot === 'plant') bloomUntil = clock + 30;
 		else if (spot === 'arcade') arcadeUntil = clock + 8;
+		else if (spot === 'board') void goto(`/crew/${station}/schedule`);
+		else if (spot === 'cork') void goto(`/crew/${station}`);
+		else if (spot === 'laptop' && running)
+			void goto(sessionPath(station, running.id));
+		else if (spot === 'bike' && !device.spectator)
+			void goto(channel.address.training);
 	}
 
 	/**

@@ -182,6 +182,13 @@
 					pizza: false,
 					fondue: params.get('fondue') === '1',
 					moment: (params.get('moment') ?? '') as Moment,
+					club: {
+						plan: params.get('plan')
+							? { day: 'THU', time: '18:30' }
+							: undefined,
+						pins: Number(params.get('pins') ?? 0),
+						live: Number(params.get('live') ?? 0),
+					},
 					owl: false,
 				});
 			},

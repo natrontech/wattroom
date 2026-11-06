@@ -120,6 +120,16 @@ export interface Heart {
 	born: number;
 }
 
+/** The crew's life, as the room's objects show it. */
+export interface Club {
+	/** The chalkboard: the next plan's day and time, when there is one. */
+	plan?: { day: string; time: string };
+	/** Notes on the corkboard: the crew's pins. */
+	pins: number;
+	/** Riders on the crew's running session; the laptop shows it live. */
+	live: number;
+}
+
 export interface SceneInput {
 	/** The whole room in scene pixels, never smaller than the stage. */
 	w: number;
@@ -172,6 +182,8 @@ export interface SceneInput {
 	fondue: boolean;
 	/** What the calendar brings today (moments.ts). */
 	moment: Moment;
+	/** What the crew's own things on the wall show. */
+	club: Club;
 	/** Past midnight: an owl on the sill. */
 	owl: boolean;
 }
@@ -263,7 +275,18 @@ export function tagsOf(crew: Crew, w: number, h: number): Tag[] {
 }
 
 export type Hotspot =
-	'lamp' | 'deck' | 'window' | 'clock' | 'stove' | 'fish' | 'plant' | 'arcade';
+	| 'lamp'
+	| 'deck'
+	| 'window'
+	| 'clock'
+	| 'stove'
+	| 'fish'
+	| 'plant'
+	| 'arcade'
+	| 'board'
+	| 'cork'
+	| 'laptop'
+	| 'bike';
 
 const SPOTS: { spot: Hotspot; x: number; y: number; w: number; h: number }[] = [
 	{ spot: 'clock', x: 216, y: 10, w: 22, h: 38 },
@@ -273,6 +296,11 @@ const SPOTS: { spot: Hotspot; x: number; y: number; w: number; h: number }[] = [
 	{ spot: 'deck', x: 236, y: 38, w: 70, h: 46 },
 	{ spot: 'window', x: 116, y: 8, w: 88, h: 48 },
 	{ spot: 'plant', x: 6, y: 36, w: 24, h: 48 },
+	{ spot: 'board', x: 62, y: 10, w: 42, h: 25 },
+	{ spot: 'cork', x: 242, y: 10, w: 30, h: 28 },
+	{ spot: 'laptop', x: 44, y: 44, w: 28, h: 18 },
+	{ spot: 'bike', x: BIKE_XS[1] - 20, y: 100, w: 40, h: 40 },
+	{ spot: 'bike', x: BIKE_XS[0] - 20, y: 100, w: 40, h: 40 },
 ];
 const ARCADE = {
 	spot: 'arcade' as const,
