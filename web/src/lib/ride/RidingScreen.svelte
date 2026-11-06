@@ -163,6 +163,8 @@
 	// or stops, hands the ride to the Skyline until the rider asks for 3D
 	// again (#3080).
 	const world = createWorldView();
+	// Its return to 3D (#4423) ends with the ride.
+	$effect(() => () => world.dispose());
 	const inWorld = $derived(world.on && !!session.road);
 	const drawn = $derived(inWorld);
 	const skyline = $derived(skylineOf(session.road, session.segments, ftp));

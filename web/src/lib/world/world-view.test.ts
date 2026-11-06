@@ -4,7 +4,7 @@ import { setWorldMode, worldMode } from './mode';
 
 const cues = vi.hoisted(() => [] as string[]);
 vi.mock('$lib/sound/cues', () => ({ play: (id: string) => cues.push(id) }));
-import { createWorldView } from './world-view.svelte';
+import { createWorldView, RETURN_S } from './world-view.svelte';
 
 /** A browser that draws the world: WebGL2 and WEBGL_multi_draw. */
 function capable() {
@@ -60,7 +60,51 @@ describe('a ride’s world view (#3080)', () => {
 		expect(worldMode()).toBe('full');
 	});
 
-	it('falls back one way, and only "Try 3D again" brings the world back', () => {
+	it('comes back by itself after a failure, later each time, a few times a ride (#4423)', () => {
+		vi.useFakeTimers();
+		try {
+			setWorldMode('full');
+			const view = createWorldView();
+			for (const s of RETURN_S) {
+				view.fail('frames');
+				expect(view.on).toBe(false);
+				vi.advanceTimersByTime(s * 1000 - 1);
+				expect(view.on).toBe(false);
+				vi.advanceTimersByTime(1);
+				expect(view.on).toBe(true);
+			}
+			expect(cues.filter((c) => c === 'recover')).toHaveLength(RETURN_S.length);
+			view.fail('context-lost');
+			vi.advanceTimersByTime(3600_000);
+			expect(view.reason).toBe('context-lost'); // past the last, only 3D
+			expect(worldMode()).toBe('full');
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('never brings the world back over the rider’s Flat, or after the ride', () => {
+		vi.useFakeTimers();
+		try {
+			setWorldMode('full');
+			const flat = createWorldView();
+			flat.fail('frames');
+			flat.flatten();
+			vi.advanceTimersByTime(RETURN_S[0] * 1000);
+			expect(flat.reason).toBe('chosen');
+			setWorldMode('full');
+			const over = createWorldView();
+			over.fail('frames');
+			over.dispose();
+			vi.advanceTimersByTime(RETURN_S[0] * 1000);
+			expect(over.reason).toBe('frames');
+			expect(cues).not.toContain('recover');
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('falls back, and 3D brings the world back at once', () => {
 		setWorldMode('full');
 		const view = createWorldView();
 		expect(view.on).toBe(true);
