@@ -17,6 +17,19 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.11.21] - 2026-11-06
+
+### Added
+
+- A workout ridden on a road now gets its workout as its picture for Strava: the blocks and your power, with the road underneath. Free rides on a road keep their road poster. (#4443)
+- The phone remote now has Skip block and +1 min, for a workout you ride alone or your own workout in a voice channel. (#4444)
+- A ride in the 3D world now leaves two pictures on the closing card: you on the road, and the same moment from above, as the Overhead camera saw it. Save either or both for Strava. (#4442)
+- A workout ridden on a road, in 3D or flat, now shows the workout along the bottom: its blocks going up and down, the power you rode and, with a heart-rate strap, your heart rate over them. The road's gradient stays out of the way unless the trainer is riding it; a free ride keeps the road profile. (#4441)
+
+### Fixed
+
+- +1 min now always adds a minute to the block you are riding. Pressed in a block's first minute it used to throw you back into the block before; in a workout's first minute it gave less than a minute. (#4446)
+
 ## [2026.11.20] - 2026-11-06
 
 ### Added
@@ -4395,7 +4408,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.20...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.21...HEAD
+[2026.11.21]: https://github.com/natrontech/wattroom/compare/2026.11.20...2026.11.21
 [2026.11.20]: https://github.com/natrontech/wattroom/compare/2026.11.19...2026.11.20
 [2026.11.19]: https://github.com/natrontech/wattroom/compare/2026.11.18...2026.11.19
 [2026.11.18]: https://github.com/natrontech/wattroom/compare/2026.11.17...2026.11.18
