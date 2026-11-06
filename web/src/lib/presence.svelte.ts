@@ -1,13 +1,16 @@
 import { api } from '$lib/api';
 import { STALE_AFTER, readOrder } from '$lib/stale';
 import type { CrewRef } from '$lib/crew-types';
+import type { LobbyLane } from '$lib/protocol';
+import { isLaneFrame, riderLane } from '$lib/rider-lane.svelte';
 
 /**
  * The one shared presence feed (#251), replacing three 10 s pollers: a lobby
  * socket to /ws/presence that the hub pings on ANY presence change — join,
  * leave, voice, camera, phase, riding, a friend coming online. The socket
  * carries no data; a ping means "re-fetch what you show". Holding it is what
- * makes YOU read as online to your friends.
+ * makes YOU read as online to your friends. It also carries the rider's own
+ * lane (rider-lane.svelte.ts, #4425): a ride alone's phone remote.
  */
 let crews = $state<CrewRef[]>([]);
 // The last read's failure. A failed read used to become an empty list, and
@@ -81,12 +84,26 @@ function connect() {
 	const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
 	socket = new WebSocket(`${scheme}://${location.host}/ws/presence`);
 	// On (re)open, catch up on whatever the gap missed.
+	const open = socket;
 	socket.onopen = () => {
 		attempts = 0;
 		void refresh();
+		riderLane.opened((msg) => {
+			if (open.readyState === WebSocket.OPEN) open.send(JSON.stringify(msg));
+		});
 	};
-	socket.onmessage = () => refreshCoalesced();
+	socket.onmessage = (event) => {
+		let frame: LobbyLane = {};
+		try {
+			frame = (JSON.parse(event.data) as LobbyLane | null) ?? {};
+		} catch {
+			// Not JSON: a ping all the same.
+		}
+		if (isLaneFrame(frame)) riderLane.heard(frame);
+		else refreshCoalesced();
+	};
 	socket.onclose = () => {
+		if (socket === open) riderLane.closed();
 		if (stopped) return;
 		attempts += 1;
 		// Jittered (#1741): a server restart brought the whole fleet back in
@@ -160,6 +177,7 @@ export const presence = {
 		pingedDuringWindow = false;
 		socket?.close();
 		socket = null;
+		riderLane.reset();
 		crews = [];
 		error = null;
 	},

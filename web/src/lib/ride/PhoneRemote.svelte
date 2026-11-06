@@ -7,19 +7,26 @@
 	 * to 5 phantom shifts. Only Talk holds, with a beat (remote-talk.ts).
 	 *
 	 * Chrome, not live data: neon, never the watt accent (ADR-0005).
+	 *
+	 * `link` is the way to the riding screen: a voice channel's socket, or the
+	 * rider's own lane for a ride alone (#4425). Talk and Cheer reach a call
+	 * and a channel, so a ride alone draws neither (`social`).
 	 */
 	import { onDestroy, onMount } from 'svelte';
-	import type { createChannelLive } from '$lib/channel/live.svelte';
+	import type { RemoteLink } from '$lib/ride/remote-link';
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
 	import { createTalkHold } from '$lib/ride/remote-talk';
 	import { keepAwakeWhile } from '$lib/workout/keep-awake.svelte';
 	import { answerLine, remoteLine } from '$lib/ride/remote-line';
 
 	let {
-		live,
+		link: live,
+		social = true,
 		onclose,
 	}: {
-		live: ReturnType<typeof createChannelLive>;
+		link: RemoteLink;
+		/** The ride is in a voice channel: Talk and Cheer have somewhere to go. */
+		social?: boolean;
 		onclose: () => void;
 	} = $props();
 
@@ -27,12 +34,12 @@
 	// Cheer answers the rider who last cheered you, or cheers everyone; Camera
 	// and Photo turn its world, so they wait for 3D, one row under Talk with
 	// the line that says so (#4253).
-	const CELLS = [
+	const CELLS = $derived([
 		{ action: 'page', label: 'Page' },
 		{ action: 'map', label: 'Map' },
 		{ action: 'view', label: '3D / Flat' },
-		{ action: 'cheer-back', label: 'Cheer' },
-	];
+		...(social ? [{ action: 'cheer-back', label: 'Cheer' }] : []),
+	]);
 	const WORLD_CELLS = [
 		{ action: 'camera', label: 'Camera' },
 		{ action: 'photo', label: 'Photo' },
@@ -87,23 +94,32 @@
 	</div>
 
 	<div class="grid flex-1 auto-rows-fr grid-cols-2 gap-3">
-		{#each CELLS as c (c.action)}
-			<button type="button" class={cell} onclick={() => press(c.action)}>
+		{#each CELLS as c, i (c.action)}
+			<!-- Three cells alone: the last takes the row. -->
+			<button
+				type="button"
+				class="{cell} {i === CELLS.length - 1 && CELLS.length % 2
+					? 'col-span-2'
+					: ''}"
+				onclick={() => press(c.action)}
+			>
 				{c.label}
 			</button>
 		{/each}
-		<button
-			type="button"
-			class="{cell} col-span-2"
-			style="touch-action: none"
-			onpointerdown={talk.down}
-			onpointerup={talk.up}
-			onpointerleave={talk.up}
-			onpointercancel={talk.up}
-			oncontextmenu={(event) => event.preventDefault()}
-		>
-			Talk
-		</button>
+		{#if social}
+			<button
+				type="button"
+				class="{cell} col-span-2"
+				style="touch-action: none"
+				onpointerdown={talk.down}
+				onpointerup={talk.up}
+				onpointerleave={talk.up}
+				onpointercancel={talk.up}
+				oncontextmenu={(event) => event.preventDefault()}
+			>
+				Talk
+			</button>
+		{/if}
 		{#each WORLD_CELLS as c (c.action)}
 			<button
 				type="button"

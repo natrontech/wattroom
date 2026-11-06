@@ -4,6 +4,7 @@ import type { RoadAlone } from '$lib/ride/road-alone.svelte';
 import { createRideSounds, soloRideSounds } from '$lib/ride/ride-sounds.svelte';
 import type { createRideSession } from '$lib/workout/session.svelte';
 import { createSignalWatch } from '$lib/workout/signal-watch.svelte';
+import { serveRideRemote } from '$lib/ride/ride-remote.svelte';
 
 type Session = ReturnType<typeof createRideSession>;
 
@@ -31,6 +32,9 @@ export function holdRideAloneEffects(ride: {
 		// What the ride says out loud (#1792): the cues a session plays for its
 		// riders, from the session's own state, the same wiring as /ramp's (#3359).
 		createRideSounds(soloRideSounds(ride.session, () => signal.lost));
+
+		// The rider's phone as its remote, from any page (#4425).
+		serveRideRemote(ride);
 
 		// Guard telemetry for #46: the hardware session has to produce evidence,
 		// not an anecdote. Dev-only via hwlog.

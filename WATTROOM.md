@@ -50,6 +50,7 @@ It is not a training plan generator, not an open world, and not a content treadm
 - Riding is the whole screen: the world, or flat the workout's graph or the Skyline, fills the content edge to edge with the numbers over it, watts top left. The ride's controls live in the now bar, never on the ride.
 - A ride belongs to the rider: one per device, owned by the app shell, ended only by End ride. Navigation never ends it.
 - One rider, one voice: the first screen to join voice carries voice and camera, every other screen is a controller.
+- A rider's phone is the remote of their ride wherever it started. A ride alone reaches it on the rider's own lane of the lobby socket, which carries nothing to anyone else.
 - One sensor, one screen: the hub arbitrates which screen holds a trainer.
 - The client owns the trainer and the workout. A network hiccup never drops a target. Trainer reconnect mid-interval is core, not polish.
 - Trainers are FTMS behind the `Trainer` interface, with a simulator for development and CI. Control-point writes are serialized. ANT+ is out.
