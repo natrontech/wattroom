@@ -6,7 +6,7 @@
  * (drawBack); drawLive adds what moves over it, and drawShade the dark that
  * falls when the lamp is off.
  */
-import { LOUNGE as C, shadeOf } from '$lib/lounge/palette';
+import { LOUNGE as C } from '$lib/lounge/palette';
 import {
 	disc,
 	dot,
@@ -31,6 +31,12 @@ import { hash3 } from '$lib/lounge/hash';
 import { paintSides } from '$lib/lounge/draw-sides';
 import { WINDOW } from '$lib/lounge/draw-window';
 import { bakeLight, type Light } from '$lib/lounge/light';
+import {
+	FRONT_LAMPS,
+	foreground,
+	frontRow,
+	mats,
+} from '$lib/lounge/draw-floor';
 
 /** The sign's five bars trace the equalizer W (ADR-0005). */
 const SIGN_BARS = [20, 9, 14, 9, 20];
@@ -68,9 +74,12 @@ export function drawBack(g: Ctx, s: SceneInput, ox: number, oy: number) {
 		else plant(b);
 		sofa(b);
 		stove(b);
+		mats(b);
 		rug(b);
 		table(b);
-		if (hasFront(s.w, s.h)) front(b);
+		if (hasFront(s.w, s.h)) frontRow(b);
+		b.setTransform(1, 0, 0, 1, 0, 0);
+		foreground(b, s.w, s.h, oy);
 		bakeLight(
 			b,
 			lightsOf(s, ox, oy, lamps),
@@ -115,10 +124,14 @@ function lightsOf(s: SceneInput, ox: number, oy: number, lamps: number[]) {
 				: { x: 160, y: 104, rx: 96, ry: 30, power: 0.6, on: 'floor' },
 		),
 	);
-	if (hasFront(s.w, s.h))
+	if (hasFront(s.w, s.h)) {
 		lights.push(
 			at({ x: 233, y: FRONT_Y - 18, rx: 40, ry: 30, power: 0.4, cool: true }),
 		);
+		if (s.lampOn)
+			for (const { x, up, rx, power } of FRONT_LAMPS)
+				lights.push(at({ x, y: FRONT_Y - up, rx, ry: 24, power, on: 'floor' }));
+	}
 	return lights;
 }
 
@@ -454,51 +467,6 @@ function table(g: Ctx) {
 	outlined(g, [[177, 104, 4, 6, C.woodDark]], C.ink);
 	rect(g, 178, 105, 2, 4, C.amberDark);
 	rect(g, 177, 103, 4, 1, C.woodTop);
-}
-
-/** A tall room's front row: a beanbag, a big plant and the arcade cabinet. */
-function front(g: Ctx) {
-	const y = FRONT_Y;
-	// The beanbag.
-	ellipse(g, 100, y + 1, 14, 2, C.floorDark);
-	ellipse(g, 100, y - 6, 13, 8, C.ink);
-	ellipse(g, 100, y - 6, 12, 7, C.cushionB);
-	ellipse(g, 97, y - 9, 6, 3, C.tealLight);
-	ellipse(g, 100, y - 1, 11, 1, shadeOf(C.cushionB));
-	// The plant.
-	ellipse(g, 160, y + 1, 9, 1, C.floorDark);
-	for (let i = 0; i < 7; i++) {
-		const a = -1 + (i / 6) * 2;
-		const tx = 160 + Math.sin(a) * 14;
-		const ty = y - 14 - Math.cos(a) * 18;
-		line(g, 160, y - 12, tx, ty, i % 2 ? C.leaf : C.leafLight);
-		ellipse(
-			g,
-			Math.round(tx),
-			Math.round(ty),
-			2,
-			1,
-			i % 2 ? C.leaf : C.leafLight,
-		);
-	}
-	outlined(g, [[154, y - 12, 12, 12, C.woodLight]], C.ink);
-	rect(g, 153, y - 12, 14, 2, C.wood);
-	// The arcade cabinet: its screen plays in drawLive.
-	ellipse(g, 233, y + 1, 13, 1, C.floorDark);
-	outlined(
-		g,
-		[
-			[223, y - 40, 21, 40, C.laptop],
-			[221, y - 20, 25, 4, C.laptopLight],
-		],
-		C.ink,
-	);
-	rect(g, 223, y - 40, 21, 5, C.frame);
-	rect(g, 226, y - 33, 15, 11, C.screen);
-	rect(g, 226, y - 19, 3, 2, C.heart);
-	rect(g, 231, y - 19, 2, 2, C.teal);
-	rect(g, 235, y - 19, 2, 2, C.amber);
-	rect(g, 226, y - 12, 15, 1, C.laptopLight);
 }
 
 /** What moves on the wall and the furniture, over drawBack's picture. */

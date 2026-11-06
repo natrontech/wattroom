@@ -73,6 +73,9 @@ const DARK = {
 	cushionB: '#2a6a7a',
 	cushionC: '#8a6a2a',
 	cushionD: '#5a3a84',
+	/** A workshop's red: the tool chest, the machine's gauge. */
+	red: '#b83a32',
+	redLight: '#dc6a4e',
 	/** Where the stove's light flickers on the floor. */
 	litFloor: '#5a3424',
 	/** What light is, on its way into the room (light.ts). */
@@ -175,6 +178,8 @@ const FIXED: readonly Name[] = [
 	'cushionA',
 	'cushionB',
 	'cushionC',
+	'red',
+	'redLight',
 	'litFloor',
 	'glow',
 	'moon',
