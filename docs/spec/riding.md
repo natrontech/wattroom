@@ -202,6 +202,9 @@ TV mode draws the same rail, with the place, the workout and the way out above i
 
 A closing card offers two pictures for Strava, and the rider saves either or both: the **poster**, drawn by the server from the saved ride, and the **world's**, drawn where the 3D world drew.
 
+- A free ride on a road is drawn as the road it rode, painted by zone: the poster. A **workout** is drawn as the workout, on a road or off one ([#4430](https://github.com/natrontech/wattroom/issues/4430)): its blocks in their zones' colours, the watts ridden over them, the heart rate over both on its own scale, and on a road the road it rode in a strip under them.
+- WattRoom's mark sits centred along the top, clear of the corners where Strava's feed lays its badges ([#4429](https://github.com/natrontech/wattroom/issues/4429)).
+
 - The world draws its one picture as it closes, at the ride's best moment once it has moved for **30 s**: the highest summit crossed, **20 m** below its top; else the highest hairpin ridden through; else the steepest **100 m** ridden. The world is keyed by place (ADR-0081), so that metre is drawn again, in the light it was ridden in, with you alone on the road. While it draws, the closing card holds the button's place with “Drawing…”.
 - The rider takes it when they choose, with the phone remote's **Photo**, the **O** key or a controller's snap button ([#4253](https://github.com/natrontech/wattroom/issues/4253)). The latest moment they took is the one drawn, in place of the best one.
 - It is drawn off-screen at **1080 × 1350**, Strava's portrait, at one pixel per pixel; the live canvas is untouched.

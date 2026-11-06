@@ -1,6 +1,7 @@
 package rides
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -59,6 +60,28 @@ func (s *Service) handleCard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	card := s.cardOf(r.Context(), user, row)
+	card.Theme = theme
+
+	png, err := og.RenderRide(card)
+	if err != nil {
+		httpx.Fail(w, s.log, "ride card render failed", err, "That ride's card could not be drawn.")
+		return
+	}
+	w.Header().Set("Content-Type", "image/png")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", cardFilename(row.StartedAt.Time, card.WorkoutName)))
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Cache-Control", "private, no-store")
+	if _, err := w.Write(png); err != nil { //nolint:gosec // G705: a PNG og drew, sent as image/png with nosniff, never markup
+		s.log.Warn("ride card write failed", "err", err, "ride", store.UUIDString(row.ID))
+	}
+}
+
+// cardOf is the ride as its picture draws it: everything but the theme the
+// download picked. Which picture it is follows from what is set here — a
+// free ride on a road is its road's poster, a workout is its workout
+// (og.RideCard.Poster).
+func (s *Service) cardOf(ctx context.Context, user db.User, row db.GetRideRow) og.RideCard {
 	card := og.RideCard{
 		// In the rider's own day, like every other date the app prints —
 		// a ride at 19:42 must not read as tomorrow morning.
@@ -66,7 +89,6 @@ func (s *Service) handleCard(w http.ResponseWriter, r *http.Request) {
 		Seconds:   int(row.Seconds), AvgWatts: int(row.AvgWatts), NormWatts: normWatts(row),
 		Kj: int(row.Kj), Ftp: int(row.FtpWatts), Xp: int(row.Xp),
 		Execution: float64(row.Execution), ExecutionScored: row.ExecutionScored,
-		Theme: theme,
 	}
 	// Where it was ridden, for the card's "in …": the voice channel, else
 	// the crew (#2558) — never a room.
@@ -85,11 +107,32 @@ func (s *Service) handleCard(w http.ResponseWriter, r *http.Request) {
 		s.log.Error("ride card samples unreadable", "err", err, "ride", store.UUIDString(row.ID))
 	}
 	card.Watts = make([]int, len(samples))
+	card.HR = make([]int, len(samples))
 	onRoad := false
+	beats, read := 0, 0
 	for i, sample := range samples {
-		card.Watts[i] = sample.Watts
+		card.Watts[i], card.HR[i] = sample.Watts, sample.HR
+		if sample.HR > 0 {
+			beats += sample.HR
+			read++
+		}
 		onRoad = onRoad || sample.M > 0
 	}
+	if read > 0 {
+		card.AvgHR = (beats + read/2) / read
+	}
+	// What the workout asked, second by second at the seconds it was scored
+	// at (#4430). A ride saved before rides kept their blocks has none, and
+	// an unreadable column costs the card its blocks, not the card.
+	var blocks []stats.Block
+	if row.Blocks != nil {
+		if err := json.Unmarshal(row.Blocks, &blocks); err != nil {
+			s.log.Warn("ride card blocks unreadable", "err", err, "ride", store.UUIDString(row.ID))
+			blocks = nil
+		}
+	}
+	card.Targets = stats.BlockTargets(blocks, samples)
+	card.Workout = len(blocks) > 0
 	// A ride on a road is drawn as the road it rode (#3142): its metres and
 	// heights beside the watts, under the route's generated name — never the
 	// owner's own, which may name where they live (#3055) — and the line
@@ -113,26 +156,19 @@ func (s *Service) handleCard(w http.ResponseWriter, r *http.Request) {
 		// workout over a 38 km road titled its 13 km poster with the road's
 		// 38 (#4229). The drawing below it is the same metres.
 		name = road.NameOf(ridden(samples))
-		stored, err := s.store.Queries.GetRideRoad(r.Context(), db.GetRideRoadParams{ID: id, UserID: user.ID})
+		stored, err := s.store.Queries.GetRideRoad(ctx, db.GetRideRoadParams{ID: row.ID, UserID: user.ID})
 		if err != nil {
 			s.log.Warn("ride card road unreadable", "err", err, "ride", store.UUIDString(row.ID))
 		}
 		card.HeightCredit = heightCredit(stored.EleSource)
+		// A workout on a road is drawn as the workout, the road under it
+		// (#4430); a free ride on one stays its poster. The ride's own mode
+		// says so even where it kept no blocks — the page's button reads the
+		// same word, so the two never disagree about which picture it is.
+		card.Workout = card.Workout || stored.RideMode != nil && *stored.RideMode == "workout"
 	}
 	card.WorkoutName = name
-
-	png, err := og.RenderRide(card)
-	if err != nil {
-		httpx.Fail(w, s.log, "ride card render failed", err, "That ride's card could not be drawn.")
-		return
-	}
-	w.Header().Set("Content-Type", "image/png")
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", cardFilename(row.StartedAt.Time, name)))
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.Header().Set("Cache-Control", "private, no-store")
-	if _, err := w.Write(png); err != nil {
-		s.log.Warn("ride card write failed", "err", err, "ride", store.UUIDString(row.ID))
-	}
+	return card
 }
 
 // cardTheme is the appearance a card is drawn in (#4098): `identity` and

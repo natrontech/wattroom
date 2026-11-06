@@ -21,11 +21,18 @@ export function fetchRideCard(
 }
 
 /**
- * What the button that downloads it says. A ride on a road is drawn as the
- * road it rode — a poster (#3142) — and the button says so; every other ride
- * gets its card, and the button says what it does (#3687).
+ * Whether the ride's picture is a poster: a ride on a road drawn as the road
+ * it rode (#3142). A workout on a road is not one — in a workout the workout
+ * comes first, its blocks, watts and heart rate with the road under them
+ * (#4430) — so only a ride on a road that was no workout gets the poster.
+ * The server draws by the same word (rides/card.go).
  */
-export const cardLabel = (ride: { distanceM?: number }) =>
-	ride.distanceM !== undefined
-		? 'Download the poster'
-		: 'Download the ride card';
+export const isPoster = (ride: { distanceM?: number; rideMode?: string }) =>
+	ride.distanceM !== undefined && ride.rideMode !== 'workout';
+
+/**
+ * What the button that downloads it says: the poster, and the button says
+ * so, or the ride's card, and the button says what it does (#3687).
+ */
+export const cardLabel = (ride: { distanceM?: number; rideMode?: string }) =>
+	isPoster(ride) ? 'Download the poster' : 'Download the ride card';

@@ -90,7 +90,7 @@ It is not a training plan generator, not an open world, and not a content treadm
 ## Data, privacy and competition
 
 - Live metrics exist only inside a session while it runs. AV is never recorded. Rides are private by default.
-- Heart rate is live in the session, never in a shared artifact. A shared ride carries numbers, never the rider's note.
+- Heart rate is live in the session, never in a shared artifact. The ride's picture, which only its rider downloads, draws it. A shared ride carries numbers, never the rider's note.
 - Channel events ride the tick and are never persisted.
 - Nobody loses a ride: samples stream to the server and buffer in IndexedDB, and a ride the server loses comes back from the browser as a file.
 - Rides export as .fit, upload to Strava, and reach Garmin by manual FIT import. Strava data never enters an LLM context.

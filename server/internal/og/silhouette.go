@@ -15,13 +15,44 @@ import (
 // its watts, and a ride on a road draws the road it rode — the heights over
 // the distance, each stretch painted with the zone the rider was in there.
 
-// drawSilhouette picks the mark a ride has the data for.
+// drawSilhouette picks the mark a ride has the data for: a free ride on a
+// road is the road it rode; anything else is its watts — over the workout's
+// blocks when it had one (#4430), with its heart rate when it read one, and
+// a workout on a road keeps the road as a strip under them.
 func (s *Service) drawSilhouette(dst *image.NRGBA, box image.Rectangle, c RideCard) error {
-	if onRoad(c) {
+	if c.Poster() {
 		s.drawRoad(dst, box, c)
 		return nil
 	}
-	return s.drawTrace(dst, box, c)
+	graph := box
+	if onRoad(c) {
+		graph.Max.Y = roadStripBox.Min.Y - 12
+		s.drawRoadStrip(dst, roadStripBox, c)
+	}
+	var top float64
+	var err error
+	if hasTargets(c) {
+		top, err = s.drawWorkout(dst, graph, c)
+	} else {
+		top, err = s.drawTrace(dst, graph, c)
+	}
+	if err != nil || top == 0 {
+		return err
+	}
+	if err := s.drawHeartRate(dst, graph, c); err != nil {
+		return err
+	}
+	// Last over the lines, so its label's backing keeps it readable.
+	if err := s.drawFTPLine(dst, graph, c.Ftp, top); err != nil {
+		return err
+	}
+	return s.drawLegend(dst, graph.Min.X, graph.Min.Y-8, s.legend(c))
+}
+
+// Poster says the card is drawn as the road it rode (#3142): a ride on a road
+// that was not a workout. A workout on a road is the workout's card (#4430).
+func (c RideCard) Poster() bool {
+	return onRoad(c) && !c.Workout
 }
 
 // onRoad reports whether the card carries a road with somewhere to go on it:
@@ -90,15 +121,12 @@ func (s *Service) drawRoad(dst *image.NRGBA, box image.Rectangle, c RideCard) {
 // column peaked in: the shape of the ride and where it was hard, in one mark.
 // Drawn at 2× and scaled down, because a hard-edged silhouette at 1× is a
 // staircase.
-func (s *Service) drawTrace(dst *image.NRGBA, box image.Rectangle, c RideCard) error {
+//
+// It answers the watts at the top of the box, for the lines drawn over it,
+// and 0 when it drew no trace.
+func (s *Service) drawTrace(dst *image.NRGBA, box image.Rectangle, c RideCard) (float64, error) {
 	if len(c.Watts) < 2 || c.Ftp <= 0 {
-		face, err := s.face(26)
-		if err != nil {
-			return err
-		}
-		drawCenter(dst, face, box.Min.X+box.Dx()/2, box.Min.Y+box.Dy()/2, s.pal.muted,
-			"No second-by-second record for this ride")
-		return nil
+		return 0, s.noRecord(dst, box)
 	}
 	const ss = 2
 	w, h := box.Dx()*ss, box.Dy()*ss
@@ -159,9 +187,26 @@ func (s *Service) drawTrace(dst *image.NRGBA, box image.Rectangle, c RideCard) e
 	// hard and hangs a halo over the silhouette.
 	draw.ApproxBiLinear.Scale(dst, box, tmp, tmp.Bounds(), draw.Over, nil)
 
+	return top, nil
+}
+
+// noRecord fills a box whose ride has no second-by-second record to draw.
+func (s *Service) noRecord(dst *image.NRGBA, box image.Rectangle) error {
+	face, err := s.face(26)
+	if err != nil {
+		return err
+	}
+	drawCenter(dst, face, box.Min.X+box.Dx()/2, box.Min.Y+box.Dy()/2, s.pal.muted,
+		"No second-by-second record for this ride")
+	return nil
+}
+
+// drawFTPLine is the dashed reference at FTP across a box whose top is `top`
+// watts.
+func (s *Service) drawFTPLine(dst *image.NRGBA, box image.Rectangle, ftp int, top float64) error {
 	// The FTP line is a reference, so it is structural neon and dashed —
 	// nothing about it is live data (ADR-0005).
-	y := box.Max.Y - int(float64(c.Ftp)/top*float64(box.Dy()))
+	y := box.Max.Y - int(float64(ftp)/top*float64(box.Dy()))
 	for x := box.Min.X; x < box.Max.X; x += 22 {
 		fill(dst, image.Rect(x, y, min(x+12, box.Max.X), y+2), s.pal.neon)
 	}
@@ -171,7 +216,7 @@ func (s *Service) drawTrace(dst *image.NRGBA, box image.Rectangle, c RideCard) e
 	}
 	// On its own backing: the line lands wherever the ride's ceiling puts it,
 	// which is regularly on top of the trace.
-	label := "FTP " + watts(c.Ftp)
+	label := "FTP " + watts(ftp)
 	width := font.MeasureString(face, label).Ceil()
 	fill(dst, image.Rect(box.Max.X-width-12, y-34, box.Max.X, y-4), s.pal.raised)
 	drawRight(dst, face, box.Max.X, y-12, s.pal.muted, label)
