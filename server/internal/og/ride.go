@@ -106,13 +106,7 @@ func RenderRide(c RideCard) ([]byte, error) {
 	img := image.NewNRGBA(image.Rect(0, 0, cardSize, cardSize))
 	skyFill(img, s.pal)
 
-	drawLogo(img, cardMargin, 48, 52, s.pal)
-	wordFace, err := s.face(32)
-	if err != nil {
-		return nil, err
-	}
-	drawText(img, wordFace, cardMargin+68, 90, s.pal.ink, siteName)
-	if err := s.datePill(img, c.StartedAt.Format("2 Jan 2006 · 15:04")); err != nil {
+	if err := s.drawBrand(img); err != nil {
 		return nil, err
 	}
 
@@ -129,7 +123,11 @@ func RenderRide(c RideCard) ([]byte, error) {
 	if c.Place != "" {
 		where = "in " + c.Place
 	}
-	subFace, sub, err := s.fit(where, cardWidth, 30, 22)
+	pillLeft, err := s.datePill(img, c.StartedAt.Format("2 Jan 2006 · 15:04"))
+	if err != nil {
+		return nil, err
+	}
+	subFace, sub, err := s.fit(where, pillLeft-24-cardMargin, 30, 22)
 	if err != nil {
 		return nil, err
 	}
@@ -197,17 +195,40 @@ func gradientBar(dst *image.NRGBA, box image.Rectangle, p Palette) {
 	}
 }
 
-// datePill sets the date apart from the wordmark it shares a line with.
-func (s *Service) datePill(dst *image.NRGBA, when string) error {
-	face, err := s.face(24)
+// brandBox is where the mark and the wordmark go: centred along the top
+// (#4429). Strava lays its own badges over a feed photo's corners — "Virtual"
+// top left on every indoor ride, which is every WattRoom ride — so a mark in
+// a corner is a mark nobody in the feed sees. The top centre is under none of
+// them, and it survives a feed tile that crops the sides off a square.
+var brandBox = image.Rect(cardMargin, 40, cardRight, 108)
+
+// drawBrand centres the logo and the wordmark in brandBox.
+func (s *Service) drawBrand(dst *image.NRGBA) error {
+	const logo, gap = 52, 16
+	face, err := s.face(32)
 	if err != nil {
 		return err
 	}
-	width := font.MeasureString(face, when).Ceil()
-	box := image.Rect(cardRight-width-36, 52, cardRight, 96)
-	fillRound(dst, box, 22, s.pal.raised)
-	drawText(dst, face, box.Min.X+18, 82, s.pal.muted, when)
+	width := logo + gap + font.MeasureString(face, siteName).Ceil()
+	x := brandBox.Min.X + (brandBox.Dx()-width)/2
+	drawLogo(dst, x, 48, logo, s.pal)
+	drawText(dst, face, x+logo+gap, 90, s.pal.ink, siteName)
 	return nil
+}
+
+// datePill sets the date apart from the line it shares with where the ride
+// was, at that line's right end, and returns the pill's left edge so the
+// place can stop short of it.
+func (s *Service) datePill(dst *image.NRGBA, when string) (int, error) {
+	face, err := s.face(24)
+	if err != nil {
+		return 0, err
+	}
+	width := font.MeasureString(face, when).Ceil()
+	box := image.Rect(cardRight-width-36, 226, cardRight, 270)
+	fillRound(dst, box, 22, s.pal.raised)
+	drawText(dst, face, box.Min.X+18, 256, s.pal.muted, when)
+	return box.Min.X, nil
 }
 
 // tile is one number with the icon that says what it is.
