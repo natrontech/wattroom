@@ -157,6 +157,8 @@
 	// a road (ADR-0066); a world that cannot draw hands the ride to the Skyline.
 	const ICON = 'btn btn-secondary icon-btn-lg p-0';
 	const world = createWorldView();
+	// Its return to 3D (#4423) ends with the ride.
+	$effect(() => () => world.dispose());
 	const inWorld = $derived(world.on && !!road);
 
 	const atMin = $derived(

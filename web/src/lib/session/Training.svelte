@@ -119,6 +119,8 @@
 	// and a world that cannot draw, or stops, leaves the slots as they were
 	// until the rider asks for 3D again (#3080).
 	const world = createWorldView();
+	// Its return to 3D (#4423) ends with the ride.
+	$effect(() => () => world.dispose());
 	// Only on a session that rides a road (ADR-0066, #3663).
 	const inWorld = $derived(world.on && !!channel.ridden);
 	// The climb card on a session's road (#3645), on either layout.

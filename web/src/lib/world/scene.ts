@@ -230,10 +230,19 @@ export function mount(
 		climb(startRung(measured, rung), 'probe');
 	}
 	// A dev build drawing in software keeps its world (software-drawing.ts); the ladder still climbs down.
-	const watch = softwareDrawing() ? null : missWatch();
+	const watching = () => (softwareDrawing() ? null : missWatch());
+	let watch = watching();
 	const judge = setInterval(() => {
 		const stats = loop.stats();
-		if (watch?.(stats)) return fail('frames');
+		if (watch?.(stats)) {
+			// Above the floor the Fallback is one more rung down, and the
+			// watch starts over on it: only L1 hands the ride to the Skyline (#4423).
+			if (!climbs || rung <= 1) return fail('frames');
+			watch = watching();
+			windowOf = windows();
+			gpuMs = [];
+			return climb((rung - 1) as Rung, 'slow');
+		}
 		if (!climbs || (probe && !probed)) return;
 		const w = windowOf(stats, gpuMs.splice(0));
 		if (!w) return;

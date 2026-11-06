@@ -96,14 +96,22 @@ export function createPacer() {
 	};
 }
 
-/** docs/SPEC.md "The world": the Skyline takes over past this share of intervals missed over this long. */
-export const FALLBACK = { share: 0.2, seconds: 10 } as const;
+/**
+ * docs/spec/world.md "Fallback": the Skyline takes over past this share of
+ * intervals missed over this long, and only when at least `bad` of those
+ * seconds each missed past the share: a stall is not a slow screen (#4423).
+ */
+export const FALLBACK = { share: 0.2, seconds: 10, bad: 5 } as const;
 
 /**
  * Judges the pacer's stats, handed one a second: true once more than a fifth
  * of the divisor intervals over the last ten seconds of drawing went without
- * a frame. A second that drew nothing — a gate shut — is no evidence either
- * way, and ten of them must be seen before it says anything.
+ * a frame, and half of those seconds missed as much on their own. One stall
+ * of a few seconds — a collection, a texture upload, the jukebox loading —
+ * lands its misses in a second or two and is forgiven; a screen that cannot
+ * keep up misses in most of them. A second that drew nothing — a gate shut
+ * — is no evidence either way, and ten of them must be seen before it says
+ * anything.
  */
 export function missWatch() {
 	const seconds: { rendered: number; missed: number }[] = [];
@@ -120,8 +128,13 @@ export function missWatch() {
 		if (seconds.length < FALLBACK.seconds) return false;
 		let r = 0;
 		let m = 0;
-		for (const s of seconds) ((r += s.rendered), (m += s.missed));
-		return m / (r + m) > FALLBACK.share;
+		let bad = 0;
+		for (const s of seconds) {
+			r += s.rendered;
+			m += s.missed;
+			if (s.missed / (s.rendered + s.missed) > FALLBACK.share) bad++;
+		}
+		return bad >= FALLBACK.bad && m / (r + m) > FALLBACK.share;
 	};
 }
 

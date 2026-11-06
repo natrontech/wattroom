@@ -163,6 +163,21 @@ describe('the fallback watch (#3080)', () => {
 		expect(watched(60, (t) => (t % 10 === 0 ? 6 : 2), 60)).toBeNull();
 	});
 
+	it('forgives one stall of a few seconds: a stall is not a slow screen (#4423)', () => {
+		// A frame that holds the thread for three seconds, then 30 fps again.
+		let stalled = false;
+		const stall = (t: number) => {
+			if (t !== 5 || stalled) return 2;
+			stalled = true;
+			return 180;
+		};
+		expect(watched(60, stall, 30)).toBeNull();
+	});
+
+	it('still falls back on a screen that misses in most seconds, stalls among them', () => {
+		expect(watched(60, (t) => (t % 4 === 0 ? 40 : 3), 30)).not.toBeNull();
+	});
+
 	it('needs ten seconds of drawing: the seconds a gate held the world fill nothing', () => {
 		const watch = missWatch();
 		const at = (k: number) => ({ rendered: 20 * k, missed: 10 * k, hz: 60 });

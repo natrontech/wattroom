@@ -1,8 +1,8 @@
 /**
  * Which view a ride on a road gets (#3080, ADR-0066): the world, or the
- * Skyline and why. Pure; the caller holds the answer for the rest of the
- * ride — the fallback is one-way, and the reason's button is the only way
- * back. What the browser can do is read first, so a browser that cannot draw
+ * Skyline and why. Pure; the caller holds the answer until the world
+ * returns by itself (world-view's RETURN_S, #4423) or the rider taps 3D.
+ * What the browser can do is read first, so a browser that cannot draw
  * the world never offers it; then the World control, which opens on Flat
  * until the rider turns 3D on (#3084, ADR-0066 amended); then what the world
  * did this ride. Width is no input: a phone with Web Bluetooth rides.

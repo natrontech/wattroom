@@ -1,8 +1,10 @@
 /**
  * A ride's view on a road, held for the ride (#3080, ADR-0066): the riding
- * surfaces ask rideView() once, and after that only a failure or the rider's
- * own Flat / 3D tap moves it — never reduced motion switched on mid-ride,
- * never a second that drew well again. Loads no three.js.
+ * surfaces ask rideView() once, and after that only a failure, its own
+ * return, or the rider's own Flat / 3D tap moves it — never reduced motion
+ * switched on mid-ride. A world that failed tries again by itself, a few
+ * times a ride and each time later (#4423): no rider on a bike should have
+ * to reach for 3D. Loads no three.js.
  */
 import { prefersReducedMotion } from '$lib/motion';
 import { PHONE_MAX_PX } from '$lib/device.svelte';
@@ -26,6 +28,12 @@ if (typeof window !== 'undefined')
 		viewport.width = window.innerWidth;
 		viewport.height = window.innerHeight;
 	});
+
+/**
+ * docs/spec/world.md "Fallback": seconds on the Skyline before each of a
+ * ride's automatic returns to the world; past the last, only 3D brings it back.
+ */
+export const RETURN_S = [15, 60, 240] as const;
 
 let caps: { webgl2: boolean; multiDraw: boolean } | null = null;
 
@@ -52,6 +60,12 @@ export function createWorldView() {
 			failure,
 		});
 	let view = $state<RideView>(decide());
+	let returns = 0;
+	let returning: ReturnType<typeof setTimeout> | undefined;
+	function settle() {
+		clearTimeout(returning);
+		returning = undefined;
+	}
 	// The window's height is live, unlike a failure: the world comes back
 	// the moment the window holds its panels again.
 	const shown = (): RideView =>
@@ -79,6 +93,17 @@ export function createWorldView() {
 			if (!failure) play('fault');
 			failure = why;
 			view = decide();
+			if (returning || returns >= RETURN_S.length) return;
+			// Back by itself, the rider's choices untouched: a ride they put
+			// on Flat meanwhile stays flat. The ladder has stepped down to the
+			// floor on the way here, so the world comes back where it held.
+			returning = setTimeout(() => {
+				returning = undefined;
+				if (!failure) return;
+				failure = null;
+				view = decide();
+				if (view === 'world') play('recover');
+			}, RETURN_S[returns++] * 1000);
 		},
 		/**
 		 * The world's own chunk (three.js), loaded for the ride; a renderer
@@ -99,6 +124,7 @@ export function createWorldView() {
 		/** The flat road, from now on, on this device: the world's Flat button and its context menu. */
 		flatten() {
 			setWorldMode('flat');
+			settle();
 			view = decide();
 		},
 		/**
@@ -110,8 +136,11 @@ export function createWorldView() {
 			const was = reason();
 			if (was === 'chosen') setWorldMode('full');
 			if (was === 'motion') setWorldMode('steady');
+			settle();
 			failure = null;
 			view = decide();
 		},
+		/** The ride is over: no world comes back to it. */
+		dispose: settle,
 	};
 }
