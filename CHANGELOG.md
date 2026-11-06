@@ -17,6 +17,32 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.11.19] - 2026-11-06
+
+### Added
+
+- Your crew can now furnish the cozy room with Batzen: rugs, sofas, wallpaper and a neon sign with your crew's initial. The arcade plays Bergpreis, a one-button race up a hill in thirty seconds, with your crew's best five on the machine.
+- The cozy room's look editor gains four hairstyles, a vest and a rain jacket, beards, chest badges, socks, and a pet: a dog at your feet, a parrot on your shoulder or a hamster on your head.
+- In the cozy room you can now tap a place to sit there, from the sofa to the coffee bar, the arcade or the workshop. Tap yourself to wave, dance, cheer or stretch, and tap someone else to send a heart everyone sees. Everyone also gets on with something: reading, coffee, a nap, their phone, or nodding to the music.
+- Twelve rare visitors now come by the cozy room when the conditions are right, from a fox on snowy nights to a mouse when the lamp is off. Your crew's album keeps who has been seen and gives a cryptic hint for the rest.
+- The cozy room now remembers. Lamp, stove, weather and mood stay as you left them, your crew's medals hang on the wall, the corkboard keeps polaroids of your last sessions, and the plant grows with every session you ride together.
+- The cozy room now shows your crew's life: a chalkboard with the next ride, a corkboard with your pins, and a laptop that goes live when a session runs. Tap any of them to go there, or tap an empty trainer to start riding. (#4415)
+- After dusk, villages light their windows and the street lamps along their road, one light after another, and you ride through pools of lamplight. In Pixel 3D the light comes on dithered, like the lounge's. (#4401)
+- The cozy room now follows the year: 1 August lanterns and fireworks, New Year fireworks, Fasnacht confetti, hidden Easter eggs, Samichlaus with a Grittibänz, the yellow jersey in July, blossom and autumn leaves past the window, and fondue on winter Fridays. (#4414)
+- In Pixel 3D, riders are shaded in steps like the rest of the world, and the zone ring under each rider stays one solid line at any distance. (#4399)
+- Riding now powers the cozy room: each trainer's dynamo lights more of the string lights, and all of them shine with three riders. Anyone who just got off the bike sits with a towel and a bottle for ten minutes. (#4413)
+- In the pixel look, the sky is drawn like the lounge's window: flat bands of colour, a striped sun, and stars once it gets dark. (#4398)
+- A tall cozy room is no longer mostly bare floor. It now has a workshop with a bike up on its stand, a reading nook, a coffee bar with an espresso machine, mats under the trainers, and things riders left lying around. (#4412)
+- A tall cozy room is no longer mostly bare floor. It now has a workshop with a bike up on its stand, a reading nook, a coffee bar with an espresso machine, mats under the trainers, and things riders left lying around. (#4411)
+- The cozy room is warmer: wooden floors and furniture, a terracotta rug, and real light from the lamp, the stove and the window, with a lantern on the table. Corners fall dark at night, and the room looks different with the lamp off or the stove lit. (#4410)
+- In the pixel look, hills, trees and houses now shade in a few flat steps from the sun side, and distant hills fade into the evening in dithered bands, like the lounge. (#4396)
+- On a desk your mic, camera, screen share, sound, Away and Leave sit under your name in the sidebar again. While you ride and on a phone they stay in the bottom bar, where you can reach them. (#4409)
+
+### Fixed
+
+- The cat stays off the table, and the room says what its things do
+- The 3D world is back to smooth edges for everyone who never chose. Pixel stays one tap away in Settings, under Look, 3D look. (#4408)
+
 ## [2026.11.18] - 2026-11-04
 
 ### Added
@@ -4357,7 +4383,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.18...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.19...HEAD
+[2026.11.19]: https://github.com/natrontech/wattroom/compare/2026.11.18...2026.11.19
 [2026.11.18]: https://github.com/natrontech/wattroom/compare/2026.11.17...2026.11.18
 [2026.11.17]: https://github.com/natrontech/wattroom/compare/2026.11.16...2026.11.17
 [2026.11.16]: https://github.com/natrontech/wattroom/compare/2026.11.15...2026.11.16
