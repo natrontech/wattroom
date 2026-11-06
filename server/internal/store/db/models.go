@@ -321,6 +321,7 @@ type Ride struct {
 	GroupSession    *bool
 	OnRoad          *bool
 	Title           *string
+	Blocks          []byte
 }
 
 type RideExport struct {

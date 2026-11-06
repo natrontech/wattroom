@@ -2,17 +2,17 @@
 -- A session's ride names its crew, the voice channel and the session (#2443);
 -- a solo ride leaves all three null. The road summary (#3053) is what exists
 -- only at the moment of saving: null where a ride had no road, or the saver
--- did not know.
+-- did not know. The workout's blocks (#4430) are null on a ride with none.
 insert into rides (
     user_id, workout_name, started_at,
     seconds, avg_watts, kj, execution, execution_scored,
     ftp_watts, samples, curve, xp, norm_watts, last20m_hr,
     crew_id, channel_id, session_id,
     route_id, route_key, road_h, ride_mode, timeable,
-    from_m, distance_m, climbed_m, weight_kg, mean_shelter, on_road
+    from_m, distance_m, climbed_m, weight_kg, mean_shelter, on_road, blocks
 )
 values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
-        $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)
+        $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29)
 returning id;
 
 -- name: ListUserRides :many
@@ -103,7 +103,7 @@ limit 1;
 select r.id, r.user_id, r.workout_name, r.started_at, r.seconds, r.avg_watts, r.kj,
        r.execution, r.ftp_watts, r.samples, r.shared_at, r.created_at, r.curve, r.xp,
        r.norm_watts, r.execution_scored, r.ftp_after_watts, r.last20m_hr, r.rpe, r.note, r.title,
-       r.on_road, r.route_key,
+       r.on_road, r.route_key, r.blocks,
        r.crew_id, r.channel_id, r.session_id,
        coalesce(c.name, '')::text as crew_name,
        coalesce(ch.name, '')::text as channel_name,

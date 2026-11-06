@@ -320,6 +320,9 @@ func BuildRideRow(
 		Xp:              int32(XP(kj, execution)), //nolint:gosec // bounded by kj
 		NormWatts:       &normWatts,
 		Last20mHr:       &lastHR,
+		// What the workout asked, for the ride's picture (#4430): kept at the
+		// FTP it was scored on, like the score.
+		Blocks: RideBlocksJSON(workoutJSON, float64(ftpWatts)),
 	}, nil
 }
 
