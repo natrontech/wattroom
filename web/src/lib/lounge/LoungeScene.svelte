@@ -59,6 +59,8 @@
 		cuckooing,
 		discoOn,
 		flybyAt,
+		fondueNight,
+		momentOf,
 		owlHours,
 		pizzaNight,
 		seasonOf,
@@ -263,6 +265,8 @@
 			bloom: clock < bloomUntil,
 			arcade: clock < arcadeUntil || mood === 'arcade',
 			pizza: pizzaNight(now),
+			fondue: fondueNight(now),
+			moment: momentOf(now),
 			owl: owlHours(now.getHours()),
 		});
 	}

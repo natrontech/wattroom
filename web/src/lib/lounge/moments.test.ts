@@ -8,7 +8,10 @@ import {
 	FLYBY_SLOT_SEC,
 	catAt,
 	cuckooing,
+	easterSunday,
 	flybyAt,
+	fondueNight,
+	momentOf,
 	seasonOf,
 } from '$lib/lounge/moments';
 
@@ -97,5 +100,43 @@ describe('the lounge moments every screen shares', () => {
 		expect(pizzaNight(new Date(2026, 10, 5, 18))).toBe(false);
 		expect(owlHours(2)).toBe(true);
 		expect(owlHours(22)).toBe(false);
+	});
+
+	it('finds Easter', () => {
+		const iso = (y: number) => {
+			const d = easterSunday(y);
+			return `${d.getMonth() + 1}-${d.getDate()}`;
+		};
+		expect(iso(2024)).toBe('3-31');
+		expect(iso(2026)).toBe('4-5');
+		expect(iso(2027)).toBe('3-28');
+		expect(iso(2038)).toBe('4-25');
+	});
+
+	it('keeps the calendar', () => {
+		const on = (m: number, d: number, h = 12) =>
+			momentOf(new Date(2026, m - 1, d, h));
+		expect(on(1, 1)).toBe('newyear');
+		expect(on(12, 31)).toBe('');
+		expect(on(12, 31, 20)).toBe('newyear');
+		expect(on(2, 11)).toBe('');
+		expect(on(2, 12)).toBe('fasnacht');
+		expect(on(2, 17)).toBe('fasnacht');
+		expect(on(2, 18)).toBe('');
+		expect(on(4, 3)).toBe('easter');
+		expect(on(4, 6)).toBe('easter');
+		expect(on(4, 7)).toBe('blossom');
+		expect(on(7, 10)).toBe('tour');
+		expect(on(7, 31)).toBe('');
+		expect(on(8, 1)).toBe('august');
+		expect(on(10, 3)).toBe('leaves');
+		expect(on(12, 6)).toBe('samichlaus');
+		expect(on(3, 3)).toBe('');
+	});
+
+	it('turns Friday night into fondue only in winter', () => {
+		expect(fondueNight(new Date(2026, 11, 4, 19))).toBe(true);
+		expect(fondueNight(new Date(2026, 5, 5, 19))).toBe(false);
+		expect(fondueNight(new Date(2026, 11, 5, 19))).toBe(false);
 	});
 });

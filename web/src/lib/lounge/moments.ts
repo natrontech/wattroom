@@ -153,6 +153,72 @@ export function pizzaNight(date: Date): boolean {
 	return date.getDay() === 5 && date.getHours() >= 17;
 }
 
+/** The same Friday from December to February is fondue, in a caquelon. */
+export function fondueNight(date: Date): boolean {
+	const month = date.getMonth();
+	return pizzaNight(date) && (month === 11 || month <= 1);
+}
+
+/** What the calendar brings to the room, one thing at a time. */
+export type Moment =
+	| ''
+	| 'newyear'
+	| 'fasnacht'
+	| 'easter'
+	| 'blossom'
+	| 'tour'
+	| 'august'
+	| 'leaves'
+	| 'samichlaus';
+
+/** Easter Sunday in a year, by the anonymous Gregorian algorithm. */
+export function easterSunday(year: number): Date {
+	const a = year % 19;
+	const b = Math.floor(year / 100);
+	const c = year % 100;
+	const d = Math.floor(b / 4);
+	const e = b % 4;
+	const f = Math.floor((b + 8) / 25);
+	const g = Math.floor((b - f + 1) / 3);
+	const h = (19 * a + b - d - g + 15) % 30;
+	const i = Math.floor(c / 4);
+	const k = c % 4;
+	const l = (32 + 2 * e + 2 * i - h - k) % 7;
+	const m = Math.floor((a + 11 * h + 22 * l) / 451);
+	const n = h + l - 7 * m + 114;
+	return new Date(year, Math.floor(n / 31) - 1, (n % 31) + 1);
+}
+
+const DAY_MS = 86_400_000;
+
+/**
+ * The day's moment: dated feasts first, then what the season does past the
+ * window. Fasnacht runs from Schmutziger Donnerstag to the Tuesday, 52 to 47
+ * days before Easter. Rounded, so a clock change cannot move a day.
+ */
+export function momentOf(date: Date): Moment {
+	const month = date.getMonth();
+	const day = date.getDate();
+	const evening = date.getHours() >= 18;
+	if ((month === 11 && day === 31 && evening) || (month === 0 && day === 1))
+		return 'newyear';
+	if ((month === 6 && day === 31 && evening) || (month === 7 && day === 1))
+		return 'august';
+	if ((month === 11 && day === 5 && evening) || (month === 11 && day === 6))
+		return 'samichlaus';
+	const today = new Date(date.getFullYear(), month, day).getTime();
+	const easter = Math.round(
+		(today - easterSunday(date.getFullYear()).getTime()) / DAY_MS,
+	);
+	if (easter >= -52 && easter <= -47) return 'fasnacht';
+	if (easter >= -2 && easter <= 1) return 'easter';
+	if (month === 6 && day <= 27) return 'tour';
+	if (month === 3 || (month === 4 && day <= 15)) return 'blossom';
+	if ((month === 8 && day >= 20) || month === 9 || (month === 10 && day <= 15))
+		return 'leaves';
+	return '';
+}
+
 /** From midnight to four an owl keeps the sill. */
 export function owlHours(hours: number): boolean {
 	return hours < 4;
