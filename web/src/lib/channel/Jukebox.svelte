@@ -55,9 +55,8 @@
 	const history = $derived(jukebox?.history ?? []);
 	const inSync = $derived(Math.abs(playerInfo.drift) <= IN_SYNC_SEC);
 
-	// The cozy room (ADR-0094, #4305): house radio on the deck, and the
-	// voice channel becomes the lounge's room while it plays. One switch
-	// queues it, as a song would be, and takes every copy off again.
+	// House radio (ADR-0094, #4305): one switch queues it, as a song would
+	// be, and takes every copy off again.
 	const cozyOn = $derived(!!current?.radio);
 	const cozy = $derived(cozyOn || queue.some((e) => e.radio));
 	function toggleCozy() {
@@ -164,10 +163,14 @@
 				? 'btn-primary'
 				: 'btn-secondary'} w-full justify-start gap-2"
 			title={cozy
-				? 'Take house radio off the deck, and the room with it'
-				: 'Lofi made for your crew, and the voice channel becomes a room'}
+				? 'Take house radio off the deck'
+				: 'Lofi made for your crew, for everyone here'}
 			><Sofa size={15} />
-			{cozyOn ? 'Cozy room is on' : cozy ? 'Cozy room is next' : 'Cozy room'}
+			{cozyOn
+				? 'House radio is on'
+				: cozy
+					? 'House radio is next'
+					: 'House radio'}
 		</button>
 	{/if}
 

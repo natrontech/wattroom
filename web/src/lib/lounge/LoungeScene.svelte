@@ -362,7 +362,7 @@
 		else if (spot === 'window')
 			live?.setLounge({ ...state, weather: nextWeather(state.weather) });
 		else if (spot === 'clock') cuckooUntil = clock + 3;
-		else if (spot === 'deck') next();
+		else if (spot === 'deck') (onAir ? next : playRadio)();
 		// Lit, the generated styles start one of their slower tunes; records play on.
 		else if (spot === 'stove') {
 			if (pick === '') live?.setLounge({ ...state, fire: !fire });
@@ -390,6 +390,9 @@
 
 	/** Next track, for everyone: the record player's click and the bar's button. */
 	const next = () => retune({});
+
+	/** House radio on the deck, as a song would go on: the empty record player's click. */
+	const playRadio = () => live?.jukebox({ action: 'add', radio: true });
 
 	const PICK_NAMES: Record<RadioPick, string> = {
 		'': 'Records',
@@ -563,11 +566,10 @@
 			</div>
 		</div>
 	</div>
-	{#if onAir}
-		<div
-			class="font-display pixel-words text-muted absolute bottom-0 left-0 flex max-w-full flex-wrap items-center gap-x-3 p-2 text-xs"
-		>
-			<button
+	<div
+		class="font-display pixel-words text-muted absolute bottom-0 left-0 flex max-w-full flex-wrap items-center gap-x-3 p-2 text-xs"
+	>
+		{#if onAir}<button
 				type="button"
 				onclick={() => radioHeard.set(!radioHeard.current)}
 				aria-pressed={radioHeard.current}
@@ -593,23 +595,28 @@
 				title="Next track, for everyone"
 				class="btn btn-ghost btn-xs text-ink px-0"
 				><SkipForward size={13} /> Next</button
-			>
-			<button
+			>{:else}<button
 				type="button"
-				onclick={moods}
-				title="Set the room's mood for everyone"
-				aria-haspopup="menu"
+				onclick={playRadio}
+				title="Lofi made for your crew, for everyone here"
 				class="btn btn-ghost btn-xs text-ink px-0"
-				><Sparkles size={13} />
-				{mood ? MOODS[mood].name : 'Mood'}</button
-			>
-			{#if nowPlaying}<span class="tabular-nums max-sm:hidden"
-					>{nowPlaying}</span
-				>{/if}
-			{#if radioHeard.current && mixer.music === 0}<span
-					>Music is at 0 in your mix.</span
-				>{/if}
-		</div>
-	{/if}
+				><Disc3 size={13} /> Play house radio</button
+			>{/if}
+		<button
+			type="button"
+			onclick={moods}
+			title="Set the room's mood for everyone"
+			aria-haspopup="menu"
+			class="btn btn-ghost btn-xs text-ink px-0"
+			><Sparkles size={13} />
+			{mood ? MOODS[mood].name : 'Mood'}</button
+		>
+		{#if onAir && nowPlaying}<span class="tabular-nums max-sm:hidden"
+				>{nowPlaying}</span
+			>{/if}
+		{#if onAir && radioHeard.current && mixer.music === 0}<span
+				>Music is at 0 in your mix.</span
+			>{/if}
+	</div>
 	{#if dressing}<LookEditor onclose={() => (dressing = false)} />{/if}
 </section>
