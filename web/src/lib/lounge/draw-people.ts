@@ -236,6 +236,17 @@ function sitter(
 				],
 				C.ink,
 			);
+		// Just off the bike: a towel over the top of everything, ends down the front.
+		if (f.cooling)
+			outlined(
+				g,
+				[
+					[x - 5, base - 11, 10, 2, C.paper],
+					[x - 4, base - 9, 2, 3, C.paper],
+					[x + 2, base - 9, 2, 3, C.paper],
+				],
+				C.ink,
+			);
 		if (!wave) {
 			rect(g, x - 4, base - 9, 1, 5, f.shirtShade);
 			rect(g, x + 3, base - 9, 1, 5, f.shirtShade);
@@ -275,6 +286,13 @@ function sitter(
 	};
 	if (f.faded) faded(g, x, base, draw);
 	else draw(g, x, base);
+	if (f.cooling) {
+		// A bottle held at the hip, and a drop that runs now and then.
+		outlined(g, [[x + 7, base - 9, 3, 6, C.teal]], C.ink);
+		rect(g, x + 8, base - 11, 1, 2, C.paper);
+		if (!s.still && Math.floor(s.t + n) % 4 === 0)
+			rect(g, x - 7, base - 16 + Math.floor((s.t % 1) * 6), 1, 1, C.tealLight);
+	}
 	if (f.speaking) bubble(g, x + 4, base - 29, s);
 	if (f.sounding)
 		sprite(g, NOTE, f.speaking ? x - 8 : x + 6, base - 27, C.lilac);

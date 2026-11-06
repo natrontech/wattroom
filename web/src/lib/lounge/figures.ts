@@ -86,10 +86,38 @@ export function ridersOf(riders: LiveRider[], t: number): Rider[] {
 }
 
 /** Everyone else in the call, in the channel's order. */
-export function seatedOf(riders: LiveRider[], onBikes: Set<string>): Figure[] {
+export function seatedOf(
+	riders: LiveRider[],
+	onBikes: Set<string>,
+	cooling: ReadonlySet<string> = NOBODY,
+): Figure[] {
 	return present(riders)
 		.filter((r) => !onBikes.has(r.id))
-		.map(dress);
+		.map((r) => ({ ...dress(r), cooling: cooling.has(r.id) }));
+}
+
+const NOBODY: ReadonlySet<string> = new Set();
+
+/** How long a rider keeps the towel on after getting off the bike. */
+export const COOLING_SEC = 600;
+
+/**
+ * Who just got off the bike. A pure step over the roster's riding flag, so
+ * nothing about a ride but that it ended is known here; each screen starts
+ * counting when it sees the ride end.
+ */
+export function cooled(
+	riders: readonly { id: string; riding?: unknown }[],
+	wasRiding: ReadonlySet<string>,
+	until: ReadonlyMap<string, number>,
+	clock: number,
+): { riding: Set<string>; until: Map<string, number> } {
+	const riding = new Set(riders.filter((r) => r.riding).map((r) => r.id));
+	const next = new Map([...until].filter(([, end]) => end > clock));
+	for (const id of wasRiding)
+		if (!riding.has(id)) next.set(id, clock + COOLING_SEC);
+	for (const id of riding) next.delete(id);
+	return { riding, until: next };
 }
 
 /** Where the trainers stand in a room w × h: both sides of the rug, row under row. */
@@ -163,13 +191,14 @@ export function crewOf(
 	t: number,
 	w: number,
 	h: number,
+	cooling: ReadonlySet<string> = NOBODY,
 ): Crew {
 	const slots = bikeSlots(Math.max(SCENE_W, w), h);
 	const onBikes = ridersOf(riders, t).slice(0, slots.length);
 	const bikes = slots
 		.slice(0, Math.max(BIKES_ALWAYS, onBikes.length))
 		.map((slot, i) => ({ ...slot, rider: onBikes[i] }));
-	const rest = seatedOf(riders, new Set(onBikes.map((r) => r.id)));
+	const rest = seatedOf(riders, new Set(onBikes.map((r) => r.id)), cooling);
 	const spots = floorSpots(Math.max(SCENE_W, w), h);
 	return {
 		bikes,
