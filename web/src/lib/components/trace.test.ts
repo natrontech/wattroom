@@ -24,7 +24,7 @@ describe('splitTrace', () => {
 		expect(runs[1].map((p) => p.t)).toEqual([600, 601, 602]);
 	});
 
-	it('breaks where extend moved the clock backward', () => {
+	it('breaks where the clock moved backward', () => {
 		// This is the one that drew the line in reverse.
 		const runs = splitTrace(at(100, 101, 102, 42, 43, 44));
 		expect(runs).toHaveLength(2);

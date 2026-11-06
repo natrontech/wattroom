@@ -4,6 +4,7 @@ import { pairError } from '$lib/ble/pair-error';
 import type { Trainer } from '$lib/ble/trainer';
 import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
 import { recordingUpload, uploadRide, type SaveFailure } from '$lib/ride/save';
+import { replan } from '$lib/ride/ride-alone-session';
 import { sensors } from '$lib/sensors.svelte';
 import { wireMetrics } from '$lib/session/wire';
 import { createRideSession } from '$lib/workout/session.svelte';
@@ -171,6 +172,7 @@ export function createOwnRide(deps: {
 						grade: deps.profile.current.sprintGrade,
 						singleSpeed: deps.profile.current.singleSpeed,
 					}),
+					onPlan: (planned) => replan(buffer, planned),
 					onRecord: (sample) => {
 						buffer?.append({
 							...sample,

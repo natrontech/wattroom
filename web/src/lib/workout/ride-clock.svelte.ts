@@ -1,11 +1,14 @@
-import { flatten, targetAt } from './engine';
+import { flatten, segmentsDuration, targetAt } from './engine';
 import { createSprintWindow } from './sprint-window.svelte';
+import { stretchSegments, stretchWorkout } from './stretch';
 import type { Segment, Workout } from './types';
 
 /**
  * Where on its workout a solo ride is: the clock, what the workout asks
- * there, and the sprint window the screen draws. Skip and extend move the
- * clock, never the workout (#13).
+ * there, and the sprint window the screen draws. Skip moves the clock (#13);
+ * +1 min lengthens the block under way (#4445), so the workout this clock
+ * runs on is the one as ridden: its segments, its length and what the ride
+ * saves all read the blocks with the minutes added.
  */
 export function createRideClock(
 	workout: Workout,
@@ -20,13 +23,14 @@ export function createRideClock(
 		road?: (segments: readonly Segment[]) => number;
 	},
 ) {
-	const segments: Segment[] = flatten(workout);
-	const total = segments.reduce(
-		(t, s) => Math.max(t, s.startSeconds + s.seconds),
-		0,
-	);
+	const written = flatten(workout);
+	/** Seconds +1 min added to each block, indexed as the segments. */
+	let extra = $state.raw<number[]>(written.map(() => 0));
+	const segments = $derived(stretchSegments(written, extra));
+	const total = $derived(segmentsDuration(segments));
+	const ridden = $derived(stretchWorkout(workout, extra));
 	let elapsed = $state(0);
-	/** Per-segment time shifts from skip/extend, so the timeline stays authoritative. */
+	/** The seconds Skip jumped over. */
 	let shift = $state(0);
 	const seconds = $derived(
 		ride.road
@@ -55,8 +59,16 @@ export function createRideClock(
 	}));
 
 	return {
-		segments,
-		total,
+		get segments() {
+			return segments;
+		},
+		get total() {
+			return total;
+		},
+		/** The workout with the minutes added: what the ride saves. */
+		get workout() {
+			return ridden;
+		},
 		/** The workout second. */
 		get seconds() {
 			return seconds;
@@ -90,16 +102,16 @@ export function createRideClock(
 			return true;
 		},
 		/**
-		 * Hold the current block longer by rewinding the workout clock, which pushes
-		 * this block's end out along with everything after it.
-		 * Known edge: within the first `seconds` of the whole workout the clock floors
-		 * at zero, so an early extend gives less than asked. Fixing it properly needs
-		 * per-segment durations rather than one global shift — not worth it until a
-		 * rider complains.
+		 * Lengthen the block under way by `by` seconds, wherever in it the
+		 * rider is (#4445): its countdown grows, the blocks after it start
+		 * that much later and the clock stays on its second. Never on a road,
+		 * nor past the end.
 		 */
 		extend(by: number): boolean {
-			if (ride.road) return false;
-			shift -= by;
+			if (ride.road || info.done || by <= 0) return false;
+			const next = [...extra];
+			next[info.segmentIndex] += by;
+			extra = next;
 			return true;
 		},
 	};

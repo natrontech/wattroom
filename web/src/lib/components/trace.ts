@@ -1,5 +1,5 @@
 export interface TracePoint {
-	/** workout-clock seconds — NOT monotonic: skip and extend shift it. */
+	/** workout-clock seconds — NOT contiguous: skip jumps it forward. */
 	t: number;
 	w: number;
 	/**
@@ -14,8 +14,8 @@ export interface TracePoint {
  *
  * The trace is keyed on workout-clock time so it lines up with the interval graph,
  * but that clock jumps: skip moves it forward over ground the rider never covered,
- * extend moves it backward over ground they are riding twice. Drawing one polyline
- * across either is a lie — forward jumps invent a straight line through work that
+ * and a clock that ran back (as +1 min did before #4445) re-rides ground. Drawing
+ * one polyline across either is a lie — forward jumps invent a straight line through work that
  * did not happen, and backward jumps draw the trace in reverse.
  *
  * Breaking into runs renders gaps as gaps and re-rides as overlapping lines, which

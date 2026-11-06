@@ -32,6 +32,18 @@ export function openWorkoutBuffer(
 	});
 }
 
+/**
+ * The crash buffer's word for the workout a ride now saves as (#4445): a
+ * recovered ride is scored against the blocks it rode, the minutes +1 min
+ * added and the workouts changed to included.
+ */
+export function replan(buffer: RideBuffer | undefined, planned: Workout) {
+	buffer?.retitle({
+		workoutName: planned.name,
+		workoutJson: JSON.stringify(byReference(planned)),
+	});
+}
+
 /** A workout alone on `trainer`, recording into the buffer and the ⚑'s recorder. */
 export function createWorkoutAlone(deps: {
 	trainer: Trainer;
@@ -57,6 +69,7 @@ export function createWorkoutAlone(deps: {
 			grade: profile.current.sprintGrade,
 			singleSpeed: profile.current.singleSpeed,
 		}),
+		onPlan: (planned) => replan(deps.buffer(), planned),
 		onRecord: (sample) => {
 			deps
 				.buffer()

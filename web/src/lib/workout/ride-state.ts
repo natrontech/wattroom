@@ -83,6 +83,12 @@ export interface RideOptions {
 	sprint?: () => SprintSetup;
 	/** Called with each recorded sample — the crash-safety buffer's seam (#19). */
 	onRecord?: (sample: RecordedSecond) => void;
+	/**
+	 * The workout the ride now saves as, each time it changes: a change of
+	 * workout (#4257) or a block +1 min lengthened (#4445). The crash buffer
+	 * keeps it, so a recovered ride scores against the blocks it rode.
+	 */
+	onPlan?: (planned: Workout) => void;
 	/** The rider's weight, kg: a road workout's dot carries it (#3499). */
 	kg?: () => number;
 }

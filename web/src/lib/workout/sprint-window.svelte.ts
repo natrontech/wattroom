@@ -28,7 +28,9 @@ export interface SprintClock {
  */
 export function createSprintWindow(read: () => SprintClock) {
 	let window = $state<SprintState | null>(null);
-	let key: number | null = null;
+	// The block and where it sits: +1 min before or in a sprint moves its
+	// window, and that re-anchors it (#4445).
+	let key: string | null = null;
 	return {
 		/** The sprint block on screen, or the one about to be — null otherwise. */
 		get current() {
@@ -39,23 +41,27 @@ export function createSprintWindow(read: () => SprintClock) {
 			let next: number | null = null;
 			let startsIn = 0;
 			let seconds = 0;
+			let start = 0;
 			const following = segments[index + 1];
 			if (over) {
 				next = null;
 			} else if (segment?.kind === 'sprint' && !done) {
 				next = index;
-				startsIn = segment.startSeconds - clock;
+				start = segment.startSeconds;
+				startsIn = start - clock;
 				seconds = segment.seconds;
 			} else if (
 				following?.kind === 'sprint' &&
 				following.startSeconds - clock <= SPRINT_LEAD_SECONDS
 			) {
 				next = index + 1;
-				startsIn = following.startSeconds - clock;
+				start = following.startSeconds;
+				startsIn = start - clock;
 				seconds = following.seconds;
 			}
-			if (next === key) return;
-			key = next;
+			const at = next === null ? null : `${next}:${start}:${seconds}`;
+			if (at === key) return;
+			key = at;
 			if (next === null) {
 				window = null;
 				return;

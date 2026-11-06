@@ -17,7 +17,6 @@ import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
 import { buildRampTest } from '$lib/workout/ramp';
 import { openRoad } from '$lib/workout/ridden';
 import { worldPicture } from '$lib/world/picture.svelte';
-import { byReference } from '$lib/workout/road-workout';
 import type { createRideSession } from '$lib/workout/session.svelte';
 import type { Workout } from '$lib/workout/types';
 
@@ -273,11 +272,6 @@ export const theRide = {
 			road ? (next ? { ...next, road } : openRoad(road)) : next!,
 		);
 		root?.flags.recorder.event('ride', `changed to ${session.workout.name}`);
-		const planned = session.planned;
-		buffer?.retitle({
-			workoutName: planned.name,
-			workoutJson: JSON.stringify(byReference(planned)),
-		});
 	},
 
 	/**

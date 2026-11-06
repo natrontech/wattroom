@@ -18,7 +18,7 @@ type RiderMetrics struct {
 	Bias float64 `json:"bias,omitempty"`
 	// The WORKOUT second this sample was ridden at (#1733). A solo ride's
 	// record counts wall seconds — the ride clock stops while auto-paused,
-	// and skip and extend make it jump — so the array index stops being the
+	// and skip makes it jump — so the array index stops being the
 	// workout second at the first pause, and every sample after it would be
 	// scored against the wrong block.
 	//

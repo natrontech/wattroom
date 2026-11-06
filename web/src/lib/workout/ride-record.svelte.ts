@@ -32,8 +32,8 @@ export interface RecordedSecond {
 	second: number;
 	/**
 	 * The workout second this sample was ridden at (#1733). `second` is
-	 * the wall clock; this one stops while auto-paused and jumps on skip
-	 * and extend, and it is the coordinate the score is keyed on — the
+	 * the wall clock; this one stops while auto-paused and jumps on skip,
+	 * and it is the coordinate the score is keyed on — the
 	 * server used to score the saved ride by array index, so a 30 s stop
 	 * mid-block read every later second against the wrong block.
 	 */
@@ -80,7 +80,7 @@ export function createRideRecord(ftp: number) {
 	let trace = $state.raw<TracePoint[]>([]);
 	/**
 	 * What actually happened, in real time. Distinct from `trace`, which is keyed on
-	 * the workout clock so it lines up with the interval graph — skip and extend make
+	 * the workout clock so it lines up with the interval graph — skip makes
 	 * that clock jump, and a .fit needs strictly increasing seconds.
 	 */
 	const recording: RecordedSecond[] = [];
