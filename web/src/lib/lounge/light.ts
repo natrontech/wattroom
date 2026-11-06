@@ -25,11 +25,14 @@ export const BANDS = 3;
 const LIT_STEP = 0.13;
 const DARK_STEP = 0.17;
 
-/** The dark the lights lift: a little everywhere at night, more toward the edges. */
+/**
+ * The dark the lights lift, toward the room's edges only: a dither spread over
+ * the middle reads as grain on a pale wall. Day has none, for the same reason.
+ */
 export const DARKNESS: Record<Sky, { base: number; edge: number }> = {
-	night: { base: -0.1, edge: 0.75 },
-	dusk: { base: -0.04, edge: 0.55 },
-	day: { base: 0, edge: 0.12 },
+	night: { base: 0, edge: 0.8 },
+	dusk: { base: 0, edge: 0.55 },
+	day: { base: 0, edge: 0 },
 };
 
 function reach(l: Light, x: number, y: number, floorRow: number): number {

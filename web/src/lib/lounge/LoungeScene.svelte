@@ -33,6 +33,7 @@
 	import { device } from '$lib/device.svelte';
 	import { crewLive } from '$lib/nav/crew-live.svelte';
 	import { fetchPins } from '$lib/pins/pins';
+	import { presence } from '$lib/presence.svelte';
 	import { NO_MEMORY, fetchRoomMemory } from '$lib/lounge/memory';
 	import { mixer } from '$lib/sound/mixer.svelte';
 	import { prefersReducedMotion } from '$lib/motion';
@@ -91,6 +92,7 @@
 		SAFE_W,
 		SCENE_H,
 		SCENE_W,
+		SPOT_HINTS,
 		drawScene,
 		hasFront,
 		middleOf,
@@ -247,10 +249,18 @@
 	);
 	/** How many notes the corkboard holds: the crew's pins. */
 	let pins = $state(0);
+	/** What the room remembers of the crew (memory.ts). */
+	let memory = $state(NO_MEMORY);
+	// Read again on a lobby ping: a pin pinned or a session ended elsewhere
+	// reaches the wall without anyone reopening the room.
 	$effect(() => {
+		void presence.version;
 		const crew = station;
 		void fetchPins(crew).then((res) => {
 			if (res.ok && crew === station) pins = res.data.length;
+		});
+		void fetchRoomMemory(crew).then((seen) => {
+			if (crew === station) memory = seen;
 		});
 	});
 
@@ -274,15 +284,6 @@
 		void saveSighting(station, kind);
 		toasts.push(`New in the album: ${VISITOR_NOTES[kind].name}.`);
 	}
-
-	/** What the room remembers of the crew (memory.ts). */
-	let memory = $state(NO_MEMORY);
-	$effect(() => {
-		const crew = station;
-		void fetchRoomMemory(crew).then((seen) => {
-			if (crew === station) memory = seen;
-		});
-	});
 
 	/** Who rode a frame ago, and who keeps a towel on until when (figures.ts). */
 	let ridingSeen: Set<string> = new Set();
@@ -625,6 +626,13 @@
 					const over = at(e);
 					canvas!.style.cursor =
 						over.who || over.cat || over.spot ? 'pointer' : 'default';
+					canvas!.title = over.who
+						? ''
+						: over.cat
+							? 'Pet the cat'
+							: over.spot
+								? SPOT_HINTS[over.spot]
+								: '';
 				}}
 				class="absolute bottom-0 left-0 block [image-rendering:pixelated]"
 				style:width="{roomW * scale}px"
@@ -684,7 +692,7 @@
 		</div>
 	</div>
 	<div
-		class="font-display pixel-words text-muted absolute bottom-0 left-0 flex max-w-full flex-wrap items-center gap-x-3 p-2 text-xs"
+		class="font-display pixel-words text-muted bg-surface/85 absolute bottom-1 left-1 flex max-w-[calc(100%-0.5rem)] flex-wrap items-center gap-x-3 rounded px-2 py-0.5 text-xs"
 	>
 		{#if onAir}<button
 				type="button"
