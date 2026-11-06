@@ -129,36 +129,48 @@ export function halved(
 }
 
 const SHEET_W = PEDAL_FRAMES * (CELL_W + CELL_W / 2 + CELL_W / 4);
-const SHEET_H = VIEWS.length * CELL_H;
+/** Seated rows, then the same out of the saddle. */
+const SHEET_H = VIEWS.length * CELL_H * 2;
 
 /** Where the cell for a view, frame and size starts on a rider's sheet. */
-function cellAt(view: number, frame: number, d: StepDown) {
+function cellAt(view: number, frame: number, d: StepDown, standing = false) {
 	const left = d === 1 ? 0 : PEDAL_FRAMES * (d === 2 ? CELL_W : CELL_W * 1.5);
 	return {
 		x: left + (frame * CELL_W) / d,
-		y: (view * CELL_H) / d,
+		y: ((view + (standing ? VIEWS.length : 0)) * CELL_H) / d,
 		w: Math.floor(CELL_W / d),
 		h: Math.floor(CELL_H / d),
 	};
 }
 
 /** Every view and frame of one rider, at every size. */
-export function sheetOf(figure: Figure): THREE.CanvasTexture {
+export function sheetOf(
+	figure: Figure,
+	draw: (
+		g: CanvasRenderingContext2D,
+		view: View,
+		frame: number,
+		standing: boolean,
+	) => void = (g, view, frame, standing) =>
+		drawRider(g, figure, view, frame, standing),
+): THREE.CanvasTexture {
 	const canvas = document.createElement('canvas');
 	canvas.width = SHEET_W;
 	canvas.height = SHEET_H;
 	const g = canvas.getContext('2d', { willReadFrequently: true })!;
-	VIEWS.forEach((view, row) => {
-		for (let frame = 0; frame < PEDAL_FRAMES; frame++) {
-			g.save();
-			g.translate(frame * CELL_W, row * CELL_H);
-			g.beginPath();
-			g.rect(0, 0, CELL_W, CELL_H);
-			g.clip();
-			drawRider(g, figure, view, frame);
-			g.restore();
-		}
-	});
+	for (const standing of [false, true])
+		VIEWS.forEach((view, i) => {
+			const row = i + (standing ? VIEWS.length : 0);
+			for (let frame = 0; frame < PEDAL_FRAMES; frame++) {
+				g.save();
+				g.translate(frame * CELL_W, row * CELL_H);
+				g.beginPath();
+				g.rect(0, 0, CELL_W, CELL_H);
+				g.clip();
+				draw(g, view, frame, standing);
+				g.restore();
+			}
+		});
 	const hex = parseInt(LOUNGE.ink.slice(1), 16);
 	const ink = [hex >> 16, (hex >> 8) & 255, hex & 255] as const;
 	const whole = PEDAL_FRAMES * CELL_W;
@@ -261,6 +273,7 @@ export function makeAvatar(sheet: THREE.CanvasTexture, ghost = false) {
 	mesh.frustumCulled = false;
 	mesh.renderOrder = 2;
 	let crank = 0;
+	let standing = false;
 	const at = new THREE.Vector3();
 	mesh.onBeforeRender = (_r, scene, camera) => {
 		const u = material.uniforms;
@@ -275,7 +288,7 @@ export function makeAvatar(sheet: THREE.CanvasTexture, ghost = false) {
 			(TALL_M * TARGET.value.y) /
 			(2 * Math.tan((cam.fov * Math.PI) / 360) * depth);
 		const d = stepDownFor(tall);
-		const cell = cellAt(VIEWS.indexOf(view), pedalFrame(crank), d);
+		const cell = cellAt(VIEWS.indexOf(view), pedalFrame(crank), d, standing);
 		u.uCell.value.set(cell.x, cell.y, cell.w, cell.h);
 		u.uFoot.value.set(
 			Math.floor(cell.w / 2),
@@ -292,8 +305,9 @@ export function makeAvatar(sheet: THREE.CanvasTexture, ghost = false) {
 	return {
 		mesh,
 		/** This frame's legs, how much of them shows, and whether their screen has gone. */
-		set(angle: number, alpha: number, faded: boolean) {
+		set(angle: number, alpha: number, faded: boolean, stand = false) {
 			crank = angle;
+			standing = stand;
 			material.uniforms.uAlpha.value = alpha;
 			material.uniforms.uGrey.value = faded ? 1 : 0;
 		},

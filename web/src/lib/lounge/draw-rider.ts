@@ -57,6 +57,13 @@ const NECK = [9, 39, 0];
 const HEAD = [12, 43, 0];
 const THIGH = 11;
 const SHIN = 11;
+/** Standing on the pedals: the hips up and over the cranks, the back nearer upright. */
+const STANDING = new Map<P, P>([
+	[HIP, [-2, 31, 0]],
+	[SHOULDER, [10, 39, 0]],
+	[NECK, [12, 41.5, 0]],
+	[HEAD, [15, 45, 0]],
+]);
 /** Looked at from this far above the road, in degrees. */
 const ABOVE = (14 * Math.PI) / 180;
 
@@ -378,14 +385,29 @@ export function drawCyclist(
 	stroke: number,
 	ox: number,
 	oy: number,
-	opts: { shadow?: boolean; talking?: boolean } = {},
+	opts: { shadow?: boolean; talking?: boolean; standing?: boolean } = {},
 ) {
 	const yaw = (YAW[view] * Math.PI) / 180;
 	const sin = Math.sin(yaw);
 	const cos = Math.cos(yaw);
 	const across = Math.abs(cos);
+	const angle = (stroke / PEDAL_FRAMES) * Math.PI * 2;
+	// Out of the saddle the bike rocks under you, away from the foot going down.
+	const rock = opts.standing ? Math.sin(angle) * 0.13 : 0;
+	/** Where a joint stands in this pose, before the bike rocks. */
+	const pose = (p: P): P => (opts.standing ? (STANDING.get(p) ?? p) : p);
+	const stood = (p: P): P => {
+		if (!opts.standing) return p;
+		const moved = pose(p);
+		return [
+			moved[0],
+			moved[1] * Math.cos(rock) - moved[2] * Math.sin(rock),
+			moved[2] * Math.cos(rock) + moved[1] * Math.sin(rock),
+		];
+	};
 	/** On the page, and how far from the camera: the last number. */
-	const at = (p: P): number[] => {
+	const at = (raw: P): number[] => {
+		const p = stood(raw);
 		const depth = p[0] * cos + p[2] * sin;
 		return [
 			ox - p[0] * sin + p[2] * cos,
@@ -394,7 +416,6 @@ export function drawCyclist(
 		];
 	};
 	const pic = new Picture();
-	const angle = (stroke / PEDAL_FRAMES) * Math.PI * 2;
 
 	const wheel = (hub: P) => {
 		pic.order++;
@@ -488,7 +509,8 @@ export function drawCyclist(
 	};
 	const leg = (rider: Figure, side: number, near: boolean) => {
 		const foot = footOf(side);
-		const hip = [HIP[0], HIP[1], side * 3];
+		const h = pose(HIP);
+		const hip = [h[0], h[1], side * 3];
 		const knee = kneeOf(hip, foot);
 		knee[2] = side * (4 + across);
 		const ankle = [foot[0] - 1, foot[1] + 2, foot[2]];
@@ -517,7 +539,8 @@ export function drawCyclist(
 		);
 	};
 	const arm = (rider: Figure, side: number) => {
-		const shoulder = [SHOULDER[0], SHOULDER[1] - 1, side * 7];
+		const sh = pose(SHOULDER);
+		const shoulder = [sh[0], sh[1] - 1, side * 7];
 		const hand = [BARS[0], BARS[1] + 1, side * 9];
 		const elbow = [10, 30, side * 11];
 		// A tee's sleeves end at the elbow, and a vest has none.
@@ -552,8 +575,8 @@ export function drawCyclist(
 		// deep as a chest, across the line of the spine.
 		const box: P[] = [];
 		for (const [p, half] of [
-			[HIP, 5.5],
-			[SHOULDER, 8.5],
+			[pose(HIP), 5.5],
+			[pose(SHOULDER), 8.5],
 		] as const)
 			for (const z of [-half, half])
 				for (const up of [-3.5, 3.5])
@@ -627,13 +650,53 @@ export function drawCyclist(
 		return;
 	}
 	// Seen along the back the head sits down between the shoulders.
-	const [cx, cy] = at([HEAD[0], HEAD[1] - across * 2.5, 0]);
+	const top = pose(HEAD);
+	const [cx, cy] = at([top[0], top[1] - across * 2.5, 0]);
 	head(g, f, view, cx, cy, !!opts.talking);
-	const [sx, sy] = at([SHOULDER[0], SHOULDER[1] + 3, 7]);
+	const [sx, sy] = at([pose(SHOULDER)[0], pose(SHOULDER)[1] + 3, 7]);
 	pet(g, f, [sx - 1, sy - 4], [cx - 2, cy - 9]);
 }
 
-/** One cell of a rider's sheet, with its top left at the origin. */
-export function drawRider(g: Ctx, f: Figure, view: View, frame: number) {
-	drawCyclist(g, f, view, frame, CELL_W / 2, GROUND, { shadow: true });
+/** One cell of a rider's sheet, with its top left at the origin: seated, or out of the saddle. */
+export function drawRider(
+	g: Ctx,
+	f: Figure,
+	view: View,
+	frame: number,
+	standing = false,
+) {
+	drawCyclist(g, f, view, frame, CELL_W / 2, GROUND, {
+		shadow: true,
+		standing,
+	});
+}
+
+/** Someone by the road, watching you ride by: facing the road, waving now and then. */
+export function drawWatcher(g: Ctx, f: Figure, frame: number) {
+	const x = CELL_W / 2;
+	const y = GROUND;
+	const up = frame % 4 < 2;
+	const shadow: Part[] = [];
+	for (let i = -6; i <= 6; i += 2) shadow.push([x + i, y, 1, 1, C.ink]);
+	for (const [px, py, w, h, c] of shadow) rect(g, px, py, w, h, c);
+	outlined(
+		g,
+		[
+			[x - 4, y - 9, 3, 9, f.pantsShade],
+			[x + 1, y - 9, 3, 9, f.pants],
+			[x - 5, y - 1, 4, 2, f.shoes],
+			[x + 1, y - 1, 4, 2, f.shoes],
+			[x - 6, y - 19, 12, 10, f.shirt],
+			[x - 8, up ? y - 27 : y - 18, 2, up ? 8 : 8, f.shirt],
+			[x + 6, y - 18, 2, 8, f.shirt],
+			[x - 8, up ? y - 29 : y - 10, 2, 2, f.skin],
+			[x + 6, y - 10, 2, 2, f.skin],
+		],
+		C.ink,
+	);
+	rect(g, x + 4, y - 19, 2, 10, f.shirtShade);
+	if (f.stripes)
+		for (const row of [y - 17, y - 14])
+			rect(g, x - 6, row, 12, 1, stripeOn(f.shirt));
+	head(g, f, 'front', x, y - 24, false);
 }
