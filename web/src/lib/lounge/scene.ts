@@ -17,7 +17,8 @@ import {
 import { drawCat } from '$lib/lounge/draw-cat';
 import { drawDisco } from '$lib/lounge/draw-disco';
 import { drawLights } from '$lib/lounge/draw-sides';
-import type { Cat, Flyby, Season } from '$lib/lounge/moments';
+import { drawConfetti } from '$lib/lounge/draw-moments';
+import type { Cat, Flyby, Moment, Season } from '$lib/lounge/moments';
 
 /**
  * The stage: the room's middle, where everything you can click sits, at
@@ -167,6 +168,10 @@ export interface SceneInput {
 	fire: boolean;
 	/** Friday from five: a pizza on the table (moments.ts). */
 	pizza: boolean;
+	/** The same evening in winter: fondue instead. */
+	fondue: boolean;
+	/** What the calendar brings today (moments.ts). */
+	moment: Moment;
 	/** Past midnight: an owl on the sill. */
 	owl: boolean;
 }
@@ -210,6 +215,7 @@ export function drawScene(g: Ctx, input: SceneInput) {
 	drawFloorCrew(g, input);
 	g.restore();
 	drawLights(g, input);
+	drawConfetti(g, input);
 	drawHearts(g, input);
 	drawShade(g, input, ox, oy);
 	drawDisco(g, input);

@@ -27,8 +27,55 @@ export function drawWindow(g: Ctx, s: SceneInput) {
 	ground(g, s);
 	if (s.flyby) flyby(g, s, s.flyby);
 	weather(g, s);
+	pastTheWindow(g, s);
 	g.restore();
 	if (s.season === 'halloween') pumpkin(g, s);
+}
+
+/** What the calendar sends past the glass: blossom, leaves, or fireworks. */
+function pastTheWindow(g: Ctx, s: SceneInput) {
+	if (s.moment === 'blossom' || s.moment === 'leaves') {
+		const blossom = s.moment === 'blossom';
+		const hues = blossom
+			? [C.heart, C.paper]
+			: [C.amber, C.amberDark, C.redLight];
+		for (let i = 0; i < 26; i++) {
+			const fall = (hash3(i, 5, 1) * H + (s.still ? 0 : s.t * 7)) % H;
+			const sway = s.still ? 0 : Math.sin(s.t * 1.2 + i) * 4;
+			rect(
+				g,
+				X + hash3(i, 5, 2) * W + sway - fall * 0.3,
+				Y + fall,
+				blossom ? 1 : 2,
+				1,
+				hues[i % hues.length],
+			);
+		}
+	}
+	if (s.moment !== 'newyear' && s.moment !== 'august') return;
+	const hues =
+		s.moment === 'august'
+			? [C.redLight, C.paper, C.red]
+			: [C.amber, C.teal, C.heart, C.lilac];
+	const BURST_SEC = 2.6;
+	for (let b = 0; b < 3; b++) {
+		const clock = (s.still ? 1.3 : s.t) / BURST_SEC + b / 3;
+		const slot = Math.floor(clock) + b * 40;
+		const age = clock - Math.floor(clock);
+		const cx = X + 10 + hash3(slot, b, 1) * (W - 20);
+		const cy = Y + 6 + hash3(slot, b, 2) * 18;
+		const hue = hues[Math.floor(hash3(slot, b, 3) * hues.length)];
+		if (age < 0.2) {
+			rect(g, cx, cy + (0.2 - age) * 60, 1, 2, C.bulb);
+			continue;
+		}
+		const r = (age - 0.2) * 16;
+		for (let i = 0; i < 12; i++) {
+			if (age > 0.75 && i % 2) continue;
+			const a = (i / 12) * Math.PI * 2;
+			dot(g, cx + Math.cos(a) * r, cy + Math.sin(a) * r + age * 3, hue);
+		}
+	}
 }
 
 /** Across the window at the moment the slot gives, the same on every screen. */

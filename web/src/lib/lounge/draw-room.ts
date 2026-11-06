@@ -31,6 +31,7 @@ import { hash3 } from '$lib/lounge/hash';
 import { paintSides } from '$lib/lounge/draw-sides';
 import { WINDOW } from '$lib/lounge/draw-window';
 import { bakeLight, type Light } from '$lib/lounge/light';
+import { drawFondue, momentDressing } from '$lib/lounge/draw-moments';
 import {
 	FRONT_LAMPS,
 	foreground,
@@ -53,20 +54,21 @@ export function forgetWalls() {
  * lamp or the season changes, so a frame is one image and what moves.
  */
 export function drawBack(g: Ctx, s: SceneInput, ox: number, oy: number) {
-	const key = `${s.w}x${s.h}:${s.lampOn}:${s.season}:${s.sky}:${s.fire}`;
+	const key = `${s.w}x${s.h}:${s.lampOn}:${s.season}:${s.sky}:${s.fire}:${s.moment}`;
 	if (back?.key !== key) {
 		const canvas = document.createElement('canvas');
 		canvas.width = s.w;
 		canvas.height = s.h;
 		const b = canvas.getContext('2d')!;
 		walls(b, s.w, s.h, oy);
-		if (oy >= 24) upperWall(b, s.w, ox, oy);
+		if (oy >= 24) upperWall(b, s.w, ox, oy, s.moment === 'tour');
 		const lamps = paintSides(b, s, ox, oy);
 		b.translate(ox, oy);
 		curtains(b);
 		windowFrame(b);
 		signFrame(b);
-		poster(b);
+		if (s.moment === 'tour') yellowJersey(b);
+		else poster(b);
 		wallShelf(b);
 		desk(b, s.lampOn);
 		cabinet(b);
@@ -78,6 +80,7 @@ export function drawBack(g: Ctx, s: SceneInput, ox: number, oy: number) {
 		rug(b);
 		table(b);
 		if (hasFront(s.w, s.h)) frontRow(b);
+		momentDressing(b, s.moment);
 		b.setTransform(1, 0, 0, 1, 0, 0);
 		foreground(b, s.w, s.h, oy);
 		bakeLight(
@@ -181,7 +184,7 @@ function walls(g: Ctx, w: number, h: number, oy: number) {
 }
 
 /** A tall room's wall above the stage: a string of pennants and two framed jerseys. */
-function upperWall(g: Ctx, w: number, ox: number, oy: number) {
+function upperWall(g: Ctx, w: number, ox: number, oy: number, tour: boolean) {
 	const y0 = Math.round(oy * 0.45) + 8;
 	const hues = [C.teal, C.heart, C.amber, C.lilac];
 	for (let x = 0; x < w; x++)
@@ -205,7 +208,7 @@ function upperWall(g: Ctx, w: number, ox: number, oy: number) {
 	]) {
 		outlined(g, [[x, y0 + 8, 18, 18, C.trim]], C.ink);
 		rect(g, x + 2, y0 + 10, 14, 14, C.poster);
-		const shirt = n ? C.teal : C.heart;
+		const shirt = n ? C.teal : tour ? C.amber : C.heart;
 		rect(g, x + 4, y0 + 12, 10, 3, shirt);
 		rect(g, x + 6, y0 + 15, 6, 7, shirt);
 		rect(g, x + 8, y0 + 12, 2, 1, C.poster);
@@ -254,6 +257,17 @@ function poster(g: Ctx) {
 	}
 	rect(g, 258, 20, 1, 6, C.lilac);
 	rect(g, 259, 20, 4, 3, C.amber);
+}
+
+/** July: the leader's jersey takes the picture's place. */
+function yellowJersey(g: Ctx) {
+	outlined(g, [[244, 12, 26, 28, C.trim]], C.ink);
+	rect(g, 246, 14, 22, 24, C.shelf);
+	rect(g, 249, 18, 16, 5, C.amber);
+	rect(g, 252, 23, 10, 12, C.amber);
+	rect(g, 255, 18, 4, 2, C.shelf);
+	rect(g, 252, 29, 10, 1, C.bulb);
+	rect(g, 262, 23, 1, 12, C.amberDark);
 }
 
 /** A shelf over the speaker: records, a book and a small plant. */
@@ -481,7 +495,8 @@ export function drawLive(g: Ctx, s: SceneInput) {
 	lantern(g, s);
 	if (s.season === 'winter') treeLights(g, s);
 	if (s.bloom) bloom(g);
-	if (s.pizza) pizza(g);
+	if (s.fondue) drawFondue(g, s);
+	else if (s.pizza) pizza(g);
 	if (s.owl && s.season !== 'halloween') owl(g, s);
 	if (hasFront(s.w, s.h)) arcade(g, s);
 }

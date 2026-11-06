@@ -11,6 +11,7 @@
 	import { sceneLoop } from '$lib/lounge/scene-loop';
 	import { drawScene, type Figure } from '$lib/lounge/scene';
 	import { shadeFor } from '$lib/lounge/draw-room';
+	import type { Moment } from '$lib/lounge/moments';
 	import { applyLoungeTheme, type Sky } from '$lib/lounge/palette';
 	import { themeFor } from '$lib/themes';
 
@@ -179,6 +180,8 @@
 					arcade: false,
 					fire: ROOM_FIRE,
 					pizza: false,
+					fondue: params.get('fondue') === '1',
+					moment: (params.get('moment') ?? '') as Moment,
 					owl: false,
 				});
 			},
