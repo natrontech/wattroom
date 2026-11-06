@@ -167,7 +167,8 @@ export function createMicChain(host: MicChainHost) {
 		return capture;
 	}
 
-	const capture = () => captureMic(host.devices, host.handheld());
+	const capture = (hearsItself = false) =>
+		captureMic(host.devices, host.handheld(), hearsItself);
 
 	/** The audio thread gated this post itself; the rest is the same as a level. */
 	function onVoice(state: VoiceState) {
@@ -217,8 +218,8 @@ export function createMicChain(host: MicChainHost) {
 	 * capture → starting gain → level → gate gain. The caller connects the gain
 	 * to wherever the audio is going: the call, or your own ears.
 	 */
-	async function build() {
-		const { raw, mic } = await capture();
+	async function build(hearsItself = false) {
+		const { raw, mic } = await capture(hearsItself);
 		// Opus's rate, not the output device's (#1340): a context left to
 		// default follows the speakers — 44.1 kHz on plenty of Macs and DACs —
 		// and the mic is then resampled 48 → 44.1 → 48 on its way to the wire.
@@ -469,7 +470,7 @@ export function createMicChain(host: MicChainHost) {
 	 */
 	async function startTest() {
 		if (chain || testing) return;
-		const { ctx, raw, mic, gain, lift, meter, voice } = await build();
+		const { ctx, raw, mic, gain, lift, meter, voice } = await build(true);
 		void host.devices.refresh(); // the grant just made the labels readable (#658)
 		gain.connect(ctx.destination); // your own ears, not the call
 		const dest = ctx.createMediaStreamDestination();

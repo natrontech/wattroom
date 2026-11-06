@@ -25,11 +25,21 @@
  * a voice losing some air beats a phone that sends the whole room.
  *
  * `echoCancellation` stays on: it is the only thing between a rider on
- * speakers and the call hearing itself back.
+ * speakers and the call hearing itself back. It is `remote-only`, because
+ * `true` cancels everything the browser plays, and music is not a voice to
+ * cancel. With music in its reference the canceller took the rider's voice
+ * with it, on headphones too, where there is no echo at all (RESEARCH §22.6).
+ * Music that reaches the mic is noise cancellation's. An older browser reads
+ * the string as `true`.
+ *
+ * Only an element is `remote-only`'s echo, so a voice needs `ECHO_REFERENCE`
+ * (`av-output.ts`). Two captures keep `true`. A handheld's voices never reach
+ * an element. A mic test plays the rider back through WebAudio, and nothing
+ * else stops that howling on speakers.
  */
 export const MIC_CONSTRAINTS = {
 	noiseSuppression: false,
-	echoCancellation: true,
+	echoCancellation: 'remote-only',
 	autoGainControl: true,
 } as const;
 
@@ -55,8 +65,14 @@ export interface MicDevices {
 export async function captureMic(
 	devices: MicDevices,
 	handheld: boolean,
+	hearsItself = false,
 ): Promise<{ raw: MediaStream; mic: string }> {
-	const audio = { ...MIC_CONSTRAINTS, noiseSuppression: handheld };
+	const audio = {
+		...MIC_CONSTRAINTS,
+		noiseSuppression: handheld,
+		echoCancellation:
+			handheld || hearsItself ? true : MIC_CONSTRAINTS.echoCancellation,
+	};
 	const exactly = (id: string) =>
 		navigator.mediaDevices.getUserMedia({
 			audio: { ...audio, deviceId: { exact: id } },

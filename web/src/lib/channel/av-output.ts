@@ -1,4 +1,5 @@
 import { createMicMeter, type MicMeter } from '$lib/channel/mic-level';
+import { device } from '$lib/device.svelte';
 import { mixer } from '$lib/sound/mixer.svelte';
 import { riderOf } from '$lib/channel/tabs';
 import { makeCeiling } from '$lib/sound/cue-graph';
@@ -42,6 +43,8 @@ import { onDuck } from '$lib/sound/duck';
  * itself when a screen share brings audio (#1124) — so the element is held
  * silent by `volume = 0` as well, which nothing in the SDK touches.
  *
+ * On a computer the element then plays one thing on purpose: `ECHO_REFERENCE`.
+ *
  * Split out of av.svelte.ts (#892). Nothing here is reactive — the graph is
  * imperative WebAudio state, and the callers already know when to re-apply.
  */
@@ -51,6 +54,21 @@ import { onDuck } from '$lib/sound/duck';
 // (ADR-0004); elsewhere the picker simply doesn't render.
 export const canPickOutput =
 	typeof AudioContext !== 'undefined' && 'setSinkId' in AudioContext.prototype;
+
+/**
+ * How loud a voice's element plays beside the graph, on a computer.
+ *
+ * The mic's echo canceller only hears audio played by an element
+ * (`remote-only`, `capture.ts`): a voice that reaches the speakers through
+ * WebAudio is not echo to it, and would come back to the crew from any rider
+ * on speakers. So the element keeps a copy going, 14 dB under the graph.
+ * 0.1 is too quiet: a -26 dBFS voice then sits under the level the canceller
+ * reacts to, and all of the echo came through (measured, RESEARCH §22.6).
+ *
+ * ponytail: a second copy, not a second path. Playing voices through the
+ * element alone would lose the faders above unity.
+ */
+export const ECHO_REFERENCE = 0.2;
 
 export type RiderOutput = ReturnType<typeof createRiderOutput>;
 
@@ -71,6 +89,7 @@ export function createRiderOutput(
 	const gains = new Map<string, GainNode>();
 	const sources = new Map<string, MediaStreamAudioSourceNode>();
 	const meters = new Map<string, MicMeter>();
+	const elements = new Map<string, HTMLAudioElement>();
 	// Which keys carry a shared machine's audio rather than a voice (#1124).
 	// A Set rather than a suffix on the key, so nothing has to parse a string
 	// to know what it is holding.
@@ -93,14 +112,21 @@ export function createRiderOutput(
 		return mixer.riderGain(riderOf(key));
 	}
 
+	/** What a connection's element plays. A share is music: it stays out. */
+	function echoCopy(key: string) {
+		return !device.coarse && !shares.has(key) && gainFor(key) > 0
+			? ECHO_REFERENCE
+			: 0;
+	}
+
 	function applySink() {
 		const id = sinkId();
 		if (!ctx || !id || !canPickOutput) return;
-		void (ctx as AudioContext & { setSinkId(id: string): Promise<void> })
-			.setSinkId(id)
-			.catch(() => {
-				// unplugged sink: audio falls back to the OS default, not silence
-			});
+		// Unplugged sink: audio falls back to the OS default, not silence.
+		for (const out of [ctx, ...elements.values()])
+			void (out as unknown as { setSinkId(id: string): Promise<void> })
+				.setSinkId(id)
+				.catch(() => {});
 	}
 
 	// One duck for the whole app (#988) — this graph is told when to move,
@@ -123,6 +149,7 @@ export function createRiderOutput(
 		sources.get(key)?.disconnect();
 		sources.delete(key);
 		shares.delete(key);
+		elements.delete(key);
 	}
 
 	return {
@@ -163,9 +190,11 @@ export function createRiderOutput(
 				// below still falls back to the element's native, unfadered
 				// playback rather than to silence. Both knobs: `startAudio()`
 				// flips `muted` back (see the top of this file); `volume` it
-				// leaves alone.
-				el.muted = true;
-				el.volume = 0;
+				// leaves alone. Then the one copy that stays: `ECHO_REFERENCE`.
+				elements.set(identity, el);
+				el.volume = echoCopy(identity);
+				el.muted = el.volume === 0;
+				applySink();
 				// The meter goes in ahead of the fader, so what it reads is the
 				// voice as sent rather than as this listener chose to hear it —
 				// turning somebody down must not stop them lighting up. The
@@ -213,6 +242,10 @@ export function createRiderOutput(
 			if (!ctx) return;
 			for (const [key, gain] of gains)
 				gain.gain.setTargetAtTime(gainFor(key), ctx.currentTime, 0.02);
+			for (const [key, el] of elements) {
+				el.volume = echoCopy(key);
+				el.muted = el.volume === 0;
+			}
 		},
 		/**
 		 * Browsers may suspend audio graphs in long-hidden tabs; coming back
@@ -232,6 +265,7 @@ export function createRiderOutput(
 			for (const source of sources.values()) source.disconnect();
 			gains.clear();
 			sources.clear();
+			elements.clear();
 			void ctx?.close().catch(() => {});
 			ctx = null;
 			bus = null;

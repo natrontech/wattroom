@@ -10,8 +10,8 @@ describe('mic capture constraints (#555)', () => {
 		expect(MIC_CONSTRAINTS.autoGainControl).toBe(true);
 	});
 
-	it('keeps echo cancellation — the one DSP a rider on speakers needs', () => {
-		expect(MIC_CONSTRAINTS.echoCancellation).toBe(true);
+	it('cancels the crew, and leaves music out of it (RESEARCH §22.6)', () => {
+		expect(MIC_CONSTRAINTS.echoCancellation).toBe('remote-only');
 	});
 
 	it('sends the voice without noise suppression (ADR-0043, #1340)', () => {
@@ -27,10 +27,14 @@ describe('the browser suppressor', () => {
 		heardNothing: () => {},
 		refresh: async () => {},
 	});
-	const asked = async (micId: string, handheld: boolean) => {
+	const asked = async (
+		micId: string,
+		handheld: boolean,
+		hearsItself = false,
+	) => {
 		const getUserMedia = vi.fn(async () => ({ getTracks: () => [] }));
 		vi.stubGlobal('navigator', { mediaDevices: { getUserMedia } });
-		await captureMic(devices(micId), handheld);
+		await captureMic(devices(micId), handheld, hearsItself);
 		return getUserMedia.mock.calls[0] as unknown as [
 			{ audio: MediaTrackConstraints },
 		];
@@ -42,7 +46,6 @@ describe('the browser suppressor', () => {
 		for (const micId of ['', 'usb']) {
 			const [{ audio }] = await asked(micId, true);
 			expect(audio.noiseSuppression).toBe(true);
-			expect(audio.echoCancellation).toBe(true);
 		}
 	});
 
@@ -51,5 +54,15 @@ describe('the browser suppressor', () => {
 			const [{ audio }] = await asked(micId, false);
 			expect(audio.noiseSuppression).toBe(false);
 		}
+	});
+
+	it('cancels everything where a voice never reaches an element', async () => {
+		const [{ audio }] = await asked('', true);
+		expect(audio.echoCancellation).toBe(true);
+	});
+
+	it('cancels everything in a mic test, which plays the rider back', async () => {
+		const [{ audio }] = await asked('', false, true);
+		expect(audio.echoCancellation).toBe(true);
 	});
 });
