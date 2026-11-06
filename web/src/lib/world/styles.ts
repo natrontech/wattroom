@@ -10,6 +10,7 @@
 import * as THREE from 'three';
 import { Biome } from './biome';
 import { sunDir, type Light } from './light';
+import { LOUNGE } from '$lib/lounge/palette';
 import { BAYER, PIXEL, STEPS } from './pixel';
 import type { SignLook } from './setpieces';
 
@@ -256,27 +257,58 @@ export function skyMaterial(style: Style): THREE.ShaderMaterial {
 				value:
 					style.sun.disc === 'stripes' ? 2 : style.sun.disc === 'halo' ? 1 : 0,
 			},
+			uPixel: PIXEL, // Pixel 3D: the lounge's window (pixel.ts)
+			uStar: { value: col(LOUNGE.star) },
+			uLilac: { value: col(LOUNGE.lilac) },
 		},
 		vertexShader: /* glsl */ `varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-		fragmentShader: /* glsl */ `uniform vec3 uTop, uHorizon, uSunward, uBand, uSun, uSunCol, uSunLow; uniform float uDisc, uPeach, uDusk; uniform sampler2D uSkyline; varying vec3 vDir;
+		fragmentShader: /* glsl */ `uniform vec3 uTop, uHorizon, uSunward, uBand, uSun, uSunCol, uSunLow; uniform float uDisc, uPeach, uDusk, uPixel; uniform vec3 uStar, uLilac; uniform sampler2D uSkyline; varying vec3 vDir;
 			${OKLAB}
+			${BAYER}
 			void main(){
 				float h = max(vDir.y, 0.0);
 				float s = max(dot(vDir, uSun), 0.0);
 				vec3 hor = mix(uHorizon, uSunward, pow(s, 8.0));
 				vec3 c = mix(hor, uTop, pow(h, 0.45));
+				float dither = (pixelBayer(gl_FragCoord.xy) - 0.5) * 0.3;
+				if (uPixel > 0.5) {
+					// The lounge's window: five flat bands from the fog's horizon up, a checker row where two meet.
+					hor = mix(uHorizon, uSunward, floor(pow(s, 8.0) * 3.0 + 0.5 + dither) / 3.0);
+					float f = pow(h, 0.45) * 5.0;
+					float b = min(floor(f), 4.0);
+					if (fract(f) > 0.78 && mod(gl_FragCoord.x + gl_FragCoord.y, 2.0) >= 1.0) b = min(b + 1.0, 4.0);
+					c = mix(hor, uTop, b / 4.0);
+				}
 				if (uPeach > 0.0) { // level over the ranges in view, fading out half a degree over the highest
 					float top = texture2D(uSkyline, vec2(atan(vDir.x, vDir.z) / 6.2831853, 0.5)).r * 0.25;
 					float clear = 0.009 * (1.0 + 0.5 * pow(s, 4.0));
 					float w = uPeach * smoothstep(-0.01, 0.0, vDir.y) * (1.0 - smoothstep(top - 0.003, top + clear, vDir.y));
+					if (uPixel > 0.5) w = step(0.5 + dither, w); // a band, its edge dithered
 					// The sky's chroma gives way to the peach's at the band's faint edge, so no pixel takes a hue between them, the pinks.
 					vec3 sky = toLab(c);
 					vec3 band = toLab(uBand);
 					vec2 ab = w < 0.02 ? sky.yz * (1.0 - w / 0.02) : band.yz * sqrt((w - 0.02) / 0.98);
 					c = fromLab(vec3(mix(sky.x, band.x, w), ab));
 				}
-				if (uDisc > 0.5) c += uSunward * pow(s, 6.0) * 0.35 + hor * exp(-abs(vDir.y) * 14.0) * 0.12;
-				if (uDisc > 1.5) { // the outrun sun: flat disc, horizontal gaps widening toward the bottom
+				if (uPixel > 0.5) {
+					// The lounge's sun: a flat disc, its lower half striped; never a glow.
+					float r = length(vDir - uSun);
+					if (r < 0.06) {
+						float row = floor(((vDir.y - uSun.y) / 0.06 + 1.0) * 6.5); // 13 rows, 0 at the bottom
+						bool gap = row <= 6.0 && abs(mod(row, 3.0) - 2.0) < 0.5;
+						if (!gap) c = row > 6.0 ? uSunCol : uSunLow;
+					}
+					// Stars once the sky is dark, more as it darkens, a pixel each, fixed to the sky.
+					float dark = 1.0 - smoothstep(0.003, 0.02, dot(uTop * uDusk, vec3(0.2126, 0.7152, 0.0722)));
+					if (dark > 0.0 && vDir.y > 0.12) {
+						vec2 q = vec2(atan(vDir.x, vDir.z), asin(vDir.y)) * 160.0;
+						vec2 cell = floor(q);
+						vec2 off = abs(fract(q) - 0.5) / fwidth(q); // under 0.5 on the one pixel at the cell's centre
+						float k = fract(sin(dot(cell, vec2(127.1, 311.7))) * 43758.5453);
+						if (k > 1.0 - 0.006 * dark && max(off.x, off.y) < 0.5) c = fract(k * 97.0) > 0.6 ? uStar : uLilac;
+					}
+				} else if (uDisc > 0.5) c += uSunward * pow(s, 6.0) * 0.35 + hor * exp(-abs(vDir.y) * 14.0) * 0.12;
+				if (uPixel < 0.5 && uDisc > 1.5) { // the outrun sun: flat disc, horizontal gaps widening toward the bottom
 					vec3 toSun = vDir - uSun;
 					float r = length(toSun);
 					if (r < 0.16) {
