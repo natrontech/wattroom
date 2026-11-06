@@ -18,7 +18,7 @@ import {
 	ring,
 	type Ctx,
 } from '$lib/lounge/pixel';
-import { BIKE_GROUND, BIKE_XS, FRONT_Y } from '$lib/lounge/scene';
+import { BIKE_GROUND, BIKE_XS, FLOOR_Y, FRONT_Y } from '$lib/lounge/scene';
 
 /** The nook's lamp stands here. */
 const NOOK_X = 124;
@@ -32,12 +32,21 @@ export const FRONT_LAMPS = [
 /** Rows under the front row before the room bothers with a foreground. */
 const FOREGROUND_ROWS = 22;
 
-/** A rubber mat under the two trainers that always stand there. */
+/**
+ * A rubber mat under the two trainers that always stand there, and the
+ * dynamo beside each with its cable to the wall: riding lights the bulbs
+ * (drawLights).
+ */
 export function mats(g: Ctx) {
 	for (const x of BIKE_XS) {
+		const out = x < 160 ? -1 : 1;
+		const box = x + out * 21;
+		line(g, box, BIKE_GROUND - 8, box + out * 6, FLOOR_Y + 2, C.cable);
 		rect(g, x - 25, BIKE_GROUND - 9, 50, 13, C.ink);
 		rect(g, x - 24, BIKE_GROUND - 8, 48, 11, C.laptop);
 		rect(g, x - 24, BIKE_GROUND - 8, 48, 1, C.laptopLight);
+		outlined(g, [[box - 2, BIKE_GROUND - 11, 5, 5, C.amberDark]], C.ink);
+		dot(g, box, BIKE_GROUND - 9, C.bulb);
 	}
 }
 

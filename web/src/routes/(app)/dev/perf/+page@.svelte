@@ -113,6 +113,7 @@
 		muted: false,
 		sounding: false,
 		faded: false,
+		cooling: params.get('cool') === '1',
 	};
 	function lounge(node: HTMLCanvasElement) {
 		if (params.get('scheme') === 'light')

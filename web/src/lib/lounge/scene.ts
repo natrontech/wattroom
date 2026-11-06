@@ -79,6 +79,8 @@ export interface Figure {
 	sounding: boolean;
 	/** Heard, with no live link: drawn in one lilac until it redials. */
 	faded: boolean;
+	/** Just off the bike: a towel round the neck and a bottle in hand. */
+	cooling?: boolean;
 }
 
 export interface Rider extends Figure {

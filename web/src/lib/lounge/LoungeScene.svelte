@@ -53,7 +53,7 @@
 		type RadioPick,
 	} from '$lib/lounge/state';
 	import { recordAt } from '$lib/lounge/records';
-	import { crewOf } from '$lib/lounge/figures';
+	import { cooled, crewOf } from '$lib/lounge/figures';
 	import {
 		catAt,
 		cuckooing,
@@ -205,11 +205,18 @@
 		return { playing: false, beat: 0, pulsing: false, disco: false };
 	}
 
+	/** Who rode a frame ago, and who keeps a towel on until when (figures.ts). */
+	let ridingSeen: Set<string> = new Set();
+	let coolingUntil: Map<string, number> = new Map();
+
 	function frame(g: CanvasRenderingContext2D, dt: number, still: boolean) {
 		// The clock runs either way: reduced motion holds the picture, not time,
 		// so a heart or an awake cat still passes.
 		clock += dt;
 		const riders = channel.riders;
+		const off = cooled(riders, ridingSeen, coolingUntil, clock);
+		ridingSeen = off.riding;
+		coolingUntil = off.until;
 		const now = new Date();
 		const sec = serverNow() / 1000;
 		// A mood brings its own sky; otherwise the window keeps the viewer's hour.
@@ -228,7 +235,13 @@
 			sky,
 			weather: weatherOf(lounge),
 			lampOn,
-			crew: crewOf(riders, still ? 0 : clock, size.w, size.h),
+			crew: crewOf(
+				riders,
+				still ? 0 : clock,
+				size.w,
+				size.h,
+				new Set(coolingUntil.keys()),
+			),
 			...music(),
 			...(mood === 'arcade' && { disco: true }),
 			fire,

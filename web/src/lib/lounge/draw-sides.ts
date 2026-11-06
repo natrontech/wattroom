@@ -12,6 +12,7 @@ import {
 	ellipse,
 	line,
 	outlined,
+	pool,
 	rect,
 	ring,
 	type Ctx,
@@ -216,7 +217,9 @@ export function paintSides(
 
 /**
  * Bulbs on a wire across the ceiling. On the beat a bulb's top pixel steps
- * to white: a colour change a pixel wide, never a glow or a flash.
+ * to white: a colour change a pixel wide, never a glow or a flash. The
+ * trainers' dynamos feed the wire: one rider lights every third bulb up with
+ * a dither of light around it, two every other, three all of them.
  */
 export function drawLights(g: Ctx, s: SceneInput) {
 	const span = 96;
@@ -231,8 +234,11 @@ export function drawLights(g: Ctx, s: SceneInput) {
 		s.season === 'winter'
 			? [C.heart, C.leafLight, C.bulb]
 			: [C.bulb, C.tealLight, C.heart];
+	const riders = s.crew.bikes.filter((b) => b.rider).length;
+	const every = Math.max(1, 4 - riders);
 	for (let x = 6, k = 0; x < s.w; x += 12, k++) {
 		const y = yAt(x) + 1;
+		if (riders && k % every === 0) pool(g, x + 1, y + 2, 5, 5, C.bulb, 0.45);
 		outlined(g, [[x, y, 2, 3, hues[k % 3]]], C.ink);
 		if (lit && k % 2 === Math.floor(s.beat) % 2) rect(g, x, y, 1, 1, C.star);
 	}

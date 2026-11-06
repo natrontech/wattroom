@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { LiveRider } from '$lib/channel/types';
-import { crewOf, floorSpots } from '$lib/lounge/figures';
+import { COOLING_SEC, cooled, crewOf, floorSpots } from '$lib/lounge/figures';
 import { SCENE_H, SCENE_W, SPOT_DX, middleOf, tagsOf } from '$lib/lounge/scene';
 
 const rider = (name: string, extra: Partial<LiveRider> = {}) =>
@@ -94,5 +94,19 @@ describe('who sits where in the lounge', () => {
 	it('wears headphones while the mic is off', () => {
 		const crew = crewOf([rider('a', { muted: true })], 0, SCENE_W, SCENE_H);
 		expect(crew.seated[0].muted).toBe(true);
+	});
+
+	it('hands a towel to whoever just stopped riding, and takes it back', () => {
+		const on = [{ id: 'a', riding: 'free' }, { id: 'b' }];
+		const off = [{ id: 'a' }, { id: 'b' }];
+		const first = cooled(on, new Set(), new Map(), 0);
+		expect([...first.until]).toEqual([]);
+		const ended = cooled(off, first.riding, first.until, 10);
+		expect(ended.until.get('a')).toBe(10 + COOLING_SEC);
+		expect(ended.until.has('b')).toBe(false);
+		const back = cooled(on, ended.riding, ended.until, 20);
+		expect(back.until.has('a')).toBe(false);
+		const later = cooled(off, new Set(), ended.until, 10 + COOLING_SEC + 1);
+		expect(later.until.size).toBe(0);
 	});
 });
