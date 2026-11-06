@@ -17,6 +17,18 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.11.20] - 2026-11-06
+
+### Added
+
+- Your crew no longer hears your fan, drivetrain or heavy breathing. Noise cancellation now runs on your own machine and is on by default, the voice gate shuts properly on a noisy bike, and the first sound of a word comes through. Advanced in the Sound panel turns it off. If you dragged the gate mark by hand, it is back on automatic. (#4433)
+
+### Fixed
+
+- A ride's icon buttons say their name the moment you point at them (#4434)
+- Road signs, mirrors and snow poles by the road no longer vanish just before you ride past them. (#4432)
+- The 3D world no longer drops to the flat road on a single hiccup, steps down its quality first when the screen really cannot keep up, and comes back by itself if it does drop. (#4428)
+
 ## [2026.11.19] - 2026-11-06
 
 ### Added
@@ -4383,7 +4395,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.19...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.20...HEAD
+[2026.11.20]: https://github.com/natrontech/wattroom/compare/2026.11.19...2026.11.20
 [2026.11.19]: https://github.com/natrontech/wattroom/compare/2026.11.18...2026.11.19
 [2026.11.18]: https://github.com/natrontech/wattroom/compare/2026.11.17...2026.11.18
 [2026.11.17]: https://github.com/natrontech/wattroom/compare/2026.11.16...2026.11.17
