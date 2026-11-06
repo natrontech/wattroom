@@ -4,20 +4,28 @@ import { worldPicture } from '$lib/world/picture.svelte';
 import WorldPicture from './WorldPicture.svelte';
 
 const card = () => render(WorldPicture).body;
+const jpeg = () => new Blob(['jpeg']);
 
-describe('the closing card’s World picture (#4263)', () => {
+describe('the closing card’s World pictures (#4263, #4431)', () => {
 	afterEach(() => worldPicture.clear());
 
-	it('holds its place with “Drawing…” while the world draws it', () => {
+	it('holds their place with “Drawing…” while the world draws them', () => {
 		void worldPicture.draw(new Promise(() => {}));
 		expect(card()).toContain('Drawing…');
 		expect(card()).not.toContain('data-testid="world-picture"');
 	});
 
-	it('offers the picture once it is drawn', async () => {
-		await worldPicture.draw(Promise.resolve(new Blob(['jpeg'])));
-		expect(card()).toContain('World picture');
+	it('offers both pictures once they are drawn', async () => {
+		await worldPicture.draw(Promise.resolve({ rider: jpeg(), above: jpeg() }));
+		expect(card()).toContain('data-testid="world-picture"');
+		expect(card()).toContain('data-testid="world-picture-above"');
 		expect(card()).not.toContain('Drawing…');
+	});
+
+	it('offers the one the browser gave, where it gave only one', async () => {
+		await worldPicture.draw(Promise.resolve({ rider: jpeg(), above: null }));
+		expect(card()).toContain('data-testid="world-picture"');
+		expect(card()).not.toContain('data-testid="world-picture-above"');
 	});
 
 	it('is absent where the world drew none', () => {

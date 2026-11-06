@@ -1,9 +1,10 @@
 <script lang="ts">
 	/**
-	 * A closing card's two pictures for Strava (#4221): the poster, drawn by
-	 * the server from the saved ride, and the world's, taken on the ride. The
-	 * rider saves either or both; Strava's API takes the activity and never a
-	 * photo, so these are what a rider adds by hand.
+	 * A closing card's pictures for Strava (#4221): the poster, drawn by the
+	 * server from the saved ride, and the world's two, taken on the ride: you,
+	 * and the same moment from above (#4431). The rider saves any of them;
+	 * Strava's API takes the activity and never a photo, so these are what a
+	 * rider adds by hand.
 	 */
 	import RideCardChooser from '$lib/ride/RideCardChooser.svelte';
 	import WorldPicture from '$lib/ride/WorldPicture.svelte';

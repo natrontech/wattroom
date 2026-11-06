@@ -9,6 +9,7 @@ import {
 	PICTURE,
 	type PictureMoment,
 	worldPicture,
+	type WorldShots,
 } from './picture.svelte';
 
 /** Ridden past each metre in turn, the light and watts rising as it went. */
@@ -81,17 +82,36 @@ describe('the ride’s best moment for its picture (#4263)', () => {
 describe('the picture as the world draws it (#4263)', () => {
 	it('keeps what it drew, and lets a late one go once a new ride starts', async () => {
 		worldPicture.clear();
-		const late = Promise.withResolvers<Blob | null>();
+		const late = Promise.withResolvers<WorldShots | null>();
 		const drawing = worldPicture.draw(late.promise);
 		expect(worldPicture.drawing).toBe(true);
 		worldPicture.clear();
-		late.resolve(new Blob(['old']));
+		late.resolve({ rider: new Blob(['old']), above: new Blob(['old']) });
 		await drawing;
-		expect(worldPicture.current).toBeNull();
-		const shot = new Blob(['new']);
-		await worldPicture.draw(Promise.resolve(shot));
+		expect(worldPicture.rider).toBeNull();
+		expect(worldPicture.above).toBeNull();
+		const shots = { rider: new Blob(['you']), above: new Blob(['above']) };
+		await worldPicture.draw(Promise.resolve(shots));
 		expect(worldPicture.drawing).toBe(false);
-		expect(worldPicture.current).toBe(shot);
+		expect(worldPicture.rider).toBe(shots.rider);
+		expect(worldPicture.above).toBe(shots.above);
+		worldPicture.clear();
+	});
+
+	it('keeps its pictures as a pair: a close that drew none leaves the last, one that drew one replaces both (#4431)', async () => {
+		worldPicture.clear();
+		const first = { rider: new Blob(['you']), above: new Blob(['above']) };
+		await worldPicture.draw(Promise.resolve(first));
+		await worldPicture.draw(Promise.resolve(null));
+		await worldPicture.draw(Promise.reject(new Error('lost')));
+		await worldPicture.draw(Promise.resolve({ rider: null, above: null }));
+		expect(worldPicture.rider).toBe(first.rider);
+		expect(worldPicture.above).toBe(first.above);
+		const only = new Blob(['you again']);
+		await worldPicture.draw(Promise.resolve({ rider: only, above: null }));
+		expect(worldPicture.rider).toBe(only);
+		// Never the last close's view from above beside this close's you.
+		expect(worldPicture.above).toBeNull();
 		worldPicture.clear();
 	});
 });
