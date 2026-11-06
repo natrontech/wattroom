@@ -9,6 +9,7 @@ import { disc, dot, line, rect, type Ctx } from '$lib/lounge/pixel';
 import type { SceneInput } from '$lib/lounge/scene';
 import type { Flyby } from '$lib/lounge/moments';
 import { hash3 } from '$lib/lounge/hash';
+import { drawSillVisitor, drawWindowVisitor } from '$lib/lounge/draw-visitors';
 
 /** The glass, in the stage's coordinates; its frame and sill are drawn with the room. */
 export const WINDOW = { X: 118, Y: 10, W: 84, H: 44 } as const;
@@ -28,7 +29,9 @@ export function drawWindow(g: Ctx, s: SceneInput) {
 	if (s.flyby) flyby(g, s, s.flyby);
 	weather(g, s);
 	pastTheWindow(g, s);
+	drawWindowVisitor(g, s);
 	g.restore();
+	drawSillVisitor(g, s);
 	if (s.season === 'halloween') pumpkin(g, s);
 }
 

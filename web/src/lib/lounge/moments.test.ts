@@ -13,6 +13,11 @@ import {
 	fondueNight,
 	momentOf,
 	seasonOf,
+	VISITORS,
+	VISITOR_SLOT_SEC,
+	visitorAt,
+	visitorsFor,
+	type VisitorWeather,
 } from '$lib/lounge/moments';
 
 const DAY = 86_400;
@@ -138,5 +143,60 @@ describe('the lounge moments every screen shares', () => {
 		expect(fondueNight(new Date(2026, 11, 4, 19))).toBe(true);
 		expect(fondueNight(new Date(2026, 5, 5, 19))).toBe(false);
 		expect(fondueNight(new Date(2026, 11, 5, 19))).toBe(false);
+	});
+
+	const calm: VisitorWeather = {
+		sky: 'night',
+		weather: 'snow',
+		lampOn: true,
+		moment: '',
+		season: '',
+		pizza: false,
+		christmasEve: false,
+	};
+
+	it('sends each visitor only in its own conditions', () => {
+		expect(visitorsFor(calm)).toEqual(['fox']);
+		expect(visitorsFor({ ...calm, sky: 'day' })).toEqual(['ibex']);
+		expect(visitorsFor({ ...calm, weather: 'clear', sky: 'day' })).toEqual([
+			'cow',
+		]);
+		expect(visitorsFor({ ...calm, lampOn: false })).toContain('mouse');
+	});
+
+	it('can show every visitor in the album', () => {
+		const seen = new Set<string>();
+		for (const sky of ['night', 'dusk', 'day'] as const)
+			for (const weather of ['rain', 'clear', 'snow'] as const)
+				for (const moment of ['', 'leaves', 'blossom'] as const)
+					for (const season of ['', 'halloween'] as const)
+						for (const flag of [false, true])
+							for (const k of visitorsFor({
+								sky,
+								weather,
+								moment,
+								season,
+								lampOn: flag,
+								pizza: flag,
+								christmasEve: flag,
+							}))
+								seen.add(k);
+		expect([...seen].sort()).toEqual([...VISITORS].sort());
+	});
+
+	it('is the same visitor on every screen, and a rare one', () => {
+		let met = 0;
+		const slots = 2000;
+		for (let i = 0; i < slots; i++) {
+			const sec = i * VISITOR_SLOT_SEC + 150;
+			expect(visitorAt(9, sec, calm)).toEqual(visitorAt(9, sec, calm));
+			for (let at = 0; at < VISITOR_SLOT_SEC; at += 20)
+				if (visitorAt(9, i * VISITOR_SLOT_SEC + at, calm)) {
+					met++;
+					break;
+				}
+		}
+		expect(met / slots).toBeGreaterThan(0.35);
+		expect(met / slots).toBeLessThan(0.65);
 	});
 });

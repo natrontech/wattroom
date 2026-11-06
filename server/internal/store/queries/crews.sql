@@ -312,3 +312,11 @@ select (select count(distinct r.session_id) from rides r
        (select count(*) from medals m where m.crew_id = c.id)::bigint as medals
 from crews c
 where c.id = $1;
+
+-- name: ListCrewSightings :many
+select kind, seen_at from crew_sightings where crew_id = $1 order by seen_at;
+
+-- name: AddCrewSighting :execrows
+-- The first time counts: seeing it again changes nothing.
+insert into crew_sightings (crew_id, kind) values ($1, $2)
+on conflict do nothing;

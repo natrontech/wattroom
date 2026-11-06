@@ -70,7 +70,19 @@
 		owlHours,
 		pizzaNight,
 		seasonOf,
+		VISITORS,
+		visitorAt,
+		type Visitor,
 	} from '$lib/lounge/moments';
+	import Album from '$lib/lounge/Album.svelte';
+	import {
+		VISITOR_NOTES,
+		fetchAlbum,
+		saveSighting,
+		type Sighting,
+	} from '$lib/lounge/album';
+	import { toasts } from '$lib/toast.svelte';
+	import BookOpen from '@lucide/svelte/icons/book-open';
 	import { palette } from '$lib/palette.svelte';
 	import { LOUNGE, applyLoungeTheme, skyAt } from '$lib/lounge/palette';
 	import { forgetWalls, shadeFor } from '$lib/lounge/draw-room';
@@ -242,6 +254,27 @@
 		});
 	});
 
+	/** The crew's album of visitors: what it has seen, and when. */
+	let album = $state<Sighting[]>([]);
+	let albumLoaded = false;
+	let browsing = $state(false);
+	$effect(() => {
+		const crew = station;
+		albumLoaded = false;
+		void fetchAlbum(crew).then((seen) => {
+			if (crew !== station) return;
+			album = seen;
+			albumLoaded = true;
+		});
+	});
+	/** A visitor on screen: the first time, it goes in the album. */
+	function noteVisitor(kind: Visitor) {
+		if (!albumLoaded || album.some((s) => s.kind === kind)) return;
+		album = [...album, { kind, seenAt: new Date().toISOString() }];
+		void saveSighting(station, kind);
+		toasts.push(`New in the album: ${VISITOR_NOTES[kind].name}.`);
+	}
+
 	/** What the room remembers of the crew (memory.ts). */
 	let memory = $state(NO_MEMORY);
 	$effect(() => {
@@ -274,8 +307,19 @@
 				? dark
 				: shade +
 					Math.max(-SHADE_RATE * dt, Math.min(SHADE_RATE * dt, dark - shade));
+		const visitor = visitorAt(seed, sec, {
+			sky,
+			weather: weatherOf(lounge),
+			lampOn,
+			moment: momentOf(now),
+			season: seasonOf(now),
+			pizza: pizzaNight(now),
+			christmasEve: now.getMonth() === 11 && now.getDate() === 24,
+		});
+		if (visitor) noteVisitor(visitor.kind);
 		drawScene(g, {
 			...size,
+			visitor,
 			t: clock,
 			still,
 			sky,
@@ -684,6 +728,13 @@
 			><Sparkles size={13} />
 			{mood ? MOODS[mood].name : 'Mood'}</button
 		>
+		<button
+			type="button"
+			onclick={() => (browsing = true)}
+			title="Who has come by"
+			class="btn btn-ghost btn-xs text-ink px-0"
+			><BookOpen size={13} /> Album {album.length}/{VISITORS.length}</button
+		>
 		{#if onAir && nowPlaying}<span class="tabular-nums max-sm:hidden"
 				>{nowPlaying}</span
 			>{/if}
@@ -691,5 +742,6 @@
 				>Music is at 0 in your mix.</span
 			>{/if}
 	</div>
+	{#if browsing}<Album {album} onclose={() => (browsing = false)} />{/if}
 	{#if dressing}<LookEditor onclose={() => (dressing = false)} />{/if}
 </section>

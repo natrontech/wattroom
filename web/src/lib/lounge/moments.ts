@@ -223,3 +223,77 @@ export function momentOf(date: Date): Moment {
 export function owlHours(hours: number): boolean {
 	return hours < 4;
 }
+
+/** The album's rare visitors. The hub's LoungeVisitors keeps the same list. */
+export const VISITORS = [
+	'fox',
+	'cow',
+	'star',
+	'rainbow',
+	'snail',
+	'hedgehog',
+	'mouse',
+	'ibex',
+	'sleigh',
+	'bat',
+	'drone',
+	'marmot',
+] as const;
+export type Visitor = (typeof VISITORS)[number];
+
+/** What decides who may come by. */
+export interface VisitorWeather {
+	sky: 'night' | 'dusk' | 'day';
+	weather: 'rain' | 'clear' | 'snow';
+	lampOn: boolean;
+	moment: Moment;
+	season: Season;
+	pizza: boolean;
+	/** The night of the 24th of December. */
+	christmasEve: boolean;
+}
+
+/** Who may come by right now. */
+export function visitorsFor(c: VisitorWeather): Visitor[] {
+	const night = c.sky === 'night';
+	const day = c.sky === 'day';
+	const can: [Visitor, boolean][] = [
+		['fox', c.weather === 'snow' && night],
+		['cow', c.weather === 'clear' && day],
+		['star', c.weather === 'clear' && night],
+		['rainbow', c.weather === 'rain' && day],
+		['snail', c.weather === 'rain' && !day],
+		['hedgehog', c.moment === 'leaves' && !day],
+		['mouse', !c.lampOn],
+		['ibex', c.weather === 'snow' && day],
+		['sleigh', c.christmasEve],
+		['bat', c.season === 'halloween' && night],
+		['drone', c.pizza],
+		['marmot', c.moment === 'blossom' && day],
+	];
+	return can.filter(([, yes]) => yes).map(([kind]) => kind);
+}
+
+/** One chance of a visitor in each slot, and how long one stays. */
+export const VISITOR_SLOT_SEC = 300;
+export const VISITOR_STAY_SEC = 24;
+
+/** Who is passing through right now, and how far along they are, 0 to 1. */
+export function visitorAt(
+	seed: number,
+	sec: number,
+	c: VisitorWeather,
+): { kind: Visitor; f: number } | undefined {
+	const slot = Math.floor(sec / VISITOR_SLOT_SEC);
+	if (hash3(seed, slot, 43) > 0.5) return undefined;
+	const start =
+		slot * VISITOR_SLOT_SEC +
+		hash3(seed, slot, 41) * (VISITOR_SLOT_SEC - VISITOR_STAY_SEC);
+	if (sec < start || sec >= start + VISITOR_STAY_SEC) return undefined;
+	const can = visitorsFor(c);
+	if (!can.length) return undefined;
+	return {
+		kind: can[Math.floor(hash3(seed, slot, 47) * can.length)],
+		f: (sec - start) / VISITOR_STAY_SEC,
+	};
+}

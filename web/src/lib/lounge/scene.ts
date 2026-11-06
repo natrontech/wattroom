@@ -18,7 +18,8 @@ import { drawCat } from '$lib/lounge/draw-cat';
 import { drawDisco } from '$lib/lounge/draw-disco';
 import { drawLights } from '$lib/lounge/draw-sides';
 import { drawConfetti } from '$lib/lounge/draw-moments';
-import type { Cat, Flyby, Moment, Season } from '$lib/lounge/moments';
+import { drawFloorVisitor } from '$lib/lounge/draw-visitors';
+import type { Cat, Flyby, Moment, Season, Visitor } from '$lib/lounge/moments';
 
 /**
  * The stage: the room's middle, where everything you can click sits, at
@@ -190,6 +191,8 @@ export interface SceneInput {
 	moment: Moment;
 	/** What the crew's own things on the wall show. */
 	club: Club;
+	/** A rare visitor passing through (moments.ts). */
+	visitor?: { kind: Visitor; f: number };
 	/** Past midnight: an owl on the sill. */
 	owl: boolean;
 }
@@ -230,6 +233,7 @@ export function drawScene(g: Ctx, input: SceneInput) {
 	// Behind everyone on the floor: its lane and spots are all further back
 	// than the first row, so a rider sits in front of it, never under it.
 	drawCat(g, input);
+	drawFloorVisitor(g, input);
 	drawFloorCrew(g, input);
 	g.restore();
 	drawLights(g, input);

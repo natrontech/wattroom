@@ -142,6 +142,12 @@ type CrewRole struct {
 	OnBoard  bool
 }
 
+type CrewSighting struct {
+	CrewID pgtype.UUID
+	Kind   string
+	SeenAt pgtype.Timestamptz
+}
+
 type DmImage struct {
 	ID          pgtype.UUID
 	SenderID    pgtype.UUID

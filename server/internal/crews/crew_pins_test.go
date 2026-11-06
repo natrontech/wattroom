@@ -240,3 +240,38 @@ func TestCrewRoomCountsAndKeepsItsDoorShut(t *testing.T) {
 		t.Fatalf("carol reading the room: %d, want 404", got)
 	}
 }
+
+func TestCrewAlbum(t *testing.T) {
+	h := setup(t)
+	crew := crewWith(t, h)
+	do := func(who, method, body string) *httptest.ResponseRecorder {
+		req := httptest.NewRequestWithContext(t.Context(), method, "/api/crews/"+crew+"/sightings", strings.NewReader(body))
+		req.Header.Set("X-Test-User", who)
+		w := httptest.NewRecorder()
+		h.mux.ServeHTTP(w, req)
+		return w
+	}
+	if got := do("alice", http.MethodPost, `{"kind":"fox"}`).Code; got != http.StatusNoContent {
+		t.Fatalf("alice saw a fox: %d", got)
+	}
+	if got := do("alice", http.MethodPost, `{"kind":"fox"}`).Code; got != http.StatusNoContent {
+		t.Fatalf("seeing it twice: %d", got)
+	}
+	if got := do("alice", http.MethodPost, `{"kind":"dragon"}`).Code; got != http.StatusBadRequest {
+		t.Fatalf("a dragon: %d, want 400", got)
+	}
+	if got := do("carol", http.MethodPost, `{"kind":"cow"}`).Code; got != http.StatusNotFound {
+		t.Fatalf("carol: %d, want 404", got)
+	}
+	var album struct {
+		Sightings []struct {
+			Kind string `json:"kind"`
+		} `json:"sightings"`
+	}
+	if err := json.NewDecoder(do("alice", http.MethodGet, "").Body).Decode(&album); err != nil {
+		t.Fatalf("decoding the album: %v", err)
+	}
+	if len(album.Sightings) != 1 || album.Sightings[0].Kind != "fox" {
+		t.Fatalf("the album holds %+v", album.Sightings)
+	}
+}

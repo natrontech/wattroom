@@ -11,7 +11,7 @@
 	import { sceneLoop } from '$lib/lounge/scene-loop';
 	import { drawScene, type Figure } from '$lib/lounge/scene';
 	import { shadeFor } from '$lib/lounge/draw-room';
-	import type { Moment } from '$lib/lounge/moments';
+	import type { Moment, Visitor } from '$lib/lounge/moments';
 	import { applyLoungeTheme, type Sky } from '$lib/lounge/palette';
 	import { themeFor } from '$lib/themes';
 
@@ -182,6 +182,9 @@
 					pizza: false,
 					fondue: params.get('fondue') === '1',
 					moment: (params.get('moment') ?? '') as Moment,
+					visitor: params.get('visitor')
+						? { kind: params.get('visitor') as Visitor, f: (t / 8) % 1 }
+						: undefined,
 					club: {
 						plan: params.get('plan')
 							? { day: 'THU', time: '18:30' }
