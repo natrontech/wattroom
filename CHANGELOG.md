@@ -32,7 +32,7 @@ not a second copy of `git log`.
 - In Pixel 3D, riders are shaded in steps like the rest of the world, and the zone ring under each rider stays one solid line at any distance. (#4399)
 - Riding now powers the cozy room: each trainer's dynamo lights more of the string lights, and all of them shine with three riders. Anyone who just got off the bike sits with a towel and a bottle for ten minutes. (#4413)
 - In the pixel look, the sky is drawn like the lounge's window: flat bands of colour, a striped sun, and stars once it gets dark. (#4398)
-- A tall cozy room is no longer mostly bare floor. It now has a workshop with a bike up on its stand, a reading nook, a coffee bar with an espresso machine, mats under the trainers, and things riders left lying around. (#4412)
+- Every idle voice channel now opens the cozy room, so nobody has to find it in the jukebox. A camera, a shared screen, a video or a ride takes its place, and house radio starts from the room's record player. (#4412)
 - A tall cozy room is no longer mostly bare floor. It now has a workshop with a bike up on its stand, a reading nook, a coffee bar with an espresso machine, mats under the trainers, and things riders left lying around. (#4411)
 - The cozy room is warmer: wooden floors and furniture, a terracotta rug, and real light from the lamp, the stove and the window, with a lantern on the table. Corners fall dark at night, and the room looks different with the lamp off or the stove lit. (#4410)
 - In the pixel look, hills, trees and houses now shade in a few flat steps from the sun side, and distant hills fade into the evening in dithered bands, like the lounge. (#4396)
