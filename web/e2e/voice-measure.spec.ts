@@ -10,11 +10,17 @@ import { expect, test, voicePath } from './crew';
  * a call is never recorded (AGENTS.md).
  *
  *   VOICE_DIR=/tmp/x VOICE_SCENE=bike pnpm exec playwright test voice-measure
+ *
+ * VOICE_DENOISE=0 turns noise cancellation off. VOICE_PHONE=1 sends from a
+ * rider with a finger for a pointer; VOICE_PHONE_NS=0 takes Chrome's suppressor
+ * off that phone again, for the before.
  */
 const dir = process.env.VOICE_DIR ?? '';
 const scene = process.env.VOICE_SCENE ?? '';
 const label = process.env.VOICE_LABEL ?? 'run';
 const LISTEN_MS = Number(process.env.VOICE_LISTEN_MS ?? 45_000);
+const PHONE = process.env.VOICE_PHONE === '1';
+const PHONE_NS = process.env.VOICE_PHONE_NS !== '0';
 
 declare global {
 	interface Window {
@@ -33,7 +39,7 @@ declare global {
 	}
 }
 
-function tap() {
+function tap(phoneNs: boolean) {
 	const Real = window.RTCPeerConnection;
 	const t = {
 		pcs: [] as RTCPeerConnection[],
@@ -105,6 +111,7 @@ function tap() {
 		const fake = inputs.find((d) => d.label === 'Fake Audio Input 1');
 		const audio = {
 			...(c.audio as object),
+			...(phoneNs ? {} : { noiseSuppression: false }),
 			deviceId: { exact: fake?.deviceId },
 		};
 		const s = await gum({ audio });
@@ -178,7 +185,7 @@ test(`what the call hears: ${scene}`, async ({ riders, channels }) => {
 	const b = await riders('Voice Measure B');
 	for (const rider of [a, b]) {
 		await rider.context().grantPermissions(['microphone']);
-		await rider.context().addInitScript(tap);
+		await rider.context().addInitScript(tap, PHONE_NS);
 		if (process.env.VOICE_DENOISE === '0')
 			await rider
 				.context()
@@ -189,6 +196,14 @@ test(`what the call hears: ${scene}`, async ({ riders, channels }) => {
 					),
 				);
 	}
+	// `device.coarse` reads this query; a real touch viewport would also turn
+	// the page into the spectator's.
+	if (PHONE)
+		await a.context().addInitScript(() => {
+			const media = window.matchMedia.bind(window);
+			window.matchMedia = (q) =>
+				media(q === '(pointer: coarse)' ? '(min-width: 0px)' : q);
+		});
 	const opened = await channels.open(a, `Measure ${Date.now() % 100000}`);
 	await channels.enter(b, opened);
 	const voice = voicePath(opened);
@@ -197,6 +212,12 @@ test(`what the call hears: ${scene}`, async ({ riders, channels }) => {
 	const micB = b.getByRole('button', { name: 'microphone', pressed: true });
 	await expect(micB).toBeVisible({ timeout: 20_000 });
 	await micB.first().click(); // only A speaks
+	// A handheld joins listening: the mic button is its gate.
+	if (PHONE)
+		await a
+			.getByRole('button', { name: 'microphone', pressed: false })
+			.first()
+			.click();
 	await expect(
 		a.getByRole('button', { name: 'microphone', pressed: true }),
 	).toBeVisible({ timeout: 20_000 });
@@ -220,7 +241,8 @@ test(`what the call hears: ${scene}`, async ({ riders, channels }) => {
 	await a.evaluate(async () => {
 		const t = window.__tap;
 		await t.start('raw', t.raw.at(-1)!);
-		await t.start('sent', t.sent.at(-1)!);
+		// A handheld publishes its capture, so nothing else is sent.
+		await t.start('sent', t.sent.at(-1) ?? t.raw.at(-1)!);
 	});
 	await b.evaluate(async () => {
 		const t = window.__tap;

@@ -20,7 +20,9 @@
  * `noiseSuppression` is OFF (ADR-0043, #1340). Chrome's suppressor is a
  * spectral gate tuned for a call centre: it takes the fan and the voice's
  * air with it, and riders heard the result as "noise reduction and stuff".
- * Noise cancellation (`denoiser.ts`) does that job on the full band.
+ * Noise cancellation (`denoiser.ts`) does that job on the full band. A
+ * handheld runs neither that nor the gate (#2142), so `captureMic` asks there:
+ * a voice losing some air beats a phone that sends the whole room.
  *
  * `echoCancellation` stays on: it is the only thing between a rider on
  * speakers and the call hearing itself back.
@@ -52,10 +54,12 @@ export interface MicDevices {
  */
 export async function captureMic(
 	devices: MicDevices,
+	handheld: boolean,
 ): Promise<{ raw: MediaStream; mic: string }> {
+	const audio = { ...MIC_CONSTRAINTS, noiseSuppression: handheld };
 	const exactly = (id: string) =>
 		navigator.mediaDevices.getUserMedia({
-			audio: { ...MIC_CONSTRAINTS, deviceId: { exact: id } },
+			audio: { ...audio, deviceId: { exact: id } },
 		});
 	// Capturing a Bluetooth headset's mic drops all it plays to call quality.
 	// The store decides, on a fresh list.
@@ -80,9 +84,7 @@ export async function captureMic(
 		const raw = await exactly(before).catch(() => null);
 		if (raw) return { raw, mic: before };
 	}
-	const raw = await navigator.mediaDevices.getUserMedia({
-		audio: MIC_CONSTRAINTS,
-	});
+	const raw = await navigator.mediaDevices.getUserMedia({ audio });
 	// A first grant is what names the devices, so the list judged before it
 	// could see no headset. Judged again, and moved off the headset once.
 	const after = before ? '' : await besideBluetooth();

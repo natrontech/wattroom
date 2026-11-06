@@ -167,7 +167,7 @@ export function createMicChain(host: MicChainHost) {
 		return capture;
 	}
 
-	const capture = () => captureMic(host.devices);
+	const capture = () => captureMic(host.devices, host.handheld());
 
 	/** The audio thread gated this post itself; the rest is the same as a level. */
 	function onVoice(state: VoiceState) {
