@@ -8,7 +8,12 @@ import { TILE_M } from './tiles';
 const route = { minEle: 0 } as Route;
 const colors = new Proxy({}, { get: () => 'white' }) as PropColors;
 const mat = () => new THREE.MeshBasicMaterial();
-const materials = { trees: mat(), buildings: mat(), stock: mat() };
+const materials = {
+	trees: mat(),
+	buildings: mat(),
+	stock: mat(),
+	lights: mat(),
+};
 
 // A tile's own centre, so distances to it read straight.
 const centre: [number, number] = [TILE_M / 2, -TILE_M / 2];
@@ -42,8 +47,9 @@ describe('the dressing as the GPU draws it (#3076, #3699)', () => {
 			).map(at),
 			eye(),
 		);
-		expect(b.meshes).toHaveLength(3);
-		expect(b.meshes.map((m) => m.instanceCount).sort()).toEqual([2, 3, 3]);
+		expect(b.meshes).toHaveLength(4);
+		// The house's windows in the lights' batch beside it.
+		expect(b.meshes.map((m) => m.instanceCount).sort()).toEqual([1, 2, 3, 3]);
 		expect(b.meshes.every((m) => m.perObjectFrustumCulled)).toBe(true);
 	});
 
@@ -56,6 +62,26 @@ describe('the dressing as the GPU draws it (#3076, #3699)', () => {
 		expect(b.has('a')).toBe(false);
 		b.add('b', centre, [at('spruce')], eye());
 		expect(trees.instanceCount).toBe(1);
+	});
+
+	it('draws a house’s windows and a lamp’s head where they stand, in the near ring only, and lets them go with their tile', () => {
+		const b = batchProps(route, colors, materials);
+		const lights = b.meshes[3];
+		b.add('a', centre, [at('house'), at('lamp'), at('barn')], eye());
+		expect(lights.instanceCount).toBe(2);
+		const where = (i: number) =>
+			new THREE.Vector3().setFromMatrixPosition(
+				lights.getMatrixAt(i, new THREE.Matrix4()),
+			);
+		expect(where(0).x).toBe(centre[0]);
+		expect(where(0).z).toBe(centre[1]);
+		b.update(eye(TILE_M / 2 + NEAR_M * 1.5));
+		expect(lights.getVisibleAt(0)).toBe(false);
+		expect(b.meshes[1].getVisibleAt(0)).toBe(true); // the house itself, far
+		b.update(eye());
+		expect(lights.getVisibleAt(0)).toBe(true);
+		b.drop('a');
+		expect(lights.instanceCount).toBe(0);
 	});
 
 	it('makes room past its first, however many a tile brings', () => {

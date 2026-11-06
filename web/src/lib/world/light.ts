@@ -21,6 +21,9 @@ const DUSK_PER_DEG = 0.11;
 const STARS_FROM = 0.055;
 const STARS_FULL = 0.042;
 
+/** The sun's elevation, degrees, from which a village's lights are on: a quarter into a ride with a known end, at once in one without. */
+const LAMPS_AT = -5;
+
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
 /** The sun's elevation in degrees for a ride's progress 0–1: −4° at the start, −8° at the finish, −6° with no known end. */
@@ -71,6 +74,8 @@ export type Light = {
 	stars: number;
 	/** The sun is up: a key light and its bands. */
 	keyed: boolean;
+	/** The villages' windows and lamps are lit (lights.ts). */
+	lamps: boolean;
 };
 
 /** The light a look gives at a ride's progress (null: no known end). */
@@ -90,5 +95,6 @@ export function lightAt(style: Style, p: number | null): Light {
 			? clamp01((STARS_FROM - y) / (STARS_FROM - STARS_FULL))
 			: 0,
 		keyed,
+		lamps: !keyed && elevation <= LAMPS_AT,
 	};
 }

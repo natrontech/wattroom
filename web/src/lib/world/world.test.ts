@@ -166,8 +166,15 @@ describe('the world', () => {
 		};
 		for (const p of world.props) check(p.kind, p.x, p.z, clear[p.kind]);
 		// Set pieces keep 6 m off the asphalt (edge at 3.2 m); road furniture
-		// excepted: posts, poles, and the danger signs and mirrors (#4240).
-		const furniture = ['delineator', 'snowpole', 'steep', 'cattle', 'mirror'];
+		// excepted: posts, poles, lamps, and the danger signs and mirrors (#4240).
+		const furniture = [
+			'delineator',
+			'snowpole',
+			'lamp',
+			'steep',
+			'cattle',
+			'mirror',
+		];
 		for (const p of world.pieces)
 			if (!furniture.includes(p.kind)) check(p.kind, p.x, p.z, 9);
 		expect(world.props.length).toBeGreaterThan(0);

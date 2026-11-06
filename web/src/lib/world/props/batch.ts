@@ -42,6 +42,7 @@ export const FAMILY: Record<DrawKind, Family> = {
 	fence: 'stock',
 	snowpole: 'buildings',
 	delineator: 'stock',
+	lamp: 'buildings',
 	steep: 'buildings',
 	cattle: 'buildings',
 	mirror: 'buildings',
@@ -94,6 +95,7 @@ const MODELS: Record<DrawKind, Form[]> = {
 	fence: [[P.fence, P.fence]],
 	snowpole: [[P.snowpole, P.snowpole]],
 	delineator: [[P.delineator, P.delineator]],
+	lamp: [[P.lamp, P.lamp]],
 	steep: [[P.steepSign, P.steepSign]],
 	cattle: [[P.cattleSign, P.cattleSign]],
 	mirror: [[P.mirror, P.mirror]],
@@ -103,6 +105,16 @@ const MODELS: Record<DrawKind, Form[]> = {
 	flag1: [[flag(1), flag(1)]],
 	flag2: [[flag(2), flag(2)]],
 	flag3: [[flag(3), flag(3)]],
+};
+
+/**
+ * What lights after dusk, drawn beside its model in the lights' own batch
+ * (lights.ts): in the near ring only, where a window is more than a speck.
+ */
+const LIT: Partial<Record<DrawKind, Models>> = {
+	house: P.houseLit,
+	hut: P.hutLit,
+	lamp: P.lampLit,
 };
 
 /** One thing to draw: its model, where it stands, how it is turned and sized. */
@@ -147,12 +159,25 @@ function flat(g: THREE.BufferGeometry): THREE.BufferGeometry {
 export function batchProps(
 	route: Route,
 	colors: PropColors,
-	materials: Record<Family, THREE.Material>,
+	materials: Record<Family | 'lights', THREE.Material>,
 ) {
-	const meshes = new Map<Family, THREE.BatchedMesh>();
+	const meshes = new Map<Family | 'lights', THREE.BatchedMesh>();
 	/** Each kind's forms, each as its near and far geometry's id in its family's batch. */
 	const geometry = new Map<DrawKind, [number, number][]>();
 	const kinds = Object.keys(FAMILY) as DrawKind[];
+	/** A batch for `models`, its instances culled one by one. */
+	function batch(models: THREE.BufferGeometry[], material: THREE.Material) {
+		const vertices = [...new Set(models)].reduce(
+			(n, g) => n + g.attributes.position.count,
+			0,
+		);
+		const mesh = new THREE.BatchedMesh(ROOM, vertices, 0, material);
+		// Three measures a batch's own bounds once, on its first frame, and its tiles move on (#4260).
+		mesh.frustumCulled = false;
+		mesh.perObjectFrustumCulled = true;
+		mesh.sortObjects = false;
+		return mesh;
+	}
 	for (const family of ['trees', 'buildings', 'stock'] as const) {
 		const mine = kinds.filter((k) => FAMILY[k] === family);
 		const models = mine.map((k) =>
@@ -161,15 +186,7 @@ export function batchProps(
 				return [near, toFar === toNear ? near : flat(toFar(colors))] as const;
 			}),
 		);
-		const vertices = [...new Set(models.flat(2))].reduce(
-			(n, g) => n + g.attributes.position.count,
-			0,
-		);
-		const mesh = new THREE.BatchedMesh(ROOM, vertices, 0, materials[family]);
-		// Its instances are culled one by one: three measures a batch's own bounds once, on its first frame, and its tiles move on (#4260).
-		mesh.frustumCulled = false;
-		mesh.perObjectFrustumCulled = true;
-		mesh.sortObjects = false;
+		const mesh = batch(models.flat(2), materials[family]);
 		mine.forEach((k, i) =>
 			geometry.set(
 				k,
@@ -187,6 +204,21 @@ export function batchProps(
 		);
 		meshes.set(family, mesh);
 	}
+	const lit = Object.entries(LIT).map(
+		([k, model]) => [k as DrawKind, flat(model(colors))] as const,
+	);
+	const lights = batch(
+		lit.map(([, g]) => g),
+		materials.lights,
+	);
+	const litId = new Map(
+		lit.map(([k, g]) => {
+			const id = lights.addGeometry(g);
+			g.dispose();
+			return [k, id];
+		}),
+	);
+	meshes.set('lights', lights);
 	/** The geometry a thing is drawn with at `ring`: its form's, or its kind's own where it has no such form. */
 	const idOf = (kind: DrawKind, form: number, ring: 0 | 1) => {
 		const forms = geometry.get(kind)!;
@@ -197,6 +229,7 @@ export function batchProps(
 		cx: number;
 		cz: number;
 		ring: Ring;
+		/** Each instance: its batch, its id, its kind and form; form −1 is a kind's lights. */
 		members: [THREE.BatchedMesh, number, DrawKind, number][];
 	};
 	const tiles = new Map<string, Tile>();
@@ -211,6 +244,10 @@ export function batchProps(
 	function show(tile: Tile, ring: Ring) {
 		tile.ring = ring;
 		for (const [mesh, id, kind, form] of tile.members) {
+			if (form < 0) {
+				mesh.setVisibleAt(id, ring === 0);
+				continue;
+			}
 			mesh.setVisibleAt(id, ring < 2);
 			if (ring !== 2) mesh.setGeometryIdAt(id, idOf(kind, form, ring));
 		}
@@ -226,6 +263,13 @@ export function batchProps(
 		return far && inside(FAR_M, was <= 1) ? 1 : 2;
 	};
 
+	/** A new instance of geometry `geo` in `mesh`, the batch grown by half when it is full. */
+	function instance(mesh: THREE.BatchedMesh, geo: number) {
+		if (mesh.instanceCount >= mesh.maxInstanceCount)
+			mesh.setInstanceCount(Math.ceil(mesh.maxInstanceCount * 1.5));
+		return mesh.addInstance(geo);
+	}
+
 	return {
 		meshes: [...meshes.values()],
 		has: (id: string) => tiles.has(id),
@@ -239,10 +283,8 @@ export function batchProps(
 			const tile: Tile = { cx, cz, ring: 0, members: [] };
 			for (const p of things) {
 				const mesh = meshes.get(FAMILY[p.kind])!;
-				if (mesh.instanceCount >= mesh.maxInstanceCount)
-					mesh.setInstanceCount(Math.ceil(mesh.maxInstanceCount * 1.5));
 				const form = p.form ?? 0;
-				const n = mesh.addInstance(idOf(p.kind, form, 0));
+				const n = instance(mesh, idOf(p.kind, form, 0));
 				q.setFromAxisAngle(up, Math.atan2(p.turn[1], p.turn[0]));
 				mesh.setMatrixAt(
 					n,
@@ -259,6 +301,11 @@ export function batchProps(
 						shade.setScalar(1 + TONE * (2 * (p.tone ?? 0.5) - 1)),
 					);
 				tile.members.push([mesh, n, p.kind, form]);
+				const light = litId.get(p.kind);
+				if (light === undefined) continue;
+				const l = instance(lights, light);
+				lights.setMatrixAt(l, m);
+				tile.members.push([lights, l, p.kind, -1]);
 			}
 			// A tile comes in as though it had been near, as every tile once did: held out to its rings' far edges.
 			show(tile, ringOf(tile, eye, 0));

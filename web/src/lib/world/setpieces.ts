@@ -38,6 +38,7 @@ export type PieceKind =
 	| 'chapel'
 	| 'snowpole'
 	| 'delineator'
+	| 'lamp'
 	| 'house'
 	| 'barn'
 	| 'hut'

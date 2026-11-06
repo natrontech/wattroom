@@ -11,6 +11,7 @@ import * as THREE from 'three';
 import { Biome } from './biome';
 import { sunDir, type Light } from './light';
 import { LOUNGE } from '$lib/lounge/palette';
+import { lightsUniforms, POOL, type Lights } from './lights';
 import { BAYER, PIXEL, STEPS } from './pixel';
 import type { SignLook } from './setpieces';
 
@@ -139,10 +140,14 @@ export function setLight(m: THREE.ShaderMaterial, light: Light) {
 	if (u.uPeach) u.uPeach.value = light.peach;
 }
 
-// The shared light: one chunk, every terrain, every style.
-export function terrainMaterial(style: Style): THREE.ShaderMaterial {
+// The shared light: one chunk, every terrain, every style; a lamp's pool where one is lit (lights.ts).
+export function terrainMaterial(
+	style: Style,
+	lights: Lights = lightsUniforms(),
+): THREE.ShaderMaterial {
 	return new THREE.ShaderMaterial({
 		uniforms: {
+			...lights,
 			uSun: { value: sunOf(style) },
 			uFrom: { value: sunOf(style) },
 			uDusk: { value: 1 },
@@ -182,6 +187,7 @@ export function terrainMaterial(style: Style): THREE.ShaderMaterial {
 			varying vec3 vColor; varying vec3 vPos; varying float vAo;
 			${BAYER}
 			${STEPS}
+			${POOL}
 			void main() {
 				vec3 n = normalize(cross(dFdx(vPos), dFdy(vPos)));
 				float dist = length(vPos - cameraPosition);
@@ -226,6 +232,9 @@ export function terrainMaterial(style: Style): THREE.ShaderMaterial {
 				vec3 ext = exp(-dist * uFogK * vec3(1.3, 1.0, 0.75)); // red fades first: aerial perspective
 				if (uPixel > 0.5) ext = 1.0 - (1.0 - ext) * pixelFog(1.0 - ext.g) / max(1.0 - ext.g, 1e-4); // one band a pixel, red still first
 				gl_FragColor = vec4(mix(fogCol, col, ext) * uDusk, 1.0);
+				float pool = lampPool(vPos); // a third of the way to amber, the lounge's pool
+				if (uPixel > 0.5) pool = pool > pixelBayer(gl_FragCoord.xy) ? 1.0 : 0.0;
+				gl_FragColor.rgb = mix(gl_FragColor.rgb, uAmber, pool / 3.0);
 				#include <colorspace_fragment>
 			}`,
 	});

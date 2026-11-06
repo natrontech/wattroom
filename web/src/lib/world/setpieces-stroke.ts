@@ -59,6 +59,9 @@ const STEEP_M = 200;
 const SIGN_OFF = 4.6;
 /** Road furniture is planned in stretches this long, each worked out as one. */
 const STRETCH_M = 200;
+/** Street lamps through a village: this far each way from its middle, this far apart, on the fountain's side. */
+const LAMPS_M = 120;
+const LAMP_EVERY_M = 30;
 
 /** Where a kind may stand. */
 const fits: Record<(typeof SMALL_KINDS)[number], (b: Biome | null) => boolean> =
@@ -611,6 +614,27 @@ export function planStroke(line: Line, k: number, plan: Plan) {
 		at('linden', 40, 1, 26, 14, sub(slot, 2));
 		sign(v.s - 200, 1, 5.8, 'village', [v.name], 1.9, 0.55);
 		sign(v.s + 200, -1, 5.8, 'village', [v.name], 1.9, 0.55);
+		// Its lamps, each standing where planned or not at all, its arm out over the road.
+		g.step(() => {
+			for (let by = -LAMPS_M; by <= LAMPS_M; by += LAMP_EVERY_M) {
+				const s = Math.round(v.s + by);
+				if (s < 0 || s > r.length) continue;
+				const p = w.at(s);
+				const x = p.x - p.lx * SIGN_OFF;
+				const z = p.z - p.lz * SIGN_OFF;
+				const turn = facing(s, -1);
+				const placed = placer.candidate('lamp', 'furniture', x, z, turn);
+				if (placed)
+					g.out.push({
+						p: placed,
+						rank: RANK.piece + u(7e6 + s, 0),
+						is: {
+							piece: { kind: 'lamp', x, y: placed.base, z, turn },
+							line: k,
+						},
+					});
+			}
+		});
 	}
 
 	// Road furniture from the stroke's start, a stretch at a time: snow poles every 25 m above 1,100 m
