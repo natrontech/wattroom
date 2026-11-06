@@ -38,6 +38,11 @@ describe('the lounge look', () => {
 		expect(lookOf('jan', '!'.repeat(parts))).toEqual(seeded);
 	});
 
+	it('reads a string from before the newest parts', () => {
+		const old = encodeLook({ ...seededLook('jan'), skin: 2 }).slice(0, 11);
+		expect(lookOf('jan', old)).toEqual({ ...seededLook('jan'), skin: 2 });
+	});
+
 	it('fits the shape the server keeps', () => {
 		const text = encodeLook(shuffledLook());
 		expect(text).toMatch(/^[0-9a-z]{1,16}$/);
