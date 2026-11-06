@@ -27,6 +27,7 @@ import {
 	type Ghosts,
 } from './ghosts';
 import { dress as figureOf } from '$lib/lounge/figures';
+import { makeWatchers } from './watchers';
 import { bunchLooks, type Loadout } from './loadout';
 import { makeTags, type Tags } from './tags';
 import type { BunchView } from '$lib/channel/bunch-view';
@@ -237,6 +238,8 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	// The dressing's far ring, the quality ladder's (#3295): kept across a style's new stage.
 	let far = true;
 	let crew: Crew | null = null;
+	/** People by the road in the villages, Pixel 3D only. */
+	let watchers: ReturnType<typeof makeWatchers> | null = null;
 	let game: GameRoad | null = null;
 	let tags: Tags | null = null;
 	let ghosts: Ghosts | null = null;
@@ -283,6 +286,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 			chalk?.group,
 			ghosts?.group,
 			gates?.group,
+			watchers?.group,
 		]) {
 			if (!old) continue;
 			scene.remove(old);
@@ -295,6 +299,8 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		game = makeGameRoad(route, world, style);
 		tags = makeTags(style);
 		scene.add(stage.group, crew.group, game.group, tags.group);
+		watchers = opts.loungeLook ? makeWatchers(route, world.villageNames) : null;
+		if (watchers) scene.add(watchers.group);
 		if (opts.ghosts) {
 			ghosts = opts.loungeLook
 				? makeSpriteGhosts(
@@ -391,6 +397,10 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		const me = crew.update(route, riders, pedal, dt, real, mode === 'orbit');
 		crew.drive(route, car, mode === 'orbit');
 		ghosts?.update(route, ghostsNow(real), dt, mode === 'orbit');
+		watchers?.update(
+			mode === 'orbit' ? -Infinity : you.d,
+			performance.now() / 1000,
+		);
 		if (controls) controls.update();
 		else
 			rig.update(

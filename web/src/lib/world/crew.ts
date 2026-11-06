@@ -494,7 +494,8 @@ export function makeCrew(
 			// The animator turns the legs at the rider's cadence, sits or stands them by SPEC's thresholds.
 			const state = v.anim.update(dt, inputOf(r, route));
 			pedal(r).crank = state.crank;
-			if (v.avatar) v.avatar.set(state.crank, alpha, !!r.faded);
+			if (v.avatar)
+				v.avatar.set(state.crank, alpha, !!r.faded, (state.stand ?? 0) > 0.5);
 			else pose(v.figure, state);
 			if (r.you) {
 				you.set(
