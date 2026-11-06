@@ -30,6 +30,7 @@ import {
 import { hash3 } from '$lib/lounge/hash';
 import { paintSides } from '$lib/lounge/draw-sides';
 import { WINDOW } from '$lib/lounge/draw-window';
+import { bakeLight, type Light } from '$lib/lounge/light';
 
 /** The sign's five bars trace the equalizer W (ADR-0005). */
 const SIGN_BARS = [20, 9, 14, 9, 20];
@@ -46,7 +47,7 @@ export function forgetWalls() {
  * lamp or the season changes, so a frame is one image and what moves.
  */
 export function drawBack(g: Ctx, s: SceneInput, ox: number, oy: number) {
-	const key = `${s.w}x${s.h}:${s.lampOn}:${s.season}`;
+	const key = `${s.w}x${s.h}:${s.lampOn}:${s.season}:${s.sky}:${s.fire}`;
 	if (back?.key !== key) {
 		const canvas = document.createElement('canvas');
 		canvas.width = s.w;
@@ -54,7 +55,7 @@ export function drawBack(g: Ctx, s: SceneInput, ox: number, oy: number) {
 		const b = canvas.getContext('2d')!;
 		walls(b, s.w, s.h, oy);
 		if (oy >= 24) upperWall(b, s.w, ox, oy);
-		paintSides(b, s, ox, oy);
+		const lamps = paintSides(b, s, ox, oy);
 		b.translate(ox, oy);
 		curtains(b);
 		windowFrame(b);
@@ -70,9 +71,55 @@ export function drawBack(g: Ctx, s: SceneInput, ox: number, oy: number) {
 		rug(b);
 		table(b);
 		if (hasFront(s.w, s.h)) front(b);
+		bakeLight(
+			b,
+			lightsOf(s, ox, oy, lamps),
+			s.sky,
+			{ w: s.w, h: s.h, floorRow: oy + FLOOR_Y },
+			{ warm: C.glow, cool: C.moon, shade: C.shade },
+		);
 		back = { key, canvas };
 	}
 	g.drawImage(back.canvas, 0, 0);
+}
+
+/** What lights the room right now, in room pixels. */
+function lightsOf(s: SceneInput, ox: number, oy: number, lamps: number[]) {
+	const at = (l: Light): Light => ({ ...l, x: l.x + ox, y: l.y + oy });
+	const lights: Light[] = [
+		// The bulbs across the ceiling, and the lantern on the table.
+		{ x: s.w / 2, y: 0, rx: s.w * 0.8, ry: 26, power: 0.3, on: 'wall' },
+		at({ x: 160, y: 120, rx: 88, ry: 34, power: 0.5, on: 'floor' }),
+	];
+	if (s.lampOn) {
+		lights.push(
+			at({ x: 88, y: 40, rx: 62, ry: 46, power: 1, on: 'wall' }),
+			at({ x: 84, y: 92, rx: 80, ry: 20, power: 0.7, on: 'floor' }),
+		);
+		const floor = oy + FLOOR_Y;
+		for (const x of lamps)
+			lights.push(
+				{ x, y: floor - 44, rx: 42, ry: 50, power: 0.8, on: 'wall' },
+				{ x, y: floor + 10, rx: 52, ry: 16, power: 0.6, on: 'floor' },
+			);
+	}
+	if (s.fire)
+		lights.push(
+			at({ x: 226, y: 94, rx: 70, ry: 20, power: 0.9, on: 'floor' }),
+			at({ x: 226, y: 68, rx: 36, ry: 30, power: 0.5, on: 'wall' }),
+		);
+	lights.push(
+		at(
+			s.sky === 'night'
+				? { x: 160, y: 98, rx: 84, ry: 24, power: 0.4, cool: true, on: 'floor' }
+				: { x: 160, y: 104, rx: 96, ry: 30, power: 0.6, on: 'floor' },
+		),
+	);
+	if (hasFront(s.w, s.h))
+		lights.push(
+			at({ x: 233, y: FRONT_Y - 18, rx: 40, ry: 30, power: 0.4, cool: true }),
+		);
+	return lights;
 }
 
 function walls(g: Ctx, w: number, h: number, oy: number) {
@@ -96,23 +143,27 @@ function walls(g: Ctx, w: number, h: number, oy: number) {
 	rect(g, 0, floor - 3, w, 2, C.wood);
 	rect(g, 0, floor - 3, w, 1, C.woodLight);
 	rect(g, 0, floor - 1, w, 1, C.woodDark);
-	// Boards running across, their joints staggered, a run of grain in some.
+	// Long boards running across, each a shade of its own, their ends staggered
+	// and a run of grain in some, so the floor reads as wood and never as brick.
 	rect(g, 0, floor, w, h - floor, C.floor);
 	rect(g, 0, floor, w, 1, C.floorDark);
-	for (let y = floor + 7, k = 0; y < h; y += 8, k++) {
-		rect(g, 0, y, w, 1, C.floorDark);
-		for (let x = (k % 2) * 24 + 8; x < w; x += 48) {
-			rect(g, x, y + 1, 1, 7, C.floorDark);
-			if (hash3(x, y, 3) > 0.5)
+	for (let y = floor + 1, k = 0; y < h; y += 8, k++) {
+		for (let x = -Math.floor(hash3(k, 1, 7) * 90), n = 0; x < w; n++) {
+			const long = 70 + Math.floor(hash3(k, n, 8) * 70);
+			if (hash3(k, n, 9) > 0.55) rect(g, x, y, long, 7, C.floorLight);
+			rect(g, x + long - 1, y + 2, 1, 5, C.floorDark);
+			if (hash3(k, n, 3) > 0.5)
 				rect(
 					g,
-					x + 6 + Math.floor(hash3(x, y, 4) * 24),
-					y + 4,
+					x + 8 + Math.floor(hash3(k, n, 4) * (long - 24)),
+					y + 3,
 					9,
 					1,
-					C.floorLight,
+					C.floorDark,
 				);
+			x += long;
 		}
+		rect(g, 0, y + 7, w, 1, C.floorDark);
 	}
 }
 
@@ -204,7 +255,6 @@ function wallShelf(g: Ctx) {
 }
 
 function desk(g: Ctx, lampOn: boolean) {
-	if (lampOn) pool(g, 88, 46, 24, 18, C.litWall, 0.75);
 	// Top, front edge and legs, with their shadow on the floor.
 	rect(g, 28, 84, 72, 1, C.floorDark);
 	outlined(
@@ -218,7 +268,6 @@ function desk(g: Ctx, lampOn: boolean) {
 	);
 	rect(g, 26, 60, 75, 1, C.woodTop);
 	rect(g, 26, 61, 75, 3, C.woodLight);
-	if (lampOn) pool(g, 90, 62, 22, 2, C.litWood, 0.9);
 	// The laptop, open toward the room.
 	outlined(
 		g,
@@ -401,6 +450,10 @@ function table(g: Ctx) {
 	rect(g, 156, 108, 9, 1, C.amber);
 	dot(g, 158, 107, C.amberDark);
 	dot(g, 162, 107, C.amberDark);
+	// The lantern: its flame is drawLive's.
+	outlined(g, [[177, 104, 4, 6, C.woodDark]], C.ink);
+	rect(g, 178, 105, 2, 4, C.amberDark);
+	rect(g, 177, 103, 4, 1, C.woodTop);
 }
 
 /** A tall room's front row: a beanbag, a big plant and the arcade cabinet. */
@@ -457,11 +510,19 @@ export function drawLive(g: Ctx, s: SceneInput) {
 	deck(g, s);
 	fishBowl(g, s);
 	fire(g, s);
+	lantern(g, s);
 	if (s.season === 'winter') treeLights(g, s);
 	if (s.bloom) bloom(g);
 	if (s.pizza) pizza(g);
 	if (s.owl && s.season !== 'halloween') owl(g, s);
 	if (hasFront(s.w, s.h)) arcade(g, s);
+}
+
+/** The table's lantern: a flame two pixels wide that never quite holds still. */
+function lantern(g: Ctx, s: SceneInput) {
+	const lean = s.still ? 0 : Math.floor(hash3(Math.floor(s.t * 4), 2, 5) * 2);
+	rect(g, 178, 105, 2, 4, C.amber);
+	rect(g, 178 + lean, 106, 1, 2, C.bulb);
 }
 
 /** The goldfish on the cabinet swims to and fro; tapped, it jumps. */
@@ -494,7 +555,7 @@ function fire(g: Ctx, s: SceneInput) {
 		return;
 	}
 	const k = s.still ? 0 : Math.floor(s.t * 6);
-	pool(g, 226, 91, 24, 5, C.litFloor, 0.7);
+	pool(g, 226, 91, 26 + Math.floor(hash3(k, 7, 3) * 5), 6, C.litFloor, 0.7);
 	FLAME.forEach((tall, c) => {
 		const h = Math.max(
 			1,

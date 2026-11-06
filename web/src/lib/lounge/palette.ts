@@ -2,9 +2,10 @@
  * The lounge's colours (ADR-0094, amended by #4302): two hand-set rooms, one
  * per scheme, turned to the rider's theme. Every material is a ramp from its
  * shadow to its light (`woodDark`, `wood`, `woodLight`, `woodTop`), lit from
- * the top left, and outlined in `ink`. The room's hues follow the theme's
- * neon; the light outside the window, skin, leaves, cushions and the lamp's
- * amber stay what they are. The one live number takes the theme's watt.
+ * the top left, and outlined in `ink`. The walls, the sofa and the curtains
+ * follow the theme's neon; wood, the floor and the rug stay warm against
+ * them, as do the light outside the window, skin, leaves, cushions and the
+ * lamp's amber. The one live number takes the theme's watt.
  */
 import { hexToOklch, normalizeHue, oklchToHex } from '$lib/color';
 import type { Theme } from '$lib/palette';
@@ -15,20 +16,20 @@ const DARK = {
 	wall: '#170838',
 	wallLight: '#21104a',
 	trim: '#2e1460',
-	floorDark: '#0a0320',
-	floor: '#120630',
-	floorLight: '#1c0c42',
-	woodDark: '#25103e',
-	wood: '#3a1d5c',
-	woodLight: '#53307a',
-	woodTop: '#6c4494',
+	floorDark: '#1d1016',
+	floor: '#2a171b',
+	floorLight: '#301b1e',
+	woodDark: '#33190f',
+	wood: '#54301c',
+	woodLight: '#7a4a2a',
+	woodTop: '#a06a3c',
 	sofaDark: '#171c52',
 	sofa: '#252d78',
 	sofaLight: '#34409a',
 	sofaTop: '#4a58b8',
-	rugDark: '#2a0e3c',
-	rug: '#3a1650',
-	rugLine: '#6a2a84',
+	rugDark: '#4a1a22',
+	rug: '#6c2a2c',
+	rugLine: '#c8894a',
 	curtainDark: '#28104a',
 	curtain: '#3a1a66',
 	frame: '#8b2bff',
@@ -72,10 +73,11 @@ const DARK = {
 	cushionB: '#2a6a7a',
 	cushionC: '#8a6a2a',
 	cushionD: '#5a3a84',
-	/** Where the lamp falls: the surface below it, a third of the way to amber. */
-	litWall: '#3a2048',
-	litWood: '#6a4060',
-	litFloor: '#2c1638',
+	/** Where the stove's light flickers on the floor. */
+	litFloor: '#5a3424',
+	/** What light is, on its way into the room (light.ts). */
+	glow: '#ffb45e',
+	moon: '#7f8ff0',
 	watt: '#ff3d8b',
 };
 
@@ -90,20 +92,20 @@ const LIGHT: LoungeColours = {
 	wall: '#ece3f8',
 	wallLight: '#f6f1fd',
 	trim: '#b7a2db',
-	floorDark: '#b39cd6',
-	floor: '#cdb9e6',
-	floorLight: '#dccdf0',
-	woodDark: '#6e4f9a',
-	wood: '#8e6cbc',
-	woodLight: '#a88ad2',
-	woodTop: '#c4aae6',
+	floorDark: '#b08a64',
+	floor: '#c9a67e',
+	floorLight: '#cfad86',
+	woodDark: '#7a4e2e',
+	wood: '#9a6a42',
+	woodLight: '#b98a5e',
+	woodTop: '#d6ab7e',
 	sofaDark: '#4554a8',
 	sofa: '#5f6fc8',
 	sofaLight: '#7a8ad8',
 	sofaTop: '#9eacea',
-	rugDark: '#9a80c8',
-	rug: '#b29ad8',
-	rugLine: '#7a58b8',
+	rugDark: '#a8553f',
+	rug: '#c4705a',
+	rugLine: '#f0d7a8',
 	curtainDark: '#8a6cc4',
 	curtain: '#a58ad6',
 	frame: '#6f1ad1',
@@ -138,14 +140,24 @@ const LIGHT: LoungeColours = {
 	cushionB: '#3f97a6',
 	cushionC: '#d0a040',
 	cushionD: '#8a68c8',
-	litWall: '#f4dcc8',
-	litWood: '#c9a0a8',
-	litFloor: '#dcc0c8',
+	litFloor: '#e8c49a',
+	glow: '#ffc27a',
+	moon: '#a8b4f0',
 	watt: '#e6247d',
 };
 
-/** What keeps its hue whatever the theme: skin, leaves, lamp light, cushions and the odd book. */
+/** What keeps its hue whatever the theme: wood, floor, rug, skin, leaves, lamp light, cushions and the odd book. */
 const FIXED: readonly Name[] = [
+	'floorDark',
+	'floor',
+	'floorLight',
+	'woodDark',
+	'wood',
+	'woodLight',
+	'woodTop',
+	'rugDark',
+	'rug',
+	'rugLine',
 	'teal',
 	'tealLight',
 	'amberDark',
@@ -163,9 +175,9 @@ const FIXED: readonly Name[] = [
 	'cushionA',
 	'cushionB',
 	'cushionC',
-	'litWall',
-	'litWood',
 	'litFloor',
+	'glow',
+	'moon',
 	'watt',
 ];
 

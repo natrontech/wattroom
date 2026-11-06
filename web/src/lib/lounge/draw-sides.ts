@@ -12,7 +12,6 @@ import {
 	ellipse,
 	line,
 	outlined,
-	pool,
 	rect,
 	ring,
 	type Ctx,
@@ -69,10 +68,6 @@ const shelf: Prop = {
 const floorLamp: Prop = {
 	w: 16,
 	draw(g, x, base, lampOn) {
-		if (lampOn) {
-			pool(g, x + 8, base - 50, 18, 22, C.litWall, 0.55);
-			pool(g, x + 8, base + 6, 20, 5, C.litFloor, 0.7);
-		}
 		ellipse(g, x + 8, base, 6, 1, C.floorDark);
 		outlined(
 			g,
@@ -181,8 +176,17 @@ function picture(g: Ctx, x: number, y: number, n: number) {
 	}
 }
 
-/** The props left and right of the stage, in room pixels. */
-export function paintSides(g: Ctx, s: SceneInput, ox: number, oy: number) {
+/**
+ * The props left and right of the stage, in room pixels. Returns the
+ * centre of each floor lamp, for the room's light to start from.
+ */
+export function paintSides(
+	g: Ctx,
+	s: SceneInput,
+	ox: number,
+	oy: number,
+): number[] {
+	const lamps: number[] = [];
 	const base = oy + FLOOR_Y + 4;
 	const left = ox;
 	const right = ox + SCENE_W;
@@ -196,6 +200,7 @@ export function paintSides(g: Ctx, s: SceneInput, ox: number, oy: number) {
 		x -= prop.w;
 		if (x + prop.w / 2 < 0) break;
 		prop.draw(g, x, base, s.lampOn, n);
+		if (prop === floorLamp) lamps.push(x + 8);
 		x -= GAP;
 	}
 	x = right + 4;
@@ -203,8 +208,10 @@ export function paintSides(g: Ctx, s: SceneInput, ox: number, oy: number) {
 		const prop = RIGHT[n % RIGHT.length];
 		if (x + prop.w / 2 > s.w) break;
 		prop.draw(g, x, base, s.lampOn, n + 50);
+		if (prop === floorLamp) lamps.push(x + 8);
 		x += prop.w + GAP;
 	}
+	return lamps;
 }
 
 /**

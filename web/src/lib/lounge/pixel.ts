@@ -144,7 +144,7 @@ export function ellipse(
 }
 
 /** The 4 × 4 Bayer matrix: the order an ordered dither fills its pixels in. */
-const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+export const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 
 /**
  * Light falling on a surface: an ordered dither of `c`, densest at the
