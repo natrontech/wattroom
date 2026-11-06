@@ -1060,6 +1060,17 @@ export interface RoomAct {
   to?: string;
 }
 /**
+ * RoomItem is something a crew can put in its cozy room, in Batzen.
+ */
+export interface RoomItem {
+  slot: string;
+  price: number /* int32 */;
+}
+/**
+ * MaxArcadeScore is more than a perfect run of the arcade's game can reach.
+ */
+export const MaxArcadeScore = 9999;
+/**
  * HouseRadioTitle is house radio's line on the deck and in the channel's
  * events: the station is generated, so it has no title of its own.
  */

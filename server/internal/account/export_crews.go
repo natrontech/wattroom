@@ -93,6 +93,30 @@ func (x *export) pins() category {
 	})
 }
 
+func (x *export) roomItems() category {
+	return x.bounded("cozy-room-items.json", []string{"crew_room_items"}, func() (any, int, error) {
+		rows, err := x.q.ExportUserRoomItems(x.ctx, db.ExportUserRoomItemsParams{
+			UserID: x.user.ID, Lim: maxExportRows,
+		})
+		out, err := mapRows(rows, err, func(row db.ExportUserRoomItemsRow) any {
+			return map[string]any{"crew": row.CrewName, "item": row.Item, "boughtAt": row.BoughtAt.Time}
+		})
+		return out, len(rows), err
+	})
+}
+
+func (x *export) arcadeScores() category {
+	return x.bounded("arcade-scores.json", []string{"crew_arcade"}, func() (any, int, error) {
+		rows, err := x.q.ExportUserArcadeScores(x.ctx, db.ExportUserArcadeScoresParams{
+			UserID: x.user.ID, Lim: maxExportRows,
+		})
+		out, err := mapRows(rows, err, func(row db.ExportUserArcadeScoresRow) any {
+			return map[string]any{"crew": row.CrewName, "score": row.Score, "setAt": row.SetAt.Time}
+		})
+		return out, len(rows), err
+	})
+}
+
 func (x *export) scheduledSessions() category {
 	return x.bounded("sessions-i-scheduled.json", []string{"scheduled_sessions"}, func() (any, int, error) {
 		// The sessions the rider PUT ON a calendar (#2089), which is not

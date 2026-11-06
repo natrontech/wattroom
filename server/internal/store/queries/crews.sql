@@ -320,3 +320,35 @@ select kind, seen_at from crew_sightings where crew_id = $1 order by seen_at;
 -- The first time counts: seeing it again changes nothing.
 insert into crew_sightings (crew_id, kind) values ($1, $2)
 on conflict do nothing;
+
+-- name: ListCrewRoomItems :many
+select item from crew_room_items where crew_id = $1 order by bought_at;
+
+-- name: CrewOwnsRoomItem :one
+select exists (select 1 from crew_room_items where crew_id = $1 and item = $2);
+
+-- name: AddCrewRoomItem :exec
+insert into crew_room_items (crew_id, item, bought_by) values ($1, $2, $3);
+
+-- name: CrewRoomPicks :one
+select picks from crew_rooms where crew_id = $1;
+
+-- name: SetCrewRoomPicks :exec
+insert into crew_rooms (crew_id, picks) values ($1, $2)
+on conflict (crew_id) do update set picks = excluded.picks;
+
+-- name: CrewArcadeTop :many
+-- The crew's five best, a rider once each, by the name the crew knows them by.
+select u.display_name, a.score
+from crew_arcade a
+join users u on u.id = a.user_id
+where a.crew_id = $1
+order by a.score desc, a.set_at
+limit 5;
+
+-- name: SaveCrewArcadeScore :exec
+-- Only a better score moves the row.
+insert into crew_arcade (crew_id, user_id, score) values ($1, $2, $3)
+on conflict (crew_id, user_id) do update
+    set score = excluded.score, set_at = now()
+    where excluded.score > crew_arcade.score;

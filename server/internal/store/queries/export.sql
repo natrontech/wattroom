@@ -394,3 +394,23 @@ join crews c on c.id = p.crew_id
 where p.created_by = sqlc.arg(user_id)
 order by p.created_at desc, p.id
 limit sqlc.arg(lim)::int;
+
+-- name: ExportUserRoomItems :many
+-- What the rider paid for in a crew's cozy room. The room is the crew's; who
+-- bought the rug is the rider's own record, and the wallet's ledger shows the
+-- spend under the same ref.
+select c.name as crew_name, i.item, i.bought_at
+from crew_room_items i
+join crews c on c.id = i.crew_id
+where i.bought_by = sqlc.arg(user_id)
+order by i.bought_at
+limit sqlc.arg(lim);
+
+-- name: ExportUserArcadeScores :many
+-- The rider's best at each crew's arcade.
+select c.name as crew_name, a.score, a.set_at
+from crew_arcade a
+join crews c on c.id = a.crew_id
+where a.user_id = sqlc.arg(user_id)
+order by a.set_at
+limit sqlc.arg(lim);

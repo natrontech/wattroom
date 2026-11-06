@@ -153,7 +153,13 @@ func (s *Service) handleCrewRoom(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "crew room failed", err, "The crew's room could not be loaded.", "crew", crew.ID)
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]int64{"sessions": row.Sessions, "medals": row.Medals})
+	room, err := s.roomFurnishing(r.Context(), crew.ID)
+	if err != nil {
+		httpx.Fail(w, s.log, "crew room failed", err, "The crew's room could not be loaded.", "crew", crew.ID)
+		return
+	}
+	room["sessions"], room["medals"] = row.Sessions, row.Medals
+	httpx.WriteJSON(w, http.StatusOK, room)
 }
 
 // handleCrewRecaps: the crew's session recaps (ADR-0034), for its current

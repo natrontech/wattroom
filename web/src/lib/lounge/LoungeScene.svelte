@@ -76,6 +76,9 @@
 		type Visitor,
 	} from '$lib/lounge/moments';
 	import Album from '$lib/lounge/Album.svelte';
+	import ArcadeGame from '$lib/lounge/ArcadeGame.svelte';
+	import Furnish from '$lib/lounge/Furnish.svelte';
+	import Armchair from '@lucide/svelte/icons/armchair';
 	import {
 		VISITOR_NOTES,
 		fetchAlbum,
@@ -99,6 +102,7 @@
 		SAFE_W,
 		SCENE_H,
 		SCENE_W,
+		ARCADE_SEAT,
 		SPOT_HINTS,
 		DOING_WORDS,
 		placeAt,
@@ -275,6 +279,33 @@
 		});
 	});
 
+	const crewName = $derived(
+		crewLive.crews.find((c) => c.id === station)?.name ?? '',
+	);
+	let furnishing = $state(false);
+
+	/** Bergpreis: you go and stand at the cabinet, and come back after. */
+	let gaming = $state(false);
+	let seatBefore = 0;
+	function playGame() {
+		arcadeUntil = clock + 8;
+		seatBefore = channel.riders.find((r) => r.you)?.seat ?? 0;
+		live?.room({ seat: ARCADE_SEAT });
+		gaming = true;
+	}
+	function leaveGame() {
+		gaming = false;
+		live?.room({ seat: seatBefore });
+	}
+
+	/** Read the room's memory again: a new score or rug shows at once. */
+	const reread = () => {
+		const crew = station;
+		void fetchRoomMemory(crew).then((seen) => {
+			if (crew === station) memory = seen;
+		});
+	};
+
 	/** The crew's album of visitors: what it has seen, and when. */
 	let album = $state<Sighting[]>([]);
 	let albumLoaded = false;
@@ -376,6 +407,7 @@
 				pins,
 				live: running?.riders.length ?? 0,
 				...memory,
+				initial: (crewName[0] ?? 'W').toUpperCase(),
 			},
 			owl: owlHours(now.getHours()),
 		});
@@ -567,7 +599,7 @@
 			else retune({ fire: !fire });
 		} else if (spot === 'fish') fishUntil = clock + 1.2;
 		else if (spot === 'plant') bloomUntil = clock + 30;
-		else if (spot === 'arcade') arcadeUntil = clock + 8;
+		else if (spot === 'arcade') playGame();
 		else if (spot === 'board') void goto(`/crew/${station}/schedule`);
 		else if (spot === 'cork') void goto(`/crew/${station}`);
 		else if (spot === 'laptop' && running)
@@ -830,6 +862,13 @@
 		>
 		<button
 			type="button"
+			onclick={() => (furnishing = true)}
+			title="Furnish the room with your Batzen"
+			class="btn btn-ghost btn-xs text-ink px-0"
+			><Armchair size={13} /> Furnish</button
+		>
+		<button
+			type="button"
 			onclick={() => (browsing = true)}
 			title="Who has come by"
 			class="btn btn-ghost btn-xs text-ink px-0"
@@ -842,6 +881,19 @@
 				>Music is at 0 in your mix.</span
 			>{/if}
 	</div>
+	{#if furnishing}<Furnish
+			crew={station}
+			owned={memory.owned}
+			picks={memory.picks}
+			shop={memory.shop}
+			onclose={() => (furnishing = false)}
+			onchange={reread}
+		/>{/if}
+	{#if gaming}<ArcadeGame
+			crew={station}
+			onclose={leaveGame}
+			onscore={reread}
+		/>{/if}
 	{#if browsing}<Album {album} onclose={() => (browsing = false)} />{/if}
 	{#if dressing}<LookEditor onclose={() => (dressing = false)} />{/if}
 </section>
