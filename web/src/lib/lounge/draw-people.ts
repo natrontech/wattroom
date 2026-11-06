@@ -14,6 +14,7 @@ import {
 	ellipse,
 	inkedSprite,
 	limb,
+	line,
 	outlined,
 	rect,
 	ring,
@@ -27,6 +28,7 @@ import {
 	BIKE_GROUND,
 	SEAT_BASE,
 	SEAT_XS,
+	pulseOf,
 	type Bike,
 	type Figure,
 	type Rider,
@@ -58,6 +60,7 @@ export type Pose = 'sofa' | 'floor';
 /** Seat n of the sofa, or a cushion: everyone sits facing the room. */
 export function drawSofaCrew(g: Ctx, s: SceneInput) {
 	s.crew.seated.forEach((f, i) => {
+		if (!f) return;
 		const x = SEAT_XS[i];
 		if (f.away === undefined) sitter(g, s, f, x, SEAT_BASE, i, 'sofa');
 		else leftBehind(g, f, x, SEAT_BASE);
@@ -74,6 +77,15 @@ export function drawFloorCrew(g: Ctx, s: SceneInput) {
 				cushion(g, f.cushion, x, y);
 				if (f.away !== undefined) leftBehind(g, f, x, y - 1);
 				else sitter(g, s, f, x, y - 1, n0 + i, 'floor');
+			},
+		}),
+	);
+	s.crew.placed.forEach(({ f, x, y }, i) =>
+		items.push({
+			y,
+			draw: () => {
+				if (f.away !== undefined) leftBehind(g, f, x, y - 1);
+				else sitter(g, s, f, x, y - 1, n0 + 40 + i, 'floor');
 			},
 		}),
 	);
@@ -189,7 +201,12 @@ function sitter(
 	const draw = (g: Ctx, x: number, base: number) => {
 		const hx = x - 5;
 		const ht = base - 19;
-		const wave = waving(s, n);
+		const wave =
+			waving(s, n) ||
+			f.emote === 'stretch' ||
+			f.doing === 'stretch' ||
+			(f.emote === 'wave' && (s.still || Math.floor(s.t * 4) % 2 === 0)) ||
+			(f.emote === 'dance' && Math.floor(s.t * 4 + n) % 4 === 0);
 		const parts: Part[] = [
 			// A hood lies on the shoulders, behind the head.
 			...(f.top === 1
@@ -272,7 +289,7 @@ function sitter(
 		}
 		// Eyes, a blink now and then, and a mouth that moves while they talk.
 		const ey = ht + 5;
-		const shut = blinking(s, n);
+		const shut = blinking(s, n) || f.doing === 'nap';
 		rect(g, hx + 2, shut ? ey + 1 : ey, 1, shut ? 1 : 2, C.ink);
 		rect(g, hx + 7, shut ? ey + 1 : ey, 1, shut ? 1 : 2, C.ink);
 		const open = f.speaking && !s.still && Math.floor(s.t * 6 + n) % 2 === 0;
@@ -284,8 +301,15 @@ function sitter(
 			rect(g, hx + 11, ht - 1, 1, 4, C.cable);
 		}
 	};
+	// Dancing steps side to side on the beat; nodding along dips with the kick.
+	const dancing = f.emote === 'dance' && !s.still;
+	const dx = dancing ? (Math.floor(s.t * 2 + n) % 2 ? 1 : -1) : 0;
+	const dy =
+		(dancing && Math.floor(s.t * 4 + n) % 2 ? 1 : 0) +
+		(f.doing === 'nod' && !s.still && pulseOf(s) > 0.6 ? -1 : 0);
 	if (f.faded) faded(g, x, base, draw);
-	else draw(g, x, base);
+	else draw(g, x + dx, base - dy);
+	drawDoing(g, s, f, x + dx, base - dy, n);
 	if (f.cooling) {
 		// A bottle held at the hip, and a drop that runs now and then.
 		outlined(g, [[x + 7, base - 9, 3, 6, C.teal]], C.ink);
@@ -299,6 +323,69 @@ function sitter(
 }
 
 /** Stripes that read on the top: dark on a light one, light on a dark one. */
+/** What their hands are up to, over the figure. */
+function drawDoing(
+	g: Ctx,
+	s: SceneInput,
+	f: Figure,
+	x: number,
+	base: number,
+	n: number,
+) {
+	if (f.emote === 'cheers') {
+		// A mug held up, and a glint off it.
+		outlined(g, [[x + 7, base - 22, 3, 4, C.lilac]], C.ink);
+		rect(g, x + 8, base - 25, 1, 1, C.bulb);
+		rect(g, x + 11, base - 23, 1, 1, C.bulb);
+		return;
+	}
+	switch (f.doing) {
+		case 'sip':
+		case 'coffee': {
+			const up = !s.still && (s.t + n * 1.3) % 6 < 1.4;
+			outlined(g, [[x + 4, base - (up ? 13 : 9), 3, 3, C.lilac]], C.ink);
+			if (f.doing === 'coffee' && !s.still && Math.floor(s.t + n) % 2 === 0)
+				rect(g, x + 5, base - 13, 1, 2, C.paper);
+			break;
+		}
+		case 'read':
+			outlined(g, [[x - 5, base - 9, 10, 5, C.bookC]], C.ink);
+			rect(g, x - 1, base - 9, 2, 5, C.paper);
+			break;
+		case 'phone':
+			outlined(g, [[x - 2, base - 8, 4, 5, C.screen]], C.ink);
+			rect(g, x - 1, base - 7, 2, 3, C.tealLight);
+			break;
+		case 'nap':
+			if (s.still || Math.floor(s.t / 2 + n) % 2 === 0)
+				text(
+					g,
+					'Z',
+					x + 7,
+					base - 25 - (s.still ? 0 : Math.floor(s.t % 2) * 2),
+					C.lilac,
+				);
+			break;
+		case 'warm':
+			rect(g, x - 7, base - 8, 2, 2, f.skin);
+			rect(g, x + 5, base - 8, 2, 2, f.skin);
+			break;
+		case 'type':
+			if (!s.still && Math.floor(s.t * 5 + n) % 2 === 0)
+				rect(g, x - 3, base - 7, 6, 1, f.skin);
+			break;
+		case 'play':
+			if (!s.still && Math.floor(s.t * 6 + n) % 2 === 0)
+				rect(g, x + 4, base - 11, 2, 2, f.skin);
+			break;
+		case 'wrench': {
+			const swing = s.still ? 0 : Math.round(Math.sin(s.t * 3 + n) * 2);
+			line(g, x + 5, base - 8, x + 10, base - 12 + swing, C.cable);
+			break;
+		}
+	}
+}
+
 function stripeOn(shirt: string): string {
 	const n = parseInt(shirt.slice(1), 16);
 	const light = 0.3 * (n >> 16) + 0.59 * ((n >> 8) & 255) + 0.11 * (n & 255);

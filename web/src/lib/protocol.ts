@@ -1036,6 +1036,30 @@ export interface LoungeState {
   mood?: string;
 }
 /**
+ * MaxRoomSeat is how many places the cozy room has: the sofa's four, then the
+ * room's others. The client keeps their positions, in web/src/lib/lounge/scene.ts.
+ */
+export const MaxRoomSeat = 12;
+/**
+ * RoomAct is a rider's move in the cozy room. Paint, like the lounge itself:
+ * it never reaches a ride.
+ */
+export interface RoomAct {
+  /**
+   * The place they took, from 1 to MaxRoomSeat; 0 lets the room seat them.
+   * Absent leaves them where they are.
+   */
+  seat?: number /* int */;
+  /**
+   * From LoungeEmotes.
+   */
+  emote?: string;
+  /**
+   * Whose heart it is: a rider's id.
+   */
+  to?: string;
+}
+/**
  * HouseRadioTitle is house radio's line on the deck and in the channel's
  * events: the station is generated, so it has no title of its own.
  */
@@ -1274,6 +1298,7 @@ export interface ClientMessage {
   voice?: VoiceClaim;
   freeRoad?: FreeRoad;
   lounge?: LoungeState;
+  room?: RoomAct;
 }
 /**
  * ServerTick is a voice channel's coalesced 1 Hz broadcast: every rider's
@@ -1901,6 +1926,19 @@ export interface Rider {
    * talking", which never went out at all.
    */
   riding?: boolean;
+  /**
+   * Where they sit in the cozy room (RoomAct.Seat); 0 is wherever the room
+   * puts them.
+   */
+  seat?: number /* int */;
+  /**
+   * What they are doing there for a moment, from LoungeEmotes, for whom if
+   * it is a heart, and a count that goes up with each one, so a second heart
+   * to the same rider shows as a second heart.
+   */
+  emote?: string;
+  emoteTo?: string;
+  emoteSeq?: number /* int */;
   /**
    * On the running session's timeline (ADR-0059). Everyone else in the
    * channel spectates it: not driven, not counted, and drawn apart.

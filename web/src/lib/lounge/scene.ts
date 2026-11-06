@@ -83,6 +83,123 @@ export interface Figure {
 	faded: boolean;
 	/** Just off the bike: a towel round the neck and a bottle in hand. */
 	cooling?: boolean;
+	/** The place they took (PLACES, or the sofa's 1 to 4); absent is wherever. */
+	seat?: number;
+	/** What they are doing for a moment, from the hub's LoungeEmotes. */
+	emote?: string;
+	/** What they are up to otherwise. */
+	doing?: Doing;
+}
+
+/** What someone in the room is up to: their place's, or an idle one. */
+export type Doing =
+	| ''
+	| 'sip'
+	| 'read'
+	| 'phone'
+	| 'nap'
+	| 'nod'
+	| 'stretch'
+	| 'type'
+	| 'warm'
+	| 'lounge'
+	| 'coffee'
+	| 'play'
+	| 'wrench';
+
+/** The same, in words, for the name that a pointer finds. */
+export const DOING_WORDS: Record<Doing, string> = {
+	'': 'hanging out',
+	sip: 'having a coffee',
+	read: 'reading',
+	phone: 'on their phone',
+	nap: 'having a nap',
+	nod: 'nodding along',
+	stretch: 'stretching',
+	type: 'at the laptop',
+	warm: 'warming up by the stove',
+	lounge: 'on the beanbag',
+	coffee: 'at the coffee bar',
+	play: 'at the arcade',
+	wrench: 'fixing a bike',
+};
+
+/** A place in the room to take, past the sofa: its seat, where, and what it is for. */
+export interface Place {
+	seat: number;
+	x: number;
+	y: number;
+	doing: Doing;
+	/** Only a tall room has it. */
+	front?: boolean;
+	/** The floor a click takes it from: x, y, width, height. */
+	hit: readonly [number, number, number, number];
+}
+
+export const PLACES: readonly Place[] = [
+	{ seat: 5, x: 58, y: 96, doing: 'type', hit: [44, 86, 28, 16] },
+	{ seat: 6, x: 203, y: 104, doing: 'warm', hit: [190, 92, 26, 18] },
+	{
+		seat: 7,
+		x: 104,
+		y: FRONT_Y - 2,
+		doing: 'lounge',
+		front: true,
+		hit: [90, FRONT_Y - 16, 28, 18],
+	},
+	{
+		seat: 8,
+		x: 146,
+		y: FRONT_Y - 2,
+		doing: 'lounge',
+		front: true,
+		hit: [132, FRONT_Y - 16, 28, 18],
+	},
+	{
+		seat: 9,
+		x: 266,
+		y: FRONT_Y + 12,
+		doing: 'coffee',
+		front: true,
+		hit: [256, FRONT_Y + 2, 20, 14],
+	},
+	{
+		seat: 10,
+		x: 296,
+		y: FRONT_Y + 12,
+		doing: 'coffee',
+		front: true,
+		hit: [286, FRONT_Y + 2, 20, 14],
+	},
+	{
+		seat: 11,
+		x: 233,
+		y: FRONT_Y + 14,
+		doing: 'play',
+		front: true,
+		hit: [221, FRONT_Y + 2, 24, 16],
+	},
+	{
+		seat: 12,
+		x: 40,
+		y: FRONT_Y + 10,
+		doing: 'wrench',
+		front: true,
+		hit: [24, FRONT_Y + 2, 36, 14],
+	},
+];
+
+/** Which place a click at the stage's coordinates takes: a seat number, or 0. */
+export function placeAt(x: number, y: number, front = false): number {
+	if (y >= SEAT_BASE - 16 && y < SEAT_BASE + 11) {
+		const seat = SEAT_XS.findIndex((sx) => Math.abs(x - sx) <= 10);
+		if (seat >= 0) return seat + 1;
+	}
+	const place = PLACES.find(
+		({ hit: [hx, hy, hw, hh], front: tall }) =>
+			(!tall || front) && x >= hx && x < hx + hw && y >= hy && y < hy + hh,
+	);
+	return place?.seat ?? 0;
 }
 
 export interface Rider extends Figure {
@@ -108,8 +225,11 @@ export interface Bike extends Spot {
 export interface Crew {
 	/** Every trainer drawn: the two that always stand there, and one more for each rider past them. */
 	bikes: Bike[];
-	seated: Figure[];
+	/** The sofa, seat by seat: null is a seat nobody took, ahead of one somebody did. */
+	seated: (Figure | null)[];
 	floor: ({ f: Figure } & Spot)[];
+	/** Who took a place of their own (PLACES). */
+	placed: ({ f: Figure } & Spot)[];
 	/** In the call with no spot left: counted beside the last one. */
 	more: number;
 }
@@ -257,13 +377,19 @@ export interface Tag {
 export function tagsOf(crew: Crew, w: number, h: number): Tag[] {
 	const { ox, oy } = middleOf(w, h);
 	// Every other name on the sofa a row lower, so neighbours get twice the width.
-	const tags: Tag[] = crew.seated.map((f, i) => ({
-		id: f.id,
-		x: ox + SEAT_XS[i],
-		y: oy + 89 + (i % 2) * 7,
-		head: oy + SEAT_BASE - 19,
-		span: (SEAT_XS[1] - SEAT_XS[0]) * 2,
-	}));
+	const tags: Tag[] = crew.seated.flatMap((f, i) =>
+		f
+			? [
+					{
+						id: f.id,
+						x: ox + SEAT_XS[i],
+						y: oy + 89 + (i % 2) * 7,
+						head: oy + SEAT_BASE - 19,
+						span: (SEAT_XS[1] - SEAT_XS[0]) * 2,
+					},
+				]
+			: [],
+	);
 	for (const { rider, x, y } of crew.bikes)
 		if (rider)
 			tags.push({
@@ -273,7 +399,7 @@ export function tagsOf(crew: Crew, w: number, h: number): Tag[] {
 				head: oy + y - 38,
 				span: 40,
 			});
-	for (const { f, x, y } of crew.floor)
+	for (const { f, x, y } of [...crew.floor, ...crew.placed])
 		tags.push({
 			id: f.id,
 			x: ox + x,

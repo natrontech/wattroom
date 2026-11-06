@@ -35,6 +35,12 @@ export interface LiveRider {
 	inSession?: boolean;
 	/** The crew session they ride (docs/SESSIONS.md), on a call's roster; never their numbers. */
 	onSession?: string;
+	/** Where they sit in the cozy room; 0 or absent is wherever it puts them. */
+	seat?: number;
+	/** What they are doing there for a moment, and for whom if it is a heart. */
+	emote?: string;
+	emoteTo?: string;
+	emoteSeq?: number;
 	/** What they wear in the cozy room (lounge/look.ts); absent is seeded from the id. */
 	loungeLook?: string;
 	/** camera-off fallback hue, so the grid isn't uniformly dark */

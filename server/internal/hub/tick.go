@@ -316,6 +316,7 @@ func (rm *channelState) rosterLocked(tick *protocol.ServerTick, now func() time.
 			rider := c.rider
 			rider.AwayReason, rider.Away = rm.away[c.rider.ID]
 			_, rider.Riding = pedalling[c.rider.ID]
+			rm.roomStateOf(&rider, now())
 			rider.InSession = rm.session.rides(c.rider.ID)
 			// The crew session they ride, named in the call they stand in
 			// (docs/SESSIONS.md); a session's own room names none.
