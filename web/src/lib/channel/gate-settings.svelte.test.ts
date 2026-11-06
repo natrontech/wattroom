@@ -54,6 +54,29 @@ describe('gate settings', () => {
 		expect(second.threshold).toBeCloseTo(0.05);
 	});
 
+	it('keeps noise cancellation and the automatic gate on until the rider says otherwise', () => {
+		const first = createGateSettings();
+		expect(first.denoise).toBe(true);
+		expect(first.auto).toBe(true);
+		first.setDenoise(false);
+		first.setThreshold(0.05);
+
+		const second = createGateSettings();
+		expect(second.denoise).toBe(false);
+		expect(second.auto).toBe(false);
+	});
+
+	it('lets go of what was saved before noise cancellation', () => {
+		store.set(
+			'wattroom.voice.v1',
+			JSON.stringify({ threshold: 0.05, auto: false, ns: false }),
+		);
+		const g = createGateSettings();
+		expect(g.auto).toBe(true);
+		expect(g.denoise).toBe(true);
+		expect(g.threshold).toBeCloseTo(0.05); // the mark, for when they set one again
+	});
+
 	it('clamps a stored threshold to the axis rather than trusting it', () => {
 		store.set(
 			'wattroom.voice.v1',

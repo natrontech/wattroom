@@ -50,7 +50,7 @@ func TestInlineScriptHashesAreTheBuildsExecutableInlineScripts(t *testing.T) {
 			t.Errorf("script-src %q is missing %s", policy, h)
 		}
 	}
-	if !strings.HasPrefix(policy, "'self' ") || !strings.HasSuffix(policy, " blob: https://www.youtube.com") {
+	if !strings.HasPrefix(policy, "'self' ") || !strings.HasSuffix(policy, " 'wasm-unsafe-eval' blob: https://www.youtube.com") {
 		t.Errorf("script-src %q lost what it allowed besides the hashes", policy)
 	}
 }

@@ -28,17 +28,6 @@ const rms = (x: Float32Array, from: number, to: number) => {
 	return Math.sqrt(s / (to - from));
 };
 
-/** Amplitude of one frequency in x[from, to). */
-function tone(x: Float32Array, f: number, from: number, to: number) {
-	let re = 0;
-	let im = 0;
-	for (let i = from; i < to; i++) {
-		re += x[i] * Math.cos((2 * Math.PI * f * i) / SR);
-		im += x[i] * Math.sin((2 * Math.PI * f * i) / SR);
-	}
-	return (2 * Math.hypot(re, im)) / (to - from);
-}
-
 describe('voice dsp', () => {
 	it('passes the voice through untouched, LOOKAHEAD samples late', () => {
 		const dsp = createVoiceDsp(voiceDspOptions(SR));
@@ -95,28 +84,5 @@ describe('voice dsp', () => {
 			make(6, () => 0),
 		);
 		expect(dsp.threshold).toBe(AUTO_MIN);
-	});
-
-	it('takes about 10 dB off a steady noise and leaves the voice over it whole', () => {
-		const dsp = createVoiceDsp(voiceDspOptions(SR));
-		dsp.set({ force: 'open', ns: true });
-		const hiss = make(8, () => 0.01 * Math.SQRT2 * noise());
-		const quiet = run(dsp, hiss);
-		const cut =
-			20 * Math.log10(rms(quiet, SR * 7, SR * 8) / rms(hiss, SR * 7, SR * 8));
-		expect(cut).toBeLessThan(-7);
-		expect(cut).toBeGreaterThan(-11);
-
-		const voice = make(
-			2,
-			(i) =>
-				0.01 * Math.SQRT2 * noise() +
-				0.1 * Math.sin((2 * Math.PI * 1000 * i) / SR),
-		);
-		const y = run(dsp, voice);
-		const kept =
-			tone(y, 1000, SR + LOOKAHEAD, 2 * SR) /
-			tone(voice, 1000, SR, 2 * SR - LOOKAHEAD);
-		expect(Math.abs(20 * Math.log10(kept))).toBeLessThan(1);
 	});
 });

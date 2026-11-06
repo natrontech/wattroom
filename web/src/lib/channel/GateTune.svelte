@@ -19,8 +19,9 @@
 		micTesting = false,
 		gateAuto = true,
 		onGateAuto,
-		noiseSuppression = false,
+		noiseSuppression = true,
 		onNoiseSuppression,
+		noiseFault = false,
 	}: {
 		micOn?: boolean;
 		micLevel?: number;
@@ -35,6 +36,7 @@
 		onGateAuto?: (on: boolean) => void;
 		noiseSuppression?: boolean;
 		onNoiseSuppression?: (on: boolean) => void;
+		noiseFault?: boolean;
 	} = $props();
 
 	const gateNow = $derived(effectiveThreshold || gateThreshold);
@@ -97,9 +99,11 @@
 				onchange={(e) => onNoiseSuppression(e.currentTarget.checked)}
 			/>
 			<span
-				>Light noise suppression
+				>Noise cancellation
 				<span class="text-muted block"
-					>takes up to 10 dB of fan and hum from under your voice</span
+					>{noiseFault
+						? 'not running on this machine, so the gate works alone'
+						: 'takes fan, drivetrain and breathing out from under your voice'}</span
 				></span
 			>
 		</label>

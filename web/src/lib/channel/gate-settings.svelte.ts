@@ -21,8 +21,8 @@ export function createGateSettings() {
 	let pttHeld = $state(false);
 	/** The gate sets its own mark from the room's noise floor (SPEC). */
 	let auto = $state(true);
-	/** Light noise suppression: off until the rider asks for it (SPEC). */
-	let ns = $state(false);
+	/** Noise cancellation: on until the rider says otherwise (SPEC). */
+	let denoise = $state(true);
 	/** Reactive: the rail draws the EFFECTIVE threshold, and music moves it. */
 	let deckPlaying = $state(false);
 
@@ -31,10 +31,11 @@ export function createGateSettings() {
 		if (saved.mode === 'ptt') mode = 'ptt';
 		if (typeof saved.threshold === 'number' && saved.threshold > 0)
 			threshold = clampThreshold(saved.threshold);
-		// A threshold stored before the automatic gate is not a choice of
-		// manual: only an explicit false is.
-		if (saved.auto === false) auto = false;
-		if (saved.ns === true) ns = true;
+		// New keys, both. A mark dragged before noise cancellation was set to
+		// clear a fan the gate no longer hears, and would clip a soft word now.
+		// Every save used to write `ns: false`, chosen or not.
+		if (saved.handSet === true) auto = false;
+		if (saved.denoise === false) denoise = false;
 	} catch {
 		// storage blocked: SPEC defaults stand
 	}
@@ -43,7 +44,7 @@ export function createGateSettings() {
 		try {
 			localStorage.setItem(
 				VOICE_KEY,
-				JSON.stringify({ mode, threshold, auto, ns }),
+				JSON.stringify({ mode, threshold, handSet: !auto, denoise }),
 			);
 		} catch {
 			// per-device convenience only
@@ -63,8 +64,8 @@ export function createGateSettings() {
 		get auto() {
 			return auto;
 		},
-		get ns() {
-			return ns;
+		get denoise() {
+			return denoise;
 		},
 		/**
 		 * SPEC: while the jukebox plays the threshold doubles. The gate reads
@@ -98,8 +99,8 @@ export function createGateSettings() {
 			auto = on;
 			persist();
 		},
-		setNs(on: boolean) {
-			ns = on;
+		setDenoise(on: boolean) {
+			denoise = on;
 			persist();
 		},
 		setPttHeld(held: boolean) {

@@ -3,10 +3,10 @@
  * and everything that decides whether anything reaches the call.
  *
  * The mic path (#151, SPEC voice channel audio): capture (browser DSP on) →
- * starting gain (#2120) → meter → gate gain → published track. The gate
- * drives the GAIN, never the track's mute — a muted track broadcasts state,
- * and a gate that flaps everyone's muted chip per pause in speech is worse
- * than no gate.
+ * starting gain (#2120) → noise cancellation → meter → gate gain → published
+ * track. The gate drives the GAIN, never the track's mute — a muted track
+ * broadcasts state, and a gate that flaps everyone's muted chip per pause in
+ * speech is worse than no gate.
  *
  * A HANDHELD takes none of that: it publishes the capture as it comes and the
  * mic button is the gate, because holding a capture open is what puts the
@@ -27,6 +27,7 @@ import {
 	gateStep,
 } from '$lib/channel/gate';
 import { type MicDevices, captureMic } from '$lib/channel/capture';
+import { type Denoiser, createDenoiser } from '$lib/channel/denoiser';
 import { createGateSettings } from '$lib/channel/gate-settings.svelte';
 import {
 	type MicMeter,
@@ -76,6 +77,10 @@ interface Chain {
 	meter: MicMeter | null;
 	/** The audio-thread gate; null on a handheld and where no worklet runs. */
 	voice: VoiceGate | null;
+	/** Noise cancellation, once it has loaded and been wired in front of the gate. */
+	denoiser?: Denoiser;
+	/** It is on its way: one load at a time. */
+	denoising?: boolean;
 	track: MediaStreamTrack;
 	/** The capture track being watched for `ended` (#640). */
 	capture: MediaStreamTrack | undefined;
@@ -87,6 +92,8 @@ export type MicChain = ReturnType<typeof createMicChain>;
 
 /** SPEC (#4161): a chosen mic that sends pure silence this long is cut off. */
 export const SILENT_MS = 3000;
+/** SPEC: how long an open waits for noise cancellation before going live. */
+export const DENOISE_WAIT_MS = 1000;
 /**
  * A mic recovered by itself that dies again inside this is not coming back
  * by itself (#4220): the rider is told, and Reconnect is theirs.
@@ -115,6 +122,8 @@ export function createMicChain(host: MicChainHost) {
 	 * why the call stopped hearing them.
 	 */
 	let fault = $state(false);
+	/** Noise cancellation asked for and not running: failed, or too heavy here. */
+	let noiseFault = $state(false);
 	/** The mark the audio-thread gate last reported: the room's, when automatic. */
 	let marked = $state(0);
 	/** What the audio-thread gate was last told, so a level post sends nothing new. */
@@ -236,7 +245,7 @@ export function createMicChain(host: MicChainHost) {
 		}
 		// ponytail: no worklet (a CSP that blocks blob:) gates from the main
 		// thread on the rider's own mark, with no lookahead, automatic mark or
-		// noise suppression. Ship the DSP as a module file if that ever matters.
+		// noise cancellation. Ship the DSP as a module file if that ever matters.
 		gain.gain.value = 0; // closed until the gate opens
 		const meter = await createMicMeter(ctx, lift.node, onLevel);
 		meter.out.connect(gain);
@@ -258,6 +267,40 @@ export function createMicChain(host: MicChainHost) {
 		);
 	}
 
+	/**
+	 * Noise cancellation goes in front of the gate once it has loaded. The
+	 * first open downloads 12 MB, and a voice through the gate alone beats a
+	 * mic stuck on starting, so `open` waits DENOISE_WAIT_MS for it and no more.
+	 */
+	async function denoise(c: Chain) {
+		if (!settings.denoise || !c.voice || !c.lift || !c.ctx) return;
+		if (c.denoiser || c.denoising) return;
+		c.denoising = true;
+		try {
+			const made = await createDenoiser(c.ctx, () => undenoise(c, true));
+			if (chain !== c || !settings.denoise) return made.dispose();
+			c.lift.node.disconnect(c.voice.out);
+			c.lift.node.connect(made.node);
+			made.node.connect(c.voice.out);
+			c.denoiser = made;
+			noiseFault = false;
+		} catch {
+			if (chain === c) noiseFault = true;
+		} finally {
+			c.denoising = false;
+		}
+	}
+
+	/** Back to the gate alone: the rider turned it off, or the machine can't. */
+	function undenoise(c: Chain, failed: boolean) {
+		noiseFault = failed;
+		if (!c.denoiser || !c.voice || !c.lift) return;
+		c.lift.node.disconnect(c.denoiser.node);
+		c.denoiser.dispose();
+		c.denoiser = undefined;
+		c.lift.node.connect(c.voice.out);
+	}
+
 	/** Tells the audio-thread gate what the main thread knows: the rider's choices and the call. */
 	function syncGate(voice: VoiceGate) {
 		const held = settings.mode === 'ptt' || settings.pttHeld;
@@ -272,7 +315,6 @@ export function createMicChain(host: MicChainHost) {
 		const next = {
 			threshold: settings.effective,
 			auto: settings.auto,
-			ns: settings.ns,
 			force,
 		} as const;
 		const key = JSON.stringify(next);
@@ -321,6 +363,15 @@ export function createMicChain(host: MicChainHost) {
 			}
 			chain = next;
 			runGate(); // shut until the call is live
+			// Its model holds this graph's audio thread for a quarter of a
+			// second as it loads. In front of the track that costs a slower
+			// unmute; behind it, every listener conceals 180 ms and stays 30 ms
+			// further behind this rider. The first open's download can't wait.
+			await Promise.race([
+				denoise(next),
+				new Promise((go) => setTimeout(go, DENOISE_WAIT_MS)),
+			]);
+			if (mine !== epoch) return false;
 			await host.publish(next.track);
 			if (mine !== epoch) {
 				host.unpublish(next.track); // closed mid-publish: take it back off
@@ -436,6 +487,7 @@ export function createMicChain(host: MicChainHost) {
 		};
 		testing = true;
 		runGate();
+		void denoise(chain);
 	}
 
 	function stopTest() {
@@ -512,15 +564,21 @@ export function createMicChain(host: MicChainHost) {
 			return settings.auto;
 		},
 		get noiseSuppression() {
-			return settings.ns;
+			return settings.denoise;
+		},
+		/** It was asked for and is not running, and the rider should know why. */
+		get noiseFault() {
+			return noiseFault;
 		},
 		setAuto(on: boolean) {
 			settings.setAuto(on);
 			runGate();
 		},
 		setNoiseSuppression(on: boolean) {
-			settings.setNs(on);
-			runGate();
+			settings.setDenoise(on);
+			if (!chain) return;
+			if (on) void denoise(chain);
+			else undenoise(chain, false);
 		},
 		get pttHeld() {
 			return settings.pttHeld;

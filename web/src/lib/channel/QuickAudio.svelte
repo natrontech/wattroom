@@ -115,6 +115,7 @@
 							onGateAuto={(on) => voice.setGateAuto(on)}
 							noiseSuppression={voice.noiseSuppression}
 							onNoiseSuppression={(on) => voice.setNoiseSuppression(on)}
+							noiseFault={voice.noiseFault}
 						/>
 					</div>
 					{#if !voice.micOn}

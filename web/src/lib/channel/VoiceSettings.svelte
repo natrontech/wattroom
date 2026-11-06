@@ -22,8 +22,9 @@
 		onGateThreshold,
 		gateAuto = true,
 		onGateAuto,
-		noiseSuppression = false,
+		noiseSuppression = true,
 		onNoiseSuppression,
+		noiseFault = false,
 		micTesting = false,
 		onMicTest,
 		onRiderGain,
@@ -47,6 +48,7 @@
 		onGateAuto?: (on: boolean) => void;
 		noiseSuppression?: boolean;
 		onNoiseSuppression?: (on: boolean) => void;
+		noiseFault?: boolean;
 		micTesting?: boolean;
 		onMicTest?: () => void;
 		/** Resets go through av, so a rider still in voice hears the change. */
@@ -120,6 +122,7 @@
 				{onGateAuto}
 				{noiseSuppression}
 				{onNoiseSuppression}
+				{noiseFault}
 				{micTesting}
 			/>
 		</div>

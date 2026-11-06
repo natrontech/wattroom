@@ -42,6 +42,7 @@
 	"packageManager": "pnpm@12.5.1",
 	"dependencies": {
 		"@lucide/svelte": "^1.64.0",
+		"@workadventure/noise-suppression": "0.2.0",
 		"emojibase-data": "18.0.0",
 		"livekit-client": "^2.23.0",
 		"suncalc": "1.9.0",

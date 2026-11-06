@@ -71,6 +71,7 @@
 				onGateAuto={(on) => av.setGateAuto(on)}
 				noiseSuppression={av.noiseSuppression}
 				onNoiseSuppression={(on) => av.setNoiseSuppression(on)}
+				noiseFault={av.noiseFault}
 				micTesting={av.micTesting}
 				onMicTest={() => void av.toggleMicTest()}
 				onRiderGain={(id, gain) => av.setRiderGain(id, gain)}
