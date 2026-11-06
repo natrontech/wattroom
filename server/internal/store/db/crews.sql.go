@@ -11,6 +11,25 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const addCrewSighting = `-- name: AddCrewSighting :execrows
+insert into crew_sightings (crew_id, kind) values ($1, $2)
+on conflict do nothing
+`
+
+type AddCrewSightingParams struct {
+	CrewID pgtype.UUID
+	Kind   string
+}
+
+// The first time counts: seeing it again changes nothing.
+func (q *Queries) AddCrewSighting(ctx context.Context, arg AddCrewSightingParams) (int64, error) {
+	result, err := q.db.Exec(ctx, addCrewSighting, arg.CrewID, arg.Kind)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const clearCrewImage = `-- name: ClearCrewImage :exec
 update crews set image_mime = null, image = null, image_set_at = null where id = $1
 `
@@ -558,6 +577,35 @@ func (q *Queries) ListCrewRoles(ctx context.Context, crewID pgtype.UUID) ([]Crew
 			&i.Notify,
 			&i.OnBoard,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCrewSightings = `-- name: ListCrewSightings :many
+select kind, seen_at from crew_sightings where crew_id = $1 order by seen_at
+`
+
+type ListCrewSightingsRow struct {
+	Kind   string
+	SeenAt pgtype.Timestamptz
+}
+
+func (q *Queries) ListCrewSightings(ctx context.Context, crewID pgtype.UUID) ([]ListCrewSightingsRow, error) {
+	rows, err := q.db.Query(ctx, listCrewSightings, crewID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCrewSightingsRow
+	for rows.Next() {
+		var i ListCrewSightingsRow
+		if err := rows.Scan(&i.Kind, &i.SeenAt); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
