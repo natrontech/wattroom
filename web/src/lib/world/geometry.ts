@@ -248,10 +248,16 @@ export function roadMaterial(
 				float verge = smoothstep(${(ROAD_W / 2 + 0.9).toFixed(2)} - 0.5 * fw, ${(ROAD_W / 2 + 0.9).toFixed(2)} + 0.5 * fw, abs(u));
 				float line = max(edge, centre);
 				#ifdef PIXEL_RAMP
-					// In whole pixels paint is there or not: a line at the share it covers, in Bayer order.
 					if (uPixel > 0.5) {
-						// A line is there, sharp, or not at all: never a dithered fade into dots.
-						line = step(0.3, line);
+						// A line thinner than a pixel draws the one pixel nearest its middle in every row it
+						// crosses, so where the grid falls never breaks it into dashes. Thinner than a sixth
+						// of a pixel it is gone: at one distance, not in dots.
+						float ew = max(${EDGE_HALF.toFixed(3)}, 0.5 * fw);
+						float cw = max(${CENTRE_HALF.toFixed(3)}, 0.5 * fw);
+						line = max(
+							step(abs(abs(u) - ${(ROAD_W / 2 - 0.25).toFixed(2)}), ew) * step(0.16, ${EDGE_HALF.toFixed(3)} / ew),
+							step(abs(u), cw) * step(0.16, ${CENTRE_HALF.toFixed(3)} / cw) * step(0.5, dash)
+						);
 						shoulder = step(0.5, shoulder);
 						// Grass grows in over the gravel's edge, unevenly.
 						float jag = fract(sin(floor(s * 7.0) * 91.7) * 43758.5453) * 0.24;
