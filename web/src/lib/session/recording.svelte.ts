@@ -1,3 +1,4 @@
+import { tracePoint, type TracePoint } from '$lib/components/trace';
 import { MaxBridgedGap } from '$lib/protocol';
 import { isLivePhase } from '$lib/channel/tick-session';
 import { createLiveStats, type LiveSecond } from '$lib/ride/live-stats.svelte';
@@ -23,7 +24,7 @@ import { createLiveStats, type LiveSecond } from '$lib/ride/live-stats.svelte';
  * the summary read one ride.
  */
 export function createRecording(deps: { ftp: () => number }) {
-	let trace = $state.raw<{ t: number; w: number }[]>([]);
+	let trace = $state.raw<TracePoint[]>([]);
 	let samples = $state.raw<{ watts: number }[]>([]);
 	// One sample per timeline second (#1411): the summary reads the record
 	// as one entry per second — Σ watts / 1000 = kJ, sixty entries = a
@@ -31,6 +32,7 @@ export function createRecording(deps: { ftp: () => number }) {
 	// server's record admits the same way (#791).
 	let lastSecond = -1;
 	let lastWatts = 0;
+	let lastHeart = 0;
 	// The recording belongs to ONE session (#1535): it clears on the edge into
 	// one, on every client. The edge is remembered here, beside what it clears
 	// and for exactly as long — a summary that remounted with every page
@@ -53,8 +55,16 @@ export function createRecording(deps: { ftp: () => number }) {
 		get live() {
 			return stats.current;
 		},
-		/** `at` carries the block and the scored target, when the caller has them. */
-		record(elapsed: number, watts: number, at: Omit<LiveSecond, 'watts'> = {}) {
+		/**
+		 * `at` carries the block and the scored target, when the caller has
+		 * them; `heartRate` the strap's bpm, 0 with none (#4426).
+		 */
+		record(
+			elapsed: number,
+			watts: number,
+			at: Omit<LiveSecond, 'watts'> = {},
+			heartRate = 0,
+		) {
 			const second = Math.floor(elapsed);
 			if (second <= lastSecond) return;
 			// A trainer reading that lands a second late leaves the one before
@@ -66,14 +76,21 @@ export function createRecording(deps: { ftp: () => number }) {
 				for (let step = 1; step <= silent; step++) {
 					const between =
 						lastWatts + ((watts - lastWatts) * step) / (silent + 1);
-					trace = [...trace, { t: lastSecond + step, w: between }];
+					// A bridged second carries a heart rate only when both
+					// neighbours do (docs/spec/stats.md).
+					const heart =
+						lastHeart > 0 && heartRate > 0
+							? lastHeart + ((heartRate - lastHeart) * step) / (silent + 1)
+							: 0;
+					trace = [...trace, tracePoint(lastSecond + step, between, heart)];
 					samples = [...samples, { watts: Math.max(0, Math.round(between)) }];
 					stats.push({ watts: between });
 				}
 			}
 			lastSecond = second;
 			lastWatts = watts;
-			trace = [...trace, { t: elapsed, w: watts }];
+			lastHeart = heartRate;
+			trace = [...trace, tracePoint(elapsed, watts, heartRate)];
 			samples = [...samples, { watts: Math.max(0, Math.round(watts)) }];
 			stats.push({ ...at, watts });
 		},

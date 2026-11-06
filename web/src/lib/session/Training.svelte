@@ -53,6 +53,7 @@
 	import { endGame } from '$lib/session/end-game';
 	import { account } from '$lib/account.svelte';
 	import { SESSION_COUNTDOWN_SECONDS } from '$lib/workout/ride-state';
+	import { ridesTheRoad } from '$lib/workout/block';
 	import { serverNow } from '$lib/server-clock';
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { tooltip } from '$lib/tooltip.svelte';
@@ -129,7 +130,9 @@
 		landed(climbView(channel.ridden), channel.ridden?.lands),
 	);
 	const map = $derived(mapView(channel.ridden));
-	watchClimbCues(() => climb);
+	// Called only where the trainer rides the grade (#4426): in a workout's
+	// ERG block the watts are the work.
+	watchClimbCues(() => (ridesTheRoad(channel.block) ? climb : null));
 	// A phone rides the solo phone layout (#4233, TARGETS phone-ride): one
 	// column of panels, the world a band where this device draws it, and the
 	// numbers the FOLLOWED rider's — a phone is a spectator, so whoever was
@@ -158,15 +161,16 @@
 	const docked = $derived(
 		inWorld && !device.narrow && channel.phase === 'live',
 	);
-	// Flat, the horizon's graph is the workout's one picture, its blocks in
-	// words, and slot 1 drops its strip (#4159). Where the graph gives way (a
-	// screen, a sprint, the world), the strip is the picture again.
+	// The horizon's graph is the workout's one picture, its blocks in words,
+	// and slot 1 drops its strip (#4159). On a road too (#4426): a workout's
+	// horizon is its blocks, your power and your heart, never the road's
+	// profile. Flat it gives way to a shared screen, which is the ground then;
+	// over the world it is the strip under one. Where a sprint or a hidden
+	// meter takes it, slot 1's strip is the picture again.
 	const graphed = $derived(
-		!inWorld &&
-			!phoneRoad &&
-			!quiet &&
-			inFocus !== 'media' &&
-			channel.segments.length > 0,
+		!quiet &&
+			channel.segments.length > 0 &&
+			(inFocus !== 'media' || inWorld || phoneRoad),
 	);
 	// A road with no graph to draw (#4192): a race or a game on a road has no
 	// segments, so the Skyline stands in the horizon where the workout's graph
@@ -516,9 +520,37 @@
 		{/snippet}
 
 		{#snippet horizon()}
-			{#if inWorld && channel.ridden}
-				<!-- On a road the horizon is the road ahead (ADR-0046 as amended,
-				     #3641); the session's clock is slot 1's strip. -->
+			{#if graphed}
+				{@const media = inFocus === 'media'}
+				<!-- The horizon: the session is the ground the numbers stand on,
+			     not another card. A workout's horizon is its graph on a road
+			     too (#4426), over the world the band along the bottom, under a
+			     shared screen the strip; flat it gives way to the player — two
+			     grounds is one too many — and a game's session has no timeline
+			     to draw (#2597). -->
+				<div
+					class={inWorld
+						? 'h-full'
+						: `relative ${phoneRoad ? 'min-h-40' : 'min-h-28'} flex-1`}
+				>
+					<div class={inWorld ? 'h-full' : 'absolute inset-0'}>
+						<IntervalGraph
+							ride
+							compact={media}
+							words={media ? undefined : { bias: channel.bias }}
+							marker={!channel.youStale}
+							segments={channel.segments}
+							{total}
+							{elapsed}
+							ftp={channel.you.ftp}
+							lthr={channelConnection.current?.profile.current.lthr}
+							trace={channel.you.trace}
+						/>
+					</div>
+				</div>
+			{:else if inWorld && channel.ridden}
+				<!-- With no workout to draw, the horizon is the road ahead
+				     (ADR-0046 as amended, #3641). -->
 				<div class="h-full">
 					<Skyline
 						road={channel.ridden.road}
@@ -539,25 +571,6 @@
 							ftp={channel.you.ftp}
 							m={channel.ridden.m}
 							mps={channel.ridden.mps}
-						/>
-					</div>
-				</div>
-			{:else if graphed}
-				<!-- The horizon: the session is the ground the numbers stand on,
-			     not another card. It gives way to the player when media has
-			     the focus — two grounds is one too many — and a game's
-			     session has no timeline to draw (#2597). -->
-				<div class="relative min-h-28 flex-1">
-					<div class="absolute inset-0">
-						<IntervalGraph
-							ride
-							words={{ bias: channel.bias }}
-							marker={!channel.youStale}
-							segments={channel.segments}
-							{total}
-							{elapsed}
-							ftp={channel.you.ftp}
-							trace={channel.you.trace}
 						/>
 					</div>
 				</div>

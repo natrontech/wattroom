@@ -2,7 +2,14 @@
 	import { formatClock } from '$lib/format';
 	import { blockWords } from '$lib/workout/block';
 	import type { Segment } from '$lib/workout/types';
-	import { splitTrace, type TracePoint, thinRun } from './trace';
+	import {
+		heartAnchor,
+		heartFraction,
+		heartRuns,
+		splitTrace,
+		type TracePoint,
+		thinRun,
+	} from './trace';
 	import { CEILING, ZONE_NAMES, ZONE_VAR, zoneOfSegment } from './zones';
 	import {
 		fractionAt,
@@ -31,6 +38,7 @@
 		ride = false,
 		words,
 		ceiling = CEILING,
+		lthr,
 		selectedPath = null,
 		onSelect,
 		editable = false,
@@ -66,6 +74,11 @@
 		 * custom ceiling are not combined.
 		 */
 		ceiling?: number;
+		/**
+		 * The rider's LTHR (#4426): the heart line's anchor, on the FTP line.
+		 * Absent, a fixed 170 bpm places the line (trace.ts).
+		 */
+		lthr?: number;
 		/** Editor hooks: present ⇒ blocks are clickable and select their step.
 		    A path, not an index, so a repeat's child selects itself (#1004). */
 		selectedPath?: number[] | null;
@@ -286,6 +299,25 @@
 				.join(' '),
 		),
 	);
+
+	// The heart rate over the blocks (#4426), on a scale of its own: half the
+	// anchor on the floor, LTHR on the FTP line. Only where a strap reports,
+	// and not on a strip too short to tell two lines apart.
+	const anchor = $derived(compact ? 0 : heartAnchor(lthr));
+	const heart = $derived(
+		anchor > 0
+			? heartRuns(trace).map((run) =>
+					thinRun(run, span / W, (point) => point.h ?? 0).map((sample) => ({
+						x: x(sample.t),
+						y: y(heartFraction(sample.h ?? 0, anchor)),
+					})),
+				)
+			: [],
+	);
+	const heartLines = $derived(
+		heart.map((run) => run.map((p) => `${p.x},${p.y}`).join(' ')),
+	);
+	const heartHead = $derived(heart.at(-1)?.at(-1));
 </script>
 
 <!-- On the TV the graph takes what height its panel is given (#3677). -->
@@ -293,7 +325,7 @@
 	<svg
 		bind:this={svg}
 		viewBox="0 0 {W} {H}"
-		class="w-full {compact ? 'h-14' : tv || ride ? 'h-full' : 'h-28'}"
+		class="w-full {tv || ride ? 'h-full' : compact ? 'h-14' : 'h-28'}"
 		preserveAspectRatio="none"
 	>
 		{#each blocks as block, i (i)}
@@ -371,6 +403,31 @@
 			/>
 		{/each}
 
+		{#each heartLines as points, i (i)}
+			<!-- The heart line (#4426): live data in the live hue, and never
+			     glowing — the glow stays your power's and your marker's. A
+			     surface halo under it keeps it apart from a Z6 or Z7 fill. -->
+			<polyline
+				{points}
+				class="text-surface"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="4"
+				stroke-linejoin="round"
+				opacity="0.6"
+				vector-effect="non-scaling-stroke"
+			/>
+			<polyline
+				{points}
+				class="text-watt"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2"
+				stroke-linejoin="round"
+				vector-effect="non-scaling-stroke"
+			/>
+		{/each}
+
 		{#if elapsed > 0 && !words}
 			<!-- watt marks live data only — previews pass elapsed 0 and get no cursor. -->
 			<line {...cursor} />
@@ -403,6 +460,20 @@
 					? 'text-2xl leading-none'
 					: 'text-[9px]'}"
 			style="top: {(y(1) / H) * 100}%">FTP</span
+		>
+	{/if}
+	{#if heartHead}
+		<!-- What the second line is, at its head: the unit, in its colour. -->
+		<span
+			class="text-watt pointer-events-none absolute -translate-y-full pl-1 font-mono tracking-widest {tv
+				? 'text-[2.4vh] leading-none'
+				: ride
+					? 'text-base leading-none'
+					: 'text-[9px]'}"
+			style="left: {Math.min(
+				94,
+				(heartHead.x / W) * 100,
+			)}%; top: {(heartHead.y / H) * 100}%">BPM</span
 		>
 	{/if}
 	{#if words}

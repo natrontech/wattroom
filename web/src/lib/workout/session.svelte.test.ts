@@ -546,6 +546,8 @@ describe('sensor arbitration inside a ride', () => {
 		session.onSample({ watts: 200, cadence: 85, at: 0 });
 
 		expect(session.recording.at(-1)?.heartRate).toBe(148);
+		// And the graph's heart line (#4426).
+		expect(session.trace.at(-1)?.h).toBe(148);
 		session.stop();
 	});
 
@@ -555,6 +557,8 @@ describe('sensor arbitration inside a ride', () => {
 		session.onSample({ watts: 200, cadence: 85, at: 0 });
 
 		expect(session.recording.at(-1)?.heartRate).toBe(0);
+		// No strap, no heart line (#4426).
+		expect(session.trace.at(-1)).not.toHaveProperty('h');
 		session.stop();
 	});
 

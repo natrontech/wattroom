@@ -2,6 +2,11 @@ export interface TracePoint {
 	/** workout-clock seconds — NOT monotonic: skip and extend shift it. */
 	t: number;
 	w: number;
+	/**
+	 * Heart rate that second, bpm (#4426): absent while no strap reports one,
+	 * so the heart line breaks where the strap went quiet.
+	 */
+	h?: number;
 }
 
 /**
@@ -48,6 +53,7 @@ export function splitTrace(
 export function thinRun(
 	run: TracePoint[],
 	bucketSeconds: number,
+	value: (point: TracePoint) => number = (point) => point.w,
 ): TracePoint[] {
 	if (bucketSeconds <= 1 || run.length <= 2) return run;
 	const out: TracePoint[] = [];
@@ -65,9 +71,62 @@ export function thinRun(
 			if (!Number.isNaN(bucket)) flush();
 			bucket = b;
 			low = high = point;
-		} else if (point.w < low.w) low = point;
-		else if (point.w > high.w) high = point;
+		} else if (value(point) < value(low)) low = point;
+		else if (value(point) > value(high)) high = point;
 	}
 	flush();
 	return out;
+}
+
+/**
+ * The heart rate's runs (#4426): the trace's runs cut again wherever a
+ * second carries no heart rate, so a strap that dropped out draws a gap and
+ * never a line to zero.
+ */
+export function heartRuns(
+	trace: TracePoint[],
+	maxGapSeconds = 3,
+): TracePoint[][] {
+	const runs: TracePoint[][] = [];
+	for (const run of splitTrace(trace, maxGapSeconds)) {
+		let part: TracePoint[] = [];
+		for (const point of run) {
+			if (point.h && point.h > 0) part.push(point);
+			else {
+				if (part.length > 1) runs.push(part);
+				part = [];
+			}
+		}
+		if (part.length > 1) runs.push(part);
+	}
+	return runs;
+}
+
+/**
+ * Where a heart rate stands on the graph (#4426), as a fraction of the
+ * power axis's FTP so it shares the graph's height on a scale of its own:
+ * half the anchor on the floor, the anchor on the FTP line. The anchor is
+ * the rider's LTHR, so the dashed line is both thresholds.
+ */
+export function heartFraction(bpm: number, anchor: number): number {
+	if (anchor <= 0) return 0;
+	return Math.max(0, (2 * bpm) / anchor - 1);
+}
+
+/**
+ * The heart axis with no LTHR set (#4426): 170 bpm on the FTP line, so 85
+ * on the floor and about 210 at the graph's top, the profile's LTHR bounds
+ * (docs/spec/stats.md). It places the line and claims no threshold. The
+ * ride's own peak was rejected: it pinned a 110 bpm warm-up to the FTP line.
+ */
+export const HEART_AXIS_BPM = 170;
+
+/** The heart line's anchor: LTHR when set, else the axis's stand-in. */
+export function heartAnchor(lthr?: number): number {
+	return lthr && lthr > 0 ? lthr : HEART_AXIS_BPM;
+}
+
+/** One second of the trace; a heart rate rides along only while one reports. */
+export function tracePoint(t: number, w: number, hr?: number): TracePoint {
+	return hr && hr > 0 ? { t, w, h: Math.round(hr) } : { t, w };
 }
