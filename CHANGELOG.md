@@ -17,6 +17,15 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.11.22] - 2026-11-06
+
+### Added
+
+- The 3D world is redrawn in the cozy room's art: a dusk sky with stars and a peach glow behind snow-capped mountains, meadows full of fields, flowers and grass, a road that looks ridden, and chalets with shutters and balconies.
+- You now ride as your cozy room avatar: same hair, top and marks, on a pixel bike, in a world drawn in the room's own pixels, with every step on the pixel grid. Every ride opens in this 3D world, your first one too. Flat stays one tap away, and Settings → Look → 3D look still has Smooth.
+- On a phone, your crew now hears much less fan behind your voice. A loud drivetrain still comes through more than it does on a computer. (#4450)
+- The cozy room now stays when someone shares a screen or plays a video: the picture hangs on the wall on a projector screen, and a camera sits in a strip along the bottom. Room and Tiles switch top right. While you ride, Room sits beside 3D, Flat and Map, so you can pedal in the room with your numbers over it, and Back to ride brings you back. A YouTube video during a free ride no longer takes a third of the road. (#4448)
+
 ## [2026.11.21] - 2026-11-06
 
 ### Added
@@ -4408,7 +4417,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.21...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.22...HEAD
+[2026.11.22]: https://github.com/natrontech/wattroom/compare/2026.11.21...2026.11.22
 [2026.11.21]: https://github.com/natrontech/wattroom/compare/2026.11.20...2026.11.21
 [2026.11.20]: https://github.com/natrontech/wattroom/compare/2026.11.19...2026.11.20
 [2026.11.19]: https://github.com/natrontech/wattroom/compare/2026.11.18...2026.11.19
