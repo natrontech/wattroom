@@ -30,8 +30,8 @@ import {
 	TOP_RUNG,
 	windows,
 } from './quality';
-import { pictureStill, wordless } from './picture-still';
-import { PICTURE, type PictureMoment } from './picture.svelte';
+import { fromAbove, pictureStill, wordless } from './picture-still';
+import { PICTURE, type PictureMoment, type WorldShots } from './picture.svelte';
 import type { Failure } from './ride-view';
 import type { Style } from './styles';
 
@@ -65,12 +65,13 @@ export type WorldScene = {
 	/** A dev build's frames since the last call: when each began and its JS ms, for the soak (#3851). Always empty in a built app. */
 	frames(): Frame[];
 	/**
-	 * The ride's picture (#4221, #4263), the world's last frame: the loop
-	 * stops, and the road at `at` is drawn again off-screen at the picture's
-	 * own size, from its own camera, with nothing that carries a word, as a
-	 * JPEG. Null where the browser gives none. Dispose after it.
+	 * The ride's pictures (#4221, #4263, #4431), the world's last frames: the
+	 * loop stops, and the road at `at` is drawn again off-screen, once from
+	 * the picture's own camera and once from the ride's heli camera, each at
+	 * its own size, with nothing that carries a word, as JPEGs. Null where
+	 * the browser gives none. Dispose after it.
 	 */
-	picture(at: PictureMoment): Promise<Blob | null>;
+	picture(at: PictureMoment): Promise<WorldShots | null>;
 	dispose(): void;
 };
 
@@ -314,15 +315,21 @@ export function mount(
 			clearInterval(judge);
 			if (broke) return null;
 			const still = pictureStill({ ...opts, style }, at);
-			try {
+			// Both pictures share one wait: the eye above stands 70 m back, mostly over ground already in.
+			const until = performance.now() + PICTURE_WAIT_MS;
+			async function shoot(width: number, height: number) {
 				// The ground round the lens streams in like the ride's; the picture waits for it, whole.
-				const until = performance.now() + PICTURE_WAIT_MS;
-				while (still.probe().ground.pending > 0 && performance.now() < until)
+				while (
+					!broke &&
+					still.probe().ground.pending > 0 &&
+					performance.now() < until
+				)
 					await new Promise((done) => setTimeout(done, PICTURE_LOOK_MS));
 				if (broke) return null;
+				// Again for each: what the eye's move brought in carries words too.
 				wordless(still.scene);
 				renderer.setPixelRatio(1);
-				renderer.setSize(PICTURE.width, PICTURE.height, false);
+				renderer.setSize(width, height, false);
 				if (still.scene.fog) renderer.setClearColor(still.scene.fog.color);
 				draw(still.scene, still.camera);
 				// Read in the same task as the render: the drawing buffer is not
@@ -331,6 +338,13 @@ export function mount(
 				return await new Promise<Blob | null>((done) =>
 					canvas.toBlob(done, 'image/jpeg', PICTURE.quality),
 				);
+			}
+			try {
+				const rider = await shoot(PICTURE.width, PICTURE.height);
+				// The second from the same still: the world is composed once, and only the camera cuts.
+				fromAbove(still);
+				const above = await shoot(PICTURE.above.width, PICTURE.above.height);
+				return { rider, above };
 			} finally {
 				still.dispose();
 			}

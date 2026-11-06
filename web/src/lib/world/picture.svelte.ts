@@ -2,28 +2,37 @@ import { at } from '$lib/road/along';
 import { hairpinsOf } from '$lib/road/climbs';
 import type { Route } from '$lib/road/route';
 
+/** The world's two pictures of one moment (#4431): you, from the picture's own lens, and the ride from above, as its heli camera saw it. Either is null where the browser gave none. */
+export type WorldShots = { rider: Blob | null; above: Blob | null };
+
 /**
- * The ride's one picture of the world (#4221, #4263): drawn when the world
- * closes, at the ride's best moment, with no name in it, and kept in this
- * tab's memory only. The closing card offers it beside the poster; the
- * rider chooses which to save for Strava, or both. Never uploaded, never
- * stored.
+ * The ride's pictures of the world (#4221, #4263, #4431): drawn when the
+ * world closes, at the ride's best moment, with no name in them, and kept
+ * in this tab's memory only. The closing card offers them beside the
+ * poster; the rider chooses which to save for Strava. Never uploaded,
+ * never stored.
  */
-let current = $state<Blob | null>(null);
+let rider = $state<Blob | null>(null);
+let above = $state<Blob | null>(null);
 let taken = $state(0);
 let drawing = $state(false);
 // Which ride a picture being drawn belongs to: a new ride's world lets a late one go.
 let ride = 0;
 
 export const worldPicture = {
-	get current() {
-		return current;
+	/** You on the road, from the picture's own lens. */
+	get rider() {
+		return rider;
+	},
+	/** The same moment from above. */
+	get above() {
+		return above;
 	},
 	/** Pictures the rider took on this ride, so the phone remote's Photo can say it took one (#4253). */
 	get taken() {
 		return taken;
 	},
-	/** The world is drawing the picture: the closing card holds its button's place. */
+	/** The world is drawing the pictures: the closing card holds their place. */
 	get drawing() {
 		return drawing;
 	},
@@ -31,19 +40,22 @@ export const worldPicture = {
 	took() {
 		taken++;
 	},
-	/** The picture `shot` will be, kept unless a new ride started meanwhile. */
-	async draw(shot: Promise<Blob | null>) {
+	/** The pictures `shots` will be, kept unless a new ride started meanwhile: always as a pair, never one beside an older close's. */
+	async draw(shots: Promise<WorldShots | null>) {
 		const mine = ride;
 		drawing = true;
-		const picture = await shot.catch(() => null);
+		const drawn = await shots.catch(() => null);
 		if (mine !== ride) return;
 		drawing = false;
-		if (picture) current = picture;
+		if (!drawn?.rider && !drawn?.above) return;
+		rider = drawn.rider;
+		above = drawn.above;
 	},
-	/** A new ride starts without the last one's picture. */
+	/** A new ride starts without the last one's pictures. */
 	clear() {
 		ride++;
-		current = null;
+		rider = null;
+		above = null;
 		taken = 0;
 		drawing = false;
 	},
@@ -57,6 +69,8 @@ export const PICTURE = {
 	width: 1080,
 	height: 1350,
 	quality: 0.9,
+	/** The view from above (#4431): the riding view's landscape, the portrait's pixels turned on their side. */
+	above: { width: 1350, height: 1080 },
 	/** A summit is drawn this far below its top: you cresting it, the climb behind you. */
 	belowTopM: 20,
 };

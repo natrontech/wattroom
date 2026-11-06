@@ -525,6 +525,13 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 			mode = next;
 			applyMode();
 		},
+		/** Cuts to `next` where it stands on this frame, never eased from where the camera was: the ride picture's view from above (#4431). */
+		cutTo(next: Follow) {
+			mode = next;
+			applyMode();
+			rig.reset();
+			advanceBy(0);
+		},
 		setWatts(watts: number) {
 			you.watts = watts;
 		},
