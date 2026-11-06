@@ -33,6 +33,7 @@
 	import Logo from '$lib/brand/Logo.svelte';
 	import Sidebar from '$lib/nav/Sidebar.svelte';
 	import RideDock from '$lib/nav/RideDock.svelte';
+	import RideElsewhere from '$lib/ride/RideElsewhere.svelte';
 	import NowBar from '$lib/nav/NowBar.svelte';
 	import { rideBar } from '$lib/nav/ride-bar.svelte';
 	import Menu from '@lucide/svelte/icons/menu';
@@ -510,6 +511,9 @@
 					     holds the dock, this one tap opens the ride. -->
 					<RideDock pathname={page.url.pathname} short />
 				</div>
+				<!-- A ride alone on another of the rider's screens, and the phone
+				     as its remote (#4425). -->
+				<RideElsewhere />
 			{/if}
 			<!-- Persistent, above whatever page you are on and outside its
 			     scroll: your screen being live is ride-critical status, and the

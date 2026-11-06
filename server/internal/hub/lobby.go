@@ -4,7 +4,9 @@
 // carries no data beyond the id of a text channel whose log changed, and that
 // only to riders who may enter it (#2435, #2821): clients re-fetch the HTTP
 // endpoints they already use, which stay membership-filtered, so nothing here
-// can pierce a channel's gate. Holding the socket IS being online (WhereIs
+// can pierce a channel's gate. The one other thing it carries is the rider's
+// own lane (rider_lane.go, #4425): a ride alone's phone remote, between one
+// rider's screens and never to anyone else. Holding the socket IS being online (WhereIs
 // reads it) — no last-seen timestamps, closing it is going offline; the
 // keepalive in keepalive.go is how the server notices a close that never
 // arrived.
@@ -24,6 +26,12 @@ import (
 
 type lobbyClient struct {
 	conn *websocket.Conn
+	// Whose socket this is, set at connect.
+	rider string
+	// The rider's own lane (rider_lane.go, #4425): frames for this socket
+	// alone, and its part in who rides. lane is guarded by riderLanes.mu.
+	out  chan []byte
+	lane laneSide
 	// The session this socket rode in on (#2807), like client's: set at
 	// connect and never written again.
 	session []byte
@@ -89,7 +97,10 @@ func (h *Hub) HandleLobbyWS(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	c := &lobbyClient{conn: conn, session: h.sessionOf(r), ping: make(chan struct{}, 1)}
+	conn.SetReadLimit(laneReadLimit)
+	c := &lobbyClient{conn: conn, rider: userID, session: h.sessionOf(r),
+		ping: make(chan struct{}, 1), out: make(chan []byte, laneQueue)}
+	h.lanes.add(c)
 	h.mu.Lock()
 	h.lobby[c] = userID
 	h.mu.Unlock()
@@ -100,6 +111,7 @@ func (h *Hub) HandleLobbyWS(w http.ResponseWriter, r *http.Request) {
 		h.mu.Lock()
 		delete(h.lobby, c)
 		h.mu.Unlock()
+		deliver(h.log, h.lanes.remove(c))
 		_ = conn.CloseNow()
 		h.tellRider(userID)
 	}()
@@ -122,23 +134,37 @@ func (h *Hub) HandleLobbyWS(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 			case <-c.ping:
-				ctx, cancel := context.WithTimeout(r.Context(), writeTimeout)
-				err := conn.Write(ctx, websocket.MessageText, c.take())
-				cancel()
-				if err != nil {
-					_ = conn.CloseNow()
+				if !lobbyWrite(r.Context(), conn, c.take()) {
+					return
+				}
+			case frame := <-c.out:
+				if !lobbyWrite(r.Context(), conn, frame) {
 					return
 				}
 			}
 		}
 	})
-	// Reader: clients send nothing — this blocks until the socket closes.
+	// Reader: the rider's own lane (rider_lane.go) is all a client sends;
+	// this blocks until the socket closes.
 	for {
-		if _, _, err := conn.Read(r.Context()); err != nil {
+		_, data, err := conn.Read(r.Context())
+		if err != nil {
 			break
 		}
+		deliver(h.log, h.lanes.heard(c, data))
 	}
 	close(done)
+}
+
+// lobbyWrite writes one frame, closing the socket when it cannot.
+func lobbyWrite(ctx context.Context, conn *websocket.Conn, frame []byte) bool {
+	ctx, cancel := context.WithTimeout(ctx, writeTimeout)
+	defer cancel()
+	if err := conn.Write(ctx, websocket.MessageText, frame); err != nil {
+		_ = conn.CloseNow()
+		return false
+	}
+	return true
 }
 
 // PresenceChanged pings every lobby client: something about who-is-where

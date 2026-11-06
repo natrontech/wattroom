@@ -1789,7 +1789,8 @@ export const PokeCooldownSeconds = 10;
  * phantom shifts, so Easier and Harder are one tap each. Only Talk holds, as
  * talk-down, a talk-keepalive while it lasts, and talk-up. Sync presses
  * nothing: the phone sends it when it opens, and the holder answers with its
- * gear and pause state.
+ * gear and pause state. Skip and Extend are the riding screen's Skip block and
+ * +1 min (#4425), on a workout whose clock the rider alone owns.
  */
 export interface RemoteCommand {
   /**
@@ -1820,10 +1821,23 @@ export const MaxGearLabel = 16;
  * is a solo ride the remote may pause, and whether it is paused by the rider.
  * It travels the way GearState does. A session is never paused by one rider,
  * so a holder in a session says Pausable false.
+ * Blocks and Last answer the same question for Skip and +1 min (#4425): a
+ * workout whose clock the rider alone owns, and whose blocks end by that
+ * clock. A road workout's blocks end at their metres (#3499) and a road with
+ * no workout has none, so both say Blocks false. A session's timeline is the
+ * coach's, so it says Pausable false and the phone draws neither.
  */
 export interface PauseState {
   pausable: boolean;
   paused: boolean;
+  /**
+   * Skip block and +1 min act on this ride.
+   */
+  blocks?: boolean;
+  /**
+   * The ride is on its last block: End ride, not Skip.
+   */
+  last?: boolean;
 }
 /**
  * ViewState is the holding tab's answer about where its rider looks (#4223):
@@ -2145,6 +2159,79 @@ export interface ChannelPresence {
    */
   workoutName?: string;
   elapsedSec?: number /* int */;
+}
+
+//////////
+// source: rider_lane.go
+
+/**
+ * LobbyClientMessage is what a screen sends on its lobby socket. Exactly one
+ * field is set.
+ */
+export interface LobbyClientMessage {
+  /**
+   * Which ride this screen runs, sent on every open and on every change.
+   */
+  ride?: RideClaim;
+  /**
+   * A phone remote's press, for the screen running the rider's ride alone.
+   */
+  remote?: RemoteCommand;
+  /**
+   * The riding screen's answers, for the rider's other screens.
+   */
+  gear?: GearState;
+  pause?: PauseState;
+  view?: ViewState;
+}
+/**
+ * RideClaim is one screen saying whether it runs its rider's ride alone. The
+ * whole state every time, as SensorClaim is, so a message lost to a reconnect
+ * cannot leave a ride claimed by a screen that ended it. First claim wins: a
+ * second screen riding alone never takes the remote off the first.
+ */
+export interface RideClaim {
+  riding: boolean;
+  /**
+   * Which tab this is, as in SensorClaim: a reload keeps its own ride.
+   */
+  tab?: string;
+  /**
+   * The coarse device word, as in SensorClaim.
+   */
+  device?: string;
+}
+/**
+ * LobbyLane is what the hub sends a screen on the rider's lane. A frame with
+ * none of these set is a LobbyPing.
+ */
+export interface LobbyLane {
+  /**
+   * Where the rider's ride alone runs, seen from this screen.
+   */
+  ride?: RideElsewhere;
+  /**
+   * A phone remote's press, to the riding screen only.
+   */
+  remote?: RemoteCommand;
+  /**
+   * The riding screen's answers, to the rider's other screens only.
+   */
+  gear?: GearState;
+  pause?: PauseState;
+  view?: ViewState;
+  /**
+   * Why the phone's last press went nowhere.
+   */
+  error?: Error;
+}
+/**
+ * RideElsewhere answers a RideClaim, and every change after it: the device
+ * word of another of the rider's screens running a ride alone, or "" when
+ * none does (or this screen is the one riding).
+ */
+export interface RideElsewhere {
+  device: string;
 }
 
 //////////

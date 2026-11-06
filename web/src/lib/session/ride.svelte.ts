@@ -277,10 +277,15 @@ export function createRide(deps: RideDeps) {
 							pedalling: aim.scoring,
 							segment: at.segment,
 						});
-						deps.recording.record(shared.elapsed, metrics.watts, {
-							block: at.segmentIndex,
-							target: scored ? aim.target : undefined,
-						});
+						deps.recording.record(
+							shared.elapsed,
+							metrics.watts,
+							{
+								block: at.segmentIndex,
+								target: scored ? aim.target : undefined,
+							},
+							metrics.heartRate ?? 0,
+						);
 					} else if (counted && !deps.joined())
 						deps.free.second({
 							watts: metrics.watts,

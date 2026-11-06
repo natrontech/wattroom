@@ -11,7 +11,9 @@ import type { Family } from './family';
 import { yOf } from './geometry';
 import { RIDE } from './look.test-helper';
 import { figureBox, HELMET_M, LENS, TYRE_M } from './picture-camera';
-import { pictureStill } from './picture-still';
+import { fromAbove, pictureStill } from './picture-still';
+import { PICTURE } from './picture.svelte';
+import { FORMATION } from './terrain/road-profile';
 import { syntheticPoints } from './synthetic';
 import { generate, type World } from './world';
 import { BUILD_MS } from './world.test-helper';
@@ -212,6 +214,53 @@ describe('the ride’s picture of the world (#4263)', () => {
 				const seen = inTheWay(still, box);
 				expect(seen.dressing, what).toBeGreaterThan(0);
 				expect(seen.hits, what).toEqual([]);
+				still.dispose();
+			}
+		},
+		2 * BUILD_MS,
+	);
+
+	it(
+		'turns to the ride’s view from above at the same moment, cut there rather than eased from the lens (#4431)',
+		() => {
+			for (const [what, m] of moments()) {
+				const still = pictureStill(
+					{ route, world, style: RIDE, ftp: 250, grids: pageGrids(world) },
+					{ m, p: 0, watts: 200 },
+				);
+				const lens = still.camera.position.clone();
+				fromAbove(still);
+				const camera = still.camera;
+				const you = figureBox(still.you!).getCenter(new THREE.Vector3());
+				// The heli's place: 70 m back along the road you rode, 42 m over it.
+				const back = at(route, m - 70);
+				expect(
+					camera.position.y - yOf(route, back.ele),
+					what,
+				).toBeGreaterThanOrEqual(41.9);
+				const across = Math.hypot(
+					camera.position.x - back.x,
+					camera.position.z - back.z,
+				);
+				expect(across, what).toBeLessThan(FORMATION);
+				expect(camera.position.distanceTo(lens), what).toBeGreaterThan(40);
+				// Its field on the landscape frame, and you in it, below the middle as the ride saw you.
+				expect(camera.fov, what).toBe(45);
+				expect(camera.aspect, what).toBeCloseTo(
+					PICTURE.above.width / PICTURE.above.height,
+				);
+				camera.updateMatrixWorld();
+				const seen = you.clone().project(camera);
+				expect(Math.abs(seen.x), what).toBeLessThan(0.5);
+				expect(seen.y, what).toBeLessThan(0);
+				expect(seen.y, what).toBeGreaterThan(-0.8);
+				expect(seen.z, what).toBeLessThan(1);
+				// Still you alone on the road.
+				let figures = 0;
+				still.scene.traverse((o) => {
+					if ((o as THREE.SkinnedMesh).isSkinnedMesh) figures++;
+				});
+				expect(figures, what).toBe(1);
 				still.dispose();
 			}
 		},

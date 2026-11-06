@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { blockWords, describeBlock } from './block';
+import { blockWords, describeBlock, ridesTheRoad } from './block';
 import { flatten, targetAt } from './engine';
 import type { Segment, Workout } from './types';
 
@@ -155,5 +155,21 @@ describe('blockWords', () => {
 	it('trims the target by the bias, as slot 1 does', () => {
 		const steady = seg({ fromFraction: 0.6, toFraction: 0.6 });
 		expect(blockWords(steady, 250, 0.85)[0]).toBe('128 W');
+	});
+});
+
+// A workout ridden on a road (#4426): the grade, the climb line and the climb
+// cues are for a rider the road drives, never for one an ERG block holds.
+describe('ridesTheRoad', () => {
+	it('is the road with no block, or in a block the trainer rides in SIM', () => {
+		expect(ridesTheRoad(null)).toBe(true);
+		expect(ridesTheRoad({ trainer: { kind: 'road', grade: 4, felt: 2 } })).toBe(
+			true,
+		);
+	});
+
+	it('is not in ERG, on a road or off one', () => {
+		expect(ridesTheRoad({ trainer: { kind: 'erg' } })).toBe(false);
+		expect(ridesTheRoad({ trainer: { kind: 'scenery' } })).toBe(false);
 	});
 });

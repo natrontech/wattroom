@@ -149,7 +149,9 @@ type Hub struct {
 	loungeKeep LoungeKeeper
 	// The lobby (#251): every signed-in client holds one socket here; holding
 	// it IS being online, and every presence change pings it. See lobby.go.
-	lobby     map[*lobbyClient]string
+	lobby map[*lobbyClient]string
+	// The rider's own lane on the lobby socket (#4425). See rider_lane.go.
+	lanes     *riderLanes
 	lobbyAuth func(*http.Request) (userID string, ok bool)
 	// Which session a request rides on, and LiveKit's half of ending one
 	// (#2807). See drop.go.
@@ -184,6 +186,7 @@ func New(log *slog.Logger, access Access, saver SessionSaver) *Hub {
 		lobby: make(map[*lobbyClient]string), sockets: make(map[string]int),
 		holds: make(map[string]int), onSession: newSessionRiders(),
 		autoplays: make(chan autoplayJob, 64)}
+	h.lanes = newRiderLanes(func() time.Time { return h.now() })
 	// Supervised (#651): a poison job costs one log line and is skipped, not
 	// the rest of the process's autoplay.
 	safego.Supervise(log, h.now, "hub autoplay worker", nil, h.autoplayWorker)

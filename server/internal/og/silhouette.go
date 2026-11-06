@@ -17,7 +17,7 @@ import (
 
 // drawSilhouette picks the mark a ride has the data for: a free ride on a
 // road is the road it rode; anything else is its watts — over the workout's
-// blocks when it had one (#4430), with its heart rate when it read one, and
+// blocks when it had one (#4430), with a heart rate when handed one, and
 // a workout on a road keeps the road as a strip under them.
 func (s *Service) drawSilhouette(dst *image.NRGBA, box image.Rectangle, c RideCard) error {
 	if c.Poster() {

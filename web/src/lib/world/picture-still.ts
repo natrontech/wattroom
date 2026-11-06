@@ -1,11 +1,12 @@
 // The ride picture's world (#4263): the road at a remembered metre, composed
 // again as a held moment (ADR-0081: the world is keyed by place, so the same
 // metre draws the same world), with you alone on it and the picture's own
-// camera. Nothing in it carries a word (#4221). scene.ts draws it.
+// camera, then turned to the ride's view from above for the second (#4431).
+// Nothing in it carries a word (#4221). scene.ts draws it.
 import * as THREE from 'three';
 import { compose, type Composed, type MountOptions } from './compose';
 import { framePicture } from './picture-camera';
-import type { PictureMoment } from './picture.svelte';
+import { PICTURE, type PictureMoment } from './picture.svelte';
 
 /** The ride's world at `at`, framed for the picture: what the ride's own feeds put on the road is left off. */
 export function pictureStill(opts: MountOptions, at: PictureMoment): Composed {
@@ -35,6 +36,19 @@ export function pictureStill(opts: MountOptions, at: PictureMoment): Composed {
 	// The alpenglow clears the land past you, which at a summit or a hairpin often stands over the far ranges (#4278).
 	still.bandOverLand();
 	return still;
+}
+
+/**
+ * Turns `still` to the second picture (#4431): the same moment as the ride
+ * saw it from above, the heli camera's own place and field, cut to rather
+ * than eased from the lens, on a landscape frame. The dressing and the
+ * ground come to the new eye, and the sky's band to the far ranges alone,
+ * as the ride's own view draws it.
+ */
+export function fromAbove(still: Composed) {
+	still.cutTo('heli');
+	still.camera.aspect = PICTURE.above.width / PICTURE.above.height;
+	still.camera.updateProjectionMatrix();
 }
 
 /** Whether `o` draws a painted face: every word and number the world draws is one (furniture.ts's paintedTexture). */

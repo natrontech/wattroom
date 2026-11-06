@@ -1,3 +1,4 @@
+import { tracePoint, type TracePoint } from '$lib/components/trace';
 import { MaxBridgedGap } from '$lib/protocol';
 import type { GuardSample } from './guards';
 import { toleranceBand } from './guards';
@@ -76,7 +77,7 @@ export function createRideRecord(ftp: number) {
 	/** The ride's own power history, for the interval graph. Owned here rather than
 	 *  rebuilt in the screen — a component effect that reads and writes it loops. */
 	// Raw, replaced on each push (#2878): see createRecording.
-	let trace = $state.raw<{ t: number; w: number }[]>([]);
+	let trace = $state.raw<TracePoint[]>([]);
 	/**
 	 * What actually happened, in real time. Distinct from `trace`, which is keyed on
 	 * the workout clock so it lines up with the interval graph — skip and extend make
@@ -180,7 +181,10 @@ export function createRideRecord(ftp: number) {
 					released: true,
 				};
 				recording.push(kept);
-				trace = [...trace, { t: kept.clock - offset, w: kept.watts }];
+				trace = [
+					...trace,
+					tracePoint(kept.clock - offset, kept.watts, kept.heartRate),
+				];
 				bridged.push(kept);
 			}
 			return bridged;
@@ -223,7 +227,8 @@ export function createRideRecord(ftp: number) {
 			// Uncapped, for the reason session/recording.svelte.ts gives: the graph
 			// is keyed on the workout clock, so dropping the oldest entries
 			// erased the start of the line rather than scrolling it (#2017).
-			trace = [...trace, { t: clock, w: sample.watts }];
+			// The heart rate rides along (#4426): the graph's second line.
+			trace = [...trace, tracePoint(clock, sample.watts, sample.heartRate)];
 			return recorded;
 		},
 		/**

@@ -14,7 +14,7 @@ import (
 )
 
 // The workout's picture (#4430): in a workout the workout comes first — its
-// blocks, the watts ridden over them and the heart rate — the way the riding
+// blocks, the watts ridden over them (and a heart rate when handed one) — the way the riding
 // screen draws a workout along its bottom, not the road's gradient. A
 // workout on a road keeps the road, small, in a strip under them.
 

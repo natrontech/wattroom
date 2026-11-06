@@ -23,7 +23,7 @@ export function fetchRideCard(
 /**
  * Whether the ride's picture is a poster: a ride on a road drawn as the road
  * it rode (#3142). A workout on a road is not one — in a workout the workout
- * comes first, its blocks, watts and heart rate with the road under them
+ * comes first, its blocks and watts with the road under them
  * (#4430) — so only a ride on a road that was no workout gets the poster.
  * The server draws by the same word (rides/card.go).
  */

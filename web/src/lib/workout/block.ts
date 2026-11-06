@@ -232,6 +232,18 @@ export function describeBlock(
 	};
 }
 
+/**
+ * Whether the road's grade is what the rider rides (#4426): no block, or
+ * a block the trainer rides in SIM — a free ride, a road block. In ERG the
+ * watts are the work and the grade is scenery, so the grade readout, the
+ * climb line and the climb cues stand down.
+ */
+export function ridesTheRoad(
+	block: Pick<Block, 'trainer'> | null | undefined,
+): boolean {
+	return !block || block.trainer.kind === 'road';
+}
+
 /** Slot 1's trainer chip (#3485), in TARGETS' one-home words: how the trainer rides this block. */
 export function trainerChip(block: Pick<Block, 'trainer' | 'watts'>): string {
 	const t = block.trainer;

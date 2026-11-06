@@ -47,9 +47,11 @@ It is not a training plan generator, not an open world, and not a content treadm
 ## Riding
 
 - One riding surface: the crew ride, the solo ride and the ramp test are the same screen.
-- Riding is the whole screen: the world, or flat the workout's graph or the Skyline, fills the content edge to edge with the numbers over it, watts top left. The ride's controls live in the now bar, never on the ride.
+- Riding is the whole screen: the world, or flat the horizon, fills the content edge to edge with the numbers over it, watts top left. The ride's controls live in the now bar, never on the ride.
+- The horizon is the workout: a workout's graph (its blocks, your power, your heart rate) on a road too, over the world as the band along the bottom. A free ride's horizon is the Skyline. The road's grade speaks only where the trainer rides it.
 - A ride belongs to the rider: one per device, owned by the app shell, ended only by End ride. Navigation never ends it.
 - One rider, one voice: the first screen to join voice carries voice and camera, every other screen is a controller.
+- A rider's phone is the remote of their ride wherever it started. A ride alone reaches it on the rider's own lane of the lobby socket, which carries nothing to anyone else.
 - One sensor, one screen: the hub arbitrates which screen holds a trainer.
 - The client owns the trainer and the workout. A network hiccup never drops a target. Trainer reconnect mid-interval is core, not polish.
 - Trainers are FTMS behind the `Trainer` interface, with a simulator for development and CI. Control-point writes are serialized. ANT+ is out.
@@ -90,7 +92,7 @@ It is not a training plan generator, not an open world, and not a content treadm
 ## Data, privacy and competition
 
 - Live metrics exist only inside a session while it runs. AV is never recorded. Rides are private by default.
-- Heart rate is live in the session, never in a shared artifact. The ride's picture, which only its rider downloads, draws it. A shared ride carries numbers, never the rider's note.
+- Heart rate is live in the session, never in a shared artifact. A shared ride carries numbers, never the rider's note.
 - Channel events ride the tick and are never persisted.
 - Nobody loses a ride: samples stream to the server and buffer in IndexedDB, and a ride the server loses comes back from the browser as a file.
 - Rides export as .fit, upload to Strava, and reach Garmin by manual FIT import. Strava data never enters an LLM context.

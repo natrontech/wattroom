@@ -105,6 +105,11 @@ export function createSoloRoadRide(deps: {
 		get gear() {
 			return actuator.gear;
 		},
+		/** On the road's grade (SIM): Easier / Harder moves the gear. For the phone's answer. */
+		get sim() {
+			return actuator.sim;
+		},
+		atEnd: (dir: 1 | -1) => actuator.atEnd(dir),
 		get metrics() {
 			return metrics;
 		},

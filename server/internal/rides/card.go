@@ -107,20 +107,14 @@ func (s *Service) cardOf(ctx context.Context, user db.User, row db.GetRideRow) o
 		s.log.Error("ride card samples unreadable", "err", err, "ride", store.UUIDString(row.ID))
 	}
 	card.Watts = make([]int, len(samples))
-	card.HR = make([]int, len(samples))
 	onRoad := false
-	beats, read := 0, 0
 	for i, sample := range samples {
-		card.Watts[i], card.HR[i] = sample.Watts, sample.HR
-		if sample.HR > 0 {
-			beats += sample.HR
-			read++
-		}
+		card.Watts[i] = sample.Watts
 		onRoad = onRoad || sample.M > 0
 	}
-	if read > 0 {
-		card.AvgHR = (beats + read/2) / read
-	}
+	// No heart rate: the picture is made to be posted, and heart rate never
+	// goes in a shared artifact (WATTROOM.md). og draws it when it is handed
+	// one, which waits on Jan's call (#4430).
 	// What the workout asked, second by second at the seconds it was scored
 	// at (#4430). A ride saved before rides kept their blocks has none, and
 	// an unreadable column costs the card its blocks, not the card.

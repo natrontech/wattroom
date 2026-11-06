@@ -15,6 +15,7 @@ import { askViewFlip } from '$lib/world/ride-view';
 import { worldPicture } from '$lib/world/picture.svelte';
 import { createRemoteWorld } from '$lib/channel/remote-world';
 import { createTalkOpener } from '$lib/ride/remote-talk';
+import { clockActions, pauseOf } from '$lib/ride/remote-blocks';
 import { shifterSlot } from '$lib/ble/controller-slot.svelte';
 import { DEFAULTS } from '$lib/workout/guards';
 import { createRideShift, type RideShift } from '$lib/ride/ride-shift';
@@ -408,8 +409,9 @@ function connect(
 			},
 			talk,
 			{
-				pause: () => ownRide.session?.pause(),
-				resume: () => ownRide.session?.resume(),
+				// Your own workout's clock is yours: Pause, Resume, Skip block and
+				// +1 min (#4425). A session's is the coach's, and has none.
+				...clockActions(() => ownRide.session),
 				// The riding screen's own controls, from the phone (#4223).
 				page: () => askPage('next'),
 				map: () => toggleMap(),
@@ -454,15 +456,10 @@ function connect(
 				live.sendGear({ label: '', atEnd: false, idle: true });
 		};
 		$effect(() => sayGear());
-		// Pause is a solo ride's alone: a session is never paused by one rider
-		// (#3217), so the phone is told there is nothing to pause.
-		const sayPause = () => {
-			const solo = ownRide.session;
-			live.sendPause({
-				pausable: !!solo && solo.state !== 'done' && solo.state !== 'countdown',
-				paused: !!solo?.held,
-			});
-		};
+		// Pause, Skip and +1 min are your own workout's alone: a session is
+		// never paused or skipped by one rider (#3217, #4425), so the phone is
+		// told there is nothing to press.
+		const sayPause = () => live.sendPause(pauseOf(ownRide.session));
 		$effect(sayPause);
 		// Where this screen looks, so the phone's Page, Map, 3D / Flat,
 		// Camera and Photo say what they did (#4223, #4253).

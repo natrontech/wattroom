@@ -44,7 +44,10 @@ contradicts one amends it here.
   **300 m** does not end a climb;
 - a road keeps its hardest **32** climbs;
 - the climb card opens by itself for class **IV** and harder, on a free or
-  route ride; on a workout or a session its chip offers it instead ([#3645](https://github.com/natrontech/wattroom/issues/3645)).
+  route ride; on a workout or a session its chip offers it instead ([#3645](https://github.com/natrontech/wattroom/issues/3645));
+- a climb's cues (`climb`, `summit`) play only where the trainer rides the
+  grade: a free ride, or a workout's SIM road block. An ERG block rides its
+  watts, and the road is scenery ([#4426](https://github.com/natrontech/wattroom/issues/4426)).
 
 **Climb repeats** (#3193, decided 2026-09-28) — a way into the free ride on a
 road, not a mode:

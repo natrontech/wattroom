@@ -62,6 +62,24 @@ describe('createRecording', () => {
 		expect(recording.trace[0]).toEqual({ t: 0, w: 150 });
 		expect(recording.trace.at(-1)).toEqual({ t: 3599, w: 150 + (3599 % 50) });
 	});
+
+	// The graph's heart line (#4426) reads the trace: a second carries the
+	// strap's bpm, a bridged one only when both neighbours had one.
+	it('keeps the heart rate beside the watts', () => {
+		const recording = createRecording({ ftp: () => 200 });
+		recording.record(0, 150, {}, 120);
+		recording.record(2, 200, {}, 130);
+		recording.record(3, 210);
+		recording.record(5, 220, {}, 140);
+		expect(recording.trace).toEqual([
+			{ t: 0, w: 150, h: 120 },
+			{ t: 1, w: 175, h: 125 },
+			{ t: 2, w: 200, h: 130 },
+			{ t: 3, w: 210 },
+			{ t: 4, w: 215 },
+			{ t: 5, w: 220, h: 140 },
+		]);
+	});
 });
 
 function ride(recording: ReturnType<typeof createRecording>, seconds: number) {

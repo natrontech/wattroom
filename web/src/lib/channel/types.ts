@@ -1,3 +1,4 @@
+import type { TracePoint } from '$lib/components/trace';
 import { toleranceBand } from '$lib/workout/guards';
 
 /**
@@ -56,7 +57,8 @@ export interface LiveRider {
 	target: number;
 	/** The live score; absent until something scorable was ridden (#1454). */
 	execution?: number;
-	trace: { t: number; w: number }[];
+	/** Your own trace; with a heart rate where a strap reports (#4426). */
+	trace: TracePoint[];
 	eliminated?: boolean;
 }
 

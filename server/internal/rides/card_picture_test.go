@@ -86,9 +86,8 @@ func TestWhichPictureASavedRideGets(t *testing.T) {
 		})
 	}
 
-	// The workout on a road carries its heart rate: 120 to 149 bpm, 134.5 on
-	// average, rounded.
-	if card := cardOf(saved(workoutOn(route))); card.AvgHR != 135 || card.HR[0] != 120 {
-		t.Errorf("heart rate %d at the start, %d on average; want 120 and 135", card.HR[0], card.AvgHR)
+	// The picture is posted: it never carries the ride's heart rate (WATTROOM.md).
+	if card := cardOf(saved(workoutOn(route))); card.AvgHR != 0 || card.HR != nil {
+		t.Errorf("heart rate on the ride's picture: %d on average", card.AvgHR)
 	}
 }
