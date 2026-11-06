@@ -17,6 +17,23 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.11.24] - 2026-11-07
+
+### Added
+
+- In the pixel world, wind streaks past at the edges of the screen once you ride faster than 20 km/h, thicker the faster you go. Reduced motion and the steady camera show none.
+
+### Fixed
+
+- Your voice stays clear while music, the radio or a video plays. On speakers, a song's singer can now reach your crew faintly; headphones avoid that. (#4460)
+- The Pixel 3D ride looks cleaner and a little brighter. Sky, hills and fog are flat colour with no dotted fades, flowers shrink with distance, trees beside the camera have foliage, a solid pad under your bike shows your zone instead of the hoop and trail, and Overhead sits lower and closer. (#4459)
+- The Overhead camera now flies 22 m behind you instead of 70 m, so you see yourself riding, not a dot. Road lines no longer break into dashes when seen from high up or far away. (#4458)
+- In the pixel world the road's lines stay sharp and solid into the distance instead of breaking into dots, and the road's edge is calmer.
+- The camera behind you rides closer and lower, so your rider is bigger on screen and the road feels nearer, and the sound button in the ride bar is easier to hit.
+- On the road you now ride as a cute 3D rider in your cozy room look and colours, with a big round head, who turns smoothly with the road and pedals smoothly, instead of a flat picture that snapped and jittered. (#4456)
+- Your rider on the road and on the room's trainers is smaller and rounder, on a lighter bike with plain round wheels, with less clutter while you ride. (#4455)
+- In the pixel world the zone ring under each rider now hugs the wheels, so from the side it no longer looks like a hoop around the rider. (#4453)
+
 ## [2026.11.23] - 2026-11-06
 
 ### Added
@@ -4423,7 +4440,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.23...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.24...HEAD
+[2026.11.24]: https://github.com/natrontech/wattroom/compare/2026.11.23...2026.11.24
 [2026.11.23]: https://github.com/natrontech/wattroom/compare/2026.11.22...2026.11.23
 [2026.11.22]: https://github.com/natrontech/wattroom/compare/2026.11.21...2026.11.22
 [2026.11.21]: https://github.com/natrontech/wattroom/compare/2026.11.20...2026.11.21
