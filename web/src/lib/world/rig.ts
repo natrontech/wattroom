@@ -22,8 +22,8 @@ const SIDE = { out: 3.2, ahead: 1.6, up: 0.3, fov: 40 };
 /** Steady (ADR-0079, docs/spec/motion.md): the heli's view from far and high, one FOV, no easing. */
 const STEADY = { back: 260, up: 190, fov: 45 };
 
-/** Overhead: close enough that you are a rider, not a dot, and a road line is a pixel wide. */
-export const HELI = { back: 22, up: 13, fov: 45 };
+/** Overhead: high over your shoulder, close enough that you are a rider, with the land ahead in frame. */
+export const HELI = { back: 16, up: 8, fov: 45 };
 
 const EYE_FLOOR = 1.5; // metres the eye keeps above the drawn ground
 /** Past the heli's distances, the widest a camera change moves the goal. */

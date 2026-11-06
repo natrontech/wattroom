@@ -60,8 +60,8 @@ export const POOL = /* glsl */ `
 
 /**
  * The lights' own material: a window or a lamp head in its pane's colour
- * by day, amber once its light is on; in whole pixels it comes on in Bayer
- * order, as the lounge fades. It fades near the sightline as its house does.
+ * by day, amber once its light is on; in whole pixels it is on or off. It fades
+ * near the sightline as its house does.
  */
 export function lightsMaterial(sight: Sight, lights: Lights) {
 	const m = flat(sight, { fade: true });
@@ -94,7 +94,7 @@ export function lightsMaterial(sight: Sight, lights: Lights) {
 				`#include <emissivemap_fragment>
 				float on = vOn;
 				#ifdef PIXEL_RAMP
-					if (uPixel > 0.5) on = on > pixelBayer(gl_FragCoord.xy) ? 1.0 : 0.0;
+					if (uPixel > 0.5) on = step(0.5, on);
 				#endif
 				diffuseColor.rgb *= 1.0 - on;
 				totalEmissiveRadiance = uAmber * on;`,

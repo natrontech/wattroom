@@ -42,14 +42,13 @@ export const BAYER = /* glsl */ `
 
 /**
  * The prototype's ramp: a half-Lambert light, 0–1, as one of four steps
- * (shadow, base, light, lit top), the edges between them dithered.
+ * (shadow, base, light, lit top), with a hard edge between them.
  */
 export const STEPS = /* glsl */ `
 	float pixelStep(float l) {
-		l += (pixelBayer(gl_FragCoord.xy) - 0.5) * 0.14;
 		return l < 0.38 ? 0.0 : l < 0.62 ? 1.0 / 3.0 : l < 0.84 ? 2.0 / 3.0 : 1.0;
 	}
-	float pixelFog(float f) { return floor(f * 3.0 + 0.5 + (pixelBayer(gl_FragCoord.xy) - 0.5) * 0.3) / 3.0; }`;
+	float pixelFog(float f) { return floor(f * 6.0 + 0.5) / 6.0; }`;
 
 const DIRECT =
 	'float dotNL = saturate( dot( geometryNormal, directLight.direction ) );';
@@ -63,7 +62,7 @@ const LAMBERT = THREE.ShaderChunk.lights_lambert_pars_fragment.replace(
 const HEMI = THREE.ShaderChunk.lights_pars_begin.replace(
 	'float hemiDiffuseWeight = 0.5 * dotNL + 0.5;',
 	`float hemiDiffuseWeight = 0.5 * dotNL + 0.5;
-		if ( uPixel > 0.5 ) hemiDiffuseWeight = floor( hemiDiffuseWeight * 4.0 + 0.5 + ( pixelBayer( gl_FragCoord.xy ) - 0.5 ) * 0.3 ) / 4.0;`,
+		if ( uPixel > 0.5 ) hemiDiffuseWeight = floor( hemiDiffuseWeight * 4.0 + 0.5 ) / 4.0;`,
 );
 // A toon material (the riders, the team car) takes the same four steps in place of its gradient map.
 const TOON = THREE.ShaderChunk.gradientmap_pars_fragment.replace(
@@ -79,8 +78,8 @@ const FOGGED = THREE.ShaderChunk.fog_fragment.replace(
 const patched = new WeakSet<THREE.Material>();
 
 /**
- * Gives a Lambert or toon material the ramp: its sun in four dithered steps,
- * its fog in three bands. Once per material; the steps show while PIXEL is
+ * Gives a Lambert or toon material the ramp: its sun in four flat steps,
+ * its fog in flat bands. Once per material; the steps show while PIXEL is
  * on. A ramped program defines PIXEL_RAMP, so a material's own chunks can
  * step too (figure/material.ts).
  */
@@ -106,7 +105,7 @@ function ramp(m: THREE.Material) {
 		shader.fragmentShader = shader.fragmentShader
 			.replace(
 				'#include <common>',
-				`#include <common>\n#define PIXEL_RAMP\nuniform float uPixel;\n${BAYER}\n${STEPS}`,
+				`#include <common>\n#define PIXEL_RAMP\nuniform float uPixel;\n${STEPS}`,
 			)
 			.replace('#include <lights_pars_begin>', HEMI)
 			.replace('#include <lights_lambert_pars_fragment>', LAMBERT)
@@ -149,7 +148,6 @@ const FRAGMENT = /* glsl */ `
 	uniform float density;
 	uniform float uSpeed;
 	uniform float uTime;
-	${BAYER}
 	${STEPS}
 	float iz(vec2 uv) { return (far - texture2D(tDepth, uv).r * (far - near)) / (near * far); }
 	bool ground(vec2 uv) { return texture2D(tColor, uv).a < 0.75; }

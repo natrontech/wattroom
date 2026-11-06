@@ -108,7 +108,7 @@ const WHEELS = /* glsl */ `#include <color_fragment>
 			if (cov < 0.004) discard;
 			#ifdef PIXEL_RAMP
 			// No multisampling in whole pixels: the coverage is an ordered dither, as the lounge fades.
-			if (uPixel > 0.5 && cov < pixelBayer(gl_FragCoord.xy)) discard;
+			if (uPixel > 0.5 && cov < 0.5) discard;
 			#endif
 		}
 	}
