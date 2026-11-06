@@ -22,6 +22,16 @@ function workout() {
 		bias: 1,
 		sim: false,
 		gear: { label: '0' },
+		workout: {
+			name: 'Two blocks',
+			steps: [
+				{ type: 'steady', seconds: 60, target: 0.6 },
+				{ type: 'steady', seconds: 60, target: 0.8 },
+			],
+		},
+		segments: [{}, {}],
+		info: { segmentIndex: 0 },
+		road: null,
 	});
 	return Object.assign(s, {
 		atEnd: () => false,
@@ -29,6 +39,8 @@ function workout() {
 		nudgeBias: vi.fn((step: number) => (s.bias += step)),
 		pause: vi.fn(() => (s.held = true)),
 		resume: vi.fn(() => (s.held = false)),
+		skip: vi.fn(() => (s.info.segmentIndex += 1)),
+		extend: vi.fn(),
 	});
 }
 
@@ -85,11 +97,25 @@ describe('the phone remote of a ride alone (#4425)', () => {
 		expect(ride.easierHarder).toHaveBeenCalledWith(1);
 		hear('pause');
 		expect(ride.pause).toHaveBeenCalled();
-		expect(sent).toContainEqual({ pause: { pausable: true, paused: true } });
+		expect(sent).toContainEqual({
+			pause: { pausable: true, paused: true, blocks: true },
+		});
 		hear('resume');
 		expect(ride.resume).toHaveBeenCalled();
 		hear('camera');
 		expect(world.camera).toHaveBeenCalled();
+
+		// Skip and +1 min (#4425): the last block's Skip is End ride's.
+		sent = [];
+		hear('extend');
+		expect(ride.extend).toHaveBeenCalledWith(60);
+		hear('skip');
+		expect(ride.skip).toHaveBeenCalledOnce();
+		expect(sent.at(-1)).toEqual({
+			pause: { pausable: true, paused: false, blocks: true, last: true },
+		});
+		hear('skip');
+		expect(ride.skip).toHaveBeenCalledOnce();
 
 		sent = [];
 		hear('sync');
