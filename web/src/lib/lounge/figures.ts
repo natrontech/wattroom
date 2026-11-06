@@ -96,8 +96,12 @@ export function seatedOf(riders: LiveRider[], onBikes: Set<string>): Figure[] {
 export function bikeSlots(w: number, h: number): Bike[] {
 	const { oy } = middleOf(w, h);
 	const slots: Bike[] = [];
-	for (let y = BIKE_GROUND; y + oy + 8 <= h; y += BIKE_DY)
+	const front = hasFront(w, h);
+	for (let y = BIKE_GROUND; y + oy + 8 <= h; y += BIKE_DY) {
+		// The front row's furniture stands where a third row would.
+		if (front && y > FRONT_Y - 44 && y < FRONT_Y + 24) continue;
 		for (const x of BIKE_XS) slots.push({ x, y, face: x > 160 ? -1 : 1 });
+	}
 	return slots;
 }
 
@@ -106,7 +110,10 @@ function blocked({ x, y }: Spot, front: boolean): boolean {
 	if (y < 112 && x > 98 && x < 222) return true;
 	if (y < 142 && Math.abs(x - 160) < 36) return true;
 	if (BIKE_XS.some((b) => Math.abs(x - b) < 20)) return true;
-	return front && y > FRONT_Y - 30 && y < FRONT_Y + 14;
+	if (!front) return false;
+	// The floor's crates, and the front row.
+	if (y > 170 && y < 208 && (x < 66 || x > 262)) return true;
+	return y > FRONT_Y - 30 && y < FRONT_Y + 24;
 }
 
 /** How far a spot is from the table, wider than deep, as the rug is. */
