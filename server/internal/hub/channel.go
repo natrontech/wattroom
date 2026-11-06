@@ -147,6 +147,11 @@ type channelState struct {
 	away map[string]string
 	// The lounge's lamp and weather (ADR-0094), flipped by anyone here.
 	lounge protocol.LoungeState
+	// Where each rider sits in it and what they are doing for a moment. Like
+	// away, keyed by rider and gone with their last socket.
+	seats    map[string]int
+	emotes   map[string]roomEmote
+	emoteSeq int
 	// Riders whose last socket has gone, and when. The room is not told until
 	// the grace window is out (#984): a phone in a garage flaps, and a leave
 	// line per flap is a strobe rather than a timeline. Coming back inside the
@@ -301,6 +306,8 @@ func newChannelState(channel string) *channelState {
 		present:        make(map[string]*span),
 		sounding:       make(map[string]firing),
 		away:           make(map[string]string),
+		seats:          make(map[string]int),
+		emotes:         make(map[string]roomEmote),
 		departed:       make(map[string]time.Time),
 		departedRiders: make(map[string]protocol.Rider),
 	}

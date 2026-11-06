@@ -8,6 +8,7 @@ import type {
 	FreeRoad,
 	GearState,
 	LoungeState,
+	RoomAct,
 	PauseState,
 	ViewState,
 	SensorClaim,
@@ -791,6 +792,10 @@ export function createChannelLive(address: PlaceAddress) {
 		 */
 		setLounge(next: LoungeState) {
 			send({ lounge: next });
+		},
+		/** A rider's move in the cozy room: a seat, an emote, a heart. */
+		room(act: RoomAct) {
+			send({ room: act });
 		},
 		/**
 		 * Whether WattRoom holds the watts on a road for this rider — "Don't

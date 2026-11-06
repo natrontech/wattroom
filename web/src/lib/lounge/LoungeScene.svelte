@@ -83,7 +83,14 @@
 		type Sighting,
 	} from '$lib/lounge/album';
 	import { toasts } from '$lib/toast.svelte';
+	import type { LiveRider } from '$lib/channel/types';
+	import Beer from '@lucide/svelte/icons/beer';
 	import BookOpen from '@lucide/svelte/icons/book-open';
+	import Hand from '@lucide/svelte/icons/hand';
+	import PartyPopper from '@lucide/svelte/icons/party-popper';
+	import PersonStanding from '@lucide/svelte/icons/person-standing';
+	import Shirt from '@lucide/svelte/icons/shirt';
+	import Sofa from '@lucide/svelte/icons/sofa';
 	import { palette } from '$lib/palette.svelte';
 	import { LOUNGE, applyLoungeTheme, skyAt } from '$lib/lounge/palette';
 	import { forgetWalls, shadeFor } from '$lib/lounge/draw-room';
@@ -93,6 +100,10 @@
 		SCENE_H,
 		SCENE_W,
 		SPOT_HINTS,
+		DOING_WORDS,
+		placeAt,
+		type Crew,
+		type Doing,
 		drawScene,
 		hasFront,
 		middleOf,
@@ -308,6 +319,16 @@
 				? dark
 				: shade +
 					Math.max(-SHADE_RATE * dt, Math.min(SHADE_RATE * dt, dark - shade));
+		const drawn = crewOf(
+			riders,
+			still ? 0 : clock,
+			size.w,
+			size.h,
+			new Set(coolingUntil.keys()),
+			{ sec, music: !!deck?.playing },
+		);
+		watchHearts(riders);
+		noteDoing(drawn, sec);
 		const visitor = visitorAt(seed, sec, {
 			sky,
 			weather: weatherOf(lounge),
@@ -326,13 +347,7 @@
 			sky,
 			weather: weatherOf(lounge),
 			lampOn,
-			crew: crewOf(
-				riders,
-				still ? 0 : clock,
-				size.w,
-				size.h,
-				new Set(coolingUntil.keys()),
-			),
+			crew: drawn,
 			...music(),
 			...(mood === 'arcade' && { disco: true }),
 			fire,
@@ -398,10 +413,79 @@
 		return () => clearInterval(every);
 	});
 
-	/** Someone clicked: a heart for them, or for yourself your look's editor. */
-	function touch(tag: { id: string; x: number; head: number }) {
-		if (byId.get(tag.id)?.you) dressing = true;
-		else heart(tag.x - 2, tag.head - 8);
+	/** What you can do in the room, on your own figure. */
+	const EMOTES = [
+		{ emote: 'wave', label: 'Wave', icon: Hand },
+		{ emote: 'dance', label: 'Dance', icon: PartyPopper },
+		{ emote: 'cheers', label: 'Cheers', icon: Beer },
+		{ emote: 'stretch', label: 'Stretch', icon: PersonStanding },
+	];
+
+	/** You: your look and what you can do. Anyone else: a heart everyone sees. */
+	function touch(
+		tag: { id: string; x: number; head: number },
+		e: MouseEvent & { currentTarget: HTMLElement },
+	) {
+		const you = byId.get(tag.id);
+		if (!you?.you) {
+			live?.room({ emote: 'heart', to: tag.id });
+			return;
+		}
+		openMenu(
+			[
+				{
+					label: 'Change your look',
+					icon: Shirt,
+					onSelect: () => (dressing = true),
+				},
+				...EMOTES.map(({ emote, label, icon }) => ({
+					label,
+					icon,
+					onSelect: () => live?.room({ emote }),
+				})),
+				...(you.seat
+					? [
+							{
+								label: 'Sit anywhere',
+								icon: Sofa,
+								onSelect: () => live?.room({ seat: 0 }),
+							},
+						]
+					: []),
+			],
+			e.clientX,
+			e.clientY,
+			e.currentTarget,
+		);
+	}
+
+	// A heart is the channel's: the roster carries each one once, by its count.
+	const heartsSeen = new Map<string, number>();
+	function watchHearts(riders: LiveRider[]) {
+		for (const r of riders) {
+			const seq = r.emoteSeq ?? 0;
+			const was = heartsSeen.get(r.id);
+			heartsSeen.set(r.id, seq);
+			if (was === undefined || seq <= was || r.emote !== 'heart') continue;
+			const to = tags.find((t) => t.id === r.emoteTo);
+			if (to) heart(to.x - 2, to.head - 8);
+		}
+	}
+
+	/** Who is doing what, in words, refreshed every couple of seconds. */
+	let doingOf = $state<Record<string, Doing>>({});
+	let doingAt = -Infinity;
+	function noteDoing(crew: Crew, sec: number) {
+		if (sec - doingAt < 2) return;
+		doingAt = sec;
+		const all = [
+			...crew.seated,
+			...crew.floor.map((p) => p.f),
+			...crew.placed.map((p) => p.f),
+		];
+		doingOf = Object.fromEntries(
+			all.flatMap((f) => (f ? [[f.id, f.doing ?? '']] : [])),
+		);
 	}
 
 	function heart(x: number, y: number) {
@@ -453,14 +537,16 @@
 				y - oy <= cat.y + 1 &&
 				y - oy >= cat.y - 20,
 			spot: spotAt(x - ox, y - oy, hasFront(roomW, roomH)),
+			seat: placeAt(x - ox, y - oy, hasFront(roomW, roomH)),
 		};
 	}
 
 	function click(e: MouseEvent) {
-		const { who, cat, spot } = at(e);
+		const { who, cat, spot, seat } = at(e);
 		// A flip by hand leaves the mood: the room is no longer its preset.
 		const state = { ...lounge, weather: weatherOf(lounge), mood: '' };
-		if (who) touch(who);
+		if (who) touch(who, e as MouseEvent & { currentTarget: HTMLElement });
+		else if (seat) live?.room({ seat });
 		else if (cat) {
 			ownPets++;
 			wake();
@@ -625,14 +711,18 @@
 				onmousemove={(e) => {
 					const over = at(e);
 					canvas!.style.cursor =
-						over.who || over.cat || over.spot ? 'pointer' : 'default';
+						over.who || over.cat || over.spot || over.seat
+							? 'pointer'
+							: 'default';
 					canvas!.title = over.who
 						? ''
-						: over.cat
-							? 'Pet the cat'
-							: over.spot
-								? SPOT_HINTS[over.spot]
-								: '';
+						: over.seat
+							? 'Sit here'
+							: over.cat
+								? 'Pet the cat'
+								: over.spot
+									? SPOT_HINTS[over.spot]
+									: '';
 				}}
 				class="absolute bottom-0 left-0 block [image-rendering:pixelated]"
 				style:width="{roomW * scale}px"
@@ -647,8 +737,10 @@
 						<button
 							type="button"
 							{@attach contextMenu(() => menuOf(tag.id))}
-							onclick={() => touch(tag)}
-							title={r.you ? 'Change your look' : MENU_HINT}
+							onclick={(e) => touch(tag, e)}
+							title={r.you
+								? 'You: your look, a wave, a dance'
+								: `${r.name}, ${DOING_WORDS[doingOf[r.id] ?? '']}. Send a heart · ${MENU_HINT}`}
 							aria-label={described(tag.id)}
 							class="font-display pixel-words absolute flex -translate-x-1/2 items-center gap-1 leading-none font-semibold whitespace-nowrap {scale >=
 							4

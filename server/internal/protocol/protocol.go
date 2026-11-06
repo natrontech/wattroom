@@ -24,6 +24,7 @@ type ClientMessage struct {
 	Voice    *VoiceClaim     `json:"voice,omitempty"`
 	FreeRoad *FreeRoad       `json:"freeRoad,omitempty"`
 	Lounge   *LoungeState    `json:"lounge,omitempty"`
+	Room     *RoomAct        `json:"room,omitempty"`
 }
 
 // ServerTick is a voice channel's coalesced 1 Hz broadcast: every rider's

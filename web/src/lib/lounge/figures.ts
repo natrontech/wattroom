@@ -7,12 +7,14 @@
 import type { LiveRider } from '$lib/channel/types';
 import { CUSHIONS, HAIRS, LOUNGE, SKINS, shadeOf } from '$lib/lounge/palette';
 import { dyed, lookOf } from '$lib/lounge/look';
+import { hash3 } from '$lib/lounge/hash';
 import {
 	BIKES_ALWAYS,
 	BIKE_DY,
 	BIKE_GROUND,
 	BIKE_XS,
 	FRONT_Y,
+	PLACES,
 	SCENE_W,
 	SEATS,
 	hasFront,
@@ -20,6 +22,7 @@ import {
 	SPOT_DY,
 	middleOf,
 	type Bike,
+	type Doing,
 	type Crew,
 	type Figure,
 	type Rider,
@@ -66,6 +69,8 @@ export function dress(
 		away: r.away ? (r.awayReason ?? '') : undefined,
 		sounding: !!r.sounding,
 		faded: !!r.linkLost,
+		seat: r.seat,
+		emote: r.emote,
 	};
 }
 
@@ -97,6 +102,22 @@ export function seatedOf(
 }
 
 const NOBODY: ReadonlySet<string> = new Set();
+
+/** How long someone keeps at one idle thing before the next. */
+export const IDLE_SLOT_SEC = 50;
+
+/**
+ * What someone sitting about is up to: a function of who they are and the
+ * server's clock, so every screen sees the same. Some of the time, nothing.
+ */
+export function idleOf(id: string, sec: number, music: boolean): Doing {
+	const slot = Math.floor((sec + (fnv(id) % IDLE_SLOT_SEC)) / IDLE_SLOT_SEC);
+	const pick = hash3(fnv(id), slot, 61);
+	if (pick < 0.3) return '';
+	const list: Doing[] = ['sip', 'read', 'phone', 'stretch', 'sip', 'nap'];
+	if (music) list.push('nod', 'nod');
+	return list[Math.floor(hash3(fnv(id), slot, 67) * list.length)];
+}
 
 /** How long a rider keeps the towel on after getting off the bike. */
 export const COOLING_SEC = 600;
@@ -192,6 +213,7 @@ export function crewOf(
 	w: number,
 	h: number,
 	cooling: ReadonlySet<string> = NOBODY,
+	now: { sec: number; music: boolean } = { sec: 0, music: false },
 ): Crew {
 	const slots = bikeSlots(Math.max(SCENE_W, w), h);
 	const onBikes = ridersOf(riders, t).slice(0, slots.length);
@@ -199,13 +221,36 @@ export function crewOf(
 		.slice(0, Math.max(BIKES_ALWAYS, onBikes.length))
 		.map((slot, i) => ({ ...slot, rider: onBikes[i] }));
 	const rest = seatedOf(riders, new Set(onBikes.map((r) => r.id)), cooling);
+	const front = hasFront(Math.max(SCENE_W, w), h);
+	const up = (f: Figure): Figure => ({
+		...f,
+		doing: f.speaking ? '' : idleOf(f.id, now.sec, now.music),
+	});
+	// Those who took a place first, first come first kept; the rest as it falls.
+	const sofa: (Figure | null)[] = Array.from({ length: SEATS }, () => null);
+	const placed: Crew['placed'] = [];
+	const taken = new Set<number>();
+	const others: Figure[] = [];
+	for (const f of rest) {
+		const seat = f.seat ?? 0;
+		const place = PLACES.find((p) => p.seat === seat);
+		if (seat >= 1 && seat <= SEATS && !sofa[seat - 1]) sofa[seat - 1] = up(f);
+		else if (place && !taken.has(seat) && (!place.front || front)) {
+			taken.add(seat);
+			placed.push({ f: { ...f, doing: place.doing }, x: place.x, y: place.y });
+		} else others.push(f);
+	}
+	for (let i = 0; i < SEATS && others.length; i++)
+		if (!sofa[i]) sofa[i] = up(others.shift()!);
+	while (sofa.length && !sofa[sofa.length - 1]) sofa.pop();
 	const spots = floorSpots(Math.max(SCENE_W, w), h);
 	return {
 		bikes,
-		seated: rest.slice(0, SEATS),
-		floor: rest
-			.slice(SEATS, SEATS + spots.length)
-			.map((f, i) => ({ f, ...spots[i] })),
-		more: Math.max(0, rest.length - SEATS - spots.length),
+		seated: sofa,
+		floor: others
+			.slice(0, spots.length)
+			.map((f, i) => ({ f: up(f), ...spots[i] })),
+		placed,
+		more: Math.max(0, others.length - spots.length),
 	};
 }

@@ -71,6 +71,15 @@ type Rider struct {
 	// which flickered, and the friends page decided it from "a trainer is
 	// talking", which never went out at all.
 	Riding bool `json:"riding,omitempty"`
+	// Where they sit in the cozy room (RoomAct.Seat); 0 is wherever the room
+	// puts them.
+	Seat int `json:"seat,omitempty"`
+	// What they are doing there for a moment, from LoungeEmotes, for whom if
+	// it is a heart, and a count that goes up with each one, so a second heart
+	// to the same rider shows as a second heart.
+	Emote    string `json:"emote,omitempty"`
+	EmoteTo  string `json:"emoteTo,omitempty"`
+	EmoteSeq int    `json:"emoteSeq,omitempty"`
 	// On the running session's timeline (ADR-0059). Everyone else in the
 	// channel spectates it: not driven, not counted, and drawn apart.
 	InSession bool `json:"inSession,omitempty"`
