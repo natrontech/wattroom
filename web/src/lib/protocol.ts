@@ -1789,7 +1789,8 @@ export const PokeCooldownSeconds = 10;
  * phantom shifts, so Easier and Harder are one tap each. Only Talk holds, as
  * talk-down, a talk-keepalive while it lasts, and talk-up. Sync presses
  * nothing: the phone sends it when it opens, and the holder answers with its
- * gear and pause state.
+ * gear and pause state. Skip and Extend are the riding screen's Skip block and
+ * +1 min (#4425), on a workout whose clock the rider alone owns.
  */
 export interface RemoteCommand {
   /**
@@ -1820,10 +1821,23 @@ export const MaxGearLabel = 16;
  * is a solo ride the remote may pause, and whether it is paused by the rider.
  * It travels the way GearState does. A session is never paused by one rider,
  * so a holder in a session says Pausable false.
+ * Blocks and Last answer the same question for Skip and +1 min (#4425): a
+ * workout whose clock the rider alone owns, and whose blocks end by that
+ * clock. A road workout's blocks end at their metres (#3499) and a road with
+ * no workout has none, so both say Blocks false. A session's timeline is the
+ * coach's, so it says Pausable false and the phone draws neither.
  */
 export interface PauseState {
   pausable: boolean;
   paused: boolean;
+  /**
+   * Skip block and +1 min act on this ride.
+   */
+  blocks?: boolean;
+  /**
+   * The ride is on its last block: End ride, not Skip.
+   */
+  last?: boolean;
 }
 /**
  * ViewState is the holding tab's answer about where its rider looks (#4223):

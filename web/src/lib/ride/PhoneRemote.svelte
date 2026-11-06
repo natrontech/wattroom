@@ -14,6 +14,7 @@
 	 */
 	import { onDestroy, onMount } from 'svelte';
 	import type { RemoteLink } from '$lib/ride/remote-link';
+	import { LAST_BLOCK, NO_BLOCKS } from '$lib/ride/remote-blocks';
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
 	import { createTalkHold } from '$lib/ride/remote-talk';
 	import { keepAwakeWhile } from '$lib/workout/keep-awake.svelte';
@@ -187,6 +188,31 @@
 		</div>
 		{#if live.pause.paused}
 			<p class="text-neon text-center text-2xl" aria-live="polite">Paused</p>
+		{/if}
+		<!-- The riding screen's +1 min and Skip block (#4425), where its clock
+		     ends the blocks; held with the line that says why where it does not. -->
+		<div class="grid grid-cols-2 gap-3">
+			<button
+				type="button"
+				class={cell}
+				disabled={!live.pause.blocks}
+				onclick={() => live.sendRemote('extend')}
+			>
+				+1 min
+			</button>
+			<button
+				type="button"
+				class={cell}
+				disabled={!live.pause.blocks || live.pause.last}
+				onclick={() => live.sendRemote('skip')}
+			>
+				Skip block
+			</button>
+		</div>
+		{#if !live.pause.blocks || live.pause.last}
+			<p class="text-ink-muted text-2xl leading-7" data-testid="remote-blocks">
+				{live.pause.blocks ? LAST_BLOCK : NO_BLOCKS}
+			</p>
 		{/if}
 	{/if}
 

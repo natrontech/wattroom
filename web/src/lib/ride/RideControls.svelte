@@ -24,6 +24,7 @@
 	import type { createWorldView } from '$lib/world/world-view.svelte';
 	import type { createRideSession } from '$lib/workout/session.svelte';
 	import { tooltip } from '$lib/tooltip.svelte';
+	import { LAST_BLOCK } from '$lib/ride/remote-blocks';
 
 	let {
 		session,
@@ -119,10 +120,8 @@
 				disabled={last}
 				class={ICON}
 				aria-label="Skip block"
-				{@attach tooltip(
-					'Skip block',
-					last ? 'Last block — End ride instead' : undefined,
-				)}><SkipForward size={20} /></button
+				{@attach tooltip('Skip block', last ? LAST_BLOCK : undefined)}
+				><SkipForward size={20} /></button
 			>
 		{/if}
 		{#if onchange}

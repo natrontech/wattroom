@@ -1,6 +1,7 @@
 import { tabId } from '$lib/channel/rejoin';
 import { deviceWord } from '$lib/device.svelte';
-import type { PauseState, ViewState } from '$lib/protocol';
+import type { ViewState } from '$lib/protocol';
+import { clockActions, pauseOf } from '$lib/ride/remote-blocks';
 import { shiftAnswer } from '$lib/ride/easier-harder';
 import { gearsEnabled } from '$lib/ride/gears-enabled';
 import { createRemoteRunner } from '$lib/ride/keys';
@@ -23,14 +24,6 @@ export function viewNow(): ViewState {
 		world: computerShown.world,
 		camera: computerShown.world ? (computerShown.camera ?? '') : '',
 		pictures: worldPicture.taken,
-	};
-}
-
-/** A workout alone pauses from the phone once its count-in is over (#3217). */
-export function pauseOf(session: Session | null): PauseState {
-	return {
-		pausable: !!session && session.state !== 'countdown',
-		paused: !!session?.held,
 	};
 }
 
@@ -86,8 +79,8 @@ export function serveRideRemote(ride: {
 		},
 		() => {},
 		{
-			pause: () => workout()?.pause(),
-			resume: () => workout()?.resume(),
+			// Pause, Resume, Skip block and +1 min, where the screen offers them.
+			...clockActions(workout),
 			page: () => void askPage('next'),
 			map: () => void toggleMap(),
 			view: () => void askViewFlip(),
