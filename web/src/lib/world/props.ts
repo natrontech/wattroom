@@ -27,14 +27,77 @@ function roof(w: number, d: number, h: number, overhang: number) {
 const foundation = (w: number, d: number, c: PropColors) =>
 	tint(box(w, 3.4, d).translate(0, -1.4, 0), c.stone);
 
-// A Swiss house: white masonry ground floor, timber upper floor, deep eaves.
+/**
+ * A window on a wall facing `a`: its glass, a pale frame and painted shutters
+ * folded back, each a flat face a hair off the one behind it. `s`: the window
+ * sits at (x, y, z), and the shutters run along the wall.
+ */
+function shuttered(
+	c: PropColors,
+	w: number,
+	h: number,
+	x: number,
+	y: number,
+	z: number,
+	a: number,
+) {
+	const plane = (
+		pw: number,
+		ph: number,
+		across: number,
+		out: number,
+		col: string,
+	) =>
+		tint(
+			new THREE.PlaneGeometry(pw, ph)
+				.translate(across, 0, out)
+				.rotateY(a)
+				.translate(x, y, z),
+			col,
+		);
+	return [
+		plane(w + 0.34, h + 0.34, 0, 0, c.post),
+		plane(w, h, 0, 0.02, c.band),
+		plane(0.46, h + 0.2, -(w / 2 + 0.42), 0.02, c.shutter),
+		plane(0.46, h + 0.2, w / 2 + 0.42, 0.02, c.shutter),
+	];
+}
+
+const EAST_FACE = Math.PI / 2;
+const WEST_FACE = -Math.PI / 2;
+
+// A Swiss house: a stone footing, white masonry ground floor and a timber upper
+// floor under deep eaves, shuttered windows on every side, and a balcony of
+// geraniums over the south gable.
 export function house(c: PropColors) {
+	const onSides = (y: number, sideX: number, zs: number[]) =>
+		zs.flatMap((z) => [
+			...shuttered(c, 1, 1.1, sideX, y, z, EAST_FACE),
+			...shuttered(c, 1, 1.1, -sideX, y, z, WEST_FACE),
+		]);
 	return merge([
 		foundation(9.3, 11.3, c),
+		tint(box(9.1, 0.7, 11.1).translate(0, 0.35, 0), c.stone),
 		tint(box(9, 3.2, 11).translate(0, 1.6, 0), c.wall),
 		tint(box(9.2, 2.8, 11.2).translate(0, 4.6, 0), c.wood),
+		tint(box(9.34, 0.2, 11.34).translate(0, 3.2, 0), c.trunk),
+		tint(box(9.34, 0.14, 11.34).translate(0, 5.2, 0), c.trunk),
 		tint(roof(9.2, 11.2, 4.2, 1.4).translate(0, 6, 0), c.roof),
 		tint(box(0.9, 2, 0.9).translate(2.2, 9.4, 1.5), c.stone),
+		tint(box(1.1, 0.2, 1.1).translate(2.2, 10.3, 1.5), c.trunk),
+		...onSides(1.8, 4.52, [-3.2, 0, 3.2]),
+		...onSides(4.4, 4.62, [-3.2, 0, 3.2]),
+		...shuttered(c, 1, 1.1, -2.2, 1.8, 5.52, 0),
+		...shuttered(c, 1, 1.1, 2.2, 1.8, 5.52, 0),
+		...shuttered(c, 1, 1.1, -2.2, 4.4, 5.62, 0),
+		...shuttered(c, 1, 1.1, 2.2, 4.4, 5.62, 0),
+		...shuttered(c, 1, 1.1, -2.2, 1.8, -5.52, Math.PI),
+		...shuttered(c, 1, 1.1, 2.2, 1.8, -5.52, Math.PI),
+		// The balcony, its rail and the flowers along it.
+		tint(box(8, 0.16, 1.1).translate(0, 3.42, 6.15), c.wood),
+		tint(box(8, 0.8, 0.1).translate(0, 3.88, 6.68), c.wood),
+		tint(box(7.8, 0.3, 0.34).translate(0, 4.44, 6.72), c.leafLight),
+		tint(box(7.2, 0.2, 0.4).translate(0, 4.66, 6.72), c.flower),
 	]);
 }
 
@@ -55,10 +118,19 @@ export function church(c: PropColors) {
 }
 
 export function barn(c: PropColors) {
+	const door = (z: number, a: number) =>
+		tint(
+			new THREE.PlaneGeometry(4.4, 3.6).rotateY(a).translate(0, 1.8, z),
+			c.trunk,
+		);
 	return merge([
 		foundation(12.2, 18.2, c),
 		tint(box(12, 5, 18).translate(0, 2.5, 0), c.wood),
+		tint(box(12.16, 0.2, 18.16).translate(0, 3.4, 0), c.trunk),
 		tint(roof(12, 18, 5.5, 1.2).translate(0, 5, 0), c.roof),
+		door(9.03, 0),
+		door(-9.03, Math.PI),
+		tint(new THREE.PlaneGeometry(1.8, 1.5).translate(0, 6.4, 9.03), c.trunk),
 	]);
 }
 
@@ -69,6 +141,10 @@ export function hut(c: PropColors) {
 		tint(box(7, 1.6, 8).translate(0, 0.8, 0), c.stone),
 		tint(box(6.6, 2.6, 7.6).translate(0, 2.9, 0), c.wood),
 		tint(roof(6.6, 7.6, 2.4, 1).translate(0, 4.2, 0), c.stone),
+		tint(new THREE.PlaneGeometry(1.1, 2).translate(-1.6, 1.1, 4.03), c.trunk),
+		...shuttered(c, 0.8, 0.8, 1.4, 2.9, 3.82, 0),
+		...shuttered(c, 0.8, 0.8, 3.32, 2.9, 1.2, EAST_FACE),
+		...shuttered(c, 0.8, 0.8, -3.32, 2.9, -1.2, WEST_FACE),
 	]);
 }
 
@@ -387,19 +463,19 @@ const WEST = -Math.PI / 2;
 /** A house's lit windows: two downstairs on one side, one up on the other, two in the gable over one below. */
 export const houseLit = (c: PropColors) =>
 	windows(c, [
-		[1, 1.1, 4.53, 1.7, -2.5, EAST],
-		[1, 1.1, 4.53, 1.7, 2.5, EAST],
-		[1, 1, -4.63, 4.5, 0, WEST],
-		[0.9, 1, -2, 4.5, 5.63, 0],
-		[0.9, 1, 2, 4.5, 5.63, 0],
-		[1, 1.1, 0, 1.7, 5.53, 0],
+		[1, 1.1, 4.56, 1.8, -3.2, EAST],
+		[1, 1.1, 4.56, 1.8, 3.2, EAST],
+		[1, 1.1, -4.66, 4.4, 0, WEST],
+		[1, 1.1, -2.2, 4.4, 5.66, 0],
+		[1, 1.1, 2.2, 4.4, 5.66, 0],
+		[1, 1.1, 2.2, 1.8, 5.56, 0],
 	]);
 
 /** A hut's: one in its side, one in its gable. */
 export const hutLit = (c: PropColors) =>
 	windows(c, [
-		[0.8, 0.8, 3.33, 2.9, 1.2, EAST],
-		[0.8, 0.8, 0, 2.9, 3.83, 0],
+		[0.8, 0.8, 3.36, 2.9, 1.2, EAST],
+		[0.8, 0.8, 1.4, 2.9, 3.86, 0],
 	]);
 
 export const lampLit = (c: PropColors) =>

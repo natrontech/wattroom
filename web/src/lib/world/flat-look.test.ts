@@ -132,8 +132,9 @@ function roadShader(): string {
 }
 
 describe('the road’s paint (ADR-0092)', () => {
-	it('paints no grain on the asphalt or the shoulder', () => {
-		expect(roadShader()).not.toMatch(/grain|noise|fract\(sin/);
+	it('paints no grain on the asphalt or the shoulder in Smooth; only Pixel 3D wears the road', () => {
+		const smooth = roadShader().replace(/#ifdef PIXEL_RAMP[\s\S]*?#endif/g, '');
+		expect(smooth).not.toMatch(/grain|noise|fract\(sin/);
 	});
 
 	it('never draws a line narrower than a pixel, and fades the dashes to their average when they are too short to draw', () => {

@@ -27,6 +27,8 @@ export type PropColors = {
 	wood: string;
 	roof: string;
 	stone: string;
+	shutter: string;
+	flower: string;
 	cow: string;
 	cowPatch: string;
 	bell: string;
@@ -89,7 +91,14 @@ export type Style = {
 	zones: readonly string[]; // Z1–Z7: the flat ring under each rider
 	trail: string | null; // the one glow: your live power leaves light
 	plinth: string | null; // the model base under the world (desk views)
-	backdrop: { ridge: string; rock: string; snow: string; snowCaps: boolean };
+	/** `tall`: how many times the ranges stand over their usual height. */
+	backdrop: {
+		ridge: string;
+		rock: string;
+		snow: string;
+		snowCaps: boolean;
+		tall?: number;
+	};
 	stars: string | null;
 	signs: Record<SignLook, { bg: string; fg: string; post: string }>;
 	arch: { chrome: string; panel: string; stripe: string; text: string };
@@ -129,6 +138,63 @@ const OKLAB = /* glsl */ `
 			dot(lms, vec3(4.0767416621, -3.3077115913, 0.2309699292)),
 			dot(lms, vec3(-1.2684380046, 2.6097574011, -0.3413193965)),
 			dot(lms, vec3(-0.0041960863, -0.7034186147, 1.7076147010)));
+	}`;
+
+/**
+ * The land up close in Pixel 3D, so no floor is ever empty: fields on a turned
+ * grid, each its own green, mottled in dithered patches, with flowers near the
+ * road. Painted on the ground by where it is, so it stays put as you ride.
+ */
+export const PIXEL_LAND = /* glsl */ `
+	float landHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+	float landNoise(vec2 p) {
+		vec2 i = floor(p), f = fract(p);
+		f = f * f * (3.0 - 2.0 * f);
+		return mix(mix(landHash(i), landHash(i + vec2(1.0, 0.0)), f.x),
+			mix(landHash(i + vec2(0.0, 1.0)), landHash(i + vec2(1.0, 1.0)), f.x), f.y);
+	}
+	vec3 pixelLand(vec3 base, vec3 pos, float dist, float up) {
+		if (base.g < base.r * 1.05 || base.g < base.b * 1.02 || up < 0.8) return base;
+		float bayer = pixelBayer(gl_FragCoord.xy);
+		vec2 turned = mat2(0.8, -0.6, 0.6, 0.8) * pos.xz;
+		float field = landHash(floor(turned / vec2(58.0, 90.0)));
+		vec3 c = base * (0.86 + field * 0.3);
+		// Hay gone gold, and a darker field of something else.
+		if (field < 0.2) c = mix(c, vec3(0.5, 0.58, 0.22), 0.34);
+		else if (field > 0.84) c = mix(c, vec3(0.12, 0.36, 0.3), 0.32);
+		// A mown field runs in stripes along its length, every third one of them.
+		if (mod(floor(field * 97.0), 3.0) < 1.0 && dist < 900.0)
+			c *= mod(floor(turned.x / 5.0), 2.0) < 1.0 ? 1.0 : 1.07;
+		float patchy = landNoise(pos.xz / 11.0) * 0.7 + landNoise(pos.xz / 3.6) * 0.3;
+		if (patchy + (bayer - 0.5) * 0.22 > 0.6) c = c * 1.14 + vec3(0.012, 0.022, 0.0);
+		else if (patchy + (bayer - 0.5) * 0.22 < 0.36) c *= 0.86;
+		// Flowers and tufts of grass near you, rooted on the ground and drawn on the
+		// screen: (a, b) is this pixel's way from the root, in world pixels, b up,
+		// so each stands the same few pixels tall however near it is, and far off
+		// a head stays one clean dot.
+		if (dist < 60.0) {
+			vec2 q = pos.xz / 1.4;
+			float k = landHash(floor(q));
+			vec2 ex = dFdx(pos.xz), ey = dFdy(pos.xz);
+			float det = ex.x * ey.y - ex.y * ey.x;
+			if (abs(det) > 1e-7) {
+				vec2 off = (fract(q) - 0.5) * 1.4;
+				float a = (off.x * ey.y - off.y * ey.x) / det;
+				float b = (off.y * ex.x - off.x * ex.y) / det;
+				float which = fract(k * 91.0);
+				if (k > 0.66 && landNoise(pos.xz / 9.0) > 0.46) {
+					vec3 petal = which < 0.5 ? vec3(0.97, 0.93, 0.86) : which < 0.8 ? vec3(0.98, 0.76, 0.28) : vec3(0.74, 0.52, 0.96);
+					float head = abs(a) + abs(b);
+					if (head < 1.7) c = head < 0.7 ? vec3(0.98, 0.8, 0.3) : petal;
+					else if (abs(a) < 0.6 && b < -1.0 && b > -4.5) c *= 0.74;
+				} else if (k < 0.4) {
+					// A tuft: three blades, the middle one longest.
+					float reach = abs(a) < 0.6 ? 5.5 : abs(abs(a) - 2.0) < 0.6 ? 3.5 : 0.0;
+					if (b > -0.5 && b < reach) c *= which < 0.5 ? 0.76 : 1.22;
+				}
+			}
+		}
+		return c;
 	}`;
 
 /** Puts a light (light.ts) on the sky's or the ground's shader. */
@@ -188,6 +254,7 @@ export function terrainMaterial(
 			${BAYER}
 			${STEPS}
 			${POOL}
+			${PIXEL_LAND}
 			void main() {
 				vec3 n = normalize(cross(dFdx(vPos), dFdy(vPos)));
 				float dist = length(vPos - cameraPosition);
@@ -195,6 +262,7 @@ export function terrainMaterial(
 				// solid rock by the earthworks' 45 (n.y 0.71), never the ground's colour smeared down a vertical.
 				float steep = smoothstep(0.86, 0.66, n.y);
 				vec3 base = mix(vColor, mix(uRock, vColor, 0.18), steep);
+				if (uPixel > 0.5) base = pixelLand(base, vPos, dist, n.y);
 				vec3 col;
 				if (uImhof > 0.5) {
 					float hs = clamp(dot(n, normalize(vec3(-1.0, 1.4, -1.0))), 0.0, 1.0);
@@ -235,6 +303,7 @@ export function terrainMaterial(
 				float pool = lampPool(vPos); // a third of the way to amber, the lounge's pool
 				if (uPixel > 0.5) pool = pool > pixelBayer(gl_FragCoord.xy) ? 1.0 : 0.0;
 				gl_FragColor.rgb = mix(gl_FragColor.rgb, uAmber, pool / 3.0);
+				if (uPixel > 0.5) gl_FragColor.a = 0.5; // the land, for the ink pass (pixel.ts)
 				#include <colorspace_fragment>
 			}`,
 	});
@@ -292,7 +361,11 @@ export function skyMaterial(style: Style): THREE.ShaderMaterial {
 					float top = texture2D(uSkyline, vec2(atan(vDir.x, vDir.z) / 6.2831853, 0.5)).r * 0.25;
 					float clear = 0.009 * (1.0 + 0.5 * pow(s, 4.0));
 					float w = uPeach * smoothstep(-0.01, 0.0, vDir.y) * (1.0 - smoothstep(top - 0.003, top + clear, vDir.y));
-					if (uPixel > 0.5) w = step(0.5 + dither, w); // a band, its edge dithered
+					// A band in one flat colour, thinning upward in a dither: pixels, never a blend.
+					if (uPixel > 0.5) {
+						float rise = vDir.y / max(top + clear, 0.01);
+						w = step(0.5, w) * step(pixelBayer(gl_FragCoord.xy), 1.0 - smoothstep(0.72, 1.12, rise));
+					}
 					// The sky's chroma gives way to the peach's at the band's faint edge, so no pixel takes a hue between them, the pinks.
 					vec3 sky = toLab(c);
 					vec3 band = toLab(uBand);
@@ -300,6 +373,20 @@ export function skyMaterial(style: Style): THREE.ShaderMaterial {
 					c = fromLab(vec3(mix(sky.x, band.x, w), ab));
 				}
 				if (uPixel > 0.5) {
+					// Long clouds lit from under by the set sun, in flat rows.
+					if (vDir.y > 0.012 && vDir.y < 0.3) {
+						float az = atan(vDir.x, vDir.z) * 4.0;
+						float row = floor(vDir.y * 90.0);
+						float cloud = sin(az * 1.7 + row * 0.9 + sin(row * 0.31) * 3.0) * 0.5 + 0.5;
+						cloud *= sin(az * 0.53 - row * 0.21) * 0.5 + 0.5;
+						if (cloud + dither * 0.5 > 0.62 - vDir.y * 0.8) {
+							vec3 lit = mix(uBand, uTop, 0.25 + vDir.y * 2.4);
+							c = mix(c, lit, 0.75);
+						}
+					}
+					// The moon, flat, a bite out of it.
+					vec3 moon = normalize(vec3(-uSun.x, 0.5, -uSun.z));
+					if (length(vDir - moon) < 0.05 && length(vDir - moon - vec3(0.02, 0.012, 0.0)) > 0.045) c = uStar;
 					// The lounge's sun: a flat disc, its lower half striped; never a glow.
 					float r = length(vDir - uSun);
 					if (r < 0.06) {

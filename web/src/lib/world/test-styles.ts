@@ -16,6 +16,8 @@ const alpineProps = (p: Partial<PropColors>): PropColors => ({
 	wood: '#9a6436',
 	roof: '#6e4a3a',
 	stone: '#8f8c86',
+	shutter: '#2f5a4a',
+	flower: '#f4ecdc',
 	cow: '#f3efe6',
 	cowPatch: '#7a4a2e',
 	bell: '#caa27a',

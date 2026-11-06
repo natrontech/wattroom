@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Biome } from './biome';
-import { terrainMaterial } from './styles';
+import { PIXEL_LAND, terrainMaterial } from './styles';
 import { RIDE } from './look.test-helper';
 
 describe('the ground material keys rock to slope (#3728)', () => {
@@ -16,7 +16,8 @@ describe('the ground material keys rock to slope (#3728)', () => {
 		const f = m.fragmentShader;
 		expect(f).toContain('smoothstep(0.86, 0.66, n.y)');
 		expect(f).toContain('mix(uRock, vColor, 0.18), steep)');
-		// No detail painted inside a face: no noise, no masonry.
-		expect(f).not.toMatch(/noise|hash|fract\(sin/);
+		// No detail painted inside a face in Smooth: no noise, no masonry. Pixel 3D's land is its own.
+		expect(f.replace(PIXEL_LAND, '')).not.toMatch(/fract\(sin|landHash\(/);
+		expect(f).toContain('if (uPixel > 0.5) base = pixelLand(');
 	});
 });

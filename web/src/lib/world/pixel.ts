@@ -147,16 +147,25 @@ const FRAGMENT = /* glsl */ `
 	${BAYER}
 	${STEPS}
 	float iz(vec2 uv) { return (far - texture2D(tDepth, uv).r * (far - near)) / (near * far); }
+	bool ground(vec2 uv) { return texture2D(tColor, uv).a < 0.75; }
 	bool past(float n, float c, float o) { return n < (2.0 * c - o) * ${STEP} && c - n > 2.0 * (o - c); }
 	void main() {
 		vec2 uv = (floor(gl_FragCoord.xy / scale) + 0.5) * texel; // S × S of the screen's pixels a world pixel
 		vec2 dx = vec2(texel.x, 0.0);
 		vec2 dy = vec2(0.0, texel.y);
 		float c = iz(uv), l = iz(uv - dx), r = iz(uv + dx), b = iz(uv - dy), t = iz(uv + dy);
-		bool edge = past(l, c, r) || past(r, c, l) || past(b, c, t) || past(t, c, b);
 		vec4 face = texture2D(tColor, uv);
+		// The land keeps no outline of its own: a fold in a field is not an edge,
+		// and only a thing standing on the land, or the land against the sky, is.
+		bool land = face.a < 0.75;
+		bool edge = (past(l, c, r) && !(land && ground(uv - dx)))
+			|| (past(r, c, l) && !(land && ground(uv + dx)))
+			|| (past(b, c, t) && !(land && ground(uv - dy)))
+			|| (past(t, c, b) && !(land && ground(uv + dy)));
 		float fog = pixelFog(1.0 - exp(-pow(density / c, 2.0)));
-		gl_FragColor = edge ? vec4(mix(ink, face.rgb, fog), 1.0) : face;
+		// Far off an outline would be all a small thing is: it goes to the thing's own shade.
+		vec3 line = mix(ink, face.rgb * 0.62, smoothstep(45.0, 170.0, 1.0 / c));
+		gl_FragColor = vec4(edge ? mix(line, face.rgb, fog) : face.rgb, 1.0);
 		#include <colorspace_fragment>
 	}`;
 
