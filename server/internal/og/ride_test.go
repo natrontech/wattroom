@@ -115,3 +115,41 @@ func near(got color.Color, want color.NRGBA) bool {
 	}
 	return d(r, want.R)+d(g, want.G)+d(b, want.B) < 24
 }
+
+// The mark has to be seen in Strava's feed (#4429), which lays its own badges
+// over a photo's corners — "Virtual" top left on every indoor ride. So the
+// logo's paint shows up in the brand's own box and in none of the corners, on
+// the card and on the poster alike.
+func TestTheMarkStaysOutOfStravasCorners(t *testing.T) {
+	pal := Palette{}.orDefault()
+	const w, h = 320, 140
+	corners := map[string]image.Rectangle{
+		"top left":     image.Rect(0, 0, w, h),
+		"top right":    image.Rect(cardSize-w, 0, cardSize, h),
+		"bottom left":  image.Rect(0, cardSize-h, w, cardSize),
+		"bottom right": image.Rect(cardSize-w, cardSize-h, cardSize, cardSize),
+	}
+	for name, card := range map[string]RideCard{"card": sampleCard(), "poster": roadCard()} {
+		img := decode(t, mustRender(t, card))
+		if !hasLogoInk(img, brandBox, pal) {
+			t.Errorf("%s: no logo in its box at the top centre", name)
+		}
+		for corner, box := range corners {
+			if hasLogoInk(img, box, pal) {
+				t.Errorf("%s: logo paint in the %s corner, under Strava's badges", name, corner)
+			}
+		}
+	}
+}
+
+// hasLogoInk reports whether any pixel in box is the logo's watt or neon.
+func hasLogoInk(img image.Image, box image.Rectangle, p Palette) bool {
+	for y := box.Min.Y; y < box.Max.Y; y += 2 {
+		for x := box.Min.X; x < box.Max.X; x += 2 {
+			if near(img.At(x, y), p.watt) || near(img.At(x, y), p.neon) {
+				return true
+			}
+		}
+	}
+	return false
+}
