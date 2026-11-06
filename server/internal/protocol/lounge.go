@@ -43,6 +43,13 @@ var LoungeRadioStyles = []string{"mix", "lofi", "chip", "ambient"}
 // its own copy, with what each sets, in web/src/lib/lounge/state.ts.
 var LoungeMoods = []string{"rainy", "snow", "sunny", "arcade"}
 
+// LoungeVisitors is the closed set of the album's rare visitors. The client
+// keeps its own copy, VISITORS in web/src/lib/lounge/moments.ts.
+var LoungeVisitors = []string{
+	"fox", "cow", "star", "rainbow", "snail", "hedgehog",
+	"mouse", "ibex", "sleigh", "bat", "drone", "marmot",
+}
+
 // HouseRadioTitle is house radio's line on the deck and in the channel's
 // events: the station is generated, so it has no title of its own.
 const HouseRadioTitle = "House radio"
