@@ -254,6 +254,7 @@
 							elapsed={session.elapsed}
 							ftp={profile.current.ftp}
 							ceiling={rampCeiling}
+							lthr={profile.current.lthr}
 							trace={session.trace}
 						/>
 					</div>
@@ -295,6 +296,7 @@
 		{@const ride = session}
 		<TvOverlay
 			stats={session.live}
+			lthr={profile.current.lthr}
 			riders={[
 				{
 					id: 'you',

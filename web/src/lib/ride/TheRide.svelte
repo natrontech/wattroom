@@ -67,9 +67,12 @@
 	// rider walked away from is done with, so the next one opens on the setup.
 	onDestroy(() => theRide.dismiss());
 
-	// The road for the TV's horizon and its bike computer's CLIMB (#3641, #3645).
+	// The road for the TV's horizon (#3641): a free ride's. A workout's TV
+	// horizon is its graph, on a road too, as the riding screen's is (#4426).
 	const tvSkyline = $derived(
-		session ? skylineOf(session.road, session.segments, ftp) : null,
+		session && isOpenRoad(session.workout)
+			? skylineOf(session.road, session.segments, ftp)
+			: null,
 	);
 
 	// The block, derived once for both screens that draw it: the riding
@@ -201,6 +204,7 @@
 		<TvOverlay
 			stats={session.live}
 			skyline={tvSkyline}
+			lthr={profile.current.lthr}
 			riders={[tvRider]}
 			segments={session.segments}
 			total={session.total}

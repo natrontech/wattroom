@@ -42,6 +42,7 @@
 		onExit,
 		stats,
 		skyline = null,
+		lthr,
 	}: {
 		riders: LiveRider[];
 		/** Your instrument has nothing paired to read (#2941). */
@@ -78,6 +79,8 @@
 		stats?: LiveStats;
 		/** A ride on a road: its horizon is the Skyline (#3641). */
 		skyline?: SkylineView | null;
+		/** Your LTHR, the graph's heart line's anchor (#4426). */
+		lthr?: number;
 	} = $props();
 
 	const you = $derived(riders.find((r) => r.you));
@@ -172,6 +175,7 @@
 			{workoutName}
 			{stats}
 			{skyline}
+			{lthr}
 			{exit}
 			{status}
 			seated={playing}

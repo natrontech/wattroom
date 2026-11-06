@@ -22,6 +22,7 @@
 		code = '',
 		stats,
 		skyline = null,
+		lthr,
 		exit,
 		status,
 		seated = false,
@@ -44,6 +45,8 @@
 		stats?: LiveStats;
 		/** A ride on a road: its horizon is the Skyline (#3641). */
 		skyline?: SkylineView | null;
+		/** Your LTHR, the graph's heart line's anchor (#4426). */
+		lthr?: number;
 		/** The way out, in the work panel's top row beside the eyebrow (#3677). */
 		exit?: import('svelte').Snippet;
 		/** Ride-critical status: one persistent row above the panels (G3). */
@@ -139,6 +142,7 @@
 							{total}
 							{elapsed}
 							ftp={you.ftp}
+							{lthr}
 							trace={you.trace}
 							tv
 						/>

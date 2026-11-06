@@ -32,6 +32,7 @@
 	import RideStatus from '$lib/ride/RideStatus.svelte';
 	import ChangeWorkout from '$lib/ride/ChangeWorkout.svelte';
 	import { isOpenRoad } from '$lib/workout/ridden';
+	import { ridesTheRoad } from '$lib/workout/block';
 	import type { ShelfEntry } from '$lib/workout/shelf';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import Skyline from '$lib/ride/Skyline.svelte';
@@ -197,7 +198,11 @@
 	// The climb card on a road (#3645): CLIMB opens by itself, and says so.
 	const climb = $derived(landed(climbView(skyline), ahead?.lands));
 	const map = $derived(mapView(skyline));
-	watchClimbCues(() => climb);
+	// A climb is called only where the trainer rides the grade (#4426): in a
+	// workout's ERG block the watts are the work, and the CLIMB page waits
+	// to be asked.
+	const roadRidden = $derived(ridesTheRoad(block));
+	watchClimbCues(() => (roadRidden ? climb : null));
 
 	// The HUD feed (ADR-0041): what this screen shows, once a second, for a
 	// second window to mirror — the shell's overlay, or another tab.
@@ -241,15 +246,19 @@
 	<RideStatus {session} {signalLost} {noCrashSafety} line />
 {/snippet}
 
-{#snippet strip()}
+{#snippet graph()}
+	<!-- The workout's one picture (#4159): its blocks in words, your power
+	     and, while a strap reports, your heart over them (#4426). -->
 	<IntervalGraph
+		ride
+		words={{ bias: session.bias }}
+		marker={!signalLost}
 		segments={session.segments}
 		total={session.total}
 		elapsed={session.elapsed}
 		{ftp}
+		{lthr}
 		trace={session.trace}
-		compact
-		marker={false}
 	/>
 {/snippet}
 
@@ -307,7 +316,7 @@
 		roadMap={map ? roadMapView : undefined}
 		clean={inWorld && cleanView.on && !signalLost && !noCrashSafety}
 		onshow={cleanView.toggle}
-		cleanLine={block?.road ? roadLine(block.road) : undefined}
+		cleanLine={block?.road && roadRidden ? roadLine(block.road) : undefined}
 		class="-mx-4 -my-5 flex-1 sm:-mx-6"
 		world={drawn ? road : undefined}
 		bar={worldControls}
@@ -334,7 +343,6 @@
 					: workout.name}
 				gear={open && gearsEnabled() ? session.gear.label : undefined}
 				status={rideStatus}
-				strip={skyline && !open ? strip : undefined}
 			/>
 		{/snippet}
 
@@ -391,9 +399,10 @@
 		{/snippet}
 
 		{#snippet horizon()}
-			{#if skyline}
-				<!-- On a road the horizon is the road ahead (ADR-0046 as amended,
-			     #3641): the Skyline, with the blocks along it. -->
+			{#if skyline && open}
+				<!-- A free ride's horizon is the road ahead (ADR-0046 as amended,
+			     #3641): the Skyline. A workout's is its graph, on a road too
+			     (#4426): the blocks, your power and your heart over them. -->
 				{#if inWorld}
 					<div class="h-full"><Skyline {...skyline} {watts} {ftp} /></div>
 				{:else}
@@ -403,20 +412,12 @@
 						</div>
 					</div>
 				{/if}
+			{:else if inWorld}
+				<!-- Over the world, the band along the bottom (the ride HUD). -->
+				<div class="h-full">{@render graph()}</div>
 			{:else}
 				<div class="relative min-h-28 flex-1">
-					<div class="absolute inset-0">
-						<IntervalGraph
-							ride
-							words={{ bias: session.bias }}
-							marker={!signalLost}
-							segments={session.segments}
-							total={session.total}
-							elapsed={session.elapsed}
-							{ftp}
-							trace={session.trace}
-						/>
-					</div>
+					<div class="absolute inset-0">{@render graph()}</div>
 				</div>
 			{/if}
 		{/snippet}

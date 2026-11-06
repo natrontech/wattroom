@@ -20,7 +20,7 @@
 	import type { RoadReadout } from '$lib/road/readout';
 	import { computerShown } from '$lib/session/computer-shown.svelte';
 	import PowerTrack from '$lib/session/PowerTrack.svelte';
-	import { nextText, type Block } from '$lib/workout/block';
+	import { nextText, ridesTheRoad, type Block } from '$lib/workout/block';
 
 	let {
 		watts,
@@ -232,7 +232,11 @@
 					>
 				</div>
 			{/if}
-			{#if block && hasGrade}{@render gradeCell(SEC)}{/if}
+			<!-- In a workout the grade shows only where the trainer rides it
+			     (#4426): in ERG the watts are the work. -->
+			{#if block && hasGrade && ridesTheRoad(block)}{@render gradeCell(
+					SEC,
+				)}{/if}
 			{#if speedKph !== undefined && !block}
 				{@render cell('Speed', dash(speedKph.toFixed(1)), 'km/h')}
 			{/if}

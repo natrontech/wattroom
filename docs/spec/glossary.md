@@ -68,7 +68,7 @@ Part of the product spec. [docs/SPEC.md](../SPEC.md) indexes every section and s
 | **Virtual gear** | A multiplier on the road the trainer simulates (ADR-0084). It changes cadence and torque, never the speed the watts buy. |
 | **Real gear** | The chainring and cog on the bike. A virtual gear rides on top of it. |
 | **Easier / Harder** | The ride's one pair of controls (ADR-0084): a gear in SIM; bias or watts in ERG. |
-| **Skyline** | The 2D road profile: a road ride's view until the rider turns 3D on with the World control, and the world's automatic fallback when the 3D view cannot run (ADR-0066, amended 2026-10-16). |
+| **Skyline** | The 2D road profile: a free ride's horizon on a road, flat until the rider turns 3D on with the World control, and the world's automatic fallback when the 3D view cannot run (ADR-0066, amended 2026-10-16). A workout on a road has its graph as the horizon instead (#4426). |
 | **Climb** | A stretch of road at least 500 m long, averaging at least 3 %, whose score (length in m × average %) is at least 1,500 (Route rides below). A climb belongs to the map, not to one route (ADR-0082). |
 | **Climb class** | A climb's difficulty by its score: **IV**, **III**, **II**, **I**, **HC**, always in Roman numerals (Route rides below). |
 | **Stroke** | A road as the map draws it: road-class ways split at junctions and re-joined through two-way joins, keyed by both ends and its length (ADR-0082). Built from the map alone, never from a route. |

@@ -262,6 +262,7 @@
 		playing={!!live.tick?.jukebox?.current}
 		sprint={live.tick?.sprint ?? connection.ride.blockSprint}
 		stats={connection.recording.live}
+		lthr={connection.profile.current.lthr}
 		game={live.tick?.game ?? null}
 		countdown={phase === 'countdown'
 			? {
