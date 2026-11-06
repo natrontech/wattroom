@@ -13,6 +13,7 @@
 	import { createLimitWatch, limitLine } from '$lib/ride/limit-line';
 	import type { RideShift } from '$lib/ride/ride-shift';
 	import type { ShiftDir } from '$lib/ride/shifter';
+	import { tooltip } from '$lib/tooltip.svelte';
 
 	let {
 		shift,
@@ -68,7 +69,7 @@
 <button
 	{...control(-1)}
 	disabled={!!off}
-	{title}
+	{@attach tooltip(null, title)}
 	aria-label="Easier"
 	class="btn btn-secondary btn-ride touch-manipulation select-none disabled:opacity-40 max-md:px-3"
 	><Minus size={20} class="md:hidden" /><span class="max-md:hidden">Easier</span
@@ -77,7 +78,7 @@
 <button
 	{...control(1)}
 	disabled={!!off}
-	{title}
+	{@attach tooltip(null, title)}
 	aria-label="Harder"
 	class="btn btn-secondary btn-ride touch-manipulation select-none disabled:opacity-40 max-md:px-3"
 	><Plus size={20} class="md:hidden" /><span class="max-md:hidden">Harder</span

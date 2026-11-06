@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { tooltip } from '$lib/tooltip.svelte';
+
 	// The ERG trim, beside the bike computer rather than on one of its pages:
 	// it is the one control a rider reaches for mid-interval, so turning a
 	// page must never hide it, and it keeps thumb-sized targets (ux.md).
@@ -36,7 +38,7 @@
 	<button
 		onclick={() => onBias?.(-0.01)}
 		disabled={!onBias}
-		title={onBias ? 'Ease the target by one percent' : off}
+		{@attach tooltip('Ease the target by one percent', onBias ? null : off)}
 		class="border-muted/25 hover:border-muted/60 h-11 w-11 rounded-full border text-lg disabled:opacity-40"
 		aria-label="ease the target by one percent">−</button
 	>
@@ -50,7 +52,7 @@
 	<button
 		onclick={() => onBias?.(0.01)}
 		disabled={!onBias}
-		title={onBias ? 'Raise the target by one percent' : off}
+		{@attach tooltip('Raise the target by one percent', onBias ? null : off)}
 		class="border-muted/25 hover:border-muted/60 h-11 w-11 rounded-full border text-lg disabled:opacity-40"
 		aria-label="raise the target by one percent">+</button
 	>

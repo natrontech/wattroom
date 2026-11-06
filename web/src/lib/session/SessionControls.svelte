@@ -25,6 +25,7 @@
 	import Square from '@lucide/svelte/icons/square';
 	import Zap from '@lucide/svelte/icons/zap';
 	import Gamepad2 from '@lucide/svelte/icons/gamepad-2';
+	import { tooltip } from '$lib/tooltip.svelte';
 
 	let { compact = false }: { compact?: boolean } = $props();
 
@@ -106,7 +107,7 @@
 		     panel's button alone. -->
 		<button
 			onclick={() => void endGame(channel)}
-			title="End game"
+			{@attach tooltip(compact ? 'End game' : null)}
 			aria-label="end the game"
 			class="btn btn-secondary ride-stage:ride-word {compact
 				? 'h-11 w-11 p-0'
@@ -149,7 +150,10 @@
 				<button
 					onclick={() => channel.control('sprint')}
 					disabled={!!channel.sprint}
-					title={channel.sprint ? 'A sprint is already running' : 'Sprint'}
+					{@attach tooltip(
+						compact ? 'Sprint' : null,
+						channel.sprint ? 'A sprint is already running' : null,
+					)}
 					aria-label="arm a sprint"
 					class="text-ink hover:bg-neon/10 ride-stage:ride-word flex items-center justify-center gap-1.5 rounded text-sm disabled:opacity-40 {compact
 						? 'h-11 w-11'
@@ -161,7 +165,7 @@
 				>
 				<button
 					onclick={() => channel.control('pause')}
-					title="Pause"
+					{@attach tooltip(compact ? 'Pause' : null)}
 					aria-label="pause the session"
 					class="text-muted hover:text-ink ride-stage:ride-word flex items-center justify-center gap-1.5 rounded text-sm {compact
 						? 'h-11 w-11'
@@ -171,7 +175,7 @@
 			{:else if paused}
 				<button
 					onclick={() => channel.control('resume')}
-					title="Resume"
+					{@attach tooltip(compact ? 'Resume' : null)}
 					aria-label="resume the session"
 					class="hover:bg-surface-raised ride-stage:ride-word flex items-center justify-center gap-1.5 rounded text-sm {compact
 						? 'h-11 w-11'
@@ -182,7 +186,7 @@
 			{#if takers.length > 0}
 				<button
 					onclick={() => (handingOff = true)}
-					title="Hand off"
+					{@attach tooltip(compact ? 'Hand off' : null)}
 					aria-label="hand the session off"
 					class="text-muted hover:text-ink ride-stage:ride-word flex items-center justify-center gap-1.5 rounded text-sm {compact
 						? 'h-11 w-11'
@@ -192,7 +196,7 @@
 			{/if}
 			<button
 				onclick={endSession}
-				title="End"
+				{@attach tooltip(compact ? 'End the session' : null)}
 				aria-label="end the session"
 				class="text-danger hover:bg-danger/10 ride-stage:ride-word flex items-center justify-center gap-1.5 rounded text-sm {compact
 					? 'h-11 w-11'

@@ -55,6 +55,7 @@
 	import { SESSION_COUNTDOWN_SECONDS } from '$lib/workout/ride-state';
 	import { serverNow } from '$lib/server-clock';
 	import { channelConnection } from '$lib/channel/connection.svelte';
+	import { tooltip } from '$lib/tooltip.svelte';
 
 	const channel = useChannel();
 	// Another of the rider's screens drives the trainer (#2075). This one
@@ -262,7 +263,7 @@
 				onclick={() => channel.openTv()}
 				class="{ICON} max-md:hidden"
 				aria-label="TV mode"
-				title="TV mode"><MonitorUp size={20} /></button
+				{@attach tooltip('TV mode')}><MonitorUp size={20} /></button
 			>
 			<span class="contents max-md:hidden"><SessionFlag /></span>
 			{#if channel.you.inSession}

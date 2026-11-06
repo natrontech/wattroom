@@ -58,6 +58,7 @@
 	import ViewSwitch from '$lib/world/ViewSwitch.svelte';
 	import type { RoadMate } from '$lib/channel/road-mates';
 	import { createWorldView } from '$lib/world/world-view.svelte';
+	import { tooltip } from '$lib/tooltip.svelte';
 
 	let {
 		free,
@@ -287,6 +288,7 @@
 			disabled={atMin}
 			class="btn btn-secondary btn-ride"
 			aria-label={inWatts ? 'fewer watts' : 'lower grade'}
+			{@attach tooltip(inWatts ? 'Fewer watts' : 'Lower grade')}
 			><Minus size={18} /></button
 		>
 		<button
@@ -294,6 +296,7 @@
 			disabled={atMax}
 			class="btn btn-secondary btn-ride"
 			aria-label={inWatts ? 'more watts' : 'steeper grade'}
+			{@attach tooltip(inWatts ? 'More watts' : 'Steeper grade')}
 			><Plus size={18} /></button
 		>
 	{/if}
@@ -340,7 +343,7 @@
 			onclick={ontv}
 			class="{ICON} max-md:hidden"
 			aria-label="TV mode"
-			title="TV mode"><MonitorUp size={20} /></button
+			{@attach tooltip('TV mode')}><MonitorUp size={20} /></button
 		>
 	{/if}
 	{#if onend}
