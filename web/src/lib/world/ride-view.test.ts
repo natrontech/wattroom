@@ -20,8 +20,8 @@ const able: RideViewEnv = {
 describe('rideView (#3080)', () => {
 	const cases: [string, Partial<RideViewEnv>, RideView][] = [
 		['the rider turned 3D on', {}, 'world'],
-		// 3D is opt-in (#3084, ADR-0066 amended): never chosen is Flat.
-		['nothing chosen rides Flat', { mode: null }, { skyline: 'chosen' }],
+		// The bike opens the world: Flat is a choice, or a machine's limit.
+		['nothing chosen rides the world', { mode: null }, 'world'],
 		['the rider chose Flat road', { mode: 'flat' }, { skyline: 'chosen' }],
 		[
 			'reduced motion, nothing chosen, opens on Flat with Steady one tap away',

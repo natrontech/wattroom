@@ -8,16 +8,14 @@
  * (LoungeScene). The watts above the bike are the picture's one live number,
  * in the theme's watt hue, and the only thing that glows (ADR-0005).
  */
+import { PEDAL_FRAMES, drawCyclist } from '$lib/lounge/draw-rider';
 import { LOUNGE as C, shadeOf } from '$lib/lounge/palette';
 import {
-	disc,
 	ellipse,
 	inkedSprite,
-	limb,
 	line,
 	outlined,
 	rect,
-	ring,
 	sprite,
 	text,
 	textWidth,
@@ -31,7 +29,6 @@ import {
 	pulseOf,
 	type Bike,
 	type Figure,
-	type Rider,
 	type SceneInput,
 } from '$lib/lounge/scene';
 
@@ -121,7 +118,7 @@ const UNDER_A_CAP = [2, 4, 8, 11];
  * Hair by style, over a head whose left edge is hx and top row ht, and the
  * cap over it. Under a cap a bun or a mohawk is cut to short hair.
  */
-function hair(f: Figure, hx: number, ht: number): Part[] {
+export function hair(f: Figure, hx: number, ht: number): Part[] {
 	// A bun, a mohawk, an afro and a top knot go under a cap cut short.
 	const h = f.hair;
 	const style = f.cap && UNDER_A_CAP.includes(f.hairStyle) ? 0 : f.hairStyle;
@@ -364,7 +361,13 @@ function sitter(
 
 /** Stripes that read on the top: dark on a light one, light on a dark one. */
 /** Stubble, a moustache or a beard, with the mouth left to move through it. */
-function beard(g: Ctx, f: Figure, hx: number, ht: number, open: boolean) {
+export function beard(
+	g: Ctx,
+	f: Figure,
+	hx: number,
+	ht: number,
+	open: boolean,
+) {
 	if (f.beard === 1)
 		for (let i = 1; i < 9; i += 2) rect(g, hx + i, ht + 8, 1, 1, f.skinShade);
 	else if (f.beard === 2) rect(g, hx + 3, ht + 6, 4, 1, f.hair);
@@ -375,7 +378,7 @@ function beard(g: Ctx, f: Figure, hx: number, ht: number, open: boolean) {
 }
 
 /** A small badge on the chest: a star, a heart or a bolt. */
-function badge(g: Ctx, f: Figure, x: number, base: number) {
+export function badge(g: Ctx, f: Figure, x: number, base: number) {
 	const bx = x - 5;
 	const by = base - 9;
 	if (f.badge === 1) {
@@ -394,7 +397,7 @@ function badge(g: Ctx, f: Figure, x: number, base: number) {
 }
 
 /** Pets as rows of letters: b its body, k its eye and nose, t and r a parrot's. */
-const PET_ROWS: Record<number, readonly string[]> = {
+export const PET_ROWS: Record<number, readonly string[]> = {
 	1: ['.b..b....', '.bbbb...b', 'bkbkbbbbb', '.bbbbbbb.', '.b.b.b.b.'],
 	2: ['.tt.', 'tkt.', 'ttr.', '.tt.', '.t..'],
 	3: ['b..b', 'bbbb', 'kbkb', 'bbbb'],
@@ -501,14 +504,14 @@ function drawDoing(
 	}
 }
 
-function stripeOn(shirt: string): string {
+export function stripeOn(shirt: string): string {
 	const n = parseInt(shirt.slice(1), 16);
 	const light = 0.3 * (n >> 16) + 0.59 * ((n >> 8) & 255) + 0.11 * (n & 255);
 	return light > 150 ? C.ink : C.paper;
 }
 
 /** What tells the tops apart: a hoodie's strings and pocket, a jersey's zip, a sweater's neck and hem. */
-function topMarks(g: Ctx, f: Figure, x: number, base: number) {
+export function topMarks(g: Ctx, f: Figure, x: number, base: number) {
 	if (f.top === 1) {
 		rect(g, x - 2, base - 10, 1, 2, C.paper);
 		rect(g, x + 1, base - 10, 1, 2, C.paper);
@@ -531,7 +534,7 @@ function topMarks(g: Ctx, f: Figure, x: number, base: number) {
 }
 
 /** Round frames over the eyes, or dark lenses on them, eye row ey. */
-function specs(g: Ctx, f: Figure, hx: number, ey: number) {
+export function specs(g: Ctx, f: Figure, hx: number, ey: number) {
 	if (f.glasses === 1) {
 		for (const lx of [hx + 1, hx + 6]) {
 			rect(g, lx, ey - 1, 3, 1, C.ink);
@@ -619,17 +622,11 @@ function leftBehind(g: Ctx, f: Figure, x: number, base: number) {
 }
 
 /** The trainer drawn at the rug's right, facing left; the others are moved and turned from it. */
-const AT_X = 263;
-const FRONT = [251, 128];
-const REAR = [275, 128];
-const BB = [263, 130];
-const SADDLE = [268, 118];
-const BARS = [255, 117];
+export const AT_X = 263;
 
 /**
- * A bike on its trainer, facing the rug: a chunky sprite at the people's
- * own scale, two-pixel tubes and wheels, its rider built like everyone on
- * the sofa. Unridden, a towel hangs over the bars.
+ * A bike on its trainer, facing the rug, and its rider: the road's own cyclist
+ * (draw-rider.ts). Unridden, a towel hangs over the bars.
  */
 function bike(g: Ctx, s: SceneInput, b: Bike) {
 	const dx = b.x - AT_X;
@@ -642,65 +639,46 @@ function bike(g: Ctx, s: SceneInput, b: Bike) {
 		g.translate(AT_X * 2 + 1, 0);
 		g.scale(-1, 1);
 	}
-	ellipse(g, AT_X, BIKE_GROUND + 1, 18, 1, C.floorDark);
+	ellipse(g, AT_X, BIKE_GROUND + 1, 24, 1, C.floorDark);
 	outlined(
 		g,
 		[
-			[270, BIKE_GROUND - 2, 10, 2, C.cable],
-			[246, BIKE_GROUND - 1, 10, 1, C.cable],
+			[AT_X + 10, BIKE_GROUND - 2, 12, 2, C.cable],
+			[AT_X - 22, BIKE_GROUND - 1, 12, 1, C.cable],
 		],
 		C.ink,
 	);
-	for (const [cx, cy] of [FRONT, REAR]) {
-		disc(g, cx, cy, 7, C.ink);
-		disc(g, cx, cy, 5, C.floor);
-		ring(g, cx, cy, 5, C.lilac);
-		rect(g, cx - 1, cy - 1, 2, 2, C.lilac);
-	}
-	for (const [a, c] of [
-		[REAR, BB],
-		[REAR, SADDLE],
-		[SADDLE, BB],
-		[BB, BARS],
-		[SADDLE, BARS],
-		[BARS, FRONT],
-	])
-		limb(g, a, c, 2, C.violet, C.ink);
-	outlined(
-		g,
-		[
-			[265, 116, 7, 2, C.cable],
-			[251, 115, 5, 2, C.cable],
-		],
-		C.ink,
-	);
-	const angle = rider?.crank ?? 0.9;
-	const p1 = [BB[0] - Math.cos(angle) * 4, BB[1] + Math.sin(angle) * 4];
-	const p2 = [BB[0] + Math.cos(angle) * 4, BB[1] - Math.sin(angle) * 4];
-	if (!rider) {
-		limb(g, BB, p1, 1, C.lilac, C.ink);
-		limb(g, BB, p2, 1, C.lilac, C.ink);
-		outlined(g, [[252, 117, 3, 6, C.towel]], C.ink);
-	} else if (rider.faded)
-		faded(g, 262, 116, (f, x, base) => {
+	const stroke = ((rider?.crank ?? 0.9) / (Math.PI * 2)) * PEDAL_FRAMES;
+	const draw = (f: Ctx) =>
+		drawCyclist(f, rider ?? null, 'side', stroke, AT_X, BIKE_GROUND, {
+			talking: !!rider?.speaking && !s.still && Math.floor(s.t * 6) % 2 === 0,
+		});
+	if (rider?.faded)
+		faded(g, AT_X, BIKE_GROUND - 18, (f, x, base) => {
 			f.save();
-			f.translate(x - 262, base - 116);
-			onTheBike(f, s, rider, p1, p2);
+			f.translate(x - AT_X, base - BIKE_GROUND + 18);
+			draw(f);
 			f.restore();
 		});
-	else onTheBike(g, s, rider, p1, p2);
+	else draw(g);
 	g.restore();
 	if (!rider) return;
 	// Words and marks are never turned: placed by hand on the turned side.
 	const turn = (x: number, w: number) =>
 		(b.face > 0 ? AT_X * 2 + 1 - x - w : x) + dx;
-	if (rider.speaking) bubble(g, turn(266, 8), 88 + dy, s);
+	if (rider.speaking) bubble(g, turn(AT_X - 12, 8), 76 + dy, s);
 	if (rider.sounding)
-		sprite(g, NOTE, turn(254, 3), (rider.speaking ? 84 : 92) + dy, C.lilac);
+		sprite(
+			g,
+			NOTE,
+			turn(AT_X - 22, 3),
+			(rider.speaking ? 72 : 80) + dy,
+			C.lilac,
+		);
 	if (rider.watts <= 0) return;
 	const label = `${Math.round(rider.watts)} W`;
-	const x = turn(262, 1) - Math.round(textWidth(label) / 2);
-	const y = (rider.speaking ? 80 : 90) + dy;
+	const x = turn(AT_X - 8, 1) - Math.round(textWidth(label) / 2);
+	const y = (rider.speaking ? 68 : 78) + dy;
 	g.globalAlpha = 0.35;
 	for (const [ox, oy] of [
 		[-1, 0],
@@ -711,67 +689,6 @@ function bike(g: Ctx, s: SceneInput, b: Bike) {
 		text(g, label, x + ox, y + oy, C.watt);
 	g.globalAlpha = 1;
 	text(g, label, x, y, C.watt);
-}
-
-/** The rider: legs to the pedals, the knee toward the bars, a sitter's head and body. */
-function onTheBike(
-	g: Ctx,
-	s: SceneInput,
-	r: Rider,
-	p1: number[],
-	p2: number[],
-) {
-	const hip = [267, 116];
-	const leg = (pedal: number[], colour: string) => {
-		const thigh = 7;
-		const shin = 8;
-		const dx = pedal[0] - hip[0];
-		const dy = pedal[1] - hip[1];
-		const d = Math.min(thigh + shin - 0.01, Math.hypot(dx, dy));
-		const bend = Math.acos(
-			(thigh * thigh + d * d - shin * shin) / (2 * thigh * d),
-		);
-		const toward = Math.atan2(dy, dx);
-		const knee = [
-			hip[0] + Math.cos(toward + bend) * thigh,
-			hip[1] + Math.sin(toward + bend) * thigh,
-		];
-		limb(g, hip, knee, 3, colour, C.ink);
-		limb(g, knee, pedal, 2, colour, C.ink);
-		limb(g, BB, pedal, 1, C.lilac, C.ink);
-	};
-	leg(p2, r.pantsShade);
-	// Body, leaning to the bars, and the arm reaching them.
-	const hx = 255;
-	const ht = 97;
-	const parts: Part[] = [
-		[259, 106, 10, 9, r.shirt],
-		[hx, ht, 10, 9, r.skin],
-		[252, 110, 7, 2, r.shirt],
-		...hair(r, hx, ht),
-		...(r.scarf ? ([[258, 105, 8, 2, r.scarf]] as Part[]) : []),
-	];
-	if (r.muted)
-		parts.push(
-			[hx - 2, ht + 3, 2, 4, C.lilac],
-			[hx + 10, ht + 3, 2, 4, C.lilac],
-		);
-	outlined(g, parts, C.ink);
-	rect(g, 266, 106, 3, 9, r.shirtShade);
-	rect(g, 252, 112, 3, 2, r.skin);
-	rect(g, hx + 9, ht + 3, 1, 6, r.skinShade);
-	rect(g, hx + 1, ht + 8, 8, 1, r.skinShade);
-	rect(g, hx + 2, ht + 5, 1, 2, C.ink);
-	rect(g, hx + 7, ht + 5, 1, 2, C.ink);
-	const open = r.speaking && !s.still && Math.floor(s.t * 6) % 2 === 0;
-	rect(g, hx + 4, ht + 7, 2, open ? 2 : 1, open ? C.ink : r.skinShade);
-	specs(g, r, hx, ht + 5);
-	if (r.muted) {
-		rect(g, hx - 1, ht - 2, 12, 1, C.cable);
-		rect(g, hx - 2, ht - 1, 1, 4, C.cable);
-		rect(g, hx + 11, ht - 1, 1, 4, C.cable);
-	}
-	leg(p1, r.pants);
 }
 
 export function drawHearts(g: Ctx, s: SceneInput) {

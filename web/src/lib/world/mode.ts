@@ -1,7 +1,7 @@
 /**
  * The World control (#3214, ADR-0079): 3D or the flat road on this device,
  * and how much the world moves. Null while the rider never chose, which rides
- * Flat: 3D is the rider's to turn on (#3084, ADR-0066 amended).
+ * the world: Flat is for a machine that cannot draw it, or a rider who asks.
  */
 export type WorldMode = 'full' | 'steady' | 'light' | 'flat';
 
@@ -49,12 +49,12 @@ export function setWorldMode(mode: WorldMode): void {
 
 const PIXELS_KEY = 'wattroom.world.pixels.v1';
 
-/** Pixel 3D (pixel.ts) on this device: off until the rider turns it on. */
+/** Pixel 3D (pixel.ts) on this device: every ride's, until the rider picks Smooth. */
 export function worldPixels(): boolean {
 	try {
-		return localStorage.getItem(PIXELS_KEY) === '1';
+		return localStorage.getItem(PIXELS_KEY) !== '0';
 	} catch {
-		return false;
+		return true;
 	}
 }
 

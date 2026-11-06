@@ -177,7 +177,13 @@
 	// the whole place, which a picture above the room does not change.
 	const placeFit = $derived(fitOf(boxW, placeH));
 	const cinema = $derived(!!screen && placeFit >= 3);
-	const scale = $derived(cinema ? placeFit - 1 : fitOf(boxW, boxH));
+	// In whole pixels of the screen too: at 125 % a room pixel of 3 would be
+	// 3.75, and every fourth row a pixel short.
+	let dpr = $state(1);
+	const scale = $derived(
+		Math.max(1, Math.round((cinema ? placeFit - 1 : fitOf(boxW, boxH)) * dpr)) /
+			dpr,
+	);
 	const roomW = $derived(Math.max(SCENE_W, Math.floor(boxW / scale)));
 	const roomH = $derived(
 		Math.max(rowsAt(scale), Math.floor((cinema ? placeH : boxH) / scale)),
@@ -741,7 +747,7 @@
 	}
 </script>
 
-<svelte:window onkeydown={key} />
+<svelte:window onkeydown={key} bind:devicePixelRatio={dpr} />
 
 <div class="flex min-h-0 flex-1 flex-col" bind:clientHeight={placeH}>
 	{#if screen && !cinema}
@@ -760,7 +766,13 @@
 			bind:this={pan}
 			class="absolute inset-0 [scrollbar-width:none] overflow-x-auto overflow-y-hidden"
 		>
-			<div class="relative mx-auto h-full" style:width="{roomW * scale}px">
+			<div
+				class="relative h-full"
+				style:width="{roomW * scale}px"
+				style:margin-left="{Math.floor(
+					(Math.max(0, boxW - roomW * scale) / 2) * dpr,
+				) / dpr}px"
+			>
 				<canvas
 					bind:this={canvas}
 					width={roomW}

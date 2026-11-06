@@ -25,9 +25,9 @@
 			{ value: 'light', label: 'Light', icon: Sun },
 		];
 
-	// The World control (#3214, ADR-0079): where a rider turns 3D on for this
-	// device, and how much the world moves. Never chosen is Flat (#3084).
-	let mode = $state<WorldMode>(worldMode() ?? 'flat');
+	// The World control (#3214, ADR-0079): 3D or Flat on this device, and how
+	// much the world moves. Never chosen is the world.
+	let mode = $state<WorldMode>(worldMode() ?? 'full');
 	let chosen = $state(worldMode() !== null);
 	function choose(next: WorldMode) {
 		mode = next;
@@ -35,7 +35,7 @@
 		setWorldMode(next);
 	}
 
-	// Pixel 3D (pixel.ts): the 3D world in whole pixels, off until turned on.
+	// Pixel 3D (pixel.ts): the 3D world in whole pixels, until the rider picks Smooth.
 	let pixels = $state(worldPixels());
 	function look(on: boolean) {
 		pixels = on;
@@ -85,8 +85,6 @@
 			>
 		</div>
 	</div>
-	<!-- 3D is the rider's to turn on (#3084, ADR-0066 amended): Flat until
-	     they pick a 3D look, here or with "Ride in 3D" on a road ride. -->
 	<div class={ROW}>
 		<span class="eyebrow">3D world</span>
 		<div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
