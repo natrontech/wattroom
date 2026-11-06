@@ -145,6 +145,8 @@ type Hub struct {
 	// What makes a finished session durable (ADR-0034). Nil = no database,
 	// and a session leaves nothing.
 	recaps RecapKeeper
+	// What keeps a voice channel's room between calls (ADR-0094).
+	loungeKeep LoungeKeeper
 	// The lobby (#251): every signed-in client holds one socket here; holding
 	// it IS being online, and every presence change pings it. See lobby.go.
 	lobby     map[*lobbyClient]string
@@ -361,6 +363,14 @@ func (h *Hub) stateOf(channel string) *channelState {
 		rm.voiceNow = h.voiceRidersLocked(channel)
 		h.states[channel] = rm
 		h.launchChannel(rm)
+		if _, session := protocol.CrewOfPlace(channel); h.loungeKeep != nil && !session {
+			keeper := h.loungeKeep
+			safego.Go(h.log, "lounge load", func() {
+				if state, ok := keeper.Load(channel); ok {
+					rm.restoreLounge(state)
+				}
+			})
+		}
 		// Its "just played" from the log (#1432), on the worker: a DB read
 		// never happens under a lock, and a full queue simply leaves the
 		// history empty until the room plays something.

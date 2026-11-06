@@ -119,6 +119,30 @@ func (q *Queries) CrewRoleOf(ctx context.Context, arg CrewRoleOfParams) (string,
 	return column_1, err
 }
 
+const crewRoomMemory = `-- name: CrewRoomMemory :one
+select (select count(distinct r.session_id) from rides r
+         where r.crew_id = c.id and r.session_id is not null)::bigint as sessions,
+       (select count(*) from medals m where m.crew_id = c.id)::bigint as medals
+from crews c
+where c.id = $1
+`
+
+type CrewRoomMemoryRow struct {
+	Sessions int64
+	Medals   int64
+}
+
+// What the crew's room remembers: how many sessions it has ridden together and
+// how many medals it has won. Counts only: no rider, ride or number reaches
+// this. A session is counted from its rides, because recaps are pruned at 90
+// days and a room remembers longer.
+func (q *Queries) CrewRoomMemory(ctx context.Context, id pgtype.UUID) (CrewRoomMemoryRow, error) {
+	row := q.db.QueryRow(ctx, crewRoomMemory, id)
+	var i CrewRoomMemoryRow
+	err := row.Scan(&i.Sessions, &i.Medals)
+	return i, err
+}
+
 const deleteCrew = `-- name: DeleteCrew :exec
 delete from crews where id = $1
 `

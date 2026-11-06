@@ -214,3 +214,29 @@ func TestPinBoardIsBounded(t *testing.T) {
 		t.Fatalf("board grew past the cap: %d pins", got)
 	}
 }
+
+func TestCrewRoomCountsAndKeepsItsDoorShut(t *testing.T) {
+	h := setup(t)
+	crew := crewWith(t, h)
+	get := func(who string) *httptest.ResponseRecorder {
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/crews/"+crew+"/room", nil)
+		req.Header.Set("X-Test-User", who)
+		w := httptest.NewRecorder()
+		h.mux.ServeHTTP(w, req)
+		return w
+	}
+	member := get("alice")
+	if member.Code != http.StatusOK {
+		t.Fatalf("alice reading the room: %d %s", member.Code, member.Body.String())
+	}
+	var room map[string]int64
+	if err := json.NewDecoder(member.Body).Decode(&room); err != nil {
+		t.Fatalf("decoding the room: %v", err)
+	}
+	if room["sessions"] != 0 || room["medals"] != 0 {
+		t.Fatalf("a new crew remembers %+v", room)
+	}
+	if got := get("carol").Code; got != http.StatusNotFound {
+		t.Fatalf("carol reading the room: %d, want 404", got)
+	}
+}

@@ -140,6 +140,22 @@ func (s *Service) handleSetCrewPrefs(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, riderPrefsJSON{Notify: prefs.Notify, OnBoard: prefs.OnBoard})
 }
 
+// handleCrewRoom: what the crew's cozy room remembers, for its members. Two
+// counts and nothing about a rider: rides stay private, and a session counted
+// here is one the crew shared.
+func (s *Service) handleCrewRoom(w http.ResponseWriter, r *http.Request) {
+	crew, _, _, ok := s.crewByID(w, r)
+	if !ok {
+		return
+	}
+	row, err := s.store.Queries.CrewRoomMemory(r.Context(), crew.ID)
+	if err != nil {
+		httpx.Fail(w, s.log, "crew room failed", err, "The crew's room could not be loaded.", "crew", crew.ID)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]int64{"sessions": row.Sessions, "medals": row.Medals})
+}
+
 // handleCrewRecaps: the crew's session recaps (ADR-0034), for its current
 // members, and of each only the sessions in a channel the caller may enter —
 // docs/SPEC.md, because a recap is presence and presence is never a way into

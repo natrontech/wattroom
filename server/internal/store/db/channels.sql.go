@@ -80,13 +80,25 @@ func (q *Queries) ChannelAudience(ctx context.Context, channelID pgtype.UUID) ([
 	return items, nil
 }
 
+const channelLounge = `-- name: ChannelLounge :one
+select lounge from channels where id = $1
+`
+
+// What the channel's room looked like when it was last touched.
+func (q *Queries) ChannelLounge(ctx context.Context, id pgtype.UUID) ([]byte, error) {
+	row := q.db.QueryRow(ctx, channelLounge, id)
+	var lounge []byte
+	err := row.Scan(&lounge)
+	return lounge, err
+}
+
 const createChannel = `-- name: CreateChannel :one
 insert into channels (crew_id, kind, name, position, private)
 select $1, $2, $3,
        coalesce((select max(position) + 1 from channels where crew_id = $1 and kind = $2), 0),
        $4
 where (select count(*) from channels where crew_id = $1 and kind = $2) < $5::int
-returning id, crew_id, kind, name, position, private, sound_pack, created_at, announcement_id, autoplay_enabled, autoplay_order, autoplay_playlist_id
+returning id, crew_id, kind, name, position, private, sound_pack, created_at, announcement_id, autoplay_enabled, autoplay_order, autoplay_playlist_id, lounge
 `
 
 type CreateChannelParams struct {
@@ -124,6 +136,7 @@ func (q *Queries) CreateChannel(ctx context.Context, arg CreateChannelParams) (C
 		&i.AutoplayEnabled,
 		&i.AutoplayOrder,
 		&i.AutoplayPlaylistID,
+		&i.Lounge,
 	)
 	return i, err
 }
@@ -141,7 +154,7 @@ func (q *Queries) DeleteChannel(ctx context.Context, id pgtype.UUID) error {
 }
 
 const getChannel = `-- name: GetChannel :one
-select id, crew_id, kind, name, position, private, sound_pack, created_at, announcement_id, autoplay_enabled, autoplay_order, autoplay_playlist_id from channels where id = $1
+select id, crew_id, kind, name, position, private, sound_pack, created_at, announcement_id, autoplay_enabled, autoplay_order, autoplay_playlist_id, lounge from channels where id = $1
 `
 
 func (q *Queries) GetChannel(ctx context.Context, id pgtype.UUID) (Channel, error) {
@@ -160,6 +173,7 @@ func (q *Queries) GetChannel(ctx context.Context, id pgtype.UUID) (Channel, erro
 		&i.AutoplayEnabled,
 		&i.AutoplayOrder,
 		&i.AutoplayPlaylistID,
+		&i.Lounge,
 	)
 	return i, err
 }
@@ -273,7 +287,7 @@ func (q *Queries) ListChannelMembers(ctx context.Context, crewID pgtype.UUID) ([
 
 const listCrewChannels = `-- name: ListCrewChannels :many
 
-select id, crew_id, kind, name, position, private, sound_pack, created_at, announcement_id, autoplay_enabled, autoplay_order, autoplay_playlist_id from channels
+select id, crew_id, kind, name, position, private, sound_pack, created_at, announcement_id, autoplay_enabled, autoplay_order, autoplay_playlist_id, lounge from channels
 where crew_id = $1
 order by kind = 'voice', position, created_at, id
 `
@@ -306,6 +320,7 @@ func (q *Queries) ListCrewChannels(ctx context.Context, crewID pgtype.UUID) ([]C
 			&i.AutoplayEnabled,
 			&i.AutoplayOrder,
 			&i.AutoplayPlaylistID,
+			&i.Lounge,
 		); err != nil {
 			return nil, err
 		}
@@ -397,6 +412,20 @@ func (q *Queries) NamedChannelsFor(ctx context.Context, arg NamedChannelsForPara
 	return items, nil
 }
 
+const saveChannelLounge = `-- name: SaveChannelLounge :exec
+update channels set lounge = $2 where id = $1
+`
+
+type SaveChannelLoungeParams struct {
+	ID     pgtype.UUID
+	Lounge []byte
+}
+
+func (q *Queries) SaveChannelLounge(ctx context.Context, arg SaveChannelLoungeParams) error {
+	_, err := q.db.Exec(ctx, saveChannelLounge, arg.ID, arg.Lounge)
+	return err
+}
+
 const setChannelPosition = `-- name: SetChannelPosition :exec
 update channels set position = $2 where id = $1
 `
@@ -431,7 +460,7 @@ set name = $1, private = $2, sound_pack = $3,
     autoplay_enabled = $4, autoplay_order = $5,
     autoplay_playlist_id = $6
 where id = $7
-returning id, crew_id, kind, name, position, private, sound_pack, created_at, announcement_id, autoplay_enabled, autoplay_order, autoplay_playlist_id
+returning id, crew_id, kind, name, position, private, sound_pack, created_at, announcement_id, autoplay_enabled, autoplay_order, autoplay_playlist_id, lounge
 `
 
 type UpdateChannelParams struct {
@@ -470,6 +499,7 @@ func (q *Queries) UpdateChannel(ctx context.Context, arg UpdateChannelParams) (C
 		&i.AutoplayEnabled,
 		&i.AutoplayOrder,
 		&i.AutoplayPlaylistID,
+		&i.Lounge,
 	)
 	return i, err
 }
