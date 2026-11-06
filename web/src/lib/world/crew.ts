@@ -20,7 +20,9 @@ import {
 import { pose } from './figure/pose';
 import { fnv, seededLoadout, type Loadout } from './loadout';
 import { outfitOf, type Outfit } from './outfit';
-import { collides, type Viewer } from '$lib/wardrobe/guard';
+import { collides, guarded, type Viewer } from '$lib/wardrobe/guard';
+import { LOUNGE } from '$lib/lounge/palette';
+import type { Figure as CozyFigure } from '$lib/lounge/scene';
 import { DEFAULT_DARK_ID, themeById } from '$lib/themes';
 import { yOf } from './geometry';
 import { ROAD_W } from './terrain/road-profile';
@@ -29,7 +31,7 @@ import { thumbGeometry } from './cheer';
 import { makeTrail } from './trail';
 import { ramp } from './materials';
 import { PIXEL } from './pixel';
-import { makeAvatar, sheetOf, type Avatar } from './avatar';
+import type { Avatar } from './avatar';
 import { dress } from '$lib/lounge/figures';
 import { LANE, type Car } from './bunch';
 import { type Route } from '$lib/road/route';
@@ -99,6 +101,49 @@ function zoneLine(across: number, along: number): THREE.BufferGeometry {
 		}),
 	);
 }
+/**
+ * A rider in their cozy room look on the 3D figure (Jan, 2026-11-06): the
+ * room's colours on its slots, a cap for a helmet where they wear one, the
+ * room's violet bike. Every colour passes the viewer's guard, as a kit's does.
+ */
+function cozy(o: Outfit, f: CozyFigure, viewer: Viewer): Outfit {
+	const c = (hex: string) => new THREE.Color(guarded(hex, viewer));
+	const head = f.cap ?? f.hair;
+	return {
+		...o,
+		palette: {
+			...o.palette,
+			jersey: c(f.shirt),
+			jerseyAccent: c(f.shirtShade),
+			skin: c(f.skin),
+			hair: c(f.hair),
+			helmet: c(head),
+			helmetAccent: c(head),
+			shorts: c(f.pants),
+			shortsAccent: c(f.pantsShade),
+			sock: c(f.socks ?? f.pants),
+			sockAccent: c(f.socks ?? f.pantsShade),
+			shoe: c(f.shoes),
+			glove: c(f.skin),
+			frame: c(LOUNGE.violet),
+			frameAccent: c(LOUNGE.lilac),
+		},
+		jersey: {
+			pattern: f.stripes ? o.jersey.pattern : 0,
+			b: c(f.shirtShade),
+			c: c(f.shirt),
+		},
+	};
+}
+
+/** The head a chibi wears: big and round over a small rider. */
+const CHIBI_HEAD = 1.4;
+const CHIBI = new THREE.Matrix4().makeScale(CHIBI_HEAD, CHIBI_HEAD, CHIBI_HEAD);
+/** After the pose, which writes the bone's matrix afresh every frame. */
+function chibi(figure: Figure) {
+	figure.skeleton.bones.find((b) => b.name === 'head')?.matrix.multiply(CHIBI);
+}
+
 /** How far a sprite's ring shrinks from the 3D figure's: about the sprite's own wheelbase. */
 const HUG = 0.7;
 /** Seconds a new figure rides before it is first drawn, so it arrives in its riding posture. */
@@ -261,8 +306,17 @@ export function makeCrew(
 		if (known) return known;
 		const hue = hueOf(r.id);
 		const loadout = loadoutOf(r);
-		const look = JSON.stringify(loadout);
-		const outfit = outfitOf(loadout, style.kit, viewer);
+		const lounge = loungeLook?.(r.id);
+		const look =
+			JSON.stringify(loadout) + (loungeLook ? `|${lounge ?? r.id}` : '');
+		const plain = outfitOf(loadout, style.kit, viewer);
+		const outfit = loungeLook
+			? cozy(
+					plain,
+					dress({ id: r.id, name: r.name, loungeLook: lounge }),
+					viewer,
+				)
+			: plain;
 		const material = figureMaterial(outfit.kit, outfit.decal, outfit.jersey);
 		const figure = figureOf(outfit, look, lod, material);
 		figure.rotation.y = -Math.PI / 2; // the figure's +X forward becomes the world's heading
@@ -330,8 +384,7 @@ export function makeCrew(
 		light.visible = false;
 		figure.add(tag('marks', light, 'tail-light'));
 		const g = new THREE.Group();
-		// The sprite draws its own shadow on its own pixels.
-		shadow.visible = shadowed && !loungeLook;
+		shadow.visible = shadowed;
 		g.userData.rider = r.id;
 		g.add(
 			tag('figures', figure),
@@ -342,14 +395,7 @@ export function makeCrew(
 			tag('marks', chevron, 'chevron'),
 			tag('marks', thumb, 'cheer'),
 		);
-		const avatar = loungeLook
-			? makeAvatar(
-					sheetOf(
-						dress({ id: r.id, name: r.name, loungeLook: loungeLook(r.id) }),
-					),
-				)
-			: null;
-		if (avatar) g.add(tag('figures', avatar.mesh, 'avatar'));
+		const avatar = null;
 		group.add(g);
 		const view: View = {
 			group: g,
@@ -504,7 +550,10 @@ export function makeCrew(
 			pedal(r).crank = state.crank;
 			if (v.avatar)
 				v.avatar.set(state.crank, alpha, !!r.faded, (state.stand ?? 0) > 0.5);
-			else pose(v.figure, state);
+			else {
+				pose(v.figure, state);
+				if (loungeLook) chibi(v.figure);
+			}
 			if (r.you) {
 				you.set(
 					v.group.position.x,

@@ -19,14 +19,7 @@ import {
 	type Crew,
 	type Pedalling,
 } from './crew';
-import {
-	makeGhosts,
-	makeSpriteGhosts,
-	MOST_GHOSTS,
-	type GhostAt,
-	type Ghosts,
-} from './ghosts';
-import { dress as figureOf } from '$lib/lounge/figures';
+import { makeGhosts, MOST_GHOSTS, type GhostAt, type Ghosts } from './ghosts';
 import { makeWatchers } from './watchers';
 import { bunchLooks, type Loadout } from './loadout';
 import { makeTags, type Tags } from './tags';
@@ -302,15 +295,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		watchers = opts.loungeLook ? makeWatchers(route, world.villageNames) : null;
 		if (watchers) scene.add(watchers.group);
 		if (opts.ghosts) {
-			ghosts = opts.loungeLook
-				? makeSpriteGhosts(
-						figureOf({
-							id: you.id,
-							name: you.name,
-							loungeLook: opts.loungeLook(you.id),
-						}),
-					)
-				: makeGhosts(style, loadoutOf(you), opts.ftp);
+			ghosts = makeGhosts(style, loadoutOf(you), opts.ftp);
 			scene.add(ghosts.group);
 		}
 		if (bunch) {
