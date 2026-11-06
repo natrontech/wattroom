@@ -71,9 +71,22 @@ type RideCard struct {
 	// Watts is the per-second series. A ride whose blob could not be read
 	// still gets a card; it just has no trace.
 	Watts []int
+	// The workout's target at each second in watts, beside Watts (#4430):
+	// the blocks the ride was ridden to, 0 where the workout asked for no
+	// watts. Nil on a ride with no workout, which draws its watts alone.
+	Targets []float64
+	// Heart rate at each second, beside Watts; 0 where none was read. AvgHR
+	// is the ride's, over the seconds that had one.
+	HR    []int
+	AvgHR int
 	// On a road (#3142): each second's metres along it and height there,
-	// beside Watts. With them the card is a poster — the road it rode.
+	// beside Watts. With them a free ride's card is a poster — the road it
+	// rode.
 	Metres, Heights []float64
+	// Workout says the ride was ridden to a workout (ADR-0062's mode). On a
+	// road a workout is still drawn as the workout, with the road it rode
+	// small under it (#4430): in a workout, the workout comes first.
+	Workout bool
 	// Where the road's heights came from, printed small at the foot of a
 	// poster: data that is someone else's is credited where it shows (#3133).
 	HeightCredit string
