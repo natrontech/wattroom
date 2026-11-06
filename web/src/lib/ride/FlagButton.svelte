@@ -3,6 +3,7 @@
 	// surfaces had drawn this button themselves — the same 44×56 outline,
 	// the same icon — and only the session's carried the consent the tap needs.
 	import Flag from '@lucide/svelte/icons/flag';
+	import { tooltip } from '$lib/tooltip.svelte';
 	import { FLAG_ASKS } from './flag';
 
 	let {
@@ -20,7 +21,7 @@
 <button
 	onclick={onflag}
 	{disabled}
-	title={FLAG_ASKS[sends]}
+	{@attach tooltip('Flag a problem', FLAG_ASKS[sends])}
 	class="border-neon/40 text-neon hover:bg-neon/10 grid h-11 w-14 shrink-0 place-items-center rounded border disabled:opacity-40 max-md:w-auto max-md:flex-1"
 	aria-label="Flag a problem"><Flag size={18} /></button
 >

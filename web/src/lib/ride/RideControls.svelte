@@ -2,7 +2,7 @@
 	/**
 	 * Slot 1's control row on a ride alone (TARGETS ride-road-world 7): ⚑,
 	 * the view switch, TV, +1 min and Skip block as 44 px icons, named and
-	 * with tooltips; Change workout (#4257) and End ride in words. A road
+	 * with the app's tooltip (#4427); Change workout (#4257) and End ride in words. A road
 	 * workout's blocks end at their metres (#3499), so it shows neither +1 min
 	 * nor Skip (D13). With no workout there is nothing to skip or stretch, and
 	 * Easier and Harder lead the row as a free ride's do (TARGETS
@@ -23,6 +23,7 @@
 	import ViewSwitch from '$lib/world/ViewSwitch.svelte';
 	import type { createWorldView } from '$lib/world/world-view.svelte';
 	import type { createRideSession } from '$lib/workout/session.svelte';
+	import { tooltip } from '$lib/tooltip.svelte';
 
 	let {
 		session,
@@ -102,7 +103,7 @@
 				onclick={ontv}
 				class="{ICON} max-md:hidden"
 				aria-label="TV mode"
-				title="TV mode"><MonitorUp size={20} /></button
+				{@attach tooltip('TV mode')}><MonitorUp size={20} /></button
 			>
 		{/if}
 		{#if !session.road?.pinned && !open}
@@ -110,15 +111,18 @@
 				onclick={() => session.extend(60)}
 				class="{ICON} max-md:hidden"
 				aria-label="One more minute"
-				title="+1 min"><AlarmClockPlus size={20} /></button
+				{@attach tooltip('One more minute')}
+				><AlarmClockPlus size={20} /></button
 			>
 			<button
 				onclick={() => session.skip()}
 				disabled={last}
 				class={ICON}
 				aria-label="Skip block"
-				title={last ? 'Last block — End ride instead' : 'Skip block'}
-				><SkipForward size={20} /></button
+				{@attach tooltip(
+					'Skip block',
+					last ? 'Last block — End ride instead' : undefined,
+				)}><SkipForward size={20} /></button
 			>
 		{/if}
 		{#if onchange}

@@ -11,6 +11,7 @@
 	 * control's shape (FreeRiding's "what you set").
 	 */
 	import { askPage } from '$lib/session/computer-pages';
+	import { tooltip } from '$lib/tooltip.svelte';
 	import { computerShown } from '$lib/session/computer-shown.svelte';
 	import {
 		flipped,
@@ -80,7 +81,7 @@
 		onclick={() => to('3d')}
 		aria-pressed={state.pressed === '3d'}
 		disabled={!state.worldOffered}
-		title={why?.line}
+		{@attach tooltip(why?.line)}
 		class={seg(state.pressed === '3d')}
 		>3D{#if why?.short}<span class="text-muted ml-1 font-normal"
 				>{state.worldOffered ? '⟳ ' : ''}{why.short}</span

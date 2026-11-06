@@ -40,6 +40,7 @@
 	import NewAccountNotice from '$lib/components/NewAccountNotice.svelte';
 	import VerifyEmailGate from '$lib/components/VerifyEmailGate.svelte';
 	import ContextMenuHost from '$lib/components/ContextMenuHost.svelte';
+	import TooltipHost from '$lib/components/TooltipHost.svelte';
 	import RiderCardHost from '$lib/rider-card/RiderCardHost.svelte';
 	import ConfirmHost from '$lib/components/ConfirmHost.svelte';
 	import StatusEditor from '$lib/status-line/StatusEditor.svelte';
@@ -616,6 +617,7 @@
      `contents` leaves their fixed layout alone. -->
 <div class="contents" data-ride={riding ? '' : undefined}>
 	<ContextMenuHost {riding} />
+	<TooltipHost />
 	<RiderCardHost />
 	<ConfirmHost />
 </div>

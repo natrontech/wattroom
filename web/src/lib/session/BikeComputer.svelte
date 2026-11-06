@@ -24,6 +24,7 @@
 	import { gapLine } from '$lib/road/ghost';
 	import { shifterSlot } from '$lib/ble/controller-slot.svelte';
 	import { computerShown } from '$lib/session/computer-shown.svelte';
+	import { tooltip } from '$lib/tooltip.svelte';
 	import {
 		PAGE_NAMES,
 		TV_LABEL,
@@ -336,7 +337,9 @@
 					type="button"
 					onclick={() => turn(-1)}
 					aria-label="previous page, {PAGE_NAMES[turned(pages, shown, -1)]}"
-					title="Previous page"
+					{@attach tooltip(
+						`Previous page: ${PAGE_NAMES[turned(pages, shown, -1)]}`,
+					)}
 					class="icon-btn-lg -ml-2 shrink-0"
 					><ChevronLeft size={24} class={tv ? 'size-[3.4vh]' : ''} /></button
 				>
@@ -351,7 +354,7 @@
 					type="button"
 					onclick={() => turn(1)}
 					aria-label="next page, {PAGE_NAMES[turned(pages, shown, 1)]}"
-					title="Next page"
+					{@attach tooltip(`Next page: ${PAGE_NAMES[turned(pages, shown, 1)]}`)}
 					class="icon-btn-lg shrink-0"
 					><ChevronRight size={24} class={tv ? 'size-[3.4vh]' : ''} /></button
 				>

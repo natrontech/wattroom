@@ -123,20 +123,19 @@ describe('the world on a ride', () => {
 		expect(screen(onRoad)).toContain('data-surface="docked"');
 	});
 
-	it('gives the now bar its controls as named 44 px icons with tooltips, End ride the one word (TARGETS ride-road-world 7)', () => {
+	it('gives the now bar its controls as named 44 px icons, End ride the one word (TARGETS ride-road-world 7)', () => {
 		const onRoad = withProfile(
 			{ ...openers, road: { routeId: 'r1', fromM: 0, toM: 2000 } },
 			{ road: legsRoad([1000, 0], [1000, 5]) },
 		);
 		const html = controls(onRoad, { ontv: () => {}, onflag: () => {} });
-		// ⚑ keeps its own kit (FlagButton): a name and the tooltip that asks.
-		expect(html).toMatch(
-			/<button[^>]*title="[^"]+"[^>]*aria-label="Flag a problem"/,
-		);
+		// ⚑ keeps its own kit (FlagButton). The names' tooltips are the app's
+		// own (#4427), attached in the browser: tooltip.test.ts holds them.
+		expect(html).toMatch(/<button[^>]*aria-label="Flag a problem"/);
 		for (const name of ['TV mode', 'One more minute', 'Skip block'])
 			expect(html).toMatch(
 				new RegExp(
-					`<button[^>]*class="[^"]*h-11 w-11[^"]*" aria-label="${name}" title="[^"]+"`,
+					`<button[^>]*class="[^"]*h-11 w-11[^"]*" aria-label="${name}"`,
 				),
 			);
 		expect(html).toMatch(/>End ride<\/button>/);
