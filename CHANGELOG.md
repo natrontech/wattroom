@@ -17,6 +17,12 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.11.23] - 2026-11-06
+
+### Added
+
+- Your avatar stands on the pedals on steep climbs and in sprints, the bike rocking under you, and in every village people in the cozy room's style stand by the road and wave you through. (#4452)
+
 ## [2026.11.22] - 2026-11-06
 
 ### Added
@@ -4417,7 +4423,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.22...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.23...HEAD
+[2026.11.23]: https://github.com/natrontech/wattroom/compare/2026.11.22...2026.11.23
 [2026.11.22]: https://github.com/natrontech/wattroom/compare/2026.11.21...2026.11.22
 [2026.11.21]: https://github.com/natrontech/wattroom/compare/2026.11.20...2026.11.21
 [2026.11.20]: https://github.com/natrontech/wattroom/compare/2026.11.19...2026.11.20
