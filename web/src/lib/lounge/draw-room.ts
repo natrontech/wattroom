@@ -58,14 +58,14 @@ export function forgetWalls() {
  * lamp or the season changes, so a frame is one image and what moves.
  */
 export function drawBack(g: Ctx, s: SceneInput, ox: number, oy: number) {
-	const key = `${s.w}x${s.h}:${s.lampOn}:${s.season}:${s.sky}:${s.fire}:${s.moment}:${plantStage(s.club.sessions)}:${JSON.stringify(s.club.picks)}`;
+	const key = `${s.w}x${s.h}:${!!s.cinema}:${s.lampOn}:${s.season}:${s.sky}:${s.fire}:${s.moment}:${plantStage(s.club.sessions)}:${JSON.stringify(s.club.picks)}`;
 	if (back?.key !== key) {
 		const canvas = document.createElement('canvas');
 		canvas.width = s.w;
 		canvas.height = s.h;
 		const b = canvas.getContext('2d')!;
 		walls(b, s.w, s.h, oy, s.club.picks.wall);
-		if (oy >= 24) upperWall(b, s.w, ox, oy, s.moment === 'tour');
+		if (oy >= 24 && !s.cinema) upperWall(b, s.w, ox, oy, s.moment === 'tour');
 		const lamps = paintSides(b, s, ox, oy);
 		b.translate(ox, oy);
 		curtains(b);
@@ -83,7 +83,7 @@ export function drawBack(g: Ctx, s: SceneInput, ox: number, oy: number) {
 		mats(b);
 		rug(b, s.club.picks.rug);
 		table(b);
-		if (hasFront(s.w, s.h)) frontRow(b);
+		if (hasFront(s.w, s.h, s.cinema)) frontRow(b);
 		momentDressing(b, s.moment);
 		b.setTransform(1, 0, 0, 1, 0, 0);
 		foreground(b, s.w, s.h, oy);
@@ -131,7 +131,7 @@ function lightsOf(s: SceneInput, ox: number, oy: number, lamps: number[]) {
 				: { x: 160, y: 104, rx: 96, ry: 30, power: 0.6, on: 'floor' },
 		),
 	);
-	if (hasFront(s.w, s.h)) {
+	if (hasFront(s.w, s.h, s.cinema)) {
 		lights.push(
 			at({ x: 233, y: FRONT_Y - 18, rx: 40, ry: 30, power: 0.4, cool: true }),
 		);
@@ -527,7 +527,7 @@ export function drawLive(g: Ctx, s: SceneInput) {
 	if (s.fondue) drawFondue(g, s);
 	else if (s.pizza) pizza(g);
 	if (s.owl && s.season !== 'halloween') owl(g, s);
-	if (hasFront(s.w, s.h)) arcade(g, s);
+	if (hasFront(s.w, s.h, s.cinema)) arcade(g, s);
 }
 
 /** The table's lantern: a flame two pixels wide that never quite holds still. */
@@ -870,4 +870,24 @@ export function drawShade(g: Ctx, s: SceneInput, ox: number, oy: number) {
 		const breath = s.still ? 0.5 : hash3(Math.floor(s.t * 5), 1, 9);
 		veil(C.amberDark, 0.06 + breath * 0.01);
 	}
+}
+
+/**
+ * The projector screen on its roller: the player or the shared picture sits
+ * on the dark cloth, in the page over this canvas, so nothing is ever drawn
+ * on it.
+ */
+export function drawScreen(
+	g: Ctx,
+	{ x, y, w, h }: { x: number; y: number; w: number; h: number },
+) {
+	rect(g, x - 2, y - 2, w + 4, h + 4, C.ink);
+	rect(g, x - 1, y - 1, w + 2, h + 2, C.star);
+	rect(g, x, y, w, h, C.ink);
+	rect(g, x - 5, y - 5, w + 10, 4, C.ink);
+	rect(g, x - 4, y - 4, w + 8, 2, C.woodDark);
+	rect(g, x - 7, y - 6, 3, 6, C.ink);
+	rect(g, x + w + 4, y - 6, 3, 6, C.ink);
+	rect(g, x + Math.floor(w / 2) - 4, y + h + 2, 8, 2, C.ink);
+	rect(g, x + Math.floor(w / 2) - 3, y + h + 2, 6, 1, C.woodDark);
 }

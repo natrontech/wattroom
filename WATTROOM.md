@@ -86,7 +86,7 @@ It is not a training plan generator, not an open world, and not a content treadm
 - A YouTube playlist is one queue entry. A saved playlist is a saved queue. Uploaded MP3s join the crew's pool.
 - Spotify is a link out, never an API integration.
 - A soundboard clip is a file the channel fetches, not audio down the voice track.
-- An idle voice channel is the lounge: a pixel room of who is in the call. A camera, a shared screen, a ride or a video on the deck takes its place. House radio is one tap away on its record player.
+- A voice channel between sessions is the lounge: a pixel room of who is in the call. It stays through a camera, a shared screen, a video and your own ride: a picture hangs on its wall, and only the rider leaves it, for the tiles, per device. A ride can look at it too: 3D, Flat, Map or Room. House radio is one tap away on its record player.
 - The server unfurls pasted links through a pinned-address fetch. The GIF picker (GIPHY) is proxied and posts a plain chat message.
 
 ## Data, privacy and competition
@@ -109,7 +109,7 @@ It is not a training plan generator, not an open world, and not a content treadm
 These were locked and are open again. A redesign may replace them; the rules above still bind it.
 
 - The app frame: one left sidebar beside the content, with the people column on the right.
-- The riding screen's layout: the slots, how they dock around the world, the bike computer paging slot 3, the desk sizes, the 3D/Flat/Map switch row.
+- The riding screen's layout: the slots, how they dock around the world, the bike computer paging slot 3, the desk sizes, the 3D/Flat/Map/Room switch row.
 - The look: the synthwave identity and palette, how a theme is built, the world's light, ground and flat-colour style.
 - Motion, except flash safety: at most one luminance flash per 10 s over 25 % of a 10° field (WCAG 2.3.1).
 

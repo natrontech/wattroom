@@ -10,6 +10,8 @@
 	import { goto } from '$app/navigation';
 	import { nowPanel } from '$lib/nav/now-panel.svelte';
 	import { rideBar } from '$lib/nav/ride-bar.svelte';
+	import { rideDock } from '$lib/nav/ride-dock.svelte';
+	import { rideRoom } from '$lib/channel/ride-room.svelte';
 	import AwayLeave from '$lib/nav/AwayLeave.svelte';
 	import VoiceControls from '$lib/nav/VoiceControls.svelte';
 	import { account, voiceUp } from '$lib/account.svelte';
@@ -180,6 +182,12 @@
 						? 'max-sm:hidden'
 						: ''}"
 					title="Back to {place.address.name}"
+					onclick={(event) => {
+						// Your ride stays on screen: the room opens under its numbers.
+						if (!rideRoom.offered) return;
+						event.preventDefault();
+						rideRoom.on = true;
+					}}
 				>
 					<Volume2
 						size={16}
@@ -256,6 +264,13 @@
 								>
 							{/if}
 						</div>
+					{:else if riding && !rideBar.on}
+						<a
+							href={rideDock.screen}
+							data-testid="back-to-ride"
+							class="btn btn-secondary min-h-11"
+							><Bike size={14} /> Back to ride</a
+						>
 					{/if}
 					{#if conn}<button
 							bind:this={nowPanel.music}

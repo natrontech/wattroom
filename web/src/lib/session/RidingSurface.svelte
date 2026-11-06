@@ -43,6 +43,7 @@
 		crew,
 		horizon,
 		world,
+		room,
 		moment,
 		centre,
 		dockIn = false,
@@ -72,6 +73,8 @@
 		horizon?: Snippet;
 		/** The world, drawn behind the docks. */
 		world?: Snippet;
+		/** The view switch's Room: the cozy room for ground, under the rail. */
+		room?: Snippet;
 		/** A moment card — a sprint armed or live (D12) — over the world. */
 		moment?: Snippet;
 		/** The one thing the corridor holds: the count-in's digit (TARGETS ride-countin 2). */
@@ -215,7 +218,7 @@
 		style={groundTop}
 		data-dock={world ? 'world' : 'horizon'}
 	>
-		{#if world}{@render world()}{:else if horizon}{@render horizon()}{/if}
+		{#if room}{@render room()}{:else if world}{@render world()}{:else if horizon}{@render horizon()}{/if}
 	</div>
 	{#if rail && world}
 		<!-- The rail stands on the world under a fade, edge to edge: no panel,

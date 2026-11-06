@@ -45,6 +45,8 @@
 		onFit,
 		onPick,
 		attach,
+		wall = false,
+		inRoom = false,
 	}: {
 		sources: StageSource[];
 		activeKey: string;
@@ -65,6 +67,10 @@
 		onPick: (key: string) => void;
 		/** Mounts the active source's video into the surface. */
 		attach: (node: HTMLElement) => void;
+		/** On the room's projector screen: its cloth is the column, the chips hang under it. */
+		wall?: boolean;
+		/** The room's picture: its chips only with a choice to make. */
+		inRoom?: boolean;
 	} = $props();
 
 	/** Where a popped-out stage was left; nothing about its size. */
@@ -227,7 +233,9 @@
 	{@attach fit}
 	class={popped
 		? 'bg-surface ring-ink/15 fixed top-24 left-24 z-[55] rounded-lg p-1.5 ring-1'
-		: 'mb-3'}
+		: wall
+			? 'relative h-full'
+			: 'mb-3'}
 >
 	{#if popped}
 		<div
@@ -265,7 +273,9 @@
 		{@attach wheelZoom}
 		{@attach reclamp}
 		{@attach aspect}
-		class="ring-neon/40 relative overflow-hidden rounded-lg bg-black ring-1 {popped
+		class="relative overflow-hidden bg-black {wall && !popped
+			? ''
+			: 'ring-neon/40 rounded-lg ring-1'} {popped
 			? 'w-[720px] max-w-[90vw]'
 			: height
 				? 'mx-auto'
@@ -358,8 +368,13 @@
 	</div>
 
 	<!-- Who is on stage, and who else could be. One tap swaps — from a bike,
-	     so 44 px (ux.md); these were 24 (audit 2026-09-09). -->
-	<div class="mt-1.5 flex flex-wrap items-center gap-1.5">
+	     so 44 px (ux.md); these were 24 (audit 2026-09-09). On the wall they
+	     hang under the screen, and only with a choice to make. -->
+	<div
+		class="mt-1.5 flex flex-wrap items-center gap-1.5 {wall
+			? 'absolute top-full left-0'
+			: ''} {inRoom && sources.length < 2 ? 'hidden' : ''}"
+	>
 		{#each sources as source (source.key)}
 			<button
 				onclick={() => onPick(source.key)}
@@ -376,7 +391,7 @@
 				{source.label}
 			</button>
 		{/each}
-		<span class="text-muted-dim ml-auto text-[10px]"
+		<span class="text-muted-dim ml-auto text-[10px] {inRoom ? 'hidden' : ''}"
 			>{seated
 				? 'everyone is watching together'
 				: 'scroll to zoom · drag to pan'}{popped

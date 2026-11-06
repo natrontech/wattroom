@@ -126,10 +126,14 @@
 		     the ride into a session from here while pedalling. -->
 		<button
 			onclick={() => channel.openPicker()}
+			aria-label="Start a session"
 			class="btn btn-accent {compact
 				? 'btn-ride'
 				: 'btn-lg ride-stage:ride-word'}"
-			><Radio size={15} /> Start a session</button
+			><Radio size={15} />
+			{#if compact}<span class="2xl:hidden">Session</span>{/if}
+			<span class={compact ? 'max-2xl:hidden' : ''}>Start a session</span
+			></button
 		>
 	{:else if phase === 'countdown'}
 		<button

@@ -97,7 +97,7 @@
 		{#if onflag}<span class="contents max-md:hidden"
 				><FlagButton {onflag} sends="after" /></span
 			>{/if}
-		{#if session.road}<ViewSwitch {world} {drawn} />{/if}
+		<ViewSwitch {world} {drawn} road={!!session.road} />
 		{#if ontv}
 			<!-- A phone has no TV to send to, and its bar keeps End in view. -->
 			<button

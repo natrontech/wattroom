@@ -6,7 +6,8 @@
 	// hung under them here in the page. A screen too narrow for the room pans
 	// across it. House radio is queued on the deck like a track and
 	// HouseRadioDeck plays it.
-	import { tick, untrack } from 'svelte';
+	import { tick, untrack, type Snippet } from 'svelte';
+	import { rideRoom } from '$lib/channel/ride-room.svelte';
 	import Disc3 from '@lucide/svelte/icons/disc-3';
 	import SkipForward from '@lucide/svelte/icons/skip-forward';
 	import Sparkles from '@lucide/svelte/icons/sparkles';
@@ -106,6 +107,7 @@
 		SPOT_HINTS,
 		DOING_WORDS,
 		placeAt,
+		wallScreen,
 		type Crew,
 		type Doing,
 		drawScene,
@@ -117,7 +119,14 @@
 		type SceneInput,
 	} from '$lib/lounge/scene';
 
-	let { menuOf }: { menuOf: (id: string) => MenuEntry[] } = $props();
+	let {
+		menuOf,
+		screen,
+	}: {
+		menuOf: (id: string) => MenuEntry[];
+		/** What is shared: on the wall at this height, or at 0 above the room. */
+		screen?: Snippet<[number]>;
+	} = $props();
 
 	/** The fewest rows a room at scale s draws: the stage, and under it the radio's line in page pixels. */
 	const rowsAt = (s: number) => SCENE_H + Math.ceil(28 / s);
@@ -153,24 +162,36 @@
 
 	let boxW = $state(0);
 	let boxH = $state(0);
+	let placeH = $state(0);
 	// The biggest whole pixel at which all that matters on the stage fits (a
 	// 1200 px box takes 4). A phone is never under 2: it sees the middle of
 	// the stage and pans the rest.
-	const scale = $derived.by(() => {
-		let s = Math.max(1, Math.min(6, Math.floor(boxW / SAFE_W)));
-		while (s > 1 && boxH / s < rowsAt(s)) s--;
-		return s >= 2 || boxH / 2 < rowsAt(2) ? s : 2;
-	});
+	const fitOf = (w: number, h: number) => {
+		let s = Math.max(1, Math.min(6, Math.floor(w / SAFE_W)));
+		while (s > 1 && h / s < rowsAt(s)) s--;
+		return s >= 2 || h / 2 < rowsAt(2) ? s : 2;
+	};
+	// A picture on the wall takes the room a whole pixel down: the same floor,
+	// and the rows that win grow the wall. Under 3 it would be under 200 px
+	// tall, YouTube's floor, so it hangs above the room instead. Read from
+	// the whole place, which a picture above the room does not change.
+	const placeFit = $derived(fitOf(boxW, placeH));
+	const cinema = $derived(!!screen && placeFit >= 3);
+	const scale = $derived(cinema ? placeFit - 1 : fitOf(boxW, boxH));
 	const roomW = $derived(Math.max(SCENE_W, Math.floor(boxW / scale)));
-	const roomH = $derived(Math.max(rowsAt(scale), Math.floor(boxH / scale)));
+	const roomH = $derived(
+		Math.max(rowsAt(scale), Math.floor((cinema ? placeH : boxH) / scale)),
+	);
 	// Read by the frame on every tick, outside the effect that starts the loop.
-	let size = { w: SCENE_W, h: rowsAt(1) };
+	let size = { w: SCENE_W, h: rowsAt(1), cinema: false };
 	$effect(() => {
-		size = { w: roomW, h: roomH };
+		size = { w: roomW, h: roomH, cinema };
 	});
 
-	const crew = $derived(crewOf(channel.riders, 0, roomW, roomH));
-	const tags = $derived(tagsOf(crew, roomW, roomH));
+	const crew = $derived(
+		crewOf(channel.riders, 0, roomW, roomH, undefined, undefined, cinema),
+	);
+	const tags = $derived(tagsOf(crew, roomW, roomH, cinema));
 	const byId = $derived(new Map(channel.riders.map((r) => [r.id, r])));
 	/** Where the canvas's top sits in the box: above it when the box is too short. */
 	const top = $derived(boxH - roomH * scale);
@@ -530,7 +551,7 @@
 	/** Wake the cat here, with a heart over it. */
 	function wake() {
 		const cat = catAt(seed, serverNow() / 1000);
-		const { ox, oy } = middleOf(roomW, roomH);
+		const { ox, oy } = middleOf(roomW, roomH, cinema);
 		catAwakeUntil = clock + 4;
 		heart(ox + cat.x - 2, oy + cat.y - 24);
 	}
@@ -558,7 +579,7 @@
 		const box = canvas!.getBoundingClientRect();
 		const x = ((e.clientX - box.left) / box.width) * roomW;
 		const y = ((e.clientY - box.top) / box.height) * roomH;
-		const { ox, oy } = middleOf(roomW, roomH);
+		const { ox, oy } = middleOf(roomW, roomH, cinema);
 		const cat = catAt(seed, serverNow() / 1000);
 		return {
 			who: tags.find(
@@ -568,8 +589,8 @@
 				Math.abs(x - ox - cat.x) <= 11 &&
 				y - oy <= cat.y + 1 &&
 				y - oy >= cat.y - 20,
-			spot: spotAt(x - ox, y - oy, hasFront(roomW, roomH)),
-			seat: placeAt(x - ox, y - oy, hasFront(roomW, roomH)),
+			spot: spotAt(x - ox, y - oy, hasFront(roomW, roomH, cinema)),
+			seat: placeAt(x - ox, y - oy, hasFront(roomW, roomH, cinema)),
 		};
 	}
 
@@ -604,6 +625,7 @@
 		else if (spot === 'cork') void goto(`/crew/${station}`);
 		else if (spot === 'laptop' && running)
 			void goto(sessionPath(station, running.id));
+		else if (spot === 'bike' && rideRoom.on) rideRoom.on = false;
 		else if (spot === 'bike' && !device.spectator)
 			void goto(channel.address.training);
 	}
@@ -721,179 +743,202 @@
 
 <svelte:window onkeydown={key} />
 
-<!-- The room is the page here: it fills the place to its edges, and the
+<div class="flex min-h-0 flex-1 flex-col" bind:clientHeight={placeH}>
+	{#if screen && !cinema}
+		<div class="shrink-0 px-2 pt-2">{@render screen(0)}</div>
+	{/if}
+	<!-- The room is the page here: it fills the place to its edges, and the
      page's own buttons float over its wall. -->
-<section
-	class="relative min-h-0 flex-1 overflow-hidden"
-	aria-label="the lounge"
-	style:background={wall}
-	bind:clientWidth={boxW}
-	bind:clientHeight={boxH}
->
-	<div
-		bind:this={pan}
-		class="absolute inset-0 [scrollbar-width:none] overflow-x-auto overflow-y-hidden"
+	<section
+		class="relative min-h-0 flex-1 overflow-hidden"
+		aria-label="the lounge"
+		style:background={wall}
+		bind:clientWidth={boxW}
+		bind:clientHeight={boxH}
 	>
-		<div class="relative mx-auto h-full" style:width="{roomW * scale}px">
-			<canvas
-				bind:this={canvas}
-				width={roomW}
-				height={roomH}
-				onclick={click}
-				onmousemove={(e) => {
-					const over = at(e);
-					canvas!.style.cursor =
-						over.who || over.cat || over.spot || over.seat
-							? 'pointer'
-							: 'default';
-					canvas!.title = over.who
-						? ''
-						: over.seat
-							? 'Sit here'
-							: over.cat
-								? 'Pet the cat'
-								: over.spot
-									? SPOT_HINTS[over.spot]
-									: '';
-				}}
-				class="absolute bottom-0 left-0 block [image-rendering:pixelated]"
-				style:width="{roomW * scale}px"
-				style:height="{roomH * scale}px"
-				aria-label="The lounge: who is in the call, on the sofa, the cushions or a trainer. Click someone to send a heart, yourself to change your look, or the cat, the lamp, the window, the stove, the clock, the goldfish or the plant. The record player plays the next track for everyone."
-			></canvas>
-			<div role="group" aria-label="in the call">
-				{#each tags as tag (tag.id)}
-					{@const r = byId.get(tag.id)}
-					{#if r}
-						{@const Away = awayState(r.awayReason).icon}
-						<button
-							type="button"
-							{@attach contextMenu(() => menuOf(tag.id))}
-							onclick={(e) => touch(tag, e)}
-							title={r.you
-								? 'You: your look, a wave, a dance'
-								: `${r.name}, ${DOING_WORDS[doingOf[r.id] ?? '']}. Send a heart · ${MENU_HINT}`}
-							aria-label={described(tag.id)}
-							class="font-display pixel-words absolute flex -translate-x-1/2 items-center gap-1 leading-none font-semibold whitespace-nowrap {scale >=
-							4
-								? 'text-sm'
-								: scale === 3
-									? 'text-xs'
-									: 'text-[11px]'} {r.away ? 'text-muted' : 'text-ink'} {r.you
-								? 'decoration-neon underline decoration-2 underline-offset-2'
-								: ''}"
-							style:left="{tag.x * scale}px"
-							style:top="{top + tag.y * scale}px"
-							style:max-width="{Math.max(56, tag.span * scale)}px"
-						>
-							{#if r.away}<Away size={12} class="text-muted shrink-0" />{/if}
-							<span class="min-w-0 truncate">{r.name}</span>
-							{#if r.muted}<MicOff size={12} class="text-muted shrink-0" />{/if}
-							{#if r.riding && !crew.bikes.some((b) => b.rider?.id === tag.id)}<Bike
-									size={12}
-									class="text-muted shrink-0"
-								/>{/if}
-							{#if r.cameraOn}<Video
-									size={12}
-									class="text-muted shrink-0"
-								/>{/if}
-							{#if r.sharing}<ScreenShare
-									size={12}
-									class="text-muted shrink-0"
-								/>{/if}
-							{#if r.sounding}<Drum
-									size={12}
-									class="text-muted shrink-0"
-								/>{/if}
-							{#if r.linkLost}<WifiOff
-									size={12}
-									class="text-muted shrink-0"
-								/>{/if}
-						</button>
-					{/if}
-				{/each}
+		<div
+			bind:this={pan}
+			class="absolute inset-0 [scrollbar-width:none] overflow-x-auto overflow-y-hidden"
+		>
+			<div class="relative mx-auto h-full" style:width="{roomW * scale}px">
+				<canvas
+					bind:this={canvas}
+					width={roomW}
+					height={roomH}
+					onclick={click}
+					onmousemove={(e) => {
+						const over = at(e);
+						canvas!.style.cursor =
+							over.who || over.cat || over.spot || over.seat
+								? 'pointer'
+								: 'default';
+						canvas!.title = over.who
+							? ''
+							: over.seat
+								? 'Sit here'
+								: over.cat
+									? 'Pet the cat'
+									: over.spot
+										? SPOT_HINTS[over.spot]
+										: '';
+					}}
+					class="absolute bottom-0 left-0 block [image-rendering:pixelated]"
+					style:width="{roomW * scale}px"
+					style:height="{roomH * scale}px"
+					aria-label="The lounge: who is in the call, on the sofa, the cushions or a trainer. Click someone to send a heart, yourself to change your look, or the cat, the lamp, the window, the stove, the clock, the goldfish or the plant. The record player plays the next track for everyone."
+				></canvas>
+				{#if cinema && screen}
+					{@const cloth = wallScreen(roomW, roomH)}
+					<div
+						class="absolute"
+						data-testid="wall-screen"
+						style:left="{cloth.x * scale}px"
+						style:top="{top + cloth.y * scale}px"
+						style:width="{cloth.w * scale}px"
+						style:height="{cloth.h * scale}px"
+					>
+						{@render screen(cloth.h * scale)}
+					</div>
+				{/if}
+				<div role="group" aria-label="in the call">
+					{#each tags as tag (tag.id)}
+						{@const r = byId.get(tag.id)}
+						{#if r}
+							{@const Away = awayState(r.awayReason).icon}
+							<button
+								type="button"
+								{@attach contextMenu(() => menuOf(tag.id))}
+								onclick={(e) => touch(tag, e)}
+								title={r.you
+									? 'You: your look, a wave, a dance'
+									: `${r.name}, ${DOING_WORDS[doingOf[r.id] ?? '']}. Send a heart · ${MENU_HINT}`}
+								aria-label={described(tag.id)}
+								class="font-display pixel-words absolute flex -translate-x-1/2 items-center gap-1 leading-none font-semibold whitespace-nowrap {scale >=
+								4
+									? 'text-sm'
+									: scale === 3
+										? 'text-xs'
+										: 'text-[11px]'} {r.away ? 'text-muted' : 'text-ink'} {r.you
+									? 'decoration-neon underline decoration-2 underline-offset-2'
+									: ''}"
+								style:left="{tag.x * scale}px"
+								style:top="{top + tag.y * scale}px"
+								style:max-width="{Math.max(56, tag.span * scale)}px"
+							>
+								{#if r.away}<Away size={12} class="text-muted shrink-0" />{/if}
+								<span class="min-w-0 truncate">{r.name}</span>
+								{#if r.muted}<MicOff
+										size={12}
+										class="text-muted shrink-0"
+									/>{/if}
+								{#if r.riding && !crew.bikes.some((b) => b.rider?.id === tag.id)}<Bike
+										size={12}
+										class="text-muted shrink-0"
+									/>{/if}
+								{#if r.cameraOn}<Video
+										size={12}
+										class="text-muted shrink-0"
+									/>{/if}
+								{#if r.sharing}<ScreenShare
+										size={12}
+										class="text-muted shrink-0"
+									/>{/if}
+								{#if r.sounding}<Drum
+										size={12}
+										class="text-muted shrink-0"
+									/>{/if}
+								{#if r.linkLost}<WifiOff
+										size={12}
+										class="text-muted shrink-0"
+									/>{/if}
+							</button>
+						{/if}
+					{/each}
+				</div>
 			</div>
 		</div>
-	</div>
-	<div
-		class="font-display pixel-words text-muted bg-surface/85 absolute bottom-1 left-1 flex max-w-[calc(100%-0.5rem)] flex-wrap items-center gap-x-3 rounded px-2 py-0.5 text-xs"
-	>
-		{#if onAir}<button
-				type="button"
-				onclick={() => radioHeard.set(!radioHeard.current)}
-				aria-pressed={radioHeard.current}
-				class="btn btn-ghost btn-xs px-0 {radioHeard.current ? 'text-ink' : ''}"
-				><Disc3 size={13} />
-				{radioHeard.current
-					? 'Hearing house radio'
-					: 'House radio muted here'}</button
-			>
+		<div
+			class="font-display pixel-words text-muted bg-surface/85 absolute bottom-1 left-1 flex max-w-[calc(100%-0.5rem)] flex-wrap items-center gap-x-3 rounded px-2 py-0.5 text-xs"
+		>
+			{#if onAir}<button
+					type="button"
+					onclick={() => radioHeard.set(!radioHeard.current)}
+					aria-pressed={radioHeard.current}
+					class="btn btn-ghost btn-xs px-0 {radioHeard.current
+						? 'text-ink'
+						: ''}"
+					><Disc3 size={13} />
+					{radioHeard.current
+						? 'Hearing house radio'
+						: 'House radio muted here'}</button
+				>
+				<button
+					type="button"
+					onclick={crate}
+					title="Pick house radio's style for everyone"
+					aria-haspopup="menu"
+					class="btn btn-ghost btn-xs text-ink px-0"
+					>{pick === 'mix'
+						? `Mix · ${STYLE_NAMES[styleNow]}`
+						: PICK_NAMES[pick]}</button
+				>
+				<button
+					type="button"
+					onclick={next}
+					title="Next track, for everyone"
+					class="btn btn-ghost btn-xs text-ink px-0"
+					><SkipForward size={13} /> Next</button
+				>{:else}<button
+					type="button"
+					onclick={playRadio}
+					title="Lofi made for your crew, for everyone here"
+					class="btn btn-ghost btn-xs text-ink px-0"
+					><Disc3 size={13} /> Play house radio</button
+				>{/if}
 			<button
 				type="button"
-				onclick={crate}
-				title="Pick house radio's style for everyone"
+				onclick={moods}
+				title="Set the room's mood for everyone"
 				aria-haspopup="menu"
 				class="btn btn-ghost btn-xs text-ink px-0"
-				>{pick === 'mix'
-					? `Mix · ${STYLE_NAMES[styleNow]}`
-					: PICK_NAMES[pick]}</button
+				><Sparkles size={13} />
+				{mood ? MOODS[mood].name : 'Mood'}</button
 			>
 			<button
 				type="button"
-				onclick={next}
-				title="Next track, for everyone"
+				onclick={() => (furnishing = true)}
+				title="Furnish the room with your Batzen"
 				class="btn btn-ghost btn-xs text-ink px-0"
-				><SkipForward size={13} /> Next</button
-			>{:else}<button
+				><Armchair size={13} /> Furnish</button
+			>
+			<button
 				type="button"
-				onclick={playRadio}
-				title="Lofi made for your crew, for everyone here"
+				onclick={() => (browsing = true)}
+				title="Who has come by"
 				class="btn btn-ghost btn-xs text-ink px-0"
-				><Disc3 size={13} /> Play house radio</button
-			>{/if}
-		<button
-			type="button"
-			onclick={moods}
-			title="Set the room's mood for everyone"
-			aria-haspopup="menu"
-			class="btn btn-ghost btn-xs text-ink px-0"
-			><Sparkles size={13} />
-			{mood ? MOODS[mood].name : 'Mood'}</button
-		>
-		<button
-			type="button"
-			onclick={() => (furnishing = true)}
-			title="Furnish the room with your Batzen"
-			class="btn btn-ghost btn-xs text-ink px-0"
-			><Armchair size={13} /> Furnish</button
-		>
-		<button
-			type="button"
-			onclick={() => (browsing = true)}
-			title="Who has come by"
-			class="btn btn-ghost btn-xs text-ink px-0"
-			><BookOpen size={13} /> Album {album.length}/{VISITORS.length}</button
-		>
-		{#if onAir && nowPlaying}<span class="tabular-nums max-sm:hidden"
-				>{nowPlaying}</span
-			>{/if}
-		{#if onAir && radioHeard.current && mixer.music === 0}<span
-				>Music is at 0 in your mix.</span
-			>{/if}
-	</div>
-	{#if furnishing}<Furnish
-			crew={station}
-			owned={memory.owned}
-			picks={memory.picks}
-			shop={memory.shop}
-			onclose={() => (furnishing = false)}
-			onchange={reread}
-		/>{/if}
-	{#if gaming}<ArcadeGame
-			crew={station}
-			onclose={leaveGame}
-			onscore={reread}
-		/>{/if}
-	{#if browsing}<Album {album} onclose={() => (browsing = false)} />{/if}
-	{#if dressing}<LookEditor onclose={() => (dressing = false)} />{/if}
-</section>
+				><BookOpen size={13} /> Album {album.length}/{VISITORS.length}</button
+			>
+			{#if onAir && nowPlaying}<span class="tabular-nums max-sm:hidden"
+					>{nowPlaying}</span
+				>{/if}
+			{#if onAir && radioHeard.current && mixer.music === 0}<span
+					>Music is at 0 in your mix.</span
+				>{/if}
+		</div>
+		{#if furnishing}<Furnish
+				crew={station}
+				owned={memory.owned}
+				picks={memory.picks}
+				shop={memory.shop}
+				onclose={() => (furnishing = false)}
+				onchange={reread}
+			/>{/if}
+		{#if gaming}<ArcadeGame
+				crew={station}
+				onclose={leaveGame}
+				onscore={reread}
+			/>{/if}
+		{#if browsing}<Album {album} onclose={() => (browsing = false)} />{/if}
+		{#if dressing}<LookEditor onclose={() => (dressing = false)} />{/if}
+	</section>
+</div>

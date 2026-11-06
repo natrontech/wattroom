@@ -9,6 +9,9 @@
 	// instrument. A sprint takes the screen and gives it back, a game replaces
 	// the workout, a shared screen replaces both, and the instrument is what
 	// returns. The player is never overlaid — RMF — so the numbers go below it.
+	import NowPlaying from '$lib/channel/NowPlaying.svelte';
+	import { rideRoom } from '$lib/channel/ride-room.svelte';
+	import RideRoom from '$lib/ride/RideRoom.svelte';
 	import CountdownScreen from '$lib/session/CountdownScreen.svelte';
 	import CrewStrip from '$lib/session/CrewStrip.svelte';
 	import CrewRows from '$lib/session/CrewRows.svelte';
@@ -161,6 +164,7 @@
 	const docked = $derived(
 		inWorld && !device.narrow && channel.phase === 'live',
 	);
+	const inRoom = $derived(rideRoom.on && rideRoom.offered);
 	// The horizon's graph is the workout's one picture, its blocks in words,
 	// and slot 1 drops its strip (#4159). On a road too (#4426): a workout's
 	// horizon is its blocks, your power and your heart, never the road's
@@ -302,15 +306,8 @@
 			marker={false}
 		/>
 	{/snippet}
-	{#snippet nowPlaying()}
-		{@const current = channelConnection.call?.live.tick?.jukebox?.current}
-		{#if current}
-			<!-- Directly under the player, at its width (TARGETS ride-session-road 3). -->
-			<p class="truncate py-1 text-2xl leading-7">
-				{current.title} · <span class="text-muted">{current.addedBy}</span>
-			</p>
-		{/if}
-	{/snippet}
+	{#snippet nowPlaying()}<NowPlaying />{/snippet}
+	{#snippet roomSlot()}<RideRoom />{/snippet}
 	{#snippet gamePanel()}
 		{#if channel.game}
 			<GamePanel
@@ -387,12 +384,13 @@
 	<RidingSurface
 		roadMap={map ? roadMapView : undefined}
 		class="h-full"
-		world={inWorld ? road : undefined}
+		world={inWorld && !inRoom ? road : undefined}
+		room={inRoom ? roomSlot : undefined}
 		stage={inFocus === 'media'}
 		moment={inWorld && inFocus === 'sprint' ? moment : undefined}
 		centre={countingIn ? digit : undefined}
 		dockIn={countingIn}
-		seat={docked ? nowPlaying : undefined}
+		seat={docked && !inRoom ? nowPlaying : undefined}
 		bar={worldControls}
 		rail={quiet ? undefined : glance}
 	>

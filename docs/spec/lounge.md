@@ -1,6 +1,6 @@
 # The cozy room
 
-An idle voice channel is its room (`WATTROOM.md`). A camera, a shared screen, a video on the deck or a ride here takes its place. Everything in it is paint: nothing reaches a ride, and no rider's numbers leave one.
+A voice channel between sessions is its room (`WATTROOM.md`), until the rider picks Tiles, which this device remembers. A camera takes a strip along its bottom, and a shared screen or a video hangs on its wall. Everything in it is paint: nothing reaches a ride, and no rider's numbers leave one.
 
 ## What it remembers
 
@@ -23,6 +23,15 @@ An idle voice channel is its room (`WATTROOM.md`). A camera, a shared screen, a 
 | An emote shows for          | **6 s**                                                                                |
 | A towel after a ride        | **10 min**                                                                             |
 | Bulbs a rider lights        | every 3rd, every 2nd at two riders, all at three                                       |
+
+## A picture on the wall
+
+| What                 | Number                                                                  |
+| -------------------- | ----------------------------------------------------------------------- |
+| The room's pixel     | one whole step smaller, so the floor stays and the wall grows           |
+| The screen           | **16:9**, centred, from **10** rows under the ceiling to the sofa's top |
+| Hangs above the room | where the room's pixel would fit under **3**: a phone                   |
+| A ride's Room view   | the same room, under the ride's numbers                                 |
 
 ## Visitors
 

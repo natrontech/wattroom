@@ -146,10 +146,10 @@ export function cooled(
 }
 
 /** Where the trainers stand in a room w × h: both sides of the rug, row under row. */
-export function bikeSlots(w: number, h: number): Bike[] {
-	const { oy } = middleOf(w, h);
+export function bikeSlots(w: number, h: number, cinema = false): Bike[] {
+	const { oy } = middleOf(w, h, cinema);
 	const slots: Bike[] = [];
-	const front = hasFront(w, h);
+	const front = hasFront(w, h, cinema);
 	for (let y = BIKE_GROUND; y + oy + 8 <= h; y += BIKE_DY) {
 		// The front row's furniture stands where a third row would.
 		if (front && y > FRONT_Y - 44 && y < FRONT_Y + 24) continue;
@@ -179,10 +179,10 @@ let cached: { key: string; spots: Spot[] } | undefined;
  * nearest the table first: a staggered grid a name's height apart, inside
  * the room and clear of the furniture.
  */
-export function floorSpots(w: number, h: number): Spot[] {
-	const key = `${w}x${h}`;
+export function floorSpots(w: number, h: number, cinema = false): Spot[] {
+	const key = `${w}x${h}:${cinema}`;
 	if (cached?.key === key) return cached.spots;
-	const { ox, oy } = middleOf(w, h);
+	const { ox, oy } = middleOf(w, h, cinema);
 	const spots: Spot[] = [];
 	for (let row = 0; 104 + row * SPOT_DY + oy <= h - 10; row++) {
 		const y = 104 + row * SPOT_DY;
@@ -199,7 +199,7 @@ export function floorSpots(w: number, h: number): Spot[] {
 		)
 			spots.push({ x, y });
 	}
-	const front = hasFront(w, h);
+	const front = hasFront(w, h, cinema);
 	const open = spots
 		.filter((p) => !blocked(p, front))
 		.sort((a, b) => fromTable(a) - fromTable(b));
@@ -218,14 +218,15 @@ export function crewOf(
 	h: number,
 	cooling: ReadonlySet<string> = NOBODY,
 	now: { sec: number; music: boolean } = { sec: 0, music: false },
+	cinema = false,
 ): Crew {
-	const slots = bikeSlots(Math.max(SCENE_W, w), h);
+	const slots = bikeSlots(Math.max(SCENE_W, w), h, cinema);
 	const onBikes = ridersOf(riders, t).slice(0, slots.length);
 	const bikes = slots
 		.slice(0, Math.max(BIKES_ALWAYS, onBikes.length))
 		.map((slot, i) => ({ ...slot, rider: onBikes[i] }));
 	const rest = seatedOf(riders, new Set(onBikes.map((r) => r.id)), cooling);
-	const front = hasFront(Math.max(SCENE_W, w), h);
+	const front = hasFront(Math.max(SCENE_W, w), h, cinema);
 	const up = (f: Figure): Figure => ({
 		...f,
 		doing: f.speaking ? '' : idleOf(f.id, now.sec, now.music),
@@ -247,7 +248,7 @@ export function crewOf(
 	for (let i = 0; i < SEATS && others.length; i++)
 		if (!sofa[i]) sofa[i] = up(others.shift()!);
 	while (sofa.length && !sofa[sofa.length - 1]) sofa.pop();
-	const spots = floorSpots(Math.max(SCENE_W, w), h);
+	const spots = floorSpots(Math.max(SCENE_W, w), h, cinema);
 	return {
 		bikes,
 		seated: sofa,
