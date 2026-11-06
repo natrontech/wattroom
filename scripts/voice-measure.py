@@ -104,6 +104,8 @@ def main(directory, label, scene):
             y = signal.resample_poly(y, sr // g, rate // g)
         print(stage, score(last_loop(y, mix, clean, labels, sr), clean, labels, sr))
     gate = json.load(open(f"{directory}/out-{label}-{scene}.json"))["gate"]
+    if not gate:  # a handheld runs no gate
+        return
     opens = sum(1 for a, b in zip(gate, gate[1:]) if b["open"] and not a["open"])
     closes = sum(1 for a, b in zip(gate, gate[1:]) if a["open"] and not b["open"])
     marks = [g["threshold"] for g in gate]

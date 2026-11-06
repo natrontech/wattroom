@@ -976,8 +976,24 @@ The speech level stays at −26.5 dBFS with peaks at −13 and nothing clipped, 
 
 The gate reads what the model leaves, so its mark sits at the new −50 dBFS floor in every scene and it opens and closes once per sentence. That floor is what brings word starts forward: the first 80 ms of a word arrive within 1 dB of the clean speech, where a fan cost up to 4.9 dB.
 
-### 22.5 Not measured
+### 22.5 A phone
 
+A handheld runs no gate and no model (#2142), so its call carried the whole room. It now captures with the browser's `noiseSuppression`. Real call, a sender whose pointer reads coarse, last whole loop, at the listener, without → with:
+
+| Scene (speech over noise) | PESQ-WB | Noise in pauses | Speech | First 80 ms of a word | STOI |
+| --- | --- | --- | --- | --- | --- |
+| Quiet (36 dB) | 3.25 → 3.69 | −59 → −76 dBFS | −22.4 → −22.5 | −0.2 → −0.7 dB | 0.998 → 0.997 |
+| Fan (15 dB) | 1.24 → 2.17 | −42 → −54 | −26.1 → −22.7 | 0.3 → −2.2 | 0.933 → 0.927 |
+| Bike (9 dB) | 1.13 → 1.39 | −35 → −38 | −25.9 → −23.0 | 0.7 → −2.5 | 0.869 → 0.885 |
+| Loud (4 dB) | 1.07 → 1.16 | −30 → −34 | −24.8 → −23.8 | 2.5 → −1.5 | 0.817 → 0.808 |
+
+A fan drops 12 dB and the bike mix barely moves, so a phone in a loud room stays well behind the desktop chain's 2.72 and 2.29. STOI, the intelligibility score, moves by 0.02 at most, and nothing clips. AGC lifts the speech about 3 dB on the fan and bike mixes. The first sound of a word comes out about 2.5 dB softer, and the 8 to 11 kHz loss from §22.3 stays.
+
+These numbers are Chrome's suppressor on this Mac. A phone may run its platform's own processing instead, so they say which way the change goes and not what a phone sounds like. The constraint is a bare value, which the spec treats as `ideal`, so a browser that cannot honour it still opens the mic.
+
+### 22.6 Not measured
+
+- A real phone, with its own mic and its own processing.
 - A real mic, a real fan, a real voice: synthetic speech stops at 11 kHz, and a neural model may treat a real rider's breathing differently.
 - Chrome's AEC under double-talk on speakers (a rider talking over the crew) needs a real speaker in the loop. It is the suspected cause of voices cutting out on speakers (#4339's note).
 - Chrome's input volume control moving a real mic's gain: the fake device has none.
