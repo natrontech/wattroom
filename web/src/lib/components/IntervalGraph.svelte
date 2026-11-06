@@ -288,7 +288,7 @@
 		'vector-effect': 'non-scaling-stroke' as const,
 	});
 
-	// One polyline per continuously-ridden run: skip and extend make the clock jump,
+	// One polyline per continuously-ridden run: skip makes the clock jump,
 	// and a single line across those jumps draws work that never happened. Each
 	// run is thinned to one low and one high per viewBox unit (#2878): the graph cannot
 	// draw more, and a long ride's line is rebuilt every second.

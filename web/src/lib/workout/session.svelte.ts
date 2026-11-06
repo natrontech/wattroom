@@ -33,6 +33,7 @@ export function createRideSession({
 		singleSpeed: DEFAULT_PROFILE.singleSpeed,
 	}),
 	onRecord,
+	onPlan,
 	kg = () => 0,
 }: RideOptions) {
 	const startedAt = new Date(startedAtMs ?? now());
@@ -72,11 +73,18 @@ export function createRideSession({
 	let reached = 0;
 	/** Blocks of the workouts before this one, so a block's numbers start over. */
 	let blocksBefore = 0;
-	// Whole seconds: a road's clock is fractional, and a step is not.
+	// Whole seconds: a road's clock is fractional, and a step is not. The
+	// workout as ridden, with the minutes +1 min added (#4445).
 	const part = (): RiddenPart => ({
-		workout,
+		workout: clock.workout,
 		reached: Math.min(clock.total, Math.ceil(Math.max(reached, clock.seconds))),
 	});
+	/** Every workout ridden, this one whole: what the crash buffer keeps. */
+	const planned = () =>
+		riddenWorkout([
+			...ridden,
+			{ workout: clock.workout, reached: clock.total },
+		]);
 
 	// A road workout's blocks end at their metres (#3499): the dot's
 	// position is the clock.
@@ -267,7 +275,7 @@ export function createRideSession({
 		},
 		/** The same with this workout whole: what a ride recovered after a crash saves as. */
 		get planned() {
-			return riddenWorkout([...ridden, { workout, reached: clock.total }]);
+			return planned();
 		},
 		/**
 		 * Ride `next` from its first block, here (#4257): the ride, its record,
@@ -286,6 +294,7 @@ export function createRideSession({
 			applyTarget();
 			clock.sync();
 			publish();
+			onPlan?.(planned());
 		},
 		/** The workout's clock; with no workout, the whole ride's (#4277). */
 		get elapsed() {
@@ -398,11 +407,12 @@ export function createRideSession({
 			applyTarget();
 			clock.sync();
 		},
-		/** Hold the current block longer (see the clock's extend). */
+		/** Lengthen the block under way (see the clock's extend). */
 		extend(seconds: number) {
 			if (!clock.extend(seconds)) return;
 			applyTarget();
 			clock.sync();
+			onPlan?.(planned());
 		},
 		/**
 		 * A road workout's place on its road (#3499): where the dot is and

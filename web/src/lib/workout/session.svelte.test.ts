@@ -138,6 +138,22 @@ describe('the sprint window (#1793)', () => {
 		session.stop();
 	});
 
+	it('runs a minute longer when +1 min lengthens the sprint (#4445)', async () => {
+		const session = createRideSession({
+			trainer: new SimulatedTrainer(),
+			workout: sprintWorkout,
+			ftp: 200,
+		});
+		await startRiding(session);
+		session.tick(5);
+		session.extend(60);
+		const window = session.sprint!;
+		expect(window.endsAtMs - window.startsAtMs).toBe(75_000);
+		pedal(session, 300, 100, 11);
+		expect(session.sprint).toBe(window);
+		session.stop();
+	});
+
 	it('counts the next sprint in before it starts', async () => {
 		const session = createRideSession({
 			trainer: new SimulatedTrainer(),
@@ -423,6 +439,38 @@ describe('createRideSession', () => {
 		pedal(session, 200, 90, 59);
 		session.extend(30);
 		expect(session.target).toBe(200); // still in block one rather than block two
+		session.stop();
+	});
+
+	it('extend after a skip keeps the new block and saves it a minute longer (#4445)', async () => {
+		const plans: Workout[] = [];
+		const session = createRideSession({
+			trainer: new SimulatedTrainer(),
+			workout,
+			ftp: 200,
+			onPlan: (planned) => plans.push(planned),
+		});
+		await startRiding(session);
+		pedal(session, 200, 90, 5);
+		session.skip();
+		pedal(session, 100, 90, 2);
+		session.extend(60);
+		// Block two, not block one again: its target and a minute more of it.
+		expect(session.target).toBe(100);
+		expect(session.info.segmentIndex).toBe(1);
+		expect(session.info.secondsRemainingInSegment).toBe(118);
+		expect(session.total).toBe(180);
+		pedal(session, 100, 90, 3);
+		// The clock never ran back: each second is recorded where it was ridden.
+		const clocks = session.recording.map((s) => s.clock);
+		expect(clocks).toEqual([...clocks].sort((a, b) => a - b));
+		// What it saves, and what the crash buffer is told, is the workout as ridden.
+		const steps = [
+			{ type: 'steady', seconds: 60, target: 1.0 },
+			{ type: 'steady', seconds: 120, target: 0.5 },
+		];
+		expect(session.ridden.steps).toEqual(steps);
+		expect(plans.at(-1)?.steps).toEqual(steps);
 		session.stop();
 	});
 });
