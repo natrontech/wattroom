@@ -223,6 +223,8 @@
 							? [{ initials: 'JAN', score: Number(params.get('hiscore')) }]
 							: [],
 						crowns: (params.get('crowns') ?? '').split(',').filter(Boolean),
+						togetherSec: Number(params.get('together') ?? 0) * 3600,
+						boardMetres: Number(params.get('km') ?? 0) * 1000,
 						medals: Number(params.get('medals') ?? 0),
 						polaroids: [...Array(Number(params.get('polaroids') ?? 0))].map(
 							(_, i) => i + 2,

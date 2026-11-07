@@ -22,6 +22,11 @@ export interface RoomMemory {
 	/** Each game's record, and who holds one. */
 	records: ArcadeRecord[];
 	crowns: string[];
+	/** Your own best at each game, for the logbook. */
+	bests: Record<string, number>;
+	/** The crew's time together in voice, and the km stone's metres. */
+	togetherSec: number;
+	boardMetres: number;
 }
 
 /** What GET /api/crews/{id}/arcade returns (crews/arcade.go). */
@@ -75,7 +80,17 @@ export const NO_MEMORY: RoomMemory = {
 	shop: {},
 	records: [],
 	crowns: [],
+	bests: {},
+	togetherSec: 0,
+	boardMetres: 0,
 };
+
+/** Hours together at which the room wears in: a mug ring, a sofa dent, a worn floor. */
+const WEAR_HOURS = [5, 20, 50];
+
+/** How worn in the room is, 0 for a new crew to 3. */
+export const wearStage = (togetherSec: number): number =>
+	WEAR_HOURS.filter((h) => togetherSec >= h * 3600).length;
 
 /** The cabinet's games in its order; games/index.ts holds how each plays. */
 const ARCADE_ORDER = ['bergpreis', 'feedzone', 'darts'] as const;
@@ -92,7 +107,7 @@ export const plantStage = (sessions: number): number =>
 
 export async function fetchRoomMemory(crew: string): Promise<RoomMemory> {
 	const [room, past, arcade] = await Promise.all([
-		api<Omit<RoomMemory, 'polaroids' | 'records' | 'crowns'>>(
+		api<Omit<RoomMemory, 'polaroids' | 'records' | 'crowns' | 'bests'>>(
 			`/api/crews/${crew}/room`,
 		),
 		api<{ recaps: SessionRecap[] }>(`/api/crews/${crew}/recaps`),
@@ -101,9 +116,16 @@ export async function fetchRoomMemory(crew: string): Promise<RoomMemory> {
 	if (!room.ok) return NO_MEMORY;
 	return {
 		...room.data,
+		togetherSec: room.data.togetherSec ?? 0,
+		boardMetres: room.data.boardMetres ?? 0,
 		...(arcade.ok
 			? recordsOf(arcade.data, ARCADE_ORDER)
 			: { records: [], crowns: [] }),
+		bests: arcade.ok
+			? Object.fromEntries(
+					Object.entries(arcade.data.games).map(([g, b]) => [g, b.best]),
+				)
+			: {},
 		polaroids: past.ok
 			? past.data.recaps
 					.slice(-POLAROIDS)

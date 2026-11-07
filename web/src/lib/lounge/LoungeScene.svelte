@@ -352,6 +352,19 @@
 			heardInvite = key;
 		});
 	});
+	/** The cabinet's games as the logbook lists your bests. */
+	const GAMES_LISTED = [
+		['bergpreis', 'Bergpreis'],
+		['feedzone', 'Feed zone'],
+		['darts', 'Darts'],
+		['toeggeli', 'Töggeli'],
+	] as const;
+	/** What the km stone says, on a hover and a tap. */
+	const stoneSays = $derived(
+		memory.boardMetres > 0
+			? `${Math.round(memory.boardMetres / 1000).toLocaleString('de-CH')} km ridden in this crew's sessions, by the riders on its weekly board.`
+			: 'The km stone counts km ridden in this crew’s sessions by riders on its weekly board. Switch “include me” on under Members to count yours.',
+	);
 	function openToeggeli() {
 		arcadeTab = 'toeggeli';
 		playGame();
@@ -717,6 +730,7 @@
 		else if (spot === 'board') void goto(`/crew/${station}/schedule`);
 		else if (spot === 'cork') void goto(`/crew/${station}`);
 		else if (spot === 'logbook') reading = true;
+		else if (spot === 'stone') toasts.push(stoneSays);
 		else if (spot === 'laptop' && running)
 			void goto(sessionPath(station, running.id));
 		else if (spot === 'bike' && rideRoom.on) rideRoom.on = false;
@@ -879,9 +893,11 @@
 								? 'Sit here'
 								: over.cat
 									? 'Pet the cat'
-									: over.spot
-										? SPOT_HINTS[over.spot]
-										: '';
+									: over.spot === 'stone'
+										? stoneSays
+										: over.spot
+											? SPOT_HINTS[over.spot]
+											: '';
 					}}
 					class="absolute bottom-0 left-0 block [image-rendering:pixelated]"
 					style:width="{roomW * scale}px"
@@ -1076,6 +1092,7 @@
 				owned={memory.owned}
 				picks={memory.picks}
 				shop={memory.shop}
+				togetherSec={memory.togetherSec}
 				onclose={() => (furnishing = false)}
 				onchange={reread}
 			/>{/if}
@@ -1118,6 +1135,21 @@
 			/>{/if}
 		{#if browsing}<Album {album} onclose={() => (browsing = false)} />{/if}
 		{#if dressing}<LookEditor onclose={() => (dressing = false)} />{/if}
-		{#if reading}<Logbook onclose={() => (reading = false)} />{/if}
+		{#if reading}<Logbook onclose={() => (reading = false)}>
+				{#snippet arcade()}
+					<ul class="grid gap-1 text-sm">
+						{#each GAMES_LISTED as [id, name] (id)}
+							<li class="flex justify-between gap-3">
+								<span>{name}</span>
+								<span class="font-display tabular-nums"
+									>{memory.bests[id]
+										? `${memory.bests[id]}${id === 'toeggeli' ? ' wins' : ''}`
+										: 'not yet'}</span
+								>
+							</li>
+						{/each}
+					</ul>
+				{/snippet}
+			</Logbook>{/if}
 	</section>
 </div>

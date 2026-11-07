@@ -11,6 +11,7 @@
 		owned,
 		picks,
 		shop,
+		togetherSec = 0,
 		onclose,
 		onchange,
 	}: {
@@ -18,6 +19,8 @@
 		owned: string[];
 		picks: Record<string, string>;
 		shop: Record<string, ShopItem>;
+		/** The crew's time together in voice, which unlocks some things. */
+		togetherSec?: number;
 		onclose: () => void;
 		onchange: () => void;
 	} = $props();
@@ -72,6 +75,10 @@
 	<p class="text-muted mt-1 text-sm">
 		You pay from your own Batzen, and it goes up for your whole crew.
 		{#if balance !== null}You have {balance}.{/if}
+		Some things come free with time together in voice: your crew has
+		<span class="font-display tabular-nums"
+			>{Math.floor(togetherSec / 3600)} h</span
+		> so far.
 	</p>
 	<div class="mt-4 grid gap-4">
 		{#each SLOTS as { slot, name } (slot)}
@@ -96,6 +103,12 @@
 								class="btn btn-xs {picks[slot] === id
 									? 'btn-primary'
 									: 'btn-secondary'}">{ITEM_NAMES[id]}</button
+							>
+						{:else if shop[id].hours}
+							<span
+								class="btn btn-xs btn-ghost pointer-events-none opacity-70"
+								title="Unlocks with time together in voice, for free"
+								>{ITEM_NAMES[id]} · {shop[id].hours} h together</span
 							>
 						{:else}
 							<button
