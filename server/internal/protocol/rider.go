@@ -31,6 +31,10 @@ type Rider struct {
 	// app already shows (#690). Identity the channel may see, the same rule
 	// the member list has followed since #253 — rides stay private.
 	TotalXp int64 `json:"totalXp"`
+	// The rider streak in weeks (docs/spec/glossary.md), so the cozy room can
+	// celebrate a week added. Read at the door and again when a ride of
+	// theirs is saved, with TotalXp, so a level gained shows without a rejoin.
+	StreakWeeks int `json:"streakWeeks,omitempty"`
 	// What the rider's figure wears, by the hash GET /api/looks/{hash}
 	// answers (#3155): a compact name for the outfit, so a client fetches the
 	// outfit once and keeps it, and the outfit itself never rides the tick.

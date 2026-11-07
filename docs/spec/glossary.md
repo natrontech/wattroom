@@ -88,6 +88,9 @@ Part of the product spec. [docs/SPEC.md](../SPEC.md) indexes every section and s
 | **Batzen** | WattRoom's one currency, for cosmetics only: one Batzen is one minute ridden at your own FTP. Earned by riding, never bought, traded or gifted (ADR-0069). |
 | **Wardrobe** | The items a rider owns — bought with Batzen or earned by an achievement, a medal or a streak (ADR-0069). |
 | **Outfit** | What a rider's figure wears: one owned item per slot. It rides on the roster, never on the tick (#3155). |
+| **Voice time** | A rider's own seconds in voice, in any voice channel, counted a minute at a time ([lounge.md](lounge.md)). Only the rider sees it, in the **logbook**, and it pays **no** XP and **no** Batzen. Not lounge XP, which pays for five full minutes on a call. |
+| **Time together** | A crew's seconds with **2** or more of its riders in one of its voice channels, counted a minute at a time for each such channel ([lounge.md](lounge.md)). A count on the crew's room; it pays nothing. |
+| **Logbook** | The book on the cozy room's desk: the rider's own level, **rider streak**, hours ridden and **voice time**, seen only by them. |
 | **Crew kit** | A kit a crew's owner or admins design; members wear it in the crew's sessions by default and can switch it off. Templates unlock by crew session hours (#3161). |
 | **Souvenir** | An item printed with the silhouette of a climb ridden in a crew session — never from a Strava-origin route, never with a place name (#3164). |
 | **Geo pack** | The pmtiles file of map data the world is built from — the Alps first (ADR-0070). One route's enrichment cut from it is a **corridor**. |

@@ -128,3 +128,33 @@ export function drawFondue(g: Ctx, s: SceneInput) {
 			C.paper,
 		);
 }
+
+/** How long a celebration's confetti flies, of the cheer's few seconds (standing.ts). */
+const CHEER_FLIES = 3;
+/** How fast the burst's air stops it, a second, and how fast it then flutters down. */
+const CHEER_DRAG = 3;
+const CHEER_FALL = 7;
+
+/**
+ * A level or a week of rider streak gained: confetti bursts up over the
+ * rider's head in a fan, stops in the air and flutters down. Held still,
+ * it hangs over them for the whole of it.
+ */
+export function drawCheers(g: Ctx, s: SceneInput) {
+	const hues = [C.amber, C.teal, C.heart, C.lilac, C.paper];
+	for (const c of s.cheers ?? []) {
+		const age = s.t - c.born;
+		if (age < 0 || age > CHEER_FLIES) continue;
+		const t = s.still ? 1 : age;
+		const out = 1 - Math.exp(-CHEER_DRAG * t);
+		for (let i = 0; i < 36; i++) {
+			const angle = Math.PI * (1 + hash3(i, 9, 1));
+			const reach = (60 + hash3(i, 9, 2) * 60) / CHEER_DRAG;
+			const sway = s.still ? 0 : Math.sin(s.t * 4 + i) * t;
+			const x = c.x + Math.cos(angle) * reach * out + sway;
+			const y = c.y + Math.sin(angle) * reach * out + CHEER_FALL * t;
+			const flip = !s.still && Math.floor(s.t * 6 + i) % 2 === 0;
+			rect(g, x, y, flip ? 1 : 2, flip ? 2 : 1, hues[i % hues.length]);
+		}
+	}
+}

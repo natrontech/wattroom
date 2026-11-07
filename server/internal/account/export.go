@@ -92,6 +92,7 @@ func (x *export) categories() []category {
 		x.scheduledSessions(), x.channelMembers(), x.soundboard(), x.rideUploads(),
 		x.avatar(), x.images(), x.emoji(), x.medals(), x.routes(), x.wallet(), x.wardrobe(),
 		x.roomItems(), x.arcadeScores(),
+		x.voiceTime(),
 	}
 }
 

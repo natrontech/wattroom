@@ -24,6 +24,21 @@ A voice channel between sessions is its room (`WATTROOM.md`), until the rider pi
 | A towel after a ride        | **10 min**                                                                             |
 | Bulbs a rider lights        | every 3rd, every 2nd at two riders, all at three                                       |
 
+## Your numbers
+
+The **logbook** on the desk opens your own numbers, seen only by you: your level and the XP to the next, your rider streak, the hours you have ridden and your voice time.
+
+| What                    | Number                                                                                  |
+| ----------------------- | --------------------------------------------------------------------------------------- |
+| Voice time              | **60 s** for each minute you are in voice, in any voice channel, once however many tabs |
+| A crew's time together  | **60 s** for each minute one of its voice channels has **2** or more riders in voice    |
+| Written                 | in one batch at most every **1 min**                                                    |
+| What either pays        | **no** XP and **no** Batzen                                                             |
+| Level badge on a name   | everyone's level, the number the rest of the app shows                                  |
+| A level gained          | the rider celebrates for everyone in the room: **5 s**, a banner and a fanfare          |
+| A rider streak extended | the same, with the weeks in a row                                                       |
+| Riders seen first       | never celebrate: a room only celebrates what changed while it was open                  |
+
 ## A picture on the wall
 
 | What                 | Number                                                                  |

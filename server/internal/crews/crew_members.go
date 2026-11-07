@@ -158,7 +158,14 @@ func (s *Service) handleCrewRoom(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "crew room failed", err, "The crew's room could not be loaded.", "crew", crew.ID)
 		return
 	}
-	room["sessions"], room["medals"] = row.Sessions, row.Medals
+	// The crew's hangout time together (lounge.md): seconds with two or more
+	// of its riders in one voice channel. A count, like the two above.
+	together, err := s.store.Queries.CrewTogetherSeconds(r.Context(), crew.ID)
+	if err != nil {
+		httpx.Fail(w, s.log, "crew room failed", err, "The crew's room could not be loaded.", "crew", crew.ID)
+		return
+	}
+	room["sessions"], room["medals"], room["togetherSec"] = row.Sessions, row.Medals, together
 	httpx.WriteJSON(w, http.StatusOK, room)
 }
 

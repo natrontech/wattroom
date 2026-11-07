@@ -365,6 +365,17 @@ func StreakXP(ctx context.Context, q *db.Queries, userID pgtype.UUID, at time.Ti
 // the ride rather than its week keeps the question the same one save asks —
 // a second ride in the same week still counts.
 func streakXPExcept(ctx context.Context, q *db.Queries, userID pgtype.UUID, at time.Time, except pgtype.UUID) int32 {
+	return int32(StreakBonus(riderStreakExcept(ctx, q, userID, at, except))) //nolint:gosec // capped at 250
+}
+
+// RiderStreak is the rider streak in weeks as it stands at `at`, every ride
+// already saved counted (glossary "Rider streak"): what the cozy room shows
+// and celebrates. A read failure is no streak, never a failed caller.
+func RiderStreak(ctx context.Context, q *db.Queries, userID pgtype.UUID, at time.Time) int {
+	return riderStreakExcept(ctx, q, userID, at, pgtype.UUID{})
+}
+
+func riderStreakExcept(ctx context.Context, q *db.Queries, userID pgtype.UUID, at time.Time, except pgtype.UUID) int {
 	tz, err := q.UserTimezone(ctx, userID)
 	if err != nil {
 		tz = nil
@@ -379,7 +390,7 @@ func streakXPExcept(ctx context.Context, q *db.Queries, userID pgtype.UUID, at t
 	for i, w := range weeks {
 		times[i] = w.Time
 	}
-	return int32(StreakBonus(WeekStreak(times, at, Zone(tz)))) //nolint:gosec // capped at 250
+	return WeekStreak(times, at, Zone(tz))
 }
 
 // Retry policy for session saves (#235): a Postgres blip at session close

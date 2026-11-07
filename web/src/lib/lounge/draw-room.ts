@@ -311,6 +311,12 @@ function desk(g: Ctx, lampOn: boolean) {
 		C.ink,
 	);
 	rect(g, 48, 47, 19, 9, C.screen);
+	// The logbook beside it (lounge.md): closed, its pages to the room, a
+	// ribbon over the edge. The cat's desk spot is on it.
+	outlined(g, [[31, 55, 10, 4, C.bookC]], C.ink);
+	rect(g, 33, 55, 5, 1, C.amber);
+	rect(g, 32, 57, 9, 1, C.paper);
+	rect(g, 38, 57, 1, 3, C.teal);
 	// The lamp's base, stem, arm and shade.
 	outlined(g, [[86, 58, 11, 2, C.trim]], C.ink);
 	rect(g, 91, 46, 1, 12, C.trim);

@@ -223,4 +223,5 @@ func (s *Service) rideSaved(ctx context.Context, userID pgtype.UUID, f stats.Rid
 	if err := s.evaluate(ctx, userID); err != nil {
 		s.log.Error("achievement check failed", "err", err, "rider", store.UUIDString(userID))
 	}
+	s.tellStanding(ctx, userID)
 }

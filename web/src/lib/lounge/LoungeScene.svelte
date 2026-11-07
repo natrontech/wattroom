@@ -79,6 +79,19 @@
 	import Album from '$lib/lounge/Album.svelte';
 	import ArcadeGame from '$lib/lounge/ArcadeGame.svelte';
 	import Furnish from '$lib/lounge/Furnish.svelte';
+	import Logbook from '$lib/lounge/Logbook.svelte';
+	import NotebookPen from '@lucide/svelte/icons/notebook-pen';
+	import Flame from '@lucide/svelte/icons/flame';
+	import { levelFromXp } from '$lib/level';
+	import { play } from '$lib/sound/cues';
+	import { enter, exit } from '$lib/motion/transitions';
+	import {
+		CHEER_SEC,
+		cheerWords,
+		cheersOf,
+		type Cheer,
+		type SeenStanding,
+	} from '$lib/lounge/standing';
 	import Armchair from '@lucide/svelte/icons/armchair';
 	import {
 		VISITOR_NOTES,
@@ -355,6 +368,39 @@
 		toasts.push(`New in the album: ${VISITOR_NOTES[kind].name}.`);
 	}
 
+	/** Your logbook is open: you tapped the book on the desk. */
+	let reading = $state(false);
+
+	/**
+	 * Who is celebrating a level or a week of rider streak, and since when on
+	 * the scene's clock (standing.ts). The roster's numbers move when a ride
+	 * saves; what this room saw first never celebrates.
+	 */
+	let cheering = $state<{ cheer: Cheer; at: number }[]>([]);
+	const standingSeen: SeenStanding = new Map();
+	$effect(() => {
+		const riders = channel.riders;
+		untrack(() => {
+			const fresh = cheersOf(standingSeen, riders);
+			if (!fresh.length) return;
+			const ids = new Set(fresh.map((c) => c.id));
+			cheering = [
+				...cheering.filter((c) => !ids.has(c.cheer.id)),
+				...fresh.map((cheer) => ({ cheer, at: clock })),
+			];
+			play(fresh.some((c) => c.level !== undefined) ? 'fanfare' : 'summit');
+		});
+	});
+	/** Who dances right now: a cheer of theirs, unless they are doing something else. */
+	const dancing = (riders: LiveRider[]) =>
+		cheering.length
+			? riders.map((r) =>
+					!r.emote && cheering.some((c) => c.cheer.id === r.id)
+						? { ...r, emote: 'dance' }
+						: r,
+				)
+			: riders;
+
 	/** Who rode a frame ago, and who keeps a towel on until when (figures.ts). */
 	let ridingSeen: Set<string> = new Set();
 	let coolingUntil: Map<string, number> = new Map();
@@ -378,8 +424,10 @@
 				? dark
 				: shade +
 					Math.max(-SHADE_RATE * dt, Math.min(SHADE_RATE * dt, dark - shade));
+		if (cheering.some((c) => clock - c.at >= CHEER_SEC))
+			cheering = cheering.filter((c) => clock - c.at < CHEER_SEC);
 		const drawn = crewOf(
-			riders,
+			dancing(riders),
 			still ? 0 : clock,
 			size.w,
 			size.h,
@@ -413,6 +461,10 @@
 			cat: catAt(seed, sec),
 			catAwake: clock < catAwakeUntil,
 			hearts,
+			cheers: cheering.flatMap(({ cheer, at }) => {
+				const tag = tags.find((t) => t.id === cheer.id);
+				return tag ? [{ x: tag.x, y: tag.head, born: at }] : [];
+			}),
 			hours: now.getHours(),
 			minutes: now.getMinutes(),
 			cuckoo:
@@ -497,6 +549,11 @@
 					label: 'Change your look',
 					icon: Shirt,
 					onSelect: () => (dressing = true),
+				},
+				{
+					label: 'Your logbook',
+					icon: NotebookPen,
+					onSelect: () => (reading = true),
 				},
 				...EMOTES.map(({ emote, label, icon }) => ({
 					label,
@@ -630,6 +687,7 @@
 		else if (spot === 'arcade') playGame();
 		else if (spot === 'board') void goto(`/crew/${station}/schedule`);
 		else if (spot === 'cork') void goto(`/crew/${station}`);
+		else if (spot === 'logbook') reading = true;
 		else if (spot === 'laptop' && running)
 			void goto(sessionPath(station, running.id));
 		else if (spot === 'bike' && rideRoom.on) rideRoom.on = false;
@@ -735,6 +793,7 @@
 		const r = byId.get(id);
 		if (!r) return '';
 		const marks = [
+			r.totalXp !== undefined && `level ${levelFromXp(r.totalXp)}`,
 			r.away && awayState(r.awayReason).label.toLowerCase(),
 			r.speaking && 'talking',
 			r.muted && 'muted',
@@ -798,7 +857,7 @@
 					class="absolute bottom-0 left-0 block [image-rendering:pixelated]"
 					style:width="{roomW * scale}px"
 					style:height="{roomH * scale}px"
-					aria-label="The lounge: who is in the call, on the sofa, the cushions or a trainer. Click someone to send a heart, yourself to change your look, or the cat, the lamp, the window, the stove, the clock, the goldfish or the plant. The record player plays the next track for everyone."
+					aria-label="The lounge: who is in the call, on the sofa, the cushions or a trainer. Click someone to send a heart, yourself to change your look or read your logbook, or the cat, the lamp, the window, the stove, the clock, the goldfish or the plant. The record player plays the next track for everyone."
 				></canvas>
 				{#if cinema && screen}
 					{@const cloth = wallScreen(roomW, roomH)}
@@ -839,6 +898,10 @@
 								style:max-width="{Math.max(56, tag.span * scale)}px"
 							>
 								{#if r.away}<Away size={12} class="text-muted shrink-0" />{/if}
+								{#if r.totalXp !== undefined}<span
+										class="bg-neon text-on-neon shrink-0 rounded-sm px-1 py-px tabular-nums"
+										>{levelFromXp(r.totalXp)}</span
+									>{/if}
 								<span class="min-w-0 truncate">{r.name}</span>
 								{#if r.muted}<MicOff
 										size={12}
@@ -865,6 +928,31 @@
 										class="text-muted shrink-0"
 									/>{/if}
 							</button>
+						{/if}
+					{/each}
+				</div>
+				<!-- A level or a week of streak gained, over the rider's head for
+				     everyone here (standing.ts), and said aloud to a screen reader. -->
+				<div role="status" aria-live="polite">
+					{#each cheering as { cheer } (cheer.id)}
+						{@const tag = tags.find((t) => t.id === cheer.id)}
+						{@const r = byId.get(cheer.id)}
+						{#if tag && r}
+							{@const Mark = cheer.level === undefined ? Flame : PartyPopper}
+							<p
+								in:enter={{ y: 8 }}
+								out:exit={{ y: -8 }}
+								class="font-display bg-neon text-on-neon pointer-events-none absolute flex -translate-x-1/2 -translate-y-full items-center gap-1.5 rounded px-2 py-1 leading-none font-bold whitespace-nowrap {scale >=
+								4
+									? 'text-base'
+									: 'text-sm'}"
+								style:left="{tag.x * scale}px"
+								style:top="{top + (tag.head - 12) * scale}px"
+							>
+								<Mark size={14} aria-hidden="true" />
+								<span class="sr-only">{r.name}:</span>
+								{cheerWords(cheer)}
+							</p>
 						{/if}
 					{/each}
 				</div>
@@ -961,5 +1049,6 @@
 			/>{/if}
 		{#if browsing}<Album {album} onclose={() => (browsing = false)} />{/if}
 		{#if dressing}<LookEditor onclose={() => (dressing = false)} />{/if}
+		{#if reading}<Logbook onclose={() => (reading = false)} />{/if}
 	</section>
 </div>

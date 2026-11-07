@@ -5,11 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 
 	"github.com/natrontech/wattroom/server/internal/av"
 	"github.com/natrontech/wattroom/server/internal/protocol"
+	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -79,6 +81,9 @@ func (s *Service) riderOf(ctx context.Context, user db.User, role, where, id str
 	}
 	rider := store.RiderOf(user)
 	rider.Role, rider.TotalXp, rider.Best20mWatts = liveRole(role), xp, int(best20m)
+	// The rider streak rides beside the level, so the cozy room can mark a
+	// week added when a ride saves (protocol.Rider.StreakWeeks).
+	rider.StreakWeeks = stats.RiderStreak(ctx, s.store.Queries, user.ID, time.Now())
 	if look != nil {
 		rider.Look = *look
 	}

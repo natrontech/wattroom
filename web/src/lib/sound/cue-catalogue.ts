@@ -191,7 +191,7 @@ export const CUES: Record<CueId, Cue> = {
 	fanfare: {
 		id: 'fanfare',
 		label: 'Medal fanfare',
-		hint: 'A medal, a category promotion, or a new best on a road. SPEC: promotions announce, demotions stay silent.',
+		hint: 'A medal, a category promotion, a level gained in the cozy room, or a new best on a road. SPEC: promotions announce, demotions stay silent.',
 		voices: [
 			{
 				type: 'square',
@@ -576,7 +576,7 @@ export const CUES: Record<CueId, Cue> = {
 	summit: {
 		id: 'summit',
 		label: 'Summit',
-		hint: 'Over the top of the climb. A major arpeggio, up.',
+		hint: 'Over the top of the climb, or a week added to a rider streak in the cozy room. A major arpeggio, up.',
 		voices: [
 			{ type: 'triangle', freq: note(4), at: 0, dur: 0.12, gain: 0.24 },
 			{ type: 'triangle', freq: note(7), at: 0.1, dur: 0.12, gain: 0.26 },

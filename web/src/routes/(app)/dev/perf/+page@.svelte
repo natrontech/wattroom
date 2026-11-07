@@ -169,9 +169,22 @@
 					beat: (t * 80) / 60,
 					pulsing: true,
 					disco: params.get('disco') !== '0',
-					cat: { x: 293, y: 40, pose: 'sleep', facing: 1, stride: 0 },
+					// `cat=desk` puts it on the logbook; `cheer=1` has the first
+					// sitter celebrate a level (standing.ts).
+					cat: {
+						...(params.get('cat') === 'desk'
+							? { x: 34, y: 60 }
+							: { x: 293, y: 40 }),
+						pose: 'sleep',
+						facing: 1,
+						stride: 0,
+					},
 					catAwake: false,
 					hearts: [],
+					cheers:
+						params.get('cheer') === '1'
+							? [{ x: 285, y: 72, born: Math.floor(t / 3) * 3 }]
+							: [],
 					hours: 21,
 					minutes: 30,
 					cuckoo: false,

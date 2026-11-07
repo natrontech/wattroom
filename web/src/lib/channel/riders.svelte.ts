@@ -145,6 +145,8 @@ export function createRiders(deps: RiderDeps) {
 				inSession: !!rider.inSession,
 				onSession: rider.onSession,
 				loungeLook: rider.loungeLook,
+				totalXp: rider.totalXp,
+				streakWeeks: rider.streakWeeks,
 				seat: rider.seat,
 				emote: rider.emote,
 				emoteTo: rider.emoteTo,
