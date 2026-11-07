@@ -36,7 +36,7 @@ func TestRoomLoopSurvivesAPanic(t *testing.T) {
 	h.launchChannel(rm)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", sessionDoor(h))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	conn := dial(t, "ws"+strings.TrimPrefix(srv.URL, "http")+"/ws/channels/flaky", "jan:owner")
@@ -79,7 +79,7 @@ func TestRoomLoopReleasesTheLockAfterAPanic(t *testing.T) {
 	h.launchChannel(rm)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", sessionDoor(h))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	conn := dial(t, "ws"+strings.TrimPrefix(srv.URL, "http")+"/ws/channels/wedged", "jan:owner")
@@ -123,7 +123,7 @@ func TestRoomIsClosedWhenItsLoopGivesUp(t *testing.T) {
 	h.launchChannel(rm)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", sessionDoor(h))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	conn := dial(t, "ws"+strings.TrimPrefix(srv.URL, "http")+"/ws/channels/doomed", "jan:owner")

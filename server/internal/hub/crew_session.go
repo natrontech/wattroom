@@ -165,5 +165,5 @@ func (h *Hub) HandleCrewSessionWS(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "this session has ended", http.StatusNotFound)
 		return
 	}
-	h.serveRoom(w, r, rider, place)
+	h.serveRoom(w, r, rider, place, false)
 }

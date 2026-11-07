@@ -58,6 +58,8 @@ const controlMinGap = 250 * time.Millisecond
 type client struct {
 	rider protocol.Rider
 	conn  *websocket.Conn
+	// A voice channel's socket (docs/SESSIONS.md): it opens no session.
+	call bool
 	// The session this socket rode in on (#2807), what ending that session
 	// severs it by. Set at connect and never written again.
 	session []byte
@@ -129,7 +131,11 @@ func (c *client) ping() int {
 // HandleWS upgrades the connection and pumps messages until the client leaves.
 // Membership is the price of entry: metrics are room-scoped (privacy is
 // architecture), so an unauthorized socket never reaches a room at all.
-func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
+func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) { h.door(w, r, true) }
+
+// door is the voice channel's door; call marks the sockets it lets in as
+// the call's, where no session opens (docs/SESSIONS.md).
+func (h *Hub) door(w http.ResponseWriter, r *http.Request, call bool) {
 	rider, channel, err := h.access.Authorize(r, r.PathValue("id"))
 	if err != nil {
 		if !errors.Is(err, av.ErrNoSession) && !errors.Is(err, av.ErrNotMember) {
@@ -143,13 +149,16 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not one of the people this voice channel admits", http.StatusForbidden)
 		return
 	}
-	h.serveRoom(w, r, rider, channel)
+	h.serveRoom(w, r, rider, channel, call)
 }
 
 // serveRoom upgrades an admitted rider's socket into the room at channel —
 // a voice channel's id or a crew session's place — and pumps it until the
 // client leaves.
-func (h *Hub) serveRoom(w http.ResponseWriter, r *http.Request, rider protocol.Rider, channel string) {
+//
+// call marks a voice channel's socket: a call and nothing else, where no
+// session opens (docs/SESSIONS.md).
+func (h *Hub) serveRoom(w http.ResponseWriter, r *http.Request, rider protocol.Rider, channel string, call bool) {
 	if !h.admitSocket(rider.ID) {
 		// Before the upgrade, like the 403: a shared resource is full.
 		http.Error(w, "too many open connections for this rider", http.StatusServiceUnavailable)
@@ -167,7 +176,7 @@ func (h *Hub) serveRoom(w http.ResponseWriter, r *http.Request, rider protocol.R
 	// it runs after rm.leave below.
 	rm := h.holdChannel(channel)
 	defer h.releaseChannel(channel)
-	c := &client{rider: rider, conn: conn, session: h.sessionOf(r), out: make(chan []byte, clientQueue)}
+	c := &client{rider: rider, conn: conn, session: h.sessionOf(r), out: make(chan []byte, clientQueue), call: call}
 	// This socket's own writer, so the room's tick never waits on it (#670).
 	writerDone := make(chan struct{})
 	defer close(writerDone)

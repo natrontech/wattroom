@@ -61,7 +61,7 @@ func tableHub(t *testing.T) (*Hub, string, *tableWins) {
 	kept := &tableWins{}
 	h.SetToeggeliKeeper(kept)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", sessionDoor(h))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	return h, "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/velvet", kept
