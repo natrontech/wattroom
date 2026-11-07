@@ -283,6 +283,8 @@ function spots(
 	route: Route,
 	world: World,
 	s: ReturnType<typeof sheet>,
+	from: number,
+	to: number,
 ): Spot[] {
 	const out: Spot[] = [];
 	const edge = FORMATION + 0.6;
@@ -305,7 +307,7 @@ function spots(
 	};
 	const pick = (list: number[], n: number) =>
 		list[Math.floor(noise(n) * list.length)];
-	for (let d = 0; d < route.length; d += 3) {
+	for (let d = from; d < to; d += 3) {
 		const seg = Math.floor(d / 70);
 		const r = noise(seg * 1.37 + world.seed * 1e-9);
 		const forest = r < 0.45;
@@ -352,19 +354,38 @@ function spots(
 	return out;
 }
 
+/** The road's stretches the roadside is built in: only those near you stand at a time. */
+const BLOCK_M = 300;
+/** How far behind you a stretch is kept: the chase camera looks back this far at most. */
+const BEHIND_M = 120;
+
+/**
+ * The stretches a rider `d` along a road `length` long sees, nearest first:
+ * a loop's wrap round to its start, a road's end where it lies.
+ */
+export function stretchesFor(d: number, length: number, loop: boolean) {
+	const last = Math.max(0, Math.ceil(length / BLOCK_M) - 1);
+	const at = Number.isFinite(d) ? d : 0;
+	const here = Math.floor(at / BLOCK_M);
+	const lo = Math.floor((at - BEHIND_M) / BLOCK_M);
+	const hi = Math.floor((at + REACH_M) / BLOCK_M);
+	const out: number[] = [];
+	for (let b = here; b <= hi; b++) out.push(b);
+	for (let b = here - 1; b >= lo; b--) out.push(b);
+	const kept = out.map((b) =>
+		loop
+			? ((b % (last + 1)) + last + 1) % (last + 1)
+			: Math.min(last, Math.max(0, b)),
+	);
+	return [...new Set(kept)];
+}
+
+/**
+ * The roadside, built a stretch at a time round where you are (`update`):
+ * a long road holds a few stretches, never the whole of it.
+ */
 export function makeRoadside(route: Route, world: World) {
 	const s = sheet();
-	const places = spots(route, world, s);
-	const geometry = new THREE.PlaneGeometry(1, 1).translate(0.5, 0.5, 0);
-	const cells = new Float32Array(places.length * 4);
-	const flips = new Float32Array(places.length);
-	places.forEach((p, i) => {
-		const c = s.kinds[p.kind].cell;
-		cells.set([c.x, c.y, c.w, c.h], i * 4);
-		flips[i] = p.flip ? 1 : 0;
-	});
-	geometry.setAttribute('aCell', new THREE.InstancedBufferAttribute(cells, 4));
-	geometry.setAttribute('aFlip', new THREE.InstancedBufferAttribute(flips, 1));
 	const material = new THREE.ShaderMaterial({
 		uniforms: {
 			uMap: { value: s.texture },
@@ -382,30 +403,89 @@ export function makeRoadside(route: Route, world: World) {
 		fragmentShader: SPRITE_FRAGMENT,
 		side: THREE.DoubleSide,
 	});
-	const mesh = new THREE.InstancedMesh(geometry, material, places.length);
-	const m = new THREE.Matrix4();
-	places.forEach((p, i) =>
-		mesh.setMatrixAt(i, m.makeTranslation(p.x, p.y, p.z)),
-	);
-	mesh.frustumCulled = false;
-	const shade = shadows(places, s);
-	const group = new THREE.Group().add(shade.mesh, mesh);
+	const shade = shadeMaterial();
+	const group = new THREE.Group();
+	const stretches = new Map<number, ReturnType<typeof stretch>>();
+
+	function stretch(b: number) {
+		const places = spots(
+			route,
+			world,
+			s,
+			b * BLOCK_M,
+			Math.min(route.length, (b + 1) * BLOCK_M),
+		);
+		const geometry = new THREE.PlaneGeometry(1, 1).translate(0.5, 0.5, 0);
+		const cells = new Float32Array(places.length * 4);
+		const flips = new Float32Array(places.length);
+		places.forEach((p, i) => {
+			const c = s.kinds[p.kind].cell;
+			cells.set([c.x, c.y, c.w, c.h], i * 4);
+			flips[i] = p.flip ? 1 : 0;
+		});
+		geometry.setAttribute(
+			'aCell',
+			new THREE.InstancedBufferAttribute(cells, 4),
+		);
+		geometry.setAttribute(
+			'aFlip',
+			new THREE.InstancedBufferAttribute(flips, 1),
+		);
+		const mesh = new THREE.InstancedMesh(geometry, material, places.length);
+		const m = new THREE.Matrix4();
+		places.forEach((p, i) =>
+			mesh.setMatrixAt(i, m.makeTranslation(p.x, p.y, p.z)),
+		);
+		mesh.frustumCulled = false;
+		const shadows = shadowsOf(places, s, shade);
+		const held = new THREE.Group().add(shadows.mesh, mesh);
+		group.add(held);
+		return {
+			count: places.length,
+			dispose() {
+				group.remove(held);
+				mesh.dispose(); // its instances' buffers
+				geometry.dispose();
+				shadows.dispose();
+			},
+		};
+	}
+
 	return {
 		group,
-		count: places.length,
+		/** Things standing now. */
+		count: () => [...stretches.values()].reduce((n, b) => n + b.count, 0),
+		/**
+		 * You are `d` along the road: the stretches round you stand, the rest
+		 * go. One is built a frame, the nearest first; `all` builds every one
+		 * now, for a first frame or a picture.
+		 */
+		update(d: number, all = false) {
+			const want = stretchesFor(d, route.length, !!route.loop);
+			for (const [b, held] of stretches)
+				if (!want.includes(b)) {
+					held.dispose();
+					stretches.delete(b);
+				}
+			for (const b of want) {
+				if (stretches.has(b)) continue;
+				stretches.set(b, stretch(b));
+				if (!all) return;
+			}
+		},
 		dispose() {
-			geometry.dispose();
+			for (const held of stretches.values()) held.dispose();
+			stretches.clear();
 			material.dispose();
-			s.texture.dispose();
 			shade.dispose();
+			s.texture.dispose();
 		},
 	};
 }
 
 /** A soft patch of shade on the ground under each thing, so it stands on the land and not over it. */
-function shadows(places: Spot[], s: ReturnType<typeof sheet>) {
-	const geometry = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
-	const material = new THREE.ShaderMaterial({
+function shadeMaterial() {
+	return new THREE.ShaderMaterial({
 		uniforms: {
 			uShade: { value: new THREE.Color(C.shade) },
 			uReach: { value: REACH_M },
@@ -437,6 +517,14 @@ function shadows(places: Spot[], s: ReturnType<typeof sheet>) {
 		polygonOffsetFactor: -2,
 		polygonOffsetUnits: -2,
 	});
+}
+
+function shadowsOf(
+	places: Spot[],
+	s: ReturnType<typeof sheet>,
+	material: THREE.ShaderMaterial,
+) {
+	const geometry = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
 	const mesh = new THREE.InstancedMesh(geometry, material, places.length);
 	const m = new THREE.Matrix4();
 	const scale = new THREE.Vector3();
@@ -454,8 +542,8 @@ function shadows(places: Spot[], s: ReturnType<typeof sheet>) {
 	return {
 		mesh,
 		dispose() {
+			mesh.dispose();
 			geometry.dispose();
-			material.dispose();
 		},
 	};
 }

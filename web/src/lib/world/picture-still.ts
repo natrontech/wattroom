@@ -22,6 +22,7 @@ export function pictureStill(opts: MountOptions, at: PictureMoment): Composed {
 			ftp: opts.ftp,
 			youId: opts.youId,
 			neon: opts.neon,
+			loungeLook: opts.loungeLook,
 			loop: opts.loop,
 			grids: opts.grids,
 			watts: at.watts,

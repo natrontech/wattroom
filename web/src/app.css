@@ -448,6 +448,19 @@
 	--world-px-prop-stone: #8a84a4;
 	--world-px-prop-shutter: #2f9a7a;
 	--world-px-prop-rock: #76709e;
+	/*
+	 * Diorama 3D's hour before sunset over Pixel 3D's world (look.ts's
+	 * dioramaLook): a warm lit side, the room's violet in the shade.
+	 */
+	--world-dio-sky-zenith: #4c5cc4;
+	--world-dio-sky-horizon: #f2b48e;
+	--world-dio-sky-sunward: #ffd08a;
+	--world-dio-sky-band: #ff9e78;
+	--world-dio-sky-light: #ffe2b4;
+	--world-dio-sky-shade: #4a3f94;
+	--world-dio-sun: #ffd9a0;
+	--world-dio-road-asphalt: #6a6694;
+	--world-dio-road-shoulder: #9a8fb0;
 
 	--world-kit-skin: #858585; /* #3413's neutral tone: none of the eight swatches */
 	--world-kit-shoe: #ece9f2;

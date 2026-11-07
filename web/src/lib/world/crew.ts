@@ -31,7 +31,7 @@ import { heartGeometry } from './cheer';
 import { makeTrail } from './trail';
 import { ramp } from './materials';
 import { DIORAMA, PIXEL } from './pixel';
-import { makeRiderSprite, riderSheet } from './rider-sprite';
+import { drawSheets, makeRiderSprite, riderSheet } from './rider-sprite';
 import type { Avatar } from './avatar';
 import type { RiderSprite } from './rider-sprite';
 import { dress } from '$lib/lounge/figures';
@@ -389,7 +389,7 @@ export function makeCrew(
 			tag('marks', chevron, 'chevron'),
 			tag('marks', heart, 'cheer'),
 		);
-		// Diorama 3D rides as the room's sprite (rider-sprite.ts); Pixel 3D and Smooth as the 3D figure.
+		// Diorama 3D rides as the room's sprite (rider-sprite.ts); Smooth as the 3D figure.
 		const avatar =
 			loungeLook && DIORAMA.value > 0
 				? makeRiderSprite(
@@ -489,6 +489,7 @@ export function makeCrew(
 		grazing = false,
 	): THREE.Vector3 {
 		for (const [r, v] of views) if (!riders.includes(r)) drop(r, v);
+		drawSheets();
 		sinceRank += real;
 		if (sinceRank >= RANK_EVERY || riders.some((r) => !views.has(r))) {
 			sinceRank = 0;

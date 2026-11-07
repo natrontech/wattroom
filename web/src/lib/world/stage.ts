@@ -154,8 +154,8 @@ export function buildStage(
 		style.shade,
 	);
 	group.add(hemi);
-	if (keyed) {
-		const sun = new THREE.DirectionalLight(style.key, 2.2);
+	const sun = keyed ? new THREE.DirectionalLight(style.key, 2.2) : null;
+	if (sun) {
 		sun.position
 			.copy(sunDir(style.sun.elevation, style.sun.azimuth))
 			.multiplyScalar(5000);
@@ -430,6 +430,7 @@ export function buildStage(
 			lit = true;
 			setLight(skyMat, l);
 			setLight(groundMat, l);
+			sun?.position.copy(l.sun).multiplyScalar(5000);
 			hemi.intensity = (l.keyed ? HEMI_KEYED : HEMI_SKY) * l.dusk;
 			horizonMat.color.setScalar(l.dusk);
 			if (starField) {

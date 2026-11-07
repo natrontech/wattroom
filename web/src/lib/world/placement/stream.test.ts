@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { beforeAll, describe, expect, it } from 'vitest';
 import { toRoute } from '$lib/road/route';
-import { RIDE } from '../look.test-helper';
+import { DIORAMA_RIDE, RIDE } from '../look.test-helper';
 import { syntheticPoints } from '../synthetic';
 import { generate, type World } from '../world';
 import { bannerRefusals, inWattBand } from './safety';
@@ -187,10 +187,12 @@ describe('the dev world against O13', () => {
 				for (const [k, v] of Object.entries(o))
 					walk(v, path ? `${path}.${k}` : k);
 		};
-		const { trail, zones, ...objects } = RIDE;
-		void trail;
-		void zones;
-		walk(objects, '');
+		for (const look of [RIDE, DIORAMA_RIDE]) {
+			const { trail, zones, ...objects } = look;
+			void trail;
+			void zones;
+			walk(objects, look.id);
+		}
 		expect(found).toEqual([]);
 	});
 });

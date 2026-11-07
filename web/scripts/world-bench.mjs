@@ -27,10 +27,10 @@ const [width, height] = (process.env.BENCH_VIEW ?? '1280x720')
 	.split('x')
 	.map(Number);
 const VIEW = { width, height };
-/** The 3D look (Settings → Look): `smooth`, the default, or `pixel`. */
-const LOOK = process.env.BENCH_LOOK ?? 'smooth';
-if (LOOK !== 'pixel' && LOOK !== 'smooth') {
-	console.error(`BENCH_LOOK is pixel or smooth, not ${LOOK}.`);
+/** The 3D look (Settings → Look): `diorama`, the default, or `smooth`. */
+const LOOK = process.env.BENCH_LOOK ?? 'diorama';
+if (LOOK !== 'diorama' && LOOK !== 'smooth') {
+	console.error(`BENCH_LOOK is diorama or smooth, not ${LOOK}.`);
 	process.exit(1);
 }
 const RIGS = [
@@ -66,7 +66,7 @@ async function bench(browser, rig) {
 			localStorage.setItem('wattroom.world-software.v1', '1');
 			localStorage.setItem('wattroom.world.pixels.v1', pixels);
 		},
-		LOOK === 'pixel' ? '1' : '0',
+		LOOK === 'diorama' ? 'd' : '0',
 	);
 	const page = await context.newPage();
 	const errors = [];
@@ -75,6 +75,8 @@ async function bench(browser, rig) {
 	const cdp = await context.newCDPSession(page);
 	await cdp.send('Emulation.setCPUThrottlingRate', { rate: rig.rate });
 	try {
+		// The perf page lives in the app: signed out, it is sent to the sign-in page and its world goes.
+		await page.goto(`${BASE}/api/auth/dev/start?as=Bench`);
 		await page.goto(`${BASE}/dev/perf?case=world`);
 	} catch (err) {
 		throw new Error(
@@ -182,7 +184,7 @@ try {
 
 const r0 = results[0];
 console.log(
-	`/dev/perf?case=world in ${LOOK === 'pixel' ? 'Pixel 3D' : 'Smooth'} at ${VIEW.width}×${VIEW.height} (${(r0.pixels / 1e6).toFixed(2)} MP), ` +
+	`/dev/perf?case=world in ${LOOK === 'diorama' ? 'Diorama 3D' : 'Smooth'} at ${VIEW.width}×${VIEW.height} (${(r0.pixels / 1e6).toFixed(2)} MP), ` +
 		`${r0.hz.toFixed(0)} Hz, ${SECONDS} s after ${WARMUP} s; renderer: ${r0.renderer}\n`,
 );
 console.log(

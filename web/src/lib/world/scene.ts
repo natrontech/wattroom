@@ -16,9 +16,9 @@ import { createLoop, type LoopStats, missWatch, watchPage } from './loop';
 import { softwareDrawing } from './software-drawing';
 import { gpuTimer } from './gpu-timer';
 import { dioramaPass } from './diorama';
-import { worldDiorama, worldPixels } from './mode';
-import { DIORAMA, pixelPass, rampAll, WORDS } from './pixel';
-import { SPRITE_LIGHT } from './rider-sprite';
+import { worldDiorama } from './mode';
+import { DIORAMA, rampAll, WORDS } from './pixel';
+import { drawSheets, SPRITE_LIGHT } from './rider-sprite';
 import {
 	deviceKey,
 	type Ladder,
@@ -98,14 +98,13 @@ export function mount(
 	canvas: HTMLCanvasElement,
 	opts: MountOptions,
 ): WorldScene {
-	// Pixel 3D draws its own edges, one pixel wide: no multisampling to pay for.
-	const pixels = worldPixels();
-	const diorama = !pixels && worldDiorama();
+	const diorama = worldDiorama();
 	// Before the crew is built: Diorama's riders are sprites (crew.ts).
 	if (diorama) DIORAMA.value = 1;
 	const renderer = new THREE.WebGLRenderer({
 		canvas,
-		antialias: !pixels,
+		// Diorama multisamples its own target (diorama.ts): the canvas gets only its pass and the words.
+		antialias: !diorama,
 		alpha: false,
 		stencil: false,
 		powerPreference: 'default', // never force a dual-GPU Mac onto its discrete GPU
@@ -127,10 +126,9 @@ export function mount(
 		world = compose(
 			{
 				...opts,
-				loungeLook:
-					pixels || diorama
-						? (opts.loungeLook ?? (() => undefined))
-						: undefined,
+				loungeLook: diorama
+					? (opts.loungeLook ?? (() => undefined))
+					: undefined,
 			},
 			canvas,
 		);
@@ -141,15 +139,9 @@ export function mount(
 	}
 	const { scene, camera } = world;
 	camera.layers.enable(WORDS);
-	const pass = pixels
-		? pixelPass(renderer)
-		: diorama
-			? dioramaPass(renderer)
-			: null;
+	const pass = diorama ? dioramaPass(renderer) : null;
 	const draw = (s: THREE.Object3D, c: THREE.PerspectiveCamera) =>
 		pass ? pass.render(s, c) : renderer.render(s, c);
-	// A canvas the browser scales blurs every world pixel: Pixel 3D's is drawn at the device's own, and never smoothed.
-	if (pixels) canvas.style.imageRendering = 'pixelated';
 	world.setFar(RUNGS[rung].far);
 	// Behind the sky, the fog's colour: what the horizon is at this light.
 	const clear = () => scene.fog && renderer.setClearColor(scene.fog.color);
@@ -173,11 +165,8 @@ export function mount(
 		const w = canvas.clientWidth;
 		const h = canvas.clientHeight;
 		if (!w || !h) return;
-		// Pixel 3D's scene is about 400 columns whatever the canvas: only its pass and its words draw at the device's pixels.
 		renderer.setPixelRatio(
-			pixels
-				? window.devicePixelRatio
-				: pixelRatio(w, h, window.devicePixelRatio, RUNGS[rung].pixels),
+			pixelRatio(w, h, window.devicePixelRatio, RUNGS[rung].pixels),
 		);
 		renderer.setSize(w, h, false);
 		camera.aspect = w / h;
@@ -280,7 +269,6 @@ export function mount(
 	let broke = false;
 	const lost = () => fail('context-lost');
 	function release() {
-		canvas.style.imageRendering = '';
 		world.dispose();
 		pass?.dispose();
 		renderer.dispose();
@@ -294,7 +282,7 @@ export function mount(
 	const unwatch = watchPage(canvas, loop.gate);
 	// The shaders compile off the main thread where the driver allows, and
 	// the first frame waits for them rather than stalling on them.
-	// Into the target where Pixel 3D draws: a program built for the screen's sRGB would build again on the first frame.
+	// Into the target where Diorama draws: a program built for the screen's sRGB would build again on the first frame.
 	if (pass) rampAll(scene);
 	if (pass) renderer.setRenderTarget(pass.sized());
 	const compiled = renderer.compileAsync(scene, camera);
@@ -340,7 +328,18 @@ export function mount(
 			loop.stop();
 			clearInterval(judge);
 			if (broke) return null;
-			const still = pictureStill({ ...opts, style }, at);
+			// Diorama's riders are the room's sprites in the picture too, drawn whole before it is shot.
+			const still = pictureStill(
+				{
+					...opts,
+					style,
+					loungeLook: diorama
+						? (opts.loungeLook ?? (() => undefined))
+						: undefined,
+				},
+				at,
+			);
+			drawSheets(Infinity);
 			// Both pictures share one wait: the eye above stands 70 m back, mostly over ground already in.
 			const until = performance.now() + PICTURE_WAIT_MS;
 			async function shoot(width: number, height: number) {

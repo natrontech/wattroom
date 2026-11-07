@@ -63,34 +63,40 @@ export function pixelLook(paint: Paint): Style {
 }
 
 /**
- * Diorama 3D's look (prototype): Pixel 3D's colours under a low sun, the
- * hour before it sets. The lit side of everything warm, its shade the
+ * Diorama 3D's look, every ride's: Pixel 3D's colours under a low sun, the
+ * hour before it sets, sinking with the ride. The lit side of everything warm, its shade the
  * room's violet, a peach sky at the horizon.
  */
-// ponytail: hex for the prototype; tokens (--world-dio-*) once the look is chosen.
 export function dioramaLook(paint: Paint): Style {
 	const look = pixelLook(paint);
+	const d = (token: string) => paint(`world-dio-${token}`);
 	return {
 		...look,
 		id: 'diorama',
 		label: 'Diorama',
 		sky: {
-			top: '#4c5cc4',
-			horizon: '#f2b48e',
-			sunward: '#ffd08a',
-			band: '#ff9e78',
+			top: d('sky-zenith'),
+			horizon: d('sky-horizon'),
+			sunward: d('sky-sunward'),
+			band: d('sky-band'),
 		},
-		sun: { ...look.sun, elevation: 12, disc: 'halo', color: '#ffd9a0' },
-		key: '#ffe2b4',
-		shade: '#4a3f94',
+		// Low, and lower by the finish: it touches the ranges as a ride with a known end ends.
+		sun: {
+			...look.sun,
+			elevation: 12,
+			sets: 3,
+			disc: 'halo',
+			color: d('sun'),
+		},
+		key: d('sky-light'),
+		shade: d('sky-shade'),
 		skyFill: 0.22,
 		fogK: 0.7e-4,
 		road: {
 			...look.road,
-			asphalt: '#6a6694',
-			shoulder: '#9a8fb0',
+			asphalt: d('road-asphalt'),
+			shoulder: d('road-shoulder'),
 		},
-		backdrop: { ...look.backdrop, snowCaps: true, tall: 1.9 },
 	};
 }
 

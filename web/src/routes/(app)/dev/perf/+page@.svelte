@@ -238,7 +238,7 @@
 	/** The ride's world, full screen as a ride draws it, for `make world-bench`
 	 *  (#3082): the synthetic pass loop, you and three riders at 200 W, the
 	 *  ride's own look; `light=1` is the World control's Light, `pixels=0` or
-	 *  `pixels=1` sets the 3D look (Smooth or Pixel 3D) before it mounts,
+	 *  `pixels=d` sets the 3D look (Smooth or Diorama 3D) before it mounts,
 	 *  `at=village` starts everyone 150 m before the loop's first village. The real
 	 *  scene, imported here so no other case loads three.js. */
 	function world(node: HTMLCanvasElement) {
@@ -256,16 +256,15 @@
 			([
 				{ mount },
 				{ generate },
-				{ dioramaLook, pixelLook, rideLook, worldPaint },
+				{ dioramaLook, rideLook, worldPaint },
 				{ syntheticPoints },
 				{ devCrew },
 				{ toRoute },
-				{ setWorldDiorama, setWorldPixels, worldDiorama, worldPixels },
+				{ setWorldDiorama, worldDiorama },
 			]) => {
 				if (gone) return;
 				const look = params.get('pixels');
-				if (look === 'd') setWorldDiorama();
-				else if (look !== null) setWorldPixels(look !== '0');
+				if (look !== null) setWorldDiorama(look !== '0');
 				const route = toRoute(syntheticPoints());
 				const world = generate(route);
 				const at =
@@ -275,11 +274,9 @@
 				const s = mount(node, {
 					route,
 					world,
-					style: (worldDiorama()
-						? dioramaLook
-						: worldPixels()
-							? pixelLook
-							: rideLook)(worldPaint(node.parentElement ?? document.body)),
+					style: (worldDiorama() ? dioramaLook : rideLook)(
+						worldPaint(node.parentElement ?? document.body),
+					),
 					ftp: 250,
 					watts: 200,
 					riders: devCrew(

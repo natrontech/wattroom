@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import { at, lastMetre, leftOf } from '$lib/road/along';
 import type { Route } from '$lib/road/route';
 import { yOf } from './geometry';
+import { DIORAMA } from './pixel';
 import { PICTURE } from './picture.svelte';
 import { FORMATION } from './terrain/road-profile';
 import type { World } from './world';
@@ -16,6 +17,8 @@ import type { World } from './world';
 export const LENS = {
 	/** Metres from you, and the field that holds you at about two fifths of the frame's height. */
 	off: 5.8,
+	/** Diorama 3D's: a sprite's art pixel about eight of the picture's, not sixteen. */
+	spriteOff: 11,
 	fov: 40,
 	/** Degrees off your heading the lens may stand at: front three-quarters, the face, the drops and both wheels. */
 	turns: [35, 60],
@@ -136,15 +139,16 @@ function stand(
 	const { lx, lz } = leftOf(here.heading);
 	const line = (middle.x - here.x) * lx + (middle.z - here.z) * lz;
 	const edge = FORMATION - LENS.inside;
+	const off = DIORAMA.value > 0 ? LENS.spriteOff : LENS.off;
 	const across = Math.max(
 		-edge,
 		Math.min(
 			edge,
-			line + side * LENS.off * Math.sin(THREE.MathUtils.degToRad(turn)),
+			line + side * off * Math.sin(THREE.MathUtils.degToRad(turn)),
 		),
 	);
 	// Up the road as far as holds you at the lens's distance.
-	const upRoad = Math.sqrt(Math.max(0, LENS.off ** 2 - (across - line) ** 2));
+	const upRoad = Math.sqrt(Math.max(0, off ** 2 - (across - line) ** 2));
 	const ahead = route.loop
 		? d + upRoad
 		: Math.min(d + upRoad, lastMetre(route));

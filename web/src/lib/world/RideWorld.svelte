@@ -41,8 +41,8 @@
 	import { AMBIENCE, ambience } from '$lib/sound/ambience';
 	import { at, leftOf } from '$lib/road/along';
 	import { generate, type World } from './world';
-	import { pixelLook, rideLook, worldPaint } from './look';
-	import { worldPixels } from './mode';
+	import { dioramaLook, rideLook, worldPaint } from './look';
+	import { worldDiorama } from './mode';
 	import {
 		momentToDraw,
 		PICTURE,
@@ -200,7 +200,7 @@
 				scene = mount(canvas!, {
 					route,
 					world,
-					style: worldPixels() ? pixelLook(paint) : rideLook(paint),
+					style: worldDiorama() ? dioramaLook(paint) : rideLook(paint),
 					watts,
 					ftp,
 					metre,

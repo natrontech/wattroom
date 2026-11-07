@@ -7,11 +7,11 @@
 	import { theme, type ThemeChoice } from '$lib/theme.svelte';
 	import { STEADY_BUTTON } from '$lib/world/ride-view';
 	import {
+		setWorldDiorama,
 		setWorldMode,
-		setWorldPixels,
 		WORLD_MODES,
+		worldDiorama,
 		worldMode,
-		worldPixels,
 		type WorldMode,
 	} from '$lib/world/mode';
 	import Monitor from '@lucide/svelte/icons/monitor';
@@ -35,15 +35,15 @@
 		setWorldMode(next);
 	}
 
-	// Pixel 3D (pixel.ts): the 3D world in whole pixels, until the rider picks Smooth.
-	let pixels = $state(worldPixels());
+	// Diorama 3D (diorama.ts): the world as a model railway with the lounge's people, until the rider picks Smooth.
+	let diorama = $state(worldDiorama());
 	function look(on: boolean) {
-		pixels = on;
-		setWorldPixels(on);
+		diorama = on;
+		setWorldDiorama(on);
 	}
 	const LOOKS = [
+		{ on: true, label: 'Diorama' },
 		{ on: false, label: 'Smooth' },
-		{ on: true, label: 'Pixel' },
 	];
 
 	// One label column, so every row's first control starts at the same x; on a
@@ -115,7 +115,7 @@
 			</button>
 		{/if}
 	</div>
-	<!-- Only where 3D draws: Flat has no pixels to choose. -->
+	<!-- Only where 3D draws: Flat has no look to choose. -->
 	{#if mode !== 'flat'}
 		<div class={ROW}>
 			<span class="eyebrow">3D look</span>
@@ -123,8 +123,8 @@
 				{#each LOOKS as option (option.label)}
 					<button
 						onclick={() => look(option.on)}
-						aria-pressed={pixels === option.on}
-						class="btn btn-xs {pixels === option.on
+						aria-pressed={diorama === option.on}
+						class="btn btn-xs {diorama === option.on
 							? 'btn-primary'
 							: 'btn-secondary'}"
 					>
@@ -132,8 +132,9 @@
 					</button>
 				{/each}
 				<span class="{HINT} col-span-2 sm:col-span-1"
-					>{pixels ? 'drawn in whole pixels, like the lounge' : 'smooth edges'} —
-					from the next ride</span
+					>{diorama
+						? 'a model railway, with the lounge’s people'
+						: 'plain 3D, for a slower machine'} — from the next ride</span
 				>
 			</div>
 		</div>

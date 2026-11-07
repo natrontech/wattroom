@@ -71,6 +71,7 @@ export type Style = {
 	};
 	sun: {
 		elevation: number; // degrees; below 0 the sky alone lights the look, and the ride's progress sinks it
+		sets?: number; // degrees at a ride's finish: a sun that is up sinks to it over a ride with a known end
 		azimuth: number; // degrees
 		disc: 'halo' | 'stripes' | 'none';
 		color: string;
