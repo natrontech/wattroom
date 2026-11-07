@@ -62,6 +62,44 @@ export function pixelLook(paint: Paint): Style {
 	};
 }
 
+/**
+ * Diorama 3D's look, every ride's: Pixel 3D's colours under a low sun, the
+ * hour before it sets, sinking with the ride. The lit side of everything warm, its shade the
+ * room's violet, a peach sky at the horizon.
+ */
+export function dioramaLook(paint: Paint): Style {
+	const look = pixelLook(paint);
+	const d = (token: string) => paint(`world-dio-${token}`);
+	return {
+		...look,
+		id: 'diorama',
+		label: 'Diorama',
+		sky: {
+			top: d('sky-zenith'),
+			horizon: d('sky-horizon'),
+			sunward: d('sky-sunward'),
+			band: d('sky-band'),
+		},
+		// Low, and lower by the finish: it touches the ranges as a ride with a known end ends.
+		sun: {
+			...look.sun,
+			elevation: 12,
+			sets: 3,
+			disc: 'halo',
+			color: d('sun'),
+		},
+		key: d('sky-light'),
+		shade: d('sky-shade'),
+		skyFill: 0.22,
+		fogK: 0.7e-4,
+		road: {
+			...look.road,
+			asphalt: d('road-asphalt'),
+			shoulder: d('road-shoulder'),
+		},
+	};
+}
+
 /** The ride's look, its colours from `paint`; the sun's bearing is the real one at `place`, when there is one. */
 export function rideLook(
 	paint: Paint,

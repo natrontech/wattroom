@@ -10,12 +10,12 @@ import type { Route } from '$lib/road/route';
 import { LANE } from './bunch';
 import { KEEP_RIGHT, placeOn, viewerOf } from './crew';
 import { tag } from './family';
-import { makeAvatar, sheetOf } from './avatar';
 import type { Figure as Figure2D } from '$lib/lounge/scene';
 import { RiderAnimator } from './figure/animator';
 import { buildFigure, type Figure, type Palette } from './figure/figure';
 import { figureMaterial } from './figure/material';
 import { pose } from './figure/pose';
+import { makeRiderSprite, riderSheet } from './rider-sprite';
 import type { Loadout } from './loadout';
 import { outfitOf } from './outfit';
 import type { Style } from './styles';
@@ -69,13 +69,19 @@ function instanced(figure: Figure): InstancedFigure {
 	});
 }
 
-/** Your ghosts in Pixel 3D: your own sprite, every other pixel of it, on whole pixels as a rider's is. */
-export function makeSpriteGhosts(you: Figure2D) {
-	const sheet = sheetOf(you);
+/** Radians a crank turns a metre ridden, near enough: a ghost's legs only need to look ridden. */
+const CRANK_PER_M = 1.1;
+
+/** Your ghosts in Diorama 3D: your own sprite, paled and see-through, a lane to your left each. */
+export function makeDioramaGhosts(you: Figure2D) {
+	const sheet = riderSheet(you);
 	const sprites = Array.from({ length: MOST_GHOSTS }, () => {
-		const avatar = makeAvatar(sheet, true);
-		const seat = new THREE.Group().add(tag('figures', avatar.mesh, 'ghost'));
-		return { avatar, seat };
+		const sprite = makeRiderSprite(sheet, {
+			opacity: GHOST_OPACITY,
+			pale: GHOST_PALE,
+		});
+		const seat = new THREE.Group().add(tag('figures', sprite.mesh, 'ghost'));
+		return { sprite, seat };
 	});
 	const group = new THREE.Group().add(...sprites.map((s) => s.seat));
 	let crank = 0;
@@ -88,12 +94,12 @@ export function makeSpriteGhosts(you: Figure2D) {
 		update(route: Route, ghosts: GhostAt[], dt: number, overview: boolean) {
 			const shown = overview ? [] : ghosts.slice(0, MOST_GHOSTS);
 			drawn = shown.length;
-			crank += dt * (shown[0]?.v ?? 0) * 0.9;
-			sprites.forEach(({ avatar, seat }, i) => {
+			crank += dt * (shown[0]?.v ?? 0) * CRANK_PER_M;
+			sprites.forEach(({ sprite, seat }, i) => {
 				seat.visible = i < shown.length;
 				if (!seat.visible) return;
 				placeOn(seat, route, shown[i].d, KEEP_RIGHT + (i + 1) * LANE);
-				avatar.set(crank + i, 1, false);
+				sprite.set(crank + i, 1, false);
 			});
 		},
 	};
@@ -166,4 +172,4 @@ export function makeGhosts(style: Style, loadout: Loadout, ftp: number) {
 }
 
 export type Ghosts =
-	ReturnType<typeof makeGhosts> | ReturnType<typeof makeSpriteGhosts>;
+	ReturnType<typeof makeGhosts> | ReturnType<typeof makeDioramaGhosts>;

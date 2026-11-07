@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { rideLook, type Paint } from './look';
+import { dioramaLook, rideLook, type Paint } from './look';
 
 const css = readFileSync(
 	join(import.meta.dirname, '..', '..', 'app.css'),
@@ -17,3 +17,6 @@ export const appCss: Paint = (token) => {
 
 /** The ride's look as a test sees it: the tokens app.css declares. */
 export const RIDE = rideLook(appCss);
+
+/** Diorama 3D's, every ride's by default. */
+export const DIORAMA_RIDE = dioramaLook(appCss);

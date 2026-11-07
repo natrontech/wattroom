@@ -19,9 +19,17 @@ import {
 	type Crew,
 	type Pedalling,
 } from './crew';
-import { makeGhosts, MOST_GHOSTS, type GhostAt, type Ghosts } from './ghosts';
+import { dress as dressFigure } from '$lib/lounge/figures';
+import {
+	makeDioramaGhosts,
+	makeGhosts,
+	MOST_GHOSTS,
+	type GhostAt,
+	type Ghosts,
+} from './ghosts';
 import { makeWatchers } from './watchers';
-import { MOTION } from './pixel';
+import { makeRoadside } from './roadside';
+import { DIORAMA, MOTION } from './pixel';
 import { bunchLooks, type Loadout } from './loadout';
 import { makeTags, type Tags } from './tags';
 import type { BunchView } from '$lib/channel/bunch-view';
@@ -234,6 +242,8 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	let crew: Crew | null = null;
 	/** People by the road in the villages, Pixel 3D only. */
 	let watchers: ReturnType<typeof makeWatchers> | null = null;
+	/** What stands close by the road, Diorama 3D only (roadside.ts). */
+	let roadside: ReturnType<typeof makeRoadside> | null = null;
 	let game: GameRoad | null = null;
 	let tags: Tags | null = null;
 	let ghosts: Ghosts | null = null;
@@ -281,6 +291,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 			ghosts?.group,
 			gates?.group,
 			watchers?.group,
+			roadside?.group,
 		]) {
 			if (!old) continue;
 			scene.remove(old);
@@ -293,10 +304,27 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		game = makeGameRoad(route, world, style);
 		tags = makeTags(style);
 		scene.add(stage.group, crew.group, game.group, tags.group);
-		watchers = opts.loungeLook ? makeWatchers(route, world.villageNames) : null;
+		const diorama = DIORAMA.value > 0;
+		watchers =
+			opts.loungeLook && !diorama
+				? makeWatchers(route, world.villageNames)
+				: null;
 		if (watchers) scene.add(watchers.group);
+		roadside = diorama ? makeRoadside(route, world) : null;
+		roadside?.update(you.d, true);
+		if (roadside) scene.add(roadside.group);
 		if (opts.ghosts) {
-			ghosts = makeGhosts(style, loadoutOf(you), opts.ftp);
+			// Diorama's ghosts are your room sprite, as you are (crew.ts).
+			ghosts =
+				diorama && opts.loungeLook
+					? makeDioramaGhosts(
+							dressFigure({
+								id: you.id,
+								name: you.name,
+								loungeLook: opts.loungeLook(you.id),
+							}),
+						)
+					: makeGhosts(style, loadoutOf(you), opts.ftp);
 			scene.add(ghosts.group);
 		}
 		if (bunch) {
@@ -399,6 +427,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 			mode === 'orbit' ? -Infinity : you.d,
 			performance.now() / 1000,
 		);
+		roadside?.update(you.d);
 		if (controls) controls.update();
 		else
 			rig.update(

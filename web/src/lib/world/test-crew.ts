@@ -22,11 +22,22 @@ export function botWatts(r: SimRider, grade: number, t: number): number {
  * ground Gipfelpunkte must never dot; absent, you wear your seeded look.
  * `alone` is a design capture's frame (G9): the figure with no stand-ins.
  */
+/** id, name, kg, FTP and where they start, metres from you: some ahead, one coming past. */
+const MORE: [string, string, number, number, number][] = [
+	['lea', 'Lea', 58, 240, 26],
+	['nico', 'Nico', 78, 320, -14],
+	['ana', 'Ana', 64, 230, 48],
+	['ben', 'Ben', 85, 260, 70],
+	['ida', 'Ida', 55, 250, 12],
+];
+
 export function devCrew(
 	watts: number,
 	ftp: number,
 	kit?: string | null,
 	alone = false,
+	/** More riders round you, at the gaps a real group ride spreads to: a design capture's bunch. */
+	more = 0,
 ): SimRider[] {
 	const bot = (
 		id: string,
@@ -62,6 +73,10 @@ export function devCrew(
 				bot('sven', 'Sven', 74, 270, 1),
 				bot('mia', 'Mia', 61, 215, 2),
 				bot('tom', 'Tom', 92, 300, 3),
+				...MORE.slice(0, more).map(([id, name, mass, ftp, d]) => ({
+					...simRider({ id, name, mass, ftp, you: false, watts: 0, d }),
+					ride: botWatts,
+				})),
 			];
 	// Each in their own kit, as a bunch dresses its riders (#3791).
 	const looks = bunchLooks(crew, MOST_ABREAST);

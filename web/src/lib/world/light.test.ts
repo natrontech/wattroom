@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_AZIMUTH, lightAt, sunAzimuth, sunElevation } from './light';
-import { RIDE } from './look.test-helper';
+import { DIORAMA_RIDE, RIDE } from './look.test-helper';
 
 describe('the ride light (ADR-0072)', () => {
 	it('sinks the sun from −4° to −8° by progress, and holds −6° with no known end', () => {
@@ -46,6 +46,20 @@ describe('the ride light (ADR-0072)', () => {
 		expect(l.keyed).toBe(true);
 		expect(l.dusk).toBe(1);
 		expect(l.from.y).toBeCloseTo(Math.sin((9 * Math.PI) / 180));
+	});
+});
+
+describe('Diorama’s low sun', () => {
+	const deg = (v: { y: number }) => (Math.asin(v.y) * 180) / Math.PI;
+	it('sinks from 12° to 3° over a ride with a known end, keyed all the way', () => {
+		expect(deg(lightAt(DIORAMA_RIDE, 0).sun)).toBeCloseTo(12, 5);
+		expect(deg(lightAt(DIORAMA_RIDE, 1).sun)).toBeCloseTo(3, 5);
+		expect(lightAt(DIORAMA_RIDE, 1).keyed).toBe(true);
+		expect(lightAt(DIORAMA_RIDE, 1).lamps).toBe(false);
+	});
+
+	it('holds 12° with no known end', () => {
+		expect(deg(lightAt(DIORAMA_RIDE, null).sun)).toBeCloseTo(12, 5);
 	});
 });
 

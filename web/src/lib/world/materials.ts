@@ -92,6 +92,8 @@ const FADE = /* glsl */ `
 // dabs a few world pixels wide, gone where a tree is small enough not to need them.
 const FOLIAGE = /* glsl */ `
 	#ifdef PIXEL_RAMP
+		// Diorama 3D: near the eye the roadside's sprites are the trees (roadside.ts).
+		if (uDiorama > 0.5 && distance(vWorld, cameraPosition) < 140.0) discard;
 		if (uPixel > 0.5 && distance(vWorld, cameraPosition) < 26.0) {
 			float dab = fract(sin(dot(floor(vWorld * vec3(7.0, 5.0, 7.0)), vec3(127.1, 311.7, 74.7))) * 43758.5453);
 			diffuseColor.rgb *= dab > 0.76 ? 1.18 : dab < 0.24 ? 0.84 : 1.0;

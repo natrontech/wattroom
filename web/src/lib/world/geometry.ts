@@ -295,7 +295,7 @@ export function roadMaterial(
 				'#include <dithering_fragment>',
 				`#include <dithering_fragment>
 				#ifdef PIXEL_RAMP
-					if (uPixel > 0.5) gl_FragColor.a = 0.5; // the land, for the ink pass (pixel.ts)
+					if (max(uPixel, uDiorama) > 0.5) gl_FragColor.a = 0.5; // the land, for the ink pass (pixel.ts, diorama.ts)
 				#endif`,
 			);
 	};

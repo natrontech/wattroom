@@ -81,7 +81,12 @@ export type Light = {
 /** The light a look gives at a ride's progress (null: no known end). */
 export function lightAt(style: Style, p: number | null): Light {
 	const keyed = style.sun.elevation >= 0;
-	const elevation = keyed ? style.sun.elevation : sunElevation(p);
+	const { sets } = style.sun;
+	const elevation = !keyed
+		? sunElevation(p)
+		: sets === undefined || p === null
+			? style.sun.elevation
+			: style.sun.elevation + (sets - style.sun.elevation) * clamp01(p);
 	const sun = sunDir(elevation, style.sun.azimuth);
 	const dusk = keyed ? 1 : Math.min(1, 1 + (elevation + 4) * DUSK_PER_DEG);
 	const zenith = new THREE.Color(style.sky.top).multiplyScalar(dusk);
