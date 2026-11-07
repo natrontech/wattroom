@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { navDrawer } from '$lib/nav/drawer.svelte';
+	import { hideSidebar, navDrawer, navFold } from '$lib/nav/drawer.svelte';
 	import { modals } from '$lib/modals.svelte';
 	import { untrack } from 'svelte';
 	import { dev } from '$app/environment';
@@ -460,7 +460,9 @@
 			inert={(device.narrow || riding) && !navDrawer.open}
 			class="bg-surface fixed inset-y-0 left-0 z-50 shrink-0 transition-transform duration-(--dur-base) max-md:pt-(--safe-top) max-md:pb-(--safe-bottom) max-md:pl-(--safe-left) {riding
 				? ''
-				: 'md:static md:z-auto md:translate-x-0'} {navDrawer.open
+				: navFold.hidden
+					? 'md:hidden'
+					: 'md:static md:z-auto md:translate-x-0'} {navDrawer.open
 				? 'translate-x-0'
 				: '-translate-x-full'}"
 			style={titleBar ? `top: ${titleBar}px` : ''}
@@ -485,13 +487,18 @@
 				     reappears in the thumb zone instead (see the FAB below), or a
 				     phone would have no navigation at all once a session starts. -->
 				<div
-					class="border-ink/5 flex shrink-0 items-center gap-2 border-b px-3 py-2 md:hidden"
+					class="border-ink/5 flex shrink-0 items-center gap-2 border-b px-3 py-2 {navFold.hidden
+						? ''
+						: 'md:hidden'}"
 				>
+					<!-- Below md this opens the drawer; on a desk it brings back the
+					     sidebar the rider hid. -->
 					<button
 						bind:this={hamburger}
-						onclick={() => (navDrawer.open = true)}
+						onclick={() =>
+							device.narrow ? (navDrawer.open = true) : hideSidebar(false)}
 						class="text-muted hover:text-ink -m-1 grid h-11 w-11 place-items-center rounded"
-						aria-label="open navigation"
+						aria-label={device.narrow ? 'open navigation' : 'show the sidebar'}
 						aria-expanded={navDrawer.open}><Menu size={20} /></button
 					>
 					<Logo

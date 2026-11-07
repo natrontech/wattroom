@@ -8,6 +8,8 @@
 	// Names, not Discord's icon rail: icons exist because Discord has forty
 	// servers, and ADR-0010 makes this strip the crew's radar — what is live
 	// and who is in voice. 48 px cannot say "Sweet Spot, 12 min in".
+	import PanelLeftClose from '@lucide/svelte/icons/panel-left-close';
+	import { hideSidebar } from './drawer.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import YouPanel from '$lib/nav/YouPanel.svelte';
 	import Logo from '$lib/brand/Logo.svelte';
@@ -371,6 +373,15 @@
 		</a>
 	{/if}
 
+	<!-- A desk's choice (md and up): the drawer below md already hides itself. -->
+	<button
+		onclick={() => hideSidebar(true)}
+		class="text-muted hover:text-ink border-ink/5 ride:hidden hidden items-center gap-2 border-t px-4 py-2 text-xs md:flex"
+		title="hide the sidebar"
+	>
+		<PanelLeftClose size={14} />
+		Hide sidebar
+	</button>
 	<YouPanel {pathname} {riding} />
 </nav>
 
