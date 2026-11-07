@@ -416,7 +416,7 @@
 			>
 				{@render notices()}
 				<StartLine />
-				<PlanCard />
+				<PlanCard compact />
 			</div>
 			<div
 				class="bg-surface/85 pointer-events-auto ml-auto flex shrink-0 flex-wrap items-center gap-2 rounded px-1 py-0.5"
