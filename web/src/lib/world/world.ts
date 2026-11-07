@@ -13,7 +13,8 @@ import { roadIndex } from './field';
 import { landUse } from './land';
 import { markersFor, type Marker } from './markers';
 import { CHUNK_M } from './place/lattice';
-import type { Salt } from './place/keyed';
+import { keyer, type Salt } from './place/keyed';
+import { forest } from './props/forest';
 import { hashSeed } from './rand';
 import type { Route } from '$lib/road/route';
 import type { Names } from './names';
@@ -62,6 +63,10 @@ export type World = {
 	/** What grows at (x, z); null where no ground is drawn. What the ride hears beside the road (#3186). */
 	biomeAt: (x: number, z: number) => Biome | null;
 	roadSurfaceAt: (x: number, z: number) => number | null;
+	/** Whether (x, z) keeps `base` metres from every road, more on a bend's inside (terrain/ground.ts). */
+	clearOf: (x: number, z: number, base: number) => boolean;
+	/** The forest's stand noise at (x, z), props/forest.ts's: below 0 a gap, above it a group. */
+	standAt: (x: number, z: number) => number;
 	/**
 	 * What one 250 m tile stands, settled the first time it is asked (#3699):
 	 * a ride asks the tiles around its eye as it goes, so mount time stops
@@ -127,6 +132,8 @@ export function generate(
 	const { roadSurfaceAt } = ground;
 
 	const place = { salt, ground, heightAt, biomeAt };
+	// The same stands scatter.ts grows its trees in (the place has no origin of its own: east is x, north −z).
+	const woods = forest(keyer(salt, 'tree')(-1, -1, -1));
 	const villages = villageSites(place);
 	// Where the ribbon is drawn it is the ground a post stands on.
 	const placer = createPlacer(
@@ -218,6 +225,8 @@ export function generate(
 		heightAt,
 		biomeAt,
 		roadSurfaceAt,
+		clearOf: ground.clearOf,
+		standAt: (x, z) => woods.groupAt(x, -z),
 		villageNames,
 		markers,
 		names: set.names,
