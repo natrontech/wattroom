@@ -114,7 +114,7 @@ export function wireLiveKitRoom(
 			const share = pub.source === client.Track.Source.ScreenShareAudio;
 			const key = audioKey(participant.identity, share);
 			const el = track.attach() as HTMLAudioElement;
-			seats.audio.set(key, el);
+			seats.seatAudio(key, el, track);
 			document.body.appendChild(el);
 			output.route(key, el, share);
 			// Mute here is unpublish, not track-mute (the gate owns the gain),
@@ -139,8 +139,8 @@ export function wireLiveKitRoom(
 				participant.identity,
 				pub.source === client.Track.Source.ScreenShareAudio,
 			);
-			track.detach().forEach((el) => el.remove());
-			seats.audio.delete(key);
+			// A newer track holds the key: this one's graph went when it came.
+			if (!seats.dropAudio(key, track)) return;
 			output.drop(key);
 			// The meter went with the track, so nothing can report this
 			// voice again — and a flag nothing will ever clear is what

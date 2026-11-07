@@ -2,7 +2,6 @@ import { channelAddress } from '$lib/channel/address';
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GATE_CEIL, GATE_FLOOR } from './gate-scale';
-import { ECHO_REFERENCE } from '$lib/channel/av-output';
 import { mixer } from '$lib/sound/mixer.svelte';
 import { pickStage } from '$lib/channel/stage';
 import { observeServerTime, resetServerClock } from '$lib/server-clock';
@@ -135,8 +134,11 @@ vi.mock('livekit-client', () => {
 	function remoteAudio(identity: string, source: string) {
 		const el = document.createElement('audio');
 		attached.push(el);
+		// One object for both events, as the SDK hands over. It has already
+		// detached the element by the time it says the track is gone.
+		const track = { kind: 'audio', attach: () => el, detach: () => [] };
 		joined?.handlers.get('TrackSubscribed')?.(
-			{ kind: 'audio', attach: () => el, detach: () => [el] },
+			track,
 			{ kind: 'audio', source, isMuted: false },
 			{ identity },
 		);
@@ -145,7 +147,7 @@ vi.mock('livekit-client', () => {
 			end() {
 				attached.splice(attached.indexOf(el), 1);
 				joined?.handlers.get('TrackUnsubscribed')?.(
-					{ kind: 'audio', attach: () => el, detach: () => [el] },
+					track,
 					{ kind: 'audio', source, isMuted: false },
 					{ identity },
 				);
@@ -592,18 +594,19 @@ describe('createChannelAv', () => {
 				av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 			});
 			await av.join();
-			remoteVoice('jan');
-			expect(gains.at(-1)?.gain.value).toBe(1);
+			const jan = remoteVoice('jan');
+			expect(jan.el.volume).toBe(1);
 
 			await av.setAway(true);
 			expect(mixer.muted).toBe(true);
-			expect(gains.map((g) => g.gain.value)).toEqual([0]);
+			expect(jan.el.volume).toBe(0);
 			// A rider who joins voice while you are out arrives silent too.
-			remoteVoice('mia');
-			expect(gains.map((g) => g.gain.value)).toEqual([0, 0]);
+			const mia = remoteVoice('mia');
+			expect(mia.el.volume).toBe(0);
 
 			await av.setAway(false);
-			expect(gains.map((g) => g.gain.value)).toEqual([1, 1]);
+			expect([jan.el.volume, mia.el.volume]).toEqual([1, 1]);
+			expect(gains.map((g) => g.gain.value)).toEqual([0, 0]);
 
 			// The call is behind you: leaving hands the speakers back.
 			await av.setAway(true);
@@ -1461,31 +1464,31 @@ describe('a browser that blocks audio playback', () => {
 // a test for it passed with the clause deleted. A test that cannot fail is
 // worse than none: it claims the ground is covered.
 describe('a remote voice is heard once (#1339)', () => {
-	// The voice reaches the speakers through the bus, tapped off the SDK's
-	// element — which must therefore stay silent itself. LiveKit's own
-	// startAudio() unmutes every attached element before playing it (the
-	// fake does exactly that), and the app calls it on the first click after
-	// a join: from then on every voice sounded twice, a few milliseconds
-	// apart, which is the phaser riders reported.
-	it("keeps its element to the echo copy through the browser's start-audio", async () => {
-		await withOutputGraph(async () => {
+	// The SDK's element and the bus both reach the speakers, a few to tens of
+	// milliseconds apart: both audible is the phaser riders reported, and in
+	// 2026.11.24 voices doubled and strange. On a computer the element plays
+	// the voice, because it is all the echo canceller hears, so the graph
+	// stays down. LiveKit's own startAudio() unmutes every attached element
+	// (the fake does exactly that), and the app calls it on the first click.
+	it("plays from its element alone, through the browser's start-audio", async () => {
+		await withOutputGraph(async (gains) => {
 			let av!: ReturnType<typeof createChannelAv>;
 			const dispose = $effect.root(() => {
 				av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 			});
 			await av.join();
 			const { el } = remoteVoice('jan');
-			expect(el.volume).toBe(ECHO_REFERENCE);
+			expect([el.volume, gains.at(-1)?.gain.value]).toEqual([1, 0]);
 			await av.startPlayback();
-			expect(el.muted).toBe(false); // the SDK did what it does —
-			expect(el.volume).toBe(ECHO_REFERENCE); // and the element stayed down
+			expect(el.muted).toBe(false);
+			expect([el.volume, gains.at(-1)?.gain.value]).toEqual([1, 0]);
 			av.leave();
 			dispose();
 		});
 	});
 
-	// Away plays nothing to an empty chair, and that takes the copy too.
-	it('silences the echo copy while you are away', async () => {
+	// Away plays nothing to an empty chair, and that takes the element too.
+	it('silences the element while you are away', async () => {
 		await withOutputGraph(async () => {
 			let av!: ReturnType<typeof createChannelAv>;
 			const dispose = $effect.root(() => {
@@ -1494,9 +1497,28 @@ describe('a remote voice is heard once (#1339)', () => {
 			await av.join();
 			const { el } = remoteVoice('jan');
 			await av.setAway(true);
-			expect(el.volume).toBe(0);
+			expect([el.volume, el.muted]).toEqual([0, true]);
 			await av.setAway(false);
-			expect(el.volume).toBe(ECHO_REFERENCE);
+			expect([el.volume, el.muted]).toEqual([1, false]);
+			av.leave();
+			dispose();
+		});
+	});
+
+	// `volume` stops at 1, so a boost is the graph's, and only the graph's.
+	it('moves a boosted voice to the graph, never both', async () => {
+		await withOutputGraph(async (gains) => {
+			let av!: ReturnType<typeof createChannelAv>;
+			const dispose = $effect.root(() => {
+				av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
+			});
+			await av.join();
+			const { el } = remoteVoice('jan');
+			av.setRiderGain('jan', 1.5);
+			expect([el.volume, gains.at(-1)?.gain.value]).toEqual([0, 1.5]);
+			av.setRiderGain('jan', 0.5);
+			expect([el.volume, gains.at(-1)?.gain.value]).toEqual([0.5, 0]);
+			av.setRiderGain('jan', 1);
 			av.leave();
 			dispose();
 		});
@@ -1522,6 +1544,38 @@ describe('a remote voice is heard once (#1339)', () => {
 			remoteShareAudio('jan');
 			expect(gains.at(-1)?.gain.value).toBe(0.5);
 			mixer.setShare(1);
+			av.leave();
+			dispose();
+		});
+	});
+
+	// Every unmute publishes a new mic track (#4177), and the new one can
+	// reach a listener before the old one leaves. The old one's goodbye took
+	// the key, and with it the voice that had just come back: that rider
+	// stayed unheard, and showed muted, until somebody restarted.
+	it('keeps the new mic track when the old one leaves after it', async () => {
+		await withOutputGraph(async (gains) => {
+			let av!: ReturnType<typeof createChannelAv>;
+			const dispose = $effect.root(() => {
+				av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
+			});
+			await av.join();
+			const first = remoteVoice('jan');
+			const second = remoteVoice('jan');
+			expect(first.el.isConnected).toBe(false);
+			expect([first.el.volume, first.el.muted]).toEqual([0, true]);
+			first.end();
+			expect(gains.map((g) => g.disconnected)).toEqual([true, false]);
+			av.setRiderGain('jan', 0.4);
+			expect(second.el.volume).toBe(0.4);
+			expect(av.voice.jan).toBe('live');
+			expect(second.el.isConnected).toBe(true);
+			second.end();
+			expect(gains[1].disconnected).toBe(true);
+			// The SDK leaves the element where it was; a call that only ever
+			// added them grew one dead element per unmute.
+			expect(second.el.isConnected).toBe(false);
+			av.setRiderGain('jan', 1);
 			av.leave();
 			dispose();
 		});
@@ -1562,7 +1616,7 @@ describe('a rider who shares their computer as well as their voice', () => {
 			});
 			await av.join();
 
-			remoteVoice('jan');
+			const voice = remoteVoice('jan');
 			const share = remoteShareAudio('jan');
 			expect(gains).toHaveLength(2);
 
@@ -1571,7 +1625,7 @@ describe('a rider who shares their computer as well as their voice', () => {
 			// by identity would have taken the voice out with the share, and a
 			// rider would simply have gone quiet when they stopped sharing.
 			av.setRiderGain('jan', 0.4);
-			expect(gains[0].gain.value).toBe(0.4);
+			expect(voice.el.volume).toBe(0.4);
 
 			dispose();
 		});
