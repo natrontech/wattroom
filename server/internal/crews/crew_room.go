@@ -79,11 +79,25 @@ func (s *Service) roomFurnishing(ctx context.Context, crew pgtype.UUID) (map[str
 	if err != nil {
 		return nil, err
 	}
-	// Never null: the client lists these, and a crew with nothing has an empty list.
-	if items == nil {
-		items = []string{}
+	together, err := s.store.Queries.CrewTogetherSeconds(ctx, crew)
+	if err != nil {
+		return nil, err
 	}
-	return map[string]any{"owned": items, "picks": picks, "shop": protocol.RoomItems}, nil
+	// Never null: the client lists these, and a crew with nothing has an empty list.
+	items = append(append([]string{}, items...), unlockedBy(together)...)
+	return map[string]any{"owned": items, "picks": picks, "shop": protocol.RoomItems, "togetherSec": together}, nil
+}
+
+// unlockedBy is every item a crew's time together has unlocked, in id order.
+func unlockedBy(togetherSec int64) []string {
+	var out []string
+	for id, item := range protocol.RoomItems {
+		if item.Hours > 0 && togetherSec >= int64(item.Hours)*3600 {
+			out = append(out, id)
+		}
+	}
+	slices.Sort(out)
+	return out
 }
 
 // setRoomPick writes one slot of the room's picks.
@@ -136,6 +150,11 @@ func (s *Service) handleBuyRoomItem(w http.ResponseWriter, r *http.Request) {
 	item, known := protocol.RoomItems[id]
 	if !known {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "There is no such thing in the shop.")
+		return
+	}
+	if item.Hours > 0 {
+		httpx.WriteError(w, http.StatusConflict, "conflict",
+			fmt.Sprintf("This one is not for sale: it comes with %d hours in voice together.", item.Hours))
 		return
 	}
 	var balance, need int64
@@ -205,6 +224,14 @@ func (s *Service) handlePickRoomItem(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			httpx.Fail(w, s.log, "room pick failed", err, "The room could not be changed.", "crew", store.UUIDString(crew.ID))
 			return
+		}
+		if !owned && item.Hours > 0 {
+			together, err := s.store.Queries.CrewTogetherSeconds(r.Context(), crew.ID)
+			if err != nil {
+				httpx.Fail(w, s.log, "room pick failed", err, "The room could not be changed.", "crew", store.UUIDString(crew.ID))
+				return
+			}
+			owned = slices.Contains(unlockedBy(together), req.Item)
 		}
 		if !owned {
 			httpx.WriteError(w, http.StatusConflict, "conflict", "Your crew does not have this yet.")

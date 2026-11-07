@@ -247,6 +247,25 @@ func (q *Queries) CrewArcadeSince(ctx context.Context, arg CrewArcadeSinceParams
 	return items, nil
 }
 
+const crewBoardMetres = `-- name: CrewBoardMetres :one
+select coalesce(sum(r.distance_m), 0)::bigint
+from rides r
+join crew_roles cr on cr.crew_id = r.crew_id and cr.user_id = r.user_id
+where r.crew_id = $1
+  and cr.role in ('member', 'admin')
+  and cr.on_board
+`
+
+// The crew's km stone (lounge.md): metres ridden in the crew's sessions by
+// the members whose weekly-board switch is on, the one consent this crew
+// number rests on. Nobody else's rides count.
+func (q *Queries) CrewBoardMetres(ctx context.Context, crewID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, crewBoardMetres, crewID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const crewOwnsRoomItem = `-- name: CrewOwnsRoomItem :one
 select exists (select 1 from crew_room_items where crew_id = $1 and item = $2)
 `

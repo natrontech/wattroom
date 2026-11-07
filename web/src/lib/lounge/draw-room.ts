@@ -25,6 +25,8 @@ import type { Sky } from '$lib/lounge/palette';
 import {
 	FLOOR_Y,
 	FRONT_Y,
+	STONE_X,
+	STONE_Y,
 	hasFront,
 	pulseOf,
 	type SceneInput,
@@ -33,7 +35,7 @@ import { hash3 } from '$lib/lounge/hash';
 import { paintSides } from '$lib/lounge/draw-sides';
 import { WINDOW } from '$lib/lounge/draw-window';
 import { bakeLight, type Light } from '$lib/lounge/light';
-import { plantStage } from '$lib/lounge/memory';
+import { plantStage, wearStage } from '$lib/lounge/memory';
 import { RUGS, SOFAS } from '$lib/lounge/furnish';
 import { drawFondue, momentDressing } from '$lib/lounge/draw-moments';
 import {
@@ -58,7 +60,9 @@ export function forgetWalls() {
  * lamp or the season changes, so a frame is one image and what moves.
  */
 export function drawBack(g: Ctx, s: SceneInput, ox: number, oy: number) {
-	const key = `${s.w}x${s.h}:${!!s.cinema}:${s.lampOn}:${s.season}:${s.sky}:${s.fire}:${s.moment}:${plantStage(s.club.sessions)}:${JSON.stringify(s.club.picks)}`;
+	const worn = wearStage(s.club.togetherSec);
+	const plates = Math.floor(s.club.boardMetres / 1e6);
+	const key = `${s.w}x${s.h}:${!!s.cinema}:${s.lampOn}:${s.season}:${s.sky}:${s.fire}:${s.moment}:${plantStage(s.club.sessions)}:${JSON.stringify(s.club.picks)}:${worn}:${plates}`;
 	if (back?.key !== key) {
 		const canvas = document.createElement('canvas');
 		canvas.width = s.w;
@@ -78,11 +82,13 @@ export function drawBack(g: Ctx, s: SceneInput, ox: number, oy: number) {
 		cabinet(b);
 		if (s.season === 'winter') tree(b);
 		else plant(b, plantStage(s.club.sessions));
-		sofa(b, s.club.picks.sofa);
+		if (worn >= 3) wornFloor(b);
+		sofa(b, s.club.picks.sofa, worn >= 2);
 		stove(b);
 		mats(b);
 		rug(b, s.club.picks.rug);
-		table(b);
+		table(b, worn >= 1);
+		kmStone(b, plates);
 		if (hasFront(s.w, s.h, s.cinema)) frontRow(b);
 		momentDressing(b, s.moment);
 		b.setTransform(1, 0, 0, 1, 0, 0);
@@ -402,7 +408,7 @@ function tree(g: Ctx) {
 }
 
 /** The sofa under the window, facing the room: back, arms, four seats. */
-function sofa(g: Ctx, pick?: string) {
+function sofa(g: Ctx, pick?: string, dented = false) {
 	const [dark, main, light, top] = (pick && SOFAS[pick]) || [
 		C.sofaDark,
 		C.sofa,
@@ -427,6 +433,13 @@ function sofa(g: Ctx, pick?: string) {
 	rect(g, 114, 73, 93, 3, light);
 	for (const x of [136, 159, 182]) rect(g, x, 72, 1, 12, dark);
 	rect(g, 114, 82, 93, 2, dark);
+	// Worn in: the two middle seats sag where everyone sits.
+	if (dented)
+		for (const x of [140, 163]) {
+			rect(g, x, 73, 16, 2, main);
+			rect(g, x + 2, 75, 12, 1, dark);
+			rect(g, x + 4, 76, 8, 1, light);
+		}
 	for (const x of [106, 207]) {
 		rect(g, x, 64, 8, 2, top);
 		rect(g, x, 84, 8, 2, dark);
@@ -483,8 +496,8 @@ function rug(g: Ctx, pick?: string) {
 	}
 }
 
-/** The low table on the rug, two mugs and a bowl on it. */
-function table(g: Ctx) {
+/** The low table on the rug, two mugs and a bowl on it; worn in, a mug's ring. */
+function table(g: Ctx, ringed = false) {
 	ellipse(g, 160, 126, 24, 2, C.rugDark);
 	outlined(
 		g,
@@ -497,6 +510,12 @@ function table(g: Ctx) {
 	);
 	rect(g, 138, 110, 45, 1, C.woodTop);
 	rect(g, 138, 111, 45, 6, C.woodLight);
+	if (ringed) {
+		rect(g, 166, 112, 3, 1, C.wood);
+		rect(g, 166, 115, 3, 1, C.wood);
+		rect(g, 165, 113, 1, 2, C.wood);
+		rect(g, 169, 113, 1, 2, C.wood);
+	}
 	outlined(
 		g,
 		[
@@ -513,6 +532,67 @@ function table(g: Ctx) {
 	outlined(g, [[177, 104, 4, 6, C.woodDark]], C.ink);
 	rect(g, 178, 105, 2, 4, C.amberDark);
 	rect(g, 177, 103, 4, 1, C.woodTop);
+}
+
+/** Worn in most of all: the floor in front of the sofa gone pale under everyone's feet. */
+function wornFloor(g: Ctx) {
+	for (let y = 89; y <= 98; y++)
+		for (let x = 106; x <= 214; x++) {
+			// Thickest in the middle of the path, thinning at its ends and edges.
+			const edge = y < 91 || y > 96 || x < 116 || x > 204;
+			const r = hash3(x, y, 13);
+			if (r < (edge ? 0.12 : 0.3)) rect(g, x, y, 1, 1, C.litFloor);
+			else if (r < (edge ? 0.3 : 0.7)) rect(g, x, y, 1, 1, C.floorLight);
+		}
+}
+
+/**
+ * The km stone (lounge.md): a white roadside marker post on the floor, its
+ * black band and amber reflector, and a brass plate on it for each 1'000 km
+ * the crew's board riders rode in its sessions.
+ */
+function kmStone(g: Ctx, plates: number) {
+	const x = STONE_X;
+	const y = STONE_Y;
+	ellipse(g, x + 4, y, 6, 1, C.floorDark);
+	// The post, its top cut on a slant toward the road.
+	outlined(
+		g,
+		[
+			[x, y - 15, 8, 15, C.paper],
+			[x, y - 16, 5, 1, C.paper],
+		],
+		C.ink,
+	);
+	rect(g, x + 6, y - 15, 2, 15, C.lilac);
+	rect(g, x, y - 12, 8, 3, C.ink);
+	rect(g, x + 2, y - 12, 3, 2, C.amber);
+	// Up to six plates, two to a row, from the foot up.
+	for (let i = 0; i < Math.min(6, plates); i++)
+		rect(
+			g,
+			x + 1 + (i % 2) * 3,
+			y - 3 - Math.floor(i / 2) * 2,
+			2,
+			1,
+			C.amberDark,
+		);
+}
+
+/** A neon bicycle in the sign's frame, unlocked by time together. */
+function neonBike(g: Ctx, c: string) {
+	ring(g, 31, 33, 6, c);
+	ring(g, 53, 33, 6, c);
+	line(g, 31, 33, 39, 24, c);
+	line(g, 39, 24, 48, 24, c);
+	line(g, 48, 24, 53, 33, c);
+	line(g, 39, 24, 42, 33, c);
+	line(g, 31, 33, 42, 33, c);
+	line(g, 42, 33, 48, 24, c);
+	line(g, 39, 24, 38, 21, c);
+	rect(g, 36, 21, 4, 1, c);
+	line(g, 48, 24, 49, 20, c);
+	rect(g, 49, 20, 3, 1, c);
 }
 
 /** What moves on the wall and the furniture, over drawBack's picture. */
@@ -657,6 +737,10 @@ function arcade(g: Ctx, s: SceneInput) {
 }
 
 function signBars(g: Ctx, s: SceneInput) {
+	if (s.club.picks.sign === 'sign.bike') {
+		neonBike(g, pulseOf(s) > 0.5 ? C.tealLight : C.teal);
+		return;
+	}
 	if (s.club.picks.sign === 'sign.initial') {
 		// The crew's letter in neon, a shade dimmer between the beats.
 		const lit = pulseOf(s) > 0.5 ? C.tealLight : C.teal;

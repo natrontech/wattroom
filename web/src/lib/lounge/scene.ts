@@ -46,6 +46,9 @@ export const SPOT_DX = 26;
 export const SPOT_DY = 26;
 /** The trainers' columns either side of the rug, and the rows they stand on. */
 export const BIKE_XS = [236, 84] as const;
+/** The km stone's left edge and its foot, on the floor left of the bikes. */
+export const STONE_X = 30;
+export const STONE_Y = 136;
 export const BIKE_GROUND = 135;
 export const BIKE_DY = 58;
 /** The two trainers that stand in the room whether or not anyone rides. */
@@ -276,6 +279,10 @@ export interface Club {
 	records: ArcadeRecord[];
 	/** Riders who hold a game's record: they wear a crown. */
 	crowns: string[];
+	/** The crew's time together in voice: the room wears in with it. */
+	togetherSec: number;
+	/** The km stone's metres: crew sessions, the weekly board's riders only. */
+	boardMetres: number;
 }
 
 /** A game's record as the cabinet shows it: the holder's initials and the score. */
@@ -487,7 +494,8 @@ export type Hotspot =
 	| 'cork'
 	| 'laptop'
 	| 'logbook'
-	| 'bike';
+	| 'bike'
+	| 'stone';
 
 /** What each clickable thing does, for the pointer that finds it. */
 export const SPOT_HINTS: Record<Hotspot, string> = {
@@ -504,6 +512,7 @@ export const SPOT_HINTS: Record<Hotspot, string> = {
 	laptop: 'A running session: go and join it',
 	logbook: 'Your logbook: your level, streak and hours, for you alone',
 	bike: 'Start riding',
+	stone: 'The km your crew rode together, by the riders on its weekly board',
 };
 
 const SPOTS: { spot: Hotspot; x: number; y: number; w: number; h: number }[] = [
@@ -520,6 +529,7 @@ const SPOTS: { spot: Hotspot; x: number; y: number; w: number; h: number }[] = [
 	{ spot: 'laptop', x: 44, y: 44, w: 28, h: 18 },
 	{ spot: 'bike', x: BIKE_XS[1] - 20, y: 100, w: 40, h: 40 },
 	{ spot: 'bike', x: BIKE_XS[0] - 20, y: 100, w: 40, h: 40 },
+	{ spot: 'stone', x: STONE_X - 2, y: STONE_Y - 16, w: 14, h: 18 },
 ];
 const ARCADE = {
 	spot: 'arcade' as const,

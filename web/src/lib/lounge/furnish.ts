@@ -20,6 +20,9 @@ export const ITEM_NAMES: Record<string, string> = {
 	'wall.stripes': 'Stripes',
 	'wall.plain': 'Plain',
 	'sign.initial': 'Crew initial',
+	'rug.fondue': 'Fondue',
+	'sofa.velvet': 'Velvet',
+	'sign.bike': 'Neon bike',
 };
 
 /** A rug's shadow, its colour and its line. */
@@ -27,6 +30,7 @@ export const RUGS: Record<string, readonly [string, string, string]> = {
 	'rug.forest': ['#1e3a2c', '#2c5a44', '#c8b06a'],
 	'rug.navy': ['#1e2a4a', '#2e4070', '#c8a24a'],
 	'rug.sand': ['#7a6248', '#a08a6a', '#ece0c8'],
+	'rug.fondue': ['#4e1c18', '#7a2e24', '#e8cf8a'],
 };
 
 /** A sofa's ramp, shadow to top. */
@@ -35,9 +39,12 @@ export const SOFAS: Record<string, readonly [string, string, string, string]> =
 		'sofa.mustard': ['#7a5a1c', '#a87e2a', '#c89c3e', '#e0bc64'],
 		'sofa.forest': ['#1e4234', '#2c5e4a', '#3e7e62', '#5ea084'],
 		'sofa.rose': ['#6e2e44', '#94405c', '#b45e78', '#d08aa0'],
+		'sofa.velvet': ['#2e1a3e', '#45285c', '#5e3c7a', '#7c5a9a'],
 	};
 
 export interface ShopItem {
 	slot: string;
 	price: number;
+	/** Hours together that unlock it; such an item is never bought. */
+	hours?: number;
 }
