@@ -149,8 +149,12 @@ type channelState struct {
 	lounge protocol.LoungeState
 	// Where each rider sits in it and what they are doing for a moment. Like
 	// away, keyed by rider and gone with their last socket.
-	seats    map[string]int
-	emotes   map[string]roomEmote
+	seats  map[string]int
+	emotes map[string]roomEmote
+	// The table football (toeggeli.go): the match at the table, and the
+	// challenges standing, by who sent them.
+	table    *table
+	invites  map[string]toeggeliInvite
 	emoteSeq int
 	// Riders whose last socket has gone, and when. The room is not told until
 	// the grace window is out (#984): a phone in a garage flaps, and a leave

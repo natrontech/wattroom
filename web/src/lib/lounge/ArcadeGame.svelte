@@ -1,11 +1,14 @@
 <script lang="ts">
 	// The room's arcade cabinet (docs/spec/lounge.md): three games on one
-	// button, today's course the same for every crew, and the crew's boards.
+	// button, today's course the same for every crew, Töggeli against someone
+	// in the voice channel, and the crew's boards.
 	import Crown from '@lucide/svelte/icons/crown';
+	import Goal from '@lucide/svelte/icons/goal';
 	import Mountain from '@lucide/svelte/icons/mountain';
 	import ShoppingBag from '@lucide/svelte/icons/shopping-bag';
 	import Target from '@lucide/svelte/icons/target';
 	import Trophy from '@lucide/svelte/icons/trophy';
+	import { untrack } from 'svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import { api } from '$lib/api';
 	import { play } from '$lib/sound/cues';
@@ -18,19 +21,37 @@
 		type Sound,
 	} from '$lib/lounge/games/game';
 	import type { ArcadeEntry, ArcadeView } from '$lib/lounge/memory';
-	import { loadPref, savePref } from '$lib/lounge/arcade-pick';
+	import { loadPref, savePref, type Tab } from '$lib/lounge/arcade-pick';
+	import ToeggeliTable from '$lib/lounge/ToeggeliTable.svelte';
+	import type {
+		ToeggeliCommand,
+		ToeggeliInvite,
+		ToeggeliState,
+	} from '$lib/protocol';
 
 	let {
 		crew,
 		onclose,
 		onscore,
 		you,
+		open,
+		table = null,
+		invites = [],
+		riders = [],
+		onToeggeli,
 	}: {
 		crew: string;
 		onclose: () => void;
 		onscore: () => void;
 		/** Your rider id: your rows stand out. */
 		you?: string;
+		/** The tab to open on, else the one this device last picked. */
+		open?: Tab;
+		/** Töggeli: the match, the challenges, and who else is here to play. */
+		table?: ToeggeliState | null;
+		invites?: ToeggeliInvite[];
+		riders?: { id: string; name: string }[];
+		onToeggeli?: (cmd: ToeggeliCommand) => void;
 	} = $props();
 
 	const ICONS = { bergpreis: Mountain, feedzone: ShoppingBag, darts: Target };
@@ -45,10 +66,13 @@
 
 	let view = $state<ArcadeView | undefined>();
 	let failed = $state(false);
-	let picked = $state<GameId>(loadPref());
-	const game = $derived(gameOf(picked));
+	// svelte-ignore state_referenced_locally
+	let picked = $state<Tab>(open ?? loadPref());
+	const solo = $derived(picked !== 'toeggeli');
+	const game = $derived(gameOf(picked as GameId));
+	// The run on screen, from the tab it opened on; pick() starts each new one.
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	let run = $state.raw<any>(gameOf(loadPref()).start(0));
+	let run = $state.raw<any>(untrack(() => gameOf(picked as GameId).start(0)));
 	let phase = $state<'ready' | 'playing' | 'done'>('ready');
 	/** The best you had before this run, and whether the run beat it. */
 	let bestBefore = 0;
@@ -75,11 +99,11 @@
 			: '',
 	);
 
-	function pick(id: GameId) {
+	function pick(id: Tab) {
 		if (phase === 'playing') return;
 		picked = id;
 		savePref(id);
-		run = gameOf(id).start(seed);
+		run = gameOf(id as GameId).start(seed);
 		phase = 'ready';
 		beat = false;
 	}
@@ -90,7 +114,7 @@
 		let frame = requestAnimationFrame(function tick(now) {
 			const dt = Math.min(0.1, (now - last) / 1000);
 			last = now;
-			const playing = gameOf(picked);
+			const playing = gameOf(picked as GameId);
 			if (phase === 'playing') {
 				const before = run;
 				run = playing.step(run, dt, held);
@@ -127,7 +151,7 @@
 	}
 
 	function key(e: KeyboardEvent, down: boolean) {
-		if (e.code !== 'Space') return;
+		if (e.code !== 'Space' || !solo) return;
 		e.preventDefault();
 		if (phase === 'playing') held = down;
 		else if (down && !e.repeat && (view || failed)) begin();
@@ -147,11 +171,15 @@
 					crown: board === 'top' && i === 0,
 				})),
 	);
-	const EMPTY = {
-		today: 'Nobody has played today’s course yet.',
-		top: 'Nobody yet. The record is yours to set.',
+	const EMPTY = $derived({
+		today: solo
+			? 'Nobody has played today’s course yet.'
+			: 'Nobody has won a match today.',
+		top: solo
+			? 'Nobody yet. The record is yours to set.'
+			: 'No matches won yet.',
 		cup: 'Nobody has won a day this week yet. The cup starts again on Monday.',
-	};
+	});
 </script>
 
 <svelte:window onkeydown={(e) => key(e, true)} onkeyup={(e) => key(e, false)} />
@@ -170,54 +198,73 @@
 				><Icon size={16} /> {g.name}</button
 			>
 		{/each}
+		<button
+			type="button"
+			role="tab"
+			aria-selected={picked === 'toeggeli'}
+			disabled={phase === 'playing'}
+			onclick={() => pick('toeggeli')}
+			class="btn {picked === 'toeggeli' ? 'btn-primary' : 'btn-ghost'}"
+			><Goal size={16} /> Töggeli</button
+		>
 	</div>
-	<p class="eyebrow mt-3">
-		{courseDay ? `Today’s course · ${courseDay}` : 'Today’s course'}
-	</p>
-	<p class="text-muted mt-1 text-sm">{game.how}</p>
-	<button
-		type="button"
-		aria-label={game.button}
-		class="mt-3 block w-full touch-none select-none"
-		onpointerdown={() =>
-			phase === 'playing' ? (held = true) : (view || failed) && begin()}
-		onpointerup={() => (held = false)}
-		onpointerleave={() => (held = false)}
-		onpointercancel={() => (held = false)}
-	>
-		<canvas
-			width={W}
-			height={H}
-			{@attach canvasLoop}
-			class="w-full rounded [image-rendering:pixelated]"
-		></canvas>
-	</button>
-	<div class="mt-3 flex min-h-9 flex-wrap items-center gap-3">
-		{#if phase !== 'playing'}
-			<button
-				type="button"
-				onclick={begin}
-				disabled={!view && !failed}
-				class="btn btn-primary"
-				>{phase === 'done' ? 'Play again' : 'Start'}</button
-			>
-		{/if}
-		{#if phase === 'done'}
-			<p class="font-display text-lg font-bold tabular-nums">
-				{game.score(run)} points
-			</p>
-			{#if beat}<p
-					class="font-display bg-neon/20 text-ink rounded px-2 py-0.5 text-sm font-bold"
-					role="status"
+	{#if !solo}
+		<ToeggeliTable
+			{table}
+			{invites}
+			{riders}
+			{you}
+			send={(cmd) => onToeggeli?.(cmd)}
+		/>
+	{:else}
+		<p class="eyebrow mt-3">
+			{courseDay ? `Today’s course · ${courseDay}` : 'Today’s course'}
+		</p>
+		<p class="text-muted mt-1 text-sm">{game.how}</p>
+		<button
+			type="button"
+			aria-label={game.button}
+			class="mt-3 block w-full touch-none select-none"
+			onpointerdown={() =>
+				phase === 'playing' ? (held = true) : (view || failed) && begin()}
+			onpointerup={() => (held = false)}
+			onpointerleave={() => (held = false)}
+			onpointercancel={() => (held = false)}
+		>
+			<canvas
+				width={W}
+				height={H}
+				{@attach canvasLoop}
+				class="w-full rounded [image-rendering:pixelated]"
+			></canvas>
+		</button>
+		<div class="mt-3 flex min-h-9 flex-wrap items-center gap-3">
+			{#if phase !== 'playing'}
+				<button
+					type="button"
+					onclick={begin}
+					disabled={!view && !failed}
+					class="btn btn-primary"
+					>{phase === 'done' ? 'Play again' : 'Start'}</button
 				>
-					<Trophy size={14} class="inline" /> New best
-				</p>{/if}
-		{:else if phase === 'ready' && mine?.best}
-			<p class="text-muted text-sm">
-				Your best: <span class="font-display tabular-nums">{mine.best}</span>
-			</p>
-		{/if}
-	</div>
+			{/if}
+			{#if phase === 'done'}
+				<p class="font-display text-lg font-bold tabular-nums">
+					{game.score(run)} points
+				</p>
+				{#if beat}<p
+						class="font-display bg-neon/20 text-ink rounded px-2 py-0.5 text-sm font-bold"
+						role="status"
+					>
+						<Trophy size={14} class="inline" /> New best
+					</p>{/if}
+			{:else if phase === 'ready' && mine?.best}
+				<p class="text-muted text-sm">
+					Your best: <span class="font-display tabular-nums">{mine.best}</span>
+				</p>
+			{/if}
+		</div>
+	{/if}
 	<div class="mt-4 flex gap-1" role="tablist" aria-label="Boards">
 		{#each [['today', 'Today'], ['top', 'All time'], ['cup', 'This week’s cup']] as const as [id, label] (id)}
 			<button
@@ -251,7 +298,7 @@
 							/>{/if}</span
 					>
 					<span class="font-display tabular-nums"
-						>{entry.value}{board === 'cup'
+						>{entry.value}{board === 'cup' || !solo
 							? entry.value === 1
 								? ' win'
 								: ' wins'

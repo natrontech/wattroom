@@ -35,6 +35,7 @@ func TestArcadeSavesBestPerGameAndDay(t *testing.T) {
 		{`{"game":"pinball","score":10}`, http.StatusBadRequest},
 		{`{"score":10}`, http.StatusBadRequest},
 		{`{"game":"feedzone","score":-1}`, http.StatusBadRequest},
+		{`{"game":"toeggeli","score":3}`, http.StatusBadRequest},
 	} {
 		if got := post(tc.body); got != tc.want {
 			t.Errorf("%s: %d, want %d", tc.body, got, tc.want)
@@ -95,8 +96,11 @@ func TestCupCountsDaysWon(t *testing.T) {
 		row("darts", alice, "Alice", "2026-11-03", 5, 60),
 		row("darts", bob, "Bob", "2026-11-03", 4, 60),
 		row("feedzone", bob, "Bob", "2026-11-04", 1, 90),
+		// Every match won at the table counts, not just the day's most.
+		row("toeggeli", alice, "Alice", "2026-11-04", 1, 3),
+		row("toeggeli", bob, "Bob", "2026-11-04", 2, 1),
 	})
-	if len(cup) != 2 || cup[0].Name != "Bob" || cup[0].Wins != 3 || cup[1].Wins != 1 {
-		t.Errorf("cup %+v, want Bob 3, Alice 1", cup)
+	if len(cup) != 2 || cup[0].Name != "Alice" || cup[0].Wins != 4 || cup[1].Wins != 4 {
+		t.Errorf("cup %+v, want Alice 4, Bob 4, by name on a tie", cup)
 	}
 }

@@ -104,6 +104,10 @@
 	import Beer from '@lucide/svelte/icons/beer';
 	import BookOpen from '@lucide/svelte/icons/book-open';
 	import Gamepad2 from '@lucide/svelte/icons/gamepad-2';
+	import Goal from '@lucide/svelte/icons/goal';
+	import { initialsOf } from '$lib/lounge/memory';
+	import type { Tab } from '$lib/lounge/arcade-pick';
+	import { play as playCue } from '$lib/sound/cues';
 	import Hand from '@lucide/svelte/icons/hand';
 	import PartyPopper from '@lucide/svelte/icons/party-popper';
 	import PersonStanding from '@lucide/svelte/icons/person-standing';
@@ -327,7 +331,31 @@
 
 	/** Bergpreis: you go and stand at the cabinet, and come back after. */
 	let gaming = $state(false);
+	let arcadeTab = $state<Tab | undefined>();
 	let seatBefore = 0;
+	/** Töggeli: the match at the table, and challenges to or from you. */
+	const youId = $derived(channel.riders.find((r) => r.you)?.id);
+	const table = $derived(live?.table ?? null);
+	const invites = $derived(live?.invites ?? []);
+	const challenged = $derived(invites.find((i) => i.to === youId));
+	const others = $derived(
+		channel.riders
+			.filter((r) => !r.you)
+			.map((r) => ({ id: r.id, name: r.name })),
+	);
+	// A challenge to you gets a sound as well as the banner.
+	let heardInvite = '';
+	$effect(() => {
+		const key = challenged ? `${challenged.from}:${challenged.until}` : '';
+		untrack(() => {
+			if (key && key !== heardInvite) playCue('poke');
+			heardInvite = key;
+		});
+	});
+	function openToeggeli() {
+		arcadeTab = 'toeggeli';
+		playGame();
+	}
 	function playGame() {
 		arcadeUntil = clock + 8;
 		seatBefore = channel.riders.find((r) => r.you)?.seat ?? 0;
@@ -336,6 +364,7 @@
 	}
 	function leaveGame() {
 		gaming = false;
+		arcadeTab = undefined;
 		live?.room({ seat: seatBefore });
 	}
 
@@ -1022,10 +1051,19 @@
 			<button
 				type="button"
 				onclick={playGame}
-				title="The arcade: three games and your crew's high scores"
+				title="The arcade: three games, Töggeli and your crew's high scores"
 				class="btn btn-ghost btn-xs text-ink px-0"
 				><Gamepad2 size={13} /> Arcade</button
 			>
+			{#if table}<button
+					type="button"
+					onclick={openToeggeli}
+					title="Watch the match at the table"
+					class="btn btn-ghost btn-xs text-ink px-0 tabular-nums"
+					><Goal size={13} /> Töggeli · {initialsOf(table.leftName)}
+					{table.leftGoals}:{table.rightGoals}
+					{initialsOf(table.rightName)}</button
+				>{/if}
 			{#if onAir && nowPlaying}<span class="tabular-nums max-sm:hidden"
 					>{nowPlaying}</span
 				>{/if}
@@ -1041,8 +1079,39 @@
 				onclose={() => (furnishing = false)}
 				onchange={reread}
 			/>{/if}
+		{#if challenged && !gaming && !table}
+			<div
+				class="bg-surface/90 absolute top-2 left-1/2 flex -translate-x-1/2 flex-wrap items-center gap-2 rounded px-3 py-2 text-sm shadow"
+				role="status"
+			>
+				<Goal size={16} />
+				<span
+					><span class="font-semibold">{challenged.fromName}</span> challenges you
+					to Töggeli</span
+				>
+				<button
+					type="button"
+					class="btn btn-primary btn-xs"
+					onclick={() => {
+						live?.toeggeli({ op: 'accept', to: challenged.from });
+						openToeggeli();
+					}}>Play</button
+				>
+				<button
+					type="button"
+					class="btn btn-ghost btn-xs"
+					onclick={() => live?.toeggeli({ op: 'decline', to: challenged.from })}
+					>Not now</button
+				>
+			</div>
+		{/if}
 		{#if gaming}<ArcadeGame
 				crew={station}
+				open={arcadeTab}
+				{table}
+				{invites}
+				riders={others}
+				onToeggeli={(cmd) => live?.toeggeli(cmd)}
 				you={channel.riders.find((r) => r.you)?.id}
 				onclose={leaveGame}
 				onscore={reread}

@@ -273,6 +273,7 @@ func wire(ctx context.Context, st *store.Store, mux *http.ServeMux, baseURL stri
 	recapService := recap.New(st, log)
 	h.SetRecapKeeper(recapService)
 	h.SetLoungeKeeper(channels.NewLoungeKeeper(ctx, st, log))
+	h.SetToeggeliKeeper(crewsService)
 	recapService.SetLive(h)
 	playlistsService := playlists.New(st, authService, channelsService, log)
 	playlistsService.Register(mux)

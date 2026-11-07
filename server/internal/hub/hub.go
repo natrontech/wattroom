@@ -147,6 +147,8 @@ type Hub struct {
 	recaps RecapKeeper
 	// What keeps a voice channel's room between calls (ADR-0094).
 	loungeKeep LoungeKeeper
+	// toeggeliKeep keeps the table's wins (toeggeli.go); nil keeps none.
+	toeggeliKeep ToeggeliKeeper
 	// The lobby (#251): every signed-in client holds one socket here; holding
 	// it IS being online, and every presence change pings it. See lobby.go.
 	lobby map[*lobbyClient]string
