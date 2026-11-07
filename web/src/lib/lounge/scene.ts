@@ -460,7 +460,7 @@ export function tagsOf(
 				id: rider.id,
 				x: ox + x,
 				y: oy + y + 4,
-				head: oy + y - 38,
+				head: oy + y - 31,
 				span: 40,
 			});
 	for (const { f, x, y } of [...crew.floor, ...crew.placed])

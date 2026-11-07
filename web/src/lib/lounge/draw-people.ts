@@ -682,12 +682,12 @@ function bike(g: Ctx, s: SceneInput, b: Bike) {
 		g.translate(AT_X * 2 + 1, 0);
 		g.scale(-1, 1);
 	}
-	ellipse(g, AT_X, BIKE_GROUND + 1, 24, 1, C.floorDark);
+	ellipse(g, AT_X, BIKE_GROUND + 1, 20, 1, C.floorDark);
 	outlined(
 		g,
 		[
-			[AT_X + 10, BIKE_GROUND - 2, 12, 2, C.cable],
-			[AT_X - 22, BIKE_GROUND - 1, 12, 1, C.cable],
+			[AT_X + 9, BIKE_GROUND - 2, 10, 2, C.cable],
+			[AT_X - 19, BIKE_GROUND - 1, 10, 1, C.cable],
 		],
 		C.ink,
 	);
@@ -709,19 +709,19 @@ function bike(g: Ctx, s: SceneInput, b: Bike) {
 	// Words and marks are never turned: placed by hand on the turned side.
 	const turn = (x: number, w: number) =>
 		(b.face > 0 ? AT_X * 2 + 1 - x - w : x) + dx;
-	if (rider.speaking) bubble(g, turn(AT_X - 12, 8), 76 + dy, s);
+	if (rider.speaking) bubble(g, turn(AT_X - 8, 8), 83 + dy, s);
 	if (rider.sounding)
 		sprite(
 			g,
 			NOTE,
-			turn(AT_X - 22, 3),
-			(rider.speaking ? 72 : 80) + dy,
+			turn(AT_X - 18, 3),
+			(rider.speaking ? 79 : 87) + dy,
 			C.lilac,
 		);
 	if (rider.watts <= 0) return;
 	const label = `${Math.round(rider.watts)} W`;
-	const x = turn(AT_X - 8, 1) - Math.round(textWidth(label) / 2);
-	const y = (rider.speaking ? 68 : 78) + dy;
+	const x = turn(AT_X - 5, 1) - Math.round(textWidth(label) / 2);
+	const y = (rider.speaking ? 75 : 85) + dy;
 	g.globalAlpha = 0.35;
 	for (const [ox, oy] of [
 		[-1, 0],
