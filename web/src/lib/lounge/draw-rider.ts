@@ -31,6 +31,14 @@ const YAW: Record<View, number> = {
 
 /** A pedal stroke's frames. */
 export const PEDAL_FRAMES = 8;
+
+/**
+ * The right crank's angle at a point of the stroke, from the front. The bike
+ * faces +x with y up, so pedalling forward turns it the negative way: the
+ * front foot goes down.
+ */
+export const crankAngle = (stroke: number): number =>
+	-(stroke / PEDAL_FRAMES) * Math.PI * 2;
 /** One cell of a rider's sheet, and where its ground sits. */
 export const CELL_W = 60;
 export const CELL_H = 60;
@@ -407,7 +415,7 @@ export function drawCyclist(
 	const sin = Math.sin(yaw);
 	const cos = Math.cos(yaw);
 	const across = Math.abs(cos);
-	const angle = (stroke / PEDAL_FRAMES) * Math.PI * 2;
+	const angle = crankAngle(stroke);
 	// Out of the saddle the bike rocks under you, away from the foot going down.
 	const rock = opts.standing ? Math.sin(angle) * 0.13 : 0;
 	/** Where a joint stands in this pose, before the bike rocks. */
@@ -453,7 +461,7 @@ export function drawCyclist(
 			WHEEL - 1.6,
 			0,
 			C.paper,
-			(Math.round(-angle * 2 * (90 / (Math.PI * 2))) % 90) + 90,
+			(Math.round(angle * 2 * (90 / (Math.PI * 2))) % 90) + 90,
 			90,
 		);
 		const [hx, hy] = at(hub);
