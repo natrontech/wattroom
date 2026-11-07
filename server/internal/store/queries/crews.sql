@@ -337,6 +337,17 @@ select picks from crew_rooms where crew_id = $1;
 insert into crew_rooms (crew_id, picks) values ($1, $2)
 on conflict (crew_id) do update set picks = excluded.picks;
 
+-- name: CrewBoardMetres :one
+-- The crew's km stone (lounge.md): metres ridden in the crew's sessions by
+-- the members whose weekly-board switch is on, the one consent this crew
+-- number rests on. Nobody else's rides count.
+select coalesce(sum(r.distance_m), 0)::bigint
+from rides r
+join crew_roles cr on cr.crew_id = r.crew_id and cr.user_id = r.user_id
+where r.crew_id = $1
+  and cr.role in ('member', 'admin')
+  and cr.on_board;
+
 -- name: CrewArcadeBests :many
 -- Each rider's best ever at each game, the first time they reached it
 -- winning a tie, by the name the crew knows them by. The handler keeps five.

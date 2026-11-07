@@ -1060,11 +1060,13 @@ export interface RoomAct {
   to?: string;
 }
 /**
- * RoomItem is something a crew can put in its cozy room, in Batzen.
+ * RoomItem is something a crew can put in its cozy room: bought in Batzen,
+ * or, with Hours, unlocked by that much time together and never bought.
  */
 export interface RoomItem {
   slot: string;
   price: number /* int32 */;
+  hours?: number /* int32 */;
 }
 /**
  * The arcade's games (docs/spec/lounge.md). The client keeps how each plays,

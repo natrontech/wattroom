@@ -63,24 +63,30 @@ type RoomAct struct {
 	To string `json:"to,omitempty"`
 }
 
-// RoomItem is something a crew can put in its cozy room, in Batzen.
+// RoomItem is something a crew can put in its cozy room: bought in Batzen,
+// or, with Hours, unlocked by that much time together and never bought.
 type RoomItem struct {
 	Slot  string `json:"slot"`
 	Price int32  `json:"price"`
+	Hours int32  `json:"hours,omitempty"`
 }
 
 // RoomItems is the closed set of what a crew can furnish with, by id. The
 // client keeps how each looks, in web/src/lib/lounge/furnish.ts.
 var RoomItems = map[string]RoomItem{
-	"rug.forest":   {"rug", 60},
-	"rug.navy":     {"rug", 60},
-	"rug.sand":     {"rug", 60},
-	"sofa.mustard": {"sofa", 120},
-	"sofa.forest":  {"sofa", 120},
-	"sofa.rose":    {"sofa", 120},
-	"wall.stripes": {"wall", 80},
-	"wall.plain":   {"wall", 80},
-	"sign.initial": {"sign", 100},
+	"rug.forest":   {"rug", 60, 0},
+	"rug.navy":     {"rug", 60, 0},
+	"rug.sand":     {"rug", 60, 0},
+	"sofa.mustard": {"sofa", 120, 0},
+	"sofa.forest":  {"sofa", 120, 0},
+	"sofa.rose":    {"sofa", 120, 0},
+	"wall.stripes": {"wall", 80, 0},
+	"wall.plain":   {"wall", 80, 0},
+	"sign.initial": {"sign", 100, 0},
+	// Unlocked by the crew's time together in voice (docs/spec/lounge.md).
+	"rug.fondue":  {"rug", 0, 10},
+	"sofa.velvet": {"sofa", 0, 25},
+	"sign.bike":   {"sign", 0, 50},
 }
 
 // The arcade's games (docs/spec/lounge.md). The client keeps how each plays,

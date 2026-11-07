@@ -38,6 +38,20 @@ The **logbook** on the desk opens your own numbers, seen only by you: your level
 | A level gained          | the rider celebrates for everyone in the room: **5 s**, a banner and a fanfare          |
 | A rider streak extended | the same, with the weeks in a row                                                       |
 | Riders seen first       | never celebrate: a room only celebrates what changed while it was open                  |
+| Arcade bests            | your best at each game in the logbook; Töggeli's is matches won                         |
+
+## Time together
+
+The room wears in with the crew's time together in voice, and that time unlocks things for it. Hangout time still pays no XP and no Batzen.
+
+| What                          | Number                                                                                                  |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------- |
+| A mug ring on the table       | at **5 h** together                                                                                     |
+| The sofa's middle seats sag   | at **20 h**                                                                                             |
+| The floor in front of it worn | at **50 h**                                                                                             |
+| Unlocks, free for the crew    | the Fondue rug at **10 h**, the Velvet sofa at **25 h**, the neon bike sign at **50 h**; never for sale |
+| The km stone                  | km ridden in the crew's sessions by members whose weekly-board switch is on; nobody else's rides count  |
+| Its plates                    | one for each **1'000 km**, **6** at most on the post                                                    |
 
 ## A picture on the wall
 
