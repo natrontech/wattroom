@@ -66,8 +66,8 @@ describe('the roadside’s chalk (#3029)', () => {
 		mesh.geometry.computeBoundingBox();
 		const half =
 			(mesh.geometry.boundingBox!.max.x - mesh.geometry.boundingBox!.min.x) / 2;
-		// Three abreast ride ±LANE; a rider's shoulders are about 0.3 m either side of their line.
-		const widest = ((lanesFor(6) - 1) / 2) * LANE + 0.3;
+		// Three abreast ride ±LANE; the room's rider reaches 0.45 m either side of their line.
+		const widest = ((lanesFor(6) - 1) / 2) * LANE + 0.45;
 		expect(BESIDE - half).toBeGreaterThan(widest);
 		expect(BESIDE + half).toBeLessThanOrEqual(ROAD_W / 2);
 	});

@@ -19,7 +19,7 @@ import { across, bankOf, ROAD_W } from './terrain/road-profile';
 // rider alone keeps right, so up to three abreast clears it (a bigger bunch's
 // outer lane rides over its edge). Stretched four to one along the road, as
 // road paint is, so a rider's low eye sees the shape whole; tune it on a climb.
-const ACROSS = ROAD_W * 0.27;
+const ACROSS = ROAD_W * 0.22;
 const ALONG = ACROSS * 4;
 /** The stamp's centre, metres left of the road's middle, a hand inside the edge. */
 export const BESIDE = ROAD_W / 2 - ACROSS / 2 - 0.2;

@@ -10,8 +10,8 @@ import { resolveKit } from './figure/kit';
 import { lanesFor } from './lanes';
 import { ROAD_W } from './terrain/road-profile';
 
-/** Metres between riders abreast. */
-export const LANE = 0.9;
+/** Metres between riders abreast: the room's rider is 0.9 m across from behind, and a gap between reads as two. */
+export const LANE = 1.05;
 /** A bike, wheel to wheel, and docs/SPEC.md "Drafting"'s 1.0 m wheel gap: one row of the bunch. */
 const BIKE = rigFor(resolveKit()).bk;
 const ROW_M = BIKE.wheelbase + 2 * BIKE.R + 1.0;
