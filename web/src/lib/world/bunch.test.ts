@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createBunch, formation, LANE, PULL_LANE, VERGE_LANE } from './bunch';
+import { ROAD_W } from './terrain/road-profile';
 import type { BunchView } from '$lib/channel/bunch-view';
 
 const ids = (n: number) => Array.from({ length: n }, (_, i) => `r${i}`);
@@ -22,6 +23,14 @@ describe('formation (#3098)', () => {
 		expect(front.map((s) => s.lane)).toEqual(
 			[1.5, 0.5, -0.5, -1.5].map((k) => k * LANE),
 		);
+	});
+
+	it('keeps a big bunch on the road, five abreast with a gap between each', () => {
+		const order = Array.from({ length: 20 }, (_, i) => `r${i}`);
+		const lanes = [...formation(order, 0).values()].map((s) => s.lane);
+		// Half the room's rider, 0.9 m across from behind, either side of the outermost lane.
+		expect(Math.max(...lanes.map(Math.abs)) + 0.45).toBeLessThan(ROAD_W / 2);
+		expect(LANE).toBeGreaterThan(0.9);
 	});
 
 	it('centres a short last row, where a late joiner rides in', () => {

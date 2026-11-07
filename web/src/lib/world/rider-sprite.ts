@@ -159,7 +159,7 @@ const ROWS = TURNS.length * 2;
 const FIRST_UP = 3;
 
 /** Sheets still to draw, a row at a time: each job says when it is done. */
-const jobs: (() => boolean)[] = [];
+const jobs: { step: () => boolean; drawn: () => number }[] = [];
 
 /**
  * Draws the sheets waiting, for `ms` of this frame: a rider's sheet is too
@@ -167,7 +167,11 @@ const jobs: (() => boolean)[] = [];
  */
 export function drawSheets(ms = 3) {
 	const until = performance.now() + ms;
-	while (jobs.length && performance.now() < until) if (jobs[0]()) jobs.shift();
+	while (jobs.length && performance.now() < until) {
+		// The sheet with the fewest rows first: everyone's back turns before anyone's front, so no rider waits on the rest.
+		const next = jobs.reduce((a, b) => (b.drawn() < a.drawn() ? b : a));
+		if (next.step()) jobs.splice(jobs.indexOf(next), 1);
+	}
 }
 
 export type RiderSheet = {
@@ -191,7 +195,7 @@ export function riderSheet(figure: Figure): RiderSheet {
 	const up = { seated: 0, standing: 0 };
 	let row = 0;
 	let gone = false;
-	jobs.push(() => {
+	const step = () => {
 		if (gone) return true;
 		const standing = row >= TURNS.length;
 		const deg = TURNS[row % TURNS.length];
@@ -220,7 +224,8 @@ export function riderSheet(figure: Figure): RiderSheet {
 			up.standing = Math.max(0, row - TURNS.length);
 		}
 		return row === ROWS;
-	});
+	};
+	jobs.push({ step, drawn: () => row });
 	return {
 		texture,
 		up,
