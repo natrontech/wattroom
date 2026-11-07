@@ -33,7 +33,7 @@ func droppable(t *testing.T, withKey bool) (*Hub, string) {
 		})
 	}
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", sessionDoor(h))
 	mux.HandleFunc("GET /ws/presence", h.HandleLobbyWS)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)

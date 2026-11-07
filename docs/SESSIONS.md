@@ -1,6 +1,6 @@
 # Sessions on their own
 
-Status: plan, agreed with Jan on 2026-11-03. Each PR below edits [WATTROOM.md](../WATTROOM.md) for the part it ships.
+Status: built, 2026-11-03 to 2026-11-07 (#4388, #4389, #4394, #4397, #4475 and the contract PR). What is left is under "Still open". Each PR edited [WATTROOM.md](../WATTROOM.md) for the part it shipped.
 
 A session is a group ride: a coach, a shared workout timeline, live numbers between its riders. Today it runs inside one voice channel. This plan takes it out. A session becomes a live object of the crew, with its own goroutine, clock and socket. A voice channel becomes a call and nothing else. It still shows who in it is riding, and on which session, with a way to join.
 
@@ -128,6 +128,15 @@ Each one ships on its own and leaves the app working.
 5. **Ride together.** A session with no workout. The call stops carrying metrics. `/v/[channel]/training` redirects to `/ride`. The privacy copy changes.
 6. **Schedule.** Plans name no channel; starting one opens a crew session; MCP and the calendar follow.
 7. **Contract.** Split `channelState`; the channel socket refuses session controls; `LiveSession.Channel` goes. One release later, drop `scheduled_sessions.channel_id`.
+
+## Still open
+
+- `channelState` is still one struct for a call and a session; a crew session's room is one with no call in it. The split is internal and changes nothing a rider sees.
+- Client code for a session inside a voice channel can no longer run and is still there: the channel Training page's session door, `LoungeSession`, the session page's voice-channel branch, the lost-road resume.
+- Rider-scoped state (sensor claims, the phone remote's relays) is still per room, so two screens of one rider in a call and a session do not see each other's claim.
+- `/crew/[id]/v/[channel]/training` stays the call's free ride page; the redirect to `/ride` waits until `/ride` draws the call's ride.
+- A crew session does not survive a server restart; its page then keeps reconnecting instead of saying it ended.
+- `LiveSession.Channel` is always empty and can go. `scheduled_sessions.channel_id` is dropped one release after the plan form stopped writing it, once no channel-pinned plan is left in the future.
 
 ## What WATTROOM.md says when this lands
 

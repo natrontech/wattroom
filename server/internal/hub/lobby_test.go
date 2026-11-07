@@ -27,7 +27,7 @@ func TestLobbyPresence(t *testing.T) {
 		return name, true
 	})
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", sessionDoor(h))
 	mux.HandleFunc("GET /ws/presence", h.HandleLobbyWS)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)

@@ -189,6 +189,13 @@ func (h *Hub) control(c *client, rm *channelState, rider protocol.Rider, cmd pro
 	// The rider on THIS socket, not the copy captured when it opened:
 	// a crew role change mid-session has to land without a reconnect.
 	rider = rm.riderOf(c)
+	// A voice channel is a call and nothing else (docs/SESSIONS.md): no
+	// session opens in one, so its room stays its room. A session is the
+	// crew's own, opened from the Ride menu, a plan or a game.
+	if c.call && (cmd.Action == "pick" || cmd.Action == "game") {
+		h.writeError(c, "forbidden", "A session is the crew's own now: start it from the Ride menu, and this call stays as it is.")
+		return
+	}
 	if code, refusal := rm.refusal(cmd.Action, rider); code != "" {
 		h.writeError(c, code, refusal)
 		return

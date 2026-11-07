@@ -136,7 +136,7 @@ func controlHub(t *testing.T) (*Hub, *atomic.Int64, string) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	h.now = func() time.Time { return time.Unix(0, clock.Load()) } // before any room exists
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", sessionDoor(h))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	return h, clock, "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/velvet"

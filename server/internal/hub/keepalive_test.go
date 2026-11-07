@@ -43,7 +43,7 @@ func keepaliveHub(t *testing.T) (*Hub, string) {
 	})
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /ws/presence", h.HandleLobbyWS)
-	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", sessionDoor(h))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	return h, "ws" + strings.TrimPrefix(srv.URL, "http")
