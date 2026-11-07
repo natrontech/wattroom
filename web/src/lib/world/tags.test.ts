@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { CORRIDOR } from '$lib/session/docks';
 import { STYLES } from './test-styles';
 import type { SimRider } from './sim';
-import { CHEVRON_Y, THUMB_Y } from './crew';
+import { CHEVRON_Y, HEART_Y } from './crew';
 import { carriers, lay, makeTags, PILL_H, TEXT_H, textOf } from './tags';
 
 const rider = (id: string, d: number, more: Partial<SimRider> = {}) =>
@@ -61,7 +61,7 @@ describe('name tags over riders (#3086)', () => {
 		}
 	});
 
-	it('stands over a cheer’s thumb while it shows, and over the chevron’s height otherwise', () => {
+	it('stands over a cheer’s heart while it shows, and over the chevron’s height otherwise', () => {
 		const style = STYLES.find((s) => s.id === 'bluehour') ?? STYLES[0];
 		const camera = new THREE.PerspectiveCamera(52, 16 / 10, 1, 1000);
 		camera.position.set(0, 1.5, 8);
@@ -79,10 +79,10 @@ describe('name tags over riders (#3086)', () => {
 			const [s] = tags.group.children as THREE.Sprite[];
 			return s.position.clone().project(camera).y - PILL_H;
 		};
-		const thumbTop = new THREE.Vector3(0, THUMB_Y + 0.16, 0).project(camera).y;
+		const heartTop = new THREE.Vector3(0, HEART_Y + 0.16, 0).project(camera).y;
 		const chevron = new THREE.Vector3(0, CHEVRON_Y + 0.12, 0).project(camera).y;
-		expect(foot({ thumb: 1, alpha: 1, lit: true })).toBeGreaterThanOrEqual(
-			thumbTop,
+		expect(foot({ heart: 1, alpha: 1, lit: true })).toBeGreaterThanOrEqual(
+			heartTop,
 		);
 		expect(foot(null)).toBeCloseTo(chevron, 5);
 	});

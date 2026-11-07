@@ -1,4 +1,4 @@
-// A cheer for one rider (#3116), as the world draws it: a thumbs-up over
+// A cheer for one rider (#3116), as the world draws it: a heart over
 // their head, then their tail light blinking. Social, never a reward, so it
 // is flat and unlit like the chevron and nothing about it glows (ADR-0005).
 import * as THREE from 'three';
@@ -10,15 +10,15 @@ export const CHEER_S = 10;
 /** The tail light's blink: a small light, far under WCAG 2.3.1's 25 % of a 10° field. */
 export const BLINK_HZ = 2;
 
-/** What a cheer `since` seconds ago looks like: the thumb's size and coverage, and the light. */
-export type CheerLook = { thumb: number; alpha: number; lit: boolean };
+/** What a cheer `since` seconds ago looks like: the heart's size and coverage, and the light. */
+export type CheerLook = { heart: number; alpha: number; lit: boolean };
 
 const arrive = bezier(EASE.arrive);
 
 /**
- * A cheer's moment: the thumb grows in, holds for the announce hold and
+ * A cheer's moment: the heart grows in, holds for the announce hold and
  * dithers out; the light blinks for CHEER_S. `steady` is reduced motion:
- * every motion a held stamp — the thumb at full size for its hold, the light
+ * every motion a held stamp — the heart at full size for its hold, the light
  * lit throughout. Null once it is over.
  */
 export function cheerLook(since: number, steady: boolean): CheerLook | null {
@@ -26,7 +26,7 @@ export function cheerLook(since: number, steady: boolean): CheerLook | null {
 	const ms = since * 1000;
 	const shown = ms < HOLD_ANNOUNCE + (steady ? 0 : DUR.quick);
 	return {
-		thumb: !shown ? 0 : steady ? 1 : arrive(Math.min(1, ms / DUR.base)),
+		heart: !shown ? 0 : steady ? 1 : arrive(Math.min(1, ms / DUR.base)),
 		alpha:
 			steady || ms < HOLD_ANNOUNCE
 				? 1
@@ -35,28 +35,26 @@ export function cheerLook(since: number, steady: boolean): CheerLook | null {
 	};
 }
 
-// docs/design/mockups/v3's thumbs-up, in its own 24-unit box (y down).
-// ponytail: its two corner arcs drawn as straight cuts; a curve if anyone can tell at this size.
-const CUFF = [
-	[2, 10],
-	[6, 10],
-	[6, 21],
-	[2, 21],
-];
-const HAND = [
-	[8, 21],
-	[17.5, 21],
-	[19.5, 19.4],
-	[20.9, 12.4],
-	[19, 10],
-	[13.5, 10],
-	[14.3, 5.8],
-	[12.3, 3.5],
-	[8, 10],
+// A heart, in a 24-unit box (y down). A thumbs-up drawn this small read as
+// another finger, so a cheer shows a heart, as the cozy room's do.
+// ponytail: its two lobes as straight cuts; a curve if anyone can tell at this size.
+const HEART = [
+	[11.5, 20.5],
+	[4.2, 13],
+	[3, 9.6],
+	[4, 6.4],
+	[6.6, 4.6],
+	[9.4, 4.8],
+	[11.5, 7.2],
+	[13.6, 4.8],
+	[16.4, 4.6],
+	[19, 6.4],
+	[20, 9.6],
+	[18.8, 13],
 ];
 
-/** The thumb on its disc, about a helmet wide: vertex colours, so one draw. The thumb sits on both faces. */
-export function thumbGeometry(disc: THREE.Color, thumb: THREE.Color) {
+/** The heart on its disc, about a helmet wide: vertex colours, so one draw. The heart sits on both faces. */
+export function heartGeometry(disc: THREE.Color, heart: THREE.Color) {
 	const R = 0.16;
 	const s = (1.4 * R) / 24;
 	const shape = (pts: number[][]) =>
@@ -76,12 +74,11 @@ export function thumbGeometry(disc: THREE.Color, thumb: THREE.Color) {
 		g.deleteAttribute('normal');
 		return g;
 	};
-	const hand = () =>
-		new THREE.ShapeGeometry([shape(CUFF), shape(HAND)]).toNonIndexed();
+	const mark = () => new THREE.ShapeGeometry(shape(HEART)).toNonIndexed();
 	const parts = [
 		paint(new THREE.CircleGeometry(R, 28).toNonIndexed(), disc),
-		paint(hand().translate(0, 0, 0.006), thumb),
-		paint(hand().translate(0, 0, -0.006), thumb),
+		paint(mark().translate(0, 0, 0.006), heart),
+		paint(mark().translate(0, 0, -0.006), heart),
 	];
 	const merged = mergeGeometries(parts)!;
 	parts.forEach((g) => g.dispose());

@@ -267,14 +267,14 @@ describe('a ride’s world', () => {
 				});
 				return over;
 			};
-			const frames: { t: number; thumb: string[]; light: string[] }[] = [];
+			const frames: { t: number; heart: string[]; light: string[] }[] = [];
 			for (let k = 0; k <= 12 * 30; k++) {
 				// A second tick at 1 s that does not cheer: the cheer is not heard again.
 				if (k === 30) sent = 2000;
 				w.advanceBy(k ? 1 / 30 : 0);
 				frames.push({
 					t: k / 30,
-					thumb: seen('cheer'),
+					heart: seen('cheer'),
 					light: seen('tail-light'),
 				});
 			}
@@ -282,15 +282,15 @@ describe('a ride’s world', () => {
 			return (t: number) => frames[Math.round(t * 30)];
 		};
 		const moving = run(false);
-		expect(moving(0.1).thumb).toEqual(['b']);
+		expect(moving(0.1).heart).toEqual(['b']);
 		expect(moving(0.1).light).toEqual(['b']);
 		// 2 Hz: off for the second quarter of each half-second.
 		expect(moving(0.35).light).toEqual([]);
 		expect(moving(0.6).light).toEqual(['b']);
-		expect(moving(3).thumb).toEqual([]);
+		expect(moving(3).heart).toEqual([]);
 		expect(moving(9.6).light).toEqual(['b']);
 		expect(moving(10.1).light).toEqual([]);
-		expect(moving(11).thumb).toEqual([]);
+		expect(moving(11).heart).toEqual([]);
 		// Reduced motion: a held stamp, the light lit throughout.
 		const steady = run(true);
 		expect(steady(0.35).light).toEqual(['b']);
