@@ -28,6 +28,8 @@ type tickFrames struct {
 	log     *slog.Logger
 	channel string
 	built   map[frameKind][]byte
+	// Free riders, whose numbers reach their own sockets alone.
+	free map[string]struct{}
 }
 
 // road is the shared road the frame's rider free-rides (#3117), 0 for none:
@@ -37,6 +39,9 @@ type frameKind struct {
 	workout, scores, deck bool
 	road                  int
 	own                   string
+	// The free rider this copy is for, whose own numbers it keeps; "" for
+	// everyone else, whose copy carries no free rider's.
+	self string
 }
 
 // frame is nil when the tick could not be marshalled, remembered so the
@@ -89,6 +94,15 @@ func (f *tickFrames) marshal(kind frameKind, cheers []protocol.Cheer, roadside *
 		t.Jukebox = nil
 	}
 	t.FreeRoads = onRoad(t.FreeRoads, kind.road)
+	if len(f.free) > 0 {
+		riders := make(map[string]protocol.RiderMetrics, len(t.Riders))
+		for id, m := range t.Riders {
+			if _, free := f.free[id]; !free || id == kind.self {
+				riders[id] = m
+			}
+		}
+		t.Riders = riders
+	}
 	b, err := json.Marshal(protocol.ServerMessage{Tick: &t})
 	if err != nil {
 		logger(f.log).Error("tick could not be marshalled", "channel", f.channel, "workout", kind.workout, "scores", kind.scores, "deck", kind.deck, "err", err)
@@ -101,7 +115,7 @@ func (f *tickFrames) marshal(kind frameKind, cheers []protocol.Cheer, roadside *
 // it alone. Runs after rm.mu is released.
 func (rm *channelState) sendTick(log *slog.Logger, out *tickOut) {
 	metricTicks.Inc()
-	frames := tickFrames{tick: &out.tick, log: log, channel: rm.channel}
+	frames := tickFrames{tick: &out.tick, log: log, channel: rm.channel, free: out.free}
 	whys := out.tick.Game != nil && out.tick.Game.Race != nil && unrankedWhy(out.tick.Game.Race.Results)
 	for _, c := range out.clients {
 		_, scores := out.rode[c.rider.ID]
@@ -116,13 +130,18 @@ func (rm *channelState) sendTick(log *slog.Logger, out *tickOut) {
 		// frame that fails to marshal falls back to the light one and
 		// leaves both owed.
 		road := out.tick.FreeRoads[c.rider.ID].Road
-		light := frameKind{scores: scores, road: road, own: own}
+		self := ""
+		if _, free := out.free[c.rider.ID]; free {
+			self = c.rider.ID
+		}
+		light := frameKind{scores: scores, road: road, own: own, self: self}
 		kind := frameKind{
 			scores:  scores,
 			workout: c.workoutSent != out.tick.State.WorkoutHash,
 			deck:    c.jukeboxSent != out.tick.JukeboxRev,
 			road:    road,
 			own:     own,
+			self:    self,
 		}
 		frame := frames.frame(light)
 		if frame != nil && kind != light {

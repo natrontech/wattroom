@@ -6,7 +6,7 @@ This file holds the decisions that hold today. Change one by editing it in the s
 
 ## What WattRoom is
 
-Indoor training is boring alone. Zwift answers with a game world; WattRoom answers with presence. Your crew rides in its voice channel, everyone sees everyone's live watts and heart rate, you talk, you see each other, and the music plays in sync. On ride night WattRoom replaces both the trainer app and the voice app.
+Indoor training is boring alone. Zwift answers with a game world; WattRoom answers with presence. Your crew rides a session together while it talks in a voice channel: everyone on the session sees everyone's live watts and heart rate, you talk, you see each other, and the music plays in sync. On ride night WattRoom replaces both the trainer app and the voice app.
 
 - A structured workout player with precise trainer control (ERG and SIM).
 - Crews with chat channels, voice channels, and sessions: in a voice channel, or the crew's own with no channel.
@@ -30,7 +30,7 @@ It is not a training plan generator, not an open world, and not a content treadm
 ## Crews and people
 
 - The crew is what persists: members, roles (owner, admin, member), one ban, the schedule, the streak, medals and history. Its invite is a link and a 6-character code.
-- A voice channel rides without a session (a free ride). A session drives only the riders who joined it.
+- A free ride is the rider's own: its numbers stay on their screen, and their call shows only that they ride. A session drives only the riders who joined it. Ride together is a session with no workout: everyone rides their own free ride and sees each other's numbers.
 - A session is the crew's own: any member starts one from the crew page or the now bar, several can run at once, and joining one needs no voice channel. A call and a session run side by side: joining one never touches the other. A call shows who in it rides a session and which one, with Join, never their numbers. Its recap is every member's. Sessions leave voice channels entirely in the steps of docs/SESSIONS.md.
 - Everything is behind sign-in except the public pages, which are prerendered.
 - One account holds a set of credentials: Google, GitHub, Strava and passkeys. No passwords. A verified email is for recovery, and a mailed link is the way back in.

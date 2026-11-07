@@ -1,7 +1,7 @@
 /**
- * Who sees a rider's live numbers, said once (#2824). ADR-0059 lets a free
- * ride show them in its voice channel, and the hub sends every rider's sample
- * to every screen that has the channel open, in the call or not. The door,
+ * Who sees a rider's live numbers, said once (#2824). Since sessions left the
+ * voice channels (docs/SESSIONS.md) a call shows that someone rides, never
+ * their numbers: those reach a session's screens alone. The door,
  * Your data and the privacy policy each promised the older, narrower rule, and
  * each drifted on its own; one sentence keeps them saying the same thing.
  *
@@ -9,7 +9,7 @@
  * riding screen (ADR-0008, #2804).
  */
 export const liveNumbersLine =
-	'While you ride in a voice channel, whoever has it open sees your live watts and cadence, and your heart rate until you stop sharing it.';
+	'A free ride’s numbers stay on your screen. In a session, the crew members who have it open see your live watts and cadence, and your heart rate until you stop sharing it.';
 
 /**
  * What happens to a route a rider imports (ADR-0063, #3057), said once: the

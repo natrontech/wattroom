@@ -2479,6 +2479,11 @@ export interface SensorPairing {
 export interface SessionState {
   phase: string; // "idle" | "countdown" | "running" | "paused" | "done"
   /**
+   * Riding together (docs/SESSIONS.md): no workout, every rider on their
+   * own free ride, which drives their trainer and is their saved ride.
+   */
+  together?: boolean;
+  /**
    * The session's id while one is open in this voice channel (#2438):
    * from the pick that opened it until the next one replaces it. Empty
    * while nobody has opened one.

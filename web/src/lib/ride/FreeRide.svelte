@@ -36,15 +36,17 @@
 	);
 	// A session beside you (ADR-0059): it leaves your trainer alone until you
 	// join, and joining saves this ride first.
+	// Riding together is a free ride inside a session (docs/SESSIONS.md):
+	// nothing here hands the trainer over.
 	const session = $derived(
-		channel.phase !== 'lounge'
+		channel.phase !== 'lounge' && !conn?.live.tick?.state.together
 			? liveSessionId(conn?.live.tick?.state)
 			: undefined,
 	);
 	// The crew's own session (docs/SESSIONS.md), when none runs here: the
 	// way in from the call, which joining keeps.
 	const crewSession = $derived(
-		session
+		session || !channel.address.channel
 			? undefined
 			: crewLive.crews.find((c) => c.id === channel.address.crew)
 					?.sessions?.[0],

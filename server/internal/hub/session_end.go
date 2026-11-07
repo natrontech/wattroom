@@ -56,7 +56,9 @@ func (rm *channelState) closeLocked(state protocol.SessionState, now time.Time, 
 	}
 	rm.saved = true
 	end := &sessionEnd{meta: state, startedAt: time.UnixMilli(now.UnixMilli() - int64(state.Elapsed)*1000)}
-	if saving {
+	// Riding together (docs/SESSIONS.md), each rider's own free ride is their
+	// ride, saved by their own screen: the session keeps the recap alone.
+	if saving && !rm.session.together {
 		// What a backfill after the close amends against (#1536): the same
 		// start per rider, or the amendment finds no ride to grow — a replay
 		// that lands after the close can reach back before a rider's first

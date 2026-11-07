@@ -88,8 +88,10 @@ func TestRidingReachesTheRoster(t *testing.T) {
 	pedal(t, rider, func() int { return int(watts.Load()) })
 
 	// Sound only on a tick that also carries the sample: a rider who has sent
-	// nothing yet is not riding either, and would pass a bare negative.
-	tick := awaitTick(t, watcher, "kim's 0 W sample", func(tick *protocol.ServerTick) bool {
+	// nothing yet is not riding either, and would pass a bare negative. A
+	// free ride's numbers reach the rider's own screen alone
+	// (docs/SESSIONS.md), so kim's is the one that shows it landed.
+	tick := awaitTick(t, rider, "kim's 0 W sample", func(tick *protocol.ServerTick) bool {
 		_, landed := tick.Riders["kim"]
 		return landed
 	})
@@ -104,8 +106,12 @@ func TestRidingReachesTheRoster(t *testing.T) {
 	}
 
 	watts.Store(214)
+	// The mark reaches everyone; the numbers do not.
 	awaitTick(t, watcher, "kim riding", func(tick *protocol.ServerTick) bool {
 		riding, _ := ridingOf(tick.Roster, "kim")
+		if _, numbers := tick.Riders["kim"]; numbers {
+			t.Fatal("the coach's tick carries kim's free-ride numbers")
+		}
 		return riding
 	})
 }

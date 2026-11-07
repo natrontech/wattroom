@@ -17,6 +17,7 @@ import (
 type CrewSessions interface {
 	CrewSessions(crew string) []protocol.LiveSession
 	OpenCrewSession(crew string, rider protocol.Rider, pick protocol.Control) (id, code, message string)
+	OpenRideTogether(crew string, rider protocol.Rider) string
 }
 
 // SetCrewSessions wires the hub's crew sessions in.
@@ -56,13 +57,22 @@ func (s *Service) handleOpenCrewSession(w http.ResponseWriter, r *http.Request) 
 	if !ok {
 		return
 	}
-	var pick protocol.Control
-	if err := httpx.DecodeStrict(r, &pick); err != nil {
+	// The socket's pick, or {"together": true}: a session with no workout.
+	var body struct {
+		protocol.Control
+		Together bool `json:"together"`
+	}
+	if err := httpx.DecodeStrict(r, &body); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That is not a workout the session can ride.")
 		return
 	}
 	rider := s.riderOf(r.Context(), user, role, "crew", store.UUIDString(crewID))
-	id, code, message := s.crewSessions.OpenCrewSession(store.UUIDString(crewID), rider, pick)
+	if body.Together {
+		id := s.crewSessions.OpenRideTogether(store.UUIDString(crewID), rider)
+		httpx.WriteJSON(w, http.StatusCreated, map[string]string{"id": id})
+		return
+	}
+	id, code, message := s.crewSessions.OpenCrewSession(store.UUIDString(crewID), rider, body.Control)
 	if code != "" {
 		status := http.StatusBadRequest
 		switch code {

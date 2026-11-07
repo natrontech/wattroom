@@ -27,3 +27,13 @@ export function startCrewSession(
 		},
 	});
 }
+
+/** Starts a session with no workout (docs/SESSIONS.md): everyone rides their own free ride. */
+export function startRideTogether(
+	crew: string,
+): Promise<ApiResult<{ id: string }>> {
+	return api<{ id: string }>(`/api/crews/${crew}/sessions`, {
+		method: 'POST',
+		json: { together: true },
+	});
+}

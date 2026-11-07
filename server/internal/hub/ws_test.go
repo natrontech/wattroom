@@ -135,7 +135,9 @@ func TestWebSocketRoom(t *testing.T) {
 	coach := dial(t, url, "jan:owner")
 	member := dial(t, url, "sven:member")
 
-	// Metrics flow into the coalesced tick, and the roster carries both riders.
+	// Metrics flow into the coalesced tick, and the roster carries both
+	// riders. A free ride's numbers come back to the rider's own screen and
+	// to nobody else's (docs/SESSIONS.md).
 	if err := wsjson.Write(t.Context(), member, protocol.ClientMessage{
 		Metrics: &protocol.RiderMetrics{Watts: 210, Cadence: 88, Seq: 1},
 	}); err != nil {
@@ -144,13 +146,16 @@ func TestWebSocketRoom(t *testing.T) {
 	deadline := time.Now().Add(5 * time.Second)
 	var tick protocol.ServerTick
 	for {
-		tick = readTick(t, coach)
+		tick = readTick(t, member)
 		if _, ok := tick.Riders["sven"]; ok || time.Now().After(deadline) {
 			break
 		}
 	}
 	if tick.Riders["sven"].Watts != 210 {
-		t.Fatalf("member metrics did not reach the tick: %+v", tick.Riders)
+		t.Fatalf("member metrics did not reach their own tick: %+v", tick.Riders)
+	}
+	if theirs := readTick(t, coach); len(theirs.Riders) != 0 {
+		t.Fatalf("the coach's tick carries a free rider's numbers: %+v", theirs.Riders)
 	}
 	if len(tick.Roster) != 2 {
 		t.Fatalf("roster: %+v", tick.Roster)
