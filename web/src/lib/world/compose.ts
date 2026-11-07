@@ -27,7 +27,6 @@ import {
 	type GhostAt,
 	type Ghosts,
 } from './ghosts';
-import { makeWatchers } from './watchers';
 import { makeRoadside } from './roadside';
 import { DIORAMA, MOTION } from './pixel';
 import { bunchLooks, type Loadout } from './loadout';
@@ -117,7 +116,7 @@ export type MountOptions = {
 	loop?: boolean;
 	/** Your rider id: which of the bunch is you. */
 	youId?: string;
-	/** Pixel 3D: what a rider wears in the cozy room, by id. Absent, the 3D figures ride. */
+	/** Diorama 3D: what a rider wears in the cozy room, by id. Absent, the 3D figures ride. */
 	loungeLook?: (id: string) => string | undefined;
 	/** The theme's structural accent, for the coach's chevron; Outrun's absent. */
 	neon?: string;
@@ -240,8 +239,6 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	// The dressing's far ring, the quality ladder's (#3295): kept across a style's new stage.
 	let far = true;
 	let crew: Crew | null = null;
-	/** People by the road in the villages, Pixel 3D only. */
-	let watchers: ReturnType<typeof makeWatchers> | null = null;
 	/** What stands close by the road, Diorama 3D only (roadside.ts). */
 	let roadside: ReturnType<typeof makeRoadside> | null = null;
 	let game: GameRoad | null = null;
@@ -290,7 +287,6 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 			chalk?.group,
 			ghosts?.group,
 			gates?.group,
-			watchers?.group,
 			roadside?.group,
 		]) {
 			if (!old) continue;
@@ -305,11 +301,6 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		tags = makeTags(style);
 		scene.add(stage.group, crew.group, game.group, tags.group);
 		const diorama = DIORAMA.value > 0;
-		watchers =
-			opts.loungeLook && !diorama
-				? makeWatchers(route, world.villageNames)
-				: null;
-		if (watchers) scene.add(watchers.group);
 		roadside = diorama ? makeRoadside(route, world) : null;
 		roadside?.update(you.d, true);
 		if (roadside) scene.add(roadside.group);
@@ -423,10 +414,6 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		MOTION.time.value = performance.now() / 1000;
 		crew.drive(route, car, mode === 'orbit');
 		ghosts?.update(route, ghostsNow(real), dt, mode === 'orbit');
-		watchers?.update(
-			mode === 'orbit' ? -Infinity : you.d,
-			performance.now() / 1000,
-		);
 		roadside?.update(you.d);
 		if (controls) controls.update();
 		else

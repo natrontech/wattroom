@@ -189,7 +189,7 @@ export function makeTags(style: Style) {
 					);
 					s.scale.set((tall * PILL_H * p.w) / p.h, tall * PILL_H, 1);
 					s.renderOrder = 10;
-					s.layers.set(WORDS); // drawn over Pixel 3D's pixels, at the canvas's own resolution
+					s.layers.set(WORDS); // drawn after Diorama 3D's pass, sharp
 					s.userData.text = t.text;
 					s.userData.speaking = t.speaking;
 					group.add(tag('marks', s, 'name-tag'));

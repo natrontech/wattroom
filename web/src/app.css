@@ -415,7 +415,7 @@
 	--world-skin-7: #4d392f;
 	--world-skin-8: #292420;
 	/*
-	 * Pixel 3D's dusk: the same world in the room's window colours, dark enough
+	 * Diorama 3D's world: the room's window colours, dark enough
 	 * for the watts and never in their band. Read through look.ts's pixelPaint;
 	 * a token with no twin here is the same in both looks.
 	 */
@@ -449,7 +449,7 @@
 	--world-px-prop-shutter: #2f9a7a;
 	--world-px-prop-rock: #76709e;
 	/*
-	 * Diorama 3D's hour before sunset over Pixel 3D's world (look.ts's
+	 * Diorama 3D's hour before sunset over that world (look.ts's
 	 * dioramaLook): a warm lit side, the room's violet in the shade.
 	 */
 	--world-dio-sky-zenith: #4c5cc4;

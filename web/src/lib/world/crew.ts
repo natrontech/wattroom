@@ -20,9 +20,8 @@ import {
 import { pose } from './figure/pose';
 import { fnv, seededLoadout, type Loadout } from './loadout';
 import { outfitOf, type Outfit } from './outfit';
-import { collides, guarded, type Viewer } from '$lib/wardrobe/guard';
+import { collides, type Viewer } from '$lib/wardrobe/guard';
 import { LOUNGE } from '$lib/lounge/palette';
-import type { Figure as CozyFigure } from '$lib/lounge/scene';
 import { DEFAULT_DARK_ID, themeById } from '$lib/themes';
 import { yOf } from './geometry';
 import { ROAD_W } from './terrain/road-profile';
@@ -30,9 +29,8 @@ import { chevronGeometry, makeCar } from './team-car';
 import { heartGeometry } from './cheer';
 import { makeTrail } from './trail';
 import { ramp } from './materials';
-import { DIORAMA, PIXEL } from './pixel';
+import { DIORAMA } from './pixel';
 import { drawSheets, makeRiderSprite, riderSheet } from './rider-sprite';
-import type { Avatar } from './avatar';
 import type { RiderSprite } from './rider-sprite';
 import { dress } from '$lib/lounge/figures';
 import { LANE, type Car } from './bunch';
@@ -90,52 +88,6 @@ function zoneRing(across: number, along: number): THREE.BufferGeometry {
 	);
 	return new THREE.ShapeGeometry(shape, 48).rotateX(-Math.PI / 2);
 }
-/** In Pixel 3D the zone is a solid pad under the bike: half widths, metres. */
-const PAD_ACROSS = 0.13;
-const PAD_ALONG = 0.92;
-/**
- * A rider in their cozy room look on the 3D figure (Jan, 2026-11-06): the
- * room's colours on its slots, a cap for a helmet where they wear one, the
- * room's violet bike. Every colour passes the viewer's guard, as a kit's does.
- */
-function cozy(o: Outfit, f: CozyFigure, viewer: Viewer): Outfit {
-	const c = (hex: string) => new THREE.Color(guarded(hex, viewer));
-	const head = f.cap ?? f.hair;
-	return {
-		...o,
-		palette: {
-			...o.palette,
-			jersey: c(f.shirt),
-			jerseyAccent: c(f.shirtShade),
-			skin: c(f.skin),
-			hair: c(f.hair),
-			helmet: c(head),
-			helmetAccent: c(head),
-			shorts: c(f.pants),
-			shortsAccent: c(f.pantsShade),
-			sock: c(f.socks ?? f.pants),
-			sockAccent: c(f.socks ?? f.pantsShade),
-			shoe: c(f.shoes),
-			glove: c(f.skin),
-			frame: c(LOUNGE.violet),
-			frameAccent: c(LOUNGE.lilac),
-		},
-		jersey: {
-			pattern: f.stripes ? o.jersey.pattern : 0,
-			b: c(f.shirtShade),
-			c: c(f.shirt),
-		},
-	};
-}
-
-/** The head a chibi wears: big and round over a small rider. */
-const CHIBI_HEAD = 1.4;
-const CHIBI = new THREE.Matrix4().makeScale(CHIBI_HEAD, CHIBI_HEAD, CHIBI_HEAD);
-/** After the pose, which writes the bone's matrix afresh every frame. */
-function chibi(figure: Figure) {
-	figure.skeleton.bones.find((b) => b.name === 'head')?.matrix.multiply(CHIBI);
-}
-
 /** How far a sprite's ring shrinks from the 3D figure's: about the sprite's own wheelbase. */
 const HUG = 0.7;
 /** Seconds a new figure rides before it is first drawn, so it arrives in its riding posture. */
@@ -172,8 +124,8 @@ type View = {
 	chevron: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
 	heart: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
 	light: THREE.Mesh;
-	/** Pixel 3D's rider: their cozy room self, in place of the figure. */
-	avatar: Avatar | RiderSprite | null;
+	/** Diorama 3D's rider: their cozy room self, in place of the figure. */
+	avatar: RiderSprite | null;
 };
 
 /** A joined rider whose screen has gone (#3098): their kit in greys, never a ghost's see-through. */
@@ -236,7 +188,7 @@ export function placeOn(
 export function makeCrew(
 	style: Style,
 	neon: THREE.Color,
-	/** Pixel 3D: what a rider wears in the cozy room, by id. Absent, the 3D figures ride. */
+	/** Diorama 3D: what a rider wears in the cozy room, by id. Absent, the 3D figures ride. */
 	loungeLook?: (id: string) => string | undefined,
 ) {
 	const viewer = viewerOf(style);
@@ -248,9 +200,6 @@ export function makeCrew(
 		.rotateX(-Math.PI / 2)
 		.scale(0.9, 1, 2.1);
 	const ringGeo = zoneRing(RING_ACROSS, RING_ALONG);
-	const padGeo = new THREE.CircleGeometry(1, 24)
-		.rotateX(-Math.PI / 2)
-		.scale(PAD_ACROSS, 1, PAD_ALONG);
 	const digits = makeZoneDigits(style.tag);
 	const beadGeo = new THREE.SphereGeometry(1, 16, 12);
 	const chevronGeo = chevronGeometry();
@@ -304,14 +253,7 @@ export function makeCrew(
 		const lounge = loungeLook?.(r.id);
 		const look =
 			JSON.stringify(loadout) + (loungeLook ? `|${lounge ?? r.id}` : '');
-		const plain = outfitOf(loadout, style.kit, viewer);
-		const outfit = loungeLook
-			? cozy(
-					plain,
-					dress({ id: r.id, name: r.name, loungeLook: lounge }),
-					viewer,
-				)
-			: plain;
+		const outfit = outfitOf(loadout, style.kit, viewer);
 		const material = figureMaterial(outfit.kit, outfit.decal, outfit.jersey);
 		const figure = figureOf(outfit, look, lod, material);
 		figure.rotation.y = -Math.PI / 2; // the figure's +X forward becomes the world's heading
@@ -515,11 +457,7 @@ export function makeCrew(
 			}
 			v.material.opacity = alpha;
 			v.shadow.material.opacity = 0.28 * alpha;
-			// Whole pixels are never see-through. The pad lies on the road, too narrow for a bank to bury it.
-			const pad = PIXEL.value > 0;
-			v.ring.material.opacity = (pad ? 1 : 0.85) * alpha;
-			v.ring.geometry = pad ? padGeo : ringGeo;
-			v.ring.position.y = pad ? 0.04 : 0.16;
+			v.ring.material.opacity = 0.85 * alpha;
 			if (v.faded !== !!r.faded) {
 				v.faded = !!r.faded;
 				fade(v);
@@ -531,7 +469,7 @@ export function makeCrew(
 			// Under a sprite the ring hugs the wheels, as a sprite's mark on the
 			// ground does: at full size it read as a hoop round the rider.
 			const hug = v.avatar ? HUG : 1;
-			v.ring.scale.set(hug, 1, pad ? 1 : hug * 0.75);
+			v.ring.scale.set(hug, 1, hug * 0.75);
 			v.digit.scale.setScalar(hug);
 			v.digit.position.z = (RING_ALONG - 0.2) * hug * 0.75;
 			v.chevron.visible = !overview && !!r.coach;
@@ -558,10 +496,7 @@ export function makeCrew(
 			pedal(r).crank = state.crank;
 			if (v.avatar)
 				v.avatar.set(state.crank, alpha, !!r.faded, (state.stand ?? 0) > 0.5);
-			else {
-				pose(v.figure, state);
-				if (loungeLook) chibi(v.figure);
-			}
+			else pose(v.figure, state);
 			if (r.you) {
 				you.set(
 					v.group.position.x,
@@ -569,7 +504,7 @@ export function makeCrew(
 					v.group.position.z,
 				);
 				// No figure, no trail: a coach in the team car leaves none (#3771).
-				if (trail) trail.mesh.visible = alpha > 0 && !r.silent && !pad;
+				if (trail) trail.mesh.visible = alpha > 0 && !r.silent;
 				trail?.follow(route, r.d, lane, r.reverse);
 			}
 		});

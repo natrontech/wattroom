@@ -4,7 +4,7 @@
 // sprite grows and shrinks with the distance like everything else in the
 // world, and its pixels stay square and sharp at any size: the texture is
 // sampled so each art pixel keeps a hard edge one screen pixel wide. Far
-// off it reads a half or a quarter copy reduced by hand (avatar.ts), so its
+// off it reads a half or a quarter copy reduced by hand (halved), so its
 // colours stay its own. Riders get nine turns from behind round to the
 // front and the room's eight frames a pedal stroke, so a bend turns them a
 // little at a time and their legs run. A sheet is drawn a row a frame.
@@ -20,7 +20,6 @@ import {
 } from '$lib/lounge/draw-rider';
 import { LOUNGE } from '$lib/lounge/palette';
 import type { Figure } from '$lib/lounge/scene';
-import { halved } from './avatar';
 import { BAYER } from './pixel';
 
 /** Metres one pixel of the room's art stands for: a person 31 pixels tall is 1.55 m. */
@@ -54,6 +53,67 @@ export function turnFrom(heading: number, dx: number, dz: number) {
 	const across = fz * dx - fx * dz;
 	const off = Math.abs(Math.atan2(across, along)) / Math.PI;
 	return { turn: Math.round(off * (TURNS.length - 1)), flip: across > 0 };
+}
+
+/**
+ * RGBA pixels at half the size. Each 2 × 2 block keeps its commonest colour
+ * that is not ink, or ink if it holds nothing else: an outline stays one
+ * pixel and a colour never becomes a blend of two. A block mostly empty
+ * stays empty.
+ */
+export function halved(
+	src: Uint8ClampedArray,
+	w: number,
+	h: number,
+	ink: readonly [number, number, number],
+): Uint8ClampedArray<ArrayBuffer> {
+	const nw = Math.floor(w / 2);
+	const nh = Math.floor(h / 2);
+	const out = new Uint8ClampedArray(nw * nh * 4);
+	const isInk = (i: number) =>
+		src[i] === ink[0] && src[i + 1] === ink[1] && src[i + 2] === ink[2];
+	for (let y = 0; y < nh; y++)
+		for (let x = 0; x < nw; x++) {
+			const counts = new Map<number, number>();
+			let solid = -1;
+			let filled = 0;
+			for (const [ox, oy] of [
+				[0, 0],
+				[1, 0],
+				[0, 1],
+				[1, 1],
+			]) {
+				const i = ((y * 2 + oy) * w + x * 2 + ox) * 4;
+				if (src[i + 3] < 128) continue;
+				filled++;
+				solid = i;
+				if (!isInk(i)) counts.set(i, 0);
+			}
+			if (filled < 2) continue;
+			let best = solid;
+			if (counts.size) {
+				const key = (i: number) =>
+					(src[i] << 16) | (src[i + 1] << 8) | src[i + 2];
+				const seen = new Map<number, { i: number; n: number }>();
+				for (const i of counts.keys()) {
+					const k = seen.get(key(i));
+					if (k) k.n++;
+					else seen.set(key(i), { i, n: 1 });
+				}
+				let most = 0;
+				for (const { i, n } of seen.values())
+					if (n > most) {
+						most = n;
+						best = i;
+					}
+			}
+			const o = (y * nw + x) * 4;
+			out[o] = src[best];
+			out[o + 1] = src[best + 1];
+			out[o + 2] = src[best + 2];
+			out[o + 3] = 255;
+		}
+	return out;
 }
 
 /** The room's ink as RGB, which the reduced copies keep their outlines in. */
@@ -244,7 +304,7 @@ const QUAD = new THREE.PlaneGeometry(1, 1).translate(0.5, 0.5, 0);
 
 export type RiderSprite = ReturnType<typeof makeRiderSprite>;
 
-/** A rider's sprite in Diorama 3D: the same calls as avatar.ts's, so crew.ts can hold either. */
+/** A rider's sprite in Diorama 3D: crew.ts sets its crank, alpha and stance each frame. */
 export function makeRiderSprite(
 	sheet: RiderSheet,
 	ghost?: { opacity: number; pale: number },

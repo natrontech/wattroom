@@ -132,7 +132,7 @@ function roadShader(): string {
 }
 
 describe('the road’s paint (ADR-0092)', () => {
-	it('paints no grain on the asphalt or the shoulder in Smooth; only Pixel 3D wears the road', () => {
+	it('paints no grain on the asphalt or the shoulder', () => {
 		const smooth = roadShader().replace(/#ifdef PIXEL_RAMP[\s\S]*?#endif/g, '');
 		expect(smooth).not.toMatch(/grain|noise|fract\(sin/);
 	});

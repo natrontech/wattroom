@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { legible } from '$lib/lounge/draw-rider';
-import { halved, pedalFrame, seenFrom, stepDownFor } from './avatar';
+import { halved } from './rider-sprite';
 
 const INK = [8, 1, 15] as const;
 const pixels = (rows: (number[] | null)[]): Uint8ClampedArray => {
@@ -10,35 +10,6 @@ const pixels = (rows: (number[] | null)[]): Uint8ClampedArray => {
 	});
 	return out;
 };
-
-describe('a rider seen from where the camera is', () => {
-	it('shows their back to a camera behind them, their front to one ahead', () => {
-		expect(seenFrom(0, 0, 10).view).toBe('back');
-		expect(seenFrom(0, 0, -10).view).toBe('front');
-	});
-	it('shows their side to a camera beside them, and turns them to where they go', () => {
-		expect(seenFrom(0, 10, 0)).toEqual({ view: 'side', flip: true });
-		expect(seenFrom(0, -10, 0)).toEqual({ view: 'side', flip: false });
-	});
-	it('takes the quarter views between', () => {
-		expect(seenFrom(0, 10, 10).view).toBe('quarter');
-		expect(seenFrom(0, 10, -10).view).toBe('nose');
-	});
-	it('follows the road round a bend', () => {
-		expect(seenFrom(Math.PI / 2, 10, 0).view).toBe('back');
-	});
-});
-
-describe('the pedal stroke', () => {
-	it('walks eight frames a turn, and wraps', () => {
-		const turn = Math.PI * 2;
-		expect([0, 0.25, 0.5, 0.75].map((t) => pedalFrame(t * turn))).toEqual([
-			0, 2, 4, 6,
-		]);
-		expect(pedalFrame(turn * 7.1)).toBe(0);
-		expect(pedalFrame(-turn * 0.1)).toBe(7);
-	});
-});
 
 describe('legs on a dark road', () => {
 	it('lifts dark trousers, and leaves bright ones alone', () => {
@@ -50,10 +21,6 @@ describe('legs on a dark road', () => {
 });
 
 describe('a sprite further off', () => {
-	it('steps down in whole sizes, so a pixel is never scaled', () => {
-		expect([40, 20, 19, 9, 8, 1].map(stepDownFor)).toEqual([1, 1, 2, 2, 4, 4]);
-	});
-
 	it('keeps a colour over its outline', () => {
 		const red = [200, 10, 10];
 		const out = halved(pixels([[...INK], red, [...INK], [...INK]]), 2, 2, INK);

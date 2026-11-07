@@ -10,7 +10,7 @@ import type { Style } from './styles';
 /** A token's colour by its custom property's name, without the dashes: `world-sky-zenith`, `color-watt`. */
 export type Paint = (token: string) => string;
 
-/** The tokens Pixel 3D paints in its own dusk: app.css's --world-px-*. */
+/** The tokens Diorama 3D paints in the room's window colours: app.css's --world-px-*. */
 const PIXEL_TOKENS = new Set(
 	[
 		'sky-zenith',
@@ -45,7 +45,7 @@ const PIXEL_TOKENS = new Set(
 	].map((t) => `world-${t}`),
 );
 
-/** `paint`, in Pixel 3D's colours. */
+/** `paint`, in the room's window colours. */
 export const pixelPaint =
 	(paint: Paint): Paint =>
 	(token) =>
@@ -53,22 +53,13 @@ export const pixelPaint =
 			PIXEL_TOKENS.has(token) ? token.replace('world-', 'world-px-') : token,
 		);
 
-/** The ride's look in Pixel 3D: its own dusk, under real snow-capped ranges. */
-export function pixelLook(paint: Paint): Style {
-	const look = rideLook(pixelPaint(paint));
-	return {
-		...look,
-		backdrop: { ...look.backdrop, snowCaps: true, tall: 1.9 },
-	};
-}
-
 /**
- * Diorama 3D's look, every ride's: Pixel 3D's colours under a low sun, the
+ * Diorama 3D's look, every ride's: the room's window colours under a low sun, the
  * hour before it sets, sinking with the ride. The lit side of everything warm, its shade the
  * room's violet, a peach sky at the horizon.
  */
 export function dioramaLook(paint: Paint): Style {
-	const look = pixelLook(paint);
+	const look = rideLook(pixelPaint(paint));
 	const d = (token: string) => paint(`world-dio-${token}`);
 	return {
 		...look,
@@ -97,6 +88,8 @@ export function dioramaLook(paint: Paint): Style {
 			asphalt: d('road-asphalt'),
 			shoulder: d('road-shoulder'),
 		},
+		// Real ranges: snow-capped and standing nearly twice as tall.
+		backdrop: { ...look.backdrop, snowCaps: true, tall: 1.9 },
 	};
 }
 
