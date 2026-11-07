@@ -22,6 +22,7 @@ import {
 	stepped,
 } from './rider-sprite';
 import { yOf } from './geometry';
+import { MOTION } from './pixel';
 import { FORMATION } from './terrain/road-profile';
 import type { World } from './world';
 
@@ -177,15 +178,22 @@ function cow(g: Ctx, c: Cell, grazing: boolean) {
 	ink(g, c);
 }
 
-/** Someone at the verge, facing the road: the room's watcher with their arms down. */
+/** A person's frames side by side, this far apart: arms down, then a wave's two sways. */
+const WAVE_STEP = 28;
+
+/** Someone at the verge, facing the road: the room's watcher, arms down and waving (draw-rider.ts). */
 function person(g: Ctx, c: Cell, id: number) {
-	g.save();
-	g.translate(c.x + Math.floor(c.w / 2) - 30, c.y + c.h - 1 - 55);
-	drawWatcher(g, dress({ id: `roadside-${id}`, name: '' }), 2);
-	g.restore();
+	const figure = dress({ id: `roadside-${id}`, name: '' });
+	[2, 0, 1].forEach((frame, k) => {
+		g.save();
+		g.translate(c.x + k * WAVE_STEP + 12 - 30, c.y + c.h - 1 - 55);
+		drawWatcher(g, figure, frame);
+		g.restore();
+	});
 }
 
-type Kind = { cell: Cell; draw: (g: Ctx, c: Cell) => void };
+/** `wave`: how far along the sheet a person's waving frames are, 0 for anything that does not wave. */
+type Kind = { cell: Cell; draw: (g: Ctx, c: Cell) => void; wave: number };
 
 /** The sheet: each thing once at whole size, then halved twice beside it. */
 function sheet() {
@@ -208,7 +216,7 @@ function sheet() {
 		};
 		x += cell.w + 4;
 		row = Math.max(row, cell.h + 4);
-		kinds.push({ cell, draw });
+		kinds.push({ cell, draw, wave: 0 });
 		return kinds.length - 1;
 	};
 	const spruces = [0, 1, 2].map((i) =>
@@ -222,9 +230,16 @@ function sheet() {
 		place(52, 34, (g, c) => cow(g, c, true)),
 		place(52, 34, (g, c) => cow(g, c, false)),
 	];
-	const people = [0, 1, 2, 3, 4, 5].map((i) =>
-		place(24, 36, (g, c) => person(g, c, i)),
-	);
+	// Three frames to a person; the kind is the first, arms down.
+	const people = [0, 1, 2, 3, 4, 5].map((i) => {
+		const k = place(WAVE_STEP * 2 + 24, 36, (g, c) => person(g, c, i));
+		kinds[k] = {
+			...kinds[k],
+			cell: { ...kinds[k].cell, w: 24 },
+			wave: WAVE_STEP,
+		};
+		return k;
+	});
 	const canvas = document.createElement('canvas');
 	canvas.width = COLS * 1.75;
 	canvas.height = ROWS;
@@ -232,7 +247,7 @@ function sheet() {
 	for (const k of kinds) {
 		g.save();
 		g.beginPath();
-		g.rect(k.cell.x, k.cell.y, k.cell.w, k.cell.h);
+		g.rect(k.cell.x, k.cell.y, k.cell.w + k.wave * 2, k.cell.h);
 		g.clip();
 		k.draw(g, k.cell);
 		g.restore();
@@ -252,6 +267,8 @@ function sheet() {
 const VERTEX = /* glsl */ `
 	attribute vec4 aCell;
 	attribute float aFlip;
+	attribute float aWave;
+	uniform float uTime;
 	uniform float uCols;
 	uniform float uHalfH;
 	uniform float uReach;
@@ -265,9 +282,17 @@ const VERTEX = /* glsl */ `
 		float d = spriteStep(px);
 		mv.xy += (position.xy - vec2(0.5, 0.0)) * aCell.zw * ${SPRITE_M.toFixed(3)};
 		float u = aFlip > 0.5 ? 1.0 - position.x : position.x;
+		// A person waves now and then: a few seconds in eleven, the arm swaying, each on their own beat.
+		vec4 cell = aCell;
+		if (aWave > 0.0) {
+			vec3 at = (instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+			float beat = fract(sin(dot(at.xz, vec2(12.9898, 78.233))) * 43758.5453);
+			if (fract(uTime / 11.0 + beat) < 0.3)
+				cell.x += aWave * (fract(uTime * 2.2 + beat) < 0.5 ? 1.0 : 2.0);
+		}
 		vUv = vec2(
-			spriteLeft(d, uCols) + (aCell.x + u * aCell.z) / d,
-			(aCell.y + (1.0 - position.y) * aCell.w) / d
+			spriteLeft(d, uCols) + (cell.x + u * cell.z) / d,
+			(cell.y + (1.0 - position.y) * cell.w) / d
 		);
 		vDepth = depth;
 		gl_Position = depth > uReach ? vec4(2.0, 2.0, 2.0, 1.0) : projectionMatrix * mv;
@@ -393,6 +418,7 @@ export function makeRoadside(route: Route, world: World) {
 			uCols: { value: COLS },
 			uHalfH: SPRITE_SCREEN.halfH,
 			uReach: { value: REACH_M },
+			uTime: MOTION.time,
 			uAlpha: { value: 1 },
 			uGrey: { value: 0 },
 			uLight: SPRITE_LIGHT.light,
@@ -418,10 +444,12 @@ export function makeRoadside(route: Route, world: World) {
 		const geometry = new THREE.PlaneGeometry(1, 1).translate(0.5, 0.5, 0);
 		const cells = new Float32Array(places.length * 4);
 		const flips = new Float32Array(places.length);
+		const waves = new Float32Array(places.length);
 		places.forEach((p, i) => {
 			const c = s.kinds[p.kind].cell;
 			cells.set([c.x, c.y, c.w, c.h], i * 4);
 			flips[i] = p.flip ? 1 : 0;
+			waves[i] = s.kinds[p.kind].wave;
 		});
 		geometry.setAttribute(
 			'aCell',
@@ -430,6 +458,10 @@ export function makeRoadside(route: Route, world: World) {
 		geometry.setAttribute(
 			'aFlip',
 			new THREE.InstancedBufferAttribute(flips, 1),
+		);
+		geometry.setAttribute(
+			'aWave',
+			new THREE.InstancedBufferAttribute(waves, 1),
 		);
 		const mesh = new THREE.InstancedMesh(geometry, material, places.length);
 		const m = new THREE.Matrix4();
