@@ -17,6 +17,34 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.11.25] - 2026-11-07
+
+### Added
+
+- The cozy room wears in as your crew spends time together in voice, and that time unlocks a rug, a sofa and a neon bike sign for free. A km post counts what the crew's weekly-board riders rode together, and the logbook shows your arcade bests. (#4467)
+- The road has night, rain and snow now, the same as the cozy room: ride after 20:00 and the lamps are lit under the room's night sky; when the room rains or snows, so does the road. (#4484)
+- The road looks like a model railway now: a warm low sun, the cozy room's people, cows and trees right by the road, and your crew as room sprites. Settings → Appearance → 3D look → Smooth brings back the plain 3D for a slower machine. (#4479)
+- Starting a planned session or a game no longer takes the cozy room away from everyone else in the call: it runs as the crew's own session, and anyone can join it from the room. Plans no longer pick a voice channel. (#4475)
+- Hide the sidebar when you want to (#4474)
+- Ride together starts a session with no workout: everyone free-rides and sees each other's numbers. A free ride's numbers now stay on your own screen; your voice channel shows only that you ride. (#4397)
+- The cozy room has a Töggeli table: challenge someone in your voice channel to live table football while the rest of the crew watches. Wins count on the crew's boards and in the weekly cup. (#4465)
+- The cozy room's desk has a logbook with your level, rider streak, hours ridden and time in voice, seen only by you. Name tags show each rider's level, and a level gained or a week added to your streak gets a cheer from the room. (#4464)
+- The cozy room's arcade has three games now: Bergpreis, Feed zone and Darts. Every crew plays the same course each day, and the cabinet keeps today's board, the all-time board and a weekly cup. Record holders wear a crown in the room. (#4463)
+
+### Changed
+
+- The road draws faster on a slow machine: fewer draw calls, and the lowest quality step drops the outline and blur first. (#4483)
+
+### Fixed
+
+- Since 2026.11.24 a rider could go faint and show as muted for everyone after unmuting, and voices could sound doubled or strange, until someone restarted. Both are fixed. (#4466)
+- Riders side by side in a group ride keep a little gap between them, and everyone in a big bunch shows up at once. (#4482)
+- Trees, cows and people by the road keep off it everywhere, hairpins and switchbacks included, never stand in a house, a sign or each other, and grow where the world's own forests do. (#4480)
+- Riders on a bike, in the cozy room and on the road, are now as small and round as everyone else in the room, and their pedalling reads clearly. (#4478)
+- Waving, toasting and cheering look friendly now: open hands, a mug held up, and a heart over a rider you cheer. (#4477)
+- Riders on a trainer in the cozy room now pedal forward instead of backwards. (#4468)
+- In the cozy room, a planned session is now one small line at the top. Tap it for the details and answers, tap the room to fold it away. (#4462)
+
 ## [2026.11.24] - 2026-11-07
 
 ### Added
@@ -4440,7 +4468,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.24...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.25...HEAD
+[2026.11.25]: https://github.com/natrontech/wattroom/compare/2026.11.24...2026.11.25
 [2026.11.24]: https://github.com/natrontech/wattroom/compare/2026.11.23...2026.11.24
 [2026.11.23]: https://github.com/natrontech/wattroom/compare/2026.11.22...2026.11.23
 [2026.11.22]: https://github.com/natrontech/wattroom/compare/2026.11.21...2026.11.22
