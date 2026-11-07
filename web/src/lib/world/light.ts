@@ -82,11 +82,14 @@ export type Light = {
 export function lightAt(style: Style, p: number | null): Light {
 	const keyed = style.sun.elevation >= 0;
 	const { sets } = style.sun;
-	const elevation = !keyed
-		? sunElevation(p)
-		: sets === undefined || p === null
-			? style.sun.elevation
-			: style.sun.elevation + (sets - style.sun.elevation) * clamp01(p);
+	// A look that says where its sun ends (Diorama's day and night) moves it there; the ride light sinks its own.
+	const elevation =
+		sets === undefined
+			? keyed
+				? style.sun.elevation
+				: sunElevation(p)
+			: style.sun.elevation +
+				(sets - style.sun.elevation) * (p === null ? 0 : clamp01(p));
 	const sun = sunDir(elevation, style.sun.azimuth);
 	const dusk = keyed ? 1 : Math.min(1, 1 + (elevation + 4) * DUSK_PER_DEG);
 	const zenith = new THREE.Color(style.sky.top).multiplyScalar(dusk);

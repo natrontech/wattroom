@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { LOUNGE } from '$lib/lounge/palette';
 import { DIORAMA, MOTION, rampAll, WORDS } from './pixel';
 import { SPRITE_SCREEN } from './rider-sprite';
+import type { Style } from './styles';
 
 const VERTEX = /* glsl */ `
 	varying vec2 vUv;
@@ -59,8 +60,14 @@ const SHIFT = /* glsl */ `
 	uniform float radius;
 	uniform float uSpeed;
 	uniform float uTime;
+	uniform float uCss;
+	uniform float uRain;
+	uniform float uSnow;
+	uniform vec3 uRainCol;
+	uniform vec3 uSnowCol;
 	varying vec2 vUv;
 	const int TAPS = 24;
+	float h21(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 	void main() {
 		float y = vUv.y;
 		float blur = smoothstep(0.5, 0.92, y) + 0.55 * smoothstep(0.2, 0.0, y);
@@ -77,6 +84,26 @@ const SHIFT = /* glsl */ `
 			}
 		}
 		vec3 rgb = sum / n;
+		// The room's rain and snow (lounge/draw-window.ts), in the room's own pixel of two CSS
+		// pixels, sharp over the blur: rain a slanting streak three tall, snow a drifting dot.
+		vec2 room = floor(gl_FragCoord.xy / (2.0 * uCss));
+		if (uRain > 0.5) {
+			// Falling down its slant: a streak keeps its lane as it falls, so it reads as one.
+			float y = room.y + floor(uTime * 75.0);
+			float lane = floor(room.x + y * 0.24);
+			float cell = floor(y / 40.0);
+			float k = h21(vec2(lane, cell));
+			float at = mod(y, 40.0) - floor(fract(k * 13.7) * 37.0);
+			if (k < 0.3 && at >= 0.0 && at < 3.0) rgb = mix(rgb, uRainCol, 0.75);
+		}
+		if (uSnow > 0.5) {
+			float y = room.y + floor(uTime * 9.0);
+			vec2 cell = floor(vec2(room.x, y) / 12.0);
+			float k = h21(cell);
+			float sway = floor(sin(uTime + k * 6.2831) * 2.0 + 0.5);
+			vec2 local = vec2(mod(room.x - sway, 12.0), mod(y, 12.0));
+			if (k < 0.55 && local.x == floor(fract(k * 5.1) * 11.0) && local.y == floor(fract(k * 7.3) * 11.0)) rgb = uSnowCol;
+		}
 		// A soft edge to the frame, the way a lens sees a table.
 		vec2 q = vUv - 0.5;
 		rgb *= 1.0 - 0.32 * smoothstep(0.32, 0.78, length(q * vec2(1.0, 0.8)));
@@ -116,6 +143,11 @@ export function dioramaPass(renderer: THREE.WebGLRenderer) {
 			radius: { value: 8 },
 			uSpeed: MOTION.speed,
 			uTime: MOTION.time,
+			uCss: { value: 1 },
+			uRain: { value: 0 },
+			uSnow: { value: 0 },
+			uRainCol: { value: new THREE.Color() },
+			uSnowCol: { value: new THREE.Color() },
 		},
 		vertexShader: VERTEX,
 		fragmentShader: SHIFT,
@@ -146,11 +178,19 @@ export function dioramaPass(renderer: THREE.WebGLRenderer) {
 		const css = renderer.getPixelRatio();
 		ink.uniforms.width.value = Math.max(1, Math.round(css));
 		shift.uniforms.radius.value = 7 * css;
+		shift.uniforms.uCss.value = css;
 		return target;
 	}
 
 	return {
 		sized,
+		/** What falls over the frame: the look's weather (styles.ts), in the room's colours. */
+		setWeather(weather: Style['weather']) {
+			shift.uniforms.uRain.value = weather === 'rain' ? 1 : 0;
+			shift.uniforms.uSnow.value = weather === 'snow' ? 1 : 0;
+			shift.uniforms.uRainCol.value.set(LOUNGE.rain);
+			shift.uniforms.uSnowCol.value.set(LOUNGE.snow);
+		},
 		/** On the lowest rung, the scene alone: its light steps and sprites, without the pass's three full-screen draws. */
 		setLite(on: boolean) {
 			lite = on;

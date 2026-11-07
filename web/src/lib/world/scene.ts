@@ -18,6 +18,7 @@ import { gpuTimer } from './gpu-timer';
 import { dioramaPass } from './diorama';
 import { worldDiorama } from './mode';
 import { DIORAMA, rampAll, WORDS } from './pixel';
+import { lightAt } from './light';
 import { drawSheets, SPRITE_LIGHT } from './rider-sprite';
 import {
 	deviceKey,
@@ -150,8 +151,14 @@ export function mount(
 	let style = opts.style;
 	// The sprites take the look's key light, softened, and its haze (rider-sprite.ts).
 	const light = (s: Style) => {
-		SPRITE_LIGHT.light.value.set(s.key).lerp(new THREE.Color(1, 1, 1), 0.45);
-		SPRITE_LIGHT.fog.value.set(s.sky.horizon);
+		pass?.setWeather(s.weather);
+		// Under a set sun the sprites take the moonlight, dimmed as the land is, and fade into its darker haze.
+		const { dusk } = lightAt(s, null);
+		SPRITE_LIGHT.light.value
+			.set(s.key)
+			.lerp(new THREE.Color(1, 1, 1), 0.45)
+			.multiplyScalar(dusk);
+		SPRITE_LIGHT.fog.value.set(s.sky.horizon).multiplyScalar(dusk);
 		SPRITE_LIGHT.fogK.value = s.fogK;
 	};
 	const dress = (next: Style) => {

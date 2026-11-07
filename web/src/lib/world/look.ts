@@ -3,6 +3,7 @@
 // theme; its accents — watt, neon, the zones — are the rider's theme's dark
 // half, read inside the cave where the world is drawn. The
 // dev gallery's blue hour is this look, so what it shows is what a rider sees.
+import * as THREE from 'three';
 import { Biome } from './biome';
 import { sunAzimuth, sunElevation } from './light';
 import type { Style } from './styles';
@@ -58,10 +59,13 @@ export const pixelPaint =
  * hour before it sets, sinking with the ride. The lit side of everything warm, its shade the
  * room's violet, a peach sky at the horizon.
  */
-export function dioramaLook(paint: Paint): Style {
+export function dioramaLook(
+	paint: Paint,
+	{ night = false, weather = 'clear' }: DioramaSky = {},
+): Style {
 	const look = rideLook(pixelPaint(paint));
 	const d = (token: string) => paint(`world-dio-${token}`);
-	return {
+	const day: Style = {
 		...look,
 		id: 'diorama',
 		label: 'Diorama',
@@ -90,6 +94,85 @@ export function dioramaLook(paint: Paint): Style {
 		},
 		// Real ranges: snow-capped and standing nearly twice as tall.
 		backdrop: { ...look.backdrop, snowCaps: true, tall: 1.9 },
+	};
+	return weathered(night ? nightOf(day, paint) : day, weather, paint);
+}
+
+/** What the clock and the room give a Diorama ride: night by the rider's hour, the room's weather. */
+export type DioramaSky = {
+	night?: boolean;
+	weather?: 'rain' | 'snow' | 'clear';
+};
+
+/** Two colours mixed in sRGB, `t` of the way from `a` to `b`. */
+const mixed = (a: string, b: string, t: number) =>
+	`#${new THREE.Color(a).lerp(new THREE.Color(b), t).getHexString()}`;
+
+/**
+ * Diorama 3D at night, the room's night (lounge/palette.ts): its sky's
+ * bands, set well under the horizon so the villages' lamps are lit and the
+ * stars are out, moonlight in place of the sun, and the room's moon.
+ */
+function nightOf(day: Style, paint: Paint): Style {
+	const n = (token: string) => paint(`world-dio-night-${token}`);
+	return {
+		...day,
+		id: 'diorama-night',
+		label: 'Diorama night',
+		sky: {
+			top: n('sky-zenith'),
+			horizon: n('sky-horizon'),
+			sunward: n('sky-horizon'),
+			band: n('sky-horizon'),
+		},
+		sun: { ...day.sun, elevation: -7, sets: -7, disc: 'none' },
+		key: n('moonlight'),
+		shade: n('sky-shade'),
+		moon: n('moon'),
+		fogK: day.fogK * 1.4,
+	};
+}
+
+/**
+ * The room's weather over a look: rain greys the sky and thickens the haze;
+ * snow greys it paler and lays snow on the land. Either hides the sun, and
+ * the pass draws what falls (diorama.ts).
+ */
+function weathered(
+	look: Style,
+	weather: DioramaSky['weather'],
+	paint: Paint,
+): Style {
+	if (weather !== 'rain' && weather !== 'snow') return look;
+	const w = (token: string) => paint(`world-dio-${weather}-${token}`);
+	const overcast = w('overcast');
+	const grey = (c: string, t: number) => mixed(c, overcast, t);
+	const snowy = (c: string) =>
+		weather === 'snow' ? mixed(c, paint('world-px-biome-snow'), 0.62) : c;
+	return {
+		...look,
+		weather,
+		sky: {
+			top: grey(look.sky.top, 0.55),
+			horizon: grey(look.sky.horizon, 0.7),
+			sunward: grey(look.sky.horizon, 0.7),
+			band: grey(look.sky.horizon, 0.7),
+		},
+		sun: { ...look.sun, disc: 'none' },
+		key: grey(look.key, 0.45),
+		fogK: look.fogK * (weather === 'rain' ? 2.6 : 2),
+		palette: Object.fromEntries(
+			Object.entries(look.palette).map(([b, c]) =>
+				Number(b) === Biome.Water || Number(b) === Biome.Rock
+					? [b, c]
+					: [b, snowy(c)],
+			),
+		) as Style['palette'],
+		road: {
+			...look.road,
+			verge: snowy(look.road.verge),
+			shoulder: look.road.shoulder && snowy(look.road.shoulder),
+		},
 	};
 }
 

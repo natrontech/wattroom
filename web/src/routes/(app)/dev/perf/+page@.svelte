@@ -7,6 +7,7 @@
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { iceGathered } from '$lib/perf/ice-gathered';
 	import Skyline from '$lib/ride/Skyline.svelte';
+	import type { DioramaSky } from '$lib/world/look';
 	import type { Road } from '$lib/road/road';
 	import { sceneLoop } from '$lib/lounge/scene-loop';
 	import { PLACES, drawScene, type Figure } from '$lib/lounge/scene';
@@ -239,6 +240,7 @@
 	 *  (#3082): the synthetic pass loop, you and three riders at 200 W, the
 	 *  ride's own look; `light=1` is the World control's Light, `pixels=0` or
 	 *  `pixels=d` sets the 3D look (Smooth or Diorama 3D) before it mounts,
+	 *  `sky=night` and `weather=rain|snow` dress Diorama for the night and the room's weather,
 	 *  `at=village` starts everyone 150 m before the loop's first village. The real
 	 *  scene, imported here so no other case loads three.js. */
 	function world(node: HTMLCanvasElement) {
@@ -274,9 +276,16 @@
 				const s = mount(node, {
 					route,
 					world,
-					style: (worldDiorama() ? dioramaLook : rideLook)(
-						worldPaint(node.parentElement ?? document.body),
-					),
+					style: worldDiorama()
+						? dioramaLook(worldPaint(node.parentElement ?? document.body), {
+								night: params.get('sky') === 'night',
+								weather:
+									params.get('weather') === 'rain' ||
+									params.get('weather') === 'snow'
+										? params.get('weather')
+										: 'clear',
+							} as DioramaSky)
+						: rideLook(worldPaint(node.parentElement ?? document.body)),
 					ftp: 250,
 					watts: 200,
 					riders: devCrew(

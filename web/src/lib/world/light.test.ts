@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_AZIMUTH, lightAt, sunAzimuth, sunElevation } from './light';
-import { DIORAMA_RIDE, RIDE } from './look.test-helper';
+import {
+	DIORAMA_NIGHT,
+	DIORAMA_RAIN,
+	DIORAMA_RIDE,
+	DIORAMA_SNOW,
+	RIDE,
+} from './look.test-helper';
 
 describe('the ride light (ADR-0072)', () => {
 	it('sinks the sun from −4° to −8° by progress, and holds −6° with no known end', () => {
@@ -60,6 +66,23 @@ describe('Diorama’s low sun', () => {
 
 	it('holds 12° with no known end', () => {
 		expect(deg(lightAt(DIORAMA_RIDE, null).sun)).toBeCloseTo(12, 5);
+	});
+
+	it('rides the whole night under the horizon: lamps lit and stars out from the start to the finish', () => {
+		for (const p of [0, 0.5, 1, null]) {
+			const l = lightAt(DIORAMA_NIGHT, p);
+			expect(l.keyed).toBe(false);
+			expect(l.lamps).toBe(true);
+			expect(l.stars).toBeGreaterThan(0.5);
+		}
+	});
+
+	it('hides the sun under rain and snow, and greys the sky without losing its night', () => {
+		expect(DIORAMA_RAIN.sun.disc).toBe('none');
+		expect(DIORAMA_RAIN.weather).toBe('rain');
+		expect(DIORAMA_RAIN.fogK).toBeGreaterThan(DIORAMA_RIDE.fogK * 2);
+		expect(DIORAMA_SNOW.weather).toBe('snow');
+		expect(lightAt(DIORAMA_SNOW, 0).lamps).toBe(true);
 	});
 });
 
