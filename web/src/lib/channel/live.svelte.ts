@@ -14,12 +14,16 @@ import type {
 	SensorClaim,
 	SensorPairing,
 	ServerMessage,
+	ToeggeliCommand,
+	ToeggeliInvite,
+	ToeggeliState,
 	ServerTick,
 	SessionRecap,
 } from '$lib/protocol';
 import {
 	MinRideSamples,
 	PokeKindBottle,
+	ToeggeliCleared,
 	RoadsideKindPaint,
 	type RoadsideStamp,
 } from '$lib/protocol';
@@ -137,6 +141,10 @@ export function createChannelLive(address: PlaceAddress) {
 	// rider's valley rather than announcing now — its own slot, so the poke's
 	// path never has to know one exists.
 	let lastBottle = $state<Poke | null>(null);
+	// The table football (toeggeli.go): the match while it runs, and the
+	// challenges standing between this rider and others, by who sent them.
+	let table = $state<ToeggeliState | null>(null);
+	let invites = $state<ToeggeliInvite[]>([]);
 	// The crew's owner or an admin moved this rider elsewhere (#2730).
 	let lastMove = $state<Moved | null>(null);
 	// This socket's own public address (#2131), addressed off the tick for a
@@ -412,6 +420,15 @@ export function createChannelLive(address: PlaceAddress) {
 			if (msg.poke?.kind === PokeKindBottle) lastBottle = msg.poke;
 			else if (msg.poke) lastPoke = msg.poke;
 			if (msg.moved) lastMove = msg.moved;
+			if (msg.toeggeli)
+				table = msg.toeggeli.phase === ToeggeliCleared ? null : msg.toeggeli;
+			if (msg.invite) {
+				const inv = msg.invite;
+				invites = [
+					...invites.filter((i) => !(i.from === inv.from && i.to === inv.to)),
+					...(inv.gone ? [] : [inv]),
+				];
+			}
 			if (msg.gear) gear = msg.gear;
 			if (msg.pause) pause = msg.pause;
 			if (msg.view) view = msg.view;
@@ -641,6 +658,18 @@ export function createChannelLive(address: PlaceAddress) {
 		voiceClaimTimedOut: () => voiceSeat.timedOut(),
 		/** This screen left the call. */
 		releaseVoice: () => voiceSeat.release(),
+		/** The match at the room's table, while one runs. */
+		get table() {
+			return table;
+		},
+		/** Challenges to the table this rider sent or was sent, still standing. */
+		get invites() {
+			return invites.filter((i) => i.until > Date.now());
+		},
+		/** A move at the table: a challenge, an answer, the rods, walking away. */
+		toeggeli(cmd: ToeggeliCommand) {
+			send({ toeggeli: cmd });
+		},
 		get lastPoke() {
 			return lastPoke;
 		},

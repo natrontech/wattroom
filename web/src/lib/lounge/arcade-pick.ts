@@ -2,18 +2,21 @@
 import type { GameId } from '$lib/lounge/games/game';
 
 const KEY = 'wattroom.arcade.v1';
-const IDS: readonly GameId[] = ['bergpreis', 'feedzone', 'darts'];
+/** A tab on the cabinet: one of its games on one button, or Töggeli. */
+export type Tab = GameId | 'toeggeli';
 
-export function loadPref(): GameId {
+const IDS: readonly Tab[] = ['bergpreis', 'feedzone', 'darts', 'toeggeli'];
+
+export function loadPref(): Tab {
 	try {
-		const id = localStorage.getItem(KEY) as GameId | null;
+		const id = localStorage.getItem(KEY) as Tab | null;
 		return id && IDS.includes(id) ? id : 'bergpreis';
 	} catch {
 		return 'bergpreis';
 	}
 }
 
-export function savePref(id: GameId): void {
+export function savePref(id: Tab): void {
 	try {
 		localStorage.setItem(KEY, id);
 	} catch {

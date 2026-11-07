@@ -97,6 +97,8 @@ var ArcadeMax = map[string]int32{
 	ArcadeBergpreis: 9999,
 	ArcadeFeedZone:  9999,
 	ArcadeDarts:     180,
+	// Matches won in a day: the hub writes these, never a client.
+	ArcadeToeggeli: 1000,
 }
 
 // LoungeVisitors is the closed set of the album's rare visitors. The client

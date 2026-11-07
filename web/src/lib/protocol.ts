@@ -1321,6 +1321,7 @@ export interface ClientMessage {
   freeRoad?: FreeRoad;
   lounge?: LoungeState;
   room?: RoomAct;
+  toeggeli?: ToeggeliCommand;
 }
 /**
  * ServerTick is a voice channel's coalesced 1 Hz broadcast: every rider's
@@ -1451,6 +1452,14 @@ export interface ServerMessage {
    * This socket's own address, sent once on join and to nobody else (#2131).
    */
   connection?: OwnConnection;
+  /**
+   * The table football's match, to everyone in the channel while it runs.
+   */
+  toeggeli?: ToeggeliState;
+  /**
+   * A challenge to the table, to the rider it names and to who sent it.
+   */
+  invite?: ToeggeliInvite;
 }
 /**
  * LobbyPing is what the lobby socket says (#251): re-fetch. Channel names the
@@ -2654,6 +2663,117 @@ export interface StatusLine {
    */
   expiresAt?: string;
 }
+
+//////////
+// source: toeggeli.go
+
+/**
+ * Challenge the rider To names.
+ */
+export const ToeggeliChallenge = "challenge";
+/**
+ * Accept the challenge of the rider To names: the match starts.
+ */
+export const ToeggeliAccept = "accept";
+/**
+ * Turn a challenge down, or take one back.
+ */
+export const ToeggeliDecline = "decline";
+/**
+ * Where your rods are, and whether you kick.
+ */
+export const ToeggeliMove = "move";
+/**
+ * Walk away from the table: the match ends with no winner.
+ */
+export const ToeggeliLeave = "leave";
+/**
+ * ToeggeliCommand is a rider's move at the table.
+ */
+export interface ToeggeliCommand {
+  op: string;
+  /**
+   * A rider's id, for a challenge, an accept or a decline.
+   */
+  to?: string;
+  /**
+   * Where the rods are, 0 at the top of the table to 1 at the bottom.
+   */
+  y?: number /* float64 */;
+  /**
+   * The button: while it is down the rods' figures kick.
+   */
+  kick?: boolean;
+}
+/**
+ * The phases of a match.
+ */
+export const ToeggeliPlay = "play";
+/**
+ * A goal went in: the ball waits at the middle before the kick-off.
+ */
+export const ToeggeliGoal = "goal";
+/**
+ * The match is over and shows its result before the table clears.
+ */
+export const ToeggeliOver = "over";
+/**
+ * The table is free again: the last frame of a match, and screens put it away.
+ */
+export const ToeggeliCleared = "cleared";
+/**
+ * ToeggeliState is the match at the table, sent to everyone in the channel
+ * many times a second while it runs. The table runs 0 to 1 along, from the
+ * left goal to the right, and 0 to 1 across. The left rider defends x = 0.
+ */
+export interface ToeggeliState {
+  left: string;
+  leftName: string;
+  right: string;
+  rightName: string;
+  leftGoals: number /* int */;
+  rightGoals: number /* int */;
+  ballX: number /* float64 */;
+  ballY: number /* float64 */;
+  leftY: number /* float64 */;
+  rightY: number /* float64 */;
+  leftKick?: boolean;
+  rightKick?: boolean;
+  /**
+   * Milliseconds left on the match's clock.
+   */
+  leftMs: number /* int64 */;
+  phase: string;
+  /**
+   * Who won, once it is over; "" is a draw or a walk-away.
+   */
+  winner?: string;
+  /**
+   * "" the match ran its course; "left" someone walked away from the table.
+   */
+  ended?: string;
+}
+/**
+ * ToeggeliInvite is a challenge, to the rider it names, while it stands.
+ */
+export interface ToeggeliInvite {
+  from: string;
+  fromName: string;
+  to: string;
+  /**
+   * Unix millis it lapses at.
+   */
+  until: number /* int64 */;
+  /**
+   * True when it was taken back, turned down or lapsed: the prompt goes.
+   */
+  gone?: boolean;
+}
+/**
+ * ArcadeToeggeli is Töggeli's board: matches won that day, a rider's best ever
+ * being their day with the most wins.
+ */
+export const ArcadeToeggeli = "toeggeli";
 
 //////////
 // source: world.go

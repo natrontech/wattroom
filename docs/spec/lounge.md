@@ -90,6 +90,22 @@ A score is paint, like everything in the room: the client's word is enough, and 
 
 Three darts at a dartboard on the corkboard, the standard board's numbers from 20 at the top. The aim sways **24 px**; holding the button steadies it by up to **75 %** over **0.9 s**, and past **1.8 s** the hand starts to shake. Letting go throws. Doubles on the outer ring, trebles on the inner one, **25** and **50** for the bull: **180** at most. A dart throws itself after **7 s**. The seed sets the sway and a draught of up to **3 px**.
 
+### Töggeli
+
+Table football between two riders in the voice channel; everyone in it can watch. The hub runs the match at **30** frames a second and sends it to every screen in the channel.
+
+| What         | Number                                                                                         |
+| ------------ | ---------------------------------------------------------------------------------------------- |
+| A challenge  | to one rider in the channel, standing **30 s**; one every **2 s** at most                      |
+| The table    | one match a voice channel; a challenge while it is taken is turned away                        |
+| A match      | first to **5** goals, or the most after **3 min**; level at the whistle is a draw              |
+| Each side    | a keeper and three forwards on two rods, moved together; the button kicks                      |
+| The ball     | a touch sends it on at **0.55** tables a second, a kick at **1.25**, never faster than **1.6** |
+| After a goal | **1.5 s** before the kick-off, toward who conceded                                             |
+| The result   | shows **4 s**, then the table is free                                                          |
+| Walking away | or leaving the channel ends the match with no winner                                           |
+| Its boards   | today's and all-time are matches won; every match won is one win in the weekly cup             |
+
 ## The calendar
 
 Fasnacht runs from Schmutziger Donnerstag to the Tuesday, 52 to 47 days before Easter. Easter runs Good Friday to Easter Monday. New Year and 1 August start at 18:00 the evening before, and Samichlaus the same on 5 December. The yellow jersey hangs 1 to 27 July, blossom falls 1 April to 15 May, leaves 20 September to 15 November. Fondue replaces Friday's pizza from December to February.

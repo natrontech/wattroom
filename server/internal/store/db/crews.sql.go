@@ -45,6 +45,30 @@ func (q *Queries) AddCrewSighting(ctx context.Context, arg AddCrewSightingParams
 	return result.RowsAffected(), nil
 }
 
+const addCrewToeggeliWin = `-- name: AddCrewToeggeliWin :one
+insert into crew_arcade_scores (crew_id, game, user_id, day, score)
+select ch.crew_id, 'toeggeli', $1::uuid, $2::date, 1
+from channels ch
+where ch.id = $3
+on conflict (crew_id, game, day, user_id) do update
+    set score = crew_arcade_scores.score + 1, set_at = now()
+returning crew_id
+`
+
+type AddCrewToeggeliWinParams struct {
+	UserID    pgtype.UUID
+	Day       pgtype.Date
+	ChannelID pgtype.UUID
+}
+
+// A match won at a voice channel's table, on its crew's board for the day.
+func (q *Queries) AddCrewToeggeliWin(ctx context.Context, arg AddCrewToeggeliWinParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, addCrewToeggeliWin, arg.UserID, arg.Day, arg.ChannelID)
+	var crew_id pgtype.UUID
+	err := row.Scan(&crew_id)
+	return crew_id, err
+}
+
 const clearCrewImage = `-- name: ClearCrewImage :exec
 update crews set image_mime = null, image = null, image_set_at = null where id = $1
 `
@@ -296,6 +320,47 @@ func (q *Queries) CrewRoomPicks(ctx context.Context, crewID pgtype.UUID) ([]byte
 	var picks []byte
 	err := row.Scan(&picks)
 	return picks, err
+}
+
+const crewToeggeliTotals = `-- name: CrewToeggeliTotals :many
+select s.user_id, u.display_name, sum(s.score)::int as wins, max(s.set_at)::timestamptz as set_at
+from crew_arcade_scores s
+join users u on u.id = s.user_id
+where s.crew_id = $1 and s.game = 'toeggeli'
+group by s.user_id, u.display_name
+`
+
+type CrewToeggeliTotalsRow struct {
+	UserID      pgtype.UUID
+	DisplayName string
+	Wins        int32
+	SetAt       pgtype.Timestamptz
+}
+
+// Töggeli's all-time board: every match each rider won at the crew's tables.
+func (q *Queries) CrewToeggeliTotals(ctx context.Context, crewID pgtype.UUID) ([]CrewToeggeliTotalsRow, error) {
+	rows, err := q.db.Query(ctx, crewToeggeliTotals, crewID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CrewToeggeliTotalsRow
+	for rows.Next() {
+		var i CrewToeggeliTotalsRow
+		if err := rows.Scan(
+			&i.UserID,
+			&i.DisplayName,
+			&i.Wins,
+			&i.SetAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const deleteCrew = `-- name: DeleteCrew :exec

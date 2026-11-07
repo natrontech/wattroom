@@ -354,6 +354,24 @@ from crew_arcade_scores s
 join users u on u.id = s.user_id
 where s.crew_id = $1 and s.day >= sqlc.arg(since)::date;
 
+-- name: CrewToeggeliTotals :many
+-- Töggeli's all-time board: every match each rider won at the crew's tables.
+select s.user_id, u.display_name, sum(s.score)::int as wins, max(s.set_at)::timestamptz as set_at
+from crew_arcade_scores s
+join users u on u.id = s.user_id
+where s.crew_id = $1 and s.game = 'toeggeli'
+group by s.user_id, u.display_name;
+
+-- name: AddCrewToeggeliWin :one
+-- A match won at a voice channel's table, on its crew's board for the day.
+insert into crew_arcade_scores (crew_id, game, user_id, day, score)
+select ch.crew_id, 'toeggeli', sqlc.arg(user_id)::uuid, sqlc.arg(day)::date, 1
+from channels ch
+where ch.id = sqlc.arg(channel_id)
+on conflict (crew_id, game, day, user_id) do update
+    set score = crew_arcade_scores.score + 1, set_at = now()
+returning crew_id;
+
 -- name: SaveCrewArcadeScore :exec
 -- A rider's run on a day: only a better score of theirs moves the row.
 insert into crew_arcade_scores (crew_id, game, user_id, day, score)

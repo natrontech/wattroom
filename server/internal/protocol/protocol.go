@@ -5,26 +5,27 @@ package protocol
 
 // ClientMessage is the envelope for everything a client sends.
 type ClientMessage struct {
-	Cheer    *Cheer          `json:"cheer,omitempty"`
-	Board    *Board          `json:"board,omitempty"`
-	Metrics  *RiderMetrics   `json:"metrics,omitempty"`
-	Control  *Control        `json:"control,omitempty"`
-	Backfill *Backfill       `json:"backfill,omitempty"`
-	Jukebox  *JukeboxCommand `json:"jukebox,omitempty"`
-	Sensors  *SensorClaim    `json:"sensors,omitempty"`
-	Poke     *Poke           `json:"poke,omitempty"`
-	Away     *AwayState      `json:"away,omitempty"`
-	Device   *DeviceKind     `json:"device,omitempty"`
-	Roadside *Roadside       `json:"roadside,omitempty"`
-	Drive    *Drive          `json:"drive,omitempty"`
-	Remote   *RemoteCommand  `json:"remote,omitempty"`
-	Gear     *GearState      `json:"gear,omitempty"`
-	Pause    *PauseState     `json:"pause,omitempty"`
-	View     *ViewState      `json:"view,omitempty"`
-	Voice    *VoiceClaim     `json:"voice,omitempty"`
-	FreeRoad *FreeRoad       `json:"freeRoad,omitempty"`
-	Lounge   *LoungeState    `json:"lounge,omitempty"`
-	Room     *RoomAct        `json:"room,omitempty"`
+	Cheer    *Cheer           `json:"cheer,omitempty"`
+	Board    *Board           `json:"board,omitempty"`
+	Metrics  *RiderMetrics    `json:"metrics,omitempty"`
+	Control  *Control         `json:"control,omitempty"`
+	Backfill *Backfill        `json:"backfill,omitempty"`
+	Jukebox  *JukeboxCommand  `json:"jukebox,omitempty"`
+	Sensors  *SensorClaim     `json:"sensors,omitempty"`
+	Poke     *Poke            `json:"poke,omitempty"`
+	Away     *AwayState       `json:"away,omitempty"`
+	Device   *DeviceKind      `json:"device,omitempty"`
+	Roadside *Roadside        `json:"roadside,omitempty"`
+	Drive    *Drive           `json:"drive,omitempty"`
+	Remote   *RemoteCommand   `json:"remote,omitempty"`
+	Gear     *GearState       `json:"gear,omitempty"`
+	Pause    *PauseState      `json:"pause,omitempty"`
+	View     *ViewState       `json:"view,omitempty"`
+	Voice    *VoiceClaim      `json:"voice,omitempty"`
+	FreeRoad *FreeRoad        `json:"freeRoad,omitempty"`
+	Lounge   *LoungeState     `json:"lounge,omitempty"`
+	Room     *RoomAct         `json:"room,omitempty"`
+	Toeggeli *ToeggeliCommand `json:"toeggeli,omitempty"`
 }
 
 // ServerTick is a voice channel's coalesced 1 Hz broadcast: every rider's
@@ -113,6 +114,10 @@ type ServerMessage struct {
 	View *ViewState `json:"view,omitempty"`
 	// This socket's own address, sent once on join and to nobody else (#2131).
 	Connection *OwnConnection `json:"connection,omitempty"`
+	// The table football's match, to everyone in the channel while it runs.
+	Toeggeli *ToeggeliState `json:"toeggeli,omitempty"`
+	// A challenge to the table, to the rider it names and to who sent it.
+	Invite *ToeggeliInvite `json:"invite,omitempty"`
 }
 
 // LobbyPing is what the lobby socket says (#251): re-fetch. Channel names the
