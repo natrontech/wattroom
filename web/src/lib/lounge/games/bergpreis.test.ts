@@ -6,7 +6,7 @@ import {
 	over,
 	scoreOf,
 	step,
-} from '$lib/lounge/arcade';
+} from '$lib/lounge/games/bergpreis';
 
 const play = (held: (r: ReturnType<typeof newRun>) => boolean) => {
 	let r = newRun();

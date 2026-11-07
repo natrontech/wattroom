@@ -83,8 +83,21 @@ var RoomItems = map[string]RoomItem{
 	"sign.initial": {"sign", 100},
 }
 
-// MaxArcadeScore is more than a perfect run of the arcade's game can reach.
-const MaxArcadeScore = 9999
+// The arcade's games (docs/spec/lounge.md). The client keeps how each plays,
+// in web/src/lib/lounge/games/.
+const (
+	ArcadeBergpreis = "bergpreis"
+	ArcadeFeedZone  = "feedzone"
+	ArcadeDarts     = "darts"
+)
+
+// ArcadeMax is the closed set of the arcade's games, each with more than a
+// perfect run of it can reach.
+var ArcadeMax = map[string]int32{
+	ArcadeBergpreis: 9999,
+	ArcadeFeedZone:  9999,
+	ArcadeDarts:     180,
+}
 
 // LoungeVisitors is the closed set of the album's rare visitors. The client
 // keeps its own copy, VISITORS in web/src/lib/lounge/moments.ts.

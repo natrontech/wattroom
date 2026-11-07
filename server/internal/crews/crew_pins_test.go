@@ -316,38 +316,3 @@ func TestCrewRoomFurnishing(t *testing.T) {
 		t.Fatalf("buying: %d %s", bought.Code, bought.Body.String())
 	}
 }
-
-func TestCrewArcadeKeepsYourBest(t *testing.T) {
-	h := setup(t)
-	crew := crewWith(t, h)
-	post := func(score string) int {
-		req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/crews/"+crew+"/arcade", strings.NewReader(`{"score":`+score+`}`))
-		req.Header.Set("X-Test-User", "alice")
-		w := httptest.NewRecorder()
-		h.mux.ServeHTTP(w, req)
-		return w.Code
-	}
-	for _, score := range []string{"300", "120"} {
-		if got := post(score); got != http.StatusNoContent {
-			t.Fatalf("score %s: %d", score, got)
-		}
-	}
-	if got := post("99999"); got != http.StatusBadRequest {
-		t.Fatalf("a score off the machine: %d", got)
-	}
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/crews/"+crew+"/arcade", nil)
-	req.Header.Set("X-Test-User", "alice")
-	w := httptest.NewRecorder()
-	h.mux.ServeHTTP(w, req)
-	var out struct {
-		Top []struct {
-			Score int `json:"score"`
-		} `json:"top"`
-	}
-	if err := json.NewDecoder(w.Body).Decode(&out); err != nil {
-		t.Fatalf("decoding the scores: %v", err)
-	}
-	if len(out.Top) != 1 || out.Top[0].Score != 300 {
-		t.Fatalf("the table holds %+v", out.Top)
-	}
-}

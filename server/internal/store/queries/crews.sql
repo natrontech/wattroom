@@ -337,18 +337,27 @@ select picks from crew_rooms where crew_id = $1;
 insert into crew_rooms (crew_id, picks) values ($1, $2)
 on conflict (crew_id) do update set picks = excluded.picks;
 
--- name: CrewArcadeTop :many
--- The crew's five best, a rider once each, by the name the crew knows them by.
-select u.display_name, a.score
-from crew_arcade a
-join users u on u.id = a.user_id
-where a.crew_id = $1
-order by a.score desc, a.set_at
-limit 5;
+-- name: CrewArcadeBests :many
+-- Each rider's best ever at each game, the first time they reached it
+-- winning a tie, by the name the crew knows them by. The handler keeps five.
+select distinct on (s.game, s.user_id)
+    s.game, s.user_id, u.display_name, s.score, s.set_at
+from crew_arcade_scores s
+join users u on u.id = s.user_id
+where s.crew_id = $1
+order by s.game, s.user_id, s.score desc, s.set_at;
+
+-- name: CrewArcadeSince :many
+-- Every rider's day at every game since a day: today's board and the week's cup.
+select s.game, s.user_id, u.display_name, s.day, s.score, s.set_at
+from crew_arcade_scores s
+join users u on u.id = s.user_id
+where s.crew_id = $1 and s.day >= sqlc.arg(since)::date;
 
 -- name: SaveCrewArcadeScore :exec
--- Only a better score moves the row.
-insert into crew_arcade (crew_id, user_id, score) values ($1, $2, $3)
-on conflict (crew_id, user_id) do update
+-- A rider's run on a day: only a better score of theirs moves the row.
+insert into crew_arcade_scores (crew_id, game, user_id, day, score)
+values ($1, $2, $3, sqlc.arg(day)::date, $4)
+on conflict (crew_id, game, day, user_id) do update
     set score = excluded.score, set_at = now()
-    where excluded.score > crew_arcade.score;
+    where excluded.score > crew_arcade_scores.score;

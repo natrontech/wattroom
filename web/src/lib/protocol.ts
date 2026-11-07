@@ -1067,9 +1067,20 @@ export interface RoomItem {
   price: number /* int32 */;
 }
 /**
- * MaxArcadeScore is more than a perfect run of the arcade's game can reach.
+ * The arcade's games (docs/spec/lounge.md). The client keeps how each plays,
+ * in web/src/lib/lounge/games/.
  */
-export const MaxArcadeScore = 9999;
+export const ArcadeBergpreis = "bergpreis";
+/**
+ * The arcade's games (docs/spec/lounge.md). The client keeps how each plays,
+ * in web/src/lib/lounge/games/.
+ */
+export const ArcadeFeedZone = "feedzone";
+/**
+ * The arcade's games (docs/spec/lounge.md). The client keeps how each plays,
+ * in web/src/lib/lounge/games/.
+ */
+export const ArcadeDarts = "darts";
 /**
  * HouseRadioTitle is house radio's line on the deck and in the channel's
  * events: the station is generated, so it has no title of its own.

@@ -129,31 +129,90 @@ func (q *Queries) CreateCrew(ctx context.Context, arg CreateCrewParams) (Crew, e
 	return i, err
 }
 
-const crewArcadeTop = `-- name: CrewArcadeTop :many
-select u.display_name, a.score
-from crew_arcade a
-join users u on u.id = a.user_id
-where a.crew_id = $1
-order by a.score desc, a.set_at
-limit 5
+const crewArcadeBests = `-- name: CrewArcadeBests :many
+select distinct on (s.game, s.user_id)
+    s.game, s.user_id, u.display_name, s.score, s.set_at
+from crew_arcade_scores s
+join users u on u.id = s.user_id
+where s.crew_id = $1
+order by s.game, s.user_id, s.score desc, s.set_at
 `
 
-type CrewArcadeTopRow struct {
+type CrewArcadeBestsRow struct {
+	Game        string
+	UserID      pgtype.UUID
 	DisplayName string
 	Score       int32
+	SetAt       pgtype.Timestamptz
 }
 
-// The crew's five best, a rider once each, by the name the crew knows them by.
-func (q *Queries) CrewArcadeTop(ctx context.Context, crewID pgtype.UUID) ([]CrewArcadeTopRow, error) {
-	rows, err := q.db.Query(ctx, crewArcadeTop, crewID)
+// Each rider's best ever at each game, the first time they reached it
+// winning a tie, by the name the crew knows them by. The handler keeps five.
+func (q *Queries) CrewArcadeBests(ctx context.Context, crewID pgtype.UUID) ([]CrewArcadeBestsRow, error) {
+	rows, err := q.db.Query(ctx, crewArcadeBests, crewID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []CrewArcadeTopRow
+	var items []CrewArcadeBestsRow
 	for rows.Next() {
-		var i CrewArcadeTopRow
-		if err := rows.Scan(&i.DisplayName, &i.Score); err != nil {
+		var i CrewArcadeBestsRow
+		if err := rows.Scan(
+			&i.Game,
+			&i.UserID,
+			&i.DisplayName,
+			&i.Score,
+			&i.SetAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const crewArcadeSince = `-- name: CrewArcadeSince :many
+select s.game, s.user_id, u.display_name, s.day, s.score, s.set_at
+from crew_arcade_scores s
+join users u on u.id = s.user_id
+where s.crew_id = $1 and s.day >= $2::date
+`
+
+type CrewArcadeSinceParams struct {
+	CrewID pgtype.UUID
+	Since  pgtype.Date
+}
+
+type CrewArcadeSinceRow struct {
+	Game        string
+	UserID      pgtype.UUID
+	DisplayName string
+	Day         pgtype.Date
+	Score       int32
+	SetAt       pgtype.Timestamptz
+}
+
+// Every rider's day at every game since a day: today's board and the week's cup.
+func (q *Queries) CrewArcadeSince(ctx context.Context, arg CrewArcadeSinceParams) ([]CrewArcadeSinceRow, error) {
+	rows, err := q.db.Query(ctx, crewArcadeSince, arg.CrewID, arg.Since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CrewArcadeSinceRow
+	for rows.Next() {
+		var i CrewArcadeSinceRow
+		if err := rows.Scan(
+			&i.Game,
+			&i.UserID,
+			&i.DisplayName,
+			&i.Day,
+			&i.Score,
+			&i.SetAt,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -928,21 +987,30 @@ func (q *Queries) PickCrewSuccessor(ctx context.Context, arg PickCrewSuccessorPa
 }
 
 const saveCrewArcadeScore = `-- name: SaveCrewArcadeScore :exec
-insert into crew_arcade (crew_id, user_id, score) values ($1, $2, $3)
-on conflict (crew_id, user_id) do update
+insert into crew_arcade_scores (crew_id, game, user_id, day, score)
+values ($1, $2, $3, $5::date, $4)
+on conflict (crew_id, game, day, user_id) do update
     set score = excluded.score, set_at = now()
-    where excluded.score > crew_arcade.score
+    where excluded.score > crew_arcade_scores.score
 `
 
 type SaveCrewArcadeScoreParams struct {
 	CrewID pgtype.UUID
+	Game   string
 	UserID pgtype.UUID
 	Score  int32
+	Day    pgtype.Date
 }
 
-// Only a better score moves the row.
+// A rider's run on a day: only a better score of theirs moves the row.
 func (q *Queries) SaveCrewArcadeScore(ctx context.Context, arg SaveCrewArcadeScoreParams) error {
-	_, err := q.db.Exec(ctx, saveCrewArcadeScore, arg.CrewID, arg.UserID, arg.Score)
+	_, err := q.db.Exec(ctx, saveCrewArcadeScore,
+		arg.CrewID,
+		arg.Game,
+		arg.UserID,
+		arg.Score,
+		arg.Day,
+	)
 	return err
 }
 

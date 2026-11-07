@@ -15,6 +15,7 @@ import (
 // that turns up here without a reason a person would accept belongs in a
 // category instead (GDPR Art. 15).
 var notExported = map[string]string{
+	"crew_arcade":    "Bergpreis's old bests, copied into crew_arcade_scores, which arcade-scores.json exports; dropped a release after nothing reads it",
 	"sessions":       "a hash of a sign-in cookie: no screen lists it, and session material is nothing to hand back",
 	"channel_reads":  "an unread-marker cursor: bookkeeping no screen shows the rider",
 	"dm_reads":       "an unread-marker cursor: bookkeeping no screen shows the rider",

@@ -106,12 +106,12 @@ func (x *export) roomItems() category {
 }
 
 func (x *export) arcadeScores() category {
-	return x.bounded("arcade-scores.json", []string{"crew_arcade"}, func() (any, int, error) {
+	return x.bounded("arcade-scores.json", []string{"crew_arcade_scores"}, func() (any, int, error) {
 		rows, err := x.q.ExportUserArcadeScores(x.ctx, db.ExportUserArcadeScoresParams{
 			UserID: x.user.ID, Lim: maxExportRows,
 		})
 		out, err := mapRows(rows, err, func(row db.ExportUserArcadeScoresRow) any {
-			return map[string]any{"crew": row.CrewName, "score": row.Score, "setAt": row.SetAt.Time}
+			return map[string]any{"crew": row.CrewName, "game": row.Game, "day": row.Day.Time.Format(time.DateOnly), "score": row.Score, "setAt": row.SetAt.Time}
 		})
 		return out, len(rows), err
 	})

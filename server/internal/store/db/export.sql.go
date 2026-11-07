@@ -95,11 +95,11 @@ func (q *Queries) ExportUserApiTokens(ctx context.Context, arg ExportUserApiToke
 }
 
 const exportUserArcadeScores = `-- name: ExportUserArcadeScores :many
-select c.name as crew_name, a.score, a.set_at
-from crew_arcade a
+select c.name as crew_name, a.game, a.day, a.score, a.set_at
+from crew_arcade_scores a
 join crews c on c.id = a.crew_id
 where a.user_id = $1
-order by a.set_at
+order by a.day, a.set_at
 limit $2
 `
 
@@ -110,11 +110,13 @@ type ExportUserArcadeScoresParams struct {
 
 type ExportUserArcadeScoresRow struct {
 	CrewName string
+	Game     string
+	Day      pgtype.Date
 	Score    int32
 	SetAt    pgtype.Timestamptz
 }
 
-// The rider's best at each crew's arcade.
+// The rider's best at each crew's arcade, each game and each day they played.
 func (q *Queries) ExportUserArcadeScores(ctx context.Context, arg ExportUserArcadeScoresParams) ([]ExportUserArcadeScoresRow, error) {
 	rows, err := q.db.Query(ctx, exportUserArcadeScores, arg.UserID, arg.Lim)
 	if err != nil {
@@ -124,7 +126,13 @@ func (q *Queries) ExportUserArcadeScores(ctx context.Context, arg ExportUserArca
 	var items []ExportUserArcadeScoresRow
 	for rows.Next() {
 		var i ExportUserArcadeScoresRow
-		if err := rows.Scan(&i.CrewName, &i.Score, &i.SetAt); err != nil {
+		if err := rows.Scan(
+			&i.CrewName,
+			&i.Game,
+			&i.Day,
+			&i.Score,
+			&i.SetAt,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

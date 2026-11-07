@@ -336,6 +336,7 @@ function sitter(
 			rect(g, hx - 2, ht - 1, 1, 4, C.cable);
 			rect(g, hx + 11, ht - 1, 1, 4, C.cable);
 		}
+		if (s.club.crowns.includes(f.id)) crown(g, hx, f.muted ? ht - 3 : ht);
 	};
 	// Dancing steps side to side on the beat; nodding along dips with the kick.
 	const dancing = f.emote === 'dance' && !s.still;
@@ -375,6 +376,22 @@ export function beard(
 		rect(g, hx + 1, ht + 6, 8, 3, f.hair);
 		rect(g, hx + 3, ht + 7, 4, open ? 2 : 1, open ? C.ink : f.skinShade);
 	}
+}
+
+/** A record holder's crown at the arcade, over the hair of a head whose top row is ht. */
+export function crown(g: Ctx, hx: number, ht: number) {
+	outlined(
+		g,
+		[
+			[hx + 2, ht - 2, 6, 2, C.amber],
+			[hx + 2, ht - 4, 1, 2, C.amber],
+			[hx + 4, ht - 5, 2, 3, C.amber],
+			[hx + 7, ht - 4, 1, 2, C.amber],
+		],
+		C.ink,
+	);
+	rect(g, hx + 4, ht - 2, 2, 1, C.red);
+	rect(g, hx + 2, ht - 1, 6, 1, C.amberDark);
 }
 
 /** A small badge on the chest: a star, a heart or a bolt. */
