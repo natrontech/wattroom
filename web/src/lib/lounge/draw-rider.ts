@@ -689,6 +689,7 @@ export function drawWatcher(g: Ctx, f: Figure, frame: number) {
 	const x = CELL_W / 2;
 	const y = GROUND;
 	const up = frame % 4 < 2;
+	const sway = frame % 2;
 	const shadow: Part[] = [];
 	for (let i = -6; i <= 6; i += 2) shadow.push([x + i, y, 1, 1, C.ink]);
 	for (const [px, py, w, h, c] of shadow) rect(g, px, py, w, h, c);
@@ -700,9 +701,19 @@ export function drawWatcher(g: Ctx, f: Figure, frame: number) {
 			[x - 5, y - 1, 4, 2, f.shoes],
 			[x + 1, y - 1, 4, 2, f.shoes],
 			[x - 6, y - 19, 12, 10, f.shirt],
-			[x - 8, up ? y - 27 : y - 18, 2, up ? 8 : 8, f.shirt],
+			// A wave goes up and out to an open hand, swaying: an arm straight
+			// up with a skin tip read as a finger.
+			...((up
+				? [
+						[x - 8, y - 22, 2, 4, f.shirt],
+						[x - 9 - sway, y - 25, 2, 4, f.shirt],
+						[x - 10 - sway, y - 28, 3, 3, f.skin],
+					]
+				: [
+						[x - 8, y - 18, 2, 8, f.shirt],
+						[x - 8, y - 10, 2, 2, f.skin],
+					]) as Part[]),
 			[x + 6, y - 18, 2, 8, f.shirt],
-			[x - 8, up ? y - 29 : y - 10, 2, 2, f.skin],
 			[x + 6, y - 10, 2, 2, f.skin],
 		],
 		C.ink,

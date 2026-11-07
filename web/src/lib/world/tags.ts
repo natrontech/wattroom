@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { CORRIDOR } from '$lib/session/docks';
 import { tag } from './family';
-import { CHEVRON_Y, THUMB_Y } from './crew';
+import { CHEVRON_Y, HEART_Y } from './crew';
 import { FONT, paintedTexture } from './furniture';
 import { WORDS } from './pixel';
 import type { SimRider } from './sim';
@@ -26,9 +26,9 @@ const PAD = 0.6;
 const CHAR_W = 0.6;
 /** The words' weight: medium, as the target's names are. */
 const WEIGHT = 500;
-/** Where a tag's foot sits: just clear of a chevron's height, so no chevron abreast hides under it, or over a cheer's thumb while it shows. */
+/** Where a tag's foot sits: just clear of a chevron's height, so no chevron abreast hides under it, or over a cheer's heart while it shows. */
 const footOf = (r: SimRider) =>
-	r.cheer && r.cheer.thumb > 0 ? THUMB_Y + 0.2 : CHEVRON_Y + 0.12;
+	r.cheer && r.cheer.heart > 0 ? HEART_Y + 0.2 : CHEVRON_Y + 0.12;
 
 /** A tag as the frame lays it: its words, and its centre as shares of the frame, from the top left. */
 export type Laid = { text: string; speaking: boolean; x: number; y: number };

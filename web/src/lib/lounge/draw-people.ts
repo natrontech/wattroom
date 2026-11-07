@@ -227,12 +227,21 @@ function sitter(
 	const draw = (g: Ctx, x: number, base: number) => {
 		const hx = x - 5;
 		const ht = base - 19;
-		const wave =
+		// Arms up go out in a V and end in open hands, never straight up as
+		// sticks: a 2-pixel arm with a skin tip read as a finger. A wave and a
+		// toast raise one arm; the crew's wave, a stretch and the beat raise both.
+		const both =
 			waving(s, n) ||
 			f.emote === 'stretch' ||
 			f.doing === 'stretch' ||
-			(f.emote === 'wave' && (s.still || Math.floor(s.t * 4) % 2 === 0)) ||
 			(f.emote === 'dance' && Math.floor(s.t * 4 + n) % 4 === 0);
+		const right = both || f.emote === 'wave' || f.emote === 'cheers';
+		const left = both;
+		// A wave sways its hand out and back.
+		const sway =
+			f.emote === 'wave' && !both && !s.still && Math.floor(s.t * 4) % 2 === 0
+				? 1
+				: 0;
 		const parts: Part[] = [
 			// A hood lies on the shoulders, behind the head.
 			...(f.top === 1
@@ -247,12 +256,8 @@ function sitter(
 						[x + 1, base, 3, 6, f.pantsShade],
 					] as Part[])
 				: ([[x - 6, base - 4, 12, 4, f.pants]] as Part[])),
-			...(wave
-				? ([
-						[x - 8, base - 18, 2, 9, f.shirt],
-						[x + 6, base - 18, 2, 9, f.shirt],
-					] as Part[])
-				: []),
+			...(left ? raisedArm(x, base, -1, 0, f) : []),
+			...(right ? raisedArm(x, base, 1, sway, f) : []),
 			...hair(f, hx, ht),
 		];
 		if (f.muted)
@@ -290,23 +295,17 @@ function sitter(
 				],
 				C.ink,
 			);
-		if (!wave) {
-			rect(g, x - 4, base - 9, 1, 5, f.shirtShade);
-			rect(g, x + 3, base - 9, 1, 5, f.shirtShade);
+		// The arms that stay down, each on its own side.
+		for (const [up, ax, hx2] of [
+			[left, x - 4, x - 5],
+			[right, x + 3, x + 3],
+		] as const) {
+			if (up) continue;
+			rect(g, ax, base - 9, 1, 5, f.shirtShade);
 			// A tee's sleeves end at the elbow, and a vest has none.
-			if (f.top === 0 || f.top === 4) {
-				rect(g, x - 4, base - 6, 1, 2, f.skin);
-				rect(g, x + 3, base - 6, 1, 2, f.skin);
-			}
-			if (f.top === 4) {
-				rect(g, x - 4, base - 9, 1, 3, f.skin);
-				rect(g, x + 3, base - 9, 1, 3, f.skin);
-			}
-			rect(g, x - 5, base - 4, 2, 1, f.skin);
-			rect(g, x + 3, base - 4, 2, 1, f.skin);
-		} else {
-			rect(g, x - 8, base - 19, 2, 2, f.skin);
-			rect(g, x + 6, base - 19, 2, 2, f.skin);
+			if (f.top === 0 || f.top === 4) rect(g, ax, base - 6, 1, 2, f.skin);
+			if (f.top === 4) rect(g, ax, base - 9, 1, 3, f.skin);
+			rect(g, hx2, base - 4, 2, 1, f.skin);
 		}
 		if (pose === 'sofa') {
 			if (f.socks) {
@@ -348,13 +347,9 @@ function sitter(
 	else draw(g, x + dx, base - dy);
 	drawDoing(g, s, f, x + dx, base - dy, n);
 	drawPet(g, s, f, x + dx, base - dy, pose, n);
-	if (f.cooling) {
-		// A bottle held at the hip, and a drop that runs now and then.
-		outlined(g, [[x + 7, base - 9, 3, 6, C.teal]], C.ink);
-		rect(g, x + 8, base - 11, 1, 2, C.paper);
-		if (!s.still && Math.floor(s.t + n) % 4 === 0)
-			rect(g, x - 7, base - 16 + Math.floor((s.t % 1) * 6), 1, 1, C.tealLight);
-	}
+	// Just off the bike, a drop of sweat runs now and then; the towel says the rest.
+	if (f.cooling && !s.still && Math.floor(s.t + n) % 4 === 0)
+		rect(g, x - 7, base - 16 + Math.floor((s.t % 1) * 6), 1, 1, C.tealLight);
 	if (f.speaking) bubble(g, x + 4, base - 29, s);
 	if (f.sounding)
 		sprite(g, NOTE, f.speaking ? x - 8 : x + 6, base - 27, C.lilac);
@@ -468,10 +463,17 @@ function drawDoing(
 	n: number,
 ) {
 	if (f.emote === 'cheers') {
-		// A mug held up, and a glint off it.
-		outlined(g, [[x + 7, base - 22, 3, 4, C.lilac]], C.ink);
-		rect(g, x + 8, base - 25, 1, 1, C.bulb);
-		rect(g, x + 11, base - 23, 1, 1, C.bulb);
+		// A mug of something in the raised hand: foam on top, a handle out.
+		outlined(
+			g,
+			[
+				[x + 7, base - 23, 4, 5, C.amber],
+				[x + 11, base - 22, 1, 3, C.amber],
+			],
+			C.ink,
+		);
+		rect(g, x + 7, base - 23, 4, 1, C.paper);
+		rect(g, x + 8, base - 21, 1, 2, C.bulb);
 		return;
 	}
 	switch (f.doing) {
@@ -516,9 +518,33 @@ function drawDoing(
 		case 'wrench': {
 			const swing = s.still ? 0 : Math.round(Math.sin(s.t * 3 + n) * 2);
 			line(g, x + 5, base - 8, x + 10, base - 12 + swing, C.cable);
+			outlined(g, [[x + 10, base - 14 + swing, 3, 2, C.cable]], C.ink);
+			rect(g, x + 11, base - 14 + swing, 1, 1, C.ink);
 			break;
 		}
 	}
+}
+
+/**
+ * One arm up and out from the shoulder, in two steps of sleeve, with an open
+ * hand wider than the arm. `side` is -1 for their left, 1 for their right; the
+ * right is the left mirrored about the figure's middle.
+ */
+function raisedArm(
+	x: number,
+	base: number,
+	side: -1 | 1,
+	sway: number,
+	f: Figure,
+): Part[] {
+	const left: Part[] = [
+		[x - 8, base - 12, 2, 4, f.shirt],
+		[x - 9 - sway, base - 15, 2, 4, f.shirt],
+		[x - 10 - sway, base - 18, 3, 3, f.skin],
+	];
+	return side < 0
+		? left
+		: left.map(([px, py, w, h, c]) => [2 * x - px - w, py, w, h, c] as Part);
 }
 
 export function stripeOn(shirt: string): string {

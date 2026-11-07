@@ -113,7 +113,7 @@ export type MountOptions = {
 	loungeLook?: (id: string) => string | undefined;
 	/** The theme's structural accent, for the coach's chevron; Outrun's absent. */
 	neon?: string;
-	/** Reduced motion, read each frame: a cheer's thumb and light hold still, the fog sea steps (ADR-0079). */
+	/** Reduced motion, read each frame: a cheer's heart and light hold still, the fog sea steps (ADR-0079). */
 	steady?: () => boolean;
 	/** The World control's Light (#3214): the world draws at the quality ladder's L1 and never climbs (#3295). */
 	light?: boolean;
