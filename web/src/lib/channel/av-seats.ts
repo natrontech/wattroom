@@ -17,7 +17,9 @@ import type { Owned } from '$lib/channel/av-types';
  * first, so sharing your screen took your voice off everyone's speakers with
  * nothing anywhere saying so (#1124). `audioKey` is that second half of the
  * name; the suffix rather than a separate map, because every caller already
- * has the publication's source in hand.
+ * has the publication's source in hand. An audio seat is owned by its TRACK:
+ * every unmute publishes a new mic track (#4177), and the new one can arrive
+ * before the old one leaves.
  *
  * No SDK past this line — which is what lets the ownership rule be tested
  * without a LiveKit mock.
@@ -39,10 +41,28 @@ export function createSeats() {
 		screen: new Map(),
 	};
 	/** Audio plumbing is per CONNECTION: one element and one gain each. */
-	const audio = new Map<string, HTMLAudioElement>();
+	const audio = new Map<string, { el: HTMLAudioElement; track: unknown }>();
 
 	return {
-		audio,
+		/** A track takes the key; an older one still on its way out loses its element. */
+		seatAudio(key: string, el: HTMLAudioElement, track: unknown) {
+			audio.get(key)?.el.remove();
+			audio.set(key, { el, track });
+		},
+		/**
+		 * Gives the key up only for the track that holds it. The old track's
+		 * goodbye used to take the key, and with it the voice that had just
+		 * come back: that rider stayed unheard, and showed muted, until a
+		 * restart.
+		 */
+		dropAudio(key: string, track: unknown) {
+			const held = audio.get(key);
+			if (!held || held.track !== track) return false;
+			// The SDK detaches its elements before it says so; the DOM is ours.
+			held.el.remove();
+			audio.delete(key);
+			return true;
+		},
 		get(kind: Picture, rider: string) {
 			return pictures[kind].get(rider);
 		},
@@ -65,7 +85,7 @@ export function createSeats() {
 		},
 		/** A disconnect empties the call: every seat, and every element with it. */
 		clear() {
-			for (const el of audio.values()) el.remove();
+			for (const { el } of audio.values()) el.remove();
 			audio.clear();
 			pictures.video.clear();
 			pictures.screen.clear();

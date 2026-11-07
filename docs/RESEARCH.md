@@ -1018,19 +1018,39 @@ The canceller suppresses wherever it expects echo, so it takes the voice under t
 | 0.1 | −33, none cancelled |
 | 0.03 | −33, none cancelled |
 
-The reference has to sit over a level the canceller reacts to, somewhere between −46 and −40 dBFS for this voice. So each voice's element plays at 0.2 beside the graph, and a share stays out because it is music. In a real call through LiveKit, a second rider's mic carrying the first rider's voice at −26 dBFS sent it back at −24 dBFS without that copy. With it the echo reached −56 dBFS within 10 s and sat between −56 and −81 after that.
+The reference has to sit over a level the canceller reacts to, somewhere between −46 and −40 dBFS for this voice. 2026.11.24 played each voice's element at 0.2 beside the graph; §22.8 replaced that copy with the element as the voice's only path. A share stays out because it is music. In a real call through LiveKit, a second rider's mic carrying the first rider's voice at −26 dBFS sent it back at −24 dBFS without that copy. With it the echo reached −56 dBFS within 10 s and sat between −56 and −81 after that.
 
 A mic test keeps `true`: it plays the rider back through WebAudio, and on speakers nothing else stops that howling. A handheld keeps `true` too, because its voices never reach an element at any volume.
 
 ### 22.7 Not measured
 
-- The copy's sound. It plays 14 dB under the voice at a delay nobody measured, which ripples the level by about 2 dB at most. Nobody has listened to that.
 - `true` with music in its reference on real speakers. The table reproduces it with the same canceller by another route.
 - A real phone, with its own mic and its own processing.
 - A real mic, a real fan, a real voice: synthetic speech stops at 11 kHz, and a neural model may treat a real rider's breathing differently.
 - Chrome's AEC under double-talk on speakers (a rider talking over the crew) needs a real speaker in the loop. It is the suspected cause of voices cutting out on speakers (#4339's note).
 - Chrome's input volume control moving a real mic's gain: the fake device has none.
 - A slower machine than an M2 Pro. The overload check falls back to the gate at 70 % of real time for 4 s.
+
+### 22.8 Voices missing, doubled or strange until a restart
+
+Report the morning after 2026.11.24: riders did not hear each other, or heard a voice twice or strange, and restarted the app to fix it. LiveKit's log of that call (10:00 to 10:52 UTC, three riders, all on the desktop app) shows the mic republished six times within a session and ten restarts, nine of them inside six minutes. Every unmute publishes a new mic track, because a muted mic holds no capture (#4177). Twice the old track's subscription outlived it, and once the new track was published before the old one left.
+
+Two causes, both in how a listener plays a voice:
+
+- **The old track's goodbye took the new voice.** A listener keys a rider's voice by connection, and the new track can arrive before the old one leaves. The old one's unsubscribe then dropped the graph the new one had just built and set the rider to muted. Since 2026.11.24 the element still played its 0.2 copy, so that rider was faint, without a fader or a speaking ring, rather than silent. It held until the next republish or a restart. A seat is now owned by its track, the way pictures already were. LiveKit also detaches a track's elements before it says the track is gone, so the handler's own `detach()` found nothing, and every unmute left a dead `<audio>` element behind: the rig counted nine after eight unmutes.
+- **Two copies of every voice.** The graph reads a stream through `WebAudioMediaStreamAudioSink`, whose FIFO holds six batch reads ([source](https://source.chromium.org/chromium/chromium/src/+/main:third_party/blink/renderer/modules/mediastream/webaudio_media_stream_audio_sink.cc)): the graph trails the element by whatever that FIFO holds, a different amount after every join, with drops and gaps where the two clocks part. Both audible is the phaser of #1339. At 0.2 it was quieter, and it was back. On a computer a voice now plays from its element alone, at the rider's fader, and the graph only meters it. That is also exactly what `remote-only` hears. A fader above 100 % moves the voice to the graph, because `volume` stops at 1, and the canceller loses it.
+
+Echo from a rider on speakers, the §22.6 call (B's mic carrying A's voice at −26 dBFS), level B sends per 5 s:
+
+| B's elements | Echo sent back |
+| --- | --- |
+| Silent, no reference | −19 to −28 dBFS throughout |
+| 0.2 copy (2026.11.24) | −25, −42, −63, then −69 to −85 |
+| One path, a clean run | −43, −69, −53, then −67 to −84 |
+
+Two of three one-path runs stalled (concealment, and about 100 ms taken out of the jitter buffer), and the echo then leaked at −20 to −28 dBFS for 5 to 15 s. The rig's echo is a second playback of the file, so a jitter-buffer jump moves it against the reference. Real echo moves with the reference.
+
+Not reproduced: the order flip on a local LiveKit. Eight unmutes over loopback all arrived in order, so a unit test pins the flipped order instead. The doubled sound was never heard here: `--mute-audio` keeps the element's output out of reach.
 
 ## Ranked risks to the plan
 

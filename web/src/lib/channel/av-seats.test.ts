@@ -174,14 +174,13 @@ describe('a disconnect', () => {
 		const voice = document.createElement('audio');
 		const machine = document.createElement('audio');
 		document.body.append(voice, machine);
-		seats.audio.set(audioKey('jan#tab1', false), voice);
-		seats.audio.set(audioKey('jan#tab1', true), machine);
+		seats.seatAudio(audioKey('jan#tab1', false), voice, track('mic'));
+		seats.seatAudio(audioKey('jan#tab1', true), machine, track('machine'));
 
 		seats.clear();
 
 		expect(seats.get('video', 'jan')).toBeUndefined();
 		expect(seats.get('screen', 'ada')).toBeUndefined();
-		expect(seats.audio.size).toBe(0);
 		// Left in the DOM they go on playing a call the rider has left.
 		expect(voice.isConnected).toBe(false);
 		expect(machine.isConnected).toBe(false);

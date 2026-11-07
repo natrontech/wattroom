@@ -32,8 +32,8 @@
  * Music that reaches the mic is noise cancellation's. An older browser reads
  * the string as `true`.
  *
- * Only an element is `remote-only`'s echo, so a voice needs `ECHO_REFERENCE`
- * (`av-output.ts`). Two captures keep `true`. A handheld's voices never reach
+ * Only an element is `remote-only`'s echo, so a computer plays voices from
+ * their elements (`viaElement`, `av-output.ts`). Two captures keep `true`. A handheld's voices never reach
  * an element. A mic test plays the rider back through WebAudio, and nothing
  * else stops that howling on speakers.
  */

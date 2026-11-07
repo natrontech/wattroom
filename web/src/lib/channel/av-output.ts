@@ -43,7 +43,8 @@ import { onDuck } from '$lib/sound/duck';
  * itself when a screen share brings audio (#1124) — so the element is held
  * silent by `volume = 0` as well, which nothing in the SDK touches.
  *
- * On a computer the element then plays one thing on purpose: `ECHO_REFERENCE`.
+ * On a computer it is the other way round for most voices: the element plays
+ * them and the graph only meters them (`viaElement`).
  *
  * Split out of av.svelte.ts (#892). Nothing here is reactive — the graph is
  * imperative WebAudio state, and the callers already know when to re-apply.
@@ -54,21 +55,6 @@ import { onDuck } from '$lib/sound/duck';
 // (ADR-0004); elsewhere the picker simply doesn't render.
 export const canPickOutput =
 	typeof AudioContext !== 'undefined' && 'setSinkId' in AudioContext.prototype;
-
-/**
- * How loud a voice's element plays beside the graph, on a computer.
- *
- * The mic's echo canceller only hears audio played by an element
- * (`remote-only`, `capture.ts`): a voice that reaches the speakers through
- * WebAudio is not echo to it, and would come back to the crew from any rider
- * on speakers. So the element keeps a copy going, 14 dB under the graph.
- * 0.1 is too quiet: a -26 dBFS voice then sits under the level the canceller
- * reacts to, and all of the echo came through (measured, RESEARCH §22.6).
- *
- * ponytail: a second copy, not a second path. Playing voices through the
- * element alone would lose the faders above unity.
- */
-export const ECHO_REFERENCE = 0.2;
 
 export type RiderOutput = ReturnType<typeof createRiderOutput>;
 
@@ -112,11 +98,31 @@ export function createRiderOutput(
 		return mixer.riderGain(riderOf(key));
 	}
 
-	/** What a connection's element plays. A share is music: it stays out. */
-	function echoCopy(key: string) {
-		return !device.coarse && !shares.has(key) && gainFor(key) > 0
-			? ECHO_REFERENCE
-			: 0;
+	/**
+	 * Whether a connection plays from its element rather than the graph.
+	 *
+	 * One path, never two (#1339). The graph reads a stream through a FIFO up
+	 * to six output buffers deep, so it trails the element by a few to tens of
+	 * milliseconds, by a different amount after every join. 2026.11.24 played
+	 * an element copy 14 dB under the graph, and riders heard voices doubled
+	 * and strange until they restarted.
+	 *
+	 * On a computer the element is the path: the mic's echo canceller only
+	 * hears what an element plays (`remote-only`, `capture.ts`), so a voice
+	 * through WebAudio comes back to the crew from any rider on speakers. A
+	 * fader above 100 % needs the graph, because `volume` stops at 1, and that
+	 * voice leaves the canceller's hearing: the cost of a boost. A phone keeps
+	 * the graph (its canceller hears everything, and iOS ignores `volume`). A
+	 * share is music, which stays out of the canceller.
+	 */
+	function viaElement(key: string) {
+		return !device.coarse && !shares.has(key) && gainFor(key) <= 1;
+	}
+	function graphGain(key: string) {
+		return viaElement(key) ? 0 : gainFor(key);
+	}
+	function elementVolume(key: string) {
+		return viaElement(key) ? gainFor(key) : 0;
 	}
 
 	function applySink() {
@@ -176,23 +182,29 @@ export function createRiderOutput(
 				// A key routed twice is a voice heard twice (#1339): the first
 				// graph would stay wired to the bus with nothing left holding
 				// its handle. Before the share flag goes on: the drop takes it off.
+				// The old element plays until the SDK lets its track go, which
+				// can be after this one arrives (#4177): it goes quiet now.
+				const old = elements.get(identity);
+				if (old && old !== el) {
+					old.volume = 0;
+					old.muted = true;
+				}
 				if (gains.has(identity)) drop(identity);
 				if (share) shares.add(identity);
 				const source = ctx.createMediaStreamSource(el.srcObject as MediaStream);
 				const gain = ctx.createGain();
-				gain.gain.value = gainFor(identity);
+				gain.gain.value = graphGain(identity);
 				gain.connect(bus);
 				gains.set(identity, gain);
 				sources.set(identity, source);
 				// Tapping the stream, not the element, leaves the element's own
-				// output live in parallel — silence it once the graph that
-				// replaces that output is actually wired, so a routing failure
-				// below still falls back to the element's native, unfadered
-				// playback rather than to silence. Both knobs: `startAudio()`
-				// flips `muted` back (see the top of this file); `volume` it
-				// leaves alone. Then the one copy that stays: `ECHO_REFERENCE`.
+				// output live beside the graph. Both are set only once the graph
+				// is wired, so a routing failure below falls back to the
+				// element's native playback rather than to silence. Both knobs:
+				// `startAudio()` flips `muted` back (see the top of this file);
+				// `volume` it leaves alone. Which of the two plays: `viaElement`.
 				elements.set(identity, el);
-				el.volume = echoCopy(identity);
+				el.volume = elementVolume(identity);
 				el.muted = el.volume === 0;
 				applySink();
 				// The meter goes in ahead of the fader, so what it reads is the
@@ -241,9 +253,9 @@ export function createRiderOutput(
 		applyGains() {
 			if (!ctx) return;
 			for (const [key, gain] of gains)
-				gain.gain.setTargetAtTime(gainFor(key), ctx.currentTime, 0.02);
+				gain.gain.setTargetAtTime(graphGain(key), ctx.currentTime, 0.02);
 			for (const [key, el] of elements) {
-				el.volume = echoCopy(key);
+				el.volume = elementVolume(key);
 				el.muted = el.volume === 0;
 			}
 		},
