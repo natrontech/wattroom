@@ -308,6 +308,12 @@ func wire(ctx context.Context, st *store.Store, mux *http.ServeMux, baseURL stri
 	ridesService.SetRideKeeper(trophies)
 	h.SetXpKeeper(trophies)
 	trophies.AccrueVoice(ctx, h)
+	// A saved ride's level and rider streak reach the rooms the rider is
+	// in, so the cozy room can celebrate them (lounge.md).
+	trophies.SetStanding(h)
+	// Hangout time (lounge.md): the hub counts the minutes in voice, the
+	// keeper writes them. It pays nothing.
+	h.KeepVoiceTime(ctx, channels.NewVoiceTime(ctx, st, log))
 	// The hub says which voice channel; each names it only to a viewer
 	// who may enter it (channels.PlacesFor, #2516).
 	friends.New(st, authService, h, log).Register(mux)

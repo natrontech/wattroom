@@ -59,6 +59,8 @@ func New(st *store.Store, users UserSource, presence PresenceSource, log *slog.L
 func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/riders/{id}", s.handleGet)
 	mux.HandleFunc("GET /api/riders/{id}/avatar", s.handleAvatar)
+	// The rider's own logbook, on the cozy room's desk (logbook.go).
+	mux.HandleFunc("GET /api/me/logbook", s.handleLogbook)
 }
 
 // notVisible is one message for "no such rider" and "not yours to see": a 404

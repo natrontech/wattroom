@@ -44,6 +44,10 @@ export interface LiveRider {
 	emoteSeq?: number;
 	/** What they wear in the cozy room (lounge/look.ts); absent is seeded from the id. */
 	loungeLook?: string;
+	/** Lifetime XP and the rider streak in weeks, for the cozy room's level
+	 * badge and its celebrations (lounge/standing.ts). */
+	totalXp?: number;
+	streakWeeks?: number;
 	/** camera-off fallback hue, so the grid isn't uniformly dark */
 	hue: number;
 	watts: number;

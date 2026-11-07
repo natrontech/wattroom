@@ -57,6 +57,8 @@ type Service struct {
 	// database work, so a slow Postgres backs up this queue and never a
 	// room tick, a webhook, or a rider's save.
 	jobs chan func(context.Context)
+	// Where a saved ride's new level and rider streak go (standing.go).
+	standing Standing
 }
 
 // New takes both sources on purpose: which one a route asks IS the rule, and

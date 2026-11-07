@@ -22,7 +22,7 @@ import {
 import { drawCat } from '$lib/lounge/draw-cat';
 import { drawDisco } from '$lib/lounge/draw-disco';
 import { drawLights } from '$lib/lounge/draw-sides';
-import { drawConfetti } from '$lib/lounge/draw-moments';
+import { drawCheers, drawConfetti } from '$lib/lounge/draw-moments';
 import { drawFloorVisitor } from '$lib/lounge/draw-visitors';
 import type { Cat, Flyby, Moment, Season, Visitor } from '$lib/lounge/moments';
 
@@ -308,6 +308,8 @@ export interface SceneInput {
 	/** Someone in the channel just petted it. */
 	catAwake: boolean;
 	hearts: Heart[];
+	/** Riders celebrating a level or a streak: their heads, and since when (standing.ts). */
+	cheers?: Heart[];
 	/** The viewer's own time, for the wall clock. */
 	hours: number;
 	minutes: number;
@@ -415,6 +417,7 @@ export function drawScene(g: Ctx, input: SceneInput) {
 	drawLights(g, input);
 	drawConfetti(g, input);
 	drawHearts(g, input);
+	drawCheers(g, input);
 	drawShade(g, input, ox, oy);
 	drawDisco(g, input);
 }
@@ -483,6 +486,7 @@ export type Hotspot =
 	| 'board'
 	| 'cork'
 	| 'laptop'
+	| 'logbook'
 	| 'bike';
 
 /** What each clickable thing does, for the pointer that finds it. */
@@ -498,10 +502,12 @@ export const SPOT_HINTS: Record<Hotspot, string> = {
 	board: 'The next ride: open the Schedule',
 	cork: 'Your crew’s pins and last sessions',
 	laptop: 'A running session: go and join it',
+	logbook: 'Your logbook: your level, streak and hours, for you alone',
 	bike: 'Start riding',
 };
 
 const SPOTS: { spot: Hotspot; x: number; y: number; w: number; h: number }[] = [
+	{ spot: 'logbook', x: 28, y: 52, w: 15, h: 10 },
 	{ spot: 'clock', x: 216, y: 10, w: 22, h: 38 },
 	{ spot: 'stove', x: 216, y: 48, w: 20, h: 38 },
 	{ spot: 'lamp', x: 80, y: 34, w: 18, h: 28 },

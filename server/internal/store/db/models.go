@@ -176,6 +176,11 @@ type CrewSighting struct {
 	SeenAt pgtype.Timestamptz
 }
 
+type CrewTogether struct {
+	CrewID  pgtype.UUID
+	Seconds int64
+}
+
 type DmImage struct {
 	ID          pgtype.UUID
 	SenderID    pgtype.UUID
@@ -498,6 +503,11 @@ type UserAvatar struct {
 	Mime   string
 	Image  []byte
 	SetAt  pgtype.Timestamptz
+}
+
+type UserVoiceTime struct {
+	UserID  pgtype.UUID
+	Seconds int64
 }
 
 type VisibleChannel struct {
