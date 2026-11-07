@@ -21,7 +21,7 @@ import type { Figure } from '$lib/lounge/scene';
 export const VIEWS = ['back', 'quarter', 'side', 'nose', 'front'] as const;
 export type View = (typeof VIEWS)[number];
 /** Each view's turn away from straight behind, in degrees. */
-const YAW: Record<View, number> = {
+export const YAW: Record<View, number> = {
 	back: 0,
 	quarter: 42,
 	side: 90,
@@ -426,9 +426,15 @@ export function drawCyclist(
 	stroke: number,
 	ox: number,
 	oy: number,
-	opts: { shadow?: boolean; talking?: boolean; standing?: boolean } = {},
+	opts: {
+		shadow?: boolean;
+		talking?: boolean;
+		standing?: boolean;
+		/** The turn in degrees, between the named views; `view` still draws the head. */
+		yaw?: number;
+	} = {},
 ) {
-	const yaw = (YAW[view] * Math.PI) / 180;
+	const yaw = ((opts.yaw ?? YAW[view]) * Math.PI) / 180;
 	const sin = Math.sin(yaw);
 	const cos = Math.cos(yaw);
 	const across = Math.abs(cos);

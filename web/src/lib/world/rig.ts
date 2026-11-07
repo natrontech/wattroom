@@ -5,6 +5,7 @@
 // heading, so bends sweep instead of snapping, and it never goes below the
 // ground.
 import * as THREE from 'three';
+import { DIORAMA } from './pixel';
 import { damp } from '$lib/motion/damp';
 import { yOf } from './geometry';
 import { type Route } from '$lib/road/route';
@@ -24,6 +25,8 @@ const STEADY = { back: 260, up: 190, fov: 45 };
 
 /** Overhead: high over your shoulder, close enough that you are a rider, with the land ahead in frame. */
 export const HELI = { back: 16, up: 8, fov: 45 };
+/** Diorama 3D's chase: higher and further back, the riders small on the road and the land round them, like a model railway seen from its edge. */
+const DIO = { back: 9.5, up: 4.4, ahead: 34, fov: 44 };
 
 const EYE_FLOOR = 1.5; // metres the eye keeps above the drawn ground
 /** Past the heli's distances, the widest a camera change moves the goal. */
@@ -120,11 +123,14 @@ export function makeRig(route: Route, world: World) {
 			}
 			const chase = mode === 'chase';
 			const steady = mode === 'steady';
+			const dio = chase && DIORAMA.value > 0;
 			const back = steady
 				? STEADY.back
-				: chase
-					? 5.6 + Math.min(2.6, rider.v * 0.13)
-					: HELI.back;
+				: dio
+					? DIO.back + Math.min(3, rider.v * 0.13)
+					: chase
+						? 5.6 + Math.min(2.6, rider.v * 0.13)
+						: HELI.back;
 			// The eye rides your lane, not the centre line, so your lane leaves you in RIDER_BOX.
 			const c = along(route, rider.d, lap);
 			const sx = you.x - c.x;
@@ -132,20 +138,27 @@ export function makeRig(route: Route, world: World) {
 			const b = along(route, rider.d - way * back, lap);
 			want.set(
 				b.x + sx,
-				yOf(route, b.ele) + (steady ? STEADY.up : chase ? 2.05 : HELI.up),
+				yOf(route, b.ele) +
+					(steady ? STEADY.up : dio ? DIO.up : chase ? 2.05 : HELI.up),
 				b.z + sz,
 			);
 			want.y = Math.max(want.y, ground(want.x, want.z) + GOAL_FLOOR);
-			const a = along(route, rider.d + way * (chase ? 18 : 10), lap);
+			const a = along(
+				route,
+				rider.d + way * (dio ? DIO.ahead : chase ? 18 : 10),
+				lap,
+			);
 			look
 				.set(a.x + sx, yOf(route, a.ele) + 1.0, a.z + sz)
-				.lerp(you, chase ? 0.45 : 0.8);
+				.lerp(you, dio ? 0.3 : chase ? 0.45 : 0.8);
 			const kmh = rider.v * 3.6;
 			const fov = steady
 				? STEADY.fov
-				: chase
-					? 50 + Math.min(4, Math.max(0, kmh - 25) * 0.2)
-					: HELI.fov;
+				: dio
+					? DIO.fov
+					: chase
+						? 50 + Math.min(4, Math.max(0, kmh - 25) * 0.2)
+						: HELI.fov;
 			// A goal this far off is a cut — a lap starting where the road began — never a swoop over the map.
 			if (!started || eye.distanceTo(want) > CUT_M) {
 				eye.copy(want);

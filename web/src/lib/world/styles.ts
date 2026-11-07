@@ -12,7 +12,7 @@ import { Biome } from './biome';
 import { sunDir, type Light } from './light';
 import { LOUNGE } from '$lib/lounge/palette';
 import { lightsUniforms, POOL, type Lights } from './lights';
-import { PIXEL, STEPS } from './pixel';
+import { DIORAMA, PIXEL, STEPS } from './pixel';
 import type { SignLook } from './setpieces';
 
 export type Palette = Record<Biome, string>;
@@ -153,8 +153,9 @@ export const PIXEL_LAND = /* glsl */ `
 		return mix(mix(landHash(i), landHash(i + vec2(1.0, 0.0)), f.x),
 			mix(landHash(i + vec2(0.0, 1.0)), landHash(i + vec2(1.0, 1.0)), f.x), f.y);
 	}
-	vec3 pixelLand(vec3 base, vec3 pos, float dist, float up) {
-		if (base.g < base.r * 1.05 || base.g < base.b * 1.02 || up < 0.8) return base;
+	bool landGreen(vec3 base, float up) { return !(base.g < base.r * 1.05 || base.g < base.b * 1.02 || up < 0.8); }
+	// The fields, their stripes and patches: Pixel 3D's and Diorama 3D's both.
+	vec3 landFields(vec3 base, vec3 pos, float dist) {
 		vec2 turned = mat2(0.8, -0.6, 0.6, 0.8) * pos.xz;
 		float field = landHash(floor(turned / vec2(58.0, 90.0)));
 		vec3 c = base * (0.86 + field * 0.3);
@@ -168,6 +169,28 @@ export const PIXEL_LAND = /* glsl */ `
 		float patchy = mix(landNoise(pos.xz / 11.0) * 0.7 + (dist < 70.0 ? landNoise(pos.xz / 3.6) * 0.3 : 0.15), 0.48, smoothstep(250.0, 400.0, dist));
 		if (patchy > 0.6) c = c * 1.14 + vec3(0.012, 0.022, 0.0);
 		else if (patchy < 0.36) c *= 0.86;
+		return c;
+	}
+	// Diorama 3D: flowers in the grass as dots in the world, a hand's width each, near the road.
+	vec3 dioramaLand(vec3 base, vec3 pos, float dist, float up) {
+		if (!landGreen(base, up)) return base;
+		vec3 c = landFields(base, pos, dist);
+		if (dist < 70.0) {
+			vec2 q = pos.xz / 0.7;
+			float k = landHash(floor(q));
+			if (k > 0.86 && landNoise(floor(q) / 9.0) > 0.5) {
+				float which = fract(k * 91.0);
+				vec3 petal = which < 0.5 ? vec3(0.97, 0.93, 0.86) : which < 0.8 ? vec3(0.98, 0.76, 0.28) : vec3(0.92, 0.6, 0.72);
+				float r = length(fract(q) - 0.5) * 0.7;
+				float fw = length(fwidth(q)) * 0.5; // the cell's own scale: r jumps at a cell's edge
+				c = mix(c, petal, (1.0 - smoothstep(0.07 - fw, 0.07 + fw, r)) * (1.0 - smoothstep(40.0, 70.0, dist)));
+			}
+		}
+		return c;
+	}
+	vec3 pixelLand(vec3 base, vec3 pos, float dist, float up) {
+		if (!landGreen(base, up)) return base;
+		vec3 c = landFields(base, pos, dist);
 		// Flowers and tufts of grass near you, rooted on the ground and drawn on the
 		// screen: (a, b) is this pixel's way from the root, in world pixels, b up.
 		// Up close a flower is a few pixels on a stem; it shrinks to a pixel at 25 m,
@@ -238,6 +261,7 @@ export function terrainMaterial(
 			uPeak: { value: col(style.imhof?.peak) },
 			uRock: { value: col(style.palette[Biome.Rock]) },
 			uPixel: PIXEL, // Pixel 3D: the light in four steps, the fog in flat bands (pixel.ts)
+			uDiorama: DIORAMA, // Diorama 3D: the light in soft steps (diorama.ts)
 		},
 		vertexColors: true,
 		vertexShader: /* glsl */ `
@@ -251,7 +275,7 @@ export function terrainMaterial(
 			}`,
 		fragmentShader: /* glsl */ `
 			uniform vec3 uSun, uFrom, uKey, uShade, uSkyTop, uHorizon, uSunward, uGridColor, uContour, uIndex, uValley, uPeak, uRock;
-			uniform float uFogK, uBands, uSkyFill, uGridSize, uGridAlpha, uContourStep, uImhof, uDusk, uPixel;
+			uniform float uFogK, uBands, uSkyFill, uGridSize, uGridAlpha, uContourStep, uImhof, uDusk, uPixel, uDiorama;
 			varying vec3 vColor; varying vec3 vPos; varying float vAo;
 			${STEPS}
 			${POOL}
@@ -264,6 +288,7 @@ export function terrainMaterial(
 				float steep = smoothstep(0.86, 0.66, n.y);
 				vec3 base = mix(vColor, mix(uRock, vColor, 0.18), steep);
 				if (uPixel > 0.5) base = pixelLand(base, vPos, dist, n.y);
+				else if (uDiorama > 0.5) base = dioramaLand(base, vPos, dist, n.y);
 				vec3 col;
 				if (uImhof > 0.5) {
 					float hs = clamp(dot(n, normalize(vec3(-1.0, 1.4, -1.0))), 0.0, 1.0);
@@ -271,10 +296,11 @@ export function terrainMaterial(
 				} else {
 					float lam = dot(n, uFrom) * 0.5 + 0.5; // half-Lambert, from the sun or, once it has set, the zenith
 					if (uPixel > 0.5) lam = pixelStep(lam);
-					else if (uBands > 1.5) {
+					else if (uBands > 1.5 || uDiorama > 0.5) {
+						float nb = uBands > 1.5 ? uBands : 4.0; // Diorama 3D: the room's four steps, with soft edges
 						float fw = fwidth(lam) * (1.0 + dist / 800.0); // soft band edges, blurred with distance so far facets never crawl
-						float q = lam * uBands;
-						lam = (floor(q) + smoothstep(0.5 - fw * uBands, 0.5 + fw * uBands, fract(q))) / uBands;
+						float q = lam * nb;
+						lam = (floor(q) + smoothstep(0.5 - fw * nb, 0.5 + fw * nb, fract(q))) / nb;
 					} else if (uBands > 0.5) lam = 0.72;
 					vec3 lit = base * mix(uShade * 2.2 + 0.15, uKey, lam); // shadow is the tint, never black
 					col = lit + base * uSkyTop * uSkyFill * max(n.y, 0.0);
@@ -304,7 +330,7 @@ export function terrainMaterial(
 				float pool = lampPool(vPos); // a third of the way to amber, the lounge's pool
 				if (uPixel > 0.5) pool = step(0.5, pool);
 				gl_FragColor.rgb = mix(gl_FragColor.rgb, uAmber, pool / 3.0);
-				if (uPixel > 0.5) gl_FragColor.a = 0.5; // the land, for the ink pass (pixel.ts)
+				if (uPixel > 0.5 || uDiorama > 0.5) gl_FragColor.a = 0.5; // the land, for the ink pass (pixel.ts, diorama.ts)
 				#include <colorspace_fragment>
 			}`,
 	});

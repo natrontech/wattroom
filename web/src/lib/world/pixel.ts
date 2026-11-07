@@ -29,6 +29,9 @@ export function pixelScale(w: number, h: number): number {
  */
 export const PIXEL = { value: 0 };
 
+/** On while Diorama 3D draws (diorama.ts): the light takes the same steps, at the screen's own pixels. */
+export const DIORAMA = { value: 0 };
+
 /** How fast you ride (m/s) and the clock, for the wind at the frame's edges; speed 0 draws none. */
 export const MOTION = { speed: { value: 0 }, time: { value: 0 } };
 
@@ -56,19 +59,19 @@ const FOG = 'gl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor, fogFactor );';
 const LAMBERT = THREE.ShaderChunk.lights_lambert_pars_fragment.replace(
 	DIRECT,
 	`${DIRECT}
-	if ( uPixel > 0.5 ) dotNL = pixelStep( dot( geometryNormal, directLight.direction ) * 0.5 + 0.5 );`,
+	if ( max( uPixel, uDiorama ) > 0.5 ) dotNL = pixelStep( dot( geometryNormal, directLight.direction ) * 0.5 + 0.5 );`,
 );
 // The sky's light in quarters of the way from the ground's: a vertical face keeps its half, a rounded back steps.
 const HEMI = THREE.ShaderChunk.lights_pars_begin.replace(
 	'float hemiDiffuseWeight = 0.5 * dotNL + 0.5;',
 	`float hemiDiffuseWeight = 0.5 * dotNL + 0.5;
-		if ( uPixel > 0.5 ) hemiDiffuseWeight = floor( hemiDiffuseWeight * 4.0 + 0.5 ) / 4.0;`,
+		if ( max( uPixel, uDiorama ) > 0.5 ) hemiDiffuseWeight = floor( hemiDiffuseWeight * 4.0 + 0.5 ) / 4.0;`,
 );
 // A toon material (the riders, the team car) takes the same four steps in place of its gradient map.
 const TOON = THREE.ShaderChunk.gradientmap_pars_fragment.replace(
 	'float dotNL = dot( normal, lightDirection );',
 	`float dotNL = dot( normal, lightDirection );
-	if ( uPixel > 0.5 ) return vec3( pixelStep( dotNL * 0.5 + 0.5 ) );`,
+	if ( max( uPixel, uDiorama ) > 0.5 ) return vec3( pixelStep( dotNL * 0.5 + 0.5 ) );`,
 );
 const FOGGED = THREE.ShaderChunk.fog_fragment.replace(
 	FOG,
@@ -102,10 +105,11 @@ function ramp(m: THREE.Material) {
 	m.onBeforeCompile = (shader, renderer) => {
 		original.call(m, shader, renderer);
 		shader.uniforms.uPixel = PIXEL;
+		shader.uniforms.uDiorama = DIORAMA;
 		shader.fragmentShader = shader.fragmentShader
 			.replace(
 				'#include <common>',
-				`#include <common>\n#define PIXEL_RAMP\nuniform float uPixel;\n${STEPS}`,
+				`#include <common>\n#define PIXEL_RAMP\nuniform float uPixel;\nuniform float uDiorama;\n${STEPS}`,
 			)
 			.replace('#include <lights_pars_begin>', HEMI)
 			.replace('#include <lights_lambert_pars_fragment>', LAMBERT)

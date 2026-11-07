@@ -256,30 +256,39 @@
 			([
 				{ mount },
 				{ generate },
-				{ pixelLook, rideLook, worldPaint },
+				{ dioramaLook, pixelLook, rideLook, worldPaint },
 				{ syntheticPoints },
 				{ devCrew },
 				{ toRoute },
-				{ setWorldPixels, worldPixels },
+				{ setWorldDiorama, setWorldPixels, worldDiorama, worldPixels },
 			]) => {
 				if (gone) return;
 				const look = params.get('pixels');
-				if (look !== null) setWorldPixels(look !== '0');
+				if (look === 'd') setWorldDiorama();
+				else if (look !== null) setWorldPixels(look !== '0');
 				const route = toRoute(syntheticPoints());
 				const world = generate(route);
 				const at =
 					params.get('at') === 'village'
 						? Math.max(0, (world.villageNames[0]?.d ?? 150) - 150)
-						: 0;
+						: Number(params.get('at') ?? 0) || 0;
 				const s = mount(node, {
 					route,
 					world,
-					style: (worldPixels() ? pixelLook : rideLook)(
-						worldPaint(node.parentElement ?? document.body),
-					),
+					style: (worldDiorama()
+						? dioramaLook
+						: worldPixels()
+							? pixelLook
+							: rideLook)(worldPaint(node.parentElement ?? document.body)),
 					ftp: 250,
 					watts: 200,
-					riders: devCrew(200, 250).map((r) => ({
+					riders: devCrew(
+						200,
+						250,
+						null,
+						false,
+						Number(params.get('crew') ?? 0),
+					).map((r) => ({
 						...r,
 						d: r.d + at,
 						at: r.at + at,

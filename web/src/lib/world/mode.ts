@@ -52,9 +52,28 @@ const PIXELS_KEY = 'wattroom.world.pixels.v1';
 /** Pixel 3D (pixel.ts) on this device: every ride's, until the rider picks Smooth. */
 export function worldPixels(): boolean {
 	try {
-		return localStorage.getItem(PIXELS_KEY) !== '0';
+		const v = localStorage.getItem(PIXELS_KEY);
+		return v !== '0' && v !== 'd';
 	} catch {
 		return true;
+	}
+}
+
+/** Diorama 3D (diorama.ts) on this device: the prototype, behind its own value of the same key. */
+export function worldDiorama(): boolean {
+	try {
+		return localStorage.getItem(PIXELS_KEY) === 'd';
+	} catch {
+		return false;
+	}
+}
+
+/** The prototype's switch: 'd' is Diorama 3D, as `setWorldPixels` sets the other two. */
+export function setWorldDiorama(): void {
+	try {
+		localStorage.setItem(PIXELS_KEY, 'd');
+	} catch {
+		/* a browser that keeps nothing keeps the default */
 	}
 }
 

@@ -30,8 +30,10 @@ import { chevronGeometry, makeCar } from './team-car';
 import { heartGeometry } from './cheer';
 import { makeTrail } from './trail';
 import { ramp } from './materials';
-import { PIXEL } from './pixel';
+import { DIORAMA, PIXEL } from './pixel';
+import { makeRiderSprite, riderSheet } from './rider-sprite';
 import type { Avatar } from './avatar';
+import type { RiderSprite } from './rider-sprite';
 import { dress } from '$lib/lounge/figures';
 import { LANE, type Car } from './bunch';
 import { type Route } from '$lib/road/route';
@@ -171,7 +173,7 @@ type View = {
 	heart: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
 	light: THREE.Mesh;
 	/** Pixel 3D's rider: their cozy room self, in place of the figure. */
-	avatar: Avatar | null;
+	avatar: Avatar | RiderSprite | null;
 };
 
 /** A joined rider whose screen has gone (#3098): their kit in greys, never a ghost's see-through. */
@@ -387,7 +389,15 @@ export function makeCrew(
 			tag('marks', chevron, 'chevron'),
 			tag('marks', heart, 'cheer'),
 		);
-		const avatar = null;
+		// Diorama 3D rides as the room's sprite (rider-sprite.ts); Pixel 3D and Smooth as the 3D figure.
+		const avatar =
+			loungeLook && DIORAMA.value > 0
+				? makeRiderSprite(
+						riderSheet(dress({ id: r.id, name: r.name, loungeLook: lounge })),
+					)
+				: null;
+		if (avatar) g.add(tag('figures', avatar.mesh, 'avatar'));
+		shadow.visible &&= !avatar;
 		group.add(g);
 		const view: View = {
 			group: g,
@@ -485,10 +495,11 @@ export function makeCrew(
 			near = nearest(riders);
 		}
 		riders.forEach((r, i) => {
+			// More than four abreast would ride the verge: a bigger dev crew rides four lanes.
+			const across =
+				riders.length > 4 ? (i % 4) - 1.5 : i - (riders.length - 1) / 2;
 			const lane =
-				r.lane ??
-				(riders.length === 1 ? KEEP_RIGHT : 0) +
-					(i - (riders.length - 1) / 2) * LANE;
+				r.lane ?? (riders.length === 1 ? KEEP_RIGHT : 0) + across * LANE;
 			const lod = near.has(r) ? 0 : 1;
 			redress(r);
 			const v = viewOf(r, route, pedal(r).crank, lod);

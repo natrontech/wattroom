@@ -15,8 +15,10 @@ import { compose, type CameraMode, type MountOptions } from './compose';
 import { createLoop, type LoopStats, missWatch, watchPage } from './loop';
 import { softwareDrawing } from './software-drawing';
 import { gpuTimer } from './gpu-timer';
-import { worldPixels } from './mode';
-import { pixelPass, rampAll, WORDS } from './pixel';
+import { dioramaPass } from './diorama';
+import { worldDiorama, worldPixels } from './mode';
+import { DIORAMA, pixelPass, rampAll, WORDS } from './pixel';
+import { SPRITE_LIGHT } from './rider-sprite';
 import {
 	deviceKey,
 	type Ladder,
@@ -98,6 +100,9 @@ export function mount(
 ): WorldScene {
 	// Pixel 3D draws its own edges, one pixel wide: no multisampling to pay for.
 	const pixels = worldPixels();
+	const diorama = !pixels && worldDiorama();
+	// Before the crew is built: Diorama's riders are sprites (crew.ts).
+	if (diorama) DIORAMA.value = 1;
 	const renderer = new THREE.WebGLRenderer({
 		canvas,
 		antialias: !pixels,
@@ -122,7 +127,10 @@ export function mount(
 		world = compose(
 			{
 				...opts,
-				loungeLook: pixels ? (opts.loungeLook ?? (() => undefined)) : undefined,
+				loungeLook:
+					pixels || diorama
+						? (opts.loungeLook ?? (() => undefined))
+						: undefined,
 			},
 			canvas,
 		);
@@ -133,20 +141,32 @@ export function mount(
 	}
 	const { scene, camera } = world;
 	camera.layers.enable(WORDS);
-	const pass = pixels ? pixelPass(renderer) : null;
+	const pass = pixels
+		? pixelPass(renderer)
+		: diorama
+			? dioramaPass(renderer)
+			: null;
 	const draw = (s: THREE.Object3D, c: THREE.PerspectiveCamera) =>
 		pass ? pass.render(s, c) : renderer.render(s, c);
 	// A canvas the browser scales blurs every world pixel: Pixel 3D's is drawn at the device's own, and never smoothed.
-	if (pass) canvas.style.imageRendering = 'pixelated';
+	if (pixels) canvas.style.imageRendering = 'pixelated';
 	world.setFar(RUNGS[rung].far);
 	// Behind the sky, the fog's colour: what the horizon is at this light.
 	const clear = () => scene.fog && renderer.setClearColor(scene.fog.color);
 	let style = opts.style;
+	// The sprites take the look's key light, softened, and its haze (rider-sprite.ts).
+	const light = (s: Style) => {
+		SPRITE_LIGHT.light.value.set(s.key).lerp(new THREE.Color(1, 1, 1), 0.45);
+		SPRITE_LIGHT.fog.value.set(s.sky.horizon);
+		SPRITE_LIGHT.fogK.value = s.fogK;
+	};
 	const dress = (next: Style) => {
 		style = next;
 		world.dress(next);
+		light(next);
 		clear();
 	};
+	light(style);
 	clear();
 
 	function fit() {
@@ -155,7 +175,7 @@ export function mount(
 		if (!w || !h) return;
 		// Pixel 3D's scene is about 400 columns whatever the canvas: only its pass and its words draw at the device's pixels.
 		renderer.setPixelRatio(
-			pass
+			pixels
 				? window.devicePixelRatio
 				: pixelRatio(w, h, window.devicePixelRatio, RUNGS[rung].pixels),
 		);
