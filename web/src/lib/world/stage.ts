@@ -25,7 +25,8 @@ import { CHUNK_M } from './place/lattice';
 import { prng } from './rand';
 import type { Route } from '$lib/road/route';
 import { lightAt, sunDir } from './light';
-import { PIXEL } from './pixel';
+import { DIORAMA, PIXEL } from './pixel';
+import { spriteOwns } from './roadside-place';
 import { setLight, skyMaterial, terrainMaterial, type Style } from './styles';
 import { meshOf, REACH } from './terrain-mesh';
 import { SHOULDER } from './terrain/road-profile';
@@ -298,12 +299,12 @@ export function buildStage(
 		const id = tileKey(ti, tj);
 		const t = world.tile(ti, tj);
 		pools.set(id, poolsOf(t.pieces));
-		props.add(
-			id,
-			tileCentre(ti, tj),
-			[...t.props, ...t.pieces.map(drawn)],
-			eye,
-		);
+		// Diorama 3D's trees and cows by the road are the roadside's sprites (roadside-place.ts).
+		const own =
+			DIORAMA.value > 0
+				? t.props.filter((p) => !spriteOwns(world, p.kind, p.x, p.z))
+				: t.props;
+		props.add(id, tileCentre(ti, tj), [...own, ...t.pieces.map(drawn)], eye);
 		boards.add(id, t.signs, t.arches);
 	}
 	function undraw(id: string) {

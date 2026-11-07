@@ -1,18 +1,15 @@
 // What stands close by the road in Diorama 3D, in the cozy room's art:
-// spruces and leafy trees, bushes, cows in the meadows and
-// people at the verge in the villages. All of it is one sheet and one draw:
-// an instanced quad per thing, each upright at its own size (SPRITE_M an art
-// pixel, the riders' scale), sharp at any distance (rider-sprite.ts). Where
-// each thing stands is a function of the road and the world's seed, so
-// every screen on the road sees the same trees in the same places.
+// spruces and leafy trees, bushes, cows in the meadows and people at the
+// verge in the villages. All of it is one sheet: an instanced quad per
+// thing, each upright at its own size (SPRITE_M an art pixel, the riders'
+// scale), sharp at any distance (rider-sprite.ts), with a patch of shade
+// laid on the ground under it. Where each thing stands is roadside-place.ts's.
 import * as THREE from 'three';
 import { drawWatcher } from '$lib/lounge/draw-rider';
 import { dress } from '$lib/lounge/figures';
 import { LOUNGE as C } from '$lib/lounge/palette';
 import { disc, rect } from '$lib/lounge/pixel';
-import { at, leftOf } from '$lib/road/along';
 import type { Route } from '$lib/road/route';
-import { Biome } from './biome';
 import {
 	SPRITE_FRAGMENT,
 	SPRITE_LIGHT,
@@ -21,9 +18,14 @@ import {
 	STEP_GLSL,
 	stepped,
 } from './rider-sprite';
-import { yOf } from './geometry';
 import { MOTION } from './pixel';
-import { FORMATION } from './terrain/road-profile';
+import {
+	ART,
+	REACH_M,
+	roadsidePlacer,
+	stretchesFor,
+	type Spot,
+} from './roadside-place';
 import type { World } from './world';
 
 type Ctx = CanvasRenderingContext2D;
@@ -195,13 +197,24 @@ function person(g: Ctx, c: Cell, id: number) {
 /** `wave`: how far along the sheet a person's waving frames are, 0 for anything that does not wave. */
 type Kind = { cell: Cell; draw: (g: Ctx, c: Cell) => void; wave: number };
 
-/** The sheet: each thing once at whole size, then halved twice beside it. */
+/** The sheet: every ART at whole size, in its order, then halved twice beside it. */
 function sheet() {
 	let x = 0;
 	let y = 0;
 	let row = 0;
-	const kinds: Kind[] = [];
-	const place = (w: number, h: number, draw: (g: Ctx, c: Cell) => void) => {
+	const seen: Record<string, number> = {};
+	const draws: Record<string, (g: Ctx, c: Cell, i: number) => void> = {
+		spruce: (g, c, i) => spruce(g, c, i * 31),
+		leafy: (g, c, i) => leafy(g, c, i * 17),
+		bush: (g, c) => bush(g, c),
+		cow: (g, c, i) => cow(g, c, i === 0),
+		person: (g, c, i) => person(g, c, i),
+	};
+	const kinds: Kind[] = ART.map((art) => {
+		const i = (seen[art.name] = (seen[art.name] ?? -1) + 1);
+		// Three frames to a person, side by side; the kind is the first, arms down.
+		const wave = art.name === 'person' ? WAVE_STEP : 0;
+		const w = art.w + wave * 2;
 		if (x + w > COLS) {
 			x = 0;
 			y += row;
@@ -211,34 +224,12 @@ function sheet() {
 		const cell = {
 			x,
 			y,
-			w: w + (w % 4 ? 4 - (w % 4) : 0),
-			h: h + (h % 4 ? 4 - (h % 4) : 0),
+			w: art.w + (art.w % 4 ? 4 - (art.w % 4) : 0),
+			h: art.h + (art.h % 4 ? 4 - (art.h % 4) : 0),
 		};
-		x += cell.w + 4;
+		x += cell.w + wave * 2 + 4;
 		row = Math.max(row, cell.h + 4);
-		kinds.push({ cell, draw, wave: 0 });
-		return kinds.length - 1;
-	};
-	const spruces = [0, 1, 2].map((i) =>
-		place(76, 152 - i * 16, (g, c) => spruce(g, c, i * 31)),
-	);
-	const leafies = [0, 1].map((i) =>
-		place(84, 116 - i * 12, (g, c) => leafy(g, c, i * 17)),
-	);
-	const bushes = [place(28, 20, bush)];
-	const cows = [
-		place(52, 34, (g, c) => cow(g, c, true)),
-		place(52, 34, (g, c) => cow(g, c, false)),
-	];
-	// Three frames to a person; the kind is the first, arms down.
-	const people = [0, 1, 2, 3, 4, 5].map((i) => {
-		const k = place(WAVE_STEP * 2 + 24, 36, (g, c) => person(g, c, i));
-		kinds[k] = {
-			...kinds[k],
-			cell: { ...kinds[k].cell, w: 24 },
-			wave: WAVE_STEP,
-		};
-		return k;
+		return { cell, draw: (g, c) => draws[art.name](g, c, i), wave };
 	});
 	const canvas = document.createElement('canvas');
 	canvas.width = COLS * 1.75;
@@ -252,15 +243,7 @@ function sheet() {
 		k.draw(g, k.cell);
 		g.restore();
 	}
-	return {
-		texture: stepped(canvas, COLS, ROWS),
-		kinds,
-		spruces,
-		leafies,
-		bushes,
-		cows,
-		people,
-	};
+	return { texture: stepped(canvas, COLS, ROWS), kinds };
 }
 
 /** Each thing's quad stands where its instance does, at its size, facing the eye; the far ones are not drawn. */
@@ -298,113 +281,6 @@ const VERTEX = /* glsl */ `
 		gl_Position = depth > uReach ? vec4(2.0, 2.0, 2.0, 1.0) : projectionMatrix * mv;
 	}`;
 
-/** How far the roadside is drawn: past this the haze has it. */
-const REACH_M = 520;
-
-type Spot = { x: number; y: number; z: number; kind: number; flip: boolean };
-
-/** Where everything stands along the road: a forest here, a meadow with cows there, people at the villages. */
-function spots(
-	route: Route,
-	world: World,
-	s: ReturnType<typeof sheet>,
-	from: number,
-	to: number,
-): Spot[] {
-	const out: Spot[] = [];
-	const edge = FORMATION + 0.6;
-	const villages = world.villageNames.map((v) => v.d);
-	const nearVillage = (d: number) =>
-		villages.some((v) => Math.abs(v - d) < 110);
-	const put = (d: number, side: number, off: number, kind: number) => {
-		const p = at(route, d);
-		const { lx, lz } = leftOf(p.heading);
-		const x = p.x + lx * side * off;
-		const z = p.z + lz * side * off;
-		if (world.biomeAt(x, z) === Biome.Water) return;
-		out.push({
-			x,
-			y: yOf(route, world.heightAt(x, z)),
-			z,
-			kind,
-			flip: noise(d * 3.1 + side) > 0.5,
-		});
-	};
-	const pick = (list: number[], n: number) =>
-		list[Math.floor(noise(n) * list.length)];
-	for (let d = from; d < to; d += 3) {
-		const seg = Math.floor(d / 70);
-		const r = noise(seg * 1.37 + world.seed * 1e-9);
-		const forest = r < 0.45;
-		for (const side of [-1, 1]) {
-			const n = d * 7.13 + side * 3.7;
-			if (nearVillage(d)) {
-				// The village turns out: a few at the verge, now and then.
-				if (noise(n) < 0.16)
-					put(d, side, edge + 0.4 + noise(n + 1) * 2.4, pick(s.people, n + 2));
-				continue;
-			}
-			if (forest) {
-				put(
-					d,
-					side,
-					edge + 1.5 + noise(n + 1) * 5,
-					pick([...s.spruces, ...s.spruces, s.leafies[0]], n + 2),
-				);
-				put(d, side, edge + 7 + noise(n + 3) * 16, pick(s.spruces, n + 4));
-				if (noise(n + 5) < 0.6)
-					put(d, side, edge + 22 + noise(n + 6) * 30, pick(s.spruces, n + 7));
-				if (noise(n + 8) < 0.3)
-					put(d, side, edge + 0.5 + noise(n + 9) * 1.5, s.bushes[0]);
-			} else {
-				if (noise(n) < 0.08)
-					put(d, side, edge + 3 + noise(n + 1) * 22, pick(s.leafies, n + 2));
-				if (noise(n + 3) < 0.1)
-					put(d, side, edge + 0.6 + noise(n + 4) * 5, s.bushes[0]);
-				// A herd now and then, near enough to hear the bells.
-				if (d % 210 === 0 && noise(seg + side) < 0.6)
-					for (let k = 0; k < 3; k++)
-						put(
-							d + k * 4,
-							side,
-							edge + 6 + noise(n + k) * 14,
-							pick(s.cows, n + k + 1),
-						);
-				// And someone out to watch the riders go by.
-				if (noise(n + 11) < 0.012)
-					put(d, side, edge + 0.5 + noise(n + 12), pick(s.people, n + 13));
-			}
-		}
-	}
-	return out;
-}
-
-/** The road's stretches the roadside is built in: only those near you stand at a time. */
-const BLOCK_M = 300;
-/** How far behind you a stretch is kept: the chase camera looks back this far at most. */
-const BEHIND_M = 120;
-
-/**
- * The stretches a rider `d` along a road `length` long sees, nearest first:
- * a loop's wrap round to its start, a road's end where it lies.
- */
-export function stretchesFor(d: number, length: number, loop: boolean) {
-	const last = Math.max(0, Math.ceil(length / BLOCK_M) - 1);
-	const at = Number.isFinite(d) ? d : 0;
-	const here = Math.floor(at / BLOCK_M);
-	const lo = Math.floor((at - BEHIND_M) / BLOCK_M);
-	const hi = Math.floor((at + REACH_M) / BLOCK_M);
-	const out: number[] = [];
-	for (let b = here; b <= hi; b++) out.push(b);
-	for (let b = here - 1; b >= lo; b--) out.push(b);
-	const kept = out.map((b) =>
-		loop
-			? ((b % (last + 1)) + last + 1) % (last + 1)
-			: Math.min(last, Math.max(0, b)),
-	);
-	return [...new Set(kept)];
-}
-
 /**
  * The roadside, built a stretch at a time round where you are (`update`):
  * a long road holds a few stretches, never the whole of it.
@@ -432,24 +308,19 @@ export function makeRoadside(route: Route, world: World) {
 	const shade = shadeMaterial();
 	const group = new THREE.Group();
 	const stretches = new Map<number, ReturnType<typeof stretch>>();
+	const placer = roadsidePlacer(route, world);
 
 	function stretch(b: number) {
-		const places = spots(
-			route,
-			world,
-			s,
-			b * BLOCK_M,
-			Math.min(route.length, (b + 1) * BLOCK_M),
-		);
+		const places = placer.spots(b);
 		const geometry = new THREE.PlaneGeometry(1, 1).translate(0.5, 0.5, 0);
 		const cells = new Float32Array(places.length * 4);
 		const flips = new Float32Array(places.length);
 		const waves = new Float32Array(places.length);
 		places.forEach((p, i) => {
-			const c = s.kinds[p.kind].cell;
+			const c = s.kinds[p.art].cell;
 			cells.set([c.x, c.y, c.w, c.h], i * 4);
 			flips[i] = p.flip ? 1 : 0;
-			waves[i] = s.kinds[p.kind].wave;
+			waves[i] = s.kinds[p.art].wave;
 		});
 		geometry.setAttribute(
 			'aCell',
@@ -562,8 +433,12 @@ function shadowsOf(
 	const scale = new THREE.Vector3();
 	const at = new THREE.Vector3();
 	const q = new THREE.Quaternion();
+	const up = new THREE.Vector3(0, 1, 0);
+	const normal = new THREE.Vector3();
 	places.forEach((p, i) => {
-		const w = s.kinds[p.kind].cell.w * SPRITE_M * 0.8;
+		const w = s.kinds[p.art].cell.w * SPRITE_M * 0.8;
+		// Laid on the ground's own slope, so no half of it floats over a bank.
+		q.setFromUnitVectors(up, normal.set(...p.normal));
 		mesh.setMatrixAt(
 			i,
 			m.compose(at.set(p.x, p.y + 0.05, p.z), q, scale.set(w, 1, w * 0.5)),
