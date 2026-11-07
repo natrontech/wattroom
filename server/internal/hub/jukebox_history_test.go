@@ -171,7 +171,7 @@ func TestANewRoomSeedsJustPlayedFromTheLog(t *testing.T) {
 	}}
 	h.SetTrackHistory(log)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", sessionDoor(h))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	conn := dial(t, "ws"+strings.TrimPrefix(srv.URL, "http")+"/ws/channels/seeded-room", "jan:owner")

@@ -107,7 +107,7 @@ func readTick(t *testing.T, conn *websocket.Conn) protocol.ServerTick {
 func TestWebSocketRoom(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", sessionDoor(h))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/velvet"
@@ -218,7 +218,7 @@ func TestWebSocketRoom(t *testing.T) {
 func TestJukeboxRefusalReachesOnlyTheRiderWhoAddedIt(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", sessionDoor(h))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/velvet"
@@ -271,7 +271,7 @@ func TestRosterDeduplicatesRiders(t *testing.T) {
 	// deduped (found live, then pinned here).
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", sessionDoor(h))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/dupes"
@@ -299,7 +299,7 @@ func TestRosterDeduplicatesRiders(t *testing.T) {
 func TestMixedCaseChannelIDSharesRoom(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", sessionDoor(h))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	base := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/"
@@ -328,7 +328,7 @@ func TestJukeboxActionsRideTheTick(t *testing.T) {
 	// happened in the room, and it reaches the others the same way a cheer does.
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", sessionDoor(h))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/loud"
@@ -377,7 +377,7 @@ func TestSetRoleReachesOpenSockets(t *testing.T) {
 	// refused and every roster still called them a member (rider report).
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", sessionDoor(h))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/promote"
@@ -424,7 +424,7 @@ func TestSetRoleReachesOpenSockets(t *testing.T) {
 func TestVoiceRidesTheTickBeforeYouJoin(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", sessionDoor(h))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/quiet"
@@ -557,7 +557,7 @@ func TestEveryRiderGetsTheSameTickBytes(t *testing.T) {
 func TestTheWorkoutRidesOnlyTheTickThatChangesIt(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", sessionDoor(h))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/lean"
@@ -607,7 +607,7 @@ const wsWorkout = `{"steps":[{"type":"steady","seconds":120,"target":0.8}]}`
 func TestAThrottledJukeboxCommandAnswers(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", sessionDoor(h))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/velvet"

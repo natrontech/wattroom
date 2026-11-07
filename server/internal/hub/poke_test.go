@@ -84,7 +84,7 @@ func readPoke(t *testing.T, conn *websocket.Conn) protocol.Poke {
 func TestPokeUsesAuthenticatedSender(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", sessionDoor(h))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/velvet"
@@ -111,7 +111,7 @@ func TestPokeUsesAuthenticatedSender(t *testing.T) {
 func TestPokeOnCooldownTellsTheSender(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", sessionDoor(h))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/velvet"
@@ -154,7 +154,7 @@ func TestPokeOnCooldownTellsTheSender(t *testing.T) {
 func TestPokeAnswersTheSender(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", sessionDoor(h))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/velvet"
@@ -179,7 +179,7 @@ func TestPokeAnswersTheSender(t *testing.T) {
 func TestPokeRiderReachesEveryChannel(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", sessionDoor(h))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	base := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/"
@@ -228,7 +228,7 @@ func roadside(t *testing.T) (h *Hub, jan, sven *websocket.Conn) {
 	t.Helper()
 	h = New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", sessionDoor(h))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/velvet"

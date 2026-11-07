@@ -272,3 +272,53 @@ func TestPlansAndGamesOpenCrewSessions(t *testing.T) {
 		t.Fatalf("%d sessions after a refused game, want 2: a refusal leaves no room", n)
 	}
 }
+
+// sessionDoor is the voice channel's door with the call's mark off: the room
+// rides sessions, as a crew session's does, for the tests that ride one
+// through a plain room. Since docs/SESSIONS.md a voice channel opens none.
+func sessionDoor(h *Hub) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) { h.door(w, r, false) }
+}
+
+// A voice channel is a call and nothing else (docs/SESSIONS.md): its socket
+// opens no session and no game, so its room stays its room.
+func TestAVoiceChannelOpensNoSession(t *testing.T) {
+	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	ana := dial(t, "ws"+strings.TrimPrefix(srv.URL, "http")+"/ws/channels/lounge", "ana:member")
+	for _, cmd := range []protocol.Control{
+		{Action: "pick", WorkoutName: "Tempo", WorkoutJSON: crewWorkout},
+		{Action: "game", GameMode: "points-race"},
+	} {
+		if err := wsjson.Write(t.Context(), ana, protocol.ClientMessage{Control: &cmd}); err != nil {
+			t.Fatalf("send %s: %v", cmd.Action, err)
+		}
+		refused := false
+		for range 5 {
+			ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
+			var m protocol.ServerMessage
+			err := wsjson.Read(ctx, ana, &m)
+			cancel()
+			if err != nil {
+				t.Fatalf("read: %v", err)
+			}
+			if m.Error != nil && m.Error.Code == "forbidden" {
+				refused = true
+				break
+			}
+		}
+		if !refused {
+			t.Fatalf("the call took a %s", cmd.Action)
+		}
+	}
+	rm := h.stateOf("lounge")
+	rm.mu.Lock()
+	open := rm.session.open()
+	rm.mu.Unlock()
+	if open {
+		t.Fatal("a session opened in the voice channel")
+	}
+}

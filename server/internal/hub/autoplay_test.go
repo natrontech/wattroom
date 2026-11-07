@@ -52,7 +52,7 @@ func TestAutoplaySeedsAnIdleDeckOnJoin(t *testing.T) {
 		ok: true,
 	})
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", sessionDoor(h))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/autoplay-room"
@@ -87,7 +87,7 @@ func TestAutoplaySilentWhenSourceHasNothing(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	h.SetPlaylistSource(fakeAutoplaySource{ok: false})
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", sessionDoor(h))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/quiet-room"
@@ -102,7 +102,7 @@ func TestAutoplaySilentWhenSourceHasNothing(t *testing.T) {
 func TestQueuePlaylistReachesAnOccupiedRoom(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", sessionDoor(h))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/bridge-room"
@@ -174,7 +174,7 @@ func TestAutoplayLoopsThePlaylistWhenTheDeckRunsDry(t *testing.T) {
 		ok:     true,
 	})
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", sessionDoor(h))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	conn := dial(t, "ws"+strings.TrimPrefix(srv.URL, "http")+"/ws/channels/loop-room", "jan:owner")
@@ -205,7 +205,7 @@ func TestAutoplayOffLeavesADryDeckIdle(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	h.SetPlaylistSource(fakeAutoplaySource{ok: false})
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", sessionDoor(h))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	conn := dial(t, "ws"+strings.TrimPrefix(srv.URL, "http")+"/ws/channels/one-shot-room", "jan:owner")

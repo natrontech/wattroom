@@ -252,7 +252,7 @@ func readUntil(t *testing.T, conn *websocket.Conn, within time.Duration, want fu
 func TestRemoteOverTheWire(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", sessionDoor(h))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/lounge"

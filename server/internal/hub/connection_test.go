@@ -73,7 +73,7 @@ func TestAnAddressReachesItsOwnSocketAndNoOther(t *testing.T) {
 	t.Cleanup(func() { httpx.TrustProxyHeader(false) })
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", sessionDoor(h))
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/velvet"
@@ -173,7 +173,7 @@ func TestARidersPingReachesTheRoster(t *testing.T) {
 func TestARidersRosterEntryIsOneScreen(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", sessionDoor(h))
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/velvet"
@@ -231,7 +231,7 @@ func TestARidersRosterEntryIsOneScreen(t *testing.T) {
 func TestAnUnmeasuredSocketStillNamesItsDevice(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", sessionDoor(h))
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/velvet"
@@ -279,7 +279,7 @@ func TestAnUnmeasuredSocketStillNamesItsDevice(t *testing.T) {
 func TestADeviceWordOutsideTheSetIsNotStored(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", sessionDoor(h))
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/velvet"
