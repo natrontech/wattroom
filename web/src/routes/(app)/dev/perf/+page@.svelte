@@ -206,7 +206,10 @@
 								.map((id) => [id.split('.')[0], id]),
 						),
 						initial: 'M',
-						hiscore: Number(params.get('hiscore') ?? 0),
+						records: params.get('hiscore')
+							? [{ initials: 'JAN', score: Number(params.get('hiscore')) }]
+							: [],
+						crowns: (params.get('crowns') ?? '').split(',').filter(Boolean),
 						medals: Number(params.get('medals') ?? 0),
 						polaroids: [...Array(Number(params.get('polaroids') ?? 0))].map(
 							(_, i) => i + 2,

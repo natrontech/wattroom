@@ -90,6 +90,7 @@
 	import type { LiveRider } from '$lib/channel/types';
 	import Beer from '@lucide/svelte/icons/beer';
 	import BookOpen from '@lucide/svelte/icons/book-open';
+	import Gamepad2 from '@lucide/svelte/icons/gamepad-2';
 	import Hand from '@lucide/svelte/icons/hand';
 	import PartyPopper from '@lucide/svelte/icons/party-popper';
 	import PersonStanding from '@lucide/svelte/icons/person-standing';
@@ -930,6 +931,13 @@
 				class="btn btn-ghost btn-xs text-ink px-0"
 				><BookOpen size={13} /> Album {album.length}/{VISITORS.length}</button
 			>
+			<button
+				type="button"
+				onclick={playGame}
+				title="The arcade: three games and your crew's high scores"
+				class="btn btn-ghost btn-xs text-ink px-0"
+				><Gamepad2 size={13} /> Arcade</button
+			>
 			{#if onAir && nowPlaying}<span class="tabular-nums max-sm:hidden"
 					>{nowPlaying}</span
 				>{/if}
@@ -947,6 +955,7 @@
 			/>{/if}
 		{#if gaming}<ArcadeGame
 				crew={station}
+				you={channel.riders.find((r) => r.you)?.id}
 				onclose={leaveGame}
 				onscore={reread}
 			/>{/if}

@@ -1,88 +1,87 @@
 <script lang="ts">
-	// Bergpreis on the room's arcade cabinet (arcade.ts): a canvas, one button,
-	// and the crew's best five.
+	// The room's arcade cabinet (docs/spec/lounge.md): three games on one
+	// button, today's course the same for every crew, and the crew's boards.
+	import Crown from '@lucide/svelte/icons/crown';
+	import Mountain from '@lucide/svelte/icons/mountain';
+	import ShoppingBag from '@lucide/svelte/icons/shopping-bag';
+	import Target from '@lucide/svelte/icons/target';
+	import Trophy from '@lucide/svelte/icons/trophy';
 	import Modal from '$lib/components/Modal.svelte';
 	import { api } from '$lib/api';
-	import { rect, text, textWidth } from '$lib/lounge/pixel';
-	import { LOUNGE as C } from '$lib/lounge/palette';
+	import { play } from '$lib/sound/cues';
+	import type { CueId } from '$lib/sound/cue-catalogue';
+	import { GAMES, gameOf } from '$lib/lounge/games';
 	import {
-		BAND,
-		RUN_SEC,
-		bandAt,
-		inBand,
-		newRun,
-		over,
-		scoreOf,
-		step,
-		type Run,
-	} from '$lib/lounge/arcade';
-
-	interface Score {
-		name: string;
-		score: number;
-	}
+		SCREEN_H as H,
+		SCREEN_W as W,
+		type GameId,
+		type Sound,
+	} from '$lib/lounge/games/game';
+	import type { ArcadeEntry, ArcadeView } from '$lib/lounge/memory';
+	import { loadPref, savePref } from '$lib/lounge/arcade-pick';
 
 	let {
 		crew,
 		onclose,
 		onscore,
-	}: { crew: string; onclose: () => void; onscore: () => void } = $props();
+		you,
+	}: {
+		crew: string;
+		onclose: () => void;
+		onscore: () => void;
+		/** Your rider id: your rows stand out. */
+		you?: string;
+	} = $props();
 
-	const W = 160;
-	const H = 90;
-	let run = $state.raw<Run>(newRun());
-	let phase = $state<'ready' | 'riding' | 'done'>('ready');
+	const ICONS = { bergpreis: Mountain, feedzone: ShoppingBag, darts: Target };
+	/** What each of a game's sounds plays on the cue bus. */
+	const CUE: Record<Sound, CueId> = {
+		grab: 'handup',
+		miss: 'shutter',
+		throw: 'whoosh',
+		hit: 'equip',
+		bull: 'cowbell',
+	};
+
+	let view = $state<ArcadeView | undefined>();
+	let failed = $state(false);
+	let picked = $state<GameId>(loadPref());
+	const game = $derived(gameOf(picked));
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	let run = $state.raw<any>(gameOf(loadPref()).start(0));
+	let phase = $state<'ready' | 'playing' | 'done'>('ready');
+	/** The best you had before this run, and whether the run beat it. */
+	let bestBefore = 0;
+	let beat = $state(false);
 	let held = false;
-	let top = $state<Score[]>([]);
+	let board = $state<'today' | 'top' | 'cup'>('today');
 
-	async function loadTop() {
-		const res = await api<{ top: Score[] }>(`/api/crews/${crew}/arcade`);
-		if (res.ok) top = res.data.top;
+	async function load() {
+		const res = await api<ArcadeView>(`/api/crews/${crew}/arcade`);
+		if (res.ok) view = res.data;
+		else failed = true;
 	}
-	void loadTop();
+	void load();
 
-	function draw(g: CanvasRenderingContext2D) {
-		rect(g, 0, 0, W, H, C.screen);
-		const scroll = run.metres * 2;
-		// The hill: a road climbing to the right, with posts going by.
-		for (let x = 18; x < W; x++) {
-			const y = 74 - Math.round((x - 18) * 0.18);
-			rect(g, x, y, 1, H - y, C.grid);
-			rect(g, x, y, 1, 1, C.lilac);
-		}
-		for (let i = 0; i < 4; i++) {
-			const x = 150 - ((scroll + i * 40) % 132);
-			const y = 74 - Math.round((x - 18) * 0.18);
-			rect(g, x, y - 6, 1, 6, C.paper);
-		}
-		// The rider: a bike and someone on it, legs turning with the climb.
-		const rx = 52;
-		const ry = 74 - Math.round((rx - 18) * 0.18);
-		const turn = Math.floor(run.metres) % 2;
-		rect(g, rx - 6, ry - 3, 3, 3, C.teal);
-		rect(g, rx + 4, ry - 5, 3, 3, C.teal);
-		rect(g, rx - 4, ry - 6, 9, 1, C.violet);
-		rect(g, rx - 1, ry - 12, 4, 6, C.heart);
-		rect(g, rx, ry - 15, 3, 3, C.amber);
-		rect(g, rx + turn - 1, ry - 5, 1, 3, C.paper);
-		// The meter: the band drifting, the needle held up by the button.
-		rect(g, 4, 6, 8, 78, C.ink);
-		const y = (v: number) => 83 - Math.round(v * 76);
-		const mid = bandAt(run.t);
-		const hit = inBand(run);
-		rect(
-			g,
-			5,
-			y(mid + BAND / 2),
-			6,
-			Math.round(BAND * 76),
-			hit ? C.teal : C.leaf,
-		);
-		rect(g, 3, y(run.power), 10, 2, C.paper);
-		const score = String(scoreOf(run));
-		text(g, score, W - textWidth(score) - 3, 3, C.amber);
-		const left = String(Math.ceil(RUN_SEC - run.t));
-		text(g, left, 18, 3, C.paper);
+	const seed = $derived(view?.seed ?? 0);
+	const mine = $derived(view?.games[picked]);
+	const courseDay = $derived(
+		view
+			? new Date(`${view.day}T12:00:00Z`).toLocaleDateString('en-GB', {
+					weekday: 'short',
+					day: 'numeric',
+					month: 'short',
+				})
+			: '',
+	);
+
+	function pick(id: GameId) {
+		if (phase === 'playing') return;
+		picked = id;
+		savePref(id);
+		run = gameOf(id).start(seed);
+		phase = 'ready';
+		beat = false;
 	}
 
 	function canvasLoop(canvas: HTMLCanvasElement) {
@@ -91,11 +90,15 @@
 		let frame = requestAnimationFrame(function tick(now) {
 			const dt = Math.min(0.1, (now - last) / 1000);
 			last = now;
-			if (phase === 'riding') {
-				run = step(run, dt, held);
-				if (over(run)) finish();
+			const playing = gameOf(picked);
+			if (phase === 'playing') {
+				const before = run;
+				run = playing.step(run, dt, held);
+				const sound = playing.sound(before, run);
+				if (sound) play(CUE[sound]);
+				if (playing.over(run)) void finish();
 			}
-			draw(g);
+			playing.draw(g, run);
 			frame = requestAnimationFrame(tick);
 		});
 		return () => cancelAnimationFrame(frame);
@@ -104,41 +107,83 @@
 	async function finish() {
 		phase = 'done';
 		held = false;
+		const score = game.score(run);
+		beat = score > bestBefore && score > 0;
+		play(beat ? 'fanfare' : 'summit');
 		await api(`/api/crews/${crew}/arcade`, {
 			method: 'POST',
-			json: { score: scoreOf(run) },
+			json: { game: picked, score },
 		});
-		await loadTop();
+		await load();
 		onscore();
 	}
 
 	function begin() {
-		run = newRun();
-		phase = 'riding';
+		bestBefore = mine?.best ?? 0;
+		beat = false;
+		run = game.start(seed);
+		phase = 'playing';
+		play('go');
 	}
 
 	function key(e: KeyboardEvent, down: boolean) {
 		if (e.code !== 'Space') return;
 		e.preventDefault();
-		if (phase === 'riding') held = down;
+		if (phase === 'playing') held = down;
+		else if (down && !e.repeat && (view || failed)) begin();
 	}
+
+	const rows = $derived<
+		{ id: string; name: string; value: number; crown?: boolean }[]
+	>(
+		board === 'cup'
+			? (view?.cup ?? [])
+					.slice(0, 5)
+					.map((e) => ({ id: e.id, name: e.name, value: e.wins }))
+			: (mine?.[board] ?? []).map((e: ArcadeEntry, i: number) => ({
+					id: e.id,
+					name: e.name,
+					value: e.score,
+					crown: board === 'top' && i === 0,
+				})),
+	);
+	const EMPTY = {
+		today: 'Nobody has played today’s course yet.',
+		top: 'Nobody yet. The record is yours to set.',
+		cup: 'Nobody has won a day this week yet. The cup starts again on Monday.',
+	};
 </script>
 
 <svelte:window onkeydown={(e) => key(e, true)} onkeyup={(e) => key(e, false)} />
 
-<Modal label="Bergpreis" {onclose} class="max-w-xl">
-	<h2 class="font-display text-lg font-bold">Bergpreis</h2>
-	<p class="text-muted mt-1 text-sm">
-		Thirty seconds up the hill. Hold to push, let go to ease off, and keep the
-		needle in the band.
+<Modal label="The arcade" {onclose} class="max-w-xl">
+	<div class="flex flex-wrap gap-2" role="tablist" aria-label="Games">
+		{#each GAMES as g (g.id)}
+			{@const Icon = ICONS[g.id as GameId]}
+			<button
+				type="button"
+				role="tab"
+				aria-selected={picked === g.id}
+				disabled={phase === 'playing'}
+				onclick={() => pick(g.id)}
+				class="btn {picked === g.id ? 'btn-primary' : 'btn-ghost'}"
+				><Icon size={16} /> {g.name}</button
+			>
+		{/each}
+	</div>
+	<p class="eyebrow mt-3">
+		{courseDay ? `Today’s course · ${courseDay}` : 'Today’s course'}
 	</p>
+	<p class="text-muted mt-1 text-sm">{game.how}</p>
 	<button
 		type="button"
-		aria-label="Hold to push"
+		aria-label={game.button}
 		class="mt-3 block w-full touch-none select-none"
-		onpointerdown={() => (held = true)}
+		onpointerdown={() =>
+			phase === 'playing' ? (held = true) : (view || failed) && begin()}
 		onpointerup={() => (held = false)}
 		onpointerleave={() => (held = false)}
+		onpointercancel={() => (held = false)}
 	>
 		<canvas
 			width={W}
@@ -147,27 +192,75 @@
 			class="w-full rounded [image-rendering:pixelated]"
 		></canvas>
 	</button>
-	<div class="mt-3 flex items-center gap-3">
-		{#if phase !== 'riding'}
-			<button type="button" onclick={begin} class="btn btn-primary"
-				>{phase === 'done' ? 'Ride again' : 'Start'}</button
+	<div class="mt-3 flex min-h-9 flex-wrap items-center gap-3">
+		{#if phase !== 'playing'}
+			<button
+				type="button"
+				onclick={begin}
+				disabled={!view && !failed}
+				class="btn btn-primary"
+				>{phase === 'done' ? 'Play again' : 'Start'}</button
 			>
 		{/if}
 		{#if phase === 'done'}
-			<p class="font-display text-sm font-bold">{scoreOf(run)} points</p>
+			<p class="font-display text-lg font-bold tabular-nums">
+				{game.score(run)} points
+			</p>
+			{#if beat}<p
+					class="font-display bg-neon/20 text-ink rounded px-2 py-0.5 text-sm font-bold"
+					role="status"
+				>
+					<Trophy size={14} class="inline" /> New best
+				</p>{/if}
+		{:else if phase === 'ready' && mine?.best}
+			<p class="text-muted text-sm">
+				Your best: <span class="font-display tabular-nums">{mine.best}</span>
+			</p>
 		{/if}
 	</div>
-	<h3 class="eyebrow mt-4 mb-1.5">Your crew's best</h3>
-	{#if top.length}
-		<ol class="grid gap-1 text-sm">
-			{#each top as entry, i (entry.name)}
-				<li class="flex justify-between gap-3">
-					<span class="truncate">{i + 1}. {entry.name}</span>
-					<span class="font-display tabular-nums">{entry.score}</span>
+	<div class="mt-4 flex gap-1" role="tablist" aria-label="Boards">
+		{#each [['today', 'Today'], ['top', 'All time'], ['cup', 'This week’s cup']] as const as [id, label] (id)}
+			<button
+				type="button"
+				role="tab"
+				aria-selected={board === id}
+				onclick={() => (board = id)}
+				class="btn btn-xs {board === id ? 'btn-secondary' : 'btn-ghost'}"
+				>{label}</button
+			>
+		{/each}
+	</div>
+	{#if failed}
+		<p class="text-muted mt-2 text-sm">
+			The boards could not be loaded. Close the arcade and open it again.
+		</p>
+	{:else if rows.length}
+		<ol class="mt-2 grid gap-1 text-sm">
+			{#each rows as entry, i (entry.id)}
+				<li
+					class="flex items-center justify-between gap-3 rounded px-1 {entry.id ===
+					you
+						? 'bg-neon/10'
+						: ''}"
+				>
+					<span class="flex min-w-0 items-center gap-1.5 truncate"
+						>{i + 1}. {entry.name}{#if entry.crown}<Crown
+								size={14}
+								class="text-warn shrink-0"
+								aria-label="record holder"
+							/>{/if}</span
+					>
+					<span class="font-display tabular-nums"
+						>{entry.value}{board === 'cup'
+							? entry.value === 1
+								? ' win'
+								: ' wins'
+							: ''}</span
+					>
 				</li>
 			{/each}
 		</ol>
 	{:else}
-		<p class="text-muted text-sm">Nobody yet. The hill is yours.</p>
+		<p class="text-muted mt-2 text-sm">{EMPTY[board]}</p>
 	{/if}
 </Modal>

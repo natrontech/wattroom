@@ -641,8 +641,13 @@ function arcade(g: Ctx, s: SceneInput) {
 	rect(g, rx, y0 + 5, 2, 2, C.teal);
 	rect(g, rx, y0 + 3, 2, 2, C.heart);
 	if (s.arcade) text(g, '1', x0 + 1, y0 + 1, C.amber);
-	else if (s.club.hiscore)
-		text(g, String(s.club.hiscore).slice(0, 4), x0, y0, C.amber);
+	else if (s.club.records.length) {
+		// Each record in turn, the holder's letters, then the score.
+		const beat = s.still ? 0 : Math.floor(s.t / 2.5);
+		const rec = s.club.records[Math.floor(beat / 2) % s.club.records.length];
+		const said = beat % 2 ? String(rec.score).slice(0, 4) : rec.initials;
+		text(g, said, x0, y0, beat % 2 ? C.amber : C.tealLight);
+	}
 }
 
 function signBars(g: Ctx, s: SceneInput) {

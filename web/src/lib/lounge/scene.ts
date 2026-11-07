@@ -272,8 +272,16 @@ export interface Club {
 	picks: Record<string, string>;
 	/** The crew's name's first letter, for the neon sign. */
 	initial: string;
-	/** The arcade's best score, on its cabinet. */
-	hiscore: number;
+	/** Each game's record, on the cabinet's screen in turn. */
+	records: ArcadeRecord[];
+	/** Riders who hold a game's record: they wear a crown. */
+	crowns: string[];
+}
+
+/** A game's record as the cabinet shows it: the holder's initials and the score. */
+export interface ArcadeRecord {
+	initials: string;
+	score: number;
 }
 
 export interface SceneInput {

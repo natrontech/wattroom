@@ -407,10 +407,10 @@ order by i.bought_at
 limit sqlc.arg(lim);
 
 -- name: ExportUserArcadeScores :many
--- The rider's best at each crew's arcade.
-select c.name as crew_name, a.score, a.set_at
-from crew_arcade a
+-- The rider's best at each crew's arcade, each game and each day they played.
+select c.name as crew_name, a.game, a.day, a.score, a.set_at
+from crew_arcade_scores a
 join crews c on c.id = a.crew_id
 where a.user_id = sqlc.arg(user_id)
-order by a.set_at
+order by a.day, a.set_at
 limit sqlc.arg(lim);

@@ -119,6 +119,15 @@ type CrewArcade struct {
 	SetAt  pgtype.Timestamptz
 }
 
+type CrewArcadeScore struct {
+	CrewID pgtype.UUID
+	Game   string
+	UserID pgtype.UUID
+	Day    pgtype.Date
+	Score  int32
+	SetAt  pgtype.Timestamptz
+}
+
 type CrewEmoji struct {
 	ID        pgtype.UUID
 	CrewID    pgtype.UUID
