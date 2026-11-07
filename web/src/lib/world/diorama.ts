@@ -129,17 +129,20 @@ export function dioramaPass(renderer: THREE.WebGLRenderer) {
 	DIORAMA.value = 1;
 
 	const buffer = new THREE.Vector2();
+	// The lowest rung's (quality.ts): the scene straight to the canvas, no multisampling, ink or blur.
+	let lite = false;
 	function sized() {
 		renderer.getDrawingBufferSize(buffer);
 		const w = Math.max(1, buffer.x);
 		const h = Math.max(1, buffer.y);
+		SPRITE_SCREEN.halfH.value = h / 2;
+		if (lite) return null;
 		if (target.width !== w || target.height !== h) {
 			target.setSize(w, h);
 			inked.setSize(w, h);
 			ink.uniforms.texel.value.set(1 / w, 1 / h);
 			shift.uniforms.texel.value.set(1 / w, 1 / h);
 		}
-		SPRITE_SCREEN.halfH.value = h / 2;
 		const css = renderer.getPixelRatio();
 		ink.uniforms.width.value = Math.max(1, Math.round(css));
 		shift.uniforms.radius.value = 7 * css;
@@ -148,9 +151,23 @@ export function dioramaPass(renderer: THREE.WebGLRenderer) {
 
 	return {
 		sized,
+		/** On the lowest rung, the scene alone: its light steps and sprites, without the pass's three full-screen draws. */
+		setLite(on: boolean) {
+			lite = on;
+			if (on) {
+				target.setSize(1, 1);
+				inked.setSize(1, 1);
+			}
+		},
 		render(scene: THREE.Object3D, camera: THREE.PerspectiveCamera) {
 			renderer.info.reset();
 			rampAll(scene);
+			if (lite) {
+				sized();
+				renderer.setRenderTarget(null);
+				renderer.render(scene, camera);
+				return;
+			}
 			ink.uniforms.ink.value.set(LOUNGE.ink);
 			ink.uniforms.near.value = camera.near;
 			ink.uniforms.far.value = camera.far;
