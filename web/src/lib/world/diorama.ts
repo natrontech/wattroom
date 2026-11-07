@@ -5,7 +5,7 @@
 // (avatar.ts), crisp at any size. Words draw after, sharp.
 import * as THREE from 'three';
 import { LOUNGE } from '$lib/lounge/palette';
-import { DIORAMA, MOTION, rampAll, TARGET, WORDS } from './pixel';
+import { DIORAMA, MOTION, rampAll, WORDS } from './pixel';
 import { SPRITE_SCREEN } from './rider-sprite';
 
 const VERTEX = /* glsl */ `
@@ -139,9 +139,6 @@ export function dioramaPass(renderer: THREE.WebGLRenderer) {
 			ink.uniforms.texel.value.set(1 / w, 1 / h);
 			shift.uniforms.texel.value.set(1 / w, 1 / h);
 		}
-		// The villagers' grid (avatar.ts): the room's pixel, two CSS pixels, whatever the canvas.
-		const s = Math.max(1, Math.round(2 * renderer.getPixelRatio()));
-		TARGET.value.set(Math.ceil(w / s), Math.ceil(h / s));
 		SPRITE_SCREEN.halfH.value = h / 2;
 		const css = renderer.getPixelRatio();
 		ink.uniforms.width.value = Math.max(1, Math.round(css));

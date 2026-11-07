@@ -216,7 +216,7 @@
 					onCue: play,
 					// Your kit is keyed by who you are, solo or in a bunch: the crew sees the one you see.
 					youId: account.me?.id,
-					// In Pixel 3D everyone rides as they sit in the cozy room.
+					// In Diorama 3D everyone rides as they sit in the cozy room.
 					loungeLook: (id) =>
 						id === account.me?.id
 							? account.me?.loungeLook

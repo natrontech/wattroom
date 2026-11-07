@@ -93,9 +93,6 @@ export function lightsMaterial(sight: Sight, lights: Lights) {
 				'#include <emissivemap_fragment>',
 				`#include <emissivemap_fragment>
 				float on = vOn;
-				#ifdef PIXEL_RAMP
-					if (uPixel > 0.5) on = step(0.5, on);
-				#endif
 				diffuseColor.rgb *= 1.0 - on;
 				totalEmissiveRadiance = uAmber * on;`,
 			);

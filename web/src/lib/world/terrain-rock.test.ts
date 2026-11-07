@@ -16,8 +16,7 @@ describe('the ground material keys rock to slope (#3728)', () => {
 		const f = m.fragmentShader;
 		expect(f).toContain('smoothstep(0.86, 0.66, n.y)');
 		expect(f).toContain('mix(uRock, vColor, 0.18), steep)');
-		// No detail painted inside a face in Smooth: no noise, no masonry. Pixel 3D's land is its own.
+		// No detail painted inside a face in Smooth: no noise, no masonry. Diorama 3D's land is its own.
 		expect(f.replace(PIXEL_LAND, '')).not.toMatch(/fract\(sin|landHash\(/);
-		expect(f).toContain('if (uPixel > 0.5) base = pixelLand(');
 	});
 });

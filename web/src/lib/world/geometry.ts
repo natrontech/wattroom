@@ -247,37 +247,7 @@ export function roadMaterial(
 				float shoulder = smoothstep(${(ROAD_W / 2).toFixed(2)} - 0.5 * fw, ${(ROAD_W / 2).toFixed(2)} + 0.5 * fw, abs(u));
 				float verge = smoothstep(${(ROAD_W / 2 + 0.9).toFixed(2)} - 0.5 * fw, ${(ROAD_W / 2 + 0.9).toFixed(2)} + 0.5 * fw, abs(u));
 				float line = max(edge, centre);
-				#ifdef PIXEL_RAMP
-					if (uPixel > 0.5) {
-						// A line thinner than a pixel draws the one pixel nearest its middle in every row it
-						// crosses, so where the grid falls never breaks it into dashes. Thinner than a sixth
-						// of a pixel it is gone: at one distance, not in dots.
-						float ew = max(${EDGE_HALF.toFixed(3)}, 0.5 * fw);
-						float cw = max(${CENTRE_HALF.toFixed(3)}, 0.5 * fw);
-						line = max(
-							step(abs(abs(u) - ${(ROAD_W / 2 - 0.25).toFixed(2)}), ew) * step(0.16, ${EDGE_HALF.toFixed(3)} / ew),
-							step(abs(u), cw) * step(0.16, ${CENTRE_HALF.toFixed(3)} / cw) * step(0.5, dash)
-						);
-						shoulder = step(0.5, shoulder);
-						// Grass grows in over the gravel's edge, unevenly.
-						float jag = fract(sin(floor(s * 7.0) * 91.7) * 43758.5453) * 0.24;
-						verge = step(${(ROAD_W / 2 + 0.9).toFixed(2)} - jag, abs(u));
-					}
-				#endif
 				vec3 col = mix(uAsphalt, uShoulder, shoulder);
-				#ifdef PIXEL_RAMP
-					// A road that has been ridden: patched tar, worn wheel tracks, loose gravel.
-					if (uPixel > 0.5) {
-						float k = fract(sin(dot(floor(vec2(u * 1.3, s * 0.3)), vec2(127.1, 311.7))) * 43758.5453);
-						float tracks = abs(abs(u) - 1.45);
-						if (shoulder < 0.5) col *= k > 0.8 ? 0.88 : tracks < 0.45 ? 1.08 : 1.0;
-						else {
-							// Gravel only up close, where a stone is a few pixels: further off it was noise.
-							float g = fract(sin(dot(floor(vec2(u, s) * 3.0), vec2(269.5, 183.3))) * 43758.5453);
-							if (fs < 0.06) col *= g > 0.8 ? 1.16 : g < 0.2 ? 0.84 : 1.0;
-						}
-					}
-				#endif
 				col = mix(col, uLine, line * (1.0 - shoulder));
 				col = mix(col, uVerge, verge);
 				vec4 diffuseColor = vec4(col, opacity);`,
@@ -285,9 +255,6 @@ export function roadMaterial(
 			.replace(
 				'#include <opaque_fragment>',
 				`float pool = lampPool(vLampAt); // a third of the way to amber, the lounge's pool
-				#ifdef PIXEL_RAMP
-					if (uPixel > 0.5) pool = step(0.5, pool);
-				#endif
 				outgoingLight = mix(outgoingLight, uAmber, pool / 3.0);
 				#include <opaque_fragment>`,
 			)
@@ -295,7 +262,7 @@ export function roadMaterial(
 				'#include <dithering_fragment>',
 				`#include <dithering_fragment>
 				#ifdef PIXEL_RAMP
-					if (max(uPixel, uDiorama) > 0.5) gl_FragColor.a = 0.5; // the land, for the ink pass (pixel.ts, diorama.ts)
+					if (uDiorama > 0.5) gl_FragColor.a = 0.5; // the land, for the ink pass (diorama.ts)
 				#endif`,
 			);
 	};

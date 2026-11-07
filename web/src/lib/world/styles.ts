@@ -10,9 +10,8 @@
 import * as THREE from 'three';
 import { Biome } from './biome';
 import { sunDir, type Light } from './light';
-import { LOUNGE } from '$lib/lounge/palette';
 import { lightsUniforms, POOL, type Lights } from './lights';
-import { DIORAMA, PIXEL, STEPS } from './pixel';
+import { DIORAMA } from './pixel';
 import type { SignLook } from './setpieces';
 
 export type Palette = Record<Biome, string>;
@@ -142,7 +141,7 @@ const OKLAB = /* glsl */ `
 	}`;
 
 /**
- * The land up close in Pixel 3D, so no floor is ever empty: fields on a turned
+ * The land up close in Diorama 3D, so no floor is ever empty: fields on a turned
  * grid, each its own green, mottled in flat patches, with flowers near the
  * road. Painted on the ground by where it is, so it stays put as you ride.
  */
@@ -155,7 +154,7 @@ export const PIXEL_LAND = /* glsl */ `
 			mix(landHash(i + vec2(0.0, 1.0)), landHash(i + vec2(1.0, 1.0)), f.x), f.y);
 	}
 	bool landGreen(vec3 base, float up) { return !(base.g < base.r * 1.05 || base.g < base.b * 1.02 || up < 0.8); }
-	// The fields, their stripes and patches: Pixel 3D's and Diorama 3D's both.
+	// The fields, their stripes and patches.
 	vec3 landFields(vec3 base, vec3 pos, float dist) {
 		vec2 turned = mat2(0.8, -0.6, 0.6, 0.8) * pos.xz;
 		float field = landHash(floor(turned / vec2(58.0, 90.0)));
@@ -189,39 +188,7 @@ export const PIXEL_LAND = /* glsl */ `
 		}
 		return c;
 	}
-	vec3 pixelLand(vec3 base, vec3 pos, float dist, float up) {
-		if (!landGreen(base, up)) return base;
-		vec3 c = landFields(base, pos, dist);
-		// Flowers and tufts of grass near you, rooted on the ground and drawn on the
-		// screen: (a, b) is this pixel's way from the root, in world pixels, b up.
-		// Up close a flower is a few pixels on a stem; it shrinks to a pixel at 25 m,
-		// and past that the meadow is its greens.
-		if (dist < 25.0) {
-			vec2 q = pos.xz / 1.8;
-			float k = landHash(floor(q));
-			vec2 ex = dFdx(pos.xz), ey = dFdy(pos.xz);
-			float det = ex.x * ey.y - ex.y * ey.x;
-			if (abs(det) > 1e-7) {
-				vec2 off = (fract(q) - 0.5) * 1.8;
-				float a = (off.x * ey.y - off.y * ey.x) / det;
-				float b = (off.y * ex.x - off.x * ex.y) / det;
-				float which = fract(k * 91.0);
-				float near = 1.0 - smoothstep(8.0, 25.0, dist);
-				if (k > 0.6 && landNoise(floor(q) / 5.0) > 0.44) {
-					vec3 petal = which < 0.5 ? vec3(0.97, 0.93, 0.86) : which < 0.8 ? vec3(0.98, 0.76, 0.28) : vec3(0.74, 0.52, 0.96);
-					float head = abs(a) + abs(b);
-					float r = 1.0 + near * 2.0;
-					if (head < r) c = near > 0.3 && head < r * 0.4 ? vec3(0.98, 0.8, 0.3) : petal;
-					else if (near > 0.2 && abs(a) < 0.6 && b < -r * 0.6 && b > -1.0 - near * 4.5) c *= 0.74;
-				} else if (k < 0.4 && near > 0.2) {
-					// A tuft: three blades, the middle one longest.
-					float reach = (abs(a) < 0.6 ? 5.5 : abs(abs(a) - 2.0) < 0.6 ? 3.5 : 0.0) * near;
-					if (b > -0.5 && b < reach) c *= which < 0.5 ? 0.76 : 1.22;
-				}
-			}
-		}
-		return c;
-	}`;
+`;
 
 /** Puts a light (light.ts) on the sky's or the ground's shader. */
 export function setLight(m: THREE.ShaderMaterial, light: Light) {
@@ -261,7 +228,6 @@ export function terrainMaterial(
 			uValley: { value: col(style.imhof?.valley) },
 			uPeak: { value: col(style.imhof?.peak) },
 			uRock: { value: col(style.palette[Biome.Rock]) },
-			uPixel: PIXEL, // Pixel 3D: the light in four steps, the fog in flat bands (pixel.ts)
 			uDiorama: DIORAMA, // Diorama 3D: the light in soft steps (diorama.ts)
 		},
 		vertexColors: true,
@@ -276,9 +242,8 @@ export function terrainMaterial(
 			}`,
 		fragmentShader: /* glsl */ `
 			uniform vec3 uSun, uFrom, uKey, uShade, uSkyTop, uHorizon, uSunward, uGridColor, uContour, uIndex, uValley, uPeak, uRock;
-			uniform float uFogK, uBands, uSkyFill, uGridSize, uGridAlpha, uContourStep, uImhof, uDusk, uPixel, uDiorama;
+			uniform float uFogK, uBands, uSkyFill, uGridSize, uGridAlpha, uContourStep, uImhof, uDusk, uDiorama;
 			varying vec3 vColor; varying vec3 vPos; varying float vAo;
-			${STEPS}
 			${POOL}
 			${PIXEL_LAND}
 			void main() {
@@ -288,16 +253,14 @@ export function terrainMaterial(
 				// solid rock by the earthworks' 45 (n.y 0.71), never the ground's colour smeared down a vertical.
 				float steep = smoothstep(0.86, 0.66, n.y);
 				vec3 base = mix(vColor, mix(uRock, vColor, 0.18), steep);
-				if (uPixel > 0.5) base = pixelLand(base, vPos, dist, n.y);
-				else if (uDiorama > 0.5) base = dioramaLand(base, vPos, dist, n.y);
+				if (uDiorama > 0.5) base = dioramaLand(base, vPos, dist, n.y);
 				vec3 col;
 				if (uImhof > 0.5) {
 					float hs = clamp(dot(n, normalize(vec3(-1.0, 1.4, -1.0))), 0.0, 1.0);
 					col = mix(uValley, uPeak, hs) * (base / max(max(base.r, base.g), max(base.b, 0.001)) * 0.12 + 0.88);
 				} else {
 					float lam = dot(n, uFrom) * 0.5 + 0.5; // half-Lambert, from the sun or, once it has set, the zenith
-					if (uPixel > 0.5) lam = pixelStep(lam);
-					else if (uBands > 1.5 || uDiorama > 0.5) {
+					if (uBands > 1.5 || uDiorama > 0.5) {
 						float nb = uBands > 1.5 ? uBands : 4.0; // Diorama 3D: the room's four steps, with soft edges
 						float fw = fwidth(lam) * (1.0 + dist / 800.0); // soft band edges, blurred with distance so far facets never crawl
 						float q = lam * nb;
@@ -326,12 +289,10 @@ export function terrainMaterial(
 				vec3 view = normalize(vPos - cameraPosition);
 				vec3 fogCol = mix(uHorizon, uSunward, pow(max(dot(view, uSun), 0.0), 8.0));
 				vec3 ext = exp(-dist * uFogK * vec3(1.3, 1.0, 0.75)); // red fades first: aerial perspective
-				if (uPixel > 0.5) ext = 1.0 - (1.0 - ext) * pixelFog(1.0 - ext.g) / max(1.0 - ext.g, 1e-4); // one band a pixel, red still first
 				gl_FragColor = vec4(mix(fogCol, col, ext) * uDusk, 1.0);
 				float pool = lampPool(vPos); // a third of the way to amber, the lounge's pool
-				if (uPixel > 0.5) pool = step(0.5, pool);
 				gl_FragColor.rgb = mix(gl_FragColor.rgb, uAmber, pool / 3.0);
-				if (uPixel > 0.5 || uDiorama > 0.5) gl_FragColor.a = 0.5; // the land, for the ink pass (pixel.ts, diorama.ts)
+				if (uDiorama > 0.5) gl_FragColor.a = 0.5; // the land, for the ink pass (diorama.ts)
 				#include <colorspace_fragment>
 			}`,
 	});
@@ -363,71 +324,27 @@ export function skyMaterial(style: Style): THREE.ShaderMaterial {
 				value:
 					style.sun.disc === 'stripes' ? 2 : style.sun.disc === 'halo' ? 1 : 0,
 			},
-			uPixel: PIXEL, // Pixel 3D: the lounge's window (pixel.ts)
-			uStar: { value: col(LOUNGE.star) },
-			uLilac: { value: col(LOUNGE.lilac) },
 		},
 		vertexShader: /* glsl */ `varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-		fragmentShader: /* glsl */ `uniform vec3 uTop, uHorizon, uSunward, uBand, uSun, uSunCol, uSunLow; uniform float uDisc, uPeach, uDusk, uPixel; uniform vec3 uStar, uLilac; uniform sampler2D uSkyline; varying vec3 vDir;
+		fragmentShader: /* glsl */ `uniform vec3 uTop, uHorizon, uSunward, uBand, uSun, uSunCol, uSunLow; uniform float uDisc, uPeach, uDusk; uniform sampler2D uSkyline; varying vec3 vDir;
 			${OKLAB}
 			void main(){
 				float h = max(vDir.y, 0.0);
 				float s = max(dot(vDir, uSun), 0.0);
 				vec3 hor = mix(uHorizon, uSunward, pow(s, 8.0));
 				vec3 c = mix(hor, uTop, pow(h, 0.45));
-				if (uPixel > 0.5) {
-					// The lounge's window: five flat bands from the fog's horizon up.
-					hor = mix(uHorizon, uSunward, floor(pow(s, 8.0) * 3.0 + 0.5) / 3.0);
-					c = mix(hor, uTop, min(floor(pow(h, 0.45) * 5.0), 4.0) / 4.0);
-				}
 				if (uPeach > 0.0) { // level over the ranges in view, fading out half a degree over the highest
 					float top = texture2D(uSkyline, vec2(atan(vDir.x, vDir.z) / 6.2831853, 0.5)).r * 0.25;
 					float clear = 0.009 * (1.0 + 0.5 * pow(s, 4.0));
 					float w = uPeach * smoothstep(-0.01, 0.0, vDir.y) * (1.0 - smoothstep(top - 0.003, top + clear, vDir.y));
-					// One flat colour, then a paler flat of it above: pixels, never a blend.
-					if (uPixel > 0.5) {
-						float rise = vDir.y / max(top + clear, 0.01);
-						w = step(0.5, w) * (rise < 0.8 ? 1.0 : rise < 1.0 ? 0.55 : 0.0);
-					}
 					// The sky's chroma gives way to the peach's at the band's faint edge, so no pixel takes a hue between them, the pinks.
 					vec3 sky = toLab(c);
 					vec3 band = toLab(uBand);
 					vec2 ab = w < 0.02 ? sky.yz * (1.0 - w / 0.02) : band.yz * sqrt((w - 0.02) / 0.98);
 					c = fromLab(vec3(mix(sky.x, band.x, w), ab));
 				}
-				if (uPixel > 0.5) {
-					// Long clouds lit from under by the set sun, in flat rows.
-					if (vDir.y > 0.012 && vDir.y < 0.3) {
-						float az = atan(vDir.x, vDir.z) * 4.0;
-						float row = floor(vDir.y * 90.0);
-						float cloud = sin(az * 1.7 + row * 0.9 + sin(row * 0.31) * 3.0) * 0.5 + 0.5;
-						cloud *= sin(az * 0.53 - row * 0.21) * 0.5 + 0.5;
-						if (cloud > 0.62 - vDir.y * 0.8) {
-							vec3 lit = mix(uBand, uTop, 0.25 + vDir.y * 2.4);
-							c = mix(c, lit, 0.75);
-						}
-					}
-					// The moon, flat, a bite out of it.
-					vec3 moon = normalize(vec3(-uSun.x, 0.5, -uSun.z));
-					if (length(vDir - moon) < 0.05 && length(vDir - moon - vec3(0.02, 0.012, 0.0)) > 0.045) c = uStar;
-					// The lounge's sun: a flat disc, its lower half striped; never a glow.
-					float r = length(vDir - uSun);
-					if (r < 0.06) {
-						float row = floor(((vDir.y - uSun.y) / 0.06 + 1.0) * 6.5); // 13 rows, 0 at the bottom
-						bool gap = row <= 6.0 && abs(mod(row, 3.0) - 2.0) < 0.5;
-						if (!gap) c = row > 6.0 ? uSunCol : uSunLow;
-					}
-					// Stars once the sky is dark, more as it darkens, a pixel each, fixed to the sky.
-					float dark = 1.0 - smoothstep(0.003, 0.02, dot(uTop * uDusk, vec3(0.2126, 0.7152, 0.0722)));
-					if (dark > 0.0 && vDir.y > 0.12) {
-						vec2 q = vec2(atan(vDir.x, vDir.z), asin(vDir.y)) * 160.0;
-						vec2 cell = floor(q);
-						vec2 off = abs(fract(q) - 0.5) / fwidth(q); // under 0.5 on the one pixel at the cell's centre
-						float k = fract(sin(dot(cell, vec2(127.1, 311.7))) * 43758.5453);
-						if (k > 1.0 - 0.006 * dark && max(off.x, off.y) < 0.5) c = fract(k * 97.0) > 0.6 ? uStar : uLilac;
-					}
-				} else if (uDisc > 0.5) c += uSunward * pow(s, 6.0) * 0.35 + hor * exp(-abs(vDir.y) * 14.0) * 0.12;
-				if (uPixel < 0.5 && uDisc > 1.5) { // the outrun sun: flat disc, horizontal gaps widening toward the bottom
+				if (uDisc > 0.5) c += uSunward * pow(s, 6.0) * 0.35 + hor * exp(-abs(vDir.y) * 14.0) * 0.12;
+				if (uDisc > 1.5) { // the outrun sun: flat disc, horizontal gaps widening toward the bottom
 					vec3 toSun = vDir - uSun;
 					float r = length(toSun);
 					if (r < 0.16) {

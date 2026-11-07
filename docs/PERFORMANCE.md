@@ -116,7 +116,7 @@ Measured on an M2 Max in September 2026 (#2998):
 
 ## The world on a real GPU
 
-`make perf` with `PERF_CASES="world&pixels=1 world&pixels=0"`, `PERF_SETTLE_MS=15000` and `PERF_SAMPLES=5` draws `/dev/perf?case=world` in each 3D look, full screen. M2 Pro, November 2026, page GPU %:
+Pixel 3D, measured before it gave way to Diorama 3D on 2026-11-07 (`pixels=d` draws Diorama now): `make perf` with `PERF_CASES="world&pixels=1 world&pixels=0"`, `PERF_SETTLE_MS=15000` and `PERF_SAMPLES=5` draws `/dev/perf?case=world` in each 3D look, full screen. M2 Pro, November 2026, page GPU %:
 
 | Display | Pixel 3D | Smooth |
 |---|---|---|

@@ -88,16 +88,6 @@ const FADE = /* glsl */ `
 	float bayer[16] = float[16](0.,8.,2.,10.,12.,4.,14.,6.,3.,11.,1.,9.,15.,7.,13.,5.);
 	if (keep < (bayer[by * 4 + bx] + 0.5) / 16.0) discard;`;
 
-// In Pixel 3D a tree beside the lens is needles and bark, not one big flat face:
-// dabs a few world pixels wide, gone where a tree is small enough not to need them.
-const FOLIAGE = /* glsl */ `
-	#ifdef PIXEL_RAMP
-		if (uPixel > 0.5 && distance(vWorld, cameraPosition) < 26.0) {
-			float dab = fract(sin(dot(floor(vWorld * vec3(7.0, 5.0, 7.0)), vec3(127.1, 311.7, 74.7))) * 43758.5453);
-			diffuseColor.rgb *= dab > 0.76 ? 1.18 : dab < 0.24 ? 0.84 : 1.0;
-		}
-	#endif`;
-
 // A face turned to the ground is lit as one turned out (#4256): the
 // hemisphere's ground colour alone takes a tier's or an eave's underside to
 // black, and the world's shadow is a tint, never black (ADR-0072).
@@ -160,11 +150,6 @@ export function flat(
 					'#include <clipping_planes_fragment>',
 					`#include <clipping_planes_fragment>\n${FADE}`,
 				);
-		if (opts.wind && opts.fade)
-			s.fragmentShader = s.fragmentShader.replace(
-				'#include <color_fragment>',
-				`#include <color_fragment>\n${FOLIAGE}`,
-			);
 	};
 	m.customProgramCacheKey = () =>
 		`flat-${opts.wind ? 'w' : ''}${opts.fade ? 'f' : ''}`;

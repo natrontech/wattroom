@@ -106,10 +106,6 @@ const WHEELS = /* glsl */ `#include <color_fragment>
 			float cov = sweepCover(phi, blurWin(uWheelDelta + 2.0 * h, P), h, P, w);
 			diffuseColor.a *= cov;
 			if (cov < 0.004) discard;
-			#ifdef PIXEL_RAMP
-			// No multisampling in whole pixels: the coverage is an ordered dither, as the lounge fades.
-			if (uPixel > 0.5 && cov < 0.5) discard;
-			#endif
 		}
 	}
 }`;
@@ -117,9 +113,6 @@ const WHEELS = /* glsl */ `#include <color_fragment>
 const LIGHT = /* glsl */ `{
 	vec3 vd = normalize(vViewPosition);
 	float fr = pow(1.0 - clamp(dot(vd, normal), 0.0, 1.0), 3.0);
-	#ifdef PIXEL_RAMP
-	if (uPixel > 0.5) fr = 0.0; // in whole pixels the ink edge parts a rider from the road
-	#endif
 	outgoingLight += fr * (uRimSun * clamp(dot(normal, uSunV) * 0.8 + 0.25, 0.0, 1.0) + uRimSky);
 }
 #include <opaque_fragment>`;
