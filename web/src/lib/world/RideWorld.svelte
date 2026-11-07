@@ -41,7 +41,9 @@
 	import { AMBIENCE, ambience } from '$lib/sound/ambience';
 	import { at, leftOf } from '$lib/road/along';
 	import { generate, type World } from './world';
-	import { dioramaLook, rideLook, worldPaint } from './look';
+	import { dioramaLook, rideLook, worldPaint, type Paint } from './look';
+	import { skyAt } from '$lib/lounge/palette';
+	import { weatherOf } from '$lib/lounge/state';
 	import { worldDiorama } from './mode';
 	import {
 		momentToDraw,
@@ -197,10 +199,13 @@
 				const ridden = (route = routeOfRoad(road));
 				const world = generate(ridden);
 				const paint = worldPaint(canvas!.parentElement ?? document.body);
+				dioramaPaint = worldDiorama() ? paint : null;
 				scene = mount(canvas!, {
 					route,
 					world,
-					style: worldDiorama() ? dioramaLook(paint) : rideLook(paint),
+					style: dioramaPaint
+						? dioramaLook(dioramaPaint, { night, weather: (dressed = weather) })
+						: rideLook(paint),
 					watts,
 					ftp,
 					metre,
@@ -274,6 +279,23 @@
 		};
 	});
 
+	// Diorama's sky (look.ts): night by the rider's own hour as the room's window
+	// has it, read once a ride; the weather of the room this rider's call is in,
+	// clear without one. The weather redresses the world as it changes.
+	const night = skyAt(new Date().getHours()) === 'night';
+	const roomLounge = $derived(
+		(channelConnection.call?.live ?? channelConnection.current?.live)?.tick
+			?.lounge,
+	);
+	const weather = $derived(roomLounge ? weatherOf(roomLounge) : 'clear');
+	let dioramaPaint: Paint | null = null;
+	let dressed = '';
+	$effect(() => {
+		const w = weather;
+		if (!scene || !dioramaPaint || w === dressed) return;
+		dressed = w;
+		scene.setStyle(dioramaLook(dioramaPaint, { night, weather: w }));
+	});
 	$effect(() => scene?.setWatts(watts));
 	$effect(() => scene?.setProgress(progress));
 	$effect(() => scene?.setSilent(silent));

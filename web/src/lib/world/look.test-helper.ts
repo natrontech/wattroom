@@ -20,3 +20,10 @@ export const RIDE = rideLook(appCss);
 
 /** Diorama 3D's, every ride's by default. */
 export const DIORAMA_RIDE = dioramaLook(appCss);
+/** …at night, and under the room's rain and snow. */
+export const DIORAMA_NIGHT = dioramaLook(appCss, { night: true });
+export const DIORAMA_RAIN = dioramaLook(appCss, { weather: 'rain' });
+export const DIORAMA_SNOW = dioramaLook(appCss, {
+	night: true,
+	weather: 'snow',
+});

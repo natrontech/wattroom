@@ -70,13 +70,17 @@ export type Style = {
 	};
 	sun: {
 		elevation: number; // degrees; below 0 the sky alone lights the look, and the ride's progress sinks it
-		sets?: number; // degrees at a ride's finish: a sun that is up sinks to it over a ride with a known end
+		sets?: number; // degrees at a ride's finish: the sun moves to it over a ride with a known end
 		azimuth: number; // degrees
 		disc: 'halo' | 'stripes' | 'none';
 		color: string;
 		low?: string; // the bottom of a striped disc; `color` is its top
 	};
 	fogK: number; // extinction per metre
+	/** What falls, drawn over the frame by Diorama 3D's pass (diorama.ts): the room's own rain or snow. */
+	weather?: 'rain' | 'snow';
+	/** The room's moon, drawn in the sky once it is dark. */
+	moon?: string;
 	bands: number; // 0 = smooth, 1 = unlit, 2–3 = soft cel bands
 	shade: string; // shadow tint
 	skyFill: number;
@@ -324,9 +328,11 @@ export function skyMaterial(style: Style): THREE.ShaderMaterial {
 				value:
 					style.sun.disc === 'stripes' ? 2 : style.sun.disc === 'halo' ? 1 : 0,
 			},
+			uMoon: { value: col(style.moon) },
+			uMoonOn: { value: style.moon ? 1 : 0 },
 		},
 		vertexShader: /* glsl */ `varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-		fragmentShader: /* glsl */ `uniform vec3 uTop, uHorizon, uSunward, uBand, uSun, uSunCol, uSunLow; uniform float uDisc, uPeach, uDusk; uniform sampler2D uSkyline; varying vec3 vDir;
+		fragmentShader: /* glsl */ `uniform vec3 uTop, uHorizon, uSunward, uBand, uSun, uSunCol, uSunLow; uniform float uDisc, uPeach, uDusk, uMoonOn; uniform vec3 uMoon; uniform sampler2D uSkyline; varying vec3 vDir;
 			${OKLAB}
 			void main(){
 				float h = max(vDir.y, 0.0);
@@ -355,6 +361,11 @@ export function skyMaterial(style: Style): THREE.ShaderMaterial {
 					}
 				}
 				gl_FragColor = vec4(c * uDusk, 1.0);
+				// The room's moon, once it is dark: flat, a bite out of it, never dimmed by the dusk.
+				if (uMoonOn > 0.5 && uDusk < 0.7) {
+					vec3 moon = normalize(vec3(-uSun.x, 0.55, -uSun.z));
+					if (length(vDir - moon) < 0.045 && length(vDir - moon - vec3(0.018, 0.01, 0.0)) > 0.04) gl_FragColor.rgb = uMoon;
+				}
 				#include <colorspace_fragment>
 			}`,
 	});

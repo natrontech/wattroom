@@ -461,6 +461,15 @@
 	--world-dio-sun: #ffd9a0;
 	--world-dio-road-asphalt: #6a6694;
 	--world-dio-road-shoulder: #9a8fb0;
+	/* Diorama 3D at night: the room's night window (lounge/palette.ts), its moon, moonlight for the sun. */
+	--world-dio-night-sky-zenith: #2e0b66;
+	--world-dio-night-sky-horizon: #6b1f8f;
+	--world-dio-night-sky-shade: #2a1460;
+	--world-dio-night-moonlight: #8f9cf0;
+	--world-dio-night-moon: #a8b4f0;
+	/* The room's weather over it: the grey a sky goes under rain, and under snow. */
+	--world-dio-rain-overcast: #6e6a8c;
+	--world-dio-snow-overcast: #b8b4d0;
 
 	--world-kit-skin: #858585; /* #3413's neutral tone: none of the eight swatches */
 	--world-kit-shoe: #ece9f2;
