@@ -390,6 +390,16 @@ function pet(g: Ctx, f: Figure, shoulder: P, top: P) {
 }
 
 /**
+ * Where a pedal is at `stroke`, in the bike's x forward, y up: a foot goes
+ * over the top toward the bars as the stroke grows. The right pedal is
+ * `side` 1, the left a half turn on.
+ */
+export function pedalAt(stroke: number, side: number): [number, number] {
+	const a = -(stroke / PEDAL_FRAMES) * Math.PI * 2 + (side > 0 ? 0 : Math.PI);
+	return [BB[0] + Math.cos(a) * CRANK, BB[1] + Math.sin(a) * CRANK];
+}
+
+/**
  * The bike, and whoever is on it, seen from `view` with its ground at
  * (ox, oy). `stroke` is how far round the pedals are, in frames; a towel hangs
  * over the bars of a bike nobody rides.
@@ -409,7 +419,7 @@ export function drawCyclist(
 	const across = Math.abs(cos);
 	const angle = (stroke / PEDAL_FRAMES) * Math.PI * 2;
 	// Out of the saddle the bike rocks under you, away from the foot going down.
-	const rock = opts.standing ? Math.sin(angle) * 0.13 : 0;
+	const rock = opts.standing ? Math.sin(-angle) * 0.13 : 0;
 	/** Where a joint stands in this pose, before the bike rocks. */
 	const pose = (p: P): P => (opts.standing ? (STANDING.get(p) ?? p) : p);
 	const stood = (p: P): P => {
@@ -493,12 +503,8 @@ export function drawCyclist(
 	};
 	/** One side's crank and pedal; f.left is -1, the right +1, half a turn apart. */
 	const footOf = (side: number): P => {
-		const a = angle + (side > 0 ? 0 : Math.PI);
-		return [
-			BB[0] + Math.cos(a) * CRANK,
-			BB[1] + Math.sin(a) * CRANK,
-			side * PEDAL_Z,
-		];
+		const [x, y] = pedalAt(stroke, side);
+		return [x, y, side * PEDAL_Z];
 	};
 	const crank = (side: number) => {
 		const foot = footOf(side);
