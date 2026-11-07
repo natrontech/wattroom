@@ -18,6 +18,7 @@ type CrewSessions interface {
 	CrewSessions(crew string) []protocol.LiveSession
 	OpenCrewSession(crew string, rider protocol.Rider, pick protocol.Control) (id, code, message string)
 	OpenRideTogether(crew string, rider protocol.Rider) string
+	OpenCrewGame(crew string, rider protocol.Rider, cmd protocol.Control) (id, code, message string)
 }
 
 // SetCrewSessions wires the hub's crew sessions in.
@@ -57,7 +58,8 @@ func (s *Service) handleOpenCrewSession(w http.ResponseWriter, r *http.Request) 
 	if !ok {
 		return
 	}
-	// The socket's pick, or {"together": true}: a session with no workout.
+	// The socket's pick or game, or {"together": true}: a session with no
+	// workout.
 	var body struct {
 		protocol.Control
 		Together bool `json:"together"`
@@ -72,7 +74,11 @@ func (s *Service) handleOpenCrewSession(w http.ResponseWriter, r *http.Request) 
 		httpx.WriteJSON(w, http.StatusCreated, map[string]string{"id": id})
 		return
 	}
-	id, code, message := s.crewSessions.OpenCrewSession(store.UUIDString(crewID), rider, body.Control)
+	open := s.crewSessions.OpenCrewSession
+	if body.Action == "game" {
+		open = s.crewSessions.OpenCrewGame
+	}
+	id, code, message := open(store.UUIDString(crewID), rider, body.Control)
 	if code != "" {
 		status := http.StatusBadRequest
 		switch code {

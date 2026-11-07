@@ -194,34 +194,7 @@ func (h *Hub) control(c *client, rm *channelState, rider protocol.Rider, cmd pro
 		return
 	}
 	if cmd.Action == "game" {
-		route, refused := h.askedRoute(cmd, rider.ID, rm.channel)
-		if refused != nil {
-			h.writeError(c, refused.Code, refused.Message)
-			return
-		}
-		// Absent is Last Light's default, which startGameOn fills in.
-		if cmd.GameMode == modeLastLight && cmd.Minutes != 0 && !protocol.LastLightLength(cmd.Minutes) {
-			h.writeError(c, "validation_error", "Last Light runs 10, 20 or 30 minutes.")
-			return
-		}
-		if cmd.GameMode == modeWheelrace && cmd.Minutes != 0 && !protocol.WheelraceLength(cmd.Minutes) {
-			h.writeError(c, "validation_error", "A Wheelrace's par is 15 to 45 minutes.")
-			return
-		}
-		if route != nil && isRace(cmd.GameMode) {
-			// A race rides its whole road from km 0, one way, to a line
-			// (ADR-0067): its own model counts no start, turn or lap.
-			route.FromM, route.Reverse, route.Loop = 0, false, false
-		}
-		if route != nil {
-			road, refusal := h.gameRoad(*route, rider.ID, rm.channel)
-			if refusal != "" {
-				h.writeError(c, "forbidden", refusal)
-				return
-			}
-			route.road = road
-		}
-		if code, refusal := rm.startGameOn(cmd.GameMode, route, cmd.Minutes, rider, h.now()); code != "" {
+		if code, refusal := h.startGame(rm, cmd, rider); code != "" {
 			h.writeError(c, code, refusal)
 		}
 		return
@@ -276,4 +249,34 @@ func (h *Hub) askedRoute(cmd protocol.Control, coach, channel string) (*routeRid
 		return nil, refused
 	}
 	return &route, nil
+}
+
+// startGame is a coach's game start in rm, from the socket or a crew
+// session's open (docs/SESSIONS.md): the road it asks for, its length, and
+// the mode on its session.
+func (h *Hub) startGame(rm *channelState, cmd protocol.Control, rider protocol.Rider) (code, message string) {
+	route, refused := h.askedRoute(cmd, rider.ID, rm.channel)
+	if refused != nil {
+		return refused.Code, refused.Message
+	}
+	// Absent is Last Light's default, which startGameOn fills in.
+	if cmd.GameMode == modeLastLight && cmd.Minutes != 0 && !protocol.LastLightLength(cmd.Minutes) {
+		return "validation_error", "Last Light runs 10, 20 or 30 minutes."
+	}
+	if cmd.GameMode == modeWheelrace && cmd.Minutes != 0 && !protocol.WheelraceLength(cmd.Minutes) {
+		return "validation_error", "A Wheelrace's par is 15 to 45 minutes."
+	}
+	if route != nil && isRace(cmd.GameMode) {
+		// A race rides its whole road from km 0, one way, to a line
+		// (ADR-0067): its own model counts no start, turn or lap.
+		route.FromM, route.Reverse, route.Loop = 0, false, false
+	}
+	if route != nil {
+		road, refusal := h.gameRoad(*route, rider.ID, rm.channel)
+		if refusal != "" {
+			return "forbidden", refusal
+		}
+		route.road = road
+	}
+	return rm.startGameOn(cmd.GameMode, route, cmd.Minutes, rider, h.now())
 }

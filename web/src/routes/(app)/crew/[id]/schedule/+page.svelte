@@ -1,9 +1,9 @@
 <script lang="ts">
 	// The crew's Schedule (#2452, ADR-0058): the room's Sessions place, ported
-	// onto the crew — one calendar, and a plan names the voice channel it will
-	// run in, or none yet. Any member plans and answers; the owner and admins
-	// move and cancel any plan, a member their own; starting one opens its
-	// session in its channel with you as coach (#2440). Owns the four states
+	// onto the crew — one calendar. Any member plans and answers; the owner
+	// and admins move and cancel any plan, a member their own; starting one
+	// opens a session of the crew's own with you as coach (docs/SESSIONS.md,
+	// #2440). Owns the four states
 	// (errors.md).
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
@@ -13,11 +13,9 @@
 		copyCalendarLink,
 		RESET_DONE,
 	} from '$lib/calendar-link';
-	import { fetchCrewChannels, type CrewChannel } from '$lib/channels';
 	import Banner from '$lib/components/Banner.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import NotifyOffer from '$lib/components/NotifyOffer.svelte';
-	import Select from '$lib/components/Select.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import WhenPicker from '$lib/components/WhenPicker.svelte';
 	import WorkoutPreview from '$lib/components/WorkoutPreview.svelte';
@@ -45,7 +43,6 @@
 	import { needsTrainer } from '$lib/session/sensor-status';
 	import { formatWhen } from '$lib/format';
 	import { presence } from '$lib/presence.svelte';
-	import { crewLive } from '$lib/nav/crew-live.svelte';
 	import RsvpRow from '$lib/session/RsvpRow.svelte';
 	import SessionPicker from '$lib/session/SessionPicker.svelte';
 	import { takePickerDoor } from '$lib/session/doors';
@@ -69,7 +66,6 @@
 	const id = $derived(page.params.id ?? '');
 	let crew = $state<Crew | null>(untrack(() => data.crew));
 	let plans = $state<CrewPlan[] | null>(untrack(() => data.plans));
-	let voice = $state<CrewChannel[]>(untrack(() => data.voice));
 	let error = $state<string | null>(untrack(() => data.error));
 	let errorCode = $state<string | null>(untrack(() => data.errorCode));
 	// The plan a link named (#2608): every surface that shows one links to
@@ -116,23 +112,6 @@
 		if (untrack(() => crew)) void reload();
 	});
 
-	// Where a new plan goes: the crew's first voice channel, or none.
-	let planChannel = $state(untrack(() => data.voice[0]?.id ?? ''));
-	// Where a plan that names no channel starts (#2607): chosen on its own
-	// row. It used to borrow the picker's choice, so picking "No channel yet"
-	// for one plan greyed every other's Start now, and the hint pointed
-	// "above" at a control that had moved into the picker. Falls back to the
-	// first channel if the chosen one goes.
-	let startChoice = $state(untrack(() => data.voice[0]?.id ?? ''));
-	const startIn = $derived(voice.find((c) => c.id === startChoice) ?? voice[0]);
-	const voiceOptions = $derived(
-		voice.map((c) => ({ value: c.id, label: c.name })),
-	);
-	const channelOptions = $derived([
-		...voice.map((c) => ({ value: c.id, label: c.name })),
-		{ value: '', label: 'No channel yet' },
-	]);
-
 	// The picker, plan-only: a calendar starts nothing (#1767). "Plan a
 	// session" on the crew's Home and on yours lands here with it open
 	// (#2572), so the plan is made where it will be listed.
@@ -151,7 +130,6 @@
 			workoutName: name,
 			workoutJson: json,
 			startsAt: startsAtIso,
-			channelId: planChannel || undefined,
 		});
 		busy = false;
 		// Closed only once the server took it (#1766): a refused time keeps
@@ -164,14 +142,6 @@
 
 	const minutes = (json: string) =>
 		Math.round(segmentsDuration(parseSharedSegments(json)) / 60);
-	/** Who is coaching a session in the plan's channel right now (#2606):
-	 *  its Start now would be refused with their name, so it stands down
-	 *  and says so instead (errors.md: never a button that will fail). */
-	const coachingIn = (entry: CrewPlan) =>
-		entry.channelId
-			? crewLive.crew(id)?.channels.find((c) => c.id === entry.channelId)
-					?.session?.coachName
-			: undefined;
 
 	const going = (entry: CrewPlan) => entry.going ?? [];
 	const answer = (entry: CrewPlan) => entry.yourAnswer ?? null;
@@ -240,11 +210,7 @@
 
 	async function start(entry: CrewPlan) {
 		busy = true;
-		const res = await startCrewPlan(
-			id,
-			entry.id,
-			entry.channelId ? undefined : startIn?.id,
-		);
+		const res = await startCrewPlan(id, entry.id);
 		busy = false;
 		if (!res.ok) {
 			toasts.push(res.error.message, { tone: 'error' });
@@ -269,11 +235,9 @@
 				moveAt = toLocalInput(new Date(entry.startsAt));
 			},
 			cancel: () => void cancel(entry),
-			startHint: startHint(entry, {
+			startHint: startHint({
 				due: planDue(entry.startsAt),
 				spectator: device.spectator,
-				voiceChannels: voice.length > 0,
-				coaching: coachingIn(entry),
 			}),
 			start: () => void start(entry),
 			busy,
@@ -299,12 +263,6 @@
 		error = null;
 		await reload();
 	}
-	// The pick's list, read again as the picker opens: a channel made a
-	// minute ago in Settings should be there to pick.
-	async function reloadVoice() {
-		const res = await fetchCrewChannels(id);
-		if (res.ok) voice = res.data.channels.filter((c) => c.kind === 'voice');
-	}
 </script>
 
 <svelte:head>
@@ -316,12 +274,8 @@
 {/snippet}
 
 {#snippet planButton(label: string)}
-	<button
-		onclick={() => {
-			picking = true;
-			void reloadVoice();
-		}}
-		class="btn btn-primary btn-xs"><Plus size={13} /> {label}</button
+	<button onclick={() => (picking = true)} class="btn btn-primary btn-xs"
+		><Plus size={13} /> {label}</button
 	>
 {/snippet}
 
@@ -397,11 +351,9 @@
 										<span class="text-ink text-xs font-medium"
 											>starting soon</span
 										>
-									{:else if coachingIn(entry)}
-										<span class="text-muted text-xs"
-											>{coachingIn(entry)} is coaching in {entry.channelName}</span
-										>
-									{:else if entry.channelId}
+									{:else}
+										<!-- A plan opens a session of the crew's own, in no voice
+										     channel (docs/SESSIONS.md): one Start for every plan. -->
 										{#if unpaired}<a
 												href="/settings/equipment"
 												class="text-muted text-xs underline"
@@ -414,30 +366,6 @@
 											>{unpaired
 												? 'Start without a trainer'
 												: 'Start now'}</button
-										>
-									{:else if startIn}
-										<!-- No channel named: where it runs is chosen here, with
-										     the start, and the button says where (#2607). -->
-										<span class="w-44">
-											<Select
-												label="voice channel to start it in"
-												options={voiceOptions}
-												bind:value={startChoice}
-											/>
-										</span>
-										<button
-											onclick={() => void start(entry)}
-											disabled={busy}
-											class="btn {unpaired ? 'btn-secondary' : 'btn-primary'}"
-											>Start in {startIn.name}{unpaired
-												? ' without a trainer'
-												: ''}</button
-										>
-									{:else}
-										<!-- Never a button that will fail (errors.md): said, not
-										     hovered. -->
-										<span class="text-muted text-xs"
-											>This crew has no voice channel you can start it in.</span
 										>
 									{/if}
 								{/if}
@@ -556,22 +484,5 @@
 		{busy}
 		onPlan={plan}
 		onClose={() => (picking = false)}
-	>
-		{#snippet where()}
-			<!-- Where it runs, chosen with what and when (#2572): it used to be a
-			     line on the page behind the picker, set before opening it. -->
-			{#if voice.length > 0}
-				<div class="w-48">
-					<span class="eyebrow">where</span>
-					<div class="mt-1">
-						<Select
-							label="voice channel"
-							options={channelOptions}
-							bind:value={planChannel}
-						/>
-					</div>
-				</div>
-			{/if}
-		{/snippet}
-	</SessionPicker>
+	></SessionPicker>
 {/if}

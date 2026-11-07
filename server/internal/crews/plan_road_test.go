@@ -180,6 +180,7 @@ func TestStartingARoadPlanSendsTheCrewCut(t *testing.T) {
 	if status, _ := h.call(t, "bob", http.MethodPut, schedulePath(crew, "/", plan, "/rsvp"), `{"going":false}`); status != http.StatusNoContent {
 		t.Fatalf("bob answers: %d", status)
 	}
+	// An older client still names a channel; the start lets it go.
 	status, body = h.call(t, "bob", http.MethodPost, schedulePath(crew, "/", plan, "/started"),
 		fmt.Sprintf(`{"channelId":%q}`, store.UUIDString(channel)))
 	if status != http.StatusOK {
@@ -188,8 +189,10 @@ func TestStartingARoadPlanSendsTheCrewCut(t *testing.T) {
 	if len(opener.awaited) != 1 || opener.awaited[0].Name != "alice" || opener.awaited[0].ID == "" {
 		t.Errorf("the start line awaits %+v, want alice alone", opener.awaited)
 	}
-	if body["sessionId"] != "" {
-		t.Errorf("bob is sent to the ride %v; its start line is in the channel", body["sessionId"])
+	// Its start line is a crew session of its own (docs/SESSIONS.md), at
+	// its own address: bob goes there.
+	if want := "session-in-" + protocol.CrewSessionPlace(store.UUIDString(crew.ID), ""); body["sessionId"] != want {
+		t.Errorf("bob is sent to %v, want the crew session %s", body["sessionId"], want)
 	}
 	var w struct {
 		Road struct {

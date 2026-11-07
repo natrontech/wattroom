@@ -126,16 +126,15 @@ export const startedPath = (crewId: string, started: StartedPlan) =>
 		? sessionPath(crewId, started.sessionId)
 		: voiceChannelPath(crewId, started.channelId);
 
-/** Opens the plan's session in its channel with you as coach (#2440). A plan
- *  that names no channel takes one here. */
+/** Opens the plan's session, one of the crew's own (docs/SESSIONS.md), with
+ *  you as coach (#2440). */
 export function startCrewPlan(
 	crewId: string,
 	planId: string,
-	channelId?: string,
 ): Promise<ApiResult<StartedPlan>> {
 	return api(`/api/crews/${crewId}/schedule/${planId}/started`, {
 		method: 'POST',
-		json: channelId ? { channelId } : {},
+		json: {},
 	});
 }
 

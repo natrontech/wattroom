@@ -237,3 +237,38 @@ func TestRideTogether(t *testing.T) {
 		t.Fatalf("close = %+v, want a close with no rides of its own", end)
 	}
 }
+
+// A plan and a game started from a call open sessions of the crew's own
+// (docs/SESSIONS.md): each in a room of its own, and no voice channel holds
+// one, so a call keeps its room while they ride.
+func TestPlansAndGamesOpenCrewSessions(t *testing.T) {
+	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
+	alice := protocol.Rider{ID: "alice", Name: "Alice", Role: "member", FtpWatts: 250}
+	plan, code, msg := h.OpenSession(protocol.CrewSessionPlace("crew1", ""), alice, "Tempo", crewWorkout, nil, "", nil)
+	if code != "" {
+		t.Fatalf("plan: %s %s", code, msg)
+	}
+	game, code, msg := h.OpenCrewGame("crew1", alice, protocol.Control{GameMode: "points-race"})
+	if code != "" {
+		t.Fatalf("game: %s %s", code, msg)
+	}
+	live := h.CrewSessions("crew1")
+	ids := map[string]string{}
+	for _, l := range live {
+		ids[l.ID] = l.Phase
+	}
+	if len(live) != 2 || ids[plan] != "countdown" || ids[game] != "running" {
+		t.Fatalf("live = %+v, want the plan counting down and the game running, side by side", live)
+	}
+	for _, rm := range h.liveChannels() {
+		if _, crewOwn := protocol.CrewOfPlace(rm.channel); !crewOwn {
+			t.Fatalf("a voice channel %q holds a session", rm.channel)
+		}
+	}
+	if _, code, _ := h.OpenCrewGame("crew1", alice, protocol.Control{GameMode: "no-such-mode"}); code == "" {
+		t.Fatal("an unknown game opened")
+	}
+	if n := len(h.CrewSessions("crew1")); n != 2 {
+		t.Fatalf("%d sessions after a refused game, want 2: a refusal leaves no room", n)
+	}
+}
