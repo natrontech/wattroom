@@ -45,32 +45,32 @@ export const CELL_H = 60;
 export const GROUND = 55;
 
 // The bike, x forward and y up from the ground, z to the rider's right. A
-// road bike's shape at the people's scale: two thirds of the height is wheel
-// and frame, so a rider stands over it, never perched on a toy.
-const WHEEL = 9;
-const REAR = [-14, WHEEL, 0];
-const FRONT = [14, WHEEL, 0];
-const BB = [-2, 8, 0];
-const SEAT = [-7, 24, 0];
-const HEAD_TOP = [9, 24, 0];
-const HEAD_LOW = [11, 19, 0];
-const BARS = [15, 26, 0];
-const CRANK = 4;
-const PEDAL_Z = 4;
-// The rider: back low, arms long to the hoods, and legs a little longer than
-// the saddle's height, so the knee is never locked.
-const HIP = [-7, 26, 0];
-const SHOULDER = [7, 36, 0];
-const NECK = [9, 39, 0];
-const HEAD = [12, 43, 0];
-const THIGH = 11;
-const SHIN = 11;
-/** Standing on the pedals: the hips up and over the cranks, the back nearer upright. */
+// small bike on round wheels under a chibi rider, built like the room's
+// people: a low saddle, so the legs are short and thick, and high bars.
+const WHEEL = 7.5;
+const REAR = [-12.5, WHEEL, 0];
+const FRONT = [12.5, WHEEL, 0];
+const BB = [-1, 6.5, 0];
+const SEAT = [-5, 16, 0];
+const HEAD_TOP = [9, 16, 0];
+const HEAD_LOW = [10, 11, 0];
+const BARS = [12, 18.5, 0];
+const CRANK = 3.5;
+const PEDAL_Z = 3.5;
+// The rider: sat up, arms bent to the bars, and legs just longer than hip to
+// ankle at the bottom of the stroke, so the knee is never locked.
+const HIP = [-5, 18, 0];
+const SHOULDER = [2.5, 27, 0];
+const NECK = [4, 29.5, 0];
+const HEAD = [6, 33.5, 0];
+const THIGH = 7.5;
+const SHIN = 7;
+/** Standing on the pedals: the hips up and over the cranks, leaning to the bars. */
 const STANDING = new Map<P, P>([
-	[HIP, [-2, 31, 0]],
-	[SHOULDER, [10, 39, 0]],
-	[NECK, [12, 41.5, 0]],
-	[HEAD, [15, 45, 0]],
+	[HIP, [0, 18.5, 0]],
+	[SHOULDER, [6.5, 27, 0]],
+	[NECK, [8, 29.5, 0]],
+	[HEAD, [10, 33, 0]],
 ]);
 /** The bike and the body against the head: smaller, so the rider reads as a chibi. */
 const SMALL = 0.8;
@@ -79,16 +79,25 @@ const ABOVE = (14 * Math.PI) / 180;
 
 type P = readonly number[];
 type Tone = 'bike' | 'pants' | 'shirt' | 'arm' | 'skin' | 'shoe' | 'scarf';
-type Pixel = { c: string; order: number; tone: Tone | null };
+type Pixel = { c: string; order: number; group: number; tone: Tone | null };
+/** What a body is made of: where one of its parts covers another, a line of ink parts them. */
+const BODY = new Set<Tone | null>(['pants', 'shirt', 'arm', 'shoe']);
 type Paint = (t: number, shaded: boolean, x: number, y: number) => string;
 
 /** What is drawn so far: a pixel at a time, nearest last. */
 class Picture {
 	pixels = new Map<number, Pixel>();
 	order = 0;
+	/** Which part of the picture is being drawn: a leg, an arm, the torso. */
+	group = 0;
 	private key = (x: number, y: number) => (y + 256) * 1024 + x + 256;
 	put(x: number, y: number, c: string, tone: Tone | null) {
-		this.pixels.set(this.key(x, y), { c, order: this.order, tone });
+		this.pixels.set(this.key(x, y), {
+			c,
+			order: this.order,
+			group: this.group,
+			tone,
+		});
 	}
 	/** Ink where a shape meets nothing, or something further off that is not itself. */
 	inked(): [number, number, string][] {
@@ -98,6 +107,14 @@ class Picture {
 			for (const d of [1, -1, 1024, -1024]) {
 				const n = this.pixels.get(k + d);
 				if (!n) edges.set(k + d, C.ink);
+				// A leg in front of the other, or an arm across the chest.
+				else if (
+					BODY.has(p.tone) &&
+					BODY.has(n.tone) &&
+					n.group !== p.group &&
+					n.order < p.order
+				)
+					edges.set(k + d, C.ink);
 			}
 		}
 		const out: [number, number, string][] = [];
@@ -479,7 +496,7 @@ export function drawCyclist(
 		bikeTube(REAR, BB);
 		bikeTube(REAR, SEAT);
 		bikeTube(SEAT, BB);
-		tube(pic, at([-11, 25, 0]), at([-3, 25, 0]), 2, 2, flat(C.cable), 'bike');
+		tube(pic, at([-8, 17, 0]), at([-2.5, 17, 0]), 2, 2, flat(C.cable), 'bike');
 	};
 	const tubes = () => {
 		bikeTube(BB, HEAD_LOW);
@@ -491,8 +508,8 @@ export function drawCyclist(
 		tube(pic, at(HEAD_TOP), at(BARS), 2, 2, flat(C.cable), 'bike');
 		tube(
 			pic,
-			at([BARS[0], BARS[1], -11]),
-			at([BARS[0], BARS[1], 11]),
+			at([BARS[0], BARS[1], -9]),
+			at([BARS[0], BARS[1], 9]),
 			2,
 			2,
 			flat(C.cable),
@@ -524,18 +541,19 @@ export function drawCyclist(
 		const foot = footOf(side);
 		const h = pose(HIP);
 		const hip = [h[0], h[1], side * 3];
-		const knee = kneeOf(hip, foot);
-		knee[2] = side * (4 + across);
-		const ankle = [foot[0] - 1, foot[1] + 2, foot[2]];
+		const ankle = [foot[0] - 0.5, foot[1] + 1.5, foot[2]];
+		const knee = kneeOf(hip, ankle);
+		knee[2] = side * (3.5 + across);
 		const pants = near ? legible(rider.pants) : rider.pantsShade;
-		const shade = near ? shadeOf(pants) : rider.pantsShade;
-		tube(pic, at(hip), at(knee), 3.6, 3, flat(pants, shade), 'pants');
+		// Flat, so the near leg reads as one shape against the far one.
+		const shade = pants;
+		tube(pic, at(hip), at(knee), 4, 3.6, flat(pants, shade), 'pants');
 		tube(
 			pic,
 			at(knee),
 			at(ankle),
-			2.6,
-			2,
+			3.4,
+			3,
 			rider.socks
 				? (t, s) => (t > 0.55 ? rider.socks! : s ? shade : pants)
 				: flat(pants, shade),
@@ -543,19 +561,19 @@ export function drawCyclist(
 		);
 		tube(
 			pic,
-			at([foot[0] - 2.5, foot[1] + 1, foot[2]]),
-			at([foot[0] + 3, foot[1] + 0.5, foot[2]]),
-			2.5,
-			2.5,
+			at([foot[0] - 2, foot[1] + 0.8, foot[2]]),
+			at([foot[0] + 2.5, foot[1] + 0.5, foot[2]]),
+			3.2,
+			3.2,
 			flat(rider.shoes),
 			'shoe',
 		);
 	};
 	const arm = (rider: Figure, side: number) => {
 		const sh = pose(SHOULDER);
-		const shoulder = [sh[0], sh[1] - 1, side * 7];
-		const hand = [BARS[0], BARS[1] + 1, side * 9];
-		const elbow = [10, 30, side * 11];
+		const shoulder = [sh[0], sh[1] - 1, side * 6.5];
+		const hand = [BARS[0], BARS[1] + 1, side * 8];
+		const elbow = [(sh[0] + BARS[0]) / 2 + 0.5, BARS[1] + 3, side * 8.5];
 		// A tee's sleeves end at the elbow, and a vest has none.
 		const bare = rider.top === 0 || rider.top === 4;
 		tube(
@@ -586,14 +604,19 @@ export function drawCyclist(
 		const stripe = rider.stripes ? stripeOn(rider.shirt) : null;
 		// The box of the back: narrow at the hips, broad at the shoulders, as
 		// deep as a chest, across the line of the spine.
+		const hip = pose(HIP);
+		const top = pose(SHOULDER);
+		const spine = Math.hypot(top[0] - hip[0], top[1] - hip[1]);
+		const nx = -(top[1] - hip[1]) / spine;
+		const ny = (top[0] - hip[0]) / spine;
 		const box: P[] = [];
 		for (const [p, half] of [
-			[pose(HIP), 5.5],
-			[pose(SHOULDER), 8.5],
+			[hip, 5.5],
+			[top, 7.5],
 		] as const)
 			for (const z of [-half, half])
 				for (const up of [-3.5, 3.5])
-					box.push(at([p[0] - 0.57 * up, p[1] + 0.82 * up, z]));
+					box.push(at([p[0] + nx * up, p[1] + ny * up, z]));
 		tube(
 			pic,
 			at(SHOULDER),
@@ -647,10 +670,13 @@ export function drawCyclist(
 				draw: () => arm(f, side),
 			});
 	}
-	for (const p of parts.sort((a, b) => b.depth - a.depth)) p.draw();
+	for (const p of parts.sort((a, b) => b.depth - a.depth)) {
+		pic.group++;
+		p.draw();
+	}
 
 	if (opts.shadow) {
-		const long = 20 * Math.abs(sin) + 6;
+		const long = 17 * Math.abs(sin) + 5;
 		for (let y = -1; y <= 1; y++)
 			for (let x = -long; x <= long; x++)
 				if ((Math.round(ox + x) + oy + y) % 2 === 0)
