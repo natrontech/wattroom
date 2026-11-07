@@ -33,6 +33,8 @@ if (LOOK !== 'diorama' && LOOK !== 'smooth') {
 	console.error(`BENCH_LOOK is diorama or smooth, not ${LOOK}.`);
 	process.exit(1);
 }
+/** The World control's Light, the lowest rung (BENCH_LIGHT=1). */
+const LIGHT = process.env.BENCH_LIGHT === '1';
 const RIGS = [
 	{ name: 'software', rate: 1 },
 	{ name: 'software, CPU 4× slower', rate: 4 },
@@ -77,7 +79,7 @@ async function bench(browser, rig) {
 	try {
 		// The perf page lives in the app: signed out, it is sent to the sign-in page and its world goes.
 		await page.goto(`${BASE}/api/auth/dev/start?as=Bench`);
-		await page.goto(`${BASE}/dev/perf?case=world`);
+		await page.goto(`${BASE}/dev/perf?case=world${LIGHT ? '&light=1' : ''}`);
 	} catch (err) {
 		throw new Error(
 			`Nothing answers on ${BASE}: start \`make dev-web\` first.`,
@@ -184,7 +186,7 @@ try {
 
 const r0 = results[0];
 console.log(
-	`/dev/perf?case=world in ${LOOK === 'diorama' ? 'Diorama 3D' : 'Smooth'} at ${VIEW.width}×${VIEW.height} (${(r0.pixels / 1e6).toFixed(2)} MP), ` +
+	`/dev/perf?case=world in ${LOOK === 'diorama' ? 'Diorama 3D' : 'Smooth'}${LIGHT ? ', Light' : ''} at ${VIEW.width}×${VIEW.height} (${(r0.pixels / 1e6).toFixed(2)} MP), ` +
 		`${r0.hz.toFixed(0)} Hz, ${SECONDS} s after ${WARMUP} s; renderer: ${r0.renderer}\n`,
 );
 console.log(

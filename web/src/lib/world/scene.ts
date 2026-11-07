@@ -140,6 +140,8 @@ export function mount(
 	const { scene, camera } = world;
 	camera.layers.enable(WORDS);
 	const pass = diorama ? dioramaPass(renderer) : null;
+	// The lowest rung draws Diorama without its pass: what keeps a slow machine at 30 fps before the Skyline.
+	pass?.setLite(rung <= 1);
 	const draw = (s: THREE.Object3D, c: THREE.PerspectiveCamera) =>
 		pass ? pass.render(s, c) : renderer.render(s, c);
 	world.setFar(RUNGS[rung].far);
@@ -218,6 +220,7 @@ export function mount(
 		rememberRung(device, next);
 		if (next !== rung) {
 			rung = next;
+			pass?.setLite(rung <= 1);
 			// Resizes the frame and shows or hides the far ring; nothing is rebuilt.
 			fit();
 			world.setFar(RUNGS[rung].far);

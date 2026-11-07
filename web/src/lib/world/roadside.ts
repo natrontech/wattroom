@@ -307,11 +307,15 @@ export function makeRoadside(route: Route, world: World) {
 	});
 	const shade = shadeMaterial();
 	const group = new THREE.Group();
-	const stretches = new Map<number, ReturnType<typeof stretch>>();
+	/** Each stretch standing, by its index: what it stands. */
+	const stretches = new Map<number, Spot[]>();
 	const placer = roadsidePlacer(route, world);
+	let drawn: { dispose(): void } | null = null;
 
-	function stretch(b: number) {
-		const places = placer.spots(b);
+	/** Everything standing, as one instanced draw and its shade as another, whatever the stretches. */
+	function redraw() {
+		drawn?.dispose();
+		const places = [...stretches.values()].flat();
 		const geometry = new THREE.PlaneGeometry(1, 1).translate(0.5, 0.5, 0);
 		const cells = new Float32Array(places.length * 4);
 		const flips = new Float32Array(places.length);
@@ -343,8 +347,7 @@ export function makeRoadside(route: Route, world: World) {
 		const shadows = shadowsOf(places, s, shade);
 		const held = new THREE.Group().add(shadows.mesh, mesh);
 		group.add(held);
-		return {
-			count: places.length,
+		drawn = {
 			dispose() {
 				group.remove(held);
 				mesh.dispose(); // its instances' buffers
@@ -357,27 +360,33 @@ export function makeRoadside(route: Route, world: World) {
 	return {
 		group,
 		/** Things standing now. */
-		count: () => [...stretches.values()].reduce((n, b) => n + b.count, 0),
+		count: () => [...stretches.values()].reduce((n, b) => n + b.length, 0),
 		/**
 		 * You are `d` along the road: the stretches round you stand, the rest
-		 * go. One is built a frame, the nearest first; `all` builds every one
-		 * now, for a first frame or a picture.
+		 * go. One is built a frame, the nearest first, once the stage has
+		 * settled the tiles it keeps off; `all` builds every one now, for a
+		 * first frame or a picture.
 		 */
 		update(d: number, all = false) {
 			const want = stretchesFor(d, route.length, !!route.loop);
-			for (const [b, held] of stretches)
+			let changed = false;
+			for (const b of stretches.keys())
 				if (!want.includes(b)) {
-					held.dispose();
 					stretches.delete(b);
+					changed = true;
 				}
 			for (const b of want) {
 				if (stretches.has(b)) continue;
-				stretches.set(b, stretch(b));
-				if (!all) return;
+				// The stage settles a tile a frame (stage.ts); settling them here would be a stall.
+				if (!all && !placer.ready(b)) continue;
+				stretches.set(b, placer.spots(b));
+				changed = true;
+				if (!all) break;
 			}
+			if (changed) redraw();
 		},
 		dispose() {
-			for (const held of stretches.values()) held.dispose();
+			drawn?.dispose();
 			stretches.clear();
 			material.dispose();
 			shade.dispose();

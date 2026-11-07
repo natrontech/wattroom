@@ -268,22 +268,30 @@ export function roadsidePlacer(route: Route, world: World) {
 		return out;
 	}
 
-	/** What the world stands in 3D round stretch b that the roadside keeps off. */
-	function obstacles(b: number): Obstacle[] {
+	/** The world's tiles stretch b's roadside reaches into. */
+	function tilesOf(b: number): [number, number][] {
 		const [minX, minZ, maxX, maxZ] = box(b);
 		const pad = BAND_M + 10;
 		const [i0, j0] = tileOf(minX - pad, minZ - pad);
 		const [i1, j1] = tileOf(maxX + pad, maxZ + pad);
-		const out: Obstacle[] = [];
+		const out: [number, number][] = [];
 		for (let i = Math.min(i0, i1); i <= Math.max(i0, i1); i++)
-			for (let j = Math.min(j0, j1); j <= Math.max(j0, j1); j++) {
-				const t = world.tile(i, j);
-				for (const p of t.props)
-					if (!spriteOwns(world, p.kind, p.x, p.z))
-						out.push(obstacleOf(p.kind, p.x, p.z, p.scale));
-				for (const p of t.pieces) out.push(obstacleOf(p.kind, p.x, p.z));
-				for (const s of t.signs) out.push({ x: s.x, z: s.z, r: 0.6 });
-			}
+			for (let j = Math.min(j0, j1); j <= Math.max(j0, j1); j++)
+				out.push([i, j]);
+		return out;
+	}
+
+	/** What the world stands in 3D round stretch b that the roadside keeps off. */
+	function obstacles(b: number): Obstacle[] {
+		const out: Obstacle[] = [];
+		for (const [i, j] of tilesOf(b)) {
+			const t = world.tile(i, j);
+			for (const p of t.props)
+				if (!spriteOwns(world, p.kind, p.x, p.z))
+					out.push(obstacleOf(p.kind, p.x, p.z, p.scale));
+			for (const p of t.pieces) out.push(obstacleOf(p.kind, p.x, p.z));
+			for (const s of t.signs) out.push({ x: s.x, z: s.z, r: 0.6 });
+		}
 		return out;
 	}
 
@@ -411,5 +419,13 @@ export function roadsidePlacer(route: Route, world: World) {
 		};
 	}
 
-	return { spots };
+	/** Whether every tile stretch b, and each stretch near it, keeps off is settled: building it then settles nothing. */
+	function ready(b: number): boolean {
+		return [b, ...near(b)].every(
+			(k) =>
+				clearOnes.has(k) || tilesOf(k).every(([i, j]) => world.settled(i, j)),
+		);
+	}
+
+	return { spots, ready };
 }
