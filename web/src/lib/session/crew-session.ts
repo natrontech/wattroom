@@ -1,5 +1,6 @@
 import { api, type ApiResult } from '$lib/api';
 import type { ControlRoute } from '$lib/protocol';
+import type { GameStart } from '$lib/session/modes';
 import { flatten } from '$lib/workout/engine';
 import type { Workout } from '$lib/workout/types';
 
@@ -35,5 +36,16 @@ export function startRideTogether(
 	return api<{ id: string }>(`/api/crews/${crew}/sessions`, {
 		method: 'POST',
 		json: { together: true },
+	});
+}
+
+/** Starts a game as a session of the crew's own (docs/SESSIONS.md). */
+export function startCrewGame(
+	crew: string,
+	game: GameStart,
+): Promise<ApiResult<{ id: string }>> {
+	return api<{ id: string }>(`/api/crews/${crew}/sessions`, {
+		method: 'POST',
+		json: { action: 'game', ...game },
 	});
 }

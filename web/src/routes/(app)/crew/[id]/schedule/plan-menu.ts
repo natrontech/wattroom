@@ -1,5 +1,4 @@
 import type { MenuEntry } from '$lib/context-menu.svelte';
-import type { CrewPlan } from '$lib/crew-schedule';
 import type { RsvpAnswer } from '$lib/session/rsvp';
 import { shareVerb } from '$lib/share';
 import CalendarClock from '@lucide/svelte/icons/calendar-clock';
@@ -76,24 +75,11 @@ export function planEntries(act: PlanActions): MenuEntry[] {
 }
 
 /** Why a plan's Start now is greyed, or '' when it may run — the row's own
- *  rule for its button, worded for the menu. */
-export function startHint(
-	plan: Pick<CrewPlan, 'channelId'>,
-	o: {
-		due: boolean;
-		spectator: boolean;
-		/** A voice channel the rider may enter exists to start a plan that
-		 *  names none in — its row offers the choice (#2607). */
-		voiceChannels: boolean;
-		/** Who coaches a session in its channel right now (#2606). */
-		coaching?: string;
-	},
-): string {
+ *  rule for its button, worded for the menu. A plan opens a session of the
+ *  crew's own (docs/SESSIONS.md), so no voice channel can refuse it. */
+export function startHint(o: { due: boolean; spectator: boolean }): string {
 	// The cockpit stays on the screen a coach rides on (#1767).
 	if (o.spectator) return 'start it from the screen you ride on';
 	if (!o.due) return 'not due yet';
-	if (o.coaching) return `${o.coaching} is coaching a session there`;
-	if (!plan.channelId && !o.voiceChannels)
-		return 'this crew has no voice channel you can start it in';
 	return '';
 }

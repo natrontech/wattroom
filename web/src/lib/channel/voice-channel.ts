@@ -69,7 +69,12 @@ export function voiceChannelData(
 		announcement: announcement.ok ? (announcement.data ?? null) : null,
 		plan:
 			(schedule?.ok &&
-				schedule.data.sessions.find((p) => p.channelId === channelId)) ||
+				// The crew's plans name no channel now (docs/SESSIONS.md):
+				// the next one shows in every room, and an older one still
+				// pinned to a channel shows in that channel's alone.
+				schedule.data.sessions.find(
+					(p) => !p.channelId || p.channelId === channelId,
+				)) ||
 			null,
 		error: channel ? null : NOT_HERE,
 		errorCode: channel ? null : 'not_found',

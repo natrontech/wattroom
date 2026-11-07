@@ -37,41 +37,73 @@ func (h *Hub) OpenCrewSession(crew string, rider protocol.Rider, pick protocol.C
 	if refusal := checkPick(pick); refusal != "" {
 		return "", "validation_error", refusal
 	}
-	id = uuid.NewString()
-	place := protocol.CrewSessionPlace(crew, id)
-	route, refused := h.askedRoute(pick, rider.ID, place)
-	if refused != nil {
-		return "", refused.Code, refused.Message
+	rm := h.newCrewRoom(crew)
+	code, message = h.pickIn(rm, rider, pick)
+	// A road waits on its start line for the coach to start it.
+	if code == "" && pick.Route == nil {
+		code, message = rm.control(protocol.Control{Action: "start"}, rider, h.now())
 	}
-	attached, name, refusal := h.sessionRoad(pick.WorkoutJSON, pick.WorkoutName, rider.ID, place)
+	h.settleCrewRoom(rm, rider, code)
+	if code != "" {
+		return "", code, message
+	}
+	return rm.sessionID, "", ""
+}
+
+// pickIn is a coach's pick in rm, the socket's own: the road it asks for and
+// the crew's cut attached.
+func (h *Hub) pickIn(rm *channelState, rider protocol.Rider, pick protocol.Control) (code, message string) {
+	ride, refused := h.askedRoute(pick, rider.ID, rm.channel)
+	if refused != nil {
+		return refused.Code, refused.Message
+	}
+	attached, name, refusal := h.sessionRoad(pick.WorkoutJSON, pick.WorkoutName, rider.ID, rm.channel)
 	if refusal != "" {
-		return "", "forbidden", refusal
+		return "forbidden", refusal
 	}
 	pick.WorkoutJSON, pick.WorkoutName = attached, name
-	rm := h.stateOf(place)
+	return rm.controlOn(pick, ride, rider, h.now())
+}
+
+// OpenCrewGame opens a game as a session of crew's own (docs/SESSIONS.md):
+// the socket's game start, in a room made for it, with rider coaching.
+func (h *Hub) OpenCrewGame(crew string, rider protocol.Rider, cmd protocol.Control) (id, code, message string) {
+	cmd.Action = "game"
+	rm := h.newCrewRoom(crew)
+	code, message = h.startGame(rm, cmd, rider)
+	h.settleCrewRoom(rm, rider, code)
+	if code != "" {
+		return "", code, message
+	}
+	return rm.sessionID, "", ""
+}
+
+// newCrewRoom makes a crew session's room, its session id minted before it.
+func (h *Hub) newCrewRoom(crew string) *channelState {
+	id := uuid.NewString()
+	rm := h.stateOf(protocol.CrewSessionPlace(crew, id))
 	rm.mu.Lock()
 	rm.sessionID = id
 	rm.mu.Unlock()
-	code, message = rm.controlOn(pick, route, rider, h.now())
-	if code == "" && route == nil {
-		code, message = rm.control(protocol.Control{Action: "start"}, rider, h.now())
-	}
+	return rm
+}
+
+// settleCrewRoom lets a refused open's room go, or tells the crew one opened.
+func (h *Hub) settleCrewRoom(rm *channelState, rider protocol.Rider, code string) {
 	if code != "" {
-		h.CloseChannel(place)
-		return "", code, message
+		h.CloseChannel(rm.channel)
+		return
 	}
-	h.tellChannel(place, rider.ID)
-	return id, "", ""
+	h.tellChannel(rm.channel, rider.ID)
 }
 
 // OpenRideTogether opens a session of crew's with no workout
 // (docs/SESSIONS.md): it runs at once with rider coaching, everyone on it
 // rides their own free ride, and the coach ends it.
 func (h *Hub) OpenRideTogether(crew string, rider protocol.Rider) string {
-	id := uuid.NewString()
-	rm := h.stateOf(protocol.CrewSessionPlace(crew, id))
+	rm := h.newCrewRoom(crew)
+	id := rm.sessionID
 	rm.mu.Lock()
-	rm.sessionID = id
 	rm.session.begin(id, rider.ID, rider.Name)
 	rm.session.runTogether(h.now())
 	rm.resetRunLocked(rider.ID)

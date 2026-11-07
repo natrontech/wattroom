@@ -49,7 +49,8 @@
 	import { takeGameDoor, takePickerDoor } from '$lib/session/doors';
 	import { page } from '$app/state';
 	import { sessionPath } from '$lib/channel/address';
-	import { startCrewSession } from '$lib/session/crew-session';
+	import { startCrewGame, startCrewSession } from '$lib/session/crew-session';
+	import type { GameStart } from '$lib/session/modes';
 	import { liveSessionId } from '$lib/channel/tick-session';
 	import { planDue, startCrewPlan, startedPath } from '$lib/crew-schedule';
 	import { device } from '$lib/device.svelte';
@@ -216,6 +217,19 @@
 	// Whether it follows is the live connection's (#3103): a resume from
 	// the status banner starts a session the same way.
 	const GO = { keepFocus: true, noScroll: true };
+	// A game is a session (docs/SESSIONS.md): from a call it opens one of the
+	// crew's own and this tab goes to it; the call and its room stay.
+	function startGame(game: GameStart) {
+		if (!channel.address.channel) {
+			live.control('game', undefined, game);
+			live.follow();
+			return;
+		}
+		void startCrewGame(channel.address.crew, game).then((res) => {
+			if (!res.ok) toasts.push(res.error.message, { tone: 'error' });
+			else void goto(sessionPath(channel.address.crew, res.data.id), GO);
+		});
+	}
 	$effect(() => {
 		const id = liveSessionId(live.tick?.state);
 		if (!live.following || !id) return;
@@ -234,8 +248,7 @@
 		if (!door) return;
 		replaceState(door.rest, page.state);
 		if (device.spectator) return;
-		live.control('game', undefined, { gameMode: door.mode });
-		live.follow();
+		startGame({ gameMode: door.mode });
 	});
 	// The picker door (#4082): the editor, opened from this picker, comes
 	// back with it open on what the rider built.
@@ -329,9 +342,8 @@
 			? // A game IS a session, started the same way.
 				undefined
 			: (game) => {
-					live.control('game', undefined, game);
-					live.follow();
 					layers.setup.open = false;
+					startGame(game);
 				}}
 		trainer={unpaired ? trainerCard : undefined}
 		onClose={() => (layers.setup.open = false)}

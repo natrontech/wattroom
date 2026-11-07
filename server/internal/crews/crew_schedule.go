@@ -382,11 +382,10 @@ func (s *Service) handleCrewRsvp(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// handleCrewStarted starts a plan (#2440): it opens the session in the voice
-// channel the plan names — or the one the body names, for a plan that named
-// none — with the caller as its coach, then marks the plan started, once.
-// The channel's one-session rule is the hub's to answer (#2438), so a plan
-// started while another session runs there is refused naming that coach.
+// handleCrewStarted starts a plan (#2440): it opens a session of the crew's
+// own (docs/SESSIONS.md), in no voice channel, with the caller as its coach,
+// then marks the plan started, once. A body naming a channel, from a client
+// older than that, is read and let go.
 func (s *Service) handleCrewStarted(w http.ResponseWriter, r *http.Request) {
 	crew, user, role, ok := s.crewByID(w, r)
 	if !ok {
@@ -406,17 +405,6 @@ func (s *Service) handleCrewStarted(w http.ResponseWriter, r *http.Request) {
 	if plan.StartedAt.Valid {
 		httpx.WriteError(w, http.StatusConflict, "conflict", "That planned session was already started.")
 		return
-	}
-	channel := plan.ChannelID
-	if !channel.Valid {
-		if req.ChannelID == "" {
-			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-				"This plan names no voice channel yet. Pick the one it runs in.", "channelId")
-			return
-		}
-		if channel, ok = s.enterableChannel(w, r, crew.ID, user.ID, req.ChannelID); !ok {
-			return
-		}
 	}
 	var sessionID string
 	if s.presence != nil {
@@ -450,7 +438,7 @@ func (s *Service) handleCrewStarted(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		rider := protocol.Rider{ID: store.UUIDString(user.ID), Name: user.DisplayName, Role: role}
-		id, code, message := s.presence.OpenSession(store.UUIDString(channel), rider, plan.WorkoutName, workoutJSON, route, store.UUIDString(plan.CreatedBy), awaited)
+		id, code, message := s.presence.OpenSession(protocol.CrewSessionPlace(store.UUIDString(crew.ID), ""), rider, plan.WorkoutName, workoutJSON, route, store.UUIDString(plan.CreatedBy), awaited)
 		if code != "" {
 			status := http.StatusBadRequest
 			if code == "conflict" {
@@ -459,13 +447,12 @@ func (s *Service) handleCrewStarted(w http.ResponseWriter, r *http.Request) {
 			httpx.WriteError(w, status, code, message)
 			return
 		}
-		// A plan on a road opens on its start line (#3228), in the channel:
-		// the starter stays there, so no ride's address to go to yet.
-		if route == nil {
-			sessionID = id
-		}
+		// A plan on a road opens on its start line (#3228), at the
+		// session's own address like every other.
+		sessionID = id
 	}
-	n, err := s.store.Queries.StartCrewPlan(r.Context(), db.StartCrewPlanParams{ID: plan.ID, CrewID: crew.ID, ChannelID: channel})
+	// No channel to stamp: the plan keeps whatever it named.
+	n, err := s.store.Queries.StartCrewPlan(r.Context(), db.StartCrewPlanParams{ID: plan.ID, CrewID: crew.ID})
 	if err != nil {
 		httpx.Fail(w, s.log, "start plan failed", err, "That could not be saved. Try again.", "crew", store.UUIDString(crew.ID))
 		return
@@ -479,5 +466,5 @@ func (s *Service) handleCrewStarted(w http.ResponseWriter, r *http.Request) {
 	s.changed(r.Context(), crew.ID)
 	// The session's id too (#2599): the starter goes to the ride, not to the
 	// channel's lobby with the count-in already running.
-	httpx.WriteJSON(w, http.StatusOK, map[string]string{"channelId": store.UUIDString(channel), "sessionId": sessionID})
+	httpx.WriteJSON(w, http.StatusOK, map[string]string{"sessionId": sessionID})
 }

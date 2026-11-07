@@ -65,21 +65,22 @@ describe('the plan a voice channel shows (#2606)', () => {
 		({ ok: true, data: { sessions } }) as ApiResult<{ sessions: CrewPlan[] }>;
 	const spin = listing({ id: 'v1', kind: 'voice', name: 'Spin' });
 
-	it('is the soonest plan set to run in this channel, not the crew’s', () => {
-		const got = voiceChannelData(
-			'v1',
-			crew,
-			spin,
-			members,
-			none,
-			schedule(
+	it('is the soonest of the crew’s plans, or one pinned here, never another channel’s', () => {
+		// Plans name no channel now (docs/SESSIONS.md): the crew's next one
+		// shows in every room.
+		const got = (...sessions: Partial<CrewPlan>[]) =>
+			voiceChannelData('v1', crew, spin, members, none, schedule(...sessions))
+				.plan?.id;
+		expect(
+			got(
 				{ id: 'p0', channelId: 'v2' },
 				{ id: 'p1' },
 				{ id: 'p2', channelId: 'v1' },
-				{ id: 'p3', channelId: 'v1' },
 			),
-		);
-		expect(got.plan?.id).toBe('p2');
+		).toBe('p1');
+		expect(
+			got({ id: 'p0', channelId: 'v2' }, { id: 'p2', channelId: 'v1' }),
+		).toBe('p2');
 	});
 
 	it('is none when the schedule is quiet or has nothing here', () => {

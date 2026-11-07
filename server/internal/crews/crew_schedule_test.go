@@ -348,6 +348,12 @@ type sessionOpener struct {
 func (o *sessionOpener) OpenSession(channel string, rider protocol.Rider, _, _ string, _ *protocol.ControlRoute, _ string, _ []protocol.RsvpRider) (string, string, string) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
+	// A crew's own session is a new one at every start (docs/SESSIONS.md):
+	// several run at once, so nobody holds it.
+	if _, crewOwn := protocol.CrewOfPlace(channel); crewOwn {
+		o.coaches[channel] = rider.ID
+		return "session-in-" + channel, "", ""
+	}
 	if coach, busy := o.coaches[channel]; busy && coach != rider.ID {
 		return "", "conflict", coach + " is coaching a session in this channel — one runs here at a time."
 	}
@@ -355,30 +361,28 @@ func (o *sessionOpener) OpenSession(channel string, rider protocol.Rider, _, _ s
 	return "session-in-" + channel, "", ""
 }
 
-// Starting a plan opens its session in its channel (#2440): a plan that names
-// none asks for one, a channel another coach holds refuses naming them, and a
-// plan starts once.
+// Starting a plan opens a session of the crew's own (#2440, docs/SESSIONS.md):
+// no channel needed, a plan once pinned to a channel opens one all the same,
+// two run side by side, and a plan starts once.
 func TestStartingACrewPlan(t *testing.T) {
 	h := setup(t)
 	opener := &sessionOpener{coaches: map[string]string{}}
 	h.svc.SetPresence(opener)
 	crew, channel := h.crewWithChannel(t)
 	cave := store.UUIDString(channel)
+	place := protocol.CrewSessionPlace(store.UUIDString(crew.ID), "")
 
 	_, body := h.call(t, "bob", http.MethodPost, schedulePath(crew), crewPlanBody(time.Now().Add(10*time.Minute), ""))
 	unassigned, _ := body["id"].(string)
 	if _, seen := h.crewSchedule(t, "bob", crew)[unassigned]; !seen {
 		t.Fatal("the plan is not on the schedule before its start — test proves nothing")
 	}
-	if status, body := h.call(t, "bob", http.MethodPost, schedulePath(crew, "/", unassigned, "/started"), ""); status != http.StatusBadRequest || body["field"] != "channelId" {
-		t.Fatalf("a plan with no channel started without one: %d %v", status, body)
-	}
-	status, body := h.call(t, "bob", http.MethodPost, schedulePath(crew, "/", unassigned, "/started"), fmt.Sprintf(`{"channelId":%q}`, cave))
+	status, body := h.call(t, "bob", http.MethodPost, schedulePath(crew, "/", unassigned, "/started"), "")
 	// With the session's id, so the starter lands on the ride (#2599).
-	if status != http.StatusOK || body["channelId"] != cave || body["sessionId"] != "session-in-"+cave {
-		t.Fatalf("start in Pain Cave: %d %v", status, body)
+	if status != http.StatusOK || body["sessionId"] != "session-in-"+place {
+		t.Fatalf("start: %d %v, want the crew's own session", status, body)
 	}
-	if coach := opener.coaches[cave]; coach != h.userID(t, "bob") {
+	if coach := opener.coaches[place]; coach != h.userID(t, "bob") {
 		t.Errorf("the session opened for %q, want bob", coach)
 	}
 	if status, _ := h.call(t, "bob", http.MethodPost, schedulePath(crew, "/", unassigned, "/started"), ""); status != http.StatusConflict {
@@ -388,16 +392,16 @@ func TestStartingACrewPlan(t *testing.T) {
 		t.Error("a started plan is still offered")
 	}
 
-	// Alice's plan names the same channel, which bob is coaching now.
+	// Alice's plan once named Pain Cave: it opens a crew session too, beside
+	// bob's, and nothing holds the channel.
 	_, body = h.call(t, "alice", http.MethodPost, schedulePath(crew), crewPlanBody(time.Now().Add(10*time.Minute), cave))
-	busy, _ := body["id"].(string)
-	status, body = h.call(t, "alice", http.MethodPost, schedulePath(crew, "/", busy, "/started"), "")
-	if status != http.StatusConflict || !strings.Contains(fmt.Sprint(body["message"]), h.userID(t, "bob")) {
-		t.Fatalf("a start into a busy channel: %d %v, want 409 naming the coach", status, body)
+	pinned, _ := body["id"].(string)
+	status, body = h.call(t, "alice", http.MethodPost, schedulePath(crew, "/", pinned, "/started"), "")
+	if status != http.StatusOK || body["sessionId"] != "session-in-"+place {
+		t.Fatalf("a plan pinned to a channel: %d %v, want the crew's own session", status, body)
 	}
-	// Refused, it is still planned — nothing marked it started.
-	if _, seen := h.crewSchedule(t, "alice", crew)[busy]; !seen {
-		t.Error("a refused start took the plan off the calendar")
+	if _, held := opener.coaches[cave]; held {
+		t.Error("starting a plan opened a session in its voice channel")
 	}
 }
 

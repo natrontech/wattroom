@@ -9,6 +9,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -288,7 +289,17 @@ func (h *Hub) SessionAnnounce(channel, verb, actor, workout string, startsAt tim
 // (ADR-0063), whoever starts it. It opens on its start line (#3228), not the
 // countdown: the coach starts the ride from there, and the riders who said
 // they are in (awaited) are listed on it until they arrive.
+//
+// A plan of the crew's own (docs/SESSIONS.md) names no voice channel: its
+// channel is the crew's place with no session in it yet,
+// protocol.CrewSessionPlace(crew, ""), and it opens a crew session of its own.
 func (h *Hub) OpenSession(channel string, rider protocol.Rider, workoutName, workoutJSON string, route *protocol.ControlRoute, routeOwner string, awaited []protocol.RsvpRider) (id, code, message string) {
+	if crew, ok := protocol.CrewOfPlace(channel); ok && strings.HasSuffix(channel, "/") {
+		rm := h.newCrewRoom(crew)
+		id, code, message = h.openPlan(rm, rider, workoutName, workoutJSON, route, routeOwner, awaited)
+		h.settleCrewRoom(rm, rider, code)
+		return id, code, message
+	}
 	rm := h.stateOf(channel)
 	rm.mu.Lock()
 	s := rm.session
@@ -301,6 +312,12 @@ func (h *Hub) OpenSession(channel string, rider protocol.Rider, workoutName, wor
 	if underWay {
 		return "", "conflict", "You're already riding " + current + " in this channel — end it before starting " + workoutName + "."
 	}
+	return h.openPlan(rm, rider, workoutName, workoutJSON, route, routeOwner, awaited)
+}
+
+// openPlan is a plan's pick and start in rm: on its road it waits on its
+// start line with the riders who said they are in.
+func (h *Hub) openPlan(rm *channelState, rider protocol.Rider, workoutName, workoutJSON string, route *protocol.ControlRoute, routeOwner string, awaited []protocol.RsvpRider) (id, code, message string) {
 	var ride *routeRide
 	if route != nil {
 		// No crew to ask: the plan was asked when it was planned (ADR-0063).

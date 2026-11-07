@@ -119,11 +119,11 @@
 		workoutJson: string,
 		startsAt: string,
 	) {
+		// The crew's, in no channel (docs/SESSIONS.md).
 		const res = await planCrewSession(crewId, {
 			workoutName,
 			workoutJson,
 			startsAt,
-			channelId,
 		});
 		if (!res.ok) return res.error.message;
 		toasts.push('Planned — it is on the crew’s schedule.', {
