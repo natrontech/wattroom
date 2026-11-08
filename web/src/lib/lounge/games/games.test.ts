@@ -109,6 +109,34 @@ describe('Feed zone', () => {
 		expect(r.streak).toBe(0);
 		expect(r.points).toBe(0);
 	});
+
+	it('drops a fair share of soigneurs for a hand a tenth of a second off', () => {
+		/** Taps at the middle of each window, early or late by the seeded error in seconds. */
+		function sloppy(seed: number, errs: number[]) {
+			let r = feedRun(seed);
+			let down = 0;
+			let aimed = -1;
+			while (!FEED_ZONE.over(r)) {
+				const i = r.stands.findIndex(
+					(s, k) => k > aimed && !s.done && s.holds !== 'flag',
+				);
+				const v = r.t === 0 ? 10 : r.metres / r.t;
+				const lead = v * (REACH_SEC / 2 + errs[i % errs.length]);
+				if (i >= 0 && down === 0 && r.stands[i].at - r.metres <= lead) {
+					down = 2;
+					aimed = i;
+				}
+				r = feedStep(r, DT, down > 0);
+				if (down > 0) down--;
+			}
+			const tried = r.stands.filter((s) => s.done && s.holds !== 'flag');
+			return tried.filter((s) => s.done === 'got').length / tried.length;
+		}
+		const errs = [0.1, -0.1, 0.05, -0.05, 0.15, -0.15, 0, 0.1, -0.1, 0.05];
+		const rate = [1, 2, 3, 4, 5].reduce((a, s) => a + sloppy(s, errs), 0) / 5;
+		expect(rate).toBeLessThan(0.8);
+		expect(sloppy(1, [0])).toBe(1);
+	});
 });
 
 describe('Darts', () => {

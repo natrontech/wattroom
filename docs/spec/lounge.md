@@ -98,7 +98,7 @@ A score is paint, like everything in the room: the client's word is enough, and 
 
 ### Feed zone
 
-**30 s** past the roadside, the road going from **8** to **15 m/s**. Someone stands every **12** to **30 m**: a bidon (**50** points, within **1.3 m**) about half the time, a musette (**120**, within **0.8 m**) one in four, a fan with a flag one in five. A tap reaches out for **0.28 s**, and the arm is back after **0.42 s**. Every three grabs in a row add one to the multiplier, up to **×4**. A grab at nothing, a soigneur passed by or a flag grabbed breaks the streak. **9'999** the most the machine shows.
+**30 s** past the roadside, the road going from **10** to **18 m/s**. Someone stands every **9** to **24 m**: a bidon (**50** points, within **0.6 m**) about half the time, a musette (**120**, within **0.35 m**) one in four, a fan with a flag (within **1.3 m**) one in four. A tap reaches out for **0.1 s**, and the arm is back after **0.35 s**. Every three grabs in a row add one to the multiplier, up to **×4**. A grab at nothing, a soigneur passed by or a flag grabbed breaks the streak. **9'999** the most the machine shows.
 
 ### Darts
 

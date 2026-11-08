@@ -1,0 +1,1 @@
+- The arcade's Feed zone is harder: the road is faster, soigneurs stand closer together, and a grab needs sharper timing.
