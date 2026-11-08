@@ -17,6 +17,12 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.11.26] - 2026-11-08
+
+### Fixed
+
+- On a laptop the ride's bottom bar showed every control again. At 1280 px the last one was cut off, and at 1024 px End ride was. Start a session and Ride a workout are icons below 1536 px, Easier and Harder below 1280 px. (#4486)
+
 ## [2026.11.25] - 2026-11-07
 
 ### Added
@@ -4468,7 +4474,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.25...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.26...HEAD
+[2026.11.26]: https://github.com/natrontech/wattroom/compare/2026.11.25...2026.11.26
 [2026.11.25]: https://github.com/natrontech/wattroom/compare/2026.11.24...2026.11.25
 [2026.11.24]: https://github.com/natrontech/wattroom/compare/2026.11.23...2026.11.24
 [2026.11.23]: https://github.com/natrontech/wattroom/compare/2026.11.22...2026.11.23
