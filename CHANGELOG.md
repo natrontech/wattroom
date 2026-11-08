@@ -17,6 +17,12 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.11.27] - 2026-11-08
+
+### Fixed
+
+- The arcade's feed zone asks for sharper timing
+
 ## [2026.11.26] - 2026-11-08
 
 ### Fixed
@@ -4474,7 +4480,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.26...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.27...HEAD
+[2026.11.27]: https://github.com/natrontech/wattroom/compare/2026.11.26...2026.11.27
 [2026.11.26]: https://github.com/natrontech/wattroom/compare/2026.11.25...2026.11.26
 [2026.11.25]: https://github.com/natrontech/wattroom/compare/2026.11.24...2026.11.25
 [2026.11.24]: https://github.com/natrontech/wattroom/compare/2026.11.23...2026.11.24
