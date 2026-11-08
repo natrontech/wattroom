@@ -127,11 +127,13 @@
 		<button
 			onclick={() => channel.openPicker()}
 			aria-label="Start a session"
+			title={compact ? 'Start a session' : undefined}
 			class="btn btn-accent {compact
 				? 'btn-ride'
 				: 'btn-lg ride-stage:ride-word'}"
-			><Radio size={15} />
-			{#if compact}<span class="2xl:hidden">Session</span>{/if}
+			><Radio size={compact ? 18 : 15} />
+			<!-- The ride's one row has no room for the word under 2xl: at
+			     1280 px it pushed the last control off the bar (#4472). -->
 			<span class={compact ? 'max-2xl:hidden' : ''}>Start a session</span
 			></button
 		>
