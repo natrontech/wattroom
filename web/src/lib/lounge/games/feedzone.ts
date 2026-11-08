@@ -13,16 +13,16 @@ import { SCREEN_W as W, type Game, type Sound } from './game';
 
 export const RUN_SEC = 30;
 /** Metres a second at the start and at the end. */
-const SPEED_FROM = 8;
-const SPEED_TO = 15;
+const SPEED_FROM = 10;
+const SPEED_TO = 18;
 /** How long an arm stays out, and before it can reach again. */
-export const REACH_SEC = 0.28;
-const COOLDOWN_SEC = 0.42;
+export const REACH_SEC = 0.1;
+const COOLDOWN_SEC = 0.35;
 /** Points for each thing, and the most a streak multiplies them by. */
 export const POINTS = { bidon: 50, musette: 120 } as const;
 export const MAX_MULT = 4;
 /** How close a hand must pass, in metres, for each thing. */
-const REACH_M = { bidon: 1.3, musette: 0.8, flag: 1.3 } as const;
+const REACH_M = { bidon: 0.6, musette: 0.35, flag: 1.3 } as const;
 /** The rider's hand, in metres ahead of where the screen's rider stands. */
 const HAND_M = 0;
 /** Metres a pixel of road is worth, and where the rider stands on screen. */
@@ -57,15 +57,15 @@ export interface Run {
 const speedAt = (t: number) =>
 	SPEED_FROM + (SPEED_TO - SPEED_FROM) * Math.min(1, t / RUN_SEC);
 
-/** Everyone at the roadside on a day: 12 to 30 m apart, one in five a fan. */
+/** Everyone at the roadside on a day: 9 to 24 m apart, one in four a fan. */
 export function standsOf(seed: number): Stand[] {
 	const out: Stand[] = [];
 	let at = 30;
-	for (let i = 0; at < 420; i++) {
+	for (let i = 0; at < 560; i++) {
 		const r = hash3(seed, i, 7);
-		const holds: Held = r < 0.2 ? 'flag' : r < 0.45 ? 'musette' : 'bidon';
+		const holds: Held = r < 0.25 ? 'flag' : r < 0.5 ? 'musette' : 'bidon';
 		out.push({ at, holds });
-		at += 12 + Math.floor(hash3(seed, i, 11) * 18);
+		at += 9 + Math.floor(hash3(seed, i, 11) * 16);
 	}
 	return out;
 }
