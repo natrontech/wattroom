@@ -25,6 +25,7 @@
 	import RoadPick from '$lib/ride/RoadPick.svelte';
 	import { createRoadMates, rideWith } from '$lib/channel/road-mates';
 	import Radio from '@lucide/svelte/icons/radio';
+	import ChartColumn from '@lucide/svelte/icons/chart-column';
 
 	const channel = useChannel();
 	const conn = $derived(channelConnection.current);
@@ -111,8 +112,9 @@
 		<button
 			onclick={() => channel.openPicker('ride')}
 			aria-label="Ride a workout"
+			title="Ride a workout"
 			class="btn btn-secondary btn-ride"
-			><span class="2xl:hidden">Workout</span><span class="max-2xl:hidden"
+			><ChartColumn size={18} /><span class="max-2xl:hidden"
 				>Ride a workout</span
 			></button
 		>
