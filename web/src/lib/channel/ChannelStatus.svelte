@@ -131,8 +131,12 @@
 				</p>
 			</div>
 		</div>
-	{:else if rideCtl.fault}
-		<!-- The trainer's own state, which a session never showed (#520): the
+	{:else if rideCtl.fault && connection.riding()}
+		<!-- Only while a ride is held: the trainer stays paired after one
+		     ends, and a trainer asleep between rides is not a fault. Its
+		     "keep pedalling, still recording" told a rider who had finished
+		     to keep riding. Before a ride, the start surfaces say it.
+		     The trainer's own state, which a session never showed (#520): the
 		     mock has simulated this banner since #39 and the product could
 		     not reach it, so "Unpair trainer" was the only thing a rider
 		     with no watts had to go on. Ranked above voice — a ride with no
