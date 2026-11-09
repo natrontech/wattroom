@@ -295,7 +295,7 @@
 	const faultKind = $derived(
 		live.down
 			? 'channel'
-			: rideCtl.fault
+			: rideCtl.fault && connection.riding()
 				? 'trainer'
 				: av.status === 'reconnecting' || av.status === 'failed'
 					? 'voice'
