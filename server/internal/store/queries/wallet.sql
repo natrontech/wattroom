@@ -18,6 +18,14 @@ select coalesce(sum(amount), 0)::integer from wallet_events
 where user_id = $1 and source in ('ride', 'ride_grew')
   and (ref = sqlc.arg(ride)::text or ref like sqlc.arg(ride)::text || '@%');
 
+-- name: WalletRideEarned :one
+-- What one ride put in the wallet, and how many rows say so (#4515): a ride
+-- saved before the wallet has none, and its closing card says nothing.
+select count(*)::integer as paid_rows, coalesce(sum(amount), 0)::integer as amount
+from wallet_events
+where user_id = $1 and source in ('ride', 'ride_grew')
+  and (ref = sqlc.arg(ride)::text or ref like sqlc.arg(ride)::text || '@%');
+
 -- name: WalletBalance :one
 select user_wallet_balance($1)::bigint;
 

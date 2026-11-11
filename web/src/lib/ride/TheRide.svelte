@@ -232,6 +232,7 @@
 			title={session.ridden.name}
 			unsaved={theRide.saveStatus !== null && !theRide.savedId}
 			savedXp={theRide.savedXp}
+			batzen={theRide.savedBatzen}
 			samples={session.recording}
 			{ftp}
 			execution={session.scored ? session.execution : undefined}

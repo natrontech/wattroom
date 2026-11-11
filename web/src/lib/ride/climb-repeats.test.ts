@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { legsRoad } from '#lib/road/fixtures.ts';
 import { turnedRound } from '#lib/road/road.ts';
 import { climbedStep } from './climbed';
-import { EVEREST_M, repeatsLine, wayUp } from './climb-repeats';
+import { EVEREST_M, repeatsLine, togetherLine, wayUp } from './climb-repeats';
 import { feltGrade } from './ride-grade';
 import { createRoadLaps } from './road-ride';
 
@@ -60,6 +60,13 @@ describe('climb repeats (#3193)', () => {
 		const loop = createRoadLaps(climb, { kg, loop: true });
 		loop.repeats = false;
 		expect(loop.repeats).toBeNull();
+	});
+
+	it('reads the crew’s sum against Everest, and says when it is climbed (#3193)', () => {
+		expect(togetherLine(0)).toBe('Everest together · 0 of 8,849 m');
+		expect(togetherLine(3410)).toBe('Everest together · 3,410 of 8,849 m');
+		expect(togetherLine(8849)).toBe('Everest together, climbed · 8,849 m');
+		expect(togetherLine(9120)).toBe('Everest together, climbed · 9,120 m');
 	});
 
 	it('reads the metres against Everest, in the app’s thousands', () => {

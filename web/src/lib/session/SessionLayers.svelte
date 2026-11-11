@@ -391,6 +391,10 @@
 			execution={card.execution}
 			medal={summary.medal}
 			savedXp={summary.rideXp}
+			batzen={summary.rideBatzen}
+			road={summary.roadSamples
+				? { samples: summary.roadSamples, timed: false }
+				: undefined}
 			{placeName}
 			riders={card.riders}
 			race={card.race}

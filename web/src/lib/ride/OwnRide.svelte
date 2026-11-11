@@ -139,6 +139,7 @@
 				title={workout.name}
 				unsaved={!!outcome && 'failure' in outcome}
 				savedXp={outcome && 'saved' in outcome ? outcome.xp : undefined}
+				batzen={outcome && 'saved' in outcome ? outcome.batzen : undefined}
 				samples={session.recording}
 				{ftp}
 				execution={session.scored ? session.execution : undefined}

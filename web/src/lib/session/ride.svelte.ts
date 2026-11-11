@@ -254,6 +254,11 @@ export function createRide(deps: RideDeps) {
 							? metrics.from.heartRate
 							: null;
 					const freeRoad = !deps.joined() ? deps.free.road : null;
+					// Riding together, your climb joins the crew's (#3193).
+					const climbed =
+						freeRoad && deps.shared()?.together
+							? Math.round((deps.climbed?.() ?? 0) * 10) / 10
+							: 0;
 					deps.live.sendMetrics({
 						...wireMetrics(
 							metrics,
@@ -264,6 +269,7 @@ export function createRide(deps: RideDeps) {
 						// A free rider on a road says where (#3117): the hub shows it
 						// only to riders here on the same road.
 						...(freeRoad && { m: Math.round(freeRoad.m * 10) / 10 }),
+						...(climbed > 0 && { climbed }),
 					});
 					const shared = deps.shared();
 					if (shared?.phase === 'running' && deps.joined()) {

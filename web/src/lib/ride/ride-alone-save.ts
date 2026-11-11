@@ -1,5 +1,6 @@
 import { account } from '#lib/account.svelte.ts';
 import { createHistoryStore, summarise } from '#lib/history.svelte.ts';
+import type { RideBatzen } from '#lib/ride/batzen.ts';
 import type { RideBuffer } from '#lib/ride/buffer.ts';
 import {
 	ROAD_LEFT_OFF,
@@ -22,7 +23,7 @@ export type SaveAnswers = {
 	saving(on: boolean): void;
 	/** Persistent status (errors.md), with the same upload again when it may go through. */
 	status(text: string | null, retry: (() => void) | null): void;
-	saved(id: string | null, xp: number | undefined): void;
+	saved(id: string | null, xp: number | undefined, batzen?: RideBatzen): void;
 };
 
 /**
@@ -70,7 +71,11 @@ export function saveRideAlone(
 						outcome.saved.roadLeftOff ? ROAD_LEFT_OFF : null,
 						null,
 					);
-					answers.saved(outcome.saved.id || null, outcome.saved.xp);
+					answers.saved(
+						outcome.saved.id || null,
+						outcome.saved.xp,
+						outcome.saved.batzen,
+					);
 				}
 				if (!seen) toastSaved(outcome.saved);
 				return;

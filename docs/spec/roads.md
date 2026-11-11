@@ -60,7 +60,9 @@ road, not a mode:
   felt grade's slew;
 - the metres climbed read against Everest (Road stats, below), and the ride
   saves as `free` with its laps;
-- never named after the registered mark "Everesting".
+- never named after the registered mark "Everesting";
+- riding together, the crew climbs as one: Everest together in a session
+  (Road stats, below).
 
 ## The Routes view (defaults — tune in alpha; #3692)
 
@@ -87,6 +89,32 @@ Privacy rules, not alpha defaults: loosening any of these takes an ADR.
 | An effort near a zone         | within **1,000 m** of any zone: hidden at read time                                             |
 | A crew member's cached copy   | IndexedDB, expires after **7 days**, capped at **50 MB**                                        |
 | Generated name                | `Road · 52.9 km · 1,312 m` — distance and climbing — until the geo pack can name places outside every zone |
+
+## The closing card on a road ([#4516](https://github.com/natrontech/wattroom/issues/4516), decided 2026-11-11)
+
+A ride that placed a second on a road ends on the same closing card as any
+ride, with one more panel, **the road**. Privacy rules, like A route's place
+above:
+
+- **Beside the power trace, never instead of it.** The trace is how hard it
+  was second by second on every ride, and one card for every ride (#1531)
+  keeps it. The road panel is the slot the grid reserved for it (#3141).
+- **The profile, never the map.** The panel draws the ride's own metres and
+  heights — the Skyline the ride's page draws (#3639) — with the zone ridden
+  over each stretch under it. The sealed map stays behind its owner's own
+  open (ADR-0063), on a ride alone and in a session alike: the card shows
+  nothing of the road the rider has not already seen of it.
+- **The stretch** reads `km a–b · n m` on one lap down the road, and the
+  length ridden with "laps and all" otherwise.
+- **The climbs**: each classed climb (Climbs, above) the ride went up from its
+  foot to its summit, by class, length and gain. A ride alone in Grade adds
+  its time, foot to summit, read between seconds as the server times it, and
+  a PR flag where the route's own climb bests (#3033) name this ride. A
+  session on a road — a bunch ride, a game, a race, whose results are a panel
+  of their own — and Watts (ERG by the road) carry no individual time (Road
+  times, ADR-0074); a home road keeps no bests, so it flags none.
+- **Nothing on it is kept** (ADR-0058): the panel is drawn from what the card
+  already holds, and the card is the rider's own.
 
 ## Road segments and ghosts (defaults — tune in alpha; ADR-0082)
 
@@ -136,6 +164,7 @@ together. Nothing here is ranked.
 | Explorer tiles     | zoom **14**; a straight segment longer than **500 m** ticks nothing                                   |
 | Everest            | **8,849 m** (the 2020 survey), everywhere in the app; the ladder **8,849 / 50,000 / 100,000 m**       |
 | Everest together   | **8,849** rider-metres per UTC month                                                                  |
+| Everest together in a session | a Ride together sums the metres its riders climb on their own roads while on it, against **8,849 m**, live; each rider's own count from the first sample on the session, at most **6 m** a second (**30 m/s** up the stored **+20 %**); the hub sends the sum, never a rider's share (#3193) |
 | Eddington number   | in road km                                                                                            |
 | Overpass           | at most **100** requests and **10 MB** a day                                                          |
 | Famous-climbs shelf | about **12**, fixed                                                                                  |

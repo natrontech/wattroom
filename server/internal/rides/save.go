@@ -283,8 +283,15 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	// Batzen in the ride's own transaction, under the lock taken above (#3152):
 	// the day's cap holds under two saves at once.
-	if err := wallet.MintRide(r.Context(), q, user.ID, id, wallet.Batzen(watts, int(row.FtpWatts), false)); err != nil {
+	due := wallet.Batzen(watts, int(row.FtpWatts), false)
+	if err := wallet.MintRide(r.Context(), q, user.ID, id, due); err != nil {
 		httpx.Fail(w, s.log, "solo ride wallet mint failed", err, "The ride could not be saved. It stays on this device.")
+		return
+	}
+	// What it paid, for the rider's own closing card (#4515).
+	earned, err := wallet.RideEarned(r.Context(), q, user.ID, id, due)
+	if err != nil {
+		httpx.Fail(w, s.log, "solo ride wallet read failed", err, "The ride could not be saved. It stays on this device.")
 		return
 	}
 	// What the rider wore on it is theirs to keep now, past the undo (#3154),
@@ -304,13 +311,21 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		s.keeper.RideSaved(user.ID, stats.Facts(req.StartedAt, int(user.FtpWatts), watts))
 	}
 	s.log.Info("solo ride saved", "seconds", row.Seconds, "kj", row.Kj)
-	httpx.WriteJSON(w, http.StatusCreated, rideJSON{
+	httpx.WriteJSON(w, http.StatusCreated, savedRideJSON{rideJSON: rideJSON{
 		ID: store.UUIDString(id), WorkoutName: req.WorkoutName,
 		StartedAt: req.StartedAt.Format(time.RFC3339),
 		Seconds:   int(row.Seconds), AvgWatts: int(row.AvgWatts), Kj: int(row.Kj),
 		Execution: float64(row.Execution), ExecutionScored: row.ExecutionScored, Ftp: int(user.FtpWatts), Xp: int(row.Xp),
 		DistanceM: row.DistanceM, ClimbedM: row.ClimbedM,
-	})
+	}, Batzen: earned})
+}
+
+// savedRideJSON is the save's answer: the ride, and what it put in the
+// wallet (#4515). Only the rider's own save and their own read of the ride
+// carry Batzen; the list, a friend's shared ride and the card never do.
+type savedRideJSON struct {
+	rideJSON
+	Batzen *wallet.Earned `json:"batzen,omitempty"`
 }
 
 // routeOf reads the stored route a ride names (#3053): the rider's own, or

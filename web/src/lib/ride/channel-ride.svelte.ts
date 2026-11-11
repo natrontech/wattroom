@@ -12,6 +12,7 @@ import {
 } from '#lib/ride/own-ride.svelte.ts';
 import type { SessionState } from '#lib/protocol.ts';
 import type { createRecording } from '#lib/session/recording.svelte.ts';
+import { countClimbed } from '#lib/ride/climbed-count.svelte.ts';
 import { createRide } from '#lib/session/ride.svelte.ts';
 import { toasts } from '#lib/toast.svelte.ts';
 import { createSignalWatch } from '#lib/workout/signal-watch.svelte.ts';
@@ -64,6 +65,7 @@ export function holdChannelRide(first: ChannelRideDeps) {
 	let ride!: ReturnType<typeof createRide>;
 	let own!: ReturnType<typeof createOwnRide>;
 	let signal!: ReturnType<typeof createSignalWatch>;
+	let climb!: ReturnType<typeof countClimbed>;
 
 	const dispose = $effect.root(() => {
 		free = createFreeRide({
@@ -71,6 +73,9 @@ export function holdChannelRide(first: ChannelRideDeps) {
 			singleSpeed: () => via.profile.current.singleSpeed,
 			kg: () => via.profile.current.kg,
 		});
+		// Counted with the ride, not on its screen: riding together, every
+		// sample says it, for the crew's Everest together (#3193).
+		climb = countClimbed(free);
 		ride = createRide({
 			get live() {
 				return via.live;
@@ -87,6 +92,7 @@ export function holdChannelRide(first: ChannelRideDeps) {
 			road: via.road,
 			joined,
 			free,
+			climbed: () => climb.m,
 		});
 		own = createOwnRide({
 			ride,
