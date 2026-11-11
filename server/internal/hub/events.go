@@ -127,11 +127,11 @@ const presenceKind = "presence"
 
 // How long a rider's socket may be gone before the room is told they left.
 //
-// Not invented: the client's reconnect backoff is `min(1000 * 2^attempts,
-// 10s)`, which spends 1+2+4+8 = 15 s trying before it settles into ten-second
-// retries. A phone in a garage flaps constantly, and a leave line per flap is
-// a strobe rather than a timeline — so a socket that is coming back is back
-// inside this, and nothing is said at all.
+// Not invented: the client redials at once, then after about 1, 2 and 5 s
+// and every 5 s from there (web/src/lib/reconnect.ts), which spends about
+// 13 s on its first six dials. A phone in a garage flaps constantly, and a
+// leave line per flap is a strobe rather than a timeline — so a socket that
+// is coming back is back inside this, and nothing is said at all.
 const presenceGrace = 15 * time.Second
 
 // presenceLine is one rider arriving, leaving, stepping out or coming back.

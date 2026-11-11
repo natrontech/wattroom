@@ -116,17 +116,25 @@ describe('the presence feed survives its socket (#1742)', () => {
 		vi.useRealTimers();
 	});
 
-	it('re-dials after a drop, and refreshes on the reopen', () => {
+	it('re-dials at once after a drop, and refreshes on the reopen', () => {
 		presence.start();
 		const first = socket!;
 		fetches = 0;
 		first.onclose?.();
-		// The backoff holds the dial: two seconds at most, jittered by half.
-		expect(socket).toBe(first);
-		vi.advanceTimersByTime(3_100);
 		expect(socket).not.toBe(first);
 		socket!.onopen?.();
 		expect(fetches).toBe(1);
+	});
+
+	it('holds the second dial a second or so, jittered', () => {
+		presence.start();
+		const first = socket!;
+		first.onclose?.();
+		const second = socket!;
+		second.onclose?.(); // the redial failed too
+		expect(socket).toBe(second);
+		vi.advanceTimersByTime(1_250);
+		expect(socket).not.toBe(second);
 	});
 
 	it('re-fetches and re-dials when the tab becomes visible', () => {

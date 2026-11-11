@@ -1,4 +1,5 @@
 import { api } from '$lib/api';
+import { reconnectDelay } from '$lib/reconnect';
 import { STALE_AFTER, readOrder } from '$lib/stale';
 import type { CrewRef } from '$lib/crew-types';
 import type { LobbyLane } from '$lib/protocol';
@@ -105,11 +106,11 @@ function connect() {
 	socket.onclose = () => {
 		if (socket === open) riderLane.closed();
 		if (stopped) return;
-		attempts += 1;
-		// Jittered (#1741): a server restart brought the whole fleet back in
-		// lockstep at 2 s, 4 s, 8 s.
-		const wait = Math.min(1000 * 2 ** attempts, 10_000) * (0.5 + Math.random());
-		reconnect = setTimeout(connect, wait);
+		// At once, then jittered (reconnect.ts, #1741): a server restart
+		// brought the whole fleet back in lockstep at 2 s, 4 s, 8 s.
+		const wait = reconnectDelay(attempts++);
+		if (wait === 0) connect();
+		else reconnect = setTimeout(connect, wait);
 	};
 }
 
