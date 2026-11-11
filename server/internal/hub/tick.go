@@ -225,7 +225,9 @@ func (rm *channelState) tickLocked(now func() time.Time, dt time.Duration, savin
 		Roadside:  rm.roadsideLocked(),
 		FreeRoads: rm.freeRoadsLocked(),
 		Riders:    rm.metrics,
-		Roster:    make([]protocol.Rider, 0, len(rm.clients)),
+		// One sum for the crew, never a rider's share (everest.go).
+		EverestTogether: rm.everestTogetherLocked(),
+		Roster:          make([]protocol.Rider, 0, len(rm.clients)),
 	}
 	rm.metrics = make(map[string]protocol.RiderMetrics)
 	cheerFrom := rm.cheerFrom

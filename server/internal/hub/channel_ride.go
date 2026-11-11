@@ -44,7 +44,7 @@ func (rm *channelState) setMetrics(c *client, m protocol.RiderMetrics) {
 	// keeps absolute height with the owner. A free rider's m reaches only
 	// riders here on the same road, through the tick's FreeRoads (#3117).
 	live := m
-	live.M, live.Alt = 0, 0
+	live.M, live.Alt, live.Climbed = 0, 0, 0
 	c.heardOnRoadLocked(m)
 	rm.metrics[rider.ID] = live
 	rm.lastMetric[rider.ID] = now
@@ -71,6 +71,9 @@ func (rm *channelState) setMetrics(c *client, m protocol.RiderMetrics) {
 		state := rm.session.state(now)
 		rm.record.add(rider.ID, m, rm.session.segments, float64(rider.FtpWatts), state.Elapsed)
 		rm.sprint.collect(rider.ID, m.Watts, now)
+		if rm.session.together {
+			rm.climbs.hear(rider.ID, m.Climbed, now)
+		}
 	}
 }
 

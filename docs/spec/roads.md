@@ -60,7 +60,9 @@ road, not a mode:
   felt grade's slew;
 - the metres climbed read against Everest (Road stats, below), and the ride
   saves as `free` with its laps;
-- never named after the registered mark "Everesting".
+- never named after the registered mark "Everesting";
+- riding together, the crew climbs as one: Everest together in a session
+  (Road stats, below).
 
 ## The Routes view (defaults — tune in alpha; #3692)
 
@@ -162,6 +164,7 @@ together. Nothing here is ranked.
 | Explorer tiles     | zoom **14**; a straight segment longer than **500 m** ticks nothing                                   |
 | Everest            | **8,849 m** (the 2020 survey), everywhere in the app; the ladder **8,849 / 50,000 / 100,000 m**       |
 | Everest together   | **8,849** rider-metres per UTC month                                                                  |
+| Everest together in a session | a Ride together sums the metres its riders climb on their own roads while on it, against **8,849 m**, live; each rider's own count from the first sample on the session, at most **6 m** a second (**30 m/s** up the stored **+20 %**); the hub sends the sum, never a rider's share (#3193) |
 | Eddington number   | in road km                                                                                            |
 | Overpass           | at most **100** requests and **10 MB** a day                                                          |
 | Famous-climbs shelf | about **12**, fixed                                                                                  |

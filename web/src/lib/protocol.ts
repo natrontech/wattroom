@@ -800,6 +800,20 @@ export const MinRoadAltM = -500;
  */
 export const MaxRoadAltM = 9000;
 /**
+ * Everest together (docs/spec/roads.md "Road stats", #3193): the most one
+ * rider climbs in a second, MaxRoadSpeedMps up the stored grade's +20 %
+ * top. The hub counts no more of a rider's climb than this allows.
+ */
+export const MaxClimbMps = MaxRoadSpeedMps * 20 / 100;
+/**
+ * The most one free ride can say it climbed: a day at MaxClimbMps.
+ */
+export const MaxRideClimbedM = MaxClimbMps * 24 * 60 * 60;
+/**
+ * Everest, in metres (docs/spec/roads.md "Road stats"): the 2020 survey.
+ */
+export const EverestM = 8849;
+/**
  * docs/SPEC.md "Road times": an effort whose mean shelter exceeds 5 % is
  * untimeable (ADR-0074, ADR-0077), as a fraction of the air.
  */
@@ -1157,6 +1171,13 @@ export interface RiderMetrics {
    */
   m?: number /* float64 */;
   alt?: number /* float64 */;
+  /**
+   * Metres climbed on a road so far this free ride, as the rider's own
+   * screen counts them (#3193): sent only riding together, where the hub
+   * sums the session's riders toward Everest together. Never on the tick,
+   * never stored. Absent off a road.
+   */
+  climbed?: number /* float64 */;
 }
 /**
  * Backfill is a reconnect's replay: samples the client buffered while the
@@ -1403,6 +1424,13 @@ export interface ServerTick {
    * rider id. A road ridden alone is never sent.
    */
   freeRoads?: { [key: string]: FreeRoadPlace};
+  /**
+   * Everest together (#3193, docs/spec/roads.md "Road stats"): the metres
+   * a Ride together session's riders have climbed on it, summed, in whole
+   * metres. One number for the crew, never per rider and never ranked;
+   * absent before anyone climbed, and off a Ride together.
+   */
+  everestTogether?: number /* int */;
   /**
    * Live execution per rider (#27) — the SPEC score so far this session.
    */

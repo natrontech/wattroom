@@ -44,13 +44,19 @@ type RiderMetrics struct {
 	// one once any of its samples has moved along it.
 	M   float64 `json:"m,omitempty"`
 	Alt float64 `json:"alt,omitempty"`
+	// Metres climbed on a road so far this free ride, as the rider's own
+	// screen counts them (#3193): sent only riding together, where the hub
+	// sums the session's riders toward Everest together. Never on the tick,
+	// never stored. Absent off a road.
+	Climbed float64 `json:"climbed,omitempty"`
 }
 
 // RoadInBounds reports whether the sample's place on a road is one a road can
 // have. A sample with no road is 0 and 0, which is.
 func (m RiderMetrics) RoadInBounds() bool {
 	return m.M >= 0 && m.M <= MaxRouteMeters &&
-		m.Alt >= MinRoadAltM && m.Alt <= MaxRoadAltM
+		m.Alt >= MinRoadAltM && m.Alt <= MaxRoadAltM &&
+		m.Climbed >= 0 && m.Climbed <= MaxRideClimbedM
 }
 
 // BiasInBounds reports whether a sample's trim is one the control can make:

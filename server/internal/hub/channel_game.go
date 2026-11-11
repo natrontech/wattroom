@@ -199,6 +199,7 @@ func (rm *channelState) resetRunLocked(starter string) {
 	rm.voiceMs = make(map[string]int64)
 	rm.present = make(map[string]*span)
 	rm.presentSince = time.Time{}
+	rm.climbs = make(everest)
 	rm.startedBy = starter
 	rm.ridden = nil
 }

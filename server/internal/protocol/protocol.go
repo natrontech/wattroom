@@ -70,6 +70,11 @@ type ServerTick struct {
 	// Free riders on a road another free rider here rides too (#3117), by
 	// rider id. A road ridden alone is never sent.
 	FreeRoads map[string]FreeRoadPlace `json:"freeRoads,omitempty"`
+	// Everest together (#3193, docs/spec/roads.md "Road stats"): the metres
+	// a Ride together session's riders have climbed on it, summed, in whole
+	// metres. One number for the crew, never per rider and never ranked;
+	// absent before anyone climbed, and off a Ride together.
+	EverestTogether int `json:"everestTogether,omitempty"`
 	// Live execution per rider (#27) — the SPEC score so far this session.
 	Execution map[string]float64 `json:"execution,omitempty"`
 	// The lounge's lamp and weather (ADR-0094), once someone has changed

@@ -171,6 +171,9 @@ type channelState struct {
 	// When the recap's clock starts: the first tick that saw anyone this
 	// session. Zero between sessions.
 	presentSince time.Time
+	// Everest together (everest.go): the Ride together session's climb, by
+	// rider, reset on start.
+	climbs everest
 	// The stored recap, waiting for the next tick to carry it to the room.
 	// Nil the rest of the time — unlike everything else the tick drains,
 	// this one is already durable.
@@ -308,6 +311,7 @@ func newChannelState(channel string) *channelState {
 		voiceNow:       make(map[string]struct{}),
 		voiceMs:        make(map[string]int64),
 		present:        make(map[string]*span),
+		climbs:         make(everest),
 		sounding:       make(map[string]firing),
 		away:           make(map[string]string),
 		seats:          make(map[string]int),
