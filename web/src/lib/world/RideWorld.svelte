@@ -45,13 +45,10 @@
 	import { skyAt } from '$lib/lounge/palette';
 	import { weatherOf } from '$lib/lounge/state';
 	import { worldDiorama } from './mode';
-	import {
-		momentToDraw,
-		PICTURE,
-		worldPicture,
-		type PictureMoment,
-	} from './picture.svelte';
-	import { momentsFor } from './ride-moments';
+	import { PICTURE, worldPicture, type PictureMoment } from './picture.svelte';
+	import { dueToDraw, momentsFor } from './ride-moments';
+	import { MaxRidePhotos } from '$lib/protocol';
+	import { toasts } from '$lib/toast.svelte';
 
 	let {
 		road,
@@ -175,12 +172,34 @@
 				];
 			event.preventDefault();
 		};
+		// A photo is a shutter and a line (ux.md: every state change is heard
+		// and seen); at the cap, the fault and the line that says where they are.
+		// One line at a time: a run of photos replaces its own, never stacks
+		// over the now bar.
+		let said: string | null = null;
+		const say = (text: string) => {
+			const last = toasts.items.find((t) => t.text === said);
+			if (last) toasts.dismiss(last.id);
+			said = text;
+			toasts.push(text, { seconds: 3 });
+		};
 		const photo = (event: Event) => {
 			if (!scene) return;
-			moments.chosen = now();
-			worldPicture.took();
-			if (canvas) canvas.dataset.picture = 'taken';
 			event.preventDefault();
+			const n = worldPicture.took();
+			if (n === null) {
+				play('fault');
+				say(
+					`A ride keeps ${MaxRidePhotos} photos. They are on its page after the ride.`,
+				);
+				return;
+			}
+			moments.chosen.push(now());
+			play('shutter');
+			say(
+				`Photo ${n} of ${MaxRidePhotos}. It is on the ride's page after the ride.`,
+			);
+			if (canvas) canvas.dataset.picture = 'taken';
 		};
 		window.addEventListener(CAMERA_ASK, ask);
 		window.addEventListener(PHOTO_ASK, photo);
@@ -266,15 +285,17 @@
 			ambience.stop();
 			const closing = scene;
 			scene = null;
-			const at = momentToDraw(
-				moments.chosen,
+			const due = dueToDraw(
+				moments,
 				route && (loop ? { ...route, loop } : route),
-				moments.ridden,
 			);
-			if (closing && at)
-				void worldPicture.draw(
-					closing.picture(at).finally(() => closing.dispose()),
-				);
+			// One at a time: each picture is the closing world's renderer.
+			if (closing && due.length > 0)
+				void worldPicture
+					.drawAll(
+						due.map(({ n, at }) => ({ n, shoot: () => closing.picture(at) })),
+					)
+					.finally(() => closing.dispose());
 			else closing?.dispose();
 		};
 	});

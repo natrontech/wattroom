@@ -6,10 +6,20 @@
 	 * them on this ride, and in their place while the world draws them as it
 	 * closes (#4263); through the share sheet on a phone, a download on a
 	 * desk (share.ts).
+	 *
+	 * The photos the rider took go to the saved ride's page (`rideId`), and
+	 * the card says so with the way there: the phone that took them finds
+	 * them on that page too.
 	 */
 	import { shareFile } from '$lib/share';
 	import { CAMERA_NAMES } from '$lib/world/cameras';
 	import { worldPicture } from '$lib/world/picture.svelte';
+
+	let { rideId }: { rideId?: string | null } = $props();
+
+	$effect(() => {
+		if (rideId) void worldPicture.keepWith(rideId);
+	});
 
 	const shots = $derived([
 		{
@@ -25,6 +35,8 @@
 			id: 'world-picture-above',
 		},
 	]);
+	const photos = $derived(worldPicture.photos.length);
+	const keeping = $derived(worldPicture.keeping);
 
 	let saving = $state<string | null>(null);
 	async function save(blob: Blob, file: string) {
@@ -47,4 +59,22 @@
 {/each}
 {#if worldPicture.drawing && !worldPicture.rider && !worldPicture.above}
 	<button disabled class="btn btn-secondary">Drawing…</button>
+{/if}
+{#if rideId && photos > 0}
+	{#if keeping.error}
+		<button
+			onclick={() => void worldPicture.retry()}
+			data-testid="ride-photos-retry"
+			class="btn btn-secondary">Save photos again</button
+		>
+	{:else if keeping.kept < photos}
+		<button disabled class="btn btn-secondary">Saving photos…</button>
+	{:else}
+		<a
+			href="/history/{rideId}#photos"
+			data-testid="ride-photos-link"
+			class="btn btn-secondary"
+			>{photos === 1 ? 'Your photo' : `Your ${photos} photos`}</a
+		>
+	{/if}
 {/if}

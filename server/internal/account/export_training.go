@@ -2,6 +2,11 @@ package account
 
 import (
 	"encoding/json"
+	"fmt"
+
+	"github.com/jackc/pgx/v5/pgtype"
+
+	"github.com/natrontech/wattroom/server/internal/store"
 
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -131,6 +136,45 @@ func (x *export) rideUploads() category {
 		})
 		return out, len(rows), err
 	})
+}
+
+func (x *export) ridePhotos() category {
+	return x.bounded("ride-photos.json", []string{"ride_photos"}, func() (any, int, error) {
+		// The photos the rider took on their rides (docs/spec/riding.md
+		// "The ride's pictures"), each view a JPEG under uploads/ride-photos/
+		// beside this list. Their own, drawn from their own ride, so the
+		// avatar's reasoning holds: a copy, not a description. Bounded by
+		// protocol.MaxRiderPhotoBytes, the soundboard's 100 MB, which is
+		// what lets an archive built whole in memory carry them. The ride is
+		// named by its start, as ride-uploads.json names one.
+		rows, err := x.q.ExportUserRidePhotos(x.ctx, db.ExportUserRidePhotosParams{
+			UserID: x.user.ID, Lim: maxExportRows,
+		})
+		out, err := mapRows(rows, err, func(row db.ExportUserRidePhotosRow) any {
+			file := ridePhotoFile(row)
+			x.photoFiles = append(x.photoFiles, ridePhotoRef{ride: row.RideID, n: row.N, view: row.View, name: file})
+			return map[string]any{"rideStartedAt": row.RideStartedAt.Time, "workoutName": row.WorkoutName,
+				"photo": row.N, "view": row.View, "sizeBytes": row.SizeBytes,
+				"savedAt": row.CreatedAt.Time, "file": file}
+		})
+		return out, len(rows), err
+	})
+}
+
+// ridePhotoRef is one photo view ride-photos.json listed, for the bytes loop
+// after the categories.
+type ridePhotoRef struct {
+	ride pgtype.UUID
+	n    int16
+	view string
+	name string
+}
+
+// ridePhotoFile names a view by its ride's start, the samples' way, then the
+// photo and the view: a rider's folder sorts in the order they rode.
+func ridePhotoFile(row db.ExportUserRidePhotosRow) string {
+	return fmt.Sprintf("uploads/ride-photos/%s-%s-%d-%s.jpg",
+		row.RideStartedAt.Time.UTC().Format("2006-01-02-1504"), store.UUIDString(row.RideID)[:8], row.N, row.View)
 }
 
 func (x *export) medals() category {

@@ -350,6 +350,16 @@ type RideExport struct {
 	StaleSince  pgtype.Timestamptz
 }
 
+type RidePhoto struct {
+	RideID    pgtype.UUID
+	UserID    pgtype.UUID
+	N         int16
+	View      string
+	Bytes     []byte
+	SizeBytes int32
+	CreatedAt pgtype.Timestamptz
+}
+
 type RideUploadXp struct {
 	UserID pgtype.UUID
 	Day    pgtype.Date

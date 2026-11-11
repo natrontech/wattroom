@@ -1,67 +1,186 @@
+import { api } from '$lib/api';
+import { MaxRidePhotos } from '$lib/protocol';
 import { at } from '$lib/road/along';
 import { hairpinsOf } from '$lib/road/climbs';
 import type { Route } from '$lib/road/route';
+import { toasts } from '$lib/toast.svelte';
 
 /** The world's two pictures of one moment (#4431): you, from the picture's own lens, and the ride from above, as its heli camera saw it. Either is null where the browser gave none. */
 export type WorldShots = { rider: Blob | null; above: Blob | null };
 
+/** A photo the rider took: its number on the ride, 1 to MaxRidePhotos, and the pair drawn at its moment. */
+export type Photo = WorldShots & { n: number };
+
+/** One picture to draw as the world closes: photo `n`, or the ride's best moment where `n` is null. */
+export type PictureJob = {
+	n: number | null;
+	shoot: () => Promise<WorldShots | null>;
+};
+
+/** Where the ride's photos stand on their way to its page. */
+export type Keeping = {
+	/** Photos the ride's page holds. */
+	kept: number;
+	/** What went wrong with the last one that did not get there, until a retry. */
+	error: string | null;
+};
+
 /**
  * The ride's pictures of the world (#4221, #4263, #4431): drawn when the
- * world closes, at the ride's best moment, with no name in them, and kept
- * in this tab's memory only. The closing card offers them beside the
- * poster; the rider chooses which to save for Strava. Never uploaded,
- * never stored.
+ * world closes, with no name in them. The rider's own photos, taken with
+ * Photo, the O key or a controller's snap, go to the saved ride's page once
+ * it has an id (`keepWith`), so the rider finds them there after the ride on
+ * any device. A ride with no photo of the rider's gets one pair at its best
+ * moment, kept in this tab's memory only, for the closing card.
  */
-let rider = $state<Blob | null>(null);
-let above = $state<Blob | null>(null);
+let photos = $state<Photo[]>([]);
+let best = $state<WorldShots | null>(null);
 let taken = $state(0);
-let drawing = $state(false);
+let drawing = $state(0);
+let keeping = $state<Keeping>({ kept: 0, error: null });
 // Which ride a picture being drawn belongs to: a new ride's world lets a late one go.
 let ride = 0;
+// The saved ride the photos go to, and the photos already sent or on their way.
+let keepId: string | null = null;
+let sent = new Set<number>();
+
+const VIEWS = [
+	['world', 'rider'],
+	['overhead', 'above'],
+] as const;
+
+/** One photo to the ride's page, both views; the server's word when it refuses. */
+async function upload(rideId: string, photo: Photo): Promise<string | null> {
+	for (const [view, key] of VIEWS) {
+		const blob = photo[key];
+		if (!blob) continue;
+		const res = await api<void>(
+			`/api/rides/${encodeURIComponent(rideId)}/photos/${photo.n}/${view}`,
+			{ method: 'PUT', body: blob, headers: { 'content-type': 'image/jpeg' } },
+		);
+		if (!res.ok) return res.error.message;
+	}
+	return null;
+}
+
+/** Sends every drawn photo not yet sent to the saved ride, one at a time. */
+async function flush() {
+	const id = keepId;
+	const mine = ride;
+	if (!id) return;
+	for (const photo of photos) {
+		if (sent.has(photo.n)) continue;
+		sent.add(photo.n);
+		const error = await upload(id, photo);
+		if (mine !== ride) return;
+		if (error) {
+			sent.delete(photo.n);
+			keeping = { ...keeping, error };
+			// A background result that did not happen: the toast sounds the fault.
+			toasts.push(`Your photos are not on the ride's page yet. ${error}`, {
+				tone: 'error',
+				seconds: 0,
+				action: { label: 'Retry', run: () => void worldPicture.retry() },
+			});
+			return;
+		}
+		keeping = { kept: keeping.kept + 1, error: null };
+	}
+}
 
 export const worldPicture = {
-	/** You on the road, from the picture's own lens. */
+	/** You on the road: the latest photo's, else the best moment's. */
 	get rider() {
-		return rider;
+		return (photos.at(-1) ?? best)?.rider ?? null;
 	},
 	/** The same moment from above. */
 	get above() {
-		return above;
+		return (photos.at(-1) ?? best)?.above ?? null;
 	},
-	/** Pictures the rider took on this ride, so the phone remote's Photo can say it took one (#4253). */
+	/** The rider's own photos, drawn, in the order taken. */
+	get photos(): readonly Photo[] {
+		return photos;
+	},
+	/** Photos the rider took on this ride, so the phone remote's Photo can say it took one (#4253). */
 	get taken() {
 		return taken;
 	},
+	/** Whether the ride has room for another photo. */
+	get canTake() {
+		return taken < MaxRidePhotos;
+	},
 	/** The world is drawing the pictures: the closing card holds their place. */
 	get drawing() {
-		return drawing;
+		return drawing > 0;
 	},
-	/** The rider took the picture: the moment they chose is the one drawn. */
-	took() {
-		taken++;
+	/** How the photos are getting to the ride's page. */
+	get keeping(): Keeping {
+		return keeping;
 	},
-	/** The pictures `shots` will be, kept unless a new ride started meanwhile: always as a pair, never one beside an older close's. */
-	async draw(shots: Promise<WorldShots | null>) {
+	/** The rider took a photo: its number on the ride, or null at the cap. */
+	took(): number | null {
+		if (taken >= MaxRidePhotos) return null;
+		return ++taken;
+	},
+	/**
+	 * Draws `jobs` one after another, keeping each as it lands, unless a new
+	 * ride started meanwhile. A photo's pair replaces that photo; the best
+	 * moment's replaces the last best pair, always as a pair and never one
+	 * beside an older close's, and a close that drew neither keeps the last.
+	 */
+	async drawAll(jobs: readonly PictureJob[]) {
 		const mine = ride;
-		drawing = true;
-		const drawn = await shots.catch(() => null);
-		if (mine !== ride) return;
-		drawing = false;
-		if (!drawn?.rider && !drawn?.above) return;
-		rider = drawn.rider;
-		above = drawn.above;
+		drawing++;
+		try {
+			for (const job of jobs) {
+				const drawn = await job.shoot().catch(() => null);
+				if (mine !== ride) return;
+				if (!drawn?.rider && !drawn?.above) continue;
+				const pair = { rider: drawn.rider, above: drawn.above };
+				if (job.n === null) best = pair;
+				else {
+					const n = job.n;
+					photos = [...photos.filter((p) => p.n !== n), { ...pair, n }].sort(
+						(a, b) => a.n - b.n,
+					);
+					void flush();
+				}
+			}
+		} finally {
+			if (mine === ride) drawing--;
+		}
 	},
-	/** A new ride starts without the last one's pictures. */
+	/** The best moment's pair that `shots` will be (drawAll with one job). */
+	draw(shots: Promise<WorldShots | null>) {
+		return this.drawAll([{ n: null, shoot: () => shots }]);
+	},
+	/** The ride was saved as `rideId`: its photos go to its page, now and as they are drawn. */
+	keepWith(rideId: string) {
+		if (keepId !== rideId) {
+			keepId = rideId;
+			sent = new Set();
+			keeping = { kept: 0, error: null };
+		}
+		return flush();
+	},
+	/** Tries the photos that did not get there again. */
+	retry() {
+		keeping = { ...keeping, error: null };
+		return flush();
+	},
+	/** A new ride starts without the last one's pictures. Photos already on their way still land on the ride they were taken on. */
 	clear() {
 		ride++;
-		rider = null;
-		above = null;
+		photos = [];
+		best = null;
 		taken = 0;
-		drawing = false;
+		drawing = 0;
+		keepId = null;
+		sent = new Set();
+		keeping = { kept: 0, error: null };
 	},
 };
 
-/** docs/spec/riding.md, "The ride's pictures". */
 export const PICTURE = {
 	/** Ridden this long first: the start arch and the count-in are not the ride. */
 	settleS: 30,

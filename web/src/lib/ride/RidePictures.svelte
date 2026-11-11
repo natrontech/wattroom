@@ -28,4 +28,4 @@
 		/>
 	{/if}
 {/if}
-<WorldPicture />
+<WorldPicture {rideId} />
