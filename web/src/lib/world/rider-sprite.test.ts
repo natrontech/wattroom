@@ -1,6 +1,28 @@
 import { describe, expect, it } from 'vitest';
 import { legible } from '$lib/lounge/draw-rider';
-import { halved } from './rider-sprite';
+import { TURNS, halved, turnFrom } from './rider-sprite';
+
+describe('which turn a camera sees', () => {
+	it('keeps one side straight behind and ahead, as the camera sways across', () => {
+		// Heading +z; the camera a step either side of the rider's line.
+		for (const dz of [10, -10]) {
+			const left = turnFrom(0, -0.4, dz);
+			const right = turnFrom(0, 0.4, dz);
+			expect(left.turn).toBe(right.turn);
+			expect(left.flip).toBe(false);
+			expect(right.flip).toBe(false);
+		}
+		expect(turnFrom(0, 0.4, 10).turn).toBe(0);
+		expect(turnFrom(0, 0.4, -10).turn).toBe(TURNS.length - 1);
+	});
+	it('mirrors a rider seen from their other side', () => {
+		const a = turnFrom(0, 10, 0.1);
+		const b = turnFrom(0, -10, 0.1);
+		expect(a.turn).toBe(4);
+		expect(b.turn).toBe(4);
+		expect(a.flip).not.toBe(b.flip);
+	});
+});
 
 const INK = [8, 1, 15] as const;
 const pixels = (rows: (number[] | null)[]): Uint8ClampedArray => {

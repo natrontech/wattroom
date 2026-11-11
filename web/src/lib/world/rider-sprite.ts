@@ -52,7 +52,11 @@ export function turnFrom(heading: number, dx: number, dz: number) {
 	const along = fx * dx + fz * dz;
 	const across = fz * dx - fx * dz;
 	const off = Math.abs(Math.atan2(across, along)) / Math.PI;
-	return { turn: Math.round(off * (TURNS.length - 1)), flip: across > 0 };
+	const turn = Math.round(off * (TURNS.length - 1));
+	// Straight behind or ahead the chase camera crosses the rider's line all
+	// the time: mirrored there, a parrot or a ponytail would hop from one
+	// shoulder to the other and back.
+	return { turn, flip: across > 0 && turn > 0 && turn < TURNS.length - 1 };
 }
 
 /**
