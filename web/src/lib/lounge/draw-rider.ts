@@ -311,6 +311,44 @@ function profileHair(f: Figure, hx: number, ht: number): Part[] {
 		: shaped;
 }
 
+/** The head's top left on the page, for a head centred on (cx, cy). */
+const headCorner = (cx: number, cy: number) =>
+	[Math.round(cx - 5), Math.round(cy - 4.5)] as const;
+
+/** What a head is cut from, seen from `view`: skin, hair and cap, inked round as one. */
+function headParts(f: Figure, view: View, hx: number, ht: number): Part[] {
+	const skin: Part[] = [
+		[hx + 1, ht, 8, 9, f.skin],
+		[hx, ht + 1, 10, 7, f.skin],
+	];
+	if (view === 'side')
+		return [...skin, [hx - 1, ht + 5, 1, 2, f.skin], ...profileHair(f, hx, ht)];
+	if (view === 'back' || view === 'quarter') {
+		const fill: Part[] =
+			f.hairStyle === 7
+				? []
+				: f.hairStyle === 4
+					? [[hx + 4, ht + 2, 2, 7, f.hair]]
+					: [[hx, ht, 10, 7, f.hair]];
+		const tail: Part[] =
+			f.hairStyle === 6 ? [[hx + 4, ht + 6, 2, 8, f.hair]] : [];
+		return [...skin, ...fill, ...tail, ...hair(f, hx, ht)];
+	}
+	return [...skin, ...hair(f, hx, ht)];
+}
+
+/** A box on the page: left, top, width, height. */
+type Box = { x: number; y: number; w: number; h: number };
+
+/** The pixels some parts cover with their ink outline round them. */
+function inkBox(parts: readonly Part[]): Box {
+	const x = Math.min(...parts.map((p) => p[0])) - 1;
+	const y = Math.min(...parts.map((p) => p[1])) - 1;
+	const r = Math.max(...parts.map((p) => p[0] + p[2])) + 1;
+	const b = Math.max(...parts.map((p) => p[1] + p[3])) + 1;
+	return { x, y, w: r - x, h: b - y };
+}
+
 /** Their head, by how far round it has turned from the back. */
 function head(
 	g: Ctx,
@@ -320,19 +358,9 @@ function head(
 	cy: number,
 	talking: boolean,
 ) {
-	const hx = Math.round(cx - 5);
-	const ht = Math.round(cy - 4.5);
+	const [hx, ht] = headCorner(cx, cy);
+	outlined(g, headParts(f, view, hx, ht), C.ink);
 	if (view === 'side') {
-		outlined(
-			g,
-			[
-				[hx + 1, ht, 8, 9, f.skin],
-				[hx, ht + 1, 10, 7, f.skin],
-				[hx - 1, ht + 5, 1, 2, f.skin],
-				...profileHair(f, hx, ht),
-			],
-			C.ink,
-		);
 		rect(g, hx + 1, ht + 8, 7, 1, f.skinShade);
 		rect(g, hx + 2, ht + 4, 1, 2, C.ink);
 		rect(g, hx + 1, ht + 7, 3, talking ? 2 : 1, talking ? C.ink : f.skinShade);
@@ -347,39 +375,11 @@ function head(
 		return;
 	}
 	if (view === 'back' || view === 'quarter') {
-		const fill: Part[] =
-			f.hairStyle === 7
-				? []
-				: f.hairStyle === 4
-					? [[hx + 4, ht + 2, 2, 7, f.hair]]
-					: [[hx, ht, 10, 7, f.hair]];
-		const tail: Part[] =
-			f.hairStyle === 6 ? [[hx + 4, ht + 6, 2, 8, f.hair]] : [];
-		outlined(
-			g,
-			[
-				[hx + 1, ht, 8, 9, f.skin],
-				[hx, ht + 1, 10, 7, f.skin],
-				...fill,
-				...tail,
-				...hair(f, hx, ht),
-			],
-			C.ink,
-		);
 		// The cheek and an ear: the side of the head that turns to the camera.
 		if (view === 'quarter' && f.hairStyle !== 7)
 			rect(g, hx, ht + 4, 3, 4, f.skin);
 		return;
 	}
-	outlined(
-		g,
-		[
-			[hx + 1, ht, 8, 9, f.skin],
-			[hx, ht + 1, 10, 7, f.skin],
-			...hair(f, hx, ht),
-		],
-		C.ink,
-	);
 	rect(g, hx + 1, ht + 8, 8, 1, f.skinShade);
 	const eyes = view === 'nose' ? [1, 5] : [2, 7];
 	for (const e of eyes) rect(g, hx + e, ht + 5, 1, 2, C.ink);
@@ -396,48 +396,95 @@ function head(
 	if (view === 'front') specs(g, f, hx, ht + 5);
 }
 
-/** Their pet where a bike has room for one: a parrot on the shoulder, a hamster on the head. */
-function pet(g: Ctx, f: Figure, shoulder: P, top: P) {
-	const colour = f.pet === 2 ? C.teal : C.amber;
-	const at = f.pet === 2 ? shoulder : f.pet === 3 ? top : null;
-	if (!at) return;
-	for (const [i, row] of PET_ROWS[f.pet ?? 0].entries())
-		for (const [j, c] of [...row].entries())
-			if (c !== '.')
-				rect(
-					g,
-					Math.round(at[0]) + j,
-					Math.round(at[1]) + i,
-					1,
-					1,
-					c === 'k' ? C.ink : colour,
-				);
-}
+/** Where a pet goes on a rider: its box, whether it looks left, and whether the rider is in front of it. */
+type PetSpot = Box & { mirror: boolean; behind: boolean };
+
+/** The columns and rows a pet's letters take. */
+const petSize = (rows: readonly string[]) => ({
+	w: Math.max(...rows.map((r) => r.replace(/\.+$/, '').length)),
+	h: rows.length,
+});
 
 /**
- * The bike, and whoever is on it, seen from `view` with its ground at
- * (ox, oy). `stroke` is how far round the pedals are, in frames; a towel hangs
- * over the bars of a bike nobody rides.
+ * Where their pet goes, if a bike has room for it: a parrot on a shoulder,
+ * a hamster on top of the head, never over the face. The parrot perches
+ * clear of `head` (skin, hair, cap and their ink) on the shoulder on the
+ * page's right, the side the face turns from (as drawn the rider faces
+ * left): its feet on `shoulder`, pushed out past a head wider than the
+ * shoulders. `faceLeft` turns it to look the way the bike goes. The hamster
+ * sits on `skull` (the head's skin, or its cap) and in any hair above it.
  */
-export function drawCyclist(
-	g: Ctx,
-	f: Figure | null,
+function petSpot(
+	pet: number | undefined,
+	head: Box,
+	skull: Box,
+	shoulder: readonly number[],
+	faceLeft: boolean,
+	behind: boolean,
+): PetSpot | null {
+	if (pet !== 2 && pet !== 3) return null;
+	const { w, h } = petSize(PET_ROWS[pet]);
+	if (pet === 3)
+		return {
+			x: Math.round(skull.x + skull.w / 2 - w / 2),
+			// Its ink shares the skull's top row of ink.
+			y: skull.y - h,
+			w,
+			h,
+			mirror: false,
+			behind: false,
+		};
+	return {
+		// Its ink shares the head's right-hand column of ink, at the nearest.
+		x: Math.max(Math.round(shoulder[0]) - 1, head.x + head.w),
+		y: Math.round(shoulder[1]) - (h - 1),
+		w,
+		h,
+		mirror: faceLeft,
+		behind,
+	};
+}
+
+/** A pet in the room's colours, inked round like everything on a bike so it reads against hair or sky. */
+function pet(g: Ctx, f: Figure, at: PetSpot) {
+	const colour: Record<string, string> = {
+		b: f.pet === 3 ? C.amber : C.woodLight,
+		k: C.ink,
+		t: C.teal,
+		r: C.redLight,
+	};
+	const parts: Part[] = [];
+	for (const [i, row] of PET_ROWS[f.pet ?? 0].entries())
+		for (const [j, c] of [...row].entries())
+			if (c !== '.' && j < at.w)
+				parts.push([
+					at.x + (at.mirror ? at.w - 1 - j : j),
+					at.y + i,
+					1,
+					1,
+					colour[c],
+				]);
+	outlined(g, parts, C.ink);
+}
+
+/** How a rider is turned and posed for one cell. */
+type Turn = {
+	standing?: boolean;
+	/** The turn in degrees, between the named views; `view` still draws the head. */
+	yaw?: number;
+};
+
+/** The bike's frame on the page: where a joint of the model lands, seen from `view` with its ground at (ox, oy). */
+function projection(
 	view: View,
 	stroke: number,
 	ox: number,
 	oy: number,
-	opts: {
-		shadow?: boolean;
-		talking?: boolean;
-		standing?: boolean;
-		/** The turn in degrees, between the named views; `view` still draws the head. */
-		yaw?: number;
-	} = {},
+	opts: Turn,
 ) {
 	const yaw = ((opts.yaw ?? YAW[view]) * Math.PI) / 180;
 	const sin = Math.sin(yaw);
 	const cos = Math.cos(yaw);
-	const across = Math.abs(cos);
 	const angle = crankAngle(stroke);
 	// Out of the saddle the bike rocks under you, away from the foot going down.
 	const rock = opts.standing ? Math.sin(angle) * 0.13 : 0;
@@ -463,6 +510,65 @@ export function drawCyclist(
 			depth,
 		];
 	};
+	return { sin, cos, across: Math.abs(cos), angle, pose, at };
+}
+
+/**
+ * Where the head lands, the box it and its hair cover with their ink, and
+ * where their pet goes beside it.
+ */
+export function riderHead(
+	f: Figure,
+	view: View,
+	stroke: number,
+	ox: number,
+	oy: number,
+	opts: Turn = {},
+) {
+	const { sin, cos, across, pose, at } = projection(view, stroke, ox, oy, opts);
+	// Seen along the back the head sits down between the shoulders.
+	const top = pose(HEAD);
+	const [cx, cy] = at([top[0], top[1] - across * 2.5, 0]);
+	const [hx, ht] = headCorner(cx, cy);
+	const box = inkBox(headParts(f, view, hx, ht));
+	// A cap's crown stands a pixel over the skull.
+	const skull = { x: hx - 1, y: ht - (f.cap ? 2 : 1), w: 12, h: 11 };
+	// The shoulder on the page's right, and the top of it a parrot's feet grip.
+	const side = cos >= 0 ? 1 : -1;
+	const sh = pose(SHOULDER);
+	const shoulder = at([sh[0] - 1, sh[1] + 0.5, side * 6.5]);
+	return {
+		cx,
+		cy,
+		box,
+		pet: petSpot(f.pet, box, skull, shoulder, sin > 0.3, side * sin > 0.01),
+	};
+}
+
+/**
+ * The bike, and whoever is on it, seen from `view` with its ground at
+ * (ox, oy). `stroke` is how far round the pedals are, in frames; a towel hangs
+ * over the bars of a bike nobody rides.
+ */
+export function drawCyclist(
+	g: Ctx,
+	f: Figure | null,
+	view: View,
+	stroke: number,
+	ox: number,
+	oy: number,
+	opts: {
+		shadow?: boolean;
+		talking?: boolean;
+	} & Turn = {},
+) {
+	const { sin, across, angle, pose, at } = projection(
+		view,
+		stroke,
+		ox,
+		oy,
+		opts,
+	);
 	const pic = new Picture();
 
 	const wheel = (hub: P) => {
@@ -688,18 +794,17 @@ export function drawCyclist(
 				if ((Math.round(ox + x) + oy + y) % 2 === 0)
 					rect(g, ox + x, oy + 1 + y, 1, 1, C.ink);
 	}
+	const up = f && riderHead(f, view, stroke, ox, oy, opts);
+	// A parrot on the far shoulder peeks over it: the rider is drawn over it.
+	if (f && up?.pet?.behind) pet(g, f, up.pet);
 	for (const [x, y, c] of pic.inked()) rect(g, x, y, 1, 1, c);
-	if (!f) {
+	if (!f || !up) {
 		const [bx, by] = at(BARS);
 		outlined(g, [[bx - 1, by + 1, 3, 6, C.towel]], C.ink);
 		return;
 	}
-	// Seen along the back the head sits down between the shoulders.
-	const top = pose(HEAD);
-	const [cx, cy] = at([top[0], top[1] - across * 2.5, 0]);
-	head(g, f, view, cx, cy, !!opts.talking);
-	const [sx, sy] = at([pose(SHOULDER)[0], pose(SHOULDER)[1] + 3, 7]);
-	pet(g, f, [sx - 1, sy - 4], [cx - 2, cy - 9]);
+	head(g, f, view, up.cx, up.cy, !!opts.talking);
+	if (up.pet && !up.pet.behind) pet(g, f, up.pet);
 }
 
 /** One cell of a rider's sheet, with its top left at the origin: seated, or out of the saddle. */
