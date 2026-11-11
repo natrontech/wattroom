@@ -17,6 +17,23 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.11.30] - 2026-11-11
+
+### Added
+
+- In a Ride together session, the crew's metres climbed add up live towards the height of Everest (8,849 m), and everyone on the session sees the shared total under their numbers. Pair it with Climb repeats. (#4522)
+- Your closing card now says how many Batzen the ride earned, and a ride on a road shows the road as you rode it, the zones you rode it in and the climbs you went up, with your time and a PR flag when you rode it alone. (#4521)
+- In the desktop app, BikeControl shifts your gears over the network: turn on its OpenBikeControl network mode and pair Network shifter beside your sensors, with no keys to set up. (#4518)
+
+### Fixed
+
+- Ride together fills the screen on a desk (#4524)
+- Opening a crew session's page now lets you watch it; you join with Join the ride, and Leave keeps you on the page instead of pulling you back in. Your ride keeps running when you open another voice channel or a session, and nothing asks "End the ride?" on the way. (#4523)
+- The jukebox no longer covers the music video in its corner; it opens above it. Riding on a phone held sideways, the jukebox button is hidden, as it already was upright. (#4520)
+- The view switch, the phone remote and the voice channel's own switch now call the pixel space the Lounge, as the rest of the app does. (#4519)
+- The road list on Ride lets you import another route once you have one, the ramp test's riding screen starts at the top, and the watts label reads "Watts · Z3" with its space back. (#4514)
+- A ride on a road started from a voice channel opens on its start line again, with the coach's Start the ride. (#4513)
+
 ## [2026.11.29] - 2026-11-11
 
 ### Fixed
@@ -4504,7 +4521,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.29...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.30...HEAD
+[2026.11.30]: https://github.com/natrontech/wattroom/compare/2026.11.29...2026.11.30
 [2026.11.29]: https://github.com/natrontech/wattroom/compare/2026.11.28...2026.11.29
 [2026.11.28]: https://github.com/natrontech/wattroom/compare/2026.11.27...2026.11.28
 [2026.11.27]: https://github.com/natrontech/wattroom/compare/2026.11.26...2026.11.27
