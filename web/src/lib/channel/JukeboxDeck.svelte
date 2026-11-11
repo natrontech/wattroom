@@ -22,7 +22,6 @@
 		JukeboxEntry,
 		JukeboxState,
 	} from '#lib/protocol.ts';
-	import { thumbnailFor } from '#lib/channel/jukebox-add.ts';
 	import {
 		deckDuration,
 		playerInfo,
@@ -30,11 +29,6 @@
 	import { listening } from '#lib/channel/listening.svelte.ts';
 	import { clampSeek, playheadAt } from '#lib/channel/playhead.ts';
 	import { serverNow } from '#lib/server-clock.ts';
-	import {
-		COLUMN_SEAT,
-		offerSeat,
-		stageSlot,
-	} from '#lib/channel/stage-slot.svelte.ts';
 	import { roadsideShown } from '#lib/channel/RoadsideDeck.svelte';
 	import TrackWave from '#lib/channel/TrackWave.svelte';
 	import { MUSIC_FADER } from '#lib/sound/fader.ts';
@@ -61,16 +55,6 @@
 		 *  targets. The layout stays the desk's (#4347). */
 		riding?: boolean;
 	} = $props();
-
-	// A stable attachment: a fresh arrow every render would tear the offer
-	// down and re-register it on updates the seat has nothing to do with.
-	const seat = (node: HTMLElement) => offerSeat(node, COLUMN_SEAT);
-
-	// Something above the column is offering — the stage, or TV mode. The hole
-	// is then a placeholder for a video already on screen, and the column has
-	// three things fighting for its height (#504), so it stands down to the
-	// words and the transport.
-	const elsewhere = $derived(stageSlot.outranked);
 
 	// A playlist on the deck (#615) — an entry is one exactly when it carries
 	// tracks, and it walks them without ever leaving its queue slot.
@@ -206,49 +190,12 @@
 		>
 			<Disc3 size={28} />
 		</div>
-	{:else}
-		<!-- The seat: the dock flies onto this hole (#445). ≥200 px tall so
-		     the player clears RMF's 200×200 at the column's width, and the
-		     height is clamped rather than tied to the panel's width — a
-		     dragged-wide panel gave the picture 300 px and left the chat a
-		     sliver (rider report).
-
-		     The hole is ALWAYS MOUNTED, never rendered conditionally: the
-		     stage taking the player and giving it back would then mount and
-		     unmount this offer, which is what turned a pre-existing effect
-		     loop fatal in 2026.09.9 (#494). When the stage or TV outranks
-		     the column it is hidden instead — display:none, so the element
-		     and its attachment stay put while the box stops costing the
-		     column 200 px for a picture of a video already on screen (#504).
-
-		     Hiding withdraws the offer, because a zero rect is not a seat.
-		     That is wanted — the seat must never be won at zero height, or
-		     the player flies into a sliver — and it is why `elsewhere` asks
-		     whether a HIGHER surface is offering rather than who holds the
-		     player. Hiding changes the holder, so deciding by holder closes
-		     the loop: hidden, withdrawn, holder changes, shown again.
-		     Measured, that was effect_update_depth_exceeded within a second
-		     of the stage appearing. -->
-		<div
-			class="bg-surface relative w-full overflow-hidden rounded-lg {elsewhere
-				? 'hidden'
-				: ''}"
-			style="height: clamp(200px, 24vh, 240px)"
-			{@attach seat}
-		>
-			<img
-				src={thumbnailFor(current.videoId)}
-				alt=""
-				loading="lazy"
-				referrerpolicy="no-referrer"
-				class="h-full w-full object-cover opacity-60"
-			/>
-			<span
-				class="bg-paper/70 text-muted absolute inset-x-0 bottom-0 px-2 py-1 text-[10px]"
-				>The player docks here.</span
-			>
-		</div>
 	{/if}
+	<!-- A YouTube track draws no picture here (#4347): this deck only ever
+	     opens in the now bar's pop-up, which counts as covering, so the
+	     player never flew into the hole it used to leave. It sits in its
+	     corner just below the pop-up instead, and the hole was a thumbnail
+	     of it that pushed the transport off a 720 px window mid-ride. -->
 	<!-- The hint sits on the words, never over the player (RMF). -->
 	<div class="min-w-0" title={MENU_HINT}>
 		{#if setTracks}
