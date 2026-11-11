@@ -14,6 +14,7 @@ import { pixelRatio } from './budget';
 import { compose, type CameraMode, type MountOptions } from './compose';
 import { createLoop, type LoopStats, missWatch, watchPage } from './loop';
 import { softwareDrawing } from './software-drawing';
+import { describeLongFrames, watchLongFrames } from './long-frames';
 import { gpuTimer } from './gpu-timer';
 import { dioramaPass } from './diorama';
 import { worldDiorama } from './mode';
@@ -24,6 +25,7 @@ import {
 	deviceKey,
 	type Ladder,
 	type Measured,
+	p90,
 	rememberedRung,
 	rememberRung,
 	type Rung,
@@ -210,6 +212,7 @@ export function mount(
 		broke = true;
 		loop.stop();
 		clearInterval(judge);
+		longFrames.stop();
 		opts.onFail?.(why);
 	}
 
@@ -258,12 +261,20 @@ export function mount(
 	// A dev build drawing in software keeps its world (software-drawing.ts); the ladder still climbs down.
 	const watching = () => (softwareDrawing() ? null : missWatch());
 	let watch = watching();
+	const longFrames = watchLongFrames();
 	const judge = setInterval(() => {
 		const stats = loop.stats();
 		if (watch?.(stats)) {
 			// Above the floor the Fallback is one more rung down, and the
 			// watch starts over on it: only L1 hands the ride to the Skyline (#4423).
-			if (!climbs || rung <= 1) return fail('frames');
+			if (!climbs || rung <= 1) {
+				// Into a ⚑ report: what the window measured and what held the page.
+				const e = watch.evidence();
+				console.error(
+					`world: dropped to the flat road at L${rung} — ${Math.round(e.share * 100)} % of frames missed over ${e.seconds} s, ${e.bad} bad seconds, ${Math.round(stats.hz)} Hz, GPU p90 ${gpuMs.length ? `${p90(gpuMs).toFixed(1)} ms` : 'untimed'}; ${describeLongFrames(longFrames.recent())}`,
+				);
+				return fail('frames');
+			}
 			watch = watching();
 			windowOf = windows();
 			gpuMs = [];
@@ -337,6 +348,7 @@ export function mount(
 			failed = true; // the world's last frame was drawn: what follows is not a failure to report
 			loop.stop();
 			clearInterval(judge);
+			longFrames.stop();
 			if (broke) return null;
 			// Diorama's riders are the room's sprites in the picture too, drawn whole before it is shot.
 			const still = pictureStill(
@@ -388,6 +400,7 @@ export function mount(
 			failed = true; // what follows is ours, not a failure to report
 			loop.stop();
 			clearInterval(judge);
+			longFrames.stop();
 			unwatch();
 			observer.disconnect();
 			canvas.removeEventListener('webglcontextlost', lost);

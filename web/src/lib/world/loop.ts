@@ -116,7 +116,7 @@ export const FALLBACK = { share: 0.2, seconds: 10, bad: 5 } as const;
 export function missWatch() {
 	const seconds: { rendered: number; missed: number }[] = [];
 	let last: LoopStats | null = null;
-	return (stats: LoopStats): boolean => {
+	const judge = (stats: LoopStats): boolean => {
 		const before = last;
 		last = stats;
 		if (!before) return false;
@@ -136,6 +136,74 @@ export function missWatch() {
 		}
 		return bad >= FALLBACK.bad && m / (r + m) > FALLBACK.share;
 	};
+	return Object.assign(judge, {
+		/** The window it last judged, for the line a fallback leaves in the console. */
+		evidence() {
+			let r = 0;
+			let m = 0;
+			let bad = 0;
+			for (const s of seconds) {
+				r += s.rendered;
+				m += s.missed;
+				if (s.missed / (s.rendered + s.missed) > FALLBACK.share) bad++;
+			}
+			return { share: m / Math.max(1, r + m), bad, seconds: seconds.length };
+		},
+	});
+}
+
+/**
+ * docs/spec/world.md "Fallback": a world that dropped comes back once the
+ * page has kept up for `seconds` in a row, each missing at most `share` of
+ * its 30 fps intervals (#4423 follow-up). A stall that drove the world off —
+ * a collection, an upload, a call starting — is over when the page keeps its
+ * frames again, and waiting out a fixed minute past that is the rider looking
+ * at a flat road for nothing.
+ */
+export const CALM = { seconds: 3, share: 0.1 } as const;
+
+/**
+ * Watches the page's own animation frames on the 30 fps grid, drawing
+ * nothing, and calls `onCalm` once, on the first second that ends CALM.seconds
+ * calm in a row and is at least `notBeforeS` seconds in. A hidden page gives
+ * no evidence: its seconds neither count nor break the run. Returns its stop.
+ */
+export function watchCalm(
+	onCalm: () => void,
+	notBeforeS = 0,
+	frames: Frames = browserFrames,
+): () => void {
+	const loop = createLoop(
+		() => {},
+		() => false,
+		frames,
+	);
+	const doc = typeof document === 'undefined' ? null : document;
+	const onVisibility = () => loop.gate('hidden', !!doc?.hidden);
+	doc?.addEventListener('visibilitychange', onVisibility);
+	onVisibility();
+	loop.start();
+	let last = loop.stats();
+	let calm = 0;
+	let elapsed = 0;
+	const judge = setInterval(() => {
+		elapsed++;
+		const now = loop.stats();
+		const rendered = now.rendered - last.rendered;
+		const missed = now.missed - last.missed;
+		last = now;
+		if (rendered + missed > 0)
+			calm = missed / (rendered + missed) <= CALM.share ? calm + 1 : 0;
+		if (calm < CALM.seconds || elapsed < notBeforeS) return;
+		stop();
+		onCalm();
+	}, 1000);
+	function stop() {
+		clearInterval(judge);
+		loop.stop();
+		doc?.removeEventListener('visibilitychange', onVisibility);
+	}
+	return stop;
 }
 
 /**

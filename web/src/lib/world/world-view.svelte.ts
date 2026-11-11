@@ -11,6 +11,7 @@ import { PHONE_MAX_PX } from '$lib/device.svelte';
 import { worldFits } from '$lib/session/docks';
 import { play } from '$lib/sound/cues';
 import { setWorldMode, worldMode, type WorldMode } from './mode';
+import { watchCalm } from './loop';
 import {
 	rideView,
 	type Failure,
@@ -30,10 +31,20 @@ if (typeof window !== 'undefined')
 	});
 
 /**
- * docs/spec/world.md "Fallback": seconds on the Skyline before each of a
- * ride's automatic returns to the world; past the last, only 3D brings it back.
+ * docs/spec/world.md "Fallback": the least seconds on the Skyline before each
+ * of a ride's automatic returns to the world, which also waits for the page
+ * to keep its frames again (loop.ts CALM); past the last, only 3D brings it
+ * back. It was 15, 60 and 240 (#4423): a world that dropped on a stall left
+ * the rider on the flat road for a minute after the stall was long over.
  */
-export const RETURN_S = [15, 60, 240] as const;
+export const RETURN_S = [3, 10, 30, 60, 120] as const;
+
+/**
+ * A world that held this long since it last came back starts the ladder
+ * above again: it counts a bad stretch, not a ride, so a drop an hour after
+ * the last one comes back in seconds too.
+ */
+export const HELD_S = 300;
 
 let caps: { webgl2: boolean; multiDraw: boolean } | null = null;
 
@@ -50,7 +61,7 @@ function capabilities() {
 	return caps;
 }
 
-export function createWorldView() {
+export function createWorldView(calm: typeof watchCalm = watchCalm) {
 	let failure: Failure | null = null;
 	const decide = (): RideView =>
 		rideView({
@@ -61,9 +72,12 @@ export function createWorldView() {
 		});
 	let view = $state<RideView>(decide());
 	let returns = 0;
-	let returning: ReturnType<typeof setTimeout> | undefined;
+	// When the world last came back by itself; null until it has.
+	let cameBack: number | null = null;
+	// Stops the wait for the next return.
+	let returning: (() => void) | undefined;
 	function settle() {
-		clearTimeout(returning);
+		returning?.();
 		returning = undefined;
 	}
 	// The window's height is live, unlike a failure: the world comes back
@@ -93,17 +107,21 @@ export function createWorldView() {
 			if (!failure) play('fault');
 			failure = why;
 			view = decide();
+			if (cameBack !== null && Date.now() - cameBack >= HELD_S * 1000)
+				returns = 0;
 			if (returning || returns >= RETURN_S.length) return;
 			// Back by itself, the rider's choices untouched: a ride they put
 			// on Flat meanwhile stays flat. The ladder has stepped down to the
-			// floor on the way here, so the world comes back where it held.
-			returning = setTimeout(() => {
+			// floor on the way here, so the world comes back where it held:
+			// once the page keeps its frames, never sooner than this step.
+			returning = calm(() => {
 				returning = undefined;
 				if (!failure) return;
 				failure = null;
 				view = decide();
+				cameBack = Date.now();
 				if (view === 'world') play('recover');
-			}, RETURN_S[returns++] * 1000);
+			}, RETURN_S[returns++]);
 		},
 		/**
 		 * The world's own chunk (three.js), loaded for the ride; a renderer
