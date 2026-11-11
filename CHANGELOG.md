@@ -17,6 +17,24 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.11.28] - 2026-11-11
+
+### Added
+
+- The picture of a free ride on a road now shows your power over the road's hills, with the distance and climb as numbers. It is titled "Virtual route ride" and its distance. (#4502)
+- The phone remote now has the same ride controls as the computer: TV mode and Flag on the phone, Camera, Photo and Pause on the computer, and a 3D / Flat / Map row on both. The phone's Page button is gone, the remote fits an iPhone screen without scrolling, and the O key takes a photo on a free ride too. (#4500)
+- The picture of a workout ride now shows the workout big, under the workout's name. On a road it says the distance and climb in one line instead of drawing the road. (#4496)
+
+### Fixed
+
+- When your connection to the session drops, WattRoom reconnects straight away and then every few seconds, instead of waiting up to ten. (#4501)
+- When your trainer or a sensor loses its Bluetooth link, WattRoom now tries to reconnect straight away and then every few seconds, instead of waiting up to half a minute. (#4499)
+- When the 3D world drops to the flat road on a hiccup, it now comes back within a few seconds once your computer keeps up again, instead of after a minute. (#4498)
+- Photos you take with the phone remote's Photo button are kept with the ride: up to 5 a ride, on the ride's page afterwards, to save on your phone or computer. (#4495)
+- A parrot now sits on your shoulder beside your head on the road and on the room's trainers, instead of covering your face, and it no longer hops from shoulder to shoulder on a straight road. (#4494)
+- A workout you ride on a road now uploads to Strava under the workout's name. A ride the road alone names is titled "Virtual route ride" and its distance. (#4493)
+- A finished ride no longer says "Trainer disconnected, keep pedalling" (#4491)
+
 ## [2026.11.27] - 2026-11-08
 
 ### Fixed
@@ -4480,7 +4498,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.27...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.28...HEAD
+[2026.11.28]: https://github.com/natrontech/wattroom/compare/2026.11.27...2026.11.28
 [2026.11.27]: https://github.com/natrontech/wattroom/compare/2026.11.26...2026.11.27
 [2026.11.26]: https://github.com/natrontech/wattroom/compare/2026.11.25...2026.11.26
 [2026.11.25]: https://github.com/natrontech/wattroom/compare/2026.11.24...2026.11.25
