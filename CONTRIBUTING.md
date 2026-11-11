@@ -4,7 +4,7 @@ Read [WATTROOM.md](WATTROOM.md) for the decisions that hold, [docs/ARCHITECTURE.
 
 ## Dev setup
 
-Requirements: Go 1.26+, Node 22+, pnpm, Docker. The pnpm version is pinned in `web/package.json` (`packageManager`); pnpm 10+ and corepack install it for you.
+Requirements: Go 1.27+, Node 26+, pnpm, Docker. The pnpm version is pinned in `web/package.json` (`packageManager`); pnpm 10+ and corepack install it for you.
 
 ```sh
 git clone https://github.com/natrontech/wattroom && cd wattroom
