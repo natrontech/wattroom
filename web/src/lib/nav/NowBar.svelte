@@ -284,13 +284,17 @@
 							><Bike size={14} /> Back to ride</a
 						>
 					{/if}
+					<!-- No jukebox mid-ride on a phone (#4347), on its side too:
+					     a 390 px tall screen has no room for the pop-up and the
+					     player both. 30rem is above every phone held sideways
+					     and below every tablet and desk window. -->
 					{#if conn}<button
 							bind:this={nowPanel.music}
 							onclick={() => toggle('music')}
 							aria-expanded={nowPanel.open === 'music'}
 							aria-haspopup="dialog"
 							class="hover:bg-ink/5 flex h-11 max-w-56 min-w-0 shrink items-center gap-2 rounded px-2 text-sm {rideBar.on
-								? 'max-sm:hidden'
+								? 'max-sm:hidden [@media(max-height:30rem)]:hidden'
 								: ''} {nowPanel.open === 'music'
 								? 'text-ink bg-ink/5'
 								: 'text-muted'}"

@@ -31,7 +31,7 @@ It is not a training plan generator, not an open world, and not a content treadm
 
 - The crew is what persists: members, roles (owner, admin, member), one ban, the schedule, the streak, medals and history. Its invite is a link and a 6-character code.
 - A free ride is the rider's own: its numbers stay on their screen, and their call shows only that they ride. A session drives only the riders who joined it. Ride together is a session with no workout: everyone rides their own free ride and sees each other's numbers.
-- A session is the crew's own: any member starts one from the crew page, the now bar, a plan or a game, several can run at once, and joining one needs no voice channel. A plan names no voice channel. A call and a session run side by side: joining one never touches the other. A call shows who in it rides a session and which one, with Join, never their numbers. Its recap is every member's. A voice channel is a call and nothing else: no session opens in it, so its room stays its room.
+- A session is the crew's own: any member starts one from the crew page, the now bar, a plan or a game, several can run at once, and joining one needs no voice channel. A plan names no voice channel. A call and a session run side by side: joining one never touches the other. A call shows who in it rides a session and which one, with Join, never their numbers. Its recap is every member's. A voice channel is a call and nothing else: no session opens in it, so its lounge stays its lounge.
 - Everything is behind sign-in except the public pages, which are prerendered.
 - One account holds a set of credentials: Google, GitHub, Strava and passkeys. No passwords. A verified email is for recovery, and a mailed link is the way back in.
 - Friends are mutual. Presence is a friend's to see.
@@ -87,7 +87,7 @@ It is not a training plan generator, not an open world, and not a content treadm
 - A YouTube playlist is one queue entry. A saved playlist is a saved queue. Uploaded MP3s join the crew's pool.
 - Spotify is a link out, never an API integration.
 - A soundboard clip is a file the channel fetches, not audio down the voice track.
-- A voice channel between sessions is the lounge: a pixel room of who is in the call. It stays through a camera, a shared screen, a video and your own ride: a picture hangs on its wall, and only the rider leaves it, for the tiles, per device. A ride can look at it too: 3D, Flat, Map or Room. House radio is one tap away on its record player.
+- A voice channel between sessions is the lounge: a pixel space of who is in the call. It stays through a camera, a shared screen, a video and your own ride: a picture hangs on its wall, and only the rider leaves it, for the tiles, per device. A ride can look at it too: 3D, Flat, Map or Lounge. House radio is one tap away on its record player.
 - The server unfurls pasted links through a pinned-address fetch. The GIF picker (GIPHY) is proxied and posts a plain chat message.
 
 ## Data, privacy and competition
@@ -110,7 +110,7 @@ It is not a training plan generator, not an open world, and not a content treadm
 These were locked and are open again. A redesign may replace them; the rules above still bind it.
 
 - The app frame: one left sidebar beside the content, with the people column on the right.
-- The riding screen's layout: the slots, how they dock around the world, the bike computer paging slot 3, the desk sizes, the 3D/Flat/Map/Room switch row.
+- The riding screen's layout: the slots, how they dock around the world, the bike computer paging slot 3, the desk sizes, the 3D/Flat/Map/Lounge switch row.
 - The look: the synthwave identity and palette, how a theme is built, the world's light, ground and flat-colour style.
 - Motion, except flash safety: at most one luminance flash per 10 s over 25 % of a 10° field (WCAG 2.3.1).
 

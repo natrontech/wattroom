@@ -28,10 +28,10 @@
 	};
 </script>
 
-<Modal label="The room's album" {onclose} class="max-w-2xl">
-	<h2 class="font-display text-lg font-bold">The room's album</h2>
+<Modal label="The lounge's album" {onclose} class="max-w-2xl">
+	<h2 class="font-display text-lg font-bold">The lounge's album</h2>
 	<p class="text-muted mt-1 text-sm">
-		{album.length} of {VISITORS.length} have come by. They only come when the room
+		{album.length} of {VISITORS.length} have come by. They only come when the lounge
 		is right.
 	</p>
 	<ul class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">

@@ -70,8 +70,8 @@
 	}
 </script>
 
-<Modal label="Furnish the room" {onclose} class="max-w-xl">
-	<h2 class="font-display text-lg font-bold">Furnish the room</h2>
+<Modal label="Furnish the lounge" {onclose} class="max-w-xl">
+	<h2 class="font-display text-lg font-bold">Furnish the lounge</h2>
 	<p class="text-muted mt-1 text-sm">
 		You pay from your own Batzen, and it goes up for your whole crew.
 		{#if balance !== null}You have {balance}.{/if}

@@ -222,13 +222,13 @@ func (s *Service) handlePickRoomItem(w http.ResponseWriter, r *http.Request) {
 		}
 		owned, err := s.store.Queries.CrewOwnsRoomItem(r.Context(), db.CrewOwnsRoomItemParams{CrewID: crew.ID, Item: req.Item})
 		if err != nil {
-			httpx.Fail(w, s.log, "room pick failed", err, "The room could not be changed.", "crew", store.UUIDString(crew.ID))
+			httpx.Fail(w, s.log, "room pick failed", err, "The lounge could not be changed. Try again.", "crew", store.UUIDString(crew.ID))
 			return
 		}
 		if !owned && item.Hours > 0 {
 			together, err := s.store.Queries.CrewTogetherSeconds(r.Context(), crew.ID)
 			if err != nil {
-				httpx.Fail(w, s.log, "room pick failed", err, "The room could not be changed.", "crew", store.UUIDString(crew.ID))
+				httpx.Fail(w, s.log, "room pick failed", err, "The lounge could not be changed. Try again.", "crew", store.UUIDString(crew.ID))
 				return
 			}
 			owned = slices.Contains(unlockedBy(together), req.Item)
@@ -239,7 +239,7 @@ func (s *Service) handlePickRoomItem(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if err := setRoomPick(r.Context(), s.store.Queries, crew.ID, req.Slot, req.Item); err != nil {
-		httpx.Fail(w, s.log, "room pick failed", err, "The room could not be changed.", "crew", store.UUIDString(crew.ID))
+		httpx.Fail(w, s.log, "room pick failed", err, "The lounge could not be changed. Try again.", "crew", store.UUIDString(crew.ID))
 		return
 	}
 	s.changed(r.Context(), crew.ID)

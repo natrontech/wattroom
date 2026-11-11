@@ -33,7 +33,7 @@
 	const faq = [
 		{
 			q: 'Does Zwift have voice chat?',
-			a: 'Not built in: Zwift’s chat is typed, and riders who want to hear each other run Discord beside it. In WattRoom the voice channel is the room the workout happens in.',
+			a: 'Not built in: Zwift’s chat is typed, and riders who want to hear each other run Discord beside it. In WattRoom the workout happens in the voice channel.',
 		},
 		{
 			q: 'Can we ride a workout together if our FTPs are different?',
@@ -108,7 +108,7 @@
 	<div>
 		<SectionHead
 			eyebrow="Why a crew, not an event"
-			title="The ride is better when the room is still there tomorrow"
+			title="The ride is better when the crew is still there tomorrow"
 		/>
 		<div class="text-muted mt-5 flex flex-col gap-4 text-base leading-relaxed">
 			<p>

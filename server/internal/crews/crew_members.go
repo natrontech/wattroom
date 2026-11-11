@@ -150,18 +150,18 @@ func (s *Service) handleCrewRoom(w http.ResponseWriter, r *http.Request) {
 	}
 	row, err := s.store.Queries.CrewRoomMemory(r.Context(), crew.ID)
 	if err != nil {
-		httpx.Fail(w, s.log, "crew room failed", err, "The crew's room could not be loaded.", "crew", crew.ID)
+		httpx.Fail(w, s.log, "crew room failed", err, "The crew's lounge could not be loaded. Try again.", "crew", crew.ID)
 		return
 	}
 	room, err := s.roomFurnishing(r.Context(), crew.ID)
 	if err != nil {
-		httpx.Fail(w, s.log, "crew room failed", err, "The crew's room could not be loaded.", "crew", crew.ID)
+		httpx.Fail(w, s.log, "crew room failed", err, "The crew's lounge could not be loaded. Try again.", "crew", crew.ID)
 		return
 	}
 	// The km stone: only the riders on the weekly board count (lounge.md).
 	metres, err := s.store.Queries.CrewBoardMetres(r.Context(), crew.ID)
 	if err != nil {
-		httpx.Fail(w, s.log, "crew room failed", err, "The crew's room could not be loaded.", "crew", crew.ID)
+		httpx.Fail(w, s.log, "crew room failed", err, "The crew's lounge could not be loaded. Try again.", "crew", crew.ID)
 		return
 	}
 	// roomFurnishing carries the crew's time together, which unlocks things.
