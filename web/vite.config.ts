@@ -53,24 +53,34 @@ function hardwareLog(): Plugin {
  * time `codeSplitting.groups[].test` is consulted.
  *
  * SvelteKit 3 starts in two steps: client/entry.js sets the payload, then
- * imports client/client-entry.js dynamically, and the build finds the runtime
- * through that dynamic import. Both stay out of the groups: merged into one
- * chunk, the import vanishes and the build stops with "Could not find the
- * client runtime chunk". client-entry.js seeds the set instead of entry.js,
- * whose static closure is only the payload.
+ * imports client/client-entry.js dynamically, so the runtime evaluates after
+ * the payload is set. Two things keep that order here:
+ * - Kit's runtime matches no group by itself. Grouped, entry.js and
+ *   client-entry.js shared a chunk, the dynamic import vanished, and the
+ *   build stopped with "Could not find the client runtime chunk".
+ * - What start.js imports statically, payload.js and Vite's preload helper,
+ *   gets a group of its own, first. A group takes its members' dependencies
+ *   along, so eager-app had pulled in $app/navigation, client.js and both of
+ *   those with it. start.js then evaluated the whole runtime before `init`:
+ *   the version read empty, every error page found an "update", and an
+ *   unknown path reloaded itself forever instead of showing the 404.
+ * client-entry.js seeds the set instead of entry.js, whose static closure is
+ * only the payload.
  */
+const startsKit = (id: string) =>
+	id.endsWith('/kit/src/runtime/client/payload.js') ||
+	id.includes('vite/preload-helper');
+
 function eagerShell(): { plugin: Plugin; contains: (id: string) => boolean } {
 	const eager = new Set<string>();
-	const kitEntry = (id: string) =>
-		id.endsWith('/kit/src/runtime/client/entry.js') ||
-		id.endsWith('/kit/src/runtime/client/client-entry.js');
+	const kitRuntime = (id: string) => id.includes('/kit/src/runtime/');
 	const isSeed = (id: string) =>
 		id.endsWith('/client-optimized/app.js') ||
 		id.endsWith('/kit/src/runtime/client/client-entry.js') ||
 		id.endsWith('/src/routes/(app)/+layout.svelte');
 
 	return {
-		contains: (id) => eager.has(id) && !kitEntry(id),
+		contains: (id) => eager.has(id) && !kitRuntime(id),
 		plugin: {
 			name: 'wattroom-eager-shell',
 			applyToEnvironment: (environment) => environment.name === 'client',
@@ -124,6 +134,7 @@ export default defineConfig({
 					output: {
 						codeSplitting: {
 							groups: [
+								{ name: 'kit-start', test: startsKit, priority: 1 },
 								{
 									name: 'eager-vendor',
 									test: (id) =>
