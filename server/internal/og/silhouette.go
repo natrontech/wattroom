@@ -11,19 +11,14 @@ import (
 	"github.com/natrontech/wattroom/server/internal/stats"
 )
 
-// The ride card's one big mark, its silhouette (#3142): a workout ride draws
-// its watts, and a ride on a road draws the road it rode — the heights over
-// the distance, each stretch painted with the zone the rider was in there.
+// The ride card's one big mark, its silhouette (#3142): a ride draws its
+// watts — over the workout's blocks when it had one — and a free ride on a
+// road draws its power over the road it rode (poster.go).
 
-// drawSilhouette picks the mark a ride has the data for: a free ride on a
-// road is the road it rode; anything else is its watts — over the workout's
-// blocks when it had one (#4430), with a heart rate when handed one. A
-// workout on a road draws nothing of the road: the workout is the picture.
+// drawSilhouette is a ride's watts: over the workout's blocks when it had
+// one (#4430), with a heart rate when handed one. A workout on a road draws
+// nothing of the road: the workout is the picture.
 func (s *Service) drawSilhouette(dst *image.NRGBA, box image.Rectangle, c RideCard) error {
-	if c.Poster() {
-		s.drawRoad(dst, box, c)
-		return nil
-	}
 	graph := box
 	var top float64
 	var err error
@@ -45,8 +40,9 @@ func (s *Service) drawSilhouette(dst *image.NRGBA, box image.Rectangle, c RideCa
 	return s.drawLegend(dst, graph.Min.X, graph.Min.Y-8, s.legend(c))
 }
 
-// Poster says the card is drawn as the road it rode (#3142): a ride on a road
-// that was not a workout. A workout on a road is the workout's card (#4430).
+// Poster says the card is drawn as its power over the road it rode (#3142):
+// a ride on a road that was not a workout. A workout on a road is the
+// workout's card (#4430).
 func (c RideCard) Poster() bool {
 	return onRoad(c) && !c.Workout
 }
@@ -63,55 +59,6 @@ func onRoad(c RideCard) bool {
 // stretched to the full height of the box. A drawing constant, like the
 // trace's 1.35 × FTP ceiling, not a product number.
 const minRoadSpanM = 100
-
-// drawRoad fills one column per horizontal pixel with the road's height
-// there, capped in the zone the rider peaked in over that stretch — the
-// trace's paint, on the road's shape. Drawn at 2× and scaled down, like the
-// trace, so the profile is not a staircase.
-func (s *Service) drawRoad(dst *image.NRGBA, box image.Rectangle, c RideCard) {
-	const ss = 2
-	w, h := box.Dx()*ss, box.Dy()*ss
-	from, to := c.Metres[0], c.Metres[len(c.Metres)-1]
-	heights := make([]float64, w)
-	peaks := make([]int, w)
-	i := 0
-	for x := range w {
-		end := from + (to-from)*float64(x+1)/float64(w)
-		sum, n := 0.0, 0
-		for ; i < len(c.Metres) && c.Metres[i] <= end; i++ {
-			sum += c.Heights[i]
-			n++
-			peaks[x] = max(peaks[x], c.Watts[i])
-		}
-		switch {
-		case n > 0:
-			heights[x] = sum / float64(n)
-		case x > 0:
-			// A stretch no second landed in rides on at the last height.
-			heights[x], peaks[x] = heights[x-1], peaks[x-1]
-		default:
-			heights[x] = c.Heights[0]
-		}
-	}
-	lo, hi := slices.Min(heights), slices.Max(heights)
-	span := math.Max(hi-lo, minRoadSpanM)
-	tmp := image.NewNRGBA(image.Rect(0, 0, w, h))
-	const capHeight = 5 * ss
-	// A tenth of the box stays under the lowest point, so the valley floor is
-	// still a road and not the panel's edge.
-	floor := float64(h) * 0.1
-	for x := range w {
-		col := zoneInk[stats.PowerZone(peaks[x], c.Ftp)]
-		y := max(0, int(float64(h)-floor-(heights[x]-lo)/span*(float64(h)-floor)))
-		fill(tmp, image.Rect(x, y, x+1, min(y+capHeight, h)), col)
-		for py := y + capHeight; py < h; py++ {
-			body := col
-			body.A = uint8(0xaa - 0x82*float64(py)/float64(h))
-			tmp.SetNRGBA(x, py, body)
-		}
-	}
-	draw.ApproxBiLinear.Scale(dst, box, tmp, tmp.Bounds(), draw.Over, nil)
-}
 
 // drawTrace fills one column per horizontal pixel, coloured by the zone that
 // column peaked in: the shape of the ride and where it was hard, in one mark.

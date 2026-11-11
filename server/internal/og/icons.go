@@ -6,7 +6,7 @@ import (
 )
 
 // The card's icons, traced from the lucide set the app draws everywhere else
-// (#2112): same 24-unit grid, same round caps, same 2-unit stroke. Six of
+// (#2112): same 24-unit grid, same round caps, same 2-unit stroke. Eight of
 // them, each named for the lucide icon it is — a seventh is a function, not a
 // dependency.
 
@@ -74,6 +74,18 @@ func iconTrophy(p pen) {
 	p.stroke(point{12, 13.5}, point{12, 17.5})
 	p.stroke(point{8, 20.5}, point{16, 20.5})
 	p.stroke(point{9.5, 20.5}, point{10.5, 17.5}, point{13.5, 17.5}, point{14.5, 20.5})
+}
+
+// iconMoveHorizontal — how far a road ride went.
+func iconMoveHorizontal(p pen) {
+	p.stroke(point{18, 8}, point{22, 12}, point{18, 16})
+	p.stroke(point{2, 12}, point{22, 12})
+	p.stroke(point{6, 8}, point{2, 12}, point{6, 16})
+}
+
+// iconMountain — how much a road ride climbed.
+func iconMountain(p pen) {
+	p.stroke(point{8, 3}, point{12, 11}, point{17, 6}, point{22, 21}, point{2, 21}, point{8, 3})
 }
 
 // draw puts one icon at (x, y) on a size-square box.

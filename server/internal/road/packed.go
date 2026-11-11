@@ -101,6 +101,12 @@ func VirtualRouteOf(lengthM, gainM float64) string {
 	return fmt.Sprintf("Virtual route · %.1f km · %s m", lengthM/1000, thousands(int64(gainM+0.5)))
 }
 
+// VirtualRouteRideOf is a ride the road alone names, as its picture and its
+// Strava activity title it: the length ridden, never a place.
+func VirtualRouteRideOf(lengthM float64) string {
+	return fmt.Sprintf("Virtual route ride · %.1f km", lengthM/1000)
+}
+
 // thousands writes n with a comma every three digits, as en-US does.
 func thousands(n int64) string {
 	s := strconv.FormatInt(n, 10)

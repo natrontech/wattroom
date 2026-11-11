@@ -160,6 +160,12 @@ func (s *Service) cardOf(ctx context.Context, user db.User, row db.GetRideRow) o
 		// says so even where it kept no blocks — the page's button reads the
 		// same word, so the two never disagree about which picture it is.
 		card.Workout = card.Workout || stored.RideMode != nil && *stored.RideMode == "workout"
+		// A free ride's poster is titled as its Strava activity is, by the
+		// length ridden alone, and its tiles say the length and the climb.
+		card.RoadM, card.ClimbM = ridden(samples)
+		if !card.Workout {
+			name = road.VirtualRouteRideOf(card.RoadM)
+		}
 	}
 	// A workout ridden over a road is titled by the workout (the save kept
 	// its own name beside the road's), and the road is said under it in

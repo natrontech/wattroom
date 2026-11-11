@@ -2,9 +2,9 @@ package og
 
 import (
 	"flag"
-	"image"
 	"image/color"
 	"os"
+	"slices"
 	"testing"
 )
 
@@ -17,7 +17,8 @@ const posterGoldenPath = "testdata/poster.golden.png"
 // never from the watts.
 func roadCard() RideCard {
 	c := sampleCard()
-	c.WorkoutName = "Road · 12.0 km · 360 m"
+	c.WorkoutName = "Virtual route ride · 12.0 km"
+	c.RoadM, c.ClimbM = 12000, 360
 	n := 40 * 60
 	c.Watts = make([]int, n)
 	c.Metres = make([]float64, n)
@@ -40,28 +41,29 @@ func roadCard() RideCard {
 	return c
 }
 
-// topEdge is the first row from the top of box, in column x, that carries
-// zone paint: where the silhouette's line is.
-func topEdge(img image.Image, box image.Rectangle, x int) int {
-	for y := box.Min.Y; y < box.Max.Y; y++ {
-		for zone := 1; zone <= 7; zone++ {
-			if near(img.At(x, y), zoneInk[zone]) {
+// The silent failure: a road ride that draws no road. The watts are flat
+// here, so their line is level; the road climbs for half the box and falls
+// away under it, and the poster has to show exactly that.
+func TestAPosterDrawsTheRoadItRode(t *testing.T) {
+	ride := roadCard()
+	ride.Watts[len(ride.Watts)/2] = 220 // no sprint: the line stays level
+	img := decode(t, mustRender(t, ride))
+	pal := Palette{}.orDefault()
+	at := func(frac float64) int {
+		x := posterBox.Min.X + int(frac*float64(posterBox.Dx()))
+		// Below the power line and its halo, the first row that is not the
+		// panel's own colour is the road's edge.
+		y := posterBox.Min.Y
+		for ; y < posterBox.Max.Y && !near(img.At(x, y), pal.ink); y++ {
+		}
+		for y += 12; y < posterBox.Max.Y; y++ {
+			if !alike(img.At(x, y), pal.raised) && !near(img.At(x, y), pal.neon) {
 				return y
 			}
 		}
+		return posterBox.Max.Y
 	}
-	return box.Max.Y
-}
-
-// The silent failure: a road ride that still draws its watts. The watts are
-// flat here, so a trace would draw a flat line; the road climbs for half the
-// box and falls away, and the poster has to show exactly that.
-func TestAPosterDrawsTheRoadItRode(t *testing.T) {
-	img := decode(t, mustRender(t, roadCard()))
-	at := func(frac float64) int {
-		return topEdge(img, traceBox, traceBox.Min.X+int(frac*float64(traceBox.Dx())))
-	}
-	start, summit, end := at(0.1), at(0.74), at(0.98)
+	start, summit, end := at(0.1), at(0.74), at(0.95)
 	if summit >= start-60 || summit >= end-60 {
 		t.Errorf("the silhouette's top sits at %d, %d and %d px along the road; want the summit well above both ends", start, summit, end)
 	}
@@ -122,4 +124,45 @@ func alike(got, want color.Color) bool {
 		return (b - a) >> 8
 	}
 	return d(gr, wr) <= 8 && d(gg, wg) <= 8 && d(gb, wb) <= 8
+}
+
+// The poster's power is a 30 s average (#3142): watts that swing between 0
+// and 400 W every five seconds draw a level line at their 200 W mean, not a
+// comb from the floor to the top of the box.
+func TestThePosterSmoothsItsPower(t *testing.T) {
+	ride := roadCard()
+	for i := range ride.Watts {
+		ride.Watts[i] = 400 * (i / 5 % 2)
+	}
+	img := decode(t, mustRender(t, ride))
+	ink := Palette{}.orDefault().ink
+	lo, hi := posterBox.Max.Y, posterBox.Min.Y
+	for x := posterBox.Min.X + 40; x < posterBox.Max.X-40; x += 3 {
+		for y := posterBox.Min.Y; y < posterBox.Max.Y; y++ {
+			if near(img.At(x, y), ink) {
+				lo, hi = min(lo, y), max(hi, y)
+			}
+		}
+	}
+	if hi < lo {
+		t.Fatal("no power line drawn on the poster")
+	}
+	if hi-lo > 40 {
+		t.Errorf("the power line spans %d px from its highest to its lowest; want a level 30 s average", hi-lo)
+	}
+}
+
+func TestRollingAverage(t *testing.T) {
+	watts := make([]int, 120)
+	for i := range watts {
+		watts[i] = 200
+	}
+	watts[60] = 1100 // one second's spike
+	got := rollingAverage(watts, 30)
+	if got[0] != 200 || got[119] != 200 {
+		t.Errorf("the ends read %v and %v, want 200", got[0], got[119])
+	}
+	if peak := slices.Max(got); peak != 230 {
+		t.Errorf("a one-second spike of 900 W over the rest averages to a peak of %v, want 230", peak)
+	}
 }
