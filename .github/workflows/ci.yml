@@ -114,10 +114,12 @@ jobs:
       - uses: golang/govulncheck-action@032d45514ae346b1db93c04b0c90b841c370344f # v1.1.0
         with:
           work-dir: server
-          # The action's own default is go-version-input: stable, which beats
-          # a go-version-file: emptied, the scan runs on go.mod's Go.
-          go-version-input: ''
-          go-version-file: server/go.mod
+          # The Go the binary ships with, not go.mod's minimum: the image
+          # builds on golang:1.27 (Dockerfile), the newest 1.27 patch. A
+          # go-version-file here would scan 1.27.0 and fail on stdlib CVEs
+          # the shipped binary does not have; one input, no warning.
+          go-version-input: '1.27'
+          check-latest: true
           cache-dependency-path: server/go.sum
 
   # Workflow and deploy config: actions pinned to a commit, every workflow
