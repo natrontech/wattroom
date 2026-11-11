@@ -4,7 +4,13 @@ import { setWorldMode, worldMode } from './mode';
 
 const cues = vi.hoisted(() => [] as string[]);
 vi.mock('$lib/sound/cues', () => ({ play: (id: string) => cues.push(id) }));
-import { createWorldView, RETURN_S } from './world-view.svelte';
+import { createWorldView, HELD_S, RETURN_S } from './world-view.svelte';
+
+/** A page that keeps its frames: calm the moment each return's step allows. */
+const calmAtOnce = (onCalm: () => void, notBeforeS = 0) => {
+	const t = setTimeout(onCalm, notBeforeS * 1000);
+	return () => clearTimeout(t);
+};
 
 /** A browser that draws the world: WebGL2 and WEBGL_multi_draw. */
 function capable() {
@@ -66,7 +72,7 @@ describe('a ride’s world view (#3080)', () => {
 		vi.useFakeTimers();
 		try {
 			setWorldMode('full');
-			const view = createWorldView();
+			const view = createWorldView(calmAtOnce);
 			for (const s of RETURN_S) {
 				view.fail('frames');
 				expect(view.on).toBe(false);
@@ -85,17 +91,61 @@ describe('a ride’s world view (#3080)', () => {
 		}
 	});
 
+	it('comes back within seconds of a stall, not a minute: the first step is short', () => {
+		expect(RETURN_S[0]).toBeLessThanOrEqual(5);
+		expect(RETURN_S[1]).toBeLessThan(60);
+	});
+
+	it('waits on the Skyline while the page still misses its frames', () => {
+		vi.useFakeTimers();
+		try {
+			setWorldMode('full');
+			let calm: (() => void) | null = null;
+			const view = createWorldView((onCalm) => {
+				calm = onCalm;
+				return () => (calm = null);
+			});
+			view.fail('frames');
+			vi.advanceTimersByTime(3600_000);
+			expect(view.reason).toBe('frames'); // a page that never keeps up never gets it back
+			calm!();
+			expect(view.on).toBe(true);
+			expect(cues).toEqual(['fault', 'recover']);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('starts the short steps again once the world has held for a while', () => {
+		vi.useFakeTimers();
+		try {
+			setWorldMode('full');
+			const view = createWorldView(calmAtOnce);
+			for (const s of RETURN_S.slice(0, 3)) {
+				view.fail('frames');
+				vi.advanceTimersByTime(s * 1000);
+				expect(view.on).toBe(true);
+			}
+			vi.advanceTimersByTime(HELD_S * 1000);
+			view.fail('frames');
+			vi.advanceTimersByTime(RETURN_S[0] * 1000);
+			expect(view.on).toBe(true);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('never brings the world back over the rider’s Flat, or after the ride', () => {
 		vi.useFakeTimers();
 		try {
 			setWorldMode('full');
-			const flat = createWorldView();
+			const flat = createWorldView(calmAtOnce);
 			flat.fail('frames');
 			flat.flatten();
 			vi.advanceTimersByTime(RETURN_S[0] * 1000);
 			expect(flat.reason).toBe('chosen');
 			setWorldMode('full');
-			const over = createWorldView();
+			const over = createWorldView(calmAtOnce);
 			over.fail('frames');
 			over.dispose();
 			vi.advanceTimersByTime(RETURN_S[0] * 1000);

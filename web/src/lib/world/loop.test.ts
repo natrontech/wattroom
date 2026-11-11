@@ -1,11 +1,13 @@
 // @vitest-environment happy-dom
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+	CALM,
 	createLoop,
 	createPacer,
 	FALLBACK,
 	missWatch,
 	type Gate,
+	watchCalm,
 	watchPage,
 } from './loop';
 
@@ -185,6 +187,83 @@ describe('the fallback watch (#3080)', () => {
 		for (let i = 0; i < 30; i++) expect(watch(at(0))).toBe(false);
 		for (let k = 1; k < FALLBACK.seconds; k++) expect(watch(at(k))).toBe(false);
 		expect(watch(at(FALLBACK.seconds))).toBe(true);
+	});
+});
+
+/** Animation frames on the fake clock, `gap()` ms apart: a stall is a long gap. */
+function timedFrames(gap: () => number) {
+	let now = 0;
+	return {
+		request(cb: (now: number) => void) {
+			const ms = gap();
+			return setTimeout(() => cb((now += ms)), ms) as unknown as number;
+		},
+		cancel(id: number) {
+			clearTimeout(id);
+		},
+	};
+}
+
+describe('the calm watch: when a dropped world may come back', () => {
+	afterEach(() => vi.useRealTimers());
+
+	it('calls once the page has kept its frames for a few seconds', () => {
+		vi.useFakeTimers();
+		let calm = 0;
+		watchCalm(
+			() => calm++,
+			0,
+			timedFrames(() => 1000 / 60),
+		);
+		vi.advanceTimersByTime((CALM.seconds - 1) * 1000);
+		expect(calm).toBe(0);
+		vi.advanceTimersByTime(2000);
+		expect(calm).toBe(1);
+		vi.advanceTimersByTime(60_000);
+		expect(calm).toBe(1);
+	});
+
+	it('waits while the page stalls, and calls seconds after it stops', () => {
+		vi.useFakeTimers();
+		let stalling = true;
+		let calm = 0;
+		watchCalm(
+			() => calm++,
+			0,
+			timedFrames(() => (stalling ? 250 : 1000 / 60)),
+		);
+		vi.advanceTimersByTime(60_000);
+		expect(calm).toBe(0);
+		stalling = false;
+		vi.advanceTimersByTime((CALM.seconds + 1) * 1000);
+		expect(calm).toBe(1);
+	});
+
+	it('never calls before its step, however calm the page', () => {
+		vi.useFakeTimers();
+		let calm = 0;
+		watchCalm(
+			() => calm++,
+			10,
+			timedFrames(() => 1000 / 60),
+		);
+		vi.advanceTimersByTime(9_000);
+		expect(calm).toBe(0);
+		vi.advanceTimersByTime(1_000);
+		expect(calm).toBe(1);
+	});
+
+	it('stops when told to', () => {
+		vi.useFakeTimers();
+		let calm = 0;
+		const stop = watchCalm(
+			() => calm++,
+			0,
+			timedFrames(() => 1000 / 60),
+		);
+		stop();
+		vi.advanceTimersByTime(60_000);
+		expect(calm).toBe(0);
 	});
 });
 
