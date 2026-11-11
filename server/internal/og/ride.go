@@ -80,9 +80,12 @@ type RideCard struct {
 	HR    []int
 	AvgHR int
 	// On a road (#3142): each second's metres along it and height there,
-	// beside Watts. With them a free ride's card is a poster — the road it
-	// rode.
+	// beside Watts. With them a free ride's card is a poster — its power
+	// over the road it rode.
 	Metres, Heights []float64
+	// What a poster's tiles say of the road: the metres ridden and the
+	// climb over them, as the ride's page counts them.
+	RoadM, ClimbM float64
 	// Workout says the ride was ridden to a workout (ADR-0062's mode). A
 	// workout is drawn as the workout, on a road or off one, and nothing of
 	// the road's shape: the workout fills the card (#4430).
@@ -161,8 +164,14 @@ func RenderRide(c RideCard) ([]byte, error) {
 	}
 	drawText(img, subFace, cardMargin, 258, s.pal.muted, sub)
 
-	if workout {
+	switch {
+	case workout:
 		if err := s.drawWorkoutCard(img, c); err != nil {
+			return nil, err
+		}
+		return encode(img)
+	case c.Poster():
+		if err := s.drawPosterCard(img, c); err != nil {
 			return nil, err
 		}
 		return encode(img)
@@ -199,13 +208,6 @@ func RenderRide(c RideCard) ([]byte, error) {
 
 	if err := s.drawCurve(img, 1004, c.Curve); err != nil {
 		return nil, err
-	}
-	if c.HeightCredit != "" && onRoad(c) {
-		creditFace, err := s.face(18)
-		if err != nil {
-			return nil, err
-		}
-		drawText(img, creditFace, cardMargin, 1052, s.pal.mutedDim, c.HeightCredit)
 	}
 	return encode(img)
 }

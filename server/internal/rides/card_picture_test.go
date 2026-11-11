@@ -11,6 +11,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/og"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
+	"github.com/natrontech/wattroom/server/internal/testx"
 )
 
 // workoutOn is a two-minute workout on storeRoute's road at 250 W: a minute
@@ -68,7 +69,7 @@ func TestWhichPictureASavedRideGets(t *testing.T) {
 		title   string // the title's start
 		road    string // the road line's start; "" for none
 	}{
-		{"a free ride on a road", freeRideOn(route, 8, ""), true, nil, "free", "Road · 0.9 km", ""},
+		{"a free ride on a road", freeRideOn(route, 8, ""), true, nil, "free", "Virtual route ride · 0.9 km", ""},
 		{"a workout on a road", workoutOn(route), false, []float64{150, 250}, "workout", "Openers", "Virtual route · 0.9 km · "},
 		{"a workout on no road", rideBody(120, 200), false, []float64{200, 200}, "workout", "Openers", ""},
 	} {
@@ -84,7 +85,8 @@ func TestWhichPictureASavedRideGets(t *testing.T) {
 			case tc.targets != nil && (len(card.Targets) != 120 || card.Targets[30] != tc.targets[0] || card.Targets[90] != tc.targets[1]):
 				t.Errorf("targets at 30 s and 90 s are not %v: %d seconds", tc.targets, len(card.Targets))
 			}
-			if !strings.HasPrefix(card.WorkoutName, tc.title) || strings.Contains(card.WorkoutName+card.RoadLine, "Home loop") {
+			if !strings.HasPrefix(card.WorkoutName, tc.title) || strings.Contains(card.WorkoutName+card.RoadLine, "Home loop") ||
+				testx.Leak(card.WorkoutName+card.RoadLine) != "" {
 				t.Errorf("titled %q, want it to start %q and never name the road", card.WorkoutName, tc.title)
 			}
 			if tc.road == "" && card.RoadLine != "" || !strings.HasPrefix(card.RoadLine, tc.road) {

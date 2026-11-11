@@ -97,7 +97,7 @@ func TestARoadRideCardIsNamedByWhatWasRidden(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d, body = %s", w.Code, w.Body.String())
 	}
-	if cd := w.Header().Get("Content-Disposition"); !strings.Contains(cd, "road-0-9-km-") || strings.Contains(cd, "street") {
+	if cd := w.Header().Get("Content-Disposition"); !strings.HasSuffix(cd, "virtual-route-ride-0-9-km.png\"") || strings.Contains(cd, "street") {
 		t.Errorf("the poster is named %q; want the ridden 0.9 km, never the road's 5.0 or the owner's name", cd)
 	}
 	if _, err := png.Decode(bytes.NewReader(w.Body.Bytes())); err != nil {
