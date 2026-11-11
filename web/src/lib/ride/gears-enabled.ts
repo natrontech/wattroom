@@ -1,5 +1,3 @@
-import { canSimulate } from '#lib/ble/can-simulate.ts';
-
 /** An input that shifts (ADR-0084 "Inputs"). */
 export type GearInput = 'screen' | 'keys' | 'phone' | 'obc' | 'obc-net';
 
@@ -14,10 +12,10 @@ export const GEAR_INPUTS: Readonly<Record<GearInput, boolean>> = {
 	keys: true,
 	phone: true,
 	obc: true,
-	// Held at the dev gate (canSimulate's rule) until its switch-on, #3349.
-	get 'obc-net'() {
-		return canSimulate();
-	},
+	// On for every rider since #3349: the desktop smoke's mock controller,
+	// written from the published spec, shifts the page (#3348, ADR-0088).
+	// Only the shell offers it; a browser never shows the card.
+	'obc-net': true,
 };
 
 /**
