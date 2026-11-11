@@ -1,31 +1,18 @@
 import { tabId } from '$lib/channel/rejoin';
 import { deviceWord } from '$lib/device.svelte';
-import type { ViewState } from '$lib/protocol';
 import { clockActions, pauseOf } from '$lib/ride/remote-blocks';
 import { shiftAnswer } from '$lib/ride/easier-harder';
 import { gearsEnabled } from '$lib/ride/gears-enabled';
 import { createRemoteRunner } from '$lib/ride/keys';
 import { createRideShift } from '$lib/ride/ride-shift';
+import { offeredActions, viewNow } from '$lib/ride/ride-offers.svelte';
 import type { RoadAlone } from '$lib/ride/road-alone.svelte';
 import { riderLane } from '$lib/rider-lane.svelte';
-import { askPage, toggleMap } from '$lib/session/computer-pages';
-import { computerShown } from '$lib/session/computer-shown.svelte';
 import { DEFAULTS } from '$lib/workout/guards';
 import type { createRideSession } from '$lib/workout/session.svelte';
-import { worldPicture } from '$lib/world/picture.svelte';
-import { askCamera, askPhoto, askViewFlip } from '$lib/world/ride-view';
+import { askCamera, askPhoto } from '$lib/world/ride-view';
 
 type Session = ReturnType<typeof createRideSession>;
-
-/** What the riding screen's view says to the phone (#4223, #4253). */
-export function viewNow(): ViewState {
-	return {
-		page: computerShown.page,
-		world: computerShown.world,
-		camera: computerShown.world ? (computerShown.camera ?? '') : '',
-		pictures: worldPicture.taken,
-	};
-}
 
 /**
  * The phone remote of the device's ride alone (#4425), the way a voice
@@ -81,9 +68,9 @@ export function serveRideRemote(ride: {
 		{
 			// Pause, Resume, Skip block and +1 min, where the screen offers them.
 			...clockActions(workout),
-			page: () => void askPage('next'),
-			map: () => void toggleMap(),
-			view: () => void askViewFlip(),
+			// The view switch's segments, ⚑, TV and End: the screen's own
+			// controls run them, where it draws them (ride-offers).
+			...offeredActions(),
 			camera: () => void askCamera(),
 			photo: () => void askPhoto(),
 		},
@@ -114,7 +101,7 @@ export function serveRideRemote(ride: {
 			if (cmd.action === 'talk-keepalive') return;
 			sayGear();
 			sayPause();
-			// A page or view press is answered by sayView's effect once the
+			// A view, TV or flag press is answered by sayView's effect once the
 			// screen has turned (connection.svelte.ts says why).
 			if (cmd.action === 'sync') sayView();
 		});

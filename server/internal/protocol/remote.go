@@ -1,5 +1,7 @@
 package protocol
 
+import "unicode/utf8"
+
 // RemoteCommand is one press on a rider's phone remote (#3217), relayed to the
 // tab that holds the rider's trainer. It travels both ways in the same shape:
 // the phone sends it, the hub forwards it unchanged.
@@ -8,9 +10,10 @@ package protocol
 // reason SensorPairing is: what a rider's second screen does is nobody else's
 // business.
 //
-// View flips the riding screen between the 3D world and the flat road
-// (#4223); Page turns the bike computer to its next page, and Map to MAP and
-// back.
+// The view-* actions are the riding screen's view switch, one segment each
+// (#4223): 3D, Flat, Map and Room. Flag, TV and End are the now bar's ⚑, TV
+// mode (a toggle) and End ride. The phone offers what the bar offers and
+// nothing else: one list of the ride's controls, web/src/lib/ride/ride-controls.ts.
 //
 // Taps never hold: a lost release under Talk's 1 s keepalive measured up to 5
 // phantom shifts, so Easier and Harder are one tap each. Only Talk holds, as
@@ -27,12 +30,13 @@ type RemoteCommand struct {
 // part of the sender's rate-limit key, so a word outside the set must not
 // reach the room's map of allowances.
 var RemoteActions = []string{
-	"page", "camera", "photo", "cheer-back", "map",
+	"camera", "photo", "cheer-back",
 	"talk-down", "talk-keepalive", "talk-up",
 	"easier", "harder", "pause", "resume",
-	"view",
+	"view-3d", "view-flat", "view-map", "view-room",
 	"sync",
 	"skip", "extend",
+	"flag", "tv", "end",
 }
 
 // IsRemoteAction reports whether s is one of RemoteActions.
@@ -81,14 +85,13 @@ type PauseState struct {
 	Last bool `json:"last,omitempty"`
 }
 
-// ViewState is the holding tab's answer about where its rider looks (#4223):
-// the bike computer's page and whether the 3D world draws. It travels the way
-// GearState does, so the phone's Page, Map and 3D / Flat say what the riding
-// screen shows now.
+// ViewState is the holding tab's answer about where its rider looks (#4223)
+// and which of the now bar's controls it offers. It travels the way GearState
+// does, so the phone's view row, Camera, Photo, Flag, TV and End say what the
+// riding screen shows and offers now.
 type ViewState struct {
-	// The bike computer's page, as its id ("ride", "map" …); empty where
-	// the screen has no computer.
-	Page string `json:"page"`
+	// The view switch's pressed segment: "3d", "flat", "map" or "room".
+	Look string `json:"look"`
 	// The 3D world draws; false is the flat road.
 	World bool `json:"world"`
 	// The world's camera ("chase", "heli", "side", "steady"); empty while
@@ -96,7 +99,33 @@ type ViewState struct {
 	Camera string `json:"camera,omitempty"`
 	// Pictures taken on this ride, so the phone's Photo can say it took one.
 	Pictures int `json:"pictures,omitempty"`
+	// Flags marked on this ride, so the phone's Flag can say it took one.
+	Flags int `json:"flags,omitempty"`
+	// TV mode is up on the riding screen.
+	TV bool `json:"tv,omitempty"`
+	// The remote actions the riding screen offers now: the view segments
+	// its switch draws, and Flag, TV and End where its now bar has them.
+	Offers []string `json:"offers,omitempty"`
 }
 
-// MaxViewPage bounds Page and Camera: each is rendered on another screen.
+// MaxViewPage bounds Look and Camera: each is rendered on another screen.
 const MaxViewPage = 8
+
+// Valid reports whether a riding screen's ViewState may be relayed: its words
+// short enough to render, its counts not negative, and every offer one of
+// RemoteActions, at most once each.
+func (v ViewState) Valid() bool {
+	if utf8.RuneCountInString(v.Look) > MaxViewPage ||
+		utf8.RuneCountInString(v.Camera) > MaxViewPage ||
+		v.Pictures < 0 || v.Flags < 0 || len(v.Offers) > len(RemoteActions) {
+		return false
+	}
+	seen := make(map[string]bool, len(v.Offers))
+	for _, a := range v.Offers {
+		if !IsRemoteAction(a) || seen[a] {
+			return false
+		}
+		seen[a] = true
+	}
+	return true
+}

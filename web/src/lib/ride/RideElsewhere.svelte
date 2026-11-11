@@ -26,7 +26,7 @@
 		class="border-ink/5 flex shrink-0 flex-col gap-2 border-b px-3 py-3"
 		data-testid="ride-elsewhere"
 	>
-		<p class="text-ink-muted text-base">Your ride is on your {where}.</p>
+		<p class="text-muted text-base">Your ride is on your {where}.</p>
 		<button
 			type="button"
 			class="btn btn-accent btn-ride w-full text-2xl!"

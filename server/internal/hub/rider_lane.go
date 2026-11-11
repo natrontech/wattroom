@@ -232,8 +232,7 @@ func (l *riderLanes) answer(c *lobbyClient, msg protocol.LobbyClientMessage) []l
 		kind, frame = "pause", protocol.LobbyLane{Pause: &p}
 	case msg.View != nil:
 		v := *msg.View
-		if utf8.RuneCountInString(v.Page) > protocol.MaxViewPage ||
-			utf8.RuneCountInString(v.Camera) > protocol.MaxViewPage || v.Pictures < 0 {
+		if !v.Valid() {
 			return nil
 		}
 		kind, frame = "view", protocol.LobbyLane{View: &v}

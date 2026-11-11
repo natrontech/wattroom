@@ -5,13 +5,14 @@ import type { LobbyClientMessage } from '$lib/protocol';
 
 vi.mock('$lib/sound/cues', () => ({ play: () => {} }));
 const world = vi.hoisted(() => ({ camera: vi.fn(), photo: vi.fn() }));
-vi.mock('$lib/world/ride-view', () => ({
+vi.mock('$lib/world/ride-view', async (actual) => ({
+	...(await actual<typeof import('$lib/world/ride-view')>()),
 	askCamera: world.camera,
 	askPhoto: world.photo,
-	askViewFlip: () => true,
 }));
 
 import { riderLane } from '$lib/rider-lane.svelte';
+import { rideOffers } from './ride-offers.svelte';
 import { serveRideRemote } from './ride-remote.svelte';
 
 /** A workout alone, as much of one as the remote reads. */
@@ -121,6 +122,46 @@ describe('the phone remote of a ride alone (#4425)', () => {
 		hear('sync');
 		expect(sent.some((m) => m.view)).toBe(true);
 		expect(sent.some((m) => m.pause)).toBe(true);
+	});
+
+	it('runs the now bar’s own controls for the phone, and says what they offer', async () => {
+		held.session = workout();
+		flushSync();
+		const tv = vi.fn(() => (rideOffers.tv = !rideOffers.tv));
+		const flag = vi.fn(() => rideOffers.flagged());
+		const offs = [
+			rideOffers.offer('view-flat', () => {}),
+			rideOffers.offer('tv', tv),
+			rideOffers.offer('flag', flag),
+		];
+		try {
+			sent = [];
+			hear('sync');
+			expect(sent.find((m) => m.view)?.view).toMatchObject({
+				look: 'flat',
+				offers: ['view-flat', 'flag', 'tv'],
+			});
+
+			sent = [];
+			hear('tv');
+			hear('flag');
+			expect(tv).toHaveBeenCalledOnce();
+			expect(flag).toHaveBeenCalledOnce();
+			// Answered once the screen has turned, by the view's own effect.
+			await Promise.resolve();
+			flushSync();
+			expect(sent.filter((m) => m.view).at(-1)?.view).toMatchObject({
+				tv: true,
+				flags: 1,
+			});
+
+			// A control the bar does not draw does nothing from the phone.
+			hear('end');
+			hear('view-map');
+		} finally {
+			offs.forEach((off) => off());
+			rideOffers.reset();
+		}
 	});
 
 	it('says nothing and runs nothing once no ride runs', () => {

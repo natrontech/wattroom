@@ -582,7 +582,12 @@
 body {
 	background: var(--color-surface);
 	color: var(--color-ink);
+	/* The dynamic viewport, as the app frame's h-dvh: iOS Safari's 100vh is
+	   the viewport with its toolbars hidden, so a body that tall scrolled by
+	   the toolbars' height under every full-screen sheet (the phone remote
+	   on an iPhone 17, 2026-11). */
 	min-height: 100vh;
+	min-height: 100dvh;
 }
 
 /* The cave (#113, ADR-0005 amended): the dark family whatever the scheme

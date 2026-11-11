@@ -14,7 +14,6 @@
 	 */
 	import { untrack, type Snippet } from 'svelte';
 	import Minus from '@lucide/svelte/icons/minus';
-	import MonitorUp from '@lucide/svelte/icons/monitor-up';
 	import Plus from '@lucide/svelte/icons/plus';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import { openMenu } from '$lib/context-menu.svelte';
@@ -25,6 +24,11 @@
 	import type { Clamp } from '$lib/ride/drivetrain';
 	import { FLAG_NOTICE_MS, FLAG_SAID } from '$lib/ride/flag';
 	import FlagButton from '$lib/ride/FlagButton.svelte';
+	import RideControlButton from '$lib/ride/RideControlButton.svelte';
+	import { NEEDS_3D, PHOTOS_FULL } from '$lib/ride/ride-controls';
+	import { worldPicture } from '$lib/world/picture.svelte';
+	import { rideOffers } from '$lib/ride/ride-offers.svelte';
+	import { askCamera, askPhoto } from '$lib/world/ride-view';
 	import RideRail from '$lib/session/RideRail.svelte';
 	import ModeSwitch from '$lib/ride/ModeSwitch.svelte';
 	import {
@@ -161,8 +165,11 @@
 	const inWatts = $derived(free.mode === 'watts');
 	// The world under the docks where this device has it on and the ride has
 	// a road (ADR-0066); a world that cannot draw hands the ride to the Skyline.
-	const ICON = 'btn btn-secondary icon-btn-lg p-0';
 	const world = createWorldView();
+	// The phone's End is this bar's End ride (ride-controls.ts).
+	$effect(() =>
+		onend && !ending ? rideOffers.offer('end', onend) : undefined,
+	);
 	// Its return to 3D (#4423) ends with the ride.
 	$effect(() => () => world.dispose());
 	const inWorld = $derived(world.on && !!road);
@@ -352,13 +359,33 @@
 	<span class="contents max-md:hidden"
 		><ViewSwitch {world} drawn={inWorld} road={!!road} /></span
 	>
+	{#if road}
+		<!-- The ride's controls, as the phone remote draws them (ride-controls.ts). -->
+		<RideControlButton
+			control="camera"
+			onclick={() => askCamera()}
+			disabled={!inWorld}
+			hint={NEEDS_3D}
+			box="icon-btn-lg"
+			class="max-md:hidden"
+		/>
+		<RideControlButton
+			control="photo"
+			onclick={() => askPhoto()}
+			disabled={!inWorld || !worldPicture.canTake}
+			hint={inWorld ? PHOTOS_FULL : NEEDS_3D}
+			box="icon-btn-lg"
+			class="max-md:hidden"
+		/>
+	{/if}
 	{#if ontv}
-		<button
+		<RideControlButton
+			control="tv"
 			onclick={ontv}
-			class="{ICON} max-md:hidden"
-			aria-label="TV mode"
-			{@attach tooltip('TV mode')}><MonitorUp size={20} /></button
-		>
+			offer="tv"
+			box="icon-btn-lg"
+			class="max-md:hidden"
+		/>
 	{/if}
 	{#if onend}
 		<!-- End ride saves where you are; carrying on is the road-end
