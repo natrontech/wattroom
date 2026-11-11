@@ -434,15 +434,14 @@ async function worldShots() {
 			.getByRole('link', { name: 'Join the ride' })
 			.click({ timeout: 30_000 });
 		await ines.page.waitForURL('**/s/**');
-		// A session on a road waits on its start line (#3228) for the
-		// coach's Start the ride. The crew's own session page draws no start
-		// line since sessions left the voice channel (#4389), so Mara's Start
-		// goes the way that button sends it.
-		await mara.page.waitForTimeout(3_000);
-		const [, , session] = new URL(mara.page.url()).pathname.match(
-			/^\/crew\/([^/]+)\/s\/([^/]+)/,
-		);
-		await control(mara, world.crew, session, 'start');
+		// A session on a road waits on its start line (#3228): Ines steps
+		// on it, and Mara starts the ride once a trainer there is ready.
+		await ines.page
+			.getByRole('button', { name: 'Join the start line' })
+			.click({ timeout: 30_000 });
+		await mara.page
+			.getByRole('button', { name: 'Start the ride' })
+			.click({ timeout: 30_000 });
 		const started = Date.now() + COUNTDOWN_MS;
 		await until(started, 30);
 		await shoot(mara.page, 'world-crew');

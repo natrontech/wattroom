@@ -6,6 +6,8 @@
 	import HrShare from '#lib/channel/HrShare.svelte';
 	import SessionControls from '#lib/session/SessionControls.svelte';
 	import SessionRecapCard from '#lib/session/SessionRecapCard.svelte';
+	import StartLine from '#lib/session/StartLine.svelte';
+	import { showsStartLine } from '#lib/session/start-line.ts';
 	import RemoteOffer from '#lib/ride/RemoteOffer.svelte';
 	import TrainerOverview from '#lib/session/TrainerOverview.svelte';
 	import { channelConnection } from '#lib/channel/connection.svelte.ts';
@@ -21,6 +23,12 @@
 	} = $props();
 
 	const channel = useChannel();
+	// A road session waits here on its start line (#3228): since sessions
+	// left the call (#4389) this is the page every one of them opens on, so
+	// the line — and the coach's Start the ride — is drawn here (#4504).
+	const onLine = $derived(
+		showsStartLine(channelConnection.at(channel.address)?.live.tick),
+	);
 </script>
 
 {#if channel.game}
@@ -44,6 +52,18 @@
 				end={() => void endGame(channel)}
 			/>
 		</section>
+	</div>
+{:else if onLine}
+	<!-- The line holds its own pairing and its one button each: the coach's
+	     Start the ride, everyone else's Join the start line. -->
+	<div class="grid h-full place-items-center px-6">
+		<div class="w-full max-w-2xl">
+			<StartLine />
+			<RemoteOffer class="mt-5" />
+			<div class="mt-5 flex flex-wrap justify-center gap-2">
+				<SessionControls />
+			</div>
+		</div>
 	</div>
 {:else}
 	<!-- Capability gating (ux.md): nothing to render until a session runs, so

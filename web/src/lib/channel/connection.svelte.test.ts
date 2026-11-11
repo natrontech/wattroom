@@ -222,6 +222,19 @@ describe('channelConnection', () => {
 		expect(channelRide.current?.live).toBe(call.live);
 	});
 
+	it("finds each place's own connection, beside a session as well (#4504)", () => {
+		const callAt = channelAddress('c', 'lounge', 'Lounge');
+		const sessionAt = crewSessionAddress('c', 's1', 'Tempo');
+		const call = channelConnection.join(callAt);
+		expect(channelConnection.at(callAt)).toBe(call);
+		expect(channelConnection.at(sessionAt)).toBeNull();
+		const session = channelConnection.join(sessionAt);
+		// `current` is the session now; the call's page still reads the call.
+		expect(channelConnection.current).toBe(session);
+		expect(channelConnection.at(callAt)).toBe(call);
+		expect(channelConnection.at(sessionAt)).toBe(session);
+	});
+
 	it('releases the trainer when you leave, not when a page unmounts', async () => {
 		const connection = channelConnection.join(
 			channelAddress('c', 'lounge', 'Lounge'),

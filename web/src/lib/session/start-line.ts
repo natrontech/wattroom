@@ -1,4 +1,10 @@
-import type { Rider, SessionRoute, StartLine } from '#lib/protocol.ts';
+import type {
+	Rider,
+	ServerTick,
+	SessionRoute,
+	SessionState,
+	StartLine,
+} from '#lib/protocol.ts';
 import type { CueId } from '#lib/sound/cue-catalogue.ts';
 import { climbsOf, type ClimbClass } from '#lib/road/climbs.ts';
 import { crewDistanceM } from '#lib/road/match.ts';
@@ -12,6 +18,27 @@ import type { Workout } from '#lib/workout/types.ts';
  * Who stands on it and what they have ready comes from the hub; what the
  * screen says about it, and when the coach may start, is decided here.
  */
+
+/** What of a tick decides whether a place draws the start line. */
+export type LineTick = Pick<ServerTick, 'startLine' | 'game'> & {
+	state: Pick<SessionState, 'phase' | 'route'>;
+};
+
+/**
+ * Whether a place draws the start line (#3228): its session is picked on a
+ * road and not started, and no game holds the place. Both places a road
+ * session waits on read this — the voice channel's lounge, and the session's
+ * own page, where every road session has opened since sessions left the
+ * call (#4389, #4504) — so the coach's Start the ride is never missing.
+ */
+export function showsStartLine(tick: LineTick | null | undefined): boolean {
+	return (
+		!!tick?.startLine &&
+		!!tick.state.route &&
+		tick.state.phase === 'idle' &&
+		!tick.game
+	);
+}
 
 /** One rider on the line, as the line's rows draw them. */
 export type LineRider = {

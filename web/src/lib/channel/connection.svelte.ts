@@ -570,6 +570,18 @@ export const channelConnection = {
 		return session;
 	},
 	/**
+	 * The connection of `address`'s own place — the crew session or the
+	 * call — or null when this tab is not in it. What a place draws of its
+	 * session reads this, not `current`: on the call's page beside a session,
+	 * `current` is the session, and the call's lounge drew the session's
+	 * start line with a Start the ride sent to the call (#4504).
+	 */
+	at(address: Pick<PlaceAddress, 'key'>) {
+		return (
+			[session, current].find((c) => c?.address.key === address.key) ?? null
+		);
+	},
+	/**
 	 * Whether `pathname` is one of the live place's own pages — its Lounge,
 	 * its Training, the session running in it (`onPlacePath`, #2460).
 	 */
