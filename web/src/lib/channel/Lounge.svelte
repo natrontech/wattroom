@@ -339,7 +339,7 @@
 			role="group"
 			aria-label="view"
 		>
-			{#each [{ tiles: false, label: 'Room', icon: Armchair }, { tiles: true, label: 'Tiles', icon: LayoutGrid }] as option (option.label)}
+			{#each [{ tiles: false, label: 'Lounge', icon: Armchair }, { tiles: true, label: 'Tiles', icon: LayoutGrid }] as option (option.label)}
 				<button
 					onclick={() => pickView(option.tiles)}
 					aria-pressed={tilesPicked === option.tiles}

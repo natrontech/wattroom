@@ -1,4 +1,4 @@
-# The cozy room
+# The lounge
 
 A voice channel between sessions is its room (`WATTROOM.md`), until the rider picks Tiles, which this device remembers. A camera takes a strip along its bottom, and a shared screen or a video hangs on its wall. Everything in it is paint: nothing reaches a ride, and no rider's numbers leave one.
 
@@ -60,7 +60,7 @@ The room wears in with the crew's time together in voice, and that time unlocks 
 | The room's pixel     | one whole step smaller, so the floor stays and the wall grows           |
 | The screen           | **16:9**, centred, from **10** rows under the ceiling to the sofa's top |
 | Hangs above the room | where the room's pixel would fit under **3**: a phone                   |
-| A ride's Room view   | the same room, under the ride's numbers                                 |
+| A ride's Lounge view | the same lounge, under the ride's numbers                               |
 
 ## Visitors
 

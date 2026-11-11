@@ -256,7 +256,7 @@
 							class="btn btn-secondary btn-xs">Change your look</button
 						>
 						<span class="text-muted text-[11px]"
-							>Hair, clothes and extras for you in the cozy room. Click yourself
+							>Hair, clothes and extras for you in the lounge. Click yourself
 							there to change it too.</span
 						>
 					</div>

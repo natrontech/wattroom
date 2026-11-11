@@ -74,7 +74,7 @@ export const LOOK_WORDS: Record<ViewSegment, string> = {
 	'3d': '3D',
 	flat: 'Flat',
 	map: 'Map',
-	room: 'Room',
+	room: 'Lounge',
 };
 
 export type PhoneTile = {
