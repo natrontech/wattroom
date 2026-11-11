@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { GEAR_INPUTS } from '$lib/ride/gears-enabled';
-import { bindShiftController } from '$lib/ride/keys';
-import { createRideShift } from '$lib/ride/ride-shift';
+import { GEAR_INPUTS } from '#lib/ride/gears-enabled.ts';
+import { bindShiftController } from '#lib/ride/keys.ts';
+import { createRideShift } from '#lib/ride/ride-shift.ts';
 import { shifterSlot } from './controller-slot.svelte';
 import { WATTROOM_APP_INFO, type ObcAction, type ObcEdge } from './obc';
 import {
@@ -11,9 +11,9 @@ import {
 	type ObcNetBridge,
 } from './obc-net.svelte';
 
-vi.mock('$lib/sound/cues', () => ({ play: () => {} }));
+vi.mock('#lib/sound/cues.ts', () => ({ play: () => {} }));
 const dev = vi.hoisted(() => ({ on: true }));
-vi.mock('$lib/ble/can-simulate', () => ({ canSimulate: () => dev.on }));
+vi.mock('#lib/ble/can-simulate.ts', () => ({ canSimulate: () => dev.on }));
 
 /**
  * The desktop shell's `window.wattroom.obc`, as preload.js exposes it: a

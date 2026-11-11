@@ -14,7 +14,7 @@
  * anchor walks off into the DVR window and a chasing client seeks on every
  * single tick. Live rides the edge instead.
  */
-import { MaxSeekSeconds } from '$lib/protocol';
+import { MaxSeekSeconds } from '#lib/protocol.ts';
 export type Chase = { do: 'seek'; to: number } | { do: 'rate'; rate: number };
 
 /** docs/SPEC.md — a seek costs a stutter, so only a real gap earns one. */

@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 let fetches = 0;
-vi.mock('$lib/api', () => ({
+vi.mock('#lib/api.ts', () => ({
 	api: async () => {
 		fetches += 1;
 		return { ok: true, data: { crews: [] } };
@@ -33,8 +33,8 @@ class FakeSocket {
 }
 vi.stubGlobal('WebSocket', FakeSocket);
 
-const { presence } = await import('$lib/presence.svelte');
-const { riderLane } = await import('$lib/rider-lane.svelte');
+const { presence } = await import('#lib/presence.svelte.ts');
+const { riderLane } = await import('#lib/rider-lane.svelte.ts');
 
 describe('the rider’s lane on the lobby socket (#4425)', () => {
 	afterEach(() => {

@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render } from 'svelte/server';
 import SessionPicker from './SessionPicker.svelte';
-import type { ShelfEntry } from '$lib/workout/shelf';
+import type { ShelfEntry } from '#lib/workout/shelf.ts';
 
 vi.mock('$app/state', () => ({
 	page: { url: new URL('http://x/crew/c1/v/v1') },
 }));
-vi.mock('$lib/api', () => ({
+vi.mock('#lib/api.ts', () => ({
 	api: () => new Promise(() => {}),
 }));
 

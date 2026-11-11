@@ -5,7 +5,7 @@ import {
 	image,
 	openImage,
 	toggleActual,
-} from '$lib/chat/viewer.svelte';
+} from '#lib/chat/viewer.svelte.ts';
 
 afterEach(closeImage);
 

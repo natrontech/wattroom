@@ -7,7 +7,7 @@
 	// across it. House radio is queued on the deck like a track and
 	// HouseRadioDeck plays it.
 	import { tick, untrack, type Snippet } from 'svelte';
-	import { rideRoom } from '$lib/channel/ride-room.svelte';
+	import { rideRoom } from '#lib/channel/ride-room.svelte.ts';
 	import Disc3 from '@lucide/svelte/icons/disc-3';
 	import SkipForward from '@lucide/svelte/icons/skip-forward';
 	import Sparkles from '@lucide/svelte/icons/sparkles';
@@ -17,37 +17,37 @@
 	import ScreenShare from '@lucide/svelte/icons/screen-share';
 	import Video from '@lucide/svelte/icons/video';
 	import WifiOff from '@lucide/svelte/icons/wifi-off';
-	import { useChannel } from '$lib/channel/context';
-	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { playheadAt } from '$lib/channel/playhead';
-	import { awayState } from '$lib/away';
+	import { useChannel } from '#lib/channel/context.ts';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import { playheadAt } from '#lib/channel/playhead.ts';
+	import { awayState } from '#lib/away.ts';
 	import {
 		MENU_HINT,
 		contextMenu,
 		openMenu,
 		type MenuEntry,
-	} from '$lib/context-menu.svelte';
-	import { serverNow } from '$lib/server-clock';
-	import type { LoungeState } from '$lib/protocol';
+	} from '#lib/context-menu.svelte.ts';
+	import { serverNow } from '#lib/server-clock.ts';
+	import type { LoungeState } from '#lib/protocol.ts';
 	import { goto } from '$app/navigation';
-	import { sessionPath } from '$lib/channel/address';
-	import { device } from '$lib/device.svelte';
-	import { crewLive } from '$lib/nav/crew-live.svelte';
-	import { fetchPins } from '$lib/pins/pins';
-	import { presence } from '$lib/presence.svelte';
-	import { NO_MEMORY, fetchRoomMemory } from '$lib/lounge/memory';
-	import { mixer } from '$lib/sound/mixer.svelte';
-	import { prefersReducedMotion } from '$lib/motion';
-	import { fnv } from '$lib/world/loadout';
-	import { radioHeard } from '$lib/lounge/radio-heard.svelte';
-	import LookEditor from '$lib/lounge/LookEditor.svelte';
-	import { sceneLoop } from '$lib/lounge/scene-loop';
+	import { sessionPath } from '#lib/channel/address.ts';
+	import { device } from '#lib/device.svelte.ts';
+	import { crewLive } from '#lib/nav/crew-live.svelte.ts';
+	import { fetchPins } from '#lib/pins/pins.ts';
+	import { presence } from '#lib/presence.svelte.ts';
+	import { NO_MEMORY, fetchRoomMemory } from '#lib/lounge/memory.ts';
+	import { mixer } from '#lib/sound/mixer.svelte.ts';
+	import { prefersReducedMotion } from '#lib/motion/index.ts';
+	import { fnv } from '#lib/world/loadout.ts';
+	import { radioHeard } from '#lib/lounge/radio-heard.svelte.ts';
+	import LookEditor from '#lib/lounge/LookEditor.svelte';
+	import { sceneLoop } from '#lib/lounge/scene-loop.ts';
 	import {
 		KEY_NAMES,
 		STYLE_NAMES,
 		drumsIn,
 		positionAt,
-	} from '$lib/lounge/station';
+	} from '#lib/lounge/station.ts';
 	import {
 		MOODS,
 		RADIO_PICKS,
@@ -59,9 +59,9 @@
 		weatherOf,
 		type Mood,
 		type RadioPick,
-	} from '$lib/lounge/state';
-	import { recordAt } from '$lib/lounge/records';
-	import { cooled, crewOf } from '$lib/lounge/figures';
+	} from '#lib/lounge/state.ts';
+	import { recordAt } from '#lib/lounge/records.ts';
+	import { cooled, crewOf } from '#lib/lounge/figures.ts';
 	import {
 		catAt,
 		cuckooing,
@@ -75,48 +75,48 @@
 		VISITORS,
 		visitorAt,
 		type Visitor,
-	} from '$lib/lounge/moments';
-	import Album from '$lib/lounge/Album.svelte';
-	import ArcadeGame from '$lib/lounge/ArcadeGame.svelte';
-	import Furnish from '$lib/lounge/Furnish.svelte';
-	import Logbook from '$lib/lounge/Logbook.svelte';
+	} from '#lib/lounge/moments.ts';
+	import Album from '#lib/lounge/Album.svelte';
+	import ArcadeGame from '#lib/lounge/ArcadeGame.svelte';
+	import Furnish from '#lib/lounge/Furnish.svelte';
+	import Logbook from '#lib/lounge/Logbook.svelte';
 	import NotebookPen from '@lucide/svelte/icons/notebook-pen';
 	import Flame from '@lucide/svelte/icons/flame';
-	import { levelFromXp } from '$lib/level';
-	import { play } from '$lib/sound/cues';
-	import { enter, exit } from '$lib/motion/transitions';
+	import { levelFromXp } from '#lib/level.ts';
+	import { play } from '#lib/sound/cues.ts';
+	import { enter, exit } from '#lib/motion/transitions.ts';
 	import {
 		CHEER_SEC,
 		cheerWords,
 		cheersOf,
 		type Cheer,
 		type SeenStanding,
-	} from '$lib/lounge/standing';
+	} from '#lib/lounge/standing.ts';
 	import Armchair from '@lucide/svelte/icons/armchair';
 	import {
 		VISITOR_NOTES,
 		fetchAlbum,
 		saveSighting,
 		type Sighting,
-	} from '$lib/lounge/album';
-	import { toasts } from '$lib/toast.svelte';
-	import type { LiveRider } from '$lib/channel/types';
+	} from '#lib/lounge/album.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
+	import type { LiveRider } from '#lib/channel/types.ts';
 	import Beer from '@lucide/svelte/icons/beer';
 	import BookOpen from '@lucide/svelte/icons/book-open';
 	import Gamepad2 from '@lucide/svelte/icons/gamepad-2';
 	import Goal from '@lucide/svelte/icons/goal';
-	import { initialsOf } from '$lib/lounge/memory';
-	import type { Tab } from '$lib/lounge/arcade-pick';
-	import { play as playCue } from '$lib/sound/cues';
+	import { initialsOf } from '#lib/lounge/memory.ts';
+	import type { Tab } from '#lib/lounge/arcade-pick.ts';
+	import { play as playCue } from '#lib/sound/cues.ts';
 	import Hand from '@lucide/svelte/icons/hand';
 	import PartyPopper from '@lucide/svelte/icons/party-popper';
 	import PersonStanding from '@lucide/svelte/icons/person-standing';
 	import Shirt from '@lucide/svelte/icons/shirt';
 	import Sofa from '@lucide/svelte/icons/sofa';
-	import { palette } from '$lib/palette.svelte';
-	import { LOUNGE, applyLoungeTheme, skyAt } from '$lib/lounge/palette';
-	import { forgetWalls, shadeFor } from '$lib/lounge/draw-room';
-	import { forgetBackdrops } from '$lib/lounge/draw-window';
+	import { palette } from '#lib/palette.svelte.ts';
+	import { LOUNGE, applyLoungeTheme, skyAt } from '#lib/lounge/palette.ts';
+	import { forgetWalls, shadeFor } from '#lib/lounge/draw-room.ts';
+	import { forgetBackdrops } from '#lib/lounge/draw-window.ts';
 	import {
 		SAFE_W,
 		SCENE_H,
@@ -135,7 +135,7 @@
 		tagsOf,
 		type Heart,
 		type SceneInput,
-	} from '$lib/lounge/scene';
+	} from '#lib/lounge/scene.ts';
 
 	let {
 		menuOf,

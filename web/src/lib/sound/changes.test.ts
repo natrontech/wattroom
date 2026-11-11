@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { changes } from '$lib/sound/changes';
+import { changes } from '#lib/sound/changes.ts';
 
 describe('changes', () => {
 	it('stays silent on the first value — arriving is not an event', () => {

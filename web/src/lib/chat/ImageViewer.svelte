@@ -2,8 +2,8 @@
 	import X from '@lucide/svelte/icons/x';
 	import ZoomIn from '@lucide/svelte/icons/zoom-in';
 	import ZoomOut from '@lucide/svelte/icons/zoom-out';
-	import { countModal } from '$lib/modals.svelte';
-	import { focusTrap } from '$lib/components/focus-trap';
+	import { countModal } from '#lib/modals.svelte.ts';
+	import { focusTrap } from '#lib/components/focus-trap.ts';
 	import { closeImage, image, toggleActual } from './viewer.svelte';
 
 	// The picture a rider clicked, big, on the page they clicked it (#510). One

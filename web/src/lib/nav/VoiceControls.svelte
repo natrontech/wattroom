@@ -3,13 +3,13 @@
 	// hang-up. `docked` is the sidebar's foot on a desk, a row of its own under
 	// your name. Riding or on a phone the sidebar is out of reach, so the now
 	// bar carries these instead.
-	import QuickAudio from '$lib/channel/QuickAudio.svelte';
-	import { account, voiceUp } from '$lib/account.svelte';
-	import { contextMenu, MENU_HINT } from '$lib/context-menu.svelte';
-	import { micMenu } from '$lib/channel/mic-menu';
-	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { rideBar } from '$lib/nav/ride-bar.svelte';
-	import { device } from '$lib/device.svelte';
+	import QuickAudio from '#lib/channel/QuickAudio.svelte';
+	import { account, voiceUp } from '#lib/account.svelte.ts';
+	import { contextMenu, MENU_HINT } from '#lib/context-menu.svelte.ts';
+	import { micMenu } from '#lib/channel/mic-menu.ts';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import { rideBar } from '#lib/nav/ride-bar.svelte.ts';
+	import { device } from '#lib/device.svelte.ts';
 	import Headphones from '@lucide/svelte/icons/headphones';
 	import Mic from '@lucide/svelte/icons/mic';
 	import MicOff from '@lucide/svelte/icons/mic-off';

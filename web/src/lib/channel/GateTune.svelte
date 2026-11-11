@@ -6,7 +6,7 @@
 	//
 	// Rendered by both homes of the gate (#477): the Sound panel and
 	// /settings/equipment.
-	import GateMeter from '$lib/channel/GateMeter.svelte';
+	import GateMeter from '#lib/channel/GateMeter.svelte';
 
 	let {
 		micOn = false,

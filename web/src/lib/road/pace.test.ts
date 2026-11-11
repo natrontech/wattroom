@@ -4,7 +4,7 @@ import {
 	PaceDefaultCdA,
 	ReferenceRiderKg,
 	ReferenceRiderWatts,
-} from '$lib/protocol';
+} from '#lib/protocol.ts';
 import { cornerLimit, createPace, shelter, steadySpeed } from './pace';
 import { BEND_STEP, curvatureOf, golden } from './golden.test-helper';
 

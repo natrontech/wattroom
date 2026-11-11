@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { legible } from '$lib/lounge/draw-rider';
+import { legible } from '#lib/lounge/draw-rider.ts';
 import { TURNS, halved, turnFrom } from './rider-sprite';
 
 describe('which turn a camera sees', () => {

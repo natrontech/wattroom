@@ -17,7 +17,7 @@
 		trayIcon,
 		trayName,
 		type ShellSwitch,
-	} from '$lib/desktop';
+	} from '#lib/desktop.ts';
 
 	let login = $state<ShellSwitch | null>(null);
 	let icon = $state<ShellSwitch | null>(null);

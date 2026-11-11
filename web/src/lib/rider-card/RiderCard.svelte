@@ -8,17 +8,17 @@
 	import MessageSquare from '@lucide/svelte/icons/message-square';
 	import Smile from '@lucide/svelte/icons/smile';
 	import User from '@lucide/svelte/icons/user';
-	import { account } from '$lib/account.svelte';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import { dm } from '$lib/dm/dm.svelte';
-	import { hiddenRiders, stillTogether } from '$lib/hidden-riders.svelte';
-	import { levelFromXp } from '$lib/level';
-	import { people } from '$lib/people.svelte';
-	import { fetchRider, type Rider } from '$lib/rider';
-	import StatusMark from '$lib/status-line/StatusMark.svelte';
-	import { clearsLabel } from '$lib/status-line/clear-after';
-	import { statusEditor } from '$lib/status-line/editor.svelte';
-	import { whereabouts } from '$lib/whereabouts';
+	import { account } from '#lib/account.svelte.ts';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import { dm } from '#lib/dm/dm.svelte.ts';
+	import { hiddenRiders, stillTogether } from '#lib/hidden-riders.svelte.ts';
+	import { levelFromXp } from '#lib/level.ts';
+	import { people } from '#lib/people.svelte.ts';
+	import { fetchRider, type Rider } from '#lib/rider.ts';
+	import StatusMark from '#lib/status-line/StatusMark.svelte';
+	import { clearsLabel } from '#lib/status-line/clear-after.ts';
+	import { statusEditor } from '#lib/status-line/editor.svelte.ts';
+	import { whereabouts } from '#lib/whereabouts.ts';
 	import { placeCard, riderCard } from './rider-card.svelte';
 	import { cachedRider } from './cache';
 

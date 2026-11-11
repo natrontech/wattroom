@@ -4,15 +4,15 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const reads: { path: string; json: unknown }[] = [];
 let refreshed = 0;
 
-vi.mock('$lib/dm/heads.svelte', () => ({
+vi.mock('#lib/dm/heads.svelte.ts', () => ({
 	dmHeads: { refresh: () => refreshed++ },
 }));
-vi.mock('$lib/account.svelte', () => ({ account: { me: { id: 'me-1' } } }));
+vi.mock('#lib/account.svelte', () => ({ account: { me: { id: 'me-1' } } }));
 
 let responses: unknown[] = [];
 let postResponses: unknown[] = [];
 const posted: unknown[] = [];
-vi.mock('$lib/api', () => ({
+vi.mock('#lib/api.ts', () => ({
 	api: async (path: string, init?: { method?: string; json?: unknown }) => {
 		if (init?.method === 'POST' && path.endsWith('/read')) {
 			reads.push({ path, json: init.json });

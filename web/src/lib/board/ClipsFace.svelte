@@ -9,7 +9,7 @@
 	 * it.
 	 */
 	import { Pause, Play, Trash2, Upload } from '@lucide/svelte';
-	import { contextMenu } from '$lib/context-menu.svelte';
+	import { contextMenu } from '#lib/context-menu.svelte.ts';
 	import {
 		assign,
 		board,
@@ -19,13 +19,13 @@
 		remove,
 		upload,
 		type Clip,
-	} from '$lib/board/clips.svelte';
-	import { boardPanel } from '$lib/board/panel.svelte';
-	import { fileDrop } from '$lib/file-drop.svelte';
-	import KeyBinder from '$lib/board/KeyBinder.svelte';
-	import ToggleBinder from '$lib/board/ToggleBinder.svelte';
-	import { learn, shapeOf } from '$lib/board/shapes.svelte';
-	import { preview, previewing, stopPreview } from '$lib/sound/board.svelte';
+	} from '#lib/board/clips.svelte.ts';
+	import { boardPanel } from '#lib/board/panel.svelte.ts';
+	import { fileDrop } from '#lib/file-drop.svelte.ts';
+	import KeyBinder from '#lib/board/KeyBinder.svelte';
+	import ToggleBinder from '#lib/board/ToggleBinder.svelte';
+	import { learn, shapeOf } from '#lib/board/shapes.svelte.ts';
+	import { preview, previewing, stopPreview } from '#lib/sound/board.svelte.ts';
 
 	let { me }: { me: string } = $props();
 

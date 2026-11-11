@@ -1,4 +1,4 @@
-import type { LiveStatus } from '$lib/channel/live.svelte';
+import type { LiveStatus } from '#lib/channel/live.svelte.ts';
 
 /**
  * How long the channel socket has been down, in whole seconds (#2855): what

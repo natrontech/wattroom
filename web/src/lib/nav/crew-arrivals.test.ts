@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { LiveCrew } from '$lib/crews-live';
+import type { LiveCrew } from '#lib/crews-live.ts';
 import { crewArrivals } from './crew-arrivals';
 
 const crew = (coach: string) =>
@@ -60,7 +60,7 @@ describe('crewArrivals — a session starting', () => {
 describe('crewArrivals — a text channel line', () => {
 	// The notification wears the author's status emoji, as a DM's does (#2758).
 	it("titles the line with its author's status emoji", async () => {
-		const { people } = await import('$lib/people.svelte');
+		const { people } = await import('#lib/people.svelte.ts');
 		people.learn([
 			{
 				id: 'ana',

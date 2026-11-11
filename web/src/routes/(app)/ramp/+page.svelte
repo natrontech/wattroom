@@ -1,18 +1,18 @@
 <script lang="ts">
-	import Banner from '$lib/components/Banner.svelte';
-	import RecoveredRides from '$lib/ride/RecoveredRides.svelte';
-	import { theRide } from '$lib/ride/the-ride.svelte';
-	import TheRide from '$lib/ride/TheRide.svelte';
-	import { canSimulate } from '$lib/ble/can-simulate';
-	import { FtmsTrainer } from '$lib/ble/ftms';
-	import { channelConnection } from '$lib/channel/connection.svelte';
-	import SensorOverview from '$lib/session/SensorOverview.svelte';
-	import { heldTrainer } from '$lib/session/sensor-status';
-	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
-	import { device } from '$lib/device.svelte';
-	import { SimulatedTrainer } from '$lib/ble/simulated';
-	import type { Trainer } from '$lib/ble/trainer';
-	import { RAMP, RAMP_TAKES } from '$lib/workout/ramp';
+	import Banner from '#lib/components/Banner.svelte';
+	import RecoveredRides from '#lib/ride/RecoveredRides.svelte';
+	import { theRide } from '#lib/ride/the-ride.svelte.ts';
+	import TheRide from '#lib/ride/TheRide.svelte';
+	import { canSimulate } from '#lib/ble/can-simulate.ts';
+	import { FtmsTrainer } from '#lib/ble/ftms.ts';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import SensorOverview from '#lib/session/SensorOverview.svelte';
+	import { heldTrainer } from '#lib/session/sensor-status.ts';
+	import { soloTrainer } from '#lib/ride/solo-trainer.svelte.ts';
+	import { device } from '#lib/device.svelte.ts';
+	import { SimulatedTrainer } from '#lib/ble/simulated.ts';
+	import type { Trainer } from '#lib/ble/trainer.ts';
+	import { RAMP, RAMP_TAKES } from '#lib/workout/ramp.ts';
 
 	let error = $state<string | null>(null);
 

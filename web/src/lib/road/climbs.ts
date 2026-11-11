@@ -27,7 +27,7 @@ import {
 	ClimbMinPct,
 	ClimbMinScore,
 	MaxClimbs,
-} from '$lib/protocol';
+} from '#lib/protocol.ts';
 import { roadStep, type Road } from './road';
 
 export type ClimbClass = 'IV' | 'III' | 'II' | 'I' | 'HC';

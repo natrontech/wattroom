@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import type { ApiResult } from '$lib/api';
-import type { CrewChannel } from '$lib/channels';
-import type { Crew, CrewMembers } from '$lib/crew';
-import type { CrewAnnouncement } from '$lib/channels';
-import type { CrewPlan } from '$lib/crew-schedule';
+import type { ApiResult } from '#lib/api.ts';
+import type { CrewChannel } from '#lib/channels.ts';
+import type { Crew, CrewMembers } from '#lib/crew.ts';
+import type { CrewAnnouncement } from '#lib/channels.ts';
+import type { CrewPlan } from '#lib/crew-schedule.ts';
 import { liveRoleOf, voiceChannelData } from './voice-channel';
 
 const crew = {

@@ -5,8 +5,8 @@
 	// 1:1 in container pixels so type never scales down; neon grid per
 	// ADR-0005. Identity is carried by shape (line, dot, diamond) plus the
 	// legend, never color alone. Hover for a ride's numbers; click to jump.
-	import ChartTip from '$lib/components/ChartTip.svelte';
-	import type { TrendRide } from '$lib/progression';
+	import ChartTip from '#lib/components/ChartTip.svelte';
+	import type { TrendRide } from '#lib/progression.ts';
 	import { atMs, ftpMarks, trendDomain, trendSparse } from './ftp-trend';
 
 	let {

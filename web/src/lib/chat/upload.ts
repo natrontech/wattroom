@@ -1,4 +1,4 @@
-import { api, type ApiResult } from '$lib/api';
+import { api, type ApiResult } from '#lib/api.ts';
 
 /**
  * A pasted image goes up first (#279, #285); the message then carries only

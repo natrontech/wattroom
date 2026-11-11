@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { render } from 'svelte/server';
 import IntervalStrip from './IntervalStrip.svelte';
-import type { Block } from '$lib/workout/block';
+import type { Block } from '#lib/workout/block.ts';
 
 const block = (secondsLeft: number): Block => ({
 	index: 2,

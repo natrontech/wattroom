@@ -10,14 +10,14 @@ import {
 	yOf,
 	type Block,
 } from './graph-edit';
-import { LIMITS } from '$lib/workout/validate';
-import { validateWorkout } from '$lib/workout/validate';
+import { LIMITS } from '#lib/workout/validate.ts';
+import { validateWorkout } from '#lib/workout/validate.ts';
 import type {
 	RampStep,
 	RepeatStep,
 	SteadyStep,
 	Workout,
-} from '$lib/workout/types';
+} from '#lib/workout/types.ts';
 
 describe('pixel → value', () => {
 	it('maps the timeline across the full width', () => {

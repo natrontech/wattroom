@@ -9,11 +9,11 @@
 	 */
 	import Minus from '@lucide/svelte/icons/minus';
 	import Plus from '@lucide/svelte/icons/plus';
-	import type { Clamp } from '$lib/ride/drivetrain';
-	import { createLimitWatch, limitLine } from '$lib/ride/limit-line';
-	import type { RideShift } from '$lib/ride/ride-shift';
-	import type { ShiftDir } from '$lib/ride/shifter';
-	import { tooltip } from '$lib/tooltip.svelte';
+	import type { Clamp } from '#lib/ride/drivetrain.ts';
+	import { createLimitWatch, limitLine } from '#lib/ride/limit-line.ts';
+	import type { RideShift } from '#lib/ride/ride-shift.ts';
+	import type { ShiftDir } from '#lib/ride/shifter.ts';
+	import { tooltip } from '#lib/tooltip.svelte.ts';
 
 	let {
 		shift,

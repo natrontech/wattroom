@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Download from '@lucide/svelte/icons/download';
-	import EmptyState from '$lib/components/EmptyState.svelte';
-	import Skeleton from '$lib/components/Skeleton.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
 	import {
 		detectOS,
 		formatBytes,
@@ -11,7 +11,7 @@
 		shellVersion,
 		type DesktopRelease,
 		type OS,
-	} from '$lib/desktop';
+	} from '#lib/desktop.ts';
 
 	// /download (#296): the desktop app, for the computer you are reading
 	// this on. Public — a rider hears about it before they have an account.

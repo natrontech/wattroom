@@ -1,5 +1,5 @@
-import type { ObcAction } from '$lib/ble/obc';
-import { rideKeyOf, shiftOf, type RideKey } from '$lib/ride/keys';
+import type { ObcAction } from '#lib/ble/obc.ts';
+import { rideKeyOf, shiftOf, type RideKey } from '#lib/ride/keys.ts';
 
 /**
  * The Controllers page's test pad (#4236): which line of the key table a

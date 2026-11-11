@@ -5,8 +5,8 @@
  * bands split by an ordered dither. So light falls on the things it reaches,
  * with no blend between pixels and a few extra colours for each material.
  */
-import { BAYER } from '$lib/lounge/pixel';
-import type { Sky } from '$lib/lounge/palette';
+import { BAYER } from '#lib/lounge/pixel.ts';
+import type { Sky } from '#lib/lounge/palette.ts';
 
 /** A light's reach: an ellipse, on the wall, on the floor, or on both. */
 export interface Light {

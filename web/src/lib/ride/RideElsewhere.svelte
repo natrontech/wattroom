@@ -6,10 +6,10 @@
 	 * (RemoteOffer.svelte); a ride alone has no page the phone would open, so
 	 * the frame carries this one, under the top bar.
 	 */
-	import { device } from '$lib/device.svelte';
-	import PhoneRemote from '$lib/ride/PhoneRemote.svelte';
-	import { theRide } from '$lib/ride/the-ride.svelte';
-	import { riderLane } from '$lib/rider-lane.svelte';
+	import { device } from '#lib/device.svelte.ts';
+	import PhoneRemote from '#lib/ride/PhoneRemote.svelte';
+	import { theRide } from '#lib/ride/the-ride.svelte.ts';
+	import { riderLane } from '#lib/rider-lane.svelte.ts';
 
 	let open = $state(false);
 	const where = $derived(

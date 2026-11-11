@@ -4,15 +4,15 @@
 	// Its own file because it is the one section that belongs to the AV chain
 	// rather than to the profile: it reads `channelConnection` directly and owns
 	// the device refresh, and none of that is the page's business (#686).
-	import DevicePickers from '$lib/channel/DevicePickers.svelte';
-	import MixFaders from '$lib/channel/MixFaders.svelte';
-	import RiderVolumes from '$lib/channel/RiderVolumes.svelte';
-	import VoiceSettings from '$lib/channel/VoiceSettings.svelte';
-	import { account } from '$lib/account.svelte';
-	import { deviceChoices } from '$lib/channel/av-devices.svelte';
-	import { canPickOutput } from '$lib/channel/av-output';
-	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { describeMediaError } from '$lib/channel/media-error';
+	import DevicePickers from '#lib/channel/DevicePickers.svelte';
+	import MixFaders from '#lib/channel/MixFaders.svelte';
+	import RiderVolumes from '#lib/channel/RiderVolumes.svelte';
+	import VoiceSettings from '#lib/channel/VoiceSettings.svelte';
+	import { account } from '#lib/account.svelte.ts';
+	import { deviceChoices } from '#lib/channel/av-devices.svelte.ts';
+	import { canPickOutput } from '#lib/channel/av-output.ts';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import { describeMediaError } from '#lib/channel/media-error.ts';
 
 	// The AV chain only exists while you are in a voice channel. The device picks
 	// do not (#1858): they are the one store the next join applies, so a rider

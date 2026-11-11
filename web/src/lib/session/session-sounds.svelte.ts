@@ -1,16 +1,16 @@
-import type { GameState, StartLine } from '$lib/protocol';
-import { gameCues, golfMoment } from '$lib/session/game-cues';
-import { lineCue } from '$lib/session/start-line';
-import { serverNow } from '$lib/server-clock';
-import { changes } from '$lib/sound/changes';
-import { PAN_LIMIT, play, playCountdownTick } from '$lib/sound/cues';
-import type { RaceReadout } from '$lib/race/race-view';
-import { passes } from '$lib/race/wheel';
-import { toasts } from '$lib/toast.svelte';
+import type { GameState, StartLine } from '#lib/protocol.ts';
+import { gameCues, golfMoment } from '#lib/session/game-cues.ts';
+import { lineCue } from '#lib/session/start-line.ts';
+import { serverNow } from '#lib/server-clock.ts';
+import { changes } from '#lib/sound/changes.ts';
+import { PAN_LIMIT, play, playCountdownTick } from '#lib/sound/cues.ts';
+import type { RaceReadout } from '#lib/race/race-view.ts';
+import { passes } from '#lib/race/wheel.ts';
+import { toasts } from '#lib/toast.svelte.ts';
 import {
 	createRideSounds,
 	type RideSoundDeps,
-} from '$lib/ride/ride-sounds.svelte';
+} from '#lib/ride/ride-sounds.svelte.ts';
 
 /**
  * What the session says out loud (#834, #686). Riders are on a bike three metres

@@ -8,8 +8,8 @@
  * (LoungeScene). The watts above the bike are the picture's one live number,
  * in the theme's watt hue, and the only thing that glows (ADR-0005).
  */
-import { PEDAL_FRAMES, drawCyclist } from '$lib/lounge/draw-rider';
-import { LOUNGE as C, shadeOf } from '$lib/lounge/palette';
+import { PEDAL_FRAMES, drawCyclist } from '#lib/lounge/draw-rider.ts';
+import { LOUNGE as C, shadeOf } from '#lib/lounge/palette.ts';
 import {
 	ellipse,
 	inkedSprite,
@@ -21,7 +21,7 @@ import {
 	textWidth,
 	type Ctx,
 	type Part,
-} from '$lib/lounge/pixel';
+} from '#lib/lounge/pixel.ts';
 import {
 	BIKE_GROUND,
 	SEAT_BASE,
@@ -30,7 +30,7 @@ import {
 	type Bike,
 	type Figure,
 	type SceneInput,
-} from '$lib/lounge/scene';
+} from '#lib/lounge/scene.ts';
 
 const NOTE = ['011', '010', '110'];
 const HEART = ['01010', '11111', '01110', '00100'];

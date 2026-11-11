@@ -1,12 +1,12 @@
-import type { Trainer } from '$lib/ble/trainer';
-import { account } from '$lib/account.svelte';
-import type { createProfileStore } from '$lib/profile.svelte';
-import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
-import type { createRideFlags } from '$lib/ride/flags.svelte';
-import { sensors } from '$lib/sensors.svelte';
-import { byReference } from '$lib/workout/road-workout';
-import { createRideSession } from '$lib/workout/session.svelte';
-import type { Workout } from '$lib/workout/types';
+import type { Trainer } from '#lib/ble/trainer.ts';
+import { account } from '#lib/account.svelte.ts';
+import type { createProfileStore } from '#lib/profile.svelte.ts';
+import { openRideBuffer, type RideBuffer } from '#lib/ride/buffer.ts';
+import type { createRideFlags } from '#lib/ride/flags.svelte.ts';
+import { sensors } from '#lib/sensors.svelte.ts';
+import { byReference } from '#lib/workout/road-workout.ts';
+import { createRideSession } from '#lib/workout/session.svelte.ts';
+import type { Workout } from '#lib/workout/types.ts';
 
 type Session = ReturnType<typeof createRideSession>;
 

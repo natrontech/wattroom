@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { render } from 'svelte/server';
 import RideBand from './RideBand.svelte';
-import type { Block, BlockTrainer } from '$lib/workout/block';
+import type { Block, BlockTrainer } from '#lib/workout/block.ts';
 
 const block = (trainer: BlockTrainer): Block => ({
 	index: 2,

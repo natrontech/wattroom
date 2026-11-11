@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { RaceRider, ServerTick } from '$lib/protocol';
+import type { RaceRider, ServerTick } from '#lib/protocol.ts';
 import { ordinal, raceOf } from './race-view';
 
 const KLAXON = 100_000;

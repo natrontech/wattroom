@@ -1,4 +1,4 @@
-import type { Road } from '$lib/road/road';
+import type { Road } from '#lib/road/road.ts';
 import type { Salt } from './keyed';
 import { onStroke, type Keying } from './region';
 import { strokeOf } from './stroke';

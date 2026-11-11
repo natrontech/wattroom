@@ -1,4 +1,4 @@
-import { packRoad, roadStep, type Road } from '$lib/road/road';
+import { packRoad, roadStep, type Road } from '#lib/road/road.ts';
 import { cosDeg, sinDeg } from './sine';
 
 /**

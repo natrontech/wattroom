@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { AUTO_MAX, AUTO_MIN, voiceDspOptions } from '$lib/channel/gate';
-import { LOOKAHEAD, createVoiceDsp } from '$lib/channel/voice-dsp';
+import { AUTO_MAX, AUTO_MIN, voiceDspOptions } from '#lib/channel/gate.ts';
+import { LOOKAHEAD, createVoiceDsp } from '#lib/channel/voice-dsp.ts';
 
 const SR = 48_000;
 const Q = 128;

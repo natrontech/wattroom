@@ -13,18 +13,18 @@
 	// the shell, which has already joined, or by the frame while a held ride
 	// is off its place (#2885), and this is the pattern the channel's other
 	// components follow.
-	import Banner from '$lib/components/Banner.svelte';
-	import { resumeKm } from '$lib/channel/lost-road';
-	import { device } from '$lib/device.svelte';
-	import FaultBanner from '$lib/channel/FaultBanner.svelte';
+	import Banner from '#lib/components/Banner.svelte';
+	import { resumeKm } from '#lib/channel/lost-road.ts';
+	import { device } from '#lib/device.svelte.ts';
+	import FaultBanner from '#lib/channel/FaultBanner.svelte';
 	import {
 		DISCONNECT_GRACE_SECONDS,
 		ELIMINATION_MODES,
-	} from '$lib/session/modes';
+	} from '#lib/session/modes.ts';
 	import { onMount } from 'svelte';
-	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { dropClock } from '$lib/channel/drop-clock.svelte';
-	import { trainerForChannel } from '$lib/ride/solo-trainer.svelte';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import { dropClock } from '#lib/channel/drop-clock.svelte.ts';
+	import { trainerForChannel } from '#lib/ride/solo-trainer.svelte.ts';
 
 	// `frame`: the one the app's frame draws while no page does (#2986). Every
 	// other instance registers, so the frame knows a page is drawing it.

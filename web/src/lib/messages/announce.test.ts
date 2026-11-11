@@ -4,8 +4,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const played: string[] = [];
 const pushed: { title: string; body: string }[] = [];
 
-vi.mock('$lib/sound/cues', () => ({ play: (id: string) => played.push(id) }));
-vi.mock('$lib/notify.svelte', () => ({
+vi.mock('#lib/sound/cues.ts', () => ({
+	play: (id: string) => played.push(id),
+}));
+vi.mock('#lib/notify.svelte.ts', () => ({
 	notify: {
 		push: (title: string, body: string) => pushed.push({ title, body }),
 	},
@@ -14,7 +16,7 @@ vi.mock('$lib/notify.svelte', () => ({
 }));
 
 import { announce, divertWhileRiding } from './announce';
-import { toasts } from '$lib/toast.svelte';
+import { toasts } from '#lib/toast.svelte.ts';
 
 const arrival = (
 	over: Partial<Parameters<typeof announce>[0]> = {},

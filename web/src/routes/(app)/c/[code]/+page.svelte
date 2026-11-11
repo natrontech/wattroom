@@ -3,12 +3,12 @@
 	// One decision, one button — the shape the room's door had when it was
 	// the golden path. Signed-out visitors meet the login gate first and come
 	// back here with the code intact.
-	import { goto, invalidateAll } from '$app/navigation';
-	import Logo from '$lib/brand/Logo.svelte';
-	import Banner from '$lib/components/Banner.svelte';
-	import CrewMark from '$lib/components/CrewMark.svelte';
-	import { crewDoorDisclosure, joinCrew, rememberCrewDoor } from '$lib/crew';
-	import { presence } from '$lib/presence.svelte';
+	import { goto, refreshAll } from '$app/navigation';
+	import Logo from '#lib/brand/Logo.svelte';
+	import Banner from '#lib/components/Banner.svelte';
+	import CrewMark from '#lib/components/CrewMark.svelte';
+	import { crewDoorDisclosure, joinCrew, rememberCrewDoor } from '#lib/crew.ts';
+	import { presence } from '#lib/presence.svelte.ts';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -125,9 +125,8 @@
 				<Banner tone="error">
 					{data.error}
 					{#snippet action()}
-						<button
-							onclick={() => void invalidateAll()}
-							class="btn-link text-xs">Retry</button
+						<button onclick={() => void refreshAll()} class="btn-link text-xs"
+							>Retry</button
 						>
 					{/snippet}
 				</Banner>

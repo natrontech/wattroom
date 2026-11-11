@@ -16,7 +16,7 @@
 	 * wears the cheers' own border, so the deck reads as one set of keys.
 	 */
 	import Drum from '@lucide/svelte/icons/drum';
-	import { boardPanel } from '$lib/board/panel.svelte';
+	import { boardPanel } from '#lib/board/panel.svelte.ts';
 </script>
 
 <button

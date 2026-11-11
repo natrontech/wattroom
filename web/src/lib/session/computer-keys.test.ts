@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it } from 'vitest';
-import { edgeDivider } from '$lib/divider';
+import { edgeDivider } from '#lib/divider.ts';
 import { claimPageTurn } from './computer-pages';
 
 /**

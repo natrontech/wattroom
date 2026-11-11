@@ -4,8 +4,8 @@ import type { RidePlace, RideRoad } from './list';
  * single blob read ADR-0016 keeps the samples for — the shape the server
  * sends, and the two calls the detail page and the list row share.
  */
-import { api, type ApiResult } from '$lib/api';
-import type { Curve } from '$lib/progression';
+import { api, type ApiResult } from '#lib/api.ts';
+import type { Curve } from '#lib/progression.ts';
 import type { RideFeel } from './feel';
 import type { RideSample } from './stats';
 

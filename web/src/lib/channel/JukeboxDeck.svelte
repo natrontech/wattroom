@@ -15,28 +15,31 @@
 		contextMenu,
 		MENU_HINT,
 		type MenuEntry,
-	} from '$lib/context-menu.svelte';
-	import { formatClockLong } from '$lib/format';
+	} from '#lib/context-menu.svelte.ts';
+	import { formatClockLong } from '#lib/format.ts';
 	import type {
 		JukeboxCommand,
 		JukeboxEntry,
 		JukeboxState,
-	} from '$lib/protocol';
-	import { thumbnailFor } from '$lib/channel/jukebox-add';
-	import { deckDuration, playerInfo } from '$lib/channel/jukebox-player.svelte';
-	import { listening } from '$lib/channel/listening.svelte';
-	import { clampSeek, playheadAt } from '$lib/channel/playhead';
-	import { serverNow } from '$lib/server-clock';
+	} from '#lib/protocol.ts';
+	import { thumbnailFor } from '#lib/channel/jukebox-add.ts';
+	import {
+		deckDuration,
+		playerInfo,
+	} from '#lib/channel/jukebox-player.svelte.ts';
+	import { listening } from '#lib/channel/listening.svelte.ts';
+	import { clampSeek, playheadAt } from '#lib/channel/playhead.ts';
+	import { serverNow } from '#lib/server-clock.ts';
 	import {
 		COLUMN_SEAT,
 		offerSeat,
 		stageSlot,
-	} from '$lib/channel/stage-slot.svelte';
-	import { roadsideShown } from '$lib/channel/RoadsideDeck.svelte';
-	import TrackWave from '$lib/channel/TrackWave.svelte';
-	import { MUSIC_FADER } from '$lib/sound/fader';
-	import { mixer } from '$lib/sound/mixer.svelte';
-	import { toasts } from '$lib/toast.svelte';
+	} from '#lib/channel/stage-slot.svelte.ts';
+	import { roadsideShown } from '#lib/channel/RoadsideDeck.svelte';
+	import TrackWave from '#lib/channel/TrackWave.svelte';
+	import { MUSIC_FADER } from '#lib/sound/fader.ts';
+	import { mixer } from '#lib/sound/mixer.svelte.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
 
 	// What is ON, and everything that moves it (#114, #1423): the picture the
 	// player flies onto, the words, the shared playhead, the transport, and the

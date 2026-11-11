@@ -1,4 +1,4 @@
-import type { SessionState } from '$lib/protocol';
+import type { SessionState } from '#lib/protocol.ts';
 
 /** A session is live from its countdown until it closes; `idle` and `done` are not. */
 export const isLivePhase = (phase: string | null | undefined): boolean =>

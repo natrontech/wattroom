@@ -1,10 +1,10 @@
 // @vitest-environment happy-dom
 import * as THREE from 'three';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { at, leftOf } from '$lib/road/along';
-import { legsRoad } from '$lib/road/fixtures';
-import type { Route } from '$lib/road/route';
-import type { RoadMate } from '$lib/channel/road-mates';
+import { at, leftOf } from '#lib/road/along.ts';
+import { legsRoad } from '#lib/road/fixtures.ts';
+import type { Route } from '#lib/road/route.ts';
+import type { RoadMate } from '#lib/channel/road-mates.ts';
 import { createAlongside } from './alongside';
 import { compose, type Hud } from './compose';
 import { RIDE } from './look.test-helper';

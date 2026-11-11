@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const uploads: unknown[] = [];
 let offline = false;
-vi.mock('$lib/ride/save', () => ({
+vi.mock('#lib/ride/save.ts', () => ({
 	uploadRide: vi.fn(async (ride: unknown) => {
 		uploads.push(ride);
 		if (offline)
@@ -12,9 +12,9 @@ vi.mock('$lib/ride/save', () => ({
 }));
 // A production rider (#3333): no dev build and no dev sign-in door, which
 // is where gears used to stop.
-vi.mock('$lib/ble/can-simulate', () => ({ canSimulate: () => false }));
+vi.mock('#lib/ble/can-simulate.ts', () => ({ canSimulate: () => false }));
 const ended: string[] = [];
-vi.mock('$lib/ride/buffer', () => ({
+vi.mock('#lib/ride/buffer.ts', () => ({
 	openRideBuffer: vi.fn(async () => ({
 		crashSafe: true,
 		append() {},
@@ -24,7 +24,7 @@ vi.mock('$lib/ride/buffer', () => ({
 	})),
 }));
 
-import { MaxRoadSpeedMps } from '$lib/protocol';
+import { MaxRoadSpeedMps } from '#lib/protocol.ts';
 import { ergByRoad } from './ride-grade';
 import type { RideableRoute } from './roads';
 import { nudged, openingWatts, ownRoad } from './free-ride-controls';

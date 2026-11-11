@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, expect, it, vi } from 'vitest';
-import { createPublish, type PublishHost } from '$lib/channel/av-publish';
+import { createPublish, type PublishHost } from '#lib/channel/av-publish.ts';
 
 /**
  * The camera's flip (#2142: "front/back camera switching does not work").

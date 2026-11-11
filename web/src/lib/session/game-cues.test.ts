@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { gameCues, golfMoment } from '$lib/session/game-cues';
-import type { GameState } from '$lib/protocol';
+import { gameCues, golfMoment } from '#lib/session/game-cues.ts';
+import type { GameState } from '#lib/protocol.ts';
 
 const ME = 'me';
 

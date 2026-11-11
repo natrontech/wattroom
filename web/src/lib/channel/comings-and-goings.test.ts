@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { comingsAndGoings } from '$lib/channel/comings-and-goings';
+import { comingsAndGoings } from '#lib/channel/comings-and-goings.ts';
 
 const set = (...ids: string[]) => new Set(ids);
 

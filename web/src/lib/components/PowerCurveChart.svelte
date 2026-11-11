@@ -4,8 +4,8 @@
 	// at three opacity steps — sequential, not categorical, and readable for
 	// every kind of color vision by lightness alone. Drawn 1:1 in container
 	// pixels; neon grid per ADR-0005.
-	import ChartTip from '$lib/components/ChartTip.svelte';
-	import { SHOWN_WINDOWS as WINDOWS, type Curve } from '$lib/progression';
+	import ChartTip from '#lib/components/ChartTip.svelte';
+	import { SHOWN_WINDOWS as WINDOWS, type Curve } from '#lib/progression.ts';
 	import { BAR_GAP, GUTTER, powerCurveGeometry } from './power-curve-geometry';
 
 	let { d30, d90, all }: { d30: Curve; d90: Curve; all: Curve } = $props();

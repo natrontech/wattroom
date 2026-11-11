@@ -1,5 +1,5 @@
-import type { CrewChannel } from '$lib/channels';
-import type { ConfirmRequest } from '$lib/confirm.svelte';
+import type { CrewChannel } from '#lib/channels.ts';
+import type { ConfirmRequest } from '#lib/confirm.svelte.ts';
 
 /**
  * A crew playlist a voice channel's autoplay plays (#2884). Deleting it

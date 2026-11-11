@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { TrendRide } from '$lib/progression';
+import type { TrendRide } from '#lib/progression.ts';
 import { ftpMarks, trendDomain, trendSparse } from './ftp-trend';
 
 const DAY = 24 * 60 * 60 * 1000;

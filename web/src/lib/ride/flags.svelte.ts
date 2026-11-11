@@ -1,4 +1,4 @@
-import { createFlightRecorder } from '$lib/ride/flightrecorder.svelte';
+import { createFlightRecorder } from '#lib/ride/flightrecorder.svelte.ts';
 
 /**
  * The ⚑ for one riding page (#52, ADR-0006): a flight recorder, the flags

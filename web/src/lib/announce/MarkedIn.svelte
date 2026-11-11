@@ -2,7 +2,7 @@
 	// Where the crew's announcement was marked, as a way there: the Board and
 	// a voice channel both show the crew's newest, which lives in a chat
 	// channel neither of them is (ADR-0058).
-	import { textChannelPath, type CrewAnnouncement } from '$lib/channels';
+	import { textChannelPath, type CrewAnnouncement } from '#lib/channels.ts';
 	import MessageCircle from '@lucide/svelte/icons/message-circle';
 
 	let {

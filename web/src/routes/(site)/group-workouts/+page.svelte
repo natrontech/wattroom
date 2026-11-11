@@ -1,12 +1,12 @@
 <script lang="ts">
-	import CtaBand from '$lib/site/CtaBand.svelte';
-	import Faq from '$lib/site/Faq.svelte';
-	import FtpSlider from '$lib/site/FtpSlider.svelte';
-	import PageHero from '$lib/site/PageHero.svelte';
-	import Screen from '$lib/site/Screen.svelte';
-	import SectionHead from '$lib/site/SectionHead.svelte';
-	import Seo from '$lib/site/Seo.svelte';
-	import { GROUP_WORKOUTS } from '$lib/site/seo';
+	import CtaBand from '#lib/site/CtaBand.svelte';
+	import Faq from '#lib/site/Faq.svelte';
+	import FtpSlider from '#lib/site/FtpSlider.svelte';
+	import PageHero from '#lib/site/PageHero.svelte';
+	import Screen from '#lib/site/Screen.svelte';
+	import SectionHead from '#lib/site/SectionHead.svelte';
+	import Seo from '#lib/site/Seo.svelte';
+	import { GROUP_WORKOUTS } from '#lib/site/seo.ts';
 
 	// Answers "zwift workout with friends", "does zwift have voice chat" and
 	// "create a group workout" (#2995) — the queries that fit best and are

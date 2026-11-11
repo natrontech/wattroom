@@ -1,8 +1,8 @@
-import { createMoments } from '$lib/moments';
-import type { ClimbClass } from '$lib/road/climbs';
-import { play } from '$lib/sound/cues';
-import type { ClimbView } from '$lib/ride/climb-view';
-import type { GhostCall } from '$lib/ride/ghost-split.svelte';
+import { createMoments } from '#lib/moments/index.ts';
+import type { ClimbClass } from '#lib/road/climbs.ts';
+import { play } from '#lib/sound/cues.ts';
+import type { ClimbView } from '#lib/ride/climb-view.ts';
+import type { GhostCall } from '#lib/ride/ghost-split.svelte.ts';
 
 /**
  * What the climb's moments are doing right now (#3645), for the surfaces that

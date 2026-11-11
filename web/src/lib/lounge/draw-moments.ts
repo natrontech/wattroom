@@ -4,7 +4,7 @@
  * lanterns and the flag of the first of August, and confetti. All of it is
  * drawn with the room, but for what falls and the fondue's steam.
  */
-import { LOUNGE as C } from '$lib/lounge/palette';
+import { LOUNGE as C } from '#lib/lounge/palette.ts';
 import {
 	dot,
 	ellipse,
@@ -12,10 +12,10 @@ import {
 	outlined,
 	rect,
 	type Ctx,
-} from '$lib/lounge/pixel';
-import type { SceneInput } from '$lib/lounge/scene';
-import type { Moment } from '$lib/lounge/moments';
-import { hash3 } from '$lib/lounge/hash';
+} from '#lib/lounge/pixel.ts';
+import type { SceneInput } from '#lib/lounge/scene.ts';
+import type { Moment } from '#lib/lounge/moments.ts';
+import { hash3 } from '#lib/lounge/hash.ts';
 
 /** Tucked behind and under things: none of them in the open. */
 const EGGS = [

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // The library warms its pads through the audio bus, which wants an
 // AudioContext this environment has not got. Nothing here is about sound.
-vi.mock('$lib/sound/board.svelte', () => ({ prefetch: () => {} }));
+vi.mock('#lib/sound/board.svelte.ts', () => ({ prefetch: () => {} }));
 
 const {
 	assign,
@@ -15,7 +15,7 @@ const {
 	rename,
 	saveEdit,
 	upload,
-} = await import('$lib/board/clips.svelte');
+} = await import('#lib/board/clips.svelte.ts');
 
 describe('nameFromFile', () => {
 	it('drops the extension and shouts, because a pad is read at arm’s length', () => {
@@ -39,7 +39,7 @@ describe('nameFromFile', () => {
 
 /**
  * The refusal paths, which is the whole point of these calls going through
- * `$lib/api` (#1997): the rider is meant to read the server's sentence, not a
+ * `#lib/api` (#1997): the rider is meant to read the server's sentence, not a
  * hand-rolled one, and never a board that looks empty when it is only unread.
  *
  * These run before the movePad block on purpose — the module's `loaded` flag

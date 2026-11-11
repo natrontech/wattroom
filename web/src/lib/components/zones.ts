@@ -3,7 +3,7 @@
  * docs/SPEC.md's; the class names are literal because Tailwind scans source text and
  * would never generate `bg-z${n}`.
  */
-import type { Segment, WorkoutStep } from '$lib/workout/types';
+import type { Segment, WorkoutStep } from '#lib/workout/types.ts';
 
 export const CEILING = 1.5;
 

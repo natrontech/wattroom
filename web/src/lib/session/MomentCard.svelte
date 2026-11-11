@@ -7,11 +7,11 @@
 	 * No watts on it: your 3 s power stays the one figure, in the computer's
 	 * head (G2), and the card's border is watt while the window is open.
 	 */
-	import type { LiveRider } from '$lib/channel/types';
-	import { wkg } from '$lib/format';
-	import type { SprintState } from '$lib/protocol';
-	import { serverNow } from '$lib/server-clock';
-	import { sprintPhase } from '$lib/session/sprint-phase';
+	import type { LiveRider } from '#lib/channel/types.ts';
+	import { wkg } from '#lib/format.ts';
+	import type { SprintState } from '#lib/protocol.ts';
+	import { serverNow } from '#lib/server-clock.ts';
+	import { sprintPhase } from '#lib/session/sprint-phase.ts';
 
 	let {
 		sprint,

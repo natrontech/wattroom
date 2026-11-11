@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { followRoomLink, movedTo, type MovedRoom } from './moved';
 
 const toasted = vi.hoisted(() => [] as string[]);
-vi.mock('$lib/toast.svelte', () => ({
+vi.mock('#lib/toast.svelte.ts', () => ({
 	toasts: { push: (text: string) => toasted.push(text) },
 }));
 

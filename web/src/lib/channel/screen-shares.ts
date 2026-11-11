@@ -1,4 +1,7 @@
-import { comingsAndGoings, type Coming } from '$lib/channel/comings-and-goings';
+import {
+	comingsAndGoings,
+	type Coming,
+} from '#lib/channel/comings-and-goings.ts';
 
 /**
  * Another rider's screen appearing is a state change the call has to hear

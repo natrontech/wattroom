@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { PlaceAddress } from '$lib/channel/address';
+	import type { PlaceAddress } from '#lib/channel/address.ts';
 	import ArrowDown from '@lucide/svelte/icons/arrow-down';
 	import ArrowUp from '@lucide/svelte/icons/arrow-up';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
@@ -9,21 +9,21 @@
 	import Pencil from '@lucide/svelte/icons/pencil';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import X from '@lucide/svelte/icons/x';
-	import { contextMenu, type MenuEntry } from '$lib/context-menu.svelte';
-	import { toasts } from '$lib/toast.svelte';
-	import { confirm } from '$lib/confirm.svelte';
-	import { fetchCrewChannels } from '$lib/channels';
-	import { deleteQuestion, playingIn } from '$lib/channel/playlist-autoplay';
-	import type { JukeboxCommand } from '$lib/protocol';
-	import { thumbnailFor } from '$lib/channel/jukebox-add';
-	import JukeboxAdd from '$lib/channel/JukeboxAdd.svelte';
+	import { contextMenu, type MenuEntry } from '#lib/context-menu.svelte.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
+	import { confirm } from '#lib/confirm.svelte.ts';
+	import { fetchCrewChannels } from '#lib/channels.ts';
+	import { deleteQuestion, playingIn } from '#lib/channel/playlist-autoplay.ts';
+	import type { JukeboxCommand } from '#lib/protocol.ts';
+	import { thumbnailFor } from '#lib/channel/jukebox-add.ts';
+	import JukeboxAdd from '#lib/channel/JukeboxAdd.svelte';
 	import {
 		commandFromSavedTrack,
 		queueSavedPlaylist,
 		type SavedPlaylist,
 		type SavedTrack,
 		type createPlaylistStore,
-	} from '$lib/channel/playlists.svelte';
+	} from '#lib/channel/playlists.svelte.ts';
 
 	// One saved playlist (#627): the row folds open onto its own tracks, add
 	// and delete live here. Adding is the jukebox's own add box (#1426) —

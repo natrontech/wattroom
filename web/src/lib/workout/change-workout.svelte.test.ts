@@ -1,13 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 
 const hud = vi.hoisted(() => ({ publishHud: vi.fn() }));
-vi.mock('$lib/hud/feed', () => hud);
+vi.mock('#lib/hud/feed.ts', () => hud);
 
-import { SimulatedTrainer } from '$lib/ble/simulated';
-import { onRoute } from '$lib/road/compile';
-import { climbedM } from '$lib/ride/climbed';
-import { homeRoad, homeRoute } from '$lib/ride/home-roads';
-import { recordingUpload } from '$lib/ride/save';
+import { SimulatedTrainer } from '#lib/ble/simulated.ts';
+import { onRoute } from '#lib/road/compile.ts';
+import { climbedM } from '#lib/ride/climbed.ts';
+import { homeRoad, homeRoute } from '#lib/ride/home-roads.ts';
+import { recordingUpload } from '#lib/ride/save.ts';
 import { durationSeconds, flatten } from './engine';
 import { byId } from './library';
 import { cutSteps, openRoad, riddenWorkout } from './ridden';

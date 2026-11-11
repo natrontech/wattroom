@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { tooltip } from '$lib/tooltip.svelte';
+	import { tooltip } from '#lib/tooltip.svelte.ts';
 
 	// The ERG trim, beside the bike computer rather than on one of its pages:
 	// it is the one control a rider reaches for mid-interval, so turning a

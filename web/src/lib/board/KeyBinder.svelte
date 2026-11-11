@@ -7,8 +7,8 @@
 	 * Shift, to a dead key, to the space bar. Escape clears the binding, which
 	 * is also how a rider says "no key at all".
 	 */
-	import { bindKey, type Clip } from '$lib/board/clips.svelte';
-	import { shiftsGears } from '$lib/ride/keys';
+	import { bindKey, type Clip } from '#lib/board/clips.svelte.ts';
+	import { shiftsGears } from '#lib/ride/keys.ts';
 
 	let { clip }: { clip: Clip } = $props();
 

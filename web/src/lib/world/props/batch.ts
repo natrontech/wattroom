@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { Route } from '$lib/road/route';
+import type { Route } from '#lib/road/route.ts';
 import { yOf } from '../geometry';
 import { LEAVE } from '../ground-stream';
 import * as P from '../props';

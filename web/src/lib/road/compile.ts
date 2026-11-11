@@ -4,9 +4,9 @@
  * ends. The engine ends a block when the rider reaches its metres (#3499);
  * the seconds here are the estimate the timeline is drawn with.
  */
-import { MaxLegSeconds, PaceDefaultCdA } from '$lib/protocol';
-import type { SteadyStep, Workout } from '$lib/workout/types';
-import { LIMITS } from '$lib/workout/validate';
+import { MaxLegSeconds, PaceDefaultCdA } from '#lib/protocol.ts';
+import type { SteadyStep, Workout } from '#lib/workout/types.ts';
+import { LIMITS } from '#lib/workout/validate.ts';
 import type { Climb } from './climbs';
 import { heightAt } from './at-metre';
 import { steadySpeed } from './pace';

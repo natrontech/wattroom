@@ -3,16 +3,16 @@
 	// summary, and the save a refusal took from it while the ride buffer still
 	// has its seconds. A refused save ends the buffer's ride, so the card that
 	// offers crashes back never shows it.
-	import { account } from '$lib/account.svelte';
-	import Banner from '$lib/components/Banner.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import Skeleton from '$lib/components/Skeleton.svelte';
-	import { formatClock } from '$lib/format';
-	import type { RideRecord } from '$lib/history.svelte';
-	import { bufferedRide } from '$lib/ride/buffer';
-	import { rideTitle } from '$lib/ride/list';
-	import { uploadPayload, type RecoveredRide } from '$lib/ride/recovered';
-	import { toastSaved, uploadRide } from '$lib/ride/save';
+	import { account } from '#lib/account.svelte.ts';
+	import Banner from '#lib/components/Banner.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import { formatClock } from '#lib/format.ts';
+	import type { RideRecord } from '#lib/history.svelte.ts';
+	import { bufferedRide } from '#lib/ride/buffer.ts';
+	import { rideTitle } from '#lib/ride/list.ts';
+	import { uploadPayload, type RecoveredRide } from '#lib/ride/recovered.ts';
+	import { toastSaved, uploadRide } from '#lib/ride/save.ts';
 
 	let {
 		ride,

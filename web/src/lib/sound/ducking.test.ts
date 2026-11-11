@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { shouldDuck } from '$lib/sound/ducking';
+import { shouldDuck } from '#lib/sound/ducking.ts';
 
 const ME = 'rider-me';
 const THEM = 'rider-them';

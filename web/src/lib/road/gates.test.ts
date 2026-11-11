@@ -4,10 +4,10 @@ import {
 	BunchMaxPct,
 	PaceDefaultCdA,
 	ReferenceRiderWatts,
-} from '$lib/protocol';
-import { createRoadRide } from '$lib/ride/road-ride';
-import { flatten, segmentsDuration, targetAt } from '$lib/workout/engine';
-import type { Workout } from '$lib/workout/types';
+} from '#lib/protocol.ts';
+import { createRoadRide } from '#lib/ride/road-ride.ts';
+import { flatten, segmentsDuration, targetAt } from '#lib/workout/engine.ts';
+import type { Workout } from '#lib/workout/types.ts';
 import { gradeAt } from './at-metre';
 import { alpineLoop, legsRoad } from './fixtures';
 import {

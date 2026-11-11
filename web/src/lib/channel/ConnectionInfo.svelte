@@ -8,10 +8,10 @@
 	//
 	// Chrome, not live data (ADR-0005): the ride's watts glow in `--color-watt`
 	// and this does not compete with them. Nothing here glows.
-	import Modal from '$lib/components/Modal.svelte';
-	import { account } from '$lib/account.svelte';
-	import { connectionInfo } from '$lib/channel/connection-info.svelte';
-	import { channelConnection } from '$lib/channel/connection.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import { account } from '#lib/account.svelte.ts';
+	import { connectionInfo } from '#lib/channel/connection-info.svelte.ts';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
 
 	const id = $derived(connectionInfo.riderId);
 	const connection = $derived(channelConnection.current);

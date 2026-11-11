@@ -1,22 +1,22 @@
 import { render } from 'svelte/server';
 import { describe, expect, it, vi } from 'vitest';
-import { SimulatedTrainer } from '$lib/ble/simulated';
-import { legsRoad } from '$lib/road/fixtures';
-import { describeBlock } from '$lib/workout/block';
-import { createRideSession } from '$lib/workout/session.svelte';
-import { openRoad } from '$lib/workout/ridden';
-import { withProfile } from '$lib/workout/road-workout';
-import type { ShelfEntry } from '$lib/workout/shelf';
-import type { Workout } from '$lib/workout/types';
-import { createWorldView } from '$lib/world/world-view.svelte';
-import { createRideShift } from '$lib/ride/ride-shift';
-import { isOpenRoad } from '$lib/workout/ridden';
+import { SimulatedTrainer } from '#lib/ble/simulated.ts';
+import { legsRoad } from '#lib/road/fixtures.ts';
+import { describeBlock } from '#lib/workout/block.ts';
+import { createRideSession } from '#lib/workout/session.svelte.ts';
+import { openRoad } from '#lib/workout/ridden.ts';
+import { withProfile } from '#lib/workout/road-workout.ts';
+import type { ShelfEntry } from '#lib/workout/shelf.ts';
+import type { Workout } from '#lib/workout/types.ts';
+import { createWorldView } from '#lib/world/world-view.svelte.ts';
+import { createRideShift } from '#lib/ride/ride-shift.ts';
+import { isOpenRoad } from '#lib/workout/ridden.ts';
 import RideControls from './RideControls.svelte';
 import RidingScreen from './RidingScreen.svelte';
 
-vi.mock('$lib/hud/feed', () => ({ publishHud: () => {} }));
+vi.mock('#lib/hud/feed.ts', () => ({ publishHud: () => {} }));
 // This device draws the world: 3D turned on and a browser that can (#3084).
-vi.mock('$lib/world/world-view.svelte', () => ({
+vi.mock('#lib/world/world-view.svelte.ts', () => ({
 	createWorldView: () => ({
 		on: true,
 		reason: null,

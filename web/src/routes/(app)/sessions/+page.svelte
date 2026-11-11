@@ -4,6 +4,6 @@
 	// crew's own Schedule (#2452).
 	import { goto } from '$app/navigation';
 	$effect(() => {
-		void goto('/home#sessions', { replaceState: true });
+		void goto('/home#sessions', { replace: true });
 	});
 </script>

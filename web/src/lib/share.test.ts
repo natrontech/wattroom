@@ -1,9 +1,9 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { shareFile, shareLink, shareVerb } from '$lib/share';
+import { shareFile, shareLink, shareVerb } from '#lib/share.ts';
 
 const env = vi.hoisted(() => ({ coarse: false }));
-vi.mock('$lib/device.svelte', () => ({
+vi.mock('#lib/device.svelte.ts', () => ({
 	device: {
 		get coarse() {
 			return env.coarse;
@@ -18,7 +18,7 @@ const shown = vi.hoisted(() => ({
 		action?: { label: string; run: () => void };
 	}[],
 }));
-vi.mock('$lib/toast.svelte', () => ({
+vi.mock('#lib/toast.svelte.ts', () => ({
 	toasts: {
 		push: (
 			text: string,
@@ -28,7 +28,7 @@ vi.mock('$lib/toast.svelte', () => ({
 }));
 
 const downloaded = vi.hoisted(() => [] as string[]);
-vi.mock('$lib/download', () => ({
+vi.mock('#lib/download.ts', () => ({
 	downloadBlob: (_: Blob, name: string) => downloaded.push(name),
 }));
 

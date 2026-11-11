@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import type { ControlRoute } from '$lib/protocol';
+	import type { ControlRoute } from '#lib/protocol.ts';
 	import { GAME_MODES, RACES, type GameStart } from './modes';
 
 	/**

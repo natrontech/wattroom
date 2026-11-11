@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { awayState } from '$lib/away';
-	import { levelFromXp, levelProgress } from '$lib/level';
-	import RidingBars from '$lib/components/RidingBars.svelte';
-	import type { PresenceStatus } from '$lib/status';
+	import { awayState } from '#lib/away.ts';
+	import { levelFromXp, levelProgress } from '#lib/level.ts';
+	import RidingBars from '#lib/components/RidingBars.svelte';
+	import type { PresenceStatus } from '#lib/status.ts';
 
 	// One avatar everywhere (#253): the picture → initial. The initial sits
 	// on a quiet disc — chrome, not data (ADR-0005). With xp set, a violet progress ring

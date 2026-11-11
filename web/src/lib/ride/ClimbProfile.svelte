@@ -5,8 +5,8 @@
 	 * the zone tokens (#397) — and your dot on it, in ink: watt marks your
 	 * place once, on the Skyline (TARGETS G2).
 	 */
-	import type { ClimbView } from '$lib/ride/climb-view';
-	import { GRADE_BG } from '$lib/road/skyline';
+	import type { ClimbView } from '#lib/ride/climb-view.ts';
+	import { GRADE_BG } from '#lib/road/skyline.ts';
 
 	let { view, tv = false }: { view: ClimbView; tv?: boolean } = $props();
 

@@ -5,7 +5,7 @@
  * saved; each screen compares with what it last saw, so a celebration needs
  * nothing on the wire of its own.
  */
-import { levelFromXp } from '$lib/level';
+import { levelFromXp } from '#lib/level.ts';
 
 /** How long a celebration lasts: the figure dances and the banner hangs over them. */
 export const CHEER_SEC = 5;

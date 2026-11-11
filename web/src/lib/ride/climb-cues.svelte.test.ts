@@ -5,7 +5,9 @@ import type { ClimbView } from './climb-view';
 import type { GhostCall } from './ghost-split.svelte';
 
 const played: string[] = [];
-vi.mock('$lib/sound/cues', () => ({ play: (id: string) => played.push(id) }));
+vi.mock('#lib/sound/cues.ts', () => ({
+	play: (id: string) => played.push(id),
+}));
 const { watchClimbCues, climbStage } = await import('./climb-cues.svelte');
 
 const at = (

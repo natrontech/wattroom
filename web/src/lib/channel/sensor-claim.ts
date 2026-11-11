@@ -1,7 +1,7 @@
-import { deviceWord } from '$lib/device.svelte';
-import type { SensorClaim } from '$lib/protocol';
-import { tabId } from '$lib/channel/rejoin';
-import { SENSOR_KINDS, sensors } from '$lib/sensors.svelte';
+import { deviceWord } from '#lib/device.svelte.ts';
+import type { SensorClaim } from '#lib/protocol.ts';
+import { tabId } from '#lib/channel/rejoin.ts';
+import { SENSOR_KINDS, sensors } from '#lib/sensors.svelte.ts';
 
 /**
  * What this tab tells the hub it has connected (#610).

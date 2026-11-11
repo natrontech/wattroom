@@ -4,7 +4,7 @@
 	// picture while it exists and its :name: once the crew deleted it; a line
 	// with words and no emoji draws a speech bubble, as Slack does.
 	import MessageCircle from '@lucide/svelte/icons/message-circle';
-	import type { StatusLine } from '$lib/protocol';
+	import type { StatusLine } from '#lib/protocol.ts';
 
 	let {
 		line,

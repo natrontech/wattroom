@@ -6,8 +6,8 @@
  * has no crew and draws `:name:` as the text it is.
  */
 import { getContext, setContext } from 'svelte';
-import { api } from '$lib/api';
-import { MaxEmojiNameChars, MinEmojiNameChars } from '$lib/protocol';
+import { api } from '#lib/api.ts';
+import { MaxEmojiNameChars, MinEmojiNameChars } from '#lib/protocol.ts';
 
 export type CrewEmoji = {
 	id: string;

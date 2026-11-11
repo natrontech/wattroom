@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { people } from '$lib/people.svelte';
-	import StatusMark from '$lib/status-line/StatusMark.svelte';
+	import { people } from '#lib/people.svelte.ts';
+	import StatusMark from '#lib/status-line/StatusMark.svelte';
 	// What a session left behind (ADR-0034): who was here, when they came, and
 	// how long they stayed. The only durable thing a session leaves the crew,
 	// and so the only entry with a border — everything around it stays as
@@ -17,9 +17,9 @@
 	//
 	// A <details> rather than a toggle: collapsed by default is what the
 	// element already does, and it opens without a line of JavaScript.
-	import { formatTime } from '$lib/format';
-	import type { SessionRecap } from '$lib/protocol';
-	import { recapBars, recapSummary } from '$lib/session/recap';
+	import { formatTime } from '#lib/format.ts';
+	import type { SessionRecap } from '#lib/protocol.ts';
+	import { recapBars, recapSummary } from '#lib/session/recap.ts';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import Clock from '@lucide/svelte/icons/clock';
 	import ArrowRight from '@lucide/svelte/icons/arrow-right';

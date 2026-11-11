@@ -1,8 +1,8 @@
-import { MaxTrainerGrade } from '$lib/protocol';
-import { at } from '$lib/road/along';
-import { gradeAt } from '$lib/road/at-metre';
-import type { Road } from '$lib/road/road';
-import type { Route } from '$lib/road/route';
+import { MaxTrainerGrade } from '#lib/protocol.ts';
+import { at } from '#lib/road/along.ts';
+import { gradeAt } from '#lib/road/at-metre.ts';
+import type { Road } from '#lib/road/road.ts';
+import type { Route } from '#lib/road/route.ts';
 
 /**
  * docs/SPEC.md's route-ride numbers (ADR-0062), final from research

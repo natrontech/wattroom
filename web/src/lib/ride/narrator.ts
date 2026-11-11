@@ -1,6 +1,6 @@
-import type { MomentEvent } from '$lib/moments';
-import type { ClimbView } from '$lib/ride/climb-view';
-import { formatKm } from '$lib/format';
+import type { MomentEvent } from '#lib/moments/index.ts';
+import type { ClimbView } from '#lib/ride/climb-view.ts';
+import { formatKm } from '#lib/format.ts';
 
 /** At most one polite line this often (#3213, WCAG 4.1.3): a screen reader queues, it does not skip. */
 export const POLITE_GAP_MS = 5000;

@@ -4,13 +4,13 @@ import {
 	dismissRequest,
 	removeFriend,
 	withdrawRequest,
-} from '$lib/friends/actions';
+} from '#lib/friends/actions.ts';
 
 const calls = vi.hoisted(() => ({
 	sent: [] as { path: string; method?: string }[],
 	fail: null as string | null,
 }));
-vi.mock('$lib/api', () => ({
+vi.mock('#lib/api.ts', () => ({
 	api: async (path: string, init?: { method?: string }) => {
 		calls.sent.push({ path, method: init?.method });
 		return calls.fail
@@ -18,13 +18,13 @@ vi.mock('$lib/api', () => ({
 			: { ok: true as const, data: {} };
 	},
 }));
-vi.mock('$lib/friends/friends.svelte', () => ({
+vi.mock('#lib/friends/friends.svelte.ts', () => ({
 	friends: { reload: async () => {} },
 }));
 const shown = vi.hoisted(() => ({
 	toasts: [] as { text: string; undo?: () => void }[],
 }));
-vi.mock('$lib/toast.svelte', () => ({
+vi.mock('#lib/toast.svelte.ts', () => ({
 	toasts: {
 		push: (text: string, opts?: { undo?: () => void }) =>
 			shown.toasts.push({ text, undo: opts?.undo }),

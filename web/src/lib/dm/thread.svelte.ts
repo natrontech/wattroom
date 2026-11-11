@@ -1,10 +1,13 @@
-import { account } from '$lib/account.svelte';
-import { api } from '$lib/api';
-import { uploadImage } from '$lib/chat/upload';
-import { dmHeads } from '$lib/dm/heads.svelte';
-import type { ChatEdit, ChatReactionCount } from '$lib/protocol';
-import { messageTimeline, type TimelineMessage } from '$lib/messages/timeline';
-import { sendPoke } from '$lib/poke';
+import { account } from '#lib/account.svelte.ts';
+import { api } from '#lib/api.ts';
+import { uploadImage } from '#lib/chat/upload.ts';
+import { dmHeads } from '#lib/dm/heads.svelte.ts';
+import type { ChatEdit, ChatReactionCount } from '#lib/protocol.ts';
+import {
+	messageTimeline,
+	type TimelineMessage,
+} from '#lib/messages/timeline.ts';
+import { sendPoke } from '#lib/poke.ts';
 
 /**
  * A DM thread's data (#672, reactions in #777) — the same reactive-store

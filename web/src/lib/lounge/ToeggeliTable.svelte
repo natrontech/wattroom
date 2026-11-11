@@ -6,10 +6,10 @@
 		ToeggeliCommand,
 		ToeggeliInvite,
 		ToeggeliState,
-	} from '$lib/protocol';
-	import { play } from '$lib/sound/cues';
-	import { SCREEN_H as H, SCREEN_W as W } from '$lib/lounge/games/game';
-	import { drawTable, rodAt } from '$lib/lounge/games/toeggeli';
+	} from '#lib/protocol.ts';
+	import { play } from '#lib/sound/cues.ts';
+	import { SCREEN_H as H, SCREEN_W as W } from '#lib/lounge/games/game.ts';
+	import { drawTable, rodAt } from '#lib/lounge/games/toeggeli.ts';
 
 	let {
 		table,

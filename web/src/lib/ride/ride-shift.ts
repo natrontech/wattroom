@@ -1,9 +1,9 @@
-import { shifterSlot } from '$lib/ble/controller-slot.svelte';
-import { play } from '$lib/sound/cues';
-import type { CueId } from '$lib/sound/cue-catalogue';
-import type { EasierHarder } from '$lib/ride/easier-harder';
-import { GEAR_INPUTS, gearsEnabled, inputOf } from '$lib/ride/gears-enabled';
-import { createShiftDriver, type ShiftDir } from '$lib/ride/shifter';
+import { shifterSlot } from '#lib/ble/controller-slot.svelte.ts';
+import { play } from '#lib/sound/cues.ts';
+import type { CueId } from '#lib/sound/cue-catalogue.ts';
+import type { EasierHarder } from '#lib/ride/easier-harder.ts';
+import { GEAR_INPUTS, gearsEnabled, inputOf } from '#lib/ride/gears-enabled.ts';
+import { createShiftDriver, type ShiftDir } from '#lib/ride/shifter.ts';
 
 /**
  * One ride's shifting (#3330): every input — the keys, the on-screen pair —

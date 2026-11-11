@@ -1,17 +1,17 @@
 <script lang="ts">
-	import SprintMoment from '$lib/session/SprintMoment.svelte';
-	import GamePanel from '$lib/session/GamePanel.svelte';
-	import TvMode from '$lib/session/TvMode.svelte';
-	import CountdownScreen from '$lib/session/CountdownScreen.svelte';
-	import { focusTrap } from '$lib/components/focus-trap';
-	import { rideOffers } from '$lib/ride/ride-offers.svelte';
-	import type { SprintState, GameState } from '$lib/protocol';
-	import { TV_SEAT, offerSeat } from '$lib/channel/stage-slot.svelte';
-	import type { Block } from '$lib/workout/block';
-	import type { LiveRider } from '$lib/channel/types';
-	import type { Segment } from '$lib/workout/types';
-	import type { LiveStats } from '$lib/ride/live-stats.svelte';
-	import type { SkylineView } from '$lib/road/skyline';
+	import SprintMoment from '#lib/session/SprintMoment.svelte';
+	import GamePanel from '#lib/session/GamePanel.svelte';
+	import TvMode from '#lib/session/TvMode.svelte';
+	import CountdownScreen from '#lib/session/CountdownScreen.svelte';
+	import { focusTrap } from '#lib/components/focus-trap.ts';
+	import { rideOffers } from '#lib/ride/ride-offers.svelte.ts';
+	import type { SprintState, GameState } from '#lib/protocol.ts';
+	import { TV_SEAT, offerSeat } from '#lib/channel/stage-slot.svelte.ts';
+	import type { Block } from '#lib/workout/block.ts';
+	import type { LiveRider } from '#lib/channel/types.ts';
+	import type { Segment } from '#lib/workout/types.ts';
+	import type { LiveStats } from '#lib/ride/live-stats.svelte.ts';
+	import type { SkylineView } from '#lib/road/skyline.ts';
 	import type { Snippet } from 'svelte';
 
 	// TV mode's frame (#460, #686): the fullscreen surface, the way out of it,

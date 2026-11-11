@@ -23,7 +23,7 @@ import { LAMP_ARM } from './props';
 import { piecePool } from './piece-pool';
 import { CHUNK_M } from './place/lattice';
 import { prng } from './rand';
-import type { Route } from '$lib/road/route';
+import type { Route } from '#lib/road/route.ts';
 import { lightAt, sunDir } from './light';
 import { DIORAMA } from './pixel';
 import { spriteOwns } from './roadside-place';

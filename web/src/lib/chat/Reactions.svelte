@@ -1,5 +1,5 @@
 <script lang="ts">
-	import CheerIcon from '$lib/components/CheerIcon.svelte';
+	import CheerIcon from '#lib/components/CheerIcon.svelte';
 
 	// What sits under a message: the reactions it has (#223). The same row in
 	// a text channel and in a DM; a press toggles yours. Adding one is the

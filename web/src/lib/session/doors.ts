@@ -1,4 +1,4 @@
-import type { PickerIntent } from '$lib/channel/context';
+import type { PickerIntent } from '#lib/channel/context.ts';
 
 /**
  * Doors into a voice channel from outside it: an address that asks the
@@ -11,8 +11,15 @@ const PICK = 'pick';
 const ROAD = 'road';
 const INTENTS: readonly PickerIntent[] = ['start', 'plan', 'ride'];
 
-function without(url: URL, ...params: string[]): URL {
-	const rest = new URL(url);
+/** What a door reads off an address: SvelteKit 3's `page.url` is read-only. */
+type Address = {
+	readonly href: string;
+	readonly origin: string;
+	readonly searchParams: { get(name: string): string | null };
+};
+
+function without(url: Address, ...params: string[]): URL {
+	const rest = new URL(url.href);
 	for (const param of params) rest.searchParams.delete(param);
 	return rest;
 }
@@ -23,7 +30,7 @@ export function gameDoor(home: string, mode: string): string {
 }
 
 /** The game this address asks for, and the address without it; null for none. */
-export function takeGameDoor(url: URL): { mode: string; rest: URL } | null {
+export function takeGameDoor(url: Address): { mode: string; rest: URL } | null {
 	const mode = url.searchParams.get(GAME);
 	return mode ? { mode, rest: without(url, GAME) } : null;
 }
@@ -35,7 +42,7 @@ export function takeGameDoor(url: URL): { mode: string; rest: URL } | null {
  * channel or their road again.
  */
 export function buildFromPicker(
-	here: URL,
+	here: Address,
 	intent: PickerIntent,
 	road?: string,
 ): string {
@@ -59,10 +66,10 @@ export function startDoor(home: string, pick: string, road?: string): string {
 }
 
 /** The editor's way back: a path on this site, never another origin. */
-export function backFrom(url: URL): string | null {
+export function backFrom(url: Address): string | null {
 	const raw = url.searchParams.get('back');
 	if (!raw?.startsWith('/')) return null;
-	const back = new URL(raw, url);
+	const back = new URL(raw, url.href);
 	return back.origin === url.origin ? back.pathname + back.search : null;
 }
 
@@ -75,7 +82,7 @@ export function withPick(back: string, id: string): string {
 
 /** The picker this address asks for, and the address without it; null for none. */
 export function takePickerDoor(
-	url: URL,
+	url: Address,
 ): { intent: PickerIntent; pick?: string; road?: string; rest: URL } | null {
 	const intent = INTENTS.find((i) => i === url.searchParams.get(PICKER));
 	if (!intent) return null;

@@ -1,4 +1,4 @@
-import type { ServerTick } from '$lib/protocol';
+import type { ServerTick } from '#lib/protocol.ts';
 
 /**
  * Your race as the RACE page and the team-car radio read it (#3174,

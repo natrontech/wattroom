@@ -5,7 +5,7 @@
  * only thing here.
  *
  * WHEN to move is not this module's business: the attack, the hold and the
- * release belong to the one duck (`$lib/sound/duck`), which hands every
+ * release belong to the one duck (`#lib/sound/duck.ts`), which hands every
  * consumer a target and a duration. This turns that duration into steps.
  */
 

@@ -2,16 +2,16 @@
 	// The board itself (ADR-0056, #2405): the grid of pins, the menu and the
 	// editor. What a pin IS, and which of its lines are copyable, lives in
 	// `pins.ts`; loading and saving belong to the place that draws this.
-	import EmptyState from '$lib/components/EmptyState.svelte';
-	import MessageText from '$lib/chat/MessageText.svelte';
-	import Modal from '$lib/components/Modal.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import MessageText from '#lib/chat/MessageText.svelte';
+	import Modal from '#lib/components/Modal.svelte';
 	import {
 		contextMenu,
 		MENU_HINT,
 		type MenuEntry,
-	} from '$lib/context-menu.svelte';
-	import { copyText, theLinkItself } from '$lib/copy';
-	import Banner from '$lib/components/Banner.svelte';
+	} from '#lib/context-menu.svelte.ts';
+	import { copyText, theLinkItself } from '#lib/copy.ts';
+	import Banner from '#lib/components/Banner.svelte';
 	import {
 		bareLink,
 		boardFull,
@@ -24,8 +24,8 @@
 		MaxCrewPins,
 		MaxPinBodyChars,
 		MaxPinTitleChars,
-	} from '$lib/protocol';
-	import { toasts } from '$lib/toast.svelte';
+	} from '#lib/protocol.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
 	import Copy from '@lucide/svelte/icons/copy';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import Pencil from '@lucide/svelte/icons/pencil';

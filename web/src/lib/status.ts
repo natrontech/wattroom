@@ -1,5 +1,5 @@
-import type { LiveCrew, LiveOccupant } from '$lib/crews-live';
-import type { Friend } from '$lib/friends/friends.svelte';
+import type { LiveCrew, LiveOccupant } from '#lib/crews-live.ts';
+import type { Friend } from '#lib/friends/friends.svelte.ts';
 
 /**
  * Where a person is, in one word (#807). Four surfaces had each invented

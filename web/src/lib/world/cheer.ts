@@ -3,7 +3,7 @@
 // is flat and unlit like the chevron and nothing about it glows (ADR-0005).
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { bezier, DUR, EASE, HOLD_ANNOUNCE } from '$lib/motion/tokens';
+import { bezier, DUR, EASE, HOLD_ANNOUNCE } from '#lib/motion/tokens.ts';
 
 /** Seconds the tail light answers a cheer (#3116). */
 export const CHEER_S = 10;

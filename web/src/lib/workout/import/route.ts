@@ -1,15 +1,19 @@
-import { MaxLegSeconds, MaxRoadGradePct, MinRoadGradePct } from '$lib/protocol';
-import { frameOf, project } from '$lib/road/line';
-import { referenceSeconds } from '$lib/road/pace';
+import {
+	MaxLegSeconds,
+	MaxRoadGradePct,
+	MinRoadGradePct,
+} from '#lib/protocol.ts';
+import { frameOf, project } from '#lib/road/line.ts';
+import { referenceSeconds } from '#lib/road/pace.ts';
 import {
 	MAX_ROUTE_FILE_BYTES,
 	parseRoute,
 	RouteError,
 	type RouteSource,
 	type TrackPoint,
-} from '$lib/road/parse';
-import { isFit } from '$lib/road/fit';
-import { lengthOf, toRoute, type Route } from '$lib/road/route';
+} from '#lib/road/parse.ts';
+import { isFit } from '#lib/road/fit.ts';
+import { lengthOf, toRoute, type Route } from '#lib/road/route.ts';
 
 /**
  * A route file through the importer (#3057): $lib/road does the work, and

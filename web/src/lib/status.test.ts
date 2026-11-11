@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { LiveCrew, LiveOccupant } from '$lib/crews-live';
+import type { LiveCrew, LiveOccupant } from '#lib/crews-live.ts';
 import { occupantOf, statusOf, statusOfRider } from './status';
 
 describe('statusOf', () => {

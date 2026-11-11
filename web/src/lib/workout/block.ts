@@ -1,9 +1,9 @@
-import { feltGrade } from '$lib/ride/ride-grade';
-import { ZONE_NAMES, zoneOf } from '$lib/components/zones';
-import type { RoadReadout } from '$lib/road/readout';
-import type { TracePoint } from '$lib/components/trace';
-import { toleranceBand } from '$lib/workout/guards';
-import type { Segment, TargetInfo, Workout } from '$lib/workout/types';
+import { feltGrade } from '#lib/ride/ride-grade.ts';
+import { ZONE_NAMES, zoneOf } from '#lib/components/zones.ts';
+import type { RoadReadout } from '#lib/road/readout.ts';
+import type { TracePoint } from '#lib/components/trace.ts';
+import { toleranceBand } from '#lib/workout/guards.ts';
+import type { Segment, TargetInfo, Workout } from '#lib/workout/types.ts';
 
 /** How long a finished block's line stays up in the next one (#3090). */
 export const LAST_BLOCK_SECONDS = 6;

@@ -8,9 +8,9 @@
 	// then renders as the GIF (#279). Nothing here knows how chat sends.
 	import RotateCw from '@lucide/svelte/icons/rotate-cw';
 	import Search from '@lucide/svelte/icons/search';
-	import Banner from '$lib/components/Banner.svelte';
-	import EmptyState from '$lib/components/EmptyState.svelte';
-	import { focusTrap } from '$lib/components/focus-trap';
+	import Banner from '#lib/components/Banner.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import { focusTrap } from '#lib/components/focus-trap.ts';
 	import { searchGifs, type Gif } from './gifs';
 
 	let { onPick, onClose }: { onPick: (gif: Gif) => void; onClose: () => void } =

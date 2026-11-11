@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { legsRoad } from '$lib/road/fixtures';
-import { turnedRound } from '$lib/road/road';
+import { legsRoad } from '#lib/road/fixtures.ts';
+import { turnedRound } from '#lib/road/road.ts';
 import { climbedStep } from './climbed';
 import { EVEREST_M, repeatsLine, wayUp } from './climb-repeats';
 import { feltGrade } from './ride-grade';

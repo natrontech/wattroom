@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { loadRoad } from '$lib/ride/roads';
-	import type { Road } from '$lib/road/road';
-	import type { StoredRoute } from '$lib/road/stored';
+	import { loadRoad } from '#lib/ride/roads.ts';
+	import type { Road } from '#lib/road/road.ts';
+	import type { StoredRoute } from '#lib/road/stored.ts';
 
 	/**
 	 * The Road row on a workout pick (#3105, #3100): which of your roads the

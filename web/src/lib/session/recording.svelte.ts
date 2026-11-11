@@ -1,7 +1,10 @@
-import { tracePoint, type TracePoint } from '$lib/components/trace';
-import { MaxBridgedGap } from '$lib/protocol';
-import { isLivePhase } from '$lib/channel/tick-session';
-import { createLiveStats, type LiveSecond } from '$lib/ride/live-stats.svelte';
+import { tracePoint, type TracePoint } from '#lib/components/trace.ts';
+import { MaxBridgedGap } from '#lib/protocol.ts';
+import { isLivePhase } from '#lib/channel/tick-session.ts';
+import {
+	createLiveStats,
+	type LiveSecond,
+} from '#lib/ride/live-stats.svelte.ts';
 
 /**
  * What you rode this session, kept for the summary and the graph: the trace

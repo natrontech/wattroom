@@ -2,10 +2,10 @@
  * The lounge's shared lamp, weather, stove, mood and radio as the client
  * reads them (ADR-0094).
  */
-import type { LoungeState } from '$lib/protocol';
-import type { Sky } from '$lib/lounge/palette';
-import { nextRecordAt } from '$lib/lounge/records';
-import { SLOT_SEC, type Style } from '$lib/lounge/station';
+import type { LoungeState } from '#lib/protocol.ts';
+import type { Sky } from '#lib/lounge/palette.ts';
+import { nextRecordAt } from '#lib/lounge/records.ts';
+import { SLOT_SEC, type Style } from '#lib/lounge/station.ts';
 
 /** The hub's LoungeWeathers, read side by side in protocol/lounge_test.go. */
 export const WEATHERS = ['rain', 'clear', 'snow'] as const;

@@ -2,7 +2,7 @@
 	// Friends, as a place (ADR-0020). It was a section at the bottom of /home,
 	// under your week's numbers — which is where you look for numbers, not for
 	// people.
-	import FriendsPanel from '$lib/friends/FriendsPanel.svelte';
+	import FriendsPanel from '#lib/friends/FriendsPanel.svelte';
 </script>
 
 <svelte:head><title>Friends · WattRoom</title></svelte:head>

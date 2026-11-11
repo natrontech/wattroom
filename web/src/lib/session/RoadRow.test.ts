@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render } from 'svelte/server';
 import RoadRow from './RoadRow.svelte';
-import type { StoredRoute } from '$lib/road/stored';
+import type { StoredRoute } from '#lib/road/stored.ts';
 
 const loadRoad = vi.fn((id: string) => new Promise(() => void id));
-vi.mock('$lib/ride/roads', () => ({ loadRoad: (id: string) => loadRoad(id) }));
+vi.mock('#lib/ride/roads.ts', () => ({
+	loadRoad: (id: string) => loadRoad(id),
+}));
 
 const route = (id: string, ownerOnly = false) =>
 	({ id, name: `Road ${id}`, ownerOnly }) as StoredRoute;

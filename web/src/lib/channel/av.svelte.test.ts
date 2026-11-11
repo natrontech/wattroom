@@ -1,12 +1,12 @@
-import { channelAddress } from '$lib/channel/address';
+import { channelAddress } from '#lib/channel/address.ts';
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GATE_CEIL, GATE_FLOOR } from './gate-scale';
-import { mixer } from '$lib/sound/mixer.svelte';
-import { pickStage } from '$lib/channel/stage';
-import { observeServerTime, resetServerClock } from '$lib/server-clock';
-import { ducking, resetDucking, setDucking } from '$lib/sound/duck';
-import { DUCK_HOLD_MS, shouldDuck } from '$lib/sound/ducking';
+import { mixer } from '#lib/sound/mixer.svelte.ts';
+import { pickStage } from '#lib/channel/stage.ts';
+import { observeServerTime, resetServerClock } from '#lib/server-clock.ts';
+import { ducking, resetDucking, setDucking } from '#lib/sound/duck.ts';
+import { DUCK_HOLD_MS, shouldDuck } from '#lib/sound/ducking.ts';
 
 // What kind of machine this is (#2142). A phone is the pointer, not the
 // width: `device.coarse` is what the voice path branches on, so the tests
@@ -18,12 +18,12 @@ const env = vi.hoisted(() => ({
 	cockpit: false,
 	spectator: false,
 }));
-vi.mock('$lib/device.svelte', () => ({
+vi.mock('#lib/device.svelte.ts', () => ({
 	device: env,
 	deviceWord: () => (env.coarse ? 'phone' : 'desktop'),
 }));
 
-vi.mock('$lib/api', () => ({
+vi.mock('#lib/api.ts', () => ({
 	api: vi.fn(async () => ({
 		ok: true,
 		data: { url: 'ws://livekit', token: 't' },
@@ -306,14 +306,14 @@ interface FakeLiveKitRoom {
 
 // The mic chain wants a real AudioContext; the meter is the one piece of it
 // with a worker behind it, so it is the one piece that has to be faked.
-vi.mock('$lib/channel/mic-level', () => ({
+vi.mock('#lib/channel/mic-level.ts', () => ({
 	createMicMeter: vi.fn(async () => ({ out: { connect() {} }, stop() {} })),
 	createVoiceGate: vi.fn(async () => null),
 }));
 
 const { createChannelAv, JOIN_TIMEOUT_MS } = await import('./av.svelte');
-const { createMicMeter } = vi.mocked(await import('$lib/channel/mic-level'));
-const { api } = await import('$lib/api');
+const { createMicMeter } = vi.mocked(await import('#lib/channel/mic-level.ts'));
+const { api } = await import('#lib/api.ts');
 const {
 	stopSharingNatively,
 	dropNatively,

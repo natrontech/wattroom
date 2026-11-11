@@ -5,9 +5,9 @@
 	 * grade steps and its climbs by class where they top out. No dot: the
 	 * ride is over, and nothing here is live, so nothing glows.
 	 */
-	import { formatKm } from '$lib/format';
-	import { climbsOf } from '$lib/road/climbs';
-	import { chipsIn, GRADE_FILL, tileOf } from '$lib/road/skyline';
+	import { formatKm } from '#lib/format.ts';
+	import { climbsOf } from '#lib/road/climbs.ts';
+	import { chipsIn, GRADE_FILL, tileOf } from '#lib/road/skyline.ts';
 	import { rideProfile, riddenM, wholeRoadFrame } from './ride-profile';
 
 	let {

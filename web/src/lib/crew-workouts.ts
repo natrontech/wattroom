@@ -1,4 +1,4 @@
-import type { SessionRecap } from '$lib/protocol';
+import type { SessionRecap } from '#lib/protocol.ts';
 
 /**
  * A crew's workouts (#2455, ADR-0058): what it has planned and what it has

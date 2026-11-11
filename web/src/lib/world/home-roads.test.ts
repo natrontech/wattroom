@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { toRoute } from '$lib/road/route';
+import { toRoute } from '#lib/road/route.ts';
 import { syntheticPoints } from './synthetic';
 import { generate } from './world';
 import { BUILD_MS } from './world.test-helper';
-import { HOME_ROADS, homeRoadsMatching, homeRow } from '$lib/ride/home-roads';
-import { loadRoad } from '$lib/ride/roads';
+import {
+	HOME_ROADS,
+	homeRoadsMatching,
+	homeRow,
+} from '#lib/ride/home-roads.ts';
+import { loadRoad } from '#lib/ride/roads.ts';
 
 describe('WattRoom’s own roads (#4248)', () => {
 	it.each(HOME_ROADS)(

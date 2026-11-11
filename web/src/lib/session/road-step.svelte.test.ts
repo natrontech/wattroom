@@ -1,13 +1,13 @@
 // @vitest-environment happy-dom
 import { afterEach, expect, it, vi } from 'vitest';
 import { flushSync } from 'svelte';
-import { SimulatedTrainer } from '$lib/ble/simulated';
-import { flatten } from '$lib/workout/engine';
+import { SimulatedTrainer } from '#lib/ble/simulated.ts';
+import { flatten } from '#lib/workout/engine.ts';
 import { createRide } from './ride.svelte';
 import { createRecording } from './recording.svelte';
 import type { RideDeps } from './ride-deps';
 
-vi.mock('$lib/sound/cues', () => ({ play: () => {} }));
+vi.mock('#lib/sound/cues.ts', () => ({ play: () => {} }));
 afterEach(() => vi.useRealTimers());
 const settle = async () => {
 	await Promise.resolve();

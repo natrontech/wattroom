@@ -1,5 +1,5 @@
-import { createCheerBack } from '$lib/channel/cheer-back';
-import { askCamera, askPhoto } from '$lib/world/ride-view';
+import { createCheerBack } from '#lib/channel/cheer-back.ts';
+import { askCamera, askPhoto } from '#lib/world/ride-view.ts';
 
 /**
  * The phone remote's Camera, Photo and Cheer as the holding tab runs them

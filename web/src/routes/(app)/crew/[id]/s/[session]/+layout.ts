@@ -1,7 +1,7 @@
 import { redirect } from '@sveltejs/kit';
-import { prepareChannelAv } from '$lib/channel/connection.svelte';
-import { voiceChannelPath } from '$lib/channels';
-import { loadSessionPage } from '$lib/session/session-page';
+import { prepareChannelAv } from '#lib/channel/connection.svelte.ts';
+import { voiceChannelPath } from '#lib/channels.ts';
+import { loadSessionPage } from '#lib/session/session-page.ts';
 import type { LayoutLoad } from './$types';
 
 export const load: LayoutLoad = async ({ fetch, params }) => {

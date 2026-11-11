@@ -1,13 +1,13 @@
 import { untrack } from 'svelte';
-import { hairpinsOf } from '$lib/road/climbs';
-import { ghostMetreAt } from '$lib/road/ghost';
+import { hairpinsOf } from '#lib/road/climbs.ts';
+import { ghostMetreAt } from '#lib/road/ghost.ts';
 import {
 	PACER_GAP_M,
 	PACER_PAR,
 	pacerLine,
 	type PacerCategory,
-} from '$lib/road/pacer';
-import { play } from '$lib/sound/cues';
+} from '#lib/road/pacer.ts';
+import { play } from '#lib/sound/cues.ts';
 import type { FreeRide } from './free-ride.svelte';
 import type { GhostRider } from './ghost-split.svelte';
 

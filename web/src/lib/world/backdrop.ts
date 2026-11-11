@@ -6,9 +6,9 @@
 // lies level just over them; it reads how high they stand from the eye.
 import * as THREE from 'three';
 import { EXAG, yOf } from './geometry';
-import { referenceSpeed } from '$lib/road/pace';
+import { referenceSpeed } from '#lib/road/pace.ts';
 import { noise2, prng } from './rand';
-import type { Route } from '$lib/road/route';
+import type { Route } from '#lib/road/route.ts';
 
 const smoothstep = THREE.MathUtils.smoothstep;
 

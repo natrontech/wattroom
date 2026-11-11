@@ -1,13 +1,13 @@
 <script lang="ts">
-	import ProgressBar from '$lib/components/ProgressBar.svelte';
-	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
-	import { ZONE_BG, fillPct, zoneOf } from '$lib/components/zones';
-	import type { LiveRider } from '$lib/channel/types';
-	import type { LiveStats } from '$lib/ride/live-stats.svelte';
-	import Skyline from '$lib/ride/Skyline.svelte';
-	import type { SkylineView } from '$lib/road/skyline';
-	import { TV_LABEL } from '$lib/session/computer-pages';
-	import RideRail from '$lib/session/RideRail.svelte';
+	import ProgressBar from '#lib/components/ProgressBar.svelte';
+	import IntervalGraph from '#lib/components/IntervalGraph.svelte';
+	import { ZONE_BG, fillPct, zoneOf } from '#lib/components/zones.ts';
+	import type { LiveRider } from '#lib/channel/types.ts';
+	import type { LiveStats } from '#lib/ride/live-stats.svelte.ts';
+	import Skyline from '#lib/ride/Skyline.svelte';
+	import type { SkylineView } from '#lib/road/skyline.ts';
+	import { TV_LABEL } from '#lib/session/computer-pages.ts';
+	import RideRail from '#lib/session/RideRail.svelte';
 
 	let {
 		riders,
@@ -30,10 +30,10 @@
 		riders: LiveRider[];
 		/** Your instrument has nothing paired to read (#2941). */
 		idle?: boolean;
-		segments: import('$lib/workout/types').Segment[];
+		segments: import('#lib/workout/types.ts').Segment[];
 		total: number;
 		elapsed: number;
-		block: import('$lib/workout/block').Block | null;
+		block: import('#lib/workout/block.ts').Block | null;
 		placeName?: string;
 		workoutName?: string;
 		/** A session is running — the HUD only exists then (#125). */

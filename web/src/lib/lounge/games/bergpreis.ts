@@ -4,9 +4,16 @@
  * and you climb fast only while the needle is inside it; stay in and you
  * climb faster still. The day's seed sets how the road changes.
  */
-import { hash3 } from '$lib/lounge/hash';
-import { LOUNGE as C, SKIES, SUNS } from '$lib/lounge/palette';
-import { disc, rect, ring, text, textWidth, type Ctx } from '$lib/lounge/pixel';
+import { hash3 } from '#lib/lounge/hash.ts';
+import { LOUNGE as C, SKIES, SUNS } from '#lib/lounge/palette.ts';
+import {
+	disc,
+	rect,
+	ring,
+	text,
+	textWidth,
+	type Ctx,
+} from '#lib/lounge/pixel.ts';
 import { SCREEN_H as H, SCREEN_W as W, type Game } from './game';
 
 export const RUN_SEC = 30;

@@ -3,7 +3,7 @@
  * for a rider's you share a channel or a friendship with; docs/SPEC.md "XP
  * sources" is the vocabulary — presence is "in voice", never "talking".
  */
-import { api, loadApi } from '$lib/api';
+import { api, loadApi } from '#lib/api.ts';
 
 export interface TrophyProgress {
 	have: number;

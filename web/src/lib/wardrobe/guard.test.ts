@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { hexToOklch } from '$lib/color';
-import { themesFor } from '$lib/themes';
+import { hexToOklch } from '#lib/color.ts';
+import { themesFor } from '#lib/themes.ts';
 import { catalogue } from './catalogue';
 import { collides, guarded, type Viewer } from './guard';
 

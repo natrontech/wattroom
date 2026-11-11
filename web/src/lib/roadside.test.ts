@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { BELL } from '$lib/icons';
-import type { GameState } from '$lib/protocol';
-import { CUES } from '$lib/sound/cue-catalogue';
-import type { LiveRider } from '$lib/channel/types';
+import { BELL } from '#lib/icons.ts';
+import type { GameState } from '#lib/protocol.ts';
+import { CUES } from '#lib/sound/cue-catalogue.ts';
+import type { LiveRider } from '#lib/channel/types.ts';
 import {
 	atRoadside,
 	nextChalkSpot,

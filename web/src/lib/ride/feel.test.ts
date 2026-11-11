@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MaxRideNoteChars, MaxRPE, MinRPE } from '$lib/protocol';
+import { MaxRideNoteChars, MaxRPE, MinRPE } from '#lib/protocol.ts';
 import { RPE_SCALE, noteTooLong, rpeLabel, rpeText } from './feel';
 
 /**

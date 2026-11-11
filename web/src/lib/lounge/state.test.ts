@@ -6,9 +6,9 @@ import {
 	skipShift,
 	stationPick,
 	weatherOf,
-} from '$lib/lounge/state';
-import { recordAt } from '$lib/lounge/records';
-import { SLOT_SEC } from '$lib/lounge/station';
+} from '#lib/lounge/state.ts';
+import { recordAt } from '#lib/lounge/records.ts';
+import { SLOT_SEC } from '#lib/lounge/station.ts';
 
 describe('lounge weather', () => {
 	it('is rain until someone changes it', () => {

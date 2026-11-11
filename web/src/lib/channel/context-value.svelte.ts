@@ -1,12 +1,15 @@
-import type { PickerIntent } from '$lib/channel/context';
-import type { PlaceAddress } from '$lib/channel/address';
-import type { ChannelContext, ChannelStageSource } from '$lib/channel/context';
-import type { channelConnection } from '$lib/channel/connection.svelte';
-import type { createRiders } from '$lib/channel/riders.svelte';
-import type { Segment } from '$lib/workout/types';
-import { unmeasured } from '$lib/session/sensor-status';
-import { sensors } from '$lib/sensors.svelte';
-import { device } from '$lib/device.svelte';
+import type { PickerIntent } from '#lib/channel/context.ts';
+import type { PlaceAddress } from '#lib/channel/address.ts';
+import type {
+	ChannelContext,
+	ChannelStageSource,
+} from '#lib/channel/context.ts';
+import type { channelConnection } from '#lib/channel/connection.svelte.ts';
+import type { createRiders } from '#lib/channel/riders.svelte.ts';
+import type { Segment } from '#lib/workout/types.ts';
+import { unmeasured } from '#lib/session/sensor-status.ts';
+import { sensors } from '#lib/sensors.svelte.ts';
+import { device } from '#lib/device.svelte.ts';
 
 /**
  * ADR-0020's contract, built (#686). The shell keeps the state and the places

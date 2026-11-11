@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('$lib/ride/gears-enabled', () => ({ gearsEnabled: () => true }));
+vi.mock('#lib/ride/gears-enabled.ts', () => ({ gearsEnabled: () => true }));
 const { pressOfController, pressOfKey } = await import('./controller-test');
 const { KEY_TABLE } = await import('./keys');
 

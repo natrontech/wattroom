@@ -1,7 +1,7 @@
 import Award from '@lucide/svelte/icons/award';
 import Medal from '@lucide/svelte/icons/medal';
 import Trophy from '@lucide/svelte/icons/trophy';
-import type { Icon } from '$lib/icons';
+import type { Icon } from '#lib/icons.ts';
 
 /**
  * The three places, one home (#458): the sprint podium and a game's final

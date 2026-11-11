@@ -2,8 +2,8 @@
  * The crew's album of rare visitors (moments.ts): each one's name and its
  * cryptic hint, and the crew's list of who has come by.
  */
-import { api } from '$lib/api';
-import type { Visitor } from '$lib/lounge/moments';
+import { api } from '#lib/api.ts';
+import type { Visitor } from '#lib/lounge/moments.ts';
 
 export interface Sighting {
 	kind: string;

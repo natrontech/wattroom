@@ -1,4 +1,4 @@
-import type { Rider } from '$lib/rider';
+import type { Rider } from '#lib/rider.ts';
 
 /**
  * The last rider page read per id, for the hover card (#2739): a pointer

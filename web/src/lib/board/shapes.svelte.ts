@@ -7,8 +7,8 @@
  * renders the instant the library loads, and the audio may still be in flight.
  * A pad that drew nothing until then would flicker into existence mid-ride.
  */
-import { peaks } from '$lib/sound/board.svelte';
-import { waveform, type Bar } from '$lib/board/waveform';
+import { peaks } from '#lib/sound/board.svelte.ts';
+import { waveform, type Bar } from '#lib/board/waveform.ts';
 
 const BOX_W = 104;
 const BOX_H = 34;

@@ -11,7 +11,7 @@
 		whoIsInOf,
 		type PlanAnswers,
 		type RsvpAnswer,
-	} from '$lib/session/rsvp';
+	} from '#lib/session/rsvp.ts';
 
 	let {
 		plan,

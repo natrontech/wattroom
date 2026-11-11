@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { boardPanel } from '$lib/board/panel.svelte';
-import { modals } from '$lib/modals.svelte';
+import { boardPanel } from '#lib/board/panel.svelte.ts';
+import { modals } from '#lib/modals.svelte.ts';
 
 describe('the board panel’s three faces', () => {
 	beforeEach(() => boardPanel.hide());

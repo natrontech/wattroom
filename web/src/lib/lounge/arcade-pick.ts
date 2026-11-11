@@ -1,5 +1,5 @@
 /** The game this device last picked on the cabinet, so it opens on it again. */
-import type { GameId } from '$lib/lounge/games/game';
+import type { GameId } from '#lib/lounge/games/game.ts';
 
 const KEY = 'wattroom.arcade.v1';
 /** A tab on the cabinet: one of its games on one button, or Töggeli. */

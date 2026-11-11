@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { at, leftOf } from '$lib/road/along';
-import { toRoute } from '$lib/road/route';
+import { at, leftOf } from '#lib/road/along.ts';
+import { toRoute } from '#lib/road/route.ts';
 import { makeRig } from './rig';
 import { syntheticPoints } from './synthetic';
 import type { SimRider } from './sim';

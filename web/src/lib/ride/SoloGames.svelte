@@ -5,14 +5,14 @@
 	// lounge (#3274's rule) with the mic off and starts the game there, with
 	// you as its coach. Anyone who opens the channel can join, like any game.
 	// Alone, it shows your own score; medals need three riders (docs/SPEC.md).
-	import Skeleton from '$lib/components/Skeleton.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
 	import { goto } from '$app/navigation';
-	import { channelAddress } from '$lib/channel/address';
-	import { askVoiceMuted } from '$lib/channel/voice-intent';
-	import { lounge, loungeCrew } from '$lib/crew-lounge';
-	import { crewLive } from '$lib/nav/crew-live.svelte';
-	import { GAME_MODES } from '$lib/session/modes';
-	import { gameDoor } from '$lib/session/doors';
+	import { channelAddress } from '#lib/channel/address.ts';
+	import { askVoiceMuted } from '#lib/channel/voice-intent.ts';
+	import { lounge, loungeCrew } from '#lib/crew-lounge.ts';
+	import { crewLive } from '#lib/nav/crew-live.svelte.ts';
+	import { GAME_MODES } from '#lib/session/modes.ts';
+	import { gameDoor } from '#lib/session/doors.ts';
 
 	/** The modes a rider can play with nobody else there. */
 	const SOLO = ['watt-golf', 'floor-is-lava', 'backyard-ramp'];

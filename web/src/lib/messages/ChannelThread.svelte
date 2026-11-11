@@ -11,24 +11,24 @@
 	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
 	import MessageCircle from '@lucide/svelte/icons/message-circle';
 	import Lock from '@lucide/svelte/icons/lock';
-	import { account } from '$lib/account.svelte';
-	import { api } from '$lib/api';
-	import AnnouncementStrip from '$lib/announce/AnnouncementStrip.svelte';
-	import { takeDownAnnouncement } from '$lib/announce/take-down';
-	import type { CrewChannel } from '$lib/channels';
-	import type { Crew } from '$lib/crew';
-	import { banFromCrewFlow } from '$lib/crew-flows';
-	import { provideCrewEmoji } from '$lib/emoji/crew-emoji.svelte';
-	import MessageThread from '$lib/messages/MessageThread.svelte';
+	import { account } from '#lib/account.svelte.ts';
+	import { api } from '#lib/api.ts';
+	import AnnouncementStrip from '#lib/announce/AnnouncementStrip.svelte';
+	import { takeDownAnnouncement } from '#lib/announce/take-down.ts';
+	import type { CrewChannel } from '#lib/channels.ts';
+	import type { Crew } from '#lib/crew.ts';
+	import { banFromCrewFlow } from '#lib/crew-flows.ts';
+	import { provideCrewEmoji } from '#lib/emoji/crew-emoji.svelte.ts';
+	import MessageThread from '#lib/messages/MessageThread.svelte';
 	import {
 		createChatThread,
 		type ChatThread,
-	} from '$lib/messages/chat-thread.svelte';
-	import type { ThreadSource } from '$lib/messages/thread-types';
-	import { learnCrewFaces } from '$lib/crew';
-	import { presence } from '$lib/presence.svelte';
-	import { messageTimeline } from '$lib/messages/timeline';
-	import { toasts } from '$lib/toast.svelte';
+	} from '#lib/messages/chat-thread.svelte.ts';
+	import type { ThreadSource } from '#lib/messages/thread-types.ts';
+	import { learnCrewFaces } from '#lib/crew.ts';
+	import { presence } from '#lib/presence.svelte.ts';
+	import { messageTimeline } from '#lib/messages/timeline.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
 	import { untrack } from 'svelte';
 
 	let { crew, channel }: { crew: Crew; channel: CrewChannel } = $props();

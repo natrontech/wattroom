@@ -2,13 +2,13 @@
 	import Check from '@lucide/svelte/icons/check';
 	import Minus from '@lucide/svelte/icons/minus';
 	import X from '@lucide/svelte/icons/x';
-	import CtaBand from '$lib/site/CtaBand.svelte';
-	import Faq from '$lib/site/Faq.svelte';
-	import PageHero from '$lib/site/PageHero.svelte';
-	import Screen from '$lib/site/Screen.svelte';
-	import SectionHead from '$lib/site/SectionHead.svelte';
-	import Seo from '$lib/site/Seo.svelte';
-	import { SMART_TRAINER_APP } from '$lib/site/seo';
+	import CtaBand from '#lib/site/CtaBand.svelte';
+	import Faq from '#lib/site/Faq.svelte';
+	import PageHero from '#lib/site/PageHero.svelte';
+	import Screen from '#lib/site/Screen.svelte';
+	import SectionHead from '#lib/site/SectionHead.svelte';
+	import Seo from '#lib/site/Seo.svelte';
+	import { SMART_TRAINER_APP } from '#lib/site/seo.ts';
 
 	// "smart trainer app free", "erg mode app", "zwift chromebook" (#2995).
 	// The browser matrix is ADR-0004's decision, said honestly: where Web

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('$lib/ride/buffer', () => ({
+vi.mock('#lib/ride/buffer.ts', () => ({
 	openRideBuffer: vi.fn(async () => ({
 		crashSafe: true,
 		append() {},
@@ -11,7 +11,7 @@ vi.mock('$lib/ride/buffer', () => ({
 }));
 
 const cues: { id: string; semitones?: number }[] = [];
-vi.mock('$lib/sound/cues', () => ({
+vi.mock('#lib/sound/cues.ts', () => ({
 	play: (id: string, o?: { semitones?: number }) =>
 		void cues.push({ id, semitones: o?.semitones }),
 }));

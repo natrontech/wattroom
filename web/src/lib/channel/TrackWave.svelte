@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { trackPeaks } from '$lib/music/peaks';
+	import { trackPeaks } from '#lib/music/peaks.ts';
 
 	// A library track on the deck (#1425): YouTube's rules give a video a
 	// ≥200 px tile; an MP3 inherited that seat and filled it with a glyph.

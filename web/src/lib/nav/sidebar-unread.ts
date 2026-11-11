@@ -1,4 +1,4 @@
-import type { LiveCrew } from '$lib/crews-live';
+import type { LiveCrew } from '#lib/crews-live.ts';
 import { livePulse } from './crew-live.svelte';
 
 /**

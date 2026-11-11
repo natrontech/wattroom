@@ -1,4 +1,4 @@
-import type { TimelineEntry, TimelineMessage } from '$lib/messages/timeline';
+import type { TimelineEntry, TimelineMessage } from '#lib/messages/timeline.ts';
 
 /**
  * What MessageThread.svelte needs of one line, whatever it came from — a

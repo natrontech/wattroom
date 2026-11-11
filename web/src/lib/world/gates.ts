@@ -4,9 +4,9 @@
 // out. Road paint, never live data: in the road line's colour, lit by the sky
 // as the road's own paint is (ADR-0072), and nothing glows.
 import * as THREE from 'three';
-import { GATES, type PaintedGate } from '$lib/road/gates';
-import { at, curvature, lapEnd, sampleAt } from '$lib/road/along';
-import { type Route } from '$lib/road/route';
+import { GATES, type PaintedGate } from '#lib/road/gates.ts';
+import { at, curvature, lapEnd, sampleAt } from '#lib/road/along.ts';
+import { type Route } from '#lib/road/route.ts';
 import { disposeTree } from './dispose';
 import { tag } from './family';
 import { FONT, archOnRoad, paintedTexture } from './furniture';

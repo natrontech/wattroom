@@ -1,17 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { encodeSimulation, FtmsTrainer } from '$lib/ble/ftms';
-import { FakeDevice } from '$lib/ble/fake-gatt.test-helper';
-import { SimulatedTrainer } from '$lib/ble/simulated';
+import { encodeSimulation, FtmsTrainer } from '#lib/ble/ftms.ts';
+import { FakeDevice } from '#lib/ble/fake-gatt.test-helper.ts';
+import { SimulatedTrainer } from '#lib/ble/simulated.ts';
 import {
 	SIM_DEFAULTS,
 	type SimParams,
 	type Trainer,
 	type TrainerSample,
 	type TrainerStatus,
-} from '$lib/ble/trainer';
-import { BikeKg, PaceDefaultCdA, ReferenceRiderKg } from '$lib/protocol';
-import { at } from '$lib/road/along';
-import { createPace, dotSecond } from '$lib/road/pace';
+} from '#lib/ble/trainer.ts';
+import { BikeKg, PaceDefaultCdA, ReferenceRiderKg } from '#lib/protocol.ts';
+import { at } from '#lib/road/along.ts';
+import { createPace, dotSecond } from '#lib/road/pace.ts';
 import { composeSim, createActuator } from './actuation.svelte';
 import { createRideGrade } from './ride-grade';
 import { gradedRoad, stretch } from './road.test-helper';

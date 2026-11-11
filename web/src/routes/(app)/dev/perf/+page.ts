@@ -1,4 +1,4 @@
-import { devOnly } from '$lib/dev-only';
+import { devOnly } from '#lib/dev-only.ts';
 
 // `+page@.svelte` resets past the app and dev layouts — their nav carries a
 // backdrop blur that would sit in every measurement — so their load and SPA

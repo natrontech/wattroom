@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createSimulatedSensor } from '$lib/ble/simulated-sensor';
+import { createSimulatedSensor } from '#lib/ble/simulated-sensor.ts';
 import { createHrHold } from './hr-hold.svelte';
 import type { Segment } from './types';
 

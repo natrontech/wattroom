@@ -4,7 +4,7 @@
  * voice channel and its crew only when you may enter that channel; for any
  * other it says the state without the place, and so does this.
  */
-import { voiceChannelPath } from '$lib/channels';
+import { voiceChannelPath } from '#lib/channels.ts';
 
 /** The wire's `channels.Place`: a voice channel and the crew it belongs to. */
 export interface VoicePlace {

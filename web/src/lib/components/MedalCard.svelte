@@ -14,7 +14,7 @@
 </script>
 
 <script lang="ts">
-	import Logo from '$lib/brand/Logo.svelte';
+	import Logo from '#lib/brand/Logo.svelte';
 
 	let { medal, placeName = 'WattRoom' }: { medal: Medal; placeName?: string } =
 		$props();

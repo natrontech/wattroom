@@ -9,9 +9,9 @@ import { MOST_ABREAST } from './lanes';
 import { CHEER_S, cheerLook } from './cheer';
 import { makeChalk, type ChalkLayer } from './chalk';
 import { makeGates, type GatesLayer } from './gates';
-import type { PaintedGate } from '$lib/road/gates';
+import type { PaintedGate } from '#lib/road/gates.ts';
 import { makeGameRoad, type GameRoad } from './game-road';
-import { roadsideSound } from '$lib/roadside';
+import { roadsideSound } from '#lib/roadside.ts';
 import {
 	loadoutOf,
 	makeCrew,
@@ -19,7 +19,7 @@ import {
 	type Crew,
 	type Pedalling,
 } from './crew';
-import { dress as dressFigure } from '$lib/lounge/figures';
+import { dress as dressFigure } from '#lib/lounge/figures.ts';
 import {
 	makeDioramaGhosts,
 	makeGhosts,
@@ -31,17 +31,17 @@ import { makeRoadside } from './roadside';
 import { DIORAMA, MOTION } from './pixel';
 import { bunchLooks, type Loadout } from './loadout';
 import { makeTags, type Tags } from './tags';
-import type { BunchView } from '$lib/channel/bunch-view';
-import type { RoadMate } from '$lib/channel/road-mates';
-import { DEFAULT_DARK_ID, themeById } from '$lib/themes';
+import type { BunchView } from '#lib/channel/bunch-view.ts';
+import type { RoadMate } from '#lib/channel/road-mates.ts';
+import { DEFAULT_DARK_ID, themeById } from '#lib/themes.ts';
 import { disposeTree } from './dispose';
 import { CAMERA } from './camera';
 import { exponentialFog, propFogDensity } from './fog';
 import { makeSight } from './materials';
 import { makeRig, type Follow } from './rig';
 import { HOLD_S, type RevealView } from './reveal';
-import { type Route } from '$lib/road/route';
-import { at, leftOf } from '$lib/road/along';
+import { type Route } from '#lib/road/route.ts';
+import { at, leftOf } from '#lib/road/along.ts';
 import {
 	advance,
 	followMetre,

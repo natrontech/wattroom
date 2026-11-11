@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { render } from 'svelte/server';
 import TabularFigures from './TabularFigures.svelte';
-import ComputerHead from '$lib/session/ComputerHead.svelte';
-import Instrument from '$lib/session/Instrument.svelte';
+import ComputerHead from '#lib/session/ComputerHead.svelte';
+import Instrument from '#lib/session/Instrument.svelte';
 
 const cells = (html: string) =>
 	[...html.matchAll(/<span data-figure="(\d)" class="([^"]*)"/g)].map(

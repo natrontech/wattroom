@@ -5,8 +5,8 @@ const mocks = vi.hoisted(() => ({
 	push: vi.fn(),
 	write: vi.fn(),
 }));
-vi.mock('$lib/confirm.svelte', () => ({ confirm: mocks.confirm }));
-vi.mock('$lib/toast.svelte', () => ({ toasts: { push: mocks.push } }));
+vi.mock('#lib/confirm.svelte.ts', () => ({ confirm: mocks.confirm }));
+vi.mock('#lib/toast.svelte.ts', () => ({ toasts: { push: mocks.push } }));
 
 const { RESET_DONE, confirmCalendarReset, copyCalendarLink, resetBody } =
 	await import('./calendar-link');

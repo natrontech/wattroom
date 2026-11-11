@@ -8,11 +8,11 @@
 	// reaches about crews they are not in, so what it discloses is the
 	// decision.
 	import Compass from '@lucide/svelte/icons/compass';
-	import EmptyState from '$lib/components/EmptyState.svelte';
-	import Skeleton from '$lib/components/Skeleton.svelte';
-	import Banner from '$lib/components/Banner.svelte';
-	import CrewMark from '$lib/components/CrewMark.svelte';
-	import { api } from '$lib/api';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import Banner from '#lib/components/Banner.svelte';
+	import CrewMark from '#lib/components/CrewMark.svelte';
+	import { api } from '#lib/api.ts';
 
 	interface Entry {
 		code: string;

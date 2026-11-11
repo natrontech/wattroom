@@ -4,8 +4,8 @@
 	// grid is the synthwave horizon (neon = grids, ADR-0005). Identity is
 	// carried by weight and shape, never color alone. Hover for a day's
 	// numbers; click a day to jump to its rides.
-	import ChartTip from '$lib/components/ChartTip.svelte';
-	import type { FormPoint } from '$lib/progression';
+	import ChartTip from '#lib/components/ChartTip.svelte';
+	import type { FormPoint } from '#lib/progression.ts';
 
 	let {
 		series,

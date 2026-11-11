@@ -18,7 +18,7 @@
 		chordLabel,
 		DEFAULT_CHORD,
 		toggleKey,
-	} from '$lib/board/toggle-key.svelte';
+	} from '#lib/board/toggle-key.svelte.ts';
 
 	const fallback = chordLabel(DEFAULT_CHORD);
 

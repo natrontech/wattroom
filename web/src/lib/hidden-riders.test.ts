@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('$lib/friends/friends.svelte', () => ({
+vi.mock('#lib/friends/friends.svelte.ts', () => ({
 	friends: { reload: async () => {} },
 }));
-vi.mock('$lib/dm/heads.svelte', () => ({ dmHeads: { refresh: () => {} } }));
+vi.mock('#lib/dm/heads.svelte.ts', () => ({ dmHeads: { refresh: () => {} } }));
 const pushed = vi.hoisted(
 	() => [] as { text: string; opts?: { tone?: string; undo?: () => void } }[],
 );
-vi.mock('$lib/toast.svelte', () => ({
+vi.mock('#lib/toast.svelte.ts', () => ({
 	toasts: {
 		push: (text: string, opts?: { tone?: string; undo?: () => void }) =>
 			pushed.push({ text, opts }),

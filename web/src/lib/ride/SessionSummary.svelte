@@ -1,18 +1,18 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { play } from '$lib/sound/cues';
-	import MedalCard, { type Medal } from '$lib/components/MedalCard.svelte';
-	import ZoneBar from '$lib/components/ZoneBar.svelte';
-	import { ZONE_VAR, zoneOf } from '$lib/components/zones';
-	import RecapHeader from '$lib/ride/RecapHeader.svelte';
-	import RecapTiles from '$lib/ride/RecapTiles.svelte';
-	import RaceResults from '$lib/race/RaceResults.svelte';
-	import type { RaceBracket } from '$lib/protocol';
+	import { play } from '#lib/sound/cues.ts';
+	import MedalCard, { type Medal } from '#lib/components/MedalCard.svelte';
+	import ZoneBar from '#lib/components/ZoneBar.svelte';
+	import { ZONE_VAR, zoneOf } from '#lib/components/zones.ts';
+	import RecapHeader from '#lib/ride/RecapHeader.svelte';
+	import RecapTiles from '#lib/ride/RecapTiles.svelte';
+	import RaceResults from '#lib/race/RaceResults.svelte';
+	import type { RaceBracket } from '#lib/protocol.ts';
 	import {
 		recapEyebrow,
 		recapTiles,
 		type RideKind,
-	} from '$lib/ride/recap-frame';
+	} from '#lib/ride/recap-frame.ts';
 	import {
 		averageWatts,
 		curvePoints,
@@ -21,7 +21,7 @@
 		xpLines,
 		zoneSeconds,
 		type RideSample,
-	} from '$lib/ride/stats';
+	} from '#lib/ride/stats.ts';
 
 	// The closing card (#39's summary design, framed by #3686): what you did,
 	// how well, what it earned — every number a SPEC formula over the rider's

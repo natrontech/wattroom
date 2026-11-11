@@ -3,12 +3,12 @@ import { describe, expect, it, vi } from 'vitest';
 const hud = vi.hoisted(() => ({
 	published: [] as Array<{ watts: number; fault?: string }>,
 }));
-vi.mock('$lib/hud/feed', () => ({
+vi.mock('#lib/hud/feed.ts', () => ({
 	publishHud: (s: { watts: number; fault?: string }) => {
 		hud.published.push(s);
 	},
 }));
-import { SimulatedTrainer } from '$lib/ble/simulated';
+import { SimulatedTrainer } from '#lib/ble/simulated.ts';
 import { createRideSession } from './session.svelte';
 import { soloRide } from './ride-life.svelte';
 import { DEFAULTS, toleranceBand } from './guards';

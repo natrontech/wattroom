@@ -2,14 +2,14 @@
 	import ListOrdered from '@lucide/svelte/icons/list-ordered';
 	import Shuffle from '@lucide/svelte/icons/shuffle';
 	import Sparkles from '@lucide/svelte/icons/sparkles';
-	import Select from '$lib/components/Select.svelte';
-	import { toasts } from '$lib/toast.svelte';
+	import Select from '#lib/components/Select.svelte';
+	import { toasts } from '#lib/toast.svelte.ts';
 	import {
 		updateChannel,
 		type CrewChannel,
 		type ChannelAutoplay,
-	} from '$lib/channels';
-	import type { PlaylistStore } from '$lib/channel/playlists.svelte';
+	} from '#lib/channels.ts';
+	import type { PlaylistStore } from '#lib/channel/playlists.svelte.ts';
 
 	// Autoplay is a voice channel's (#1422, ADR-0058): the switch, the order
 	// and which of the crew's playlists it walks, kept by the crew's owner and

@@ -1,8 +1,8 @@
-import { Biome } from '$lib/world/biome';
-import type { NoiseVoice, Voice } from '$lib/sound/cue-catalogue';
-import { makeNoise, scheduleVoices } from '$lib/sound/cue-graph';
-import { cueInput } from '$lib/sound/cues';
-import { glideTo } from '$lib/sound/glide';
+import { Biome } from '#lib/world/biome.ts';
+import type { NoiseVoice, Voice } from '#lib/sound/cue-catalogue.ts';
+import { makeNoise, scheduleVoices } from '#lib/sound/cue-graph.ts';
+import { cueInput } from '#lib/sound/cues.ts';
+import { glideTo } from '#lib/sound/glide.ts';
 
 /**
  * The ride's ambience (#3186): the land beside the road and the air you ride

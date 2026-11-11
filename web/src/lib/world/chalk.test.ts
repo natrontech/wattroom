@@ -1,10 +1,10 @@
 // @vitest-environment happy-dom
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import type { Chalk } from '$lib/channel/bunch-view';
-import { at, curvature, leftOf } from '$lib/road/along';
-import { legsRoad, switchback } from '$lib/road/fixtures';
-import { toRoute } from '$lib/road/route';
+import type { Chalk } from '#lib/channel/bunch-view.ts';
+import { at, curvature, leftOf } from '#lib/road/along.ts';
+import { legsRoad, switchback } from '#lib/road/fixtures.ts';
+import { toRoute } from '#lib/road/route.ts';
 import { LANE } from './bunch';
 import { lanesFor } from './lanes';
 import { BESIDE, makeChalk } from './chalk';

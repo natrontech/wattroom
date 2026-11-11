@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import type { Road } from '$lib/road/road';
-import type { Route } from '$lib/road/route';
+import type { Road } from '#lib/road/road.ts';
+import type { Route } from '#lib/road/route.ts';
 import { Biome } from './biome';
 import { routeOfRoad } from './road-route';
 import { drawnRows, FORMATION, rowCount } from './terrain/road-profile';

@@ -1,6 +1,6 @@
-import type { ChannelContext } from '$lib/channel/context';
-import { confirm } from '$lib/confirm.svelte';
-import { gameMode } from '$lib/session/modes';
+import type { ChannelContext } from '#lib/channel/context.ts';
+import { confirm } from '#lib/confirm.svelte.ts';
+import { gameMode } from '#lib/session/modes.ts';
 
 /**
  * Every End game, from one place (#2604): the header's game-pad and the

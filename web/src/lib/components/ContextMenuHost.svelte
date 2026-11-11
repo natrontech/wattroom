@@ -12,9 +12,9 @@
 		placeRidingMenu,
 		scrollClosesMenu,
 		type Rect,
-	} from '$lib/context-menu.svelte';
-	import { navDrawer } from '$lib/nav/drawer.svelte';
-	import { CORRIDOR } from '$lib/session/docks';
+	} from '#lib/context-menu.svelte.ts';
+	import { navDrawer } from '#lib/nav/drawer.svelte.ts';
+	import { CORRIDOR } from '#lib/session/docks.ts';
 
 	let { riding = false }: { riding?: boolean } = $props();
 

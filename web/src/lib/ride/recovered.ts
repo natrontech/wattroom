@@ -8,7 +8,7 @@
  * neither the index nor that spelling. Both were inline in the ride screen with
  * nothing checking them.
  */
-import { confirm } from '$lib/confirm.svelte';
+import { confirm } from '#lib/confirm.svelte.ts';
 import type { BufferedSample, RideMeta } from './buffer';
 
 export type RecoveredRide = RideMeta & { samples: BufferedSample[] };

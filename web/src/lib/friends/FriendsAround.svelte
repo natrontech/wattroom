@@ -2,16 +2,16 @@
 	// Friends around right now, as chips (#2586): Home's row, and the crew
 	// Home's for the ones outside that crew. A chip goes where they are when
 	// you may enter it, else to your conversation with them.
-	import Avatar from '$lib/components/Avatar.svelte';
-	import StatusMark from '$lib/status-line/StatusMark.svelte';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import StatusMark from '#lib/status-line/StatusMark.svelte';
 	import {
 		friendPlace,
 		friends,
 		type Friend,
-	} from '$lib/friends/friends.svelte';
-	import { crewLive } from '$lib/nav/crew-live.svelte';
-	import { statusOf } from '$lib/status';
-	import { placePath } from '$lib/whereabouts';
+	} from '#lib/friends/friends.svelte.ts';
+	import { crewLive } from '#lib/nav/crew-live.svelte.ts';
+	import { statusOf } from '#lib/status.ts';
+	import { placePath } from '#lib/whereabouts.ts';
 
 	let { list }: { list: Friend[] } = $props();
 </script>

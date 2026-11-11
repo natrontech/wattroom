@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { encodeSimulation, FtmsTrainer } from '$lib/ble/ftms';
-import { FakeDevice } from '$lib/ble/fake-gatt.test-helper';
-import { SimulatedTrainer, type RealRatio } from '$lib/ble/simulated';
-import { resolveSim, trainerForce, type SimParams } from '$lib/ble/trainer';
+import { encodeSimulation, FtmsTrainer } from '#lib/ble/ftms.ts';
+import { FakeDevice } from '#lib/ble/fake-gatt.test-helper.ts';
+import { SimulatedTrainer, type RealRatio } from '#lib/ble/simulated.ts';
+import { resolveSim, trainerForce, type SimParams } from '#lib/ble/trainer.ts';
 import {
 	BikeKg,
 	MaxTrainerGrade,
@@ -10,7 +10,7 @@ import {
 	PaceDrivetrainEfficiency,
 	PaceGravity,
 	ReferenceRiderKg,
-} from '$lib/protocol';
+} from '#lib/protocol.ts';
 import { composeSim } from './actuation.svelte';
 import {
 	GEAR_RATIOS,

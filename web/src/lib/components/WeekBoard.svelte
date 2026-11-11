@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { people } from '$lib/people.svelte';
-	import StatusMark from '$lib/status-line/StatusMark.svelte';
+	import { people } from '#lib/people.svelte.ts';
+	import StatusMark from '#lib/status-line/StatusMark.svelte';
 	// The weekly board (ADR-0036): this week only, and only because someone
 	// turned it on. Shared by the crew's Members page and a voice channel's
 	// Lounge.
-	import { account } from '$lib/account.svelte';
-	import type { BoardRow } from '$lib/crew-types';
+	import { account } from '#lib/account.svelte.ts';
+	import type { BoardRow } from '#lib/crew-types.ts';
 
 	let { rows }: { rows: BoardRow[] } = $props();
 </script>

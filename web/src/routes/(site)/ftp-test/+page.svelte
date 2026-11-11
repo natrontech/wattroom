@@ -1,12 +1,12 @@
 <script lang="ts">
-	import CtaBand from '$lib/site/CtaBand.svelte';
-	import Faq from '$lib/site/Faq.svelte';
-	import FtpCalculator from '$lib/site/FtpCalculator.svelte';
-	import PageHero from '$lib/site/PageHero.svelte';
-	import SectionHead from '$lib/site/SectionHead.svelte';
-	import Seo from '$lib/site/Seo.svelte';
-	import { FTP_TEST } from '$lib/site/seo';
-	import { RAMP, RAMP_TAKES } from '$lib/workout/ramp';
+	import CtaBand from '#lib/site/CtaBand.svelte';
+	import Faq from '#lib/site/Faq.svelte';
+	import FtpCalculator from '#lib/site/FtpCalculator.svelte';
+	import PageHero from '#lib/site/PageHero.svelte';
+	import SectionHead from '#lib/site/SectionHead.svelte';
+	import Seo from '#lib/site/Seo.svelte';
+	import { FTP_TEST } from '#lib/site/seo.ts';
+	import { RAMP, RAMP_TAKES } from '#lib/workout/ramp.ts';
 
 	// "ramp test online", "ftp test", "ftp calculator" (#2995). Every number
 	// is the ramp the app runs (RAMP — docs/SPEC.md's), never retyped here.

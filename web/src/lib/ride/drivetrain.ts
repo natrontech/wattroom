@@ -2,14 +2,14 @@ import {
 	resolveSim,
 	type SimParams,
 	type TrainerSample,
-} from '$lib/ble/trainer';
+} from '#lib/ble/trainer.ts';
 import {
 	BikeKg,
 	MaxTrainerGrade,
 	MinTrainerGrade,
 	PaceGravity,
 	ReferenceRiderKg,
-} from '$lib/protocol';
+} from '#lib/protocol.ts';
 
 /**
  * The virtual drivetrain (#3325, ADR-0084): a gear is k = virtual ratio ÷

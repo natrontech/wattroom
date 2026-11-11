@@ -6,26 +6,26 @@
 	 * /ramp or /ride.
 	 */
 	import { goto } from '$app/navigation';
-	import Banner from '$lib/components/Banner.svelte';
-	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
-	import { formatClock } from '$lib/format';
-	import { createProfileStore } from '$lib/profile.svelte';
-	import { askToStopRamp } from '$lib/ride/end-ride';
-	import FlagButton from '$lib/ride/FlagButton.svelte';
-	import { FLAG_NOTICE_MS, FLAG_SAID } from '$lib/ride/flag';
-	import RampResult from '$lib/ride/RampResult.svelte';
-	import RideFlags from '$lib/ride/RideFlags.svelte';
-	import RideStatus from '$lib/ride/RideStatus.svelte';
-	import { theRide } from '$lib/ride/the-ride.svelte';
-	import BiasTrim from '$lib/session/BiasTrim.svelte';
-	import BikeComputer from '$lib/session/BikeComputer.svelte';
-	import CountdownScreen from '$lib/session/CountdownScreen.svelte';
-	import RideBand from '$lib/session/RideBand.svelte';
-	import { rideContext } from '$lib/session/ride-context';
-	import RidingSurface from '$lib/session/RidingSurface.svelte';
-	import TvOverlay from '$lib/session/TvOverlay.svelte';
-	import { describeBlock } from '$lib/workout/block';
-	import { RAMP, rampUsable } from '$lib/workout/ramp';
+	import Banner from '#lib/components/Banner.svelte';
+	import IntervalGraph from '#lib/components/IntervalGraph.svelte';
+	import { formatClock } from '#lib/format.ts';
+	import { createProfileStore } from '#lib/profile.svelte.ts';
+	import { askToStopRamp } from '#lib/ride/end-ride.ts';
+	import FlagButton from '#lib/ride/FlagButton.svelte';
+	import { FLAG_NOTICE_MS, FLAG_SAID } from '#lib/ride/flag.ts';
+	import RampResult from '#lib/ride/RampResult.svelte';
+	import RideFlags from '#lib/ride/RideFlags.svelte';
+	import RideStatus from '#lib/ride/RideStatus.svelte';
+	import { theRide } from '#lib/ride/the-ride.svelte.ts';
+	import BiasTrim from '#lib/session/BiasTrim.svelte';
+	import BikeComputer from '#lib/session/BikeComputer.svelte';
+	import CountdownScreen from '#lib/session/CountdownScreen.svelte';
+	import RideBand from '#lib/session/RideBand.svelte';
+	import { rideContext } from '#lib/session/ride-context.ts';
+	import RidingSurface from '#lib/session/RidingSurface.svelte';
+	import TvOverlay from '#lib/session/TvOverlay.svelte';
+	import { describeBlock } from '#lib/workout/block.ts';
+	import { RAMP, rampUsable } from '#lib/workout/ramp.ts';
 
 	const profile = createProfileStore();
 	const flags = theRide.flags;

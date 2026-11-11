@@ -1,8 +1,8 @@
-import { heightAt } from '$lib/road/at-metre';
-import { climbsOf } from '$lib/road/climbs';
-import { gainOf, gradeOf, roadName } from '$lib/road/profile';
-import type { Road } from '$lib/road/road';
-import type { Route } from '$lib/road/route';
+import { heightAt } from '#lib/road/at-metre.ts';
+import { climbsOf } from '#lib/road/climbs.ts';
+import { gainOf, gradeOf, roadName } from '#lib/road/profile.ts';
+import type { Road } from '#lib/road/road.ts';
+import type { Route } from '#lib/road/route.ts';
 import { walk } from './place/stroke';
 
 /** Metres between the route's samples, as a route file's are (route.ts). */

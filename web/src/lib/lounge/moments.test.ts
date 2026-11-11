@@ -18,7 +18,7 @@ import {
 	visitorAt,
 	visitorsFor,
 	type VisitorWeather,
-} from '$lib/lounge/moments';
+} from '#lib/lounge/moments.ts';
 
 const DAY = 86_400;
 

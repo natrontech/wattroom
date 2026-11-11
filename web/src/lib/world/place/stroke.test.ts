@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { hairpinClimb } from '$lib/road/fixtures';
-import { toRoute } from '$lib/road/route';
+import { hairpinClimb } from '#lib/road/fixtures.ts';
+import { toRoute } from '#lib/road/route.ts';
 import { GOLDEN_HASH, goldenKeying, goldenRoad } from './golden.test-helper';
 import { placementHash, type Keying } from './region';
 import { reverseRoad, STROKE_STEP_M, strokeMetre, strokeOf } from './stroke';

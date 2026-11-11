@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it } from 'vitest';
-import { hideTip, placeTip, tip, tooltip } from '$lib/tooltip.svelte';
+import { hideTip, placeTip, tip, tooltip } from '#lib/tooltip.svelte.ts';
 
 // A 1440 × 900 window; a 44 px button and a 100 × 30 tooltip.
 const VW = 1440;

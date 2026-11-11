@@ -1,12 +1,12 @@
-import { account } from '$lib/account.svelte';
-import { fetchCrewsLive, type LiveCrew } from '$lib/crews-live';
-import { announce } from '$lib/messages/announce';
-import { shouldAnnounce } from '$lib/notify-once';
-import { away } from '$lib/notify.svelte';
-import { STALE_AFTER, readOrder } from '$lib/stale';
-import type { LiveSession } from '$lib/protocol';
-import { rideName } from '$lib/road/profile';
-import { channelConnection } from '$lib/channel/connection.svelte';
+import { account } from '#lib/account.svelte.ts';
+import { fetchCrewsLive, type LiveCrew } from '#lib/crews-live.ts';
+import { announce } from '#lib/messages/announce.ts';
+import { shouldAnnounce } from '#lib/notify-once.ts';
+import { away } from '#lib/notify.svelte.ts';
+import { STALE_AFTER, readOrder } from '#lib/stale.ts';
+import type { LiveSession } from '#lib/protocol.ts';
+import { rideName } from '#lib/road/profile.ts';
+import { channelConnection } from '#lib/channel/connection.svelte.ts';
 import { crewArrivals, runningSessions } from './crew-arrivals';
 
 /**
@@ -14,9 +14,9 @@ import { crewArrivals, runningSessions } from './crew-arrivals';
  * #2447): per crew, the channels they may enter — who is in each voice
  * channel and what is running there, how much is unread in each text
  * channel — and the next plan. One read, again on every lobby ping, the way
- * the rest of the column re-reads. The shapes are `$lib/crews-live`'s.
+ * the rest of the column re-reads. The shapes are `#lib/crews-live`'s.
  */
-export type { LiveChannel, LiveCrew } from '$lib/crews-live';
+export type { LiveChannel, LiveCrew } from '#lib/crews-live.ts';
 
 let crews = $state<LiveCrew[]>([]);
 let loaded = $state(false);

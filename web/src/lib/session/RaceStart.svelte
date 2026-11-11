@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { RaceNeutralSeconds } from '$lib/protocol';
-	import { SESSION_COUNTDOWN_SECONDS } from '$lib/workout/ride-state';
+	import { RaceNeutralSeconds } from '#lib/protocol.ts';
+	import { SESSION_COUNTDOWN_SECONDS } from '#lib/workout/ride-state.ts';
 	import { gameMode, type GameStart } from './modes';
 	import PairFirst from './PairFirst.svelte';
 

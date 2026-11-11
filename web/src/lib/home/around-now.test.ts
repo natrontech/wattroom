@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { LiveChannel, LiveCrew, LiveOccupant } from '$lib/crews-live';
+import type { LiveChannel, LiveCrew, LiveOccupant } from '#lib/crews-live.ts';
 import { aroundNow, namedInCards } from './around-now';
 
 const voice = (id: string, occupants?: LiveOccupant[]): LiveChannel => ({

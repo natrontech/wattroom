@@ -2,37 +2,37 @@
 	import Lock from '@lucide/svelte/icons/lock';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { api } from '$lib/api';
-	import { routeBackLink } from '$lib/back-link';
-	import Banner from '$lib/components/Banner.svelte';
-	import ClimbTable from '$lib/components/ClimbTable.svelte';
-	import EmptyState from '$lib/components/EmptyState.svelte';
-	import RouteAttempts from '$lib/components/RouteAttempts.svelte';
-	import RouteProfile from '$lib/components/RouteProfile.svelte';
-	import RouteShape from '$lib/components/RouteShape.svelte';
-	import RouteStatRow from '$lib/components/RouteStatRow.svelte';
-	import Skeleton from '$lib/components/Skeleton.svelte';
-	import { confirm } from '$lib/confirm.svelte';
-	import { device, isSpectator } from '$lib/device.svelte';
-	import { routeNameLine, routePrivacyLine } from '$lib/privacy-copy';
+	import { api } from '#lib/api.ts';
+	import { routeBackLink } from '#lib/back-link.ts';
+	import Banner from '#lib/components/Banner.svelte';
+	import ClimbTable from '#lib/components/ClimbTable.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import RouteAttempts from '#lib/components/RouteAttempts.svelte';
+	import RouteProfile from '#lib/components/RouteProfile.svelte';
+	import RouteShape from '#lib/components/RouteShape.svelte';
+	import RouteStatRow from '#lib/components/RouteStatRow.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import { confirm } from '#lib/confirm.svelte.ts';
+	import { device, isSpectator } from '#lib/device.svelte.ts';
+	import { routeNameLine, routePrivacyLine } from '#lib/privacy-copy.ts';
 	import {
 		homeRoad,
 		homeRoute,
 		homeRow,
 		homeShape,
-	} from '$lib/ride/home-roads';
-	import { carryOnOf } from '$lib/ride/roads';
-	import type { Attempt, ClimbBest } from '$lib/road/attempts';
-	import { classedOf } from '$lib/road/climbs';
-	import { isLoop } from '$lib/road/line';
-	import type { Road } from '$lib/road/road';
+	} from '#lib/ride/home-roads.ts';
+	import { carryOnOf } from '#lib/ride/roads.ts';
+	import type { Attempt, ClimbBest } from '#lib/road/attempts.ts';
+	import { classedOf } from '#lib/road/climbs.ts';
+	import { isLoop } from '#lib/road/line.ts';
+	import type { Road } from '#lib/road/road.ts';
 	import {
 		roadOf,
 		shapeLine,
 		statRow,
 		type StoredRoute,
-	} from '$lib/road/stored';
-	import { toasts } from '$lib/toast.svelte';
+	} from '#lib/road/stored.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
 	import RideHow from './RideHow.svelte';
 
 	/**

@@ -9,7 +9,7 @@ import {
 	UnrankedUntimeable,
 	type RaceBracket,
 	type RaceFinisher,
-} from '$lib/protocol';
+} from '#lib/protocol.ts';
 
 /**
  * A race's section of the closing card (#3779, ADR-0067): the results per

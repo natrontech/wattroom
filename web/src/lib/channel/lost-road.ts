@@ -1,4 +1,4 @@
-import type { ControlRoute, ServerTick } from '$lib/protocol';
+import type { ControlRoute, ServerTick } from '#lib/protocol.ts';
 
 /**
  * A session's road as its coach's screen remembers it (#3103): the workout,

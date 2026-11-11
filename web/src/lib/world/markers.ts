@@ -1,8 +1,8 @@
 // What the route itself says: where it starts, where it tops out, every
 // kilometre, every hairpin, every village and every climb. Hairpins and
 // climbs are $lib/road's, the one rule everything else reads (#3047).
-import { hairpinsOf } from '$lib/road/climbs';
-import { type Route } from '$lib/road/route';
+import { hairpinsOf } from '#lib/road/climbs.ts';
+import { type Route } from '#lib/road/route.ts';
 
 export type Marker = {
 	kind: 'start' | 'summit' | 'km' | 'hairpin' | 'village' | 'climb';

@@ -1,5 +1,5 @@
-import { GATE_SHUT, gateStep, type GateState } from '$lib/channel/gate';
-import { GATE_DEFAULT } from '$lib/channel/gate-scale';
+import { GATE_SHUT, gateStep, type GateState } from '#lib/channel/gate.ts';
+import { GATE_DEFAULT } from '#lib/channel/gate-scale.ts';
 
 /**
  * Who is talking, measured rather than remembered (#987).

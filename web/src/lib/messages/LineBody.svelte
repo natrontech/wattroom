@@ -5,11 +5,11 @@
 	// name, the reactions and the actions — stays MessageThread's.
 	import BellRing from '@lucide/svelte/icons/bell-ring';
 	import Timer from '@lucide/svelte/icons/timer';
-	import ChatImage from '$lib/chat/ChatImage.svelte';
-	import MessageText from '$lib/chat/MessageText.svelte';
-	import type { MenuEntry } from '$lib/context-menu.svelte';
-	import { formatLeft, formatStamp, formatTime } from '$lib/format';
-	import type { ThreadMessage } from '$lib/messages/thread-types';
+	import ChatImage from '#lib/chat/ChatImage.svelte';
+	import MessageText from '#lib/chat/MessageText.svelte';
+	import type { MenuEntry } from '#lib/context-menu.svelte.ts';
+	import { formatLeft, formatStamp, formatTime } from '#lib/format.ts';
+	import type { ThreadMessage } from '#lib/messages/thread-types.ts';
 
 	let {
 		message,

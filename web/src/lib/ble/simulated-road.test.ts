@@ -6,9 +6,9 @@ import {
 	PaceDefaultCdA,
 	ReferenceRiderKg,
 	ReferenceRiderWatts,
-} from '$lib/protocol';
-import { createPace } from '$lib/road/pace';
-import { goldenVector } from '$lib/road/golden.test-helper';
+} from '#lib/protocol.ts';
+import { createPace } from '#lib/road/pace.ts';
+import { goldenVector } from '#lib/road/golden.test-helper.ts';
 import { encodeSimulation } from './ftms';
 import { SimulatedTrainer } from './simulated';
 import { trainerForce } from './trainer';

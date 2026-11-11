@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { liveNumbersLine, routePrivacyLine } from '$lib/privacy-copy';
+	import { liveNumbersLine, routePrivacyLine } from '#lib/privacy-copy.ts';
 </script>
 
 <svelte:head>

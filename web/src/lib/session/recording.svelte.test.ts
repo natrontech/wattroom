@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MaxBridgedGap } from '$lib/protocol';
+import { MaxBridgedGap } from '#lib/protocol.ts';
 import { createRecording } from './recording.svelte';
 
 // The record is read as one entry per second downstream (#1411): a trainer

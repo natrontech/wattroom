@@ -7,10 +7,10 @@
 	// tokens that survived, each with the same Revoke Coach access has — a
 	// rider signing out after a borrowed session sees at once whether that
 	// session left a way back in.
-	import Banner from '$lib/components/Banner.svelte';
-	import TokenList from '$lib/profile/TokenList.svelte';
-	import { api } from '$lib/api';
-	import { toasts } from '$lib/toast.svelte';
+	import Banner from '#lib/components/Banner.svelte';
+	import TokenList from '#lib/profile/TokenList.svelte';
+	import { api } from '#lib/api.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
 	import type { ApiToken } from '../data/+page';
 
 	let signingOut = $state(false);

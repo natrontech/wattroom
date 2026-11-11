@@ -1,11 +1,11 @@
-import { coachOf } from '$lib/channel/tick-session';
-import { levelFromXp } from '$lib/level';
-import type { LiveRider } from '$lib/channel/types';
+import { coachOf } from '#lib/channel/tick-session.ts';
+import { levelFromXp } from '#lib/level.ts';
+import type { LiveRider } from '#lib/channel/types.ts';
 import {
 	RoadsideStampInitial,
 	type RoadsideStamp,
 	type ServerTick,
-} from '$lib/protocol';
+} from '#lib/protocol.ts';
 
 /** One chalk stamp on the road (#3029), as the world draws it. */
 export type Chalk = {

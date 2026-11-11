@@ -1,19 +1,19 @@
 <script lang="ts">
-	import { EMAIL_IS_FOR } from '$lib/auth/address';
+	import { EMAIL_IS_FOR } from '#lib/auth/address.ts';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import Logo from '$lib/brand/Logo.svelte';
-	import LandingHero from '$lib/brand/LandingHero.svelte';
-	import { GITHUB_MARK, GOOGLE_G } from '$lib/brand/icons';
-	import Skeleton from '$lib/components/Skeleton.svelte';
-	import { account } from '$lib/account.svelte';
-	import { landing, rememberNext, takeNext } from '$lib/auth/next';
-	import CrewMark from '$lib/components/CrewMark.svelte';
-	import { crewDoor, type CrewDoor } from '$lib/crew';
-	import { lastProvider, rememberProvider } from '$lib/auth/last-provider';
-	import { providerRow, signInWays } from '$lib/auth/providers';
-	import Banner from '$lib/components/Banner.svelte';
-	import * as passkeys from '$lib/passkeys';
+	import Logo from '#lib/brand/Logo.svelte';
+	import LandingHero from '#lib/brand/LandingHero.svelte';
+	import { GITHUB_MARK, GOOGLE_G } from '#lib/brand/icons.ts';
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import { account } from '#lib/account.svelte.ts';
+	import { landing, rememberNext, takeNext } from '#lib/auth/next.ts';
+	import CrewMark from '#lib/components/CrewMark.svelte';
+	import { crewDoor, type CrewDoor } from '#lib/crew.ts';
+	import { lastProvider, rememberProvider } from '#lib/auth/last-provider.ts';
+	import { providerRow, signInWays } from '#lib/auth/providers.ts';
+	import Banner from '#lib/components/Banner.svelte';
+	import * as passkeys from '#lib/passkeys.ts';
 	import {
 		browserSignInUrl,
 		desktopNonce,
@@ -21,7 +21,7 @@
 		redeemHandoff,
 		shellVersion,
 		startBrowserSignIn,
-	} from '$lib/desktop';
+	} from '#lib/desktop.ts';
 
 	void account.load();
 
@@ -155,7 +155,7 @@
 			return;
 		}
 		void goto(takeNext() ?? landing(account.me.pendingInvite), {
-			replaceState: true,
+			replace: true,
 		});
 	});
 

@@ -1,4 +1,4 @@
-import { createWBal, type CPW } from '$lib/road/cpw';
+import { createWBal, type CPW } from '#lib/road/cpw.ts';
 
 /**
  * The matches gauge (#3263, docs/spec/races.md "Matches"): your own W′

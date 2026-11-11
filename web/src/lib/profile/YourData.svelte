@@ -5,12 +5,12 @@
 	// Its own file because the purge owns three pieces of state and a request
 	// that nothing else on the profile page reads, and because the destructive
 	// half wants to be read on its own (#126, #686).
-	import { account } from '$lib/account.svelte';
-	import { forgetAccountHere } from '$lib/account/forget-device';
-	import { api, apiBlob } from '$lib/api';
-	import Banner from '$lib/components/Banner.svelte';
-	import { downloadBlob } from '$lib/download';
-	import { liveNumbersLine } from '$lib/privacy-copy';
+	import { account } from '#lib/account.svelte.ts';
+	import { forgetAccountHere } from '#lib/account/forget-device.ts';
+	import { api, apiBlob } from '#lib/api.ts';
+	import Banner from '#lib/components/Banner.svelte';
+	import { downloadBlob } from '#lib/download.ts';
+	import { liveNumbersLine } from '#lib/privacy-copy.ts';
 
 	// Failures are said where the button is (errors.md): the page's own
 	// status line at the far end of the page held a fixed sentence while

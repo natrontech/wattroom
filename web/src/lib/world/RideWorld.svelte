@@ -1,5 +1,5 @@
 <script module lang="ts">
-	import { onShellVisibility } from '$lib/desktop';
+	import { onShellVisibility } from '#lib/desktop.ts';
 
 	// The desktop shell put its window away (a close to the tray): nobody is
 	// looking, so the world holds. One listener for the page, however many
@@ -22,33 +22,33 @@
 	 * (#3080). A right-click on it offers the flat road.
 	 */
 	import { onMount, untrack } from 'svelte';
-	import { contextMenu } from '$lib/context-menu.svelte';
+	import { contextMenu } from '#lib/context-menu.svelte.ts';
 	import { CAMERA_ASK, PHOTO_ASK, type Failure } from './ride-view';
 	import { CAMERA_PRESETS, type CameraPreset } from './cameras';
-	import { computerShown } from '$lib/session/computer-shown.svelte';
-	import type { Road } from '$lib/road/road';
-	import type { Route } from '$lib/road/route';
+	import { computerShown } from '#lib/session/computer-shown.svelte.ts';
+	import type { Road } from '#lib/road/road.ts';
+	import type { Route } from '#lib/road/route.ts';
 	import { routeOfRoad } from './road-route';
 	import { mount, type WorldScene } from './scene';
 	import type { RideMetre } from './sim';
-	import type { BunchView } from '$lib/channel/bunch-view';
-	import { channelConnection } from '$lib/channel/connection.svelte';
-	import type { RoadMate } from '$lib/channel/road-mates';
-	import type { PaintedGate } from '$lib/road/gates';
-	import { account } from '$lib/account.svelte';
-	import { prefersReducedMotion } from '$lib/motion';
-	import { play } from '$lib/sound/cues';
-	import { AMBIENCE, ambience } from '$lib/sound/ambience';
-	import { at, leftOf } from '$lib/road/along';
+	import type { BunchView } from '#lib/channel/bunch-view.ts';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import type { RoadMate } from '#lib/channel/road-mates.ts';
+	import type { PaintedGate } from '#lib/road/gates.ts';
+	import { account } from '#lib/account.svelte.ts';
+	import { prefersReducedMotion } from '#lib/motion/index.ts';
+	import { play } from '#lib/sound/cues.ts';
+	import { AMBIENCE, ambience } from '#lib/sound/ambience.ts';
+	import { at, leftOf } from '#lib/road/along.ts';
 	import { generate, type World } from './world';
 	import { dioramaLook, rideLook, worldPaint, type Paint } from './look';
-	import { skyAt } from '$lib/lounge/palette';
-	import { weatherOf } from '$lib/lounge/state';
+	import { skyAt } from '#lib/lounge/palette.ts';
+	import { weatherOf } from '#lib/lounge/state.ts';
 	import { worldDiorama } from './mode';
 	import { PICTURE, worldPicture, type PictureMoment } from './picture.svelte';
 	import { dueToDraw, momentsFor } from './ride-moments';
-	import { MaxRidePhotos } from '$lib/protocol';
-	import { toasts } from '$lib/toast.svelte';
+	import { MaxRidePhotos } from '#lib/protocol.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
 
 	let {
 		road,

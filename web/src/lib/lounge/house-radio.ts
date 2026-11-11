@@ -12,10 +12,10 @@ import {
 	type Note,
 	type Style,
 	type Tune,
-} from '$lib/lounge/station';
-import { bass, lead } from '$lib/lounge/radio-voices';
-import { organ, pad, piano, pluck } from '$lib/lounge/radio-keys';
-import { brush, hat, kick, rim, snare } from '$lib/lounge/radio-drums';
+} from '#lib/lounge/station.ts';
+import { bass, lead } from '#lib/lounge/radio-voices.ts';
+import { organ, pad, piano, pluck } from '#lib/lounge/radio-keys.ts';
+import { brush, hat, kick, rim, snare } from '#lib/lounge/radio-drums.ts';
 import {
 	chipBass,
 	chipHat,
@@ -23,8 +23,8 @@ import {
 	chipLead,
 	chipSnare,
 	pulse,
-} from '$lib/lounge/radio-chip';
-import { OPEN_HZ, build, type Graph } from '$lib/lounge/radio-graph';
+} from '#lib/lounge/radio-chip.ts';
+import { OPEN_HZ, build, type Graph } from '#lib/lounge/radio-graph.ts';
 
 /** How far ahead the scheduler lays notes down, in seconds. */
 const AHEAD_SEC = 0.15;

@@ -8,27 +8,27 @@
 	 * pairs here. The ride is `theRide`'s (ADR-0093): leaving this screen
 	 * never ends it, and this view only reads it.
 	 */
-	import RidePictures from '$lib/ride/RidePictures.svelte';
-	import Banner from '$lib/components/Banner.svelte';
-	import { canSimulate } from '$lib/ble/can-simulate';
-	import { FtmsTrainer } from '$lib/ble/ftms';
-	import { SimulatedTrainer } from '$lib/ble/simulated';
-	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { formatClock, formatKm } from '$lib/format';
-	import { createProfileStore } from '$lib/profile.svelte';
-	import { freeRideLabel } from '$lib/ride/free-ride.svelte';
-	import FreeRiding from '$lib/ride/FreeRiding.svelte';
-	import FreeRideTv from '$lib/ride/FreeRideTv.svelte';
-	import { gearsEnabled } from '$lib/ride/gears-enabled';
-	import { bindShifters } from '$lib/ride/keys';
-	import { carriesOn } from '$lib/ride/road-end';
-	import SessionSummary from '$lib/ride/SessionSummary.svelte';
-	import RideFlags from '$lib/ride/RideFlags.svelte';
-	import type { RideableRoute } from '$lib/ride/roads';
-	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
-	import { theRide } from '$lib/ride/the-ride.svelte';
-	import SensorOverview from '$lib/session/SensorOverview.svelte';
-	import { heldTrainer } from '$lib/session/sensor-status';
+	import RidePictures from '#lib/ride/RidePictures.svelte';
+	import Banner from '#lib/components/Banner.svelte';
+	import { canSimulate } from '#lib/ble/can-simulate.ts';
+	import { FtmsTrainer } from '#lib/ble/ftms.ts';
+	import { SimulatedTrainer } from '#lib/ble/simulated.ts';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import { formatClock, formatKm } from '#lib/format.ts';
+	import { createProfileStore } from '#lib/profile.svelte.ts';
+	import { freeRideLabel } from '#lib/ride/free-ride.svelte.ts';
+	import FreeRiding from '#lib/ride/FreeRiding.svelte';
+	import FreeRideTv from '#lib/ride/FreeRideTv.svelte';
+	import { gearsEnabled } from '#lib/ride/gears-enabled.ts';
+	import { bindShifters } from '#lib/ride/keys.ts';
+	import { carriesOn } from '#lib/ride/road-end.ts';
+	import SessionSummary from '#lib/ride/SessionSummary.svelte';
+	import RideFlags from '#lib/ride/RideFlags.svelte';
+	import type { RideableRoute } from '#lib/ride/roads.ts';
+	import { soloTrainer } from '#lib/ride/solo-trainer.svelte.ts';
+	import { theRide } from '#lib/ride/the-ride.svelte.ts';
+	import SensorOverview from '#lib/session/SensorOverview.svelte';
+	import { heldTrainer } from '#lib/session/sensor-status.ts';
 
 	let {
 		route,

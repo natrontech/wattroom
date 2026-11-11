@@ -1,8 +1,8 @@
-import { api } from '$lib/api';
-import { RouteHiddenEndM } from '$lib/protocol';
-import { homeRoad, homeRoute, homeRow } from '$lib/ride/home-roads';
-import type { LostRoad } from '$lib/channel/lost-road';
-import type { Workout } from '$lib/workout/types';
+import { api } from '#lib/api.ts';
+import { RouteHiddenEndM } from '#lib/protocol.ts';
+import { homeRoad, homeRoute, homeRow } from '#lib/ride/home-roads.ts';
+import type { LostRoad } from '#lib/channel/lost-road.ts';
+import type { Workout } from '#lib/workout/types.ts';
 import { onRoute } from './compile';
 import { ownerFromM, rideTogether } from './ride-together';
 import { roadStep, type Road } from './road';

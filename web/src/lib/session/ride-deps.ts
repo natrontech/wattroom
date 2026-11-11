@@ -1,9 +1,9 @@
-import type { FreeRide } from '$lib/ride/free-ride.svelte';
-import type { RoadPlace } from '$lib/channel/road-place';
-import type { Segment } from '$lib/workout/types';
-import type { GameState, SensorPairing, SprintState } from '$lib/protocol';
-import type { createRecording } from '$lib/session/recording.svelte';
-import type { wireMetrics } from '$lib/session/wire';
+import type { FreeRide } from '#lib/ride/free-ride.svelte.ts';
+import type { RoadPlace } from '#lib/channel/road-place.ts';
+import type { Segment } from '#lib/workout/types.ts';
+import type { GameState, SensorPairing, SprintState } from '#lib/protocol.ts';
+import type { createRecording } from '#lib/session/recording.svelte.ts';
+import type { wireMetrics } from '#lib/session/wire.ts';
 
 /** What a session ride is handed by the connection that owns it. */
 export interface RideDeps {

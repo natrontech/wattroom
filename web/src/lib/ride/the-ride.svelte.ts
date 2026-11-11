@@ -1,24 +1,24 @@
-import type { Trainer } from '$lib/ble/trainer';
-import { channelConnection } from '$lib/channel/connection.svelte';
-import { createProfileStore } from '$lib/profile.svelte';
-import type { RideBuffer } from '$lib/ride/buffer';
-import { channelRide } from '$lib/ride/channel-ride.svelte';
-import { holdRampAlone, type RampAlone } from '$lib/ride/ramp-alone.svelte';
-import { holdRoadAlone, type RoadAlone } from '$lib/ride/road-alone.svelte';
-import type { RideableRoute } from '$lib/ride/roads';
-import { holdRideAloneEffects } from '$lib/ride/ride-alone-effects.svelte';
-import { saveRideAlone } from '$lib/ride/ride-alone-save';
+import type { Trainer } from '#lib/ble/trainer.ts';
+import { channelConnection } from '#lib/channel/connection.svelte.ts';
+import { createProfileStore } from '#lib/profile.svelte.ts';
+import type { RideBuffer } from '#lib/ride/buffer.ts';
+import { channelRide } from '#lib/ride/channel-ride.svelte.ts';
+import { holdRampAlone, type RampAlone } from '#lib/ride/ramp-alone.svelte.ts';
+import { holdRoadAlone, type RoadAlone } from '#lib/ride/road-alone.svelte.ts';
+import type { RideableRoute } from '#lib/ride/roads.ts';
+import { holdRideAloneEffects } from '#lib/ride/ride-alone-effects.svelte.ts';
+import { saveRideAlone } from '#lib/ride/ride-alone-save.ts';
 import {
 	createWorkoutAlone,
 	openWorkoutBuffer,
-} from '$lib/ride/ride-alone-session';
-import { createSaveOutcome } from '$lib/ride/save-outcome.svelte';
-import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
-import { buildRampTest } from '$lib/workout/ramp';
-import { openRoad } from '$lib/workout/ridden';
-import { worldPicture } from '$lib/world/picture.svelte';
-import type { createRideSession } from '$lib/workout/session.svelte';
-import type { Workout } from '$lib/workout/types';
+} from '#lib/ride/ride-alone-session.ts';
+import { createSaveOutcome } from '#lib/ride/save-outcome.svelte.ts';
+import { soloTrainer } from '#lib/ride/solo-trainer.svelte.ts';
+import { buildRampTest } from '#lib/workout/ramp.ts';
+import { openRoad } from '#lib/workout/ridden.ts';
+import { worldPicture } from '#lib/world/picture.svelte.ts';
+import type { createRideSession } from '#lib/workout/session.svelte.ts';
+import type { Workout } from '#lib/workout/types.ts';
 
 type Session = ReturnType<typeof createRideSession>;
 type NextRide = { label: string; href: string };

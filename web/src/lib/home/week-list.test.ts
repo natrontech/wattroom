@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { LiveCrew } from '$lib/crews-live';
+import type { LiveCrew } from '#lib/crews-live.ts';
 import { byDay, weekList, type Planned } from './week-list';
 
 // Thursday 1 October 2026, 18:00 local.

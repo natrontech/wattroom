@@ -8,24 +8,24 @@
 	// appear.
 	import { SvelteMap } from 'svelte/reactivity';
 	import { goto } from '$app/navigation';
-	import { contextMenu } from '$lib/context-menu.svelte';
-	import { personMenu } from '$lib/person-menu';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import RidingBars from '$lib/components/RidingBars.svelte';
-	import { account } from '$lib/account.svelte';
-	import { people } from '$lib/people.svelte';
-	import { presence } from '$lib/presence.svelte';
-	import { fetchCrew, learnCrewFaces } from '$lib/crew';
-	import { hoverCard } from '$lib/rider-card/rider-card.svelte';
-	import StatusMark from '$lib/status-line/StatusMark.svelte';
-	import { channelConnection } from '$lib/channel/connection.svelte';
+	import { contextMenu } from '#lib/context-menu.svelte.ts';
+	import { personMenu } from '#lib/person-menu.ts';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import RidingBars from '#lib/components/RidingBars.svelte';
+	import { account } from '#lib/account.svelte.ts';
+	import { people } from '#lib/people.svelte.ts';
+	import { presence } from '#lib/presence.svelte.ts';
+	import { fetchCrew, learnCrewFaces } from '#lib/crew.ts';
+	import { hoverCard } from '#lib/rider-card/rider-card.svelte.ts';
+	import StatusMark from '#lib/status-line/StatusMark.svelte';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
 	import {
 		AWAY_MARK,
 		MARK_SURFACE,
 		MUTED_MARK,
 		tileFrame,
 		VOICE_DOT,
-	} from '$lib/channel/presence-marks';
+	} from '#lib/channel/presence-marks.ts';
 	import { STRIP_MAX, orderBySpoke } from './voice-strip';
 	import MicOff from '@lucide/svelte/icons/mic-off';
 

@@ -1,4 +1,4 @@
-import { referenceSpeed } from '$lib/road/pace';
+import { referenceSpeed } from '#lib/road/pace.ts';
 import { inside, type P2 } from './geom';
 import type { Violation } from './types';
 

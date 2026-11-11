@@ -1,6 +1,6 @@
-import { flatten } from '$lib/workout/engine';
-import type { Segment, Workout } from '$lib/workout/types';
-import { validateWorkout } from '$lib/workout/validate';
+import { flatten } from '#lib/workout/engine.ts';
+import type { Segment, Workout } from '#lib/workout/types.ts';
+import { validateWorkout } from '#lib/workout/validate.ts';
 
 /**
  * The shared workout arrives opaquely over the wire (the server owns the

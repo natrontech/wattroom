@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { copyText } from '$lib/copy';
+	import { copyText } from '#lib/copy.ts';
 	// API tokens for a rider's own tools (ADR-0017): read-only, unless the
 	// rider ticks planning, which lets its MCP coach save workouts and plan
 	// sessions in their crews (#4207).
@@ -9,8 +9,8 @@
 	// exists client-side only in `fresh`, until the rider hides it. The page
 	// was 758 lines and this was the largest section that owed it nothing
 	// (#686 — long, not tangled).
-	import { api } from '$lib/api';
-	import Banner from '$lib/components/Banner.svelte';
+	import { api } from '#lib/api.ts';
+	import Banner from '#lib/components/Banner.svelte';
 	import Copy from '@lucide/svelte/icons/copy';
 	import TokenList from './TokenList.svelte';
 	import { untrack } from 'svelte';

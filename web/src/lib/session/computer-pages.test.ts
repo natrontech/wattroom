@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { LiveStats } from '$lib/ride/live-stats.svelte';
-import type { ClimbView } from '$lib/ride/climb-view';
-import type { RaceReadout } from '$lib/race/race-view';
+import type { LiveStats } from '#lib/ride/live-stats.svelte.ts';
+import type { ClimbView } from '#lib/ride/climb-view.ts';
+import type { RaceReadout } from '#lib/race/race-view.ts';
 import {
 	climbHeader,
 	fieldsFor,

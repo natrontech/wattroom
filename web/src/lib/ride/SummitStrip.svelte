@@ -7,8 +7,8 @@
 	 * The same strip calls your ghost's gap along the road (#3246): "Halfway ·
 	 * Your best · 12 s ahead", the gap in neon as a model's output (G2).
 	 */
-	import { climbStage } from '$lib/ride/climb-cues.svelte';
-	import { worldMode } from '$lib/world/mode';
+	import { climbStage } from '#lib/ride/climb-cues.svelte.ts';
+	import { worldMode } from '#lib/world/mode.ts';
 
 	const PIECES = 14;
 	const confetti = $derived(

@@ -7,22 +7,22 @@
 	// (errors.md).
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { account } from '$lib/account.svelte';
+	import { account } from '#lib/account.svelte.ts';
 	import {
 		confirmCalendarReset,
 		copyCalendarLink,
 		RESET_DONE,
-	} from '$lib/calendar-link';
-	import Banner from '$lib/components/Banner.svelte';
-	import EmptyState from '$lib/components/EmptyState.svelte';
-	import NotifyOffer from '$lib/components/NotifyOffer.svelte';
-	import Skeleton from '$lib/components/Skeleton.svelte';
-	import WhenPicker from '$lib/components/WhenPicker.svelte';
-	import WorkoutPreview from '$lib/components/WorkoutPreview.svelte';
-	import { toLocalInput } from '$lib/components/when';
-	import { confirm } from '$lib/confirm.svelte';
-	import { contextMenu, MENU_HINT } from '$lib/context-menu.svelte';
-	import { fetchCrew, type Crew } from '$lib/crew';
+	} from '#lib/calendar-link.ts';
+	import Banner from '#lib/components/Banner.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import NotifyOffer from '#lib/components/NotifyOffer.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import WhenPicker from '#lib/components/WhenPicker.svelte';
+	import WorkoutPreview from '#lib/components/WorkoutPreview.svelte';
+	import { toLocalInput } from '#lib/components/when.ts';
+	import { confirm } from '#lib/confirm.svelte.ts';
+	import { contextMenu, MENU_HINT } from '#lib/context-menu.svelte.ts';
+	import { fetchCrew, type Crew } from '#lib/crew.ts';
 	import {
 		cancelCrewPlan,
 		crewCalendarLink,
@@ -37,23 +37,23 @@
 		startedPath,
 		startCrewPlan,
 		type CrewPlan,
-	} from '$lib/crew-schedule';
-	import { device } from '$lib/device.svelte';
-	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { needsTrainer } from '$lib/session/sensor-status';
-	import { formatWhen } from '$lib/format';
-	import { presence } from '$lib/presence.svelte';
-	import RsvpRow from '$lib/session/RsvpRow.svelte';
-	import SessionPicker from '$lib/session/SessionPicker.svelte';
-	import { takePickerDoor } from '$lib/session/doors';
-	import type { RsvpAnswer } from '$lib/session/rsvp';
-	import { parseSharedSegments } from '$lib/workout/shared';
-	import { serverNow } from '$lib/server-clock';
-	import { shareLink } from '$lib/share';
-	import { toasts } from '$lib/toast.svelte';
-	import { segmentsDuration } from '$lib/workout/engine';
-	import { customWorkouts } from '$lib/workout/custom.svelte';
-	import { buildShelf } from '$lib/workout/shelf';
+	} from '#lib/crew-schedule.ts';
+	import { device } from '#lib/device.svelte.ts';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import { needsTrainer } from '#lib/session/sensor-status.ts';
+	import { formatWhen } from '#lib/format.ts';
+	import { presence } from '#lib/presence.svelte.ts';
+	import RsvpRow from '#lib/session/RsvpRow.svelte';
+	import SessionPicker from '#lib/session/SessionPicker.svelte';
+	import { takePickerDoor } from '#lib/session/doors.ts';
+	import type { RsvpAnswer } from '#lib/session/rsvp.ts';
+	import { parseSharedSegments } from '#lib/workout/shared.ts';
+	import { serverNow } from '#lib/server-clock.ts';
+	import { shareLink } from '#lib/share.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
+	import { segmentsDuration } from '#lib/workout/engine.ts';
+	import { customWorkouts } from '#lib/workout/custom.svelte.ts';
+	import { buildShelf } from '#lib/workout/shelf.ts';
 	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 	import Copy from '@lucide/svelte/icons/copy';
 	import Plus from '@lucide/svelte/icons/plus';

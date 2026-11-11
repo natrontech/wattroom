@@ -17,30 +17,30 @@
  * cross-wired bug looked local. The host owns the LiveKit connection and hands
  * this two functions to reach it, so nothing here imports the SDK.
  */
-import { watchMicHealth } from '$lib/channel/mic-health';
-import { glideTo } from '$lib/sound/glide';
+import { watchMicHealth } from '#lib/channel/mic-health.ts';
+import { glideTo } from '#lib/sound/glide.ts';
 import {
 	GATE_ATTACK_MS,
 	GATE_RELEASE_MS,
 	GATE_SHUT,
 	type GateState,
 	gateStep,
-} from '$lib/channel/gate';
-import { type MicDevices, captureMic } from '$lib/channel/capture';
-import { type Denoiser, createDenoiser } from '$lib/channel/denoiser';
-import { createGateSettings } from '$lib/channel/gate-settings.svelte';
+} from '#lib/channel/gate.ts';
+import { type MicDevices, captureMic } from '#lib/channel/capture.ts';
+import { type Denoiser, createDenoiser } from '#lib/channel/denoiser.ts';
+import { createGateSettings } from '#lib/channel/gate-settings.svelte.ts';
 import {
 	type MicMeter,
 	type VoiceGate,
 	type VoiceState,
 	createMicMeter,
 	createVoiceGate,
-} from '$lib/channel/mic-level';
+} from '#lib/channel/mic-level.ts';
 import {
 	STARTING_GAIN_GLIDE_MS,
 	type StartingGain,
 	createStartingGain,
-} from '$lib/channel/starting-gain';
+} from '#lib/channel/starting-gain.ts';
 
 export interface MicChainHost {
 	/** The rider's chosen input, and what to do when that choice is gone. */

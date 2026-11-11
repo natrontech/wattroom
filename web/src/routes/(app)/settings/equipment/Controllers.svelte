@@ -1,10 +1,10 @@
 <script lang="ts">
 	// Controllers (#4236): what a press runs while riding, a pad that shows
 	// it live, and how a Zwift controller reaches WattRoom at all.
-	import { shifterSlot } from '$lib/ble/controller-slot.svelte';
-	import { isTyping } from '$lib/keys';
-	import { KEY_TABLE } from '$lib/ride/keys';
-	import { pressOfController, pressOfKey } from '$lib/ride/controller-test';
+	import { shifterSlot } from '#lib/ble/controller-slot.svelte.ts';
+	import { isTyping } from '#lib/keys.ts';
+	import { KEY_TABLE } from '#lib/ride/keys.ts';
+	import { pressOfController, pressOfKey } from '#lib/ride/controller-test.ts';
 
 	/** A two-controller set bridged as keys: the left one's arrows, the right one's letters. */
 	const ZWIFT_MAP: [button: string, key: string, does: string][] = [

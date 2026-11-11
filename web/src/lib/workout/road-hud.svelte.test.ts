@@ -1,13 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 
 const published: { road?: unknown }[] = [];
-vi.mock('$lib/hud/feed', () => ({
+vi.mock('#lib/hud/feed.ts', () => ({
 	publishHud: (snapshot: { road?: unknown }) => void published.push(snapshot),
 }));
 
-import { SimulatedTrainer } from '$lib/ble/simulated';
-import { packRoad, type Road } from '$lib/road/road';
-import { roadLine } from '$lib/ride/road-readout';
+import { SimulatedTrainer } from '#lib/ble/simulated.ts';
+import { packRoad, type Road } from '#lib/road/road.ts';
+import { roadLine } from '#lib/ride/road-readout.ts';
 import { describeBlock } from './block';
 import { COUNTDOWN_SECONDS } from './ride-state';
 import { createRideSession } from './session.svelte';

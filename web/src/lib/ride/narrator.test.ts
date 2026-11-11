@@ -1,4 +1,4 @@
-import type { MomentEvent } from '$lib/moments';
+import type { MomentEvent } from '#lib/moments/index.ts';
 import { describe, expect, it } from 'vitest';
 import {
 	createNarrator,

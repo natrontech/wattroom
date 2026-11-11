@@ -12,16 +12,16 @@
 	 */
 	import { Pause, Play } from '@lucide/svelte';
 	import { untrack } from 'svelte';
-	import { saveEdit, type Clip, type Edit } from '$lib/board/clips.svelte';
-	import { boardPanel } from '$lib/board/panel.svelte';
+	import { saveEdit, type Clip, type Edit } from '#lib/board/clips.svelte.ts';
+	import { boardPanel } from '#lib/board/panel.svelte.ts';
 	import {
 		peaks,
 		preview,
 		previewAt,
 		previewing,
 		stopPreview,
-	} from '$lib/sound/board.svelte';
-	import { waveform } from '$lib/board/waveform';
+	} from '#lib/sound/board.svelte.ts';
+	import { waveform } from '#lib/board/waveform.ts';
 
 	let { clip, me }: { clip: Clip; me: string } = $props();
 

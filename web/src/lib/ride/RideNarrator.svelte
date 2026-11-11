@@ -6,12 +6,12 @@
 	 * trainer. S speaks the state. Mounted once by the surface that rides,
 	 * like watchClimbCues: a TV beside the desk would say it twice.
 	 */
-	import type { MomentEvent } from '$lib/moments';
-	import { board } from '$lib/board/clips.svelte';
-	import { zoneOf } from '$lib/components/zones';
-	import { isTyping } from '$lib/keys';
-	import { climbStage } from '$lib/ride/climb-cues.svelte';
-	import { climbView } from '$lib/ride/climb-view';
+	import type { MomentEvent } from '#lib/moments/index.ts';
+	import { board } from '#lib/board/clips.svelte.ts';
+	import { zoneOf } from '#lib/components/zones.ts';
+	import { isTyping } from '#lib/keys.ts';
+	import { climbStage } from '#lib/ride/climb-cues.svelte.ts';
+	import { climbView } from '#lib/ride/climb-view.ts';
 	import {
 		blockLine,
 		climbStartLine,
@@ -24,10 +24,10 @@
 		toTopLine,
 		trainerLine,
 		type Narration,
-	} from '$lib/ride/narrator';
-	import { gradeAt } from '$lib/road/at-metre';
-	import { turnedRound } from '$lib/road/road';
-	import type { SkylineView } from '$lib/road/skyline';
+	} from '#lib/ride/narrator.ts';
+	import { gradeAt } from '#lib/road/at-metre.ts';
+	import { turnedRound } from '#lib/road/road.ts';
+	import type { SkylineView } from '#lib/road/skyline.ts';
 
 	let {
 		view,

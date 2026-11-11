@@ -3,13 +3,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const toggleMap = vi.fn(() => true);
 const askViewFlip = vi.fn(() => true);
-vi.mock('$lib/session/computer-pages', () => ({
+vi.mock('#lib/session/computer-pages.ts', () => ({
 	toggleMap: () => toggleMap(),
 }));
 const world = { on: true };
 const askCamera = vi.fn((_preset?: string) => world.on);
 const askPhoto = vi.fn(() => world.on);
-vi.mock('$lib/world/ride-view', () => ({
+vi.mock('#lib/world/ride-view.ts', () => ({
 	askViewFlip: () => askViewFlip(),
 	askCamera: (preset?: string) => askCamera(preset),
 	askPhoto: () => askPhoto(),

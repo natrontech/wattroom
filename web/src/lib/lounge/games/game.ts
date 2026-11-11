@@ -4,8 +4,8 @@
  * the same seed. The seed is the day's (GET /api/crews/{id}/arcade), so a
  * crew's board compares one course.
  */
-import type { Ctx } from '$lib/lounge/pixel';
-import { ArcadeBergpreis, ArcadeDarts, ArcadeFeedZone } from '$lib/protocol';
+import type { Ctx } from '#lib/lounge/pixel.ts';
+import { ArcadeBergpreis, ArcadeDarts, ArcadeFeedZone } from '#lib/protocol.ts';
 
 export const SCREEN_W = 160;
 export const SCREEN_H = 90;

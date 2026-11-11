@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest';
-import { createStage } from '$lib/channel/av-stage.svelte';
+import { createStage } from '#lib/channel/av-stage.svelte.ts';
 
 describe('the stage', () => {
 	it('keeps every share, newest last (#280)', () => {

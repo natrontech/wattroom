@@ -13,9 +13,9 @@
 	// presence is measured, and every surface says "in voice" — never
 	// "talking", and never a microphone.
 	import Check from '@lucide/svelte/icons/check';
-	import EmptyState from '$lib/components/EmptyState.svelte';
-	import ProgressBar from '$lib/components/ProgressBar.svelte';
-	import { formatDuration } from '$lib/format';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import ProgressBar from '#lib/components/ProgressBar.svelte';
+	import { formatDuration } from '#lib/format.ts';
 	import { ACHIEVEMENTS } from './catalogue';
 	import {
 		RIDER_COUNTS,

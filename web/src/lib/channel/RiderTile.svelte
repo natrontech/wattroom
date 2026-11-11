@@ -1,23 +1,23 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import Avatar from '$lib/components/Avatar.svelte';
+	import Avatar from '#lib/components/Avatar.svelte';
 	import {
 		contextMenu,
 		MENU_HINT,
 		type MenuEntry,
-	} from '$lib/context-menu.svelte';
-	import { wkg } from '$lib/format';
-	import { personMenu } from '$lib/person-menu';
-	import { people } from '$lib/people.svelte';
-	import StatusMark from '$lib/status-line/StatusMark.svelte';
-	import { hoverCard } from '$lib/rider-card/rider-card.svelte';
+	} from '#lib/context-menu.svelte.ts';
+	import { wkg } from '#lib/format.ts';
+	import { personMenu } from '#lib/person-menu.ts';
+	import { people } from '#lib/people.svelte.ts';
+	import StatusMark from '#lib/status-line/StatusMark.svelte';
+	import { hoverCard } from '#lib/rider-card/rider-card.svelte.ts';
 	import MicOff from '@lucide/svelte/icons/mic-off';
 	import ScreenShare from '@lucide/svelte/icons/screen-share';
 	import Drum from '@lucide/svelte/icons/drum';
 	import Bike from '@lucide/svelte/icons/bike';
-	import { sessionPath } from '$lib/channel/address';
-	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { crewLive } from '$lib/nav/crew-live.svelte';
+	import { sessionPath } from '#lib/channel/address.ts';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import { crewLive } from '#lib/nav/crew-live.svelte.ts';
 	import {
 		AWAY_MARK,
 		BOARD_MARK,
@@ -26,10 +26,14 @@
 		SHARE_MARK,
 		tileFrame,
 		VOICE_DOT,
-	} from '$lib/channel/presence-marks';
-	import { fillPct, ZONE_BG, zoneOf } from '$lib/components/zones';
-	import type { Phase } from '$lib/channel/types';
-	import type { PanelMember, LiveRider, TileMetric } from '$lib/channel/types';
+	} from '#lib/channel/presence-marks.ts';
+	import { fillPct, ZONE_BG, zoneOf } from '#lib/components/zones.ts';
+	import type { Phase } from '#lib/channel/types.ts';
+	import type {
+		PanelMember,
+		LiveRider,
+		TileMetric,
+	} from '#lib/channel/types.ts';
 
 	let {
 		rider,

@@ -3,14 +3,14 @@ import {
 	DUCK_ATTACK_MS,
 	DUCK_HOLD_MS,
 	DUCK_RELEASE_MS,
-} from '$lib/sound/ducking';
+} from '#lib/sound/ducking.ts';
 import {
 	type DuckStep,
 	ducking,
 	onDuck,
 	resetDucking,
 	setDucking,
-} from '$lib/sound/duck';
+} from '#lib/sound/duck.ts';
 
 let steps: DuckStep[] = [];
 const listen = () => onDuck((step) => steps.push(step));

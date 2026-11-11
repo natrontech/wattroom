@@ -3,8 +3,8 @@
 	// or right of the bright slot" reads before any digit does. The
 	// Instrument's gauge and the bike computer's target track (#3668) are
 	// this one drawing.
-	import { fillPct, ZONE_BG, zoneOf } from '$lib/components/zones';
-	import { targetState } from '$lib/channel/types';
+	import { fillPct, ZONE_BG, zoneOf } from '#lib/components/zones.ts';
+	import { targetState } from '#lib/channel/types.ts';
 
 	let {
 		watts,

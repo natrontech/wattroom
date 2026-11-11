@@ -5,7 +5,7 @@
 		gateDb,
 		gateLevel,
 		gatePct,
-	} from '$lib/channel/gate-scale';
+	} from '#lib/channel/gate-scale.ts';
 
 	let {
 		level = 0,

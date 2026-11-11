@@ -1,6 +1,6 @@
-import { zoneOf } from '$lib/components/zones';
-import { toleranceBand } from '$lib/workout/guards';
-import { NormPowerMinSeconds } from '$lib/protocol';
+import { zoneOf } from '#lib/components/zones.ts';
+import { toleranceBand } from '#lib/workout/guards.ts';
+import { NormPowerMinSeconds } from '#lib/protocol.ts';
 
 /**
  * The ride's numbers while it happens — one module for every riding surface

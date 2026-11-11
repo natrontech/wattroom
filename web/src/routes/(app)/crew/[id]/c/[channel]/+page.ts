@@ -1,5 +1,5 @@
-import { fetchCrewChannels } from '$lib/channels';
-import { fetchCrew } from '$lib/crew';
+import { fetchCrewChannels } from '#lib/channels.ts';
+import { fetchCrew } from '#lib/crew.ts';
 import type { PageLoad } from './$types';
 
 export const load: PageLoad = async ({ fetch, params }) => {

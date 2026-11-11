@@ -1,5 +1,5 @@
-import { loadApi } from '$lib/api';
-import { fetchProgression, type Progression } from '$lib/progression';
+import { loadApi } from '#lib/api.ts';
+import { fetchProgression, type Progression } from '#lib/progression.ts';
 // The list's shapes live in $lib (#2064): a +page.ts may only export `load`
 // and its siblings, and a helper beside it fails the route at runtime with
 // "Invalid export" — a 500 on /history that neither svelte-check nor the
@@ -9,7 +9,7 @@ import {
 	type RideCursor,
 	type RidesPage,
 	type ServerRide,
-} from '$lib/ride/list';
+} from '#lib/ride/list.ts';
 import type { PageLoad } from './$types';
 
 export const load: PageLoad = async ({ fetch }) => {

@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { beforeAll, describe, expect, it } from 'vitest';
-import { toRoute } from '$lib/road/route';
+import { toRoute } from '#lib/road/route.ts';
 import {
 	DIORAMA_NIGHT,
 	DIORAMA_RAIN,

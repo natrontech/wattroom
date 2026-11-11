@@ -3,8 +3,8 @@ import {
 	ENV_RELEASE_MS,
 	envelope,
 	voiceDspOptions,
-} from '$lib/channel/gate';
-import { type VoiceDspParams, createVoiceDsp } from '$lib/channel/voice-dsp';
+} from '#lib/channel/gate.ts';
+import { type VoiceDspParams, createVoiceDsp } from '#lib/channel/voice-dsp.ts';
 
 /**
  * The mic's level, measured continuously (#514).

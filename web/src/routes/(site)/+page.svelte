@@ -4,22 +4,22 @@
 	import Link from '@lucide/svelte/icons/link';
 	import Shield from '@lucide/svelte/icons/shield';
 	import Zap from '@lucide/svelte/icons/zap';
-	import LandingHero from '$lib/brand/LandingHero.svelte';
-	import { account } from '$lib/account.svelte';
+	import LandingHero from '#lib/brand/LandingHero.svelte';
+	import { account } from '#lib/account.svelte.ts';
 	import { goto } from '$app/navigation';
-	import { shellVersion } from '$lib/desktop';
-	import CompareTable from '$lib/site/CompareTable.svelte';
-	import CtaBand from '$lib/site/CtaBand.svelte';
-	import Faq from '$lib/site/Faq.svelte';
-	import FtpSlider from '$lib/site/FtpSlider.svelte';
-	import GameModeCards from '$lib/site/GameModeCards.svelte';
-	import Screen from '$lib/site/Screen.svelte';
-	import SectionHead from '$lib/site/SectionHead.svelte';
-	import Seo from '$lib/site/Seo.svelte';
-	import SprintGame from '$lib/site/SprintGame.svelte';
-	import { live } from '$lib/site/live.svelte';
-	import { RIVALS } from '$lib/site/rivals';
-	import { LANDING, REPO, siteGraph } from '$lib/site/seo';
+	import { shellVersion } from '#lib/desktop.ts';
+	import CompareTable from '#lib/site/CompareTable.svelte';
+	import CtaBand from '#lib/site/CtaBand.svelte';
+	import Faq from '#lib/site/Faq.svelte';
+	import FtpSlider from '#lib/site/FtpSlider.svelte';
+	import GameModeCards from '#lib/site/GameModeCards.svelte';
+	import Screen from '#lib/site/Screen.svelte';
+	import SectionHead from '#lib/site/SectionHead.svelte';
+	import Seo from '#lib/site/Seo.svelte';
+	import SprintGame from '#lib/site/SprintGame.svelte';
+	import { live } from '#lib/site/live.svelte.ts';
+	import { RIVALS } from '#lib/site/rivals.ts';
+	import { LANDING, REPO, siteGraph } from '#lib/site/seo.ts';
 
 	// The public face of wattroom.ch (#111, #2995), prerendered (ADR-0061).
 	// The server sends a request carrying a session to /enter before this page
@@ -27,10 +27,9 @@
 	// same way. The desktop shell has already been installed: nobody in it
 	// needs the pitch, and it has a sign-in of its own (#1188).
 	$effect(() => {
-		if (account.me)
-			void goto(`/enter${location.search}`, { replaceState: true });
+		if (account.me) void goto(`/enter${location.search}`, { replace: true });
 		else if (account.loaded && shellVersion())
-			void goto('/login', { replaceState: true });
+			void goto('/login', { replace: true });
 	});
 
 	const steps = [

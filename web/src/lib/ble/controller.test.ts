@@ -1,15 +1,15 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { GEAR_INPUTS } from '$lib/ride/gears-enabled';
-import { bindShiftController } from '$lib/ride/keys';
-import { createRideShift } from '$lib/ride/ride-shift';
-import type { CueId } from '$lib/sound/cue-catalogue';
+import { GEAR_INPUTS } from '#lib/ride/gears-enabled.ts';
+import { bindShiftController } from '#lib/ride/keys.ts';
+import { createRideShift } from '#lib/ride/ride-shift.ts';
+import type { CueId } from '#lib/sound/cue-catalogue.ts';
 import { shifterSlot } from './controller-slot.svelte';
 import { createObcController } from './controller';
 import { FakeObcDevice } from './fake-gatt.test-helper';
 import { OBC, WATTROOM_APP_INFO, type ObcAction, type ObcEdge } from './obc';
 
-vi.mock('$lib/sound/cues', () => ({ play: () => {} }));
+vi.mock('#lib/sound/cues.ts', () => ({ play: () => {} }));
 
 let device: FakeObcDevice;
 let asked: RequestDeviceOptions[];

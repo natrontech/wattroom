@@ -6,9 +6,9 @@
 	 * your place once, on the Skyline (TARGETS G2). No north, no names, no
 	 * coordinates: the shape a crew is sent (ADR-0063).
 	 */
-	import { bestTurn, shapeOf, type MapView } from '$lib/ride/map-view';
-	import { planPoints, walk } from '$lib/road/draw';
-	import { GRADE_STROKE, gradeStep } from '$lib/road/skyline';
+	import { bestTurn, shapeOf, type MapView } from '#lib/ride/map-view.ts';
+	import { planPoints, walk } from '#lib/road/draw.ts';
+	import { GRADE_STROKE, gradeStep } from '#lib/road/skyline.ts';
 
 	let { view, tv = false }: { view: MapView; tv?: boolean } = $props();
 

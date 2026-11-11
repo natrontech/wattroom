@@ -13,25 +13,25 @@
 	// "You" is the first entry (ADR-0058, decision 5; #2447): the rider's own
 	// Home, Workouts, Rides, Music and Friends are a mode like a crew is —
 	// the #1023 amendment's "the crew is a mode, not a level", finished.
-	import { account } from '$lib/account.svelte';
-	import CrewMark from '$lib/components/CrewMark.svelte';
-	import RidingBars from '$lib/components/RidingBars.svelte';
-	import { contextMenu, type MenuEntry } from '$lib/context-menu.svelte';
+	import { account } from '#lib/account.svelte.ts';
+	import CrewMark from '#lib/components/CrewMark.svelte';
+	import RidingBars from '#lib/components/RidingBars.svelte';
+	import { contextMenu, type MenuEntry } from '#lib/context-menu.svelte.ts';
 	import {
 		leaveCrewFlow,
 		MAIN_CREW_LABEL,
 		makeMainCrewFlow,
 		shareInviteLink,
-	} from '$lib/crew-flows';
-	import { UNREAD_COUNT, unreadCount } from '$lib/messages/unread-marks';
-	import type { CrewRef } from '$lib/crew-types';
-	import { shareVerb } from '$lib/share';
+	} from '#lib/crew-flows.ts';
+	import { UNREAD_COUNT, unreadCount } from '#lib/messages/unread-marks.ts';
+	import type { CrewRef } from '#lib/crew-types.ts';
+	import { shareVerb } from '#lib/share.ts';
 	import { quiet } from './crews';
 	import { crewLive, livePulse } from './crew-live.svelte';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import StatusMark from '$lib/status-line/StatusMark.svelte';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import StatusMark from '#lib/status-line/StatusMark.svelte';
 	import { goto } from '$app/navigation';
-	import { presence } from '$lib/presence.svelte';
+	import { presence } from '#lib/presence.svelte.ts';
 	import Check from '@lucide/svelte/icons/check';
 	import CloudOff from '@lucide/svelte/icons/cloud-off';
 	import ChevronsUpDown from '@lucide/svelte/icons/chevrons-up-down';

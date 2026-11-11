@@ -3,9 +3,9 @@
 	import ListOrdered from '@lucide/svelte/icons/list-ordered';
 	import Dumbbell from '@lucide/svelte/icons/dumbbell';
 	import type { Component } from 'svelte';
-	import { spectatorRideLine } from '$lib/device.svelte';
-	import { formatKm } from '$lib/format';
-	import { classedOf, type Climb } from '$lib/road/climbs';
+	import { spectatorRideLine } from '#lib/device.svelte.ts';
+	import { formatKm } from '#lib/format.ts';
+	import { classedOf, type Climb } from '#lib/road/climbs.ts';
 
 	/**
 	 * How to ride a route, beside its road (#3680): one row per way to ride,

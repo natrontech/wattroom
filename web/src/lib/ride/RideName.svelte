@@ -4,7 +4,7 @@
 	 * Empty is a name too — the one of what was ridden — so clearing the box
 	 * and pressing Rename gives the ride its workout's name back.
 	 */
-	import { MaxWorkoutNameChars } from '$lib/protocol';
+	import { MaxWorkoutNameChars } from '#lib/protocol.ts';
 	import { riddenName, type RideRoad } from './list';
 	import { renameRide } from './title';
 

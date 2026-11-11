@@ -1,10 +1,10 @@
 <script lang="ts">
-	import type { PlaceAddress } from '$lib/channel/address';
+	import type { PlaceAddress } from '#lib/channel/address.ts';
 	import ListPlus from '@lucide/svelte/icons/list-plus';
-	import Select from '$lib/components/Select.svelte';
-	import { queueTracks, type Track } from '$lib/music/pool';
-	import type { PlaylistStore } from '$lib/channel/playlists.svelte';
-	import { toasts } from '$lib/toast.svelte';
+	import Select from '#lib/components/Select.svelte';
+	import { queueTracks, type Track } from '#lib/music/pool.ts';
+	import type { PlaylistStore } from '#lib/channel/playlists.svelte.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
 
 	// What the picked rows can do together (#1433). A checkbox per row, this
 	// bar while anything is ticked: queueing goes through one request (see

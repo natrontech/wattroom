@@ -1,5 +1,5 @@
-import { formatDuration, formatShortDate } from '$lib/format';
-import type { SessionRecap, SessionRecapRider } from '$lib/protocol';
+import { formatDuration, formatShortDate } from '#lib/format.ts';
+import type { SessionRecap, SessionRecapRider } from '#lib/protocol.ts';
 
 /**
  * One rider's bar on a session recap card (ADR-0034), as a percentage of the

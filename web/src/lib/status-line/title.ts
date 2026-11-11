@@ -1,4 +1,4 @@
-import type { StatusLine } from '$lib/protocol';
+import type { StatusLine } from '#lib/protocol.ts';
 
 /**
  * A name as a notification's title says it (#2744): with the rider's status

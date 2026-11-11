@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Road } from '$lib/road/road';
+import type { Road } from '#lib/road/road.ts';
 import { climbedM } from './climbed';
 
 // Ten metres a sample: up 10, down 4, up 6, flat, down 10.

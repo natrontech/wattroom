@@ -4,10 +4,16 @@
  * cushions around the rug, nearest the table first. Shirts are the jersey the world would seed for
  * the rider, so a crewmate wears the same colour on the sofa as on the road.
  */
-import type { LiveRider } from '$lib/channel/types';
-import { CUSHIONS, HAIRS, LOUNGE, SKINS, shadeOf } from '$lib/lounge/palette';
-import { dyed, lookOf } from '$lib/lounge/look';
-import { hash3 } from '$lib/lounge/hash';
+import type { LiveRider } from '#lib/channel/types.ts';
+import {
+	CUSHIONS,
+	HAIRS,
+	LOUNGE,
+	SKINS,
+	shadeOf,
+} from '#lib/lounge/palette.ts';
+import { dyed, lookOf } from '#lib/lounge/look.ts';
+import { hash3 } from '#lib/lounge/hash.ts';
 import {
 	BIKES_ALWAYS,
 	BIKE_DY,
@@ -27,8 +33,8 @@ import {
 	type Figure,
 	type Rider,
 	type Spot,
-} from '$lib/lounge/scene';
-import { fnv, hexOf, seededLoadout } from '$lib/world/loadout';
+} from '#lib/lounge/scene.ts';
+import { fnv, hexOf, seededLoadout } from '#lib/world/loadout.ts';
 
 /**
  * A rider as the lounge draws them: the look they put together (look.ts), or

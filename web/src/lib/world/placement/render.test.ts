@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { at, curvature, leftOf } from '$lib/road/along';
-import { toRoute } from '$lib/road/route';
+import { at, curvature, leftOf } from '#lib/road/along.ts';
+import { toRoute } from '#lib/road/route.ts';
 import { STYLES } from '../test-styles';
 import { CAMERA } from '../camera';
 import { exponentialFog, propVisibility, terrainVisibility } from '../fog';

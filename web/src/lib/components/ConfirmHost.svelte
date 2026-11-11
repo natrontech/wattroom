@@ -2,7 +2,7 @@
 	// The one confirm dialog (#1127). Danger token on the action, always:
 	// confirming is reserved for what cannot be undone (errors.md). btn-lg
 	// because two of the questions are asked mid-ride.
-	import { confirmation } from '$lib/confirm.svelte';
+	import { confirmation } from '#lib/confirm.svelte.ts';
 	import Modal from './Modal.svelte';
 </script>
 

@@ -6,7 +6,7 @@
 	 * Each saves through the share sheet on a phone and as a download on a
 	 * desk (share.ts). Absent on a ride with none.
 	 */
-	import { apiBlob } from '$lib/api';
+	import { apiBlob } from '#lib/api.ts';
 	import {
 		deletePhoto,
 		listPhotos,
@@ -14,11 +14,11 @@
 		photoUrl,
 		type PhotoView,
 		type RidePhoto,
-	} from '$lib/ride/photos';
-	import { shareFile } from '$lib/share';
-	import { play } from '$lib/sound/cues';
-	import { toasts } from '$lib/toast.svelte';
-	import { CAMERA_NAMES } from '$lib/world/cameras';
+	} from '#lib/ride/photos.ts';
+	import { shareFile } from '#lib/share.ts';
+	import { play } from '#lib/sound/cues.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
+	import { CAMERA_NAMES } from '#lib/world/cameras.ts';
 	import ImageDown from '@lucide/svelte/icons/image-down';
 	import Lock from '@lucide/svelte/icons/lock';
 	import Trash2 from '@lucide/svelte/icons/trash-2';

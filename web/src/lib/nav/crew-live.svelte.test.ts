@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { LiveChannel, LiveCrew } from '$lib/crews-live';
+import type { LiveChannel, LiveCrew } from '#lib/crews-live.ts';
 
 // The crew read (#2444), answered by hand. Counting reads keeps the waits
 // honest: an assertion of silence is only worth something after the read.
@@ -11,7 +11,7 @@ let failing = false;
 // test can land them out of order (#2565).
 let hold = false;
 const held: (() => void)[] = [];
-vi.mock('$lib/crews-live', () => ({
+vi.mock('#lib/crews-live.ts', () => ({
 	fetchCrewsLive: async () => {
 		reads += 1;
 		const answer = failing
@@ -21,9 +21,9 @@ vi.mock('$lib/crews-live', () => ({
 		return new Promise((resolve) => held.push(() => resolve(answer)));
 	},
 }));
-vi.mock('$lib/account.svelte', () => ({ account: { me: { id: 'me' } } }));
+vi.mock('#lib/account.svelte', () => ({ account: { me: { id: 'me' } } }));
 let connected: string | undefined;
-vi.mock('$lib/channel/connection.svelte', () => ({
+vi.mock('#lib/channel/connection.svelte.ts', () => ({
 	channelConnection: {
 		get current() {
 			return connected ? { address: { channel: connected } } : null;
@@ -40,14 +40,16 @@ vi.mock('$lib/channel/connection.svelte', () => ({
 const sounds: string[] = [];
 const notified: { tag: string; href?: string }[] = [];
 const toasted: { text: string; href?: string }[] = [];
-vi.mock('$lib/sound/cues', () => ({ play: (id: string) => sounds.push(id) }));
-vi.mock('$lib/toast.svelte', () => ({
+vi.mock('#lib/sound/cues.ts', () => ({
+	play: (id: string) => sounds.push(id),
+}));
+vi.mock('#lib/toast.svelte.ts', () => ({
 	toasts: {
 		push: (text: string, opts?: { href?: string }) =>
 			toasted.push({ text, href: opts?.href }),
 	},
 }));
-vi.mock('$lib/notify.svelte', () => ({
+vi.mock('#lib/notify.svelte.ts', () => ({
 	// The real rule (ADR-0042): hidden, or not the front window.
 	away: () => document.hidden || !document.hasFocus(),
 	notify: {

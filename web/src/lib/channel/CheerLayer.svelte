@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { play } from '$lib/sound/cues';
-	import { cheerCues, roadsideSound } from '$lib/roadside';
-	import type { Cheer } from '$lib/protocol';
-	import CheerIcon from '$lib/components/CheerIcon.svelte';
+	import { play } from '#lib/sound/cues.ts';
+	import { cheerCues, roadsideSound } from '#lib/roadside.ts';
+	import type { Cheer } from '#lib/protocol.ts';
+	import CheerIcon from '#lib/components/CheerIcon.svelte';
 
 	// The reaction layer (#74): cheers arrive on the tick, float up, announce
 	// with sound — riders don't watch the screen (AGENTS.md).

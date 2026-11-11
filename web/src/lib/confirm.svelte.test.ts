@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { confirm, confirmation } from '$lib/confirm.svelte';
+import { confirm, confirmation } from '#lib/confirm.svelte.ts';
 
 describe('confirm', () => {
 	it('resolves to the button pressed and clears the question', async () => {

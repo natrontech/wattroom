@@ -6,15 +6,15 @@
 	// Join the start line. Drawn like the plan card above it: the riding
 	// screen's layout is open for the redesign (WATTROOM.md), so this is a
 	// panel in the voice channel and nothing on the ride.
-	import { account } from '$lib/account.svelte';
-	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { useChannel } from '$lib/channel/context';
-	import { device, spectatorRideLine } from '$lib/device.svelte';
-	import { formatDuration } from '$lib/format';
-	import TrainerOverview from '$lib/session/TrainerOverview.svelte';
-	import { needsTrainer } from '$lib/session/sensor-status';
-	import { roadCard, startLineView } from '$lib/session/start-line';
-	import { roadOf } from '$lib/workout/road-workout';
+	import { account } from '#lib/account.svelte.ts';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import { useChannel } from '#lib/channel/context.ts';
+	import { device, spectatorRideLine } from '#lib/device.svelte.ts';
+	import { formatDuration } from '#lib/format.ts';
+	import TrainerOverview from '#lib/session/TrainerOverview.svelte';
+	import { needsTrainer } from '#lib/session/sensor-status.ts';
+	import { roadCard, startLineView } from '#lib/session/start-line.ts';
+	import { roadOf } from '#lib/workout/road-workout.ts';
 	import Bike from '@lucide/svelte/icons/bike';
 	import Flag from '@lucide/svelte/icons/flag';
 	import HeartPulse from '@lucide/svelte/icons/heart-pulse';

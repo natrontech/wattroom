@@ -3,10 +3,10 @@ import {
 	type SimParams,
 	type Trainer,
 	type TrainerSample,
-} from '$lib/ble/trainer';
-import { composeSim, createActuator } from '$lib/ride/actuation.svelte';
-import { ratioState, trackRatio } from '$lib/ride/drivetrain';
-import { createShiftDriver, type ShiftDir } from '$lib/ride/shifter';
+} from '#lib/ble/trainer.ts';
+import { composeSim, createActuator } from '#lib/ride/actuation.svelte.ts';
+import { ratioState, trackRatio } from '#lib/ride/drivetrain.ts';
+import { createShiftDriver, type ShiftDir } from '#lib/ride/shifter.ts';
 
 /**
  * The Gears probe (#3331, ADR-0084): what the virtual-gears prototype assumes

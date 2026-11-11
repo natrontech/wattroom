@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { dragPane, keepSize } from '$lib/pane';
+import { dragPane, keepSize } from '#lib/pane.ts';
 
 // Ported from the duplicate stage PR (#294), adapted to this pane module:
 // sizes are read from the inline style the browser's resize handle writes,

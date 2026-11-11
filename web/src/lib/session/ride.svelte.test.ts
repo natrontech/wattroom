@@ -1,24 +1,26 @@
-import { channelAddress } from '$lib/channel/address';
+import { channelAddress } from '#lib/channel/address.ts';
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { flushSync } from 'svelte';
-import type { RiderMetrics } from '$lib/protocol';
+import type { RiderMetrics } from '#lib/protocol.ts';
 import type {
 	SimParams,
 	Trainer,
 	TrainerSample,
 	TrainerStatus,
-} from '$lib/ble/trainer';
-import { SPRINT_LEAD_SECONDS } from '$lib/workout/sprint-window.svelte';
-import { SIGNAL_LOST_MS } from '$lib/workout/ride-state';
-import { effortOf, inRecoveryValley } from '$lib/roadside';
-import { createFreeRide } from '$lib/ride/free-ride.svelte';
+} from '#lib/ble/trainer.ts';
+import { SPRINT_LEAD_SECONDS } from '#lib/workout/sprint-window.svelte.ts';
+import { SIGNAL_LOST_MS } from '#lib/workout/ride-state.ts';
+import { effortOf, inRecoveryValley } from '#lib/roadside.ts';
+import { createFreeRide } from '#lib/ride/free-ride.svelte.ts';
 
 // The socket's own dependencies, silenced: IndexedDB, and the module the
 // tick's clock window lives in stays real (it only does arithmetic).
 const played = vi.hoisted(() => [] as string[]);
-vi.mock('$lib/sound/cues', () => ({ play: (id: string) => played.push(id) }));
-vi.mock('$lib/ride/buffer', () => ({
+vi.mock('#lib/sound/cues.ts', () => ({
+	play: (id: string) => played.push(id),
+}));
+vi.mock('#lib/ride/buffer.ts', () => ({
 	openRideBuffer: async () => ({
 		crashSafe: true,
 		append() {},
@@ -52,7 +54,7 @@ class FakeSocket {
 }
 globalThis.WebSocket = FakeSocket as unknown as typeof WebSocket;
 
-const { createChannelLive } = await import('$lib/channel/live.svelte');
+const { createChannelLive } = await import('#lib/channel/live.svelte.ts');
 const { createRide } = await import('./ride.svelte');
 
 /** A trainer that is only ever asked to hand over samples. */

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { CueId } from '$lib/sound/cue-catalogue';
+import type { CueId } from '#lib/sound/cue-catalogue.ts';
 import { createRideShift } from './ride-shift';
 import { SHIFTER } from './shifter';
 

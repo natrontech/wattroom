@@ -1,12 +1,12 @@
-import { arbitrate } from '$lib/ble/arbitrate';
-import { DEFAULT_PROFILE } from '$lib/profile.svelte';
-import type { TrainerSample } from '$lib/ble/trainer';
-import { createActuator } from '$lib/ride/actuation.svelte';
+import { arbitrate } from '#lib/ble/arbitrate.ts';
+import { DEFAULT_PROFILE } from '#lib/profile.svelte.ts';
+import type { TrainerSample } from '#lib/ble/trainer.ts';
+import { createActuator } from '#lib/ride/actuation.svelte.ts';
 import { createRiderGuards } from './rider-guards.svelte';
 import { wireSoloGuards } from './solo-guards';
 import { createHrHold } from './hr-hold.svelte';
 import { countsToward, createRideRecord } from './ride-record.svelte';
-import { createLiveStats } from '$lib/ride/live-stats.svelte';
+import { createLiveStats } from '#lib/ride/live-stats.svelte.ts';
 import { createRideClock } from './ride-clock.svelte';
 import { createRideLife } from './ride-life.svelte';
 import { createRoadDot } from './road-dot.svelte';

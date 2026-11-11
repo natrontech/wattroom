@@ -1,4 +1,4 @@
-import type { JukeboxState, ServerTick } from '$lib/protocol';
+import type { JukeboxState, ServerTick } from '#lib/protocol.ts';
 
 /** The last deck this socket heard, and which revision it was. */
 export interface DeckHeard {

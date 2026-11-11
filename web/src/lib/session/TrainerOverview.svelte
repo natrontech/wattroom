@@ -11,20 +11,20 @@
 	// grid (#611). Both trainers are held above the router now (#521, #1716),
 	// but they are still two: a voice channel's belongs to standing in the
 	// channel, the solo one to a rider who has paired and not yet started.
-	import { canSimulate } from '$lib/ble/can-simulate';
-	import { trainerForChannel } from '$lib/ride/solo-trainer.svelte';
-	import { SimulatedTrainer } from '$lib/ble/simulated';
-	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { theRide } from '$lib/ride/the-ride.svelte';
-	import { useChannel } from '$lib/channel/context';
-	import SensorOverview from '$lib/session/SensorOverview.svelte';
-	import { deviceWord } from '$lib/device.svelte';
+	import { canSimulate } from '#lib/ble/can-simulate.ts';
+	import { trainerForChannel } from '#lib/ride/solo-trainer.svelte.ts';
+	import { SimulatedTrainer } from '#lib/ble/simulated.ts';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import { theRide } from '#lib/ride/the-ride.svelte.ts';
+	import { useChannel } from '#lib/channel/context.ts';
+	import SensorOverview from '#lib/session/SensorOverview.svelte';
+	import { deviceWord } from '#lib/device.svelte.ts';
 	import {
 		pairedElsewhereAll,
 		trainerState,
 		trainerTargetsNote,
-	} from '$lib/session/sensor-status';
-	import { trainerHint } from '$lib/session/sensor-status';
+	} from '#lib/session/sensor-status.ts';
+	import { trainerHint } from '#lib/session/sensor-status.ts';
 
 	// The trainer alone as one row, for a running session's header (#1000) —
 	// what `TrainerButton` used to draw with its own vocabulary.

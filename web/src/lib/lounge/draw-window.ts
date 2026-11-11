@@ -4,12 +4,15 @@
  * Everything that moves here is a function of the clock, so the scene keeps
  * no particles of its own.
  */
-import { LOUNGE as C, SKIES, SUNS, type Sky } from '$lib/lounge/palette';
-import { disc, dot, line, rect, type Ctx } from '$lib/lounge/pixel';
-import type { SceneInput } from '$lib/lounge/scene';
-import type { Flyby } from '$lib/lounge/moments';
-import { hash3 } from '$lib/lounge/hash';
-import { drawSillVisitor, drawWindowVisitor } from '$lib/lounge/draw-visitors';
+import { LOUNGE as C, SKIES, SUNS, type Sky } from '#lib/lounge/palette.ts';
+import { disc, dot, line, rect, type Ctx } from '#lib/lounge/pixel.ts';
+import type { SceneInput } from '#lib/lounge/scene.ts';
+import type { Flyby } from '#lib/lounge/moments.ts';
+import { hash3 } from '#lib/lounge/hash.ts';
+import {
+	drawSillVisitor,
+	drawWindowVisitor,
+} from '#lib/lounge/draw-visitors.ts';
 
 /** The glass, in the stage's coordinates; its frame and sill are drawn with the room. */
 export const WINDOW = { X: 118, Y: 10, W: 84, H: 44 } as const;

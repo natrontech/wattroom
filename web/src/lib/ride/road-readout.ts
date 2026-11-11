@@ -1,7 +1,7 @@
-import { formatKm } from '$lib/format';
-import { climbsOf, type Climb } from '$lib/road/climbs';
-import { roadReadout, type RoadReadout } from '$lib/road/readout';
-import { turnedRound, type Road } from '$lib/road/road';
+import { formatKm } from '#lib/format.ts';
+import { climbsOf, type Climb } from '#lib/road/climbs.ts';
+import { roadReadout, type RoadReadout } from '#lib/road/readout.ts';
+import { turnedRound, type Road } from '#lib/road/road.ts';
 
 /**
  * One ride's road readout (#3639): the road as this lap rides it — turned

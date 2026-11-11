@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { CueId } from '$lib/sound/cue-catalogue';
+import type { CueId } from '#lib/sound/cue-catalogue.ts';
 import {
 	GEAR_INPUTS,
 	gearsEnabled,
@@ -12,7 +12,7 @@ import { createRideShift } from './ride-shift';
 // simulated trainer. A gate that came back through canSimulate fails here.
 // Only the network shifter waits at that gate (#3336) until #3349.
 const dev = vi.hoisted(() => ({ on: false }));
-vi.mock('$lib/ble/can-simulate', () => ({ canSimulate: () => dev.on }));
+vi.mock('#lib/ble/can-simulate.ts', () => ({ canSimulate: () => dev.on }));
 
 const INPUTS = Object.keys(GEAR_INPUTS) as GearInput[];
 const LANDED = INPUTS.filter((input) => input !== 'obc-net');

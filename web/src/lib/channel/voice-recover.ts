@@ -1,4 +1,4 @@
-import type { AvStatus } from '$lib/channel/av-types';
+import type { AvStatus } from '#lib/channel/av-types.ts';
 
 /** Waits between rejoin attempts after a drop; the last one repeats. */
 export const RECOVER_DELAYS_MS = [2_000, 4_000, 8_000, 15_000, 30_000];

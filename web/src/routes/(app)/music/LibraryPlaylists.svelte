@@ -1,9 +1,9 @@
 <script lang="ts">
-	import type { PlaceAddress } from '$lib/channel/address';
+	import type { PlaceAddress } from '#lib/channel/address.ts';
 	import Plus from '@lucide/svelte/icons/plus';
-	import Skeleton from '$lib/components/Skeleton.svelte';
-	import JukeboxPlaylistRow from '$lib/channel/JukeboxPlaylistRow.svelte';
-	import type { createPlaylistStore } from '$lib/channel/playlists.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import JukeboxPlaylistRow from '#lib/channel/JukeboxPlaylistRow.svelte';
+	import type { createPlaylistStore } from '#lib/channel/playlists.svelte.ts';
 
 	// The rider's personal playlists, on the library's own page (#1460). Until
 	// then they were only reachable inside the jukebox panel under "Mine", so

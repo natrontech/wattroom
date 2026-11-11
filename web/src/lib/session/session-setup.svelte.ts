@@ -1,7 +1,7 @@
-import type { PickerIntent } from '$lib/channel/context';
-import { api } from '$lib/api';
-import { buildShelf } from '$lib/workout/shelf';
-import { customWorkouts } from '$lib/workout/custom.svelte';
+import type { PickerIntent } from '#lib/channel/context.ts';
+import { api } from '#lib/api.ts';
+import { buildShelf } from '#lib/workout/shelf.ts';
+import { customWorkouts } from '#lib/workout/custom.svelte.ts';
 
 /**
  * Picking something to ride (#115).

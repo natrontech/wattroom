@@ -4,11 +4,11 @@
  * the floor. Each sprite is rows of letters, a letter a colour and a dot
  * nothing, so the album can draw them too.
  */
-import { LOUNGE as C } from '$lib/lounge/palette';
-import { rect, type Ctx } from '$lib/lounge/pixel';
-import type { SceneInput } from '$lib/lounge/scene';
-import type { Visitor } from '$lib/lounge/moments';
-import { WINDOW } from '$lib/lounge/draw-window';
+import { LOUNGE as C } from '#lib/lounge/palette.ts';
+import { rect, type Ctx } from '#lib/lounge/pixel.ts';
+import type { SceneInput } from '#lib/lounge/scene.ts';
+import type { Visitor } from '#lib/lounge/moments.ts';
+import { WINDOW } from '#lib/lounge/draw-window.ts';
 
 export const VISITOR_SPRITES: Record<Visitor, readonly string[]> = {
 	fox: [

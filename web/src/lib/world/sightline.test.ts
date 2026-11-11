@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { at, leftOf } from '$lib/road/along';
-import { toRoute } from '$lib/road/route';
+import { at, leftOf } from '#lib/road/along.ts';
+import { toRoute } from '#lib/road/route.ts';
 import { CAMERA } from './camera';
 import { CAMERA_PRESETS } from './cameras';
 import { ROAD_LIFT, yOf } from './geometry';

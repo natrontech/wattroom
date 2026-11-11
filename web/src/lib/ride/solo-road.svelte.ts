@@ -1,13 +1,13 @@
-import { arbitrate } from '$lib/ble/arbitrate';
-import type { SensorKind, SensorReading } from '$lib/ble/sensor';
-import type { Trainer, TrainerSample } from '$lib/ble/trainer';
-import { publishHud } from '$lib/hud/feed';
-import { createActuator } from '$lib/ride/actuation.svelte';
-import { freeRideLabel, type FreeRide } from '$lib/ride/free-ride.svelte';
-import { createRideShift } from '$lib/ride/ride-shift';
-import type { RideableRoute } from '$lib/ride/roads';
-import { acquireWakeLock, type WakeLock } from '$lib/workout/wakelock';
-import { createRiderGuards } from '$lib/workout/rider-guards.svelte';
+import { arbitrate } from '#lib/ble/arbitrate.ts';
+import type { SensorKind, SensorReading } from '#lib/ble/sensor.ts';
+import type { Trainer, TrainerSample } from '#lib/ble/trainer.ts';
+import { publishHud } from '#lib/hud/feed.ts';
+import { createActuator } from '#lib/ride/actuation.svelte.ts';
+import { freeRideLabel, type FreeRide } from '#lib/ride/free-ride.svelte.ts';
+import { createRideShift } from '#lib/ride/ride-shift.ts';
+import type { RideableRoute } from '#lib/ride/roads.ts';
+import { acquireWakeLock, type WakeLock } from '#lib/workout/wakelock.ts';
+import { createRiderGuards } from '#lib/workout/rider-guards.svelte.ts';
 
 /**
  * A free ride on a road, alone at /ride?road= (#3027) — the channel's free

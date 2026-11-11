@@ -1,5 +1,5 @@
-import type { ApiResult } from '$lib/api';
-import { api } from '$lib/api';
+import type { ApiResult } from '#lib/api.ts';
+import { api } from '#lib/api.ts';
 
 /**
  * The ride's flight recorder (#52, ADR-0006): a bounded in-memory ring of the

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { contextMenu, type MenuEntry } from '$lib/context-menu.svelte';
+	import { contextMenu, type MenuEntry } from '#lib/context-menu.svelte.ts';
 	import ArrowDown from '@lucide/svelte/icons/arrow-down';
 	import Music from '@lucide/svelte/icons/music';
 	import Disc3 from '@lucide/svelte/icons/disc-3';
@@ -11,10 +11,10 @@
 	import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
 	import X from '@lucide/svelte/icons/x';
 	import ListMusic from '@lucide/svelte/icons/list-music';
-	import type { JukeboxEntry } from '$lib/protocol';
-	import type { SaveTarget } from '$lib/channel/playlists.svelte';
-	import { fitsCadence } from '$lib/channel/cadence-fit';
-	import { thumbnailFor } from '$lib/channel/jukebox-add';
+	import type { JukeboxEntry } from '#lib/protocol.ts';
+	import type { SaveTarget } from '#lib/channel/playlists.svelte.ts';
+	import { fitsCadence } from '#lib/channel/cadence-fit.ts';
+	import { thumbnailFor } from '#lib/channel/jukebox-add.ts';
 
 	// One track in the playlist (#286) — the same row for what's next and for
 	// what just played, because they differ only in which verbs apply.

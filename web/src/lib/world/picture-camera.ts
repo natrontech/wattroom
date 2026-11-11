@@ -6,8 +6,8 @@
 // metre of its sightline to you. Beside the ride's rig, never one of its
 // cameras: it holds one frame and follows nothing.
 import * as THREE from 'three';
-import { at, lastMetre, leftOf } from '$lib/road/along';
-import type { Route } from '$lib/road/route';
+import { at, lastMetre, leftOf } from '#lib/road/along.ts';
+import type { Route } from '#lib/road/route.ts';
 import { yOf } from './geometry';
 import { DIORAMA } from './pixel';
 import { PICTURE } from './picture.svelte';

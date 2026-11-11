@@ -1,4 +1,4 @@
-import { ShelterNoneGapM } from '$lib/protocol';
+import { ShelterNoneGapM } from '#lib/protocol.ts';
 import type { RaceReadout } from './race-view';
 
 /**

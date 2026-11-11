@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { formatClock } from '$lib/format';
+	import { formatClock } from '#lib/format.ts';
 	import ZoneLegend from './ZoneLegend.svelte';
 	import { ZONE_BG, ZONE_NAMES } from './zones';
 

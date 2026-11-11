@@ -4,15 +4,15 @@
 	// in the voice channel the session runs in.
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { sessionPath } from '$lib/channel/address';
-	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { useChannel } from '$lib/channel/context';
-	import { liveSessionId } from '$lib/channel/tick-session';
-	import Training from '$lib/session/Training.svelte';
-	import CrewStrip from '$lib/session/CrewStrip.svelte';
-	import SessionControls from '$lib/session/SessionControls.svelte';
-	import FreeRide from '$lib/ride/FreeRide.svelte';
-	import { device } from '$lib/device.svelte';
+	import { sessionPath } from '#lib/channel/address.ts';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import { useChannel } from '#lib/channel/context.ts';
+	import { liveSessionId } from '#lib/channel/tick-session.ts';
+	import Training from '#lib/session/Training.svelte';
+	import CrewStrip from '#lib/session/CrewStrip.svelte';
+	import SessionControls from '#lib/session/SessionControls.svelte';
+	import FreeRide from '#lib/ride/FreeRide.svelte';
+	import { device } from '#lib/device.svelte.ts';
 
 	const channel = useChannel();
 
@@ -49,7 +49,7 @@
 		const to = live
 			? sessionPath(channel.address.crew, live)
 			: channel.address.home;
-		void goto(to, { replaceState: true, keepFocus: true, noScroll: true });
+		void goto(to, { replace: true, reset: false });
 	});
 </script>
 

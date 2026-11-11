@@ -6,16 +6,16 @@
  * and every frame of the stroke agree. The room's trainers and the road draw
  * the same one. Facing left as drawn; the world mirrors it for the other way.
  */
-import { LOUNGE as C, shadeOf } from '$lib/lounge/palette';
-import { outlined, rect, type Ctx, type Part } from '$lib/lounge/pixel';
+import { LOUNGE as C, shadeOf } from '#lib/lounge/palette.ts';
+import { outlined, rect, type Ctx, type Part } from '#lib/lounge/pixel.ts';
 import {
 	PET_ROWS,
 	beard,
 	hair,
 	specs,
 	stripeOn,
-} from '$lib/lounge/draw-people';
-import type { Figure } from '$lib/lounge/scene';
+} from '#lib/lounge/draw-people.ts';
+import type { Figure } from '#lib/lounge/scene.ts';
 
 /** How the camera sees the rider, from behind round to the front. */
 export const VIEWS = ['back', 'quarter', 'side', 'nose', 'front'] as const;

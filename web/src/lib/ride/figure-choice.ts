@@ -1,9 +1,9 @@
-import type { FigureBuild } from '$lib/account.svelte';
+import type { FigureBuild } from '#lib/account.svelte.ts';
 import {
 	MaxFigureHeightCm,
 	MinFigureHeightCm,
 	SkinSwatches,
-} from '$lib/protocol';
+} from '#lib/protocol.ts';
 
 export const BUILDS: FigureBuild[] = ['slim', 'athletic', 'strong'];
 /** docs/spec/garage.md: the neutral figure is athletic, a middle height. */

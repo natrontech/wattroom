@@ -1,11 +1,11 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { copyText } from '$lib/copy';
+import { copyText } from '#lib/copy.ts';
 
 const shown = vi.hoisted(() => ({
 	said: [] as { text: string; tone?: string }[],
 }));
-vi.mock('$lib/toast.svelte', () => ({
+vi.mock('#lib/toast.svelte.ts', () => ({
 	toasts: {
 		push: (text: string, opts?: { tone?: string }) =>
 			shown.said.push({ text, tone: opts?.tone }),

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { MenuItem } from '$lib/context-menu.svelte';
-import { personMenu } from '$lib/person-menu';
-import { mixer } from '$lib/sound/mixer.svelte';
+import type { MenuItem } from '#lib/context-menu.svelte.ts';
+import { personMenu } from '#lib/person-menu.ts';
+import { mixer } from '#lib/sound/mixer.svelte.ts';
 
 // The surface says who is in voice (#874); the fader writes through the voice
 // channel's av when there is one.
@@ -24,12 +24,12 @@ const connection = vi.hoisted(() => ({
 		return this.current;
 	},
 }));
-vi.mock('$lib/channel/connection.svelte', () => ({
+vi.mock('#lib/channel/connection.svelte.ts', () => ({
 	channelConnection: connection,
 }));
 
 const poked = vi.hoisted(() => [] as string[][]);
-vi.mock('$lib/poke', () => ({
+vi.mock('#lib/poke.ts', () => ({
 	pokeFriend: (id: string, name: string) => poked.push([id, name]),
 	threadOf: (id: string) => `/messages/dm/${id}`,
 }));
@@ -38,7 +38,7 @@ const hidden = vi.hoisted(() => ({
 	ids: new Set<string>(),
 	calls: [] as string[][],
 }));
-vi.mock('$lib/hidden-riders.svelte', () => ({
+vi.mock('#lib/hidden-riders.svelte.ts', () => ({
 	hiddenRiders: {
 		has: (id: string) => hidden.ids.has(id),
 		hide: (id: string, name: string) => hidden.calls.push(['hide', id, name]),
@@ -47,7 +47,7 @@ vi.mock('$lib/hidden-riders.svelte', () => ({
 }));
 
 const opened = vi.hoisted(() => ({ id: null as string | null }));
-vi.mock('$lib/channel/connection-info.svelte', () => ({
+vi.mock('#lib/channel/connection-info.svelte.ts', () => ({
 	connectionInfo: {
 		open: (id: string) => {
 			opened.id = id;

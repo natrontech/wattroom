@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { iconFor } from '$lib/icons';
+	import { iconFor } from '#lib/icons.ts';
 
 	// A crew's identity mark (#223), drawn from its stored key (#447).
 	// Nothing for a crew without one — the name stands alone.

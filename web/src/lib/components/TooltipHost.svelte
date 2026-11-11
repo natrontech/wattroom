@@ -6,8 +6,8 @@
 	// app's own type; a 90 ms fade, and none for a rider who asked for stillness.
 	import { fade } from 'svelte/transition';
 	import { prefersReducedMotion } from 'svelte/motion';
-	import { DUR } from '$lib/motion/tokens';
-	import { hideTip, placeTip, tip } from '$lib/tooltip.svelte';
+	import { DUR } from '#lib/motion/tokens.ts';
+	import { hideTip, placeTip, tip } from '#lib/tooltip.svelte.ts';
 
 	let box = $state<HTMLDivElement | null>(null);
 	let pos = $state<{ left: number; top: number } | null>(null);

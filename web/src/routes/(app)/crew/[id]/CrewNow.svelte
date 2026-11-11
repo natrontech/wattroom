@@ -1,52 +1,52 @@
 <script lang="ts">
-	import StatusMark from '$lib/status-line/StatusMark.svelte';
+	import StatusMark from '#lib/status-line/StatusMark.svelte';
 	// The crew's Home (ADR-0058, #2451): what is live, what is next and who
 	// is around — in that order, because a rider opening the crew wants to
 	// know whether to get on the bike. Presence only (ADR-0010's radar): who
 	// is in which voice channel, never a number of theirs. Re-read on every
 	// lobby ping, which is how a session starting elsewhere reaches it.
-	import Banner from '$lib/components/Banner.svelte';
-	import EmptyState from '$lib/components/EmptyState.svelte';
-	import NotifyOffer from '$lib/components/NotifyOffer.svelte';
-	import { voiceChannelPath } from '$lib/channels';
-	import { sessionPath } from '$lib/channel/address';
-	import { fetchCrewRecaps, type Crew } from '$lib/crew';
+	import Banner from '#lib/components/Banner.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import NotifyOffer from '#lib/components/NotifyOffer.svelte';
+	import { voiceChannelPath } from '#lib/channels.ts';
+	import { sessionPath } from '#lib/channel/address.ts';
+	import { fetchCrewRecaps, type Crew } from '#lib/crew.ts';
 	import {
 		answerCrewPlan,
 		planCrewSession,
 		fetchCrewSchedule,
 		type CrewPlan,
 		planPath,
-	} from '$lib/crew-schedule';
-	import { fetchCrewsLive, type LiveChannel } from '$lib/crews-live';
-	import { formatClock, formatWhen } from '$lib/format';
-	import { presence } from '$lib/presence.svelte';
-	import type { SessionRecap } from '$lib/protocol';
-	import SessionRecapCard from '$lib/session/SessionRecapCard.svelte';
+	} from '#lib/crew-schedule.ts';
+	import { fetchCrewsLive, type LiveChannel } from '#lib/crews-live.ts';
+	import { formatClock, formatWhen } from '#lib/format.ts';
+	import { presence } from '#lib/presence.svelte.ts';
+	import type { SessionRecap } from '#lib/protocol.ts';
+	import SessionRecapCard from '#lib/session/SessionRecapCard.svelte';
 	import {
 		rsvpSummary,
 		tallyOf,
 		whoIsInOf,
 		type RsvpAnswer,
-	} from '$lib/session/rsvp';
-	import { toasts } from '$lib/toast.svelte';
+	} from '#lib/session/rsvp.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
 	import { untrack } from 'svelte';
-	import { friends, friendsAround } from '$lib/friends/friends.svelte';
-	import FriendsAround from '$lib/friends/FriendsAround.svelte';
+	import { friends, friendsAround } from '#lib/friends/friends.svelte.ts';
+	import FriendsAround from '#lib/friends/FriendsAround.svelte';
 	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 	import Radio from '@lucide/svelte/icons/radio';
 	import { goto } from '$app/navigation';
-	import { account } from '$lib/account.svelte';
-	import { device } from '$lib/device.svelte';
-	import type { ControlRoute, LiveSession } from '$lib/protocol';
-	import SessionPicker from '$lib/session/SessionPicker.svelte';
+	import { account } from '#lib/account.svelte.ts';
+	import { device } from '#lib/device.svelte.ts';
+	import type { ControlRoute, LiveSession } from '#lib/protocol.ts';
+	import SessionPicker from '#lib/session/SessionPicker.svelte';
 	import {
 		startCrewSession,
 		startRideTogether,
-	} from '$lib/session/crew-session';
-	import { customWorkouts } from '$lib/workout/custom.svelte';
-	import { buildShelf } from '$lib/workout/shelf';
-	import type { Workout } from '$lib/workout/types';
+	} from '#lib/session/crew-session.ts';
+	import { customWorkouts } from '#lib/workout/custom.svelte.ts';
+	import { buildShelf } from '#lib/workout/shelf.ts';
+	import type { Workout } from '#lib/workout/types.ts';
 
 	let { crew }: { crew: Crew } = $props();
 

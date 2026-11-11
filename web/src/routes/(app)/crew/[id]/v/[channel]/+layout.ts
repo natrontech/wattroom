@@ -1,5 +1,5 @@
-import { prepareChannelAv } from '$lib/channel/connection.svelte';
-import { loadVoiceChannel } from '$lib/channel/voice-channel';
+import { prepareChannelAv } from '#lib/channel/connection.svelte.ts';
+import { loadVoiceChannel } from '#lib/channel/voice-channel.ts';
 import type { LayoutLoad } from './$types';
 
 export const load: LayoutLoad = async ({ fetch, params }) => {

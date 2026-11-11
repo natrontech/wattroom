@@ -3,8 +3,8 @@
 // the way a shipped world's are — the ride's own blue hour is
 // $lib/world/look.ts, painted from app.css. Hex values follow the Outrun
 // identity where one applies — the watt magenta trail, the zone ring's Z1–Z7.
-import { Biome } from '$lib/world/biome';
-import type { PropColors, RiderKit, Style } from '$lib/world/styles';
+import { Biome } from '#lib/world/biome.ts';
+import type { PropColors, RiderKit, Style } from '#lib/world/styles.ts';
 
 const alpineProps = (p: Partial<PropColors>): PropColors => ({
 	spruce: '#2c5a3d',

@@ -1,5 +1,5 @@
 <script module lang="ts">
-	import type { PairState } from '$lib/session/sensor-status';
+	import type { PairState } from '#lib/session/sensor-status.ts';
 
 	/**
 	 * The trainer card's view-model, injected by whoever owns the trainer.
@@ -40,17 +40,17 @@
 	// Two layouts, one card: the full grid a rider gets set up in (#606's
 	// "Paired Devices" shape), and `compact` — the trainer alone, thumb-sized,
 	// for a running session's header where the grid does not fit.
-	import { device } from '$lib/device.svelte';
-	import type { SensorKind } from '$lib/ble/sensor';
-	import { cardView } from '$lib/session/sensor-card';
-	import { sensorReading, sensorState } from '$lib/session/sensor-status';
-	import { sensors } from '$lib/sensors.svelte';
+	import { device } from '#lib/device.svelte.ts';
+	import type { SensorKind } from '#lib/ble/sensor.ts';
+	import { cardView } from '#lib/session/sensor-card.ts';
+	import { sensorReading, sensorState } from '#lib/session/sensor-status.ts';
+	import { sensors } from '#lib/sensors.svelte.ts';
 	import {
 		shifterSlot,
 		type ShifterInput,
-	} from '$lib/ble/controller-slot.svelte';
-	import { createObcNetController, obcNet } from '$lib/ble/obc-net.svelte';
-	import { gearsEnabled } from '$lib/ride/gears-enabled';
+	} from '#lib/ble/controller-slot.svelte.ts';
+	import { createObcNetController, obcNet } from '#lib/ble/obc-net.svelte.ts';
+	import { gearsEnabled } from '#lib/ride/gears-enabled.ts';
 	import Gamepad2 from '@lucide/svelte/icons/gamepad-2';
 	import Wifi from '@lucide/svelte/icons/wifi';
 	import Bike from '@lucide/svelte/icons/bike';

@@ -1,18 +1,18 @@
-import { account } from '$lib/account.svelte';
-import { ridePath, type PlaceAddress } from '$lib/channel/address';
-import type { createChannelAv } from '$lib/channel/av.svelte';
-import { comingsAndGoings } from '$lib/channel/comings-and-goings';
-import type { createChannelLive } from '$lib/channel/live.svelte';
-import { screenShareChanges } from '$lib/channel/screen-shares';
-import { announce, divertWhileRiding } from '$lib/messages/announce';
-import { pokeArrival, pokeFriend } from '$lib/poke';
-import { toasts } from '$lib/toast.svelte';
-import { shouldAnnounce } from '$lib/notify-once';
-import { notify } from '$lib/notify.svelte';
-import { play } from '$lib/sound/cues';
-import { setDucking } from '$lib/sound/duck';
-import { shouldDuck } from '$lib/sound/ducking';
-import { mixer } from '$lib/sound/mixer.svelte';
+import { account } from '#lib/account.svelte.ts';
+import { ridePath, type PlaceAddress } from '#lib/channel/address.ts';
+import type { createChannelAv } from '#lib/channel/av.svelte.ts';
+import { comingsAndGoings } from '#lib/channel/comings-and-goings.ts';
+import type { createChannelLive } from '#lib/channel/live.svelte.ts';
+import { screenShareChanges } from '#lib/channel/screen-shares.ts';
+import { announce, divertWhileRiding } from '#lib/messages/announce.ts';
+import { pokeArrival, pokeFriend } from '#lib/poke.ts';
+import { toasts } from '#lib/toast.svelte.ts';
+import { shouldAnnounce } from '#lib/notify-once.ts';
+import { notify } from '#lib/notify.svelte.ts';
+import { play } from '#lib/sound/cues.ts';
+import { setDucking } from '#lib/sound/duck.ts';
+import { shouldDuck } from '#lib/sound/ducking.ts';
+import { mixer } from '#lib/sound/mixer.svelte.ts';
 import { untrack } from 'svelte';
 
 /**

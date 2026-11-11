@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, expect, it, vi } from 'vitest';
-import type { Sensor, SensorReading, SensorStatus } from '$lib/ble/sensor';
+import type { Sensor, SensorReading, SensorStatus } from '#lib/ble/sensor.ts';
 
 /**
  * One strap at a time (#1716). Pairing over a live sensor used to attach the
@@ -42,7 +42,7 @@ class FakeSensor implements Sensor {
 }
 
 const built: FakeSensor[] = [];
-vi.mock('$lib/ble/heartrate', () => ({
+vi.mock('#lib/ble/heartrate.ts', () => ({
 	createHeartRateSensor: () => {
 		const sensor = new FakeSensor(`strap ${built.length + 1}`);
 		built.push(sensor);

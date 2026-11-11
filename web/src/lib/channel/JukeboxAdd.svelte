@@ -2,19 +2,19 @@
 	import ListPlus from '@lucide/svelte/icons/list-plus';
 	import Music from '@lucide/svelte/icons/music';
 	import Plus from '@lucide/svelte/icons/plus';
-	import { listTracks, trackClock, type Track } from '$lib/music/pool';
-	import type { JukeboxCommand } from '$lib/protocol';
+	import { listTracks, trackClock, type Track } from '#lib/music/pool.ts';
+	import type { JukeboxCommand } from '#lib/protocol.ts';
 	import {
 		addIntent,
 		queueResolvedPlaylist,
 		queueVideo,
 		readLink,
 		type PastedLink,
-	} from '$lib/channel/jukebox-add';
+	} from '#lib/channel/jukebox-add.ts';
 	import {
 		resolvePlaylist,
 		type ResolvedPlaylist,
-	} from '$lib/channel/youtube-playlist';
+	} from '#lib/channel/youtube-playlist.ts';
 
 	// One field for everything a rider can put on the deck (#1421): typing
 	// searches their library and each hit queues with a tap, Enter queues the

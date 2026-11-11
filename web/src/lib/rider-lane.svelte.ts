@@ -5,7 +5,7 @@ import type {
 	PauseState,
 	RemoteCommand,
 	ViewState,
-} from '$lib/protocol';
+} from '#lib/protocol.ts';
 
 /**
  * The rider's own lane on the lobby socket (#4425): the phone remote of a ride

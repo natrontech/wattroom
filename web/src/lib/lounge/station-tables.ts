@@ -2,7 +2,7 @@
  * House radio's material (ADR-0094, #4302): the chords, grooves, forms,
  * instruments and names a tune is drawn from. station.ts does the drawing.
  */
-import type { Section } from '$lib/lounge/station';
+import type { Section } from '#lib/lounge/station.ts';
 
 /** Chord colours above the root, which the bass plays. */
 export const QUALITY = {

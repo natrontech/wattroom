@@ -2,8 +2,8 @@
 	// Where a ride was sent (#799): a rider who turned auto-upload on has had
 	// no way to know whether the ride actually arrived. Delivery is durable
 	// now, so the page can simply say.
-	import { api } from '$lib/api';
-	import type { RideExport } from '$lib/ride/detail';
+	import { api } from '#lib/api.ts';
+	import type { RideExport } from '#lib/ride/detail.ts';
 
 	let {
 		id,

@@ -14,7 +14,7 @@
  * carries a reply field; in a browser a click does the same and there is no
  * reply.
  */
-import { toasts } from '$lib/toast.svelte';
+import { toasts } from '#lib/toast.svelte.ts';
 const KEY = 'wattroom.notify.v1'; // '1' on, '0' off; the shell's default is on
 const OFFER_KEY = 'wattroom.notify-offer.v1'; // 'no' once waved away
 

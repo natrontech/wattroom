@@ -2,13 +2,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const uploads: { routeId?: string; drive?: string; samples: unknown[] }[] = [];
-vi.mock('$lib/ride/save', () => ({
+vi.mock('#lib/ride/save.ts', () => ({
 	uploadRide: vi.fn(async (ride: (typeof uploads)[number]) => {
 		uploads.push(ride);
 		return { saved: { id: 'r1' } };
 	}),
 }));
-vi.mock('$lib/ride/buffer', () => ({
+vi.mock('#lib/ride/buffer.ts', () => ({
 	openRideBuffer: vi.fn(async () => ({
 		crashSafe: true,
 		append() {},
@@ -18,7 +18,7 @@ vi.mock('$lib/ride/buffer', () => ({
 	})),
 }));
 
-import { SimulatedTrainer } from '$lib/ble/simulated';
+import { SimulatedTrainer } from '#lib/ble/simulated.ts';
 import { createFreeRide } from './free-ride.svelte';
 import { ergByRoad } from './ride-grade';
 import type { RideableRoute } from './roads';

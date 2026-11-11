@@ -6,18 +6,18 @@
 	import { tick } from 'svelte';
 	import Smile from '@lucide/svelte/icons/smile';
 	import X from '@lucide/svelte/icons/x';
-	import { account } from '$lib/account.svelte';
-	import Banner from '$lib/components/Banner.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import Select from '$lib/components/Select.svelte';
-	import EmojiPicker from '$lib/emoji/EmojiPicker.svelte';
+	import { account } from '#lib/account.svelte.ts';
+	import Banner from '#lib/components/Banner.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import Select from '#lib/components/Select.svelte';
+	import EmojiPicker from '#lib/emoji/EmojiPicker.svelte';
 	import {
 		crewEmoji,
 		customName,
 		loadCrewEmoji,
-	} from '$lib/emoji/crew-emoji.svelte';
-	import { chosenCrew } from '$lib/nav/chosen-crew.svelte';
-	import { MaxStatusChars } from '$lib/protocol';
+	} from '#lib/emoji/crew-emoji.svelte.ts';
+	import { chosenCrew } from '#lib/nav/chosen-crew.svelte.ts';
+	import { MaxStatusChars } from '#lib/protocol.ts';
 	import {
 		CLEAR_AFTER,
 		clearsAt,

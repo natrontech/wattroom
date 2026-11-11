@@ -1,6 +1,6 @@
-import { FtmsTrainer } from '$lib/ble/ftms';
-import { pairError } from '$lib/ble/pair-error';
-import type { Trainer } from '$lib/ble/trainer';
+import { FtmsTrainer } from '#lib/ble/ftms.ts';
+import { pairError } from '#lib/ble/pair-error.ts';
+import type { Trainer } from '#lib/ble/trainer.ts';
 
 /**
  * A lost trainer's one way back mid-ride (#2881): the chooser, then the ride

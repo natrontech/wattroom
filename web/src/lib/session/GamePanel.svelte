@@ -1,17 +1,17 @@
 <script lang="ts">
-	import { serverNow } from '$lib/server-clock';
-	import ProgressBar from '$lib/components/ProgressBar.svelte';
-	import { account } from '$lib/account.svelte';
-	import ZoneDot from '$lib/components/ZoneDot.svelte';
-	import { ZONE_BG, ZONE_NAMES } from '$lib/components/zones';
-	import { formatClock } from '$lib/format';
-	import { createProfileStore } from '$lib/profile.svelte';
-	import { gameMode } from '$lib/session/modes';
-	import { PLACES } from '$lib/session/podium';
+	import { serverNow } from '#lib/server-clock.ts';
+	import ProgressBar from '#lib/components/ProgressBar.svelte';
+	import { account } from '#lib/account.svelte.ts';
+	import ZoneDot from '#lib/components/ZoneDot.svelte';
+	import { ZONE_BG, ZONE_NAMES } from '#lib/components/zones.ts';
+	import { formatClock } from '#lib/format.ts';
+	import { createProfileStore } from '#lib/profile.svelte.ts';
+	import { gameMode } from '#lib/session/modes.ts';
+	import { PLACES } from '#lib/session/podium.ts';
 	import Heart from '@lucide/svelte/icons/heart';
-	import { atRoadside } from '$lib/roadside';
+	import { atRoadside } from '#lib/roadside.ts';
 	import type { Snippet } from 'svelte';
-	import type { GameState } from '$lib/protocol';
+	import type { GameState } from '#lib/protocol.ts';
 
 	// One panel, seven heroes (#39's modes design): the server owns every rule;
 	// this renders each mode's one load-bearing state. Vocabulary is SPEC's.

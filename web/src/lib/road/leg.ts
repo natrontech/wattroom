@@ -1,7 +1,7 @@
-import { BikeKg } from '$lib/protocol';
-import type { RideableRoute } from '$lib/ride/roads';
-import type { Workout } from '$lib/workout/types';
-import { withProfile } from '$lib/workout/road-workout';
+import { BikeKg } from '#lib/protocol.ts';
+import type { RideableRoute } from '#lib/ride/roads.ts';
+import type { Workout } from '#lib/workout/types.ts';
+import { withProfile } from '#lib/workout/road-workout.ts';
 import { climbsOf } from './climbs';
 import { compileRoad } from './compile';
 

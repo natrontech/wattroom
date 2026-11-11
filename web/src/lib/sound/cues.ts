@@ -1,8 +1,12 @@
-import { ducking, onDuck } from '$lib/sound/duck';
-import { DUCK_ATTACK_MS, DUCK_DEFAULT } from '$lib/sound/ducking';
-import { CUES, type CueId } from '$lib/sound/cue-catalogue';
-import { makeLimiter, makeNoise, scheduleVoices } from '$lib/sound/cue-graph';
-import { glideTo } from '$lib/sound/glide';
+import { ducking, onDuck } from '#lib/sound/duck.ts';
+import { DUCK_ATTACK_MS, DUCK_DEFAULT } from '#lib/sound/ducking.ts';
+import { CUES, type CueId } from '#lib/sound/cue-catalogue.ts';
+import {
+	makeLimiter,
+	makeNoise,
+	scheduleVoices,
+} from '#lib/sound/cue-graph.ts';
+import { glideTo } from '#lib/sound/glide.ts';
 
 /**
  * Session sound design (WATTROOM.md feel layer, #33).

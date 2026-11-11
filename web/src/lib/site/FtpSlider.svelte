@@ -1,8 +1,8 @@
 <script lang="ts">
 	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
-	import { ZONE_NAMES, ZONE_VAR, zoneOf } from '$lib/components/zones';
-	import { reducedMotion } from '$lib/motion';
+	import { ZONE_NAMES, ZONE_VAR, zoneOf } from '#lib/components/zones.ts';
+	import { reducedMotion } from '#lib/motion/index.ts';
 
 	// The idea WattRoom rests on, in five seconds (#2995): one workout, and
 	// every trainer holds its own rider's share of it. Drag your FTP and the

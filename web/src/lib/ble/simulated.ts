@@ -3,8 +3,8 @@ import {
 	PaceDrivetrainEfficiency,
 	PaceSubsteps,
 	ReferenceRiderKg,
-} from '$lib/protocol';
-import { nextSpeed } from '$lib/road/pace';
+} from '#lib/protocol.ts';
+import { nextSpeed } from '#lib/road/pace.ts';
 import { simulatedSteady } from './simulated-steady';
 import {
 	resolveSim,

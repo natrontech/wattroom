@@ -23,7 +23,7 @@ vi.stubGlobal('navigator', {
 });
 
 const { createDeviceChoices, deviceChoices } =
-	await import('$lib/channel/av-devices.svelte');
+	await import('#lib/channel/av-devices.svelte.ts');
 
 /** enumerateDevices' shape, only the fields this module reads. */
 function device(kind: MediaDeviceKind, deviceId: string) {

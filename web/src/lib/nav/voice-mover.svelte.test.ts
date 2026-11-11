@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { MenuItem } from '$lib/context-menu.svelte';
-import type { LiveChannel, LiveOccupant } from '$lib/crews-live';
+import type { MenuItem } from '#lib/context-menu.svelte.ts';
+import type { LiveChannel, LiveOccupant } from '#lib/crews-live.ts';
 import { ARRIVAL_MS } from './voice-move';
 
 const { api, push } = vi.hoisted(() => ({ api: vi.fn(), push: vi.fn() }));
-vi.mock('$lib/api', () => ({ api }));
-vi.mock('$lib/toast.svelte', () => ({ toasts: { push } }));
+vi.mock('#lib/api.ts', () => ({ api }));
+vi.mock('#lib/toast.svelte.ts', () => ({ toasts: { push } }));
 const { createVoiceMover } = await import('./voice-mover.svelte');
 
 const kim: LiveOccupant = { id: 'kim', name: 'Kim' };

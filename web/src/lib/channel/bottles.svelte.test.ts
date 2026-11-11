@@ -1,19 +1,19 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { tick } from 'svelte';
-import { channelAddress } from '$lib/channel/address';
-import type { Effort } from '$lib/roadside';
+import { channelAddress } from '#lib/channel/address.ts';
+import type { Effort } from '#lib/roadside.ts';
 
 const announced = vi.hoisted(() => [] as { title: string; kind: string }[]);
-vi.mock('$lib/messages/announce', () => ({
+vi.mock('#lib/messages/announce.ts', () => ({
 	announce: (arrival: { title: string; kind: string }) =>
 		announced.push(arrival),
 }));
 const signedIn = vi.hoisted(() => ({ me: { id: 'sven' } as { id: string } }));
-vi.mock('$lib/account.svelte', () => ({ account: signedIn }));
+vi.mock('#lib/account.svelte.ts', () => ({ account: signedIn }));
 
-import { bottleHandUps } from '$lib/channel/bottles.svelte';
-import { toasts } from '$lib/toast.svelte';
+import { bottleHandUps } from '#lib/channel/bottles.svelte.ts';
+import { toasts } from '#lib/toast.svelte.ts';
 
 const hard: Effort = {
 	targetWatts: 300,

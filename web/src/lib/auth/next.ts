@@ -4,7 +4,7 @@
  * signed-in redirect picks the stash up. Same-origin paths only — "//host"
  * and full URLs are open redirects and are dropped.
  */
-import { sameOriginPath } from '$lib/same-origin';
+import { sameOriginPath } from '#lib/same-origin.ts';
 
 const KEY = 'wattroom.login.next';
 

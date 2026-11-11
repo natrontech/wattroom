@@ -5,11 +5,11 @@
 	// medals, your own two switches, and the sessions it rode in the last 90
 	// days. Owns the four states (errors.md); the people list owns its menus.
 	import { page } from '$app/state';
-	import Banner from '$lib/components/Banner.svelte';
-	import RiderPrefs from '$lib/components/RiderPrefs.svelte';
-	import Skeleton from '$lib/components/Skeleton.svelte';
-	import TogetherTiles from '$lib/components/TogetherTiles.svelte';
-	import WeekBoard from '$lib/components/WeekBoard.svelte';
+	import Banner from '#lib/components/Banner.svelte';
+	import RiderPrefs from '#lib/components/RiderPrefs.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import TogetherTiles from '#lib/components/TogetherTiles.svelte';
+	import WeekBoard from '#lib/components/WeekBoard.svelte';
 	import {
 		fetchCrew,
 		fetchCrewMembers,
@@ -17,10 +17,10 @@
 		learnCrewFaces,
 		type Crew,
 		type CrewMembers,
-	} from '$lib/crew';
-	import { presence } from '$lib/presence.svelte';
-	import type { SessionRecap } from '$lib/protocol';
-	import SessionRecapCard from '$lib/session/SessionRecapCard.svelte';
+	} from '#lib/crew.ts';
+	import { presence } from '#lib/presence.svelte.ts';
+	import type { SessionRecap } from '#lib/protocol.ts';
+	import SessionRecapCard from '#lib/session/SessionRecapCard.svelte';
 	import { untrack } from 'svelte';
 	import CrewPeople from './CrewPeople.svelte';
 	import type { PageData } from './$types';

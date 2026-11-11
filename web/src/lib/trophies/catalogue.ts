@@ -8,7 +8,7 @@ import Skull from '@lucide/svelte/icons/skull';
 import Sunrise from '@lucide/svelte/icons/sunrise';
 import Users from '@lucide/svelte/icons/users';
 import Zap from '@lucide/svelte/icons/zap';
-import type { Icon } from '$lib/icons';
+import type { Icon } from '#lib/icons.ts';
 
 /**
  * The achievement catalogue (#467) — the client's copy of

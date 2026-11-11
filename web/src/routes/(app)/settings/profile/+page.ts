@@ -1,4 +1,4 @@
-import { fetchProgression, type TrendRide } from '$lib/progression';
+import { fetchProgression, type TrendRide } from '#lib/progression.ts';
 import type { PageLoad } from './$types';
 
 // The FTP trend the Profile section charts; on failure it simply does not

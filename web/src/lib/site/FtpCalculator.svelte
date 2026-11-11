@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { RAMP } from '$lib/workout/ramp';
-	import { ZONE_NAMES, ZONE_VAR, zoneBands } from '$lib/components/zones';
+	import { RAMP } from '#lib/workout/ramp.ts';
+	import { ZONE_NAMES, ZONE_VAR, zoneBands } from '#lib/components/zones.ts';
 
 	// An FTP from a number the rider already has, and the seven zones it
 	// makes (#2995). Both factors are docs/SPEC.md's: 75 % of a ramp test's

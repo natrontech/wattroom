@@ -1,7 +1,7 @@
-import { channelAddress } from '$lib/channel/address';
+import { channelAddress } from '#lib/channel/address.ts';
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { MaxBackfillBatch } from '$lib/protocol';
+import { MaxBackfillBatch } from '#lib/protocol.ts';
 
 const buffered = vi.hoisted(() => ({
 	rows: [] as { watts: number }[],
@@ -16,7 +16,7 @@ const buffered = vi.hoisted(() => ({
 	// private window or blocked site data (#1466 finding 4).
 	crashSafe: true,
 }));
-vi.mock('$lib/ride/buffer', () => ({
+vi.mock('#lib/ride/buffer.ts', () => ({
 	openRideBuffer: async (meta: { workoutName: string; startedAt: number }) => {
 		buffered.opened.push(meta);
 		return {
@@ -37,7 +37,7 @@ vi.mock('$lib/ride/buffer', () => ({
 		};
 	},
 }));
-vi.mock('$lib/account.svelte', () => ({ account: { me: { id: 'u1' } } }));
+vi.mock('#lib/account.svelte', () => ({ account: { me: { id: 'u1' } } }));
 
 /** A channel socket that is dialled but never answers until the test says so. */
 class FakeSocket {

@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { HOME_ROADS } from '$lib/ride/home-roads';
-import { syntheticPoints } from '$lib/world/synthetic';
+import { HOME_ROADS } from '#lib/ride/home-roads.ts';
+import { syntheticPoints } from '#lib/world/synthetic.ts';
 import { bridgeAndTunnel, hairpinClimb, switchback } from './fixtures';
 import { frameOf, project } from './line';
 import { turnsOf } from './profile';

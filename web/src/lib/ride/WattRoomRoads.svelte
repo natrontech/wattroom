@@ -6,15 +6,15 @@
 	 * is along it in the ridden line's place; the caller gives it its Ride.
 	 */
 	import type { Snippet } from 'svelte';
-	import RouteRow from '$lib/components/RouteRow.svelte';
-	import Skeleton from '$lib/components/Skeleton.svelte';
+	import RouteRow from '#lib/components/RouteRow.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
 	import {
 		HOME_ROADS,
 		homeRoadsMatching,
 		homeRow,
 		type HomeRoad,
-	} from '$lib/ride/home-roads';
-	import type { StoredRoute } from '$lib/road/stored';
+	} from '#lib/ride/home-roads.ts';
+	import type { StoredRoute } from '#lib/road/stored.ts';
 
 	let {
 		ride,

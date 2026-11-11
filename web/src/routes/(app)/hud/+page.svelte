@@ -1,12 +1,12 @@
 <script lang="ts">
 	import X from '@lucide/svelte/icons/x';
-	import { formatClock, formatKm } from '$lib/format';
-	import { isStale, subscribeHud, type HudSnapshot } from '$lib/hud/feed';
-	import { account } from '$lib/account.svelte';
-	import ZoneDot from '$lib/components/ZoneDot.svelte';
-	import { ZONE_BG, ZONE_NAMES } from '$lib/components/zones';
-	import { GRADE_FILL, gradeStep } from '$lib/road/skyline';
-	import { toleranceBand } from '$lib/workout/guards';
+	import { formatClock, formatKm } from '#lib/format.ts';
+	import { isStale, subscribeHud, type HudSnapshot } from '#lib/hud/feed.ts';
+	import { account } from '#lib/account.svelte.ts';
+	import ZoneDot from '#lib/components/ZoneDot.svelte';
+	import { ZONE_BG, ZONE_NAMES } from '#lib/components/zones.ts';
+	import { GRADE_FILL, gradeStep } from '#lib/road/skyline.ts';
+	import { toleranceBand } from '#lib/workout/guards.ts';
 
 	// The HUD (#296, ADR-0041): the rider's own numbers in a window of their
 	// own — the shell floats it over whatever else is on screen while a ride

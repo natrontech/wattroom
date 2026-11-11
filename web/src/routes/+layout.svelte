@@ -7,7 +7,7 @@
 	import '@fontsource/barlow/600.css';
 	import '@fontsource/chakra-petch/500.css';
 	import '@fontsource/chakra-petch/700.css';
-	import { browser } from '$app/environment';
+	import { browser } from '$app/env';
 
 	let { children } = $props();
 

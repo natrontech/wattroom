@@ -6,13 +6,13 @@
 	 * name, never colour alone (#3213); and, while a target is asked, the
 	 * target track with its band and how much of this block sat inside it.
 	 */
-	import TabularFigures from '$lib/components/TabularFigures.svelte';
-	import ZoneDot from '$lib/components/ZoneDot.svelte';
-	import { ZONE_NAMES, zoneOf } from '$lib/components/zones';
-	import { targetState } from '$lib/channel/types';
-	import { wkg } from '$lib/format';
-	import PowerTrack from '$lib/session/PowerTrack.svelte';
-	import { TV_LABEL } from '$lib/session/computer-pages';
+	import TabularFigures from '#lib/components/TabularFigures.svelte';
+	import ZoneDot from '#lib/components/ZoneDot.svelte';
+	import { ZONE_NAMES, zoneOf } from '#lib/components/zones.ts';
+	import { targetState } from '#lib/channel/types.ts';
+	import { wkg } from '#lib/format.ts';
+	import PowerTrack from '#lib/session/PowerTrack.svelte';
+	import { TV_LABEL } from '#lib/session/computer-pages.ts';
 
 	let {
 		power,

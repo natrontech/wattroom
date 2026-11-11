@@ -5,8 +5,8 @@ import {
 	lookOf,
 	seededLook,
 	shuffledLook,
-} from '$lib/lounge/look';
-import { fnv } from '$lib/world/loadout';
+} from '#lib/lounge/look.ts';
+import { fnv } from '#lib/world/loadout.ts';
 
 describe('the lounge look', () => {
 	it('keeps the look every rider wore before the editor', () => {

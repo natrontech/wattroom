@@ -17,9 +17,9 @@ import {
 	drawCyclist,
 	type View,
 	YAW,
-} from '$lib/lounge/draw-rider';
-import { LOUNGE } from '$lib/lounge/palette';
-import type { Figure } from '$lib/lounge/scene';
+} from '#lib/lounge/draw-rider.ts';
+import { LOUNGE } from '#lib/lounge/palette.ts';
+import type { Figure } from '#lib/lounge/scene.ts';
 import { BAYER } from './pixel';
 
 /** Metres one pixel of the room's art stands for: a person 31 pixels tall is 1.55 m. */

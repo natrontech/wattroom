@@ -6,13 +6,13 @@
 	 * Category) is the peloton list's (#3107). Over the flat surface the crew
 	 * keeps its camera strip (CrewStrip).
 	 */
-	import { useChannel } from '$lib/channel/context';
-	import type { LiveRider } from '$lib/channel/types';
-	import { contextMenu } from '$lib/context-menu.svelte';
-	import { zoneOf } from '$lib/components/zones';
-	import { wkg } from '$lib/format';
-	import { crewMenu } from '$lib/session/crew-menu';
-	import { offsetWindow, pelotonRows } from '$lib/session/peloton-list';
+	import { useChannel } from '#lib/channel/context.ts';
+	import type { LiveRider } from '#lib/channel/types.ts';
+	import { contextMenu } from '#lib/context-menu.svelte.ts';
+	import { zoneOf } from '#lib/components/zones.ts';
+	import { wkg } from '#lib/format.ts';
+	import { crewMenu } from '#lib/session/crew-menu.ts';
+	import { offsetWindow, pelotonRows } from '#lib/session/peloton-list.ts';
 
 	let {
 		riders,

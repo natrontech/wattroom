@@ -1,4 +1,4 @@
-import type { Icon } from '$lib/icons';
+import type { Icon } from '#lib/icons.ts';
 import Coffee from '@lucide/svelte/icons/coffee';
 import ShowerHead from '@lucide/svelte/icons/shower-head';
 import Toilet from '@lucide/svelte/icons/toilet';

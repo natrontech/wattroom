@@ -6,10 +6,10 @@
  * times a ride and each time later (#4423): no rider on a bike should have
  * to reach for 3D. Loads no three.js.
  */
-import { prefersReducedMotion } from '$lib/motion';
-import { PHONE_MAX_PX } from '$lib/device.svelte';
-import { worldFits } from '$lib/session/docks';
-import { play } from '$lib/sound/cues';
+import { prefersReducedMotion } from '#lib/motion/index.ts';
+import { PHONE_MAX_PX } from '#lib/device.svelte.ts';
+import { worldFits } from '#lib/session/docks.ts';
+import { play } from '#lib/sound/cues.ts';
 import { setWorldMode, worldMode, type WorldMode } from './mode';
 import { watchCalm } from './loop';
 import {
@@ -128,7 +128,7 @@ export function createWorldView(calm: typeof watchCalm = watchCalm) {
 		 * that does not load is this ride's failure, and the Skyline's.
 		 */
 		load() {
-			return import('$lib/world/RideWorld.svelte').catch((err: unknown) => {
+			return import('#lib/world/RideWorld.svelte').catch((err: unknown) => {
 				console.error('world: the renderer did not load', err);
 				this.fail('build-failed');
 				throw err;

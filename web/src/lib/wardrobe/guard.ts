@@ -3,7 +3,7 @@ import {
 	hueDistance,
 	oklchToHex,
 	perceptualDistance,
-} from '$lib/color';
+} from '#lib/color.ts';
 import { catalogue } from './catalogue';
 
 /**

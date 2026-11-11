@@ -1,7 +1,7 @@
-import type { Route } from '$lib/road/route';
-import type { Corner, Shape } from '$lib/world/synthetic';
-import type { RideableRoute } from '$lib/ride/roads';
-import type { StoredRoute } from '$lib/road/stored';
+import type { Route } from '#lib/road/route.ts';
+import type { Corner, Shape } from '#lib/world/synthetic.ts';
+import type { RideableRoute } from '#lib/ride/roads.ts';
+import type { StoredRoute } from '#lib/road/stored.ts';
 
 /**
  * WattRoom's own roads (#4248): made-up loops every rider has, crew or none,
@@ -50,7 +50,7 @@ export const HOME_ROADS: readonly HomeRoad[] = [
 		name: 'Pass loop',
 		story:
 			'A valley, five hairpins with their mirrors, and a pass with its hut, flags and summit cross.',
-		shape: async () => (await import('$lib/world/synthetic')).PASS_LOOP,
+		shape: async () => (await import('#lib/world/synthetic.ts')).PASS_LOOP,
 	},
 	{
 		id: 'valley',
@@ -84,8 +84,8 @@ export function homeRoadsMatching(query: string): readonly HomeRoad[] {
 export async function homeRow(home: HomeRoad): Promise<StoredRoute> {
 	const [route, { climbsOf }, { gainOf }] = await Promise.all([
 		homeRoute(home),
-		import('$lib/road/climbs'),
-		import('$lib/road/profile'),
+		import('#lib/road/climbs.ts'),
+		import('#lib/road/profile.ts'),
 	]);
 	return {
 		id: home.id,
@@ -107,8 +107,8 @@ function build(road: HomeRoad): Promise<Route> {
 	let route = built.get(road.id);
 	if (!route) {
 		route = Promise.all([
-			import('$lib/road/route'),
-			import('$lib/world/synthetic'),
+			import('#lib/road/route.ts'),
+			import('#lib/world/synthetic.ts'),
 			road.shape(),
 		]).then(([{ toRoute }, { syntheticPoints }, shape]) =>
 			toRoute(syntheticPoints(shape)),

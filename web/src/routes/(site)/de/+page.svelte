@@ -1,12 +1,12 @@
 <script lang="ts">
-	import CtaBand from '$lib/site/CtaBand.svelte';
-	import Faq from '$lib/site/Faq.svelte';
-	import GameModeCards from '$lib/site/GameModeCards.svelte';
-	import PageHero from '$lib/site/PageHero.svelte';
-	import Screen from '$lib/site/Screen.svelte';
-	import SectionHead from '$lib/site/SectionHead.svelte';
-	import Seo from '$lib/site/Seo.svelte';
-	import { GERMAN } from '$lib/site/seo';
+	import CtaBand from '#lib/site/CtaBand.svelte';
+	import Faq from '#lib/site/Faq.svelte';
+	import GameModeCards from '#lib/site/GameModeCards.svelte';
+	import PageHero from '#lib/site/PageHero.svelte';
+	import Screen from '#lib/site/Screen.svelte';
+	import SectionHead from '#lib/site/SectionHead.svelte';
+	import Seo from '#lib/site/Seo.svelte';
+	import { GERMAN } from '#lib/site/seo.ts';
 
 	// The one German page (#2995): "Zwift Alternative kostenlos / ohne Abo /
 	// mit Freunden" is real demand in Switzerland and Germany. It says plainly

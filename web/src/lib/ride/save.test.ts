@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
 const api = vi.hoisted(() => vi.fn());
-vi.mock('$lib/api', () => ({ api }));
+vi.mock('#lib/api.ts', () => ({ api }));
 const account = vi.hoisted(() => ({ load: vi.fn() }));
-vi.mock('$lib/account.svelte', () => ({ account }));
+vi.mock('#lib/account.svelte.ts', () => ({ account }));
 
 const { uploadRide, recordingUpload } = await import('./save');
 
@@ -115,9 +115,9 @@ describe('recordingUpload', () => {
 // has no route row, so a workout on it saves as one on no stored road.
 describe('a workout on a WattRoom road', () => {
 	it('saves without the loop’s id', async () => {
-		const { homeRoad, homeRoute } = await import('$lib/ride/home-roads');
-		const { onRoute } = await import('$lib/road/compile');
-		const { byId } = await import('$lib/workout/library');
+		const { homeRoad, homeRoute } = await import('#lib/ride/home-roads.ts');
+		const { onRoute } = await import('#lib/road/compile.ts');
+		const { byId } = await import('#lib/workout/library.ts');
 		const pass = await homeRoute(homeRoad('intro')!);
 		const workout = onRoute(byId('sweet-spot-2x20')!.workout, pass, 0);
 		const second = {

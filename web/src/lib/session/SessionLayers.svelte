@@ -1,7 +1,7 @@
 <script module lang="ts">
-	import { createSessionSetup } from '$lib/session/session-setup.svelte';
-	import type { PickerIntent } from '$lib/channel/context';
-	import type { ControlRoute } from '$lib/protocol';
+	import { createSessionSetup } from '#lib/session/session-setup.svelte.ts';
+	import type { PickerIntent } from '#lib/channel/context.ts';
+	import type { ControlRoute } from '#lib/protocol.ts';
 
 	/**
 	 * What the shell opens over a voice channel for its session: TV mode and
@@ -43,36 +43,39 @@
 </script>
 
 <script lang="ts">
-	import { account } from '$lib/account.svelte';
-	import { useChannel } from '$lib/channel/context';
-	import { goto, replaceState } from '$app/navigation';
-	import { takeGameDoor, takePickerDoor } from '$lib/session/doors';
+	import { account } from '#lib/account.svelte.ts';
+	import { useChannel } from '#lib/channel/context.ts';
+	import { goto } from '$app/navigation';
+	import { takeGameDoor, takePickerDoor } from '#lib/session/doors.ts';
 	import { page } from '$app/state';
-	import { sessionPath } from '$lib/channel/address';
-	import { startCrewGame, startCrewSession } from '$lib/session/crew-session';
-	import type { GameStart } from '$lib/session/modes';
-	import { liveSessionId } from '$lib/channel/tick-session';
-	import { planDue, startCrewPlan, startedPath } from '$lib/crew-schedule';
-	import { device } from '$lib/device.svelte';
-	import { toasts } from '$lib/toast.svelte';
-	import { resumeKm, type LostRoad } from '$lib/channel/lost-road';
-	import { loadNextLeg, nextLegAt } from '$lib/road/next-leg';
-	import { flatten } from '$lib/workout/engine';
-	import type { Workout, Segment } from '$lib/workout/types';
-	import type { SessionState } from '$lib/protocol';
-	import { countModal, modals } from '$lib/modals.svelte';
-	import SessionSummary from '$lib/ride/SessionSummary.svelte';
-	import RidePictures from '$lib/ride/RidePictures.svelte';
-	import ChannelStatus from '$lib/channel/ChannelStatus.svelte';
-	import type { channelConnection } from '$lib/channel/connection.svelte';
-	import type { ChannelShellProps } from '$lib/channel/context-value.svelte';
-	import type { createRiders } from '$lib/channel/riders.svelte';
-	import type { Phase } from '$lib/channel/types';
-	import SessionPicker from '$lib/session/SessionPicker.svelte';
-	import TrainerOverview from '$lib/session/TrainerOverview.svelte';
-	import { needsTrainer } from '$lib/session/sensor-status';
-	import TvOverlay from '$lib/session/TvOverlay.svelte';
-	import { createSummary } from '$lib/session/summary.svelte';
+	import { sessionPath } from '#lib/channel/address.ts';
+	import {
+		startCrewGame,
+		startCrewSession,
+	} from '#lib/session/crew-session.ts';
+	import type { GameStart } from '#lib/session/modes.ts';
+	import { liveSessionId } from '#lib/channel/tick-session.ts';
+	import { planDue, startCrewPlan, startedPath } from '#lib/crew-schedule.ts';
+	import { device } from '#lib/device.svelte.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
+	import { resumeKm, type LostRoad } from '#lib/channel/lost-road.ts';
+	import { loadNextLeg, nextLegAt } from '#lib/road/next-leg.ts';
+	import { flatten } from '#lib/workout/engine.ts';
+	import type { Workout, Segment } from '#lib/workout/types.ts';
+	import type { SessionState } from '#lib/protocol.ts';
+	import { countModal, modals } from '#lib/modals.svelte.ts';
+	import SessionSummary from '#lib/ride/SessionSummary.svelte';
+	import RidePictures from '#lib/ride/RidePictures.svelte';
+	import ChannelStatus from '#lib/channel/ChannelStatus.svelte';
+	import type { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import type { ChannelShellProps } from '#lib/channel/context-value.svelte.ts';
+	import type { createRiders } from '#lib/channel/riders.svelte.ts';
+	import type { Phase } from '#lib/channel/types.ts';
+	import SessionPicker from '#lib/session/SessionPicker.svelte';
+	import TrainerOverview from '#lib/session/TrainerOverview.svelte';
+	import { needsTrainer } from '#lib/session/sensor-status.ts';
+	import TvOverlay from '#lib/session/TvOverlay.svelte';
+	import { createSummary } from '#lib/session/summary.svelte.ts';
 
 	// The session's own layers over the live shell (#686's seams, one more):
 	// TV mode, the picker and the summary at its close, with the pick → start
@@ -90,6 +93,8 @@
 		crewName,
 		code,
 		onSchedule,
+
+		/** The crew the channel belongs to: the closing card's eyebrow. */
 	}: {
 		layers: ReturnType<typeof createSessionLayers>;
 		connection: ReturnType<typeof channelConnection.join>;
@@ -98,7 +103,6 @@
 		segments: Segment[];
 		phase: Phase;
 		placeName: string;
-		/** The crew the channel belongs to: the closing card's eyebrow. */
 		crewName?: string;
 		code?: string;
 		onSchedule: ChannelShellProps['onSchedule'];
@@ -216,7 +220,7 @@
 	// start: a refusal lets go, and nobody else's start moves anyone.
 	// Whether it follows is the live connection's (#3103): a resume from
 	// the status banner starts a session the same way.
-	const GO = { keepFocus: true, noScroll: true };
+	const GO = { reset: false };
 	// A game is a session (docs/SESSIONS.md): from a call it opens one of the
 	// crew's own and this tab goes to it; the call and its room stay.
 	function startGame(game: GameStart) {
@@ -246,7 +250,7 @@
 		doorTaken = true;
 		const door = takeGameDoor(page.url);
 		if (!door) return;
-		replaceState(door.rest, page.state);
+		goto(door.rest, { shallow: true, replace: true, state: page.state });
 		if (device.spectator) return;
 		startGame({ gameMode: door.mode });
 	});
@@ -255,7 +259,7 @@
 	$effect(() => {
 		const door = takePickerDoor(page.url);
 		if (!door) return;
-		replaceState(door.rest, page.state);
+		goto(door.rest, { shallow: true, replace: true, state: page.state });
 		layers.openPicker(door.intent, door.pick, door.road);
 	});
 </script>

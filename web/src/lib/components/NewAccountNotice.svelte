@@ -11,16 +11,16 @@
 	// a fixed card over the app steals clicks from whatever it covers, which
 	// e2e found by failing to press "Join room" underneath one.
 	import { goto } from '$app/navigation';
-	import { account } from '$lib/account.svelte';
-	import { nameOf } from '$lib/auth/providers';
-	import { takeNewAccount } from '$lib/auth/new-account';
+	import { account } from '#lib/account.svelte.ts';
+	import { nameOf } from '#lib/auth/providers.ts';
+	import { takeNewAccount } from '#lib/auth/new-account.ts';
 
 	const provider = takeNewAccount();
 	let dismissed = $state(false);
 
 	async function useAnother() {
 		await account.signOut();
-		void goto('/login', { replaceState: true });
+		void goto('/login', { replace: true });
 	}
 </script>
 

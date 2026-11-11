@@ -1,8 +1,8 @@
-import { api } from '$lib/api';
-import { uploadImage } from '$lib/chat/upload';
-import { presence } from '$lib/presence.svelte';
-import type { ChatEdit, ChatLine, ChatReactionCount } from '$lib/protocol';
-import type { Announcement } from '$lib/channels';
+import { api } from '#lib/api.ts';
+import { uploadImage } from '#lib/chat/upload.ts';
+import { presence } from '#lib/presence.svelte.ts';
+import type { ChatEdit, ChatLine, ChatReactionCount } from '#lib/protocol.ts';
+import type { Announcement } from '#lib/channels.ts';
 
 /**
  * One chat read and written over HTTP — a text channel's (#2448). No socket:

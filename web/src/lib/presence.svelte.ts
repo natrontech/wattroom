@@ -1,9 +1,9 @@
-import { api } from '$lib/api';
-import { reconnectDelay } from '$lib/reconnect';
-import { STALE_AFTER, readOrder } from '$lib/stale';
-import type { CrewRef } from '$lib/crew-types';
-import type { LobbyLane } from '$lib/protocol';
-import { isLaneFrame, riderLane } from '$lib/rider-lane.svelte';
+import { api } from '#lib/api.ts';
+import { reconnectDelay } from '#lib/reconnect.ts';
+import { STALE_AFTER, readOrder } from '#lib/stale.ts';
+import type { CrewRef } from '#lib/crew-types.ts';
+import type { LobbyLane } from '#lib/protocol.ts';
+import { isLaneFrame, riderLane } from '#lib/rider-lane.svelte.ts';
 
 /**
  * The one shared presence feed (#251), replacing three 10 s pollers: a lobby

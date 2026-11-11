@@ -3,7 +3,7 @@
  * hands back only URLs `gifUrl()` in ./media.ts agrees to render, so what a
  * picked tile posts is an ordinary chat message that draws itself.
  */
-import { api, type ApiResult } from '$lib/api';
+import { api, type ApiResult } from '#lib/api.ts';
 
 export interface Gif {
 	id: string;

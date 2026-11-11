@@ -13,13 +13,13 @@ import LogOut from '@lucide/svelte/icons/log-out';
 import Settings from '@lucide/svelte/icons/settings';
 import Smile from '@lucide/svelte/icons/smile';
 import User from '@lucide/svelte/icons/user';
-import { account } from '$lib/account.svelte';
-import type { MenuEntry, MenuSlider } from '$lib/context-menu.svelte';
-import { channelConnection } from '$lib/channel/connection.svelte';
-import { deviceOptions } from '$lib/channel/device-options';
-import { play } from '$lib/sound/cues';
-import { mixer } from '$lib/sound/mixer.svelte';
-import { statusEditor } from '$lib/status-line/editor.svelte';
+import { account } from '#lib/account.svelte.ts';
+import type { MenuEntry, MenuSlider } from '#lib/context-menu.svelte.ts';
+import { channelConnection } from '#lib/channel/connection.svelte.ts';
+import { deviceOptions } from '#lib/channel/device-options.ts';
+import { play } from '#lib/sound/cues.ts';
+import { mixer } from '#lib/sound/mixer.svelte.ts';
+import { statusEditor } from '#lib/status-line/editor.svelte.ts';
 
 /** Percent, like every other fader in a menu; `mixer.cues` is a 0–1 gain. */
 const cueFader = (): MenuSlider => ({

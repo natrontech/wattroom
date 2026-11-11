@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createHouseRadio } from '$lib/lounge/house-radio';
-import { SLOT_SEC } from '$lib/lounge/station';
-import { skipShift } from '$lib/lounge/state';
+import { createHouseRadio } from '#lib/lounge/house-radio.ts';
+import { SLOT_SEC } from '#lib/lounge/station.ts';
+import { skipShift } from '#lib/lounge/state.ts';
 
 /** Every source the radio starts, by the audio time it asked for. */
 let starts: number[] = [];

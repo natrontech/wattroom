@@ -1,27 +1,27 @@
 <script lang="ts">
-	import { learnCrewFaces } from '$lib/crew';
+	import { learnCrewFaces } from '#lib/crew.ts';
 	// The crew's Workouts (#2455, ADR-0058): what it has planned and what it
 	// has ridden together, derived from its schedule and its last 90 days of
 	// recaps. "Plan it again" puts a ridden workout back on the schedule, in
 	// one of the crew's voice channels or none yet; starting it is the
 	// channel's.
-	import { invalidateAll } from '$app/navigation';
+	import { refreshAll } from '$app/navigation';
 	import { navigating } from '$app/state';
-	import Banner from '$lib/components/Banner.svelte';
-	import WhenPicker from '$lib/components/WhenPicker.svelte';
-	import { nextHourInput } from '$lib/components/when';
-	import { account } from '$lib/account.svelte';
-	import { planCrewSession, planPath } from '$lib/crew-schedule';
+	import Banner from '#lib/components/Banner.svelte';
+	import WhenPicker from '#lib/components/WhenPicker.svelte';
+	import { nextHourInput } from '#lib/components/when.ts';
+	import { account } from '#lib/account.svelte.ts';
+	import { planCrewSession, planPath } from '#lib/crew-schedule.ts';
 	import {
 		riddenTogether,
 		riddenTotals,
 		workoutByName,
-	} from '$lib/crew-workouts';
-	import { formatDuration, formatWhen } from '$lib/format';
-	import { presence } from '$lib/presence.svelte';
-	import { toasts } from '$lib/toast.svelte';
-	import { customWorkouts } from '$lib/workout/custom.svelte';
-	import { buildShelf } from '$lib/workout/shelf';
+	} from '#lib/crew-workouts.ts';
+	import { formatDuration, formatWhen } from '#lib/format.ts';
+	import { presence } from '#lib/presence.svelte.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
+	import { customWorkouts } from '#lib/workout/custom.svelte.ts';
+	import { buildShelf } from '#lib/workout/shelf.ts';
 	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 	import Repeat from '@lucide/svelte/icons/repeat';
 	import RiddenCard from './RiddenCard.svelte';
@@ -56,7 +56,7 @@
 		if (version === heard) return;
 		heard = version;
 		if (untrack(() => navigating.to)) return;
-		untrack(() => void invalidateAll());
+		untrack(() => void refreshAll());
 	});
 
 	// One plan form open at a time, under the row it plans.
@@ -91,7 +91,7 @@
 		}
 		planning = null;
 		toasts.push(`${name} is planned for ${formatWhen(res.data.startsAt)}.`);
-		await invalidateAll();
+		await refreshAll();
 	}
 </script>
 
@@ -111,7 +111,7 @@
 		<Banner tone="error">
 			{data.error ?? 'The crew could not be loaded.'}
 			{#snippet action()}
-				<button onclick={() => void invalidateAll()} class="btn-link text-xs"
+				<button onclick={() => void refreshAll()} class="btn-link text-xs"
 					>Retry</button
 				>
 			{/snippet}

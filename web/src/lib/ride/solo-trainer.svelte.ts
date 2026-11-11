@@ -1,9 +1,13 @@
-import { channelConnection } from '$lib/channel/connection.svelte';
-import { FtmsTrainer } from '$lib/ble/ftms';
-import { pairError } from '$lib/ble/pair-error';
-import type { Trainer, TrainerSample, TrainerStatus } from '$lib/ble/trainer';
-import { type PairState, trainerState } from '$lib/session/sensor-status';
-import { quietFault, type TrainerFault } from '$lib/session/sensor-status';
+import { channelConnection } from '#lib/channel/connection.svelte.ts';
+import { FtmsTrainer } from '#lib/ble/ftms.ts';
+import { pairError } from '#lib/ble/pair-error.ts';
+import type {
+	Trainer,
+	TrainerSample,
+	TrainerStatus,
+} from '#lib/ble/trainer.ts';
+import { type PairState, trainerState } from '#lib/session/sensor-status.ts';
+import { quietFault, type TrainerFault } from '#lib/session/sensor-status.ts';
 
 /**
  * The trainer of the SOLO screens — /ride, /ramp and Settings › Equipment

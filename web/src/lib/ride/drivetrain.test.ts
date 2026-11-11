@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { encodeSimulation } from '$lib/ble/ftms';
-import { trainerForce, SIM_DEFAULTS, type SimParams } from '$lib/ble/trainer';
-import { BikeKg, ReferenceRiderKg } from '$lib/protocol';
+import { encodeSimulation } from '#lib/ble/ftms.ts';
+import {
+	trainerForce,
+	SIM_DEFAULTS,
+	type SimParams,
+} from '#lib/ble/trainer.ts';
+import { BikeKg, ReferenceRiderKg } from '#lib/protocol.ts';
 import {
 	GEAR_RATIOS,
 	GEARS,

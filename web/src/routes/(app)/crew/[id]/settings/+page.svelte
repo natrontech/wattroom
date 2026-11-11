@@ -8,10 +8,10 @@
 	// save button.
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import Banner from '$lib/components/Banner.svelte';
-	import CrewMark from '$lib/components/CrewMark.svelte';
-	import IconPicker from '$lib/components/IconPicker.svelte';
-	import Skeleton from '$lib/components/Skeleton.svelte';
+	import Banner from '#lib/components/Banner.svelte';
+	import CrewMark from '#lib/components/CrewMark.svelte';
+	import IconPicker from '#lib/components/IconPicker.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
 	import {
 		clearCrewImage,
 		fetchCrew,
@@ -19,15 +19,15 @@
 		setCrewImage,
 		type Crew,
 		rotateCrewCode,
-	} from '$lib/crew';
-	import { presence } from '$lib/presence.svelte';
-	import { toasts } from '$lib/toast.svelte';
+	} from '#lib/crew.ts';
+	import { presence } from '#lib/presence.svelte.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
 	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
-	import { confirm } from '$lib/confirm.svelte';
+	import { confirm } from '#lib/confirm.svelte.ts';
 	import CrewChannels from './CrewChannels.svelte';
 	import CrewEmoji from './CrewEmoji.svelte';
-	import { provideCrewEmoji } from '$lib/emoji/crew-emoji.svelte';
+	import { provideCrewEmoji } from '#lib/emoji/crew-emoji.svelte.ts';
 
 	let { data }: { data: PageData } = $props();
 	let crew = $state<Crew | null>(untrack(() => data.crew));

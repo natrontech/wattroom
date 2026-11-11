@@ -1,4 +1,4 @@
-import { api, apiBlob, type ApiResult } from '$lib/api';
+import { api, apiBlob, type ApiResult } from '#lib/api.ts';
 
 /**
  * A ride's photos on its page (docs/spec/riding.md "The ride's pictures"):

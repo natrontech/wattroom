@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { render } from 'svelte/server';
 import RideCard from './RideCard.svelte';
 import { homeRoad, homeRoute } from './home-roads';
-import { byId } from '$lib/workout/library';
+import { byId } from '#lib/workout/library.ts';
 
 async function card(id: string) {
 	const road = await homeRoute(homeRoad(id)!);

@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { ROAD_LIFT, yOf } from './geometry';
 import { across, bankOf } from './terrain/road-profile';
-import { type Route } from '$lib/road/route';
+import { type Route } from '#lib/road/route.ts';
 import {
 	at,
 	closes,
@@ -12,7 +12,7 @@ import {
 	lapEnd,
 	leftOf,
 	sampleAt,
-} from '$lib/road/along';
+} from '#lib/road/along.ts';
 
 /**
  * The trail lies on this much road behind you and fades out along it

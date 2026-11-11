@@ -9,9 +9,9 @@
 	// ride that sends the samples and the profile store it reads the flag
 	// from are the connection's, and toggling any other store would change a
 	// setting nothing on this screen sends by.
-	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { hrShareView } from '$lib/channel/hr-share';
-	import { play } from '$lib/sound/cues';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import { hrShareView } from '#lib/channel/hr-share.ts';
+	import { play } from '#lib/sound/cues.ts';
 	import HeartOff from '@lucide/svelte/icons/heart-off';
 	import HeartPulse from '@lucide/svelte/icons/heart-pulse';
 

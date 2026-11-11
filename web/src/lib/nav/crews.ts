@@ -1,4 +1,4 @@
-import type { CrewRef } from '$lib/crew-types';
+import type { CrewRef } from '#lib/crew-types.ts';
 
 /**
  * The crew is a mode the sidebar is in (ADR-0020, amended 2026-09-08; #1147):

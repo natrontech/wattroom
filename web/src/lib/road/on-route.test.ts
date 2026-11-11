@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { flatten, targetAt } from '$lib/workout/engine';
-import type { Workout } from '$lib/workout/types';
-import { validateWorkout } from '$lib/workout/validate';
+import { flatten, targetAt } from '#lib/workout/engine.ts';
+import type { Workout } from '#lib/workout/types.ts';
+import { validateWorkout } from '#lib/workout/validate.ts';
 import { onRoute } from './compile';
 import type { Road } from './road';
 

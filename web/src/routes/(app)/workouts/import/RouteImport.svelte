@@ -1,14 +1,18 @@
 <script lang="ts">
 	import Lock from '@lucide/svelte/icons/lock';
-	import { account } from '$lib/account.svelte';
+	import { account } from '#lib/account.svelte.ts';
 	import { goto } from '$app/navigation';
-	import { api } from '$lib/api';
-	import Banner from '$lib/components/Banner.svelte';
-	import RoutePreview from '$lib/components/RoutePreview.svelte';
-	import { device, isSpectator } from '$lib/device.svelte';
-	import { packRoad } from '$lib/road/road';
-	import { toasts } from '$lib/toast.svelte';
-	import { base64Of, importRoute, type RouteChoice } from '$lib/workout/import';
+	import { api } from '#lib/api.ts';
+	import Banner from '#lib/components/Banner.svelte';
+	import RoutePreview from '#lib/components/RoutePreview.svelte';
+	import { device, isSpectator } from '#lib/device.svelte.ts';
+	import { packRoad } from '#lib/road/road.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
+	import {
+		base64Of,
+		importRoute,
+		type RouteChoice,
+	} from '#lib/workout/import/index.ts';
 
 	/**
 	 * A route file on the import page (#3057): what the rider must choose

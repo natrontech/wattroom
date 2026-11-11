@@ -6,8 +6,8 @@
  * the record and how far into it follow from the crew and the server clock,
  * the way the generated styles do (station.ts).
  */
-import RECORDS from '$lib/lounge/records.json';
-import { hashSeed, prng } from '$lib/world/rand';
+import RECORDS from '#lib/lounge/records.json';
+import { hashSeed, prng } from '#lib/world/rand.ts';
 
 export interface Record {
 	file: string;

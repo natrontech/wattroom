@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { JukeboxState, ServerTick } from '$lib/protocol';
+import type { JukeboxState, ServerTick } from '#lib/protocol.ts';
 import { fillDeck } from './deck-heard';
 
 const deck = (title: string): JukeboxState => ({

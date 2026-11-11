@@ -11,8 +11,8 @@
  * feed is a 404, and a 404 means "no build yet" — the page teaches, it does
  * not apologise (ux.md).
  */
-import { api } from '$lib/api';
-import { sameOriginPath } from '$lib/same-origin';
+import { api } from '#lib/api.ts';
+import { sameOriginPath } from '#lib/same-origin.ts';
 
 export type OS = 'mac' | 'windows' | 'linux' | 'phone' | 'other';
 
@@ -377,7 +377,9 @@ export function startBrowserSignIn(): string {
 }
 
 /** The nonce from a `?desktop=` query, only if it looks like one we made. */
-export function desktopNonce(search: URLSearchParams): string | null {
+export function desktopNonce(search: {
+	get(name: string): string | null;
+}): string | null {
 	const n = search.get('desktop');
 	return n && NONCE_SHAPE.test(n) ? n : null;
 }

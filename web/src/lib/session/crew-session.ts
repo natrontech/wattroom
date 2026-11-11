@@ -1,8 +1,8 @@
-import { api, type ApiResult } from '$lib/api';
-import type { ControlRoute } from '$lib/protocol';
-import type { GameStart } from '$lib/session/modes';
-import { flatten } from '$lib/workout/engine';
-import type { Workout } from '$lib/workout/types';
+import { api, type ApiResult } from '#lib/api.ts';
+import type { ControlRoute } from '#lib/protocol.ts';
+import type { GameStart } from '#lib/session/modes.ts';
+import { flatten } from '#lib/workout/engine.ts';
+import type { Workout } from '#lib/workout/types.ts';
 
 /**
  * Starts a session of the crew's own (docs/SESSIONS.md): the picked workout,

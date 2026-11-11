@@ -4,7 +4,7 @@
  * asks before drawing any of them, kept here so they can be tested without a
  * DOM the web suite has no harness for.
  */
-import type { TrendRide } from '$lib/progression';
+import type { TrendRide } from '#lib/progression.ts';
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 

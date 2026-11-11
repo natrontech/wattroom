@@ -3,10 +3,12 @@ import { flushSync, tick } from 'svelte';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const played: string[] = [];
-vi.mock('$lib/sound/cues', () => ({ play: (id: string) => played.push(id) }));
+vi.mock('#lib/sound/cues.ts', () => ({
+	play: (id: string) => played.push(id),
+}));
 
-import { legsRoad } from '$lib/road/fixtures';
-import { pacerLine, PACER_PAR } from '$lib/road/pacer';
+import { legsRoad } from '#lib/road/fixtures.ts';
+import { pacerLine, PACER_PAR } from '#lib/road/pacer.ts';
 import type { FreeRide } from './free-ride.svelte';
 import { createPacer } from './pacer.svelte';
 

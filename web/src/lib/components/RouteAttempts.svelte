@@ -1,17 +1,17 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
-	import Banner from '$lib/components/Banner.svelte';
-	import Skeleton from '$lib/components/Skeleton.svelte';
-	import { formatClockLong, formatKm, formatShortDate } from '$lib/format';
-	import { withBack } from '$lib/back-link';
+	import Banner from '#lib/components/Banner.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import { formatClockLong, formatKm, formatShortDate } from '#lib/format.ts';
+	import { withBack } from '#lib/back-link.ts';
 	import {
 		attemptPoints,
 		attemptTrend,
 		bestAndLast,
 		type Attempt,
 		type ClimbBest,
-	} from '$lib/road/attempts';
+	} from '#lib/road/attempts.ts';
 
 	/**
 	 * Every ride of a route, as its owner sees them (#3615, #3033): the best

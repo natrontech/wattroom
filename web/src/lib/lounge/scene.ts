@@ -4,27 +4,33 @@
  * table, a trainer for everyone who rides. What the picture needs to know,
  * where its clickable things sit, and the order it is painted in.
  */
-import type { Ctx } from '$lib/lounge/pixel';
-import type { RadioPick, Weather } from '$lib/lounge/state';
-import type { Sky } from '$lib/lounge/palette';
+import type { Ctx } from '#lib/lounge/pixel.ts';
+import type { RadioPick, Weather } from '#lib/lounge/state.ts';
+import type { Sky } from '#lib/lounge/palette.ts';
 import {
 	drawBack,
 	drawLive,
 	drawScreen,
 	drawShade,
-} from '$lib/lounge/draw-room';
-import { drawWindow } from '$lib/lounge/draw-window';
+} from '#lib/lounge/draw-room.ts';
+import { drawWindow } from '#lib/lounge/draw-window.ts';
 import {
 	drawFloorCrew,
 	drawHearts,
 	drawSofaCrew,
-} from '$lib/lounge/draw-people';
-import { drawCat } from '$lib/lounge/draw-cat';
-import { drawDisco } from '$lib/lounge/draw-disco';
-import { drawLights } from '$lib/lounge/draw-sides';
-import { drawCheers, drawConfetti } from '$lib/lounge/draw-moments';
-import { drawFloorVisitor } from '$lib/lounge/draw-visitors';
-import type { Cat, Flyby, Moment, Season, Visitor } from '$lib/lounge/moments';
+} from '#lib/lounge/draw-people.ts';
+import { drawCat } from '#lib/lounge/draw-cat.ts';
+import { drawDisco } from '#lib/lounge/draw-disco.ts';
+import { drawLights } from '#lib/lounge/draw-sides.ts';
+import { drawCheers, drawConfetti } from '#lib/lounge/draw-moments.ts';
+import { drawFloorVisitor } from '#lib/lounge/draw-visitors.ts';
+import type {
+	Cat,
+	Flyby,
+	Moment,
+	Season,
+	Visitor,
+} from '#lib/lounge/moments.ts';
 
 /**
  * The stage: the room's middle, where everything you can click sits, at

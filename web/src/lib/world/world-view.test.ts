@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setWorldMode, worldMode } from './mode';
 
 const cues = vi.hoisted(() => [] as string[]);
-vi.mock('$lib/sound/cues', () => ({ play: (id: string) => cues.push(id) }));
+vi.mock('#lib/sound/cues.ts', () => ({ play: (id: string) => cues.push(id) }));
 import { createWorldView, HELD_S, RETURN_S } from './world-view.svelte';
 
 /** A page that keeps its frames: calm the moment each return's step allows. */
@@ -192,7 +192,7 @@ describe('a ride’s world view (#3080)', () => {
 	});
 
 	it('opens on Flat under reduced motion, and one tap lands on Steady (#3214)', async () => {
-		const { prefersReducedMotion } = await import('$lib/motion');
+		const { prefersReducedMotion } = await import('#lib/motion/index.ts');
 		vi.spyOn(prefersReducedMotion, 'current', 'get').mockReturnValue(true);
 		const view = createWorldView();
 		expect(view.reason).toBe('motion');

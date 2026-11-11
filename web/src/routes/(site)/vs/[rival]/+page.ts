@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { rival, RIVALS } from '$lib/site/rivals';
+import { rival, RIVALS } from '#lib/site/rivals.ts';
 import type { EntryGenerator, PageLoad } from './$types';
 
 // One page per rival in rivals.ts, written out at build time (ADR-0061).

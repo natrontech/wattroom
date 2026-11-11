@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { LiveChannel, LiveCrew } from '$lib/crews-live';
+import type { LiveChannel, LiveCrew } from '#lib/crews-live.ts';
 import {
 	lastDoor,
 	lounge,

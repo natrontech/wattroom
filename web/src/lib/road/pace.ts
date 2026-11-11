@@ -16,7 +16,7 @@ import {
 	ShelterNoneGapM,
 	ShelterSecondWheel,
 	ShelterThirdWheel,
-} from '$lib/protocol';
+} from '#lib/protocol.ts';
 import { roadStep, type Road } from './road';
 
 /**

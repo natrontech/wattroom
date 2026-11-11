@@ -1,7 +1,7 @@
 // Where along the ridden route a spot lies: what the HUD's markers read a
 // village's distance from. What stands beside the road asks the ground
 // instead (terrain/ground.ts's `clearOf`, #3076, #3077), keyed by place.
-import { type Route } from '$lib/road/route';
+import { type Route } from '#lib/road/route.ts';
 import { indexLines, type Hit } from './terrain/lines';
 
 export type Nearest = (x: number, z: number, maxRing?: number) => Hit | null;

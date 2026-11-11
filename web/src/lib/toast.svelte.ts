@@ -4,8 +4,8 @@
  * errors stay persistent dashboard status (FaultBanner), never a toast.
  * Rendered by components/Toasts.svelte in the app layout.
  */
-import type { Icon } from '$lib/icons';
-import { play } from '$lib/sound/cues';
+import type { Icon } from '#lib/icons.ts';
+import { play } from '#lib/sound/cues.ts';
 
 export interface Toast {
 	id: number;

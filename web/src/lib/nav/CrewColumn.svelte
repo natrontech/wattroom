@@ -5,26 +5,26 @@
 	// here is one the rider may enter: a private one that does not name them
 	// is not in the read at all (#2444), so nothing here is a link that fails.
 	import { goto } from '$app/navigation';
-	import { api } from '$lib/api';
-	import RidingBars from '$lib/components/RidingBars.svelte';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import Skeleton from '$lib/components/Skeleton.svelte';
-	import Modal from '$lib/components/Modal.svelte';
+	import { api } from '#lib/api.ts';
+	import RidingBars from '#lib/components/RidingBars.svelte';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import Modal from '#lib/components/Modal.svelte';
 	import {
 		contextMenu,
 		MENU_HINT,
 		type MenuEntry,
-	} from '$lib/context-menu.svelte';
-	import { deleteLabel, newLabel } from '$lib/channels';
-	import { deleteChannelFlow } from '$lib/crew-flows';
-	import { device } from '$lib/device.svelte';
-	import { UNREAD_COUNT, unreadCount } from '$lib/messages/unread-marks';
-	import type { CrewRef } from '$lib/crew-types';
-	import { channelAddress, sessionPath } from '$lib/channel/address';
-	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { askVoice } from '$lib/channel/voice-intent';
-	import { account, voiceUp } from '$lib/account.svelte';
-	import { toasts } from '$lib/toast.svelte';
+	} from '#lib/context-menu.svelte.ts';
+	import { deleteLabel, newLabel } from '#lib/channels.ts';
+	import { deleteChannelFlow } from '#lib/crew-flows.ts';
+	import { device } from '#lib/device.svelte.ts';
+	import { UNREAD_COUNT, unreadCount } from '#lib/messages/unread-marks.ts';
+	import type { CrewRef } from '#lib/crew-types.ts';
+	import { channelAddress, sessionPath } from '#lib/channel/address.ts';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import { askVoice } from '#lib/channel/voice-intent.ts';
+	import { account, voiceUp } from '#lib/account.svelte.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
 	import Lock from '@lucide/svelte/icons/lock';
 	import LockOpen from '@lucide/svelte/icons/lock-open';
 	import MessageCircle from '@lucide/svelte/icons/message-circle';
@@ -39,7 +39,7 @@
 	import Radio from '@lucide/svelte/icons/radio';
 	import NewChannel from './NewChannel.svelte';
 	import { crewPlaces } from './pages';
-	import { people as faces } from '$lib/people.svelte';
+	import { people as faces } from '#lib/people.svelte.ts';
 	import { createVoiceMover } from './voice-mover.svelte';
 	import VoiceOccupants from './VoiceOccupants.svelte';
 

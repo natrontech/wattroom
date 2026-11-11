@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { CrewPlan } from '$lib/crew-schedule';
+import type { CrewPlan } from '#lib/crew-schedule.ts';
 import { rideFirstHref } from './ride-first';
 
 const plan = (road: object | undefined, mine = false): CrewPlan =>

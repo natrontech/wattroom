@@ -1,10 +1,10 @@
 // @vitest-environment happy-dom
 import * as THREE from 'three';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { at } from '$lib/road/along';
-import { hairpinsOf } from '$lib/road/climbs';
-import { hairpinClimb } from '$lib/road/fixtures';
-import { toRoute, type Route } from '$lib/road/route';
+import { at } from '#lib/road/along.ts';
+import { hairpinsOf } from '#lib/road/climbs.ts';
+import { hairpinClimb } from '#lib/road/fixtures.ts';
+import { toRoute, type Route } from '#lib/road/route.ts';
 import { pageGrids } from './chunks/grids';
 import type { Composed } from './compose';
 import type { Family } from './family';

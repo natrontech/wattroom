@@ -5,24 +5,24 @@
 	 * numbers on a desk; on a phone the followed rider's (#412, #4233), where
 	 * POWER, CLIMB, MAP and the trim, all your own ride's, stand aside.
 	 */
-	import { useChannel } from '$lib/channel/context';
-	import { channelConnection } from '$lib/channel/connection.svelte';
-	import type { LiveRider } from '$lib/channel/types';
-	import HrShare from '$lib/channel/HrShare.svelte';
-	import type { ClimbView } from '$lib/ride/climb-view';
-	import type { MapView } from '$lib/ride/map-view';
-	import BiasTrim from '$lib/session/BiasTrim.svelte';
-	import BikeComputer from '$lib/session/BikeComputer.svelte';
-	import ExecutionMeter from '$lib/session/ExecutionMeter.svelte';
-	import { fetchProgression } from '$lib/progression';
-	import { fitCPW, type CPW } from '$lib/road/cpw';
+	import { useChannel } from '#lib/channel/context.ts';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import type { LiveRider } from '#lib/channel/types.ts';
+	import HrShare from '#lib/channel/HrShare.svelte';
+	import type { ClimbView } from '#lib/ride/climb-view.ts';
+	import type { MapView } from '#lib/ride/map-view.ts';
+	import BiasTrim from '#lib/session/BiasTrim.svelte';
+	import BikeComputer from '#lib/session/BikeComputer.svelte';
+	import ExecutionMeter from '#lib/session/ExecutionMeter.svelte';
+	import { fetchProgression } from '#lib/progression.ts';
+	import { fitCPW, type CPW } from '#lib/road/cpw.ts';
 	import {
 		createMatchGauge,
 		matchesLine,
 		type MatchesReadout,
-	} from '$lib/race/matches';
-	import { changes } from '$lib/sound/changes';
-	import { play } from '$lib/sound/cues';
+	} from '#lib/race/matches.ts';
+	import { changes } from '#lib/sound/changes.ts';
+	import { play } from '#lib/sound/cues.ts';
 
 	let {
 		rider,

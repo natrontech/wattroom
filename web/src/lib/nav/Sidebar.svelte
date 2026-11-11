@@ -10,26 +10,26 @@
 	// and who is in voice. 48 px cannot say "Sweet Spot, 12 min in".
 	import PanelLeftClose from '@lucide/svelte/icons/panel-left-close';
 	import { hideSidebar } from './drawer.svelte';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import YouPanel from '$lib/nav/YouPanel.svelte';
-	import Logo from '$lib/brand/Logo.svelte';
-	import Skeleton from '$lib/components/Skeleton.svelte';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import YouPanel from '#lib/nav/YouPanel.svelte';
+	import Logo from '#lib/brand/Logo.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
 	import VoiceStrip from './VoiceStrip.svelte';
 	import RideDock from './RideDock.svelte';
 	import CrewSwitcher from './CrewSwitcher.svelte';
 	import CrewColumn from './CrewColumn.svelte';
 	import { crewLive } from './crew-live.svelte';
 	import { chosenCrew } from './chosen-crew.svelte';
-	import { keepSize } from '$lib/pane';
-	import { edgeDivider } from '$lib/divider';
-	import { friends } from '$lib/friends/friends.svelte';
-	import { dmHeads } from '$lib/dm/heads.svelte';
+	import { keepSize } from '#lib/pane.ts';
+	import { edgeDivider } from '#lib/divider.ts';
+	import { friends } from '#lib/friends/friends.svelte.ts';
+	import { dmHeads } from '#lib/dm/heads.svelte.ts';
 	import {
 		UNREAD_COUNT,
 		UNREAD_DOT,
 		unreadCount,
-	} from '$lib/messages/unread-marks';
-	import { channelConnection } from '$lib/channel/connection.svelte';
+	} from '#lib/messages/unread-marks.ts';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
 	import {
 		activeHref,
 		columnCrew,
@@ -39,21 +39,21 @@
 	} from './pages';
 	import { readFolded, rememberFolded } from './folds';
 	import { untrack } from 'svelte';
-	import { contextMenu, MENU_HINT } from '$lib/context-menu.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import StartOrJoin from '$lib/home/StartOrJoin.svelte';
-	import { personMenu } from '$lib/person-menu';
-	import { presence } from '$lib/presence.svelte';
-	import { statusOf } from '$lib/status';
+	import { contextMenu, MENU_HINT } from '#lib/context-menu.svelte.ts';
+	import Modal from '#lib/components/Modal.svelte';
+	import StartOrJoin from '#lib/home/StartOrJoin.svelte';
+	import { personMenu } from '#lib/person-menu.ts';
+	import { presence } from '#lib/presence.svelte.ts';
+	import { statusOf } from '#lib/status.ts';
 	import { goto } from '$app/navigation';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
-	import { device } from '$lib/device.svelte';
+	import { device } from '#lib/device.svelte.ts';
 	import Monitor from '@lucide/svelte/icons/monitor';
 	import UpdateRow from './UpdateRow.svelte';
-	import StatusMark from '$lib/status-line/StatusMark.svelte';
+	import StatusMark from '#lib/status-line/StatusMark.svelte';
 	import ReleaseSheet from './ReleaseSheet.svelte';
 	import { updates } from './updates.svelte';
-	import { shellVersion } from '$lib/desktop';
+	import { shellVersion } from '#lib/desktop.ts';
 
 	let {
 		pathname,

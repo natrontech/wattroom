@@ -9,9 +9,9 @@
 		contextMenu,
 		MENU_HINT,
 		type MenuEntry,
-	} from '$lib/context-menu.svelte';
-	import { ZONE_BG, zoneOfStep } from '$lib/components/zones';
-	import { formatClock } from '$lib/format';
+	} from '#lib/context-menu.svelte.ts';
+	import { ZONE_BG, zoneOfStep } from '#lib/components/zones.ts';
+	import { formatClock } from '#lib/format.ts';
 	import {
 		addInto,
 		append,
@@ -22,8 +22,8 @@
 		sameParent,
 		STEP_TYPES,
 		wrapInRepeat,
-	} from '$lib/workout/tree';
-	import type { Workout, WorkoutStep } from '$lib/workout/types';
+	} from '#lib/workout/tree.ts';
+	import type { Workout, WorkoutStep } from '#lib/workout/types.ts';
 
 	let {
 		workout,

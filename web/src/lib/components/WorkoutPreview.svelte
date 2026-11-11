@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { segmentsDuration } from '$lib/workout/engine';
-	import type { Segment } from '$lib/workout/types';
+	import { segmentsDuration } from '#lib/workout/engine.ts';
+	import type { Segment } from '#lib/workout/types.ts';
 	import IntervalGraph from './IntervalGraph.svelte';
 	import ZoneLegend from './ZoneLegend.svelte';
 	import { plannedZoneSeconds } from './zones';

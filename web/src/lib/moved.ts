@@ -1,7 +1,7 @@
 import { redirect } from '@sveltejs/kit';
-import { loadApi } from '$lib/api';
-import type { LiveSession } from '$lib/protocol';
-import { toasts } from '$lib/toast.svelte';
+import { loadApi } from '#lib/api.ts';
+import type { LiveSession } from '#lib/protocol.ts';
+import { toasts } from '#lib/toast.svelte.ts';
 
 /** What an old room became (#2446): its crew, and the channels it split into. */
 export interface MovedRoom {

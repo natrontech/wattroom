@@ -2,12 +2,12 @@
 	// Away and the way out of where you are. `docked` is the sidebar's foot on a
 	// desk, where the split button takes the row; riding or on a phone they
 	// sit at the end of the now bar.
-	import { leaveChannel } from '$lib/channel/leave';
-	import { account } from '$lib/account.svelte';
-	import { contextMenu, openMenu } from '$lib/context-menu.svelte';
-	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { rideBar } from '$lib/nav/ride-bar.svelte';
-	import { AWAY_CHOICES, AWAY_STATES, awayState } from '$lib/away';
+	import { leaveChannel } from '#lib/channel/leave.ts';
+	import { account } from '#lib/account.svelte.ts';
+	import { contextMenu, openMenu } from '#lib/context-menu.svelte.ts';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import { rideBar } from '#lib/nav/ride-bar.svelte.ts';
+	import { AWAY_CHOICES, AWAY_STATES, awayState } from '#lib/away.ts';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import LogOut from '@lucide/svelte/icons/log-out';
 

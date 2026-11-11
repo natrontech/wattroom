@@ -10,9 +10,9 @@
 	 * their voice (ADR-0089): it says where the voice is, and the one tap that
 	 * moves it here.
 	 */
-	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { device } from '$lib/device.svelte';
-	import PhoneRemote from '$lib/ride/PhoneRemote.svelte';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import { device } from '#lib/device.svelte.ts';
+	import PhoneRemote from '#lib/ride/PhoneRemote.svelte';
 
 	let { class: cls = '' }: { class?: string } = $props();
 

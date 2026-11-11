@@ -7,16 +7,16 @@
 	 * Opened from a route page (#3681), `road` is already picked: it opens on
 	 * where to start.
 	 */
-	import Banner from '$lib/components/Banner.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import Skeleton from '$lib/components/Skeleton.svelte';
-	import { formatKm as km } from '$lib/format';
-	import RouteRow from '$lib/components/RouteRow.svelte';
-	import WattRoomRoads from '$lib/ride/WattRoomRoads.svelte';
-	import { loadRoad, myRoutes } from '$lib/ride/roads';
-	import type { StoredRoute } from '$lib/road/stored';
-	import { matchTerrain } from '$lib/road/match';
-	import type { Workout } from '$lib/workout/types';
+	import Banner from '#lib/components/Banner.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import { formatKm as km } from '#lib/format.ts';
+	import RouteRow from '#lib/components/RouteRow.svelte';
+	import WattRoomRoads from '#lib/ride/WattRoomRoads.svelte';
+	import { loadRoad, myRoutes } from '#lib/ride/roads.ts';
+	import type { StoredRoute } from '#lib/road/stored.ts';
+	import { matchTerrain } from '#lib/road/match.ts';
+	import type { Workout } from '#lib/workout/types.ts';
 
 	let {
 		id,

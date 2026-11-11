@@ -2,7 +2,7 @@
 	// The crew's channels (ADR-0058, #2454): text ones and voice ones, each in
 	// its own order, and the forms that add one. Channels have no owner — the
 	// crew's owner and admins keep all of them, which is who reaches this page.
-	import Banner from '$lib/components/Banner.svelte';
+	import Banner from '#lib/components/Banner.svelte';
 	import {
 		createChannel,
 		fetchCrewChannels,
@@ -10,15 +10,15 @@
 		type CrewChannel,
 		type ChannelKind,
 		newLabel,
-	} from '$lib/channels';
-	import type { Crew } from '$lib/crew';
+	} from '#lib/channels.ts';
+	import type { Crew } from '#lib/crew.ts';
 	import {
 		MaxChannelNameChars,
 		MaxCrewTextChannels,
 		MaxCrewVoiceChannels,
-	} from '$lib/protocol';
-	import { createPlaylistStore } from '$lib/channel/playlists.svelte';
-	import { toasts } from '$lib/toast.svelte';
+	} from '#lib/protocol.ts';
+	import { createPlaylistStore } from '#lib/channel/playlists.svelte.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
 	import ChannelRow from './ChannelRow.svelte';
 
 	let { crew }: { crew: Crew } = $props();

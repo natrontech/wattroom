@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('$lib/sound/cues', () => ({ play: () => {} }));
+vi.mock('#lib/sound/cues.ts', () => ({ play: () => {} }));
 const { toasts } = await import('./toast.svelte');
 
 describe('toasts (#1961)', () => {

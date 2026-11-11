@@ -5,7 +5,7 @@ import {
 	DUCK_DEFAULT,
 	DUCK_HOLD_MS,
 	DUCK_RELEASE_MS,
-} from '$lib/sound/ducking';
+} from '#lib/sound/ducking.ts';
 
 /**
  * Enough of an AudioContext for the master bus to exist: what this test

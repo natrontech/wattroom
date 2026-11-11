@@ -5,10 +5,10 @@ import {
 	MinTrainerGrade,
 	PaceDefaultCdA,
 	ReferenceRiderKg,
-} from '$lib/protocol';
-import { SimulatedTrainer } from '$lib/ble/simulated';
-import { at } from '$lib/road/along';
-import { createPace } from '$lib/road/pace';
+} from '#lib/protocol.ts';
+import { SimulatedTrainer } from '#lib/ble/simulated.ts';
+import { at } from '#lib/road/along.ts';
+import { createPace } from '#lib/road/pace.ts';
 import { createActuator } from './actuation.svelte';
 import { createRideGrade, feltGrade, ROAD } from './ride-grade';
 import { gradedRoad, stretch } from './road.test-helper';

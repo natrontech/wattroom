@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { waveform } from '$lib/board/waveform';
+import { waveform } from '#lib/board/waveform.ts';
 
 describe('waveform', () => {
 	it('is stable for a clip, so a pad never changes shape under the rider', () => {

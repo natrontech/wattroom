@@ -1,5 +1,5 @@
-import type { RideRecord } from '$lib/history.svelte';
-import { FREE_RIDE_NAME } from '$lib/ride/free-ride.svelte';
+import type { RideRecord } from '#lib/history.svelte.ts';
+import { FREE_RIDE_NAME } from '#lib/ride/free-ride.svelte.ts';
 
 /** The one line a place with no ride yet teaches (ux.md): Home and History say the same thing. */
 export const NO_RIDES_YET = 'No rides yet — every ride you finish lands here.';

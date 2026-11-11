@@ -1,4 +1,4 @@
-import type { LiveChannel, LiveOccupant } from '$lib/crews-live';
+import type { LiveChannel, LiveOccupant } from '#lib/crews-live.ts';
 
 /**
  * A rider an admin moved (#2730) whose client has not arrived yet (#2745).

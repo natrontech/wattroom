@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import type { LiveRider } from '$lib/channel/types';
+import type { LiveRider } from '#lib/channel/types.ts';
 import {
 	COOLING_SEC,
 	cooled,
 	crewOf,
 	floorSpots,
 	idleOf,
-} from '$lib/lounge/figures';
+} from '#lib/lounge/figures.ts';
 import {
 	PLACES,
 	SCENE_H,
@@ -15,7 +15,7 @@ import {
 	middleOf,
 	placeAt,
 	tagsOf,
-} from '$lib/lounge/scene';
+} from '#lib/lounge/scene.ts';
 
 const rider = (name: string, extra: Partial<LiveRider> = {}) =>
 	({

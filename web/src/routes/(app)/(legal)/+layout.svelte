@@ -1,7 +1,7 @@
 <script lang="ts">
-	import Logo from '$lib/brand/Logo.svelte';
-	import { account } from '$lib/account.svelte';
-	import { shellTitleBar } from '$lib/desktop';
+	import Logo from '#lib/brand/Logo.svelte';
+	import { account } from '#lib/account.svelte.ts';
+	import { shellTitleBar } from '#lib/desktop.ts';
 
 	let { children } = $props();
 	// Under the desktop shell's drag strip (#1188); 0 in a browser.

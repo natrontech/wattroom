@@ -1,16 +1,16 @@
-import { loadApi, type ApiResult } from '$lib/api';
+import { loadApi, type ApiResult } from '#lib/api.ts';
 import {
 	fetchCrewChannels,
 	type CrewAnnouncement,
 	type CrewChannel,
-} from '$lib/channels';
-import { fetchCrewSchedule, type CrewPlan } from '$lib/crew-schedule';
+} from '#lib/channels.ts';
+import { fetchCrewSchedule, type CrewPlan } from '#lib/crew-schedule.ts';
 import {
 	fetchCrew,
 	fetchCrewMembers,
 	type Crew,
 	type CrewMembers,
-} from '$lib/crew';
+} from '#lib/crew.ts';
 
 /**
  * What a voice channel's page needs (#2449): the channel, its crew, the

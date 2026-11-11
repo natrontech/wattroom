@@ -1,10 +1,10 @@
 // @vitest-environment happy-dom
 import * as THREE from 'three';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
-import { at, leftOf } from '$lib/road/along';
-import { legsRoad } from '$lib/road/fixtures';
-import { ROADSIDE_SOUNDS_PER_MINUTE, roadsideSound } from '$lib/roadside';
-import { RIDER_BOX } from '$lib/session/docks';
+import { at, leftOf } from '#lib/road/along.ts';
+import { legsRoad } from '#lib/road/fixtures.ts';
+import { ROADSIDE_SOUNDS_PER_MINUTE, roadsideSound } from '#lib/roadside.ts';
+import { RIDER_BOX } from '#lib/session/docks.ts';
 import { VERGE_LANE } from './bunch';
 import { RIDE } from './look.test-helper';
 import { LANE } from './bunch';
@@ -17,7 +17,7 @@ import type { RideMetre } from './sim';
 import { ROAD_W } from './terrain/road-profile';
 import { generate, type World } from './world';
 import { BUILD_MS } from './world.test-helper';
-import type { Route } from '$lib/road/route';
+import type { Route } from '#lib/road/route.ts';
 
 /**
  * A ride's world is this ride (#3663): one figure, yours, standing where the

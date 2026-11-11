@@ -1,9 +1,9 @@
-import type { ClaimantSource } from '$lib/channel/av-types';
-import type { AvConn, AvState } from '$lib/channel/av-state.svelte';
-import type { Mic } from '$lib/channel/av-mic';
-import type { Publish } from '$lib/channel/av-publish';
-import { createClaims } from '$lib/channel/av-claim.svelte';
-import { serverNow } from '$lib/server-clock';
+import type { ClaimantSource } from '#lib/channel/av-types.ts';
+import type { AvConn, AvState } from '#lib/channel/av-state.svelte.ts';
+import type { Mic } from '#lib/channel/av-mic.ts';
+import type { Publish } from '#lib/channel/av-publish.ts';
+import { createClaims } from '#lib/channel/av-claim.svelte.ts';
+import { serverNow } from '#lib/server-clock.ts';
 
 /**
  * One rider, several tabs (#293), wired to this connection (#1698).

@@ -3,18 +3,21 @@
 	// ride-alone lifecycle on the channel's riding surface — the count-in,
 	// your own clock, the summary — beside anything running here. ADR-0046's
 	// one riding surface: /ride's screens, with the channel around them.
-	import RidePictures from '$lib/ride/RidePictures.svelte';
-	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { useChannel } from '$lib/channel/context';
-	import { ridePath } from '$lib/channel/address';
-	import { liveSessionId } from '$lib/channel/tick-session';
-	import Banner from '$lib/components/Banner.svelte';
-	import CountdownScreen from '$lib/session/CountdownScreen.svelte';
-	import RidingScreen from '$lib/ride/RidingScreen.svelte';
-	import SessionSummary from '$lib/ride/SessionSummary.svelte';
-	import { createRideSounds, guardOfRide } from '$lib/ride/ride-sounds.svelte';
-	import { describeBlock } from '$lib/workout/block';
-	import { signalLost as isSignalLost } from '$lib/workout/ride-state';
+	import RidePictures from '#lib/ride/RidePictures.svelte';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import { useChannel } from '#lib/channel/context.ts';
+	import { ridePath } from '#lib/channel/address.ts';
+	import { liveSessionId } from '#lib/channel/tick-session.ts';
+	import Banner from '#lib/components/Banner.svelte';
+	import CountdownScreen from '#lib/session/CountdownScreen.svelte';
+	import RidingScreen from '#lib/ride/RidingScreen.svelte';
+	import SessionSummary from '#lib/ride/SessionSummary.svelte';
+	import {
+		createRideSounds,
+		guardOfRide,
+	} from '#lib/ride/ride-sounds.svelte.ts';
+	import { describeBlock } from '#lib/workout/block.ts';
+	import { signalLost as isSignalLost } from '#lib/workout/ride-state.ts';
 	import Radio from '@lucide/svelte/icons/radio';
 
 	const channel = useChannel();

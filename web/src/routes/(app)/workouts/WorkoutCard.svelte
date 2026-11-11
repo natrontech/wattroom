@@ -1,16 +1,16 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import WorkoutPreview from '$lib/components/WorkoutPreview.svelte';
+	import WorkoutPreview from '#lib/components/WorkoutPreview.svelte';
 	import {
 		contextMenu,
 		openMenu,
 		MENU_HINT,
 		type MenuEntry,
-	} from '$lib/context-menu.svelte';
+	} from '#lib/context-menu.svelte.ts';
 	import Ellipsis from '@lucide/svelte/icons/ellipsis';
-	import { formatClock } from '$lib/format';
-	import { durationSeconds, flatten } from '$lib/workout/engine';
-	import type { Workout } from '$lib/workout/types';
+	import { formatClock } from '#lib/format.ts';
+	import { durationSeconds, flatten } from '#lib/workout/engine.ts';
+	import type { Workout } from '#lib/workout/types.ts';
 
 	/**
 	 * One card for every workout on the shelf, curated or your own (#1525): the

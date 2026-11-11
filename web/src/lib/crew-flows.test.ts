@@ -18,14 +18,14 @@ const mocks = vi.hoisted(() => ({
 	deleteChannel: vi.fn(),
 }));
 vi.mock('$app/navigation', () => ({ goto: mocks.goto }));
-vi.mock('$lib/confirm.svelte', () => ({ confirm: mocks.confirm }));
-vi.mock('$lib/crew', () => ({
+vi.mock('#lib/confirm.svelte.ts', () => ({ confirm: mocks.confirm }));
+vi.mock('#lib/crew.ts', () => ({
 	leaveCrew: mocks.leaveCrew,
 	transferCrew: mocks.transferCrew,
 	joinCrew: vi.fn(),
 	inviteLink: (code: string) => `/c/${code}`,
 }));
-vi.mock('$lib/presence.svelte', () => ({
+vi.mock('#lib/presence.svelte.ts', () => ({
 	presence: {
 		get crews() {
 			return mocks.crews;
@@ -33,11 +33,11 @@ vi.mock('$lib/presence.svelte', () => ({
 		reload: mocks.reload,
 	},
 }));
-vi.mock('$lib/channels', async (importOriginal) => ({
-	...(await importOriginal<typeof import('$lib/channels')>()),
+vi.mock('#lib/channels.ts', async (importOriginal) => ({
+	...(await importOriginal<typeof import('#lib/channels.ts')>()),
 	deleteChannel: mocks.deleteChannel,
 }));
-vi.mock('$lib/channel/connection.svelte', () => ({
+vi.mock('#lib/channel/connection.svelte.ts', () => ({
 	channelConnection: {
 		get current() {
 			return mocks.current;
@@ -45,7 +45,7 @@ vi.mock('$lib/channel/connection.svelte', () => ({
 		leave: mocks.leave,
 	},
 }));
-vi.mock('$lib/toast.svelte', () => ({ toasts: { push: mocks.push } }));
+vi.mock('#lib/toast.svelte.ts', () => ({ toasts: { push: mocks.push } }));
 
 const {
 	HAND_OVER_BODY,

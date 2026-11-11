@@ -1,5 +1,5 @@
-import { formatClock } from '$lib/format';
-import type { Fault } from '$lib/channel/types';
+import { formatClock } from '#lib/format.ts';
+import type { Fault } from '#lib/channel/types.ts';
 
 /** What a fault banner says: a title, the line under it, and the button's word. */
 export interface FaultCopy {

@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('$lib/hud/feed', () => ({ publishHud: () => {} }));
+vi.mock('#lib/hud/feed.ts', () => ({ publishHud: () => {} }));
 
-import { SimulatedTrainer } from '$lib/ble/simulated';
-import { onRoute } from '$lib/road/compile';
-import type { Road } from '$lib/road/road';
-import { homeRoad, homeRoute } from '$lib/ride/home-roads';
-import { recordingUpload } from '$lib/ride/save';
+import { SimulatedTrainer } from '#lib/ble/simulated.ts';
+import { onRoute } from '#lib/road/compile.ts';
+import type { Road } from '#lib/road/road.ts';
+import { homeRoad, homeRoute } from '#lib/ride/home-roads.ts';
+import { recordingUpload } from '#lib/ride/save.ts';
 import { createRideSession } from './session.svelte';
 import { COUNTDOWN_SECONDS } from './ride-state';
 import { byId } from './library';

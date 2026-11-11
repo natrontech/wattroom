@@ -8,7 +8,7 @@
  * and whoever needs a face asks. An id nobody has taught falls back to the
  * initial exactly as before, so no surface waits on it.
  */
-import type { StatusLine } from '$lib/protocol';
+import type { StatusLine } from '#lib/protocol.ts';
 
 export interface Face {
 	id: string;

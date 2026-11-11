@@ -1,8 +1,8 @@
-import { account } from '$lib/account.svelte';
-import { api } from '$lib/api';
-import { toasts } from '$lib/toast.svelte';
-import { byReference } from '$lib/workout/road-workout';
-import type { Workout } from '$lib/workout/types';
+import { account } from '#lib/account.svelte.ts';
+import { api } from '#lib/api.ts';
+import { toasts } from '#lib/toast.svelte.ts';
+import { byReference } from '#lib/workout/road-workout.ts';
+import type { Workout } from '#lib/workout/types.ts';
 
 /** A finished solo ride, in the shape POST /api/rides wants. */
 export interface RideUpload {

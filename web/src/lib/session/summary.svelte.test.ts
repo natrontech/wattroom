@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { tick } from 'svelte';
-import { MinRideSamples } from '$lib/protocol';
-import type { LiveRider } from '$lib/channel/types';
+import { MinRideSamples } from '#lib/protocol.ts';
+import type { LiveRider } from '#lib/channel/types.ts';
 
 const served = vi.hoisted(() => ({
 	rides: [] as {
@@ -16,7 +16,7 @@ const served = vi.hoisted(() => ({
 	/** The rides read refuses, as a server having a moment does. */
 	refuse: false,
 }));
-vi.mock('$lib/api', () => ({
+vi.mock('#lib/api.ts', () => ({
 	api: async (path: string) =>
 		path === '/api/rides' && served.refuse
 			? { ok: false, error: { error: 'internal_error', message: 'Not now.' } }
@@ -32,7 +32,7 @@ vi.mock('$lib/api', () => ({
 
 // The account re-read a found ride sets off (#2626), recorded, not run.
 const account = vi.hoisted(() => ({ load: vi.fn() }));
-vi.mock('$lib/account.svelte', () => ({ account }));
+vi.mock('#lib/account.svelte.ts', () => ({ account }));
 
 const { createSummary } = await import('./summary.svelte');
 const { createRecording } = await import('./recording.svelte');

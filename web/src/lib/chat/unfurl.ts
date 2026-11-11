@@ -10,7 +10,7 @@
  * link — and a null is cached like a card, so a page with nothing to say is
  * asked once and not once per scroll.
  */
-import { api } from '$lib/api';
+import { api } from '#lib/api.ts';
 import { parseInline, type Part } from './inline';
 
 export type Card = {

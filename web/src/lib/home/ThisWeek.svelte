@@ -7,12 +7,12 @@
 	// No RSVP here, on purpose (decided 2026-09-17). Saying you are in, and
 	// who is, belong with the planning on the crew's Schedule; a row carries
 	// only the count.
-	import { account } from '$lib/account.svelte';
-	import { api } from '$lib/api';
-	import { presence } from '$lib/presence.svelte';
-	import { crewLive } from '$lib/nav/crew-live.svelte';
-	import NotifyOffer from '$lib/components/NotifyOffer.svelte';
-	import Skeleton from '$lib/components/Skeleton.svelte';
+	import { account } from '#lib/account.svelte.ts';
+	import { api } from '#lib/api.ts';
+	import { presence } from '#lib/presence.svelte.ts';
+	import { crewLive } from '#lib/nav/crew-live.svelte.ts';
+	import NotifyOffer from '#lib/components/NotifyOffer.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
 	import { byDay, weekList, type Planned, type WeekDay } from './week-list';
 
 	let {

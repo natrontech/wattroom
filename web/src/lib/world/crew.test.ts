@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { toRoute } from '$lib/road/route';
+import { toRoute } from '#lib/road/route.ts';
 import { makeCrew, type Pedalling } from './crew';
 import { RIDE } from './look.test-helper';
 import { simRider, type SimRider } from './sim';

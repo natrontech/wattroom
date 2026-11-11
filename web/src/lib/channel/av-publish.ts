@@ -1,11 +1,11 @@
-import type { AvConn, AvState } from '$lib/channel/av-state.svelte';
-import { rememberShareSound } from '$lib/channel/av-state.svelte';
-import type { Seats } from '$lib/channel/av-seats';
-import type { Stage } from '$lib/channel/av-stage.svelte';
-import type { RiderOutput } from '$lib/channel/av-output';
-import type { MicChain } from '$lib/channel/mic-chain.svelte';
-import type { MediaDevice } from '$lib/channel/media-error';
-import { mixer } from '$lib/sound/mixer.svelte';
+import type { AvConn, AvState } from '#lib/channel/av-state.svelte.ts';
+import { rememberShareSound } from '#lib/channel/av-state.svelte.ts';
+import type { Seats } from '#lib/channel/av-seats.ts';
+import type { Stage } from '#lib/channel/av-stage.svelte.ts';
+import type { RiderOutput } from '#lib/channel/av-output.ts';
+import type { MicChain } from '#lib/channel/mic-chain.svelte.ts';
+import type { MediaDevice } from '#lib/channel/media-error.ts';
+import { mixer } from '#lib/sound/mixer.svelte.ts';
 
 /**
  * What this machine puts into the call, and what stepping out takes back down

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Road } from '$lib/road/road';
+import type { Road } from '#lib/road/road.ts';
 import { createDeadReckoning, placeOnRoad, type RoadPlace } from './road-place';
 
 const road: Road = {

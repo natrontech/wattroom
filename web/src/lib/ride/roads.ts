@@ -1,9 +1,9 @@
-import { homeRoad, homeRoute } from '$lib/ride/home-roads';
-import { api } from '$lib/api';
-import type { Road } from '$lib/road/road';
-import { fetchCrewSchedule } from '$lib/crew-schedule';
-import { roadOf, type StoredRoute } from '$lib/road/stored';
-import { roadOf as attachedRoadOf } from '$lib/workout/road-workout';
+import { homeRoad, homeRoute } from '#lib/ride/home-roads.ts';
+import { api } from '#lib/api.ts';
+import type { Road } from '#lib/road/road.ts';
+import { fetchCrewSchedule } from '#lib/crew-schedule.ts';
+import { roadOf, type StoredRoute } from '#lib/road/stored.ts';
+import { roadOf as attachedRoadOf } from '#lib/workout/road-workout.ts';
 
 /** A route with its road, ready to ride. */
 export interface RideableRoute {

@@ -6,9 +6,15 @@
  * the bull. The day's seed sets how the aim sways and the draught across
  * the room.
  */
-import { hash3 } from '$lib/lounge/hash';
-import { LOUNGE as C } from '$lib/lounge/palette';
-import { outlined, rect, text, textWidth, type Ctx } from '$lib/lounge/pixel';
+import { hash3 } from '#lib/lounge/hash.ts';
+import { LOUNGE as C } from '#lib/lounge/palette.ts';
+import {
+	outlined,
+	rect,
+	text,
+	textWidth,
+	type Ctx,
+} from '#lib/lounge/pixel.ts';
 import { SCREEN_H as H, SCREEN_W as W, type Game, type Sound } from './game';
 
 export const DARTS = 3;

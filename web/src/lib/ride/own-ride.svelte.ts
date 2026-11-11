@@ -1,14 +1,18 @@
-import { byReference } from '$lib/workout/road-workout';
-import { account } from '$lib/account.svelte';
-import { pairError } from '$lib/ble/pair-error';
-import type { Trainer } from '$lib/ble/trainer';
-import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
-import { recordingUpload, uploadRide, type SaveFailure } from '$lib/ride/save';
-import { replan } from '$lib/ride/ride-alone-session';
-import { sensors } from '$lib/sensors.svelte';
-import { wireMetrics } from '$lib/session/wire';
-import { createRideSession } from '$lib/workout/session.svelte';
-import type { Workout } from '$lib/workout/types';
+import { byReference } from '#lib/workout/road-workout.ts';
+import { account } from '#lib/account.svelte.ts';
+import { pairError } from '#lib/ble/pair-error.ts';
+import type { Trainer } from '#lib/ble/trainer.ts';
+import { openRideBuffer, type RideBuffer } from '#lib/ride/buffer.ts';
+import {
+	recordingUpload,
+	uploadRide,
+	type SaveFailure,
+} from '#lib/ride/save.ts';
+import { replan } from '#lib/ride/ride-alone-session.ts';
+import { sensors } from '#lib/sensors.svelte.ts';
+import { wireMetrics } from '#lib/session/wire.ts';
+import { createRideSession } from '#lib/workout/session.svelte.ts';
+import type { Workout } from '#lib/workout/types.ts';
 
 type RideSession = ReturnType<typeof createRideSession>;
 

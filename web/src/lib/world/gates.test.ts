@@ -1,9 +1,9 @@
 // @vitest-environment happy-dom
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { at } from '$lib/road/along';
-import { legsRoad } from '$lib/road/fixtures';
-import type { PaintedGate } from '$lib/road/gates';
+import { at } from '#lib/road/along.ts';
+import { legsRoad } from '#lib/road/fixtures.ts';
+import type { PaintedGate } from '#lib/road/gates.ts';
 import { BANNER_M, CHEVRONS_M, makeGates } from './gates';
 import { ROAD_LIFT, roadMaterial, yOf } from './geometry';
 import { RIDE } from './look.test-helper';

@@ -1,5 +1,5 @@
 import { expect, vi } from 'vitest';
-import type { Trainer } from '$lib/ble/trainer';
+import type { Trainer } from '#lib/ble/trainer.ts';
 import { GEARS_PROBE } from './gears-probe-steps';
 import { runProbeStep, type ProbeEvent, type StepId } from './gears-probe';
 

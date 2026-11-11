@@ -1,6 +1,6 @@
-import type { TrackPoint } from '$lib/road/parse';
-import type { Route } from '$lib/road/route';
-import { frameAt } from '$lib/road/along';
+import type { TrackPoint } from '#lib/road/parse.ts';
+import type { Route } from '#lib/road/route.ts';
+import { frameAt } from '#lib/road/along.ts';
 import { ROAD_W } from './terrain/road-profile';
 import type { World } from './world';
 

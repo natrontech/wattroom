@@ -5,9 +5,9 @@
 	is made by looking rather than by reading colour names.
 -->
 <script lang="ts">
-	import { tokenDeclarations } from '$lib/palette';
-	import { DEFAULT_CHOICE, DEFAULT_IDENTITY, themesFor } from '$lib/themes';
-	import { palette } from '$lib/palette.svelte';
+	import { tokenDeclarations } from '#lib/palette.ts';
+	import { DEFAULT_CHOICE, DEFAULT_IDENTITY, themesFor } from '#lib/themes.ts';
+	import { palette } from '#lib/palette.svelte.ts';
 
 	const choice = $derived(palette.choice);
 	const selectedId = $derived(choice.identity);

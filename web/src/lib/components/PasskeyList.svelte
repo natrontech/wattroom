@@ -8,10 +8,10 @@
 	// AGENTS.md asks that nothing live only in a menu.
 	import Banner from './Banner.svelte';
 	import Skeleton from './Skeleton.svelte';
-	import { account } from '$lib/account.svelte';
-	import * as passkeys from '$lib/passkeys';
-	import { shellVersion } from '$lib/desktop';
-	import { LAST_WAY_IN, isLastWayIn } from '$lib/auth/last-way-in';
+	import { account } from '#lib/account.svelte.ts';
+	import * as passkeys from '#lib/passkeys.ts';
+	import { shellVersion } from '#lib/desktop.ts';
+	import { LAST_WAY_IN, isLastWayIn } from '#lib/auth/last-way-in.ts';
 
 	// Two different preconditions, and the rider can act on one of them
 	// (#2256). The browser is theirs to change; whether this server derived a

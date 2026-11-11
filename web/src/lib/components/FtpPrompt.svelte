@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { RaceWeightConfirmDays } from '$lib/protocol';
-	import { confirmWeight } from '$lib/profile-sync.svelte';
-	import { toasts } from '$lib/toast.svelte';
+	import { RaceWeightConfirmDays } from '#lib/protocol.ts';
+	import { confirmWeight } from '#lib/profile-sync.svelte.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
 
 	let {
 		current,

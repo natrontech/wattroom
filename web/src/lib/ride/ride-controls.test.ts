@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { PauseState, ViewState } from '$lib/protocol';
+import type { PauseState, ViewState } from '#lib/protocol.ts';
 import { clockActions, LAST_BLOCK, NO_BLOCKS } from './remote-blocks';
 import {
 	answerLine,

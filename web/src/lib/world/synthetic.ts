@@ -8,7 +8,7 @@
 // joined by five hairpins, a short summit ridge, a long winding descent and the valley
 // again — about 30 km and 600 m up.
 import { prng } from './rand';
-import type { TrackPoint } from '$lib/road/parse';
+import type { TrackPoint } from '#lib/road/parse.ts';
 
 export const SYNTHETIC_NAME = 'Synthetic pass loop';
 

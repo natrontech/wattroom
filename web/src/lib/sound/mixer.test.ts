@@ -1,15 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DUCK_DEFAULT } from '$lib/sound/ducking';
+import { DUCK_DEFAULT } from '#lib/sound/ducking.ts';
 import {
 	MUSIC_FADER,
 	RIDER_FADER,
 	UNIT_FADER,
 	type Fader,
-} from '$lib/sound/fader';
+} from '#lib/sound/fader.ts';
 
 // The cue engine opens an AudioContext on first use; the mixer only needs
 // its setters to exist.
-vi.mock('$lib/sound/cues', () => ({
+vi.mock('#lib/sound/cues.ts', () => ({
 	setDuckLevel: vi.fn(),
 	setVolume: vi.fn(),
 }));
@@ -18,7 +18,7 @@ vi.mock('$lib/sound/cues', () => ({
 // (#713), so no platform `localStorage` — happy-dom's, or the one Node now
 // ships — can stand in for it and carry state between tests.
 const store = { value: null as string | null };
-vi.mock('$lib/sound/mixer-storage', () => ({
+vi.mock('#lib/sound/mixer-storage.ts', () => ({
 	mixerStorage: {
 		read: () => store.value,
 		write: (json: string) => void (store.value = json),
@@ -226,7 +226,7 @@ describe('fader resolution (#509)', () => {
 	// pulls the cues down, and the board keeps whatever level they gave it.
 	it('moves the board without touching the cues, or the cue bus', async () => {
 		const mixer = await freshMixer();
-		const { setVolume } = await import('$lib/sound/cues');
+		const { setVolume } = await import('#lib/sound/cues.ts');
 		mixer.setCues(0.6);
 		vi.mocked(setVolume).mockClear();
 
@@ -257,7 +257,7 @@ describe('mixer muted while away (#875)', () => {
 
 	it('takes the cue bus to silence and gives the level back on return', async () => {
 		const mixer = await freshMixer();
-		const { setVolume } = await import('$lib/sound/cues');
+		const { setVolume } = await import('#lib/sound/cues.ts');
 		mixer.setCues(0.4);
 
 		mixer.setMuted(true);

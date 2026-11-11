@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import * as THREE from 'three';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { toRoute, type Route } from '$lib/road/route';
+import { toRoute, type Route } from '#lib/road/route.ts';
 import { devCrew } from './test-crew';
 import { RIDE } from './look.test-helper';
 import { compose, type Composed } from './compose';

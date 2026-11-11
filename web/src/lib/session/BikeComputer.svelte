@@ -12,19 +12,19 @@
 	import { untrack } from 'svelte';
 	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
-	import { device } from '$lib/device.svelte';
-	import ZoneDot from '$lib/components/ZoneDot.svelte';
-	import ComputerHead from '$lib/session/ComputerHead.svelte';
-	import { ZONE_BG } from '$lib/components/zones';
-	import { pulse } from '$lib/motion/transitions';
-	import { fieldDimmer } from '$lib/session/field-dim';
-	import ClimbProfile from '$lib/ride/ClimbProfile.svelte';
-	import { climbStage } from '$lib/ride/climb-cues.svelte';
-	import ComputerMap from '$lib/ride/ComputerMap.svelte';
-	import { gapLine } from '$lib/road/ghost';
-	import { shifterSlot } from '$lib/ble/controller-slot.svelte';
-	import { computerShown } from '$lib/session/computer-shown.svelte';
-	import { tooltip } from '$lib/tooltip.svelte';
+	import { device } from '#lib/device.svelte.ts';
+	import ZoneDot from '#lib/components/ZoneDot.svelte';
+	import ComputerHead from '#lib/session/ComputerHead.svelte';
+	import { ZONE_BG } from '#lib/components/zones.ts';
+	import { pulse } from '#lib/motion/transitions.ts';
+	import { fieldDimmer } from '#lib/session/field-dim.ts';
+	import ClimbProfile from '#lib/ride/ClimbProfile.svelte';
+	import { climbStage } from '#lib/ride/climb-cues.svelte.ts';
+	import ComputerMap from '#lib/ride/ComputerMap.svelte';
+	import { gapLine } from '#lib/road/ghost.ts';
+	import { shifterSlot } from '#lib/ble/controller-slot.svelte.ts';
+	import { computerShown } from '#lib/session/computer-shown.svelte.ts';
+	import { tooltip } from '#lib/tooltip.svelte.ts';
 	import {
 		PAGE_NAMES,
 		TV_LABEL,
@@ -38,7 +38,7 @@
 		type ComputerContext,
 		type ComputerPage,
 		type PageAsk,
-	} from '$lib/session/computer-pages';
+	} from '#lib/session/computer-pages.ts';
 
 	let {
 		tv = false,

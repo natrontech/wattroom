@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ApiResult } from '$lib/api';
+import type { ApiResult } from '#lib/api.ts';
 
 /**
  * #850, a rider report: clicking through Home and settings, they dropped out
@@ -17,7 +17,7 @@ const answers = new Map<string, ApiResult<unknown>>();
 const calls: string[] = [];
 let hold: (() => void) | null = null;
 
-vi.mock('$lib/api', () => ({
+vi.mock('#lib/api.ts', () => ({
 	api: async (path: string) => {
 		calls.push(path);
 		// Read now, answer later: a held call carries what it was given when it
@@ -28,9 +28,9 @@ vi.mock('$lib/api', () => ({
 		return answer;
 	},
 }));
-vi.mock('$lib/people.svelte', () => ({ people: { learn: () => {} } }));
+vi.mock('#lib/people.svelte.ts', () => ({ people: { learn: () => {} } }));
 
-const { account } = await import('$lib/account.svelte');
+const { account } = await import('#lib/account.svelte.ts');
 
 const ME = { id: 'u1', displayName: 'Jan', ftpWatts: 240, weightKg: 72 };
 const signedIn = () => answers.set('/api/me', { ok: true, data: ME });
@@ -173,7 +173,7 @@ describe('account.load timezone', () => {
  */
 describe('unchosen', () => {
 	it('is only true of the source that means nobody chose it', async () => {
-		const { unchosen } = await import('$lib/account.svelte');
+		const { unchosen } = await import('#lib/account.svelte.ts');
 		expect(unchosen('default')).toBe(true);
 		expect(unchosen('manual')).toBe(false);
 		expect(unchosen('ramp')).toBe(false);

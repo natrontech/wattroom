@@ -1,6 +1,6 @@
-import { MOST_ABREAST } from '$lib/world/lanes';
-import { bunchLooks, seededLoadout } from '$lib/world/loadout';
-import { simRider, type SimRider } from '$lib/world/sim';
+import { MOST_ABREAST } from '#lib/world/lanes.ts';
+import { bunchLooks, seededLoadout } from '#lib/world/loadout.ts';
+import { simRider, type SimRider } from '#lib/world/sim.ts';
 
 /**
  * The dev gallery's crew (#3663): you on your own FTP and three stand-ins a

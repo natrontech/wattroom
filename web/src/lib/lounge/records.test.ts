@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import RECORDS from '$lib/lounge/records.json';
-import { recordAt } from '$lib/lounge/records';
+import RECORDS from '#lib/lounge/records.json';
+import { recordAt } from '#lib/lounge/records.ts';
 
 const NOW = 1_793_750_400;
 

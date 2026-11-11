@@ -1,5 +1,5 @@
-import { faultCopy } from '$lib/channel/fault-copy';
-import { DEFAULTS } from '$lib/workout/guards';
+import { faultCopy } from '#lib/channel/fault-copy.ts';
+import { DEFAULTS } from '#lib/workout/guards.ts';
 
 /**
  * Slot 1's persistent lines over the world (#3212, TARGETS G3): one line per

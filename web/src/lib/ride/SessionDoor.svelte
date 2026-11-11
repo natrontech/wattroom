@@ -5,12 +5,12 @@
 	// starts. Hidden with no lounge to open and on a phone, which only plans
 	// (#1767): never a door that fails on click (ux.md).
 	import { goto } from '$app/navigation';
-	import { channelAddress } from '$lib/channel/address';
-	import { askVoiceMuted } from '$lib/channel/voice-intent';
-	import { lounge, loungeCrew, rememberDoor } from '$lib/crew-lounge';
-	import { device } from '$lib/device.svelte';
-	import { crewLive } from '$lib/nav/crew-live.svelte';
-	import { startDoor } from '$lib/session/doors';
+	import { channelAddress } from '#lib/channel/address.ts';
+	import { askVoiceMuted } from '#lib/channel/voice-intent.ts';
+	import { lounge, loungeCrew, rememberDoor } from '#lib/crew-lounge.ts';
+	import { device } from '#lib/device.svelte.ts';
+	import { crewLive } from '#lib/nav/crew-live.svelte.ts';
+	import { startDoor } from '#lib/session/doors.ts';
 	import Radio from '@lucide/svelte/icons/radio';
 
 	let { pick, road }: { pick: string; road?: string } = $props();

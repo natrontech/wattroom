@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { people } from '$lib/people.svelte';
-	import StatusMark from '$lib/status-line/StatusMark.svelte';
+	import { people } from '#lib/people.svelte.ts';
+	import StatusMark from '#lib/status-line/StatusMark.svelte';
 	// The strip a coach's announcement draws as (#2408), at the top of the
 	// Lounge and of Chat. It is persistent status, not a toast: a rider is on
 	// a bike three metres from the screen and does not watch it (`ux.md`), so
@@ -9,9 +9,9 @@
 	//
 	// Nothing here composes one. The coach marks a line in chat — the menu
 	// item lives on the message, where the sentence already is.
-	import MessageText from '$lib/chat/MessageText.svelte';
-	import { formatWhen } from '$lib/format';
-	import type { Announcement } from '$lib/channels';
+	import MessageText from '#lib/chat/MessageText.svelte';
+	import { formatWhen } from '#lib/format.ts';
+	import type { Announcement } from '#lib/channels.ts';
 	import Megaphone from '@lucide/svelte/icons/megaphone';
 	import X from '@lucide/svelte/icons/x';
 

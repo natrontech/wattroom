@@ -17,6 +17,5 @@ export function leaveChannel(): void {
 	const place = channelConnection.current?.address;
 	const standing = channelConnection.onPlacePath(page.url.pathname);
 	channelConnection.leave();
-	if (place && standing)
-		void goto(`/crew/${place.crew}`, { replaceState: true });
+	if (place && standing) void goto(`/crew/${place.crew}`, { replace: true });
 }

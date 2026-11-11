@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('$lib/hud/feed', () => ({ publishHud: () => {} }));
-import { SimulatedTrainer } from '$lib/ble/simulated';
-import { MaxBridgedGap } from '$lib/protocol';
+vi.mock('#lib/hud/feed.ts', () => ({ publishHud: () => {} }));
+import { SimulatedTrainer } from '#lib/ble/simulated.ts';
+import { MaxBridgedGap } from '#lib/protocol.ts';
 import { createRideSession } from './session.svelte';
 import { COUNTDOWN_SECONDS } from './ride-state';
 import type { Workout } from './types';

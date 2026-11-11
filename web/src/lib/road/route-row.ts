@@ -1,4 +1,4 @@
-import { formatKm } from '$lib/format';
+import { formatKm } from '#lib/format.ts';
 import type { Climb, ClimbClass } from './climbs';
 import type { StoredRoute } from './stored';
 

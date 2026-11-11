@@ -2,7 +2,7 @@
  * House radio's mixing desk: the buses its voices play into, the tone and
  * tape that make it lofi, and the mixer's fader last of all.
  */
-import type { Buses } from '$lib/lounge/radio-voices';
+import type { Buses } from '#lib/lounge/radio-voices.ts';
 
 /** The tone control before a tune sets its own; house-radio.ts closes it for a breakdown. */
 export const OPEN_HZ = 3200;

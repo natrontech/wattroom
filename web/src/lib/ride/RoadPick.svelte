@@ -7,21 +7,21 @@
 	 */
 	import { untrack } from 'svelte';
 	import { page } from '$app/state';
-	import Banner from '$lib/components/Banner.svelte';
-	import RouteRow from '$lib/components/RouteRow.svelte';
-	import WattRoomRoads from '$lib/ride/WattRoomRoads.svelte';
-	import { HOME_ROADS } from '$lib/ride/home-roads';
-	import Skeleton from '$lib/components/Skeleton.svelte';
-	import type { StoredRoute } from '$lib/road/stored';
-	import type { FreeRide } from '$lib/ride/free-ride.svelte';
-	import { formatKm as km } from '$lib/format';
-	import { carriesOn } from '$lib/ride/road-end';
+	import Banner from '#lib/components/Banner.svelte';
+	import RouteRow from '#lib/components/RouteRow.svelte';
+	import WattRoomRoads from '#lib/ride/WattRoomRoads.svelte';
+	import { HOME_ROADS } from '#lib/ride/home-roads.ts';
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import type { StoredRoute } from '#lib/road/stored.ts';
+	import type { FreeRide } from '#lib/ride/free-ride.svelte.ts';
+	import { formatKm as km } from '#lib/format.ts';
+	import { carriesOn } from '#lib/ride/road-end.ts';
 	import {
 		carryOnFrom,
 		loadRoad,
 		myRoutes,
 		type RideableRoute,
-	} from '$lib/ride/roads';
+	} from '#lib/ride/roads.ts';
 
 	let {
 		free,

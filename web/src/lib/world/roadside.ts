@@ -5,11 +5,11 @@
 // scale), sharp at any distance (rider-sprite.ts), with a patch of shade
 // laid on the ground under it. Where each thing stands is roadside-place.ts's.
 import * as THREE from 'three';
-import { drawWatcher } from '$lib/lounge/draw-rider';
-import { dress } from '$lib/lounge/figures';
-import { LOUNGE as C } from '$lib/lounge/palette';
-import { disc, rect } from '$lib/lounge/pixel';
-import type { Route } from '$lib/road/route';
+import { drawWatcher } from '#lib/lounge/draw-rider.ts';
+import { dress } from '#lib/lounge/figures.ts';
+import { LOUNGE as C } from '#lib/lounge/palette.ts';
+import { disc, rect } from '#lib/lounge/pixel.ts';
+import type { Route } from '#lib/road/route.ts';
 import {
 	SPRITE_FRAGMENT,
 	SPRITE_LIGHT,

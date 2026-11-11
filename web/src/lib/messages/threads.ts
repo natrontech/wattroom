@@ -1,5 +1,5 @@
-import type { DmHead } from '$lib/dm/heads.svelte';
-import { headPreview } from '$lib/dm/heads.svelte';
+import type { DmHead } from '#lib/dm/heads.svelte.ts';
+import { headPreview } from '#lib/dm/heads.svelte.ts';
 
 /**
  * The messages list (#468): every direct message, one line each. Unread

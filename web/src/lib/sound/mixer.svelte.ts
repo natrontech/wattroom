@@ -1,6 +1,6 @@
-import { setDuckLevel, setVolume as setCueVolume } from '$lib/sound/cues';
-import { DUCK_DEFAULT } from '$lib/sound/ducking';
-import { mixerStorage } from '$lib/sound/mixer-storage';
+import { setDuckLevel, setVolume as setCueVolume } from '#lib/sound/cues.ts';
+import { DUCK_DEFAULT } from '#lib/sound/ducking.ts';
+import { mixerStorage } from '#lib/sound/mixer-storage.ts';
 
 /**
  * The mix has one owner (#179, #152): music, cues, and each rider's voice

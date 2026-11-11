@@ -1,5 +1,5 @@
-import type { JukeboxTrack } from '$lib/protocol';
-import { withYouTubeApi, type YTPlayer } from '$lib/channel/youtube-api';
+import type { JukeboxTrack } from '#lib/protocol.ts';
+import { withYouTubeApi, type YTPlayer } from '#lib/channel/youtube-api.ts';
 
 /**
  * Reading a YouTube playlist without an API key (#615).

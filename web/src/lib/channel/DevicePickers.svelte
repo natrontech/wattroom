@@ -2,9 +2,9 @@
 	// The three device selects (#1858): /settings/equipment draws them with and
 	// without a call, and the Sound panel draws them too (#1883). One
 	// component, so the two never disagree on what an unnamed device is called.
-	import Select from '$lib/components/Select.svelte';
-	import { deviceOptions } from '$lib/channel/device-options';
-	import { deviceChoices } from '$lib/channel/av-devices.svelte';
+	import Select from '#lib/components/Select.svelte';
+	import { deviceOptions } from '#lib/channel/device-options.ts';
+	import { deviceChoices } from '#lib/channel/av-devices.svelte.ts';
 
 	let {
 		devices = { mics: [], cams: [], outs: [] },

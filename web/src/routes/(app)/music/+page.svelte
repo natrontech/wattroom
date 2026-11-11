@@ -7,15 +7,15 @@
 	//
 	// The rider's own playlists live here too (#1460): the library's home is
 	// where a list of its tracks gets built, channel or no channel.
-	import { confirm } from '$lib/confirm.svelte';
-	import type { MenuEntry } from '$lib/context-menu.svelte';
+	import { confirm } from '#lib/confirm.svelte.ts';
+	import type { MenuEntry } from '#lib/context-menu.svelte.ts';
 	import Pencil from '@lucide/svelte/icons/pencil';
 	import ListMusic from '@lucide/svelte/icons/list-music';
 	import {
 		createPlaylistStore,
 		type PlaylistStore,
-	} from '$lib/channel/playlists.svelte';
-	import { saveToPlaylist } from '$lib/channel/save-to-playlist';
+	} from '#lib/channel/playlists.svelte.ts';
+	import { saveToPlaylist } from '#lib/channel/save-to-playlist.ts';
 	import { SvelteSet } from 'svelte/reactivity';
 	import LibraryPicked from './LibraryPicked.svelte';
 	import LibraryPlaylists from './LibraryPlaylists.svelte';
@@ -24,12 +24,12 @@
 	import Search from '@lucide/svelte/icons/search';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import Upload from '@lucide/svelte/icons/upload';
-	import { account } from '$lib/account.svelte';
-	import Banner from '$lib/components/Banner.svelte';
-	import EmptyState from '$lib/components/EmptyState.svelte';
-	import Skeleton from '$lib/components/Skeleton.svelte';
-	import { toasts } from '$lib/toast.svelte';
-	import { channelConnection } from '$lib/channel/connection.svelte';
+	import { account } from '#lib/account.svelte.ts';
+	import Banner from '#lib/components/Banner.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import { toasts } from '#lib/toast.svelte.ts';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
 	import ListPlus from '@lucide/svelte/icons/list-plus';
 	import {
 		deleteTrack,
@@ -40,8 +40,8 @@
 		whyNotUploadable,
 		type PoolTag,
 		type Track,
-	} from '$lib/music/pool';
-	import { fileDrop } from '$lib/file-drop.svelte';
+	} from '#lib/music/pool.ts';
+	import { fileDrop } from '#lib/file-drop.svelte.ts';
 
 	let tracks = $state<Track[]>([]);
 	let facets = $state<PoolTag[]>([]);

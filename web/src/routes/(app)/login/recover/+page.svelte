@@ -4,11 +4,11 @@
 	// whole session is gone — so it asks for one thing, types nothing else,
 	// and never says whether the address it was given belongs to an account.
 	import { onMount } from 'svelte';
-	import Logo from '$lib/brand/Logo.svelte';
-	import Banner from '$lib/components/Banner.svelte';
-	import Skeleton from '$lib/components/Skeleton.svelte';
-	import { account } from '$lib/account.svelte';
-	import { api } from '$lib/api';
+	import Logo from '#lib/brand/Logo.svelte';
+	import Banner from '#lib/components/Banner.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import { account } from '#lib/account.svelte.ts';
+	import { api } from '#lib/api.ts';
 
 	void account.load();
 

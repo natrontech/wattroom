@@ -8,7 +8,7 @@
  * — the popped-out stage is the one surface the rider still positions by
  * hand. Resizing is a divider now ($lib/divider), never a grip on the pane.
  */
-import { type Guides, snapSpan } from '$lib/pane-snap';
+import { type Guides, snapSpan } from '#lib/pane-snap.ts';
 
 interface Spot {
 	w?: number;

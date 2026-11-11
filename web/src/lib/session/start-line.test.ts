@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { Rider, SessionRoute, StartLine } from '$lib/protocol';
-import type { Road } from '$lib/road/road';
-import type { PinnedRoad } from '$lib/workout/road-workout';
+import type { Rider, SessionRoute, StartLine } from '#lib/protocol.ts';
+import type { Road } from '#lib/road/road.ts';
+import type { PinnedRoad } from '#lib/workout/road-workout.ts';
 import {
 	WAIT_FOR_TRAINER,
 	lineCue,

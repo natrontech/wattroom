@@ -8,11 +8,11 @@
 	 * the slot read "Not connected — Pair" for a trainer that was connected
 	 * and reattaching, and paired a second one the ride never heard.
 	 */
-	import Banner from '$lib/components/Banner.svelte';
-	import FaultBanner from '$lib/channel/FaultBanner.svelte';
-	import { createPairAgain } from '$lib/ble/pair-again.svelte';
-	import { statusLine, trainerLine } from '$lib/ride/status-lines';
-	import type { createRideSession } from '$lib/workout/session.svelte';
+	import Banner from '#lib/components/Banner.svelte';
+	import FaultBanner from '#lib/channel/FaultBanner.svelte';
+	import { createPairAgain } from '#lib/ble/pair-again.svelte.ts';
+	import { statusLine, trainerLine } from '#lib/ride/status-lines.ts';
+	import type { createRideSession } from '#lib/workout/session.svelte.ts';
 
 	let {
 		session,

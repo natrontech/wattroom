@@ -7,12 +7,12 @@
 	 * browser second (#1543, #1571).
 	 */
 	import type { Snippet } from 'svelte';
-	import Banner from '$lib/components/Banner.svelte';
-	import { formatClock } from '$lib/format';
-	import { pushProfile } from '$lib/profile-sync.svelte';
-	import { createProfileStore, PROFILE_LIMITS } from '$lib/profile.svelte';
-	import { ftpFromRamp, RAMP } from '$lib/workout/ramp';
-	import type { createRideSession } from '$lib/workout/session.svelte';
+	import Banner from '#lib/components/Banner.svelte';
+	import { formatClock } from '#lib/format.ts';
+	import { pushProfile } from '#lib/profile-sync.svelte.ts';
+	import { createProfileStore, PROFILE_LIMITS } from '#lib/profile.svelte.ts';
+	import { ftpFromRamp, RAMP } from '#lib/workout/ramp.ts';
+	import type { createRideSession } from '#lib/workout/session.svelte.ts';
 
 	let {
 		session,

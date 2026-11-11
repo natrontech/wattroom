@@ -1,4 +1,4 @@
-import type { Owned } from '$lib/channel/av-types';
+import type { Owned } from '#lib/channel/av-types.ts';
 
 /**
  * Who is in which seat, and which of their connections put them there

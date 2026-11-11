@@ -1,12 +1,12 @@
 <script lang="ts">
 	import Menu from '@lucide/svelte/icons/menu';
-	import Logo from '$lib/brand/Logo.svelte';
-	import { GITHUB_MARK } from '$lib/brand/icons';
-	import { account } from '$lib/account.svelte';
-	import { browser } from '$app/environment';
-	import { live, watchLive } from '$lib/site/live.svelte';
-	import { REPO } from '$lib/site/seo';
-	import { RIVALS } from '$lib/site/rivals';
+	import Logo from '#lib/brand/Logo.svelte';
+	import { GITHUB_MARK } from '#lib/brand/icons.ts';
+	import { account } from '#lib/account.svelte.ts';
+	import { browser } from '$app/env';
+	import { live, watchLive } from '#lib/site/live.svelte.ts';
+	import { REPO } from '#lib/site/seo.ts';
+	import { RIVALS } from '#lib/site/rivals.ts';
 
 	// The public pages' frame (ADR-0061): one header and one footer, so every
 	// page links every other — which is also how a crawler finds them.
@@ -95,8 +95,9 @@
 				aria-label="Star WattRoom on GitHub"
 			>
 				<svg viewBox="0 0 24 24" class="h-4 w-4 fill-current" aria-hidden="true"
-					><path d={GITHUB_MARK} /></svg
+					><path d={GITHUB_MARK}></path></svg
 				>
+
 				<span class="hidden sm:inline">Star</span>
 				{#if live.stars > 0}
 					<span class="text-muted num">{live.stars}</span>

@@ -1,5 +1,5 @@
-import { zoneOf } from '$lib/components/zones';
-import { NormPowerMinSeconds } from '$lib/protocol';
+import { zoneOf } from '#lib/components/zones.ts';
+import { NormPowerMinSeconds } from '#lib/protocol.ts';
 
 /**
  * Post-ride numbers for the session summary (#39's design), computed from the

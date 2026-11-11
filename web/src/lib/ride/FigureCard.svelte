@@ -3,9 +3,9 @@
 	// and a skin tone, previewed, and as easy to skip as to save. Either answer
 	// sets figure_asked_at, so this never returns on any device. The preview is
 	// a still figure: it has no motion to hold under reduced motion.
-	import { account, type FigureBuild } from '$lib/account.svelte';
-	import { MaxFigureHeightCm, MinFigureHeightCm } from '$lib/protocol';
-	import { toasts } from '$lib/toast.svelte';
+	import { account, type FigureBuild } from '#lib/account.svelte.ts';
+	import { MaxFigureHeightCm, MinFigureHeightCm } from '#lib/protocol.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
 	import {
 		BUILDS,
 		metres,

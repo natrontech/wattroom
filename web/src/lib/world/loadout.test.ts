@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { perceptualDistance } from '$lib/color';
+import { perceptualDistance } from '#lib/color.ts';
 import { formation } from './bunch';
 import { MOST_ABREAST } from './lanes';
 import { bunchLooks, hexOf, JERSEY_BAND, seededLoadout } from './loadout';

@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { formatClock } from '$lib/format';
-	import { blockWords } from '$lib/workout/block';
-	import type { Segment } from '$lib/workout/types';
+	import { formatClock } from '#lib/format.ts';
+	import { blockWords } from '#lib/workout/block.ts';
+	import type { Segment } from '#lib/workout/types.ts';
 	import {
 		heartAnchor,
 		heartFraction,
@@ -24,7 +24,7 @@
 		type GraphEdit,
 		type GrabKind,
 	} from './graph-edit';
-	import { sameParent } from '$lib/workout/tree';
+	import { sameParent } from '#lib/workout/tree.ts';
 
 	let {
 		segments,

@@ -1,4 +1,4 @@
-import { followRoomLink } from '$lib/moved';
+import { followRoomLink } from '#lib/moved.ts';
 import type { PageLoad } from './$types';
 
 // A room's thread is its text channel's now (ADR-0058, #2458).

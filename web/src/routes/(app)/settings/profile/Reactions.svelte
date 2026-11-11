@@ -4,12 +4,12 @@
 	// all of them first in the chat's picker, in every crew and DM. A crew's
 	// own emoji stay in the full picker: they mean something in one crew only.
 	import Plus from '@lucide/svelte/icons/plus';
-	import { account } from '$lib/account.svelte';
-	import CheerIcon from '$lib/components/CheerIcon.svelte';
-	import EmojiPicker from '$lib/emoji/EmojiPicker.svelte';
-	import { CHEER_ICONS } from '$lib/icons';
-	import { MaxCheers } from '$lib/protocol';
-	import { toasts } from '$lib/toast.svelte';
+	import { account } from '#lib/account.svelte.ts';
+	import CheerIcon from '#lib/components/CheerIcon.svelte';
+	import EmojiPicker from '#lib/emoji/EmojiPicker.svelte';
+	import { CHEER_ICONS } from '#lib/icons.ts';
+	import { MaxCheers } from '#lib/protocol.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
 
 	let adder = $state<HTMLButtonElement | null>(null);
 	let picking = $state(false);

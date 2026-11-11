@@ -1,5 +1,5 @@
-import { parseRoute } from '$lib/road/parse';
-import { toRoute } from '$lib/road/route';
+import { parseRoute } from '#lib/road/parse.ts';
+import { toRoute } from '#lib/road/route.ts';
 import { ROAD_W } from '../geometry';
 import { syntheticGpx } from '../synthetic';
 import type { P2 } from './geom';

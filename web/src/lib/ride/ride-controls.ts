@@ -14,11 +14,11 @@ import {
 	type GearState,
 	type PauseState,
 	type ViewState,
-} from '$lib/protocol';
-import { LAST_BLOCK, NO_BLOCKS } from '$lib/ride/remote-blocks';
-import type { Offered } from '$lib/ride/ride-offers.svelte';
-import { CAMERA_NAMES, type CameraPreset } from '$lib/world/cameras';
-import type { ViewSegment } from '$lib/world/ride-view';
+} from '#lib/protocol.ts';
+import { LAST_BLOCK, NO_BLOCKS } from '#lib/ride/remote-blocks.ts';
+import type { Offered } from '#lib/ride/ride-offers.svelte.ts';
+import { CAMERA_NAMES, type CameraPreset } from '#lib/world/cameras.ts';
+import type { ViewSegment } from '#lib/world/ride-view.ts';
 
 /**
  * The ride's controls, one list for the now bar and the phone remote (rider

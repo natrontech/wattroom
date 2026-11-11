@@ -1,6 +1,6 @@
-import type { PauseState } from '$lib/protocol';
-import { isOpenRoad } from '$lib/workout/ridden';
-import type { Workout } from '$lib/workout/types';
+import type { PauseState } from '#lib/protocol.ts';
+import { isOpenRoad } from '#lib/workout/ridden.ts';
+import type { Workout } from '#lib/workout/types.ts';
 
 /** As much of a workout session as Pause, Skip and +1 min read. */
 export type ClockedRide = {

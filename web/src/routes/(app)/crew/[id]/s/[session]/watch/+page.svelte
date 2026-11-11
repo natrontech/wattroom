@@ -5,12 +5,11 @@
 	// kept so a shared or bookmarked link still lands.
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import Logo from '$lib/brand/Logo.svelte';
+	import Logo from '#lib/brand/Logo.svelte';
 
 	$effect(() => {
 		const { id, session } = page.params;
-		if (id && session)
-			void goto(`/crew/${id}/s/${session}`, { replaceState: true });
+		if (id && session) void goto(`/crew/${id}/s/${session}`, { replace: true });
 	});
 </script>
 

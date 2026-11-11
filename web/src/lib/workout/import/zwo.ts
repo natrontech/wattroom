@@ -1,4 +1,4 @@
-import { formatClock } from '$lib/format';
+import { formatClock } from '#lib/format.ts';
 import type { SteadyStep, Workout, WorkoutStep } from '../types';
 import { LIMITS } from '../validate';
 import type { ImportOutcome } from './types';

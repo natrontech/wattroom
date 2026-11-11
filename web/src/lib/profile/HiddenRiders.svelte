@@ -2,9 +2,9 @@
 	// The riders you hid (#3202), and the way back for each. Hiding happens
 	// from a rider — their card or their menu — so this list is the one place
 	// the whole of it is seen, and the undo that outlives the toast.
-	import Avatar from '$lib/components/Avatar.svelte';
-	import Banner from '$lib/components/Banner.svelte';
-	import { hiddenRiders } from '$lib/hidden-riders.svelte';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import Banner from '#lib/components/Banner.svelte';
+	import { hiddenRiders } from '#lib/hidden-riders.svelte.ts';
 
 	void hiddenRiders.load();
 </script>

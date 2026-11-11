@@ -3,7 +3,7 @@
 // it on the ground under each lamp. Each light eases on over --dur-draw, a
 // village's one after another, so nothing flashes (WCAG 2.3.1).
 import * as THREE from 'three';
-import { LOUNGE } from '$lib/lounge/palette';
+import { LOUNGE } from '#lib/lounge/palette.ts';
 import { flat, type Sight } from './materials';
 
 /** --dur-draw (docs/spec/motion.md): how long one light takes to come on. */

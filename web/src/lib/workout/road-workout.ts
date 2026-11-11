@@ -1,6 +1,6 @@
-import { zoneOfSegment } from '$lib/components/zones';
-import { packRoad, unpackRoad, type Road } from '$lib/road/road';
-import type { BandBlock, SkylineView } from '$lib/road/skyline';
+import { zoneOfSegment } from '#lib/components/zones.ts';
+import { packRoad, unpackRoad, type Road } from '#lib/road/road.ts';
+import type { BandBlock, SkylineView } from '#lib/road/skyline.ts';
 import { base64Of } from './import/route';
 import type { Segment, Workout } from './types';
 

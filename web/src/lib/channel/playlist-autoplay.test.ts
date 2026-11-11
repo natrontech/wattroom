@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { CrewChannel } from '$lib/channels';
+import type { CrewChannel } from '#lib/channels.ts';
 import { deleteQuestion, playingIn } from './playlist-autoplay';
 
 const channel = (

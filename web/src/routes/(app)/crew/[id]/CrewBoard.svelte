@@ -2,14 +2,17 @@
 	// What the crew wrote down, on its Home: the newest announcement across
 	// its text channels, then its pins. It was the Board page until the crew's
 	// nav came down to Home, Schedule and Members.
-	import AnnouncementStrip from '$lib/announce/AnnouncementStrip.svelte';
-	import MarkedIn from '$lib/announce/MarkedIn.svelte';
-	import { takeDownAnnouncement } from '$lib/announce/take-down';
-	import { fetchCrewAnnouncement, type CrewAnnouncement } from '$lib/channels';
-	import type { Crew } from '$lib/crew';
-	import { provideCrewEmoji } from '$lib/emoji/crew-emoji.svelte';
-	import CrewPins from '$lib/pins/CrewPins.svelte';
-	import { presence } from '$lib/presence.svelte';
+	import AnnouncementStrip from '#lib/announce/AnnouncementStrip.svelte';
+	import MarkedIn from '#lib/announce/MarkedIn.svelte';
+	import { takeDownAnnouncement } from '#lib/announce/take-down.ts';
+	import {
+		fetchCrewAnnouncement,
+		type CrewAnnouncement,
+	} from '#lib/channels.ts';
+	import type { Crew } from '#lib/crew.ts';
+	import { provideCrewEmoji } from '#lib/emoji/crew-emoji.svelte.ts';
+	import CrewPins from '#lib/pins/CrewPins.svelte';
+	import { presence } from '#lib/presence.svelte.ts';
 	import { untrack } from 'svelte';
 
 	let { crew }: { crew: Crew } = $props();

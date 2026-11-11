@@ -9,24 +9,28 @@
 	 * or stretch, and Easier and Harder lead the row as a free ride's do
 	 * (TARGETS ride-free-road 7, #4283).
 	 */
-	import { createProfileStore } from '$lib/profile.svelte';
-	import { EASIER_HARDER_OFF } from '$lib/ride/easier-harder';
-	import { askToEndWorkout } from '$lib/ride/end-ride';
-	import FlagButton from '$lib/ride/FlagButton.svelte';
-	import BiasTrim from '$lib/session/BiasTrim.svelte';
-	import { gearsEnabled } from '$lib/ride/gears-enabled';
-	import GearShift from '$lib/ride/GearShift.svelte';
-	import ModeSwitch from '$lib/ride/ModeSwitch.svelte';
-	import type { RideShift } from '$lib/ride/ride-shift';
-	import RideControlButton from '$lib/ride/RideControlButton.svelte';
-	import { NEEDS_3D, PHOTOS_FULL } from '$lib/ride/ride-controls';
-	import { worldPicture } from '$lib/world/picture.svelte';
-	import { rideOffers } from '$lib/ride/ride-offers.svelte';
-	import ViewSwitch from '$lib/world/ViewSwitch.svelte';
-	import type { createWorldView } from '$lib/world/world-view.svelte';
-	import { askCamera, askPhoto } from '$lib/world/ride-view';
-	import type { createRideSession } from '$lib/workout/session.svelte';
-	import { EXTEND_SECONDS, LAST_BLOCK, pauseOf } from '$lib/ride/remote-blocks';
+	import { createProfileStore } from '#lib/profile.svelte.ts';
+	import { EASIER_HARDER_OFF } from '#lib/ride/easier-harder.ts';
+	import { askToEndWorkout } from '#lib/ride/end-ride.ts';
+	import FlagButton from '#lib/ride/FlagButton.svelte';
+	import BiasTrim from '#lib/session/BiasTrim.svelte';
+	import { gearsEnabled } from '#lib/ride/gears-enabled.ts';
+	import GearShift from '#lib/ride/GearShift.svelte';
+	import ModeSwitch from '#lib/ride/ModeSwitch.svelte';
+	import type { RideShift } from '#lib/ride/ride-shift.ts';
+	import RideControlButton from '#lib/ride/RideControlButton.svelte';
+	import { NEEDS_3D, PHOTOS_FULL } from '#lib/ride/ride-controls.ts';
+	import { worldPicture } from '#lib/world/picture.svelte.ts';
+	import { rideOffers } from '#lib/ride/ride-offers.svelte.ts';
+	import ViewSwitch from '#lib/world/ViewSwitch.svelte';
+	import type { createWorldView } from '#lib/world/world-view.svelte.ts';
+	import { askCamera, askPhoto } from '#lib/world/ride-view.ts';
+	import type { createRideSession } from '#lib/workout/session.svelte.ts';
+	import {
+		EXTEND_SECONDS,
+		LAST_BLOCK,
+		pauseOf,
+	} from '#lib/ride/remote-blocks.ts';
 
 	let {
 		session,

@@ -1,4 +1,4 @@
-import { MaxRouteMeters } from '$lib/protocol';
+import { MaxRouteMeters } from '#lib/protocol.ts';
 import type { RepeatStep, Workout, WorkoutStep } from './types';
 
 /**

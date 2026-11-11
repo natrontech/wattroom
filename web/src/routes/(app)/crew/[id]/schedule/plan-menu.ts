@@ -1,6 +1,6 @@
-import type { MenuEntry } from '$lib/context-menu.svelte';
-import type { RsvpAnswer } from '$lib/session/rsvp';
-import { shareVerb } from '$lib/share';
+import type { MenuEntry } from '#lib/context-menu.svelte.ts';
+import type { RsvpAnswer } from '#lib/session/rsvp.ts';
+import { shareVerb } from '#lib/share.ts';
 import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 import CircleX from '@lucide/svelte/icons/circle-x';
 import Link from '@lucide/svelte/icons/link';

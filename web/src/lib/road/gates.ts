@@ -11,12 +11,12 @@ import {
 	PaceDefaultCdA,
 	ReferenceRiderKg,
 	ReferenceRiderWatts,
-} from '$lib/protocol';
-import { formatClock } from '$lib/format';
-import { blockLabel, blockWatts, repOf, targetOf } from '$lib/workout/block';
-import { segmentsDuration, targetAt } from '$lib/workout/engine';
-import { roadSecond } from '$lib/workout/road-workout';
-import type { Segment, Workout } from '$lib/workout/types';
+} from '#lib/protocol.ts';
+import { formatClock } from '#lib/format.ts';
+import { blockLabel, blockWatts, repOf, targetOf } from '#lib/workout/block.ts';
+import { segmentsDuration, targetAt } from '#lib/workout/engine.ts';
+import { roadSecond } from '#lib/workout/road-workout.ts';
+import type { Segment, Workout } from '#lib/workout/types.ts';
 import { gradeAt } from './at-metre';
 import { createPace } from './pace';
 import type { Road } from './road';

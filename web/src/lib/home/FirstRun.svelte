@@ -8,12 +8,12 @@
 	// account — no crew yet — and a rider who joined someone else's saw no
 	// card at all, and the one instruction that makes a watt appear went
 	// down with the two that are the owner's alone.
-	import { account, unchosen } from '$lib/account.svelte';
-	import { fetchCrew } from '$lib/crew';
-	import { canSimulate } from '$lib/ble/can-simulate';
-	import { INTRO_ROAD_ID } from '$lib/ride/roads';
-	import FtpAsk from '$lib/home/FtpAsk.svelte';
-	import type { CrewRef } from '$lib/crew-types';
+	import { account, unchosen } from '#lib/account.svelte.ts';
+	import { fetchCrew } from '#lib/crew.ts';
+	import { canSimulate } from '#lib/ble/can-simulate.ts';
+	import { INTRO_ROAD_ID } from '#lib/ride/roads.ts';
+	import FtpAsk from '#lib/home/FtpAsk.svelte';
+	import type { CrewRef } from '#lib/crew-types.ts';
 	import Check from '@lucide/svelte/icons/check';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 

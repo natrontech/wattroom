@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { MenuEntry } from '$lib/context-menu.svelte';
-	import { crewEmoji, emojiCrew } from '$lib/emoji/crew-emoji.svelte';
+	import type { MenuEntry } from '#lib/context-menu.svelte.ts';
+	import { crewEmoji, emojiCrew } from '#lib/emoji/crew-emoji.svelte.ts';
 	import { parseInline } from './inline';
 	import { gifUrl } from './media';
 	import ChatImage from './ChatImage.svelte';

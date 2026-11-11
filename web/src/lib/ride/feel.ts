@@ -11,8 +11,8 @@
  * ADR-0055: the note never leaves the rider's own account. Nothing here
  * sends it anywhere but the owner-scoped endpoint.
  */
-import { api, type ApiResult } from '$lib/api';
-import { MinRPE, MaxRPE, MaxRideNoteChars } from '$lib/protocol';
+import { api, type ApiResult } from '#lib/api.ts';
+import { MinRPE, MaxRPE, MaxRideNoteChars } from '#lib/protocol.ts';
 
 export interface RideFeel {
 	/** docs/SPEC.md's 1–10, or null on a ride the rider has not rated. */

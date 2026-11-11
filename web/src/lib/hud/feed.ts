@@ -5,9 +5,9 @@
  * no server, and no claim on the sensor (ADR-0025): the HUD mirrors the
  * screen that holds the trainer, it never reads the trainer itself.
  */
-import { account } from '$lib/account.svelte';
-import { hrZoneOf, zoneOf } from '$lib/components/zones';
-import type { RoadReadout } from '$lib/road/readout';
+import { account } from '#lib/account.svelte.ts';
+import { hrZoneOf, zoneOf } from '#lib/components/zones.ts';
+import type { RoadReadout } from '#lib/road/readout.ts';
 
 export interface HudSnapshot {
 	/** Unix millis when published; a HUD that has not heard for a while says so. */

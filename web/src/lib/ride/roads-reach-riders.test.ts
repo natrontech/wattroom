@@ -1,14 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render } from 'svelte/server';
-import RideCard from '$lib/ride/RideCard.svelte';
+import RideCard from '#lib/ride/RideCard.svelte';
 import RideHow from '../../routes/(app)/workouts/routes/[id]/RideHow.svelte';
-import { byId } from '$lib/workout/library';
+import { byId } from '#lib/workout/library.ts';
 
 // A production rider (#3352): no dev build, no dev sign-in door, so no
 // simulated trainer — the gate roads used to share with it.
-vi.mock('$lib/ble/can-simulate', () => ({ canSimulate: () => false }));
+vi.mock('#lib/ble/can-simulate.ts', () => ({ canSimulate: () => false }));
 // The solo games read the crew list; nothing here is about them.
-vi.mock('$lib/nav/crew-live.svelte', () => ({
+vi.mock('#lib/nav/crew-live.svelte.ts', () => ({
 	crewLive: { loaded: true, crews: [], reload: async () => {} },
 }));
 

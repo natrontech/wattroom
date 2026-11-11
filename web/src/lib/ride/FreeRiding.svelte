@@ -1,7 +1,7 @@
 <script lang="ts">
-	import RoadMap from '$lib/ride/RoadMap.svelte';
-	import { board } from '$lib/board/clips.svelte';
-	import { bindViewKeys } from '$lib/ride/keys';
+	import RoadMap from '#lib/ride/RoadMap.svelte';
+	import { board } from '#lib/board/clips.svelte.ts';
+	import { bindViewKeys } from '#lib/ride/keys.ts';
 	/**
 	 * A free ride, riding (ADR-0059, #3669): ADR-0046's riding surface with no
 	 * workout, drawn once for the road ride at /ride?road= and for a voice
@@ -16,58 +16,58 @@
 	import Minus from '@lucide/svelte/icons/minus';
 	import Plus from '@lucide/svelte/icons/plus';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
-	import { openMenu } from '$lib/context-menu.svelte';
-	import { createPairAgain } from '$lib/ble/pair-again.svelte';
-	import type { Trainer } from '$lib/ble/trainer';
-	import { formatClock } from '$lib/format';
-	import { countClimbed } from '$lib/ride/climbed-count.svelte';
-	import type { Clamp } from '$lib/ride/drivetrain';
-	import { FLAG_NOTICE_MS, FLAG_SAID } from '$lib/ride/flag';
-	import FlagButton from '$lib/ride/FlagButton.svelte';
-	import RideControlButton from '$lib/ride/RideControlButton.svelte';
-	import { NEEDS_3D, PHOTOS_FULL } from '$lib/ride/ride-controls';
-	import { worldPicture } from '$lib/world/picture.svelte';
-	import { rideOffers } from '$lib/ride/ride-offers.svelte';
-	import { askCamera, askPhoto } from '$lib/world/ride-view';
-	import RideRail from '$lib/session/RideRail.svelte';
-	import ModeSwitch from '$lib/ride/ModeSwitch.svelte';
+	import { openMenu } from '#lib/context-menu.svelte.ts';
+	import { createPairAgain } from '#lib/ble/pair-again.svelte.ts';
+	import type { Trainer } from '#lib/ble/trainer.ts';
+	import { formatClock } from '#lib/format.ts';
+	import { countClimbed } from '#lib/ride/climbed-count.svelte.ts';
+	import type { Clamp } from '#lib/ride/drivetrain.ts';
+	import { FLAG_NOTICE_MS, FLAG_SAID } from '#lib/ride/flag.ts';
+	import FlagButton from '#lib/ride/FlagButton.svelte';
+	import RideControlButton from '#lib/ride/RideControlButton.svelte';
+	import { NEEDS_3D, PHOTOS_FULL } from '#lib/ride/ride-controls.ts';
+	import { worldPicture } from '#lib/world/picture.svelte.ts';
+	import { rideOffers } from '#lib/ride/ride-offers.svelte.ts';
+	import { askCamera, askPhoto } from '#lib/world/ride-view.ts';
+	import RideRail from '#lib/session/RideRail.svelte';
+	import ModeSwitch from '#lib/ride/ModeSwitch.svelte';
 	import {
 		GRADE,
 		RAMP,
 		WATTS,
 		type RampKind,
-	} from '$lib/ride/free-ride-controls';
-	import { freeRideLabel, type FreeRide } from '$lib/ride/free-ride.svelte';
-	import GearShift from '$lib/ride/GearShift.svelte';
-	import { EASIER_HARDER_OFF } from '$lib/ride/easier-harder';
-	import { gearsEnabled } from '$lib/ride/gears-enabled';
-	import { gearsNews } from '$lib/ride/gears-news';
-	import type { GhostSplit } from '$lib/ride/ghost-split.svelte';
-	import type { Pacer } from '$lib/ride/pacer.svelte';
-	import { PACER_CATEGORIES, PACER_PAR } from '$lib/road/pacer';
-	import type { RideShift } from '$lib/ride/ride-shift';
-	import { roadEndOffered } from '$lib/ride/road-end';
-	import { trainerLine } from '$lib/ride/status-lines';
-	import RoadEnd from '$lib/ride/RoadEnd.svelte';
-	import RideNarrator from '$lib/ride/RideNarrator.svelte';
-	import Skyline from '$lib/ride/Skyline.svelte';
-	import { climbView, raced } from '$lib/ride/climb-view';
-	import { EVEREST_M } from '$lib/ride/climb-repeats';
-	import { play } from '$lib/sound/cues';
-	import { mapView } from '$lib/ride/map-view';
-	import { watchClimbCues } from '$lib/ride/climb-cues.svelte';
-	import BikeComputer from '$lib/session/BikeComputer.svelte';
-	import { roadContext } from '$lib/session/computer-pages';
-	import RidingSurface from '$lib/session/RidingSurface.svelte';
-	import ViewSwitch from '$lib/world/ViewSwitch.svelte';
-	import type { RoadMate } from '$lib/channel/road-mates';
-	import { channelConnection } from '$lib/channel/connection.svelte';
-	import NowPlaying from '$lib/channel/NowPlaying.svelte';
-	import { rideRoom } from '$lib/channel/ride-room.svelte';
-	import { device } from '$lib/device.svelte';
-	import RideRoom from '$lib/ride/RideRoom.svelte';
-	import { createWorldView } from '$lib/world/world-view.svelte';
-	import { tooltip } from '$lib/tooltip.svelte';
+	} from '#lib/ride/free-ride-controls.ts';
+	import { freeRideLabel, type FreeRide } from '#lib/ride/free-ride.svelte.ts';
+	import GearShift from '#lib/ride/GearShift.svelte';
+	import { EASIER_HARDER_OFF } from '#lib/ride/easier-harder.ts';
+	import { gearsEnabled } from '#lib/ride/gears-enabled.ts';
+	import { gearsNews } from '#lib/ride/gears-news.ts';
+	import type { GhostSplit } from '#lib/ride/ghost-split.svelte.ts';
+	import type { Pacer } from '#lib/ride/pacer.svelte.ts';
+	import { PACER_CATEGORIES, PACER_PAR } from '#lib/road/pacer.ts';
+	import type { RideShift } from '#lib/ride/ride-shift.ts';
+	import { roadEndOffered } from '#lib/ride/road-end.ts';
+	import { trainerLine } from '#lib/ride/status-lines.ts';
+	import RoadEnd from '#lib/ride/RoadEnd.svelte';
+	import RideNarrator from '#lib/ride/RideNarrator.svelte';
+	import Skyline from '#lib/ride/Skyline.svelte';
+	import { climbView, raced } from '#lib/ride/climb-view.ts';
+	import { EVEREST_M } from '#lib/ride/climb-repeats.ts';
+	import { play } from '#lib/sound/cues.ts';
+	import { mapView } from '#lib/ride/map-view.ts';
+	import { watchClimbCues } from '#lib/ride/climb-cues.svelte.ts';
+	import BikeComputer from '#lib/session/BikeComputer.svelte';
+	import { roadContext } from '#lib/session/computer-pages.ts';
+	import RidingSurface from '#lib/session/RidingSurface.svelte';
+	import ViewSwitch from '#lib/world/ViewSwitch.svelte';
+	import type { RoadMate } from '#lib/channel/road-mates.ts';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import NowPlaying from '#lib/channel/NowPlaying.svelte';
+	import { rideRoom } from '#lib/channel/ride-room.svelte.ts';
+	import { device } from '#lib/device.svelte.ts';
+	import RideRoom from '#lib/ride/RideRoom.svelte';
+	import { createWorldView } from '#lib/world/world-view.svelte.ts';
+	import { tooltip } from '#lib/tooltip.svelte.ts';
 
 	let {
 		free,

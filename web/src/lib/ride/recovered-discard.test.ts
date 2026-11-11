@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RecoveredRide } from './recovered';
 
 const mocks = vi.hoisted(() => ({ confirm: vi.fn() }));
-vi.mock('$lib/confirm.svelte', () => ({ confirm: mocks.confirm }));
+vi.mock('#lib/confirm.svelte.ts', () => ({ confirm: mocks.confirm }));
 
 const { confirmDiscard, discardBody, recordedMinutes } =
 	await import('./recovered');

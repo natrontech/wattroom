@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { render } from 'svelte/server';
 import BikeComputer from './BikeComputer.svelte';
-import type { LiveStats } from '$lib/ride/live-stats.svelte';
+import type { LiveStats } from '#lib/ride/live-stats.svelte.ts';
 
 const stats: LiveStats = {
 	seconds: 60,

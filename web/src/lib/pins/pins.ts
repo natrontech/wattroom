@@ -12,8 +12,8 @@
  * a crew has exactly one. Everyone in the crew writes it; nothing asks who
  * wrote a pin.
  */
-import { api } from '$lib/api';
-import { MaxCrewPins } from '$lib/protocol';
+import { api } from '#lib/api.ts';
+import { MaxCrewPins } from '#lib/protocol.ts';
 
 export interface Pin {
 	id: string;

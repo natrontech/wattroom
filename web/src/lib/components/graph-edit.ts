@@ -6,9 +6,9 @@
  * must not be able to build a workout the validator would then refuse.
  */
 import { CEILING } from './zones';
-import { stepAt, reorder } from '$lib/workout/tree';
-import { LIMITS } from '$lib/workout/validate';
-import type { Segment, Workout } from '$lib/workout/types';
+import { stepAt, reorder } from '#lib/workout/tree.ts';
+import { LIMITS } from '#lib/workout/validate.ts';
+import type { Segment, Workout } from '#lib/workout/types.ts';
 
 /**
  * The graph's viewBox. The SVG stretches to its box (`preserveAspectRatio="none"`),

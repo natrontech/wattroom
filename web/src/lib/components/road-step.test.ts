@@ -1,8 +1,8 @@
 import { expect, it } from 'vitest';
 import { applyEdit, grabAt } from './graph-edit';
 import { plannedZoneSeconds, zoneOfSegment, zoneOfStep } from './zones';
-import { flatten } from '$lib/workout/engine';
-import type { Workout } from '$lib/workout/types';
+import { flatten } from '#lib/workout/engine.ts';
+import type { Workout } from '#lib/workout/types.ts';
 
 it('gives an untargeted road no planned power zone or draggable target', () => {
 	const workout: Workout = {

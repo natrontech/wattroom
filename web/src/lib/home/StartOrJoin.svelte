@@ -5,11 +5,11 @@
 	// own copy of these forms went with #3688: it offered "Start a crew"
 	// three times on one page.
 	import { goto } from '$app/navigation';
-	import { account } from '$lib/account.svelte';
-	import Banner from '$lib/components/Banner.svelte';
-	import { crewDoor, crewDoorPath, foundCrew } from '$lib/crew';
-	import { foundedCount, leadsWithJoining } from '$lib/nav/crews';
-	import { presence } from '$lib/presence.svelte';
+	import { account } from '#lib/account.svelte.ts';
+	import Banner from '#lib/components/Banner.svelte';
+	import { crewDoor, crewDoorPath, foundCrew } from '#lib/crew.ts';
+	import { foundedCount, leadsWithJoining } from '#lib/nav/crews.ts';
+	import { presence } from '#lib/presence.svelte.ts';
 	// The code lengths and the caps are the server's, generated (#2180): the
 	// box that tells a friend's code from a crew's cannot disagree with the
 	// door, nor the start button with the cap.
@@ -18,7 +18,7 @@
 		FriendCodeLen,
 		MaxCrewNameChars,
 		MaxFoundedCrews,
-	} from '$lib/protocol';
+	} from '#lib/protocol.ts';
 
 	const crews = $derived(presence.crews);
 	// A rider carrying an invite is asked to join that crew before founding

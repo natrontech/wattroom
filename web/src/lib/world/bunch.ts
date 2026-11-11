@@ -3,8 +3,8 @@
 // rests and the order they joined in; this lays them out in formation and
 // carries them between ticks. Every screen reads the same tick and the same
 // clock, so every screen draws one bunch. It draws nothing: crew.ts does.
-import type { BunchView } from '$lib/channel/bunch-view';
-import { damp } from '$lib/motion/damp';
+import type { BunchView } from '#lib/channel/bunch-view.ts';
+import { damp } from '#lib/motion/damp.ts';
 import { rigFor } from './figure/rig';
 import { resolveKit } from './figure/kit';
 import { lanesFor } from './lanes';

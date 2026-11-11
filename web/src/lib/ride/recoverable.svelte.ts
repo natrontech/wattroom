@@ -1,6 +1,6 @@
-import { account } from '$lib/account.svelte';
-import { unfinishedRides } from '$lib/ride/buffer';
-import type { RecoveredRide } from '$lib/ride/recovered';
+import { account } from '#lib/account.svelte.ts';
+import { unfinishedRides } from '#lib/ride/buffer.ts';
+import type { RecoveredRide } from '#lib/ride/recovered.ts';
 
 /**
  * The signed-in rider's unfinished rides, for the card that offers them back

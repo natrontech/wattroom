@@ -6,7 +6,7 @@ import {
 	ParWkgC,
 	ParWkgD,
 	ReferenceRiderKg,
-} from '$lib/protocol';
+} from '#lib/protocol.ts';
 import { gradeAt } from './at-metre';
 import { createWBal } from './cpw';
 import { createPace } from './pace';

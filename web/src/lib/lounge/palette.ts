@@ -7,8 +7,8 @@
  * them, as do the light outside the window, skin, leaves, cushions and the
  * lamp's amber. The one live number takes the theme's watt.
  */
-import { hexToOklch, normalizeHue, oklchToHex } from '$lib/color';
-import type { Theme } from '$lib/palette';
+import { hexToOklch, normalizeHue, oklchToHex } from '#lib/color.ts';
+import type { Theme } from '#lib/palette.ts';
 
 const DARK = {
 	ink: '#08010f',

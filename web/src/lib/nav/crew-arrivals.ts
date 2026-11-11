@@ -1,9 +1,9 @@
-import { api } from '$lib/api';
-import type { LiveCrew } from '$lib/crews-live';
-import type { Arrival } from '$lib/messages/announce';
-import { sessionPath } from '$lib/channel/address';
-import { people } from '$lib/people.svelte';
-import { titleWithStatus } from '$lib/status-line/title';
+import { api } from '#lib/api.ts';
+import type { LiveCrew } from '#lib/crews-live.ts';
+import type { Arrival } from '#lib/messages/announce.ts';
+import { sessionPath } from '#lib/channel/address.ts';
+import { people } from '#lib/people.svelte.ts';
+import { titleWithStatus } from '#lib/status-line/title.ts';
 
 /** Every session running in the rider's crews, by id. */
 export function runningSessions(crews: LiveCrew[]): Set<string> {

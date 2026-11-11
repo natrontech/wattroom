@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { hairpinsOf } from '$lib/road/climbs';
-import { legsRoad } from '$lib/road/fixtures';
-import type { Road } from '$lib/road/road';
+import { hairpinsOf } from '#lib/road/climbs.ts';
+import { legsRoad } from '#lib/road/fixtures.ts';
+import type { Road } from '#lib/road/road.ts';
 import { routeOfRoad } from './road-route';
 import {
 	bestMoment,

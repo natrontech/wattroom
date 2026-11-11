@@ -3,7 +3,7 @@ import {
 	CPEstimateShortSeconds,
 	CPLongSeconds,
 	CPShortSeconds,
-} from '$lib/protocol';
+} from '#lib/protocol.ts';
 
 /**
  * A rider's critical power and W′ (#3262): the one model the matches gauge,

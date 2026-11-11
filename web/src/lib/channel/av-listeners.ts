@@ -1,8 +1,8 @@
-import type { AvConn, AvState } from '$lib/channel/av-state.svelte';
-import type { DeviceChoices } from '$lib/channel/av-devices.svelte';
-import type { MicChain } from '$lib/channel/mic-chain.svelte';
-import type { RiderOutput } from '$lib/channel/av-output';
-import { GESTURES } from '$lib/sound/cues';
+import type { AvConn, AvState } from '#lib/channel/av-state.svelte.ts';
+import type { DeviceChoices } from '#lib/channel/av-devices.svelte.ts';
+import type { MicChain } from '#lib/channel/mic-chain.svelte.ts';
+import type { RiderOutput } from '#lib/channel/av-output.ts';
+import { GESTURES } from '#lib/sound/cues.ts';
 
 /**
  * The machine's own events, not LiveKit's (#1698) — the three ways a browser

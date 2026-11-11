@@ -7,7 +7,7 @@
 		shellVersion,
 		type DesktopRelease,
 		type Installer,
-	} from '$lib/desktop';
+	} from '#lib/desktop.ts';
 
 	// The desktop app's offer, on home (#296, #1235): in a browser on a Mac,
 	// Windows or Linux machine, what the app buys, the installer for THIS

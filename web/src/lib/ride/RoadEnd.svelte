@@ -5,7 +5,7 @@
 	 * without a default (errors.md): Ride back, after RIDE_BACK_AFTER_S.
 	 * Mounted while offered (road-end.ts); mounting starts the count.
 	 */
-	import { play } from '$lib/sound/cues';
+	import { play } from '#lib/sound/cues.ts';
 	import type { FreeRide } from './free-ride.svelte';
 	import { RIDE_BACK_AFTER_S } from './road-end';
 

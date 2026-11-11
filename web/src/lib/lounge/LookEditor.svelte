@@ -2,14 +2,19 @@
 	// Your look in the cozy room (look.ts): parts and colours, with yourself
 	// on the sofa as you change them. Saved, it reaches every voice channel
 	// you stand in on the next tick.
-	import Modal from '$lib/components/Modal.svelte';
-	import Banner from '$lib/components/Banner.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import Banner from '#lib/components/Banner.svelte';
 	import Dices from '@lucide/svelte/icons/dices';
 	import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
-	import { account } from '$lib/account.svelte';
-	import { palette } from '$lib/palette.svelte';
-	import { toasts } from '$lib/toast.svelte';
-	import { HAIRS, LOUNGE, SKINS, applyLoungeTheme } from '$lib/lounge/palette';
+	import { account } from '#lib/account.svelte.ts';
+	import { palette } from '#lib/palette.svelte.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
+	import {
+		HAIRS,
+		LOUNGE,
+		SKINS,
+		applyLoungeTheme,
+	} from '#lib/lounge/palette.ts';
 	import {
 		BADGES,
 		BEARDS,
@@ -24,9 +29,9 @@
 		shuffledLook,
 		type Look,
 		type Part,
-	} from '$lib/lounge/look';
-	import { dress } from '$lib/lounge/figures';
-	import { drawFigure } from '$lib/lounge/draw-people';
+	} from '#lib/lounge/look.ts';
+	import { dress } from '#lib/lounge/figures.ts';
+	import { drawFigure } from '#lib/lounge/draw-people.ts';
 
 	let { onclose }: { onclose: () => void } = $props();
 

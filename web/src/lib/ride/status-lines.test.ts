@@ -4,7 +4,7 @@ import {
 	statusLine,
 	trainerLine,
 	type StatusState,
-} from '$lib/ride/status-lines';
+} from '#lib/ride/status-lines.ts';
 
 describe('slot 1 status lines (#3212)', () => {
 	const table: [StatusState, string, string | undefined][] = [

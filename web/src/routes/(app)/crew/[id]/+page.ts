@@ -1,4 +1,4 @@
-import { fetchCrew, type Crew } from '$lib/crew';
+import { fetchCrew, type Crew } from '#lib/crew.ts';
 import type { PageLoad } from './$types';
 
 export const load: PageLoad = async ({ fetch, params }) => {

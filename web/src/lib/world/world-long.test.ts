@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { toRoute, type Route } from '$lib/road/route';
+import { toRoute, type Route } from '#lib/road/route.ts';
 import { generate, type World } from './world';
 import {
 	folds,

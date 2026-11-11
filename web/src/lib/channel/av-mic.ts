@@ -1,9 +1,9 @@
-import { device } from '$lib/device.svelte';
-import type { AvConn, AvState } from '$lib/channel/av-state.svelte';
-import type { DeviceChoices } from '$lib/channel/av-devices.svelte';
-import type { Speaking } from '$lib/channel/speaking';
-import type { MediaDevice } from '$lib/channel/media-error';
-import { createMicChain } from '$lib/channel/mic-chain.svelte';
+import { device } from '#lib/device.svelte.ts';
+import type { AvConn, AvState } from '#lib/channel/av-state.svelte.ts';
+import type { DeviceChoices } from '#lib/channel/av-devices.svelte.ts';
+import type { Speaking } from '#lib/channel/speaking.ts';
+import type { MediaDevice } from '#lib/channel/media-error.ts';
+import { createMicChain } from '#lib/channel/mic-chain.svelte.ts';
 
 /**
  * This tab's microphone, wired to this tab's connection (#1698).

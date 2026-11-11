@@ -1,6 +1,6 @@
 import { untrack } from 'svelte';
-import { climbedStep } from '$lib/ride/climbed';
-import type { Road } from '$lib/road/road';
+import { climbedStep } from '#lib/ride/climbed.ts';
+import type { Road } from '#lib/road/road.ts';
 
 /**
  * Metres climbed this ride (TARGETS ride-free-road 3): the rises between one

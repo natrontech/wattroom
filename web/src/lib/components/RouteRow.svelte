@@ -5,10 +5,10 @@
 		contextMenu,
 		MENU_HINT,
 		type MenuEntry,
-	} from '$lib/context-menu.svelte';
-	import { withBack } from '$lib/back-link';
-	import { classChips, riddenLine, statLine } from '$lib/road/route-row';
-	import type { StoredRoute } from '$lib/road/stored';
+	} from '#lib/context-menu.svelte.ts';
+	import { withBack } from '#lib/back-link.ts';
+	import { classChips, riddenLine, statLine } from '#lib/road/route-row.ts';
+	import type { StoredRoute } from '#lib/road/stored.ts';
 
 	/**
 	 * One route, the same row everywhere a rider's routes are listed (#3683):

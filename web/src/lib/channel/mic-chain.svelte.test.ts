@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  * the audio worklet, and a stub AudioContext. No `vi.mock('livekit-client')` —
  * this module has never heard of the SDK, which is the point of #892.
  */
-vi.mock('$lib/channel/mic-level', () => ({
+vi.mock('#lib/channel/mic-level.ts', () => ({
 	createMicMeter: vi.fn(
 		async (_ctx: unknown, _src: unknown, onLevel: (n: number) => void) => {
 			meterLevel = onLevel;
@@ -21,10 +21,10 @@ vi.mock('$lib/channel/mic-level', () => ({
 	createVoiceGate: vi.fn(async () => null),
 }));
 
-vi.mock('$lib/channel/denoiser', () => ({ createDenoiser: vi.fn() }));
+vi.mock('#lib/channel/denoiser.ts', () => ({ createDenoiser: vi.fn() }));
 
-import { createDenoiser } from '$lib/channel/denoiser';
-import { createVoiceGate } from '$lib/channel/mic-level';
+import { createDenoiser } from '#lib/channel/denoiser.ts';
+import { createVoiceGate } from '#lib/channel/mic-level.ts';
 import {
 	DENOISE_WAIT_MS,
 	SILENT_MS,

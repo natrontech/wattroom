@@ -4,9 +4,9 @@
 	// rides out of the buffer and hands failures up, because a ride-critical
 	// error is the page's persistent status and never this card's own toast
 	// (AGENTS.md — the rider is on a bike).
-	import { apiBlob } from '$lib/api';
-	import { downloadBlob } from '$lib/download';
-	import { discardRide } from '$lib/ride/buffer';
+	import { apiBlob } from '#lib/api.ts';
+	import { downloadBlob } from '#lib/download.ts';
+	import { discardRide } from '#lib/ride/buffer.ts';
 	import {
 		canSave,
 		confirmDiscard,
@@ -16,9 +16,9 @@
 		resumeAt,
 		uploadPayload,
 		type RecoveredRide,
-	} from '$lib/ride/recovered';
-	import { recoverableRides } from '$lib/ride/recoverable.svelte';
-	import { toastSaved, uploadRide } from '$lib/ride/save';
+	} from '#lib/ride/recovered.ts';
+	import { recoverableRides } from '#lib/ride/recoverable.svelte.ts';
+	import { toastSaved, uploadRide } from '#lib/ride/save.ts';
 
 	let {
 		onError,

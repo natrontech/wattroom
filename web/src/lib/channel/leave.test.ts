@@ -44,7 +44,7 @@ describe('leaveChannel', () => {
 		leaveChannel();
 		expect(mocks.leave).toHaveBeenCalledOnce();
 		expect(mocks.goto).toHaveBeenCalledWith('/crew/c1', {
-			replaceState: true,
+			replace: true,
 		});
 	});
 

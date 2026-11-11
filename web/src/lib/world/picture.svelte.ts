@@ -1,9 +1,9 @@
-import { api } from '$lib/api';
-import { MaxRidePhotos } from '$lib/protocol';
-import { at } from '$lib/road/along';
-import { hairpinsOf } from '$lib/road/climbs';
-import type { Route } from '$lib/road/route';
-import { toasts } from '$lib/toast.svelte';
+import { api } from '#lib/api.ts';
+import { MaxRidePhotos } from '#lib/protocol.ts';
+import { at } from '#lib/road/along.ts';
+import { hairpinsOf } from '#lib/road/climbs.ts';
+import type { Route } from '#lib/road/route.ts';
+import { toasts } from '#lib/toast.svelte.ts';
 
 /** The world's two pictures of one moment (#4431): you, from the picture's own lens, and the ride from above, as its heli camera saw it. Either is null where the browser gave none. */
 export type WorldShots = { rider: Blob | null; above: Blob | null };

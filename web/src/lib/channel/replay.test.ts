@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { MaxBackfillBatch } from '$lib/protocol';
-import type { BufferedSample } from '$lib/ride/buffer';
+import { MaxBackfillBatch } from '#lib/protocol.ts';
+import type { BufferedSample } from '#lib/ride/buffer.ts';
 import { replayFrames, timelineOrigin, timelineSecond } from './replay';
 
 const row = (

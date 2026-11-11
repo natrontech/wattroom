@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { openRoad } from '$lib/workout/ridden';
-import type { Workout } from '$lib/workout/types';
+import { openRoad } from '#lib/workout/ridden.ts';
+import type { Workout } from '#lib/workout/types.ts';
 import { clockActions, pauseOf, type ClockedRide } from './remote-blocks';
 
 const twoBlocks: Workout = {

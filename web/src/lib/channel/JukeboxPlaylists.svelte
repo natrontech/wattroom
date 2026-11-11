@@ -1,10 +1,10 @@
 <script lang="ts">
-	import type { PlaceAddress } from '$lib/channel/address';
+	import type { PlaceAddress } from '#lib/channel/address.ts';
 	import Plus from '@lucide/svelte/icons/plus';
-	import Skeleton from '$lib/components/Skeleton.svelte';
-	import JukeboxPlaylistRow from '$lib/channel/JukeboxPlaylistRow.svelte';
-	import { useChannel } from '$lib/channel/context';
-	import type { createPlaylistStore } from '$lib/channel/playlists.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import JukeboxPlaylistRow from '#lib/channel/JukeboxPlaylistRow.svelte';
+	import { useChannel } from '#lib/channel/context.ts';
+	import type { createPlaylistStore } from '#lib/channel/playlists.svelte.ts';
 
 	// The saved playlists above the live queue (#627): crew playlists (any
 	// member adds and reorders, one markable active per voice channel) and

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { LiveCrew } from '$lib/crews-live';
+import type { LiveCrew } from '#lib/crews-live.ts';
 import { sidebarUnread } from './sidebar-unread';
 
 const crew = (...unread: (number | undefined)[]): LiveCrew =>

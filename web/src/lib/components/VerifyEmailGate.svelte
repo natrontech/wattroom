@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { EMAIL_IS_FOR } from '$lib/auth/address';
+	import { EMAIL_IS_FOR } from '#lib/auth/address.ts';
 	// The address gate (#781, ADR-0029). An email is the account's recovery
 	// attribute — the way back in when every provider and passkey is gone — so
 	// a rider onboarded with the requirement confirms one before riding, and an
@@ -10,13 +10,13 @@
 	// confirm. Signing out is the only way past it, which is the honest escape
 	// for an address that will not arrive.
 	import { page } from '$app/state';
-	import { account } from '$lib/account.svelte';
+	import { account } from '#lib/account.svelte.ts';
 	import {
 		canSkipEmailPrompt,
 		markSkipped,
 		readSkipped,
 		shouldPromptEmail,
-	} from '$lib/account/verify-prompt';
+	} from '#lib/account/verify-prompt.ts';
 	import Banner from './Banner.svelte';
 	import { focusTrap } from './focus-trap';
 

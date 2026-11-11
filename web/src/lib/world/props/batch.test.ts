@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import type { Route } from '$lib/road/route';
+import type { Route } from '#lib/road/route.ts';
 import type { PropColors } from '../styles';
 import { batchProps, FAR_M, NEAR_M, type Drawn } from './batch';
 import { TILE_M } from './tiles';
