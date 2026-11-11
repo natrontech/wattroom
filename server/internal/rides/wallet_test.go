@@ -1,11 +1,73 @@
 package rides
 
 import (
+	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
+
+	"github.com/natrontech/wattroom/server/internal/store/db"
 )
+
+// The rider's own closing card says what the ride paid (#4515): the save's
+// answer and the rider's own read of the ride carry it, the day's cap says
+// when it held a ride under its minutes, and no projection anybody else sees
+// carries it — the list, a friend's shared ride.
+func TestOnlyTheRidersOwnReadsSayWhatARidePaid(t *testing.T) {
+	h := setup(t)
+	type earned struct {
+		Earned int  `json:"earned"`
+		Held   bool `json:"held"`
+	}
+	read := func(body map[string]any) *earned {
+		t.Helper()
+		raw, ok := body["batzen"]
+		if !ok {
+			return nil
+		}
+		b, _ := json.Marshal(raw)
+		var e earned
+		if err := json.Unmarshal(b, &e); err != nil {
+			t.Fatal(err)
+		}
+		return &e
+	}
+	var ids []string
+	for i, want := range []earned{{120, false}, {60, true}} {
+		status, body := call(t, h.mux, "alice", http.MethodPost, "/api/rides", rideBodyAt(7200, 250, nextStart()))
+		if status != http.StatusCreated {
+			t.Fatalf("save %d: %d %v", i, status, body)
+		}
+		if got := read(body); got == nil || *got != want {
+			t.Fatalf("save %d paid %+v, want %+v", i, got, want)
+		}
+		id, _ := body["id"].(string)
+		ids = append(ids, id)
+	}
+	status, body := call(t, h.mux, "alice", http.MethodGet, "/api/rides/"+ids[1], "")
+	if got := read(body); status != http.StatusOK || got == nil || *got != (earned{60, true}) {
+		t.Fatalf("the rider's own read: %d %+v", status, got)
+	}
+
+	if status, body := call(t, h.mux, "alice", http.MethodPatch, "/api/rides/"+ids[1], `{"sharedWithFriends":true}`); status != http.StatusOK {
+		t.Fatalf("share: %d %v", status, body)
+	}
+	_, list := call(t, h.mux, "alice", http.MethodGet, "/api/rides", "")
+	shared, err := h.store.Queries.ListSharedRides(t.Context(), db.ListSharedRidesParams{
+		Rider: h.users.ByToken["alice"].ID, Viewer: h.users.ByToken["bob"].ID, Max: 10,
+	})
+	if err != nil || len(shared) != 1 {
+		t.Fatalf("shared rides: %d (%v)", len(shared), err)
+	}
+	for name, v := range map[string]any{"the list": list, "a friend's shared ride": shared[0]} {
+		raw, _ := json.Marshal(v)
+		if strings.Contains(strings.ToLower(string(raw)), "batzen") {
+			t.Fatalf("%s carries the ride's Batzen: %s", name, raw)
+		}
+	}
+}
 
 // Two saves in one UTC day pay at most the day's cap (#3152, docs/SPEC.md
 // "Wardrobe"): two hours at FTP is 120 Batzen each, and the second pays the

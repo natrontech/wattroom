@@ -46,11 +46,14 @@ describe('saveRideAlone', () => {
 	});
 
 	it('lands on the summary that shows its ride', async () => {
-		upload.mockResolvedValue({ saved: { id: 'r1', xp: 5 } });
+		upload.mockResolvedValue({
+			saved: { id: 'r1', xp: 5, batzen: { earned: 3 } },
+		});
 		const a = answers(() => true);
 		saveRideAlone(ridden, { buffer: undefined, borrowed: false, ftp: 200 }, a);
 		await settle();
-		expect(a.saved).toHaveBeenCalledWith('r1', 5);
+		// What the ride paid reaches the card with its XP (#4515).
+		expect(a.saved).toHaveBeenCalledWith('r1', 5, { earned: 3 });
 		expect(toastSaved).not.toHaveBeenCalled();
 	});
 

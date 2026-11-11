@@ -77,6 +77,27 @@ func MintGrowth(ctx context.Context, q *db.Queries, user, ride pgtype.UUID, seco
 	return mint(ctx, q, user, "ride_grew", id+"@"+strconv.Itoa(int(seconds)), amount-have)
 }
 
+// Earned is what one saved ride put in the wallet (#4515), for the rider's
+// own closing card and nowhere else: the rows minted for it, and whether the
+// day's cap paid less than its minutes earned.
+type Earned struct {
+	Earned int32 `json:"earned"`
+	// The day's cap held it under `due` (docs/spec/garage.md, "Earning Batzen").
+	Held bool `json:"held,omitempty"`
+}
+
+// RideEarned reads what a ride was paid against `due`, Batzen over its own
+// seconds. Nil for a ride nothing paid — one saved before the wallet, whose
+// share went into the opening grant, or the synthetic account's — since a
+// card saying "+0" there would read as a ride that earned nothing.
+func RideEarned(ctx context.Context, q *db.Queries, user, ride pgtype.UUID, due int32) (*Earned, error) {
+	row, err := q.WalletRideEarned(ctx, db.WalletRideEarnedParams{UserID: user, Ride: store.UUIDString(ride)})
+	if err != nil || row.PaidRows == 0 {
+		return nil, err
+	}
+	return &Earned{Earned: row.Amount, Held: row.Amount < due}, nil
+}
+
 // mint writes one riding row, held to what is left of the UTC day's cap, and
 // the welcome grant first if the rider has not had it. The synthetic account
 // rides for real and earns nothing.

@@ -252,3 +252,29 @@ func (q *Queries) WalletMintedToday(ctx context.Context, userID pgtype.UUID) (in
 	err := row.Scan(&column_1)
 	return column_1, err
 }
+
+const walletRideEarned = `-- name: WalletRideEarned :one
+select count(*)::integer as paid_rows, coalesce(sum(amount), 0)::integer as amount
+from wallet_events
+where user_id = $1 and source in ('ride', 'ride_grew')
+  and (ref = $2::text or ref like $2::text || '@%')
+`
+
+type WalletRideEarnedParams struct {
+	UserID pgtype.UUID
+	Ride   string
+}
+
+type WalletRideEarnedRow struct {
+	PaidRows int32
+	Amount   int32
+}
+
+// What one ride put in the wallet, and how many rows say so (#4515): a ride
+// saved before the wallet has none, and its closing card says nothing.
+func (q *Queries) WalletRideEarned(ctx context.Context, arg WalletRideEarnedParams) (WalletRideEarnedRow, error) {
+	row := q.db.QueryRow(ctx, walletRideEarned, arg.UserID, arg.Ride)
+	var i WalletRideEarnedRow
+	err := row.Scan(&i.PaidRows, &i.Amount)
+	return i, err
+}

@@ -17,6 +17,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/tokens"
+	"github.com/natrontech/wattroom/server/internal/wallet"
 )
 
 // One past ride, opened (#503). The list is summaries; this is the single
@@ -200,6 +201,10 @@ type rideDetailJSON struct {
 	// is owner-scoped and bearer-refused above, which is the whole of
 	// ADR-0055's enforcement — no other projection of a ride selects them.
 	Feel feelJSON `json:"feel"`
+	// What the ride put in the wallet (#4515), for a session's closing card,
+	// which finds its ride here. Owner-scoped like the rest of this read, and
+	// absent on a ride nothing paid.
+	Batzen *wallet.Earned `json:"batzen,omitempty"`
 }
 
 // exportJSON is one delivery's durable state (#799): a rider who turned
@@ -301,7 +306,9 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 		// One unreadable blob costs this ride its trace, not its page.
 		s.log.Error("ride samples unreadable", "err", err, "ride", store.UUIDString(row.ID))
 	}
-	for _, sample := range samples {
+	watts := make([]int, len(samples))
+	for i, sample := range samples {
+		watts[i] = sample.Watts
 		// On a road, its place too: the page draws the ride's own Skyline
 		// from it (#3639). The owner's read only, like the rest of the trace.
 		out.Samples = append(out.Samples, sampleJSON{
@@ -309,6 +316,18 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 			M: sample.M, Alt: sample.Alt,
 		})
 	}
+	// Measured against what its seconds earn, at the save's own answer to
+	// "a group session?" (#3517), so a cap that held it can say so.
+	group, err := s.store.Queries.RideGroupSession(r.Context(), row.ID)
+	if err != nil {
+		s.log.Warn("ride group session unreadable", "err", err, "ride", store.UUIDString(row.ID))
+	}
+	earned, err := wallet.RideEarned(r.Context(), s.store.Queries, user.ID, row.ID,
+		wallet.Batzen(watts, int(row.FtpWatts), group != nil && *group))
+	if err != nil {
+		s.log.Warn("ride batzen unreadable", "err", err, "ride", store.UUIDString(row.ID))
+	}
+	out.Batzen = earned
 	if road, err := s.store.Queries.GetRideRoad(r.Context(), db.GetRideRoadParams{ID: row.ID, UserID: user.ID}); err != nil {
 		s.log.Warn("ride road unreadable", "err", err, "ride", store.UUIDString(row.ID))
 	} else {

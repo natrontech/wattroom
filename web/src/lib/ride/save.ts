@@ -1,5 +1,6 @@
 import { account } from '#lib/account.svelte.ts';
 import { api } from '#lib/api.ts';
+import type { RideBatzen } from '#lib/ride/batzen.ts';
 import { toasts } from '#lib/toast.svelte.ts';
 import { byReference } from '#lib/workout/road-workout.ts';
 import type { Workout } from '#lib/workout/types.ts';
@@ -119,16 +120,21 @@ export function toastSaved(saved: { id: string; roadLeftOff?: true }): void {
 }
 
 const post = (ride: RideUpload) =>
-	api<{ id?: string; xp?: number }>('/api/rides', {
+	api<{ id?: string; xp?: number; batzen?: RideBatzen }>('/api/rides', {
 		method: 'POST',
 		json: ride,
 	});
 
 /** Null on success — or the saved ride, so the summary can link to it (#1331). */
-export async function uploadRide(
-	ride: RideUpload,
-): Promise<
-	| { saved: { id: string; xp?: number; roadLeftOff?: true } }
+export async function uploadRide(ride: RideUpload): Promise<
+	| {
+			saved: {
+				id: string;
+				xp?: number;
+				batzen?: RideBatzen;
+				roadLeftOff?: true;
+			};
+	  }
 	| { failure: SaveFailure }
 > {
 	let res = await post(ride);
@@ -147,6 +153,7 @@ export async function uploadRide(
 			saved: {
 				id: String(res.data?.id ?? ''),
 				xp: res.data?.xp,
+				batzen: res.data?.batzen,
 				...(roadLeftOff && { roadLeftOff: true as const }),
 			},
 		};

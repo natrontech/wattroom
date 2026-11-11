@@ -6,6 +6,15 @@
 	import { ZONE_VAR, zoneOf } from '#lib/components/zones.ts';
 	import RecapHeader from '#lib/ride/RecapHeader.svelte';
 	import RecapTiles from '#lib/ride/RecapTiles.svelte';
+	import RoadRecap from '#lib/ride/RoadRecap.svelte';
+	import { BATZEN_DAY_CAP, type RideBatzen } from '#lib/ride/batzen.ts';
+	import {
+		roadRecap,
+		withBests,
+		type RoadSample,
+	} from '#lib/ride/road-recap.ts';
+	import type { ClimbBest } from '#lib/road/attempts.ts';
+	import type { Road } from '#lib/road/road.ts';
 	import RaceResults from '#lib/race/RaceResults.svelte';
 	import type { RaceBracket } from '#lib/protocol.ts';
 	import {
@@ -44,6 +53,8 @@
 		status,
 		unsaved = false,
 		savedXp,
+		batzen,
+		road,
 	}: {
 		/** The ride's name: the workout's, or the road's. */
 		title: string;
@@ -74,7 +85,41 @@
 		unsaved?: boolean;
 		/** The saved ride's own XP, streak bonus in it (#3753): what the ride page reads. */
 		savedXp?: number;
+		/**
+		 * What the saved ride put in the wallet (#4515), as the server answered
+		 * it. This card is the rider's own; nothing shared ever carries it.
+		 */
+		batzen?: RideBatzen;
+		/**
+		 * The road, on a ride along one (#4516). `samples` are the rider's own
+		 * seconds with their metres, where the card's own carry none (a
+		 * session's); `route` the stored road, for its climbs' own metres;
+		 * `timed` is ADR-0074's word, false on a bunch; `bests` the route's
+		 * climb bests read after the save, and `rideId` the ride they name.
+		 * Without it the card reads its own samples, untimed. A ride that
+		 * placed no second on a road has no road section either way.
+		 */
+		road?: {
+			samples?: RoadSample[];
+			route?: Road;
+			timed: boolean;
+			bests?: ClimbBest[];
+			rideId?: string;
+		};
 	} = $props();
+
+	const roadSection = $derived.by(() => {
+		const recap = roadRecap(road?.samples ?? samples, {
+			ftp,
+			timed: road?.timed ?? false,
+			route: road?.route,
+		});
+		if (!recap || !road?.bests || !road.rideId) return recap;
+		return {
+			...recap,
+			climbs: withBests(recap.climbs, road.bests, road.rideId),
+		};
+	});
 
 	// The ride second by second (#1559): the screen a rider looks at while
 	// catching their breath drew nothing, and the data was in memory.
@@ -236,6 +281,9 @@
 			{#if race?.length}
 				<RaceResults results={race} {you} />
 			{/if}
+			{#if roadSection}
+				<RoadRecap recap={roadSection} />
+			{/if}
 			<section class="panel panel-lg">
 				<h2 class="eyebrow">power curve</h2>
 				<div class="mt-4 grid grid-cols-2 gap-3 2xl:grid-cols-4">
@@ -285,6 +333,24 @@
 						</li>
 					{/if}
 				</ul>
+				{#if batzen && !unsaved}
+					<!-- What the ride paid (#4515): the save's own answer, never a
+					     sum of our own, and only ever on this card. -->
+					<div
+						class="mt-3 flex items-baseline gap-3"
+						data-testid="recap-batzen"
+					>
+						<span class="eyebrow">batzen</span>
+						<span class="text-muted num ml-auto text-[11px]"
+							>+{batzen.earned} Batzen</span
+						>
+					</div>
+					{#if batzen.held}
+						<p class="text-muted mt-1 text-[11px]">
+							Riding pays at most {BATZEN_DAY_CAP} Batzen a day, and today's are in.
+						</p>
+					{/if}
+				{/if}
 				<p class="text-muted mt-2 text-[11px]">
 					{#if unsaved}
 						None of this is on your account: the ride has not been saved.

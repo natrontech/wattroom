@@ -24,7 +24,8 @@
 	import { carriesOn } from '#lib/ride/road-end.ts';
 	import SessionSummary from '#lib/ride/SessionSummary.svelte';
 	import RideFlags from '#lib/ride/RideFlags.svelte';
-	import type { RideableRoute } from '#lib/ride/roads.ts';
+	import { climbBests, type RideableRoute } from '#lib/ride/roads.ts';
+	import type { ClimbBest } from '#lib/road/attempts.ts';
 	import { soloTrainer } from '#lib/ride/solo-trainer.svelte.ts';
 	import { theRide } from '#lib/ride/the-ride.svelte.ts';
 	import SensorOverview from '#lib/session/SensorOverview.svelte';
@@ -67,6 +68,27 @@
 		void ride?.end();
 	}
 
+	// The climbs this ride holds your best on (#4516): read once the ride is
+	// on your own road's account, never on a crew's road you borrowed.
+	const savedId = $derived(
+		ride?.ended && ride.free.outcome && 'saved' in ride.free.outcome
+			? ride.free.outcome.saved.id
+			: undefined,
+	);
+	let bests = $state<ClimbBest[]>([]);
+	$effect(() => {
+		const id = savedId;
+		bests = [];
+		if (!id || route.borrowed || ride?.free.mode === 'watts') return;
+		let live = true;
+		void climbBests(route.id).then((read) => {
+			if (live) bests = read;
+		});
+		return () => {
+			live = false;
+		};
+	});
+
 	// You, in the shape the TV renders (#1632): a roster of one.
 	const tvRider = $derived({
 		id: 'you',
@@ -95,7 +117,7 @@
 	{@const free = ride.free}
 	{@const ghost = ride.ghost}
 	<!-- The road ends on the closing card (#3686, #3839): the frame every ride
-	     closes on. The road's own section is #3141's. -->
+	     closes on, with the road's own panel (#3141, #4516). -->
 	<SessionSummary
 		kind="Free ride"
 		title={route.name}
@@ -104,6 +126,15 @@
 		ftp={profile.current.ftp}
 		unsaved={'failure' in outcome}
 		savedXp={'saved' in outcome ? outcome.saved.xp : undefined}
+		batzen={'saved' in outcome ? outcome.saved.batzen : undefined}
+		road={{
+			route: route.road,
+			// ADR-0074: your own watts moved your dot unless the trainer held
+			// them, Watts riding ERG by the road.
+			timed: free.mode !== 'watts',
+			bests,
+			rideId: savedId,
+		}}
 	>
 		{#snippet actions()}
 			{#if free.road && carriesOn(free.road)}

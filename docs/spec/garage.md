@@ -24,6 +24,22 @@ Part of the product spec. [docs/SPEC.md](../SPEC.md) indexes every section and s
 **Grants**: **100** on welcome; an opening grant for existing riders of
 min(their history, **1,500**).
 
+**On the closing card** ([#4515](https://github.com/natrontech/wattroom/issues/4515), decided 2026-11-11):
+
+- Your own closing card says what the ride paid, `+48 Batzen`, under its XP:
+  the amount the wallet minted for it, as the save (or, for a session, the
+  ride's own read) answers it — never the balance after it, which is the
+  shop's number, and never a sum the client works out.
+- When the day's **180** held the ride under what its minutes earned, the
+  card says so in one line.
+- It is the rider's own: no shared card, friend's ride, crew surface, TV,
+  export picture or personal-token read carries it.
+- No wish item and no "88 % to the aero wheels". A card points at what the
+  ride did, not at a shop; and cosmetics are earned, so the card does not
+  set a purchase as the goal of a ride.
+- A ride saved before the wallet, whose share went into the opening grant,
+  shows no Batzen line rather than `+0`.
+
 **The catalogue (v3)**:
 
 | Parameter       | Value                                                                                                |
