@@ -273,7 +273,7 @@
 						/>
 					{/if}
 				{/if}
-				<WorldPicture />
+				<WorldPicture rideId={theRide.savedId} />
 				{#if theRide.next}
 					<a
 						href={theRide.next.href}

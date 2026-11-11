@@ -94,6 +94,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	// What the rider says about the ride, next to what the trainer said (#2328).
 	mux.HandleFunc("PUT /api/rides/{id}/feel", s.handleFeel)
 	mux.HandleFunc("DELETE /api/rides/{id}", s.handleDelete)
+	s.registerPhotos(mux)
 }
 
 type rideJSON struct {

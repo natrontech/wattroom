@@ -12,13 +12,14 @@
 	 * rider's own lane for a ride alone (#4425). Talk and Cheer reach a call
 	 * and a channel, so a ride alone draws neither (`social`).
 	 */
-	import { onDestroy, onMount } from 'svelte';
+	import { onDestroy, onMount, untrack } from 'svelte';
 	import type { RemoteLink } from '$lib/ride/remote-link';
 	import { LAST_BLOCK, NO_BLOCKS } from '$lib/ride/remote-blocks';
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
 	import { createTalkHold } from '$lib/ride/remote-talk';
 	import { keepAwakeWhile } from '$lib/workout/keep-awake.svelte';
-	import { answerLine, remoteLine } from '$lib/ride/remote-line';
+	import { answerLine, photosFull, remoteLine } from '$lib/ride/remote-line';
+	import { play } from '$lib/sound/cues';
 
 	let {
 		link: live,
@@ -49,6 +50,15 @@
 	// Photo's answer: the count of pictures it had when pressed (remoteLine).
 	let photoFrom = $state<number | null>(null);
 	const shown = $derived(remoteLine(live.view, photoFrom));
+	// At the ride's cap Photo is disabled under the line that says so.
+	const full = $derived(photosFull(live.view));
+	// The shutter here too, when the riding screen says it took one.
+	let heard = untrack(() => live.view?.pictures ?? 0);
+	$effect(() => {
+		const pictures = live.view?.pictures ?? 0;
+		if (pictures > heard) play('shutter');
+		heard = pictures;
+	});
 	function press(action: string) {
 		if (action === 'photo') photoFrom = live.view?.pictures ?? 0;
 		live.sendRemote(action);
@@ -125,7 +135,7 @@
 			<button
 				type="button"
 				class={cell}
-				disabled={!world}
+				disabled={!world || (c.action === 'photo' && !!full)}
 				onclick={() => press(c.action)}
 			>
 				{c.label}
@@ -135,6 +145,10 @@
 	{#if !world}
 		<p class="text-ink-muted text-2xl leading-7" data-testid="remote-hint">
 			Camera and Photo need 3D.
+		</p>
+	{:else if full}
+		<p class="text-ink-muted text-2xl leading-7" data-testid="remote-hint">
+			{full}
 		</p>
 	{/if}
 

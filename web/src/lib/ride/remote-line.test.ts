@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { answerLine, remoteLine } from './remote-line';
+import { answerLine, photosFull, remoteLine } from './remote-line';
 
 describe('the phone remote’s line (#4253)', () => {
 	it.each([
@@ -27,16 +27,28 @@ describe('the phone remote’s line (#4253)', () => {
 			'Photo taken',
 			{ page: 'ride', world: true, camera: 'chase', pictures: 2 },
 			1,
-			'Picture taken',
+			"Photo 2 of 5 · on the ride's page after",
 		],
 		[
 			'the first picture of the ride',
 			{ page: 'ride', world: true, pictures: 1 },
 			0,
-			'Picture taken',
+			"Photo 1 of 5 · on the ride's page after",
 		],
 	])('%s', (_, view, photoFrom, want) => {
 		expect(remoteLine(view, photoFrom)).toBe(want);
+	});
+});
+
+describe('the phone’s Photo at the ride’s cap', () => {
+	it.each([
+		['before any answer', null, false],
+		['one under the cap', { page: 'ride', world: true, pictures: 4 }, false],
+		['at the cap', { page: 'ride', world: true, pictures: 5 }, true],
+	])('%s', (_, view, full) => {
+		const line = photosFull(view);
+		expect(line !== null).toBe(full);
+		if (line) expect(line).toMatch(/keeps 5 photos.*page/);
 	});
 });
 

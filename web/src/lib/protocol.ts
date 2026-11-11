@@ -524,6 +524,19 @@ export const MaxRPE = 10;
  */
 export const MaxRideNoteChars = 500;
 /**
+ * The photos a rider takes on one ride (docs/spec/riding.md "The ride's
+ * pictures"): Photo on the phone remote and the O key disable at this
+ * count, and the server refuses a photo numbered past it. Each is two
+ * JPEGs of about 0.1 MB, the World and the Overhead view.
+ */
+export const MaxRidePhotos = 5;
+/**
+ * Every ride's photos of one rider together, in bytes: the soundboard's
+ * 100 MB, for the same reason — the account export carries them, and it
+ * is built whole in memory.
+ */
+export const MaxRiderPhotoBytes = 100 << 20;
+/**
  * A workout's name, planned, ridden or saved (docs/SPEC.md "Names"), in
  * CHARACTERS — MaxMessageChars' rule. A ride the rider retitles (#4209)
  * is a ridden workout's name, so its title takes the same bound.

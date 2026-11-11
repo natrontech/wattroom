@@ -66,6 +66,8 @@ type export struct {
 	// The clips soundboard.json listed, for the bytes loop after the
 	// categories: one read serves the rows and the files (#2090).
 	clipIDs []pgtype.UUID
+	// The photo views ride-photos.json listed, for the same loop.
+	photoFiles []ridePhotoRef
 	// And the avatar, read once by its own category and written there too.
 	avatarFile struct {
 		name  string
@@ -89,7 +91,7 @@ func (x *export) categories() []category {
 		x.rides(), x.chat(), x.messages(), x.sessions(), x.friends(), x.dismissedRequests(), x.hiddenRiders(),
 		x.playlists(), x.tracks(), x.plannedSessions(), x.workouts(), x.xp(), x.trophies(),
 		x.identities(), x.passkeys(), x.coachAccess(), x.reactions(), x.crews(), x.pins(),
-		x.scheduledSessions(), x.channelMembers(), x.soundboard(), x.rideUploads(),
+		x.scheduledSessions(), x.channelMembers(), x.soundboard(), x.rideUploads(), x.ridePhotos(),
 		x.avatar(), x.images(), x.emoji(), x.medals(), x.routes(), x.wallet(), x.wardrobe(),
 		x.roomItems(), x.arcadeScores(),
 		x.voiceTime(),
@@ -333,6 +335,19 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 		}
 		clipsWritten++
 	}
+	photosWritten := 0
+	for _, ref := range x.photoFiles {
+		photo, err := s.store.Queries.GetRidePhoto(r.Context(), db.GetRidePhotoParams{
+			RideID: ref.ride, UserID: user.ID, N: ref.n, View: ref.view,
+		})
+		if err != nil {
+			continue // one unreadable photo loses itself, and the manifest counts it
+		}
+		if !writeUpload(ref.name, photo.Bytes) {
+			return
+		}
+		photosWritten++
+	}
 	routesWritten, err := x.writeRoutes(archive.Create, x.gpx)
 	if err != nil {
 		fail("export write routes", err)
@@ -346,13 +361,15 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 		// avatar is one row or none, so it says whether; clips count, the way
 		// samples do, because a missing one is otherwise silent.
 		"uploads": map[string]any{
-			"avatar": x.avatarFile.name != "",
-			"clips":  map[string]int{"rows": len(x.clipIDs), "written": clipsWritten},
+			"avatar":     x.avatarFile.name != "",
+			"clips":      map[string]int{"rows": len(x.clipIDs), "written": clipsWritten},
+			"ridePhotos": map[string]int{"rows": len(x.photoFiles), "written": photosWritten},
 			// A route's GPX needs its map (#3024): one stored without a key
 			// has heights only, in routes.json, and is not owed a file.
 			"routes": map[string]int{"withMap": x.routesWithPlace, "written": routesWritten},
 		},
 		"complete": samplesWritten == len(rides) && clipsWritten == len(x.clipIDs) &&
+			photosWritten == len(x.photoFiles) &&
 			routesWritten == x.routesWithPlace &&
 			!slices.ContainsFunc(manifest, func(e entry) bool { return !e.Ok || e.Truncated }),
 	}) {

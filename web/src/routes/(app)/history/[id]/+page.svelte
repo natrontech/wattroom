@@ -42,6 +42,7 @@
 	import Download from '@lucide/svelte/icons/download';
 	import ImageDown from '@lucide/svelte/icons/image-down';
 	import RideFeel from '$lib/ride/RideFeel.svelte';
+	import RidePhotos from '$lib/ride/RidePhotos.svelte';
 	import RideName from '$lib/ride/RideName.svelte';
 	import ShareToggle from '$lib/ride/ShareToggle.svelte';
 	import Pencil from '@lucide/svelte/icons/pencil';
@@ -323,6 +324,10 @@
 		{#if ride.samples.length > 0}
 			<FitImportHelp />
 		{/if}
+
+		<!-- The photos the rider took on the ride, high on the page: the
+		     closing card sends them here, and so does the phone that took them. -->
+		<RidePhotos id={ride.id} startedAt={ride.startedAt} />
 
 		<section class="panel panel-xl mt-6">
 			<h2 class="eyebrow">how it went</h2>
