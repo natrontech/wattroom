@@ -140,20 +140,23 @@ describe('a BLE sensor that drops (#1716)', () => {
 		expect(device.characteristic.live).toBe(1);
 	});
 
-	it('backs off when the reattach itself fails, and keeps trying', async () => {
+	it('tries at once when the link drops, and keeps trying when that fails', async () => {
 		const { sensor } = makeSensor();
 		await sensor.connect();
 		device.failConnects = 2;
 		device.drop();
 
-		await vi.advanceTimersByTimeAsync(1000);
-		expect(sensor.status).toBe('connecting');
-		// Doubling: nothing happens at +1 s, the second retry is at +2 s.
-		await vi.advanceTimersByTimeAsync(999);
+		// At once, and refused.
+		await vi.advanceTimersByTimeAsync(0);
 		expect(device.connects).toBe(2);
-		await vi.advanceTimersByTimeAsync(1001);
 		expect(sensor.status).toBe('connecting');
-		await vi.advanceTimersByTimeAsync(4000);
+		// Then +1 s, refused again; then +2 s more, and back.
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(device.connects).toBe(3);
+		expect(sensor.status).toBe('connecting');
+		await vi.advanceTimersByTimeAsync(1999);
+		expect(sensor.status).toBe('connecting');
+		await vi.advanceTimersByTimeAsync(1);
 		expect(sensor.status).toBe('connected');
 	});
 
