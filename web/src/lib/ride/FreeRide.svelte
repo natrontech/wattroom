@@ -7,7 +7,7 @@
 	import { onDestroy, onMount, untrack } from 'svelte';
 	import { useChannel } from '#lib/channel/context.ts';
 	import { channelConnection } from '#lib/channel/connection.svelte.ts';
-	import { ridePath, sessionPath } from '#lib/channel/address.ts';
+	import { joinSessionPath, ridePath } from '#lib/channel/address.ts';
 	import { crewLive } from '#lib/nav/crew-live.svelte.ts';
 	import { liveSessionId } from '#lib/channel/tick-session.ts';
 	import Banner from '#lib/components/Banner.svelte';
@@ -194,7 +194,7 @@
 				and your trainer, and saves this ride first.
 			</p>
 			<a
-				href={sessionPath(channel.address.crew, crewSession.id)}
+				href={joinSessionPath(channel.address.crew, crewSession.id)}
 				class="btn btn-accent btn-ride ml-auto"
 				><Radio size={15} /> Join the ride</a
 			>

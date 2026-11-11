@@ -9,8 +9,8 @@ import type { Moved } from '#lib/protocol.ts';
  * Moved by the crew's owner or an admin (#2730, Discord's drag): go where
  * they put you, the way a sidebar click goes (#2702). A live mic and camera
  * come along; a rider who was only on the page arrives without joining
- * voice. A session ride still asks first, because the navigation passes
- * ride-guard like any other. Call inside the connection's effect root.
+ * voice. A ride comes along too, still running (#4259). Call inside the
+ * connection's effect root.
  */
 export function followMoves({
 	address,

@@ -22,9 +22,8 @@
 	import { palette } from '#lib/palette.svelte.ts';
 	import { themeFor } from '#lib/themes.ts';
 	import { channelConnection } from '#lib/channel/connection.svelte.ts';
-	import { soloRide } from '#lib/workout/ride-life.svelte.ts';
+	import { rideFrame } from '#lib/ride/ride-frame.svelte.ts';
 	import { theRide } from '#lib/ride/the-ride.svelte.ts';
-	import { drawsTheRide } from '#lib/ride/ride-screens.ts';
 	import { createProfileStore } from '#lib/profile.svelte.ts';
 	import { pullProfile } from '#lib/profile-sync.svelte.ts';
 	import { dmHeads } from '#lib/dm/heads.svelte.ts';
@@ -47,7 +46,6 @@
 	import StatusEditor from '#lib/status-line/StatusEditor.svelte';
 	import { statusEditor } from '#lib/status-line/editor.svelte.ts';
 	import ConnectionInfo from '#lib/channel/ConnectionInfo.svelte';
-	import { guardTheRide } from '#lib/channel/ride-guard.svelte.ts';
 	import ImageViewer from '#lib/chat/ImageViewer.svelte';
 	import DevicePicker from '#lib/ble/DevicePicker.svelte';
 	import { devicePicker } from '#lib/ble/device-picker.svelte.ts';
@@ -67,9 +65,7 @@
 
 	let { children } = $props();
 
-	// A ride in one voice channel is not ended by a tap on another (#2602).
-	guardTheRide();
-	// …and keeps the screen and the machine awake, on whichever page the
+	// A ride keeps the screen and the machine awake, on whichever page the
 	// rider reads meanwhile: only a solo ride held the lock (#4219).
 	keepAwakeWhile(() => !!channelConnection.current?.riding());
 
@@ -181,16 +177,10 @@
 	// ride starts and closes when it ends, and the shell shows it only while
 	// WattRoom is not the front window. A free ride is a ride (#2843).
 	// The ride alone outlives its screens (ADR-0093): the frame is the ride
-	// only while one of them draws it, and a desk frame everywhere else.
-	const alone = $derived(
-		theRide.alone ? drawsTheRide(page.url.pathname) : soloRide.active,
-	);
-
-	const riding = $derived(
-		(channelConnection.onPlacePath(page.url.pathname) &&
-			!!channelConnection.current?.riding()) ||
-			alone,
-	);
+	// only while one of them draws it, and a desk frame everywhere else. One
+	// answer, `rideFrame`, which the lounge reads too (#4472).
+	const alone = $derived(rideFrame.alone);
+	const riding = $derived(rideFrame.riding);
 
 	// A solo ride has no timeline to write a DM into (#1743), so it takes the
 	// line and leaves it to the unread badge in the sidebar, which was already

@@ -19,7 +19,7 @@
 	import { channelConnection } from '#lib/channel/connection.svelte.ts';
 	import { navDrawer } from '#lib/nav/drawer.svelte.ts';
 	import { crewLive } from '#lib/nav/crew-live.svelte.ts';
-	import { sessionPath } from '#lib/channel/address.ts';
+	import { joinSessionPath } from '#lib/channel/address.ts';
 	import { startRideTogether } from '#lib/session/crew-session.ts';
 	import { device } from '#lib/device.svelte.ts';
 	import Bike from '@lucide/svelte/icons/bike';
@@ -87,7 +87,7 @@
 				if (!conn) return;
 				const crew = conn.address.crew;
 				void startRideTogether(crew).then((res) => {
-					if (res.ok) void goto(sessionPath(crew, res.data.id));
+					if (res.ok) void goto(joinSessionPath(crew, res.data.id));
 				});
 			},
 		},
@@ -95,7 +95,7 @@
 			label: `Join ${session.workout} · ${session.riders.length} riding`,
 			icon: Bike,
 			onSelect: () => {
-				if (conn) void goto(sessionPath(conn.address.crew, session.id));
+				if (conn) void goto(joinSessionPath(conn.address.crew, session.id));
 			},
 		})),
 	];

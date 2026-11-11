@@ -89,6 +89,13 @@ export const sessionPath = (crew: string, sessionId: string) =>
 	`/crew/${crew}/s/${sessionId}`;
 
 /**
+ * The session's page, asking to join it on arrival (#4469): every "Join the
+ * ride" and the coach's own Start. Plain `sessionPath` watches.
+ */
+export const joinSessionPath = (crew: string, sessionId: string) =>
+	`${sessionPath(crew, sessionId)}?join=1`;
+
+/**
  * Where the ride is (#2450): the running session at its own address, else
  * the channel's Training.
  */

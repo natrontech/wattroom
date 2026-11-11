@@ -29,7 +29,7 @@
 	import RideDoors from '#lib/ride/RideDoors.svelte';
 	import { doorsFor } from '#lib/crew-lounge.ts';
 	import { goto } from '$app/navigation';
-	import { sessionPath } from '#lib/channel/address.ts';
+	import { joinSessionPath } from '#lib/channel/address.ts';
 
 	// Home (#212): the between-rides overview — who is around, what is
 	// planned, your friends, your week. ADR-0020 folded /sessions in here;
@@ -182,7 +182,7 @@
 			return {
 				// A ride is joined where the numbers are (#1332): the session's
 				// own page, which joins no voice by itself.
-				href: sessionPath(running.crew.id, session.id),
+				href: joinSessionPath(running.crew.id, session.id),
 				text: `${running.channel.name} is riding right now — ${minutesIn(session.elapsed)}.`,
 				cta: 'Join the ride',
 			};

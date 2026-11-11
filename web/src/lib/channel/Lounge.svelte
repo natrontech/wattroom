@@ -30,6 +30,7 @@
 	import { account } from '#lib/account.svelte.ts';
 	import Bike from '@lucide/svelte/icons/bike';
 	import { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import { rideFrame } from '#lib/ride/ride-frame.svelte.ts';
 	import { type MenuEntry } from '#lib/context-menu.svelte.ts';
 	import { mateOnRoad, rideWith } from '#lib/channel/road-mates.ts';
 	import { personMenu } from '#lib/person-menu.ts';
@@ -48,7 +49,7 @@
 	// While a ride runs the frame is the ride and this stage a riding surface
 	// (TARGETS G1): a rider a game put out uses it on the bike, so its words
 	// take riding size through the `ride-stage:` variant (#3890, #3882).
-	const riding = $derived(!!channelConnection.current?.riding());
+	const riding = $derived(rideFrame.riding);
 	const av = $derived(channelConnection.call?.av);
 	const isOwner = $derived(channel.myRole === 'owner');
 

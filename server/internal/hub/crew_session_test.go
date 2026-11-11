@@ -322,3 +322,31 @@ func TestAVoiceChannelOpensNoSession(t *testing.T) {
 		t.Fatal("a session opened in the voice channel")
 	}
 }
+
+// A member who opens a crew session and has not joined it is watching: their
+// own ride came along to the page, and its numbers stay on their screen
+// (#4469). Only the session's riders reach everyone.
+func TestACrewSessionKeepsAWatchersNumbersTheirOwn(t *testing.T) {
+	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
+	alice := protocol.Rider{ID: "alice", Name: "Alice", Role: "member", FtpWatts: 250}
+	id, code, msg := h.OpenCrewSession("crew1", alice, protocol.Control{WorkoutName: "Tempo", WorkoutJSON: crewWorkout})
+	if code != "" {
+		t.Fatalf("open: %s %s", code, msg)
+	}
+	rm := h.stateOf(protocol.CrewSessionPlace("crew1", id))
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+	if !rm.session.join("alice", true) {
+		t.Fatal("alice could not join an open session")
+	}
+	free := rm.freeRidersLocked(map[string]protocol.RiderMetrics{
+		"alice": {Watts: 200},
+		"bob":   {Watts: 150},
+	})
+	if _, watching := free["bob"]; !watching {
+		t.Errorf("free = %v, want bob's numbers his own", free)
+	}
+	if _, riding := free["alice"]; riding {
+		t.Errorf("free = %v, want alice's numbers the session's", free)
+	}
+}

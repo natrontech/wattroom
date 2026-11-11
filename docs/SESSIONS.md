@@ -13,6 +13,11 @@ Taken with Jan on 2026-11-03:
 3. **Announce, never bind.** Start a session while in a call and that call gets one line with Join. Joining a session never touches your call. A session names no channel.
 4. **The sidebar lists live sessions at the top of the crew column.** One row each: name, coach, riders, clock. Nothing shows while none runs.
 
+Taken on 2026-11-11 (#4469), from WATTROOM.md's "A session drives only the riders who joined it" and "joining one never touches the other":
+
+5. **Opening a session watches it; joining is a choice.** The session page no longer joins whoever opens it. Join is the page's Join button, a "Join the ride" link (`joinSessionPath`, which carries `?join=1`), or the coach's own Start. The choice is the tab's, per session (`joinIntent`): a join a reconnect lost is asked again from the count-in on, at most every 3 s, and Leave the ride drops the choice, so the page never re-joins a rider who left. Leave keeps the rider on the page, watching. A sidebar row, a tile's badge, a notification and a shared link open the page and watch. This replaces ADR-0059's "opening the session is joining it", which made a rider who stepped off unable to watch.
+6. **The ride is moved, never ended, by a place.** Opening a crew session moves the device's ride to the session's socket still running: a free ride goes on, and the hub keeps a watcher's numbers on their own screen, as it does for a free rider in a call. Joining ends the free ride, saved, as before (docs/SPEC.md). Leaving the session hands the ride back to the call still running. Opening another voice channel moves the ride to the new call (#4259).
+
 ## Today
 
 Where a session assumes a voice channel:
@@ -52,7 +57,7 @@ Open rides already work the way this plan wants. Each one is a hub object of its
 ## Voice and sessions side by side
 
 - The client holds two live connections at most: the call (`channelConnection`) and the session (`sessionConnection`). Either can exist without the other.
-- In a call and on a session: you hear the call, you ride the session. Leaving the call keeps the session; leaving the session keeps the call.
+- In a call and on a session: you hear the call, you ride the session. Leaving the call keeps the session; leaving the session keeps the call, and the ride with it.
 - On a session with no call: the session's screen and its sounds. Music is the call's, so a rider with no call hears no jukebox.
 - One rider, one voice and one sensor, one screen stay true. What is the rider's and not a room's moves to the hub, keyed by rider and reached from any of their sockets: the sensor claims (#610), the phone remote's relays (#3217) and the voice seat.
 
@@ -132,10 +137,11 @@ Each one ships on its own and leaves the app working.
 ## Still open
 
 - `channelState` is still one struct for a call and a session; a crew session's room is one with no call in it. The split is internal and changes nothing a rider sees.
-- Client code for a session inside a voice channel can no longer run and is still there: the channel Training page's session door, `LoungeSession`, the session page's voice-channel branch, the lost-road resume.
+- Client code for a session inside a voice channel can no longer run and is still there: the channel Training page's session door, `LoungeSession`, the lost-road resume.
 - Rider-scoped state (sensor claims, the phone remote's relays) is still per room, so two screens of one rider in a call and a session do not see each other's claim.
 - `/crew/[id]/v/[channel]/training` stays the call's free ride page; the redirect to `/ride` waits until `/ride` draws the call's ride.
 - A crew session does not survive a server restart; its page then keeps reconnecting instead of saying it ended.
+- Leaving the last place a ride rides on (the now bar's Leave with no session, or the call's Leave) still ends that ride, saved. WATTROOM.md wants only End ride to end it; that needs the ride to ride with no socket, private, until the rider opens a place again.
 - `LiveSession.Channel` is always empty and can go. `scheduled_sessions.channel_id` is dropped one release after the plan form stopped writing it, once no channel-pinned plan is left in the future.
 
 ## What WATTROOM.md says when this lands

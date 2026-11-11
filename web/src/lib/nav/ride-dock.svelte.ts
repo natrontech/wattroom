@@ -35,6 +35,20 @@ export const rideDock = {
 		if (channel) return channel.seconds;
 		return theRide.road?.free.seconds ?? theRide.session?.elapsed ?? 0;
 	},
+	/**
+	 * The place the ride rides on, for the dock's eyebrow: the call or the
+	 * crew session it moved to (#4259), or null for a ride alone. Its numbers
+	 * stay the rider's either way; the call shows only that they ride.
+	 */
+	get place(): string | null {
+		const channel = inChannel();
+		if (!channel) return null;
+		const { call, session } = channelConnection;
+		return (
+			[session, call].find((c) => c?.live === channel.live)?.address.name ??
+			null
+		);
+	},
 	get watts(): number {
 		const channel = inChannel();
 		if (channel) return channel.watts;

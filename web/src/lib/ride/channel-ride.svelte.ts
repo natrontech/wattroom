@@ -17,15 +17,8 @@ import { toasts } from '#lib/toast.svelte.ts';
 import { createSignalWatch } from '#lib/workout/signal-watch.svelte.ts';
 import type { Segment } from '#lib/workout/types.ts';
 
-/**
- * A voice channel's ride (ADR-0093, #4259): the trainer the channel rides,
- * its free ride and your own workout, held by `theRide` in an effect root of
- * their own rather than by the connection's. The trainer is the ride's; a
- * joined session only feeds it targets. Its numbers still go to the call it
- * was held for, and leaving that call ends it (`end`), until the audience
- * follows the rider (ADR-0093 point 6).
- */
-export function holdChannelRide(deps: {
+/** What a ride rides on: the socket and the session state of one place. */
+export type ChannelRideDeps = {
 	live: ReturnType<typeof createChannelLive>;
 	profile: ReturnType<typeof createProfileStore>;
 	recording: ReturnType<typeof createRecording>;
@@ -33,13 +26,40 @@ export function holdChannelRide(deps: {
 	segments: () => Segment[];
 	road: () => RoadPlace | null;
 	joined: () => boolean;
-}) {
-	const { live, profile } = deps;
+};
+
+/**
+ * A voice channel's ride (ADR-0093, #4259): the trainer the channel rides,
+ * its free ride and your own workout, held by `theRide` in an effect root of
+ * their own rather than by the connection's. The trainer is the ride's; a
+ * joined session only feeds it targets. It rides on one place's socket at a
+ * time, and `move` takes it to another place still running: the next voice
+ * channel, a crew session, and back to the call.
+ */
+export function holdChannelRide(first: ChannelRideDeps) {
+	// The place the ride rides on. Read through, never copied, so a move
+	// re-runs whatever reads the socket, the tick or the roster.
+	let on = $state.raw(first);
+	const via = {
+		get live() {
+			return on.live;
+		},
+		get profile() {
+			return on.profile;
+		},
+		get recording() {
+			return on.recording;
+		},
+		shared: () => on.shared(),
+		segments: () => on.segments(),
+		road: () => on.road(),
+		joined: () => on.joined(),
+	};
 	// Riding together (docs/SESSIONS.md) the rider is in the session and the
 	// free ride still drives the trainer: no workout gives targets. Only a
 	// session with one takes the trainer over.
-	const together = () => !!deps.shared()?.together;
-	const joined = () => deps.joined() && !together();
+	const together = () => !!via.shared()?.together;
+	const joined = () => via.joined() && !together();
 	let free!: ReturnType<typeof createFreeRide>;
 	let ride!: ReturnType<typeof createRide>;
 	let own!: ReturnType<typeof createOwnRide>;
@@ -47,25 +67,35 @@ export function holdChannelRide(deps: {
 
 	const dispose = $effect.root(() => {
 		free = createFreeRide({
-			ftp: () => profile.current.ftp,
-			singleSpeed: () => profile.current.singleSpeed,
-			kg: () => profile.current.kg,
+			ftp: () => via.profile.current.ftp,
+			singleSpeed: () => via.profile.current.singleSpeed,
+			kg: () => via.profile.current.kg,
 		});
 		ride = createRide({
-			live,
-			profile,
-			recording: deps.recording,
+			get live() {
+				return via.live;
+			},
+			get profile() {
+				return via.profile;
+			},
+			get recording() {
+				return via.recording;
+			},
 			myId: () => account.me?.id,
-			shared: deps.shared,
-			segments: deps.segments,
-			road: deps.road,
+			shared: via.shared,
+			segments: via.segments,
+			road: via.road,
 			joined,
 			free,
 		});
 		own = createOwnRide({
 			ride,
-			live,
-			profile,
+			get live() {
+				return via.live;
+			},
+			get profile() {
+				return via.profile;
+			},
 			joined,
 			endFreeRide: () => free.end().then(sayFreeRide),
 		});
@@ -82,13 +112,25 @@ export function holdChannelRide(deps: {
 		});
 		// In a session with no workout, the free ride is the ride.
 		$effect(() => {
-			if (deps.joined() && together() && !free.armed) free.arm();
+			if (via.joined() && together() && !free.armed) free.arm();
 		});
 	});
 
 	return {
 		/** The socket the ride rides on: the connection that holds it. */
-		live,
+		get live() {
+			return on.live;
+		},
+		/**
+		 * Ride on another place from here, still running: only the socket the
+		 * numbers go to changes. The old socket's session buffer is settled,
+		 * as leaving that session settled it.
+		 */
+		move(to: ChannelRideDeps) {
+			if (to.live === on.live) return;
+			on.live.finish();
+			on = to;
+		},
 		ride,
 		freeRide: free,
 		ownRide: own,
@@ -123,21 +165,23 @@ export type ChannelRide = ReturnType<typeof holdChannelRide>;
 
 let current = $state.raw<ChannelRide | null>(null);
 
-/** The call's ride, held while the rider is in it; `theRide.channel` reads it. */
+/** The device's ride in a place, held while the rider is in one; `theRide.channel` reads it. */
 export const channelRide = {
 	get current() {
 		return current;
 	},
-	hold(deps: Parameters<typeof holdChannelRide>[0]): ChannelRide {
-		// A crew session taking the ride from the call takes its trainer too,
-		// still connected (docs/SESSIONS.md): the rider never pairs again.
-		const trainer = current?.ride.handOff() ?? null;
-		current?.end();
-		current = holdChannelRide(deps);
-		if (trainer) void current.ride.ride(trainer);
+	/**
+	 * The device's ride, riding on `deps`' place: made when there is none,
+	 * moved there when there is (#4259). A crew session taking it from the
+	 * call, or the next voice channel from the last, keeps the trainer
+	 * connected, the free ride recording and your own workout on its block.
+	 */
+	hold(deps: ChannelRideDeps): ChannelRide {
+		if (current) current.move(deps);
+		else current = holdChannelRide(deps);
 		return current;
 	},
-	/** Leaving the call ends its ride, saved, until the audience follows the rider. */
+	/** The ride ends, saved, and the trainer lets go: no place is left to ride it on. */
 	leave() {
 		current?.end();
 		current = null;

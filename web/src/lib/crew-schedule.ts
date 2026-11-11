@@ -1,5 +1,5 @@
 import { api, loadApi, type ApiResult } from '#lib/api.ts';
-import { sessionPath } from '#lib/channel/address.ts';
+import { joinSessionPath } from '#lib/channel/address.ts';
 import { voiceChannelPath } from '#lib/channels.ts';
 import { serverNow } from '#lib/server-clock.ts';
 import type { CrewRole } from '#lib/crew.ts';
@@ -123,7 +123,7 @@ export interface StartedPlan {
  *  The channel when the server named no session. */
 export const startedPath = (crewId: string, started: StartedPlan) =>
 	started.sessionId
-		? sessionPath(crewId, started.sessionId)
+		? joinSessionPath(crewId, started.sessionId)
 		: voiceChannelPath(crewId, started.channelId);
 
 /** Opens the plan's session, one of the crew's own (docs/SESSIONS.md), with
