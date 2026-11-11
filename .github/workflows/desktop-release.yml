@@ -329,7 +329,7 @@ jobs:
 
   # The build a rider downloads, ridden before it is published (#1314,
   # ADR-0088): the signed, notarized macOS app out of the .zip the updater
-  # installs, and the Linux AppImage, each launched as built and driven over
+  # installs, and the Linux .deb installed, each launched as built and driven over
   # CDP by packaged.spec.js — the wattroom:// hand-off from a second launch,
   # a minute on the SimulatedTrainer saved on a local server, the HUD. The
   # fuses leave no --inspect, so CDP is the only way in.
@@ -367,10 +367,12 @@ jobs:
               ditto -x -k "$RUNNER_TEMP"/installers/*.zip .
               codesign -dvv WattRoom.app 2>&1 | grep '^Authority=' | head -1
               echo "WATTROOM_APP_BINARY=$PWD/WattRoom.app/Contents/MacOS/WattRoom" >> "$GITHUB_ENV" ;;
+            # The .deb, installed: its postinst makes chrome-sandbox setuid,
+            # which the runner's AppArmor needs (no unprivileged user
+            # namespaces), as an Ubuntu 24.04 rider's does.
             Linux)
-              chmod +x "$RUNNER_TEMP"/installers/*.AppImage
-              "$RUNNER_TEMP"/installers/*.AppImage --appimage-extract > /dev/null
-              echo "WATTROOM_APP_BINARY=$PWD/squashfs-root/wattroom-desktop" >> "$GITHUB_ENV" ;;
+              sudo apt-get install -y --no-install-recommends "$RUNNER_TEMP"/installers/*.deb > /dev/null
+              echo "WATTROOM_APP_BINARY=/opt/WattRoom/wattroom-desktop" >> "$GITHUB_ENV" ;;
           esac
       # No service containers outside Linux, so the database is the runner's
       # own Postgres on both, for one shape. Any recent major does: the

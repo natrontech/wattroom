@@ -147,6 +147,15 @@ jobs:
       - name: the fuses are off
         working-directory: desktop
         run: node fuses-check.js dist/linux-unpacked/wattroom-desktop
+      # What the .deb's postinst does on a rider's machine: the runner's
+      # AppArmor refuses unprivileged user namespaces, so Chromium needs its
+      # setuid helper or aborts at launch. Not --no-sandbox: that would ride a
+      # build no rider runs.
+      - name: the sandbox helper, as the .deb installs it
+        working-directory: desktop
+        run: |
+          sudo chown root:root dist/linux-unpacked/chrome-sandbox
+          sudo chmod 4755 dist/linux-unpacked/chrome-sandbox
       # The server the e2e job rides against: the production web build behind
       # web/e2e/server.js, which proxies /api and /ws to `go run`. No LiveKit:
       # an empty URL turns AV off rather than pointing at nothing.
