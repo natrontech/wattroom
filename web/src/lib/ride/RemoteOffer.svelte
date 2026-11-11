@@ -38,7 +38,7 @@
 			</button>
 		{/if}
 		{#if voiceElsewhere}
-			<p class="text-ink-muted text-base">
+			<p class="text-muted text-base">
 				Your voice is on your {voiceElsewhere}.
 			</p>
 			<button

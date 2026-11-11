@@ -1,16 +1,14 @@
 <script lang="ts">
 	/**
 	 * Slot 1's control row on a ride alone (TARGETS ride-road-world 7): ⚑,
-	 * the view switch, TV, +1 min and Skip block as 44 px icons, named and
-	 * with the app's tooltip (#4427); Change workout (#4257) and End ride in words. A road
-	 * workout's blocks end at their metres (#3499), so it shows neither +1 min
-	 * nor Skip (D13). With no workout there is nothing to skip or stretch, and
-	 * Easier and Harder lead the row as a free ride's do (TARGETS
-	 * ride-free-road 7, #4283).
+	 * the view switch, then the ride's icon controls from the list the phone
+	 * remote draws too (ride-controls.ts): Camera and Photo on a road, TV,
+	 * Pause, +1 min and Skip block; Change workout (#4257) and End ride in
+	 * words. A road workout's blocks end at their metres (#3499), so it shows
+	 * neither +1 min nor Skip (D13). With no workout there is nothing to skip
+	 * or stretch, and Easier and Harder lead the row as a free ride's do
+	 * (TARGETS ride-free-road 7, #4283).
 	 */
-	import AlarmClockPlus from '@lucide/svelte/icons/alarm-clock-plus';
-	import MonitorUp from '@lucide/svelte/icons/monitor-up';
-	import SkipForward from '@lucide/svelte/icons/skip-forward';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { EASIER_HARDER_OFF } from '$lib/ride/easier-harder';
 	import { askToEndWorkout } from '$lib/ride/end-ride';
@@ -20,11 +18,14 @@
 	import GearShift from '$lib/ride/GearShift.svelte';
 	import ModeSwitch from '$lib/ride/ModeSwitch.svelte';
 	import type { RideShift } from '$lib/ride/ride-shift';
+	import RideControlButton from '$lib/ride/RideControlButton.svelte';
+	import { NEEDS_3D } from '$lib/ride/ride-controls';
+	import { rideOffers } from '$lib/ride/ride-offers.svelte';
 	import ViewSwitch from '$lib/world/ViewSwitch.svelte';
 	import type { createWorldView } from '$lib/world/world-view.svelte';
+	import { askCamera, askPhoto } from '$lib/world/ride-view';
 	import type { createRideSession } from '$lib/workout/session.svelte';
-	import { tooltip } from '$lib/tooltip.svelte';
-	import { LAST_BLOCK } from '$lib/ride/remote-blocks';
+	import { EXTEND_SECONDS, LAST_BLOCK, pauseOf } from '$lib/ride/remote-blocks';
 
 	let {
 		session,
@@ -56,16 +57,19 @@
 	const last = $derived(
 		session.info.segmentIndex + 1 >= session.segments.length,
 	);
+	// Pause, as the phone's (#3217): a ride alone, once the count-in is over.
+	const clock = $derived(pauseOf(session));
 
 	// End sits in the cluster with TV and Skip block, 44 px each, and a ride
 	// it ends cannot be resumed — one stray thumb filed a truncated ride
-	// (#2623). It asks, the way a session's End always has (errors.md).
+	// (#2623). It asks, the way a session's End always has (errors.md). The
+	// phone's End asks on the phone, so it ends at once here.
 	async function endRide() {
 		if (await askToEndWorkout()) session.stop();
 	}
-
-	/** A 44 px icon control mid-ride (ux.md), skinned as SessionControls' are. */
-	const ICON = 'btn btn-secondary h-11 w-11 shrink-0 p-0';
+	$effect(() =>
+		countIn ? undefined : rideOffers.offer('end', () => session.stop()),
+	);
 </script>
 
 <div class="contents">
@@ -98,31 +102,51 @@
 				><FlagButton {onflag} sends="after" /></span
 			>{/if}
 		<ViewSwitch {world} {drawn} road={!!session.road} />
+		{#if session.road}
+			<RideControlButton
+				control="camera"
+				onclick={() => askCamera()}
+				disabled={!drawn}
+				hint={NEEDS_3D}
+				class="max-md:hidden"
+			/>
+			<RideControlButton
+				control="photo"
+				onclick={() => askPhoto()}
+				disabled={!drawn}
+				hint={NEEDS_3D}
+				class="max-md:hidden"
+			/>
+		{/if}
 		{#if ontv}
 			<!-- A phone has no TV to send to, and its bar keeps End in view. -->
-			<button
+			<RideControlButton
+				control="tv"
 				onclick={ontv}
-				class="{ICON} max-md:hidden"
-				aria-label="TV mode"
-				{@attach tooltip('TV mode')}><MonitorUp size={20} /></button
-			>
+				offer="tv"
+				class="max-md:hidden"
+			/>
+		{/if}
+		{#if clock.pausable}
+			<RideControlButton
+				control={clock.paused ? 'resume' : 'pause'}
+				onclick={() => (clock.paused ? session.resume() : session.pause())}
+				pressed={clock.paused}
+				class="max-md:hidden"
+			/>
 		{/if}
 		{#if !session.road?.pinned && !open}
-			<button
-				onclick={() => session.extend(60)}
-				class="{ICON} max-md:hidden"
-				aria-label="One more minute"
-				{@attach tooltip('One more minute')}
-				><AlarmClockPlus size={20} /></button
-			>
-			<button
+			<RideControlButton
+				control="extend"
+				onclick={() => session.extend(EXTEND_SECONDS)}
+				class="max-md:hidden"
+			/>
+			<RideControlButton
+				control="skip"
 				onclick={() => session.skip()}
 				disabled={last}
-				class={ICON}
-				aria-label="Skip block"
-				{@attach tooltip('Skip block', last ? LAST_BLOCK : undefined)}
-				><SkipForward size={20} /></button
-			>
+				hint={LAST_BLOCK}
+			/>
 		{/if}
 		{#if onchange}
 			<button

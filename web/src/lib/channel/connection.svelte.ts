@@ -9,10 +9,7 @@ import { spaceBelongsTo } from '$lib/channel/ptt-keys';
 import { gearsEnabled } from '$lib/ride/gears-enabled';
 import { EASIER_HARDER_OFF, shiftAnswer } from '$lib/ride/easier-harder';
 import { bindShifters, createRemoteRunner } from '$lib/ride/keys';
-import { askPage, toggleMap } from '$lib/session/computer-pages';
-import { computerShown } from '$lib/session/computer-shown.svelte';
-import { askViewFlip } from '$lib/world/ride-view';
-import { worldPicture } from '$lib/world/picture.svelte';
+import { offeredActions, viewNow } from '$lib/ride/ride-offers.svelte';
 import { createRemoteWorld } from '$lib/channel/remote-world';
 import { createTalkOpener } from '$lib/ride/remote-talk';
 import { clockActions, pauseOf } from '$lib/ride/remote-blocks';
@@ -412,10 +409,9 @@ function connect(
 				// Your own workout's clock is yours: Pause, Resume, Skip block and
 				// +1 min (#4425). A session's is the coach's, and has none.
 				...clockActions(() => ownRide.session),
-				// The riding screen's own controls, from the phone (#4223).
-				page: () => askPage('next'),
-				map: () => toggleMap(),
-				view: () => askViewFlip(),
+				// The riding screen's own controls, from the phone (#4223): its
+				// view switch's segments, ⚑, TV and End, where it draws them.
+				...offeredActions(),
 				...remoteWorld.actions,
 			},
 		);
@@ -461,15 +457,9 @@ function connect(
 		// told there is nothing to press.
 		const sayPause = () => live.sendPause(pauseOf(ownRide.session));
 		$effect(sayPause);
-		// Where this screen looks, so the phone's Page, Map, 3D / Flat,
-		// Camera and Photo say what they did (#4223, #4253).
-		const sayView = () =>
-			live.sendView({
-				page: computerShown.page,
-				world: computerShown.world,
-				camera: computerShown.world ? (computerShown.camera ?? '') : '',
-				pictures: worldPicture.taken,
-			});
+		// Where this screen looks and what its bar offers, so the phone's view
+		// row, Camera, Photo, Flag and TV say what they did (#4223, #4253).
+		const sayView = () => live.sendView(viewNow());
 		$effect(sayView);
 		$effect(() => {
 			const off = live.onRemote((cmd) => {
@@ -478,8 +468,8 @@ function connect(
 					sayGear(cmd.action === 'easier' || cmd.action === 'harder');
 					sayPause();
 				}
-				// A page or view press is answered by sayView's effect once the
-				// screen has turned; said now it would be the old page, and
+				// A view, TV or flag press is answered by sayView's effect once
+				// the screen has turned; said now it would be the old view, and
 				// the hub's 100 ms gap would drop the new one.
 				if (cmd.action === 'sync') sayView();
 			});

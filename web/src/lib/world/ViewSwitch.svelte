@@ -16,6 +16,7 @@
 	import { askPage } from '$lib/session/computer-pages';
 	import { tooltip } from '$lib/tooltip.svelte';
 	import { computerShown } from '$lib/session/computer-shown.svelte';
+	import { rideOffers } from '$lib/ride/ride-offers.svelte';
 	import {
 		flipped,
 		REASONS,
@@ -72,7 +73,7 @@
 		if (segment === '3d' && !drawn) world.retry();
 		if (segment === 'flat' && drawn) world.flatten();
 	}
-	// The phone remote's 3D / Flat (#4223), and what it is told back.
+	// The V key's 3D / Flat (#4236).
 	$effect(() => {
 		const flip = (event: Event) => {
 			const next = flipped(state);
@@ -82,6 +83,26 @@
 		};
 		window.addEventListener(VIEW_ASK, flip);
 		return () => window.removeEventListener(VIEW_ASK, flip);
+	});
+	// The phone's view row is this switch (ride-controls.ts): each segment
+	// drawn here, and live, is offered to it, and runs as a tap here does.
+	function toMap() {
+		rideRoom.on = false;
+		askPage('map');
+	}
+	$effect(() => {
+		if (!road && !roomy) return;
+		const offs = [
+			...(road && state.worldOffered
+				? [rideOffers.offer('view-3d', () => to('3d'))]
+				: []),
+			rideOffers.offer('view-flat', () => to('flat')),
+			...(computerShown.maps ? [rideOffers.offer('view-map', toMap)] : []),
+			...(roomy
+				? [rideOffers.offer('view-room', () => (rideRoom.on = true))]
+				: []),
+		];
+		return () => offs.forEach((off) => off());
 	});
 	$effect(() => {
 		computerShown.world = drawn;
@@ -122,10 +143,7 @@
 		>
 		{#if computerShown.maps}
 			<button
-				onclick={() => {
-					rideRoom.on = false;
-					askPage('map');
-				}}
+				onclick={toMap}
 				aria-pressed={state.pressed === 'map'}
 				class={seg(state.pressed === 'map')}>Map</button
 			>

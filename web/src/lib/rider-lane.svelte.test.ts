@@ -92,12 +92,12 @@ describe('the rider’s lane on the lobby socket (#4425)', () => {
 		const heard: string[] = [];
 		const off = riderLane.onRemote((cmd) => heard.push(cmd.action));
 		socket!.onmessage?.({
-			data: JSON.stringify({ remote: { action: 'view' } }),
+			data: JSON.stringify({ remote: { action: 'view-flat' } }),
 		});
 		off();
 		socket!.onmessage?.({
-			data: JSON.stringify({ remote: { action: 'page' } }),
+			data: JSON.stringify({ remote: { action: 'view-map' } }),
 		});
-		expect(heard).toEqual(['view']);
+		expect(heard).toEqual(['view-flat']);
 	});
 });

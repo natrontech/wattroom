@@ -38,8 +38,10 @@
 	import MomentCard from '$lib/session/MomentCard.svelte';
 	import Skyline from '$lib/ride/Skyline.svelte';
 	import { rideContext } from './ride-context';
-	import MonitorUp from '@lucide/svelte/icons/monitor-up';
 	import { goto } from '$app/navigation';
+	import RideControlButton from '$lib/ride/RideControlButton.svelte';
+	import { NEEDS_3D } from '$lib/ride/ride-controls';
+	import { askCamera, askPhoto } from '$lib/world/ride-view';
 	import SessionFlag from '$lib/session/SessionFlag.svelte';
 	import TrainerOverview from '$lib/session/TrainerOverview.svelte';
 	import SessionControls from '$lib/session/SessionControls.svelte';
@@ -59,7 +61,6 @@
 	import { ridesTheRoad } from '$lib/workout/block';
 	import { serverNow } from '$lib/server-clock';
 	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { tooltip } from '$lib/tooltip.svelte';
 
 	const channel = useChannel();
 	// Another of the rider's screens drives the trainer (#2075). This one
@@ -189,7 +190,6 @@
 	);
 	// The count-in over the world: the reveal flies, the digit hangs on the arch's banner (#3087, ADR-0046).
 	const countingIn = $derived(inWorld && channel.phase === 'countdown');
-	const ICON = 'btn btn-secondary h-11 w-11 p-0';
 	// M and V from a key or a bridged controller (#4236).
 	$effect(() => bindViewKeys((k) => !!board.onKey(k)));
 </script>
@@ -267,14 +267,31 @@
 					hint={targetsNote ? `${targetsNote} — trim them there` : undefined}
 				/>
 			{/if}
-			{#if channel.ridden}<ViewSwitch {world} drawn={inWorld} />{/if}
+			{#if channel.ridden}
+				<ViewSwitch {world} drawn={inWorld} />
+				<!-- The ride's controls, as the phone remote draws them (ride-controls.ts). -->
+				<RideControlButton
+					control="camera"
+					onclick={() => askCamera()}
+					disabled={!inWorld}
+					hint={NEEDS_3D}
+					class="max-md:hidden"
+				/>
+				<RideControlButton
+					control="photo"
+					onclick={() => askPhoto()}
+					disabled={!inWorld}
+					hint={NEEDS_3D}
+					class="max-md:hidden"
+				/>
+			{/if}
 			<!-- A phone's bar keeps Leave and the coach's controls in view. -->
-			<button
+			<RideControlButton
+				control="tv"
 				onclick={() => channel.openTv()}
-				class="{ICON} max-md:hidden"
-				aria-label="TV mode"
-				{@attach tooltip('TV mode')}><MonitorUp size={20} /></button
-			>
+				offer="tv"
+				class="max-md:hidden"
+			/>
 			<span class="contents max-md:hidden"><SessionFlag /></span>
 			{#if channel.you.inSession}
 				<!-- One short word, so the eyebrow keeps the row (slot 1's 860 px). -->

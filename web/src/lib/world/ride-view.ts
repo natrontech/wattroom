@@ -119,8 +119,8 @@ export function viewSwitch(s: {
 }
 
 /**
- * Asks the riding screen's view switch to flip between 3D and Flat: the
- * phone remote's 3D / Flat (#4223). From MAP it goes to 3D, as its 3D
+ * Asks the riding screen's view switch to flip between 3D and Flat: the V
+ * key (#4236). From MAP it goes to 3D, as its 3D
  * segment does. Says whether a switch took it: none where no world can draw.
  */
 export const VIEW_ASK = 'wattroom:view-flip';

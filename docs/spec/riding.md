@@ -198,6 +198,27 @@ A tap on the rail adds a second row in the same type: W/kg, zone, 10 s, 30 s, No
 
 TV mode draws the same rail, with the place, the workout and the way out above it, the graph (a workout's) or the Skyline (a free ride's) as the ground and the crew beside it. In a session the crew and now playing stand under a fade from the right (a phone: from the foot), no panel; the rider whose numbers the rail shows is marked with a neon edge.
 
+## The ride's controls and the phone remote (2026-11)
+
+The now bar and the phone remote draw the ride's controls from one list (`web/src/lib/ride/ride-controls.ts`), in one order, with one icon and one name each. The bar draws them as 44 px icons with the name as tooltip; the phone draws the same icon over a short word.
+
+| Control      | Now bar                                    | Phone                                                            |
+| ------------ | ------------------------------------------ | ---------------------------------------------------------------- |
+| Easier / Harder | the trim or the shifter                 | the full-width pair at the foot, answered with the gear or bias  |
+| View         | 3D · Flat · Map · Room, the view switch    | the same segments, the ones the bar draws, pressed where it looks |
+| Camera       | on a road; held off 3D                     | the same                                                         |
+| Photo        | on a road; held off 3D                     | the same                                                         |
+| TV           | opens TV mode                              | toggles TV mode on the riding screen                             |
+| ⚑ Flag       | marks or sends, as it says                 | the bar's ⚑, answered "Flagged"                                  |
+| Pause / Resume | a ride alone, after the count-in         | the same                                                         |
+| +1 min, Skip | a workout timed by the clock               | the same                                                         |
+| End ride     | asks on the riding screen                  | asks on the phone with a second tap within **3 s**, then ends    |
+| Cheer, Talk  | —: the call's own mic and cheers           | in a voice channel only                                          |
+
+- **The phone offers what the bar offers.** The riding screen tells the phone which of its view segments, ⚑, TV and End ride its bar draws and has live, and the phone holds every other tile, disabled, with one line that says why (the first that applies: Camera and Photo need 3D; Skip and +1 min need a workout timed by the clock; the last block; TV and Flag not on the riding screen). A control that never applies to the ride is left off: Camera and Photo off a road, the clock's on a session, Cheer and Talk alone.
+- **Page is gone.** It turned the bike computer, which the rail hides; the rider saw nothing move but MAP, which the view row now has.
+- **It fits.** The remote is the phone's dynamic viewport and never scrolls: every row shares the height under the header, with a **48 px** floor per target, and the shift pair the tallest. Checked at 402 × 874 (iPhone 17, standalone and Safari with its toolbars), 375 × 667, 375 × 548 and 440 × 956.
+
 ## The ride's pictures (defaults — tune in alpha; [#4221](https://github.com/natrontech/wattroom/issues/4221), [#4263](https://github.com/natrontech/wattroom/issues/4263), [#4431](https://github.com/natrontech/wattroom/issues/4431))
 
 A closing card offers the pictures for Strava, and the rider saves any of them: the **poster**, drawn by the server from the saved ride, and where the 3D world drew, the **world's two** of one moment: you on the road (**World picture**), and the ride as its Overhead camera saw it (**Overhead picture**).
